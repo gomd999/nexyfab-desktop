@@ -11,6 +11,7 @@ export type Col1PanelId =
   | 'gen'
   | 'motion'
   | 'modal'
+  | 'buckling'
   | 'tol'
   | 'surf'
   | 'mfgpipe'

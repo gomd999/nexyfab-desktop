@@ -406,7 +406,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
         <div style={{ flex: 1, overflow: 'auto', padding: '24px 24px 16px' }}>
           {mode === 'text' ? (
             <div>
-              <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--nx-panel-2)', margin: '0 0 8px' }}>
+              <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--nx-text)', margin: '0 0 8px' }}>
                 {t.freeTextTitle}
               </h2>
               <p style={{ fontSize: 13, color: 'var(--nx-text-2)', margin: '0 0 16px' }}>
@@ -423,7 +423,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                   borderRadius: 10,
                   border: '1px solid #334155',
                   background: 'var(--nx-border-strong)',
-                  color: 'var(--nx-panel-2)',
+                  color: 'var(--nx-text)',
                   fontSize: 14,
                   outline: 'none',
                   resize: 'vertical',
@@ -470,7 +470,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
             style={{
               fontSize: 22,
               fontWeight: 600,
-              color: 'var(--nx-panel-2)',
+              color: 'var(--nx-text)',
               margin: '0 0 8px',
               lineHeight: 1.4,
             }}
@@ -495,7 +495,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                       borderRadius: 10,
                       border: selected ? '2px solid #22d3ee' : '1px solid #334155',
                       background: selected ? 'rgba(34,211,238,0.1)' : 'var(--nx-border-strong)',
-                      color: 'var(--nx-panel-2)',
+                      color: 'var(--nx-text)',
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                       display: 'flex',
@@ -546,7 +546,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                       borderRadius: 8,
                       border: selected ? '2px solid #22d3ee' : '1px solid #334155',
                       background: selected ? 'rgba(34,211,238,0.1)' : 'var(--nx-border-strong)',
-                      color: 'var(--nx-panel-2)',
+                      color: 'var(--nx-text)',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -564,7 +564,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: 'var(--nx-bg)',
+                        color: 'var(--nx-text)',
                         fontSize: 12,
                         fontWeight: 700,
                         flexShrink: 0,
@@ -615,7 +615,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                         borderRadius: 8,
                         border: '1px solid #334155',
                         background: 'var(--nx-border-strong)',
-                        color: 'var(--nx-panel-2)',
+                        color: 'var(--nx-text)',
                         fontSize: 15,
                         outline: 'none',
                       }}
@@ -639,7 +639,7 @@ export default function IntakeWizard({ onComplete, onCancel, initialSpec }: Prop
                 borderRadius: 8,
                 border: '1px solid #334155',
                 background: 'var(--nx-border-strong)',
-                color: 'var(--nx-panel-2)',
+                color: 'var(--nx-text)',
                 fontSize: 14,
                 outline: 'none',
                 resize: 'vertical',

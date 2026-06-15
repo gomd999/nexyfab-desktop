@@ -51,6 +51,26 @@ import type {
 } from './types';
 import { applyUnifiedDiff, DiffApplyError } from './diff';
 import { intentToScad } from '../../openscad-render/intentToScad';
+import { compositeIntentToScad, compositeExpectedBbox, verifyCompositeAgainstSpec, type CompositePart } from './compositeIntent';
+import { verifyAgainstSpec, formatSpecCritique, type ProcessForDfm } from './specVerification';
+import { suggestGdtForIntent, formatSuggestions, type SuggestGdtOptions, type SuggestedGdtFrame } from './gdtSuggestion';
+import { estimateCost, formatCostBreakdown, type Material, type CostBreakdown, type EstimateCostOptions } from './costEstimation';
+import { suggestProcessForPart, formatProcessScores, type SuggestProcessOptions, type ProcessScore } from './processSelection';
+import { suggestMaterialForPart, formatMaterialScores, type SuggestMaterialOptions, type MaterialScore } from './materialRecommendation';
+import { generateBom, formatBomReport, bomToCSV, type GenerateBomOptions, type BomReport } from './bomGenerator';
+import {
+  suggestMatesForPair,
+  formatMateSuggestions,
+  type SuggestedMate,
+  type PartFingerprint,
+  type SuggestMatesOptions,
+} from './mateInference';
+import {
+  diffCheckpoints,
+  formatCheckpointDelta,
+  type CheckpointDelta,
+  type CheckpointWithStats,
+} from './checkpointDiff';
 import { searchBosl2 } from './bosl2Index';
 import { effectiveScadSource } from './composeSource';
 
@@ -111,6 +131,20 @@ export interface BrepAdapter {
   chamfer(args: import('./types').BrepChamferArgs): Promise<BrepResult>;
   shell(args: import('./types').BrepShellArgs): Promise<BrepResult>;
   toMesh(args: import('./types').BrepToMeshArgs): Promise<Ok<{ triangleCount: number; bbox?: { min: [number, number, number]; max: [number, number, number] } }> | Err>;
+  /**
+   * X1 (B-rep parallel) — Extract the tessellated mesh positions for a
+   * B-rep handle so the verify_spec_brep tool can run the full mesh-side
+   * inspection chain (genus, surface area, dihedrals, hole peaks, min
+   * wall thickness). Optional — adapters that don't implement it cause
+   * verify_spec_brep to return NO_BREP_MESH rather than failing the
+   * whole agent loop. Positions follow the THREE.BufferGeometry "flat
+   * triangles" convention: each triangle = 9 consecutive floats
+   * (x0,y0,z0,x1,y1,z1,x2,y2,z2).
+   */
+  toMeshGeometry?(args: { handle: string; tolerance?: number }): Promise<
+    | { ok: true; positions: Float32Array; triangleCount: number; bbox: { min: [number, number, number]; max: [number, number, number] } }
+    | { ok: false; reason: string }
+  >;
   exportStep(args: import('./types').BrepExportStepArgs): Promise<Ok<{ bytes: number }> | Err>;
   // ─── G (Stage 4) — sweep / loft / draft / helix ───────────────────────
   sweep?(args: import('./types').BrepSweepArgs): Promise<BrepResult>;
@@ -146,7 +180,15 @@ export interface SolverAdapter {
  */
 export interface MateAdapter {
   isAvailable(): boolean;
-  solve(mates: import('./types').AssemblyMate[]): Promise<
+  /**
+   * Solve the mate system. `anchors` (optional) supplies per-handle world
+   * placements so the solver can actually reposition parts; adapters that
+   * ignore it fall back to their own geometry source.
+   */
+  solve(
+    mates: import('./types').AssemblyMate[],
+    anchors?: Record<string, import('./types').AgentPlacement>,
+  ): Promise<
     | { ok: true; transforms: Record<string, [number, number, number]>; residual: number }
     | { ok: false; reason: string }
   >;
@@ -248,6 +290,10 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     // Invalidate render — caller must render again to get fresh stats.
     session.render = { ok: null, errors: [] };
     session.geometry = {};
+    // X1 — raw write breaks the intent↔SCAD coupling; spec verification
+    // would compare against a stale intent and emit nonsense critique.
+    session.lastIntent = undefined;
+    session.lastCompositeParts = undefined; // W2.1 — same for a composite
     return {
       ok: true,
       output: `OK. SCAD source replaced (${a.code.length} bytes). Call render to verify.`,
@@ -264,6 +310,9 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       session.scadSource = next;
       session.render = { ok: null, errors: [] };
       session.geometry = {};
+      // X1 — diff edits invalidate intent-derived expectations.
+      session.lastIntent = undefined;
+      session.lastCompositeParts = undefined; // W2.1 — same for a composite
       return {
         ok: true,
         output: `OK. Diff applied (source now ${next.length} bytes). Call render to verify.`,
@@ -363,6 +412,22 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     }
     const result = intentToScad(a.intent);
     if (!result.ok) {
+      // W4 — an unsupported shapeId is no longer a dead end. Route the agent to
+      // the composite fallback (add_composite_intent) instead of leaving
+      // write_scad as the only escape, so non-whitelisted shapes still reach a
+      // closed-loop-gated build. NB: gate on intentToScad's own support set, not
+      // the (narrower) schema allow-list, so renderable shapes aren't misrouted.
+      const unsupportedShape = /not yet supported by the deterministic SCAD converter/.test(result.reason);
+      if (unsupportedShape) {
+        return {
+          ok: false,
+          error: `'${(a.intent as { shapeId?: unknown }).shapeId}' is not a single whitelisted primitive. `
+            + `Build it as a boolean composition of primitives with add_composite_intent `
+            + `(e.g. an L-bracket = two boxes; a holed plate = box minus a cylinder). `
+            + `Fall back to write_scad only if it can't be composed.`,
+          code: 'USE_COMPOSITE',
+        };
+      }
       return {
         ok: false,
         error: `intent rejected: ${result.reason}. Use write_scad to author SCAD by hand if shape isn't supported.`,
@@ -373,10 +438,698 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     session.scadSource = result.scad;
     session.render = { ok: null, errors: [] };
     session.geometry = {};
+    // X1 — remember the intent so verify_spec can compare measured bbox
+    // against the closed-form expected bbox derived from these params.
+    session.lastIntent = a.intent;
+    session.lastCompositeParts = undefined; // mutually exclusive with a composite
     return {
       ok: true,
       output: `OK. SCAD generated from intent (${result.scad.length} bytes${result.warnings.length > 0 ? `, ${result.warnings.length} warnings` : ''}). Call render to verify.`,
       meta: { warnings: result.warnings },
+    };
+  };
+
+  // X1 — Compare last intent's expected bbox against the measured bbox.
+  // W2 (ADR-015) — build a non-whitelisted shape as a boolean COMPOSITION of
+  // whitelisted primitives when no single primitive fits. The expected bbox
+  // (union of placed add-parts) is returned so the verifier can gate it.
+  const add_composite_intent: ToolExecutor = async (args, session) => {
+    const a = args as { parts?: unknown };
+    if (!Array.isArray(a.parts) || a.parts.length === 0) {
+      return { ok: false, error: 'add_composite_intent requires { parts: [{ intent, op?, at? }, ...] }', code: 'BAD_ARGS' };
+    }
+    const parts = a.parts as CompositePart[];
+    const result = compositeIntentToScad(parts);
+    if (!result.ok) {
+      return { ok: false, error: `composite rejected: ${result.reason}`, code: 'COMPOSITE_REJECTED' };
+    }
+    session.scadSource = result.scad;
+    session.render = { ok: null, errors: [] };
+    session.geometry = {};
+    // A composite is not a single intent → clear lastIntent and remember the
+    // parts so verify_spec gates it against the composite envelope (W2.1).
+    session.lastIntent = undefined;
+    session.lastCompositeParts = parts;
+    const expectedBbox = compositeExpectedBbox(parts);
+    return {
+      ok: true,
+      output: `OK. Composite SCAD generated from ${parts.length} parts (${result.scad.length} bytes${result.warnings.length > 0 ? `, ${result.warnings.length} warnings` : ''}). Call render to verify.`,
+      meta: { warnings: result.warnings, expectedBbox },
+    };
+  };
+
+  // Reads `session.lastIntent` (populated by add_feature_intent) and
+  // `session.geometry.bbox` (populated by get_geometry). Emits a
+  // structured critique the agent uses to self-correct param values.
+  const verify_spec: ToolExecutor = async (_args, session) => {
+    if (!session.lastIntent && !session.lastCompositeParts) {
+      return {
+        ok: false,
+        error: 'verify_spec requires a prior add_feature_intent or add_composite_intent call (session has no intent).',
+        code: 'NO_INTENT',
+      };
+    }
+    const bbox = session.geometry?.bbox;
+    if (!bbox) {
+      return {
+        ok: false,
+        error: 'verify_spec requires a measured bbox. Call render → get_geometry first.',
+        code: 'NO_BBOX',
+      };
+    }
+
+    // W2.1 — composite path: gate the measured bbox against the composite
+    // envelope. (Hole/volume/thread sub-checks are intent-shape specific and
+    // don't apply to an arbitrary composition.)
+    if (!session.lastIntent && session.lastCompositeParts) {
+      const compResult = verifyCompositeAgainstSpec(session.lastCompositeParts, bbox);
+      return {
+        ok: true,
+        output: formatSpecCritique(compResult),
+        meta: {
+          verifiable: compResult.verifiable,
+          passed: compResult.ok,
+          mismatchCount: compResult.mismatches.length,
+          expected: compResult.expected,
+          measured: compResult.measured,
+          composite: true,
+        },
+      };
+    }
+    // Past the composite branch, a single intent is guaranteed.
+    const intent = session.lastIntent;
+    if (!intent) {
+      return { ok: false, error: 'verify_spec: no single intent to verify.', code: 'NO_INTENT' };
+    }
+    // X2 — pull the topological genus stashed by the geometry adapter
+    // and let verifyAgainstSpec compare against the intent's hole count.
+    // X3 — also pull measured volume so blind holes / wrong-diameter
+    // holes (which preserve genus + bbox) are caught.
+    const detectedGenus = session.geometry?.genus;
+    const detectedVolumeMm3 = session.geometry?.volume_mm3;
+    const detectedSurfaceAreaMm2 = session.geometry?.surfaceArea_mm2;
+    const detectedHoles = session.geometry?.detectedHoles;
+    const detectedDihedralStats = session.geometry?.dihedralStats;
+    // X11 — wall thickness DFM gate. minWallThicknessMm comes from the
+    // geometry adapter (raycast sampling); processForDfm from the user
+    // prefs Y3 stored on the session. Both are optional — verifyAgainstSpec
+    // skips the check when either is missing.
+    const detectedMinWallMm = session.geometry?.minWallThicknessMm;
+    const processForDfm = mapUserPrefToProcess(session.userPrefs?.default_process);
+    const result = verifyAgainstSpec(intent, bbox, {
+      detectedGenus,
+      detectedVolumeMm3,
+      detectedSurfaceAreaMm2,
+      detectedHoles,
+      detectedDihedralStats,
+      detectedMinWallMm,
+      processForDfm,
+    });
+    const critique = formatSpecCritique(result);
+    return {
+      ok: true,
+      output: critique,
+      meta: {
+        verifiable: result.verifiable,
+        passed: result.ok,
+        mismatchCount: result.mismatches.length,
+        expected: result.expected,
+        measured: result.measured,
+        holeCount: result.holeCount,
+        volume: result.volume,
+        surfaceArea: result.surfaceArea,
+        holePositions: result.holePositions,
+        fillet: result.fillet,
+        chamfer: result.chamfer,
+        threads: result.threads,
+        wallThickness: result.wallThickness,
+        intentIssues: result.intentIssues,
+      },
+    };
+  };
+
+  // X1 (B-rep parallel) — verify_spec_brep mirrors verify_spec for the
+  // OCCT B-rep flow. Where verify_spec consumes whatever the SCAD render
+  // path stored in session.geometry, this tool drives the same 10-layer
+  // SpecVerificationResult chain straight from a B-rep handle: it asks
+  // the host's BrepAdapter to tessellate the handle (toMeshGeometry),
+  // builds a THREE.BufferGeometry from the returned positions, then runs
+  // countThroughHoles / computeSurfaceArea / computeMinWallThickness /
+  // detectAllAxisAlignedHoles / computeDihedralStats and feeds the
+  // measurements into verifyAgainstSpec.
+  //
+  // Adapters that don't implement toMeshGeometry (e.g. older mocks) cause
+  // this tool to return NO_BREP_MESH cleanly rather than throwing, so
+  // existing flows aren't disturbed. The result `meta` shape mirrors
+  // verify_spec so the SSE bridge in ScadAgentPanel auto-feeds the
+  // critique to OpenScadPanel without per-tool wiring.
+  const verify_spec_brep: ToolExecutor = async (args, session) => {
+    const guard = brepGuard(session); if (guard) return guard;
+    const a = args as {
+      brepHandle?: unknown;
+      intent?: unknown;
+      processForDfm?: unknown;
+    };
+    const brepHandle = typeof a.brepHandle === 'string' ? a.brepHandle : '';
+    if (!brepHandle) {
+      return { ok: false, error: 'verify_spec_brep requires { brepHandle: string, intent: IntentInput, processForDfm? }', code: 'BAD_ARGS' };
+    }
+    const intent = a.intent;
+    if (!intent || typeof intent !== 'object') {
+      return { ok: false, error: 'verify_spec_brep requires { intent: { shapeId, params, features? } }', code: 'BAD_ARGS' };
+    }
+    const intentShapeId = (intent as { shapeId?: unknown }).shapeId;
+    if (typeof intentShapeId !== 'string') {
+      return { ok: false, error: 'intent.shapeId must be a string', code: 'BAD_ARGS' };
+    }
+    const entry = session.brepEntries.find(e => e.handle === brepHandle);
+    if (!entry) {
+      return {
+        ok: false,
+        error: `B-rep handle "${brepHandle}" not found in session. Call brep_primitive / brep_boolean / etc. first, or check the handle.`,
+        code: 'NO_BREP',
+      };
+    }
+    if (!host.brep!.toMeshGeometry) {
+      return {
+        ok: false,
+        error: 'verify_spec_brep needs BrepAdapter.toMeshGeometry, which this server has not wired yet. Skip the check or use the SCAD verify_spec path via brep_to_mesh → render-side stats.',
+        code: 'NO_BREP_MESH',
+      };
+    }
+    let meshOut: Awaited<ReturnType<NonNullable<BrepAdapter['toMeshGeometry']>>>;
+    try {
+      await host.brep!.ensureReady();
+      meshOut = await host.brep!.toMeshGeometry({ handle: brepHandle });
+    } catch (e) {
+      return { ok: false, error: `toMeshGeometry threw: ${(e as Error).message}`, code: 'BREP_THREW' };
+    }
+    if (!meshOut.ok) {
+      return { ok: false, error: `B-rep tessellation failed: ${meshOut.reason}`, code: 'NO_BREP_MESH' };
+    }
+    if (meshOut.positions.length < 9 || meshOut.triangleCount <= 0) {
+      return { ok: false, error: 'B-rep tessellation produced an empty mesh (no triangles).', code: 'EMPTY_MESH' };
+    }
+    // Build a non-indexed THREE.BufferGeometry directly from positions.
+    const THREE = await import('three');
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(meshOut.positions, 3));
+
+    // Run the full inspection pipeline. computeMinWallThickness is the
+    // only async one (it lazy-imports three-mesh-bvh for fast raycasts).
+    const { countThroughHoles, computeSurfaceArea, computeMinWallThickness, detectAllAxisAlignedHoles, computeDihedralStats } = await import('./faceInspection');
+    const detectedGenus = countThroughHoles(geometry);
+    const detectedSurfaceAreaMm2 = computeSurfaceArea(geometry);
+    const detectedHoles = detectAllAxisAlignedHoles(geometry, { bbox: meshOut.bbox });
+    const detectedDihedralStats = computeDihedralStats(geometry);
+    let detectedMinWallMm: number | null;
+    try {
+      const wallStats = await computeMinWallThickness(geometry);
+      detectedMinWallMm = wallStats.minMm === Infinity ? null : wallStats.minMm;
+    } catch {
+      detectedMinWallMm = null;
+    }
+    // Volume from the triangle mesh (signed-tetra sum) so verify_spec can
+    // run the X3 volume check. Cheap O(F); avoids re-walking the
+    // positions buffer twice.
+    const detectedVolumeMm3 = computeMeshVolume(meshOut.positions);
+
+    // processForDfm: explicit override beats the session pref, mirroring
+    // the SCAD-path executor's mapUserPrefToProcess fallback.
+    let processForDfm: ProcessForDfm | undefined;
+    if (typeof a.processForDfm === 'string') {
+      processForDfm = mapUserPrefToProcess(a.processForDfm);
+    } else {
+      processForDfm = mapUserPrefToProcess(session.userPrefs?.default_process);
+    }
+
+    const result = verifyAgainstSpec(intent as import('../../openscad-render/intentToScad').IntentInput, meshOut.bbox, {
+      detectedGenus,
+      detectedVolumeMm3,
+      detectedSurfaceAreaMm2,
+      detectedHoles,
+      detectedDihedralStats,
+      detectedMinWallMm,
+      processForDfm,
+    });
+    const critique = formatSpecCritique(result);
+    return {
+      ok: true,
+      output: critique,
+      meta: {
+        verifiable: result.verifiable,
+        passed: result.ok,
+        mismatchCount: result.mismatches.length,
+        expected: result.expected,
+        measured: result.measured,
+        holeCount: result.holeCount,
+        volume: result.volume,
+        surfaceArea: result.surfaceArea,
+        holePositions: result.holePositions,
+        fillet: result.fillet,
+        chamfer: result.chamfer,
+        threads: result.threads,
+        wallThickness: result.wallThickness,
+        intentIssues: result.intentIssues,
+        brepHandle,
+        brepKind: entry.kind,
+        triangleCount: meshOut.triangleCount,
+      },
+    };
+  };
+
+  // ─── GD&T tolerance suggester ─────────────────────────────────────────
+  // Heuristic v1 — given an intent, propose a sensible default set of
+  // GD&T frames (datum seed + position on holes + flatness on top face +
+  // perpendicularity on cylinder axes, etc.). Pure helper; the agent
+  // reviews suggestions with the user, then materializes via
+  // add_datum_target + add_gdt_frame.
+  const suggest_gdt_for_intent: ToolExecutor = async (args) => {
+    const a = args as {
+      intent?: unknown;
+      processForDfm?: unknown;
+      grade?: unknown;
+    };
+    if (!a.intent || typeof a.intent !== 'object') {
+      return {
+        ok: false,
+        error: 'suggest_gdt_for_intent requires { intent: { shapeId, params, features? }, processForDfm?, grade? }',
+        code: 'BAD_ARGS',
+      };
+    }
+    const intentObj = a.intent as { shapeId?: unknown };
+    if (typeof intentObj.shapeId !== 'string') {
+      return { ok: false, error: 'intent.shapeId must be a string', code: 'BAD_ARGS' };
+    }
+    const opts: SuggestGdtOptions = {};
+    if (typeof a.processForDfm === 'string') {
+      const allowed: SuggestGdtOptions['processForDfm'][] = ['fdm', 'sla', 'cnc_mill', 'sheet', 'injection_molding', 'die_cast'];
+      if ((allowed as string[]).includes(a.processForDfm)) {
+        opts.processForDfm = a.processForDfm as SuggestGdtOptions['processForDfm'];
+      }
+    }
+    if (typeof a.grade === 'string') {
+      const allowedGrade: SuggestGdtOptions['grade'][] = ['rough', 'standard', 'precision'];
+      if ((allowedGrade as string[]).includes(a.grade)) {
+        opts.grade = a.grade as SuggestGdtOptions['grade'];
+      }
+    }
+    const suggestions: SuggestedGdtFrame[] = suggestGdtForIntent(
+      a.intent as import('../../openscad-render/intentToScad').IntentInput,
+      opts,
+    );
+    return {
+      ok: true,
+      output: formatSuggestions(suggestions),
+      meta: { suggestions },
+    };
+  };
+
+  // ─── Track B — Cost estimation ────────────────────────────────────────
+  // Order-of-magnitude part-cost estimator. Pulls density × volume for
+  // material cost, fixed machine-hour rate for process time, and amortizes
+  // a per-job setup fee over the requested quantity. Confidence label
+  // tells the caller whether to trust the figure ('medium' when measured
+  // volume + supported process; 'low' when bbox-only; 'rough' for sheet
+  // metal or degenerate inputs).
+  const VALID_PROCESSES_COST: ProcessForDfm[] = ['fdm', 'sla', 'cnc_mill', 'sheet', 'injection_molding', 'die_cast'];
+  const VALID_MATERIALS: Material[] = ['aluminum_6061', 'steel_a36', 'steel_4140', 'stainless_304', 'pla', 'abs'];
+
+  const estimate_cost: ToolExecutor = async (args) => {
+    const a = args as {
+      process?: unknown;
+      material?: unknown;
+      quantity?: unknown;
+      measuredVolumeMm3?: unknown;
+      bboxMm?: unknown;
+    };
+    if (typeof a.process !== 'string' || !(VALID_PROCESSES_COST as string[]).includes(a.process)) {
+      return {
+        ok: false,
+        error: `estimate_cost requires process ∈ {${VALID_PROCESSES_COST.join('|')}}`,
+        code: 'BAD_ARGS',
+      };
+    }
+    if (typeof a.material !== 'string' || !(VALID_MATERIALS as string[]).includes(a.material)) {
+      return {
+        ok: false,
+        error: `estimate_cost requires material ∈ {${VALID_MATERIALS.join('|')}}`,
+        code: 'BAD_ARGS',
+      };
+    }
+    const opts: EstimateCostOptions = {
+      process: a.process as ProcessForDfm,
+      material: a.material as Material,
+      quantity: typeof a.quantity === 'number' && a.quantity > 0 ? a.quantity : 1,
+    };
+    if (typeof a.measuredVolumeMm3 === 'number' && a.measuredVolumeMm3 > 0) {
+      opts.measuredVolumeMm3 = a.measuredVolumeMm3;
+    }
+    if (a.bboxMm && typeof a.bboxMm === 'object') {
+      const b = a.bboxMm as { wMm?: unknown; hMm?: unknown; dMm?: unknown };
+      if (typeof b.wMm === 'number' && typeof b.hMm === 'number' && typeof b.dMm === 'number') {
+        opts.bboxMm = { wMm: b.wMm, hMm: b.hMm, dMm: b.dMm };
+      }
+    }
+    let cost: CostBreakdown;
+    try {
+      cost = estimateCost(opts);
+    } catch (e) {
+      return { ok: false, error: `estimate_cost threw: ${(e as Error).message}`, code: 'COST_THREW' };
+    }
+    return {
+      ok: true,
+      output: formatCostBreakdown(opts, cost),
+      meta: { cost },
+    };
+  };
+
+  // ─── Track G — AI process selection ───────────────────────────────────
+  // Heuristic ranking of manufacturing processes for a given intent.
+  // Each process starts at 50 and gets +/- modifiers from material /
+  // quantity / wall thickness / bbox / hole count. Blockers force the
+  // score to 0. Returns top 3 by default (or all 6 when returnAll=true).
+  const suggest_process: ToolExecutor = async (args) => {
+    const a = args as {
+      intent?: unknown;
+      measured?: unknown;
+      quantityHint?: unknown;
+      materialHint?: unknown;
+      returnAll?: unknown;
+    };
+    if (!a.intent || typeof a.intent !== 'object') {
+      return {
+        ok: false,
+        error: 'suggest_process requires { intent: { shapeId, params, features? }, measured?, quantityHint?, materialHint? }',
+        code: 'BAD_ARGS',
+      };
+    }
+    const intentObj = a.intent as { shapeId?: unknown };
+    if (typeof intentObj.shapeId !== 'string') {
+      return { ok: false, error: 'intent.shapeId must be a string', code: 'BAD_ARGS' };
+    }
+    const opts: SuggestProcessOptions = {
+      intent: a.intent as import('../../openscad-render/intentToScad').IntentInput,
+    };
+    if (typeof a.quantityHint === 'number' && a.quantityHint > 0) {
+      opts.quantityHint = a.quantityHint;
+    }
+    if (a.materialHint === 'metal' || a.materialHint === 'plastic' || a.materialHint === 'any') {
+      opts.materialHint = a.materialHint;
+    }
+    if (a.returnAll === true) opts.returnAll = true;
+    if (a.measured && typeof a.measured === 'object') {
+      const m = a.measured as Record<string, unknown>;
+      const measured: NonNullable<SuggestProcessOptions['measured']> = {};
+      if (typeof m.volumeMm3 === 'number') measured.volumeMm3 = m.volumeMm3;
+      if (m.bboxMm && typeof m.bboxMm === 'object') {
+        const b = m.bboxMm as { wMm?: unknown; hMm?: unknown; dMm?: unknown };
+        if (typeof b.wMm === 'number' && typeof b.hMm === 'number' && typeof b.dMm === 'number') {
+          measured.bboxMm = { wMm: b.wMm, hMm: b.hMm, dMm: b.dMm };
+        }
+      }
+      if (typeof m.minWallMm === 'number' || m.minWallMm === null) {
+        measured.minWallMm = m.minWallMm as number | null;
+      }
+      if (typeof m.holeCount === 'number') measured.holeCount = m.holeCount;
+      if (typeof m.chamferEdgeCount === 'number') measured.chamferEdgeCount = m.chamferEdgeCount;
+      opts.measured = measured;
+    }
+    let scores: ProcessScore[];
+    try {
+      scores = suggestProcessForPart(opts);
+    } catch (e) {
+      return { ok: false, error: `suggest_process threw: ${(e as Error).message}`, code: 'PROCESS_THREW' };
+    }
+    return {
+      ok: true,
+      output: formatProcessScores(scores),
+      meta: { scores },
+    };
+  };
+
+  // ─── Track M — AI material recommendation ─────────────────────────────
+  // Heuristic ranking of all 6 materials against the part's intended
+  // process / environment / loading / budget / quantity. Each material
+  // starts at 50 and accumulates +/- modifiers; hard incompatibilities
+  // (metal on FDM, plastic on die_cast, PLA at high_temp, non-food-safe
+  // in 'food' env) zero the score AND surface as blockers. Returns the
+  // full 6-material list (sorted descending) so the agent has a visible
+  // trade-off table even when only the top recommendation is surfaced.
+  const VALID_ENVIRONMENTS: NonNullable<SuggestMaterialOptions['environment']>[] = ['indoor', 'outdoor', 'food', 'high_temp', 'marine'];
+  const VALID_LOADING: NonNullable<SuggestMaterialOptions['loading']>[] = ['cosmetic', 'light', 'structural'];
+  const VALID_BUDGET: NonNullable<SuggestMaterialOptions['budget']>[] = ['cheap', 'standard', 'premium'];
+  const VALID_PROCESSES_MAT: ProcessForDfm[] = ['fdm', 'sla', 'cnc_mill', 'sheet', 'injection_molding', 'die_cast'];
+
+  const suggest_material: ToolExecutor = async (args) => {
+    // All args optional — caller may pass {} to get the default ranking.
+    if (args !== undefined && args !== null && typeof args !== 'object') {
+      return { ok: false, error: 'suggest_material requires an args object (all fields optional)', code: 'BAD_ARGS' };
+    }
+    const a = (args ?? {}) as {
+      process?: unknown;
+      environment?: unknown;
+      loading?: unknown;
+      budget?: unknown;
+      quantityHint?: unknown;
+    };
+    const opts: SuggestMaterialOptions = {};
+    if (typeof a.process === 'string' && (VALID_PROCESSES_MAT as string[]).includes(a.process)) {
+      opts.process = a.process as ProcessForDfm;
+    }
+    if (typeof a.environment === 'string' && (VALID_ENVIRONMENTS as string[]).includes(a.environment)) {
+      opts.environment = a.environment as SuggestMaterialOptions['environment'];
+    }
+    if (typeof a.loading === 'string' && (VALID_LOADING as string[]).includes(a.loading)) {
+      opts.loading = a.loading as SuggestMaterialOptions['loading'];
+    }
+    if (typeof a.budget === 'string' && (VALID_BUDGET as string[]).includes(a.budget)) {
+      opts.budget = a.budget as SuggestMaterialOptions['budget'];
+    }
+    if (typeof a.quantityHint === 'number' && a.quantityHint > 0) {
+      opts.quantityHint = a.quantityHint;
+    }
+    let scores: MaterialScore[];
+    try {
+      scores = suggestMaterialForPart(opts);
+    } catch (e) {
+      return { ok: false, error: `suggest_material threw: ${(e as Error).message}`, code: 'MATERIAL_THREW' };
+    }
+    return {
+      ok: true,
+      output: formatMaterialScores(scores),
+      meta: { scores },
+    };
+  };
+
+  // ─── Track N — BOM auto-generation ────────────────────────────────────
+  // Aggregates session.modules + composition into a structured BOM with
+  // optional cost wiring. Prefers an explicit partsList (the same array
+  // the agent passed to compose_assembly) for accuracy; falls back to a
+  // composition-string scan for legacy / hand-written compositions.
+  // Surfaces CSV + human-readable output so the user can paste straight
+  // into a spreadsheet or read in chat.
+  const generate_bom: ToolExecutor = async (args, session) => {
+    if (args !== undefined && args !== null && typeof args !== 'object') {
+      return { ok: false, error: 'generate_bom requires an args object (all fields optional)', code: 'BAD_ARGS' };
+    }
+    const a = (args ?? {}) as {
+      partsList?: unknown;
+      costLookup?: unknown;
+    };
+    const opts: GenerateBomOptions = {
+      session: { modules: session.modules, composition: session.composition },
+    };
+    if (Array.isArray(a.partsList)) {
+      const cleaned: Array<{ moduleName: string; count?: number }> = [];
+      for (const raw of a.partsList) {
+        if (!raw || typeof raw !== 'object') continue;
+        const r = raw as { moduleName?: unknown; count?: unknown };
+        if (typeof r.moduleName !== 'string' || !r.moduleName.trim()) continue;
+        const entry: { moduleName: string; count?: number } = { moduleName: r.moduleName };
+        if (typeof r.count === 'number' && r.count > 0) entry.count = Math.round(r.count);
+        cleaned.push(entry);
+      }
+      if (cleaned.length > 0) opts.partsList = cleaned;
+    }
+    if (a.costLookup && typeof a.costLookup === 'object' && !Array.isArray(a.costLookup)) {
+      const cleanedLookup: Record<string, { unitCostUsd: number; material?: import('./costEstimation').Material }> = {};
+      for (const [k, v] of Object.entries(a.costLookup as Record<string, unknown>)) {
+        if (!v || typeof v !== 'object') continue;
+        const e = v as { unitCostUsd?: unknown; material?: unknown };
+        if (typeof e.unitCostUsd !== 'number' || !(e.unitCostUsd >= 0)) continue;
+        const entry: { unitCostUsd: number; material?: import('./costEstimation').Material } = {
+          unitCostUsd: e.unitCostUsd,
+        };
+        if (typeof e.material === 'string'
+            && ['aluminum_6061', 'steel_a36', 'steel_4140', 'stainless_304', 'pla', 'abs'].includes(e.material)) {
+          entry.material = e.material as import('./costEstimation').Material;
+        }
+        cleanedLookup[k] = entry;
+      }
+      if (Object.keys(cleanedLookup).length > 0) opts.costLookup = cleanedLookup;
+    }
+
+    // Empty session: return ok with a hint instead of an error so the
+    // agent isn't punished for asking before compose_assembly ran.
+    if (Object.keys(session.modules).length === 0 && (!opts.partsList || opts.partsList.length === 0)) {
+      return {
+        ok: true,
+        output: 'No assembly yet — call compose_assembly first (or pass partsList directly to generate_bom).',
+        meta: {
+          report: {
+            lines: [],
+            totalPartCount: 0,
+            uniquePartCount: 0,
+            hasCosts: false,
+            notes: ['no modules in session'],
+          } as BomReport,
+          csv: 'Part,Quantity,Material,Cost (USD)',
+        },
+      };
+    }
+
+    let report: BomReport;
+    try {
+      report = generateBom(opts);
+    } catch (e) {
+      return { ok: false, error: `generate_bom threw: ${(e as Error).message}`, code: 'BOM_THREW' };
+    }
+    const csv = bomToCSV(report);
+    return {
+      ok: true,
+      output: formatBomReport(report),
+      meta: { report, csv },
+    };
+  };
+
+  // ─── Track E — AI mate inference for 2-part pairs ──────────────────────
+  // Proposes mate candidates (face_touch / face_offset / concentric /
+  // hole_pattern_align / axis_align / mirror) for a pair of parts based
+  // on their intent + measured bbox + optional detected holes. Each
+  // suggestion carries a confidence 0..100, a concrete numeric hint, and
+  // any hard blockers. Pair with add_mate to materialize the chosen one.
+  const suggest_mates: ToolExecutor = async (args) => {
+    if (!args || typeof args !== 'object') {
+      return { ok: false, error: 'suggest_mates requires { partA, partB } objects', code: 'BAD_ARGS' };
+    }
+    const a = args as {
+      partA?: unknown;
+      partB?: unknown;
+      relativePositionMm?: unknown;
+      toleranceMm?: unknown;
+    };
+    function coerceFingerprint(raw: unknown, side: 'A' | 'B'): { ok: true; fp: PartFingerprint } | { ok: false; error: string } {
+      if (!raw || typeof raw !== 'object') return { ok: false, error: `part${side} must be an object with { intent, bbox, holes? }` };
+      const r = raw as { intent?: unknown; bbox?: unknown; holes?: unknown };
+      if (!r.intent || typeof r.intent !== 'object') {
+        return { ok: false, error: `part${side}.intent is required (with shapeId + params)` };
+      }
+      const intent = r.intent as { shapeId?: unknown; params?: unknown };
+      if (typeof intent.shapeId !== 'string') {
+        return { ok: false, error: `part${side}.intent.shapeId is required (string)` };
+      }
+      if (!r.bbox || typeof r.bbox !== 'object') {
+        return { ok: false, error: `part${side}.bbox is required ({ min: [x,y,z], max: [x,y,z] })` };
+      }
+      const bbox = r.bbox as { min?: unknown; max?: unknown };
+      if (!Array.isArray(bbox.min) || bbox.min.length !== 3 || !Array.isArray(bbox.max) || bbox.max.length !== 3) {
+        return { ok: false, error: `part${side}.bbox.min and .max must be length-3 number arrays` };
+      }
+      if ((bbox.min as unknown[]).some(v => typeof v !== 'number') || (bbox.max as unknown[]).some(v => typeof v !== 'number')) {
+        return { ok: false, error: `part${side}.bbox coords must all be numbers` };
+      }
+      const fp: PartFingerprint = {
+        intent: r.intent as PartFingerprint['intent'],
+        bbox: { min: bbox.min as [number, number, number], max: bbox.max as [number, number, number] },
+      };
+      if (Array.isArray(r.holes)) {
+        const holes: NonNullable<PartFingerprint['holes']> = [];
+        for (const h of r.holes) {
+          if (!h || typeof h !== 'object') continue;
+          const hh = h as { axis?: unknown; cx?: unknown; cy?: unknown; diameter?: unknown };
+          if ((hh.axis !== 'x' && hh.axis !== 'y' && hh.axis !== 'z')
+              || typeof hh.cx !== 'number' || typeof hh.cy !== 'number' || typeof hh.diameter !== 'number') continue;
+          holes.push({ axis: hh.axis, cx: hh.cx, cy: hh.cy, diameter: hh.diameter });
+        }
+        if (holes.length > 0) fp.holes = holes;
+      }
+      return { ok: true, fp };
+    }
+    const A = coerceFingerprint(a.partA, 'A');
+    if (!A.ok) return { ok: false, error: A.error, code: 'BAD_ARGS' };
+    const B = coerceFingerprint(a.partB, 'B');
+    if (!B.ok) return { ok: false, error: B.error, code: 'BAD_ARGS' };
+    const opts: SuggestMatesOptions = { partA: A.fp, partB: B.fp };
+    if (Array.isArray(a.relativePositionMm) && a.relativePositionMm.length === 3
+        && a.relativePositionMm.every(v => typeof v === 'number')) {
+      opts.relativePositionMm = a.relativePositionMm as [number, number, number];
+    }
+    if (typeof a.toleranceMm === 'number' && a.toleranceMm > 0) {
+      opts.toleranceMm = a.toleranceMm;
+    }
+    let suggestions: SuggestedMate[];
+    try {
+      suggestions = suggestMatesForPair(opts);
+    } catch (e) {
+      return { ok: false, error: `suggest_mates threw: ${(e as Error).message}`, code: 'MATES_THREW' };
+    }
+    return {
+      ok: true,
+      output: formatMateSuggestions(suggestions),
+      meta: { suggestions },
+    };
+  };
+
+  // ─── Track H — Version diff between checkpoints ────────────────────────
+  // Compares two named checkpoints, surfacing SCAD source delta (byte +
+  // line counts + qualitative summary) and geometry deltas (bbox per axis,
+  // volume, surface area, through-hole count, triangle count) when both
+  // sides carry GeometryStats snapshots. Useful for code review or
+  // rollback decision. Checkpoints without stats just get null geometry
+  // deltas — the diff still shows the scadSource part.
+  const diff_checkpoints: ToolExecutor = async (args, session) => {
+    if (!args || typeof args !== 'object') {
+      return { ok: false, error: 'diff_checkpoints requires { fromCheckpointId: number, toCheckpointId: number }', code: 'BAD_ARGS' };
+    }
+    const a = args as { fromCheckpointId?: unknown; toCheckpointId?: unknown };
+    // Accept number or numeric string for convenience.
+    const fromId = typeof a.fromCheckpointId === 'number'
+      ? a.fromCheckpointId
+      : (typeof a.fromCheckpointId === 'string' ? parseInt(a.fromCheckpointId, 10) : NaN);
+    const toId = typeof a.toCheckpointId === 'number'
+      ? a.toCheckpointId
+      : (typeof a.toCheckpointId === 'string' ? parseInt(a.toCheckpointId, 10) : NaN);
+    if (!Number.isFinite(fromId) || !Number.isFinite(toId)) {
+      return { ok: false, error: 'diff_checkpoints requires both fromCheckpointId and toCheckpointId as positive integers', code: 'BAD_ARGS' };
+    }
+    const fromCp = session.checkpoints.find(c => c.index === fromId);
+    const toCp = session.checkpoints.find(c => c.index === toId);
+    if (!fromCp || !toCp) {
+      const avail = session.checkpoints.map(c => c.index).join(', ') || '(none)';
+      const missing: number[] = [];
+      if (!fromCp) missing.push(fromId);
+      if (!toCp) missing.push(toId);
+      return {
+        ok: false,
+        error: `checkpoint(s) not found: #${missing.join(', #')}. Available: ${avail}`,
+        code: 'NOT_FOUND',
+      };
+    }
+    const aSide: CheckpointWithStats = { checkpoint: fromCp };
+    if (fromCp.stats) aSide.stats = fromCp.stats;
+    const bSide: CheckpointWithStats = { checkpoint: toCp };
+    if (toCp.stats) bSide.stats = toCp.stats;
+    let delta: CheckpointDelta;
+    try {
+      delta = diffCheckpoints(aSide, bSide);
+    } catch (e) {
+      return { ok: false, error: `diff_checkpoints threw: ${(e as Error).message}`, code: 'DIFF_THREW' };
+    }
+    return {
+      ok: true,
+      output: formatCheckpointDelta(delta),
+      meta: { delta },
     };
   };
 
@@ -519,6 +1272,18 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     }
     for (const p of a.parts) lines.push(emitPlacement(p));
     session.composition = lines.join('\n');
+    // Retain structured placements (keyed by moduleName) so solve_mates has
+    // real anchors. Arrays keep the base instance position; cylinder-like
+    // modules are flagged from their brep entry kind when known.
+    const placements: Record<string, import('./types').AgentPlacement> = { ...(session.placements ?? {}) };
+    for (const p of a.parts) {
+      const kind = session.brepEntries.find((e) => e.label === p.moduleName || e.handle === p.moduleName)?.kind ?? '';
+      placements[p.moduleName] = {
+        position: p.position ?? [0, 0, 0],
+        cylindrical: /cylinder|helix|round/i.test(kind) || undefined,
+      };
+    }
+    session.placements = placements;
     session.render = { ok: null, errors: [] };
     session.geometry = {};
     return {
@@ -584,6 +1349,267 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     } catch (e) {
       return { ok: false, error: `view_render threw: ${(e as Error).message}`, code: 'VISION_THREW' };
     }
+  };
+
+  // ─── Image-to-CAD — extract IntentInput from a photo/sketch ──────────
+  //
+  // Mirrors the POST /api/nexyfab/intent-from-image route, but for the agent
+  // loop. Vision is expensive — the agent must call this AT MOST ONCE per
+  // upload. Result populates session.lastIntent + scadSource so the next
+  // turn can chain into render → verify_spec without an extra
+  // add_feature_intent call. Pair with verify_spec to confirm the extracted
+  // intent matches the user's description.
+  const intent_from_image: ToolExecutor = async (args, session) => {
+    if (!host.vision) {
+      return {
+        ok: false,
+        error: 'intent_from_image is unavailable in this environment (no vision adapter).',
+        code: 'NO_VISION',
+      };
+    }
+    const a = args as unknown as import('./types').IntentFromImageArgs;
+    if (typeof a.imageBase64 !== 'string' || !a.imageBase64.trim()) {
+      return {
+        ok: false,
+        error: 'intent_from_image requires { imageBase64: string (data URL or raw base64), mimeType?, hintText? }',
+        code: 'BAD_ARGS',
+      };
+    }
+    // Vision budget — share the same cap as view_render so a wedged model
+    // that loops on image extraction can't bankrupt the user.
+    if (session.budget.visionCallsUsed >= session.budget.visionCallsCap) {
+      return {
+        ok: false,
+        error: `intent_from_image budget exhausted (${session.budget.visionCallsUsed}/${session.budget.visionCallsCap}). `
+          + 'Hand back to the user or use the text-only add_feature_intent path.',
+        code: 'BUDGET_VISION',
+      };
+    }
+    const { decodeImageBase64, extractIntentFromImage } = await import('../imageIntentExtractor');
+    const decoded = decodeImageBase64(a.imageBase64);
+    if (!decoded) {
+      return {
+        ok: false,
+        error: 'imageBase64 could not be decoded (expected data URL or valid base64)',
+        code: 'IMAGE_DECODE_FAILED',
+      };
+    }
+    const mimeType = a.mimeType ?? decoded.mimeType ?? 'image/png';
+    try {
+      const result = await extractIntentFromImage({
+        imageBytes: decoded.bytes,
+        mimeType,
+        hintText: typeof a.hintText === 'string' ? a.hintText : undefined,
+      });
+      if (!result.ok) {
+        return { ok: false, error: result.message, code: result.code };
+      }
+      // Charge vision budget on success only — failed calls don't burn credits.
+      if (!result.cached) {
+        session.budget = { ...session.budget, visionCallsUsed: session.budget.visionCallsUsed + 1 };
+      }
+      // Mirror add_feature_intent's session writes so the next turn can
+      // chain straight into render → verify_spec.
+      session.scadSource = result.scad;
+      session.render = { ok: null, errors: [] };
+      session.geometry = {};
+      session.lastIntent = result.intent;
+      const summaryLine = result.summary ? `\n${result.summary}` : '';
+      return {
+        ok: true,
+        output:
+          `OK. Extracted intent from image (shape: ${result.intent.shapeId}, `
+          + `${result.scad.length} bytes SCAD${result.cached ? ', cached' : ''}).${summaryLine}\n`
+          + `Call render → verify_spec to confirm the extracted intent matches what the user wanted.`,
+        meta: {
+          intent: result.intent,
+          scad: result.scad,
+          summary: result.summary,
+          cached: result.cached,
+          warnings: result.warnings,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: `intent_from_image threw: ${(e as Error).message}`, code: 'IMAGE_INTENT_THREW' };
+    }
+  };
+
+  // ─── Mesh reverse-engineering — STL → proposed IntentInput ────────────
+  //
+  // Heuristic shape classifier driven by the existing faceInspection helpers.
+  // Used when the user uploads a scanned STL or imported part with no source
+  // intent. Pure CPU — no AI call. Result populates session.lastIntent +
+  // scadSource (top candidate) so the next turn can chain into render →
+  // verify_spec to confirm the proposed intent matches what the user wanted.
+  //
+  // v1 coverage: box / cylinder / sphere / pipe / disk / washer + simple
+  // fillet/chamfer secondary features. Multi-body assemblies short-circuit
+  // to a single low-confidence "assembly" candidate (X-track follow-up).
+  const reverse_engineer_mesh: ToolExecutor = async (args, session) => {
+    const a = args as unknown as import('./types').ReverseEngineerMeshArgs;
+    if (typeof a.stlBase64 !== 'string' || !a.stlBase64.trim()) {
+      return {
+        ok: false,
+        error: 'reverse_engineer_mesh requires { stlBase64: string (data URL or raw base64) }',
+        code: 'BAD_ARGS',
+      };
+    }
+    // Decode — accept data URLs or bare base64. Same shape as the route's
+    // decodeStlBase64 but kept inline so the tool has no route dep.
+    let payload = a.stlBase64;
+    const m = /^data:[^;]*;base64,(.*)$/.exec(a.stlBase64);
+    if (m) payload = m[1]!;
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(payload, 'base64');
+    } catch {
+      return { ok: false, error: 'stlBase64 could not be decoded', code: 'STL_DECODE_FAILED' };
+    }
+    if (buffer.length === 0) {
+      return { ok: false, error: 'stlBase64 decoded to zero bytes', code: 'STL_DECODE_FAILED' };
+    }
+    // Same 8 MB cap as the route — agent loop shouldn't burn more memory
+    // than a user upload would.
+    if (buffer.length > 8 * 1024 * 1024) {
+      return { ok: false, error: `STL exceeds 8 MB (got ${buffer.length} bytes)`, code: 'STL_TOO_LARGE' };
+    }
+    try {
+      const { parseStlBufferToGeometry } = await import('./renderToGeometry');
+      const { reverseEngineerWithWallThickness, formatProposedIntents } = await import('./reverseEngineer');
+      const geometry = await parseStlBufferToGeometry(
+        new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength),
+      );
+      const result = await reverseEngineerWithWallThickness({ geometry });
+      if (result.candidates.length === 0) {
+        return {
+          ok: false,
+          error: 'classifier produced no candidates — mesh is likely empty or unreadable',
+          code: 'NO_CANDIDATES',
+        };
+      }
+      const top = result.candidates[0]!;
+      // Mirror add_feature_intent's session writes so the next turn can
+      // chain straight into render → verify_spec. Only the top candidate's
+      // SCAD is materialized; the rest stay in meta for the user to review.
+      const conv = intentToScad(top.intent);
+      if (conv.ok) {
+        session.scadSource = conv.scad;
+        session.render = { ok: null, errors: [] };
+        session.geometry = {};
+        session.lastIntent = top.intent;
+      }
+      return {
+        ok: true,
+        output:
+          `${formatProposedIntents(result)}\n\n`
+          + `Applied the top candidate (${top.intent.shapeId}) as session.scadSource + lastIntent. `
+          + `Review with the user before render — reverse engineering is best-guess, not authoritative.`,
+        meta: {
+          candidates: result.candidates,
+          observedStats: result.observedStats,
+        },
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        error: `reverse_engineer_mesh threw: ${(e as Error).message}`,
+        code: 'REVERSE_ENGINEER_THREW',
+      };
+    }
+  };
+
+  // ─── Manufacturer quoting — pricing via internal or partner provider ───
+  //
+  // Wraps the QuoteProvider registry so the agent doesn't need to know
+  // whether a partner (Xometry/Hubs/Protolabs) API key is configured.
+  // Defaults to the internal estimator — always returns something. Partner
+  // stubs return NOT_CONFIGURED until their key is provisioned.
+  //
+  // Call AFTER the user describes part + material + quantity. Always start
+  // with the internal provider for an indicative number — tell the user
+  // external quotes need a partnership API key before going live.
+  const request_quote: ToolExecutor = async (args) => {
+    const a = args as {
+      providerId?: unknown;
+      process?: unknown;
+      material?: unknown;
+      quantity?: unknown;
+      measuredVolumeMm3?: unknown;
+      bboxMm?: unknown;
+      notes?: unknown;
+    };
+    const VALID_PROC: ProcessForDfm[] = ['fdm', 'sla', 'cnc_mill', 'sheet', 'injection_molding', 'die_cast'];
+    const VALID_MAT: Material[] = ['aluminum_6061', 'steel_a36', 'steel_4140', 'stainless_304', 'pla', 'abs'];
+    if (typeof a.process !== 'string' || !(VALID_PROC as string[]).includes(a.process)) {
+      return {
+        ok: false,
+        error: `request_quote requires process ∈ {${VALID_PROC.join('|')}}`,
+        code: 'BAD_ARGS',
+      };
+    }
+    if (typeof a.material !== 'string' || !(VALID_MAT as string[]).includes(a.material)) {
+      return {
+        ok: false,
+        error: `request_quote requires material ∈ {${VALID_MAT.join('|')}}`,
+        code: 'BAD_ARGS',
+      };
+    }
+    const quantity = typeof a.quantity === 'number' && a.quantity > 0
+      ? Math.max(1, Math.floor(a.quantity))
+      : 1;
+    const { getDefaultProvider, getProvider } = await import('../../quoting/registry');
+    const providerId = typeof a.providerId === 'string' ? a.providerId : '';
+    const provider = providerId ? getProvider(providerId) : getDefaultProvider();
+    if (!provider) {
+      return {
+        ok: false,
+        error: `unknown quote provider "${providerId}". Available: internal, xometry.`,
+        code: 'UNKNOWN_PROVIDER',
+      };
+    }
+    const reqArgs: import('../../quoting/types').QuoteRequest = {
+      process: a.process as ProcessForDfm,
+      material: a.material as Material,
+      quantity,
+    };
+    if (typeof a.measuredVolumeMm3 === 'number' && a.measuredVolumeMm3 > 0) {
+      reqArgs.measuredVolumeMm3 = a.measuredVolumeMm3;
+    }
+    if (a.bboxMm && typeof a.bboxMm === 'object') {
+      const b = a.bboxMm as { wMm?: unknown; hMm?: unknown; dMm?: unknown };
+      if (typeof b.wMm === 'number' && typeof b.hMm === 'number' && typeof b.dMm === 'number'
+          && b.wMm > 0 && b.hMm > 0 && b.dMm > 0) {
+        reqArgs.bboxMm = { wMm: b.wMm, hMm: b.hMm, dMm: b.dMm };
+      }
+    }
+    if (typeof a.notes === 'string') reqArgs.notes = a.notes.slice(0, 1000);
+
+    let result: import('../../quoting/types').QuoteResult;
+    try {
+      result = await provider.getQuote(reqArgs);
+    } catch (e) {
+      return { ok: false, error: `quote provider threw: ${(e as Error).message}`, code: 'PROVIDER_THREW' };
+    }
+    if (!result.ok) {
+      // NOT_CONFIGURED is the most common stub path — surface the reason
+      // verbatim so the agent tells the user "Xometry needs an API key,
+      // try the internal estimator instead".
+      return {
+        ok: false,
+        error: `Quote from ${provider.name} failed (${result.code}): ${result.reason}`,
+        code: result.code,
+      };
+    }
+    const q = result.quote;
+    const summary =
+      `Quote from ${q.providerName}: $${q.totalUsd.toFixed(2)} for ${quantity} unit(s) `
+      + `($${q.unitPriceUsd.toFixed(2)}/ea), lead time ${q.leadTimeDays} days, `
+      + `confidence: ${q.confidence}.`;
+    return {
+      ok: true,
+      output: summary,
+      meta: { quote: q },
+    };
   };
 
   // ─── Ω3 — Design pattern retrieval (RAG-lite for seeds) ────────────────
@@ -840,6 +1866,36 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
   // Catalogs the agent can query when the user says "use a 6204 bearing"
   // or "1/4-20 bolt" — returns dimensional + load data so the agent can
   // size the geometry without inventing numbers.
+
+  // X #5 — Metric ISO fastener catalog (M3-M16). Agents MUST call this
+  // before sizing a metric bolt/nut/tap hole so clearance/tap drill +
+  // hex AF match the ISO 261 standard instead of being invented.
+  const lookup_metric_fastener: ToolExecutor = async (args) => {
+    const { lookupMetric } = await import('../../openscad-render/isoFasteners');
+    const a = args as { size?: unknown };
+    const size = typeof a.size === 'string' ? a.size.toUpperCase() : '';
+    if (!size) {
+      return { ok: false, error: 'lookup_metric_fastener requires { size: e.g. "M8" }', code: 'BAD_ARGS' };
+    }
+    const f = lookupMetric(size);
+    if (!f) {
+      return { ok: false, error: `unknown metric fastener "${size}". Supported: M3, M4, M5, M6, M8, M10, M12, M14, M16.`, code: 'NOT_FOUND' };
+    }
+    const lines = [
+      `${size} (ISO 261 coarse): nominal Ø${f.d} mm, pitch ${f.pitch} mm`,
+      `  Clearance hole (medium fit): Ø${f.clearanceHole} mm`,
+      `  Tap drill (~75% thread):    Ø${f.tapHole} mm`,
+      `  Hex across-flats (DIN 934 nut / DIN 933 bolt head): ${f.hexAcrossFlats} mm`,
+      `  Hex socket cap drive (ISO 4762): ${f.hexSocketDrive} mm`,
+      `  Source: ISO 261 (metric thread series), DIN 934/933, ISO 4762`,
+    ];
+    return {
+      ok: true,
+      output: lines.join('\n'),
+      meta: { fastener: f, standard: 'ISO 261' },
+    };
+  };
+
   const lookup_imperial_fastener: ToolExecutor = async (args) => {
     const { lookupImperial } = await import('../../openscad-render/standardsLibrary');
     const a = args as { designation?: unknown };
@@ -1506,8 +2562,19 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       return { ok: true, output: 'No mates to solve.' };
     }
     try {
-      const r = await host.mateSolver.solve(session.mates);
+      const anchors = session.placements ?? {};
+      const r = await host.mateSolver.solve(session.mates, anchors);
       if (!r.ok) return { ok: false, error: `mate solver: ${r.reason}`, code: 'SOLVE_FAILED' };
+      // Reflect the solved deltas back into the session placements so chained
+      // solves + later compose see the new positions.
+      session.placements = session.placements ?? {};
+      for (const [handle, delta] of Object.entries(r.transforms)) {
+        const cur = session.placements[handle]?.position ?? [0, 0, 0];
+        session.placements[handle] = {
+          ...session.placements[handle],
+          position: [cur[0] + delta[0], cur[1] + delta[1], cur[2] + delta[2]],
+        };
+      }
       const moved = Object.keys(r.transforms).length;
       return {
         ok: true,
@@ -1874,6 +2941,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     tree_summary,
     tree_set_param,
     tree_remove_node,
+    lookup_metric_fastener,
     lookup_imperial_fastener,
     select_bearing,
     select_key,
@@ -1902,6 +2970,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     render,
     get_geometry,
     add_feature_intent,
+    add_composite_intent,
     search_bosl2: search_bosl2_tool,
     read_dfm,
     plan_design,
@@ -1958,6 +3027,30 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     fea_stress,
     // Stage 4 U — sheet metal multi-bend unfold
     sheet_metal_unfold,
+    // X1 — spec verification (intent vs measured bbox)
+    verify_spec,
+    // X1 (B-rep parallel) — same 10-layer chain driven from a B-rep handle
+    verify_spec_brep,
+    // GD&T tolerance suggester (DimXpert / Auto-dim equivalent)
+    suggest_gdt_for_intent,
+    // Track B — cost estimation
+    estimate_cost,
+    // Track G — AI process selection
+    suggest_process,
+    // Track M — AI material recommendation
+    suggest_material,
+    // Track N — BOM auto-generation
+    generate_bom,
+    // Track E — AI mate inference for 2-part pairs
+    suggest_mates,
+    // Track H — Version diff between checkpoints
+    diff_checkpoints,
+    // Image-to-CAD — vision → IntentInput
+    intent_from_image,
+    // Mesh reverse-engineering — STL → proposed IntentInput
+    reverse_engineer_mesh,
+    // Manufacturer quoting — internal estimator or partner provider
+    request_quote,
   };
 }
 
@@ -2037,6 +3130,76 @@ function mapCameraViews(labels?: ('iso' | 'front' | 'right' | 'left' | 'top' | '
     if (out.length >= 4) break;
   }
   return out.length > 0 ? out : undefined;
+}
+
+/**
+ * Signed tetrahedron volume sum for a non-indexed triangle soup. Each
+ * triangle (p0, p1, p2) contributes (p0 · (p1 × p2)) / 6 to the volume;
+ * for a closed orientable manifold the sum equals the enclosed volume in
+ * the same units as the positions (mm³ here). Returns the absolute
+ * value so winding-order quirks in a B-rep tessellator don't flip the
+ * sign on us. Cost: O(F).
+ */
+function computeMeshVolume(positions: Float32Array): number {
+  let sum = 0;
+  const triCount = Math.floor(positions.length / 9);
+  for (let t = 0; t < triCount; t++) {
+    const i = t * 9;
+    const ax = positions[i]!,     ay = positions[i + 1]!, az = positions[i + 2]!;
+    const bx = positions[i + 3]!, by = positions[i + 4]!, bz = positions[i + 5]!;
+    const cx = positions[i + 6]!, cy = positions[i + 7]!, cz = positions[i + 8]!;
+    // p0 · (p1 × p2)
+    const crossX = by * cz - bz * cy;
+    const crossY = bz * cx - bx * cz;
+    const crossZ = bx * cy - by * cx;
+    sum += (ax * crossX + ay * crossY + az * crossZ) / 6;
+  }
+  return Math.abs(sum);
+}
+
+/**
+ * X11 — Map the user-pref `default_process` string (Y3 multi-turn) to the
+ * ProcessForDfm key used by verifyAgainstSpec's wall-thickness gate.
+ * Returns undefined when the pref is missing or doesn't resolve — the
+ * verify layer then skips the wall-thickness check entirely.
+ *
+ * Accepts both the canonical token ("fdm", "cnc_mill") and the friendlier
+ * synonyms the model tends to emit ("3d_printing", "cnc_milling",
+ * "injection-molding"). Unknown strings → undefined (skip).
+ */
+function mapUserPrefToProcess(pref: string | undefined): ProcessForDfm | undefined {
+  if (!pref) return undefined;
+  const k = pref.trim().toLowerCase().replace(/[-\s]+/g, '_');
+  switch (k) {
+    case 'fdm':
+    case '3d_printing':
+    case '3d_print':
+    case 'fff':
+      return 'fdm';
+    case 'sla':
+    case 'msla':
+    case 'resin':
+      return 'sla';
+    case 'cnc_mill':
+    case 'cnc_milling':
+    case 'cnc':
+    case 'milling':
+      return 'cnc_mill';
+    case 'sheet':
+    case 'sheet_metal':
+    case 'laser_cut':
+      return 'sheet';
+    case 'injection_molding':
+    case 'injection_mold':
+    case 'injection':
+      return 'injection_molding';
+    case 'die_cast':
+    case 'die_casting':
+    case 'casting':
+      return 'die_cast';
+    default:
+      return undefined;
+  }
 }
 
 function emitPlacement(p: AssemblyPlacement): string {

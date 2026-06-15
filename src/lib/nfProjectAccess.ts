@@ -12,16 +12,23 @@ export type NfProjectAccess = {
 
 export async function ensureProjectMembersTable(): Promise<void> {
   const db = getDbAdapter();
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS nf_project_members (
-      project_id TEXT NOT NULL,
-      user_id    TEXT NOT NULL,
-      role       TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      PRIMARY KEY (project_id, user_id)
-    );
-    CREATE INDEX IF NOT EXISTS idx_nf_pm_user ON nf_project_members(user_id);
-  `).catch(() => {});
+  // One statement per execute(): better-sqlite3's prepare() throws on
+  // multi-statement strings, so a combined CREATE+INDEX string silently
+  // no-ops on SQLite. BIGINT keeps ms-epoch Date.now() values in range on
+  // Postgres (INT4 max 2.1e9 < 1.7e12); SQLite treats BIGINT as INTEGER.
+  try {
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS nf_project_members (
+        project_id TEXT NOT NULL,
+        user_id    TEXT NOT NULL,
+        role       TEXT NOT NULL,
+        created_at BIGINT NOT NULL,
+        PRIMARY KEY (project_id, user_id)
+      )`);
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_nf_pm_user ON nf_project_members(user_id)');
+  } catch (err) {
+    console.error('[nfProjectAccess] ensureProjectMembersTable failed:', err);
+  }
 }
 
 export async function resolveProjectAccess(

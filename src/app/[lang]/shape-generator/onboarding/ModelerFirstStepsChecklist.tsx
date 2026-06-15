@@ -47,15 +47,18 @@ const STEPS: ReadonlyArray<{
 ];
 
 export default function ModelerFirstStepsChecklist({
-  lang, completed, defaultCollapsed = false,
+  lang, completed, defaultCollapsed = true,
 }: ModelerFirstStepsChecklistProps) {
   const [dismissed, setDismissed] = useState(true);
+  // Start COLLAPSED (a small pill) so the checklist isn't a persistent panel
+  // across every mode — the user expands it on demand (2026-06-09 UX cleanup).
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
   useEffect(() => {
     try {
       setDismissed(window.localStorage.getItem(STORAGE_DISMISSED) === 'true');
-      setCollapsed(window.localStorage.getItem(STORAGE_COLLAPSED) === 'true');
+      // Collapsed unless the user explicitly expanded it before (stored 'false').
+      setCollapsed(window.localStorage.getItem(STORAGE_COLLAPSED) !== 'false');
     } catch {
       setDismissed(false);
     }
@@ -92,8 +95,8 @@ export default function ModelerFirstStepsChecklist({
         left: 20,
         zIndex: 700,
         width: collapsed ? 'auto' : 280,
-        background: '#1e293b',
-        color: '#f1f5f9',
+        background: 'var(--nx-panel-2)',
+        color: 'var(--nx-text)',
         borderRadius: 10,
         boxShadow: '0 8px 22px rgba(0,0,0,0.35)',
         fontFamily: 'system-ui, sans-serif',
@@ -112,8 +115,8 @@ export default function ModelerFirstStepsChecklist({
         }}
         style={{
           width: '100%',
-          background: '#0f172a',
-          color: '#e2e8f0',
+          background: 'var(--nx-panel)',
+          color: 'var(--nx-text)',
           border: 'none',
           padding: '10px 14px',
           textAlign: 'left',
@@ -128,7 +131,7 @@ export default function ModelerFirstStepsChecklist({
       >
         <span>
           {t.title}
-          <span style={{ color: '#94a3b8', fontWeight: 400, marginLeft: 8 }}>
+          <span style={{ color: 'var(--nx-text-2)', fontWeight: 400, marginLeft: 8 }}>
             {doneCount}/{STEPS.length}
           </span>
         </span>
@@ -153,7 +156,7 @@ export default function ModelerFirstStepsChecklist({
                   style={{
                     width: 18, height: 18, borderRadius: 4,
                     background: done ? '#22c55e' : 'transparent',
-                    border: done ? 'none' : '1.5px solid #475569',
+                    border: done ? 'none' : '1.5px solid var(--nx-border)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 11, color: 'white', flexShrink: 0, marginTop: 1,
                   }}
@@ -165,7 +168,7 @@ export default function ModelerFirstStepsChecklist({
                     {ko ? step.ko : step.en}
                   </div>
                   {!done && (
-                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 2 }}>
                       {ko ? step.hintKo : step.hintEn}
                     </div>
                   )}
@@ -176,7 +179,7 @@ export default function ModelerFirstStepsChecklist({
           {allDone && (
             <div style={{
               marginTop: 8, padding: '8px 10px',
-              background: '#0f172a', borderRadius: 6,
+              background: 'var(--nx-panel)', borderRadius: 6,
               fontSize: 12, color: '#86efac', textAlign: 'center',
             }}>
               {t.completeMsg}
@@ -192,7 +195,7 @@ export default function ModelerFirstStepsChecklist({
               marginTop: 10,
               background: 'transparent',
               border: 'none',
-              color: '#64748b',
+              color: 'var(--nx-text-2)',
               fontSize: 11,
               cursor: 'pointer',
               display: 'block',

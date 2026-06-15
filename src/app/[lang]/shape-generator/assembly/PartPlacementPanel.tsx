@@ -8,6 +8,7 @@ import React, { useState, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { SHAPES, SHAPE_MAP, buildShapeResult } from '../shapes';
 import type { BomPartResult } from '../ShapePreview';
+import { loc } from '../lib/loc';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -369,7 +370,7 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
                     {SHAPE_MAP[part.shapeId]?.params && SHAPE_MAP[part.shapeId].params.length > 0 && (
                       <div style={{ marginTop: 4 }}>
                         <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--nx-border-strong)', textTransform: 'uppercase', marginBottom: 3 }}>
-                          {langMap[seg] === 'ko' ? '파라미터' : 'Parameters'}
+                          {loc(seg, { ko: '파라미터', en: 'Parameters', ja: 'パラメータ', zh: '参数', es: 'Parámetros', ar: 'المعلمات' })}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {SHAPE_MAP[part.shapeId].params.map(param => (

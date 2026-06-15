@@ -57,13 +57,11 @@ export default function SimpleModeOfferBanner({
       setVisible(false);
       return;
     }
-    try {
-      if (localStorage.getItem(LS_KEY)) return;
-    } catch {
-      /* private mode */
-    }
-    const id = window.setTimeout(() => setVisible(true), 2200);
-    return () => window.clearTimeout(id);
+    // Auto-prompt retired (2026-06-09 UX cleanup): the "어떤 모드로 시작할까요?"
+    // preset picker was one of several first-run modals firing at once. The
+    // durable entry point — the workspace preset selector in the top-right —
+    // stays, so users can switch basic/designer/engineer anytime without a
+    // forced prompt. (Keeping the component mounted for a future manual trigger.)
   }, [simpleMode]);
 
   if (!visible || simpleMode) return null;

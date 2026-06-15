@@ -153,7 +153,10 @@ export default function ToastContainer({ toasts, removeToast }: ToastContainerPr
     <>
       <div style={{
         position: 'fixed',
-        bottom: 24,
+        // Lifted above the floating AI FAB (bottom:24/28) so toasts no longer
+        // cover the primary action button in the bottom-right corner.
+        // (2026-06-12 corner declutter)
+        bottom: 88,
         right: 24,
         zIndex: 9999,
         display: 'flex',

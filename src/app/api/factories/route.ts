@@ -84,6 +84,34 @@ export async function GET(req: NextRequest) {
 
   const db = getDbAdapter();
 
+  // ── 단건 조회: ?id=… (디렉터리 문의 → 그 공장으로 라우팅) ────────────────
+  // country/필터 무시하고 id로 직접 찾는다(공장의 실제 국가로 매핑).
+  const idParam = (searchParams.get('id') || '').trim();
+  if (idParam) {
+    const row = await db.queryOne<DirRow>(
+      `SELECT id, country, name, product, industry, address
+         FROM nf_factories_directory WHERE id = ?`,
+      idParam,
+    );
+    if (!row) {
+      return NextResponse.json({ factories: [], total: 0, page: 1, totalPages: 0 });
+    }
+    const tags = (row.product || '').split(/[,·\/]+/).map(t => t.trim()).filter(Boolean).slice(0, 5);
+    const isCn = String(row.country).toUpperCase() === 'CN';
+    const factory = isCn
+      ? {
+          id: String(row.id), company: row.name || '(미입력)', tags,
+          industry: row.industry || '', regionKo: extractCnProvince(row.address).ko,
+          regionZh: extractCnProvince(row.address).zh, address: row.address || '', country: 'cn' as const,
+        }
+      : {
+          id: String(row.id), company: row.name || '(미입력)', tags,
+          industry: row.industry || '', region: extractKoRegion(row.address),
+          address: row.address || '', country: 'ko' as const,
+        };
+    return NextResponse.json({ factories: [factory], total: 1, page: 1, totalPages: 1 });
+  }
+
   // ── WHERE 절 (adapter 는 '?' placeholder 를 PG $N 로 자동 치환) ──────────
   const conds: string[] = ['country = ?'];
   const params: unknown[] = [dbCountry];

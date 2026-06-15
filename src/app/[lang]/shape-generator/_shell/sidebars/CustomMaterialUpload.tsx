@@ -7,6 +7,8 @@
 // server) so we don't pay R2 cost for one-off experiments.
 
 import { useState } from 'react';
+import { useLang } from '../../hooks/useLang';
+import { loc } from '../../lib/loc';
 
 export interface CustomMaterialUploadProps {
   isKo: boolean;
@@ -14,16 +16,18 @@ export interface CustomMaterialUploadProps {
 
 type Slot = 'albedo' | 'normal' | 'roughness' | 'metalness' | 'ao' | 'displacement';
 
-const SLOT_LABELS: Record<Slot, { ko: string; en: string }> = {
-  albedo: { ko: 'Albedo (Base color)', en: 'Albedo (Base color)' },
-  normal: { ko: 'Normal map', en: 'Normal map' },
-  roughness: { ko: '거칠기 (Roughness)', en: 'Roughness' },
-  metalness: { ko: '금속성 (Metalness)', en: 'Metalness' },
-  ao: { ko: 'AO map', en: 'AO map' },
-  displacement: { ko: 'Displacement', en: 'Displacement' },
+const SLOT_LABELS: Record<Slot, { ko: string; en: string; ja: string; zh: string; es: string; ar: string }> = {
+  albedo:       { ko: 'Albedo (Base color)', en: 'Albedo (Base color)', ja: 'アルベド (ベースカラー)', zh: '反照率 (基础色)', es: 'Albedo (Color base)', ar: 'ألبيدو (اللون الأساسي)' },
+  normal:       { ko: 'Normal map', en: 'Normal map', ja: '法線マップ', zh: '法线贴图', es: 'Mapa de normales', ar: 'خريطة الموجِّهات' },
+  roughness:    { ko: '거칠기 (Roughness)', en: 'Roughness', ja: '粗さ (Roughness)', zh: '粗糙度', es: 'Rugosidad', ar: 'الخشونة' },
+  metalness:    { ko: '금속성 (Metalness)', en: 'Metalness', ja: 'メタリック', zh: '金属度', es: 'Metalicidad', ar: 'المعدنية' },
+  ao:           { ko: 'AO map', en: 'AO map', ja: 'AO マップ', zh: 'AO 贴图', es: 'Mapa AO', ar: 'خريطة AO' },
+  displacement: { ko: 'Displacement', en: 'Displacement', ja: 'ディスプレイスメント', zh: '置换贴图', es: 'Desplazamiento', ar: 'الإزاحة' },
 };
 
 export function CustomMaterialUpload({ isKo }: CustomMaterialUploadProps) {
+  void isKo; // prop retained for caller compat; strings now use loc(lang, …)
+  const lang = useLang();
   const [urls, setUrls] = useState<Partial<Record<Slot, string>>>({});
 
   const onPick = (slot: Slot, file: File | null) => {
@@ -65,15 +69,20 @@ export function CustomMaterialUpload({ isKo }: CustomMaterialUploadProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>
-        {isKo
-          ? 'PNG/JPG 텍스처를 드래그하거나 클릭하여 업로드'
-          : 'Drop or click to upload PNG/JPG texture maps'}
+        {loc(lang, {
+          ko: 'PNG/JPG 텍스처를 드래그하거나 클릭하여 업로드',
+          en: 'Drop or click to upload PNG/JPG texture maps',
+          ja: 'PNG/JPGテクスチャをドラッグまたはクリックしてアップロード',
+          zh: '拖放或点击上传 PNG/JPG 纹理贴图',
+          es: 'Arrastre o haga clic para subir mapas de textura PNG/JPG',
+          ar: 'اسحب أو انقر لتحميل خرائط نسيج PNG/JPG',
+        })}
       </div>
       {(Object.keys(SLOT_LABELS) as Slot[]).map(slot => (
         <UploadSlot
           key={slot}
           slot={slot}
-          label={isKo ? SLOT_LABELS[slot].ko : SLOT_LABELS[slot].en}
+          label={loc(lang, SLOT_LABELS[slot])}
           url={urls[slot]}
           onPick={f => onPick(slot, f)}
         />
@@ -92,7 +101,7 @@ export function CustomMaterialUpload({ isKo }: CustomMaterialUploadProps) {
             fontSize: 10, cursor: 'pointer',
           }}
         >
-          {isKo ? '모두 지우기' : 'Clear all'}
+          {loc(lang, { ko: '모두 지우기', en: 'Clear all', ja: 'すべてクリア', zh: '全部清除', es: 'Borrar todo', ar: 'مسح الكل' })}
         </button>
       )}
     </div>

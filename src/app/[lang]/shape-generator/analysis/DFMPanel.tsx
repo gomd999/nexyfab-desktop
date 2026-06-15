@@ -6,6 +6,8 @@ import type { DFMResult, ManufacturingProcess, DFMIssue } from './dfmAnalysis';
 import type { DFMExplanation, CostDelta } from './dfmExplainer';
 import { useSceneStore } from '../store/sceneStore';
 import { useAnalysisStore } from '../store/analysisStore';
+import { useLang } from '../hooks/useLang';
+import { loc } from '../lib/loc';
 
 /* ─── i18n dictionary ────────────────────────────────────────────────────── */
 
@@ -1182,6 +1184,8 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
 // triggers the file download. Self-contained: parent passes `results`
 // + locale; spinner state stays local to avoid plumbing.
 function PdfExportButton({ results, isKo }: { results: DFMResult[]; isKo: boolean }) {
+  void isKo;
+  const lang = useLang();
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
 
@@ -1246,9 +1250,9 @@ function PdfExportButton({ results, isKo }: { results: DFMResult[]; isKo: boolea
           cursor: busy ? 'wait' : 'pointer',
           transition: 'background 0.12s',
         }}
-        title={isKo ? 'A4 PDF로 다운로드' : 'Download as A4 PDF'}
+        title={loc(lang, { ko: 'A4 PDF로 다운로드', en: 'Download as A4 PDF', ja: 'A4 PDFでダウンロード', zh: '下载为A4 PDF', es: 'Descargar como PDF A4', ar: 'تنزيل بصيغة PDF بحجم A4' })}
       >
-        {busy ? '⏳ ...' : (isKo ? '📄 PDF 다운로드' : '📄 Download PDF')}
+        {busy ? '⏳ ...' : loc(lang, { ko: '📄 PDF 다운로드', en: '📄 Download PDF', ja: '📄 PDFダウンロード', zh: '📄 下载PDF', es: '📄 Descargar PDF', ar: '📄 تنزيل PDF' })}
       </button>
       {err && (
         <div style={{

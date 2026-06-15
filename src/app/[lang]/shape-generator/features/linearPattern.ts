@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtLinearPattern } from './occtEngine';
+import { occtLinearPattern } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
 
 export const linearPatternFeature: FeatureDefinition = {
   type: 'linearPattern',
@@ -35,7 +36,7 @@ export const linearPatternFeature: FeatureDefinition = {
     return merged;
   },
   async applyAsync(geometry, params) {
-    if (isOcctReady() && isOcctGlobalMode()) {
+    if (shouldUseOcctEngine()) {
       const handle = geometry.userData?.occtHandle as string | undefined;
       if (handle) {
         try {

@@ -1,0 +1,8 @@
+name = "nexyfab-cron"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+
+[triggers]
+# Single trigger (account-wide 5-cron free-plan limit was hit); the worker
+# routes nightly/morning/weekly batches internally from the tick timestamp.
+crons = ["*/5 * * * *"]

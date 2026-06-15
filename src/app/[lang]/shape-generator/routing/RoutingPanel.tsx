@@ -103,8 +103,9 @@ export default function RoutingPanel({
 
   return (
     <div style={{
-      position: 'fixed', top: 80, right: 20, zIndex: 700, width: 320,
-      background: '#0f172a', color: '#f1f5f9',
+      // right: 336 clears the 320px right property pane (2026-06-12)
+      position: 'fixed', top: 80, right: 340, zIndex: 700, width: 320,
+      background: 'var(--nx-panel)', color: 'var(--nx-text)',
       borderRadius: 10, padding: '14px 16px',
       boxShadow: '0 12px 24px rgba(0,0,0,0.35)',
       fontFamily: 'system-ui, sans-serif',
@@ -112,14 +113,14 @@ export default function RoutingPanel({
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{t.title}</h3>
         {onClose && (
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer' }}>✕</button>
         )}
       </div>
 
       <select
         value={selectedId ?? ''}
         onChange={e => setSelectedId(e.target.value)}
-        style={{ width: '100%', marginBottom: 8, background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 6, padding: '6px 8px', fontSize: 12 }}
+        style={{ width: '100%', marginBottom: 8, background: 'var(--nx-panel-2)', color: 'var(--nx-text)', border: '1px solid var(--nx-border)', borderRadius: 6, padding: '6px 8px', fontSize: 12 }}
       >
         {routes.length === 0 && <option>—</option>}
         {routes.map(r => <option key={r.id} value={r.id}>{r.id} ({r.kind})</option>)}
@@ -151,12 +152,12 @@ export default function RoutingPanel({
               style={fieldStyle()} />
           </Row>
 
-          <div style={{ marginTop: 8, marginBottom: 4, fontSize: 10, color: '#94a3b8' }}>
+          <div style={{ marginTop: 8, marginBottom: 4, fontSize: 10, color: 'var(--nx-text-2)' }}>
             {t.points} ({selected.points.length})
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: 160, overflowY: 'auto' }}>
             {selected.points.map((p, i) => (
-              <li key={i} style={{ fontSize: 10, color: '#94a3b8', padding: '3px 0' }}>
+              <li key={i} style={{ fontSize: 10, color: 'var(--nx-text-2)', padding: '3px 0' }}>
                 #{i + 1}: ({p.position[0].toFixed(1)}, {p.position[1].toFixed(1)}, {p.position[2].toFixed(1)})
               </li>
             ))}
@@ -181,13 +182,13 @@ export default function RoutingPanel({
 
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-    <span style={{ fontSize: 11, color: '#94a3b8' }}>{label}</span>
+    <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{label}</span>
     <span style={{ flex: 1, marginLeft: 8 }}>{children}</span>
   </div>
 );
 
 function fieldStyle(): React.CSSProperties {
-  return { width: '100%', background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 4, padding: '3px 6px', fontSize: 11 };
+  return { width: '100%', background: 'var(--nx-panel-2)', color: 'var(--nx-text)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '3px 6px', fontSize: 11 };
 }
 function primaryBtn(): React.CSSProperties {
   return { width: '100%', background: '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer' };

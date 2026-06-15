@@ -46,7 +46,6 @@ export interface CurveSample {
 export function sampleCurveFromPolyline(points: Point3D[]): CurveSample[] {
   const n = points.length;
   if (n < 2) return [];
-  const samples: CurveSample[] = [];
   // Cumulative arc length.
   const arc: number[] = new Array(n).fill(0);
   for (let i = 1; i < n; i++) {
@@ -54,35 +53,55 @@ export function sampleCurveFromPolyline(points: Point3D[]): CurveSample[] {
   }
   const totalLen = arc[n - 1]!;
 
+  // First pass: unit tangents, plus the unsigned Menger curvature and the
+  // binormal (unit a×b) at every interior point.
+  const tangents: Point3D[] = new Array(n);
+  const binormals: Array<Point3D | null> = new Array(n).fill(null);
+  const kappaMag: number[] = new Array(n).fill(0);
   for (let i = 0; i < n; i++) {
-    const t = totalLen > 0 ? arc[i]! / totalLen : 0;
-    // Tangent = finite difference. Use centered when possible.
     let tx = 0, ty = 0, tz = 0;
-    if (i === 0) {
-      tx = points[1]!.x - points[0]!.x;
-      ty = points[1]!.y - points[0]!.y;
-      tz = points[1]!.z - points[0]!.z;
-    } else if (i === n - 1) {
-      tx = points[n - 1]!.x - points[n - 2]!.x;
-      ty = points[n - 1]!.y - points[n - 2]!.y;
-      tz = points[n - 1]!.z - points[n - 2]!.z;
-    } else {
-      tx = points[i + 1]!.x - points[i - 1]!.x;
-      ty = points[i + 1]!.y - points[i - 1]!.y;
-      tz = points[i + 1]!.z - points[i - 1]!.z;
-    }
+    if (i === 0) { tx = points[1]!.x - points[0]!.x; ty = points[1]!.y - points[0]!.y; tz = points[1]!.z - points[0]!.z; }
+    else if (i === n - 1) { tx = points[n - 1]!.x - points[n - 2]!.x; ty = points[n - 1]!.y - points[n - 2]!.y; tz = points[n - 1]!.z - points[n - 2]!.z; }
+    else { tx = points[i + 1]!.x - points[i - 1]!.x; ty = points[i + 1]!.y - points[i - 1]!.y; tz = points[i + 1]!.z - points[i - 1]!.z; }
     const tLen = Math.hypot(tx, ty, tz) || 1;
-    const tangent: Point3D = { x: tx / tLen, y: ty / tLen, z: tz / tLen };
-
-    // Curvature: Menger (radius of inscribed circle) via triple of points.
-    let curv = 0;
-    let normal: Point3D = { x: 0, y: 1, z: 0 };
+    tangents[i] = { x: tx / tLen, y: ty / tLen, z: tz / tLen };
     if (i > 0 && i < n - 1) {
       const m = mengerCurvature(points[i - 1]!, points[i]!, points[i + 1]!);
-      curv = m.curvature;
-      normal = m.normal;
+      kappaMag[i] = m.curvature;
+      binormals[i] = m.normal; // unit binormal
     }
-    samples.push({ t, position: points[i]!, tangent, normal, curvature: curv });
+  }
+
+  // Reference binormal = the binormal at the highest-curvature interior point.
+  // Signing every sample's curvature by sign(B·refB) makes the curvature flip
+  // across an inflection (binormal reversal) — the input findInflectionPoints
+  // needs. For a planar curve this is the textbook signed curvature.
+  let refB: Point3D = { x: 0, y: 0, z: 1 };
+  let best = -1;
+  for (let i = 0; i < n; i++) {
+    const b = binormals[i];
+    if (b && kappaMag[i] > best) { best = kappaMag[i]; refB = b; }
+  }
+
+  const samples: CurveSample[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = totalLen > 0 ? arc[i]! / totalLen : 0;
+    const tangent = tangents[i]!;
+    let curvature = 0;
+    let normal: Point3D = { x: 0, y: 1, z: 0 };
+    const B = binormals[i];
+    if (B) {
+      const s = (B.x * refB.x + B.y * refB.y + B.z * refB.z) >= 0 ? 1 : -1;
+      curvature = kappaMag[i]! * s;
+      // Principal normal N = B × T — in the osculating plane, toward the centre
+      // of curvature (NOT the binormal, which points out of the plane).
+      const nx = B.y * tangent.z - B.z * tangent.y;
+      const ny = B.z * tangent.x - B.x * tangent.z;
+      const nz = B.x * tangent.y - B.y * tangent.x;
+      const nl = Math.hypot(nx, ny, nz) || 1;
+      normal = { x: nx / nl, y: ny / nl, z: nz / nl };
+    }
+    samples.push({ t, position: points[i]!, tangent, normal, curvature });
   }
   return samples;
 }
@@ -261,6 +280,12 @@ export function auditCurveJunction(curveA: CurveSample[], curveB: CurveSample[])
   const tangentDeg = (Math.acos(Math.max(-1, Math.min(1, dot))) * 180) / Math.PI;
   const curvRatio = b.curvature !== 0 ? a.curvature / b.curvature : (a.curvature === 0 ? 1 : 0);
 
+  // This audit compares position, tangent and curvature at the junction, so it
+  // can certify up to G2 (curvature continuity). It deliberately does NOT claim
+  // G3: G3 is curvature-DERIVATIVE (dκ/ds) continuity, which cannot be told from
+  // the junction curvatures alone — and the two curves are signed against
+  // independent reference binormals, so a cross-curve dκ/ds comparison would be
+  // unreliable anyway. Reporting G3 from a tighter ratio (as before) overclaimed.
   let level: GLevel = 'G0';
   if (posGap < 0.01) {
     level = 'G0';
@@ -268,9 +293,6 @@ export function auditCurveJunction(curveA: CurveSample[], curveB: CurveSample[])
       level = 'G1';
       if (Math.abs(curvRatio - 1) < 0.05) {
         level = 'G2';
-        if (Math.abs(curvRatio - 1) < 0.01) {
-          level = 'G3';
-        }
       }
     }
   }

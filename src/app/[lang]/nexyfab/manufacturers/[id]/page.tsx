@@ -77,8 +77,8 @@ const PRICE_LABELS: Record<string, { ko: string; en: string; color: string }> = 
 };
 
 const C = {
-  bg: '#0d1117', surface: '#161b22', card: '#21262d',
-  border: '#30363d', text: '#e6edf3', dim: '#8b949e',
+  bg: 'var(--nx-bg)', surface: 'var(--nx-panel)', card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)', text: 'var(--nx-text)', dim: 'var(--nx-text-2)',
   accent: '#388bfd', green: '#3fb950', yellow: '#e3b341',
 };
 
@@ -336,8 +336,8 @@ function RatingBar({ label, value }: { label: string; value: number }) {
   const pct = Math.round((value / 5) * 100);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-      <span style={{ fontSize: 12, color: '#8b949e', width: 100, flexShrink: 0 }}>{label}</span>
-      <div style={{ flex: 1, height: 6, background: '#21262d', borderRadius: 3, overflow: 'hidden' }}>
+      <span style={{ fontSize: 12, color: 'var(--nx-text-2)', width: 100, flexShrink: 0 }}>{label}</span>
+      <div style={{ flex: 1, height: 6, background: 'var(--nx-panel-2)', borderRadius: 3, overflow: 'hidden' }}>
         <div style={{ width: `${pct}%`, height: '100%', background: '#e3b341', borderRadius: 3 }} />
       </div>
       <span style={{ fontSize: 12, color: '#e3b341', width: 28, textAlign: 'right' }}>{value.toFixed(1)}</span>

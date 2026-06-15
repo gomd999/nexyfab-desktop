@@ -72,11 +72,12 @@ export default function FirstTimeOnboardingShell({
   });
 
   useEffect(() => {
-    try {
-      setPickerDismissed(window.localStorage.getItem(PICKER_DISMISSED_KEY) === 'true');
-    } catch {
-      setPickerDismissed(false);
-    }
+    // Blank workspace is the default (pro-CAD: open straight into an empty part).
+    // The full-screen template picker no longer auto-opens as a forced first-run
+    // modal — the empty-canvas Shape Library / AI Chat cards are the discoverable
+    // entry points. A future "New from template" button can flip this back on
+    // demand. (Retired the forced modal 2026-06-09 per UX review.)
+    setPickerDismissed(true);
   }, []);
 
   // When the first feature is added, mark 'template' step done.

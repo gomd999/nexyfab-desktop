@@ -50,6 +50,23 @@
 | 예외 ID | 원 갭 | 조건 | 재검토 |
 |---------|--------|------|--------|
 | *(종료)* **X-G-S3** | G-S3 `enterpriseContract` 고정 false | `nf_users.enterprise_contract`·관리 PATCH로 대체되어 예외 종료 | — |
+| **X-G-U2-FENCE** (2026-05-29) | G-U2 별도 범용 Feature Flag 스토어 없음 | 단일 `BM_MATRIX_STAGE_GATES_FOR_PLAN_LIMITS` + `BM_MATRIX_PLAN_STAGE_GATE_REVISION` 패턴 유지. 변경 시 fingerprint 테스트가 막아주므로 별도 remote flag 도입은 후속(필요 시 D5+). | Phase 4 (AI/CAM/FEA) 마감 |
+| **X-G-M1-CRON** (2026-05-29) | G-M1 cron URL이 배포별 | `runQuarterlyStageHistoryRoll` + `/api/jobs/rolling-quarterly-metrics` 엔드포인트 코드는 완성. 배포별 cron 스케줄링은 Railway dashboard / wrangler cron 설정 항목으로 분리 — 코드 갭 아님. | 운영 SLO 추가 시 |
+| **X-G-U1-COPY** (2026-05-29) | G-U1 32×6 매트릭스 row-by-row UI 카피 QA | 매트릭스 구조 + lockstep 테스트 완료. 행별 UI 카피·툴팁은 사용 빈도 기준 롤링 QA (분기마다 가장 많이 트리거된 5행). | 분기 운영 |
+
+### 4.2 D4 ship gate (2026-05-29)
+
+D4 = "갭 0 또는 승인된 예외만"의 달성 시점.
+
+- ✅ G-S1 / G-S3 / G-S4 — 코드 완성, Vitest 통과
+- ✅ G-S2 quarterly roll — 코드 완성 (cron 배포는 X-G-M1-CRON 예외)
+- ✅ G-U1 — 32 row + lockstep 테스트, 행별 카피는 X-G-U1-COPY 운영 롤링
+- ✅ G-U2 — fingerprint 회귀 `src/test/lib/bmMatrixD4Invariants.test.ts`
+       (6 cases). REVISION 변경 강제 + plan-gate 표 무결성 + duplicate 차단
+- ✅ G-U3 — 워커→UI 직접 쓰기 금지 계약을 `stage-worker.ts` 주석에 고정
+- 별도 범용 feature flag 스토어 = **X-G-U2-FENCE 예외로 합의**
+
+**D4 코드 갭 = 0** (모든 항목이 완료 또는 명시적 예외).
 
 ---
 

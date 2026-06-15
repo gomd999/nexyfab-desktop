@@ -138,13 +138,13 @@ export default function RfqCadFilesPanel({
 
   return (
     <div style={{
-      border: '1px solid #30363d',
+      border: '1px solid var(--nx-border)',
       borderRadius: 8,
-      background: '#161b22',
+      background: 'var(--nx-panel)',
       padding: pad,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#8b949e' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text-2)' }}>
           {isKo ? 'CAD 파일 (버전)' : 'CAD files (versions)'}
         </span>
         <button
@@ -157,7 +157,7 @@ export default function RfqCadFilesPanel({
             padding: '4px 10px',
             borderRadius: 6,
             border: '1px solid #388bfd55',
-            background: uploading ? '#21262d' : '#388bfd22',
+            background: uploading ? 'var(--nx-panel-2)' : '#388bfd22',
             color: '#58a6ff',
             cursor: uploading ? 'not-allowed' : 'pointer',
           }}
@@ -167,9 +167,9 @@ export default function RfqCadFilesPanel({
       </div>
       {err && <p style={{ margin: '0 0 8px', fontSize: 11, color: '#f85149' }}>{err}</p>}
       {loading ? (
-        <p style={{ margin: 0, fontSize: 12, color: '#6e7681' }}>{isKo ? '불러오는 중…' : 'Loading…'}</p>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--nx-text-3)' }}>{isKo ? '불러오는 중…' : 'Loading…'}</p>
       ) : threads.length === 0 ? (
-        <p style={{ margin: 0, fontSize: 12, color: '#6e7681' }}>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--nx-text-3)' }}>
           {isKo
             ? '등록된 CAD 파일이 없습니다. STEP 등을 올리면 고객·파트너가 같은 RFQ에서 버전을 이어갈 수 있습니다.'
             : 'No CAD files yet. Upload a STEP file to start a version chain visible to both sides.'}
@@ -179,8 +179,8 @@ export default function RfqCadFilesPanel({
           {threads.map(thread => {
             const latest = thread.versions[thread.versions.length - 1];
             return (
-              <div key={thread.rootId} style={{ background: '#0d1117', borderRadius: 6, padding: '8px 10px' }}>
-                <div style={{ fontSize: 10, color: '#484f58', marginBottom: 6 }}>
+              <div key={thread.rootId} style={{ background: 'var(--nx-bg)', borderRadius: 6, padding: '8px 10px' }}>
+                <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 6 }}>
                   {isKo ? '버전 묶음' : 'Thread'} · v1–v{thread.versions.length}
                   {role && (
                     <span style={{ marginLeft: 8 }}>
@@ -198,16 +198,16 @@ export default function RfqCadFilesPanel({
                         gap: 8,
                         flexWrap: 'wrap',
                         fontSize: 12,
-                        color: '#e6edf3',
+                        color: 'var(--nx-text)',
                         padding: '4px 0',
-                        borderBottom: '1px solid #21262d',
+                        borderBottom: '1px solid var(--nx-panel-2)',
                       }}
                     >
                       <span style={{ fontWeight: 600, color: '#58a6ff', minWidth: 28 }}>v{v.cadVersion}</span>
                       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {v.filename}
                       </span>
-                      <span style={{ fontSize: 10, color: '#8b949e' }}>
+                      <span style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>
                         {v.uploadedByRole === 'partner' ? (isKo ? '파트너' : 'Partner') : (isKo ? '고객' : 'Customer')}
                         {v.isUploaderYou ? (isKo ? '·나' : '·you') : ''}
                       </span>
@@ -218,7 +218,7 @@ export default function RfqCadFilesPanel({
                           fontSize: 10,
                           padding: '2px 8px',
                           borderRadius: 4,
-                          border: '1px solid #30363d',
+                          border: '1px solid var(--nx-border)',
                           background: 'transparent',
                           color: '#8b9cf4',
                           cursor: 'pointer',

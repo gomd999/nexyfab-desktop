@@ -6,8 +6,16 @@ import type {
   SketchProfile, SketchPoint, SketchSegment, SketchTool,
   SketchConstraint, SketchDimension, ConstraintType,
 } from './types';
+import {
+  SNAP_POINT_PX, genId, segmentsIntersect, snap, snapPoint, dist,
+  arcPathFromPoints, sampleArc, generateCircleSegments, generateRectSegments,
+  generatePolygonSegments, generateEllipseSegments, generateSlotSegments,
+  applyFilletAtVertex, mirrorSegments, catmullRomToSegments,
+  trimSegmentAtIntersections, offsetSegment, findNearestSegment, findNearestSegmentBody,
+} from './sketchGeometryOps';
 import { sampleNurbsSegment } from './nurbs';
-import { CONSTRAINT_ICON, getConstraintsForEntity, solveConstraints } from './constraintSolver';
+import { CONSTRAINT_ICON, getConstraintsForEntity } from './constraintSolver';
+import { dragSolve, dragSolveSegment } from './sketchDragSolve';
 import { cleanupProfile } from './profileCleanup';
 
 type SketchLang = 'ko' | 'en' | 'ja' | 'cn' | 'es' | 'ar';
@@ -248,6 +256,22 @@ const SKETCH_MSG = {
     es: 'Gris discontinuo = otros perfiles (clic en el contorno para cambiar, o pestañas izquierda). Azul = activo.',
     ar: 'رمادي متقطع = ملفات أخرى (انقر المخطط للتبديل أو التبويبات). أزرق = النشط.',
   },
+  dragBlockedFixed: {
+    ko: '고정(🔒)된 점은 드래그할 수 없습니다',
+    en: 'Point is fixed (🔒) — cannot drag',
+    ja: '固定(🔒)された点はドラッグできません',
+    cn: '固定(🔒)的点无法拖动',
+    es: 'Punto fijado (🔒) — no se puede arrastrar',
+    ar: 'النقطة مثبتة (🔒) — لا يمكن سحبها',
+  },
+  dragBlockedOver: {
+    ko: '과잉 구속 — 이동 불가 (구속을 제거하세요)',
+    en: 'Over-constrained — drag blocked (remove a constraint)',
+    ja: '過剰拘束 — 移動できません (拘束を削除してください)',
+    cn: '过约束 — 无法拖动 (请删除约束)',
+    es: 'Sobre-restringido — arrastre bloqueado (elimina una restricción)',
+    ar: 'مقيّد بشكل زائد — السحب محظور (احذف قيدًا)',
+  },
 } as const;
 
 /** Resolve SKETCH_MSG entry: some keys are plain strings, some are `(n) => string`. */
@@ -351,517 +375,17 @@ interface SketchCanvasProps {
    *  alongside `onSweepPathChange` to enable the sweep-path drawing tool. */
   sweepPathPoints?: { x: number; y: number; z: number }[];
   onSweepPathChange?: (points: { x: number; y: number; z: number }[]) => void;
-}
-
-// ─── Named constants ─────────────────────────────────────────────────────────
-
-const SNAP_GRID_SIZE = 5;        // grid cell size in mm
-const SNAP_GRID_PX = 8;          // grid snap threshold in pixels
-const SNAP_POINT_PX = 12;        // endpoint snap radius in pixels
-const ENDPOINT_EPSILON = 1e-10;  // floating point equality tolerance
-
-// ─── ID generator ───────────────────────────────────────────────────────────
-// Module-level counter is intentionally stable across re-renders;
-// IDs only need to be unique within a session, not across SSR/client.
-// genId is called only in event handlers and helper functions (never during render),
-// so it does not cause hydration mismatches.
-let _idCounter = 0;
-function genId(prefix: string = 'e'): string {
-  return `${prefix}_${Date.now().toString(36)}_${(++_idCounter).toString(36)}`;
-}
-
-// ─── Self-intersection detection ────────────────────────────────────────────
-// 두 선분 AB, CD가 교차하는지 검사 (끝점 공유는 교차로 간주하지 않음)
-function segmentsIntersect(
-  a: { x: number; y: number }, b: { x: number; y: number },
-  c: { x: number; y: number }, d: { x: number; y: number }
-): boolean {
-  const eps = 1e-9;
-  // 끝점이 거의 같으면 교차가 아닌 연결점
-  const sameEnd = (p: {x:number;y:number}, q: {x:number;y:number}) =>
-    Math.abs(p.x - q.x) < eps && Math.abs(p.y - q.y) < eps;
-  if (sameEnd(a, c) || sameEnd(a, d) || sameEnd(b, c) || sameEnd(b, d)) return false;
-  const d1 = (d.x - c.x) * (a.y - c.y) - (d.y - c.y) * (a.x - c.x);
-  const d2 = (d.x - c.x) * (b.y - c.y) - (d.y - c.y) * (b.x - c.x);
-  const d3 = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-  const d4 = (b.x - a.x) * (d.y - a.y) - (b.y - a.y) * (d.x - a.x);
-  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
-         ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function snap(val: number, gridSize: number, pxThreshold: number, scale: number): number {
-  const nearest = Math.round(val / gridSize) * gridSize;
-  if (Math.abs(val - nearest) * scale < pxThreshold) return nearest;
-  return val;
-}
-
-function snapPoint(p: SketchPoint, scale: number): SketchPoint {
-  return { x: snap(p.x, SNAP_GRID_SIZE, SNAP_GRID_PX, scale), y: snap(p.y, SNAP_GRID_SIZE, SNAP_GRID_PX, scale) };
-}
-
-function dist(a: SketchPoint, b: SketchPoint): number {
-  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
-}
-
-/** Compute center of a circle through 3 points. Returns null if colinear. */
-function circleThrough3(p1: SketchPoint, p2: SketchPoint, p3: SketchPoint): { cx: number; cy: number; r: number } | null {
-  const ax = p1.x, ay = p1.y, bx = p2.x, by = p2.y, cx = p3.x, cy = p3.y;
-  const D = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
-  if (Math.abs(D) < ENDPOINT_EPSILON) return null;
-  const ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / D;
-  const uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / D;
-  return { cx: ux, cy: uy, r: Math.sqrt((ax - ux) ** 2 + (ay - uy) ** 2) };
-}
-
-/** Generate SVG arc path from 3 points */
-function arcPathFromPoints(start: SketchPoint, through: SketchPoint, end: SketchPoint): string {
-  const circle = circleThrough3(start, through, end);
-  if (!circle) return `L ${end.x} ${-end.y}`;
-  const r = circle.r;
-  const cross = (through.x - start.x) * (end.y - start.y) - (through.y - start.y) * (end.x - start.x);
-  const sweepFlag = cross > 0 ? 0 : 1;
-  const angleStart = Math.atan2(start.y - circle.cy, start.x - circle.cx);
-  const angleThrough = Math.atan2(through.y - circle.cy, through.x - circle.cx);
-  const angleEnd = Math.atan2(end.y - circle.cy, end.x - circle.cx);
-
-  function normalizeAngle(a: number, ref: number): number {
-    while (a < ref) a += 2 * Math.PI;
-    while (a > ref + 2 * Math.PI) a -= 2 * Math.PI;
-    return a;
-  }
-
-  const aEnd = normalizeAngle(angleEnd, angleStart);
-  const aThrough = normalizeAngle(angleThrough, angleStart);
-  const largeArc = (aThrough < aEnd) ? 0 : 1;
-  const largeArcFlag = largeArc ^ sweepFlag;
-
-  return `A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${end.x} ${-end.y}`;
-}
-
-/** Approximate arc points for preview */
-function sampleArc(start: SketchPoint, through: SketchPoint, end: SketchPoint, n: number = 20): SketchPoint[] {
-  const circle = circleThrough3(start, through, end);
-  if (!circle) return [start, end];
-  const { cx, cy, r } = circle;
-  const a1 = Math.atan2(start.y - cy, start.x - cx);
-  let a2 = Math.atan2(end.y - cy, end.x - cx);
-  const aMid = Math.atan2(through.y - cy, through.x - cx);
-
-  function normAngle(a: number, ref: number): number {
-    while (a < ref) a += 2 * Math.PI;
-    while (a > ref + 2 * Math.PI) a -= 2 * Math.PI;
-    return a;
-  }
-  a2 = normAngle(a2, a1);
-  const aMidN = normAngle(aMid, a1);
-
-  let sweep: number;
-  if (aMidN <= a2) {
-    sweep = a2 - a1;
-  } else {
-    sweep = a2 - a1 - 2 * Math.PI;
-  }
-
-  const pts: SketchPoint[] = [];
-  for (let i = 0; i <= n; i++) {
-    const t = i / n;
-    const a = a1 + sweep * t;
-    pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
-  }
-  return pts;
-}
-
-/** Generate circle points approximated as line segments */
-function generateCircleSegments(center: SketchPoint, radius: number, sides: number = 32): SketchSegment[] {
-  const segs: SketchSegment[] = [];
-  for (let i = 0; i < sides; i++) {
-    const a1 = (2 * Math.PI * i) / sides;
-    const a2 = (2 * Math.PI * (i + 1)) / sides;
-    segs.push({
-      type: 'line',
-      points: [
-        { x: center.x + radius * Math.cos(a1), y: center.y + radius * Math.sin(a1), id: genId('cp') },
-        { x: center.x + radius * Math.cos(a2), y: center.y + radius * Math.sin(a2), id: genId('cp') },
-      ],
-      id: genId('cseg'),
-    });
-  }
-  return segs;
-}
-
-/** Generate rectangle as 4 line segments */
-function generateRectSegments(corner1: SketchPoint, corner2: SketchPoint): SketchSegment[] {
-  const tl: SketchPoint = { x: Math.min(corner1.x, corner2.x), y: Math.max(corner1.y, corner2.y), id: genId('rp') };
-  const tr: SketchPoint = { x: Math.max(corner1.x, corner2.x), y: Math.max(corner1.y, corner2.y), id: genId('rp') };
-  const br: SketchPoint = { x: Math.max(corner1.x, corner2.x), y: Math.min(corner1.y, corner2.y), id: genId('rp') };
-  const bl: SketchPoint = { x: Math.min(corner1.x, corner2.x), y: Math.min(corner1.y, corner2.y), id: genId('rp') };
-  return [
-    { type: 'line', points: [tl, tr], id: genId('rseg') },
-    { type: 'line', points: [tr, br], id: genId('rseg') },
-    { type: 'line', points: [br, bl], id: genId('rseg') },
-    { type: 'line', points: [bl, tl], id: genId('rseg') },
-  ];
-}
-
-/** Generate regular polygon segments */
-function generatePolygonSegments(center: SketchPoint, radiusPt: SketchPoint, sides: number): SketchSegment[] {
-  const r = dist(center, radiusPt);
-  const baseAngle = Math.atan2(radiusPt.y - center.y, radiusPt.x - center.x);
-  const segs: SketchSegment[] = [];
-  const pts: SketchPoint[] = [];
-  for (let i = 0; i < sides; i++) {
-    const a = baseAngle + (2 * Math.PI * i) / sides;
-    pts.push({ x: center.x + r * Math.cos(a), y: center.y + r * Math.sin(a), id: genId('pp') });
-  }
-  for (let i = 0; i < sides; i++) {
-    segs.push({
-      type: 'line',
-      points: [pts[i], pts[(i + 1) % sides]],
-      id: genId('pseg'),
-    });
-  }
-  return segs;
-}
-
-/** Generate ellipse approximated as line segments */
-function generateEllipseSegments(center: SketchPoint, rx: number, ry: number, sides: number = 36): SketchSegment[] {
-  const segs: SketchSegment[] = [];
-  for (let i = 0; i < sides; i++) {
-    const a1 = (2 * Math.PI * i) / sides;
-    const a2 = (2 * Math.PI * (i + 1)) / sides;
-    segs.push({
-      type: 'line',
-      points: [
-        { x: center.x + rx * Math.cos(a1), y: center.y + ry * Math.sin(a1), id: genId('ep') },
-        { x: center.x + rx * Math.cos(a2), y: center.y + ry * Math.sin(a2), id: genId('ep') },
-      ],
-      id: genId('eseg'),
-    });
-  }
-  // Store center info on first segment for geometry snap
-  if (segs.length > 0) {
-    (segs[0] as SketchSegment & { _ellipseCenter?: SketchPoint })._ellipseCenter = center;
-  }
-  return segs;
-}
-
-/** Generate slot: two semicircles + two tangent lines */
-function generateSlotSegments(c1: SketchPoint, c2: SketchPoint, radius: number, sides: number = 32): SketchSegment[] {
-  const dx = c2.x - c1.x;
-  const dy = c2.y - c1.y;
-  const len = Math.sqrt(dx * dx + dy * dy);
-  if (len < 0.01) return generateEllipseSegments(c1, radius, radius);
-  // Perpendicular direction (normalised)
-  const nx = -dy / len;
-  const ny = dx / len;
-  const segs: SketchSegment[] = [];
-  const halfSides = Math.floor(sides / 2);
-  // Direction angle of c1→c2
-  const baseAngle = Math.atan2(dy, dx);
-  // Cap 1 (at c1, facing away from c2)
-  for (let i = 0; i < halfSides; i++) {
-    const a1 = baseAngle + Math.PI / 2 + (Math.PI * i) / halfSides;
-    const a2 = baseAngle + Math.PI / 2 + (Math.PI * (i + 1)) / halfSides;
-    segs.push({
-      type: 'line',
-      points: [
-        { x: c1.x + radius * Math.cos(a1), y: c1.y + radius * Math.sin(a1), id: genId('sp') },
-        { x: c1.x + radius * Math.cos(a2), y: c1.y + radius * Math.sin(a2), id: genId('sp') },
-      ],
-      id: genId('slseg'),
-    });
-  }
-  // Top tangent line: c1 top → c2 top
-  segs.push({
-    type: 'line',
-    points: [
-      { x: c1.x + nx * radius, y: c1.y + ny * radius, id: genId('sp') },
-      { x: c2.x + nx * radius, y: c2.y + ny * radius, id: genId('sp') },
-    ],
-    id: genId('slseg'),
-  });
-  // Cap 2 (at c2, facing away from c1)
-  for (let i = 0; i < halfSides; i++) {
-    const a1 = baseAngle - Math.PI / 2 + (Math.PI * i) / halfSides;
-    const a2 = baseAngle - Math.PI / 2 + (Math.PI * (i + 1)) / halfSides;
-    segs.push({
-      type: 'line',
-      points: [
-        { x: c2.x + radius * Math.cos(a1), y: c2.y + radius * Math.sin(a1), id: genId('sp') },
-        { x: c2.x + radius * Math.cos(a2), y: c2.y + radius * Math.sin(a2), id: genId('sp') },
-      ],
-      id: genId('slseg'),
-    });
-  }
-  // Bottom tangent line: c2 bottom → c1 bottom
-  segs.push({
-    type: 'line',
-    points: [
-      { x: c2.x - nx * radius, y: c2.y - ny * radius, id: genId('sp') },
-      { x: c1.x - nx * radius, y: c1.y - ny * radius, id: genId('sp') },
-    ],
-    id: genId('slseg'),
-  });
-  return segs;
-}
-
-/** Apply fillet between two lines meeting at a vertex — replaces the corner with an arc */
-function applyFilletAtVertex(
-  segments: SketchSegment[],
-  vertexPt: SketchPoint,
-  radius: number,
-  eps: number = 1,
-): SketchSegment[] {
-  // Find the two line segments that share this vertex
-  const sharesVertex = (seg: SketchSegment, pt: SketchPoint): 0 | 1 | -1 => {
-    if (seg.type !== 'line' || seg.points.length < 2) return 0;
-    if (dist(seg.points[0], pt) < eps) return 1;
-    if (dist(seg.points[seg.points.length - 1], pt) < eps) return -1;
-    return 0;
-  };
-  const matched: Array<{ idx: number; end: 0 | 1 | -1 }> = [];
-  for (let i = 0; i < segments.length; i++) {
-    const e = sharesVertex(segments[i], vertexPt);
-    if (e !== 0) matched.push({ idx: i, end: e });
-  }
-  if (matched.length < 2) return segments;
-  const [m0, m1] = matched;
-  const s0 = segments[m0.idx];
-  const s1 = segments[m1.idx];
-  // Direction from vertex along each segment
-  const dir0 = m0.end === 1
-    ? { x: s0.points[1].x - s0.points[0].x, y: s0.points[1].y - s0.points[0].y }
-    : { x: s0.points[0].x - s0.points[s0.points.length - 1].x, y: s0.points[0].y - s0.points[s0.points.length - 1].y };
-  const dir1 = m1.end === 1
-    ? { x: s1.points[1].x - s1.points[0].x, y: s1.points[1].y - s1.points[0].y }
-    : { x: s1.points[0].x - s1.points[s1.points.length - 1].x, y: s1.points[0].y - s1.points[s1.points.length - 1].y };
-  const len0 = Math.sqrt(dir0.x ** 2 + dir0.y ** 2);
-  const len1 = Math.sqrt(dir1.x ** 2 + dir1.y ** 2);
-  if (len0 < 0.01 || len1 < 0.01) return segments;
-  const u0 = { x: dir0.x / len0, y: dir0.y / len0 };
-  const u1 = { x: dir1.x / len1, y: dir1.y / len1 };
-  // Setback distance
-  const dot = u0.x * u1.x + u0.y * u1.y;
-  const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
-  const setback = angle < 0.01 ? radius : radius / Math.tan(angle / 2);
-  if (setback > Math.min(len0, len1) * 0.9) return segments; // radius too large
-  // Fillet tangent points
-  const tp0: SketchPoint = { x: vertexPt.x + u0.x * setback, y: vertexPt.y + u0.y * setback, id: genId('fp') };
-  const tp1: SketchPoint = { x: vertexPt.x + u1.x * setback, y: vertexPt.y + u1.y * setback, id: genId('fp') };
-  // Mid-arc point (bisector direction)
-  const bisLen = Math.sqrt((u0.x + u1.x) ** 2 + (u0.y + u1.y) ** 2);
-  const midDir = bisLen > 0.001
-    ? { x: (u0.x + u1.x) / bisLen, y: (u0.y + u1.y) / bisLen }
-    : { x: -u0.y, y: u0.x };
-  const arcMidDist = radius / Math.max(0.01, Math.cos((Math.PI - angle) / 2));
-  const arcMid: SketchPoint = { x: vertexPt.x + midDir.x * arcMidDist * 0.7, y: vertexPt.y + midDir.y * arcMidDist * 0.7, id: genId('fp') };
-  // Trim segments
-  const newSegs = segments.map((seg, i) => {
-    if (i === m0.idx) {
-      if (m0.end === 1) return { ...seg, points: [tp0, ...seg.points.slice(1)] };
-      const pts = [...seg.points]; pts[pts.length - 1] = tp0; return { ...seg, points: pts };
-    }
-    if (i === m1.idx) {
-      if (m1.end === 1) return { ...seg, points: [tp1, ...seg.points.slice(1)] };
-      const pts = [...seg.points]; pts[pts.length - 1] = tp1; return { ...seg, points: pts };
-    }
-    return seg;
-  });
-  // Insert fillet arc
-  const arcSeg: SketchSegment = { type: 'arc', points: [tp0, arcMid, tp1], id: genId('fillet') };
-  const insertIdx = Math.max(m0.idx, m1.idx) + 1;
-  newSegs.splice(insertIdx, 0, arcSeg);
-  return newSegs;
-}
-
-/** Mirror all segments about a vertical or horizontal axis through the given point */
-function mirrorSegments(segs: SketchSegment[], axis: 'x' | 'y', pivot: number): SketchSegment[] {
-  return segs.map(seg => ({
-    ...seg,
-    id: genId('mir'),
-    points: seg.points.map(p => ({
-      ...p,
-      id: genId('mirp'),
-      x: axis === 'y' ? 2 * pivot - p.x : p.x,
-      y: axis === 'x' ? 2 * pivot - p.y : p.y,
-    })),
-  }));
-}
-
-/** Convert N Catmull-Rom control points into line-segment approximations */
-function catmullRomToSegments(points: SketchPoint[], tension = 0.5): Array<{ start: SketchPoint; end: SketchPoint }> {
-  if (points.length < 2) return [];
-  const segs: Array<{ start: SketchPoint; end: SketchPoint }> = [];
-  const steps = 12; // line segments per span
-
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[Math.max(0, i - 1)];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[Math.min(points.length - 1, i + 2)];
-
-    let prev = p1;
-    for (let s = 1; s <= steps; s++) {
-      const t = s / steps;
-      const t2 = t * t;
-      const t3 = t2 * t;
-      const x = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2*p0.x - 5*p1.x + 4*p2.x - p3.x) * t2 + (-p0.x + 3*p1.x - 3*p2.x + p3.x) * t3);
-      const y = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2*p0.y - 5*p1.y + 4*p2.y - p3.y) * t2 + (-p0.y + 3*p1.y - 3*p2.y + p3.y) * t3);
-      const curr = { x, y };
-      segs.push({ start: { ...prev }, end: { ...curr } });
-      prev = curr;
-    }
-  }
-  // suppress unused-variable warning for tension param (reserved for future use)
-  void tension;
-  return segs;
-}
-
-/** Find intersection of two line segments. Returns intersection point or null. */
-function lineLineIntersect(a1: SketchPoint, a2: SketchPoint, b1: SketchPoint, b2: SketchPoint): SketchPoint | null {
-  const d1x = a2.x - a1.x, d1y = a2.y - a1.y;
-  const d2x = b2.x - b1.x, d2y = b2.y - b1.y;
-  const cross = d1x * d2y - d1y * d2x;
-  if (Math.abs(cross) < 1e-10) return null;
-  const t = ((b1.x - a1.x) * d2y - (b1.y - a1.y) * d2x) / cross;
-  const u = ((b1.x - a1.x) * d1y - (b1.y - a1.y) * d1x) / cross;
-  if (t < -0.001 || t > 1.001 || u < -0.001 || u > 1.001) return null;
-  return { x: a1.x + t * d1x, y: a1.y + t * d1y };
-}
-
-/** Trim a line segment at its nearest intersection with any other segment in the profile.
- *  Returns trimmed segment or null if no intersections found. */
-function trimSegmentAtIntersections(
-  seg: SketchSegment,
-  allSegs: SketchSegment[],
-  clickPt: SketchPoint,
-): SketchSegment | null {
-  if (seg.type !== 'line' || seg.points.length < 2) return null;
-  const [p0, p1] = seg.points;
-
-  // Collect all intersection points along this segment
-  const intersections: Array<{ t: number; pt: SketchPoint }> = [];
-  for (const other of allSegs) {
-    if (other === seg) continue;
-    if (other.type === 'line' && other.points.length >= 2) {
-      const ip = lineLineIntersect(p0, p1, other.points[0], other.points[1]);
-      if (ip) {
-        const dx = p1.x - p0.x, dy = p1.y - p0.y;
-        const len2 = dx * dx + dy * dy;
-        const t = len2 > 0 ? ((ip.x - p0.x) * dx + (ip.y - p0.y) * dy) / len2 : 0;
-        if (t > 0.001 && t < 0.999) {
-          intersections.push({ t, pt: ip });
-        }
-      }
-    }
-  }
-  if (intersections.length === 0) return null;
-  intersections.sort((a, b) => a.t - b.t);
-
-  // Determine which portion the click point is in — find its t
-  const dx = p1.x - p0.x, dy = p1.y - p0.y;
-  const len2 = dx * dx + dy * dy;
-  const clickT = len2 > 0 ? ((clickPt.x - p0.x) * dx + (clickPt.y - p0.y) * dy) / len2 : 0;
-
-  // Find boundary intersections: the first one before and after clickT
-  const before = intersections.filter(i => i.t <= clickT);
-  const after = intersections.filter(i => i.t > clickT);
-
-  const newP0 = before.length > 0 ? { ...before[before.length - 1].pt, id: genId('tp') } : p0;
-  const newP1 = after.length > 0 ? { ...after[0].pt, id: genId('tp') } : p1;
-
-  return { ...seg, points: [newP0, newP1], id: genId('seg') };
-}
-
-/** Offset a segment by a perpendicular distance */
-function offsetSegment(seg: SketchSegment, distance: number): SketchSegment | null {
-  if (seg.type === 'line' && seg.points.length >= 2) {
-    const p0 = seg.points[0];
-    const p1 = seg.points[1];
-    const dx = p1.x - p0.x;
-    const dy = p1.y - p0.y;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    if (len < 0.001) return null;
-    const nx = -dy / len;
-    const ny = dx / len;
-    return {
-      ...seg,
-      id: genId('offseg'),
-      points: [
-        { x: p0.x + nx * distance, y: p0.y + ny * distance, id: genId('offp') },
-        { x: p1.x + nx * distance, y: p1.y + ny * distance, id: genId('offp') },
-      ],
-    };
-  }
-  if (seg.type === 'arc' && seg.points.length === 3) {
-    // Arc: find center, offset radius by distance
-    const [start, through, end] = seg.points;
-    const ax = start.x, ay = start.y, bx = through.x, by = through.y, cx = end.x, cy = end.y;
-    const D = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
-    if (Math.abs(D) < 1e-10) return null;
-    const ux = ((ax*ax+ay*ay)*(by-cy) + (bx*bx+by*by)*(cy-ay) + (cx*cx+cy*cy)*(ay-by)) / D;
-    const uy = ((ax*ax+ay*ay)*(cx-bx) + (bx*bx+by*by)*(ax-cx) + (cx*cx+cy*cy)*(bx-ax)) / D;
-    const r = Math.sqrt((ax-ux)**2 + (ay-uy)**2);
-    const newR = r + distance;
-    if (newR <= 0) return null;
-    // Scale each point outward from center
-    const scalePoint = (p: SketchPoint): SketchPoint => {
-      const dr = Math.sqrt((p.x-ux)**2 + (p.y-uy)**2);
-      if (dr < 0.001) return p;
-      const f = newR / dr;
-      return { x: ux + (p.x-ux)*f, y: uy + (p.y-uy)*f, id: genId('offp') };
-    };
-    return { ...seg, id: genId('offseg'), points: [scalePoint(start), scalePoint(through), scalePoint(end)] };
-  }
-  return null;
-}
-
-/** Find nearest segment to a point (in mm coords) */
-function findNearestSegment(
-  segments: SketchSegment[],
-  pt: SketchPoint,
-  threshold: number,
-): { index: number; distance: number } | null {
-  let bestIdx = -1;
-  let bestDist = Infinity;
-
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i];
-    if (seg.type === 'line' && seg.points.length >= 2) {
-      const a = seg.points[0];
-      const b = seg.points[1];
-      // Point-to-segment distance
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const lenSq = dx * dx + dy * dy;
-      let t = 0;
-      if (lenSq > 0) {
-        t = Math.max(0, Math.min(1, ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / lenSq));
-      }
-      const proj = { x: a.x + t * dx, y: a.y + t * dy };
-      const d = dist(pt, proj);
-      if (d < bestDist) {
-        bestDist = d;
-        bestIdx = i;
-      }
-    } else if (seg.type === 'arc' && seg.points.length >= 3) {
-      const circle = circleThrough3(seg.points[0], seg.points[1], seg.points[2]);
-      if (circle) {
-        const d = Math.abs(dist(pt, { x: circle.cx, y: circle.cy }) - circle.r);
-        if (d < bestDist) {
-          bestDist = d;
-          bestIdx = i;
-        }
-      }
-    }
-  }
-
-  if (bestIdx >= 0 && bestDist <= threshold) {
-    return { index: bestIdx, distance: bestDist };
-  }
-  return null;
+  /** Fires when the select tool's segment selection changes. The id matches
+   *  `segment.id` (or the `seg${index}` fallback the shell bridge uses), so
+   *  the SketchRightPane can show live selection / constraint info. */
+  onSelectedEntityChange?: (id: string | null) => void;
+  /** Fires ONCE per point-drag gesture, before the first geometry change.
+   *  Parent should capture an undo snapshot here (one undo step per drag). */
+  onPointDragStart?: () => void;
+  /** Per-frame profile updates during a point drag. Unlike `onProfileChange`
+   *  this must NOT capture an undo snapshot — `onPointDragStart` already did.
+   *  When absent, drags fall back to `onProfileChange` (legacy behavior). */
+  onProfileChangeLive?: (profile: SketchProfile) => void;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -895,6 +419,9 @@ function SketchCanvas({
   pickFilter = 'all',
   sweepPathPoints,
   onSweepPathChange,
+  onSelectedEntityChange,
+  onPointDragStart,
+  onProfileChangeLive,
 }: SketchCanvasProps) {
   // ── i18n: resolve locale from URL segment ──
   const pathname = usePathname();
@@ -976,9 +503,28 @@ function SketchCanvas({
   // Selection state (select tool: click segment to select, Delete to remove)
   const [selectedSegIdx, setSelectedSegIdx] = useState<number>(-1);
 
+  // Mirror the selection out to the parent (shell right pane shows live
+  // selection info). Id falls back to `seg${idx}` matching the bridge writer.
+  useEffect(() => {
+    if (!onSelectedEntityChange) return;
+    const seg = selectedSegIdx >= 0 ? profile.segments[selectedSegIdx] : undefined;
+    onSelectedEntityChange(seg ? (seg.id ?? `seg${selectedSegIdx}`) : null);
+  }, [selectedSegIdx, profile.segments, onSelectedEntityChange]);
+
   // Point drag state (select tool: drag a point to move it, solver will re-constrain)
   const [dragPoint, setDragPoint] = useState<{ segIdx: number; ptIdx: number } | null>(null);
   const isDraggingPointRef = useRef(false);
+  // Segment-body (edge) drag state (select tool: grab an edge away from its
+  // point handles — dragSolveSegment translates the whole segment while the
+  // solver keeps constraints satisfied). Gesture-start snapshot anchors the
+  // absolute cursor delta so per-frame solves never accumulate drift.
+  const [dragSeg, setDragSeg] = useState<number>(-1);
+  const isDraggingSegRef = useRef(false);
+  const dragSegStartRef = useRef<{ segments: SketchSegment[]; cursor: SketchPoint } | null>(null);
+  // Drag-solve gesture bookkeeping: capture exactly ONE undo snapshot per
+  // gesture (on first actual move), and toast a blocked drag only once.
+  const dragUndoCapturedRef = useRef(false);
+  const dragBlockedToastShownRef = useRef(false);
 
   // Dimension inline input (line tool: 첫 점 클릭 후 숫자 입력 → Enter로 정확한 길이 커밋)
   const [dimInput, setDimInput] = useState<string>('');
@@ -1679,44 +1225,100 @@ function SketchCanvas({
       setPanY(panStartRef.current.py - dy);
       return;
     }
-    // Point drag
+    // Point drag — drag-solve (SolidWorks feel): the dragged point chases the
+    // cursor while the LM solver keeps every constraint + locked dimension
+    // satisfied each frame (soft cursor-pin + exact polish, sketchDragSolve).
     if (isDraggingPointRef.current && dragPoint) {
       const raw = screenToMm(e.clientX, e.clientY);
-      const draggedSegments = profile.segments.map((seg, si) => {
-        if (si !== dragPoint.segIdx) return seg;
-        return {
-          ...seg,
-          points: seg.points.map((p, pi) =>
-            pi === dragPoint.ptIdx ? { ...p, x: raw.x, y: raw.y } : p
-          ),
-        };
-      });
-      // E3: dynamic drag — when constraints exist, run a short solver pass so
-      // the drag respects horizontal/vertical/perpendicular/etc. instead of
-      // hard-locking the point. Mirrors Fusion 360's behaviour of "the line
-      // stays horizontal but you can still slide it left/right." If the
-      // solver fails (over-defined, residual blow-up), fall back to raw drag
-      // so the user is never stuck.
-      let solvedSegments = draggedSegments;
-      if (constraints.length > 0 || dimensions.length > 0) {
+      const seg = profile.segments[dragPoint.segIdx];
+      const pt = seg?.points[dragPoint.ptIdx];
+      if (!pt) return;
+
+      let nextSegments: SketchSegment[];
+      if (pt.id) {
+        let result: ReturnType<typeof dragSolve>;
         try {
-          const result = solveConstraints(draggedSegments, constraints, dimensions, 20, 1e-3);
-          const status = result.solveResult?.status;
-          if (status === 'ok' || status === 'under-defined') {
-            solvedSegments = draggedSegments.map(seg => ({
-              ...seg,
-              points: seg.points.map(p => {
-                if (!p.id) return p;
-                const solved = result.points.get(p.id);
-                return solved ? { ...p, x: solved.x, y: solved.y } : p;
-              }),
-            }));
-          }
+          result = dragSolve(profile.segments, constraints, dimensions, pt.id, raw);
         } catch {
-          // Solver threw — keep raw drag.
+          return; // solver threw — keep geometry as-is, never corrupt it
         }
+        if (result.outcome === 'blocked-fixed' || result.outcome === 'blocked-unsolvable') {
+          // No-move fallback: the live status chip already shows the red
+          // over-defined state; toast the reason once per gesture.
+          if (!dragBlockedToastShownRef.current) {
+            dragBlockedToastShownRef.current = true;
+            showToast(L(result.outcome === 'blocked-fixed' ? 'dragBlockedFixed' : 'dragBlockedOver'));
+          }
+          return;
+        }
+        nextSegments = result.segments;
+      } else {
+        // Anonymous point (no id): invisible to the solver — plain move.
+        nextSegments = profile.segments.map((s, si) => {
+          if (si !== dragPoint.segIdx) return s;
+          return {
+            ...s,
+            points: s.points.map((p, pi) =>
+              pi === dragPoint.ptIdx ? { ...p, x: raw.x, y: raw.y } : p
+            ),
+          };
+        });
       }
-      onProfileChange({ ...profile, segments: solvedSegments });
+      // One undo step per drag gesture: snapshot lazily on the first actual
+      // move (a click without movement must not pollute the undo stack).
+      if (!dragUndoCapturedRef.current) {
+        dragUndoCapturedRef.current = true;
+        onPointDragStart?.();
+      }
+      (onProfileChangeLive ?? onProfileChange)({ ...profile, segments: nextSegments });
+      return;
+    }
+    // Segment-body (edge) drag — whole-segment drag-solve: the segment's
+    // defining points are soft-pinned to gesture-start position + cumulative
+    // cursor delta (two-point pin for lines; see dragSolveSegment), so
+    // constraints + locked dimensions hold every frame. Solving from the
+    // gesture-start snapshot keeps targets absolute (no per-frame drift).
+    if (isDraggingSegRef.current && dragSeg >= 0 && dragSegStartRef.current) {
+      const raw = screenToMm(e.clientX, e.clientY);
+      const start = dragSegStartRef.current;
+      const seg = start.segments[dragSeg];
+      if (!seg) return;
+      const delta = { x: raw.x - start.cursor.x, y: raw.y - start.cursor.y };
+      // Dead-band until the gesture really moves: a click with ±2px jitter
+      // must select the segment, not nudge the whole profile.
+      if (!dragUndoCapturedRef.current && Math.hypot(delta.x, delta.y) * zoom < 3) return;
+
+      let nextSegments: SketchSegment[];
+      if (seg.id) {
+        let result: ReturnType<typeof dragSolveSegment>;
+        try {
+          result = dragSolveSegment(start.segments, constraints, dimensions, seg.id, delta);
+        } catch {
+          return; // solver threw — keep geometry as-is, never corrupt it
+        }
+        if (result.outcome === 'blocked-fixed' || result.outcome === 'blocked-unsolvable') {
+          // No-move fallback, same rules as point drag: toast once per gesture.
+          if (!dragBlockedToastShownRef.current) {
+            dragBlockedToastShownRef.current = true;
+            showToast(L(result.outcome === 'blocked-fixed' ? 'dragBlockedFixed' : 'dragBlockedOver'));
+          }
+          return;
+        }
+        nextSegments = result.segments;
+      } else {
+        // Anonymous segment (no id): invisible to the solver — plain translate.
+        nextSegments = start.segments.map((s, si) =>
+          si === dragSeg
+            ? { ...s, points: s.points.map(p => ({ ...p, x: p.x + delta.x, y: p.y + delta.y })) }
+            : s,
+        );
+      }
+      // One undo step per drag gesture (same flow as point drag).
+      if (!dragUndoCapturedRef.current) {
+        dragUndoCapturedRef.current = true;
+        onPointDragStart?.();
+      }
+      (onProfileChangeLive ?? onProfileChange)({ ...profile, segments: nextSegments });
       return;
     }
     const { pt: snapped, type: sType } = smartSnap(e.clientX, e.clientY);
@@ -1729,7 +1331,7 @@ function SketchCanvas({
       const nearest = findNearestSegment(profile.segments, snapped, 10 / zoom);
       setHoverSegIdx(nearest ? nearest.index : -1);
     }
-  }, [isPanning, smartSnap, zoom, activeTool, dragPoint, screenToMm, profile, onProfileChange, constraints, dimensions]);
+  }, [isPanning, smartSnap, zoom, activeTool, dragPoint, dragSeg, screenToMm, profile, onProfileChange, onProfileChangeLive, onPointDragStart, constraints, dimensions, showToast, L]);
 
   // Middle-click or right-click pan; left-click in select mode starts point drag
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1739,18 +1341,35 @@ function SketchCanvas({
       panStartRef.current = { mx: e.clientX, my: e.clientY, px: panX, py: panY };
       return;
     }
-    // Left click in select mode: check if near a point → start drag
-    if (e.button === 0 && activeTool === 'select' && pickFilter !== 'segments') {
+    // Left click in select mode: check if near a point → start drag;
+    // otherwise a segment BODY under the cursor starts a whole-edge drag.
+    if (e.button === 0 && activeTool === 'select') {
       const raw = screenToMm(e.clientX, e.clientY);
-      for (let si = 0; si < profile.segments.length; si++) {
-        const seg = profile.segments[si];
-        for (let pi = 0; pi < seg.points.length; pi++) {
-          if (dist(raw, seg.points[pi]) * zoom < 10) {
-            setDragPoint({ segIdx: si, ptIdx: pi });
-            isDraggingPointRef.current = true;
-            e.preventDefault();
-            return;
+      if (pickFilter !== 'segments') {
+        for (let si = 0; si < profile.segments.length; si++) {
+          const seg = profile.segments[si];
+          for (let pi = 0; pi < seg.points.length; pi++) {
+            if (dist(raw, seg.points[pi]) * zoom < 10) {
+              setDragPoint({ segIdx: si, ptIdx: pi });
+              isDraggingPointRef.current = true;
+              dragUndoCapturedRef.current = false;
+              dragBlockedToastShownRef.current = false;
+              e.preventDefault();
+              return;
+            }
           }
+        }
+      }
+      if (pickFilter !== 'points') {
+        const near = findNearestSegmentBody(profile.segments, raw, 10 / zoom);
+        if (near) {
+          setDragSeg(near.index);
+          isDraggingSegRef.current = true;
+          dragSegStartRef.current = { segments: profile.segments, cursor: raw };
+          dragUndoCapturedRef.current = false;
+          dragBlockedToastShownRef.current = false;
+          e.preventDefault();
+          return;
         }
       }
     }
@@ -1761,6 +1380,17 @@ function SketchCanvas({
     if (isDraggingPointRef.current) {
       isDraggingPointRef.current = false;
       setDragPoint(null);
+      // End of drag gesture — the single undo snapshot (captured on first
+      // move) stays on the stack; just reset gesture bookkeeping.
+      dragUndoCapturedRef.current = false;
+      dragBlockedToastShownRef.current = false;
+    }
+    if (isDraggingSegRef.current) {
+      isDraggingSegRef.current = false;
+      setDragSeg(-1);
+      dragSegStartRef.current = null;
+      dragUndoCapturedRef.current = false;
+      dragBlockedToastShownRef.current = false;
     }
   }, []);
 

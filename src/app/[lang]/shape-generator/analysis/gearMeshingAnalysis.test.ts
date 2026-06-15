@@ -47,6 +47,15 @@ describe('analyzeGearMesh', () => {
     expect(b.contactRatio).toBeGreaterThan(a.contactRatio);
   });
 
+  it('contact ratio matches the AGMA closed form for standard gears', () => {
+    // 20T-20T, 20° standard → ε ≈ 1.557 (textbook AGMA value). Contact ratio is
+    // dimensionless (module-independent).
+    expect(analyzeGearMesh(pinion(20, 1), wheel(20, 1)).contactRatio).toBeCloseTo(1.557, 2);
+    // 18T-36T, 20° standard → ε ≈ 1.611 (hand-computed from
+    // [√(ra²−rb²) − r·sinα] summed over both gears / base pitch).
+    expect(analyzeGearMesh(pinion(18, 1), wheel(36, 1)).contactRatio).toBeCloseTo(1.611, 2);
+  });
+
   it('very small pinion is undercut', () => {
     const r = analyzeGearMesh(pinion(8, 2), wheel(40, 2));
     expect(r.pinionUndercut).toBe(true);

@@ -59,26 +59,26 @@ const S = {
   page: {
     padding: '28px 32px',
     minHeight: '100%',
-    background: '#0d1117',
-    color: '#c9d1d9',
+    background: 'var(--nx-bg)',
+    color: 'var(--nx-text)',
     fontFamily: 'system-ui, -apple-system, sans-serif',
   } as React.CSSProperties,
   header: { marginBottom: '28px' } as React.CSSProperties,
-  title: { fontSize: '20px', fontWeight: 700, color: '#e6edf3', margin: 0 } as React.CSSProperties,
-  subtitle: { fontSize: '13px', color: '#8b949e', marginTop: '4px' } as React.CSSProperties,
+  title: { fontSize: '20px', fontWeight: 700, color: 'var(--nx-text)', margin: 0 } as React.CSSProperties,
+  subtitle: { fontSize: '13px', color: 'var(--nx-text-2)', marginTop: '4px' } as React.CSSProperties,
   card: {
-    background: '#161b22',
-    border: '1px solid #30363d',
+    background: 'var(--nx-panel)',
+    border: '1px solid var(--nx-border)',
     borderRadius: '10px',
     marginBottom: '24px',
     overflow: 'hidden',
   } as React.CSSProperties,
   cardHeader: {
     padding: '14px 20px',
-    borderBottom: '1px solid #30363d',
+    borderBottom: '1px solid var(--nx-border)',
     fontSize: '13px',
     fontWeight: 600,
-    color: '#e6edf3',
+    color: 'var(--nx-text)',
   } as React.CSSProperties,
   cardBody: { padding: '20px 24px' } as React.CSSProperties,
   fieldGroup: {
@@ -88,24 +88,24 @@ const S = {
     marginBottom: '16px',
   } as React.CSSProperties,
   field: { display: 'flex', flexDirection: 'column' as const, gap: '6px' } as React.CSSProperties,
-  label: { fontSize: '12px', color: '#8b949e', fontWeight: 500 } as React.CSSProperties,
+  label: { fontSize: '12px', color: 'var(--nx-text-2)', fontWeight: 500 } as React.CSSProperties,
   input: {
-    background: '#0d1117',
-    border: '1px solid #30363d',
+    background: 'var(--nx-bg)',
+    border: '1px solid var(--nx-border)',
     borderRadius: '6px',
     padding: '8px 12px',
-    color: '#c9d1d9',
+    color: 'var(--nx-text)',
     fontSize: '13px',
     outline: 'none',
     transition: 'border-color 0.15s',
   } as React.CSSProperties,
   inputFocus: { borderColor: '#388bfd' } as React.CSSProperties,
   textarea: {
-    background: '#0d1117',
-    border: '1px solid #30363d',
+    background: 'var(--nx-bg)',
+    border: '1px solid var(--nx-border)',
     borderRadius: '6px',
     padding: '8px 12px',
-    color: '#c9d1d9',
+    color: 'var(--nx-text)',
     fontSize: '13px',
     outline: 'none',
     resize: 'vertical' as const,
@@ -113,11 +113,11 @@ const S = {
     fontFamily: 'inherit',
   } as React.CSSProperties,
   select: {
-    background: '#0d1117',
-    border: '1px solid #30363d',
+    background: 'var(--nx-bg)',
+    border: '1px solid var(--nx-border)',
     borderRadius: '6px',
     padding: '8px 12px',
-    color: '#c9d1d9',
+    color: 'var(--nx-text)',
     fontSize: '13px',
     cursor: 'pointer',
     outline: 'none',
@@ -133,7 +133,7 @@ const S = {
     gap: '8px',
     cursor: 'pointer',
     fontSize: '13px',
-    color: '#c9d1d9',
+    color: 'var(--nx-text)',
     padding: '6px 10px',
     borderRadius: '6px',
     border: '1px solid transparent',
@@ -265,7 +265,7 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
       </div>
 
       {loading ? (
-        <div style={{ color: '#8b949e', fontSize: '14px', padding: '40px 0', textAlign: 'center' }}>
+        <div style={{ color: 'var(--nx-text-2)', fontSize: '14px', padding: '40px 0', textAlign: 'center' }}>
           {isKo ? '불러오는 중…' : 'Loading profile…'}
         </div>
       ) : (
@@ -455,8 +455,8 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
             alignItems: 'center',
             gap: '14px',
             padding: '16px 24px',
-            background: '#161b22',
-            border: '1px solid #30363d',
+            background: 'var(--nx-panel)',
+            border: '1px solid var(--nx-border)',
             borderRadius: '10px',
             marginBottom: '32px',
           }}>
@@ -484,10 +484,10 @@ export default function ManufacturerProfilePage({ params }: { params: Promise<{ 
                 onClick={loadProfile}
                 style={{
                   background: 'transparent',
-                  border: '1px solid #30363d',
+                  border: '1px solid var(--nx-border)',
                   borderRadius: '6px',
                   padding: '9px 16px',
-                  color: '#8b949e',
+                  color: 'var(--nx-text-2)',
                   fontSize: '13px',
                   cursor: 'pointer',
                 }}

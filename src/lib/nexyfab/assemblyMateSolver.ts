@@ -31,7 +31,11 @@ export type Mate =
   | { kind: 'coincident'; a: MatePoint; b: MatePoint }
   | { kind: 'distance'; a: MatePoint; b: MatePoint; distMm: number }
   | { kind: 'parallel'; a: MateAxis; b: MateAxis }
-  | { kind: 'angle'; a: MateAxis; b: MateAxis; deg: number };
+  | { kind: 'angle'; a: MateAxis; b: MateAxis; deg: number }
+  // Phase 2 — inequality (limit) mates: free inside [min, max], pulled to
+  // the violated bound outside it.
+  | { kind: 'limitDistance'; a: MatePoint; b: MatePoint; minMm: number; maxMm: number }
+  | { kind: 'limitAngle'; a: MateAxis; b: MateAxis; minDeg: number; maxDeg: number };
 
 export interface SolveOptions {
   maxIters?: number;
@@ -176,6 +180,43 @@ function mateResidual(mate: Mate, frames: Record<string, Frame>): { error: numbe
         error: Math.abs(err),
         targetPart: mate.b.partId,
         correction: { dRotAxis: vcross(db, da), dRotAngle: err },
+      };
+    }
+    case 'limitDistance': {
+      const fa = frames[mate.a.partId];
+      const fb = frames[mate.b.partId];
+      const pa = transformPoint(fa, mate.a.position);
+      const pb = transformPoint(fb, mate.b.position);
+      const d = vsub(pa, pb);
+      const dist = vlen(d);
+      // Inside the band → satisfied, no correction.
+      if (dist >= mate.minMm - 1e-9 && dist <= mate.maxMm + 1e-9) {
+        return { error: 0, targetPart: mate.b.partId, correction: {} };
+      }
+      const target = dist < mate.minMm ? mate.minMm : mate.maxMm;
+      const err = dist - target;
+      const dir = dist > 1e-9 ? vscale(d, 1 / dist) : [1, 0, 0] as Vec3;
+      return {
+        error: Math.abs(err),
+        targetPart: mate.b.partId,
+        correction: { dPos: vscale(dir, err) },
+      };
+    }
+    case 'limitAngle': {
+      const fa = frames[mate.a.partId];
+      const fb = frames[mate.b.partId];
+      const da = transformDirection(fa, mate.a.direction);
+      const db = transformDirection(fb, mate.b.direction);
+      const currentDeg = (Math.acos(Math.max(-1, Math.min(1, vdot(da, db)))) * 180) / Math.PI;
+      if (currentDeg >= mate.minDeg - 1e-7 && currentDeg <= mate.maxDeg + 1e-7) {
+        return { error: 0, targetPart: mate.b.partId, correction: {} };
+      }
+      const targetDeg = currentDeg < mate.minDeg ? mate.minDeg : mate.maxDeg;
+      const errRad = ((currentDeg - targetDeg) * Math.PI) / 180;
+      return {
+        error: Math.abs(errRad),
+        targetPart: mate.b.partId,
+        correction: { dRotAxis: vcross(db, da), dRotAngle: errRad },
       };
     }
   }

@@ -20,6 +20,7 @@ export const weightCostManifest: PluginManifest = {
   name: 'Weight Block',
   version: '1.0.0',
   author: 'NexyFab',
+  apiVersion: '1.0.0',
   description: 'Generates a reference box whose volume exactly corresponds to a target mass at a given material density',
 };
 

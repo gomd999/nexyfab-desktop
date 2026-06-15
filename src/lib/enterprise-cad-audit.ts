@@ -27,6 +27,12 @@ export const CadAuditAction = {
   MESH_EXPORT: 'cad.mesh.export',
   /** SCAD coding agent multi-turn run (one user prompt = one audit row). */
   SCAD_AGENT_RUN: 'cad.scad_agent.run',
+  /** Image-to-CAD intent extraction (photo/sketch → IntentInput via vision). */
+  IMAGE_INTENT_EXTRACTED: 'cad.image_intent.extracted',
+  /** Mesh reverse-engineering (STL → proposed IntentInput via heuristic shape classifier). */
+  MESH_REVERSE_ENGINEERED: 'cad.mesh.reverse_engineered',
+  /** Manufacturer quote requested via /api/nexyfab/request-quote (internal or partner provider). */
+  QUOTE_REQUESTED: 'cad.quote.requested',
 } as const;
 
 export function logCadPipelineAudit(opts: {

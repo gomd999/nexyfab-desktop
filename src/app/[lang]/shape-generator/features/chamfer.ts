@@ -1,9 +1,12 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition, FeatureApplyContext } from './types';
-import { isOcctReady, isOcctGlobalMode, occtChamferBox, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadEdgeFinder } from './occtEngine';
+import { occtChamferBox, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadEdgeFinder } from './occtEngine';
+import { wantsOcctEngine, shouldUseOcctEngine } from './engineSelection';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 import { assertRoundingApplied } from './roundingGuard';
+import { classifyMeshDowngrade, stampDowngrade } from './downgradeNotice';
+import { captureKernelFailure } from './kernelCorpus';
 import { tryMeshChamfer } from './meshRounding';
 import {
   buildEdgeFinderFromSelection,
@@ -58,6 +61,13 @@ function applyChamferOcct(
     return result.geometry;
   } catch (err) {
     console.warn('[chamfer] OCCT path failed, falling back to mesh approximator:', err);
+    captureKernelFailure({
+      op: 'chamfer',
+      params: { distance: dist },
+      geometry,
+      error: err,
+      resolution: { strategy: 'mesh-fallback', requested: { distance: dist } },
+    });
     return null;
   }
 }
@@ -98,7 +108,28 @@ function applyChamferMeshCsg(
   configureEvaluatorForProvenance(evaluator, expanded, geometry);
   const result = evaluator.evaluate(makeBrush(expanded), makeBrush(geometry), INTERSECTION);
   propagateFeatureIdMap(result.geometry, expanded, geometry);
-  if (guardNoOp) assertRoundingApplied(geometry, result.geometry, 'Chamfer');
+  // Guard a degenerate CSG result rather than returning an empty solid. A large
+  // distance can self-intersect the offset shell so the intersection collapses;
+  // block it with a structured error instead of silently destroying the part.
+  if (!result.geometry.attributes.position || result.geometry.attributes.position.count === 0) {
+    throw new Error(`Chamfer distance ${dist.toFixed(2)} is too large for this solid — the bevel produced no geometry`);
+  }
+  if (guardNoOp) {
+    // No-op against B-rep intent → throw (blocked). Past that, the mesh CSG DID
+    // bevel but it is a faceted approximation, not exact B-rep — stamp a soft,
+    // non-fatal downgrade notice so the UI stops shipping it silently.
+    assertRoundingApplied(geometry, result.geometry, 'Chamfer');
+    stampDowngrade(
+      result.geometry,
+      classifyMeshDowngrade({
+        op: 'Chamfer',
+        featureId: ctx?.featureId,
+        wantedOcct: true,
+        occtRan: false,
+        isNoOp: false,
+      }),
+    );
+  }
   return result.geometry;
 }
 
@@ -109,8 +140,8 @@ function applyChamferSync(
 ): THREE.BufferGeometry {
   const dist = params.distance!;
   const engine = Math.round(params.engine ?? 0);
-  const wantedOcct = engine === 1 || isOcctGlobalMode();
-  if (wantedOcct && isOcctReady()) {
+  const wantedOcct = wantsOcctEngine(engine);
+  if (shouldUseOcctEngine(engine)) {
     const out = applyChamferOcct(geometry, dist, null);
     if (out) return out;
   }
@@ -124,8 +155,8 @@ async function applyChamferWithEdgeFinder(
 ): Promise<THREE.BufferGeometry> {
   const dist = params.distance!;
   const engine = Math.round(params.engine ?? 0);
-  const wantedOcct = engine === 1 || isOcctGlobalMode();
-  if (wantedOcct && isOcctReady()) {
+  const wantedOcct = wantsOcctEngine(engine);
+  if (shouldUseOcctEngine(engine)) {
     const edgeFinder = await buildBestEdgeFinder(ctx, geometry);
     const out = applyChamferOcct(geometry, dist, edgeFinder);
     if (out) return out;

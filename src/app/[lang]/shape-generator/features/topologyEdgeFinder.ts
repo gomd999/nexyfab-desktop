@@ -32,6 +32,7 @@
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
 import type { ReplicadEdgeFinder } from './occtEngine';
 import { matchEdgeBySignature, matchFaceBySignature, type EdgeSig, type FaceSig } from './edgeCorrespondence';
+import { AXIS_EPS } from './tolerancePolicy';
 
 /** The subset of EdgeFinder builder methods we rely on. Pulled from
  *  replicad's README — kept here as a typed shim so consumers don't
@@ -58,7 +59,7 @@ export function remapPointThroughBbox(
   const out: [number, number, number] = [point[0], point[1], point[2]];
   for (let i = 0; i < 3; i++) {
     const span = oldBbox.max[i] - oldBbox.min[i];
-    const frac = Math.abs(span) > 1e-6 ? (point[i] - oldBbox.min[i]) / span : 0.5;
+    const frac = Math.abs(span) > AXIS_EPS ? (point[i] - oldBbox.min[i]) / span : 0.5;
     out[i] = currentBbox.min[i] + frac * (currentBbox.max[i] - currentBbox.min[i]);
   }
   return out;

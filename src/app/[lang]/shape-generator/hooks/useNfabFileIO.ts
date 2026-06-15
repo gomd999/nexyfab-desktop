@@ -14,6 +14,7 @@ import {
   type SerializeInput,
   type NfabAssemblySnapshotV1,
   type NfabConfigurationV1,
+  type NfabGlobalVariableV1,
   type NfabProjectV1,
   type NfabStudioViewV1,
 } from '../io/nfabFormat';
@@ -68,6 +69,11 @@ interface Deps {
     configurations: NfabConfigurationV1[] | undefined,
     activeConfigurationId: string | null | undefined,
   ) => void;
+  /** Current global model variables (name + raw expression) for .nfab serialize. */
+  getGlobalVariables?: () => NfabGlobalVariableV1[];
+  /** After tree + scene hydrate — restore (or clear, on undefined) the
+   *  global variable table from the file. Values are re-derived by the host. */
+  restoreGlobalVariables?: (vars: NfabGlobalVariableV1[] | undefined) => void;
 }
 
 /**
@@ -89,6 +95,8 @@ export function useNfabFileIO(deps: Deps) {
     restoreStudioViewSnapshot,
     getConfigurationsBlock,
     restoreConfigurationsSnapshot,
+    getGlobalVariables,
+    restoreGlobalVariables,
   } = deps;
 
   const [desktopFilePath, setDesktopFilePath] = useState<string | null>(null);
@@ -110,13 +118,13 @@ export function useNfabFileIO(deps: Deps) {
   /** Server `nf_projects.updated_at` from last GET/POST/PATCH — drives optional if-match. */
   const cloudServerUpdatedAtRef = useRef<number | null>(null);
   const cloudDirtyRef = useRef(false);
-  const cloudSavingRef = useRef(false);
 
   const buildSerializeInput = useCallback((): SerializeInput | null => {
     if (!featureHistory) return null;
     const sceneSnapshot = useSceneStore.getState();
     const studioView = getStudioViewSnapshot?.();
     const cfgBlock = getConfigurationsBlock?.();
+    const globalVariables = getGlobalVariables?.();
 
     // ── W6 (Track A6) cleanup — the session-only master-snapshot
     // defensive layer (PR #42) was removed. The new A3/A5 path routes
@@ -149,6 +157,9 @@ export function useNfabFileIO(deps: Deps) {
         // plane and the extrude would land in the wrong place.
         sketchFaceFrame: sceneSnapshot.sketchFaceFrame ?? null,
         ...(studioView ? { studioView } : {}),
+        // Global model variables — only emitted when the user defined some,
+        // so variable-free files stay byte-identical to pre-feature saves.
+        ...(globalVariables && globalVariables.length > 0 ? { globalVariables } : {}),
       },
       manufacturing: {
         camPostProcessorId: mfgCamPost,
@@ -181,6 +192,7 @@ export function useNfabFileIO(deps: Deps) {
     getAssemblySnapshot,
     getStudioViewSnapshot,
     getConfigurationsBlock,
+    getGlobalVariables,
   ]);
 
   /** 로컬 .nfab 저장 (Tauri: 네이티브 다이얼로그 또는 기존 경로에 덮어쓰기) */
@@ -299,64 +311,14 @@ export function useNfabFileIO(deps: Deps) {
     }
   }, [featureHistory, buildSerializeInput, saveProject, updateProject, addToast, lang]);
 
-  // Cloud auto-save: 3-min interval flush while dirty + logged in
-  useEffect(() => {
-    const FLUSH_MS = 180_000;
-    const tick = async () => {
-      if (!cloudDirtyRef.current) return;
-      if (cloudSavingRef.current) return;
-      if (!useAuthStore.getState().user) return;
-      const accFlush = useCloudProjectAccessStore.getState();
-      if (accFlush.hydrated && !accFlush.canEdit) return;
-      if (!featureHistory) return;
-      cloudSavingRef.current = true;
-      try {
-        const input = buildSerializeInput();
-        if (!input) return;
-        const project = serializeProject(input);
-        const sceneData = toJsonString(project);
-        const sceneSnapshot = useSceneStore.getState();
-        const existingId = cloudProjectIdRef.current;
-        if (existingId) {
-          const patch: NexyfabProjectPatchPayload = {
-            name: project.name,
-            shapeId: sceneSnapshot.selectedId,
-            materialId: sceneSnapshot.materialId,
-            sceneData,
-          };
-          if (cloudServerUpdatedAtRef.current != null) {
-            patch.ifMatchUpdatedAt = cloudServerUpdatedAtRef.current;
-          }
-          const updated = await updateProject(existingId, patch);
-          if (updated) {
-            cloudServerUpdatedAtRef.current = updated.updatedAt;
-            cloudDirtyRef.current = false;
-          } else if (useProjectsStore.getState().lastErrorCode === 'PROJECT_VERSION_CONFLICT') {
-            notifyProjectVersionConflict(addToast, lang, existingId);
-            useProjectsStore.getState().clearError();
-          }
-        } else {
-          const saved = await saveProject({
-            name: project.name,
-            shapeId: sceneSnapshot.selectedId,
-            materialId: sceneSnapshot.materialId,
-            sceneData,
-          });
-          if (saved) {
-            cloudProjectIdRef.current = saved.id;
-            cloudServerUpdatedAtRef.current = saved.updatedAt;
-            cloudDirtyRef.current = false;
-          }
-        }
-      } catch {
-        // Silent — local autoSave still active; retry next tick.
-      } finally {
-        cloudSavingRef.current = false;
-      }
-    };
-    const id = window.setInterval(() => { void tick(); }, FLUSH_MS);
-    return () => window.clearInterval(id);
-  }, [featureHistory, buildSerializeInput, saveProject, updateProject, addToast, lang]);
+  // Automatic cloud autosave is now OWNED by useCloudSaveFlow (the 10s writer),
+  // which serializes the full .nfab via getCloudSceneObject(). This hook's old
+  // 3-min .nfab tick wrote the SAME nf_projects row through a SEPARATE
+  // updatedAt ref, so the two writers tripped each other's 409 guard and could
+  // even create a duplicate project mid-session. Retiring the tick leaves a
+  // single automatic cloud writer. (2026-06-09 dual-writer unification.)
+  // The manual "save to cloud" button (handleSaveNfabCloud) and local .nfab
+  // file save/open remain here unchanged.
 
   /** Apply parsed .nfab payload — shared by disk open, recent file, and dashboard cloud open */
   const applyLoadedNfabProject = useCallback(
@@ -402,6 +364,9 @@ export function useNfabFileIO(deps: Deps) {
         sketchFaceFrame: project.scene.sketchFaceFrame ?? null,
       });
       restoreStudioViewSnapshot?.(project.scene.studioView);
+      // Restore (or clear) the global variable table BEFORE the tree lands so
+      // the host's expression re-evaluation effect sees the file's variables.
+      restoreGlobalVariables?.(project.scene.globalVariables);
       replaceHistory(project.tree.nodes, project.tree.rootId, project.tree.activeNodeId);
       restoreConfigurationsSnapshot?.(project.configurations, project.activeConfigurationId);
       restoreAssemblySnapshot?.(project.assembly);
@@ -440,6 +405,7 @@ export function useNfabFileIO(deps: Deps) {
       setMfgQuoteQty,
       restoreStudioViewSnapshot,
       restoreConfigurationsSnapshot,
+      restoreGlobalVariables,
     ],
   );
 
@@ -500,9 +466,22 @@ export function useNfabFileIO(deps: Deps) {
     useCloudProjectAccessStore.getState().reset();
   }, []);
 
+  // Full-fidelity .nfab scene object for the unified cloud writer. The legacy
+  // 10s cloud autosave (useCloudSaveFlow) previously persisted a lossy
+  // AutoSaveState JSON that dropped assembly/configurations/studio-view, and
+  // it raced this hook's separate 3-min .nfab writer over the same row. Routing
+  // the 10s writer through THIS serializer makes the cloud always hold a full
+  // .nfab — so the dual-writer clobber + 409 fights disappear. (2026-06-09.)
+  const getCloudSceneObject = useCallback((): NfabProjectV1 | null => {
+    const input = buildSerializeInput();
+    if (!input) return null;
+    return serializeProject(input);
+  }, [buildSerializeInput]);
+
   return {
     desktopFilePath,
     desktopDirty,
+    getCloudSceneObject,
     handleSaveNfab,
     handleSaveNfabCloud,
     handleLoadNfab,

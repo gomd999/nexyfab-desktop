@@ -25,7 +25,7 @@ export const SAMPLE_PROJECTS: SampleProject[] = [
     thumbnailHue: 215,
     intent: {
       shapeId: 'lBracket',
-      params: { width_mm: 80, height_mm: 50, thickness_mm: 5, hole_diameter_mm: 6.5, hole_count: 4 },
+      params: { width: 80, height: 50, thickness: 5, depth: 40 },
     },
   },
   {
@@ -37,7 +37,7 @@ export const SAMPLE_PROJECTS: SampleProject[] = [
     thumbnailHue: 145,
     intent: {
       shapeId: 'gear',
-      params: { teeth_count: 24, module_mm: 1, thickness_mm: 5 },
+      params: { teeth: 24, module: 1, width: 5, boreDiameter: 8 },
     },
   },
   {
@@ -48,8 +48,9 @@ export const SAMPLE_PROJECTS: SampleProject[] = [
     descEn: '100×60×30mm · wall 2mm · R3 corners',
     thumbnailHue: 285,
     intent: {
-      shapeId: 'roundedBox',
-      params: { length_mm: 100, width_mm: 60, height_mm: 30, thickness_mm: 2, fillet_radius_mm: 3 },
+      // 'roundedBox' is not a real shape id — use 'box' (closest primitive).
+      shapeId: 'box',
+      params: { width: 100, height: 30, depth: 60 },
     },
   },
 ];

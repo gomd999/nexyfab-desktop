@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 
 export const moldToolsFeature: FeatureDefinition = {
   type: 'moldTools',
@@ -107,7 +109,7 @@ export const moldToolsFeature: FeatureDefinition = {
       cz = operation === 1 ? splitVal + half : splitVal - half;
     }
 
-    if ((engine === 1 || isOcctGlobalMode()) && isOcctReady()) {
+    if (shouldUseOcctEngine(engine)) {
       try {
         const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
         const host = hostBoxFromGeometry(geometry);
@@ -143,10 +145,11 @@ export const moldToolsFeature: FeatureDefinition = {
 
       const result = evaluator.evaluate(geoBrush, cutBrush, SUBTRACTION);
       result.geometry.computeVertexNormals();
-      return result.geometry;
+      return noteMeshFallback(result.geometry, { op: 'MoldTool', engine });
     } catch {
-      // If CSG unavailable, fall back to returning original geometry
-      return geometry;
+      // If CSG unavailable, fall back to returning original geometry — a no-op
+      // against B-rep intent, so flag it as blocked (nothing was actually cut).
+      return noteMeshFallback(geometry, { op: 'MoldTool', engine, isNoOp: true });
     }
   },
 };

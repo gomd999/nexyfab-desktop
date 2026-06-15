@@ -28,13 +28,13 @@ interface Entry {
 const POLL_MS = 30_000;
 
 const STATUS_META: Record<string, { ko: string; en: string; emoji: string; color: string }> = {
-  recommended:    { ko: '추천됨',         en: 'Recommended',  emoji: '📋', color: '#8b949e' },
+  recommended:    { ko: '추천됨',         en: 'Recommended',  emoji: '📋', color: 'var(--nx-text-2)' },
   contacted:      { ko: '컨택 시도 중',   en: 'Contacting',   emoji: '📞', color: '#d29922' },
   responded:      { ko: '응답 받음',      en: 'Responded',    emoji: '💬', color: '#79c0ff' },
   quote_drafting: { ko: '견적 작성 중',   en: 'Drafting',     emoji: '📨', color: '#a371f7' },
   quote_received: { ko: '견적 도착!',     en: 'Quote arrived!', emoji: '✅', color: '#3fb950' },
   partner_signup: { ko: '가입 완료',      en: 'Joined NexyFab', emoji: '🔓', color: '#3fb950' },
-  declined:       { ko: '거절',           en: 'Declined',     emoji: '✋', color: '#6e7681' },
+  declined:       { ko: '거절',           en: 'Declined',     emoji: '✋', color: 'var(--nx-text-3)' },
 };
 
 const dict = {
@@ -107,18 +107,18 @@ export default function ConciergeProgressCard({ lang, rfqId }: ConciergeProgress
               borderLeft: `3px solid ${meta.color}`,
             }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: revealed ? '#e6edf3' : '#c9d1d9' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: revealed ? 'var(--nx-text)' : 'var(--nx-text)' }}>
                   {e.displayName}
                   {e.region && (
-                    <span style={{ fontSize: 11, color: '#8b949e', fontWeight: 400, marginLeft: 8 }}>
+                    <span style={{ fontSize: 11, color: 'var(--nx-text-2)', fontWeight: 400, marginLeft: 8 }}>
                       · {e.region}
                     </span>
                   )}
                 </div>
                 {e.note && e.publicNote && (
-                  <div style={{ fontSize: 11, color: '#8b949e', marginTop: 3 }}>📝 {e.note}</div>
+                  <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 3 }}>📝 {e.note}</div>
                 )}
-                <div style={{ fontSize: 10, color: '#6e7681', marginTop: 2 }}>
+                <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginTop: 2 }}>
                   {timeAgo(e.lastActionAt, lang)}
                 </div>
               </div>
@@ -163,7 +163,7 @@ function timeAgo(ts: number, lang: 'ko' | 'en'): string {
 }
 
 const containerStyle: React.CSSProperties = {
-  background: '#0d1117', border: '1px solid #1f6feb', borderRadius: 10,
+  background: 'var(--nx-bg)', border: '1px solid #1f6feb', borderRadius: 10,
   padding: 14, marginTop: 12,
 };
 const headerRow: React.CSSProperties = {
@@ -171,16 +171,16 @@ const headerRow: React.CSSProperties = {
   marginBottom: 10, gap: 10, flexWrap: 'wrap',
 };
 const titleStyle: React.CSSProperties = { fontSize: 13, fontWeight: 800, color: '#79c0ff' };
-const subtitleStyle: React.CSSProperties = { fontSize: 11, color: '#8b949e', marginTop: 2 };
+const subtitleStyle: React.CSSProperties = { fontSize: 11, color: 'var(--nx-text-2)', marginTop: 2 };
 const refreshBtn: React.CSSProperties = {
   padding: '3px 10px', fontSize: 10,
-  borderRadius: 4, border: '1px solid #30363d',
+  borderRadius: 4, border: '1px solid var(--nx-border)',
   background: 'transparent', color: '#9ca3af', cursor: 'pointer',
 };
-const mutedStyle: React.CSSProperties = { fontSize: 11, color: '#8b949e', padding: 12, textAlign: 'center' };
+const mutedStyle: React.CSSProperties = { fontSize: 11, color: 'var(--nx-text-2)', padding: 12, textAlign: 'center' };
 const rowStyle: React.CSSProperties = {
   display: 'flex', gap: 10, alignItems: 'flex-start',
-  padding: 10, background: '#161b22', borderRadius: 8,
+  padding: 10, background: 'var(--nx-panel)', borderRadius: 8,
 };
 const contactLinkStyle: React.CSSProperties = {
   fontSize: 10, color: '#79c0ff', textDecoration: 'underline',

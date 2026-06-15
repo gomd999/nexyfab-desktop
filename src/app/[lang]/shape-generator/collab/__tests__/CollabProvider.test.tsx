@@ -9,7 +9,7 @@
  */
 
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, act, cleanup } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
 import * as Y from 'yjs';
@@ -21,6 +21,7 @@ import {
   useCollabAwareness,
   useCollabConnectionState,
   useCollabPresence,
+  useCollabPresenceOptional,
   useCollabUpdateLocalPresence,
 } from '../CollabProvider';
 
@@ -360,5 +361,49 @@ describe('CollabProvider · unmount', () => {
       );
     });
     expect(() => unmount()).not.toThrow();
+  });
+});
+
+// useCollabPresenceOptional is the no-throw variant the presence-aware
+// components (sketch peer cursors, feature-tree highlight, presence panel,
+// editing-focus) consume so the bare modeler route — which has no
+// <CollabProvider> — doesn't spam console.error via boundary-caught throws.
+describe('useCollabPresenceOptional · outside a provider', () => {
+  it('returns empty presence instead of throwing — and logs nothing', () => {
+    let captured: { localPeer: unknown; remotePeers: Record<string, unknown> } | null = null;
+    function Probe() {
+      const p = useCollabPresenceOptional();
+      useEffect(() => { captured = p; });
+      return null;
+    }
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // No <CollabProvider> wrapper — the throwing useCollabPresence would crash
+    // here; the optional variant must not.
+    expect(() => render(<Probe />)).not.toThrow();
+    expect(captured).not.toBeNull();
+    expect(captured!.localPeer).toBeNull();
+    expect(captured!.remotePeers).toEqual({});
+    // The whole point: zero console noise on the no-provider path.
+    expect(errSpy).not.toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
+
+  it('returns the live presence when a provider IS present', async () => {
+    let captured: { localPeer: { id?: string } | null; remotePeers: Record<string, unknown> } | null = null;
+    function Probe() {
+      const p = useCollabPresenceOptional();
+      useEffect(() => { captured = p; });
+      return null;
+    }
+    await act(async () => {
+      render(
+        <CollabProvider docId="optional-1">
+          <Probe />
+        </CollabProvider>,
+      );
+    });
+    expect(captured).not.toBeNull();
+    expect(captured!.localPeer).not.toBeNull();
+    expect(typeof captured!.localPeer!.id).toBe('string');
   });
 });

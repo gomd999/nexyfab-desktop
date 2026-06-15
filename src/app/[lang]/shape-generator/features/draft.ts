@@ -1,5 +1,33 @@
-import * as _THREE from 'three';
+import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
+import { occtDraft } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
+import { captureKernelFailure } from './kernelCorpus';
+
+function applyDraftMesh(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry {
+  const angleDeg = params.angle;
+  const direction = Math.round(params.direction) === 0 ? 1 : -1;
+  const tanAngle = Math.tan((angleDeg * Math.PI) / 180);
+
+  const clone = geometry.clone();
+  const posAttr = clone.getAttribute('position');
+  const positions = posAttr.array as Float32Array;
+
+  for (let i = 0; i < positions.length; i += 3) {
+    const x = positions[i];
+    const y = positions[i + 1];
+    const z = positions[i + 2];
+    // Distance from neutral plane (Y = 0); taper X/Z proportionally.
+    const offset = tanAngle * y * direction;
+    positions[i] = x + offset;
+    positions[i + 2] = z + offset;
+  }
+
+  posAttr.needsUpdate = true;
+  clone.computeVertexNormals();
+  return clone;
+}
 
 export const draftFeature: FeatureDefinition = {
   type: 'draft',
@@ -21,29 +49,31 @@ export const draftFeature: FeatureDefinition = {
     },
   ],
   apply(geometry, params) {
-    const angleDeg = params.angle;
-    const direction = Math.round(params.direction) === 0 ? 1 : -1;
-    const tanAngle = Math.tan((angleDeg * Math.PI) / 180);
-
-    const clone = geometry.clone();
-    const posAttr = clone.getAttribute('position');
-    const positions = posAttr.array as Float32Array;
-
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
-
-      // Distance from neutral plane (Y = 0)
-      const distY = y;
-      const offset = tanAngle * distY * direction;
-
-      positions[i] = x + offset;     // offset X
-      positions[i + 2] = z + offset;  // offset Z
+    return applyDraftMesh(geometry, params);
+  },
+  async applyAsync(geometry, params) {
+    if (shouldUseOcctEngine()) {
+      const handle = geometry.userData?.occtHandle as string | undefined;
+      if (handle) {
+        try {
+          const r = occtDraft(handle, params.angle, Math.round(params.direction));
+          if (r.handle) {
+            r.geometry.userData.occtHandle = r.handle;
+            return r.geometry;
+          }
+        } catch (err) {
+          console.warn('[draft] OCCT path failed, falling back to mesh:', err);
+          captureKernelFailure({
+            op: 'draft',
+            params: { angle: params.angle, direction: Math.round(params.direction) },
+            geometry,
+            error: err,
+            resolution: { strategy: 'mesh-fallback', requested: { angle: params.angle } },
+          });
+        }
+      }
     }
-
-    posAttr.needsUpdate = true;
-    clone.computeVertexNormals();
-    return clone;
+    // Wanted B-rep but meshed (no handle / OCCT unavailable / threw) → soft notice.
+    return noteMeshFallback(applyDraftMesh(geometry, params), { op: 'Draft' });
   },
 };

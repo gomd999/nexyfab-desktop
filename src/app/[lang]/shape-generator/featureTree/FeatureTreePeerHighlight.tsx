@@ -32,7 +32,7 @@
  */
 
 import React, { useMemo, useEffect, useState, useCallback } from 'react';
-import { useCollabPresence } from '../collab/CollabProvider';
+import { useCollabPresenceOptional } from '../collab/CollabProvider';
 import { CollabSafe } from '../collab/CollabSafe';
 import type { PeerInfo } from '../collab/awareness';
 
@@ -43,7 +43,7 @@ import type { PeerInfo } from '../collab/awareness';
  * Self is implicitly excluded (Provider strips it from `remotePeers`).
  */
 export function useRemotePeersOnNode(nodeId: string | null): PeerInfo[] {
-  const { remotePeers } = useCollabPresence();
+  const { remotePeers } = useCollabPresenceOptional();
   return useMemo(() => {
     if (!nodeId) return [];
     return Object.values(remotePeers).filter((p) => p.activeNodeId === nodeId);
@@ -179,7 +179,7 @@ export function FeatureTreePeerOverlay(props: FeatureTreePeerOverlayProps) {
 
 function FeatureTreePeerOverlayInner(props: FeatureTreePeerOverlayProps) {
   const { containerRef, maxVisible = 3 } = props;
-  const { remotePeers } = useCollabPresence();
+  const { remotePeers } = useCollabPresenceOptional();
   const [anchors, setAnchors] = useState<AnchorRect[]>([]);
 
   const refresh = useCallback(() => {

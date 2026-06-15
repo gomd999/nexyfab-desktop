@@ -37,10 +37,11 @@ export const defaultSettings: AdminSettings = {
     bodyScripts: '',
     adminEmails: 'info@Nexyfab.com',
     fbPixelId: '',
-    // Defensible until partner DB ingestion is verified. Operator increases
-    // this in admin-settings.json once the registry counts are confirmed.
-    landingFactoryCount: '10,000+',
-    landingFactoryCountQualifier: 'verified',
+    // Honest default = the real directory size (~286k listings). No 'verified'
+    // qualifier — there are no verified partners yet. Operator overrides in
+    // admin-settings.json once real verified-partner counts exist.
+    landingFactoryCount: '286,000+',
+    landingFactoryCountQualifier: '',
 };
 
 let cachedSettings: AdminSettings | null = null;

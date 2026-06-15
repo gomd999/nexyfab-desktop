@@ -19,6 +19,13 @@
 import './ensureWorkerWindow';
 import * as THREE from 'three';
 import type { FeatureInstance } from '../features/types';
+import { collectDowngrades, type MeshDowngradeNotice } from '../features/downgradeNotice';
+import {
+  extractFaceProvenance,
+  applyFaceProvenance,
+  faceProvenanceTransferables,
+  type FaceProvenancePayload,
+} from './faceProvenanceTransfer';
 
 // ─── Message types ───────────────────────────────────────────────────────────
 
@@ -31,6 +38,12 @@ export interface PipelineWorkerInput {
     features: FeatureInstance[];
     occtMode?: boolean;
     baseSpec?: { shapeId: string; params: Record<string, number> };
+    /** Face provenance of the base geometry (per-vertex feature-id attribute
+     *  + topology userData maps) — BufferAttributes/userData don't survive
+     *  postMessage, so the caller ships them explicitly and we re-attach
+     *  before running the pipeline (base-shape topo stamps feed the carried
+     *  `topoFaceMapByFeature` merge in pipelineManager). */
+    faceProvenance?: FaceProvenancePayload;
   };
 }
 
@@ -49,6 +62,16 @@ export interface PipelineWorkerOutput {
   /** Stable topology data (plain JSON) so the main thread can tag selections
    *  with rebuild-stable edge ids — userData itself doesn't cross the boundary. */
   topoEdgeSignatures?: { id: string; mid: [number, number, number]; dir: [number, number, number]; length: number }[];
+  /** OCCT→mesh downgrade notices (plain JSON) — like topoEdgeSignatures, userData
+   *  is dropped at the worker boundary, so we ferry them as an explicit field and
+   *  re-attach on the main thread (else the downgrade banner is blind to the
+   *  worker path, the primary production eval). */
+  meshDowngrades?: MeshDowngradeNotice[];
+  /** Face provenance (per-vertex `nfabFaceFeatureId` attribute + topology
+   *  userData maps) — same boundary problem as topoEdgeSignatures: without
+   *  this explicit ferry, persistent face selection silently degrades to
+   *  coplanar-group heuristics on the worker path. */
+  faceProvenance?: FaceProvenancePayload;
 }
 
 // ─── Worker handler ──────────────────────────────────────────────────────────
@@ -60,7 +83,7 @@ ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput>)
   if (type !== 'RUN_PIPELINE') return;
 
   try {
-    const { positions, normals, indices, features, occtMode, baseSpec } = payload;
+    const { positions, normals, indices, features, occtMode, baseSpec, faceProvenance } = payload;
 
     // Reconstruct base geometry from transferable arrays
     const baseGeo = new THREE.BufferGeometry();
@@ -68,6 +91,9 @@ ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput>)
     if (normals) baseGeo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
     if (indices) baseGeo.setIndex(new THREE.BufferAttribute(indices, 1));
     if (!normals) baseGeo.computeVertexNormals();
+    // Restore the base geometry's face provenance (attribute + topo userData)
+    // so the pipeline carries it forward exactly like the sync path does.
+    applyFaceProvenance(baseGeo, faceProvenance);
 
     // Run pipeline (uses built-in FEATURE_MAP; no function refs needed from caller)
     const { applyFeaturePipelineDetailedAsync, applyFeaturePipelineDetailed } =
@@ -107,6 +133,8 @@ ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput>)
       ? new Uint32Array(outGeo.index.array)
       : undefined;
 
+    const outFaceProvenance = extractFaceProvenance(outGeo);
+
     const output: PipelineWorkerOutput = {
       type: 'PIPELINE_RESULT',
       positions: outPositions,
@@ -114,11 +142,14 @@ ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput>)
       indices: outIndices,
       errors: result.errors,
       topoEdgeSignatures: outGeo.userData?.topoEdgeSignatures as PipelineWorkerOutput['topoEdgeSignatures'],
+      meshDowngrades: collectDowngrades(outGeo),
+      faceProvenance: outFaceProvenance,
     };
 
     const transferables: ArrayBuffer[] = [outPositions.buffer as ArrayBuffer];
     if (outNormals) transferables.push(outNormals.buffer as ArrayBuffer);
     if (outIndices) transferables.push(outIndices.buffer as ArrayBuffer);
+    transferables.push(...faceProvenanceTransferables(outFaceProvenance));
 
     ctx.postMessage(output, transferables as unknown as Transferable[]);
   } catch (err) {

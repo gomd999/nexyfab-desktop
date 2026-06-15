@@ -59,11 +59,18 @@ import { useViewportOverlays } from './hooks/useViewportOverlays';
 import { useAssemblyPartDisplay } from './hooks/useAssemblyPartDisplay';
 import { useSketchPaletteToggles } from './hooks/useSketchPaletteToggles';
 import { useSketchInteractionMode } from './hooks/useSketchInteractionMode';
-import { parseProject, NfabParseError, type NfabAssemblySnapshotV1, type NfabConfigurationV1, type NfabStudioViewV1 } from './io/nfabFormat';
+import { parseProject, NfabParseError, type NfabAssemblySnapshotV1, type NfabConfigurationV1, type NfabGlobalVariableV1, type NfabStudioViewV1 } from './io/nfabFormat';
 import { ConfigurationTable as ConfigurationTableRuntime } from './configurations/ConfigurationTable';
 import { migrateFromV1 as migrateConfigsFromV1 } from './configurations/migrateFromV1';
 import { ConfigStore, migrateToYjs as migrateConfigStoreToYjs, type ConfigStore as ConfigStoreType } from './configurations/ConfigStore';
-import { setConfigurationTable as setPipelineConfigurationTable } from './features/featureContext';
+import { setConfigurationTable as setPipelineConfigurationTable, setEquationManager as setPipelineEquationManager } from './features/featureContext';
+import { EquationManager } from './equations/equationManager';
+import {
+  parseParamInput,
+  evaluateParamExpression,
+  paramScopeFor,
+  reevaluateFeatureParamExpressionsFixedPoint,
+} from './equations/featureParamExpressions';
 import type * as Y from 'yjs';
 import { useSceneAutoSaveWatchers } from './hooks/useSceneAutoSaveWatchers';
 import { applyBooleanAsync } from './features/boolean';
@@ -76,7 +83,6 @@ import { useFeatureStack, type FeatureHistory } from './useFeatureStack';
 import { useShapeCart } from './useShapeCart';
 import { exportBomCSV, exportBomExcel, estimateWeight, type BomRow } from './io/bomExport';
 import { canExportStepViaBridge } from './io/stepExporter';
-import { useHistory } from './useHistory';
 import { useToast } from './useToast';
 import ToastContainer from './ToastContainer';
 import SidebarResizer from './SidebarResizer';
@@ -97,6 +103,7 @@ import type { SketchProfile, SketchConfig, SketchConstraint, SketchDimension, Sk
 import { profileToGeometry, profileToGeometryMulti, brepContourPoints } from './sketch/extrudeProfile';
 import { occtExtrudeWithHoles, isOcctReady as isOcctReadySync, isOcctGlobalMode as isOcctGlobalModeSync } from './features/occtEngine';
 import { solveConstraints, resolveDimensionTargetsWithErrors } from './sketch/constraintSolver';
+import { computeSketchLiveStatus } from './sketch/sketchStatusLive';
 import SketchCanvas from './sketch/SketchCanvas';
 import {
   type SketchHistoryEntry,
@@ -104,6 +111,8 @@ import {
   saveSketchHistory } from './sketch/SketchHistory';
 const Sketch3DCanvas = dynamic(() => import('./sketch/Sketch3DCanvas'), { ssr: false });
 const DrawingView = dynamic(() => import('./sketch/DrawingView'), { ssr: false });
+const MobileModelViewer = dynamic(() => import('./responsive/MobileModelViewer'), { ssr: false });
+import { hasViewableGeometry, mobileViewerLabels } from './responsive/mobileViewer';
 // Editing imports
 import type { EditMode } from './editing/types';
 // Custom hooks
@@ -117,14 +126,14 @@ import { useSketchState } from './hooks/useSketchState';
 import { useFreemium } from '@/hooks/useFreemium';
 import UpgradeModalsDock from './panels/UpgradeModalsDock';
 import FirstTimeOnboardingShell from './onboarding/FirstTimeOnboardingShell';
-import GetQuoteButton from './export/GetQuoteButton';
 import type { SampleTemplate } from './templates/sampleTemplates';
 import AiAssistantShell from './ai/AiAssistantShell';
+import { resolveFeatureEditPrompt } from './ai/featureEditFromPrompt';
 import { useIPShareFlow } from './hooks/useIPShareFlow';
 import { useShapeGeneratorUI } from './hooks/useShapeGeneratorUI';
 const QuoteWizard = dynamic(() => import('./onboarding/QuoteWizard'), { ssr: false });
 const DesktopFirstRunWizard = dynamic(() => import('./onboarding/DesktopFirstRunWizard'), { ssr: false });
-import { useAssemblyState } from './hooks/useAssemblyState';
+import { useAssemblyState, BODY_COLORS } from './hooks/useAssemblyState';
 import { applyCSG, makeToolGeometry } from './editing/CSGOperations';
 import type { CSGOperation, CSGToolParams } from './editing/CSGOperations';
 import { splitBodyBoth } from './features/splitBodyBoth';
@@ -162,7 +171,7 @@ import { evaluateExpression, findBrokenExpressions, freezeBrokenExpressions, typ
 import { globalMacroRecorder } from './history/macroRecorder';
 import { analyzeChangeImpact } from './analysis/changeImpact';
 import ConfirmModal from '@/components/ConfirmModal';
-import { type ModelVar } from './ModelParametersPanel';
+import { resolveModelVars, type ModelVar } from './ModelParametersPanel';
 import { buildExprGraph, propagateChanges } from './ExpressionGraph';
 import { usePlugins } from './plugins/usePlugins';
 import TransformInputPanel from './TransformInputPanel';
@@ -192,6 +201,17 @@ import AsyncWorkIndicator from './panels/AsyncWorkIndicator';
 import TopBanners from './panels/TopBanners';
 import OnboardingDock from './panels/OnboardingDock';
 import Phase4PanelDock from './panels/Phase4PanelDock';
+import { DirectEditHostBridge, type DirectEditSceneAdapter } from './directEdit/DirectEditHostBridge';
+import { AssemblyExportBridge } from './io/AssemblyExportBridge';
+import { ConfigurationsExportBridge } from './configurations/ConfigurationsExportBridge';
+import { applyFeatureEnabledMap } from './configurations/featureSuppression';
+import { generateDrawingsForConfigs } from './configurations/perConfigDrawing';
+import { runPipeline } from './features/pipelineManager';
+import { FEATURE_MAP } from './features';
+import type { DrawingConfig } from './analysis/autoDrawing';
+import { generateAssemblyDrawing, type AssemblyDrawingPart } from './analysis/assemblyDrawing';
+import { buildDrawingSvgString } from './analysis/drawingExport';
+import { useDrawingTemplatePrefs } from './analysis/drawingTemplatePrefs';
 import HelpCluster from './panels/HelpCluster';
 import ValidationResultsModal from './panels/ValidationResultsModal';
 import Modal4Dock from './panels/Modal4Dock';
@@ -203,6 +223,7 @@ import SketchInputCluster from './panels/SketchInputCluster';
 import BodyCsgDock from './panels/BodyCsgDock';
 import ComposeIndicator from './panels/ComposeIndicator';
 import CanvasGizmoOverlays from './panels/CanvasGizmoOverlays';
+import { collectDowngrades } from './features/downgradeNotice';
 import StatusFooter from './panels/StatusFooter';
 import AuthModelPlacementDock from './panels/AuthModelPlacementDock';
 import SplitExportDock from './panels/SplitExportDock';
@@ -226,6 +247,17 @@ import { useVersionHistory } from './history/useVersionHistory';
 import type { DesignVersion } from './history/useVersionHistory';
 import { useCommandHistory } from './history/useCommandHistory';
 import { commandHistory } from './history/CommandHistory';
+import {
+  createFeatureParamCoalescer,
+  makeArrayAddCommand,
+  makeArrayRemoveCommand,
+  makeArrayUpdateCommand,
+  makeToggleCommand,
+  makeInsertStandardPartCommand,
+  makePlacePartWithMatesCommand,
+  makeRemoveFeatureCommand,
+  snapshotFeatureTree,
+} from './history/undoableCommands';
 import { captureCanvasSnapshot } from './history/useCanvasSnapshot';
 import RightPanel from './panels/RightPanel';
 import { mapDFMToParams, getBestDFMScore, getTopDFMIssues } from './analysis/dfmParamMapper';
@@ -264,6 +296,7 @@ const UpgradePrompt = dynamic(() => import('./freemium/UpgradePrompt'), { ssr: f
 const COTSPanel = dynamic(() => import('./cots/COTSPanel'), { ssr: false });
 const CAMSimPanel = dynamic(() => import('./analysis/CAMSimPanel'), { ssr: false });
 import type { COTSPart } from './cots/cotsData';
+import { cotsToScad } from './cots/cotsGeometry';
 import { usePinComments } from './comments/PinComments';
 const CommentsPanel = dynamic(() => import('./comments/CommentsPanel'), { ssr: false });
 import type { ActivityEvent } from './comments/CommentsPanel';
@@ -283,6 +316,7 @@ import type { BreadcrumbItem } from './BreadcrumbNav';
 import SelectionFilterBar from './SelectionFilterBar';
 import type { SelectionFilter } from './SelectionFilterBar';
 import SelectionInfoBadge from './editing/SelectionInfoBadge';
+import MatePickerOverlay from './editing/MatePickerOverlay';
 import AIAssistantSidebar from './analysis/AIAssistantSidebar';
 const IntakeWizard = dynamic(() => import('./intake/IntakeWizard'), { ssr: false });
 const ComposeResultPanel = dynamic(() => import('./intake/ComposeResultPanel'), { ssr: false });
@@ -418,7 +452,9 @@ export function ShapeGeneratorInner() {
     onlineCount } = useAssemblyState();
   /** 메이트→배치 적용 후 Solver 탭 `solveAssembly` 상태를 `placedParts`와 다시 맞출 때 증가 (M3 B1). */
   const [assemblySolverResyncNonce, setAssemblySolverResyncNonce] = useState(0);
-  const BODY_COLORS = ['var(--nx-accent-2)', '#f4a28b', '#8bf4b0', '#f4e08b', '#c48bf4', '#8bd8f4', '#f48bb0', '#b0f48b'];
+  // BODY_COLORS imported from useAssemblyState — the old local copy started
+  // with 'var(--nx-accent-2)', which THREE.Color can't parse (broken
+  // <Instance color>). The hook's palette is THREE-safe ('#8bb7f4' first).
   // ══════════════════════════════════════════════════════════════════════════
   // VIEW MODE: gallery vs workspace
   // ══════════════════════════════════════════════════════════════════════════
@@ -492,7 +528,40 @@ export function ShapeGeneratorInner() {
       if (didChange) setParams(newParams);
     }
   }, [paramExpressions]);
-  const { features, addFeature, addFeatureWithEdges, addFeatureWithParams, addSketchFeature, removeFeature, updateFeatureParam, toggleFeature, moveFeature, undoLast, clearAll, history: featureHistory, rollbackTo, startEditing, finishEditing, toggleExpanded, ensureExpanded, removeNode, updateNode, featureErrors, setFeatureError: _setFeatureError, clearFeatureError, getOrderedNodes, replaceHistory } = useFeatureStack();
+  const { features, addFeature, addFeatureWithEdges, addFeatureWithParams, addSketchFeature, removeFeature, updateFeatureParam, toggleFeature, moveFeature, undoLast, clearAll, history: featureHistory, rollbackTo, startEditing, finishEditing, toggleExpanded, ensureExpanded, addNode, removeNode, updateNode, featureErrors, setFeatureError: _setFeatureError, clearFeatureError, getOrderedNodes, replaceHistory } = useFeatureStack();
+
+  // ── Phase A undo unification: tracked feature-param / suppress wrappers ────
+  // updateFeatureParamCmd routes param edits through commandHistory with
+  // commit-on-settle coalescing (one undo step per drag / typing burst, same
+  // contract as the base-shape handleParamChange/handleParamCommit pair).
+  // getOrderedNodes recreates whenever the node map changes, so the coalescer
+  // reads it through a render-synced ref — the 500ms settle callback must see
+  // the params AFTER the last setNodeMap commit, not the closure it was
+  // created under.
+  const getOrderedNodesRef = useRef(getOrderedNodes);
+  getOrderedNodesRef.current = getOrderedNodes;
+  const featureParamCoalescer = useMemo(() => createFeatureParamCoalescer({
+    getParams: (featureId) =>
+      getOrderedNodesRef.current().find(n => n.id === featureId)?.params ?? null,
+    applyParam: (featureId, key, value) => updateFeatureParam(featureId, key, value),
+    // Whole-params restore via updateNode also reverses the NURBS cp_* wipe
+    // that updateFeatureParam performs on uCount/vCount edits.
+    restoreParams: (featureId, params) =>
+      updateNode(featureId, { params: { ...params }, error: undefined }),
+    push: (cmd) => commandHistory.execute(cmd),
+  }), [updateFeatureParam, updateNode]);
+  const updateFeatureParamCmd = useCallback((id: string, key: string, value: number) => {
+    featureParamCoalescer.edit(id, key, value);
+  }, [featureParamCoalescer]);
+  const toggleFeatureCmd = useCallback((id: string) => {
+    commandHistory.execute(makeToggleCommand({
+      commandId: `toggle-feature-${id}-${Date.now()}`,
+      label: 'Suppress/unsuppress feature',
+      labelKo: '피처 표시/숨김 전환',
+      toggle: () => toggleFeature(id),
+    }));
+  }, [toggleFeature]);
+
   const { performCSG, loading: csgLoading, cancel: cancelCsg } = useCsgWorker();
   const { runFEA: runFEAWorker, loading: feaWorkerLoading, cancel: cancelFea } = useFEAWorker();
   const { analyzeDFM: analyzeDFMWorker, loading: dfmWorkerLoading, cancel: cancelDfm } = useDFMWorker();
@@ -508,7 +577,6 @@ export function ShapeGeneratorInner() {
   // Forward ref to handleGenerateActiveProfile so the early-mounted tool
   // listener can fire it (the handler is declared later in this function).
   const handleGenerateActiveProfileRef = useRef<(() => void) | null>(null);
-  const history = useHistory();
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
   // Auto-clear stale selection when undo/rollback removes the selected feature.
   // Avoids "selection points to a feature that no longer exists" after history nav.
@@ -1020,11 +1088,25 @@ export function ShapeGeneratorInner() {
       router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
       return;
     }
+    if (searchParams?.get('entry') === 'ai') {
+      // Hub "Nexy AI Studio" deep-link: open the AI chat panel in the design
+      // workspace. (HubFrame previously linked ?mode=ai, which no handler read,
+      // so the button opened a plain modeler. 2026-06-09 fix.)
+      urlWorkspaceOrTabAppliedRef.current = true;
+      setIsSketchMode(false);
+      applyCadWorkspace('design', { isSketchMode: false });
+      setShowChatPanel(true);
+      const qs = new URLSearchParams(searchParams?.toString() ?? '');
+      qs.delete('entry');
+      const n = qs.toString();
+      router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
+      return;
+    }
     if (searchParams?.get('tab') === 'optimize') {
       urlWorkspaceOrTabAppliedRef.current = true;
       applyCadWorkspace('optimize', { isSketchMode });
     }
-  }, [searchParams, isSketchMode, isReadOnly, pathname, router, setIsSketchMode, setShowAssemblyPanel]);
+  }, [searchParams, isSketchMode, isReadOnly, pathname, router, setIsSketchMode, setShowAssemblyPanel, setShowChatPanel]);
 
   const sketchViewMode = useSceneStore(s => s.sketchViewMode);
   const splitMode = useSceneStore(s => s.splitMode);
@@ -1113,7 +1195,45 @@ export function ShapeGeneratorInner() {
         if (isFinite(val)) setParam(key, val);
       } catch { /* invalid expression — skip */ }
     });
-  }, [modelVars, setParam]);  
+  }, [modelVars, setParam]);
+
+  // Render-synced ref so call-time handlers (expression commit command) read
+  // the LATEST variable table, not the closure they were created under.
+  const modelVarsRef = useRef(modelVars);
+  modelVarsRef.current = modelVars;
+
+  // Shared variable scope for FEATURE param expressions ("=W/2"): base-shape
+  // params first, global model variables after (user-defined globals shadow a
+  // base param on name collision); sibling params of the edited feature are
+  // appended last by paramScopeFor and shadow both.
+  const featureExprScope = useMemo<ExprVariable[]>(() => [
+    ...Object.entries(params).map(([name, value]) => ({ name, value })),
+    ...modelVars.map(v => ({ name: v.name, value: v.value })),
+  ], [params, modelVars]);
+
+  // Expose the global variable table to the EXISTING EquationManager engine
+  // (features/featureContext slot). The pipeline's applyFeatureContext then
+  // resolves any expression-typed (string) feature params — e.g. emitted by
+  // ConfigurationTable overrides — against the same variables the UI shows.
+  // Formula seeding is best-effort (the EquationManager's parser is the
+  // positionDrivers one); on parse failure we fall back to the value already
+  // resolved by resolveModelVars so the table never goes missing a name.
+  useEffect(() => {
+    if (modelVars.length === 0) {
+      setPipelineEquationManager(null);
+      return;
+    }
+    const em = new EquationManager();
+    for (const v of modelVars) {
+      try {
+        em.set(v.name, v.expression);
+      } catch {
+        try { em.set(v.name, String(v.value)); } catch { /* invalid name — skip */ }
+      }
+    }
+    setPipelineEquationManager(em);
+    return () => setPipelineEquationManager(null);
+  }, [modelVars]);
 
   const lastBrokenSnapshotRef = useRef<string>('');
 
@@ -1132,6 +1252,7 @@ export function ShapeGeneratorInner() {
     transformMatrix, setTransformMatrix,
     snapEnabled, setSnapEnabled,
     snapSize, setSnapSize,
+    smartSnapEnabled, setSmartSnapEnabled,
     unitSystem, setUnitSystem } = useViewportState();
 
   // ── Selection filters (depends on editMode from viewport) ──
@@ -1331,6 +1452,12 @@ export function ShapeGeneratorInner() {
       geo.setIndex(new Uint32BufferAttribute(data.triangles, 1));
       geo.computeVertexNormals();
       geo.computeBoundingBox();
+      // Preserve B-rep lineage: the browser holds only this mesh, but the exact
+      // B-rep is still live in the server registry under `handle`. Stamping it
+      // lets the adopted body export STEP losslessly (brep-step endpoint) instead
+      // of re-meshing, and upgrade to a live browser handle once K-series lands.
+      const { tagBrepProvenance } = await import('./features/agentBrepAdoption');
+      tagBrepProvenance(geo, handle);
       const edgeGeo = makeEdges(geo);
       const vol = meshVolume(geo) / 1000;
       const sa = meshSurfaceArea(geo) / 100;
@@ -1634,7 +1761,10 @@ export function ShapeGeneratorInner() {
   const setIsPreviewMode = useSceneStore(s => s.setIsPreviewMode);
 
   // ── Tutorial / Onboarding ──
-  const tutorial = useTutorial();
+  // Suppress the legacy auto welcome-banner/tutorial while the first-run sample
+  // template picker owns the screen (empty part) — they used to stack on top of
+  // it (the reported onboarding clutter). Manual tutorial start still works.
+  const tutorial = useTutorial(features.length === 0);
   const contextHelp = useContextHelp();
 
   useEffect(() => {
@@ -1669,7 +1799,7 @@ export function ShapeGeneratorInner() {
     // Frozen in this closure so undo→redo replays the same selection.
     let edgeSel: import('./editing/selectionInfo').EdgeSelectionInfo[] | undefined;
     let faceSel: import('./editing/selectionInfo').FaceSelectionInfo[] | undefined;
-    if (featType === 'fillet' || featType === 'chamfer') {
+    if (featType === 'fillet' || featType === 'chamfer' || featType === 'variableFillet') {
       const el = useSelectionStore.getState().selectedElement;
       if (el && el.type === 'edge') edgeSel = [el];
     } else if (featType === 'shell') {
@@ -1736,6 +1866,22 @@ export function ShapeGeneratorInner() {
   const occtInitPending = useUIStore(s => s.occtInitPending);
   const occtInitError = useUIStore(s => s.occtInitError);
   const setOcctMode = useUIStore(s => s.setOcctMode);
+  // Kernel of record (Phase 0): the OCCT B-rep kernel is the DEFAULT. It is
+  // verified correct (test:occt:feasibility) and perf-cleared (WASM cold load
+  // ~300 ms one-time, per-commit eval 25–59 ms — see occtCommitPerf). Auto-
+  // enable on boot, deferred to idle so the 10 MB WASM load never blocks first
+  // paint, and skip it if the user has deliberately switched back to the mesh
+  // path (nf_occt_pref='off'). setOcctMode fails safe to mesh if the load errors.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let pref: string | null = null;
+    try { pref = window.localStorage.getItem('nf_occt_pref'); } catch { /* private mode */ }
+    if (pref === 'off') return;
+    const enable = () => { if (!useUIStore.getState().occtMode) void setOcctMode(true); };
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback;
+    if (ric) ric(enable);
+    else window.setTimeout(enable, 400);
+  }, [setOcctMode]);
   const multiView = useUIStore(s => s.multiView);
   const setMultiView = useUIStore(s => s.setMultiView);
   const showVersionPanel = useUIStore(s => s.showVersionPanel);
@@ -1817,6 +1963,11 @@ export function ShapeGeneratorInner() {
   const { toasts, addToast, removeToast } = useToast();
   useEffect(() => { collabAddToastRef.current = addToast; }, [addToast]);
 
+  // Phase 6c — drawing template prefs (single user pref shared by
+  // the assembly + configurations export bridges below). localStorage-
+  // backed; default is the 3-view A4 landscape "cookbook" template.
+  const [drawingTemplatePrefs] = useDrawingTemplatePrefs();
+
   const paletteCommands = useMemo<Command[]>(
     () => [
       ...buildWorkspaceCommands({
@@ -1880,6 +2031,109 @@ export function ShapeGeneratorInner() {
     }
   }, [features, modelVars, addToast, lang, lt]);
 
+  // ── Feature param "=expression" support (SolidWorks-style) ────────────────
+  // The raw expression lives in the node's `paramExpressions` sidecar; the
+  // evaluated number stays in `params` (pipeline/coalescer untouched). See
+  // equations/featureParamExpressions.ts for the engine + the deleted-variable
+  // policy (keep last value + error badge — never silent NaN).
+
+  /** Commit raw typed input ("=W/2", "12", "") for a feature param as ONE
+   *  undoable command: expression assign/edit, expression clear (plain number
+   *  or empty input), and the accompanying numeric write all restore together
+   *  on undo. Mirrors the makeArrayUpdateCommand before/after-snapshot style. */
+  const setFeatureParamExpressionCmd = useCallback((featureId: string, key: string, raw: string) => {
+    const node = getOrderedNodesRef.current().find(n => n.id === featureId);
+    if (!node) return;
+    const parsed = parseParamInput(raw);
+
+    const beforeParams = { ...node.params };
+    const beforeExprs = node.paramExpressions ? { ...node.paramExpressions } : undefined;
+    const afterParams = { ...node.params };
+    let afterExprs: Record<string, string> | undefined =
+      node.paramExpressions ? { ...node.paramExpressions } : undefined;
+
+    if (parsed.kind === 'expression') {
+      const scope = paramScopeFor(node, key, [
+        ...Object.entries(useSceneStore.getState().params).map(([name, value]) => ({ name, value })),
+        ...modelVarsRef.current.map(v => ({ name: v.name, value: v.value })),
+      ]);
+      const r = evaluateParamExpression(parsed.expression, scope);
+      if (!r.ok) {
+        addToast('warning', lang === 'ko'
+          ? `수식 오류: ${r.error}`
+          : `Invalid expression: ${r.error}`);
+        return;
+      }
+      afterParams[key] = r.value;
+      afterExprs = { ...(afterExprs ?? {}), [key]: parsed.expression };
+    } else {
+      // Plain number / empty input → clear the driving expression; a number
+      // also writes the literal value (expression → frozen literal).
+      if (afterExprs) {
+        delete afterExprs[key];
+        if (Object.keys(afterExprs).length === 0) afterExprs = undefined;
+      }
+      if (parsed.kind === 'number') afterParams[key] = parsed.value;
+    }
+
+    const paramKeys = new Set([...Object.keys(beforeParams), ...Object.keys(afterParams)]);
+    const paramsChanged = Array.from(paramKeys).some(k => beforeParams[k] !== afterParams[k]);
+    const exprsChanged = JSON.stringify(beforeExprs ?? {}) !== JSON.stringify(afterExprs ?? {});
+    if (!paramsChanged && !exprsChanged) return; // no-op — skip empty undo step
+
+    // Don't let a pending slider coalesce interleave with this command.
+    featureParamCoalescer.flush();
+    commandHistory.execute({
+      id: `feature-param-expr-${featureId}-${Date.now()}`,
+      label: 'Edit parameter expression',
+      labelKo: '파라미터 수식 편집',
+      // State does NOT yet hold `after` — execute() applies it (and re-applies
+      // on redo); undo restores the full pre-edit param + expression snapshot.
+      execute: () => updateNode(featureId, { params: { ...afterParams }, paramExpressions: afterExprs, error: undefined }),
+      undo: () => updateNode(featureId, { params: { ...beforeParams }, paramExpressions: beforeExprs, error: undefined }),
+    });
+  }, [featureParamCoalescer, updateNode, addToast, lang]);
+
+  // Re-evaluate expression-driven feature params whenever the variable scope
+  // (global variables / base params) or the tree changes. Writes go through
+  // the RAW param setter — the undo step belongs to the edit that moved the
+  // variable. Failed evaluations keep the last value (error badge in the
+  // FeatureParams dialog); non-converging sibling cycles freeze (no writes).
+  useEffect(() => {
+    const nodes = getOrderedNodesRef.current().filter(
+      n => n.paramExpressions && Object.keys(n.paramExpressions).length > 0,
+    );
+    if (nodes.length === 0) return;
+    const { updates, converged } = reevaluateFeatureParamExpressionsFixedPoint(nodes, featureExprScope);
+    if (!converged) return;
+    for (const u of updates) updateFeatureParam(u.featureId, u.key, u.value);
+  }, [featureExprScope, features, updateFeatureParam]);
+
+  // PropertyManager expression drafts: its ExpressionInput reports text on
+  // every keystroke (onExpressionChange) but only commits a value on
+  // Enter/blur (onParamChange). Keystrokes land in this ref; the commit
+  // routes the final draft through setFeatureParamExpressionCmd so one
+  // undo step covers the whole authoring burst.
+  const pmExprDraftRef = useRef<Record<string, string>>({});
+
+  // ── Global variables ↔ .nfab persistence (scene.globalVariables) ──────────
+  const getGlobalVariables = useCallback((): NfabGlobalVariableV1[] =>
+    modelVarsRef.current.map(v => ({ name: v.name, expression: v.expression })), []);
+  const restoreGlobalVariables = useCallback((vars: NfabGlobalVariableV1[] | undefined) => {
+    if (!vars || vars.length === 0) {
+      setModelVars([]);
+      return;
+    }
+    // Values are re-derived from the expressions (resolveModelVars is the
+    // same resolver the panel uses — later vars can reference earlier ones).
+    setModelVars(resolveModelVars(vars.map((v, i) => ({
+      id: `mv-nfab-${i}-${v.name}`,
+      name: v.name,
+      expression: v.expression,
+      value: 0,
+    }))));
+  }, []);
+
   // 스케치 평면 전환 래퍼: 진행 중인 프로파일이 있으면 사용자에게 알림.
   // 평면을 바꿔도 기존 2D 좌표는 유지되지만 새 평면에 투영되므로 혼란을 방지.
   const setSketchPlane = useCallback((plane: 'xy' | 'xz' | 'yz') => {
@@ -1915,13 +2169,19 @@ export function ShapeGeneratorInner() {
   // ── Pipeline errors (set by result useMemo, consumed by FeatureTree + toast) ──
   const [pipelineErrors, setPipelineErrors] = useState<Record<string, string>>({});
 
+  // True while a sample template is loading its features in bulk. Each add fires
+  // its own pipeline eval, so a dependent feature (fillet) can transiently fail
+  // against base geometry that hasn't computed yet — a spurious error toast even
+  // though the final tree recomputes fine. Suppress the toasts during that window.
+  const templateLoadingRef = useRef(false);
+
   // ── Feature validation error (e.g. param out of range) → toast ──
   useEffect(() => {
     const errorIds = Object.keys(featureErrors);
     if (errorIds.length > 0) {
       const lastErrorId = errorIds[errorIds.length - 1];
       const msg = featureErrors[lastErrorId];
-      addToast('error', lt.cannotApplyFeature(msg));
+      if (!templateLoadingRef.current) addToast('error', lt.cannotApplyFeature(msg));
       clearFeatureError(lastErrorId);
     }
   }, [featureErrors]);
@@ -1936,6 +2196,7 @@ export function ShapeGeneratorInner() {
     }
     prevPipelineErrorsRef.current = pipelineErrors;
     if (newlyFailed.length === 0) return;
+    if (templateLoadingRef.current) return; // suppress transient errors during bulk template load
     // Show a toast for the most recent failure only (rest are visible as red badges in tree)
     const id = newlyFailed[newlyFailed.length - 1];
     const raw = pipelineErrors[id];
@@ -2006,6 +2267,61 @@ export function ShapeGeneratorInner() {
     }
   }, [addToast, promptUpgrade, handleApplyAgentScad, lang]);
 
+  // ── Shell-v2 AiChatPanel "Apply" bridge (orphan CustomEvents fixed) ──
+  // AiChatPanel dispatches 'nexyfab:apply-ai-intent' / 'nexyfab:apply-ai-pattern'
+  // which previously had no listener (the Apply button did nothing).
+  //  · intent  = an IntentInput ({ shapeId, params, features }) — run it through
+  //    the deterministic intentToScad converter and render via the same
+  //    handleApplyAgentScad path the SCAD agent panel uses.
+  //  · pattern = a design-pattern library reference ({ id, title }) — resolve
+  //    its seedPrompt and route through handleFreeAiPrompt, the same free
+  //    NL→intent→render front door the legacy chat flow uses.
+  useEffect(() => {
+    const onApplyIntent = (e: Event) => {
+      const intent = (e as CustomEvent<Record<string, unknown> | undefined>).detail;
+      if (!intent || typeof intent !== 'object') {
+        addToast('warning', lang === 'ko' ? '적용할 AI 의도가 없습니다.' : 'No AI intent to apply.');
+        return;
+      }
+      void (async () => {
+        try {
+          const { intentToScad } = await import('@/lib/openscad-render/intentToScad');
+          const result = intentToScad(intent as unknown as Parameters<typeof intentToScad>[0]);
+          if (!result.ok) { addToast('error', result.reason); return; }
+          await handleApplyAgentScad(result.scad);
+        } catch (err) {
+          addToast('error', `AI intent apply failed: ${(err as Error).message}`);
+        }
+      })();
+    };
+    const onApplyPattern = (e: Event) => {
+      const detail = (e as CustomEvent<{ id?: string; title?: string } | undefined>).detail;
+      if (!detail?.id) {
+        addToast('warning', lang === 'ko' ? '적용할 디자인 패턴이 없습니다.' : 'No design pattern to apply.');
+        return;
+      }
+      void (async () => {
+        try {
+          const { listPatterns } = await import('@/lib/ai/scad-agent/designPatternLibrary');
+          const pattern = listPatterns().find(p => p.id === detail.id);
+          if (!pattern) {
+            addToast('warning', `Unknown design pattern: ${detail.id}`);
+            return;
+          }
+          await handleFreeAiPrompt(pattern.seedPrompt);
+        } catch (err) {
+          addToast('error', `AI pattern apply failed: ${(err as Error).message}`);
+        }
+      })();
+    };
+    window.addEventListener('nexyfab:apply-ai-intent', onApplyIntent);
+    window.addEventListener('nexyfab:apply-ai-pattern', onApplyPattern);
+    return () => {
+      window.removeEventListener('nexyfab:apply-ai-intent', onApplyIntent);
+      window.removeEventListener('nexyfab:apply-ai-pattern', onApplyPattern);
+    };
+  }, [handleApplyAgentScad, handleFreeAiPrompt, addToast, lang]);
+
   // ── Ctrl+\ split-screen toggle ──
   // Cycle splitMode: off → side-notes → side-spec → off. Skip when an input
   // is focused so the keystroke doesn't fight typing.
@@ -2016,6 +2332,24 @@ export function ShapeGeneratorInner() {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || (document.activeElement as HTMLElement)?.isContentEditable) return;
       e.preventDefault();
       useSceneStore.getState().toggleSplitMode();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // ── Esc clears in-flight mate selection (Phase F click-to-mate UX) ──
+  // When the user has armed mate mode (mateFaceA set) or has the picker
+  // overlay open (pendingMate set) Escape bails out of the workflow.
+  // Skipped while an input is focused so dialog text editing isn't hijacked.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const tag = (document.activeElement?.tagName ?? '').toUpperCase();
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (document.activeElement as HTMLElement)?.isContentEditable) return;
+      const st = useSelectionStore.getState();
+      if (!st.mateFaceA && !st.pendingMate) return;
+      st.setMateFaceA(null);
+      st.setPendingMate(null);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -2197,6 +2531,10 @@ export function ShapeGeneratorInner() {
   const setSelectedElement = useSelectionStore(s => s.setSelectedElement);
   const mateFaceA          = useSelectionStore(s => s.mateFaceA);
   const setMateFaceA       = useSelectionStore(s => s.setMateFaceA);
+  // Phase F (click-to-mate UX): pending pair surfaces the MatePickerOverlay.
+  // Owned by the selection store so the canvas, the overlay, and the host
+  // share a single source of truth.
+  const pendingMate        = useSelectionStore(s => s.pendingMate);
   const [selectionActive, setSelectionActive] = React.useState(false);
   // ── Idea-to-Design Intake Wizard (L1→L5 composition) ──
   const [showIntakeWizard, setShowIntakeWizard] = React.useState(false);
@@ -2248,12 +2586,33 @@ export function ShapeGeneratorInner() {
 
   const toggleFaceSelectionMode = useCallback(() => {
     setSelectionActive(prev => {
-      if (prev) setSelectedElement(null);
       const next = !prev;
-      if (next) setMeasureActive(false);
+      if (prev) {
+        setSelectedElement(null);
+        // Turning the toolbar "Face Select" toggle OFF → drop back to body
+        // (editMode 'none'), which unmounts FaceScene. Without this the top
+        // selection-filter chip would stay stuck on "면".
+        setEditMode('none');
+      } else {
+        setMeasureActive(false);
+        // Turning it ON must actually enter face-edit mode. FaceScene (real
+        // face picking + Push/Pull) only mounts when editMode === 'face'
+        // (ShapePreview), so the prominent "면 선택 ON" toggle and the top
+        // selection-filter chip were previously disconnected — toggling the
+        // toolbar did nothing on click. Sync them here. (2026-06-10 fix)
+        setEditMode('face');
+      }
       return next;
     });
-  }, [setMeasureActive]);
+  }, [setMeasureActive, setEditMode]);
+
+  // Keep the toolbar "Face Select" toggle (selectionActive) in sync with the
+  // top selection-filter chips: picking 면/엣지/정점 directly (editMode !==
+  // 'none') reflects as ON; switching back to 바디 turns it OFF. Without this
+  // the two controls drift apart and the toolbar lies about the current mode.
+  useEffect(() => {
+    setSelectionActive(editMode !== 'none');
+  }, [editMode]);
   // ── AI pipeline chain: Process Router → Supplier Matcher pre-fill ──
 
   const [chainedSupplierProcess, setChainedSupplierProcess] = React.useState<string | undefined>(undefined);
@@ -2285,6 +2644,8 @@ export function ShapeGeneratorInner() {
   const [motionPartTransforms, setMotionPartTransforms] = useState<Record<string, import('three').Matrix4> | null>(null);
   const showModalAnalysis    = useUIStore(s => s.showModalAnalysis);
   const setShowModalAnalysis = useUIStore(s => s.setShowModalAnalysis);
+  const showBucklingAnalysis = useUIStore(s => s.showBucklingAnalysis);
+  const setShowBucklingAnalysis = useUIStore(s => s.setShowBucklingAnalysis);
   const showParametricSweep  = useUIStore(s => s.showParametricSweep);
   const setShowParametricSweep = useUIStore(s => s.setShowParametricSweep);
   const showToleranceStackup = useUIStore(s => s.showToleranceStackup);
@@ -2310,6 +2671,7 @@ export function ShapeGeneratorInner() {
         { id: 'gen', active: showGenDesign },
         { id: 'motion', active: showMotionStudy },
         { id: 'modal', active: showModalAnalysis },
+        { id: 'buckling', active: showBucklingAnalysis },
         { id: 'tol', active: showToleranceStackup },
         { id: 'surf', active: showSurfaceQuality },
         { id: 'mfgpipe', active: showMfgPipeline },
@@ -2325,6 +2687,7 @@ export function ShapeGeneratorInner() {
       showGenDesign,
       showMotionStudy,
       showModalAnalysis,
+      showBucklingAnalysis,
       showToleranceStackup,
       showSurfaceQuality,
       showMfgPipeline,
@@ -2491,6 +2854,7 @@ export function ShapeGeneratorInner() {
   const {
     desktopFilePath,
     desktopDirty,
+    getCloudSceneObject,
     handleSaveNfab,
     handleSaveNfabCloud,
     handleLoadNfab,
@@ -2512,7 +2876,20 @@ export function ShapeGeneratorInner() {
     restoreStudioViewSnapshot,
     getConfigurationsBlock,
     restoreConfigurationsSnapshot,
+    getGlobalVariables,
+    restoreGlobalVariables,
   });
+
+  // Global variable edits dirty the .nfab (they persist in scene.globalVariables).
+  // Skip the mount pass — an unchanged project must not start dirty.
+  const modelVarsDirtySkipRef = useRef(true);
+  useEffect(() => {
+    if (modelVarsDirtySkipRef.current) {
+      modelVarsDirtySkipRef.current = false;
+      return;
+    }
+    markNfabDirty();
+  }, [modelVars, markNfabDirty]);
 
   // Wire scene → autosave + .nfab dirty (debounced + transition triggers)
   useSceneAutoSaveWatchers({
@@ -2555,8 +2932,41 @@ export function ShapeGeneratorInner() {
     // preview instead of a placeholder. captureRef may not yet be wired on
     // initial mount — that's fine, the next save attempt will catch it.
     const thumb = captureRef.current ? captureRef.current() : null;
-    scheduleCloudSync(buildAutoSaveState(), selectedId ?? '', materialId, thumb);
-  }, [selectedId, params, features, isSketchMode, materialId, viewMode, authUser, cadWorkspace, renderMode]);
+    // Persist the FULL .nfab payload to the cloud (assembly / configurations /
+    // studio-view / feature history included), falling back to the lossy
+    // AutoSaveState only before the feature history is ready on first mount.
+    // This makes useCloudSaveFlow the single full-fidelity cloud writer — the
+    // old path sent AutoSaveState, which dropped assembly/configs and got
+    // clobbered against the .nfab tick. (2026-06-09 dual-writer unification.)
+    const cloudScene = getCloudSceneObject() ?? buildAutoSaveState();
+    scheduleCloudSync(cloudScene, selectedId ?? '', materialId, thumb);
+    // 2026-06-09 dual-writer regression: when the 3-min .nfab tick was retired
+    // this effect became the ONLY cloud writer, but its deps still covered just
+    // the lossy AutoSaveState fields. Assembly / multi-body / configuration /
+    // sketch edits — which getCloudSceneObject() serializes and the old tick
+    // caught via cloudDirtyRef — never re-ran the effect, so those changes were
+    // silently dropped from cloud autosave. Track them explicitly here.
+  }, [selectedId, params, features, isSketchMode, materialId, viewMode, authUser, cadWorkspace, renderMode,
+      placedParts, assemblyMates, bodies, configurationsSig, sketchProfile, sketchConfig, modelVars]);
+
+  // Guest save nudge: a logged-out user's work lives only in THIS browser
+  // (localStorage autosave — no cloud sync). Once they've built something real,
+  // point them to sign-in / .nfab export so a cleared browser or device switch
+  // doesn't silently lose it. Fires once per browser. (2026-06-09 storage
+  // robustness.)
+  const guestSaveHintShownRef = useRef(false);
+  useEffect(() => {
+    if (authUser || guestSaveHintShownRef.current) return;
+    if (viewMode !== 'workspace' || !desktopDirty || features.length === 0) return;
+    guestSaveHintShownRef.current = true;
+    try {
+      if (window.localStorage.getItem('nexyfab_guest_save_hint_v1') === '1') return;
+      window.localStorage.setItem('nexyfab_guest_save_hint_v1', '1');
+    } catch { /* ignore */ }
+    addToast('info', lang === 'ko'
+      ? '게스트 작업은 이 브라우저에만 저장됩니다. 로그인하면 클라우드에 안전하게 저장되고, File → .nfab로 파일 내보내기도 됩니다.'
+      : 'Guest work is saved only in this browser. Sign in to save to the cloud, or export a file via File → .nfab.');
+  }, [authUser, viewMode, desktopDirty, features.length, addToast, lang]);
 
 
   // 스케치 모드 진입/이탈 시 3D 편집 모드는 항상 'none'으로 리셋.
@@ -2575,7 +2985,24 @@ export function ShapeGeneratorInner() {
       setShowSketchActionMenu(false);
     }
   }, [activeProfile.closed]);
-  useEffect(() => { if (viewMode !== 'workspace') return; const h = (e: BeforeUnloadEvent) => { e.preventDefault(); }; window.addEventListener('beforeunload', h); return () => window.removeEventListener('beforeunload', h); }, [viewMode]);
+  // Dirty-gated unload guard. Previously this fired the browser "Leave site?"
+  // dialog on EVERY refresh/close while in the workspace, even with zero unsaved
+  // edits — so users learned to dismiss it reflexively (cry-wolf). Now it only
+  // prompts when there are actual unsaved changes (.nfab dirty flag or a save in
+  // flight). A ref holds the latest dirty value so the listener isn't re-bound on
+  // every keystroke. (2026-06-09 UX cleanup.)
+  const unloadDirtyRef = useRef(false);
+  unloadDirtyRef.current = desktopDirty || isSaving;
+  useEffect(() => {
+    if (viewMode !== 'workspace') return;
+    const h = (e: BeforeUnloadEvent) => {
+      if (!unloadDirtyRef.current) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [viewMode]);
   const handleRestoreRecovery = useCallback(() => {
     if (!recoveryData) return;
     setSelectedId(recoveryData.selectedId);
@@ -2589,7 +3016,21 @@ export function ShapeGeneratorInner() {
     clearAll();
     if (recoveryData.features.length > 0) {
       setTimeout(() => {
-        recoveryData.features.forEach(f => addFeature(f.type as FeatureType));
+        // Re-add each feature with its SAVED params + enabled flag. Previously
+        // only f.type was restored (addFeature), so every recovered feature
+        // came back with default params. Saved params are merged onto the
+        // definition defaults so keys added to a feature after the save still
+        // get a value; addNode returns the new node id, letting the enabled
+        // flag apply without a deferred tree lookup.
+        recoveryData.features.forEach(f => {
+          const def = getFeatureDefinition(f.type as FeatureType);
+          if (!def) return;
+          const params: Record<string, number> = {};
+          def.params.forEach(p => { params[p.key] = p.default; });
+          Object.assign(params, f.params);
+          const nodeId = addNode('feature', undefined, def.icon, params, f.type as FeatureType);
+          if (f.enabled === false) updateNode(nodeId, { enabled: false });
+        });
       }, 50);
     }
     const ws =
@@ -2608,7 +3049,7 @@ export function ShapeGeneratorInner() {
     }
     setShowRecovery(false);
     setViewMode('workspace');
-  }, [recoveryData, clearAll, addFeature, setParamExpressions, setParams, setSelectedId]);
+  }, [recoveryData, clearAll, addNode, updateNode, setParamExpressions, setParams, setSelectedId]);
   const handleDismissRecovery = useCallback(() => { setShowRecovery(false); dismissRecovery(); }, [dismissRecovery]);
 
   // ═══ SHARE LINK RESTORE ═══
@@ -2635,7 +3076,11 @@ export function ShapeGeneratorInner() {
 
   // ═══ PROJECT LOAD (from dashboard ?projectId=xxx) ═══
   useEffect(() => {
-    const projectId = searchParams?.get('projectId');
+    // Accept the legacy `?project=` alias too: the main projects list, the
+    // nexyfab dashboard, and the in-modeler hub all link with `?project=`,
+    // while this loader historically only read `?projectId=` — so clicking
+    // "Open" on a saved project opened a blank workspace. (2026-06-09 fix.)
+    const projectId = searchParams?.get('projectId') ?? searchParams?.get('project');
     if (!projectId) {
       useCloudProjectAccessStore.getState().reset();
       return;
@@ -2720,6 +3165,35 @@ export function ShapeGeneratorInner() {
       })
       .catch(() => {});
   // Intentionally keyed on URL only — avoid re-fetch loops when callback identities churn.
+  }, [searchParams]);
+
+  // ═══ SAMPLE LOAD (Hub "예제로 시작" → ?from=sample&intent=) ═══
+  // Without this the sample link opened a blank workspace (the intent was
+  // never read; one sample even used a non-existent shapeId). (2026-06-09)
+  useEffect(() => {
+    if (searchParams?.get('from') !== 'sample') return;
+    const raw = searchParams?.get('intent');
+    if (raw) {
+      try {
+        const intent = JSON.parse(decodeURIComponent(raw)) as { shapeId?: string; params?: Record<string, number> };
+        const sid = intent.shapeId && SHAPE_MAP[intent.shapeId] ? intent.shapeId : 'box';
+        // Force the 3D solid workspace — otherwise a restored guest/sketch
+        // session leaves the modeler in sketch mode and the sample's solid
+        // never renders in the center. (2026-06-09)
+        setIsSketchMode(false);
+        setSelectedId(sid);
+        if (intent.params) {
+          applySceneParamsToSetters(SHAPE_MAP[sid], intent.params, { setParams, setParamExpressions });
+        }
+        setViewMode('workspace');
+        addToast('success', lang === 'ko' ? '예제를 불러왔습니다.' : 'Sample loaded.');
+      } catch { /* ignore malformed intent */ }
+    }
+    const qs = new URLSearchParams(searchParams?.toString() ?? '');
+    qs.delete('from'); qs.delete('sampleId'); qs.delete('intent');
+    const n = qs.toString();
+    router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
+     
   }, [searchParams]);
 
   // ═══ SHARED MODEL LOAD (from /view/{token} → sessionStorage) ═══
@@ -2894,11 +3368,9 @@ export function ShapeGeneratorInner() {
   const shape = useMemo(() => SHAPES.find(s => s.id === selectedId) ?? SHAPES[0], [selectedId]);
 
   const handleSelectShape = useCallback((s: ShapeConfig) => {
-    // Round 29 Phase 4: route shape changes through commandHistory so Ctrl+Z
-    // reverses them in one step. Legacy `history.push` is kept as a backup
-    // snapshot so non-tracked callers (e.g. older URL-restore paths) can
-    // still rollback via the coordinated undo, but the modern stack is the
-    // primary source of truth.
+    // Undo Phase B: shape changes flow ONLY through commandHistory — the
+    // legacy useHistory snapshot stack has been retired (single source of
+    // truth for Ctrl+Z).
     const prevSelectedId = selectedId;
     const prevParams = { ...params };
     const newP: Record<string, number> = {};
@@ -2921,7 +3393,6 @@ export function ShapeGeneratorInner() {
         setParamExpressions(e);
       },
     });
-    history.push({ selectedId: prevSelectedId, params: prevParams, featureIds: features.map(f => f.id) });
     clearAll();
     setSelectedFeatureId(null);
     setSketchResult(null);
@@ -2929,7 +3400,7 @@ export function ShapeGeneratorInner() {
     setEditMode('none');
     setShowManufacturingCard(false);
     collabSendShapeChange(s.id);
-  }, [clearAll, selectedId, params, features, history, collabSendShapeChange, setIsSketchMode]);
+  }, [clearAll, selectedId, params, collabSendShapeChange, setIsSketchMode]);
 
   // ── LOD-during-drag: hide expensive edge overlay while a slider is held ──
   const [paramDragging, setParamDragging] = React.useState(false);
@@ -2971,11 +3442,9 @@ export function ShapeGeneratorInner() {
     }
   }, [params, modelVars, setParam, setParamExpression]);
 
-  // Push to history on significant param changes (debounced via blur/enter).
-  // Records both the legacy snapshot stack (for compat) AND a commandHistory
-  // entry so the modern Ctrl+Z path reverses the drag in one step.
-  // Phase 1 of the unified-history migration: param drags are now first-class
-  // command entries instead of opaque snapshots.
+  // Commit on significant param changes (debounced via blur/enter): one
+  // commandHistory entry per drag so Ctrl+Z reverses the whole drag in one
+  // step (undo Phase B — commandHistory is the only history stack).
   const handleParamCommit = useCallback(() => {
     const before = paramDragBeforeRef.current;
     paramDragBeforeRef.current = null;
@@ -3006,15 +3475,13 @@ export function ShapeGeneratorInner() {
         });
       }
     }
-    // Legacy snapshot — kept until all paths migrate.
-    history.push({ selectedId, params: { ...params }, featureIds: features.map(f => f.id) });
     if (paramDragTimerRef.current) { clearTimeout(paramDragTimerRef.current); paramDragTimerRef.current = null; }
     setParamDragging(false);
-  }, [history, selectedId, params, features, setParams, setParamExpressions]);
+  }, [params, setParams, setParamExpressions]);
 
   const handleShapeReset = useCallback(() => {
     // Phase 5: track shape resets in commandHistory so Ctrl+Z restores the
-    // user's prior parameters in one step. Legacy push retained as backup.
+    // user's prior parameters in one step.
     const prevParams = { ...params };
     const newP: Record<string, number> = {};
     const newE: Record<string, string> = {};
@@ -3034,7 +3501,6 @@ export function ShapeGeneratorInner() {
         setParamExpressions(e);
       },
     });
-    history.push({ selectedId, params: prevParams, featureIds: features.map(f => f.id) });
     clearAll();
     setSelectedFeatureId(null);
     // Reset formula values to defaults for new shape
@@ -3045,7 +3511,7 @@ export function ShapeGeneratorInner() {
     } else {
       setFormulaValues({});
     }
-  }, [shape, clearAll, history, selectedId, params, features]);
+  }, [shape, clearAll, selectedId, params]);
 
   // ── Formula values (for functionSurface / latheProfile etc.) ──────────────
   const [formulaValues, setFormulaValues] = React.useState<Record<string, string>>(() => {
@@ -3069,49 +3535,29 @@ export function ShapeGeneratorInner() {
     setFormulaValues(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  // Coordinated undo/redo across the two history stacks.
+  // Undo/redo — commandHistory is the SINGLE source of truth (undo Phase B).
   //
-  // We have two independent histories that both track edits:
-  //   - `commandHistory` (Command pattern, src/.../history/CommandHistory.ts):
-  //     used by mate-to-placement, the tracked param-change panel, etc.
-  //   - `history` (legacy useHistory hook): plain shape+params snapshots
-  //     pushed by direct setSelectedId/setParams paths.
+  // Phase A routed every user mutation (base params, feature add/remove/
+  // param/suppress, assembly mates, COTS inserts, drag gestures, shape
+  // switches) through commandHistory; Phase B retired the legacy useHistory
+  // snapshot stack ({selectedId, params, featureIds} — it could not restore
+  // feature params and duplicated every command-tracked mutation), so the
+  // drains below no longer need a fallback.
   //
-  // Ctrl+Z used to drain only the legacy stack, which silently swallowed
-  // commandHistory entries. We now drain whichever stack actually has work
-  // pending — preferring commandHistory (it has finer-grained undo for
-  // recent operations). When commandHistory is empty we fall back to the
-  // legacy snapshot stack so older operations are still reversible.
-  //
-  // Long-term: migrate all mutations onto commandHistory and remove the
-  // legacy snapshot stack (tracked as a follow-up; not in this audit).
+  // Sketch mode is the one deliberate exception: while a sketch session is
+  // active, Ctrl+Z is handled by the sketch editor's own session-scoped stack
+  // (see sketchUndoRef below) and these drains are not invoked.
   const handleHistoryUndo = useCallback(() => {
-    if (cmdHistory.canUndo) {
-      cmdHistory.undo();
-      return;
-    }
-    const snap = history.undo();
-    if (!snap) return;
-    setSelectedId(snap.selectedId);
-    applySceneParamsToSetters(SHAPE_MAP[snap.selectedId], snap.params, {
-      setParams,
-      setParamExpressions,
-    });
-  }, [history, cmdHistory, setParams, setParamExpressions]);
+    // Commit any still-settling feature-param edit FIRST so Ctrl+Z within the
+    // 500ms coalescing window undoes that edit (not the command before it).
+    featureParamCoalescer.flush();
+    cmdHistory.undo();
+  }, [cmdHistory, featureParamCoalescer]);
 
   const handleHistoryRedo = useCallback(() => {
-    if (cmdHistory.canRedo) {
-      cmdHistory.redo();
-      return;
-    }
-    const snap = history.redo();
-    if (!snap) return;
-    setSelectedId(snap.selectedId);
-    applySceneParamsToSetters(SHAPE_MAP[snap.selectedId], snap.params, {
-      setParams,
-      setParamExpressions,
-    });
-  }, [history, cmdHistory, setParams, setParamExpressions]);
+    featureParamCoalescer.flush();
+    cmdHistory.redo();
+  }, [cmdHistory, featureParamCoalescer]);
 
   // ─── Command-pattern wrappers (for tracked undo/redo via CommandHistory) ────
 
@@ -3133,35 +3579,8 @@ export function ShapeGeneratorInner() {
       } });
   }, [params, setParam, setParamExpression]);
 
-  const _handleShapeChangeCmd = useCallback((s: ShapeConfig) => {
-    const prevId = selectedId;
-    const prevParams = { ...params };
-    const id = `shape-${s.id}-${Date.now()}`;
-    const newP: Record<string, number> = {};
-    const newE: Record<string, string> = {};
-    s.params.forEach(sp => { newP[sp.key] = sp.default; newE[sp.key] = String(sp.default); });
-    commandHistory.execute({
-      id,
-      label: `Shape → ${s.id}`,
-      labelKo: `형상 변경 → ${s.id}`,
-      execute: () => {
-        history.push({ selectedId: prevId, params: prevParams, featureIds: features.map(f => f.id) });
-        setSelectedId(s.id);
-        setParams(newP);
-        setParamExpressions(newE);
-        clearAll();
-        setSelectedFeatureId(null);
-        setSketchResult(null);
-        setEditMode('none');
-      },
-      undo: () => {
-        setSelectedId(prevId);
-        setParams(prevParams);
-        const e: Record<string, string> = {};
-        Object.entries(prevParams).forEach(([k, v]) => { e[k] = String(v); });
-        setParamExpressions(e);
-      } });
-  }, [selectedId, params, features, history, clearAll]);
+  // (Phase B: the unused `_handleShapeChangeCmd` duplicate of handleSelectShape
+  // was deleted along with the legacy useHistory stack it pushed to.)
 
   // Tracked feature add — drops the legacy `_` prefix and is now wired into
   // every UI entry point that adds a feature (Round 26 Phase 2). Restoration
@@ -3192,6 +3611,7 @@ export function ShapeGeneratorInner() {
       'loft': 'loft',
       'hole': 'hole',
       'fillet': 'fillet',
+      'variableFillet': 'variableFillet',
       'chamfer': 'chamfer',
       'shell': 'shell',
       'draft': 'draft',
@@ -3324,6 +3744,15 @@ export function ShapeGeneratorInner() {
         setShowAssemblyPanel(true);
         return;
       }
+      // Sheet Metal ribbon "Flatten" — the sheet-metal-tool bridge below
+      // re-dispatches sm.flatten as this id, but the switch previously had no
+      // case for it (dead end). The flatten UI lives in SheetMetalPanel's
+      // Unfold tab (FlatPatternPanel with SVG/DXF export), so open that panel
+      // instead of silently dropping the event.
+      if (id === 'flat-pattern') {
+        setShowSheetMetalPanel(true);
+        return;
+      }
       // Drawing route output buttons — open the AutoDrawingPanel where the
       // PDF/DXF export buttons live. Direct one-click export would need a
       // pre-baked DrawingResult; opening the panel lets the user review the
@@ -3427,6 +3856,13 @@ export function ShapeGeneratorInner() {
         'mate.concentric': 'concentric',
         'mate.distance': 'distance',
         'mate.angle': 'angle',
+        // Phase 2 advanced mates (SolidWorks-parity roadmap)
+        'mate.hinge': 'hinge',
+        'mate.slider': 'slider',
+        'mate.gear': 'gear',
+        'mate.limitDistance': 'limitDistance',
+        'mate.limitAngle': 'limitAngle',
+        'mate.width': 'width',
       };
       if (MATE_TYPES[id]) {
         setShowAssemblyPanel(true);
@@ -3448,6 +3884,40 @@ export function ShapeGeneratorInner() {
         setShowAssemblyPanel(true);
         return;
       }
+      // Direct editing (Phase 1) — Delete Face / Offset Face operate on the
+      // face selection captured BEFORE the tool is pressed (same flow as the
+      // fillet/shell selection capture). Without a face selected the click
+      // explains itself instead of dead-ending.
+      if (id === 'direct.delete-face' || id === 'direct.offset-face') {
+        const dd = t as unknown as Record<string, string>;
+        const el = useSelectionStore.getState().selectedElement;
+        let faceSel: FaceSelectionInfo[] | undefined;
+        if (el && el.type === 'face') {
+          faceSel = [el as FaceSelectionInfo];
+        } else if (el && el.type === 'multi') {
+          const faces = (el as import('./editing/selectionInfo').MultiSelectionInfo).faces;
+          if (faces && faces.length > 0) faceSel = faces;
+        }
+        if (!faceSel) {
+          addToast('info', dd.directEditSelectFaceFirst
+            ?? 'Select a face first — click the boss/pocket/hole face(s), then press again.');
+          return;
+        }
+        const featType: FeatureType = id === 'direct.delete-face' ? 'deleteFace' : 'offsetFace';
+        // Offset Face moves ONE planar face; Delete Face takes the whole set.
+        const frozen = featType === 'offsetFace' ? [faceSel[0]!] : faceSel;
+        commandHistory.execute({
+          id: `add-feature-${featType}-${Date.now()}`,
+          label: `Add feature: ${featType}`,
+          labelKo: `피처 추가: ${featType}`,
+          execute: () => { addFeatureWithEdges(featType, undefined, frozen); },
+          undo: () => { undoLast(); },
+        });
+        addToast('info', featType === 'deleteFace'
+          ? (dd.directDeleteFaceAdded ?? 'Delete Face added — removes the selected face set and heals with planar caps')
+          : (dd.directOffsetFaceAdded ?? 'Offset Face added — adjust the distance (±) in feature parameters'));
+        return;
+      }
       const ft = FEATURE_TYPES[id];
       if (ft) {
         handleAddFeatureCmd(ft);
@@ -3462,7 +3932,7 @@ export function ShapeGeneratorInner() {
     };
     window.addEventListener('nexyfab:tool', onTool);
     return () => window.removeEventListener('nexyfab:tool', onTool);
-  }, [handleAddFeatureCmd, setIsSketchMode, setSketchTool, setMeasureActive, setSectionActive, setShowMassProps, setShowCenterOfMass, setShowAssemblyPanel, openAIAssistant]);
+  }, [handleAddFeatureCmd, setIsSketchMode, setSketchTool, setMeasureActive, setSectionActive, setShowMassProps, setShowCenterOfMass, setShowAssemblyPanel, setShowSheetMetalPanel, openAIAssistant, addFeatureWithEdges, undoLast, addToast, t]);
 
   // F7 — DRC rule set state. Loaded from .drc.json or built inline.
 
@@ -3475,6 +3945,7 @@ export function ShapeGeneratorInner() {
   const bridgeCloud = useShellBridge(s => s.setCloud);
   const bridgeFeatureItems = useShellBridge(s => s.setFeatureItems);
   const bridgeAssemblyItems = useShellBridge(s => s.setAssemblyItems);
+  const bridgeAssemblyMates = useShellBridge(s => s.setAssemblyMates);
 
   useEffect(() => {
     const editMode: 'modeling' | 'sketch' | 'assembly' = isSketchMode
@@ -3512,6 +3983,7 @@ export function ShapeGeneratorInner() {
   // entities/constraints/dimensions/solveMs for the engineer-mode readout.
   const bridgeSketchSolver = useShellBridge(s => s.setSketchSolver);
   const bridgeSketchSnapshot = useShellBridge(s => s.setSketchSnapshot);
+  const bridgeSketchSelectedEntity = useShellBridge(s => s.setSketchSelectedEntity);
   useEffect(() => {
     if (!isSketchMode) {
       bridgeSketchSolver({
@@ -3521,22 +3993,31 @@ export function ShapeGeneratorInner() {
         sketchConstraints: 0,
         sketchDimensions: 0,
         sketchSolveMs: null,
+        sketchStatus: null,
+        sketchRedundantCount: 0,
       });
       bridgeSketchSnapshot({ entities: [], constraints: [], dimensions: [] });
+      bridgeSketchSelectedEntity(null);
       return;
     }
-    const ok = constraintStatus === 'ok';
-    const dof = constraintDiagnostic?.dof ?? null;
+    // Empty sketch → no status (honest "nothing to constrain" instead of a
+    // fake "Fully constrained · DOF 0" green pill on entry).
+    const hasContent = (sketchProfile?.segments?.length ?? 0) > 0;
+    const ok = hasContent ? constraintStatus === 'ok' : null;
+    const dof = hasContent ? constraintDiagnostic?.dof ?? null : null;
     bridgeSketchSolver({
       sketchSolverOk: ok,
       sketchDof: dof,
       sketchEntities: sketchProfile?.segments?.length ?? 0,
       sketchConstraints: sketchConstraints?.length ?? 0,
       sketchDimensions: sketchDimensions?.length ?? 0,
-      sketchSolveMs: typeof constraintDiagnostic?.residual === 'number' ? constraintDiagnostic.residual : null,
+      sketchSolveMs: hasContent && typeof constraintDiagnostic?.solveMs === 'number' ? constraintDiagnostic.solveMs : null,
+      sketchStatus: hasContent ? constraintStatus : null,
+      sketchRedundantCount: constraintDiagnostic?.redundant?.length ?? 0,
     });
     // Publish real sketch entity / constraint / dimension lists so the
     // SketchLeftPane renders actual content instead of mockup placeholders.
+    const unsatisfiedIds = new Set(constraintDiagnostic?.unsatisfiedIds ?? []);
     bridgeSketchSnapshot({
       entities: (sketchProfile?.segments ?? []).map((seg, i) => ({
         id: seg.id ?? `seg${i}`,
@@ -3544,11 +4025,14 @@ export function ShapeGeneratorInner() {
         label: `${seg.type[0].toUpperCase()}${seg.type.slice(1)} ${i + 1}`,
         meta: seg.construction ? 'construction' : `${seg.points.length} pts`,
         construction: seg.construction === true,
+        pointIds: seg.points.map(p => p.id).filter((id): id is string => !!id),
       })),
       constraints: (sketchConstraints ?? []).map((c, i) => ({
         id: (c as { id?: string }).id ?? `c${i}`,
         type: (c as { type?: string }).type ?? 'unknown',
         label: (c as { type?: string }).type ?? undefined,
+        entityIds: (c as { entityIds?: string[] }).entityIds ?? [],
+        satisfied: !unsatisfiedIds.has((c as { id?: string }).id ?? `c${i}`),
       })),
       dimensions: (() => {
         const dims = (sketchDimensions ?? []) as Array<{ id?: string; name?: string; value?: number; unit?: string; expression?: string; type?: string; entityIds?: string[]; position?: { x: number; y: number }; locked?: boolean }>;
@@ -3574,6 +4058,7 @@ export function ShapeGeneratorInner() {
             unit: d.unit ?? 'mm',
             expression: d.expression,
             expressionError: errors.get(id),
+            entityIds: d.entityIds ?? [],
           };
         });
       })(),
@@ -3582,12 +4067,15 @@ export function ShapeGeneratorInner() {
     isSketchMode,
     constraintStatus,
     constraintDiagnostic?.dof,
-    constraintDiagnostic?.residual,
+    constraintDiagnostic?.solveMs,
+    constraintDiagnostic?.redundant,
+    constraintDiagnostic?.unsatisfiedIds,
     sketchProfile,
     sketchConstraints,
     sketchDimensions,
     bridgeSketchSolver,
     bridgeSketchSnapshot,
+    bridgeSketchSelectedEntity,
   ]);
 
   // Selection bridge — drives Shell's floating "{feature} · {n} edges" bubble.
@@ -3606,6 +4094,23 @@ export function ShapeGeneratorInner() {
     bridgeSelection({ selectionKind: kind, selectionLabel: label, selectionCount: count });
   }, [selectedElement, selectedFeatureId, selectedId, bridgeSelection]);
 
+  // Selection bubble Edit / Suppress buttons: SelectionBubble dispatches these
+  // global events but nothing listened, so the buttons did nothing. Route them
+  // to the exact same guarded handlers the context-menu 'edit-feature' /
+  // 'suppress' commands use — acting on the displayed feature (the bubble's
+  // label IS selectedFeatureId above), and safely no-op when none is selected.
+  // (2026-06-13 dead-wiring fix)
+  useEffect(() => {
+    const onEdit = () => { if (selectedFeatureId) startEditing(selectedFeatureId); };
+    const onSuppress = () => { if (selectedFeatureId) toggleFeatureCmd(selectedFeatureId); };
+    window.addEventListener('nexyfab:selection-edit', onEdit);
+    window.addEventListener('nexyfab:selection-suppress', onSuppress);
+    return () => {
+      window.removeEventListener('nexyfab:selection-edit', onEdit);
+      window.removeEventListener('nexyfab:selection-suppress', onSuppress);
+    };
+  }, [selectedFeatureId, startEditing, toggleFeatureCmd]);
+
   // Note: feature stats bridge writer is declared below after effectiveResult is in scope.
   const [drcRuleSet, setDrcRuleSet] = useState<import('./analysis/drcEngine').DrcRuleSet | null>(null);
 
@@ -3622,37 +4127,32 @@ export function ShapeGeneratorInner() {
    * gates this with a confirm modal when impact analysis flags major impact.
    */
   const performRemoveFeature = useCallback((featureId: string) => {
-    // Capture the node before removal so undo can restore it
-    const snapshot = featureHistory?.nodes.find(n => n.id === featureId);
-    const id = `remove-feature-${featureId}-${Date.now()}`;
+    // Phase A fix: capture the FULL pre-removal tree (rootId/activeNodeId and
+    // every node incl. sketchData / edgeSelections / faceSelections / original
+    // position). removeNode also deletes descendants, and the old undo
+    // re-added a bare feature at the END of the tree with numeric params only.
+    // Restoring via replaceHistory puts everything back exactly where it was;
+    // redo still works because replaceHistory preserves node ids.
+    const snapshot = snapshotFeatureTree(
+      getOrderedNodes(),
+      featureHistory.rootId,
+      featureHistory.activeNodeId,
+    );
     // F4: emit macro action up-front so even a destructive sequence is
     // replayable. Removal undo is handled separately by commandHistory.
     globalMacroRecorder.record({ kind: 'remove-feature', featureId });
-    commandHistory.execute({
-      id,
-      label: `Remove feature`,
-      labelKo: `피처 제거`,
-      execute: () => { removeFeature(featureId); },
-      undo: () => {
-        if (!snapshot || !snapshot.featureType) {
-          addToast('warning', lt.featureCannotRestore);
-          return;
-        }
-        // Re-add the feature with its original params
-        addFeature(snapshot.featureType);
-        // Restore params after a tick so the new node is in the tree
-        setTimeout(() => {
-          const nodes = getOrderedNodes();
-          const restored = nodes[nodes.length - 1];
-          if (restored) {
-            Object.entries(snapshot.params).forEach(([key, val]) => {
-              updateFeatureParam(restored.id, key, val);
-            });
-          }
-        }, 0);
-        addToast('success', lt.featureRestored);
-      } });
-  }, [removeFeature, featureHistory, addFeature, updateFeatureParam, getOrderedNodes, addToast, lt]);
+    commandHistory.execute(makeRemoveFeatureCommand({
+      commandId: `remove-feature-${featureId}-${Date.now()}`,
+      label: 'Remove feature',
+      labelKo: '피처 제거',
+      featureId,
+      snapshot,
+      removeFeature,
+      replaceHistory,
+      onRestored: () => addToast('success', lt.featureRestored),
+      onRestoreFailed: () => addToast('warning', lt.featureCannotRestore),
+    }));
+  }, [removeFeature, featureHistory, replaceHistory, getOrderedNodes, addToast, lt]);
 
   // F6 — public wrapper. Runs analyzeChangeImpact and gates `major` impact
   // through a confirm modal so the user sees the cascade (broken
@@ -3837,6 +4337,12 @@ export function ShapeGeneratorInner() {
         muted: f.enabled === false,
         meta: undefined,
         params: { ...f.params },
+        // Real click-time edge selections (fillet/chamfer/shell) so the
+        // Inspector EDGES section lists actual edges, not placeholders.
+        edges: (f.edgeSelections ?? []).map((sel, i) => ({
+          id: sel.persistentId ?? `edge-${i + 1}`,
+          meta: Number.isFinite(sel.length) ? `L ${sel.length.toFixed(1)} mm` : undefined,
+        })),
       })),
       selectedId ?? null,
     );
@@ -3855,7 +4361,21 @@ export function ShapeGeneratorInner() {
       })),
       selectedId ?? null,
     );
-  }, [features, effectiveResult, selectedId, bridgeStats, bridgeFeatureItems, bridgeAssemblyItems, bomParts, cloudProjectId]);
+    // Publish REAL mates so the assembly sidebars list actual constraints
+    // instead of a placeholder. Resolve partA/partB ids → display labels via
+    // placedParts (id→name). (2026-06-09 follow-up #4)
+    const partLabel = new Map(placedParts.map(p => [p.id, p.name]));
+    bridgeAssemblyMates(
+      assemblyMates.map(m => ({
+        id: m.id,
+        type: m.type,
+        partA: partLabel.get(m.partA) ?? m.partA,
+        partB: partLabel.get(m.partB) ?? m.partB,
+        value: m.value,
+        locked: m.locked,
+      })),
+    );
+  }, [features, effectiveResult, selectedId, bridgeStats, bridgeFeatureItems, bridgeAssemblyItems, bridgeAssemblyMates, bomParts, placedParts, assemblyMates, cloudProjectId]);
 
   // Shell-v2 Inspector → Inner bridge for parameter edits. Listener decoupled
   // from the visual chrome so the new sidebar can edit live params without
@@ -3865,12 +4385,38 @@ export function ShapeGeneratorInner() {
       const ce = e as CustomEvent<{ id: string; key: string; value: number }>;
       const { id, key, value } = ce.detail ?? {};
       if (id && typeof key === 'string' && Number.isFinite(value)) {
-        updateFeatureParam(id, key, value);
+        updateFeatureParamCmd(id, key, value);
       }
     };
     window.addEventListener('nexyfab:update-feature-param', onUpdate);
     return () => window.removeEventListener('nexyfab:update-feature-param', onUpdate);
-  }, [updateFeatureParam]);
+  }, [updateFeatureParamCmd]);
+
+  // Shell-v2 Inspector EDGES section → remove one edge selection from a
+  // fillet/chamfer/shell feature. Undoable via commandHistory. Refuses to
+  // remove the LAST edge — an empty edgeSelections silently flips the
+  // feature back to legacy all-edges behaviour, which would be surprising.
+  useEffect(() => {
+    const onRemoveEdge = (e: Event) => {
+      const ce = e as CustomEvent<{ featureId: string; edgeIndex: number }>;
+      const { featureId, edgeIndex } = ce.detail ?? {};
+      if (!featureId || !Number.isInteger(edgeIndex)) return;
+      const node = getOrderedNodesRef.current().find(n => n.id === featureId);
+      const before = node?.edgeSelections;
+      if (!node || !before || before.length <= 1) return;
+      if (edgeIndex < 0 || edgeIndex >= before.length) return;
+      const after = before.filter((_, i) => i !== edgeIndex);
+      commandHistory.execute({
+        id: `remove-feature-edge-${featureId}-${Date.now()}`,
+        label: 'Remove edge from feature',
+        labelKo: '피처 엣지 제거',
+        execute: () => updateNode(featureId, { edgeSelections: after, error: undefined }),
+        undo: () => updateNode(featureId, { edgeSelections: before, error: undefined }),
+      });
+    };
+    window.addEventListener('nexyfab:remove-feature-edge', onRemoveEdge);
+    return () => window.removeEventListener('nexyfab:remove-feature-edge', onRemoveEdge);
+  }, [updateNode]);
 
   // Shell-v2 Sketch dimension inline edit → patch sketchDimensions by id.
   // SketchLeftPane's DimensionEditableRow dispatches this event on commit.
@@ -3971,11 +4517,13 @@ export function ShapeGeneratorInner() {
       const ce = e as CustomEvent<{ featureId?: string; key?: string; value?: number }>;
       const { featureId, key, value } = ce.detail ?? {};
       if (!featureId || !key || typeof value !== 'number') return;
-      updateFeatureParam(featureId, key, value);
+      // Tracked + coalesced: a push/pull drag emits many events for the same
+      // (featureId, key) → ONE undo step on settle.
+      updateFeatureParamCmd(featureId, key, value);
     };
     window.addEventListener('nexyfab:update-feature-param', onUpdate);
     return () => window.removeEventListener('nexyfab:update-feature-param', onUpdate);
-  }, [updateFeatureParam]);
+  }, [updateFeatureParamCmd]);
 
   // Shell-v2 Components → Standard parts materialization. The grid emits a
   // resolved SCAD source; we POST it to /api/nexyfab/openscad-render to get
@@ -4015,10 +4563,6 @@ export function ShapeGeneratorInner() {
           rotation: [0, 0, 0],
           color: '#8aa2c2',
         };
-        // Attach geometry via the BomPart sync (placedPart → bomPart mapper).
-        // Cleanest path is to extend placedPartsToBomResults; for v1 we push
-        // an inline bomPart entry with the parsed geometry.
-        setPlacedParts([...placedParts, newPart]);
         // Build minimal ShapeResult — edgeGeometry stays as an empty
         // BufferGeometry; downstream rendering uses real edges via
         // computeVertexNormals on the parsed STL.
@@ -4034,7 +4578,22 @@ export function ShapeGeneratorInner() {
           volume_cm3: 0,
           surface_area_cm2: 0,
         };
-        setBomParts(prev => [...prev, { name: newPart.name, result, position: newPart.position, rotation: newPart.rotation, color: newPart.color }]);
+        // Attach geometry via the BomPart sync (placedPart → bomPart mapper).
+        // Cleanest path is to extend placedPartsToBomResults; for v1 we push
+        // an inline bomPart entry with the parsed geometry.
+        const bomEntry = { name: newPart.name, result, position: newPart.position, rotation: newPart.rotation, color: newPart.color };
+        // Phase A undo unification: COTS insert (placedPart + bom entry) is
+        // ONE tracked undo step. bomParts is a plain useState array whose
+        // entries lack ids, so the command matches the entry by reference.
+        commandHistory.execute(makeInsertStandardPartCommand({
+          commandId: `insert-standard-part-${newPart.id}`,
+          label: `Insert ${ce.detail.title}`,
+          labelKo: `${ce.detail.title} 삽입`,
+          part: newPart,
+          setParts: setPlacedParts,
+          bomEntry,
+          setBom: setBomParts,
+        }));
         addToast('success', `${ce.detail.title} 어셈블리에 추가됨`);
       } catch (err) {
         console.error('Standard part materialize failed', err);
@@ -4063,9 +4622,35 @@ export function ShapeGeneratorInner() {
           addFeatureWithParams('bend', { ...baseParams, angle: 90, radius: 1.5, position: 0.5, direction: 0 });
           addToast('info', 'Bend 추가됨');
           break;
+        // Tab — flat rectangular protrusion grown from a sheet edge
+        // (undoable through the command-history wrapper, then tunable in
+        // FeatureParams like every other feature).
+        case 'sm.tab':
+          addFeatureWithParamsAndContext('tab', { width: 20, length: 10, position: 50, edgeIndex: 0 });
+          addToast('info', 'Tab 추가됨 — 피처 파라미터에서 폭/길이/위치 조정');
+          break;
+        // Hem — the hem feature has existed in the registry; this finally
+        // routes the ribbon button to it (closed hem on the +Z edge by
+        // default; type/length/edge editable in FeatureParams).
+        case 'sm.hem':
+          addFeatureWithParamsAndContext('hem', { hemType: 0, length: 6, edgeIndex: 0 });
+          addToast('info', 'Hem 추가됨 — 피처 파라미터에서 종류/길이 조정');
+          break;
+        // Bend relief — notch pair at both ends of the bend line. Add it
+        // BEFORE the bend at the same position % so the notches line up.
+        case 'sm.bend-relief':
+          addFeatureWithParamsAndContext('bendRelief', { width: 3, depth: 5, position: 50, shape: 0 });
+          addToast('info', 'Bend relief 추가됨 — 굽힘과 같은 위치%로 정렬하세요');
+          break;
+        // Corner relief — circular cut centered on a sheet corner where
+        // two flange bend lines meet.
+        case 'sm.corner-relief':
+          addFeatureWithParamsAndContext('cornerRelief', { corner: 0, shape: 0, size: 4, inset: 0 });
+          addToast('info', 'Corner relief 추가됨 — 코너/크기 조정 가능');
+          break;
         case 'sm.flatten':
-          // FlatPatternPanel is already mounted via the Inspector flow.
-          // Dispatch the existing tool route so it opens consistently.
+          // Route through the nexyfab:tool 'flat-pattern' case, which opens
+          // SheetMetalPanel (its Unfold tab hosts FlatPatternPanel).
           window.dispatchEvent(new CustomEvent('nexyfab:tool', { detail: { id: 'flat-pattern' } }));
           addToast('info', 'Flat pattern 열기');
           break;
@@ -4078,7 +4663,7 @@ export function ShapeGeneratorInner() {
     };
     window.addEventListener('nexyfab:sheet-metal-tool', onSheetMetalTool);
     return () => window.removeEventListener('nexyfab:sheet-metal-tool', onSheetMetalTool);
-  }, [addFeatureWithParams, addToast]);
+  }, [addFeatureWithParams, addFeatureWithParamsAndContext, addToast]);
 
   // Shell-v2 Assembly mate hookup → run v3 solver on every mate change.
   // Builds a v3 Mate spec from each AssemblyMate, seeds the current placed
@@ -4129,7 +4714,9 @@ export function ShapeGeneratorInner() {
       | { kind: 'coincident'; a: { partId: string; position: [number, number, number] }; b: { partId: string; position: [number, number, number] } }
       | { kind: 'distance'; a: { partId: string; position: [number, number, number] }; b: { partId: string; position: [number, number, number] }; distMm: number }
       | { kind: 'parallel'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] } }
-      | { kind: 'angle'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; deg: number };
+      | { kind: 'angle'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; deg: number }
+      | { kind: 'limitDistance'; a: { partId: string; position: [number, number, number] }; b: { partId: string; position: [number, number, number] }; minMm: number; maxMm: number }
+      | { kind: 'limitAngle'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; minDeg: number; maxDeg: number };
     const mates: V3Mate[] = [];
     for (const m of assemblyMates) {
       if (!partIds.includes(m.partA) || !partIds.includes(m.partB)) continue;
@@ -4149,6 +4736,18 @@ export function ShapeGeneratorInner() {
         case 'angle':
           mates.push({ kind: 'angle', a: { partId: m.partA, origin: [0, 0, 0], direction: [0, 0, 1] }, b: { partId: m.partB, origin: [0, 0, 0], direction: [0, 0, 1] }, deg: m.value ?? 0 });
           break;
+        case 'limitDistance':
+          mates.push({ kind: 'limitDistance', a: { partId: m.partA, position: [0, 0, 0] }, b: { partId: m.partB, position: [0, 0, 0] }, minMm: m.min ?? 0, maxMm: m.max ?? m.min ?? 0 });
+          break;
+        case 'limitAngle':
+          mates.push({ kind: 'limitAngle', a: { partId: m.partA, origin: [0, 0, 0], direction: [0, 0, 1] }, b: { partId: m.partB, origin: [0, 0, 0], direction: [0, 0, 1] }, minDeg: m.min ?? 0, maxDeg: m.max ?? m.min ?? 0 });
+          break;
+        // `gear` is a motion coupling (ratio between two revolute axes) —
+        // it has no static-placement meaning, so the reactive re-solve skips
+        // it; the kinematic drag loop (`kinematicDragSolve`) honors it.
+        // `width` needs the two reference-face planes which this synthetic
+        // origin-axis path doesn't carry; it solves through the geometry
+        // path (`applyGeometryMatesToPlaced` / Solver tab) instead.
         default:
           break;
       }
@@ -4427,6 +5026,13 @@ export function ShapeGeneratorInner() {
     () => dfmResults ? dfmResults.reduce((n, r) => n + r.issues.filter(i => i.severity !== 'info').length, 0) : 0,
     [dfmResults],
   );
+
+  // Shell-v2 bridge: publish the REAL DFM warning count so the Inspector
+  // ANALYZE row shows actual numbers (null until the first analysis lands).
+  const bridgeDfmWarningCount = useShellBridge(s => s.setDfmWarningCount);
+  useEffect(() => {
+    bridgeDfmWarningCount(dfmResults !== null ? dfmIssueCount : null);
+  }, [dfmResults, dfmIssueCount, bridgeDfmWarningCount]);
 
   // ── REST-based DFM warnings (debounced 800ms, supplements worker-based analysis) ──
   // Used on free plan (worker DFM disabled) or before worker completes its first run.
@@ -4812,7 +5418,25 @@ export function ShapeGeneratorInner() {
     prevIsSketchModeRef.current = isSketchMode;
   }, [isSketchMode]);
 
-  // ── Sketch undo/redo stack (unlimited, covers profiles + constraints + dimensions) ──
+  // ── Sketch undo/redo stack (session-scoped; covers profiles + constraints + dimensions) ──
+  //
+  // Undo Phase B note: this stack is deliberately KEPT separate from
+  // commandHistory. Sketch mode is a modal editing session — Ctrl+Z inside it
+  // is routed to handleSketchUndo by the sketch editor / useKeyboardShortcuts
+  // (never to the global commandHistory drain). Unifying onto commandHistory
+  // would break two invariants:
+  //   1. Scope: once the in-session entries were exhausted, a unified Ctrl+Z
+  //      would walk past the sketch-entry boundary and undo pre-sketch
+  //      modeling commands while the sketch UI is still open (mode/state
+  //      corruption — e.g. undoing a shape switch under an open sketch).
+  //   2. Granularity: in-sketch micro-edits (per-segment draws, drag-solve
+  //      gestures via onPointDragStart — one snapshot per gesture) would
+  //      flood the document history shown in HistoryPanel.
+  // This stack dies with the session and never duplicated the legacy
+  // useHistory stack, so retiring that stack does not affect it. (The
+  // session's exit paths — setSketchResult / addSketchFeature — are
+  // document-level mutations that remain untracked today; making "finish
+  // sketch" a single commandHistory step is a separate follow-up.)
   type SketchSnapshot = {
     profiles: SketchProfile[];
     constraints: SketchConstraint[];
@@ -4957,7 +5581,9 @@ export function ShapeGeneratorInner() {
         else if (code === 'large_constraint_set' && !suppressPerf) addToast('warning', lt.sketchPreflightLargeConstraintSet);
       }
     }
+    const solveT0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const result = solveConstraints(activeProfile.segments, sketchConstraints, sketchDimensions);
+    const solveMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - solveT0;
     // Apply solved point positions back into segments
     const solvedSegments = activeProfile.segments.map(seg => ({
       ...seg,
@@ -4981,7 +5607,9 @@ export function ShapeGeneratorInner() {
       residual: result.solveResult?.residual,
       message: result.solveResult?.message,
       unsatisfiedCount: result.unsatisfiedConstraints.length,
+      unsatisfiedIds: result.unsatisfiedConstraints,
       redundant: result.solveResult?.redundant,
+      solveMs,
       onRemoveRedundant: (id: string) => {
         setSketchConstraints(prev => prev.filter(c => c.id !== id));
       } });
@@ -5024,6 +5652,68 @@ export function ShapeGeneratorInner() {
     }, 150);
     return () => clearTimeout(timer);
   }, [autoSolve, sketchConstraints.length, sketchProfileHash]);
+
+  // Live constraint diagnostics (SolidWorks-style) — when auto-solve is OFF
+  // the solver previously never ran, so the DOF pill / status chip showed a
+  // stale default-green state. Run a READ-ONLY diagnostic solve (geometry is
+  // never moved) debounced 250 ms so the chrome always reflects reality.
+  // Also covers auto-solve ON with zero constraints (auto-solve effects bail
+  // there, which would leave the status stale).
+  React.useEffect(() => {
+    if (!isSketchMode || (autoSolve && sketchConstraints.length > 0)) return;
+    const segments = (sketchProfiles[activeProfileIdx] ?? sketchProfile).segments;
+    if (segments.length === 0) {
+      // Empty sketch → clear diagnostics so the chrome shows no status.
+      setConstraintStatus('ok');
+      setConstraintDiagnostic({});
+      return;
+    }
+    const timer = setTimeout(() => {
+      const live = computeSketchLiveStatus(segments, sketchConstraints, sketchDimensions);
+      if (live.status === null) return;
+      setConstraintStatus(live.status);
+      setConstraintDiagnostic({
+        dof: live.dof ?? undefined,
+        message: live.message,
+        unsatisfiedCount: live.unsatisfiedIds.length,
+        unsatisfiedIds: live.unsatisfiedIds,
+        redundant: live.redundantIds.length > 0 ? live.redundantIds : undefined,
+        solveMs: live.solveMs ?? undefined,
+        onRemoveRedundant: (id: string) => {
+          setSketchConstraints(prev => prev.filter(c => c.id !== id));
+        },
+      });
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [isSketchMode, autoSolve, sketchProfiles, activeProfileIdx, sketchProfile, sketchProfileHash, sketchConstraints, sketchDimHash, sketchDimensions]);
+
+  // Shell-v2 SketchRightPane actions — delete a constraint from the
+  // "Constraints on Selection" rows, toggle construction geometry from the
+  // "Active Selection" checkbox. Ids match the bridge snapshot writer
+  // (segment.id ?? `seg${i}`, constraint.id ?? `c${i}`).
+  useEffect(() => {
+    const onDeleteConstraint = (e: Event) => {
+      const ce = e as CustomEvent<{ id: string }>;
+      if (ce.detail?.id) handleRemoveConstraint(ce.detail.id);
+    };
+    const onToggleConstruction = (e: Event) => {
+      const ce = e as CustomEvent<{ id: string }>;
+      const id = ce.detail?.id;
+      if (!id) return;
+      const profile = useSceneStore.getState().sketchProfile;
+      const segments = profile.segments.map((s, i) =>
+        (s.id ?? `seg${i}`) === id ? { ...s, construction: !s.construction } : s);
+      const next = { ...profile, segments };
+      setSketchProfile(next);
+      setSketchProfiles(prev => prev.map((x, i) => i === activeProfileIdx ? next : x));
+    };
+    window.addEventListener('nexyfab:delete-sketch-constraint', onDeleteConstraint);
+    window.addEventListener('nexyfab:toggle-sketch-construction', onToggleConstruction);
+    return () => {
+      window.removeEventListener('nexyfab:delete-sketch-constraint', onDeleteConstraint);
+      window.removeEventListener('nexyfab:toggle-sketch-construction', onToggleConstruction);
+    };
+  }, [handleRemoveConstraint, setSketchProfile, setSketchProfiles, activeProfileIdx]);
 
   // ── Add sketch as feature-tree item ──
   const handleAddSketchToFeatureTree = useCallback(() => {
@@ -5275,8 +5965,7 @@ export function ShapeGeneratorInner() {
         for (let i = 0; i < featuresAddedRef; i++) undoLast();
       },
     });
-    history.push({ selectedId, params: prevParams, featureIds: features.map(f => f.id) });
-  }, [addFeature, history, selectedId, params, features, setParam, setParams, setParamExpressions, undoLast]);
+  }, [addFeature, params, setParam, setParams, setParamExpressions, undoLast]);
 
   /** Called after modify is auto-applied — show undo toast */
   const handleModifyAutoApplied = useCallback((actionCount: number) => {
@@ -5583,13 +6272,12 @@ export function ShapeGeneratorInner() {
         setParamExpressions(e);
       },
     });
-    history.push({ selectedId: prevSelectedId, params: prevParams, featureIds: features.map(f => f.id) });
     clearAll();
     setSelectedFeatureId(null);
     setSketchResult(null);
     setEditMode('none');
     addToast('success', lt.shapeFromText(sc.id));
-  }, [selectedId, params, features, history, setSelectedId, setParams, setParamExpressions, clearAll, setSelectedFeatureId, setSketchResult, setEditMode, addToast, lt]);
+  }, [selectedId, params, setSelectedId, setParams, setParamExpressions, clearAll, setSelectedFeatureId, setSketchResult, setEditMode, addToast, lt]);
 
   // ══════════════════════════════════════════════════════════════════════════
   // CONTEXT MENU HANDLERS
@@ -5608,10 +6296,29 @@ export function ShapeGeneratorInner() {
       closeContextMenu();
       return;
     }
-    const geomOpts = { hasAssembly: bomParts.length >= 2, hasHighlightedPart: !!highlightedPartId };
+    // selectedType threads the cursor-time selection into geometry items so
+    // face/edge/vertex right-clicks surface element-specific ops (offset,
+    // fillet, chamfer, mate…) at the top of the menu. Without this the
+    // selection-aware branch in getContextItemsGeometry was dead code.
+    // `selectedElement.type` is currently 'face' | 'edge' | 'multi' in the
+    // union, but the canvas (VertexHandles / smartSnap) already produces
+    // vertex selections that future widening will surface here. Read via
+    // a string to stay forward-compatible without breaking strict typing.
+    const selType = selectedElement?.type as string | undefined;
+    const selKind: 'face' | 'edge' | 'vertex' | 'body' | null =
+      selType === 'face' ? 'face'
+      : selType === 'edge' ? 'edge'
+      : selType === 'vertex' ? 'vertex'
+      : highlightedPartId ? 'body'
+      : null;
+    const geomOpts = {
+      hasAssembly: bomParts.length >= 2,
+      hasHighlightedPart: !!highlightedPartId,
+      selectedType: selKind,
+    };
     const items = isSketchMode ? getContextItemsSketch(lang) : effectiveResult ? getContextItemsGeometry(lang, geomOpts) : getContextItemsEmpty(lang);
     openContextMenu(e.clientX, e.clientY, items);
-  }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length, highlightedPartId, openContextMenu, closeContextMenu, openSketchRadial]);
+  }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length, highlightedPartId, selectedElement, openContextMenu, closeContextMenu, openSketchRadial]);
 
   const handleContextSelect = useCallback((id: string) => {
     closeContextMenu();
@@ -5700,13 +6407,86 @@ export function ShapeGeneratorInner() {
       case 'sketch-toggle-slice': setSketchPalSlice(v => !v); break;
       case 'measure': toggleMeasureMode(); break;
       case 'delete': if (selectedFeatureId) handleRemoveFeatureCmd(selectedFeatureId); break;
-      case 'suppress': if (selectedFeatureId) toggleFeature(selectedFeatureId); break;
+      case 'suppress': if (selectedFeatureId) toggleFeatureCmd(selectedFeatureId); break;
       case 'add-dimension': setShowDimensions(true); setSketchPalDims(true); break;
       case 'properties': if (selectedFeatureId) setShowPropertyManager(true); break;
       case 'add-to-cart': handleAddToCart(); break;
       case 'sketch-undo': handleSketchUndo(); break;
       case 'sketch-clear': handleSketchClear(); break;
       case 'edit-feature': if (selectedFeatureId) startEditing(selectedFeatureId); break;
+      // ── selection-aware right-click items (face/edge/vertex) ─────────
+      // The deterministic numeric panels (FaceContextPanel / EdgeContextPanel)
+      // auto-mount in face/edge edit mode whenever a selection exists, so the
+      // user can drive precise values there. These menu entries are the
+      // discoverable AI-hint shortcut alongside that panel — clicking them
+      // primes the AI chat with the same intent.
+      case 'face-offset': {
+        // Direct edit (Phase 1): with a face selected, add the REAL offsetFace
+        // feature (undoable, tunable in FeatureParams). The AI-hint fallback
+        // only remains for the no-selection edge case.
+        if (selectedElement && selectedElement.type === 'face') {
+          const frozen = [selectedElement as FaceSelectionInfo];
+          commandHistory.execute({
+            id: `add-feature-offsetFace-${Date.now()}`,
+            label: 'Add feature: offsetFace',
+            labelKo: '피처 추가: offsetFace',
+            execute: () => { addFeatureWithEdges('offsetFace', undefined, frozen); },
+            undo: () => { undoLast(); },
+          });
+          const dd = t as unknown as Record<string, string>;
+          addToast('info', dd.directOffsetFaceAdded ?? 'Offset Face added — adjust the distance (±) in feature parameters');
+        } else {
+          setPendingChatMsg(`Offset the selected face by 2mm`);
+          openAIAssistant('chat');
+        }
+        break;
+      }
+      case 'face-shell': {
+        setPendingChatMsg(`Shell this body with 2mm wall thickness, opening on the selected face`);
+        openAIAssistant('chat');
+        break;
+      }
+      case 'face-pushpull': {
+        setPendingChatMsg(`Push/pull the selected face by 10mm along its normal`);
+        openAIAssistant('chat');
+        break;
+      }
+      case 'face-sketch-from': {
+        setPendingChatMsg(`Start a sketch on the selected face`);
+        openAIAssistant('chat');
+        break;
+      }
+      case 'face-create-mate': {
+        // Same flow SelectionInfoBadge uses for "Create Mate": arm the first
+        // face, then the next face-pick on a different part triggers the
+        // MatePickerOverlay (`pendingMate` in selection store).
+        if (selectedElement && selectedElement.type === 'face') {
+          setMateFaceA(selectedElement as FaceSelectionInfo);
+          addToast(
+            'info',
+            (lt as { mateSelectSecondFace?: string }).mateSelectSecondFace
+              ?? 'Pick a second face on a different part to mate to. (Esc cancels)',
+          );
+        }
+        break;
+      }
+      case 'edge-chamfer': {
+        setPendingChatMsg(`Add a 2mm chamfer to the selected edge`);
+        openAIAssistant('chat');
+        break;
+      }
+      case 'vertex-move': {
+        setPendingChatMsg(`Move the selected vertex (specify direction and distance)`);
+        openAIAssistant('chat');
+        break;
+      }
+      case 'vertex-snap-grid': {
+        // No deterministic vertex-snap API yet — route via AI hint so the
+        // intent surfaces in chat and the user gets a parametric proposal.
+        setPendingChatMsg(`Snap the selected vertex to the nearest grid point (1mm grid)`);
+        openAIAssistant('chat');
+        break;
+      }
       case 'mate-coincident':
       case 'mate-coaxial':
       case 'mate-distance': {
@@ -5725,14 +6505,21 @@ export function ShapeGeneratorInner() {
           partB,
           ...(mateType === 'distance' ? { value: 0 } : {}),
           locked: false };
-        setAssemblyMates([...assemblyMates, newMate]);
+        // Phase A undo unification: tracked mate add (Ctrl+Z removes it).
+        commandHistory.execute(makeArrayAddCommand({
+          commandId: `mate-add-${newMate.id}`,
+          label: 'Add mate',
+          labelKo: '메이트 추가',
+          items: [newMate],
+          set: setAssemblyMates,
+        }));
         setShowAssemblyPanel(true);
         const mateLabel = mateType === 'coincident' ? lt.mateCoincident : mateType === 'concentric' ? lt.mateConcentric : lt.mateDistance;
         addToast('success', lt.mateAdded(mateLabel, partA, partB));
         break;
       }
     }
-  }, [selectedFeatureId, removeFeature, toggleFeature, handleSketchGenerate, handleAddToCart, handleSketchUndo, handleSketchClear, startEditing, bomParts, assemblyMates, setAssemblyMates, setShowAssemblyPanel, addToast, lang, setSketchTool, setIsSketchMode, setShowDimensions, setSketchPalDims, setSketchPalSlice, toggleMeasureMode, closeContextMenu, closeSketchRadial]);
+  }, [selectedFeatureId, removeFeature, toggleFeatureCmd, handleSketchGenerate, handleAddToCart, handleSketchUndo, handleSketchClear, startEditing, bomParts, assemblyMates, setAssemblyMates, setShowAssemblyPanel, addToast, lang, setSketchTool, setIsSketchMode, setShowDimensions, setSketchPalDims, setSketchPalSlice, toggleMeasureMode, closeContextMenu, closeSketchRadial, selectedElement, setMateFaceA, setPendingChatMsg, openAIAssistant, lt, addFeatureWithEdges, undoLast, t]);
 
   const handleExportDrawingPDF = useCallback(async () => {
     if (!effectiveResult) return;
@@ -5768,10 +6555,25 @@ export function ShapeGeneratorInner() {
       closeContextMenu();
       return;
     }
-    const geomOpts = { hasAssembly: bomParts.length >= 2, hasHighlightedPart: !!highlightedPartId };
+    // `selectedElement.type` is currently 'face' | 'edge' | 'multi' in the
+    // union, but the canvas (VertexHandles / smartSnap) already produces
+    // vertex selections that future widening will surface here. Read via
+    // a string to stay forward-compatible without breaking strict typing.
+    const selType = selectedElement?.type as string | undefined;
+    const selKind: 'face' | 'edge' | 'vertex' | 'body' | null =
+      selType === 'face' ? 'face'
+      : selType === 'edge' ? 'edge'
+      : selType === 'vertex' ? 'vertex'
+      : highlightedPartId ? 'body'
+      : null;
+    const geomOpts = {
+      hasAssembly: bomParts.length >= 2,
+      hasHighlightedPart: !!highlightedPartId,
+      selectedType: selKind,
+    };
     const items = isSketchMode ? getContextItemsSketch(lang) : effectiveResult ? getContextItemsGeometry(lang, geomOpts) : getContextItemsEmpty(lang);
     openContextMenu(x, y, items);
-  }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length, highlightedPartId, openContextMenu, closeContextMenu, openSketchRadial]);
+  }, [isSketchMode, sketchViewMode, effectiveResult, lang, bomParts.length, highlightedPartId, selectedElement, openContextMenu, closeContextMenu, openSketchRadial]);
   const touchGestureHandlers = useTouchGestures({ onLongPress: isMobile ? handleLongPress : undefined });
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -5815,6 +6617,21 @@ export function ShapeGeneratorInner() {
     );
   }, [effectiveResult]);
 
+  // While 2D-sketching a fresh part the right-hand 3D preview is just an empty
+  // placeholder that squeezes the canvas — collapse it on ENTER and restore it on
+  // EXIT. Transition-based (a ref tracks the prior state) so a manual 3D▶ toggle
+  // mid-sketch is preserved; we only act when crossing into/out of that state.
+  const sketch2dCollapsedPreviewRef = useRef(false);
+  useEffect(() => {
+    const fresh2dSketch = isSketchMode && sketchViewMode === '2d' && !effectiveResult?.geometry;
+    if (fresh2dSketch && !sketch2dCollapsedPreviewRef.current) {
+      setShow3DPreview(false);
+    } else if (!fresh2dSketch && sketch2dCollapsedPreviewRef.current) {
+      setShow3DPreview(true);
+    }
+    sketch2dCollapsedPreviewRef.current = fresh2dSketch;
+  }, [isSketchMode, sketchViewMode, effectiveResult?.geometry, setShow3DPreview]);
+
   // ══════════════════════════════════════════════════════════════════════════
   // FILE IMPORT / EXPORT HANDLERS
   // ══════════════════════════════════════════════════════════════════════════
@@ -5828,6 +6645,82 @@ export function ShapeGeneratorInner() {
     handleExportOBJ,
     handleExportPLY,
     handleExport3MF } = useImportExport(addToast, getEffectiveGeometry, setSketchResult as React.Dispatch<React.SetStateAction<ShapeResult | null>>, setBomParts, setBomLabel, setIsSketchMode as React.Dispatch<React.SetStateAction<boolean>>, activeTab, resultMesh);
+
+  // ─── K-series Thicken (kernel-ceiling op) ────────────────────────────────
+  // Thicken the active closed line-loop sketch (or a 10×10 demo when none)
+  // into a solid via the real opencascade.js worker, and show it through the
+  // import-display seam (setImportedGeometry) — deliberately NOT a parametric
+  // feature, so it can't desync the feature tree. The kernel facade is
+  // lazy-imported so it never weighs down the main modeler bundle.
+  useEffect(() => {
+    const onThicken = async (e: Event) => {
+      const ce = e as CustomEvent<{ thickness?: number }>;
+      const thickness = ce.detail?.thickness ?? 2;
+      // Extract a planar loop from the active sketch's line segments; fall back
+      // to a 10×10 demo square when there is no usable closed line loop.
+      let loop: Array<{ x: number; y: number }> | null = null;
+      const prof = activeProfile;
+      if (prof?.closed) {
+        const lines = prof.segments.filter((s) => s.type === 'line' && s.points.length >= 2);
+        if (lines.length >= 3) loop = lines.map((s) => ({ x: s.points[0].x, y: s.points[0].y }));
+      }
+      if (!loop) loop = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+      addToast('info', 'Thickening surface via OCCT worker…');
+      try {
+        const { thickenSurfaceKSeries } = await import('./features/thickenKSeries');
+        const out = await thickenSurfaceKSeries({ loop, thickness });
+        if (out.ok) {
+          setImportedGeometry(out.result.geometry);
+          setImportedFilename(`thicken-${thickness}mm`);
+          addToast('success', `Solid generated — ${out.result.volume_cm3.toFixed(3)} cm³`);
+        } else {
+          addToast('error', `Thicken failed: ${out.error}`);
+        }
+      } catch (err) {
+        addToast('error', `Thicken failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    };
+    window.addEventListener('nexyfab:kseries-thicken', onThicken);
+    return () => window.removeEventListener('nexyfab:kseries-thicken', onThicken);
+  }, [activeProfile, setImportedGeometry, setImportedFilename, addToast]);
+
+  // ─── K-series STEP import (B-rep, gap #3) ────────────────────────────────
+  // Read a STEP file as a true OCCT B-rep solid (STEPControl_Reader via the
+  // worker) and show it through the import-display seam — accurate volume/bbox,
+  // re-exportable, vs the default occt-import-js → tessellated-mesh path. Accepts
+  // inline `stepText` (tests) or opens a file picker. Lazy-imported.
+  useEffect(() => {
+    const runImport = async (stepText: string) => {
+      addToast('info', 'Importing STEP as B-rep via OCCT worker…');
+      try {
+        const { importStepKSeries } = await import('./features/stepImportKSeries');
+        const out = await importStepKSeries(stepText);
+        if (out.ok) {
+          setImportedGeometry(out.result.geometry);
+          setImportedFilename('imported.step (B-rep)');
+          addToast('success', `STEP imported as B-rep — ${out.result.volume_cm3.toFixed(3)} cm³`);
+        } else {
+          addToast('error', `STEP B-rep import failed: ${out.error}`);
+        }
+      } catch (err) {
+        addToast('error', `STEP B-rep import failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    };
+    const onImport = (e: Event) => {
+      const ce = e as CustomEvent<{ stepText?: string }>;
+      if (ce.detail?.stepText) { void runImport(ce.detail.stepText); return; }
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.step,.stp,.STEP,.STP';
+      input.onchange = () => {
+        const f = input.files?.[0];
+        if (f) void f.text().then(runImport);
+      };
+      input.click();
+    };
+    window.addEventListener('nexyfab:kseries-import-step', onImport);
+    return () => window.removeEventListener('nexyfab:kseries-import-step', onImport);
+  }, [setImportedGeometry, setImportedFilename, addToast]);
 
   const handleExportSTEP = useCallback(async () => {
     const geo = effectiveResult?.geometry;
@@ -6134,6 +7027,7 @@ export function ShapeGeneratorInner() {
     ecad:             () => setShowECADPanel(true),
     motionStudy:      () => setShowMotionStudy(true),
     modalAnalysis:    () => setShowModalAnalysis(true),
+    bucklingAnalysis: () => setShowBucklingAnalysis(true),
     parametricSweep:  () => setShowParametricSweep(true),
     toleranceStackup: () => setShowToleranceStackup(true),
     surfaceQuality:   () => setShowSurfaceQuality(true),
@@ -6148,7 +7042,7 @@ export function ShapeGeneratorInner() {
   // opening the panel if `effectiveResult.geometry` is missing.
   const PANELS_REQUIRING_GEO = new Set([
     'fea', 'massProperties', 'gdt', 'dfm', 'thermal',
-    'generativeDesign', 'ecad', 'motionStudy', 'modalAnalysis',
+    'generativeDesign', 'ecad', 'motionStudy', 'modalAnalysis', 'bucklingAnalysis',
     'parametricSweep', 'toleranceStackup', 'surfaceQuality',
     'autoDrawing', 'mfgPipeline',
   ]);
@@ -6218,6 +7112,49 @@ export function ShapeGeneratorInner() {
       }
     }
   }, [effectiveResult, importedGeometry, sketchResult, addToast, printBuildDir, printOverhangAngle, lang, panelOpeners, mfgCamPost, selectedId, checkFreemium, lt]);
+
+  // ── Shell-v2 File menu / CAM section bridge (orphan CustomEvents fixed) ──
+  // ModelerShell's File menu dispatches 'nexyfab:file-import' / 'nexyfab:file-
+  // export' and ModelerRightPane's CAM section dispatches 'nexyfab:cam-export',
+  // none of which had a listener (dead buttons). Wire them onto the existing
+  // flows — same pattern as the other nexyfab:* listener effects. This effect
+  // lives below the handlers it calls (handleImportFile / handleExportSTEP /
+  // handleAnalysis) to avoid a TDZ on the dep array during render.
+  useEffect(() => {
+    // File → Import STEP/IGES… : reuse the existing picker-based import flow.
+    const onFileImport = () => { handleImportFile(); };
+    // File → Export STL / STEP : call the existing export handlers.
+    const onFileExport = (e: Event) => {
+      const format = (e as CustomEvent<{ format?: string } | undefined>).detail?.format;
+      if (!effectiveResult?.geometry) {
+        addToast('warning', lang === 'ko' ? '내보낼 형상이 없습니다 — 먼저 형상을 생성하세요.' : 'Nothing to export — generate a shape first.');
+        return;
+      }
+      if (format === 'stl') { void handleExportCurrentSTL(); return; }
+      if (format === 'step') { void handleExportSTEP(); return; }
+      addToast('warning', `Unknown export format: ${format ?? '(none)'}`);
+    };
+    // Properties → CAM → export : persist the chosen post-processor dialect,
+    // then run the existing CAM flow (freemium gate → toolpath generation →
+    // CAMSimPanel, where the actual G-code download button lives).
+    const onCamExport = (e: Event) => {
+      const detail = (e as CustomEvent<{ dialect?: string; machine?: string } | undefined>).detail;
+      if (!effectiveResult?.geometry) {
+        addToast('warning', lang === 'ko' ? 'CAM 내보내기는 형상이 필요합니다 — 먼저 형상을 생성하세요.' : 'CAM export needs geometry — generate a shape first.');
+        return;
+      }
+      if (detail?.dialect) setMfgCamPost(detail.dialect);
+      void handleAnalysis('cam');
+    };
+    window.addEventListener('nexyfab:file-import', onFileImport);
+    window.addEventListener('nexyfab:file-export', onFileExport);
+    window.addEventListener('nexyfab:cam-export', onCamExport);
+    return () => {
+      window.removeEventListener('nexyfab:file-import', onFileImport);
+      window.removeEventListener('nexyfab:file-export', onFileExport);
+      window.removeEventListener('nexyfab:cam-export', onCamExport);
+    };
+  }, [handleImportFile, handleExportCurrentSTL, handleExportSTEP, handleAnalysis, setMfgCamPost, effectiveResult, addToast, lang]);
 
   // ── GD&T Annotation handlers ──
   const handleAddGDT = useCallback((a: GDTAnnotation) => addGDTAnnotation(a), [addGDTAnnotation]);
@@ -6532,17 +7469,99 @@ export function ShapeGeneratorInner() {
   // ASSEMBLY HANDLERS
   // ══════════════════════════════════════════════════════════════════════════
 
+  // Phase A undo unification: mate add/remove/update flow through
+  // commandHistory (mirrors the mate→placement command below). assemblyMates
+  // is a Yjs id-keyed map sorted by id on read, so undo only needs to
+  // re-add/remove the affected ITEM — no order restoration required.
   const handleAddMate = useCallback((mate: AssemblyMate) => {
-    setAssemblyMates(prev => [...prev, mate]);
-  }, []);
+    commandHistory.execute(makeArrayAddCommand({
+      commandId: `mate-add-${mate.id}`,
+      label: 'Add mate',
+      labelKo: '메이트 추가',
+      items: [mate],
+      set: setAssemblyMates,
+    }));
+  }, [setAssemblyMates]);
 
   const handleRemoveMate = useCallback((id: string) => {
-    setAssemblyMates(prev => prev.filter(m => m.id !== id));
-  }, []);
+    const removed = assemblyMates.find(m => m.id === id);
+    if (!removed) return;
+    commandHistory.execute(makeArrayRemoveCommand({
+      commandId: `mate-remove-${id}-${Date.now()}`,
+      label: 'Remove mate',
+      labelKo: '메이트 제거',
+      item: removed,
+      set: setAssemblyMates,
+    }));
+  }, [assemblyMates, setAssemblyMates]);
 
   const handleUpdateMate = useCallback((id: string, updates: Partial<AssemblyMate>) => {
-    setAssemblyMates(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
-  }, []);
+    const before = assemblyMates.find(m => m.id === id);
+    if (!before) return;
+    commandHistory.execute(makeArrayUpdateCommand({
+      commandId: `mate-update-${id}-${Date.now()}`,
+      label: 'Edit mate',
+      labelKo: '메이트 수정',
+      before,
+      updates,
+      set: setAssemblyMates,
+    }));
+  }, [assemblyMates, setAssemblyMates]);
+
+  // Phase A undo unification: PartPlacementPanel (add/duplicate/remove/move
+  // placed parts) mutates through this tracked setter. Whole-array before/
+  // after snapshots are used deliberately — the panel hands us a full new
+  // array and placedParts stays small, so item-level diffing isn't worth the
+  // complexity here.
+  const setPlacedPartsTracked = useCallback((action: PlacedPart[] | ((prev: PlacedPart[]) => PlacedPart[])) => {
+    const before = placedParts;
+    const after = typeof action === 'function' ? action(before) : action;
+    commandHistory.execute({
+      id: `placed-parts-edit-${Date.now()}`,
+      label: 'Edit placed parts',
+      labelKo: '배치 파트 편집',
+      execute: () => { setPlacedParts(after); },
+      undo: () => { setPlacedParts(before); },
+    });
+  }, [placedParts, setPlacedParts]);
+
+  // Shell-v2 assembly sidebar → mate edit bridge. The AssemblyLeftPane/
+  // AssemblyRightPane mate rows dispatch these so the user can delete / lock a
+  // mate inline (the full editor stays available via the ribbon mate tools).
+  // (2026-06-09 P1)
+  useEffect(() => {
+    const onRemove = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id;
+      if (id) handleRemoveMate(id);
+    };
+    const onToggle = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id;
+      if (!id) return;
+      // Self-inverse lock flip — tracked so Ctrl+Z reverses the toggle.
+      commandHistory.execute(makeToggleCommand({
+        commandId: `mate-lock-${id}-${Date.now()}`,
+        label: 'Toggle mate lock',
+        labelKo: '메이트 잠금 전환',
+        toggle: () => setAssemblyMates(prev => prev.map(m => m.id === id ? { ...m, locked: !m.locked } : m)),
+      }));
+    };
+    window.addEventListener('nexyfab:assembly-mate-remove', onRemove);
+    window.addEventListener('nexyfab:assembly-mate-toggle', onToggle);
+    return () => {
+      window.removeEventListener('nexyfab:assembly-mate-remove', onRemove);
+      window.removeEventListener('nexyfab:assembly-mate-toggle', onToggle);
+    };
+  }, [handleRemoveMate, setAssemblyMates]);
+
+  // Shell title-bar "exit assembly mode" chip → close the assembly panel. The
+  // chip dispatches this (mirroring sketch.finish → setIsSketchMode(false));
+  // without this listener the button was a silent no-op (editMode='assembly'
+  // ⟺ showAssemblyPanel, so closing the panel pops the mode back to modeling).
+  useEffect(() => {
+    const onAssemblyClose = () => setShowAssemblyPanel(false);
+    window.addEventListener('nexyfab:assembly-close', onAssemblyClose);
+    return () => window.removeEventListener('nexyfab:assembly-close', onAssemblyClose);
+  }, [setShowAssemblyPanel]);
 
   const handleApplyMatesToPlacement = useCallback(() => {
     if (placedParts.length < 2 || assemblyMates.length === 0) return;
@@ -6927,27 +7946,38 @@ export function ShapeGeneratorInner() {
         rotation: rot,
       };
 
-      setPlacedParts(prev => [...prev, newPlacedPart]);
+      // Smart mates (Coincident + Concentric) when dropped onto another part.
+      const newMates = evt.intersectedPartName
+        ? [
+            {
+              id: `mate_coincident_${Date.now()}`,
+              type: 'coincident' as const,
+              partA: evt.intersectedPartName,
+              partB: newPlacedPartId, // partB is the standard part
+              locked: false,
+            },
+            {
+              id: `mate_concentric_${Date.now() + 1}`,
+              type: 'concentric' as const,
+              partA: evt.intersectedPartName,
+              partB: newPlacedPartId,
+              locked: false,
+            },
+          ]
+        : [];
 
-      if (evt.intersectedPartName) {
-        // Add smart mates! Coincident and Concentric
-        const newMates = [
-          {
-            id: `mate_coincident_${Date.now()}`,
-            type: 'coincident' as const,
-            partA: evt.intersectedPartName,
-            partB: newPlacedPartId, // partB is the standard part
-            locked: false,
-          },
-          {
-            id: `mate_concentric_${Date.now() + 1}`,
-            type: 'concentric' as const,
-            partA: evt.intersectedPartName,
-            partB: newPlacedPartId,
-            locked: false,
-          }
-        ];
-        setAssemblyMates(prev => [...prev, ...newMates]);
+      // Phase A undo unification: part placement + auto-mates is ONE undo step.
+      commandHistory.execute(makePlacePartWithMatesCommand({
+        commandId: `place-standard-part-${newPlacedPartId}`,
+        label: 'Place standard part',
+        labelKo: '규격 부품 배치',
+        part: newPlacedPart,
+        setParts: setPlacedParts,
+        mates: newMates,
+        setMates: setAssemblyMates,
+      }));
+
+      if (newMates.length > 0) {
         addToast('success', lang === 'ko' ? `규격 부품 배치 및 자동 메이트 체결 완료` : `Standard part placed with smart mates`);
       } else {
         addToast('success', lang === 'ko' ? `규격 부품 배치 완료` : `Standard part placed`);
@@ -7017,13 +8047,31 @@ export function ShapeGeneratorInner() {
   // MainWorkspace component reads them directly without prop-drilling.
   // All hook calls MUST live above the mobile-gate early return so React
   // hook order stays stable across remounts.
-  const { onElementSelect: canvasOnElementSelect, highlightTriangles: canvasHighlightTriangles } =
-    useCanvasSelectionHandlers({
+  const {
+    onElementSelect: canvasOnElementSelect,
+    highlightTriangles: canvasHighlightTriangles,
+    commitPendingMate: canvasCommitPendingMate,
+    cancelPendingMate: canvasCancelPendingMate,
+  } = useCanvasSelectionHandlers({
       generateMateId,
       setSelectionActive,
-      labels: { mateCoincident: lt.mateCoincident, mateConcentric: lt.mateConcentric },
+      labels: {
+        mateCoincident: lt.mateCoincident,
+        mateConcentric: lt.mateConcentric,
+        mateDistance: lt.mateDistance,
+        // mateParallel is a Phase F addition — fallback string preserves
+        // the build if a lang dict is mid-migration.
+        mateParallel: (lt as { mateParallel?: string }).mateParallel ?? 'Parallel',
+      },
       onMateCreated: (mate, partA, partB, mateLabel) => {
-        setAssemblyMates(prev => [...prev, mate]);
+        // Phase A undo unification: face-pick mate creation is tracked.
+        commandHistory.execute(makeArrayAddCommand({
+          commandId: `mate-add-${mate.id}`,
+          label: 'Add mate',
+          labelKo: '메이트 추가',
+          items: [mate],
+          set: setAssemblyMates,
+        }));
         setShowAssemblyPanel(true);
         addToast('success', lt.mateAdded?.(mateLabel, partA, partB) ?? `Added Mate between ${partA} and ${partB}`);
       },
@@ -7051,7 +8099,7 @@ export function ShapeGeneratorInner() {
   });
 
   const { nurbsCPEdit: canvasNurbsCPEdit, nurbsCPParams: canvasNurbsCPParams, onNurbsCPParamChange: canvasOnNurbsCPParamChange } =
-    useNurbsCpEdit({ selectedFeatureId, features, updateFeatureParam });
+    useNurbsCpEdit({ selectedFeatureId, features, updateFeatureParam: updateFeatureParamCmd });
 
   const canvasPinComments = useCanvasPinCommentHandlers({
     authUserName: authUser?.name,
@@ -7070,6 +8118,45 @@ export function ShapeGeneratorInner() {
   // ══════════════════════════════════════════════════════════════════════════
 
   if (isMobile) {
+    // Read-only mobile 3D viewer: editing is desktop-only, but a phone user who
+    // opened a (shared) design can still rotate/zoom it with touch instead of
+    // hitting a pure "use a desktop" wall. Falls back to the wall when there's
+    // no model to show.
+    const mobileGeo = effectiveResult?.geometry;
+    const hasViewableModel = hasViewableGeometry(mobileGeo);
+    const vl = mobileViewerLabels(lang);
+
+    if (hasViewableModel && mobileGeo) {
+      return (
+        <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#0d1117', color: 'var(--nx-text)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--nx-panel)', borderBottom: '1px solid var(--nx-border)', flexShrink: 0 }}>
+            <span style={{ fontSize: 17, fontWeight: 800 }}><span style={{ color: 'var(--nx-accent-2)' }}>Nexy</span>Fab</span>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 8, background: 'rgba(59,130,246,0.18)', color: 'var(--nx-accent-2)' }}>{vl.badge}</span>
+          </div>
+          <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            <MobileModelViewer geometry={mobileGeo} />
+            <div style={{ position: 'absolute', bottom: 10, left: 0, right: 0, textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.55)', pointerEvents: 'none' }}>
+              {vl.gesture}
+            </div>
+          </div>
+          <div style={{ padding: '12px 16px calc(16px + env(safe-area-inset-bottom))', background: 'var(--nx-panel)', borderTop: '1px solid var(--nx-border)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 12, color: 'var(--nx-text-2)', textAlign: 'center', fontWeight: 600 }}>✏️ {vl.edit}</div>
+            <MobileSendToDesktop
+              labels={{
+                title: lt.mobileSendToDesktopTitle,
+                body: lt.mobileSendToDesktopBody,
+                qrAlt: lt.mobileQrAlt,
+                copyUrl: lt.mobileCopyUrl,
+                copyUrlDone: lt.mobileCopyUrlDone,
+                emailSelf: lt.mobileEmailSelf,
+                emailSubject: lt.mobileEmailSubject,
+                emailBody: lt.mobileEmailBody,
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
     return (
       <div style={{
         minHeight: '100dvh', background: 'var(--nx-bg)', color: 'var(--nx-text)',
@@ -7261,6 +8348,43 @@ export function ShapeGeneratorInner() {
                     sketchPlane={isSketchMode ? (sketchPlane as 'xy' | 'xz' | 'yz') : undefined}
                     onSketchPlaneChange={isSketchMode ? setSketchPlane : undefined}
                     onGeometryApply={handleGeometryApply}
+                    onEdgeOperationStatus={(status, op, detail) => {
+                      // Surface viewport edge fillet/chamfer outcomes as toasts so
+                      // failures stop being silent. The detail payload is one of:
+                      //   success → "r=3mm × 2" / "d=2mm × 1"
+                      //   error   → "NO_GEOMETRY" | "RADIUS_INVALID" | "OCCT_FAILED"
+                      //             | "IMPORT_FAILED: …" | raw error text
+                      const opLabel = op === 'fillet'
+                        ? (lang === 'ko' ? '필렛' : 'Fillet')
+                        : (lang === 'ko' ? '챔퍼' : 'Chamfer');
+                      if (status === 'success') {
+                        addToast('success', lang === 'ko'
+                          ? `${opLabel} 적용 (${detail})`
+                          : `${opLabel} applied (${detail})`);
+                      } else {
+                        addToast('error', lang === 'ko'
+                          ? `${opLabel} 실패: ${detail}`
+                          : `${opLabel} failed: ${detail}`);
+                      }
+                    }}
+                    onFaceOperationStatus={(status, op, detail) => {
+                      // Mirror of onEdgeOperationStatus for the FaceContextPanel.
+                      // success → "d=2.0mm" / "t=2.0mm × top"
+                      // error   → "NO_GEOMETRY" | "OFFSET_INVALID" | "THICKNESS_INVALID"
+                      //           | "OCCT_FAILED" | raw error text
+                      const opLabel = op === 'offset'
+                        ? (lang === 'ko' ? '면 오프셋' : 'Face Offset')
+                        : (lang === 'ko' ? '쉘' : 'Shell');
+                      if (status === 'success') {
+                        addToast('success', lang === 'ko'
+                          ? `${opLabel} 적용 (${detail})`
+                          : `${opLabel} applied (${detail})`);
+                      } else {
+                        addToast('error', lang === 'ko'
+                          ? `${opLabel} 실패: ${detail}`
+                          : `${opLabel} failed: ${detail}`);
+                      }
+                    }}
                     faceEditViewportCallout={lt.faceEditViewportCallout}
                     faceEditViewportCalloutTitle={lt.faceEditViewportCalloutTitle}
                     faceEditViewportCalloutTip={lt.faceEditViewportCalloutTip}
@@ -7294,6 +8418,7 @@ export function ShapeGeneratorInner() {
                       }
                     }}
                     snapEnabled={snapEnabled}
+                    smartSnapEnabled={smartSnapEnabled}
                     ghostResult={isPreviewMode ? previewResult : null}
                     motionPartTransforms={motionPartTransforms}
                     nurbsCPEdit={canvasNurbsCPEdit}
@@ -7374,8 +8499,8 @@ export function ShapeGeneratorInner() {
         lang={lang}
         langSeg={langSeg}
         isSketchMode={isSketchMode}
-        canUndo={history.canUndo}
-        canRedo={history.canRedo}
+        canUndo={cmdHistory.canUndo}
+        canRedo={cmdHistory.canRedo}
         onHistoryUndo={handleHistoryUndo}
         onHistoryRedo={handleHistoryRedo}
         showVersionPanel={showVersionPanel}
@@ -7624,6 +8749,14 @@ export function ShapeGeneratorInner() {
       )}
 
       {/* ════════ CSG + Body Manager dock ════════ */}
+      {/* The CSGPanel mounts via BodyCsgDock when showCSGPanel === true. A sibling
+       *  zero-size marker carries data-testid="csg-panel-overlay" so regression
+       *  tests can assert overlay visibility without depending on the dynamically
+       *  imported panel's internal markup. The marker is only rendered when the
+       *  panel is open, matching the panel's mount lifecycle. */}
+      {showCSGPanel && (
+        <span data-testid="csg-panel-overlay" style={{ display: 'none' }} aria-hidden="true" />
+      )}
       <BodyCsgDock
         lang={lang}
         showCSGPanel={showCSGPanel}
@@ -7690,9 +8823,9 @@ export function ShapeGeneratorInner() {
           finishEditing={finishEditing}
           toggleExpanded={toggleExpanded}
           ensureExpanded={ensureExpanded}
-          toggleFeature={toggleFeature}
+          toggleFeature={toggleFeatureCmd}
           removeNode={removeNode}
-          updateFeatureParam={updateFeatureParam}
+          updateFeatureParam={updateFeatureParamCmd}
           addFeature={addFeatureWithContext}
           moveFeatureByIds={handleMoveFeatureByIds}
           sketchProfiles={sketchProfiles}
@@ -7897,8 +9030,8 @@ export function ShapeGeneratorInner() {
             exportingFormat={exportingFormat}
             onSetCamPost={setMfgCamPost}
             activeCamPost={mfgCamPost}
-            onUndo={cmdHistory.undo}
-            onRedo={cmdHistory.redo}
+            onUndo={() => { featureParamCoalescer.flush(); cmdHistory.undo(); }}
+            onRedo={() => { featureParamCoalescer.flush(); cmdHistory.redo(); }}
             canUndo={cmdHistory.canUndo}
             canRedo={cmdHistory.canRedo}
             showHistoryPanel={showHistoryPanel}
@@ -8058,7 +9191,19 @@ export function ShapeGeneratorInner() {
                     </button>
                   ))}
                   <button
+                    data-testid="toolbar-boolean-button"
                     onClick={() => {
+                      // Toggle: re-clicking the button when the panel is open should close it.
+                      if (showCSGPanel) {
+                        setShowCSGPanel(false);
+                        return;
+                      }
+                      if (!effectiveResult) {
+                        // Discoverability: surface the gating reason instead of silently opening
+                        // an apply-disabled panel. handleCSGApply early-returns on no geometry.
+                        addToast('info', lt.booleanNoGeometry);
+                        return;
+                      }
                       setShowCSGPanel(true);
                       addToast('info', lt.booleanPanelOpened);
                     }}
@@ -8215,7 +9360,28 @@ export function ShapeGeneratorInner() {
                     min: 0,
                     max: typeof val === 'number' ? Math.max(val * 3, 100) : 100,
                     step: 1 })) : []}
-                  onParamChange={(param, value) => { if (selectedFeatureId) updateFeatureParam(selectedFeatureId, param, value); }}
+                  onParamChange={(param, value) => {
+                    if (!selectedFeatureId) return;
+                    const draft = pmExprDraftRef.current[param];
+                    delete pmExprDraftRef.current[param];
+                    const node = features.find(f => f.id === selectedFeatureId);
+                    const wasDriven = !!node?.paramExpressions?.[param];
+                    if (draft !== undefined && parseParamInput(draft).kind === 'expression') {
+                      // Typed a formula → assign/update the expression (one undo step).
+                      setFeatureParamExpressionCmd(selectedFeatureId, param, draft);
+                      return;
+                    }
+                    if (wasDriven) {
+                      // Plain number over a driven param → freeze to literal
+                      // (clears the expression + writes the value together).
+                      setFeatureParamExpressionCmd(selectedFeatureId, param, String(value));
+                      return;
+                    }
+                    updateFeatureParamCmd(selectedFeatureId, param, value);
+                  }}
+                  expressions={selectedFeatureId ? features.find(f => f.id === selectedFeatureId)?.paramExpressions : undefined}
+                  onExpressionChange={(param, expression) => { pmExprDraftRef.current[param] = expression; }}
+                  extraVariables={featureExprScope}
                   onClose={() => setShowPropertyManager(false)}
                   onApply={() => setShowPropertyManager(false)}
                 />
@@ -8265,6 +9431,14 @@ export function ShapeGeneratorInner() {
                         setSketchProfiles(prev => prev.map((x, i) => i === activeProfileIdx ? p : x));
                         setSketchProfile(p);
                       }}
+                      // Drag-solve gesture: ONE undo snapshot at drag start,
+                      // then per-frame live updates that bypass the snapshot
+                      // (otherwise every mousemove would spam the undo stack).
+                      onPointDragStart={captureSketchSnapshot}
+                      onProfileChangeLive={(p) => {
+                        setSketchProfiles(prev => prev.map((x, i) => i === activeProfileIdx ? p : x));
+                        setSketchProfile(p);
+                      }}
                       activeTool={sketchTool}
                       width={sketchSize.width}
                       height={sketchSize.height}
@@ -8303,6 +9477,7 @@ export function ShapeGeneratorInner() {
                         ...sketchConfig,
                         sweepPath: pts.length > 0 ? { points: pts, steps: sketchConfig.sweepPath?.steps ?? 32 } : undefined,
                       })}
+                      onSelectedEntityChange={bridgeSketchSelectedEntity}
                     />
                   )) : null}
                   </div>
@@ -8355,9 +9530,12 @@ export function ShapeGeneratorInner() {
                     />
                   )}
 
-                  {/* First-use sketch hint — shows once, then dismissed */}
+                  {/* First-use sketch hint — auto-modal retired (2026-06-09):
+                      it popped over the canvas on entry, adding to the on-entry
+                      overlay pile. visible={false} so it never auto-shows; the
+                      Draw ribbon + tool tooltips guide instead. */}
                   {isSketchMode && sketchViewMode === '2d' && (
-                    <SketchContextTip visible={isSketchMode} lang={lang} recoveryVisible={showRecovery && !!recoveryData} />
+                    <SketchContextTip visible={false} lang={lang} recoveryVisible={showRecovery && !!recoveryData} />
                   )}
 
                   {showMainWorkspacePreview && (
@@ -8370,6 +9548,24 @@ export function ShapeGeneratorInner() {
                       flexDirection: 'column',
                     }}>
                       {renderWorkspaceShapePreview('main')}
+                      {/* Gizmo / dimension lines / DFM badges over the MAIN-slot
+                          model. Without this they rendered only over the (empty)
+                          right column placeholder and visually leaked into the
+                          gap between the viewport and the inspector. (2026-06-09) */}
+                      <CanvasGizmoOverlays
+                        visible={!!effectiveResult && !isSketchMode}
+                        lang={lang}
+                        shapeId={selectedId}
+                        params={params}
+                        paramDefs={selectedId ? (SHAPE_MAP[selectedId]?.params ?? []) : []}
+                        labelDict={t as unknown as Record<string, string>}
+                        onParamChange={_handleParamChangeCmd}
+                        bbox={effectiveResult?.bbox ?? null}
+                        dfmResults={dfmResults}
+                        downgradeNotices={
+                          effectiveResult?.geometry ? collectDowngrades(effectiveResult.geometry) : []
+                        }
+                      />
                       {/* Presence sidebar — hidden when alone in the room. */}
                       <AwarenessPresencePanel
                         presences={awarenessPresences}
@@ -8482,26 +9678,30 @@ export function ShapeGeneratorInner() {
             )}
 
             {/* ── 3D Preview toggle button (shown when hidden) ── */}
-            {activeTab === 'design' && !isMobile && !show3DPreview && (
+            {activeTab === 'design' && !isMobile && !show3DPreview && !showMainWorkspacePreview && (
               <button
                 onClick={() => setShow3DPreview(true)}
                 title={lt.show3dPreview}
                 style={{
                   position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                  zIndex: 30, padding: '8px 6px', borderRadius: 8,
+                  zIndex: 30, padding: '10px 7px', borderRadius: 8,
                   background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)',
                   color: 'var(--nx-text-2)', fontSize: 11, cursor: 'pointer',
-                  writingMode: 'vertical-rl', fontWeight: 700,
+                  writingMode: 'vertical-rl', fontWeight: 700, letterSpacing: '0.02em',
                   transition: 'all 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
               >
-                3D ▶
+                ◀ {lang === 'ko' ? '3D 미리보기' : '3D preview'}
               </button>
             )}
 
-            {/* ── 3D Preview side (right panel) ── */}
-            {activeTab === 'design' && show3DPreview && (
+            {/* ── 3D Preview side (right panel) ──
+                 Hidden when the model already fills the MAIN column
+                 (showMainWorkspacePreview) — otherwise this fixed-width panel
+                 showed only a "3D is in the main area" placeholder + leaked
+                 gizmo overlays, wasting ~half the viewport. (2026-06-09) */}
+            {activeTab === 'design' && show3DPreview && !showMainWorkspacePreview && (
               <div style={{
                 width: isMobile ? '100%' : designPreviewWidth,
                 flexShrink: 0,
@@ -8729,7 +9929,11 @@ export function ShapeGeneratorInner() {
                   onSendToChat={(info, actionHint) => {
                     if (actionHint === 'mate_start' && info.type === 'face') {
                       setMateFaceA(info as import('./editing/selectionInfo').FaceSelectionInfo);
-                      addToast('info', 'Select a second face on a different part to create a mate.');
+                      addToast(
+                        'info',
+                        (lt as { mateSelectSecondFace?: string }).mateSelectSecondFace
+                          ?? 'Pick a second face on a different part to mate to. (Esc cancels)',
+                      );
                       setSelectedElement(null);
                       return;
                     }
@@ -8753,9 +9957,36 @@ export function ShapeGeneratorInner() {
                     setSelectionActive(false);
                   }}
                 />
-                {/* Canvas gizmo overlays (gizmo + dimension lines + DFM badges) */}
+                {/* Mate Picker Overlay — Phase F click-to-mate.
+                    Auto-mounts when `pendingMate` is set (after the user picks
+                    the second face on a different part). Apply commits via
+                    the same onMateCreated callback the auto-flow used. */}
+                <MatePickerOverlay
+                  pending={pendingMate}
+                  labels={{
+                    title: (lt as { matePickerTitle?: string }).matePickerTitle ?? 'Choose Mate Type',
+                    apply: (lt as { matePickerApply?: string }).matePickerApply ?? 'Apply',
+                    cancel: (lt as { matePickerCancel?: string }).matePickerCancel ?? 'Cancel',
+                    suggested: (lt as { matePickerSuggested?: string }).matePickerSuggested ?? 'Suggested',
+                    flipHint: (lt as { matePickerFlipHint?: string }).matePickerFlipHint
+                      ?? 'Both faces point the same way — Coincident may flip one part.',
+                    type: {
+                      coincident: lt.mateCoincident ?? 'Coincident',
+                      concentric: lt.mateConcentric ?? 'Concentric',
+                      distance:   lt.mateDistance   ?? 'Distance',
+                      parallel:   (lt as { mateParallel?: string }).mateParallel ?? 'Parallel',
+                    },
+                  }}
+                  onApply={canvasCommitPendingMate}
+                  onCancel={canvasCancelPendingMate}
+                />
+                {/* Canvas gizmo overlays (gizmo + dimension lines + DFM badges).
+                    Suppressed in main-slot mode — there a duplicate set renders
+                    over the actual model (see showMainWorkspacePreview block);
+                    keeping this one on would leak the overlays into the empty
+                    right-column placeholder. (2026-06-09) */}
                 <CanvasGizmoOverlays
-                  visible={!!effectiveResult && !isSketchMode}
+                  visible={!!effectiveResult && !isSketchMode && !showMainWorkspacePreview}
                   lang={lang}
                   shapeId={selectedId}
                   params={params}
@@ -8764,6 +9995,9 @@ export function ShapeGeneratorInner() {
                   onParamChange={_handleParamChangeCmd}
                   bbox={effectiveResult?.bbox ?? null}
                   dfmResults={dfmResults}
+                  downgradeNotices={
+                    effectiveResult?.geometry ? collectDowngrades(effectiveResult.geometry) : []
+                  }
                 />
                 {/* Manufacturing Ready Card */}
                 {showManufacturingCard && effectiveResult && (
@@ -8857,14 +10091,18 @@ export function ShapeGeneratorInner() {
                 </div>
                 <div style={{ padding: '12px', maxHeight: '60vh', overflowY: 'auto' }} className="nf-scroll">
                   <FeatureParams
-                    instance={{ id: editingNode.id, type: editingNode.featureType, params: editingNode.params, enabled: editingNode.enabled, error: editingNode.error }}
+                    instance={{ id: editingNode.id, type: editingNode.featureType, params: editingNode.params, paramExpressions: editingNode.paramExpressions, enabled: editingNode.enabled, error: editingNode.error }}
                     definition={editingDef}
                     t={shapeLabels}
-                    onParamChange={(id, key, value) => updateFeatureParam(id, key, value)}
+                    onParamChange={(id, key, value) => updateFeatureParamCmd(id, key, value)}
+                    expressions={editingNode.paramExpressions}
+                    variables={featureExprScope}
+                    onExpressionCommit={setFeatureParamExpressionCmd}
+                    lang={lang}
                   />
                 </div>
                 <div style={{ padding: '8px 12px', background: 'var(--nx-panel-2)', borderTop: '1px solid #d0d7de', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={() => finishEditing?.()} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #d0d7de', background: 'var(--nx-text)', color: 'var(--nx-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>OK</button>
+                  <button onClick={() => finishEditing?.()} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid var(--nx-border)', background: 'var(--nx-accent)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>OK</button>
                 </div>
               </div>
             );
@@ -8876,7 +10114,7 @@ export function ShapeGeneratorInner() {
               features={features}
               selectedId={selectedFeatureId}
               onSelect={setSelectedFeatureId}
-              onToggle={toggleFeature}
+              onToggle={toggleFeatureCmd}
               onMoveFeature={handleMoveFeatureByIds}
               onEditFeature={(id) => {
                 const f = features.find(x => x.id === id);
@@ -8895,7 +10133,7 @@ export function ShapeGeneratorInner() {
                 }
               }}
               onDeleteFeature={removeNode}
-              onSuppressFeature={toggleFeature}
+              onSuppressFeature={toggleFeatureCmd}
               baseShapeName={shapeLabels[`shapeName_${selectedId}`] || selectedId}
               baseShapeIcon={SHAPE_ICONS[selectedId] || '🧊'}
               analysisProgress={
@@ -8932,6 +10170,8 @@ export function ShapeGeneratorInner() {
             onToggleSnap={() => setSnapEnabled(v => !v)}
             snapSize={snapSize}
             onSnapSizeChange={setSnapSize}
+            smartSnapEnabled={smartSnapEnabled}
+            onToggleSmartSnap={() => setSmartSnapEnabled(v => !v)}
             sectionActive={sectionActive}
             sectionAxis={sectionAxis}
             sectionOffset={sectionOffset}
@@ -9037,6 +10277,18 @@ export function ShapeGeneratorInner() {
         lang={lang}
         onInsert={(part: COTSPart) => {
           addToast('success', lt.cotsAddedToBom(lang === 'ko' ? part.nameKo : part.name));
+          // Insert real (simplified) geometry into the assembly via the same
+          // pipeline as the ISO standard-parts grid — was BOM-toast only.
+          // (2026-06-09 P3)
+          window.dispatchEvent(new CustomEvent('nexyfab:insert-standard-part', {
+            detail: {
+              id: part.id,
+              title: lang === 'ko' ? part.nameKo : part.name,
+              standard: part.standard,
+              params: part.params,
+              scad: cotsToScad(part),
+            },
+          }));
         }}
       />
 
@@ -9306,6 +10558,292 @@ export function ShapeGeneratorInner() {
         onUserPartLoaded={(name) => addToast('success', lt.partLoaded(name))}
       />
 
+      {/* ═══ Phase 5 bridges (flag-gated, minimal-invasive host wire) ═══
+         All three bridges are render-trees rendered next to Phase4PanelDock
+         and gated by URL search params so they're invisible unless explicitly
+         opted in. Adapters use the single-body shape-generator scene model
+         (one primary body, geometry = effectiveResult.geometry). */}
+      {(() => {
+        const directEditOn = searchParams?.get('direct-edit') === 'v1';
+        const assemblyExportOn = searchParams?.get('assembly-export') === 'v1';
+        const configExportOn = searchParams?.get('config-export') === 'v1';
+        if (!directEditOn && !assemblyExportOn && !configExportOn) return null;
+
+        // Phase 5l — multi-body scene resolver. The host's `bodies`
+        // state (BodyEntry[]) + `bodyGeosRef` (Map<id, {geometry,
+        // edgeGeometry}>) is the multi-body registry; when bodies is
+        // empty the scene is single-body and we fall back to the
+        // parametric `result` slot. This lets direct-edit ops (E1-E4)
+        // target a specific body in a split scene + lets subtract
+        // actually remove the tool body from the registry.
+        const isMultiBody = bodies.length > 0;
+        const sceneAdapter: DirectEditSceneAdapter = {
+          getActiveBodyId: () => {
+            if (isMultiBody && activeBodyId) return activeBodyId;
+            return '__primary';
+          },
+          getTargetGeometry: (bodyId) => {
+            if (bodyId === '__primary' || !isMultiBody) {
+              return effectiveResultRef.current?.geometry ?? null;
+            }
+            return bodyGeosRef.current.get(bodyId)?.geometry ?? null;
+          },
+          replaceBodyGeometry: (bodyId, nextGeo) => {
+            // Phase 5h + 5l — real viewport swap.
+            // Multi-body branch: update bodyGeosRef + force a setBodies
+            // re-render so bodyBomParts useMemo picks up the change.
+            // Single-body branch (legacy): setResult swap as before.
+            try {
+              const newEdges = makeEdges(nextGeo, 20);
+              if (isMultiBody && bodyId !== '__primary' && bodyGeosRef.current.has(bodyId)) {
+                bodyGeosRef.current.set(bodyId, { geometry: nextGeo, edgeGeometry: newEdges });
+                setBodies((prev) => [...prev]); // shallow-clone to trigger re-render
+                addToast('info', `직접편집 → '${bodyId}' (commit-to-history로 영구화)`);
+                return;
+              }
+              const prev = effectiveResultRef.current;
+              if (!prev) return;
+              setResult({ ...prev, geometry: nextGeo, edgeGeometry: newEdges });
+              addToast('info', '직접편집 적용 (commit-to-history로 영구화)');
+            } catch (err) {
+              addToast('error', `viewport swap failed: ${err instanceof Error ? err.message : String(err)}`);
+            }
+          },
+          removeBodyFromScene: (bodyId) => {
+            // Phase 5l — real removal. Only applies in the multi-body
+            // branch (single-body has no "tool body" to remove).
+            if (!isMultiBody || bodyId === '__primary') return;
+            if (!bodyGeosRef.current.has(bodyId)) return;
+            bodyGeosRef.current.delete(bodyId);
+            setBodies((prev) => prev.filter((b) => b.id !== bodyId));
+            // If the removed body was active, fall back to the first
+            // remaining body (or null).
+            if (activeBodyId === bodyId) {
+              setActiveBodyId(bodies.find((b) => b.id !== bodyId)?.id ?? null);
+            }
+          },
+          notify: (level, msg) => addToast(level === 'warn' ? 'warning' : level, msg),
+        };
+
+        return (
+          <>
+            {directEditOn && (
+              <div style={{ position: 'absolute', top: 64, left: 16, zIndex: 30 }}>
+                <DirectEditHostBridge lang={lang} sceneAdapter={sceneAdapter} />
+              </div>
+            )}
+            {assemblyExportOn && (() => {
+              // Real adapter: availableParts ← placedParts. Empty assembly
+              // falls back to the single-body __primary placeholder so the
+              // bridge still has something to walk.
+              //
+              // Phase 5c per-part replay: each PlacedPart has shapeId +
+              // params, so we run `buildShapeResult(shapeId, params)` per
+              // part to get the part-specific geometry.
+              //
+              // Phase 5e per-part transforms: PlacedPart.position (mm) +
+              // PlacedPart.rotation (deg, XYZ Euler) → Matrix4 per part.
+              // Bridge applies these to leaf nodes via partTransforms prop
+              // so the exported NAUO STEP has each part placed at its
+              // assembly position (not all stacked at origin).
+              const realParts = placedParts.length > 0
+                ? placedParts.map((p) => ({ id: p.id, label: p.name }))
+                : [{ id: '__primary', label: 'Primary' }];
+              const partTransforms: Record<string, Matrix4> = {};
+              for (const p of placedParts) {
+                const m = new Matrix4();
+                const q = new Quaternion().setFromEuler(
+                  new Euler(
+                    (p.rotation[0] * Math.PI) / 180,
+                    (p.rotation[1] * Math.PI) / 180,
+                    (p.rotation[2] * Math.PI) / 180,
+                    'XYZ',
+                  ),
+                );
+                m.compose(
+                  new Vector3(p.position[0], p.position[1], p.position[2]),
+                  q,
+                  new Vector3(1, 1, 1),
+                );
+                partTransforms[p.id] = m;
+              }
+              return (
+                <div style={{ position: 'absolute', top: 64, right: 16, zIndex: 30, maxWidth: 420 }}>
+                  <AssemblyExportBridge
+                    lang={lang}
+                    availableParts={realParts}
+                    partTransforms={partTransforms}
+                    resolveAssemblyMatesJson={() => {
+                      // Phase 6a — bundle the live assemblyMates as a
+                      // JSON manifest alongside the STEP + drawing.
+                      // Empty mates list → null (no extra file). Format
+                      // is the AssemblyMate[] shape verbatim — vendor
+                      // CAMs can re-create the constraints by id +
+                      // (partA, partB, type, faceA, faceB, value).
+                      if (assemblyMates.length === 0) return null;
+                      return JSON.stringify({
+                        schema: 'nexyfab.assemblyMates.v1',
+                        partName: selectedId || 'assembly',
+                        generatedAt: new Date().toISOString(),
+                        mates: assemblyMates,
+                      }, null, 2);
+                    }}
+                    resolveAssemblyDrawing={() => {
+                      // Phase 5j — generate a multi-view assembly drawing
+                      // (per-part iso views + BOM) from the live placedParts.
+                      // Empty assembly → null (bridge downloads bare .step).
+                      if (placedParts.length === 0) return null;
+                      const drawingParts: AssemblyDrawingPart[] = [];
+                      for (const p of placedParts) {
+                        const built = buildShapeResult(p.shapeId, p.params);
+                        if (!built?.geometry) continue;
+                        drawingParts.push({
+                          id: p.id,
+                          label: p.name || p.id,
+                          qty: p.qty,
+                          geometry: built.geometry,
+                          transform: partTransforms[p.id],
+                        });
+                      }
+                      if (drawingParts.length === 0) return null;
+                      try {
+                        // Phase 6c — derive the assembly drawing config
+                        // from the user prefs (shared with the configs
+                        // export branch). Assembly-specific overrides:
+                        // paperSize bumped to A3 (more parts → more
+                        // views), partName labelled "Assembly",
+                        // perPartView 'iso' for the per-leaf miniatures.
+                        const result = generateAssemblyDrawing(drawingParts, {
+                          ...drawingTemplatePrefs,
+                          paperSize: 'A3',
+                          titleBlock: {
+                            ...drawingTemplatePrefs.titleBlock,
+                            partName: 'Assembly',
+                            material: 'Mixed',
+                          },
+                          perPartView: 'iso',
+                        });
+                        return buildDrawingSvgString(result);
+                      } catch {
+                        return null;
+                      }
+                    }}
+                    resolvePartStepText={async (partId) => {
+                      const { exportToStepAsync } = await import('./io/stepExporter');
+                      if (partId === '__primary') {
+                        const geo = effectiveResultRef.current?.geometry;
+                        return geo ? await exportToStepAsync(geo, 'Primary') : null;
+                      }
+                      const part = placedParts.find((p) => p.id === partId);
+                      if (!part) return null;
+                      const built = buildShapeResult(part.shapeId, part.params);
+                      if (!built?.geometry) return null;
+                      return await exportToStepAsync(built.geometry, part.name || partId);
+                    }}
+                    onDiagnostics={(d) => {
+                      if (d.length > 0) addToast('warning', `Assembly export: ${d.length} part(s) skipped`);
+                    }}
+                  />
+                </div>
+              );
+            })()}
+            {configExportOn && (() => {
+              // Real adapter: configs ← configurations state.
+              //
+              // Phase 5c per-config base shape replay:
+              //   buildShapeResult(selectedId, cfg.params, cfg.paramExpressions)
+              //
+              // Phase 5f per-config feature suppression replay:
+              //   applyFeatureEnabledMap(features, cfg.featureEnabled) →
+              //   runPipeline(base.geometry, suppressed, FEATURE_MAP)
+              //   → exportToStepAsync(pipelineResult.geometry, ...)
+              //
+              // Each config's STEP now reflects BOTH its params AND its
+              // featureEnabled state. The pipeline rerun is sync (uses
+              // runPipeline not runPipelineAsync) so we don't carry the
+              // OCCT WASM init cost per config — features that need OCCT
+              // fall back to their mesh paths via isOcctReady() checks
+              // (same fallback the live viewport uses on first paint).
+              const realConfigs = configurations.length > 0
+                ? configurations.map((c) => ({ id: c.id, name: c.name }))
+                : [{ id: 'default', name: 'default' }];
+              // Phase 5i — per-config drawing SVGs alongside STEP in the
+              // bundle. Default DrawingConfig template (3-view + dims +
+              // centerlines) is plenty for vendor handoff; the user can
+              // still open AutoDrawingPanel for finer control before the
+              // next export. Geometry resolver mirrors exportConfigStep's
+              // base-shape path (per-config params, no feature replay —
+              // drawings are projection-based; feature suppression is
+              // baked into the STEP separately and would over-clutter the
+              // 2D view here).
+              // Phase 6c — use user prefs (localStorage-backed) as the
+              // template base; only the partName is overridden to match
+              // the current selectedId so it shows in the titleBlock.
+              const drawingTemplate: DrawingConfig = {
+                ...drawingTemplatePrefs,
+                titleBlock: {
+                  ...drawingTemplatePrefs.titleBlock,
+                  partName: selectedId || drawingTemplatePrefs.titleBlock.partName,
+                },
+              };
+              const drawingsByConfigId = selectedId && configurations.length > 0
+                ? generateDrawingsForConfigs({
+                    configs: realConfigs,
+                    resolveGeometry: (configId) => {
+                      const cfg = configurations.find((c) => c.id === configId);
+                      if (!cfg) return null;
+                      return buildShapeResult(selectedId, cfg.params, cfg.paramExpressions)?.geometry ?? null;
+                    },
+                    drawingConfigTemplate: drawingTemplate,
+                  }).drawingsByConfigId
+                : {};
+              return (
+                <div style={{ position: 'absolute', bottom: 96, right: 16, zIndex: 30, maxWidth: 420 }}>
+                  <ConfigurationsExportBridge
+                    lang={lang}
+                    partName={selectedId || 'part'}
+                    configs={realConfigs}
+                    resolveConfigDrawing={(id) => drawingsByConfigId[id] ?? null}
+                    exportConfigStep={async (configId) => {
+                      const { exportToStepAsync } = await import('./io/stepExporter');
+                      // Default placeholder → current viewport geometry.
+                      if (configId === 'default' && configurations.length === 0) {
+                        const geo = effectiveResultRef.current?.geometry;
+                        return geo ? await exportToStepAsync(geo, selectedId || 'part') : null;
+                      }
+                      const cfg = configurations.find((c) => c.id === configId);
+                      if (!cfg || !selectedId) return null;
+                      const built = buildShapeResult(selectedId, cfg.params, cfg.paramExpressions);
+                      if (!built?.geometry) return null;
+                      // Apply this config's feature suppression to the live
+                      // featureStack, then re-run the pipeline. Falls back
+                      // to base-only when features is empty.
+                      let outGeo = built.geometry;
+                      if (features.length > 0) {
+                        const suppressed = applyFeatureEnabledMap(features, cfg.featureEnabled);
+                        try {
+                          const piped = runPipeline(built.geometry, suppressed, FEATURE_MAP);
+                          if (piped.geometry) outGeo = piped.geometry;
+                        } catch {
+                          // Pipeline failure → ship base shape; the diagnostic
+                          // surfaces via the existing pipeline-error toast on
+                          // the live viewport.
+                        }
+                      }
+                      return await exportToStepAsync(outGeo, `${selectedId}_${cfg.name}`);
+                    }}
+                    onBundleReady={(r) => {
+                      const m = r.manifest as { configCount: number };
+                      addToast('success', `Bundle: ${m.configCount} config(s)`);
+                    }}
+                  />
+                </div>
+              );
+            })()}
+          </>
+        );
+      })()}
+
       {/* ═══ Collab Reconnect Banner (Phase 3 — offline/reconnect UX) ═══ */}
       <CollabReconnectBanner
         state={collabReconnectState}
@@ -9452,7 +10990,7 @@ export function ShapeGeneratorInner() {
         setModelVars={setModelVars}
         showPartPlacement={showPartPlacement}
         placedParts={placedParts}
-        setPlacedParts={setPlacedParts}
+        setPlacedParts={setPlacedPartsTracked}
         selectedId={selectedId}
         params={params}
         setHighlightedPartId={setHighlightedPartId}
@@ -9500,6 +11038,12 @@ export function ShapeGeneratorInner() {
         tutorial={tutorial}
         userId={authUser?.id ?? null}
         onOpenChat={() => openAIAssistant('chat')}
+        // Auto-tour retired: it suppressed on a blank workspace but popped a
+        // full-screen "build your first shape" modal over an ALREADY-LOADED
+        // project (features.length>0). Blank entry is guided by the empty-canvas
+        // cards + 5-min checklist; the tour stays available for manual replay.
+        // (2026-06-09 C2)
+        suppressAutoTour
       />
 
       {/* ═══ Split-screen + STL Export dock ═══ */}
@@ -9529,6 +11073,11 @@ export function ShapeGeneratorInner() {
           // through the public addFeature APIs. SetTimeout 0 lets the
           // clearAll commit before features land (same pattern as
           // handleRestoreVersion).
+          // Suppress transient per-feature error toasts while the bulk add races
+          // ahead of the async base-geometry eval; clear the flag once the
+          // pipeline has settled on the complete tree.
+          templateLoadingRef.current = true;
+          window.setTimeout(() => { templateLoadingRef.current = false; }, 1200);
           clearAll();
           window.setTimeout(() => {
             for (const feat of template.build()) {
@@ -9553,34 +11102,33 @@ export function ShapeGeneratorInner() {
         onExportStl={() => { setStlExportDialogOpen(true); }}
       />
 
-      {/* Lay-conversion CTA: "make it real → quote" once a model exists. Free
-          users hit the rfq upgrade prompt (the conversion ask); Pro opens RFQ. */}
-      <GetQuoteButton
-        lang={lang}
-        hasGeometry={!!effectiveResult?.geometry}
-        onRequestQuote={() => requirePro('rfq', () => setShowRfqPanel(true))}
-      />
+      {/* Manufacturing/quote CTA removed (2026-06-12): the floating
+          "make it real → quote" button duplicated the quote entry already in
+          DesignFunnelBar + ManufacturingPipelinePanel and crowded the
+          bottom-right with the STL/AI buttons. The funnel bar (design → DFM →
+          quote) is the single conversion path now. */}
 
-      {/* Phase-2/3 floating AI shell — viewport-overlay prompt +
-          intent dispatcher. promptToIntents is a placeholder stub
-          until the LLM pipeline (lib/ai/scad-agent) is wired through;
-          for now it returns an empty intent list with a help message. */}
+      {/* Phase-2/3 floating AI shell — viewport-overlay prompt + intent
+          dispatcher. promptToIntents resolves a prompt parser-first
+          (nlFeatureEditParser: "add a 5mm fillet", "make it 8mm", "clear all" —
+          EN + KR, instant/offline) then escalates the long tail to the
+          regex→LLM /api/featureTree-intent endpoint, mapping its PlanIntent to
+          feature edits (patterns, fuzzier phrasings). */}
       <AiAssistantShell
         lang={lang}
         store={{
           features,
           addFeatureWithParams: (type, params) => addFeatureWithParams(type as FeatureType, params),
           addSketchFeature: () => { /* sketch via picker not via free-form prompt */ },
-          updateFeatureParam,
+          // Tracked wrappers: AI-driven edits land in commandHistory too, so
+          // a bad AI patch is one Ctrl+Z away from reverting.
+          updateFeatureParam: updateFeatureParamCmd,
           removeFeature,
           moveFeature,
-          toggleFeature,
+          toggleFeature: toggleFeatureCmd,
           clearAll,
         }}
-        promptToIntents={async (prompt) => ({
-          intents: [],
-          explanation: `Received: "${prompt}" — AI pipeline wiring in progress.`,
-        })}
+        promptToIntents={async (prompt) => resolveFeatureEditPrompt(prompt, features)}
       />
 
       {/* ═══ AI Process Router Panel ═══ */}
@@ -9922,6 +11470,8 @@ export function ShapeGeneratorInner() {
         setMotionPartTransforms={setMotionPartTransforms}
         showModalAnalysis={showModalAnalysis}
         setShowModalAnalysis={setShowModalAnalysis}
+        showBucklingAnalysis={showBucklingAnalysis}
+        setShowBucklingAnalysis={setShowBucklingAnalysis}
         showToleranceStackup={showToleranceStackup}
         setShowToleranceStackup={setShowToleranceStackup}
         showSurfaceQuality={showSurfaceQuality}
@@ -9931,7 +11481,7 @@ export function ShapeGeneratorInner() {
 
       {/* ═══ Parametric Sweep Panel ═══ */}
       {showParametricSweep && (
-        <div style={{ position: 'fixed', top: 60, right: 16 + col1RightInset('sweep'), zIndex: 500 }}>
+        <div style={{ position: 'fixed', top: 60, right: 336 + col1RightInset('sweep'), zIndex: 500 }}>
           <ParametricSweepPanel
             lang={lang}
             currentParams={params}
@@ -10016,7 +11566,7 @@ export function ShapeGeneratorInner() {
 
       {/* ═══ Auto Drawing Panel ═══ */}
       {showAutoDrawing && (
-        <div style={{ position: 'fixed', top: 60, right: 16 + col1RightInset('draw'), zIndex: 500 }}>
+        <div style={{ position: 'fixed', top: 60, right: 336 + col1RightInset('draw'), zIndex: 500 }}>
           <AutoDrawingPanel
             lang={lang}
             geometry={effectiveResult?.geometry ?? null}
@@ -10050,7 +11600,7 @@ export function ShapeGeneratorInner() {
 
       {/* ═══ Copilot Panel ═══ */}
       {showCopilot && (
-        <div style={{ position: 'fixed', top: 60, right: 16 + col1RightInset('copilot'), zIndex: 600 }}>
+        <div style={{ position: 'fixed', top: 60, right: 336 + col1RightInset('copilot'), zIndex: 600 }}>
           <CopilotPanel
             lang={lang}
             dispatcher={{

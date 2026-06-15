@@ -75,6 +75,30 @@ describe('Network surface', () => {
     const m = tessellateNetworkSurface(net, 4, 4);
     expect(m.positions.length).toBe(5 * 5 * 3);
   });
+
+  it('Gordon surface interpolates a CURVED network curve exactly (not just intersections)', () => {
+    // u-curve at v=0 is an arch peaking at z=4; the surface must reproduce it
+    // along v=0, not sag to z=2 like the old (U+V)/2 average did.
+    const archZ = (u: number) => 4 * Math.sin(Math.PI * u);
+    const curved: NetworkInput = {
+      uCurves: [
+        (u) => ({ x: 10 * u, y: 0, z: archZ(u) }),
+        (u) => ({ x: 10 * u, y: 10, z: 0 }),
+      ],
+      vCurves: [
+        (v) => ({ x: 0, y: 10 * v, z: 0 }),
+        (v) => ({ x: 10, y: 10 * v, z: 0 }),
+      ],
+      vSamples: [0, 1], uSamples: [0, 1],
+    };
+    for (const u of [0, 0.25, 0.5, 0.75, 1]) {
+      const p = evalNetworkSurface(curved, u, 0);
+      expect(p.z).toBeCloseTo(archZ(u), 6); // on the arch curve, exact
+      expect(p.x).toBeCloseTo(10 * u, 6);
+    }
+    // Peak is the full arch height, not half.
+    expect(evalNetworkSurface(curved, 0.5, 0).z).toBeCloseTo(4, 6);
+  });
 });
 
 // ── Trim / Offset ──────────────────────────────────────────────────
@@ -125,7 +149,9 @@ describe('Trim / Offset', () => {
     expect(offset.positions[5]).toBe(2);
   });
 
-  it('thickenSurface doubles vertex count + adds top triangles', () => {
+  it('thickenSurface doubles vertex count + builds a CLOSED (watertight) solid', () => {
+    // A single triangle thickened becomes a triangular prism: bottom + flipped
+    // top + 3 side-wall quads. Every edge must be shared by exactly 2 triangles.
     const mesh: SurfaceMesh = {
       positions: [0, 0, 0,  1, 0, 0,  0, 1, 0],
       normals: [0, 0, 1, 0, 0, 1, 0, 0, 1],
@@ -133,8 +159,46 @@ describe('Trim / Offset', () => {
       indices: [0, 1, 2],
     };
     const thick = thickenSurface(mesh, 2);
-    expect(thick.positions.length).toBe(mesh.positions.length * 2);
-    expect(thick.indices.length).toBe(mesh.indices.length * 2);
+    expect(thick.positions.length).toBe(mesh.positions.length * 2); // verts doubled (walls reuse them)
+    // prism = 2 caps + 3 quads·2 = 8 triangles.
+    expect(thick.indices.length).toBe(8 * 3);
+    // Watertight: no boundary edges, no non-manifold edges.
+    const cnt = new Map<string, number>();
+    for (let i = 0; i < thick.indices.length; i += 3) {
+      const t = [thick.indices[i]!, thick.indices[i + 1]!, thick.indices[i + 2]!];
+      for (let e = 0; e < 3; e++) {
+        const u = t[e]!, v = t[(e + 1) % 3]!;
+        const k = u < v ? `${u}-${v}` : `${v}-${u}`;
+        cnt.set(k, (cnt.get(k) ?? 0) + 1);
+      }
+    }
+    for (const c of cnt.values()) expect(c).toBe(2);
+  });
+
+  it('thickenSurface closes the boundary of a multi-triangle grid surface', () => {
+    // 4×4 grid → thicken → watertight shell (regression guard for the missing
+    // side walls; the old version left 24 open boundary edges).
+    const n = 4;
+    const positions: number[] = [], normals: number[] = [], uvs: number[] = [], indices: number[] = [];
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { positions.push(i, j, 0); normals.push(0, 0, 1); uvs.push(0, 0); }
+    for (let j = 0; j < n - 1; j++) for (let i = 0; i < n - 1; i++) {
+      const a = j * n + i, b = a + 1, c = a + n, d = c + 1;
+      indices.push(a, c, b, b, c, d);
+    }
+    const thick = thickenSurface({ positions, normals, uvs, indices }, 1.5);
+    const cnt = new Map<string, number>();
+    for (let i = 0; i < thick.indices.length; i += 3) {
+      const t = [thick.indices[i]!, thick.indices[i + 1]!, thick.indices[i + 2]!];
+      for (let e = 0; e < 3; e++) {
+        const u = t[e]!, v = t[(e + 1) % 3]!;
+        const k = u < v ? `${u}-${v}` : `${v}-${u}`;
+        cnt.set(k, (cnt.get(k) ?? 0) + 1);
+      }
+    }
+    let boundary = 0, nonManifold = 0;
+    for (const c of cnt.values()) { if (c === 1) boundary++; else if (c > 2) nonManifold++; }
+    expect(boundary).toBe(0);
+    expect(nonManifold).toBe(0);
   });
 });
 
@@ -178,6 +242,22 @@ describe('Knit', () => {
     expect(report.isClosed).toBe(true);
     expect(report.boundaryEdges).toHaveLength(0);
   });
+
+  it('welds vertices within tolerance even when they straddle a grid cell', () => {
+    // Mesh B's shared edge is nudged 0.0006 mm — inside the 0.001 mm tolerance
+    // but across the rounding boundary (cell 0 vs cell 1). The old exact-cell
+    // key left these unwelded, so the seam read as open.
+    const tol = 0.001, eps = 0.0006;
+    const a: SurfaceMesh = { positions: [0, 0, 0, 0, 1, 0, -1, 0, 0], normals: new Array(9).fill(0), uvs: new Array(6).fill(0), indices: [0, 1, 2] };
+    const b: SurfaceMesh = { positions: [eps, 0, 0, eps, 1, 0, 1, 0, 0], normals: new Array(9).fill(0), uvs: new Array(6).fill(0), indices: [0, 1, 2] };
+    const within = knitSurfaces([a, b], { toleranceMm: tol });
+    expect(within.report.mergedVertices).toBe(2);          // both shared verts welded
+    expect(within.report.finalVertexCount).toBe(4);
+    // Beyond tolerance the vertices must stay distinct.
+    const far: SurfaceMesh = { positions: [0.002, 0, 0, 0.002, 1, 0, 1, 0, 0], normals: new Array(9).fill(0), uvs: new Array(6).fill(0), indices: [0, 1, 2] };
+    const beyond = knitSurfaces([a, far], { toleranceMm: tol });
+    expect(beyond.report.mergedVertices).toBe(0);
+  });
 });
 
 // ── Surface fillet ─────────────────────────────────────────────────
@@ -218,5 +298,31 @@ describe('Surface fillet', () => {
       crossSamples: 12,
     });
     expect(r.positions.length).toBe(2 * 13 * 3);
+  });
+
+  it('a 90° fillet cross-section is a true radius-R circular arc, G1 to both faces', () => {
+    // Rolling-ball fillet of radius R between two perpendicular planes. Tangent
+    // points (R,0) and (0,R); the arc is a quarter circle about (R,R). The
+    // angle-based handle makes the cubic Bézier hug that circle (a fixed
+    // 0.55·chord handle bulged ~12% past it).
+    const R = 10;
+    const st: BlendStation = {
+      pointA: { x: R, y: 0, z: 0 }, pointB: { x: 0, y: R, z: 0 },
+      tangentA: { x: -1, y: 0, z: 0 }, tangentB: { x: 0, y: -1, z: 0 },
+    };
+    const m = buildSurfaceFillet({ stations: [st, { ...st, pointA: { x: R, y: 0, z: 5 }, pointB: { x: 0, y: R, z: 5 } }], crossSamples: 32 });
+    const pt = (k: number) => ({ x: m.positions[k * 3]!, y: m.positions[k * 3 + 1]!, z: m.positions[k * 3 + 2]! });
+    // Every cross-section point lies on the radius-R circle about (R,R).
+    for (let k = 0; k <= 32; k++) {
+      const p = pt(k);
+      expect(Math.hypot(p.x - R, p.y - R)).toBeCloseTo(R, 1); // within ~0.05
+    }
+    // C0 + G1: endpoints exact, start direction along tangentA.
+    const c0 = pt(0), c1 = pt(1), cN = pt(32);
+    expect(Math.hypot(c0.x - R, c0.y - 0)).toBeLessThan(1e-6);
+    expect(Math.hypot(cN.x - 0, cN.y - R)).toBeLessThan(1e-6);
+    const dir0 = { x: c1.x - c0.x, y: c1.y - c0.y };
+    const dl = Math.hypot(dir0.x, dir0.y);
+    expect(dir0.x / dl).toBeLessThan(-0.99); // leaves P0 along (−1,0) = tangentA
   });
 });

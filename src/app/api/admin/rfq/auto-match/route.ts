@@ -15,63 +15,11 @@ import { sendEmail, rfqAssignedToFactoryHtml } from '@/lib/nexyfab-email';
 import { createNotification } from '@/app/lib/notify';
 import { logAudit } from '@/lib/audit';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
+// Helpers + types live in a sibling module: Next.js 16 forbids non-handler
+// exports from a route file (only GET/POST/… + route config are allowed).
+import { type RfqRow, type FactoryRow, type ScoredFactory, pickAssignedFactory } from './matchSelection';
 
 export const dynamic = 'force-dynamic';
-
-interface RfqRow {
-  id: string;
-  material_id: string | null;
-  dfm_process: string | null;
-  volume_cm3: number | null;
-  quantity: number;
-  shape_name: string | null;
-  status: string;
-}
-
-interface FactoryRow {
-  id: string;
-  name: string;
-  partner_email: string | null;
-  contact_email: string | null;
-  processes: string | null; // JSON text array
-  rating: number | null;
-  price_level: number | null;
-}
-
-interface ScoredFactory extends FactoryRow {
-  score: number;
-}
-
-function scoreFactory(rfq: RfqRow, factory: FactoryRow): number {
-  let score = 10; // base
-
-  // Process match: +40
-  if (rfq.dfm_process && factory.processes) {
-    try {
-      const procs: string[] = JSON.parse(factory.processes);
-      if (Array.isArray(procs) && procs.includes(rfq.dfm_process)) {
-        score += 40;
-      }
-    } catch {
-      // malformed JSON — skip process score
-    }
-  }
-
-  // Rating: (rating / 5) * 30 — clamped [0, 30]
-  const rating = typeof factory.rating === 'number' ? factory.rating : 0;
-  const ratingScore = (Math.min(5, Math.max(0, rating)) / 5) * 30;
-  score += ratingScore;
-
-  // Price level: lower price_level = higher score
-  // price_level expected range: 1–3
-  // (3 - price_level) / 2 * 20 → price_level=1 → 20, price_level=2 → 10, price_level=3 → 0
-  const priceLevel = typeof factory.price_level === 'number' ? factory.price_level : 3;
-  const clamped = Math.min(3, Math.max(1, priceLevel));
-  const priceScore = ((3 - clamped) / 2) * 20;
-  score += priceScore;
-
-  return Math.round(score * 100) / 100;
-}
 
 export async function POST(req: NextRequest) {
   const isAdmin = await verifyAdmin(req);
@@ -93,7 +41,8 @@ export async function POST(req: NextRequest) {
 
   // ── 1. Fetch the RFQ ──────────────────────────────────────────────────────────
   const rfq = await db.queryOne<RfqRow>(
-    `SELECT id, material_id, dfm_process, volume_cm3, quantity, shape_name, status
+    `SELECT id, material_id, dfm_process, volume_cm3, quantity, shape_name, status,
+            preferred_factory_id
      FROM nf_rfqs
      WHERE id = ? AND user_id <> 'demo-user'`,
     rfqId,
@@ -114,15 +63,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No active factories available' }, { status: 404 });
   }
 
-  // ── 3. Score each factory ─────────────────────────────────────────────────────
-  const scored: ScoredFactory[] = factories.map((f) => ({
-    ...f,
-    score: scoreFactory(rfq, f),
-  }));
-
-  // ── 4. Sort by score descending, pick top ─────────────────────────────────────
-  scored.sort((a, b) => b.score - a.score);
-  const best = scored[0];
+  // ── 3. Pick the factory — customer preference wins, else best score ───────────
+  const picked = pickAssignedFactory(rfq, factories);
+  if (!picked) {
+    return NextResponse.json({ error: 'No active factories available' }, { status: 404 });
+  }
+  const best: ScoredFactory = { ...picked.factory, score: picked.score };
+  const preferred = picked.matchedBy === 'preference';
 
   // ── 5. Update the RFQ ────────────────────────────────────────────────────────
   const now = Date.now();
@@ -179,6 +126,7 @@ export async function POST(req: NextRequest) {
       factoryId: best.id,
       factoryName: best.name,
       score: best.score,
+      matchedBy: preferred ? 'preference' : 'score',
     },
   });
 
@@ -188,6 +136,7 @@ export async function POST(req: NextRequest) {
     factoryId: best.id,
     factoryName: best.name,
     score: best.score,
+    matchedBy: preferred ? 'preference' : 'score',
     status: 'assigned',
   });
 }

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { solveAssemblyNewton } from './assemblyNewtonSolver';
 
 /**
  * Assembly Mate Constraint Solver
@@ -26,7 +27,10 @@ export type MateType =
   | 'hinge'           // Kinematic: 1 rotational DOF (Concentric + Coincident plane)
   | 'slider'          // Kinematic: 1 translational DOF (Concentric without position lock)
   | 'gear'            // Kinematic: Rotation ratio between two axes (gear mesh)
-  | 'belt';           // Kinematic: Rotation coupling via belt / chain — ratio derived from pulley radii
+  | 'belt'            // Kinematic: Rotation coupling via belt / chain — ratio derived from pulley radii
+  | 'limitDistance'   // Inequality: distance between two points clamped to [min, max]
+  | 'limitAngle'      // Inequality: angle between two normals clamped to [min, max] (degrees)
+  | 'width';          // Center selection B between two parallel reference planes on body A
 
 export type MateSelectionType = 'face' | 'edge' | 'point' | 'axis' | 'plane';
 
@@ -60,6 +64,13 @@ export interface Mate {
   beltRadius1?: number;
   /** For belt mates: `true` flips the direction (crossed belt). */
   beltCrossed?: boolean;
+  /** For limitDistance (mm) / limitAngle (deg): lower bound of the allowed range. */
+  min?: number;
+  /** For limitDistance (mm) / limitAngle (deg): upper bound of the allowed range. */
+  max?: number;
+  /** For width mates: the SECOND reference plane on the same body as
+   *  `selections[0]`. `selections[1]` is centered between the two planes. */
+  widthSecond?: MateSelection;
   /** Is this mate enabled? */
   enabled: boolean;
   /** Is this mate over-defining (conflict detected)? */
@@ -91,8 +102,16 @@ export interface SolveResult {
   unsatisfied: string[];
   /** Conflicting mate IDs */
   conflicts: string[];
-  /** Degrees of freedom remaining */
+  /** Degrees of freedom remaining (Grübler count, clamped ≥ 0). */
   remainingDOF: number;
+  /**
+   * The mates request more constraint DOF than the free bodies have (Σ
+   * DOF_PER_MATE > 6·freeBodies) — the assembly is over-defined. A necessary
+   * condition for over-constraint (the gross case); redundant-but-within-budget
+   * mates need rank analysis (follow-up). Surfaced so the UI can warn instead
+   * of falsely showing "fully constrained" (DOF clamps to 0 either way).
+   */
+  overConstrained: boolean;
   converged: boolean;
   iterations: number;
 }
@@ -117,11 +136,82 @@ function worldNormal(body: AssemblyBody, localNorm: THREE.Vector3): THREE.Vector
 
 // ─── Per-constraint appliers ──────────────────────────────────────────────────
 
+/** Options threaded from `solveAssembly` into the appliers. */
+export interface SolveOptions {
+  /**
+   * PBD-style lever-arm rotation on point-coincidence corrections
+   * (coincident / concentric / hinge). OFF by default — the static
+   * placement solver keeps its historical translate-only behavior so
+   * existing placements stay byte-stable. The kinematic drag loop turns
+   * this ON: articulating a linkage (e.g. a four-bar's coupler/rocker)
+   * requires bodies to ROTATE about their remaining pins to chase a
+   * point target, which pure translation can never satisfy for a body
+   * with two pins at different local offsets.
+   */
+  rotationalResponse?: boolean;
+}
+
+/**
+ * Move world point `p` (attached to `body` at lever arm r = p − body.position)
+ * toward `p + e` using rotation-about-origin plus translation. The rotational
+ * part absorbs the component of `e` perpendicular to the lever arm
+ * (Δθ = (r × e)/|r|², the PBD point-constraint response); the remainder is
+ * translated. Falls back to pure translation for tiny lever arms.
+ */
+function movePointWithRotation(body: AssemblyBody, p: THREE.Vector3, e: THREE.Vector3): void {
+  const r = p.clone().sub(body.position);
+  const r2 = r.lengthSq();
+  if (r2 > 1e-8) {
+    const dTheta = new THREE.Vector3().crossVectors(r, e).divideScalar(r2);
+    const ang = dTheta.length();
+    if (ang > 1e-9) {
+      // Clamp single-step rotation so a far-off target can't flip the body.
+      const clamped = Math.min(ang, 0.5);
+      const q = new THREE.Quaternion().setFromAxisAngle(dTheta.normalize(), clamped);
+      const bq = new THREE.Quaternion().setFromEuler(body.rotation);
+      bq.premultiply(q);
+      body.rotation.setFromQuaternion(bq);
+      // p has moved with the rotation: p' = x + q·r
+      const newP = body.position.clone().add(r.clone().applyQuaternion(q));
+      const remaining = p.clone().add(e).sub(newP);
+      body.position.add(remaining);
+      return;
+    }
+  }
+  body.position.add(e);
+}
+
+/** Distribute a point-gap correction `delta` (p1 → p0 means b1 moves by −delta,
+ *  b0 by +delta) across the free bodies, optionally with lever-arm rotation. */
+function applyPointGap(
+  b0: AssemblyBody, b1: AssemblyBody,
+  p0: THREE.Vector3, p1: THREE.Vector3,
+  delta: THREE.Vector3,
+  opts?: SolveOptions,
+): void {
+  const rot = opts?.rotationalResponse === true;
+  if (!b0.fixed && !b1.fixed) {
+    if (rot) {
+      movePointWithRotation(b0, p0, delta.clone().multiplyScalar(0.5));
+      movePointWithRotation(b1, p1, delta.clone().multiplyScalar(-0.5));
+    } else {
+      b0.position.add(delta.clone().multiplyScalar(0.5));
+      b1.position.sub(delta.clone().multiplyScalar(0.5));
+    }
+  } else if (!b0.fixed) {
+    if (rot) movePointWithRotation(b0, p0, delta);
+    else b0.position.add(delta);
+  } else if (!b1.fixed) {
+    if (rot) movePointWithRotation(b1, p1, delta.clone().negate());
+    else b1.position.sub(delta);
+  }
+}
+
 /**
  * Coincident: bring the two selection points to the same world-space location.
  * Returns the residual distance before correction.
  */
-function applyCoincidentConstraint(bodies: AssemblyBody[], mate: Mate): number {
+function applyCoincidentConstraint(bodies: AssemblyBody[], mate: Mate, opts?: SolveOptions): number {
   const [s0, s1] = mate.selections;
   const b0 = bodies[s0.bodyIndex];
   const b1 = bodies[s1.bodyIndex];
@@ -133,14 +223,7 @@ function applyCoincidentConstraint(bodies: AssemblyBody[], mate: Mate): number {
 
   if (residual < 1e-6) return residual;
 
-  if (!b0.fixed && !b1.fixed) {
-    b0.position.add(delta.clone().multiplyScalar(0.5));
-    b1.position.sub(delta.clone().multiplyScalar(0.5));
-  } else if (!b0.fixed) {
-    b0.position.add(delta);
-  } else if (!b1.fixed) {
-    b1.position.sub(delta);
-  }
+  applyPointGap(b0, b1, p0, p1, delta, opts);
 
   return residual;
 }
@@ -149,7 +232,7 @@ function applyCoincidentConstraint(bodies: AssemblyBody[], mate: Mate): number {
  * Concentric: align two axis origins and orient the axes to be parallel.
  * Returns sum of position residual and axis-alignment residual.
  */
-function applyConcentricConstraint(bodies: AssemblyBody[], mate: Mate): number {
+function applyConcentricConstraint(bodies: AssemblyBody[], mate: Mate, opts?: SolveOptions): number {
   const [s0, s1] = mate.selections;
   const b0 = bodies[s0.bodyIndex];
   const b1 = bodies[s1.bodyIndex];
@@ -167,15 +250,10 @@ function applyConcentricConstraint(bodies: AssemblyBody[], mate: Mate): number {
   const axDot = Math.min(1, Math.max(-1, ax0.dot(ax1)));
   const axisResidual = 1 - Math.abs(axDot);
 
-  // Align origins
-  if (!b0.fixed && !b1.fixed) {
-    b0.position.add(posDelta.clone().multiplyScalar(0.5));
-    b1.position.sub(posDelta.clone().multiplyScalar(0.5));
-  } else if (!b0.fixed) {
-    b0.position.add(posDelta);
-  } else if (!b1.fixed) {
-    b1.position.sub(posDelta);
-  }
+  // Align origins (lever-arm rotation when kinematic drag requests it —
+  // this is what lets a rocker SWING about its grounded pin instead of
+  // translating off it)
+  applyPointGap(b0, b1, p0, p1, posDelta, opts);
 
   // Align axes
   if (axisResidual > 1e-6) {
@@ -286,14 +364,19 @@ function applyPerpendicularConstraint(bodies: AssemblyBody[], mate: Mate): numbe
   const halfFor0 = (!b0.fixed && !b1.fixed) ? correction / 2 : (!b0.fixed ? correction : 0);
   const halfFor1 = (!b0.fixed && !b1.fixed) ? correction / 2 : (!b1.fixed ? correction : 0);
 
+  // Sign convention (Phase 2 fix, mirrors applyAngleConstraint): rotating n1
+  // by +φ about normalize(n0 × n1) increases the REAL n0→n1 angle. The folded
+  // measure acos(|dot|) needs the real angle to grow when dot > 0 (acute) and
+  // shrink when dot < 0 (obtuse) — the old fixed signs only handled obtuse.
+  const sgn = dot >= 0 ? 1 : -1;
   if (halfFor0 > 0) {
     const q0 = new THREE.Quaternion().setFromEuler(b0.rotation);
-    q0.premultiply(new THREE.Quaternion().setFromAxisAngle(rotAxis, halfFor0));
+    q0.premultiply(new THREE.Quaternion().setFromAxisAngle(rotAxis, -halfFor0 * sgn));
     b0.rotation.setFromQuaternion(q0);
   }
   if (halfFor1 > 0) {
     const q1 = new THREE.Quaternion().setFromEuler(b1.rotation);
-    q1.premultiply(new THREE.Quaternion().setFromAxisAngle(rotAxis, -halfFor1));
+    q1.premultiply(new THREE.Quaternion().setFromAxisAngle(rotAxis, halfFor1 * sgn));
     b1.rotation.setFromQuaternion(q1);
   }
   void usedFallback; // reserved for future telemetry — silences ts-unused.
@@ -347,6 +430,7 @@ function applyAngleConstraint(bodies: AssemblyBody[], mate: Mate): number {
   const n0 = worldNormal(b0, s0.localNormal);
   const n1 = worldNormal(bodies[s1.bodyIndex], s1.localNormal);
 
+  const b1 = bodies[s1.bodyIndex];
   const targetRad = (mate.angle ?? 0) * (Math.PI / 180);
   const clampedDot = Math.min(1, Math.max(-1, n0.dot(n1)));
   const currentAngle = Math.acos(clampedDot);
@@ -354,19 +438,44 @@ function applyAngleConstraint(bodies: AssemblyBody[], mate: Mate): number {
 
   if (residual < 1e-6) return residual;
 
-  const rotAxis = new THREE.Vector3().crossVectors(n0, n1);
-  if (rotAxis.lengthSq() < 1e-10) return residual;
+  let correction = (targetRad - currentAngle) * 0.5;
+  let rotAxis = new THREE.Vector3().crossVectors(n0, n1);
+  if (rotAxis.lengthSq() < 1e-10) {
+    // n0 ∥ n1 (the common parallel start, or anti-parallel): the cross product is zero,
+    // so there is no natural rotation plane. The old code just returned here, so the
+    // bodies never rotated and the angle stayed at 0 (the angle mate did nothing). Mirror
+    // the perpendicular constraint: pick a fallback axis ⟂ n0 and apply the FULL target
+    // angle in one step.
+    const fallback = Math.abs(n0.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+    rotAxis = new THREE.Vector3().crossVectors(n0, fallback);
+    if (rotAxis.lengthSq() < 1e-10) return residual;
+    correction = targetRad - currentAngle; // full (currentAngle ≈ 0 or π)
+  }
   rotAxis.normalize();
 
-  const correction = (targetRad - currentAngle) * 0.5;
-  const rotQuat = new THREE.Quaternion().setFromAxisAngle(rotAxis, correction);
-
-  if (!b0.fixed) {
+  // Distribute the correction across whichever bodies are free (the old code only ever
+  // rotated b0, so a fixed b0 left a free b1 untouched). Both free ⇒ each takes half
+  // (opposite signs); one free ⇒ it absorbs the full correction.
+  //
+  // Sign convention (Phase 2 fix): with a = normalize(n0 × n1), rotating n1
+  // by +φ about a INCREASES the n0→n1 angle, while rotating n0 by +φ about a
+  // DECREASES it. The previous signs were inverted for both bodies, so from
+  // any non-parallel start the iteration ran AWAY from the target
+  // (angle_{k+1} = 2·angle_k − target) and oscillated. All prior tests began
+  // at the parallel/degenerate pose where direction is arbitrary, which hid
+  // this. Exposed by the limitAngle "clamp 120° down to 90°" case.
+  const for0 = (!b0.fixed && !b1.fixed) ? correction / 2 : (!b0.fixed ? correction : 0);
+  const for1 = (!b0.fixed && !b1.fixed) ? correction / 2 : (!b1.fixed ? correction : 0);
+  if (for0 !== 0) {
     const q = new THREE.Quaternion().setFromEuler(b0.rotation);
-    q.premultiply(rotQuat);
+    q.premultiply(new THREE.Quaternion().setFromAxisAngle(rotAxis, -for0));
     b0.rotation.setFromQuaternion(q);
   }
-
+  if (for1 !== 0) {
+    const q = new THREE.Quaternion().setFromEuler(b1.rotation);
+    q.premultiply(new THREE.Quaternion().setFromAxisAngle(rotAxis, for1));
+    b1.rotation.setFromQuaternion(q);
+  }
   return residual;
 }
 
@@ -376,13 +485,13 @@ function applyAngleConstraint(bodies: AssemblyBody[], mate: Mate): number {
  * Hinge: Acts as a revolute joint. Leaves exactly 1 rotational DOF.
  * Combines Concentric (align axes) + Coincident (align points along the axis).
  */
-function applyHingeConstraint(bodies: AssemblyBody[], mate: Mate): number {
+function applyHingeConstraint(bodies: AssemblyBody[], mate: Mate, opts?: SolveOptions): number {
   // A hinge is mathematically identical to a concentric mate that also enforces position match
   // Concentric already aligns position completely if we just use the points.
   // In our simplified solver, applyConcentricConstraint aligns the origins AND the axes.
   // So it effectively removes 5 DOF (2 translation, 2 rotation), leaving 1 rotational DOF.
   // Wait, applyConcentricConstraint aligns the exact local points.
-  return applyConcentricConstraint(bodies, mate);
+  return applyConcentricConstraint(bodies, mate, opts);
 }
 
 /**
@@ -444,12 +553,172 @@ function applySliderConstraint(bodies: AssemblyBody[], mate: Mate): number {
   return posResidual + axisResidual;
 }
 
+/**
+ * Tangent: the two selected faces touch along a common tangent plane.
+ * Enforced as (a) the outward normals OPPOSE (anti-parallel — the two solids
+ * sit on either side of the shared tangent plane, "touching without
+ * penetration") and (b) the contact points have zero separation ALONG that
+ * normal, while the in-plane offset stays free (a cylinder may roll or slide
+ * along a flat face).
+ *
+ * Scope: this uses only the contact point + normal carried by the selection,
+ * so it is exact for planar-to-planar contact and for the contact-point
+ * tangency of curved faces. It deliberately does NOT read a curvature radius
+ * (the selection carries none), so it will not park a free-floating cylinder
+ * at `distance = radius` from an axis without a contact point — that needs a
+ * radius the picker does not yet supply. Previously tangent fell through to a
+ * silent no-op (reported satisfied while consuming a DOF); this makes it a
+ * real, convergent constraint.
+ */
+function applyTangentConstraint(bodies: AssemblyBody[], mate: Mate): number {
+  const [s0, s1] = mate.selections;
+  const b0 = bodies[s0.bodyIndex];
+  const b1 = bodies[s1.bodyIndex];
+
+  const n0 = worldNormal(b0, s0.localNormal);
+  const n1 = worldNormal(b1, s1.localNormal);
+
+  // (a) Drive the normals anti-parallel (n1 → −n0).
+  const dot = Math.min(1, Math.max(-1, n0.dot(n1)));
+  const alignResidual = 1 + dot;                 // 0 when opposed (dot = −1)
+  if (alignResidual > 1e-6) {
+    const target = n0.clone().negate();          // where n1 should point
+    let rotAxis = new THREE.Vector3().crossVectors(n1, target);
+    if (rotAxis.lengthSq() < 1e-10) {
+      // n1 is exactly +n0 (a 180° flip): pick any axis ⟂ n0.
+      const fallback = Math.abs(n0.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+      rotAxis = new THREE.Vector3().crossVectors(n0, fallback);
+    }
+    rotAxis.normalize();
+    const rotAngle = Math.acos(Math.min(1, Math.max(-1, n1.dot(target))));
+    if (!b0.fixed && !b1.fixed) {
+      const half = new THREE.Quaternion().setFromAxisAngle(rotAxis, rotAngle * 0.5);
+      const q1 = new THREE.Quaternion().setFromEuler(b1.rotation);
+      q1.premultiply(half); b1.rotation.setFromQuaternion(q1);
+      const q0 = new THREE.Quaternion().setFromEuler(b0.rotation);
+      q0.premultiply(half.clone().invert()); b0.rotation.setFromQuaternion(q0);
+    } else if (!b1.fixed) {
+      const full = new THREE.Quaternion().setFromAxisAngle(rotAxis, rotAngle);
+      const q1 = new THREE.Quaternion().setFromEuler(b1.rotation);
+      q1.premultiply(full); b1.rotation.setFromQuaternion(q1);
+    } else if (!b0.fixed) {
+      const full = new THREE.Quaternion().setFromAxisAngle(rotAxis, -rotAngle);
+      const q0 = new THREE.Quaternion().setFromEuler(b0.rotation);
+      q0.premultiply(full); b0.rotation.setFromQuaternion(q0);
+    }
+  }
+
+  // (b) Zero the separation along the (now opposed) reference normal; in-plane
+  // translation is left free. Recompute n0 after the rotation above.
+  const nRef = worldNormal(b0, s0.localNormal);
+  const p0 = worldPoint(b0, s0.localPoint);
+  const p1 = worldPoint(b1, s1.localPoint);
+  const sep = p1.clone().sub(p0).dot(nRef);
+  const posResidual = Math.abs(sep);
+  if (posResidual > 1e-6) {
+    const corr = nRef.clone().multiplyScalar(sep);
+    if (!b0.fixed && !b1.fixed) {
+      b0.position.add(corr.clone().multiplyScalar(0.5));
+      b1.position.sub(corr.clone().multiplyScalar(0.5));
+    } else if (!b1.fixed) {
+      b1.position.sub(corr);
+    } else if (!b0.fixed) {
+      b0.position.add(corr);
+    }
+  }
+
+  return alignResidual + posResidual;
+}
+
+/**
+ * Limit distance: inequality constraint — the gap between the two selection
+ * points must stay within `[mate.min, mate.max]` (mm). Inside the range the
+ * mate is satisfied (residual 0, no correction); outside it behaves like a
+ * distance mate targeting the violated bound. SolidWorks "Limit / Distance".
+ */
+function applyLimitDistanceConstraint(bodies: AssemblyBody[], mate: Mate): number {
+  const lo = mate.min ?? 0;
+  const hi = mate.max ?? lo;
+  const [s0, s1] = mate.selections;
+  const b0 = bodies[s0.bodyIndex];
+  const b1 = bodies[s1.bodyIndex];
+
+  const p0 = worldPoint(b0, s0.localPoint);
+  const p1 = worldPoint(b1, s1.localPoint);
+  const current = p0.distanceTo(p1);
+  if (current >= lo - 1e-9 && current <= hi + 1e-9) return 0; // inside range — free DOF
+
+  const target = current < lo ? lo : hi;
+  return applyDistanceConstraint(bodies, { ...mate, distance: target });
+}
+
+/**
+ * Limit angle: inequality constraint — the angle between the two selection
+ * normals must stay within `[mate.min, mate.max]` (degrees). Inside the range
+ * the mate is satisfied; outside it behaves like an angle mate targeting the
+ * violated bound. SolidWorks "Limit / Angle".
+ */
+function applyLimitAngleConstraint(bodies: AssemblyBody[], mate: Mate): number {
+  const lo = mate.min ?? 0;
+  const hi = mate.max ?? lo;
+  const [s0, s1] = mate.selections;
+  const n0 = worldNormal(bodies[s0.bodyIndex], s0.localNormal);
+  const n1 = worldNormal(bodies[s1.bodyIndex], s1.localNormal);
+  const currentDeg = (Math.acos(Math.min(1, Math.max(-1, n0.dot(n1)))) * 180) / Math.PI;
+  if (currentDeg >= lo - 1e-7 && currentDeg <= hi + 1e-7) return 0; // inside range
+
+  const target = currentDeg < lo ? lo : hi;
+  return applyAngleConstraint(bodies, { ...mate, angle: target });
+}
+
+/**
+ * Width: center selection B (`selections[1]`'s point) between two parallel
+ * reference planes on body A — `selections[0]` and `mate.widthSecond`.
+ * SolidWorks "Width" (centered variant): the tab is held at the midplane of
+ * the groove, in-plane sliding stays free. Residual = |signed offset from the
+ * midplane| along the reference normal. Without `widthSecond` the mate is a
+ * no-op (reported as 0 so it doesn't poison convergence; the UI requires the
+ * second face before creating the mate).
+ */
+function applyWidthConstraint(bodies: AssemblyBody[], mate: Mate): number {
+  const s2 = mate.widthSecond;
+  if (!s2) return 0;
+  const [s0, s1] = mate.selections;
+  const b0 = bodies[s0.bodyIndex];
+  const b1 = bodies[s1.bodyIndex];
+  const bRef2 = bodies[s2.bodyIndex] ?? b0;
+
+  const pA1 = worldPoint(b0, s0.localPoint);
+  const pA2 = worldPoint(bRef2, s2.localPoint);
+  const n = worldNormal(b0, s0.localNormal);
+
+  // Midplane point: halfway between the two reference planes measured along n.
+  const sep = pA2.clone().sub(pA1).dot(n);
+  const mid = pA1.clone().add(n.clone().multiplyScalar(sep * 0.5));
+
+  const pB = worldPoint(b1, s1.localPoint);
+  const off = pB.clone().sub(mid).dot(n); // signed offset from midplane
+  const residual = Math.abs(off);
+  if (residual < 1e-6) return residual;
+
+  const corr = n.clone().multiplyScalar(off);
+  if (!b0.fixed && !b1.fixed) {
+    b0.position.add(corr.clone().multiplyScalar(0.5));
+    b1.position.sub(corr.clone().multiplyScalar(0.5));
+  } else if (!b1.fixed) {
+    b1.position.sub(corr);
+  } else if (!b0.fixed) {
+    b0.position.add(corr);
+  }
+  return residual;
+}
+
 /** Twist component of a quaternion around a given axis. Decomposes Q
  *  into swing × twist where twist is rotation purely around `axis` and
  *  returns the twist angle in radians (signed by right-hand rule).
  *  Used by the gear constraint to read out each body's current rotation
  *  around its gear axis without depending on iteration history. */
-function twistAngleAroundAxis(quat: THREE.Quaternion, axis: THREE.Vector3): number {
+export function twistAngleAroundAxis(quat: THREE.Quaternion, axis: THREE.Vector3): number {
   const a = axis.clone().normalize();
   // The twist part of (qx, qy, qz, qw) is the projection of (qx, qy, qz)
   // onto the axis, plus the original qw — then renormalised.
@@ -551,6 +820,11 @@ const DOF_PER_MATE: Record<MateType, number> = {
   slider:        5,
   gear:          1,
   belt:          1,
+  // Inequality (limit) mates remove no DOF while inside their range — they
+  // only act at the bounds, so they're counted as 0 for DOF bookkeeping.
+  limitDistance: 0,
+  limitAngle:    0,
+  width:         1,
   fixed:         6,
 };
 
@@ -569,6 +843,21 @@ export function calculateDOF(state: AssemblyState): number {
 }
 
 /**
+ * Over-constraint check: the enabled mates request more constraint DOF than the
+ * free bodies have (Σ DOF_PER_MATE > 6·freeBodies). `calculateDOF` clamps this
+ * to 0, so without this an over-defined assembly looks "fully constrained"
+ * (green) instead of warning. This is the gross necessary condition; redundant
+ * mates that fit within the DOF budget need rank analysis (follow-up).
+ */
+export function isAssemblyOverConstrained(state: AssemblyState): boolean {
+  const freeBodies = state.bodies.filter(b => !b.fixed).length;
+  const constrained = state.mates
+    .filter(m => m.enabled)
+    .reduce((sum, m) => sum + (DOF_PER_MATE[m.type] ?? 0), 0);
+  return constrained > freeBodies * 6;
+}
+
+/**
  * Main constraint solver using Gauss-Seidel iteration.
  *
  * Clones all body positions/rotations before solving so the input state is
@@ -576,7 +865,86 @@ export function calculateDOF(state: AssemblyState): number {
  * corrections until the maximum residual drops below 1e-5 or maxIterations
  * is reached.
  */
-export function solveAssembly(state: AssemblyState, maxIterations = 200): SolveResult {
+/** Dispatch one mate to its applier, returning the residual. Shared by the
+ *  warm-start placement pass and the relaxation sweep. */
+function dispatchMate(bodies: AssemblyBody[], mate: Mate, opts?: SolveOptions): number {
+  switch (mate.type) {
+    case 'coincident':   return applyCoincidentConstraint(bodies, mate, opts);
+    case 'concentric':   return applyConcentricConstraint(bodies, mate, opts);
+    case 'parallel':     return applyParallelConstraint(bodies, mate);
+    case 'perpendicular': return applyPerpendicularConstraint(bodies, mate);
+    case 'distance':     return applyDistanceConstraint(bodies, mate);
+    case 'angle':        return applyAngleConstraint(bodies, mate);
+    case 'fixed':        return 0; // handled by body.fixed flag
+    case 'hinge':        return applyHingeConstraint(bodies, mate, opts);
+    case 'slider':       return applySliderConstraint(bodies, mate);
+    case 'gear':         return applyGearConstraint(bodies, mate);
+    case 'belt':         return applyBeltConstraint(bodies, mate);
+    case 'tangent':      return applyTangentConstraint(bodies, mate);
+    case 'limitDistance': return applyLimitDistanceConstraint(bodies, mate);
+    case 'limitAngle':   return applyLimitAngleConstraint(bodies, mate);
+    case 'width':        return applyWidthConstraint(bodies, mate);
+    default:             return 0;
+  }
+}
+
+/**
+ * Warm-start: place bodies in BFS order outward from the grounded (fixed)
+ * bodies, treating each already-placed body as fixed so the whole correction
+ * goes to the body being placed. For a tree/chain assembly this positions every
+ * body in a SINGLE O(N) pass (a depth-N chain otherwise needs O(N²) relaxation
+ * sweeps to propagate). Closed loops and over-constraints are left for the
+ * relaxation that follows — this only provides a near-solved starting point, so
+ * the converged result is unchanged; it just removes the chain-propagation cost.
+ */
+function warmStartPlacement(bodies: AssemblyBody[], mates: Mate[], opts?: SolveOptions): void {
+  const n = bodies.length;
+  if (n === 0) return;
+  // Adjacency: body → mates touching it (with the index of the other body).
+  const adj: Array<Array<{ mate: Mate; other: number }>> = Array.from({ length: n }, () => []);
+  for (const m of mates) {
+    const a = m.selections[0].bodyIndex, b = m.selections[1].bodyIndex;
+    if (a < 0 || a >= n || b < 0 || b >= n || a === b) continue;
+    adj[a]!.push({ mate: m, other: b });
+    adj[b]!.push({ mate: m, other: a });
+  }
+  const origFixed = bodies.map(b => b.fixed);
+  const placed = new Uint8Array(n);
+  const queue: number[] = [];
+  for (let i = 0; i < n; i++) if (bodies[i]!.fixed) { placed[i] = 1; queue.push(i); }
+  // No ground → no anchor to propagate from, and the final pose is arbitrary
+  // (only relative positions are constrained). Skip the warm-start and let the
+  // symmetric relaxation place a free-floating assembly; this preserves the
+  // "both free bodies meet in the middle" behaviour. The O(N²) chain cost we are
+  // removing is a GROUNDED-assembly concern (a chain attached to a frame).
+  if (queue.length === 0) return;
+
+  while (queue.length > 0) {
+    const p = queue.shift()!;
+    for (const { mate, other } of adj[p]!) {
+      if (placed[other]) continue;
+      // Place `other` against the already-placed `p`: pin every placed body so
+      // the applier routes the full correction onto `other`.
+      bodies[other]!.fixed = false;
+      try { dispatchMate(bodies, mate, opts); } catch { /* leave for relaxation */ }
+      bodies[other]!.fixed = true; // now placed → fixed for its own children
+      placed[other] = 1;
+      queue.push(other);
+    }
+  }
+  // Restore the real fixed flags so relaxation only pins genuinely-grounded bodies.
+  for (let i = 0; i < n; i++) bodies[i]!.fixed = origFixed[i]!;
+}
+
+// Mate types the Newton fallback (assemblyNewtonSolver) models with an exact
+// residual. The fallback only engages when EVERY enabled mate is in this set,
+// so it never silently ignores a constraint it can't represent (width, tangent,
+// limit*, gear, …) — those stay on the Gauss-Seidel result.
+const NEWTON_FALLBACK_TYPES = new Set<MateType>([
+  'coincident', 'distance', 'parallel', 'perpendicular', 'angle', 'concentric',
+]);
+
+export function solveAssembly(state: AssemblyState, maxIterations = 200, opts?: SolveOptions): SolveResult {
   // Deep-clone body transforms to avoid mutating the input
   const bodies: AssemblyBody[] = state.bodies.map(b => ({
     ...b,
@@ -589,6 +957,11 @@ export function solveAssembly(state: AssemblyState, maxIterations = 200): SolveR
   let converged = false;
 
   const enabledMates = state.mates.filter(m => m.enabled);
+
+  // O(N) warm-start: position the dependency tree in one BFS pass so the
+  // relaxation below only has to clean up closed loops, not propagate a chain
+  // one link per sweep.
+  warmStartPlacement(bodies, enabledMates, opts);
 
   for (let iter = 0; iter < maxIterations; iter++) {
     let maxResidual = 0;
@@ -605,44 +978,7 @@ export function solveAssembly(state: AssemblyState, maxIterations = 200): SolveR
           if (!conflicts.includes(mate.id)) conflicts.push(mate.id);
           continue;
         }
-        switch (mate.type) {
-          case 'coincident':
-            residual = applyCoincidentConstraint(bodies, mate);
-            break;
-          case 'concentric':
-            residual = applyConcentricConstraint(bodies, mate);
-            break;
-          case 'parallel':
-            residual = applyParallelConstraint(bodies, mate);
-            break;
-          case 'perpendicular':
-            residual = applyPerpendicularConstraint(bodies, mate);
-            break;
-          case 'distance':
-            residual = applyDistanceConstraint(bodies, mate);
-            break;
-          case 'angle':
-            residual = applyAngleConstraint(bodies, mate);
-            break;
-          case 'fixed':
-            // Handled by body.fixed flag; no per-iteration work needed
-            residual = 0;
-            break;
-          case 'hinge':
-            residual = applyHingeConstraint(bodies, mate);
-            break;
-          case 'slider':
-            residual = applySliderConstraint(bodies, mate);
-            break;
-          case 'gear':
-            residual = applyGearConstraint(bodies, mate);
-            break;
-          case 'belt':
-            residual = applyBeltConstraint(bodies, mate);
-            break;
-          default:
-            break;
-        }
+        residual = dispatchMate(bodies, mate, opts);
       } catch {
         if (!conflicts.includes(mate.id)) conflicts.push(mate.id);
         continue;
@@ -655,6 +991,34 @@ export function solveAssembly(state: AssemblyState, maxIterations = 200): SolveR
     if (maxResidual < 1e-5) {
       converged = true;
       break;
+    }
+  }
+
+  // Newton/Levenberg-Marquardt fallback (#5 inc 3). Gauss-Seidel above relaxes
+  // one mate at a time and stalls on COUPLED constraints (closed loops, a body
+  // pinned by several mates). When it doesn't converge — and every enabled mate
+  // is one the Newton residual model covers (so the comparison is apples-to-
+  // apples and nothing is silently dropped) — solve the whole system at once and
+  // ADOPT the result only if it lowers the residual. Purely additive: a Newton
+  // pass can never degrade a Gauss-Seidel result.
+  if (!converged && conflicts.length === 0 && enabledMates.length > 0 &&
+      enabledMates.every(m => NEWTON_FALLBACK_TYPES.has(m.type))) {
+    const probe = { ...state, bodies };
+    const gsResidual = solveAssemblyNewton(probe, { maxIterations: 0 }).residualNorm;
+    if (gsResidual < 1e-5) {
+      // Already satisfied (e.g. warm-start placed everything) — Gauss-Seidel
+      // just never got an iteration to notice. The L2 residual being below the
+      // per-mate threshold means every constraint holds.
+      converged = true;
+    } else {
+      const newton = solveAssemblyNewton(probe, { maxIterations: 40 });
+      if (Number.isFinite(newton.residualNorm) && newton.residualNorm < gsResidual - 1e-9) {
+        newton.state.bodies.forEach((nb, i) => {
+          bodies[i].position.copy(nb.position);
+          bodies[i].rotation.copy(nb.rotation);
+        });
+        if (newton.converged) converged = true;
+      }
     }
   }
 
@@ -703,6 +1067,50 @@ export function solveAssembly(state: AssemblyState, maxIterations = 200): SolveR
         if (Math.abs(currentAngle - targetRad) > 0.01) unsatisfied.push(mate.id);
         break;
       }
+      case 'limitDistance': {
+        const p0 = worldPoint(b0, mate.selections[0].localPoint);
+        const p1 = worldPoint(b1, mate.selections[1].localPoint);
+        const d = p0.distanceTo(p1);
+        const lo = mate.min ?? 0;
+        const hi = mate.max ?? lo;
+        if (d < lo - 0.01 || d > hi + 0.01) unsatisfied.push(mate.id);
+        break;
+      }
+      case 'limitAngle': {
+        const n0 = worldNormal(b0, mate.selections[0].localNormal);
+        const n1 = worldNormal(b1, mate.selections[1].localNormal);
+        const deg = (Math.acos(Math.min(1, Math.max(-1, n0.dot(n1)))) * 180) / Math.PI;
+        const lo = mate.min ?? 0;
+        const hi = mate.max ?? lo;
+        if (deg < lo - 0.1 || deg > hi + 0.1) unsatisfied.push(mate.id);
+        break;
+      }
+      case 'width': {
+        const s2 = mate.widthSecond;
+        if (!s2) break; // incomplete mate — UI prevents this; don't poison the report
+        const bRef2 = bodies[s2.bodyIndex] ?? b0;
+        const pA1 = worldPoint(b0, mate.selections[0].localPoint);
+        const pA2 = worldPoint(bRef2, s2.localPoint);
+        const n = worldNormal(b0, mate.selections[0].localNormal);
+        const sep = pA2.clone().sub(pA1).dot(n);
+        const mid = pA1.clone().add(n.clone().multiplyScalar(sep * 0.5));
+        const pB = worldPoint(b1, mate.selections[1].localPoint);
+        if (Math.abs(pB.clone().sub(mid).dot(n)) > 0.01) unsatisfied.push(mate.id);
+        break;
+      }
+      case 'tangent': {
+        // Honest check: the normals must oppose (anti-parallel) AND the gap
+        // along that normal must close. Either failing → report unsatisfied
+        // rather than silently rubber-stamping the mate.
+        const n0 = worldNormal(b0, mate.selections[0].localNormal);
+        const n1 = worldNormal(b1, mate.selections[1].localNormal);
+        const p0 = worldPoint(b0, mate.selections[0].localPoint);
+        const p1 = worldPoint(b1, mate.selections[1].localPoint);
+        const opposed = 1 + Math.min(1, Math.max(-1, n0.dot(n1))); // 0 when anti-parallel
+        const sep = Math.abs(p1.clone().sub(p0).dot(n0));
+        if (opposed > 0.01 || sep > 0.01) unsatisfied.push(mate.id);
+        break;
+      }
       default:
         break;
     }
@@ -713,12 +1121,14 @@ export function solveAssembly(state: AssemblyState, maxIterations = 200): SolveR
     (sum, m) => sum + (DOF_PER_MATE[m.type] ?? 0), 0,
   );
   const remainingDOF = Math.max(0, freeBodies * 6 - constrainedDOF);
+  const overConstrained = constrainedDOF > freeBodies * 6;
 
   return {
     bodies: bodies.map(b => ({ position: b.position, rotation: b.rotation })),
     unsatisfied,
     conflicts,
     remainingDOF,
+    overConstrained,
     converged,
     iterations,
   };

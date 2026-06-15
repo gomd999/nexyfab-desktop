@@ -30,6 +30,7 @@ const dict: Record<Lang, Record<string, string>> = {
     total: '합계', leadTime: '리드타임', days: '일', manufacturer: '제조사',
     rating: '평점', certifications: '인증', getQuote: '견적 요청', risk: '위험도',
     low: '낮음', medium: '보통', high: '높음', close: '닫기',
+    dfmPreliminary: '예비 점검 (정밀 기하 DFM 검사 아님)',
   },
   en: {
     title: 'Manufacturing Pipeline', process: 'Process', quantity: 'Quantity', urgency: 'Urgency',
@@ -41,6 +42,7 @@ const dict: Record<Lang, Record<string, string>> = {
     total: 'Total', leadTime: 'Lead Time', days: 'days', manufacturer: 'Manufacturer',
     rating: 'Rating', certifications: 'Certifications', getQuote: 'Get Quote', risk: 'Risk',
     low: 'Low', medium: 'Medium', high: 'High', close: 'Close',
+    dfmPreliminary: 'Preliminary — not the full geometric DFM check',
   },
   ja: {
     title: '製造パイプライン', process: '工程', quantity: '数量', urgency: '緊急度',
@@ -366,7 +368,8 @@ export default function ManufacturingPipelinePanel({
   /* ── Main render ─ */
   return (
     <div style={{
-      position: 'fixed', top: 60, right: 16, width: 380,
+      // right: 336 clears the 320px right property pane (2026-06-12)
+      position: 'fixed', top: 60, right: 336, width: 380,
       maxHeight: 'calc(100vh - 80px)', overflowY: 'auto',
       background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12,
       boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
@@ -465,9 +468,10 @@ export default function ManufacturingPipelinePanel({
             {/* DFM Score gauge */}
             {renderDFMGauge(result.dfmScore)}
 
-            {/* DFM Issues */}
+            {/* DFM Issues — heuristic preliminary checks, NOT the geometric DFM verdict */}
             {result.dfmIssues.length > 0 && (
               <div style={{ marginBottom: 10, padding: '8px 10px', background: C.card, borderRadius: 6, border: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 9, color: C.textDim, marginBottom: 5, fontStyle: 'italic' }}>{tt('dfmPreliminary', lang)}</div>
                 {result.dfmIssues.map((issue, i) => (
                   <div key={i} style={{ fontSize: 11, color: C.yellow, marginBottom: i < result.dfmIssues.length - 1 ? 4 : 0 }}>
                     {'\u26A0'} {issue}

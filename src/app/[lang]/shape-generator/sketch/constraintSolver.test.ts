@@ -99,3 +99,74 @@ describe('solveConstraints', () => {
     expect(r.satisfied).toBe(true);
   });
 });
+
+/**
+ * DOF & diagnostics — the rank-based analysis layer (dof count, redundancy /
+ * over-defined detection, conflict, scale-robust rank) drives the sketch's
+ * fully-constrained UI signal but had almost no coverage (only the empty-sketch
+ * under-defined case). Each case below has an analytically known answer; they
+ * pin estimateRank / findRedundantConstraints against it.
+ */
+describe('solveConstraints — DOF & diagnostics (verified)', () => {
+  const oneLine = (): SketchSegment[] => [
+    { type: 'line', id: 's1', points: [{ id: 'p0', x: 0, y: 0 }, { id: 'p1', x: 10, y: 3 }] },
+  ];
+
+  it('one free endpoint + horizontal ⇒ exactly 1 DOF (slides in x)', () => {
+    const r = solveConstraints(oneLine(), [
+      { id: 'fix', type: 'fixed', entityIds: ['p0'], satisfied: false },
+      { id: 'h', type: 'horizontal', entityIds: ['s1'], satisfied: false },
+    ], [], 200, 1e-9);
+    expect(r.solveResult?.status).toBe('under-defined');
+    expect(r.solveResult?.dof).toBe(1);
+    expect(r.solveResult?.redundant).toBeUndefined();
+  });
+
+  it('horizontal + vertical pins both coords ⇒ 0 DOF, ok, no false redundancy', () => {
+    const r = solveConstraints(oneLine(), [
+      { id: 'fix', type: 'fixed', entityIds: ['p0'], satisfied: false },
+      { id: 'h', type: 'horizontal', entityIds: ['s1'], satisfied: false },
+      { id: 'v', type: 'vertical', entityIds: ['s1'], satisfied: false },
+    ], [], 200, 1e-9);
+    expect(r.solveResult?.status).toBe('ok');
+    expect(r.solveResult?.dof).toBe(0);
+    expect(r.solveResult?.redundant).toBeUndefined(); // independent — NOT redundant
+  });
+
+  it('two independent horizontals ⇒ over-defined with both flagged redundant', () => {
+    const r = solveConstraints(oneLine(), [
+      { id: 'fix', type: 'fixed', entityIds: ['p0'], satisfied: false },
+      { id: 'h1', type: 'horizontal', entityIds: ['s1'], satisfied: false },
+      { id: 'h2', type: 'horizontal', entityIds: ['s1'], satisfied: false },
+    ], [], 200, 1e-9);
+    expect(r.solveResult?.status).toBe('over-defined');
+    expect(r.solveResult?.dof).toBe(1); // rank still 1 → 1 DOF left
+    expect(r.solveResult?.redundant).toEqual(expect.arrayContaining(['h1', 'h2']));
+  });
+
+  it('coincident + non-zero distance on the same pair ⇒ inconsistent (not rubber-stamped)', () => {
+    const r = solveConstraints(oneLine(), [
+      { id: 'fix', type: 'fixed', entityIds: ['p0'], satisfied: false },
+      { id: 'coin', type: 'coincident', entityIds: ['p1', 'p0'], satisfied: false },
+      { id: 'dist', type: 'distance', entityIds: ['p0', 'p1'], value: 10, satisfied: false },
+    ], [], 200, 1e-9);
+    expect(r.satisfied).toBe(false);
+    expect(r.unsatisfiedConstraints).toEqual(expect.arrayContaining(['coin', 'dist']));
+    expect(r.solveResult?.status).not.toBe('ok');
+  });
+
+  it('rank is scale-robust: horizontal + a 1000-unit distance ⇒ 0 DOF, ok', () => {
+    // The two constraints differ in Jacobian scale by ~10³; a naive absolute
+    // rank tolerance would mis-count. estimateRank must still see rank 2.
+    const seg: SketchSegment[] = [
+      { type: 'line', id: 's1', points: [{ id: 'p0', x: 0, y: 0 }, { id: 'p1', x: 1000, y: 0.0001 }] },
+    ];
+    const r = solveConstraints(seg, [
+      { id: 'fix', type: 'fixed', entityIds: ['p0'], satisfied: false },
+      { id: 'h', type: 'horizontal', entityIds: ['s1'], satisfied: false },
+      { id: 'dist', type: 'distance', entityIds: ['p0', 'p1'], value: 1000, satisfied: false },
+    ], [], 200, 1e-9);
+    expect(r.solveResult?.status).toBe('ok');
+    expect(r.solveResult?.dof).toBe(0);
+  });
+});

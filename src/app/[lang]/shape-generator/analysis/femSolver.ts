@@ -36,253 +36,349 @@ export interface FEMResult {
   iterations: number;
 }
 
-interface Tet {
+export interface Tet {
   nodes: [number, number, number, number];
   volume: number;
 }
 
-/** Simple spatial hash for fast nearest-vertex lookup. */
-class SpatialHash {
-  private cells = new Map<string, number[]>();
-  private cellSize: number;
-
-  constructor(cellSize: number) {
-    this.cellSize = cellSize;
+/** Parity of forward ray–triangle crossings (Möller–Trumbore) for a GENERIC ray
+ *  direction. A generic (non-axis-aligned) direction makes grazing a shared
+ *  edge of axis-aligned coplanar surface triangles a measure-zero event, so the
+ *  count is robust where a +X/+Y/+Z projection parity is not. Odd ⇒ inside. */
+function rayParity(
+  ox: number, oy: number, oz: number,
+  dx: number, dy: number, dz: number,
+  tri: Float32Array, triCount: number,
+): boolean {
+  const EPS = 1e-12;
+  let crossings = 0;
+  for (let t = 0; t < triCount; t++) {
+    const o = t * 9;
+    const v0x = tri[o], v0y = tri[o + 1], v0z = tri[o + 2];
+    const e1x = tri[o + 3] - v0x, e1y = tri[o + 4] - v0y, e1z = tri[o + 5] - v0z;
+    const e2x = tri[o + 6] - v0x, e2y = tri[o + 7] - v0y, e2z = tri[o + 8] - v0z;
+    // p = dir × e2
+    const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x;
+    const det = e1x * px + e1y * py + e1z * pz;
+    if (det > -EPS && det < EPS) continue;
+    const inv = 1 / det;
+    const tx = ox - v0x, ty = oy - v0y, tz = oz - v0z;
+    const u = (tx * px + ty * py + tz * pz) * inv;
+    if (u < 0 || u > 1) continue;
+    const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x;
+    const v = (dx * qx + dy * qy + dz * qz) * inv;
+    if (v < 0 || u + v > 1) continue;
+    const s = (e2x * qx + e2y * qy + e2z * qz) * inv;
+    if (s > EPS) crossings++; // forward hit only
   }
+  return (crossings & 1) === 1;
+}
 
-  private key(x: number, y: number, z: number): string {
-    return `${Math.floor(x / this.cellSize)},${Math.floor(y / this.cellSize)},${Math.floor(z / this.cellSize)}`;
-  }
-
-  add(x: number, y: number, z: number, index: number) {
-    const k = this.key(x, y, z);
-    if (!this.cells.has(k)) this.cells.set(k, []);
-    this.cells.get(k)!.push(index);
-  }
-
-  /** Returns all indices in the 3×3×3 neighbourhood. */
-  query(x: number, y: number, z: number): number[] {
-    const result: number[] = [];
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dz = -1; dz <= 1; dz++) {
-          const k = this.key(
-            x + dx * this.cellSize,
-            y + dy * this.cellSize,
-            z + dz * this.cellSize,
-          );
-          const cell = this.cells.get(k);
-          if (cell) result.push(...cell);
-        }
-      }
-    }
-    return result;
-  }
+/** Robust point-in-solid: majority vote of three generic ray directions. */
+export function pointInsideSurface(
+  px: number, py: number, pz: number,
+  tri: Float32Array, triCount: number,
+): boolean {
+  let votes = 0;
+  if (rayParity(px, py, pz, 1, 0.017, 0.011, tri, triCount)) votes++;
+  if (rayParity(px, py, pz, 0.013, 1, 0.019, tri, triCount)) votes++;
+  if (rayParity(px, py, pz, 0.021, 0.014, 1, tri, triCount)) votes++;
+  return votes >= 2;
 }
 
 /**
- * Generate a simple tetrahedral mesh from a surface triangle mesh.
- * Each surface triangle is connected to one interior "hub" node to form a tet.
- * Interior nodes are placed on a regular grid inside the bounding box.
+ * Generate a CONFORMING tetrahedral mesh by structured-grid decomposition.
+ *
+ * Each grid cell whose centre is inside the solid is split into 6 tets sharing a
+ * common diagonal (Freudenthal/Kuhn), with cells referencing SHARED grid nodes —
+ * so the mesh is globally conforming (adjacent cells share faces) and has NO
+ * floating, zero-stiffness nodes. (The previous "fan each surface triangle to its
+ * nearest interior hub" approach produced a non-conforming shell with unreferenced
+ * interior nodes → a singular stiffness matrix, CG non-convergence, and
+ * astronomically large spurious displacements. This is the M1 mesh fix.)
  */
-function generateTetMesh(
+export function generateTetMesh(
   pos: THREE.BufferAttribute,
   maxNodes = 1500,
 ): { nodes: Float32Array; tets: Tet[] } {
   const surfaceVertCount = pos.count;
-  const MERGE_EPS = 1e-4;
-  const hash = new SpatialHash(MERGE_EPS * 10);
-
-  // --- Step 1: deduplicate surface vertices ---
-  const uniqueVerts: THREE.Vector3[] = [];
-  const surfIndexMap = new Int32Array(surfaceVertCount); // raw index -> unique index
-
-  for (let i = 0; i < surfaceVertCount; i++) {
-    const v = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
-    const nearby = hash.query(v.x, v.y, v.z);
-    let found = -1;
-    for (const idx of nearby) {
-      if (uniqueVerts[idx].distanceTo(v) < MERGE_EPS) { found = idx; break; }
-    }
-    if (found === -1) {
-      found = uniqueVerts.length;
-      hash.add(v.x, v.y, v.z, found);
-      uniqueVerts.push(v);
-    }
-    surfIndexMap[i] = found;
-  }
-
-  const totalSurface = uniqueVerts.length;
-
-  // --- Step 2: add interior nodes via grid sampling ---
-  const bb = new THREE.Box3();
-  for (const v of uniqueVerts) bb.expandByPoint(v);
-  const bbSize = new THREE.Vector3();
-  bb.getSize(bbSize);
-
-  const interiorTarget = Math.min(maxNodes - totalSurface, 600);
-  const gridN = Math.max(2, Math.cbrt(interiorTarget) | 0);
-
-  for (let ix = 0; ix < gridN && uniqueVerts.length < maxNodes; ix++) {
-    for (let iy = 0; iy < gridN && uniqueVerts.length < maxNodes; iy++) {
-      for (let iz = 0; iz < gridN && uniqueVerts.length < maxNodes; iz++) {
-        uniqueVerts.push(new THREE.Vector3(
-          bb.min.x + (ix + 0.5) / gridN * bbSize.x,
-          bb.min.y + (iy + 0.5) / gridN * bbSize.y,
-          bb.min.z + (iz + 0.5) / gridN * bbSize.z,
-        ));
-      }
-    }
-  }
-
-  // Pack into flat array
-  const nodes = new Float32Array(uniqueVerts.length * 3);
-  for (let i = 0; i < uniqueVerts.length; i++) {
-    nodes[i * 3] = uniqueVerts[i].x;
-    nodes[i * 3 + 1] = uniqueVerts[i].y;
-    nodes[i * 3 + 2] = uniqueVerts[i].z;
-  }
-
-  const interiorStart = totalSurface;
-  const interiorEnd = uniqueVerts.length;
-
-  // --- Step 3: build tets — each surface tri + nearest interior hub ---
   const triCount = surfaceVertCount / 3;
-  const tets: Tet[] = [];
 
-  for (let t = 0; t < triCount; t++) {
-    const ri0 = t * 3, ri1 = t * 3 + 1, ri2 = t * 3 + 2;
-    const n0 = surfIndexMap[ri0];
-    const n1 = surfIndexMap[ri1];
-    const n2 = surfIndexMap[ri2];
-    if (n0 === n1 || n0 === n2 || n1 === n2) continue;
-
-    // Centroid of the triangle
-    const cx = (uniqueVerts[n0].x + uniqueVerts[n1].x + uniqueVerts[n2].x) / 3;
-    const cy = (uniqueVerts[n0].y + uniqueVerts[n1].y + uniqueVerts[n2].y) / 3;
-    const cz = (uniqueVerts[n0].z + uniqueVerts[n1].z + uniqueVerts[n2].z) / 3;
-
-    // Find nearest interior node
-    let nearestIdx = interiorStart;
-    let nearestDist2 = Infinity;
-    for (let n = interiorStart; n < interiorEnd; n++) {
-      const dx = cx - nodes[n * 3];
-      const dy = cy - nodes[n * 3 + 1];
-      const dz = cz - nodes[n * 3 + 2];
-      const d2 = dx * dx + dy * dy + dz * dz;
-      if (d2 < nearestDist2) { nearestDist2 = d2; nearestIdx = n; }
-    }
-
-    const n3 = nearestIdx;
-    if (n3 === n0 || n3 === n1 || n3 === n2) continue;
-
-    // Compute signed volume
-    const p0 = uniqueVerts[n0], p1 = uniqueVerts[n1], p2 = uniqueVerts[n2], p3 = uniqueVerts[n3];
-    const e1x = p1.x - p0.x, e1y = p1.y - p0.y, e1z = p1.z - p0.z;
-    const e2x = p2.x - p0.x, e2y = p2.y - p0.y, e2z = p2.z - p0.z;
-    const e3x = p3.x - p0.x, e3y = p3.y - p0.y, e3z = p3.z - p0.z;
-    // cross(e2, e3)
-    const cx2 = e2y * e3z - e2z * e3y;
-    const cy2 = e2z * e3x - e2x * e3z;
-    const cz2 = e2x * e3y - e2y * e3x;
-    const vol = Math.abs(e1x * cx2 + e1y * cy2 + e1z * cz2) / 6;
-
-    if (vol < 1e-18) continue;
-
-    tets.push({ nodes: [n0, n1, n2, n3], volume: vol });
+  // Surface triangles (flat) + bbox.
+  const tri = new Float32Array(surfaceVertCount * 3);
+  const bb = new THREE.Box3();
+  const tmp = new THREE.Vector3();
+  for (let i = 0; i < surfaceVertCount; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    tri[i * 3] = x; tri[i * 3 + 1] = y; tri[i * 3 + 2] = z;
+    bb.expandByPoint(tmp.set(x, y, z));
   }
+  const size = new THREE.Vector3(); bb.getSize(size);
+  const sx = Math.max(size.x, 1e-9), sy = Math.max(size.y, 1e-9), sz = Math.max(size.z, 1e-9);
 
-  return { nodes, tets };
-}
-
-/**
- * Compute the 12×12 element stiffness matrix for a linear tetrahedral element.
- * Returns both the Ke matrix and the B (strain-displacement) matrix for
- * later stress recovery.
- */
-function computeTetStiffness(
-  nodes: Float32Array,
-  tet: Tet,
-  E: number,   // MPa (or any consistent unit)
-  nu: number,
-): { Ke: number[][]; B: number[][] } {
-  const [n0, n1, n2, n3] = tet.nodes;
-
-  const x = [nodes[n0*3], nodes[n1*3], nodes[n2*3], nodes[n3*3]];
-  const y = [nodes[n0*3+1], nodes[n1*3+1], nodes[n2*3+1], nodes[n3*3+1]];
-  const z = [nodes[n0*3+2], nodes[n1*3+2], nodes[n2*3+2], nodes[n3*3+2]];
-
-  // Determinant of Jacobian (= 6 * volume)
-  const V6 = (
-    (x[1]-x[0]) * ((y[2]-y[0])*(z[3]-z[0]) - (y[3]-y[0])*(z[2]-z[0]))
-    - (x[2]-x[0]) * ((y[1]-y[0])*(z[3]-z[0]) - (y[3]-y[0])*(z[1]-z[0]))
-    + (x[3]-x[0]) * ((y[1]-y[0])*(z[2]-z[0]) - (y[2]-y[0])*(z[1]-z[0]))
-  );
-
-  const V = Math.abs(V6) / 6;
-  const zero12 = (): number[] => Array(12).fill(0);
-
-  if (V < 1e-20) {
-    return {
-      Ke: Array(12).fill(null).map(zero12),
-      B: Array(6).fill(null).map(zero12),
-    };
+  // Divisions per axis, ~uniform cell size, total grid nodes ≤ maxNodes.
+  let div = Math.max(2, Math.floor(Math.cbrt(maxNodes)) - 1);
+  let nx = 0, ny = 0, nz = 0;
+  const maxDim = Math.max(sx, sy, sz);
+  for (; div >= 1; div--) {
+    nx = Math.max(1, Math.round((div * sx) / maxDim));
+    ny = Math.max(1, Math.round((div * sy) / maxDim));
+    nz = Math.max(1, Math.round((div * sz) / maxDim));
+    if ((nx + 1) * (ny + 1) * (nz + 1) <= maxNodes) break;
   }
-
-  // Shape function natural-coordinate derivatives (dN/dx, dN/dy, dN/dz)
-  // For a linear tet these are constant — computed from cofactors.
-  const b = new Array<number>(4);
-  const c = new Array<number>(4);
-  const d = new Array<number>(4);
-
-  for (let i = 0; i < 4; i++) {
-    const j = (i + 1) % 4, k = (i + 2) % 4, l = (i + 3) % 4;
-    const sign = i % 2 === 0 ? 1 : -1;
-    b[i] = sign * ((y[k]-y[j])*(z[l]-z[j]) - (y[l]-y[j])*(z[k]-z[j])) / V6;
-    c[i] = -sign * ((x[k]-x[j])*(z[l]-z[j]) - (x[l]-x[j])*(z[k]-z[j])) / V6;
-    d[i] = sign * ((x[k]-x[j])*(y[l]-y[j]) - (x[l]-x[j])*(y[k]-y[j])) / V6;
-  }
-
-  // B matrix (6 rows × 12 cols)
-  const B: number[][] = Array(6).fill(null).map(zero12);
-  for (let i = 0; i < 4; i++) {
-    B[0][i*3]   = b[i];
-    B[1][i*3+1] = c[i];
-    B[2][i*3+2] = d[i];
-    B[3][i*3]   = c[i]; B[3][i*3+1] = b[i];
-    B[4][i*3+1] = d[i]; B[4][i*3+2] = c[i];
-    B[5][i*3]   = d[i]; B[5][i*3+2] = b[i];
-  }
-
-  // Isotropic constitutive matrix D (6×6)
-  const lam = E * nu / ((1 + nu) * (1 - 2 * nu));
-  const mu  = E / (2 * (1 + nu));
-  const D: number[][] = [
-    [lam+2*mu, lam,      lam,      0,  0,  0 ],
-    [lam,      lam+2*mu, lam,      0,  0,  0 ],
-    [lam,      lam,      lam+2*mu, 0,  0,  0 ],
-    [0,        0,        0,        mu, 0,  0 ],
-    [0,        0,        0,        0,  mu, 0 ],
-    [0,        0,        0,        0,  0,  mu],
+  const hx = sx / nx, hy = sy / ny, hz = sz / nz;
+  const nodeAt = (ix: number, iy: number, iz: number): [number, number, number] => [
+    bb.min.x + ix * hx, bb.min.y + iy * hy, bb.min.z + iz * hz,
   ];
 
-  // Ke = V * B^T * D * B
-  const Ke: number[][] = Array(12).fill(null).map(zero12);
-  for (let i = 0; i < 12; i++) {
-    for (let j = 0; j < 12; j++) {
-      let sum = 0;
-      for (let k = 0; k < 6; k++) {
-        let db = 0;
-        for (let l = 0; l < 6; l++) {
-          db += D[k][l] * B[l][j];
+  // Lazily allocate only the grid nodes that an included cell actually uses.
+  const nodeIndex = new Map<number, number>();
+  const coords: number[] = [];
+  const gridKey = (ix: number, iy: number, iz: number) => (iz * (ny + 1) + iy) * (nx + 1) + ix;
+  const getNode = (ix: number, iy: number, iz: number): number => {
+    const key = gridKey(ix, iy, iz);
+    let idx = nodeIndex.get(key);
+    if (idx === undefined) {
+      idx = coords.length / 3;
+      const [x, y, z] = nodeAt(ix, iy, iz);
+      coords.push(x, y, z);
+      nodeIndex.set(key, idx);
+    }
+    return idx;
+  };
+
+  // 8 cube corners by (di, dj, dk) bits → corner index; the 6-tet Freudenthal split.
+  const CORNER: Array<[number, number, number]> = [
+    [0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1],
+  ];
+  const SPLIT: Array<[number, number, number, number]> = [
+    [0, 1, 3, 7], [0, 3, 2, 7], [0, 2, 6, 7], [0, 6, 4, 7], [0, 4, 5, 7], [0, 5, 1, 7],
+  ];
+
+  const tets: Tet[] = [];
+  for (let iz = 0; iz < nz; iz++) {
+    for (let iy = 0; iy < ny; iy++) {
+      for (let ix = 0; ix < nx; ix++) {
+        // Jitter the sample off the cell centre by irrational fractions so the
+        // +X ray never aligns with a surface-subdivision grid line (which would
+        // graze a shared triangle edge and miscount the parity).
+        const cxw = bb.min.x + (ix + 0.5) * hx;
+        const cyw = bb.min.y + (iy + 0.5 + 0.0137) * hy;
+        const czw = bb.min.z + (iz + 0.5 + 0.0237) * hz;
+        if (!pointInsideSurface(cxw, cyw, czw, tri, triCount)) continue;
+
+        const corner = CORNER.map(([di, dj, dk]) => getNode(ix + di, iy + dj, iz + dk));
+        for (const [a, b, c, dd] of SPLIT) {
+          tets.push({ nodes: [corner[a], corner[b], corner[c], corner[dd]], volume: (hx * hy * hz) / 6 });
         }
-        sum += B[k][i] * db;
       }
-      Ke[i][j] = V * sum;
     }
   }
 
-  return { Ke, B };
+  // Fallback: a degenerate/open surface where no cell tested inside — wrap the
+  // whole bbox as a single 6-tet cell so the solver still returns something.
+  if (tets.length === 0) {
+    const corner = CORNER.map(([di, dj, dk]) => getNode(di * nx, dj * ny, dk * nz));
+    for (const [a, b, c, dd] of SPLIT) {
+      tets.push({ nodes: [corner[a], corner[b], corner[c], corner[dd]], volume: (sx * sy * sz) / 6 });
+    }
+  }
+
+  return { nodes: new Float32Array(coords), tets };
+}
+
+// ─── TET10 (10-node quadratic tetrahedron) ──────────────────────────────────
+//
+// Linear (TET4) elements have a CONSTANT strain field, so they lock in bending —
+// a cantilever comes out far too stiff (~50% under-predicted). TET10 carries
+// edge-midside nodes and quadratic shape functions ⇒ a LINEAR strain field,
+// which represents bending well (cantilever within a few %). Stiffness is
+// integrated with a 4-point Gauss rule (the integrand is quadratic).
+
+/** The 6 edges of a tet as local corner-index pairs (midside node ordering). */
+const TET_EDGES: ReadonlyArray<readonly [number, number]> = [
+  [0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3],
+];
+
+/** 4-point Gauss quadrature for a tet (degree-2 exact), in barycentric coords. */
+const G_A = 0.5854101966249685, G_B = 0.1381966011250105;
+const TET10_GAUSS: ReadonlyArray<readonly [number, number, number, number]> = [
+  [G_A, G_B, G_B, G_B], [G_B, G_A, G_B, G_B], [G_B, G_B, G_A, G_B], [G_B, G_B, G_B, G_A],
+];
+
+/** Augment a TET4 mesh with SHARED edge-midside nodes → TET10 connectivity.
+ *  Midsides are cached by sorted corner-pair so adjacent elements share them
+ *  (the mesh stays conforming). */
+export function buildTet10Mesh(nodes: Float32Array, tets: Tet[]): { nodes: Float32Array; elems: Int32Array[] } {
+  const coords: number[] = Array.from(nodes);
+  let nNodes = nodes.length / 3;
+  const midCache = new Map<number, number>();
+  const getMid = (a: number, b: number): number => {
+    const key = a < b ? a * 1e7 + b : b * 1e7 + a;
+    let idx = midCache.get(key);
+    if (idx === undefined) {
+      idx = nNodes++;
+      coords.push(
+        (nodes[a*3] + nodes[b*3]) / 2,
+        (nodes[a*3+1] + nodes[b*3+1]) / 2,
+        (nodes[a*3+2] + nodes[b*3+2]) / 2,
+      );
+      midCache.set(key, idx);
+    }
+    return idx;
+  };
+  const elems: Int32Array[] = [];
+  for (const tet of tets) {
+    const c = tet.nodes;
+    const e = new Int32Array(10);
+    e[0] = c[0]; e[1] = c[1]; e[2] = c[2]; e[3] = c[3];
+    for (let k = 0; k < 6; k++) e[4 + k] = getMid(c[TET_EDGES[k][0]], c[TET_EDGES[k][1]]);
+    elems.push(e);
+  }
+  return { nodes: new Float32Array(coords), elems };
+}
+
+/** TET10 shape-function derivatives wrt natural coords (r=L2,s=L3,t=L4) at the
+ *  barycentric point (L1..L4). Returns dN/dr, dN/ds, dN/dt (each length 10). */
+function tet10ShapeDeriv(L: readonly [number, number, number, number]): { dr: number[]; ds: number[]; dt: number[] } {
+  // dL_i/d(r,s,t): L1=1−r−s−t, L2=r, L3=s, L4=t.
+  const dL = [[-1, -1, -1], [1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  const dr = new Array<number>(10), ds = new Array<number>(10), dt = new Array<number>(10);
+  for (let i = 0; i < 4; i++) {                 // corners: N_i = L_i(2L_i−1)
+    const f = 4 * L[i] - 1;
+    dr[i] = f * dL[i][0]; ds[i] = f * dL[i][1]; dt[i] = f * dL[i][2];
+  }
+  for (let k = 0; k < 6; k++) {                 // midsides: N = 4 L_a L_b
+    const a = TET_EDGES[k][0], b = TET_EDGES[k][1], m = 4 + k;
+    dr[m] = 4 * (dL[a][0] * L[b] + L[a] * dL[b][0]);
+    ds[m] = 4 * (dL[a][1] * L[b] + L[a] * dL[b][1]);
+    dt[m] = 4 * (dL[a][2] * L[b] + L[a] * dL[b][2]);
+  }
+  return { dr, ds, dt };
+}
+
+/** Build the 6×30 strain–displacement matrix B at one quadrature point, given
+ *  the inverse Jacobian. Returns B and detJ (caller skips degenerate points). */
+function tet10B(coords: Float32Array, elem: Int32Array, L: readonly [number, number, number, number]):
+  { B: number[][]; detJ: number } {
+  const { dr, ds, dt } = tet10ShapeDeriv(L);
+  // Jacobian J_ij = Σ_k dN_k/dξ_j · x_{k,i}
+  const J = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (let k = 0; k < 10; k++) {
+    const n = elem[k], dξ = [dr[k], ds[k], dt[k]];
+    const xi = coords[n*3], yi = coords[n*3+1], zi = coords[n*3+2];
+    for (let j = 0; j < 3; j++) { J[0][j] += dξ[j]*xi; J[1][j] += dξ[j]*yi; J[2][j] += dξ[j]*zi; }
+  }
+  const detJ = J[0][0]*(J[1][1]*J[2][2]-J[1][2]*J[2][1])
+             - J[0][1]*(J[1][0]*J[2][2]-J[1][2]*J[2][0])
+             + J[0][2]*(J[1][0]*J[2][1]-J[1][1]*J[2][0]);
+  const B: number[][] = Array(6).fill(null).map(() => new Array<number>(30).fill(0));
+  if (Math.abs(detJ) < 1e-18) return { B, detJ: 0 };
+  const id = 1 / detJ;
+  const inv = [
+    [(J[1][1]*J[2][2]-J[1][2]*J[2][1])*id, (J[0][2]*J[2][1]-J[0][1]*J[2][2])*id, (J[0][1]*J[1][2]-J[0][2]*J[1][1])*id],
+    [(J[1][2]*J[2][0]-J[1][0]*J[2][2])*id, (J[0][0]*J[2][2]-J[0][2]*J[2][0])*id, (J[0][2]*J[1][0]-J[0][0]*J[1][2])*id],
+    [(J[1][0]*J[2][1]-J[1][1]*J[2][0])*id, (J[0][1]*J[2][0]-J[0][0]*J[2][1])*id, (J[0][0]*J[1][1]-J[0][1]*J[1][0])*id],
+  ];
+  for (let k = 0; k < 10; k++) {
+    // dN/dx_i = Σ_j inv[j][i] · dN/dξ_j
+    const dξ = [dr[k], ds[k], dt[k]];
+    const nx = inv[0][0]*dξ[0] + inv[1][0]*dξ[1] + inv[2][0]*dξ[2];
+    const ny = inv[0][1]*dξ[0] + inv[1][1]*dξ[1] + inv[2][1]*dξ[2];
+    const nz = inv[0][2]*dξ[0] + inv[1][2]*dξ[1] + inv[2][2]*dξ[2];
+    const cx = k*3, cy = k*3+1, cz = k*3+2;
+    B[0][cx] = nx; B[1][cy] = ny; B[2][cz] = nz;
+    B[3][cx] = ny; B[3][cy] = nx;
+    B[4][cy] = nz; B[4][cz] = ny;
+    B[5][cx] = nz; B[5][cz] = nx;
+  }
+  return { B, detJ };
+}
+
+/** TET10 element stiffness (30×30) via 4-point Gauss + a centroid B for stress. */
+export function computeTet10Stiffness(
+  coords: Float32Array, elem: Int32Array, E: number, nu: number,
+): { Ke: number[][]; Bc: number[][] } {
+  const lam = E * nu / ((1 + nu) * (1 - 2 * nu)), mu = E / (2 * (1 + nu));
+  const D = [
+    [lam+2*mu, lam, lam, 0, 0, 0], [lam, lam+2*mu, lam, 0, 0, 0], [lam, lam, lam+2*mu, 0, 0, 0],
+    [0, 0, 0, mu, 0, 0], [0, 0, 0, 0, mu, 0], [0, 0, 0, 0, 0, mu],
+  ];
+  const Ke = Array(30).fill(null).map(() => new Array<number>(30).fill(0));
+  for (const L of TET10_GAUSS) {
+    const { B, detJ } = tet10B(coords, elem, L);
+    if (detJ === 0) continue;
+    const w = detJ / 24; // (ref-tet volume 1/6) × (weight 1/4) × |J|
+    // DB = D·B (6×30), then Ke += w·Bᵀ·DB
+    const DB = Array(6).fill(null).map(() => new Array<number>(30).fill(0));
+    for (let r = 0; r < 6; r++) for (let j = 0; j < 30; j++) {
+      let s = 0; for (let l = 0; l < 6; l++) s += D[r][l] * B[l][j]; DB[r][j] = s;
+    }
+    for (let i = 0; i < 30; i++) for (let j = 0; j < 30; j++) {
+      let s = 0; for (let r = 0; r < 6; r++) s += B[r][i] * DB[r][j];
+      Ke[i][j] += w * s;
+    }
+  }
+  const { B: Bc } = tet10B(coords, elem, [0.25, 0.25, 0.25, 0.25]);
+  return { Ke, Bc };
+}
+
+/** Cartesian shape-function gradients (∂N/∂x,∂N/∂y,∂N/∂z per node) + |J| at one
+ *  barycentric point — the raw gradients tet10B folds into the symmetric B. Used
+ *  by the geometric-stiffness (buckling) assembly. */
+function tet10Gradients(coords: Float32Array, elem: Int32Array, L: readonly [number, number, number, number]):
+  { dNx: number[]; dNy: number[]; dNz: number[]; detJ: number } {
+  const { dr, ds, dt } = tet10ShapeDeriv(L);
+  const J = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (let k = 0; k < 10; k++) {
+    const n = elem[k], dξ = [dr[k], ds[k], dt[k]];
+    const xi = coords[n * 3], yi = coords[n * 3 + 1], zi = coords[n * 3 + 2];
+    for (let j = 0; j < 3; j++) { J[0][j] += dξ[j] * xi; J[1][j] += dξ[j] * yi; J[2][j] += dξ[j] * zi; }
+  }
+  const detJ = J[0][0] * (J[1][1] * J[2][2] - J[1][2] * J[2][1])
+             - J[0][1] * (J[1][0] * J[2][2] - J[1][2] * J[2][0])
+             + J[0][2] * (J[1][0] * J[2][1] - J[1][1] * J[2][0]);
+  const dNx = new Array<number>(10).fill(0), dNy = new Array<number>(10).fill(0), dNz = new Array<number>(10).fill(0);
+  if (Math.abs(detJ) < 1e-18) return { dNx, dNy, dNz, detJ: 0 };
+  const id = 1 / detJ;
+  const inv = [
+    [(J[1][1]*J[2][2]-J[1][2]*J[2][1])*id, (J[0][2]*J[2][1]-J[0][1]*J[2][2])*id, (J[0][1]*J[1][2]-J[0][2]*J[1][1])*id],
+    [(J[1][2]*J[2][0]-J[1][0]*J[2][2])*id, (J[0][0]*J[2][2]-J[0][2]*J[2][0])*id, (J[0][2]*J[1][0]-J[0][0]*J[1][2])*id],
+    [(J[1][0]*J[2][1]-J[1][1]*J[2][0])*id, (J[0][1]*J[2][0]-J[0][0]*J[2][1])*id, (J[0][0]*J[1][1]-J[0][1]*J[1][0])*id],
+  ];
+  for (let k = 0; k < 10; k++) {
+    const dξ = [dr[k], ds[k], dt[k]];
+    dNx[k] = inv[0][0]*dξ[0] + inv[1][0]*dξ[1] + inv[2][0]*dξ[2];
+    dNy[k] = inv[0][1]*dξ[0] + inv[1][1]*dξ[1] + inv[2][1]*dξ[2];
+    dNz[k] = inv[0][2]*dξ[0] + inv[1][2]*dξ[1] + inv[2][2]*dξ[2];
+  }
+  return { dNx, dNy, dNz, detJ };
+}
+
+/** Uniform stress tensor (MPa); compression negative. */
+export interface StressTensor3 { xx: number; yy: number; zz: number; xy?: number; yz?: number; zx?: number }
+
+/** TET10 geometric-stiffness scalar matrix (10×10): kg(a,b) = ∫ ∇N_a·(σ ∇N_b) dV
+ *  over the element, via the 4-point Gauss rule. Couples same-direction DOFs —
+ *  the caller scatters each scalar onto the x-x, y-y, z-z slots of the (a,b)
+ *  nodal block to form the 30×30 geometric stiffness. */
+export function computeTet10GeomScalar(
+  coords: Float32Array, elem: Int32Array, s: StressTensor3,
+): number[][] {
+  const sxx = s.xx, syy = s.yy, szz = s.zz, sxy = s.xy ?? 0, syz = s.yz ?? 0, szx = s.zx ?? 0;
+  const Kg = Array(10).fill(null).map(() => new Array<number>(10).fill(0));
+  for (const L of TET10_GAUSS) {
+    const { dNx, dNy, dNz, detJ } = tet10Gradients(coords, elem, L);
+    if (detJ === 0) continue;
+    const w = detJ / 24;
+    for (let a = 0; a < 10; a++) for (let b = 0; b < 10; b++) {
+      const sbx = sxx * dNx[b] + sxy * dNy[b] + szx * dNz[b];
+      const sby = sxy * dNx[b] + syy * dNy[b] + syz * dNz[b];
+      const sbz = szx * dNx[b] + syz * dNy[b] + szz * dNz[b];
+      Kg[a][b] += w * (dNx[a] * sbx + dNy[a] * sby + dNz[a] * sbz);
+    }
+  }
+  return Kg;
 }
 
 /**
@@ -290,7 +386,7 @@ function computeTetStiffness(
  * Memory: O(nnz) instead of O(n²).
  * For FEM stiffness matrices, nnz ≈ 27*n (bandwidth of typical tet mesh).
  */
-class CSRMatrix {
+export class CSRMatrix {
   readonly nRows: number;
   readonly nCols: number;
   /** Non-zero values */
@@ -364,7 +460,7 @@ class CSRMatrix {
  * Convergence: O(√κ) iterations vs O(κ) for plain CG,
  * where κ is the condition number.
  */
-function sparsePCG(
+export function sparsePCG(
   A: CSRMatrix,
   b: Float64Array,
   maxIter = 2000,
@@ -514,13 +610,17 @@ export function runFEM(
   const yieldStr = material.yieldStrength; // MPa
 
   // Generate tet mesh
-  const { nodes, tets } = generateTetMesh(pos, maxNodes);
+  // Conforming TET4 grid mesh, then upgrade to quadratic TET10 (edge-midside
+  // nodes) — linear tets lock in bending; TET10 represents a linear strain field
+  // so cantilevers come out within a few %. Grid is sized smaller so the TET10
+  // DOF count stays near maxNodes.
+  const tet4 = generateTetMesh(pos, Math.max(64, Math.floor(maxNodes / 3)));
+  const nCornerNodes = tet4.nodes.length / 3; // nodes [0,nCornerNodes) are corners; the rest are edge midsides
+  const { nodes, elems } = buildTet10Mesh(tet4.nodes, tet4.tets);
   const nNodes = nodes.length / 3;
   const nDOF   = nNodes * 3;
 
   // --- Assemble global stiffness matrix K (CSR sparse) ---
-  // Sparse assembly: accumulate into Map<row, Map<col, value>> first,
-  // then construct CSRMatrix. Memory: O(nnz) ≈ O(27*nNodes) instead of O(nDOF²).
   const entries = new Map<number, Map<number, number>>();
 
   const addToSparse = (row: number, col: number, val: number) => {
@@ -529,19 +629,17 @@ export function runFEM(
     rowMap.set(col, (rowMap.get(col) ?? 0) + val);
   };
 
-  const tetStiffnesses: Array<{ Ke: number[][]; B: number[][] }> = [];
+  const elemStiffnesses: Array<{ Bc: number[][] }> = [];
 
-  for (const tet of tets) {
-    const { Ke, B } = computeTetStiffness(nodes, tet, E, nu);
-    tetStiffnesses.push({ Ke, B });
+  for (const elem of elems) {
+    const { Ke, Bc } = computeTet10Stiffness(nodes, elem, E, nu);
+    elemStiffnesses.push({ Bc });
 
-    for (let i = 0; i < 4; i++) {
-      for (let j = 0; j < 4; j++) {
+    for (let i = 0; i < 10; i++) {
+      for (let j = 0; j < 10; j++) {
         for (let di = 0; di < 3; di++) {
           for (let dj = 0; dj < 3; dj++) {
-            const row = tet.nodes[i] * 3 + di;
-            const col = tet.nodes[j] * 3 + dj;
-            addToSparse(row, col, Ke[i*3+di][j*3+dj]);
+            addToSparse(elem[i] * 3 + di, elem[j] * 3 + dj, Ke[i*3+di][j*3+dj]);
           }
         }
       }
@@ -552,59 +650,103 @@ export function runFEM(
   const F = new Float64Array(nDOF);
   const fixedDOFs = new Set<number>();
 
-  // Build a lookup: surface raw vertex index -> tet node index
-  // (reuse the surfIndexMap logic implicitly via nearest-node search)
-  // For conditions with faceIndices we find the tet nodes near each face centroid.
+  // Boundary conditions are applied over a whole FACE, not a single nearest node.
+  // Fixing only the node nearest each face-centroid left the structure
+  // under-constrained (rigid-body modes survive ⇒ singular K ⇒ CG diverges). We
+  // instead infer the axis-aligned face plane from the selected triangles and
+  // constrain / load EVERY mesh node lying on that plane.
+  let span = 0;
+  for (let d = 0; d < 3; d++) {
+    let lo = Infinity, hi = -Infinity;
+    for (let n = 0; n < nNodes; n++) { const v = nodes[n*3+d]; if (v < lo) lo = v; if (v > hi) hi = v; }
+    span = Math.max(span, hi - lo);
+  }
+  const planeTol = Math.max(1e-4, 1e-3 * span);
 
   for (const cond of conditions) {
+    // Infer the face plane: the axis with the least vertex spread is the normal;
+    // its mean coordinate is the plane value.
+    const sum = [0, 0, 0]; const sum2 = [0, 0, 0]; let cnt = 0;
     for (const fi of cond.faceIndices) {
       const base = fi * 3;
       if (base + 2 >= surfaceVertCount) continue;
-
-      // Face centroid in surface geometry
-      const cx = (pos.getX(base) + pos.getX(base+1) + pos.getX(base+2)) / 3;
-      const cy = (pos.getY(base) + pos.getY(base+1) + pos.getY(base+2)) / 3;
-      const cz = (pos.getZ(base) + pos.getZ(base+1) + pos.getZ(base+2)) / 3;
-
-      // Find nearest tet node
-      let nearest = 0;
-      let nearestD2 = Infinity;
-      for (let n = 0; n < nNodes; n++) {
-        const dx = cx - nodes[n*3], dy = cy - nodes[n*3+1], dz = cz - nodes[n*3+2];
-        const d2 = dx*dx + dy*dy + dz*dz;
-        if (d2 < nearestD2) { nearestD2 = d2; nearest = n; }
+      for (let k = 0; k < 3; k++) {
+        const vi = base + k;
+        const c = [pos.getX(vi), pos.getY(vi), pos.getZ(vi)];
+        for (let d = 0; d < 3; d++) { sum[d] += c[d]; sum2[d] += c[d] * c[d]; }
+        cnt++;
       }
+    }
+    if (cnt === 0) continue;
+    const mean = [sum[0]/cnt, sum[1]/cnt, sum[2]/cnt];
+    const variance = [0, 1, 2].map((d) => sum2[d]/cnt - mean[d]*mean[d]);
+    const axis = variance[0] <= variance[1] && variance[0] <= variance[2] ? 0 : variance[1] <= variance[2] ? 1 : 2;
+    const planeVal = mean[axis];
 
-      if (cond.type === 'fixed') {
-        fixedDOFs.add(nearest*3);
-        fixedDOFs.add(nearest*3+1);
-        fixedDOFs.add(nearest*3+2);
-      } else if (cond.type === 'force' && cond.value) {
-        // Distribute over faces — each face contributes 1/faceCount of total
-        const nFaces = cond.faceIndices.length;
-        F[nearest*3]   += cond.value[0] / nFaces;
-        F[nearest*3+1] += cond.value[1] / nFaces;
-        F[nearest*3+2] += cond.value[2] / nFaces;
-      } else if (cond.type === 'pressure' && cond.value) {
-        // Compute face normal
-        const v0 = new THREE.Vector3(pos.getX(base),   pos.getY(base),   pos.getZ(base));
-        const v1 = new THREE.Vector3(pos.getX(base+1), pos.getY(base+1), pos.getZ(base+1));
-        const v2 = new THREE.Vector3(pos.getX(base+2), pos.getY(base+2), pos.getZ(base+2));
-        const normal = new THREE.Vector3().subVectors(v1, v0).cross(new THREE.Vector3().subVectors(v2, v0)).normalize();
-        const pressureMag = new THREE.Vector3(cond.value[0], cond.value[1], cond.value[2]).length();
-        const nFaces = cond.faceIndices.length;
-        F[nearest*3]   += normal.x * pressureMag / nFaces;
-        F[nearest*3+1] += normal.y * pressureMag / nFaces;
-        F[nearest*3+2] += normal.z * pressureMag / nFaces;
+    // Every mesh node on that plane.
+    const onPlane: number[] = [];
+    for (let n = 0; n < nNodes; n++) {
+      if (Math.abs(nodes[n*3+axis] - planeVal) < planeTol) onPlane.push(n);
+    }
+    if (onPlane.length === 0) continue;
+
+    if (cond.type === 'fixed') {
+      for (const n of onPlane) { fixedDOFs.add(n*3); fixedDOFs.add(n*3+1); fixedDOFs.add(n*3+2); }
+    } else if (cond.type === 'force' && cond.value) {
+      // cond.value is the TOTAL force on the face. For quadratic (TET10) elements
+      // the CONSISTENT nodal load of a uniform face traction is carried by the
+      // edge-MIDSIDE nodes (corner nodes get ~0); distributing equally over all
+      // face nodes instead makes the loaded face dish and over-reports the peak
+      // displacement. So load the midside face nodes when present.
+      const mids = onPlane.filter((n) => n >= nCornerNodes);
+      const target = mids.length > 0 ? mids : onPlane;
+      const per = target.length;
+      for (const n of target) {
+        F[n*3]   += cond.value[0] / per;
+        F[n*3+1] += cond.value[1] / per;
+        F[n*3+2] += cond.value[2] / per;
       }
+    } else if (cond.type === 'pressure' && cond.value) {
+      // Pressure × face area → a total force along the OUTWARD plane normal,
+      // distributed over the plane nodes.
+      const perp = [0, 1, 2].filter((d) => d !== axis);
+      let lo0 = Infinity, hi0 = -Infinity, lo1 = Infinity, hi1 = -Infinity;
+      let axLo = Infinity, axHi = -Infinity;
+      for (let n = 0; n < nNodes; n++) { const a = nodes[n*3+axis]; if (a < axLo) axLo = a; if (a > axHi) axHi = a; }
+      for (const n of onPlane) {
+        const a = nodes[n*3+perp[0]], b = nodes[n*3+perp[1]];
+        if (a < lo0) lo0 = a; if (a > hi0) hi0 = a;
+        if (b < lo1) lo1 = b; if (b > hi1) hi1 = b;
+      }
+      const area = Math.max(hi0 - lo0, planeTol) * Math.max(hi1 - lo1, planeTol);
+      const pressureMag = Math.hypot(cond.value[0], cond.value[1], cond.value[2]);
+      // Outward normal: +1 on the max side of the part, −1 on the min side.
+      const sign = Math.abs(planeVal - axHi) <= Math.abs(planeVal - axLo) ? 1 : -1;
+      const per = onPlane.length;
+      for (const n of onPlane) F[n*3+axis] += (sign * pressureMag * area) / per;
     }
   }
 
-  // --- Apply fixed DOF constraints via large-number (penalty) method ---
-  const LARGE = 1e30;
+  // --- Apply fixed DOF constraints by Dirichlet ELIMINATION (u = 0) ---
+  // The old 1e30 penalty wrecked the conditioning (1e30 on the diagonal vs ~1e5
+  // real stiffness → condition number ~1e25), so the Jacobi-PCG converged only
+  // intermittently across mesh resolutions. Proper elimination — zero the row and
+  // column of each fixed DOF and put a representative value on the diagonal —
+  // keeps the system well-conditioned and the fixed DOF trivially u = 0.
+  let diagSum = 0, diagCnt = 0;
+  for (const [r, rowMap] of entries) {
+    const dv = rowMap.get(r);
+    if (dv && !fixedDOFs.has(r)) { diagSum += dv; diagCnt++; }
+  }
+  const diagScale = diagCnt > 0 ? diagSum / diagCnt : 1;
+  // Zero the COLUMN of every fixed DOF in the remaining (free) rows.
+  for (const [r, rowMap] of entries) {
+    if (fixedDOFs.has(r)) continue;
+    for (const c of [...rowMap.keys()]) if (fixedDOFs.has(c)) rowMap.delete(c);
+  }
+  // Replace each fixed ROW with a single diagonal entry; RHS already 0.
   for (const dof of fixedDOFs) {
-    if (!entries.has(dof)) entries.set(dof, new Map());
-    entries.get(dof)!.set(dof, LARGE);
+    entries.set(dof, new Map([[dof, diagScale]]));
     F[dof] = 0;
   }
 
@@ -620,46 +762,34 @@ export function runFEM(
   const nodeDispVec = new Float32Array(nNodes * 3);
   const nodeCount   = new Float32Array(nNodes);
 
-  for (let ti = 0; ti < tets.length; ti++) {
-    const tet = tets[ti];
-    const { B } = tetStiffnesses[ti];
+  const lam = E * nu / ((1 + nu) * (1 - 2 * nu));
+  const mu  = E / (2 * (1 + nu));
+  for (let ti = 0; ti < elems.length; ti++) {
+    const elem = elems[ti];
+    const { Bc } = elemStiffnesses[ti];
 
-    // Element displacement vector (12 DOF)
-    const ue = new Array<number>(12);
-    for (let i = 0; i < 4; i++) {
-      const n = tet.nodes[i];
-      ue[i*3]   = u[n*3];
-      ue[i*3+1] = u[n*3+1];
-      ue[i*3+2] = u[n*3+2];
-    }
-
-    // Strain vector: eps = B * ue (6 components)
+    // Element displacement vector (30 DOF) + centroid strain eps = Bc · ue.
     const eps = new Array<number>(6).fill(0);
-    for (let r = 0; r < 6; r++) {
-      for (let c = 0; c < 12; c++) eps[r] += B[r][c] * ue[c];
+    for (let i = 0; i < 10; i++) {
+      const n = elem[i];
+      const ux = u[n*3], uy = u[n*3+1], uz = u[n*3+2];
+      for (let r = 0; r < 6; r++) eps[r] += Bc[r][i*3]*ux + Bc[r][i*3+1]*uy + Bc[r][i*3+2]*uz;
     }
 
-    // Constitutive matrix to get stress sigma = D * eps
-    const lam = E * nu / ((1 + nu) * (1 - 2 * nu));
-    const mu  = E / (2 * (1 + nu));
     const sx = lam*(eps[0]+eps[1]+eps[2]) + 2*mu*eps[0];
     const sy = lam*(eps[0]+eps[1]+eps[2]) + 2*mu*eps[1];
     const sz = lam*(eps[0]+eps[1]+eps[2]) + 2*mu*eps[2];
-    const txy = mu * eps[3];
-    const tyz = mu * eps[4];
-    const txz = mu * eps[5];
+    const txy = mu * eps[3], tyz = mu * eps[4], txz = mu * eps[5];
 
-    // Von Mises stress
     const vonMises = Math.sqrt(0.5 * (
-      (sx-sy)**2 + (sy-sz)**2 + (sz-sx)**2 +
-      6 * (txy**2 + tyz**2 + txz**2)
+      (sx-sy)**2 + (sy-sz)**2 + (sz-sx)**2 + 6 * (txy**2 + tyz**2 + txz**2)
     ));
 
-    // Distribute to element nodes
-    for (const n of tet.nodes) {
+    // Distribute to all 10 element nodes.
+    for (let i = 0; i < 10; i++) {
+      const n = elem[i];
       nodeStress[n] += vonMises;
-      const dm = Math.sqrt(u[n*3]**2 + u[n*3+1]**2 + u[n*3+2]**2);
-      nodeDisp[n]    += dm;
+      nodeDisp[n]    += Math.sqrt(u[n*3]**2 + u[n*3+1]**2 + u[n*3+2]**2);
       nodeDispVec[n*3]   += u[n*3];
       nodeDispVec[n*3+1] += u[n*3+1];
       nodeDispVec[n*3+2] += u[n*3+2];
@@ -722,7 +852,7 @@ export function runFEM(
     minStress,
     safetyFactor,
     dofCount:    nDOF,
-    elementCount: tets.length,
+    elementCount: elems.length,
     converged,
     iterations: solverIterations,
   };

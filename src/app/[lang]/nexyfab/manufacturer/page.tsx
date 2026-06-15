@@ -114,27 +114,27 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#0d1117', color: '#e6edf3',
+      minHeight: '100vh', background: 'var(--nx-bg)', color: 'var(--nx-text)',
       fontFamily: 'system-ui, -apple-system, sans-serif',
     }}>
       {/* ── Header ── */}
       <div style={{
-        borderBottom: '1px solid #21262d', padding: '16px 32px',
+        borderBottom: '1px solid var(--nx-panel-2)', padding: '16px 32px',
         display: 'flex', alignItems: 'center', gap: 16,
-        position: 'sticky', top: 0, background: '#0d1117', zIndex: 10,
+        position: 'sticky', top: 0, background: 'var(--nx-bg)', zIndex: 10,
       }}>
         <Link prefetch href={`/${lang}/shape-generator`} style={{ textDecoration: 'none' }}>
           <span style={{ fontSize: 20, fontWeight: 800, color: '#388bfd' }}>Nexy</span>
           <span style={{ fontSize: 20, fontWeight: 800, color: '#3fb950' }}>Fab</span>
         </Link>
-        <span style={{ color: '#30363d' }}>/</span>
+        <span style={{ color: 'var(--nx-border)' }}>/</span>
         <span style={{ fontSize: 16, fontWeight: 600 }}>
           {isKo ? '제조 대시보드' : 'Manufacturer Dashboard'}
         </span>
         <div style={{ flex: 1 }} />
         <a href={`/${lang}/nexyfab/orders`} style={{
-          fontSize: 12, color: '#8b949e', textDecoration: 'none', padding: '6px 12px',
-          border: '1px solid #30363d', borderRadius: 6,
+          fontSize: 12, color: 'var(--nx-text-2)', textDecoration: 'none', padding: '6px 12px',
+          border: '1px solid var(--nx-border)', borderRadius: 6,
         }}>
           {isKo ? '내 주문' : 'My Orders'}
         </a>
@@ -166,7 +166,7 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
         </div>
 
         {/* ── Tabs ── */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid #21262d' }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid var(--nx-panel-2)' }}>
           {tabs.map(t => (
             <button
               key={t.key}
@@ -174,7 +174,7 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
               style={{
                 padding: '10px 18px', fontSize: 13, fontWeight: 600,
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: tab === t.key ? '#e6edf3' : '#8b949e',
+                color: tab === t.key ? 'var(--nx-text)' : 'var(--nx-text-2)',
                 borderBottom: tab === t.key ? '2px solid #388bfd' : '2px solid transparent',
                 marginBottom: -1, transition: 'color 0.15s',
                 display: 'flex', alignItems: 'center', gap: 8,
@@ -184,8 +184,8 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
               {t.count > 0 && (
                 <span style={{
                   fontSize: 10, padding: '1px 7px', borderRadius: 12,
-                  background: tab === t.key ? '#388bfd22' : '#21262d',
-                  color: tab === t.key ? '#388bfd' : '#8b949e',
+                  background: tab === t.key ? '#388bfd22' : 'var(--nx-panel-2)',
+                  color: tab === t.key ? '#388bfd' : 'var(--nx-text-2)',
                 }}>
                   {t.count}
                 </span>
@@ -196,7 +196,7 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
 
         {/* ── Content ── */}
         {loading && (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#6e7681' }}>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--nx-text-3)' }}>
             {isKo ? '불러오는 중...' : 'Loading...'}
           </div>
         )}
@@ -211,7 +211,7 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
         )}
 
         {!loading && !error && tabOrders.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#6e7681' }}>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--nx-text-3)' }}>
             {isKo ? '해당 주문이 없습니다.' : 'No orders in this category.'}
           </div>
         )}
@@ -237,7 +237,7 @@ export default function ManufacturerDashboardPage({ params }: { params: Promise<
 function StatCard({ label, value, icon, color }: { label: string; value: string; icon: string; color: string }) {
   return (
     <div style={{
-      background: '#161b22', border: '1px solid #30363d',
+      background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
       borderRadius: 12, padding: '20px 24px',
       display: 'flex', alignItems: 'center', gap: 16,
     }}>
@@ -248,7 +248,7 @@ function StatCard({ label, value, icon, color }: { label: string; value: string;
         {icon}
       </div>
       <div>
-        <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>{label}</div>
+        <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 4 }}>{label}</div>
         <div style={{ fontSize: 22, fontWeight: 800, color, fontFamily: 'monospace' }}>{value}</div>
       </div>
     </div>
@@ -286,17 +286,17 @@ function ManufacturerOrderCard({
 
   return (
     <div style={{
-      background: '#161b22', border: '1px solid #30363d',
+      background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
       borderRadius: 12, overflow: 'hidden',
     }}>
       {/* Header row */}
       <div style={{
-        padding: '14px 20px', borderBottom: '1px solid #21262d',
+        padding: '14px 20px', borderBottom: '1px solid var(--nx-panel-2)',
         display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
       }}>
         <div>
-          <p style={{ margin: 0, fontSize: 10, color: '#6e7681', fontFamily: 'monospace' }}>{order.id}</p>
-          <p style={{ margin: '3px 0 0', fontSize: 15, fontWeight: 700, color: '#e6edf3' }}>
+          <p style={{ margin: 0, fontSize: 10, color: 'var(--nx-text-3)', fontFamily: 'monospace' }}>{order.id}</p>
+          <p style={{ margin: '3px 0 0', fontSize: 15, fontWeight: 700, color: 'var(--nx-text)' }}>
             {order.partName}
           </p>
         </div>
@@ -328,9 +328,9 @@ function ManufacturerOrderCard({
             disabled={actionLoading}
             style={{
               padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-              background: actionLoading ? '#21262d' : actionDef.color + '22',
-              color: actionLoading ? '#6e7681' : actionDef.color,
-              border: `1px solid ${actionLoading ? '#30363d' : actionDef.color + '66'}`,
+              background: actionLoading ? 'var(--nx-panel-2)' : actionDef.color + '22',
+              color: actionLoading ? 'var(--nx-text-3)' : actionDef.color,
+              border: `1px solid ${actionLoading ? 'var(--nx-border)' : actionDef.color + '66'}`,
               cursor: actionLoading ? 'not-allowed' : 'pointer',
               transition: 'all 0.15s',
             }}
@@ -342,7 +342,7 @@ function ManufacturerOrderCard({
         ) : (
           <span style={{
             fontSize: 12, fontWeight: 600, padding: '6px 14px', borderRadius: 8,
-            background: '#21262d', color: '#6e7681', border: '1px solid #30363d',
+            background: 'var(--nx-panel-2)', color: 'var(--nx-text-3)', border: '1px solid var(--nx-border)',
           }}>
             {order.status === 'shipped'
               ? (isKo ? '배송 완료 확인 대기' : 'Awaiting delivery confirm')
@@ -357,8 +357,8 @@ function ManufacturerOrderCard({
 function MetaItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p style={{ margin: 0, fontSize: 10, color: '#6e7681' }}>{label}</p>
-      <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 600, color: '#e6edf3' }}>{value}</p>
+      <p style={{ margin: 0, fontSize: 10, color: 'var(--nx-text-3)' }}>{label}</p>
+      <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 600, color: 'var(--nx-text)' }}>{value}</p>
     </div>
   );
 }

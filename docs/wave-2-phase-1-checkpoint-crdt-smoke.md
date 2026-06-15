@@ -451,6 +451,68 @@ What this does NOT prove (deferred):
   until the host wires `resolveCreatorName` via CollabProvider awareness.
 - Default-on flag rollout — `?crdt=v2` stays opt-in through W6.
 
+## Phase 3 Z7 — activity feed + presence panel embed (flag-gated)
+
+Wave 2 Phase 3 W7 introduces the **chronological activity log** that
+surfaces who-did-what across all 5 CRDT sub-trees (sketches, feature
+tree, reference geometry, configurations, branches). The feed lives on
+a new top-level `activity` Y.Array root and replicates over the same
+Y.Doc transports as the rest of the data.
+
+ADR-012 §7 lock-ins (recap):
+- Last 50 ops per doc, chronological newest-first.
+- Each entry: peer name + relative time + op kind label.
+- No auto-purge beyond the 50-window — older history relies on
+  git-style branch + restore.
+
+Resolved ambiguities:
+- **Log-on-source-peer policy** — every peer logs ONLY its own
+  locally-originated ops. Remote peers receive the entry via Y.Array
+  replication, not by re-logging the remote-origin update. This avoids
+  N² log spam (2 peers × 1 op = exactly 1 entry, not 2). See
+  `useActivityFeed.ts:isLocalOrigin`.
+- **Clock skew across peers** — every entry's `timestamp` is the
+  originating peer's `Date.now()`. We accept wall-clock skew up to a
+  few seconds (UI groups by "Xs / Xm ago" buckets which absorb it);
+  entry ids stay stable for dedup. No server-stamped clock — Z7 is
+  strictly client-side.
+- **50-cap enforcement** — at append time inside the same `doc.transact`
+  block. No separate sweep cron required.
+
+60-second smoke (manual, two-tab):
+
+1. Open `/[lang]/shape-generator?crdt=v2` in two tabs of the same
+   browser.
+2. In tab A, add a sketch / segment / feature-tree node.
+3. The activity feed (bottom-right corner) shows
+   `@<TabA-name> added sketch <id>` within ~100 ms.
+4. In tab B, the same entry appears in the activity feed within ~100 ms
+   (Y.Array replicated via BroadcastChannel).
+5. In tab B, add a feature. Tab A's activity feed shows the new entry.
+6. Click an entry with an entity id in tab A → the host's
+   `nfab:activity-focus` listener (if wired) scrolls / selects the
+   affected entity.
+7. Click **Clear local view** in tab A → entries hide on tab A only,
+   tab B's feed unchanged. Adding a new op in either tab re-populates
+   tab A's feed.
+8. Open the presence panel (top-right). Click the **Activity (N)** tab
+   at the bottom — an embedded compact feed expands inline.
+9. Both tabs converge to identical activity logs after a brief
+   BroadcastChannel round-trip.
+
+What this proves: the 5-store subscription pipeline emits exactly one
+entry per local op; Y.Array replication keeps multi-tab logs in sync;
+50-cap holds at the wire level; "clear local view" is local-only
+(does NOT touch the Y.Doc).
+
+What this does NOT prove (deferred):
+- Filtering / search UI — W8+ scope per spec §7 §scope.
+- Live "X seconds ago" ticking — host wraps the panel in their own
+  `setInterval(setNow, 30000)` if they want this; the panel itself
+  re-renders only on log change.
+- Cross-network sync (BroadcastChannel is same-origin only until
+  `occt-collab-worker` ships per P0 backlog #31).
+
 ## Phase 3 E2 — dynamic fillet + chamfer (flag-gated)
 
 Wave 2 Phase 3 W4 layers **dynamic edge editing** on top of the E1

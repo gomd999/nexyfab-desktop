@@ -241,7 +241,8 @@ export default function CostCopilotPanel({
 
   return (
     <div style={{
-      position: 'fixed', top: 48, right: 16, zIndex: 900,
+      // right: 336 clears the 320px right property pane (2026-06-12)
+      position: 'fixed', top: 48, right: 336, zIndex: 900,
       width: 400, maxHeight: 'calc(100vh - 80px)',
       background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12,
       boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
@@ -358,9 +359,19 @@ export default function CostCopilotPanel({
                     <div style={{ fontSize: 12, fontWeight: 800, color: C.text, lineHeight: 1.3 }}>
                       {isKo ? s.titleKo : s.title}
                     </div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: s.estimatedSavingsPercent > 0 ? C.green : C.dim, flexShrink: 0 }}>
-                      ~{s.estimatedSavingsPercent > 0 ? '-' : '+'}{Math.abs(s.estimatedSavingsPercent)}%
-                    </div>
+                    {/* Prefer the REAL computed delta (costDelta) over the
+                        model's rough guess. When no geometry/material is
+                        available to compute one, show the rough % explicitly
+                        labelled "est." so it isn't read as a precise figure. */}
+                    {s.costDelta ? (
+                      <div style={{ fontSize: 11, fontWeight: 800, color: deltaColor, flexShrink: 0 }}>
+                        {s.costDelta.percentChange > 0 ? '+' : ''}{s.costDelta.percentChange}%
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11, fontWeight: 800, color: s.estimatedSavingsPercent > 0 ? C.green : C.dim, flexShrink: 0 }}>
+                        ~{s.estimatedSavingsPercent > 0 ? '-' : '+'}{Math.abs(s.estimatedSavingsPercent)}% {isKo ? '추정' : 'est.'}
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ fontSize: 10, color: C.text, lineHeight: 1.5, marginBottom: 6 }}>

@@ -3,6 +3,7 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import ShareButton from './ShareButton';
+import { DocPermissionsButton } from './collab/DocPermissionsButton';
 import UserMenu from '@/components/nexyfab/UserMenu';
 import CollabAvatars from '@/components/nexyfab/CollabAvatars';
 import StepUploaderButton from './io/StepUploaderButton';
@@ -390,6 +391,10 @@ export interface ShapeGeneratorToolbarProps {
   params: Record<string, number>;
   materialId: string;
   shareOpenKey: number;
+  // Cloud-doc permissions (Z8). Hidden when documentId is undefined.
+  cloudDocumentId?: string | null;
+  cloudCurrentUserId?: string | null;
+  cloudCanManagePerms?: boolean;
   // IP Share
   isCreatingShare: boolean;
   shareUrl: string | null;
@@ -453,6 +458,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
     showCostPanel, setShowCostPanel,
     onGetQuote, rfqPending, tGetQuote,
     selectedId, params, materialId, shareOpenKey,
+    cloudDocumentId, cloudCurrentUserId, cloudCanManagePerms,
     isCreatingShare, shareUrl, onIPShare,
     addToast, onStepGeometry: _onStepGeometry, onStepGeometryDirect,
     simpleMode, onEnableSimpleMode, onDisableSimpleMode,
@@ -926,6 +932,12 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
         lang={langSeg}
         label={'Share'}
         autoOpenKey={shareOpenKey}
+      />
+      <DocPermissionsButton
+        documentId={cloudDocumentId ?? null}
+        currentUserId={cloudCurrentUserId ?? null}
+        lang={langSeg}
+        canManage={cloudCanManagePerms ?? false}
       />
       {/* IP-protected share link */}
       <button

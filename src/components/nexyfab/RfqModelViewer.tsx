@@ -73,8 +73,8 @@ export default function RfqModelViewer({
     return (
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        height, background: '#0d1117', border: '1px dashed #30363d', borderRadius: 8,
-        gap: 8, color: '#484f58',
+        height, background: 'var(--nx-bg)', border: '1px dashed var(--nx-border)', borderRadius: 8,
+        gap: 8, color: 'var(--nx-text-3)',
       }}>
         <span style={{ fontSize: 28 }}>⬡</span>
         <p style={{ margin: 0, fontSize: 12, textAlign: 'center', lineHeight: 1.4 }}>
@@ -98,25 +98,25 @@ export default function RfqModelViewer({
 
   return (
     <div style={{
-      position: 'relative', background: '#0d1117',
-      border: '1px solid #30363d', borderRadius: 8, overflow: 'hidden',
+      position: 'relative', background: 'var(--nx-bg)',
+      border: '1px solid var(--nx-border)', borderRadius: 8, overflow: 'hidden',
     }}>
       {/* Header row */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 12px', borderBottom: '1px solid #21262d',
-        background: '#161b22',
+        padding: '8px 12px', borderBottom: '1px solid var(--nx-panel-2)',
+        background: 'var(--nx-panel)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span style={{ fontSize: 12 }}>⬡</span>
           <span style={{
-            fontSize: 12, fontWeight: 600, color: '#e6edf3',
+            fontSize: 12, fontWeight: 600, color: 'var(--nx-text)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
             {shapeName ?? '3D 모델'}
           </span>
           {materialId && (
-            <span style={{ fontSize: 10, color: '#8b949e', flexShrink: 0 }}>{materialId}</span>
+            <span style={{ fontSize: 10, color: 'var(--nx-text-2)', flexShrink: 0 }}>{materialId}</span>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -147,7 +147,7 @@ export default function RfqModelViewer({
         {loading && (
           <div style={{
             position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
-            justifyContent: 'center', color: '#484f58', fontSize: 12,
+            justifyContent: 'center', color: 'var(--nx-text-3)', fontSize: 12,
           }}>
             <span>모델 로딩 중...</span>
           </div>
@@ -157,24 +157,24 @@ export default function RfqModelViewer({
           <div style={{
             position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center', gap: 10,
-            background: 'linear-gradient(135deg, #0d1117 0%, #161b22 100%)',
+            background: 'linear-gradient(135deg, var(--nx-bg) 0%, var(--nx-panel) 100%)',
           }}>
             {/* Decorative 3D-ish hex icon */}
             <div style={{
               width: 64, height: 64, borderRadius: 16,
               background: 'linear-gradient(135deg, #8b9cf422, #388bfd22)',
-              border: '1px solid #30363d',
+              border: '1px solid var(--nx-border)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 28, color: '#8b9cf4',
             }}>
               ⬡
             </div>
             <div style={{ textAlign: 'center' }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#e6edf3' }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--nx-text)' }}>
                 3D 뷰어 열기
               </p>
               {bboxStr && (
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#8b949e' }}>{bboxStr}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--nx-text-2)' }}>{bboxStr}</p>
               )}
             </div>
             <div style={{
@@ -192,7 +192,7 @@ export default function RfqModelViewer({
             {!iframeLoaded && (
               <div style={{
                 position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
-                justifyContent: 'center', color: '#484f58', fontSize: 12, zIndex: 1,
+                justifyContent: 'center', color: 'var(--nx-text-3)', fontSize: 12, zIndex: 1,
               }}>
                 3D 렌더링 중...
               </div>
@@ -214,11 +214,11 @@ export default function RfqModelViewer({
       {/* Footer: DFM detail */}
       {dfmScore != null && (
         <div style={{
-          padding: '6px 12px', borderTop: '1px solid #21262d',
+          padding: '6px 12px', borderTop: '1px solid var(--nx-panel-2)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: '#0d1117',
+          background: 'var(--nx-bg)',
         }}>
-          <span style={{ fontSize: 10, color: '#8b949e' }}>DFM 분석</span>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>DFM 분석</span>
           <DfmScoreBadge score={dfmScore} process={dfmProcess} size="sm" showLabel />
         </div>
       )}

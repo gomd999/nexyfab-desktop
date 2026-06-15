@@ -95,7 +95,8 @@ function throwIfAborted(signal?: AbortSignal): void {
 
 /** Get triangle vertices in world space */
 function getTriangle(geometry: THREE.BufferGeometry, transform: THREE.Matrix4, triIndex: number): THREE.Triangle {
-  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute | null;
+  if (!posAttr) return new THREE.Triangle(); // malformed/empty geometry (e.g. corrupt import) — avoid crash
   const index = geometry.index;
 
   let i0: number, i1: number, i2: number;

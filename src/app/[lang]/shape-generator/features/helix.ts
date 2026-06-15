@@ -17,6 +17,19 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { FeatureDefinition } from './types';
+import { occtSweepHelix, occtBooleanSolids } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
+
+/** A closed circular cross-section (polygon) for the helical sweep profile. */
+function circleProfile(r: number, segs = 24): { x: number; y: number }[] {
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i < segs; i++) {
+    const a = (i / segs) * Math.PI * 2;
+    pts.push({ x: r * Math.cos(a), y: r * Math.sin(a) });
+  }
+  return pts;
+}
 
 export const helixFeature: FeatureDefinition = {
   type: 'helix',
@@ -91,5 +104,41 @@ export const helixFeature: FeatureDefinition = {
       }
     }
     return helixGeo;
+  },
+  async applyAsync(geometry, params) {
+    if (shouldUseOcctEngine()) {
+      try {
+        const radius = Math.max(0.5, params.radius);
+        const pitch = Math.max(0.1, params.pitch);
+        const turns = Math.max(1, Math.round(params.turns));
+        const wireRadius = Math.max(0.05, params.wireRadius);
+        const axis = Math.round(params.axis);
+        const lefthand = Math.round(params.handedness) === 1;
+        // Helix axis direction (matches the mesh axis convention).
+        const dir: [number, number, number] = axis === 0 ? [1, 0, 0] : axis === 2 ? [0, 0, 1] : [0, 1, 0];
+        const built = occtSweepHelix(circleProfile(wireRadius), pitch, pitch * turns, radius, undefined, dir, lefthand);
+        if (built.handle) {
+          const hasBase = geometry.attributes.position && geometry.attributes.position.count > 0;
+          const baseHandle = geometry.userData?.occtHandle as string | undefined;
+          if (!hasBase) {
+            // Fresh helical solid (the common spring / auger case) → B-rep.
+            built.geometry.userData.occtHandle = built.handle;
+            return built.geometry;
+          }
+          if (baseHandle) {
+            // Helix on top of an upstream B-rep → fuse into one solid.
+            const fused = occtBooleanSolids('union', baseHandle, built.handle);
+            if (fused.handle) {
+              fused.geometry.userData.occtHandle = fused.handle;
+              return fused.geometry;
+            }
+          }
+          // Base without a B-rep handle → fall through to the mesh merge.
+        }
+      } catch (err) {
+        console.warn('[helix] OCCT path failed, falling back to mesh:', err);
+      }
+    }
+    return noteMeshFallback(helixFeature.apply(geometry, params), { op: 'Helix' });
   },
 };

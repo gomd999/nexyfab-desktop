@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPartnerAuth } from '@/lib/partner-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { findFactoryForPartnerEmail, normPartnerEmail } from '@/lib/partner-factory-access';
+import { redactRfqsForPartner } from '@/lib/marketplace/partnerRedaction';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,7 +106,10 @@ export async function GET(req: NextRequest) {
       avgResponseHours,
       winRate,
     },
-    pendingRfqs: pendingQuoteRfqs.slice(0, 20).map(r => ({
+    // Pre-acceptance RFQs the partner may quote on — routed through the redactor
+    // so customer identity can never reach the partner, even if a future field is
+    // added to this map (anonymity by contract, not by which columns we selected).
+    pendingRfqs: redactRfqsForPartner(pendingQuoteRfqs.slice(0, 20).map(r => ({
       id: r.id,
       shapeName: r.shape_name,
       materialId: r.material_id,
@@ -115,7 +119,7 @@ export async function GET(req: NextRequest) {
       note: r.note,
       assignedAt: r.assigned_at ? new Date(r.assigned_at).toISOString() : null,
       createdAt: new Date(r.created_at).toISOString(),
-    })),
+    }))),
     activeContracts: activeContracts.slice(0, 20),
     recentQuotes: myQuotes.slice(0, 10).map(q => ({
       id: q.id,

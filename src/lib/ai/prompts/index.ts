@@ -47,6 +47,7 @@ import rfqResponder from './rfq-responder';
 import capacityMatch from './capacity-match';
 import certFilter from './cert-filter';
 import changeDetector from './change-detector';
+import imageIntentFromSketchV1 from './imageIntentFromSketch.v1';
 
 export interface PromptDefaults {
   temperature?: number;
@@ -90,6 +91,7 @@ const PROMPTS: Record<string, PromptDefinition> = {
   [capacityMatch.id]: capacityMatch,
   [certFilter.id]: certFilter,
   [changeDetector.id]: changeDetector,
+  [imageIntentFromSketchV1.id]: imageIntentFromSketchV1,
 };
 
 export function getPrompt(id: string): PromptDefinition {

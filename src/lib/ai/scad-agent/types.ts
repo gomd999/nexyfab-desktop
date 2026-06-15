@@ -29,6 +29,7 @@ export type ToolName =
   | 'render'
   | 'get_geometry'
   | 'add_feature_intent'
+  | 'add_composite_intent'
   | 'search_bosl2'
   | 'read_dfm'
   // ─── Stage 1 (assembly composition) ──────────────────────────────────
@@ -76,6 +77,7 @@ export type ToolName =
   | 'tree_set_param'
   | 'tree_remove_node'
   // ─── Z4 — Standards library lookups ──────────────────────────────────
+  | 'lookup_metric_fastener'
   | 'lookup_imperial_fastener'
   | 'select_bearing'
   | 'select_key'
@@ -126,7 +128,31 @@ export type ToolName =
   | 'fea_solve'
   | 'fea_stress'
   // ─── U (Stage 4) — sheet metal unfold (multi-bend) ───────────────────
-  | 'sheet_metal_unfold';
+  | 'sheet_metal_unfold'
+  // ─── X1 — spec verification (intent vs measured bbox) ───────────────
+  | 'verify_spec'
+  // ─── X1 (B-rep parallel) — spec verification for B-rep flows ────────
+  | 'verify_spec_brep'
+  // ─── GD&T tolerance suggester (DimXpert / Auto-dim equivalent) ──────
+  | 'suggest_gdt_for_intent'
+  // ─── Track B — Cost estimation ──────────────────────────────────────
+  | 'estimate_cost'
+  // ─── Track G — AI process selection ─────────────────────────────────
+  | 'suggest_process'
+  // ─── Track M — AI material recommendation ───────────────────────────
+  | 'suggest_material'
+  // ─── Track N — BOM auto-generation ──────────────────────────────────
+  | 'generate_bom'
+  // ─── Track E — AI mate inference for 2-part pairs ────────────────────
+  | 'suggest_mates'
+  // ─── Track H — Version diff between checkpoints ──────────────────────
+  | 'diff_checkpoints'
+  // ─── Image-to-CAD — extract intent from a photo/sketch via vision ────
+  | 'intent_from_image'
+  // ─── Mesh reverse-engineering — STL → proposed IntentInput via heuristic ─
+  | 'reverse_engineer_mesh'
+  // ─── Manufacturer quoting — internal estimator or partner provider ──────
+  | 'request_quote';
 
 export interface ToolCall {
   /** Unique id for matching tool_result back to tool_call */
@@ -169,6 +195,15 @@ export interface ReadDfmArgs { processes?: string[]; }
 export interface PlanDesignArgs { goal: string; }
 export interface WriteModuleArgs { name: string; code: string; }
 export type ListModulesArgs = Record<string, never>;
+/** World placement of a part, used as a mate-solver anchor. */
+export interface AgentPlacement {
+  position: [number, number, number];
+  /** Local-frame AABB (mm); when absent the solver assumes a unit cube. */
+  bbox?: { min: [number, number, number]; max: [number, number, number] };
+  /** True for cylinder-like parts (axis face tags resolve to the +Z axis). */
+  cylindrical?: boolean;
+}
+
 export interface AssemblyPlacement {
   moduleName: string;
   position?: [number, number, number];
@@ -689,6 +724,15 @@ export interface Checkpoint {
   modules: Record<string, string>;
   composition: string | null;
   designPlan: string | null;
+  /**
+   * Track H — Optional GeometryStats snapshot captured WITH this
+   * checkpoint. Future checkpoint-capture sites (after a successful
+   * render + geometry parse) can populate this so `diff_checkpoints`
+   * can surface bbox / volume / surface area / genus deltas in addition
+   * to the SCAD source delta. Existing checkpoints without stats simply
+   * yield null deltas — the diff still works for the scadSource part.
+   */
+  stats?: GeometryStats;
 }
 
 export type ListCheckpointsArgs = Record<string, never>;
@@ -700,6 +744,22 @@ export interface ViewRenderArgs {
   prompt?: string;
   /** Subset of camera angles. Defaults to iso + front + right side. */
   views?: ('iso' | 'front' | 'right' | 'left' | 'top' | 'back')[];
+}
+
+/** Args for `intent_from_image`: vision-driven CAD-intent extraction. */
+export interface IntentFromImageArgs {
+  /** Raw base64 or data URL (data URL preferred). */
+  imageBase64: string;
+  /** Optional MIME type — inferred from data URL when present. */
+  mimeType?: 'image/png' | 'image/jpeg' | 'image/webp';
+  /** Optional NL hint paired with the image ("the bracket is 50mm wide"). */
+  hintText?: string;
+}
+
+/** Args for `reverse_engineer_mesh`: heuristic shape classifier over an STL. */
+export interface ReverseEngineerMeshArgs {
+  /** Raw base64 or data URL (data URL preferred). */
+  stlBase64: string;
 }
 
 // ─── Session state ──────────────────────────────────────────────────────────
@@ -748,6 +808,46 @@ export interface GeometryStats {
   /** Layer-1 verification critique when the geometry has problems (gaps,
    *  inside-out normals, fragments). Undefined/empty when the model is clean. */
   issues?: string;
+  /**
+   * X2 — Topological genus = number of through-holes for a single-body
+   * closed manifold. Null when the mesh isn't a clean closed single body
+   * (multi-body, open boundary, non-manifold). verify_spec uses this to
+   * count through-holes against the intent's `hole` feature count.
+   */
+  genus?: number | null;
+  /**
+   * X6/X7 — axis-aligned cylindrical hole peaks across X/Y/Z. Each peak
+   * carries its detection axis so verify_spec can match intent holes
+   * along the right axis. (cx, cy) is in the perpendicular plane
+   * (Z: world XY, X: world YZ, Y: world XZ).
+   */
+  detectedHoles?: Array<{
+    axis: 'x' | 'y' | 'z';
+    cx: number;
+    cy: number;
+    diameter: number;
+    voteCount: number;
+  }>;
+  /**
+   * X11 — Minimum wall thickness sampled across the mesh (mm). null when
+   * the shape is a convex solid (no inward hits — sphere, single cube)
+   * or the mesh was empty. verify_spec uses this against the declared
+   * manufacturing process's minimum to fail "wall too thin to print/mill".
+   */
+  minWallThicknessMm?: number | null;
+  /**
+   * X8 — dihedral angle stats for fillet verification. sharpEdgeCount ≈ 0
+   * indicates a part where every sharp corner has been replaced with a
+   * smooth fillet transition.
+   */
+  dihedralStats?: {
+    totalManifoldEdges: number;
+    sharpEdgeCount: number;
+    curvedEdgeCount: number;
+    flatEdgeCount: number;
+    maxDihedralDeg: number;
+    meanDihedralDeg: number;
+  };
 }
 
 export interface BudgetState {
@@ -820,6 +920,13 @@ export interface AgentSession {
    */
   mates: AssemblyMate[];
   /**
+   * I* — World placements per part identifier (handle / moduleName), set by
+   * compose_assembly and updated by solve_mates. Feeds the real mate solver's
+   * anchors so mates actually reposition parts (not the origin-stub). Optional
+   * for back-compat: sessions without placements solve from origin.
+   */
+  placements?: Record<string, AgentPlacement>;
+  /**
    * P (Stage 4) — GD&T frames attached to features for the drawing
    * studio to render. The frames are session-scoped so the agent can
    * iterate on tolerance design before exporting the final drawing.
@@ -853,6 +960,20 @@ export interface AgentSession {
    * runs in legacy immediate-mode (current behavior).
    */
   featureTree?: import('./featureTree').FeatureTree;
+  /**
+   * X1 — Most recent IntentInput passed through add_feature_intent. The
+   * verify_spec tool reads this against the latest measured bbox to
+   * detect param-level mismatches (e.g. AI emitted width=5 when the user
+   * said 50). Cleared when write_scad / apply_diff replace the source.
+   */
+  lastIntent?: import('../../openscad-render/intentToScad').IntentInput;
+  /**
+   * W2.1 (ADR-015) — parts of the most recent add_composite_intent. A composite
+   * is not a single primitive, so verify_spec compares the measured bbox against
+   * the composite's expected envelope via verifyCompositeAgainstSpec instead of
+   * lastIntent. Mutually exclusive with lastIntent (each tool clears the other).
+   */
+  lastCompositeParts?: import('./compositeIntent').CompositePart[];
   /** Conversation messages, including tool_call / tool_result envelopes. */
   history: AgentMessage[];
   render: RenderState;

@@ -35,11 +35,11 @@ const STATUS_STEP_INDEX: Record<NexyfabOrder['status'], number> = {
 };
 
 const STATUS_COLORS: Record<NexyfabOrder['status'], string> = {
-  placed: '#388bfd',
+  placed: 'var(--nx-accent)',
   production: '#f0883e',
   qc: '#e3b341',
   shipped: '#79c0ff',
-  delivered: '#3fb950',
+  delivered: 'var(--nx-ok)',
 };
 
 const STATUS_LABEL: Record<NexyfabOrder['status'], { ko: string; en: string }> = {
@@ -208,7 +208,7 @@ interface ReviewData {
 function OrderSkeleton() {
   return (
     <div style={{
-      background: '#161b22', border: '1px solid #21262d',
+      background: 'var(--nx-panel)', border: '1px solid var(--nx-panel-2)',
       borderRadius: 12, overflow: 'hidden', marginBottom: 20,
     }}>
       <style precedence="default" href="orders-skeleton">{`
@@ -217,14 +217,14 @@ function OrderSkeleton() {
           100% { background-position: 600px 0; }
         }
         .nf-skel {
-          background: linear-gradient(90deg, #21262d 25%, #30363d 50%, #21262d 75%);
+          background: linear-gradient(90deg, var(--nx-panel-2) 25%, var(--nx-border) 50%, var(--nx-panel-2) 75%);
           background-size: 600px 100%;
           animation: nf-shimmer 1.4s infinite linear;
           border-radius: 4px;
         }
       `}</style>
       {/* Header skeleton */}
-      <div style={{ padding: '14px 20px', borderBottom: '1px solid #21262d', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--nx-panel-2)', display: 'flex', alignItems: 'center', gap: 12 }}>
         <div>
           <div className="nf-skel" style={{ height: 10, width: 120, marginBottom: 6 }} />
           <div className="nf-skel" style={{ height: 16, width: 200 }} />
@@ -233,7 +233,7 @@ function OrderSkeleton() {
         <div className="nf-skel" style={{ height: 22, width: 70, borderRadius: 10 }} />
       </div>
       {/* Meta skeleton */}
-      <div style={{ padding: '12px 20px', borderBottom: '1px solid #21262d', display: 'flex', gap: 24 }}>
+      <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--nx-panel-2)', display: 'flex', gap: 24 }}>
         {[100, 80, 110, 90, 100].map((w, i) => (
           <div key={i}>
             <div className="nf-skel" style={{ height: 9, width: w * 0.6, marginBottom: 5 }} />
@@ -281,11 +281,11 @@ interface DefectSummary {
 
 const DEFECT_STATUS_COLOR: Record<DefectStatus, string> = {
   reported: '#e3b341',
-  under_review: '#388bfd',
+  under_review: 'var(--nx-accent)',
   approved: '#a371f7',
-  rejected: '#484f58',
-  resolved: '#3fb950',
-  disputed: '#f85149',
+  rejected: 'var(--nx-border-strong)',
+  resolved: 'var(--nx-ok)',
+  disputed: 'var(--nx-error)',
 };
 
 function OrderDetailDrawer({
@@ -519,13 +519,13 @@ function OrderDetailDrawer({
     panel: { flex: 1, overflow: 'auto', padding: '16px 20px' } as React.CSSProperties,
     tabBtn: (active: boolean): React.CSSProperties => ({
       padding: '6px 14px', fontSize: 12, fontWeight: 600, borderRadius: 6, cursor: 'pointer',
-      border: 'none', background: active ? '#388bfd' : 'transparent',
-      color: active ? '#fff' : '#6e7681',
+      border: 'none', background: active ? 'var(--nx-accent)' : 'transparent',
+      color: active ? '#fff' : 'var(--nx-text-3)',
     }),
     inputRow: { display: 'flex', gap: 8, marginTop: 12 } as React.CSSProperties,
     input: {
-      flex: 1, background: '#0d1117', border: '1px solid #30363d', borderRadius: 6,
-      padding: '7px 10px', color: '#e6edf3', fontSize: 12,
+      flex: 1, background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 6,
+      padding: '7px 10px', color: 'var(--nx-text)', fontSize: 12,
     } as React.CSSProperties,
     btn: (color: string): React.CSSProperties => ({
       padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700,
@@ -533,7 +533,7 @@ function OrderDetailDrawer({
     }),
     msRow: (done: boolean): React.CSSProperties => ({
       display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
-      borderBottom: '1px solid #21262d', opacity: done ? 0.6 : 1,
+      borderBottom: '1px solid var(--nx-panel-2)', opacity: done ? 0.6 : 1,
     }),
     statusBadge: (color: string): React.CSSProperties => ({
       fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 8,
@@ -542,8 +542,8 @@ function OrderDetailDrawer({
   };
 
   const SHIP_STATUS_COLOR: Record<string, string> = {
-    delivered: '#3fb950', in_transit: '#388bfd', out_for_delivery: '#e3b341',
-    exception: '#f85149', pending: '#6e7681',
+    delivered: 'var(--nx-ok)', in_transit: 'var(--nx-accent)', out_for_delivery: '#e3b341',
+    exception: 'var(--nx-error)', pending: 'var(--nx-text-3)',
   };
 
   const canReview = order.status === 'delivered' && !reviewData;
@@ -580,15 +580,15 @@ function OrderDetailDrawer({
 
       {/* Drawer */}
       <div style={{
-        width: 'min(calc(100vw - 24px), 420px)', background: '#161b22', borderLeft: '1px solid #30363d',
-        display: 'flex', flexDirection: 'column', color: '#e6edf3',
+        width: 'min(calc(100vw - 24px), 420px)', background: 'var(--nx-panel)', borderLeft: '1px solid var(--nx-border)',
+        display: 'flex', flexDirection: 'column', color: 'var(--nx-text)',
         fontFamily: 'system-ui, sans-serif',
       }}>
         {/* Header */}
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid #21262d', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--nx-panel-2)', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ fontSize: 11, color: '#6e7681' }}>{order.id}</div>
+              <div style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>{order.id}</div>
               {isDemo && (
                 <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 6, background: '#e3b34122', color: '#e3b341' }}>
                   DEMO
@@ -600,7 +600,7 @@ function OrderDetailDrawer({
           {!isDemo && (
             <button
               onClick={() => onReorder(order.id)}
-              style={{ ...S.btn('#388bfd22'), color: '#388bfd', border: '1px solid #388bfd55', marginRight: 4 }}
+              style={{ ...S.btn('#388bfd22'), color: 'var(--nx-accent)', border: '1px solid #388bfd55', marginRight: 4 }}
             >
               {isKo ? '재발주' : 'Reorder'}
             </button>
@@ -611,7 +611,7 @@ function OrderDetailDrawer({
                 href={`/api/nexyfab/orders/${order.id}/pdf`}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ ...S.btn('#21262d'), color: '#8b949e', textDecoration: 'none', border: '1px solid #30363d' }}
+                style={{ ...S.btn('var(--nx-panel-2)'), color: 'var(--nx-text-2)', textDecoration: 'none', border: '1px solid var(--nx-border)' }}
               >
                 📄 PDF
               </a>
@@ -619,17 +619,17 @@ function OrderDetailDrawer({
                 href={`/api/nexyfab/orders/${order.id}/tax-invoice`}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ ...S.btn('#21262d'), color: '#e3b341', textDecoration: 'none', border: '1px solid #e3b34155' }}
+                style={{ ...S.btn('var(--nx-panel-2)'), color: '#e3b341', textDecoration: 'none', border: '1px solid #e3b34155' }}
               >
                 🧾 세금계산서
               </a>
             </>
           )}
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6e7681', cursor: 'pointer', fontSize: 18, padding: 4 }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 18, padding: 4 }}>✕</button>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, padding: '10px 16px', borderBottom: '1px solid #21262d', background: '#0d1117', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 4, padding: '10px 16px', borderBottom: '1px solid var(--nx-panel-2)', background: 'var(--nx-bg)', flexWrap: 'wrap' }}>
           {tabs.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={S.tabBtn(tab === t.id)}>{t.label}</button>
           ))}
@@ -640,7 +640,7 @@ function OrderDetailDrawer({
           {drawerError && (
             <div style={{
               background: '#f8514918', border: '1px solid #f8514944', borderRadius: 8,
-              padding: '8px 12px', marginBottom: 12, fontSize: 12, color: '#f85149',
+              padding: '8px 12px', marginBottom: 12, fontSize: 12, color: 'var(--nx-error)',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
             }}>
               <span>{
@@ -652,11 +652,11 @@ function OrderDetailDrawer({
                 drawerError
               }</span>
               <button onClick={() => setDrawerError(null)}
-                style={{ background: 'none', border: 'none', color: '#f85149', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>✕</button>
+                style={{ background: 'none', border: 'none', color: 'var(--nx-error)', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>✕</button>
             </div>
           )}
           {loading && (
-            <div style={{ color: '#6e7681', textAlign: 'center', padding: '40px 0', fontSize: 13 }}>
+            <div style={{ color: 'var(--nx-text-3)', textAlign: 'center', padding: '40px 0', fontSize: 13 }}>
               {isKo ? '불러오는 중...' : 'Loading...'}
             </div>
           )}
@@ -669,13 +669,13 @@ function OrderDetailDrawer({
           {/* ── MILESTONES ── */}
           {(!loading || isDemo) && tab === 'milestones' && (
             <div>
-              <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 12 }}>
                 {isKo
                   ? `${displayMilestones.filter(m => m.status === 'completed').length} / ${displayMilestones.length} 완료`
                   : `${displayMilestones.filter(m => m.status === 'completed').length} / ${displayMilestones.length} done`}
               </div>
               {displayMilestones.length === 0 && (
-                <div style={{ color: '#484f58', fontSize: 12, padding: '20px 0' }}>
+                <div style={{ color: 'var(--nx-border-strong)', fontSize: 12, padding: '20px 0' }}>
                   {isKo ? '마일스톤이 없습니다.' : 'No milestones yet.'}
                 </div>
               )}
@@ -683,8 +683,8 @@ function OrderDetailDrawer({
                 <div key={ms.id} style={S.msRow(ms.status === 'completed')}>
                   <button onClick={() => toggleMilestone(ms)} style={{
                     width: 20, height: 20, borderRadius: 4, border: '2px solid',
-                    borderColor: ms.status === 'completed' ? '#3fb950' : '#30363d',
-                    background: ms.status === 'completed' ? '#3fb950' : 'transparent',
+                    borderColor: ms.status === 'completed' ? 'var(--nx-ok)' : 'var(--nx-border)',
+                    background: ms.status === 'completed' ? 'var(--nx-ok)' : 'transparent',
                     color: '#fff', fontSize: 11, cursor: isDemo ? 'default' : 'pointer', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
@@ -694,9 +694,9 @@ function OrderDetailDrawer({
                     <div style={{ fontSize: 13, fontWeight: 600, textDecoration: ms.status === 'completed' ? 'line-through' : 'none' }}>
                       {ms.title}
                     </div>
-                    {ms.dueDate && <div style={{ fontSize: 10, color: '#6e7681' }}>{isKo ? '기한: ' : 'Due: '}{ms.dueDate}</div>}
+                    {ms.dueDate && <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{isKo ? '기한: ' : 'Due: '}{ms.dueDate}</div>}
                   </div>
-                  <span style={S.statusBadge(ms.status === 'completed' ? '#3fb950' : '#6e7681')}>
+                  <span style={S.statusBadge(ms.status === 'completed' ? 'var(--nx-ok)' : 'var(--nx-text-3)')}>
                     {ms.status === 'completed' ? (isKo ? '완료' : 'Done') : (isKo ? '대기' : 'Pending')}
                   </span>
                 </div>
@@ -711,7 +711,7 @@ function OrderDetailDrawer({
                     onKeyDown={e => e.key === 'Enter' && addMilestone()}
                   />
                   <button onClick={addMilestone} disabled={addingMs || !newMsTitle.trim()}
-                    style={{ ...S.btn('#388bfd'), opacity: addingMs || !newMsTitle.trim() ? 0.5 : 1 }}>
+                    style={{ ...S.btn('var(--nx-accent)'), opacity: addingMs || !newMsTitle.trim() ? 0.5 : 1 }}>
                     {isKo ? '추가' : 'Add'}
                   </button>
                 </div>
@@ -732,44 +732,44 @@ function OrderDetailDrawer({
           {!loading && tab === 'qc' && (
             <div>
               {isDemo ? (
-                <div style={{ padding: '12px 14px', background: '#0d1117', borderRadius: 8, border: '1px solid #21262d', fontSize: 12, color: '#6e7681' }}>
+                <div style={{ padding: '12px 14px', background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)', fontSize: 12, color: 'var(--nx-text-3)' }}>
                   {isKo ? '실제 계약 후 QC 체크리스트가 표시됩니다.' : 'QC checklist will be shown after a real order is placed.'}
                 </div>
               ) : (
                 <>
                   {qcItems.length === 0 && (
-                    <div style={{ color: '#484f58', fontSize: 12, padding: '20px 0' }}>{isKo ? 'QC 항목이 없습니다.' : 'No QC items.'}</div>
+                    <div style={{ color: 'var(--nx-border-strong)', fontSize: 12, padding: '20px 0' }}>{isKo ? 'QC 항목이 없습니다.' : 'No QC items.'}</div>
                   )}
                   {qcItems.map(item => (
-                    <div key={item.id} style={{ padding: '10px 0', borderBottom: '1px solid #21262d' }}>
+                    <div key={item.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--nx-panel-2)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={S.statusBadge(
-                          item.status === 'passed' ? '#3fb950' : item.status === 'failed' ? '#f85149' : '#6e7681',
+                          item.status === 'passed' ? 'var(--nx-ok)' : item.status === 'failed' ? 'var(--nx-error)' : 'var(--nx-text-3)',
                         )}>
                           {item.status === 'passed' ? (isKo ? '통과' : 'Pass') : item.status === 'failed' ? (isKo ? '실패' : 'Fail') : (isKo ? '대기' : 'Pending')}
                         </span>
                         <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{item.title}</span>
                       </div>
-                      {item.criteria && <div style={{ fontSize: 11, color: '#6e7681', marginTop: 3 }}>{item.criteria}</div>}
-                      {item.inspector_note && <div style={{ fontSize: 11, color: '#8b949e', marginTop: 3 }}>📝 {item.inspector_note}</div>}
+                      {item.criteria && <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginTop: 3 }}>{item.criteria}</div>}
+                      {item.inspector_note && <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 3 }}>📝 {item.inspector_note}</div>}
                       {item.checked_by && (
-                        <div style={{ fontSize: 10, color: '#484f58', marginTop: 2 }}>
+                        <div style={{ fontSize: 10, color: 'var(--nx-border-strong)', marginTop: 2 }}>
                           {isKo ? '검사: ' : 'Inspector: '}{item.checked_by}
                         </div>
                       )}
                     </div>
                   ))}
                   {qcItems.length > 0 && (
-                    <div style={{ marginTop: 12, padding: '10px 14px', background: '#0d1117', borderRadius: 8, fontSize: 12 }}>
-                      <span style={{ color: '#3fb950', fontWeight: 700 }}>
+                    <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--nx-bg)', borderRadius: 8, fontSize: 12 }}>
+                      <span style={{ color: 'var(--nx-ok)', fontWeight: 700 }}>
                         {isKo ? '통과 ' : 'Pass '}{qcItems.filter(i => i.status === 'passed').length}
                       </span>
-                      <span style={{ color: '#6e7681', margin: '0 6px' }}>/</span>
-                      <span style={{ color: '#f85149', fontWeight: 700 }}>
+                      <span style={{ color: 'var(--nx-text-3)', margin: '0 6px' }}>/</span>
+                      <span style={{ color: 'var(--nx-error)', fontWeight: 700 }}>
                         {isKo ? '실패 ' : 'Fail '}{qcItems.filter(i => i.status === 'failed').length}
                       </span>
-                      <span style={{ color: '#6e7681', margin: '0 6px' }}>/</span>
-                      <span style={{ color: '#6e7681' }}>
+                      <span style={{ color: 'var(--nx-text-3)', margin: '0 6px' }}>/</span>
+                      <span style={{ color: 'var(--nx-text-3)' }}>
                         {isKo ? '대기 ' : 'Pending '}{qcItems.filter(i => i.status === 'pending').length}
                       </span>
                     </div>
@@ -783,34 +783,34 @@ function OrderDetailDrawer({
           {!loading && tab === 'shipment' && (
             <div>
               {isDemo ? (
-                <div style={{ padding: '12px 14px', background: '#0d1117', borderRadius: 8, border: '1px solid #21262d', fontSize: 12, color: '#6e7681' }}>
+                <div style={{ padding: '12px 14px', background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)', fontSize: 12, color: 'var(--nx-text-3)' }}>
                   {isKo ? '배송 번호가 등록되면 실시간 추적이 가능합니다.' : 'Once a tracking number is added, real-time tracking will be available.'}
                 </div>
               ) : (
                 <>
                   {shipments.map(shp => (
-                    <div key={shp.id} style={{ marginBottom: 16, padding: '12px 14px', background: '#0d1117', borderRadius: 8, border: '1px solid #21262d' }}>
+                    <div key={shp.id} style={{ marginBottom: 16, padding: '12px 14px', background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <span style={S.statusBadge(SHIP_STATUS_COLOR[shp.status] ?? '#6e7681')}>
+                        <span style={S.statusBadge(SHIP_STATUS_COLOR[shp.status] ?? 'var(--nx-text-3)')}>
                           {shp.status.replace(/_/g, ' ')}
                         </span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#e6edf3' }}>{shp.carrier.toUpperCase()}</span>
-                        <span style={{ fontSize: 11, color: '#6e7681', flex: 1, textAlign: 'right' }}>{shp.trackingNumber}</span>
-                        <button onClick={() => refreshShipment(shp.id)} style={{ ...S.btn('#21262d'), fontSize: 10, padding: '3px 8px' }}>↺</button>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>{shp.carrier.toUpperCase()}</span>
+                        <span style={{ fontSize: 11, color: 'var(--nx-text-3)', flex: 1, textAlign: 'right' }}>{shp.trackingNumber}</span>
+                        <button onClick={() => refreshShipment(shp.id)} style={{ ...S.btn('var(--nx-panel-2)'), fontSize: 10, padding: '3px 8px' }}>↺</button>
                       </div>
-                      {shp.lastStatusText && <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 6 }}>{shp.lastStatusText}</div>}
+                      {shp.lastStatusText && <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 6 }}>{shp.lastStatusText}</div>}
                       {shp.estimatedDelivery && (
-                        <div style={{ fontSize: 11, color: '#6e7681', marginBottom: 6 }}>
+                        <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginBottom: 6 }}>
                           {isKo ? '예상 도착: ' : 'Est. delivery: '}{shp.estimatedDelivery}
                         </div>
                       )}
                       {shp.events.length > 0 && (
                         <div style={{ marginTop: 8 }}>
                           {shp.events.slice(0, 4).map((ev, i) => (
-                            <div key={i} style={{ display: 'flex', gap: 8, fontSize: 10, color: '#6e7681', padding: '3px 0', borderBottom: '1px solid #21262d' }}>
-                              <span style={{ minWidth: 110, color: '#484f58' }}>{ev.datetime}</span>
-                              <span style={{ color: '#8b949e' }}>{ev.location}</span>
-                              <span style={{ flex: 1, color: '#e6edf3' }}>{ev.description}</span>
+                            <div key={i} style={{ display: 'flex', gap: 8, fontSize: 10, color: 'var(--nx-text-3)', padding: '3px 0', borderBottom: '1px solid var(--nx-panel-2)' }}>
+                              <span style={{ minWidth: 110, color: 'var(--nx-border-strong)' }}>{ev.datetime}</span>
+                              <span style={{ color: 'var(--nx-text-2)' }}>{ev.location}</span>
+                              <span style={{ flex: 1, color: 'var(--nx-text)' }}>{ev.description}</span>
                             </div>
                           ))}
                         </div>
@@ -819,8 +819,8 @@ function OrderDetailDrawer({
                   ))}
 
                   {/* Add tracking */}
-                  <div style={{ marginTop: 8, padding: '12px', background: '#0d1117', borderRadius: 8, border: '1px solid #21262d' }}>
-                    <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 8, fontWeight: 600 }}>
+                  <div style={{ marginTop: 8, padding: '12px', background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)' }}>
+                    <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 8, fontWeight: 600 }}>
                       {isKo ? '배송번호 등록' : 'Add Tracking'}
                     </div>
                     <input value={newTracking} onChange={e => setNewTracking(e.target.value)}
@@ -830,7 +830,7 @@ function OrderDetailDrawer({
                       placeholder={isKo ? '메모 (선택)' : 'Label (optional)'}
                       style={{ ...S.input, marginBottom: 8, display: 'block', width: '100%', boxSizing: 'border-box' }} />
                     <button onClick={addShipment} disabled={addingShipment || !newTracking.trim()}
-                      style={{ ...S.btn('#388bfd'), opacity: addingShipment || !newTracking.trim() ? 0.5 : 1, width: '100%' }}>
+                      style={{ ...S.btn('var(--nx-accent)'), opacity: addingShipment || !newTracking.trim() ? 0.5 : 1, width: '100%' }}>
                       {isKo ? '등록' : 'Register'}
                     </button>
                   </div>
@@ -843,31 +843,31 @@ function OrderDetailDrawer({
           {!loading && tab === 'review' && (
             <div>
               {reviewData ? (
-                <div style={{ padding: '14px', background: '#0d1117', borderRadius: 8, border: '1px solid #21262d' }}>
+                <div style={{ padding: '14px', background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#e3b341' }}>
                     {'★'.repeat(reviewData.rating)}{'☆'.repeat(5 - reviewData.rating)} {reviewData.rating}/5
                   </div>
-                  <div style={{ display: 'flex', gap: 12, marginBottom: 10, fontSize: 11, color: '#6e7681' }}>
+                  <div style={{ display: 'flex', gap: 12, marginBottom: 10, fontSize: 11, color: 'var(--nx-text-3)' }}>
                     <span>{isKo ? '납기: ' : 'Deadline: '}{reviewData.categories?.deadline}/5</span>
                     <span>{isKo ? '품질: ' : 'Quality: '}{reviewData.categories?.quality}/5</span>
                     <span>{isKo ? '소통: ' : 'Comm.: '}{reviewData.categories?.communication}/5</span>
                   </div>
-                  {reviewData.comment && <p style={{ fontSize: 13, color: '#e6edf3', margin: 0 }}>{reviewData.comment}</p>}
-                  <div style={{ fontSize: 10, color: '#484f58', marginTop: 8 }}>{reviewData.reviewedAt?.slice(0, 10)}</div>
+                  {reviewData.comment && <p style={{ fontSize: 13, color: 'var(--nx-text)', margin: 0 }}>{reviewData.comment}</p>}
+                  <div style={{ fontSize: 10, color: 'var(--nx-border-strong)', marginTop: 8 }}>{reviewData.reviewedAt?.slice(0, 10)}</div>
                 </div>
               ) : order.status === 'delivered' ? (
                 <div>
-                  <div style={{ fontSize: 13, color: '#8b949e', marginBottom: 16 }}>
+                  <div style={{ fontSize: 13, color: 'var(--nx-text-2)', marginBottom: 16 }}>
                     {isKo ? '이 주문에 대한 파트너 평가를 남겨주세요.' : 'Leave a review for this order.'}
                   </div>
 
                   {/* Overall */}
                   <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, color: '#6e7681', marginBottom: 6 }}>{isKo ? '종합 평점' : 'Overall'}</div>
+                    <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginBottom: 6 }}>{isKo ? '종합 평점' : 'Overall'}</div>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {[1,2,3,4,5].map(n => (
                         <button key={n} onClick={() => setRating(n)}
-                          style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: n <= rating ? '#e3b341' : '#30363d' }}>
+                          style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: n <= rating ? '#e3b341' : 'var(--nx-border)' }}>
                           ★
                         </button>
                       ))}
@@ -881,11 +881,11 @@ function OrderDetailDrawer({
                     { label: isKo ? '소통' : 'Communication', val: ratingComm, set: setRatingComm },
                   ].map(c => (
                     <div key={c.label} style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize: 11, color: '#6e7681', marginBottom: 4 }}>{c.label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginBottom: 4 }}>{c.label}</div>
                       <div style={{ display: 'flex', gap: 4 }}>
                         {[1,2,3,4,5].map(n => (
                           <button key={n} onClick={() => c.set(n)}
-                            style={{ background: 'none', border: 'none', fontSize: 16, cursor: 'pointer', color: n <= c.val ? '#e3b341' : '#30363d' }}>
+                            style={{ background: 'none', border: 'none', fontSize: 16, cursor: 'pointer', color: n <= c.val ? '#e3b341' : 'var(--nx-border)' }}>
                             ★
                           </button>
                         ))}
@@ -906,7 +906,7 @@ function OrderDetailDrawer({
                   />
 
                   {reviewMsg && (
-                    <div style={{ fontSize: 12, color: reviewMsg === 'REVIEW_OK' ? '#3fb950' : '#f85149', marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, color: reviewMsg === 'REVIEW_OK' ? 'var(--nx-ok)' : 'var(--nx-error)', marginBottom: 8 }}>
                       {reviewMsg === 'REVIEW_OK' ? (isKo ? '리뷰가 등록되었습니다.' : 'Review submitted.') :
                        reviewMsg === 'REVIEW_DEMO' ? (isKo ? '데모 모드에서는 리뷰를 제출할 수 없습니다.' : 'Cannot submit review in demo mode.') :
                        reviewMsg === 'REVIEW_ERROR' ? (isKo ? '오류가 발생했습니다.' : 'Error occurred.') :
@@ -917,13 +917,13 @@ function OrderDetailDrawer({
                   <button
                     onClick={submitReview}
                     disabled={submittingReview}
-                    style={{ ...S.btn('#388bfd'), width: '100%', opacity: submittingReview ? 0.6 : 1 }}
+                    style={{ ...S.btn('var(--nx-accent)'), width: '100%', opacity: submittingReview ? 0.6 : 1 }}
                   >
                     {submittingReview ? (isKo ? '제출 중...' : 'Submitting...') : (isKo ? '리뷰 제출' : 'Submit Review')}
                   </button>
                 </div>
               ) : (
-                <div style={{ color: '#484f58', fontSize: 12, padding: '20px 0' }}>
+                <div style={{ color: 'var(--nx-border-strong)', fontSize: 12, padding: '20px 0' }}>
                   {isKo ? '배송 완료 후 리뷰를 작성할 수 있습니다.' : 'You can review after delivery is complete.'}
                 </div>
               )}
@@ -952,7 +952,7 @@ function OrderDetailDrawer({
             />
           )}
           {!loading && tab === 'messages' && isDemo && (
-            <div style={{ color: '#484f58', fontSize: 12, padding: '20px 0' }}>
+            <div style={{ color: 'var(--nx-border-strong)', fontSize: 12, padding: '20px 0' }}>
               {isKo ? '데모 주문에서는 메시지를 사용할 수 없습니다.' : 'Messages are not available in demo orders.'}
             </div>
           )}
@@ -962,13 +962,13 @@ function OrderDetailDrawer({
             <div>
               {defects.length === 0 && !showDefectForm && (
                 <div style={{
-                  padding: '14px', background: '#0d1117', borderRadius: 8, border: '1px solid #21262d',
-                  fontSize: 12, color: '#8b949e', marginBottom: 12,
+                  padding: '14px', background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)',
+                  fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 12,
                 }}>
                   {isKo
                     ? '접수된 불량·RMA 이슈가 없습니다. 받은 제품에 문제가 있으면 아래 버튼으로 제기할 수 있습니다.'
                     : 'No defects or RMA issues. If the delivered part has a problem, report it below.'}
-                  <div style={{ fontSize: 10, color: '#484f58', marginTop: 6 }}>
+                  <div style={{ fontSize: 10, color: 'var(--nx-border-strong)', marginTop: 6 }}>
                     {isKo ? '배송 후 30일 이내, 주문당 미해결 이슈 최대 3건.' : 'Within 30 days of delivery, max 3 open issues per order.'}
                   </div>
                 </div>
@@ -976,11 +976,11 @@ function OrderDetailDrawer({
 
               {defects.map(d => (
                 <div key={d.id} style={{
-                  padding: '12px', background: '#0d1117', borderRadius: 8,
-                  border: '1px solid #21262d', marginBottom: 10,
+                  padding: '12px', background: 'var(--nx-bg)', borderRadius: 8,
+                  border: '1px solid var(--nx-panel-2)', marginBottom: 10,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#6e7681' }}>{d.id}</span>
+                    <span style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--nx-text-3)' }}>{d.id}</span>
                     <span style={{
                       fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 8,
                       background: DEFECT_STATUS_COLOR[d.status] + '22',
@@ -992,19 +992,19 @@ function OrderDetailDrawer({
                       fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 8,
                       background: d.severity === 'critical' ? '#f8514922'
                                 : d.severity === 'major' ? '#e3b34122' : '#6e768122',
-                      color: d.severity === 'critical' ? '#f85149'
-                            : d.severity === 'major' ? '#e3b341' : '#8b949e',
+                      color: d.severity === 'critical' ? 'var(--nx-error)'
+                            : d.severity === 'major' ? '#e3b341' : 'var(--nx-text-2)',
                     }}>
                       {d.severity}
                     </span>
-                    <span style={{ fontSize: 10, color: '#6e7681', marginLeft: 'auto' }}>
+                    <span style={{ fontSize: 10, color: 'var(--nx-text-3)', marginLeft: 'auto' }}>
                       {new Date(d.createdAt).toISOString().slice(0, 10)}
                     </span>
                   </div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#e6edf3', marginBottom: 4 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--nx-text)', marginBottom: 4 }}>
                     {d.kind.replace(/_/g, ' ')}
                   </div>
-                  <div style={{ fontSize: 12, color: '#c9d1d9', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                  <div style={{ fontSize: 12, color: 'var(--nx-text)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
                     {d.description}
                   </div>
 
@@ -1016,7 +1016,7 @@ function OrderDetailDrawer({
                     }}>
                       🧾 RMA: <b>{d.rmaNumber}</b>
                       {d.rmaInstructions && (
-                        <div style={{ fontSize: 11, color: '#c9d1d9', fontFamily: 'system-ui', marginTop: 4, whiteSpace: 'pre-wrap' }}>
+                        <div style={{ fontSize: 11, color: 'var(--nx-text)', fontFamily: 'system-ui', marginTop: 4, whiteSpace: 'pre-wrap' }}>
                           {d.rmaInstructions}
                         </div>
                       )}
@@ -1027,9 +1027,9 @@ function OrderDetailDrawer({
                     <div style={{
                       marginTop: 8, padding: '6px 10px', borderRadius: 6,
                       background: '#388bfd11', border: '1px solid #388bfd33',
-                      fontSize: 11, color: '#c9d1d9', whiteSpace: 'pre-wrap',
+                      fontSize: 11, color: 'var(--nx-text)', whiteSpace: 'pre-wrap',
                     }}>
-                      💬 <b style={{ color: '#388bfd' }}>{isKo ? '공급사 응답' : 'Supplier response'}</b>
+                      💬 <b style={{ color: 'var(--nx-accent)' }}>{isKo ? '공급사 응답' : 'Supplier response'}</b>
                       <div style={{ marginTop: 4 }}>{d.partnerResponse}</div>
                     </div>
                   )}
@@ -1038,9 +1038,9 @@ function OrderDetailDrawer({
                     <div style={{
                       marginTop: 8, padding: '6px 10px', borderRadius: 6,
                       background: '#3fb95011', border: '1px solid #3fb95033',
-                      fontSize: 11, color: '#c9d1d9', whiteSpace: 'pre-wrap',
+                      fontSize: 11, color: 'var(--nx-text)', whiteSpace: 'pre-wrap',
                     }}>
-                      ✓ <b style={{ color: '#3fb950' }}>{isKo ? '해결 확인' : 'Resolved'}</b>
+                      ✓ <b style={{ color: 'var(--nx-ok)' }}>{isKo ? '해결 확인' : 'Resolved'}</b>
                       <div style={{ marginTop: 4 }}>{d.resolutionNote}</div>
                     </div>
                   )}
@@ -1052,7 +1052,7 @@ function OrderDetailDrawer({
                         const note = window.prompt(isKo ? '해결 내용을 간단히 입력하세요 (선택)' : 'Resolution note (optional)') ?? '';
                         transitionDefect(d.id, 'resolved', { resolutionNote: note });
                       }}
-                      style={{ ...S.btn('#3fb950'), marginTop: 8, width: '100%' }}
+                      style={{ ...S.btn('var(--nx-ok)'), marginTop: 8, width: '100%' }}
                     >
                       ✓ {isKo ? '해결 확인' : 'Mark Resolved'}
                     </button>
@@ -1060,7 +1060,7 @@ function OrderDetailDrawer({
                   {d.status === 'rejected' && (
                     <button
                       onClick={() => transitionDefect(d.id, 'disputed')}
-                      style={{ ...S.btn('#f85149'), marginTop: 8, width: '100%' }}
+                      style={{ ...S.btn('var(--nx-error)'), marginTop: 8, width: '100%' }}
                     >
                       ⚠ {isKo ? '이의 제기' : 'Dispute'}
                     </button>
@@ -1072,7 +1072,7 @@ function OrderDetailDrawer({
                           transitionDefect(d.id, 'rejected');
                         }
                       }}
-                      style={{ ...S.btn('#484f58'), marginTop: 8, width: '100%', fontSize: 11 }}
+                      style={{ ...S.btn('var(--nx-border-strong)'), marginTop: 8, width: '100%', fontSize: 11 }}
                     >
                       {isKo ? '철회' : 'Withdraw'}
                     </button>
@@ -1083,15 +1083,15 @@ function OrderDetailDrawer({
               {/* 신규 제기 폼 */}
               {showDefectForm ? (
                 <div style={{
-                  padding: '12px', background: '#161b22', borderRadius: 8,
-                  border: '1px solid #30363d', marginTop: 8,
+                  padding: '12px', background: 'var(--nx-panel)', borderRadius: 8,
+                  border: '1px solid var(--nx-border)', marginTop: 8,
                 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: '#e6edf3' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: 'var(--nx-text)' }}>
                     {isKo ? '불량·이슈 제기' : 'Report a Defect'}
                   </div>
 
                   <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 4 }}>{isKo ? '유형' : 'Kind'}</div>
+                    <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{isKo ? '유형' : 'Kind'}</div>
                     <select value={defectKind} onChange={e => setDefectKind(e.target.value as DefectKind)} style={{ ...S.input, width: '100%' }}>
                       <option value="wrong_part">{isKo ? '다른 부품' : 'Wrong part'}</option>
                       <option value="damaged">{isKo ? '파손' : 'Damaged'}</option>
@@ -1103,7 +1103,7 @@ function OrderDetailDrawer({
                   </div>
 
                   <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 4 }}>{isKo ? '심각도' : 'Severity'}</div>
+                    <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginBottom: 4 }}>{isKo ? '심각도' : 'Severity'}</div>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {(['minor', 'major', 'critical'] as DefectSeverity[]).map(s => (
                         <button
@@ -1111,9 +1111,9 @@ function OrderDetailDrawer({
                           onClick={() => setDefectSeverity(s)}
                           style={{
                             flex: 1, padding: '6px 0', borderRadius: 6,
-                            border: `1px solid ${defectSeverity === s ? '#f85149' : '#30363d'}`,
+                            border: `1px solid ${defectSeverity === s ? 'var(--nx-error)' : 'var(--nx-border)'}`,
                             background: defectSeverity === s ? '#f8514922' : 'transparent',
-                            color: defectSeverity === s ? '#f85149' : '#8b949e',
+                            color: defectSeverity === s ? 'var(--nx-error)' : 'var(--nx-text-2)',
                             fontSize: 11, fontWeight: 700, cursor: 'pointer',
                           }}
                         >
@@ -1135,7 +1135,7 @@ function OrderDetailDrawer({
 
                   {defectMsg && (
                     <div style={{
-                      fontSize: 11, color: defectMsg.startsWith('제출') || defectMsg.startsWith('Defect') ? '#3fb950' : '#f85149',
+                      fontSize: 11, color: defectMsg.startsWith('제출') || defectMsg.startsWith('Defect') ? 'var(--nx-ok)' : 'var(--nx-error)',
                       marginBottom: 8,
                     }}>
                       {defectMsg}
@@ -1145,14 +1145,14 @@ function OrderDetailDrawer({
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button
                       onClick={() => { setShowDefectForm(false); setDefectDescription(''); setDefectMsg(''); }}
-                      style={{ ...S.btn('#484f58'), flex: 1 }}
+                      style={{ ...S.btn('var(--nx-border-strong)'), flex: 1 }}
                     >
                       {isKo ? '취소' : 'Cancel'}
                     </button>
                     <button
                       onClick={submitDefect}
                       disabled={submittingDefect}
-                      style={{ ...S.btn('#f85149'), flex: 2, opacity: submittingDefect ? 0.6 : 1 }}
+                      style={{ ...S.btn('var(--nx-error)'), flex: 2, opacity: submittingDefect ? 0.6 : 1 }}
                     >
                       {submittingDefect ? (isKo ? '제출 중…' : 'Submitting…') : (isKo ? '제출' : 'Submit')}
                     </button>
@@ -1161,7 +1161,7 @@ function OrderDetailDrawer({
               ) : (
                 <button
                   onClick={() => setShowDefectForm(true)}
-                  style={{ ...S.btn('#f85149'), width: '100%', marginTop: 4 }}
+                  style={{ ...S.btn('var(--nx-error)'), width: '100%', marginTop: 4 }}
                 >
                   ⚠ {isKo ? '새 이슈 제기' : 'Report New Issue'}
                 </button>
@@ -1315,9 +1315,9 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* Top bar */}
         <div style={{
-          borderBottom: '1px solid #21262d', padding: '14px 28px',
+          borderBottom: '1px solid var(--nx-panel-2)', padding: '14px 28px',
           display: 'flex', alignItems: 'center', gap: 14,
-          position: 'sticky', top: 0, background: '#0d1117', zIndex: 10,
+          position: 'sticky', top: 0, background: 'var(--nx-bg)', zIndex: 10,
         }}>
           <span style={{ fontSize: 15, fontWeight: 700 }}>
             {isKo ? '주문 추적' : 'Order Tracking'}
@@ -1332,7 +1332,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
           )}
           <div style={{ flex: 1 }} />
           {lastUpdated && (
-            <span style={{ fontSize: 11, color: '#484f58' }}>
+            <span style={{ fontSize: 11, color: 'var(--nx-border-strong)' }}>
               {isKo ? '최근 갱신 ' : 'Updated '}
               {lastUpdated.toLocaleTimeString(isKo ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
@@ -1343,8 +1343,8 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
               disabled={refreshing}
               style={{
                 padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                border: '1px solid #30363d', background: 'transparent',
-                color: refreshing ? '#484f58' : '#8b949e',
+                border: '1px solid var(--nx-border)', background: 'transparent',
+                color: refreshing ? 'var(--nx-border-strong)' : 'var(--nx-text-2)',
               }}
             >
               {refreshing ? '↻' : '↺'} {isKo ? '새로고침' : 'Refresh'}
@@ -1353,7 +1353,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
           <a
             href={`/${lang}/nexyfab/marketplace`}
             style={{
-              fontSize: 12, color: '#388bfd', textDecoration: 'none',
+              fontSize: 12, color: 'var(--nx-accent)', textDecoration: 'none',
               padding: '5px 12px', borderRadius: 6, border: '1px solid #388bfd33',
               background: '#388bfd11',
             }}
@@ -1364,17 +1364,17 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
 
         <div style={{ flex: 1, maxWidth: 860, margin: '0 auto', padding: '28px 24px', width: '100%', boxSizing: 'border-box' }}>
           {/* Breadcrumb */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6e7681', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--nx-text-3)', marginBottom: 20 }}>
             <a
               href={`/${lang}/nexyfab`}
-              style={{ color: '#6e7681', textDecoration: 'none' }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#388bfd')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#6e7681')}
+              style={{ color: 'var(--nx-text-3)', textDecoration: 'none' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--nx-accent)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--nx-text-3)')}
             >
               {isKo ? '대시보드' : 'Dashboard'}
             </a>
-            <span style={{ color: '#30363d' }}>/</span>
-            <span style={{ color: '#8b949e' }}>{isKo ? '주문 추적' : 'Order Tracking'}</span>
+            <span style={{ color: 'var(--nx-border)' }}>/</span>
+            <span style={{ color: 'var(--nx-text-2)' }}>{isKo ? '주문 추적' : 'Order Tracking'}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 6 }}>
@@ -1382,12 +1382,12 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
               {isKo ? '주문 추적' : 'Order Tracking'}
             </h1>
             {!isDemo && (
-              <span style={{ fontSize: 13, color: '#6e7681', marginBottom: 2 }}>
+              <span style={{ fontSize: 13, color: 'var(--nx-text-3)', marginBottom: 2 }}>
                 {isKo ? `총 ${orders.length}건` : `${orders.length} orders`}
               </span>
             )}
           </div>
-          <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6e7681' }}>
+          <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--nx-text-3)' }}>
             {isKo ? '실시간 제조 진행 현황을 확인하세요' : 'Track your manufacturing orders in real time'}
           </p>
 
@@ -1407,9 +1407,9 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                   onClick={() => { setStatusFilter(opt.value); setOrdersPage(1); loadOrders(false, { status: opt.value, page: 1 }); }}
                   style={{
                     padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                    border: `1px solid ${statusFilter === opt.value ? '#388bfd' : '#30363d'}`,
+                    border: `1px solid ${statusFilter === opt.value ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
                     background: statusFilter === opt.value ? '#388bfd20' : 'transparent',
-                    color: statusFilter === opt.value ? '#388bfd' : '#8b949e',
+                    color: statusFilter === opt.value ? 'var(--nx-accent)' : 'var(--nx-text-2)',
                     transition: 'all 0.12s',
                   }}
                 >
@@ -1431,7 +1431,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#e3b341', marginBottom: 2 }}>
                   {isKo ? '데모 데이터입니다' : 'You are viewing demo data'}
                 </div>
-                <div style={{ fontSize: 12, color: '#8b949e' }}>
+                <div style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
                   {isKo ? '로그인하면 실제 주문 내역을 확인할 수 있습니다.' : 'Log in to view your real orders.'}
                 </div>
               </div>
@@ -1439,7 +1439,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                 onClick={() => setShowAuth(true)}
                 style={{
                   padding: '7px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
+                  background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
                   color: '#fff', fontSize: 13, fontWeight: 700,
                 }}
               >
@@ -1454,7 +1454,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
               background: paymentMsg.startsWith('결제가 완료') ? '#388bfd22' : '#f8514918',
               border: `1px solid ${paymentMsg.startsWith('결제가 완료') ? '#388bfd55' : '#f8514944'}`,
               borderRadius: 8, padding: '10px 16px',
-              color: paymentMsg.startsWith('결제가 완료') ? '#388bfd' : '#f85149',
+              color: paymentMsg.startsWith('결제가 완료') ? 'var(--nx-accent)' : 'var(--nx-error)',
               fontSize: 13, marginBottom: 20,
               display: 'flex', alignItems: 'center', gap: 8,
             }}>
@@ -1477,7 +1477,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
               background: reorderMsg.startsWith('REORDER_OK') ? '#388bfd22' : '#f8514918',
               border: `1px solid ${reorderMsg.startsWith('REORDER_OK') ? '#388bfd55' : '#f8514944'}`,
               borderRadius: 8, padding: '10px 16px',
-              color: reorderMsg.startsWith('REORDER_OK') ? '#388bfd' : '#f85149',
+              color: reorderMsg.startsWith('REORDER_OK') ? 'var(--nx-accent)' : 'var(--nx-error)',
               fontSize: 13, marginBottom: 20,
               display: 'flex', alignItems: 'center', gap: 8,
             }}>
@@ -1505,7 +1505,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
           {error && (
             <div style={{
               background: '#da363322', border: '1px solid #da363355',
-              borderRadius: 8, padding: '14px 16px', color: '#f85149', fontSize: 13,
+              borderRadius: 8, padding: '14px 16px', color: 'var(--nx-error)', fontSize: 13,
               display: 'flex', alignItems: 'center', gap: 12,
             }}>
               <span style={{ flex: 1 }}>
@@ -1515,7 +1515,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                 onClick={() => loadOrders()}
                 style={{
                   padding: '5px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer',
-                  border: '1px solid #f85149', background: 'transparent', color: '#f85149', flexShrink: 0,
+                  border: '1px solid var(--nx-error)', background: 'transparent', color: 'var(--nx-error)', flexShrink: 0,
                 }}
               >
                 {isKo ? '다시 시도' : 'Retry'}
@@ -1527,7 +1527,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
           {!loading && !error && user && orders.length === 0 && (
             <div style={{ textAlign: 'center', padding: '80px 0' }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
-              <p style={{ color: '#6e7681', marginBottom: 16 }}>
+              <p style={{ color: 'var(--nx-text-3)', marginBottom: 16 }}>
                 {isKo ? '아직 주문 내역이 없습니다.' : 'No orders yet.'}
               </p>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -1535,7 +1535,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                   href={`/${lang}/nexyfab/marketplace`}
                   style={{
                     display: 'inline-block', padding: '9px 22px',
-                    borderRadius: 8, background: '#388bfd', color: '#fff',
+                    borderRadius: 8, background: 'var(--nx-accent)', color: '#fff',
                     fontSize: 13, fontWeight: 700, textDecoration: 'none',
                   }}
                 >
@@ -1546,8 +1546,8 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                   href={`/${lang}/help#track-order`}
                   style={{
                     display: 'inline-block', padding: '9px 18px',
-                    borderRadius: 8, border: '1px solid #30363d',
-                    background: 'transparent', color: '#9ca3af',
+                    borderRadius: 8, border: '1px solid var(--nx-border)',
+                    background: 'transparent', color: 'var(--nx-text-3)',
                     fontSize: 13, fontWeight: 600, textDecoration: 'none',
                   }}
                 >
@@ -1564,7 +1564,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
               <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   {orders.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '40px 0', color: '#6e7681', fontSize: 13 }}>
+                    <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--nx-text-3)', fontSize: 13 }}>
                       {isKo ? '해당 상태의 주문이 없습니다.' : 'No orders match the selected filter.'}
                     </div>
                   )}
@@ -1597,13 +1597,13 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                       onClick={() => { const p = ordersPage - 1; setOrdersPage(p); loadOrders(false, { page: p }); }}
                       style={{
                         padding: '6px 14px', borderRadius: 6, fontSize: 12, cursor: ordersPage <= 1 ? 'default' : 'pointer',
-                        border: '1px solid #30363d', background: 'transparent',
-                        color: ordersPage <= 1 ? '#484f58' : '#8b949e',
+                        border: '1px solid var(--nx-border)', background: 'transparent',
+                        color: ordersPage <= 1 ? 'var(--nx-border-strong)' : 'var(--nx-text-2)',
                       }}
                     >
                       ← {isKo ? '이전' : 'Prev'}
                     </button>
-                    <span style={{ fontSize: 12, color: '#6e7681' }}>
+                    <span style={{ fontSize: 12, color: 'var(--nx-text-3)' }}>
                       {ordersPage} / {totalOrderPages}
                     </span>
                     <button
@@ -1612,8 +1612,8 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
                       style={{
                         padding: '6px 14px', borderRadius: 6, fontSize: 12,
                         cursor: ordersPage >= totalOrderPages ? 'default' : 'pointer',
-                        border: '1px solid #30363d', background: 'transparent',
-                        color: ordersPage >= totalOrderPages ? '#484f58' : '#8b949e',
+                        border: '1px solid var(--nx-border)', background: 'transparent',
+                        color: ordersPage >= totalOrderPages ? 'var(--nx-border-strong)' : 'var(--nx-text-2)',
                       }}
                     >
                       {isKo ? '다음' : 'Next'} →
@@ -1717,26 +1717,26 @@ function OrderCard({
     <div
       onClick={onClick}
       style={{
-        background: '#161b22', border: '1px solid #30363d',
+        background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
         borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
         transition: 'border-color 0.15s',
       }}
       onMouseEnter={e => (e.currentTarget.style.borderColor = '#388bfd55')}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = '#30363d')}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--nx-border)')}
     >
       {/* Card header */}
       <div style={{
-        padding: '14px 20px', borderBottom: '1px solid #21262d',
+        padding: '14px 20px', borderBottom: '1px solid var(--nx-panel-2)',
         display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
       }}>
         <div>
-          <p style={{ margin: 0, fontSize: 11, color: '#6e7681' }}>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--nx-text-3)' }}>
             {order.id}
             {isDemo && (
               <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#e3b34122', color: '#e3b341' }}>DEMO</span>
             )}
           </p>
-          <p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700, color: '#e6edf3' }}>
+          <p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700, color: 'var(--nx-text)' }}>
             {order.partName}
           </p>
         </div>
@@ -1748,7 +1748,7 @@ function OrderCard({
             style={{
               padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700,
               border: 'none', cursor: paying ? 'default' : 'pointer',
-              background: paying ? '#388bfd44' : 'linear-gradient(135deg,#388bfd,#8b5cf6)',
+              background: paying ? '#388bfd44' : 'linear-gradient(135deg,var(--nx-accent),#8b5cf6)',
               color: '#fff', opacity: paying ? 0.7 : 1, marginRight: 6,
             }}
           >
@@ -1756,7 +1756,7 @@ function OrderCard({
           </button>
         )}
         {refundRequested && (
-          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 8, background: '#f8514922', color: '#f85149', border: '1px solid #f8514944' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 8, background: '#f8514922', color: 'var(--nx-error)', border: '1px solid #f8514944' }}>
             {isKo ? '환불 요청 중' : 'Refund Pending'}
           </span>
         )}
@@ -1766,13 +1766,13 @@ function OrderCard({
             style={{
               padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
               border: '1px solid #f8514966', background: 'transparent',
-              color: '#f85149', cursor: 'pointer', marginRight: 4,
+              color: 'var(--nx-error)', cursor: 'pointer', marginRight: 4,
             }}
           >
             {isKo ? '환불 요청' : 'Refund'}
           </button>
         )}
-        <span style={{ fontSize: 10, color: '#484f58' }}>
+        <span style={{ fontSize: 10, color: 'var(--nx-border-strong)' }}>
           {isKo ? '상세 보기 →' : 'Details →'}
         </span>
         {/* 리뷰 미작성 뱃지 */}
@@ -1797,9 +1797,9 @@ function OrderCard({
       {showRefund && (
         <div
           onClick={e => e.stopPropagation()}
-          style={{ padding: '12px 20px', borderBottom: '1px solid #21262d', background: '#1a0d0d' }}
+          style={{ padding: '12px 20px', borderBottom: '1px solid var(--nx-panel-2)', background: '#1a0d0d' }}
         >
-          <p style={{ margin: '0 0 8px', fontSize: 12, color: '#f85149', fontWeight: 600 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--nx-error)', fontWeight: 600 }}>
             {isKo ? '환불 요청 사유를 입력하세요' : 'Please enter your refund reason'}
           </p>
           <textarea
@@ -1808,31 +1808,31 @@ function OrderCard({
             placeholder={isKo ? '사유 입력 (선택)' : 'Reason (optional)'}
             rows={2}
             style={{
-              width: '100%', background: '#0d1117', border: '1px solid #30363d',
-              borderRadius: 6, padding: '7px 10px', color: '#e6edf3', fontSize: 12,
+              width: '100%', background: 'var(--nx-bg)', border: '1px solid var(--nx-border)',
+              borderRadius: 6, padding: '7px 10px', color: 'var(--nx-text)', fontSize: 12,
               resize: 'none', boxSizing: 'border-box',
             }}
           />
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button onClick={submitRefundRequest} disabled={refunding} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: '#f85149', color: '#fff', opacity: refunding ? 0.6 : 1 }}>
+            <button onClick={submitRefundRequest} disabled={refunding} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', background: 'var(--nx-error)', color: '#fff', opacity: refunding ? 0.6 : 1 }}>
               {refunding ? (isKo ? '요청 중...' : 'Submitting...') : (isKo ? '환불 요청 제출' : 'Submit Request')}
             </button>
-            <button onClick={e => { e.stopPropagation(); setShowRefund(false); }} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid #30363d', background: 'transparent', color: '#8b949e', cursor: 'pointer' }}>
+            <button onClick={e => { e.stopPropagation(); setShowRefund(false); }} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--nx-border)', background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer' }}>
               {isKo ? '취소' : 'Cancel'}
             </button>
           </div>
-          {refundMsg && <p style={{ margin: '8px 0 0', fontSize: 11, color: '#f85149' }}>{refundMsg}</p>}
+          {refundMsg && <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--nx-error)' }}>{refundMsg}</p>}
         </div>
       )}
       {refundMsg && !showRefund && (
-        <div style={{ padding: '8px 20px', background: '#1a0d0d', borderBottom: '1px solid #21262d' }}>
-          <p style={{ margin: 0, fontSize: 11, color: '#3fb950' }}>{refundMsg}</p>
+        <div style={{ padding: '8px 20px', background: '#1a0d0d', borderBottom: '1px solid var(--nx-panel-2)' }}>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--nx-ok)' }}>{refundMsg}</p>
         </div>
       )}
 
       {/* Meta row */}
       <div style={{
-        padding: '12px 20px', borderBottom: '1px solid #21262d',
+        padding: '12px 20px', borderBottom: '1px solid var(--nx-panel-2)',
         display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 12,
       }}>
         <MetaItem label={isKo ? '제조사' : 'Manufacturer'} value={order.manufacturerName} />
@@ -1840,8 +1840,8 @@ function OrderCard({
         <MetaItem label={isKo ? '계약금액' : 'Amount'} value={fmtKRW(order.totalPriceKRW)} />
         <MetaItem label={isKo ? '주문일' : 'Ordered'} value={formatDate(order.createdAt)} />
         <div>
-          <p style={{ margin: 0, fontSize: 10, color: '#6e7681' }}>{isKo ? '납기 예정' : 'Est. Delivery'}</p>
-          <p style={{ margin: '2px 0 0', fontWeight: 600, color: '#3fb950', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <p style={{ margin: 0, fontSize: 10, color: 'var(--nx-text-3)' }}>{isKo ? '납기 예정' : 'Est. Delivery'}</p>
+          <p style={{ margin: '2px 0 0', fontWeight: 600, color: 'var(--nx-ok)', display: 'flex', alignItems: 'center', gap: 6 }}>
             {formatDate(order.estimatedDeliveryAt)}
             {dday && (
               <span style={{
@@ -1861,17 +1861,17 @@ function OrderCard({
       {/* Progress bar + stepper */}
       <div style={{ padding: '16px 20px 8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <span style={{ fontSize: 11, color: '#8b949e' }}>
+          <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
             {isKo ? '진행률' : 'Progress'}
           </span>
           <span style={{ fontSize: 11, fontWeight: 700, color: statusColor }}>
             {progressPct}%
           </span>
         </div>
-        <div style={{ height: 5, background: '#21262d', borderRadius: 3, overflow: 'hidden', marginBottom: 20 }}>
+        <div style={{ height: 5, background: 'var(--nx-panel-2)', borderRadius: 3, overflow: 'hidden', marginBottom: 20 }}>
           <div style={{
             height: '100%', width: `${progressPct}%`,
-            background: `linear-gradient(90deg, #388bfd, ${statusColor})`,
+            background: `linear-gradient(90deg, var(--nx-accent), ${statusColor})`,
             borderRadius: 3, transition: 'width 0.4s',
           }} />
         </div>
@@ -1882,7 +1882,7 @@ function OrderCard({
           {/* Track line */}
           <div style={{
             position: 'absolute', top: 11, left: '10%', right: '10%',
-            height: 2, background: '#21262d', borderRadius: 1, zIndex: 0,
+            height: 2, background: 'var(--nx-panel-2)', borderRadius: 1, zIndex: 0,
           }} />
           <div style={{
             position: 'absolute', top: 11, left: '10%',
@@ -1905,10 +1905,10 @@ function OrderCard({
               >
                 <div style={{
                   width: 22, height: 22, borderRadius: '50%',
-                  background: done ? statusColor : '#21262d',
-                  border: `2px solid ${active ? statusColor : done ? statusColor : '#30363d'}`,
+                  background: done ? statusColor : 'var(--nx-panel-2)',
+                  border: `2px solid ${active ? statusColor : done ? statusColor : 'var(--nx-border)'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 700, color: done ? '#0d1117' : '#6e7681',
+                  fontSize: 10, fontWeight: 700, color: done ? 'var(--nx-bg)' : 'var(--nx-text-3)',
                   boxShadow: active ? `0 0 0 3px ${statusColor}44` : undefined,
                   transition: 'background 0.3s, box-shadow 0.3s',
                 }}>
@@ -1916,13 +1916,13 @@ function OrderCard({
                 </div>
                 <span style={{
                   fontSize: 9, fontWeight: active ? 700 : 400,
-                  color: active ? statusColor : done ? '#8b949e' : '#6e7681',
+                  color: active ? statusColor : done ? 'var(--nx-text-2)' : 'var(--nx-text-3)',
                   textAlign: 'center', lineHeight: 1.3, whiteSpace: 'nowrap',
                 }}>
                   {isKo ? step.labelKo : step.label}
                 </span>
                 {ts && (
-                  <span style={{ fontSize: 8, color: '#6e7681', textAlign: 'center' }}>
+                  <span style={{ fontSize: 8, color: 'var(--nx-text-3)', textAlign: 'center' }}>
                     {step.completedAt
                       ? (isKo ? '완료 ' : 'Done ') + formatDate(ts)
                       : (isKo ? '예정 ' : 'Est. ') + formatDate(ts)}
@@ -1943,8 +1943,8 @@ function OrderCard({
 function MetaItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p style={{ margin: 0, fontSize: 10, color: '#6e7681' }}>{label}</p>
-      <p style={{ margin: '2px 0 0', fontWeight: 600, color: '#e6edf3' }}>{value}</p>
+      <p style={{ margin: 0, fontSize: 10, color: 'var(--nx-text-3)' }}>{label}</p>
+      <p style={{ margin: '2px 0 0', fontWeight: 600, color: 'var(--nx-text)' }}>{value}</p>
     </div>
   );
 }
@@ -1990,7 +1990,7 @@ function TrackingStrip({ tracking, isKo }: TrackingStripProps) {
     : null;
   const updated = tracking.updatedAt ? formatDate(tracking.updatedAt) : null;
   const isDelivered = tracking.lastEvent === 'delivered';
-  const accent = isDelivered ? '#3fb950' : '#79c0ff';
+  const accent = isDelivered ? 'var(--nx-ok)' : '#79c0ff';
 
   return (
     <div
@@ -2009,8 +2009,8 @@ function TrackingStrip({ tracking, isKo }: TrackingStripProps) {
       }}
     >
       <span style={{ fontSize: 14 }}>📦</span>
-      <span style={{ fontWeight: 700, color: '#e6edf3' }}>{carrierName}</span>
-      <span style={{ fontFamily: 'monospace', color: '#c9d1d9' }}>{tracking.number}</span>
+      <span style={{ fontWeight: 700, color: 'var(--nx-text)' }}>{carrierName}</span>
+      <span style={{ fontFamily: 'monospace', color: 'var(--nx-text)' }}>{tracking.number}</span>
       {eventLabel && (
         <span style={{
           fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
@@ -2020,7 +2020,7 @@ function TrackingStrip({ tracking, isKo }: TrackingStripProps) {
         </span>
       )}
       {updated && (
-        <span style={{ fontSize: 10, color: '#6e7681' }}>
+        <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
           {isKo ? '업데이트 ' : 'Updated '}{updated}
         </span>
       )}

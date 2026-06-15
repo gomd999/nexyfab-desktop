@@ -1,0 +1,435 @@
+/**
+ * nurbsSurfaceCurvature.ts — ANALYTIC differential geometry of a NURBS surface.
+ *
+ * evalNurbsSurfaceNormal (and the G2 continuity check) used finite differences;
+ * this computes the surface partials ∂P/∂u, ∂P/∂v, ∂²P/∂u², ∂²P/∂u∂v, ∂²P/∂v²
+ * EXACTLY from the basis-function derivatives, then the first/second fundamental
+ * forms and the Gaussian / mean / principal curvatures. This is the foundation
+ * for class-A inspection (curvature combs, zebra, exact G2).
+ *
+ * Algorithms follow Piegl & Tiller, "The NURBS Book": A2.3 (basis-function
+ * derivatives), the tensor-product surface derivative, and A4.4 (rational
+ * surface derivatives via the quotient rule on homogeneous coordinates).
+ */
+
+import * as THREE from 'three';
+import type { NurbsSurface } from './nurbsSurface';
+
+/** Knot span k with knots[k] ≤ u < knots[k+1] (clamped at the ends). */
+function findSpan(n: number, p: number, u: number, U: number[]): number {
+  if (u >= U[n + 1]!) return n;
+  if (u <= U[p]!) return p;
+  let low = p, high = n + 1, mid = (low + high) >> 1;
+  while (u < U[mid]! || u >= U[mid + 1]!) {
+    if (u < U[mid]!) high = mid; else low = mid;
+    mid = (low + high) >> 1;
+  }
+  return mid;
+}
+
+/** Basis functions and their derivatives (NURBS Book A2.3). ders[k][j] is the
+ *  k-th derivative of the j-th non-zero basis function over [span−p, span]. */
+function basisFunsDers(span: number, u: number, p: number, n: number, U: number[]): number[][] {
+  const ndu: number[][] = Array.from({ length: p + 1 }, () => new Array(p + 1).fill(0));
+  const left = new Array(p + 1).fill(0);
+  const right = new Array(p + 1).fill(0);
+  ndu[0]![0] = 1;
+  for (let j = 1; j <= p; j++) {
+    left[j] = u - U[span + 1 - j]!;
+    right[j] = U[span + j]! - u;
+    let saved = 0;
+    for (let r = 0; r < j; r++) {
+      ndu[j]![r] = right[r + 1] + left[j - r];
+      const temp = ndu[r]![j - 1]! / ndu[j]![r]!;
+      ndu[r]![j] = saved + right[r + 1]! * temp;
+      saved = left[j - r]! * temp;
+    }
+    ndu[j]![j] = saved;
+  }
+  const ders: number[][] = Array.from({ length: n + 1 }, () => new Array(p + 1).fill(0));
+  for (let j = 0; j <= p; j++) ders[0]![j] = ndu[j]![p]!;
+  for (let r = 0; r <= p; r++) {
+    let s1 = 0, s2 = 1;
+    const a: number[][] = [new Array(p + 1).fill(0), new Array(p + 1).fill(0)];
+    a[0]![0] = 1;
+    for (let k = 1; k <= n; k++) {
+      let d = 0;
+      const rk = r - k, pk = p - k;
+      if (r >= k) { a[s2]![0] = a[s1]![0]! / ndu[pk + 1]![rk]!; d = a[s2]![0]! * ndu[rk]![pk]!; }
+      const j1 = rk >= -1 ? 1 : -rk;
+      const j2 = r - 1 <= pk ? k - 1 : p - r;
+      for (let j = j1; j <= j2; j++) {
+        a[s2]![j] = (a[s1]![j]! - a[s1]![j - 1]!) / ndu[pk + 1]![rk + j]!;
+        d += a[s2]![j]! * ndu[rk + j]![pk]!;
+      }
+      if (r <= pk) { a[s2]![k] = -a[s1]![k - 1]! / ndu[pk + 1]![r]!; d += a[s2]![k]! * ndu[r]![pk]!; }
+      ders[k]![r] = d;
+      const t = s1; s1 = s2; s2 = t;
+    }
+  }
+  let r = p;
+  for (let k = 1; k <= n; k++) {
+    for (let j = 0; j <= p; j++) ders[k]![j]! *= r;
+    r *= (p - k);
+  }
+  return ders;
+}
+
+export interface SurfaceCurvature {
+  /** Gaussian curvature K = κ1·κ2 (1/mm²). */
+  gaussian: number;
+  /** Mean curvature H = (κ1+κ2)/2 (1/mm). */
+  mean: number;
+  /** Principal curvatures (1/mm), κ1 ≥ κ2. */
+  k1: number;
+  k2: number;
+  /** Unit surface normal. */
+  normal: THREE.Vector3;
+}
+
+type Hom = [number, number, number, number]; // (w·x, w·y, w·z, w)
+
+/** Homogeneous surface derivatives SKL[k][l] up to order 2 in each parameter,
+ *  computed analytically from the basis-function derivatives. Plain 4-component
+ *  arithmetic — no Vector4 methods — so the weight (4th) component is scaled
+ *  exactly like the spatial ones. */
+function homogeneousDerivs(s: NurbsSurface, u: number, v: number): Hom[][] {
+  const nU = s.controlPoints.length - 1, pU = s.degreeU;
+  const nV = s.controlPoints[0]!.length - 1, pV = s.degreeV;
+  const su = findSpan(nU, pU, u, s.knotsU);
+  const sv = findSpan(nV, pV, v, s.knotsV);
+  const du = basisFunsDers(su, u, pU, 2, s.knotsU);
+  const dv = basisFunsDers(sv, v, pV, 2, s.knotsV);
+
+  const SKL: Hom[][] = [];
+  for (let k = 0; k <= 2; k++) {
+    SKL.push([]);
+    for (let l = 0; l <= 2; l++) {
+      let ax = 0, ay = 0, az = 0, aw = 0;
+      for (let i = 0; i <= pU; i++) {
+        const ci = su - pU + i;
+        let tx = 0, ty = 0, tz = 0, tw = 0;
+        for (let j = 0; j <= pV; j++) {
+          const cj = sv - pV + j;
+          const cp = s.controlPoints[ci]![cj]!;
+          const w = s.weights ? s.weights[ci]![cj]! : 1;
+          const b = dv[l]![j]!;
+          tx += cp.x * w * b; ty += cp.y * w * b; tz += cp.z * w * b; tw += w * b;
+        }
+        const a = du[k]![i]!;
+        ax += tx * a; ay += ty * a; az += tz * a; aw += tw * a;
+      }
+      SKL[k]!.push([ax, ay, az, aw]);
+    }
+  }
+  return SKL;
+}
+
+/** Cartesian point + the five derivatives (Pu, Pv, Puu, Puv, Pvv) via the
+ *  rational quotient rule (NURBS Book A4.4) on the homogeneous derivatives. */
+function rationalDerivs(SKL: Hom[][]): {
+  P: THREE.Vector3; Pu: THREE.Vector3; Pv: THREE.Vector3;
+  Puu: THREE.Vector3; Puv: THREE.Vector3; Pvv: THREE.Vector3;
+} {
+  const A = (k: number, l: number) => new THREE.Vector3(SKL[k]![l]![0], SKL[k]![l]![1], SKL[k]![l]![2]);
+  const w = (k: number, l: number) => SKL[k]![l]![3];
+  const w00 = w(0, 0);
+  const P = A(0, 0).clone().divideScalar(w00);
+  // First derivatives: P_a = (A_a − w_a·P) / w.
+  const Pu = A(1, 0).clone().sub(P.clone().multiplyScalar(w(1, 0))).divideScalar(w00);
+  const Pv = A(0, 1).clone().sub(P.clone().multiplyScalar(w(0, 1))).divideScalar(w00);
+  // Second derivatives (quotient rule, 2nd order).
+  const Puu = A(2, 0).clone()
+    .sub(Pu.clone().multiplyScalar(2 * w(1, 0)))
+    .sub(P.clone().multiplyScalar(w(2, 0)))
+    .divideScalar(w00);
+  const Pvv = A(0, 2).clone()
+    .sub(Pv.clone().multiplyScalar(2 * w(0, 1)))
+    .sub(P.clone().multiplyScalar(w(0, 2)))
+    .divideScalar(w00);
+  const Puv = A(1, 1).clone()
+    .sub(Pu.clone().multiplyScalar(w(0, 1)))
+    .sub(Pv.clone().multiplyScalar(w(1, 0)))
+    .sub(P.clone().multiplyScalar(w(1, 1)))
+    .divideScalar(w00);
+  return { P, Pu, Pv, Puu, Puv, Pvv };
+}
+
+/**
+ * Analytic Gaussian / mean / principal curvature of the surface at (u, v) via
+ * the first and second fundamental forms.
+ */
+/**
+ * Analytic NORMAL curvature κ_n at (u, v) in the parametric tangent direction
+ * (a·∂u + b·∂v) = II(d,d) / I(d,d). The direction (1,0) gives the curvature
+ * along the u-parameter line (L/E), (0,1) along v (N/G); κ_n is even in the
+ * direction so the sign of (a,b) does not matter. Used by the G2 continuity
+ * check for the exact cross-seam curvature.
+ */
+export function normalCurvature(s: NurbsSurface, u: number, v: number, a: number, b: number): number {
+  const { Pu, Pv, Puu, Puv, Pvv } = rationalDerivs(homogeneousDerivs(s, u, v));
+  const nVec = new THREE.Vector3().crossVectors(Pu, Pv);
+  const nLen = nVec.length();
+  if (nLen < 1e-12) return 0;
+  const N = nVec.divideScalar(nLen);
+  const E = Pu.dot(Pu), F = Pu.dot(Pv), G = Pv.dot(Pv);
+  const L = Puu.dot(N), M = Puv.dot(N), Nf = Pvv.dot(N);
+  const I = E * a * a + 2 * F * a * b + G * b * b;
+  if (Math.abs(I) < 1e-12) return 0;
+  return (L * a * a + 2 * M * a * b + Nf * b * b) / I;
+}
+
+/** One station of an analytic curvature comb sampled along a surface isocurve. */
+export interface IsoCombSample {
+  /** Surface point at this station. */
+  position: THREE.Vector3;
+  /** Unit tangent of the isocurve (direction of travel). */
+  tangent: THREE.Vector3;
+  /** Unit surface normal — the comb spike stands off along this. */
+  normal: THREE.Vector3;
+  /** Surface NORMAL curvature κ_n along the isocurve tangent (1/mm, signed). */
+  curvature: number;
+}
+
+/**
+ * Analytic curvature comb along an isoparametric curve of a NURBS surface.
+ *
+ * Unlike the mesh angle-defect comb (classASurfaceAnalysis.computeCurvature),
+ * this evaluates the EXACT surface normal curvature κ_n = II(d,d)/I(d,d) at each
+ * station from the analytic fundamental forms — the comb a Class-A reviewer
+ * trusts. `isoDirection: 'u'` holds u fixed and sweeps v (tangent = ∂P/∂v,
+ * direction (0,1)); `'v'` holds v fixed and sweeps u (tangent = ∂P/∂u, (1,0)).
+ */
+export function nurbsIsoCurvatureComb(
+  s: NurbsSurface,
+  isoDirection: 'u' | 'v',
+  fixedParam: number,
+  samples = 32,
+): IsoCombSample[] {
+  const out: IsoCombSample[] = [];
+  const n = Math.max(2, samples);
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const u = isoDirection === 'u' ? fixedParam : t;
+    const v = isoDirection === 'u' ? t : fixedParam;
+    const { P, Pu, Pv, Puu, Puv, Pvv } = rationalDerivs(homogeneousDerivs(s, u, v));
+    const tangentRaw = isoDirection === 'u' ? Pv : Pu;
+    const tangent = tangentRaw.lengthSq() > 1e-24 ? tangentRaw.clone().normalize() : new THREE.Vector3(1, 0, 0);
+    const nVec = new THREE.Vector3().crossVectors(Pu, Pv);
+    const normal = nVec.lengthSq() > 1e-24 ? nVec.normalize() : new THREE.Vector3(0, 0, 1);
+    // κ_n in the iso direction: (0,1) → N_form/G, (1,0) → L/E.
+    const E = Pu.dot(Pu), F = Pu.dot(Pv), G = Pv.dot(Pv);
+    const L = Puu.dot(normal), M = Puv.dot(normal), Nf = Pvv.dot(normal);
+    const a = isoDirection === 'u' ? 0 : 1;
+    const b = isoDirection === 'u' ? 1 : 0;
+    const I = E * a * a + 2 * F * a * b + G * b * b;
+    const curvature = Math.abs(I) > 1e-12 ? (L * a * a + 2 * M * a * b + Nf * b * b) / I : 0;
+    out.push({ position: P, tangent, normal, curvature });
+  }
+  return out;
+}
+
+/** Renderable line geometry for a curvature comb overlay. */
+export interface CurvatureCombGeometry {
+  /** Spike segments — flat [x,y,z,...], two vertices per station (base, tip). */
+  spikes: number[];
+  /** Envelope polyline through the spike tips — flat xyz, one vertex per station. */
+  envelope: number[];
+  /** Per-vertex RGB (0..1) for the spike segments, two per station, ramped by |κ|. */
+  spikeColors: number[];
+  /** Spike scale actually used (mm of spike per 1/mm of curvature). */
+  scale: number;
+  /** Max |κ| across the stations — for the legend. */
+  maxCurvature: number;
+}
+
+/** Blue→green→red ramp for t∈[0,1] (low→high curvature). */
+function curvatureColor(t: number): [number, number, number] {
+  const x = Math.max(0, Math.min(1, t));
+  // Two-segment lerp: blue(0,0.3,1)→green(0,0.9,0.2)→red(1,0.15,0).
+  if (x < 0.5) {
+    const k = x / 0.5;
+    return [0 + k * 0, 0.3 + k * 0.6, 1 + k * (0.2 - 1)];
+  }
+  const k = (x - 0.5) / 0.5;
+  return [0 + k * 1, 0.9 + k * (0.15 - 0.9), 0.2 + k * (0 - 0.2)];
+}
+
+/**
+ * Build renderable comb geometry from analytic isocurve samples.
+ *
+ * Each station gets a spike from the surface point to `point + normal·κ·scale`
+ * — the spike is drawn on the SIGNED side of κ, so an inflection flips the comb
+ * across the curve (the whole point of a comb). The envelope polyline joins the
+ * tips. When `scale` is omitted it auto-fits so the longest spike spans
+ * `targetFraction` (default 0.25) of the curve's bounding-box diagonal. Feed
+ * `spikes`/`spikeColors` to a THREE.LineSegments and `envelope` to a Line.
+ */
+export function buildCurvatureCombGeometry(
+  samples: IsoCombSample[],
+  opts: { scale?: number; targetFraction?: number } = {},
+): CurvatureCombGeometry {
+  const spikes: number[] = [];
+  const envelope: number[] = [];
+  const spikeColors: number[] = [];
+  let maxK = 0;
+  for (const s of samples) maxK = Math.max(maxK, Math.abs(s.curvature));
+
+  let scale = opts.scale ?? 0;
+  if (!opts.scale) {
+    // Bounding-box diagonal of the curve points → auto spike length.
+    const lo = new THREE.Vector3(Infinity, Infinity, Infinity);
+    const hi = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+    for (const s of samples) { lo.min(s.position); hi.max(s.position); }
+    const diag = lo.distanceTo(hi);
+    const frac = opts.targetFraction ?? 0.25;
+    scale = maxK > 1e-9 && diag > 0 ? (diag * frac) / maxK : 0;
+  }
+
+  for (const s of samples) {
+    const ext = s.curvature * scale; // signed
+    const tipx = s.position.x + s.normal.x * ext;
+    const tipy = s.position.y + s.normal.y * ext;
+    const tipz = s.position.z + s.normal.z * ext;
+    spikes.push(s.position.x, s.position.y, s.position.z, tipx, tipy, tipz);
+    envelope.push(tipx, tipy, tipz);
+    const [r, g, b] = curvatureColor(maxK > 1e-9 ? Math.abs(s.curvature) / maxK : 0);
+    spikeColors.push(r, g, b, r, g, b);
+  }
+  return { spikes, envelope, spikeColors, scale, maxCurvature: maxK };
+}
+
+/** An inflection of a surface isocurve — where its normal curvature κ_n
+ *  changes sign (the comb flips across the curve there). */
+export interface IsoInflection {
+  /** Boundary parameter t∈(0,1) of the inflection. */
+  t: number;
+  /** Surface point at the inflection. */
+  position: THREE.Vector3;
+}
+
+/**
+ * Find the inflections of a NURBS surface isocurve — the parameters where the
+ * analytic normal curvature κ_n crosses zero (a sign change), which is exactly
+ * where a curvature comb flips from one side of the curve to the other. The
+ * class-A "no unwanted inflection" check. Samples κ_n densely, then bisects each
+ * sign change to a tight tolerance. Flat (κ≈0) stretches are not reported as
+ * inflections — only genuine sign reversals.
+ */
+export function findIsoInflections(
+  s: NurbsSurface, isoDirection: 'u' | 'v', fixedParam: number, samples = 64,
+): IsoInflection[] {
+  const a = isoDirection === 'u' ? 0 : 1;
+  const b = isoDirection === 'u' ? 1 : 0;
+  const uvOf = (t: number) => (isoDirection === 'u' ? { u: fixedParam, v: t } : { u: t, v: fixedParam });
+  const kappaAt = (t: number): number => { const { u, v } = uvOf(t); return normalCurvature(s, u, v, a, b); };
+  const pointAt = (t: number): THREE.Vector3 => { const { u, v } = uvOf(t); return rationalDerivs(homogeneousDerivs(s, u, v)).P; };
+
+  const n = Math.max(4, samples);
+  const ks: number[] = [];
+  for (let i = 0; i < n; i++) ks.push(kappaAt(i / (n - 1)));
+  const maxAbs = Math.max(...ks.map(Math.abs), 1e-12);
+  const eps = maxAbs * 1e-3; // ignore near-zero noise / tangent touches
+
+  const out: IsoInflection[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const ka = ks[i]!, kb = ks[i + 1]!;
+    if (Math.abs(ka) < eps || Math.abs(kb) < eps) continue;
+    if (Math.sign(ka) === Math.sign(kb)) continue;
+    // Bisect the sign change between t_i and t_{i+1}.
+    let lo = i / (n - 1), hi = (i + 1) / (n - 1), klo = ka;
+    for (let it = 0; it < 50; it++) {
+      const mid = (lo + hi) / 2;
+      const km = kappaAt(mid);
+      if (km === 0) { lo = hi = mid; break; }
+      if (Math.sign(km) === Math.sign(klo)) { lo = mid; klo = km; } else hi = mid;
+    }
+    const t = (lo + hi) / 2;
+    out.push({ t, position: pointAt(t) });
+  }
+  return out;
+}
+
+/** Flat buffers for a multi-isocurve comb overlay, ready for BufferGeometry. */
+export interface CombScene {
+  /** Spike line-segment vertices (2 per station, all combs concatenated). */
+  spikePositions: number[];
+  /** Per-vertex RGB matching spikePositions. */
+  spikeColors: number[];
+  /** Envelope line-SEGMENT vertices (consecutive tips expanded to pairs). */
+  envelopeSegments: number[];
+  /** Inflection-marker line-SEGMENT vertices — a small screen-agnostic cross
+   *  on the surface at each isocurve inflection (κ_n sign change). */
+  inflectionMarkers: number[];
+  /** Max |κ| across every station of every comb. */
+  maxCurvature: number;
+}
+
+/**
+ * Assemble a render-ready comb scene over several isocurves at once — the data
+ * the R3F `CurvatureCombOverlay` feeds straight into two `lineSegments`. Each
+ * fixed parameter in `isoParams` draws one comb; the envelope polyline is
+ * expanded into discrete segments here so the overlay can avoid R3F's `<line>`
+ * (which collides with the DOM SVGLineElement type).
+ */
+export function buildCombScene(
+  surface: NurbsSurface,
+  opts: {
+    isoDirection?: 'u' | 'v';
+    isoParams?: number[];
+    sampleCount?: number;
+    scale?: number;
+    targetFraction?: number;
+  } = {},
+): CombScene {
+  const isoDirection = opts.isoDirection ?? 'u';
+  const isoParams = opts.isoParams && opts.isoParams.length ? opts.isoParams : [0.25, 0.5, 0.75];
+  const sampleCount = opts.sampleCount ?? 24;
+  const spikePositions: number[] = [];
+  const spikeColors: number[] = [];
+  const envelopeSegments: number[] = [];
+  const inflectionMarkers: number[] = [];
+  let maxCurvature = 0;
+  for (const p of isoParams) {
+    const comb = nurbsIsoCurvatureComb(surface, isoDirection, p, sampleCount);
+    const g = buildCurvatureCombGeometry(
+      comb, opts.scale != null ? { scale: opts.scale } : { targetFraction: opts.targetFraction },
+    );
+    maxCurvature = Math.max(maxCurvature, g.maxCurvature);
+    spikePositions.push(...g.spikes);
+    spikeColors.push(...g.spikeColors);
+    for (let i = 0; i + 1 < comb.length; i++) {
+      envelopeSegments.push(
+        g.envelope[i * 3]!, g.envelope[i * 3 + 1]!, g.envelope[i * 3 + 2]!,
+        g.envelope[(i + 1) * 3]!, g.envelope[(i + 1) * 3 + 1]!, g.envelope[(i + 1) * 3 + 2]!,
+      );
+    }
+    // Inflection crosses, sized from the comb scale so they read at any zoom.
+    const r = (g.scale > 0 ? g.scale : 1) * (maxCurvature > 0 ? maxCurvature : 1) * 0.15 + 1e-3;
+    for (const inf of findIsoInflections(surface, isoDirection, p, Math.max(48, sampleCount * 2))) {
+      const c = inf.position;
+      inflectionMarkers.push(c.x - r, c.y, c.z, c.x + r, c.y, c.z, c.x, c.y - r, c.z, c.x, c.y + r, c.z);
+    }
+  }
+  return { spikePositions, spikeColors, envelopeSegments, inflectionMarkers, maxCurvature };
+}
+
+export function nurbsSurfaceCurvature(s: NurbsSurface, u: number, v: number): SurfaceCurvature {
+  const { Pu, Pv, Puu, Puv, Pvv } = rationalDerivs(homogeneousDerivs(s, u, v));
+  const nVec = new THREE.Vector3().crossVectors(Pu, Pv);
+  const nLen = nVec.length();
+  const N = nLen > 1e-12 ? nVec.clone().divideScalar(nLen) : new THREE.Vector3(0, 0, 1);
+  // First fundamental form.
+  const E = Pu.dot(Pu), F = Pu.dot(Pv), G = Pv.dot(Pv);
+  // Second fundamental form.
+  const L = Puu.dot(N), M = Puv.dot(N), Nf = Pvv.dot(N);
+  const denom = E * G - F * F;
+  if (Math.abs(denom) < 1e-12) {
+    return { gaussian: 0, mean: 0, k1: 0, k2: 0, normal: N };
+  }
+  const K = (L * Nf - M * M) / denom;
+  const H = (E * Nf - 2 * F * M + G * L) / (2 * denom);
+  const disc = Math.max(0, H * H - K);
+  const root = Math.sqrt(disc);
+  return { gaussian: K, mean: H, k1: H + root, k2: H - root, normal: N };
+}

@@ -1,7 +1,51 @@
 'use client';
 
 import { I } from './Icons';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+
+// Self-contained immersive-mode toggle. Lives top-right next to Publish; a
+// real click is a valid user gesture for the Fullscreen API (browsers block
+// auto-fullscreen), so no popup is needed. (2026-06-09)
+function FullscreenToggle() {
+  const [isFs, setIsFs] = useState(false);
+  useEffect(() => {
+    const on = () => setIsFs(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', on);
+    return () => document.removeEventListener('fullscreenchange', on);
+  }, []);
+  const toggle = () => {
+    if (typeof document === 'undefined') return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+  return (
+    <button
+      type="button"
+      className="nx-pillbtn"
+      onClick={toggle}
+      title={isFs ? 'Exit fullscreen' : 'Fullscreen'}
+      aria-label={isFs ? 'Exit fullscreen' : 'Fullscreen'}
+      style={{ padding: '0 8px' }}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {isFs ? (
+          <>
+            <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
+            <line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
+          </>
+        ) : (
+          <>
+            <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
+            <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+          </>
+        )}
+      </svg>
+    </button>
+  );
+}
 
 export interface Avatar {
   initials: string;
@@ -32,6 +76,8 @@ export interface TitleBarProps {
   canUndo?: boolean;
   canRedo?: boolean;
   rightExtras?: ReactNode;
+  /** Navigate to the hub when the NEXYFAB wordmark is clicked. */
+  onBrandClick?: () => void;
 }
 
 export function TitleBar({
@@ -57,30 +103,54 @@ export function TitleBar({
   canUndo = true,
   canRedo = false,
   rightExtras,
+  onBrandClick,
 }: TitleBarProps) {
   return (
     <div className="nx-title">
-      <div className="brand">
+      <div
+        className="brand"
+        onClick={onBrandClick}
+        role={onBrandClick ? 'button' : undefined}
+        tabIndex={onBrandClick ? 0 : undefined}
+        onKeyDown={onBrandClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onBrandClick(); } } : undefined}
+        title={onBrandClick ? 'Hub' : undefined}
+        style={onBrandClick ? { cursor: 'pointer' } : undefined}
+      >
         <span>NEXYFAB</span>
       </div>
 
-      <div className="quick">
-        <button type="button" title="New" onClick={onNew}>
-          <I.file size={14} />
-        </button>
-        <button type="button" title="Open" onClick={onOpen}>
-          <I.folder size={14} />
-        </button>
-        <button type="button" title="Save" onClick={onSave}>
-          <I.save size={14} />
-        </button>
-        <button type="button" title="Undo" disabled={!canUndo} onClick={onUndo}>
-          <I.undo size={14} />
-        </button>
-        <button type="button" title="Redo" disabled={!canRedo} onClick={onRedo}>
-          <I.redo size={14} />
-        </button>
-      </div>
+      {/* Quick actions render only when the host frame supplies a real
+          handler — frames without file/undo plumbing (Drawing, Render)
+          simply don't show dead buttons. */}
+      {(onNew || onOpen || onSave || onUndo || onRedo) && (
+        <div className="quick">
+          {onNew && (
+            <button type="button" title="New" onClick={onNew}>
+              <I.file size={14} />
+            </button>
+          )}
+          {onOpen && (
+            <button type="button" title="Open" onClick={onOpen}>
+              <I.folder size={14} />
+            </button>
+          )}
+          {onSave && (
+            <button type="button" title="Save" onClick={onSave}>
+              <I.save size={14} />
+            </button>
+          )}
+          {onUndo && (
+            <button type="button" title="Undo" disabled={!canUndo} onClick={onUndo}>
+              <I.undo size={14} />
+            </button>
+          )}
+          {onRedo && (
+            <button type="button" title="Redo" disabled={!canRedo} onClick={onRedo}>
+              <I.redo size={14} />
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="file">
         {breadcrumbs && breadcrumbs.length > 0 ? (
@@ -117,11 +187,14 @@ export function TitleBar({
         </span>
       )}
 
-      <div className="nx-search" onClick={onSearch} role="button" tabIndex={0}>
-        <I.search size={12} />
-        <span>{searchPlaceholder}</span>
-        <span className="kbd">{searchShortcut}</span>
-      </div>
+      {/* Command-palette search is only shown when the frame wires it. */}
+      {onSearch && (
+        <div className="nx-search" onClick={onSearch} role="button" tabIndex={0}>
+          <I.search size={12} />
+          <span>{searchPlaceholder}</span>
+          <span className="kbd">{searchShortcut}</span>
+        </div>
+      )}
 
       <div className="right">
         {avatars.length > 0 && (
@@ -144,6 +217,7 @@ export function TitleBar({
             <I.bolt size={12} /> {publishLabel}
           </button>
         )}
+        <FullscreenToggle />
       </div>
     </div>
   );

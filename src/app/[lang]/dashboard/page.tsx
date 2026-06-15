@@ -170,7 +170,7 @@ export default function DashboardPage() {
                 {filteredProjects.map(project => (
                   <div 
                     key={project.id} 
-                    onClick={() => router.push(`/${lang}/shape-generator?id=${project.id}`)}
+                    onClick={() => router.push(`/${lang}/shape-generator?projectId=${project.id}`)}
                     className="group bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden hover:border-[#58a6ff] cursor-pointer transition-colors"
                   >
                     <div className="h-40 bg-[#0d1117] relative flex items-center justify-center border-b border-[#30363d]">
@@ -226,7 +226,7 @@ export default function DashboardPage() {
                     {filteredProjects.map(project => (
                       <tr 
                         key={project.id}
-                        onClick={() => router.push(`/${lang}/shape-generator?id=${project.id}`)}
+                        onClick={() => router.push(`/${lang}/shape-generator?projectId=${project.id}`)}
                         className="border-b border-[#30363d] hover:bg-[#30363d] hover:bg-opacity-30 cursor-pointer transition-colors"
                       >
                         <td className="px-6 py-4 font-medium text-white flex items-center gap-3">

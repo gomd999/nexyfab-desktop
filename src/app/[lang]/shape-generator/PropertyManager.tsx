@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import ExpressionInput from './ExpressionInput';
-import type { ExprVariable } from './ExpressionEngine';
+import { isExpression, type ExprVariable } from './ExpressionEngine';
 
 export interface PropertyManagerProps {
   visible: boolean;
@@ -19,6 +19,10 @@ export interface PropertyManagerProps {
   expressions?: Record<string, string>;
   /** Optional: callback for expression text changes (separate from numeric value). */
   onExpressionChange?: (param: string, expression: string) => void;
+  /** Optional: extra variables offered to expressions beyond sibling params
+   *  (global model variables, base-shape params). Appended BEFORE siblings so
+   *  siblings shadow on name collision. */
+  extraVariables?: ExprVariable[];
 }
 
 const L: Record<string, Record<string, string>> = {
@@ -68,15 +72,19 @@ const FEATURE_ICONS: Record<string, string> = {
 export default function PropertyManager({
   visible, lang, selectedFeatureId, featureName, featureType,
   featureParams, paramDefs, onParamChange, onClose, onApply,
-  expressions, onExpressionChange,
+  expressions, onExpressionChange, extraVariables,
 }: PropertyManagerProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   if (!visible || !selectedFeatureId) return null;
 
-  // Build the variable list from sibling params so expressions can reference
-  // them ("d/2" where d is another param on the same feature).
-  const variables: ExprVariable[] = Object.entries(featureParams).map(([name, value]) => ({ name, value }));
+  // Build the variable list: external scope (global model variables, base
+  // params) first, then sibling params so siblings shadow on collision
+  // ("d/2" where d is another param on the same feature).
+  const variables: ExprVariable[] = [
+    ...(extraVariables ?? []),
+    ...Object.entries(featureParams).map(([name, value]) => ({ name, value })),
+  ];
 
   const typeLabel = t(lang, featureType);
 
@@ -122,6 +130,9 @@ export default function PropertyManager({
           const value = featureParams[def.name] ?? 0;
           const expr = expressions?.[def.name] ?? String(value);
           const supportsExpression = !!onExpressionChange;
+          // Expression-driven params are edited through their formula — the
+          // slider is hidden (a drag would be snapped back by re-evaluation).
+          const driven = supportsExpression && !!expressions?.[def.name] && isExpression(expressions[def.name]);
           return (
             <div key={def.name} style={{ marginBottom: 6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2, gap: 6 }}>
@@ -152,7 +163,7 @@ export default function PropertyManager({
                   />
                 )}
               </div>
-              {def.min !== undefined && def.max !== undefined && (
+              {def.min !== undefined && def.max !== undefined && !driven && (
                 <input type="range" min={def.min} max={def.max} step={def.step ?? 1} value={value}
                   onChange={e => onParamChange(def.name, parseFloat(e.target.value))}
                   style={{ width: '100%', accentColor: 'var(--nx-accent)', height: 3 }} />

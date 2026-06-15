@@ -3,6 +3,7 @@
 // Uses simplified FD/lumped-node approach for web performance
 
 import * as THREE from 'three';
+import { pointInsideSurface } from './femSolver';
 
 export interface ThermalBoundary {
   type: 'heat_source' | 'fixed_temp' | 'convection';
@@ -61,6 +62,46 @@ export function runThermalFEA(
     return ix * gridSize * gridSize + iy * gridSize + iz;
   }
 
+  // ── Point-in-solid mask ──
+  // The grid spans the bounding box; only nodes INSIDE the actual solid should conduct.
+  // Without this, a non-convex part (L-bracket, two separated bodies, a notch) would
+  // diffuse heat across the empty bounding-box volume — heat flowing through air. We mark
+  // each grid node inside/outside via ray-parity (the same test femSolver uses) and treat
+  // outside nodes as inactive: they don't conduct and are excluded from neighbour averages
+  // and from the grid→vertex interpolation.
+  const flat = geometry.index ? geometry.toNonIndexed() : geometry;
+  const fp = flat.attributes.position as THREE.BufferAttribute;
+  const triCountSolid = Math.floor(fp.count / 3);
+  const tri = new Float32Array(fp.count * 3);
+  for (let i = 0; i < fp.count; i++) { tri[i*3] = fp.getX(i); tri[i*3+1] = fp.getY(i); tri[i*3+2] = fp.getZ(i); }
+  // Mark by CELL CENTRE (jittered), not by node: a node is active if any of the up-to-8
+  // cells touching it has its centre inside the solid. Testing nodes directly is
+  // degenerate on the bounding-box boundary planes — with +X-ish rays the −X faces test
+  // "inside" but the +X faces test "outside", which would silently drop the Dirichlet BC
+  // on a max face. Cell-centre sampling (femSolver's approach) avoids that entirely and a
+  // solid box keeps every node active.
+  const active = new Uint8Array(nodes);
+  let activeCount = 0;
+  const mark = (ix: number, iy: number, iz: number) => {
+    const n = idx(ix, iy, iz); if (!active[n]) { active[n] = 1; activeCount++; }
+  };
+  for (let cx = 0; cx < gridSize - 1; cx++) {
+    for (let cy = 0; cy < gridSize - 1; cy++) {
+      for (let cz = 0; cz < gridSize - 1; cz++) {
+        const px = bb.min.x + (cx + 0.5 + 0.0137) * sx;
+        const py = bb.min.y + (cy + 0.5 + 0.0237) * sy;
+        const pz = bb.min.z + (cz + 0.5 + 0.0111) * sz;
+        if (pointInsideSurface(px, py, pz, tri, triCountSolid)) {
+          for (let di = 0; di < 2; di++) for (let dj = 0; dj < 2; dj++) for (let dk = 0; dk < 2; dk++)
+            mark(cx + di, cy + dj, cz + dk);
+        }
+      }
+    }
+  }
+  // Fallback: if the sampling found nothing inside (tiny/thin part vs coarse grid), treat
+  // every node as active so the solver still returns a field rather than all-ambient.
+  if (activeCount === 0) active.fill(1);
+
   // Apply boundary conditions
   const fixedNodes = new Set<number>();
   const heatSources = new Float32Array(nodes);
@@ -113,77 +154,98 @@ export function runThermalFEA(
     return result;
   }
 
+  // ── Finite-volume control-volume weights ──
+  // Cell sizes in METRES (geometry is mm) so conductances come out in SI (W/K). A node on a
+  // grid-boundary plane owns a HALF control volume in that direction — this makes the
+  // cross-section conductance Σ g_x exactly k·A/L (the old full-width node sum over-counted
+  // the section by ~30%, so a heat source read ~50× wrong). cvW = control-volume widths.
+  const hxm = sx * 1e-3, hym = sy * 1e-3, hzm = sz * 1e-3;
+  const wfac = (i: number) => (i === 0 || i === gridSize - 1) ? 0.5 : 1.0;
+  const gs2 = gridSize * gridSize;
+  const decode = (n: number): [number, number, number] => [Math.floor(n / gs2), Math.floor((n % gs2) / gridSize), n % gridSize];
+  const FACE_AXIS: Record<number, number> = { 0: 1, 1: 1, 2: 0, 3: 0, 4: 2, 5: 2 };
+  // The control-volume face area a node presents on a given BC face (m²), used to split a
+  // total face heat load / film conductance over the face's nodes by area.
+  function bcNodeArea(n: number, faceIndex: number): number {
+    const [ix, iy, iz] = decode(n);
+    const wx = hxm * wfac(ix), wy = hym * wfac(iy), wz = hzm * wfac(iz);
+    const a = FACE_AXIS[faceIndex];
+    if (a === undefined) return wx * wy * wz;          // volumetric source ⇒ weight by volume
+    return a === 0 ? wy * wz : a === 1 ? wx * wz : wx * wy;
+  }
+
   for (const bc of boundaries) {
     const faceNodes = getFaceNodes(bc.faceIndex);
-    for (const n of faceNodes) {
-      if (bc.type === 'fixed_temp') {
-        temps[n] = bc.value;
-        fixedNodes.add(n);
-      } else if (bc.type === 'heat_source') {
-        heatSources[n] += bc.value / faceNodes.length;
+    if (bc.type === 'fixed_temp') {
+      for (const n of faceNodes) { temps[n] = bc.value; fixedNodes.add(n); }
+      continue;
+    }
+    // Split the total load over the face by control-volume area so boundary/corner nodes
+    // get their proper share (bc.value = total W for a source, total h·A [W/K] for convection).
+    const weights = faceNodes.map(n => bcNodeArea(n, bc.faceIndex));
+    const totalW = weights.reduce((s, w) => s + w, 0);
+    if (totalW <= 0) continue;
+    for (let i = 0; i < faceNodes.length; i++) {
+      const n = faceNodes[i], frac = weights[i] / totalW;
+      if (bc.type === 'heat_source') {
+        heatSources[n] += bc.value * frac;             // W
       } else if (bc.type === 'convection') {
         const amb = bc.ambientTemp ?? ambientTemp;
-        // Accumulate convection contributions (multiple BCs on same node sum up)
+        const hA = bc.value * frac;                    // W/K for this node's CV face
         const existing = convectionNodes.get(n);
         if (existing) {
-          existing.h += bc.value;
-          // weighted average of ambient temps proportional to h
-          existing.amb = (existing.amb * (existing.h - bc.value) + amb * bc.value) / existing.h;
+          const newH = existing.h + hA;
+          existing.amb = (existing.amb * existing.h + amb * hA) / newH;
+          existing.h = newH;
         } else {
-          convectionNodes.set(n, { h: bc.value, amb });
+          convectionNodes.set(n, { h: hA, amb });
         }
       }
     }
   }
 
-  // Jacobi iteration (steady-state heat conduction)
-  // Governing equation per interior node (finite difference):
-  //   k * (sum of 6 neighbour temps - 6*T) / h² = -Q   (Q = volumetric source)
-  // With convection BC on boundary/surface node:
-  //   adds h_conv*(T_amb - T) to the RHS, modifies effective diagonal
-  const MAX_ITER = 500;
-  const tolerance = 0.01;
-  const conductance = k; // simplified: uniform conductance
+  // ── Steady-state solve: finite-volume balance by Gauss–Seidel with SOR ──
+  //   Σ_d g_d (T_j − T_i) + Q_i + hA_i (T_amb − T_i) = 0
+  //   g_d = k · (perpendicular CV face area) / (node spacing)   [W/K]
+  // Gauss–Seidel (in-place) + over-relaxation converges far faster than Jacobi for the
+  // anisotropic conductances of a long thin part (where the old isotropic average stalled).
+  const MAX_ITER = 3000;
+  const tolerance = 1e-3;
+  const omega = 1.8;
 
   for (let iter = 0; iter < MAX_ITER; iter++) {
-    const newTemps = new Float32Array(temps);
     let maxDelta = 0;
-
     for (let ix = 0; ix < gridSize; ix++) {
       for (let iy = 0; iy < gridSize; iy++) {
         for (let iz = 0; iz < gridSize; iz++) {
           const n = idx(ix, iy, iz);
-          if (fixedNodes.has(n)) continue;
+          if (fixedNodes.has(n) || !active[n]) continue;
 
-          // Collect available neighbours (handles boundary nodes with fewer than 6)
-          const neighbourTemps: number[] = [];
-          if (ix > 0)            neighbourTemps.push(temps[idx(ix-1,iy,iz)]);
-          if (ix < gridSize - 1) neighbourTemps.push(temps[idx(ix+1,iy,iz)]);
-          if (iy > 0)            neighbourTemps.push(temps[idx(ix,iy-1,iz)]);
-          if (iy < gridSize - 1) neighbourTemps.push(temps[idx(ix,iy+1,iz)]);
-          if (iz > 0)            neighbourTemps.push(temps[idx(ix,iy,iz-1)]);
-          if (iz < gridSize - 1) neighbourTemps.push(temps[idx(ix,iy,iz+1)]);
+          const gx = (k * (hym * wfac(iy)) * (hzm * wfac(iz))) / hxm;
+          const gy = (k * (hxm * wfac(ix)) * (hzm * wfac(iz))) / hym;
+          const gz = (k * (hxm * wfac(ix)) * (hym * wfac(iy))) / hzm;
 
-          const numNeighbours = neighbourTemps.length;
-          const sumNeighbours = neighbourTemps.reduce((s, v) => s + v, 0);
-          const source = heatSources[n] / (conductance * (sx + sy + sz) / 3);
+          let num = 0, den = 0;
+          if (ix > 0            && active[idx(ix-1,iy,iz)]) { num += gx * temps[idx(ix-1,iy,iz)]; den += gx; }
+          if (ix < gridSize - 1 && active[idx(ix+1,iy,iz)]) { num += gx * temps[idx(ix+1,iy,iz)]; den += gx; }
+          if (iy > 0            && active[idx(ix,iy-1,iz)]) { num += gy * temps[idx(ix,iy-1,iz)]; den += gy; }
+          if (iy < gridSize - 1 && active[idx(ix,iy+1,iz)]) { num += gy * temps[idx(ix,iy+1,iz)]; den += gy; }
+          if (iz > 0            && active[idx(ix,iy,iz-1)]) { num += gz * temps[idx(ix,iy,iz-1)]; den += gz; }
+          if (iz < gridSize - 1 && active[idx(ix,iy,iz+1)]) { num += gz * temps[idx(ix,iy,iz+1)]; den += gz; }
+          if (den === 0) continue; // isolated node
 
-          // Apply convection BC (Newton's law of cooling):
-          //   q_conv = h * (T_amb - T)  →  modify diagonal and RHS
-          //   newT = (sumNeighbours + source + h*T_amb) / (numNeighbours + h)
+          num += heatSources[n]; // W
           const conv = convectionNodes.get(n);
-          if (conv) {
-            newTemps[n] = (sumNeighbours + source + conv.h * conv.amb) / (numNeighbours + conv.h);
-          } else {
-            newTemps[n] = (sumNeighbours + source) / numNeighbours;
-          }
+          if (conv) { num += conv.h * conv.amb; den += conv.h; }
 
-          maxDelta = Math.max(maxDelta, Math.abs(newTemps[n] - temps[n]));
+          const tStar = num / den;
+          const tNew = temps[n] + omega * (tStar - temps[n]); // SOR, in-place (Gauss–Seidel)
+          const d = Math.abs(tNew - temps[n]);
+          if (d > maxDelta) maxDelta = d;
+          temps[n] = tNew;
         }
       }
     }
-
-    temps.set(newTemps);
     if (maxDelta < tolerance) break;
   }
 
@@ -197,28 +259,42 @@ export function runThermalFEA(
     const vz = positions.getZ(i);
 
     // Trilinear interpolation from grid to vertex
-    const fx = Math.min(gridSize - 2, Math.max(0, (vx - bb.min.x) / sx));
-    const fy = Math.min(gridSize - 2, Math.max(0, (vy - bb.min.y) / sy));
-    const fz = Math.min(gridSize - 2, Math.max(0, (vz - bb.min.z) / sz));
+    // Clamp the fractional coordinate to [0, gridSize-1] (so a vertex on the high-side
+    // face can reach the last grid plane and pick up a fixed-temperature BC there), but
+    // keep the stencil base index ≤ gridSize-2 so ix+1 stays in range. The previous
+    // clamp capped fx at gridSize-2, leaving tx=0 on the max faces — surface vertices
+    // never sampled the boundary plane, so a fixed cold face read one step in (~14% off).
+    const fx = Math.max(0, Math.min(gridSize - 1, (vx - bb.min.x) / sx));
+    const fy = Math.max(0, Math.min(gridSize - 1, (vy - bb.min.y) / sy));
+    const fz = Math.max(0, Math.min(gridSize - 1, (vz - bb.min.z) / sz));
 
-    const ix = Math.floor(fx), tx = fx - ix;
-    const iy = Math.floor(fy), ty = fy - iy;
-    const iz = Math.floor(fz), tz = fz - iz;
+    const ix = Math.min(gridSize - 2, Math.floor(fx)), tx = fx - ix;
+    const iy = Math.min(gridSize - 2, Math.floor(fy)), ty = fy - iy;
+    const iz = Math.min(gridSize - 2, Math.floor(fz)), tz = fz - iz;
 
-    const t000 = temps[idx(ix,iy,iz)];
-    const t100 = temps[idx(ix+1,iy,iz)];
-    const t010 = temps[idx(ix,iy+1,iz)];
-    const t110 = temps[idx(ix+1,iy+1,iz)];
-    const t001 = temps[idx(ix,iy,iz+1)];
-    const t101 = temps[idx(ix+1,iy,iz+1)];
-    const t011 = temps[idx(ix,iy+1,iz+1)];
-    const t111 = temps[idx(ix+1,iy+1,iz+1)];
-
-    vertexTemps[i] =
-      t000*(1-tx)*(1-ty)*(1-tz) + t100*tx*(1-ty)*(1-tz) +
-      t010*(1-tx)*ty*(1-tz) + t110*tx*ty*(1-tz) +
-      t001*(1-tx)*(1-ty)*tz + t101*tx*(1-ty)*tz +
-      t011*(1-tx)*ty*tz + t111*tx*ty*tz;
+    // Trilinear blend over the 8 cell corners, but weight only ACTIVE (in-solid) corners
+    // and renormalise — a surface vertex next to the void must not blend in an inactive
+    // node still sitting at the ambient seed value.
+    const corners: Array<[number, number, number, number]> = [
+      [idx(ix,iy,iz),       (1-tx)*(1-ty)*(1-tz), 0, 0],
+      [idx(ix+1,iy,iz),     tx*(1-ty)*(1-tz),     0, 0],
+      [idx(ix,iy+1,iz),     (1-tx)*ty*(1-tz),     0, 0],
+      [idx(ix+1,iy+1,iz),   tx*ty*(1-tz),         0, 0],
+      [idx(ix,iy,iz+1),     (1-tx)*(1-ty)*tz,     0, 0],
+      [idx(ix+1,iy,iz+1),   tx*(1-ty)*tz,         0, 0],
+      [idx(ix,iy+1,iz+1),   (1-tx)*ty*tz,         0, 0],
+      [idx(ix+1,iy+1,iz+1), tx*ty*tz,             0, 0],
+    ];
+    let wSum = 0, tSum = 0;
+    for (const [ci, w] of corners) { if (active[ci]) { wSum += w; tSum += w * temps[ci]; } }
+    if (wSum > 1e-9) {
+      vertexTemps[i] = tSum / wSum;
+    } else {
+      // all corners inactive (vertex sits between cells) — use the nearest grid node
+      let best = idx(ix,iy,iz), bestW = -1;
+      for (const [ci, w] of corners) { if (w > bestW) { bestW = w; best = ci; } }
+      vertexTemps[i] = temps[best];
+    }
   }
 
   const maxTemp = Math.max(...vertexTemps);
@@ -231,13 +307,21 @@ export function runThermalFEA(
   const gridFlux = new Array<THREE.Vector3>(nodes);
   for (let i = 0; i < nodes; i++) gridFlux[i] = new THREE.Vector3(0, 0, 0);
 
-  for (let ix = 1; ix < gridSize - 1; ix++) {
-    for (let iy = 1; iy < gridSize - 1; iy++) {
-      for (let iz = 1; iz < gridSize - 1; iz++) {
+  // Compute flux at EVERY grid node (central difference in the interior, one-sided at the
+  // faces). Boundary nodes used to be left at zero flux, which — together with the fixed
+  // trilinear clamp that now reaches the last plane — would make surface flux read zero.
+  // The (hi−lo) step is 2 cells in the interior and 1 at a face, so the difference is
+  // correctly scaled either way.
+  for (let ix = 0; ix < gridSize; ix++) {
+    for (let iy = 0; iy < gridSize; iy++) {
+      for (let iz = 0; iz < gridSize; iz++) {
         const n = idx(ix, iy, iz);
-        const dTdx = (temps[idx(ix+1,iy,iz)] - temps[idx(ix-1,iy,iz)]) / (2 * sx);
-        const dTdy = (temps[idx(ix,iy+1,iz)] - temps[idx(ix,iy-1,iz)]) / (2 * sy);
-        const dTdz = (temps[idx(ix,iy,iz+1)] - temps[idx(ix,iy,iz-1)]) / (2 * sz);
+        const xp = Math.min(gridSize - 1, ix + 1), xm = Math.max(0, ix - 1);
+        const yp = Math.min(gridSize - 1, iy + 1), ym = Math.max(0, iy - 1);
+        const zp = Math.min(gridSize - 1, iz + 1), zm = Math.max(0, iz - 1);
+        const dTdx = (temps[idx(xp,iy,iz)] - temps[idx(xm,iy,iz)]) / ((xp - xm) * sx);
+        const dTdy = (temps[idx(ix,yp,iz)] - temps[idx(ix,ym,iz)]) / ((yp - ym) * sy);
+        const dTdz = (temps[idx(ix,iy,zp)] - temps[idx(ix,iy,zm)]) / ((zp - zm) * sz);
         gridFlux[n].set(-k * dTdx, -k * dTdy, -k * dTdz);
       }
     }
@@ -250,13 +334,18 @@ export function runThermalFEA(
     const vy = positions.getY(i);
     const vz = positions.getZ(i);
 
-    const fx = Math.min(gridSize - 2, Math.max(0, (vx - bb.min.x) / sx));
-    const fy = Math.min(gridSize - 2, Math.max(0, (vy - bb.min.y) / sy));
-    const fz = Math.min(gridSize - 2, Math.max(0, (vz - bb.min.z) / sz));
+    // Clamp the fractional coordinate to [0, gridSize-1] (so a vertex on the high-side
+    // face can reach the last grid plane and pick up a fixed-temperature BC there), but
+    // keep the stencil base index ≤ gridSize-2 so ix+1 stays in range. The previous
+    // clamp capped fx at gridSize-2, leaving tx=0 on the max faces — surface vertices
+    // never sampled the boundary plane, so a fixed cold face read one step in (~14% off).
+    const fx = Math.max(0, Math.min(gridSize - 1, (vx - bb.min.x) / sx));
+    const fy = Math.max(0, Math.min(gridSize - 1, (vy - bb.min.y) / sy));
+    const fz = Math.max(0, Math.min(gridSize - 1, (vz - bb.min.z) / sz));
 
-    const ix = Math.floor(fx), tx = fx - ix;
-    const iy = Math.floor(fy), ty = fy - iy;
-    const iz = Math.floor(fz), tz = fz - iz;
+    const ix = Math.min(gridSize - 2, Math.floor(fx)), tx = fx - ix;
+    const iy = Math.min(gridSize - 2, Math.floor(fy)), ty = fy - iy;
+    const iz = Math.min(gridSize - 2, Math.floor(fz)), tz = fz - iz;
 
     // Trilinear interpolation weights
     const w000 = (1-tx)*(1-ty)*(1-tz);

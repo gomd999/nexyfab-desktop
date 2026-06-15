@@ -16,6 +16,7 @@ import {
 } from './autoDrawing';
 import { DRAWING_TITLE_REVISION_LABEL, exportDrawingPDF, exportDrawingDXF } from './drawingExport';
 import { bumpDrawingRevision } from './drawingRevisionPolicy';
+import { loadDrawingTemplatePrefs, saveDrawingTemplatePrefs } from './drawingTemplatePrefs';
 import { reportInfo } from '../lib/telemetry';
 import { autoExplodedDrawing } from '../assembly/autoExplodedDrawing';
 import AutoExplodedSVG from '../assembly/AutoExplodedSVG';
@@ -43,6 +44,7 @@ const dict = {
     title: '자동 도면 생성', views: '투영 뷰',
     front: '정면', top: '평면', right: '우측면', iso: '등각',
     scale: '축척', paper: '용지', dimensions: '치수', centerlines: '중심선',
+    hiddenLines: '숨은선(정밀 HLR)', hiddenLinesHint: '다른 형상 뒤에 가려진 모서리를 깊이 기준으로 은선 처리합니다 (느리지만 정확).',
     generate: '도면 생성', download: 'SVG 다운로드', printPDF: 'PDF 다운로드', downloadDXF: 'DXF 다운로드',
     titleBlock: '표제란', partName: '부품명', material: '재질', drawnBy: '작성자', date: '날짜', revision: '리비전',
     close: '닫기', landscape: '가로', portrait: '세로', noGeometry: '지오메트리 없음',
@@ -60,11 +62,15 @@ const dict = {
     exportNeedsRegen: '도면이 최신 3D와 맞지 않습니다. 먼저「도면 생성」을 누르세요.',
     bumpRevision: '리비전 올리기',
     bumpRevisionTitle: '표제란 리비전만 증가합니다. 이후「도면 생성」으로 형상을 반영하세요.',
+    saveAsDefault: '기본값으로 저장',
+    saveAsDefaultTitle: '현재 도면 설정(뷰/축척/공차/표제란)을 기본값으로 저장합니다. 이후 어셈블리·구성 STEP export 시 자동 적용됩니다.',
+    savedAsDefaultToast: '도면 기본값 저장됨',
   },
   en: {
     title: 'Auto Drawing', views: 'Views',
     front: 'Front', top: 'Top', right: 'Right', iso: 'Isometric',
     scale: 'Scale', paper: 'Paper', dimensions: 'Dimensions', centerlines: 'Centerlines',
+    hiddenLines: 'Hidden lines (HLR)', hiddenLinesHint: 'Removes edges occluded behind other geometry using a true depth test (slower, accurate).',
     generate: 'Generate', download: 'Download SVG', printPDF: 'Download PDF', downloadDXF: 'Download DXF',
     titleBlock: 'Title Block', partName: 'Part Name', material: 'Material', drawnBy: 'Drawn By', date: 'Date', revision: 'Revision',
     close: 'Close', landscape: 'Landscape', portrait: 'Portrait', noGeometry: 'No geometry',
@@ -82,11 +88,15 @@ const dict = {
     exportNeedsRegen: 'Drawing is out of date with the 3D model. Click Generate before exporting.',
     bumpRevision: 'Bump revision',
     bumpRevisionTitle: 'Increments the title-block revision only — click Generate to refresh views from the latest 3D.',
+    saveAsDefault: 'Save as default',
+    saveAsDefaultTitle: 'Persists the current drawing settings (views/scale/tolerance/title block) as the default. Assembly and configuration STEP exports will reuse them automatically.',
+    savedAsDefaultToast: 'Drawing default saved',
   },
   ja: {
     title: '自動図面生成', views: 'ビュー',
     front: '正面', top: '平面', right: '右側面', iso: 'アイソメ',
     scale: 'スケール', paper: '用紙', dimensions: '寸法', centerlines: '中心線',
+    hiddenLines: '隠れ線(HLR)', hiddenLinesHint: '他の形状の背後に隠れたエッジを深度判定で陰線処理します (低速・高精度)。',
     generate: '生成', download: 'SVGダウンロード', printPDF: 'PDFダウンロード', downloadDXF: 'DXFダウンロード',
     titleBlock: '表題欄', partName: '部品名', material: '材質', drawnBy: '作成者', date: '日付', revision: 'リビジョン',
     close: '閉じる', landscape: '横', portrait: '縦', noGeometry: 'ジオメトリなし',
@@ -104,11 +114,15 @@ const dict = {
     exportNeedsRegen: '図面が3Dと一致しません。エクスポート前に「生成」してください。',
     bumpRevision: 'リビジョンを上げる',
     bumpRevisionTitle: '表題欄のリビジョンのみ進めます。その後「生成」で3Dを反映してください。',
+    saveAsDefault: 'デフォルトとして保存',
+    saveAsDefaultTitle: '現在の図面設定（ビュー/スケール/公差/表題欄）をデフォルトとして保存します。以降のアセンブリ・構成STEPエクスポートに自動適用されます。',
+    savedAsDefaultToast: '図面デフォルトを保存しました',
   },
   zh: {
     title: '自动工程图', views: '视图',
     front: '正面', top: '顶面', right: '右侧', iso: '等轴测',
     scale: '比例', paper: '纸张', dimensions: '尺寸', centerlines: '中心线',
+    hiddenLines: '隐藏线(HLR)', hiddenLinesHint: '使用真实深度测试隐藏被其他几何体遮挡的边 (较慢但精确)。',
     generate: '生成', download: '下载SVG', printPDF: '下载PDF', downloadDXF: '下载DXF',
     titleBlock: '标题栏', partName: '零件名', material: '材料', drawnBy: '绘制人', date: '日期', revision: '版本',
     close: '关闭', landscape: '横向', portrait: '纵向', noGeometry: '无几何体',
@@ -126,11 +140,15 @@ const dict = {
     exportNeedsRegen: '图纸与三维不同步。导出前请先点击「生成」。',
     bumpRevision: '提升版本',
     bumpRevisionTitle: '仅递增标题栏版本号；请点击「生成」以反映最新三维模型。',
+    saveAsDefault: '保存为默认',
+    saveAsDefaultTitle: '将当前图纸设置（视图/比例/公差/标题栏）保存为默认值。后续装配体与配置 STEP 导出将自动应用。',
+    savedAsDefaultToast: '已保存图纸默认值',
   },
   es: {
     title: 'Dibujo Auto', views: 'Vistas',
     front: 'Frontal', top: 'Superior', right: 'Derecha', iso: 'Isométrica',
     scale: 'Escala', paper: 'Papel', dimensions: 'Cotas', centerlines: 'Ejes',
+    hiddenLines: 'Líneas ocultas (HLR)', hiddenLinesHint: 'Oculta las aristas tapadas por otra geometría con una prueba de profundidad real (más lento, preciso).',
     generate: 'Generar', download: 'Descargar SVG', printPDF: 'Descargar PDF', downloadDXF: 'Descargar DXF',
     titleBlock: 'Cuadro título', partName: 'Pieza', material: 'Material', drawnBy: 'Dibujado por', date: 'Fecha', revision: 'Revisión',
     close: 'Cerrar', landscape: 'Horizontal', portrait: 'Vertical', noGeometry: 'Sin geometría',
@@ -148,11 +166,15 @@ const dict = {
     exportNeedsRegen: 'El dibujo no coincide con el 3D. Pulse Generar antes de exportar.',
     bumpRevision: 'Subir revisión',
     bumpRevisionTitle: 'Solo incrementa la revisión del cartucho; pulse Generar para actualizar la geometría 3D.',
+    saveAsDefault: 'Guardar como predeterminado',
+    saveAsDefaultTitle: 'Guarda los ajustes actuales del dibujo (vistas/escala/tolerancia/cartucho) como predeterminado. Las exportaciones STEP de ensamblaje y configuración los reutilizarán automáticamente.',
+    savedAsDefaultToast: 'Predeterminado de dibujo guardado',
   },
   ar: {
     title: 'رسم تلقائي', views: 'المناظر',
     front: 'أمامي', top: 'علوي', right: 'يمين', iso: 'متساوي القياس',
     scale: 'مقياس', paper: 'ورقة', dimensions: 'أبعاد', centerlines: 'خطوط المركز',
+    hiddenLines: 'الخطوط المخفية (HLR)', hiddenLinesHint: 'يخفي الحواف المحجوبة خلف أشكال أخرى باختبار عمق حقيقي (أبطأ، دقيق).',
     generate: 'توليد', download: 'تحميل SVG', printPDF: 'تحميل PDF', downloadDXF: 'تحميل DXF',
     titleBlock: 'كتلة العنوان', partName: 'اسم الجزء', material: 'مادة', drawnBy: 'رسم بواسطة', date: 'تاريخ', revision: 'مراجعة',
     close: 'إغلاق', landscape: 'أفقي', portrait: 'عمودي', noGeometry: 'لا هندسة',
@@ -170,6 +192,9 @@ const dict = {
     exportNeedsRegen: 'الرسم غير متزامن مع النموذج ثلاثي الأبعاد. اضغط «توليد» قبل التصدير.',
     bumpRevision: 'رفع المراجعة',
     bumpRevisionTitle: 'يزيد رقم المراجعة في كتلة العنوان فقط — اضغط «توليد» لمزامنة الشكل ثلاثي الأبعاد.',
+    saveAsDefault: 'حفظ كافتراضي',
+    saveAsDefaultTitle: 'يحفظ إعدادات الرسم الحالية (المناظر/المقياس/التسامح/كتلة العنوان) كافتراضي. ستعيد عمليات تصدير STEP للتجميع والتكوينات استخدامها تلقائياً.',
+    savedAsDefaultToast: 'تم حفظ الافتراضي للرسم',
   },
 } as const;
 
@@ -272,6 +297,7 @@ export default function AutoDrawingPanel({
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
   const [showDimensions, setShowDimensions] = useState(true);
   const [showCenterlines, setShowCenterlines] = useState(true);
+  const [trueHlr, setTrueHlr] = useState(false);
 
   // Title block
   const [tbPartName, setTbPartName] = useState(partName || '');
@@ -293,6 +319,10 @@ export default function AutoDrawingPanel({
   const setDrawing = setStoreResult;
   /** `computeDrawingGeometryFingerprint` at last successful Generate — mismatch ⇒ stale preview */
   const [fpAtLastGenerate, setFpAtLastGenerate] = useState<string | null>(null);
+  /** Associativity: when on, the drawing auto-regenerates (debounced) whenever
+   *  the 3D model changes, so views/dimensions track the model without a manual
+   *  Generate. Default on (SolidWorks-like); toggle off for on-demand. */
+  const [autoUpdate, setAutoUpdate] = useState(true);
 
   // K2/K3 — detail + section view specs. Keep them simple: each entry has a
   // unique label letter (A, B, C, …). User adds via the toolbar buttons; the
@@ -406,34 +436,88 @@ export default function AutoDrawingPanel({
     });
   }, []);
 
+  const buildCurrentConfig = useCallback((): DrawingConfig => ({
+    views: Array.from(selectedViews),
+    scale: scaleVal,
+    paperSize,
+    orientation,
+    showDimensions,
+    showCenterlines,
+    trueHlr,
+    tolerance: { linear: linearTol, angular: angularTol },
+    roughness: [{ ra: raValue, nx: 0.85, ny: 0.15 }],
+    titleBlock: {
+      partName: tbPartName,
+      material: tbMaterial,
+      drawnBy: tbDrawnBy,
+      date: tbDate,
+      scale: `${scaleVal}:1`,
+      revision: tbRevision,
+    },
+  }), [selectedViews, scaleVal, paperSize, orientation, showDimensions, showCenterlines, trueHlr, linearTol, angularTol, raValue, tbPartName, tbMaterial, tbDrawnBy, tbDate, tbRevision]);
+
   const handleGenerate = useCallback(() => {
     if (!geometry) return;
-    const config: DrawingConfig = {
-      views: Array.from(selectedViews),
-      scale: scaleVal,
-      paperSize,
-      orientation,
-      showDimensions,
-      showCenterlines,
-      tolerance: { linear: linearTol, angular: angularTol },
-      roughness: [{ ra: raValue, nx: 0.85, ny: 0.15 }],
-      titleBlock: {
-        partName: tbPartName,
-        material: tbMaterial,
-        drawnBy: tbDrawnBy,
-        date: tbDate,
-        scale: `${scaleVal}:1`,
-        revision: tbRevision,
-      },
-    };
+    const config = buildCurrentConfig();
     const result = generateDrawing(geometry, config);
     setDrawing(result);
     setFpAtLastGenerate(computeDrawingGeometryFingerprint(geometry));
-  }, [geometry, selectedViews, scaleVal, paperSize, orientation, showDimensions, showCenterlines, linearTol, angularTol, raValue, tbPartName, tbMaterial, tbDrawnBy, tbDate, tbRevision]);
+  }, [geometry, buildCurrentConfig]);
+
+  // Phase 6e — hydrate template-level state from saved prefs on mount.
+  // Per-part fields (tbPartName, tbMaterial) and tbDate stay prop/today
+  // so users don't see a stale part name on a fresh open.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    const prefs = loadDrawingTemplatePrefs();
+    if (prefs.views && prefs.views.length > 0) {
+      setSelectedViews(new Set<ProjectionView>(prefs.views));
+    }
+    if (typeof prefs.scale === 'number' && prefs.scale > 0) setScaleVal(prefs.scale);
+    if (prefs.paperSize === 'A4' || prefs.paperSize === 'A3' || prefs.paperSize === 'A2') {
+      setPaperSize(prefs.paperSize);
+    }
+    if (prefs.orientation === 'landscape' || prefs.orientation === 'portrait') {
+      setOrientation(prefs.orientation);
+    }
+    if (typeof prefs.showDimensions === 'boolean') setShowDimensions(prefs.showDimensions);
+    if (typeof prefs.showCenterlines === 'boolean') setShowCenterlines(prefs.showCenterlines);
+    if (typeof prefs.trueHlr === 'boolean') setTrueHlr(prefs.trueHlr);
+    if (prefs.tolerance?.linear) setLinearTol(prefs.tolerance.linear);
+    if (prefs.tolerance?.angular) setAngularTol(prefs.tolerance.angular);
+    const ra = prefs.roughness?.[0]?.ra;
+    if (typeof ra === 'number' && ra > 0) setRaValue(ra);
+    if (prefs.titleBlock?.drawnBy) setTbDrawnBy(prefs.titleBlock.drawnBy);
+    if (prefs.titleBlock?.revision) setTbRevision(prefs.titleBlock.revision);
+  }, []);
+
+  const [savedDefaultAt, setSavedDefaultAt] = useState<number | null>(null);
+  const handleSavePrefs = useCallback(() => {
+    saveDrawingTemplatePrefs(buildCurrentConfig());
+    reportInfo('drawing_export', 'save_default_template', { partName: tbPartName || 'drawing' });
+    setSavedDefaultAt(Date.now());
+  }, [buildCurrentConfig, tbPartName]);
+  useEffect(() => {
+    if (savedDefaultAt == null) return;
+    const id = window.setTimeout(() => setSavedDefaultAt(null), 2000);
+    return () => window.clearTimeout(id);
+  }, [savedDefaultAt]);
 
   const currentFp = geometry ? computeDrawingGeometryFingerprint(geometry) : null;
   const drawingStale =
     Boolean(drawing && fpAtLastGenerate && currentFp && currentFp !== fpAtLastGenerate);
+
+  // Associativity (#4): when Auto-update is on and the model changed since the
+  // last Generate, regenerate automatically (debounced 500ms) so the drawing
+  // tracks the 3D model — no manual refresh. Toggle off → on-demand + the
+  // stale banner. Only fires while a drawing exists and the fingerprint drifted.
+  useEffect(() => {
+    if (!autoUpdate || !drawingStale) return;
+    const id = window.setTimeout(() => { handleGenerate(); }, 500);
+    return () => window.clearTimeout(id);
+  }, [autoUpdate, drawingStale, handleGenerate]);
 
   const handleDownload = useCallback(() => {
     void (async () => {
@@ -672,6 +756,15 @@ export default function AutoDrawingPanel({
             <input type="checkbox" checked={showCenterlines} onChange={() => setShowCenterlines(!showCenterlines)} />
             {tt.centerlines}
           </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }} title={tt.hiddenLinesHint}>
+            <input
+              type="checkbox"
+              data-testid="auto-drawing-truehlr"
+              checked={trueHlr}
+              onChange={() => setTrueHlr(!trueHlr)}
+            />
+            {tt.hiddenLines}
+          </label>
         </div>
       </div>
 
@@ -784,7 +877,9 @@ export default function AutoDrawingPanel({
           }}
           role="status"
         >
-          <span style={{ flex: '1 1 200px' }}>{tt.drawingStaleHint}</span>
+          <span style={{ flex: '1 1 200px' }}>
+            {autoUpdate ? 'Model changed — updating drawing…' : tt.drawingStaleHint}
+          </span>
           <button
             type="button"
             title={tt.bumpRevisionTitle}
@@ -807,8 +902,39 @@ export default function AutoDrawingPanel({
       )}
 
       {/* Actions */}
-      <div style={{ ...sectionStyle, display: 'flex', gap: 8 }}>
+      <div style={{ ...sectionStyle, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <button type="button" data-testid="auto-drawing-generate" style={primaryBtn} onClick={handleGenerate}>{tt.generate}</button>
+        <label
+          data-testid="auto-drawing-autoupdate"
+          title="Regenerate the drawing automatically when the 3D model changes"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.text, cursor: 'pointer', userSelect: 'none' }}
+        >
+          <input
+            type="checkbox"
+            checked={autoUpdate}
+            onChange={(e) => setAutoUpdate(e.target.checked)}
+            data-state={autoUpdate ? 'on' : 'off'}
+          />
+          Auto-update
+        </label>
+        <button
+          type="button"
+          data-testid="auto-drawing-save-default"
+          title={tt.saveAsDefaultTitle}
+          style={secondaryBtn}
+          onClick={handleSavePrefs}
+        >
+          💾 {tt.saveAsDefault}
+        </button>
+        {savedDefaultAt != null && (
+          <span
+            role="status"
+            data-testid="auto-drawing-save-default-toast"
+            style={{ fontSize: 11, color: C.green, fontWeight: 600 }}
+          >
+            ✓ {tt.savedAsDefaultToast}
+          </span>
+        )}
         {drawing && (
           <>
             <button
@@ -1213,6 +1339,102 @@ export default function AutoDrawingPanel({
               }}
             >Clear extras</button>
           )}
+        </div>
+      )}
+
+      {/* Polish — per-spec editor rows so the user can refine the
+          default placement instead of being stuck with the
+          quick-add defaults. Same look + feel as the GD&T row list. */}
+      {drawing && sectionSpecs.length > 0 && (
+        <div style={{ padding: '4px 12px 8px', borderTop: '1px solid var(--nx-panel-2)', fontSize: 11 }}>
+          <div style={{ color: 'var(--nx-text-2)', marginBottom: 4 }}>Section views</div>
+          {sectionSpecs.map((spec, i) => (
+            <div key={`sec-edit-${i}`} data-testid={`section-edit-${i}`} style={{
+              display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginBottom: 4,
+            }}>
+              <span style={{ fontWeight: 700, color: 'var(--nx-warn)', minWidth: 14 }}>{spec.label}</span>
+              <select
+                value={spec.sourceViewIdx}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  setSectionSpecs(prev => prev.map((s, j) => j === i ? { ...s, sourceViewIdx: v } : s));
+                }}
+                style={{ fontSize: 10, padding: '1px 4px' }}
+              >
+                {drawing.views.map((v, j) => <option key={j} value={j}>{v.projection}</option>)}
+              </select>
+              {(['x1', 'y1', 'x2', 'y2'] as const).map(k => (
+                <label key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: 'var(--nx-text-2)' }}>
+                  {k}<input
+                    type="number" step={1} value={spec[k]}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!Number.isFinite(v)) return;
+                      setSectionSpecs(prev => prev.map((s, j) => j === i ? { ...s, [k]: v } : s));
+                    }}
+                    style={{ width: 50, fontSize: 10, padding: '1px 4px' }}
+                  />
+                </label>
+              ))}
+              <button
+                onClick={() => setSectionSpecs(prev => prev.filter((_, j) => j !== i))}
+                data-testid={`section-delete-${i}`}
+                title="delete this section view"
+                style={{
+                  marginLeft: 4, padding: '1px 6px', borderRadius: 3,
+                  border: '1px solid var(--nx-border)', background: 'transparent',
+                  color: 'var(--nx-text-2)', fontSize: 10, cursor: 'pointer',
+                }}
+              >×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {drawing && detailSpecs.length > 0 && (
+        <div style={{ padding: '4px 12px 8px', borderTop: '1px solid var(--nx-panel-2)', fontSize: 11 }}>
+          <div style={{ color: 'var(--nx-text-2)', marginBottom: 4 }}>Detail views</div>
+          {detailSpecs.map((spec, i) => (
+            <div key={`det-edit-${i}`} data-testid={`detail-edit-${i}`} style={{
+              display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginBottom: 4,
+            }}>
+              <span style={{ fontWeight: 700, color: 'var(--nx-accent)', minWidth: 14 }}>{spec.label}</span>
+              <select
+                value={spec.sourceViewIdx}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  setDetailSpecs(prev => prev.map((s, j) => j === i ? { ...s, sourceViewIdx: v } : s));
+                }}
+                style={{ fontSize: 10, padding: '1px 4px' }}
+              >
+                {drawing.views.map((v, j) => <option key={j} value={j}>{v.projection}</option>)}
+              </select>
+              {(['centerX', 'centerY', 'radius', 'magnification'] as const).map(k => (
+                <label key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: 'var(--nx-text-2)' }}>
+                  {k === 'magnification' ? 'mag' : k.replace('center', 'c')}
+                  <input
+                    type="number" step={k === 'magnification' ? 0.5 : 1} value={spec[k]}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!Number.isFinite(v) || v <= 0 && k !== 'centerX' && k !== 'centerY') return;
+                      setDetailSpecs(prev => prev.map((s, j) => j === i ? { ...s, [k]: v } : s));
+                    }}
+                    style={{ width: 48, fontSize: 10, padding: '1px 4px' }}
+                  />
+                </label>
+              ))}
+              <button
+                onClick={() => setDetailSpecs(prev => prev.filter((_, j) => j !== i))}
+                data-testid={`detail-delete-${i}`}
+                title="delete this detail view"
+                style={{
+                  marginLeft: 4, padding: '1px 6px', borderRadius: 3,
+                  border: '1px solid var(--nx-border)', background: 'transparent',
+                  color: 'var(--nx-text-2)', fontSize: 10, cursor: 'pointer',
+                }}
+              >×</button>
+            </div>
+          ))}
         </div>
       )}
 

@@ -12,7 +12,6 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { PREF_KEYS, prefGetString, prefSetString, prefRemove } from '@/lib/platform';
-import type { AutoSaveState } from './useAutoSave';
 import { useCloudProjectAccessStore } from './store/cloudProjectAccessStore';
 import { stashPendingIntent } from '@/lib/pending-intents';
 
@@ -29,8 +28,8 @@ export interface UseCloudSaveFlowResult {
   /** POST 403 free-plan project limit hit — UI shows upgrade prompt instead of generic error */
   projectLimitReached: boolean;
   clearProjectLimitReached: () => void;
-  syncNow: (state: AutoSaveState, shapeId: string, materialId: string, thumbnail?: string | null) => void;
-  scheduleSync: (state: AutoSaveState, shapeId: string, materialId: string, thumbnail?: string | null) => void;
+  syncNow: (state: object, shapeId: string, materialId: string, thumbnail?: string | null) => void;
+  scheduleSync: (state: object, shapeId: string, materialId: string, thumbnail?: string | null) => void;
   /** Adopt a server project id (e.g. dashboard ?projectId=) so PATCH targets the right row */
   adoptProjectId: (id: string | null, serverUpdatedAt?: number | null) => void;
   /** 서버 `updatedAt`과 씬을 다시 맞추기 위해 동일 URL에 `projectId`를 붙여 전체 리로드 */
@@ -46,7 +45,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
   const [projectLimitReached, setProjectLimitReached] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMounted = useRef(true);
-  const pendingRef = useRef<{ state: AutoSaveState; shapeId: string; materialId: string; thumbnail?: string | null } | null>(null);
+  const pendingRef = useRef<{ state: object; shapeId: string; materialId: string; thumbnail?: string | null } | null>(null);
   const lastServerUpdatedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -54,7 +53,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
   }, []);
 
   const doSync = useCallback(async (
-    state: AutoSaveState,
+    state: object,
     shapeId: string,
     materialId: string,
     thumbnail?: string | null,
@@ -233,7 +232,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
     }
   }, [isLoggedIn, projectId]);
 
-  const syncNow = useCallback((state: AutoSaveState, shapeId: string, materialId: string, thumbnail?: string | null) => {
+  const syncNow = useCallback((state: object, shapeId: string, materialId: string, thumbnail?: string | null) => {
     const acc = useCloudProjectAccessStore.getState();
     if (acc.hydrated && !acc.canEdit) return;
     if (debounceRef.current) {
@@ -268,7 +267,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
     }
   }, []);
 
-  const scheduleSync = useCallback((state: AutoSaveState, shapeId: string, materialId: string, thumbnail?: string | null) => {
+  const scheduleSync = useCallback((state: object, shapeId: string, materialId: string, thumbnail?: string | null) => {
     if (!isLoggedIn) return;
     const acc = useCloudProjectAccessStore.getState();
     if (acc.hydrated && !acc.canEdit) return;

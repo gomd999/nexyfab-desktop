@@ -118,8 +118,17 @@ export const useSceneStore = create<SceneStore>()(
       paramExpressions: {},
       materialId: 'aluminum',
       color: '#4FC3F7',
-      isSketchMode: true,
-      sketchViewMode: '2d',
+      // Default to the 3D SOLID view, not sketch mode. isSketchMode is NOT
+      // persisted (not in partialize), so this default applied on every load —
+      // making the modeler always open into an empty 2D sketch with no visible
+      // model (the part / sample renders only in 3D). Standard CAD opens on the
+      // solid; users enter sketch explicitly. (2026-06-09 root fix)
+      isSketchMode: false,
+      // Default sketches to the 3D view (sketch plane shown in 3D space with
+      // the world xyz axes + the part for context), not a flat 2D grid. The
+      // 2D/3D toggle (right edge) still switches to flat-normal for precise
+      // drawing. (2026-06-09 per user request)
+      sketchViewMode: '3d',
       sketchPlane: 'xy',
       sketchProfile: DEFAULT_SKETCH_PROFILE,
       sketchConfig: DEFAULT_SKETCH_CONFIG,

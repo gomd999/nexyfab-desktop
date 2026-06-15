@@ -7,6 +7,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { I } from '../Icons';
+import { useLang } from '../../hooks/useLang';
+import { loc } from '../../lib/loc';
 
 interface Message {
   id: string;
@@ -25,27 +27,30 @@ export interface AiChatPanelProps {
   isKo: boolean;
 }
 
-const SUGGESTIONS_KO = [
-  '두께 5mm 알루미늄 브라켓을 만들어줘',
-  '필렛 반경 2mm 적용',
-  '∅6.5 카운터보어 홀 4개를 모서리에 추가',
-  'M5 나사 구멍으로 변경',
-];
-const SUGGESTIONS_EN = [
-  'Make a 5 mm aluminum bracket',
-  'Apply 2 mm fillet to all sharp edges',
-  'Add 4× ∅6.5 counterbore holes in corners',
-  'Change holes to tapped M5',
-];
+// Example prompt chips, keyed by route lang (matches useLang()). (2026-06-13 i18n)
+const SUGGESTIONS: Record<string, string[]> = {
+  ko: ['두께 5mm 알루미늄 브라켓을 만들어줘', '필렛 반경 2mm 적용', '∅6.5 카운터보어 홀 4개를 모서리에 추가', 'M5 나사 구멍으로 변경'],
+  en: ['Make a 5 mm aluminum bracket', 'Apply 2 mm fillet to all sharp edges', 'Add 4× ∅6.5 counterbore holes in corners', 'Change holes to tapped M5'],
+  ja: ['厚さ5mmのアルミブラケットを作って', 'すべての鋭いエッジに2mmのフィレットを適用', '∅6.5のザグり穴を四隅に4つ追加', '穴をM5タップ穴に変更'],
+  cn: ['制作一个5mm厚的铝支架', '对所有尖锐边缘应用2mm圆角', '在四角添加4个∅6.5沉头孔', '将孔改为M5攻丝孔'],
+  es: ['Crea un soporte de aluminio de 5 mm', 'Aplica un redondeo de 2 mm a todas las aristas vivas', 'Añade 4 agujeros avellanados ∅6.5 en las esquinas', 'Cambia los agujeros a roscados M5'],
+  ar: ['أنشئ حاملاً من الألومنيوم بسماكة 5 مم', 'طبّق تدويرًا 2 مم على كل الحواف الحادة', 'أضف 4 ثقوب غاطسة ∅6.5 في الزوايا', 'غيّر الثقوب إلى ملولبة M5'],
+};
 
 export function AiChatPanel({ isKo }: AiChatPanelProps) {
+  const lang = useLang();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: isKo
-        ? '안녕하세요. 자연어로 모델 편집을 요청하거나 DFM 검토를 부탁할 수 있습니다.'
-        : 'Ask in natural language to edit your model or get a DFM review.',
+      content: loc(lang, {
+        ko: '안녕하세요. 자연어로 모델 편집을 요청하거나 DFM 검토를 부탁할 수 있습니다.',
+        en: 'Ask in natural language to edit your model or get a DFM review.',
+        ja: '自然言語でモデルの編集を依頼したり、DFM レビューを頼んだりできます。',
+        zh: '用自然语言请求编辑模型或进行 DFM 审查。',
+        es: 'Pide en lenguaje natural editar tu modelo u obtener una revisión DFM.',
+        ar: 'اطلب بلغة طبيعية تعديل نموذجك أو الحصول على مراجعة DFM.',
+      }),
     },
   ]);
   const [input, setInput] = useState('');
@@ -120,7 +125,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
         setMessages(prev => prev.map(m => m.id === assistantId ? {
           ...m,
           loading: false,
-          content: acc || (isKo ? '응답 없음' : 'Empty response'),
+          content: acc || loc(lang, { ko: '응답 없음', en: 'Empty response', ja: '応答なし', zh: '无响应', es: 'Sin respuesta', ar: 'لا توجد استجابة' }),
           diagnostics: final.diagnostics,
           intent: final.intent,
           pattern: final.pattern,
@@ -136,7 +141,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
         setMessages(prev => prev.map(m => m.id === assistantId ? {
           ...m,
           loading: false,
-          content: data?.text ?? (isKo ? '응답을 받을 수 없습니다 — 오프라인 모드' : 'No response — offline mode'),
+          content: data?.text ?? loc(lang, { ko: '응답을 받을 수 없습니다 — 오프라인 모드', en: 'No response — offline mode', ja: '応答を取得できません — オフラインモード', zh: '无法获取响应 — 离线模式', es: 'Sin respuesta — modo sin conexión', ar: 'لا توجد استجابة — وضع عدم الاتصال' }),
           diagnostics: data?.diagnostics,
           intent: data?.intent,
           pattern: data?.pattern,
@@ -146,9 +151,14 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
       setMessages(prev => prev.map(m => m.id === assistantId ? {
         ...m,
         loading: false,
-        content: isKo
-          ? '연결 실패. 모달 어시스턴트로 폴백합니다.'
-          : 'Connection failed. Falling back to modal assistant.',
+        content: loc(lang, {
+          ko: '연결 실패. 모달 어시스턴트로 폴백합니다.',
+          en: 'Connection failed. Falling back to modal assistant.',
+          ja: '接続に失敗しました。モーダルアシスタントにフォールバックします。',
+          zh: '连接失败。回退到模态助手。',
+          es: 'Conexión fallida. Recurriendo al asistente modal.',
+          ar: 'فشل الاتصال. يتم الرجوع إلى المساعد المنبثق.',
+        }),
       } : m));
     } finally {
       setBusy(false);
@@ -194,7 +204,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
     }
   };
 
-  const suggestions = isKo ? SUGGESTIONS_KO : SUGGESTIONS_EN;
+  const suggestions = SUGGESTIONS[lang] ?? SUGGESTIONS.en;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -204,7 +214,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
         role="log"
         aria-live="polite"
         aria-atomic="false"
-        aria-label={isKo ? 'AI 대화 내역' : 'AI conversation history'}
+        aria-label={loc(lang, { ko: 'AI 대화 내역', en: 'AI conversation history', ja: 'AI 会話履歴', zh: 'AI 对话记录', es: 'Historial de conversación de IA', ar: 'سجل محادثة الذكاء الاصطناعي' })}
         style={{ flex: 1, overflow: 'auto', padding: 10, display: 'flex', flexDirection: 'column', gap: 10 }}
       >
         {messages.map(m => (
@@ -245,7 +255,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
                 )}
                 {m.pattern && (
                   <div style={{ marginTop: 6, fontSize: 10, color: 'var(--nx-accent-2)' }}>
-                    {isKo ? '추천 패턴' : 'Pattern'}: {m.pattern.title}
+                    {loc(lang, { ko: '추천 패턴', en: 'Pattern', ja: '推奨パターン', zh: '推荐模式', es: 'Patrón', ar: 'النمط' })}: {m.pattern.title}
                   </div>
                 )}
                 {(m.intent || m.pattern) && (
@@ -258,7 +268,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
                       fontSize: 10, fontWeight: 600, cursor: 'pointer',
                     }}
                   >
-                    {isKo ? '✓ 적용' : '✓ Apply'}
+                    {'✓ ' + loc(lang, { ko: '적용', en: 'Apply', ja: '適用', zh: '应用', es: 'Aplicar', ar: 'تطبيق' })}
                   </button>
                 )}
               </>
@@ -296,9 +306,9 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
           type="text"
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder={isKo ? 'AI 에게 요청…' : 'Ask Nexy AI…'}
+          placeholder={loc(lang, { ko: 'AI 에게 요청…', en: 'Ask Nexy AI…', ja: 'Nexy AI に質問…', zh: '向 Nexy AI 提问…', es: 'Pregunta a Nexy AI…', ar: 'اسأل Nexy AI…' })}
           disabled={busy}
-          aria-label={isKo ? 'AI 메시지 입력' : 'AI message input'}
+          aria-label={loc(lang, { ko: 'AI 메시지 입력', en: 'AI message input', ja: 'AI メッセージ入力', zh: 'AI 消息输入', es: 'Entrada de mensaje de IA', ar: 'إدخال رسالة الذكاء الاصطناعي' })}
           style={{
             flex: 1, height: 28, padding: '0 10px',
             borderRadius: 4, border: '1px solid var(--nx-border)',
@@ -310,7 +320,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
         <button
           type="submit"
           disabled={busy || !input.trim()}
-          aria-label={isKo ? '보내기' : 'Send'}
+          aria-label={loc(lang, { ko: '보내기', en: 'Send', ja: '送信', zh: '发送', es: 'Enviar', ar: 'إرسال' })}
           style={{
             padding: '0 12px', height: 28, border: 0, borderRadius: 4,
             background: busy ? 'var(--nx-text-3)' : 'var(--nx-accent)',
@@ -349,6 +359,7 @@ function VoiceButton({ isKo, onTranscript, disabled }: {
   onTranscript: (text: string) => void;
   disabled: boolean;
 }) {
+  const lang = useLang();
   const [listening, setListening] = useState(false);
   const recRef = useRef<SpeechRecognitionLike | null>(null);
   const supported = typeof window !== 'undefined' && (
@@ -366,7 +377,7 @@ function VoiceButton({ isKo, onTranscript, disabled }: {
     const Ctor = W.SpeechRecognition ?? W.webkitSpeechRecognition;
     if (!Ctor) return;
     const r = new Ctor();
-    r.lang = isKo ? 'ko-KR' : 'en-US';
+    r.lang = ({ ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', cn: 'zh-CN', es: 'es-ES', ar: 'ar-SA' } as const)[lang] ?? 'en-US';
     r.continuous = false;
     r.interimResults = false;
     r.onresult = (e) => {
@@ -393,8 +404,8 @@ function VoiceButton({ isKo, onTranscript, disabled }: {
       type="button"
       onClick={listening ? stop : start}
       disabled={disabled}
-      aria-label={isKo ? '음성 입력' : 'Voice input'}
-      title={isKo ? '음성 입력' : 'Voice input'}
+      aria-label={loc(lang, { ko: '음성 입력', en: 'Voice input', ja: '音声入力', zh: '语音输入', es: 'Entrada de voz', ar: 'الإدخال الصوتي' })}
+      title={loc(lang, { ko: '음성 입력', en: 'Voice input', ja: '音声入力', zh: '语音输入', es: 'Entrada de voz', ar: 'الإدخال الصوتي' })}
       style={{
         padding: '0 10px', height: 28, border: 0, borderRadius: 4,
         background: listening ? 'var(--nx-error, #f85149)' : 'var(--nx-panel-2)',

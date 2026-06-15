@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtShellBox, occtFaceSignatures, hostBoxFromGeometry } from './occtEngine';
+import { occtShellBox, occtFaceSignatures, hostBoxFromGeometry } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
+import { captureKernelFailure } from './kernelCorpus';
 import { buildFaceFinderBySignature } from './topologyEdgeFinder';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 
@@ -47,7 +50,7 @@ export const shellFeature: FeatureDefinition = {
     const openFace = Math.round(params.openFace);
     const engine = Math.round(params.engine ?? 0);
 
-    if ((engine === 1 || isOcctGlobalMode()) && isOcctReady()) {
+    if (shouldUseOcctEngine(engine)) {
       try {
         const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
         const host = hostBoxFromGeometry(geometry);
@@ -56,6 +59,13 @@ export const shellFeature: FeatureDefinition = {
         return result.geometry;
       } catch (err) {
         console.warn('[shell] OCCT path failed, falling back to three-bvh-csg:', err);
+        captureKernelFailure({
+          op: 'shell',
+          params: { wallThickness: thickness, openFace, featureId: ctx?.featureId ?? '' },
+          geometry,
+          error: err,
+          resolution: { strategy: 'mesh-fallback', requested: { wallThickness: thickness } },
+        });
       }
     }
 
@@ -129,7 +139,7 @@ export const shellFeature: FeatureDefinition = {
       propagateFeatureIdMap(result.geometry, prev, cutBox);
     }
 
-    return result.geometry;
+    return noteMeshFallback(result.geometry, { op: 'Shell', engine, featureId: ctx?.featureId });
   },
 
   /** OCCT async path: when the user picked a face to leave open, re-resolve it
@@ -141,7 +151,7 @@ export const shellFeature: FeatureDefinition = {
     const openFace = Math.round(params.openFace);
     const engine = Math.round(params.engine ?? 0);
     const sel = ctx?.faceSelections?.[0];
-    if (sel && (engine === 1 || isOcctGlobalMode()) && isOcctReady()) {
+    if (sel && shouldUseOcctEngine(engine)) {
       try {
         const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
         if (upstreamHandle) {
@@ -158,6 +168,14 @@ export const shellFeature: FeatureDefinition = {
         }
       } catch (err) {
         console.warn('[shell] OCCT face-finder path failed, falling back:', err);
+        captureKernelFailure({
+          op: 'shell',
+          stage: 'occt-face-finder',
+          params: { wallThickness: thickness, openFace, featureId: ctx?.featureId ?? '' },
+          geometry,
+          error: err,
+          resolution: { strategy: 'mesh-fallback', requested: { wallThickness: thickness } },
+        });
       }
     }
     return shellFeature.apply(geometry, params, ctx);

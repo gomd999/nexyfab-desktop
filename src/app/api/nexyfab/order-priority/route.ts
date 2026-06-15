@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { materialCostKrwPerCm3 } from './materialCost';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
 import { getPrompt } from '@/lib/ai/prompts';
 import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
@@ -23,7 +24,11 @@ interface IncomingQuote {
   validUntil?: string | null;
   details?: string | null;
   bbox?: { w: number; h: number; d: number } | null;
+  /** Material id/name if known (e.g. 'aluminum', 'titanium', 'abs'). When
+   *  absent the margin estimate is flagged approximate — see materialCostKrwPerCm3. */
+  material?: string | null;
 }
+
 
 interface PartnerProfile {
   hourlyRateKrw?: number;
@@ -88,7 +93,9 @@ function ruleBasedResult(body: RequestBody): PriorityResult {
         : 30;
       const cycleMin = Math.max(2, (100 - dfm) / 8 + Math.sqrt(volumeCm3));
       const laborCost = (cycleMin / 60) * hourly;
-      const matCost = volumeCm3 * 200 * (1 + materialMargin);
+      // Material-aware cost (titanium ≠ aluminium ≠ the old flat 200/cm³).
+      const mat = materialCostKrwPerCm3(q.material);
+      const matCost = volumeCm3 * mat.perCm3 * (1 + materialMargin);
       const estimatedCost = (laborCost + matCost) * 1.12;
       const estimatedMarginKrw = Math.max(0, q.estimatedAmount - estimatedCost);
       const marginPct = q.estimatedAmount > 0
@@ -109,6 +116,13 @@ function ruleBasedResult(body: RequestBody): PriorityResult {
       let deadlineScore = 10;
       const riskFlags: string[] = [];
       const riskFlagsKo: string[] = [];
+      // Honesty: the margin is only as good as the material assumption. If the
+      // quote didn't specify a material, say so rather than presenting a
+      // fake-precise margin.
+      if (!mat.known) {
+        riskFlags.push('Margin is approximate — material not specified');
+        riskFlagsKo.push('마진 추정치 — 재료 미지정 (대략값)');
+      }
       if (q.validUntil) {
         const daysLeft = Math.round((new Date(q.validUntil).getTime() - now) / 86_400_000);
         if (daysLeft <= 0) {

@@ -115,8 +115,8 @@ export default function ReviewForm({ lang, contractId, partnerEmail, onSubmitted
   return (
     <div style={containerStyle}>
       <div style={{ marginBottom: 14 }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#e6edf3' }}>{t.title}</h3>
-        <p style={{ margin: '4px 0 0', fontSize: 11, color: '#8b949e', lineHeight: 1.5 }}>{t.subtitle}</p>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--nx-text)' }}>{t.title}</h3>
+        <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--nx-text-2)', lineHeight: 1.5 }}>{t.subtitle}</p>
       </div>
 
       <StarRow label={t.overall} value={overall} onChange={setOverall} accent="#79c0ff" />
@@ -145,7 +145,7 @@ export default function ReviewForm({ lang, contractId, partnerEmail, onSubmitted
       )}
 
       <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 11, color: allRated ? '#3fb950' : '#8b949e' }}>
+        <span style={{ fontSize: 11, color: allRated ? '#3fb950' : 'var(--nx-text-2)' }}>
           {allRated ? '✓ 모든 항목 평가됨' : t.requireRating}
         </span>
         <button
@@ -154,7 +154,7 @@ export default function ReviewForm({ lang, contractId, partnerEmail, onSubmitted
           style={{
             padding: '8px 18px', fontSize: 12, fontWeight: 700,
             borderRadius: 6, border: 'none',
-            background: allRated && !submitting ? '#1f6feb' : '#30363d',
+            background: allRated && !submitting ? '#1f6feb' : 'var(--nx-border)',
             color: '#fff',
             cursor: allRated && !submitting ? 'pointer' : 'not-allowed',
           }}
@@ -168,8 +168,8 @@ export default function ReviewForm({ lang, contractId, partnerEmail, onSubmitted
 
 function StarRow({ label, value, onChange, accent }: { label: string; value: number; onChange: (v: number) => void; accent: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #21262d' }}>
-      <span style={{ fontSize: 12, color: '#c9d1d9', fontWeight: 600 }}>{label}</span>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid var(--nx-panel-2)' }}>
+      <span style={{ fontSize: 12, color: 'var(--nx-text)', fontWeight: 600 }}>{label}</span>
       <div style={{ display: 'flex', gap: 2 }}>
         {[1, 2, 3, 4, 5].map(n => (
           <button
@@ -179,7 +179,7 @@ function StarRow({ label, value, onChange, accent }: { label: string; value: num
               width: 28, height: 28,
               fontSize: 18, lineHeight: 1,
               background: 'transparent', border: 'none',
-              color: n <= value ? accent : '#30363d',
+              color: n <= value ? accent : 'var(--nx-border)',
               cursor: 'pointer',
             }}
             aria-label={`${label} ${n}/5`}
@@ -193,21 +193,21 @@ function StarRow({ label, value, onChange, accent }: { label: string; value: num
 }
 
 const containerStyle: React.CSSProperties = {
-  background: '#0d1117',
-  border: '1px solid #30363d',
+  background: 'var(--nx-bg)',
+  border: '1px solid var(--nx-border)',
   borderRadius: 10,
   padding: 16,
 };
 const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: 11, fontWeight: 700,
-  color: '#8b949e', marginBottom: 6,
+  color: 'var(--nx-text-2)', marginBottom: 6,
   textTransform: 'uppercase', letterSpacing: 0.5,
 };
 const textareaStyle: React.CSSProperties = {
   width: '100%', padding: '8px 10px',
-  background: '#161b22',
-  border: '1px solid #30363d',
+  background: 'var(--nx-panel)',
+  border: '1px solid var(--nx-border)',
   borderRadius: 6,
-  color: '#e6edf3', fontSize: 12, fontFamily: 'inherit',
+  color: 'var(--nx-text)', fontSize: 12, fontFamily: 'inherit',
   resize: 'vertical', outline: 'none',
 };

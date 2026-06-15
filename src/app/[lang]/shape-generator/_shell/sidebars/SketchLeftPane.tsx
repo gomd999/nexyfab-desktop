@@ -7,17 +7,21 @@
 import React, { useState } from 'react';
 import { SidePanel, PropSection, PropItemRow } from './';
 import { useShellBridge } from '../shellBridgeStore';
+import { sketchStatusColor, sketchStatusLabel } from '../sketchStatusUi';
 import { I } from '../Icons';
+import { pickShellDict, type ShellDict } from '../shellDict';
 
 export interface SketchLeftPaneProps {
-  isKo: boolean;
+  lang: string;
 }
 
-export function SketchLeftPane({ isKo }: SketchLeftPaneProps) {
+export function SketchLeftPane({ lang }: SketchLeftPaneProps) {
+  const d = pickShellDict(lang);
   const entities = useShellBridge(s => s.sketchEntities);
   const constraints = useShellBridge(s => s.sketchConstraints);
   const dimensions = useShellBridge(s => s.sketchDimensions);
-  const solverOk = useShellBridge(s => s.sketchSolverOk);
+  const status = useShellBridge(s => s.sketchStatus);
+  const redundantCount = useShellBridge(s => s.sketchRedundantCount);
   const dof = useShellBridge(s => s.sketchDof);
   const entityList = useShellBridge(s => s.sketchEntityList);
   const constraintList = useShellBridge(s => s.sketchConstraintList);
@@ -34,30 +38,29 @@ export function SketchLeftPane({ isKo }: SketchLeftPaneProps) {
   return (
     <SidePanel
       side="left"
-      title={isKo ? '스케치 1 — 기본 프로파일' : 'SKETCH 1 — BASE PROFILE'}
+      title={d.sketchPaneTitle}
       titleIcon={<I.sketch size={12} />}
       footer={
         <span
-          className={`nx-panel-footer-pill ${solverOk === false ? 'warn' : ''}`}
+          className={`nx-panel-footer-pill ${status === 'over-defined' || status === 'inconsistent' || status === 'under-defined' ? 'warn' : ''}`}
         >
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: solverOk === false ? 'var(--nx-warn, #ffa800)' : 'var(--nx-accent)' }} />
-          {solverOk === false
-            ? (isKo ? `미정의 · DOF ${dof ?? '?'}` : `Under-defined · DOF ${dof ?? '?'}`)
-            : (isKo ? `완전 정의 · DOF ${dof ?? 0} · Solver OK` : `Fully constrained · DOF ${dof ?? 0} · Solver OK`)}
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: sketchStatusColor(status) }} />
+          {sketchStatusLabel(status, dof, redundantCount, d)
+            ?? d.emptySketch}
         </span>
       }
     >
       <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--nx-border)', color: 'var(--nx-text-3)', fontSize: 11 }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <I.plane size={11} />
-          {isKo ? 'XY 평면 위' : 'On XY Plane'}
+          {d.onXyPlane}
         </span>
       </div>
 
-      <PropSection title={isKo ? `엔티티 (${entities})` : `Entities (${entities})`}>
+      <PropSection title={`${d.entitiesTitle} (${entities})`}>
         {entityList.length === 0 ? (
           <div style={{ fontSize: 11, color: 'var(--nx-text-3)', padding: '4px 0' }}>
-            {isKo ? '엔티티 없음 — 라인 / 사각형 / 원으로 시작' : 'No entities — draw a line / rect / circle to start'}
+            {d.noEntities}
           </div>
         ) : (
           entityList.map(seg => (
@@ -75,10 +78,10 @@ export function SketchLeftPane({ isKo }: SketchLeftPaneProps) {
         )}
       </PropSection>
 
-      <PropSection title={isKo ? `구속조건 (${constraints})` : `Constraints (${constraints})`}>
+      <PropSection title={`${d.constraintsTitle} (${constraints})`}>
         {groupedConstraints.length === 0 ? (
           <div style={{ fontSize: 11, color: 'var(--nx-text-3)', padding: '4px 0' }}>
-            {isKo ? '구속조건 없음' : 'No constraints'}
+            {d.noConstraints}
           </div>
         ) : (
           groupedConstraints.map(g => (
@@ -87,14 +90,14 @@ export function SketchLeftPane({ isKo }: SketchLeftPaneProps) {
         )}
       </PropSection>
 
-      <PropSection title={isKo ? `치수 (${dimensions})` : `Dimensions (${dimensions})`}>
+      <PropSection title={`${d.dimensionsTitle} (${dimensions})`}>
         {dimensionList.length === 0 ? (
           <div style={{ fontSize: 11, color: 'var(--nx-text-3)', padding: '4px 0' }}>
-            {isKo ? '치수 없음' : 'No dimensions'}
+            {d.noDimensions}
           </div>
         ) : (
-          dimensionList.map(d => (
-            <DimensionEditableRow key={d.id} dim={d} isKo={isKo} />
+          dimensionList.map(dim => (
+            <DimensionEditableRow key={dim.id} dim={dim} d={d} />
           ))
         )}
       </PropSection>
@@ -102,7 +105,7 @@ export function SketchLeftPane({ isKo }: SketchLeftPaneProps) {
   );
 }
 
-const CONSTRAINT_GLYPH: Record<string, string> = {
+export const CONSTRAINT_GLYPH: Record<string, string> = {
   coincident: '↗',
   horizontal: '—',
   vertical: '|',
@@ -115,7 +118,7 @@ const CONSTRAINT_GLYPH: Record<string, string> = {
   fix: '◇',
 };
 
-type DimensionRowData = {
+export type DimensionRowData = {
   id: string;
   name: string;
   value: number;
@@ -126,23 +129,14 @@ type DimensionRowData = {
 
 /** i18n for the expression error tooltip. Reasons map to short human strings —
  *  detail is appended verbatim (e.g. the offending identifier name). */
-function formatExprError(err: NonNullable<DimensionRowData['expressionError']>, isKo: boolean): string {
+function formatExprError(err: NonNullable<DimensionRowData['expressionError']>, d: ShellDict): string {
   const detail = err.detail ? ` (${err.detail})` : '';
-  if (isKo) {
-    switch (err.reason) {
-      case 'syntax':              return `수식 오류${detail}`;
-      case 'unknown-identifier':  return `미정의 변수${detail}`;
-      case 'cycle':               return `순환 참조${detail}`;
-      case 'runtime':             return `실행 오류${detail}`;
-      case 'non-finite':          return `유효하지 않은 값${detail}`;
-    }
-  }
   switch (err.reason) {
-    case 'syntax':              return `Syntax error${detail}`;
-    case 'unknown-identifier':  return `Unknown variable${detail}`;
-    case 'cycle':               return `Cyclic reference${detail}`;
-    case 'runtime':             return `Runtime error${detail}`;
-    case 'non-finite':          return `Non-finite value${detail}`;
+    case 'syntax':              return `${d.errSyntax}${detail}`;
+    case 'unknown-identifier':  return `${d.errUnknownVar}${detail}`;
+    case 'cycle':               return `${d.errCycle}${detail}`;
+    case 'runtime':             return `${d.errRuntime}${detail}`;
+    case 'non-finite':          return `${d.errNonFinite}${detail}`;
   }
 }
 
@@ -152,7 +146,7 @@ function formatExprError(err: NonNullable<DimensionRowData['expressionError']>, 
 // Commit via nexyfab:update-sketch-dimension event — Inner listens and
 // calls the sketch store's setDimensionValue (or setDimensionExpression
 // when the committed text isn't a bare number).
-function DimensionEditableRow({ dim, isKo }: { dim: DimensionRowData; isKo: boolean }) {
+export function DimensionEditableRow({ dim, d }: { dim: DimensionRowData; d: ShellDict }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(dim.expression ?? String(dim.value));
   React.useEffect(() => setDraft(dim.expression ?? String(dim.value)), [dim.expression, dim.value]);
@@ -177,7 +171,7 @@ function DimensionEditableRow({ dim, isKo }: { dim: DimensionRowData; isKo: bool
     setEditing(false);
   };
 
-  const errMsg = dim.expressionError ? formatExprError(dim.expressionError, isKo) : null;
+  const errMsg = dim.expressionError ? formatExprError(dim.expressionError, d) : null;
   const hasExpr = !!dim.expression;
   const valueLabel = hasExpr
     ? `${dim.expression} → ${dim.value.toFixed(2)}`
@@ -197,7 +191,7 @@ function DimensionEditableRow({ dim, isKo }: { dim: DimensionRowData; isKo: bool
             if (e.key === 'Enter') commit();
             if (e.key === 'Escape') { setDraft(dim.expression ?? String(dim.value)); setEditing(false); }
           }}
-          placeholder={isKo ? '값 또는 수식 (예: 2*D1)' : 'Value or expression (e.g. 2*D1)'}
+          placeholder={d.valueOrExpr}
           style={{
             flex: 1, minWidth: 0, height: 20, padding: '0 6px',
             border: `1px solid ${errMsg ? 'var(--nx-error)' : 'var(--nx-accent)'}`, borderRadius: 3,
@@ -225,7 +219,7 @@ function DimensionEditableRow({ dim, isKo }: { dim: DimensionRowData; isKo: bool
       </span>
       <span
         onClick={() => setEditing(true)}
-        title={errMsg ?? (isKo ? '클릭하여 편집' : 'Click to edit')}
+        title={errMsg ?? d.clickToEdit}
         style={{
           flex: 1, minWidth: 0,
           fontSize: 11,
@@ -243,7 +237,7 @@ function DimensionEditableRow({ dim, isKo }: { dim: DimensionRowData; isKo: bool
           if (typeof window === 'undefined') return;
           window.dispatchEvent(new CustomEvent('nexyfab:delete-sketch-dimension', { detail: { id: dim.id } }));
         }}
-        aria-label={isKo ? '치수 제거' : 'Remove dimension'}
+        aria-label={d.removeDimension}
         style={{
           width: 16, height: 16, border: 0, background: 'transparent',
           color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 12,

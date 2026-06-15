@@ -19,6 +19,9 @@ export interface StatusBarProps {
   /** Grid / transform snap step (mm). Shown when snap is on. */
   snapSize?: number;
   onSnapSizeChange?: (mm: number) => void;
+  /** Smart snap (edge-to-edge) toggle — orthogonal to grid snap. */
+  smartSnapEnabled?: boolean;
+  onToggleSmartSnap?: () => void;
   sectionActive: boolean;
   sectionAxis: 'x' | 'y' | 'z';
   sectionOffset: number;
@@ -157,6 +160,7 @@ export default function StatusBar({
   selectionCount, activeTool, isSketchMode, editMode,
   featureCount, triangleCount, snapEnabled, onToggleSnap,
   snapSize, onSnapSizeChange,
+  smartSnapEnabled = false, onToggleSmartSnap,
   sectionActive, sectionAxis, sectionOffset,
   onSectionAxisChange, onSectionOffsetChange,
   isOptimizing, progress, onShowShortcuts,
@@ -230,6 +234,17 @@ export default function StatusBar({
       <button onClick={onToggleSnap} style={S.snapBtn(snapEnabled)} title={t.toggleSnap}>
         ⊞ {t.snap}: {snapEnabled ? 'ON' : 'OFF'}
       </button>
+      {onToggleSmartSnap && (
+        <button
+          data-testid="smart-snap-toggle"
+          onClick={onToggleSmartSnap}
+          style={S.snapBtn(smartSnapEnabled)}
+          title="Smart Snap (edge-to-edge)"
+          aria-pressed={smartSnapEnabled}
+        >
+          ◈ Smart: {smartSnapEnabled ? 'ON' : 'OFF'}
+        </button>
+      )}
       {snapEnabled && typeof snapSize === 'number' && onSnapSizeChange && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px', borderRight: '1px solid #21262d', height: '100%' }}>
           <span style={{ fontSize: 9, color: '#484f58' }}>{t.snapStep}</span>

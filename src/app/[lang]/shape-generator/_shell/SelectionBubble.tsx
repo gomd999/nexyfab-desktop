@@ -6,12 +6,14 @@
 // Suppress dispatch the existing tool event channel so Inner can handle.
 
 import { useShellBridge } from './shellBridgeStore';
+import { pickShellDict } from './shellDict';
 
 interface SelectionBubbleProps {
-  isKo: boolean;
+  lang: string;
 }
 
-export function SelectionBubble({ isKo }: SelectionBubbleProps) {
+export function SelectionBubble({ lang }: SelectionBubbleProps) {
+  const d = pickShellDict(lang);
   const kind = useShellBridge(s => s.selectionKind);
   const label = useShellBridge(s => s.selectionLabel);
   const count = useShellBridge(s => s.selectionCount);
@@ -19,14 +21,15 @@ export function SelectionBubble({ isKo }: SelectionBubbleProps) {
 
   if (!kind || !label || editMode === 'sketch') return null;
 
+  const many = count > 1;
   const noun =
-    kind === 'edge' ? (isKo ? '엣지' : 'edge') :
-    kind === 'face' ? (isKo ? '면' : 'face') :
-    kind === 'vertex' ? (isKo ? '꼭짓점' : 'vertex') :
-    kind === 'multi' ? (isKo ? '항목' : 'items') :
+    kind === 'edge' ? (many ? d.nEdges : d.nEdge) :
+    kind === 'face' ? (many ? d.nFaces : d.nFace) :
+    kind === 'vertex' ? (many ? d.nVertices : d.nVertex) :
+    kind === 'multi' ? (many ? d.nItems : d.nItem) :
     kind;
-  const suffix = count > 1 ? `${count}` : '1';
-  const summary = `${suffix} ${noun}${count > 1 && !isKo ? 's' : ''}`;
+  const suffix = many ? `${count}` : '1';
+  const summary = `${suffix} ${noun}`;
 
   return (
     <div
@@ -67,7 +70,7 @@ export function SelectionBubble({ isKo }: SelectionBubbleProps) {
           style={{ height: 22, padding: '0 10px', fontSize: 10 }}
           onClick={() => window.dispatchEvent(new CustomEvent('nexyfab:selection-edit'))}
         >
-          {isKo ? '편집' : 'Edit'}
+          {d.editBtn}
         </button>
         <button
           type="button"
@@ -75,7 +78,7 @@ export function SelectionBubble({ isKo }: SelectionBubbleProps) {
           style={{ height: 22, padding: '0 10px', fontSize: 10 }}
           onClick={() => window.dispatchEvent(new CustomEvent('nexyfab:selection-suppress'))}
         >
-          {isKo ? '억제' : 'Suppress'}
+          {d.suppress}
         </button>
       </div>
     </div>

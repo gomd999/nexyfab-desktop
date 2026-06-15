@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { loc } from './lib/loc';
 
 /**
  * DimensionLinesOverlay — renders BBox dimension arrows + labels on top of
@@ -16,13 +17,12 @@ interface DimensionLinesOverlayProps {
 export default function DimensionLinesOverlay({ bbox, visible, lang }: DimensionLinesOverlayProps) {
   if (!visible || !bbox) return null;
 
-  const isKo = lang === 'ko' || lang === 'kr';
   const fmt = (v: number) => v < 1 ? v.toFixed(2) : v < 10 ? v.toFixed(1) : Math.round(v).toString();
 
   const dims = [
-    { label: isKo ? '폭' : 'W', value: bbox.w, color: '#ff6b6b', position: 'bottom' as const },
-    { label: isKo ? '높이' : 'H', value: bbox.h, color: '#51cf66', position: 'right' as const },
-    { label: isKo ? '깊이' : 'D', value: bbox.d, color: '#339af0', position: 'top' as const },
+    { label: loc(lang, { ko: '폭', en: 'W', ja: '幅', zh: '宽', es: 'An', ar: 'العرض' }), value: bbox.w, color: '#ff6b6b', position: 'bottom' as const },
+    { label: loc(lang, { ko: '높이', en: 'H', ja: '高さ', zh: '高', es: 'Al', ar: 'الارتفاع' }), value: bbox.h, color: '#51cf66', position: 'right' as const },
+    { label: loc(lang, { ko: '깊이', en: 'D', ja: '奥行', zh: '深', es: 'Pr', ar: 'العمق' }), value: bbox.d, color: '#339af0', position: 'top' as const },
   ];
 
   return (

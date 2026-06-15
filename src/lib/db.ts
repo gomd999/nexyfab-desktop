@@ -1650,6 +1650,14 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       ALTER TABLE nf_rfqs ADD COLUMN analysis_summary TEXT;
     `,
   },
+  {
+    version: 74,
+    name: 'inquiry_factory_id',
+    sql: `
+      ALTER TABLE nf_inquiries ADD COLUMN factory_id TEXT;
+      CREATE INDEX IF NOT EXISTS idx_inquiries_factory ON nf_inquiries(factory_id);
+    `,
+  },
 ];
 
 function runMigrations(db: Database.Database): void {

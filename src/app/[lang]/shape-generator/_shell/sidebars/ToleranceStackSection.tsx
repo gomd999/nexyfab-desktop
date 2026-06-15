@@ -6,6 +6,8 @@
 import { useMemo, useState } from 'react';
 import { PropSection } from './';
 import { analyzeStackUp, monteCarloStackUp, type ChainLink, type MonteCarloResult, type StackUpResult } from '../../annotations/toleranceStackUp';
+import { useLang } from '../../hooks/useLang';
+import { loc } from '../../lib/loc';
 
 export interface ToleranceStackSectionProps {
   isKo: boolean;
@@ -18,6 +20,7 @@ const DEFAULT_CHAIN: ChainLink[] = [
 ];
 
 export function ToleranceStackSection({ isKo }: ToleranceStackSectionProps) {
+  const lang = useLang();
   const [chain, setChain] = useState<ChainLink[]>(DEFAULT_CHAIN);
   const [mode, setMode] = useState<'worst' | 'rss' | 'mc'>('worst');
 
@@ -36,7 +39,7 @@ export function ToleranceStackSection({ isKo }: ToleranceStackSectionProps) {
   };
 
   return (
-    <PropSection title={isKo ? '공차 누적' : 'Tolerance Stack-up'} defaultExpanded={false}>
+    <PropSection title={loc(lang, { ko: '공차 누적', en: 'Tolerance Stack-up', ja: '公差積み上げ', zh: '公差堆叠', es: 'Acumulación de Tolerancias', ar: 'تراكم التفاوتات' })} defaultExpanded={false}>
       {/* Mode pills */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
         {(['worst', 'rss', 'mc'] as const).map(m => (
@@ -51,7 +54,7 @@ export function ToleranceStackSection({ isKo }: ToleranceStackSectionProps) {
               borderRadius: 3,
             }}
           >
-            {m === 'worst' ? (isKo ? '최악' : 'Worst') : m === 'rss' ? 'RSS' : (isKo ? '몬테카를로' : 'Monte Carlo')}
+            {m === 'worst' ? loc(lang, { ko: '최악', en: 'Worst', ja: '最悪', zh: '最差', es: 'Peor caso', ar: 'الأسوأ' }) : m === 'rss' ? 'RSS' : loc(lang, { ko: '몬테카를로', en: 'Monte Carlo', ja: 'モンテカルロ', zh: '蒙特卡洛', es: 'Monte Carlo', ar: 'مونت كارلو' })}
           </button>
         ))}
       </div>
@@ -105,7 +108,7 @@ export function ToleranceStackSection({ isKo }: ToleranceStackSectionProps) {
             background: 'transparent', color: 'var(--nx-text-3)', fontSize: 10, cursor: 'pointer',
           }}
         >
-          + {isKo ? '체인 링크 추가' : 'Add link'}
+          + {loc(lang, { ko: '체인 링크 추가', en: 'Add link', ja: 'リンク追加', zh: '添加链节', es: 'Añadir eslabón', ar: 'إضافة حلقة' })}
         </button>
       </div>
 
@@ -115,12 +118,12 @@ export function ToleranceStackSection({ isKo }: ToleranceStackSectionProps) {
         fontSize: 11, fontFamily: 'ui-monospace, monospace', color: 'var(--nx-text)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--nx-text-2)' }}>{isKo ? '명목' : 'Nominal'}</span>
+          <span style={{ color: 'var(--nx-text-2)' }}>{loc(lang, { ko: '명목', en: 'Nominal', ja: '公称', zh: '名义', es: 'Nominal', ar: 'اسمي' })}</span>
           <span>{result.nominal.toFixed(3)} mm</span>
         </div>
         {mode === 'worst' && (
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: 'var(--nx-text-2)' }}>{isKo ? '최악' : 'Worst-case'}</span>
+            <span style={{ color: 'var(--nx-text-2)' }}>{loc(lang, { ko: '최악', en: 'Worst-case', ja: '最悪ケース', zh: '最差情况', es: 'Peor caso', ar: 'أسوأ حالة' })}</span>
             <span style={{ color: 'var(--nx-warn, #ffa800)' }}>
               [{result.worstCase.min.toFixed(3)}, {result.worstCase.max.toFixed(3)}] mm
             </span>
@@ -135,11 +138,11 @@ export function ToleranceStackSection({ isKo }: ToleranceStackSectionProps) {
         {mode === 'mc' && mc && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--nx-text-2)' }}>{isKo ? '평균' : 'Mean'}</span>
+              <span style={{ color: 'var(--nx-text-2)' }}>{loc(lang, { ko: '평균', en: 'Mean', ja: '平均', zh: '平均值', es: 'Media', ar: 'المتوسط' })}</span>
               <span>{mc.mean.toFixed(3)} mm</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--nx-text-2)' }}>{isKo ? '표준편차' : 'Stddev'}</span>
+              <span style={{ color: 'var(--nx-text-2)' }}>{loc(lang, { ko: '표준편차', en: 'Stddev', ja: '標準偏差', zh: '标准差', es: 'Desv. estándar', ar: 'الانحراف المعياري' })}</span>
               <span>±{mc.stddev.toFixed(3)} mm</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>

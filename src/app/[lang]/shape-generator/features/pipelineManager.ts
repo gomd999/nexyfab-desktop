@@ -5,6 +5,7 @@ import type { FeatureDefinition, FeatureInstance, MapBackedFeatureType } from '.
 import { classifyFeatureError } from './featureDiagnostics';
 import { profileToGeometry, countContourEdgesPerSegment, brepContourPoints } from '../sketch/extrudeProfile';
 import { reportError } from '../lib/telemetry';
+import { captureKernelFailure } from './kernelCorpus';
 import {
   cacheGet,
   cachePut,
@@ -135,6 +136,20 @@ export async function runPipelineAsync(
 
 // ─── Internal loop ──────────────────────────────────────────────────────────
 
+/**
+ * Phase-4 corpus support: carry the applied feature-type stack forward on
+ * userData so a kernel-failure capture (here or inside a feature's OCCT
+ * fallback path) can record "what was built up to this point" as part of the
+ * minimal repro signature. A string-array copy per feature — negligible.
+ */
+function stampFeatureStack(next: THREE.BufferGeometry, prev: THREE.BufferGeometry, featureType: string): void {
+  const prevStack = (prev.userData as { nfabFeatureStack?: string[] } | undefined)?.nfabFeatureStack;
+  next.userData = {
+    ...next.userData,
+    nfabFeatureStack: [...(Array.isArray(prevStack) ? prevStack : []), featureType],
+  };
+}
+
 function runLoopSync(
   baseGeometry: THREE.BufferGeometry,
   features: FeatureInstance[],
@@ -170,6 +185,11 @@ function runLoopSync(
         featureId: f.id,
         targetEdgeIds: f.targetEdgeIds,
         targetFaceIds: f.targetFaceIds,
+        // Click-time selections were async-loop-only historically; the sync
+        // loop passes them too so selection-driven features (offsetFace mesh
+        // path) behave identically in both loops.
+        edgeSelections: f.edgeSelections,
+        faceSelections: f.faceSelections,
       });
       if (!next || !next.attributes.position || next.attributes.position.count === 0) {
         cacheDelete(key);
@@ -194,6 +214,7 @@ function runLoopSync(
       // tool before calling applyCSG, and the Evaluator preserves the
       // attribute so the mixed result keeps the correct per-triangle ids.
       stampFaceFeatureIdAll(next, f.id);
+      stampFeatureStack(next, geo, f.type);
       cachePut(key, next);
       geo = next;
     } catch (e) {
@@ -205,6 +226,16 @@ function runLoopSync(
         featureType: f.type,
         params: f.params,
         diagnosticCode: classifyFeatureError(f.type, msg, { nodeId: f.id }).code,
+      });
+      // Phase-4 corpus: minimal repro record (forward:false — the reportError
+      // above already shipped the failure through telemetry).
+      captureKernelFailure({
+        op: f.type,
+        stage: 'pipeline',
+        params: { ...f.params, featureId: f.id },
+        geometry: geo,
+        error: e,
+        forward: false,
       });
     }
   }
@@ -285,6 +316,7 @@ async function runLoopAsync(
       stampGeoId(next);
       // B1 (face provenance) — see sync loop for rationale.
       stampFaceFeatureIdAll(next, f.id);
+      stampFeatureStack(next, geo, f.type);
       cachePut(key, next);
       geo = next;
     } catch (e) {
@@ -296,6 +328,15 @@ async function runLoopAsync(
         featureType: f.type,
         params: f.params,
         diagnosticCode: classifyFeatureError(f.type, msg, { nodeId: f.id }).code,
+      });
+      // Phase-4 corpus — see sync loop for rationale.
+      captureKernelFailure({
+        op: f.type,
+        stage: 'pipeline',
+        params: { ...f.params, featureId: f.id },
+        geometry: geo,
+        error: e,
+        forward: false,
       });
     }
     computed++;
@@ -536,8 +577,25 @@ function runSketchExtrude(
             }
           }
         }
-      } catch {
+      } catch (brepErr) {
         brepHandle = null; // never break the working mesh path
+        // Phase-4 corpus: a failed B-rep build here silently drops the whole
+        // downstream chain to bbox/mesh — exactly the kind of kernel failure
+        // the corpus exists to accumulate.
+        captureKernelFailure({
+          op: 'sketchExtrude',
+          stage: 'brep-chain',
+          params: {
+            featureId: f.id,
+            operation: operation ?? 'add',
+            mode: config.mode ?? 'extrude',
+            depth: config.depth ?? 0,
+            segments: profile.segments.length,
+          },
+          geometry: geo,
+          error: brepErr,
+          resolution: { strategy: 'mesh-fallback' },
+        });
       }
     }
 
@@ -547,6 +605,7 @@ function runSketchExtrude(
       topoFaceMapByFeature: mergedMap,
       ...(brepHandle ? { occtHandle: brepHandle } : {}),
     };
+    stampFeatureStack(result, geo, 'sketchExtrude');
     cachePut(key, result);
     return result;
   } catch (e) {

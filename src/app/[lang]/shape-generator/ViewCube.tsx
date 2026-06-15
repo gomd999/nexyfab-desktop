@@ -288,7 +288,7 @@ export function ViewCubeOverlay() {
     position: 'absolute',
     width: CUBE_SIZE,
     height: CUBE_SIZE,
-    background: hovered === id ? 'rgba(88, 166, 255, 0.9)' : 'rgba(22, 27, 34, 0.75)',
+    background: hovered === id ? 'rgba(88, 166, 255, 0.9)' : 'var(--nx-glass-strong)',
     border: `1.5px solid ${hovered === id ? 'var(--nx-accent-2)' : 'var(--nx-border)'}`,
     boxShadow: hovered === id 
       ? '0 0 16px rgba(88, 166, 255, 0.4), inset 0 0 10px rgba(255,255,255,0.2)' 
@@ -384,8 +384,8 @@ export function ViewCubeOverlay() {
             width: 24,
             height: 24,
             borderRadius: '50%',
-            background: 'rgba(22, 27, 34, 0.8)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'var(--nx-glass-strong)',
+            border: '1px solid var(--nx-border)',
             color: 'var(--nx-text)',
             display: 'flex',
             alignItems: 'center',
@@ -493,7 +493,7 @@ export function ViewCubeOverlay() {
             fontFamily: '"Inter", system-ui, sans-serif',
             pointerEvents: 'none',
             letterSpacing: '0.1em',
-            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+            textShadow: '0 0 2px var(--nx-bg), 0 0 4px var(--nx-bg)'
           }}
         >
           {hovered ? hovered.replace(/-/g, ' ').toUpperCase() : ''}

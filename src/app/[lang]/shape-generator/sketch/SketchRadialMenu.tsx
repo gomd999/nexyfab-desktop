@@ -111,8 +111,8 @@ export default function SketchRadialMenu({
           width: MENU_R * 1.7,
           height: MENU_R * 1.7,
           borderRadius: '50%',
-          background: 'rgba(241,243,245,0.92)',
-          border: '1px solid var(--nx-text)',
+          background: 'var(--nx-panel)',
+          border: '1px solid var(--nx-border)',
           boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
           pointerEvents: 'auto',
         }}
@@ -135,8 +135,8 @@ export default function SketchRadialMenu({
               width: BTN_INNER_R * 2,
               height: BTN_INNER_R * 2,
               borderRadius: '50%',
-              border: '1px solid #bfbfbf',
-              background: '#f0f3f6',
+              border: '1px solid var(--nx-border)',
+              background: 'var(--nx-panel-2)',
               color: 'var(--nx-text)',
               fontSize: 12,
               cursor: 'pointer',
@@ -149,11 +149,11 @@ export default function SketchRadialMenu({
             }}
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'scale(1.06)';
-              e.currentTarget.style.background = 'var(--nx-text)';
+              e.currentTarget.style.background = 'var(--nx-accent-soft)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.background = '#f0f3f6';
+              e.currentTarget.style.background = 'var(--nx-panel-2)';
             }}
           >
             <span style={{ lineHeight: 1 }}>{item.icon}</span>
@@ -178,8 +178,8 @@ export default function SketchRadialMenu({
               width: BTN_R * 2,
               height: BTN_R * 2,
               borderRadius: '50%',
-              border: '1px solid #d0d7de',
-              background: 'var(--nx-text)',
+              border: '1px solid var(--nx-border)',
+              background: 'var(--nx-panel)',
               color: 'var(--nx-text)',
               fontSize: 14,
               cursor: 'pointer',
@@ -196,7 +196,7 @@ export default function SketchRadialMenu({
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.background = 'var(--nx-text)';
+              e.currentTarget.style.background = 'var(--nx-panel)';
             }}
           >
             <span style={{ lineHeight: 1 }}>{item.icon}</span>
@@ -212,8 +212,8 @@ export default function SketchRadialMenu({
             width: LINEAR_W,
             maxHeight: (MENU_R + BTN_R) * 2 - 16,
             overflowY: 'auto',
-            background: 'rgba(255,255,255,0.98)',
-            border: '1px solid var(--nx-text)',
+            background: 'var(--nx-panel)',
+            border: '1px solid var(--nx-border)',
             borderRadius: 8,
             boxShadow: '0 8px 28px rgba(0,0,0,0.12)',
             pointerEvents: 'auto',
@@ -236,19 +236,19 @@ export default function SketchRadialMenu({
                 gap: 8,
                 padding: '8px 12px',
                 border: 'none',
-                borderBottom: '1px solid #eaeef2',
+                borderBottom: '1px solid var(--nx-border)',
                 background: 'transparent',
                 cursor: 'pointer',
                 fontSize: 12,
                 color: 'var(--nx-text)',
                 textAlign: 'left',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#f0f3f6'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-panel-2)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
               <span style={{ fontWeight: 600 }}>{item.label}</span>
               {item.shortcut ? (
-                <span style={{ fontSize: 10, color: '#6e7781', fontFamily: 'ui-monospace, monospace' }}>{item.shortcut}</span>
+                <span style={{ fontSize: 10, color: 'var(--nx-text-3)', fontFamily: 'ui-monospace, monospace' }}>{item.shortcut}</span>
               ) : null}
             </button>
           ))}

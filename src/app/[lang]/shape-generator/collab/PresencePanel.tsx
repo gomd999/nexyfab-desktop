@@ -25,9 +25,13 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useCollabPresence } from './CollabProvider';
+import { useCollabPresenceOptional } from './CollabProvider';
 import { CollabSafe } from './CollabSafe';
 import type { PeerInfo } from './awareness';
+// ─── Z7 boundary-marked import (activity feed embed) ────────────────────────
+import { ActivityFeed } from './ActivityFeedPanel';
+import { useActivityFeed } from './useActivityFeed';
+// ─── End Z7 boundary ────────────────────────────────────────────────────────
 
 // ─── i18n dict (6 languages) ────────────────────────────────────────────────
 
@@ -50,6 +54,7 @@ const DICT: Record<Lang, Record<string, string>> = {
     collapse: '접기',
     expand: '펼치기',
     alone: '혼자 작업 중',
+    activityTab: '활동',
   },
   en: {
     presence: 'Presence',
@@ -67,6 +72,7 @@ const DICT: Record<Lang, Record<string, string>> = {
     collapse: 'Collapse',
     expand: 'Expand',
     alone: 'You are alone',
+    activityTab: 'Activity',
   },
   ja: {
     presence: 'プレゼンス',
@@ -84,6 +90,7 @@ const DICT: Record<Lang, Record<string, string>> = {
     collapse: '折りたたむ',
     expand: '展開',
     alone: '一人で作業中',
+    activityTab: 'アクティビティ',
   },
   cn: {
     presence: '在线状态',
@@ -101,6 +108,7 @@ const DICT: Record<Lang, Record<string, string>> = {
     collapse: '折叠',
     expand: '展开',
     alone: '独自工作中',
+    activityTab: '活动',
   },
   es: {
     presence: 'Presencia',
@@ -118,6 +126,7 @@ const DICT: Record<Lang, Record<string, string>> = {
     collapse: 'Contraer',
     expand: 'Expandir',
     alone: 'Estás solo',
+    activityTab: 'Actividad',
   },
   ar: {
     presence: 'الحضور',
@@ -135,6 +144,7 @@ const DICT: Record<Lang, Record<string, string>> = {
     collapse: 'طي',
     expand: 'توسيع',
     alone: 'تعمل وحدك',
+    activityTab: 'النشاط',
   },
 };
 
@@ -238,7 +248,7 @@ function PresencePanelInner(props: PresencePanelProps) {
     getInviteUrl,
   } = props;
   const t = DICT[lang] ?? DICT.en;
-  const { localPeer, remotePeers } = useCollabPresence();
+  const { localPeer, remotePeers } = useCollabPresenceOptional();
   const [collapsed, setCollapsed] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'ok' | 'err'>('idle');
 
@@ -288,8 +298,9 @@ function PresencePanelInner(props: PresencePanelProps) {
     window.setTimeout(() => setCopyState('idle'), 1500);
   }, [getInviteUrl]);
 
-  // Auto-hide when only self is present.
-  if (!forceShow && remoteList.length === 0) {
+  // No <CollabProvider> upstream (bare modeler route) → nothing to show.
+  // Also auto-hide when only self is present.
+  if (!localPeer || (!forceShow && remoteList.length === 0)) {
     return null;
   }
 
@@ -429,6 +440,65 @@ function PresencePanelInner(props: PresencePanelProps) {
               ? t.inviteFailed
               : t.inviteLink}
           </button>
+
+          {/* ── Z7 boundary-marked addition ── activity tab ── */}
+          <ActivityTabSection labelActivity={t.activityTab} lang={lang} />
+          {/* ── End Z7 boundary ── */}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Z7 boundary-marked Activity tab section ──────────────────────────────
+//
+// One additional sub-section at the bottom of PresencePanel's body. The
+// section auto-hides when the activity log is empty so the unchanged-
+// rendering invariant holds for the "no activity" case.
+
+function ActivityTabSection(props: { labelActivity: string; lang: Lang }): React.ReactNode {
+  const { labelActivity, lang } = props;
+  const [open, setOpen] = useState(false);
+  const { entries } = useActivityFeed();
+
+  // Auto-hide when log is empty — existing rendering unchanged in this case.
+  if (entries.length === 0) return null;
+
+  return (
+    <div data-testid="collab-presence-activity-section" style={{ marginTop: 8 }}>
+      <button
+        type="button"
+        data-testid="collab-presence-activity-toggle"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        style={{
+          padding: '4px 8px',
+          width: '100%',
+          borderRadius: 6,
+          border: '1px solid var(--nx-border, #374151)',
+          background: 'var(--nx-panel, #111827)',
+          color: 'inherit',
+          fontFamily: 'inherit',
+          fontSize: 10,
+          fontWeight: 600,
+          cursor: 'pointer',
+          display: 'flex',
+          justifyContent: 'space-between',
+        }}
+      >
+        <span>{labelActivity} ({entries.length})</span>
+        <span style={{ color: 'var(--nx-text-3, #9ca3af)' }}>{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div
+          data-testid="collab-presence-activity-body"
+          style={{
+            marginTop: 4,
+            maxHeight: 180,
+            overflowY: 'auto',
+          }}
+        >
+          <ActivityFeed lang={lang} compact maxRows={10} />
         </div>
       )}
     </div>

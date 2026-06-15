@@ -85,18 +85,18 @@ function NexyfabAIInsight({ summary, isKo, token }: {
   }
 
   return (
-    <div style={{ background: 'linear-gradient(135deg, #1a1f35 0%, #161b22 100%)', border: '1px solid #30363d', borderRadius: 16, padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div style={{ background: 'linear-gradient(135deg, #1a1f35 0%, var(--nx-panel) 100%)', border: '1px solid var(--nx-border)', borderRadius: 16, padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
       <span style={{ fontSize: 20 }}>✨</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ margin: '0 0 2px', fontSize: 11, color: '#8b9cf4', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           AI {isKo ? '인사이트' : 'Insight'}
         </p>
         {insight ? (
-          <p style={{ margin: 0, fontSize: 13, color: '#c9d1d9', lineHeight: 1.5 }}>{insight}</p>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--nx-text)', lineHeight: 1.5 }}>{insight}</p>
         ) : loading ? (
-          <p style={{ margin: 0, fontSize: 13, color: '#6e7681' }}>{isKo ? 'AI가 분석 중…' : 'Analyzing…'}</p>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--nx-text-3)' }}>{isKo ? 'AI가 분석 중…' : 'Analyzing…'}</p>
         ) : (
-          <p style={{ margin: 0, fontSize: 13, color: '#6e7681' }}>{isKo ? '현황을 AI로 분석해보세요.' : 'Get AI analysis of your current status.'}</p>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--nx-text-3)' }}>{isKo ? '현황을 AI로 분석해보세요.' : 'Get AI analysis of your current status.'}</p>
         )}
       </div>
       {!insight && !loading && (
@@ -112,10 +112,10 @@ function NexyfabAIInsight({ summary, isKo, token }: {
 }
 
 const PLAN_INFO: Record<string, { label: string; color: string; projectLimit: number }> = {
-  free:       { label: 'Free',       color: '#6e7681', projectLimit: 3 },
-  pro:        { label: 'Pro',        color: '#388bfd', projectLimit: Infinity },
+  free:       { label: 'Free',       color: 'var(--nx-text-3)', projectLimit: 3 },
+  pro:        { label: 'Pro',        color: 'var(--nx-accent)', projectLimit: Infinity },
   team:       { label: 'Team',       color: '#a371f7', projectLimit: Infinity },
-  enterprise: { label: 'Enterprise', color: '#d29922', projectLimit: Infinity },
+  enterprise: { label: 'Enterprise', color: 'var(--nx-warn)', projectLimit: Infinity },
 };
 
 function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }) {
@@ -533,22 +533,22 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#0d1117',
-      fontFamily: 'system-ui, -apple-system, sans-serif', color: '#e6edf3',
+      minHeight: '100vh', background: 'var(--nx-bg)',
+      fontFamily: 'system-ui, -apple-system, sans-serif', color: 'var(--nx-text)',
     }}>
       {/* Header */}
       <div style={{
-        borderBottom: '1px solid #21262d', padding: '16px 32px',
+        borderBottom: '1px solid var(--nx-panel-2)', padding: '16px 32px',
         display: 'flex', alignItems: 'center', gap: 16,
-        position: 'sticky', top: 0, background: '#0d1117', zIndex: 10,
+        position: 'sticky', top: 0, background: 'var(--nx-bg)', zIndex: 10,
       }}>
         <Link prefetch href={`/${lang}/shape-generator`} style={{
-          fontSize: 18, fontWeight: 800, color: '#e6edf3', textDecoration: 'none',
+          fontSize: 18, fontWeight: 800, color: 'var(--nx-text)', textDecoration: 'none',
         }}>
           <span style={{ color: '#8b9cf4' }}>Nexy</span>Fab
         </Link>
-        <span style={{ color: '#30363d' }}>|</span>
-        <span style={{ fontSize: 14, color: '#6e7681' }}>{isKo ? '내 프로젝트' : 'My Projects'}</span>
+        <span style={{ color: 'var(--nx-border)' }}>|</span>
+        <span style={{ fontSize: 14, color: 'var(--nx-text-3)' }}>{isKo ? '내 프로젝트' : 'My Projects'}</span>
         <div style={{ flex: 1 }} />
         {user && (
           <div style={{
@@ -573,16 +573,16 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             }}>
               <span style={{ fontSize: 28 }}>🔒</span>
               <div style={{ flex: 1 }}>
-                <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 800, color: '#e6edf3' }}>
+                <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 800, color: 'var(--nx-text)' }}>
                   {isKo ? '로그인 후 대시보드를 이용하세요' : 'Sign in to access your dashboard'}
                 </p>
-                <p style={{ margin: 0, fontSize: 12, color: '#6e7681' }}>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--nx-text-3)' }}>
                   {isKo ? '프로젝트, RFQ, 주문, 지출을 한 눈에 확인할 수 있습니다.' : 'Track your projects, RFQs, orders, and spending in one place.'}
                 </p>
               </div>
               <button onClick={() => setShowAuth(true)} style={{
                 padding: '9px 22px', borderRadius: 8,
-                background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
+                background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
                 border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                 whiteSpace: 'nowrap',
               }}>
@@ -599,14 +599,14 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 { label: isKo ? '이번달 지출' : 'Monthly Spend', icon: '💰' },
               ].map(card => (
                 <div key={card.label} style={{
-                  background: '#161b22', border: '1px solid #30363d',
+                  background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
                   borderRadius: 16, padding: '20px', position: 'relative', overflow: 'hidden',
                 }}>
-                  <p style={{ margin: '0 0 8px', fontSize: 11, color: '#6e7681', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--nx-text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     {card.icon} {card.label}
                   </p>
-                  <p style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 800, color: '#30363d' }}>—</p>
-                  <p style={{ margin: 0, fontSize: 11, color: '#388bfd', opacity: 0.7 }}>
+                  <p style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 800, color: 'var(--nx-border)' }}>—</p>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--nx-accent)', opacity: 0.7 }}>
                     {isKo ? '로그인 후 확인' : 'Sign in to view'}
                   </p>
                   <div style={{
@@ -622,12 +622,12 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
 
             {/* Quick actions preview */}
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
-              <p style={{ color: '#6e7681', fontSize: 14, marginBottom: 20 }}>
+              <p style={{ color: 'var(--nx-text-3)', fontSize: 14, marginBottom: 20 }}>
                 {isKo ? 'NexyFab에서 설계부터 제조까지 한 번에' : 'From design to manufacturing — all in one place'}
               </p>
               <button onClick={() => setShowAuth(true)} style={{
                 padding: '10px 28px', borderRadius: 8,
-                background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
+                background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
                 border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
               }}>
                 {isKo ? '지금 시작하기 →' : 'Get started →'}
@@ -645,7 +645,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
               {/* Refresh button + timestamp */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {lastRefreshed && (
-                  <span style={{ fontSize: 10, color: '#6e7681' }}>
+                  <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
                     {isKo ? '최근 업데이트' : 'Updated'} {lastRefreshed.toLocaleTimeString()}
                   </span>
                 )}
@@ -654,8 +654,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   disabled={isLoading || filesLoading}
                   title={isKo ? '새로고침' : 'Refresh'}
                   style={{
-                    padding: '5px 10px', borderRadius: 6, border: '1px solid #30363d',
-                    background: 'transparent', color: '#8b949e', fontSize: 13,
+                    padding: '5px 10px', borderRadius: 6, border: '1px solid var(--nx-border)',
+                    background: 'transparent', color: 'var(--nx-text-2)', fontSize: 13,
                     cursor: isLoading || filesLoading ? 'default' : 'pointer',
                     opacity: isLoading || filesLoading ? 0.5 : 1,
                   }}
@@ -671,8 +671,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   placeholder={isKo ? '프로젝트 검색...' : 'Search projects...'}
                   style={{
                     padding: '7px 12px', borderRadius: 8, width: 200,
-                    background: '#161b22', border: '1px solid #30363d',
-                    color: '#e6edf3', fontSize: 13, outline: 'none',
+                    background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
+                    color: 'var(--nx-text)', fontSize: 13, outline: 'none',
                   }}
                 />
               )}
@@ -690,8 +690,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   }}
                   style={{
                     padding: '8px 18px', borderRadius: 8, border: 'none',
-                    background: atLimit ? '#21262d' : 'linear-gradient(135deg, #388bfd, #8b5cf6)',
-                    color: atLimit ? '#6e7681' : '#fff',
+                    background: atLimit ? 'var(--nx-panel-2)' : 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
+                    color: atLimit ? 'var(--nx-text-3)' : '#fff',
                     fontSize: 13, fontWeight: 700, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', gap: 6,
                   }}
@@ -711,7 +711,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   trend: summaryLoading ? '' : (summary?.activeProjects ?? 0) > 0
                     ? (isKo ? `총 ${summary?.activeProjects}개 프로젝트` : `${summary?.activeProjects} total`)
                     : (isKo ? '아직 프로젝트 없음' : 'No projects yet'),
-                  trendColor: '#6e7681',
+                  trendColor: 'var(--nx-text-3)',
                 },
                 {
                   label: isKo ? '대기 중 RFQ' : 'Pending RFQs',
@@ -720,7 +720,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   trend: summaryLoading ? '' : (summary?.pendingRfqs ?? 0) > 0
                     ? (isKo ? '검토 대기 중' : 'Awaiting review')
                     : (isKo ? '없음' : 'None pending'),
-                  trendColor: (summary?.pendingRfqs ?? 0) > 0 ? '#d29922' : '#6e7681',
+                  trendColor: (summary?.pendingRfqs ?? 0) > 0 ? 'var(--nx-warn)' : 'var(--nx-text-3)',
                 },
                 {
                   label: isKo ? '진행 중 주문' : 'Active Orders',
@@ -729,7 +729,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   trend: summaryLoading ? '' : (summary?.activeOrders ?? 0) > 0
                     ? (isKo ? '생산/배송 중' : 'In production/shipping')
                     : (isKo ? '진행 중 없음' : 'None active'),
-                  trendColor: (summary?.activeOrders ?? 0) > 0 ? '#3fb950' : '#6e7681',
+                  trendColor: (summary?.activeOrders ?? 0) > 0 ? 'var(--nx-ok)' : 'var(--nx-text-3)',
                 },
                 {
                   label: isKo ? '이번달 지출' : 'Monthly Spend',
@@ -740,13 +740,13 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 },
               ].map(card => (
                 <div key={card.label} style={{
-                  background: '#161b22', border: '1px solid #30363d',
+                  background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
                   borderRadius: 16, padding: '20px', transition: 'border-color 0.15s',
                 }}>
-                  <p style={{ margin: '0 0 6px', fontSize: 11, color: '#6e7681', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--nx-text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     {card.icon} {card.label}
                   </p>
-                  <p style={{ margin: '0 0 5px', fontSize: 26, fontWeight: 800, color: '#e6edf3', letterSpacing: '-0.02em' }}>
+                  <p style={{ margin: '0 0 5px', fontSize: 26, fontWeight: 800, color: 'var(--nx-text)', letterSpacing: '-0.02em' }}>
                     {card.value}
                   </p>
                   <p style={{ margin: 0, fontSize: 11, color: card.trendColor }}>
@@ -767,46 +767,46 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
 
             {/* ── Recent Activity Feed ──────────────────────────────────── */}
             <div style={{
-              background: '#161b22', border: '1px solid #30363d',
+              background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
               borderRadius: 16, padding: '18px 20px', marginBottom: 24,
             }}>
-              <h2 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 800, color: '#e6edf3' }}>
+              <h2 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 800, color: 'var(--nx-text)' }}>
                 🕐 {isKo ? '최근 활동' : 'Recent Activity'}
               </h2>
               {activityLoading ? (
-                <p style={{ color: '#6e7681', fontSize: 13, margin: 0, padding: '12px 0' }}>
+                <p style={{ color: 'var(--nx-text-3)', fontSize: 13, margin: 0, padding: '12px 0' }}>
                   {isKo ? '불러오는 중...' : 'Loading...'}
                 </p>
               ) : activity.length === 0 ? (
-                <p style={{ color: '#6e7681', fontSize: 13, margin: 0, padding: '8px 0' }}>
+                <p style={{ color: 'var(--nx-text-3)', fontSize: 13, margin: 0, padding: '8px 0' }}>
                   {isKo ? '아직 활동 내역이 없습니다.' : 'No recent activity yet.'}
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                   {activity.map((item, i) => {
                     const typeConfig: Record<ActivityItem['type'], { icon: string; border: string }> = {
-                      rfq_submitted:  { icon: '📋', border: '#d29922' },
-                      quote_received: { icon: '💬', border: '#388bfd' },
-                      order_milestone:{ icon: '🏭', border: '#3fb950' },
+                      rfq_submitted:  { icon: '📋', border: 'var(--nx-warn)' },
+                      quote_received: { icon: '💬', border: 'var(--nx-accent)' },
+                      order_milestone:{ icon: '🏭', border: 'var(--nx-ok)' },
                       contract_signed:{ icon: '📝', border: '#a371f7' },
                       project_created:{ icon: '📁', border: '#8b9cf4' },
                     };
-                    const cfg = typeConfig[item.type] ?? { icon: '•', border: '#30363d' };
+                    const cfg = typeConfig[item.type] ?? { icon: '•', border: 'var(--nx-border)' };
                     return (
                       <div key={item.id} style={{
                         display: 'flex', alignItems: 'flex-start', gap: 12,
                         padding: '10px 0',
-                        borderBottom: i < activity.length - 1 ? '1px solid #21262d' : 'none',
+                        borderBottom: i < activity.length - 1 ? '1px solid var(--nx-panel-2)' : 'none',
                         borderLeft: `3px solid ${cfg.border}`,
                         paddingLeft: 12,
                         marginLeft: -12,
                       }}>
                         <span style={{ fontSize: 16, lineHeight: 1.4 }}>{cfg.icon}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 13, color: '#c9d1d9', fontWeight: 500 }}>
+                          <p style={{ margin: 0, fontSize: 13, color: 'var(--nx-text)', fontWeight: 500 }}>
                             {item.message}
                           </p>
-                          <p style={{ margin: '2px 0 0', fontSize: 11, color: '#6e7681' }}>
+                          <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--nx-text-3)' }}>
                             {formatDateTime(item.createdAt)}
                           </p>
                         </div>
@@ -831,23 +831,23 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   href={action.href}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
-                    background: '#161b22', border: '1px solid #30363d',
+                    background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
                     borderRadius: 12, padding: '14px 16px',
-                    textDecoration: 'none', color: '#e6edf3',
+                    textDecoration: 'none', color: 'var(--nx-text)',
                     transition: 'border-color 0.15s, background 0.15s',
                   }}
                   onMouseEnter={e => {
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#58a6ff';
+                    (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--nx-accent-2)';
                     (e.currentTarget as HTMLAnchorElement).style.background = '#1c2c3e';
                   }}
                   onMouseLeave={e => {
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#30363d';
-                    (e.currentTarget as HTMLAnchorElement).style.background = '#161b22';
+                    (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--nx-border)';
+                    (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-panel)';
                   }}
                 >
                   <span style={{ fontSize: 20 }}>{action.icon}</span>
                   <span style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>{action.title}</span>
-                  <span style={{ fontSize: 16, color: '#6e7681' }}>→</span>
+                  <span style={{ fontSize: 16, color: 'var(--nx-text-3)' }}>→</span>
                 </Link>
               ))}
             </div>
@@ -855,7 +855,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             {/* Tab switcher */}
             <div style={{
               display: 'flex', gap: 0, marginBottom: 24,
-              borderBottom: '1px solid #21262d',
+              borderBottom: '1px solid var(--nx-panel-2)',
             }}>
               {(['projects', 'rfqs', 'orders', 'files', 'teams'] as const).map(tab => (
                 <button
@@ -863,10 +863,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   onClick={() => setActiveTab(tab)}
                   style={{
                     padding: '8px 20px', border: 'none', background: 'transparent',
-                    color: activeTab === tab ? '#e6edf3' : '#6e7681',
+                    color: activeTab === tab ? 'var(--nx-text)' : 'var(--nx-text-3)',
                     fontSize: 13, fontWeight: activeTab === tab ? 700 : 400,
                     cursor: 'pointer',
-                    borderBottom: `2px solid ${activeTab === tab ? '#388bfd' : 'transparent'}`,
+                    borderBottom: `2px solid ${activeTab === tab ? 'var(--nx-accent)' : 'transparent'}`,
                     marginBottom: -1,
                     transition: 'color 0.15s',
                   }}
@@ -902,24 +902,24 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             {/* Plan usage bar (only for limited plans) */}
             {planInfo.projectLimit !== Infinity && (
               <div style={{
-                background: '#161b22', border: '1px solid #30363d',
+                background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
                 borderRadius: 10, padding: '12px 16px', marginBottom: 24,
                 display: 'flex', alignItems: 'center', gap: 12,
               }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, color: '#8b949e' }}>
+                    <span style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>
                       {isKo ? '프로젝트 사용량' : 'Project usage'}
                     </span>
-                    <span style={{ fontSize: 12, color: '#e6edf3', fontWeight: 700 }}>
+                    <span style={{ fontSize: 12, color: 'var(--nx-text)', fontWeight: 700 }}>
                       {projects.length} / {planInfo.projectLimit}
                     </span>
                   </div>
-                  <div style={{ height: 4, background: '#21262d', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ height: 4, background: 'var(--nx-panel-2)', borderRadius: 2, overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', borderRadius: 2,
                       width: `${Math.min(100, (projects.length / planInfo.projectLimit) * 100)}%`,
-                      background: atLimit ? '#f85149' : '#388bfd',
+                      background: atLimit ? 'var(--nx-error)' : 'var(--nx-accent)',
                       transition: 'width 0.3s',
                     }} />
                   </div>
@@ -927,7 +927,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 {atLimit && (
                   <a href={`/${lang}/pricing`} style={{
                     padding: '6px 14px', borderRadius: 6,
-                    background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
+                    background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
                     color: '#fff', fontSize: 11, fontWeight: 700, textDecoration: 'none',
                     whiteSpace: 'nowrap',
                   }}>
@@ -940,32 +940,32 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             {/* Storage usage bar (free plan only) */}
             {storageLimitMB !== Infinity && (
               <div style={{
-                background: '#161b22', border: `1px solid ${storageNearLimit ? '#d29922' : '#30363d'}`,
+                background: 'var(--nx-panel)', border: `1px solid ${storageNearLimit ? 'var(--nx-warn)' : 'var(--nx-border)'}`,
                 borderRadius: 10, padding: '10px 16px', marginBottom: 16,
                 display: 'flex', alignItems: 'center', gap: 12,
               }}>
                 <span style={{ fontSize: 14 }}>🗄️</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, color: '#8b949e' }}>
+                    <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
                       {isKo ? '클라우드 저장 용량' : 'Cloud storage'}
                     </span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: storageNearLimit ? '#d29922' : '#e6edf3' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: storageNearLimit ? 'var(--nx-warn)' : 'var(--nx-text)' }}>
                       {storageUsedMB < 1 ? `${(storageUsedMB * 1024).toFixed(0)} KB` : `${storageUsedMB.toFixed(1)} MB`} / {storageLimitMB} MB
                     </span>
                   </div>
-                  <div style={{ height: 4, background: '#21262d', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ height: 4, background: 'var(--nx-panel-2)', borderRadius: 2, overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', borderRadius: 2,
                       width: `${storagePercent}%`,
-                      background: storageNearLimit ? '#d29922' : '#3fb950',
+                      background: storageNearLimit ? 'var(--nx-warn)' : 'var(--nx-ok)',
                       transition: 'width 0.3s',
                     }} />
                   </div>
                 </div>
                 {storageNearLimit && (
                   <a href={`/${lang}/pricing`} style={{
-                    fontSize: 10, fontWeight: 700, color: '#d29922', textDecoration: 'none',
+                    fontSize: 10, fontWeight: 700, color: 'var(--nx-warn)', textDecoration: 'none',
                     whiteSpace: 'nowrap',
                   }}>
                     {isKo ? '용량 늘리기 →' : 'Increase →'}
@@ -977,13 +977,13 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             {/* ── Projects tab ─────────────────────────────────────────────── */}
             {activeTab === 'projects' && (
               isLoading ? (
-                <div style={{ textAlign: 'center', padding: '60px 0', color: '#6e7681' }}>
+                <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--nx-text-3)' }}>
                   {isKo ? '불러오는 중...' : 'Loading...'}
                 </div>
               ) : filtered.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '80px 0' }}>
                   <div style={{ fontSize: 48, marginBottom: 12 }}>✏️</div>
-                  <p style={{ color: '#6e7681', fontSize: 14 }}>
+                  <p style={{ color: 'var(--nx-text-3)', fontSize: 14 }}>
                     {search
                       ? (isKo ? '검색 결과가 없습니다' : 'No projects match your search')
                       : (isKo ? '아직 저장된 프로젝트가 없습니다. 새 프로젝트를 시작하세요!' : 'No projects yet. Start a new one!')}
@@ -991,7 +991,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   {!search && (
                     <button onClick={() => router.push(`/${lang}/shape-generator`)} style={{
                       marginTop: 12, padding: '9px 22px', borderRadius: 8,
-                      background: '#388bfd', border: 'none',
+                      background: 'var(--nx-accent)', border: 'none',
                       color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                     }}>
                       {isKo ? '첫 프로젝트 만들기' : 'Create your first project'}
@@ -1035,20 +1035,20 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             {activeTab === 'rfqs' && (
               <div>
                 {rfqsLoading ? (
-                  <div style={{ textAlign: 'center', padding: '60px 0', color: '#6e7681' }}>
+                  <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--nx-text-3)' }}>
                     {isKo ? '불러오는 중...' : 'Loading...'}
                   </div>
                 ) : rfqs.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '80px 0' }}>
                     <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
-                    <p style={{ color: '#6e7681', fontSize: 14 }}>
+                    <p style={{ color: 'var(--nx-text-3)', fontSize: 14 }}>
                       {isKo ? '아직 견적 요청이 없습니다.' : 'No quote requests yet.'}
                     </p>
                     <button
                       onClick={() => router.push(`/${lang}/shape-generator`)}
                       style={{
                         marginTop: 12, padding: '9px 22px', borderRadius: 8,
-                        background: '#388bfd', border: 'none',
+                        background: 'var(--nx-accent)', border: 'none',
                         color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                       }}
                     >
@@ -1056,13 +1056,13 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                     </button>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 12, overflow: 'hidden', border: '1px solid #21262d' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--nx-panel-2)' }}>
                     {/* Header */}
                     <div style={{
                       display: 'grid', gridTemplateColumns: '1fr 90px 70px 80px 100px 80px 90px',
-                      padding: '9px 16px', background: '#161b22',
-                      borderBottom: '1px solid #21262d',
-                      fontSize: 11, fontWeight: 700, color: '#6e7681', letterSpacing: '0.04em',
+                      padding: '9px 16px', background: 'var(--nx-panel)',
+                      borderBottom: '1px solid var(--nx-panel-2)',
+                      fontSize: 11, fontWeight: 700, color: 'var(--nx-text-3)', letterSpacing: '0.04em',
                     }}>
                       <span>{isKo ? '부품명' : 'Part'}</span>
                       <span>{isKo ? '재질' : 'Material'}</span>
@@ -1074,8 +1074,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                     </div>
                     {rfqs.map((rfq, i) => {
                       const statusColor: Record<string, string> = {
-                        pending: '#d29922', quoted: '#388bfd',
-                        accepted: '#3fb950', rejected: '#f85149',
+                        pending: 'var(--nx-warn)', quoted: 'var(--nx-accent)',
+                        accepted: 'var(--nx-ok)', rejected: 'var(--nx-error)',
                       };
                       const statusLabel: Record<string, { ko: string; en: string }> = {
                         pending: { ko: '검토 중', en: 'Pending' },
@@ -1088,36 +1088,36 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                         <div key={rfq.rfqId} style={{
                           display: 'grid', gridTemplateColumns: '1fr 90px 70px 80px 100px 80px 90px',
                           alignItems: 'center', padding: '11px 16px', gap: 4,
-                          background: i % 2 === 0 ? '#0d1117' : '#161b22',
-                          borderBottom: i < rfqs.length - 1 ? '1px solid #21262d' : 'none',
+                          background: i % 2 === 0 ? 'var(--nx-bg)' : 'var(--nx-panel)',
+                          borderBottom: i < rfqs.length - 1 ? '1px solid var(--nx-panel-2)' : 'none',
                         }}>
                           <div>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3' }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' }}>
                               {rfq.shapeName || `RFQ #${rfq.rfqId.slice(4, 12).toUpperCase()}`}
                             </div>
                             {rfq.manufacturerNote && (
-                              <div style={{ fontSize: 10, color: '#6e7681', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
+                              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
                                 💬 {rfq.manufacturerNote}
                               </div>
                             )}
                           </div>
-                          <div style={{ fontSize: 11, color: '#8b949e' }}>{rfq.materialId}</div>
-                          <div style={{ fontSize: 12, color: '#e6edf3', fontWeight: 600 }}>{rfq.quantity.toLocaleString()}</div>
+                          <div style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{rfq.materialId}</div>
+                          <div style={{ fontSize: 12, color: 'var(--nx-text)', fontWeight: 600 }}>{rfq.quantity.toLocaleString()}</div>
                           <div style={{
                             fontSize: 11, fontWeight: 700,
-                            color: statusColor[rfq.status] ?? '#6e7681',
-                            background: `${statusColor[rfq.status] ?? '#6e7681'}18`,
+                            color: statusColor[rfq.status] ?? 'var(--nx-text-3)',
+                            background: `${statusColor[rfq.status] ?? 'var(--nx-text-3)'}18`,
                             borderRadius: 4, padding: '2px 7px', textAlign: 'center',
                             display: 'inline-block',
                           }}>
                             {(statusLabel[rfq.status]?.[isKo ? 'ko' : 'en']) ?? rfq.status}
                           </div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: rfq.quoteAmount ? '#3fb950' : '#6e7681' }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: rfq.quoteAmount ? 'var(--nx-ok)' : 'var(--nx-text-3)' }}>
                             {rfq.quoteAmount
                               ? (isKo ? `₩${rfq.quoteAmount.toLocaleString()}` : `$${rfq.quoteAmount.toLocaleString()}`)
                               : '—'}
                           </div>
-                          <div style={{ fontSize: 11, color: '#6e7681' }}>
+                          <div style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
                             {new Date(rfq.createdAt).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}
                           </div>
                           <div>
@@ -1148,8 +1148,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                 }}
                                 style={{
                                   padding: '4px 10px', borderRadius: 5, border: 'none',
-                                  background: isAccepting ? '#21262d' : '#3fb950',
-                                  color: isAccepting ? '#6e7681' : '#fff',
+                                  background: isAccepting ? 'var(--nx-panel-2)' : 'var(--nx-ok)',
+                                  color: isAccepting ? 'var(--nx-text-3)' : '#fff',
                                   fontSize: 11, fontWeight: 700,
                                   cursor: isAccepting ? 'default' : 'pointer',
                                   whiteSpace: 'nowrap',
@@ -1165,7 +1165,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                   </div>
                 )}
                 {rfqTotal > rfqs.length && (
-                  <p style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: '#6e7681' }}>
+                  <p style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: 'var(--nx-text-3)' }}>
                     {isKo ? `전체 ${rfqTotal}건 중 최근 50건 표시` : `Showing 50 of ${rfqTotal} total`}
                   </p>
                 )}
@@ -1175,30 +1175,30 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
             {/* ── Orders tab ───────────────────────────────────────────────── */}
             {activeTab === 'orders' && (() => {
               const STATUS_LABEL: Record<string, { ko: string; en: string; color: string }> = {
-                placed:     { ko: '주문 완료',  en: 'Placed',     color: '#388bfd' },
+                placed:     { ko: '주문 완료',  en: 'Placed',     color: 'var(--nx-accent)' },
                 production: { ko: '생산 중',    en: 'Production', color: '#f0883e' },
                 qc:         { ko: '품질 검사',  en: 'QC',         color: '#e3b341' },
                 shipped:    { ko: '배송 중',    en: 'Shipped',    color: '#79c0ff' },
-                delivered:  { ko: '납품 완료',  en: 'Delivered',  color: '#3fb950' },
+                delivered:  { ko: '납품 완료',  en: 'Delivered',  color: 'var(--nx-ok)' },
               };
               const STEP_IDX: Record<string, number> = { placed: 0, production: 1, qc: 2, shipped: 3, delivered: 4 };
               return (
                 <div>
                   {ordersLoading ? (
-                    <div style={{ textAlign: 'center', padding: '60px 0', color: '#6e7681' }}>
+                    <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--nx-text-3)' }}>
                       {isKo ? '불러오는 중...' : 'Loading...'}
                     </div>
                   ) : orders.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '80px 0' }}>
                       <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
-                      <p style={{ color: '#6e7681', fontSize: 14 }}>
+                      <p style={{ color: 'var(--nx-text-3)', fontSize: 14 }}>
                         {isKo ? '아직 주문이 없습니다. 견적 요청을 수락하면 주문이 생성됩니다.' : 'No orders yet. Accept a quote to create an order.'}
                       </p>
                       <button
                         onClick={() => setActiveTab('rfqs')}
                         style={{
                           marginTop: 12, padding: '9px 22px', borderRadius: 8,
-                          background: '#388bfd', border: 'none',
+                          background: 'var(--nx-accent)', border: 'none',
                           color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                         }}
                       >
@@ -1215,43 +1215,43 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                         const dday = Math.ceil((order.estimatedDeliveryAt - Date.now()) / 86400000);
                         return (
                           <div key={order.id} style={{
-                            background: '#161b22', border: '1px solid #30363d',
+                            background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
                             borderRadius: 10, padding: '14px 18px',
                           }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                                  <span style={{ fontSize: 14, fontWeight: 700, color: '#e6edf3' }}>{order.partName}</span>
+                                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--nx-text)' }}>{order.partName}</span>
                                   <span style={{
                                     fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 8,
-                                    background: (sl?.color ?? '#6e7681') + '22', color: sl?.color ?? '#6e7681',
+                                    background: (sl?.color ?? 'var(--nx-text-3)') + '22', color: sl?.color ?? 'var(--nx-text-3)',
                                   }}>{sl?.[isKo ? 'ko' : 'en'] ?? order.status}</span>
                                   {isPaid && (
-                                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: '#3fb95022', color: '#3fb950' }}>
+                                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: '#3fb95022', color: 'var(--nx-ok)' }}>
                                       {isKo ? '결제완료' : 'Paid'}
                                     </span>
                                   )}
                                 </div>
-                                <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 2 }}>
+                                <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 2 }}>
                                   {order.manufacturerName} · {order.quantity.toLocaleString()}{isKo ? '개' : 'ea'} · ₩{order.totalPriceKRW.toLocaleString('ko-KR')}
                                 </div>
-                                <div style={{ fontSize: 11, color: '#6e7681', marginBottom: 8 }}>
+                                <div style={{ fontSize: 11, color: 'var(--nx-text-3)', marginBottom: 8 }}>
                                   {isKo ? '납기 예정' : 'ETA'}:{' '}
                                   {new Date(order.estimatedDeliveryAt).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}
                                   {dday > 0
                                     ? <span style={{ marginLeft: 6, color: '#e3b341', fontWeight: 700 }}>D-{dday}</span>
                                     : dday === 0
-                                    ? <span style={{ marginLeft: 6, color: '#3fb950', fontWeight: 700 }}>D-Day</span>
-                                    : <span style={{ marginLeft: 6, color: '#f85149', fontWeight: 700 }}>D+{Math.abs(dday)}</span>
+                                    ? <span style={{ marginLeft: 6, color: 'var(--nx-ok)', fontWeight: 700 }}>D-Day</span>
+                                    : <span style={{ marginLeft: 6, color: 'var(--nx-error)', fontWeight: 700 }}>D+{Math.abs(dday)}</span>
                                   }
                                 </div>
                                 {/* Progress bar */}
-                                <div style={{ height: 4, background: '#21262d', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
-                                  <div style={{ height: '100%', width: `${pct}%`, background: sl?.color ?? '#388bfd', transition: 'width 0.4s' }} />
+                                <div style={{ height: 4, background: 'var(--nx-panel-2)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
+                                  <div style={{ height: '100%', width: `${pct}%`, background: sl?.color ?? 'var(--nx-accent)', transition: 'width 0.4s' }} />
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#484f58' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--nx-border-strong)' }}>
                                   {(isKo ? ['주문', '생산', 'QC', '배송', '완료'] : ['Order', 'Prod', 'QC', 'Ship', 'Done']).map((s, i) => (
-                                    <span key={i} style={{ color: i <= stepIdx ? sl?.color ?? '#388bfd' : '#484f58', fontWeight: i === stepIdx ? 700 : 400 }}>{s}</span>
+                                    <span key={i} style={{ color: i <= stepIdx ? sl?.color ?? 'var(--nx-accent)' : 'var(--nx-border-strong)', fontWeight: i === stepIdx ? 700 : 400 }}>{s}</span>
                                   ))}
                                 </div>
                               </div>
@@ -1260,7 +1260,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                   href={`/${lang}/nexyfab/orders`}
                                   style={{
                                     padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                                    background: '#388bfd22', color: '#388bfd', textDecoration: 'none',
+                                    background: '#388bfd22', color: 'var(--nx-accent)', textDecoration: 'none',
                                     border: '1px solid #388bfd44', textAlign: 'center', whiteSpace: 'nowrap',
                                   }}
                                 >
@@ -1286,7 +1286,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                       <div style={{ textAlign: 'center', marginTop: 8 }}>
                         <a
                           href={`/${lang}/nexyfab/orders`}
-                          style={{ fontSize: 12, color: '#388bfd', textDecoration: 'none', fontWeight: 600 }}
+                          style={{ fontSize: 12, color: 'var(--nx-accent)', textDecoration: 'none', fontWeight: 600 }}
                         >
                           {isKo ? '전체 주문 관리 →' : 'Manage all orders →'}
                         </a>
@@ -1303,15 +1303,15 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 {/* Team plan gate */}
                 {user && !['team', 'enterprise'].includes(user.plan ?? '') ? (
                   <div style={{
-                    background: '#161b22', border: '1px solid #a371f7',
+                    background: 'var(--nx-panel)', border: '1px solid #a371f7',
                     borderRadius: 14, padding: '32px', textAlign: 'center',
                     maxWidth: 480, margin: '0 auto',
                   }}>
                     <div style={{ fontSize: 40, marginBottom: 12 }}>👥</div>
-                    <h3 style={{ margin: '0 0 8px', color: '#e6edf3', fontSize: 16, fontWeight: 800 }}>
+                    <h3 style={{ margin: '0 0 8px', color: 'var(--nx-text)', fontSize: 16, fontWeight: 800 }}>
                       {isKo ? '팀 협업은 Team 플랜부터' : 'Team collaboration requires Team plan'}
                     </h3>
-                    <p style={{ margin: '0 0 20px', color: '#6e7681', fontSize: 13 }}>
+                    <p style={{ margin: '0 0 20px', color: 'var(--nx-text-3)', fontSize: 13 }}>
                       {isKo
                         ? '팀원 초대, 공유 프로젝트, 실시간 협업 기능은 Team 플랜에서 사용 가능합니다.'
                         : 'Invite members, share projects, and collaborate in real-time with Team plan.'}
@@ -1320,7 +1320,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                       href={`/${lang}/nexyfab/pricing`}
                       style={{
                         display: 'inline-block', padding: '10px 28px', borderRadius: 8,
-                        background: 'linear-gradient(135deg, #a371f7, #388bfd)',
+                        background: 'linear-gradient(135deg, #a371f7, var(--nx-accent))',
                         color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none',
                       }}
                     >
@@ -1333,10 +1333,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                     <div>
                       {/* Create team */}
                       <div style={{
-                        background: '#161b22', border: '1px solid #30363d',
+                        background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
                         borderRadius: 10, padding: '14px', marginBottom: 14,
                       }}>
-                        <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#8b949e' }}>
+                        <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--nx-text-2)' }}>
                           {isKo ? '새 팀 만들기' : 'Create Team'}
                         </p>
                         <input
@@ -1346,8 +1346,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                           placeholder={isKo ? '팀 이름...' : 'Team name...'}
                           style={{
                             width: '100%', padding: '7px 10px', borderRadius: 6,
-                            background: '#0d1117', border: '1px solid #30363d',
-                            color: '#e6edf3', fontSize: 12, outline: 'none',
+                            background: 'var(--nx-bg)', border: '1px solid var(--nx-border)',
+                            color: 'var(--nx-text)', fontSize: 12, outline: 'none',
                             boxSizing: 'border-box', marginBottom: 8,
                           }}
                         />
@@ -1356,8 +1356,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                           disabled={creatingTeam || !newTeamName.trim()}
                           style={{
                             width: '100%', padding: '7px 0', borderRadius: 6, border: 'none',
-                            background: newTeamName.trim() ? 'linear-gradient(135deg,#388bfd,#8b5cf6)' : '#21262d',
-                            color: newTeamName.trim() ? '#fff' : '#6e7681',
+                            background: newTeamName.trim() ? 'linear-gradient(135deg,var(--nx-accent),#8b5cf6)' : 'var(--nx-panel-2)',
+                            color: newTeamName.trim() ? '#fff' : 'var(--nx-text-3)',
                             fontSize: 12, fontWeight: 700, cursor: newTeamName.trim() ? 'pointer' : 'default',
                           }}
                         >
@@ -1367,7 +1367,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
 
                       {/* Team list */}
                       {teamsLoading ? (
-                        <div style={{ color: '#6e7681', fontSize: 12, textAlign: 'center', padding: '20px 0' }}>
+                        <div style={{ color: 'var(--nx-text-3)', fontSize: 12, textAlign: 'center', padding: '20px 0' }}>
                           {isKo ? '불러오는 중...' : 'Loading...'}
                         </div>
                       ) : (
@@ -1378,13 +1378,13 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                               onClick={() => setSelectedTeamId(t.id)}
                               style={{
                                 width: '100%', textAlign: 'left', padding: '9px 12px',
-                                borderRadius: 8, border: `1px solid ${selectedTeamId === t.id ? '#388bfd' : '#30363d'}`,
-                                background: selectedTeamId === t.id ? '#1c2c3e' : '#161b22',
+                                borderRadius: 8, border: `1px solid ${selectedTeamId === t.id ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+                                background: selectedTeamId === t.id ? '#1c2c3e' : 'var(--nx-panel)',
                                 cursor: 'pointer',
                               }}
                             >
-                              <div style={{ fontSize: 12, fontWeight: 700, color: '#e6edf3' }}>👑 {t.name}</div>
-                              <div style={{ fontSize: 10, color: '#6e7681', marginTop: 2 }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>👑 {t.name}</div>
+                              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginTop: 2 }}>
                                 {isKo ? '소유자' : 'Owner'}
                               </div>
                             </button>
@@ -1395,19 +1395,19 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                               onClick={() => setSelectedTeamId(t.id)}
                               style={{
                                 width: '100%', textAlign: 'left', padding: '9px 12px',
-                                borderRadius: 8, border: `1px solid ${selectedTeamId === t.id ? '#388bfd' : '#30363d'}`,
-                                background: selectedTeamId === t.id ? '#1c2c3e' : '#161b22',
+                                borderRadius: 8, border: `1px solid ${selectedTeamId === t.id ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+                                background: selectedTeamId === t.id ? '#1c2c3e' : 'var(--nx-panel)',
                                 cursor: 'pointer',
                               }}
                             >
-                              <div style={{ fontSize: 12, fontWeight: 700, color: '#e6edf3' }}>🏢 {t.name}</div>
-                              <div style={{ fontSize: 10, color: '#6e7681', marginTop: 2 }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>🏢 {t.name}</div>
+                              <div style={{ fontSize: 10, color: 'var(--nx-text-3)', marginTop: 2 }}>
                                 {t.role === 'manager' ? (isKo ? '매니저' : 'Manager') : (isKo ? '뷰어' : 'Viewer')}
                               </div>
                             </button>
                           ))}
                           {ownedTeams.length === 0 && memberTeams.length === 0 && (
-                            <p style={{ color: '#6e7681', fontSize: 12, textAlign: 'center', padding: '12px 0' }}>
+                            <p style={{ color: 'var(--nx-text-3)', fontSize: 12, textAlign: 'center', padding: '12px 0' }}>
                               {isKo ? '아직 팀이 없습니다' : 'No teams yet'}
                             </p>
                           )}
@@ -1419,43 +1419,43 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                     <div>
                       {selectedTeamId ? (
                         <div style={{
-                          background: '#161b22', border: '1px solid #30363d',
+                          background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
                           borderRadius: 12, overflow: 'hidden',
                         }}>
                           {/* Members section */}
-                          <div style={{ padding: '16px 20px', borderBottom: '1px solid #21262d' }}>
-                            <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 800, color: '#e6edf3' }}>
+                          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--nx-panel-2)' }}>
+                            <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 800, color: 'var(--nx-text)' }}>
                               👥 {isKo ? '팀원' : 'Members'}
                             </h3>
                             {membersLoading ? (
-                              <p style={{ color: '#6e7681', fontSize: 12 }}>{isKo ? '불러오는 중...' : 'Loading...'}</p>
+                              <p style={{ color: 'var(--nx-text-3)', fontSize: 12 }}>{isKo ? '불러오는 중...' : 'Loading...'}</p>
                             ) : (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid #21262d' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--nx-panel-2)' }}>
                                 {teamMembers.length === 0 ? (
-                                  <p style={{ padding: '12px 16px', color: '#6e7681', fontSize: 12, margin: 0 }}>
+                                  <p style={{ padding: '12px 16px', color: 'var(--nx-text-3)', fontSize: 12, margin: 0 }}>
                                     {isKo ? '팀원이 없습니다. 아래에서 초대하세요.' : 'No members yet. Invite below.'}
                                   </p>
                                 ) : teamMembers.map((m, i) => (
                                   <div key={m.id} style={{
                                     display: 'grid', gridTemplateColumns: '1fr 80px 80px 32px',
                                     alignItems: 'center', padding: '9px 14px', gap: 8,
-                                    background: i % 2 === 0 ? '#0d1117' : '#161b22',
-                                    borderBottom: i < teamMembers.length - 1 ? '1px solid #21262d' : 'none',
+                                    background: i % 2 === 0 ? 'var(--nx-bg)' : 'var(--nx-panel)',
+                                    borderBottom: i < teamMembers.length - 1 ? '1px solid var(--nx-panel-2)' : 'none',
                                   }}>
                                     <div>
-                                      <div style={{ fontSize: 12, fontWeight: 700, color: '#e6edf3' }}>
+                                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>
                                         {m.display_name ?? m.email}
                                       </div>
-                                      <div style={{ fontSize: 10, color: '#6e7681' }}>{m.email}</div>
+                                      <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{m.email}</div>
                                     </div>
                                     <div style={{
                                       fontSize: 10, fontWeight: 700,
-                                      color: m.role === 'owner' ? '#d29922' : m.role === 'manager' ? '#388bfd' : '#6e7681',
+                                      color: m.role === 'owner' ? 'var(--nx-warn)' : m.role === 'manager' ? 'var(--nx-accent)' : 'var(--nx-text-3)',
                                       textAlign: 'center',
                                     }}>
                                       {m.role === 'owner' ? '👑 Owner' : m.role === 'manager' ? 'Manager' : 'Viewer'}
                                     </div>
-                                    <div style={{ fontSize: 10, color: '#6e7681', textAlign: 'center' }}>
+                                    <div style={{ fontSize: 10, color: 'var(--nx-text-3)', textAlign: 'center' }}>
                                       {m.joined_at ? new Date(m.joined_at).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' }) : '-'}
                                     </div>
                                     {m.role !== 'owner' && ownedTeams.some(t => t.id === selectedTeamId) ? (
@@ -1465,10 +1465,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                         style={{
                                           padding: 0, width: 24, height: 24, borderRadius: 4,
                                           border: 'none', background: 'transparent',
-                                          color: '#6e7681', cursor: 'pointer', fontSize: 13,
+                                          color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 13,
                                         }}
-                                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#f85149'; }}
-                                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#6e7681'; }}
+                                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--nx-error)'; }}
+                                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--nx-text-3)'; }}
                                       >✕</button>
                                     ) : <div />}
                                   </div>
@@ -1479,8 +1479,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
 
                           {/* Invite form (owner/manager only) */}
                           {ownedTeams.some(t => t.id === selectedTeamId) && (
-                            <div style={{ padding: '16px 20px', borderBottom: '1px solid #21262d' }}>
-                              <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: '#8b949e' }}>
+                            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--nx-panel-2)' }}>
+                              <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--nx-text-2)' }}>
                                 ✉️ {isKo ? '팀원 초대' : 'Invite member'}
                               </h4>
                               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -1492,8 +1492,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                   type="email"
                                   style={{
                                     flex: 1, padding: '8px 12px', borderRadius: 6,
-                                    background: '#0d1117', border: '1px solid #30363d',
-                                    color: '#e6edf3', fontSize: 12, outline: 'none',
+                                    background: 'var(--nx-bg)', border: '1px solid var(--nx-border)',
+                                    color: 'var(--nx-text)', fontSize: 12, outline: 'none',
                                   }}
                                 />
                                 <select
@@ -1501,8 +1501,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                   onChange={e => setInviteRole(e.target.value as 'manager' | 'viewer')}
                                   style={{
                                     padding: '8px 6px', borderRadius: 6,
-                                    background: '#0d1117', border: '1px solid #30363d',
-                                    color: '#e6edf3', fontSize: 12, outline: 'none',
+                                    background: 'var(--nx-bg)', border: '1px solid var(--nx-border)',
+                                    color: 'var(--nx-text)', fontSize: 12, outline: 'none',
                                   }}
                                 >
                                   <option value="viewer">{isKo ? '뷰어' : 'Viewer'}</option>
@@ -1513,8 +1513,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                   disabled={inviting || !inviteEmail.trim()}
                                   style={{
                                     padding: '8px 16px', borderRadius: 6, border: 'none',
-                                    background: inviteEmail.trim() ? '#388bfd' : '#21262d',
-                                    color: inviteEmail.trim() ? '#fff' : '#6e7681',
+                                    background: inviteEmail.trim() ? 'var(--nx-accent)' : 'var(--nx-panel-2)',
+                                    color: inviteEmail.trim() ? '#fff' : 'var(--nx-text-3)',
                                     fontSize: 12, fontWeight: 700,
                                     cursor: inviteEmail.trim() ? 'pointer' : 'default',
                                     whiteSpace: 'nowrap',
@@ -1528,8 +1528,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
 
                           {/* Pending invites */}
                           {teamInvites.length > 0 && (
-                            <div style={{ padding: '14px 20px', borderBottom: '1px solid #21262d' }}>
-                              <h4 style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: '#8b949e' }}>
+                            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--nx-panel-2)' }}>
+                              <h4 style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: 'var(--nx-text-2)' }}>
                                 ⏳ {isKo ? '대기 중인 초대' : 'Pending invites'} ({teamInvites.length})
                               </h4>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1537,13 +1537,13 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                   <div key={inv.id} style={{
                                     display: 'flex', alignItems: 'center', gap: 8,
                                     padding: '7px 10px', borderRadius: 7,
-                                    background: '#0d1117', border: '1px solid #21262d',
+                                    background: 'var(--nx-bg)', border: '1px solid var(--nx-panel-2)',
                                   }}>
-                                    <span style={{ flex: 1, fontSize: 12, color: '#8b949e' }}>{inv.email}</span>
-                                    <span style={{ fontSize: 10, color: '#6e7681' }}>
+                                    <span style={{ flex: 1, fontSize: 12, color: 'var(--nx-text-2)' }}>{inv.email}</span>
+                                    <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
                                       {inv.role === 'manager' ? (isKo ? '매니저' : 'Manager') : (isKo ? '뷰어' : 'Viewer')}
                                     </span>
-                                    <span style={{ fontSize: 10, color: '#6e7681' }}>
+                                    <span style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
                                       {isKo ? '만료' : 'Exp'}: {new Date(inv.expires_at).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}
                                     </span>
                                     <button
@@ -1552,10 +1552,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                       style={{
                                         padding: 0, width: 22, height: 22, borderRadius: 4,
                                         border: 'none', background: 'transparent',
-                                        color: '#6e7681', cursor: 'pointer', fontSize: 12,
+                                        color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 12,
                                       }}
-                                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#f85149'; }}
-                                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#6e7681'; }}
+                                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--nx-error)'; }}
+                                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--nx-text-3)'; }}
                                     >✕</button>
                                   </div>
                                 ))}
@@ -1566,7 +1566,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                           {/* Team shared projects */}
                           <div style={{ padding: '14px 20px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                              <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#8b949e' }}>
+                              <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--nx-text-2)' }}>
                                 📂 {isKo ? '팀 공유 설계' : 'Shared Designs'}
                               </h4>
                               <button
@@ -1575,8 +1575,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                                   void fetchTeamProjects(selectedTeamId);
                                 }}
                                 style={{
-                                  padding: '4px 10px', borderRadius: 5, border: '1px solid #30363d',
-                                  background: 'transparent', color: '#8b949e', fontSize: 11,
+                                  padding: '4px 10px', borderRadius: 5, border: '1px solid var(--nx-border)',
+                                  background: 'transparent', color: 'var(--nx-text-2)', fontSize: 11,
                                   cursor: 'pointer',
                                 }}
                               >
@@ -1585,35 +1585,35 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                             </div>
                             {showTeamProjects && (
                               teamProjectsLoading ? (
-                                <p style={{ color: '#6e7681', fontSize: 12 }}>{isKo ? '불러오는 중...' : 'Loading...'}</p>
+                                <p style={{ color: 'var(--nx-text-3)', fontSize: 12 }}>{isKo ? '불러오는 중...' : 'Loading...'}</p>
                               ) : teamProjects.length === 0 ? (
-                                <p style={{ color: '#6e7681', fontSize: 12 }}>
+                                <p style={{ color: 'var(--nx-text-3)', fontSize: 12 }}>
                                   {isKo ? '팀원 중 공유된 프로젝트가 없습니다.' : 'No shared projects from team members yet.'}
                                 </p>
                               ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid #21262d' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--nx-panel-2)' }}>
                                   {teamProjects.map((tp, i) => (
                                     <div key={tp.id} style={{
                                       display: 'grid', gridTemplateColumns: '28px 1fr 120px 80px',
                                       alignItems: 'center', padding: '9px 14px', gap: 8,
-                                      background: i % 2 === 0 ? '#0d1117' : '#161b22',
-                                      borderBottom: i < teamProjects.length - 1 ? '1px solid #21262d' : 'none',
+                                      background: i % 2 === 0 ? 'var(--nx-bg)' : 'var(--nx-panel)',
+                                      borderBottom: i < teamProjects.length - 1 ? '1px solid var(--nx-panel-2)' : 'none',
                                     }}>
                                       <span style={{ fontSize: 18, textAlign: 'center' }}>
                                         {SHAPE_ICONS[tp.shapeId ?? ''] ?? SHAPE_ICONS.default}
                                       </span>
                                       <div>
-                                        <div style={{ fontSize: 12, fontWeight: 700, color: '#e6edf3' }}>{tp.name}</div>
-                                        <div style={{ fontSize: 10, color: '#6e7681' }}>{tp.ownerEmail}</div>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>{tp.name}</div>
+                                        <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>{tp.ownerEmail}</div>
                                       </div>
-                                      <div style={{ fontSize: 10, color: '#6e7681', textAlign: 'right' }}>
+                                      <div style={{ fontSize: 10, color: 'var(--nx-text-3)', textAlign: 'right' }}>
                                         {new Date(tp.updatedAt).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}
                                       </div>
                                       <button
                                         onClick={() => router.push(`/${lang}/shape-generator?project=${tp.id}`)}
                                         style={{
-                                          padding: '5px 10px', borderRadius: 5, border: '1px solid #30363d',
-                                          background: '#21262d', color: '#8b949e',
+                                          padding: '5px 10px', borderRadius: 5, border: '1px solid var(--nx-border)',
+                                          background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)',
                                           fontSize: 11, cursor: 'pointer',
                                         }}
                                       >
@@ -1628,10 +1628,10 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                         </div>
                       ) : (
                         <div style={{
-                          background: '#161b22', border: '1px solid #30363d',
+                          background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
                           borderRadius: 12, padding: '40px', textAlign: 'center',
                         }}>
-                          <p style={{ color: '#6e7681', fontSize: 13 }}>
+                          <p style={{ color: 'var(--nx-text-3)', fontSize: 13 }}>
                             {isKo ? '왼쪽에서 팀을 선택하거나 새 팀을 만드세요.' : 'Select a team or create a new one.'}
                           </p>
                         </div>
@@ -1642,8 +1642,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                         <div style={{
                           marginTop: 10, padding: '8px 14px', borderRadius: 7,
                           background: teamActionMsg.ok ? '#1a2e1a' : '#2e1a1a',
-                          border: `1px solid ${teamActionMsg.ok ? '#3fb950' : '#f85149'}`,
-                          color: teamActionMsg.ok ? '#3fb950' : '#f85149',
+                          border: `1px solid ${teamActionMsg.ok ? 'var(--nx-ok)' : 'var(--nx-error)'}`,
+                          color: teamActionMsg.ok ? 'var(--nx-ok)' : 'var(--nx-error)',
                           fontSize: 12, fontWeight: 700,
                         }}>
                           {teamActionMsg.ok ? '✓' : '✕'} {teamActionMsg.text}
@@ -1661,28 +1661,28 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 {/* R2 storage bar */}
                 {filesStorage && (
                   <div style={{
-                    background: '#161b22', border: `1px solid ${filesStorage.usage_percent >= 80 ? '#d29922' : '#30363d'}`,
+                    background: 'var(--nx-panel)', border: `1px solid ${filesStorage.usage_percent >= 80 ? 'var(--nx-warn)' : 'var(--nx-border)'}`,
                     borderRadius: 10, padding: '10px 16px', marginBottom: 16,
                     display: 'flex', alignItems: 'center', gap: 12,
                   }}>
                     <span style={{ fontSize: 14 }}>☁️</span>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 11, color: '#8b949e' }}>
+                        <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
                           {isKo ? 'R2 저장소 사용량' : 'R2 Storage used'}
                         </span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: filesStorage.usage_percent >= 80 ? '#d29922' : '#e6edf3' }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: filesStorage.usage_percent >= 80 ? 'var(--nx-warn)' : 'var(--nx-text)' }}>
                           {filesStorage.used_gb < 0.001
                             ? `${(filesStorage.used_bytes / 1024).toFixed(0)} KB`
                             : `${filesStorage.used_gb.toFixed(2)} GB`}
                           {' '}/ {filesStorage.limit_gb} GB
                         </span>
                       </div>
-                      <div style={{ height: 4, background: '#21262d', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ height: 4, background: 'var(--nx-panel-2)', borderRadius: 2, overflow: 'hidden' }}>
                         <div style={{
                           height: '100%', borderRadius: 2,
                           width: `${Math.min(100, filesStorage.usage_percent)}%`,
-                          background: filesStorage.usage_percent >= 80 ? '#d29922' : '#3fb950',
+                          background: filesStorage.usage_percent >= 80 ? 'var(--nx-warn)' : 'var(--nx-ok)',
                           transition: 'width 0.3s',
                         }} />
                       </div>
@@ -1691,24 +1691,24 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 )}
 
                 {filesLoading ? (
-                  <div style={{ textAlign: 'center', padding: '60px 0', color: '#6e7681' }}>
+                  <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--nx-text-3)' }}>
                     {isKo ? '불러오는 중...' : 'Loading...'}
                   </div>
                 ) : r2Files.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '80px 0' }}>
                     <div style={{ fontSize: 48, marginBottom: 12 }}>🗄️</div>
-                    <p style={{ color: '#6e7681', fontSize: 14 }}>
+                    <p style={{ color: 'var(--nx-text-3)', fontSize: 14 }}>
                       {isKo ? '업로드된 파일이 없습니다' : 'No files uploaded yet'}
                     </p>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid #21262d' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--nx-panel-2)' }}>
                     {/* Table header */}
                     <div style={{
                       display: 'grid', gridTemplateColumns: '1fr 100px 100px 140px 80px',
-                      padding: '8px 14px', background: '#161b22',
-                      borderBottom: '1px solid #21262d',
-                      fontSize: 11, fontWeight: 700, color: '#6e7681', letterSpacing: '0.05em',
+                      padding: '8px 14px', background: 'var(--nx-panel)',
+                      borderBottom: '1px solid var(--nx-panel-2)',
+                      fontSize: 11, fontWeight: 700, color: 'var(--nx-text-3)', letterSpacing: '0.05em',
                     }}>
                       <span>{isKo ? '파일명' : 'Filename'}</span>
                       <span>{isKo ? '종류' : 'Type'}</span>
@@ -1742,16 +1742,16 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
           background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <div style={{
-            background: '#161b22', border: '1px solid #30363d',
+            background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
             borderRadius: 12, padding: '24px', width: 320, textAlign: 'center',
           }}>
-            <p style={{ margin: '0 0 16px', fontSize: 14, color: '#e6edf3' }}>
+            <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--nx-text)' }}>
               {isKo ? '이 프로젝트를 삭제하시겠습니까?' : 'Delete this project?'}
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
               <button onClick={() => setDeleteConfirm(null)} style={{
-                padding: '8px 20px', borderRadius: 6, border: '1px solid #30363d',
-                background: 'transparent', color: '#8b949e', cursor: 'pointer',
+                padding: '8px 20px', borderRadius: 6, border: '1px solid var(--nx-border)',
+                background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer',
               }}>
                 {isKo ? '취소' : 'Cancel'}
               </button>
@@ -1762,7 +1762,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 }}
                 style={{
                   padding: '8px 20px', borderRadius: 6, border: 'none',
-                  background: '#da3633', color: '#fff', fontWeight: 700, cursor: 'pointer',
+                  background: 'var(--nx-error)', color: '#fff', fontWeight: 700, cursor: 'pointer',
                 }}
               >
                 {isKo ? '삭제' : 'Delete'}
@@ -1779,16 +1779,16 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
           background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <div style={{
-            background: '#161b22', border: '1px solid #30363d',
+            background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
             borderRadius: 12, padding: '24px', width: 320, textAlign: 'center',
           }}>
-            <p style={{ margin: '0 0 16px', fontSize: 14, color: '#e6edf3' }}>
+            <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--nx-text)' }}>
               {isKo ? '이 파일을 R2에서 영구 삭제하시겠습니까?' : 'Permanently delete this file from R2?'}
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
               <button onClick={() => setDeleteFileConfirm(null)} style={{
-                padding: '8px 20px', borderRadius: 6, border: '1px solid #30363d',
-                background: 'transparent', color: '#8b949e', cursor: 'pointer',
+                padding: '8px 20px', borderRadius: 6, border: '1px solid var(--nx-border)',
+                background: 'transparent', color: 'var(--nx-text-2)', cursor: 'pointer',
               }}>
                 {isKo ? '취소' : 'Cancel'}
               </button>
@@ -1799,7 +1799,7 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
                 }}
                 style={{
                   padding: '8px 20px', borderRadius: 6, border: 'none',
-                  background: '#da3633', color: '#fff', fontWeight: 700, cursor: 'pointer',
+                  background: 'var(--nx-error)', color: '#fff', fontWeight: 700, cursor: 'pointer',
                 }}
               >
                 {isKo ? '삭제' : 'Delete'}
@@ -1816,8 +1816,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
       {shareToast && (
         <div style={{
           position: 'fixed', bottom: 72, left: '50%', transform: 'translateX(-50%)',
-          background: '#1a2332', border: '1px solid #388bfd', borderRadius: 10,
-          padding: '10px 20px', color: '#58a6ff', fontSize: 13, fontWeight: 700,
+          background: '#1a2332', border: '1px solid var(--nx-accent)', borderRadius: 10,
+          padding: '10px 20px', color: 'var(--nx-accent-2)', fontSize: 13, fontWeight: 700,
           zIndex: 9999, boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
         }}>
           🔗 {shareToast}
@@ -1828,8 +1828,8 @@ function NexyfabDashboardInner({ params }: { params: Promise<{ lang: string }> }
       {upgradeToast && (
         <div style={{
           position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-          background: '#1a2e1a', border: '1px solid #3fb950', borderRadius: 10,
-          padding: '12px 24px', color: '#3fb950', fontSize: 14, fontWeight: 700,
+          background: '#1a2e1a', border: '1px solid var(--nx-ok)', borderRadius: 10,
+          padding: '12px 24px', color: 'var(--nx-ok)', fontSize: 14, fontWeight: 700,
           zIndex: 9999, boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
         }}>
           {upgradeToast}
@@ -1871,8 +1871,8 @@ function ProjectCard({ project, lang: _lang, isKo, onOpen, onDelete, onDuplicate
     <div
       className="project-card"
       style={{
-        background: '#161b22',
-        border: `1px solid ${hovered ? '#58a6ff' : '#30363d'}`,
+        background: 'var(--nx-panel)',
+        border: `1px solid ${hovered ? 'var(--nx-accent-2)' : 'var(--nx-border)'}`,
         borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
         transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
         transition: 'border-color 0.15s, transform 0.15s',
@@ -1884,9 +1884,9 @@ function ProjectCard({ project, lang: _lang, isKo, onOpen, onDelete, onDuplicate
     >
       {/* Thumbnail */}
       <div style={{
-        height: 140, background: '#0d1117',
+        height: 140, background: 'var(--nx-bg)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        borderBottom: '1px solid #21262d', fontSize: 48,
+        borderBottom: '1px solid var(--nx-panel-2)', fontSize: 48,
       }}>
         {project.thumbnail
           ? <img src={project.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -1895,19 +1895,19 @@ function ProjectCard({ project, lang: _lang, isKo, onOpen, onDelete, onDuplicate
 
       {/* Info */}
       <div style={{ padding: '12px 14px' }}>
-        <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: '#e6edf3' }}>
+        <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' }}>
           {project.name}
         </p>
-        <p style={{ margin: 0, fontSize: 11, color: '#6e7681' }}>
+        <p style={{ margin: 0, fontSize: 11, color: 'var(--nx-text-3)' }}>
           {new Date(project.updatedAt).toLocaleDateString(isKo ? 'ko-KR' : 'en-US')}
-          {project.materialId && <span style={{ marginLeft: 6, color: '#388bfd' }}>· {project.materialId}</span>}
+          {project.materialId && <span style={{ marginLeft: 6, color: 'var(--nx-accent)' }}>· {project.materialId}</span>}
         </p>
         {project.tags && project.tags.length > 0 && (
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 5 }}>
             {project.tags.slice(0, 3).map(tag => (
               <span key={tag} style={{
                 fontSize: 9, padding: '2px 6px', borderRadius: 4,
-                background: '#21262d', color: '#8b949e',
+                background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)',
               }}>
                 {tag}
               </span>
@@ -1918,7 +1918,7 @@ function ProjectCard({ project, lang: _lang, isKo, onOpen, onDelete, onDuplicate
         {/* Action buttons row */}
         <div style={{
           display: 'flex', gap: 4, marginTop: 8,
-          borderTop: '1px solid #21262d', paddingTop: 8,
+          borderTop: '1px solid var(--nx-panel-2)', paddingTop: 8,
         }}
           onClick={e => e.stopPropagation()}
         >
@@ -1928,12 +1928,12 @@ function ProjectCard({ project, lang: _lang, isKo, onOpen, onDelete, onDuplicate
             title={isKo ? '복제' : 'Duplicate'}
             style={{
               flex: 1, padding: '4px 0', borderRadius: 5,
-              border: '1px solid #30363d', background: 'transparent',
-              color: '#8b949e', fontSize: 11, cursor: isDuplicating ? 'default' : 'pointer',
+              border: '1px solid var(--nx-border)', background: 'transparent',
+              color: 'var(--nx-text-2)', fontSize: 11, cursor: isDuplicating ? 'default' : 'pointer',
               opacity: isDuplicating ? 0.5 : 1,
             }}
-            onMouseEnter={e => { if (!isDuplicating) e.currentTarget.style.borderColor = '#58a6ff'; e.currentTarget.style.color = '#58a6ff'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.color = '#8b949e'; }}
+            onMouseEnter={e => { if (!isDuplicating) e.currentTarget.style.borderColor = 'var(--nx-accent-2)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
           >
             {isDuplicating ? '⏳' : '📋'} {isKo ? '복제' : 'Copy'}
           </button>
@@ -1942,11 +1942,11 @@ function ProjectCard({ project, lang: _lang, isKo, onOpen, onDelete, onDuplicate
             title={isKo ? '공유 링크 복사' : 'Copy share link'}
             style={{
               flex: 1, padding: '4px 0', borderRadius: 5,
-              border: '1px solid #30363d', background: 'transparent',
-              color: '#8b949e', fontSize: 11, cursor: 'pointer',
+              border: '1px solid var(--nx-border)', background: 'transparent',
+              color: 'var(--nx-text-2)', fontSize: 11, cursor: 'pointer',
             }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#3fb950'; e.currentTarget.style.color = '#3fb950'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.color = '#8b949e'; }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--nx-ok)'; e.currentTarget.style.color = 'var(--nx-ok)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
           >
             🔗 {isKo ? '공유' : 'Share'}
           </button>
@@ -1955,11 +1955,11 @@ function ProjectCard({ project, lang: _lang, isKo, onOpen, onDelete, onDuplicate
             title={isKo ? '삭제' : 'Delete'}
             style={{
               padding: '4px 10px', borderRadius: 5,
-              border: '1px solid #30363d', background: 'transparent',
-              color: '#8b949e', fontSize: 11, cursor: 'pointer',
+              border: '1px solid var(--nx-border)', background: 'transparent',
+              color: 'var(--nx-text-2)', fontSize: 11, cursor: 'pointer',
             }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#f85149'; e.currentTarget.style.color = '#f85149'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.color = '#8b949e'; }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--nx-error)'; e.currentTarget.style.color = 'var(--nx-error)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
           >
             🗑
           </button>
@@ -2033,15 +2033,15 @@ function FileRow({ file, isKo, isEven, token, onDelete }: FileRowProps) {
       style={{
         display: 'grid', gridTemplateColumns: '1fr 100px 100px 140px 80px',
         padding: '9px 14px', alignItems: 'center',
-        background: hovered ? '#1c2128' : isEven ? '#0d1117' : '#161b22',
-        borderBottom: '1px solid #21262d',
+        background: hovered ? 'var(--nx-panel-2)' : isEven ? 'var(--nx-bg)' : 'var(--nx-panel)',
+        borderBottom: '1px solid var(--nx-panel-2)',
         transition: 'background 0.1s',
         fontSize: 12,
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <span style={{ color: '#e6edf3', display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+      <span style={{ color: 'var(--nx-text)', display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
         <span>{icon}</span>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {file.filename}
@@ -2049,30 +2049,30 @@ function FileRow({ file, isKo, isEven, token, onDelete }: FileRowProps) {
         {file.category !== 'general' && (
           <span style={{
             fontSize: 9, padding: '1px 5px', borderRadius: 3,
-            background: '#21262d', color: '#8b949e', flexShrink: 0,
+            background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)', flexShrink: 0,
           }}>
             {file.category}
           </span>
         )}
       </span>
-      <span style={{ color: '#6e7681', fontSize: 11 }}>{ext.toUpperCase() || '—'}</span>
-      <span style={{ color: '#6e7681', fontSize: 11 }}>{formatBytes(file.size_bytes)}</span>
-      <span style={{ color: '#6e7681', fontSize: 11 }}>
+      <span style={{ color: 'var(--nx-text-3)', fontSize: 11 }}>{ext.toUpperCase() || '—'}</span>
+      <span style={{ color: 'var(--nx-text-3)', fontSize: 11 }}>{formatBytes(file.size_bytes)}</span>
+      <span style={{ color: 'var(--nx-text-3)', fontSize: 11 }}>
         {date.toLocaleDateString(isKo ? 'ko-KR' : 'en-US')}
         {' '}
-        <span style={{ color: '#30363d' }}>{date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        <span style={{ color: 'var(--nx-border)' }}>{date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </span>
       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
         <button
           onClick={handleDownload}
           disabled={downloading}
           style={{
-            padding: '3px 8px', borderRadius: 4, border: '1px solid #30363d',
-            background: 'transparent', color: downloading ? '#3fb950' : '#8b949e',
+            padding: '3px 8px', borderRadius: 4, border: '1px solid var(--nx-border)',
+            background: 'transparent', color: downloading ? 'var(--nx-ok)' : 'var(--nx-text-2)',
             fontSize: 11, cursor: downloading ? 'default' : 'pointer',
           }}
-          onMouseEnter={e => { if (!downloading) { e.currentTarget.style.borderColor = '#58a6ff'; e.currentTarget.style.color = '#58a6ff'; }}}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.color = '#8b949e'; }}
+          onMouseEnter={e => { if (!downloading) { e.currentTarget.style.borderColor = 'var(--nx-accent-2)'; e.currentTarget.style.color = 'var(--nx-accent-2)'; }}}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
           title={isKo ? '다운로드' : 'Download'}
         >
           {downloading ? '⏳' : '↓'}
@@ -2080,11 +2080,11 @@ function FileRow({ file, isKo, isEven, token, onDelete }: FileRowProps) {
         <button
           onClick={onDelete}
           style={{
-            padding: '3px 7px', borderRadius: 4, border: '1px solid #30363d',
-            background: 'transparent', color: '#8b949e', fontSize: 11, cursor: 'pointer',
+            padding: '3px 7px', borderRadius: 4, border: '1px solid var(--nx-border)',
+            background: 'transparent', color: 'var(--nx-text-2)', fontSize: 11, cursor: 'pointer',
           }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#f85149'; e.currentTarget.style.color = '#f85149'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.color = '#8b949e'; }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--nx-error)'; e.currentTarget.style.color = 'var(--nx-error)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; e.currentTarget.style.color = 'var(--nx-text-2)'; }}
           title={isKo ? '삭제' : 'Delete'}
         >
           🗑
@@ -2096,7 +2096,7 @@ function FileRow({ file, isKo, isEven, token, onDelete }: FileRowProps) {
 
 export default function NexyfabDashboard({ params }: { params: Promise<{ lang: string }> }) {
   return (
-    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0d1117' }} />}>
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--nx-bg)' }} />}>
       <NexyfabDashboardInner params={params} />
     </Suspense>
   );

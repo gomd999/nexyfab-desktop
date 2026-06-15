@@ -98,8 +98,8 @@ export default function SampleTemplatePicker({
         maxWidth: 960,
         margin: '24px auto',
         padding: '28px 24px',
-        background: '#0f172a',
-        color: '#e5e7eb',
+        background: 'var(--nx-panel)',
+        color: 'var(--nx-text)',
         borderRadius: 12,
         boxShadow: '0 12px 30px rgba(0,0,0,0.3)',
       }}
@@ -115,7 +115,7 @@ export default function SampleTemplatePicker({
       >
         {t.title}
       </h2>
-      <p style={{ margin: '0 0 24px', color: '#94a3b8', fontSize: 14 }}>
+      <p style={{ margin: '0 0 24px', color: 'var(--nx-text-2)', fontSize: 14 }}>
         {t.subtitle}
       </p>
 
@@ -123,7 +123,7 @@ export default function SampleTemplatePicker({
       {onAiPrompt && (
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>✨ {t.aiTitle}</div>
-          <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 10 }}>{t.aiHint}</div>
+          <div style={{ fontSize: 12, color: 'var(--nx-text-2)', marginBottom: 10 }}>{t.aiHint}</div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
             <input
               type="text"
@@ -133,7 +133,7 @@ export default function SampleTemplatePicker({
               placeholder={t.aiPlaceholder}
               aria-label={t.aiHint}
               style={{
-                flex: 1, background: '#1e293b', border: '1px solid #334155', color: '#e5e7eb',
+                flex: 1, background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', color: 'var(--nx-text)',
                 borderRadius: 8, padding: '10px 12px', fontSize: 14, outline: 'none',
               }}
             />
@@ -142,7 +142,7 @@ export default function SampleTemplatePicker({
               onClick={submitAi}
               disabled={!aiInput.trim()}
               style={{
-                background: aiInput.trim() ? '#3b82f6' : '#1e293b', color: 'white', border: 'none',
+                background: aiInput.trim() ? '#3b82f6' : 'var(--nx-panel-2)', color: 'white', border: 'none',
                 padding: '0 18px', borderRadius: 8, fontSize: 14, fontWeight: 600,
                 cursor: aiInput.trim() ? 'pointer' : 'not-allowed',
               }}
@@ -151,7 +151,7 @@ export default function SampleTemplatePicker({
             </button>
           </div>
 
-          <div style={{ fontWeight: 600, fontSize: 13, color: '#cbd5e1', marginBottom: 10 }}>{t.everydayTitle}</div>
+          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--nx-text-2)', marginBottom: 10 }}>{t.everydayTitle}</div>
           <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
             {EVERYDAY_PRESETS.map(preset => (
               <button
@@ -159,16 +159,16 @@ export default function SampleTemplatePicker({
                 type="button"
                 onClick={() => onAiPrompt(presetPrompt(preset, lang))}
                 style={{
-                  background: '#1e293b', border: '1px solid #334155', borderRadius: 10,
+                  background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', borderRadius: 10,
                   padding: 14, display: 'flex', flexDirection: 'column', gap: 6, cursor: 'pointer',
-                  textAlign: 'left', color: '#e5e7eb', transition: 'border-color 120ms',
+                  textAlign: 'left', color: 'var(--nx-text)', transition: 'border-color 120ms',
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#334155'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--nx-border)'; }}
               >
                 <span style={{ fontSize: 24, lineHeight: 1 }} aria-hidden>{preset.icon}</span>
                 <span style={{ fontWeight: 600, fontSize: 14 }}>{presetName(preset, lang)}</span>
-                <span style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.45 }}>{presetDesc(preset, lang)}</span>
+                <span style={{ fontSize: 11, color: 'var(--nx-text-2)', lineHeight: 1.45 }}>{presetDesc(preset, lang)}</span>
               </button>
             ))}
           </div>
@@ -176,7 +176,7 @@ export default function SampleTemplatePicker({
       )}
 
       {onAiPrompt && (
-        <div style={{ fontWeight: 600, fontSize: 13, color: '#cbd5e1', margin: '0 0 10px' }}>{t.templatesTitle}</div>
+        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--nx-text-2)', margin: '0 0 10px' }}>{t.templatesTitle}</div>
       )}
 
       <div
@@ -190,8 +190,8 @@ export default function SampleTemplatePicker({
           <div
             key={sample.id}
             style={{
-              background: '#1e293b',
-              border: '1px solid #334155',
+              background: 'var(--nx-panel-2)',
+              border: '1px solid var(--nx-border)',
               borderRadius: 10,
               padding: 16,
               display: 'flex',
@@ -200,7 +200,7 @@ export default function SampleTemplatePicker({
               transition: 'border-color 120ms',
             }}
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#334155'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--nx-border)'; }}
           >
             <div style={{ fontSize: 28, lineHeight: 1 }} aria-hidden>
               {ICONS[sample.id]}
@@ -208,11 +208,11 @@ export default function SampleTemplatePicker({
             <div style={{ fontWeight: 600, fontSize: 15 }}>
               {nameFor(sample, lang)}
             </div>
-            <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, flex: 1 }}>
+            <div style={{ fontSize: 12, color: 'var(--nx-text-2)', lineHeight: 1.5, flex: 1 }}>
               {descFor(sample, lang)}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: '#64748b' }}>
+              <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
                 {t.timeLabel} {sample.timeToExportMin} {t.minLabel}
               </span>
               <button
@@ -244,7 +244,7 @@ export default function SampleTemplatePicker({
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#64748b',
+              color: 'var(--nx-text-2)',
               fontSize: 13,
               cursor: 'pointer',
               textDecoration: 'underline',

@@ -66,18 +66,9 @@ export function useShapeGeneratorUI() {
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const dismissed = sessionStorage.getItem('nf_fs_prompt_dismissed');
-    if (dismissed) return;
-    const check = () => {
-      if (window.innerWidth < 1280 && !document.fullscreenElement) {
-        setShowFullscreenPrompt(true);
-      }
-    };
-    const t = setTimeout(check, 1500);
-    return () => clearTimeout(t);
-  }, []);
+  // Fullscreen auto-prompt retired (2026-06-09 per user request): no popup on
+  // entry. The user toggles immersive mode via the explicit ⛶ button in the
+  // top bar (next to Publish). `showFullscreenPrompt` stays false.
 
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {

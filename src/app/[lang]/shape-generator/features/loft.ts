@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtLoftProfiles } from './occtEngine';
+import { occtLoftProfiles } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
 
 const SEGS = 32;
 
@@ -151,7 +152,7 @@ export const loftFeature: FeatureDefinition = {
     return applyLoftMesh(params);
   },
   async applyAsync(_geometry, params) {
-    if (isOcctReady() && isOcctGlobalMode()) {
+    if (shouldUseOcctEngine()) {
       const brep = applyLoftOcct(params);
       if (brep) return brep;
     }

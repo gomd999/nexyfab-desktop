@@ -5,5 +5,7 @@ export { default as EdgeHandles } from './EdgeHandles';
 export { useFaceEditing } from './useFaceEditing';
 export { default as FaceHandles } from './FaceHandles';
 export { default as EdgeContextPanel } from './EdgeContextPanel';
+export { default as FaceContextPanel } from './FaceContextPanel';
+export { offsetFace, shellWhole, type ShellOpenFace } from './applyFaceOps';
 export { applyCSG, makeToolGeometry, type CSGOperation, type CSGToolShape, type CSGToolParams } from './CSGOperations';
 export { default as CSGPanel } from './CSGPanel';

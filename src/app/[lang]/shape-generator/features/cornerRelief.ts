@@ -10,9 +10,9 @@
  *   relief depth  ≥ T + R           (thickness + inner bend radius)
  *
  * **This module ships detection + suggestion only.** The geometric
- * mesh cut (V / U / circular notch) lands in a follow-up because doing
- * it well requires CSG against the unfolded flat pattern, which is
- * better unified with the planned `flatPattern` v2.
+ * mesh cut lives in `reliefCuts.ts` (`applyCornerRelief` / the
+ * `cornerRelief` pipeline feature) — suggestions from here can be fed
+ * straight into that feature's `size`/`shape` params.
  *
  * Detection input is the per-geometry `__bendHistory` already recorded
  * by `applyBend` / `applyFlange` / `applyJog`. Two bends are considered

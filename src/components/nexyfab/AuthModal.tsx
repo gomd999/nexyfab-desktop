@@ -146,8 +146,8 @@ export default function AuthModal({
 
   const fieldBase = {
     width: '100%', padding: '10px 12px', borderRadius: 8, boxSizing: 'border-box' as const,
-    background: '#0d1117', border: '1px solid #30363d',
-    color: '#e6edf3', fontSize: 13, outline: 'none',
+    background: 'var(--nx-bg)', border: '1px solid var(--nx-border)',
+    color: 'var(--nx-text)', fontSize: 13, outline: 'none',
   };
   const fieldErrorStyle = { borderColor: '#f85149' };
 
@@ -168,7 +168,7 @@ export default function AuthModal({
         aria-labelledby="auth-modal-title"
         style={{
           position: 'relative',
-          background: '#161b22', border: '1px solid #30363d',
+          background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
           borderRadius: 16, padding: '32px 28px', width: 400, maxWidth: 'calc(100vw - 32px)',
           boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
           fontFamily: 'system-ui, sans-serif',
@@ -178,10 +178,10 @@ export default function AuthModal({
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#e6edf3', marginBottom: 4 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--nx-text)', marginBottom: 4 }}>
             <span style={{ color: '#8b9cf4' }}>Nexy</span>Fab
           </div>
-          <p id="auth-modal-title" style={{ fontSize: 13, color: '#6e7681', margin: 0 }}>
+          <p id="auth-modal-title" style={{ fontSize: 13, color: 'var(--nx-text-3)', margin: 0 }}>
             {mode === 'login' ? t.loginTitle : t.signupTitle}
           </p>
         </div>
@@ -209,19 +209,19 @@ export default function AuthModal({
         <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {mode === 'signup' && (
             <div>
-              <label style={{ fontSize: 12, color: '#8b949e', display: 'block', marginBottom: 4 }}>{t.name}</label>
+              <label style={{ fontSize: 12, color: 'var(--nx-text-2)', display: 'block', marginBottom: 4 }}>{t.name}</label>
               <input
                 type="text" value={name} onChange={e => setName(e.target.value)}
                 placeholder={t.namePlaceholder} required={mode === 'signup'}
                 style={fieldBase}
                 onFocus={e => { e.currentTarget.style.borderColor = '#388bfd'; }}
-                onBlur={e => { e.currentTarget.style.borderColor = '#30363d'; }}
+                onBlur={e => { e.currentTarget.style.borderColor = 'var(--nx-border)'; }}
               />
             </div>
           )}
 
           <div>
-            <label style={{ fontSize: 12, color: '#8b949e', display: 'block', marginBottom: 4 }}>{t.email}</label>
+            <label style={{ fontSize: 12, color: 'var(--nx-text-2)', display: 'block', marginBottom: 4 }}>{t.email}</label>
             <input
               type="email" value={email}
               onChange={e => setEmail(e.target.value)}
@@ -240,7 +240,7 @@ export default function AuthModal({
           </div>
 
           <div>
-            <label style={{ fontSize: 12, color: '#8b949e', display: 'block', marginBottom: 4 }}>{t.password}</label>
+            <label style={{ fontSize: 12, color: 'var(--nx-text-2)', display: 'block', marginBottom: 4 }}>{t.password}</label>
             <div style={{ position: 'relative' }}>
               <input
                 type={showPw ? 'text' : 'password'} value={password}
@@ -258,7 +258,7 @@ export default function AuthModal({
               />
               <button type="button" onClick={() => setShowPw(v => !v)} style={{
                 position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                background: 'none', border: 'none', color: '#6e7681', cursor: 'pointer', fontSize: 12,
+                background: 'none', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 12,
               }}>
                 {showPw ? t.hide : t.show}
               </button>
@@ -274,7 +274,7 @@ export default function AuthModal({
             type="submit" disabled={isLoading}
             style={{
               padding: '11px 0', borderRadius: 8, border: 'none',
-              background: isLoading ? '#21262d' : 'linear-gradient(135deg, #388bfd, #8b5cf6)',
+              background: isLoading ? 'var(--nx-panel-2)' : 'linear-gradient(135deg, #388bfd, #8b5cf6)',
               color: '#fff', fontSize: 14, fontWeight: 700,
               cursor: isLoading ? 'not-allowed' : 'pointer',
               opacity: isLoading ? 0.6 : 1,
@@ -289,13 +289,13 @@ export default function AuthModal({
         {mode === 'signup' && (
           <div style={{
             marginTop: 16, padding: '10px 12px',
-            background: '#0d1117', borderRadius: 8, border: '1px solid #21262d',
+            background: 'var(--nx-bg)', borderRadius: 8, border: '1px solid var(--nx-panel-2)',
           }}>
-            <p style={{ fontSize: 11, color: '#6e7681', margin: '0 0 6px', fontWeight: 700 }}>
+            <p style={{ fontSize: 11, color: 'var(--nx-text-3)', margin: '0 0 6px', fontWeight: 700 }}>
               {t.planSummaryHeader}
             </p>
             {t.planItems.map(item => (
-              <p key={item} style={{ fontSize: 11, color: '#8b949e', margin: '2px 0', display: 'flex', gap: 6 }}>
+              <p key={item} style={{ fontSize: 11, color: 'var(--nx-text-2)', margin: '2px 0', display: 'flex', gap: 6 }}>
                 <span style={{ color: '#3fb950' }}>✓</span> {item}
               </p>
             ))}
@@ -303,7 +303,7 @@ export default function AuthModal({
         )}
 
         {/* Mode switch */}
-        <p style={{ textAlign: 'center', marginTop: 18, fontSize: 12, color: '#6e7681' }}>
+        <p style={{ textAlign: 'center', marginTop: 18, fontSize: 12, color: 'var(--nx-text-3)' }}>
           {mode === 'login' ? t.noAccount : t.hasAccount}
           {' '}
           <button onClick={switchMode} style={{
@@ -317,7 +317,7 @@ export default function AuthModal({
         {/* Close */}
         <button onClick={onClose} style={{
           position: 'absolute', top: 12, right: 14,
-          background: 'none', border: 'none', color: '#6e7681',
+          background: 'none', border: 'none', color: 'var(--nx-text-3)',
           fontSize: 18, cursor: 'pointer', lineHeight: 1,
         }} aria-label={t.close}>✕</button>
       </div>

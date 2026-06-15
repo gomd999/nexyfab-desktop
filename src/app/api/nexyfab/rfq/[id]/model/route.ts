@@ -38,6 +38,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const bbox = rfq.bbox ? JSON.parse(rfq.bbox) as Record<string, number> : null;
   const dfmResults = rfq.dfm_results ? JSON.parse(rfq.dfm_results) as unknown[] : null;
 
+  // Downloadable CAD attachments (STEP/STL) uploaded against this RFQ. The
+  // download endpoint (/api/nexyfab/files/[id]/download) now also authorizes
+  // partners with a quote on this RFQ, so listing them here gives the partner a
+  // real manufacturable file — not just the viewer share link. (2026-06-09)
+  const fileRows = await db.queryAll<{
+    id: string; filename: string; mime_type: string | null; size_bytes: number | null; created_at: number | null;
+  }>(
+    `SELECT id, filename, mime_type, size_bytes, created_at
+       FROM nf_files
+      WHERE ref_type = 'rfq' AND ref_id = ?
+      ORDER BY created_at DESC`,
+    rfqId,
+  ).catch(() => [] as { id: string; filename: string; mime_type: string | null; size_bytes: number | null; created_at: number | null }[]);
+  const files = (fileRows ?? []).map(f => ({
+    id: f.id,
+    filename: f.filename,
+    mimeType: f.mime_type,
+    sizeBytes: f.size_bytes,
+    createdAt: f.created_at,
+    downloadUrl: `/api/nexyfab/files/${f.id}/download`,
+  }));
+
   return NextResponse.json({
     rfqId,
     shapeId: rfq.shape_id,
@@ -51,7 +73,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     dfmScore: rfq.dfm_score,
     dfmProcess: rfq.dfm_process,
     dfmResults,
-    has3DModel: !!rfq.shape_share_token || !!rfq.shape_id,
+    files,
+    has3DModel: !!rfq.shape_share_token || !!rfq.shape_id || files.length > 0,
   });
 }
 

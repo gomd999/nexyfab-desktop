@@ -42,16 +42,25 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
     const raf = requestAnimationFrame(() => {
       observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
+          // Reveal ONCE and stop observing. The previous version removed `active`
+          // whenever an element scrolled out of view, so on a phone — where each
+          // 1-column section fills the short viewport — almost everything reverted
+          // to opacity:0 the moment you scrolled past it, making the page look
+          // mostly blank. A one-time reveal keeps content visible.
           if (entry.isIntersecting) {
             entry.target.classList.add('active');
-          } else {
-            entry.target.classList.remove('active');
+            observer.unobserve(entry.target);
           }
         });
-      }, { threshold: 0.1 });
+      }, { threshold: 0.08, rootMargin: '0px 0px -8% 0px' });
       document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
     });
-    return () => { cancelAnimationFrame(raf); observer?.disconnect(); };
+    // Safety net: if the observer never runs (very old browser / JS race), reveal
+    // everything after a short delay so content is never permanently hidden.
+    const fallback = setTimeout(() => {
+      document.querySelectorAll('.reveal:not(.active)').forEach(el => el.classList.add('active'));
+    }, 2500);
+    return () => { cancelAnimationFrame(raf); clearTimeout(fallback); observer?.disconnect(); };
   }, []);
 
   const dismissOnboarding = () => {
@@ -104,7 +113,7 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
       <section style={{
         position: 'relative', overflow: 'hidden',
         background: 'linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 40%, #0b1a38 100%)',
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '120px 24px 80px',
       }}>
         {/* Animated grid background */}

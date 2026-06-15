@@ -8,6 +8,7 @@ export const holeWizardManifest: PluginManifest = {
   name: 'Hole Wizard',
   version: '1.0.0',
   author: 'NexyFab',
+  apiVersion: '1.0.0',
   description: 'Creates a flat plate with a parametric grid of through-holes, counterbores, or countersinks',
 };
 

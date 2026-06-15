@@ -3,13 +3,14 @@
 import { usePathname } from 'next/navigation';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import ErrorBoundary from '@/components/nexyfab/ErrorBoundary';
-import { OrbitControls, Grid, TransformControls, Environment, Lightformer, Html, GizmoHelper, GizmoViewport, Instances, Instance } from '@react-three/drei';
+import { OrbitControls, TransformControls, Environment, Lightformer, Html, GizmoHelper, GizmoViewport, Instances, Instance } from '@react-three/drei';
 import { NF_R3F_VIEWPORT_DATA_ENGINE } from '@/lib/nexyfab/viewport';
 import * as THREE from 'three';
 import type { TransformControls as TransformControlsThree } from 'three/examples/jsm/controls/TransformControls.js';
 import React, { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, type ComponentRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { ShapeResult } from './shapes';
+import { GL_COLOR } from './lib/glColors';
 import type { EditMode } from './editing/types';
 import { useEditableGeometry } from './editing/useEditableGeometry';
 import { useFaceEditing } from './editing/useFaceEditing';
@@ -17,9 +18,14 @@ import { useFaceEditing } from './editing/useFaceEditing';
 import KinematicDragManager from './assembly/KinematicDragManager';
 import { bomPartResultsAndAssemblyMatesToSolverState } from './assembly/mateSelectionMapping';
 import type { AssemblyState } from './assembly/matesSolver';
+import { restorePoses, type BodyPoseSnapshot } from './assembly/kinematicDragSolve';
+import { commandHistory } from './history/CommandHistory';
 import StandardPartDropHandler, { type StandardPartDropEvent } from './library/StandardPartDropHandler';
 import FaceHandles from './editing/FaceHandles';
 import EdgeContextPanel from './editing/EdgeContextPanel';
+import FaceContextPanel from './editing/FaceContextPanel';
+import { offsetFace as offsetFaceOp, shellWhole as shellWholeOp, type ShellOpenFace } from './editing/applyFaceOps';
+import type { UniqueFace } from './editing/useFaceEditing';
 import { useLOD } from './lod/useLOD';
 import VertexHandles from './editing/VertexHandles';
 import EdgeHandles from './editing/EdgeHandles';
@@ -747,6 +753,7 @@ function EditScene({
   displayMode,
   onDragStateChange,
   snapGrid,
+  smartSnapEnabled = false,
   selectedEdgeIds,
   onEdgeSelect,
 }: {
@@ -755,11 +762,13 @@ function EditScene({
   displayMode: DisplayMode;
   onDragStateChange?: (dragging: boolean) => void;
   snapGrid?: number;
+  smartSnapEnabled?: boolean;
   selectedEdgeIds?: Set<number>;
   onEdgeSelect?: (edge: import('./editing/types').UniqueEdge, additive: boolean) => void;
 }) {
   const { editGeometry, vertices, edges, moveVertex, moveEdge } = useEditableGeometry(sourceGeometry);
   const [isDragging, setIsDragging] = useState(false);
+  const [smartSnap, setSmartSnap] = useState<import('./editing/smartSnap').SnapCandidate | null>(null);
 
   /** OrbitControls default LEFT=rotate steals clicks from vertex/edge handles; disable left binding. */
   const vertexEdgeOrbitMouse = useMemo(
@@ -792,7 +801,7 @@ function EditScene({
 
   return (
     <group>
-      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color="var(--nx-accent-2)" />
+      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color={GL_COLOR.accent2} />
 
       {editMode === 'vertex' && (
         <VertexHandles
@@ -802,6 +811,9 @@ function EditScene({
           onDragEnd={handleDragEnd}
           snapGrid={snapGrid}
           size={2.4}
+          smartSnapEnabled={smartSnapEnabled}
+          smartSnapGeometry={editGeometry}
+          onSmartSnapChange={setSmartSnap}
         />
       )}
 
@@ -816,6 +828,18 @@ function EditScene({
           selectedEdgeIds={selectedEdgeIds}
           onEdgeSelect={onEdgeSelect}
         />
+      )}
+
+      {/* Smart-snap visual indicator: small glowing sphere at the snap target */}
+      {smartSnap && (
+        <mesh
+          position={smartSnap.point}
+          renderOrder={999}
+          userData={{ 'data-testid': 'smart-snap-indicator' }}
+        >
+          <sphereGeometry args={[0.8, 12, 8]} />
+          <meshBasicMaterial color="#22d3ee" transparent opacity={0.85} depthTest={false} />
+        </mesh>
       )}
 
       <OrbitControls
@@ -839,6 +863,7 @@ function FaceScene({
   onDragStateChange,
   onGeometryApply,
   onFaceSketch,
+  onFaceSelectionChange,
   emptySelectionCallout,
   emptySelectionCalloutTitle,
   emptySelectionCalloutTip,
@@ -849,6 +874,14 @@ function FaceScene({
   onDragStateChange?: (d: boolean) => void;
   onGeometryApply?: (geo: THREE.BufferGeometry) => void;
   onFaceSketch?: (faceId: number) => void;
+  /** Emits the currently selected face (or null) so the parent host can mount
+   *  a sibling DOM-overlay panel (FaceContextPanel) for numeric ops. The
+   *  panel is rendered *outside* the R3F Canvas, so it cannot live inside
+   *  this scene — but the selection state does. This callback bridges the two. */
+  onFaceSelectionChange?: (
+    face: UniqueFace | null,
+    workingGeometry: THREE.BufferGeometry | null,
+  ) => void;
   /** Shown until a face is selected — keeps Push/Pull steps visible on the canvas. */
   emptySelectionCallout?: string;
   emptySelectionCalloutTitle?: string;
@@ -879,6 +912,18 @@ function FaceScene({
       return next;
     });
   }, [setSelectedFaceId]);
+
+  // Bridge: emit the primary selection up to the host so FaceContextPanel can
+  // mount as a sibling DOM overlay. Skip multi-selection (panel is single-face).
+  useEffect(() => {
+    if (!onFaceSelectionChange) return;
+    if (selectedFaceId === null) {
+      onFaceSelectionChange(null, editGeometry);
+      return;
+    }
+    const face = faces.find((f) => f.id === selectedFaceId) ?? null;
+    onFaceSelectionChange(face, editGeometry);
+  }, [selectedFaceId, faces, editGeometry, onFaceSelectionChange]);
 
   const clearSelection = useCallback(() => {
     setSelectedFaceId(null);
@@ -911,7 +956,7 @@ function FaceScene({
 
   return (
     <group>
-      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color="var(--nx-accent-2)" />
+      <EditableShapeMesh geometry={editGeometry} displayMode={displayMode} color={GL_COLOR.accent2} />
       <FaceHandles
         geometry={editGeometry}
         faces={faces}
@@ -999,7 +1044,7 @@ function FaceScene({
           <div style={{
             position: 'fixed', top: 84, right: 16, zIndex: 50,
             padding: '8px 12px', borderRadius: 8,
-            background: 'rgba(13,17,23,0.92)', border: '1px solid var(--nx-accent)',
+            background: 'var(--nx-glass-strong)', border: '1px solid var(--nx-accent)',
             color: 'var(--nx-text)', fontSize: 12, fontWeight: 600,
             fontFamily: 'system-ui, sans-serif',
             display: 'flex', alignItems: 'center', gap: 10,
@@ -1099,7 +1144,7 @@ function TransformScene({
 
   return (
     <group>
-      <ShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" />
+      <ShapeMesh result={result} displayMode={displayMode} color={GL_COLOR.accent2} />
       <mesh ref={meshRef} geometry={result.geometry} visible={false} />
       <TransformControls
         ref={transformRef}
@@ -1333,11 +1378,32 @@ interface ShapePreviewProps {
   onGeometryApply?: (geo: THREE.BufferGeometry) => void;
   onFaceSketch?: (faceId: number) => void;
   onDimClick?: (dim: 'w' | 'h' | 'd', currentValue: number) => void;
+  /** Status callback for edge-context fillet/chamfer operations. Host wires this
+   *  to addToast so success ("Fillet applied (r=3mm)") and specific errors
+   *  ("OCCT_FAILED", "NO_GEOMETRY") surface to the user instead of being
+   *  silently swallowed. Optional — when absent, errors still log to console. */
+  onEdgeOperationStatus?: (
+    status: 'success' | 'error',
+    op: 'fillet' | 'chamfer',
+    detail: string,
+  ) => void;
+  /** Status callback for face-context offset/shell operations. Mirrors
+   *  `onEdgeOperationStatus`. Detail payload is one of:
+   *    success → "d=2.0mm" / "t=2.0mm × open=top"
+   *    error   → "NO_GEOMETRY" | "OFFSET_INVALID" | "THICKNESS_INVALID"
+   *              | "OCCT_FAILED" | "IMPORT_FAILED: …" | raw error text */
+  onFaceOperationStatus?: (
+    status: 'success' | 'error',
+    op: 'offset' | 'shell',
+    detail: string,
+  ) => void;
   lang?: string;
   /** Called when a supported CAD/mesh file is dropped onto the viewport */
   onFileImport?: (file: File) => void;
   /** Whether snap is enabled (shows snap guides) */
   snapEnabled?: boolean;
+  /** Smart-snap (edge-to-edge) toggle. Wires through to vertex handles. */
+  smartSnapEnabled?: boolean;
   /** Ghost (preview) result — shown semi-transparent alongside the main shape */
   ghostResult?: ShapeResult | null;
   /** Turntable animation mode: 'turntable' rotates the shape automatically */
@@ -1533,9 +1599,12 @@ export default function ShapePreview({
   onGeometryApply,
   onFaceSketch,
   onDimClick,
+  onEdgeOperationStatus,
+  onFaceOperationStatus,
   lang = 'ko',
   onFileImport,
   snapEnabled: _snapEnabled = false,
+  smartSnapEnabled = false,
   ghostResult = null,
   animateMode = 'none',
   motionPartTransforms = null,
@@ -1586,6 +1655,35 @@ export default function ShapePreview({
     setKinematicTransforms(newTransforms);
   }, [kinematicState]);
 
+  // One undo step per drag gesture (sketch drag-solve contract): the manager
+  // hands us before/after pose snapshots when the pointer is released, and we
+  // register a single command that swaps the whole assembly pose set.
+  const handleDragGestureEnd = useCallback((before: BodyPoseSnapshot[], after: BodyPoseSnapshot[]) => {
+    const state = kinematicState;
+    if (!state) return;
+    const applyPoses = (snap: BodyPoseSnapshot[]) => {
+      restorePoses(state, snap);
+      const t: Record<string, THREE.Matrix4> = {};
+      state.bodies.forEach(b => {
+        t[b.name] = new THREE.Matrix4().compose(
+          b.position.clone(),
+          new THREE.Quaternion().setFromEuler(b.rotation),
+          new THREE.Vector3(1, 1, 1),
+        );
+      });
+      setKinematicTransforms(t);
+    };
+    commandHistory.execute({
+      id: `kinematic-drag-${Date.now()}`,
+      label: 'Drag part (kinematic)',
+      labelKo: '기구 드래그',
+      // The drag already left the live state at `after`; execute is also the
+      // redo path, so it must apply the snapshot rather than assume it.
+      execute: () => applyPoses(after),
+      undo: () => applyPoses(before),
+    });
+  }, [kinematicState]);
+
   const [hitboxes, setHitboxes] = useState<THREE.Object3D[]>([]);
   const hitboxesGroupRef = useRef<THREE.Group>(null);
   useEffect(() => {
@@ -1625,6 +1723,15 @@ export default function ShapePreview({
     return () => window.removeEventListener('nexyfab:display-mode', onMode);
   }, []);
   const [fitKey, setFitKey] = useState(0);
+  // Wire the keyboard "fit camera" shortcut: useKeyboardShortcuts dispatches
+  // window 'nexyfab:fit-camera' but nothing listened, so the binding silently
+  // did nothing. Trigger the same fit the toolbar Fit button uses.
+  // (2026-06-12 dead-wiring fix)
+  useEffect(() => {
+    const onFit = () => { onGeometryFitRequest?.(); setFitKey(k => k + 1); };
+    window.addEventListener('nexyfab:fit-camera', onFit);
+    return () => window.removeEventListener('nexyfab:fit-camera', onFit);
+  }, [onGeometryFitRequest]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [internalAnimateMode, setInternalAnimateMode] = useState<'none' | 'turntable'>('none');
   const effectiveAnimateMode = animateMode !== 'none' ? animateMode : internalAnimateMode;
@@ -1692,6 +1799,21 @@ export default function ShapePreview({
   const [selectedEdgesForPanel, setSelectedEdgesForPanel] = useState<import('./editing/types').UniqueEdge[]>([]);
   const selectedEdgeIdsForPanel = useMemo(() => new Set(selectedEdgesForPanel.map(e => e.id)), [selectedEdgesForPanel]);
 
+  // Face context panel state (single-face, for face offset / shell). FaceScene
+  // emits the current primary selection via onFaceSelectionChange so we can
+  // mount the panel as a sibling overlay outside the R3F Canvas. The working
+  // geometry comes from FaceScene's edit ref so the panel's operations land
+  // on the same vertex set the user sees highlighted.
+  const [selectedFaceForPanel, setSelectedFaceForPanel] = useState<UniqueFace | null>(null);
+  const [faceEditGeometry, setFaceEditGeometry] = useState<THREE.BufferGeometry | null>(null);
+  const handleFaceSelectionChange = useCallback(
+    (face: UniqueFace | null, workingGeometry: THREE.BufferGeometry | null) => {
+      setSelectedFaceForPanel(face);
+      setFaceEditGeometry(workingGeometry);
+    },
+    [],
+  );
+
   const handleEdgeSelect = useCallback((edge: import('./editing/types').UniqueEdge, additive: boolean) => {
     setSelectedEdgesForPanel(prev => {
       if (!additive) return [edge];
@@ -1729,6 +1851,32 @@ export default function ShapePreview({
       });
     }
   }, [materialId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Custom material upload: CustomMaterialUpload dispatches 'nexyfab:set-custom-material'
+  // with PBR map URLs, but nothing listened — uploads never reached the mesh.
+  // Merge the maps into the live material override so TexturedMeshMaterial picks
+  // them up. The upload panel re-emits its full slot set each change, so writing
+  // all five (undefined = slot cleared) mirrors the panel exactly.
+  // (2026-06-13 dead-wiring fix)
+  useEffect(() => {
+    const onCustomMat = (e: Event) => {
+      const d = (e as CustomEvent).detail as {
+        normalMapUrl?: string; roughnessMapUrl?: string; metalnessMapUrl?: string;
+        aoMapUrl?: string; displacementMapUrl?: string;
+      } | undefined;
+      if (!d) return;
+      setMaterialOverride(prev => ({
+        ...prev,
+        normalMapUrl: d.normalMapUrl,
+        roughnessMapUrl: d.roughnessMapUrl,
+        metalnessMapUrl: d.metalnessMapUrl,
+        aoMapUrl: d.aoMapUrl,
+        displacementMapUrl: d.displacementMapUrl,
+      }));
+    };
+    window.addEventListener('nexyfab:set-custom-material', onCustomMat);
+    return () => window.removeEventListener('nexyfab:set-custom-material', onCustomMat);
+  }, []);
 
   const isAssembly = bomParts && bomParts.length > 0;
 
@@ -1846,6 +1994,26 @@ export default function ShapePreview({
     }
     const size = combined.getSize(new THREE.Vector3());
     return { vol: totalVol, sa: totalSA, w: size.x, h: size.y, d: size.z };
+  }, [allResults]);
+
+  // Ground-grid span. The gridHelper is finite (a plain LineSegments, not the
+  // infinite drei shader), so a fixed 600-unit pad clipped large parts or parts
+  // placed far from the origin (they floated off the grid). Grow the span to
+  // cover the model's XZ footprint+offset while keeping the grid centred on the
+  // world origin so its lines still align to world snap multiples. (2026-06-10)
+  const gridSpan = useMemo(() => {
+    if (allResults.length === 0) return 600;
+    const combined = new THREE.Box3();
+    for (const r of allResults) {
+      if (!r.geometry.boundingBox) r.geometry.computeBoundingBox();
+      if (r.geometry.boundingBox) combined.union(r.geometry.boundingBox);
+    }
+    if (combined.isEmpty()) return 600;
+    const maxAbs = Math.max(
+      Math.abs(combined.min.x), Math.abs(combined.max.x),
+      Math.abs(combined.min.z), Math.abs(combined.max.z),
+    );
+    return Math.max(600, Math.ceil((maxAbs * 2.4) / 100) * 100);
   }, [allResults]);
 
   // Total triangle count across all displayed geometries (for the overlay badge)
@@ -2017,8 +2185,12 @@ export default function ShapePreview({
           )}
         </div>
 
-        {/* Fusion 360-style Top Right ViewCube */}
-        <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {/* Fusion 360-style Top Right ViewCube.
+            In sketch mode the centered "Sketch Plane" selector also sits at
+            top:16 — on the narrow preview panel they collide, so drop the
+            ViewCube to a second row when the plane selector is visible.
+            (2026-06-12 overlap fix) */}
+        <div style={{ position: 'absolute', top: (onSketchPlaneChange && sketchPlane) ? 60 : 16, right: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, background: 'var(--nx-glass-strong)', padding: 4, borderRadius: 8, border: '1px solid var(--nx-border)', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
             {([
               { label: t.top, key: '7', view: 'top' },
@@ -2195,33 +2367,233 @@ export default function ShapePreview({
           onMouseDown={e => e.preventDefault()}
           onWheel={e => e.stopPropagation()}>
 
-          {/* Edge context panel (fillet/chamfer — multi-select) */}
+          {/* ════════ Edge context panel (fillet/chamfer — multi-select) ════════
+           *
+           * BACKEND CHOICE: direct feature pipeline (filletFeature / chamferFeature
+           * via applyAsync). Trade-off vs alternatives:
+           *
+           *   - Picked: applyAsync path uses real per-edge OCCT when a B-rep handle
+           *     is attached to the geometry, falling back to the mesh approximator
+           *     otherwise. Edge selections from the viewport are forwarded as
+           *     EdgeSelectionInfo[] via ctx.edgeSelections so the OCCT EdgeFinder
+           *     can target the clicked edges instead of rounding the whole body.
+           *
+           *   - Rejected: AI-agent (brep_fillet via prompt). Adds latency,
+           *     non-determinism, and a server roundtrip for a one-click viewport
+           *     operation. The deterministic feature pipeline already does what
+           *     the agent would do — there is no reason to route through AI here.
+           *
+           *   - Rejected: SCAD minkowski-wrap whole-body. Misleading (user picked
+           *     an edge but everything rounds). Worse UX than calling the existing
+           *     OCCT-backed feature.
+           *
+           * The sibling overlay marker carries data-testid="edge-context-panel-overlay"
+           * so regression tests can assert mount lifecycle independent of the
+           * panel's internal markup (mirrors the csg-panel-overlay pattern).
+           */}
           {editMode === 'edge' && selectedEdgesForPanel.length > 0 && result && (
-            <EdgeContextPanel
-              selectedEdges={selectedEdgesForPanel}
-              geometry={result.geometry}
-              lang={lang}
-              onApplyFillet={(radius, segments) => {
-                import('./features/fillet').then(({ filletFeature }) => {
+            <>
+              <span
+                data-testid="edge-context-panel-overlay"
+                style={{ display: 'none' }}
+                aria-hidden="true"
+              />
+              <EdgeContextPanel
+                selectedEdges={selectedEdgesForPanel}
+                geometry={result.geometry}
+                lang={lang}
+                onApplyFillet={(radius, segments) => {
+                  const geo = result.geometry;
+                  // Validate before dispatching (specific reasons surface to toast)
+                  if (!geo || (geo.attributes.position?.count ?? 0) < 4) {
+                    onEdgeOperationStatus?.('error', 'fillet', 'NO_GEOMETRY');
+                    setSelectedEdgesForPanel([]);
+                    return;
+                  }
+                  if (!(radius > 0)) {
+                    onEdgeOperationStatus?.('error', 'fillet', 'RADIUS_INVALID');
+                    return;
+                  }
+                  // Build per-edge selection context so the OCCT path can target
+                  // the clicked edges via EdgeFinder. Position = midpoint;
+                  // length = |A-B|; normal is omitted (the finder tolerates it).
+                  const edgeSelections = selectedEdgesForPanel.map((edge) => {
+                    const [mx, my, mz] = edge.midpoint;
+                    return {
+                      type: 'edge' as const,
+                      position: [mx, my, mz] as [number, number, number],
+                      length: 0,
+                      normal: [0, 0, 1] as [number, number, number],
+                    };
+                  });
+                  const captured = selectedEdgesForPanel.slice();
+                  setSelectedEdgesForPanel([]);
+                  void import('./features/fillet').then(async ({ filletFeature }) => {
+                    try {
+                      const apply = filletFeature.applyAsync ?? (async (g, p, c) => filletFeature.apply(g, p, c));
+                      const newGeo = await apply(
+                        geo,
+                        { radius, segments, engine: 1 },
+                        { featureId: 'edge-context-fillet', edgeSelections },
+                      );
+                      onGeometryApply?.(newGeo);
+                      onEdgeOperationStatus?.(
+                        'success',
+                        'fillet',
+                        `r=${radius}mm × ${captured.length}`,
+                      );
+                    } catch (err) {
+                      const detail = err instanceof Error ? err.message : String(err);
+                      const code = /requires.*4 vertices|requires indexed/i.test(detail)
+                        ? 'NO_GEOMETRY'
+                        : /occt/i.test(detail)
+                          ? 'OCCT_FAILED'
+                          : detail.slice(0, 120);
+                      onEdgeOperationStatus?.('error', 'fillet', code);
+                    }
+                  }).catch((err: unknown) => {
+                    const detail = err instanceof Error ? err.message : String(err);
+                    onEdgeOperationStatus?.('error', 'fillet', `IMPORT_FAILED: ${detail}`);
+                  });
+                }}
+                onApplyChamfer={(distance) => {
+                  const geo = result.geometry;
+                  if (!geo || (geo.attributes.position?.count ?? 0) < 4) {
+                    onEdgeOperationStatus?.('error', 'chamfer', 'NO_GEOMETRY');
+                    setSelectedEdgesForPanel([]);
+                    return;
+                  }
+                  if (!(distance > 0)) {
+                    onEdgeOperationStatus?.('error', 'chamfer', 'DISTANCE_INVALID');
+                    return;
+                  }
+                  const edgeSelections = selectedEdgesForPanel.map((edge) => {
+                    const [mx, my, mz] = edge.midpoint;
+                    return {
+                      type: 'edge' as const,
+                      position: [mx, my, mz] as [number, number, number],
+                      length: 0,
+                      normal: [0, 0, 1] as [number, number, number],
+                    };
+                  });
+                  const captured = selectedEdgesForPanel.slice();
+                  setSelectedEdgesForPanel([]);
+                  void import('./features/chamfer').then(async ({ chamferFeature }) => {
+                    try {
+                      const apply = chamferFeature.applyAsync ?? (async (g, p, c) => chamferFeature.apply(g, p, c));
+                      const newGeo = await apply(
+                        geo,
+                        { distance, engine: 1 },
+                        { featureId: 'edge-context-chamfer', edgeSelections },
+                      );
+                      onGeometryApply?.(newGeo);
+                      onEdgeOperationStatus?.(
+                        'success',
+                        'chamfer',
+                        `d=${distance}mm × ${captured.length}`,
+                      );
+                    } catch (err) {
+                      const detail = err instanceof Error ? err.message : String(err);
+                      const code = /requires.*4 vertices|requires indexed/i.test(detail)
+                        ? 'NO_GEOMETRY'
+                        : /occt/i.test(detail)
+                          ? 'OCCT_FAILED'
+                          : detail.slice(0, 120);
+                      onEdgeOperationStatus?.('error', 'chamfer', code);
+                    }
+                  }).catch((err: unknown) => {
+                    const detail = err instanceof Error ? err.message : String(err);
+                    onEdgeOperationStatus?.('error', 'chamfer', `IMPORT_FAILED: ${detail}`);
+                  });
+                }}
+                onClose={() => setSelectedEdgesForPanel([])}
+                onClearSelection={() => setSelectedEdgesForPanel([])}
+              />
+            </>
+          )}
+
+          {/* Face context panel — mirrors the EdgeContextPanel wiring above.
+           * Mount conditions: face edit mode + a single primary face selected +
+           * working geometry available. The FaceScene above emits the selection
+           * via onFaceSelectionChange so this DOM-overlay panel (outside the
+           * Canvas) can dispatch deterministic offset/shell ops without
+           * round-tripping through the AI chat.
+           *
+           * Why a sibling panel instead of extending SelectionInfoBadge?
+           * Phase 1.2/1.3 constraint pinned SelectionInfoBadge as "do not modify".
+           * The existing `faceOffset` chip there sends an AI hint string — that
+           * UX stays; this panel is the deterministic numeric-input alternative.
+           *
+           * The sibling overlay marker carries data-testid="face-context-panel-
+           * overlay" so regression tests can assert mount lifecycle independent
+           * of the panel's internal markup (mirrors the edge-context-panel-
+           * overlay pattern). */}
+          {editMode === 'face' && selectedFaceForPanel && faceEditGeometry && (
+            <>
+              <span
+                data-testid="face-context-panel-overlay"
+                style={{ display: 'none' }}
+                aria-hidden="true"
+              />
+              <FaceContextPanel
+                selectedFace={selectedFaceForPanel}
+                geometry={faceEditGeometry}
+                lang={lang}
+                onApplyOffset={(distance) => {
+                  const face = selectedFaceForPanel;
+                  const geo = faceEditGeometry;
+                  if (!geo || (geo.attributes.position?.count ?? 0) < 4) {
+                    onFaceOperationStatus?.('error', 'offset', 'NO_GEOMETRY');
+                    return;
+                  }
+                  if (!Number.isFinite(distance) || distance === 0) {
+                    onFaceOperationStatus?.('error', 'offset', 'OFFSET_INVALID');
+                    return;
+                  }
                   try {
-                    const newGeo = filletFeature.apply(result.geometry, { radius, segments });
+                    const newGeo = offsetFaceOp(geo, face, distance);
                     onGeometryApply?.(newGeo);
-                  } catch { /* ignore */ }
-                });
-                setSelectedEdgesForPanel([]);
-              }}
-              onApplyChamfer={(distance) => {
-                import('./features/chamfer').then(({ chamferFeature }) => {
-                  try {
-                    const newGeo = chamferFeature.apply(result.geometry, { distance });
-                    onGeometryApply?.(newGeo);
-                  } catch { /* ignore */ }
-                });
-                setSelectedEdgesForPanel([]);
-              }}
-              onClose={() => setSelectedEdgesForPanel([])}
-              onClearSelection={() => setSelectedEdgesForPanel([])}
-            />
+                    onFaceOperationStatus?.('success', 'offset', `d=${distance.toFixed(1)}mm`);
+                  } catch (err) {
+                    const detail = err instanceof Error ? err.message : String(err);
+                    onFaceOperationStatus?.('error', 'offset', detail.slice(0, 120));
+                  }
+                }}
+                onApplyShell={(thickness, openFace) => {
+                  const geo = faceEditGeometry;
+                  if (!geo || (geo.attributes.position?.count ?? 0) < 4) {
+                    onFaceOperationStatus?.('error', 'shell', 'NO_GEOMETRY');
+                    return;
+                  }
+                  if (!(thickness > 0)) {
+                    onFaceOperationStatus?.('error', 'shell', 'THICKNESS_INVALID');
+                    return;
+                  }
+                  const safeOpen: ShellOpenFace =
+                    openFace === 1 ? 1 : openFace === 2 ? 2 : 0;
+                  void shellWholeOp(geo, thickness, safeOpen)
+                    .then((newGeo) => {
+                      onGeometryApply?.(newGeo);
+                      const openLabel = safeOpen === 1 ? 'top' : safeOpen === 2 ? 'bottom' : 'closed';
+                      onFaceOperationStatus?.(
+                        'success',
+                        'shell',
+                        `t=${thickness.toFixed(1)}mm × ${openLabel}`,
+                      );
+                    })
+                    .catch((err: unknown) => {
+                      const detail = err instanceof Error ? err.message : String(err);
+                      const code = /requires.*4 vertices|requires indexed/i.test(detail)
+                        ? 'NO_GEOMETRY'
+                        : /occt/i.test(detail)
+                          ? 'OCCT_FAILED'
+                          : detail.slice(0, 120);
+                      onFaceOperationStatus?.('error', 'shell', code);
+                    });
+                }}
+                onClose={() => setSelectedFaceForPanel(null)}
+              />
+            </>
           )}
 
           {/* Sketch plane selector overlay */}
@@ -2378,7 +2750,15 @@ export default function ShapePreview({
               </div>
             )}
             <Canvas
-              camera={{ position: [150, 120, 150], fov: 50, near: 0.05, far: 2_000_000 }}
+              // near:0.05 / far:2,000,000 gave a 4e7 depth range → catastrophic
+              // depth-buffer precision loss → the ground grid (and coplanar
+              // faces) shimmered / Z-fought when orbiting. Tighten the range to
+              // a CAD-sane span (5e4 ratio → ample 24-bit precision).
+              // NOTE: do NOT enable logarithmicDepthBuffer — drei's <Grid>
+              // shader doesn't write logarithmic depth, so it renders at the
+              // wrong depth under a log buffer and Z-fights HARDER. The tight
+              // near/far range alone fixes the shimmer. (2026-06-09)
+              camera={{ position: [150, 120, 150], fov: 50, near: 1, far: 50_000 }}
               shadows
               gl={{ antialias: true, preserveDrawingBuffer: true }}
               onCreated={({ gl, scene }) => {
@@ -2425,6 +2805,10 @@ export default function ShapePreview({
                     showGround={renderSettings.showGround}
                     exposure={renderSettings.exposure}
                     customHdriUrl={renderSettings.customHdriUrl}
+                    dofEnabled={renderSettings.dofEnabled}
+                    dofFocusDistance={renderSettings.dofFocusDistance}
+                    dofFocalLength={renderSettings.dofFocalLength}
+                    dofBokehScale={renderSettings.dofBokehScale}
                   />
                   {renderSettings.pathTracing && (
                     <PathTracer enabled={true} />
@@ -2432,11 +2816,11 @@ export default function ShapePreview({
                 </Suspense>
               ) : (
                 <>
-                  <hemisphereLight args={['var(--nx-text)', 'var(--nx-panel-2)', 0.8]} />
+                  <hemisphereLight args={['#ffffff', '#444444', 0.8]} />
                   <ambientLight intensity={0.4} />
                   <directionalLight position={[20, 30, 15]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0005} />
                   <directionalLight position={[-15, 10, -10]} intensity={0.6} color="#eef2ff" />
-                  <pointLight position={[0, 50, 0]} intensity={0.3} color="var(--nx-text)" />
+                  <pointLight position={[0, 50, 0]} intensity={0.3} color="#ffffff" />
                 </>
               )}
               <Suspense fallback={null}>
@@ -2463,6 +2847,7 @@ export default function ShapePreview({
                     onDragStateChange={onDragStateChange}
                     onGeometryApply={onGeometryApply}
                     onFaceSketch={onFaceSketch}
+                    onFaceSelectionChange={handleFaceSelectionChange}
                     emptySelectionCallout={faceEditViewportCallout}
                     emptySelectionCalloutTitle={faceEditViewportCalloutTitle}
                     emptySelectionCalloutTip={faceEditViewportCalloutTip}
@@ -2475,6 +2860,7 @@ export default function ShapePreview({
                     displayMode={displayMode}
                     onDragStateChange={onDragStateChange}
                     snapGrid={snapGrid}
+                    smartSnapEnabled={smartSnapEnabled}
                     selectedEdgeIds={selectedEdgeIdsForPanel}
                     onEdgeSelect={handleEdgeSelect}
                   />
@@ -2541,7 +2927,7 @@ export default function ShapePreview({
                       return (
                         <mesh key={`interference_${i}`} position={[center.x, center.y, center.z]}>
                           <boxGeometry args={[size.x, size.y, size.z]} />
-                          <meshStandardMaterial color="var(--nx-error)" transparent opacity={0.35} depthWrite={false} side={THREE.DoubleSide} />
+                          <meshStandardMaterial color={GL_COLOR.error} transparent opacity={0.35} depthWrite={false} side={THREE.DoubleSide} />
                         </mesh>
                       );
                     })}
@@ -2608,6 +2994,7 @@ export default function ShapePreview({
                         bomParts={bomParts}
                         assemblyState={kinematicState}
                         onSolverUpdate={handleSolverUpdate}
+                        onGestureEnd={handleDragGestureEnd}
                         onDragStateChange={(dragging) => onDragStateChange && onDragStateChange(dragging)}
                         hitboxes={hitboxes}
                       />
@@ -2622,7 +3009,7 @@ export default function ShapePreview({
                   <TurntableGroup active={effectiveAnimateMode === 'turntable'}>
                   <MotionMeshWrapper transforms={effectiveMotionTransforms}>
                   <>
-                    {result && !showPrintAnalysis && !showFEA && !showDFM && !showDraftAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && !showPrintAnalysis && !showFEA && !showDFM && !showDraftAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color={GL_COLOR.accent2} isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {result && selectionActive && onElementSelect && <SelectionMeshR3F geometry={result.geometry} onSelect={onElementSelect} />}
                     {result && highlightTriangles && highlightTriangles.length > 0 && <FaceHighlightMesh sourceGeometry={result.geometry} triangleIndices={highlightTriangles} />}
                     {ghostResult && (
@@ -2638,7 +3025,7 @@ export default function ShapePreview({
                         buildDirection={printBuildDirection as [number, number, number]}
                       />
                     )}
-                    {result && showPrintAnalysis && !printAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showPrintAnalysis && !printAnalysis && <LODShapeMesh result={result} displayMode={displayMode} color={GL_COLOR.accent2} isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {result && showFEA && feaResult && (
                       <FEAOverlay
                         geometry={result.geometry}
@@ -2647,7 +3034,7 @@ export default function ShapePreview({
                         deformationScale={feaDeformationScale}
                       />
                     )}
-                    {result && showFEA && !feaResult && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showFEA && !feaResult && <LODShapeMesh result={result} displayMode={displayMode} color={GL_COLOR.accent2} isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {/* FEA boundary-condition markers — visible during setup */}
                     {result && showFEA && feaConditions && feaConditions.length > 0 && (
                       <FEAConditionMarkers
@@ -2664,7 +3051,7 @@ export default function ShapePreview({
                         highlightedIssue={dfmHighlightedIssue}
                       />
                     )}
-                    {result && showDFM && (!dfmResults || dfmResults.length === 0) && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showDFM && (!dfmResults || dfmResults.length === 0) && <LODShapeMesh result={result} displayMode={displayMode} color={GL_COLOR.accent2} isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {result && showDraftAnalysis && draftResult && (
                       <DraftAnalysisOverlay
                         geometry={result.geometry}
@@ -2673,11 +3060,11 @@ export default function ShapePreview({
                         pullDirection={draftResult.options?.pullDirection}
                       />
                     )}
-                    {result && showDraftAnalysis && !draftResult && <LODShapeMesh result={result} displayMode={displayMode} color="var(--nx-accent-2)" isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
+                    {result && showDraftAnalysis && !draftResult && <LODShapeMesh result={result} displayMode={displayMode} color={GL_COLOR.accent2} isOrbiting={isOrbiting} material={effectiveMaterial} override={materialOverride} />}
                     {/* Instance Array overlay */}
                     {result && showArray && arrayPattern && (() => {
                       const matrices = buildInstanceMatrices(arrayPattern);
-                      const mat = new THREE.MeshStandardMaterial({ color: 'var(--nx-accent-2)', roughness: 0.35, metalness: 0.4, side: THREE.DoubleSide });
+                      const mat = new THREE.MeshStandardMaterial({ color: GL_COLOR.accent2, roughness: 0.35, metalness: 0.4, side: THREE.DoubleSide });
                       return <InstanceArray geometry={result.geometry} material={mat} matrices={matrices} visible={true} />;
                     })()}
                     <OrbitControls makeDefault enableDamping dampingFactor={0.07} minDistance={1} maxDistance={5000} onStart={handleOrbitStart} onEnd={handleOrbitEnd} mouseButtons={{ LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN }} touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }} />
@@ -2770,20 +3157,29 @@ export default function ShapePreview({
                   )
                 )}
               </Suspense>
-              <group position={[0, bottomY - 2, 0]}>
-                <Grid
-                  args={[2000, 2000]}
-                  cellSize={typeof snapGrid === 'number' && snapGrid > 0 ? snapGrid : 10}
-                  cellThickness={0.6}
-                  cellColor="#e5e7eb"
-                  sectionSize={50}
-                  sectionThickness={1.2}
-                  sectionColor="#d1d5db"
-                  fadeDistance={800}
-                  fadeStrength={3}
-                  infiniteGrid
-                />
-              </group>
+              {/* Plain three.js gridHelper (LineSegments) instead of drei's
+                  <Grid>. The drei infinite-grid is a SHADER that computes lines
+                  via screen-space derivatives — that derivative AA is what
+                  shimmers/"지직" at grazing angles when orbiting, and it survived
+                  every depth/fade tweak. A gridHelper has no shader, so it can't
+                  shimmer that way. Finite 600-unit pad around the model; cells
+                  follow the snap size. (2026-06-10)
+                  Two helpers: fine cells + bolder section lines, the section one
+                  lifted 0.02 so the overlapping lines don't co-planar Z-fight. */}
+              {(() => {
+                const cell = typeof snapGrid === 'number' && snapGrid > 0 ? snapGrid : 10;
+                const SPAN = gridSpan;
+                // Cap line counts so a huge span (big/far parts) doesn't spawn
+                // thousands of LineSegments and tank the framerate.
+                const fineDiv = Math.min(400, Math.max(2, Math.round(SPAN / cell)));
+                const sectDiv = Math.min(200, Math.max(2, Math.round(SPAN / 50)));
+                return (
+                  <group position={[0, bottomY - 2, 0]}>
+                    <gridHelper args={[SPAN, fineDiv, '#e5e7eb', '#e5e7eb']} />
+                    <gridHelper args={[SPAN, sectDiv, '#cbd2d9', '#cbd2d9']} position={[0, 0.02, 0]} />
+                  </group>
+                );
+              })()}
               {/* World-origin axis: true (0,0,0), +0.5 Y lift so X/Z lines don't Z-fight with the grid.
                   Colors are forced to match GizmoViewport (iOS red/green/blue) so the bottom-left
                   triad and the ground axes read as the same coordinate system. */}
@@ -2817,7 +3213,7 @@ export default function ShapePreview({
           {hasContent && totalTriCount > 0 && (
             <div style={{
               position: 'absolute', bottom: 6, right: 8,
-              background: 'rgba(13,17,23,0.75)', borderRadius: '4px',
+              background: 'var(--nx-glass-strong)', borderRadius: '4px',
               padding: '2px 7px', fontSize: '10px', fontWeight: 600,
               color: isOrbiting ? 'var(--nx-warn)' : 'var(--nx-text-3)',
               pointerEvents: 'none', userSelect: 'none',

@@ -364,7 +364,7 @@ export const FEATURE_REGISTRY: FeatureRegistryEntry[] = [
     id: 'weld.structural', name: 'Weldments Structural Members', category: 'standard-parts',
     routes: ['modeling'], tags: ['w-beam', 'channel', 'angle', 'cut-list', 'stock-pack'],
     license: 'pro',
-    entryHint: 'weldments/structuralMembers',
+    entryHint: 'welding/structuralMembers',
     description: 'W-beam / C-channel / L-angle / HSS catalog + cut list + stock packing.',
   },
   {
@@ -1487,7 +1487,7 @@ export const FEATURE_REGISTRY: FeatureRegistryEntry[] = [
     tags: ['boolean', 'union', 'subtract', 'intersect', 'plane-plane', 'topology-preserve', 'provenance', 'in-out-test'],
     license: 'pro-plus',
     entryHint: 'features/brepBoolean',
-    description: 'Topology-level boolean ops on half-edge B-rep. Plane-plane intersection, face-provenance tagging (fromA/fromB/cut), divergence-theorem signed volume, Möller-Trumbore ray-cast point-in-shell test.',
+    description: 'Half-edge B-rep boolean ANALYSIS layer: plane-plane intersection lines, face-provenance tagging (fromA/fromB/cut), divergence-theorem signed volume, Möller-Trumbore ray-cast point-in-shell test. Does NOT split faces — watertight CSG is delegated to the OCCT B-rep kernel; this layer flags un-split results as non-watertight.',
   },
   {
     id: 'features.lattice', name: 'Additive-Manufacturing Lattice (TPMS + Strut)', category: 'modeling',
@@ -2374,7 +2374,7 @@ export const FEATURE_REGISTRY: FeatureRegistryEntry[] = [
     routes: ['drawing', 'modeling'],
     tags: ['weldment', 'cut-list', 'fabrication', 'bom', 'bin-packing', 'first-fit-decreasing', 'kerf', 'stock-length'],
     license: 'pro',
-    entryHint: 'weldments/cutListReport',
+    entryHint: 'welding/cutListReport',
     description: 'Generate cut-list from structural members: profile + material + length grouping with tolerance, mass + miter capture, optional 1D first-fit-decreasing bin packing against stock length with kerf, utilization report.',
   },
   {
@@ -4314,7 +4314,7 @@ export const FEATURE_REGISTRY: FeatureRegistryEntry[] = [
     routes: ['sheet-metal'],
     tags: ['relief-notch', 'rectangular', 'obround', 'V-notch', 'bend-corner', 'minimum-width'],
     license: 'free',
-    entryHint: 'sheet-metal/cornerOverlapRelief',
+    entryHint: 'sheetmetal/cornerOverlapRelief',
     description: 'Generate corner relief at intersecting bends so flanges fold without tearing. Rectangular / obround / V-notch shapes, minimum-width rule (t+0.5mm or 1.5·R), shape suggestion by thickness, area calculation.',
   },
   {
@@ -4658,7 +4658,7 @@ export const FEATURE_REGISTRY: FeatureRegistryEntry[] = [
     routes: ['sheet-metal'],
     tags: ['jog', 'joggle', 'Z-bend', 'offset-bend', 'bend-allowance', 'springback'],
     license: 'free',
-    entryHint: 'sheet-metal/jogBendDeveloper',
+    entryHint: 'sheetmetal/jogBendDeveloper',
     description: 'Develop flat pattern for a jog/joggle (two opposite bends stepping to a parallel plane). Bend allowance per bend, slanted web length H/sinθ, total flat length, min formable offset (~2.5·t collision rule), springback compensation.',
   },
   {
@@ -5354,7 +5354,7 @@ export const FEATURE_REGISTRY: FeatureRegistryEntry[] = [
     routes: ['sheet-metal'],
     tags: ['deep-draw', 'blank-diameter', 'draw-ratio', 'LDR', 'redraw', 'blank-holder'],
     license: 'pro',
-    entryHint: 'sheet-metal/deepDraw',
+    entryHint: 'sheetmetal/deepDraw',
     description: 'Cylindrical deep-draw: blank D=√(d²+4dh), draw ratio vs limiting draw ratio (single-draw feasibility + redraw stage count), draw force π·d·t·UTS·(D/d−C), blank-holder force, max single-draw cup height.',
   },
   {
@@ -5386,7 +5386,7 @@ export const FEATURE_REGISTRY: FeatureRegistryEntry[] = [
     routes: ['sheet-metal'],
     tags: ['cone-development', 'frustum', 'flat-pattern', 'sector-angle', 'slant-height', 'transition'],
     license: 'pro',
-    entryHint: 'sheet-metal/coneDevelopment',
+    entryHint: 'sheetmetal/coneDevelopment',
     description: 'Flat-pattern of a (truncated) cone: side slant √(h²+(R−r)²), apex/top developed radii, sector angle 2π·R/L, outer/inner arc lengths, blank area, half apex angle. Full-cone special case (r=0).',
   },
   {

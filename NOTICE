@@ -1,0 +1,39 @@
+NexyFab — Third-Party License Notices
+======================================
+
+This product bundles or dynamically loads the following third-party
+components. The full text of each license is available at the URLs
+listed and/or in the corresponding subdirectory under
+`node_modules/<package>/LICENSE`.
+
+----------------------------------------------------------------------
+@salusoft89/planegcs (LGPL-2.0-or-later)
+----------------------------------------------------------------------
+
+NexyFab uses `@salusoft89/planegcs`, a WebAssembly port of the
+planegcs 2D Geometric Constraint Solver originally developed as part of
+the FreeCAD project (https://www.freecadweb.org/).
+
+  - Upstream solver source (C++):
+    https://github.com/FreeCAD/FreeCAD/tree/main/src/Mod/Sketcher/App/planegcs
+  - WASM/TypeScript port (Salusoft89):
+    https://github.com/Salusoft89/planegcs
+  - npm package:
+    https://www.npmjs.com/package/@salusoft89/planegcs
+
+License: GNU Lesser General Public License v2.1 or later
+         (https://www.gnu.org/licenses/lgpl-2.1.html)
+
+NexyFab loads the planegcs WebAssembly module dynamically at runtime via
+standard ES module `import`. Users wishing to substitute a modified
+version of planegcs may do so by replacing the package in node_modules
+or by overriding the WASM URL via the documented `init_planegcs_module`
+options.
+
+Acknowledgments: FreeCAD contributors (original solver) and the
+Salusoft89 maintainers (WASM port + TypeScript bindings).
+
+----------------------------------------------------------------------
+
+For a complete list of dependencies and their licenses, see
+`package.json` and run `npm ls`.

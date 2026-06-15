@@ -51,28 +51,28 @@ interface Pagination {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const C = {
-  bg: '#0d1117',
-  surface: '#161b22',
-  card: '#21262d',
-  border: '#30363d',
-  text: '#e6edf3',
-  textDim: '#8b949e',
-  textMuted: '#6e7681',
-  accent: '#388bfd',
-  green: '#3fb950',
-  yellow: '#d29922',
-  red: '#f85149',
+  bg: 'var(--nx-bg)',
+  surface: 'var(--nx-panel)',
+  card: 'var(--nx-panel-2)',
+  border: 'var(--nx-border)',
+  text: 'var(--nx-text)',
+  textDim: 'var(--nx-text-2)',
+  textMuted: 'var(--nx-text-3)',
+  accent: 'var(--nx-accent)',
+  green: 'var(--nx-ok)',
+  yellow: 'var(--nx-warn)',
+  red: 'var(--nx-error)',
 };
 
 const STATUS_META: Record<
   RFQEntry['status'],
   { labelKo: string; labelEn: string; color: string; bg: string }
 > = {
-  pending:  { labelKo: '검토 중',     labelEn: 'Pending',   color: '#d29922', bg: '#d2992220' },
+  pending:  { labelKo: '검토 중',     labelEn: 'Pending',   color: 'var(--nx-warn)', bg: '#d2992220' },
   assigned: { labelKo: '제조사 배정', labelEn: 'Assigned',  color: '#a78bfa', bg: '#a78bfa20' },
-  quoted:   { labelKo: '견적 완료',   labelEn: 'Quoted',    color: '#388bfd', bg: '#388bfd20' },
-  accepted: { labelKo: '수락됨',      labelEn: 'Accepted',  color: '#3fb950', bg: '#3fb95020' },
-  rejected: { labelKo: '취소됨',      labelEn: 'Cancelled', color: '#f85149', bg: '#f8514920' },
+  quoted:   { labelKo: '견적 완료',   labelEn: 'Quoted',    color: 'var(--nx-accent)', bg: '#388bfd20' },
+  accepted: { labelKo: '수락됨',      labelEn: 'Accepted',  color: 'var(--nx-ok)', bg: '#3fb95020' },
+  rejected: { labelKo: '취소됨',      labelEn: 'Cancelled', color: 'var(--nx-error)', bg: '#f8514920' },
 };
 
 const PROCESS_LABELS: Record<string, { en: string; ko: string }> = {
@@ -166,6 +166,28 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  // Pick up a COTS parts-library selection handed off from /nexyfab/cots
+  // ("Send RFQ"). Prefill the note + open the new-RFQ form so the standard
+  // parts actually carry into the request. (2026-06-09 follow-up #1)
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('nexyfab_cots_rfq');
+      if (!raw) return;
+      sessionStorage.removeItem('nexyfab_cots_rfq');
+      const parts = JSON.parse(raw) as Array<{ name: string; nameKo: string; standard: string; qty: number; unitPriceKRW: number }>;
+      if (!Array.isArray(parts) || parts.length === 0) return;
+      const header = isKo ? '표준 부품 견적 요청:' : 'Standard parts quote request:';
+      const lines = parts.map(p => `- ${isKo ? (p.nameKo || p.name) : p.name} (${p.standard}) ×${p.qty}`).join('\n');
+      const block = `${header}\n${lines}`;
+      setFormState(s => ({
+        ...s,
+        note: s.note ? `${s.note}\n${block}` : block,
+        shapeName: s.shapeName || (isKo ? '표준 부품 세트' : 'Standard parts set'),
+      }));
+      setShowNewForm(true);
+    } catch { /* ignore */ }
+  }, [isKo]);
 
   // ── AI 자연어 파싱 ─────────────────────────────────────────────────────────
   const [aiText, setAiText] = useState('');
@@ -416,7 +438,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
     }}>
       {/* Header */}
       <div style={{
-        borderBottom: `1px solid #21262d`,
+        borderBottom: `1px solid var(--nx-panel-2)`,
         padding: '16px clamp(16px, 4vw, 32px)',
         display: 'flex', alignItems: 'center', gap: 16,
         position: 'sticky', top: 0, background: C.bg, zIndex: 10,
@@ -434,7 +456,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
           onClick={() => router.push(`/${lang}/shape-generator`)}
           style={{
             padding: '7px 16px', borderRadius: 8, border: 'none',
-            background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
+            background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
             color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
           }}
         >
@@ -567,7 +589,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                     <span style={{
                       padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 800,
-                      background: tone.c, color: '#0d1117', letterSpacing: 0.4,
+                      background: tone.c, color: 'var(--nx-bg)', letterSpacing: 0.4,
                     }}>{grade}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
                       {isKo ? 'DFM 검증 결과 동봉' : 'DFM check attached'}
@@ -622,7 +644,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                     style={{
                       padding: '7px 18px', borderRadius: 7, fontSize: 12, fontWeight: 700,
                       border: 'none', cursor: aiParsing || !aiText.trim() ? 'default' : 'pointer',
-                      background: aiParsing || !aiText.trim() ? C.border : 'linear-gradient(135deg,#a78bfa,#388bfd)',
+                      background: aiParsing || !aiText.trim() ? C.border : 'linear-gradient(135deg,#a78bfa,var(--nx-accent))',
                       color: aiParsing || !aiText.trim() ? C.textMuted : '#fff',
                     }}
                   >
@@ -830,7 +852,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                 style={{
                   padding: '9px 24px', borderRadius: 8, fontSize: 13, fontWeight: 700, border: 'none',
                   cursor: submitting ? 'default' : 'pointer',
-                  background: submitting ? '#388bfd88' : 'linear-gradient(135deg, #388bfd, #8b5cf6)',
+                  background: submitting ? '#388bfd88' : 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
                   color: '#fff',
                 }}
               >
@@ -1078,7 +1100,7 @@ function QuoteAcceptSection({
           <>
             <p style={{ margin: '0 0 10px', fontSize: 12, color: C.textMuted }}>
               {isKo ? '주문이 자동 생성되었습니다' : 'Order auto-created'} ·{' '}
-              <code style={{ background: '#161b22', padding: '2px 6px', borderRadius: 4, color: C.text }}>{orderIdFromAccept}</code>
+              <code style={{ background: 'var(--nx-panel)', padding: '2px 6px', borderRadius: 4, color: C.text }}>{orderIdFromAccept}</code>
             </p>
             <a
               href={`/${isKo ? 'kr' : 'en'}/nexyfab/orders/${orderIdFromAccept}`}
@@ -1233,7 +1255,7 @@ function EmptyState({
           onClick={() => router.push(`/${lang}/shape-generator`)}
           style={{
             padding: '10px 26px', borderRadius: 8, border: 'none',
-            background: 'linear-gradient(135deg, #388bfd, #8b5cf6)',
+            background: 'linear-gradient(135deg, var(--nx-accent), #8b5cf6)',
             color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
           }}
         >
@@ -1244,8 +1266,8 @@ function EmptyState({
           onClick={() => router.push(`/${lang}/help#send-rfq`)}
           style={{
             padding: '10px 22px', borderRadius: 8,
-            border: '1px solid #30363d', background: 'transparent',
-            color: '#9ca3af', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            border: '1px solid var(--nx-border)', background: 'transparent',
+            color: 'var(--nx-text-3)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
           }}
         >
           {isKo ? '📖 처음이세요? 가이드' : '📖 New here? Guide'}
@@ -1658,7 +1680,7 @@ function QuoteCompareModal({
                           ${q.estimatedAmount.toLocaleString()}
                         </span>
                       </div>
-                      <div style={{ height: 5, background: '#0d1117', borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
+                      <div style={{ height: 5, background: 'var(--nx-bg)', borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
                         <div style={{
                           width: `${barW}%`, height: '100%', borderRadius: 3,
                           background: isLowest ? C.green : C.accent,
@@ -1674,7 +1696,7 @@ function QuoteCompareModal({
                       {selected === q.id && q.note && (
                         <div style={{
                           marginTop: 8, padding: '8px 10px', borderRadius: 6,
-                          background: '#0d1117', border: `1px solid ${C.border}`,
+                          background: 'var(--nx-bg)', border: `1px solid ${C.border}`,
                           fontSize: 12, color: C.textMuted, lineHeight: 1.5,
                         }}>
                           {q.note}
@@ -1710,8 +1732,8 @@ function QuoteCompareModal({
 }
 
 function ConfidenceBadge({ confidence }: { confidence: string }) {
-  const colorMap: Record<string, string> = { high: '#3fb950', medium: '#d29922', low: '#f85149' };
-  const color = colorMap[confidence.toLowerCase()] ?? '#8b949e';
+  const colorMap: Record<string, string> = { high: 'var(--nx-ok)', medium: 'var(--nx-warn)', low: 'var(--nx-error)' };
+  const color = colorMap[confidence.toLowerCase()] ?? 'var(--nx-text-2)';
   return (
     <span style={{
       fontSize: 10, padding: '2px 6px', borderRadius: 4,

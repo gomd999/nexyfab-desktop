@@ -5,15 +5,17 @@
  * 스냅샷·다운로드에 쓰이는 메시 솔버는 `applyGeometryMatesToPlaced` → `AssemblyMates.solveMates`
  * (`AssemblyMate` + 면 인덱스) — 두 경로는 의도적으로 분리됨(M3_ASSEMBLY.md §1 P1).
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   solveAssembly,
   calculateDOF,
+  isAssemblyOverConstrained,
   type AssemblyState,
   type Mate as _Mate,
   type MateType,
 } from './matesSolver';
+import { analyzeAssemblyRank } from './assemblyRank';
 import { useMateWorker } from '../workers/useMateWorker';
 import { reportError } from '../lib/telemetry';
 
@@ -31,6 +33,9 @@ const MATE_ICONS: Record<MateType, string> = {
   slider:        '\u21C4', // ⇄
   gear:          '\u2699', // ⚙
   belt:          '⟿', // ⟿
+  limitDistance: '↤', // ↤ (bounded travel)
+  limitAngle:    '⦡', // ⦡ (bounded angle)
+  width:         '⬌', // ⬌ centered between planes
   fixed:         '\uD83D\uDD12', // 🔒
 };
 
@@ -39,26 +44,32 @@ const MATE_LABELS: Record<string, Record<MateType, string>> = {
   en: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
     distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'Hinge', slider: 'Slider', gear: 'Gear', belt: 'Belt', fixed: 'Fixed',
+    limitDistance: 'Limit Distance', limitAngle: 'Limit Angle', width: 'Width',
   },
   ko: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
     distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: '힌지', slider: '슬라이더', gear: '기어', belt: '벨트', fixed: '고정',
+    limitDistance: '거리 제한', limitAngle: '각도 제한', width: '폭',
   },
   ja: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
     distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'ヒンジ', slider: 'スライダー', gear: 'ギア', belt: 'ベルト', fixed: '固定',
+    limitDistance: '距離制限', limitAngle: '角度制限', width: '幅',
   },
   zh: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
     distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: '铰链', slider: '滑块', gear: '齿轮', belt: '皮带', fixed: '固定',
+    limitDistance: '距离限制', limitAngle: '角度限制', width: '宽度',
   },
   es: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
     distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'Bisagra', slider: 'Deslizador', gear: 'Engranaje', belt: 'Correa', fixed: 'Fijo',
+    limitDistance: 'Distancia límite', limitAngle: 'Ángulo límite', width: 'Anchura',
   },
   ar: {
     coincident: 'Coincident', concentric: 'Concentric', parallel: 'Parallel', perpendicular: 'Perpendicular',
     distance: 'Distance', angle: 'Angle', tangent: 'Tangent', hinge: 'مفصلة', slider: 'منزلق', gear: 'ترس', belt: 'حزام', fixed: 'ثابت',
+    limitDistance: 'حد المسافة', limitAngle: 'حد الزاوية', width: 'العرض',
   },
 };
 
@@ -69,7 +80,7 @@ const dict = {
     off: '끄기', on: '켜기',
     solving: '계산 중...', solve: '구속 계산',
     status: '상태', converged: '수렴 ✓', notConverged: '수렴 실패 ⚠',
-    iterations: '반복 횟수', remainingDOF: '잔여 자유도',
+    iterations: '반복 횟수', remainingDOF: '잔여 자유도', overConstrained: '과구속',
     unsatisfied: '구속 미충족', conflicting: '충돌 구속',
     dofPreSolve: '자유도(사전·해석)',
     solveTryNext:
@@ -83,7 +94,7 @@ const dict = {
     off: 'Off', on: 'On',
     solving: 'Solving...', solve: 'Solve Mates',
     status: 'Status', converged: 'Converged ✓', notConverged: 'Not Converged ⚠',
-    iterations: 'Iterations', remainingDOF: 'Remaining DOF',
+    iterations: 'Iterations', remainingDOF: 'Remaining DOF', overConstrained: 'Over-constrained',
     unsatisfied: 'unsatisfied mate(s)', conflicting: 'conflicting mate(s)',
     dofPreSolve: 'DOF (pre-solve)',
     solveTryNext:
@@ -97,7 +108,7 @@ const dict = {
     off: 'オフ', on: 'オン',
     solving: '計算中...', solve: '拘束を解く',
     status: 'ステータス', converged: '収束 ✓', notConverged: '収束失敗 ⚠',
-    iterations: '反復回数', remainingDOF: '残存自由度',
+    iterations: '反復回数', remainingDOF: '残存自由度', overConstrained: '過拘束',
     unsatisfied: '未充足の拘束', conflicting: '競合する拘束',
     dofPreSolve: '自由度（事前・解析）',
     solveTryNext:
@@ -111,7 +122,7 @@ const dict = {
     off: '关', on: '开',
     solving: '求解中...', solve: '求解约束',
     status: '状态', converged: '收敛 ✓', notConverged: '未收敛 ⚠',
-    iterations: '迭代次数', remainingDOF: '剩余自由度',
+    iterations: '迭代次数', remainingDOF: '剩余自由度', overConstrained: '过约束',
     unsatisfied: '未满足约束', conflicting: '冲突约束',
     dofPreSolve: '自由度（预解）',
     solveTryNext:
@@ -125,7 +136,7 @@ const dict = {
     off: 'Off', on: 'On',
     solving: 'Resolviendo...', solve: 'Resolver Mates',
     status: 'Estado', converged: 'Convergido ✓', notConverged: 'No Convergido ⚠',
-    iterations: 'Iteraciones', remainingDOF: 'DOF Restante',
+    iterations: 'Iteraciones', remainingDOF: 'DOF Restante', overConstrained: 'Sobredefinido',
     unsatisfied: 'restricción(es) insatisfecha(s)', conflicting: 'restricción(es) en conflicto',
     dofPreSolve: 'DOF (pre-solución)',
     solveTryNext:
@@ -139,7 +150,7 @@ const dict = {
     off: 'إيقاف', on: 'تشغيل',
     solving: 'جار الحل...', solve: 'حل القيود',
     status: 'الحالة', converged: 'تقارب ✓', notConverged: 'لم يتقارب ⚠',
-    iterations: 'التكرارات', remainingDOF: 'DOF المتبقية',
+    iterations: 'التكرارات', remainingDOF: 'DOF المتبقية', overConstrained: 'مقيّد بإفراط',
     unsatisfied: 'قيد (قيود) غير مستوفاة', conflicting: 'قيد (قيود) متعارضة',
     dofPreSolve: 'درجة الحرية (تقديرية)',
     solveTryNext:
@@ -262,13 +273,28 @@ export default function AssemblyMatesPanel({
   // ── Derived values ────────────────────────────────────────────────────────
 
   const dof = calculateDOF(assemblyState);
+  // calculateDOF clamps to 0, so an over-defined assembly would otherwise show
+  // green "fully constrained". Detect the gross over-constraint explicitly.
+  const overConstrained = isAssemblyOverConstrained(assemblyState);
+
+  // Rank-based redundancy (leave-one-out). Heavier than the Grübler count
+  // (numerical Jacobian per mate), so memoise on state and cap the size for a
+  // live panel; large assemblies fall back to the gross over-constraint badge.
+  const rankInfo = useMemo(() => {
+    const enabled = assemblyState.mates.filter(m => m.enabled).length;
+    if (enabled === 0 || enabled > 40) return null;
+    try { return analyzeAssemblyRank(assemblyState); } catch { return null; }
+  }, [assemblyState]);
+  const redundantCount = rankInfo?.redundantMateIds.length ?? 0;
 
   const dofColor =
+    overConstrained ? 'var(--nx-error)' : // over-constrained — red
     dof === 0 ? 'var(--nx-ok)' :   // fully constrained — green
     dof >  0 ? '#e3b341' :    // under-constrained — yellow
-               'var(--nx-error)';     // over-constrained  — red (dof < 0 shouldn't happen; shown as 0)
+               'var(--nx-error)';
 
   const dofBg =
+    overConstrained ? 'var(--nx-error)22' :
     dof === 0 ? '#16a34a22' :
     dof >  0 ? 'var(--nx-warn)22' :
                'var(--nx-error)22';
@@ -296,10 +322,25 @@ export default function AssemblyMatesPanel({
           color: dofColor,
           fontWeight: 700,
           flexShrink: 0,
-        }}>
-          DOF: {dof}
+        }}
+          data-testid="assembly-dof-badge"
+          data-overconstrained={overConstrained ? '1' : '0'}
+        >
+          {overConstrained ? `DOF: 0 ⚠ ${tt.overConstrained}` : `DOF: ${dof}`}
         </div>
       </div>
+
+      {/* Rank-based redundancy: mates whose removal doesn't change the DOF. */}
+      {redundantCount > 0 && (
+        <div
+          data-testid="assembly-redundant-note"
+          data-count={redundantCount}
+          style={{ fontSize: 11, color: 'var(--nx-error)', background: 'var(--nx-error)18', borderRadius: 6, padding: '5px 8px', lineHeight: 1.4 }}
+          role="status"
+        >
+          ⚠ {redundantCount} {tt.overConstrained} · {redundantCount === 1 ? 'mate is redundant' : 'mates are redundant'} (over-defines the assembly)
+        </div>
+      )}
 
       {/* Parts list */}
       {assemblyState.bodies.length > 0 && (
@@ -362,6 +403,9 @@ export default function AssemblyMatesPanel({
                     {labels[mate.type]}
                     {mate.distance !== undefined && ` (${mate.distance}\u202Fmm)`}
                     {mate.angle    !== undefined && ` (${mate.angle}\u00B0)`}
+                    {mate.gearRatio !== undefined && ` (${mate.gearRatio}:1)`}
+                    {(mate.min !== undefined || mate.max !== undefined) &&
+                      ` [${mate.min ?? 0}\u2026${mate.max ?? mate.min ?? 0}${mate.type === 'limitAngle' ? '\u00B0' : '\u202Fmm'}]`}
                   </div>
                   <div style={{ fontSize: 10, color: theme.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {tt.part}&nbsp;{mate.selections[0].bodyIndex + 1}

@@ -128,7 +128,7 @@ export default function WeldingSymbolPicker({
         </div>
 
         <div style={previewStyle()}>
-          <span style={{ fontSize: 10, color: '#94a3b8' }}>{t.preview}:</span>
+          <span style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{t.preview}:</span>
           <code style={{ fontSize: 14, marginLeft: 8 }}>{formatWeldSymbol(symbol)}</code>
         </div>
 
@@ -143,7 +143,7 @@ export default function WeldingSymbolPicker({
 
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-    <span style={{ width: 110, fontSize: 12, color: '#94a3b8' }}>{label}</span>
+    <span style={{ width: 110, fontSize: 12, color: 'var(--nx-text-2)' }}>{label}</span>
     <span style={{ flex: 1 }}>{children}</span>
   </div>
 );
@@ -157,7 +157,7 @@ function overlayStyle(): React.CSSProperties {
 }
 function dialogStyle(): React.CSSProperties {
   return {
-    background: '#0f172a', color: '#f1f5f9',
+    background: 'var(--nx-panel)', color: 'var(--nx-text)',
     borderRadius: 12, padding: '20px 24px',
     width: 'min(420px, 95vw)',
     fontFamily: 'system-ui, sans-serif',
@@ -165,9 +165,9 @@ function dialogStyle(): React.CSSProperties {
   };
 }
 function headerStyle(): React.CSSProperties { return { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }; }
-function xBtnStyle(): React.CSSProperties { return { background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 18 }; }
-function fieldStyle(): React.CSSProperties { return { width: '100%', background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 4, padding: '4px 6px', fontSize: 12 }; }
-function checkboxLabelStyle(): React.CSSProperties { return { fontSize: 12, color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }; }
-function previewStyle(): React.CSSProperties { return { padding: '10px 12px', background: '#1e293b', borderRadius: 6, marginTop: 8 }; }
-function cancelBtn(): React.CSSProperties { return { background: 'transparent', color: '#94a3b8', border: 'none', padding: '6px 12px', fontSize: 12, cursor: 'pointer' }; }
+function xBtnStyle(): React.CSSProperties { return { background: 'transparent', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 18 }; }
+function fieldStyle(): React.CSSProperties { return { width: '100%', background: 'var(--nx-panel-2)', color: 'var(--nx-text)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '4px 6px', fontSize: 12 }; }
+function checkboxLabelStyle(): React.CSSProperties { return { fontSize: 12, color: 'var(--nx-text-2)', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }; }
+function previewStyle(): React.CSSProperties { return { padding: '10px 12px', background: 'var(--nx-panel-2)', borderRadius: 6, marginTop: 8 }; }
+function cancelBtn(): React.CSSProperties { return { background: 'transparent', color: 'var(--nx-text-2)', border: 'none', padding: '6px 12px', fontSize: 12, cursor: 'pointer' }; }
 function applyBtn(): React.CSSProperties { return { background: '#3b82f6', color: 'white', border: 'none', padding: '6px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }; }

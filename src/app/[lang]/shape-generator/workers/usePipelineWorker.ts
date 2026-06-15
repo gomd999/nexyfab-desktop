@@ -19,6 +19,11 @@ import * as THREE from 'three';
 import type { FeatureInstance } from '../features/types';
 import type { PipelineWorkerInput, PipelineWorkerOutput } from './pipelineWorker';
 import { trackGeometry } from '../hooks/useGeometryGC';
+import {
+  extractFaceProvenance,
+  applyFaceProvenance,
+  faceProvenanceTransferables,
+} from './faceProvenanceTransfer';
 
 export interface PipelineRunOptions {
   occtMode?: boolean;
@@ -44,7 +49,11 @@ function serializeGeometry(geo: THREE.BufferGeometry) {
   const indices = geo.index
     ? new Uint32Array(geo.index.array)
     : undefined;
-  return { positions, normals, indices };
+  // Face provenance (per-vertex feature-id attribute + topo userData maps)
+  // does not survive postMessage — ferry it explicitly so the worker-side
+  // pipeline sees the same base geometry the sync path would.
+  const faceProvenance = extractFaceProvenance(geo);
+  return { positions, normals, indices, faceProvenance };
 }
 
 function deserializeGeometry(
@@ -103,6 +112,15 @@ export function usePipelineWorker() {
           if (data.topoEdgeSignatures) {
             geo.userData = { ...geo.userData, topoEdgeSignatures: data.topoEdgeSignatures };
           }
+          // Re-attach OCCT→mesh downgrade notices so the banner sees the worker
+          // path too (the same userData-doesn't-cross-the-boundary issue).
+          if (data.meshDowngrades && data.meshDowngrades.length > 0) {
+            geo.userData = { ...geo.userData, meshDowngrades: data.meshDowngrades };
+          }
+          // Re-attach face provenance (nfabFaceFeatureId attribute +
+          // topoFaceMapByFeature/topoSketchExtrudeHashes/nfabFeatureIdMap)
+          // so persistent face selection works on worker-path geometry.
+          applyFaceProvenance(geo, data.faceProvenance);
           pending.resolve({ geometry: geo, errors: data.errors ?? {} });
         } else {
           pending.reject(new Error(data.error ?? 'Pipeline worker returned unknown error'));
@@ -182,16 +200,17 @@ export function usePipelineWorker() {
           setProgressLabel('Starting calculation...');
 
           try {
-            const { positions, normals, indices } = serializeGeometry(baseGeo);
+            const { positions, normals, indices, faceProvenance } = serializeGeometry(baseGeo);
 
             const message: PipelineWorkerInput = {
               type: 'RUN_PIPELINE',
-              payload: { positions, normals, indices, features, occtMode: opts.occtMode, baseSpec: opts.baseSpec },
+              payload: { positions, normals, indices, features, occtMode: opts.occtMode, baseSpec: opts.baseSpec, faceProvenance },
             };
 
             const transferables: ArrayBuffer[] = [positions.buffer as ArrayBuffer];
             if (normals) transferables.push(normals.buffer as ArrayBuffer);
             if (indices) transferables.push(indices.buffer as ArrayBuffer);
+            transferables.push(...faceProvenanceTransferables(faceProvenance));
 
             workerRef.current!.postMessage(message, transferables as unknown as Transferable[]);
           } catch (err) {

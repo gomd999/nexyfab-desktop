@@ -26,7 +26,9 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, ADDITION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtRib } from './occtEngine';
+import { occtRib } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -105,7 +107,7 @@ export const ribFeature: FeatureDefinition = {
     }
   },
   async applyAsync(geometry, params) {
-    if (isOcctReady() && isOcctGlobalMode()) {
+    if (shouldUseOcctEngine()) {
       const handle = geometry.userData?.occtHandle as string | undefined;
       if (handle) {
         try {
@@ -129,6 +131,6 @@ export const ribFeature: FeatureDefinition = {
         }
       }
     }
-    return ribFeature.apply(geometry, params);
+    return noteMeshFallback(ribFeature.apply(geometry, params), { op: 'Rib' });
   },
 };

@@ -3,12 +3,16 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation';
 import * as THREE from 'three';
 import { runJscadCode } from './jscadRunner';
+import { generateVerifiedJscad } from './verifiedJscadGen';
 import { useJscadWorker } from '../workers/useJscadWorker';
 import { verifyGeneratedModel, formatVerificationCritique } from '../analysis/verifyGeneratedModel';
 import { loadHistory, saveToHistory, deleteFromHistory, type JscadHistoryItem } from './jscadHistory';
 import { extractParams, updateParam, type JscadParam } from './jscadParams';
 import type { ElementSelectionInfo, FaceSelectionInfo } from '../editing/selectionInfo';
 import { downloadBlob } from '@/lib/platform';
+import VerifySpecPanel from './VerifySpecPanel';
+import { useAnalysisStore } from '../store/analysisStore';
+import type { SpecVerificationResult } from '@/lib/ai/scad-agent/specVerification';
 
 function errorMessageFromUnknown(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -129,6 +133,39 @@ const dict = {
     scadNlEmpty: '프롬프트를 입력하세요.',
     scadNlBudgetReached: '오늘 AI 사용 예산을 모두 썼어요. 24시간 후 자동 초기화됩니다.',
     scadNlBudgetWarn: 'AI 일일 예산 사용량이 임계치에 근접했습니다',
+    verifyToggle: '🔍 사양 검증',
+    intentJsonLabel: '의도 JSON (shapeId + params + features)',
+    intentJsonPlaceholder: '{\n  "shapeId": "box",\n  "params": { "width": 50, "height": 50, "depth": 50 },\n  "features": []\n}',
+    runVerify: '검증 실행',
+    verifying: '검증 중…',
+    jsonParseError: '의도 JSON을 파싱할 수 없습니다. 형식을 확인하세요.',
+    routeFailed: '검증 요청 실패',
+    verifyFromAgent: '마지막 에이전트 실행 결과',
+    sliderHeader: '─── 슬라이더 ───',
+    sliderAutoVerify: '자동 검증',
+    sliderApply: 'JSON에 반영',
+    sliderReset: '초기화',
+    sliderDebounceHint: '🔄 자동 검증 활성화 (800ms 지연)',
+    sliderWas: '원본',
+    sliderEmpty: '슬라이더로 조정할 수치 파라미터가 없습니다.',
+    imageIntentToggle: '📷 이미지에서 CAD 추출 (Pro)',
+    imageHintLabel: '힌트 (선택) — 크기·재질 등',
+    imageHintPlaceholder: '예: 가로 50mm 알루미늄 bracket',
+    extractIntent: '의도 추출',
+    extracting: '추출 중…',
+    applyToVerify: '↓ 검증 섹션에 적용',
+    imageRouteFailed: '이미지에서 의도 추출 실패',
+    reToggle: '🔬 역설계 (STL → 의도)',
+    analyze: '분석',
+    analyzing: '분석 중…',
+    applyCandidate: '↓ 검증 섹션에 적용',
+    reRouteFailed: '메시 역설계 실패',
+    quoteToggle: '💰 견적 요청',
+    quoteProcessLabel: '공정',
+    quoteMaterialLabel: '재질',
+    quoteQuantityLabel: '수량',
+    getQuote: '견적 받기',
+    quoteRouteFailed: '견적 요청 실패',
   },
   en: {
     tabShape: '⚙ AI Shape',
@@ -244,6 +281,39 @@ const dict = {
     scadNlEmpty: 'Enter a prompt first.',
     scadNlBudgetReached: 'Daily AI spend cap reached. Resets in 24h.',
     scadNlBudgetWarn: 'Approaching daily AI budget limit',
+    verifyToggle: '🔍 Verify spec',
+    intentJsonLabel: 'Intent JSON (shapeId + params + features)',
+    intentJsonPlaceholder: '{\n  "shapeId": "box",\n  "params": { "width": 50, "height": 50, "depth": 50 },\n  "features": []\n}',
+    runVerify: 'Run verify',
+    verifying: 'Verifying…',
+    jsonParseError: 'Intent JSON could not be parsed. Check the syntax.',
+    routeFailed: 'Verification request failed',
+    verifyFromAgent: 'from last agent run',
+    sliderHeader: '─── Sliders ───',
+    sliderAutoVerify: 'Auto-verify',
+    sliderApply: 'Apply to JSON',
+    sliderReset: 'Reset',
+    sliderDebounceHint: '🔄 auto-verify on (800ms debounce)',
+    sliderWas: 'was',
+    sliderEmpty: 'No numeric parameters to adjust with sliders.',
+    imageIntentToggle: '📷 Image-to-CAD (Pro)',
+    imageHintLabel: 'Hint (optional) — describe the part, size, material',
+    imageHintPlaceholder: 'e.g. aluminum bracket, ~50mm wide',
+    extractIntent: 'Extract intent',
+    extracting: 'Extracting…',
+    applyToVerify: '↓ Apply to verify section',
+    imageRouteFailed: 'Image-to-CAD extraction failed',
+    reToggle: '🔬 Reverse engineer (STL → intent)',
+    analyze: 'Analyze',
+    analyzing: 'Analyzing…',
+    applyCandidate: '↓ Apply to verify section',
+    reRouteFailed: 'Mesh reverse engineering failed',
+    quoteToggle: '💰 Request quote',
+    quoteProcessLabel: 'Process',
+    quoteMaterialLabel: 'Material',
+    quoteQuantityLabel: 'Quantity',
+    getQuote: 'Get quote',
+    quoteRouteFailed: 'Quote request failed',
   },
   ja: {
     tabShape: '⚙ AI 形状',
@@ -359,6 +429,39 @@ const dict = {
     scadNlEmpty: 'プロンプトを入力してください。',
     scadNlBudgetReached: '本日のAI予算上限に達しました。24時間後にリセットされます。',
     scadNlBudgetWarn: '本日のAI予算上限に近づいています',
+    verifyToggle: '🔍 仕様検証',
+    intentJsonLabel: '意図 JSON (shapeId + params + features)',
+    intentJsonPlaceholder: '{\n  "shapeId": "box",\n  "params": { "width": 50, "height": 50, "depth": 50 },\n  "features": []\n}',
+    runVerify: '検証実行',
+    verifying: '検証中…',
+    jsonParseError: '意図 JSON を解析できません。書式を確認してください。',
+    routeFailed: '検証リクエスト失敗',
+    verifyFromAgent: '最後のエージェント実行結果',
+    sliderHeader: '─── スライダー ───',
+    sliderAutoVerify: '自動検証',
+    sliderApply: 'JSON に反映',
+    sliderReset: 'リセット',
+    sliderDebounceHint: '🔄 自動検証オン (800ms デバウンス)',
+    sliderWas: '元値',
+    sliderEmpty: 'スライダーで調整できる数値パラメータがありません。',
+    imageIntentToggle: '📷 画像から CAD (Pro)',
+    imageHintLabel: 'ヒント (任意) — サイズ・素材など',
+    imageHintPlaceholder: '例: 幅 50mm のアルミ bracket',
+    extractIntent: '意図を抽出',
+    extracting: '抽出中…',
+    applyToVerify: '↓ 検証セクションに適用',
+    imageRouteFailed: '画像からの意図抽出に失敗しました',
+    reToggle: '🔬 リバースエンジニア (STL → 意図)',
+    analyze: '解析',
+    analyzing: '解析中…',
+    applyCandidate: '↓ 検証セクションに適用',
+    reRouteFailed: 'メッシュのリバースエンジニアに失敗しました',
+    quoteToggle: '💰 見積依頼',
+    quoteProcessLabel: '工程',
+    quoteMaterialLabel: '材質',
+    quoteQuantityLabel: '数量',
+    getQuote: '見積を取得',
+    quoteRouteFailed: '見積依頼に失敗しました',
   },
   zh: {
     tabShape: '⚙ AI 形状',
@@ -473,6 +576,39 @@ const dict = {
     scadNlEmpty: '请先输入提示词。',
     scadNlBudgetReached: '今日 AI 用量已达上限,24 小时后自动重置。',
     scadNlBudgetWarn: '今日 AI 用量接近上限',
+    verifyToggle: '🔍 规格验证',
+    intentJsonLabel: '意图 JSON (shapeId + params + features)',
+    intentJsonPlaceholder: '{\n  "shapeId": "box",\n  "params": { "width": 50, "height": 50, "depth": 50 },\n  "features": []\n}',
+    runVerify: '运行验证',
+    verifying: '验证中…',
+    jsonParseError: '无法解析意图 JSON。请检查格式。',
+    routeFailed: '验证请求失败',
+    verifyFromAgent: '来自上次智能体运行',
+    sliderHeader: '─── 滑块 ───',
+    sliderAutoVerify: '自动验证',
+    sliderApply: '应用到 JSON',
+    sliderReset: '重置',
+    sliderDebounceHint: '🔄 自动验证已开启 (800ms 防抖)',
+    sliderWas: '原始',
+    sliderEmpty: '没有可用滑块调整的数值参数。',
+    imageIntentToggle: '📷 图像生成 CAD (Pro)',
+    imageHintLabel: '提示（可选）— 描述部件、尺寸、材质',
+    imageHintPlaceholder: '例如：宽 50mm 的铝制 bracket',
+    extractIntent: '提取意图',
+    extracting: '提取中…',
+    applyToVerify: '↓ 应用到验证区',
+    imageRouteFailed: '从图像提取意图失败',
+    reToggle: '🔬 逆向工程 (STL → 意图)',
+    analyze: '分析',
+    analyzing: '分析中…',
+    applyCandidate: '↓ 应用到验证区',
+    reRouteFailed: '网格逆向工程失败',
+    quoteToggle: '💰 申请报价',
+    quoteProcessLabel: '工艺',
+    quoteMaterialLabel: '材料',
+    quoteQuantityLabel: '数量',
+    getQuote: '获取报价',
+    quoteRouteFailed: '报价请求失败',
   },
   es: {
     tabShape: '⚙ Forma IA',
@@ -588,6 +724,39 @@ const dict = {
     scadNlEmpty: 'Introduce un prompt primero.',
     scadNlBudgetReached: 'Límite diario de IA alcanzado. Se restablece en 24 h.',
     scadNlBudgetWarn: 'Acercándose al límite diario de IA',
+    verifyToggle: '🔍 Verificar especificación',
+    intentJsonLabel: 'Intent JSON (shapeId + params + features)',
+    intentJsonPlaceholder: '{\n  "shapeId": "box",\n  "params": { "width": 50, "height": 50, "depth": 50 },\n  "features": []\n}',
+    runVerify: 'Ejecutar verificación',
+    verifying: 'Verificando…',
+    jsonParseError: 'No se pudo analizar el JSON de intención. Revisa la sintaxis.',
+    routeFailed: 'La solicitud de verificación falló',
+    verifyFromAgent: 'desde la última ejecución del agente',
+    sliderHeader: '─── Deslizadores ───',
+    sliderAutoVerify: 'Auto-verificar',
+    sliderApply: 'Aplicar al JSON',
+    sliderReset: 'Restablecer',
+    sliderDebounceHint: '🔄 auto-verificación activada (800 ms de espera)',
+    sliderWas: 'original',
+    sliderEmpty: 'No hay parámetros numéricos para ajustar con deslizadores.',
+    imageIntentToggle: '📷 Imagen a CAD (Pro)',
+    imageHintLabel: 'Pista (opcional) — describe la pieza, tamaño, material',
+    imageHintPlaceholder: 'p. ej. bracket de aluminio, ~50 mm de ancho',
+    extractIntent: 'Extraer intención',
+    extracting: 'Extrayendo…',
+    applyToVerify: '↓ Aplicar a la sección de verificación',
+    imageRouteFailed: 'Fallo al extraer intención de la imagen',
+    reToggle: '🔬 Ingeniería inversa (STL → intención)',
+    analyze: 'Analizar',
+    analyzing: 'Analizando…',
+    applyCandidate: '↓ Aplicar a la sección de verificación',
+    reRouteFailed: 'Fallo al hacer ingeniería inversa de la malla',
+    quoteToggle: '💰 Solicitar cotización',
+    quoteProcessLabel: 'Proceso',
+    quoteMaterialLabel: 'Material',
+    quoteQuantityLabel: 'Cantidad',
+    getQuote: 'Obtener cotización',
+    quoteRouteFailed: 'Fallo en la solicitud de cotización',
   },
   ar: {
     tabShape: '⚙ شكل الذكاء الاصطناعي',
@@ -703,6 +872,39 @@ const dict = {
     apiRateLimit: 'طلبات كثيرة جدًا. حاول بعد قليل.',
     apiScadRequired: 'مصدر scad فارغ.',
     apiOutputTooLarge: 'الشبكة تتجاوز حد الاستجابة المضمنة. بسِّط النموذج أو استخدم العرض غير المتزامن.',
+    verifyToggle: '🔍 التحقق من المواصفات',
+    intentJsonLabel: 'JSON النية (shapeId + params + features)',
+    intentJsonPlaceholder: '{\n  "shapeId": "box",\n  "params": { "width": 50, "height": 50, "depth": 50 },\n  "features": []\n}',
+    runVerify: 'تشغيل التحقق',
+    verifying: 'جارٍ التحقق…',
+    jsonParseError: 'تعذر تحليل JSON النية. تحقق من الصياغة.',
+    routeFailed: 'فشل طلب التحقق',
+    verifyFromAgent: 'من آخر تشغيل للوكيل',
+    sliderHeader: '─── شرائط التمرير ───',
+    sliderAutoVerify: 'تحقق تلقائي',
+    sliderApply: 'تطبيق على JSON',
+    sliderReset: 'إعادة تعيين',
+    sliderDebounceHint: '🔄 التحقق التلقائي مفعّل (تأخير 800 مللي ثانية)',
+    sliderWas: 'الأصلي',
+    sliderEmpty: 'لا توجد معاملات رقمية لضبطها بشرائط التمرير.',
+    imageIntentToggle: '📷 من صورة إلى CAD (Pro)',
+    imageHintLabel: 'تلميح (اختياري) — صف القطعة والحجم والمادة',
+    imageHintPlaceholder: 'مثال: bracket ألومنيوم بعرض 50 مم',
+    extractIntent: 'استخراج النية',
+    extracting: 'جارٍ الاستخراج…',
+    applyToVerify: '↓ تطبيق على قسم التحقق',
+    imageRouteFailed: 'فشل استخراج النية من الصورة',
+    reToggle: '🔬 الهندسة العكسية (STL ← نية)',
+    analyze: 'تحليل',
+    analyzing: 'جارٍ التحليل…',
+    applyCandidate: '↓ تطبيق على قسم التحقق',
+    reRouteFailed: 'فشل الهندسة العكسية للشبكة',
+    quoteToggle: '💰 طلب عرض سعر',
+    quoteProcessLabel: 'العملية',
+    quoteMaterialLabel: 'المادة',
+    quoteQuantityLabel: 'الكمية',
+    getQuote: 'الحصول على عرض السعر',
+    quoteRouteFailed: 'فشل طلب عرض السعر',
   },
 } as const;
 
@@ -788,6 +990,96 @@ function openScadApiErrorMessage(
   return err || t.scadError;
 }
 
+/* ─── Slider helpers (extract / apply / serialise) ─────────────────────────
+ * Walk `intent.params` + each `intent.features[i].params` for NUMERIC values
+ * and produce a flat list of slider-able rows with dotted-path tokens like
+ * `params.width` or `features[0].params.diameter`.
+ *
+ * Range policy = [max(0.1, default * 0.1), default * 5] · step 0.1mm. The
+ * lower bound is clamped to 0.1 so dimensions never collapse to zero/negative
+ * (which crashes most SCAD primitives). Defaults of 0 fall back to a small
+ * exploratory range (0.1..5).
+ */
+interface NumericPath {
+  path: string;
+  value: number;
+  minRange: number;
+  maxRange: number;
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+function rangeForDefault(def: number): { minRange: number; maxRange: number } {
+  if (!Number.isFinite(def) || def <= 0) return { minRange: 0.1, maxRange: 5 };
+  return { minRange: Math.max(0.1, def * 0.1), maxRange: def * 5 };
+}
+
+export function extractNumericPaths(intent: unknown): NumericPath[] {
+  if (!isPlainObject(intent)) return [];
+  const out: NumericPath[] = [];
+  const params = intent.params;
+  if (isPlainObject(params)) {
+    for (const [k, v] of Object.entries(params)) {
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        out.push({ path: `params.${k}`, value: v, ...rangeForDefault(v) });
+      }
+    }
+  }
+  const features = intent.features;
+  if (Array.isArray(features)) {
+    features.forEach((feat, i) => {
+      if (!isPlainObject(feat)) return;
+      const fparams = feat.params;
+      if (!isPlainObject(fparams)) return;
+      for (const [k, v] of Object.entries(fparams)) {
+        if (typeof v === 'number' && Number.isFinite(v)) {
+          out.push({ path: `features[${i}].params.${k}`, value: v, ...rangeForDefault(v) });
+        }
+      }
+    });
+  }
+  return out;
+}
+
+/**
+ * Plug current slider values back into a deep-cloned intent. Paths are the
+ * exact tokens emitted by `extractNumericPaths`. Unknown paths are silently
+ * skipped (defensive — the user may have edited the JSON between extracts).
+ */
+export function applySliderValuesToIntent(
+  originalIntent: unknown,
+  sliderValues: ReadonlyMap<string, number>,
+): unknown {
+  if (!isPlainObject(originalIntent)) return originalIntent;
+  // Shallow-typed deep clone via JSON round-trip — intent JSON is plain data.
+  const clone: Record<string, unknown> = JSON.parse(JSON.stringify(originalIntent));
+  for (const [path, val] of sliderValues) {
+    if (path.startsWith('params.')) {
+      const key = path.slice('params.'.length);
+      if (!isPlainObject(clone.params)) clone.params = {};
+      (clone.params as Record<string, unknown>)[key] = val;
+      continue;
+    }
+    const featMatch = /^features\[(\d+)\]\.params\.(.+)$/.exec(path);
+    if (featMatch) {
+      const idx = Number(featMatch[1]);
+      const key = featMatch[2];
+      if (!Array.isArray(clone.features)) continue;
+      const feat = clone.features[idx];
+      if (!isPlainObject(feat)) continue;
+      if (!isPlainObject(feat.params)) feat.params = {};
+      (feat.params as Record<string, unknown>)[key] = val;
+    }
+  }
+  return clone;
+}
+
+export function intentToJsonString(intent: unknown): string {
+  return JSON.stringify(intent, null, 2);
+}
+
 export default function OpenScadPanel({ onGeometryReady, selectedElement, currentShape }: Props) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
@@ -827,6 +1119,82 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const [scadNlBudgetAdvisory, setScadNlBudgetAdvisory] = useState<{ fraction: number; limitUsd: number | null } | null>(null);
   const scadNlBudgetAdvisoryShownRef = useRef(false);
   const [scadNlBudgetNow, setScadNlBudgetNow] = useState(() => Date.now());
+
+  /** Spec-verify panel state — collapsed until the user toggles it open. */
+  const [verifyOpen, setVerifyOpen] = useState(false);
+  const [verifyIntentJson, setVerifyIntentJson] = useState('');
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [verifyErr, setVerifyErr] = useState('');
+  const [verifyResult, setVerifyResult] = useState<SpecVerificationResult | null>(null);
+
+  /** Image-to-CAD panel state — Pro+ feature, collapsed until toggled.
+   *  imageDataUrl is stored as a data URL so we can re-display the preview
+   *  AND POST the same string to the route without a second FileReader. */
+  const [imageIntentOpen, setImageIntentOpen] = useState(false);
+  const [imageDataUrl, setImageDataUrl] = useState<string>('');
+  const [imageHint, setImageHint] = useState('');
+  const [extractBusy, setExtractBusy] = useState(false);
+  const [imageErr, setImageErr] = useState('');
+  const [extractedIntent, setExtractedIntent] = useState<unknown>(null);
+  const [extractedSummary, setExtractedSummary] = useState('');
+
+  /** Request-quote panel state — FREE-accessible conversion funnel. Defaults
+   *  to the internal estimator (always configured); user can pin a partner
+   *  provider via the dropdown to see the NOT_CONFIGURED bounce-back. The
+   *  quote section sits above reverse-engineer so it's visible without
+   *  scrolling past every other Pro+ feature. */
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const [quoteProcess, setQuoteProcess] = useState<'fdm' | 'sla' | 'cnc_mill' | 'sheet' | 'injection_molding' | 'die_cast'>('cnc_mill');
+  const [quoteMaterial, setQuoteMaterial] = useState<'aluminum_6061' | 'steel_a36' | 'steel_4140' | 'stainless_304' | 'pla' | 'abs'>('aluminum_6061');
+  const [quoteQuantity, setQuoteQuantity] = useState<number>(1);
+  const [quoteProviderId, setQuoteProviderId] = useState<'internal' | 'xometry'>('internal');
+  const [quoteBusy, setQuoteBusy] = useState(false);
+  const [quoteErr, setQuoteErr] = useState('');
+  interface QuoteUiResponse {
+    providerId: string;
+    providerName: string;
+    totalUsd: number;
+    unitPriceUsd: number;
+    leadTimeDays: number;
+    confidence: 'binding' | 'indicative' | 'rough';
+    lineItems: Array<{ label: string; amountUsd: number; unit?: string }>;
+    notes: string[];
+    orderUrl: string | null;
+  }
+  const [quoteResult, setQuoteResult] = useState<QuoteUiResponse | null>(null);
+
+  /** Mesh reverse-engineering panel state — Pro+ feature, collapsed until
+   *  toggled. The classifier returns multiple candidates; the user picks one
+   *  and the "Apply" button copies the intent into the verify section. */
+  const [reOpen, setReOpen] = useState(false);
+  const [reStlBase64, setReStlBase64] = useState<string>('');
+  const [reStlName, setReStlName] = useState<string>('');
+  const [reBusy, setReBusy] = useState(false);
+  const [reErr, setReErr] = useState('');
+  const [reCandidates, setReCandidates] = useState<Array<{
+    intent: unknown;
+    confidence: number;
+    summary: string;
+    evidence: string[];
+    counterEvidence: string[];
+  }>>([]);
+
+  /** Live-preview sliders — one row per numeric param in the last-parsed
+   *  intent. Only built AFTER a successful verify (verifiable === true). */
+  const [sliderRows, setSliderRows] = useState<NumericPath[]>([]);
+  const [sliderValues, setSliderValues] = useState<Map<string, number>>(new Map());
+  const [sliderSnapshot, setSliderSnapshot] = useState<Map<string, number>>(new Map());
+  const [sliderIntent, setSliderIntent] = useState<unknown>(null);
+  const [sliderJsonAtBuild, setSliderJsonAtBuild] = useState<string>('');
+  const [autoVerifyOn, setAutoVerifyOn] = useState(true);
+
+  // Auto-feed: the ScadAgentPanel writes here whenever an agent run emits
+  // a verify_spec tool_result. We prefer the manual button result when
+  // present (most recent user action), else fall back to the agent's.
+  const agentVerifyResult = useAnalysisStore(s => s.latestVerifySpecResult);
+  const agentVerifyAtMs = useAnalysisStore(s => s.latestVerifySpecAtMs);
+  const effectiveVerifyResult = verifyResult ?? agentVerifyResult;
+  const verifyResultFromAgent = verifyResult === null && agentVerifyResult !== null;
 
   useEffect(() => {
     if (!scadNlBudgetLockUntil || scadNlBudgetLockUntil <= Date.now()) {
@@ -936,23 +1304,63 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     return data as { code: string; description: string };
   }, [t]);
 
-  // ── Generate (new shape) ──
+  // ── Generate (new shape) — render-verify-repair loop ──
+  // Generation runs through generateVerifiedJscad: the AI's code is rendered +
+  // Layer-1 verified in-process and, on a render error or hard verification
+  // failure, the critique is fed back so the model repairs it (bounded retries)
+  // — instead of dead-ending on the first imperfect generation. The panel used
+  // to compute the verification critique and throw it away; this closes the loop.
   const generate = useCallback(async (text?: string) => {
     const p = (text ?? prompt).trim();
     if (!p) return;
-    setCode(''); setDescription(''); setTriCount(0);
+    setCode(''); setDescription(''); setTriCount(0); setErrorMsg(''); setWarnings([]);
+
+    // Worker-first render (hard-terminable on runaway), main-thread fallback when
+    // the worker is unavailable — mirrors `compile`. A real timeout rejects so
+    // the loop treats it as a render error and repairs.
+    const render = (codeStr: string): Promise<THREE.BufferGeometry> =>
+      runJscad(codeStr).then(r => r.geometry).catch((werr: unknown) => {
+        const msg = werr instanceof Error ? werr.message : String(werr);
+        if (/timed out|terminated|superseded|cancelled/i.test(msg)) throw werr;
+        return runJscadCode(codeStr).geometry;
+      });
+
+    const aiGenerate = async (args: { priorCode: string | null; critique: string | null; attempt: number }) => {
+      if (args.attempt === 1 || !args.priorCode) {
+        return callAI({ prompt: p, mode: 'generate' }, 'generating');
+      }
+      // Repair pass: hand the model its prior code + the blocking critique.
+      return callAI(
+        { prompt: `${p}\n\nThe previous attempt failed verification. Fix exactly this:\n${args.critique ?? ''}`, currentCode: args.priorCode, mode: 'refine' },
+        'refining',
+      );
+    };
+
     try {
-      const data = await callAI({ prompt: p, mode: 'generate' }, 'generating');
-      setCode(data.code);
-      setDescription(data.description);
-      compile(data.code, data.description || p);
-      saveToHistory({ prompt: p, code: data.code, description: data.description, triCount: 0 });
-      setHistory(loadHistory());
+      const result = await generateVerifiedJscad(p, { aiGenerate, render }, { maxAttempts: 3 });
+      setCode(result.code);
+      setDescription(result.description || p);
+      if (result.ok && result.geometry) {
+        prevGeoRef.current?.dispose();
+        prevGeoRef.current = result.geometry;
+        lastGeoRef.current = result.geometry;
+        lastVerifyCritiqueRef.current = result.warnings;
+        const tri = result.geometry.attributes.position.count / 3;
+        setWarnings(result.warnings ? result.warnings.split('\n') : []);
+        setTriCount(tri);
+        setStatus('done');
+        onGeometryReady(result.geometry, result.description || p);
+        saveToHistory({ prompt: p, code: result.code, description: result.description, triCount: tri });
+        setHistory(loadHistory());
+      } else {
+        setStatus('error');
+        setErrorMsg(result.finalCritique || t.errCompile);
+      }
     } catch (e: unknown) {
       setStatus('error');
       setErrorMsg(errorMessageFromUnknown(e) || t.errUnknown);
     }
-  }, [prompt, callAI, compile, t]);
+  }, [prompt, callAI, t, runJscad, onGeometryReady]);
 
   // ── Refine (modify existing code) ──
   const refine = useCallback(async () => {
@@ -1345,6 +1753,331 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
       }
     }
   }, [scadResultB64, scadArtifactUrl, t.scadError]);
+
+  /**
+   * Run spec verification: parse the intent JSON locally, then POST it
+   * together with the current SCAD textarea to /api/nexyfab/verify-spec.
+   * Result is stored in `verifyResult` and rendered by VerifySpecPanel.
+   *
+   * Parse failures short-circuit with a localized error — the route is
+   * never called with a malformed intent.
+   */
+  const runVerify = useCallback(async (overrideIntent?: unknown) => {
+    if (!scadSource.trim() || verifyBusy) return;
+    setVerifyErr('');
+    let intent: unknown;
+    if (overrideIntent !== undefined) {
+      intent = overrideIntent;
+    } else {
+      try {
+        intent = JSON.parse(verifyIntentJson);
+      } catch {
+        setVerifyErr(t.jsonParseError);
+        return;
+      }
+    }
+    if (!intent || typeof intent !== 'object' || Array.isArray(intent)) {
+      setVerifyErr(t.jsonParseError);
+      return;
+    }
+    setVerifyBusy(true);
+    try {
+      const res = await fetch('/api/nexyfab/verify-spec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scad: scadSource, intent }),
+      });
+      const data = await res.json().catch(() => ({} as { ok?: boolean; error?: string; result?: SpecVerificationResult }));
+      if (!res.ok || data.ok === false) {
+        const msg = typeof data.error === 'string' ? data.error : `${t.routeFailed} (${res.status})`;
+        setVerifyErr(msg);
+        return;
+      }
+      if (data.result) {
+        setVerifyResult(data.result);
+        // Build / refresh slider rows when verifiable. Snapshot is captured
+        // only on the FIRST build for a given textarea-JSON so "Reset" goes
+        // back to what the user originally typed, not the most recent
+        // auto-verify roundtrip.
+        if (data.result.verifiable) {
+          const rows = extractNumericPaths(intent);
+          setSliderRows(rows);
+          setSliderIntent(intent);
+          const nextValues = new Map<string, number>();
+          for (const r of rows) nextValues.set(r.path, r.value);
+          setSliderValues(nextValues);
+          // If this verify was invoked from the textarea (no override), the
+          // textarea is the new canonical source — capture a fresh snapshot.
+          if (overrideIntent === undefined) {
+            setSliderSnapshot(new Map(nextValues));
+            setSliderJsonAtBuild(verifyIntentJson);
+          }
+        }
+      }
+    } catch (e: unknown) {
+      setVerifyErr(e instanceof Error ? e.message : t.routeFailed);
+    } finally {
+      setVerifyBusy(false);
+    }
+  }, [scadSource, verifyIntentJson, verifyBusy, t]);
+
+  /** Read a user-picked file into a data URL so we can preview it AND
+   *  POST it to /api/nexyfab/intent-from-image. We cap at ~7MB raw
+   *  (~5MB decoded base64 after multipart bloat) to mirror the route's
+   *  413 gate — better to surface here than after an upload round-trip. */
+  const handleImageFile = useCallback((file: File | null) => {
+    setImageErr('');
+    setExtractedIntent(null);
+    setExtractedSummary('');
+    if (!file) { setImageDataUrl(''); return; }
+    if (file.size > 7 * 1024 * 1024) {
+      setImageErr(`${t.imageRouteFailed}: file too large (${(file.size / 1024 / 1024).toFixed(1)} MB, max 5 MB after decode)`);
+      setImageDataUrl('');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === 'string') setImageDataUrl(result);
+    };
+    reader.onerror = () => {
+      setImageErr(`${t.imageRouteFailed}: file read failed`);
+    };
+    reader.readAsDataURL(file);
+  }, [t]);
+
+  /** POST the data URL + optional hint to /api/nexyfab/intent-from-image
+   *  and stash the extracted intent + summary on success. The result has
+   *  an "Apply to verify section" button that copies the JSON into the
+   *  existing verifyIntentJson textarea. */
+  const extractIntentFromImage = useCallback(async () => {
+    if (!imageDataUrl || extractBusy) return;
+    setImageErr('');
+    setExtractedIntent(null);
+    setExtractedSummary('');
+    setExtractBusy(true);
+    try {
+      const res = await fetch('/api/nexyfab/intent-from-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: imageDataUrl, hintText: imageHint.trim() || undefined }),
+      });
+      const data = await res.json().catch(() => ({} as { ok?: boolean; error?: string; intent?: unknown; summary?: string }));
+      if (!res.ok || data.ok === false) {
+        const msg = typeof data.error === 'string' ? data.error : `${t.imageRouteFailed} (${res.status})`;
+        setImageErr(msg);
+        return;
+      }
+      if (data.intent && typeof data.intent === 'object') {
+        setExtractedIntent(data.intent);
+      }
+      if (typeof data.summary === 'string') setExtractedSummary(data.summary);
+    } catch (e: unknown) {
+      setImageErr(e instanceof Error ? e.message : t.imageRouteFailed);
+    } finally {
+      setExtractBusy(false);
+    }
+  }, [imageDataUrl, imageHint, extractBusy, t]);
+
+  /** Copy the extracted intent JSON into the verify-spec textarea and
+   *  reveal the verify section. The user can then click "Run verify" or
+   *  adjust sliders without retyping the intent. */
+  const applyExtractedToVerify = useCallback(() => {
+    if (!extractedIntent) return;
+    setVerifyIntentJson(JSON.stringify(extractedIntent, null, 2));
+    setVerifyOpen(true);
+  }, [extractedIntent]);
+
+  /** FileReader for the reverse-engineer STL upload. Same shape as the
+   *  image upload handler — we stash the data URL so it can be POSTed
+   *  straight to the route without a second decode pass. */
+  const handleReStlFile = useCallback((file: File | null) => {
+    setReErr('');
+    setReCandidates([]);
+    if (!file) { setReStlBase64(''); setReStlName(''); return; }
+    if (file.size > 9 * 1024 * 1024) {
+      setReErr(`${t.reRouteFailed}: file too large (${(file.size / 1024 / 1024).toFixed(1)} MB, max 8 MB after decode)`);
+      setReStlBase64(''); setReStlName('');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === 'string') {
+        setReStlBase64(result);
+        setReStlName(file.name);
+      }
+    };
+    reader.onerror = () => {
+      setReErr(`${t.reRouteFailed}: file read failed`);
+    };
+    reader.readAsDataURL(file);
+  }, [t]);
+
+  /** POST the STL data URL to /api/nexyfab/reverse-engineer and stash the
+   *  ranked candidate list. Each candidate has its own "Apply" button that
+   *  copies the proposed intent into the verify section. */
+  const analyzeReverseMesh = useCallback(async () => {
+    if (!reStlBase64 || reBusy) return;
+    setReErr('');
+    setReCandidates([]);
+    setReBusy(true);
+    try {
+      const res = await fetch('/api/nexyfab/reverse-engineer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stlBase64: reStlBase64 }),
+      });
+      const data = await res.json().catch(() => ({} as { ok?: boolean; error?: string; candidates?: unknown[] }));
+      if (!res.ok || data.ok === false) {
+        const msg = typeof data.error === 'string' ? data.error : `${t.reRouteFailed} (${res.status})`;
+        setReErr(msg);
+        return;
+      }
+      if (Array.isArray(data.candidates)) {
+        setReCandidates(data.candidates as Array<{
+          intent: unknown;
+          confidence: number;
+          summary: string;
+          evidence: string[];
+          counterEvidence: string[];
+        }>);
+      }
+    } catch (e: unknown) {
+      setReErr(e instanceof Error ? e.message : t.reRouteFailed);
+    } finally {
+      setReBusy(false);
+    }
+  }, [reStlBase64, reBusy, t]);
+
+  /** POST to /api/nexyfab/request-quote with the selected provider +
+   *  process + material + quantity. We prefill measuredVolumeMm3 / bboxMm
+   *  from the most recent verifyResult when available so the internal
+   *  estimator bumps confidence from 'rough' to 'indicative'. */
+  const requestQuote = useCallback(async () => {
+    if (quoteBusy) return;
+    setQuoteErr('');
+    setQuoteResult(null);
+    setQuoteBusy(true);
+    try {
+      const body: Record<string, unknown> = {
+        providerId: quoteProviderId,
+        process: quoteProcess,
+        material: quoteMaterial,
+        quantity: quoteQuantity,
+      };
+      // Prefill measured geometry from the last verify result when present
+      // — improves internal estimator confidence + lets the partner provider
+      // (when wired) skip an extra round-trip.
+      const lastVerified = verifyResult ?? agentVerifyResult;
+      if (lastVerified?.measured) {
+        const m = lastVerified.measured as { wMm: number; hMm: number; dMm: number };
+        if (typeof m.wMm === 'number' && typeof m.hMm === 'number' && typeof m.dMm === 'number'
+            && m.wMm > 0 && m.hMm > 0 && m.dMm > 0) {
+          body.bboxMm = { wMm: m.wMm, hMm: m.hMm, dMm: m.dMm };
+        }
+      }
+      if (lastVerified?.volume?.actualMm3 && lastVerified.volume.actualMm3 > 0) {
+        body.measuredVolumeMm3 = lastVerified.volume.actualMm3;
+      }
+      const res = await fetch('/api/nexyfab/request-quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({} as { ok?: boolean; error?: string; quote?: QuoteUiResponse }));
+      if (!res.ok || data.ok === false) {
+        const msg = typeof data.error === 'string' ? data.error : `${t.quoteRouteFailed} (${res.status})`;
+        setQuoteErr(msg);
+        return;
+      }
+      if (data.quote) setQuoteResult(data.quote);
+    } catch (e: unknown) {
+      setQuoteErr(e instanceof Error ? e.message : t.quoteRouteFailed);
+    } finally {
+      setQuoteBusy(false);
+    }
+  }, [quoteBusy, quoteProviderId, quoteProcess, quoteMaterial, quoteQuantity, verifyResult, agentVerifyResult, t]);
+
+  /** Copy a chosen candidate's intent into the verify-spec textarea and
+   *  reveal the verify section so the user can immediately round-trip. */
+  const applyCandidateToVerify = useCallback((intent: unknown) => {
+    if (!intent) return;
+    setVerifyIntentJson(JSON.stringify(intent, null, 2));
+    setVerifyOpen(true);
+  }, []);
+
+  /** Slider change handler — updates the local working copy + marks the
+   *  change. The auto-verify effect picks up sliderValues changes. */
+  const handleSliderChange = useCallback((path: string, val: number) => {
+    setSliderValues(prev => {
+      const next = new Map(prev);
+      next.set(path, val);
+      return next;
+    });
+  }, []);
+
+  /** Apply current slider values back to the textarea JSON — makes the
+   *  round-trip visible to the user. After this, the textarea is in sync
+   *  with the sliders again. */
+  const applySlidersToJson = useCallback(() => {
+    if (!sliderIntent) return;
+    const updated = applySliderValuesToIntent(sliderIntent, sliderValues);
+    const jsonStr = intentToJsonString(updated);
+    setVerifyIntentJson(jsonStr);
+    setSliderIntent(updated);
+    setSliderJsonAtBuild(jsonStr);
+    // After apply, snapshot now reflects the new "saved" baseline so a
+    // subsequent Reset goes back to what's now in the textarea.
+    setSliderSnapshot(new Map(sliderValues));
+  }, [sliderIntent, sliderValues]);
+
+  /** Reset sliders to the snapshot taken when the rows were first built
+   *  (or when "Apply to JSON" was last clicked). */
+  const resetSliders = useCallback(() => {
+    setSliderValues(new Map(sliderSnapshot));
+  }, [sliderSnapshot]);
+
+  /** Invalidate the slider working copy when the user manually edits the
+   *  textarea JSON — the textarea is the canonical source, sliders are a
+   *  derived view that must be rebuilt on the next verify. */
+  useEffect(() => {
+    if (!sliderJsonAtBuild) return;
+    if (verifyIntentJson !== sliderJsonAtBuild) {
+      // User typed in the textarea after sliders were built; hide sliders
+      // until they Re-run verify.
+      setSliderRows([]);
+      setSliderValues(new Map());
+      setSliderSnapshot(new Map());
+      setSliderIntent(null);
+      setSliderJsonAtBuild('');
+    }
+  }, [verifyIntentJson, sliderJsonAtBuild]);
+
+  /** Debounced auto-verify: when sliders move AND autoVerifyOn, re-run
+   *  /verify-spec after 800ms idle with the slider-modified intent. */
+  useEffect(() => {
+    if (!autoVerifyOn) return;
+    if (sliderRows.length === 0) return;
+    if (!sliderIntent) return;
+    // Skip when the current sliderValues exactly match the snapshot — no
+    // user-driven change to debounce on (e.g. immediately after row build).
+    let changed = false;
+    for (const [k, v] of sliderValues) {
+      if (sliderSnapshot.get(k) !== v) { changed = true; break; }
+    }
+    if (!changed) return;
+    const handle = setTimeout(() => {
+      const updated = applySliderValuesToIntent(sliderIntent, sliderValues);
+      void runVerify(updated);
+    }, 800);
+    return () => { clearTimeout(handle); };
+  }, [sliderValues, sliderSnapshot, sliderIntent, sliderRows.length, autoVerifyOn, runVerify]);
+
+  /** Sliders visible only when intent JSON parsed cleanly AND verify ran
+   *  at least once with verifiable=true (which sets sliderRows). */
+  const slidersVisible = sliderRows.length > 0 && verifyResult !== null && verifyResult.verifiable;
+
   const hasCode = !!code;
   const hasSelectedFace = selectedElement?.type === 'face';
   const face = hasSelectedFace ? (selectedElement as FaceSelectionInfo) : null;
@@ -1790,6 +2523,454 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
                 <p className="text-[11px] text-gray-500">{t.scadImportHint}</p>
               ) : (
                 <p className="text-[11px] text-amber-200/80">{t.scadStoredRemoteHint}</p>
+              )}
+            </div>
+          )}
+
+          {/* ── Request quote (FREE-accessible collapsible) ── */}
+          <div className="flex flex-col gap-2 border-t border-gray-800 pt-3 mt-1">
+            <button
+              type="button"
+              data-testid="quote-toggle"
+              onClick={() => setQuoteOpen(v => !v)}
+              className="self-start text-xs px-3 py-1.5 bg-amber-700/70 hover:bg-amber-600 text-white rounded font-medium border border-amber-500/40"
+            >
+              {t.quoteToggle} {quoteOpen ? '▲' : '▼'}
+            </button>
+            {quoteOpen && (
+              <div className="flex flex-col gap-2" data-testid="quote-section">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex flex-col gap-1 text-[11px] text-gray-400 font-medium">
+                    {t.quoteProcessLabel}
+                    <select
+                      value={quoteProcess}
+                      onChange={e => setQuoteProcess(e.target.value as typeof quoteProcess)}
+                      disabled={quoteBusy}
+                      data-testid="quote-process"
+                      className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 focus:outline-none focus:border-amber-500/60"
+                    >
+                      <option value="fdm">FDM</option>
+                      <option value="sla">SLA</option>
+                      <option value="cnc_mill">CNC mill</option>
+                      <option value="sheet">Sheet metal</option>
+                      <option value="injection_molding">Injection molding</option>
+                      <option value="die_cast">Die cast</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11px] text-gray-400 font-medium">
+                    {t.quoteMaterialLabel}
+                    <select
+                      value={quoteMaterial}
+                      onChange={e => setQuoteMaterial(e.target.value as typeof quoteMaterial)}
+                      disabled={quoteBusy}
+                      data-testid="quote-material"
+                      className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 focus:outline-none focus:border-amber-500/60"
+                    >
+                      <option value="aluminum_6061">Aluminum 6061</option>
+                      <option value="steel_a36">Steel A36</option>
+                      <option value="steel_4140">Steel 4140</option>
+                      <option value="stainless_304">Stainless 304</option>
+                      <option value="pla">PLA</option>
+                      <option value="abs">ABS</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11px] text-gray-400 font-medium">
+                    {t.quoteQuantityLabel}
+                    <input
+                      type="number"
+                      min={1}
+                      max={100_000}
+                      step={1}
+                      value={quoteQuantity}
+                      onChange={e => {
+                        const v = parseInt(e.target.value, 10);
+                        setQuoteQuantity(Number.isFinite(v) && v > 0 ? v : 1);
+                      }}
+                      disabled={quoteBusy}
+                      data-testid="quote-quantity"
+                      className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 focus:outline-none focus:border-amber-500/60"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11px] text-gray-400 font-medium">
+                    Provider
+                    <select
+                      value={quoteProviderId}
+                      onChange={e => setQuoteProviderId(e.target.value as typeof quoteProviderId)}
+                      disabled={quoteBusy}
+                      data-testid="quote-provider"
+                      className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 focus:outline-none focus:border-amber-500/60"
+                    >
+                      <option value="internal">NexyFab internal · Configured</option>
+                      <option value="xometry">Xometry · Not configured</option>
+                    </select>
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  data-testid="quote-submit"
+                  onClick={() => void requestQuote()}
+                  disabled={quoteBusy}
+                  className="self-start text-xs px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded font-medium"
+                >
+                  {quoteBusy ? t.quoteRouteFailed.replace(/failed.*$/i, '...') : t.getQuote}
+                </button>
+                {quoteErr && (
+                  <div
+                    data-testid="quote-error"
+                    className="text-xs text-red-300 bg-red-950/40 border border-red-800/50 rounded p-2 whitespace-pre-wrap"
+                  >
+                    {quoteErr}
+                  </div>
+                )}
+                {quoteResult && (
+                  <div
+                    data-testid="quote-result"
+                    className="flex flex-col gap-1.5 border border-amber-700/30 rounded p-2 bg-amber-950/20"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-amber-100 font-mono">{quoteResult.providerName}</span>
+                      <span
+                        data-testid="quote-confidence"
+                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                          quoteResult.confidence === 'binding'
+                            ? 'text-green-300 border-green-700/40 bg-green-950/40'
+                            : quoteResult.confidence === 'indicative'
+                              ? 'text-amber-300 border-amber-700/40 bg-amber-950/40'
+                              : 'text-gray-300 border-gray-700/40 bg-gray-950/40'
+                        }`}
+                      >
+                        {quoteResult.confidence}
+                      </span>
+                    </div>
+                    <div className="text-sm text-amber-200 font-mono">
+                      ${quoteResult.totalUsd.toFixed(2)}{' '}
+                      <span className="text-[11px] text-amber-300/70">
+                        (${quoteResult.unitPriceUsd.toFixed(2)} / unit · lead {quoteResult.leadTimeDays}d)
+                      </span>
+                    </div>
+                    {quoteResult.lineItems.length > 0 && (
+                      <ul className="text-[10px] text-amber-200/80 font-mono">
+                        {quoteResult.lineItems.map((li, i) => (
+                          <li key={i}>
+                            {li.label}: ${li.amountUsd.toFixed(2)}
+                            {li.unit ? ` (${li.unit})` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {quoteResult.notes.length > 0 && (
+                      <p className="text-[10px] text-amber-300/70 italic">
+                        {quoteResult.notes.join(' · ')}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Reverse engineer (Pro+ collapsible) ── */}
+          <div className="flex flex-col gap-2 border-t border-gray-800 pt-3 mt-1">
+            <button
+              type="button"
+              data-testid="reverse-engineer-toggle"
+              onClick={() => setReOpen(v => !v)}
+              className="self-start text-xs px-3 py-1.5 bg-emerald-700/70 hover:bg-emerald-600 text-white rounded font-medium border border-emerald-500/40"
+            >
+              {t.reToggle} {reOpen ? '▲' : '▼'}
+            </button>
+            {reOpen && (
+              <div className="flex flex-col gap-2" data-testid="reverse-engineer-section">
+                <input
+                  type="file"
+                  accept=".stl"
+                  data-testid="reverse-engineer-file"
+                  onChange={e => handleReStlFile(e.target.files?.[0] ?? null)}
+                  disabled={reBusy}
+                  className="text-xs text-gray-300 file:mr-2 file:px-2 file:py-1 file:bg-emerald-700/70 file:hover:bg-emerald-600 file:text-white file:border-0 file:rounded file:cursor-pointer file:text-[11px]"
+                />
+                {reStlName && (
+                  <p className="text-[11px] text-emerald-200/80" data-testid="reverse-engineer-filename">
+                    {reStlName}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  data-testid="reverse-engineer-analyze"
+                  onClick={() => void analyzeReverseMesh()}
+                  disabled={reBusy || !reStlBase64}
+                  className="self-start text-xs px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded font-medium"
+                >
+                  {reBusy ? t.analyzing : t.analyze}
+                </button>
+                {reErr && (
+                  <div
+                    data-testid="reverse-engineer-error"
+                    className="text-xs text-red-300 bg-red-950/40 border border-red-800/50 rounded p-2 whitespace-pre-wrap"
+                  >
+                    {reErr}
+                  </div>
+                )}
+                {reCandidates.length > 0 && (
+                  <div className="flex flex-col gap-2" data-testid="reverse-engineer-results">
+                    {reCandidates.map((c, idx) => {
+                      const intentObj = c.intent as { shapeId?: string } | null;
+                      const shapeId = intentObj?.shapeId ?? '?';
+                      // Clamp the confidence bar at 100% so an over-eager
+                      // rule (theoretically possible since rules are float)
+                      // doesn't visually overflow the container.
+                      const widthPct = Math.min(100, Math.max(0, c.confidence)).toFixed(0);
+                      return (
+                        <div
+                          key={`${shapeId}-${idx}`}
+                          data-testid={`reverse-engineer-candidate-${idx}`}
+                          className="flex flex-col gap-1.5 border border-emerald-700/30 rounded p-2 bg-emerald-950/20"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-emerald-100 font-mono">{c.summary}</span>
+                            <span className="text-[11px] text-emerald-300 font-mono">{c.confidence.toFixed(0)}%</span>
+                          </div>
+                          <div className="w-full h-1 bg-gray-800 rounded overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-500"
+                              style={{ width: `${widthPct}%` }}
+                            />
+                          </div>
+                          {c.evidence.length > 0 && (
+                            <ul className="text-[10px] text-emerald-200/70 list-disc list-inside">
+                              {c.evidence.slice(0, 3).map((ev, i) => (
+                                <li key={i}>{ev}</li>
+                              ))}
+                            </ul>
+                          )}
+                          <button
+                            type="button"
+                            data-testid={`reverse-engineer-apply-${idx}`}
+                            onClick={() => applyCandidateToVerify(c.intent)}
+                            className="self-start text-[11px] px-2.5 py-1 bg-violet-700/70 hover:bg-violet-600 text-white rounded font-medium border border-violet-500/40"
+                          >
+                            {t.applyCandidate}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Image-to-CAD (Pro+ collapsible) ── */}
+          <div className="flex flex-col gap-2 border-t border-gray-800 pt-3 mt-1">
+            <button
+              type="button"
+              data-testid="image-intent-toggle"
+              onClick={() => setImageIntentOpen(v => !v)}
+              className="self-start text-xs px-3 py-1.5 bg-pink-700/70 hover:bg-pink-600 text-white rounded font-medium border border-pink-500/40"
+            >
+              {t.imageIntentToggle} {imageIntentOpen ? '▲' : '▼'}
+            </button>
+            {imageIntentOpen && (
+              <div className="flex flex-col gap-2" data-testid="image-intent-section">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  data-testid="image-intent-file"
+                  onChange={e => handleImageFile(e.target.files?.[0] ?? null)}
+                  disabled={extractBusy}
+                  className="text-xs text-gray-300 file:mr-2 file:px-2 file:py-1 file:bg-pink-700/70 file:hover:bg-pink-600 file:text-white file:border-0 file:rounded file:cursor-pointer file:text-[11px]"
+                />
+                {imageDataUrl && (
+                  <img
+                    src={imageDataUrl}
+                    alt="upload preview"
+                    data-testid="image-intent-preview"
+                    style={{ maxWidth: 150, maxHeight: 150 }}
+                    className="rounded border border-gray-700 object-contain"
+                  />
+                )}
+                <label className="text-[11px] text-gray-400 font-medium">{t.imageHintLabel}</label>
+                <input
+                  type="text"
+                  value={imageHint}
+                  onChange={e => setImageHint(e.target.value)}
+                  placeholder={t.imageHintPlaceholder}
+                  disabled={extractBusy}
+                  data-testid="image-intent-hint"
+                  maxLength={500}
+                  className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-100 focus:outline-none focus:border-pink-500/60"
+                />
+                <button
+                  type="button"
+                  data-testid="image-intent-extract"
+                  onClick={() => void extractIntentFromImage()}
+                  disabled={extractBusy || !imageDataUrl}
+                  className="self-start text-xs px-3 py-1.5 bg-pink-600 hover:bg-pink-500 disabled:opacity-40 text-white rounded font-medium"
+                >
+                  {extractBusy ? t.extracting : t.extractIntent}
+                </button>
+                {imageErr && (
+                  <div
+                    data-testid="image-intent-error"
+                    className="text-xs text-red-300 bg-red-950/40 border border-red-800/50 rounded p-2 whitespace-pre-wrap"
+                  >
+                    {imageErr}
+                  </div>
+                )}
+                {extractedIntent !== null && (
+                  <div className="flex flex-col gap-1.5" data-testid="image-intent-result">
+                    {extractedSummary && (
+                      <p className="text-[11px] text-pink-200/90 italic">{extractedSummary}</p>
+                    )}
+                    <pre
+                      data-testid="image-intent-json"
+                      className="text-[11px] text-gray-100 bg-gray-950 border border-gray-700 rounded p-2 font-mono max-h-48 overflow-auto whitespace-pre-wrap"
+                    >
+                      {JSON.stringify(extractedIntent, null, 2)}
+                    </pre>
+                    <button
+                      type="button"
+                      data-testid="image-intent-apply"
+                      onClick={applyExtractedToVerify}
+                      className="self-start text-xs px-3 py-1.5 bg-violet-700/70 hover:bg-violet-600 text-white rounded font-medium border border-violet-500/40"
+                    >
+                      {t.applyToVerify}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Spec verification (collapsible) ── */}
+          {scadSource.trim() && (
+            <div className="flex flex-col gap-2 border-t border-gray-800 pt-3 mt-1">
+              <button
+                type="button"
+                data-testid="verify-spec-toggle"
+                onClick={() => setVerifyOpen(v => !v)}
+                className="self-start text-xs px-3 py-1.5 bg-violet-700/70 hover:bg-violet-600 text-white rounded font-medium border border-violet-500/40"
+              >
+                {t.verifyToggle} {verifyOpen ? '▲' : '▼'}
+              </button>
+              {verifyOpen && (
+                <div className="flex flex-col gap-2" data-testid="verify-spec-section">
+                  <label className="text-[11px] text-gray-400 font-medium">{t.intentJsonLabel}</label>
+                  <textarea
+                    value={verifyIntentJson}
+                    onChange={e => setVerifyIntentJson(e.target.value)}
+                    spellCheck={false}
+                    placeholder={t.intentJsonPlaceholder}
+                    rows={6}
+                    disabled={verifyBusy}
+                    data-testid="verify-intent-json"
+                    className="w-full bg-gray-950 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-100 font-mono resize-y focus:outline-none focus:border-violet-500/60"
+                  />
+                  <button
+                    type="button"
+                    data-testid="verify-run-button"
+                    onClick={() => void runVerify()}
+                    disabled={verifyBusy || !scadSource.trim()}
+                    className="self-start text-xs px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded font-medium"
+                  >
+                    {verifyBusy ? t.verifying : t.runVerify}
+                  </button>
+                  {verifyErr && (
+                    <div
+                      data-testid="verify-error"
+                      className="text-xs text-red-300 bg-red-950/40 border border-red-800/50 rounded p-2 whitespace-pre-wrap"
+                    >
+                      {verifyErr}
+                    </div>
+                  )}
+                  {verifyResultFromAgent && (
+                    <div
+                      data-testid="verify-from-agent-badge"
+                      className="text-[11px] text-blue-300/90 bg-blue-950/30 border border-blue-800/40 rounded px-2 py-1 inline-flex items-center gap-1.5"
+                      title={agentVerifyAtMs ? new Date(agentVerifyAtMs).toLocaleString() : undefined}
+                    >
+                      <span>🤖</span>
+                      <span>{t.verifyFromAgent ?? 'from last agent run'}</span>
+                    </div>
+                  )}
+                  {/* Live-preview sliders. Gated on: verifyResult.verifiable
+                      === true AND intent had ≥1 numeric param. */}
+                  {slidersVisible && (
+                    <div
+                      data-testid="verify-sliders-section"
+                      className="flex flex-col gap-2 border border-violet-700/30 rounded p-2.5 bg-violet-950/20"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-violet-200/90 font-medium font-mono">
+                          {t.sliderHeader}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <label className="text-[11px] text-violet-100/80 inline-flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              data-testid="verify-slider-auto-toggle"
+                              checked={autoVerifyOn}
+                              onChange={e => setAutoVerifyOn(e.target.checked)}
+                              className="accent-violet-500"
+                            />
+                            <span>{t.sliderAutoVerify}</span>
+                          </label>
+                          <button
+                            type="button"
+                            data-testid="verify-slider-apply"
+                            onClick={applySlidersToJson}
+                            className="text-[11px] px-2 py-0.5 bg-violet-600 hover:bg-violet-500 text-white rounded"
+                          >
+                            {t.sliderApply}
+                          </button>
+                          <button
+                            type="button"
+                            data-testid="verify-slider-reset"
+                            onClick={resetSliders}
+                            className="text-[11px] px-2 py-0.5 bg-gray-700 hover:bg-gray-600 text-gray-100 rounded"
+                          >
+                            {t.sliderReset}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {sliderRows.map(row => {
+                          const cur = sliderValues.get(row.path) ?? row.value;
+                          const snap = sliderSnapshot.get(row.path) ?? row.value;
+                          return (
+                            <div key={row.path} className="flex flex-col gap-0.5">
+                              <div className="flex justify-between text-[11px]">
+                                <span className="text-gray-200 font-mono">{row.path}</span>
+                                <span className="text-violet-300 font-mono">
+                                  {cur.toFixed(1)} mm{' '}
+                                  <span className="text-gray-500">
+                                    ({t.sliderWas} {snap.toFixed(1)})
+                                  </span>
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                data-testid={`verify-slider-${row.path}`}
+                                min={row.minRange}
+                                max={row.maxRange}
+                                step={0.1}
+                                value={cur}
+                                onChange={e => handleSliderChange(row.path, parseFloat(e.target.value))}
+                                className="w-full accent-violet-500 h-1.5"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {autoVerifyOn && (
+                        <p className="text-[10px] text-violet-300/70 self-end">
+                          {t.sliderDebounceHint}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <VerifySpecPanel lang={seg} result={effectiveVerifyResult} />
+                </div>
               )}
             </div>
           )}

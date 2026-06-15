@@ -8,20 +8,11 @@
 import { useMemo, useState } from 'react';
 import { STANDARD_PARTS, type StandardPart } from '../../library/standardPartsIso';
 import { I } from '../Icons';
+import { pickShellDict } from '../shellDict';
 
 export interface StandardPartsGridProps {
-  isKo: boolean;
+  lang: string;
 }
-
-const CATEGORY_LABELS: Record<string, { ko: string; en: string }> = {
-  all: { ko: '전체', en: 'All' },
-  fastener: { ko: '체결', en: 'Fasteners' },
-  bearing: { ko: '베어링', en: 'Bearings' },
-  pulley: { ko: '풀리', en: 'Pulleys' },
-  rail: { ko: '리니어 레일', en: 'Linear rails' },
-  spring: { ko: '스프링', en: 'Springs' },
-  gear: { ko: '기어', en: 'Gears' },
-};
 
 const CATEGORY_ICON: Record<string, React.ReactNode> = {
   fastener: <I.cube size={11} />,
@@ -32,7 +23,8 @@ const CATEGORY_ICON: Record<string, React.ReactNode> = {
   gear: <I.pattern size={11} />,
 };
 
-export function StandardPartsGrid({ isKo }: StandardPartsGridProps) {
+export function StandardPartsGrid({ lang }: StandardPartsGridProps) {
+  const d = pickShellDict(lang);
   const [filter, setFilter] = useState<'all' | StandardPart['category']>('all');
   const [selectedPart, setSelectedPart] = useState<StandardPart | null>(null);
   const [paramValues, setParamValues] = useState<Record<string, number | string>>({});
@@ -85,7 +77,7 @@ export function StandardPartsGrid({ isKo }: StandardPartsGridProps) {
                 border: `1px solid ${isActive ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
               }}
             >
-              {isKo ? CATEGORY_LABELS[c].ko : CATEGORY_LABELS[c].en}
+              {d.stdCategories[c]}
             </button>
           );
         })}
@@ -171,7 +163,7 @@ export function StandardPartsGrid({ isKo }: StandardPartsGridProps) {
               fontSize: 11, fontWeight: 600, cursor: 'pointer',
             }}
           >
-            {isKo ? '어셈블리에 추가' : 'Insert into assembly'}
+            {d.insertIntoAssembly}
           </button>
         </div>
       )}

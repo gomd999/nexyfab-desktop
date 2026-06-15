@@ -147,76 +147,72 @@ function computeBBoxDimensions(geometry: THREE.BufferGeometry): THREE.Vector3 {
 
 /**
  * Measure wall thickness at sampled surface points using inward raycasting.
- * For each sampled vertex, casts a ray inward along -normal.
- * Returns an array of { position, thickness, normalDir } for vertices thinner
- * than maxThickness.
  *
- * @param geometry    BufferGeometry (non-indexed, with computed normals)
+ * Samples each (strided) TRIANGLE at its centroid using the geometric FACE normal,
+ * casting a ray inward to the opposite wall. Sampling face centroids — not vertices with
+ * averaged normals — avoids the edge/corner artefact that made the old version report a
+ * spurious ~0.2 mm minimum on ANY faceted box: at a shared vertex the averaged normal
+ * points diagonally, so the inward ray grazed an adjacent face at ≈0 distance and (after
+ * the fixed 0.1 mm offsets) read ~0.2 mm regardless of the real wall. A face centroid is
+ * interior to its (flat) triangle, so the ray crosses the slab cleanly and returns the
+ * true thickness.
+ *
+ * @param geometry    BufferGeometry (indexed or not)
  * @param maxThickness  Only return measurements below this value (mm)
- * @param sampleRate  Fraction of vertices to sample (0.0–1.0), default 0.05
+ * @param sampleRate  Fraction of triangles to sample (0.0–1.0), default 0.05
  */
 export function measureWallThickness(
   geometry: THREE.BufferGeometry,
   maxThickness: number = 3.0,
   sampleRate: number = 0.05,
 ): Array<{ position: THREE.Vector3; thickness: number; normalDir: THREE.Vector3 }> {
-  const pos = geometry.attributes.position as THREE.BufferAttribute;
-  const nor = geometry.attributes.normal as THREE.BufferAttribute;
-  if (!pos || !nor) return [];
+  const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry;
+  const pos = nonIndexed.attributes.position as THREE.BufferAttribute;
+  if (!pos) return [];
 
   const results: Array<{ position: THREE.Vector3; thickness: number; normalDir: THREE.Vector3 }> = [];
 
-  // Build a temporary mesh for raycasting
-  const tempMesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+  const tempMesh = new THREE.Mesh(nonIndexed, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
   const raycaster = new THREE.Raycaster();
   raycaster.params.Mesh = { threshold: 0 };
 
+  // Scale-aware outward offset so the entry hit is cleanly separated from the centroid.
+  nonIndexed.computeBoundingBox();
+  const bb = nonIndexed.boundingBox!;
+  const diag = bb.min.distanceTo(bb.max) || 1;
+  const off = Math.max(1e-3, diag * 1e-4);
+
+  const triCount = Math.floor(pos.count / 3);
   const stride = Math.max(1, Math.floor(1 / sampleRate));
-  const vertCount = pos.count;
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  const ab = new THREE.Vector3(), ac = new THREE.Vector3(), nrm = new THREE.Vector3(), ctr = new THREE.Vector3();
 
-  for (let i = 0; i < vertCount; i += stride) {
-    const vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
-    const nx = nor.getX(i), ny = nor.getY(i), nz = nor.getZ(i);
-    const nLen = Math.sqrt(nx * nx + ny * ny + nz * nz);
-    if (nLen < 0.01) continue;
+  for (let t = 0; t < triCount; t += stride) {
+    a.fromBufferAttribute(pos, t * 3);
+    b.fromBufferAttribute(pos, t * 3 + 1);
+    c.fromBufferAttribute(pos, t * 3 + 2);
+    ab.subVectors(b, a); ac.subVectors(c, a); nrm.crossVectors(ab, ac);
+    const nl = nrm.length();
+    if (nl < 1e-12) continue;
+    nrm.multiplyScalar(1 / nl);
+    ctr.copy(a).add(b).add(c).multiplyScalar(1 / 3);
 
-    // Offset origin slightly outward to avoid self-intersection
-    const origin = new THREE.Vector3(
-      vx + (nx / nLen) * 0.1,
-      vy + (ny / nLen) * 0.1,
-      vz + (nz / nLen) * 0.1,
-    );
-    const direction = new THREE.Vector3(-nx / nLen, -ny / nLen, -nz / nLen); // inward
-
-    raycaster.set(origin, direction);
+    const origin = new THREE.Vector3(ctr.x + nrm.x * off, ctr.y + nrm.y * off, ctr.z + nrm.z * off);
+    raycaster.set(origin, new THREE.Vector3(-nrm.x, -nrm.y, -nrm.z));
     const hits = raycaster.intersectObject(tempMesh, false);
 
-    if (hits.length >= 2) {
-      // First hit is entry surface, second hit is the opposite wall
-      const thickness = hits[1].distance + 0.1; // +0.1 for the origin offset
-      if (thickness < maxThickness) {
-        results.push({
-          position: new THREE.Vector3(vx, vy, vz),
-          thickness,
-          normalDir: new THREE.Vector3(nx / nLen, ny / nLen, nz / nLen),
-        });
-      }
-    } else if (hits.length === 1) {
-      // Single hit — measure from origin to the one visible wall
-      const thickness = hits[0].distance + 0.1;
-      if (thickness < maxThickness) {
-        results.push({
-          position: new THREE.Vector3(vx, vy, vz),
-          thickness,
-          normalDir: new THREE.Vector3(nx / nLen, ny / nLen, nz / nLen),
-        });
-      }
+    // The origin sits `off` OUTSIDE the entry face; the first hit beyond it is the
+    // opposite wall, so thickness = (hit distance) − off.
+    let thickness = -1;
+    for (const h of hits) {
+      if (h.distance > off + 1e-4) { thickness = h.distance - off; break; }
+    }
+    if (thickness > 0 && thickness < maxThickness) {
+      results.push({ position: ctr.clone(), thickness, normalDir: nrm.clone() });
     }
   }
 
-  // Dispose temp material (geometry is owned by the caller)
   (tempMesh.material as THREE.Material).dispose();
-
   return results;
 }
 

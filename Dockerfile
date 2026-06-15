@@ -5,17 +5,46 @@ WORKDIR /app
 # Native module build tools (better-sqlite3 needs python3 + build-essential)
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Install dependencies.
+# `npm install` (not `npm ci`): the lock drifts on platform-specific optional
+# wasm deps (@emnapi/*, generated on a Windows dev box), which makes the strict
+# `npm ci` fail on Linux. `npm install` reconciles the lock at build time and
+# still installs the full tree (webpack, replicad-opencascadejs, etc.).
 COPY package.json package-lock.json* ./
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps --no-audit --no-fund
 
 # Copy source
 COPY . .
 
-# Build (4GB heap for large Next.js projects)
+# NEXT_PUBLIC_* are inlined into the client bundle at `next build` time.
+# Railway exposes service variables as Docker build args, but ONLY for ARGs
+# declared here — without these, the client bundle bakes `undefined` (the
+# reCAPTCHA outage of 2026-06: api.js?render=undefined → all lead forms 403).
+ARG NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+ARG NEXT_PUBLIC_SITE_URL
+ARG NEXT_PUBLIC_NEXYFLOW_URL
+ARG NEXT_PUBLIC_NEXYWISE_URL
+ARG NEXT_PUBLIC_TOSS_CLIENT_KEY
+ARG NEXT_PUBLIC_POSTHOG_KEY
+ARG NEXT_PUBLIC_POSTHOG_HOST
+ARG NEXT_PUBLIC_SENTRY_DSN
+ARG NEXT_PUBLIC_PAID_BETA
+ARG NEXT_PUBLIC_OCCT_COLLAB_WS_URL
+ENV NEXT_PUBLIC_RECAPTCHA_SITE_KEY=$NEXT_PUBLIC_RECAPTCHA_SITE_KEY \
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
+    NEXT_PUBLIC_NEXYFLOW_URL=$NEXT_PUBLIC_NEXYFLOW_URL \
+    NEXT_PUBLIC_NEXYWISE_URL=$NEXT_PUBLIC_NEXYWISE_URL \
+    NEXT_PUBLIC_TOSS_CLIENT_KEY=$NEXT_PUBLIC_TOSS_CLIENT_KEY \
+    NEXT_PUBLIC_POSTHOG_KEY=$NEXT_PUBLIC_POSTHOG_KEY \
+    NEXT_PUBLIC_POSTHOG_HOST=$NEXT_PUBLIC_POSTHOG_HOST \
+    NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
+    NEXT_PUBLIC_PAID_BETA=$NEXT_PUBLIC_PAID_BETA \
+    NEXT_PUBLIC_OCCT_COLLAB_WS_URL=$NEXT_PUBLIC_OCCT_COLLAB_WS_URL
+
+# Build (8GB heap — the project outgrew 4GB; webpack OOMs mid-compile at 4096).
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_OPTIONS=--max-old-space-size=4096
+ENV NODE_OPTIONS=--max-old-space-size=8192
 RUN npm run build
 
 # ---- Runner stage ----

@@ -17,6 +17,7 @@ import { readGeometry } from './geometryBridge';
 import { DrawingLeftPane } from './sidebars/DrawingLeftPane';
 import { DrawingRightPane } from './sidebars/DrawingRightPane';
 import { generateAutoDimensions } from './autoDimension';
+import { loc } from '../lib/loc';
 
 interface DrawingFrameProps {
   lang: string;
@@ -36,7 +37,6 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
   const router = useRouter();
   const gate = useFreemiumGate();
   const [activeTab, setActiveTab] = useState('drawing');
-  const [activeTool, setActiveTool] = useState<string | null>(null);
   const [selectedView, setSelectedView] = useState('view.iso');
   // Real geometry bridged from modeler via sessionStorage. Falls back to
   // primitive silhouette when not present (route visited directly).
@@ -87,7 +87,7 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
     else if (id === 'solid' || id === 'file' || id === 'inspect' || id === 'view')
       router.push(`/${langSeg}/shape-generator${project}`);
     else if (id === 'assembly')
-      router.push(`/${langSeg}/shape-generator${project ? project + '&mode=assembly' : '?mode=assembly'}`);
+      router.push(`/${langSeg}/shape-generator${project ? project + '&entry=assembly' : '?entry=assembly'}`);
   };
 
   // Sheet tree nodes — one entry per sheet plus its view children (built
@@ -208,26 +208,27 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
       <Shell
         mode="drawing"
         titleBar={{
-          filename: isKo ? '도면 — 무제 파트' : 'Drawing — Untitled Part',
-          savedAt: isKo ? '자동 저장됨' : 'Auto-saved',
-          breadcrumbs: ['Projects', 'Drawing', isKo ? '도면 1' : 'Sheet 1'],
-          mode: isKo ? '도면 모드' : 'DRAWING MODE',
-          canUndo: true,
-          canRedo: false,
-          onShare: () => {},
+          filename: loc(lang, { ko: '도면 — 무제 파트', en: 'Drawing — Untitled Part', ja: '図面 — 無題パート', zh: '图纸 — 未命名零件', es: 'Plano — Pieza sin título', ar: 'رسم — قطعة بدون عنوان' }),
+          savedAt: loc(lang, { ko: '자동 저장됨', en: 'Auto-saved', ja: '自動保存済み', zh: '已自动保存', es: 'Guardado automáticamente', ar: 'تم الحفظ تلقائيًا' }),
+          breadcrumbs: ['Projects', 'Drawing', loc(lang, { ko: '도면 1', en: 'Sheet 1', ja: 'シート 1', zh: '图框 1', es: 'Hoja 1', ar: 'الورقة 1' })],
+          onBrandClick: () => router.push(`/${langSeg}/nexyfab/hub`),
+          mode: loc(lang, { ko: '도면 모드', en: 'DRAWING MODE', ja: '図面モード', zh: '图纸模式', es: 'MODO PLANO', ar: 'وضع الرسم' }),
+          // No file/undo/share plumbing on this surface yet — TitleBar hides
+          // quick buttons + Share when their handlers are omitted.
           onPublish: onExportPDF,
-          publishLabel: isKo ? 'PDF 내보내기' : 'Export PDF',
+          publishLabel: loc(lang, { ko: 'PDF 내보내기', en: 'Export PDF', ja: 'PDF 書き出し', zh: '导出 PDF', es: 'Exportar PDF', ar: 'تصدير PDF' }),
         }}
         ribbon={{
           activeTab,
           onTabChange: handleTabChange,
           onTool: id => {
-            // Drawing-specific tool handlers — intercept export commands.
-            if (id === 'file.export-pdf') onExportPDF();
-            else if (id === 'file.export-dxf') onExportDXF();
-            else setActiveTool(id);
+            // Every remaining DRAWING_GROUPS id maps to a real capability;
+            // decorative ids were removed from the ribbon (honest wiring).
+            if (id === 'output.pdf') onExportPDF();
+            else if (id === 'output.dxf') onExportDXF();
+            else if (id === 'output.print') { if (typeof window !== 'undefined') window.print(); }
+            else if (id === 'sheet.new') addSheet();
           },
-          isActive: id => activeTool === id,
         }}
         leftWidth={240}
         rightWidth={300}
@@ -240,6 +241,7 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
         />}
         right={<DrawingRightPane
           isKo={isKo}
+          lang={lang}
           onExportPdf={onExportPDF}
           onExportDxf={onExportDXF}
         />}
@@ -251,9 +253,11 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
               onSelect={setActiveSheet}
               onAdd={addSheet}
               isKo={isKo}
+              lang={lang}
             />
             <DrawingCanvas
               isKo={isKo}
+              lang={lang}
               edges={edges}
               bbox={bbox}
               layout={activeSheetMeta?.layout ?? 'ortho4'}
@@ -265,8 +269,8 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
         }
         statusBar={{
           left: [
-            { id: 'sheet', items: [isKo ? '시트 1 · A3 · 297×420 mm' : 'Sheet 1 · A3 · 297×420 mm'] },
-            { id: 'scale', items: [isKo ? '축척 1:2' : 'Scale 1:2'] },
+            { id: 'sheet', items: [loc(lang, { ko: '시트 1 · A3 · 297×420 mm', en: 'Sheet 1 · A3 · 297×420 mm', ja: 'シート 1 · A3 · 297×420 mm', zh: '图框 1 · A3 · 297×420 mm', es: 'Hoja 1 · A3 · 297×420 mm', ar: 'الورقة 1 · A3 · 297×420 مم' })] },
+            { id: 'scale', items: [loc(lang, { ko: '축척 1:2', en: 'Scale 1:2', ja: '尺度 1:2', zh: '比例 1:2', es: 'Escala 1:2', ar: 'المقياس 1:2' })] },
           ],
           pills: [
             { id: 'standard', label: 'ISO 128' },
@@ -301,11 +305,11 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
             }}
           >
             <h3 style={{ margin: '0 0 8px', fontSize: 16 }}>
-              {isKo ? 'Pro 플랜 기능' : 'Pro feature'}
+              {loc(lang, { ko: 'Pro 플랜 기능', en: 'Pro feature', ja: 'Pro 機能', zh: 'Pro 功能', es: 'Función Pro', ar: 'ميزة Pro' })}
             </h3>
             <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--nx-text-2)' }}>
               {gate.upgradeFeature}{' '}
-              {isKo ? '은(는) Pro 플랜 이상에서 사용할 수 있습니다.' : 'is available on Pro and above.'}
+              {loc(lang, { ko: '은(는) Pro 플랜 이상에서 사용할 수 있습니다.', en: 'is available on Pro and above.', ja: 'は Pro 以上でご利用いただけます。', zh: '在 Pro 及以上版本中可用。', es: 'está disponible en Pro y superiores.', ar: 'متاح في Pro وما فوق.' })}
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button
@@ -313,14 +317,14 @@ export function DrawingFrame({ lang, isKo, projectId }: DrawingFrameProps) {
                 className="nx-pillbtn"
                 onClick={() => gate.setShowUpgradePrompt(false)}
               >
-                {isKo ? '나중에' : 'Later'}
+                {loc(lang, { ko: '나중에', en: 'Later', ja: '後で', zh: '稍后', es: 'Más tarde', ar: 'لاحقًا' })}
               </button>
               <button
                 type="button"
                 className="nx-pillbtn primary"
                 onClick={() => router.push(`/${lang}/nexyfab/pricing`)}
               >
-                {isKo ? 'Pro 업그레이드' : 'Upgrade to Pro'}
+                {loc(lang, { ko: 'Pro 업그레이드', en: 'Upgrade to Pro', ja: 'Pro にアップグレード', zh: '升级到 Pro', es: 'Actualizar a Pro', ar: 'الترقية إلى Pro' })}
               </button>
             </div>
           </div>
@@ -338,12 +342,14 @@ function SheetTabs({
   onSelect,
   onAdd,
   isKo,
+  lang,
 }: {
   sheets: string[];
   activeSheet: string;
   onSelect: (id: string) => void;
   onAdd: () => void;
   isKo: boolean;
+  lang: string;
 }) {
   return (
     <div
@@ -367,7 +373,7 @@ function SheetTabs({
           className={`nx-pillbtn${activeSheet === id ? ' primary' : ''}`}
           style={{ height: 22, padding: '0 12px', fontSize: 10 }}
         >
-          {isKo ? `시트 ${idx + 1}` : `Sheet ${idx + 1}`}
+          {loc(lang, { ko: `시트 ${idx + 1}`, en: `Sheet ${idx + 1}`, ja: `シート ${idx + 1}`, zh: `图框 ${idx + 1}`, es: `Hoja ${idx + 1}`, ar: `الورقة ${idx + 1}` })}
           {idx === 0 && (
             <span className="mono" style={{ marginLeft: 6, fontSize: 9, opacity: 0.7 }}>
               A3
@@ -380,7 +386,7 @@ function SheetTabs({
         onClick={onAdd}
         className="nx-pillbtn"
         style={{ height: 22, padding: '0 8px', fontSize: 10 }}
-        title={isKo ? '시트 추가' : 'Add sheet'}
+        title={loc(lang, { ko: '시트 추가', en: 'Add sheet', ja: 'シートを追加', zh: '添加图框', es: 'Añadir hoja', ar: 'إضافة ورقة' })}
       >
         +
       </button>
@@ -608,27 +614,29 @@ function DrawingTreePane({
   selectedId,
   onSelect,
   isKo,
+  lang,
 }: {
   nodes: SheetTreeNode[];
   selectedId: string;
   onSelect: (id: string) => void;
   isKo: boolean;
+  lang: string;
 }) {
   return (
     <>
       <div className="nx-panel-h">
         <I.layers size={14} />
-        {isKo ? '시트 · 뷰' : 'Sheets · Views'}
+        {loc(lang, { ko: '시트 · 뷰', en: 'Sheets · Views', ja: 'シート · ビュー', zh: '图框 · 视图', es: 'Hojas · Vistas', ar: 'الأوراق · العروض' })}
       </div>
       <div className="nx-panel-tabs">
         <button type="button" className="t active">
-          {isKo ? '시트' : 'Sheets'}
+          {loc(lang, { ko: '시트', en: 'Sheets', ja: 'シート', zh: '图框', es: 'Hojas', ar: 'الأوراق' })}
         </button>
         <button type="button" className="t">
-          {isKo ? '뷰' : 'Views'}
+          {loc(lang, { ko: '뷰', en: 'Views', ja: 'ビュー', zh: '视图', es: 'Vistas', ar: 'العروض' })}
         </button>
         <button type="button" className="t">
-          {isKo ? '레이어' : 'Layers'}
+          {loc(lang, { ko: '레이어', en: 'Layers', ja: 'レイヤー', zh: '图层', es: 'Capas', ar: 'الطبقات' })}
         </button>
       </div>
       <div className="nx-tree" style={{ flex: 1, overflow: 'auto' }}>
@@ -655,32 +663,32 @@ function DrawingTreePane({
   );
 }
 
-function DrawingPropsPane({ isKo, selectedView }: { isKo: boolean; selectedView: string }) {
+function DrawingPropsPane({ isKo, lang, selectedView }: { isKo: boolean; lang: string; selectedView: string }) {
   return (
     <>
       <div className="nx-panel-h">
         <I.cog size={14} />
-        {isKo ? '뷰 속성' : 'View Properties'}
+        {loc(lang, { ko: '뷰 속성', en: 'View Properties', ja: 'ビュー プロパティ', zh: '视图属性', es: 'Propiedades de vista', ar: 'خصائص العرض' })}
       </div>
       <div className="nx-props" style={{ padding: '8px 0' }}>
         <div className="sect">
           <div className="sect-h">
             <span className="tg">▼</span>
-            {isKo ? '선택된 뷰' : 'Selected view'}
+            {loc(lang, { ko: '선택된 뷰', en: 'Selected view', ja: '選択中のビュー', zh: '所选视图', es: 'Vista seleccionada', ar: 'العرض المحدد' })}
           </div>
           <div className="row">
-            <span className="k">{isKo ? '뷰' : 'View'}</span>
+            <span className="k">{loc(lang, { ko: '뷰', en: 'View', ja: 'ビュー', zh: '视图', es: 'Vista', ar: 'العرض' })}</span>
             <span className="v">{selectedView}</span>
           </div>
           <div className="row">
-            <span className="k">{isKo ? '축척' : 'Scale'}</span>
+            <span className="k">{loc(lang, { ko: '축척', en: 'Scale', ja: '尺度', zh: '比例', es: 'Escala', ar: 'المقياس' })}</span>
             <span className="v">
               <input className="input short" defaultValue="1:2" />
             </span>
           </div>
           <div className="row">
-            <span className="k">{isKo ? '스타일' : 'Style'}</span>
-            <span className="v">{isKo ? '음영 + 모서리' : 'Shaded + edges'}</span>
+            <span className="k">{loc(lang, { ko: '스타일', en: 'Style', ja: 'スタイル', zh: '样式', es: 'Estilo', ar: 'النمط' })}</span>
+            <span className="v">{loc(lang, { ko: '음영 + 모서리', en: 'Shaded + edges', ja: 'シェーディング + エッジ', zh: '着色 + 边线', es: 'Sombreado + aristas', ar: 'مظلل + حواف' })}</span>
           </div>
         </div>
 
@@ -689,37 +697,42 @@ function DrawingPropsPane({ isKo, selectedView }: { isKo: boolean; selectedView:
             <span className="tg">▼</span>GD&T
           </div>
           <div style={{ padding: '6px 10px', fontSize: 11, color: 'var(--nx-text-3)' }}>
-            {isKo
-              ? '치수에 우클릭하여 위치도·평면도·진원도 등을 추가하세요.'
-              : 'Right-click a dimension to add position, flatness, circularity callouts.'}
+            {loc(lang, {
+              ko: '치수에 우클릭하여 위치도·평면도·진원도 등을 추가하세요.',
+              en: 'Right-click a dimension to add position, flatness, circularity callouts.',
+              ja: '寸法を右クリックして、位置度・平面度・真円度などの公差記号を追加します。',
+              zh: '右键单击尺寸以添加位置度、平面度、圆度等形位公差标注。',
+              es: 'Haga clic derecho en una cota para añadir indicaciones de posición, planitud y circularidad.',
+              ar: 'انقر بزر الفأرة الأيمن على البُعد لإضافة رموز الموضع والاستواء والاستدارة.',
+            })}
           </div>
         </div>
 
         <div className="sect">
           <div className="sect-h">
             <span className="tg">▼</span>
-            {isKo ? '타이틀 블록' : 'Title block'}
+            {loc(lang, { ko: '타이틀 블록', en: 'Title block', ja: '表題欄', zh: '标题栏', es: 'Cuadro de rotulación', ar: 'خانة العنوان' })}
           </div>
           <div className="row">
-            <span className="k">{isKo ? '도면 번호' : 'Part №'}</span>
+            <span className="k">{loc(lang, { ko: '도면 번호', en: 'Part №', ja: '部品番号', zh: '零件号', es: 'N.º de pieza', ar: 'رقم القطعة' })}</span>
             <span className="v">
               <input className="input" defaultValue="NXF-0001-A" />
             </span>
           </div>
           <div className="row">
-            <span className="k">{isKo ? '재질' : 'Material'}</span>
+            <span className="k">{loc(lang, { ko: '재질', en: 'Material', ja: '材質', zh: '材料', es: 'Material', ar: 'المادة' })}</span>
             <span className="v">
               <input className="input" defaultValue="Al 6061-T6" />
             </span>
           </div>
           <div className="row">
-            <span className="k">{isKo ? '제작자' : 'Drawn by'}</span>
+            <span className="k">{loc(lang, { ko: '제작자', en: 'Drawn by', ja: '作図者', zh: '制图', es: 'Dibujado por', ar: 'رسم بواسطة' })}</span>
             <span className="v">
               <input className="input" defaultValue="—" />
             </span>
           </div>
           <div className="row">
-            <span className="k">{isKo ? '리비전' : 'Revision'}</span>
+            <span className="k">{loc(lang, { ko: '리비전', en: 'Revision', ja: 'リビジョン', zh: '版本', es: 'Revisión', ar: 'المراجعة' })}</span>
             <span className="v">
               <input className="input short" defaultValue="A" />
             </span>
@@ -732,12 +745,14 @@ function DrawingPropsPane({ isKo, selectedView }: { isKo: boolean; selectedView:
 
 function DrawingCanvas({
   isKo,
+  lang,
   edges,
   bbox,
   layout,
   onBackToModeling,
 }: {
   isKo: boolean;
+  lang: string;
   edges: THREE.EdgesGeometry | null;
   bbox: THREE.Box3 | null;
   layout: 'ortho4' | 'iso-only' | 'section' | 'detail';
@@ -818,10 +833,10 @@ function DrawingCanvas({
                   textTransform: 'uppercase',
                 }}
               >
-                {view === 'top' ? (isKo ? '평면' : 'Top') :
-                 view === 'iso' ? (isKo ? '아이소' : 'Isometric') :
-                 view === 'front' ? (isKo ? '정면' : 'Front') :
-                 (isKo ? '우측' : 'Right')}
+                {view === 'top' ? loc(lang, { ko: '평면', en: 'Top', ja: '平面', zh: '俯视', es: 'Superior', ar: 'علوي' }) :
+                 view === 'iso' ? loc(lang, { ko: '아이소', en: 'Isometric', ja: '等角', zh: '等轴测', es: 'Isométrica', ar: 'متساوي القياس' }) :
+                 view === 'front' ? loc(lang, { ko: '정면', en: 'Front', ja: '正面', zh: '主视', es: 'Frontal', ar: 'أمامي' }) :
+                 loc(lang, { ko: '우측', en: 'Right', ja: '右側面', zh: '右视', es: 'Derecha', ar: 'يمين' })}
               </span>
               {edges && bbox ? (
                 <OrthoSvgReal view={view} edges={edges} bbox={bbox} />
@@ -852,19 +867,19 @@ function DrawingCanvas({
         >
           {[
             {
-              k: isKo ? '도면명' : 'Title',
-              v: selectedLabel ?? (isKo ? '무제 파트' : 'Untitled Part'),
+              k: loc(lang, { ko: '도면명', en: 'Title', ja: '図面名', zh: '图名', es: 'Título', ar: 'العنوان' }),
+              v: selectedLabel ?? loc(lang, { ko: '무제 파트', en: 'Untitled Part', ja: '無題パート', zh: '未命名零件', es: 'Pieza sin título', ar: 'قطعة بدون عنوان' }),
             },
             {
-              k: isKo ? '도면 번호' : 'Part №',
+              k: loc(lang, { ko: '도면 번호', en: 'Part №', ja: '部品番号', zh: '零件号', es: 'N.º de pieza', ar: 'رقم القطعة' }),
               v: selectedLabel ? `NXF-${selectedLabel.slice(0, 6).toUpperCase()}` : 'NXF-0001-A',
             },
             {
-              k: isKo ? '볼륨' : 'Volume',
+              k: loc(lang, { ko: '볼륨', en: 'Volume', ja: '体積', zh: '体积', es: 'Volumen', ar: 'الحجم' }),
               v: volume !== null ? `${volume.toFixed(1)} cm³` : '—',
             },
             {
-              k: isKo ? '삼각형' : 'Triangles',
+              k: loc(lang, { ko: '삼각형', en: 'Triangles', ja: '三角形', zh: '三角面', es: 'Triángulos', ar: 'المثلثات' }),
               v: triangleCount > 0 ? `${Math.round(triangleCount).toLocaleString()}` : '—',
             },
           ].map(c => (
@@ -896,7 +911,7 @@ function DrawingCanvas({
           <span style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}>
             <I.caret_r size={12} />
           </span>
-          {isKo ? '모델링으로 돌아가기' : 'Back to Modeling'}
+          {loc(lang, { ko: '모델링으로 돌아가기', en: 'Back to Modeling', ja: 'モデリングに戻る', zh: '返回建模', es: 'Volver al modelado', ar: 'العودة إلى النمذجة' })}
         </button>
       </div>
     </div>

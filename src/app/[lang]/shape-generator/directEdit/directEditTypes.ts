@@ -81,6 +81,16 @@ export type DirectEditOp =
         pivot: [number, number, number];
       };
       createdAt: number;
+    }
+  | {
+      /** E4 — body-level boolean subtract. Tool body is consumed
+       *  (removed from the scene) when the op succeeds. */
+      kind: 'subtractBody';
+      /** Body the tool subtracts FROM. The mesh receives the cut. */
+      targetBodyId: string;
+      /** Body subtracted from the target. Removed on success. */
+      toolBodyId: string;
+      createdAt: number;
     };
 
 /** Snapshot of all direct edits the local session has applied since
@@ -169,6 +179,13 @@ export function isRotateBodyOp(
   op: DirectEditOp,
 ): op is Extract<DirectEditOp, { kind: 'rotateBody' }> {
   return op.kind === 'rotateBody';
+}
+
+/** Type guard for the `subtractBody` op variant (E4). */
+export function isSubtractBodyOp(
+  op: DirectEditOp,
+): op is Extract<DirectEditOp, { kind: 'subtractBody' }> {
+  return op.kind === 'subtractBody';
 }
 
 /** Pick payload for body-level direct edits (E3). The overlay maps a
@@ -311,6 +328,12 @@ export function validateDirectEditOp(op: DirectEditOp): OpValidationResult {
     case 'rotateBody': {
       const r = validateRotateBody(op);
       return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+    }
+    case 'subtractBody': {
+      if (!op.targetBodyId) return { ok: false, reason: 'missing_targetBodyId' };
+      if (!op.toolBodyId) return { ok: false, reason: 'missing_toolBodyId' };
+      if (op.targetBodyId === op.toolBodyId) return { ok: false, reason: 'self_subtract' };
+      return { ok: true };
     }
     default: {
       const _exhaustive: never = op;

@@ -13,6 +13,7 @@
  *
  * Pure + framework-free so it unit-tests without the OCCT WASM.
  */
+import { ZERO_LENGTH_EPS as EPS, AXIS_EPS } from './tolerancePolicy';
 
 export interface EdgeSig {
   /** Edge midpoint (chord midpoint for curved edges). */
@@ -23,15 +24,13 @@ export interface EdgeSig {
   length: number;
 }
 
-const EPS = 1e-9;
-
 /** Sign-normalise a direction so an edge and its reverse compare equal:
  *  force the first significantly non-zero component positive. */
 export function normalizeEdgeDir(d: [number, number, number]): [number, number, number] {
   const len = Math.hypot(d[0], d[1], d[2]);
   if (len < EPS) return [0, 0, 0];
   let x = d[0] / len, y = d[1] / len, z = d[2] / len;
-  const lead = Math.abs(x) > 1e-6 ? x : Math.abs(y) > 1e-6 ? y : z;
+  const lead = Math.abs(x) > AXIS_EPS ? x : Math.abs(y) > AXIS_EPS ? y : z;
   if (lead < 0) { x = -x; y = -y; z = -z; }
   // `|| 0` collapses −0 → 0 so reversed-axis edges compare deep-equal.
   return [x || 0, y || 0, z || 0];

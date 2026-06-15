@@ -25,7 +25,10 @@ export { solveAssembly, calculateDOF } from './matesSolver';
 
 import * as THREE from 'three';
 
-export type MateType = 'coincident' | 'concentric' | 'distance' | 'angle' | 'parallel' | 'perpendicular' | 'tangent' | 'hinge' | 'slider' | 'gear';
+export type MateType =
+  | 'coincident' | 'concentric' | 'distance' | 'angle' | 'parallel' | 'perpendicular' | 'tangent'
+  | 'hinge' | 'slider' | 'gear'
+  | 'limitDistance' | 'limitAngle' | 'width';
 
 export interface AssemblyMate {
   id: string;
@@ -34,7 +37,14 @@ export interface AssemblyMate {
   partB: string;
   faceA?: number; // face index
   faceB?: number;
-  value?: number; // distance or angle value
+  /** distance (mm) / angle (deg) target — for `gear`, the ratio ω_A:ω_B. */
+  value?: number;
+  /** limitDistance (mm) / limitAngle (deg): lower bound of the allowed range. */
+  min?: number;
+  /** limitDistance (mm) / limitAngle (deg): upper bound of the allowed range. */
+  max?: number;
+  /** width: SECOND reference face on part A (`faceA` is the first). */
+  faceA2?: number;
   locked: boolean;
 }
 
@@ -48,7 +58,8 @@ export interface AssemblyPart {
 
 /** Estimate face normal from geometry at a given face (triangle) index */
 function getFaceNormal(geometry: THREE.BufferGeometry, faceIndex: number): THREE.Vector3 {
-  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute | null;
+  if (!posAttr) return new THREE.Vector3(); // malformed/empty geometry (e.g. corrupt import) — avoid crash
   const index = geometry.index;
 
   let i0: number, i1: number, i2: number;
@@ -73,7 +84,8 @@ function getFaceNormal(geometry: THREE.BufferGeometry, faceIndex: number): THREE
 
 /** Get the centroid of a face */
 function getFaceCentroid(geometry: THREE.BufferGeometry, faceIndex: number): THREE.Vector3 {
-  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute | null;
+  if (!posAttr) return new THREE.Vector3(); // malformed/empty geometry (e.g. corrupt import) — avoid crash
   const index = geometry.index;
 
   let i0: number, i1: number, i2: number;
@@ -257,7 +269,13 @@ function solveAngle(
   }
   axis.normalize();
 
-  const rotQuat = new THREE.Quaternion().setFromAxisAngle(axis, delta);
+  // Sign convention (Phase 2 fix): rotating normalB about axis = normalB ×
+  // normalA by +φ DECREASES the A→B angle, so achieving an angle CHANGE of
+  // `delta` requires rotating by −delta. The old `+delta` ran away from the
+  // target from any non-degenerate start (120° → 150° instead of → 90°);
+  // both prior tests started at the degenerate 0°/180° poses where the
+  // fallback axis makes direction arbitrary, which hid this.
+  const rotQuat = new THREE.Quaternion().setFromAxisAngle(axis, -delta);
   const rotMat = new THREE.Matrix4().makeRotationFromQuaternion(rotQuat);
 
   return new THREE.Matrix4().multiplyMatrices(rotMat, partB.transform);
@@ -327,6 +345,71 @@ function solveTangent(
   return new THREE.Matrix4().multiplyMatrices(transMat, newTransformB);
 }
 
+/** Current distance between the two mate-face centroids (world space). */
+function currentFaceDistance(partB: AssemblyPart, partA: AssemblyPart, mate: AssemblyMate): number {
+  const centroidA = getFaceCentroid(partA.geometry, mate.faceA ?? 0).applyMatrix4(partA.transform);
+  const centroidB = getFaceCentroid(partB.geometry, mate.faceB ?? 0).applyMatrix4(partB.transform);
+  return centroidA.distanceTo(centroidB);
+}
+
+/** Limit-distance: inequality — only act when the current centroid gap is
+ *  outside `[min, max]`, then snap to the violated bound via the distance
+ *  solver. Inside the range the placement is left untouched (free DOF). */
+function solveLimitDistance(
+  partB: AssemblyPart,
+  partA: AssemblyPart,
+  mate: AssemblyMate,
+): THREE.Matrix4 {
+  const lo = mate.min ?? 0;
+  const hi = mate.max ?? lo;
+  const d = currentFaceDistance(partB, partA, mate);
+  if (d >= lo - 1e-9 && d <= hi + 1e-9) return partB.transform.clone();
+  return solveDistance(partB, partA, { ...mate, value: d < lo ? lo : hi });
+}
+
+/** Limit-angle: inequality — only act when the current normal-to-normal angle
+ *  is outside `[min, max]` degrees, then snap to the violated bound. */
+function solveLimitAngle(
+  partB: AssemblyPart,
+  partA: AssemblyPart,
+  mate: AssemblyMate,
+): THREE.Matrix4 {
+  const lo = mate.min ?? 0;
+  const hi = mate.max ?? lo;
+  const rotA = new THREE.Matrix4().extractRotation(partA.transform);
+  const rotB = new THREE.Matrix4().extractRotation(partB.transform);
+  const nA = getFaceNormal(partA.geometry, mate.faceA ?? 0).applyMatrix4(rotA).normalize();
+  const nB = getFaceNormal(partB.geometry, mate.faceB ?? 0).applyMatrix4(rotB).normalize();
+  const deg = (Math.acos(THREE.MathUtils.clamp(nA.dot(nB), -1, 1)) * 180) / Math.PI;
+  if (deg >= lo - 1e-7 && deg <= hi + 1e-7) return partB.transform.clone();
+  return solveAngle(partB, partA, { ...mate, value: deg < lo ? lo : hi });
+}
+
+/** Width: center part B's mate face between TWO reference faces on part A
+ *  (`faceA` + `faceA2`), measured along faceA's normal. In-plane position is
+ *  left free. Without `faceA2` this degrades to tangent-style plane contact
+ *  (honest fallback — the UI requires the second face). */
+function solveWidth(
+  partB: AssemblyPart,
+  partA: AssemblyPart,
+  mate: AssemblyMate,
+): THREE.Matrix4 {
+  if (mate.faceA2 == null) return solveTangent(partB, partA, mate);
+  const rotA = new THREE.Matrix4().extractRotation(partA.transform);
+  const n = getFaceNormal(partA.geometry, mate.faceA ?? 0).applyMatrix4(rotA).normalize();
+  const c1 = getFaceCentroid(partA.geometry, mate.faceA ?? 0).applyMatrix4(partA.transform);
+  const c2 = getFaceCentroid(partA.geometry, mate.faceA2).applyMatrix4(partA.transform);
+  // Midplane point between the two reference planes measured along n.
+  const sep = c2.clone().sub(c1).dot(n);
+  const mid = c1.clone().add(n.clone().multiplyScalar(sep * 0.5));
+
+  const cB = getFaceCentroid(partB.geometry, mate.faceB ?? 0).applyMatrix4(partB.transform);
+  const off = cB.clone().sub(mid).dot(n); // signed offset from the midplane
+  const corr = n.clone().multiplyScalar(-off);
+  const transMat = new THREE.Matrix4().makeTranslation(corr.x, corr.y, corr.z);
+  return new THREE.Matrix4().multiplyMatrices(transMat, partB.transform);
+}
+
 // ─── Main Solver ─────────────────────────────────────────────────────────────
 
 // Mate routing — `hinge` aligns the rotation axis (=concentric) so the
@@ -350,6 +433,13 @@ const SOLVER_MAP: Record<MateType, (partB: AssemblyPart, partA: AssemblyPart, ma
   hinge: solveConcentric,
   slider: solveDistance,
   gear: solveParallel,
+  // Phase 2 (SolidWorks-parity roadmap) — limit/width are real static
+  // constraints; gear's RATIO (mate.value) is a motion coupling and is
+  // honored by the kinematic drag loop (`kinematicDragSolve` +
+  // `matesSolver.applyGearConstraint`), not by this static placement pass.
+  limitDistance: solveLimitDistance,
+  limitAngle: solveLimitAngle,
+  width: solveWidth,
 };
 
 /**
@@ -415,6 +505,9 @@ export const MATE_TYPE_LABELS: Record<string, Record<MateType, string>> = {
     hinge: '힌지',
     slider: '슬라이더',
     gear: '기어',
+    limitDistance: '거리 제한',
+    limitAngle: '각도 제한',
+    width: '폭 (중앙 정렬)',
   },
   en: {
     coincident: 'Coincident',
@@ -427,5 +520,8 @@ export const MATE_TYPE_LABELS: Record<string, Record<MateType, string>> = {
     hinge: 'Hinge',
     slider: 'Slider',
     gear: 'Gear',
+    limitDistance: 'Limit Distance',
+    limitAngle: 'Limit Angle',
+    width: 'Width',
   },
 };

@@ -264,6 +264,7 @@ interface Inquiry {
   scope?: string;
   budget_range?: string;
   message?: string;
+  factoryId?: string | null; // 디렉터리에서 특정 공장에 "문의하기"한 경우
   contractId?: string; // 이미 계약이 생성된 경우
 }
 
@@ -629,6 +630,23 @@ function InquiryCard({
           <span>{inquiry.budget_range || '-'}</span>
         </div>
       </div>
+
+      {/* 디렉터리에서 특정 공장을 골라 들어온 문의 — 그 공장으로 라우팅 가능하게 표시 */}
+      {inquiry.factoryId && (
+        <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm">
+          <span className="text-base">🏭</span>
+          <span className="text-gray-500 text-xs">요청 공장(디렉터리)</span>
+          <code className="font-mono text-xs text-blue-800 break-all">{inquiry.factoryId}</code>
+          <a
+            href={`/api/factories/?id=${encodeURIComponent(inquiry.factoryId)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto shrink-0 rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
+          >
+            공장 보기 →
+          </a>
+        </div>
+      )}
 
       {/* Message */}
       {message && (

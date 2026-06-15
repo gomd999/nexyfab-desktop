@@ -12,6 +12,7 @@
 import { use, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { isKorean } from '@/lib/i18n/normalize';
+import { useAuthStore } from '@/hooks/useAuth';
 
 interface ChatMessage {
   id: string;
@@ -43,6 +44,7 @@ export default function AIStudioPage({ params }: { params: Promise<{ lang: strin
   const { lang } = use(params);
   const isKo = isKorean(lang);
   const router = useRouter();
+  const user = useAuthStore(s => s.user);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -65,6 +67,26 @@ export default function AIStudioPage({ params }: { params: Promise<{ lang: strin
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream, application/json' },
         body: JSON.stringify({ prompt, mode: 'chat', stream: true }),
       });
+      // Guests get 401 from scad-agent's free-plan gate. Previously this fell
+      // through to a misleading "Connection failed" / "No response". Show an
+      // honest sign-in nudge and restore their prompt so it's not lost. (B1)
+      if (!res.ok) {
+        const needsAuth = res.status === 401 || res.status === 403;
+        setInput(prompt);
+        setMessages(prev => prev.map(m => m.id === assistantId ? {
+          ...m,
+          loading: false,
+          content: needsAuth
+            ? (isKo
+                ? '🔒 AI 생성은 로그인 후 사용할 수 있어요 — 가입은 무료입니다. 오른쪽 위 “로그인”을 눌러주세요.'
+                : '🔒 Sign in to generate with AI — it’s free to start. Use the “Sign in” button at the top right.')
+            : (isKo
+                ? `오류가 발생했어요 (${res.status}). 잠시 후 다시 시도하세요.`
+                : `Something went wrong (${res.status}). Please try again.`),
+        } : m));
+        setBusy(false);
+        return;
+      }
       const contentType = res.headers.get('content-type') ?? '';
       const isStream = contentType.includes('event-stream') || contentType.includes('ndjson');
 
@@ -165,6 +187,19 @@ export default function AIStudioPage({ params }: { params: Promise<{ lang: strin
           BETA
         </span>
         <span style={{ flex: 1 }} />
+        {!user && (
+          <button
+            onClick={() => router.push('/login')}
+            style={{
+              height: 32, padding: '0 14px',
+              border: 'none', borderRadius: 6,
+              background: 'var(--nx-accent)', color: '#fff',
+              fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            {isKo ? '로그인' : 'Sign in'}
+          </button>
+        )}
         <button
           onClick={() => router.push(`/${lang}/shape-generator`)}
           style={{

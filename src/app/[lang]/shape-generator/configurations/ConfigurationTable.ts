@@ -45,6 +45,7 @@
  */
 
 import { wouldCreateCycle, type DepGraph } from '../referenceGeometry/depSolver';
+import { EquationManager } from '../equations/equationManager';
 import type { FeatureInstance } from '../features/types';
 import type {
   ConfigEntry,
@@ -52,6 +53,8 @@ import type {
   ConfigOverride,
   MasterFeatures,
 } from './types';
+
+const IDENT_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
 export class ConfigurationTable {
   private entries = new Map<string, ConfigEntry>();
@@ -364,6 +367,20 @@ export class ConfigurationTable {
         }
       }
     }
+    // A3: build the equation context (table-wide globalVars + chain-merged
+    // config expressionVars) so a string override like "2*width + 5" lowers to
+    // a number instead of NaN-ing through Number().
+    const em = this.buildEquationManager(chain);
+    const evalParam = (v: number | string): number => {
+      if (typeof v === 'number') return v;
+      try {
+        const n = em.evaluateExpression(v);
+        return Number.isFinite(n) ? n : Number(v); // unknown vars → fall back
+      } catch {
+        return Number(v); // parse error → old A2 coercion
+      }
+    };
+
     // Project onto features. Suppressed features drop out.
     const out: FeatureInstance[] = [];
     for (const f of features) {
@@ -373,14 +390,33 @@ export class ConfigurationTable {
         out.push(cloneFeature(f));
         continue;
       }
-      // Coerce string→number for A2 (deferred eval lands in A3).
       const newParams: Record<string, number> = { ...f.params };
       for (const [k, v] of Object.entries(ov.params)) {
-        newParams[k] = typeof v === 'number' ? v : Number(v);
+        newParams[k] = evalParam(v);
       }
       out.push({ ...cloneFeature(f), params: newParams });
     }
     return out;
+  }
+
+  /**
+   * A3: seed an EquationManager with the table-wide `globalVars` + the config
+   * chain's `expressionVars` (root → leaf, so a leaf can shadow a root). The
+   * EquationManager owns the dependency DAG + cycle detection; a var with an
+   * invalid name or a cyclic expression is skipped (best-effort) rather than
+   * failing the whole resolve.
+   */
+  private buildEquationManager(chain: ConfigEntry[]): EquationManager {
+    const em = new EquationManager();
+    const seed = (name: string, value: number | string): void => {
+      if (!IDENT_RE.test(name)) return; // EquationManager rejects invalid names
+      try { em.set(name, String(value)); } catch { /* cycle / parse error — skip this var */ }
+    };
+    for (const [name, value] of Object.entries(this.globalVars)) seed(name, value);
+    for (const cfg of chain) {
+      for (const [name, value] of Object.entries(cfg.expressionVars)) seed(name, value);
+    }
+    return em;
   }
 
   /** Walk a config's parent chain root → leaf. Returns `[]` when the

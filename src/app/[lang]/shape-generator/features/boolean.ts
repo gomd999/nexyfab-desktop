@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtBoxBooleanWithPrimitive, OcctNotReadyError, hostBoxFromGeometry } from './occtEngine';
+import { occtBoxBooleanWithPrimitive, OcctNotReadyError, hostBoxFromGeometry } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
+import { captureKernelFailure } from './kernelCorpus';
 import { reportWarning } from '../lib/telemetry';
 import { stampFaceFeatureIdAll, FACE_FEATURE_ID_ATTR } from './faceProvenance';
 
@@ -257,7 +260,7 @@ export const booleanFeature: FeatureDefinition = {
     const type = operationCodeToType(operation);
     const engine = Math.round(params.engine ?? 0);
 
-    if ((engine === 1 || isOcctGlobalMode()) && isOcctReady()) {
+    if (shouldUseOcctEngine(engine)) {
       // OCCT path. Prefer an upstream B-rep handle (phase 2d chain) so the
       // op composes against the real prior shape. Falls back to a bbox-
       // derived box host when no handle is present.
@@ -300,6 +303,21 @@ export const booleanFeature: FeatureDefinition = {
           op: type,
           toolShape: Math.round(params.toolShape),
         });
+        // Phase-4 corpus: minimal reproducible record (already telemetered
+        // above → forward:false avoids the double-send).
+        captureKernelFailure({
+          op: 'boolean',
+          params: {
+            type,
+            toolShape: Math.round(params.toolShape),
+            toolWidth: params.toolWidth, toolHeight: params.toolHeight, toolDepth: params.toolDepth,
+            posX: params.posX, posY: params.posY, posZ: params.posZ,
+          },
+          geometry,
+          error: err,
+          resolution: { strategy: 'mesh-fallback' },
+          forward: false,
+        });
         // Fall through to legacy path.
       }
     }
@@ -315,6 +333,8 @@ export const booleanFeature: FeatureDefinition = {
     if (ctx?.featureId) {
       stampFaceFeatureIdAll(toolGeo, ctx.featureId, { avoidIdsFrom: geometry });
     }
-    return applyBooleanSync(type, geometry, toolGeo);
+    return noteMeshFallback(applyBooleanSync(type, geometry, toolGeo), {
+      op: 'Boolean', engine, featureId: ctx?.featureId,
+    });
   },
 };

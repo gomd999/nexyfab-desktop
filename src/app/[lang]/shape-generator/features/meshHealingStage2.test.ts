@@ -110,6 +110,32 @@ describe('consistentNormals', () => {
     const r = consistentNormals([0, 1, 2,  1, 3, 2]);
     expect(r.flippedCount).toBe(0);
   });
+
+  it('harmonises EVERY disconnected component, not just the one with triangle 0', () => {
+    // Two shells that share no vertices (a multi-body / multi-solid import).
+    // Component A (verts 0–3) is already consistent. Component B (verts 4–7)
+    // has its second triangle wound the wrong way on the shared edge 4–6.
+    // A single-seed BFS would only ever reach component A and leave B's bad
+    // winding untouched (flippedCount 0); re-seeding per component fixes B.
+    const compA = [0, 1, 2,  0, 2, 3];      // consistent
+    const compB = [4, 5, 6,  4, 7, 6];      // T3 traverses 6→4 same as T2 → bad
+    const r = consistentNormals([...compA, ...compB]);
+    expect(r.flippedCount).toBe(1);
+    // Component A untouched; component B's stray triangle flipped to (4,6,7).
+    expect(r.indices.slice(0, 6)).toEqual(compA);
+    expect(r.indices.slice(9, 12)).toEqual([4, 6, 7]);
+  });
+
+  it('fixes a bad winding in a LATER component while the first is already clean', () => {
+    // Three shells; only the third (verts 8–11) is inconsistent.
+    const r = consistentNormals([
+      0, 1, 2,  0, 2, 3,        // comp 1 — clean
+      4, 5, 6,  4, 6, 7,        // comp 2 — clean
+      8, 9, 10,  8, 11, 10,     // comp 3 — T5 bad
+    ]);
+    expect(r.flippedCount).toBe(1);
+    expect(r.indices.slice(15, 18)).toEqual([8, 10, 11]); // comp 3 fixed
+  });
 });
 
 describe('healMeshStage2 pipeline', () => {

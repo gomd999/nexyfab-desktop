@@ -151,6 +151,21 @@ export async function POST(
     metadata: { emailNorm, role },
   });
 
+  // Email the invitee an accept link. Non-blocking. (2026-06-09 follow-up #2)
+  void (async () => {
+    try {
+      const { sendNotificationEmail } = await import('@/app/lib/mailer');
+      const link = `${req.nextUrl.origin}/kr/nexyfab/invite/${token}`;
+      await sendNotificationEmail(
+        emailNorm,
+        'You were invited to a NexyFab project',
+        `You've been invited as ${role} to a project on NexyFab.\n\n` +
+        `Open this link to accept — sign in or sign up with this email address:\n${link}\n\n` +
+        `This invitation expires in 7 days.`,
+      );
+    } catch { /* ignore — token is still valid; owner can resend */ }
+  })();
+
   return NextResponse.json({
     token,
     expiresAt: exp,

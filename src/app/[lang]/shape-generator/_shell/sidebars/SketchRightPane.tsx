@@ -1,120 +1,214 @@
 'use client';
 
 // Sketch mode right pane — ACTIVE SELECTION / CONSTRAINTS ON SELECTION /
-// PARAMETERS / SOLVER sections matching mockup #30.
+// PARAMETERS / SOLVER sections. All sections are LIVE (2026-06-10): the
+// previous hardcoded mockup (fake "4× ∅6.5 hole pattern", fake d4/d5
+// params) was replaced with real data from the shell bridge —
+//   selection      ← sketchSelectedEntityId (SketchCanvas select tool)
+//   constraints    ← sketchConstraintList filtered to the selection
+//   parameters     ← sketchDimensionList filtered to the selection
+//   solver         ← live read-only diagnostic solve (sketchStatusLive)
 
-import { SidePanel, PropSection, PropRow, PropNumber, PropSelect, PropCheck, PropItemRow } from './';
+import type { ReactNode } from 'react';
+import { SidePanel, PropSection, PropRow, PropCheck } from './';
 import { useShellBridge } from '../shellBridgeStore';
+import { sketchStatusColor, sketchStatusLabel } from '../sketchStatusUi';
+import { CONSTRAINT_GLYPH, DimensionEditableRow } from './SketchLeftPane';
 import { I } from '../Icons';
 import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+import { pickShellDict, type ShellDict } from '../shellDict';
 
-const SKETCH_CATALOG_DICT_KO: CatalogPanelDict = {
-  catalogTitle: '스케치 도구', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
-  catalogRun: '실행', catalogFailed: '불러오기 실패', catalogEmpty: '해당 기능이 없습니다',
-};
-const SKETCH_CATALOG_DICT_EN: CatalogPanelDict = {
-  catalogTitle: 'Sketch Tools', catalogLoading: 'Loading…', catalogReady: 'Ready',
-  catalogRun: 'Run', catalogFailed: 'Load failed', catalogEmpty: 'No matching feature',
-};
-
-export interface SketchRightPaneProps {
-  isKo: boolean;
+function sketchCatalogDict(d: ShellDict): CatalogPanelDict {
+  return {
+    catalogTitle: d.catSketchTitle, catalogLoading: d.loading, catalogReady: d.catReady,
+    catalogRun: d.catRun, catalogFailed: d.catFailed, catalogEmpty: d.catEmpty,
+  };
 }
 
-export function SketchRightPane({ isKo }: SketchRightPaneProps) {
+function Hint({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ fontSize: 11, color: 'var(--nx-text-3)', padding: '4px 0' }}>
+      {children}
+    </div>
+  );
+}
+
+export interface SketchRightPaneProps {
+  lang: string;
+}
+
+export function SketchRightPane({ lang }: SketchRightPaneProps) {
+  const d = pickShellDict(lang);
   const entities = useShellBridge(s => s.sketchEntities);
   const constraints = useShellBridge(s => s.sketchConstraints);
   const dof = useShellBridge(s => s.sketchDof);
-  const solverOk = useShellBridge(s => s.sketchSolverOk);
+  const status = useShellBridge(s => s.sketchStatus);
+  const redundantCount = useShellBridge(s => s.sketchRedundantCount);
   const solveMs = useShellBridge(s => s.sketchSolveMs);
+  const entityList = useShellBridge(s => s.sketchEntityList);
+  const constraintList = useShellBridge(s => s.sketchConstraintList);
+  const dimensionList = useShellBridge(s => s.sketchDimensionList);
+  const selectedEntityId = useShellBridge(s => s.sketchSelectedEntityId);
+
+  const selected = selectedEntityId
+    ? entityList.find(e => e.id === selectedEntityId) ?? null
+    : null;
+  // Constraints / dimensions can reference the segment id OR its point ids.
+  const selectedIds = selected
+    ? new Set<string>([selected.id, ...(selected.pointIds ?? [])])
+    : null;
+  const selConstraints = selectedIds
+    ? constraintList.filter(c => c.entityIds?.some(id => selectedIds.has(id)))
+    : [];
+  const selDims = selectedIds
+    ? dimensionList.filter(d => d.entityIds?.some(id => selectedIds.has(id)))
+    : [];
+
+  const typeLabel = selected
+    ? (d.entityTypes[selected.type as keyof ShellDict['entityTypes']] ?? selected.type)
+    : null;
 
   return (
     <SidePanel
       side="right"
-      title={isKo ? '스케치 속성' : 'SKETCH PROPERTIES'}
+      title={d.sketchProps}
       titleIcon={<I.sketch size={12} />}
     >
-      <PropSection title={isKo ? '활성 선택' : 'Active Selection'}>
-        <PropRow label={isKo ? '선택' : 'Selected'}>
-          <span style={{ fontSize: 11, color: 'var(--nx-accent)' }}>
-            {isKo ? '4× ∅6.5 홀 패턴' : '4× ∅6.5 hole pattern'}
+      <PropSection title={d.activeSelection}>
+        {!selected ? (
+          <Hint>
+            {d.clickEntity}
+          </Hint>
+        ) : (
+          <>
+            <PropRow label={d.selectedLabel}>
+              <span style={{ fontSize: 11, color: 'var(--nx-accent)' }}>{selected.label}</span>
+            </PropRow>
+            <PropRow label={d.typeLabel}>
+              <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{typeLabel}</span>
+            </PropRow>
+            {selected.meta && (
+              <PropRow label={d.infoLabel}>
+                <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{selected.meta}</span>
+              </PropRow>
+            )}
+            <PropRow label={d.construction}>
+              <PropCheck
+                checked={selected.construction === true}
+                onChange={() => {
+                  if (typeof window === 'undefined') return;
+                  window.dispatchEvent(new CustomEvent('nexyfab:toggle-sketch-construction', {
+                    detail: { id: selected.id },
+                  }));
+                }}
+                label={d.yes}
+              />
+            </PropRow>
+          </>
+        )}
+      </PropSection>
+
+      <PropSection title={d.constraintsOnSel}>
+        {!selected ? (
+          <Hint>{d.noSelection}</Hint>
+        ) : selConstraints.length === 0 ? (
+          <Hint>{d.noConstraintsOnEntity}</Hint>
+        ) : (
+          selConstraints.map(c => (
+            <div
+              key={c.id}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', fontSize: 11 }}
+            >
+              <span style={{ flex: '0 0 auto', color: 'var(--nx-accent)' }}>
+                {CONSTRAINT_GLYPH[c.type] ?? '◦'}
+              </span>
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--nx-text)' }}>
+                {c.type}
+              </span>
+              {c.satisfied === false && (
+                <span
+                  title={d.unsatisfied}
+                  style={{ fontSize: 10, color: 'var(--nx-error, #f85149)' }}
+                >
+                  ⚠
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window === 'undefined') return;
+                  window.dispatchEvent(new CustomEvent('nexyfab:delete-sketch-constraint', {
+                    detail: { id: c.id },
+                  }));
+                }}
+                aria-label={d.removeConstraint}
+                style={{
+                  width: 16, height: 16, border: 0, background: 'transparent',
+                  color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 12,
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))
+        )}
+      </PropSection>
+
+      <PropSection title={d.paramsTitle}>
+        {!selected ? (
+          <Hint>{d.noSelection}</Hint>
+        ) : selDims.length === 0 ? (
+          <Hint>
+            {d.noDimsOnEntity}
+          </Hint>
+        ) : (
+          selDims.map(dim => (
+            <DimensionEditableRow key={dim.id} dim={dim} d={d} />
+          ))
+        )}
+      </PropSection>
+
+      <PropSection title={d.solver}>
+        <PropRow label={d.statusLower}>
+          <span className="mono" style={{ fontSize: 11, color: sketchStatusColor(status) }}>
+            {sketchStatusLabel(status, dof, redundantCount, d) ?? '—'}
           </span>
         </PropRow>
-        <PropRow label={isKo ? '지름' : 'Diameter'}>
-          <PropNumber value={6.5} onChange={() => { /* TODO wire */ }} suffix="mm" />
-        </PropRow>
-        <PropRow label={isKo ? '패턴' : 'Pattern'}>
-          <PropSelect
-            value="rect"
-            onChange={() => { /* TODO */ }}
-            options={[
-              { value: 'rect', label: isKo ? '직사각형 · 2×2' : 'Rectangular · 2×2' },
-              { value: 'circular', label: isKo ? '원형' : 'Circular' },
-              { value: 'linear', label: isKo ? '선형' : 'Linear' },
-            ]}
-          />
-        </PropRow>
-        <PropRow label={isKo ? '간격 X' : 'Spacing X'}>
-          <PropNumber value={50.0} onChange={() => { /* TODO */ }} suffix="mm" />
-        </PropRow>
-        <PropRow label={isKo ? '간격 Y' : 'Spacing Y'}>
-          <PropNumber value={26.0} onChange={() => { /* TODO */ }} suffix="mm" />
-        </PropRow>
-        <PropRow label={isKo ? '구성선' : 'Construction'}>
-          <PropCheck checked={false} onChange={() => { /* TODO */ }} label={isKo ? '예' : 'Yes'} />
-        </PropRow>
-      </PropSection>
-
-      <PropSection title={isKo ? '선택에 적용된 구속조건' : 'Constraints on Selection'}>
-        <PropItemRow bullet="↗" label="Concentric · Line.4.center" />
-        <PropItemRow bullet="≡" label="Equal · Circle.2 ..." />
-        <PropItemRow bullet="⇆" label="Symmetric · X axis" />
-      </PropSection>
-
-      <PropSection title={isKo ? '파라미터' : 'Parameters'}>
-        <PropRow label="d4 (∅)">
-          <PropNumber value={6.5} onChange={() => { /* TODO */ }} suffix="mm" />
-        </PropRow>
-        <PropRow label="d5 (X pos)">
-          <PropNumber value={15.0} onChange={() => { /* TODO */ }} suffix="mm" />
-        </PropRow>
-        <PropRow label="d6 (Y pos)">
-          <PropNumber value={12.0} onChange={() => { /* TODO */ }} suffix="mm" />
-        </PropRow>
-        <div style={{ fontSize: 10, color: 'var(--nx-accent)', padding: '4px 0' }}>
-          ⊳ d5 = (d1 − 50) / 2 · {isKo ? '연결됨' : 'linked'}
-        </div>
-      </PropSection>
-
-      <PropSection title={isKo ? '솔버' : 'Solver'}>
-        <PropRow label={isKo ? '엔티티' : 'entities'}>
+        <PropRow label={d.entitiesLower}>
           <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{entities}</span>
         </PropRow>
-        <PropRow label={isKo ? '구속조건' : 'constraints'}>
+        <PropRow label={d.constraintsLower}>
           <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{constraints}</span>
         </PropRow>
-        <PropRow label={isKo ? '미정의' : 'under-defined'}>
-          <span className="mono" style={{ fontSize: 11, color: solverOk === false ? 'var(--nx-warn, #ffa800)' : 'var(--nx-text-2)' }}>
-            {dof ?? 0}
+        <PropRow label="DOF">
+          <span className="mono" style={{ fontSize: 11, color: sketchStatusColor(status) }}>
+            {dof ?? '—'}
           </span>
         </PropRow>
-        <PropRow label={isKo ? '과정의' : 'over-defined'}>
-          <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>0</span>
+        <PropRow label={d.redundantLower}>
+          <span className="mono" style={{ fontSize: 11, color: redundantCount > 0 ? 'var(--nx-error, #f85149)' : 'var(--nx-text-2)' }}>
+            {redundantCount}
+          </span>
         </PropRow>
-        <PropRow label={isKo ? '풀이 시간' : 'solve time'}>
+        <PropRow label={d.solveTime}>
           <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
             {solveMs != null ? `${solveMs.toFixed(1)} ms` : '—'}
           </span>
         </PropRow>
       </PropSection>
 
-      <PropSection title={isKo ? '스케치 도구 (라이브)' : 'Sketch Tools (live)'}>
+      {/* Advanced pro tools — collapsed by default so the property inspector
+          stays focused on the live selection. Descriptions are suppressed to
+          keep the rail compact; users expand on demand (full launcher is also
+          on ⌘K). (2026-06-12 declutter) */}
+      <PropSection title={d.sketchToolsLive} defaultExpanded={false}>
         <FeatureCatalogPanel
           route="sketch"
           license="pro"
-          dict={isKo ? SKETCH_CATALOG_DICT_KO : SKETCH_CATALOG_DICT_EN}
+          dict={sketchCatalogDict(d)}
+          showDescriptions={false}
           onRun={(featureId, entryFn) => {
-             
+
             console.info(`[catalog] run ${featureId} via ${entryFn}()`);
           }}
         />

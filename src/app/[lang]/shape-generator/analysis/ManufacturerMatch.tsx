@@ -291,6 +291,10 @@ export interface Manufacturer {
   descriptionKo: string;
   /** /partner/metrics-batch 다차원 지표 조회 키. 파트너 미등록 공장은 null. */
   partnerEmail?: string | null;
+  /** True for the curated seed factories (id 'mfr-NNN'): illustrative examples
+   *  with placeholder ratings, NOT onboarded partners. UI badges them so a
+   *  fabricated rating is never read as a real earned one. */
+  isExample?: boolean;
 }
 
 interface ManufacturerMatchProps {
@@ -1087,12 +1091,22 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
           </span>
         </div>
 
-        {/* Stars + review count */}
-        <div style={{ marginBottom: 6 }}>
+        {/* Stars + review count. Example/seed factories carry placeholder
+            ratings, so badge them rather than letting a fabricated rating read
+            as a real earned one. */}
+        <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {renderStars(m.rating)}
-          <span style={{ fontSize: 11, color: C.textMuted, marginLeft: 4 }}>
+          <span style={{ fontSize: 11, color: C.textMuted }}>
             ({m.reviewCount.toLocaleString()})
           </span>
+          {m.isExample && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+              background: `${C.textMuted}22`, color: C.textMuted, border: `1px solid ${C.textMuted}55`,
+            }}>
+              {L === 'ko' ? '예시' : 'example'}
+            </span>
+          )}
         </div>
 
         {/* Processes */}

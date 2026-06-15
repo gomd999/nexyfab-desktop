@@ -334,7 +334,8 @@ export default function AIHistoryPanel({ lang, onClose, projectId, onApplySugges
 
   return (
     <div style={{
-      position: 'fixed', top: 48, right: 16, zIndex: 900,
+      // right: 336 clears the 320px right property pane (2026-06-12)
+      position: 'fixed', top: 48, right: 336, zIndex: 900,
       width: 440, maxHeight: 'calc(100vh - 80px)',
       background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12,
       boxShadow: '0 8px 32px rgba(0,0,0,0.5)',

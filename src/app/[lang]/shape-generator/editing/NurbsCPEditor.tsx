@@ -4,10 +4,12 @@ import { useRef, useMemo, useCallback, useState, useEffect } from 'react';
 import { useThree, useFrame, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { cpKey, buildCpGrid } from '../features/nurbsSurface';
+import { GL_COLOR } from '../lib/glColors';
 
 const COLOR_DEFAULT = new THREE.Color('#f472b6');
 const COLOR_HOVERED = new THREE.Color('#fbbf24');
-const COLOR_DRAGGING = new THREE.Color('var(--nx-ok)');
+// Hex (not CSS var): THREE.Color can't parse var(--…) → white. (2026-06-12)
+const COLOR_DRAGGING = new THREE.Color(GL_COLOR.ok);
 
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();

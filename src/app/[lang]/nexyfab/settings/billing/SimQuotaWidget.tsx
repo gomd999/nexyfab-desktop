@@ -80,7 +80,7 @@ export default function SimQuotaWidget({ lang }: SimQuotaWidgetProps) {
     return <div style={{ padding: 14, color: '#ffa198', fontSize: 12 }}>{t.error}: {error}</div>;
   }
   if (!data) {
-    return <div style={{ padding: 14, color: '#8b949e', fontSize: 12 }}>…</div>;
+    return <div style={{ padding: 14, color: 'var(--nx-text-2)', fontSize: 12 }}>…</div>;
   }
 
   const isLocked = data.limit === -2;
@@ -92,20 +92,20 @@ export default function SimQuotaWidget({ lang }: SimQuotaWidgetProps) {
 
   return (
     <div style={{
-      background: '#161b22',
-      border: '1px solid #30363d',
+      background: 'var(--nx-panel)',
+      border: '1px solid var(--nx-border)',
       borderRadius: 10,
       padding: 16,
       marginTop: 16,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#e6edf3' }}>{t.title}</span>
-        <span style={{ fontSize: 11, color: '#8b949e', fontFamily: 'monospace' }}>{data.plan}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--nx-text)' }}>{t.title}</span>
+        <span style={{ fontSize: 11, color: 'var(--nx-text-2)', fontFamily: 'monospace' }}>{data.plan}</span>
       </div>
 
       {isLocked ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 12, color: '#8b949e' }}>{t.locked}</span>
+          <span style={{ fontSize: 12, color: 'var(--nx-text-2)' }}>{t.locked}</span>
           <a href="../pricing" style={{
             padding: '4px 10px', fontSize: 11, fontWeight: 700,
             borderRadius: 6, background: '#1f6feb', color: '#fff',
@@ -115,24 +115,24 @@ export default function SimQuotaWidget({ lang }: SimQuotaWidgetProps) {
       ) : (
         <>
           <div style={{ display: 'flex', gap: 16, alignItems: 'baseline', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, color: '#8b949e' }}>{t.used}</span>
-            <span style={{ fontSize: 18, fontWeight: 700, color: '#e6edf3', fontFamily: 'monospace' }}>
+            <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{t.used}</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--nx-text)', fontFamily: 'monospace' }}>
               {data.used} / {isUnlimited ? '∞' : data.limit}
             </span>
             {data.remaining !== null && (
-              <span style={{ fontSize: 11, color: '#8b949e' }}>
+              <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
                 ({t.remaining}: {data.remaining})
               </span>
             )}
           </div>
           {!isUnlimited && (
-            <div style={{ width: '100%', height: 6, background: '#21262d', borderRadius: 3, overflow: 'hidden', marginBottom: 14 }}>
+            <div style={{ width: '100%', height: 6, background: 'var(--nx-panel-2)', borderRadius: 3, overflow: 'hidden', marginBottom: 14 }}>
               <div style={{ width: `${pct}%`, height: '100%', background: barColor, transition: 'width 0.3s' }} />
             </div>
           )}
 
           {Object.keys(data.byKind).length === 0 ? (
-            <div style={{ fontSize: 11, color: '#8b949e' }}>{t.none}</div>
+            <div style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{t.none}</div>
           ) : (
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#58a6ff', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t.breakdown}</div>
@@ -143,8 +143,8 @@ export default function SimQuotaWidget({ lang }: SimQuotaWidgetProps) {
                     <span key={kind} style={{
                       padding: '3px 8px', fontSize: 11,
                       borderRadius: 12,
-                      background: '#0d1117', border: '1px solid #30363d',
-                      color: '#c9d1d9', fontFamily: 'monospace',
+                      background: 'var(--nx-bg)', border: '1px solid var(--nx-border)',
+                      color: 'var(--nx-text)', fontFamily: 'monospace',
                     }}>
                       {meta.emoji} {meta[lang]} ×{count}
                     </span>

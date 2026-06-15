@@ -16,7 +16,7 @@ import type { ToolCall, ToolName } from './types';
 
 const VALID_TOOL_NAMES = new Set<ToolName>([
   'write_scad', 'apply_diff', 'render', 'get_geometry',
-  'add_feature_intent', 'search_bosl2', 'read_dfm',
+  'add_feature_intent', 'add_composite_intent', 'search_bosl2', 'read_dfm',
   // Stage 1 — assembly tools
   'plan_design', 'write_module', 'list_modules', 'compose_assembly',
   // Stage 2 — multimodal visual verification

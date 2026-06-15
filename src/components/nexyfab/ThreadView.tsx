@@ -159,8 +159,8 @@ export default function ThreadView({ lang, threadKind, threadId, asRole }: Threa
             }}>
               <div style={{
                 padding: '8px 12px',
-                background: isMine ? '#1f6feb' : '#21262d',
-                color: isMine ? '#fff' : '#e6edf3',
+                background: isMine ? '#1f6feb' : 'var(--nx-panel-2)',
+                color: isMine ? '#fff' : 'var(--nx-text)',
                 borderRadius: 12,
                 fontSize: 13, lineHeight: 1.45,
                 whiteSpace: 'pre-wrap', wordBreak: 'break-word',
@@ -179,7 +179,7 @@ export default function ThreadView({ lang, threadKind, threadId, asRole }: Threa
                 )}
               </div>
               <div style={{
-                fontSize: 9, color: '#8b949e',
+                fontSize: 9, color: 'var(--nx-text-2)',
                 marginTop: 2,
                 textAlign: isMine ? 'right' : 'left',
               }}>
@@ -217,29 +217,29 @@ export default function ThreadView({ lang, threadKind, threadId, asRole }: Threa
 }
 
 const containerStyle: React.CSSProperties = {
-  background: '#0d1117', border: '1px solid #30363d', borderRadius: 10,
+  background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 10,
   padding: 12, display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12,
 };
-const titleStyle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: '#e6edf3' };
+const titleStyle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: 'var(--nx-text)' };
 const scrollStyle: React.CSSProperties = {
   display: 'flex', flexDirection: 'column',
   maxHeight: 380, overflowY: 'auto',
   padding: '6px 4px',
 };
-const mutedStyle: React.CSSProperties = { fontSize: 11, color: '#8b949e', textAlign: 'center', padding: 16 };
+const mutedStyle: React.CSSProperties = { fontSize: 11, color: 'var(--nx-text-2)', textAlign: 'center', padding: 16 };
 const composerStyle: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', gap: 6,
-  borderTop: '1px solid #21262d', paddingTop: 8,
+  borderTop: '1px solid var(--nx-panel-2)', paddingTop: 8,
 };
 const textareaStyle: React.CSSProperties = {
-  padding: 8, background: '#161b22', border: '1px solid #30363d',
-  borderRadius: 6, color: '#e6edf3', fontSize: 12, fontFamily: 'inherit',
+  padding: 8, background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
+  borderRadius: 6, color: 'var(--nx-text)', fontSize: 12, fontFamily: 'inherit',
   resize: 'vertical', outline: 'none',
 };
 const attachInputStyle: React.CSSProperties = {
   padding: '4px 8px', fontSize: 11, fontFamily: 'monospace',
-  background: '#161b22', border: '1px solid #30363d',
-  borderRadius: 6, color: '#c9d1d9', outline: 'none',
+  background: 'var(--nx-panel)', border: '1px solid var(--nx-border)',
+  borderRadius: 6, color: 'var(--nx-text)', outline: 'none',
 };
 const errStyle: React.CSSProperties = {
   fontSize: 11, color: '#ffa198', padding: '4px 8px',

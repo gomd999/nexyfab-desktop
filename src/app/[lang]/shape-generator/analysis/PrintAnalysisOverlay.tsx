@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import type { PrintAnalysisResult } from './printAnalysis';
+import { GL_COLOR } from '../lib/glColors';
 
 /* ─── Color helpers ──────────────────────────────────────────────────────── */
 
@@ -124,7 +125,7 @@ export default function PrintAnalysisOverlay({
       {/* Build plate border */}
       <mesh position={[0, buildPlateY, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[plateSize * 0.499, plateSize * 0.5, 64]} />
-        <meshBasicMaterial color="var(--nx-accent)" transparent opacity={0.6} />
+        <meshBasicMaterial color={GL_COLOR.accent} transparent opacity={0.6} />
       </mesh>
 
       {/* Build direction arrow */}

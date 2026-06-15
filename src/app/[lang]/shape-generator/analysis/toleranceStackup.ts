@@ -107,11 +107,15 @@ export function computeStackup(dims: ToleranceDimension[]): StackupResult {
   for (const d of dims) {
     nominal += d.direction * d.nominal;
 
+    // tp / tm are this dimension's max / min signed deviation contribution to
+    // the stack (after the direction flip). The worst-case bounds simply sum
+    // them — the old code summed |tp| and |tm| together, which double-counted a
+    // symmetric ±t into ±2t and mishandled asymmetric tolerances.
     const tp = d.direction === 1 ? d.tolerancePlus : -d.toleranceMinus;
     const tm = d.direction === 1 ? d.toleranceMinus : -d.tolerancePlus;
 
-    wcPlus += Math.max(tp, 0) + Math.max(-tm, 0);
-    wcMinus += Math.min(tm, 0) + Math.min(-tp, 0);
+    wcPlus += tp;
+    wcMinus += tm;
 
     // RSS uses half-range of each dimension
     const halfRange = (d.tolerancePlus - d.toleranceMinus) / 2;

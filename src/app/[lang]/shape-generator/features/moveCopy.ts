@@ -1,6 +1,27 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { FeatureDefinition } from './types';
+import { occtMoveCopy } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
+
+function applyMoveCopyMesh(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry {
+  const { offsetX, offsetY, offsetZ } = params;
+  const operation = Math.round(params.operation);
+  const translation = new THREE.Matrix4().makeTranslation(offsetX, offsetY, offsetZ);
+
+  if (operation === 0) {
+    const clone = geometry.clone();
+    clone.applyMatrix4(translation);
+    return clone;
+  }
+
+  const original = geometry.clone();
+  const copy = geometry.clone();
+  copy.applyMatrix4(translation);
+  const merged = mergeGeometries([original, copy]);
+  if (!merged) throw new Error('MoveCopy merge failed');
+  return merged;
+}
 
 export const moveCopyFeature: FeatureDefinition = {
   type: 'moveCopy',
@@ -24,24 +45,29 @@ export const moveCopyFeature: FeatureDefinition = {
     },
   ],
   apply(geometry, params) {
-    const { offsetX, offsetY, offsetZ } = params;
-    const operation = Math.round(params.operation);
-    const translation = new THREE.Matrix4().makeTranslation(offsetX, offsetY, offsetZ);
-
-    if (operation === 0) {
-      // Move only: clone and translate
-      const clone = geometry.clone();
-      clone.applyMatrix4(translation);
-      return clone;
+    return applyMoveCopyMesh(geometry, params);
+  },
+  async applyAsync(geometry, params) {
+    if (shouldUseOcctEngine()) {
+      const handle = geometry.userData?.occtHandle as string | undefined;
+      if (handle) {
+        try {
+          const r = occtMoveCopy(
+            handle,
+            params.offsetX,
+            params.offsetY,
+            params.offsetZ,
+            Math.round(params.operation),
+          );
+          if (r.handle) {
+            r.geometry.userData.occtHandle = r.handle;
+            return r.geometry;
+          }
+        } catch (err) {
+          console.warn('[moveCopy] OCCT path failed, falling back to mesh:', err);
+        }
+      }
     }
-
-    // Copy: keep original + translated clone
-    const original = geometry.clone();
-    const copy = geometry.clone();
-    copy.applyMatrix4(translation);
-
-    const merged = mergeGeometries([original, copy]);
-    if (!merged) throw new Error('MoveCopy merge failed');
-    return merged;
+    return applyMoveCopyMesh(geometry, params);
   },
 };

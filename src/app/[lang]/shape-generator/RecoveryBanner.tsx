@@ -22,7 +22,7 @@ const dict = {
         just: '방금 전', d: '일 전', h: '시간 전', m: '분 전' },
   en: { recovered: 'Unsaved work recovered', crashRecovered: 'Recovered after unexpected exit',
         restore: 'Restore', dismiss: 'Dismiss', compare: 'Compare',
-        just: 'just now', d: ' day ago', h: ' hour ago', m: ' minute ago' },
+        just: 'just now', d: ' day', h: ' hour', m: ' minute' },
   ja: { recovered: '未保存の作業を復元しました', crashRecovered: '異常終了後の復元',
         restore: '復元', dismiss: '閉じる', compare: '比較',
         just: 'たった今', d: '日前', h: '時間前', m: '分前' },
@@ -47,9 +47,12 @@ function formatTimeAgo(ts: number, tt: typeof dict[keyof typeof dict], isEn: boo
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
 
-  if (days > 0) return `${days}${tt.d}${isEn && days > 1 ? 's' : ''}`;
-  if (hours > 0) return `${hours}${tt.h}${isEn && hours > 1 ? 's' : ''}`;
-  if (minutes > 0) return `${minutes}${tt.m}${isEn && minutes > 1 ? 's' : ''}`;
+  // English keeps the unit + plural 's' + " ago" separate ("3 days ago"); other
+  // languages bake the suffix into d/h/m ("3日前", "3일 전") so append nothing.
+  const ago = isEn ? ' ago' : '';
+  if (days > 0) return `${days}${tt.d}${isEn && days > 1 ? 's' : ''}${ago}`;
+  if (hours > 0) return `${hours}${tt.h}${isEn && hours > 1 ? 's' : ''}${ago}`;
+  if (minutes > 0) return `${minutes}${tt.m}${isEn && minutes > 1 ? 's' : ''}${ago}`;
   return tt.just;
 }
 
@@ -80,18 +83,24 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, 
   const timeAgo = formatTimeAgo(timestamp, t, key === 'en');
 
   return (
-    // In-flow banner strip (sibling of the other TopBanners) so it sits BELOW
-    // the ribbon instead of a fixed top:56 that overlapped the taller shell-v2
-    // chrome. Right-aligned compact pill; overflow-hidden contains the slide-in.
+    // FLOATING popup (position:fixed) so it overlays the top-right corner instead
+    // of an in-flow strip that pushed the toolbar/sidebar down (reported clutter).
+    // pointer-events:none on the wrapper so only the pill itself is interactive —
+    // the rest of the chrome underneath stays clickable.
     <div
       style={{
-        width: '100%',
+        position: 'fixed',
+        // Anchored to the TOP-CENTER under the toolbar. Previously top:128/right:16
+        // with maxWidth 420 — the wide pill extended left across the right
+        // property pane and occluded its top sections (reported overlap).
+        // Centering clears both the left and right side panes. (2026-06-12)
+        top: 64,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 250,
         display: 'flex',
-        justifyContent: 'flex-end',
-        padding: '6px 16px 0',
-        boxSizing: 'border-box',
-        overflow: 'hidden',
-        flexShrink: 0,
+        justifyContent: 'center',
+        pointerEvents: 'none',
       }}
     >
     <div
@@ -105,7 +114,9 @@ export default function RecoveryBanner({ timestamp, lang, onRestore, onDismiss, 
         borderRadius: 8,
         boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
         flexShrink: 0,
-        transform: visible && !exiting ? 'translateX(0)' : 'translateX(120%)',
+        pointerEvents: 'auto',
+        // Slide down from under the toolbar (top-center anchor).
+        transform: visible && !exiting ? 'translateY(0)' : 'translateY(-120%)',
         opacity: visible && !exiting ? 1 : 0,
         transition: 'transform 0.3s ease, opacity 0.3s ease',
         maxWidth: 420,

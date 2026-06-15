@@ -55,7 +55,7 @@ export interface RightPanelProps {
   interferenceResults: InterferenceResult[];
   interferenceLoading: boolean;
   assemblyPartNames: string[];
-  /** 레거시/표시용 — 어셈블리 패널 표시는 `interferenceCheckPartCount >= 2`로 판단. */
+  /** 레거시/표시용. */
   bomPartsLength: number;
   /** 간섭 검사에 쓰는 파트 수(placedParts→bodyBom→bom 우선, ShapeGeneratorInner와 동일) */
   interferenceCheckPartCount: number;
@@ -331,7 +331,11 @@ function RightPanel({
       )}
 
       {/* ══════ RIGHT — Assembly Panel ══════ */}
-      {showAssemblyPanel && interferenceCheckPartCount >= 2 && (
+      {/* No part-count gate: the panel is how parts get inserted/mated in the
+          first place, so requiring >=2 parts to open it was a chicken-and-egg
+          (Insert button did nothing on an empty scene). AssemblyPanel itself
+          already gates the interference-check sections on >=2 parts. */}
+      {showAssemblyPanel && (
         <AssemblyPanel
           mates={assemblyMates}
           onAddMate={onAddMate}

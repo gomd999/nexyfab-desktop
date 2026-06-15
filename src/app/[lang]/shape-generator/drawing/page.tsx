@@ -1,27 +1,29 @@
 'use client';
 
-// Drawing route (Phase 3). Standalone shell-v2 drafting view.
-// Reads `?project=...` for context. Project ID becomes a route segment in Phase 6.
+/**
+ * Drawing → production entry (Phase 4.4 Drawing UI track).
+ *
+ * Route: /[lang]/shape-generator/drawing/
+ *
+ * This is the production-grade drawing page that promotes the SheetRenderer
+ * stack out of the /sheet-preview demo route. It builds a standard 3-view
+ * sheet (front / top / right / iso) from a selected sample part, lets the
+ * user adjust paper size + scale, and exposes the DimensionAnnotationModal
+ * for authoring dimensions + GD&T callouts. Export buttons emit PNG (via
+ * SVG → canvas rasterisation) and JSON (sheet IR dump).
+ *
+ * The /sheet-preview/ demo route is preserved verbatim for regression
+ * snapshots.
+ */
 
-import { Suspense, use } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { isKorean } from '@/lib/i18n/normalize';
-import { ThemeProvider } from '../ThemeContext';
-import { DrawingFrame } from '../_shell/DrawingFrame';
+import { use } from 'react';
+import { DrawingPageContent } from './_content';
 
-function DrawingPageInner({ params }: { params: Promise<{ lang: string }> }) {
-  const { lang } = use(params);
-  const sp = useSearchParams();
-  const projectId = sp?.get('project') ?? undefined;
-  return <DrawingFrame lang={lang} isKo={isKorean(lang)} projectId={projectId} />;
+interface PageProps {
+  params: Promise<{ lang: string }>;
 }
 
-export default function DrawingPage({ params }: { params: Promise<{ lang: string }> }) {
-  return (
-    <ThemeProvider>
-      <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0c0f14' }} />}>
-        <DrawingPageInner params={params} />
-      </Suspense>
-    </ThemeProvider>
-  );
+export default function DrawingPage({ params }: PageProps): React.ReactElement {
+  const { lang } = use(params);
+  return <DrawingPageContent lang={lang} />;
 }

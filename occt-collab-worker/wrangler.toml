@@ -22,7 +22,9 @@ class_name = "CollabRoom"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["CollabRoom"]
+# Free plan requires SQLite-backed DO (per CF API code 10097); Workers
+# Paid can use new_classes for the in-memory storage backend if needed.
+new_sqlite_classes = ["CollabRoom"]
 
 # ─── KV namespace for snapshots ──────────────────────────────────────────────
 # Persist Y.Doc state every 30s so DO eviction does not lose document state.
@@ -33,8 +35,8 @@ new_classes = ["CollabRoom"]
 
 [[kv_namespaces]]
 binding = "COLLAB_SNAPSHOTS"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
-preview_id = "REPLACE_WITH_KV_PREVIEW_NAMESPACE_ID"
+id = "b1bc68a43a484ed28d9f9c09dab3594f"
+preview_id = "b1bc68a43a484ed28d9f9c09dab3594f"
 
 # ─── Plain env vars (non-secret) ─────────────────────────────────────────────
 
@@ -67,7 +69,7 @@ class_name = "CollabRoom"
 
 [[env.staging.kv_namespaces]]
 binding = "COLLAB_SNAPSHOTS"
-id = "REPLACE_WITH_STAGING_KV_ID"
+id = "b2a7c500604845e480d6678fd6788f48"
 
 [env.production]
 name = "occt-collab-worker"
@@ -84,7 +86,7 @@ class_name = "CollabRoom"
 
 [[env.production.kv_namespaces]]
 binding = "COLLAB_SNAPSHOTS"
-id = "REPLACE_WITH_PRODUCTION_KV_ID"
+id = "b1bc68a43a484ed28d9f9c09dab3594f"
 
 # Optional: route binding for production custom domain.
 # routes = [

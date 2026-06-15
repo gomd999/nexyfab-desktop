@@ -6,6 +6,7 @@ require('./scripts/load-parent-env.cjs');
 
 import type { NextConfig } from "next";
 import { withSentryConfig } from '@sentry/nextjs';
+import { buildSecurityHeaders } from './src/lib/security/cspHeaders';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -51,50 +52,15 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
-    // CORS: Access-Control-Allow-Origin only accepts a single origin, not a comma-separated list.
-    // For multiple origins, dynamic origin matching should be done in middleware.
-    // Here we use the first configured origin for the static header.
-    const corsHeaders = CORS_ALLOWED_ORIGINS.length > 0
-      ? [
-          { key: 'Access-Control-Allow-Origin', value: CORS_ALLOWED_ORIGINS[0] },
-          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, PATCH, DELETE, OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization, x-admin-token, x-admin-secret' },
-          { key: 'Access-Control-Max-Age', value: '86400' },
-        ]
-      : [];
-
-    return [
-      // CORS for API routes
-      ...(corsHeaders.length > 0 ? [{ source: '/api/(.*)', headers: corsHeaders }] : []),
-      {
-        source: '/(.*)',
-        headers: [
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload',
-          },
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              `script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/`,
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://api.dicebear.com https://www.facebook.com",
-              "font-src 'self' https://fonts.gstatic.com",
-              `connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://www.google.com https://*.sentry.io${CSP_EXTRA_CONNECT_SRC ? ` ${CSP_EXTRA_CONNECT_SRC}` : ''}`,
-              "frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/",
-              "frame-ancestors 'none'",
-              ...(CSP_INCLUDE_UPGRADE_INSECURE ? (['upgrade-insecure-requests'] as const) : []),
-            ].join('; '),
-          },
-        ],
-      },
-    ];
+    // Delegates to `src/lib/security/cspHeaders.ts` so the directive set is
+    // unit-testable without booting Next.js. The function is pure — env
+    // values are captured at module load (above).
+    return buildSecurityHeaders({
+      isDev,
+      extraConnectSrc: CSP_EXTRA_CONNECT_SRC,
+      includeUpgradeInsecure: CSP_INCLUDE_UPGRADE_INSECURE,
+      corsAllowedOrigins: CORS_ALLOWED_ORIGINS,
+    });
   },
   productionBrowserSourceMaps: false,
   images: {
@@ -131,11 +97,20 @@ const nextConfig: NextConfig = {
   // Webpack config retained for non-Turbopack builds (e.g. CI, Docker)
   webpack: (config, { isServer }) => {
     config.experiments = { ...config.experiments, asyncWebAssembly: true };
-    if (!isServer) {
+    if (isServer) {
+      // three/examples/jsm is client-only (OrbitControls, TransformControls,
+      // BufferGeometryUtils' mergeVertices/mergeGeometries, …). Stub it on the
+      // SERVER bundle so SSR never pulls browser-only example code.
+      // IMPORTANT: this alias was previously in the `!isServer` branch, which
+      // nulled these in the BROWSER bundle — silently breaking auto-drawing
+      // (mergeVertices), mesh patterns/helix/merge (mergeGeometries), and the
+      // assembly viewer controls. It must stub the server, not the client.
       config.resolve.alias = {
         ...config.resolve.alias,
         'three/examples/jsm': false,
       };
+    }
+    if (!isServer) {
       // WASM packages (replicad-opencascadejs) reference Node.js built-ins
       // that don't exist in the browser. Stub them out so the browser bundle
       // builds cleanly; the WASM module is only executed at runtime via
@@ -145,6 +120,28 @@ const nextConfig: NextConfig = {
         fs: false,
         path: false,
         crypto: false,
+        // planegcs WASM (Emscripten output) uses require('url').fileURLToPath
+        // for Node-side initialization; never runs in the browser, but
+        // webpack tries to resolve it during bundling.
+        url: false,
+      };
+      // planegcs's Emscripten output (planegcs.js) is a single huge
+      // self-contained module that confuses webpack's static analyzer
+      // with literal './' strings and Node-only require() calls. Tell
+      // webpack to skip parsing it entirely — treat it as pre-bundled
+      // opaque blob. The browser will evaluate it at runtime via the
+      // dynamic import chunk where the Emscripten loader detects the
+      // browser env via importScripts/window checks.
+      const existingNoParse = config.module?.noParse;
+      const noParseList = existingNoParse
+        ? (Array.isArray(existingNoParse) ? existingNoParse : [existingNoParse])
+        : [];
+      config.module = {
+        ...config.module,
+        noParse: [
+          ...noParseList,
+          /@salusoft89[\\/]planegcs[\\/]dist[\\/]planegcs_dist[\\/]planegcs\.js$/,
+        ],
       };
     }
     // Tauri 빌드 시 API 디렉토리는 scripts/tauri-build.mjs가 임시 이동 처리합니다.

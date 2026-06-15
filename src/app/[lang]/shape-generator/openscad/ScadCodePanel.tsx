@@ -14,8 +14,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { downloadBlob } from '@/lib/platform';
 import type { FeatureInstance } from '../features/types';
 import { emitScadFromFeatures } from './emitScadFromFeatures';
-import { parseScadToFeatures } from './parseScadToFeatures';
+import { parseScadToFeatures, type ScadRecognisedFeature } from './parseScadToFeatures';
 import { useSceneStore } from '../store/sceneStore';
+import { useLang } from '../hooks/useLang';
+import { loc } from '../lib/loc';
 
 interface Props {
   features: FeatureInstance[];
@@ -27,6 +29,7 @@ interface Props {
 }
 
 export default function ScadCodePanel({ features, baseShapeId, baseParams, header, isKo }: Props) {
+  const lang = useLang();
   const projection = useMemo(
     () => emitScadFromFeatures(features, { baseShapeId, baseParams, header }),
     [features, baseShapeId, baseParams, header],
@@ -89,7 +92,14 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
       const artifactUrl = (data as { artifactUrl?: string }).artifactUrl;
       const dataB64 = (data as { dataBase64?: string }).dataBase64;
       if (artifactUrl) {
-        setApplyMsg(isKo ? `STL 준비됨 — 다운로드: ${artifactUrl}` : `STL ready — download: ${artifactUrl}`);
+        setApplyMsg(loc(lang, {
+          ko: `STL 준비됨 — 다운로드: ${artifactUrl}`,
+          en: `STL ready — download: ${artifactUrl}`,
+          ja: `STL 準備完了 — ダウンロード: ${artifactUrl}`,
+          zh: `STL 已就绪 — 下载: ${artifactUrl}`,
+          es: `STL listo — descargar: ${artifactUrl}`,
+          ar: `STL جاهز — تنزيل: ${artifactUrl}`,
+        }));
         return;
       }
       if (dataB64) {
@@ -99,10 +109,10 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
         const blob = new Blob([bytes], { type: 'model/stl' });
         const fname = `${(header || 'nexyfab').replace(/[^a-z0-9-]+/gi, '_')}.stl`;
         void downloadBlob(fname, blob);
-        setApplyMsg(isKo ? 'STL 다운로드 시작됨' : 'STL download started');
+        setApplyMsg(loc(lang, { ko: 'STL 다운로드 시작됨', en: 'STL download started', ja: 'STLのダウンロードを開始しました', zh: 'STL 下载已开始', es: 'Descarga de STL iniciada', ar: 'بدأ تنزيل STL' }));
         return;
       }
-      setApplyMsg(isKo ? '응답이 비어있습니다' : 'Empty response from renderer');
+      setApplyMsg(loc(lang, { ko: '응답이 비어있습니다', en: 'Empty response from renderer', ja: 'レンダラーからの応答が空です', zh: '渲染器返回空响应', es: 'Respuesta vacía del renderizador', ar: 'استجابة فارغة من المُصيِّر' }));
     } catch (e) {
       setApplyMsg(e instanceof Error ? e.message : String(e));
     } finally {
@@ -118,7 +128,11 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
   /** Centralised so the auto-apply path and the manual button do the
    *  same thing (incl. the translate → moveCopy side-effect). Returns
    *  the human-readable status the caller writes into applyMsg. */
-  const applyParsedResult = (shape: { baseShapeId: 'box' | 'cylinder' | 'sphere'; params: Record<string, number>; translate?: { x: number; y: number; z: number } }, manual: boolean): string => {
+  const applyParsedResult = (
+    shape: { baseShapeId: 'box' | 'cylinder' | 'sphere' | 'cone' | 'torus'; params: Record<string, number>; translate?: { x: number; y: number; z: number } },
+    features: ScadRecognisedFeature[] | undefined,
+    manual: boolean,
+  ): string => {
     const { baseShapeId, params, translate } = shape;
     const store = useSceneStore.getState();
     store.setSelectedId(baseShapeId);
@@ -134,22 +148,51 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
         },
       }));
     }
-    const prefix = manual ? (isKo ? '피처 트리에 적용됨' : 'Applied to tree') : (isKo ? '자동 적용됨' : 'Auto-applied');
-    const xfmNote = translate ? (isKo
-      ? ` + 이동 (${translate.x}, ${translate.y}, ${translate.z})`
-      : ` + move (${translate.x}, ${translate.y}, ${translate.z})`) : '';
-    return `${prefix} — ${baseShapeId}${xfmNote}`;
+    // Phase 2 — each subtractive hole recovered from a `difference()` becomes a
+    // real `hole` feature node (same add-feature channel as moveCopy), so an
+    // edited SCAD difference round-trips into the parametric tree, not a flat mesh.
+    const holes = features ?? [];
+    for (const h of holes) {
+      window.dispatchEvent(new CustomEvent('nexyfab:add-feature', {
+        detail: { type: h.type, overrides: h.params },
+      }));
+    }
+    const prefix = manual
+      ? loc(lang, { ko: '피처 트리에 적용됨', en: 'Applied to tree', ja: 'フィーチャーツリーに適用しました', zh: '已应用到特征树', es: 'Aplicado al árbol de operaciones', ar: 'تم التطبيق على شجرة العناصر' })
+      : loc(lang, { ko: '자동 적용됨', en: 'Auto-applied', ja: '自動適用しました', zh: '已自动应用', es: 'Aplicado automáticamente', ar: 'تم التطبيق تلقائيًا' });
+    const xfmNote = translate ? loc(lang, {
+      ko: ` + 이동 (${translate.x}, ${translate.y}, ${translate.z})`,
+      en: ` + move (${translate.x}, ${translate.y}, ${translate.z})`,
+      ja: ` + 移動 (${translate.x}, ${translate.y}, ${translate.z})`,
+      zh: ` + 移动 (${translate.x}, ${translate.y}, ${translate.z})`,
+      es: ` + mover (${translate.x}, ${translate.y}, ${translate.z})`,
+      ar: ` + نقل (${translate.x}, ${translate.y}, ${translate.z})`,
+    }) : '';
+    const holeNote = holes.length ? loc(lang, {
+      ko: ` + 구멍 ${holes.length}개`,
+      en: ` + ${holes.length} hole(s)`,
+      ja: ` + 穴 ${holes.length}個`,
+      zh: ` + ${holes.length} 个孔`,
+      es: ` + ${holes.length} agujero(s)`,
+      ar: ` + ${holes.length} فتحة`,
+    }) : '';
+    return `${prefix} — ${baseShapeId}${xfmNote}${holeNote}`;
   };
 
   const handleApplyToTree = () => {
     const res = parseScadToFeatures(code);
     if (!res.ok) {
-      setApplyMsg(isKo
-        ? '인식 실패: 서버 렌더 사용 또는 기본 도형으로 단순화하세요'
-        : 'Not recognised — use Apply (server render) or simplify to a primitive');
+      setApplyMsg(loc(lang, {
+        ko: '인식 실패: 서버 렌더 사용 또는 기본 도형으로 단순화하세요',
+        en: 'Not recognised — use Apply (server render) or simplify to a primitive',
+        ja: '認識できません — Apply(サーバーレンダー)を使うか、基本形状に簡略化してください',
+        zh: '无法识别 — 请使用 Apply(服务器渲染)或简化为基本图元',
+        es: 'No reconocido — use Apply (renderizado en servidor) o simplifique a una primitiva',
+        ar: 'غير معروف — استخدم Apply (التصيير على الخادم) أو بسّطه إلى شكل أولي',
+      }));
       return;
     }
-    setApplyMsg(applyParsedResult(res.shape, true));
+    setApplyMsg(applyParsedResult(res.shape, res.features, true));
   };
 
   /** Auto-apply debounce — only fires while the user is actively editing
@@ -161,6 +204,10 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
     const timer = setTimeout(() => {
       const res = parseScadToFeatures(code);
       if (!res.ok) return;
+      // Subtractive holes append a feature node each fire — like moveCopy, that
+      // would spam duplicates during live typing. Leave hole-bearing SCAD to the
+      // explicit Apply button (handleApplyToTree) and only auto-apply base edits.
+      if (res.features && res.features.length > 0) return;
       const { baseShapeId, params, translate } = res.shape;
       const store = useSceneStore.getState();
       // Skip when nothing changed (idempotent typing — the user added a
@@ -173,7 +220,7 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
           && JSON.stringify(store.params) === JSON.stringify({ ...store.params, ...params })) {
         return;
       }
-      setApplyMsg(applyParsedResult(res.shape, false));
+      setApplyMsg(applyParsedResult(res.shape, res.features, false));
     }, 600);
     return () => clearTimeout(timer);
     // applyParsedResult is intentionally not in deps — it closes over
@@ -187,8 +234,8 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--nx-text-2)', flexWrap: 'wrap' }}>
         <span style={{ flex: 1, minWidth: 0 }}>
           {editing
-            ? (isKo ? '편집 모드 · Apply로 서버 렌더' : 'Editing · Apply renders on server')
-            : (isKo ? '읽기 전용 · 피처 트리 투영' : 'Read-only · feature tree projection')}
+            ? loc(lang, { ko: '편집 모드 · Apply로 서버 렌더', en: 'Editing · Apply renders on server', ja: '編集モード · Apply でサーバーレンダー', zh: '编辑模式 · Apply 在服务器渲染', es: 'Edición · Apply renderiza en el servidor', ar: 'وضع التحرير · Apply يُصيّر على الخادم' })
+            : loc(lang, { ko: '읽기 전용 · 피처 트리 투영', en: 'Read-only · feature tree projection', ja: '読み取り専用 · フィーチャーツリー投影', zh: '只读 · 特征树投影', es: 'Solo lectura · proyección del árbol de operaciones', ar: 'للقراءة فقط · إسقاط شجرة العناصر' })}
         </span>
         <button
           type="button"
@@ -201,13 +248,15 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
             fontSize: 11, cursor: 'pointer', fontWeight: 600,
           }}
         >
-          {editing ? (isKo ? '편집 종료' : 'Done') : (isKo ? '편집' : 'Edit')}
+          {editing
+            ? loc(lang, { ko: '편집 종료', en: 'Done', ja: '完了', zh: '完成', es: 'Hecho', ar: 'تم' })
+            : loc(lang, { ko: '편집', en: 'Edit', ja: '編集', zh: '编辑', es: 'Editar', ar: 'تحرير' })}
         </button>
         {editing && (
           <>
             <label
               style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--nx-text-2)', cursor: 'pointer', userSelect: 'none' }}
-              title={isKo ? '편집 중 600ms마다 인식되면 자동 적용' : 'Auto-apply on pause (600ms) when parse succeeds'}
+              title={loc(lang, { ko: '편집 중 600ms마다 인식되면 자동 적용', en: 'Auto-apply on pause (600ms) when parse succeeds', ja: '一時停止時(600ms)に解析が成功すれば自動適用', zh: '暂停时(600ms)解析成功则自动应用', es: 'Auto-aplicar al pausar (600 ms) si el análisis tiene éxito', ar: 'تطبيق تلقائي عند التوقف (600 مللي ثانية) إذا نجح التحليل' })}
             >
               <input
                 type="checkbox"
@@ -215,7 +264,7 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
                 onChange={e => setAutoApply(e.target.checked)}
                 style={{ accentColor: 'var(--nx-accent)' }}
               />
-              {isKo ? '자동' : 'Auto'}
+              {loc(lang, { ko: '자동', en: 'Auto', ja: '自動', zh: '自动', es: 'Auto', ar: 'تلقائي' })}
             </label>
             <button
               type="button"
@@ -227,9 +276,9 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
                 color: 'var(--nx-text)',
                 fontSize: 11, cursor: 'pointer', fontWeight: 600,
               }}
-              title={isKo ? '인식된 기본 도형을 피처 트리에 적용' : 'Apply recognised primitive to feature tree'}
+              title={loc(lang, { ko: '인식된 기본 도형을 피처 트리에 적용', en: 'Apply recognised primitive to feature tree', ja: '認識された基本形状をフィーチャーツリーに適用', zh: '将识别的基本图元应用到特征树', es: 'Aplicar la primitiva reconocida al árbol de operaciones', ar: 'تطبيق الشكل الأولي المُتعرَّف عليه على شجرة العناصر' })}
             >
-              {isKo ? '트리에 적용' : 'To tree'}
+              {loc(lang, { ko: '트리에 적용', en: 'To tree', ja: 'ツリーに適用', zh: '应用到树', es: 'Al árbol', ar: 'إلى الشجرة' })}
             </button>
             <button
               type="button"
@@ -242,9 +291,11 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
                 color: '#fff',
                 fontSize: 11, cursor: applyBusy ? 'wait' : 'pointer', fontWeight: 700,
               }}
-              title={isKo ? '서버에서 렌더링 (STL 다운로드)' : 'Render on server (STL download)'}
+              title={loc(lang, { ko: '서버에서 렌더링 (STL 다운로드)', en: 'Render on server (STL download)', ja: 'サーバーでレンダリング (STL ダウンロード)', zh: '在服务器渲染 (STL 下载)', es: 'Renderizar en el servidor (descarga STL)', ar: 'التصيير على الخادم (تنزيل STL)' })}
             >
-              {applyBusy ? (isKo ? '렌더 중…' : 'Rendering…') : (isKo ? 'Apply →' : 'Apply →')}
+              {applyBusy
+                ? loc(lang, { ko: '렌더 중…', en: 'Rendering…', ja: 'レンダリング中…', zh: '渲染中…', es: 'Renderizando…', ar: 'جارٍ التصيير…' })
+                : 'Apply →'}
             </button>
           </>
         )}
@@ -257,7 +308,9 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
             color: 'var(--nx-text)', fontSize: 11, cursor: 'pointer',
           }}
         >
-          {copied ? '✓ ' + (isKo ? '복사됨' : 'Copied') : (isKo ? '복사' : 'Copy')}
+          {copied
+            ? '✓ ' + loc(lang, { ko: '복사됨', en: 'Copied', ja: 'コピーしました', zh: '已复制', es: 'Copiado', ar: 'تم النسخ' })
+            : loc(lang, { ko: '복사', en: 'Copy', ja: 'コピー', zh: '复制', es: 'Copiar', ar: 'نسخ' })}
         </button>
         <button
           type="button"
@@ -268,7 +321,7 @@ export default function ScadCodePanel({ features, baseShapeId, baseParams, heade
             color: 'var(--nx-text)', fontSize: 11, cursor: 'pointer',
           }}
         >
-          {isKo ? '.scad 저장' : 'Save .scad'}
+          {loc(lang, { ko: '.scad 저장', en: 'Save .scad', ja: '.scad を保存', zh: '保存 .scad', es: 'Guardar .scad', ar: 'حفظ ‎.scad' })}
         </button>
       </div>
       {editing ? (

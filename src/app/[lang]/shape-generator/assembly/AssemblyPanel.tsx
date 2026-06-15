@@ -16,6 +16,7 @@ import {
 } from './mateSelectionMapping';
 import type { BomPartResult } from '../ShapePreview';
 import { useAssemblyState } from './useAssemblyState';
+import { loc } from '../lib/loc';
 import { mateGraphSummary, preflightAssemblyMates } from '@/lib/assemblyMatePreflight';
 import { useUIStore } from '../store/uiStore';
 
@@ -259,6 +260,10 @@ export default function AssemblyPanel({
   const [newPartA, setNewPartA] = useState(partNames[0] ?? '');
   const [newPartB, setNewPartB] = useState(partNames[1] ?? partNames[0] ?? '');
   const [newValue, setNewValue] = useState(10);
+  // Phase 2 advanced mates: [min, max] range for limit mates, ratio for gear.
+  const [newMin, setNewMin] = useState(0);
+  const [newMax, setNewMax] = useState(50);
+  const [newRatio, setNewRatio] = useState(1);
   const [activeSection, setActiveSection] = useState<'mates' | 'interference' | 'explode' | 'solver'>('mates');
 
   // Listen for shell-v2 ribbon "mate.{type}" clicks — open add-mate UI and
@@ -344,6 +349,8 @@ export default function AssemblyPanel({
     accentBright: C.accent,
   };
 
+  const isLimitType = newMateType === 'limitDistance' || newMateType === 'limitAngle';
+
   const handleAddMate = useCallback(() => {
     if (!newPartA || !newPartB) return;
     const mate: AssemblyMate = {
@@ -351,14 +358,22 @@ export default function AssemblyPanel({
       type: newMateType,
       partA: newPartA,
       partB: newPartB,
-      value: newMateType === 'distance' || newMateType === 'angle' ? newValue : undefined,
+      value:
+        newMateType === 'distance' || newMateType === 'angle' ? newValue :
+        newMateType === 'gear' ? newRatio :
+        undefined,
+      min: isLimitType ? Math.min(newMin, newMax) : undefined,
+      max: isLimitType ? Math.max(newMin, newMax) : undefined,
       locked: false,
     };
     onAddMate(mate);
     setAddMode(false);
-  }, [newMateType, newPartA, newPartB, newValue, onAddMate]);
+  }, [newMateType, newPartA, newPartB, newValue, newRatio, newMin, newMax, isLimitType, onAddMate]);
 
-  const MATE_TYPES: MateType[] = ['coincident', 'concentric', 'distance', 'angle', 'parallel', 'perpendicular', 'tangent'];
+  const MATE_TYPES: MateType[] = [
+    'coincident', 'concentric', 'distance', 'angle', 'parallel', 'perpendicular', 'tangent',
+    'hinge', 'slider', 'gear', 'limitDistance', 'limitAngle', 'width',
+  ];
 
   const sectionBtnStyle = (active: boolean): React.CSSProperties => ({
     flex: 1,
@@ -557,12 +572,13 @@ export default function AssemblyPanel({
                     &#x2715;
                   </button>
                 </div>
-                {(mate.type === 'distance' || mate.type === 'angle') && (
+                {(mate.type === 'distance' || mate.type === 'angle' || mate.type === 'gear') && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600 }}>{t.value}:</span>
                     <input
                       type="number"
-                      value={mate.value ?? 0}
+                      step={mate.type === 'gear' ? 0.1 : 1}
+                      value={mate.value ?? (mate.type === 'gear' ? 1 : 0)}
                       onChange={e => onUpdateMate(mate.id, { value: parseFloat(e.target.value) || 0 })}
                       style={{
                         width: 70,
@@ -575,7 +591,34 @@ export default function AssemblyPanel({
                         fontWeight: 600,
                       }}
                     />
-                    <span style={{ fontSize: 10, color: C.textDim }}>{mate.type === 'distance' ? 'mm' : 'deg'}</span>
+                    <span style={{ fontSize: 10, color: C.textDim }}>
+                      {mate.type === 'distance' ? 'mm' : mate.type === 'angle' ? 'deg' : ': 1'}
+                    </span>
+                  </div>
+                )}
+                {(mate.type === 'limitDistance' || mate.type === 'limitAngle') && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {([['min', mate.min ?? 0], ['max', mate.max ?? 0]] as const).map(([key, val]) => (
+                      <React.Fragment key={key}>
+                        <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600 }}>{key}:</span>
+                        <input
+                          type="number"
+                          value={val}
+                          onChange={e => onUpdateMate(mate.id, { [key]: parseFloat(e.target.value) || 0 })}
+                          style={{
+                            width: 56,
+                            padding: '3px 6px',
+                            borderRadius: 4,
+                            border: `1px solid ${C.border}`,
+                            background: 'var(--nx-bg)',
+                            color: C.text,
+                            fontSize: 11,
+                            fontWeight: 600,
+                          }}
+                        />
+                      </React.Fragment>
+                    ))}
+                    <span style={{ fontSize: 10, color: C.textDim }}>{mate.type === 'limitDistance' ? 'mm' : 'deg'}</span>
                   </div>
                 )}
               </div>
@@ -683,6 +726,74 @@ export default function AssemblyPanel({
                       }}
                     />
                   </div>
+                )}
+
+                {/* Gear ratio */}
+                {newMateType === 'gear' && (
+                  <div>
+                    <label style={{ fontSize: 10, fontWeight: 700, color: C.textDim, display: 'block', marginBottom: 3 }}>
+                      {loc(seg, { ko: '기어비 (A:B, 음수 = 역회전)', en: 'Gear ratio (A:B, negative = reversed)', ja: 'ギア比 (A:B、負 = 逆回転)', zh: '齿轮比 (A:B，负值 = 反转)', es: 'Relación de engranaje (A:B, negativo = invertido)', ar: 'نسبة التروس (A:B، سالب = عكسي)' })}
+                    </label>
+                    <input
+                      type="number"
+                      step={0.1}
+                      value={newRatio}
+                      onChange={e => setNewRatio(parseFloat(e.target.value) || 1)}
+                      style={{
+                        width: '100%',
+                        padding: '5px 8px',
+                        borderRadius: 6,
+                        border: `1px solid ${C.border}`,
+                        background: C.card,
+                        color: C.text,
+                        fontSize: 11,
+                        fontWeight: 600,
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Limit range (min/max) */}
+                {isLimitType && (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {([
+                      ['min', newMin, setNewMin],
+                      ['max', newMax, setNewMax],
+                    ] as const).map(([key, val, setter]) => (
+                      <div key={key} style={{ flex: 1 }}>
+                        <label style={{ fontSize: 10, fontWeight: 700, color: C.textDim, display: 'block', marginBottom: 3 }}>
+                          {key === 'min'
+                            ? loc(seg, { ko: '최소', en: 'Min', ja: '最小', zh: '最小', es: 'Mín', ar: 'الحد الأدنى' })
+                            : loc(seg, { ko: '최대', en: 'Max', ja: '最大', zh: '最大', es: 'Máx', ar: 'الحد الأقصى' })}
+                          {' '}({newMateType === 'limitDistance' ? 'mm' : 'deg'})
+                        </label>
+                        <input
+                          type="number"
+                          value={val}
+                          onChange={e => setter(parseFloat(e.target.value) || 0)}
+                          style={{
+                            width: '100%',
+                            padding: '5px 8px',
+                            borderRadius: 6,
+                            border: `1px solid ${C.border}`,
+                            background: C.card,
+                            color: C.text,
+                            fontSize: 11,
+                            fontWeight: 600,
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Width hint — needs a second reference face on part A */}
+                {newMateType === 'width' && (
+                  <p style={{ margin: 0, fontSize: 10, lineHeight: 1.45, color: C.textDim }}>
+                    {resolvedLang === 'ko'
+                      ? '파트 A의 두 기준면 사이에 파트 B를 중앙 정렬합니다. 두 번째 기준면(faceA2)은 뷰포트에서 면을 선택해 지정하세요. 미지정 시 면 접촉으로 동작합니다.'
+                      : 'Centers part B between two reference faces on part A. Pick the second face (faceA2) in the viewport; without it the mate falls back to plane contact.'}
+                  </p>
                 )}
 
                 {/* Actions */}

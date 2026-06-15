@@ -80,8 +80,8 @@ export default function OnboardingChecklist({
   return (
     <div
       style={{
-        background: '#161b22',
-        border: '1px solid #30363d',
+        background: 'var(--nx-panel)',
+        border: '1px solid var(--nx-border)',
         borderRadius: 12,
         padding: 20,
         marginBottom: 24,
@@ -89,7 +89,7 @@ export default function OnboardingChecklist({
     >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#e6edf3' }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--nx-text)' }}>
           🚀 {isKo ? '시작하기' : 'Get Started'}
         </span>
         <div style={{ flex: 1 }} />
@@ -98,7 +98,7 @@ export default function OnboardingChecklist({
           style={{
             background: 'transparent',
             border: 'none',
-            color: '#6e7681',
+            color: 'var(--nx-text-3)',
             cursor: 'pointer',
             fontSize: 16,
             lineHeight: 1,
@@ -119,15 +119,15 @@ export default function OnboardingChecklist({
             marginBottom: 6,
           }}
         >
-          <span style={{ fontSize: 11, color: '#8b949e' }}>{isKo ? '진행 상황' : 'Progress'}</span>
-          <span style={{ fontSize: 11, color: '#e6edf3', fontWeight: 700 }}>
+          <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{isKo ? '진행 상황' : 'Progress'}</span>
+          <span style={{ fontSize: 11, color: 'var(--nx-text)', fontWeight: 700 }}>
             {doneCount} / {items.length}
           </span>
         </div>
         <div
           style={{
             height: 4,
-            background: '#21262d',
+            background: 'var(--nx-panel-2)',
             borderRadius: 2,
             overflow: 'hidden',
           }}
@@ -157,10 +157,10 @@ export default function OnboardingChecklist({
               gap: 10,
               padding: '8px 10px',
               borderRadius: 8,
-              background: item.done ? '#1a2e1a' : '#0d1117',
-              border: `1px solid ${item.done ? '#2d4a2d' : '#21262d'}`,
+              background: item.done ? '#1a2e1a' : 'var(--nx-bg)',
+              border: `1px solid ${item.done ? '#2d4a2d' : 'var(--nx-panel-2)'}`,
               textDecoration: 'none',
-              color: item.done ? '#8b949e' : '#e6edf3',
+              color: item.done ? 'var(--nx-text-2)' : 'var(--nx-text)',
               fontSize: 13,
               transition: 'border-color 0.15s',
             }}
@@ -171,7 +171,7 @@ export default function OnboardingChecklist({
             <span
               style={{
                 textDecoration: item.done ? 'line-through' : 'none',
-                color: item.done ? '#6e7681' : '#e6edf3',
+                color: item.done ? 'var(--nx-text-3)' : 'var(--nx-text)',
               }}
             >
               {isKo ? item.labelKo : item.labelEn}

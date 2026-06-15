@@ -29,6 +29,7 @@
 
 import * as THREE from 'three';
 import { evalNurbsSurface, evalNurbsSurfaceNormal, type NurbsSurface } from './nurbsSurface';
+import { normalCurvature } from './nurbsSurfaceCurvature';
 
 export type BoundaryEdge = 'u0' | 'u1' | 'v0' | 'v1';
 
@@ -58,6 +59,21 @@ export interface ContinuityOptions {
   positionTolerance?: number;
   /** Normal angle tolerance for G1, radians. */
   normalAngleTolerance?: number;
+  /** Relative cross-seam curvature mismatch allowed for G2 (default 0.05). */
+  curvatureTolerance?: number;
+}
+
+/** Magnitude of the surface's normal curvature in the cross-SEAM direction at
+ *  boundary parameter `t`. Computed ANALYTICALLY (second fundamental form over
+ *  the first) — the seam runs along one parameter, so the cross direction is the
+ *  OTHER parameter: (1,0) for a u-edge, (0,1) for a v-edge. */
+function crossSeamCurvature(s: NurbsSurface, edge: BoundaryEdge, t: number): number {
+  switch (edge) {
+    case 'u0': return Math.abs(normalCurvature(s, 0, t, 1, 0));
+    case 'u1': return Math.abs(normalCurvature(s, 1, t, 1, 0));
+    case 'v0': return Math.abs(normalCurvature(s, t, 0, 0, 1));
+    case 'v1': return Math.abs(normalCurvature(s, t, 1, 0, 1));
+  }
 }
 
 /** Map a boundary parameter t (0..1) to the (u, v) point that lies on
@@ -87,9 +103,12 @@ export function checkSurfaceContinuity(
   const posTol = opts.positionTolerance ?? 1e-3;
   const angTol = opts.normalAngleTolerance ?? (Math.PI / 180); // 1°
 
+  const curvTol = opts.curvatureTolerance ?? 0.05;
+
   const samples: ContinuitySample[] = [];
   let maxPositionGap = 0;
   let maxNormalAngle = 0;
+  let maxCurvatureRelDiff = 0;
 
   for (let i = 0; i < N; i++) {
     const t = i / (N - 1);
@@ -107,23 +126,28 @@ export function checkSurfaceContinuity(
     const dot = Math.abs(THREE.MathUtils.clamp(normalA.dot(normalB), -1, 1));
     const angle = Math.acos(dot);
 
+    // Geometric cross-seam curvature on each side (analytic, parametrisation-invariant).
+    const kA = crossSeamCurvature(a, edgeA, t);
+    const kB = crossSeamCurvature(b, edgeB, t);
+    const relCurv = Math.abs(kA - kB) / Math.max(kA, kB, 1e-4);
+
     samples.push({ t, positionGap: gap, normalAngle: angle });
     if (gap > maxPositionGap) maxPositionGap = gap;
     if (angle > maxNormalAngle) maxNormalAngle = angle;
+    if (relCurv > maxCurvatureRelDiff) maxCurvatureRelDiff = relCurv;
   }
 
-  // Decide overall level.
+  // Decide overall level. G2 now uses an actual cross-seam curvature comparison
+  // (κ_n via finite differences) once positions and normals already match.
   let level: ContinuityReport['level'];
   if (maxPositionGap > posTol) {
     level = 'discontinuous';
   } else if (maxNormalAngle > angTol) {
     level = 'G0';
+  } else if (maxCurvatureRelDiff <= curvTol) {
+    level = 'G2'; // curvature matches across the seam
   } else {
-    // G2 would require comparing curvatures (second derivatives). For
-    // this PR we report G1 when normals match within tolerance — a
-    // proper G2 check lands when we have the second-derivative
-    // machinery from `nurbsCurve`/`nurbsSurface`.
-    level = 'G1';
+    level = 'G1'; // tangent-continuous but a curvature break (e.g. plane meets cylinder)
   }
   return { maxPositionGap, maxNormalAngle, samples, level };
 }

@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
-import { isOcctReady, isOcctGlobalMode, occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
@@ -65,7 +67,7 @@ export const holeFeature: FeatureDefinition = {
     const actualDepth = depth >= 999 ? (topY - bottomY) + 10 : depth;
     const engine = Math.round(params.engine ?? 0);
 
-    if ((engine === 1 || isOcctGlobalMode()) && isOcctReady()) {
+    if (shouldUseOcctEngine(engine)) {
       try {
         let currentHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
         let currentGeo = geometry;
@@ -153,6 +155,11 @@ export const holeFeature: FeatureDefinition = {
       propagateFeatureIdMap(result.geometry, prev, cone);
     }
 
-    return result.geometry;
+    // Block a hole that swallows the whole part (e.g. a default-diameter hole on
+    // a sub-millimetre solid) rather than returning a silent empty body.
+    if (!result.geometry.attributes.position || result.geometry.attributes.position.count === 0) {
+      throw new Error('Hole is larger than the part — it would remove all material; reduce the diameter or depth');
+    }
+    return noteMeshFallback(result.geometry, { op: 'Hole', engine, featureId: ctx?.featureId });
   },
 };

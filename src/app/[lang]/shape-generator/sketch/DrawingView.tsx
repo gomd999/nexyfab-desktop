@@ -746,7 +746,7 @@ export default function DrawingView({
       </div>
       {/* Drawing sheet */}
       <div style={{
-        border: '2px solid var(--nx-border)', borderRadius: 4, background: 'var(--nx-text)',
+        border: '2px solid var(--nx-border)', borderRadius: 4, background: '#ffffff',
         boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
         maxWidth: '100%', overflow: 'auto',
       }}>
@@ -756,7 +756,7 @@ export default function DrawingView({
           viewBox={`0 0 ${DRAWING_W} ${DRAWING_H}`}
           width={DRAWING_W}
           height={DRAWING_H}
-          style={{ display: 'block', background: 'var(--nx-text)' }}
+          style={{ display: 'block', background: '#ffffff' }}
         >
           {/* Drawing border */}
           <rect x={MARGIN / 2} y={MARGIN / 2} width={DRAWING_W - MARGIN} height={DRAWING_H - MARGIN}

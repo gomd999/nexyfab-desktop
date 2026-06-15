@@ -5,20 +5,27 @@ const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export { INVITE_TTL_MS };
 
 export async function ensureProjectInvitesTable(db: DbAdapter): Promise<void> {
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS nf_project_invites (
-      id          TEXT PRIMARY KEY,
-      project_id  TEXT NOT NULL,
-      email_norm  TEXT NOT NULL,
-      role        TEXT NOT NULL,
-      token       TEXT NOT NULL UNIQUE,
-      expires_at  INTEGER NOT NULL,
-      created_at  INTEGER NOT NULL,
-      UNIQUE(project_id, email_norm)
-    );
-    CREATE INDEX IF NOT EXISTS idx_nf_pinv_token ON nf_project_invites(token);
-    CREATE INDEX IF NOT EXISTS idx_nf_pinv_project ON nf_project_invites(project_id);
-  `).catch(() => {});
+  // One statement per execute(): better-sqlite3's prepare() throws on
+  // multi-statement strings, so a combined CREATE+INDEX string silently
+  // no-ops on SQLite. BIGINT keeps ms-epoch Date.now() values in range on
+  // Postgres (INT4 max 2.1e9 < 1.7e12); SQLite treats BIGINT as INTEGER.
+  try {
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS nf_project_invites (
+        id          TEXT PRIMARY KEY,
+        project_id  TEXT NOT NULL,
+        email_norm  TEXT NOT NULL,
+        role        TEXT NOT NULL,
+        token       TEXT NOT NULL UNIQUE,
+        expires_at  BIGINT NOT NULL,
+        created_at  BIGINT NOT NULL,
+        UNIQUE(project_id, email_norm)
+      )`);
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_nf_pinv_token ON nf_project_invites(token)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_nf_pinv_project ON nf_project_invites(project_id)');
+  } catch (err) {
+    console.error('[nfProjectInvites] ensureProjectInvitesTable failed:', err);
+  }
 }
 
 export function newInviteToken(): string {

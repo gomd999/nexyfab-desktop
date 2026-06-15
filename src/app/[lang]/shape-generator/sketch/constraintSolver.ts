@@ -244,8 +244,13 @@ export interface SolverResult {
 }
 
 // ─── Variable vector: maps pointId ↔ x/y index in state array ───────────────
+//
+// NOTE: `buildVars` / `buildResiduals` and the LM kernels below are exported
+// for `sketchDragSolve.ts` (interactive drag-solve composes its own LM loop
+// with a soft cursor-pin). They remain internal implementation details —
+// `solveConstraints` is the stable public API.
 
-interface VarIndex {
+export interface VarIndex {
   /** pointId → [xIdx, yIdx] in state vector; fixed points omitted */
   idx: Map<string, [number, number]>;
   /** Concrete positions of fixed points (not part of x) */
@@ -254,7 +259,7 @@ interface VarIndex {
   n: number;
 }
 
-function buildVars(
+export function buildVars(
   segments: SketchSegment[],
   constraints: SketchConstraint[],
 ): { vars: VarIndex; x: Float64Array } {
@@ -317,15 +322,15 @@ function readPt(
  * one or more residuals. We collect them into a flat array so the Jacobian can
  * be computed row-by-row with finite differences.
  */
-type Residual = (x: Float64Array) => number;
+export type Residual = (x: Float64Array) => number;
 
-interface ResidualSet {
+export interface ResidualSet {
   residuals: Residual[];
   /** Parallel array: source constraint id per residual row (for reporting) */
   sourceIds: string[];
 }
 
-function buildResiduals(
+export function buildResiduals(
   segments: SketchSegment[],
   constraints: SketchConstraint[],
   dimensions: SketchDimension[],
@@ -689,20 +694,20 @@ function squaredLen(seg: SketchSegment, x: Float64Array, vars: VarIndex): number
 
 const JAC_EPS = 1e-6;
 
-function evalResiduals(rs: Residual[], x: Float64Array): Float64Array {
+export function evalResiduals(rs: Residual[], x: Float64Array): Float64Array {
   const out = new Float64Array(rs.length);
   for (let i = 0; i < rs.length; i++) out[i] = rs[i](x);
   return out;
 }
 
-function residualNorm(r: Float64Array): number {
+export function residualNorm(r: Float64Array): number {
   let s = 0;
   for (let i = 0; i < r.length; i++) s += r[i] * r[i];
   return Math.sqrt(s);
 }
 
 /** Numerical Jacobian via forward differences. J is stored row-major (m × n). */
-function jacobian(rs: Residual[], x: Float64Array, r0: Float64Array): Float64Array {
+export function jacobian(rs: Residual[], x: Float64Array, r0: Float64Array): Float64Array {
   const m = rs.length;
   const n = x.length;
   const J = new Float64Array(m * n);
@@ -740,7 +745,7 @@ function lmStep(J: Float64Array, r: Float64Array, m: number, n: number, lambda: 
 }
 
 /** In-place Gaussian elimination with partial pivoting. */
-function solveDense(A: Float64Array, b: Float64Array, n: number): Float64Array | null {
+export function solveDense(A: Float64Array, b: Float64Array, n: number): Float64Array | null {
   const M = new Float64Array(A);
   const y = new Float64Array(b);
   for (let k = 0; k < n; k++) {
@@ -822,10 +827,16 @@ function findRedundantConstraints(
   return redundant;
 }
 
-/** Estimate numerical rank of J via diagonal of Jᵀ J with column-scaled tolerance. */
+/** Estimate the numerical rank of J = the number of pivots (above `tol`) of the
+ *  Gram matrix Jᵀ J under symmetric Gaussian elimination with diagonal (full
+ *  symmetric) pivoting. Counting pivots of the FULL Gram matrix — not just its
+ *  diagonal — is what makes coupled/linearly-dependent constraint rows reduce
+ *  rank correctly. (Squaring into Jᵀ J squares the conditioning, but the
+ *  diagonal pivot keeps verified analytic cases — including ~10³ scale spreads —
+ *  correct; see the DOF & diagnostics tests.) */
 function estimateRank(J: Float64Array, m: number, n: number): number {
   if (m === 0 || n === 0) return 0;
-  // Gram matrix diagonals as column norms, then Gram-Schmidt-ish reduction.
+  // Full Gram matrix M = JᵀJ (n×n), then pivoted symmetric elimination below.
   const M = new Float64Array(n * n);
   for (let i = 0; i < n; i++) {
     for (let j = i; j < n; j++) {

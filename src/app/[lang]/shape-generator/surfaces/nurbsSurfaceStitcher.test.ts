@@ -94,6 +94,30 @@ describe('polylineDistance', () => {
   it('empty polylines → infinity', () => {
     expect(polylineDistance([], [])).toBe(Infinity);
   });
+
+  it('is sampling-independent: the same curve at different densities reads 0', () => {
+    // The seam-detection scenario: two patches trimmed independently share an
+    // edge but sample it differently. Distance must reflect geometry, not point
+    // counts. (The old same-parameter-sample average returned 0.67–1.75 mm here
+    // and would have missed the seam at the default 0.01 mm tolerance.)
+    const a: Array<[number, number, number]> = [[0, 0, 0], [10, 0, 0]];
+    const b: Array<[number, number, number]> = [[0, 0, 0], [3, 0, 0], [10, 0, 0]];
+    const c: Array<[number, number, number]> = [[0, 0, 0], [1, 0, 0], [2, 0, 0], [10, 0, 0]];
+    expect(polylineDistance(a, b)).toBeCloseTo(0, 6);
+    expect(polylineDistance(a, c)).toBeCloseTo(0, 6);
+    // A reversed copy is the same set of points → still zero gap.
+    expect(polylineDistance(a, [...b].reverse())).toBeCloseTo(0, 6);
+  });
+
+  it('two patches sharing a curve still stitch when sampled at different densities', () => {
+    const fine: Array<[number, number, number]> = [[0, 0, 0], [2, 0, 0], [5, 0, 0], [8, 0, 0], [10, 0, 0]];
+    const coarse: Array<[number, number, number]> = [[0, 0, 0], [10, 0, 0]];
+    const pA: Patch = { id: 'A', boundaries: [{ patchId: 'A', side: 'u1', points: fine }] };
+    const pB: Patch = { id: 'B', boundaries: [{ patchId: 'B', side: 'u0', points: coarse }] };
+    const r = stitch([pA, pB], { toleranceMm: 0.01 });
+    expect(r.seams).toHaveLength(1);          // seam found despite density mismatch
+    expect(r.shells).toHaveLength(1);
+  });
 });
 
 describe('snapMatchedBoundaries', () => {

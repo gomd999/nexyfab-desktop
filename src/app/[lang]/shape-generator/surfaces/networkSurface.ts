@@ -6,15 +6,15 @@
  * The surface passes through every intersection point of the
  * U/V curves and smoothly interpolates between them.
  *
- * Approach: at each (u, v) sample, blend the nearest U-curves +
- * V-curves using bilinear weights. For dense curve networks this
- * converges to the right surface; sparse networks reduce to a
- * Coons-like patch.
- *
- * Implementation kept compact: real CAD's GORDON surface uses
- * 3 components (ruled U + ruled V − tensor product of intersection
- * points). This module ships the simpler bilinear-interpolation
- * variant which is preview-grade.
+ * Approach: the **Gordon surface** (Gordon 1969) —
+ *     S = U(u,v) + V(u,v) − T(u,v)
+ * where U interpolates the U-curves across V, V interpolates the
+ * V-curves across U, and T is the bilinear tensor product of the
+ * curve-intersection grid. The −T term is what makes S pass through
+ * EVERY network curve exactly (not just the intersection points): on
+ * any grid line V and T cancel, leaving the corresponding curve.
+ * (The earlier (U+V)/2 average only hit the intersections and sagged
+ * halfway to the chord between them — preview-grade. This is exact.)
  */
 
 import type { PatchPoint, Curve } from './coonsPatch';
@@ -55,26 +55,29 @@ function lerp(a: PatchPoint, b: PatchPoint, t: number): PatchPoint {
   };
 }
 
-/** Evaluate the network surface at (u, v). */
+/** Evaluate the network (Gordon) surface at (u, v). */
 export function evalNetworkSurface(net: NetworkInput, u: number, v: number): PatchPoint {
-  // Interpolate u along the two nearest u-curves.
+  // U term: interpolate the u-curves across V.
   const [iV0, iV1, mixV] = findInterval(net.vSamples, v);
-  const pUC0 = net.uCurves[iV0]!(u);
-  const pUC1 = net.uCurves[iV1]!(u);
-  const uBlend = lerp(pUC0, pUC1, mixV);
+  const uBlend = lerp(net.uCurves[iV0]!(u), net.uCurves[iV1]!(u), mixV);
 
-  // Interpolate v along the two nearest v-curves.
+  // V term: interpolate the v-curves across U.
   const [iU0, iU1, mixU] = findInterval(net.uSamples, u);
-  const pVC0 = net.vCurves[iU0]!(v);
-  const pVC1 = net.vCurves[iU1]!(v);
-  const vBlend = lerp(pVC0, pVC1, mixU);
+  const vBlend = lerp(net.vCurves[iU0]!(v), net.vCurves[iU1]!(v), mixU);
 
-  // Average — Gordon-like (sum) minus the bilinear of corner intersections.
-  // For simplicity we average rather than full Gordon subtract.
+  // T term: bilinear tensor product of the four bounding intersection points.
+  // The intersection at (uSamples[a], vSamples[b]) is the b-th u-curve sampled
+  // at the a-th u-position. Subtracting this is what makes the surface
+  // interpolate every curve (on a grid line, vBlend − T = 0).
+  const I = (a: number, b: number): PatchPoint => net.uCurves[b]!(net.uSamples[a]!);
+  const t0 = lerp(I(iU0, iV0), I(iU1, iV0), mixU);
+  const t1 = lerp(I(iU0, iV1), I(iU1, iV1), mixU);
+  const tBlend = lerp(t0, t1, mixV);
+
   return {
-    x: (uBlend.x + vBlend.x) * 0.5,
-    y: (uBlend.y + vBlend.y) * 0.5,
-    z: (uBlend.z + vBlend.z) * 0.5,
+    x: uBlend.x + vBlend.x - tBlend.x,
+    y: uBlend.y + vBlend.y - tBlend.y,
+    z: uBlend.z + vBlend.z - tBlend.z,
   };
 }
 

@@ -29,18 +29,42 @@ export async function verifyStlBuffer(buf: Buffer): Promise<GeometryStats> {
   const { verifyGeneratedModel, formatVerificationCritique } = await import(
     '../../../app/[lang]/shape-generator/analysis/verifyGeneratedModel'
   );
+  const { countThroughHoles, computeSurfaceArea, detectAllAxisAlignedHoles, computeDihedralStats, computeMinWallThickness } = await import('./faceInspection');
   const geo = await parseStlBufferToGeometry(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
   const result = verifyGeneratedModel(geo);
   const watertight = result.checks.find(c => c.id === 'watertight')?.pass ?? false;
   const manifoldClean = !result.checks.some(c => c.id === 'manifold' && !c.pass);
   const critique = formatVerificationCritique(result);
   const bb = geo.boundingBox; // verifyGeneratedModel computed it
+  // X2 — Euler-characteristic through-hole count (null if mesh isn't
+  // a single closed manifold; verify_spec suppresses the check then).
+  const genus = countThroughHoles(geo);
+  // X5 — surface area for the wall-count / fin / hollow-shell catch.
+  const surfaceArea_mm2 = computeSurfaceArea(geo);
+  // X6/X7 — axis-aligned hole peaks across all 3 cardinal axes.
+  const detectedHoles = detectAllAxisAlignedHoles(geo,
+    bb ? { bbox: {
+      min: [bb.min.x, bb.min.y, bb.min.z],
+      max: [bb.max.x, bb.max.y, bb.max.z],
+    }} : {},
+  );
+  // X8 — dihedral stats so verify_spec can confirm fillet application.
+  const dihedralStats = computeDihedralStats(geo);
+  // X11 — minimum wall thickness sampled via inward raycasts; null when
+  // the mesh is a convex solid (no opposing wall to register a hit).
+  const wallStats = await computeMinWallThickness(geo);
+  const minWallThicknessMm = wallStats.minMm === Infinity ? null : wallStats.minMm;
   return {
     triangleCount: result.metrics.triangleCount,
     volume_mm3: result.metrics.volumeMm3,
+    surfaceArea_mm2,
     manifold: watertight && manifoldClean,
     watertight,
     componentCount: result.metrics.componentCount,
+    genus,
+    detectedHoles,
+    dihedralStats,
+    minWallThicknessMm,
     ...(bb ? { bbox: { min: [bb.min.x, bb.min.y, bb.min.z] as [number, number, number], max: [bb.max.x, bb.max.y, bb.max.z] as [number, number, number] } } : {}),
     ...(critique ? { issues: critique } : {}),
   };
@@ -303,6 +327,63 @@ export const serverBrepAdapter: BrepAdapter = {
         ? { min: [mnx, mny, mnz] as [number, number, number], max: [mxx, mxy, mxz] as [number, number, number] }
         : undefined;
       return { ok: true, triangleCount, bbox };
+    } catch (e) {
+      return { ok: false, reason: (e as Error).message };
+    }
+  },
+
+  /**
+   * X1 (B-rep parallel) — Tessellate to a flat positions buffer so
+   * verify_spec_brep can run the full mesh-side inspection chain
+   * (genus, hole peaks, dihedrals, wall thickness) without re-rendering
+   * through OpenSCAD. Each triangle expands into 9 floats (the OCCT
+   * mesh ships indexed; we explode here so the result matches the
+   * non-indexed convention faceInspection.ts expects from STLLoader).
+   */
+  async toMeshGeometry(args) {
+    try {
+      const { getShape } = await import('../../../app/[lang]/shape-generator/features/occtEngine');
+      const host = getShape(args.handle) as { mesh?: (opts?: { tolerance?: number; angularTolerance?: number }) => { vertices: number[]; triangles: number[] } };
+      if (!host || typeof host.mesh !== 'function') {
+        return { ok: false, reason: `handle ${args.handle} cannot be tessellated` };
+      }
+      const mesh = host.mesh({ tolerance: args.tolerance ?? 0.1, angularTolerance: 0.2 });
+      const vertices = mesh.vertices ?? [];
+      const indices = mesh.triangles ?? [];
+      const triangleCount = Math.floor(indices.length / 3);
+      if (triangleCount === 0 || vertices.length < 9) {
+        return { ok: false, reason: 'OCCT mesh produced no triangles' };
+      }
+      // Explode indexed → flat positions (3 verts × 3 coords per triangle).
+      const positions = new Float32Array(triangleCount * 9);
+      let mnx = Infinity, mny = Infinity, mnz = Infinity;
+      let mxx = -Infinity, mxy = -Infinity, mxz = -Infinity;
+      for (let t = 0; t < triangleCount; t++) {
+        for (let v = 0; v < 3; v++) {
+          const vi = indices[t * 3 + v]! * 3;
+          const x = vertices[vi]!;
+          const y = vertices[vi + 1]!;
+          const z = vertices[vi + 2]!;
+          positions[t * 9 + v * 3 + 0] = x;
+          positions[t * 9 + v * 3 + 1] = y;
+          positions[t * 9 + v * 3 + 2] = z;
+          if (x < mnx) mnx = x; if (x > mxx) mxx = x;
+          if (y < mny) mny = y; if (y > mxy) mxy = y;
+          if (z < mnz) mnz = z; if (z > mxz) mxz = z;
+        }
+      }
+      if (!Number.isFinite(mnx)) {
+        return { ok: false, reason: 'tessellated mesh has no finite vertices' };
+      }
+      return {
+        ok: true,
+        positions,
+        triangleCount,
+        bbox: {
+          min: [mnx, mny, mnz] as [number, number, number],
+          max: [mxx, mxy, mxz] as [number, number, number],
+        },
+      };
     } catch (e) {
       return { ok: false, reason: (e as Error).message };
     }

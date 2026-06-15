@@ -4,10 +4,26 @@
 // PBR PHYSICAL / ENVIRONMENT / CAMERA / OUTPUT four sections + Final CTA
 // matching mockup #33.
 
+import type { ReactNode } from 'react';
 import { SidePanel, PropSection, PropRow, PropSelect, PropCheck } from './';
 import { I } from '../Icons';
 import { CustomMaterialUpload } from './CustomMaterialUpload';
 import { FeatureCatalogPanel, type CatalogPanelDict } from '../../featureCatalog/FeatureCatalogPanel';
+import { loc } from '../../lib/loc';
+
+// Wraps a control whose handler isn't wired yet so it reads as unavailable
+// instead of pretending to work (dimmed + non-interactive + tooltip).
+// (2026-06-12 honesty: disable dead controls rather than show fake-working ones)
+function Soon({ children, isKo }: { children: ReactNode; isKo: boolean }) {
+  return (
+    <span
+      title={isKo ? '준비 중 — 아직 적용되지 않습니다' : 'Coming soon — not yet wired'}
+      style={{ display: 'block', opacity: 0.4, pointerEvents: 'none' }}
+    >
+      {children}
+    </span>
+  );
+}
 
 const RENDER_CATALOG_DICT_KO: CatalogPanelDict = {
   catalogTitle: '렌더/애니메이션 도구', catalogLoading: '불러오는 중…', catalogReady: '준비됨',
@@ -20,6 +36,7 @@ const RENDER_CATALOG_DICT_EN: CatalogPanelDict = {
 
 export interface RenderRightPaneProps {
   isKo: boolean;
+  lang: string;
   material: string;
   color: string;
   roughness: number;
@@ -44,7 +61,7 @@ export interface RenderRightPaneProps {
 }
 
 export function RenderRightPane({
-  isKo, material, color, roughness, metalness, exposure, hdri, lens,
+  isKo, lang, material, color, roughness, metalness, exposure, hdri, lens,
   specular = 0.5, clearcoat = 0, anisotropy = 0.3,
   setRoughness, setMetalness, setExposure, setHdri, setLens,
   setSpecular, setClearcoat, setAnisotropy,
@@ -71,43 +88,43 @@ export function RenderRightPane({
         ))}
       </div>
 
-      <PropSection title={isKo ? 'PBR · 물리' : 'PBR — Physical'}>
-        <Slider label={isKo ? '거칠기' : 'Roughness'} value={roughness} min={0} max={1} step={0.01} onChange={setRoughness} />
-        <Slider label={isKo ? '금속성' : 'Metalness'} value={metalness} min={0} max={1} step={0.01} onChange={setMetalness} />
-        <Slider label={isKo ? '반사' : 'Specular'}    value={specular}    min={0} max={1} step={0.01} onChange={setSpecular    ?? (() => {})} />
-        <Slider label={isKo ? '클리어코트' : 'Clearcoat'} value={clearcoat} min={0} max={1} step={0.01} onChange={setClearcoat ?? (() => {})} />
-        <Slider label={isKo ? '이방성' : 'Anisotropy'}  value={anisotropy}  min={0} max={1} step={0.01} onChange={setAnisotropy  ?? (() => {})} />
-        <PropRow label={isKo ? '범프맵' : 'Bump map'}>
+      <PropSection title={loc(lang, { ko: 'PBR · 물리', en: 'PBR — Physical', ja: 'PBR · 物理', zh: 'PBR · 物理', es: 'PBR · Físico', ar: 'PBR · فيزيائي' })}>
+        <Slider label={loc(lang, { ko: '거칠기', en: 'Roughness', ja: '粗さ', zh: '粗糙度', es: 'Rugosidad', ar: 'الخشونة' })} value={roughness} min={0} max={1} step={0.01} onChange={setRoughness} />
+        <Slider label={loc(lang, { ko: '금속성', en: 'Metalness', ja: 'メタリック', zh: '金属度', es: 'Metalicidad', ar: 'المعدنية' })} value={metalness} min={0} max={1} step={0.01} onChange={setMetalness} />
+        <Slider label={loc(lang, { ko: '반사', en: 'Specular', ja: '反射', zh: '高光', es: 'Especular', ar: 'انعكاس' })}    value={specular}    min={0} max={1} step={0.01} onChange={setSpecular    ?? (() => {})} />
+        <Slider label={loc(lang, { ko: '클리어코트', en: 'Clearcoat', ja: 'クリアコート', zh: '清漆', es: 'Barniz', ar: 'طبقة شفافة' })} value={clearcoat} min={0} max={1} step={0.01} onChange={setClearcoat ?? (() => {})} />
+        <Slider label={loc(lang, { ko: '이방성', en: 'Anisotropy', ja: '異方性', zh: '各向异性', es: 'Anisotropía', ar: 'التباين الاتجاهي' })}  value={anisotropy}  min={0} max={1} step={0.01} onChange={setAnisotropy  ?? (() => {})} />
+        <PropRow label={loc(lang, { ko: '범프맵', en: 'Bump map', ja: 'バンプマップ', zh: '凹凸贴图', es: 'Mapa de relieve', ar: 'خريطة النتوء' })}>
           <span style={{ fontSize: 11, color: 'var(--nx-accent)', cursor: 'pointer' }}>brushed_x.exr ↗</span>
         </PropRow>
       </PropSection>
 
-      <PropSection title={isKo ? '커스텀 텍스처' : 'Custom textures'} defaultExpanded={false}>
+      <PropSection title={loc(lang, { ko: '커스텀 텍스처', en: 'Custom textures', ja: 'カスタムテクスチャ', zh: '自定义纹理', es: 'Texturas personalizadas', ar: 'مواد مخصصة' })} defaultExpanded={false}>
         <CustomMaterialUpload isKo={isKo} />
       </PropSection>
 
-      <PropSection title={isKo ? '환경' : 'Environment'}>
+      <PropSection title={loc(lang, { ko: '환경', en: 'Environment', ja: '環境', zh: '环境', es: 'Entorno', ar: 'البيئة' })}>
         <PropRow label="HDRI">
           <PropSelect
             value={hdri}
             onChange={setHdri}
             options={[
-              { value: 'studio', label: isKo ? '스튜디오' : 'Studio' },
-              { value: 'workshop', label: isKo ? '작업장' : 'Workshop' },
-              { value: 'overcast', label: isKo ? '흐림' : 'Overcast' },
-              { value: 'warehouse', label: isKo ? '창고' : 'Warehouse' },
+              { value: 'studio', label: loc(lang, { ko: '스튜디오', en: 'Studio', ja: 'スタジオ', zh: '影棚', es: 'Estudio', ar: 'استوديو' }) },
+              { value: 'workshop', label: loc(lang, { ko: '작업장', en: 'Workshop', ja: '作業場', zh: '车间', es: 'Taller', ar: 'ورشة' }) },
+              { value: 'overcast', label: loc(lang, { ko: '흐림', en: 'Overcast', ja: '曇り', zh: '阴天', es: 'Nublado', ar: 'غائم' }) },
+              { value: 'warehouse', label: loc(lang, { ko: '창고', en: 'Warehouse', ja: '倉庫', zh: '仓库', es: 'Almacén', ar: 'مستودع' }) },
             ]}
           />
         </PropRow>
-        <Slider label={isKo ? '회전' : 'Rotation'} value={0} min={0} max={360} step={1} onChange={() => { /* TODO */ }} />
-        <Slider label={isKo ? '노출' : 'Exposure'} value={exposure} min={0.1} max={3} step={0.05} onChange={setExposure} />
-        <PropRow label={isKo ? '바닥 그림자' : 'Ground shadow'}>
-          <PropCheck checked onChange={() => { /* TODO */ }} label={isKo ? '받기' : 'Catch'} />
+        <Soon isKo={isKo}><Slider label={loc(lang, { ko: '회전', en: 'Rotation', ja: '回転', zh: '旋转', es: 'Rotación', ar: 'تدوير' })} value={0} min={0} max={360} step={1} onChange={() => { /* not wired */ }} /></Soon>
+        <Slider label={loc(lang, { ko: '노출', en: 'Exposure', ja: '露出', zh: '曝光', es: 'Exposición', ar: 'التعريض' })} value={exposure} min={0.1} max={3} step={0.05} onChange={setExposure} />
+        <PropRow label={loc(lang, { ko: '바닥 그림자', en: 'Ground shadow', ja: '地面の影', zh: '地面阴影', es: 'Sombra de suelo', ar: 'ظل الأرضية' })}>
+          <Soon isKo={isKo}><PropCheck checked onChange={() => { /* not wired */ }} label={loc(lang, { ko: '받기', en: 'Catch', ja: '受光', zh: '接收', es: 'Recibir', ar: 'التقاط' })} /></Soon>
         </PropRow>
       </PropSection>
 
-      <PropSection title={isKo ? '카메라' : 'Camera'}>
-        <PropRow label={isKo ? '렌즈' : 'Lens'}>
+      <PropSection title={loc(lang, { ko: '카메라', en: 'Camera', ja: 'カメラ', zh: '相机', es: 'Cámara', ar: 'الكاميرا' })}>
+        <PropRow label={loc(lang, { ko: '렌즈', en: 'Lens', ja: 'レンズ', zh: '镜头', es: 'Lente', ar: 'العدسة' })}>
           <input
             type="number"
             value={lens}
@@ -121,47 +138,47 @@ export function RenderRightPane({
             }}
           />
         </PropRow>
-        <Slider label={isKo ? '조리개' : 'Aperture'} value={0.5} min={0.95} max={32} step={0.1} onChange={() => { /* TODO */ }} />
-        <Slider label={isKo ? '초점거리' : 'Focus dist.'} value={0.6} min={0} max={10} step={0.1} onChange={() => { /* TODO */ }} />
-        <PropRow label={isKo ? '구도' : 'Composition'}>
-          <PropSelect
+        <Soon isKo={isKo}><Slider label={loc(lang, { ko: '조리개', en: 'Aperture', ja: '絞り', zh: '光圈', es: 'Apertura', ar: 'فتحة العدسة' })} value={0.5} min={0.95} max={32} step={0.1} onChange={() => { /* not wired */ }} /></Soon>
+        <Soon isKo={isKo}><Slider label={loc(lang, { ko: '초점거리', en: 'Focus dist.', ja: '焦点距離', zh: '对焦距离', es: 'Dist. de enfoque', ar: 'مسافة التركيز' })} value={0.6} min={0} max={10} step={0.1} onChange={() => { /* not wired */ }} /></Soon>
+        <PropRow label={loc(lang, { ko: '구도', en: 'Composition', ja: '構図', zh: '构图', es: 'Composición', ar: 'التكوين' })}>
+          <Soon isKo={isKo}><PropSelect
             value="hero"
-            onChange={() => { /* TODO */ }}
+            onChange={() => { /* not wired */ }}
             options={[
-              { value: 'hero', label: isKo ? '히어로 · 3/4 iso' : 'Hero · 3/4 iso' },
-              { value: 'front', label: isKo ? '정면' : 'Front' },
-              { value: 'top', label: isKo ? '상부' : 'Top-down' },
+              { value: 'hero', label: loc(lang, { ko: '히어로 · 3/4 iso', en: 'Hero · 3/4 iso', ja: 'ヒーロー · 3/4 iso', zh: '主视角 · 3/4 等距', es: 'Héroe · 3/4 iso', ar: 'بطولي · 3/4 متساوي' }) },
+              { value: 'front', label: loc(lang, { ko: '정면', en: 'Front', ja: '正面', zh: '正面', es: 'Frontal', ar: 'أمامي' }) },
+              { value: 'top', label: loc(lang, { ko: '상부', en: 'Top-down', ja: '上面', zh: '俯视', es: 'Superior', ar: 'علوي' }) },
             ]}
-          />
+          /></Soon>
         </PropRow>
       </PropSection>
 
-      <PropSection title={isKo ? '출력' : 'Output'}>
-        <PropRow label={isKo ? '해상도' : 'Resolution'}>
-          <PropSelect
+      <PropSection title={loc(lang, { ko: '출력', en: 'Output', ja: '出力', zh: '输出', es: 'Salida', ar: 'الإخراج' })}>
+        <PropRow label={loc(lang, { ko: '해상도', en: 'Resolution', ja: '解像度', zh: '分辨率', es: 'Resolución', ar: 'الدقة' })}>
+          <Soon isKo={isKo}><PropSelect
             value="4k"
-            onChange={() => { /* TODO */ }}
+            onChange={() => { /* not wired */ }}
             options={[
               { value: '4k', label: '3840 × 2160 · 4K' },
               { value: '2k', label: '2560 × 1440 · 2K' },
               { value: '1080', label: '1920 × 1080 · FHD' },
             ]}
-          />
+          /></Soon>
         </PropRow>
-        <PropRow label={isKo ? '샘플' : 'Samples'}>
+        <PropRow label={loc(lang, { ko: '샘플', en: 'Samples', ja: 'サンプル', zh: '采样', es: 'Muestras', ar: 'العينات' })}>
           <span className="mono" style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>256 spp</span>
         </PropRow>
-        <PropRow label={isKo ? '포맷' : 'Format'}>
-          <PropSelect
+        <PropRow label={loc(lang, { ko: '포맷', en: 'Format', ja: 'フォーマット', zh: '格式', es: 'Formato', ar: 'الصيغة' })}>
+          <Soon isKo={isKo}><PropSelect
             value="png16"
-            onChange={() => { /* TODO */ }}
+            onChange={() => { /* not wired */ }}
             options={[
               { value: 'png16', label: 'PNG · 16-bit' },
               { value: 'png8', label: 'PNG · 8-bit' },
               { value: 'jpg', label: 'JPG · 90%' },
               { value: 'exr', label: 'OpenEXR · 32-bit float' },
             ]}
-          />
+          /></Soon>
         </PropRow>
       </PropSection>
 
@@ -182,11 +199,11 @@ export function RenderRightPane({
           }}
         >
           <I.bolt size={14} />
-          {isKo ? '최종 · 4K · 256 spp 렌더' : 'Final · 4K · 256 spp Render'}
+          {loc(lang, { ko: '최종 · 4K · 256 spp 렌더', en: 'Final · 4K · 256 spp Render', ja: '最終 · 4K · 256 spp レンダリング', zh: '最终 · 4K · 256 spp 渲染', es: 'Final · 4K · 256 spp Render', ar: 'نهائي · 4K · 256 spp تصيير' })}
         </button>
       </div>
 
-      <PropSection title={isKo ? '렌더 도구 (라이브)' : 'Render Tools (live)'}>
+      <PropSection title={loc(lang, { ko: '렌더 도구 (라이브)', en: 'Render Tools (live)', ja: 'レンダーツール (ライブ)', zh: '渲染工具（实时）', es: 'Herramientas de render (en vivo)', ar: 'أدوات التصيير (مباشر)' })}>
         <FeatureCatalogPanel
           route="render"
           license="pro"

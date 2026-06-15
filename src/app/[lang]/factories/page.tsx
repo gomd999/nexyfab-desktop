@@ -7,13 +7,13 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   return {
     title: isKo ? '제조사 검색 | NexyFab' : 'Find Manufacturers | NexyFab',
     description: isKo
-      ? '검증된 한국·중국 제조사를 검색하고 비교하세요. 공정별, 지역별, 인증별 필터로 최적의 파트너를 찾아보세요.'
-      : 'Search and compare verified Korean and Chinese manufacturers. Filter by process, region, and certification to find the right partner.',
+      ? '한국·중국 공장 디렉터리를 검색하고 비교하세요. 공정별·지역별 필터로 후보를 좁혀보세요.'
+      : 'Search and compare our Korea-China factory directory. Filter by process and region to shortlist candidates.',
     openGraph: {
       title: isKo ? '제조사 검색 | NexyFab' : 'Find Manufacturers | NexyFab',
       description: isKo
-        ? '검증된 한국·중국 제조사를 검색하고 비교하세요. 공정별, 지역별, 인증별 필터로 최적의 파트너를 찾아보세요.'
-        : 'Search and compare verified Korean and Chinese manufacturers. Filter by process, region, and certification to find the right partner.',
+        ? '한국·중국 공장 디렉터리를 검색하고 비교하세요. 공정별·지역별 필터로 후보를 좁혀보세요.'
+        : 'Search and compare our Korea-China factory directory. Filter by process and region to shortlist candidates.',
       type: 'website',
       locale: isKo ? 'ko_KR' : 'en_US',
       siteName: 'NexyFab',
@@ -22,8 +22,8 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
       card: 'summary_large_image',
       title: isKo ? '제조사 검색 | NexyFab' : 'Find Manufacturers | NexyFab',
       description: isKo
-        ? '검증된 한국·중국 제조사를 검색하고 비교하세요. 공정별, 지역별, 인증별 필터로 최적의 파트너를 찾아보세요.'
-        : 'Search and compare verified Korean and Chinese manufacturers. Filter by process, region, and certification to find the right partner.',
+        ? '한국·중국 공장 디렉터리를 검색하고 비교하세요. 공정별·지역별 필터로 후보를 좁혀보세요.'
+        : 'Search and compare our Korea-China factory directory. Filter by process and region to shortlist candidates.',
     },
   };
 }

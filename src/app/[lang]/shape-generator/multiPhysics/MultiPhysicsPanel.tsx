@@ -86,7 +86,7 @@ export default function MultiPhysicsPanel({
       </div>
 
       <div style={{ marginBottom: 10 }}>
-        <span style={{ fontSize: 11, color: '#94a3b8' }}>{t.workflow}: </span>
+        <span style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>{t.workflow}: </span>
         <select value={workflow} onChange={e => setWorkflow(e.target.value as WorkflowKind)} style={fieldStyle()}>
           <option value="thermal-structural">{t.thermalStructural}</option>
           <option value="fluid-structural">{t.fluidStructural}</option>
@@ -112,7 +112,7 @@ export default function MultiPhysicsPanel({
 
           {result.history.length > 0 && (
             <div style={{ marginTop: 10 }}>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{t.history}</div>
+              <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginBottom: 4 }}>{t.history}</div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 60 }}>
                 {result.history.map((h, i) => {
                   const max = Math.max(...result.history.map(x => x.residual)) || 1;
@@ -133,8 +133,9 @@ export default function MultiPhysicsPanel({
   );
 }
 
-function panelStyle(): React.CSSProperties { return { position: 'fixed', top: 80, right: 20, zIndex: 700, width: 300, background: '#0f172a', color: '#f1f5f9', borderRadius: 10, padding: '14px 16px', boxShadow: '0 12px 24px rgba(0,0,0,0.35)', fontFamily: 'system-ui, sans-serif' }; }
+// right: 336 clears the 320px right property pane (2026-06-12)
+function panelStyle(): React.CSSProperties { return { position: 'fixed', top: 80, right: 340, zIndex: 700, width: 300, background: 'var(--nx-panel)', color: 'var(--nx-text)', borderRadius: 10, padding: '14px 16px', boxShadow: '0 12px 24px rgba(0,0,0,0.35)', fontFamily: 'system-ui, sans-serif' }; }
 function headerStyle(): React.CSSProperties { return { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }; }
-function xBtnStyle(): React.CSSProperties { return { background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16 }; }
-function fieldStyle(): React.CSSProperties { return { background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155', borderRadius: 4, padding: '3px 6px', fontSize: 11 }; }
+function xBtnStyle(): React.CSSProperties { return { background: 'transparent', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 16 }; }
+function fieldStyle(): React.CSSProperties { return { background: 'var(--nx-panel-2)', color: 'var(--nx-text)', border: '1px solid var(--nx-border)', borderRadius: 4, padding: '3px 6px', fontSize: 11 }; }
 function primaryBtn(): React.CSSProperties { return { width: '100%', background: '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer' }; }

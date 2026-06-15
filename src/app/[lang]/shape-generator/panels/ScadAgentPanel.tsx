@@ -21,7 +21,10 @@ import ScadAgentCheckpointTimeline from './ScadAgentCheckpointTimeline';
 import ScadAgentTemplateGallery from './ScadAgentTemplateGallery';
 import ScadAgentPresence from './ScadAgentPresence';
 import ScadAgentAssemblyTree from './ScadAgentAssemblyTree';
+import ScadAgentFeatureTree from './ScadAgentFeatureTree';
 import BetaBanner from '@/components/nexyfab/BetaBanner';
+import { useAnalysisStore } from '../store/analysisStore';
+import type { SpecVerificationResult } from '@/lib/ai/scad-agent/specVerification';
 
 const dict = {
   ko: {
@@ -262,6 +265,11 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
   const abortRef = useRef<AbortController | null>(null);
   const threadEndRef = useRef<HTMLDivElement | null>(null);
 
+  // Bridge SCAD agent verify_spec tool_results into the shared analysis
+  // store so the OpenScadPanel's verify section can show the same result
+  // without the user re-pasting the intent JSON.
+  const setLatestVerifySpecResult = useAnalysisStore(s => s.setLatestVerifySpecResult);
+
   // W8 — stable per-tab user identity for the presence heartbeat.
   // Persists across React re-renders but resets on full page reload — that
   // matches "this browser tab is one viewer" semantics. Real auth user id
@@ -309,6 +317,10 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
 
     let assistantBuffer = '';
     let assistantId: string | null = null;
+    // Track tool_call name by callId so we can recognise verify_spec
+    // tool_result events and forward the meta payload to the shared
+    // analysis store (consumed by OpenScadPanel's verify section).
+    const callIdToName = new Map<string, string>();
 
     await streamScadAgent({
       userPrompt: prompt,
@@ -324,6 +336,7 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
           ]);
         } else if (ev.type === 'tool_call') {
           const call = ev.call as ToolCall;
+          callIdToName.set(call.id, call.name);
           pushEntry({
             kind: 'tool',
             text: '',
@@ -331,6 +344,31 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
             preview: extractPreview(call.name, call.args),
           });
         } else if (ev.type === 'tool_result') {
+          // Bridge verify_spec results to the analysis store so the
+          // OpenScadPanel verify section picks them up. The agent's
+          // verify_spec tool packs the whole SpecVerificationResult into
+          // result.meta — reconstruct by spreading the named sub-fields.
+          const toolName = callIdToName.get(ev.callId);
+          if (toolName === 'verify_spec' && ev.result.ok && ev.result.meta) {
+            const meta = ev.result.meta as Record<string, unknown>;
+            const reconstructed: SpecVerificationResult = {
+              ok: meta.passed === true,
+              verifiable: meta.verifiable === true,
+              mismatches: [],
+              ...(meta.expected ? { expected: meta.expected as SpecVerificationResult['expected'] } : {}),
+              ...(meta.measured ? { measured: meta.measured as SpecVerificationResult['measured'] } : {}),
+              ...(meta.holeCount ? { holeCount: meta.holeCount as SpecVerificationResult['holeCount'] } : {}),
+              ...(meta.volume ? { volume: meta.volume as SpecVerificationResult['volume'] } : {}),
+              ...(meta.surfaceArea ? { surfaceArea: meta.surfaceArea as SpecVerificationResult['surfaceArea'] } : {}),
+              ...(meta.holePositions ? { holePositions: meta.holePositions as SpecVerificationResult['holePositions'] } : {}),
+              ...(meta.fillet ? { fillet: meta.fillet as SpecVerificationResult['fillet'] } : {}),
+              ...(meta.chamfer ? { chamfer: meta.chamfer as SpecVerificationResult['chamfer'] } : {}),
+              ...(meta.threads ? { threads: meta.threads as SpecVerificationResult['threads'] } : {}),
+              ...(meta.wallThickness ? { wallThickness: meta.wallThickness as SpecVerificationResult['wallThickness'] } : {}),
+              ...(meta.intentIssues ? { intentIssues: meta.intentIssues as SpecVerificationResult['intentIssues'] } : {}),
+            };
+            setLatestVerifySpecResult(reconstructed);
+          }
           // Patch the most-recent matching tool entry with the result
           // outcome. We don't index by callId because the badge already
           // sits one step above in thread order — simpler to mutate last.
@@ -430,7 +468,8 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
   }, [session]);
 
   const containerStyle: React.CSSProperties = variant === 'floating'
-    ? { position: 'fixed', top: 80, right: 16, width: 420, maxHeight: 'calc(100vh - 100px)', zIndex: 700 }
+    // right: 336 clears the 320px right property pane (2026-06-12)
+    ? { position: 'fixed', top: 80, right: 336, width: 420, maxHeight: 'calc(100vh - 100px)', zIndex: 700 }
     : { width: '100%', height: '100%', minHeight: 360 };
 
   return (
@@ -471,6 +510,28 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
           session={session}
           onQuery={(p) => { setInput(p); }}
         />
+        {/* Z1 — Parametric feature tree visualization (SolidWorks
+            FeatureManager equivalent). Read-only in this mount —
+            inline param edit + delete callbacks are a follow-up that
+            will route through tree_set_param / tree_remove_node. */}
+        {session?.featureTree && Object.keys(session.featureTree.nodes).length > 0 && (
+          <ScadAgentFeatureTree
+            lang={lang}
+            tree={session.featureTree}
+            onParamChange={(nodeId, key, newValue) => {
+              // Routes through the agent so tree_set_param fires inside
+              // the same session context (single source of truth — no
+              // direct client-side mutation that would drift from server).
+              const valueStr = typeof newValue === 'string'
+                ? JSON.stringify(newValue)
+                : String(newValue);
+              void handleSend(`Call tree_set_param with nodeId=${nodeId} key=${key} value=${valueStr}`);
+            }}
+            onRemove={(nodeId) => {
+              void handleSend(`Call tree_remove_node with nodeId=${nodeId}`);
+            }}
+          />
+        )}
         <button onClick={handleNewSession}
           disabled={busy && !abortRef.current}
           style={btnSecondary}>

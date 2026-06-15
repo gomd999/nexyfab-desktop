@@ -18,6 +18,8 @@ import { scaleFeature } from './scale';
 import { moveCopyFeature } from './moveCopy';
 import { splitBodyFeature } from './splitBody';
 import { bendFeature, flangeFeature, flatPatternFeature, hemFeature, jogFeature } from './sheetMetal';
+import { tabFeature } from './tab';
+import { bendReliefFeature, cornerReliefFeature } from './reliefCuts';
 import { variableFilletFeature } from './variableFillet';
 import { boundarySurfaceFeature } from './boundarySurface';
 import { revolveFeature } from './revolve';
@@ -31,6 +33,8 @@ import { sketchFeature } from './sketch';
 import { helixFeature } from './helix';
 import { variableShellFeature } from './variableShell';
 import { ribFeature } from './rib';
+import { deleteFaceFeature } from './deleteFace';
+import { offsetFaceFeature } from './offsetFace';
 
 // ─── Registry ────────────────────────────────────────────────────────────────
 
@@ -52,6 +56,9 @@ export const FEATURE_DEFS: FeatureDefinition[] = [
   flangeFeature,
   hemFeature,
   jogFeature,
+  tabFeature,
+  bendReliefFeature,
+  cornerReliefFeature,
   flatPatternFeature,
   variableFilletFeature,
   boundarySurfaceFeature,
@@ -65,6 +72,8 @@ export const FEATURE_DEFS: FeatureDefinition[] = [
   helixFeature,
   variableShellFeature,
   ribFeature,
+  deleteFaceFeature,
+  offsetFaceFeature,
 ];
 
 export const FEATURE_MAP: Record<MapBackedFeatureType, FeatureDefinition> =

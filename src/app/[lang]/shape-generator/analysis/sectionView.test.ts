@@ -88,3 +88,59 @@ describe('generateSectionView · empty / degenerate inputs', () => {
     expect(Array.isArray(r.hatchLines)).toBe(true);
   });
 });
+
+describe('generateSectionView · outline geometry is the true cross-section (verified)', () => {
+  const outlineBBox = (lines: { x1: number; y1: number; x2: number; y2: number }[]) => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const l of lines) {
+      minX = Math.min(minX, l.x1, l.x2); maxX = Math.max(maxX, l.x1, l.x2);
+      minY = Math.min(minY, l.y1, l.y2); maxY = Math.max(maxY, l.y1, l.y2);
+    }
+    return { w: maxX - minX, h: maxY - minY };
+  };
+
+  // A 20(X) × 30(Y) × 40(Z) box: the cut exposes the two axes orthogonal to the
+  // plane normal, projected by sectionProjectionFor. ⊥X → Z×Y (40×30),
+  // ⊥Y → X×Z (20×40), ⊥Z → X×Y (20×30).
+  it.each([
+    ['x', 40, 30],
+    ['y', 20, 40],
+    ['z', 20, 30],
+  ] as ['x' | 'y' | 'z', number, number][])(
+    'a box cut ⊥%s yields the correct %d×%d cross-section',
+    (axis, w, h) => {
+      const box = new THREE.BoxGeometry(20, 30, 40);
+      const r = generateSectionView(box, { axis, offset: 0, label: 'A' });
+      const b = outlineBBox(r.outlineLines);
+      expect(b.w).toBeCloseTo(w, 0);
+      expect(b.h).toBeCloseTo(h, 0);
+    },
+  );
+
+  it('a cylinder cut ⊥ its axis is a circle of the right diameter; ⊥ side is a rectangle', () => {
+    const cyl = new THREE.CylinderGeometry(10, 10, 40, 48); // R10, axis +Y
+    const circle = outlineBBox(generateSectionView(cyl, { axis: 'y', offset: 0, label: 'A' }).outlineLines);
+    expect(circle.w).toBeCloseTo(20, 0); // diameter
+    expect(circle.h).toBeCloseTo(20, 0);
+    const rect = outlineBBox(generateSectionView(cyl, { axis: 'x', offset: 0, label: 'B' }).outlineLines);
+    // right-view projection of the X=0 slice: width = diameter (Z, 20),
+    // height = cylinder length (Y, 40).
+    expect(rect.w).toBeCloseTo(20, 0); // diameter
+    expect(rect.h).toBeCloseTo(40, 0); // cylinder length
+  });
+
+  it('hatch is clipped to a round section — never spills into the bbox corners', () => {
+    // ⊥Y cut of an axis-aligned cylinder is a circle of radius 10 centred on the
+    // projected origin. A bbox fill would reach the corner (~14.1); a clipped
+    // fill keeps every hatch endpoint within the circle.
+    const cyl = new THREE.CylinderGeometry(10, 10, 40, 64);
+    const r = generateSectionView(cyl, { axis: 'y', offset: 0, label: 'A' });
+    expect(r.hatchLines.length).toBeGreaterThan(0);
+    for (const h of r.hatchLines) {
+      expect(Math.hypot(h.x1, h.y1)).toBeLessThanOrEqual(10.5);
+      expect(Math.hypot(h.x2, h.y2)).toBeLessThanOrEqual(10.5);
+      // still a 45° line
+      expect((h.y2 - h.y1) - (h.x2 - h.x1)).toBeCloseTo(0, 4);
+    }
+  });
+});

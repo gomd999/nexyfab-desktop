@@ -13,12 +13,12 @@ const _SEARCH_PLACEHOLDERS: Record<Lang, string> = {
 
 export default function JsonLd({ lang }: { lang: Lang }) {
     const descriptions: Record<Lang, string> = {
-        kr: 'AI 3D 모델링부터 AI 견적까지. 30만+ 공장 DB 기반으로 최적의 제조 파트너를 매칭하는 올인원 플랫폼입니다.',
-        en: 'From AI 3D modeling to instant quoting. Match with the best manufacturers from our 300,000+ factory database.',
-        ja: 'AI 3Dモデリングから見積もりまで。30万件以上の工場DBから最適な製造パートナーをマッチングするプラットフォームです。',
-        cn: '从AI 3D建模到即时报价。基于30万+工厂数据库匹配最优制造合作伙伴的一站式平台。',
-        es: 'Desde modelado 3D con IA hasta cotización instantánea. Encuentre el mejor socio entre más de 300,000 fábricas.',
-        ar: 'من النمذجة ثلاثية الأبعاد بالذكاء الاصطناعي إلى التسعير الفوري. مطابقة مع أفضل المصنعين من قاعدة بيانات تضم أكثر من 300,000 مصنع.',
+        kr: 'AI 3D 모델링부터 AI 견적까지. 28만+ 공장 DB 기반으로 최적의 제조 파트너를 매칭하는 올인원 플랫폼입니다.',
+        en: 'From AI 3D modeling to instant quoting. Match with manufacturers from our 286,000+ factory database.',
+        ja: 'AI 3Dモデリングから見積もりまで。28万件以上の工場DBから最適な製造パートナーをマッチングするプラットフォームです。',
+        cn: '从AI 3D建模到即时报价。基于28万+工厂数据库匹配最优制造合作伙伴的一站式平台。',
+        es: 'Desde modelado 3D con IA hasta cotización instantánea. Encuentre el mejor socio entre más de 286,000 fábricas.',
+        ar: 'من النمذجة ثلاثية الأبعاد بالذكاء الاصطناعي إلى التسعير الفوري. مطابقة مع أفضل المصنعين من قاعدة بيانات تضم أكثر من 286,000 مصنع.',
     };
 
     const organization = {

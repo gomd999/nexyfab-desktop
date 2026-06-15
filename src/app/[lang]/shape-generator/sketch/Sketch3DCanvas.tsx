@@ -6,6 +6,7 @@ import type { ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, Grid, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { SketchProfile, SketchPoint, SketchTool } from './types';
+import { resolveCssColor } from '../lib/glColors';
 
 /**
  * 3D Sketch Canvas — draw on a selected plane (XY, XZ, YZ) directly in the 3D viewport.
@@ -15,6 +16,23 @@ import type { SketchProfile, SketchPoint, SketchTool } from './types';
  */
 
 type PlaneType = 'xy' | 'xz' | 'yz';
+
+// WebGL materials (three.js) CANNOT parse CSS custom properties — passing
+// color="var(--nx-ok)" to a <lineBasicMaterial>/<meshBasicMaterial> makes
+// THREE.Color fall back to white, so the sketch profile / points / guides
+// rendered as near-invisible lines on the light viewport. Use explicit hex
+// for everything that lives in the 3D scene (DOM/<Html> labels keep CSS vars,
+// which resolve fine). Vivid mid-tones stay visible on light AND dark themes.
+// (2026-06-12 sketch visibility fix)
+const GL = {
+  ok:      '#16a34a', // closed profile (green)
+  warn:    '#f59e0b', // open profile / secondary points (amber)
+  error:   '#ef4444', // start point (red)
+  accent:  '#3b82f6', // guides / handles (blue)
+  accent2: '#58a6ff',
+  neutral: '#64748b', // origin marker
+  guide:   '#94a3b8', // dashed helper lines
+} as const;
 
 interface Sketch3DCanvasProps {
   profile: SketchProfile;
@@ -100,7 +118,7 @@ function AxisArrow({ dir, color, label }: { dir: [number, number, number]; color
         <meshBasicMaterial color={color} />
       </mesh>
       <Html position={endPos} center style={{ pointerEvents: 'none' }}>
-        <div style={{ color, fontSize: 13, fontWeight: 900, fontFamily: 'monospace', textShadow: '0 0 4px rgba(0,0,0,0.8)' }}>
+        <div style={{ color, fontSize: 13, fontWeight: 900, fontFamily: 'monospace', textShadow: '0 0 2px var(--nx-bg), 0 0 4px var(--nx-bg)' }}>
           {label}
         </div>
       </Html>
@@ -111,15 +129,15 @@ function AxisArrow({ dir, color, label }: { dir: [number, number, number]; color
 function AxisSystem() {
   return (
     <group>
-      <AxisArrow dir={[1, 0, 0]} color="var(--nx-error)" label="X" />
+      <AxisArrow dir={[1, 0, 0]} color={GL.error} label="X" />
       <AxisArrow dir={[0, 1, 0]} color="#22c55e" label="Y" />
-      <AxisArrow dir={[0, 0, 1]} color="var(--nx-accent)" label="Z" />
+      <AxisArrow dir={[0, 0, 1]} color={GL.accent} label="Z" />
       <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[1.5, 12, 12]} />
-        <meshBasicMaterial color="var(--nx-text)" />
+        <meshBasicMaterial color={GL.neutral} />
       </mesh>
       <Html position={[-6, -6, 0]} style={{ pointerEvents: 'none' }}>
-        <div style={{ color: 'var(--nx-text-2)', fontSize: 10, fontWeight: 700, fontFamily: 'monospace', textShadow: '0 0 3px rgba(0,0,0,0.9)' }}>
+        <div style={{ color: 'var(--nx-text-2)', fontSize: 10, fontWeight: 700, fontFamily: 'monospace', textShadow: '0 0 2px var(--nx-bg), 0 0 4px var(--nx-bg)' }}>
           O(0,0,0)
         </div>
       </Html>
@@ -152,7 +170,10 @@ function GridTickLabels({ plane, range = 100, step = 25 }: { plane: 'xy' | 'xz' 
     <>
       {ticks.map((t, i) => (
         <Html key={i} position={t.pos} center style={{ pointerEvents: 'none' }}>
-          <div style={{ color: '#4b5563', fontSize: 9, fontWeight: 600, fontFamily: 'monospace', textShadow: '0 0 3px rgba(0,0,0,0.9)', whiteSpace: 'nowrap' }}>
+          {/* Background-colored halo (not a dark blur) keeps the tick numbers
+              crisp on both themes — the previous dark blur muddied dark-gray
+              text on the light viewport. (2026-06-12 readability) */}
+          <div style={{ color: 'var(--nx-text-2)', fontSize: 9, fontWeight: 700, fontFamily: 'monospace', textShadow: '0 0 2px var(--nx-bg), 0 0 4px var(--nx-bg)', whiteSpace: 'nowrap' }}>
             {t.label}
           </div>
         </Html>
@@ -275,12 +296,12 @@ function Crosshair({
     <group>
       {crosshairGeo && (
         <lineSegments geometry={crosshairGeo}>
-          <lineBasicMaterial color="var(--nx-accent)" transparent opacity={0.2} depthTest={false} />
+          <lineBasicMaterial color={GL.accent} transparent opacity={0.35} depthTest={false} />
         </lineSegments>
       )}
       {alignGeo && (
         <lineSegments geometry={alignGeo}>
-          <lineBasicMaterial color="var(--nx-warn)" transparent opacity={0.6} depthTest={false} />
+          <lineBasicMaterial color={GL.warn} transparent opacity={0.6} depthTest={false} />
         </lineSegments>
       )}
       {/* Snap indicator ring */}
@@ -296,7 +317,7 @@ function Crosshair({
           <div style={{
             color: snapTarget ? 'var(--nx-ok)' : 'var(--nx-accent-2)',
             fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
-            background: 'rgba(0,0,0,0.8)', padding: '2px 6px', borderRadius: 3,
+            background: 'var(--nx-glass-strong)', padding: '2px 6px', borderRadius: 3,
             border: snapTarget ? '1px solid #22c55e' : '1px solid rgba(99,102,241,0.4)',
             whiteSpace: 'nowrap',
           }}>
@@ -324,7 +345,7 @@ function PreviewLine({ profile, cursorPt, plane }: { profile: SketchProfile; cur
   if (!geo) return null;
   return (
     <lineSegments geometry={geo}>
-      <lineBasicMaterial color="var(--nx-accent)" transparent opacity={0.5} depthTest={false} />
+      <lineBasicMaterial color={GL.accent} transparent opacity={0.6} depthTest={false} />
     </lineSegments>
   );
 }
@@ -476,7 +497,7 @@ function ProfileLines({ profile, plane }: { profile: SketchProfile; plane: 'xy' 
   if (points.length === 0) return null;
   return (
     <lineSegments geometry={geo}>
-      <lineBasicMaterial color={profile.closed ? 'var(--nx-ok)' : 'var(--nx-warn)'} linewidth={2} />
+      <lineBasicMaterial color={profile.closed ? GL.ok : GL.warn} linewidth={2} />
     </lineSegments>
   );
 }
@@ -494,14 +515,14 @@ function PointMarkers({ profile, plane }: { profile: SketchProfile; plane: 'xy' 
           <group key={i}>
             <mesh position={pos3d}>
               <sphereGeometry args={[1.5, 8, 8]} />
-              <meshBasicMaterial color={i === 0 ? 'var(--nx-error)' : 'var(--nx-warn)'} />
+              <meshBasicMaterial color={i === 0 ? GL.error : GL.warn} />
             </mesh>
             <Html position={[pos3d.x, pos3d.y + 4, pos3d.z]} style={{ pointerEvents: 'none' }}>
               <div style={{
                 color: i === 0 ? '#fca5a5' : '#fde68a',
                 fontSize: 9, fontWeight: 700, fontFamily: 'monospace',
-                background: 'rgba(0,0,0,0.7)', padding: '1px 4px', borderRadius: 3,
-                whiteSpace: 'nowrap', textShadow: '0 0 2px rgba(0,0,0,0.8)',
+                background: 'var(--nx-glass-strong)', border: '1px solid var(--nx-border)', padding: '1px 4px', borderRadius: 3,
+                whiteSpace: 'nowrap', textShadow: '0 0 2px var(--nx-bg), 0 0 4px var(--nx-bg)',
               }}>
                 P{i}{i === 0 ? '(S)' : ''} ({p.x},{p.y})
               </div>
@@ -594,7 +615,7 @@ function ProfileBoundingBox({ profile, plane }: { profile: SketchProfile; plane:
   return (
     <group>
       <lineSegments geometry={bbGeo}>
-        <lineDashedMaterial color="var(--nx-border-strong)" dashSize={4} gapSize={3} linewidth={1} />
+        <lineDashedMaterial color={GL.guide} dashSize={4} gapSize={3} linewidth={1} />
       </lineSegments>
       {w > 1 && (
         <Html position={wPos} center style={{ pointerEvents: 'none' }}>
@@ -639,7 +660,7 @@ function InfoHUD({
     }}>
       {/* Active plane badge */}
       <div style={{
-        background: 'rgba(13,17,23,0.92)', border: '1px solid var(--nx-accent)',
+        background: 'var(--nx-glass-strong)', border: '1px solid var(--nx-accent)',
         padding: '6px 12px', borderRadius: 8,
         display: 'flex', alignItems: 'center', gap: 8,
       }}>
@@ -654,8 +675,11 @@ function InfoHUD({
         </div>
       </div>
 
-      {/* View preset buttons */}
-      <div style={{ display: 'flex', gap: 4 }}>
+      {/* View presets + plane selector — merged onto a single row (separated by
+          a thin divider) to flatten the top-left tower. View buttons reorient
+          the camera; the compact XY/XZ/YZ group sets the active sketch plane.
+          (2026-06-12 declutter) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
         {(Object.entries(VIEW_PRESETS) as [ViewPreset, typeof VIEW_PRESETS[ViewPreset]][]).map(([key, v]) => (
           <button
             key={key}
@@ -672,16 +696,14 @@ function InfoHUD({
             {v.label}
           </button>
         ))}
-      </div>
-
-      {/* Plane selector */}
-      <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ width: 1, height: 16, background: 'var(--nx-border)', margin: '0 2px' }} />
         {(['xz', 'xy', 'yz'] as PlaneType[]).map(p => (
           <button
             key={p}
             onClick={() => onPlaneSelect(p)}
+            title={`Sketch plane → ${PLANE_LABELS[p]}`}
             style={{
-              padding: '3px 8px', borderRadius: 5, cursor: 'pointer',
+              padding: '4px 8px', borderRadius: 5, cursor: 'pointer',
               border: `1px solid ${plane === p ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
               background: plane === p ? 'var(--nx-accent-soft)' : 'var(--nx-glass-strong)',
               color: plane === p ? 'var(--nx-accent-2)' : 'var(--nx-text-3)',
@@ -703,17 +725,6 @@ function InfoHUD({
           👁 Facing {PLANE_LABELS[detectedPlane]} — auto-switching
         </div>
       )}
-
-      {/* Shortcuts */}
-      <div style={{
-        background: 'var(--nx-glass-strong)', border: '1px solid var(--nx-panel-2)',
-        padding: '3px 10px', borderRadius: 6,
-        fontSize: 9, fontWeight: 600, color: 'var(--nx-border-strong)', fontFamily: 'monospace',
-        display: 'flex', gap: 8, pointerEvents: 'none',
-      }}>
-        <span style={{ color: canUndo ? 'var(--nx-warn)' : 'var(--nx-border-strong)' }}>Ctrl+Z</span>
-        <span>[T]op [F]ront [R]ight [I]so</span>
-      </div>
 
       {/* Cursor coordinate display */}
       {cursorPt && (
@@ -822,7 +833,7 @@ function ExtrudeDepthHandle({
       {/* Shaft along extrude direction */}
       <group quaternion={arrowQuat} position={[extrudeDir.x * depth / 2, extrudeDir.y * depth / 2, extrudeDir.z * depth / 2]}>
         <mesh geometry={shaftGeo}>
-          <meshStandardMaterial color="var(--nx-accent)" roughness={0.4} metalness={0.1} transparent opacity={0.7} />
+          <meshStandardMaterial color={GL.accent} roughness={0.4} metalness={0.1} transparent opacity={0.7} />
         </mesh>
         {/* Cone tip at top of shaft (drag handle) */}
         <mesh
@@ -855,7 +866,7 @@ function ExtrudeDepthHandle({
           const extGeo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
           return (
             <mesh geometry={extGeo} position={[0, -depth / 2, 0]}>
-              <meshBasicMaterial color="var(--nx-accent)" wireframe transparent opacity={0.25} />
+              <meshBasicMaterial color={GL.accent} wireframe transparent opacity={0.25} />
             </mesh>
           );
         })()}
@@ -925,7 +936,7 @@ export default function Sketch3DCanvas({ profile, onProfileChange, activeTool, s
       />
 
       <Canvas camera={{ position: [80, 120, 160], fov: 50 }} style={{ width: '100%', height: '100%' }}>
-        <color attach="background" args={['var(--nx-bg)']} />
+        <color attach="background" args={[resolveCssColor('--nx-bg', '#0c0f14')]} />
         <ambientLight intensity={0.5} />
         <directionalLight position={[20, 30, 15]} intensity={1} />
 
@@ -956,13 +967,17 @@ export default function Sketch3DCanvas({ profile, onProfileChange, activeTool, s
         {/* Grid with tick labels */}
         <GridTickLabels plane={sketchPlane} range={100} step={25} />
 
+        {/* Explicit hex — drei <Grid> feeds these to a WebGL shader as
+            THREE.Color, which can't parse CSS vars (var(--…) → black). Mid
+            grays stay visible on both light and dark themes; majors thicker
+            so the scale reads clearly. (2026-06-12 contrast fix) */}
         <Grid
           args={[400, 400]}
           position={gridProps.position}
           rotation={gridProps.rotation}
-          cellSize={5} cellThickness={0.3} cellColor="var(--nx-panel-2)"
-          sectionSize={25} sectionThickness={0.6} sectionColor="var(--nx-border)"
-          fadeDistance={300} fadeStrength={3} infiniteGrid
+          cellSize={5} cellThickness={0.5} cellColor="#aab1bd"
+          sectionSize={25} sectionThickness={1.0} sectionColor="#727b8a"
+          fadeDistance={320} fadeStrength={2} infiniteGrid
         />
 
         {/* Extrude depth drag handle */}

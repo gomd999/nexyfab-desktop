@@ -30,6 +30,9 @@ export type FeatureType =
   | 'flange'
   | 'hem'
   | 'jog'
+  | 'tab'
+  | 'bendRelief'
+  | 'cornerRelief'
   | 'flatPattern'
   | 'variableFillet'
   | 'boundarySurface'
@@ -43,7 +46,9 @@ export type FeatureType =
   | 'nurbsSurface'
   | 'helix'
   | 'variableShell'
-  | 'rib';
+  | 'rib'
+  | 'deleteFace'
+  | 'offsetFace';
 
 /** Types dispatched through `FEATURE_MAP` / registry (not the inline sketchExtrude path). */
 export type MapBackedFeatureType = Exclude<FeatureType, 'sketchExtrude'>;
@@ -99,6 +104,11 @@ export interface FeatureInstance {
   id: string;
   type: FeatureType;
   params: Record<string, number>;
+  /** SolidWorks-style "=expression" sidecar (raw expression per param key).
+   *  `params[key]` already holds the evaluated value — the pipeline ignores
+   *  this; it's carried so UI surfaces (PropertyManager / FeatureParams) can
+   *  show the driving expression. See equations/featureParamExpressions.ts. */
+  paramExpressions?: Record<string, string>;
   enabled: boolean;
   error?: string;
   /** Phase-1 "fillet / chamfer on selected edges". Persistent edge ids

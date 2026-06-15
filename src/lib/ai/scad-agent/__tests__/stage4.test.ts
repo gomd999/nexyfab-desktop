@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { makeTools, type BrepAdapter, type SolverAdapter, type MateAdapter, type DrawingStudioAdapter } from '../tools';
 import type { AgentSession } from '../types';
+import { serverMateAdapter } from '../serverMate';
 
 let nextHandleSeq = 0;
 const newHandle = () => `mock:${++nextHandleSeq}`;
@@ -243,6 +244,50 @@ describe('I — mate connectors', () => {
     const r = await tools.solve_mates!({}, session);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.meta?.transforms).toBeDefined();
+  });
+
+  it('add_composite_intent builds a non-whitelisted shape via primitive composition (W1/W2)', async () => {
+    const tools = makeTools(host({}));
+    const session = blankSession();
+    const r = await tools.add_composite_intent!({
+      parts: [
+        { intent: { shapeId: 'box', params: { width: 40, height: 40, depth: 20 } } },
+        { intent: { shapeId: 'cylinder', params: { diameter: 10, height: 30 } }, op: 'subtract' },
+      ],
+    }, session);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(session.scadSource).toMatch(/difference\(\)/);
+      expect(session.lastIntent).toBeUndefined(); // composite ≠ single intent
+      expect(r.meta?.expectedBbox).toMatchObject({ wMm: 40, hMm: 40, dMm: 20 });
+    }
+  });
+
+  it('add_composite_intent rejects an unrenderable part', async () => {
+    const tools = makeTools(host({}));
+    const session = blankSession();
+    const r = await tools.add_composite_intent!({ parts: [{ intent: { shapeId: 'nope', params: {} } }] }, session);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe('COMPOSITE_REJECTED');
+  });
+
+  it('end-to-end: real serverMateAdapter repositions a part from session placements', async () => {
+    const tools = makeTools(host({ brep: fullBrep(), mateSolver: serverMateAdapter }));
+    const session = blankSession();
+    // Two cylinder-like parts off-axis; concentric should pull `pin` onto `base`.
+    session.placements = {
+      base: { position: [0, 0, 0], cylindrical: true },
+      pin: { position: [12, 0, 0], cylindrical: true },
+    };
+    await tools.add_mate!({ kind: 'concentric', handleA: 'base', handleB: 'pin', faceTagA: 'side', faceTagB: 'side' }, session);
+    const r = await tools.solve_mates!({}, session);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.meta?.transforms).toBeDefined();
+      // The solved delta was written back into the session placement.
+      expect(session.placements!.pin.position[0]).toBeCloseTo(0, 2);
+      expect(session.placements!.base.position[0]).toBe(0); // anchor unmoved
+    }
   });
 });
 

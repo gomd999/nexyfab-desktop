@@ -44,8 +44,10 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   // verified.
   const settings = getAdminSettings();
   const siteStats = {
-    factoryCount: settings.landingFactoryCount ?? '10,000+',
-    factoryQualifier: settings.landingFactoryCountQualifier ?? 'verified',
+    // Honest defaults: the real directory size (~286k listings), no 'verified'
+    // qualifier (there are no verified partners). Admin can still override both.
+    factoryCount: settings.landingFactoryCount ?? '286,000+',
+    factoryQualifier: settings.landingFactoryCountQualifier ?? '',
   };
 
   return <HomeClient dict={dict} langCode={langCode} siteStats={siteStats} />;

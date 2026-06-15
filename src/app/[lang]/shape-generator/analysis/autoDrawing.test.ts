@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import {
   projectGeometry,
+  generateAutoKeyDimensions,
   computeDrawingGeometryFingerprint,
   type ProjectionView,
 } from './autoDrawing';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildDrawingSvgString } from './drawingExport';
 
 function makeBox(w = 60, h = 40, d = 20): THREE.BufferGeometry {
@@ -72,6 +74,106 @@ describe('projectGeometry · view-direction sanity', () => {
   it('returns empty for geometry without a position attribute', () => {
     const empty = new THREE.BufferGeometry();
     expect(projectGeometry(empty, 'front', 1)).toEqual([]);
+  });
+});
+
+describe('projectGeometry · unwelded mesh weld (no triangulation artifacts)', () => {
+  // An L-shaped profile extruded with THREE — like every primitive / Extrude /
+  // boolean result the drawing pipeline actually feeds in — comes out UNWELDED
+  // (each triangle owns its vertices). projectGeometry keys edges by vertex
+  // index, so without an internal weld the front face's triangulation diagonals
+  // survive as spurious "feature" lines. The clean L outline has exactly 6
+  // edges; the face has 4 fan triangles → 3 interior diagonals that must NOT
+  // appear. Front view also bounds 40 × 40.
+  function lProfile(): THREE.BufferGeometry {
+    const s = new THREE.Shape();
+    s.moveTo(0, 0); s.lineTo(40, 0); s.lineTo(40, 20); s.lineTo(20, 20);
+    s.lineTo(20, 40); s.lineTo(0, 40); s.lineTo(0, 0);
+    return new THREE.ExtrudeGeometry(s, { depth: 10, bevelEnabled: false });
+  }
+  const bbox = (lines: { x1: number; y1: number; x2: number; y2: number }[]) => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const l of lines) {
+      minX = Math.min(minX, l.x1, l.x2); maxX = Math.max(maxX, l.x1, l.x2);
+      minY = Math.min(minY, l.y1, l.y2); maxY = Math.max(maxY, l.y1, l.y2);
+    }
+    return { w: maxX - minX, h: maxY - minY };
+  };
+
+  it('an unwelded L-extrusion front view is the clean 6-edge outline, not 9', () => {
+    const lines = projectGeometry(lProfile(), 'front', 1);
+    expect(lines.length).toBe(6);                 // 6 outline edges, 0 diagonals
+    const b = bbox(lines);
+    expect(b.w).toBeCloseTo(40, 3);
+    expect(b.h).toBeCloseTo(40, 3);
+  });
+
+  it('is idempotent: pre-welding the same mesh yields the identical line count', () => {
+    const raw = lProfile();
+    const welded = mergeVertices(raw);
+    expect(projectGeometry(welded, 'front', 1).length)
+      .toBe(projectGeometry(raw, 'front', 1).length);
+  });
+});
+
+describe('projectGeometry · true HLR opt-in (depth occlusion)', () => {
+  it('a convex box is unchanged — no edge is falsely hidden by its own faces', () => {
+    const box = makeBox(20, 30, 40);
+    const def = projectGeometry(box, 'front', 1);
+    const hlr = projectGeometry(box, 'front', 1, { trueHlr: true });
+    // Same 4-edge silhouette, all visible either way (no self-occlusion).
+    expect(hlr.filter(l => l.type === 'hidden')).toHaveLength(0);
+    expect(hlr.filter(l => l.type === 'visible').length).toBe(def.filter(l => l.type === 'visible').length);
+  });
+
+  it('a box parked behind a larger box has its edges marked hidden', () => {
+    // Front block 40×40×10 at the origin; a smaller block behind it at z=−30.
+    const front = new THREE.BoxGeometry(40, 40, 10).toNonIndexed();
+    const back = new THREE.BoxGeometry(20, 20, 10); back.translate(0, 0, -30);
+    const backNI = back.toNonIndexed();
+    const fa = front.getAttribute('position').array as Float32Array;
+    const ba = backNI.getAttribute('position').array as Float32Array;
+    const merged = new Float32Array(fa.length + ba.length);
+    merged.set(fa, 0); merged.set(ba, fa.length);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(merged, 3));
+
+    const hlr = projectGeometry(g, 'front', 1, { trueHlr: true });
+    // The back block's silhouette is occluded → some hidden lines appear, which
+    // the face-normal pass alone never produces here.
+    expect(hlr.filter(l => l.type === 'hidden').length).toBeGreaterThan(0);
+    expect(hlr.filter(l => l.type === 'visible').length).toBeGreaterThan(0);
+  });
+});
+
+describe('generateAutoKeyDimensions · per-view dimension VALUES (verified)', () => {
+  // The dimension TEXT must report the projected extents of THIS view, not a
+  // fixed pair of world axes. For a 20(X) × 30(Y) × 40(Z) box: front sees X×Y,
+  // top sees X×Z, right sees Z×Y, etc. Regression: width/height were hardcoded
+  // to world X/Y, so a top view labeled its 40 mm depth as "30.0".
+  const box = () => new THREE.BoxGeometry(20, 30, 40);
+  const dimValues = (view: ProjectionView, scale = 1): [number, number] => {
+    const { texts } = generateAutoKeyDimensions(box(), view, scale);
+    return [parseFloat(texts[0].text), parseFloat(texts[1].text)];
+  };
+
+  it.each([
+    ['front', 20, 30],
+    ['top', 20, 40],
+    ['right', 40, 30],
+    ['left', 40, 30],
+    ['bottom', 20, 40],
+  ] as [ProjectionView, number, number][])(
+    '%s view labels [W=%d, H=%d] matching its projected axes',
+    (view, w, h) => {
+      const [vw, vh] = dimValues(view);
+      expect(vw).toBeCloseTo(w, 1);
+      expect(vh).toBeCloseTo(h, 1);
+    },
+  );
+
+  it('reports the true model length regardless of drawing scale', () => {
+    expect(dimValues('top', 1)).toEqual(dimValues('top', 3)); // scale-invariant text
   });
 });
 

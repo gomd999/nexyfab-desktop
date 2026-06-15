@@ -189,7 +189,8 @@ export default function DesignVariantsPanel({
 
   return (
     <div style={{
-      position: 'fixed', top: 80, right: 20, width: 440, maxHeight: 'calc(100vh - 120px)',
+      // right: 340 clears the 320px right property pane (2026-06-12)
+      position: 'fixed', top: 80, right: 340, width: 440, maxHeight: 'calc(100vh - 120px)',
       background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: 8,
       boxShadow: '0 8px 32px rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex',
       flexDirection: 'column', color: 'var(--nx-text)', fontSize: 13,

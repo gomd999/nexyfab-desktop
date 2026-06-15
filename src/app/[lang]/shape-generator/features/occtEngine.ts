@@ -331,6 +331,52 @@ export function occtBoxBooleanWithPrimitive(
   };
 }
 
+/**
+ * General solid-vs-solid boolean: combine TWO arbitrary registered OCCT solids
+ * (by handle), not just a primitive tool. This lifts the box-host/primitive-tool
+ * limitation of occtBoxBooleanWithPrimitive — either operand can be any
+ * feature-built B-rep (extrude, revolve, sweep, loft, a prior boolean…), so
+ * multi-body booleans compose precisely. Returns geometry + a fresh handle for
+ * chaining, or { handle: null } when a handle is unknown / inputs don't intersect.
+ */
+export function occtBooleanSolids(
+  type: OcctBooleanType,
+  hostHandle: string | null | undefined,
+  toolHandle: string | null | undefined,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctBooleanResult {
+  const host = getShape(hostHandle);
+  const tool = getShape(toolHandle);
+  if (!host || !tool) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  type BoolOps = {
+    cut: (other: unknown) => unknown;
+    fuse: (other: unknown) => unknown;
+    intersect: (other: unknown) => unknown;
+    mesh: (opts?: { tolerance?: number; angularTolerance?: number }) => { vertices: number[]; triangles: number[]; normals: number[] };
+  };
+  const hostOps = host as BoolOps;
+  let result: unknown;
+  if (type === 'subtract') result = hostOps.cut(tool);
+  else if (type === 'union') result = hostOps.fuse(tool);
+  else result = hostOps.intersect(tool);
+
+  const mesh = (result as BoolOps).mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new Float32BufferAttribute(mesh.vertices, 3));
+  if (mesh.normals && mesh.normals.length === mesh.vertices.length) {
+    geometry.setAttribute('normal', new Float32BufferAttribute(mesh.normals, 3));
+  }
+  geometry.setIndex(new Uint32BufferAttribute(mesh.triangles, 1));
+  if (!geometry.attributes.normal) geometry.computeVertexNormals();
+
+  return { geometry, handle: registerShape(result) };
+}
+
 // ─── Fillet / Chamfer via OCCT ──────────────────────────────────────────────
 
 interface MeshedShape {
@@ -359,7 +405,7 @@ export type ReplicadEdgeFinder = { readonly [ReplicadEdgeFinderBrand]: 'Replicad
 interface FilletChamferShape extends MeshedShape {
   /** replicad accepts `(radius, predicate?)`; predicate is an EdgeFinder
    *  or `(edge) => boolean`. NexyFab passes it through opaquely. */
-  fillet: (radius: number, predicate?: (f: ReplicadEdgeFinder) => ReplicadEdgeFinder) => FilletChamferShape;
+  fillet: (radius: number | [number, number], predicate?: (f: ReplicadEdgeFinder) => ReplicadEdgeFinder) => FilletChamferShape;
   chamfer: (distance: number, predicate?: (f: ReplicadEdgeFinder) => ReplicadEdgeFinder) => FilletChamferShape;
   translate: (v: [number, number, number]) => FilletChamferShape;
 }
@@ -743,6 +789,105 @@ export function occtLoftProfiles(
   return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
 }
 
+// ─── Kernel-backed filled surface (Track S — surfacing on the OCCT kernel) ──
+
+export interface OcctSurfaceResult extends OcctExtrudeResult {
+  /** The B-rep surface type OCCT assigned (e.g. BSPLINE_SURFACE) — proves the
+   *  result is a real kernel surface, not a tessellated approximation. */
+  surfaceType: string | null;
+}
+
+interface BSplineEdge { /* opaque replicad Edge */ _e?: never }
+interface FilledFace {
+  geomType: string;
+  mesh: (cfg?: { tolerance?: number; angularTolerance?: number }) => { vertices: number[]; triangles: number[]; normals: number[] };
+}
+
+/**
+ * Build a real B-rep surface FACE filling a 4-sided boundary of (possibly
+ * curved) edges, on the OCCT kernel — `makeBSplineApproximation` fits each
+ * boundary as a B-spline edge, `assembleWire` closes them, `makeNonPlanarFace`
+ * fills the wire (BRepFill). The result is a genuine `Geom_BSplineSurface`-backed
+ * face with exact UV/normals, not a tessellated patch — so trims/knits/offsets
+ * downstream are kernel-exact (Track S goal). Returns the tessellation + a
+ * registry handle + the OCCT surface type. Requires `isOcctReady()`.
+ */
+export function occtFilledSurface(
+  boundary: Array<Array<{ x: number; y: number; z: number }>>,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctSurfaceResult {
+  const rc = requireReplicad();
+  const makeApprox = rc.makeBSplineApproximation as ((pts: Array<[number, number, number]>, cfg?: unknown) => BSplineEdge) | undefined;
+  const assemble = rc.assembleWire as ((edges: BSplineEdge[]) => unknown) | undefined;
+  const makeNonPlanar = rc.makeNonPlanarFace as ((wire: unknown) => FilledFace) | undefined;
+  if (typeof makeApprox !== 'function' || typeof assemble !== 'function' || typeof makeNonPlanar !== 'function'
+      || boundary.length !== 4) {
+    return { geometry: new BufferGeometry(), handle: null, surfaceType: null };
+  }
+  try {
+    const edges = boundary.map((curve) => {
+      if (curve.length < 2) throw new Error('boundary curve needs ≥2 points');
+      return makeApprox(curve.map((p) => [p.x, p.y, p.z] as [number, number, number]));
+    });
+    const wire = assemble(edges);
+    const face = makeNonPlanar(wire);
+    const mesh = face.mesh({
+      tolerance: tessellation.tolerance ?? 0.1,
+      angularTolerance: tessellation.angularTolerance ?? 0.2,
+    });
+    return { geometry: meshToBufferGeometry(mesh), handle: registerShape(face), surfaceType: face.geomType ?? null };
+  } catch (err) {
+    console.warn('[occtFilledSurface] kernel fill failed:', err);
+    return { geometry: new BufferGeometry(), handle: null, surfaceType: null };
+  }
+}
+
+export interface OcctKnitResult extends OcctExtrudeResult {
+  /** Number of faces that were knit. */
+  faceCount: number;
+  /** Exact B-rep volume of the sewn solid (kernel measure), or null. */
+  volume: number | null;
+}
+
+interface ShapeWithFaces { faces: unknown[] }
+interface MeshableSolid { mesh: (cfg?: { tolerance?: number; angularTolerance?: number }) => { vertices: number[]; triangles: number[]; normals: number[] } }
+
+/**
+ * KNIT (sew) the faces of a registered B-rep shape into a watertight shell and
+ * close it into a Solid on the OCCT kernel — `weldShellsAndFaces` stitches shared
+ * edges within tolerance, `makeSolid` caps the shell (Track S surfacing op). The
+ * round-trip (decompose a solid → re-sew) is the cleanest proof the knit is
+ * kernel-exact: the sewn solid's `measureVolume` must match the original. Returns
+ * the tessellation, a handle, the face count and the exact B-rep volume.
+ */
+export function occtKnitSolidFaces(
+  handle: string | null | undefined,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctKnitResult {
+  const rc = requireReplicad();
+  const shape = getShape(handle) as ShapeWithFaces | null;
+  const weld = rc.weldShellsAndFaces as ((fs: unknown[], ignore?: boolean) => unknown) | undefined;
+  const makeSolid = rc.makeSolid as ((fs: unknown[]) => unknown) | undefined;
+  const measureVolume = rc.measureVolume as ((s: unknown) => number) | undefined;
+  if (!shape || typeof weld !== 'function' || typeof makeSolid !== 'function' || !Array.isArray(shape.faces)) {
+    return { geometry: new BufferGeometry(), handle: null, faceCount: 0, volume: null };
+  }
+  try {
+    const faces = shape.faces;
+    const shell = weld(faces, true);
+    const solid = makeSolid([shell]) as MeshableSolid;
+    const volume = typeof measureVolume === 'function' ? measureVolume(solid) : null;
+    const mesh = solid.mesh({
+      tolerance: tessellation.tolerance ?? 0.1,
+      angularTolerance: tessellation.angularTolerance ?? 0.2,
+    });
+    return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid), faceCount: faces.length, volume };
+  } catch (err) {
+    console.warn('[occtKnitSolidFaces] sew/knit failed:', err);
+    return { geometry: new BufferGeometry(), handle: null, faceCount: 0, volume: null };
+  }
+}
+
 interface SweepSketch {
   sweepSketch: (
     fn: (plane: unknown, origin: unknown) => unknown,
@@ -811,6 +956,10 @@ export function occtSweepHelix(
   height: number,
   radius: number,
   tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  /** Helix axis direction (default +Y, matching the legacy sweep wiring). */
+  axisDir: [number, number, number] = [0, 1, 0],
+  /** Left-handed helix (default right-handed). */
+  lefthand = false,
 ): OcctExtrudeResult {
   const rc = requireReplicad();
   const sketchHelix = rc.sketchHelix as
@@ -820,7 +969,7 @@ export function occtSweepHelix(
     || profile.length < 3 || !(radius > 0) || !(height > 0) || !(pitch > 0)) {
     return { geometry: new BufferGeometry(), handle: null };
   }
-  const spine = sketchHelix(pitch, height, radius, [0, 0, 0], [0, 1, 0]);
+  const spine = sketchHelix(pitch, height, radius, [0, 0, 0], axisDir, lefthand);
   const last = profile.length - 1;
   const solid = spine.sweepSketch((plane) => {
     let pp = draw([profile[0]!.x, profile[0]!.y]);
@@ -1055,6 +1204,118 @@ export function occtMirror(
   const mirrored = base.clone().mirror(planeName, [0, 0, 0]);
   const fused = base.clone().fuse(mirrored);
   return meshAndRegister(fused, tessellation);
+}
+
+/** Face selector handed to replicad's `draft` — only the methods we call. */
+interface FaceFinderLike {
+  atAngleWith: (direction: [number, number, number], angle?: number) => FaceFinderLike;
+}
+
+/** B-rep solid that supports replicad's native draft (OCCT BRepOffsetAPI_DraftAngle). */
+interface DraftableSolid extends MeshedShape {
+  draft: (
+    angle: number,
+    faceFinder: (f: FaceFinderLike) => FaceFinderLike,
+    neutralPlane?: string,
+  ) => MeshedShape;
+}
+
+/**
+ * Draft as a real B-rep: taper the host solid's side walls by `angleDeg` about a
+ * neutral plane, via replicad's native draft (OCCT BRepOffsetAPI_DraftAngle).
+ *
+ * The legacy mesh path (draft.ts) just shears every vertex relative to Y=0,
+ * which is geometrically wrong for anything but the simplest box. Here the side
+ * walls — faces whose normal is perpendicular to the +Y pull direction — are the
+ * ones tilted, and the XZ neutral plane (Y=0) keeps the cross-section fixed
+ * there and tapers away from it. `direction` flips the taper sense (0 vs 1).
+ *
+ * Returns a null handle when the host can't be drafted (no faces matched, the
+ * op fails, …) so the caller falls back to the mesh path.
+ */
+export function occtDraft(
+  handle: string | null | undefined,
+  angleDeg: number,
+  direction: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const host = getShape(handle) as DraftableSolid | null;
+  if (!host || typeof host.draft !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const signed = direction === 0 ? angleDeg : -angleDeg;
+  const drafted = host.draft(signed, (f) => f.atAngleWith([0, 1, 0], 90), 'XZ');
+  return meshAndRegister(drafted, tessellation);
+}
+
+/** B-rep solid that supports replicad's uniform scale. */
+interface ScalableSolid extends MeshedShape {
+  scale: (factor: number, center?: [number, number, number]) => MeshedShape;
+}
+
+/**
+ * Scale as a real B-rep so the OCCT chain survives a scale feature (a mesh scale
+ * in the middle of the tree drops the handle and forces everything downstream to
+ * mesh). replicad exposes UNIFORM scale only (`scale(factor)` about the origin,
+ * matching the mesh `makeScale`); a non-uniform (sx≠sy≠sz) scale needs OCCT
+ * `GTransform`, which replicad doesn't surface, so we return a null handle and
+ * the caller meshes. Uniform is the common, feature-safe case.
+ */
+export function occtScale(
+  handle: string | null | undefined,
+  sx: number,
+  sy: number,
+  sz: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const host = getShape(handle) as ScalableSolid | null;
+  if (!host || typeof host.scale !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const eps = 1e-6;
+  if (Math.abs(sx - sy) > eps || Math.abs(sy - sz) > eps) {
+    // Non-uniform: not expressible via replicad's uniform scale → mesh fallback.
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  return meshAndRegister(host.scale(sx), tessellation);
+}
+
+/** B-rep solid that supports translate + fuse (move / copy). */
+interface MovableSolid extends MeshedShape {
+  clone: () => MovableSolid;
+  translate: (v: [number, number, number]) => MovableSolid;
+  fuse: (other: unknown) => MovableSolid;
+}
+
+/**
+ * Move / copy as a real B-rep (another chain-breaker if left to mesh).
+ *   operation 0 (move) → translate the solid in place; one handle.
+ *   operation 1 (copy) → fuse the original with a translated copy into one
+ *     B-rep (a compound when the two are disjoint), matching the mesh path that
+ *     merges original+copy into one geometry.
+ * Null handle if the host can't be translated (caller meshes).
+ */
+export function occtMoveCopy(
+  handle: string | null | undefined,
+  offsetX: number,
+  offsetY: number,
+  offsetZ: number,
+  operation: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const host = getShape(handle) as MovableSolid | null;
+  if (!host || typeof host.translate !== 'function' || typeof host.clone !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const offset: [number, number, number] = [offsetX, offsetY, offsetZ];
+  if (operation === 0) {
+    return meshAndRegister(host.clone().translate(offset), tessellation);
+  }
+  if (typeof host.fuse !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const moved = host.clone().translate(offset);
+  return meshAndRegister(host.clone().fuse(moved), tessellation);
 }
 
 /**
@@ -1342,6 +1603,41 @@ export function occtFilletBox(
 }
 
 /**
+ * Variable-radius fillet: round the selected edge with a radius that varies
+ * linearly from `startRadius` (edge start) to `endRadius` (edge end). replicad's
+ * fillet accepts a `[r1, r2]` radius (FilletRadius) for exactly this — a real
+ * B-rep variable fillet, not the mesh-offset approximation.
+ *
+ * Variable radius is only meaningful along a SINGLE edge, so an `edgeFinder`
+ * (re-resolved from the stored selection by signature, like occtFilletBox)
+ * should restrict it to the picked edge. With no finder it applies to every
+ * edge, which replicad may reject for some solids → the caller's try/catch
+ * falls back to the mesh path.
+ */
+export function occtVariableFillet(
+  hostBox: { w: number; h: number; d: number; cx: number; cy: number; cz: number },
+  startRadius: number,
+  endRadius: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+  hostHandle?: string | null,
+  edgeFinder?: ReplicadEdgeFinder,
+): OcctBooleanResult {
+  const rc = requireReplicad();
+  const chained = getShape(hostHandle) as FilletChamferShape | null;
+  const source: FilletChamferShape = chained ?? (() => {
+    const base = (rc.makeBaseBox as ReplicadLike['makeBaseBox'])(hostBox.w, hostBox.h, hostBox.d) as FilletChamferShape;
+    return base.translate([hostBox.cx, hostBox.cy, hostBox.cz - hostBox.d / 2]);
+  })();
+  const r: [number, number] = [startRadius, endRadius];
+  const filleted = edgeFinder !== undefined ? source.fillet(r, () => edgeFinder) : source.fillet(r);
+  const mesh = filleted.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(filleted) };
+}
+
+/**
  * Chamfer every edge of a box primitive with `distance`. Same scope caveat
  * as occtFilletBox.
  */
@@ -1423,6 +1719,395 @@ export function occtShellBox(
     angularTolerance: tessellation.angularTolerance ?? 0.2,
   });
   return { geometry: meshToBufferGeometry(mesh), handle: registerShape(shelled) };
+}
+
+// ─── Direct editing (Phase 1 — Delete Face / Offset Face) ──────────────────
+//
+// Binding survey (2026-06-10, replicad-opencascadejs WASM):
+//   - BRepAlgoAPI_Defeaturing / BRepTools_RemoveFeatures are NOT bound in the
+//     shipped WASM, so the classic one-call OCCT Delete Face is unavailable.
+//   - What IS available (replicad level): Face.outerWire()/innerWires(),
+//     makeFace(wire, holes) (BRepBuilderAPI_MakeFace + ShapeFix_Face),
+//     weldShellsAndFaces (BRepBuilderAPI_Sewing), makeSolid (ShapeFix_Solid),
+//     Shape.simplify() (ShapeUpgrade_UnifySameDomain), basicFaceExtrusion
+//     (face prism), measureVolume, and shared-TShape identity via isSame().
+//
+// Delete Face therefore ships as sew-and-cap defeaturing: remove the selected
+// face set, find the interior loops it leaves on the remaining faces, cap each
+// loop with a planar face, re-sew, re-solidify. This covers the boss / pocket /
+// hole removal cases (the STEP-defeaturing use case) and HONESTLY REFUSES face
+// sets whose opening is not an interior loop (e.g. deleting one side of a box)
+// or whose healing cap would be non-planar — those need true OCCT defeaturing.
+//
+// Offset Face ships as a planar prism rebuild (push/pull semantics): the face
+// is extruded along its normal and fused (outward) or cut (inward). For the
+// dominant case — planar face with perpendicular neighbour walls — this is
+// identical to SolidWorks Move Face (Offset). Non-planar faces are refused.
+
+export interface FaceOpSelection {
+  /** Click point on the face (mm, world). */
+  position: [number, number, number];
+  /** Outward normal at the click point (unit, world). */
+  normal: [number, number, number];
+}
+
+interface DirectEditEdgeLike {
+  hashCode: number;
+  isSame: (other: unknown) => boolean;
+}
+
+interface DirectEditWireLike {
+  edges: DirectEditEdgeLike[];
+  isSame: (other: unknown) => boolean;
+}
+
+interface DirectEditFaceLike extends MeshedShape {
+  geomType?: string;
+  center: OcctVertexPoint;
+  normalAt: (loc?: unknown) => OcctVertexPoint;
+  outerWire: () => DirectEditWireLike;
+  innerWires: () => DirectEditWireLike[];
+  edges: DirectEditEdgeLike[];
+  clone: () => DirectEditFaceLike;
+  translate: (v: [number, number, number]) => DirectEditFaceLike;
+  isSame: (other: unknown) => boolean;
+}
+
+interface DirectEditSolidLike extends MeshedShape {
+  faces: DirectEditFaceLike[];
+  fuse: (other: unknown) => DirectEditSolidLike;
+  cut: (other: unknown) => DirectEditSolidLike;
+  simplify?: () => DirectEditSolidLike;
+}
+
+interface FaceFinderCtorLike {
+  new (): {
+    withinDistance: (distance: number, point: [number, number, number]) => { find: (shape: unknown) => DirectEditFaceLike[] };
+  };
+}
+
+function unit3(v: [number, number, number]): [number, number, number] | null {
+  const len = Math.hypot(v[0], v[1], v[2]);
+  if (len < 1e-9) return null;
+  return [v[0] / len, v[1] / len, v[2] / len];
+}
+
+/**
+ * Resolve ONE stored face selection to the actual B-rep face on the current
+ * solid. Primary path: replicad's FaceFinder.withinDistance anchored at the
+ * click point (BRepExtrema — works for curved faces where a center/normal
+ * signature does not), tie-broken by the surface normal AT THE CLICK POINT vs
+ * the recorded selection normal. Fallback: center/normal signature matching
+ * (same matcher shell-face removal uses). Returns null when nothing matches.
+ */
+function resolveFaceForSelection(
+  rc: Record<string, unknown>,
+  solid: DirectEditSolidLike,
+  sel: FaceOpSelection,
+  allFaces: DirectEditFaceLike[],
+): DirectEditFaceLike | null {
+  const FF = rc.FaceFinder as FaceFinderCtorLike | undefined;
+  const alignmentAtClick = (face: DirectEditFaceLike): number => {
+    try {
+      const n = face.normalAt(sel.position);
+      const u = unit3([n.x, n.y, n.z]);
+      n.delete?.();
+      if (!u) return -Infinity;
+      return u[0] * sel.normal[0] + u[1] * sel.normal[1] + u[2] * sel.normal[2];
+    } catch {
+      return -Infinity;
+    }
+  };
+
+  if (FF) {
+    for (const tol of [0.5, 2.0]) {
+      let candidates: DirectEditFaceLike[] = [];
+      try {
+        candidates = new FF().withinDistance(tol, sel.position).find(solid);
+      } catch {
+        candidates = [];
+      }
+      if (candidates.length === 1) return candidates[0]!;
+      if (candidates.length > 1) {
+        let best: DirectEditFaceLike | null = null;
+        let bestAlign = -Infinity;
+        for (const c of candidates) {
+          const a = alignmentAtClick(c);
+          if (a > bestAlign) { bestAlign = a; best = c; }
+        }
+        if (best) return best;
+      }
+    }
+  }
+
+  // Signature fallback (good for planar faces; what shell-removal already uses).
+  const sigs: FaceSig[] = [];
+  const sigFace: DirectEditFaceLike[] = [];
+  for (const f of allFaces) {
+    try {
+      const c = f.center;
+      const n = f.normalAt();
+      sigs.push({ center: [c.x, c.y, c.z], normal: [n.x, n.y, n.z], geomType: typeof f.geomType === 'string' ? f.geomType : undefined });
+      sigFace.push(f);
+      c.delete?.(); n.delete?.();
+    } catch { /* skip unreadable face */ }
+  }
+  // Local import avoided (edgeCorrespondence is type-only above); inline the
+  // same scoring: signed normal alignment − 0.5 × center distance.
+  const tn = unit3(sel.normal);
+  if (!tn) return null;
+  let bestIdx = -1;
+  let bestScore = -Infinity;
+  for (let i = 0; i < sigs.length; i++) {
+    const cn = unit3(sigs[i]!.normal);
+    if (!cn) continue;
+    const align = tn[0] * cn[0] + tn[1] * cn[1] + tn[2] * cn[2];
+    if (align < 0.95) continue;
+    const dx = sel.position[0] - sigs[i]!.center[0];
+    const dy = sel.position[1] - sigs[i]!.center[1];
+    const dz = sel.position[2] - sigs[i]!.center[2];
+    const score = align - 0.5 * Math.hypot(dx, dy, dz);
+    if (score > bestScore) { bestScore = score; bestIdx = i; }
+  }
+  return bestIdx >= 0 ? sigFace[bestIdx]! : null;
+}
+
+/**
+ * DELETE FACE (sew-and-cap defeaturing, replicad/OCCT).
+ *
+ * Removes the faces matched by `selections` from the registered solid, caps
+ * every interior loop the removal leaves on the remaining faces with a planar
+ * face (makeFace), sews everything back (BRepBuilderAPI_Sewing) and rebuilds a
+ * solid (ShapeFix_Solid), then merges coplanar faces (UnifySameDomain).
+ *
+ * Supported face sets — complete boss / pocket / through-hole / blind-hole
+ * features whose opening is an INTERIOR wire on remaining faces. Anything else
+ * throws a structured Error explaining the boundary:
+ *   - a removed face sharing an edge with a remaining face's OUTER wire
+ *     (e.g. deleting a box side) cannot be healed without surface extension
+ *     (OCCT BRepAlgoAPI_Defeaturing — not bound in the shipped WASM);
+ *   - a non-planar opening cannot be capped by a planar face.
+ *
+ * Throws on scope violations; returns a null handle only when the input handle
+ * is unknown. Same registry contract as the other B-rep builders.
+ */
+export function occtDeleteFaces(
+  handle: string | null | undefined,
+  selections: FaceOpSelection[],
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const solid = getShape(handle) as DirectEditSolidLike | null;
+  if (!solid || selections.length === 0) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const allFaces = solid.faces;
+
+  // Resolve selections → faces (deduped via shared-TShape identity).
+  const removed: DirectEditFaceLike[] = [];
+  for (const sel of selections) {
+    const f = resolveFaceForSelection(rc as Record<string, unknown>, solid, sel, allFaces);
+    if (!f) {
+      throw new Error('Delete Face: a selected face was not found on the current solid (the body may have been rebuilt since the selection)');
+    }
+    if (!removed.some(r => r.isSame(f))) removed.push(f);
+  }
+  if (removed.length >= allFaces.length) {
+    throw new Error('Delete Face: cannot remove every face of the body');
+  }
+
+  // Pool of edges owned by the removed face set (TShape-shared with neighbours).
+  const removedEdges: DirectEditEdgeLike[] = [];
+  for (const f of removed) {
+    for (const e of f.edges) removedEdges.push(e);
+  }
+  const inRemoved = (e: DirectEditEdgeLike): boolean =>
+    removedEdges.some(r => r.hashCode === e.hashCode && r.isSame(e));
+
+  const kept = allFaces.filter(f => !removed.some(r => r.isSame(f)));
+
+  // Interior loops the removal opens up — each becomes a planar healing cap.
+  const capWires: DirectEditWireLike[] = [];
+  const capWiresByFace = new Map<DirectEditFaceLike, DirectEditWireLike[]>();
+  for (const f of kept) {
+    let inner: DirectEditWireLike[];
+    // ⚠️ replicad convention: outerWire()/innerWires() CONSUME the receiver
+    // (this.delete()) — always call them on a clone so `f` survives the sew.
+    try { inner = f.clone().innerWires(); } catch { inner = []; }
+    const drops = inner.filter(w => {
+      const es = w.edges;
+      return es.length > 0 && es.every(inRemoved);
+    });
+    if (drops.length > 0) {
+      capWires.push(...drops);
+      capWiresByFace.set(f, drops);
+    }
+  }
+
+  // Scope validation: every removed-face edge still referenced by a remaining
+  // face must lie on a cap wire. A removed edge on a kept face's outer wire
+  // (or a non-cap inner wire) means the opening is NOT an interior loop —
+  // healing would require extending the neighbour surfaces (true defeaturing).
+  for (const f of kept) {
+    const dropsForFace = capWiresByFace.get(f) ?? [];
+    let wires: DirectEditWireLike[];
+    // Clone before outerWire()/innerWires() — both consume the receiver.
+    try { wires = [f.clone().outerWire(), ...f.clone().innerWires().filter(w => !dropsForFace.some(d => d.isSame(w)))]; } catch { wires = []; }
+    for (const w of wires) {
+      for (const e of w.edges) {
+        if (inRemoved(e)) {
+          throw new Error(
+            'Delete Face: the selected faces share an open boundary with the remaining body. '
+            + 'Only complete boss / pocket / hole face sets (bounded by an interior loop on a remaining face) '
+            + 'can be removed and healed — select the full feature face set. '
+            + '(Surface-extension defeaturing requires OCCT BRepAlgoAPI_Defeaturing, which is not bound in this build.)',
+          );
+        }
+      }
+    }
+  }
+  if (capWires.length === 0) {
+    throw new Error('Delete Face: the selected face set leaves no interior loop to heal — select the complete face set of a boss, pocket, or hole.');
+  }
+
+  // Cap each loop with a planar face. makeFace throws on a non-planar wire —
+  // surface that as the honest planar-cap boundary.
+  const makeFaceFn = rc.makeFace as ((w: unknown, holes?: unknown[]) => unknown) | undefined;
+  const weld = rc.weldShellsAndFaces as ((fs: unknown[], ignore?: boolean) => unknown) | undefined;
+  const mkSolid = rc.makeSolid as ((fs: unknown[]) => unknown) | undefined;
+  const measureVolume = rc.measureVolume as ((s: unknown) => number) | undefined;
+  if (typeof makeFaceFn !== 'function' || typeof weld !== 'function' || typeof mkSolid !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const caps: unknown[] = [];
+  for (const w of capWires) {
+    try {
+      caps.push(makeFaceFn(w));
+    } catch {
+      throw new Error('Delete Face: the opening left by the removed faces is non-planar — only planar healing caps are supported in this build.');
+    }
+  }
+
+  let healed: DirectEditSolidLike;
+  try {
+    const shell = weld([...kept, ...caps], true);
+    healed = mkSolid([shell]) as DirectEditSolidLike;
+  } catch (err) {
+    throw new Error(`Delete Face: re-sewing the healed shell failed (${err instanceof Error ? err.message : String(err)})`);
+  }
+  // Merge the coplanar cap into its host face (UnifySameDomain) — best-effort.
+  try {
+    if (typeof healed.simplify === 'function') healed = healed.simplify();
+  } catch { /* keep the unsimplified (still valid) solid */ }
+
+  if (typeof measureVolume === 'function') {
+    const vol = measureVolume(healed);
+    if (!Number.isFinite(vol) || vol <= 1e-9) {
+      throw new Error('Delete Face: healing produced an invalid (empty) solid');
+    }
+  }
+  return meshAndRegister(healed, tessellation);
+}
+
+/**
+ * OFFSET FACE (Move Face along its normal — planar prism rebuild).
+ *
+ * The selected PLANAR face is extruded along its outward normal by |distance|
+ * (basicFaceExtrusion) and the prism is fused onto the solid (distance > 0) or
+ * cut out of it (distance < 0). Push/pull semantics: the prism's side walls run
+ * along the face normal, so for the common case — adjacent walls perpendicular
+ * to the offset face — the result is exactly SolidWorks Move Face (Offset).
+ * Adjacent faces that are NOT perpendicular gain a prism side wall instead of
+ * being extended (documented param-note boundary).
+ *
+ * Non-planar faces throw (general Move Face needs per-face offset surface
+ * rebuilding — OCCT BRepOffset_MakeOffset on a face subset is not exposed by
+ * replicad). Volume identity: ΔV = ±(face area × |distance|) for prismatic
+ * neighbourhoods, which the closed-form tests assert.
+ */
+export function occtOffsetFace(
+  handle: string | null | undefined,
+  selection: FaceOpSelection,
+  distance: number,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): OcctExtrudeResult {
+  const rc = requireReplicad();
+  const solid = getShape(handle) as DirectEditSolidLike | null;
+  if (!solid || !Number.isFinite(distance)) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const allFaces = solid.faces;
+  const face = resolveFaceForSelection(rc as Record<string, unknown>, solid, selection, allFaces);
+  if (!face) {
+    throw new Error('Offset Face: the selected face was not found on the current solid');
+  }
+  let geomType: string | undefined;
+  try { geomType = typeof face.geomType === 'string' ? face.geomType : undefined; } catch { geomType = undefined; }
+  if (geomType !== 'PLANE') {
+    throw new Error(`Offset Face: only planar faces are supported (selected face is ${geomType ?? 'of unknown type'}) — curved-face offsets need OCCT face-subset offsetting, not exposed in this build`);
+  }
+  if (Math.abs(distance) < 1e-6) {
+    return meshAndRegister(solid, tessellation);
+  }
+
+  const nRaw = face.normalAt();
+  const n = unit3([nRaw.x, nRaw.y, nRaw.z]);
+  nRaw.delete?.();
+  if (!n) throw new Error('Offset Face: the selected face has a degenerate normal');
+
+  const VecCtor = rc.Vector as (new (v?: [number, number, number]) => unknown) | undefined;
+  const extrudeFace = rc.basicFaceExtrusion as ((f: unknown, v: unknown) => unknown) | undefined;
+  const measureVolume = rc.measureVolume as ((s: unknown) => number) | undefined;
+  if (typeof VecCtor !== 'function' || typeof extrudeFace !== 'function') {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+
+  let result: DirectEditSolidLike;
+  if (distance > 0) {
+    const prism = extrudeFace(face, new VecCtor([n[0] * distance, n[1] * distance, n[2] * distance]));
+    result = solid.fuse(prism);
+  } else {
+    // Inward: start the cutting prism a touch OUTSIDE the face plane so the
+    // boolean has no coplanar cap (the inner cap at -|d| stays exact).
+    const depth = -distance;
+    const pad = Math.min(1, depth);
+    const shifted = face.clone().translate([n[0] * pad, n[1] * pad, n[2] * pad]);
+    const prism = extrudeFace(shifted, new VecCtor([-n[0] * (depth + pad), -n[1] * (depth + pad), -n[2] * (depth + pad)]));
+    result = solid.cut(prism);
+  }
+
+  if (typeof measureVolume === 'function') {
+    const vol = measureVolume(result);
+    if (!Number.isFinite(vol) || vol <= 1e-9) {
+      throw new Error('Offset Face: the inward offset consumed the entire body — reduce the distance');
+    }
+  }
+  return meshAndRegister(result, tessellation);
+}
+
+/**
+ * Mesh → simplified B-rep bridge for direct editing on IMPORTED bodies (STEP/
+ * STL imports arrive in the pipeline as tessellated meshes with no occtHandle).
+ * Imports the mesh as a triangulated B-rep (importSTL) then merges coplanar
+ * facets into real faces (Shape.simplify → ShapeUpgrade_UnifySameDomain), so a
+ * prismatic import gets genuine planar face topology that Delete Face / Offset
+ * Face can operate on. Curved regions stay faceted — operations on them will
+ * fail their planar checks honestly. Null when the import/registration fails.
+ */
+export async function meshToSimplifiedBrepHandle(
+  geometry: import('three').BufferGeometry,
+): Promise<string | null> {
+  const handle = await meshToOcctShapeHandle(geometry);
+  if (!handle) return null;
+  const shape = getShape(handle) as { simplify?: () => unknown } | null;
+  if (shape && typeof shape.simplify === 'function') {
+    try {
+      return registerShape(shape.simplify());
+    } catch {
+      return handle; // unsimplified is still a valid B-rep
+    }
+  }
+  return handle;
 }
 
 // Shared helper: derive box host params from an upstream BufferGeometry's

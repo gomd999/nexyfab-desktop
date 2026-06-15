@@ -3,6 +3,8 @@
 // with hidden-line detection, dimension annotations, and centerlines.
 
 import * as THREE from 'three';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { removeHiddenLinesProjected, trianglesFromArrays } from './hiddenLineRemoval';
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 
@@ -52,6 +54,10 @@ export interface DrawingConfig {
   orientation: 'landscape' | 'portrait';
   showDimensions: boolean;
   showCenterlines: boolean;
+  /** Use true depth-occlusion hidden-line removal instead of the face-normal
+   *  heuristic. More accurate (resolves edges hidden behind other geometry) at
+   *  an O(edges·triangles) cost; defaults off. */
+  trueHlr?: boolean;
   tolerance?: ToleranceSpec;
   roughness?: RoughnessSpec[];
   titleBlock: {
@@ -235,14 +241,38 @@ export function getProjectionDef(view: ProjectionView): ProjectionDef {
  * Project 3D mesh edges onto a 2D plane for the given view direction.
  * Uses face-normal direction to classify edges as visible or hidden.
  */
+/** View direction (toward the viewer) for each orthographic projection — used by
+ *  the optional true-HLR pass to compute depth. */
+const PROJECTION_VIEW_DIR: Record<ProjectionView, [number, number, number]> = {
+  front: [0, 0, 1], back: [0, 0, -1],
+  top: [0, 1, 0], bottom: [0, -1, 0],
+  right: [1, 0, 0], left: [-1, 0, 0],
+  iso: [1, 1, 1],
+};
+
 export function projectGeometry(
-  geometry: THREE.BufferGeometry,
+  geometryIn: THREE.BufferGeometry,
   projection: ProjectionView,
   scale: number,
+  opts: { trueHlr?: boolean } = {},
 ): DrawingLine[] {
+  if (!geometryIn.attributes.position) return [];
+
+  // Weld coincident vertices first. Edges are keyed by vertex INDEX, and shared
+  // edges are recognised (and their two face normals collected) only when the
+  // adjacent triangles reference the SAME indices. Mesh sources here are mostly
+  // unwelded — THREE primitives, ExtrudeGeometry, boolean output — where every
+  // triangle owns its own vertices, so a manifold edge looks like two distinct
+  // single-face boundary edges. The consequence: interior triangulation
+  // diagonals on a flat face (e.g. the front face of an L-profile) survive as
+  // spurious "feature" lines instead of being suppressed as coplanar. Welding
+  // makes coincident vertices share an index so each manifold edge gets both
+  // normals and the dot-product feature test works. Idempotent for already-
+  // welded input. (Same unwelded-primitive class as the surfaceQuality fix.)
+  // mergeVertices accepts indexed or non-indexed input directly.
+  const geometry = mergeVertices(geometryIn);
   const pos = geometry.attributes.position;
   const idx = geometry.index;
-  if (!pos) return [];
 
   const triCount = idx ? idx.count / 3 : pos.count / 3;
   const def = getProjectionDef(projection);
@@ -287,6 +317,9 @@ export function projectGeometry(
 
   // Project edges and classify
   const lines: DrawingLine[] = [];
+  // When true-HLR is requested we collect the SELECTED 3D edges here and resolve
+  // their visibility by depth occlusion (below) instead of the face-normal sign.
+  const hlrEdges: Array<[[number, number, number], [number, number, number]]> = [];
 
   for (const [, edge] of edgeMap) {
     const p1 = def.project(edge.a);
@@ -327,6 +360,13 @@ export function projectGeometry(
     // Skip non-feature interior edges
     if (!silhouette) continue;
 
+    if (opts.trueHlr) {
+      // Defer: the edge is a drawn feature; its visibility is decided by
+      // occlusion against the whole solid, not its own face normals.
+      hlrEdges.push([[edge.a.x, edge.a.y, edge.a.z], [edge.b.x, edge.b.y, edge.b.z]]);
+      continue;
+    }
+
     lines.push({
       x1: p1.x * scale,
       y1: p1.y * scale,
@@ -334,6 +374,24 @@ export function projectGeometry(
       y2: p2.y * scale,
       type: visible ? 'visible' : 'hidden',
     });
+  }
+
+  // True HLR: resolve the collected feature edges by depth occlusion against the
+  // whole solid, emitting visible / hidden segments in this view's page frame.
+  if (opts.trueHlr) {
+    const tris = trianglesFromArrays(
+      pos.array as ArrayLike<number>,
+      idx ? (idx.array as ArrayLike<number>) : null,
+    );
+    const viewDir = PROJECTION_VIEW_DIR[projection];
+    // Project consistently with getProjectionDef (page x,y) + depth toward viewer.
+    const project = (v: [number, number, number]) => {
+      const p = def.project(new THREE.Vector3(v[0], v[1], v[2]));
+      return { x: p.x, y: p.y, depth: v[0] * viewDir[0] + v[1] * viewDir[1] + v[2] * viewDir[2] };
+    };
+    const { visible: vis, hidden: hid } = removeHiddenLinesProjected(hlrEdges, tris, project);
+    for (const s of vis) lines.push({ x1: s.a.x * scale, y1: s.a.y * scale, x2: s.b.x * scale, y2: s.b.y * scale, type: 'visible' });
+    for (const s of hid) lines.push({ x1: s.a.x * scale, y1: s.a.y * scale, x2: s.b.x * scale, y2: s.b.y * scale, type: 'hidden' });
   }
 
   return deduplicateLines(lines);
@@ -384,7 +442,8 @@ export function generateAutoKeyDimensions(
   if (!bb) return { lines: [], texts: [] };
 
   const def = getProjectionDef(projection);
-  let { x0, y0, x1, y1 } = viewBounds2D(geometry, def);
+  const proj = viewBounds2D(geometry, def);
+  let { x0, y0, x1, y1 } = proj;
   x0 *= scale; y0 *= scale; x1 *= scale; y1 *= scale;
 
   const dimLines: DrawingLine[] = [];
@@ -404,12 +463,16 @@ export function generateAutoKeyDimensions(
   const aw = Math.max(0.8, fontSize * 0.5);
   const tolStr = tolerance ? ` ${tolerance.linear}` : '';
 
-  // Real model dimensions (in mm). Note: width/height/depth in WORLD space —
-  // their meaning in the 2D drawing depends on projection (front view: realW,
-  // realH dimensioned; depth orthogonal). We rely on top + right views to
-  // capture depth so we no longer emit a redundant "D:" note here.
-  const realW = Math.abs(bb.max.x - bb.min.x);
-  const realH = Math.abs(bb.max.y - bb.min.y);
+  // Real model dimensions (mm) for THIS view = the PROJECTED extents in model
+  // units. Orthographic views have no foreshortening, so the projected width /
+  // height equal the true model lengths along whichever axes the view exposes:
+  // front X×Y, top X×Z, right Z×Y, etc. (Previously hardcoded to world X/Y,
+  // which mislabeled the height on top/bottom and the width on left/right —
+  // a top view of a 20×30×40 box reported its 40 mm depth as "30.0".) Using the
+  // projected bounds also keeps the number consistent with the dimension line,
+  // which spans those same bounds.
+  const realW = Math.abs(proj.x1 - proj.x0);
+  const realH = Math.abs(proj.y1 - proj.y0);
 
   // Width dimension (horizontal, below the part)
   dimLines.push(
@@ -595,7 +658,7 @@ export function generateDrawing(
   // Project each view
   const rawViews: { projection: ProjectionView; lines: DrawingLine[]; texts: DrawingText[]; w: number; h: number }[] = [];
   for (const v of sortedViews) {
-    let lines = projectGeometry(geometry, v, config.scale);
+    let lines = projectGeometry(geometry, v, config.scale, { trueHlr: config.trueHlr });
     let texts: DrawingText[] = [];
     if (config.showDimensions) {
       const dimResult = generateAutoKeyDimensions(geometry, v, config.scale, config.tolerance);

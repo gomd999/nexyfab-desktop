@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
       default: 'Nexyfab | AI 3D Modeling & Manufacturing Partner Matching Platform',
       template: '%s | Nexyfab',
     },
-    description: 'AI 3D modeling, instant quoting, and manufacturing partner matching — all in your browser. 300,000+ factory database.',
+    description: 'AI 3D modeling, instant quoting, and manufacturing partner matching — all in your browser. 286,000+ factory database.',
     keywords: [
       '3D modeling', 'AI manufacturing', 'manufacturing partner',
       'CAD online', 'instant quote', 'DFM analysis',
@@ -53,7 +53,7 @@ export async function generateMetadata(): Promise<Metadata> {
       url: BASE_URL,
       siteName: 'Nexyfab',
       title: 'Nexyfab | AI 3D Modeling & Manufacturing Matching',
-      description: 'AI 3D modeling, instant quoting, and manufacturing partner matching — all in your browser. 300,000+ factory database.',
+      description: 'AI 3D modeling, instant quoting, and manufacturing partner matching — all in your browser. 286,000+ factory database.',
       images: [
         {
           url: `${BASE_URL}/og-image.png`,

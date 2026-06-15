@@ -74,6 +74,9 @@ export function mateToYMap(mate: Mate): MateMap {
   if (mate.beltRadius0 !== undefined) map.set('beltRadius0', mate.beltRadius0);
   if (mate.beltRadius1 !== undefined) map.set('beltRadius1', mate.beltRadius1);
   if (mate.beltCrossed !== undefined) map.set('beltCrossed', mate.beltCrossed);
+  if (mate.min !== undefined) map.set('min', mate.min);
+  if (mate.max !== undefined) map.set('max', mate.max);
+  if (mate.widthSecond !== undefined) map.set('widthSecond', selectionToJson(mate.widthSecond));
   return map;
 }
 
@@ -99,6 +102,12 @@ export function yMapToMate(map: MateMap): Mate {
   if (typeof br1 === 'number') out.beltRadius1 = br1;
   const bc = map.get('beltCrossed');
   if (typeof bc === 'boolean') out.beltCrossed = bc;
+  const mn = map.get('min');
+  if (typeof mn === 'number') out.min = mn;
+  const mx = map.get('max');
+  if (typeof mx === 'number') out.max = mx;
+  const ws = map.get('widthSecond');
+  if (typeof ws === 'string') out.widthSecond = selectionFromJson(ws);
   return out;
 }
 

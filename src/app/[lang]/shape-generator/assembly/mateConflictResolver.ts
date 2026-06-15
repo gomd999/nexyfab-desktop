@@ -20,7 +20,9 @@
  *      "suppressed" rationale per mate.
  */
 
-export type MateType = 'coincident' | 'parallel' | 'perpendicular' | 'concentric' | 'distance' | 'angle' | 'tangent';
+export type MateType =
+  | 'coincident' | 'parallel' | 'perpendicular' | 'concentric' | 'distance' | 'angle' | 'tangent'
+  | 'hinge' | 'slider' | 'gear' | 'limitDistance' | 'limitAngle' | 'width';
 
 export interface AssemblyMate {
   id: string;
@@ -75,6 +77,14 @@ export const MATE_TYPE_WEIGHT: Record<MateType, number> = {
   tangent: 4,
   distance: 2,
   angle: 2,
+  // Kinematic joints carry strong design intent — drop them last.
+  hinge: 6,
+  slider: 6,
+  gear: 4,
+  // Inequality / centering mates are the cheapest to relax.
+  limitDistance: 1,
+  limitAngle: 1,
+  width: 3,
 };
 
 export const MATE_TYPE_DOFS: Record<MateType, number> = {
@@ -85,6 +95,13 @@ export const MATE_TYPE_DOFS: Record<MateType, number> = {
   tangent: 1,
   distance: 1,
   angle: 1,
+  hinge: 5,
+  slider: 5,
+  gear: 1,
+  // Limit mates remove no DOF while inside their range.
+  limitDistance: 0,
+  limitAngle: 0,
+  width: 1,
 };
 
 export function autoStrength(type: MateType, creationOrder: number): number {
@@ -208,4 +225,84 @@ export function summarize(originalMates: AssemblyMate[], result: ResolutionResul
     resolved: result.resolved,
     preservedFraction: total > 0 ? result.remainingMates.length / total : 1,
   };
+}
+
+// ── A1: non-destructive resolution proposals (viewport feedback) ───────────
+
+export interface ResolutionOption {
+  /** The mate to relax/suppress for this option. */
+  dropMateId: string;
+  mateType: MateType;
+  strength: number;
+  /** Cost of taking this option = strength (lower = less intent lost). */
+  cost: number;
+  reason: string;
+}
+
+export interface ConflictProposal {
+  conflict: Conflict;
+  /** All mates in the over-constrained subgraph — for viewport highlighting. */
+  highlightMateIds: string[];
+  /** Relaxation options, ranked best-first (weakest mate = least intent lost). */
+  options: ResolutionOption[];
+  /** The top-ranked option (`options[0]`), or null if none. */
+  recommended: ResolutionOption | null;
+}
+
+/**
+ * A1: produce NON-DESTRUCTIVE, ranked resolution proposals for the viewport to
+ * surface — instead of greedily mutating like {@link resolveConflicts}. For each
+ * over-constrained subgraph it returns the mates to highlight plus the candidate
+ * mates to relax, ranked weakest-first (the recommended pick loses the least
+ * design intent). The UI shows these as choices the user accepts/overrides; the
+ * recommended option matches what `resolveConflicts` would auto-drop first.
+ */
+export function proposeConflictResolutions(
+  mates: AssemblyMate[],
+  bodyIds: string[],
+): ConflictProposal[] {
+  const availableDofs = bodyIds.length * 6;
+  const conflicts = findConflicts(mates, availableDofs);
+  const byId = new Map(mates.map((m) => [m.id, m]));
+  return conflicts.map((conflict) => {
+    const options: ResolutionOption[] = conflict.matesInvolved
+      .map((id) => byId.get(id))
+      .filter((m): m is AssemblyMate => !!m)
+      .sort((a, b) => a.strength - b.strength) // weakest first
+      .map((m) => ({
+        dropMateId: m.id,
+        mateType: m.type,
+        strength: m.strength,
+        cost: m.strength,
+        reason: `relax ${m.type} mate "${m.id}" (strength ${m.strength}) — frees ${m.dofsRemoved} DOF`,
+      }));
+    return {
+      conflict,
+      highlightMateIds: [...conflict.matesInvolved],
+      options,
+      recommended: options[0] ?? null,
+    };
+  });
+}
+
+/**
+ * Apply ONE accepted relax option — drop that mate. Returns a new mate list
+ * (non-mutating). This is what the overlay's `onAccept` should call before
+ * re-solving + re-proposing.
+ */
+export function applyAcceptedResolution(mates: AssemblyMate[], dropMateId: string): AssemblyMate[] {
+  return mates.filter((m) => m.id !== dropMateId);
+}
+
+/**
+ * Apply every conflict's recommended option in one pass. One pass may not fully
+ * resolve (relaxing one mate can re-shape the remaining subgraph), so callers
+ * re-propose and repeat — {@link resolveConflicts} is the fixed-point version of
+ * this for the fully-automatic path.
+ */
+export function acceptAllRecommended(mates: AssemblyMate[], proposals: ConflictProposal[]): AssemblyMate[] {
+  const drop = new Set(
+    proposals.map((p) => p.recommended?.dropMateId).filter((x): x is string => !!x),
+  );
+  return mates.filter((m) => !drop.has(m.id));
 }

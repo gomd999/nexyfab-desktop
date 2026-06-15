@@ -100,7 +100,12 @@ describe('refineWorst', () => {
     const a = staticBody('a', 0, 0, 0, 1);
     const b = linearBody('b', { x: 10, y: 0, z: 0 }, { x: -10, y: 0, z: 0 }, 1);
     const refined = refineWorst(a, b, 0.5, 12, 0.2);
-    expect(Math.abs(refined.distanceMm)).toBeLessThan(0.5);
+    // b sweeps through a; at mid-travel (t=0.5) the centres coincide, so the
+    // WORST (minimum signed) surface distance is the full -2mm penetration
+    // (centreDist 0 − rA 1 − rB 1). refineWorst must converge onto that instant
+    // rather than drift to a window edge.
+    expect(refined.t).toBeCloseTo(0.5, 1);
+    expect(refined.distanceMm).toBeCloseTo(-2, 1);
   });
 
   it('stays in [0, 1]', () => {

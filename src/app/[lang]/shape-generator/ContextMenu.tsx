@@ -37,6 +37,9 @@ const CTX_I18N: Record<string, CL> = {
     extrudeFace: '돌출 (Extrude)', filletEdge: '필렛 (Fillet)', askAI: 'AI 어시스턴트에게 묻기', isolate: '선택 격리 (Isolate)',
     hidePart: '파트 숨기기', transparent: '반투명 표시', showAllParts: '모든 파트 표시', resetColors: '색상 초기화',
     yellow: '노랑', orange: '주황', purple: '보라', white: '흰색',
+    faceOffset: '오프셋…', faceShell: '쉘…', facePushPull: '밀기/당기기',
+    sketchFromFace: '면에서 스케치', createMate: '메이트 생성',
+    edgeChamfer: '모따기…', vertexMove: '꼭짓점 이동', vertexSnapGrid: '그리드에 스냅',
   },
   en: {
     zoomFit: 'Zoom Fit', zoomSel: 'Zoom Selection', selectAll: 'Select All',
@@ -51,6 +54,9 @@ const CTX_I18N: Record<string, CL> = {
     extrudeFace: 'Extrude Face', filletEdge: 'Fillet Edge', askAI: 'Ask AI Assistant', isolate: 'Isolate',
     hidePart: 'Hide Part', transparent: 'Make Transparent', showAllParts: 'Show All Parts', resetColors: 'Reset Colors',
     yellow: 'Yellow', orange: 'Orange', purple: 'Purple', white: 'White',
+    faceOffset: 'Offset…', faceShell: 'Shell…', facePushPull: 'Push/Pull',
+    sketchFromFace: 'Sketch from Face', createMate: 'Create Mate',
+    edgeChamfer: 'Chamfer…', vertexMove: 'Move Vertex', vertexSnapGrid: 'Snap to Grid',
   },
   ja: {
     zoomFit: '全体表示', zoomSel: '選択を拡大', selectAll: 'すべて選択',
@@ -65,6 +71,9 @@ const CTX_I18N: Record<string, CL> = {
     extrudeFace: '押し出し (Extrude)', filletEdge: 'フィレット (Fillet)', askAI: 'AIアシスタントに質問', isolate: '分離 (Isolate)',
     hidePart: 'パーツ非表示', transparent: '半透明表示', showAllParts: 'すべて表示', resetColors: '色リセット',
     yellow: '黄', orange: 'オレンジ', purple: '紫', white: '白',
+    faceOffset: 'オフセット…', faceShell: 'シェル…', facePushPull: 'プッシュ/プル',
+    sketchFromFace: '面からスケッチ', createMate: 'メイト作成',
+    edgeChamfer: '面取り…', vertexMove: '頂点を移動', vertexSnapGrid: 'グリッドにスナップ',
   },
   cn: {
     zoomFit: '适应窗口', zoomSel: '缩放到选择', selectAll: '全部选择',
@@ -79,6 +88,9 @@ const CTX_I18N: Record<string, CL> = {
     extrudeFace: '拉伸 (Extrude)', filletEdge: '圆角 (Fillet)', askAI: '询问 AI 助手', isolate: '隔离 (Isolate)',
     hidePart: '隐藏零件', transparent: '设为透明', showAllParts: '显示所有零件', resetColors: '重置颜色',
     yellow: '黄色', orange: '橙色', purple: '紫色', white: '白色',
+    faceOffset: '偏移…', faceShell: '抽壳…', facePushPull: '推/拉',
+    sketchFromFace: '从面草图', createMate: '创建配合',
+    edgeChamfer: '倒角…', vertexMove: '移动顶点', vertexSnapGrid: '对齐到网格',
   },
   es: {
     zoomFit: 'Ajustar Vista', zoomSel: 'Zoom a Selección', selectAll: 'Seleccionar Todo',
@@ -93,6 +105,9 @@ const CTX_I18N: Record<string, CL> = {
     extrudeFace: 'Extruir', filletEdge: 'Redondear (Fillet)', askAI: 'Preguntar a IA', isolate: 'Aislar',
     hidePart: 'Ocultar pieza', transparent: 'Transparente', showAllParts: 'Mostrar todas', resetColors: 'Restablecer colores',
     yellow: 'Amarillo', orange: 'Naranja', purple: 'Púrpura', white: 'Blanco',
+    faceOffset: 'Desplazar…', faceShell: 'Vaciado…', facePushPull: 'Empujar/Tirar',
+    sketchFromFace: 'Boceto desde Cara', createMate: 'Crear Ensamblaje',
+    edgeChamfer: 'Chaflán…', vertexMove: 'Mover Vértice', vertexSnapGrid: 'Ajustar a Cuadrícula',
   },
   ar: {
     zoomFit: 'ملاءمة العرض', zoomSel: 'تكبير التحديد', selectAll: 'تحديد الكل',
@@ -107,6 +122,9 @@ const CTX_I18N: Record<string, CL> = {
     extrudeFace: 'بثق (Extrude)', filletEdge: 'تدوير الحواف (Fillet)', askAI: 'اسأل الذكاء الاصطناعي', isolate: 'عزل',
     hidePart: 'إخفاء الجزء', transparent: 'جعل شفاف', showAllParts: 'إظهار جميع الأجزاء', resetColors: 'إعادة تعيين الألوان',
     yellow: 'أصفر', orange: 'برتقالي', purple: 'بنفسجي', white: 'أبيض',
+    faceOffset: 'إزاحة…', faceShell: 'تجويف…', facePushPull: 'دفع/سحب',
+    sketchFromFace: 'رسم من الوجه', createMate: 'إنشاء تقييد',
+    edgeChamfer: 'شطف…', vertexMove: 'تحريك الرأس', vertexSnapGrid: 'محاذاة للشبكة',
   },
 };
 
@@ -129,17 +147,40 @@ export function getContextItemsEmpty(lang: string | boolean): ContextMenuItem[] 
 
 export function getContextItemsGeometry(
   lang: string | boolean,
-  opts?: { hasAssembly?: boolean; selectedType?: 'face' | 'edge' | 'body' | null; hasHighlightedPart?: boolean },
+  opts?: {
+    hasAssembly?: boolean;
+    selectedType?: 'face' | 'edge' | 'body' | 'vertex' | null;
+    hasHighlightedPart?: boolean;
+  },
 ): ContextMenuItem[] {
   const l = typeof lang === 'boolean' ? (lang ? 'ko' : 'en') : lang;
   const items: ContextMenuItem[] = [];
 
-  // Context-aware actions
+  // Context-aware actions — selection-type aware items appear first so the
+  // most relevant ops are at the cursor. Each "…" entry routes through the
+  // existing AI-hint dispatcher; the deterministic numeric panels
+  // (FaceContextPanel/EdgeContextPanel) auto-mount alongside the cursor
+  // menu when the user is in face/edge edit mode, so these are the
+  // discoverable surfacing — the numeric panel remains the primary input.
   if (opts?.selectedType === 'face') {
     items.push({ id: 'action-extrude', label: cl(l, 'extrudeFace'), icon: '⬆', shortcut: 'E' });
+    items.push({ id: 'face-offset', label: cl(l, 'faceOffset'), icon: '↗' });
+    items.push({ id: 'face-shell', label: cl(l, 'faceShell'), icon: '⊟' });
+    items.push({ id: 'face-pushpull', label: cl(l, 'facePushPull'), icon: '⇅' });
+    items.push({ id: 'face-sketch-from', label: cl(l, 'sketchFromFace'), icon: '✏️' });
+    if (opts?.hasAssembly) {
+      items.push({ id: 'face-create-mate', label: cl(l, 'createMate'), icon: '🔗' });
+    }
     items.push({ id: 'action-ask-ai', label: cl(l, 'askAI'), icon: '✨', separator: true });
   } else if (opts?.selectedType === 'edge') {
     items.push({ id: 'action-fillet', label: cl(l, 'filletEdge'), icon: '📐', shortcut: 'F' });
+    items.push({ id: 'edge-chamfer', label: cl(l, 'edgeChamfer'), icon: '◣' });
+    // `measure` is also in the always-present block below; we don't double-
+    // push it here so testids stay unique and the menu stays compact.
+    items.push({ id: 'action-ask-ai', label: cl(l, 'askAI'), icon: '✨', separator: true });
+  } else if (opts?.selectedType === 'vertex') {
+    items.push({ id: 'vertex-move', label: cl(l, 'vertexMove'), icon: '◆' });
+    items.push({ id: 'vertex-snap-grid', label: cl(l, 'vertexSnapGrid'), icon: '⊞' });
     items.push({ id: 'action-ask-ai', label: cl(l, 'askAI'), icon: '✨', separator: true });
   } else if (opts?.selectedType === 'body') {
     items.push({ id: 'action-isolate', label: cl(l, 'isolate'), icon: '👁', shortcut: 'I' });
@@ -311,22 +352,27 @@ export default function ContextMenu({ x, y, visible, items, onSelect, onClose }:
 
   return (
     <>
-      <div ref={ref} style={{
-        position: 'fixed', left: posX, top: posY, zIndex: 10000,
-        background: 'var(--nx-glass-strong)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: 10, padding: 6,
-        boxShadow: '0 12px 32px rgba(0,0,0,0.5)', minWidth: menuW,
-        animation: 'ctxFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
-      }}>
+      <div
+        ref={ref}
+        data-testid="context-menu-overlay"
+        style={{
+          position: 'fixed', left: posX, top: posY, zIndex: 10000,
+          background: 'var(--nx-glass-strong)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 10, padding: 6,
+          boxShadow: '0 12px 32px rgba(0,0,0,0.5)', minWidth: menuW,
+          animation: 'ctxFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+      >
         {items.map((item, idx) => (
           <React.Fragment key={item.id}>
             {item.separator && idx > 0 && (
               <div style={{ height: 1, background: 'var(--nx-glass-soft)', margin: '6px 8px' }} />
             )}
             <button disabled={item.disabled}
+              data-testid={`context-menu-item-${item.id}`}
               onClick={() => {
                 if (!item.disabled && !item.children) { onSelect(item.id); onClose(); }
               }}

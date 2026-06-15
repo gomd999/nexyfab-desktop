@@ -80,7 +80,7 @@ export default function EquationPanel({
       style={{
         position: 'fixed', top: 80, right: 320,
         zIndex: 700, width: 360,
-        background: '#0f172a', color: '#f1f5f9',
+        background: 'var(--nx-panel)', color: 'var(--nx-text)',
         borderRadius: 10, padding: '14px 16px',
         boxShadow: '0 12px 24px rgba(0,0,0,0.35)',
         fontFamily: 'system-ui, sans-serif',
@@ -89,13 +89,13 @@ export default function EquationPanel({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{t.title}</h3>
         {onClose && (
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer' }}>✕</button>
         )}
       </div>
 
       <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ borderBottom: '1px solid #334155', color: '#94a3b8' }}>
+          <tr style={{ borderBottom: '1px solid var(--nx-border)', color: 'var(--nx-text-2)' }}>
             <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 500 }}>{t.name}</th>
             <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 500 }}>{t.expr}</th>
             <th style={{ textAlign: 'right', padding: '4px 8px', fontWeight: 500 }}>{t.value}</th>
@@ -104,9 +104,9 @@ export default function EquationPanel({
         </thead>
         <tbody>
           {vars.map(v => (
-            <tr key={v.name} style={{ borderBottom: '1px solid #1e293b' }}>
+            <tr key={v.name} style={{ borderBottom: '1px solid var(--nx-panel-2)' }}>
               <td style={{ padding: '6px 8px', fontFamily: 'monospace' }}>{v.name}</td>
-              <td style={{ padding: '6px 8px', fontFamily: 'monospace', color: '#94a3b8' }}>{v.expression}</td>
+              <td style={{ padding: '6px 8px', fontFamily: 'monospace', color: 'var(--nx-text-2)' }}>{v.expression}</td>
               <td style={{ padding: '6px 8px', textAlign: 'right' }}>
                 {Number.isFinite(v.value) ? v.value.toFixed(3) : '—'}
               </td>
@@ -114,7 +114,7 @@ export default function EquationPanel({
                 <button
                   onClick={() => handleRemove(v.name)}
                   style={{
-                    background: 'transparent', color: '#94a3b8', border: 'none',
+                    background: 'transparent', color: 'var(--nx-text-2)', border: 'none',
                     cursor: 'pointer', fontSize: 11,
                   }}
                 >
@@ -135,8 +135,8 @@ export default function EquationPanel({
               onChange={e => setDraftName(e.target.value)}
               placeholder={t.name}
               style={{
-                flex: 1, background: '#1e293b', color: '#f1f5f9',
-                border: '1px solid #334155', borderRadius: 6,
+                flex: 1, background: 'var(--nx-panel-2)', color: 'var(--nx-text)',
+                border: '1px solid var(--nx-border)', borderRadius: 6,
                 padding: '6px 8px', fontSize: 12, fontFamily: 'monospace',
               }}
             />
@@ -146,8 +146,8 @@ export default function EquationPanel({
               onChange={e => setDraftExpr(e.target.value)}
               placeholder={t.expr}
               style={{
-                flex: 2, background: '#1e293b', color: '#f1f5f9',
-                border: '1px solid #334155', borderRadius: 6,
+                flex: 2, background: 'var(--nx-panel-2)', color: 'var(--nx-text)',
+                border: '1px solid var(--nx-border)', borderRadius: 6,
                 padding: '6px 8px', fontSize: 12, fontFamily: 'monospace',
               }}
             />
@@ -165,7 +165,7 @@ export default function EquationPanel({
             <button
               onClick={() => { setEditing(null); setDraftName(''); setDraftExpr(''); setError(null); }}
               style={{
-                background: 'transparent', color: '#94a3b8', border: 'none',
+                background: 'transparent', color: 'var(--nx-text-2)', border: 'none',
                 padding: '6px 8px', fontSize: 11, cursor: 'pointer',
               }}
             >
@@ -179,8 +179,8 @@ export default function EquationPanel({
           onClick={() => setEditing('new')}
           style={{
             width: '100%', marginTop: 8,
-            background: '#1e293b', color: '#94a3b8',
-            border: '1px dashed #334155', borderRadius: 6,
+            background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)',
+            border: '1px dashed var(--nx-border)', borderRadius: 6,
             padding: '8px 0', fontSize: 12, cursor: 'pointer',
           }}
         >

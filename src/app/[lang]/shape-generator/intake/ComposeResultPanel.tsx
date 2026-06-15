@@ -327,7 +327,7 @@ export default function ComposeResultPanel({
               style={{
                 fontSize: 18,
                 fontWeight: 600,
-                color: 'var(--nx-panel-2)',
+                color: 'var(--nx-text)',
                 margin: '2px 0 0',
               }}
             >

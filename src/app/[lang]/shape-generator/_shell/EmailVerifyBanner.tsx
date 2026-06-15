@@ -6,14 +6,16 @@
 
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/hooks/useAuth';
+import { loc } from '../lib/loc';
 
 const DISMISS_KEY = 'nexyfab.verify-banner-dismissed.v1';
 
 export interface EmailVerifyBannerProps {
   isKo: boolean;
+  lang: string;
 }
 
-export function EmailVerifyBanner({ isKo }: EmailVerifyBannerProps) {
+export function EmailVerifyBanner({ isKo, lang }: EmailVerifyBannerProps) {
   const user = useAuthStore(s => s.user);
   const refreshUser = useAuthStore(s => s.refreshPlan);
   // Optimistic UI fallback — mark user verified locally on success so the
@@ -51,14 +53,35 @@ export function EmailVerifyBanner({ isKo }: EmailVerifyBannerProps) {
         body: JSON.stringify({}),
       });
       if (res.ok) {
-        setInfo(isKo ? '인증 코드를 재발송했습니다 — 메일함 확인하세요.' : 'Verification code resent — check your inbox.');
+        setInfo(loc(lang, {
+          ko: '인증 코드를 재발송했습니다 — 메일함 확인하세요.',
+          en: 'Verification code resent — check your inbox.',
+          ja: '認証コードを再送信しました — メールをご確認ください。',
+          zh: '验证码已重新发送 — 请查收邮箱。',
+          es: 'Código de verificación reenviado — revisa tu bandeja de entrada.',
+          ar: 'تمت إعادة إرسال رمز التحقق — تحقق من بريدك الوارد.',
+        }));
         setShowInput(true);
       } else {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? (isKo ? '재발송 실패' : 'Resend failed'));
+        setError(data.error ?? loc(lang, {
+          ko: '재발송 실패',
+          en: 'Resend failed',
+          ja: '再送信に失敗しました',
+          zh: '重新发送失败',
+          es: 'Error al reenviar',
+          ar: 'فشلت إعادة الإرسال',
+        }));
       }
     } catch {
-      setError(isKo ? '네트워크 오류' : 'Network error');
+      setError(loc(lang, {
+        ko: '네트워크 오류',
+        en: 'Network error',
+        ja: 'ネットワークエラー',
+        zh: '网络错误',
+        es: 'Error de red',
+        ar: 'خطأ في الشبكة',
+      }));
     } finally {
       setBusy(false);
     }
@@ -66,7 +89,14 @@ export function EmailVerifyBanner({ isKo }: EmailVerifyBannerProps) {
 
   const verify = async () => {
     if (!/^\d{6}$/.test(code)) {
-      setError(isKo ? '6자리 숫자 코드를 입력하세요.' : 'Enter the 6-digit code.');
+      setError(loc(lang, {
+        ko: '6자리 숫자 코드를 입력하세요.',
+        en: 'Enter the 6-digit code.',
+        ja: '6桁の数字コードを入力してください。',
+        zh: '请输入6位数字验证码。',
+        es: 'Introduce el código de 6 dígitos.',
+        ar: 'أدخل الرمز المكوّن من 6 أرقام.',
+      }));
       return;
     }
     setBusy(true);
@@ -78,17 +108,38 @@ export function EmailVerifyBanner({ isKo }: EmailVerifyBannerProps) {
         body: JSON.stringify({ code, userId: user.id }),
       });
       if (res.ok) {
-        setInfo(isKo ? '✓ 이메일 인증 완료' : '✓ Email verified');
+        setInfo(loc(lang, {
+          ko: '✓ 이메일 인증 완료',
+          en: '✓ Email verified',
+          ja: '✓ メール認証完了',
+          zh: '✓ 邮箱验证完成',
+          es: '✓ Correo verificado',
+          ar: '✓ تم التحقق من البريد الإلكتروني',
+        }));
         // Optimistic local update — emailVerified true so the banner hides
         // immediately. refreshPlan also runs to sync the token claim.
         setUser((s) => ({ ...s, user: s.user ? { ...s.user, emailVerified: true } : null }));
         setTimeout(() => { void refreshUser?.(); }, 200);
       } else {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? (isKo ? '인증 실패' : 'Verification failed'));
+        setError(data.error ?? loc(lang, {
+          ko: '인증 실패',
+          en: 'Verification failed',
+          ja: '認証に失敗しました',
+          zh: '验证失败',
+          es: 'Error de verificación',
+          ar: 'فشل التحقق',
+        }));
       }
     } catch {
-      setError(isKo ? '네트워크 오류' : 'Network error');
+      setError(loc(lang, {
+        ko: '네트워크 오류',
+        en: 'Network error',
+        ja: 'ネットワークエラー',
+        zh: '网络错误',
+        es: 'Error de red',
+        ar: 'خطأ في الشبكة',
+      }));
     } finally {
       setBusy(false);
     }
@@ -97,7 +148,14 @@ export function EmailVerifyBanner({ isKo }: EmailVerifyBannerProps) {
   return (
     <div
       role="region"
-      aria-label={isKo ? '이메일 인증 안내' : 'Email verification notice'}
+      aria-label={loc(lang, {
+        ko: '이메일 인증 안내',
+        en: 'Email verification notice',
+        ja: 'メール認証のお知らせ',
+        zh: '邮箱验证提示',
+        es: 'Aviso de verificación de correo',
+        ar: 'إشعار التحقق من البريد الإلكتروني',
+      })}
       style={{
         position: 'fixed',
         top: 0, left: 0, right: 0,
@@ -129,7 +187,14 @@ export function EmailVerifyBanner({ isKo }: EmailVerifyBannerProps) {
             onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
             onKeyDown={e => { if (e.key === 'Enter') verify(); }}
             disabled={busy}
-            aria-label={isKo ? '6자리 인증 코드' : '6-digit verification code'}
+            aria-label={loc(lang, {
+              ko: '6자리 인증 코드',
+              en: '6-digit verification code',
+              ja: '6桁の認証コード',
+              zh: '6位验证码',
+              es: 'Código de verificación de 6 dígitos',
+              ar: 'رمز التحقق المكوّن من 6 أرقام',
+            })}
             autoComplete="one-time-code"
             style={{
               height: 28, padding: '0 10px',
@@ -151,7 +216,7 @@ export function EmailVerifyBanner({ isKo }: EmailVerifyBannerProps) {
               opacity: code.length !== 6 ? 0.5 : 1,
             }}
           >
-            {isKo ? '인증' : 'Verify'}
+            {loc(lang, { ko: '인증', en: 'Verify', ja: '認証', zh: '验证', es: 'Verificar', ar: 'تحقّق' })}
           </button>
         </>
       )}
@@ -164,7 +229,14 @@ export function EmailVerifyBanner({ isKo }: EmailVerifyBannerProps) {
             fontSize: 12, fontWeight: 700, cursor: 'pointer',
           }}
         >
-          {isKo ? '코드 입력' : 'Enter code'}
+          {loc(lang, {
+            ko: '코드 입력',
+            en: 'Enter code',
+            ja: 'コード入力',
+            zh: '输入验证码',
+            es: 'Introducir código',
+            ar: 'أدخل الرمز',
+          })}
         </button>
       )}
       <button
@@ -177,11 +249,25 @@ export function EmailVerifyBanner({ isKo }: EmailVerifyBannerProps) {
           cursor: busy ? 'not-allowed' : 'pointer',
         }}
       >
-        {isKo ? '재발송' : 'Resend'}
+        {loc(lang, {
+          ko: '재발송',
+          en: 'Resend',
+          ja: '再送信',
+          zh: '重新发送',
+          es: 'Reenviar',
+          ar: 'إعادة الإرسال',
+        })}
       </button>
       <button
         onClick={dismiss}
-        aria-label={isKo ? '인증 안내 닫기' : 'Dismiss verification notice'}
+        aria-label={loc(lang, {
+          ko: '인증 안내 닫기',
+          en: 'Dismiss verification notice',
+          ja: '認証のお知らせを閉じる',
+          zh: '关闭验证提示',
+          es: 'Descartar aviso de verificación',
+          ar: 'إغلاق إشعار التحقق',
+        })}
         style={{
           width: 24, height: 24, padding: 0, border: 0, background: 'transparent',
           color: '#0f0f0f', fontSize: 18, cursor: 'pointer',

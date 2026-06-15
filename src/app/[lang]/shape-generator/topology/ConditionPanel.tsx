@@ -51,7 +51,7 @@ const RESOLUTION_ELEMENTS: Record<string, string> = {
 };
 
 const cardStyle: React.CSSProperties = {
-  background: 'var(--nx-text)',
+  background: 'var(--nx-panel)',
   borderRadius: 16,
   border: '1px solid #e5e7eb',
   padding: 14,
@@ -140,11 +140,11 @@ export default function ConditionPanel({
         <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
           <div style={{ background: 'var(--nx-panel)', borderRadius: 8, padding: '6px 8px' }}>
             <div style={{ fontSize: 9, color: 'var(--nx-text-2)', fontWeight: 600 }}>E (GPa)</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-bg)' }}>{(MATERIALS[materialKey].E / 1e9).toFixed(1)}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>{(MATERIALS[materialKey].E / 1e9).toFixed(1)}</div>
           </div>
           <div style={{ background: 'var(--nx-panel)', borderRadius: 8, padding: '6px 8px' }}>
             <div style={{ fontSize: 9, color: 'var(--nx-text-2)', fontWeight: 600 }}>{t.density || 'Density'} (kg/m3)</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-bg)' }}>{MATERIALS[materialKey].density}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)' }}>{MATERIALS[materialKey].density}</div>
           </div>
         </div>
       </div>
@@ -511,7 +511,7 @@ export default function ConditionPanel({
           borderRadius: 12,
           border: '1px solid #e5e7eb',
           cursor: isOptimizing ? 'not-allowed' : 'pointer',
-          background: 'var(--nx-text)',
+          background: 'var(--nx-panel)',
           color: 'var(--nx-text-3)',
           fontWeight: 600,
           fontSize: 12,

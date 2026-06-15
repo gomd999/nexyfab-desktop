@@ -8,7 +8,9 @@ import type {
   ToolbarButton,
   PanelDefinition,
   CustomShapeDefinition,
+  PluginRegistrationResult,
 } from './PluginAPI';
+import { validateManifest } from './PluginAPI';
 
 type Listener = () => void;
 
@@ -31,13 +33,32 @@ class PluginRegistryImpl {
 
   /* ── Registration ── */
 
+  /**
+   * Pre-flight a registration: manifest validity + API compatibility + that all
+   * declared dependencies are already registered. Pure query (no side effects).
+   */
+  canRegister(manifest: PluginManifest): PluginRegistrationResult {
+    const v = validateManifest(manifest);
+    if (!v.ok) return v;
+    if (this.plugins.has(manifest.id)) {
+      return { ok: false, reason: `plugin "${manifest.id}" is already registered` };
+    }
+    for (const dep of manifest.dependencies ?? []) {
+      if (!this.plugins.has(dep)) {
+        return { ok: false, reason: `missing dependency "${dep}" (register it first)` };
+      }
+    }
+    return { ok: true };
+  }
+
   registerPlugin(
     manifest: PluginManifest,
     initFn: PluginInitFn,
     contextFactory: () => PluginContext,
   ): boolean {
-    if (this.plugins.has(manifest.id)) {
-      console.warn(`[PluginRegistry] Plugin "${manifest.id}" is already registered.`);
+    const pre = this.canRegister(manifest);
+    if (!pre.ok) {
+      console.warn(`[PluginRegistry] "${manifest.id}": ${pre.reason}`);
       return false;
     }
 

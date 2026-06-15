@@ -174,27 +174,27 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#0d1117', color: '#e6edf3',
+      minHeight: '100vh', background: 'var(--nx-bg)', color: 'var(--nx-text)',
       fontFamily: 'system-ui, -apple-system, sans-serif',
     }}>
       {/* ── Header ── */}
       <div style={{
-        borderBottom: '1px solid #21262d', padding: '16px 32px',
+        borderBottom: '1px solid var(--nx-panel-2)', padding: '16px 32px',
         display: 'flex', alignItems: 'center', gap: 16,
-        position: 'sticky', top: 0, background: '#0d1117', zIndex: 10,
+        position: 'sticky', top: 0, background: 'var(--nx-bg)', zIndex: 10,
       }}>
         <Link prefetch href={`/${lang}/shape-generator`} style={{ textDecoration: 'none' }}>
           <span style={{ fontSize: 20, fontWeight: 800, color: '#388bfd' }}>Nexy</span>
           <span style={{ fontSize: 20, fontWeight: 800, color: '#3fb950' }}>Fab</span>
         </Link>
-        <span style={{ color: '#30363d' }}>/</span>
+        <span style={{ color: 'var(--nx-border)' }}>/</span>
         <span style={{ fontSize: 16, fontWeight: 600 }}>
           {isKo ? '요금제' : 'Billing & Plans'}
         </span>
         <div style={{ flex: 1 }} />
         <a href={`/${lang}/nexyfab/settings`} style={{
-          fontSize: 12, color: '#8b949e', textDecoration: 'none',
-          padding: '6px 12px', border: '1px solid #30363d', borderRadius: 6,
+          fontSize: 12, color: 'var(--nx-text-2)', textDecoration: 'none',
+          padding: '6px 12px', border: '1px solid var(--nx-border)', borderRadius: 6,
         }}>
           {isKo ? '설정' : 'Settings'}
         </a>
@@ -234,10 +234,10 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
 
         {/* ── Title ── */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <h1 style={{ fontSize: 32, fontWeight: 800, color: '#e6edf3', margin: '0 0 12px' }}>
+          <h1 style={{ fontSize: 32, fontWeight: 800, color: 'var(--nx-text)', margin: '0 0 12px' }}>
             {isKo ? '당신에게 맞는 플랜을 선택하세요' : 'Choose the right plan for you'}
           </h1>
-          <p style={{ fontSize: 15, color: '#8b949e', margin: 0 }}>
+          <p style={{ fontSize: 15, color: 'var(--nx-text-2)', margin: 0 }}>
             {isKo
               ? '언제든지 업그레이드하거나 다운그레이드할 수 있습니다.'
               : 'Upgrade or downgrade at any time.'}
@@ -249,14 +249,14 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           gap: 12, marginBottom: 40,
         }}>
-          <span style={{ fontSize: 13, color: cycle === 'monthly' ? '#e6edf3' : '#8b949e', fontWeight: 600 }}>
+          <span style={{ fontSize: 13, color: cycle === 'monthly' ? 'var(--nx-text)' : 'var(--nx-text-2)', fontWeight: 600 }}>
             {isKo ? '월간' : 'Monthly'}
           </span>
           <button
             onClick={() => setCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly')}
             style={{
               width: 52, height: 28, borderRadius: 14,
-              background: '#21262d', border: '1px solid #30363d',
+              background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)',
               cursor: 'pointer', position: 'relative', transition: 'background 0.2s',
               padding: 0,
             }}
@@ -265,12 +265,12 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
               position: 'absolute', top: 3,
               left: cycle === 'yearly' ? 25 : 3,
               width: 20, height: 20, borderRadius: '50%',
-              background: cycle === 'yearly' ? '#388bfd' : '#484f58',
+              background: cycle === 'yearly' ? '#388bfd' : 'var(--nx-text-3)',
               transition: 'left 0.2s, background 0.2s',
               display: 'block',
             }} />
           </button>
-          <span style={{ fontSize: 13, color: cycle === 'yearly' ? '#e6edf3' : '#8b949e', fontWeight: 600 }}>
+          <span style={{ fontSize: 13, color: cycle === 'yearly' ? 'var(--nx-text)' : 'var(--nx-text-2)', fontWeight: 600 }}>
             {isKo ? '연간' : 'Yearly'}
             <span style={{
               marginLeft: 6, fontSize: 10, padding: '1px 7px', borderRadius: 10,
@@ -299,8 +299,8 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
               <div
                 key={plan.id}
                 style={{
-                  background: '#161b22',
-                  border: `1px solid ${plan.popular ? plan.color + '66' : '#30363d'}`,
+                  background: 'var(--nx-panel)',
+                  border: `1px solid ${plan.popular ? plan.color + '66' : 'var(--nx-border)'}`,
                   borderRadius: 14, overflow: 'hidden',
                   position: 'relative',
                   boxShadow: plan.popular ? `0 0 24px ${plan.color}22` : undefined,
@@ -329,11 +329,11 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
 
                   {/* Price */}
                   <div style={{ marginBottom: 20 }}>
-                    <span style={{ fontSize: 32, fontWeight: 800, color: '#e6edf3', fontFamily: 'monospace' }}>
+                    <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--nx-text)', fontFamily: 'monospace' }}>
                       {fmtKRW(price)}
                     </span>
                     {price !== null && price > 0 && (
-                      <span style={{ fontSize: 12, color: '#8b949e', marginLeft: 4 }}>
+                      <span style={{ fontSize: 12, color: 'var(--nx-text-2)', marginLeft: 4 }}>
                         /{isKo ? (cycle === 'monthly' ? '월' : '년') : (cycle === 'monthly' ? 'mo' : 'yr')}
                       </span>
                     )}
@@ -352,8 +352,8 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
                   ) : plan.id === 'free' ? (
                     <div style={{
                       padding: '10px 16px', borderRadius: 8, textAlign: 'center',
-                      background: '#21262d', color: '#6e7681',
-                      border: '1px solid #30363d',
+                      background: 'var(--nx-panel-2)', color: 'var(--nx-text-3)',
+                      border: '1px solid var(--nx-border)',
                       fontSize: 13, marginBottom: 24,
                     }}>
                       {isKo ? '기본 플랜' : 'Default plan'}
@@ -365,8 +365,8 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
                       style={{
                         width: '100%', padding: '10px 16px', borderRadius: 8,
                         fontSize: 13, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer',
-                        background: isLoading ? '#21262d' : plan.color,
-                        color: isLoading ? '#6e7681' : '#fff',
+                        background: isLoading ? 'var(--nx-panel-2)' : plan.color,
+                        color: isLoading ? 'var(--nx-text-3)' : '#fff',
                         border: 'none', marginBottom: 24,
                         transition: 'opacity 0.15s',
                         opacity: isLoading ? 0.7 : 1,
@@ -383,7 +383,7 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
                     {plan.features.map((f, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                         <span style={{ color: plan.color, fontSize: 14, flexShrink: 0 }}>✓</span>
-                        <span style={{ fontSize: 13, color: '#c9d1d9', lineHeight: 1.4 }}>
+                        <span style={{ fontSize: 13, color: 'var(--nx-text)', lineHeight: 1.4 }}>
                           {isKo ? f.ko : f.en}
                         </span>
                       </div>
@@ -397,10 +397,10 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
 
         {/* ── FAQ / Note ── */}
         <div style={{
-          marginTop: 48, padding: '24px', background: '#161b22',
-          border: '1px solid #30363d', borderRadius: 12,
+          marginTop: 48, padding: '24px', background: 'var(--nx-panel)',
+          border: '1px solid var(--nx-border)', borderRadius: 12,
         }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: '#e6edf3' }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: 'var(--nx-text)' }}>
             {isKo ? '자주 묻는 질문' : 'FAQ'}
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -433,8 +433,8 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
 function FaqItem({ q, a }: { q: string; a: string }) {
   return (
     <div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: '#e6edf3', marginBottom: 3 }}>{q}</div>
-      <div style={{ fontSize: 12, color: '#8b949e', lineHeight: 1.5 }}>{a}</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--nx-text)', marginBottom: 3 }}>{q}</div>
+      <div style={{ fontSize: 12, color: 'var(--nx-text-2)', lineHeight: 1.5 }}>{a}</div>
     </div>
   );
 }

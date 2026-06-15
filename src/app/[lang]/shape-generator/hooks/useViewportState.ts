@@ -19,6 +19,7 @@ export function useViewportState() {
   const [transformMatrix, setTransformMatrix] = useState<number[] | null>(null);
   const [snapEnabled, setSnapEnabled] = useState(false);
   const [snapSize, setSnapSize] = useState(1);
+  const [smartSnapEnabled, setSmartSnapEnabled] = useState(false);
   const [unitSystem, setUnitSystem] = useState<UnitSystem>('mm');
 
   return {
@@ -33,6 +34,7 @@ export function useViewportState() {
     transformMatrix, setTransformMatrix,
     snapEnabled, setSnapEnabled,
     snapSize, setSnapSize,
+    smartSnapEnabled, setSmartSnapEnabled,
     unitSystem, setUnitSystem,
   };
 }

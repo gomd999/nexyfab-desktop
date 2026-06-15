@@ -9,9 +9,10 @@ import { SidePanel, Tree, type TreeNode } from './';
 import { useShellBridge, type ShellFeatureItem } from '../shellBridgeStore';
 import { I } from '../Icons';
 import { StandardPartsGrid } from './StandardPartsGrid';
+import { pickShellDict } from '../shellDict';
 
 export interface ModelerLeftPaneProps {
-  isKo: boolean;
+  lang: string;
   onSelectFeature?: (id: string) => void;
 }
 
@@ -47,7 +48,8 @@ function featureToTreeNode(item: ShellFeatureItem): TreeNode {
   };
 }
 
-export function ModelerLeftPane({ isKo, onSelectFeature }: ModelerLeftPaneProps) {
+export function ModelerLeftPane({ lang, onSelectFeature }: ModelerLeftPaneProps) {
+  const d = pickShellDict(lang);
   const features = useShellBridge(s => s.featureItems);
   const selectedFeatureId = useShellBridge(s => s.selectedFeatureId);
   const setHoveredFeatureId = useShellBridge(s => s.setHoveredFeatureId);
@@ -66,9 +68,9 @@ export function ModelerLeftPane({ isKo, onSelectFeature }: ModelerLeftPaneProps)
     <SidePanel
       side="left"
       tabs={[
-        { id: 'features', label: isKo ? '피처' : 'Features', icon: <I.tree size={12} /> },
-        { id: 'bodies', label: isKo ? '바디' : 'Bodies', icon: <I.layers size={12} /> },
-        { id: 'components', label: isKo ? '컴포넌트' : 'Components', icon: <I.cube size={12} /> },
+        { id: 'features', label: d.tabFeatures, icon: <I.tree size={12} /> },
+        { id: 'bodies', label: d.tabBodies, icon: <I.layers size={12} /> },
+        { id: 'components', label: d.tabComponents, icon: <I.cube size={12} /> },
       ]}
       activeTab={activeTab}
       onTabChange={(id) => setActiveTab(id as typeof activeTab)}
@@ -78,7 +80,7 @@ export function ModelerLeftPane({ isKo, onSelectFeature }: ModelerLeftPaneProps)
             <I.search size={11} />
             <input
               type="text"
-              placeholder={isKo ? '피처 필터…' : 'Filter features…'}
+              placeholder={d.filterFeatures}
               value={filter}
               onChange={e => setFilter(e.target.value)}
               style={{
@@ -87,7 +89,7 @@ export function ModelerLeftPane({ isKo, onSelectFeature }: ModelerLeftPaneProps)
               }}
             />
           </div>
-          <button className="nx-icon-btn" aria-label={isKo ? '추가' : 'Add'}>
+          <button className="nx-icon-btn" aria-label={d.add}>
             <I.plus size={11} />
           </button>
         </div>
@@ -95,7 +97,7 @@ export function ModelerLeftPane({ isKo, onSelectFeature }: ModelerLeftPaneProps)
     >
       {activeTab === 'features' && (
         treeNodes.length === 0 ? (
-          <EmptyHint isKo={isKo} message={isKo ? '피처 없음 — 스케치를 만들어 시작' : 'No features — create a sketch to start'} />
+          <EmptyHint message={d.noFeatures} />
         ) : (
           <Tree
             nodes={treeNodes}
@@ -111,14 +113,17 @@ export function ModelerLeftPane({ isKo, onSelectFeature }: ModelerLeftPaneProps)
         )
       )}
       {activeTab === 'bodies' && (
-        <EmptyHint isKo={isKo} message={isKo ? '바디 보기 — 모든 솔리드 / 서피스 / 메시 보디' : 'Bodies view — solids, surfaces, meshes'} />
+        // Honest state instead of a static "Bodies view — solids/surfaces"
+        // description that masqueraded as content. The shell bridge tracks
+        // features, not a separate multi-body list. (2026-06-09 C3)
+        <EmptyHint message={features.length === 0 ? d.noBodies : d.singleBody} />
       )}
-      {activeTab === 'components' && <StandardPartsGrid isKo={isKo} />}
+      {activeTab === 'components' && <StandardPartsGrid lang={lang} />}
     </SidePanel>
   );
 }
 
-function EmptyHint({ message }: { isKo: boolean; message: string }) {
+function EmptyHint({ message }: { message: string }) {
   return (
     <div style={{
       padding: '20px 16px',

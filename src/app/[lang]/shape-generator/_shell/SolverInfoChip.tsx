@@ -8,15 +8,25 @@
 
 import { useState } from 'react';
 import { useShellBridge } from './shellBridgeStore';
+import { sketchStatusColor, sketchStatusLabel } from './sketchStatusUi';
+import { pickShellDict } from './shellDict';
 
 interface SolverInfoChipProps {
-  isKo: boolean;
+  lang: string;
 }
 
-export function SolverInfoChip({ isKo }: SolverInfoChipProps) {
-  const [collapsed, setCollapsed] = useState(false);
+export function SolverInfoChip({ lang }: SolverInfoChipProps) {
+  const d = pickShellDict(lang);
+  // Collapsed by default: the full solver readout (entities/constraints/DOF/
+  // redundant/solve-time) already lives in the right-pane SOLVER section and
+  // the left-pane footer pill. This floating chip is the glanceable third copy
+  // — keep it to a single "DOF n · OK" pill so it stops occluding the
+  // bottom-left of the viewport. Click to expand for the full breakdown.
+  // (2026-06-12 declutter)
+  const [collapsed, setCollapsed] = useState(true);
   const editMode = useShellBridge(s => s.editMode);
-  const ok = useShellBridge(s => s.sketchSolverOk);
+  const status = useShellBridge(s => s.sketchStatus);
+  const redundantCount = useShellBridge(s => s.sketchRedundantCount);
   const dof = useShellBridge(s => s.sketchDof);
   const entities = useShellBridge(s => s.sketchEntities);
   const constraints = useShellBridge(s => s.sketchConstraints);
@@ -24,19 +34,21 @@ export function SolverInfoChip({ isKo }: SolverInfoChipProps) {
 
   if (editMode !== 'sketch') return null;
 
+  const ok = status === null ? null : status === 'ok';
+  const statusLabel = sketchStatusLabel(status, dof, redundantCount, d);
   const rows: { k: string; v: string; tone?: 'ok' | 'warn' | 'error' }[] = [
-    { k: isKo ? '엔티티' : 'entities', v: String(entities) },
-    { k: isKo ? '구속' : 'constraints', v: String(constraints) },
-    { k: isKo ? '치수' : 'dimensions', v: String(dimensions) },
+    { k: d.entitiesLower, v: String(entities) },
+    { k: d.constraintsShort, v: String(constraints) },
+    { k: d.dimensionsLower, v: String(dimensions) },
     {
       k: 'DOF',
       v: dof !== null ? String(dof) : '—',
-      tone: dof === 0 ? 'ok' : (dof ?? 0) > 0 ? 'warn' : 'error',
+      tone: dof === null ? undefined : dof === 0 ? 'ok' : dof > 0 ? 'warn' : 'error',
     },
     {
-      k: 'solver',
-      v: ok === null ? '—' : ok ? 'OK' : 'fail',
-      tone: ok ? 'ok' : ok === false ? 'error' : undefined,
+      k: d.statusLower,
+      v: statusLabel ?? '—',
+      tone: status === null ? undefined : status === 'ok' ? 'ok' : status === 'under-defined' ? 'warn' : 'error',
     },
   ];
 
@@ -73,10 +85,10 @@ export function SolverInfoChip({ isKo }: SolverInfoChipProps) {
           cursor: 'pointer',
         }}
       >
-        <span style={{ flex: 1 }}>{isKo ? '솔버' : 'Solver'}</span>
+        <span style={{ flex: 1 }}>{d.solver}</span>
         {collapsed && (
           <span style={{
-            color: ok ? 'var(--nx-ok)' : ok === false ? 'var(--nx-error)' : 'var(--nx-text-3)',
+            color: sketchStatusColor(status),
             fontFamily: 'var(--font-jetbrains-mono), monospace',
             fontSize: 9,
           }}>

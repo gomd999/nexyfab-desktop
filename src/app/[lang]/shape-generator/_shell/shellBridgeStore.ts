@@ -24,6 +24,10 @@ export interface ShellFeatureItem {
   meta?: string;
   /** Numeric params keyed by name — drives the Inspector PARAMETERS section. */
   params?: Record<string, number>;
+  /** Real edge selections attached to this feature (fillet/chamfer/shell) —
+   *  drives the Inspector EDGES section. id = persistent topology id when
+   *  available; meta = human hint (e.g. "L 12.0 mm"). */
+  edges?: { id: string; meta?: string }[];
   /** Children for sketch profile / sub-features. */
   children?: ShellFeatureItem[];
 }
@@ -39,19 +43,41 @@ export interface ShellAssemblyItem {
   kind?: 'part' | 'subassembly' | 'reference';
 }
 
+export interface ShellMate {
+  id: string;
+  /** Mate type — coincident / concentric / distance / parallel / etc. */
+  type: string;
+  /** Display labels for the two mated parts (resolved from part ids). */
+  partA: string;
+  partB: string;
+  /** Distance (mm) or angle (deg) when applicable. */
+  value?: number;
+  locked?: boolean;
+}
+
 export interface ShellSketchEntity {
   id: string;
   type: string;
   label: string;
   meta?: string;
   construction?: boolean;
+  /** Ids of the entity's defining points — lets the sidebars match
+   *  point-level constraints (coincident/fixed) back to their segment. */
+  pointIds?: string[];
 }
 
 export interface ShellSketchConstraint {
   id: string;
   type: string;
   label?: string;
+  /** Segment / point ids the constraint references. */
+  entityIds?: string[];
+  /** Solver verdict from the last (live or manual) solve. */
+  satisfied?: boolean;
 }
+
+/** Mirrors constraintSolver's ConstraintStatus; null = empty sketch. */
+export type ShellSketchStatus = 'ok' | 'under-defined' | 'over-defined' | 'inconsistent';
 
 export interface ShellSketchDimension {
   id: string;
@@ -66,6 +92,9 @@ export interface ShellSketchDimension {
    *  Lets the UI mark cycle / unknown-id / non-finite cases with a tooltip
    *  rather than silently falling back to `value`. */
   expressionError?: { reason: 'syntax' | 'unknown-identifier' | 'cycle' | 'runtime' | 'non-finite'; detail?: string };
+  /** Segment / point ids the dimension measures — lets the right pane
+   *  show only the parameters attached to the current selection. */
+  entityIds?: string[];
 }
 
 export interface ShellBridgeState {
@@ -100,6 +129,10 @@ export interface ShellBridgeState {
   sketchConstraints: number;
   sketchDimensions: number;
   sketchSolveMs: number | null;
+  /** Full solver status — drives the 3-state (under/full/over) chrome. */
+  sketchStatus: ShellSketchStatus | null;
+  /** Count of redundant constraints reported by the last solve. */
+  sketchRedundantCount: number;
 
   // Current canvas selection — drives the floating "Fillet 1 · 12 edges" bubble.
   selectionKind: 'face' | 'edge' | 'vertex' | 'feature' | 'multi' | null;
@@ -117,11 +150,22 @@ export interface ShellBridgeState {
   // assembly mode (parts list with mate counts + mass).
   assemblyItems: ShellAssemblyItem[];
   selectedAssemblyId: string | null;
+  /** Real mates (constraints between parts) — published from Inner's
+   *  assemblyMates so the assembly sidebars show actual mates, not placeholders. */
+  assemblyMates: ShellMate[];
   // Sketch snapshot — published from sketch store so SketchLeftPane shows
   // real entities/constraints/dimensions instead of placeholders.
   sketchEntityList: ShellSketchEntity[];
   sketchConstraintList: ShellSketchConstraint[];
   sketchDimensionList: ShellSketchDimension[];
+  /** Entity currently selected in the sketch canvas (select tool) —
+   *  drives the SketchRightPane "Active Selection" section. */
+  sketchSelectedEntityId: string | null;
+
+  /** Real DFM error/warning count from the last analysis run (worker auto-DFM).
+   *  null = no analysis has completed yet — Inspector shows "run" instead of
+   *  a fabricated count. */
+  dfmWarningCount: number | null;
 
   // Writers
   setMode: (s: Partial<Pick<ShellBridgeState, 'isSketchMode' | 'assemblyOpen' | 'editMode'>>) => void;
@@ -130,16 +174,19 @@ export interface ShellBridgeState {
   setStats: (s: Partial<Pick<ShellBridgeState, 'featureCount' | 'mass' | 'volume' | 'triangleCount' | 'selectedLabel'>>) => void;
   setFps: (n: number) => void;
   setCloud: (s: Partial<Pick<ShellBridgeState, 'cloudStatus' | 'cloudSavedAt' | 'autosaveSavedAt'>>) => void;
-  setSketchSolver: (s: Partial<Pick<ShellBridgeState, 'sketchSolverOk' | 'sketchDof' | 'sketchEntities' | 'sketchConstraints' | 'sketchDimensions' | 'sketchSolveMs'>>) => void;
+  setSketchSolver: (s: Partial<Pick<ShellBridgeState, 'sketchSolverOk' | 'sketchDof' | 'sketchEntities' | 'sketchConstraints' | 'sketchDimensions' | 'sketchSolveMs' | 'sketchStatus' | 'sketchRedundantCount'>>) => void;
   setSelection: (s: Partial<Pick<ShellBridgeState, 'selectionKind' | 'selectionLabel' | 'selectionCount'>>) => void;
   setFeatureItems: (items: ShellFeatureItem[], selectedId: string | null) => void;
   setHoveredFeatureId: (id: string | null) => void;
   setAssemblyItems: (items: ShellAssemblyItem[], selectedId: string | null) => void;
+  setAssemblyMates: (mates: ShellMate[]) => void;
   setSketchSnapshot: (s: {
     entities: ShellSketchEntity[];
     constraints: ShellSketchConstraint[];
     dimensions: ShellSketchDimension[];
   }) => void;
+  setSketchSelectedEntity: (id: string | null) => void;
+  setDfmWarningCount: (n: number | null) => void;
 }
 
 export const useShellBridge = create<ShellBridgeState>((set) => ({
@@ -163,6 +210,8 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   sketchConstraints: 0,
   sketchDimensions: 0,
   sketchSolveMs: null,
+  sketchStatus: null,
+  sketchRedundantCount: 0,
   selectionKind: null,
   selectionLabel: null,
   selectionCount: 0,
@@ -171,9 +220,12 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   hoveredFeatureId: null,
   assemblyItems: [],
   selectedAssemblyId: null,
+  assemblyMates: [],
   sketchEntityList: [],
   sketchConstraintList: [],
   sketchDimensionList: [],
+  sketchSelectedEntityId: null,
+  dfmWarningCount: null,
 
   setMode: (s) => set(s),
   setUnits: (u) => set({ unitSystem: u }),
@@ -186,9 +238,12 @@ export const useShellBridge = create<ShellBridgeState>((set) => ({
   setFeatureItems: (items, selectedId) => set({ featureItems: items, selectedFeatureId: selectedId }),
   setHoveredFeatureId: (id) => set({ hoveredFeatureId: id }),
   setAssemblyItems: (items, selectedId) => set({ assemblyItems: items, selectedAssemblyId: selectedId }),
+  setAssemblyMates: (mates) => set({ assemblyMates: mates }),
   setSketchSnapshot: (s) => set({
     sketchEntityList: s.entities,
     sketchConstraintList: s.constraints,
     sketchDimensionList: s.dimensions,
   }),
+  setSketchSelectedEntity: (id) => set({ sketchSelectedEntityId: id }),
+  setDfmWarningCount: (n) => set({ dfmWarningCount: n }),
 }));

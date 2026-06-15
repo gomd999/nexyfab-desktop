@@ -75,8 +75,8 @@ const FLOW_STEPS = [
     icon: '🤝',
     titleKo: '제조사 연결',
     titleEn: 'Manufacturer Connection',
-    descKo: '검증된 제조 파트너에게 견적을 요청하고 주문을 진행합니다.',
-    descEn: 'Request quotes from verified manufacturing partners and place orders.',
+    descKo: '제조 파트너에게 견적을 요청하고 주문을 진행합니다.',
+    descEn: 'Request quotes from manufacturing partners and place orders.',
     color: '#3fb950',
   },
 ];
@@ -469,7 +469,7 @@ export default function NexyfabHomePage({ params }: { params: Promise<{ lang: st
         textAlign: 'center',
       }}>
         <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6e7681', fontWeight: 600, letterSpacing: '0.05em' }}>
-          {isKo ? '검증된 제조 파트너' : 'VERIFIED MANUFACTURING PARTNERS'}
+          {isKo ? '제조 파트너' : 'MANUFACTURING PARTNERS'}
         </p>
         <div style={{
           display: 'flex',

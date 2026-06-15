@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
-import { isOcctReady, isOcctGlobalMode, occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { shouldUseOcctEngine } from './engineSelection';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo.toNonIndexed(), new THREE.MeshStandardMaterial());
@@ -19,7 +20,7 @@ export function splitBodyBoth(
 ): [THREE.BufferGeometry, THREE.BufferGeometry] {
   const SIZE = 4000;
   
-  if (isOcctGlobalMode() && isOcctReady()) {
+  if (shouldUseOcctEngine()) {
     try {
       const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
       const host = hostBoxFromGeometry(geometry);

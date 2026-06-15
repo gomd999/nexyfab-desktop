@@ -1,0 +1,124 @@
+{
+  "$schema": "Phase-4 kernel-robustness corpus fixtures. Each case rebuilds a base solid via `steps` (named shapes), then runs `final` (the historically-failing op) through the production avoidance/capture path. `expectation`: 'ok' = succeeds as requested | 'avoided' = requested fails, reduced-radius ladder succeeds | 'partial' = per-edge subset succeeds | 'fail-clean' = every kernel attempt fails, error is captured, no crash | 'empty' = op returns empty geometry without throwing. Field-captured kernelCorpus records (window.__nfabKernelCorpus.export()) can be converted into new cases by adding replay `steps`.",
+  "cases": [
+    {
+      "id": "fillet-radius-exceeds-thickness",
+      "title": "Fillet all edges of a 40x40x10 plate with r=12 (> thickness) — radius-too-large; ladder lands on 9 (kernel merges the opposing rounds)",
+      "expectation": "avoided",
+      "steps": [
+        { "op": "extrude", "out": "a", "profile": [[-20, -20], [20, -20], [20, 20], [-20, 20]], "depth": 10 }
+      ],
+      "final": { "op": "fillet", "host": "a", "radius": 12 }
+    },
+    {
+      "id": "fillet-exact-half-thickness-seam",
+      "title": "Fillet all edges of a 40x40x10 plate with r=5 (EXACTLY half thickness) — kernel seam quirk: 4.9 and 6 build, 5.0 throws; ladder lands on 3.75",
+      "expectation": "avoided",
+      "steps": [
+        { "op": "extrude", "out": "a", "profile": [[-20, -20], [20, -20], [20, 20], [-20, 20]], "depth": 10 }
+      ],
+      "final": { "op": "fillet", "host": "a", "radius": 5 }
+    },
+    {
+      "id": "fillet-radius-exceeds-plate-under-boss",
+      "title": "Plate 40x40x5 with 10x10x8 boss; fillet all edges r=6 (> plate thickness 5)",
+      "expectation": "avoided",
+      "steps": [
+        { "op": "extrude", "out": "plate", "profile": [[-20, -20], [20, -20], [20, 20], [-20, 20]], "depth": 5 },
+        { "op": "extrude", "out": "boss", "profile": [[-5, -5], [5, -5], [5, 5], [-5, 5]], "depth": 8, "offset": 5 },
+        { "op": "boolean", "out": "a", "type": "union", "host": "plate", "tool": "boss" }
+      ],
+      "final": { "op": "fillet", "host": "a", "radius": 6 }
+    },
+    {
+      "id": "fillet-tangent-cylinder-boss",
+      "title": "Cylinder boss (r=20) tangent to all four sides of a 40x40 plate; fillet all edges r=3 near tangency — canary: tangent blends must KEEP working",
+      "expectation": "ok",
+      "steps": [
+        { "op": "extrude", "out": "plate", "profile": [[-20, -20], [20, -20], [20, 20], [-20, 20]], "depth": 10 },
+        { "op": "extrudeCircle", "out": "boss", "r": 20, "cx": 0, "cy": 0, "depth": 10, "offset": 10 },
+        { "op": "boolean", "out": "a", "type": "union", "host": "plate", "tool": "boss" }
+      ],
+      "final": { "op": "fillet", "host": "a", "radius": 3 }
+    },
+    {
+      "id": "shell-on-extruded-brep",
+      "title": "Shell t=1 (open top) on a HEALTHY 30x30x10 extruded solid — replicad shell on extruded-profile B-reps currently throws (wasm exception); production falls back to mesh shell",
+      "expectation": "fail-clean",
+      "steps": [
+        { "op": "extrude", "out": "a", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10 }
+      ],
+      "final": { "op": "shell", "host": "a", "thickness": 1, "openFace": 1 }
+    },
+    {
+      "id": "fillet-per-edge-thin-slot",
+      "title": "Box with a through-slot leaving a 0.5mm wall at one corner; 2-edge selection r=2 — only the healthy edge can fillet",
+      "expectation": "partial",
+      "steps": [
+        { "op": "extrude", "out": "solid", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 30 },
+        { "op": "extrude", "out": "slot", "profile": [[12.5, -16], [14.5, -16], [14.5, 16], [12.5, 16]], "depth": 32, "offset": -1 },
+        { "op": "boolean", "out": "a", "type": "subtract", "host": "solid", "tool": "slot" }
+      ],
+      "final": {
+        "op": "filletPerEdge",
+        "host": "a",
+        "radius": 2,
+        "selections": [
+          { "position": [-15, -15, 15], "direction": [0, 0, 1], "length": 30, "normal": [-1, 0, 0] },
+          { "position": [15, 15, 15], "direction": [0, 0, 1], "length": 30, "normal": [1, 0, 0] }
+        ]
+      }
+    },
+    {
+      "id": "shell-thin-plate",
+      "title": "Shell a 30x30x2 plate with t=1.5 (walls thicker than the body)",
+      "expectation": "fail-clean",
+      "steps": [
+        { "op": "extrude", "out": "a", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 2 }
+      ],
+      "final": { "op": "shell", "host": "a", "thickness": 1.5, "openFace": 1 }
+    },
+    {
+      "id": "shell-thickness-exceeds-boss",
+      "title": "20x20x20 box with a 4x4x4 boss; shell t=2.5 (> boss half-width)",
+      "expectation": "fail-clean",
+      "steps": [
+        { "op": "extrude", "out": "box", "profile": [[-10, -10], [10, -10], [10, 10], [-10, 10]], "depth": 20 },
+        { "op": "extrude", "out": "boss", "profile": [[-2, -2], [2, -2], [2, 2], [-2, 2]], "depth": 4, "offset": 20 },
+        { "op": "boolean", "out": "a", "type": "union", "host": "box", "tool": "boss" }
+      ],
+      "final": { "op": "shell", "host": "a", "thickness": 2.5, "openFace": 1 }
+    },
+    {
+      "id": "boolean-coplanar-subtract",
+      "title": "Subtract a tool whose top/bottom/side faces are exactly coplanar with the host (classic fuzzy-tolerance case)",
+      "expectation": "ok",
+      "volume": 3000,
+      "steps": [
+        { "op": "extrude", "out": "host", "profile": [[-10, -10], [10, -10], [10, 10], [-10, 10]], "depth": 10 },
+        { "op": "extrude", "out": "tool", "profile": [[0, -5], [10, -5], [10, 5], [0, 5]], "depth": 10 }
+      ],
+      "final": { "op": "boolean", "type": "subtract", "host": "host", "tool": "tool" }
+    },
+    {
+      "id": "boolean-identical-cut",
+      "title": "Subtract a solid from an identical copy of itself — must come back empty without crashing",
+      "expectation": "empty",
+      "steps": [
+        { "op": "extrude", "out": "host", "profile": [[-10, -10], [10, -10], [10, 10], [-10, 10]], "depth": 10 },
+        { "op": "extrude", "out": "tool", "profile": [[-10, -10], [10, -10], [10, 10], [-10, 10]], "depth": 10 }
+      ],
+      "final": { "op": "boolean", "type": "subtract", "host": "host", "tool": "tool" }
+    },
+    {
+      "id": "draft-on-filleted-body",
+      "title": "Draft 5deg on a body whose vertical edges were filleted (cylindrical side faces)",
+      "expectation": "fail-clean",
+      "steps": [
+        { "op": "extrude", "out": "solid", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 20 },
+        { "op": "filletStep", "out": "a", "host": "solid", "radius": 2 }
+      ],
+      "final": { "op": "draft", "host": "a", "angle": 5, "direction": 0 }
+    }
+  ]
+}

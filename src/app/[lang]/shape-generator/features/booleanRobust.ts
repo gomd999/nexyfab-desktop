@@ -188,8 +188,17 @@ function isClosedMesh(geo: THREE.BufferGeometry): boolean {
 }
 
 function mergeGeometries(a: THREE.BufferGeometry, b: THREE.BufferGeometry): THREE.BufferGeometry {
-  const pa = a.getAttribute('position') as THREE.BufferAttribute | undefined;
-  const pb = b.getAttribute('position') as THREE.BufferAttribute | undefined;
+  // Expand any INDEXED input to its real triangle vertices first. The output is
+  // a flat non-indexed position buffer, so concatenating the raw position
+  // arrays of an indexed mesh (where the 24 box corners only form triangles
+  // VIA the index) silently dropped the index and reinterpreted the corners as
+  // garbage triangles — a disjoint union of two indexed cubes came back with
+  // ~3/4 of its volume. toNonIndexed() bakes the index into the positions so
+  // every consecutive triple is a real triangle.
+  const na = a.index ? a.toNonIndexed() : a;
+  const nb = b.index ? b.toNonIndexed() : b;
+  const pa = na.getAttribute('position') as THREE.BufferAttribute | undefined;
+  const pb = nb.getAttribute('position') as THREE.BufferAttribute | undefined;
   if (!pa || !pb) throw new Error('mergeGeometries: missing position attribute');
   const total = pa.count + pb.count;
   const merged = new Float32Array(total * 3);

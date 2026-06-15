@@ -195,7 +195,7 @@ const inputStyle: React.CSSProperties = {
   background: 'var(--nx-bg)',
   border: '1px solid var(--nx-border-strong)',
   borderRadius: 4,
-  color: 'var(--nx-panel-2)',
+  color: 'var(--nx-text)',
   fontSize: 12,
   width: '100%',
 };
@@ -563,7 +563,7 @@ export default function HoleWizardThreadsSection({
             borderRadius: 4,
             fontFamily: 'monospace',
             fontSize: 11,
-            color: '#d1d5db',
+            color: 'var(--nx-text)',
           }}
         >
           <div>

@@ -42,6 +42,10 @@ export function useSketchState() {
     unsatisfiedCount?: number;
     redundant?: string[];
     onRemoveRedundant?: (id: string) => void;
+    /** Wall-clock duration of the last solve (ms) — live or manual. */
+    solveMs?: number;
+    /** Constraint ids the last solve could not satisfy. */
+    unsatisfiedIds?: string[];
   }>({});
 
   // ── History ───────────────────────────────────────────────────────────────

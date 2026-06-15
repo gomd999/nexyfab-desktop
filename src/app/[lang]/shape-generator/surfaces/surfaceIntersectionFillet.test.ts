@@ -55,7 +55,7 @@ describe('sampleIntersectionCurve', () => {
 });
 
 describe('rollingBallSpine', () => {
-  it('center offset radius/sin(half-angle) from foot point', () => {
+  it('center offset = radius/cos(half-angle) from the foot point', () => {
     const c = sampleIntersectionCurve(
       planeZ, planeY,
       { u: 0.5, v: 0.5 }, { u: 0.5, v: 0.5 },
@@ -63,14 +63,38 @@ describe('rollingBallSpine', () => {
     );
     const r = 2;
     const spine = rollingBallSpine(c, r);
-    // For perpendicular surfaces, half-angle = 45°, sin = √2/2,
-    // offset = r/sin(45°) = r·√2. Center is r·√2 along bisector.
+    // Perpendicular surfaces → normals at α=90°, half-angle 45°, offset =
+    // r/cos(45°) = r·√2. (cos and sin coincide at 45°, which is exactly why
+    // the old r/sin(α/2) bug stayed hidden until a non-90° dihedral.)
     const center = spine.centers[0]!;
     const mid = c.spinePoints[0]!;
     const dx = center.x - mid.x;
     const dy = center.y - mid.y;
     const dz = center.z - mid.z;
     expect(Math.hypot(dx, dy, dz)).toBeCloseTo(r * Math.sqrt(2), 2);
+  });
+
+  it('foot points lie on BOTH surfaces at any dihedral angle (not just 90°)', () => {
+    // The defining rolling-ball property: foot_A is on surface A, foot_B on
+    // surface B, each at distance r from the centre. Hand-build curves whose
+    // normals meet at non-90° angles — where the old r/sin(α/2) put the feet
+    // off the faces (e.g. 3.66 mm adrift at 60°).
+    const p = { x: 0, y: 0, z: 0 };
+    const r = 5;
+    for (const deg of [45, 60, 120, 150]) {
+      const a = (deg * Math.PI) / 180;
+      const nA = { x: 0, y: 0, z: 1 };
+      const nB = { x: Math.sin(a), y: 0, z: Math.cos(a) };
+      const curve = { spinePoints: [p], tangents: [{ x: 0, y: 1, z: 0 }], normalsA: [nA], normalsB: [nB] };
+      const s = rollingBallSpine(curve, r);
+      const ctr = s.centers[0]!, fA = s.feetA[0]!, fB = s.feetB[0]!;
+      // foot on plane (through p with that normal): (foot − p)·n = 0.
+      expect(fA.x * nA.x + fA.y * nA.y + fA.z * nA.z).toBeCloseTo(0, 5);
+      expect(fB.x * nB.x + fB.y * nB.y + fB.z * nB.z).toBeCloseTo(0, 5);
+      // ball touches each surface at radius r.
+      expect(Math.hypot(ctr.x - fA.x, ctr.y - fA.y, ctr.z - fA.z)).toBeCloseTo(r, 5);
+      expect(Math.hypot(ctr.x - fB.x, ctr.y - fB.y, ctr.z - fB.z)).toBeCloseTo(r, 5);
+    }
   });
 
   it('foot points distance r from center', () => {

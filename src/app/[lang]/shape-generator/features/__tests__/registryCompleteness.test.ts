@@ -21,6 +21,9 @@ function allMapBackedFeatureTypes(): MapBackedFeatureType[] {
     'flange',
     'hem',
     'jog',
+    'tab',
+    'bendRelief',
+    'cornerRelief',
     'flatPattern',
     'variableFillet',
     'boundarySurface',
@@ -35,6 +38,8 @@ function allMapBackedFeatureTypes(): MapBackedFeatureType[] {
     'helix',
     'variableShell',
     'rib',
+    'deleteFace',
+    'offsetFace',
   ];
   return all.filter((t): t is MapBackedFeatureType => t !== 'sketchExtrude');
 }

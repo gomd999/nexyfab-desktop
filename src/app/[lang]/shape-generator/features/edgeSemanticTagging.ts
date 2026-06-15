@@ -18,6 +18,43 @@
 
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
 
+/** True when `frag` is a fragment of the same physical edge as `orig` — i.e. it
+ *  is parallel, lies on `orig`'s infinite line (perpendicular offset ≤ tolMm),
+ *  and falls within `orig`'s reach along that line. This is what makes a
+ *  boolean-split fragment inherit the original selection's tag even though its
+ *  midpoint has moved well away from the original click point. Parallel-but-
+ *  offset edges (e.g. the opposite edge of a box) are rejected by the
+ *  perpendicular-offset test, so they do NOT steal the tag. */
+function fragmentLiesOnEdge(
+  frag: EdgeSelectionInfo,
+  orig: EdgeSelectionInfo,
+  tolMm: number,
+): boolean {
+  const fd = frag.direction, od = orig.direction;
+  if (!fd || !od) return false;
+  const fl = Math.hypot(fd[0], fd[1], fd[2]);
+  const ol = Math.hypot(od[0], od[1], od[2]);
+  if (fl < 1e-9 || ol < 1e-9) return false;
+  const ux = od[0] / ol, uy = od[1] / ol, uz = od[2] / ol;
+  // Parallel?
+  const dot = (fd[0] * ux + fd[1] * uy + fd[2] * uz) / fl;
+  if (Math.abs(dot) < 0.999) return false;
+  // Decompose (frag.position − orig.position) into along- and perpendicular-axis.
+  const wx = frag.position[0] - orig.position[0];
+  const wy = frag.position[1] - orig.position[1];
+  const wz = frag.position[2] - orig.position[2];
+  const along = wx * ux + wy * uy + wz * uz;
+  const perpX = wx - along * ux, perpY = wy - along * uy, perpZ = wz - along * uz;
+  const perp = Math.hypot(perpX, perpY, perpZ);
+  if (perp > tolMm) return false;                 // not on the same line
+  // The two must OVERLAP along the line, not just be collinear: the gap between
+  // their reference points may not exceed their combined half-extents. This
+  // tags a split fragment (shorter, inside) AND a merged super-edge (longer,
+  // straddling) while a genuinely separate edge further down the same line —
+  // beyond both half-lengths — is rejected.
+  return Math.abs(along) <= (orig.length + frag.length) / 2 + tolMm;
+}
+
 export type SemanticTag = string & { readonly __brand: 'SemanticTag' };
 
 /** Mint a tag from a click. The tag is the persistent id when
@@ -84,10 +121,17 @@ export class SemanticTagRegistry {
     const tolSq = tolMm * tolMm;
     for (const [tag, sels] of this.byTag) {
       for (const s of sels) {
+        // Fast path — (near-)coincident click points (an unchanged edge).
         const dx = s.position[0] - candidate.position[0];
         const dy = s.position[1] - candidate.position[1];
         const dz = s.position[2] - candidate.position[2];
         if (dx * dx + dy * dy + dz * dz <= tolSq) return tag;
+        // A boolean SPLIT yields fragments whose midpoints sit far from the
+        // original click point, so point proximity alone misses them (the very
+        // bug this module exists to fix). A fragment of the same edge is instead
+        // identified by COLLINEARITY: parallel direction + lying on the original
+        // edge's line, within its reach. That tags both halves of a split.
+        if (fragmentLiesOnEdge(candidate, s, tolMm)) return tag;
       }
     }
     return null;

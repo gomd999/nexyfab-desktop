@@ -49,7 +49,7 @@ export default function AssemblyBrowser({
   return (
     <div
       style={{
-        background: 'var(--nx-text)',
+        background: 'var(--nx-panel)',
         borderRadius: 16,
         border: '1px solid #e5e7eb',
         padding: 16,

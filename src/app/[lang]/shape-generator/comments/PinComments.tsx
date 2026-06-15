@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { GL_COLOR } from '../lib/glColors';
 
 const dict = {
   ko: {
@@ -110,10 +111,12 @@ interface PinCommentsProps {
 
 const PIN_RADIUS = 0.002;
 
+// Hex (not CSS vars): these feed WebGL pin materials below; var(--…) → white.
+// Hex is also valid CSS, so the DOM type-picker borders still resolve. (2026-06-12)
 export const TYPE_COLOR: Record<MeshComment['type'], string> = {
-  comment: 'var(--nx-accent)',
+  comment: GL_COLOR.accent,
   issue: '#e3b341',
-  approval: 'var(--nx-ok)',
+  approval: GL_COLOR.ok,
 };
 
 export const TYPE_LABEL: Record<MeshComment['type'], { en: string; ko: string }> = {
@@ -286,7 +289,7 @@ function Pin({ comment, focused, onResolve, onDelete, onReact, onReply, roomUser
   const [replyText, setReplyText] = useState('');
   const [showReply, setShowReply] = useState(false);
   const tt = usePinT(lang);
-  const color = comment.resolved ? 'var(--nx-text-2)' : TYPE_COLOR[comment.type];
+  const color = comment.resolved ? GL_COLOR.neutral : TYPE_COLOR[comment.type];
   const typeLabel = tt[comment.type];
   const dateStr = new Date(comment.createdAt).toLocaleDateString(tt.locale);
 
@@ -543,7 +546,7 @@ export default function PinComments({
         <group position={pendingPos}>
           <mesh>
             <sphereGeometry args={[PIN_RADIUS, 12, 12]} />
-            <meshStandardMaterial color="var(--nx-accent)" emissive="var(--nx-accent)" emissiveIntensity={0.8} />
+            <meshStandardMaterial color={GL_COLOR.accent} emissive={GL_COLOR.accent} emissiveIntensity={0.8} />
           </mesh>
           <Html position={[0, PIN_RADIUS * 8, 0]} distanceFactor={0.4} occlude={false} zIndexRange={[200, 0]}>
             <div style={{ ...popupStyle, pointerEvents: 'auto' }}>

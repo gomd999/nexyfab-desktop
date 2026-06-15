@@ -163,7 +163,7 @@ export default function MoldPanel({ lang, mesh, onClose, onModeChange }: MoldPan
       )}
 
       {mode === 'undercut' && analysis.undercutRegions && (
-        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
+        <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 8 }}>
           {analysis.undercutRegions.length} {t.regions}
           {analysis.undercutRegions.length > 0 && (
             <ul style={{ margin: '4px 0 0', paddingLeft: 16, fontSize: 10 }}>
@@ -188,8 +188,9 @@ export default function MoldPanel({ lang, mesh, onClose, onModeChange }: MoldPan
 
 function panelStyle(): React.CSSProperties {
   return {
-    position: 'fixed', top: 80, right: 20, zIndex: 700, width: 280,
-    background: '#0f172a', color: '#f1f5f9',
+    // right: 336 clears the 320px right property pane (2026-06-12)
+    position: 'fixed', top: 80, right: 340, zIndex: 700, width: 280,
+    background: 'var(--nx-panel)', color: 'var(--nx-text)',
     borderRadius: 10, padding: '14px 16px',
     boxShadow: '0 12px 24px rgba(0,0,0,0.35)',
     fontFamily: 'system-ui, sans-serif',
@@ -199,16 +200,16 @@ function headerStyle(): React.CSSProperties {
   return { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 };
 }
 function xBtnStyle(): React.CSSProperties {
-  return { background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16 };
+  return { background: 'transparent', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 16 };
 }
 function labelStyle(): React.CSSProperties {
-  return { fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' };
+  return { fontSize: 10, color: 'var(--nx-text-2)', textTransform: 'uppercase', letterSpacing: '0.04em' };
 }
 function activeBtnStyle(): React.CSSProperties {
   return { background: '#3b82f6', color: 'white', border: 'none', padding: '4px 8px', borderRadius: 4, fontSize: 11, cursor: 'pointer' };
 }
 function inactiveBtnStyle(): React.CSSProperties {
-  return { background: '#1e293b', color: '#94a3b8', border: '1px solid #334155', padding: '4px 8px', borderRadius: 4, fontSize: 11, cursor: 'pointer' };
+  return { background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)', border: '1px solid var(--nx-border)', padding: '4px 8px', borderRadius: 4, fontSize: 11, cursor: 'pointer' };
 }
 function textBtnStyle(): React.CSSProperties {
   return { background: 'transparent', color: '#3b82f6', border: 'none', fontSize: 11, cursor: 'pointer', padding: 0 };

@@ -49,18 +49,40 @@ export function nfabTag(type: string, params: Record<string, number | undefined>
   return `// @nfab ${type}${parts.length ? ' ' + parts.join(' ') : ''}`;
 }
 
+/** OpenSCAD primitives take radii; the NexyFab scene stores DIAMETERS
+ *  (cylinder.diameter, cone.bottomDiameter, torus.tubeDiameter, …). Convert so
+ *  the emitted SCAD reflects the real model size instead of a stale default —
+ *  the prior code read non-existent `p.radius`/`p.bottomRadius` keys and always
+ *  fell back to the hard-coded radius. parseScadToFeatures inverts this (r·2). */
+function radFromDia(dia: number | undefined, fallbackDia: number): string {
+  const d = typeof dia === 'number' && Number.isFinite(dia) ? dia : fallbackDia;
+  return fmt(d / 2);
+}
+
+/** Emit a boolean feature's tool primitive at its position. Mirrors
+ *  buildToolGeometry: box = W×H×D, cylinder = Ø toolWidth × toolHeight,
+ *  sphere = Ø toolWidth. parseBooleanTool inverts this. The SCAD translate
+ *  swaps Y-up↔Z-up ([posX, posZ, posY]) like the hole/base emitters. */
+function emitBooleanTool(p: Record<string, number>): string {
+  const shape = Math.round(p.toolShape ?? 0);
+  const t = `translate([${fmt(p.posX)}, ${fmt(p.posZ)}, ${fmt(p.posY)}])`;
+  if (shape === 1) return `${t} cylinder(h=${fmt(p.toolHeight, 50)}, r=${fmt((p.toolWidth ?? 50) / 2)}, center=true, $fn=32);`;
+  if (shape === 2) return `${t} sphere(r=${fmt((p.toolWidth ?? 50) / 2)}, $fn=32);`;
+  return `${t} cube([${fmt(p.toolWidth, 50)}, ${fmt(p.toolDepth, 50)}, ${fmt(p.toolHeight, 50)}], center=true);`;
+}
+
 function emitBase(baseShapeId: string, p: Record<string, number>): string {
   switch (baseShapeId) {
     case 'box':
       return `cube([${fmt(p.width, 50)}, ${fmt(p.depth, 50)}, ${fmt(p.height, 50)}], center=true);`;
     case 'cylinder':
-      return `cylinder(h=${fmt(p.height, 50)}, r=${fmt(p.radius, 25)}, center=true, $fn=64);`;
+      return `cylinder(h=${fmt(p.height, 50)}, r=${radFromDia(p.diameter, 50)}, center=true, $fn=64);`;
     case 'sphere':
-      return `sphere(r=${fmt(p.radius, 25)}, $fn=64);`;
+      return `sphere(r=${radFromDia(p.diameter, 50)}, $fn=64);`;
     case 'cone':
-      return `cylinder(h=${fmt(p.height, 50)}, r1=${fmt(p.bottomRadius, 25)}, r2=${fmt(p.topRadius, 0)}, center=true, $fn=64);`;
+      return `cylinder(h=${fmt(p.height, 50)}, r1=${radFromDia(p.bottomDiameter, 50)}, r2=${radFromDia(p.topDiameter, 0)}, center=true, $fn=64);`;
     case 'torus':
-      return `rotate_extrude($fn=64) translate([${fmt(p.majorRadius, 30)}, 0, 0]) circle(r=${fmt(p.minorRadius, 8)}, $fn=32);`;
+      return `rotate_extrude($fn=64) translate([${radFromDia(p.majorDiameter, 80)}, 0, 0]) circle(r=${radFromDia(p.tubeDiameter, 20)}, $fn=32);`;
     default:
       return `// unsupported base shape: ${baseShapeId}\ncube([10, 10, 10], center=true);`;
   }
@@ -103,10 +125,13 @@ function emitFeature(f: FeatureInstance, prior: string): string {
       return `for (a = [0 : ${count - 1}]) rotate([0, ${fmt(angle / count)}*a, 0]) ${prior}`;
     }
     case 'boolean': {
-      // Without the other operand inline, mark as op-only — round-trip
-      // editor will resolve operand bodies once that exists.
-      const op = p.op === 1 ? 'difference' : p.op === 2 ? 'intersection' : 'union';
-      return `// boolean ${op} with auxiliary body (see feature tree)\n${prior}`;
+      // Emit the actual tool primitive (box/cylinder/sphere) so a union/intersect
+      // round-trips into the tree. (Prior code read a non-existent `p.op` key and
+      // dropped the tool entirely.) Subtract stays an op-only marker — a
+      // cylindrical subtract round-trips through the `hole` path instead.
+      const operation = Math.round(p.operation ?? 0);
+      const kind = operation === 1 ? 'difference' : operation === 2 ? 'intersection' : 'union';
+      return `${kind}() {\n${INDENT}${prior}\n${INDENT}${emitBooleanTool(p)}\n}`;
     }
     case 'scale': {
       return `scale([${fmt(p.x, 1)}, ${fmt(p.y, 1)}, ${fmt(p.z, 1)}]) ${prior}`;
@@ -132,6 +157,9 @@ function emitFeature(f: FeatureInstance, prior: string): string {
     case 'flange':
     case 'hem':
     case 'jog':
+    case 'tab':
+    case 'bendRelief':
+    case 'cornerRelief':
     case 'flatPattern':
       return `${nfabTag(f.type)}\n${prior}`;
     case 'sweep':
@@ -146,6 +174,11 @@ function emitFeature(f: FeatureInstance, prior: string): string {
     case 'weldment':
     case 'nurbsSurface':
       return `${nfabTag(f.type)}\n${prior}`;
+    // Direct edits operate on selected B-rep faces — no OpenSCAD equivalent.
+    case 'deleteFace':
+      return `${nfabTag('deleteFace')}\n${prior}`;
+    case 'offsetFace':
+      return `${nfabTag('offsetFace', { distance: p.distance ?? 1 })}\n${prior}`;
     case 'sketch':
       // Pure sketch nodes don't produce 3-D geometry on their own; they
       // feed sketchExtrude. Emit nothing, pass prior through.

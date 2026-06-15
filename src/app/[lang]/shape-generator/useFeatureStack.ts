@@ -70,6 +70,13 @@ export interface HistoryNode {
   icon: string;
   featureType?: FeatureType;
   params: Record<string, number>;
+  /** SolidWorks-style "=expression" sidecar — raw expression per param key.
+   *  `params[key]` always holds the last EVALUATED numeric value (the
+   *  pipeline / undo coalescer keep seeing plain numbers); the host
+   *  re-evaluates these against the global variable scope on change
+   *  (see equations/featureParamExpressions.ts). Persists with the node
+   *  in .nfab `tree.nodes` — older builds simply ignore the field. */
+  paramExpressions?: Record<string, string>;
   enabled: boolean;
   /** Optional JS-like expression that controls enabled state.
    *  Variables: param names from this node (e.g. "width > 50 && height < 100").
@@ -444,6 +451,9 @@ export function useFeatureStack() {
         id: n.id,
         type: n.featureType!,
         params: { ...n.params },
+        ...(n.paramExpressions && Object.keys(n.paramExpressions).length > 0
+          ? { paramExpressions: { ...n.paramExpressions } }
+          : {}),
         enabled: n.enabled,
         error: n.error,
         sketchData: n.sketchData,

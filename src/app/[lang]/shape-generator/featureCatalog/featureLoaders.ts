@@ -270,10 +270,10 @@ export const SHEET_METAL_LOADERS: Record<string, ModuleLoader> = {
   'sheet-metal.bend-deduction': () => import('../sheetmetal/bendDeductionCalculator'),
   'sheet-metal.coining': () => import('../sheetmetal/coiningCheck'),
   'sheet-metal.louver-direction': () => import('../sheetmetal/louverDirectionPicker'),
-  'sheet-metal.corner-overlap-relief': () => import('../sheet-metal/cornerOverlapRelief'),
-  'sheet-metal.jog-bend': () => import('../sheet-metal/jogBendDeveloper'),
-  'sheet-metal.deep-draw': () => import('../sheet-metal/deepDraw'),
-  'sheet-metal.cone-development': () => import('../sheet-metal/coneDevelopment'),
+  'sheet-metal.corner-overlap-relief': () => import('../sheetmetal/cornerOverlapRelief'),
+  'sheet-metal.jog-bend': () => import('../sheetmetal/jogBendDeveloper'),
+  'sheet-metal.deep-draw': () => import('../sheetmetal/deepDraw'),
+  'sheet-metal.cone-development': () => import('../sheetmetal/coneDevelopment'),
 };
 
 export const ESTIMATION_LOADERS: Record<string, ModuleLoader> = {

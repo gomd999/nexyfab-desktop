@@ -12,11 +12,16 @@
  *   - Z stepdown via repeated planar passes.
  *   - Stepover = tool diameter × fraction (default 0.4 = 40%).
  *
+ * Arbitrary (non-rectangular) pockets are now handled by
+ * `buildPolygonPocketToolpath`, which drives the polygon offset solver
+ * (`polygonOffset.ts`) for a contour-parallel path.
+ *
  * Out of scope:
- *   - Arbitrary 2D pocket profile (would need an offset solver).
  *   - 3-axis surface machining.
  *   - Rest-machining / adaptive clearing.
  */
+
+import { insetContours, insetContoursMulti, type Pt2 } from './polygonOffset';
 
 export interface RectPocket {
   /** Pocket extent on X (mm). */
@@ -61,6 +66,8 @@ export interface ToolpathResult {
   rapidLengthMm: number;
   /** Pass count along Z. */
   passCount: number;
+  /** Set when the tool is too large for the pocket — no toolpath was produced. */
+  toolTooLarge?: boolean;
 }
 
 const SAFE_Z_CLEARANCE = 5; // mm above topZ for rapids
@@ -100,12 +107,15 @@ function zigzagAtZ(
   // Rapid to start.
   out.push({ kind: 'rapid', start: [rect.x0, y, topZ + SAFE_Z_CLEARANCE], end: [rect.x0, y, topZ + SAFE_Z_CLEARANCE] });
   out.push({ kind: 'plunge', start: [rect.x0, y, topZ + SAFE_Z_CLEARANCE], end: [rect.x0, y, z] });
-  while (y <= rect.y1 + 1e-6) {
+  while (true) {
     const fromX = dir === 1 ? rect.x0 : rect.x1;
     const toX = dir === 1 ? rect.x1 : rect.x0;
     out.push({ kind: 'feed', start: [fromX, y, z], end: [toX, y, z] });
-    const nextY = y + stepover;
-    if (nextY > rect.y1 + 1e-6) break;
+    if (y >= rect.y1 - 1e-6) break; // reached the far inset wall
+    // Clamp the last step to y1 so the final pass clears the strip against the
+    // far wall — otherwise (y1−y0) not being a multiple of the stepover leaves an
+    // uncut ridge up to one stepover wide.
+    const nextY = Math.min(y + stepover, rect.y1);
     out.push({ kind: 'feed', start: [toX, y, z], end: [toX, nextY, z] });
     y = nextY;
     dir = dir === 1 ? -1 : 1;
@@ -169,6 +179,14 @@ export function buildPocketToolpath(
   const stepdown = Math.max(0.01, tool.stepdown);
   const rect = effectiveRect(pocket, radius);
 
+  // The tool does not fit: a pocket narrower than the tool diameter on either
+  // axis insets to an inverted rectangle. Emit nothing rather than a meaningless
+  // plunge (which the old code counted as cutting) — the caller must pick a
+  // smaller tool.
+  if (rect.x1 <= rect.x0 + 1e-9 || rect.y1 <= rect.y0 + 1e-9) {
+    return { segments: [], cutLengthMm: 0, rapidLengthMm: 0, passCount: 0, toolTooLarge: true };
+  }
+
   const segments: ToolpathSegment[] = [];
   let passCount = 0;
   for (let dz = stepdown; dz <= pocket.depth + 1e-9; dz += stepdown) {
@@ -190,5 +208,57 @@ export function buildPocketToolpath(
     else rapidLen += len;
   }
 
+  return { segments, cutLengthMm: cutLen, rapidLengthMm: rapidLen, passCount };
+}
+
+/**
+ * Contour-parallel toolpath for an ARBITRARY (non-rectangular) pocket given its
+ * 2D boundary polygon. Uses the polygon offset solver to inset concentric
+ * contours by the tool radius then the stepover, feeding each as a closed loop
+ * at every Z level. Returns toolTooLarge when the tool radius already closes the
+ * pocket (no contour fits).
+ *
+ * With `topologyAware`, a concave pocket that pinches into separate regions is
+ * cleared on BOTH sides (insetContoursMulti) instead of stopping at the pinch —
+ * at the cost of a resolution-limited offset boundary.
+ */
+export function buildPolygonPocketToolpath(
+  boundary: Pt2[],
+  tool: ToolingParams,
+  depth: number,
+  topZ = 0,
+  opts: { topologyAware?: boolean } = {},
+): ToolpathResult {
+  const radius = tool.diameter / 2;
+  const stepover = tool.diameter * Math.max(0.05, Math.min(1, tool.stepoverFraction ?? 0.4));
+  const stepdown = Math.max(0.01, tool.stepdown);
+  const contours = opts.topologyAware
+    ? insetContoursMulti(boundary, radius, stepover)
+    : insetContours(boundary, radius, stepover);
+  if (contours.length === 0) {
+    return { segments: [], cutLengthMm: 0, rapidLengthMm: 0, passCount: 0, toolTooLarge: true };
+  }
+
+  const segments: ToolpathSegment[] = [];
+  let passCount = 0;
+  for (let dz = stepdown; dz <= depth + 1e-9; dz += stepdown) {
+    const z = topZ - dz;
+    for (const c of contours) {
+      const start = c[0]!;
+      segments.push({ kind: 'rapid', start: [start.x, start.y, topZ + SAFE_Z_CLEARANCE], end: [start.x, start.y, topZ + SAFE_Z_CLEARANCE] });
+      segments.push({ kind: 'plunge', start: [start.x, start.y, topZ + SAFE_Z_CLEARANCE], end: [start.x, start.y, z] });
+      for (let i = 0; i < c.length; i++) {
+        const a = c[i]!, b = c[(i + 1) % c.length]!;
+        segments.push({ kind: 'feed', start: [a.x, a.y, z], end: [b.x, b.y, z] });
+      }
+    }
+    passCount++;
+  }
+
+  let cutLen = 0, rapidLen = 0;
+  for (const s of segments) {
+    const len = segLength(s);
+    if (s.kind === 'feed' || s.kind === 'plunge') cutLen += len; else rapidLen += len;
+  }
   return { segments, cutLengthMm: cutLen, rapidLengthMm: rapidLen, passCount };
 }

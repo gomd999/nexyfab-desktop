@@ -4,113 +4,158 @@
 // mockup #31. Reads the assembly snapshot from shellBridgeStore.
 
 import { useState } from 'react';
-import { SidePanel, Tree, type TreeNode, PropItemRow } from './';
-import { useShellBridge } from '../shellBridgeStore';
+import { SidePanel, Tree, type TreeNode } from './';
+import { pickShellDict, type ShellDict } from '../shellDict';
+
+// Mate-type → bullet glyph. Shared with the right pane.
+export const MATE_BULLET: Record<string, string> = {
+  coincident: '≡', concentric: '◎', distance: '↔', angle: '∠',
+  parallel: '∥', perpendicular: '⟂', tangent: '◠', hinge: '⤿', slider: '⇄', gear: '⚙',
+};
+
+export function mateMeta(type: string, value: number | undefined, d: ShellDict): string {
+  const name = d.mateTypes[type as keyof ShellDict['mateTypes']]
+    ?? type.charAt(0).toUpperCase() + type.slice(1);
+  if (value === undefined) return name;
+  const unit = type === 'angle' ? '°' : ' mm';
+  return `${name} · ${value}${unit}`;
+}
+import { useShellBridge, type ShellMate } from '../shellBridgeStore';
+import { useUIStore } from '../../store/uiStore';
 import { I } from '../Icons';
 
-export interface AssemblyLeftPaneProps {
-  isKo: boolean;
+// Mate list with inline add / delete / lock controls — shared by the left and
+// right assembly panes. Opens the full editor via the uiStore; per-row actions
+// dispatch events the Inner monolith listens for. (2026-06-09 P1)
+export function MateList({ mates, isEmpty, d }: { mates: ShellMate[]; isEmpty: boolean; d: ShellDict }) {
+  const openEditor = () => { try { useUIStore.getState().setShowAssemblyPanel(true); } catch { /* ignore */ } };
+  const remove = (id: string) => window.dispatchEvent(new CustomEvent('nexyfab:assembly-mate-remove', { detail: { id } }));
+  const toggle = (id: string) => window.dispatchEvent(new CustomEvent('nexyfab:assembly-mate-toggle', { detail: { id } }));
+  const iconBtn: React.CSSProperties = {
+    border: 'none', background: 'transparent', color: 'var(--nx-text-3)',
+    cursor: 'pointer', fontSize: 11, padding: '2px 4px', flexShrink: 0,
+  };
+  return (
+    <div style={{ padding: '6px 0', fontSize: 11 }}>
+      <button
+        type="button"
+        onClick={openEditor}
+        disabled={isEmpty}
+        style={{
+          width: '100%', marginBottom: 6, padding: '6px 8px', borderRadius: 6,
+          border: '1px solid var(--nx-accent-line)', background: 'var(--nx-accent-soft)',
+          color: 'var(--nx-text)', fontSize: 11, fontWeight: 700,
+          cursor: isEmpty ? 'not-allowed' : 'pointer', opacity: isEmpty ? 0.5 : 1,
+        }}
+      >
+        + {d.addMate}
+      </button>
+      {mates.length === 0 ? (
+        <div style={{ padding: '12px 8px', textAlign: 'center', color: 'var(--nx-text-3)', lineHeight: 1.5 }}>
+          {isEmpty ? d.insertPartsFirst : d.noMatesYet}
+        </div>
+      ) : mates.map(m => (
+        <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 4px' }}>
+          <span style={{ width: 12, flexShrink: 0, textAlign: 'center', color: 'var(--nx-text-2)' }}>{MATE_BULLET[m.type] ?? '↗'}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.partA} ↔ {m.partB}</div>
+            <div style={{ fontSize: 9, color: 'var(--nx-text-3)' }}>{mateMeta(m.type, m.value, d)}</div>
+          </div>
+          <button type="button" onClick={() => toggle(m.id)} title={m.locked ? 'Unlock' : 'Lock'} style={iconBtn}>{m.locked ? '🔒' : '🔓'}</button>
+          <button type="button" onClick={() => remove(m.id)} title={d.deleteWord} style={iconBtn}>✕</button>
+        </div>
+      ))}
+    </div>
+  );
 }
 
-export function AssemblyLeftPane({ isKo }: AssemblyLeftPaneProps) {
+export interface AssemblyLeftPaneProps {
+  lang: string;
+}
+
+export function AssemblyLeftPane({ lang }: AssemblyLeftPaneProps) {
+  const d = pickShellDict(lang);
   const items = useShellBridge(s => s.assemblyItems);
+  const mates = useShellBridge(s => s.assemblyMates);
   const selectedId = useShellBridge(s => s.selectedAssemblyId);
   const [activeTab, setActiveTab] = useState<'components' | 'mates' | 'bom'>('components');
 
-  const treeNodes: TreeNode[] = items.length > 0
-    ? items.map(item => ({
-        id: item.id,
-        label: item.label,
-        icon: item.kind === 'subassembly'
-          ? <I.layers size={12} />
-          : <I.cube size={12} />,
-        meta: item.count > 1 ? `${item.count}×` : undefined,
-      }))
-    : DEFAULT_TREE;
+  const treeNodes: TreeNode[] = items.map(item => ({
+    id: item.id,
+    label: item.label,
+    icon: item.kind === 'subassembly'
+      ? <I.layers size={12} />
+      : <I.cube size={12} />,
+    meta: item.count > 1 ? `${item.count}×` : undefined,
+  }));
+  const isEmpty = items.length === 0;
 
   return (
     <SidePanel
       side="left"
-      title={isKo ? '어셈블리' : 'ASSEMBLY'}
+      title={d.asmTitle}
       titleIcon={<I.layers size={12} />}
       tabs={[
-        { id: 'components', label: isKo ? '컴포넌트' : 'Components', icon: <I.cube size={12} /> },
-        { id: 'mates', label: isKo ? '메이트' : 'Mates', icon: <I.link size={12} /> },
-        { id: 'bom', label: isKo ? 'BOM' : 'BOM', icon: <I.doc size={12} /> },
+        { id: 'components', label: d.tabComponents, icon: <I.cube size={12} /> },
+        { id: 'mates', label: d.tabMates, icon: <I.link size={12} /> },
+        { id: 'bom', label: 'BOM', icon: <I.doc size={12} /> },
       ]}
       activeTab={activeTab}
       onTabChange={(id) => setActiveTab(id as typeof activeTab)}
     >
       {activeTab === 'components' && (
-        <Tree
-          nodes={treeNodes}
-          selectedId={selectedId}
-          onSelect={(id) => {
-            // Inner listens via `nexyfab:select-assembly` and routes to
-            // the assembly browser / selection store. Event-based wiring
-            // mirrors how the feature tree fires `nexyfab:select-feature`
-            // so this sidebar stays decoupled from Inner's state.
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('nexyfab:select-assembly', { detail: { id } }));
-            }
-          }}
-        />
+        isEmpty ? (
+          <EmptyHint text={d.noComponents} />
+        ) : (
+          <Tree
+            nodes={treeNodes}
+            selectedId={selectedId}
+            onSelect={(id) => {
+              // Inner listens via `nexyfab:select-assembly` and routes to
+              // the assembly browser / selection store. Event-based wiring
+              // mirrors how the feature tree fires `nexyfab:select-feature`
+              // so this sidebar stays decoupled from Inner's state.
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('nexyfab:select-assembly', { detail: { id } }));
+              }
+            }}
+          />
+        )
       )}
       {activeTab === 'mates' && (
-        <div style={{ padding: '8px 0', fontSize: 11 }}>
-          {(items.length > 0 ? items.slice(0, 6) : MATE_PLACEHOLDERS).map((m, i) => (
-            <PropItemRow
-              key={(m as { id?: string }).id ?? i}
-              bullet="↗"
-              label={typeof m === 'string' ? m : `Mate ${i + 1}`}
-              meta={i % 2 === 0 ? 'Concentric' : 'Coincident'}
-            />
-          ))}
-        </div>
+        <MateList mates={mates} isEmpty={isEmpty} d={d} />
       )}
       {activeTab === 'bom' && (
-        <BomList items={items.length > 0 ? items : []} isKo={isKo} />
+        isEmpty
+          ? <EmptyHint text={d.bomEmpty} />
+          : <BomList items={items} d={d} />
       )}
     </SidePanel>
   );
 }
 
-const DEFAULT_TREE: TreeNode[] = [
-  {
-    id: 'asm',
-    label: 'GearboxAssy_v07.nxasm',
-    icon: <I.layers size={12} />,
-    defaultExpanded: true,
-    children: [
-      { id: 'refGeo', label: 'Reference Geometry', icon: <I.plane size={12} /> },
-      { id: 'housingTop', label: 'Housing_Top', icon: <I.cube size={12} />, meta: '1' },
-      { id: 'housingBot', label: 'Housing_Bottom', icon: <I.cube size={12} />, meta: '1' },
-      { id: 'bearing', label: 'Bearing_6202-RS', icon: <I.cube size={12} />, meta: '4', children: [
-        { id: 'bearingExt', label: 'External · McMaster #5972K12', icon: <I.link size={12} /> },
-      ]},
-      { id: 'inputShaft', label: 'InputShaft', icon: <I.cube size={12} />, meta: '1' },
-      { id: 'gear24', label: 'Gear_24T_M1', icon: <I.cube size={12} />, meta: '1' },
-      { id: 'gear48', label: 'Gear_48T_M1', icon: <I.cube size={12} />, meta: '1' },
-      { id: 'outputShaft', label: 'OutputShaft', icon: <I.cube size={12} />, meta: '1' },
-      { id: 'bolt', label: 'Bolt_M5×20', icon: <I.cube size={12} />, meta: '12' },
-      { id: 'bracket', label: 'Bracket_v14', icon: <I.cube size={12} />, meta: '1' },
-    ],
-  },
-];
+function EmptyHint({ text }: { text: string }) {
+  return (
+    <div style={{
+      padding: '24px 16px', textAlign: 'center',
+      fontSize: 11, lineHeight: 1.6, color: 'var(--nx-text-3)',
+    }}>
+      {text}
+    </div>
+  );
+}
 
-const MATE_PLACEHOLDERS = ['Concentric · 1', 'Coincident · 2', 'Distance · 1', 'Parallel · 1', 'Angle · 1', 'Tangent · 1'];
-
-function BomList({ items, isKo }: { items: ReturnType<typeof useShellBridge.getState>['assemblyItems']; isKo: boolean }) {
-  const list = items.length > 0 ? items : DEFAULT_BOM;
+function BomList({ items, d }: { items: ReturnType<typeof useShellBridge.getState>['assemblyItems']; d: ShellDict }) {
+  const list = items;
   const total = list.reduce((acc, i) => acc + ((i.massG ?? 0) * i.count), 0);
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
       <thead>
         <tr style={{ background: 'var(--nx-panel-2)' }}>
           <th style={th}>#</th>
-          <th style={th}>{isKo ? '부품' : 'PART'}</th>
-          <th style={{ ...th, textAlign: 'right' }}>{isKo ? '수량' : 'QTY'}</th>
-          <th style={{ ...th, textAlign: 'right' }}>{isKo ? '중량' : 'MASS'}</th>
+          <th style={th}>{d.thPart}</th>
+          <th style={{ ...th, textAlign: 'right' }}>{d.thQty}</th>
+          <th style={{ ...th, textAlign: 'right' }}>{d.thMass}</th>
         </tr>
       </thead>
       <tbody>
@@ -123,7 +168,7 @@ function BomList({ items, isKo }: { items: ReturnType<typeof useShellBridge.getS
           </tr>
         ))}
         <tr>
-          <td style={{ ...td, fontWeight: 700 }} colSpan={2}>{isKo ? '합계' : 'TOTAL'}</td>
+          <td style={{ ...td, fontWeight: 700 }} colSpan={2}>{d.totalRow}</td>
           <td style={{ ...td, textAlign: 'right' }}>{list.reduce((a, i) => a + i.count, 0)} parts</td>
           <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{total.toFixed(1)} g</td>
         </tr>
@@ -131,18 +176,6 @@ function BomList({ items, isKo }: { items: ReturnType<typeof useShellBridge.getS
     </table>
   );
 }
-
-const DEFAULT_BOM = [
-  { id: 'p1', label: 'Housing_Top', count: 1, massG: 82.4 },
-  { id: 'p2', label: 'Housing_Bot', count: 1, massG: 96.1 },
-  { id: 'p3', label: 'Bearing 6202-RS', count: 4, massG: 12.0 },
-  { id: 'p4', label: 'InputShaft', count: 1, massG: 24.2 },
-  { id: 'p5', label: 'Gear_24T_M1', count: 1, massG: 12.8 },
-  { id: 'p6', label: 'Gear_48T_M1', count: 1, massG: 38.4 },
-  { id: 'p7', label: 'OutputShaft', count: 1, massG: 28.4 },
-  { id: 'p8', label: 'Bolt M5×20', count: 12, massG: 0.55 },
-  { id: 'p9', label: 'Bracket_v14', count: 1, massG: 184.3 },
-];
 
 const th: React.CSSProperties = { padding: '4px 6px', textAlign: 'left', fontSize: 9, fontWeight: 600, color: 'var(--nx-text-3)', textTransform: 'uppercase' };
 const td: React.CSSProperties = { padding: '3px 6px', color: 'var(--nx-text)' };

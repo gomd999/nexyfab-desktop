@@ -85,8 +85,8 @@ const S = {
   page: {
     padding: '28px 32px',
     minHeight: '100%',
-    background: '#0d1117',
-    color: '#c9d1d9',
+    background: 'var(--nx-bg)',
+    color: 'var(--nx-text)',
     fontFamily: 'system-ui, -apple-system, sans-serif',
   } as React.CSSProperties,
   header: {
@@ -95,12 +95,12 @@ const S = {
   title: {
     fontSize: '20px',
     fontWeight: 700,
-    color: '#e6edf3',
+    color: 'var(--nx-text)',
     margin: 0,
   } as React.CSSProperties,
   subtitle: {
     fontSize: '13px',
-    color: '#8b949e',
+    color: 'var(--nx-text-2)',
     marginTop: '4px',
   } as React.CSSProperties,
   kpiGrid: {
@@ -110,14 +110,14 @@ const S = {
     marginBottom: '28px',
   } as React.CSSProperties,
   kpiCard: {
-    background: '#161b22',
-    border: '1px solid #30363d',
+    background: 'var(--nx-panel)',
+    border: '1px solid var(--nx-border)',
     borderRadius: '10px',
     padding: '18px 20px',
   } as React.CSSProperties,
   kpiLabel: {
     fontSize: '11px',
-    color: '#8b949e',
+    color: 'var(--nx-text-2)',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.05em',
     marginBottom: '8px',
@@ -125,27 +125,27 @@ const S = {
   kpiValue: {
     fontSize: '26px',
     fontWeight: 700,
-    color: '#e6edf3',
+    color: 'var(--nx-text)',
     lineHeight: 1,
   } as React.CSSProperties,
   kpiSub: {
     fontSize: '11px',
-    color: '#8b949e',
+    color: 'var(--nx-text-2)',
     marginTop: '4px',
   } as React.CSSProperties,
   section: {
-    background: '#161b22',
-    border: '1px solid #30363d',
+    background: 'var(--nx-panel)',
+    border: '1px solid var(--nx-border)',
     borderRadius: '10px',
     marginBottom: '24px',
     overflow: 'hidden',
   } as React.CSSProperties,
   sectionHeader: {
     padding: '14px 20px',
-    borderBottom: '1px solid #30363d',
+    borderBottom: '1px solid var(--nx-border)',
     fontSize: '13px',
     fontWeight: 600,
-    color: '#e6edf3',
+    color: 'var(--nx-text)',
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
@@ -158,18 +158,18 @@ const S = {
   th: {
     padding: '10px 20px',
     textAlign: 'left' as const,
-    color: '#8b949e',
+    color: 'var(--nx-text-2)',
     fontWeight: 500,
     fontSize: '11px',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.04em',
-    borderBottom: '1px solid #30363d',
+    borderBottom: '1px solid var(--nx-border)',
     whiteSpace: 'nowrap' as const,
   } as React.CSSProperties,
   td: {
     padding: '12px 20px',
-    borderBottom: '1px solid #21262d',
-    color: '#c9d1d9',
+    borderBottom: '1px solid var(--nx-panel-2)',
+    color: 'var(--nx-text)',
     verticalAlign: 'middle' as const,
   } as React.CSSProperties,
   badge: (status: string): React.CSSProperties => {
@@ -181,7 +181,7 @@ const S = {
       quality_check: '#d29922',
       completed: '#238636',
       rejected: '#da3633',
-      cancelled: '#6e7681',
+      cancelled: 'var(--nx-text-3)',
     };
     return {
       display: 'inline-block',
@@ -189,9 +189,9 @@ const S = {
       borderRadius: '12px',
       fontSize: '11px',
       fontWeight: 600,
-      background: (map[status] ?? '#30363d') + '33',
-      color: map[status] ?? '#8b949e',
-      border: `1px solid ${map[status] ?? '#30363d'}55`,
+      background: (map[status] ?? 'var(--nx-border)') + '33',
+      color: map[status] ?? 'var(--nx-text-2)',
+      border: `1px solid ${map[status] ?? 'var(--nx-border)'}55`,
     };
   },
 };
@@ -297,7 +297,7 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
       </div>
 
       {loading && (
-        <div style={{ color: '#8b949e', fontSize: '14px', padding: '40px 0', textAlign: 'center' }}>
+        <div style={{ color: 'var(--nx-text-2)', fontSize: '14px', padding: '40px 0', textAlign: 'center' }}>
           {isKo ? '데이터 불러오는 중…' : 'Loading dashboard…'}
         </div>
       )}
@@ -350,10 +350,10 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
                 return (
                   <div key={item.label}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                      <span style={{ fontSize: '12px', color: '#8b949e' }}>{item.label}</span>
-                      <span style={{ fontSize: '12px', color: '#c9d1d9', fontWeight: 600 }}>{item.value}</span>
+                      <span style={{ fontSize: '12px', color: 'var(--nx-text-2)' }}>{item.label}</span>
+                      <span style={{ fontSize: '12px', color: 'var(--nx-text)', fontWeight: 600 }}>{item.value}</span>
                     </div>
-                    <div style={{ height: '8px', background: '#21262d', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ height: '8px', background: 'var(--nx-panel-2)', borderRadius: '4px', overflow: 'hidden' }}>
                       <div
                         style={{
                           height: '100%',
@@ -374,12 +374,12 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
           <div style={S.section}>
             <div style={S.sectionHeader}>
               📋 {isKo ? '최근 RFQ 목록' : 'Recent RFQs'}
-              <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#8b949e', fontWeight: 400 }}>
+              <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--nx-text-2)', fontWeight: 400 }}>
                 {isKo ? `최근 ${rfqs.length}건` : `Last ${rfqs.length} items`}
               </span>
             </div>
             {rfqs.length === 0 ? (
-              <div style={{ padding: '32px 20px', textAlign: 'center', color: '#8b949e', fontSize: '13px' }}>
+              <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--nx-text-2)', fontSize: '13px' }}>
                 {isKo ? '배정된 RFQ가 없습니다.' : 'No RFQs assigned yet.'}
               </div>
             ) : (
@@ -406,10 +406,10 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
                         <td style={S.td}>
                           <span style={S.badge(rfq.status)}>{rfq.status}</span>
                         </td>
-                        <td style={{ ...S.td, color: '#8b949e' }}>
+                        <td style={{ ...S.td, color: 'var(--nx-text-2)' }}>
                           {fmtDate(rfq.created_at, isKo)}
                         </td>
-                        <td style={{ ...S.td, color: '#8b949e' }}>
+                        <td style={{ ...S.td, color: 'var(--nx-text-2)' }}>
                           {rfq.assigned_at ? fmtDate(rfq.assigned_at, isKo) : '—'}
                         </td>
                       </tr>
@@ -444,7 +444,7 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
                           }
                           style={{ accentColor: '#388bfd', width: '15px', height: '15px' }}
                         />
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: day.enabled ? '#e6edf3' : '#6e7681', width: '24px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: day.enabled ? 'var(--nx-text)' : 'var(--nx-text-3)', width: '24px' }}>
                           {isKo ? ko : en}
                         </span>
                       </label>
@@ -461,11 +461,11 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
                             }))
                           }
                           style={{
-                            background: '#0d1117', border: '1px solid #30363d', borderRadius: '6px',
-                            padding: '4px 8px', color: '#c9d1d9', fontSize: '13px', cursor: 'pointer',
+                            background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: '6px',
+                            padding: '4px 8px', color: 'var(--nx-text)', fontSize: '13px', cursor: 'pointer',
                           }}
                         />
-                        <span style={{ color: '#6e7681', fontSize: '13px' }}>—</span>
+                        <span style={{ color: 'var(--nx-text-3)', fontSize: '13px' }}>—</span>
                         <input
                           type="time"
                           value={day.to}
@@ -477,8 +477,8 @@ export default function PartnerDashboardPage({ params }: { params: Promise<{ lan
                             }))
                           }
                           style={{
-                            background: '#0d1117', border: '1px solid #30363d', borderRadius: '6px',
-                            padding: '4px 8px', color: '#c9d1d9', fontSize: '13px', cursor: 'pointer',
+                            background: 'var(--nx-bg)', border: '1px solid var(--nx-border)', borderRadius: '6px',
+                            padding: '4px 8px', color: 'var(--nx-text)', fontSize: '13px', cursor: 'pointer',
                           }}
                         />
                       </div>

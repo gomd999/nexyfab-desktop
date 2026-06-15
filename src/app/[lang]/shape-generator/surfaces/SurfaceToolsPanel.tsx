@@ -77,11 +77,11 @@ export default function SurfaceToolsPanel({
               onMouseEnter={() => setHovered(tool.id)}
               onMouseLeave={() => setHovered(null)}
               style={{
-                background: isHov ? '#1e3a8a' : '#1e293b',
-                border: isHov ? '1px solid #3b82f6' : '1px solid #334155',
+                background: isHov ? '#1e3a8a' : 'var(--nx-panel-2)',
+                border: isHov ? '1px solid #3b82f6' : '1px solid var(--nx-border)',
                 borderRadius: 8,
                 padding: '14px 10px',
-                color: '#f1f5f9',
+                color: 'var(--nx-text)',
                 cursor: 'pointer',
                 textAlign: 'left',
                 display: 'flex',
@@ -92,7 +92,7 @@ export default function SurfaceToolsPanel({
             >
               <div style={{ fontSize: 22 }}>{tool.icon}</div>
               <div style={{ fontSize: 12, fontWeight: 600, marginTop: 4 }}>{copy.label}</div>
-              <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{copy.desc}</div>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-2)', marginTop: 2 }}>{copy.desc}</div>
             </button>
           );
         })}
@@ -101,6 +101,7 @@ export default function SurfaceToolsPanel({
   );
 }
 
-function panelStyle(): React.CSSProperties { return { position: 'fixed', top: 80, right: 20, zIndex: 700, width: 320, background: '#0f172a', color: '#f1f5f9', borderRadius: 10, padding: '14px 16px', boxShadow: '0 12px 24px rgba(0,0,0,0.35)', fontFamily: 'system-ui, sans-serif' }; }
+// right: 336 clears the 320px right property pane (2026-06-12)
+function panelStyle(): React.CSSProperties { return { position: 'fixed', top: 80, right: 340, zIndex: 700, width: 320, background: 'var(--nx-panel)', color: 'var(--nx-text)', borderRadius: 10, padding: '14px 16px', boxShadow: '0 12px 24px rgba(0,0,0,0.35)', fontFamily: 'system-ui, sans-serif' }; }
 function headerStyle(): React.CSSProperties { return { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }; }
-function xBtnStyle(): React.CSSProperties { return { background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16 }; }
+function xBtnStyle(): React.CSSProperties { return { background: 'transparent', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 16 }; }

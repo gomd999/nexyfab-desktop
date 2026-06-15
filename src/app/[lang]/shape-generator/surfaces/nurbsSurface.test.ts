@@ -119,3 +119,50 @@ describe('tessellateNurbsSurface', () => {
     expect(fine.attributes.position.count).toBeGreaterThan(coarse.attributes.position.count);
   });
 });
+
+describe('rational NURBS — varying weights (homogeneous evaluation)', () => {
+  // 2×2 bilinear grid; P[i][j] with i=U, j=V. Corner (1,1) weighted 5×.
+  const P = [
+    [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0)],
+    [new THREE.Vector3(1, 0, 0), new THREE.Vector3(1, 1, 1)],
+  ];
+  const W = [[1, 1], [1, 5]];
+  const rationalSurface: NurbsSurface = {
+    controlPoints: P, degreeU: 1, degreeV: 1, knotsU: [0, 0, 1, 1], knotsV: [0, 0, 1, 1], weights: W,
+  };
+
+  /** Closed-form rational bilinear: Σ NᵢNⱼwᵢⱼPᵢⱼ / Σ NᵢNⱼwᵢⱼ. */
+  function directRational(u: number, v: number): THREE.Vector3 {
+    const Nu = [1 - u, u], Nv = [1 - v, v];
+    let x = 0, y = 0, z = 0, den = 0;
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) {
+      const c = Nu[i]! * Nv[j]! * W[i]![j]!;
+      x += c * P[i]![j]!.x; y += c * P[i]![j]!.y; z += c * P[i]![j]!.z; den += c;
+    }
+    return new THREE.Vector3(x / den, y / den, z / den);
+  }
+
+  it('matches the closed-form rational bilinear at interior points', () => {
+    for (const [u, v] of [[0.5, 0.5], [0.3, 0.7], [0.8, 0.2], [0.25, 0.25]] as const) {
+      const got = evalNurbsSurface(rationalSurface, u, v);
+      const want = directRational(u, v);
+      expect(got.x).toBeCloseTo(want.x, 6);
+      expect(got.y).toBeCloseTo(want.y, 6);
+      expect(got.z).toBeCloseTo(want.z, 6);
+    }
+  });
+
+  it('the weight actually pulls the surface (≠ the equal-weight result)', () => {
+    const weighted = evalNurbsSurface(rationalSurface, 0.5, 0.5);
+    const equal = evalNurbsSurface({ ...rationalSurface, weights: undefined }, 0.5, 0.5);
+    // weighted center is pulled toward the heavy corner P[1][1]=(1,1,1).
+    expect(weighted.x).toBeCloseTo(0.75, 6);
+    expect(equal.x).toBeCloseTo(0.5, 6);
+    expect(weighted.z).toBeGreaterThan(equal.z); // pulled up in Z too
+  });
+
+  it('interior point still lies in the unit cell (sane)', () => {
+    const p = evalNurbsSurface(rationalSurface, 0.5, 0.5);
+    for (const c of [p.x, p.y, p.z]) { expect(c).toBeGreaterThanOrEqual(0); expect(c).toBeLessThanOrEqual(1); }
+  });
+});

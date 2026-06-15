@@ -86,4 +86,79 @@ describe('SemanticTagRegistry', () => {
     r.clear();
     expect(r.entries()).toEqual([]);
   });
+
+  // ── Boolean SPLIT propagation (the module's actual purpose) ──────────────
+  // A real split moves each fragment's midpoint well away from the original
+  // click, so point-proximity alone tags neither half (the C0-kink bug). A
+  // fragment is the same edge when it is COLLINEAR and within the original's
+  // reach; that tags both halves while off-line siblings keep their distance.
+  const edge = (pos: [number, number, number], length: number, direction: [number, number, number]): EdgeSelectionInfo =>
+    ({ type: 'edge', position: pos, length, direction, normal: [0, 1, 0] });
+
+  it('tags BOTH halves when a boolean splits an edge at its centre', () => {
+    const r = new SemanticTagRegistry();
+    const orig = edge([0, 0, 0], 40, [1, 0, 0]); // clicked mid of a 40mm +X edge
+    const tag = mintSemanticTag(orig);
+    r.register(tag, orig);
+    // Split at x=0 → fragments at x=−10 and x=+10 (each midpoint 10mm from click).
+    const report = r.propagateAfterBoolean([
+      edge([-10, 0, 0], 20, [1, 0, 0]),
+      edge([10, 0, 0], 20, [1, 0, 0]),
+    ]);
+    expect(report.taggedFragments).toBe(2);
+    expect(report.orphans).toHaveLength(0);
+    expect(r.resolve(tag)).toHaveLength(3); // original + two halves
+  });
+
+  it('tags both fragments of an off-centre (end-clicked) split', () => {
+    const r = new SemanticTagRegistry();
+    const orig = edge([-18, 0, 0], 40, [1, 0, 0]);
+    const tag = mintSemanticTag(orig);
+    r.register(tag, orig);
+    const report = r.propagateAfterBoolean([
+      edge([-19, 0, 0], 4, [1, 0, 0]),
+      edge([10, 0, 0], 32, [1, 0, 0]),
+    ]);
+    expect(report.taggedFragments).toBe(2);
+    expect(report.orphans).toHaveLength(0);
+  });
+
+  it('a parallel but OFF-LINE edge (opposite side) does not steal the tag', () => {
+    const r = new SemanticTagRegistry();
+    const orig = edge([0, 0, 20], 40, [1, 0, 0]); // top-front +X edge (z=+20)
+    const tag = mintSemanticTag(orig);
+    r.register(tag, orig);
+    // top-back edge: same +X direction, but 40mm off the line in z.
+    const report = r.propagateAfterBoolean([edge([0, 0, -20], 40, [1, 0, 0])]);
+    expect(report.taggedFragments).toBe(0);
+    expect(report.orphans).toHaveLength(1);
+  });
+
+  it('a MERGE (reverse split) lets a longer combined edge inherit the tag', () => {
+    const r = new SemanticTagRegistry();
+    const a = edge([-10, 0, 0], 20, [1, 0, 0]); // short edge spanning x[-20,0]
+    const tag = mintSemanticTag(a);
+    r.register(tag, a);
+    // a boolean joins it with a collinear neighbour into one 40mm edge.
+    const report = r.propagateAfterBoolean([edge([0, 0, 0], 40, [1, 0, 0])]);
+    expect(report.taggedFragments).toBe(1);
+    expect(r.resolve(tag)).toHaveLength(2);
+  });
+
+  it('merges far past the original reach still match when the spans overlap', () => {
+    const r = new SemanticTagRegistry();
+    const a = edge([-30, 0, 0], 10, [1, 0, 0]); // x[-35,-25]
+    const tag = mintSemanticTag(a);
+    r.register(tag, a);
+    // merged super-edge x[-35,35] (mid 0) overlaps a → overlap-reach tags it.
+    expect(r.propagateAfterBoolean([edge([0, 0, 0], 70, [1, 0, 0])]).taggedFragments).toBe(1);
+  });
+
+  it('a separate collinear edge with a real GAP is rejected (not a fragment)', () => {
+    const r = new SemanticTagRegistry();
+    const a = edge([0, 0, 0], 10, [1, 0, 0]);
+    r.register(mintSemanticTag(a), a);
+    // 100mm down the same line, no span overlap → orphan.
+    expect(r.propagateAfterBoolean([edge([100, 0, 0], 10, [1, 0, 0])]).taggedFragments).toBe(0);
+  });
 });

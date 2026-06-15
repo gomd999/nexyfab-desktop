@@ -8,6 +8,7 @@ export const threadManifest: PluginManifest = {
   name: 'External Thread',
   version: '1.0.0',
   author: 'NexyFab',
+  apiVersion: '1.0.0',
   description: 'Adds a parametric helical external thread (bolt thread profile) to the shape library',
 };
 

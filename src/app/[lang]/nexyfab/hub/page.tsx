@@ -5,7 +5,6 @@
 // which keeps RFQ / Orders / Teams / Files management.
 
 import { Suspense, use, useState } from 'react';
-import { isKorean } from '@/lib/i18n/normalize';
 import AuthModal from '@/components/nexyfab/AuthModal';
 import { HubFrame } from '@/app/[lang]/shape-generator/_shell';
 
@@ -14,7 +13,7 @@ function HubInner({ params }: { params: Promise<{ lang: string }> }) {
   const [showAuth, setShowAuth] = useState(false);
   return (
     <>
-      <HubFrame lang={lang} isKo={isKorean(lang)} onShowAuth={() => setShowAuth(true)} />
+      <HubFrame lang={lang} onShowAuth={() => setShowAuth(true)} />
       <AuthModal open={showAuth} onClose={() => setShowAuth(false)} lang={lang} />
     </>
   );

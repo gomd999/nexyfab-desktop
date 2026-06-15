@@ -36,9 +36,13 @@ export interface FeatureCatalogPanelProps {
   dict: CatalogPanelDict;
   /** Called when the user runs a ready feature (with the launched descriptor). */
   onRun?: (featureId: string, entryFunctionName: string | null) => void;
+  /** Render the per-feature description lines under each ribbon group.
+   *  Defaults to true (back-compat); pass false in dense side panels where
+   *  the descriptions bloat the rail. */
+  showDescriptions?: boolean;
 }
 
-export function FeatureCatalogPanel({ route, routes, routeLabels, license = 'free', dict, onRun }: FeatureCatalogPanelProps) {
+export function FeatureCatalogPanel({ route, routes, routeLabels, license = 'free', dict, onRun, showDescriptions = true }: FeatureCatalogPanelProps) {
   const domainRoutes: FeatureRoute[] = routes && routes.length > 0 ? routes : route ? [route] : ['modeling'];
   const [activeRoute, setActiveRoute] = useState<FeatureRoute>(domainRoutes[0]!);
   const groups = useCatalogRibbonGroups(activeRoute, license);
@@ -89,7 +93,7 @@ export function FeatureCatalogPanel({ route, routes, routeLabels, license = 'fre
           groups={groups}
           onPick={(id) => { setDemoResult(null); setDemoError(null); launch(id); }}
           activeFeatureId={activeId ?? undefined}
-          showDescriptions
+          showDescriptions={showDescriptions}
         />
       )}
 

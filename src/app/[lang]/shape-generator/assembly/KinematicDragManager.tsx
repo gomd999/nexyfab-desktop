@@ -2,7 +2,13 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import type { AssemblyState } from './matesSolver';
-import { solveAssembly } from './matesSolver';
+import {
+  beginDragGesture,
+  kinematicDragStep,
+  snapshotPoses,
+  type DragGesture,
+  type BodyPoseSnapshot,
+} from './kinematicDragSolve';
 import type { BomPartResult } from '../ShapePreview';
 
 interface Props {
@@ -11,12 +17,20 @@ interface Props {
   assemblyState: AssemblyState | null;
   onSolverUpdate: (solvedBodies: { position: THREE.Vector3; rotation: THREE.Euler }[]) => void;
   onDragStateChange: (dragging: boolean) => void;
+  /** Fired once per completed gesture with before/after pose snapshots, so
+   *  the host can register a SINGLE undo step for the whole drag. */
+  onGestureEnd?: (before: BodyPoseSnapshot[], after: BodyPoseSnapshot[]) => void;
   hitboxes: THREE.Object3D[]; // array of meshes to raycast against
 }
 
 /**
  * Attaches global pointer events to the canvas to handle raycast dragging
  * of assembly parts, and runs the kinematic solver in real-time.
+ *
+ * Drag semantics live in `kinematicDragSolve` (pure, unit-tested): a part
+ * hinged to a fixed partner rotates about the hinge axis, a slider-mated
+ * part slides along its axis, anything else translates with the solver
+ * re-polishing constraints each frame (soft-pin, sketch drag-solve style).
  */
 export default function KinematicDragManager({
   enabled,
@@ -24,14 +38,15 @@ export default function KinematicDragManager({
   assemblyState,
   onSolverUpdate,
   onDragStateChange,
+  onGestureEnd,
   hitboxes
 }: Props) {
   const { camera, gl, raycaster } = useThree();
   const draggingState = useRef<{
-    partIndex: number;
+    gesture: DragGesture;
     plane: THREE.Plane;
-    offset: THREE.Vector3;
-    startPos: THREE.Vector3;
+    before: BodyPoseSnapshot[];
+    moved: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -41,7 +56,6 @@ export default function KinematicDragManager({
     const plane = new THREE.Plane();
     const planeNormal = new THREE.Vector3();
     const intersection = new THREE.Vector3();
-    const offset = new THREE.Vector3();
 
     const onPointerDown = (e: PointerEvent) => {
       if (e.button !== 0) return; // Only left click
@@ -65,19 +79,16 @@ export default function KinematicDragManager({
         e.preventDefault();
         onDragStateChange(true);
 
-        // Setup drag plane facing the camera
+        // Setup drag plane facing the camera through the grab point
         camera.getWorldDirection(planeNormal);
         planeNormal.negate();
         plane.setFromNormalAndCoplanarPoint(planeNormal, hit.point);
 
-        const partPos = assemblyState.bodies[partIndex].position;
-        offset.copy(hit.point).sub(partPos);
-
         draggingState.current = {
-          partIndex,
+          gesture: beginDragGesture(assemblyState, partIndex, hit.point.clone()),
           plane: plane.clone(),
-          offset: offset.clone(),
-          startPos: partPos.clone()
+          before: snapshotPoses(assemblyState),
+          moved: false,
         };
       }
     };
@@ -93,14 +104,11 @@ export default function KinematicDragManager({
 
       raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
       if (raycaster.ray.intersectPlane(state.plane, intersection)) {
-        // Requested new position for the dragged part
-        const newPos = intersection.sub(state.offset);
-        
-        // Temporarily apply it to the dragged body in the local assembly state copy
-        assemblyState.bodies[state.partIndex].position.copy(newPos);
-
-        // Run Kinematic Solver (Gauss-Seidel) to resolve all constraints including gears, hinges, etc.
-        const res = solveAssembly(assemblyState, 50); // Fewer iterations for real-time 60fps drag
+        // One soft-pin + re-polish frame: pose the dragged part toward the
+        // cursor along its joint, re-solve everything else (gears, hinges,
+        // limit mates...), and write the result back for warm-starting.
+        const res = kinematicDragStep(assemblyState, state.gesture, intersection.clone(), { iterations: 50 });
+        state.moved = true;
 
         // Callback to update the React state (which passes down new transforms to instances)
         onSolverUpdate(res.bodies);
@@ -108,8 +116,12 @@ export default function KinematicDragManager({
     };
 
     const onPointerUp = () => {
-      if (draggingState.current) {
+      const state = draggingState.current;
+      if (state) {
         draggingState.current = null;
+        if (state.moved && onGestureEnd) {
+          onGestureEnd(state.before, snapshotPoses(assemblyState));
+        }
         onDragStateChange(false);
       }
     };
@@ -123,7 +135,7 @@ export default function KinematicDragManager({
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     };
-  }, [enabled, hitboxes, assemblyState, camera, gl.domElement, raycaster, onSolverUpdate, onDragStateChange]);
+  }, [enabled, hitboxes, assemblyState, camera, gl.domElement, raycaster, onSolverUpdate, onDragStateChange, onGestureEnd]);
 
   return null;
 }
