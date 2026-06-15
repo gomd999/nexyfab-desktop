@@ -151,8 +151,8 @@ describe('runIntentAccuracyCase · scoring wrapper', () => {
     const drifted: IntentInput = {
       shapeId: 'hexNut',
       params: {
-        acrossFlats: 13.3,        // +0.3
-        thickness: 7.7,           // −0.3
+        acrossFlats: 13.3,        // +0.3 from 13
+        thickness: 6.8,           // +0.3 from corrected 6.5
         nominalDiameter: 8.0,
       },
     };

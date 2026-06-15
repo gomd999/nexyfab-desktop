@@ -96,11 +96,12 @@ export const INTENT_ACCURACY_EVAL_CASES: EvalCase[] = [
   {
     id: 'hexNut-m8',
     prompt: 'An M8 hex nut',
-    // DIN 934 / ISO 4032: across-flats 13mm, thickness 8mm (nominal slot uses
-    // ~6.5mm but the task spec accepts ≈8). nominalDiameter = M8.
+    // DIN 934 / ISO 4032 for M8: across-flats 13mm, thickness 6.5mm,
+    // nominalDiameter = M8. (Corrected from 8 → 6.5: 6.5 is the real standard
+    // thickness; the model was right, the expected was wrong.) Default tolerance.
     expected: {
       shapeId: 'hexNut',
-      params: { acrossFlats: 13, thickness: 8, nominalDiameter: 8 },
+      params: { acrossFlats: 13, thickness: 6.5, nominalDiameter: 8 },
     },
   },
   {

@@ -61,11 +61,12 @@ describe.skipIf(!RUN)('LIVE NL→intent accuracy (DeepSeek, production prompt)',
       `(exact=${r.exactCount} structural=${r.structuralCount} directional=${r.directionalCount} mismatch=${r.mismatchCount} / ${r.total})`,
     );
     for (const c of r.results) {
-      console.log(`  ${c.matchLevel.padEnd(12)} ${c.caseId}${c.matchLevel === 'mismatch' ? ' — ' + c.details.slice(0, 2).join('; ') : ''}`);
+      const diag = c.matchLevel !== 'exact' && c.details.length ? '  ⟵ ' + c.details.join(' | ') : '';
+      console.log(`  ${c.matchLevel.padEnd(12)} ${c.caseId}${diag}`);
     }
-    // A real gate, not flaky-strict: most golden cases must land at least
-    // directionally. Tighten as the prompt improves.
-    expect(r.passRate).toBeGreaterThanOrEqual(0.6);
+    // Regression guard. Prompt v1.3.0 measured 100% (15/15 exact) twice; 0.85
+    // catches a real 2+-case regression without flaking on model variance.
+    expect(r.passRate).toBeGreaterThanOrEqual(0.85);
   }, 180_000);
 });
 

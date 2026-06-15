@@ -74,6 +74,27 @@ Common feature.params keys:
   draft:           angle, height, referenceWidth
   twist / rotate:  angleX, angleY, angleZ
 
+PARAMETER RULES:
+  - Use the EXACT parameter-key names listed above for the chosen shape — do not
+    invent generic keys (e.g. a bolt uses shaftDiameter / shaftLength, NOT
+    diameter / length; a gear uses teeth / module, NOT a generic size).
+  - Include ONLY the parameters the user stated or that are essential to the
+    shape. Omit optional parameters and let the generator's defaults apply —
+    don't pad the object with values the user never mentioned.
+  - For standard fasteners (bolt, hexNut, washer, screw) use the real ISO/DIN
+    dimensions for the named size (e.g. an M8 hex head is 13mm across flats).
+  - "rounded edges / rounded corners" on a box → shapeId "box" + a fillet
+    feature. Use shapeId "roundedBox" ONLY when the user literally asks for a
+    "rounded box" primitive.
+
+EXAMPLES (patterns only — derive your own values from the user's request):
+  "M6 hex bolt 25mm long"
+   → {"shapeId":"bolt","params":{"shaftDiameter":6,"shaftLength":25,"headHeight":4,"headFlats":10},"summary":"M6 hex bolt, 25mm"}
+  "a 30mm cube with 4mm rounded edges"
+   → {"shapeId":"box","params":{"width":30,"height":30,"depth":30},"features":[{"type":"fillet","params":{"radius":4}}],"summary":"30mm cube, 4mm filleted edges"}
+  "a plate 40mm square 5mm thick with a 12mm hole in the middle"
+   → {"shapeId":"box","params":{"width":40,"height":5,"depth":40},"features":[{"type":"hole","params":{"diameter":12}}],"summary":"40mm square plate with a centred 12mm hole"}
+
 RESPONSE FORMAT (single JSON object):
 {
   "shapeId": "<from list>",
@@ -88,7 +109,7 @@ If the user's request cannot be expressed with the allowed shapes, return:
 
 const def: PromptDefinition = {
   id: 'scad-intent-from-nl',
-  version: '1.2.0',
+  version: '1.3.0',
   description: 'Parse natural-language mechanical-part descriptions into a strict JSON intent. Whitelist-bounded — never emits SCAD directly.',
   template: TEMPLATE,
   defaults: {
