@@ -55,7 +55,11 @@ export interface Stage2Summary {
   adjustments: { field: string; from: unknown; to: unknown; reason: string }[];
 }
 
-const SUPPORTED_SHAPES = new Set([
+// Single source of truth for the deterministic shape vocabulary. The scad-agent
+// gate (intentSchema.KNOWN_SHAPE_IDS) imports this so the LLM allow-list can
+// never drift below what the compiler can actually emit (the drift previously
+// stranded ~18 compiler-supported parts behind the agent gate).
+export const SUPPORTED_SHAPES = new Set([
   'box', 'cylinder', 'sphere', 'cone', 'torus', 'wedge', 'pipe', 'disk',
   'hexNut', 'washer', 'iBeam', 'lBracket', 'flange', 'bolt',
   'gear', 'threadedRod', 'roundedBox', 'screw', 'springCoil',
@@ -72,7 +76,9 @@ const BOSL2_SHAPES = new Set([
   'turbine',
 ]);
 
-const SUPPORTED_FEATURES = new Set([
+// Single source of truth for the deterministic feature vocabulary — imported by
+// the scad-agent gate so its allow-list can't drift below the compiler.
+export const SUPPORTED_FEATURES = new Set([
   'hole', 'fillet', 'chamfer', 'mirror', 'linearPattern', 'circularPattern',
   'scale', 'shell', 'thread', 'draft', 'twist', 'rotate',
 ]);

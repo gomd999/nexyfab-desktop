@@ -17,28 +17,22 @@ import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage
 import { getPromptVariant } from '@/lib/ai/prompts';
 import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
 import { checkUserBudget } from '@/lib/ai/userBudget';
-import { intentToScad, type IntentInput, type IntentFeature } from '@/lib/openscad-render/intentToScad';
+import {
+  intentToScad,
+  SUPPORTED_SHAPES as SUPPORTED_SHAPES_SET,
+  SUPPORTED_FEATURES as SUPPORTED_FEATURES_SET,
+  type IntentInput,
+  type IntentFeature,
+} from '@/lib/openscad-render/intentToScad';
 import { getCachedIntent, setCachedIntent } from '@/lib/ai/intentCache';
 import { captureServerError } from '@/lib/error-capture';
 
 export const dynamic = 'force-dynamic';
 
-// Keep these whitelists in lock-step with intentToScad's SUPPORTED_SHAPES /
-// SUPPORTED_FEATURES so the AI can never pick something the converter rejects.
-const SUPPORTED_SHAPES = [
-  'box', 'cylinder', 'sphere', 'cone', 'torus', 'wedge', 'pipe', 'disk',
-  'hexNut', 'washer', 'iBeam', 'lBracket', 'flange', 'bolt',
-  'gear', 'threadedRod', 'roundedBox', 'screw', 'springCoil',
-  'sweep', 'loft', 'fanBlade',
-  'heatsink', 'manifold', 'turbine',
-  'enclosure', 'tBeam', 'uChannel', 'zPurlin',
-  'rackUnit', 'shelfBracket', 'hingedBracket', 'motorMount',
-  'nameplate', 'phoneStand', 'coaster', 'wallHook', 'drawerKnob', 'planterPot',
-] as const;
-const SUPPORTED_FEATURES = [
-  'hole', 'fillet', 'chamfer', 'mirror', 'linearPattern', 'circularPattern', 'scale', 'shell',
-  'thread', 'draft', 'twist', 'rotate',
-] as const;
+// Single-sourced from intentToScad so the runtime whitelist can never reject a
+// shape the converter actually supports (nor accept one it doesn't).
+const SUPPORTED_SHAPES: readonly string[] = [...SUPPORTED_SHAPES_SET];
+const SUPPORTED_FEATURES: readonly string[] = [...SUPPORTED_FEATURES_SET];
 
 
 export async function POST(req: NextRequest) {

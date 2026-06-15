@@ -1,21 +1,15 @@
 import type { PromptDefinition } from './index';
+import {
+  SUPPORTED_SHAPES as SHAPE_SET,
+  SUPPORTED_FEATURES as FEATURE_SET,
+} from '@/lib/openscad-render/intentToScad';
 
-// Whitelists are duplicated in /api/nexyfab/scad-intent-from-nl/route.ts for
-// runtime validation. Keep them in lock-step with intentToScad.ts coverage.
-const SUPPORTED_SHAPES = [
-  'box', 'cylinder', 'sphere', 'cone', 'torus', 'wedge', 'pipe', 'disk',
-  'hexNut', 'washer', 'iBeam', 'lBracket', 'flange', 'bolt',
-  'gear', 'threadedRod', 'roundedBox', 'screw', 'springCoil',
-  'sweep', 'loft', 'fanBlade',
-  'heatsink', 'manifold', 'turbine',
-  'enclosure', 'tBeam', 'uChannel', 'zPurlin',
-  'rackUnit', 'shelfBracket', 'hingedBracket', 'motorMount',
-  'nameplate', 'phoneStand', 'coaster', 'wallHook', 'drawerKnob', 'planterPot',
-];
-const SUPPORTED_FEATURES = [
-  'hole', 'fillet', 'chamfer', 'mirror', 'linearPattern', 'circularPattern',
-  'scale', 'shell', 'thread', 'draft', 'twist', 'rotate',
-];
+// Derived DIRECTLY from the deterministic compiler so the LLM is never told
+// about a shape the compiler can't emit, nor kept ignorant of one it can.
+// (The per-shape parameter docs below are still hand-written, but the ALLOWED
+// list is single-sourced — drift-guarded by scadVocabularySync.test.ts.)
+const SUPPORTED_SHAPES = [...SHAPE_SET];
+const SUPPORTED_FEATURES = [...FEATURE_SET];
 
 const TEMPLATE = `You are a CAD intent parser for NexyFab.
 Convert the user's natural-language description of a mechanical part into a strict JSON object.

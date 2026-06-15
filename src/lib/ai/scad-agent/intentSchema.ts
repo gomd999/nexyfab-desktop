@@ -28,26 +28,18 @@
  */
 
 import type { IntentInput, IntentFeature } from '@/lib/openscad-render/intentToScad';
+import { SUPPORTED_SHAPES, SUPPORTED_FEATURES } from '@/lib/openscad-render/intentToScad';
 
-/** Identifiers we currently accept as `shapeId`. Mirror of the switch
- *  table in `intentToScad.ts` — keep in sync when new shapes land. */
-const KNOWN_SHAPE_IDS = new Set<string>([
-  // Primitives
-  'box', 'cylinder', 'sphere', 'cone', 'torus', 'wedge', 'pipe', 'disk',
-  // Standard parts
-  'hexNut', 'washer', 'iBeam', 'lBracket', 'flange', 'bolt',
-  // BOSL2-backed
-  'gear', 'threadedRod', 'roundedBox', 'screw',
-  // Plain helix
-  'springCoil',
-]);
+/** Identifiers we accept as `shapeId`. Imported DIRECTLY from the deterministic
+ *  compiler (`intentToScad.SUPPORTED_SHAPES`) so the agent allow-list can never
+ *  drift below what the compiler can actually emit. (It previously hand-mirrored
+ *  the list and drifted, stranding ~18 compiler-supported parts — enclosure,
+ *  motorMount, heatsink, manifold, brackets, structural beams, … — behind this
+ *  gate: the agent rejected shapes the compiler renders cleanly.) */
+const KNOWN_SHAPE_IDS: ReadonlySet<string> = SUPPORTED_SHAPES;
 
-/** Feature types accepted under `features[]`. */
-const KNOWN_FEATURE_TYPES = new Set<string>([
-  'hole', 'fillet', 'chamfer', 'mirror',
-  'linearPattern', 'circularPattern',
-  'scale', 'shell',
-]);
+/** Feature types accepted under `features[]` — same single-source rule. */
+const KNOWN_FEATURE_TYPES: ReadonlySet<string> = SUPPORTED_FEATURES;
 
 export type IntentIssueSeverity = 'error' | 'warning';
 
