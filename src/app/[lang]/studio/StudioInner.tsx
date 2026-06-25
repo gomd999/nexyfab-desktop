@@ -442,7 +442,10 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
             try {
               for (let iter = 1; iter <= MAX; iter++) {
                 if (!curView) break;
-                setAiMsg(aiId, T(`AI가 형상을 보고 개선 중… (${iter}/${MAX})`, `Looking at the render & refining… (${iter}/${MAX})`), 'thinking');
+                // Stay 'done' (not 'thinking') so the model reads as READY and
+                // stays interactive — the refinement is a visible background
+                // bonus, not a blocking wait.
+                setAiMsg(aiId, T(`완성! 형상을 더 다듬는 중… (${iter}/${MAX})`, `Done! Polishing the shape… (${iter}/${MAX})`), 'done');
                 const cr = await fetch('/api/nexyfab/scad-vision-critique', {
                   method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
                   body: JSON.stringify({ image: curView, prompt: text || (sentImage ? 'the object in the reference photo' : ''), scad: curScad, multiview: true, ...(sentImage ? { refImage: sentImage } : {}) }),
