@@ -32,19 +32,23 @@ async function getBosl2(): Promise<Record<string, Uint8Array>> {
 let loader: OpenSCADLoader | null = null;
 async function getLoader(): Promise<OpenSCADLoader> {
   if (loader) return loader;
-  // Loaded at runtime from /public so its import.meta.url resolves the sibling
-  // openscad.wasm.js + openscad.wasm; webpackIgnore keeps the bundler out.
+  // The 2025.03 build's openscad.js is the full self-contained emscripten glue
+  // (default export). Loaded at runtime from /public; webpackIgnore keeps the
+  // bundler out. locateFile (set per-instance) points it at openscad.wasm.
   // @ts-expect-error — runtime public asset, no module type
   const mod = (await import(/* webpackIgnore: true */ '/openscad/openscad.js')) as { default: OpenSCADLoader };
   loader = mod.default;
   return loader;
 }
 
-async function render(scad: string): Promise<{ ok: boolean; data?: Uint8Array; error?: string }> {
+async function renderWith(scad: string, args: string[]): Promise<{ ok: boolean; data?: Uint8Array; error?: string }> {
   const OpenSCAD = await getLoader();
   const files = await getBosl2();
+  // Fresh instance per render — emscripten runs main() once; the compiled
+  // module is cached so re-init is ~100ms.
   const inst = await OpenSCAD({
     noInitialRun: true,
+    locateFile: (p: string) => '/openscad/' + p,
     preRun: [(m: { ENV: Record<string, string> }) => { try { m.ENV.OPENSCADPATH = '/libraries'; } catch { /* set on instance */ } }],
   });
   try { inst.FS.mkdir('/libraries'); } catch { /* exists */ }
@@ -52,13 +56,21 @@ async function render(scad: string): Promise<{ ok: boolean; data?: Uint8Array; e
   for (const [p, d] of Object.entries(files)) { try { inst.FS.writeFile('/libraries/' + p, d); } catch { /* skip */ } }
   inst.FS.writeFile('/in.scad', scad);
   let code = -1;
-  try { code = inst.callMain(['/in.scad', '-o', '/out.stl', '--export-format=binstl']); }
+  try { code = inst.callMain(args); }
   catch { return { ok: false, error: 'render failed' }; }
   try {
     const data = inst.FS.readFile('/out.stl', { encoding: 'binary' });
     if (!data || data.length === 0) return { ok: false, error: `empty output (exit ${code})` };
     return { ok: true, data };
   } catch { return { ok: false, error: `no output (exit ${code})` }; }
+}
+
+async function render(scad: string): Promise<{ ok: boolean; data?: Uint8Array; error?: string }> {
+  // Manifold backend is ~5–25× faster than CGAL. It needs watertight input,
+  // so on failure fall back to the (slower, more tolerant) default backend.
+  const r = await renderWith(scad, ['/in.scad', '-o', '/out.stl', '--backend=manifold', '--export-format=binstl']);
+  if (r.ok) return r;
+  return renderWith(scad, ['/in.scad', '-o', '/out.stl', '--export-format=binstl']);
 }
 
 self.onmessage = async (e: MessageEvent<{ id: number; scad: string }>) => {
