@@ -45,12 +45,12 @@ function getReplicad(): Promise<any> {
  * this runs on demand when the user exports STEP.
  *
  * Coverage: rectangular/circular base, through-holes (incl. circular/linear
- * patterns), all-edge fillet/chamfer (best-effort). Ribs/shells are skipped
- * (returned in `skipped`) — they fall back to the mesh STEP path.
+ * patterns), ribs (fused fins), all-edge fillet/chamfer (best-effort). Shells
+ * are skipped (returned in `skipped`).
  */
 interface Feat {
   id?: string; type?: string; shape?: string;
-  width?: number; depth?: number; height?: number;
+  width?: number; depth?: number; height?: number; length?: number; alongY?: boolean;
   diameter?: number; posX?: number; posY?: number;
   feature?: string; count?: number; pcd?: number; spacing?: number; axis?: string;
   radius?: number; distance?: number;
@@ -108,8 +108,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Ribs: vertical fins fused onto the base (makeBaseBox sits bottom at z=0,
+    // matching the base). alongY runs the rib along Y, else along X.
     for (const f of feats) {
-      if (f.type === 'rib' || f.type === 'shell') { skipped.push(f.type); continue; }
+      if (f.type !== 'rib') continue;
+      try {
+        const t = num(f.width, 8), rh = num(f.height, 40), L = num(f.length, num(base.depth, 80));
+        const rib = replicad.makeBaseBox(f.alongY ? t : L, f.alongY ? L : t, rh).translate([num(f.posX, 0), num(f.posY, 0), 0]);
+        solid = solid.fuse(rib);
+      } catch { skipped.push('rib'); }
+    }
+
+    for (const f of feats) {
+      if (f.type === 'shell') { skipped.push('shell'); continue; }
       try {
         if (f.type === 'fillet') solid = solid.fillet(num(f.radius, 3));
         else if (f.type === 'chamfer') solid = solid.chamfer(num(f.distance, 1));
