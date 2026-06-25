@@ -6761,10 +6761,37 @@ export function ShapeGeneratorInner() {
   useEffect(() => {
     let cancelled = false;
     let scad: string | null = null;
-    try { scad = sessionStorage.getItem('nexyfab:studio-handoff-scad'); } catch { return; }
-    if (!scad) return;
-    try { sessionStorage.removeItem('nexyfab:studio-handoff-scad'); } catch { /* ignore */ }
+    let programRaw: string | null = null;
+    try {
+      scad = sessionStorage.getItem('nexyfab:studio-handoff-scad');
+      programRaw = sessionStorage.getItem('nexyfab:studio-handoff-program');
+    } catch { return; }
+    if (!scad && !programRaw) return;
+    try {
+      sessionStorage.removeItem('nexyfab:studio-handoff-scad');
+      sessionStorage.removeItem('nexyfab:studio-handoff-program');
+    } catch { /* ignore */ }
     void (async () => {
+      // Precise designs carry a feature program → rebuild an EDITABLE feature
+      // tree (the modeler then builds it via OCCT → analytic B-rep + STEP).
+      if (programRaw) {
+        try {
+          const program = JSON.parse(programRaw);
+          const { reconstructFeatureTree } = await import('./ai/programToFeatures');
+          if (cancelled) return;
+          const out = reconstructFeatureTree(program, { addSketchFeature, addFeatureWithParams });
+          if (out.ok) {
+            addToast('success', out.skipped.length
+              ? `정밀 부품을 편집 가능한 피처트리로 가져왔어요 (${out.skipped.join(', ')}는 미반영)`
+              : '정밀 부품을 편집 가능한 피처트리로 가져왔어요');
+            return;
+          }
+        } catch (e) {
+          console.warn('[precise handoff] feature rebuild failed, falling back to mesh import:', e);
+        }
+      }
+      // Free-form (or precise fallback): render the OpenSCAD → imported mesh.
+      if (!scad) return;
       try {
         addToast('info', 'Studio 모델 가져오는 중…');
         const res = await fetch('/api/nexyfab/openscad-render', {
@@ -6789,7 +6816,7 @@ export function ShapeGeneratorInner() {
       }
     })();
     return () => { cancelled = true; };
-  }, [setImportedGeometry, setImportedFilename, addToast]);
+  }, [setImportedGeometry, setImportedFilename, addToast, addSketchFeature, addFeatureWithParams]);
 
   // ─── K-series STEP import (B-rep, gap #3) ────────────────────────────────
   // Read a STEP file as a true OCCT B-rep solid (STEPControl_Reader via the
