@@ -23,14 +23,18 @@ export interface CodegenModel {
   note?: string;
 }
 
+// Ordered best-first. A head-to-head car test (2026-06-25) put DeepSeek
+// Reasoner clearly ahead: fast (~17s), reliable, and the only model whose car
+// read as a real car. Gemini was slowest (~65s) and frequently emitted SCAD
+// that failed to render, so it is no longer the default.
 export const CODEGEN_MODELS: CodegenModel[] = [
-  { id: 'gemini-pro',        label: 'Gemini 2.5 Pro',     provider: 'gemini',     model: 'gemini-2.5-pro',  note: '사진→형상 최강' },
+  { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner',  provider: 'deepseek',   model: 'deepseek-reasoner', note: '안정 · 추천' },
+  { id: 'qwen-max',          label: 'Qwen3 Max',          provider: 'openrouter', model: 'qwen/qwen3-max',  note: 'OpenRouter · 빠름' },
+  { id: 'gemini-pro',        label: 'Gemini 2.5 Pro',     provider: 'gemini',     model: 'gemini-2.5-pro',  note: '사진 이해 강함' },
   { id: 'glm-5.2',           label: 'GLM 5.2',            provider: 'openrouter', model: 'z-ai/glm-5.2',    note: 'OpenRouter · 추론' },
-  { id: 'qwen-max',          label: 'Qwen3 Max',          provider: 'openrouter', model: 'qwen/qwen3-max',  note: 'OpenRouter' },
-  { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner',  provider: 'deepseek',   model: 'deepseek-reasoner', note: '직접' },
 ];
 
-export const DEFAULT_CODEGEN_MODEL = 'gemini-pro';
+export const DEFAULT_CODEGEN_MODEL = 'deepseek-reasoner';
 
 /** Map a (possibly client-supplied) model id to a provider + model, defaulting
  *  safely. Returns the preferred provider (chain keeps fallback behind it). */
