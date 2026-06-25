@@ -30,6 +30,9 @@ export interface StatusBarProps {
   isOptimizing: boolean;
   progress: { iteration: number; maxIteration: number } | null;
   onShowShortcuts: () => void;
+  /** Live part readout — bounding size (mm), volume (cm³), mass (g). Always-on
+   *  feedback so users don't need the Mass Properties panel for a quick check. */
+  modelStats?: { sx: number; sy: number; sz: number; volumeCm3: number | null; massG: number | null } | null;
 }
 
 // ── i18n dict ──
@@ -125,6 +128,9 @@ const S = {
   coordY: { color: 'var(--nx-ok)' } as React.CSSProperties,
   coordZ: { color: 'var(--nx-accent-2)' } as React.CSSProperties,
   coordVal: { color: '#c9d1d9', minWidth: 42, textAlign: 'right' as const } as React.CSSProperties,
+  statKey: { color: '#7d8590', fontSize: 10, letterSpacing: '0.04em' } as React.CSSProperties,
+  statKeyAccent: { color: 'var(--nx-accent, #ff9a3c)', fontSize: 10, letterSpacing: '0.04em', marginLeft: 2 } as React.CSSProperties,
+  statValAccent: { color: 'var(--nx-accent, #ff9a3c)' } as React.CSSProperties,
   selWrap: { display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px', borderRight: '1px solid #21262d', height: '100%' } as React.CSSProperties,
   selCount: { color: 'var(--nx-warn)' } as React.CSSProperties,
   selLabel: { color: 'var(--nx-text-2)', fontSize: 10 } as React.CSSProperties,
@@ -163,7 +169,7 @@ export default function StatusBar({
   smartSnapEnabled = false, onToggleSmartSnap,
   sectionActive, sectionAxis, sectionOffset,
   onSectionAxisChange, onSectionOffsetChange,
-  isOptimizing, progress, onShowShortcuts,
+  isOptimizing, progress, onShowShortcuts, modelStats,
 }: StatusBarProps) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
@@ -221,6 +227,26 @@ export default function StatusBar({
           <span style={S.coordEmpty}>--- , --- , ---</span>
         )}
       </div>
+
+      {/* Live part readout — size · volume · mass (always-on, no panel needed) */}
+      {modelStats && (
+        <div style={S.coordWrap} title="Bounding size · Volume · Mass">
+          <span style={S.statKey}>SIZE</span>
+          <span style={S.coordVal}>{fmt(modelStats.sx)}×{fmt(modelStats.sy)}×{fmt(modelStats.sz)}</span>
+          {modelStats.volumeCm3 != null && (
+            <>
+              <span style={S.statKey}>VOL</span>
+              <span style={S.coordVal}>{modelStats.volumeCm3.toFixed(2)}cm³</span>
+            </>
+          )}
+          {modelStats.massG != null && (
+            <>
+              <span style={S.statKeyAccent}>MASS</span>
+              <span style={S.statValAccent}>{modelStats.massG < 1000 ? `${modelStats.massG.toFixed(1)}g` : `${(modelStats.massG / 1000).toFixed(2)}kg`}</span>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Selection info */}
       {selectionCount > 0 && (

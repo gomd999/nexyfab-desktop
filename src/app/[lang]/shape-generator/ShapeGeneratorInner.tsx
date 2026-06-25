@@ -7573,6 +7573,26 @@ export function ShapeGeneratorInner() {
     return computeMassProperties(effectiveResult.geometry, density);
   }, [showMassProps, effectiveResult, materialId]);
 
+  // Lightweight always-on status-bar readout (bbox size + volume + mass) —
+  // cheap enough to show without opening the Mass Properties panel.
+  const statusBarStats = useMemo(() => {
+    const g = effectiveResult?.geometry;
+    if (!g) return null;
+    if (!g.boundingBox) g.computeBoundingBox();
+    const bb = g.boundingBox;
+    if (!bb) return null;
+    const mat = MATERIAL_PRESETS.find(m => m.id === materialId);
+    const density = mat?.density ?? 2.7;
+    const vol = typeof effectiveResult?.volume_cm3 === 'number' ? effectiveResult.volume_cm3 : null;
+    return {
+      sx: bb.max.x - bb.min.x,
+      sy: bb.max.y - bb.min.y,
+      sz: bb.max.z - bb.min.z,
+      volumeCm3: vol,
+      massG: vol != null ? vol * density : null,
+    };
+  }, [effectiveResult, materialId]);
+
   // F2 — assembly-level CG. When the user has 2+ placed parts and the Mass
   // Properties panel is open, fold each part's mass into a combined assembly
   // CG (parallel-axis weighted). This is the marker the user actually wants
@@ -10314,6 +10334,7 @@ export function ShapeGeneratorInner() {
             isOptimizing={isOptimizing}
             progress={progress}
             onShowShortcuts={() => setShowShortcuts(true)}
+            modelStats={statusBarStats}
           />
         </div>
 
