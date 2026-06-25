@@ -70,6 +70,9 @@ export function buildCspValue(opts: BuildSecurityHeadersOptions = {}): string {
     "'unsafe-eval'",
     "'unsafe-inline'",
     "'wasm-unsafe-eval'",
+    // blob: — the client OpenSCAD-WASM render worker imports the emscripten
+    // glue from a same-origin blob URL (Studio in-browser CAD). Safer than data:.
+    'blob:',
     'https://www.googletagmanager.com',
     'https://www.google-analytics.com',
     'https://connect.facebook.net',

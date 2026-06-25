@@ -22,6 +22,15 @@ import { listDesigns, saveDesign, getDesign, deleteDesign, titleFromMessages, ty
 import { parseScadColors, isolateColorScad, defaultColorCss } from './scadColors';
 import { emitScadFromProgram, type FeatureProgram } from './emitScadFromProgram';
 import { CODEGEN_MODELS, DEFAULT_CODEGEN_MODEL } from '@/lib/ai/codegenModels';
+import { renderScadWasm, wasmAvailable } from './wasmRender';
+
+/** base64-encode STL bytes (for the download button + persistence) in chunks. */
+function uint8ToB64(u8: Uint8Array): string {
+  let s = '';
+  const CH = 0x8000;
+  for (let i = 0; i < u8.length; i += CH) s += String.fromCharCode(...u8.subarray(i, i + CH));
+  return btoa(s);
+}
 
 const StudioViewer = dynamic(() => import('./StudioViewer'), { ssr: false });
 
@@ -150,6 +159,24 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   }, []);
 
   const renderScad = useCallback(async (src: string): Promise<RenderResult> => {
+    // Client-side WASM render first — no server load, no auth gate, no byte cap.
+    // Attached-STL models still use the server (it injects the user's model.stl).
+    if (!importStlRef.current && wasmAvailable()) {
+      const w = await renderScadWasm(src);
+      if (w.ok && w.data) {
+        const geo = parseSTL(w.data.slice().buffer);
+        geo.computeBoundingBox();
+        const c = new THREE.Vector3();
+        geo.boundingBox?.getCenter(c);
+        geo.translate(-c.x, -c.y, -c.z);
+        setGeometry(geo);
+        setNeedLogin(false);
+        setStlB64(uint8ToB64(w.data));
+        return { ok: true };
+      }
+      // WASM failed → fall through to the server (also yields a real error
+      // string the caller can feed to the self-repair loop).
+    }
     let res: Response;
     try {
       res = await fetch('/api/nexyfab/openscad-render', {
@@ -182,17 +209,27 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     if (colors.length === 0) { setColoredObject(null); return; } // nothing to colour
     const myReq = ++colorReqRef.current;
     // Render every colour group (a detailed car has ~8: body, cabin, windows,
-    // wheels, hubcaps, lights, spoiler) so no part is silently dropped — but at
-    // a LIMITED concurrency. Firing all isolations at once floods the shared
-    // OpenSCAD render service and makes unrelated renders (other tabs, the
-    // precise path) fail under load; a small pool renders all of them safely.
+    // wheels, hubcaps, lights, spoiler) so no part is silently dropped. Client
+    // WASM has no shared-service to flood, so all colours render through the
+    // worker pool; only fall back to the server when WASM is unavailable.
     const tokens: (string | null)[] = colors.map(c => c.token).slice(0, 24);
     tokens.push(null); // uncoloured remainder → default colour
+    const useWasm = !importStlRef.current && wasmAvailable();
     const renderOne = async (tok: string | null) => {
+      const iso = isolateColorScad(src, tok);
       try {
+        if (useWasm) {
+          const w = await renderScadWasm(iso);
+          if (w.ok && w.data) {
+            const g = parseSTL(w.data.slice().buffer);
+            if (!g.attributes.position || g.attributes.position.count === 0) return null;
+            return { tok, geo: g };
+          }
+          if (wasmAvailable()) return null; // genuine empty/error for this colour
+        }
         const res = await fetch('/api/nexyfab/openscad-render', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ scad: isolateColorScad(src, tok), format: 'stl' }),
+          body: JSON.stringify({ scad: iso, format: 'stl' }),
         });
         if (!res.ok) return null;
         const data = await res.json().catch(() => ({}));

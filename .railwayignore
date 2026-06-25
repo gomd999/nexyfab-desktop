@@ -23,3 +23,7 @@ build_log.txt
 .husky
 .cursor
 .claude
+
+# Studio client WASM render assets — must deploy despite *.zip rule above
+!public/openscad/bosl2.zip
+!public/openscad/openscad.wasm

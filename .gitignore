@@ -114,3 +114,7 @@ cron-worker/.cron-secret.txt
 
 # E2E test account credentials (local only)
 .e2e-*
+
+# Client-side OpenSCAD render assets (Studio in-browser CAD) — vendored, must deploy
+!/public/openscad/openscad.wasm
+!/public/openscad/bosl2.zip
