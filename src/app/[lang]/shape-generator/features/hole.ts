@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
-import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry, resolveBrepHostHandle } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback } from './downgradeNotice';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
@@ -69,7 +69,9 @@ export const holeFeature: FeatureDefinition = {
 
     if (shouldUseOcctEngine(engine)) {
       try {
-        let currentHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
+        // Fail-clean host contract — throws for a handle-less non-box body
+        // (→ mesh CSG fallback below) instead of drilling its bounding box.
+        let currentHandle = resolveBrepHostHandle(geometry);
         let currentGeo = geometry;
         const host = hostBoxFromGeometry(geometry);
 

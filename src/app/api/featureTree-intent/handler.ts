@@ -35,6 +35,8 @@
 import { detectIntent } from '@/lib/ai/featureTreeIntentDetector';
 import { INTENT_KINDS } from '@/lib/ai/featureTreeIntentDetector';
 import { BUILD_INTENT_PROMPT } from '@/lib/ai/llmPrompt';
+import { isAddableFeatureType } from '@/lib/ai/addableFeatureTypes';
+import type { AiModelContext } from '@/lib/ai/modelContext';
 import type { PlanIntent } from '@/lib/ai/featureTreePlanner';
 
 const MAX_TEXT_LEN = 1000;
@@ -53,6 +55,8 @@ const PROMPT_VERSION = 'v2';
 
 export interface FeatureTreeIntentBody {
   text?: string;
+  /** Compact model summary so the LLM can resolve context-dependent commands. */
+  context?: AiModelContext;
 }
 
 export interface FeatureTreeIntentResponseOk {
@@ -75,32 +79,41 @@ export interface FeatureTreeIntentResponseErr {
 
 /** Test-injection seam: pass `opts.llmFetcher` from unit tests to skip env+network. */
 export interface FeatureTreeIntentOpts {
-  llmFetcher?: (text: string, signal: AbortSignal) => Promise<unknown>;
+  llmFetcher?: (text: string, context: AiModelContext | undefined, signal: AbortSignal) => Promise<unknown>;
 }
 
 /**
  * Resolve the LLM bridge. Precedence:
  *   1. opts.llmFetcher (test injection)
  *   2. env vars in order:
- *        NEXYFAB_ANTHROPIC_KEY → ANTHROPIC_API_KEY
- *        NEXYFAB_OPENAI_KEY    → OPENAI_API_KEY
- *      Anthropic preferred because it is the project's primary provider.
+ *        NEXYFAB_DEEPSEEK_API_KEY → DEEPSEEK_API_KEY   (project's primary provider)
+ *        NEXYFAB_ANTHROPIC_KEY    → ANTHROPIC_API_KEY
+ *        NEXYFAB_OPENAI_KEY       → OPENAI_API_KEY
+ *      DeepSeek is checked first because it is the only provider actually
+ *      configured in this deployment (Anthropic/OpenAI keys are commented out
+ *      in .env). Without this branch the long-tail LLM fallback never fired in
+ *      production and every command outside the regex grammar silently failed.
  *   3. null → "no LLM available" sentinel (handler emits source:'fallback').
  */
 function resolveLlmFetcher(
   opts: FeatureTreeIntentOpts,
-): ((text: string, signal: AbortSignal) => Promise<unknown>) | null {
+): ((text: string, context: AiModelContext | undefined, signal: AbortSignal) => Promise<unknown>) | null {
   if (opts.llmFetcher) return opts.llmFetcher;
 
+  const deepseekKey =
+    process.env.NEXYFAB_DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY;
+  if (deepseekKey) {
+    return (text, context, signal) => callDeepSeek(text, context, deepseekKey, signal);
+  }
   const anthropicKey =
     process.env.NEXYFAB_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY;
   if (anthropicKey) {
-    return (text, signal) => callAnthropic(text, anthropicKey, signal);
+    return (text, context, signal) => callAnthropic(text, context, anthropicKey, signal);
   }
   const openaiKey =
     process.env.NEXYFAB_OPENAI_KEY || process.env.OPENAI_API_KEY;
   if (openaiKey) {
-    return (text, signal) => callOpenAI(text, openaiKey, signal);
+    return (text, context, signal) => callOpenAI(text, context, openaiKey, signal);
   }
   return null;
 }
@@ -116,12 +129,13 @@ function resolveLlmFetcher(
  * can build the prompt themselves and pass the body through an injected
  * `opts.llmFetcher`.
  */
-function buildPrompt(text: string): string {
-  return BUILD_INTENT_PROMPT(text, INTENT_KINDS);
+function buildPrompt(text: string, context?: AiModelContext): string {
+  return BUILD_INTENT_PROMPT(text, INTENT_KINDS, context);
 }
 
 async function callAnthropic(
   text: string,
+  context: AiModelContext | undefined,
   apiKey: string,
   signal: AbortSignal,
 ): Promise<unknown> {
@@ -136,7 +150,7 @@ async function callAnthropic(
       model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001',
       max_tokens: 512,
       temperature: 0,
-      messages: [{ role: 'user', content: buildPrompt(text) }],
+      messages: [{ role: 'user', content: buildPrompt(text, context) }],
     }),
     signal,
   });
@@ -151,8 +165,43 @@ async function callAnthropic(
   return parseJsonOrNull(raw);
 }
 
+/**
+ * DeepSeek is OpenAI-compatible (`/chat/completions`, Bearer auth, same
+ * response shape) — mirror callOpenAI but against the DeepSeek base URL.
+ * This is the provider actually configured in production.
+ */
+async function callDeepSeek(
+  text: string,
+  context: AiModelContext | undefined,
+  apiKey: string,
+  signal: AbortSignal,
+): Promise<unknown> {
+  const baseUrl = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1';
+  const res = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: process.env.DEEPSEEK_MODEL ?? 'deepseek-chat',
+      max_tokens: 512,
+      temperature: 0,
+      messages: [{ role: 'user', content: buildPrompt(text, context) }],
+    }),
+    signal,
+  });
+  if (!res.ok) throw new Error(`deepseek ${res.status}`);
+  const data = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const raw = data.choices?.[0]?.message?.content ?? '';
+  return parseJsonOrNull(raw);
+}
+
 async function callOpenAI(
   text: string,
+  context: AiModelContext | undefined,
   apiKey: string,
   signal: AbortSignal,
 ): Promise<unknown> {
@@ -166,7 +215,7 @@ async function callOpenAI(
       model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
       max_tokens: 512,
       temperature: 0,
-      messages: [{ role: 'user', content: buildPrompt(text) }],
+      messages: [{ role: 'user', content: buildPrompt(text, context) }],
     }),
     signal,
   });
@@ -330,9 +379,104 @@ function validatePlanIntent(payload: unknown): PlanIntent | null {
       if (typeof obj.angle === 'number') circular.angle = obj.angle;
       return circular;
     }
+    case 'add_feature_to_last': {
+      // Generic feature add: featureType must be in the allowlist; params is a
+      // flat numeric record (non-numeric values dropped). Omitted params are
+      // filled from registry defaults client-side, so {} is valid.
+      if (!isAddableFeatureType(obj.featureType)) return null;
+      const rawParams = obj.params;
+      const params: Record<string, number> = {};
+      if (rawParams && typeof rawParams === 'object') {
+        for (const [k, v] of Object.entries(rawParams as Record<string, unknown>)) {
+          if (typeof v === 'number' && Number.isFinite(v)) params[k] = v;
+        }
+      }
+      return { kind, featureType: obj.featureType, params };
+    }
+    case 'update_last_param': {
+      if (typeof obj.paramKey !== 'string' || obj.paramKey.length === 0) return null;
+      if (typeof obj.value !== 'number' || !Number.isFinite(obj.value)) return null;
+      return { kind, paramKey: obj.paramKey, value: obj.value };
+    }
+    case 'remove_last':
+      return { kind };
+    case 'create_sketch_extrude': {
+      if (!Array.isArray(obj.profile)) return null;
+      const profile = obj.profile
+        .filter((p): p is { x: number; y: number } =>
+          !!p && typeof p === 'object' &&
+          typeof (p as Record<string, unknown>).x === 'number' && Number.isFinite((p as Record<string, unknown>).x as number) &&
+          typeof (p as Record<string, unknown>).y === 'number' && Number.isFinite((p as Record<string, unknown>).y as number))
+        .map((p) => ({ x: p.x, y: p.y }));
+      if (profile.length < 3) return null;
+      if (typeof obj.depth !== 'number' || !Number.isFinite(obj.depth) || obj.depth <= 0) return null;
+      const plane = obj.plane === 'xz' || obj.plane === 'yz' ? obj.plane : 'xy';
+      const operation = obj.operation === 'subtract' ? 'subtract' : 'add';
+      return { kind, profile, depth: obj.depth, plane, operation };
+    }
+    case 'build_part': {
+      const base = obj.base;
+      if (!base || typeof base !== 'object') return null;
+      const b = base as Record<string, unknown>;
+      if (typeof b.shapeId !== 'string' || !BUILD_PART_BASES.has(b.shapeId)) return null;
+      const baseParams = numericRecord(b.params);
+      const featsRaw = Array.isArray(obj.features) ? obj.features : [];
+      const features = featsRaw
+        .filter((f): f is Record<string, unknown> => !!f && typeof f === 'object' && !Array.isArray(f))
+        .filter((f) => typeof f.type === 'string' && f.type.length > 0)
+        .map((f) => ({ type: f.type as string, params: numericRecord(f.params) }));
+      return { kind, base: { shapeId: b.shapeId, params: baseParams }, features };
+    }
+    case 'assemble_parts': {
+      if (!Array.isArray(obj.parts)) return null;
+      const parts = obj.parts
+        .filter((p): p is Record<string, unknown> => !!p && typeof p === 'object' && !Array.isArray(p))
+        .filter((p) => typeof p.shapeId === 'string' && ASSEMBLY_PART_SHAPES.has(p.shapeId as string))
+        .map((p) => {
+          const part: { name?: string; shapeId: string; params: Record<string, number>; position?: [number, number, number]; rotation?: [number, number, number] } = {
+            shapeId: p.shapeId as string,
+            params: numericRecord(p.params),
+          };
+          if (typeof p.name === 'string') part.name = p.name;
+          const pos = vec3OrNull(p.position);
+          if (pos) part.position = pos;
+          const rot = vec3OrNull(p.rotation);
+          if (rot) part.rotation = rot;
+          return part;
+        });
+      if (parts.length < 2) return null; // an "assembly" needs ≥2 parts
+      return { kind, parts };
+    }
     default:
       return null;
   }
+}
+
+/** Base primitives a build_part may stand on (scene-store shape-picker ids). */
+const BUILD_PART_BASES = new Set(['box', 'cylinder', 'sphere', 'cone', 'disk', 'pipe', 'torus']);
+
+/** Shapes an assemble_parts part may be (real per-part geometry via SHAPE_MAP). */
+const ASSEMBLY_PART_SHAPES = new Set([
+  'box', 'cylinder', 'sphere', 'cone', 'disk', 'pipe', 'torus', 'hexNut', 'washer',
+  'bolt', 'gear', 'flange', 'roundedBox', 'wedge',
+]);
+
+/** Parse an unknown into a finite [x,y,z] tuple, or null. */
+function vec3OrNull(v: unknown): [number, number, number] | null {
+  if (!Array.isArray(v) || v.length !== 3) return null;
+  if (!v.every((n) => typeof n === 'number' && Number.isFinite(n))) return null;
+  return [v[0] as number, v[1] as number, v[2] as number];
+}
+
+/** Coerce an unknown into a flat record of finite numbers (drops the rest). */
+function numericRecord(v: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (v && typeof v === 'object' && !Array.isArray(v)) {
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      if (typeof val === 'number' && Number.isFinite(val)) out[k] = val;
+    }
+  }
+  return out;
 }
 
 function isVec3(v: unknown): v is { x: number; y: number; z: number } {
@@ -403,8 +547,12 @@ export async function handleFeatureTreeIntent(
 
   let llmRaw: unknown;
   try {
-    llmRaw = await fetcher(trimmed, AbortSignal.timeout(LLM_TIMEOUT_MS));
-  } catch {
+    llmRaw = await fetcher(trimmed, body.context, AbortSignal.timeout(LLM_TIMEOUT_MS));
+  } catch (err) {
+    // Observability: surface WHY the LLM fallback engaged (provider error /
+    // timeout / network). Swallowed for the client (graceful fallback) but
+    // logged so prod issues like a rejected key or blocked egress are visible.
+    console.warn('[featureTree-intent] LLM fetcher failed → fallback:', (err as Error)?.message ?? err);
     return {
       status: 200,
       payload: { ok: true, intent: null, source: 'fallback' },
@@ -413,6 +561,7 @@ export async function handleFeatureTreeIntent(
 
   const validated = validatePlanIntent(llmRaw);
   if (validated === null) {
+    console.warn('[featureTree-intent] LLM output failed validation → fallback:', JSON.stringify(llmRaw)?.slice(0, 200));
     return {
       status: 200,
       payload: { ok: true, intent: null, source: 'fallback' },

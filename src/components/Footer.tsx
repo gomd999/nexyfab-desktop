@@ -123,6 +123,7 @@ export default function Footer() {
     // app-style surfaces where a marketing footer would steal vertical
     // real estate from the canvas / project gallery.
     if (pathname?.includes('/shape-generator')) return null;
+    if (pathname?.includes('/studio')) return null;
     if (pathname?.includes('/nexyfab/hub')) return null;
     if (pathname?.includes('/nexyfab/dashboard')) return null;
 

@@ -34,9 +34,26 @@ describe('BUILD_INTENT_PROMPT — basic shape', () => {
     // Embedded quotes must be backslash-escaped so the wrapper "…" stays balanced.
     expect(out).toContain('say \\"hi\\"');
   });
+
+  it('omits the model-context section when no context is given', () => {
+    const out = BUILD_INTENT_PROMPT('add a fillet');
+    expect(out).not.toContain('## Current model');
+  });
+
+  it('embeds the model context (features + selection) when provided', () => {
+    const out = BUILD_INTENT_PROMPT('make it 8mm', undefined, {
+      baseShape: 'box',
+      features: [{ id: 'f1', type: 'fillet', params: { radius: 3 } }],
+      selection: { kind: 'face', label: '+Y Top' },
+    });
+    expect(out).toContain('## Current model');
+    expect(out).toContain('fillet');
+    expect(out).toContain('[id=f1]');
+    expect(out).toContain('+Y Top');
+  });
 });
 
-describe('BUILD_INTENT_PROMPT — covers all 12 INTENT_KINDS', () => {
+describe('BUILD_INTENT_PROMPT — covers all 18 INTENT_KINDS', () => {
   const out = BUILD_INTENT_PROMPT('box 50x50x30');
 
   for (const kind of INTENT_KINDS) {
@@ -45,8 +62,8 @@ describe('BUILD_INTENT_PROMPT — covers all 12 INTENT_KINDS', () => {
     });
   }
 
-  it('lists exactly 12 kinds in the allowed list', () => {
-    expect(INTENT_KINDS).toHaveLength(12);
+  it('lists exactly 18 kinds in the allowed list', () => {
+    expect(INTENT_KINDS).toHaveLength(18);
   });
 });
 

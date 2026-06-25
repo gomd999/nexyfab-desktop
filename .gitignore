@@ -111,3 +111,6 @@ public/occt-worker/opencascade.js
 
 cron-worker/.cron-secret.txt
 .claude/worktrees/
+
+# E2E test account credentials (local only)
+.e2e-*

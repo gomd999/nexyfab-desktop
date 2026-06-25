@@ -990,7 +990,12 @@ export default function Sketch3DCanvas({ profile, onProfileChange, activeTool, s
           />
         )}
 
-        <OrbitControls makeDefault enableDamping dampingFactor={0.07} />
+        {/* Damping disabled for the sketch view: inertial glide left the camera
+            micro-jittering as it settled after a view-preset switch (the whole
+            scene incl. the axes appeared to shake then stop). A sketch is a
+            precise editing surface — instant, stable framing beats the glide
+            and removes the settle jitter entirely. */}
+        <OrbitControls makeDefault enableDamping={false} />
       </Canvas>
     </div>
   );

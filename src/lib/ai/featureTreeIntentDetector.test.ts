@@ -186,8 +186,14 @@ describe('detectIntent — disambiguation', () => {
 });
 
 describe('INTENT_KINDS export', () => {
-  it('lists all 12 intent kinds (6 base + 6 Phase 3.AI.2)', () => {
-    expect(INTENT_KINDS).toHaveLength(12);
+  it('lists all 18 intent kinds (6 base + 6 Phase 3.AI.2 + generic + update/remove + sketch)', () => {
+    expect(INTENT_KINDS).toHaveLength(18);
+    expect(INTENT_KINDS).toContain('add_feature_to_last');
+    expect(INTENT_KINDS).toContain('update_last_param');
+    expect(INTENT_KINDS).toContain('remove_last');
+    expect(INTENT_KINDS).toContain('create_sketch_extrude');
+    expect(INTENT_KINDS).toContain('build_part');
+    expect(INTENT_KINDS).toContain('assemble_parts');
     expect(INTENT_KINDS).toContain('create_box_with_holes');
     expect(INTENT_KINDS).toContain('create_box_with_fillet');
     expect(INTENT_KINDS).toContain('create_cylinder');

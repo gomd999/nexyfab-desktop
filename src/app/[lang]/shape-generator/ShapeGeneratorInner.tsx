@@ -336,6 +336,10 @@ const PushPullBanner = dynamic(() => import('./pushpull/PushPullBanner'), { ssr:
 const GdtPicker = dynamic(() => import('./drawing/GdtPicker'), { ssr: false });
 import type { PlacedPart } from './assembly/PartPlacementPanel';
 import { placedPartsToBomResults } from './assembly/PartPlacementPanel';
+import { inferAssemblyMates } from './assembly/inferAssemblyMates';
+import { splitGeometryByConnectedComponent, connectedComponentCount } from './io/splitByComponent';
+import { importedGeometriesToPlaced } from './assembly/importedParts';
+import { fitPrimitive, fittedPartsFromGeometries } from './assembly/fitPrimitive';
 import { bomPartWorldMatrixFromBom } from './assembly/bomPartWorldMatrix';
 import { applyGeometryMatesToPlaced } from './assembly/applyGeometryMatesToPlaced';
 import { useLang } from './hooks/useLang';
@@ -528,7 +532,7 @@ export function ShapeGeneratorInner() {
       if (didChange) setParams(newParams);
     }
   }, [paramExpressions]);
-  const { features, addFeature, addFeatureWithEdges, addFeatureWithParams, addSketchFeature, removeFeature, updateFeatureParam, toggleFeature, moveFeature, undoLast, clearAll, history: featureHistory, rollbackTo, startEditing, finishEditing, toggleExpanded, ensureExpanded, addNode, removeNode, updateNode, featureErrors, setFeatureError: _setFeatureError, clearFeatureError, getOrderedNodes, replaceHistory } = useFeatureStack();
+  const { features, addFeature, addFeatureWithEdges, addFeatureWithParams, addFeatureWithParamsAndEdges, addSketchFeature, removeFeature, updateFeatureParam, toggleFeature, moveFeature, undoLast, clearAll, history: featureHistory, rollbackTo, startEditing, finishEditing, toggleExpanded, ensureExpanded, addNode, removeNode, updateNode, featureErrors, setFeatureError: _setFeatureError, clearFeatureError, getOrderedNodes, replaceHistory } = useFeatureStack();
 
   // ── Phase A undo unification: tracked feature-param / suppress wrappers ────
   // updateFeatureParamCmd routes param edits through commandHistory with
@@ -4648,6 +4652,19 @@ export function ShapeGeneratorInner() {
           addFeatureWithParamsAndContext('cornerRelief', { corner: 0, shape: 0, size: 4, inset: 0 });
           addToast('info', 'Corner relief 추가됨 — 코너/크기 조정 가능');
           break;
+        // Cut — rectangular through-slot punched out of the sheet (a real CSG
+        // feature now; size/position tunable in FeatureParams like any other).
+        case 'sm.cut':
+          addFeatureWithParamsAndContext('cut', { width: 20, length: 10, posX: 0, posZ: 0 });
+          addToast('info', 'Cut 추가됨 — 피처 파라미터에서 크기/위치 조정');
+          break;
+        // Unbend — unfold the bent sheet to its flat developed state as a
+        // feature in the stack (vs sm.flatten which opens the flat-pattern
+        // panel for DXF export). Routes to the existing flatPattern builder.
+        case 'sm.unbend':
+          addFeatureWithParamsAndContext('flatPattern', { thickness: 1.5, material: 0 });
+          addToast('info', 'Unbend(펼침) 추가됨 — 굽힘이 펴진 전개 상태');
+          break;
         case 'sm.flatten':
           // Route through the nexyfab:tool 'flat-pattern' case, which opens
           // SheetMetalPanel (its Unfold tab hosts FlatPatternPanel).
@@ -4664,6 +4681,16 @@ export function ShapeGeneratorInner() {
     window.addEventListener('nexyfab:sheet-metal-tool', onSheetMetalTool);
     return () => window.removeEventListener('nexyfab:sheet-metal-tool', onSheetMetalTool);
   }, [addFeatureWithParams, addFeatureWithParamsAndContext, addToast]);
+
+  // Re-solve mates when a part's SHAPE or PARAMS change (resize / material /
+  // shape swap) so the mates HOLD after an edit instead of going stale. We key
+  // ONLY on shapeId + params — NOT position/rotation, since those are exactly
+  // what the solver writes back, so keying on them would feed back into an
+  // infinite solve loop.
+  const placedPartParamSig = useMemo(
+    () => placedParts.map(p => `${p.id}:${p.shapeId}:${JSON.stringify(p.params)}`).join('|'),
+    [placedParts],
+  );
 
   // Shell-v2 Assembly mate hookup → run v3 solver on every mate change.
   // Builds a v3 Mate spec from each AssemblyMate, seeds the current placed
@@ -4780,8 +4807,11 @@ export function ShapeGeneratorInner() {
       }
     });
     return () => { cancelled = true; };
-     
-  }, [assemblyMates]);
+    // placedPartParamSig re-fires the solve when a part is resized/swapped so
+    // mates hold; placedParts itself is intentionally NOT a dep (the solver
+    // writes its position/rotation — depending on it would loop).
+
+  }, [assemblyMates, placedPartParamSig]);
 
   // Shell-v2 BottomDrawer "Run →" buttons → existing uiStore-driven panels.
   // Inner's modal mounts (DFMPanel, FEAPanel, CostCopilotPanel, etc.) listen
@@ -6683,6 +6713,83 @@ export function ShapeGeneratorInner() {
     window.addEventListener('nexyfab:kseries-thicken', onThicken);
     return () => window.removeEventListener('nexyfab:kseries-thicken', onThicken);
   }, [activeProfile, setImportedGeometry, setImportedFilename, addToast]);
+
+  // ─── Multi-body import → assembly parts ──────────────────────────────────
+  // When an imported mesh (STL/STEP) is actually several disconnected shells,
+  // split it into independent PlacedParts so each can be moved, mated,
+  // balanced, and simulated — instead of one frozen blob. Single-body imports
+  // are left untouched. Guarded by a ref so it runs once per imported mesh.
+  const lastMultiBodySplitRef = useRef<BufferGeometry | null>(null);
+  useEffect(() => {
+    if (!importedGeometry || importedGeometry === lastMultiBodySplitRef.current) return;
+    lastMultiBodySplitRef.current = importedGeometry;
+    let count = 0;
+    try { count = connectedComponentCount(importedGeometry); } catch { return; }
+    if (count < 2) return;
+    try {
+      const shells = splitGeometryByConnectedComponent(importedGeometry, 4);
+      if (shells.length < 2) return;
+      const base = (importedFilename || 'part').replace(/\.[^.]+$/, '');
+      // Try fitting each shell to a catalog primitive (box/cylinder/sphere).
+      // If the parts are primitive-like (low average fit error), use the FITTED
+      // parts — they have real params, so sliders/balance/sim all work on them
+      // ("STL → parametric"). Organic shells fall back to the raw mesh.
+      const fits = shells.map(fitPrimitive);
+      const avgErr = fits.reduce((s, f) => s + f.fitError, 0) / fits.length;
+      let placed;
+      if (avgErr < 0.28) {
+        placed = fittedPartsFromGeometries(shells, base);
+        setPlacedParts(placed);
+        setShowAssemblyPanel(true);
+        addToast('success', `${placed.length}개 부품을 기본도형으로 근사 — 슬라이더로 치수 편집·균형·시뮬 가능`);
+      } else {
+        placed = importedGeometriesToPlaced(shells, base);
+        setPlacedParts(placed);
+        setShowAssemblyPanel(true);
+        addToast('success', `${placed.length}개 부품으로 분리됨 — 조립 패널에서 개별 편집·메이트·균형`);
+      }
+    } catch (e) {
+      console.warn('[multi-body import] split failed:', e);
+    }
+  }, [importedGeometry, importedFilename, setPlacedParts, setShowAssemblyPanel, addToast]);
+
+  // ── Studio → Expert handoff ──────────────────────────────────────────────
+  // The free-form Studio stashes its OpenSCAD in sessionStorage. Render it to a
+  // mesh and feed it into the import pipeline — which splits multi-body output
+  // into shells and primitive-fits them into editable parts. Honest boundary:
+  // geometry (and fitted primitives) carry over, not editable feature history.
+  useEffect(() => {
+    let cancelled = false;
+    let scad: string | null = null;
+    try { scad = sessionStorage.getItem('nexyfab:studio-handoff-scad'); } catch { return; }
+    if (!scad) return;
+    try { sessionStorage.removeItem('nexyfab:studio-handoff-scad'); } catch { /* ignore */ }
+    void (async () => {
+      try {
+        addToast('info', 'Studio 모델 가져오는 중…');
+        const res = await fetch('/api/nexyfab/openscad-render', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ scad, format: 'stl' }),
+        });
+        const data = await res.json().catch(() => ({} as { dataBase64?: string; error?: string }));
+        if (!res.ok || !data.dataBase64) throw new Error(data.error || 'render failed');
+        const bin = atob(data.dataBase64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const { parseSTL } = await import('./io/importers');
+        const geo = parseSTL(bytes.buffer);
+        geo.computeBoundingBox();
+        if (cancelled) return;
+        setImportedGeometry(geo);
+        setImportedFilename('studio-model');
+        addToast('success', 'Studio 모델 가져옴 — 다부품이면 자동 분리·근사');
+      } catch (e) {
+        console.warn('[studio handoff] failed:', e);
+        if (!cancelled) addToast('error', 'Studio 모델 가져오기 실패');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [setImportedGeometry, setImportedFilename, addToast]);
 
   // ─── K-series STEP import (B-rep, gap #3) ────────────────────────────────
   // Read a STEP file as a true OCCT B-rep solid (STEPControl_Reader via the
@@ -11119,7 +11226,59 @@ export function ShapeGeneratorInner() {
         store={{
           features,
           addFeatureWithParams: (type, params) => addFeatureWithParams(type as FeatureType, params),
-          addSketchFeature: () => { /* sketch via picker not via free-form prompt */ },
+          // Selection-based AI edits (offset/delete/draft a picked face,
+          // fillet/chamfer a picked edge). The selection is embedded in the
+          // intent by the parser; here we just forward it to the store.
+          addFeatureWithParamsAndSelection: (type, params, edgeSelections, faceSelections) =>
+            addFeatureWithParamsAndEdges(type as FeatureType, params, edgeSelections, faceSelections),
+          // Base-shape creation from the prompt ("make a 50x50x30 box") — drives
+          // the scene-store shape picker, filling registry defaults then the
+          // AI-supplied params. Follow-on add_feature intents stack on top.
+          setBaseShape: (shapeId, params) => {
+            const sd = SHAPE_MAP[shapeId];
+            if (!sd) return;
+            const p: Record<string, number> = {};
+            sd.params.forEach(sp => { p[sp.key] = sp.default; });
+            Object.assign(p, params);
+            setSelectedId(shapeId);
+            setParams(p);
+          },
+          // Heterogeneous assembly: the AI synthesised several different parts
+          // (each shapeId + params) and positioned them. Build real PlacedParts
+          // (distinct per-part geometry via buildShapeResult) and show the
+          // assembly panel so the composed result is visible.
+          setAssemblyParts: (parts) => {
+            const stamp = Date.now();
+            const placed: PlacedPart[] = parts.map((p, i) => ({
+              id: `aip_${stamp}_${i}`,
+              name: p.name || `${p.shapeId} ${i + 1}`,
+              shapeId: p.shapeId,
+              params: p.params,
+              qty: 1,
+              position: p.position ?? [0, 0, 0],
+              rotation: p.rotation ?? [0, 0, 0],
+            }));
+            setPlacedParts(placed);
+            setShowAssemblyPanel(true);
+            // Mate inference (increment 1 of auto-constraint): detect the
+            // obvious relationships (fastener-through-part concentric, axial
+            // gaps) and surface them. We do NOT auto-solve/reposition yet — the
+            // off-axis solve needs face-topology + browser verification — but
+            // the detected mates are the foundation for parametric constraint.
+            try {
+              const inferred = inferAssemblyMates(
+                placed.map(p => ({ id: p.id, name: p.name, shapeId: p.shapeId, params: p.params, position: p.position })),
+              );
+              if (inferred.length > 0) {
+                addToast('info', `${placed.length} parts · ${inferred.length} mate relationship(s) detected`);
+              }
+            } catch { /* inference is advisory — never block the assembly */ }
+          },
+          // Free-form sketch: the AI emits a custom 2D outline → extruded solid
+          // for shapes the catalog can't express (L-brackets, stars, custom
+          // profiles). Wired to the real sketch-feature path.
+          addSketchFeature: (profile, config, plane, operation, planeOffset, constraints, dimensions) =>
+            addSketchFeature(profile, config, plane, operation, planeOffset ?? 0, constraints, dimensions),
           // Tracked wrappers: AI-driven edits land in commandHistory too, so
           // a bad AI patch is one Ctrl+Z away from reverting.
           updateFeatureParam: updateFeatureParamCmd,
@@ -11128,7 +11287,12 @@ export function ShapeGeneratorInner() {
           toggleFeature: toggleFeatureCmd,
           clearAll,
         }}
-        promptToIntents={async (prompt) => resolveFeatureEditPrompt(prompt, features)}
+        promptToIntents={async (prompt) =>
+          resolveFeatureEditPrompt(prompt, features, undefined, {
+            selection: useSelectionStore.getState().selectedElement,
+            baseShape: selectedId,
+          })
+        }
       />
 
       {/* ═══ AI Process Router Panel ═══ */}

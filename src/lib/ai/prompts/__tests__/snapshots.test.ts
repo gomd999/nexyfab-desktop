@@ -35,8 +35,10 @@ interface Snapshot {
 const GOLDEN: Record<string, Snapshot> = {
   // NexyFab core
   'shape-chat':                  { version: '1.0.0', templateHash: '5ae3a7a77dd63ba53099733999b03f958b8bcbf6be072069132a48e9a72c81a6' },
-  'scad-intent-from-nl':         { version: '1.3.0', templateHash: '70968e8a1c6ff0d64a4af37689428867968ecfee75328cc2fd4520a2ce78c829' },
-  'scad-intent-from-nl:tighter': { version: '1.1.0', templateHash: '70968e8a1c6ff0d64a4af37689428867968ecfee75328cc2fd4520a2ce78c829' },
+  'scad-intent-from-nl':         { version: '1.6.0', templateHash: 'b0fe7332f8b7822d7f4e1991da13547403523d4e342ffde6e121d153d6ae2e09' },
+  'scad-freeform':               { version: '1.5.0', templateHash: '28e10c23e2d370e0ee34871c68be11271ae330a5caa1316b282f068dfda9cc79' },
+  'cad-feature-program':         { version: '1.0.0', templateHash: '0c59290b2f7dacd3585ec97da3aa59ee4a2cb93ccb00b04d66442e97333d73c7' },
+  'scad-intent-from-nl:tighter': { version: '1.1.0', templateHash: 'b0fe7332f8b7822d7f4e1991da13547403523d4e342ffde6e121d153d6ae2e09' },
   'openscad-gen':                { version: '1.0.0', templateHash: '32b9897ff298e6ce7200c932b8b779eaf4f7bae6f2d6d08091ef2d945cdf56aa' },
   'openscad-gen-generate':       { version: '1.0.0', templateHash: '32b9897ff298e6ce7200c932b8b779eaf4f7bae6f2d6d08091ef2d945cdf56aa' },
   'openscad-gen-refine':         { version: '1.0.0', templateHash: 'ee5a3a70366e947988a43b26f878664ce2080d36f73d0505c6a7aeb5355131fa' },
@@ -49,7 +51,7 @@ const GOLDEN: Record<string, Snapshot> = {
   // Marketplace / RFQ / advisor prompts (added in earlier rounds without
   // snapshot updates — this block fixes the prior debt while landing
   // imageIntentFromSketch.v1).
-  'ai-advisor':                  { version: '1.0.0', templateHash: '795f6500a1528ff2a6824b4172d4947f21001eb3800c4ae98cc5f33539bc9fdd' },
+  'ai-advisor':                  { version: '1.1.0', templateHash: '468bb38d4dc68dbcb232c774b72c354a14028adfd56c0d0ac763e75e60512959' },
   'capacity-match':              { version: '1.0.0', templateHash: 'd0e329e57b8a2e1b40eeb036febbf79cad0a32bd66d27aed04164209a86437e9' },
   'cert-filter':                 { version: '1.0.0', templateHash: 'ae6bb41ef60f32a36dea2e2a7fa7ee8303e1cc8f36d5f706b77f37a6a225a84c' },
   'change-detector':             { version: '1.0.0', templateHash: '47afdc38244b64c309696fa720450392e5477ece34064bdbcb67d16376fb797e' },

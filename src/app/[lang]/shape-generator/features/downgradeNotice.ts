@@ -122,9 +122,37 @@ export function classifyMeshDowngrade(args: {
 const USERDATA_KEY = 'meshDowngrades';
 
 /**
+ * Drop a stale B-rep handle from a mesh-fallback result.
+ *
+ * THREE's `BufferGeometry.clone()/copy()` shares `userData` BY REFERENCE, so a
+ * feature's mesh fallback that clones-and-mutates vertices still carries the
+ * upstream `occtHandle` — the displayed mesh and the registered B-rep solid
+ * silently diverge (downstream OCCT features / STEP export then operate on the
+ * WRONG solid). After any mesh fallback the handle must be cleared so
+ * downstream OCCT features re-derive a host from the mesh instead.
+ *
+ * Detaches `userData` (shallow copy) before deleting, so the upstream
+ * geometry's own (still-valid) handle is never mutated through the shared
+ * reference. Returns the geometry for chaining.
+ */
+export function clearStaleBrepHandle(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
+  const ud = geometry.userData as Record<string, unknown> | undefined;
+  if (ud && 'occtHandle' in ud) {
+    const detached = { ...ud };
+    delete detached.occtHandle;
+    geometry.userData = detached;
+  }
+  return geometry;
+}
+
+/**
  * Stamp a downgrade notice onto a geometry's userData side-channel so the
  * pipeline can collect it. Accumulates (a feature pipeline can downgrade more
  * than once); no-ops on a null notice for call-site convenience.
+ *
+ * Copy-on-write: `userData` (and the notice list) may be SHARED with the
+ * upstream geometry via THREE's reference-sharing clone, so both the object
+ * and the array are replaced rather than mutated in place.
  */
 export function stampDowngrade(
   geometry: THREE.BufferGeometry,
@@ -132,8 +160,7 @@ export function stampDowngrade(
 ): void {
   if (!notice) return;
   const list = (geometry.userData[USERDATA_KEY] as MeshDowngradeNotice[] | undefined) ?? [];
-  list.push(notice);
-  geometry.userData[USERDATA_KEY] = list;
+  geometry.userData = { ...geometry.userData, [USERDATA_KEY]: [...list, notice] };
 }
 
 /** Read back the downgrade notices accumulated on a geometry (never null). */
@@ -156,11 +183,18 @@ export function hasBlockingDowngrade(geometry: THREE.BufferGeometry): boolean {
  * actually wanted B-rep (wantsOcctEngine) — so wrapping a pure-mesh return where
  * the user explicitly picked the mesh engine is a no-op. Returns the geometry so
  * it drops in around the existing `return`.
+ *
+ * Always (regardless of engine intent) clears a stale `occtHandle` from the
+ * result: a mesh-path output must never advertise the upstream B-rep solid as
+ * its own (see clearStaleBrepHandle). Exception: an isNoOp fallback returned
+ * the input UNCHANGED, so an existing handle still matches the mesh and is
+ * kept.
  */
 export function noteMeshFallback(
   geometry: THREE.BufferGeometry,
   args: { op: string; engine?: number; featureId?: string; isNoOp?: boolean },
 ): THREE.BufferGeometry {
+  if (!args.isNoOp) clearStaleBrepHandle(geometry);
   stampDowngrade(
     geometry,
     classifyMeshDowngrade({

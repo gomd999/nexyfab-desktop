@@ -19,6 +19,7 @@ import { moveCopyFeature } from './moveCopy';
 import { splitBodyFeature } from './splitBody';
 import { bendFeature, flangeFeature, flatPatternFeature, hemFeature, jogFeature } from './sheetMetal';
 import { tabFeature } from './tab';
+import { cutFeature } from './cut';
 import { bendReliefFeature, cornerReliefFeature } from './reliefCuts';
 import { variableFilletFeature } from './variableFillet';
 import { boundarySurfaceFeature } from './boundarySurface';
@@ -57,6 +58,7 @@ export const FEATURE_DEFS: FeatureDefinition[] = [
   hemFeature,
   jogFeature,
   tabFeature,
+  cutFeature,
   bendReliefFeature,
   cornerReliefFeature,
   flatPatternFeature,

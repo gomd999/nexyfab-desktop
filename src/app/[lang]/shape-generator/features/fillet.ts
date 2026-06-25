@@ -5,7 +5,7 @@ import { occtEdgeSignatures, type ReplicadEdgeFinder } from './occtEngine';
 import { wantsOcctEngine, shouldUseOcctEngine } from './engineSelection';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 import { assertRoundingApplied } from './roundingGuard';
-import { classifyMeshDowngrade, stampDowngrade, makeReducedNotice } from './downgradeNotice';
+import { classifyMeshDowngrade, stampDowngrade, makeReducedNotice, clearStaleBrepHandle } from './downgradeNotice';
 import { tryMeshFillet } from './meshRounding';
 import {
   occtFilletWithAvoidanceSync,
@@ -68,7 +68,7 @@ function applyFilletMeshCsg(
   const rounded = tryMeshFillet(geometry, radius);
   if (rounded) {
     if (ctx?.featureId) stampFaceFeatureIdAll(rounded, ctx.featureId);
-    return rounded;
+    return clearStaleBrepHandle(rounded);
   }
   if (!geometry.index) {
     throw new Error('Fillet requires indexed (manifold) geometry');
@@ -117,7 +117,8 @@ function applyFilletMeshCsg(
       }),
     );
   }
-  return resultBrush.geometry;
+  // Mesh approximation output must never carry the upstream B-rep handle.
+  return clearStaleBrepHandle(resultBrush.geometry);
 }
 
 /**

@@ -162,6 +162,12 @@ function emitFeature(f: FeatureInstance, prior: string): string {
     case 'cornerRelief':
     case 'flatPattern':
       return `${nfabTag(f.type)}\n${prior}`;
+    case 'cut': {
+      // A rectangular through-slot — emit a real OpenSCAD difference so the
+      // projection actually removes material (unlike the tag-only sheet ops).
+      const w = p.width ?? 20, l = p.length ?? 10, x = p.posX ?? 0, z = p.posZ ?? 0;
+      return `difference() {\n${prior}\n  translate([${x}, 0, ${z}]) cube([${w}, 1000, ${l}], center=true);\n}`;
+    }
     case 'sweep':
     case 'loft':
     case 'boundarySurface':

@@ -1,8 +1,15 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition, FeatureApplyContext } from './types';
-import { occtVariableFillet, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadEdgeFinder } from './occtEngine';
+import {
+  occtVariableFillet,
+  occtEdgeSignatures,
+  hostBoxFromGeometry,
+  resolveBrepHostHandleAsync,
+  type ReplicadEdgeFinder,
+} from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 import { buildEdgeFinderFromSelection, buildEdgeFinderBySignature } from './topologyEdgeFinder';
 
 // ─── Variable Fillet Types ─────────────────────────────────────────────────────
@@ -141,7 +148,10 @@ export const variableFilletFeature: FeatureDefinition = {
     if (shouldUseOcctEngine(engine)) {
       try {
         const edgeFinder = await buildEdgeFinder(ctx, geometry);
-        const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
+        // Fail-clean host contract (with the mesh→B-rep bridge) — throws for
+        // an unbridgeable handle-less non-box body (→ mesh fallback below)
+        // instead of filleting its bounding box.
+        const upstreamHandle = await resolveBrepHostHandleAsync(geometry);
         const host = hostBoxFromGeometry(geometry);
         const result = occtVariableFillet(
           host,
@@ -159,11 +169,16 @@ export const variableFilletFeature: FeatureDefinition = {
         console.warn('[variableFillet] OCCT path failed, falling back to mesh:', err);
       }
     }
-    return applyVariableFillet(geometry, {
-      edgeIndex: 0,
-      startRadius: params.startRadius,
-      endRadius: params.endRadius,
-      segments: Math.round(params.segments),
-    });
+    // Mesh fallback: stamp the downgrade notice and drop any stale B-rep
+    // handle so downstream OCCT features re-derive from the mesh.
+    return noteMeshFallback(
+      applyVariableFillet(geometry, {
+        edgeIndex: 0,
+        startRadius: params.startRadius,
+        endRadius: params.endRadius,
+        segments: Math.round(params.segments),
+      }),
+      { op: 'Variable Fillet', engine, featureId: ctx?.featureId },
+    );
   },
 };

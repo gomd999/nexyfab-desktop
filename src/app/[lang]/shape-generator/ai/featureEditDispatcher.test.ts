@@ -14,6 +14,16 @@ function mockStore(initial: FeatureInstance[] = []): FeatureStoreApi & {
       log.push(['addFeatureWithParams', type, overrides]);
       features.push({ id: `f_${features.length}`, type, params: overrides, enabled: true });
     },
+    addFeatureWithParamsAndSelection(type, overrides, edgeSelections, faceSelections) {
+      log.push(['addFeatureWithParamsAndSelection', type, overrides, edgeSelections, faceSelections]);
+      features.push({ id: `f_${features.length}`, type, params: overrides, enabled: true });
+    },
+    setBaseShape(shapeId, params) {
+      log.push(['setBaseShape', shapeId, params]);
+    },
+    setAssemblyParts(parts) {
+      log.push(['setAssemblyParts', parts]);
+    },
     addSketchFeature(profile, config, plane, operation, planeOffset = 0) {
       log.push(['addSketchFeature', plane, operation]);
       features.push({
@@ -61,6 +71,64 @@ describe('dispatchFeatureEdit', () => {
     expect(r.applied).toBe(true);
     expect(store.features).toHaveLength(1);
     expect(store.features[0]!.type).toBe('fillet');
+  });
+
+  it('add_feature_on_selection forwards the selection to the store', () => {
+    const store = mockStore();
+    const face = { type: 'face' as const, normal: [0, 1, 0] as [number, number, number], position: [0, 0, 0] as [number, number, number], area: 1, triangleCount: 1, normalLabel: '+Y', triangleIndices: [0] };
+    const r = dispatchFeatureEdit(
+      { kind: 'add_feature_on_selection', featureType: 'offsetFace', params: { distance: 5 }, faceSelections: [face] },
+      store,
+    );
+    expect(r.applied).toBe(true);
+    const call = store.log.find(l => l[0] === 'addFeatureWithParamsAndSelection');
+    expect(call).toBeTruthy();
+    expect(call![1]).toBe('offsetFace');
+    expect(call![2]).toEqual({ distance: 5 });
+    expect(call![4]).toEqual([face]);
+  });
+
+  it('add_feature_on_selection falls back to addFeatureWithParams when the store lacks the selection method', () => {
+    const store = mockStore();
+    delete (store as { addFeatureWithParamsAndSelection?: unknown }).addFeatureWithParamsAndSelection;
+    const r = dispatchFeatureEdit(
+      { kind: 'add_feature_on_selection', featureType: 'fillet', params: { radius: 3 }, edgeSelections: [] },
+      store,
+    );
+    expect(r.applied).toBe(true);
+    expect(store.log.some(l => l[0] === 'addFeatureWithParams')).toBe(true);
+    expect(store.features[0]!.type).toBe('fillet');
+  });
+
+  it('set_base_shape drives the store shape picker', () => {
+    const store = mockStore();
+    const r = dispatchFeatureEdit({ kind: 'set_base_shape', shapeId: 'box', params: { width: 50, height: 40, depth: 30 } }, store);
+    expect(r.applied).toBe(true);
+    const call = store.log.find(l => l[0] === 'setBaseShape');
+    expect(call).toBeTruthy();
+    expect(call![1]).toBe('box');
+    expect(call![2]).toEqual({ width: 50, height: 40, depth: 30 });
+  });
+
+  it('set_base_shape reports a no-op when the store lacks setBaseShape', () => {
+    const store = mockStore();
+    delete (store as { setBaseShape?: unknown }).setBaseShape;
+    const r = dispatchFeatureEdit({ kind: 'set_base_shape', shapeId: 'box', params: {} }, store);
+    expect(r.applied).toBe(false);
+    expect(r.errorReason).toMatch(/setBaseShape/);
+  });
+
+  it('set_assembly_parts forwards heterogeneous parts to the store', () => {
+    const store = mockStore();
+    const parts: Array<{ name?: string; shapeId: string; params: Record<string, number>; position?: [number, number, number] }> = [
+      { name: 'plate', shapeId: 'box', params: { width: 80 }, position: [0, 0, 0] },
+      { name: 'leg', shapeId: 'cylinder', params: { diameter: 10 } },
+    ];
+    const r = dispatchFeatureEdit({ kind: 'set_assembly_parts', parts }, store);
+    expect(r.applied).toBe(true);
+    const call = store.log.find(l => l[0] === 'setAssemblyParts');
+    expect(call).toBeTruthy();
+    expect((call![1] as unknown[])).toHaveLength(2);
   });
 
   it('update_param mutates an existing feature', () => {

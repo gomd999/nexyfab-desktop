@@ -229,9 +229,15 @@ export async function POST(req: NextRequest) {
     useCase: UseCase;
     lang: string;
     loadContext?: LoadContext;
+    /** Free-form natural-language requirements ("holds 50kg, outdoor, cheap"). */
+    requirements?: string;
+    /** Already-measured DFM issues to ground the advice in (optional). */
+    dfmIssues?: Array<{ severity: string; code?: string; description?: string }>;
+    /** Geometry metrics (volume_cm3, bbox, …) to ground the advice (optional). */
+    metrics?: Record<string, unknown>;
   };
 
-  const { shape, params, material, useCase, lang, loadContext } = body;
+  const { shape, params, material, useCase, lang, loadContext, requirements, dfmIssues, metrics } = body;
   if (!shape || !params || !material || !useCase) {
     return NextResponse.json({ error: 'shape, params, material, useCase are required' }, { status: 400 });
   }
@@ -242,7 +248,13 @@ export async function POST(req: NextRequest) {
   const prompt = getPrompt('ai-advisor');
   const messages: ChatMessage[] = [
     { role: 'system', content: prompt.template },
-    { role: 'user', content: JSON.stringify({ shape, currentParameters: params, material, useCase, loadContext, requestedLanguage: lang }) },
+    { role: 'user', content: JSON.stringify({
+      shape, currentParameters: params, material, useCase, loadContext,
+      ...(requirements ? { requirements } : {}),
+      ...(dfmIssues && dfmIssues.length ? { dfmIssues } : {}),
+      ...(metrics ? { metrics } : {}),
+      requestedLanguage: lang,
+    }) },
   ];
 
   let content = '';

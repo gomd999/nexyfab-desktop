@@ -147,6 +147,63 @@ export type PlanIntent =
       count: number;
       spacing?: number;
       angle?: number;
+    }
+  | {
+      // Generic "add this feature to the current part". `featureType` is a
+      // FeatureType registry key (kept as string here so this lib stays
+      // decoupled from the client three.js feature registry); `params` are
+      // the feature's numeric params (omitted ones fall back to registry
+      // defaults at apply time). Applied through the in-context viewport path
+      // only — the planner panel's typed payload model does not implement it.
+      kind: 'add_feature_to_last';
+      featureType: string;
+      params: Record<string, number>;
+    }
+  | {
+      // "make it 8mm" / "make the fillet bigger" — update the last feature's
+      // numeric param. Resolved against model context (the last feature id) in
+      // the viewport mapper. Planner-panel no-op.
+      kind: 'update_last_param';
+      paramKey: string;
+      value: number;
+    }
+  | {
+      // "remove the fillet" / "delete that" — remove the last feature.
+      kind: 'remove_last';
+    }
+  | {
+      // Free-form custom outline → extruded solid. `profile` is a closed 2D
+      // polygon (≥3 points, mm) the LLM derived from a description the catalog
+      // shapes can't express. Materialised by the viewport mapper into an
+      // add_sketch_extrude; planner-panel no-op.
+      kind: 'create_sketch_extrude';
+      profile: Array<{ x: number; y: number }>;
+      depth: number;
+      plane?: 'xy' | 'xz' | 'yz';
+      operation?: 'add' | 'subtract';
+    }
+  | {
+      // Multi-step: one base primitive + an ordered list of features to stack
+      // on it ("a plate with 4 holes and filleted edges"). Materialised by the
+      // viewport mapper into [set_base_shape, add_feature, …]; planner-panel
+      // no-op.
+      kind: 'build_part';
+      base: { shapeId: string; params: Record<string, number> };
+      features: Array<{ type: string; params: Record<string, number> }>;
+    }
+  | {
+      // Heterogeneous assembly: several DIFFERENT named parts, each its own
+      // shape + params + world position (mm) / rotation (deg). Materialised by
+      // the viewport mapper into a set_assembly_parts edit that drives the
+      // PlacedPart pipeline (real per-part geometry). Planner-panel no-op.
+      kind: 'assemble_parts';
+      parts: Array<{
+        name?: string;
+        shapeId: string;
+        params: Record<string, number>;
+        position?: [number, number, number];
+        rotation?: [number, number, number];
+      }>;
     };
 
 export class FeatureTreePlannerError extends Error {
@@ -194,6 +251,28 @@ export function planFromIntent(
       return planCreateRevolveAxis(intent, currentTree);
     case 'add_pattern_to_last':
       return planAddPatternToLast(intent, currentTree);
+    case 'add_feature_to_last':
+      // The generic feature-add is materialised by the in-context viewport
+      // path (planIntentToFeatureEdit → dispatcher add_feature). The planner
+      // panel builds a fully-typed payload tree it doesn't model for arbitrary
+      // features, so here it is an explicit, harmless no-op.
+      return {
+        steps: [],
+        rationale: `add_feature_to_last (${intent.featureType}) is applied in-context, not via the planner panel.`,
+        warnings: [`add_feature_to_last is not materialised by the planner panel (featureType=${intent.featureType}).`],
+      };
+    case 'update_last_param':
+    case 'remove_last':
+    case 'create_sketch_extrude':
+    case 'build_part':
+    case 'assemble_parts':
+      // Context-aware / sketch / multi-step / assembly edits resolved by the
+      // viewport mapper; the planner panel has no concept of these here.
+      return {
+        steps: [],
+        rationale: `${intent.kind} is applied in-context, not via the planner panel.`,
+        warnings: [`${intent.kind} is not materialised by the planner panel.`],
+      };
   }
 }
 

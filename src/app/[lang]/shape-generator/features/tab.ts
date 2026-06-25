@@ -23,6 +23,9 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { FeatureDefinition } from './types';
 import { noteMeshFallback } from './downgradeNotice';
+// Shared attribute/index unification (formerly a tab-local helper — now the
+// common layer every merge-based feature uses; see meshMerge.ts).
+import { alignForMerge } from './meshMerge';
 
 export interface TabParams {
   /** Tab width along the selected edge, mm. Clamped to the edge length. */
@@ -33,30 +36,6 @@ export interface TabParams {
   position: number;
   /** Edge to attach to — same indexing as FlangeParams (0=+Z,1=-Z,2=+X,3=-X). */
   edgeIndex: number;
-}
-
-/** Normalize two geometries so mergeGeometries succeeds regardless of
- *  where the base mesh came from (BoxGeometry has uv; sketch-extrude /
- *  CSG outputs often don't): strip attributes not shared by both, ensure
- *  normals exist, and align index parity (both indexed or both not).
- *  Returns the (possibly replaced) pair. */
-function alignForMerge(
-  a: THREE.BufferGeometry,
-  b: THREE.BufferGeometry,
-): [THREE.BufferGeometry, THREE.BufferGeometry] {
-  if (!a.getAttribute('normal')) a.computeVertexNormals();
-  if (!b.getAttribute('normal')) b.computeVertexNormals();
-  for (const k of Object.keys(a.attributes)) {
-    if (k !== 'position' && !b.getAttribute(k)) a.deleteAttribute(k);
-  }
-  for (const k of Object.keys(b.attributes)) {
-    if (k !== 'position' && !a.getAttribute(k)) b.deleteAttribute(k);
-  }
-  if (!!a.index !== !!b.index) {
-    if (a.index) a = a.toNonIndexed();
-    if (b.index) b = b.toNonIndexed();
-  }
-  return [a, b];
 }
 
 /**

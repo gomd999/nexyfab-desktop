@@ -19,9 +19,43 @@
  */
 
 import type { FeatureInstance, FeatureType } from '../features/types';
+import type { FaceSelectionInfo, EdgeSelectionInfo } from '../editing/selectionInfo';
 
 export type FeatureEditIntent =
   | { kind: 'add_feature'; featureType: FeatureType; params: Record<string, number> }
+  | {
+      // Add a feature that operates on the user's current face/edge selection
+      // (offset/delete/draft a clicked face, fillet/chamfer a clicked edge).
+      // The selection is captured client-side and embedded here so dispatch
+      // stays pure + testable.
+      kind: 'add_feature_on_selection';
+      featureType: FeatureType;
+      params: Record<string, number>;
+      faceSelections?: FaceSelectionInfo[];
+      edgeSelections?: EdgeSelectionInfo[];
+    }
+  | {
+      // Set/replace the base primitive (box, cylinder, …) from the prompt —
+      // "make a 50x50x30 box". Drives the scene store's shape picker, not the
+      // feature tree; follow-on add_feature intents in the same batch (holes,
+      // fillets) then stack on top.
+      kind: 'set_base_shape';
+      shapeId: string;
+      params: Record<string, number>;
+    }
+  | {
+      // Heterogeneous assembly: replace the placed-parts list with several
+      // DIFFERENT parts (each its own shape + params + transform). Drives the
+      // PlacedPart pipeline → real per-part geometry.
+      kind: 'set_assembly_parts';
+      parts: Array<{
+        name?: string;
+        shapeId: string;
+        params: Record<string, number>;
+        position?: [number, number, number];
+        rotation?: [number, number, number];
+      }>;
+    }
   | { kind: 'add_sketch_extrude'; sketchData: NonNullable<FeatureInstance['sketchData']> }
   | { kind: 'update_param'; featureId: string; paramKey: string; value: number }
   | { kind: 'remove_feature'; featureId: string }
@@ -33,6 +67,25 @@ export type FeatureEditIntent =
 export interface FeatureStoreApi {
   features: FeatureInstance[];
   addFeatureWithParams: (type: FeatureType, overrides: Record<string, number>) => void;
+  /**
+   * Add a feature with params AND a face/edge selection. Optional: when a store
+   * does not provide it (e.g. minimal test doubles), dispatch falls back to
+   * `addFeatureWithParams` (feature applied without the selection).
+   */
+  addFeatureWithParamsAndSelection?: (
+    type: FeatureType,
+    overrides: Record<string, number>,
+    edgeSelections?: EdgeSelectionInfo[],
+    faceSelections?: FaceSelectionInfo[],
+  ) => void;
+  /** Set the base primitive (scene-store shape picker). Optional — stores that
+   *  don't provide it make `set_base_shape` a reported no-op. */
+  setBaseShape?: (shapeId: string, params: Record<string, number>) => void;
+  /** Replace the assembly's placed parts (heterogeneous, real per-part
+   *  geometry). Optional — a no-op when not provided. */
+  setAssemblyParts?: (
+    parts: Array<{ name?: string; shapeId: string; params: Record<string, number>; position?: [number, number, number]; rotation?: [number, number, number] }>,
+  ) => void;
   addSketchFeature: (
     profile: NonNullable<FeatureInstance['sketchData']>['profile'],
     config: NonNullable<FeatureInstance['sketchData']>['config'],
@@ -64,6 +117,35 @@ export function dispatchFeatureEdit(
     case 'add_feature': {
       store.addFeatureWithParams(intent.featureType, intent.params);
       return { applied: true, summary: `Added ${intent.featureType}` };
+    }
+    case 'add_feature_on_selection': {
+      if (store.addFeatureWithParamsAndSelection) {
+        store.addFeatureWithParamsAndSelection(
+          intent.featureType,
+          intent.params,
+          intent.edgeSelections,
+          intent.faceSelections,
+        );
+      } else {
+        // Graceful fallback — apply without the selection rather than no-op.
+        store.addFeatureWithParams(intent.featureType, intent.params);
+      }
+      const n = (intent.faceSelections?.length ?? 0) + (intent.edgeSelections?.length ?? 0);
+      return { applied: true, summary: `Added ${intent.featureType} on ${n} selected element(s)` };
+    }
+    case 'set_base_shape': {
+      if (store.setBaseShape) {
+        store.setBaseShape(intent.shapeId, intent.params);
+        return { applied: true, summary: `Set base shape ${intent.shapeId}` };
+      }
+      return { applied: false, summary: 'No-op', errorReason: 'store has no setBaseShape' };
+    }
+    case 'set_assembly_parts': {
+      if (store.setAssemblyParts) {
+        store.setAssemblyParts(intent.parts);
+        return { applied: true, summary: `Assembled ${intent.parts.length} parts` };
+      }
+      return { applied: false, summary: 'No-op', errorReason: 'store has no setAssemblyParts' };
     }
     case 'add_sketch_extrude': {
       const sd = intent.sketchData;

@@ -26,6 +26,8 @@
 import shapeChat from './shape-chat';
 import scadIntentFromNl from './scad-intent-from-nl';
 import scadIntentFromNlTighter from './scad-intent-from-nl.tighter';
+import scadFreeform from './scad-freeform';
+import cadFeatureProgram from './cad-feature-program';
 import openscadGen, {
   openscadGenGenerate,
   openscadGenRefine,
@@ -71,6 +73,8 @@ const PROMPTS: Record<string, PromptDefinition> = {
   [shapeChat.id]: shapeChat,
   [scadIntentFromNl.id]: scadIntentFromNl,
   [scadIntentFromNlTighter.id]: scadIntentFromNlTighter,
+  [scadFreeform.id]: scadFreeform,
+  [cadFeatureProgram.id]: cadFeatureProgram,
   [openscadGen.id]: openscadGen,
   [openscadGenGenerate.id]: openscadGenGenerate,
   [openscadGenRefine.id]: openscadGenRefine,

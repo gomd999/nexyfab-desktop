@@ -196,12 +196,12 @@ export async function POST(req: NextRequest) {
     const refreshTokenHash = createHash('sha256').update(rawRefreshToken).digest('hex');
     const now = Date.now();
     await db.execute(
-      "UPDATE nf_refresh_tokens SET revoked = 1 WHERE user_id = ? AND revoked = 0",
+      "UPDATE nf_refresh_tokens SET revoked = TRUE WHERE user_id = ? AND revoked = FALSE",
       dbUser.id,
     );
     await db.execute(
       `INSERT INTO nf_refresh_tokens (id, user_id, token_hash, expires_at, revoked, created_at)
-       VALUES (?, ?, ?, ?, 0, ?)`,
+       VALUES (?, ?, ?, ?, FALSE, ?)`,
       `rt-${crypto.randomUUID()}`,
       dbUser.id,
       refreshTokenHash,

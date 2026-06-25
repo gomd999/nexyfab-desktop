@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
 import { occtDraft } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
-import { noteMeshFallback } from './downgradeNotice';
+import { noteMeshFallback, clearStaleBrepHandle } from './downgradeNotice';
 import { captureKernelFailure } from './kernelCorpus';
 
 function applyDraftMesh(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry {
@@ -26,7 +26,10 @@ function applyDraftMesh(geometry: THREE.BufferGeometry, params: Record<string, n
 
   posAttr.needsUpdate = true;
   clone.computeVertexNormals();
-  return clone;
+  // THREE's clone shares userData by reference — the sheared mesh must not
+  // keep advertising the PRE-draft upstream B-rep solid (downstream OCCT
+  // features / STEP export would silently operate on the undrafted solid).
+  return clearStaleBrepHandle(clone);
 }
 
 export const draftFeature: FeatureDefinition = {

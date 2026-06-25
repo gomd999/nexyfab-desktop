@@ -15,6 +15,7 @@ import type { FeatureInstance } from '../../features/types';
 import { ensureOcctReady, setOcctGlobalMode } from '../../features/occtEngine';
 import { cacheClear } from '../../features/pipelineCache';
 import { getKernelCorpus, clearKernelCorpus } from '../../features/kernelCorpus';
+import { collectDowngrades } from '../../features/downgradeNotice';
 import type { FaceSelectionInfo } from '../../editing/selectionInfo';
 import { meshVolume, manifoldReport, nfabRoundTrip, recordFinding } from './refPartsHarness';
 
@@ -158,29 +159,30 @@ describeMaybe('REF-PART 4 · gearbox housing', () => {
     draftedVolume = vol;
     draftHandleAlive = !!res.geometry.userData?.occtHandle;
     const occtDraftFailed = !!getKernelCorpus().find(r => r.op === 'draft');
+    const draftDowngrades = collectDowngrades(res.geometry).filter(n => n.op === 'Draft');
     console.log(`[REF-PART 4] draft: vol=${vol.toFixed(0)} (pre-draft ${V_PRE_DRAFT.toFixed(0)}), `
-      + `error=${err ?? '(none)'}, handleAlive=${draftHandleAlive}, occtDraftFailed=${occtDraftFailed}`);
+      + `error=${err ?? '(none)'}, handleAlive=${draftHandleAlive}, occtDraftFailed=${occtDraftFailed}, `
+      + `downgrades=${JSON.stringify(draftDowngrades.map(n => n.severity))}`);
     if (occtDraftFailed) {
+      // The OCCT draft kernel crash itself is still open (atAngleWith face
+      // filter hits the bore + flange faces) — but the fallback is no longer
+      // SILENT, and the stale-handle divergence is fixed:
       recordFinding({
         part: 'P4 gearbox housing',
-        severity: 'critical',
-        title: 'OCCT draft crashes on a real housing and the mesh fallback is a silent whole-body shear',
-        detail: 'occtDraft throws a wasm-exception on the flanged/bored housing (atAngleWith([0,1,0],90) face '
-          + 'filter hits the bore + flange faces) → features/draft.ts falls back to applyDraftMesh, a per-vertex '
-          + 'X/Z shear: it is volume-preserving (det=1), tapers NOTHING per-face, skews the bore and flange, and '
-          + 'the pipeline reports NO error — the user believes the part is drafted.',
+        severity: 'major',
+        title: 'OCCT draft crashes on a real housing; mesh fallback is a shear approximation (now surfaced, not silent)',
+        detail: 'occtDraft throws a wasm-exception on the flanged/bored housing → features/draft.ts falls back '
+          + 'to applyDraftMesh (per-vertex X/Z shear: volume-preserving, skews bore/flange). Since the fix the '
+          + 'fallback stamps a "Draft approximated" downgrade notice (banner) and CLEARS the pre-draft '
+          + 'occtHandle, so downstream OCCT features re-derive from the mesh instead of the wrong solid. '
+          + 'Remaining gap: the mesh approximation is a shear, not a per-face taper.',
       });
-      if (draftHandleAlive) {
-        recordFinding({
-          part: 'P4 gearbox housing',
-          severity: 'critical',
-          title: 'stale occtHandle after a mesh fallback — B-rep and mesh silently diverge',
-          detail: 'applyDraftMesh clones the geometry; THREE\'s clone shares userData by reference, so '
-            + 'userData.occtHandle still points at the PRE-draft solid. Every downstream OCCT feature '
-            + '(boss union, deleteFace, STEP export) operates on the undrafted B-rep while the viewport '
-            + 'shows the sheared mesh.',
-        });
-      }
+      // FIXED pins (were critical findings):
+      // 1. mesh fallback must surface a downgrade notice — never silent.
+      expect(draftDowngrades.some(n => n.severity === 'approximated')).toBe(true);
+      // 2. the stale PRE-draft handle must be cleared — B-rep and mesh may
+      //    not silently diverge.
+      expect(draftHandleAlive).toBe(false);
     }
     expect(res.geometry.attributes.position.count).toBeGreaterThan(0);
     // Draft of 2° on ≤50 mm walls changes volume by a few %, never an order.
@@ -201,7 +203,24 @@ describeMaybe('REF-PART 4 · gearbox housing', () => {
     console.log(`[REF-PART 4] SCORECARD deleteFace: vol=${vol.toFixed(0)} vs drafted ${draftedVolume.toFixed(0)} `
       + `(boss ${V_BOSS.toFixed(0)}), errors=${Object.keys(errs).length === 0 ? '(none)' : JSON.stringify(errs)}`);
 
-    if (errs['h-delboss']) {
+    if (errs['h-boss']) {
+      // Honest behaviour change from the fail-clean host contract: the boss
+      // union used to run OCCT against the STALE pre-draft handle (silently
+      // composing on the WRONG solid). Now the drafted housing has no handle
+      // (cleared by the draft mesh fallback), OCCT refuses a bbox stand-in,
+      // and the boolean falls to mesh CSG — which fails LOUDLY on the uv-less
+      // OCCT tessellation (same merge-compat class pinned in P1/P2).
+      recordFinding({
+        part: 'P4 gearbox housing',
+        severity: 'major',
+        title: 'boss union on the drafted (mesh-fallback) housing fails in the mesh CSG fallback',
+        detail: `boolean error: "${errs['h-boss']}" — fail-clean per the host contract (the union previously `
+          + 'applied to the WRONG, undrafted B-rep via the stale handle). The mesh CSG fallback rejects the '
+          + 'uv-less OCCT tessellation; the body is preserved un-bossed with a per-feature error.',
+      });
+      // Both boss and deleteFace reverted — the body stays the drafted housing.
+      expect(Math.abs(vol - draftedVolume)).toBeLessThan(Math.max(draftedVolume * 0.015, 500));
+    } else if (errs['h-delboss']) {
       recordFinding({
         part: 'P4 gearbox housing',
         severity: 'major',

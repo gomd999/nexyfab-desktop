@@ -56,6 +56,14 @@ function resolveLlmFetcher(
 ): ((text: string, signal: AbortSignal) => Promise<unknown>) | null {
   if (opts.llmFetcher) return opts.llmFetcher;
 
+  // DeepSeek first — it is the only provider configured in this deployment
+  // (Anthropic/OpenAI keys are commented out in .env). Without this branch the
+  // LLM fallback never fired in prod and only the regex patterns worked.
+  const deepseekKey =
+    process.env.NEXYFAB_DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY;
+  if (deepseekKey) {
+    return (text, signal) => callDeepSeek(text, deepseekKey, signal);
+  }
   const anthropicKey =
     process.env.NEXYFAB_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY;
   if (anthropicKey) {
@@ -67,6 +75,35 @@ function resolveLlmFetcher(
     return (text, signal) => callOpenAI(text, openaiKey, signal);
   }
   return null;
+}
+
+/** DeepSeek is OpenAI-compatible — mirror callOpenAI against the DeepSeek base URL. */
+async function callDeepSeek(
+  text: string,
+  apiKey: string,
+  signal: AbortSignal,
+): Promise<unknown> {
+  const baseUrl = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1';
+  const res = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: process.env.DEEPSEEK_MODEL ?? 'deepseek-chat',
+      max_tokens: 256,
+      temperature: 0,
+      messages: [{ role: 'user', content: BUILD_ASSEMBLY_PROMPT(text) }],
+    }),
+    signal,
+  });
+  if (!res.ok) throw new Error(`deepseek ${res.status}`);
+  const data = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const raw = data.choices?.[0]?.message?.content ?? '';
+  return parseJsonOrNull(raw);
 }
 
 async function callAnthropic(

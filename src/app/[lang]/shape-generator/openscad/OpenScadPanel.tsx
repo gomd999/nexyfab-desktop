@@ -8,6 +8,9 @@ import { useJscadWorker } from '../workers/useJscadWorker';
 import { verifyGeneratedModel, formatVerificationCritique } from '../analysis/verifyGeneratedModel';
 import { loadHistory, saveToHistory, deleteFromHistory, type JscadHistoryItem } from './jscadHistory';
 import { extractParams, updateParam, type JscadParam } from './jscadParams';
+import { extractScadSliders, applyScadSlider } from '@/lib/openscad-render/scadParamSliders';
+import { scadFromIntent, type StoredIntent } from '@/lib/openscad-render/intentToScad';
+import { parseCustomizerParams, applyCustomizerValue } from '@/lib/openscad-render/customizerParams';
 import type { ElementSelectionInfo, FaceSelectionInfo } from '../editing/selectionInfo';
 import { downloadBlob } from '@/lib/platform';
 import VerifySpecPanel from './VerifySpecPanel';
@@ -1080,6 +1083,12 @@ export function intentToJsonString(intent: unknown): string {
   return JSON.stringify(intent, null, 2);
 }
 
+/** "Refine previous result" checkbox label per UI language. */
+const REFINE_LABEL: Record<string, string> = {
+  ko: '이전 결과 수정', en: 'Refine previous', ja: '前の結果を修正',
+  zh: '修改上一结果', es: 'Refinar anterior', ar: 'تعديل السابق',
+};
+
 export default function OpenScadPanel({ onGeometryReady, selectedElement, currentShape }: Props) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
@@ -1112,6 +1121,50 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const [scadFromIntentBusy, setScadFromIntentBusy] = useState(false);
   const [scadNlPrompt, setScadNlPrompt] = useState('');
   const [scadNlBusy, setScadNlBusy] = useState(false);
+  // Refine: keep the last generated intent so a follow-up prompt ("make it
+  // taller", "add a hole") modifies it instead of starting fresh.
+  const [lastScadIntent, setLastScadIntent] = useState<unknown>(null);
+  const [scadNlRefine, setScadNlRefine] = useState(false);
+  // Auto-extracted parametric sliders (CADAM-style): adjustable dimensions
+  // pulled from the generated intent. Dragging a slider re-emits the .scad
+  // LOCALLY via scadFromIntent — no AI re-call, no server round-trip.
+  const scadSliders = useMemo(
+    () => extractScadSliders(lastScadIntent as StoredIntent | null),
+    [lastScadIntent],
+  );
+  const onScadSliderChange = useCallback((path: (string | number)[], value: number) => {
+    setLastScadIntent((prev: unknown) => {
+      if (prev == null) return prev;
+      const next = applyScadSlider(prev as StoredIntent, path, value);
+      const out = scadFromIntent(next);
+      if (out.ok) setScadSource(out.scad);
+      return next;
+    });
+  }, []);
+  // Free-form (CADAM-style) mode: the AI writes a complete OpenSCAD program.
+  // `scadNlFreeform` opts in before generating; `scadIsFreeform` is set when a
+  // free-form result arrives. Its sliders come from parsing the .scad
+  // Customizer annotations directly (not an intent).
+  const [scadNlFreeform, setScadNlFreeform] = useState(false);
+  const [scadIsFreeform, setScadIsFreeform] = useState(false);
+  // Image-to-3D: a reference image (data-URL) sent to the vision model, which
+  // writes parametric OpenSCAD from it. An image implies free-form.
+  const [scadNlImage, setScadNlImage] = useState<string | null>(null);
+  const [scadNlImageName, setScadNlImageName] = useState<string | null>(null);
+  const onPickScadImage = useCallback((file: File | null | undefined) => {
+    if (!file) return;
+    if (file.size > 6 * 1024 * 1024) { setScadErr('이미지가 너무 큽니다 (최대 6MB)'); return; }
+    const reader = new FileReader();
+    reader.onload = () => { setScadNlImage(typeof reader.result === 'string' ? reader.result : null); setScadNlImageName(file.name); };
+    reader.readAsDataURL(file);
+  }, []);
+  const customizerParams = useMemo(
+    () => (scadIsFreeform ? parseCustomizerParams(scadSource) : []),
+    [scadIsFreeform, scadSource],
+  );
+  const onCustomizerChange = useCallback((name: string, value: number | boolean | string) => {
+    setScadSource(prev => applyCustomizerValue(prev, name, value));
+  }, []);
   const [scadNlSummary, setScadNlSummary] = useState<string | null>(null);
   /** Per-user budget cool-down: epoch ms until input unlocks. Set on 402. */
   const [scadNlBudgetLockUntil, setScadNlBudgetLockUntil] = useState<number | null>(null);
@@ -1679,7 +1732,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
    */
   const generateScadFromNlPrompt = useCallback(async () => {
     const prompt = scadNlPrompt.trim();
-    if (!prompt) {
+    if (!prompt && !scadNlImage) {
       setScadErr(t.scadNlEmpty);
       return;
     }
@@ -1687,10 +1740,18 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     setScadErr('');
     setScadNlSummary(null);
     try {
+      const doRefine = scadNlRefine && lastScadIntent != null && !scadNlFreeform && !scadNlImage;
+      const reqBody = scadNlImage
+        ? { prompt, image: scadNlImage, freeform: true }
+        : scadNlFreeform
+          ? { prompt, freeform: true }
+          : doRefine
+            ? { prompt, previousIntent: lastScadIntent }
+            : { prompt };
       const res = await fetch('/api/nexyfab/scad-intent-from-nl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify(reqBody),
       });
       const data = await res.json().catch(() => ({} as { error?: string; scad?: string; summary?: string; reason?: string; code?: string; resetAtMs?: number }));
       if (!res.ok) {
@@ -1712,6 +1773,13 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
       }
       if (typeof data.scad === 'string' && data.scad.length > 0) {
         setScadSource(data.scad);
+        const isFreeform = (data as { freeform?: boolean }).freeform === true;
+        setScadIsFreeform(isFreeform);
+        if (isFreeform) {
+          setLastScadIntent(null); // free-form has no intent; sliders come from the .scad
+        } else if ((data as { intent?: unknown }).intent != null) {
+          setLastScadIntent((data as { intent?: unknown }).intent);
+        }
         if (typeof data.summary === 'string') setScadNlSummary(data.summary);
         // Surface "approaching budget" advisory when server flagged it.
         const warning = (data as { budgetWarning?: { fraction: number; limitUsd: number | null } }).budgetWarning;
@@ -1727,7 +1795,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     } finally {
       setScadNlBusy(false);
     }
-  }, [scadNlPrompt, t]);
+  }, [scadNlPrompt, t, scadNlRefine, lastScadIntent, scadNlFreeform, scadNlImage]);
 
   const downloadScadStl = useCallback(async () => {
     if (scadResultB64) {
@@ -2457,11 +2525,108 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
               >
                 {scadNlBusy ? t.scadNlBusy : t.scadNlBtn}
               </button>
+              <label className="flex items-center gap-1 text-[11px] text-gray-300 cursor-pointer select-none" title="Free-form: the AI writes a full OpenSCAD program (cars, vases, anything) instead of catalog shapes">
+                <input
+                  type="checkbox"
+                  checked={scadNlFreeform}
+                  onChange={e => setScadNlFreeform(e.target.checked)}
+                  className="accent-emerald-500"
+                />
+                {(langMap[seg] ?? 'en') === 'ko' ? '자유형' : 'Free-form'}
+              </label>
+              <label className="flex items-center gap-1 text-[11px] text-emerald-300 cursor-pointer select-none" title="Image → 3D: upload a reference photo/sketch; the vision model writes parametric OpenSCAD from it">
+                <input type="file" accept="image/*" className="hidden" onChange={e => onPickScadImage(e.target.files?.[0])} />
+                🖼️ {(langMap[seg] ?? 'en') === 'ko' ? '이미지' : 'Image'}
+              </label>
+              {scadNlImage && (
+                <span className="flex items-center gap-1 text-[11px] text-emerald-200/80">
+                  <span className="truncate max-w-[100px]" title={scadNlImageName ?? ''}>{scadNlImageName}</span>
+                  <button type="button" className="text-gray-400 hover:text-gray-200" onClick={() => { setScadNlImage(null); setScadNlImageName(null); }} aria-label="remove image">✕</button>
+                </span>
+              )}
+              {lastScadIntent != null && !scadNlFreeform && (
+                <label className="flex items-center gap-1 text-[11px] text-gray-300 cursor-pointer select-none" title="Treat the prompt as a change to the last result">
+                  <input
+                    type="checkbox"
+                    checked={scadNlRefine}
+                    onChange={e => setScadNlRefine(e.target.checked)}
+                    className="accent-indigo-500"
+                  />
+                  {REFINE_LABEL[langMap[seg] ?? 'en'] ?? 'Refine previous'}
+                </label>
+              )}
               {scadNlSummary && (
                 <span className="text-[11px] text-indigo-200/70 truncate">{scadNlSummary}</span>
               )}
             </div>
           </div>
+          {scadSliders.length > 0 && (
+            <div className="border border-gray-700 rounded p-2 bg-gray-950/60 flex flex-col gap-1.5" data-testid="scad-param-sliders">
+              <div className="text-[11px] text-indigo-200/80 font-medium">📐 치수 조정 — AI 재생성 없이 즉시 반영</div>
+              {scadSliders.map(s => (
+                <label key={s.id} className="flex items-center gap-2 text-[11px] text-gray-300">
+                  <span className="w-28 truncate" title={s.label}>{s.label}</span>
+                  <input
+                    type="range"
+                    min={s.min}
+                    max={s.max}
+                    step={s.step}
+                    value={s.value}
+                    onChange={e => onScadSliderChange(s.path, parseFloat(e.target.value))}
+                    className="flex-1 accent-indigo-500"
+                  />
+                  <span className="w-12 text-right tabular-nums text-gray-100">{s.step < 1 ? s.value.toFixed(1) : Math.round(s.value)}</span>
+                </label>
+              ))}
+            </div>
+          )}
+          {scadIsFreeform && customizerParams.length > 0 && (
+            <div className="border border-emerald-800/60 rounded p-2 bg-gray-950/60 flex flex-col gap-1.5" data-testid="scad-customizer-params">
+              <div className="text-[11px] text-emerald-300/90 font-medium">🎛️ 파라미터 (자유형) — 코드 변경, AI 재호출 없음</div>
+              {customizerParams.map(p => {
+                const label = p.description || p.name;
+                if (p.kind === 'bool') {
+                  return (
+                    <label key={p.name} className="flex items-center gap-2 text-[11px] text-gray-300">
+                      <input type="checkbox" checked={p.value as boolean} onChange={e => onCustomizerChange(p.name, e.target.checked)} className="accent-emerald-500" />
+                      <span className="truncate" title={p.name}>{label}</span>
+                    </label>
+                  );
+                }
+                if (p.kind === 'slider') {
+                  const v = p.value as number;
+                  return (
+                    <label key={p.name} className="flex items-center gap-2 text-[11px] text-gray-300">
+                      <span className="w-28 truncate" title={`${p.name}${p.group ? ' · ' + p.group : ''}`}>{label}</span>
+                      <input type="range" min={p.min} max={p.max} step={p.step} value={v}
+                        onChange={e => onCustomizerChange(p.name, parseFloat(e.target.value))}
+                        className="flex-1 accent-emerald-500" />
+                      <span className="w-12 text-right tabular-nums text-gray-100">{(p.step ?? 1) < 1 ? v.toFixed(1) : Math.round(v)}</span>
+                    </label>
+                  );
+                }
+                if (p.kind === 'dropdown') {
+                  return (
+                    <label key={p.name} className="flex items-center gap-2 text-[11px] text-gray-300">
+                      <span className="w-28 truncate" title={p.name}>{label}</span>
+                      <select value={String(p.value)} onChange={e => onCustomizerChange(p.name, typeof p.value === 'number' ? parseFloat(e.target.value) : e.target.value)}
+                        className="flex-1 bg-gray-900 border border-gray-700 rounded px-1 py-0.5 text-gray-100">
+                        {(p.options ?? []).map(o => <option key={String(o)} value={String(o)}>{String(o)}</option>)}
+                      </select>
+                    </label>
+                  );
+                }
+                // string / colour
+                return (
+                  <label key={p.name} className="flex items-center gap-2 text-[11px] text-gray-300">
+                    <span className="w-28 truncate" title={p.name}>{label}</span>
+                    <input type="text" value={String(p.value)} onChange={e => onCustomizerChange(p.name, e.target.value)}
+                      className="flex-1 bg-gray-900 border border-gray-700 rounded px-1 py-0.5 text-gray-100 font-mono" />
+                  </label>
+                );
+              })}
+            </div>
+          )}
           <button
             type="button"
             onClick={() => void generateScadFromCurrentShape()}

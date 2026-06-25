@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { SketchProfile, SketchConfig, SketchPoint } from './types';
+import type { SketchProfile, SketchConfig, SketchPoint, SketchSegment } from './types';
 import { sampleNurbsSegment } from './nurbs';
 
 /**
@@ -127,13 +127,13 @@ function sampleArcPoints(start: SketchPoint, through: SketchPoint, end: SketchPo
  * displayed ExtrudeGeometry mesh in correspondence.
  */
 /**
- * Build a single closed contour's 2D points for the B-rep extruder, covering
- * the common primitive segment types `profileToPoints` doesn't (rect). Returns
+ * Build a single closed contour's 2D points for the B-rep extruder. Returns
  * null when the profile can't be a single B-rep contour (a single `circle` —
  * handled separately by occtExtrudeCircle for an exact cylinder — or a
  * multi-contour profile with holes, i.e. a `circle`/`rect` mixed among other
- * segments). Kept separate from `profileToPoints` so the mesh-provenance
- * sampler (and countContourEdgesPerSegment) stay untouched.
+ * segments). Single `rect` keeps its exact 4-corner contour here; the other
+ * closed primitives (polygon/ellipse/slot) flow through `profileToPoints`,
+ * which now tessellates them identically for the mesh and B-rep paths.
  */
 export function brepContourPoints(profile: SketchProfile): SketchPoint[] | null {
   const segs = profile.segments;
@@ -157,6 +157,102 @@ export function brepContourPoints(profile: SketchProfile): SketchPoint[] | null 
   return pts.length >= 3 ? pts : null;
 }
 
+// ─── Closed-primitive tessellation densities ─────────────────────────────────
+// One closed primitive segment (circle/rect/polygon/ellipse/slot) expands to a
+// fixed point count so countContourEdgesPerSegment can mirror the sampler
+// EXACTLY (the pipeline maps triangle ranges back to authoring segments).
+export const CIRCLE_CONTOUR_EDGES = 32;
+export const ELLIPSE_CONTOUR_EDGES = 36;
+/** Sampled edges per semicircular slot cap → a slot contributes 2·(CAP+1) points. */
+export const SLOT_CAP_EDGES = 16;
+/**
+ * The SketchSegment data model stores a polygon as [center, vertex] with NO
+ * side count (the interactive polygon tool emits plain line segments instead,
+ * see SketchCanvas generatePolygonSegments) — so a typed 'polygon' segment
+ * (imports/scripts) tessellates with this default.
+ */
+export const POLYGON_DEFAULT_SIDES = 6;
+
+/** N points around a circle given [center, rim] — starts at the rim point's
+ *  angle so the loop is deterministic w.r.t. the authored geometry. */
+function sampleCirclePoints(center: SketchPoint, rim: SketchPoint, n: number): SketchPoint[] {
+  const r = Math.hypot(rim.x - center.x, rim.y - center.y);
+  if (!(r > 1e-9)) return [];
+  const a0 = Math.atan2(rim.y - center.y, rim.x - center.x);
+  const pts: SketchPoint[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = a0 + (i / n) * Math.PI * 2;
+    pts.push({ x: center.x + r * Math.cos(a), y: center.y + r * Math.sin(a) });
+  }
+  return pts;
+}
+
+/** Capsule outline for slot [c1, c2, radiusPt]: cap around c1, cap around c2. */
+function sampleSlotPoints(c1: SketchPoint, c2: SketchPoint, radiusPt: SketchPoint): SketchPoint[] {
+  const r = Math.hypot(radiusPt.x - c1.x, radiusPt.y - c1.y);
+  if (!(r > 1e-9)) return [];
+  const theta = Math.atan2(c2.y - c1.y, c2.x - c1.x);
+  const pts: SketchPoint[] = [];
+  // Cap 1: from θ+90° to θ+270° around c1 (SLOT_CAP_EDGES+1 points).
+  for (let i = 0; i <= SLOT_CAP_EDGES; i++) {
+    const a = theta + Math.PI / 2 + (i / SLOT_CAP_EDGES) * Math.PI;
+    pts.push({ x: c1.x + r * Math.cos(a), y: c1.y + r * Math.sin(a) });
+  }
+  // Cap 2: from θ-90° to θ+90° around c2 (SLOT_CAP_EDGES+1 points). The two
+  // straight flanks are the edges cap1[last]→cap2[0] and the closing edge.
+  for (let i = 0; i <= SLOT_CAP_EDGES; i++) {
+    const a = theta - Math.PI / 2 + (i / SLOT_CAP_EDGES) * Math.PI;
+    pts.push({ x: c2.x + r * Math.cos(a), y: c2.y + r * Math.sin(a) });
+  }
+  return pts;
+}
+
+/**
+ * Closed-primitive segment → contour point loop, or null for the segment
+ * types handled inline by profileToPoints (line/arc/nurbs).
+ */
+function closedPrimitivePoints(seg: SketchSegment): SketchPoint[] | null {
+  const p = seg.points;
+  switch (seg.type) {
+    case 'circle':
+      return p.length >= 2 ? sampleCirclePoints(p[0], p[1], CIRCLE_CONTOUR_EDGES) : [];
+    case 'rect': {
+      if (p.length < 2) return [];
+      const x0 = Math.min(p[0].x, p[1].x), x1 = Math.max(p[0].x, p[1].x);
+      const y0 = Math.min(p[0].y, p[1].y), y1 = Math.max(p[0].y, p[1].y);
+      if (x1 - x0 < 1e-6 || y1 - y0 < 1e-6) return [];
+      return [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+    }
+    case 'polygon':
+      return p.length >= 2 ? sampleCirclePoints(p[0], p[1], POLYGON_DEFAULT_SIDES) : [];
+    case 'ellipse': {
+      if (p.length < 3) return [];
+      const rx = Math.hypot(p[1].x - p[0].x, p[1].y - p[0].y);
+      const ry = Math.hypot(p[2].x - p[0].x, p[2].y - p[0].y);
+      if (!(rx > 1e-9) || !(ry > 1e-9)) return [];
+      const pts: SketchPoint[] = [];
+      for (let i = 0; i < ELLIPSE_CONTOUR_EDGES; i++) {
+        const a = (i / ELLIPSE_CONTOUR_EDGES) * Math.PI * 2;
+        pts.push({ x: p[0].x + rx * Math.cos(a), y: p[0].y + ry * Math.sin(a) });
+      }
+      return pts;
+    }
+    case 'slot':
+      return p.length >= 3 ? sampleSlotPoints(p[0], p[1], p[2]) : [];
+    default:
+      return null;
+  }
+}
+
+/**
+ * NOTE on holes / inner loops: a closed primitive is tessellated INTO the
+ * single contour this function returns. Holes are NOT modelled at this level —
+ * the multi-profile path (`profileToGeometryMulti`, profiles[1..] = holes /
+ * SketchCanvas's auto-hole flow) is where an inner circle becomes a hole.
+ * A circle mixed into the SAME profile as other segments is appended inline
+ * (degenerate authoring; previously it was silently DROPPED, which made a
+ * circle-only sketch unextrudable — see REF-PART 2 finding).
+ */
 export function profileToPoints(profile: SketchProfile): SketchPoint[] {
   const points: SketchPoint[] = [];
   for (let i = 0; i < profile.segments.length; i++) {
@@ -181,6 +277,13 @@ export function profileToPoints(profile: SketchProfile): SketchPoint[] {
       for (let j = startIdx; j < nurbsPts.length; j++) {
         points.push(nurbsPts[j]);
       }
+    } else {
+      // Closed primitives (circle/rect/polygon/ellipse/slot). These used to be
+      // SKIPPED entirely — a circle-only sketch sampled to 0 points and the
+      // most common sketch op ("draw a circle, extrude/cut") errored with
+      // "Sketch produced empty geometry".
+      const prim = closedPrimitivePoints(seg);
+      if (prim) for (const q of prim) points.push(q);
     }
   }
   return points;
@@ -189,10 +292,12 @@ export function profileToPoints(profile: SketchProfile): SketchPoint[] {
 /**
  * How many contour edges each profile segment contributes to the closed
  * loop fed to ExtrudeGeometry. Lines = 1 edge; arcs sample to 16 points
- * → 15 edges; nurbs to 32 → 31 edges. The numbers mirror exactly what
- * `profileToPoints` produces so a downstream caller (pipelineManager's
- * runSketchExtrude → sideSegmentRanges) can map a hit triangle index
- * back to its authoring segment hash without re-walking the sampler.
+ * → 15 edges; nurbs to 32 → 31 edges; closed primitives contribute their
+ * full tessellated loop (circle 32, rect 4, polygon 6, ellipse 36, slot
+ * 2·(SLOT_CAP_EDGES+1)). The numbers mirror exactly what `profileToPoints`
+ * produces so a downstream caller (pipelineManager's runSketchExtrude →
+ * sideSegmentRanges) can map a hit triangle index back to its authoring
+ * segment hash without re-walking the sampler.
  */
 export function countContourEdgesPerSegment(profile: SketchProfile): number[] {
   const out: number[] = [];
@@ -200,7 +305,10 @@ export function countContourEdgesPerSegment(profile: SketchProfile): number[] {
     if (seg.type === 'line') out.push(1);
     else if (seg.type === 'arc') out.push(15);
     else if (seg.type === 'nurbs') out.push(31);
-    else out.push(1); // safe default
+    else {
+      const prim = closedPrimitivePoints(seg);
+      out.push(prim ? Math.max(1, prim.length) : 1);
+    }
   }
   return out;
 }

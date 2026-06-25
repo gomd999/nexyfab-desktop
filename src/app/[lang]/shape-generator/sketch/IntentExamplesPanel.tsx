@@ -103,7 +103,8 @@ type CategoryKey = 'Box' | 'Cylinder' | 'Patterns' | 'Modify';
 /**
  * Maps each IntentKind to one of 4 user-facing categories. Kept as a
  * static object (rather than a switch) so the test suite can iterate it
- * to guarantee exhaustive coverage of all 12 INTENT_KINDS.
+ * to guarantee exhaustive coverage of all INTENT_KINDS (TS enforces the
+ * Record is total, so a new kind fails to compile until categorised here).
  */
 export const INTENT_CATEGORY_MAP: Record<IntentKind, CategoryKey> = {
   // Box family — 4 kinds, all start with create_box_*
@@ -119,9 +120,17 @@ export const INTENT_CATEGORY_MAP: Record<IntentKind, CategoryKey> = {
   create_pattern_grid: 'Patterns',
   create_assembly_stack: 'Patterns',
   add_pattern_to_last: 'Patterns',
-  // Modify — 2 kinds that operate on the last feature
+  // Modify — operate on the last feature (incl. the generic feature add)
   add_fillet_to_last: 'Modify',
   add_chamfer_to_last: 'Modify',
+  add_feature_to_last: 'Modify',
+  update_last_param: 'Modify',
+  remove_last: 'Modify',
+  // Free-form custom outline → solid (grouped with shape creation).
+  create_sketch_extrude: 'Box',
+  build_part: 'Box',
+  // Heterogeneous assembly → grouped with patterns/multi-part.
+  assemble_parts: 'Patterns',
 };
 
 const CATEGORY_ORDER: ReadonlyArray<CategoryKey> = ['Box', 'Cylinder', 'Patterns', 'Modify'];

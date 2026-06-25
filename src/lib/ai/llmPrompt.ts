@@ -31,6 +31,8 @@
 
 import { INTENT_KINDS } from './featureTreeIntentDetector';
 import type { IntentKind } from './featureTreeIntentDetector';
+import { ADDABLE_FEATURES } from './addableFeatureTypes';
+import { renderModelContext, type AiModelContext } from './modelContext';
 
 // ─── Public API ──────────────────────────────────────────────────────────
 
@@ -45,13 +47,22 @@ import type { IntentKind } from './featureTreeIntentDetector';
 export function BUILD_INTENT_PROMPT(
   text: string,
   intentKinds: ReadonlyArray<IntentKind> = INTENT_KINDS,
+  context?: AiModelContext,
 ): string {
   const kindsLine = intentKinds.join(', ');
   const exampleBlock = buildExampleBlock(intentKinds);
   const escapedText = text.replace(/"/g, '\\"');
+  const contextBlock = renderModelContext(context);
   return [
     `You are a CAD design assistant. Your job is to convert the user's natural language CAD request into a structured JSON intent.`,
     ``,
+    ...(contextBlock
+      ? [
+          `## Current model (use it to resolve "it", "the last feature", "this face", "the fillet", etc.)`,
+          contextBlock,
+          ``,
+        ]
+      : []),
     `## Allowed intent kinds`,
     `[${kindsLine}]`,
     ``,
@@ -61,8 +72,20 @@ export function BUILD_INTENT_PROMPT(
     `- Do NOT wrap output in markdown code fences (\`\`\`json …\`\`\`).`,
     `- Do NOT include any prose, explanation, or apology.`,
     `- All numeric fields are millimetres (mm). Angles are degrees.`,
-    `- Reject (emit null) requests that require unsupported features such as`,
-    `  threads, gears, sheet-metal, or freeform surfaces.`,
+    `- To add a dress-up / modifier feature to the current part (thread, draft,`,
+    `  shell, helix, scale, fillet, chamfer, hole, …), use "add_feature_to_last".`,
+    `- For a CUSTOM shape the catalog can't express (L-bracket, T-profile, star,`,
+    `  gusset, arbitrary outline), use "create_sketch_extrude": emit the 2D`,
+    `  outline as a closed list of {x,y} points (mm) plus an extrude depth.`,
+    `- For a part that is a base shape PLUS several features ("a plate with 4`,
+    `  holes and rounded edges"), use "build_part": one base primitive + an`,
+    `  ordered list of features. Prefer this over emitting features one at a time.`,
+    `- For an ASSEMBLY of several DIFFERENT parts positioned in space ("a base`,
+    `  plate with 4 cylindrical legs at the corners", "a bolt through two plates"),`,
+    `  use "assemble_parts": list each part with its own shapeId, params, and`,
+    `  position (mm). Compute sensible corner/stack positions from the dimensions.`,
+    `- Reject (emit null) only requests that require genuinely unsupported`,
+    `  features such as gears, full sheet-metal flanges, or freeform surfaces.`,
     ``,
     `## JSON schema sketch`,
     SCHEMA_SKETCH,
@@ -134,7 +157,40 @@ add_pattern_to_last:      { "kind": "add_pattern_to_last",
                             "patternKind": "linear" | "circular",
                             "count": int≥2,
                             "spacing"?: number,   // required when patternKind="linear"
-                            "angle"?:   number }  // optional for "circular" (default 360, range (0,360])`;
+                            "angle"?:   number }  // optional for "circular" (default 360, range (0,360])
+
+add_feature_to_last:      { "kind": "add_feature_to_last",
+                            "featureType": one of the types below,
+                            "params": { <param>: number, … } }   // omitted params use feature defaults
+${ADDABLE_FEATURES.map((f) => `   • ${f.type}: ${f.params.join(', ')}`).join('\n')}
+
+update_last_param:        { "kind": "update_last_param",
+                            "paramKey": string, "value": number }   // edit the LAST feature's param ("make it 8mm")
+
+remove_last:              { "kind": "remove_last" }                  // remove the LAST feature ("remove the fillet")
+
+create_sketch_extrude:    { "kind": "create_sketch_extrude",
+                            "profile": [{ "x": number, "y": number }, …],  // CLOSED 2D outline, mm, ≥3 pts, CCW
+                            "depth": number,                                // extrude thickness, mm
+                            "plane"?: "xy" | "xz" | "yz",                   // default xy
+                            "operation"?: "add" | "subtract" }             // default add
+
+build_part:               { "kind": "build_part",
+                            "base": { "shapeId": "box"|"cylinder"|"sphere"|"cone"|"disk"|"pipe"|"torus",
+                                      "params": { <param>: number } },
+                            "features": [ { "type": "hole"|"fillet"|"chamfer"|"shell"|"thread"|"draft"|
+                                                    "linearPattern"|"circularPattern"|"scale",
+                                            "params": { <param>: number } }, … ] }
+                            // ONE base + an ordered list of features stacked on it
+
+assemble_parts:           { "kind": "assemble_parts",
+                            "parts": [ { "name"?: string,
+                                         "shapeId": "box"|"cylinder"|"sphere"|"cone"|"disk"|"pipe"|
+                                                    "torus"|"hexNut"|"washer"|"bolt"|"gear"|"flange",
+                                         "params": { <param>: number },
+                                         "position"?: [x, y, z],   // mm, default [0,0,0]
+                                         "rotation"?: [x, y, z] }, … ] }  // degrees
+                            // ≥2 DIFFERENT parts positioned in space (a real assembly)`;
 
 /**
  * Worked NL→JSON examples, one (and occasionally two) per kind. The LLM
@@ -232,6 +288,82 @@ export const INTENT_EXAMPLES: Record<IntentKind, ReadonlyArray<{ in: string; out
     {
       in: 'circular pattern 8 around 360',
       out: '{"kind":"add_pattern_to_last","patternKind":"circular","count":8,"angle":360}',
+    },
+  ],
+  update_last_param: [
+    {
+      in: 'make it 8mm',
+      out: '{"kind":"update_last_param","paramKey":"radius","value":8}',
+    },
+    {
+      in: 'make the fillet 5 instead',
+      out: '{"kind":"update_last_param","paramKey":"radius","value":5}',
+    },
+  ],
+  remove_last: [
+    {
+      in: 'remove the fillet',
+      out: '{"kind":"remove_last"}',
+    },
+    {
+      in: '마지막 거 지워줘',
+      out: '{"kind":"remove_last"}',
+    },
+  ],
+  create_sketch_extrude: [
+    {
+      in: 'an L-shaped bracket, 50mm legs, 20mm wide, 5mm thick',
+      out: '{"kind":"create_sketch_extrude","profile":[{"x":0,"y":0},{"x":50,"y":0},{"x":50,"y":20},{"x":20,"y":20},{"x":20,"y":50},{"x":0,"y":50}],"depth":5}',
+    },
+    {
+      in: 'a right-triangle gusset 40x40, 6mm thick',
+      out: '{"kind":"create_sketch_extrude","profile":[{"x":0,"y":0},{"x":40,"y":0},{"x":0,"y":40}],"depth":6}',
+    },
+    {
+      in: '한 변 30 정육각형 프로파일 10mm 두께',
+      out: '{"kind":"create_sketch_extrude","profile":[{"x":30,"y":0},{"x":15,"y":26},{"x":-15,"y":26},{"x":-30,"y":0},{"x":-15,"y":-26},{"x":15,"y":-26}],"depth":10}',
+    },
+  ],
+  build_part: [
+    {
+      in: 'a 50x30x20 plate with a 10mm hole and 2mm filleted edges',
+      out: '{"kind":"build_part","base":{"shapeId":"box","params":{"width":50,"height":20,"depth":30}},"features":[{"type":"hole","params":{"diameter":10}},{"type":"fillet","params":{"radius":2}}]}',
+    },
+    {
+      in: '지름 40 높이 60 원통, 가운데 12mm 구멍, 윗면 모깎기 3mm',
+      out: '{"kind":"build_part","base":{"shapeId":"cylinder","params":{"diameter":40,"height":60}},"features":[{"type":"hole","params":{"diameter":12}},{"type":"fillet","params":{"radius":3}}]}',
+    },
+  ],
+  assemble_parts: [
+    {
+      in: 'a 80x80x5 base plate with 4 cylindrical legs 10mm diameter 40mm tall at the corners',
+      out: '{"kind":"assemble_parts","parts":[{"name":"plate","shapeId":"box","params":{"width":80,"height":5,"depth":80},"position":[0,0,0]},{"name":"leg1","shapeId":"cylinder","params":{"diameter":10,"height":40},"position":[30,-22,30]},{"name":"leg2","shapeId":"cylinder","params":{"diameter":10,"height":40},"position":[-30,-22,30]},{"name":"leg3","shapeId":"cylinder","params":{"diameter":10,"height":40},"position":[30,-22,-30]},{"name":"leg4","shapeId":"cylinder","params":{"diameter":10,"height":40},"position":[-30,-22,-30]}]}',
+    },
+    {
+      in: '두 플레이트(50x50x4)를 5mm 띄워 쌓고 가운데 M6 볼트로 관통',
+      out: '{"kind":"assemble_parts","parts":[{"name":"plate_bottom","shapeId":"box","params":{"width":50,"height":4,"depth":50},"position":[0,0,0]},{"name":"plate_top","shapeId":"box","params":{"width":50,"height":4,"depth":50},"position":[0,9,0]},{"name":"bolt","shapeId":"bolt","params":{"shaftDiameter":6,"shaftLength":20},"position":[0,0,0]}]}',
+    },
+  ],
+  add_feature_to_last: [
+    {
+      in: 'add a thread pitch 2',
+      out: '{"kind":"add_feature_to_last","featureType":"thread","params":{"pitch":2}}',
+    },
+    {
+      in: '나사 넣어줘',
+      out: '{"kind":"add_feature_to_last","featureType":"thread","params":{}}',
+    },
+    {
+      in: 'add 3 degree draft',
+      out: '{"kind":"add_feature_to_last","featureType":"draft","params":{"angle":3}}',
+    },
+    {
+      in: 'hollow it out 2mm walls',
+      out: '{"kind":"add_feature_to_last","featureType":"shell","params":{"wallThickness":2}}',
+    },
+    {
+      in: 'scale to 1.5x',
+      out: '{"kind":"add_feature_to_last","featureType":"scale","params":{"scaleX":1.5,"scaleY":1.5,"scaleZ":1.5}}',
     },
   ],
 };

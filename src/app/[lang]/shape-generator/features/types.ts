@@ -31,6 +31,7 @@ export type FeatureType =
   | 'hem'
   | 'jog'
   | 'tab'
+  | 'cut'
   | 'bendRelief'
   | 'cornerRelief'
   | 'flatPattern'

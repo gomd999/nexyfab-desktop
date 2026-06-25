@@ -146,7 +146,7 @@ describe('IntentExamplesPanel', () => {
     expect(screen.getByTestId('planner-intent-examples-panel').getAttribute('dir')).toBe('ltr');
   });
 
-  it('Box category contains exactly the 4 create_box_with_* kinds', () => {
+  it('Box category contains the create_box_with_* kinds plus the freeform-solid kinds', () => {
     const boxKinds = INTENT_KINDS.filter((k) => INTENT_CATEGORY_MAP[k] === 'Box');
     expect(boxKinds.sort()).toEqual(
       [
@@ -154,13 +154,17 @@ describe('IntentExamplesPanel', () => {
         'create_box_with_fillet',
         'create_box_with_holes',
         'create_box_with_pocket',
+        'create_sketch_extrude',
+        'build_part',
       ].sort(),
     );
   });
 
-  it('Modify category contains exactly the 2 add_*_to_last kinds (no pattern)', () => {
+  it('Modify category contains the last-feature operations', () => {
     const modKinds = INTENT_KINDS.filter((k) => INTENT_CATEGORY_MAP[k] === 'Modify');
-    expect(modKinds.sort()).toEqual(['add_chamfer_to_last', 'add_fillet_to_last'].sort());
+    expect(modKinds.sort()).toEqual(
+      ['add_chamfer_to_last', 'add_fillet_to_last', 'add_feature_to_last', 'update_last_param', 'remove_last'].sort(),
+    );
   });
 
   it('chip text equals the INTENT_EXAMPLES `in` value verbatim', () => {

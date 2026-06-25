@@ -13,6 +13,21 @@ function makePlate(w = 100, t = 2.0, d = 50): THREE.BufferGeometry {
   return g;
 }
 
+/** Flat plate with a DECLARED bend on the history (legacy-shaped entry, no
+ *  absolute line data) — bend relief locates the bend line from the history,
+ *  and a legacy entry resolves exactly like the old position-fraction
+ *  convention, so the closed-form volume identities below stay exact (the
+ *  plate is still flat: reliefs are cut before folding). */
+function plateWithDeclaredBend(
+  w = 100, t = 2.0, d = 50, position = 0.5,
+): THREE.BufferGeometry {
+  const g = makePlate(w, t, d);
+  g.userData = {
+    __bendHistory: [{ angle: 90, radius: 2, position, direction: 'up' }],
+  };
+  return g;
+}
+
 /** Signed mesh volume via the divergence theorem (works for the
  *  non-indexed triangle soup three-bvh-csg produces). */
 function meshVolume(geo: THREE.BufferGeometry): number {
@@ -38,7 +53,7 @@ describe('applyBendRelief — notch pair at bend-line ends', () => {
     // 100×2×50 plate: X is longest → position runs along X, the bend
     // line runs along Z, and the notches cut inward at the two Z edges.
     // The volume identity is layout-independent either way.
-    const plate = makePlate(100, 2, 50);
+    const plate = plateWithDeclaredBend(100, 2, 50);
     const v0 = meshVolume(plate);
     const out = applyBendRelief(plate, { width: 4, depth: 6, position: 0.5, shape: 'rectangular' });
     const v1 = meshVolume(out);
@@ -46,7 +61,7 @@ describe('applyBendRelief — notch pair at bend-line ends', () => {
   });
 
   it('obround: removes 2 × (w·(d−r) + πr²/2) × t within facet tolerance', () => {
-    const plate = makePlate(100, 2, 50);
+    const plate = plateWithDeclaredBend(100, 2, 50);
     const v0 = meshVolume(plate);
     const w = 4, d = 6, t = 2, r = w / 2;
     const out = applyBendRelief(plate, { width: w, depth: d, position: 0.5, shape: 'obround' });
@@ -57,7 +72,7 @@ describe('applyBendRelief — notch pair at bend-line ends', () => {
   });
 
   it('keeps the sheet bbox (notches are interior to the blank outline)', () => {
-    const plate = makePlate(100, 2, 50);
+    const plate = plateWithDeclaredBend(100, 2, 50);
     const out = applyBendRelief(plate, { width: 3, depth: 5, position: 0.5, shape: 'rectangular' });
     out.computeBoundingBox();
     const bb = out.boundingBox!;
@@ -66,9 +81,9 @@ describe('applyBendRelief — notch pair at bend-line ends', () => {
     expect(bb.max.y - bb.min.y).toBeCloseTo(2, 4);
   });
 
-  it('cuts at the bend position along the primary (longest) axis', () => {
+  it('cuts at the recorded bend position along the primary (longest) axis', () => {
     // Long in Z → primary axis Z, bend line along X, notches at x=±50.
-    const plate = makePlate(60, 2, 200); // z ∈ [-100, 100]
+    const plate = plateWithDeclaredBend(60, 2, 200, 0.25); // z ∈ [-100, 100]
     const out = applyBendRelief(plate, { width: 4, depth: 6, position: 0.25, shape: 'rectangular' });
     // Expect removed material near z = -100 + 200·0.25 = -50, at both X edges.
     // Verify by sampling: some vertex should now sit at the notch inner wall
@@ -85,17 +100,72 @@ describe('applyBendRelief — notch pair at bend-line ends', () => {
   });
 
   it('carries the upstream bend history through the cut', () => {
-    const plate = makePlate();
-    plate.userData = { __bendHistory: [{ angle: 90, radius: 1, position: 0.5, direction: 'up' }] };
+    const plate = plateWithDeclaredBend();
     const out = applyBendRelief(plate, { width: 3, depth: 5, position: 0.5, shape: 'rectangular' });
     expect((out.userData as { __bendHistory?: unknown[] }).__bendHistory).toHaveLength(1);
   });
 
+  it('FAILS CLEAN with a descriptive error when the body has no bend to relieve', () => {
+    const plate = makePlate(); // no __bendHistory — nothing to relieve
+    expect(() =>
+      applyBendRelief(plate, { width: 3, depth: 5, position: 0.5, shape: 'rectangular' }),
+    ).toThrow(/requires a bend/i);
+  });
+
+  it('locates a v2 history entry by its ABSOLUTE bend line (lineAxis/linePos)', () => {
+    // Declared line at z = -10 (fraction would say z = 0): the notch pair
+    // must land on the recorded absolute coordinate, not the bbox fraction.
+    const plate = makePlate(100, 2, 50);
+    plate.userData = {
+      __bendHistory: [{
+        angle: 90, radius: 2, position: 0.3, direction: 'up',
+        source: 'bend', lineAxis: 'z', linePos: -10, blankLength: 100, flatBefore: 40,
+      }],
+    };
+    const out = applyBendRelief(plate, { width: 4, depth: 6, position: 0.3, shape: 'rectangular' });
+    // lineAxis 'z' → the bend line runs along Z at x = −10 → the notch pair
+    // cuts inward from the two Z edges, centred at x = −10. The inner notch
+    // wall therefore sits at z = ±(25−6) = ±19 with x within the 4mm width.
+    const pos = out.attributes.position;
+    let found = false;
+    for (let i = 0; i < pos.count; i++) {
+      if (Math.abs(Math.abs(pos.getZ(i)) - 19) < 1e-3 && Math.abs(pos.getX(i) + 10) <= 2 + 1e-3) {
+        found = true;
+        break;
+      }
+    }
+    expect(found).toBe(true);
+  });
+
+  it('selects the recorded bend NEAREST the requested position fraction', () => {
+    // Two declared bends at 25% and 75% of a Z-long plate (z ∈ [-100, 100]).
+    const plate = makePlate(60, 2, 200);
+    plate.userData = {
+      __bendHistory: [
+        { angle: 90, radius: 2, position: 0.25, direction: 'up' },
+        { angle: 90, radius: 2, position: 0.75, direction: 'up' },
+      ],
+    };
+    const out = applyBendRelief(plate, { width: 4, depth: 6, position: 0.8, shape: 'rectangular' });
+    // Nearest to 0.8 is the 75% bend → notches near z = +50, not z = -50.
+    const pos = out.attributes.position;
+    let nearUpper = false, nearLower = false;
+    for (let i = 0; i < pos.count; i++) {
+      if (Math.abs(Math.abs(pos.getX(i)) - 24) < 1e-3) {
+        if (Math.abs(pos.getZ(i) - 50) <= 2 + 1e-3) nearUpper = true;
+        if (Math.abs(pos.getZ(i) + 50) <= 2 + 1e-3) nearLower = true;
+      }
+    }
+    expect(nearUpper).toBe(true);
+    expect(nearLower).toBe(false);
+  });
+
   it('throws on invalid params and zero-thickness bodies', () => {
-    const plate = makePlate();
+    const plate = plateWithDeclaredBend();
     expect(() => applyBendRelief(plate, { width: 0, depth: 5, position: 0.5, shape: 'rectangular' })).toThrow();
     expect(() => applyBendRelief(plate, { width: 3, depth: 0, position: 0.5, shape: 'rectangular' })).toThrow();
     const zeroThick = new THREE.BoxGeometry(50, 0, 30);
+    zeroThick.userData = { __bendHistory: [{ angle: 90, radius: 1, position: 0.5, direction: 'up' }] };
     expect(() => applyBendRelief(zeroThick, { width: 3, depth: 5, position: 0.5, shape: 'rectangular' })).toThrow();
   });
 });
@@ -163,10 +233,16 @@ describe('applyCornerRelief — corner cutout', () => {
 
 describe('feature definitions — pipeline contract', () => {
   it('bendReliefFeature applies with percent position + enum shape', () => {
-    const plate = makePlate(100, 2, 50);
+    const plate = plateWithDeclaredBend(100, 2, 50);
     const v0 = meshVolume(plate);
     const out = bendReliefFeature.apply(plate, { width: 4, depth: 6, position: 50, shape: 0 });
     expect(meshVolume(out)).toBeLessThan(v0);
+  });
+
+  it('bendReliefFeature fails clean through the pipeline contract when no bend exists', () => {
+    const plate = makePlate(100, 2, 50);
+    expect(() => bendReliefFeature.apply(plate, { width: 4, depth: 6, position: 50, shape: 0 }))
+      .toThrow(/requires a bend/i);
   });
 
   it('cornerReliefFeature applies with enum corner + shape', () => {

@@ -204,25 +204,25 @@ describeMaybe('REF-PART 2 · L-bracket', () => {
     expect(Math.max(...ys)).toBeCloseTo(HT, 3);
   });
 
-  it('PROBE — a circle-only sketch profile cannot extrude/cut through the pipeline', async () => {
+  it('a circle-only sketch profile extrudes/cuts through the pipeline (fixed: was "Sketch produced empty geometry")', async () => {
+    // FIXED (was a pinned critical finding): profileToPoints used to SKIP
+    // circle segments, so the single most common sketch op — draw a circle,
+    // extrude/cut — errored with "Sketch produced empty geometry" on every
+    // plane. sketch/extrudeProfile.ts now tessellates circle (and rect/
+    // polygon/ellipse/slot) into the contour loop.
     cacheClear();
     const features = [extrudeL(), uprightHoleSketchCut('g-circlecut-probe', 24, 12)];
     const res = await applyFeaturePipelineDetailedAsync(emptySketchBase(), features, { occtMode: true });
     const err = res.errors['g-circlecut-probe'];
-    console.log(`[REF-PART 2] circle-profile cut probe: error=${err ?? '(none)'}`);
-    if (err) {
-      recordFinding({
-        part: 'P2 L-bracket',
-        severity: 'critical',
-        title: 'a sketch containing ONLY a circle cannot extrude or cut (the most common sketch op)',
-        detail: `error "${err}" — profileToGeometry gates on countUniquePoints(profile) < 3, and `
-          + 'profileToPoints (sketch/extrudeProfile.ts:160-187) samples line/arc/nurbs but SKIPS circle '
-          + 'segments → a circle-only profile counts 0 points and returns null. Drill-a-circle → extrude-cut, '
-          + 'the single most common sketch workflow, errors with "Sketch produced empty geometry" on every plane.',
-      });
-      expect(err).toMatch(/empty/i);
-    }
+    const vol = meshVolume(res.geometry);
+    console.log(`[REF-PART 2] circle-profile cut: error=${err ?? '(none)'}, vol=${vol.toFixed(0)} (prism ${V_PRISM})`);
+    expect(err).toBeUndefined();
     expect(res.geometry.attributes.position.count).toBeGreaterThan(0);
+    // The Ø6 cut tool spans x ∈ [-6, 4] (planeOffset −1, depth 10), so it
+    // removes ≈ π·3²·4 ≈ 113 mm³ from the 8 mm upright wall. Honest band:
+    // SOME material must be gone, and never more than the full-wall bore.
+    expect(vol).toBeLessThan(V_PRISM - 40);
+    expect(vol).toBeGreaterThan(V_PRISM - 400);
   }, 240_000);
 
   it('PROBE — square sketch-cut (YZ plane) after an OCCT fillet: does the cut apply?', async () => {
@@ -248,37 +248,43 @@ describeMaybe('REF-PART 2 · L-bracket', () => {
         part: 'P2 L-bracket',
         severity: 'major',
         title: 'non-XY sketch-cut silently drops the B-rep chain',
-        detail: 'cut applied (mesh CSG) but occtHandle is gone — every downstream OCCT feature now '
-          + 'operates on a bounding-box host (pipelineManager.ts gates the B-rep chain to plane==="xy")',
+        detail: 'cut applied (mesh CSG) but occtHandle is gone — downstream OCCT features must re-derive a '
+          + 'host via the mesh→B-rep bridge or fail clean (pipelineManager.ts gates the B-rep chain to '
+          + 'plane==="xy"; since the fail-clean host contract, the old bounding-box substitution is gone).',
       });
     }
     expect(res.geometry.attributes.position.count).toBeGreaterThan(0);
   }, 240_000);
 
-  it('PROBE — global OCCT fillet on a body without a B-rep handle (suspected bbox replacement)', async () => {
+  it('global OCCT fillet on a body without a B-rep handle NEVER substitutes the bounding box (fixed)', async () => {
+    // FIXED (was a pinned critical finding): occtFilletBox used to build
+    // makeBaseBox(bbox) as the host when no occtHandle was present and ship
+    // the filleted BOX as a "requested" success — the L-bracket silently
+    // became its 96 000 mm³ bounding box. The fail-clean host contract
+    // (occtEngine.resolveBrepHostHandle/-Async) now either bridges the mesh
+    // into a faithful B-rep (importSTL + simplify) or throws, dropping to the
+    // guarded mesh path — both honest, neither a bbox stand-in.
     cacheClear();
-    // Mesh-only L-bracket (no handle): hand the pipeline a raw merged mesh.
     const features = [extrudeL(), uprightSquareSketchCut('g-yzcut', 24, 12), filletAll('g-fillet-late', 1)];
     const res = await applyFeaturePipelineDetailedAsync(emptySketchBase(), features, { occtMode: true });
     const vol = meshVolume(res.geometry);
     const bboxVol = 60 * 40 * 40; // 96 000 — the L-bracket's bounding box
-    console.log(`[REF-PART 2] late-fillet probe: vol=${vol.toFixed(0)} (L≈${V_PRISM}, bbox=${bboxVol}), `
-      + `filletError=${res.errors['g-fillet-late'] ?? '(none)'}`);
-    if (vol > V_PRISM * 1.5) {
+    const filletErr = res.errors['g-fillet-late'];
+    console.log(`[REF-PART 2] late-fillet: vol=${vol.toFixed(0)} (L≈${V_PRISM}, bbox=${bboxVol}), `
+      + `filletError=${filletErr ?? '(none)'}`);
+    // The bbox-replacement class is dead: volume must stay an L-bracket.
+    expect(vol).toBeLessThan(V_PRISM * 1.1);
+    // Honest outcomes only: the fillet applied on the REAL solid (small
+    // volume loss) or failed loudly (pipeline error, body reverted).
+    expect(vol).toBeGreaterThan(V_PRISM * 0.85);
+    if (filletErr) {
       recordFinding({
         part: 'P2 L-bracket',
-        severity: 'critical',
-        title: 'OCCT fillet on a handle-less body REPLACES the part with its filleted bounding box',
-        detail: `volume ${vol.toFixed(0)} ≈ bbox ${bboxVol} (expected ≈ ${V_PRISM}) — occtFilletBox builds `
-          + 'makeBaseBox(bbox) when no occtHandle is present (occtEngine.ts:1589, occtFilletAvoidance.ts:107) '
-          + 'and ships it as a "requested" success. A user sees their L-bracket silently become a box.',
+        severity: 'minor',
+        title: 'late fillet on a handle-less body fails clean (no B-rep bridge result)',
+        detail: `fillet error "${filletErr}" — fail-clean per contract; the part is preserved un-filleted `
+          + 'instead of being replaced by its bounding box.',
       });
-      // Pin the bug so a fix flips this test (then update the finding).
-      expect(vol).toBeGreaterThan(V_PRISM * 1.5);
-    } else {
-      // Healthy outcome: fillet either applied on the real mesh or failed loudly.
-      expect(vol).toBeGreaterThan(V_PRISM * 0.85);
-      expect(vol).toBeLessThan(V_PRISM * 1.1);
     }
   }, 240_000);
 

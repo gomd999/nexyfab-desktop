@@ -3,6 +3,11 @@ import {
   SUPPORTED_SHAPES as SHAPE_SET,
   SUPPORTED_FEATURES as FEATURE_SET,
 } from '@/lib/openscad-render/intentToScad';
+import {
+  SHAPE_ALIASES,
+  FEATURE_ALIASES,
+  renderAliasGlossary,
+} from '@/lib/openscad-render/shapeAliases';
 
 // Derived DIRECTLY from the deterministic compiler so the LLM is never told
 // about a shape the compiler can't emit, nor kept ignorant of one it can.
@@ -16,9 +21,31 @@ Convert the user's natural-language description of a mechanical part into a stri
 NEVER write OpenSCAD code yourself — a deterministic generator does that.
 Respond with ONLY a JSON object, no markdown, no commentary, no code fences.
 
+The request may be written in ANY language (English, Korean, Japanese, Chinese,
+Spanish, Arabic, …). The shapeId and feature.type in your output are ALWAYS the
+English ids below. Map the user's shape/feature words — in whatever language —
+to the correct English id. Numbers and dimensions carry over unchanged
+regardless of language.
+
+SHAPE SELECTION (read carefully — this is the most common mistake):
+  - The GLOSSARY below is AUTHORITATIVE. If ANY word in the request matches a
+    glossary synonym, you MUST output that glossary shapeId. Example: "구체",
+    "球", "كرة", "esfera" all force shapeId "sphere" — never "box".
+  - Do NOT default to "box". "box" is ONLY for an explicitly rectangular part
+    (box / cube / block / plate / 상자 / 箱 / caja …). When unsure between box
+    and a glossary shape, the glossary shape wins.
+  - A dimension word like "지름 / diameter / 直径 / radius" describes a ROUND
+    part — it never by itself implies a box.
+
 ALLOWED shapeId values (pick exactly one): ${SUPPORTED_SHAPES.join(', ')}.
 
 ALLOWED feature.type values: ${SUPPORTED_FEATURES.join(', ')}.
+
+SHAPE NAME GLOSSARY (any-language word → English shapeId; pick the id, never a synonym):
+${renderAliasGlossary(SHAPE_ALIASES)}
+
+FEATURE NAME GLOSSARY (any-language word → English feature.type):
+${renderAliasGlossary(FEATURE_ALIASES)}
 
 Common parameter keys (all in millimeters; pick those relevant to the chosen shape):
   box:        width, height, depth
@@ -95,25 +122,45 @@ EXAMPLES (patterns only — derive your own values from the user's request):
   "a plate 40mm square 5mm thick with a 12mm hole in the middle"
    → {"shapeId":"box","params":{"width":40,"height":5,"depth":40},"features":[{"type":"hole","params":{"diameter":12}}],"summary":"40mm square plate with a centred 12mm hole"}
 
-RESPONSE FORMAT (single JSON object):
-{
-  "shapeId": "<from list>",
-  "params":  { <numeric values in mm> },
-  "features": [ { "type": "<from list>", "params": { ... } }, ... ],
-  "facets":  64,
-  "summary": "<one-sentence description of the part>"
-}
+NON-ENGLISH EXAMPLES (same rules — output ids stay English):
+  "지름 20mm 높이 50mm 원통, 가운데 지름 8mm 구멍"   (Korean: cylinder + hole)
+   → {"shapeId":"cylinder","params":{"diameter":20,"height":50},"features":[{"type":"hole","params":{"diameter":8}}],"summary":"20mm dia x 50mm cylinder with an 8mm bore"}
+  "外径30mm 内径20mm 长100mm 的管子"   (Chinese: pipe)
+   → {"shapeId":"pipe","params":{"outerDiameter":30,"innerDiameter":20,"length":100},"summary":"pipe, 30/20mm dia, 100mm long"}
+  "歯数24 モジュール1.5 の平歯車"   (Japanese: spur gear)
+   → {"shapeId":"gear","params":{"teeth":24,"module":1.5},"summary":"spur gear, 24 teeth, module 1.5"}
+  "una brida de 100mm con 4 agujeros de 8mm"   (Spanish: flange)
+   → {"shapeId":"flange","params":{"outerDiameter":100,"boltCount":4,"boltDiameter":8},"summary":"100mm flange with 4x 8mm bolt holes"}
 
-If the user's request cannot be expressed with the allowed shapes, return:
+TWO EXTRA MODES beyond the catalog shapes:
+
+A) FREE-FORM OUTLINE — for a custom 2D profile the catalog can't express
+   (L-bracket, T-profile, star, gusset, arbitrary outline). Use shapeId
+   "sketch" with a CLOSED list of {x,y} points (mm, CCW) and a "depth":
+  "an L-bracket, 50mm legs, 20mm wide, 5mm thick"
+   → {"shapeId":"sketch","profile":[{"x":0,"y":0},{"x":50,"y":0},{"x":50,"y":20},{"x":20,"y":20},{"x":20,"y":50},{"x":0,"y":50}],"params":{"depth":5},"summary":"L-bracket, 5mm thick"}
+
+B) ASSEMBLY — for SEVERAL DIFFERENT parts positioned in space. Return a
+   "parts" array; each part is a normal shape object PLUS a "position" [x,y,z]
+   (mm) and optional "rotation" [x,y,z] (degrees). Compute sensible positions:
+  "a 80x80x5 base plate with 4 cylindrical legs 10mm dia 40mm tall at the corners"
+   → {"parts":[{"name":"plate","shapeId":"box","params":{"width":80,"height":5,"depth":80},"position":[0,0,0]},{"name":"leg1","shapeId":"cylinder","params":{"diameter":10,"height":40},"position":[30,-22,30]},{"name":"leg2","shapeId":"cylinder","params":{"diameter":10,"height":40},"position":[-30,-22,30]},{"name":"leg3","shapeId":"cylinder","params":{"diameter":10,"height":40},"position":[30,-22,-30]},{"name":"leg4","shapeId":"cylinder","params":{"diameter":10,"height":40},"position":[-30,-22,-30]}],"summary":"base plate on 4 legs"}
+
+RESPONSE FORMAT — return EXACTLY ONE of:
+  • A catalog part:  { "shapeId": "<from list>", "params": {…}, "features": [...], "facets": 64, "summary": "…" }
+  • A free-form sketch:  { "shapeId": "sketch", "profile": [{x,y},…], "params": {"depth": n}, "summary": "…" }
+  • An assembly:  { "parts": [ {shapeId, params, position, rotation?}, … ], "summary": "…" }
+
+If the request truly cannot be expressed at all, return:
 { "error": "unsupported", "reason": "<short explanation>" }`;
 
 const def: PromptDefinition = {
   id: 'scad-intent-from-nl',
-  version: '1.3.0',
-  description: 'Parse natural-language mechanical-part descriptions into a strict JSON intent. Whitelist-bounded — never emits SCAD directly.',
+  version: '1.6.0',
+  description: 'Parse natural-language mechanical-part descriptions (any of NexyFab\'s 6 UI languages) into a strict JSON intent. Whitelist-bounded — never emits SCAD directly. v1.4 added a multilingual glossary + non-English few-shots; v1.5 makes the glossary authoritative, forbids the box default, and drops temperature to 0 (shape classification is deterministic — 0.1 caused needless shape flips).',
   template: TEMPLATE,
   defaults: {
-    temperature: 0.1,
+    temperature: 0,
     maxTokens: 800,
     timeoutMs: 30_000,
   },

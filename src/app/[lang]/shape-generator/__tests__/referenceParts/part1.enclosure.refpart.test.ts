@@ -219,11 +219,12 @@ describeMaybe('REF-PART 1 · electronics enclosure', () => {
     expect(Math.abs(p2.y - 30)).toBeLessThan(1e-3);
   });
 
-  it('PROBE — natural CAD order (shell → sketch boss) — does a sketch survive after an OCCT feature?', async () => {
+  it('natural CAD order (shell → sketch boss): the sketch merges after an OCCT feature (FIXED — was a pinned finding)', async () => {
     cacheClear();
     const sk = solveFootprintSketch();
-    // Square boss profile (lines) — a circle-only profile cannot extrude AT ALL
-    // (separate finding in part 2), so the merge path is probed with lines.
+    // Square boss profile (lines). (Circle-only profiles used to be
+    // unextrudable — FIXED, see part 2 — but this probe targets the
+    // post-OCCT merge path, so plain lines keep it focused.)
     const [bx, by] = BOSS_XY[0];
     const s = BOSS_R;
     const bp = [
@@ -253,6 +254,14 @@ describeMaybe('REF-PART 1 · electronics enclosure', () => {
         operation: 'add',
       },
     };
+    // Shell-only baseline so the boss's closed-form contribution is provable.
+    const shellOnly = await applyFeaturePipelineDetailedAsync(
+      emptySketchBase(),
+      [bodyExtrudeFeature(sk), shellFeatureInst()],
+      { occtMode: true },
+    );
+    const vShellOnly = meshVolume(shellOnly.geometry);
+    cacheClear();
     const res = await applyFeaturePipelineDetailedAsync(
       emptySketchBase(),
       [bodyExtrudeFeature(sk), shellFeatureInst(), boss],
@@ -261,19 +270,15 @@ describeMaybe('REF-PART 1 · electronics enclosure', () => {
     expect(res.geometry.attributes.position.count).toBeGreaterThan(0);
     const vol = meshVolume(res.geometry);
     const bossError = res.errors['f-sketchboss'];
-    console.log(`[REF-PART 1] shell→sketch-boss probe: vol=${vol.toFixed(0)}, error=${bossError ?? '(none)'}`);
-    if (bossError) {
-      recordFinding({
-        part: 'P1 enclosure',
-        severity: 'major',
-        title: 'sketchExtrude after an OCCT-output feature (shell) does not merge',
-        detail: `Adding a sketch boss after shell ${bossError ? `errors with "${bossError}"` : 'silently no-ops'} — `
-          + 'OCCT tessellation is indexed without uv, ExtrudeGeometry is non-indexed with uv, so '
-          + 'mergeGeometries() rejects the pair. A user must author every sketch feature BEFORE '
-          + 'shell/fillet or switch to primitive booleans (pipelineManager.ts runSketchExtrude).',
-      });
-    }
-    // Pipeline must never crash or go empty — that part is non-negotiable.
+    console.log(`[REF-PART 1] shell→sketch-boss: vol=${vol.toFixed(0)} (shell-only ${vShellOnly.toFixed(0)}), error=${bossError ?? '(none)'}`);
+    // FIXED (meshMerge unification layer): OCCT tessellation (indexed, uv-less)
+    // and ExtrudeGeometry (non-indexed, uv) now align before merging, so a
+    // sketch boss added AFTER shell applies instead of erroring with
+    // "merge produced empty geometry". Closed form: the 8×8×28 boss sits in
+    // the open cavity, so the volume grows by exactly its prism volume.
+    expect(bossError).toBeUndefined();
+    const bossVol = (2 * s) * (2 * s) * (DEPTH - WALL); // 1 792
+    expect(Math.abs(vol - (vShellOnly + bossVol))).toBeLessThan(bossVol * 0.02);
     expect(vol).toBeGreaterThan(V_SHELL * 0.9);
   }, 120_000);
 

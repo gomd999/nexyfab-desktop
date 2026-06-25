@@ -1,11 +1,18 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition, FeatureApplyContext } from './types';
-import { occtChamferBox, occtEdgeSignatures, hostBoxFromGeometry, type ReplicadEdgeFinder } from './occtEngine';
+import {
+  occtChamferBox,
+  occtEdgeSignatures,
+  hostBoxFromGeometry,
+  resolveBrepHostHandle,
+  resolveBrepHostHandleAsync,
+  type ReplicadEdgeFinder,
+} from './occtEngine';
 import { wantsOcctEngine, shouldUseOcctEngine } from './engineSelection';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 import { assertRoundingApplied } from './roundingGuard';
-import { classifyMeshDowngrade, stampDowngrade } from './downgradeNotice';
+import { classifyMeshDowngrade, stampDowngrade, clearStaleBrepHandle } from './downgradeNotice';
 import { captureKernelFailure } from './kernelCorpus';
 import { tryMeshChamfer } from './meshRounding';
 import {
@@ -52,9 +59,14 @@ function applyChamferOcct(
   geometry: THREE.BufferGeometry,
   dist: number,
   edgeFinder: ReplicadEdgeFinder | null,
+  hostHandle?: string | null,
 ): THREE.BufferGeometry | null {
   try {
-    const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
+    // Fail-clean host contract: registered handle, or null only for a
+    // verifiably-box mesh; otherwise resolveBrepHostHandle throws and we fall
+    // to the mesh path below — never a bounding-box stand-in. Async callers
+    // pre-bridge via resolveBrepHostHandleAsync and pass the handle in.
+    const upstreamHandle = hostHandle !== undefined ? hostHandle : resolveBrepHostHandle(geometry);
     const host = hostBoxFromGeometry(geometry);
     const result = occtChamferBox(host, dist, {}, upstreamHandle, edgeFinder ?? undefined);
     if (result.handle) result.geometry.userData.occtHandle = result.handle;
@@ -83,7 +95,7 @@ function applyChamferMeshCsg(
   const beveled = tryMeshChamfer(geometry, dist);
   if (beveled) {
     if (ctx?.featureId) stampFaceFeatureIdAll(beveled, ctx.featureId);
-    return beveled;
+    return clearStaleBrepHandle(beveled);
   }
   if (!geometry.index) {
     throw new Error('Chamfer requires indexed (manifold) geometry');
@@ -130,7 +142,8 @@ function applyChamferMeshCsg(
       }),
     );
   }
-  return result.geometry;
+  // Mesh approximation output must never carry the upstream B-rep handle.
+  return clearStaleBrepHandle(result.geometry);
 }
 
 function applyChamferSync(
@@ -157,9 +170,24 @@ async function applyChamferWithEdgeFinder(
   const engine = Math.round(params.engine ?? 0);
   const wantedOcct = wantsOcctEngine(engine);
   if (shouldUseOcctEngine(engine)) {
-    const edgeFinder = await buildBestEdgeFinder(ctx, geometry);
-    const out = applyChamferOcct(geometry, dist, edgeFinder);
-    if (out) return out;
+    try {
+      // Async host resolution can bridge a handle-less mesh into a faithful
+      // B-rep (importSTL + simplify) before chamfering; throws fail-clean.
+      const hostHandle = await resolveBrepHostHandleAsync(geometry);
+      const edgeFinder = await buildBestEdgeFinder(ctx, geometry);
+      const out = applyChamferOcct(geometry, dist, edgeFinder, hostHandle);
+      if (out) return out;
+    } catch (err) {
+      console.warn('[chamfer] OCCT host resolution failed, falling back to mesh approximator:', err);
+      captureKernelFailure({
+        op: 'chamfer',
+        stage: 'host-resolve',
+        params: { distance: dist },
+        geometry,
+        error: err,
+        resolution: { strategy: 'mesh-fallback', requested: { distance: dist } },
+      });
+    }
   }
   return applyChamferMeshCsg(geometry, dist, ctx, wantedOcct);
 }

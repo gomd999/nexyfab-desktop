@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { FeatureDefinition } from './types';
 import { occtCircularPattern } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 
 export const circularPatternFeature: FeatureDefinition = {
   type: 'circularPattern',
@@ -53,6 +54,8 @@ export const circularPatternFeature: FeatureDefinition = {
         }
       }
     }
-    return circularPatternFeature.apply(geometry, params);
+    // Mesh fallback after wanting B-rep: surface the downgrade (and the
+    // helper drops any stale occtHandle so B-rep and mesh can't diverge).
+    return noteMeshFallback(circularPatternFeature.apply(geometry, params), { op: 'Circular Pattern' });
   },
 };

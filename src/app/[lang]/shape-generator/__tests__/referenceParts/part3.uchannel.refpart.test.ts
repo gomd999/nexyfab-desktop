@@ -87,74 +87,67 @@ const drawingConfig = {
 };
 
 /** U-channel geometry via the production geometry FUNCTIONS (applyFlange /
- *  applyTab) — the pipeline route is blocked (see findings below), so the
- *  drawing/flat-pattern stages run on the direct-built body. uv must be
- *  stripped first or applyFlange's merge fails (production gap, pinned). */
+ *  applyTab) on the DEFAULT box base (uv intact — the meshMerge unification
+ *  layer aligns the attribute sets; the old uv-strip workaround is gone). */
 function buildUChannelDirect(): THREE.BufferGeometry {
   const base = defaultBoxBase();
-  base.deleteAttribute('uv'); // workaround — see 'flange on the default box base' finding
   const f1 = applyFlange(base, { height: FLANGE_H, angle: 90, radius: R, edgeIndex: 0 });
   const f2 = applyFlange(f1, { height: FLANGE_H, angle: 90, radius: R, edgeIndex: 1 });
   return applyTab(f2, { width: 20, length: 10, position: 0.5, edgeIndex: 2 });
 }
 
 describeMaybe('REF-PART 3 · sheet-metal U-channel chassis', () => {
-  it('FINDING PROBE — flange on the DEFAULT box base fails in the pipeline', async () => {
-    cacheClear();
-    const res = await applyFeaturePipelineDetailedAsync(defaultBoxBase(), [flange('s-f-probe', 0)], { occtMode: false });
-    console.log(`[REF-PART 3] flange-on-default-base error: ${res.errors['s-f-probe'] ?? '(none)'}`);
-    if (res.errors['s-f-probe']) {
-      recordFinding({
-        part: 'P3 U-channel',
-        severity: 'critical',
-        title: 'flange feature fails on the default box base ("Failed to merge flange geometry")',
-        detail: 'applyFlange builds a position-only flange mesh and mergeGeometries rejects the pair because '
-          + 'BoxGeometry carries uv (features/sheetMetal.ts:361). The feature\'s own unit tests strip uv to pass '
-          + '(features/sheetMetal.test.ts:13-22). tab.ts already has the fix pattern (alignForMerge, tab.ts:43) — '
-          + 'flange/hem never adopted it. A user adding the FIRST flange to the standard plate sees an error.',
-      });
-      expect(res.errors['s-f-probe']).toMatch(/merge/i);
-    }
-  }, 60_000);
-
-  it('FINDING PROBE — a SECOND flange fails even on a uv-less base (provenance stamp breaks merges)', async () => {
+  it('flange on the DEFAULT box base applies through the pipeline (FIXED — was a pinned finding)', async () => {
     cacheClear();
     const base = defaultBoxBase();
-    base.deleteAttribute('uv');
-    const res = await applyFeaturePipelineDetailedAsync(base, [flange('s-f1', 0), flange('s-f2', 1)], { occtMode: false });
-    console.log(`[REF-PART 3] second-flange errors: ${JSON.stringify(res.errors)}`);
-    expect(res.errors['s-f1']).toBeUndefined(); // first flange merges fine without uv
-    if (res.errors['s-f2']) {
-      recordFinding({
-        part: 'P3 U-channel',
-        severity: 'critical',
-        title: 'any merge-based feature after another feature fails — pipeline provenance stamp poisons the attribute set',
-        detail: 'pipelineManager stamps every feature output with the per-vertex nfabFaceFeatureId attribute '
-          + '(pipelineManager.ts:216), but applyFlange/applyHem build tools WITHOUT it, and mergeGeometries '
-          + 'hard-fails on any attribute-set mismatch. Consequence: flange→flange, flange→hem, or any '
-          + 'merge-feature chain errors on the SECOND feature. A U-channel (two flanges) cannot be built '
-          + 'through the feature pipeline at all.',
-      });
-      expect(res.errors['s-f2']).toMatch(/merge/i);
-    }
+    const baseVerts = base.attributes.position.count;
+    const res = await applyFeaturePipelineDetailedAsync(base, [flange('s-f-probe', 0)], { occtMode: false });
+    console.log(`[REF-PART 3] flange-on-default-base error: ${res.errors['s-f-probe'] ?? '(none)'}`);
+    // FIXED (meshMerge unification): applyFlange aligns the uv-carrying
+    // BoxGeometry base with its position-only flange mesh instead of letting
+    // mergeGeometries hard-fail ("Failed to merge flange geometry").
+    expect(res.errors['s-f-probe']).toBeUndefined();
+    expect(res.geometry.attributes.position.count).toBeGreaterThan(baseVerts);
   }, 60_000);
 
-  it('FINDING PROBE — bendRelief through the pipeline crashes on the default box base', async () => {
+  it('flange → flange (U-channel) builds through the PIPELINE (FIXED — was a pinned finding)', async () => {
+    cacheClear();
+    // Default base, uv intact, AND the pipeline's per-vertex provenance stamp
+    // on the first flange's output — both used to break the second merge.
+    const res = await applyFeaturePipelineDetailedAsync(
+      defaultBoxBase(), [flange('s-f1', 0), flange('s-f2', 1)], { occtMode: false });
+    console.log(`[REF-PART 3] second-flange errors: ${JSON.stringify(res.errors)}`);
+    expect(Object.entries(res.errors)).toEqual([]);
+    res.geometry.computeBoundingBox();
+    const bb = res.geometry.boundingBox!;
+    // Two upstanding flanges → a real U-channel silhouette.
+    expect(bb.max.y - bb.min.y).toBeGreaterThan(FLANGE_H * 0.6);
+    expect(bb.max.z - bb.min.z).toBeGreaterThan(BL); // both ends flanged outward
+    console.log(`[REF-PART 3] pipeline U-channel bbox ${(bb.max.x - bb.min.x).toFixed(1)}×${(bb.max.y - bb.min.y).toFixed(1)}×${(bb.max.z - bb.min.z).toFixed(1)}`);
+  }, 60_000);
+
+  it('bendRelief with NO bend in the history fails CLEAN with a clear message (FIXED — was an attribute crash)', async () => {
     cacheClear();
     const res = await applyFeaturePipelineDetailedAsync(defaultBoxBase(), [relief('s-r-probe', 50)], { occtMode: false });
     console.log(`[REF-PART 3] bendRelief-on-default-base error: ${res.errors['s-r-probe'] ?? '(none)'}`);
-    if (res.errors['s-r-probe']) {
-      recordFinding({
-        part: 'P3 U-channel',
-        severity: 'critical',
-        title: 'bendRelief (and cornerRelief) crash on the default box base in the pipeline',
-        detail: `error "${res.errors['s-r-probe']}" — reliefCuts.csgSubtract stamps the TOOL with `
-          + 'nfabFaceFeatureId and configureEvaluatorForProvenance then adds that attribute to the evaluator, '
-          + 'but the BASE (feature #1 input) was never stamped, so three-bvh-csg dereferences a missing '
-          + 'attribute. The relief features only work when something upstream already stamped the body.',
-      });
-      expect(res.errors['s-r-probe']).toMatch(/array|attribute/i);
-    }
+    // FIXED: the relief locates its bend from __bendHistory. A flat plate with
+    // no bend has nothing to relieve — the old behaviour was a three-bvh-csg
+    // crash on a missing attribute; now it is a descriptive feature error.
+    expect(res.errors['s-r-probe']).toBeDefined();
+    expect(res.errors['s-r-probe']).toMatch(/requires a bend/i);
+    expect(res.errors['s-r-probe']).not.toMatch(/array|attribute/i);
+  }, 60_000);
+
+  it('bendRelief AFTER a bend locates the bend line from the history and cuts (pipeline)', async () => {
+    cacheClear();
+    const res = await applyFeaturePipelineDetailedAsync(
+      stampedBox(BW, BT, BL),
+      [bend('s-r-bend', 75), relief('s-r-after', 75)],
+      { occtMode: false },
+    );
+    console.log(`[REF-PART 3] bend→relief errors: ${JSON.stringify(res.errors)}`);
+    expect(Object.entries(res.errors)).toEqual([]);
+    expect(res.geometry.attributes.position.count).toBeGreaterThan(0);
   }, 60_000);
 
   it('FINDING PROBE — a U needs flanges on BOTH ends; the bend feature refolds the first flange', async () => {
@@ -190,43 +183,45 @@ describeMaybe('REF-PART 3 · sheet-metal U-channel chassis', () => {
     console.log(`[REF-PART 3] SCORECARD U-channel (direct) bbox ${(bb.max.x - bb.min.x).toFixed(1)}×${(bb.max.y - bb.min.y).toFixed(1)}×${(bb.max.z - bb.min.z).toFixed(1)}, vol=${meshVolume(geo).toFixed(0)}`);
   });
 
-  it('FINDING PROBE — flat pattern of the flange-built U-channel: bend table is EMPTY', async () => {
+  it('flat pattern of the flange-built U-channel: 2 bend rows + exact developed length (FIXED — table was EMPTY)', async () => {
     cacheClear();
-    // flatPattern runs fine as a pipeline feature on the direct-built channel.
+    // flatPattern runs as a pipeline feature on the direct-built channel.
     const res = await applyFeaturePipelineDetailedAsync(buildUChannelDirect(), [flatPattern('s-fp-flat')], { occtMode: false });
     expect(Object.entries(res.errors)).toEqual([]);
     const meta = getFlatPatternMetadata(res.geometry);
     expect(meta).not.toBeNull();
     console.log(`[REF-PART 3] flange flat pattern: bends=${meta!.bendTable.length}, blank=${meta!.width.toFixed(1)}×${meta!.length.toFixed(1)}`);
-    if (meta!.bendTable.length === 0) {
-      recordFinding({
-        part: 'P3 U-channel',
-        severity: 'critical',
-        title: 'flange bends are invisible to the flat pattern',
-        detail: 'applyFlange never records __bendHistory (features/sheetMetal.ts:215-365 vs applyBend:200-206), '
-          + 'so flatPattern of a flange-built part emits a bend table with 0 rows and a blank sized from the '
-          + 'FOLDED bbox — the DXF a user sends to the laser cutter has no bend lines and the wrong blank size.',
-      });
-      expect(meta!.bendTable).toHaveLength(0); // pinned until fixed
+    // FIXED: applyFlange now records __bendHistory like applyBend, so the
+    // flat pattern sees both flange bends and the laser DXF carries them.
+    expect(meta!.bendTable).toHaveLength(2);
+    // Closed form — U-channel = 3 flats + 2 BA:
+    //   flats = base blank 160 + two flange legs (height − radius = 27 each).
+    const k = getKFactor('mildSteel', R, BT);
+    const ba = bendAllowance(90, R, BT, k);
+    const leg = FLANGE_H - R;
+    expect(meta!.length).toBeCloseTo(BL + 2 * (leg + ba), 4);
+    // Width = extent along the bend-line axis — the 10 mm +X mounting tab
+    // (applyTab in buildUChannelDirect) widens the blank to 90.
+    expect(meta!.width).toBeCloseTo(BW + 10, 4);
+    for (const row of meta!.bendTable) {
+      expect(row.angle).toBe(90);
+      expect(row.radius).toBe(R);
+      expect(Math.abs(row.bendAllowance - ba)).toBeLessThan(1e-6);
     }
+    // Bend lines on the blank: end of the leading leg / end of the base blank.
+    expect(meta!.bendTable[0].position).toBeCloseTo(leg, 4);
+    expect(meta!.bendTable[1].position).toBeCloseTo(leg + ba + BL, 4);
+    console.log(`[REF-PART 3] SCORECARD U-channel flat: blank ${meta!.width.toFixed(1)}×${meta!.length.toFixed(1)} `
+      + `(= 3 flats [${leg}, ${BL}, ${leg}] + 2×BA ${ba.toFixed(3)})`);
   }, 60_000);
 
-  it('L-channel via relief + bend → flat pattern with a real bend table → flat-pattern DXF', async () => {
+  it('L-channel via bend + relief → flat pattern with a real bend table → flat-pattern DXF', async () => {
     cacheClear();
-    // Measure the bent body first (the flat-pattern length formula walks ITS bbox).
-    const bentRes = await applyFeaturePipelineDetailedAsync(
-      stampedBox(BW, BT, BL),
-      [relief('s-l-relief', 75), bend('s-l-bend', 75)],
-      { occtMode: false },
-    );
-    expect(Object.entries(bentRes.errors)).toEqual([]);
-    bentRes.geometry.computeBoundingBox();
-    const bentSizeZ = bentRes.geometry.boundingBox!.max.z - bentRes.geometry.boundingBox!.min.z;
-
-    cacheClear();
+    // The relief locates the bend from __bendHistory, so the bend comes first
+    // in the stack and the relief aligns itself to the recorded bend line.
     const res = await applyFeaturePipelineDetailedAsync(
       stampedBox(BW, BT, BL),
-      [relief('s-l-relief', 75), bend('s-l-bend', 75), flatPattern('s-l-flat')],
+      [bend('s-l-bend', 75), relief('s-l-relief', 75), flatPattern('s-l-flat')],
       { occtMode: false },
     );
     expect(Object.entries(res.errors)).toEqual([]);
@@ -243,23 +238,20 @@ describeMaybe('REF-PART 3 · sheet-metal U-channel chassis', () => {
     expect(Math.abs(row.bendAllowance - ba)).toBeLessThan(1e-6);
     expect(Math.abs(row.kFactor - k)).toBeLessThan(1e-6);
 
-    console.log(`[REF-PART 3] SCORECARD L-channel flat: blank ${meta!.width.toFixed(1)}×${meta!.length.toFixed(1)}, `
-      + `BA=${ba.toFixed(2)} (K=${k}), bentSizeZ=${bentSizeZ.toFixed(1)}, developed(=original blank)=${BL}`);
+    // FIXED: developed length comes from the bend history (flats + BA), not
+    // from walking the FOLDED bbox (which gave 131.1 mm for this part).
+    // Closed form — blank = flat1 + flat2 + BA EXACTLY, where the fold
+    // consumes its bend allowance out of the original 160 mm blank:
+    //   flat1 = 120 (bend line), flat2 = 160 − 120 − BA.
+    const flat1 = BL * 0.75;
+    const flat2 = BL - flat1 - ba;
+    expect(meta!.length).toBeCloseTo(flat1 + ba + flat2, 6);
+    expect(meta!.length).toBeCloseTo(BL, 6); // = the original blank
+    expect(row.position).toBeCloseTo(flat1, 6);
+    expect(meta!.width).toBeCloseTo(BW, 4);
 
-    // Honest developed length is the ORIGINAL 160 mm blank (the bend consumed
-    // arc out of it). The production formula walks the FOLDED bbox instead.
-    if (Math.abs(meta!.length - BL) > 5) {
-      recordFinding({
-        part: 'P3 U-channel',
-        severity: 'critical',
-        title: 'flat-pattern developed length computed from the FOLDED bbox',
-        detail: `generateFlatPattern walks bb.min.z..bb.max.z of the bent body (features/sheetMetal.ts:594-634): `
-          + `blank length ${meta!.length.toFixed(1)} mm vs the true developed ≈ ${BL} mm — the folded flange's `
-          + 'height is not unfolded into the blank. Cutting this DXF yields a short part.',
-      });
-      // Pin the actual formula so a fix is detected.
-      expect(Math.abs(meta!.length - (bentSizeZ + ba))).toBeLessThan(2);
-    }
+    console.log(`[REF-PART 3] SCORECARD L-channel flat: blank ${meta!.width.toFixed(1)}×${meta!.length.toFixed(1)} `
+      + `(= flat1 ${flat1} + BA ${ba.toFixed(3)} + flat2 ${flat2.toFixed(3)}), K=${k}`);
 
     // Flat-pattern DXF IR through the real exporter.
     const entities = flatPatternToDXFEntities({ geometry: res.geometry, ...meta! });

@@ -59,6 +59,29 @@ export const INTENT_KINDS = [
   'create_pattern_grid',
   'create_revolve_axis',
   'add_pattern_to_last',
+  // ── Generic in-context feature add (thread, draft, shell, helix, scale, …) ──
+  // Lets the LLM target any feature in ADDABLE_FEATURE_TYPES without a bespoke
+  // kind per feature. Applied via the viewport path (planIntentToFeatureEdit);
+  // the planner panel treats it as a no-op (see planFromIntent).
+  'add_feature_to_last',
+  // ── Context-aware edits (need the model context to resolve the target) ──
+  // "make it 8mm" / "make the fillet bigger" → update the last feature's param.
+  // "remove the fillet" / "undo that" → remove the last feature.
+  'update_last_param',
+  'remove_last',
+  // ── Free-form sketch (custom 2D outline → extrude) ──────────────────────
+  // For shapes NOT in the catalog: the LLM emits a 2D polygon outline and an
+  // extrude depth ("an L-shaped bracket profile 5mm thick", "a 5-point star").
+  'create_sketch_extrude',
+  // ── Multi-step composition (idea → base + a sequence of features) ───────
+  // "a 50x30x20 plate with 4 corner holes 5mm and 2mm filleted edges" → one
+  // base primitive + an ordered list of features, applied as a batch.
+  'build_part',
+  // ── Heterogeneous assembly (idea → several DIFFERENT parts, positioned) ──
+  // "a base plate with 4 cylindrical legs at the corners" → a list of named
+  // parts, each its own shape + params + position. Renders real per-part
+  // geometry (PlacedPart path). Covers both shape synthesis and composition.
+  'assemble_parts',
 ] as const;
 
 export type IntentKind = (typeof INTENT_KINDS)[number];
@@ -67,10 +90,24 @@ export type IntentKind = (typeof INTENT_KINDS)[number];
  * Detect a PlanIntent from a free-form natural-language string.
  * Returns null when no regex matches — caller should fall back to an LLM.
  */
+/** Distinct feature keywords — used to detect multi-feature prompts. */
+const FEATURE_WORD_RES: RegExp[] = [
+  /\b(holes?|bore|drill)\b/, /\b(fillet|rounded?)\b/, /\b(chamfer|bevel)\b/,
+  /\b(pocket)\b/, /\b(shell|hollow)\b/, /\b(thread)\b/, /\b(draft)\b/,
+];
+
 export function detectIntent(input: string): PlanIntent | null {
   const text = input.trim();
   if (!text) return null;
   const lower = text.toLowerCase();
+
+  // Multi-feature guard: when the prompt mentions 2+ DISTINCT feature types
+  // ("a plate with a hole AND rounded edges"), the single-feature regex
+  // composites (create_box_with_holes / _fillet / _chamfer) would capture one
+  // and silently drop the rest. Defer to the LLM, which composes all of them
+  // via build_part. (Single-feature prompts still hit the fast regex path.)
+  const distinctFeatures = FEATURE_WORD_RES.filter((re) => re.test(lower)).length;
+  if (distinctFeatures >= 2) return null;
 
   // Order matters: more specific patterns first.
   // Phase 3.AI.2 additions are tried *before* their single-feature counterparts

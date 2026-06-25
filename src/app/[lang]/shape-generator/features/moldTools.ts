@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
-import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry, resolveBrepHostHandle } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback } from './downgradeNotice';
 
@@ -111,7 +111,9 @@ export const moldToolsFeature: FeatureDefinition = {
 
     if (shouldUseOcctEngine(engine)) {
       try {
-        const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
+        // Fail-clean host contract — throws for a handle-less non-box body
+        // (→ mesh CSG fallback below) instead of molding its bounding box.
+        const upstreamHandle = resolveBrepHostHandle(geometry);
         const host = hostBoxFromGeometry(geometry);
         const result = occtBoxBooleanWithPrimitive(
           'subtract',

@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { FeatureDefinition } from './types';
 import { occtMirror } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback } from './downgradeNotice';
 
 export const mirrorFeature: FeatureDefinition = {
   type: 'mirror',
@@ -52,6 +53,8 @@ export const mirrorFeature: FeatureDefinition = {
         }
       }
     }
-    return mirrorFeature.apply(geometry, params);
+    // Mesh fallback after wanting B-rep: surface the downgrade (and the
+    // helper drops any stale occtHandle so B-rep and mesh can't diverge).
+    return noteMeshFallback(mirrorFeature.apply(geometry, params), { op: 'Mirror' });
   },
 };

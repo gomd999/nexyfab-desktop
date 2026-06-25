@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { FeatureDefinition } from './types';
+import { mergeAligned } from './meshMerge';
 import {
   type SheetMetalMaterial,
   SHEET_METAL_MATERIALS,
@@ -44,6 +44,39 @@ export interface FlangeParams {
   angle: number;
   radius: number;
   edgeIndex: number;
+}
+
+/**
+ * One recorded bend on `userData.__bendHistory`. The legacy fields are the
+ * plain BendParams every consumer already reads; the optional v2 fields are
+ * written by the bend/flange/hem appliers so the flat pattern can compute an
+ * EXACT developed length (and bendRelief can locate the bend line) instead of
+ * walking the FOLDED bounding box:
+ *
+ *   lineAxis/linePos  where the bend line physically sits (absolute coords at
+ *                     apply time — survives later folding of the bbox).
+ *   blankLength       blank extent along the unfold axis BEFORE the op.
+ *   flatBefore        straight length from the blank start to the bend line
+ *                     (folding ops only — the fold consumes its bend
+ *                     allowance out of this blank).
+ *   flatAdded         appended leg length (material-ADDING ops: flange/hem,
+ *                     whose arc+leg is new material grown off the edge).
+ *   addsMaterial      true for flange/hem; false/absent for bend.
+ */
+export interface BendHistoryEntry extends BendParams {
+  source?: 'bend' | 'flange' | 'hem' | 'jog';
+  /** Axis the bend LINE runs along ('x' → unfold axis is Z, and vice versa). */
+  lineAxis?: 'x' | 'z';
+  /** Absolute coordinate of the bend line along the unfold axis at apply time. */
+  linePos?: number;
+  /** Blank extent along the unfold axis before this op was applied. */
+  blankLength?: number;
+  /** Straight length before the bend line (folding ops). */
+  flatBefore?: number;
+  /** Appended flat leg length (material-adding ops). */
+  flatAdded?: number;
+  /** True when the op appends material instead of folding the blank. */
+  addsMaterial?: boolean;
 }
 
 /** Hem types per ASM Handbook / press-brake conventions:
@@ -196,12 +229,25 @@ export function applyBend(
 
   // Record this bend in the history so a downstream flatPattern feature can
   // unfold the stack correctly. We copy the parent's history (if any) rather
-  // than mutating the source geometry's userData.
+  // than mutating the source geometry's userData. The v2 fields capture the
+  // bend line in ABSOLUTE coordinates plus the pre-fold blank extent, so the
+  // flat pattern can recover the true developed length (a fold consumes its
+  // bend allowance out of the blank — the blank length IS the developed
+  // length) and bendRelief can find the line after the bbox has folded up.
   const parentHistory =
-    (geometry.userData as { __bendHistory?: BendParams[] } | undefined)?.__bendHistory ?? [];
+    (geometry.userData as { __bendHistory?: BendHistoryEntry[] } | undefined)?.__bendHistory ?? [];
+  const entry: BendHistoryEntry = {
+    ...params,
+    source: 'bend',
+    lineAxis: bendAlongX ? 'x' : 'z',
+    linePos: bendLinePos,
+    blankLength: primarySize,
+    flatBefore: bendLinePos - primaryMin,
+    addsMaterial: false,
+  };
   geo.userData = {
     ...(geo.userData ?? {}),
-    __bendHistory: [...parentHistory, { ...params }],
+    __bendHistory: [...parentHistory, entry],
   };
   return geo;
 }
@@ -210,11 +256,16 @@ export function applyBend(
 
 /**
  * Add an edge flange (bent tab) to a selected edge of the geometry.
- * Generates new geometry for the flange and merges it with the original.
+ * Generates new geometry for the flange and merges it with the original
+ * (attribute sets unified via the shared meshMerge layer, so the base may
+ * come from BoxGeometry, OCCT tessellation, CSG, or a prior flange).
+ * Records the bend on `userData.__bendHistory` so the flat-pattern feature
+ * sees flange bends exactly like bend-feature bends.
  */
 export function applyFlange(
   geometry: THREE.BufferGeometry,
   params: FlangeParams,
+  opts?: { historySource?: 'flange' | 'hem' },
 ): THREE.BufferGeometry {
   const { height, angle, radius, edgeIndex } = params;
   const geo = geometry.clone();
@@ -357,10 +408,44 @@ export function applyFlange(
   flangeGeo.setIndex(indices);
   flangeGeo.computeVertexNormals();
 
-  // Merge original geometry with the flange
-  const merged = mergeGeometries([geo, flangeGeo]);
+  // Merge original geometry with the flange. mergeAligned unifies the
+  // attribute matrix (uv-carrying bases, provenance-stamped pipeline
+  // outputs, index parity) so the merge no longer fails on the default box
+  // base or on a second flange — see meshMerge.ts.
+  const merged = mergeAligned(geo, flangeGeo);
   if (!merged) throw new Error('Failed to merge flange geometry');
   merged.computeVertexNormals();
+
+  // Record the flange's bend so flat patterns and bend tables see it
+  // (parity with applyBend). A flange ADDS material: the arc consumes its
+  // bend allowance and the straight leg (height − radius) is appended flat.
+  // Carry the parent userData forward (minus any B-rep handle — the merged
+  // mesh no longer matches that solid).
+  const { occtHandle: _staleHandle, ...carriedUserData } =
+    (geometry.userData ?? {}) as Record<string, unknown>;
+  const parentHistory =
+    (carriedUserData as { __bendHistory?: BendHistoryEntry[] }).__bendHistory ?? [];
+  const entry: BendHistoryEntry = {
+    angle,
+    radius,
+    // Edge → fraction along the unfold axis: +Z/+X edges sit at the far end.
+    position: edgeIndex === 0 || edgeIndex === 2 ? 1 : 0,
+    direction: 'up',
+    source: opts?.historySource ?? 'flange',
+    lineAxis: edgeIndex <= 1 ? 'x' : 'z',
+    linePos:
+      edgeIndex === 0 ? bb.max.z
+      : edgeIndex === 1 ? bb.min.z
+      : edgeIndex === 2 ? bb.max.x
+      : bb.min.x,
+    blankLength: edgeIndex <= 1 ? sizeZ : sizeX,
+    flatAdded: flangeLen,
+    addsMaterial: true,
+  };
+  merged.userData = {
+    ...carriedUserData,
+    __bendHistory: [...parentHistory, entry],
+  };
   return merged;
 }
 
@@ -400,12 +485,16 @@ export function applyHem(
   // The flange's `height` is the total reach from the bend root; for a
   // hem we want the flat tail to be `params.length`, so the height that
   // includes the arc tip is roughly `length + radius`.
-  return applyFlange(geo, {
-    height: params.length + radius,
-    angle: 180,
-    radius,
-    edgeIndex: params.edgeIndex,
-  });
+  return applyFlange(
+    geo,
+    {
+      height: params.length + radius,
+      angle: 180,
+      radius,
+      edgeIndex: params.edgeIndex,
+    },
+    { historySource: 'hem' },
+  );
 }
 
 // ─── Apply Jog (Z-bend) ────────────────────────────────────────────────────────
@@ -472,13 +561,15 @@ export function applyJog(
   const jogAngleDeg = (jogAngleRad * 180) / Math.PI;
   const radius = params.radius ?? Math.max(0.5, thickness);
   const parentHistory =
-    (geometry.userData as { __bendHistory?: BendParams[] } | undefined)?.__bendHistory ?? [];
+    (geometry.userData as { __bendHistory?: BendHistoryEntry[] } | undefined)?.__bendHistory ?? [];
+  // Jog entries stay legacy-shaped (no exact flat data): the flat pattern's
+  // legacy walk reproduces the established jog developed length (blank + 2·BA).
   geo.userData = {
     ...(geo.userData ?? {}),
     __bendHistory: [
       ...parentHistory,
-      { angle: jogAngleDeg, radius, position: params.position, direction: 'up' as const },
-      { angle: jogAngleDeg, radius, position: params.position, direction: 'down' as const },
+      { angle: jogAngleDeg, radius, position: params.position, direction: 'up' as const, source: 'jog' as const },
+      { angle: jogAngleDeg, radius, position: params.position, direction: 'down' as const, source: 'jog' as const },
     ],
   };
   return geo;
@@ -569,7 +660,7 @@ export interface FlatPatternResult {
  */
 export function generateFlatPattern(
   geometry: THREE.BufferGeometry,
-  bends: BendParams[],
+  bends: BendHistoryEntry[],
   thickness: number = 2,
   materialOrK: SheetMetalMaterial | number = DEFAULT_MATERIAL,
 ): FlatPatternResult {
@@ -587,33 +678,22 @@ export function generateFlatPattern(
   const forcedK = typeof materialOrK === 'number' ? materialOrK : null;
 
   const warnings: SheetMetalBendWarning[] = [];
-
-  // Sort bends by position along Z to get them in walking order along the blank.
-  const sortedBends = [...bends].sort((a, b) => a.position - b.position);
-
-  // Walk the bend list, accumulating the flat length segment by segment.
-  // Each bend's `position` fraction references the ORIGINAL geometry's Z range,
-  // so we turn it into an absolute distance in the 3D part then accumulate.
   const bendTable: BendTableEntry[] = [];
-  let cumulativeFlat = 0;
-  let prevZ3D = bb.min.z;
 
-  for (let i = 0; i < sortedBends.length; i++) {
-    const b = sortedBends[i];
-    const clampedPos = Math.max(0, Math.min(1, b.position));
-    const absoluteZ = bb.min.z + sizeZ * clampedPos;
-    const straight = absoluteZ - prevZ3D;
-    cumulativeFlat += straight;
-
+  const baOf = (b: BendHistoryEntry): { k: number; ba: number; bd: number } => {
     const k = forcedK ?? getKFactor(material, b.radius, thickness);
-    const ba = tableBendAllowance(b.angle, b.radius, thickness, k);
-    const bd = bendDeduction(b.angle, b.radius, thickness, k);
-
+    return {
+      k,
+      ba: tableBendAllowance(b.angle, b.radius, thickness, k),
+      bd: bendDeduction(b.angle, b.radius, thickness, k),
+    };
+  };
+  const pushRow = (b: BendHistoryEntry, position: number): number => {
+    const { k, ba, bd } = baOf(b);
     warnings.push(...validateBend(material, thickness, b.radius, b.angle));
-
     bendTable.push({
-      index: i,
-      position: cumulativeFlat, // bend line sits at the start of the BA segment
+      index: bendTable.length,
+      position, // bend line sits at the start of the BA segment
       angle: b.angle,
       radius: b.radius,
       direction: b.direction,
@@ -621,21 +701,81 @@ export function generateFlatPattern(
       bendDeduction: bd,
       kFactor: k,
     });
+    return ba;
+  };
 
-    // Advance past the bend allowance on the flat, and past the arc length on
-    // the 3D part. The arc length is how much of the original Z was consumed
-    // inside the bend region — the remaining straight segment continues after.
-    cumulativeFlat += ba;
-    prevZ3D = absoluteZ; // bends are treated as point events in Z for this
-                         // simplified feature-pipeline geometry
+  // Split the history into folding bends (consume blank) and material-adding
+  // bends (flange/hem legs grown off an edge). When the history carries the
+  // exact v2 fields, the developed length comes from the recorded FLAT
+  // segments + bend allowances — not from walking the FOLDED bounding box
+  // (which under-measures: a folded flange's height is not its developed
+  // length). Mixed/legacy histories (detected bends, jog) keep the legacy
+  // bbox walk so existing consumers are unchanged.
+  const adding = bends.filter(e => e.addsMaterial === true);
+  const folding = bends.filter(e => e.addsMaterial !== true);
+  const exactFolds =
+    folding.length > 0 &&
+    adding.length === 0 &&
+    folding.every(e => typeof e.blankLength === 'number' && typeof e.flatBefore === 'number');
+  const exactAdds =
+    adding.length > 0 &&
+    folding.length === 0 &&
+    adding.every(e => typeof e.flatAdded === 'number');
+
+  // Blank width = extent along the bend-line axis (legacy default: X).
+  const lineAxis = (folding[0] ?? adding[0])?.lineAxis ?? 'x';
+  const blankWidth = lineAxis === 'x' ? sizeX : sizeZ;
+
+  let totalLength: number;
+  if (exactFolds) {
+    // Folding bends consume their bend allowance OUT of the original blank:
+    // developed length = blank length at the first fold. Closed form per
+    // fold: blank = flatBefore + BA + flatAfter, with
+    // flatAfter ≡ blank − flatBefore − BA.
+    const sorted = [...folding].sort((a, b) => a.flatBefore! - b.flatBefore!);
+    for (const b of sorted) pushRow(b, b.flatBefore!);
+    totalLength = folding[0].blankLength!;
+  } else if (exactAdds) {
+    // Flange/hem legs are NEW material: developed = base blank + Σ(leg + BA).
+    // Closed form (U-channel, 2 flanges): 3 flats + 2 BA.
+    const baseBlank =
+      adding[0].blankLength ?? (lineAxis === 'x' ? sizeZ : sizeX);
+    // Leading edge (-Z/-X, fraction < 0.5) legs come before the base blank on
+    // the flat — outermost (last applied) first. Trailing legs follow it.
+    const leading = adding.filter(e => (e.position ?? 1) < 0.5).reverse();
+    const trailing = adding.filter(e => (e.position ?? 1) >= 0.5);
+    let cursor = 0;
+    for (const f of leading) {
+      cursor += f.flatAdded!;
+      cursor += pushRow(f, cursor);
+    }
+    cursor += baseBlank;
+    for (const f of trailing) {
+      const ba = pushRow(f, cursor);
+      cursor += ba + f.flatAdded!;
+    }
+    totalLength = cursor;
+  } else {
+    // Legacy path — walk the bend list against the CURRENT geometry's Z
+    // range, treating bends as point events (detected-bend / jog histories
+    // carry no exact flat data).
+    const sortedBends = [...bends].sort((a, b) => a.position - b.position);
+    let cumulativeFlat = 0;
+    let prevZ3D = bb.min.z;
+    for (const b of sortedBends) {
+      const clampedPos = Math.max(0, Math.min(1, b.position));
+      const absoluteZ = bb.min.z + sizeZ * clampedPos;
+      cumulativeFlat += absoluteZ - prevZ3D;
+      cumulativeFlat += pushRow(b, cumulativeFlat);
+      prevZ3D = absoluteZ;
+    }
+    cumulativeFlat += bb.max.z - prevZ3D;
+    totalLength = cumulativeFlat;
   }
-  // Trailing straight segment after the last bend
-  cumulativeFlat += bb.max.z - prevZ3D;
-  const totalLength = cumulativeFlat;
 
   // Build a thin box geometry so the viewport can still render a preview.
   const flatGeo = new THREE.BufferGeometry();
-  const hw = sizeX / 2;
+  const hw = blankWidth / 2;
   const hl = totalLength / 2;
   const ht = thickness / 2;
 
@@ -669,7 +809,7 @@ export function generateFlatPattern(
   flatGeo.userData = {
     ...(flatGeo.userData ?? {}),
     sheetMetal: {
-      width: sizeX,
+      width: blankWidth,
       length: totalLength,
       thickness,
       material,
@@ -680,7 +820,7 @@ export function generateFlatPattern(
 
   return {
     geometry: flatGeo,
-    width: sizeX,
+    width: blankWidth,
     length: totalLength,
     thickness,
     material,
@@ -819,7 +959,7 @@ export const flatPatternFeature: FeatureDefinition = {
     // the feature-pipeline contract is (geometry, params) → geometry. For now
     // the flat pattern uses any bend history the upstream bend feature stashed
     // into userData.__bendHistory, falling back to empty.
-    const history = (geometry.userData as { __bendHistory?: BendParams[] } | undefined)?.__bendHistory ?? [];
+    const history = (geometry.userData as { __bendHistory?: BendHistoryEntry[] } | undefined)?.__bendHistory ?? [];
     return generateFlatPattern(geometry, history, params.thickness, material).geometry;
   },
 };

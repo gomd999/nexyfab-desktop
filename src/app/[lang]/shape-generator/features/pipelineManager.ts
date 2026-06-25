@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
+import { mergeAligned, configureEvaluatorAttributes } from './meshMerge';
 import type { FeatureDefinition, FeatureInstance, MapBackedFeatureType } from './types';
 import { classifyFeatureError } from './featureDiagnostics';
 import { profileToGeometry, countContourEdgesPerSegment, brepContourPoints } from '../sketch/extrudeProfile';
@@ -24,7 +24,6 @@ import { TopologyNamer } from './topologyRegistry';
 const pipelineNamer = new TopologyNamer();
 import {
   stampFaceFeatureIdAll,
-  configureEvaluatorForProvenance,
   propagateFeatureIdMap,
 } from './faceProvenance';
 // Topology naming — Phase-2 step A. `runSketchExtrude` now stamps the
@@ -420,7 +419,11 @@ function runSketchExtrude(
     if (operation === 'subtract') {
       try {
         const ev = new Evaluator();
-        configureEvaluatorForProvenance(ev, geo, sketchGeo);
+        // Shared attribute unification: restrict interpolated attributes to
+        // those on BOTH operands and keep provenance alive (sentinel-filling
+        // the unstamped side). An OCCT-output base (indexed, uv-less) vs the
+        // uv-carrying ExtrudeGeometry tool used to crash the evaluator here.
+        configureEvaluatorAttributes(ev, geo, sketchGeo);
         const a = new Brush(geo, new THREE.MeshStandardMaterial());
         const b = new Brush(sketchGeo, new THREE.MeshStandardMaterial());
         a.updateMatrixWorld();
@@ -436,11 +439,14 @@ function runSketchExtrude(
           featureType: 'sketchExtrude',
           diagnosticCode: 'csg_subtract_failed',
         });
-        result = mergeGeometries([geo, sketchGeo], false);
+        result = mergeAligned(geo, sketchGeo);
         if (result) propagateFeatureIdMap(result, geo, sketchGeo);
       }
     } else {
-      result = mergeGeometries([geo, sketchGeo], false);
+      // Additive sketch (boss): attribute/index-aligned merge so a sketch
+      // feature still applies after an OCCT-output feature (shell/fillet
+      // tessellations are indexed and uv-less; ExtrudeGeometry is neither).
+      result = mergeAligned(geo, sketchGeo);
       if (result) propagateFeatureIdMap(result, geo, sketchGeo);
     }
     if (!result || !result.attributes.position || result.attributes.position.count === 0) {

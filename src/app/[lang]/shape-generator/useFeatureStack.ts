@@ -505,6 +505,26 @@ export function useFeatureStack() {
     addNode('feature', undefined, def.icon, params, type);
   }, [addNode]);
 
+  /** Add a feature with both caller params (merged onto defaults) AND a
+   *  face/edge selection. Combines addFeatureWithParams + addFeatureWithEdges;
+   *  used by the AI prompt for selection-based edits (offset/delete/draft a
+   *  picked face, fillet/chamfer a picked edge). */
+  const addFeatureWithParamsAndEdges = useCallback((
+    type: FeatureType,
+    overrides: Record<string, number>,
+    edgeSelections?: import('./editing/selectionInfo').EdgeSelectionInfo[],
+    faceSelections?: import('./editing/selectionInfo').FaceSelectionInfo[],
+  ) => {
+    const def = getFeatureDefinition(type);
+    if (!def) return;
+    const params: Record<string, number> = {};
+    def.params.forEach(p => {
+      params[p.key] = p.default;
+    });
+    Object.assign(params, overrides);
+    addNode('feature', undefined, def.icon, params, type, edgeSelections, faceSelections);
+  }, [addNode]);
+
   const addSketchFeature = useCallback((
     profile: SketchProfile,
     config: SketchConfig,
@@ -707,6 +727,7 @@ export function useFeatureStack() {
     addFeature,
     addFeatureWithEdges,
     addFeatureWithParams,
+    addFeatureWithParamsAndEdges,
     addSketchFeature,
     removeFeature,
     updateFeatureParam,

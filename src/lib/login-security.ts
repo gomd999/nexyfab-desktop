@@ -6,7 +6,7 @@
  * - 위험 수준에 따라 자동 계정 잠금
  */
 
-import { getDbAdapter } from './db-adapter';
+import { getDbAdapter, fromBool } from './db-adapter';
 import { sendEmail } from './nexyfab-email';
 import { escapeHtml } from './sanitize';
 
@@ -116,7 +116,7 @@ async function assessRisk(record: LoginRecord): Promise<RiskAssessment> {
     // 1. 최근 1시간 내 다른 IP에서 로그인 횟수
     const recentLogins = await db.queryAll<{ ip: string; country: string | null }>(
       `SELECT DISTINCT ip, country FROM nf_login_history
-       WHERE user_id = ? AND success = 1 AND created_at > ?
+       WHERE user_id = ? AND success = TRUE AND created_at > ?
        ORDER BY created_at DESC`,
       record.userId, now - ONE_HOUR,
     );
@@ -135,7 +135,7 @@ async function assessRisk(record: LoginRecord): Promise<RiskAssessment> {
     if (record.country) {
       const lastLogin = await db.queryOne<{ country: string; ip: string; created_at: number }>(
         `SELECT country, ip, created_at FROM nf_login_history
-         WHERE user_id = ? AND success = 1 AND country IS NOT NULL
+         WHERE user_id = ? AND success = TRUE AND country IS NOT NULL
          ORDER BY created_at DESC LIMIT 1`,
         record.userId,
       );
@@ -156,7 +156,7 @@ async function assessRisk(record: LoginRecord): Promise<RiskAssessment> {
     // 3. 최근 24시간 실패한 로그인 시도
     const failCount = await db.queryOne<{ cnt: number }>(
       `SELECT COUNT(*) AS cnt FROM nf_login_history
-       WHERE user_id = ? AND success = 0 AND created_at > ?`,
+       WHERE user_id = ? AND success = FALSE AND created_at > ?`,
       record.userId, now - ONE_DAY,
     );
     if ((failCount?.cnt ?? 0) >= 10) {
@@ -209,7 +209,7 @@ export async function recordLoginAndCheck(
       record.country,
       record.userAgent?.slice(0, 500) ?? null,
       record.method,
-      record.success ? 1 : 0,
+      fromBool(record.success),
       risk.level,
       risk.reasons.length > 0 ? risk.reasons.join('; ') : null,
       'nexyfab',
@@ -286,5 +286,5 @@ export async function cleanupOldLoginHistory(retentionDays = 90): Promise<void> 
   const db = getDbAdapter();
   const cutoff = Date.now() - retentionDays * 24 * 3600_000;
   await db.execute('DELETE FROM nf_login_history WHERE created_at < ?', cutoff);
-  await db.execute('DELETE FROM nf_security_alerts WHERE resolved = 1 AND created_at < ?', cutoff);
+  await db.execute('DELETE FROM nf_security_alerts WHERE resolved = TRUE AND created_at < ?', cutoff);
 }

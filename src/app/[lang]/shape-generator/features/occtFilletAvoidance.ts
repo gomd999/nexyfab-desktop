@@ -25,6 +25,8 @@ import {
   occtFilletBox,
   occtEdgeSignatures,
   hostBoxFromGeometry,
+  resolveBrepHostHandle,
+  resolveBrepHostHandleAsync,
   type ReplicadEdgeFinder,
 } from './occtEngine';
 import {
@@ -97,14 +99,23 @@ function tryFillet(
  * Sync avoidance: requested radius, then the reduced-radius ladder.
  * Returns null when every attempt failed (caller falls back to mesh) — the
  * failure is already captured in the corpus with resolution 'mesh-fallback'.
+ *
+ * Host contract (fail-clean): the host handle comes from
+ * resolveBrepHostHandle — a registered upstream B-rep solid, or null ONLY for
+ * a verifiably-box mesh (where the box host is faithful). A handle-less
+ * non-box body THROWS BrepHostUnavailableError instead of silently filleting
+ * its bounding box; the caller's try/catch falls to the mesh path. Async
+ * callers can pre-bridge a handle and pass it via `opts.hostHandle`.
  */
 export function occtFilletWithAvoidanceSync(
   geometry: BufferGeometry,
   radius: number,
   edgeFinder: ReplicadEdgeFinder | null,
-  opts: { featureId?: string } = {},
+  opts: { featureId?: string; hostHandle?: string | null } = {},
 ): FilletAvoidanceResult | null {
-  const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
+  const upstreamHandle = opts.hostHandle !== undefined
+    ? opts.hostHandle
+    : resolveBrepHostHandle(geometry); // throws BrepHostUnavailableError — never a bbox stand-in
   const host = hostBoxFromGeometry(geometry);
   const attempts: FilletAvoidanceAttempt[] = [];
 
@@ -167,7 +178,11 @@ export async function occtFilletWithAvoidanceAsync(
   edgeFinder: ReplicadEdgeFinder | null,
   ctx: { featureId?: string; edgeSelections?: EdgeSelectionInfo[] } = {},
 ): Promise<FilletAvoidanceResult | null> {
-  const ladderResult = occtFilletWithAvoidanceSync(geometry, radius, edgeFinder, ctx);
+  // Fail-clean host resolution with the async mesh→B-rep bridge: a handle-less
+  // non-box body gets a faithful simplified B-rep imported from its mesh, or
+  // this THROWS (caller falls back to mesh) — never a bbox stand-in.
+  const hostHandle = await resolveBrepHostHandleAsync(geometry);
+  const ladderResult = occtFilletWithAvoidanceSync(geometry, radius, edgeFinder, { ...ctx, hostHandle });
   if (ladderResult) return ladderResult;
 
   const sels = ctx.edgeSelections;
@@ -180,7 +195,7 @@ export async function occtFilletWithAvoidanceAsync(
     : undefined;
 
   const host = hostBoxFromGeometry(geometry);
-  let runningHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
+  let runningHandle = hostHandle;
   let runningGeometry: BufferGeometry | null = null;
   const attempts: FilletAvoidanceAttempt[] = [];
   let applied = 0;

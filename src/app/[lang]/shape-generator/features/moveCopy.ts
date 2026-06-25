@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { FeatureDefinition } from './types';
 import { occtMoveCopy } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback, clearStaleBrepHandle } from './downgradeNotice';
 
 function applyMoveCopyMesh(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry {
   const { offsetX, offsetY, offsetZ } = params;
@@ -12,7 +13,9 @@ function applyMoveCopyMesh(geometry: THREE.BufferGeometry, params: Record<string
   if (operation === 0) {
     const clone = geometry.clone();
     clone.applyMatrix4(translation);
-    return clone;
+    // THREE's clone shares userData by reference — the moved mesh must not
+    // keep advertising the UNmoved upstream B-rep solid.
+    return clearStaleBrepHandle(clone);
   }
 
   const original = geometry.clone();
@@ -68,6 +71,8 @@ export const moveCopyFeature: FeatureDefinition = {
         }
       }
     }
-    return applyMoveCopyMesh(geometry, params);
+    // Mesh fallback after wanting B-rep: surface the downgrade (and the
+    // helper drops any stale occtHandle so B-rep and mesh can't diverge).
+    return noteMeshFallback(applyMoveCopyMesh(geometry, params), { op: 'Move/Copy' });
   },
 };

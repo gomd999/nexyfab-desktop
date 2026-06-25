@@ -52,8 +52,8 @@ const SECTIONS: NavSection[] = [
     titleEn: 'Design',
     items: [
       { icon: '🏠', labelKo: '홈',                labelEn: 'Hub',                href: '/nexyfab/hub' },
-      { icon: '✏️', labelKo: '3D 설계 시작',     labelEn: '3D Design',          href: '/shape-generator' },
-      { icon: '✨', labelKo: 'Nexy AI 스튜디오', labelEn: 'Nexy AI Studio',     href: '/nexyfab/ai-studio', badge: 'NEW' },
+      { icon: '✨', labelKo: '자유형 Studio',     labelEn: 'Free-form Studio',   href: '/studio', badge: 'NEW' },
+      { icon: '🛠️', labelKo: '전문가형 CAD',      labelEn: 'Expert CAD',         href: '/shape-generator?mode=expert' },
       { icon: '📁', labelKo: '내 프로젝트',       labelEn: 'My Projects',        href: '/nexyfab/projects' },
       { icon: '🔗', labelKo: '공유된 항목',       labelEn: 'Shared with me',     href: '/nexyfab/projects?filter=shared' },
       { icon: '🔩', labelKo: '부품 라이브러리',   labelEn: 'Part Library',       href: '/nexyfab/cots' },
@@ -164,8 +164,8 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
             borderBottom: '1px solid var(--nx-border)',
           }}
         >
-          <span style={{ color: 'var(--nx-text)' }}>Nexy</span>
-          <span className="nf-uni-brand-text" style={{ color: 'var(--nx-accent)' }}>Fab</span>
+          <span style={{ color: 'var(--nx-accent)' }}>Nexy</span>
+          <span className="nf-uni-brand-text" style={{ color: '#3fb950' }}>Fab</span>
         </Link>
 
         {/* Sections */}

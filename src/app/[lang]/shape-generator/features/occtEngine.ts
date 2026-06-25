@@ -2113,6 +2113,12 @@ export async function meshToSimplifiedBrepHandle(
 // Shared helper: derive box host params from an upstream BufferGeometry's
 // bounding box. Used by OCCT-routed fillet/chamfer/boolean until phase 2d
 // plumbs real B-rep through the pipeline.
+//
+// ⚠️ FAITHFULNESS CONTRACT: the box this describes is only a valid OCCT host
+// when the mesh actually IS its own bounding box (a true axis-aligned box).
+// Callers must obtain the host handle via resolveBrepHostHandle /
+// resolveBrepHostHandleAsync below — never feed a non-box mesh through the
+// box-host path, or the part gets silently replaced by its bounding box.
 export function hostBoxFromGeometry(
   geometry: BufferGeometry,
 ): { w: number; h: number; d: number; cx: number; cy: number; cz: number } {
@@ -2127,4 +2133,134 @@ export function hostBoxFromGeometry(
     cy: (bb.min.y + bb.max.y) / 2,
     cz: (bb.min.z + bb.max.z) / 2,
   };
+}
+
+// ─── FAIL-CLEAN B-rep host contract ─────────────────────────────────────────
+//
+// Historic bug (silently-wrong-geometry class): when a body reached an OCCT
+// feature without a live `userData.occtHandle`, occtFilletBox / occtChamferBox
+// / occtShellBox / occtBoxBooleanWithPrimitive rebuilt the host as
+// makeBaseBox(bbox) and shipped the result as SUCCESS — an L-bracket got
+// silently replaced by its filleted bounding box (measured 95 880 vs 29 440
+// mm³ on the reference L-bracket). The contract below makes that impossible:
+//
+//   resolveBrepHostHandle(geometry)
+//     → registered handle      : use the real upstream B-rep solid
+//     → null                   : ONLY when the mesh verifiably IS its own
+//                                axis-aligned bounding box (a true box —
+//                                the box host is then exactly faithful)
+//     → throws BrepHostUnavailableError otherwise (incl. a stale handle the
+//       registry no longer knows). The caller's try/catch records a
+//       per-feature error / falls to its mesh fallback — never a bbox stand-in.
+//
+//   resolveBrepHostHandleAsync additionally tries the mesh→B-rep bridge
+//   (meshToSimplifiedBrepHandle: importSTL + UnifySameDomain) before throwing,
+//   so async feature paths recover a faithful host from the displayed mesh.
+
+export class BrepHostUnavailableError extends Error {
+  constructor(detail: string) {
+    super(
+      `OCCT host unavailable: ${detail}. ` +
+      'Refusing to substitute a bounding-box host (it would silently replace the part with its bbox).',
+    );
+    this.name = 'BrepHostUnavailableError';
+  }
+}
+
+/** Signed tetra-sum mesh volume (mm³, absolute). Indexed or soup. */
+function meshVolumeOf(geometry: BufferGeometry): number {
+  const pos = geometry.attributes.position;
+  if (!pos) return 0;
+  const idx = geometry.index;
+  const triCount = idx ? idx.count / 3 : pos.count / 3;
+  let vol = 0;
+  for (let t = 0; t < triCount; t++) {
+    const i0 = idx ? idx.getX(t * 3) : t * 3;
+    const i1 = idx ? idx.getX(t * 3 + 1) : t * 3 + 1;
+    const i2 = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+    const ax = pos.getX(i0), ay = pos.getY(i0), az = pos.getZ(i0);
+    const bx = pos.getX(i1), by = pos.getY(i1), bz = pos.getZ(i1);
+    const cx = pos.getX(i2), cy = pos.getY(i2), cz = pos.getZ(i2);
+    vol += ax * (by * cz - bz * cy) + bx * (cy * az - cz * ay) + cx * (ay * bz - az * by);
+  }
+  return Math.abs(vol / 6);
+}
+
+/** Total triangle surface area (mm²). */
+function meshAreaOf(geometry: BufferGeometry): number {
+  const pos = geometry.attributes.position;
+  if (!pos) return 0;
+  const idx = geometry.index;
+  const triCount = idx ? idx.count / 3 : pos.count / 3;
+  let area = 0;
+  for (let t = 0; t < triCount; t++) {
+    const i0 = idx ? idx.getX(t * 3) : t * 3;
+    const i1 = idx ? idx.getX(t * 3 + 1) : t * 3 + 1;
+    const i2 = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+    const ux = pos.getX(i1) - pos.getX(i0), uy = pos.getY(i1) - pos.getY(i0), uz = pos.getZ(i1) - pos.getZ(i0);
+    const vx = pos.getX(i2) - pos.getX(i0), vy = pos.getY(i2) - pos.getY(i0), vz = pos.getZ(i2) - pos.getZ(i0);
+    const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+    area += Math.hypot(cx, cy, cz) / 2;
+  }
+  return area;
+}
+
+/**
+ * Is this mesh (within `relTol`, default 0.01%) exactly its own axis-aligned
+ * bounding box — i.e. a true box, for which the makeBaseBox(bbox) host is
+ * FAITHFUL? Strict on purpose: a box with even a small chamfer/fillet/hole
+ * must NOT pass (the box host would silently erase that feature). Volume and
+ * surface area are both compared against the bbox closed forms.
+ */
+export function isBboxFaithfulBox(geometry: BufferGeometry, relTol = 1e-4): boolean {
+  geometry.computeBoundingBox();
+  const bb = geometry.boundingBox;
+  if (!bb) return false;
+  const w = bb.max.x - bb.min.x, h = bb.max.y - bb.min.y, d = bb.max.z - bb.min.z;
+  const boxVol = w * h * d;
+  if (!(boxVol > 1e-9) || !Number.isFinite(boxVol)) return false;
+  const vol = meshVolumeOf(geometry);
+  if (Math.abs(vol - boxVol) / boxVol > relTol) return false;
+  const boxArea = 2 * (w * h + h * d + w * d);
+  const area = meshAreaOf(geometry);
+  return Math.abs(area - boxArea) / boxArea <= relTol;
+}
+
+/**
+ * Resolve the OCCT host handle for `geometry` under the fail-clean contract
+ * (see block comment above). Returns the registered handle, or null when a
+ * bbox box host is verifiably faithful; throws BrepHostUnavailableError in
+ * every other case.
+ */
+export function resolveBrepHostHandle(geometry: BufferGeometry): string | null {
+  const raw = geometry.userData?.occtHandle as string | undefined;
+  if (raw) {
+    if (getShape(raw)) return raw;
+    // A handle the registry no longer knows (cleared between pipeline runs,
+    // or carried over a worker boundary) is NOT a usable host.
+    if (isBboxFaithfulBox(geometry)) return null;
+    throw new BrepHostUnavailableError(
+      `stale B-rep handle '${raw}' is not in the shape registry and the mesh is not a plain box`,
+    );
+  }
+  if (isBboxFaithfulBox(geometry)) return null;
+  throw new BrepHostUnavailableError(
+    'the body has no B-rep handle and its mesh is not a plain box',
+  );
+}
+
+/**
+ * Async variant: same contract, but before failing it attempts the
+ * mesh→B-rep bridge (meshToSimplifiedBrepHandle) so the OCCT op can run on a
+ * faithful import of the displayed mesh instead of erroring out.
+ */
+export async function resolveBrepHostHandleAsync(geometry: BufferGeometry): Promise<string | null> {
+  try {
+    return resolveBrepHostHandle(geometry);
+  } catch (err) {
+    if (!(err instanceof BrepHostUnavailableError)) throw err;
+    const bridged = await meshToSimplifiedBrepHandle(geometry);
+    if (bridged) return bridged;
+    throw err;
+  }
 }

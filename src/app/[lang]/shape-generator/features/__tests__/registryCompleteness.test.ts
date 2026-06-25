@@ -38,6 +38,7 @@ function allMapBackedFeatureTypes(): MapBackedFeatureType[] {
     'helix',
     'variableShell',
     'rib',
+    'cut',
     'deleteFace',
     'offsetFace',
   ];

@@ -2,13 +2,16 @@ import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
 import { occtScale } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { noteMeshFallback, clearStaleBrepHandle } from './downgradeNotice';
 
 function applyScaleMesh(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry {
   const { scaleX, scaleY, scaleZ } = params;
   const clone = geometry.clone();
   clone.applyMatrix4(new THREE.Matrix4().makeScale(scaleX, scaleY, scaleZ));
   clone.computeVertexNormals();
-  return clone;
+  // THREE's clone shares userData by reference — the scaled mesh must not keep
+  // advertising the UNscaled upstream B-rep solid.
+  return clearStaleBrepHandle(clone);
 }
 
 export const scaleFeature: FeatureDefinition = {
@@ -37,6 +40,8 @@ export const scaleFeature: FeatureDefinition = {
         }
       }
     }
-    return applyScaleMesh(geometry, params);
+    // Mesh fallback after wanting B-rep: surface the downgrade (and the
+    // helper drops any stale occtHandle so B-rep and mesh can't diverge).
+    return noteMeshFallback(applyScaleMesh(geometry, params), { op: 'Scale' });
   },
 };

@@ -8,6 +8,8 @@ import type { AssemblyMate, MateType } from './AssemblyMates';
 import { MATE_TYPE_LABELS, generateMateId } from './AssemblyMates';
 import type { InterferenceResult } from './InterferenceDetection';
 import type { PlacedPart } from './PartPlacementPanel';
+import { computeAssemblyBalance } from './assemblyBalance';
+import { simulateAssembly, type AssemblySimReport } from './assemblySimulation';
 import {
   bomPartResultsAndAssemblyMatesToSolverState,
   placedPartsAndAssemblyMatesToSolverState,
@@ -443,6 +445,10 @@ export default function AssemblyPanel({
           {t.explodedView}
         </button>
       </div>
+
+      {/* Balance readout — total mass, centre of mass, static stability. Recomputes
+          whenever a part changes (size / material / position). */}
+      <AssemblyBalanceStrip placedParts={placedParts} C={C} />
 
       {/* Content */}
       <div style={{ flex: 1, overflow: 'auto', padding: 10 }}>
@@ -1133,6 +1139,74 @@ export default function AssemblyPanel({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Compact balance readout: total mass, centre of mass, and a stable/tipping
+ *  badge. Pure derive from placedParts — recomputes on any part change. */
+function AssemblyBalanceStrip({ placedParts, C }: { placedParts?: PlacedPart[]; C: Record<string, string> }) {
+  const balance = useMemo(
+    () => (placedParts && placedParts.length > 0 ? computeAssemblyBalance(placedParts) : null),
+    [placedParts],
+  );
+  // Simulation (stability + interference) is on-demand: the triangle-level
+  // interference test is too heavy to run on every edit, so a button triggers
+  // it. Cleared whenever the parts change so a stale verdict never shows.
+  const [sim, setSim] = useState<AssemblySimReport | null>(null);
+  useEffect(() => { setSim(null); }, [placedParts]);
+  if (!balance || balance.totalMassG <= 0) return null;
+  const [cx, cy, cz] = balance.centerOfMass;
+  const mass = balance.totalMassG >= 1000
+    ? `${(balance.totalMassG / 1000).toFixed(2)} kg`
+    : `${balance.totalMassG.toFixed(1)} g`;
+  const okBg = '#16331f', okFg = '#5fe39a', badBg = '#3a1d1d', badFg = '#ff8d8d';
+  const canSim = (placedParts?.length ?? 0) >= 2;
+  return (
+    <div style={{ borderBottom: `1px solid ${C.border}` }}>
+      <div
+        data-testid="assembly-balance-strip"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          padding: '6px 10px', fontSize: 11, color: C.text2 ?? C.text,
+        }}
+      >
+        <span title="Total mass">⚖️ <b style={{ color: C.text }}>{mass}</b></span>
+        <span title="Centre of mass (mm)">CoM <span style={{ color: C.text }}>{cx.toFixed(0)}, {cy.toFixed(0)}, {cz.toFixed(0)}</span></span>
+        {canSim && (
+          <button
+            type="button"
+            data-testid="assembly-simulate-btn"
+            onClick={() => placedParts && setSim(simulateAssembly(placedParts))}
+            style={{
+              padding: '1px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer',
+              background: C.panel2 ?? 'transparent', color: C.text, border: `1px solid ${C.border}`,
+            }}
+          >▶ 시뮬레이션</button>
+        )}
+        <span
+          title={balance.stable ? 'Centre of mass sits over the support — stable' : 'Centre of mass falls outside the support — it would tip'}
+          style={{
+            marginLeft: 'auto', padding: '1px 8px', borderRadius: 10, fontWeight: 700,
+            background: balance.stable ? okBg : badBg, color: balance.stable ? okFg : badFg,
+          }}
+        >
+          {balance.stable ? `안정 ·  여유 ${balance.marginMm.toFixed(0)}mm` : `전도 위험 · ${Math.abs(balance.marginMm).toFixed(0)}mm 초과`}
+        </span>
+      </div>
+      {sim && (
+        <div style={{ padding: '4px 10px 8px', fontSize: 11 }}>
+          {sim.ok ? (
+            <span style={{ color: okFg }}>✓ 시뮬레이션 통과 — 안정적이고 부품 간섭 없음</span>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 16, color: badFg }}>
+              {sim.issues.map((it, i) => (
+                <li key={i} style={{ color: it.severity === 'error' ? badFg : (C.text2 ?? C.text) }}>{it.message}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

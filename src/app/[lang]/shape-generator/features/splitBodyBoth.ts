@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
-import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry } from './occtEngine';
+import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry, resolveBrepHostHandle } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
@@ -22,7 +22,9 @@ export function splitBodyBoth(
   
   if (shouldUseOcctEngine()) {
     try {
-      const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
+      // Fail-clean host contract — throws for a handle-less non-box body
+      // (→ mesh CSG fallback below) instead of splitting its bounding box.
+      const upstreamHandle = resolveBrepHostHandle(geometry);
       const host = hostBoxFromGeometry(geometry);
       
       let cxPos = 0, cyPos = 0, czPos = 0;

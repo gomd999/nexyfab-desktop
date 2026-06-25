@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { trackGeometry } from '../hooks/useGeometryGC';
+import { isImportedShapeId, getImportedGeometry, meshVolumeMm3, meshAreaMm2 } from './importedRegistry';
 
 // ─── Shape system types ───────────────────────────────────────────────────────
 
@@ -272,6 +273,23 @@ export function buildShapeResult(
   partParams: Record<string, number>,
   formulas?: Record<string, string>,
 ): ShapeResult | null {
+  // Imported mesh (STL/STEP) — resolve from the imported-geometry registry so
+  // it behaves like any catalog part (placeable, mateable, balanceable).
+  if (isImportedShapeId(shapeId)) {
+    const geo = getImportedGeometry(shapeId);
+    if (!geo) return null;
+    geo.computeBoundingBox();
+    const bb = geo.boundingBox ?? new THREE.Box3();
+    const size = new THREE.Vector3();
+    bb.getSize(size);
+    return {
+      geometry: geo,
+      edgeGeometry: new THREE.EdgesGeometry(geo, 30),
+      volume_cm3: meshVolumeMm3(geo) / 1000,
+      surface_area_cm2: meshAreaMm2(geo) / 100,
+      bbox: { w: size.x, h: size.y, d: size.z },
+    };
+  }
   const shapeDef = SHAPE_MAP[shapeId];
   if (!shapeDef) return null;
   const { params: p } = normalizeShapeParams(shapeDef, partParams);

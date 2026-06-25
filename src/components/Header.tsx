@@ -105,9 +105,11 @@ export default function Header() {
     }, [pathname]);
     // ─────────────────────────────────────────────────────────────────────────
 
-    // Hide marketing header on full-screen app surfaces (modeler + Hub).
-    if (pathname?.includes('/shape-generator')) return null;
-    if (pathname?.includes('/nexyfab/hub')) return null;
+    // Hide marketing header on full-screen app surfaces (modeler + Studio) and
+    // on every NexyFab app page that already has the unified sidebar chrome —
+    // otherwise the white marketing bar stacks on top of the dark app shell.
+    if (pathname?.includes('/shape-generator') || pathname?.includes('/studio')) return null;
+    if (pathname && /\/nexyfab\/(hub|projects|cots|billing|settings|dashboard|ai-studio|orders)(\/|$)/.test(pathname)) return null;
 
     const parts = pathname?.split('/').filter(Boolean) || [];
     const isAdmin = parts[0] === 'adminlink';
@@ -276,7 +278,20 @@ export default function Header() {
                             <LanguageSelector />
                             {currentUser ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Link href={`/${lang}/dashboard`} style={{
+                                    <Link href={`/${lang}/studio`} style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff',
+                                        padding: '9px 16px', borderRadius: '16px',
+                                        fontWeight: 800, fontSize: '13px', textDecoration: 'none',
+                                        transition: 'transform 0.15s',
+                                    }}
+                                        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.04)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+                                        title={String(lang) === 'ko' || String(lang) === 'kr' ? '말/사진으로 3D 만들기' : 'Make 3D from text/photo'}
+                                    >
+                                        <span>✨ Studio</span>
+                                    </Link>
+                                    <Link href="/dashboard" style={{
                                         display: 'flex', alignItems: 'center', gap: '10px',
                                         background: '#111827', color: '#fff',
                                         padding: '9px 18px', borderRadius: '16px',
@@ -419,7 +434,7 @@ export default function Header() {
 
                     {currentUser ? (
                         <>
-                        <Link href={`/${lang}/dashboard`} style={{
+                        <Link href="/dashboard" style={{
                             display: 'flex', alignItems: 'center', gap: '10px',
                             padding: '14px 16px', borderRadius: '14px',
                             color: '#374151', fontWeight: 700, fontSize: '15px', textDecoration: 'none',

@@ -114,6 +114,176 @@ describe('POST /api/featureTree-intent — LLM fallback path', () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
+  it('LLM returns generic add_feature_to_last (thread) → source:"llm"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'add_feature_to_last',
+      featureType: 'thread',
+      params: { pitch: 2 },
+    });
+    const res = await handleFeatureTreeIntent(
+      { text: '50mm 나사' },
+      { llmFetcher: fetcher },
+    );
+    expect(res.payload.ok).toBe(true);
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    expect(res.payload.intent?.kind).toBe('add_feature_to_last');
+    if (res.payload.intent?.kind === 'add_feature_to_last') {
+      expect(res.payload.intent.featureType).toBe('thread');
+      expect(res.payload.intent.params).toEqual({ pitch: 2 });
+    }
+  });
+
+  it('LLM update_last_param ("make it 8mm") → source:"llm"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ kind: 'update_last_param', paramKey: 'radius', value: 8 });
+    const res = await handleFeatureTreeIntent({ text: 'make it 8mm' }, { llmFetcher: fetcher });
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    expect(res.payload.intent?.kind).toBe('update_last_param');
+  });
+
+  it('LLM remove_last ("remove the fillet") → source:"llm"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ kind: 'remove_last' });
+    const res = await handleFeatureTreeIntent({ text: 'remove the fillet' }, { llmFetcher: fetcher });
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    expect(res.payload.intent?.kind).toBe('remove_last');
+  });
+
+  it('update_last_param with a non-numeric value → source:"fallback"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ kind: 'update_last_param', paramKey: 'radius', value: 'big' });
+    const res = await handleFeatureTreeIntent({ text: 'make it big' }, { llmFetcher: fetcher });
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('fallback');
+    expect(res.payload.intent).toBeNull();
+  });
+
+  it('forwards the model context to the LLM fetcher', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ kind: 'remove_last' });
+    const context = { features: [{ id: 'f1', type: 'fillet' }], selection: null };
+    await handleFeatureTreeIntent({ text: 'remove it', context }, { llmFetcher: fetcher });
+    expect(fetcher.mock.calls[0]![1]).toEqual(context);
+  });
+
+  it('LLM create_sketch_extrude (custom outline) → source:"llm"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'create_sketch_extrude',
+      profile: [{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 20 }, { x: 20, y: 20 }, { x: 20, y: 50 }, { x: 0, y: 50 }],
+      depth: 5,
+    });
+    const res = await handleFeatureTreeIntent({ text: 'an L-bracket 5mm thick' }, { llmFetcher: fetcher });
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    if (res.payload.intent?.kind === 'create_sketch_extrude') {
+      expect(res.payload.intent.profile).toHaveLength(6);
+      expect(res.payload.intent.depth).toBe(5);
+      expect(res.payload.intent.plane).toBe('xy');
+      expect(res.payload.intent.operation).toBe('add');
+    } else {
+      throw new Error('expected create_sketch_extrude');
+    }
+  });
+
+  it('LLM build_part (base + features) → source:"llm"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'build_part',
+      base: { shapeId: 'box', params: { width: 50, height: 20, depth: 30 } },
+      features: [{ type: 'hole', params: { diameter: 10 } }, { type: 'fillet', params: { radius: 2 } }],
+    });
+    const res = await handleFeatureTreeIntent({ text: 'a plate with a hole and rounded edges' }, { llmFetcher: fetcher });
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    if (res.payload.intent?.kind === 'build_part') {
+      expect(res.payload.intent.base.shapeId).toBe('box');
+      expect(res.payload.intent.features).toHaveLength(2);
+      expect(res.payload.intent.features[1]!.type).toBe('fillet');
+    } else {
+      throw new Error('expected build_part');
+    }
+  });
+
+  it('LLM assemble_parts (heterogeneous) → source:"llm"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'assemble_parts',
+      parts: [
+        { name: 'plate', shapeId: 'box', params: { width: 80, height: 5, depth: 80 }, position: [0, 0, 0] },
+        { name: 'leg', shapeId: 'cylinder', params: { diameter: 10, height: 40 }, position: [30, -22, 30] },
+      ],
+    });
+    const res = await handleFeatureTreeIntent({ text: 'a plate with a leg' }, { llmFetcher: fetcher });
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('llm');
+    if (res.payload.intent?.kind === 'assemble_parts') {
+      expect(res.payload.intent.parts).toHaveLength(2);
+      expect(res.payload.intent.parts[1]!.position).toEqual([30, -22, 30]);
+    } else {
+      throw new Error('expected assemble_parts');
+    }
+  });
+
+  it('rejects assemble_parts with <2 valid parts → source:"fallback"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ kind: 'assemble_parts', parts: [{ shapeId: 'box', params: {} }] });
+    const res = await handleFeatureTreeIntent({ text: 'one box' }, { llmFetcher: fetcher });
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('fallback');
+  });
+
+  it('rejects build_part with a base shape not in the base allowlist → source:"fallback"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ kind: 'build_part', base: { shapeId: 'gearbox', params: {} }, features: [] });
+    const res = await handleFeatureTreeIntent({ text: 'a gearbox with holes' }, { llmFetcher: fetcher });
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('fallback');
+  });
+
+  it('rejects create_sketch_extrude with <3 points → source:"fallback"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ kind: 'create_sketch_extrude', profile: [{ x: 0, y: 0 }, { x: 10, y: 0 }], depth: 5 });
+    const res = await handleFeatureTreeIntent({ text: 'a line' }, { llmFetcher: fetcher });
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('fallback');
+    expect(res.payload.intent).toBeNull();
+  });
+
+  it('rejects create_sketch_extrude with non-positive depth → source:"fallback"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ kind: 'create_sketch_extrude', profile: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 5, y: 8 }], depth: 0 });
+    const res = await handleFeatureTreeIntent({ text: 'flat triangle' }, { llmFetcher: fetcher });
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('fallback');
+  });
+
+  it('rejects add_feature_to_last with a featureType not in the allowlist → source:"fallback"', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'add_feature_to_last',
+      featureType: 'gearbox',
+      params: {},
+    });
+    const res = await handleFeatureTreeIntent(
+      { text: 'design a transmission' },
+      { llmFetcher: fetcher },
+    );
+    expect(res.payload.ok).toBe(true);
+    if (!res.payload.ok) throw new Error('expected ok');
+    expect(res.payload.source).toBe('fallback');
+    expect(res.payload.intent).toBeNull();
+  });
+
+  it('add_feature_to_last drops non-numeric params, keeping only finite numbers', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      kind: 'add_feature_to_last',
+      featureType: 'shell',
+      params: { wallThickness: 2, junk: 'x', nan: Number.NaN },
+    });
+    const res = await handleFeatureTreeIntent(
+      { text: 'hollow it' },
+      { llmFetcher: fetcher },
+    );
+    if (!res.payload.ok) throw new Error('expected ok');
+    if (res.payload.intent?.kind === 'add_feature_to_last') {
+      expect(res.payload.intent.params).toEqual({ wallThickness: 2 });
+    } else {
+      throw new Error('expected add_feature_to_last');
+    }
+  });
+
   it('LLM returns invalid JSON shape (no kind) → source:"fallback"', async () => {
     const fetcher = vi.fn().mockResolvedValue({ foo: 'bar' });
     const res = await handleFeatureTreeIntent(
@@ -169,7 +339,7 @@ describe('POST /api/featureTree-intent — LLM fallback path', () => {
     // window: fetcher aborts itself immediately, exactly how a timed-out
     // AbortSignal would surface to the underlying fetch().
     const fetcher = vi.fn().mockImplementation(
-      (_text: string, _signal: AbortSignal) => {
+      (_text: string, _ctx: unknown, _signal: AbortSignal) => {
         const err = new Error('aborted');
         err.name = 'AbortError';
         return Promise.reject(err);
@@ -183,8 +353,9 @@ describe('POST /api/featureTree-intent — LLM fallback path', () => {
     if (!res.payload.ok) throw new Error('expected ok');
     expect(res.payload.source).toBe('fallback');
     expect(fetcher).toHaveBeenCalledTimes(1);
-    // Verify a real AbortSignal was passed (timeout enforcement seam).
-    const signal = fetcher.mock.calls[0]![1];
+    // Verify a real AbortSignal was passed (timeout enforcement seam) — now the
+    // 3rd arg after (text, context).
+    const signal = fetcher.mock.calls[0]![2];
     expect(signal).toBeInstanceOf(AbortSignal);
   });
 

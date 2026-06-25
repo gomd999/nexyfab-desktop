@@ -1,7 +1,13 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
-import { occtShellBox, occtFaceSignatures, hostBoxFromGeometry } from './occtEngine';
+import {
+  occtShellBox,
+  occtFaceSignatures,
+  hostBoxFromGeometry,
+  resolveBrepHostHandle,
+  resolveBrepHostHandleAsync,
+} from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback } from './downgradeNotice';
 import { captureKernelFailure } from './kernelCorpus';
@@ -52,7 +58,11 @@ export const shellFeature: FeatureDefinition = {
 
     if (shouldUseOcctEngine(engine)) {
       try {
-        const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
+        // Fail-clean host contract: registered handle, or null only when the
+        // mesh verifiably IS a box (the box host is then faithful); otherwise
+        // resolveBrepHostHandle throws → mesh fallback below. Never shell a
+        // bounding-box stand-in of a non-box body.
+        const upstreamHandle = resolveBrepHostHandle(geometry);
         const host = hostBoxFromGeometry(geometry);
         const result = occtShellBox(host, thickness, openFace, undefined, upstreamHandle);
         if (result.handle) result.geometry.userData.occtHandle = result.handle;
@@ -142,30 +152,34 @@ export const shellFeature: FeatureDefinition = {
     return noteMeshFallback(result.geometry, { op: 'Shell', engine, featureId: ctx?.featureId });
   },
 
-  /** OCCT async path: when the user picked a face to leave open, re-resolve it
-   *  against the current solid's face signatures into a FaceFinder and open
-   *  exactly that face — surviving rebuilds. Otherwise defer to the sync path
-   *  (OCCT openFace heuristic / mesh fallback). */
+  /** OCCT async path: resolve the host under the fail-clean contract (with
+   *  the mesh→B-rep bridge for handle-less bodies), and — when the user picked
+   *  a face to leave open — re-resolve it against the current solid's face
+   *  signatures into a FaceFinder so exactly that face opens, surviving
+   *  rebuilds. Any failure falls to the sync path (which retries OCCT sync,
+   *  then the mesh fallback). */
   async applyAsync(geometry, params, ctx) {
     const thickness = params.wallThickness;
     const openFace = Math.round(params.openFace);
     const engine = Math.round(params.engine ?? 0);
     const sel = ctx?.faceSelections?.[0];
-    if (sel && shouldUseOcctEngine(engine)) {
+    if (shouldUseOcctEngine(engine)) {
       try {
-        const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
-        if (upstreamHandle) {
-          const faceFinder = await buildFaceFinderBySignature(
+        const upstreamHandle = await resolveBrepHostHandleAsync(geometry);
+        let faceFinder: unknown = undefined;
+        if (sel && upstreamHandle) {
+          faceFinder = await buildFaceFinderBySignature(
             { position: sel.position, normal: sel.normal },
             occtFaceSignatures(upstreamHandle),
-          );
-          if (faceFinder) {
-            const host = hostBoxFromGeometry(geometry);
-            const result = occtShellBox(host, thickness, openFace, undefined, upstreamHandle, faceFinder);
-            if (result.handle) result.geometry.userData.occtHandle = result.handle;
-            return result.geometry;
-          }
+          ) ?? undefined;
         }
+        // Shell the REAL (possibly bridged) solid — with the re-resolved face
+        // finder when available, else the openFace heuristic. Never a bbox
+        // stand-in: resolveBrepHostHandleAsync already threw for those.
+        const host = hostBoxFromGeometry(geometry);
+        const result = occtShellBox(host, thickness, openFace, undefined, upstreamHandle, faceFinder);
+        if (result.handle) result.geometry.userData.occtHandle = result.handle;
+        return result.geometry;
       } catch (err) {
         console.warn('[shell] OCCT face-finder path failed, falling back:', err);
         captureKernelFailure({

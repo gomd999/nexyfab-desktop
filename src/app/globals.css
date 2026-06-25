@@ -784,3 +784,20 @@ body.sg-shell-v2 [data-tour="feature-tree"] > div > div {
   body.sg-shell-v2 .nx-app { background: #ffffff !important; }
   body.sg-shell-v2 .nx-viewport { background: #ffffff !important; }
 }
+
+/* ── Studio (free-form) theme helpers — follow <html data-theme> via --nx- vars
+   so the chat Studio supports light + dark like the rest of NexyFab. The 3D
+   viewport stays a neutral mid-tone (CAD convention) and is themed separately. */
+.st-bg       { background: var(--nx-bg); color: var(--nx-text); }
+.st-panel    { background: var(--nx-panel); }
+.st-panel-2  { background: var(--nx-panel-2); }
+.st-text     { color: var(--nx-text); }
+.st-text-2   { color: var(--nx-text-2); }
+.st-text-3   { color: var(--nx-text-3); }
+.st-bd       { border-color: var(--nx-border) !important; }
+.st-hover:hover { background: var(--nx-hover); }
+.st-input    { background: var(--nx-panel-2); border-color: var(--nx-border); color: var(--nx-text); }
+.st-card     { background: var(--nx-panel); border-color: var(--nx-border); }
+.st-chip     { background: var(--nx-panel-2); border-color: var(--nx-border); color: var(--nx-text-2); }
+.st-chip:hover { background: var(--nx-hover); color: var(--nx-text); }
+.st-hero-bg  { background: radial-gradient(120% 80% at 50% 0%, var(--nx-panel-2) 0%, var(--nx-bg) 60%); }

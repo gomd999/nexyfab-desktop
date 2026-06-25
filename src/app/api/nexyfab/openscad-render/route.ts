@@ -24,18 +24,26 @@ export const dynamic = 'force-dynamic';
 
 function parseFormat(v: unknown): OpenScadMeshFormat {
   if (v === 'off') return 'off';
+  if (v === '3mf') return '3mf';
   return 'stl';
 }
 
 export async function POST(req: NextRequest) {
   const lang = openscadApiLangFromRequest(req);
+  // Studio is a wide funnel: GUESTS may render (so they can see + slider-tune
+  // their 1 free design), bounded by an IP rate limit. Logged-in users keep
+  // their monthly quota; guests are metered only by the rate limit below.
   const plan = await checkPlan(req, 'free');
-  if (!plan.ok) return plan.response;
-
   const ip = getTrustedClientIp(req.headers);
-  const rl = rateLimit(`openscad-render:${ip}:${plan.userId}`, 30, 3_600_000);
+  const isGuest = !plan.ok;
+  const userId = plan.ok ? plan.userId : `guest:${ip}`;
+  const planTier = plan.ok ? plan.plan : 'free';
+
+  // Guests get a tighter render budget than logged-in users (abuse guard on an
+  // anonymous CPU endpoint); logged-in users keep the generous 30/hr.
+  const rl = rateLimit(`openscad-render:${ip}:${userId}`, isGuest ? 12 : 30, 3_600_000);
   if (!rl.allowed) {
-    nfApiInfo('openscad.render', 'RATE_LIMIT', { userId: plan.userId });
+    nfApiInfo('openscad.render', 'RATE_LIMIT', { userId });
     return NextResponse.json({ error: 'Rate limit exceeded', code: 'RATE_LIMIT' }, { status: 429 });
   }
 
@@ -43,6 +51,14 @@ export async function POST(req: NextRequest) {
   const scad = typeof body.scad === 'string' ? body.scad : '';
   const format = parseFormat(body.format);
   const asyncMode = body.async === true;
+  // Optional attached STL the source can `import("model.stl")` to modify.
+  let importStl: Uint8Array | undefined;
+  if (typeof body.importStl === 'string' && body.importStl.length > 0) {
+    try {
+      const buf = Buffer.from(body.importStl, 'base64');
+      if (buf.byteLength > 0 && buf.byteLength <= 20 * 1024 * 1024) importStl = Uint8Array.from(buf);
+    } catch { /* ignore bad base64 */ }
+  }
 
   if (!scad.trim()) {
     return NextResponse.json(
@@ -57,37 +73,39 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const quota = await checkMonthlyLimit(plan.userId, plan.plan, 'openscad_render');
-  if (!quota.ok) {
-    nfApiInfo('openscad.render', 'MONTHLY_LIMIT', {
-      userId: plan.userId,
-      used: quota.used,
-      limit: quota.limit,
-    });
-    return NextResponse.json(
-      {
-        error: openscadMsg(lang, 'MONTHLY_LIMIT'),
-        code: 'MONTHLY_LIMIT',
+  if (plan.ok) {
+    const quota = await checkMonthlyLimit(userId, planTier, 'openscad_render');
+    if (!quota.ok) {
+      nfApiInfo('openscad.render', 'MONTHLY_LIMIT', {
+        userId: userId,
         used: quota.used,
         limit: quota.limit,
-      },
-      { status: 403 },
-    );
+      });
+      return NextResponse.json(
+        {
+          error: openscadMsg(lang, 'MONTHLY_LIMIT'),
+          code: 'MONTHLY_LIMIT',
+          used: quota.used,
+          limit: quota.limit,
+        },
+        { status: 403 },
+      );
+    }
   }
 
   const forceAsync =
     asyncMode || Buffer.byteLength(scad, 'utf8') > 200_000;
 
   if (!forceAsync) {
-    const r = await runOpenScadCli({ scadSource: scad, format });
+    const r = await runOpenScadCli({ scadSource: scad, format, importStl });
     if (!r.ok) {
       const status = r.code === 'ENOENT' ? 503 : r.code === 'TIMEOUT' ? 504 : 500;
-      nfApiInfo('openscad.render', 'CLI_FAILED', { code: r.code, status, userId: plan.userId });
+      nfApiInfo('openscad.render', 'CLI_FAILED', { code: r.code, status, userId: userId });
       return NextResponse.json({ error: r.message, code: r.code, stderr: r.stderr }, { status });
     }
     if (r.buffer.length > OPENSCAD_SYNC_MAX_OUTPUT_BYTES) {
       nfApiInfo('openscad.render', 'OUTPUT_TOO_LARGE', {
-        userId: plan.userId,
+        userId: userId,
         bytes: r.buffer.length,
       });
       return NextResponse.json(
@@ -103,26 +121,30 @@ export async function POST(req: NextRequest) {
     const syncId = `sync-${randomBytes(8).toString('hex')}`;
     const artifact = await maybeUploadOpenScadArtifact({
       buffer: r.buffer,
-      userId: plan.userId,
+      userId: userId,
       jobId: syncId,
       format,
     });
-    const consumed = await consumeMonthlyMetricSlot(plan.userId, plan.plan, 'openscad_render', {
-      mode: 'sync',
-      jobId: syncId,
-      format,
-      bytesOut: r.buffer.length,
-    });
-    if (!consumed.ok) {
-      nfApiInfo('openscad.render', 'MONTHLY_SLOT_RACE_AFTER_SYNC', {
-        userId: plan.userId,
-        used: consumed.used,
-        limit: consumed.limit,
+    // Guests aren't on the monthly meter — bounded by the IP rate limit so a
+    // free design + slider tweaks don't exhaust a per-IP monthly cap mid-session.
+    if (plan.ok) {
+      const consumed = await consumeMonthlyMetricSlot(userId, planTier, 'openscad_render', {
+        mode: 'sync',
+        jobId: syncId,
+        format,
+        bytesOut: r.buffer.length,
       });
+      if (!consumed.ok) {
+        nfApiInfo('openscad.render', 'MONTHLY_SLOT_RACE_AFTER_SYNC', {
+          userId: userId,
+          used: consumed.used,
+          limit: consumed.limit,
+        });
+      }
     }
     logCadPipelineAudit({
-      userId: plan.userId,
-      plan: plan.plan,
+      userId: userId,
+      plan: planTier,
       action: CadAuditAction.OPENSCAD_SYNC,
       resourceId: syncId,
       metadata: { format, bytesOut: r.buffer.length, scadBytes: Buffer.byteLength(scad, 'utf8') },
@@ -138,31 +160,33 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const reserved = await consumeMonthlyMetricSlot(plan.userId, plan.plan, 'openscad_render', {
-    mode: 'async',
-    format,
-  });
-  if (!reserved.ok) {
-    nfApiInfo('openscad.render', 'MONTHLY_LIMIT_RESERVE', {
-      userId: plan.userId,
-      used: reserved.used,
-      limit: reserved.limit,
+  if (plan.ok) {
+    const reserved = await consumeMonthlyMetricSlot(userId, planTier, 'openscad_render', {
+      mode: 'async',
+      format,
     });
-    return NextResponse.json(
-      {
-        error: openscadMsg(lang, 'MONTHLY_LIMIT'),
-        code: 'MONTHLY_LIMIT',
+    if (!reserved.ok) {
+      nfApiInfo('openscad.render', 'MONTHLY_LIMIT_RESERVE', {
+        userId: userId,
         used: reserved.used,
         limit: reserved.limit,
-      },
-      { status: 403 },
-    );
+      });
+      return NextResponse.json(
+        {
+          error: openscadMsg(lang, 'MONTHLY_LIMIT'),
+          code: 'MONTHLY_LIMIT',
+          used: reserved.used,
+          limit: reserved.limit,
+        },
+        { status: 403 },
+      );
+    }
   }
 
-  const job = await enqueueOpenScadJob({ userId: plan.userId, scad, format });
+  const job = await enqueueOpenScadJob({ userId: userId, scad, format });
   logCadPipelineAudit({
-    userId: plan.userId,
-    plan: plan.plan,
+    userId: userId,
+    plan: planTier,
     action: CadAuditAction.OPENSCAD_ASYNC,
     resourceId: job.id,
     metadata: { format, scadBytes: Buffer.byteLength(scad, 'utf8') },

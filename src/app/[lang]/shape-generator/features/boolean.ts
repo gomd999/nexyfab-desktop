@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
-import { occtBoxBooleanWithPrimitive, OcctNotReadyError, hostBoxFromGeometry } from './occtEngine';
+import { occtBoxBooleanWithPrimitive, OcctNotReadyError, hostBoxFromGeometry, resolveBrepHostHandle } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback } from './downgradeNotice';
 import { captureKernelFailure } from './kernelCorpus';
@@ -262,10 +262,12 @@ export const booleanFeature: FeatureDefinition = {
 
     if (shouldUseOcctEngine(engine)) {
       // OCCT path. Prefer an upstream B-rep handle (phase 2d chain) so the
-      // op composes against the real prior shape. Falls back to a bbox-
-      // derived box host when no handle is present.
+      // op composes against the real prior shape. Fail-clean host contract:
+      // a box host is only used when the mesh verifiably IS a box; a
+      // handle-less non-box body throws (→ legacy mesh CSG below) instead of
+      // being silently replaced by its bounding box.
       try {
-        const upstreamHandle = (geometry.userData?.occtHandle as string | undefined) ?? null;
+        const upstreamHandle = resolveBrepHostHandle(geometry);
         const host = hostBoxFromGeometry(geometry);
 
         const toolShapeCode = Math.round(params.toolShape);

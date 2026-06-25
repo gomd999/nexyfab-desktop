@@ -13,19 +13,55 @@
 
 import type { FeatureEditIntent } from './featureEditDispatcher';
 import type { FeatureInstance, FeatureType } from '../features/types';
+import type {
+  ElementSelectionInfo,
+  FaceSelectionInfo,
+  EdgeSelectionInfo,
+} from '../editing/selectionInfo';
 
 export interface ParsedFeatureEdit {
   intents: FeatureEditIntent[];
   explanation: string;
 }
 
-/** Feature keyword → (FeatureType, primary numeric param). */
-const ADD_PATTERNS: Array<{ re: RegExp; type: FeatureType; paramKey: string; label: string }> = [
+/**
+ * Feature keyword → (FeatureType, primary numeric param).
+ * `mapNumber: false` adds the feature with default params even when the prompt
+ * carries a number — for features (e.g. thread) where a bare "50mm" does not
+ * correspond to the primary param and would set a nonsensical value.
+ */
+const ADD_PATTERNS: Array<{ re: RegExp; type: FeatureType; paramKey: string; label: string; mapNumber?: boolean }> = [
   { re: /fillet|round|필렛|모깎기|라운드/i, type: 'fillet', paramKey: 'radius', label: 'fillet' },
   { re: /chamfer|bevel|챔퍼|모따기/i, type: 'chamfer', paramKey: 'distance', label: 'chamfer' },
   { re: /hole|bore|drill|구멍|홀/i, type: 'hole', paramKey: 'diameter', label: 'hole' },
   { re: /shell|hollow|쉘|속.?비우/i, type: 'shell', paramKey: 'wallThickness', label: 'shell' },
+  { re: /thread|screw|나사산|나사/i, type: 'thread', paramKey: 'pitch', label: 'thread', mapNumber: false },
+  // Selection-based (face) edits — see FACE_FEATURES / REQUIRE_SELECTION below.
+  // Order matters: "delete/면 삭제" must be checked here, not by the remove-last
+  // rule (that needs an explicit last/마지막 reference, which these lack).
+  { re: /delete\s*face|면\s*(삭제|제거|지우)/i, type: 'deleteFace', paramKey: '', label: 'delete face', mapNumber: false },
+  { re: /off\s?set|오프\s?셋|옵셋|면\s*이동/i, type: 'offsetFace', paramKey: 'distance', label: 'face offset' },
+  { re: /draft|구배|빼기.?구배/i, type: 'draft', paramKey: 'angle', label: 'draft' },
 ];
+
+/** Features that consume a selected FACE (offset/delete operate on it; draft refines with it). */
+const FACE_FEATURES = new Set<FeatureType>(['offsetFace', 'deleteFace', 'draft']);
+/** Features that can consume a selected EDGE (else fall back to "all edges"). */
+const EDGE_FEATURES = new Set<FeatureType>(['fillet', 'chamfer']);
+/** Features that are meaningless without a face selection — guide the user instead of adding a no-op. */
+const REQUIRE_FACE = new Set<FeatureType>(['offsetFace', 'deleteFace']);
+
+/** Split the current selection into face/edge arrays the feature pipeline understands. */
+export function selectionToArrays(selection: ElementSelectionInfo | null | undefined): {
+  faces: FaceSelectionInfo[];
+  edges: EdgeSelectionInfo[];
+} {
+  if (!selection) return { faces: [], edges: [] };
+  if (selection.type === 'face') return { faces: [selection], edges: [] };
+  if (selection.type === 'multi') return { faces: selection.faces, edges: [] };
+  if (selection.type === 'edge') return { faces: [], edges: [selection] };
+  return { faces: [], edges: [] };
+}
 
 const UPDATE_VERB = /\b(make|set|change|resize|update|adjust)\b|변경|바꿔|설정|로\s*해|크기/i;
 
@@ -59,6 +95,7 @@ function primaryParamKey(type: FeatureType): string | null {
 export function parseFeatureEditPrompt(
   prompt: string,
   features: ReadonlyArray<FeatureInstance>,
+  selection?: ElementSelectionInfo | null,
 ): ParsedFeatureEdit {
   const text = prompt.trim();
   if (!text) {
@@ -103,13 +140,38 @@ export function parseFeatureEditPrompt(
   }
 
   // 5. Add a feature (keyword match; number → its primary param, else default).
+  //    Face/edge-aware: when the matched feature consumes a selection and one
+  //    of the right kind is active, attach it (add_feature_on_selection) so the
+  //    edit targets the clicked face/edge instead of the default. Features that
+  //    REQUIRE a face (offset/delete) surface guidance when none is selected.
+  const { faces, edges } = selectionToArrays(selection);
   for (const pat of ADD_PATTERNS) {
     if (pat.re.test(text)) {
-      const params: Record<string, number> = num !== null ? { [pat.paramKey]: num } : {};
-      const size = num !== null ? ` (${pat.paramKey} ${num}mm)` : ' (default size)';
+      const useNumber = num !== null && pat.mapNumber !== false && pat.paramKey !== '';
+      const params: Record<string, number> = useNumber ? { [pat.paramKey]: num } : {};
+      const size = useNumber ? ` (${pat.paramKey} ${num}mm)` : '';
+
+      if (REQUIRE_FACE.has(pat.type) && faces.length === 0) {
+        return {
+          intents: [],
+          explanation: `Select a face first, then say "${pat.label}". (먼저 면을 선택한 뒤 "${pat.label}" 라고 하세요.)`,
+        };
+      }
+      if (FACE_FEATURES.has(pat.type) && faces.length > 0) {
+        return {
+          intents: [{ kind: 'add_feature_on_selection', featureType: pat.type, params, faceSelections: faces }],
+          explanation: `Applied ${pat.label}${size} to the selected ${faces.length > 1 ? `${faces.length} faces` : 'face'}.`,
+        };
+      }
+      if (EDGE_FEATURES.has(pat.type) && edges.length > 0) {
+        return {
+          intents: [{ kind: 'add_feature_on_selection', featureType: pat.type, params, edgeSelections: edges }],
+          explanation: `Added a ${pat.label}${size} on the selected edge.`,
+        };
+      }
       return {
         intents: [{ kind: 'add_feature', featureType: pat.type, params }],
-        explanation: `Added a ${pat.label}${size}.`,
+        explanation: `Added a ${pat.label}${size || ' (default size)'}.`,
       };
     }
   }

@@ -28,8 +28,10 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
+import type { BendHistoryEntry } from './sheetMetal';
 import { noteMeshFallback } from './downgradeNotice';
-import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
+import { stampFaceFeatureIdAll, propagateFeatureIdMap } from './faceProvenance';
+import { configureEvaluatorAttributes } from './meshMerge';
 
 export type BendReliefShape = 'rectangular' | 'obround';
 export type CornerReliefShape = 'circular' | 'square';
@@ -60,22 +62,13 @@ function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
 }
 
-/** Restrict the evaluator's interpolated attributes to those present on
- *  BOTH operands (plus provenance when stamped) — keeps the CSG working
- *  when the base mesh has no uv channel (sketch-extrude / prior CSG). */
-function configureEvaluatorAttributes(
-  evaluator: Evaluator,
-  a: THREE.BufferGeometry,
-  b: THREE.BufferGeometry,
-): void {
-  evaluator.attributes = ['position', 'normal', 'uv'].filter(
-    k => a.getAttribute(k) && b.getAttribute(k),
-  );
-  configureEvaluatorForProvenance(evaluator, a, b);
-}
-
-/** Subtract `tool` from `base`, carrying face provenance through. */
-function csgSubtract(
+/** Subtract `tool` from `base`, carrying face provenance through. The shared
+ *  meshMerge.configureEvaluatorAttributes restricts interpolated attributes
+ *  to those on BOTH operands and sentinel-fills the provenance attribute on
+ *  whichever side lacks it — previously the TOOL was stamped but a fresh
+ *  (unstamped) base wasn't, so three-bvh-csg dereferenced a missing
+ *  attribute and the relief crashed as feature #1 in the pipeline. */
+export function csgSubtract(
   base: THREE.BufferGeometry,
   tool: THREE.BufferGeometry,
   featureId?: string,
@@ -157,11 +150,16 @@ function buildNotchTools(
 }
 
 /**
- * Cut a pair of relief notches at both ends of the bend line at
- * `position`. Primary-axis selection matches applyBend (the position
- * fraction runs along the LONGEST horizontal axis; the bend line runs
- * along the other one), so a bendRelief at position p lines up with a
- * bend at the same p added after it.
+ * Cut a pair of relief notches at both ends of the bend line of an existing
+ * bend in the body's `__bendHistory` (bend, flange, or hem). The relief
+ * LOCATES the bend from the history: v2 entries carry the bend line's
+ * absolute axis/position (exact even after the bbox has folded up); legacy
+ * entries fall back to the applyBend convention (fraction along the longest
+ * horizontal axis). `params.position` selects WHICH recorded bend to relieve
+ * (nearest recorded fraction) when several exist.
+ *
+ * Fails clean with a descriptive error when the body has no bend at all —
+ * there is nothing to relieve.
  */
 export function applyBendRelief(
   geometry: THREE.BufferGeometry,
@@ -172,6 +170,14 @@ export function applyBendRelief(
   if (width <= 0) throw new Error('Bend relief width must be greater than 0');
   if (depth <= 0) throw new Error('Bend relief depth must be greater than 0');
 
+  const history =
+    (geometry.userData as { __bendHistory?: BendHistoryEntry[] } | undefined)?.__bendHistory ?? [];
+  if (history.length === 0) {
+    throw new Error(
+      'Bend relief requires a bend to relieve — add a bend, flange, or hem feature before the relief cut',
+    );
+  }
+
   const geo = geometry.clone();
   geo.computeBoundingBox();
   const bb = geo.boundingBox!;
@@ -180,11 +186,31 @@ export function applyBendRelief(
 
   const sizeX = bb.max.x - bb.min.x;
   const sizeZ = bb.max.z - bb.min.z;
-  // applyBend: bend line parallel to X when Z is the longest axis.
-  const bendAlongX = sizeZ >= sizeX;
-  const primarySize = bendAlongX ? sizeZ : sizeX;
-  const primaryMin = bendAlongX ? bb.min.z : bb.min.x;
-  const bendLinePos = primaryMin + primarySize * Math.max(0, Math.min(1, position));
+
+  // Pick the recorded bend whose position fraction is nearest the requested
+  // one (single-bend bodies always pick their bend).
+  const frac = Math.max(0, Math.min(1, position));
+  let target = history[0];
+  for (const e of history) {
+    if (Math.abs((e.position ?? 0.5) - frac) < Math.abs((target.position ?? 0.5) - frac)) {
+      target = e;
+    }
+  }
+
+  let bendAlongX: boolean;
+  let bendLinePos: number;
+  if (target.lineAxis && typeof target.linePos === 'number') {
+    // v2 history — exact bend line in absolute coordinates.
+    bendAlongX = target.lineAxis === 'x';
+    bendLinePos = target.linePos;
+  } else {
+    // Legacy entry — applyBend convention: bend line parallel to X when Z is
+    // the longest axis; position is a fraction along the other (primary) axis.
+    bendAlongX = sizeZ >= sizeX;
+    const primarySize = bendAlongX ? sizeZ : sizeX;
+    const primaryMin = bendAlongX ? bb.min.z : bb.min.x;
+    bendLinePos = primaryMin + primarySize * Math.max(0, Math.min(1, target.position ?? frac));
+  }
 
   let result: THREE.BufferGeometry = geo;
   for (const side of [-1, 1] as const) {

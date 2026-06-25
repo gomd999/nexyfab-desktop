@@ -141,7 +141,7 @@ export function HubFrame({ lang, onShowAuth }: HubFrameProps) {
       ico: 'cube',
       lbl: d.qsNewPart,
       sub: d.qsNewPartSub,
-      href: `/${lang}/shape-generator`,
+      href: `/${lang}/shape-generator?entry=part`,
     },
     {
       ico: 'combine',

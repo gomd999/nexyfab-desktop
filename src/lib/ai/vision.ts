@@ -85,8 +85,25 @@ export async function visionCompletion(req: VisionRequest): Promise<VisionRespon
   const t0 = Date.now();
   const adapter = ADAPTERS[provider];
   if (!adapter) throw new VisionNotConfiguredError();
-  const resp = await adapter(req);
-  return { ...resp, latencyMs: Date.now() - t0 };
+  // Vision models (esp. Gemini Flash) intermittently return "high demand /
+  // try again later" (503/429/UNAVAILABLE). These are transient — retry a few
+  // times with backoff before surfacing the error to the user.
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const resp = await adapter(req);
+      return { ...resp, latencyMs: Date.now() - t0 };
+    } catch (e) {
+      lastErr = e;
+      const transient = e instanceof VisionProviderError && (
+        e.status === 429 || e.status === 500 || e.status === 503 || e.status === undefined ||
+        /high demand|overload|unavailable|try again|resource_exhausted|temporarily|rate.?limit/i.test(e.message)
+      );
+      if (!transient || attempt === 2) throw e;
+      await new Promise(r => setTimeout(r, 700 * (attempt + 1) + Math.floor(Math.random() * 400)));
+    }
+  }
+  throw lastErr ?? new Error('vision failed');
 }
 
 /**
@@ -225,9 +242,10 @@ async function openaiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'l
 async function geminiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'latencyMs'>> {
   const key = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
   if (!key) throw new VisionNotConfiguredError();
-  // gemini-2.0-flash is fast + cheap and has solid multimodal grounding;
-  // gemini-1.5-flash works as fallback. Pro variants overkill for CAD review.
-  const model = req.model ?? 'gemini-2.0-flash';
+  // gemini-2.5-flash is fast + cheap with solid multimodal grounding. (The
+  // older gemini-2.0-flash now 404s "no longer available" on newer projects.)
+  // Override per-call via req.model or globally via GEMINI_VISION_MODEL.
+  const model = req.model ?? process.env.GEMINI_VISION_MODEL ?? 'gemini-2.5-flash';
 
   // Gemini wants `parts` with mixed text + inline_data entries.
   const parts: unknown[] = [];

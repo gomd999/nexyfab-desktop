@@ -116,7 +116,7 @@ export const KNOWN_FEATURE_TYPES: ReadonlySet<string> = new Set([
   'flange', 'hem', 'jog', 'tab', 'bendRelief', 'cornerRelief',
   'flatPattern', 'variableFillet', 'boundarySurface',
   'revolve', 'sweep', 'loft', 'thread', 'moldTools', 'weldment', 'nurbsSurface',
-  'helix', 'variableShell', 'rib', 'deleteFace', 'offsetFace',
+  'helix', 'variableShell', 'rib', 'cut', 'deleteFace', 'offsetFace',
   // sketch types are materialised in the pipeline, not via FEATURE_MAP
   'sketch', 'sketchExtrude',
 ]);

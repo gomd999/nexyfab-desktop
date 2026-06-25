@@ -151,7 +151,7 @@ describe('Adapter request shapes', () => {
 
     await visionCompletion({ prompt: 'analyze', images: [{ bytes: pngStub(), label: 'Iso' }] });
     const url = fetchSpy.mock.calls[0][0] as string;
-    expect(url).toContain('gemini-2.0-flash');
+    expect(url).toContain('gemini-2.5-flash');
     expect(url).toContain('key=');
     const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string);
     expect(body.contents[0].role).toBe('user');
