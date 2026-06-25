@@ -24,12 +24,10 @@ export interface CodegenModel {
 }
 
 export const CODEGEN_MODELS: CodegenModel[] = [
-  { id: 'gemini-pro',        label: 'Gemini 2.5 Pro',     provider: 'gemini',     model: 'gemini-2.5-pro',          note: '사진→형상 최강' },
-  { id: 'glm-5.2',           label: 'GLM 5.2',            provider: 'openrouter', model: 'z-ai/glm-5.2',            note: 'OpenRouter · 추론' },
-  { id: 'claude-opus',       label: 'Claude Opus 4.8',    provider: 'openrouter', model: 'anthropic/claude-opus-4.8', note: 'OpenRouter · 최강 추론' },
-  { id: 'qwen-max',          label: 'Qwen3 Max',          provider: 'openrouter', model: 'qwen/qwen3-max',          note: 'OpenRouter' },
-  { id: 'deepseek-v32',      label: 'DeepSeek V3.2',      provider: 'openrouter', model: 'deepseek/deepseek-v3.2',  note: 'OpenRouter' },
-  { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner',  provider: 'deepseek',   model: 'deepseek-reasoner',       note: '직접' },
+  { id: 'gemini-pro',        label: 'Gemini 2.5 Pro',     provider: 'gemini',     model: 'gemini-2.5-pro',  note: '사진→형상 최강' },
+  { id: 'glm-5.2',           label: 'GLM 5.2',            provider: 'openrouter', model: 'z-ai/glm-5.2',    note: 'OpenRouter · 추론' },
+  { id: 'qwen-max',          label: 'Qwen3 Max',          provider: 'openrouter', model: 'qwen/qwen3-max',  note: 'OpenRouter' },
+  { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner',  provider: 'deepseek',   model: 'deepseek-reasoner', note: '직접' },
 ];
 
 export const DEFAULT_CODEGEN_MODEL = 'gemini-pro';
