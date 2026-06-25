@@ -54,7 +54,9 @@ async function renderWith(scad: string, args: string[]): Promise<{ ok: boolean; 
   try { inst.FS.mkdir('/libraries'); } catch { /* exists */ }
   try { inst.FS.mkdir('/libraries/BOSL2'); } catch { /* exists */ }
   for (const [p, d] of Object.entries(files)) { try { inst.FS.writeFile('/libraries/' + p, d); } catch { /* skip */ } }
-  inst.FS.writeFile('/in.scad', scad);
+  // CRLF defence: a stray \r after `include <...>` makes OpenSCAD throw a
+  // line-1 syntax error (some models emit CRLF).
+  inst.FS.writeFile('/in.scad', scad.replace(/\r\n?/g, '\n'));
   let code = -1;
   try { code = inst.callMain(args); }
   catch { return { ok: false, error: 'render failed' }; }

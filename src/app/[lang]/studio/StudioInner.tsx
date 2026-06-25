@@ -431,7 +431,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
           void (async () => {
             let curScad = code;
             let refined = false;
-            const MAX = 3;
+            const MAX = 2; // most gains land in round 1–2; cap latency (each round = a vision + codegen pass)
             // 4-angle composite (iso/front/side/top) so the reviewer catches
             // faults a single angle hides; fall back to the live iso canvas.
             const sheet = () => (lastGeoRef.current ? captureMultiView(lastGeoRef.current) : null) ?? grab();

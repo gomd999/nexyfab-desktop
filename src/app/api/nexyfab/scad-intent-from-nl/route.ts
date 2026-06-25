@@ -357,6 +357,10 @@ ${prompt ? 'User note: ' + prompt : ''}`;
     // Some models still wrap mid-text; if fences remain, take the fenced block.
     const fence = scad.match(/```(?:openscad|scad|c)?\s*([\s\S]*?)```/i);
     if (fence) scad = fence[1]!.trim();
+    // Normalise line endings: some models (e.g. Gemini) emit CRLF, and a stray
+    // \r after `include <...>` makes OpenSCAD's parser throw "syntax error
+    // line 1" — the render then fails entirely.
+    scad = scad.replace(/\r\n?/g, '\n');
     // Accept any plausible OpenSCAD program. The BOSL2 include is a definitive
     // signal; otherwise look for any primitive/operation (broad — BOSL2 uses
     // cyl/tube/prismoid/rotate_extrude that a narrow list would wrongly reject).
