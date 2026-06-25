@@ -181,7 +181,10 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     const colors = parseScadColors(src);
     if (colors.length === 0) { setColoredObject(null); return; } // nothing to colour
     const myReq = ++colorReqRef.current;
-    const tokens: (string | null)[] = colors.map(c => c.token).slice(0, 6);
+    // Render every colour group (a detailed car has ~8: body, cabin, windows,
+    // wheels, hubcaps, lights, spoiler). Capping too low silently drops whole
+    // parts — e.g. the body — when the model orders that colour past the cap.
+    const tokens: (string | null)[] = colors.map(c => c.token).slice(0, 16);
     tokens.push(null); // uncoloured remainder → default colour
     const results = await Promise.all(tokens.map(async (tok) => {
       try {
