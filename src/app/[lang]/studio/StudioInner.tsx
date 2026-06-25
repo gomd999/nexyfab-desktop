@@ -424,8 +424,10 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         // CADAM-style agentic refine loop: the model LOOKS at its own render,
         // fixes the geometry, re-renders, and looks again — a few rounds until
         // the shape reads as the requested object. Affordable now that every
-        // render is in-browser (WASM). Fresh text-described objects only.
-        if (thumb && !refineFromScad && !sentImage && text) {
+        // render is in-browser (WASM). Runs for fresh text AND photo
+        // generations (photo path: the reviewer also gets the reference photo,
+        // which is exactly where raw codegen tends to scatter the parts).
+        if (thumb && !refineFromScad && (text || sentImage)) {
           void (async () => {
             let curScad = code;
             let refined = false;
@@ -440,13 +442,15 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
                 setAiMsg(aiId, T(`AI가 형상을 보고 개선 중… (${iter}/${MAX})`, `Looking at the render & refining… (${iter}/${MAX})`), 'thinking');
                 const cr = await fetch('/api/nexyfab/scad-vision-critique', {
                   method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-                  body: JSON.stringify({ image: curView, prompt: text, scad: curScad, multiview: true }),
+                  body: JSON.stringify({ image: curView, prompt: text || (sentImage ? 'the object in the reference photo' : ''), scad: curScad, multiview: true, ...(sentImage ? { refImage: sentImage } : {}) }),
                 }).then(r => r.json()).catch(() => null) as { scad?: string | null } | null;
                 if (!cr?.scad) break; // reviewer says it's faithful — stop
                 const rr = await renderScad(cr.scad);
                 if (!rr.ok) break;    // the fix didn't render — keep the last good one
                 curScad = cr.scad; refined = true;
-                setScad(curScad); setGenCount(c => c + 1);
+                // Update the mesh in place but DON'T bump fitKey — re-fitting
+                // the camera every refine round makes the viewport jump/shake.
+                setScad(curScad);
                 // capture the NEW render so the next round inspects the fix
                 await new Promise(res => setTimeout(res, 650));
                 curView = sheet();
@@ -608,6 +612,14 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
 
   const handoff = useCallback(() => {
     if (scad) { try { sessionStorage.setItem('nexyfab:studio-handoff-scad', scad); } catch { /* ignore */ } }
+    // Hand over the ALREADY-RENDERED STL so the modeler imports it directly,
+    // without re-rendering on the server (which a guest can't — it 401s). Large
+    // meshes may overflow sessionStorage; that's fine, the modeler falls back to
+    // rendering the SCAD.
+    try {
+      if (stlB64 && !importStlRef.current) sessionStorage.setItem('nexyfab:studio-handoff-stl', stlB64);
+      else sessionStorage.removeItem('nexyfab:studio-handoff-stl');
+    } catch { try { sessionStorage.removeItem('nexyfab:studio-handoff-stl'); } catch { /* ignore */ } }
     // Precise designs also carry their structured feature program so the modeler
     // can rebuild an EDITABLE feature tree (not just an imported solid).
     try {
@@ -616,7 +628,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     } catch { /* ignore */ }
     if (onExpert) onExpert();
     else router.push(`/${lang}/shape-generator?mode=expert`);
-  }, [scad, lang, router, onExpert]);
+  }, [scad, stlB64, lang, router, onExpert]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }

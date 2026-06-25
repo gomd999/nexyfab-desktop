@@ -6762,14 +6762,17 @@ export function ShapeGeneratorInner() {
     let cancelled = false;
     let scad: string | null = null;
     let programRaw: string | null = null;
+    let stlB64: string | null = null;
     try {
       scad = sessionStorage.getItem('nexyfab:studio-handoff-scad');
       programRaw = sessionStorage.getItem('nexyfab:studio-handoff-program');
+      stlB64 = sessionStorage.getItem('nexyfab:studio-handoff-stl');
     } catch { return; }
-    if (!scad && !programRaw) return;
+    if (!scad && !programRaw && !stlB64) return;
     try {
       sessionStorage.removeItem('nexyfab:studio-handoff-scad');
       sessionStorage.removeItem('nexyfab:studio-handoff-program');
+      sessionStorage.removeItem('nexyfab:studio-handoff-stl');
     } catch { /* ignore */ }
     void (async () => {
       // Precise designs carry a feature program → rebuild an EDITABLE feature
@@ -6788,6 +6791,26 @@ export function ShapeGeneratorInner() {
           }
         } catch (e) {
           console.warn('[precise handoff] feature rebuild failed, falling back to mesh import:', e);
+        }
+      }
+      // Fast path: the Studio already rendered the mesh (client-side WASM) and
+      // handed over the STL — import it directly, no server render (works for
+      // guests, who can't call the render API).
+      if (stlB64) {
+        try {
+          const bin = atob(stlB64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          const { parseSTL } = await import('./io/importers');
+          const geo = parseSTL(bytes.buffer);
+          geo.computeBoundingBox();
+          if (cancelled) return;
+          setImportedGeometry(geo);
+          setImportedFilename('studio-model');
+          addToast('success', 'Studio 모델 가져옴 — 다부품이면 자동 분리·근사');
+          return;
+        } catch (e) {
+          console.warn('[studio handoff] STL import failed, falling back to render:', e);
         }
       }
       // Free-form (or precise fallback): render the OpenSCAD → imported mesh.

@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
  * not metered as a new design (guest-friendly, like the render self-repair).
  */
 export async function POST(req: NextRequest) {
-  const body = (await req.json().catch(() => ({}))) as { image?: string; prompt?: string; scad?: string; multiview?: boolean };
+  const body = (await req.json().catch(() => ({}))) as { image?: string; prompt?: string; scad?: string; multiview?: boolean; refImage?: string };
   const multiview = body.multiview === true;
   const prompt = (body.prompt ?? '').trim();
   const scad = (body.scad ?? '').trim();
@@ -25,22 +25,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ faithful: true, scad: null });
   }
 
-  // dataURL → PNG bytes
-  const b64 = image.includes(',') ? image.split(',')[1]! : image;
-  let bytes: Uint8Array;
-  try { bytes = Uint8Array.from(Buffer.from(b64, 'base64')); }
-  catch { return NextResponse.json({ faithful: true, scad: null }); }
+  const toBytes = (s: string): Uint8Array | null => {
+    try { return Uint8Array.from(Buffer.from(s.includes(',') ? s.split(',')[1]! : s, 'base64')); }
+    catch { return null; }
+  };
+  const bytes = toBytes(image);
+  if (!bytes) return NextResponse.json({ faithful: true, scad: null });
+  // Optional reference photo (image-to-3D): the reviewer compares the render
+  // against the real object the user uploaded.
+  const refBytes = body.refImage ? toBytes(body.refImage) : null;
 
   // 1. Vision judges the render against the request.
   let critique: { faithful: boolean; issues: string[] };
   try {
-    const v = await visionCompletion({
-      prompt: `${multiview
-        ? `This is a 2×2 multi-view sheet (top-left ISO, top-right FRONT, bottom-left SIDE, bottom-right TOP) of ONE 3D model meant to represent`
-        : `This is a screenshot of a 3D model meant to represent`}: "${prompt}". Judge it AS that object, using ALL the views together.
+    const sheetDesc = multiview
+      ? `a 2×2 multi-view sheet (top-left ISO, top-right FRONT, bottom-left SIDE, bottom-right TOP) of ONE 3D model`
+      : `a screenshot of a 3D model`;
+    const visionPrompt = refBytes
+      ? `IMAGE 1 is a reference photo of the real object the user wants. IMAGE 2 is ${sheetDesc} that is supposed to reproduce it. Judge IMAGE 2 against IMAGE 1.
 Reply with STRICT JSON ONLY: {"faithful": true|false, "issues": ["short specific geometry problem", ...]}
-Faithful = a person clearly recognizes it as "${prompt}", with every part correctly shaped, oriented, positioned, proportioned and connected.${multiview ? ' Cross-check the views: a part can look fine in ISO but be wrong in TOP/SIDE (e.g. wheels lying flat, a hollow/missing back, parts floating off the body).' : ''} Flag problems like: missing parts, wrong orientation (e.g. wheels lying flat / sideways instead of rolling), misplaced or floating/detached parts, wrong count, bad proportions. Max 5 issues. If it already looks right, return faithful=true and issues=[].`,
-      images: [{ bytes }],
+Faithful = IMAGE 2 clearly reads as the SAME kind of object as IMAGE 1, as ONE connected solid, with every part correctly shaped, oriented, positioned, proportioned and connected. Cross-check the model's views. The most common failure is parts SCATTERED / EXPLODED / floating away from the body — flag every detached or mis-positioned part and where it should go. Also flag: missing parts, wrong orientation (wheels lying flat instead of rolling), wrong count, bad proportions. Max 5 issues. If it already looks right, return faithful=true and issues=[].`
+      : `This is ${sheetDesc} meant to represent: "${prompt}". Judge it AS that object, using ALL the views together.
+Reply with STRICT JSON ONLY: {"faithful": true|false, "issues": ["short specific geometry problem", ...]}
+Faithful = a person clearly recognizes it as "${prompt}", as ONE connected solid, with every part correctly shaped, oriented, positioned, proportioned and connected.${multiview ? ' Cross-check the views: a part can look fine in ISO but be wrong in TOP/SIDE (e.g. wheels lying flat, a hollow/missing back, parts floating off the body).' : ''} Flag problems like: scattered/floating/detached parts, missing parts, wrong orientation, wrong count, bad proportions. Max 5 issues. If it already looks right, return faithful=true and issues=[].`;
+    const v = await visionCompletion({
+      prompt: visionPrompt,
+      images: refBytes ? [{ bytes: refBytes, label: 'reference photo' }, { bytes, label: 'model render' }] : [{ bytes }],
       maxTokens: 400,
       timeoutMs: 40_000,
     });
