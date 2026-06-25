@@ -382,7 +382,10 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         try {
           const fixRes = await fetch('/api/nexyfab/scad-intent-from-nl', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-            body: JSON.stringify({ prompt: fixPrompt, freeform: true, previousScad: code, repair: true }),
+            // Repairs go to DeepSeek regardless of the picked model — it reliably
+            // emits valid OpenSCAD, whereas a model that just produced a broken
+            // program (e.g. rounding>size, syntax errors) tends to repeat it.
+            body: JSON.stringify({ prompt: fixPrompt, freeform: true, previousScad: code, repair: true, modelId: 'deepseek-reasoner' }),
           });
           const fixData = await fixRes.json().catch(() => ({}));
           const fixed = (fixData as { scad?: string }).scad;
