@@ -45,15 +45,15 @@ function getReplicad(): Promise<any> {
  * this runs on demand when the user exports STEP.
  *
  * Coverage: rectangular/circular base, through-holes (incl. circular/linear
- * patterns), ribs (fused fins), all-edge fillet/chamfer (best-effort). Shells
- * are skipped (returned in `skipped`).
+ * patterns), ribs (fused fins), shells (hollow, open top/bottom), all-edge
+ * fillet/chamfer (best-effort).
  */
 interface Feat {
   id?: string; type?: string; shape?: string;
   width?: number; depth?: number; height?: number; length?: number; alongY?: boolean;
   diameter?: number; posX?: number; posY?: number;
   feature?: string; count?: number; pcd?: number; spacing?: number; axis?: string;
-  radius?: number; distance?: number;
+  radius?: number; distance?: number; wallThickness?: number; openFace?: string;
 }
 const num = (v: unknown, d: number): number => (typeof v === 'number' && isFinite(v) ? v : d);
 
@@ -108,6 +108,22 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Shell: hollow cavity cut from the base, open at top or bottom — same
+    // deterministic inner-box/cylinder approach as the OpenSCAD preview, so the
+    // STEP matches it (more robust than replicad's face-selection .shell()).
+    const shell = feats.find(f => f.type === 'shell');
+    if (shell) {
+      try {
+        const wt = num(shell.wallThickness, 2);
+        const H = num(base.height, 8);
+        const zoff = shell.openFace === 'bottom' ? -wt - 20 : wt;
+        const inner = base.shape === 'circle'
+          ? replicad.makeCylinder(num(base.width, 50) / 2 - wt, H + 20, [0, 0, zoff], [0, 0, 1])
+          : replicad.makeBaseBox(num(base.width, 100) - 2 * wt, num(base.depth, 80) - 2 * wt, H + 20).translate([0, 0, zoff]);
+        solid = solid.cut(inner);
+      } catch { skipped.push('shell'); }
+    }
+
     // Ribs: vertical fins fused onto the base (makeBaseBox sits bottom at z=0,
     // matching the base). alongY runs the rib along Y, else along X.
     for (const f of feats) {
@@ -120,7 +136,6 @@ export async function POST(req: NextRequest) {
     }
 
     for (const f of feats) {
-      if (f.type === 'shell') { skipped.push('shell'); continue; }
       try {
         if (f.type === 'fillet') solid = solid.fillet(num(f.radius, 3));
         else if (f.type === 'chamfer') solid = solid.chamfer(num(f.distance, 1));

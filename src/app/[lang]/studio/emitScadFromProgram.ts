@@ -20,7 +20,7 @@ export interface ProgramFeature {
   // rib
   length?: number; alongY?: boolean;
   // fillet / chamfer / shell
-  radius?: number; distance?: number; where?: string; wallThickness?: number;
+  radius?: number; distance?: number; where?: string; wallThickness?: number; openFace?: string;
 }
 export interface FeatureProgram { part?: string; features: ProgramFeature[] }
 
@@ -64,17 +64,38 @@ export function emitScadFromProgram(program: FeatureProgram): string {
   params.push('/* [Base] */');
   let baseGeom: string;
   let baseHVar = '0';
-  if (base.shape === 'circle') {
+  const isCircle = base.shape === 'circle';
+  let baseW = '0', baseD = '0', baseDia = '0'; // captured for the shell cavity
+  if (isCircle) {
     const dia = P('Disc diameter', n(base.width, 50), ...around(n(base.width, 50)));
+    baseDia = dia;
     baseHVar = P('Thickness', n(base.height, 5), ...around(n(base.height, 5)));
     const ch = chamfer ? `, chamfer=${P('Edge chamfer', n(chamfer.distance, 1), 0.5, 10, 0.5)}` : '';
     baseGeom = `cyl(d=${dia}, h=${baseHVar}, anchor=BOTTOM${ch})`;
   } else {
     const w = P('Base length', n(base.width, 100), ...around(n(base.width, 100)));
     const d = P('Base width', n(base.depth, 80), ...around(n(base.depth, 80)));
+    baseW = w; baseD = d;
     baseHVar = P('Base thickness', n(base.height, 8), ...around(n(base.height, 8)));
     const ch = chamfer ? `, chamfer=${P('Edge chamfer', n(chamfer.distance, 1), 0.5, 10, 0.5)}, except=BOTTOM` : '';
     baseGeom = `cuboid([${w}, ${d}, ${baseHVar}], anchor=BOTTOM${ch})`;
+  }
+
+  // ── shell (hollow cavity, open at top or bottom) ─────────────────────────
+  const shell = feats.find(f => f.type === 'shell');
+  const shellGeoms: string[] = [];
+  if (shell) {
+    params.push('/* [Shell] */');
+    const wt = P('Wall thickness', n(shell.wallThickness, 2), 0.5, 10, 0.5);
+    const openBottom = shell.openFace === 'bottom';
+    // Cavity is taller than the base so it breaks through the open face.
+    // open top  → cavity sits from z=wt upward (bottom wall = wt).
+    // open bottom → cavity top lands at h-wt (top wall = wt).
+    const zoff = openBottom ? `-(${wt})-20` : `${wt}`;
+    const inner = isCircle
+      ? `cyl(d=${baseDia}-2*${wt}, h=${baseHVar}+20, anchor=BOTTOM)`
+      : `cuboid([${baseW}-2*${wt}, ${baseD}-2*${wt}, ${baseHVar}+20], anchor=BOTTOM)`;
+    shellGeoms.push(`translate([0, 0, ${zoff}]) ${inner};`);
   }
 
   // ── ribs (union'd onto the base, with a proper concave base fillet weld) ──
@@ -129,6 +150,7 @@ export function emitScadFromProgram(program: FeatureProgram): string {
   for (const g of ribGeoms) body.push(`    ${g};`);
   body.push('  }');
   for (const g of holeGeoms) body.push(`  ${g}`);
+  for (const g of shellGeoms) body.push(`  ${g}`);
   body.push('}');
 
   return `include <BOSL2/std.scad>\n\n${params.join('\n')}\n\n${body.join('\n')}\n`;
