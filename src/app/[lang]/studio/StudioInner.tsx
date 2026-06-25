@@ -23,6 +23,7 @@ import { parseScadColors, isolateColorScad, defaultColorCss } from './scadColors
 import { emitScadFromProgram, type FeatureProgram } from './emitScadFromProgram';
 import { CODEGEN_MODELS, DEFAULT_CODEGEN_MODEL } from '@/lib/ai/codegenModels';
 import { renderScadWasm, wasmAvailable } from './wasmRender';
+import { captureMultiView } from './multiViewCapture';
 
 /** base64-encode STL bytes (for the download button + persistence) in chunks. */
 function uint8ToB64(u8: Uint8Array): string {
@@ -126,6 +127,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const currentIdRef = useRef<string>('');
   const lastThumbRef = useRef<string | null>(null);
   const importStlRef = useRef<string | null>(null); // base64 of an attached STL the SCAD imports
+  const lastGeoRef = useRef<THREE.BufferGeometry | null>(null); // newest rendered mesh (for multi-view capture)
   const [precise, setPrecise] = useState(initialPrecise); // expert: NL → exact B-rep feature program
   const programRef = useRef<FeatureProgram | null>(null); // last precise feature program (for refine)
   const [modelId, setModelId] = useState(DEFAULT_CODEGEN_MODEL); // user-picked codegen model
@@ -169,6 +171,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         const c = new THREE.Vector3();
         geo.boundingBox?.getCenter(c);
         geo.translate(-c.x, -c.y, -c.z);
+        lastGeoRef.current = geo;
         setGeometry(geo);
         setNeedLogin(false);
         setStlB64(uint8ToB64(w.data));
@@ -195,6 +198,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     const c = new THREE.Vector3();
     geo.boundingBox?.getCenter(c);
     geo.translate(-c.x, -c.y, -c.z);
+    lastGeoRef.current = geo;
     setGeometry(geo);
     setStlB64(b64);
     return { ok: true };
@@ -424,15 +428,19 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         if (thumb && !refineFromScad && !sentImage && text) {
           void (async () => {
             let curScad = code;
-            let curThumb = thumb;
             let refined = false;
             const MAX = 3;
+            // 4-angle composite (iso/front/side/top) so the reviewer catches
+            // faults a single angle hides; fall back to the live iso canvas.
+            const sheet = () => (lastGeoRef.current ? captureMultiView(lastGeoRef.current) : null) ?? grab();
+            let curView = sheet();
             try {
               for (let iter = 1; iter <= MAX; iter++) {
+                if (!curView) break;
                 setAiMsg(aiId, T(`AI가 형상을 보고 개선 중… (${iter}/${MAX})`, `Looking at the render & refining… (${iter}/${MAX})`), 'thinking');
                 const cr = await fetch('/api/nexyfab/scad-vision-critique', {
                   method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-                  body: JSON.stringify({ image: curThumb, prompt: text, scad: curScad }),
+                  body: JSON.stringify({ image: curView, prompt: text, scad: curScad, multiview: true }),
                 }).then(r => r.json()).catch(() => null) as { scad?: string | null } | null;
                 if (!cr?.scad) break; // reviewer says it's faithful — stop
                 const rr = await renderScad(cr.scad);
@@ -441,9 +449,11 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
                 setScad(curScad); setGenCount(c => c + 1);
                 // capture the NEW render so the next round inspects the fix
                 await new Promise(res => setTimeout(res, 650));
-                const t2 = grab(); if (t2) { curThumb = t2; lastThumbRef.current = t2; }
+                curView = sheet();
+                const t2 = grab(); if (t2) lastThumbRef.current = t2;
               }
             } catch { /* keep whatever rendered last */ }
+            const curThumb = lastThumbRef.current ?? thumb;
             setScad(curScad);
             void renderColored(curScad);
             setAiMsg(aiId, refined

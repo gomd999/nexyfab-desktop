@@ -16,7 +16,8 @@ export const dynamic = 'force-dynamic';
  * not metered as a new design (guest-friendly, like the render self-repair).
  */
 export async function POST(req: NextRequest) {
-  const body = (await req.json().catch(() => ({}))) as { image?: string; prompt?: string; scad?: string };
+  const body = (await req.json().catch(() => ({}))) as { image?: string; prompt?: string; scad?: string; multiview?: boolean };
+  const multiview = body.multiview === true;
   const prompt = (body.prompt ?? '').trim();
   const scad = (body.scad ?? '').trim();
   const image = body.image ?? '';
@@ -34,9 +35,11 @@ export async function POST(req: NextRequest) {
   let critique: { faithful: boolean; issues: string[] };
   try {
     const v = await visionCompletion({
-      prompt: `This is a screenshot of a 3D model meant to represent: "${prompt}". Judge it AS that object.
+      prompt: `${multiview
+        ? `This is a 2×2 multi-view sheet (top-left ISO, top-right FRONT, bottom-left SIDE, bottom-right TOP) of ONE 3D model meant to represent`
+        : `This is a screenshot of a 3D model meant to represent`}: "${prompt}". Judge it AS that object, using ALL the views together.
 Reply with STRICT JSON ONLY: {"faithful": true|false, "issues": ["short specific geometry problem", ...]}
-Faithful = a person clearly recognizes it as "${prompt}", with every part correctly shaped, oriented, positioned, proportioned and connected. Flag problems like: missing parts, wrong orientation (e.g. wheels lying flat / sideways instead of rolling), misplaced or floating/detached parts, wrong count, bad proportions. Max 5 issues. If it already looks right, return faithful=true and issues=[].`,
+Faithful = a person clearly recognizes it as "${prompt}", with every part correctly shaped, oriented, positioned, proportioned and connected.${multiview ? ' Cross-check the views: a part can look fine in ISO but be wrong in TOP/SIDE (e.g. wheels lying flat, a hollow/missing back, parts floating off the body).' : ''} Flag problems like: missing parts, wrong orientation (e.g. wheels lying flat / sideways instead of rolling), misplaced or floating/detached parts, wrong count, bad proportions. Max 5 issues. If it already looks right, return faithful=true and issues=[].`,
       images: [{ bytes }],
       maxTokens: 400,
       timeoutMs: 40_000,
