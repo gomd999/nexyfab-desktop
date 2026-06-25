@@ -562,13 +562,35 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     URL.revokeObjectURL(url);
   }, [stlB64]);
 
-  // STEP export — the manufacturing handoff. Tessellated solid → AP203 STEP
-  // (valid for FreeCAD / Onshape / SolidWorks). Needs a (free) login.
+  // STEP export — the manufacturing handoff. Precise models build a TRUE
+  // analytic B-rep (planar + cylindrical faces, re-opens cleanly in
+  // SolidWorks/Fusion); free-form falls back to a tessellated AP203 STEP.
   const [stepBusy, setStepBusy] = useState(false);
   const exportStep = useCallback(async () => {
     if (!geometry || stepBusy) return;
     setStepBusy(true);
+    const save = (text: string) => {
+      const url = URL.createObjectURL(new Blob([text], { type: 'application/step' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = 'nexyfab-part.step'; a.click();
+      URL.revokeObjectURL(url);
+    };
     try {
+      // Precise: analytic B-rep STEP from the feature program (replicad/OCCT).
+      if (programRef.current) {
+        try {
+          const res = await fetch('/api/nexyfab/cad-feature-step', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify(programRef.current),
+          });
+          if (res.ok) {
+            const text = await res.text();
+            if (text.includes('ISO-10303-21')) { save(text); return; }
+          }
+          // analytic build failed → fall through to the mesh STEP
+        } catch { /* fall through */ }
+      }
+      // Free-form (or analytic failed): tessellated solid → AP203 STEP.
       const pos = geometry.getAttribute('position');
       if (!pos) return;
       const positions = Array.from(pos.array as Float32Array);
@@ -580,11 +602,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
       });
       if (res.status === 401) { alert(T('STEP 내보내기는 무료 로그인이 필요합니다.', 'STEP export needs a (free) login.')); return; }
       if (!res.ok) { alert(T('STEP 내보내기에 실패했어요.', 'STEP export failed.')); return; }
-      const text = await res.text();
-      const url = URL.createObjectURL(new Blob([text], { type: 'application/step' }));
-      const a = document.createElement('a');
-      a.href = url; a.download = 'nexyfab-part.step'; a.click();
-      URL.revokeObjectURL(url);
+      save(await res.text());
     } catch { alert(T('STEP 내보내기에 실패했어요.', 'STEP export failed.')); }
     finally { setStepBusy(false); }
   }, [geometry, stepBusy, isKo]);

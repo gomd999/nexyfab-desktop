@@ -8,7 +8,7 @@
   "scripts": {
     "prepare": "husky",
     "dev": "next dev --webpack",
-    "prebuild": "node -e \"const fs=require('fs');fs.copyFileSync('node_modules/occt-import-js/dist/occt-import-js.wasm','public/occt-import-js.wasm');console.log('✓ occt-import-js.wasm copied to public/');fs.mkdirSync('public/fonts',{recursive:true});fs.copyFileSync('node_modules/three/examples/fonts/helvetiker_regular.typeface.json','public/fonts/helvetiker.json');console.log('✓ helvetiker.json copied to public/fonts/')\" && node scripts/copy-occt.js",
+    "prebuild": "node -e \"const fs=require('fs');fs.copyFileSync('node_modules/occt-import-js/dist/occt-import-js.wasm','public/occt-import-js.wasm');console.log('✓ occt-import-js.wasm copied to public/');fs.copyFileSync('node_modules/replicad-opencascadejs/src/replicad_single.wasm','public/replicad_single.wasm');console.log('✓ replicad_single.wasm copied to public/');fs.mkdirSync('public/fonts',{recursive:true});fs.copyFileSync('node_modules/three/examples/fonts/helvetiker_regular.typeface.json','public/fonts/helvetiker.json');console.log('✓ helvetiker.json copied to public/fonts/')\" && node scripts/copy-occt.js",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 next build --webpack",
     "postbuild": "node scripts/sync-standalone-static.mjs && node scripts/bundle-budget.mjs",
     "start": "next start",
