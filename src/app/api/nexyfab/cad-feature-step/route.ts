@@ -117,6 +117,12 @@ export async function POST(req: NextRequest) {
     }
 
     const step: string = await solid.blobSTEP().text();
+    // A degenerate program (e.g. a hole wider than the body) can cut everything
+    // away — replicad still emits a valid-but-EMPTY STEP. Reject it so the studio
+    // falls back to the mesh STEP, which keeps whatever the preview shows.
+    if (!step.includes('MANIFOLD_SOLID_BREP') || !step.includes('ADVANCED_FACE')) {
+      return NextResponse.json({ error: 'empty solid', code: 'DEGENERATE' }, { status: 422 });
+    }
     return new NextResponse(step, {
       status: 200,
       headers: {

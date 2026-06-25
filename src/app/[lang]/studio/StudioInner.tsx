@@ -840,7 +840,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
             </div>
             <div className="flex gap-2">
               <button onClick={exportStl} disabled={!stlB64} className="flex-1 border st-bd st-hover disabled:opacity-40 rounded py-1.5 text-[11px]">⬇ STL</button>
-              {precise && <button onClick={() => void exportStep()} disabled={!geometry || stepBusy} className="flex-1 border st-bd st-hover disabled:opacity-40 rounded py-1.5 text-[11px]" title={T('제조용 STEP (CAD 호환)', 'Manufacturing STEP (CAD interchange)')}>{stepBusy ? '…' : '⬇ STEP'}</button>}
+              <button onClick={() => void exportStep()} disabled={!geometry || stepBusy} className="flex-1 border st-bd st-hover disabled:opacity-40 rounded py-1.5 text-[11px]" title={precise ? T('제조용 analytic STEP (CAD 호환)', 'Analytic STEP for manufacturing (CAD interchange)') : T('제조용 STEP (테셀레이션, CAD 호환)', 'STEP for manufacturing (tessellated, CAD interchange)')}>{stepBusy ? '…' : '⬇ STEP'}</button>
               <button onClick={handoff} className="flex-1 bg-indigo-600 hover:bg-indigo-500 rounded py-1.5 text-[11px] font-semibold" title={T('전문가형 모델러', 'Expert modeler')}>{T('전문가형 →', 'Expert →')}</button>
             </div>
           </div>
