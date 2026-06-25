@@ -37,7 +37,7 @@ export function wasmAvailable(): boolean {
 
 /** Render SCAD to binary STL bytes entirely client-side. Resolves {ok:false}
  *  (never throws) so callers can fall back to the server render. */
-export function renderScadWasm(scad: string, timeoutMs = 30000): Promise<WasmResult> {
+export function renderScadWasm(scad: string, timeoutMs = 60000): Promise<WasmResult> {
   return new Promise((resolve) => {
     let done = false;
     const finish = (r: WasmResult) => { if (!done) { done = true; resolve(r); } };
