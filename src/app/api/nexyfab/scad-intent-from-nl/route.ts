@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
   // above. Placed after the cache return so a cache hit doesn't burn the freebie.
   if (!planCheck.ok && !isRepair) {
     const guestIp = getTrustedClientIp(req.headers);
-    const guestRl = rateLimit(`scad-gen-guest:${guestIp}`, 100, 24 * 3_600_000); // TEMP: raised 1→100 for model testing
+    const guestRl = rateLimit(`scad-gen-guest:${guestIp}`, 3, 24 * 3_600_000);
     if (!guestRl.allowed) {
       return NextResponse.json(
         { error: 'Free design used — log in (free) to keep designing.', code: 'GUEST_LIMIT' },

@@ -20,7 +20,7 @@ interface FeatureProgram { part?: string; features?: unknown[] }
 
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
-  if (!rateLimit(`cad-feature-program:${ip}`, 100, 3_600_000).allowed) { // TEMP: raised 20→100 for model testing
+  if (!rateLimit(`cad-feature-program:${ip}`, 20, 3_600_000).allowed) {
     return NextResponse.json({ error: 'Too many requests — try again shortly.', code: 'RATE_LIMIT' }, { status: 429 });
   }
   const body = (await req.json().catch(() => ({}))) as { prompt?: string; previousProgram?: FeatureProgram; modelId?: string };

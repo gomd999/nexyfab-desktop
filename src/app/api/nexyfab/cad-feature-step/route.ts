@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { rateLimit } from '@/lib/rate-limit';
+import { getTrustedClientIp } from '@/lib/client-ip';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,6 +58,13 @@ interface Feat {
 const num = (v: unknown, d: number): number => (typeof v === 'number' && isFinite(v) ? v : d);
 
 export async function POST(req: NextRequest) {
+  // Building a real B-rep runs OCCT server-side (a few CPU-seconds); this route
+  // is unauthenticated, so cap it per IP to prevent abuse. Export is
+  // user-initiated, so a modest hourly budget is plenty.
+  const ip = getTrustedClientIp(req.headers);
+  if (!rateLimit(`cad-feature-step:${ip}`, 30, 3_600_000).allowed) {
+    return NextResponse.json({ error: 'Too many STEP exports — try again shortly.', code: 'RATE_LIMIT' }, { status: 429 });
+  }
   const body = (await req.json().catch(() => ({}))) as { features?: Feat[]; part?: string };
   const feats = Array.isArray(body.features) ? body.features : [];
   const base = feats.find(f => f.type === 'sketchExtrude');
