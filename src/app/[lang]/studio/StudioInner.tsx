@@ -417,29 +417,39 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         if (thumb) lastThumbRef.current = thumb;
         persist(code, thumb);
 
-        // Show it, then let a vision model check if it actually LOOKS right and
-        // fix the geometry if not — only for a fresh text-described object.
+        // CADAM-style agentic refine loop: the model LOOKS at its own render,
+        // fixes the geometry, re-renders, and looks again — a few rounds until
+        // the shape reads as the requested object. Affordable now that every
+        // render is in-browser (WASM). Fresh text-described objects only.
         if (thumb && !refineFromScad && !sentImage && text) {
-          setAiMsg(aiId, T('AI가 형상을 점검·개선 중…', 'Checking & refining the shape…'), 'thinking');
           void (async () => {
+            let curScad = code;
+            let curThumb = thumb;
+            let refined = false;
+            const MAX = 3;
             try {
-              const cr = await fetch('/api/nexyfab/scad-vision-critique', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-                body: JSON.stringify({ image: thumb, prompt: text, scad: code }),
-              }).then(r => r.json()).catch(() => null) as { scad?: string | null } | null;
-              if (cr?.scad) {
-                setScad(cr.scad); setGenCount(c => c + 1);
+              for (let iter = 1; iter <= MAX; iter++) {
+                setAiMsg(aiId, T(`AI가 형상을 보고 개선 중… (${iter}/${MAX})`, `Looking at the render & refining… (${iter}/${MAX})`), 'thinking');
+                const cr = await fetch('/api/nexyfab/scad-vision-critique', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+                  body: JSON.stringify({ image: curThumb, prompt: text, scad: curScad }),
+                }).then(r => r.json()).catch(() => null) as { scad?: string | null } | null;
+                if (!cr?.scad) break; // reviewer says it's faithful — stop
                 const rr = await renderScad(cr.scad);
-                if (rr.ok) {
-                  setAiMsg(aiId, T('완성! 형상을 더 알아보기 쉽게 다듬었어요. 슬라이더로 조정하거나 계속 말해서 수정하세요.', 'Done! I refined the shape to match better. Tune with sliders or keep chatting.'), 'done');
-                  void renderColored(cr.scad);
-                  setTimeout(() => { const t2 = grab(); if (t2) lastThumbRef.current = t2; persist(cr.scad!, t2 ?? thumb); }, 600);
-                  return;
-                }
-                setScad(code); setGenCount(c => c + 1); await renderScad(code); // refined render failed → keep the good one
+                if (!rr.ok) break;    // the fix didn't render — keep the last good one
+                curScad = cr.scad; refined = true;
+                setScad(curScad); setGenCount(c => c + 1);
+                // capture the NEW render so the next round inspects the fix
+                await new Promise(res => setTimeout(res, 650));
+                const t2 = grab(); if (t2) { curThumb = t2; lastThumbRef.current = t2; }
               }
-              setAiMsg(aiId, DONE, 'done');
-            } catch { setAiMsg(aiId, DONE, 'done'); }
+            } catch { /* keep whatever rendered last */ }
+            setScad(curScad);
+            void renderColored(curScad);
+            setAiMsg(aiId, refined
+              ? T('완성! 렌더를 보며 형상을 다듬었어요. 슬라이더로 조정하거나 계속 말해서 수정하세요.', 'Done! Refined the shape by looking at the render. Tune with sliders or keep chatting.')
+              : DONE, 'done');
+            setTimeout(() => { const tf = grab(); if (tf) lastThumbRef.current = tf; persist(curScad, tf ?? curThumb); }, 600);
           })();
         }
       }, 700);
