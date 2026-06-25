@@ -182,11 +182,13 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     if (colors.length === 0) { setColoredObject(null); return; } // nothing to colour
     const myReq = ++colorReqRef.current;
     // Render every colour group (a detailed car has ~8: body, cabin, windows,
-    // wheels, hubcaps, lights, spoiler). Capping too low silently drops whole
-    // parts — e.g. the body — when the model orders that colour past the cap.
-    const tokens: (string | null)[] = colors.map(c => c.token).slice(0, 16);
+    // wheels, hubcaps, lights, spoiler) so no part is silently dropped — but at
+    // a LIMITED concurrency. Firing all isolations at once floods the shared
+    // OpenSCAD render service and makes unrelated renders (other tabs, the
+    // precise path) fail under load; a small pool renders all of them safely.
+    const tokens: (string | null)[] = colors.map(c => c.token).slice(0, 24);
     tokens.push(null); // uncoloured remainder → default colour
-    const results = await Promise.all(tokens.map(async (tok) => {
+    const renderOne = async (tok: string | null) => {
       try {
         const res = await fetch('/api/nexyfab/openscad-render', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -200,6 +202,16 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         if (!g.attributes.position || g.attributes.position.count === 0) return null;
         return { tok, geo: g };
       } catch { return null; }
+    };
+    // Concurrency-limited pool (max 4 in flight) over all colour tokens.
+    const results: ({ tok: string | null; geo: THREE.BufferGeometry } | null)[] = new Array(tokens.length).fill(null);
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(4, tokens.length) }, async () => {
+      while (next < tokens.length) {
+        const idx = next++;
+        results[idx] = await renderOne(tokens[idx]!);
+        if (myReq !== colorReqRef.current) return; // abort early if superseded
+      }
     }));
     if (myReq !== colorReqRef.current) return; // a newer render superseded us
     const group = new THREE.Group();

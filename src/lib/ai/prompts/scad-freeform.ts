@@ -55,14 +55,15 @@ GEOMETRY & ASSEMBLY — make it actually LOOK like the thing (this matters most)
 
 QUALITY:
 - Make it look good: sensible proportions, rounded edges, a few cosmetic details. Use color() to distinguish parts.
-- Pick reasonable real-world millimetre dimensions and defaults.
+- Pick reasonable real-world PROPORTIONS, but keep the whole model within roughly 250 mm in its largest dimension (a clean desk-scale model) — scale a large real object like a car DOWN to that range. Do NOT emit a 4000 mm vehicle.
+- RESOLUTION BUDGET (critical — prevents render failures): put a MODEST global resolution near the top, $fn = 32 (never above 48). High $fn on an assembly with many rounded parts explodes the triangle count and the render fails with a size limit. Keep to the 2–3 DEFINING parts plus a few details; do not add 15+ separately-rounded tiny features.
 - Aim for 8–20 tunable parameters across logical groups.
 
 Output the .scad program now.`;
 
 const def: PromptDefinition = {
   id: 'scad-freeform',
-  version: '1.5.0',
+  version: '1.6.0',
   description: 'Free-form OpenSCAD generation (CADAM-style): the model writes a complete parametric .scad program with Customizer annotations, so organic/assembled models work and dimensions stay slider-adjustable without an AI re-call. Distinct from the whitelist scad-intent-from-nl path.',
   template: TEMPLATE,
   defaults: {
