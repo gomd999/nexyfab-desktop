@@ -21,6 +21,7 @@ import StudioSidebar from './StudioSidebar';
 import { listDesigns, saveDesign, getDesign, deleteDesign, titleFromMessages, type StudioDesign, type StudioChatMsg } from './studioDesigns';
 import { parseScadColors, isolateColorScad, defaultColorCss } from './scadColors';
 import { emitScadFromProgram, type FeatureProgram } from './emitScadFromProgram';
+import { CODEGEN_MODELS, DEFAULT_CODEGEN_MODEL } from '@/lib/ai/codegenModels';
 
 const StudioViewer = dynamic(() => import('./StudioViewer'), { ssr: false });
 
@@ -53,6 +54,34 @@ function shortScadError(raw: string): string {
 }
 
 interface RenderResult { ok: boolean; error?: string; raw?: string; auth?: boolean }
+
+/** Compact model picker (CADAM-style) — choose which AI generates the model. */
+function ModelPicker({ modelId, onPick, isKo, compact }: { modelId: string; onPick: (id: string) => void; isKo: boolean; compact?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const cur = CODEGEN_MODELS.find(m => m.id === modelId) ?? CODEGEN_MODELS[0];
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen(o => !o)} className={`flex items-center gap-1 st-panel-2 border st-bd rounded-full ${compact ? 'px-2 py-0.5 text-[11px]' : 'px-3 py-[7px] text-[12px]'} st-text-2 hover:st-text font-medium`} title={isKo ? 'AI 모델 선택' : 'Choose AI model'}>
+        <span>🧠 {cur.label}</span><span className="opacity-60">▾</span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute z-30 mt-1 right-0 w-60 st-panel border st-bd rounded-xl shadow-2xl overflow-hidden py-1">
+            {CODEGEN_MODELS.map(m => (
+              <button key={m.id} onClick={() => { onPick(m.id); setOpen(false); }}
+                className={`w-full text-left px-3 py-2 hover:st-hover ${m.id === modelId ? 'bg-emerald-600/15' : ''}`}>
+                <div className="text-[13px] font-semibold st-text flex items-center gap-1.5">{m.label}{m.id === modelId && <span className="text-emerald-400 text-[11px]">✓</span>}</div>
+                {m.note && <div className="text-[11px] st-text-3">{m.note}</div>}
+              </button>
+            ))}
+            <div className="px-3 pt-1.5 pb-1 text-[10px] st-text-3 border-t st-bd mt-1">{isKo ? '미설정 모델은 자동으로 대체됩니다.' : 'Unconfigured models fall back automatically.'}</div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function StudioInner({ onExpert, initialPrecise = false }: { onExpert?: () => void; initialPrecise?: boolean } = {}) {
   const params = useParams();
@@ -90,6 +119,9 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const importStlRef = useRef<string | null>(null); // base64 of an attached STL the SCAD imports
   const [precise, setPrecise] = useState(initialPrecise); // expert: NL → exact B-rep feature program
   const programRef = useRef<FeatureProgram | null>(null); // last precise feature program (for refine)
+  const [modelId, setModelId] = useState(DEFAULT_CODEGEN_MODEL); // user-picked codegen model
+  useEffect(() => { try { const m = localStorage.getItem('nexyfab:studio-model'); if (m && CODEGEN_MODELS.some(x => x.id === m)) setModelId(m); } catch { /* ignore */ } }, []);
+  const pickModel = useCallback((id: string) => { setModelId(id); try { localStorage.setItem('nexyfab:studio-model', id); } catch { /* ignore */ } }, []);
 
   const idRef = useRef(0);
   const nextId = () => ++idRef.current;
@@ -201,7 +233,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
       try {
         const res = await fetch('/api/nexyfab/cad-feature-program', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ prompt: text, ...(programRef.current ? { previousProgram: programRef.current } : {}) }),
+          body: JSON.stringify({ prompt: text, modelId, ...(programRef.current ? { previousProgram: programRef.current } : {}) }),
         });
         const data = await res.json().catch(() => ({})) as { part?: string; features?: unknown[]; error?: string };
         if (!res.ok || !Array.isArray(data.features) || data.features.length === 0) {
@@ -242,10 +274,10 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     }
     try {
       const body = sentImage
-        ? { prompt: text, image: sentImage, freeform: true }
+        ? { prompt: text, image: sentImage, freeform: true, modelId }
         : refineFromScad
-          ? { prompt: text, freeform: true, previousScad: scad }
-          : { prompt: text, freeform: true };
+          ? { prompt: text, freeform: true, previousScad: scad, modelId }
+          : { prompt: text, freeform: true, modelId };
       const res = await fetch('/api/nexyfab/scad-intent-from-nl', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify(body),
@@ -364,7 +396,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     } finally {
       setBusy(false);
     }
-  }, [input, image, busy, scad, precise, renderScad, renderColored, setAiMsg, refreshDesigns, isKo]);
+  }, [input, image, busy, scad, precise, modelId, renderScad, renderColored, setAiMsg, refreshDesigns, isKo]);
 
   const onCustomizer = useCallback((name: string, value: number | boolean | string) => {
     setColoredObject(null); // drop to fast monochrome while dragging
@@ -607,10 +639,13 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
           <a href={`/${lang}`} className="absolute top-4 right-5 text-[12px] st-text-3 hover:st-text-2">{T('홈', 'Home')}</a>
           {dragOver && <div className="absolute inset-0 z-10 flex items-center justify-center bg-emerald-900/20 text-emerald-300 text-lg font-semibold pointer-events-none">📷 {T('사진을 놓으세요', 'Drop the photo')}</div>}
 
-          {/* Mode toggle: 자유형 (organic OpenSCAD) ↔ 정밀 (exact B-rep features) */}
-          <div className="flex items-center gap-1 mb-5 st-panel-2 border st-bd rounded-full p-1 text-[12px]">
-            <button onClick={() => setPrecise(false)} className={`px-3 py-1 rounded-full font-semibold ${!precise ? 'bg-emerald-600 text-white' : 'st-text-2'}`}>✨ {T('자유형', 'Free-form')}</button>
-            <button onClick={() => setPrecise(true)} className={`px-3 py-1 rounded-full font-semibold ${precise ? 'bg-indigo-600 text-white' : 'st-text-2'}`}>📐 {T('정밀', 'Precise')}</button>
+          {/* Mode toggle + model picker */}
+          <div className="flex items-center gap-2 mb-5 flex-wrap justify-center">
+            <div className="flex items-center gap-1 st-panel-2 border st-bd rounded-full p-1 text-[12px]">
+              <button onClick={() => setPrecise(false)} className={`px-3 py-1 rounded-full font-semibold ${!precise ? 'bg-emerald-600 text-white' : 'st-text-2'}`}>✨ {T('자유형', 'Free-form')}</button>
+              <button onClick={() => setPrecise(true)} className={`px-3 py-1 rounded-full font-semibold ${precise ? 'bg-indigo-600 text-white' : 'st-text-2'}`}>📐 {T('정밀', 'Precise')}</button>
+            </div>
+            <ModelPicker modelId={modelId} onPick={pickModel} isKo={isKo} />
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-center">{greeting}</h1>
@@ -681,6 +716,13 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
             <div ref={chatEndRef} />
           </div>
           <div className="border-t st-bd p-2.5 flex flex-col gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-0.5 st-panel-2 border st-bd rounded-full p-0.5 text-[11px]">
+                <button onClick={() => setPrecise(false)} className={`px-2 py-0.5 rounded-full font-semibold ${!precise ? 'bg-emerald-600 text-white' : 'st-text-2'}`}>✨ {T('자유형', 'Free')}</button>
+                <button onClick={() => setPrecise(true)} className={`px-2 py-0.5 rounded-full font-semibold ${precise ? 'bg-indigo-600 text-white' : 'st-text-2'}`}>📐 {T('정밀', 'Precise')}</button>
+              </div>
+              <ModelPicker modelId={modelId} onPick={pickModel} isKo={isKo} compact />
+            </div>
             {image && <ImagePill />}
             <div className="flex items-end gap-1.5 st-panel-2 border st-bd rounded-xl px-2 py-1.5 focus-within:border-emerald-500/60">
               <label className="cursor-pointer text-base shrink-0 leading-none" title={T('사진 첨부', 'Attach photo')}>

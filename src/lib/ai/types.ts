@@ -27,6 +27,10 @@ export interface ChatCompletionRequest {
   timeoutMs?: number;
   /** Force a specific provider for this call (skips fallback chain) */
   provider?: ProviderName;
+  /** Prefer this provider first but keep the normal chain as fallback. Use for
+   *  task-specific routing (e.g. spatial CAD codegen → gemini, fall back to
+   *  deepseek if gemini is unconfigured/degraded). */
+  preferProvider?: ProviderName;
   /** Force a specific model name (otherwise provider default) */
   model?: string;
   /** Logical task name for telemetry / per-provider model routing */
@@ -54,7 +58,7 @@ export interface ChatCompletionResponse {
   latencyMs: number;
 }
 
-export type ProviderName = 'deepseek' | 'openai' | 'anthropic' | 'local' | 'gemini';
+export type ProviderName = 'deepseek' | 'openai' | 'anthropic' | 'local' | 'gemini' | 'qwen' | 'openrouter';
 
 export interface ProviderAdapter {
   readonly name: ProviderName;

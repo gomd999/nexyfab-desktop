@@ -21,7 +21,9 @@ export const deepseekProvider: ProviderAdapter = {
     if (!apiKey) throw new AiProviderError('deepseek', undefined, 'DEEPSEEK_API_KEY is not set');
 
     const baseUrl = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1';
-    const model = req.model ?? DEFAULT_MODEL;
+    // Only honour a deepseek-family model; a model meant for a preferred
+    // provider (gemini-*, qwen3.*) that fell back to us must not reach the API.
+    const model = req.model?.startsWith('deepseek') ? req.model : DEFAULT_MODEL;
     const startedAt = Date.now();
 
     const res = await fetch(`${baseUrl}/chat/completions`, {

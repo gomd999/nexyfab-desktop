@@ -3,6 +3,7 @@ import { chatCompletion } from '@/lib/ai';
 import { getPrompt } from '@/lib/ai/prompts';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { resolveCodegenModel } from '@/lib/ai/codegenModels';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,9 +23,10 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(`cad-feature-program:${ip}`, 20, 3_600_000).allowed) {
     return NextResponse.json({ error: 'Too many requests — try again shortly.', code: 'RATE_LIMIT' }, { status: 429 });
   }
-  const body = (await req.json().catch(() => ({}))) as { prompt?: string; previousProgram?: FeatureProgram };
+  const body = (await req.json().catch(() => ({}))) as { prompt?: string; previousProgram?: FeatureProgram; modelId?: string };
   const prompt = (body.prompt ?? '').trim();
   if (!prompt) return NextResponse.json({ error: 'prompt required' }, { status: 400 });
+  const codegen = resolveCodegenModel(typeof body.modelId === 'string' ? body.modelId : undefined);
 
   const def = getPrompt('cad-feature-program');
   const userContent = body.previousProgram
@@ -38,7 +40,8 @@ export async function POST(req: NextRequest) {
         { role: 'system', content: def.template },
         { role: 'user', content: userContent },
       ],
-      model: process.env.CAD_FEATURE_MODEL || 'deepseek-reasoner',
+      preferProvider: codegen.preferProvider,
+      model: codegen.model,
       maxTokens: def.defaults.maxTokens,
       temperature: def.defaults.temperature,
       timeoutMs: def.defaults.timeoutMs,

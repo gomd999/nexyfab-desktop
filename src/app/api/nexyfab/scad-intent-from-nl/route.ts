@@ -16,6 +16,7 @@ import { checkPlan, consumeMonthlyMetricSlot } from '@/lib/plan-guard';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { resolveCodegenModel } from '@/lib/ai/codegenModels';
 import { visionCompletion, VisionNotConfiguredError, VisionProviderError } from '@/lib/ai/vision';
 import { getPromptVariant } from '@/lib/ai/prompts';
 import { recordPromptCall, classifyAiError } from '@/lib/ai/telemetry';
@@ -140,6 +141,9 @@ export async function POST(req: NextRequest) {
   // models like a car work. Returns raw .scad; the client parses Customizer
   // annotations for sliders. Not cached (large, iterated).
   const freeform = body.freeform === true || hasImage;
+  // User-selected codegen model (Studio model picker) → preferred provider +
+  // model, validated against the allowlist (never trust raw provider/model).
+  const codegen = resolveCodegenModel(typeof body.modelId === 'string' ? body.modelId : undefined);
   // Free-form chat iteration: the prior OpenSCAD program to modify in place
   // ("make it taller", "add a hole") instead of starting fresh.
   const previousScad = typeof body.previousScad === 'string' && body.previousScad.trim().length > 0
@@ -233,6 +237,7 @@ export async function POST(req: NextRequest) {
   }
 
   let raw = '';
+  const used: { provider?: string; model?: string } = {};
   try {
     let meta: { provider: string; model: string; latencyMs: number; promptTokens?: number; completionTokens?: number };
     if (hasImage && imageB64) {
@@ -260,8 +265,11 @@ ${prompt ? 'User note: ' + prompt : ''}`;
           { role: 'system', content: promptDef.template },
           { role: 'user', content: `${prompt ? prompt + '\n\n' : ''}Model the object described below as a parametric OpenSCAD program following ALL the rules above. The description came from a photo — estimate sensible millimetre dimensions.\n\nObject description:\n${description}` },
         ],
-        // Free-form geometry quality is much better from the reasoning model.
-        model: process.env.SCAD_FREEFORM_MODEL || 'deepseek-reasoner',
+        // Free-form geometry quality is much better from a strong spatial model.
+        // Route to the user-picked model (default Gemini), with the normal chain
+        // as fallback when that provider isn't configured/healthy.
+        preferProvider: codegen.preferProvider,
+        model: codegen.model,
         maxTokens: 8000,
         temperature: promptDef.defaults.temperature,
         timeoutMs: 180_000,
@@ -278,8 +286,9 @@ ${prompt ? 'User note: ' + prompt : ''}`;
     } else {
       const result = await chatCompletion({
         messages,
-        // Reasoning model for free-form (better geometry); whitelist path keeps chat.
-        ...(freeform ? { model: process.env.SCAD_FREEFORM_MODEL || 'deepseek-reasoner' } : {}),
+        // Free-form geometry: route to the user-picked model (default Gemini),
+        // fall back via the normal chain. Whitelist path keeps the cheap chat model.
+        ...(freeform ? { preferProvider: codegen.preferProvider, model: codegen.model } : {}),
         maxTokens: freeform ? 8000 : promptDef.defaults.maxTokens,
         temperature: promptDef.defaults.temperature,
         timeoutMs: freeform ? 180_000 : promptDef.defaults.timeoutMs,
@@ -299,6 +308,8 @@ ${prompt ? 'User note: ' + prompt : ''}`;
       completionTokens: meta.completionTokens,
       success: true,
     });
+    used.provider = meta.provider;
+    used.model = meta.model;
   } catch (e) {
     if (e instanceof VisionNotConfiguredError) {
       return NextResponse.json({ error: 'No vision provider configured for image input' }, { status: 500 });
@@ -353,7 +364,7 @@ ${prompt ? 'User note: ' + prompt : ''}`;
     if (!looksLikeScad) {
       return NextResponse.json({ error: 'AI did not return OpenSCAD code', raw: raw.slice(0, 400) }, { status: 502 });
     }
-    return NextResponse.json({ scad, freeform: true, summary: 'Free-form OpenSCAD' });
+    return NextResponse.json({ scad, freeform: true, summary: 'Free-form OpenSCAD', usedProvider: used.provider, usedModel: used.model });
   }
 
   // Extract JSON from response — strip markdown fences and find first/last brace.

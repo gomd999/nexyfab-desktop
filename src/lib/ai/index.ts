@@ -30,13 +30,18 @@ import { deepseekProvider } from './providers/deepseek';
 import { openaiProvider } from './providers/openai';
 import { anthropicProvider } from './providers/anthropic';
 import { localProvider } from './providers/local';
+import { geminiProvider } from './providers/gemini';
+import { qwenProvider } from './providers/qwen';
+import { openrouterProvider } from './providers/openrouter';
 
-// Partial because not every ProviderName has a chat adapter — `gemini`
-// is currently vision-only (see src/lib/ai/vision.ts). Chat callers
+// Partial because not every ProviderName has a chat adapter. Chat callers
 // fall through the fallback chain when their requested provider isn't
 // in this registry.
 const REGISTRY: Partial<Record<ProviderName, ProviderAdapter>> = {
   deepseek: deepseekProvider,
+  gemini: geminiProvider,
+  qwen: qwenProvider,
+  openrouter: openrouterProvider,
   openai: openaiProvider,
   anthropic: anthropicProvider,
   local: localProvider,
@@ -69,7 +74,11 @@ function resolveChain(req: ChatCompletionRequest): ProviderName[] {
   // is intentionally omitted from the default fallback to avoid surprise Opus
   // spend on provider outages.
   const fallbacks = parseProviderList(process.env.AI_PROVIDER_FALLBACKS, ['openai', 'local']);
-  return Array.from(new Set([...primary, ...fallbacks]));
+  // A task-specific preference (e.g. CAD codegen → gemini) jumps the queue but
+  // keeps the normal chain behind it as fallback. Only honoured if the
+  // preferred provider is actually configured, so it degrades silently.
+  const prefer = req.preferProvider && REGISTRY[req.preferProvider]?.isConfigured() ? [req.preferProvider] : [];
+  return Array.from(new Set([...prefer, ...primary, ...fallbacks]));
 }
 
 export async function chatCompletion(req: ChatCompletionRequest): Promise<ChatCompletionResponse> {
