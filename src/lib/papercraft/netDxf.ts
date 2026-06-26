@@ -61,6 +61,43 @@ export function buildingNetSegments(W: number, D: number, H: number, t: number):
   return segs;
 }
 
+/**
+ * Gable-roof HOUSE net: the box body + a triangular gable on each end wall + two
+ * sloped roof panels folding up from the front/back walls to the ridge. `gableH`
+ * is the roof peak height above the walls.
+ */
+export function gableHouseNetSegments(W: number, D: number, H: number, gableH: number, t: number): Seg[] {
+  const segs: Seg[] = [];
+  const slant = Math.sqrt((D / 2) ** 2 + gableH ** 2); // roof-panel length
+  // floor — folds up to all 4 walls
+  segs.push(...rectEdges(0, 0, W, D, { bottom: 'FOLD', top: 'FOLD', left: 'FOLD', right: 'FOLD' }));
+  // front wall (below) + roof panel folding off its bottom
+  segs.push(...rectEdges(0, -H, W, H, { bottom: 'FOLD', top: 'FOLD', left: 'CUT', right: 'CUT' }));
+  segs.push(...rectEdges(0, -H - slant, W, slant, { bottom: 'CUT', top: 'FOLD', left: 'CUT', right: 'CUT' }));
+  // back wall (above) + roof panel
+  segs.push(...rectEdges(0, D, W, H, { bottom: 'FOLD', top: 'FOLD', left: 'CUT', right: 'CUT' }));
+  segs.push(...rectEdges(0, D + H, W, slant, { bottom: 'FOLD', top: 'CUT', left: 'CUT', right: 'CUT' }));
+  // left wall + gable triangle on its outer edge (peak at mid-depth)
+  segs.push(...rectEdges(-H, 0, H, D, { bottom: 'CUT', top: 'CUT', left: 'FOLD', right: 'FOLD' }));
+  segs.push({ a: [-H, 0], b: [-H - gableH, D / 2], layer: 'CUT' });
+  segs.push({ a: [-H - gableH, D / 2], b: [-H, D], layer: 'CUT' });
+  // right wall + gable triangle
+  segs.push(...rectEdges(W, 0, H, D, { bottom: 'CUT', top: 'CUT', left: 'FOLD', right: 'FOLD' }));
+  segs.push({ a: [W + H, 0], b: [W + H + gableH, D / 2], layer: 'CUT' });
+  segs.push({ a: [W + H + gableH, D / 2], b: [W + H, D], layer: 'CUT' });
+  // glue tabs on the roof outer edges
+  segs.push(...tab([W, -H - slant], [0, -H - slant], t));
+  segs.push(...tab([0, D + H + slant], [W, D + H + slant], t));
+  return segs;
+}
+
+export function gableHouseNetDxf(W: number, D: number, H: number, gableH: number, t = 6): { dxf: string; counts: Record<string, number> } {
+  const segs = gableHouseNetSegments(W, D, H, gableH, t);
+  const counts = { CUT: 0, FOLD: 0, TAB: 0 } as Record<string, number>;
+  for (const s of segs) counts[s.layer]++;
+  return { dxf: segmentsToDxf(segs), counts };
+}
+
 export function segmentsToDxf(segs: Seg[]): string {
   const header = '0\nSECTION\n2\nHEADER\n9\n$INSUNITS\n70\n4\n0\nENDSEC\n'; // 4 = millimetres
   const tables =
