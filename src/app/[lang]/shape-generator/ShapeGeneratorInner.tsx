@@ -6764,56 +6764,20 @@ export function ShapeGeneratorInner() {
     let programRaw: string | null = null;
     let stlB64: string | null = null;
     let sheetStep: string | null = null;
-    let sheetSpec: string | null = null;
     try {
       scad = sessionStorage.getItem('nexyfab:studio-handoff-scad');
       programRaw = sessionStorage.getItem('nexyfab:studio-handoff-program');
       stlB64 = sessionStorage.getItem('nexyfab:studio-handoff-stl');
       sheetStep = sessionStorage.getItem('nexyfab:sheetmetal-handoff-step');
-      sheetSpec = sessionStorage.getItem('nexyfab:sheetmetal-handoff-spec');
     } catch { return; }
-    if (!scad && !programRaw && !stlB64 && !sheetStep && !sheetSpec) return;
+    if (!scad && !programRaw && !stlB64 && !sheetStep) return;
     try {
       sessionStorage.removeItem('nexyfab:studio-handoff-scad');
       sessionStorage.removeItem('nexyfab:studio-handoff-program');
       sessionStorage.removeItem('nexyfab:studio-handoff-stl');
       sessionStorage.removeItem('nexyfab:sheetmetal-handoff-step');
-      sessionStorage.removeItem('nexyfab:sheetmetal-handoff-spec');
     } catch { /* ignore */ }
     void (async () => {
-      // Sheet-metal MVP → modeler as NATIVE editable features: a thin base sheet
-      // + one `flange` feature per edge (the same feature the Sheet Metal ribbon
-      // adds). Beats the STEP-mesh import — flange height/angle stay editable and
-      // the part can be Flattened. Edge map: back=+Z(0) front=-Z(1) right=+X(2)
-      // left=-X(3); modeler uses Y as thickness, so MVP length(L)→Z.
-      if (sheetSpec) {
-        try {
-          const spec = JSON.parse(sheetSpec) as { W: number; L: number; T: number; bendRadius?: number; flanges?: { edge: string; height: number; angle?: number }[] };
-          clearAll();
-          setSelectedId('box');
-          setParams({ width: spec.W, height: spec.T, depth: spec.L });
-          const edgeMap: Record<string, number> = { back: 0, front: 1, right: 2, left: 3 };
-          const r = Math.max(0.5, spec.bendRadius ?? spec.T);
-          const flangeList = spec.flanges ?? [];
-          // Add the flanges on the NEXT tick — applyFlange reads the base's bounding
-          // box, so the base sheet (setParams) must commit + rebuild first, else
-          // the flange applies to stale geometry and gets dropped.
-          let added = 0;
-          const addNext = () => {
-            if (cancelled || added >= flangeList.length) {
-              if (!cancelled && added > 0) addToast('success', '판금 부품을 편집 가능한 플랜지 피처로 가져왔어요 — 높이·각도 수정 가능');
-              return;
-            }
-            const f = flangeList[added++];
-            addFeatureWithParams('flange', { thickness: spec.T, material: 0, height: Math.max(1, f.height), angle: f.angle ?? 90, radius: r, edgeIndex: edgeMap[f.edge] ?? 0 });
-            setTimeout(addNext, 350); // chain so each flange applies onto the prior rebuild
-          };
-          setTimeout(addNext, 400);
-          return;
-        } catch (e) {
-          console.warn('[sheetmetal spec handoff] failed, falling back:', e);
-        }
-      }
       // Sheet-metal MVP → modeler: the folded part as a B-rep STEP. Import via
       // the proven replicad mesh pipeline (same as the toolbar STEP import) so it
       // becomes an editable/analysable part — feeds FEA · DFM · quoting.
