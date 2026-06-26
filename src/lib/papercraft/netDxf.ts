@@ -6,8 +6,8 @@
  * laser/cutting plotter cuts one and scores the other.
  */
 
-type Pt = [number, number];
-interface Seg { a: Pt; b: Pt; layer: 'CUT' | 'FOLD' | 'TAB' }
+export type Pt = [number, number];
+export interface Seg { a: Pt; b: Pt; layer: 'CUT' | 'FOLD' | 'TAB' | 'BEND' }
 
 function rectEdges(x: number, y: number, w: number, h: number, layers: { bottom: Seg['layer']; top: Seg['layer']; left: Seg['layer']; right: Seg['layer'] }): Seg[] {
   return [
@@ -101,10 +101,11 @@ export function gableHouseNetDxf(W: number, D: number, H: number, gableH: number
 export function segmentsToDxf(segs: Seg[]): string {
   const header = '0\nSECTION\n2\nHEADER\n9\n$INSUNITS\n70\n4\n0\nENDSEC\n'; // 4 = millimetres
   const tables =
-    '0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLAYER\n70\n3\n' +
+    '0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLAYER\n70\n4\n' +
     '0\nLAYER\n2\nCUT\n70\n0\n62\n1\n6\nCONTINUOUS\n' +   // red, solid
     '0\nLAYER\n2\nFOLD\n70\n0\n62\n5\n6\nDASHED\n' +       // blue, dashed
     '0\nLAYER\n2\nTAB\n70\n0\n62\n3\n6\nCONTINUOUS\n' +    // green, solid
+    '0\nLAYER\n2\nBEND\n70\n0\n62\n30\n6\nDASHED\n' +      // orange, dashed (sheet-metal bend)
     '0\nENDTAB\n0\nENDSEC\n';
   const ents = segs.map(s =>
     `0\nLINE\n8\n${s.layer}\n10\n${s.a[0]}\n20\n${s.a[1]}\n30\n0\n11\n${s.b[0]}\n21\n${s.b[1]}\n31\n0\n`,
@@ -151,12 +152,12 @@ export function segmentsToSvg(segs: Seg[], pad = 10): string {
     maxX = Math.max(maxX, p[0]); maxY = Math.max(maxY, p[1]);
   }
   const w = maxX - minX + pad * 2, h = maxY - minY + pad * 2;
-  const color = { CUT: '#dc2626', FOLD: '#2563eb', TAB: '#16a34a' };
+  const color: Record<string,string> = { CUT: '#dc2626', FOLD: '#2563eb', TAB: '#16a34a', BEND: '#ea580c' };
   // Flip Y (SVG y-down vs model y-up) by mapping y → maxY - y.
   const tx = (x: number) => (x - minX + pad).toFixed(2);
   const ty = (y: number) => (maxY - y + pad).toFixed(2);
   const lines = segs.map(s =>
-    `<line x1="${tx(s.a[0])}" y1="${ty(s.a[1])}" x2="${tx(s.b[0])}" y2="${ty(s.b[1])}" stroke="${color[s.layer]}" stroke-width="0.6"${s.layer === 'FOLD' ? ' stroke-dasharray="2 1.5"' : ''}/>`,
+    `<line x1="${tx(s.a[0])}" y1="${ty(s.a[1])}" x2="${tx(s.b[0])}" y2="${ty(s.b[1])}" stroke="${color[s.layer]}" stroke-width="0.6"${(s.layer === 'FOLD' || s.layer === 'BEND') ? ' stroke-dasharray="2 1.5"' : ''}/>`,
   ).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w.toFixed(2)} ${h.toFixed(2)}" width="100%" style="max-height:420px">${lines}</svg>`;
 }
