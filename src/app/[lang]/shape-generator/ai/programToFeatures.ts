@@ -27,6 +27,12 @@ export interface ModelerFeatureApi {
     planeOffset?: number,
   ) => void;
   addFeatureWithParams: (type: FeatureType, overrides: Record<string, number>) => void;
+  /** Replace the modeler's BASE primitive (box/cylinder). Preferred over a
+   *  sketch base: the modeler always starts with a default base solid, so a
+   *  sketch 'add' would UNION the part onto that default box (wrong dims). */
+  setBaseShape?: (shapeId: string, params: Record<string, number>) => void;
+  /** Clear the existing feature stack before replaying (idempotent handoff). */
+  clearFeatures?: () => void;
 }
 
 /** Replay a feature program into the modeler. Returns whether the base was built
@@ -36,17 +42,32 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
   const base = feats.find(f => f.type === 'sketchExtrude');
   if (!base) return { ok: false, skipped: [] };
 
-  // 1. base solid (rectangular plate or disc) via a sketch + extrude
+  // 1. base solid. The modeler ALWAYS starts with a default base primitive
+  // (a 50×30×20 box), so the old approach — a sketch 'add' — unioned the part
+  // ONTO that box, corrupting the dimensions. Instead REPLACE the base
+  // primitive directly when we can (box/cylinder, which is every Studio base).
+  // Box param→axis mapping: width→X, height→Y, depth→Z. The Studio program is
+  // width(X) × depth(Y) × height(Z-thickness), so swap depth↔height.
   const h = num(base.height, 8);
-  let profile: SketchProfile;
-  if (base.shape === 'circle') {
-    profile = { segments: generateCircleSegments(pt(0, 0), num(base.width, 50) / 2, 64), closed: true };
+  api.clearFeatures?.();
+  if (api.setBaseShape) {
+    if (base.shape === 'circle') {
+      api.setBaseShape('cylinder', { diameter: num(base.width, 50), height: h });
+    } else {
+      api.setBaseShape('box', { width: num(base.width, 100), height: num(base.depth, 80), depth: h });
+    }
   } else {
-    const w = num(base.width, 100), d = num(base.depth, 80);
-    profile = { segments: generateRectSegments(pt(-w / 2, -d / 2), pt(w / 2, d / 2)), closed: true };
+    // Fallback (no base-shape setter): sketch extrude (will double the default box).
+    let profile: SketchProfile;
+    if (base.shape === 'circle') {
+      profile = { segments: generateCircleSegments(pt(0, 0), num(base.width, 50) / 2, 64), closed: true };
+    } else {
+      const w = num(base.width, 100), d = num(base.depth, 80);
+      profile = { segments: generateRectSegments(pt(-w / 2, -d / 2), pt(w / 2, d / 2)), closed: true };
+    }
+    const config = { mode: 'extrude', depth: h, revolveAngle: 360, revolveAxis: 'y', segments: 32 } as unknown as SketchConfig;
+    api.addSketchFeature(profile, config, 'xy', 'add', 0);
   }
-  const config = { mode: 'extrude', depth: h, revolveAngle: 360, revolveAxis: 'y', segments: 32 } as unknown as SketchConfig;
-  api.addSketchFeature(profile, config, 'xy', 'add', 0);
 
   // 2. downstream features, in program order (a pattern follows its source hole)
   const skipped: string[] = [];

@@ -6782,7 +6782,13 @@ export function ShapeGeneratorInner() {
           const program = JSON.parse(programRaw);
           const { reconstructFeatureTree } = await import('./ai/programToFeatures');
           if (cancelled) return;
-          const out = reconstructFeatureTree(program, { addSketchFeature, addFeatureWithParams });
+          const out = reconstructFeatureTree(program, {
+            addSketchFeature, addFeatureWithParams,
+            // Replace the default base primitive (avoids unioning onto the
+            // modeler's default 50×30×20 box) and clear any prior features.
+            setBaseShape: (id, p) => { setSelectedId(id); setParams(p); },
+            clearFeatures: clearAll,
+          });
           if (out.ok) {
             addToast('success', out.skipped.length
               ? `정밀 부품을 편집 가능한 피처트리로 가져왔어요 (${out.skipped.join(', ')}는 미반영)`
@@ -6839,7 +6845,7 @@ export function ShapeGeneratorInner() {
       }
     })();
     return () => { cancelled = true; };
-  }, [setImportedGeometry, setImportedFilename, addToast, addSketchFeature, addFeatureWithParams]);
+  }, [setImportedGeometry, setImportedFilename, addToast, addSketchFeature, addFeatureWithParams, setSelectedId, setParams, clearAll]);
 
   // ─── K-series STEP import (B-rep, gap #3) ────────────────────────────────
   // Read a STEP file as a true OCCT B-rep solid (STEPControl_Reader via the
