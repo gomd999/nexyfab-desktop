@@ -146,17 +146,18 @@ export async function POST(req: NextRequest) {
     const solidBeforeEdges: any = solid; // fall back to this if the edge ops corrupt the B-rep
     let appliedEdgeOp = false;
     for (const f of feats) {
+      // A radius near/over the feasible max aborts OCCT (an un-catchable WASM
+      // trap). SKIP those (and report) rather than attempt-and-crash; only apply
+      // edge ops that comfortably fit.
       try {
         if (f.type === 'fillet') {
           const want = num(f.radius, 3);
-          const r = Math.min(want, maxEdge);
-          if (r < want - 1e-3) clamped.push(`fillet ${want}→${r.toFixed(1)}mm`);
-          solid = solid.fillet(r); appliedEdgeOp = true;
+          if (want > maxEdge) { skipped.push(`fillet ${want}mm (max ~${maxEdge.toFixed(1)}mm for this thickness)`); continue; }
+          solid = solid.fillet(want); appliedEdgeOp = true;
         } else if (f.type === 'chamfer') {
           const want = num(f.distance, 1);
-          const d = Math.min(want, maxEdge);
-          if (d < want - 1e-3) clamped.push(`chamfer ${want}→${d.toFixed(1)}mm`);
-          solid = solid.chamfer(d); appliedEdgeOp = true;
+          if (want > maxEdge) { skipped.push(`chamfer ${want}mm (max ~${maxEdge.toFixed(1)}mm)`); continue; }
+          solid = solid.chamfer(want); appliedEdgeOp = true;
         }
       } catch { skipped.push(f.type ?? 'edge-op'); }
     }
