@@ -10748,7 +10748,10 @@ export function ShapeGeneratorInner() {
          opted in. Adapters use the single-body shape-generator scene model
          (one primary body, geometry = effectiveResult.geometry). */}
       {(() => {
-        const directEditOn = searchParams?.get('direct-edit') === 'v1';
+        // Direct-edit (push/pull, dynamic fillet/chamfer, subtract, move/rotate)
+        // is on by default — it's the only way to edit IMPORTED meshes (a STEP
+        // import has no parametric feature tree). Disable with ?direct-edit=off.
+        const directEditOn = searchParams?.get('direct-edit') !== 'off';
         const assemblyExportOn = searchParams?.get('assembly-export') === 'v1';
         const configExportOn = searchParams?.get('config-export') === 'v1';
         if (!directEditOn && !assemblyExportOn && !configExportOn) return null;
