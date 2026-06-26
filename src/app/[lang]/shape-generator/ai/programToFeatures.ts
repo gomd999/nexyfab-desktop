@@ -49,7 +49,9 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
   // Box param→axis mapping: width→X, height→Y, depth→Z. The Studio program is
   // width(X) × depth(Y) × height(Z-thickness), so swap depth↔height.
   const h = num(base.height, 8);
-  api.clearFeatures?.();
+  // NOTE: do NOT clearFeatures() here — the modeler mounts fresh on handoff, and
+  // clearAll() resets activeNodeId asynchronously, so features added in the same
+  // tick attach to a stale (removed) parent and vanish from the tree.
   if (api.setBaseShape) {
     if (base.shape === 'circle') {
       api.setBaseShape('cylinder', { diameter: num(base.width, 50), height: h });
