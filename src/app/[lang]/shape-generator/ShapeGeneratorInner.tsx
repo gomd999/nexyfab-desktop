@@ -6796,7 +6796,8 @@ export function ShapeGeneratorInner() {
           const r = Math.max(0.5, spec.bendRadius ?? spec.T);
           for (const f of spec.flanges ?? []) {
             const edgeIndex = edgeMap[f.edge] ?? 0;
-            addFeatureWithParams('flange', { height: Math.max(1, f.height), angle: f.angle ?? 90, radius: r, edgeIndex });
+            // Match the Sheet Metal ribbon's call exactly (thickness + material).
+            addFeatureWithParams('flange', { thickness: spec.T, material: 0, height: Math.max(1, f.height), angle: f.angle ?? 90, radius: r, edgeIndex });
           }
           if (cancelled) return;
           addToast('success', '판금 부품을 편집 가능한 플랜지 피처로 가져왔어요 — 높이·각도 수정 가능');
