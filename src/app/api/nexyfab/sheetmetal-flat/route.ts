@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { type Seg, segmentsToDxf, segmentsToSvg } from '@/lib/papercraft/netDxf';
+import { chatCompletion } from '@/lib/ai';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,15 +27,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests', code: 'RATE_LIMIT' }, { status: 429 });
   }
   const b = (await req.json().catch(() => ({}))) as {
-    width?: number; length?: number; thickness?: number; bendRadius?: number; kFactor?: number; flanges?: Flange[];
+    width?: number; length?: number; thickness?: number; bendRadius?: number; kFactor?: number; flanges?: Flange[]; prompt?: string;
   };
+
+  // AI: extract a sheet-metal spec from a free-text part description.
+  let aiFlanges: Flange[] | undefined;
+  let usedPrompt = false;
+  if (b.prompt && b.width == null) {
+    try {
+      const r = await chatCompletion({
+        messages: [
+          { role: 'system', content: 'Extract a sheet-metal part spec in MILLIMETRES from the description. Reply STRICT JSON ONLY: {"width":N,"length":N,"thickness":N,"bendRadius":N,"flanges":[{"edge":"front"|"back"|"left"|"right","height":N,"angle":N}]}. width=X span, length=Y span, thickness=sheet gauge (default 2). bendRadius defaults to thickness. Each flange folds up from a base edge (angle 90 default). A simple bracket = one flange. A U/channel = two opposite flanges. A tray/box = all four. Default 100×60×2, one back flange 30mm.' },
+          { role: 'user', content: b.prompt },
+        ],
+        maxTokens: 220,
+        temperature: 0,
+        timeoutMs: 20_000,
+      });
+      const m = r.text.match(/\{[\s\S]*\}/);
+      const j = (m ? JSON.parse(m[0]) : {}) as typeof b;
+      if (j.width != null) b.width = j.width;
+      if (j.length != null) b.length = j.length;
+      if (j.thickness != null) b.thickness = j.thickness;
+      if (j.bendRadius != null) b.bendRadius = j.bendRadius;
+      if (Array.isArray(j.flanges)) aiFlanges = j.flanges;
+      usedPrompt = true;
+    } catch { /* fall back to defaults below */ }
+  }
+
   const W = Math.min(Math.max(10, num(b.width, 100)), 2000);
   const L = Math.min(Math.max(10, num(b.length, 60)), 2000);
   const T = Math.min(Math.max(0.3, num(b.thickness, 2)), 20);
   const R = Math.min(Math.max(0.1, num(b.bendRadius, T)), 50);          // inside bend radius (≈ T)
   const K = Math.min(Math.max(0.1, num(b.kFactor, 0.4)), 0.5);          // neutral-axis factor
-  const flanges = (Array.isArray(b.flanges) ? b.flanges : [{ edge: 'back' as const, height: 30 }])
-    .filter(f => ['front', 'back', 'left', 'right'].includes(f.edge));
+  const flanges = (aiFlanges ?? (Array.isArray(b.flanges) ? b.flanges : [{ edge: 'back' as const, height: 30 }]))
+    .filter(f => ['front', 'back', 'left', 'right'].includes(f.edge))
+    .slice(0, 4);
 
   const rad = (deg: number) => (deg * Math.PI) / 180;
   const bend = (angle: number) => {
@@ -90,6 +118,7 @@ export async function POST(req: NextRequest) {
   const svg = segmentsToSvg(segs);
   return NextResponse.json({
     ok: true,
+    fromPrompt: usedPrompt,
     base: { W, L, thickness: T, bendRadius: R, kFactor: K },
     blank: { width: +(maxX - minX).toFixed(2), length: +(maxY - minY).toFixed(2) },
     bends: report,
