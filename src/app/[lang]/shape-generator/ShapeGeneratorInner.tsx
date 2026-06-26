@@ -6794,13 +6794,21 @@ export function ShapeGeneratorInner() {
           setParams({ width: spec.W, height: spec.T, depth: spec.L });
           const edgeMap: Record<string, number> = { back: 0, front: 1, right: 2, left: 3 };
           const r = Math.max(0.5, spec.bendRadius ?? spec.T);
-          for (const f of spec.flanges ?? []) {
-            const edgeIndex = edgeMap[f.edge] ?? 0;
-            // Match the Sheet Metal ribbon's call exactly (thickness + material).
-            addFeatureWithParams('flange', { thickness: spec.T, material: 0, height: Math.max(1, f.height), angle: f.angle ?? 90, radius: r, edgeIndex });
-          }
-          if (cancelled) return;
-          addToast('success', '판금 부품을 편집 가능한 플랜지 피처로 가져왔어요 — 높이·각도 수정 가능');
+          const flangeList = spec.flanges ?? [];
+          // Add the flanges on the NEXT tick — applyFlange reads the base's bounding
+          // box, so the base sheet (setParams) must commit + rebuild first, else
+          // the flange applies to stale geometry and gets dropped.
+          let added = 0;
+          const addNext = () => {
+            if (cancelled || added >= flangeList.length) {
+              if (!cancelled && added > 0) addToast('success', '판금 부품을 편집 가능한 플랜지 피처로 가져왔어요 — 높이·각도 수정 가능');
+              return;
+            }
+            const f = flangeList[added++];
+            addFeatureWithParams('flange', { thickness: spec.T, material: 0, height: Math.max(1, f.height), angle: f.angle ?? 90, radius: r, edgeIndex: edgeMap[f.edge] ?? 0 });
+            setTimeout(addNext, 350); // chain so each flange applies onto the prior rebuild
+          };
+          setTimeout(addNext, 400);
           return;
         } catch (e) {
           console.warn('[sheetmetal spec handoff] failed, falling back:', e);
