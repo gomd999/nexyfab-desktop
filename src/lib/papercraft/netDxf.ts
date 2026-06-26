@@ -118,3 +118,45 @@ export function buildingNetDxf(W: number, D: number, H: number, t = 6): { dxf: s
   for (const s of segs) counts[s.layer]++;
   return { dxf: segmentsToDxf(segs), counts };
 }
+
+/**
+ * Room (interior space) net: an OPEN-TOP box — floor + 4 walls, no lid — so it
+ * reads as a room you look down into. Floor↔wall edges fold; wall outer edges
+ * cut; tabs on the side-wall verticals.
+ */
+export function roomNetSegments(W: number, D: number, H: number, t: number): Seg[] {
+  const segs: Seg[] = [];
+  segs.push(...rectEdges(0, 0, W, D, { bottom: 'FOLD', top: 'FOLD', left: 'FOLD', right: 'FOLD' }));
+  segs.push(...rectEdges(0, -H, W, H, { bottom: 'CUT', top: 'FOLD', left: 'CUT', right: 'CUT' }));   // front
+  segs.push(...rectEdges(0, D, W, H, { bottom: 'FOLD', top: 'CUT', left: 'CUT', right: 'CUT' }));     // back
+  segs.push(...rectEdges(-H, 0, H, D, { bottom: 'CUT', top: 'CUT', left: 'CUT', right: 'FOLD' }));    // left
+  segs.push(...rectEdges(W, 0, H, D, { bottom: 'CUT', top: 'CUT', left: 'FOLD', right: 'CUT' }));     // right
+  segs.push(...tab([-H, D], [-H, 0], t));
+  segs.push(...tab([W + H, 0], [W + H, D], t));
+  return segs;
+}
+
+export function roomNetDxf(W: number, D: number, H: number, t = 6): { dxf: string; counts: Record<string, number> } {
+  const segs = roomNetSegments(W, D, H, t);
+  const counts = { CUT: 0, FOLD: 0, TAB: 0 } as Record<string, number>;
+  for (const s of segs) counts[s.layer]++;
+  return { dxf: segmentsToDxf(segs), counts };
+}
+
+/** Browser-previewable SVG of a net (CUT red, FOLD blue dashed, TAB green). */
+export function segmentsToSvg(segs: Seg[], pad = 10): string {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const s of segs) for (const p of [s.a, s.b]) {
+    minX = Math.min(minX, p[0]); minY = Math.min(minY, p[1]);
+    maxX = Math.max(maxX, p[0]); maxY = Math.max(maxY, p[1]);
+  }
+  const w = maxX - minX + pad * 2, h = maxY - minY + pad * 2;
+  const color = { CUT: '#dc2626', FOLD: '#2563eb', TAB: '#16a34a' };
+  // Flip Y (SVG y-down vs model y-up) by mapping y → maxY - y.
+  const tx = (x: number) => (x - minX + pad).toFixed(2);
+  const ty = (y: number) => (maxY - y + pad).toFixed(2);
+  const lines = segs.map(s =>
+    `<line x1="${tx(s.a[0])}" y1="${ty(s.a[1])}" x2="${tx(s.b[0])}" y2="${ty(s.b[1])}" stroke="${color[s.layer]}" stroke-width="0.6"${s.layer === 'FOLD' ? ' stroke-dasharray="2 1.5"' : ''}/>`,
+  ).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w.toFixed(2)} ${h.toFixed(2)}" width="100%" style="max-height:420px">${lines}</svg>`;
+}
