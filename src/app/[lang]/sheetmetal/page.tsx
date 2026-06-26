@@ -50,6 +50,8 @@ export default function SheetMetalDemoPage() {
     }
   };
 
+  const [stepBusy, setStepBusy] = useState(false);
+
   const downloadDxf = () => {
     if (!result?.dxf) return;
     const blob = new Blob([result.dxf], { type: 'application/dxf' });
@@ -57,6 +59,30 @@ export default function SheetMetalDemoPage() {
     const a = document.createElement('a');
     a.href = url; a.download = 'nexyfab-sheetmetal.dxf'; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Folded 3D B-rep STEP — the part as a real CAD model (re-opens in the modeler
+  // / SolidWorks / Fusion, feeds FEA & quoting), not just a flat DXF.
+  const downloadStep = async () => {
+    if (!result?.base || !result.bends || stepBusy) return;
+    setStepBusy(true);
+    try {
+      const res = await fetch('/api/nexyfab/sheetmetal-step', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          width: result.base.W, length: result.base.L, thickness: result.base.thickness, bendRadius: result.base.bendRadius,
+          flanges: result.bends.map(b => ({ edge: b.edge, height: b.height, angle: b.angle })),
+        }),
+      });
+      if (!res.ok) { alert('STEP 생성에 실패했어요.'); return; }
+      const text = await res.text();
+      const blob = new Blob([text], { type: 'application/step' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'nexyfab-sheetmetal.step'; a.click();
+      URL.revokeObjectURL(url);
+    } catch { alert('STEP 생성에 실패했어요.'); }
+    finally { setStepBusy(false); }
   };
 
   return (
@@ -104,9 +130,15 @@ export default function SheetMetalDemoPage() {
                 {result.base && <>본체 {result.base.W}×{result.base.L}×{result.base.thickness}mm · R{result.base.bendRadius} · K{result.base.kFactor}</>}
                 {result.blank && <> · <b style={{ color: '#e6edf3' }}>블랭크 {result.blank.width}×{result.blank.length}mm</b></>}
               </div>
-              <button onClick={downloadDxf} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #238636', background: '#238636', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                ⬇ DXF 다운로드
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => void downloadStep()} disabled={stepBusy} title="접힌 3D 부품을 STEP으로 — 모델러/SolidWorks에서 열림"
+                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #ea580c', background: stepBusy ? '#1f2937' : 'transparent', color: '#ea580c', fontSize: 14, fontWeight: 700, cursor: stepBusy ? 'default' : 'pointer' }}>
+                  {stepBusy ? '생성 중…' : '⬇ 3D STEP'}
+                </button>
+                <button onClick={downloadDxf} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #238636', background: '#238636', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                  ⬇ DXF 전개도
+                </button>
+              </div>
             </div>
             {result.base && result.bends && result.bends.length > 0 && (
               <div style={{ marginBottom: 16 }}>
