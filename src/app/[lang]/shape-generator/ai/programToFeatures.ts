@@ -80,21 +80,34 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
     switch (f.type) {
       case 'sketchExtrude':
         break;
-      case 'hole':
-        api.addFeatureWithParams('hole', {
-          holeType: num(f.holeType, 0),
-          diameter: num(f.diameter, 6),
-          posX: num(f.posX, 0),
-          posZ: num(f.posY, 0),
-          depth: 999, // through
+      case 'hole': {
+        // EXPAND patterns into explicit holes rather than using the modeler's
+        // circularPattern feature — it places copies at the wrong radius (the
+        // bbox blew up to 2×PCD in the Z axis). Same positions the OpenSCAD
+        // preview and the analytic-STEP route use.
+        const addHole = (x: number, y: number) => api.addFeatureWithParams('hole', {
+          holeType: num(f.holeType, 0), diameter: num(f.diameter, 6), posX: x, posZ: y, depth: 999,
         });
+        const pat = feats.find(p => (p.type === 'circularPattern' || p.type === 'linearPattern') && p.feature === f.id);
+        if (pat?.type === 'circularPattern') {
+          const cnt = Math.max(2, Math.round(num(pat.count, 4)));
+          const r = num(pat.pcd, 60) / 2;
+          for (let i = 0; i < cnt; i++) { const a = (i / cnt) * 2 * Math.PI; addHole(Math.cos(a) * r, Math.sin(a) * r); }
+        } else if (pat?.type === 'linearPattern') {
+          const cnt = Math.max(2, Math.round(num(pat.count, 3)));
+          const sp = num(pat.spacing, 20);
+          for (let i = 0; i < cnt; i++) {
+            const off = (i - (cnt - 1) / 2) * sp;
+            addHole(num(f.posX, 0) + (pat.axis === 'y' ? 0 : off), num(f.posY, 0) + (pat.axis === 'y' ? off : 0));
+          }
+        } else {
+          addHole(num(f.posX, 0), num(f.posY, 0));
+        }
         break;
+      }
       case 'circularPattern':
-        api.addFeatureWithParams('circularPattern', { axis: 1, count: Math.max(2, Math.round(num(f.count, 4))) });
-        break;
       case 'linearPattern':
-        api.addFeatureWithParams('linearPattern', { axis: f.axis === 'y' ? 1 : 0, count: Math.max(2, Math.round(num(f.count, 3))), spacing: num(f.spacing, 20) });
-        break;
+        break; // expanded together with their source hole above
       case 'fillet':
         api.addFeatureWithParams('fillet', { radius: num(f.radius, 3) });
         break;
