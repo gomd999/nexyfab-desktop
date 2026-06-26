@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
+
+const SheetMetal3D = dynamic(() => import('./SheetMetal3D'), { ssr: false });
 
 interface Bend { edge: string; angle: number; height: number; bendAllowance: number; bendDeduction: number; flangeFlat: number }
 interface FlatResult {
@@ -105,6 +108,15 @@ export default function SheetMetalDemoPage() {
                 ⬇ DXF 다운로드
               </button>
             </div>
+            {result.base && result.bends && result.bends.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#8b949e', marginBottom: 8, letterSpacing: '0.05em' }}>
+                  3D 폴드 미리보기 <span style={{ fontWeight: 400, color: '#6e7681' }}>· 드래그하여 회전</span>
+                </div>
+                <SheetMetal3D base={result.base} bends={result.bends} />
+              </div>
+            )}
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#8b949e', marginBottom: 8, letterSpacing: '0.05em' }}>전개도 (FLAT PATTERN)</div>
             <div style={{ background: '#fff', borderRadius: 8, padding: 16 }} dangerouslySetInnerHTML={{ __html: result.svg }} />
             <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 12, color: '#8b949e' }}>
               <span><span style={{ color: '#dc2626' }}>━</span> 칼선(Cut)</span>
