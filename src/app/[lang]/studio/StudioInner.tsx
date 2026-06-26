@@ -334,11 +334,24 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         : refineFromScad
           ? { prompt: text, freeform: true, previousScad: scad, modelId }
           : { prompt: text, freeform: true, modelId };
-      const res = await fetch('/api/nexyfab/scad-intent-from-nl', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => ({}));
+      // Codegen (DeepSeek Reasoner) occasionally times out / 5xx's / returns no
+      // code — retry once. Deterministic gate/vision responses never improve on
+      // retry, so break out for those.
+      let res: Response | null = null;
+      let data: { code?: string; scad?: string; reason?: string; error?: string } = {};
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          res = await fetch('/api/nexyfab/scad-intent-from-nl', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify(body),
+          });
+          data = await res.json().catch(() => ({}));
+        } catch { res = null; data = {}; }
+        const c = data.code;
+        if (c === 'GUEST_LIMIT' || c === 'VISION_BUSY' || c === 'VISION_FAILED') break;
+        if (res?.ok && data.scad) break; // success
+        if (attempt === 0) setAiMsg(aiId, T('생성 재시도 중…', 'Retrying…'), 'thinking');
+      }
       if ((data as { code?: string }).code === 'GUEST_LIMIT') {
         setNeedLogin(true);
         setAiMsg(aiId, T('무료 설계 1개를 사용했어요. 무료 로그인하면 계속할 수 있습니다.', 'You used your 1 free design. Log in (free) to keep going.'), 'error');
@@ -355,7 +368,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         setAiMsg(aiId, T('이미지를 이해하지 못했어요. 다른 사진으로 시도하거나 글로 설명해 주세요.', 'Could not read the image — try another photo or describe it in words.'), 'error');
         return;
       }
-      if (!res.ok) throw new Error((data as { reason?: string; error?: string }).reason ?? (data as { error?: string }).error ?? `server ${res.status}`);
+      if (!res?.ok) throw new Error((data as { reason?: string; error?: string }).reason ?? (data as { error?: string }).error ?? `server ${res?.status ?? 'error'}`);
       let code: string = (data as { scad?: string }).scad ?? '';
       if (!code) throw new Error(T('코드 생성 실패', 'no code returned'));
       setAiMsg(aiId, T('렌더링…', 'Rendering…'), 'thinking');
