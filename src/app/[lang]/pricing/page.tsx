@@ -376,8 +376,8 @@ function get3dPlans(lang: LangKey) {
         {
             key: 'pro',
             name: 'Pro',
-            price: price('₩39,000', '$29', '¥4,200', '$29'),
-            period: price('/월', '/mo', '/月', '/月'),
+            price: price('별도 협의', 'Contact us', 'お問い合わせ', '联系洽询'),
+            period: price('', '', '', ''),
             desc: price('혼자 일하는 엔지니어·스타트업', 'Solo engineers & startups', 'ソロエンジニア・スタートアップ', '独立工程师·初创企业'),
             highlight: true,
             badge: price('가장 인기', 'Most Popular', '人気No.1', '最受欢迎'),
@@ -405,8 +405,8 @@ function get3dPlans(lang: LangKey) {
         {
             key: 'team',
             name: price('팀', 'Team', 'チーム', '团队'),
-            price: price('₩129,000', '$99', '¥14,500', '$99'),
-            period: price('/월', '/mo', '/月', '/月'),
+            price: price('별도 협의', 'Contact us', 'お問い合わせ', '联系洽询'),
+            period: price('', '', '', ''),
             desc: price('소규모 팀·제조 스타트업', 'Small teams & mfg startups', '小規模チーム', '小型团队'),
             highlight: false,
             badge: '',

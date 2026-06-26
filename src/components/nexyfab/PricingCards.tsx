@@ -77,12 +77,12 @@ const PLANS: Plan[] = [
     // nexyfab-freemium 정책 (Free=1 project full workflow, Pro=2nd project).
     id: 'pro_lite',
     name: 'Pro Lite',
-    price: '₩9,900',
-    priceAlt: '$8',
-    priceJa: '¥1,200',
-    period: '/월',
-    periodEn: '/mo',
-    periodJa: '/月',
+    price: '별도 협의',
+    priceAlt: 'Contact us',
+    priceJa: 'お問い合わせ',
+    period: '',
+    periodEn: '',
+    periodJa: '',
     features: [
       '프로젝트 5개',
       '풀 형상 + 어셈블리 + 도면',
@@ -110,19 +110,19 @@ const PLANS: Plan[] = [
       'STL / STEP / DXF エクスポート',
       'コミュニティサポート',
     ],
-    cta: 'Pro Lite 시작',
-    ctaEn: 'Start Pro Lite',
-    ctaJa: 'Pro Liteを始める',
+    cta: '문의하기',
+    ctaEn: 'Contact us',
+    ctaJa: 'お問い合わせ',
   },
   {
     id: 'pro',
     name: 'Pro',
-    price: '₩29,000',
-    priceAlt: '$20',
-    priceJa: '¥3,500',
-    period: '/월',
-    periodEn: '/mo',
-    periodJa: '/月',
+    price: '별도 협의',
+    priceAlt: 'Contact us',
+    priceJa: 'お問い合わせ',
+    period: '',
+    periodEn: '',
+    periodJa: '',
     highlight: true,
     features: [
       '프로젝트 무제한',
@@ -169,19 +169,19 @@ const PLANS: Plan[] = [
       title: 'マッチングプラン利用時バンドル',
       detail: '¥60,000プラン → 3ヶ月 / ¥120,000プラン → 6ヶ月',
     },
-    cta: 'Pro 시작하기',
-    ctaEn: 'Start Pro',
-    ctaJa: 'Proを始める',
+    cta: '문의하기',
+    ctaEn: 'Contact us',
+    ctaJa: 'お問い合わせ',
   },
   {
     id: 'team',
     name: 'Team',
-    price: '₩42,000',
-    priceAlt: '$30',
-    priceJa: '¥4,500',
-    period: '/월',
-    periodEn: '/mo',
-    periodJa: '/月',
+    price: '별도 협의',
+    priceAlt: 'Contact us',
+    priceJa: 'お問い合わせ',
+    period: '',
+    periodEn: '',
+    periodJa: '',
     features: [
       'Pro 모든 기능',
       '팀 워크스페이스',
@@ -206,9 +206,9 @@ const PLANS: Plan[] = [
       '専任アカウントマネージャー',
       'SLA 99.9%保証',
     ],
-    cta: 'Team 시작하기',
-    ctaEn: 'Start Team',
-    ctaJa: 'Teamを始める',
+    cta: '문의하기',
+    ctaEn: 'Contact us',
+    ctaJa: 'お問い合わせ',
   },
 ];
 
@@ -437,8 +437,11 @@ export default function PricingCards({ lang = 'ko', currentPlan }: Props) {
               <button
                 disabled={isCurrent || isLoading}
                 onClick={() => {
-                  if (!isCurrent && (plan.id === 'pro' || plan.id === 'team')) {
-                    handleUpgrade(plan.id);
+                  if (isCurrent) return;
+                  // Paid tiers are quote-on-request ("별도 협의") — route to an
+                  // inquiry instead of self-serve checkout.
+                  if (plan.id === 'pro_lite' || plan.id === 'pro' || plan.id === 'team') {
+                    window.location.href = `mailto:gomd99914@gmail.com?subject=${encodeURIComponent(`[NexyFab] 3D 툴 견적 문의 — ${plan.name}`)}`;
                   }
                 }}
                 style={{

@@ -94,8 +94,8 @@ const PLANS = [
   },
   {
     name: 'Pro',
-    priceKo: '₩29,000/월',
-    priceEn: '₩29,000/mo',
+    priceKo: '별도 협의',
+    priceEn: 'Contact us',
     color: '#388bfd',
     highlight: true,
     features: {
@@ -105,8 +105,8 @@ const PLANS = [
   },
   {
     name: 'Team',
-    priceKo: '₩42,000/월',
-    priceEn: '₩42,000/mo',
+    priceKo: '별도 협의',
+    priceEn: 'Contact us',
     color: '#a371f7',
     features: {
       ko: ['Pro 모든 기능', '팀 협업', '우선 제조사 매칭', 'API 접근'],

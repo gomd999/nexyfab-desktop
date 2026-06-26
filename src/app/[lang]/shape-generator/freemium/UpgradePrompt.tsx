@@ -110,7 +110,7 @@ export default function UpgradePrompt({
   const isoLang = langKey;
   const isKo = langKey === 'ko';
 
-  const handleUpgrade = async (plan: 'pro' | 'team') => {
+  const handleUpgrade = (plan: 'pro' | 'team') => {
     setCheckoutLoading(plan);
     // Fire paywall_upgrade_clicked funnel event before redirect — fire-and-forget.
     // Only when this prompt was opened with a funnelContext (caller decided
@@ -128,19 +128,10 @@ export default function UpgradePrompt({
         }),
       }).catch(() => { /* ignore — must not block checkout redirect */ });
     }
-    try {
-      const res = await fetch('/api/billing/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: plan, lang: isoLang }),
-      });
-      const data = await res.json() as { url?: string; ok?: boolean };
-      if (data.url) window.location.href = data.url;
-    } catch {
-      // fallback
-    } finally {
-      setCheckoutLoading(null);
-    }
+    // Paid tiers are quote-on-request ("별도 협의") — open an inquiry instead of
+    // self-serve checkout.
+    window.location.href = `mailto:gomd99914@gmail.com?subject=${encodeURIComponent(`[NexyFab] 3D 툴 견적 문의 — ${plan}`)}`;
+    setCheckoutLoading(null);
   };
 
   if (!open) return null;
@@ -201,8 +192,8 @@ export default function UpgradePrompt({
         {/* Pricing */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
           {[
-            { plan: 'pro' as const, label: 'Pro', price: '₩29,000', priceEn: '$20', priceJa: '¥3,500', period: t.period, color: 'var(--nx-accent)' },
-            { plan: 'team' as const, label: 'Team', price: '₩79,000', priceEn: '$57', priceJa: '¥8,500', period: t.periodSeat, color: 'var(--nx-accent-2)' },
+            { plan: 'pro' as const, label: 'Pro', price: '별도 협의', priceEn: 'Contact us', priceJa: 'お問い合わせ', period: '', color: 'var(--nx-accent)' },
+            { plan: 'team' as const, label: 'Team', price: '별도 협의', priceEn: 'Contact us', priceJa: 'お問い合わせ', period: '', color: 'var(--nx-accent-2)' },
           ].map(item => (
             <div
               key={item.plan}
