@@ -21,17 +21,17 @@ import { useEffect, useState } from 'react';
 
 export type ColorScheme = 'light' | 'dark';
 
-function readSystemColorScheme(): ColorScheme {
-  if (typeof window === 'undefined' || !window.matchMedia) return 'dark';
-  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-}
-
 export function useColorScheme(): ColorScheme {
-  const [scheme, setScheme] = useState<ColorScheme>(readSystemColorScheme);
+  // MUST start at the SSR value ('dark') so the first client render matches the
+  // server HTML — reading matchMedia in the initializer made the client hydrate
+  // as 'light' on light systems while the server emitted 'dark' (React #418
+  // hydration mismatch). Resolve the real scheme after mount instead.
+  const [scheme, setScheme] = useState<ColorScheme>('dark');
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
     const mq = window.matchMedia('(prefers-color-scheme: light)');
+    setScheme(mq.matches ? 'light' : 'dark'); // sync to the actual system scheme post-hydration
     const handler = (e: MediaQueryListEvent) => setScheme(e.matches ? 'light' : 'dark');
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
