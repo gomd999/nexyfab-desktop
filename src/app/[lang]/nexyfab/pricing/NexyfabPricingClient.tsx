@@ -132,13 +132,13 @@ export default function NexyfabPricingPage({ params }: { params: Promise<{ lang:
             {(isKo ? [
               { q: 'Free 플랜은 어디까지 쓸 수 있나요?', a: '3개 프로젝트까지 저장 가능하고, STL 내보내기와 기본 AI 채팅을 무료로 사용할 수 있습니다. DFM 분석, FEA, 비용 추정은 Pro부터 가능합니다.' },
               { q: 'Pro와 Team의 차이는?', a: 'Pro는 개인용으로 모든 분석 기능과 무제한 프로젝트를 제공합니다. Team은 실시간 협업, 팀원 초대, 공유 프로젝트 기능이 추가됩니다.' },
-              { q: '3D 모델러 단독으로 사용하려면?', a: 'Pro 플랜(₩29,000/월)으로 이용 가능합니다. 단, NexyFab 매칭 서비스(50만원 플랜)를 이용하시면 Pro 3개월이 무료 포함되고, 100만원 플랜은 6개월이 포함됩니다.' },
+              { q: '3D 모델러 단독으로 사용하려면?', a: 'Pro 플랜(별도 협의)으로 이용 가능합니다. 문의 주시면 맞춤 견적을 안내해 드립니다. NexyFab 매칭 서비스(50만원 플랜)를 이용하시면 Pro 3개월이 무료 포함되고, 100만원 플랜은 6개월이 포함됩니다.' },
               { q: '결제는 어떻게 이루어지나요?', a: 'Stripe를 통한 카드 결제입니다. 매월 자동 갱신되며, 언제든 해지하면 해당 기간까지만 사용 가능합니다.' },
               { q: 'Enterprise는 어떻게 신청하나요?', a: '하단의 Enterprise 문의 버튼을 통해 연락하시면 맞춤 견적을 제공해드립니다.' },
             ] : [
               { q: 'What does the Free plan include?', a: 'Up to 3 saved projects, STL export, and basic AI chat. DFM analysis, FEA, and cost estimation require Pro.' },
               { q: 'Difference between Pro and Team?', a: 'Pro is for individuals with all analysis features and unlimited projects. Team adds real-time collaboration and shared workspaces.' },
-              { q: 'Can I use the 3D Modeler standalone?', a: 'Yes, the Pro plan ($20/mo) gives full 3D Modeler access. However, NexyFab matching plans already include it — 3 months with the $400 plan, 6 months with the $800 plan.' },
+              { q: 'Can I use the 3D Modeler standalone?', a: 'Yes — the Pro plan (contact us for a quote) gives full 3D Modeler access. NexyFab matching plans already include it — 3 months with the $400 plan, 6 months with the $800 plan.' },
               { q: 'How does billing work?', a: 'Monthly Stripe card billing. Cancel anytime — access continues until the end of the billing period.' },
               { q: 'How do I get Enterprise?', a: 'Contact us via the Enterprise button below for a custom quote.' },
             ]).map((item, i) => (
