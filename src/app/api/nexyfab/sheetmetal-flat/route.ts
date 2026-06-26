@@ -43,49 +43,46 @@ export async function POST(req: NextRequest) {
     return { ba, ossb, bd: 2 * ossb - ba };
   };
 
-  const segs: Seg[] = [];
-  // Base panel rectangle [0,0]-[W,L]; flanged edges become BEND lines, others CUT.
+  // Per-edge bend geometry. The base panel is SHORTENED by OSSB on each flanged
+  // edge (the bend region replaces material up to the bend tangent), so the
+  // developed length = (L − ΣOSSB) + Σ(BA + flange_flat) = (L+H) − ΣBD. Without
+  // this setback the blank comes out too long by OSSB per bend.
   const onEdge = (e: Flange['edge']) => flanges.find(f => f.edge === e);
-  segs.push({ a: [0, 0], b: [W, 0], layer: onEdge('front') ? 'BEND' : 'CUT' });
-  segs.push({ a: [0, L], b: [W, L], layer: onEdge('back') ? 'BEND' : 'CUT' });
-  segs.push({ a: [0, 0], b: [0, L], layer: onEdge('left') ? 'BEND' : 'CUT' });
-  segs.push({ a: [W, 0], b: [W, L], layer: onEdge('right') ? 'BEND' : 'CUT' });
-
-  const report: Record<string, unknown>[] = [];
-  for (const f of flanges) {
+  const edgeBend = (e: Flange['edge']) => {
+    const f = onEdge(e); if (!f) return null;
     const angle = Math.min(Math.max(1, num(f.angle, 90)), 179);
     const H = Math.min(Math.max(2, num(f.height, 30)), 1000);
     const { ba, ossb, bd } = bend(angle);
-    const flat = Math.max(0.5, H - ossb);   // straight (flat) part of the flange beyond the bend
-    const dev = ba + flat;                  // developed strip beyond the bend line
-    // unfold the flange outward from its base edge as a CUT rectangle + a 2nd
-    // BEND line at the far tangent of the bend zone.
-    if (f.edge === 'back') {
-      segs.push({ a: [0, L + ba], b: [W, L + ba], layer: 'BEND' });               // far bend tangent
-      segs.push({ a: [0, L], b: [0, L + dev], layer: 'CUT' });
-      segs.push({ a: [W, L], b: [W, L + dev], layer: 'CUT' });
-      segs.push({ a: [0, L + dev], b: [W, L + dev], layer: 'CUT' });
-    } else if (f.edge === 'front') {
-      segs.push({ a: [0, -ba], b: [W, -ba], layer: 'BEND' });
-      segs.push({ a: [0, 0], b: [0, -dev], layer: 'CUT' });
-      segs.push({ a: [W, 0], b: [W, -dev], layer: 'CUT' });
-      segs.push({ a: [0, -dev], b: [W, -dev], layer: 'CUT' });
-    } else if (f.edge === 'right') {
-      segs.push({ a: [W + ba, 0], b: [W + ba, L], layer: 'BEND' });
-      segs.push({ a: [W, 0], b: [W + dev, 0], layer: 'CUT' });
-      segs.push({ a: [W, L], b: [W + dev, L], layer: 'CUT' });
-      segs.push({ a: [W + dev, 0], b: [W + dev, L], layer: 'CUT' });
-    } else { // left
-      segs.push({ a: [-ba, 0], b: [-ba, L], layer: 'BEND' });
-      segs.push({ a: [0, 0], b: [-dev, 0], layer: 'CUT' });
-      segs.push({ a: [0, L], b: [-dev, L], layer: 'CUT' });
-      segs.push({ a: [-dev, 0], b: [-dev, L], layer: 'CUT' });
-    }
-    report.push({ edge: f.edge, angle, height: H, bendAllowance: +ba.toFixed(2), bendDeduction: +bd.toFixed(2), flangeFlat: +flat.toFixed(2) });
+    const flat = Math.max(0.5, H - ossb);
+    return { angle, H, ba, ossb, bd, flat, dev: ba + flat };
+  };
+  const bF = edgeBend('front'), bB = edgeBend('back'), bL = edgeBend('left'), bR = edgeBend('right');
+  // Developed base panel (setback applied) — base origin at (x0, y0).
+  const x0 = 0, y0 = 0;
+  const baseW = W - (bL?.ossb ?? 0) - (bR?.ossb ?? 0);
+  const baseL = L - (bF?.ossb ?? 0) - (bB?.ossb ?? 0);
+  const x1 = x0 + baseW, y1 = y0 + baseL;
+
+  const segs: Seg[] = [];
+  // base edges: flanged → BEND (the bend line), else CUT
+  segs.push({ a: [x0, y0], b: [x1, y0], layer: bF ? 'BEND' : 'CUT' });
+  segs.push({ a: [x0, y1], b: [x1, y1], layer: bB ? 'BEND' : 'CUT' });
+  segs.push({ a: [x0, y0], b: [x0, y1], layer: bL ? 'BEND' : 'CUT' });
+  segs.push({ a: [x1, y0], b: [x1, y1], layer: bR ? 'BEND' : 'CUT' });
+
+  // unfold each flange outward: far bend tangent (BEND) + flange flat outline (CUT)
+  if (bB) { const e = y1 + bB.dev; segs.push({ a: [x0, y1 + bB.ba], b: [x1, y1 + bB.ba], layer: 'BEND' }, { a: [x0, y1], b: [x0, e], layer: 'CUT' }, { a: [x1, y1], b: [x1, e], layer: 'CUT' }, { a: [x0, e], b: [x1, e], layer: 'CUT' }); }
+  if (bF) { const e = y0 - bF.dev; segs.push({ a: [x0, y0 - bF.ba], b: [x1, y0 - bF.ba], layer: 'BEND' }, { a: [x0, y0], b: [x0, e], layer: 'CUT' }, { a: [x1, y0], b: [x1, e], layer: 'CUT' }, { a: [x0, e], b: [x1, e], layer: 'CUT' }); }
+  if (bR) { const e = x1 + bR.dev; segs.push({ a: [x1 + bR.ba, y0], b: [x1 + bR.ba, y1], layer: 'BEND' }, { a: [x1, y0], b: [e, y0], layer: 'CUT' }, { a: [x1, y1], b: [e, y1], layer: 'CUT' }, { a: [e, y0], b: [e, y1], layer: 'CUT' }); }
+  if (bL) { const e = x0 - bL.dev; segs.push({ a: [x0 - bL.ba, y0], b: [x0 - bL.ba, y1], layer: 'BEND' }, { a: [x0, y0], b: [e, y0], layer: 'CUT' }, { a: [x0, y1], b: [e, y1], layer: 'CUT' }, { a: [e, y0], b: [e, y1], layer: 'CUT' }); }
+
+  const report: Record<string, unknown>[] = [];
+  for (const [edge, bnd] of [['front', bF], ['back', bB], ['left', bL], ['right', bR]] as const) {
+    if (bnd) report.push({ edge, angle: bnd.angle, height: bnd.H, bendAllowance: +bnd.ba.toFixed(2), bendDeduction: +bnd.bd.toFixed(2), flangeFlat: +bnd.flat.toFixed(2) });
   }
 
   // overall developed blank bounding size
-  let minX = 0, maxX = W, minY = 0, maxY = L;
+  let minX = x0, maxX = x1, minY = y0, maxY = y1;
   for (const s of segs) for (const p of [s.a, s.b]) {
     minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]); minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
   }

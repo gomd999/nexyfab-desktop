@@ -138,7 +138,9 @@ export async function POST(req: NextRequest) {
     // An all-edge fillet/chamfer can't exceed half the smallest dimension it
     // rounds (the thickness binds), or replicad silently no-ops it. Clamp to a
     // feasible value and REPORT it, rather than silently dropping the feature.
-    const maxEdge = Math.max(0.3, Math.min(num(base.height, 8), num(base.width, 100), num(base.depth, 80)) * 0.49);
+    // 0.42 (not 0.49): a radius right at half the thickness leaves a degenerate
+    // sliver that corrupts the B-rep and fails the STEP export — keep a margin.
+    const maxEdge = Math.max(0.3, Math.min(num(base.height, 8), num(base.width, 100), num(base.depth, 80)) * 0.42);
     const clamped: string[] = [];
     for (const f of feats) {
       try {
