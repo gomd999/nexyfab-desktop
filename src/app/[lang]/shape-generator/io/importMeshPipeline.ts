@@ -38,11 +38,16 @@ export async function prepareImportedShapeFromBuffer(
 ): Promise<PreparedImportedShape> {
   const ext = filename.split('.').pop()?.toLowerCase() || '';
   if (ext === 'step' || ext === 'stp') {
-    const { tryServerStepImport } = await import('./serverStepImport');
-    const server = await tryServerStepImport(filename, buffer);
-    if (server) {
-      trackGeometry(server.geometry);
-      return finalizeImported(server.geometry, filename, undefined);
+    try {
+      const { tryServerStepImport } = await import('./serverStepImport');
+      const server = await tryServerStepImport(filename, buffer);
+      if (server) {
+        trackGeometry(server.geometry);
+        return finalizeImported(server.geometry, filename, undefined);
+      }
+    } catch {
+      // Server worker unavailable/unconfigured (e.g. BREP_WORKER_URL unset) —
+      // fall through to the client path (importPayload → parseSTEP → replicad).
     }
   }
   const { geometry, filename: resolvedName, parts } = await importPayload(filename, buffer);
