@@ -601,7 +601,17 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
           });
           if (res.ok) {
             const text = await res.text();
-            if (text.includes('ISO-10303-21')) { save(text); return; }
+            if (text.includes('ISO-10303-21')) {
+              save(text);
+              // Surface any approximation rather than letting it ship silently.
+              const skipped = res.headers.get('X-Skipped');
+              const clamped = res.headers.get('X-Clamped');
+              const notes: string[] = [];
+              if (skipped && skipped !== 'none') notes.push(T(`미반영 피처: ${skipped}`, `Features not applied: ${skipped}`));
+              if (clamped && clamped !== 'none') notes.push(T(`치수 조정: ${clamped}`, `Clamped: ${clamped}`));
+              if (notes.length) alert(T('STEP를 내보냈어요.\n', 'STEP exported.\n') + notes.join('\n'));
+              return;
+            }
           }
           // analytic build failed → fall through to the mesh STEP
         } catch { /* fall through */ }
