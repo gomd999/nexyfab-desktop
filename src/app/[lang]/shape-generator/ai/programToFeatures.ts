@@ -46,8 +46,11 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
   // (a 50×30×20 box), so the old approach — a sketch 'add' — unioned the part
   // ONTO that box, corrupting the dimensions. Instead REPLACE the base
   // primitive directly when we can (box/cylinder, which is every Studio base).
-  // Box param→axis mapping: width→X, height→Y, depth→Z. The Studio program is
-  // width(X) × depth(Y) × height(Z-thickness), so swap depth↔height.
+  // The modeler is Y-up: box height is the vertical (Y) axis and the hole
+  // feature drills along Y through it. So the plate's THICKNESS must map to the
+  // box height (Studio height), not depth — otherwise the holes drill through
+  // the wrong dimension and blow up the bbox. width→X, height→Y(thickness),
+  // depth→Z.
   const h = num(base.height, 8);
   // NOTE: do NOT clearFeatures() here — the modeler mounts fresh on handoff, and
   // clearAll() resets activeNodeId asynchronously, so features added in the same
@@ -56,7 +59,7 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
     if (base.shape === 'circle') {
       api.setBaseShape('cylinder', { diameter: num(base.width, 50), height: h });
     } else {
-      api.setBaseShape('box', { width: num(base.width, 100), height: num(base.depth, 80), depth: h });
+      api.setBaseShape('box', { width: num(base.width, 100), height: h, depth: num(base.depth, 80) });
     }
   } else {
     // Fallback (no base-shape setter): sketch extrude (will double the default box).
