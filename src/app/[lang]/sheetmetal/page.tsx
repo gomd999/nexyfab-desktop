@@ -89,19 +89,22 @@ export default function SheetMetalDemoPage() {
     finally { setStepBusy(false); }
   };
 
-  // One-click handoff: stash the parametric SPEC and open the modeler, which
-  // rebuilds it as NATIVE editable flange features (height/angle stay editable,
-  // Flatten works) — better than a static STEP mesh.
-  const openInModeler = () => {
-    if (!result?.base || !result.bends) return;
+  // One-click handoff: stash the folded STEP and open the modeler, which imports
+  // it on load (→ analysable part, FEA / DFM / quote). NOTE: a native-flange
+  // handoff (editable flange features) was attempted but the flange feature does
+  // not apply cleanly in the programmatic handoff context (works via the Sheet
+  // Metal ribbon though) — deferred. The STEP-mesh path is the reliable one.
+  const openInModeler = async () => {
+    if (stepBusy) return;
+    setStepBusy(true);
     try {
-      sessionStorage.setItem('nexyfab:sheetmetal-handoff-spec', JSON.stringify({
-        W: result.base.W, L: result.base.L, T: result.base.thickness, bendRadius: result.base.bendRadius,
-        flanges: result.bends.map(b => ({ edge: b.edge, height: b.height, angle: b.angle })),
-      }));
+      const text = await fetchStep();
+      if (!text) { alert('STEP 생성에 실패했어요.'); return; }
+      sessionStorage.setItem('nexyfab:sheetmetal-handoff-step', text);
       const lang = window.location.pathname.split('/')[1] || 'ko';
       window.location.href = `/${lang}/shape-generator?mode=expert`;
     } catch { alert('모델러 열기에 실패했어요.'); }
+    finally { setStepBusy(false); }
   };
 
   return (
