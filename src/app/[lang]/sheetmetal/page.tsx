@@ -89,19 +89,19 @@ export default function SheetMetalDemoPage() {
     finally { setStepBusy(false); }
   };
 
-  // One-click handoff: stash the STEP and open the modeler, which imports it on
-  // load (→ editable part, FEA / DFM / quote) instead of a manual file upload.
-  const openInModeler = async () => {
-    if (stepBusy) return;
-    setStepBusy(true);
+  // One-click handoff: stash the parametric SPEC and open the modeler, which
+  // rebuilds it as NATIVE editable flange features (height/angle stay editable,
+  // Flatten works) — better than a static STEP mesh.
+  const openInModeler = () => {
+    if (!result?.base || !result.bends) return;
     try {
-      const text = await fetchStep();
-      if (!text) { alert('STEP 생성에 실패했어요.'); return; }
-      sessionStorage.setItem('nexyfab:sheetmetal-handoff-step', text);
+      sessionStorage.setItem('nexyfab:sheetmetal-handoff-spec', JSON.stringify({
+        W: result.base.W, L: result.base.L, T: result.base.thickness, bendRadius: result.base.bendRadius,
+        flanges: result.bends.map(b => ({ edge: b.edge, height: b.height, angle: b.angle })),
+      }));
       const lang = window.location.pathname.split('/')[1] || 'ko';
       window.location.href = `/${lang}/shape-generator?mode=expert`;
     } catch { alert('모델러 열기에 실패했어요.'); }
-    finally { setStepBusy(false); }
   };
 
   return (
