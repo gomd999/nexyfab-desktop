@@ -142,23 +142,35 @@ export async function POST(req: NextRequest) {
     // sliver that corrupts the B-rep and fails the STEP export — keep a margin.
     const maxEdge = Math.max(0.3, Math.min(num(base.height, 8), num(base.width, 100), num(base.depth, 80)) * 0.42);
     const clamped: string[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const solidBeforeEdges: any = solid; // fall back to this if the edge ops corrupt the B-rep
+    let appliedEdgeOp = false;
     for (const f of feats) {
       try {
         if (f.type === 'fillet') {
           const want = num(f.radius, 3);
           const r = Math.min(want, maxEdge);
           if (r < want - 1e-3) clamped.push(`fillet ${want}→${r.toFixed(1)}mm`);
-          solid = solid.fillet(r);
+          solid = solid.fillet(r); appliedEdgeOp = true;
         } else if (f.type === 'chamfer') {
           const want = num(f.distance, 1);
           const d = Math.min(want, maxEdge);
           if (d < want - 1e-3) clamped.push(`chamfer ${want}→${d.toFixed(1)}mm`);
-          solid = solid.chamfer(d);
+          solid = solid.chamfer(d); appliedEdgeOp = true;
         }
       } catch { skipped.push(f.type ?? 'edge-op'); }
     }
 
-    const step: string = await solid.blobSTEP().text();
+    // Edge ops can silently produce a B-rep that won't export (degenerate blends).
+    // If blobSTEP throws, re-export WITHOUT the edge ops so the part still ships.
+    let step: string;
+    try {
+      step = await solid.blobSTEP().text();
+    } catch {
+      if (!appliedEdgeOp) throw new Error('STEP export failed');
+      step = await solidBeforeEdges.blobSTEP().text();
+      skipped.push('fillet/chamfer (export-incompatible)');
+    }
     // A degenerate program (e.g. a hole wider than the body) can cut everything
     // away — replicad still emits a valid-but-EMPTY STEP. Reject it so the studio
     // falls back to the mesh STEP, which keeps whatever the preview shows.
