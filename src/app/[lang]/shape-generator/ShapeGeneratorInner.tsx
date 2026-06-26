@@ -6763,18 +6763,43 @@ export function ShapeGeneratorInner() {
     let scad: string | null = null;
     let programRaw: string | null = null;
     let stlB64: string | null = null;
+    let sheetStep: string | null = null;
     try {
       scad = sessionStorage.getItem('nexyfab:studio-handoff-scad');
       programRaw = sessionStorage.getItem('nexyfab:studio-handoff-program');
       stlB64 = sessionStorage.getItem('nexyfab:studio-handoff-stl');
+      sheetStep = sessionStorage.getItem('nexyfab:sheetmetal-handoff-step');
     } catch { return; }
-    if (!scad && !programRaw && !stlB64) return;
+    if (!scad && !programRaw && !stlB64 && !sheetStep) return;
     try {
       sessionStorage.removeItem('nexyfab:studio-handoff-scad');
       sessionStorage.removeItem('nexyfab:studio-handoff-program');
       sessionStorage.removeItem('nexyfab:studio-handoff-stl');
+      sessionStorage.removeItem('nexyfab:sheetmetal-handoff-step');
     } catch { /* ignore */ }
     void (async () => {
+      // Sheet-metal MVP → modeler: the folded part as a B-rep STEP. Import via
+      // the proven replicad mesh pipeline (same as the toolbar STEP import) so it
+      // becomes an editable/analysable part — feeds FEA · DFM · quoting.
+      if (sheetStep) {
+        try {
+          const { prepareImportedShapeFromBuffer } = await import('./io/importMeshPipeline');
+          const buf = new TextEncoder().encode(sheetStep).buffer;
+          const prepared = await prepareImportedShapeFromBuffer('nexyfab-sheetmetal.step', buf);
+          if (cancelled) return;
+          setImportedGeometry(prepared.geometry);
+          setImportedFilename(prepared.filename);
+          setSketchResult({
+            geometry: prepared.geometry, edgeGeometry: prepared.edgeGeometry,
+            volume_cm3: prepared.volume_cm3, surface_area_cm2: prepared.surface_area_cm2, bbox: prepared.bbox,
+          });
+          addToast('success', '판금 부품을 모델러로 가져왔어요 — FEA·DFM·견적 가능');
+        } catch (e) {
+          console.warn('[sheetmetal handoff] STEP import failed:', e);
+          if (!cancelled) addToast('error', '판금 부품 가져오기 실패');
+        }
+        return;
+      }
       // Precise designs carry a feature program → rebuild an EDITABLE feature
       // tree (the modeler then builds it via OCCT → analytic B-rep + STEP).
       if (programRaw) {
@@ -6845,7 +6870,7 @@ export function ShapeGeneratorInner() {
       }
     })();
     return () => { cancelled = true; };
-  }, [setImportedGeometry, setImportedFilename, addToast, addSketchFeature, addFeatureWithParams, setSelectedId, setParams, clearAll]);
+  }, [setImportedGeometry, setImportedFilename, addToast, addSketchFeature, addFeatureWithParams, setSelectedId, setParams, clearAll, setSketchResult]);
 
   // ─── K-series STEP import (B-rep, gap #3) ────────────────────────────────
   // Read a STEP file as a true OCCT B-rep solid (STEPControl_Reader via the
