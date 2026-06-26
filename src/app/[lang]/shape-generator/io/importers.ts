@@ -320,9 +320,34 @@ async function parseOCCT(
 }
 
 export async function parseSTEP(buffer: ArrayBuffer) {
+  // Primary: the replicad OCCT route — reads any AP203/214 B-rep STEP server-side
+  // and returns a mesh. The occt-import-js client path (importStepFile) needs an
+  // unconfigured tessellation worker (503), so it's only a fallback now.
+  try {
+    const stepText = new TextDecoder().decode(buffer);
+    if (stepText.includes('ISO-10303-21')) {
+      const res = await fetch('/api/nexyfab/brep/step-import-replicad/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ stepText }),
+      });
+      if (res.ok) {
+        const d = await res.json() as { ok?: boolean; positions?: number[]; triangles?: number[]; triangleCount?: number };
+        if (d.ok && d.positions?.length && d.triangles?.length) {
+          const geo = new THREE.BufferGeometry();
+          geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(d.positions), 3));
+          geo.setIndex(new THREE.BufferAttribute(new Uint32Array(d.triangles), 1));
+          geo.computeVertexNormals();
+          geo.computeBoundingBox();
+          return {
+            geometry: geo, meshCount: 1, faceCount: d.triangleCount ?? (d.triangles.length / 3),
+            name: 'imported.step', boundingBox: geo.boundingBox ?? new THREE.Box3(),
+          };
+        }
+      }
+    }
+  } catch { /* fall through to the occt-import-js client path */ }
   const { importStepFile } = await import('./stepImporter');
-  const result = await importStepFile(buffer);
-  return result;
+  return importStepFile(buffer);
 }
 
 export async function parseIGES(buffer: ArrayBuffer): Promise<THREE.BufferGeometry> {
