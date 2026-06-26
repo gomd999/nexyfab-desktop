@@ -135,10 +135,24 @@ export async function POST(req: NextRequest) {
       } catch { skipped.push('rib'); }
     }
 
+    // An all-edge fillet/chamfer can't exceed half the smallest dimension it
+    // rounds (the thickness binds), or replicad silently no-ops it. Clamp to a
+    // feasible value and REPORT it, rather than silently dropping the feature.
+    const maxEdge = Math.max(0.3, Math.min(num(base.height, 8), num(base.width, 100), num(base.depth, 80)) * 0.49);
+    const clamped: string[] = [];
     for (const f of feats) {
       try {
-        if (f.type === 'fillet') solid = solid.fillet(num(f.radius, 3));
-        else if (f.type === 'chamfer') solid = solid.chamfer(num(f.distance, 1));
+        if (f.type === 'fillet') {
+          const want = num(f.radius, 3);
+          const r = Math.min(want, maxEdge);
+          if (r < want - 1e-3) clamped.push(`fillet ${want}→${r.toFixed(1)}mm`);
+          solid = solid.fillet(r);
+        } else if (f.type === 'chamfer') {
+          const want = num(f.distance, 1);
+          const d = Math.min(want, maxEdge);
+          if (d < want - 1e-3) clamped.push(`chamfer ${want}→${d.toFixed(1)}mm`);
+          solid = solid.chamfer(d);
+        }
       } catch { skipped.push(f.type ?? 'edge-op'); }
     }
 
@@ -155,6 +169,7 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/step',
         'Content-Disposition': `attachment; filename="${(body.part ?? 'nexyfab-part').replace(/[^\w.-]/g, '_')}.step"`,
         'X-Skipped': skipped.join(',') || 'none',
+        'X-Clamped': clamped.join('; ') || 'none',
       },
     });
   } catch (e) {
