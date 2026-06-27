@@ -1,10 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
+import type { Model3D } from './Preview3D';
+
+// 3D preview is client-only (WebGL) — lazy-load so it never blocks the page.
+const Preview3D = dynamic(() => import('./Preview3D'), { ssr: false, loading: () => <div style={{ color: '#8b949e', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>3D 로딩…</div> });
 
 interface NetResult {
   ok: boolean;
-  dims?: { W: number; D: number; H: number; type?: string; roof?: string };
+  dims?: { W: number; D: number; H: number; type?: string; roof?: string; gableHeight?: number };
   layers?: { CUT: number; FOLD: number; TAB: number };
   steps?: string[];
   faceCount?: number;
@@ -54,6 +59,7 @@ export default function PapercraftDemoPage() {
   const [image, setImage] = useState<string | null>(null);
   const [imageName, setImageName] = useState('');
   const [thickness, setThickness] = useState(0); // material thickness mm; 0 = thin paper
+  const [model3d, setModel3d] = useState<Model3D | null>(null); // finished-product 3D preview
 
   const onPickImage = (file: File | null) => {
     if (!file) { setImage(null); setImageName(''); return; }
@@ -73,7 +79,9 @@ export default function PapercraftDemoPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: text, ...(image ? { image } : {}), ...(thickness > 0 ? { thickness } : {}) }),
       });
-      setResult(await res.json());
+      const j = await res.json() as NetResult;
+      setResult(j);
+      if (j.ok && j.dims) setModel3d({ kind: 'box', W: j.dims.W, D: j.dims.D, H: j.dims.H, roof: (j.dims.roof as 'flat' | 'gable' | 'open') ?? 'flat', gableH: j.dims.gableHeight });
     } catch {
       setResult({ ok: false, error: '생성에 실패했어요. 다시 시도해 주세요.' });
     } finally {
@@ -89,6 +97,7 @@ export default function PapercraftDemoPage() {
       const buf = await file.arrayBuffer();
       const positions = parseStlPositions(buf);
       if (positions.length < 9) { setResult({ ok: false, error: 'STL을 읽지 못했어요 (삼각형이 없어요).' }); return; }
+      setModel3d({ kind: 'mesh', positions });
       const res = await fetch('/api/nexyfab/papercraft-unfold', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ positions, ...(thickness > 0 ? { thickness } : {}) }),
@@ -108,6 +117,7 @@ export default function PapercraftDemoPage() {
       const buf = await file.arrayBuffer();
       const positions = parseStlPositions(buf);
       if (positions.length < 9) { setResult({ ok: false, error: 'STL을 읽지 못했어요 (삼각형이 없어요).' }); return; }
+      setModel3d({ kind: 'mesh', positions });
       const res = await fetch('/api/nexyfab/papercraft-slice', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ positions, ...(thickness > 0 ? { thickness } : { thickness: 5 }) }),
@@ -159,7 +169,7 @@ export default function PapercraftDemoPage() {
         </p>
         <h1 style={{ fontSize: 30, fontWeight: 800, margin: '0 0 8px' }}>말 또는 사진으로 건물 → 레이저컷 전개도</h1>
         <p style={{ color: '#8b949e', fontSize: 15, margin: '0 0 28px' }}>
-          건물·방을 글로 설명하거나 사진을 올리면 종이/하드보드지 키트용 전개도(칼선·접는선·탭)를 자동 생성하고 DXF로 내보냅니다.
+          글·사진·3D모델(STL)을 넣으면 3D 완성 미리보기와 2D 도면(칼선·접는선·탭)을 한 화면에서 함께 보고, 레이저컷 DXF로 내보냅니다.
         </p>
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -257,7 +267,18 @@ export default function PapercraftDemoPage() {
                 ⚠ 일부 면이 겹쳐서 펼쳐졌어요 ({result.overlaps}개). 저폴리 모델이 더 깔끔하게 펼쳐집니다 — 겹친 부분은 솔기를 나눠 수동 보정이 필요할 수 있어요.
               </div>
             )}
-            <div style={{ background: '#fff', borderRadius: 8, padding: 16 }} dangerouslySetInnerHTML={{ __html: result.svg }} />
+            <div style={{ display: 'grid', gridTemplateColumns: model3d ? 'repeat(auto-fit, minmax(280px, 1fr))' : '1fr', gap: 12 }}>
+              {model3d && (
+                <div style={{ background: '#0d1117', borderRadius: 8, height: 340, border: '1px solid #30363d', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: 8, left: 10, zIndex: 1, fontSize: 11, color: '#8b949e', pointerEvents: 'none' }}>🧊 3D 완성 미리보기 · 드래그로 회전</div>
+                  <Preview3D model={model3d} />
+                </div>
+              )}
+              <div style={{ background: '#fff', borderRadius: 8, padding: 16, position: 'relative' }}>
+                <div style={{ position: 'absolute', top: 6, left: 10, fontSize: 11, color: '#999', pointerEvents: 'none' }}>📐 2D 도면 (칼선·접는선·탭)</div>
+                <div dangerouslySetInnerHTML={{ __html: result.svg }} />
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 12, color: '#8b949e' }}>
               <span><span style={{ color: '#dc2626' }}>━</span> 칼선(Cut)</span>
               <span><span style={{ color: '#2563eb' }}>┄</span> 접는선(Fold)</span>
