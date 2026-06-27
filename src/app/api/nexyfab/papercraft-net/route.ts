@@ -3,6 +3,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { buildingNetSegments, gableHouseNetSegments, roomNetSegments, segmentsToDxf, segmentsToSvg } from '@/lib/papercraft/netDxf';
 import { chatCompletion } from '@/lib/ai';
+import { visionCompletion } from '@/lib/ai/vision';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,10 +25,36 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(`papercraft-net:${ip}`, 30, 3_600_000).allowed) {
     return NextResponse.json({ error: 'Too many requests', code: 'RATE_LIMIT' }, { status: 429 });
   }
-  const b = (await req.json().catch(() => ({}))) as { width?: number; depth?: number; height?: number; tab?: number; prompt?: string; roof?: string; gableHeight?: number; type?: string };
+  const b = (await req.json().catch(() => ({}))) as { width?: number; depth?: number; height?: number; tab?: number; prompt?: string; roof?: string; gableHeight?: number; type?: string; image?: string };
   let { width, depth, height } = b;
   let roof = b.roof === 'gable' ? 'gable' : b.roof === 'flat' ? 'flat' : '';
   let type = b.type === 'room' ? 'room' : b.type === 'building' ? 'building' : '';
+
+  const SPEC_SCHEMA = 'STRICT JSON ONLY: {"width":N,"depth":N,"height":N,"roof":"flat"|"gable","type":"building"|"room"}. type="room" for an interior space (open-top), else "building". roof="gable" for a house/pitched roof, "flat" for a box/shop/tower (ignored for rooms). All dimensions in MILLIMETRES for a tabletop diorama (pick pleasing 40–120mm sizes). Default: 60×40×30, building, flat.';
+
+  // Vision: a photo of a building/room → papercraft spec (the "upload a photo,
+  // get a paper kit" path). Takes priority over text when both are present.
+  let usedImage = false;
+  const imageB64 = typeof b.image === 'string' && b.image.length > 0
+    ? b.image.replace(/^data:image\/\w+;base64,/, '')
+    : null;
+  if (imageB64 && (width == null || depth == null || height == null)) {
+    try {
+      const bytes = Uint8Array.from(Buffer.from(imageB64, 'base64'));
+      const v = await visionCompletion({
+        prompt: `Look at this photo of a building or interior space and estimate a papercraft spec for a tabletop paper/cardboard diorama model. Reply ${SPEC_SCHEMA}\n${b.prompt ? 'User note: ' + b.prompt : ''}`,
+        images: [{ bytes }],
+        maxTokens: 120,
+        timeoutMs: 25_000,
+      });
+      const m = v.text.match(/\{[\s\S]*?\}/);
+      const j = (m ? JSON.parse(m[0]) : {}) as { width?: number; depth?: number; height?: number; roof?: string; type?: string };
+      width = width ?? j.width; depth = depth ?? j.depth; height = height ?? j.height;
+      if (!roof && (j.roof === 'gable' || j.roof === 'flat')) roof = j.roof;
+      if (!type && (j.type === 'room' || j.type === 'building')) type = j.type;
+      usedImage = true;
+    } catch { /* fall back to text / defaults below */ }
+  }
 
   // AI: extract dimensions from a free-text building description.
   let usedPrompt = false;
@@ -67,6 +94,7 @@ export async function POST(req: NextRequest) {
     ok: true,
     dims: { W, D, H, tab, type: type || 'building', roof: type === 'room' ? 'open' : (roof || 'flat'), ...(roof === 'gable' && type !== 'room' ? { gableHeight: gableH } : {}) },
     fromPrompt: usedPrompt,
+    fromImage: usedImage,
     layers: counts,            // { CUT, FOLD, TAB } line counts
     bytes: Buffer.byteLength(dxf, 'utf8'),
     svg,

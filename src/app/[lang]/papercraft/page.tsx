@@ -23,16 +23,26 @@ export default function PapercraftDemoPage() {
   const [prompt, setPrompt] = useState('박공지붕 집, 가로 50 세로 35');
   const [result, setResult] = useState<NetResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [image, setImage] = useState<string | null>(null);
+  const [imageName, setImageName] = useState('');
+
+  const onPickImage = (file: File | null) => {
+    if (!file) { setImage(null); setImageName(''); return; }
+    const reader = new FileReader();
+    reader.onload = () => { setImage(typeof reader.result === 'string' ? reader.result : null); setImageName(file.name); };
+    reader.readAsDataURL(file);
+  };
 
   const generate = async (p?: string) => {
     const text = (p ?? prompt).trim();
-    if (!text) return;
+    // Allow image-only generation (a photo drives the spec). Text or image required.
+    if (!text && !image) return;
     if (p) setPrompt(p);
     setLoading(true);
     try {
       const res = await fetch('/api/nexyfab/papercraft-net', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: text }),
+        body: JSON.stringify({ prompt: text, ...(image ? { image } : {}) }),
       });
       setResult(await res.json());
     } catch {
@@ -57,9 +67,9 @@ export default function PapercraftDemoPage() {
         <p style={{ color: '#388bfd', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 8px' }}>
           NexyFab · Papercraft
         </p>
-        <h1 style={{ fontSize: 30, fontWeight: 800, margin: '0 0 8px' }}>말로 건물 → 레이저컷 전개도</h1>
+        <h1 style={{ fontSize: 30, fontWeight: 800, margin: '0 0 8px' }}>말 또는 사진으로 건물 → 레이저컷 전개도</h1>
         <p style={{ color: '#8b949e', fontSize: 15, margin: '0 0 28px' }}>
-          건물·방을 글로 설명하면 종이/하드보드지 키트용 전개도(칼선·접는선·탭)를 자동 생성하고 DXF로 내보냅니다.
+          건물·방을 글로 설명하거나 사진을 올리면 종이/하드보드지 키트용 전개도(칼선·접는선·탭)를 자동 생성하고 DXF로 내보냅니다.
         </p>
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -79,13 +89,28 @@ export default function PapercraftDemoPage() {
           </button>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 28 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
           {EXAMPLES.map(ex => (
             <button key={ex} onClick={() => void generate(ex)} disabled={loading}
               style={{ padding: '6px 12px', borderRadius: 20, border: '1px solid #30363d', background: '#161b22', color: '#8b949e', fontSize: 13, cursor: 'pointer' }}>
               {ex}
             </button>
           ))}
+        </div>
+
+        {/* Photo → paper kit: upload a building/room photo, vision estimates the spec. */}
+        <div style={{ border: '1px dashed #30363d', borderRadius: 10, padding: 14, marginBottom: 28, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <label style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #30363d', background: '#161b22', color: '#e6edf3', fontSize: 14, cursor: 'pointer' }}>
+            📷 건물·실내 사진 업로드
+            <input type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => onPickImage(e.target.files?.[0] ?? null)} />
+          </label>
+          {image
+            ? <span style={{ fontSize: 13, color: '#8b949e', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <img src={image} alt="" style={{ height: 36, borderRadius: 4, border: '1px solid #30363d' }} />
+                {imageName} <button onClick={() => onPickImage(null)} style={{ background: 'none', border: 'none', color: '#f85149', cursor: 'pointer', fontSize: 13 }}>✕ 제거</button>
+              </span>
+            : <span style={{ fontSize: 13, color: '#8b949e' }}>사진을 올리면 AI가 치수·지붕·형태를 추정해 전개도를 만듭니다 (글 설명은 선택).</span>}
         </div>
 
         {result && result.ok && result.svg && (
