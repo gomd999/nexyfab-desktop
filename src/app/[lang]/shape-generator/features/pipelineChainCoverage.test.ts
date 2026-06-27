@@ -42,6 +42,11 @@ const CHAINS: { name: string; indexed?: boolean; feats: FeatureInstance[] }[] = 
   { name: 'multi-hole: hole×3', feats: [feat('hole', { posX: -15 }), feat('hole', { posX: 0 }), feat('hole', { posX: 15 })] },
   { name: 'pattern: hole→linearPattern', feats: [feat('hole', { posX: -20, diameter: 5 }), feat('linearPattern')] },
   { name: 'mirror: hole→mirror', feats: [feat('hole', { posX: 15, diameter: 5 }), feat('mirror')] },
+  { name: 'circ: hole→circularPattern', feats: [feat('hole', { posX: 18, diameter: 5 }), feat('circularPattern')] },
+  { name: 'transform: scale→hole', feats: [feat('scale'), feat('hole', { posX: 0, diameter: 6 })] },
+  // NB: draft→edge-op chains are intentionally NOT here — in mesh mode the edge
+  // approximators legitimately refuse a tapered box's all-convex edges and demand
+  // OCCT; that is a documented mesh-mode limitation, not a chain bug.
 ];
 
 describe('pipeline chain coverage', () => {
