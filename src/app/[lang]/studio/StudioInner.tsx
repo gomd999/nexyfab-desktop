@@ -42,6 +42,33 @@ function b64ToArrayBuffer(b64: string): ArrayBuffer {
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return bytes.buffer;
 }
+/** Serialize a flat positions[] + triangles[] index to a binary STL buffer
+ *  (so a server-converted STEP mesh can feed the same import("model.stl") AI
+ *  path as a directly-attached STL). Per-face normals computed from vertices. */
+function trianglesToBinaryStl(positions: ArrayLike<number>, triangles: ArrayLike<number>): ArrayBuffer {
+  const triCount = Math.floor(triangles.length / 3);
+  const buf = new ArrayBuffer(84 + triCount * 50);
+  const dv = new DataView(buf);
+  dv.setUint32(80, triCount, true);
+  let off = 84;
+  for (let t = 0; t < triangles.length; t += 3) {
+    const a = triangles[t] * 3, b = triangles[t + 1] * 3, c = triangles[t + 2] * 3;
+    const ax = positions[a], ay = positions[a + 1], az = positions[a + 2];
+    const bx = positions[b], by = positions[b + 1], bz = positions[b + 2];
+    const cx = positions[c], cy = positions[c + 1], cz = positions[c + 2];
+    const ux = bx - ax, uy = by - ay, uz = bz - az;
+    const vx = cx - ax, vy = cy - ay, vz = cz - az;
+    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const len = Math.hypot(nx, ny, nz) || 1; nx /= len; ny /= len; nz /= len;
+    dv.setFloat32(off, nx, true); dv.setFloat32(off + 4, ny, true); dv.setFloat32(off + 8, nz, true); off += 12;
+    dv.setFloat32(off, ax, true); dv.setFloat32(off + 4, ay, true); dv.setFloat32(off + 8, az, true); off += 12;
+    dv.setFloat32(off, bx, true); dv.setFloat32(off + 4, by, true); dv.setFloat32(off + 8, bz, true); off += 12;
+    dv.setFloat32(off, cx, true); dv.setFloat32(off + 4, cy, true); dv.setFloat32(off + 8, cz, true); off += 12;
+    dv.setUint16(off, 0, true); off += 2;
+  }
+  return buf;
+}
+
 function freshId(): string {
   try { if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID(); } catch { /* ignore */ }
   return 'd_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -549,12 +576,69 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     r.readAsArrayBuffer(file);
   }, [isKo]);
 
+  // Attach a .step/.stp: convert to a mesh on the server (replicad), serialize
+  // to STL, then route through the same import("model.stl") base as onPickStl so
+  // the AI can edit it by chat ("a 10mm hole", "2× bigger", …) just like an STL.
+  const onPickStep = useCallback((file: File) => {
+    if (file.size > 25 * 1024 * 1024) return;
+    const r = new FileReader();
+    r.onload = async () => {
+      const stepText = r.result as string;
+      setMessages([{ id: nextId(), role: 'assistant', text: T('STEP을 변환하는 중…', 'Converting your STEP…'), status: 'thinking' }]);
+      try {
+        const res = await fetch('/api/nexyfab/brep/step-import-replicad/', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stepText }),
+        });
+        const data = await res.json().catch(() => ({})) as { positions?: number[]; triangles?: number[]; error?: string };
+        if (!res.ok || !data.positions?.length || !data.triangles?.length) {
+          throw new Error(data.error || T('STEP을 불러오지 못했어요.', 'Could not import that STEP.'));
+        }
+        // Center about the origin (matches onPickStl) before serializing, so the
+        // displayed mesh and the OpenSCAD import("model.stl") agree.
+        const pos = Float32Array.from(data.positions);
+        let mnx = Infinity, mny = Infinity, mnz = Infinity, mxx = -Infinity, mxy = -Infinity, mxz = -Infinity;
+        for (let i = 0; i < pos.length; i += 3) {
+          mnx = Math.min(mnx, pos[i]); mxx = Math.max(mxx, pos[i]);
+          mny = Math.min(mny, pos[i + 1]); mxy = Math.max(mxy, pos[i + 1]);
+          mnz = Math.min(mnz, pos[i + 2]); mxz = Math.max(mxz, pos[i + 2]);
+        }
+        const cx = (mnx + mxx) / 2, cy = (mny + mxy) / 2, cz = (mnz + mxz) / 2;
+        for (let i = 0; i < pos.length; i += 3) { pos[i] -= cx; pos[i + 1] -= cy; pos[i + 2] -= cz; }
+
+        const stlBuf = trianglesToBinaryStl(pos, data.triangles);
+        const bytes = new Uint8Array(stlBuf);
+        let bin = '';
+        for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + 0x8000)));
+        const b64 = btoa(bin);
+
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setIndex(data.triangles);
+        geo.computeVertexNormals();
+
+        importStlRef.current = b64;
+        currentIdRef.current = freshId(); setCurrentId(currentIdRef.current);
+        lastThumbRef.current = null;
+        setMessages([{ id: nextId(), role: 'assistant', text: T('STEP을 불러왔어요. 무엇을 바꿀까요? (예: 가운데 10mm 구멍, 2배 크게, 바닥 평평하게)', 'Loaded your STEP. What should I change? (e.g. a 10mm hole through the center, 2× bigger, flatten the base)'), status: 'done' }]);
+        setScad('import("model.stl");');
+        setGeometry(geo); setColoredObject(null); setStlB64(b64); setGenCount(g => g + 1);
+        setNeedLogin(false); setInput(''); setImage(null); setImageName(null); setMobileTab('3d'); setSidebarOpen(false);
+      } catch (e) {
+        setMessages([{ id: nextId(), role: 'assistant', text: e instanceof Error ? e.message : T('STEP 변환 실패', 'STEP conversion failed'), status: 'error' }]);
+      }
+    };
+    r.readAsText(file);
+  }, [isKo]);
+
   // Route a picked/dropped/pasted file to the right handler.
   const onPickFile = useCallback((file: File | null | undefined) => {
     if (!file) return;
     if (file.type.startsWith('image/')) onPickImage(file);
     else if (/\.stl$/i.test(file.name) || /stl/i.test(file.type)) onPickStl(file);
-  }, [onPickImage, onPickStl]);
+    else if (/\.(step|stp)$/i.test(file.name) || /step/i.test(file.type)) onPickStep(file);
+  }, [onPickImage, onPickStl, onPickStep]);
 
   // Paste an image straight from the clipboard (Ctrl/Cmd+V) anywhere in Studio.
   useEffect(() => {
@@ -795,7 +879,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
               rows={2} autoFocus className="w-full bg-transparent text-base resize-none focus:outline-none px-1" />
             <div className="flex items-center justify-between mt-2">
               <label className="flex items-center gap-1.5 text-[12px] text-emerald-300 hover:text-emerald-200 cursor-pointer border border-emerald-800/60 hover:border-emerald-600 rounded-lg px-2.5 py-1.5">
-                <input type="file" accept="image/*,.stl,model/stl" className="hidden" onChange={e => onPickFile(e.target.files?.[0])} />
+                <input type="file" accept="image/*,.stl,model/stl,.step,.stp,model/step" className="hidden" onChange={e => onPickFile(e.target.files?.[0])} />
                 📷 {T('사진·STL 올리기', 'Upload photo / STL')}
               </label>
               <button onClick={() => void send()} disabled={busy || (!input.trim() && !image)} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-lg px-5 py-1.5 text-sm font-semibold">
@@ -861,7 +945,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
             {image && <ImagePill />}
             <div className="flex items-end gap-1.5 st-panel-2 border st-bd rounded-xl px-2 py-1.5 focus-within:border-emerald-500/60">
               <label className="cursor-pointer text-base shrink-0 leading-none" title={T('사진 첨부', 'Attach photo')}>
-                <input type="file" accept="image/*,.stl,model/stl" className="hidden" onChange={e => onPickFile(e.target.files?.[0])} />📎
+                <input type="file" accept="image/*,.stl,model/stl,.step,.stp,model/step" className="hidden" onChange={e => onPickFile(e.target.files?.[0])} />📎
               </label>
               <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={onKeyDown}
                 placeholder={T('계속 수정해보세요 (예: 더 높게)…', 'Keep iterating (e.g. make it taller)…')} rows={1}
