@@ -7476,6 +7476,33 @@ export function ShapeGeneratorInner() {
       }
       if (format === 'stl') { void handleExportCurrentSTL(); return; }
       if (format === 'step') { void handleExportSTEP(); return; }
+      if (format === 'papercraft') {
+        // Unfold the current model into a laser-ready papercraft net (DXF).
+        void (async () => {
+          const geo = effectiveResult.geometry;
+          const posAttr = geo.attributes.position;
+          if (!posAttr) { addToast('error', lang === 'ko' ? '형상에 정점이 없습니다.' : 'No vertices.'); return; }
+          const positions = Array.from(posAttr.array as ArrayLike<number>);
+          const indices = geo.index ? Array.from(geo.index.array as ArrayLike<number>) : null;
+          addToast('info', lang === 'ko' ? '종이 전개도를 만드는 중…' : 'Unfolding to papercraft…');
+          try {
+            const res = await fetch('/api/nexyfab/papercraft-unfold', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ positions, indices }),
+            });
+            const j = await res.json() as { ok?: boolean; dxf?: string; pieces?: number; faceCount?: number; overlaps?: number; error?: string };
+            if (!res.ok || !j.ok || !j.dxf) { addToast('error', j.error || (lang === 'ko' ? '펼치기에 실패했어요.' : 'Unfold failed.')); return; }
+            const blob = new Blob([j.dxf], { type: 'application/dxf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'papercraft-net.dxf'; a.click();
+            URL.revokeObjectURL(url);
+            addToast('success', lang === 'ko'
+              ? `종이 전개도 생성 — ${j.pieces}조각 · 면 ${j.faceCount}개${j.overlaps ? ` (겹침 ${j.overlaps})` : ''}`
+              : `Papercraft net — ${j.pieces} pieces · ${j.faceCount} faces`);
+          } catch (err) { addToast('error', String((err as Error).message)); }
+        })();
+        return;
+      }
       addToast('warning', `Unknown export format: ${format ?? '(none)'}`);
     };
     // Properties → CAM → export : persist the chosen post-processor dialect,

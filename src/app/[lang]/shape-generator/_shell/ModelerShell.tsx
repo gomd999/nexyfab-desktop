@@ -235,6 +235,15 @@ export function ModelerShell() {
         }
       },
     },
+    {
+      id: 'export-papercraft',
+      label: d.fmExportPapercraft,
+      onClick: () => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('nexyfab:file-export', { detail: { format: 'papercraft' } }));
+        }
+      },
+    },
     { id: 'div2', label: '', divider: true },
     {
       id: 'projects',
