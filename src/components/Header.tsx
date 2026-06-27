@@ -59,12 +59,6 @@ const IconDownload = () => (
     </svg>
 );
 
-const IconPaper = () => (
-    <svg aria-hidden="true" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-        <path d="M4 4h11l5 5v11a0 0 0 010 0H4z" /><path d="M15 4v5h5" /><path d="M8 13l8 0M8 17l5 0" strokeDasharray="2 2" />
-    </svg>
-);
-
 export default function Header() {
     const pathname = usePathname();
 
@@ -148,7 +142,6 @@ export default function Header() {
         // launches the real /shape-generator modeler via "New Design".
         { href: `/${lang}/nexyfab/hub/`, label: t.shapeGen, icon: <IconCube />, external: false, highlight: 'blue' as const },
         { href: `/${lang}/factories/`, label: t.factories, icon: <IconFactory />, external: false, highlight: false as const },
-        { href: `/${lang}/papercraft/`, label: t.papercraft, icon: <IconPaper />, external: false, highlight: false as const },
         { href: `/${lang}/pricing/`, label: t.pricing, icon: <IconZap />, external: false, highlight: false as const },
         { href: `/${lang}/download/`, label: t.download, icon: <IconDownload />, external: false, highlight: false as const },
         { href: `/${lang}/quick-quote/`, label: t.quickQuote, icon: <IconCalculator />, external: false, highlight: 'gradient' as const },

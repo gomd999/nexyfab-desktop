@@ -18,6 +18,7 @@ interface NetResult {
   overlaps?: number;
   thick?: boolean;
   thickness?: number;
+  notBuilding?: boolean;
   bytes?: number;
   svg?: string;
   dxf?: string;
@@ -326,6 +327,15 @@ export default function PapercraftDemoPage() {
                 </button>
               </div>
             </div>
+            {result.notBuilding && (
+              <div style={{ background: '#2a1633', border: '1px solid #7c3aed', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 13, color: '#d8b4fe', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span>🤖 이건 건물이 아닌 것 같아요 — 「건물 전개도」는 박스만 만들어요. <b>「AI로 만들기」</b>를 누르면 설명한 모양 그대로 3D로 만들어 드려요.</span>
+                <button onClick={() => void onAiGenerate()} disabled={loading}
+                  style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(90deg,#7c3aed,#2563eb)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                  🤖 AI로 만들기
+                </button>
+              </div>
+            )}
             {result.thick && (
               <div style={{ background: '#12243a', border: '1px solid #1a5a8a', borderRadius: 8, padding: '8px 12px', marginBottom: 10, fontSize: 12, color: '#74b9f0' }}>
                 🧱 두꺼운 보드({result.thickness}mm)는 접기 어렵습니다 — 면을 따로 잘라 탭/풀로 조립하거나, 적층(레이어) 방식을 권장합니다. 탭은 두께에 맞춰 넓혔습니다.

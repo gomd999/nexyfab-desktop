@@ -29,8 +29,9 @@ export async function POST(req: NextRequest) {
   let { width, depth, height } = b;
   let roof = b.roof === 'gable' ? 'gable' : b.roof === 'flat' ? 'flat' : '';
   let type = b.type === 'room' ? 'room' : b.type === 'building' ? 'building' : '';
+  let kind = ''; // 'object' when the description isn't architecture → suggest AI
 
-  const SPEC_SCHEMA = 'STRICT JSON ONLY: {"width":N,"depth":N,"height":N,"roof":"flat"|"gable","type":"building"|"room"}. type="room" for an interior space (open-top), else "building". roof="gable" for a house/pitched roof, "flat" for a box/shop/tower (ignored for rooms). All dimensions in MILLIMETRES for a tabletop diorama (pick pleasing 40–120mm sizes). Default: 60×40×30, building, flat.';
+  const SPEC_SCHEMA = 'STRICT JSON ONLY: {"width":N,"depth":N,"height":N,"roof":"flat"|"gable","type":"building"|"room","kind":"building"|"room"|"object"}. kind="object" if the description is NOT architecture (an animal, vehicle, character, toy, figurine, etc.) — those cannot be made by this box generator. type="room" for an interior space (open-top), else "building". roof="gable" for a house/pitched roof, "flat" for a box/shop/tower (ignored for rooms). All dimensions in MILLIMETRES for a tabletop diorama (pick pleasing 40–120mm sizes). Default: 60×40×30, building, flat.';
 
   // Vision: a photo of a building/room → papercraft spec (the "upload a photo,
   // get a paper kit" path). Takes priority over text when both are present.
@@ -48,10 +49,11 @@ export async function POST(req: NextRequest) {
         timeoutMs: 25_000,
       });
       const m = v.text.match(/\{[\s\S]*?\}/);
-      const j = (m ? JSON.parse(m[0]) : {}) as { width?: number; depth?: number; height?: number; roof?: string; type?: string };
+      const j = (m ? JSON.parse(m[0]) : {}) as { width?: number; depth?: number; height?: number; roof?: string; type?: string; kind?: string };
       width = width ?? j.width; depth = depth ?? j.depth; height = height ?? j.height;
       if (!roof && (j.roof === 'gable' || j.roof === 'flat')) roof = j.roof;
       if (!type && (j.type === 'room' || j.type === 'building')) type = j.type;
+      if (!kind && typeof j.kind === 'string') kind = j.kind;
       usedImage = true;
     } catch { /* fall back to text / defaults below */ }
   }
@@ -62,7 +64,7 @@ export async function POST(req: NextRequest) {
     try {
       const r = await chatCompletion({
         messages: [
-          { role: 'system', content: 'Extract a papercraft spec in MILLIMETRES from the description. Reply STRICT JSON ONLY: {"width":N,"depth":N,"height":N,"roof":"flat"|"gable","type":"building"|"room"}. type="room" for an interior space (open-top), else "building". roof="gable" for a house/pitched roof, "flat" for a box/shop/tower (ignored for rooms). storeys → height ≈ storeys×30mm. Default: 60×40×30, building, flat.' },
+          { role: 'system', content: 'Extract a papercraft spec from the description (storeys → height ≈ storeys×30mm). Reply ' + SPEC_SCHEMA },
           { role: 'user', content: b.prompt },
         ],
         maxTokens: 100,
@@ -70,10 +72,11 @@ export async function POST(req: NextRequest) {
         timeoutMs: 20_000,
       });
       const m = r.text.match(/\{[\s\S]*?\}/);
-      const j = (m ? JSON.parse(m[0]) : {}) as { width?: number; depth?: number; height?: number; roof?: string; type?: string };
+      const j = (m ? JSON.parse(m[0]) : {}) as { width?: number; depth?: number; height?: number; roof?: string; type?: string; kind?: string };
       width = width ?? j.width; depth = depth ?? j.depth; height = height ?? j.height;
       if (!roof && (j.roof === 'gable' || j.roof === 'flat')) roof = j.roof;
       if (!type && (j.type === 'room' || j.type === 'building')) type = j.type;
+      if (!kind && typeof j.kind === 'string') kind = j.kind;
       usedPrompt = true;
     } catch { /* fall back to defaults below */ }
   }
@@ -99,6 +102,8 @@ export async function POST(req: NextRequest) {
     dims: { W, D, H, tab, type: type || 'building', roof: type === 'room' ? 'open' : (roof || 'flat'), ...(roof === 'gable' && type !== 'room' ? { gableHeight: gableH } : {}) },
     fromPrompt: usedPrompt,
     fromImage: usedImage,
+    notBuilding: kind === 'object',   // description isn't architecture → suggest the AI path
+
     thickness: thickness || undefined,
     thick: thickness > 1.5,
     layers: counts,            // { CUT, FOLD, TAB } line counts

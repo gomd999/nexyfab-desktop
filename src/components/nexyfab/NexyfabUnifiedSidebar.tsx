@@ -54,6 +54,7 @@ const SECTIONS: NavSection[] = [
       { icon: '🏠', labelKo: '홈',                labelEn: 'Hub',                href: '/nexyfab/hub' },
       { icon: '✨', labelKo: '자유형 Studio',     labelEn: 'Free-form Studio',   href: '/studio', badge: 'NEW' },
       { icon: '🛠️', labelKo: '전문가형 CAD',      labelEn: 'Expert CAD',         href: '/shape-generator?mode=expert' },
+      { icon: '📐', labelKo: '종이·레이저컷',     labelEn: 'Papercraft',         href: '/papercraft', badge: 'NEW' },
       { icon: '📁', labelKo: '내 프로젝트',       labelEn: 'My Projects',        href: '/nexyfab/projects' },
       { icon: '🔗', labelKo: '공유된 항목',       labelEn: 'Shared with me',     href: '/nexyfab/projects?filter=shared' },
       { icon: '🔩', labelKo: '부품 라이브러리',   labelEn: 'Part Library',       href: '/nexyfab/cots' },
