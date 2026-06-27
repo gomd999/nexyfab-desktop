@@ -50,6 +50,7 @@ GEOMETRY & ASSEMBLY — make it actually LOOK like the thing (this matters most)
 - UP is +Z. The object rests on the ground: its lowest point should sit at/near z=0, oriented the natural way up.
 - A cylinder() is built along +Z by default. For anything that should lie on its side (a WHEEL, an axle, a rolling pin), ROTATE it so its round faces point sideways — e.g. \`rotate([90,0,0]) cylinder(...)\` makes the axis run along Y. A car's 4 wheels are side-facing cylinders at the four lower corners, half-tucked against the body, their bottoms touching the ground (z=0).
 - EVERY part must physically connect to or overlap a neighbour — NEVER leave a piece floating in empty space. Wheels touch the body sides; a cabin sits ON the body; a handle joins the mug wall on both ends.
+- ATTACHED DETAILS — anchor small face-mounted features (headlights, taillights, badges, buttons, knobs, a spoiler) to the BODY's OWN dimensions and EMBED them so they overlap the body surface (sink them in ~30%). A headlight sits on the FRONT face: its centre at the body's front Y and at x WITHIN ±body_width/2 — NEVER at the wheel track or the overall-vehicle width (those are wider, so the light ends up floating out beside the wheels). Taillights sit on the REAR face the same way. A spoiler/wing rests ON the rear deck with its posts touching the body. Wheels (and only wheels) use the track/wheelbase; body details never do. Before finalizing, mentally check each detail's anchor lies on or inside a body face — if it would float, move it onto the surface or drop it.
 - Mirror left/right and front/back parts symmetrically, e.g. \`for (s=[-1,1]) translate([s*dx,0,0]) ...\`.
 - Favor a clear, correct silhouette over tiny cosmetic details.
 - Add the DEFINING details that make the object instantly recognizable — leaving them out is the #1 reason a model looks like a vague blob. For a CAR: a separate lower BODY with front/rear overhangs; a CABIN/greenhouse on top with WINDOW openings (cut dark window shapes into the cabin sides + windshield with difference(), or inset a darker "glass" colour); 4 WHEELS as side-facing cylinders placed with a for-loop at ±track/2 and ±wheelbase/2, sunk slightly into wheel arches, each with a lighter HUBCAP disc; plus headlights, tail lights, and an optional spoiler. Apply the same "main mass + sub-parts + the 2-3 signature features" thinking to ANY object (a mug = wall + base + handle + hollow interior; a gear = hub + rim + teeth).
@@ -64,7 +65,7 @@ Output the .scad program now.`;
 
 const def: PromptDefinition = {
   id: 'scad-freeform',
-  version: '1.7.0',
+  version: '1.8.0',
   description: 'Free-form OpenSCAD generation (CADAM-style): the model writes a complete parametric .scad program with Customizer annotations, so organic/assembled models work and dimensions stay slider-adjustable without an AI re-call. Distinct from the whitelist scad-intent-from-nl path.',
   template: TEMPLATE,
   defaults: {
