@@ -148,7 +148,7 @@ export function RenderFrame({ lang, isKo, projectId }: RenderFrameProps) {
           filename: loc(lang, { ko: '렌더 — 무제 파트', en: 'Render — Untitled Part', ja: 'レンダリング — 無題パート', zh: '渲染 — 未命名零件', es: 'Render — Pieza sin título', ar: 'تصيير — قطعة بدون عنوان' }),
           savedAt: loc(lang, { ko: '자동 저장됨', en: 'Auto-saved', ja: '自動保存済み', zh: '已自动保存', es: 'Guardado automáticamente', ar: 'تم الحفظ تلقائيًا' }),
           breadcrumbs: ['Projects', 'Render Studio'],
-          onBrandClick: () => router.push(`/${langSeg}/nexyfab/hub`),
+          onBrandClick: () => { try { sessionStorage.setItem('nexyfab:hub-visited', '1'); } catch { /* ignore */ } router.push(`/${langSeg}/nexyfab/hub`); },
           mode: loc(lang, { ko: '렌더 모드', en: 'RENDER STUDIO', ja: 'レンダースタジオ', zh: '渲染工作室', es: 'ESTUDIO DE RENDER', ar: 'استوديو التصيير' }),
           // No file/undo/share plumbing on this surface yet — TitleBar hides
           // quick buttons + Share when their handlers are omitted.

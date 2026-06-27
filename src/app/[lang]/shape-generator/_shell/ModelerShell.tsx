@@ -381,7 +381,13 @@ export function ModelerShell() {
           : d.untitledFile,
         savedAt: savedAtLabel,
         breadcrumbs: ['Projects', bridgeSelectedLabel ?? d.untitled],
-        onBrandClick: () => router.push(`/${langSeg}/nexyfab/hub`),
+        // Leaving an active expert-modeler session — go to the Hub, NOT the
+        // guest "Studio-first funnel" (the Hub auto-redirects a guest's first
+        // visit to the free-form Studio). Mark the Hub visited so it stays put.
+        onBrandClick: () => {
+          try { sessionStorage.setItem('nexyfab:hub-visited', '1'); } catch { /* ignore */ }
+          router.push(`/${langSeg}/nexyfab/hub`);
+        },
         mode: modeChip,
         modeHint,
         onExitMode: modeChip
