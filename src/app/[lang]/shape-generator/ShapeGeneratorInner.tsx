@@ -5036,6 +5036,14 @@ export function ShapeGeneratorInner() {
   useEffect(() => {
     if (!effectiveResult?.geometry) return;
     if (!dfmAnalysisAllowed(useAuthStore.getState().user?.plan)) return;
+    // Crash safety: skip the AUTOMATIC background DFM on heavy meshes (large
+    // imported STEP/STL). Running the full multi-process analysis on tens of
+    // thousands of triangles right after import competes with the import's own
+    // BVH/CSG work and can push the tab to a WebGL-context-loss / OOM
+    // "unexpected exit". The manual DFM button still runs the full analysis.
+    const _geo = effectiveResult.geometry;
+    const _tris = _geo.index ? _geo.index.count / 3 : (_geo.attributes.position?.count ?? 0) / 3;
+    if (_tris > 15000) return;
     const timer = setTimeout(async () => {
       if (!dfmAnalysisAllowed(useAuthStore.getState().user?.plan)) return;
       try {

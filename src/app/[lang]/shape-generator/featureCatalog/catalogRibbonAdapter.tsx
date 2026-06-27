@@ -147,7 +147,7 @@ export interface CatalogRibbonProps {
 
 export function CatalogRibbon({ groups, onPick, activeFeatureId, showDescriptions = false }: CatalogRibbonProps) {
   return (
-    <div className="catalog-ribbon" style={{ display: 'flex', gap: 8, padding: 4 }}>
+    <div className="catalog-ribbon" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: 4, maxWidth: '100%', boxSizing: 'border-box' }}>
       {groups.map(group => (
         <Grp key={group.id} title={group.label}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>

@@ -33,6 +33,25 @@ function getAuthHeader(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/**
+ * fetch that, on a 401, refreshes the access token once and retries — so an
+ * access token lapsing mid-session (e.g. autosave firing right before the
+ * keepalive refresh lands) doesn't surface a spurious "Cloud sync failed".
+ */
+async function authedFetch(url: string, init: RequestInit): Promise<Response> {
+  let res = await fetch(url, init);
+  if (res.status === 401) {
+    try {
+      const r = await fetch('/api/auth/refresh', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: '{}',
+      });
+      if (r.ok) res = await fetch(url, init);
+    } catch { /* offline — keep the original 401 */ }
+  }
+  return res;
+}
+
 export const useProjectsStore = create<ProjectsStore>()((set, get) => ({
   projects: [],
   isLoading: false,
@@ -53,7 +72,7 @@ export const useProjectsStore = create<ProjectsStore>()((set, get) => ({
 
   saveProject: async (data) => {
     try {
-      const res = await fetch('/api/nexyfab/projects', {
+      const res = await authedFetch('/api/nexyfab/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify(data),
@@ -74,7 +93,7 @@ export const useProjectsStore = create<ProjectsStore>()((set, get) => ({
 
   updateProject: async (id, data) => {
     try {
-      const res = await fetch(`/api/nexyfab/projects/${id}`, {
+      const res = await authedFetch(`/api/nexyfab/projects/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify(data),
