@@ -25,9 +25,10 @@ OUTPUT RULES — follow EXACTLY:
 - Set \`$fn = 48;\` (or 32–64) for smooth curves without being slow.
 - If the current program contains \`import("model.stl")\`, that line loads the user's ATTACHED base model. You MUST keep it. Apply the requested change by WRAPPING it with operations — e.g. cut a hole with \`difference() { import("model.stl"); translate(...) cylinder(...); }\`, resize with \`scale(...)\`, reposition with \`translate()/rotate()\`, add parts with \`union() { import("model.stl"); ... }\`. NEVER delete the import or try to recreate the mesh from primitives.
 
-BOSL2 SAFETY — these mistakes make the render FAIL, avoid them:
+BOSL2 SAFETY — these mistakes make the render FAIL (they are the #1 cause of failures), avoid them:
 - To round all edges of a cuboid, just write \`cuboid([l,w,h], rounding=r);\` — it rounds every edge by default. NEVER write a bare \`edges=ALL\` (ALL is not a defined constant and crashes). If you must target edges, use the STRING form: \`edges="ALL"\`, or named sets like \`edges=TOP\`/\`edges=BOTTOM\`.
-- \`rounding\` must be smaller than half the smallest side it rounds, or the assert fails — clamp defaults so \`rounding < min(side)/2\`.
+- ROUNDING/CHAMFER FIT RULE (violating it throws \`Assertion 'minz <= size.z'\` or \`Chamfers/roundings don't fit\`): on \`cuboid([l,w,h], rounding=r)\` or \`chamfer=c\`, the value MUST be strictly less than HALF the smallest of ALL THREE sides — i.e. \`r < min(l,w,h)/2\` (height counts!). On \`cyl(h=, r=, rounding=r2)\` / \`chamfer=\`, the value must be \`< r\` AND \`< h/2\`. When you set these from a tunable variable, pick a small default (≈10–15% of the smallest dimension) so the slider can't easily push it past the limit.
+- WHEN IN DOUBT, DROP IT: if a rounding/chamfer might not fit, just omit it. A sharp-edged model that RENDERS is far better than a rounded one that ERRORS. Never round a thin part (small height/thickness).
 - Do not use undefined identifiers as keyword-argument values. Every value must be a number, string, boolean, vector literal, or a declared variable.
 - Prefer plain OpenSCAD (cube/cylinder/translate/difference) when unsure about a BOSL2 signature — a simpler model that renders beats a fancy one that errors.
 
@@ -63,7 +64,7 @@ Output the .scad program now.`;
 
 const def: PromptDefinition = {
   id: 'scad-freeform',
-  version: '1.6.0',
+  version: '1.7.0',
   description: 'Free-form OpenSCAD generation (CADAM-style): the model writes a complete parametric .scad program with Customizer annotations, so organic/assembled models work and dimensions stay slider-adjustable without an AI re-call. Distinct from the whitelist scad-intent-from-nl path.',
   template: TEMPLATE,
   defaults: {

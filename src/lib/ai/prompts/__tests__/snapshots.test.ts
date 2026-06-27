@@ -36,7 +36,7 @@ const GOLDEN: Record<string, Snapshot> = {
   // NexyFab core
   'shape-chat':                  { version: '1.0.0', templateHash: '5ae3a7a77dd63ba53099733999b03f958b8bcbf6be072069132a48e9a72c81a6' },
   'scad-intent-from-nl':         { version: '1.6.0', templateHash: 'b0fe7332f8b7822d7f4e1991da13547403523d4e342ffde6e121d153d6ae2e09' },
-  'scad-freeform':               { version: '1.6.0', templateHash: '84790d4d157e93011e975c41e077e4229b5c2a9d9ae5543bba7dcba668b07e41' },
+  'scad-freeform':               { version: '1.7.0', templateHash: 'ebc6146704a3a0f7a859415fa6d88e0d587d3530bc6c3983389f253c9957a367' },
   'cad-feature-program':         { version: '1.0.0', templateHash: '0c59290b2f7dacd3585ec97da3aa59ee4a2cb93ccb00b04d66442e97333d73c7' },
   'scad-intent-from-nl:tighter': { version: '1.1.0', templateHash: 'b0fe7332f8b7822d7f4e1991da13547403523d4e342ffde6e121d153d6ae2e09' },
   'openscad-gen':                { version: '1.0.0', templateHash: '32b9897ff298e6ce7200c932b8b779eaf4f7bae6f2d6d08091ef2d945cdf56aa' },
