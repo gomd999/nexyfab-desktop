@@ -71,6 +71,21 @@ CREATE TABLE IF NOT EXISTS nf_refresh_tokens (
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON nf_refresh_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_hash ON nf_refresh_tokens(token_hash);
 
+-- WebAuthn / passkey credentials (one row per registered authenticator)
+CREATE TABLE IF NOT EXISTS nf_webauthn_credentials (
+  id              TEXT PRIMARY KEY,
+  user_id         TEXT NOT NULL REFERENCES nf_users(id) ON DELETE CASCADE,
+  credential_id   TEXT NOT NULL UNIQUE,
+  public_key      TEXT NOT NULL,
+  counter         BIGINT NOT NULL DEFAULT 0,
+  transports      TEXT,
+  device_label    TEXT,
+  created_at      BIGINT NOT NULL,
+  last_used_at    BIGINT
+);
+CREATE INDEX IF NOT EXISTS idx_webauthn_user ON nf_webauthn_credentials(user_id);
+CREATE INDEX IF NOT EXISTS idx_webauthn_cred ON nf_webauthn_credentials(credential_id);
+
 CREATE TABLE IF NOT EXISTS nf_password_reset_tokens (
   id         TEXT PRIMARY KEY,
   user_id    TEXT NOT NULL REFERENCES nf_users(id) ON DELETE CASCADE,

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import PasskeyManager from './PasskeyManager';
 import { useToast } from '@/components/ToastProvider';
 import { authBaseUrl, nexysysBaseUrl } from '@/lib/auth-base-url';
 
@@ -897,6 +898,9 @@ export default function AccountPage() {
             </button>
           </form>
         </div>
+
+        {/* ─── 패스키 ──────────────────────────────────────────────────────── */}
+        <PasskeyManager />
 
         {/* ─── 이메일 변경 ──────────────────────────────────────────────────── */}
         <div style={cardStyle}>
