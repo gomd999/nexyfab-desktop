@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   const db = getDbAdapter();
   await db.execute(
     `INSERT INTO nf_partner_tokens (id, partner_id, email, company, token_hash, expires_at, used, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, FALSE, ?)`,
     id, partnerId, email.toLowerCase(), company ?? '', tokenHash, expiresAt, Date.now(),
   );
 

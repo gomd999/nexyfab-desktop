@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
     await db.execute(
       `INSERT INTO nf_partner_tokens
          (id, partner_id, email, company, token_hash, expires_at, used, created_at)
-       VALUES (?,?,?,?,?,?,0,?)`,
+       VALUES (?,?,?,?,?,?,FALSE,?)`,
       tokenId, facId,
       body.contact_email.trim(),
       body.company_name.trim(),

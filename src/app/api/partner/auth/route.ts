@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     userId = crypto.randomUUID();
     await db.execute(
       `INSERT INTO nf_users (id, email, name, password_hash, plan, email_verified, project_count, created_at, role)
-       VALUES (?, ?, ?, NULL, 'free', 1, 0, ?, 'user')`,
+       VALUES (?, ?, ?, NULL, 'free', TRUE, 0, ?, 'user')`,
       userId, email.toLowerCase(), company || email.split('@')[0], Date.now(),
     ).catch(() => {});
   }

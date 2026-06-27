@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24h
 
     await db.execute(
-      'INSERT INTO nf_email_change_tokens (id, user_id, new_email, token_hash, expires_at, used, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)',
+      'INSERT INTO nf_email_change_tokens (id, user_id, new_email, token_hash, expires_at, used, created_at) VALUES (?, ?, ?, ?, ?, FALSE, ?)',
       tokenId,
       authUser.userId,
       newEmail.toLowerCase(),

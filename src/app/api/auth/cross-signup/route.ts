@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
       signup_source, language, country, timezone, company,
       last_login_at, login_count, signup_ip, last_login_ip,
       services, signup_service, ${planCol}, updated_at)
-     VALUES (?, ?, ?, ?, 'free', 0, 0, ?,
+     VALUES (?, ?, ?, ?, 'free', FALSE, 0, ?,
       ?, ?, ?, ?, ?,
       ?, 1, ?, ?,
       ?, ?, 'free', ?)`,
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
   const refreshHash = createHash('sha256').update(rawRefresh).digest('hex');
   await db.execute(
     `INSERT INTO nf_refresh_tokens (id, user_id, token_hash, expires_at, revoked, created_at)
-     VALUES (?, ?, ?, ?, 0, ?)`,
+     VALUES (?, ?, ?, ?, FALSE, ?)`,
     `rt-${crypto.randomUUID()}`, userId, refreshHash, now + 30 * 24 * 3600_000, now,
   );
 

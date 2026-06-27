@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
         `INSERT INTO nf_users (id, email, name, plan, email_verified, created_at, signup_source, language, country,
           last_login_at, login_count, signup_ip, last_login_ip,
           services, signup_service, ${SERVICE_NAME}_plan, oauth_provider, oauth_id, updated_at)
-         VALUES (?, ?, ?, 'free', 1, ?, 'kakao', ?, 'KR',
+         VALUES (?, ?, ?, 'free', TRUE, ?, 'kakao', ?, 'KR',
           ?, 1, ?, ?,
           ?, ?, 'free', 'kakao', ?, ?)`,
         userId, email, name, loginNow, lang,
@@ -157,7 +157,7 @@ export async function GET(req: NextRequest) {
     );
     await db.execute(
       `INSERT INTO nf_refresh_tokens (id, user_id, token_hash, expires_at, revoked, created_at)
-       VALUES (?, ?, ?, ?, 0, ?)`,
+       VALUES (?, ?, ?, ?, FALSE, ?)`,
       `rt-${crypto.randomUUID()}`, user.id, refreshHash, now + 30 * 24 * 3600_000, now,
     );
 

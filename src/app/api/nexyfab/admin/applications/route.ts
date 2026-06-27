@@ -109,7 +109,7 @@ export async function PATCH(req: NextRequest) {
 
     await db.execute(
       `INSERT INTO nf_partner_tokens (id, partner_id, email, company, token_hash, expires_at, used, created_at)
-       VALUES (?,?,?,?,?,?,0,?)`,
+       VALUES (?,?,?,?,?,?,FALSE,?)`,
       tokenId, facId, app.contact_email, app.company_name, tokenHash, now + 7 * 86400000, now,
     ).catch(() => {});
 

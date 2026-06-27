@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   await db.execute(
     `INSERT INTO nf_password_reset_tokens (id, user_id, token_hash, expires_at, used, created_at)
-     VALUES (?, ?, ?, ?, 0, ?)`,
+     VALUES (?, ?, ?, ?, FALSE, ?)`,
     `prt-${crypto.randomUUID()}`, user.id, tokenHash, now + RESET_TOKEN_TTL, now,
   );
 

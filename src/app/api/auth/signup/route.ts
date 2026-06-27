@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
     const REFRESH_TTL = 30 * 24 * 3600_000; // 30일
     await db.execute(
       `INSERT INTO nf_refresh_tokens (id, user_id, token_hash, expires_at, revoked, created_at)
-       VALUES (?, ?, ?, ?, 0, ?)`,
+       VALUES (?, ?, ?, ?, FALSE, ?)`,
       `rt-${crypto.randomUUID()}`, id, refreshHash, now + REFRESH_TTL, now,
     );
 
