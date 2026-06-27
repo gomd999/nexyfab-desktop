@@ -62,7 +62,7 @@ export function unfoldMesh(
 ): UnfoldResult {
   const thickness = Math.min(Math.max(opts.thickness ?? 0, 0), 30);
   const tabSize = Math.min(Math.max((opts.tab ?? 5) + thickness * 0.5, 1), 40);
-  const maxFaces = opts.maxFaces ?? 1500;
+  const maxFaces = opts.maxFaces ?? 3000;
 
   // 1. Weld vertices so shared edges are detected (STL duplicates them).
   const vx: number[] = [], vy: number[] = [], vz: number[] = [];

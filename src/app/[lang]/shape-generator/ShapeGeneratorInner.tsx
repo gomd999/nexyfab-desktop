@@ -7490,8 +7490,18 @@ export function ShapeGeneratorInner() {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ positions, indices }),
             });
-            const j = await res.json() as { ok?: boolean; dxf?: string; pieces?: number; faceCount?: number; overlaps?: number; error?: string };
-            if (!res.ok || !j.ok || !j.dxf) { addToast('error', j.error || (lang === 'ko' ? '펼치기에 실패했어요.' : 'Unfold failed.')); return; }
+            const j = await res.json() as { ok?: boolean; dxf?: string; pieces?: number; faceCount?: number; overlaps?: number; error?: string; code?: string };
+            if (!res.ok || !j.ok || !j.dxf) {
+              // Too-dense (curved/high-poly) meshes can't fold into flat paper —
+              // guide the user to a low-poly model or the layered-diorama path.
+              const dense = j.code === 'UNFOLD_REJECT' || /dense/i.test(j.error ?? '');
+              addToast('error', dense
+                ? (lang === 'ko'
+                  ? `모델이 너무 정밀해 종이접기 전개가 어렵습니다 (${j.faceCount ?? '?'}면). 곡면/고폴리 제품은 적층(레이어) 디오라마가 적합해요 — /papercraft 페이지를 이용하세요.`
+                  : `Model too detailed to fold into paper (${j.faceCount ?? '?'} faces). Curved/high-poly parts suit a layered diorama — use the /papercraft page.`)
+                : (j.error || (lang === 'ko' ? '펼치기에 실패했어요.' : 'Unfold failed.')));
+              return;
+            }
             const blob = new Blob([j.dxf], { type: 'application/dxf' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = 'papercraft-net.dxf'; a.click();
