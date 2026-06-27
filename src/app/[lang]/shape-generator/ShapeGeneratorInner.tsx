@@ -579,6 +579,13 @@ export function ShapeGeneratorInner() {
   // Ref-of-current-effectiveResult so the Shell tool listener (declared before
   // effectiveResult) can still reach the latest geometry. Synced via effect below.
   const effectiveResultRef = useRef<ShapeResult | null>(null);
+  // Persistent result for an IMPORTED model. The import sets the transient
+  // sketchResult, which many view/tab/mode transitions clear — making the
+  // imported model vanish back to the parametric `result` (the box) when you
+  // open Render or another tab. This survives those clears (kept in sync with
+  // the persistent importedGeometry below) so the import stays put. Cleared
+  // when a new model is started (e.g. handleSelectShape).
+  const [importedResult, setImportedResult] = useState<ShapeResult | null>(null);
   // Forward ref to handleGenerateActiveProfile so the early-mounted tool
   // listener can fire it (the handler is declared later in this function).
   const handleGenerateActiveProfileRef = useRef<(() => void) | null>(null);
@@ -3374,6 +3381,9 @@ export function ShapeGeneratorInner() {
   const shape = useMemo(() => SHAPES.find(s => s.id === selectedId) ?? SHAPES[0], [selectedId]);
 
   const handleSelectShape = useCallback((s: ShapeConfig) => {
+    // Starting a fresh parametric shape — drop any imported model so it stops
+    // taking precedence in effectiveResult.
+    setImportedResult(null);
     // Undo Phase B: shape changes flow ONLY through commandHistory — the
     // legacy useHistory snapshot stack has been retired (single source of
     // truth for Ctrl+Z).
@@ -4289,7 +4299,7 @@ export function ShapeGeneratorInner() {
   // While sketching, do NOT fall back to parametric `result` (avoids ghost shape).
   const effectiveResultRaw: ShapeResult | null = isSketchMode
     ? sketchResult
-    : (sketchResult ?? result);
+    : (sketchResult ?? importedResult ?? result);
 
   // E1: transient-null guard for the viewport. When a feature is rebuilding
   // (CSG running, pipeline mid-flight, undo replacing params), `result` can
@@ -6762,6 +6772,30 @@ export function ShapeGeneratorInner() {
       console.warn('[multi-body import] split failed:', e);
     }
   }, [importedGeometry, importedFilename, setPlacedParts, setShowAssemblyPanel, addToast]);
+
+  // Keep the persistent importedResult in sync with importedGeometry so the
+  // imported model survives view/tab/mode switches (sketchResult, where the
+  // import first lands, gets cleared by many of those transitions).
+  useEffect(() => {
+    if (!importedGeometry) { setImportedResult(null); return; }
+    try {
+      importedGeometry.computeBoundingBox();
+      const bb = importedGeometry.boundingBox;
+      const size = new Vector3();
+      bb?.getSize(size);
+      let edgeGeometry: BufferGeometry;
+      try { edgeGeometry = makeEdges(importedGeometry); } catch { edgeGeometry = new BufferGeometry(); }
+      setImportedResult({
+        geometry: importedGeometry,
+        edgeGeometry,
+        volume_cm3: meshVolume(importedGeometry) / 1000,
+        surface_area_cm2: meshSurfaceArea(importedGeometry) / 100,
+        bbox: { w: Math.round(size.x), h: Math.round(size.y), d: Math.round(size.z) },
+      });
+    } catch {
+      setImportedResult({ geometry: importedGeometry, edgeGeometry: new BufferGeometry(), volume_cm3: 0, surface_area_cm2: 0, bbox: { w: 0, h: 0, d: 0 } });
+    }
+  }, [importedGeometry]);
 
   // ── Studio → Expert handoff ──────────────────────────────────────────────
   // The free-form Studio stashes its OpenSCAD in sessionStorage. Render it to a
