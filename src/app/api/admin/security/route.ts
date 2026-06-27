@@ -118,7 +118,7 @@ export async function PATCH(req: NextRequest) {
 
   const db = getDbAdapter();
   await db.execute(
-    'UPDATE nf_security_alerts SET resolved = 1, resolved_by = ?, resolved_at = ? WHERE id = ?',
+    'UPDATE nf_security_alerts SET resolved = TRUE, resolved_by = ?, resolved_at = ? WHERE id = ?',
     'admin', Date.now(), alertId,
   );
 

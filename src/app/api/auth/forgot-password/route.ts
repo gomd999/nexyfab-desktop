@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
   // 기존 미사용 토큰 무효화
   await db.execute(
-    'UPDATE nf_password_reset_tokens SET used = 1 WHERE user_id = ? AND used = 0',
+    'UPDATE nf_password_reset_tokens SET used = TRUE WHERE user_id = ? AND used = FALSE',
     user.id,
   );
 

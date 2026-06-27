@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
     // Invalidate any previous pending tokens for this user
     await db.execute(
-      'UPDATE nf_email_change_tokens SET used = 1 WHERE user_id = ? AND used = 0',
+      'UPDATE nf_email_change_tokens SET used = TRUE WHERE user_id = ? AND used = FALSE',
       authUser.userId,
     );
 

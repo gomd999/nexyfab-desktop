@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   }>(
     `SELECT id, partner_id, email, company, expires_at, used
      FROM nf_partner_tokens
-     WHERE token_hash = ? AND LOWER(email) = LOWER(?) AND used = 0 AND expires_at > ?`,
+     WHERE token_hash = ? AND LOWER(email) = LOWER(?) AND used = FALSE AND expires_at > ?`,
     tokenHash, email, Date.now(),
   ).catch(() => null);
 
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
   }
 
   // Mark token as used
-  await db.execute('UPDATE nf_partner_tokens SET used = 1 WHERE id = ?', tokenRow.id).catch(() => {});
+  await db.execute('UPDATE nf_partner_tokens SET used = TRUE WHERE id = ?', tokenRow.id).catch(() => {});
 
   const company = tokenRow.company;
 

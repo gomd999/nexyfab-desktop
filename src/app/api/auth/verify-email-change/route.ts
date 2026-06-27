@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
       record.user_id,
     );
     await tx.execute(
-      'UPDATE nf_email_change_tokens SET used = 1 WHERE id = ?',
+      'UPDATE nf_email_change_tokens SET used = TRUE WHERE id = ?',
       record.id,
     );
   });

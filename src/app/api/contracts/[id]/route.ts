@@ -83,7 +83,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     setVals.push(JSON.stringify(customerContact));
   }
   if (completionRequested === true && !existing.completion_requested) {
-    setClauses.push('completion_requested = 1', 'completion_requested_at = ?');
+    setClauses.push('completion_requested = TRUE', 'completion_requested_at = ?');
     setVals.push(now);
   }
 
@@ -114,7 +114,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     setVals.push(status);
 
     if (status === 'completed') {
-      setClauses.push('commission_status = ?', 'completed_at = ?', 'completion_requested = 0');
+      setClauses.push('commission_status = ?', 'completed_at = ?', 'completion_requested = FALSE');
       setVals.push('invoiced', now);
     }
   }

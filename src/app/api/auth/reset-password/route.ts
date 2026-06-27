@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
   const row = await db.queryOne<{ id: string; user_id: string }>(
     `SELECT id, user_id FROM nf_password_reset_tokens
-     WHERE token_hash = ? AND used = 0 AND expires_at > ?`,
+     WHERE token_hash = ? AND used = FALSE AND expires_at > ?`,
     tokenHash, Date.now(),
   );
 

@@ -141,7 +141,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   if (completionRequested === true && !found.completion_requested) {
-    setClauses.push('completion_requested = 1');
+    setClauses.push('completion_requested = TRUE');
     setClauses.push('completion_requested_at = ?');
     setVals.push(now);
   }
