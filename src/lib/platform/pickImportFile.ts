@@ -41,41 +41,24 @@ export async function pickImportMeshFile(): Promise<PickedImportMesh | null> {
     document.body.appendChild(input);
 
     let settled = false;
-    // The native file dialog blurs the window when it opens. We only treat a
-    // later window 'focus' as a possible cancel AFTER that blur — otherwise an
-    // UNRELATED focus event at click time (e.g. a File-menu dropdown closing)
-    // fires the cancel path, nulls the result ~300 ms later while the user is
-    // still browsing, and the real selection is then dropped as "already
-    // settled" → silent failure (no import, no toast). This is exactly why the
-    // menu-triggered import did nothing while a direct trigger worked.
-    let dialogOpened = false;
-
-    const onBlur = () => { dialogOpened = true; };
-    const onFocus = () => {
-      if (!dialogOpened) return; // pre-dialog focus (dropdown close) — ignore
-      window.setTimeout(() => {
-        if (settled) return;
-        if (input.files && input.files.length > 0) return;
-        finish(null);
-      }, 400);
-    };
 
     const finish = (value: PickedImportMesh | null) => {
       if (settled) return;
       settled = true;
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('blur', onBlur);
+      window.clearTimeout(safetyTimer);
       input.remove();
       resolve(value);
     };
 
+    // SELECTION — the only path that matters. Resolves with the file the moment
+    // the user picks one. No focus/blur heuristics, so nothing can race this and
+    // drop a valid selection (the previous focus-based cancel detection nulled
+    // the result when triggered from the File menu, whose dropdown emitted a
+    // focus event — the import then silently no-op'd).
     input.addEventListener('change', () => {
       void (async () => {
         const file = input.files?.[0];
-        if (!file) {
-          finish(null);
-          return;
-        }
+        if (!file) { finish(null); return; }
         try {
           const buffer = await file.arrayBuffer();
           finish({ filename: file.name, buffer, byteSize: file.size });
@@ -85,8 +68,13 @@ export async function pickImportMeshFile(): Promise<PickedImportMesh | null> {
       })();
     });
 
-    window.addEventListener('blur', onBlur, { once: true });
-    window.addEventListener('focus', onFocus);
+    // CANCEL — the standard `cancel` event fires when the dialog is dismissed
+    // without a selection (Chromium 113+/FF 91+/Safari 16.4+). Proper, race-free.
+    input.addEventListener('cancel', () => finish(null));
+
+    // Ultimate safety net so the Promise can't leak forever on browsers without
+    // the `cancel` event (a real selection always resolves via `change` first).
+    const safetyTimer = window.setTimeout(() => finish(null), 5 * 60 * 1000);
 
     input.click();
   });
