@@ -8,11 +8,17 @@ interface ToastContainerProps {
   removeToast: (id: string) => void;
 }
 
+// Toasts are always a DARK notification card, so colours are fixed (not theme
+// vars) — using var(--nx-text) for the message rendered dark-on-dark in the
+// light theme (black text on the dark card = unreadable). Bright accents + a
+// near-white message read correctly in both themes.
+const TOAST_TEXT = '#f3f4f6';
+const TOAST_TEXT_DIM = '#9ca3af';
 const TOAST_STYLES: Record<Toast['type'], { bg: string; accent: string; icon: string }> = {
-  success: { bg: '#0d2818', accent: 'var(--nx-ok)', icon: '✓' },
-  error:   { bg: '#3d1519', accent: 'var(--nx-error)', icon: '✕' },
-  warning: { bg: '#2a2013', accent: 'var(--nx-warn)', icon: '⚠' },
-  info:    { bg: 'var(--nx-panel-2)', accent: 'var(--nx-accent-2)', icon: 'ℹ' },
+  success: { bg: '#0d2818', accent: '#34d399', icon: '✓' },
+  error:   { bg: '#3d1519', accent: '#f87171', icon: '✕' },
+  warning: { bg: '#2a2013', accent: '#fbbf24', icon: '⚠' },
+  info:    { bg: '#1f2430', accent: '#60a5fa', icon: 'ℹ' },
 };
 
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) {
@@ -83,7 +89,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
         padding: '10px 4px 10px 0',
         fontSize: 13,
         fontWeight: 500,
-        color: 'var(--nx-text)',
+        color: TOAST_TEXT,
         lineHeight: 1.4,
         wordBreak: 'break-word',
         gap: 8,
@@ -114,14 +120,14 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
           width: 32,
           border: 'none',
           background: 'transparent',
-          color: 'var(--nx-text-2)',
+          color: TOAST_TEXT_DIM,
           cursor: 'pointer',
           fontSize: 14,
           flexShrink: 0,
           padding: 0,
         }}
-        onMouseEnter={e => { e.currentTarget.style.color = 'var(--nx-text)'; }}
-        onMouseLeave={e => { e.currentTarget.style.color = 'var(--nx-text-2)'; }}
+        onMouseEnter={e => { e.currentTarget.style.color = TOAST_TEXT; }}
+        onMouseLeave={e => { e.currentTarget.style.color = TOAST_TEXT_DIM; }}
       >
         ✕
       </button>
