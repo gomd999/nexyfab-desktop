@@ -8,7 +8,6 @@ import { NF_R3F_VIEWPORT_DATA_ENGINE } from '@/lib/nexyfab/viewport';
 import * as THREE from 'three';
 import type { TransformControls as TransformControlsThree } from 'three/examples/jsm/controls/TransformControls.js';
 import React, { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, type ComponentRef } from 'react';
-import { createPortal } from 'react-dom';
 import type { ShapeResult } from './shapes';
 import { GL_COLOR } from './lib/glColors';
 import type { EditMode } from './editing/types';
@@ -974,7 +973,12 @@ function FaceScene({
           if (hasEdits && editGeometry && onGeometryApply) onGeometryApply(editGeometry.clone());
         }}
       />
-      {showFaceEditCallout && typeof document !== 'undefined' && createPortal(
+      {/* Face-edit help callout — rendered via drei <Html> (NOT react-dom
+          createPortal): FaceScene lives inside the R3F <Canvas>, and a bare
+          createPortal <div> there makes R3F throw "Div is not part of the
+          THREE namespace". <Html> is the R3F-safe DOM escape hatch. */}
+      {showFaceEditCallout && (
+        <Html position={[0, 0, 0]} wrapperClass="nf-face-edit-callout-host">
         <div
           role="note"
           className="nf-face-edit-callout"
@@ -1035,8 +1039,8 @@ function FaceScene({
               {calloutTip}
             </div>
           ) : null}
-        </div>,
-        document.body,
+        </div>
+        </Html>
       )}
       {/* Multi-selection HUD overlay (only when >1 face is selected) */}
       {selectedFaceIds.size > 1 && (
