@@ -382,16 +382,18 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
       // since it's fixing an already-counted design). The last attempt escalates
       // to "rewrite with PLAIN OpenSCAD, no BOSL2" — far less error-prone — so a
       // stubborn BOSL2 bug still resolves into a renderable model.
-      for (let attempt = 1; !r.ok && r.raw && attempt <= 2; attempt++) {
+      for (let attempt = 1; !r.ok && r.raw && attempt <= 3; attempt++) {
         setAiMsg(aiId, T('코드 오류를 자동 수정 중…', 'Auto-fixing a code error…'), 'thinking');
-        const escalate = attempt >= 2;
+        // Final attempt = full PLAIN-OpenSCAD rewrite (no BOSL2). Plain primitives
+        // almost never error, so this resolves stubborn BOSL2 bugs (rounding-fit
+        // asserts, bad gear()/attach signatures, syntax) that targeted fixes repeat.
+        const escalate = attempt >= 3;
         const tooLarge = /too large/i.test(r.raw) || /too large/i.test(r.error ?? '');
-        // Code errors (BOSL2 geometry assertions etc.) rarely survive a generic
-        // "fix this" pass — the model just reproduces the bug. A from-scratch
-        // PLAIN-OpenSCAD rewrite reliably renders, so go straight to it.
         const fixPrompt = tooLarge
-          ? `The rendered mesh is too large to return. Shrink the triangle count: set $fn=${escalate ? 20 : 28}, simplify or drop the most detailed cosmetic features, and avoid minkowski() and very large hull() chains. Return the COMPLETE program keeping the same overall shape and the Customizer parameters/groups.`
-          : `The program failed to render in OpenSCAD with this error:\n${r.raw.slice(0, 800)}\nFix ONLY what caused the error and return the COMPLETE corrected program. The usual cause is a BOSL2 call (cuboid/cyl/rounding=/attach/anchor/edges) — replace just those with the plain-OpenSCAD equivalent (cube/cylinder/translate/difference/hull), keeping the SAME rounding/fillet intent where easy. CRITICAL: keep EVERY part, its position, size, proportions and the overall design intact — do NOT simplify the model, do NOT turn it into a plain box, do NOT remove parts. Keep the Customizer parameter variables, comments and groups.${escalate ? ' If a part still fails, approximate that one part with a simple primitive but keep all the other parts and the layout.' : ''}`;
+          ? `The rendered mesh is too large to return. Shrink the triangle count: set $fn=${attempt >= 2 ? 20 : 28}, simplify or drop the most detailed cosmetic features, and avoid minkowski() and very large hull() chains. Return the COMPLETE program keeping the same overall shape and the Customizer parameters/groups.`
+          : escalate
+            ? `The program keeps failing to render in OpenSCAD:\n${r.raw.slice(0, 600)}\nRewrite the ENTIRE model using ONLY PLAIN OpenSCAD — cube, cylinder, sphere, polyhedron, translate, rotate, scale, mirror, hull, minkowski, difference, union, intersection, for. Do NOT use BOSL2 at all: no \`include <BOSL2/...>\`, no cuboid/cyl/rounding=/chamfer=/attach/anchor/edges/gear. Keep EVERY part with its position, size, proportions and the overall design, plus the Customizer parameter variables, comments and groups. Approximate any rounded/chamfered edge with a plain shape — a sharp model that RENDERS is the goal.`
+            : `The program failed to render in OpenSCAD with this error:\n${r.raw.slice(0, 800)}\nFix ONLY what caused the error and return the COMPLETE corrected program. The usual cause is a BOSL2 call (cuboid/cyl/rounding=/attach/anchor/edges) — replace just those with the plain-OpenSCAD equivalent (cube/cylinder/translate/difference/hull), keeping the SAME rounding/fillet intent where easy. CRITICAL: keep EVERY part, its position, size, proportions and the overall design intact — do NOT simplify the model, do NOT turn it into a plain box, do NOT remove parts. Keep the Customizer parameter variables, comments and groups.`;
         try {
           const fixRes = await fetch('/api/nexyfab/scad-intent-from-nl', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
