@@ -47,15 +47,14 @@ export function createAdminSession(): string {
 }
 
 /**
- * Verify admin access via:
- * 1. Signed admin session token (x-admin-token header or nf_admin_token cookie)
- * 2. JWT with globalRole = 'super_admin' (nf_users.role)
+ * Verify a raw admin session token (no NextRequest) — for Server Components /
+ * the admin layout that read the cookie via next/headers and must gate rendering
+ * BEFORE children are server-rendered (a client-only gate still ships the
+ * protected HTML in the response). Mirrors verifyAdminSession's signature/exp
+ * checks exactly.
  */
-export function verifyAdminSession(req: NextRequest): boolean {
-  const token = req.headers.get('x-admin-token')
-    ?? req.cookies.get('nf_admin_token')?.value;
+export function verifyAdminToken(token: string | undefined | null): boolean {
   if (!token) return false;
-
   const secret = adminSessionSecret();
   if (!secret) return false;
   const [payload, sig] = token.split('.');
@@ -73,6 +72,17 @@ export function verifyAdminSession(req: NextRequest): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Verify admin access via:
+ * 1. Signed admin session token (x-admin-token header or nf_admin_token cookie)
+ * 2. JWT with globalRole = 'super_admin' (nf_users.role)
+ */
+export function verifyAdminSession(req: NextRequest): boolean {
+  const token = req.headers.get('x-admin-token')
+    ?? req.cookies.get('nf_admin_token')?.value;
+  return verifyAdminToken(token);
 }
 
 /**

@@ -64,7 +64,9 @@ export async function POST(req: NextRequest) {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: 30 * 60,
-    path: '/api/admin',
+    // Was '/api/admin' — but the server-side admin layout must read this cookie
+    // on /admin/* page requests to gate rendering, so it has to be sent there too.
+    path: '/',
   });
   return response;
 }
