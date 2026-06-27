@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const lang = req.nextUrl.searchParams.get('lang') ?? 'ko';
 
   if (!clientId) {
-    return NextResponse.redirect(`${siteUrl}/${lang}/login?error=oauth_unavailable`);
+    return NextResponse.redirect(`${siteUrl}/login?error=oauth_unavailable`);
   }
 
   const state = randomBytes(16).toString('hex');

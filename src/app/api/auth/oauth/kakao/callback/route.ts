@@ -28,11 +28,11 @@ export async function GET(req: NextRequest) {
   // Verify CSRF state
   const storedState = req.cookies.get('oauth_state')?.value;
   if (!storedState || storedState !== returnedState) {
-    return NextResponse.redirect(`${siteUrl}/${lang}/login?error=oauth_csrf`);
+    return NextResponse.redirect(`${siteUrl}/login?error=oauth_csrf`);
   }
 
   if (!code || !clientId) {
-    return NextResponse.redirect(`${siteUrl}/${lang}/login?error=oauth_failed`);
+    return NextResponse.redirect(`${siteUrl}/login?error=oauth_failed`);
   }
 
   try {
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
     const name = userData.kakao_account?.profile?.nickname ?? 'Kakao User';
 
     if (!email) {
-      return NextResponse.redirect(`${siteUrl}/${lang}/login?error=email_required`);
+      return NextResponse.redirect(`${siteUrl}/login?error=email_required`);
     }
 
     // 3. Upsert user
@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
       req.headers,
     );
     if (blocked) {
-      return NextResponse.redirect(`${siteUrl}/${lang}/login?error=account_locked`);
+      return NextResponse.redirect(`${siteUrl}/login?error=account_locked`);
     }
 
     // 5. Issue JWT + refresh token
@@ -171,6 +171,6 @@ export async function GET(req: NextRequest) {
     return response;
   } catch (err) {
     console.error('[kakao/callback]', err);
-    return NextResponse.redirect(`${siteUrl}/${lang}/login?error=oauth_failed`);
+    return NextResponse.redirect(`${siteUrl}/login?error=oauth_failed`);
   }
 }

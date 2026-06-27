@@ -880,7 +880,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
           {needLogin && !geometry && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-6">
               <div className="text-emerald-300 text-sm">🔒 {T('3D 미리보기·STL은 로그인이 필요합니다', '3D preview & STL need a (free) login')}</div>
-              <a href={`/${lang}/login`} className="bg-emerald-600 hover:bg-emerald-500 text-white rounded px-4 py-1.5 text-xs font-semibold">{T('무료 로그인', 'Free login')}</a>
+              <a href={`/login?next=${encodeURIComponent(`/${lang}/studio`)}`} className="bg-emerald-600 hover:bg-emerald-500 text-white rounded px-4 py-1.5 text-xs font-semibold">{T('무료 로그인', 'Free login')}</a>
             </div>
           )}
           {busy && (

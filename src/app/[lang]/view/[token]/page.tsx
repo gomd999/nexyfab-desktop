@@ -693,7 +693,7 @@ export default function ViewTokenPage({ params }: { params: Promise<{ lang: stri
             {/* Not logged in hint */}
             {!authToken && (
               <div style={{ padding: '10px 14px', borderTop: '1px solid #21262d', fontSize: 11, color: '#6e7681', textAlign: 'center' }}>
-                <a href={`/${lang}/nexyfab/login`} style={{ color: '#388bfd', fontWeight: 700, textDecoration: 'none' }}>
+                <a href="/login" style={{ color: '#388bfd', fontWeight: 700, textDecoration: 'none' }}>
                   {isKo ? 'Pro 로그인하면 주석을 추가할 수 있습니다 →' : 'Log in with Pro to add annotations →'}
                 </a>
               </div>

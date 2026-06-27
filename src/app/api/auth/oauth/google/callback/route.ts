@@ -27,11 +27,11 @@ export async function GET(req: NextRequest) {
   // Verify CSRF state
   const storedState = req.cookies.get('oauth_state')?.value;
   if (!storedState || storedState !== returnedState) {
-    return NextResponse.redirect(`${siteUrl}/${lang}/login?error=oauth_csrf`);
+    return NextResponse.redirect(`${siteUrl}/login?error=oauth_csrf`);
   }
 
   if (!code || !clientId || !clientSecret) {
-    return NextResponse.redirect(`${siteUrl}/${lang}/login?error=oauth_failed`);
+    return NextResponse.redirect(`${siteUrl}/login?error=oauth_failed`);
   }
 
   try {
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
     const name = userData.name ?? 'Google User';
 
     if (!email) {
-      return NextResponse.redirect(`${siteUrl}/${lang}/login?error=email_required`);
+      return NextResponse.redirect(`${siteUrl}/login?error=email_required`);
     }
 
     // Google locale → language/country (e.g. "ko" or "en-US")
@@ -136,7 +136,7 @@ export async function GET(req: NextRequest) {
       req.headers,
     );
     if (blocked) {
-      return NextResponse.redirect(`${siteUrl}/${lang}/login?error=account_locked`);
+      return NextResponse.redirect(`${siteUrl}/login?error=account_locked`);
     }
 
     // 5. Issue JWT + refresh token (동시 접속 방지: 기존 세션 revoke)
@@ -178,6 +178,6 @@ export async function GET(req: NextRequest) {
     return response;
   } catch (err) {
     console.error('[google/callback]', err);
-    return NextResponse.redirect(`${siteUrl}/${lang}/login?error=oauth_failed`);
+    return NextResponse.redirect(`${siteUrl}/login?error=oauth_failed`);
   }
 }
