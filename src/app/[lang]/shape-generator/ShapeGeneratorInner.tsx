@@ -363,6 +363,47 @@ function shapeGeneratorRouteSegment(pathname: string | null): 'sketch' | 'analys
   return null;
 }
 
+/**
+ * Serialize a BufferGeometry to a binary-STL base64 string so an imported mesh
+ * can be AI-edited: we wrap it as `import("model.stl")` in OpenSCAD and let the
+ * model add operations around it (mirrors the Studio flow). Handles indexed and
+ * non-indexed geometry; normals are left zero (viewers/OpenSCAD recompute).
+ */
+function geometryToStlBase64(geo: BufferGeometry): string | null {
+  const posAttr = geo.attributes.position;
+  if (!posAttr) return null;
+  const pos = posAttr.array as ArrayLike<number>;
+  const idx = geo.index ? (geo.index.array as ArrayLike<number>) : null;
+  const triCount = idx ? Math.floor(idx.length / 3) : Math.floor(pos.length / 9);
+  if (triCount <= 0) return null;
+  const buf = new ArrayBuffer(84 + triCount * 50);
+  const dv = new DataView(buf);
+  dv.setUint32(80, triCount, true);
+  let off = 84;
+  for (let t = 0; t < triCount; t++) {
+    const ia = idx ? idx[t * 3] : t * 3;
+    const ib = idx ? idx[t * 3 + 1] : t * 3 + 1;
+    const ic = idx ? idx[t * 3 + 2] : t * 3 + 2;
+    off += 12; // normal left as (0,0,0)
+    for (const vi of [ia, ib, ic]) {
+      const b = vi * 3;
+      dv.setFloat32(off, pos[b], true);
+      dv.setFloat32(off + 4, pos[b + 1], true);
+      dv.setFloat32(off + 8, pos[b + 2], true);
+      off += 12;
+    }
+    off += 2; // attribute byte count
+  }
+  // Chunked base64 — avoids stack overflow from spreading a large Uint8Array.
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)));
+  }
+  return typeof btoa === 'function' ? btoa(bin) : null;
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function ShapeGeneratorInner() {
@@ -586,6 +627,13 @@ export function ShapeGeneratorInner() {
   // the persistent importedGeometry below) so the import stays put. Cleared
   // when a new model is started (e.g. handleSelectShape).
   const [importedResult, setImportedResult] = useState<ShapeResult | null>(null);
+  // AI-edit-an-import support: the imported mesh serialized as base64 STL, plus
+  // the current OpenSCAD program that wraps it (`import("model.stl"); …`). When
+  // set, AI prompts modify this program (previousScad) and render with importStl
+  // so the import is preserved and edited rather than replaced. Cleared when a
+  // fresh parametric shape is started (handleSelectShape).
+  const importStlRef = useRef<string | null>(null);
+  const importScadRef = useRef<string>('import("model.stl");');
   // Forward ref to handleGenerateActiveProfile so the early-mounted tool
   // listener can fire it (the handler is declared later in this function).
   const handleGenerateActiveProfileRef = useRef<(() => void) | null>(null);
@@ -1392,7 +1440,9 @@ export function ShapeGeneratorInner() {
     if (!scad.trim()) return;
     try {
       const { renderScadToGeometry } = await import('@/lib/ai/scad-agent/renderToGeometry');
-      const result = await renderScadToGeometry(scad);
+      // Pass the imported mesh (if any) so a SCAD program that does
+      // import("model.stl") edits the import instead of failing to find it.
+      const result = await renderScadToGeometry(scad, undefined, importStlRef.current);
       const edgeGeo = makeEdges(result.geometry);
       const vol = meshVolume(result.geometry) / 1000;
       const sa = meshSurfaceArea(result.geometry) / 100;
@@ -2245,10 +2295,18 @@ export function ShapeGeneratorInner() {
     if (!p) return;
     addToast('info', lang === 'ko' ? 'AI가 모델을 만드는 중…' : 'AI is generating your model…');
     try {
+      // When a mesh has been imported, edit it: send the current wrapping
+      // program as previousScad so the AI modifies `import("model.stl"); …`
+      // instead of generating a brand-new shape from scratch.
+      const editingImport = !!importStlRef.current;
       const resp = await fetch('/api/nexyfab/scad-intent-from-nl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: p }),
+        body: JSON.stringify(
+          editingImport
+            ? { prompt: p, freeform: true, previousScad: importScadRef.current }
+            : { prompt: p },
+        ),
       });
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({} as Record<string, unknown>));
@@ -2263,6 +2321,8 @@ export function ShapeGeneratorInner() {
       }
       const body = await resp.json() as { scad?: string; summary?: string; usage?: { used: number; limit: number; remaining: number } };
       if (!body.scad) { addToast('error', 'AI 응답에 모델이 없어요.'); return; }
+      // Chain edits: remember the updated program so the next prompt refines it.
+      if (editingImport) importScadRef.current = body.scad;
       await handleApplyAgentScad(body.scad);
       if (body.summary) addToast('info', body.summary);
       // Soft-cap nudge: a gentle reminder as the generous free monthly
@@ -3382,8 +3442,9 @@ export function ShapeGeneratorInner() {
 
   const handleSelectShape = useCallback((s: ShapeConfig) => {
     // Starting a fresh parametric shape — drop any imported model so it stops
-    // taking precedence in effectiveResult.
+    // taking precedence in effectiveResult (and stop AI-editing the import).
     setImportedResult(null);
+    importStlRef.current = null;
     // Undo Phase B: shape changes flow ONLY through commandHistory — the
     // legacy useHistory snapshot stack has been retired (single source of
     // truth for Ctrl+Z).
@@ -6783,7 +6844,12 @@ export function ShapeGeneratorInner() {
   // imported model survives view/tab/mode switches (sketchResult, where the
   // import first lands, gets cleared by many of those transitions).
   useEffect(() => {
-    if (!importedGeometry) { setImportedResult(null); return; }
+    if (!importedGeometry) { setImportedResult(null); importStlRef.current = null; return; }
+    // Serialize the import for AI editing (wrap as import("model.stl")).
+    try {
+      importStlRef.current = geometryToStlBase64(importedGeometry);
+      importScadRef.current = 'import("model.stl");';
+    } catch { importStlRef.current = null; }
     try {
       importedGeometry.computeBoundingBox();
       const bb = importedGeometry.boundingBox;

@@ -21,7 +21,13 @@ export interface RenderToGeometryResult {
   bytes: number;
 }
 
-export async function renderScadToGeometry(scad: string, signal?: AbortSignal): Promise<RenderToGeometryResult> {
+export async function renderScadToGeometry(
+  scad: string,
+  signal?: AbortSignal,
+  /** Base64 STL the SCAD may `import("model.stl")` — used to AI-edit an
+   *  imported mesh by wrapping it as the base of the generated program. */
+  importStl?: string | null,
+): Promise<RenderToGeometryResult> {
   if (!scad.trim()) {
     throw new ScadRenderError(400, 'SCAD source is empty');
   }
@@ -29,7 +35,7 @@ export async function renderScadToGeometry(scad: string, signal?: AbortSignal): 
   const resp = await fetch('/api/nexyfab/openscad-render', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ scad, format: 'stl' }),
+    body: JSON.stringify({ scad, format: 'stl', ...(importStl ? { importStl } : {}) }),
     signal,
   });
 
