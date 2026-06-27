@@ -96,8 +96,43 @@ export async function POST(req: NextRequest) {
     fromPrompt: usedPrompt,
     fromImage: usedImage,
     layers: counts,            // { CUT, FOLD, TAB } line counts
+    steps: assemblySteps(type === 'room' ? 'room' : (roof === 'gable' ? 'gable' : 'building')),
     bytes: Buffer.byteLength(dxf, 'utf8'),
     svg,
     dxf,
   });
+}
+
+/**
+ * Deterministic step-by-step assembly guide for the generated paper kit. The
+ * nets are templated (building / gable house / open room), so the fold/glue
+ * sequence is predictable — no LLM needed, instant and reliable.
+ */
+function assemblySteps(kind: 'building' | 'gable' | 'room'): string[] {
+  const common = [
+    '빨강 칼선(Cut)을 모두 따라 오려냅니다.',
+    '파랑 접는선(Fold)을 칼등이나 다 쓴 볼펜으로 눌러 자국을 냅니다(스코어링) — 깔끔하게 접힙니다.',
+  ];
+  if (kind === 'room') {
+    return [
+      ...common,
+      '바닥을 기준으로 벽 4개를 위로 직각이 되게 접어 세웁니다.',
+      '모서리의 초록 조립 탭(Tab)에 풀을 발라 옆 벽 안쪽에 붙여 고정합니다.',
+      '천장이 없는 개방형 실내 공간이 완성됩니다 — 디오라마 배경으로 사용하세요.',
+    ];
+  }
+  if (kind === 'gable') {
+    return [
+      ...common,
+      '바닥 기준으로 벽 4개를 세우고, 초록 탭에 풀칠해 인접 벽에 붙입니다.',
+      '박공(삼각) 지붕면을 접어 용마루에서 맞물리게 한 뒤 탭으로 붙여 지붕을 만듭니다.',
+      '완성된 지붕을 벽 위에 얹고 탭으로 고정하면 집이 완성됩니다.',
+    ];
+  }
+  return [
+    ...common,
+    '바닥 기준으로 벽 4개를 위로 접어 세웁니다.',
+    '초록 조립 탭(Tab)에 풀을 발라 인접한 벽에 붙여 상자 형태를 고정합니다.',
+    '윗면(뚜껑)을 접어 덮고 남은 탭으로 마무리하면 완성됩니다.',
+  ];
 }

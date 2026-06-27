@@ -6,6 +6,7 @@ interface NetResult {
   ok: boolean;
   dims?: { W: number; D: number; H: number; type?: string; roof?: string };
   layers?: { CUT: number; FOLD: number; TAB: number };
+  steps?: string[];
   bytes?: number;
   svg?: string;
   dxf?: string;
@@ -59,6 +60,30 @@ export default function PapercraftDemoPage() {
     const a = document.createElement('a');
     a.href = url; a.download = `papercraft-${result.dims?.type ?? 'net'}.dxf`; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Print/Save-as-PDF an assembly guide: the net drawing + numbered fold/glue
+  // steps, in a clean print layout (browser "Save as PDF" yields the manual).
+  const printGuide = () => {
+    if (!result?.svg || !result.steps) return;
+    const d = result.dims;
+    const w = window.open('', '_blank');
+    if (!w) return;
+    const stepsHtml = result.steps.map((s, i) => `<li>${s}</li>`).join('');
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>조립 가이드</title>
+      <style>body{font-family:system-ui,sans-serif;margin:32px;color:#111}h1{font-size:22px;margin:0 0 4px}
+      .meta{color:#666;font-size:13px;margin-bottom:20px}.net{border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:20px}
+      ol{font-size:15px;line-height:1.9;padding-left:22px}li{margin-bottom:4px}
+      .legend{font-size:12px;color:#666;margin-top:8px}@media print{button{display:none}}</style></head>
+      <body><h1>종이 키트 조립 가이드</h1>
+      <div class="meta">${d ? `치수 ${d.W}×${d.D}×${d.H}mm · ${d.type === 'room' ? '방(개방)' : d.roof === 'gable' ? '박공지붕' : '평지붕'}` : ''}</div>
+      <div class="net">${result.svg}</div>
+      <div class="legend">빨강=칼선(자르기) · 파랑=접는선(스코어) · 초록=조립 탭(풀칠)</div>
+      <h2 style="font-size:16px;margin:18px 0 6px">조립 순서</h2>
+      <ol>${stepsHtml}</ol>
+      <button onclick="window.print()" style="margin-top:16px;padding:10px 18px;font-size:14px">🖨 인쇄 / PDF로 저장</button>
+      </body></html>`);
+    w.document.close();
   };
 
   return (
@@ -120,9 +145,14 @@ export default function PapercraftDemoPage() {
                 {result.dims && <>치수 {result.dims.W}×{result.dims.D}×{result.dims.H}mm · {result.dims.type === 'room' ? '방(개방)' : result.dims.roof === 'gable' ? '박공지붕' : '평지붕'}</>}
                 {result.layers && <> · 칼선 {result.layers.CUT} / 접는선 {result.layers.FOLD} / 탭 {result.layers.TAB}</>}
               </div>
-              <button onClick={downloadDxf} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #238636', background: '#238636', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                ⬇ DXF 다운로드
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={printGuide} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #30363d', background: '#161b22', color: '#e6edf3', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                  🖨 조립 가이드 (PDF)
+                </button>
+                <button onClick={downloadDxf} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #238636', background: '#238636', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                  ⬇ DXF 다운로드
+                </button>
+              </div>
             </div>
             <div style={{ background: '#fff', borderRadius: 8, padding: 16 }} dangerouslySetInnerHTML={{ __html: result.svg }} />
             <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 12, color: '#8b949e' }}>
@@ -130,6 +160,14 @@ export default function PapercraftDemoPage() {
               <span><span style={{ color: '#2563eb' }}>┄</span> 접는선(Fold)</span>
               <span><span style={{ color: '#16a34a' }}>━</span> 조립 탭(Tab)</span>
             </div>
+            {result.steps && result.steps.length > 0 && (
+              <div style={{ marginTop: 18, borderTop: '1px solid #30363d', paddingTop: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3', marginBottom: 8 }}>📋 조립 순서</div>
+                <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#c9d1d9', lineHeight: 1.8 }}>
+                  {result.steps.map((s, i) => <li key={i}>{s}</li>)}
+                </ol>
+              </div>
+            )}
           </div>
         )}
         {result && !result.ok && (
