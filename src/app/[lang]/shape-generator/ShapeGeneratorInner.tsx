@@ -11469,6 +11469,11 @@ export function ShapeGeneratorInner() {
           feature edits (patterns, fuzzier phrasings). */}
       <AiAssistantShell
         lang={lang}
+        // When a mesh has been imported there is no parametric feature tree to
+        // edit, so route AI prompts through the SCAD path (handleFreeAiPrompt),
+        // which wraps the import and edits it via OpenSCAD.
+        scadEditActive={!!importedResult}
+        onScadEdit={handleFreeAiPrompt}
         store={{
           features,
           addFeatureWithParams: (type, params) => addFeatureWithParams(type as FeatureType, params),

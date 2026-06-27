@@ -40,12 +40,17 @@ export interface AiAssistantShellProps {
   onAiBatch?: (batchId: string, intentCount: number) => void;
   /** Optional: open the full chat sidebar. */
   onOpenFullChat?: () => void;
+  /** When true (a mesh has been imported), route prompts to onScadEdit — the
+   *  SCAD path that edits the import — instead of parametric feature intents. */
+  scadEditActive?: boolean;
+  onScadEdit?: (prompt: string) => Promise<void>;
   /** Disable when WASM not ready or user is in a modal flow. */
   disabled?: boolean;
 }
 
 export default function AiAssistantShell({
   lang, store, promptToIntents, onAiBatch, onOpenFullChat, disabled,
+  scadEditActive, onScadEdit,
 }: AiAssistantShellProps) {
   const trackerRef = useRef<EditOriginTracker | null>(null);
   if (!trackerRef.current) trackerRef.current = new EditOriginTracker();
@@ -66,6 +71,12 @@ export default function AiAssistantShell({
 
   const runPrompt = useCallback(async (prompt: string): Promise<string | null> => {
     if (disabled) return 'AI is currently unavailable.';
+    // Imported mesh: no feature tree to edit — hand off to the SCAD path which
+    // wraps import("model.stl") and edits it through OpenSCAD.
+    if (scadEditActive && onScadEdit) {
+      try { await onScadEdit(prompt); return null; }
+      catch (err) { return `AI error: ${(err as Error)?.message ?? err}`; }
+    }
     try {
       const { intents, explanation } = await promptToIntents(prompt);
       if (intents.length === 0) return explanation || 'No actions inferred.';
@@ -87,7 +98,7 @@ export default function AiAssistantShell({
     } catch (err) {
       return `AI error: ${(err as Error)?.message ?? err}`;
     }
-  }, [disabled, promptToIntents, store, onAiBatch]);
+  }, [disabled, promptToIntents, store, onAiBatch, scadEditActive, onScadEdit]);
 
   // Cleanup voice on unmount.
   useEffect(() => {
