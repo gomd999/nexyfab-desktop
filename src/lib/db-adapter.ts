@@ -143,6 +143,30 @@ function sqliteToPostgres(sql: string): string {
     `EXTRACT(EPOCH FROM DATE_TRUNC('month', NOW()))::bigint * 1000`,
   );
 
+  // ── julianday(X) → days-since-epoch (differences match SQLite's julianday;
+  //    both express days, so subtractions like julianday(a)-julianday(b) agree).
+  //    X is a TEXT timestamp column or a bound timestamp param. ───────────────
+  s = s.replace(
+    /julianday\s*\(\s*([^()]+?)\s*\)/gi,
+    (_m, x) => `(EXTRACT(EPOCH FROM (${x.trim()})::timestamptz) / 86400.0)`,
+  );
+
+  // ── strftime('%s', <TEXT-ts expr>) → EXTRACT(EPOCH FROM expr). The
+  //    date('now',…) forms are already handled above; the negative lookahead
+  //    keeps any stray date('now') from being mis-translated here. ────────────
+  s = s.replace(
+    /strftime\s*\(\s*'%s'\s*,\s*((?!date\s*\()[^)]+?)\s*\)/gi,
+    (_m, x) => `EXTRACT(EPOCH FROM (${x.trim()})::timestamptz)`,
+  );
+
+  // ── strftime('%Y-%m', <TEXT-ts expr>) general form (the datetime(X/1000,
+  //    'unixepoch') variant is already handled above). Handles COALESCE(a, b)
+  //    on TEXT timestamp columns, e.g. settlement month grouping. ────────────
+  s = s.replace(
+    /strftime\s*\(\s*'%Y-%m'\s*,\s*(COALESCE\s*\([^)]*\)|[^)]+?)\s*\)/gi,
+    (_m, x) => `TO_CHAR((${x.trim()})::timestamptz, 'YYYY-MM')`,
+  );
+
   return s;
 }
 
