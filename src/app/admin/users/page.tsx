@@ -180,6 +180,15 @@ export default function AdminUsersPage() {
     else setPwError(true);
   }
 
+  // The layout's AdminAuthGate already authenticated; auto-detect that session
+  // so this page doesn't show a second password form.
+  useEffect(() => {
+    fetch('/api/admin/auth', { method: 'GET' })
+      .then((r) => r.json())
+      .then((d) => { if (d?.authed) setAuthed(true); })
+      .catch(() => {});
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {

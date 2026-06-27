@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { rateLimit } from '@/lib/rate-limit';
 import { checkOrigin } from '@/lib/csrf';
-import { createAdminSession } from '@/lib/admin-auth';
+import { createAdminSession, verifyAdmin } from '@/lib/admin-auth';
 import { getTrustedClientIp } from '@/lib/client-ip';
 
 export const dynamic = 'force-dynamic';
+
+/** Session check for the AdminAuthGate — returns whether the caller already
+ *  holds a valid admin session (the nf_admin_token cookie is scoped to
+ *  /api/admin, so the gate must ask the server rather than read it). */
+export async function GET(req: NextRequest) {
+  return NextResponse.json({ authed: await verifyAdmin(req) });
+}
 
 export async function POST(req: NextRequest) {
   // CSRF check
