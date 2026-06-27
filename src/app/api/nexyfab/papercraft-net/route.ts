@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(`papercraft-net:${ip}`, 30, 3_600_000).allowed) {
     return NextResponse.json({ error: 'Too many requests', code: 'RATE_LIMIT' }, { status: 429 });
   }
-  const b = (await req.json().catch(() => ({}))) as { width?: number; depth?: number; height?: number; tab?: number; prompt?: string; roof?: string; gableHeight?: number; type?: string; image?: string };
+  const b = (await req.json().catch(() => ({}))) as { width?: number; depth?: number; height?: number; tab?: number; prompt?: string; roof?: string; gableHeight?: number; type?: string; image?: string; thickness?: number };
   let { width, depth, height } = b;
   let roof = b.roof === 'gable' ? 'gable' : b.roof === 'flat' ? 'flat' : '';
   let type = b.type === 'room' ? 'room' : b.type === 'building' ? 'building' : '';
@@ -79,7 +79,11 @@ export async function POST(req: NextRequest) {
   }
 
   const W = clamp(width, 60), D = clamp(depth, 40), H = clamp(height, 30);
-  const tab = Math.min(Math.max(2, typeof b.tab === 'number' ? b.tab : 6), 20);
+  // Material thickness (e.g. foam board / 우드락). Grows the glue tab so a
+  // thicker board still has a bonding flap; >1.5mm can't really be folded, so
+  // the response flags it and the UI suggests the layered/cut approach.
+  const thickness = typeof b.thickness === 'number' && b.thickness > 0 ? Math.min(b.thickness, 30) : 0;
+  const tab = Math.min(Math.max(2, (typeof b.tab === 'number' ? b.tab : 6) + thickness * 0.5), 30);
   const gableH = Math.min(Math.max(2, typeof b.gableHeight === 'number' ? b.gableHeight : Math.round(D * 0.4)), 500);
   const segs = type === 'room'
     ? roomNetSegments(W, D, H, tab)
@@ -95,6 +99,8 @@ export async function POST(req: NextRequest) {
     dims: { W, D, H, tab, type: type || 'building', roof: type === 'room' ? 'open' : (roof || 'flat'), ...(roof === 'gable' && type !== 'room' ? { gableHeight: gableH } : {}) },
     fromPrompt: usedPrompt,
     fromImage: usedImage,
+    thickness: thickness || undefined,
+    thick: thickness > 1.5,
     layers: counts,            // { CUT, FOLD, TAB } line counts
     steps: assemblySteps(type === 'room' ? 'room' : (roof === 'gable' ? 'gable' : 'building')),
     bytes: Buffer.byteLength(dxf, 'utf8'),

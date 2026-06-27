@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(`papercraft-unfold:${ip}`, 30, 3_600_000).allowed) {
     return NextResponse.json({ error: 'Too many requests', code: 'RATE_LIMIT' }, { status: 429 });
   }
-  const b = (await req.json().catch(() => ({}))) as { positions?: number[]; indices?: number[] | null; tab?: number };
+  const b = (await req.json().catch(() => ({}))) as { positions?: number[]; indices?: number[] | null; tab?: number; thickness?: number };
   const positions = Array.isArray(b.positions) ? b.positions : null;
   if (!positions || positions.length < 9) {
     return NextResponse.json({ error: 'positions (flat [x,y,z,…], ≥1 triangle) required', code: 'NO_GEOMETRY' }, { status: 400 });
@@ -30,7 +30,10 @@ export async function POST(req: NextRequest) {
 
   let res;
   try {
-    res = unfoldMesh(positions, indices, { tab: typeof b.tab === 'number' ? b.tab : 5 });
+    res = unfoldMesh(positions, indices, {
+      tab: typeof b.tab === 'number' ? b.tab : 5,
+      thickness: typeof b.thickness === 'number' ? b.thickness : 0,
+    });
   } catch (e) {
     return NextResponse.json({ error: `unfold failed: ${(e as Error).message}`, code: 'UNFOLD_ERROR' }, { status: 500 });
   }
@@ -45,7 +48,8 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     faceCount: res.faceCount,
-    overlaps: res.overlaps,            // >0 → net has overlapping faces; warn user
+    pieces: res.pieces,                // separate net pieces (overlaps split into islands)
+    overlaps: res.overlaps,            // residual after resolution (should be ~0)
     layers: counts,
     bytes: Buffer.byteLength(dxf, 'utf8'),
     svg,

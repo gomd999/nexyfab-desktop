@@ -27,11 +27,18 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(`papercraft-layers:${ip}`, 20, 3_600_000).allowed) {
     return NextResponse.json({ error: 'Too many requests', code: 'RATE_LIMIT' }, { status: 429 });
   }
-  const body = (await req.json().catch(() => ({}))) as { scad?: string; layers?: number; height?: number };
+  const body = (await req.json().catch(() => ({}))) as { scad?: string; layers?: number; height?: number; thickness?: number };
   const scad = (body.scad ?? '').trim();
   if (!scad) return NextResponse.json({ error: 'scad required' }, { status: 400 });
-  const N = Math.min(Math.max(2, Math.round(body.layers ?? 8)), 30);
   const H = Math.min(Math.max(1, body.height ?? 50), 1000);
+  // Material thickness (e.g. foam board / 우드락) → how many slabs to stack to
+  // reach the height. Takes priority over an explicit layer count so the cut
+  // sheets physically add up to H when glued.
+  const thickness = typeof body.thickness === 'number' && body.thickness > 0
+    ? Math.min(Math.max(0.5, body.thickness), 50) : 0;
+  const N = thickness > 0
+    ? Math.min(Math.max(2, Math.round(H / thickness)), 60)
+    : Math.min(Math.max(2, Math.round(body.layers ?? 8)), 30);
 
   const id = randomBytes(8).toString('hex');
   const workDir = join(tmpdir(), `nf-papercraft-${id}`);

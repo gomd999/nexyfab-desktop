@@ -8,7 +8,10 @@ interface NetResult {
   layers?: { CUT: number; FOLD: number; TAB: number };
   steps?: string[];
   faceCount?: number;
+  pieces?: number;
   overlaps?: number;
+  thick?: boolean;
+  thickness?: number;
   bytes?: number;
   svg?: string;
   dxf?: string;
@@ -49,6 +52,7 @@ export default function PapercraftDemoPage() {
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState<string | null>(null);
   const [imageName, setImageName] = useState('');
+  const [thickness, setThickness] = useState(0); // material thickness mm; 0 = thin paper
 
   const onPickImage = (file: File | null) => {
     if (!file) { setImage(null); setImageName(''); return; }
@@ -66,7 +70,7 @@ export default function PapercraftDemoPage() {
     try {
       const res = await fetch('/api/nexyfab/papercraft-net', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: text, ...(image ? { image } : {}) }),
+        body: JSON.stringify({ prompt: text, ...(image ? { image } : {}), ...(thickness > 0 ? { thickness } : {}) }),
       });
       setResult(await res.json());
     } catch {
@@ -86,7 +90,7 @@ export default function PapercraftDemoPage() {
       if (positions.length < 9) { setResult({ ok: false, error: 'STL을 읽지 못했어요 (삼각형이 없어요).' }); return; }
       const res = await fetch('/api/nexyfab/papercraft-unfold', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ positions }),
+        body: JSON.stringify({ positions, ...(thickness > 0 ? { thickness } : {}) }),
       });
       setResult(await res.json());
     } catch {
@@ -155,6 +159,16 @@ export default function PapercraftDemoPage() {
           </button>
         </div>
 
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, color: '#8b949e' }}>재료 두께</span>
+          {[{ v: 0, l: '얇은 종이' }, { v: 1, l: '두꺼운 종이' }, { v: 3, l: '우드락 3mm' }, { v: 5, l: '우드락 5mm' }].map(o => (
+            <button key={o.v} onClick={() => setThickness(o.v)}
+              style={{ padding: '4px 12px', borderRadius: 16, border: `1px solid ${thickness === o.v ? '#2563eb' : '#30363d'}`, background: thickness === o.v ? '#13294d' : '#161b22', color: thickness === o.v ? '#cfe1ff' : '#8b949e', fontSize: 12, cursor: 'pointer' }}>
+              {o.l}
+            </button>
+          ))}
+        </div>
+
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
           {EXAMPLES.map(ex => (
             <button key={ex} onClick={() => void generate(ex)} disabled={loading}
@@ -195,6 +209,7 @@ export default function PapercraftDemoPage() {
               <div style={{ fontSize: 13, color: '#8b949e' }}>
                 {result.dims && <>치수 {result.dims.W}×{result.dims.D}×{result.dims.H}mm · {result.dims.type === 'room' ? '방(개방)' : result.dims.roof === 'gable' ? '박공지붕' : '평지붕'}</>}
                 {typeof result.faceCount === 'number' && <>면 {result.faceCount}개</>}
+                {typeof result.pieces === 'number' && result.pieces > 1 && <> · 조각 {result.pieces}개</>}
                 {result.layers && <> · 칼선 {result.layers.CUT} / 접는선 {result.layers.FOLD} / 탭 {result.layers.TAB}</>}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -206,6 +221,11 @@ export default function PapercraftDemoPage() {
                 </button>
               </div>
             </div>
+            {result.thick && (
+              <div style={{ background: '#12243a', border: '1px solid #1a5a8a', borderRadius: 8, padding: '8px 12px', marginBottom: 10, fontSize: 12, color: '#74b9f0' }}>
+                🧱 두꺼운 보드({result.thickness}mm)는 접기 어렵습니다 — 면을 따로 잘라 탭/풀로 조립하거나, 적층(레이어) 방식을 권장합니다. 탭은 두께에 맞춰 넓혔습니다.
+              </div>
+            )}
             {typeof result.overlaps === 'number' && result.overlaps > 0 && (
               <div style={{ background: '#3a2a12', border: '1px solid #8a6d1a', borderRadius: 8, padding: '8px 12px', marginBottom: 10, fontSize: 12, color: '#f0c674' }}>
                 ⚠ 일부 면이 겹쳐서 펼쳐졌어요 ({result.overlaps}개). 저폴리 모델이 더 깔끔하게 펼쳐집니다 — 겹친 부분은 솔기를 나눠 수동 보정이 필요할 수 있어요.
