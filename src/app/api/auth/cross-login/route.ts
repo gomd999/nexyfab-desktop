@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
   const now = Date.now();
 
   await db.execute(
-    "UPDATE nf_refresh_tokens SET revoked = 1 WHERE user_id = ? AND revoked = 0",
+    "UPDATE nf_refresh_tokens SET revoked = TRUE WHERE user_id = ? AND revoked = FALSE",
     dbUser.id,
   );
   await db.execute(

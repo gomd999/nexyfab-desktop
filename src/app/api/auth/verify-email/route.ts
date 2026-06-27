@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '인증 코드가 올바르지 않습니다.' }, { status: 400 });
   }
 
-  await db.execute('UPDATE nf_users SET email_verified = 1 WHERE id = ?', userId);
+  await db.execute('UPDATE nf_users SET email_verified = TRUE WHERE id = ?', userId);
   await db.execute('DELETE FROM nf_verification_codes WHERE user_id = ?', userId);
 
   try {

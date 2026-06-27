@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     const db = getDbAdapter();
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
-    await db.execute('UPDATE nf_refresh_tokens SET revoked = 1 WHERE token_hash = ?', tokenHash);
+    await db.execute('UPDATE nf_refresh_tokens SET revoked = TRUE WHERE token_hash = ?', tokenHash);
 
     const response = NextResponse.json({ ok: true });
     response.cookies.set('nf_refresh_token', '', {

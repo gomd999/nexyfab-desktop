@@ -311,9 +311,9 @@ export async function POST(req: NextRequest) {
       `INSERT INTO nf_users (id, email, name, password_hash, plan, email_verified, project_count, created_at,
         signup_source, language, login_count, services, signup_service, ${SERVICE_NAME}_plan, updated_at,
         terms_agreed_at, privacy_agreed_at, age_confirmed)
-       VALUES (?, ?, ?, ?, ?, 1, 0, ?,
+       VALUES (?, ?, ?, ?, ?, TRUE, 0, ?,
         'admin', 'en', 0, ?, ?, ?, ?,
-        ?, ?, 1)`,
+        ?, ?, TRUE)`,
       id, email, displayName, passwordHash, plan, now,
       JSON.stringify([SERVICE_NAME]), SERVICE_NAME, plan, now,
       now, now,

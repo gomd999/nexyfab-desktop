@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       `SELECT rt.*, u.email, u.plan, u.email_verified, u.stage
        FROM nf_refresh_tokens rt
        JOIN nf_users u ON u.id = rt.user_id
-       WHERE rt.token_hash = ? AND rt.revoked = 0 AND rt.expires_at > ?`,
+       WHERE rt.token_hash = ? AND rt.revoked = FALSE AND rt.expires_at > ?`,
       tokenHash, Date.now(),
     );
 
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     const now = Date.now();
 
     await db.transaction(async (db) => {
-      await db.execute('UPDATE nf_refresh_tokens SET revoked = 1 WHERE id = ?', row.id);
+      await db.execute('UPDATE nf_refresh_tokens SET revoked = TRUE WHERE id = ?', row.id);
 
       await db.execute(
         `INSERT INTO nf_refresh_tokens (id, user_id, token_hash, expires_at, revoked, created_at)

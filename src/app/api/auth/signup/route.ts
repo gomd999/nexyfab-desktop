@@ -149,10 +149,10 @@ export async function POST(req: NextRequest) {
         signup_source, language, country, timezone, company, last_login_at, login_count, signup_ip, last_login_ip,
         services, signup_service, ${SERVICE_NAME}_plan, updated_at,
         terms_agreed_at, privacy_agreed_at, age_confirmed)
-       VALUES (?, ?, ?, ?, 'free', 0, 0, ?,
+       VALUES (?, ?, ?, ?, 'free', FALSE, 0, ?,
         'email', ?, ?, ?, ?, ?, 1, ?, ?,
         ?, ?, 'free', ?,
-        ?, ?, 1)`,
+        ?, ?, TRUE)`,
       id, email, displayName, passwordHash, now,
       userLang, userCountry, userTimezone, userCompany, now, ip, ip,
       JSON.stringify([SERVICE_NAME]), SERVICE_NAME, now,

@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
     const now = Date.now();
     // 동시 접속 방지: 기존 세션 revoke
     await db.execute(
-      "UPDATE nf_refresh_tokens SET revoked = 1 WHERE user_id = ? AND revoked = 0",
+      "UPDATE nf_refresh_tokens SET revoked = TRUE WHERE user_id = ? AND revoked = FALSE",
       user.id,
     );
     await db.execute(

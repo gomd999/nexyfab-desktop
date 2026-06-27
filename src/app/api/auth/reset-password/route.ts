@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   await db.transaction(async (tx) => {
     await tx.execute('UPDATE nf_users SET password_hash = ?, failed_login_attempts = 0, locked_until = NULL WHERE id = ?', passwordHash, row.user_id);
     await tx.execute('DELETE FROM nf_password_reset_tokens WHERE id = ?', row.id);
-    await tx.execute('UPDATE nf_refresh_tokens SET revoked = 1 WHERE user_id = ?', row.user_id);
+    await tx.execute('UPDATE nf_refresh_tokens SET revoked = TRUE WHERE user_id = ?', row.user_id);
   });
 
   return NextResponse.json({ ok: true });

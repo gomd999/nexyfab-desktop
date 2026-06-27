@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
   }
 
-  await db.execute('UPDATE nf_users SET totp_enabled = 1 WHERE id = ?', authUser.userId);
+  await db.execute('UPDATE nf_users SET totp_enabled = TRUE WHERE id = ?', authUser.userId);
 
   return NextResponse.json({ ok: true, message: '2FA enabled successfully' });
 }
@@ -119,7 +119,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid 2FA code' }, { status: 401 });
   }
 
-  await db.execute('UPDATE nf_users SET totp_secret = NULL, totp_enabled = 0 WHERE id = ?', authUser.userId);
+  await db.execute('UPDATE nf_users SET totp_secret = NULL, totp_enabled = FALSE WHERE id = ?', authUser.userId);
 
   return NextResponse.json({ ok: true, message: '2FA disabled' });
 }
