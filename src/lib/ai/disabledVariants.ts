@@ -74,7 +74,8 @@ export async function disableVariant(entry: DisableEntry): Promise<void> {
   await ensureTable();
   const db = getDbAdapter();
   await db.execute(
-    `INSERT OR REPLACE INTO nf_disabled_variants (variant_id, reason, disabled_at, disabled_by) VALUES (?, ?, ?, ?)`,
+    `INSERT INTO nf_disabled_variants (variant_id, reason, disabled_at, disabled_by) VALUES (?, ?, ?, ?)
+     ON CONFLICT (variant_id) DO UPDATE SET reason = EXCLUDED.reason, disabled_at = EXCLUDED.disabled_at, disabled_by = EXCLUDED.disabled_by`,
     entry.variantId,
     entry.reason ?? null,
     Date.now(),

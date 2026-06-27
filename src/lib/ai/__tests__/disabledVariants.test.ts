@@ -17,7 +17,9 @@ vi.mock('@/lib/db-adapter', () => ({
         getOrCreateTable('nf_disabled_variants');
         return;
       }
-      if (/INSERT OR REPLACE INTO nf_disabled_variants/i.test(sql)) {
+      // Matches both the legacy "INSERT OR REPLACE" and the current
+      // "INSERT ... ON CONFLICT DO UPDATE" upsert — Map.set is upsert either way.
+      if (/INSERT (OR REPLACE )?INTO nf_disabled_variants/i.test(sql)) {
         const t = getOrCreateTable('nf_disabled_variants');
         const [variant_id, reason, disabled_at, disabled_by] = args as [string, string | null, number, string | null];
         t.set(variant_id, { variant_id, reason, disabled_at, disabled_by });
