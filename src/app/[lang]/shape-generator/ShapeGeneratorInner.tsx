@@ -634,6 +634,9 @@ export function ShapeGeneratorInner() {
   // fresh parametric shape is started (handleSelectShape).
   const importStlRef = useRef<string | null>(null);
   const importScadRef = useRef<string>('import("model.stl");');
+  // Tracks the geometry uuid we last showed the "too heavy for auto-DFM" hint
+  // for, so the nudge fires once per heavy model rather than on every re-render.
+  const heavyDfmHintRef = useRef<string | null>(null);
   // Forward ref to handleGenerateActiveProfile so the early-mounted tool
   // listener can fire it (the handler is declared later in this function).
   const handleGenerateActiveProfileRef = useRef<(() => void) | null>(null);
@@ -5120,7 +5123,19 @@ export function ShapeGeneratorInner() {
     // "unexpected exit". The manual DFM button still runs the full analysis.
     const _geo = effectiveResult.geometry;
     const _tris = _geo.index ? _geo.index.count / 3 : (_geo.attributes.position?.count ?? 0) / 3;
-    if (_tris > 15000) return;
+    if (_tris > 50000) {
+      // Too heavy for the automatic background pass — nudge the user to run DFM
+      // manually (once per model), since the silent skip otherwise looks like
+      // "DFM doesn't work on my import".
+      if (heavyDfmHintRef.current !== _geo.uuid) {
+        heavyDfmHintRef.current = _geo.uuid;
+        const k = Math.round(_tris / 1000);
+        addToast('info', lang === 'ko'
+          ? `무거운 모델(약 ${k}k 삼각형) — 자동 DFM은 건너뜁니다. 도구 모음의 DFM 버튼으로 직접 실행하세요.`
+          : `Heavy model (~${k}k triangles) — auto DFM is skipped. Run it manually from the DFM toolbar button.`);
+      }
+      return;
+    }
     const timer = setTimeout(async () => {
       if (!dfmAnalysisAllowed(useAuthStore.getState().user?.plan)) return;
       try {
@@ -5136,7 +5151,7 @@ export function ShapeGeneratorInner() {
       }
     }, 1800);
     return () => clearTimeout(timer);
-  }, [effectiveResult, analyzeDFMWorker, authUser?.plan, setDfmResults]);
+  }, [effectiveResult, analyzeDFMWorker, authUser?.plan, setDfmResults, addToast, lang]);
 
   // Count of DFM error/warning issues from last analysis (drives toolbar badge)
   const dfmIssueCount = useMemo(
