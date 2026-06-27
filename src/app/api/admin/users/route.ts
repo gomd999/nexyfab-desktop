@@ -4,10 +4,12 @@
  * DELETE /api/admin/users  — 회원 삭제 { userId }
  */
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import { verifyAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { evaluateStage } from '@/lib/stage-engine';
+import { SERVICE_NAME } from '@/lib/service-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -277,4 +279,48 @@ export async function DELETE(req: NextRequest) {
   await db.execute('DELETE FROM nf_users WHERE id = ?', userId);
 
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * POST /api/admin/users — admin provisions a new account (public sign-up is
+ * invite-only). { email, password, name?, plan? } → bcrypt + pre-verified user
+ * that can log in immediately. No welcome email / JWT here.
+ */
+export async function POST(req: NextRequest) {
+  if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!(await verifyAdmin(req))) return unauthorized();
+
+  const body = await req.json().catch(() => ({})) as { email?: string; password?: string; name?: string; plan?: string };
+  const email = (body.email ?? '').trim().toLowerCase();
+  const password = body.password ?? '';
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return NextResponse.json({ error: '유효한 이메일을 입력하세요.' }, { status: 400 });
+  if (password.length < 8) return NextResponse.json({ error: '비밀번호는 8자 이상이어야 합니다.' }, { status: 400 });
+  const plan = ['free', 'pro', 'team'].includes(body.plan ?? '') ? body.plan! : 'free';
+
+  const db = getDbAdapter();
+  const existing = await db.queryOne<{ id: string }>('SELECT id FROM nf_users WHERE email = ?', email);
+  if (existing) return NextResponse.json({ error: '이미 존재하는 이메일입니다.' }, { status: 409 });
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  const displayName = (body.name?.trim() || email.split('@')[0]).slice(0, 100);
+
+  try {
+    await db.execute(
+      `INSERT INTO nf_users (id, email, name, password_hash, plan, email_verified, project_count, created_at,
+        signup_source, language, login_count, services, signup_service, ${SERVICE_NAME}_plan, updated_at,
+        terms_agreed_at, privacy_agreed_at, age_confirmed)
+       VALUES (?, ?, ?, ?, ?, 1, 0, ?,
+        'admin', 'en', 0, ?, ?, ?, ?,
+        ?, ?, 1)`,
+      id, email, displayName, passwordHash, plan, now,
+      JSON.stringify([SERVICE_NAME]), SERVICE_NAME, plan, now,
+      now, now,
+    );
+  } catch (e) {
+    return NextResponse.json({ error: 'DB insert failed', detail: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200) }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, user: { id, email, name: displayName, plan } }, { status: 201 });
 }

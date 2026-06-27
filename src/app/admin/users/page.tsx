@@ -132,6 +132,14 @@ export default function AdminUsersPage() {
   const [error, setError]     = useState('');
   const [toast, setToast]     = useState('');
 
+  // Create-account form (admin provisioning — public sign-up is invite-only)
+  const [createOpen, setCreateOpen] = useState(false);
+  const [cEmail, setCEmail]   = useState('');
+  const [cName, setCName]     = useState('');
+  const [cPw, setCPw]         = useState('');
+  const [cPlan, setCPlan]     = useState('free');
+  const [cBusy, setCBusy]     = useState(false);
+
   // Filters
   const [filterPlan, setFilterPlan]         = useState('');
   const [filterRole, setFilterRole]         = useState('');
@@ -197,6 +205,28 @@ export default function AdminUsersPage() {
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(''), 3500);
+  }
+
+  async function handleCreateUser() {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cEmail)) { showToast('유효한 이메일을 입력하세요.'); return; }
+    if (cPw.length < 8) { showToast('비밀번호는 8자 이상이어야 합니다.'); return; }
+    setCBusy(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cEmail.trim(), password: cPw, name: cName.trim(), plan: cPlan }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast(`계정 생성 완료: ${cEmail}`);
+        setCEmail(''); setCName(''); setCPw(''); setCPlan('free'); setCreateOpen(false);
+        void load();
+      } else {
+        showToast(data.error || data.detail || `생성 실패 (${res.status})`);
+      }
+    } catch { showToast('생성 중 오류가 발생했습니다.'); }
+    finally { setCBusy(false); }
   }
 
   async function handleEdit() {
@@ -324,6 +354,34 @@ export default function AdminUsersPage() {
           {toast}
         </div>
       )}
+
+      {/* Create account — admin provisioning (public sign-up is invite-only) */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-gray-900">계정 생성 (관리자 발급)</h2>
+            <p className="text-xs text-gray-500 mt-0.5">공개 회원가입은 비공개입니다. 여기서 만든 계정만 로그인할 수 있어요.</p>
+          </div>
+          <button onClick={() => setCreateOpen(o => !o)} className="text-sm font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-500">
+            {createOpen ? '닫기' : '+ 새 계정'}
+          </button>
+        </div>
+        {createOpen && (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input value={cEmail} onChange={e => setCEmail(e.target.value)} type="email" placeholder="이메일" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input value={cName} onChange={e => setCName(e.target.value)} type="text" placeholder="이름 (선택)" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input value={cPw} onChange={e => setCPw(e.target.value)} type="text" placeholder="비밀번호 (8자 이상)" className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <select value={cPlan} onChange={e => setCPlan(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              <option value="free">Free</option>
+              <option value="pro">Pro</option>
+              <option value="team">Team</option>
+            </select>
+            <button onClick={() => void handleCreateUser()} disabled={cBusy} className="sm:col-span-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-500 disabled:opacity-60">
+              {cBusy ? '생성 중…' : '계정 생성 + 접근 권한 부여'}
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Detail modal */}
       {detailUser && (

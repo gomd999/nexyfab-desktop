@@ -28,6 +28,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
   }
 
+  // Public sign-up is invite-only: accounts are provisioned by an admin
+  // (see /admin/users). Set SIGNUPS_OPEN=1 to re-open public registration.
+  if (process.env.SIGNUPS_OPEN !== '1') {
+    return NextResponse.json({
+      error: '회원가입은 현재 비공개입니다 — 허용된 인원만 접근할 수 있어요. 접근 권한이 필요하면 관리자에게 문의하세요.',
+      errorEn: 'Registration is currently invite-only — access is limited to approved members. Contact an administrator for access.',
+      code: 'SIGNUPS_CLOSED',
+    }, { status: 403 });
+  }
+
   const body = await req.json() as {
     email?: string; password?: string; name?: string; language?: string;
     country?: string; timezone?: string; company?: string;
