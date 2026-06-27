@@ -4341,7 +4341,13 @@ export function ShapeGeneratorInner() {
     // Key is the cloud project id when available, otherwise 'local'.
     if (effectiveResult?.geometry) {
       void import('./_shell/geometryBridge').then(({ writeGeometry }) => {
-        writeGeometry(cloudProjectId ?? 'local', effectiveResult.geometry, selectedId ?? null);
+        // Always mirror to 'local' — the Render/Drawing tabs navigate WITHOUT a
+        // projectId, so those routes read readGeometry('local'). Writing only to
+        // the cloud-project key left them reading an empty 'local' slot, so the
+        // model (e.g. a fresh import) vanished into the sphere/primitive fallback.
+        const key = cloudProjectId ?? 'local';
+        writeGeometry(key, effectiveResult.geometry, selectedId ?? null);
+        if (key !== 'local') writeGeometry('local', effectiveResult.geometry, selectedId ?? null);
       });
     }
     // Publish the feature tree snapshot for the shell-v2 sidebar.
