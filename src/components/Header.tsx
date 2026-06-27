@@ -186,9 +186,13 @@ export default function Header() {
                         }}>BETA</span>
                     </Link>
 
-                    {/* Desktop Pill Nav — absolutely centered */}
+                    {/* Desktop Pill Nav — a flex child (NOT absolutely centered):
+                        absolute centering ignored the right controls' width, so
+                        when signed in (Studio + Dashboard + Sign Out) the pill
+                        overlapped the language selector. In-flow + space-between
+                        keeps logo · nav · controls apart at every width. */}
                     <nav aria-label="Main navigation" style={{
-                        position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+                        margin: '0 12px', flexShrink: 1, minWidth: 0,
                         display: 'flex', alignItems: 'center', gap: '1px',
                         flexWrap: 'nowrap',
                         background: 'rgba(243,244,246,0.7)',
@@ -268,7 +272,7 @@ export default function Header() {
                     </nav>
 
                     {/* Right Actions */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
                         {currentUser && (
                             <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                                 <NexyfabNotificationBell ariaLabel={t.notifications} />
