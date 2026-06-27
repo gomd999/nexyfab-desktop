@@ -7,10 +7,33 @@ interface NetResult {
   dims?: { W: number; D: number; H: number; type?: string; roof?: string };
   layers?: { CUT: number; FOLD: number; TAB: number };
   steps?: string[];
+  faceCount?: number;
+  overlaps?: number;
   bytes?: number;
   svg?: string;
   dxf?: string;
   error?: string;
+}
+
+/** Parse binary or ASCII STL → flat [x,y,z,…] vertex positions. */
+function parseStlPositions(buf: ArrayBuffer): number[] {
+  const dv = new DataView(buf);
+  const triCount = buf.byteLength >= 84 ? dv.getUint32(80, true) : 0;
+  if (triCount > 0 && 84 + triCount * 50 === buf.byteLength) {
+    const pos: number[] = []; let off = 84;
+    for (let i = 0; i < triCount; i++) {
+      off += 12; // skip normal
+      for (let v = 0; v < 3; v++) { pos.push(dv.getFloat32(off, true), dv.getFloat32(off + 4, true), dv.getFloat32(off + 8, true)); off += 12; }
+      off += 2;
+    }
+    return pos;
+  }
+  const txt = new TextDecoder().decode(new Uint8Array(buf));
+  const pos: number[] = [];
+  const re = /vertex\s+([-\d.eE+]+)\s+([-\d.eE+]+)\s+([-\d.eE+]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(txt))) pos.push(parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]));
+  return pos;
 }
 
 const EXAMPLES = [
@@ -51,6 +74,24 @@ export default function PapercraftDemoPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Gap 1: upload an arbitrary 3D model (STL) → generic mesh unfold → net.
+  const onPickStl = async (file: File | null) => {
+    if (!file) return;
+    setLoading(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const positions = parseStlPositions(buf);
+      if (positions.length < 9) { setResult({ ok: false, error: 'STL을 읽지 못했어요 (삼각형이 없어요).' }); return; }
+      const res = await fetch('/api/nexyfab/papercraft-unfold', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ positions }),
+      });
+      setResult(await res.json());
+    } catch {
+      setResult({ ok: false, error: '펼치기에 실패했어요. 다른 모델로 시도해 주세요.' });
+    } finally { setLoading(false); }
   };
 
   const downloadDxf = () => {
@@ -138,11 +179,22 @@ export default function PapercraftDemoPage() {
             : <span style={{ fontSize: 13, color: '#8b949e' }}>사진을 올리면 AI가 치수·지붕·형태를 추정해 전개도를 만듭니다 (글 설명은 선택).</span>}
         </div>
 
+        {/* Gap 1: generic 3D model → mesh unfold. */}
+        <div style={{ border: '1px dashed #30363d', borderRadius: 10, padding: 14, marginBottom: 28, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <label style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #30363d', background: '#161b22', color: '#e6edf3', fontSize: 14, cursor: 'pointer' }}>
+            🧊 3D 모델(STL) 펼치기
+            <input type="file" accept=".stl,model/stl" style={{ display: 'none' }}
+              onChange={e => void onPickStl(e.target.files?.[0] ?? null)} />
+          </label>
+          <span style={{ fontSize: 13, color: '#8b949e' }}>임의의 3D 모델(STL)을 올리면 삼각형 메시를 펼쳐 전개도로 만듭니다 (저폴리 모델이 잘 펼쳐져요).</span>
+        </div>
+
         {result && result.ok && result.svg && (
           <div style={{ border: '1px solid #30363d', borderRadius: 12, padding: 20, background: '#161b22' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
               <div style={{ fontSize: 13, color: '#8b949e' }}>
                 {result.dims && <>치수 {result.dims.W}×{result.dims.D}×{result.dims.H}mm · {result.dims.type === 'room' ? '방(개방)' : result.dims.roof === 'gable' ? '박공지붕' : '평지붕'}</>}
+                {typeof result.faceCount === 'number' && <>면 {result.faceCount}개</>}
                 {result.layers && <> · 칼선 {result.layers.CUT} / 접는선 {result.layers.FOLD} / 탭 {result.layers.TAB}</>}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -154,6 +206,11 @@ export default function PapercraftDemoPage() {
                 </button>
               </div>
             </div>
+            {typeof result.overlaps === 'number' && result.overlaps > 0 && (
+              <div style={{ background: '#3a2a12', border: '1px solid #8a6d1a', borderRadius: 8, padding: '8px 12px', marginBottom: 10, fontSize: 12, color: '#f0c674' }}>
+                ⚠ 일부 면이 겹쳐서 펼쳐졌어요 ({result.overlaps}개). 저폴리 모델이 더 깔끔하게 펼쳐집니다 — 겹친 부분은 솔기를 나눠 수동 보정이 필요할 수 있어요.
+              </div>
+            )}
             <div style={{ background: '#fff', borderRadius: 8, padding: 16 }} dangerouslySetInnerHTML={{ __html: result.svg }} />
             <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 12, color: '#8b949e' }}>
               <span><span style={{ color: '#dc2626' }}>━</span> 칼선(Cut)</span>
