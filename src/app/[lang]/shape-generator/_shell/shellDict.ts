@@ -30,6 +30,7 @@ export interface ShellDict {
   fmExportStl: string;
   fmExportStep: string;
   fmExportPapercraft: string;
+  fmExportSlice: string;
   fmAllProjects: string;
   fmBackToHub: string;
   // ── ModelerShell · relative time ('{n}' = number) ──
@@ -291,6 +292,7 @@ const ko: ShellDict = {
   fmExportStl: 'STL 내보내기',
   fmExportStep: 'STEP 내보내기',
   fmExportPapercraft: '종이로 펼치기 (DXF)',
+  fmExportSlice: '적층 슬라이스 (DXF)',
   fmAllProjects: '프로젝트 목록',
   fmBackToHub: '허브로',
   tJustNow: '방금',
@@ -535,6 +537,7 @@ const en: ShellDict = {
   fmExportStl: 'Export STL',
   fmExportStep: 'Export STEP',
   fmExportPapercraft: 'Unfold to papercraft (DXF)',
+  fmExportSlice: 'Slice into layers (DXF)',
   fmAllProjects: 'All Projects',
   fmBackToHub: 'Back to Hub',
   tJustNow: 'just now',
@@ -779,6 +782,7 @@ const ja: ShellDict = {
   fmExportStl: 'STL をエクスポート',
   fmExportStep: 'STEP をエクスポート',
   fmExportPapercraft: 'ペーパークラフトに展開 (DXF)',
+  fmExportSlice: 'レイヤーにスライス (DXF)',
   fmAllProjects: 'すべてのプロジェクト',
   fmBackToHub: 'ハブに戻る',
   tJustNow: 'たった今',
@@ -1023,6 +1027,7 @@ const zh: ShellDict = {
   fmExportStl: '导出 STL',
   fmExportStep: '导出 STEP',
   fmExportPapercraft: '展开为纸艺 (DXF)',
+  fmExportSlice: '切片为层 (DXF)',
   fmAllProjects: '所有项目',
   fmBackToHub: '返回中心',
   tJustNow: '刚刚',
@@ -1267,6 +1272,7 @@ const es: ShellDict = {
   fmExportStl: 'Exportar STL',
   fmExportStep: 'Exportar STEP',
   fmExportPapercraft: 'Desplegar a papercraft (DXF)',
+  fmExportSlice: 'Cortar en capas (DXF)',
   fmAllProjects: 'Todos los proyectos',
   fmBackToHub: 'Volver al hub',
   tJustNow: 'ahora mismo',
@@ -1511,6 +1517,7 @@ const ar: ShellDict = {
   fmExportStl: 'تصدير STL',
   fmExportStep: 'تصدير STEP',
   fmExportPapercraft: 'فرد إلى ورق (DXF)',
+  fmExportSlice: 'تقطيع إلى طبقات (DXF)',
   fmAllProjects: 'كل المشاريع',
   fmBackToHub: 'العودة إلى المركز',
   tJustNow: 'الآن',

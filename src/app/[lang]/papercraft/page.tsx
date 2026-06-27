@@ -9,6 +9,7 @@ interface NetResult {
   steps?: string[];
   faceCount?: number;
   pieces?: number;
+  layerCount?: number;
   overlaps?: number;
   thick?: boolean;
   thickness?: number;
@@ -95,6 +96,25 @@ export default function PapercraftDemoPage() {
       setResult(await res.json());
     } catch {
       setResult({ ok: false, error: '펼치기에 실패했어요. 다른 모델로 시도해 주세요.' });
+    } finally { setLoading(false); }
+  };
+
+  // Slice an uploaded 3D model (STL) into stacked foam-board layers — works for
+  // curved / high-poly models that can't fold.
+  const onPickStlSlice = async (file: File | null) => {
+    if (!file) return;
+    setLoading(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const positions = parseStlPositions(buf);
+      if (positions.length < 9) { setResult({ ok: false, error: 'STL을 읽지 못했어요 (삼각형이 없어요).' }); return; }
+      const res = await fetch('/api/nexyfab/papercraft-slice', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ positions, ...(thickness > 0 ? { thickness } : { thickness: 5 }) }),
+      });
+      setResult(await res.json());
+    } catch {
+      setResult({ ok: false, error: '슬라이스에 실패했어요. 다른 모델로 시도해 주세요.' });
     } finally { setLoading(false); }
   };
 
@@ -196,11 +216,16 @@ export default function PapercraftDemoPage() {
         {/* Gap 1: generic 3D model → mesh unfold. */}
         <div style={{ border: '1px dashed #30363d', borderRadius: 10, padding: 14, marginBottom: 28, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <label style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #30363d', background: '#161b22', color: '#e6edf3', fontSize: 14, cursor: 'pointer' }}>
-            🧊 3D 모델(STL) 펼치기
+            🧊 STL 펼치기
             <input type="file" accept=".stl,model/stl" style={{ display: 'none' }}
               onChange={e => void onPickStl(e.target.files?.[0] ?? null)} />
           </label>
-          <span style={{ fontSize: 13, color: '#8b949e' }}>임의의 3D 모델(STL)을 올리면 삼각형 메시를 펼쳐 전개도로 만듭니다 (저폴리 모델이 잘 펼쳐져요).</span>
+          <label style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #30363d', background: '#161b22', color: '#e6edf3', fontSize: 14, cursor: 'pointer' }}>
+            🥞 STL 적층 슬라이스
+            <input type="file" accept=".stl,model/stl" style={{ display: 'none' }}
+              onChange={e => void onPickStlSlice(e.target.files?.[0] ?? null)} />
+          </label>
+          <span style={{ fontSize: 13, color: '#8b949e' }}>펼치기=저폴리 접기 / 적층 슬라이스=곡면·고폴리 모델을 층으로 잘라 우드락에 쌓기 (두께 선택 반영).</span>
         </div>
 
         {result && result.ok && result.svg && (
@@ -210,6 +235,7 @@ export default function PapercraftDemoPage() {
                 {result.dims && <>치수 {result.dims.W}×{result.dims.D}×{result.dims.H}mm · {result.dims.type === 'room' ? '방(개방)' : result.dims.roof === 'gable' ? '박공지붕' : '평지붕'}</>}
                 {typeof result.faceCount === 'number' && <>면 {result.faceCount}개</>}
                 {typeof result.pieces === 'number' && result.pieces > 1 && <> · 조각 {result.pieces}개</>}
+                {typeof result.layerCount === 'number' && <>적층 {result.layerCount}장</>}
                 {result.layers && <> · 칼선 {result.layers.CUT} / 접는선 {result.layers.FOLD} / 탭 {result.layers.TAB}</>}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>

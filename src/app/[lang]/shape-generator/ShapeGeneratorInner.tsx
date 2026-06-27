@@ -7513,6 +7513,34 @@ export function ShapeGeneratorInner() {
         })();
         return;
       }
+      if (format === 'papercraft-slice') {
+        // Cross-section the model into foam-board (우드락) slabs — works for
+        // curved / high-poly imports that can't fold. Default 5mm slabs.
+        void (async () => {
+          const geo = effectiveResult.geometry;
+          const posAttr = geo.attributes.position;
+          if (!posAttr) { addToast('error', lang === 'ko' ? '형상에 정점이 없습니다.' : 'No vertices.'); return; }
+          const positions = Array.from(posAttr.array as ArrayLike<number>);
+          const indices = geo.index ? Array.from(geo.index.array as ArrayLike<number>) : null;
+          addToast('info', lang === 'ko' ? '적층 슬라이스를 만드는 중…' : 'Slicing into stacked layers…');
+          try {
+            const res = await fetch('/api/nexyfab/papercraft-slice', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ positions, indices, thickness: 5 }),
+            });
+            const j = await res.json() as { ok?: boolean; dxf?: string; layerCount?: number; error?: string };
+            if (!res.ok || !j.ok || !j.dxf) { addToast('error', j.error || (lang === 'ko' ? '슬라이스에 실패했어요.' : 'Slice failed.')); return; }
+            const blob = new Blob([j.dxf], { type: 'application/dxf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'papercraft-layers.dxf'; a.click();
+            URL.revokeObjectURL(url);
+            addToast('success', lang === 'ko'
+              ? `적층 슬라이스 생성 — ${j.layerCount}장 (5mm 보드 기준). 잘라서 쌓으세요.`
+              : `Sliced into ${j.layerCount} layers (5mm board). Cut & stack.`);
+          } catch (err) { addToast('error', String((err as Error).message)); }
+        })();
+        return;
+      }
       addToast('warning', `Unknown export format: ${format ?? '(none)'}`);
     };
     // Properties → CAM → export : persist the chosen post-processor dialect,

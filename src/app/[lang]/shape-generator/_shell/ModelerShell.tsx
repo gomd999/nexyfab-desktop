@@ -244,6 +244,15 @@ export function ModelerShell() {
         }
       },
     },
+    {
+      id: 'export-slice',
+      label: d.fmExportSlice,
+      onClick: () => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('nexyfab:file-export', { detail: { format: 'papercraft-slice' } }));
+        }
+      },
+    },
     { id: 'div2', label: '', divider: true },
     {
       id: 'projects',
