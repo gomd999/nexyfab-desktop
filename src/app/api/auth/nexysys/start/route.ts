@@ -27,7 +27,11 @@ export async function GET(req: NextRequest) {
   const challenge = base64url(createHash('sha256').update(verifier).digest());
   const state = base64url(randomBytes(16));
 
-  const origin = req.nextUrl.origin;
+  // Behind Railway's proxy, req.nextUrl.origin resolves to the internal bind
+  // address (https://0.0.0.0:8080) — which the auth-server rejects with
+  // invalid_redirect_uri. Use the public site URL (must match the redirect_uri
+  // seeded for client_id=nexyfab-web in the auth-server).
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nexyfab.com';
   const redirectUri = `${origin}/auth/callback`;
 
   const authorizeUrl = new URL(`${ISSUER}/oauth/authorize`);
