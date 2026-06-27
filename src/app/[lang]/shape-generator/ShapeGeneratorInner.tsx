@@ -6764,20 +6764,45 @@ export function ShapeGeneratorInner() {
     let programRaw: string | null = null;
     let stlB64: string | null = null;
     let sheetStep: string | null = null;
+    let sheetSpec: string | null = null;
     try {
       scad = sessionStorage.getItem('nexyfab:studio-handoff-scad');
       programRaw = sessionStorage.getItem('nexyfab:studio-handoff-program');
       stlB64 = sessionStorage.getItem('nexyfab:studio-handoff-stl');
       sheetStep = sessionStorage.getItem('nexyfab:sheetmetal-handoff-step');
+      sheetSpec = sessionStorage.getItem('nexyfab:sheetmetal-handoff-spec');
     } catch { return; }
-    if (!scad && !programRaw && !stlB64 && !sheetStep) return;
+    if (!scad && !programRaw && !stlB64 && !sheetStep && !sheetSpec) return;
     try {
       sessionStorage.removeItem('nexyfab:studio-handoff-scad');
       sessionStorage.removeItem('nexyfab:studio-handoff-program');
       sessionStorage.removeItem('nexyfab:studio-handoff-stl');
       sessionStorage.removeItem('nexyfab:sheetmetal-handoff-step');
+      sessionStorage.removeItem('nexyfab:sheetmetal-handoff-spec');
     } catch { /* ignore */ }
     void (async () => {
+      // Sheet-metal MVP → modeler as NATIVE editable features: a thin base sheet +
+      // one `flange` feature per edge. Now works because addNode reads the active
+      // node from a ref (the base sheet + flanges parent correctly even batched in
+      // this one handoff tick). Edge map back/front/right/left → edgeIndex 0/1/2/3
+      // (modeler uses Y as thickness, so MVP length L → Z).
+      if (sheetSpec) {
+        try {
+          const spec = JSON.parse(sheetSpec) as { W: number; L: number; T: number; bendRadius?: number; flanges?: { edge: string; height: number; angle?: number }[] };
+          clearAll();
+          setSelectedId('box');
+          setParams({ width: spec.W, height: spec.T, depth: spec.L });
+          const edgeMap: Record<string, number> = { back: 0, front: 1, right: 2, left: 3 };
+          const r = Math.max(0.5, spec.bendRadius ?? spec.T);
+          let n = 0;
+          for (const f of (spec.flanges ?? [])) {
+            addFeatureWithParams('flange', { thickness: spec.T, material: 0, height: Math.max(1, f.height), angle: f.angle ?? 90, radius: r, edgeIndex: edgeMap[f.edge] ?? 0 });
+            n++;
+          }
+          if (n > 0) addToast('success', '판금 부품을 편집 가능한 플랜지 피처로 가져왔어요 — 높이·각도 수정 가능');
+          return;
+        } catch (e) { console.warn('[sheetmetal spec handoff] failed:', e); }
+      }
       // Sheet-metal MVP → modeler: the folded part as a B-rep STEP. Import via
       // the proven replicad mesh pipeline (same as the toolbar STEP import) so it
       // becomes an editable/analysable part — feeds FEA · DFM · quoting.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { FeatureType, FeatureInstance } from './features/types';
 import { getFeatureDefinition } from './features';
 import type { SketchProfile, SketchConfig } from './sketch/types';
@@ -169,6 +169,13 @@ export function useFeatureStack() {
   });
 
   const [activeNodeId, setActiveNodeId] = useState<string>(rootId);
+  // Mirror activeNodeId in a ref so addNode reads the LATEST value within a tick.
+  // Without this, several adds (or clearAll + add) batched in one tick all read
+  // the stale render-time activeNodeId — a node clearAll just removed — so the
+  // new node is parented to a missing node, orphaned, and dropped from the tree
+  // (this is exactly why the sheet-metal native handoff lost its flange).
+  const activeNodeIdRef = useRef<string>(rootId);
+  useEffect(() => { activeNodeIdRef.current = activeNodeId; }, [activeNodeId]);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [labelCounters, setLabelCounters] = useState<Map<string, number>>(new Map());
   const [featureErrors, setFeatureErrors] = useState<Record<string, string>>({});
@@ -262,6 +269,9 @@ export function useFeatureStack() {
     const id = genId();
     const resolvedLabel = label || generateLabel(type, featureType);
     const resolvedIcon = icon || (featureType ? FEATURE_ICONS[featureType] : undefined) || NODE_ICONS[type] || '🔧';
+    // Read the LATEST active node from the ref (not the stale closure) so adds
+    // batched in one tick chain off each other / off a fresh clearAll root.
+    const parentId = activeNodeIdRef.current;
 
     const newNode: HistoryNode = {
       id,
@@ -272,22 +282,25 @@ export function useFeatureStack() {
       params: params || {},
       enabled: true,
       expanded: true,
-      parentId: activeNodeId,
+      parentId,
       children: [],
       editingActive: false,
       timestamp: Date.now(),
-      dependsOn: [activeNodeId],
+      dependsOn: [parentId],
       ...(edgeSelections && edgeSelections.length > 0 ? { edgeSelections } : {}),
       ...(faceSelections && faceSelections.length > 0 ? { faceSelections } : {}),
     };
 
     setNodeMap(prev => {
       const next = new Map(prev);
+      // If the active node went missing (e.g. cleared in the same tick), fall
+      // back to the tree root so the node is never orphaned out of the stack.
+      let attachTo = parentId;
+      if (!next.has(attachTo)) { const r = [...next.values()].find(n => n.parentId === null); if (r) { attachTo = r.id; newNode.parentId = r.id; newNode.dependsOn = [r.id]; } }
       next.set(id, newNode);
-      // Add as child of active node
-      const parent = next.get(activeNodeId);
+      const parent = next.get(attachTo);
       if (parent) {
-        next.set(activeNodeId, {
+        next.set(attachTo, {
           ...parent,
           children: [...parent.children, id],
         });
@@ -295,9 +308,10 @@ export function useFeatureStack() {
       return next;
     });
 
+    activeNodeIdRef.current = id; // sync so the next add in this tick chains here
     setActiveNodeId(id);
     return id;
-  }, [activeNodeId, generateLabel]);
+  }, [generateLabel]);
 
   // ── Remove a node and all descendants ──
 
@@ -716,6 +730,7 @@ export function useFeatureStack() {
     };
     setNodeMap(new Map([[newRootId, root]]));
     setRootId(newRootId);
+    activeNodeIdRef.current = newRootId; // sync so a same-tick add parents to the new root
     setActiveNodeId(newRootId);
     setEditingNodeId(null);
     setLabelCounters(new Map());
