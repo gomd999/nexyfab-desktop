@@ -310,6 +310,7 @@ const ManufacturerMatch = dynamic(() => import('./analysis/ManufacturerMatch'), 
   ) });
 import type { Manufacturer } from './analysis/ManufacturerMatch';
 import { useCollabPolling } from '@/hooks/useCollabPolling';
+import { useSessionKeepalive } from '@/hooks/useSessionKeepalive';
 const StatusBar = dynamic(() => import('./StatusBar'), { ssr: false });
 const BreadcrumbNav = dynamic(() => import('./BreadcrumbNav'), { ssr: false });
 import type { BreadcrumbItem } from './BreadcrumbNav';
@@ -1965,6 +1966,7 @@ export function ShapeGeneratorInner() {
   // ── Shared: Cart ──
   const { items: cartItems, addItem: addCartItem, removeItem: removeCartItem, clearCart } = useShapeCart();
   const { toasts, addToast, removeToast } = useToast();
+  useSessionKeepalive(); // keep the 15-min access token fresh during long sessions
   useEffect(() => { collabAddToastRef.current = addToast; }, [addToast]);
 
   // Phase 6c — drawing template prefs (single user pref shared by

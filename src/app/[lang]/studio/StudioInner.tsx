@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { parseSTL } from '../shape-generator/io/importers';
 import { parseCustomizerParams, applyCustomizerValue } from '@/lib/openscad-render/customizerParams';
 import { useAuthStore } from '@/hooks/useAuth';
+import { useSessionKeepalive } from '@/hooks/useSessionKeepalive';
 import StudioSidebar from './StudioSidebar';
 import { listDesigns, saveDesign, getDesign, deleteDesign, titleFromMessages, type StudioDesign, type StudioChatMsg } from './studioDesigns';
 import { parseScadColors, isolateColorScad, defaultColorCss } from './scadColors';
@@ -103,6 +104,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
 
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
+  useSessionKeepalive(); // keep the 15-min access token fresh during long sessions
   const [image, setImage] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
