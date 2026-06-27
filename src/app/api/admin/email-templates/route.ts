@@ -105,12 +105,19 @@ export async function POST(req: NextRequest) {
     : JSON.stringify([]);
 
   try {
-    // Upsert: insert or replace (SQLite) / ON CONFLICT handled by db-adapter
+    // Upsert via ON CONFLICT DO UPDATE — works on both SQLite (3.24+) and
+    // Postgres. The adapter only rewrites "INSERT OR IGNORE" (→ DO NOTHING),
+    // NOT "INSERT OR REPLACE", so the old form was a Postgres syntax error.
+    // created_at is preserved automatically (it's not in the UPDATE set).
     await db.execute(
-      `INSERT OR REPLACE INTO nf_email_templates
+      `INSERT INTO nf_email_templates
          (id, name, subject, html_body, variables, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM nf_email_templates WHERE id = ?), ?), ?)`,
-      id, name, subject, html_body, variables, id, now, now,
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name, subject = EXCLUDED.subject,
+         html_body = EXCLUDED.html_body, variables = EXCLUDED.variables,
+         updated_at = EXCLUDED.updated_at`,
+      id, name, subject, html_body, variables, now, now,
     );
 
     const created = await db.queryOne<TemplateRow>(
