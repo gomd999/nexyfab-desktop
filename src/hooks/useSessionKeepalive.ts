@@ -23,6 +23,10 @@ export function useSessionKeepalive() {
         body: '{}',
       }).catch(() => { /* offline / guest — ignore */ });
     };
+    // Refresh ONCE immediately on mount — the page may have loaded with a token
+    // that expires before the first 12-min tick (e.g. logged in 14 min ago), and
+    // without this the first authenticated call (cloud sync / import) 401s.
+    refresh();
     const id = setInterval(refresh, 12 * 60 * 1000);
     // Returning to the tab after a while? Top up if it's been > 5 min.
     const onFocus = () => { if (Date.now() - lastRun > 5 * 60 * 1000) refresh(); };
