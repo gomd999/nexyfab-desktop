@@ -12,9 +12,7 @@
  * the production auth server. Either way, the env var wins when set.
  */
 
-const PRODUCTION_AUTH_URL = 'https://auth.nexysys.com';
 const PRODUCTION_NEXYSYS_URL = 'https://nexysys.com';
-const DEV_AUTH_URL = 'http://localhost:4000';
 const DEV_NEXYSYS_URL = 'http://localhost:5173';
 
 function isDevHost(): boolean {
@@ -26,7 +24,12 @@ function isDevHost(): boolean {
 export function authBaseUrl(): string {
   const env = process.env.NEXT_PUBLIC_AUTH_URL;
   if (env) return env;
-  return isDevHost() ? DEV_AUTH_URL : PRODUCTION_AUTH_URL;
+  // The central SSO auth-server (auth.nexysys.com) does NOT implement
+  // /api/auth/login etc. yet — pointing there gives a credentialed-CORS
+  // "Failed to fetch". Default to NexyFab's OWN same-origin auth endpoints
+  // (empty base → relative /api/auth/*). Set NEXT_PUBLIC_AUTH_URL to re-point
+  // at the central server once it ships these routes.
+  return '';
 }
 
 export function nexysysBaseUrl(): string {
