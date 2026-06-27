@@ -161,6 +161,12 @@ export function HubFrame({ lang, onShowAuth }: HubFrameProps) {
       sub: d.qsFromSketchSub,
       href: `/${lang}/shape-generator?entry=sketch`,
     },
+    {
+      ico: 'doc',
+      lbl: lang === 'ko' ? '종이·레이저컷 키트' : 'Papercraft / Laser Kit',
+      sub: lang === 'ko' ? '글·사진·3D → 전개도/적층 DXF' : 'Text/photo/3D → net & DXF',
+      href: `/${lang}/papercraft`,
+    },
   ];
 
   // Filtered projects driven by Hub search input.
