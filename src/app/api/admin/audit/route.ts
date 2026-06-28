@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
       resourceId: r.resource_id,
       metadata: r.metadata ? JSON.parse(r.metadata) : null,
       ip: r.ip,
-      createdAt: new Date(r.created_at).toISOString(),
+      createdAt: (() => { const t = Number(r.created_at); return Number.isFinite(t) && t > 0 ? new Date(t).toISOString() : null; })(),
     })),
     total: countRow?.cnt ?? 0,
     actions: actions.map(a => a.action),

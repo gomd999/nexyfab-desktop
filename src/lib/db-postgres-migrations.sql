@@ -1727,3 +1727,10 @@ CREATE INDEX IF NOT EXISTS idx_nf_pinv_project ON nf_project_invites(project_id)
 ALTER TABLE nf_project_members ALTER COLUMN created_at TYPE BIGINT;
 ALTER TABLE nf_project_invites ALTER COLUMN expires_at TYPE BIGINT;
 ALTER TABLE nf_project_invites ALTER COLUMN created_at TYPE BIGINT;
+
+-- ── Full-checkup backfills (2026-06-28) ──────────────────────────────────────
+-- Columns referenced by code but missing from older tables → endpoint 500s.
+-- Idempotent + non-destructive (placed after all CREATEs).
+ALTER TABLE nf_webhook_events ADD COLUMN IF NOT EXISTS payload TEXT;        -- admin/webhooks 500
+ALTER TABLE nf_rfqs ADD COLUMN IF NOT EXISTS assigned_factory_id TEXT;      -- admin/manufacturing-kpi 500
+ALTER TABLE nf_rfqs ADD COLUMN IF NOT EXISTS assigned_at BIGINT;            -- rfq matching

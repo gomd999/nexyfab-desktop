@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
        FROM nf_usage_events ue
        LEFT JOIN nf_users u ON u.id = ue.user_id
        WHERE ue.cycle_start = strftime('%s', date('now','start of month')) * 1000
-       GROUP BY ue.user_id, ue.product
+       GROUP BY ue.user_id, u.email, u.name, ue.product
        ORDER BY total DESC
        LIMIT 20`,
     ),

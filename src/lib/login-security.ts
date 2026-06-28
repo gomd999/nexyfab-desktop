@@ -115,9 +115,10 @@ async function assessRisk(record: LoginRecord): Promise<RiskAssessment> {
 
     // 1. 최근 1시간 내 다른 IP에서 로그인 횟수
     const recentLogins = await db.queryAll<{ ip: string; country: string | null }>(
+      // No ORDER BY — Postgres rejects ORDER BY created_at with SELECT DISTINCT
+      // (the column isn't selected), and we only build a Set of IPs below.
       `SELECT DISTINCT ip, country FROM nf_login_history
-       WHERE user_id = ? AND success = TRUE AND created_at > ?
-       ORDER BY created_at DESC`,
+       WHERE user_id = ? AND success = TRUE AND created_at > ?`,
       record.userId, now - ONE_HOUR,
     );
     const uniqueIPs = new Set(recentLogins.map(r => r.ip));
