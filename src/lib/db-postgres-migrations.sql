@@ -127,9 +127,14 @@ CREATE TABLE IF NOT EXISTS nf_projects (
   thumbnail   TEXT,
   tags        TEXT,
   created_at  BIGINT NOT NULL,
-  updated_at  BIGINT NOT NULL
+  updated_at  BIGINT NOT NULL,
+  archived_at BIGINT
 );
 CREATE INDEX IF NOT EXISTS idx_projects_user ON nf_projects(user_id);
+-- archived_at was added to the project-list query AFTER this table first shipped;
+-- existing DBs (created without it) → "column archived_at does not exist" 500 on
+-- the project list. Add it idempotently so cloud projects (CAD + papercraft) list.
+ALTER TABLE nf_projects ADD COLUMN IF NOT EXISTS archived_at BIGINT;
 CREATE INDEX IF NOT EXISTS idx_projects_user_updated ON nf_projects(user_id, updated_at);
 
 CREATE TABLE IF NOT EXISTS nf_shares (
