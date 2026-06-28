@@ -215,6 +215,28 @@ export default function PapercraftDemoPage() {
     }
   };
 
+  // Photo → tonal layered relief (사진 같은 적층). Pure image processing — no AI
+  // model: luminance → N tonal bands → contour each → stacked relief + heightmap.
+  const onPhotoRelief = async () => {
+    if (!image) { setResult({ ok: false, error: '먼저 사진을 올리거나 Ctrl+V로 붙여넣어 주세요.' }); return; }
+    setLoading(true); setResult(null); setModel3d(null); setPhase('사진 분석 중…');
+    try {
+      const { imageToField, reliefToSegs, reliefHeightmap } = await import('./relief');
+      const { segmentsToDxf, segmentsToSvg } = await import('@/lib/papercraft/netDxf');
+      const field = await imageToField(image, 140);
+      setPhase('레이어드 부조 만드는 중…');
+      const levels = 6; // tonal layers
+      const { segs, layerCount } = reliefToSegs(field, levels, 2);
+      if (segs.length === 0) { setResult({ ok: false, error: '명암 대비가 약해 층을 못 만들었어요 — 대비가 뚜렷한 사진으로 시도해 주세요.' }); return; }
+      const dxf = segmentsToDxf(segs);
+      const svg = segmentsToSvg(segs);
+      setModel3d({ kind: 'mesh', positions: reliefHeightmap(field, 120, 18) });
+      setResult({ ok: true, layerCount, layers: { CUT: segs.length, FOLD: 0, TAB: 0 }, dxf, svg, bytes: dxf.length });
+    } catch {
+      setResult({ ok: false, error: '부조 생성에 실패했어요. 다른 사진으로 시도해 주세요.' });
+    } finally { setLoading(false); setPhase(''); }
+  };
+
   // Gap 1: upload an arbitrary 3D model (STL) → generic mesh unfold → net.
   const onPickStl = async (file: File | null) => {
     if (!file) return;
@@ -388,6 +410,11 @@ export default function PapercraftDemoPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={image} alt="" style={{ height: 36, borderRadius: 4, border: '1px solid #30363d' }} />
                 {imageName} <button onClick={() => onPickImage(null)} style={{ background: 'none', border: 'none', color: '#f85149', cursor: 'pointer', fontSize: 13 }}>✕ 제거</button>
+                <button onClick={() => void onPhotoRelief()} disabled={loading}
+                  title="사진의 명암을 층으로 — 사진 같은 입체 부조 (적층/레이저컷)"
+                  style={{ marginLeft: 6, padding: '5px 12px', borderRadius: 8, border: 'none', background: loading ? '#1f2937' : 'linear-gradient(90deg,#0ea5e9,#2563eb)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: loading ? 'default' : 'pointer' }}>
+                  🏞️ 입체 부조로 만들기
+                </button>
               </span>
             : <span style={{ fontSize: 13, color: '#8b949e' }}>사진을 올리거나 <b>Ctrl+V로 붙여넣기</b> 후 「✨ 만들기」 — 건물은 추정, 그 외는 AI가 3D로.</span>}
         </div>
