@@ -54,6 +54,8 @@ GEOMETRY & ASSEMBLY — make it actually LOOK like the thing (this matters most)
 - Mirror left/right and front/back parts symmetrically, e.g. \`for (s=[-1,1]) translate([s*dx,0,0]) ...\`.
 - Favor a clear, correct silhouette over tiny cosmetic details.
 - Add the DEFINING details that make the object instantly recognizable — leaving them out is the #1 reason a model looks like a vague blob. For a CAR: a separate lower BODY with front/rear overhangs; a CABIN/greenhouse on top with WINDOW openings (cut dark window shapes into the cabin sides + windshield with difference(), or inset a darker "glass" colour); 4 WHEELS as side-facing cylinders placed with a for-loop at ±track/2 and ±wheelbase/2, sunk slightly into wheel arches, each with a lighter HUBCAP disc; plus headlights, tail lights, and an optional spoiler. Apply the same "main mass + sub-parts + the 2-3 signature features" thinking to ANY object (a mug = wall + base + handle + hollow interior; a gear = hub + rim + teeth).
+- For ANIMALS / CHARACTERS / CREATURES: do NOT stack equal spheres (that reads as a generic "mouse/blob"). Build from a few SCALED ellipsoids — \`scale([sx,sy,sz]) sphere(r)\` — for the torso and head, sized in CORRECT PROPORTION to each other, plus limbs, then add the 2-3 SIGNATURE features that identify the exact species/character and place them anatomically. Examples: koala = chunky upright body + a LARGE round head + very BIG round fuzzy ears on the sides + a big flat dark oval nose + short stubby arms/legs; cat = upright triangular ears + slim body + tail; elephant = trunk + huge flat ears; rabbit = tall upright ears. Getting the proportions and these signature features right is what makes it read as the requested animal rather than a blob.
+- BUILDINGS with detail requested (windows, doors, interior, floors): cut window/door openings into the walls with difference(); add a roof, a base/floor slab, and if "interior" is asked, model it hollow (outer shell minus an inner cavity) so you can see inside — not a solid block.
 
 QUALITY:
 - Make it look good: sensible proportions, rounded edges, a few cosmetic details. Use color() to distinguish parts.
@@ -65,7 +67,7 @@ Output the .scad program now.`;
 
 const def: PromptDefinition = {
   id: 'scad-freeform',
-  version: '1.8.0',
+  version: '1.9.0',
   description: 'Free-form OpenSCAD generation (CADAM-style): the model writes a complete parametric .scad program with Customizer annotations, so organic/assembled models work and dimensions stay slider-adjustable without an AI re-call. Distinct from the whitelist scad-intent-from-nl path.',
   template: TEMPLATE,
   defaults: {

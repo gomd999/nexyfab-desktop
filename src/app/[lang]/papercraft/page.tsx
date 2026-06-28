@@ -64,6 +64,20 @@ export default function PapercraftDemoPage() {
   const [model3d, setModel3d] = useState<Model3D | null>(null); // finished-product 3D preview
   const [mode, setMode] = useState<'slice' | 'fold'>('slice'); // 적층 슬라이스 / 접기 전개
   const [phase, setPhase] = useState(''); // progress label while generating
+  // 상세 설정 — enrich the AI prompt for more accurate / detailed results.
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [style, setStyle] = useState(''); // '' | English style descriptor
+  const [features, setFeatures] = useState(''); // free-text key features
+  const [detailHigh, setDetailHigh] = useState(false);
+
+  const hasDetail = () => !!(style || features.trim() || detailHigh);
+  const composePrompt = (base: string): string => {
+    const parts = [base.trim()];
+    if (style) parts.push(style);
+    if (features.trim()) parts.push(features.trim());
+    if (detailHigh) parts.push('highly detailed, clearly recognizable, correct proportions, emphasize characteristic features, multiple distinct parts');
+    return parts.filter(Boolean).join(', ');
+  };
 
   const onPickImage = (file: File | null) => {
     if (!file) { setImage(null); setImageName(''); return; }
@@ -148,7 +162,7 @@ export default function PapercraftDemoPage() {
     const text = prompt.trim();
     if (!text && !image) return;
     setLoading(true); setResult(null); setModel3d(null);
-    try { await runAiPipeline(text); }
+    try { await runAiPipeline(composePrompt(text)); }
     catch { setResult({ ok: false, error: 'AI 생성 중 오류가 발생했어요.' }); }
     finally { setLoading(false); setPhase(''); }
   };
@@ -159,6 +173,8 @@ export default function PapercraftDemoPage() {
     if (!text && !image) return;
     setLoading(true); setResult(null); setModel3d(null); setPhase('무엇을 만들지 분석 중…');
     try {
+      // 상세 설정이 있으면 (단순 박스로 안 끝내고) 항상 AI로 — 복잡한 건물/물체.
+      if (hasDetail()) { await runAiPipeline(composePrompt(text)); return; }
       // The building generator doubles as the classifier (returns notBuilding).
       const res = await fetch('/api/nexyfab/papercraft-net', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -171,8 +187,8 @@ export default function PapercraftDemoPage() {
         if (j.dims) setModel3d({ kind: 'box', W: j.dims.W, D: j.dims.D, H: j.dims.H, roof: (j.dims.roof as 'flat' | 'gable' | 'open') ?? 'flat', gableH: j.dims.gableHeight });
         return;
       }
-      // Object (or building gen failed) → AI pipeline.
-      await runAiPipeline(text);
+      // Object (or building gen failed) → AI pipeline (with detail composition).
+      await runAiPipeline(composePrompt(text));
     } catch {
       setResult({ ok: false, error: '생성 중 오류가 발생했어요.' });
     } finally { setLoading(false); setPhase(''); }
@@ -320,6 +336,35 @@ export default function PapercraftDemoPage() {
               {o.l}
             </button>
           ))}
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <button onClick={() => setDetailOpen(o => !o)}
+            style={{ background: 'none', border: 'none', color: '#8b949e', fontSize: 13, cursor: 'pointer', padding: 0 }}>
+            ⚙️ 상세 설정 (선택) {detailOpen ? '▾' : '▸'}{hasDetail() && !detailOpen ? ' · 적용됨' : ''}
+          </button>
+          {detailOpen && (
+            <div style={{ marginTop: 10, padding: 12, border: '1px solid #30363d', borderRadius: 8, background: '#10141a', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, color: '#8b949e', width: 56 }}>스타일</span>
+                {[{ v: '', l: '없음' }, { v: 'cute chibi proportions, smooth rounded forms', l: '귀여운' }, { v: 'realistic proportions and silhouette', l: '사실적' }, { v: 'simple low-poly with few parts', l: '단순' }].map(o => (
+                  <button key={o.l} onClick={() => setStyle(o.v)}
+                    style={{ padding: '3px 10px', borderRadius: 14, border: `1px solid ${style === o.v ? '#7c3aed' : '#30363d'}`, background: style === o.v ? '#241338' : '#161b22', color: style === o.v ? '#d8b4fe' : '#8b949e', fontSize: 12, cursor: 'pointer' }}>{o.l}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, color: '#8b949e', width: 56 }}>핵심 특징</span>
+                <input value={features} onChange={e => setFeatures(e.target.value)} placeholder="예: 큰 코, 둥근 귀, 앉은 자세, 통통한 몸"
+                  style={{ flex: '1 1 280px', padding: '7px 10px', borderRadius: 6, border: '1px solid #30363d', background: '#161b22', color: '#e6edf3', fontSize: 13 }} />
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, color: '#8b949e', width: 56 }}>디테일</span>
+                <button onClick={() => setDetailHigh(d => !d)}
+                  style={{ padding: '3px 10px', borderRadius: 14, border: `1px solid ${detailHigh ? '#7c3aed' : '#30363d'}`, background: detailHigh ? '#241338' : '#161b22', color: detailHigh ? '#d8b4fe' : '#8b949e', fontSize: 12, cursor: 'pointer' }}>높음{detailHigh ? ' ✓' : ''}</button>
+                <span style={{ fontSize: 11, color: '#6b7280' }}>※ 상세 설정을 넣으면 건물도 AI가 더 정교하게(창문·내부 등) 만듭니다.</span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
