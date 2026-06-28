@@ -395,19 +395,11 @@ export async function initPostgresSchema(): Promise<void> {
   }
 
   await adapter.executeRaw(sql);
-  // Wave-2 cloud-document tables (nf_workspaces/nf_documents/…) live in a
-  // separate migration that was never run on startup → those tables are missing
-  // in prod → /api/documents 500. Run it too (idempotent: all CREATE IF NOT
-  // EXISTS + DROP TRIGGER IF EXISTS), non-fatal so it can't break the core schema.
-  try {
-    let w2: string | null = null;
-    for (const p of [path.join(__dirname, 'db-migrations-wave-2.sql'), path.join(process.cwd(), 'src', 'lib', 'db-migrations-wave-2.sql')]) {
-      try { w2 = fs.readFileSync(p, 'utf-8'); break; } catch { continue; }
-    }
-    if (w2) await adapter.executeRaw(w2);
-  } catch (e) {
-    console.warn('[db-adapter] wave-2 migration skipped:', e);
-  }
+  // NOTE: the wave-2 cloud-document tables (nf_workspaces/nf_documents/…) live in
+  // db-migrations-wave-2.sql, written with TIMESTAMPTZ + triggers — incompatible
+  // with this app's BIGINT-ms timestamp convention (running it throws "operator
+  // does not exist: integer = boolean"). So /api/documents 500s (tables absent).
+  // Fixing it = porting wave-2 to BIGINT-ms, tracked separately — do NOT auto-run.
   console.log('[db-adapter] PostgreSQL schema initialized');
 }
 
