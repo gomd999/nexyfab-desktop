@@ -51,7 +51,7 @@ export default function StudioViewer({ geometry, object = null, fitKey = 0, them
   return (
     <Canvas
       shadows
-      gl={{ preserveDrawingBuffer: true, antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
+      gl={{ preserveDrawingBuffer: true, antialias: true, logarithmicDepthBuffer: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
       camera={{ position: [120, 90, 140], fov: 45 }}
       style={{ width: '100%', height: '100%', background: light ? 'radial-gradient(circle at 50% 30%, #f3f5f8 0%, #dfe4ea 75%)' : 'radial-gradient(circle at 50% 30%, #232327 0%, #161618 70%)' }}
     >

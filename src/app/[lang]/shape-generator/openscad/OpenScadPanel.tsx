@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
+import { useAuthStore } from '@/hooks/useAuth';
 import * as THREE from 'three';
 import { runJscadCode } from './jscadRunner';
 import { generateVerifiedJscad } from './verifiedJscadGen';
@@ -1750,7 +1751,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
             : { prompt };
       const res = await fetch('/api/nexyfab/scad-intent-from-nl', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(useAuthStore.getState().token ? { Authorization: `Bearer ${useAuthStore.getState().token}` } : {}) },
         body: JSON.stringify(reqBody),
       });
       const data = await res.json().catch(() => ({} as { error?: string; scad?: string; summary?: string; reason?: string; code?: string; resetAtMs?: number }));

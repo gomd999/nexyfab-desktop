@@ -2304,7 +2304,7 @@ export function ShapeGeneratorInner() {
       const editingImport = !!importStlRef.current;
       const resp = await fetch('/api/nexyfab/scad-intent-from-nl', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(useAuthStore.getState().token ? { Authorization: `Bearer ${useAuthStore.getState().token}` } : {}) },
         body: JSON.stringify(
           editingImport
             ? { prompt: p, freeform: true, previousScad: importScadRef.current }

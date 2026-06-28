@@ -287,11 +287,12 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     const group = new THREE.Group();
     for (const r of results) {
       if (!r) continue;
-      const cg = r.tok == null ? { css: defaultColorCss(), alpha: 1 } : colors.find(c => c.token === r.tok);
+      const cg = r.tok == null ? { css: defaultColorCss() } : colors.find(c => c.token === r.tok);
       const css = cg?.css ?? defaultColorCss();
-      const alpha = cg?.alpha ?? 1;
       r.geo.computeVertexNormals();
-      const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(css), metalness: 0.1, roughness: 0.6, transparent: alpha < 1, opacity: alpha });
+      // Render parts opaque — a fab/CAD viewer should show solid bodies; honouring
+      // AI-emitted colour alpha made overlapping parts confusingly see-through.
+      const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(css), metalness: 0.1, roughness: 0.6 });
       group.add(new THREE.Mesh(r.geo, mat));
     }
     if (group.children.length === 0) { setColoredObject(null); return; }

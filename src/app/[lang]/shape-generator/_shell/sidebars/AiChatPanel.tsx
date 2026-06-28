@@ -6,6 +6,7 @@
 // tool intent for Inner to materialise.
 
 import { useEffect, useRef, useState } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
 import { I } from '../Icons';
 import { useLang } from '../../hooks/useLang';
 import { loc } from '../../lib/loc';
@@ -78,6 +79,10 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'text/event-stream, application/json',
+          // Send the access token so a logged-in user is recognised even when the
+          // short-lived auth cookie has expired (raw fetch can't refresh) — else
+          // the request falls back to guest and hits the daily limit → 401.
+          ...(useAuthStore.getState().token ? { Authorization: `Bearer ${useAuthStore.getState().token}` } : {}),
         },
         body: JSON.stringify({ prompt, mode: 'chat', stream: true }),
       });
