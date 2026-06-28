@@ -1734,3 +1734,83 @@ ALTER TABLE nf_project_invites ALTER COLUMN created_at TYPE BIGINT;
 ALTER TABLE nf_webhook_events ADD COLUMN IF NOT EXISTS payload TEXT;        -- admin/webhooks 500
 ALTER TABLE nf_rfqs ADD COLUMN IF NOT EXISTS assigned_factory_id TEXT;      -- admin/manufacturing-kpi 500
 ALTER TABLE nf_rfqs ADD COLUMN IF NOT EXISTS assigned_at BIGINT;            -- rfq matching
+
+-- ── Cloud-document (wave-2) tables, ported to the BIGINT-ms convention ────────
+-- ensureCloudDocTables() in cloudDoc/access.ts created these lazily with INTEGER
+-- timestamps — fine on SQLite (64-bit) but Postgres INTEGER is int4 and overflows
+-- on ms-epoch values (~1.78e12) → /api/documents 500. Define them here (BIGINT)
+-- so they exist at startup with the right types, then ALTER any pre-existing
+-- INTEGER columns up to BIGINT. ids are TEXT (routes mint crypto.randomUUID()).
+CREATE TABLE IF NOT EXISTS nf_workspaces (
+  id          TEXT    PRIMARY KEY,
+  owner_id    TEXT    NOT NULL,
+  name        TEXT    NOT NULL,
+  created_at  BIGINT  NOT NULL,
+  updated_at  BIGINT  NOT NULL,
+  deleted_at  BIGINT
+);
+CREATE TABLE IF NOT EXISTS nf_workspace_members (
+  workspace_id TEXT   NOT NULL,
+  user_id      TEXT   NOT NULL,
+  role         TEXT   NOT NULL,
+  invited_by   TEXT,
+  joined_at    BIGINT NOT NULL,
+  PRIMARY KEY (workspace_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS nf_documents (
+  id               TEXT    PRIMARY KEY,
+  owner_id         TEXT    NOT NULL,
+  workspace_id     TEXT,
+  name             TEXT    NOT NULL,
+  blob_r2_key      TEXT    NOT NULL,
+  version          INTEGER NOT NULL DEFAULT 1,
+  nfab_format      INTEGER NOT NULL DEFAULT 2,
+  yjs_proto        INTEGER NOT NULL DEFAULT 1,
+  thumbnail_r2_key TEXT,
+  size_bytes       BIGINT  NOT NULL DEFAULT 0,
+  feature_count    INTEGER NOT NULL DEFAULT 0,
+  part_count       INTEGER NOT NULL DEFAULT 0,
+  created_at       BIGINT  NOT NULL,
+  updated_at       BIGINT  NOT NULL,
+  last_edited_by   TEXT,
+  deleted_at       BIGINT
+);
+CREATE TABLE IF NOT EXISTS nf_document_permissions (
+  document_id TEXT   NOT NULL,
+  user_id     TEXT   NOT NULL,
+  role        TEXT   NOT NULL,
+  granted_by  TEXT,
+  granted_at  BIGINT NOT NULL,
+  expires_at  BIGINT,
+  PRIMARY KEY (document_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS nf_document_versions (
+  id                TEXT    PRIMARY KEY,
+  document_id       TEXT    NOT NULL,
+  parent_version_id TEXT,
+  blob_r2_key       TEXT    NOT NULL,
+  oplog_r2_key      TEXT,
+  label             TEXT,
+  branch_name       TEXT,
+  is_explicit       INTEGER NOT NULL DEFAULT 0,
+  size_bytes        BIGINT  NOT NULL DEFAULT 0,
+  created_by        TEXT    NOT NULL,
+  created_at        BIGINT  NOT NULL
+);
+-- Widen any pre-existing INTEGER timestamp/size columns to BIGINT (no-op if
+-- already BIGINT; converts the INTEGER tables ensureCloudDocTables made earlier).
+ALTER TABLE nf_workspaces           ALTER COLUMN created_at TYPE BIGINT;
+ALTER TABLE nf_workspaces           ALTER COLUMN updated_at TYPE BIGINT;
+ALTER TABLE nf_workspaces           ALTER COLUMN deleted_at TYPE BIGINT;
+ALTER TABLE nf_workspace_members    ALTER COLUMN joined_at  TYPE BIGINT;
+ALTER TABLE nf_documents            ALTER COLUMN created_at TYPE BIGINT;
+ALTER TABLE nf_documents            ALTER COLUMN updated_at TYPE BIGINT;
+ALTER TABLE nf_documents            ALTER COLUMN deleted_at TYPE BIGINT;
+ALTER TABLE nf_documents            ALTER COLUMN size_bytes TYPE BIGINT;
+ALTER TABLE nf_document_permissions ALTER COLUMN granted_at TYPE BIGINT;
+ALTER TABLE nf_document_permissions ALTER COLUMN expires_at TYPE BIGINT;
+ALTER TABLE nf_document_versions    ALTER COLUMN created_at TYPE BIGINT;
+ALTER TABLE nf_document_versions    ALTER COLUMN size_bytes TYPE BIGINT;
+CREATE INDEX IF NOT EXISTS idx_nf_documents_owner_updated ON nf_documents (owner_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_nf_document_perms_user     ON nf_document_permissions (user_id);
+CREATE INDEX IF NOT EXISTS idx_nf_ws_members_user         ON nf_workspace_members (user_id);
