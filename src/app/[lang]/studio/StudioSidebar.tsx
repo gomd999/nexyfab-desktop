@@ -42,7 +42,7 @@ export default function StudioSidebar({
       </>
     );
     return href
-      ? <a href={href} className={cls}>{inner}</a>
+      ? <a href={href} className={cls} style={{ textDecoration: 'none' }}>{inner}</a>
       : <button onClick={onClick} className={`${cls} w-full text-left`}>{inner}</button>;
   };
 
@@ -120,7 +120,7 @@ export default function StudioSidebar({
             <span className="w-7 h-7 shrink-0 rounded-full bg-gradient-to-br from-emerald-500 to-indigo-500 grid place-items-center text-[11px] font-bold text-white">{(userName ?? 'G')[0]?.toUpperCase()}</span>
             <span className="flex-1 truncate text-[12px] st-text-2">{userName ?? T('게스트', 'Guest')}</span>
             <button onClick={onToggleTheme} className="st-text-3 hover:opacity-70 text-sm" title={T('테마 전환', 'Toggle theme')} aria-label="toggle theme">{theme === 'dark' ? '☀️' : '🌙'}</button>
-            {!userName && <a href={`/login?next=${encodeURIComponent(`/${lang}/studio`)}`} className="text-[11px] font-semibold text-emerald-500 hover:text-emerald-400 no-underline">{T('로그인', 'Sign in')}</a>}
+            {!userName && <a href={`/login?next=${encodeURIComponent(`/${lang}/studio`)}`} className="text-[11px] font-semibold text-emerald-500 hover:text-emerald-400" style={{ textDecoration: 'none' }}>{T('로그인', 'Sign in')}</a>}
           </div>
         </div>
       </aside>
