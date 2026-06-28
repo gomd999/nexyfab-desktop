@@ -121,13 +121,28 @@ export default function PapercraftDemoPage() {
       return false;
     }
     setPhase('3D 렌더링 중…');
-    const r2 = await fetch('/api/nexyfab/openscad-render', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scad: j1.scad, format: 'stl' }),
-    });
-    const j2 = await r2.json().catch(() => ({})) as { dataBase64?: string; error?: string };
-    if (!r2.ok || !j2.dataBase64) { setResult({ ok: false, error: '3D 렌더에 실패했어요.' }); return false; }
-    const stlBuf = Uint8Array.from(atob(j2.dataBase64), c => c.charCodeAt(0)).buffer;
+    const render = async (scad: string) => {
+      const r = await fetch('/api/nexyfab/openscad-render', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scad, format: 'stl' }),
+      });
+      const j = await r.json().catch(() => ({})) as { dataBase64?: string; error?: string };
+      return r.ok && j.dataBase64 ? j.dataBase64 : null;
+    };
+    let stlB64 = await render(j1.scad);
+    if (!stlB64) {
+      // Complex SCAD (esp. with high detail) can exceed the render budget — ask
+      // the model to simplify once, then re-render.
+      setPhase('너무 복잡 — 단순화해서 다시 렌더 중…');
+      const rr = await fetch('/api/nexyfab/scad-intent-from-nl', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: 'Simplify this so it renders within size limits: set $fn=12, remove tiny/decorative features, keep only the main mass and 2-3 defining parts.', previousScad: j1.scad, repair: true, freeform: true }),
+      });
+      const jr = await rr.json().catch(() => ({})) as { scad?: string };
+      if (jr.scad) stlB64 = await render(jr.scad);
+    }
+    if (!stlB64) { setResult({ ok: false, error: '3D 렌더에 실패했어요 — 더 단순한 설명/낮은 디테일로 다시 시도해 주세요.' }); return false; }
+    const stlBuf = Uint8Array.from(atob(stlB64), c => c.charCodeAt(0)).buffer;
     const positions = parseStlPositions(stlBuf);
     if (positions.length < 9) { setResult({ ok: false, error: '생성된 3D를 읽지 못했어요.' }); return false; }
     setModel3d({ kind: 'mesh', positions });
@@ -175,6 +190,8 @@ export default function PapercraftDemoPage() {
     try {
       // 상세 설정이 있으면 (단순 박스로 안 끝내고) 항상 AI로 — 복잡한 건물/물체.
       if (hasDetail()) { await runAiPipeline(composePrompt(text)); return; }
+      // 사진이 있으면 AI 3D로 (적층/접기 선택대로) — 사진은 박스가 아니라 입체로.
+      if (image) { await runAiPipeline(composePrompt(text)); return; }
       // The building generator doubles as the classifier (returns notBuilding).
       const res = await fetch('/api/nexyfab/papercraft-net', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -223,10 +240,11 @@ export default function PapercraftDemoPage() {
     try {
       const { imageToField, reliefToSegs, reliefHeightmap } = await import('./relief');
       const { segmentsToDxf, segmentsToSvg } = await import('@/lib/papercraft/netDxf');
-      const field = await imageToField(image, 140);
+      const field = await imageToField(image, 200);
       setPhase('레이어드 부조 만드는 중…');
-      const levels = 6; // tonal layers
-      const { segs, layerCount } = reliefToSegs(field, levels, 2);
+      // More tonal bands → finer relief. Thicker board → fewer (chunkier) layers.
+      const levels = thickness >= 5 ? 8 : thickness >= 3 ? 10 : 12;
+      const { segs, layerCount } = reliefToSegs(field, levels, 1.4);
       if (segs.length === 0) { setResult({ ok: false, error: '명암 대비가 약해 층을 못 만들었어요 — 대비가 뚜렷한 사진으로 시도해 주세요.' }); return; }
       const dxf = segmentsToDxf(segs);
       const svg = segmentsToSvg(segs);
@@ -416,7 +434,7 @@ export default function PapercraftDemoPage() {
                   🏞️ 입체 부조로 만들기
                 </button>
               </span>
-            : <span style={{ fontSize: 13, color: '#8b949e' }}>사진을 올리거나 <b>Ctrl+V로 붙여넣기</b> 후 「✨ 만들기」 — 건물은 추정, 그 외는 AI가 3D로.</span>}
+            : <span style={{ fontSize: 13, color: '#8b949e' }}>사진을 올리거나 <b>Ctrl+V</b> → <b>「✨ 만들기」</b>=AI가 3D로(적층/접기 선택대로) · <b>「🏞️ 입체 부조」</b>=사진 명암을 층으로(부조).</span>}
         </div>
 
         {/* Gap 1: generic 3D model → mesh unfold. */}

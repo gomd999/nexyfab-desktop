@@ -31,7 +31,25 @@ export async function imageToField(dataUrl: string, maxDim = 140): Promise<Relie
     const a = d[i * 4 + 3];
     vals[i] = a < 16 ? 0 : (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255;
   }
-  return { w, h, vals };
+  return { w, h, vals: boxBlur(vals, w, h, 1) };
+}
+
+/** Small separable box blur — smooths the luminance so tonal-band contours come
+ *  out cleaner (less jagged "투박" stair-stepping). */
+function boxBlur(src: Float32Array, w: number, h: number, r: number): Float32Array {
+  if (r < 1) return src;
+  const tmp = new Float32Array(w * h), out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let s = 0, n = 0;
+    for (let k = -r; k <= r; k++) { const xx = x + k; if (xx >= 0 && xx < w) { s += src[y * w + xx]; n++; } }
+    tmp[y * w + x] = s / n;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let s = 0, n = 0;
+    for (let k = -r; k <= r; k++) { const yy = y + k; if (yy >= 0 && yy < h) { s += tmp[yy * w + x]; n++; } }
+    out[y * w + x] = s / n;
+  }
+  return out;
 }
 
 /** Marching-squares contour segments for threshold t (image-pixel coords). */
