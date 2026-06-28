@@ -108,8 +108,8 @@ function ModelPicker({ modelId, onPick, isKo, compact }: { modelId: string; onPi
           <div className="absolute z-30 mt-1 right-0 w-60 st-panel border st-bd rounded-xl shadow-2xl overflow-hidden py-1">
             {CODEGEN_MODELS.map(m => (
               <button key={m.id} onClick={() => { onPick(m.id); setOpen(false); }}
-                className={`w-full text-left px-3 py-2 hover:st-hover ${m.id === modelId ? 'bg-emerald-600/15' : ''}`}>
-                <div className="text-[13px] font-semibold st-text flex items-center gap-1.5">{m.label}{m.id === modelId && <span className="text-emerald-400 text-[11px]">✓</span>}</div>
+                className={`w-full text-left px-3 py-2 hover:st-hover ${m.id === modelId ? 'bg-blue-600/15' : ''}`}>
+                <div className="text-[13px] font-semibold st-text flex items-center gap-1.5">{m.label}{m.id === modelId && <span className="text-blue-400 text-[11px]">✓</span>}</div>
                 {m.note && <div className="text-[11px] st-text-3">{m.note}</div>}
               </button>
             ))}
@@ -775,7 +775,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   };
 
   const ImagePill = () => image ? (
-    <span className="flex items-center gap-1.5 text-[11px] text-emerald-200/90 bg-emerald-900/30 rounded px-1.5 py-1">
+    <span className="flex items-center gap-1.5 text-[11px] text-blue-200/90 bg-blue-900/30 rounded px-1.5 py-1">
       <img src={image} alt="" className="w-7 h-7 object-cover rounded" />
       <span className="truncate max-w-[120px]">{imageName}</span>
       <button onClick={() => { setImage(null); setImageName(null); }} className="st-text-2 hover:opacity-70">✕</button>
@@ -786,14 +786,14 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     const label = p.description || p.name;
     if (p.kind === 'bool') return (
       <label key={p.name} className="flex items-center gap-2 text-[11px] st-text-2">
-        <input type="checkbox" checked={p.value as boolean} onChange={e => onCustomizer(p.name, e.target.checked)} className="accent-emerald-500" />
+        <input type="checkbox" checked={p.value as boolean} onChange={e => onCustomizer(p.name, e.target.checked)} className="accent-blue-500" />
         <span className="truncate" title={p.name}>{label}</span>
       </label>
     );
     if (p.kind === 'slider') { const v = p.value as number; return (
       <div key={p.name} className="flex flex-col gap-0.5">
         <div className="flex justify-between text-[11px] st-text-2"><span className="truncate" title={p.name}>{label}</span><span className="tabular-nums st-text">{(p.step ?? 1) < 1 ? v.toFixed(1) : Math.round(v)}</span></div>
-        <input type="range" min={p.min} max={p.max} step={p.step} value={v} onChange={e => onCustomizer(p.name, parseFloat(e.target.value))} className="w-full accent-emerald-500" />
+        <input type="range" min={p.min} max={p.max} step={p.step} value={v} onChange={e => onCustomizer(p.name, parseFloat(e.target.value))} className="w-full accent-blue-500" />
       </div>
     ); }
     if (p.kind === 'dropdown') return (
@@ -817,7 +817,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
       {customizer.length === 0 && <div className="text-[11px] st-text-3">{T('조절 가능한 치수가 여기 나타납니다.', 'Adjustable dimensions appear here.')}</div>}
       {grouped.map((g, gi) => (
         <div key={g.name ?? `g${gi}`} className="flex flex-col gap-2">
-          {g.name && <div className="text-[10px] uppercase tracking-wide text-emerald-400/70 font-semibold border-b st-bd pb-1">{g.name}</div>}
+          {g.name && <div className="text-[10px] uppercase tracking-wide text-blue-400/70 font-semibold border-b st-bd pb-1">{g.name}</div>}
           {g.params.map(renderParam)}
         </div>
       ))}
@@ -856,12 +856,12 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         <div className="flex-1 min-w-0 relative flex flex-col items-center justify-center px-6 st-hero-bg">
           <button onClick={() => setSidebarOpen(true)} className="md:hidden absolute top-3 left-3 st-text-2 text-xl" aria-label="menu">☰</button>
           <a href={`/${lang}`} className="absolute top-4 right-5 text-[12px] st-text-3 hover:st-text-2">{T('홈', 'Home')}</a>
-          {dragOver && <div className="absolute inset-0 z-10 flex items-center justify-center bg-emerald-900/20 text-emerald-300 text-lg font-semibold pointer-events-none">📷 {T('사진을 놓으세요', 'Drop the photo')}</div>}
+          {dragOver && <div className="absolute inset-0 z-10 flex items-center justify-center bg-blue-900/20 text-blue-300 text-lg font-semibold pointer-events-none">📷 {T('사진을 놓으세요', 'Drop the photo')}</div>}
 
           {/* Mode toggle + model picker */}
           <div className="flex items-center gap-2 mb-5 flex-wrap justify-center">
             <div className="flex items-center gap-1 st-panel-2 border st-bd rounded-full p-1 text-[12px]">
-              <button onClick={() => setPrecise(false)} className={`px-3 py-1 rounded-full font-semibold ${!precise ? 'bg-emerald-600 text-white' : 'st-text-2'}`}>✨ {T('자유형', 'Free-form')}</button>
+              <button onClick={() => setPrecise(false)} className={`px-3 py-1 rounded-full font-semibold ${!precise ? 'bg-blue-600 text-white' : 'st-text-2'}`}>✨ {T('자유형', 'Free-form')}</button>
               <button onClick={() => setPrecise(true)} className={`px-3 py-1 rounded-full font-semibold ${precise ? 'bg-indigo-600 text-white' : 'st-text-2'}`}>📐 {T('정밀', 'Precise')}</button>
             </div>
             <ModelPicker modelId={modelId} onPick={pickModel} isKo={isKo} />
@@ -872,17 +872,17 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
             ? T('치수를 넣어 설명하면 정확한 치수의 부품을 만듭니다 (구멍·면취·필렛·패턴).', 'Describe it with dimensions for an exact part — holes, chamfers, fillets, patterns.')
             : T('말로 설명하거나 사진을 올리면 조절 가능한 3D 모델이 됩니다.', 'Describe it — or drop a photo — to get an adjustable 3D model.')}</p>
 
-          <div className="w-full max-w-2xl st-panel-2 border st-bd rounded-2xl p-3 focus-within:border-emerald-500/60 shadow-xl">
+          <div className="w-full max-w-2xl st-panel-2 border st-bd rounded-2xl p-3 focus-within:border-blue-500/60 shadow-xl">
             {image && <div className="mb-2"><ImagePill /></div>}
             <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={onKeyDown}
               placeholder={T('예: 바퀴 4개 달린 장난감 자동차…  (사진은 끌어다 놓거나 Ctrl+V 붙여넣기)', 'e.g. a toy car with four wheels…  (drag or paste a photo with Ctrl+V)')}
               rows={2} autoFocus className="w-full bg-transparent text-base resize-none focus:outline-none px-1" />
             <div className="flex items-center justify-between mt-2">
-              <label className="flex items-center gap-1.5 text-[12px] text-emerald-300 hover:text-emerald-200 cursor-pointer border border-emerald-800/60 hover:border-emerald-600 rounded-lg px-2.5 py-1.5">
+              <label className="flex items-center gap-1.5 text-[12px] text-blue-300 hover:text-blue-200 cursor-pointer border border-blue-800/60 hover:border-blue-600 rounded-lg px-2.5 py-1.5">
                 <input type="file" accept="image/*,.stl,model/stl,.step,.stp,model/step" className="hidden" onChange={e => onPickFile(e.target.files?.[0])} />
                 📷 {T('사진·STL 올리기', 'Upload photo / STL')}
               </label>
-              <button onClick={() => void send()} disabled={busy || (!input.trim() && !image)} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-lg px-5 py-1.5 text-sm font-semibold">
+              <button onClick={() => void send()} disabled={busy || (!input.trim() && !image)} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg px-5 py-1.5 text-sm font-semibold">
                 {busy ? T('생성 중…', 'Working…') : T('생성하기', 'Generate')}
               </button>
             </div>
@@ -909,10 +909,10 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
 
   // ── Active workspace (sidebar + chat + 3D + params) ────────────────────────
   const tabBtn = (id: typeof mobileTab, label: string) => (
-    <button onClick={() => setMobileTab(id)} className={`flex-1 py-2 text-[12px] font-semibold ${mobileTab === id ? 'text-emerald-400 border-t-2 border-emerald-400 -mt-px' : 'st-text-3'}`}>{label}</button>
+    <button onClick={() => setMobileTab(id)} className={`flex-1 py-2 text-[12px] font-semibold ${mobileTab === id ? 'text-blue-400 border-t-2 border-blue-400 -mt-px' : 'st-text-3'}`}>{label}</button>
   );
   return (
-    <div className={`flex h-dvh w-full st-bg ${dragOver ? 'ring-2 ring-emerald-500 ring-inset' : ''}`} {...dragProps}>
+    <div className={`flex h-dvh w-full st-bg ${dragOver ? 'ring-2 ring-blue-500 ring-inset' : ''}`} {...dragProps}>
       {sidebar}
       <div className="flex-1 min-w-0 flex flex-col md:flex-row">
         {/* Chat */}
@@ -925,9 +925,9 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
           <div className="flex-1 overflow-auto p-3 flex flex-col gap-3 min-h-0">
             {messages.map(m => (
               <div key={m.id} className={m.role === 'user' ? 'self-end max-w-[88%]' : 'self-start max-w-[92%]'}>
-                <div className={`rounded-xl px-3 py-2 text-[12px] whitespace-pre-wrap break-words ${m.role === 'user' ? 'bg-emerald-700/40 border border-emerald-700/40' : m.status === 'error' ? 'bg-red-900/30 border border-red-800/40 text-red-200' : 'st-panel-2 border st-bd'}`}>
+                <div className={`rounded-xl px-3 py-2 text-[12px] whitespace-pre-wrap break-words ${m.role === 'user' ? 'bg-blue-700/40 border border-blue-700/40' : m.status === 'error' ? 'bg-red-900/30 border border-red-800/40 text-red-200' : 'st-panel-2 border st-bd'}`}>
                   {m.image && <img src={m.image} alt="" className="w-full max-h-32 object-contain rounded mb-1.5 bg-black/30" />}
-                  {m.status === 'thinking' ? <span className="inline-flex items-center gap-1.5 text-emerald-300"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />{m.text}</span> : m.text}
+                  {m.status === 'thinking' ? <span className="inline-flex items-center gap-1.5 text-blue-300"><span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />{m.text}</span> : m.text}
                   {m.thumb && <img src={m.thumb} alt="" className="w-full max-h-28 object-contain rounded mt-1.5 bg-black/20 cursor-pointer" onClick={() => setMobileTab('3d')} title={T('3D 보기', 'View in 3D')} />}
                 </div>
               </div>
@@ -937,20 +937,20 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
           <div className="border-t st-bd p-2.5 flex flex-col gap-2 shrink-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <div className="flex items-center gap-0.5 st-panel-2 border st-bd rounded-full p-0.5 text-[11px]">
-                <button onClick={() => setPrecise(false)} className={`px-2 py-0.5 rounded-full font-semibold ${!precise ? 'bg-emerald-600 text-white' : 'st-text-2'}`}>✨ {T('자유형', 'Free')}</button>
+                <button onClick={() => setPrecise(false)} className={`px-2 py-0.5 rounded-full font-semibold ${!precise ? 'bg-blue-600 text-white' : 'st-text-2'}`}>✨ {T('자유형', 'Free')}</button>
                 <button onClick={() => setPrecise(true)} className={`px-2 py-0.5 rounded-full font-semibold ${precise ? 'bg-indigo-600 text-white' : 'st-text-2'}`}>📐 {T('정밀', 'Precise')}</button>
               </div>
               <ModelPicker modelId={modelId} onPick={pickModel} isKo={isKo} compact />
             </div>
             {image && <ImagePill />}
-            <div className="flex items-end gap-1.5 st-panel-2 border st-bd rounded-xl px-2 py-1.5 focus-within:border-emerald-500/60">
+            <div className="flex items-end gap-1.5 st-panel-2 border st-bd rounded-xl px-2 py-1.5 focus-within:border-blue-500/60">
               <label className="cursor-pointer text-base shrink-0 leading-none" title={T('사진 첨부', 'Attach photo')}>
                 <input type="file" accept="image/*,.stl,model/stl,.step,.stp,model/step" className="hidden" onChange={e => onPickFile(e.target.files?.[0])} />📎
               </label>
               <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={onKeyDown}
                 placeholder={T('계속 수정해보세요 (예: 더 높게)…', 'Keep iterating (e.g. make it taller)…')} rows={1}
                 className="flex-1 bg-transparent text-sm resize-none focus:outline-none max-h-28 py-0.5" />
-              <button onClick={() => void send()} disabled={busy || (!input.trim() && !image)} className="shrink-0 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-lg w-7 h-7 flex items-center justify-center" title={T('보내기', 'Send')}>↑</button>
+              <button onClick={() => void send()} disabled={busy || (!input.trim() && !image)} className="shrink-0 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg w-7 h-7 flex items-center justify-center" title={T('보내기', 'Send')}>↑</button>
             </div>
             <div className="flex gap-2">
               <button onClick={exportStl} disabled={!stlB64} className="flex-1 border st-bd st-hover disabled:opacity-40 rounded py-1.5 text-[11px]">⬇ STL</button>
@@ -965,14 +965,14 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
           <StudioViewer geometry={geometry} object={coloredObject} fitKey={genCount} theme={theme} />
           {needLogin && !geometry && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-6">
-              <div className="text-emerald-300 text-sm">🔒 {T('3D 미리보기·STL은 로그인이 필요합니다', '3D preview & STL need a (free) login')}</div>
-              <a href={`/login?next=${encodeURIComponent(`/${lang}/studio`)}`} className="bg-emerald-600 hover:bg-emerald-500 text-white rounded px-4 py-1.5 text-xs font-semibold">{T('무료 로그인', 'Free login')}</a>
+              <div className="text-blue-300 text-sm">🔒 {T('3D 미리보기·STL은 로그인이 필요합니다', '3D preview & STL need a (free) login')}</div>
+              <a href={`/login?next=${encodeURIComponent(`/${lang}/studio`)}`} className="bg-blue-600 hover:bg-blue-500 text-white rounded px-4 py-1.5 text-xs font-semibold">{T('무료 로그인', 'Free login')}</a>
             </div>
           )}
           {busy && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-              <div className="w-9 h-9 border-2 border-emerald-500/25 border-t-emerald-400 rounded-full animate-spin" />
-              <span className="text-emerald-300 text-sm">{geometry ? T('업데이트 중…', 'Updating…') : T('생성 중…', 'Working…')}</span>
+              <div className="w-9 h-9 border-2 border-blue-500/25 border-t-blue-400 rounded-full animate-spin" />
+              <span className="text-blue-300 text-sm">{geometry ? T('업데이트 중…', 'Updating…') : T('생성 중…', 'Working…')}</span>
             </div>
           )}
         </main>
