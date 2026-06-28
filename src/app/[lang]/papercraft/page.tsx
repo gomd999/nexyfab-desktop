@@ -19,6 +19,7 @@ interface NetResult {
   thick?: boolean;
   thickness?: number;
   notBuilding?: boolean;
+  foldFallback?: boolean;
   bytes?: number;
   svg?: string;
   dxf?: string;
@@ -118,10 +119,26 @@ export default function PapercraftDemoPage() {
     setModel3d({ kind: 'mesh', positions });
     // fold (접기) or stacked slice (적층) per the chosen mode.
     setPhase(mode === 'fold' ? '전개도(접기)를 펼치는 중…' : '적층 도면으로 자르는 중…');
-    const endpoint = mode === 'fold' ? 'papercraft-unfold' : 'papercraft-slice';
-    const r3 = await fetch(`/api/nexyfab/${endpoint}`, {
+    if (mode === 'fold') {
+      const rf = await fetch('/api/nexyfab/papercraft-unfold', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ positions, ...(thickness > 0 ? { thickness } : {}) }),
+      });
+      const jf = await rf.json().catch(() => ({})) as NetResult & { code?: string };
+      if (jf.ok) { setResult(jf); return true; }
+      // Too complex to fold (dense AI mesh) → auto-fall back to stacked slice.
+      setPhase('접기엔 너무 복잡 — 적층으로 전환 중…');
+      const rs = await fetch('/api/nexyfab/papercraft-slice', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ positions, ...(thickness > 0 ? { thickness } : { thickness: 5 }) }),
+      });
+      const js = await rs.json().catch(() => ({})) as NetResult;
+      setResult({ ...js, foldFallback: js.ok });
+      return true;
+    }
+    const r3 = await fetch('/api/nexyfab/papercraft-slice', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ positions, ...(thickness > 0 ? { thickness } : (mode === 'fold' ? {} : { thickness: 5 })) }),
+      body: JSON.stringify({ positions, ...(thickness > 0 ? { thickness } : { thickness: 5 }) }),
     });
     setResult(await r3.json());
     return true;
@@ -371,6 +388,11 @@ export default function PapercraftDemoPage() {
                   style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(90deg,#7c3aed,#2563eb)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                   🤖 AI로 만들기
                 </button>
+              </div>
+            )}
+            {result.foldFallback && (
+              <div style={{ background: '#12243a', border: '1px solid #1a5a8a', borderRadius: 8, padding: '8px 12px', marginBottom: 10, fontSize: 12, color: '#74b9f0' }}>
+                📦→🥞 이 모델은 접기엔 너무 복잡해서 <b>적층(쌓기)으로 만들었어요</b>. 접기는 단순/저폴리 모델에 적합해요.
               </div>
             )}
             {result.thick && (
