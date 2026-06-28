@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { Model3D } from './Preview3D';
+import { useProjectsStore } from '@/hooks/useProjects';
+import { useAuthStore } from '@/hooks/useAuth';
 
 // 3D preview is client-only (WebGL) — lazy-load so it never blocks the page.
 const Preview3D = dynamic(() => import('./Preview3D'), { ssr: false, loading: () => <div style={{ color: '#8b949e', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>3D 로딩…</div> });
@@ -69,6 +71,7 @@ export default function PapercraftDemoPage() {
   const [style, setStyle] = useState(''); // '' | English style descriptor
   const [features, setFeatures] = useState(''); // free-text key features
   const [detailHigh, setDetailHigh] = useState(false);
+  const [saved, setSaved] = useState(false); // cloud-save state for the current result
 
   const hasDetail = () => !!(style || features.trim() || detailHigh);
   const composePrompt = (base: string): string => {
@@ -176,7 +179,7 @@ export default function PapercraftDemoPage() {
   const onAiGenerate = async () => {
     const text = prompt.trim();
     if (!text && !image) return;
-    setLoading(true); setResult(null); setModel3d(null);
+    setLoading(true); setResult(null); setModel3d(null); setSaved(false);
     try { await runAiPipeline(composePrompt(text)); }
     catch { setResult({ ok: false, error: 'AI 생성 중 오류가 발생했어요.' }); }
     finally { setLoading(false); setPhase(''); }
@@ -186,7 +189,7 @@ export default function PapercraftDemoPage() {
   const onUnifiedGenerate = async () => {
     const text = prompt.trim();
     if (!text && !image) return;
-    setLoading(true); setResult(null); setModel3d(null); setPhase('무엇을 만들지 분석 중…');
+    setLoading(true); setResult(null); setModel3d(null); setSaved(false); setPhase('무엇을 만들지 분석 중…');
     try {
       // 상세 설정이 있으면 (단순 박스로 안 끝내고) 항상 AI로 — 복잡한 건물/물체.
       if (hasDetail()) { await runAiPipeline(composePrompt(text)); return; }
@@ -216,7 +219,7 @@ export default function PapercraftDemoPage() {
     // Allow image-only generation (a photo drives the spec). Text or image required.
     if (!text && !image) return;
     if (p) setPrompt(p);
-    setLoading(true);
+    setLoading(true); setSaved(false);
     try {
       const res = await fetch('/api/nexyfab/papercraft-net', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -236,7 +239,7 @@ export default function PapercraftDemoPage() {
   // model: luminance → N tonal bands → contour each → stacked relief + heightmap.
   const onPhotoRelief = async () => {
     if (!image) { setResult({ ok: false, error: '먼저 사진을 올리거나 Ctrl+V로 붙여넣어 주세요.' }); return; }
-    setLoading(true); setResult(null); setModel3d(null); setPhase('사진 분석 중…');
+    setLoading(true); setResult(null); setModel3d(null); setSaved(false); setPhase('사진 분석 중…');
     try {
       const { imageToField, reliefToSegs, reliefHeightmap } = await import('./relief');
       const { segmentsToDxf, segmentsToSvg } = await import('@/lib/papercraft/netDxf');
@@ -258,7 +261,7 @@ export default function PapercraftDemoPage() {
   // Gap 1: upload an arbitrary 3D model (STL) → generic mesh unfold → net.
   const onPickStl = async (file: File | null) => {
     if (!file) return;
-    setLoading(true);
+    setLoading(true); setSaved(false);
     try {
       const buf = await file.arrayBuffer();
       const positions = parseStlPositions(buf);
@@ -278,7 +281,7 @@ export default function PapercraftDemoPage() {
   // curved / high-poly models that can't fold.
   const onPickStlSlice = async (file: File | null) => {
     if (!file) return;
-    setLoading(true);
+    setLoading(true); setSaved(false);
     try {
       const buf = await file.arrayBuffer();
       const positions = parseStlPositions(buf);
@@ -293,6 +296,54 @@ export default function PapercraftDemoPage() {
       setResult({ ok: false, error: '슬라이스에 실패했어요. 다른 모델로 시도해 주세요.' });
     } finally { setLoading(false); }
   };
+
+  // Save the current papercraft result to 내 프로젝트 (cloud) so it persists and
+  // can be reopened later — papercraft work is preserved just like 3D CAD.
+  const onSaveProject = async () => {
+    if (!result?.ok) return;
+    if (!useAuthStore.getState().user) { setResult({ ...result, error: '저장하려면 로그인이 필요해요 — 우측 상단 Sign In 후 다시 시도하세요.' }); return; }
+    const scene = {
+      kind: 'papercraft', prompt, mode, thickness, style, features, detailHigh,
+      result: {
+        svg: result.svg, dxf: result.dxf, layerCount: result.layerCount, faceCount: result.faceCount,
+        pieces: result.pieces, dims: result.dims, layers: result.layers, thick: result.thick,
+        thickness: result.thickness, notBuilding: result.notBuilding, foldFallback: result.foldFallback, steps: result.steps,
+      },
+    };
+    const name = `${(prompt.trim() || '종이공예').slice(0, 60)} · Papercraft`;
+    const p = await useProjectsStore.getState().saveProject({ name, shapeId: 'papercraft', sceneData: JSON.stringify(scene) });
+    if (p) setSaved(true);
+    else setResult({ ...result, error: '저장에 실패했어요. 다시 시도해 주세요.' });
+  };
+
+  // Reopen a saved papercraft project (?project=id) — restore inputs + result.
+  useEffect(() => {
+    const pid = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('project') : null;
+    if (!pid) return;
+    void (async () => {
+      setLoading(true); setPhase('저장된 작업 불러오는 중…');
+      try {
+        const token = useAuthStore.getState().token;
+        const r = await fetch(`/api/nexyfab/projects/${pid}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        if (!r.ok) return;
+        const { project } = await r.json() as { project?: { shapeId?: string; sceneData?: string } };
+        if (project?.shapeId !== 'papercraft' || !project.sceneData) return;
+        const s = JSON.parse(project.sceneData) as Record<string, unknown>;
+        if (typeof s.prompt === 'string') setPrompt(s.prompt);
+        if (s.mode === 'fold' || s.mode === 'slice') setMode(s.mode);
+        if (typeof s.thickness === 'number') setThickness(s.thickness);
+        if (typeof s.style === 'string') setStyle(s.style);
+        if (typeof s.features === 'string') setFeatures(s.features);
+        if (typeof s.detailHigh === 'boolean') setDetailHigh(s.detailHigh);
+        const res = s.result as NetResult | undefined;
+        if (res && res.svg) {
+          setResult({ ...res, ok: true });
+          setSaved(true);
+          if (res.dims) setModel3d({ kind: 'box', W: res.dims.W, D: res.dims.D, H: res.dims.H, roof: (res.dims.roof as 'flat' | 'gable' | 'open') ?? 'flat', gableH: res.dims.gableHeight });
+        }
+      } catch { /* ignore */ } finally { setLoading(false); setPhase(''); }
+    })();
+  }, []);
 
   const downloadDxf = () => {
     if (!result?.dxf) return;
@@ -463,6 +514,11 @@ export default function PapercraftDemoPage() {
                 {result.layers && <> · 칼선 {result.layers.CUT} / 접는선 {result.layers.FOLD} / 탭 {result.layers.TAB}</>}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => void onSaveProject()} disabled={saved}
+                  title="내 프로젝트에 저장 — 나중에 Hub에서 다시 열 수 있어요"
+                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid ' + (saved ? '#2ea043' : '#30363d'), background: saved ? '#16331f' : '#161b22', color: saved ? '#56d364' : '#e6edf3', fontSize: 14, fontWeight: 700, cursor: saved ? 'default' : 'pointer' }}>
+                  {saved ? '✓ 저장됨' : '💾 프로젝트에 저장'}
+                </button>
                 <button onClick={printGuide} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #30363d', background: '#161b22', color: '#e6edf3', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                   🖨 조립 가이드 (PDF)
                 </button>

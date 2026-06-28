@@ -766,7 +766,7 @@ export function HubFrame({ lang, onShowAuth }: HubFrameProps) {
                   <button
                     type="button"
                     key={p.id}
-                    onClick={() => router.push(`/${lang}/shape-generator?project=${p.id}`)}
+                    onClick={() => router.push(p.shapeId === 'papercraft' ? `/${lang}/papercraft?project=${p.id}` : `/${lang}/shape-generator?project=${p.id}`)}
                     style={{
                       background: 'var(--nx-panel)',
                       border: '1px solid var(--nx-border)',
@@ -955,7 +955,7 @@ export function HubFrame({ lang, onShowAuth }: HubFrameProps) {
                           cursor: 'pointer',
                         }}
                         onClick={() =>
-                          router.push(`/${lang}/shape-generator?project=${p.id}`)
+                          router.push(p.shapeId === 'papercraft' ? `/${lang}/papercraft?project=${p.id}` : `/${lang}/shape-generator?project=${p.id}`)
                         }
                       >
                         <td
