@@ -61,6 +61,8 @@ export default function PapercraftDemoPage() {
   const [imageName, setImageName] = useState('');
   const [thickness, setThickness] = useState(0); // material thickness mm; 0 = thin paper
   const [model3d, setModel3d] = useState<Model3D | null>(null); // finished-product 3D preview
+  const [mode, setMode] = useState<'slice' | 'fold'>('slice'); // 적층 슬라이스 / 접기 전개
+  const [phase, setPhase] = useState(''); // progress label while generating
 
   const onPickImage = (file: File | null) => {
     if (!file) { setImage(null); setImageName(''); return; }
@@ -88,44 +90,75 @@ export default function PapercraftDemoPage() {
 
   // AI → arbitrary object: text/image → AI OpenSCAD → mesh → slice → 3D + net.
   // Chains the existing endpoints client-side (each keeps its own gating).
+  // AI pipeline: text/image → AI OpenSCAD → mesh → fold/slice net. Reused by the
+  // unified generator when the description is a non-building object.
+  const runAiPipeline = async (text: string): Promise<boolean> => {
+    setPhase('AI가 3D 모양을 만드는 중…');
+    const r1 = await fetch('/api/nexyfab/scad-intent-from-nl', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: text, ...(image ? { image } : {}), freeform: true }),
+    });
+    const j1 = await r1.json().catch(() => ({})) as { scad?: string; error?: string; code?: string };
+    if (!r1.ok || !j1.scad) {
+      setResult({ ok: false, error: r1.status === 401 || j1.code === 'GUEST_LIMIT'
+        ? 'AI 생성 무료 한도를 다 썼어요 — 로그인하면 계속 만들 수 있어요.'
+        : (j1.error || 'AI 3D 생성에 실패했어요. 다른 설명으로 시도해 보세요.') });
+      return false;
+    }
+    setPhase('3D 렌더링 중…');
+    const r2 = await fetch('/api/nexyfab/openscad-render', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scad: j1.scad, format: 'stl' }),
+    });
+    const j2 = await r2.json().catch(() => ({})) as { dataBase64?: string; error?: string };
+    if (!r2.ok || !j2.dataBase64) { setResult({ ok: false, error: '3D 렌더에 실패했어요.' }); return false; }
+    const stlBuf = Uint8Array.from(atob(j2.dataBase64), c => c.charCodeAt(0)).buffer;
+    const positions = parseStlPositions(stlBuf);
+    if (positions.length < 9) { setResult({ ok: false, error: '생성된 3D를 읽지 못했어요.' }); return false; }
+    setModel3d({ kind: 'mesh', positions });
+    // fold (접기) or stacked slice (적층) per the chosen mode.
+    setPhase(mode === 'fold' ? '전개도(접기)를 펼치는 중…' : '적층 도면으로 자르는 중…');
+    const endpoint = mode === 'fold' ? 'papercraft-unfold' : 'papercraft-slice';
+    const r3 = await fetch(`/api/nexyfab/${endpoint}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ positions, ...(thickness > 0 ? { thickness } : (mode === 'fold' ? {} : { thickness: 5 })) }),
+    });
+    setResult(await r3.json());
+    return true;
+  };
+
   const onAiGenerate = async () => {
     const text = prompt.trim();
     if (!text && !image) return;
-    setLoading(true);
-    setResult(null); setModel3d(null);
+    setLoading(true); setResult(null); setModel3d(null);
+    try { await runAiPipeline(text); }
+    catch { setResult({ ok: false, error: 'AI 생성 중 오류가 발생했어요.' }); }
+    finally { setLoading(false); setPhase(''); }
+  };
+
+  // Unified: one button. Buildings → fast box generator; objects → AI pipeline.
+  const onUnifiedGenerate = async () => {
+    const text = prompt.trim();
+    if (!text && !image) return;
+    setLoading(true); setResult(null); setModel3d(null); setPhase('무엇을 만들지 분석 중…');
     try {
-      // 1) text/image → AI OpenSCAD (freeform; guest-limited)
-      const r1 = await fetch('/api/nexyfab/scad-intent-from-nl', {
+      // The building generator doubles as the classifier (returns notBuilding).
+      const res = await fetch('/api/nexyfab/papercraft-net', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: text, ...(image ? { image } : {}), freeform: true }),
+        body: JSON.stringify({ prompt: text, ...(image ? { image } : {}), ...(thickness > 0 ? { thickness } : {}) }),
       });
-      const j1 = await r1.json().catch(() => ({})) as { scad?: string; error?: string; code?: string };
-      if (!r1.ok || !j1.scad) {
-        setResult({ ok: false, error: r1.status === 401 || j1.code === 'GUEST_LIMIT'
-          ? 'AI 생성 무료 한도를 다 썼어요 — 로그인하면 계속 만들 수 있어요.'
-          : (j1.error || 'AI 3D 생성에 실패했어요. 다른 설명으로 시도해 보세요.') });
+      const j = await res.json() as NetResult;
+      if (j.ok && !j.notBuilding) {
+        // It's architecture → use the fast building net.
+        setResult(j);
+        if (j.dims) setModel3d({ kind: 'box', W: j.dims.W, D: j.dims.D, H: j.dims.H, roof: (j.dims.roof as 'flat' | 'gable' | 'open') ?? 'flat', gableH: j.dims.gableHeight });
         return;
       }
-      // 2) OpenSCAD → STL mesh
-      const r2 = await fetch('/api/nexyfab/openscad-render', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scad: j1.scad, format: 'stl' }),
-      });
-      const j2 = await r2.json().catch(() => ({})) as { dataBase64?: string; error?: string };
-      if (!r2.ok || !j2.dataBase64) { setResult({ ok: false, error: '3D 렌더에 실패했어요.' }); return; }
-      const stlBuf = Uint8Array.from(atob(j2.dataBase64), c => c.charCodeAt(0)).buffer;
-      const positions = parseStlPositions(stlBuf);
-      if (positions.length < 9) { setResult({ ok: false, error: '생성된 3D를 읽지 못했어요.' }); return; }
-      setModel3d({ kind: 'mesh', positions });
-      // 3) mesh → stacked slice (robust for arbitrary / curved objects)
-      const r3 = await fetch('/api/nexyfab/papercraft-slice', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ positions, ...(thickness > 0 ? { thickness } : { thickness: 5 }) }),
-      });
-      setResult(await r3.json());
+      // Object (or building gen failed) → AI pipeline.
+      await runAiPipeline(text);
     } catch {
-      setResult({ ok: false, error: 'AI 생성 중 오류가 발생했어요.' });
-    } finally { setLoading(false); }
+      setResult({ ok: false, error: '생성 중 오류가 발생했어요.' });
+    } finally { setLoading(false); setPhase(''); }
   };
 
   const generate = async (p?: string) => {
@@ -223,39 +256,43 @@ export default function PapercraftDemoPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0d1117', color: '#e6edf3', fontFamily: 'system-ui, sans-serif' }}>
+      <style>{`@keyframes pcspin{to{transform:rotate(360deg)}} .pc-spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;display:inline-block;animation:pcspin .7s linear infinite}`}</style>
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '48px 20px' }}>
         <p style={{ color: '#388bfd', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 8px' }}>
           NexyFab · Papercraft
         </p>
         <h1 style={{ fontSize: 30, fontWeight: 800, margin: '0 0 8px' }}>말 또는 사진으로 건물 → 레이저컷 전개도</h1>
         <p style={{ color: '#8b949e', fontSize: 15, margin: '0 0 28px' }}>
-          건물은 「🏠 건물 전개도」, 자동차·동물·캐릭터 등 무엇이든은 「🤖 AI로 만들기」로 — 글·사진(Ctrl+V 붙여넣기 가능)·STL을 넣으면 3D 완성 미리보기 + 2D 도면(칼선·접는선·탭)을 함께 보고 레이저컷 DXF로 내보냅니다.
+          글·사진(Ctrl+V 붙여넣기)·STL을 넣고 「✨ 만들기」 — 건물이면 즉시, 자동차·동물·캐릭터 등은 AI가 3D로 (자동 판별). 3D 완성 미리보기 + 2D 도면(칼선·접는선·탭)을 함께 보고 레이저컷 DXF로 내보냅니다.
         </p>
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
           <input
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') void generate(); }}
-            placeholder="예: 박공지붕 집, 가로 50 세로 35"
+            onKeyDown={e => { if (e.key === 'Enter') void onUnifiedGenerate(); }}
+            placeholder="예: 박공지붕 집 가로 50 세로 35 / 코알라 / 장난감 자동차"
             style={{ flex: '1 1 320px', padding: '12px 14px', borderRadius: 8, border: '1px solid #30363d', background: '#161b22', color: '#e6edf3', fontSize: 15 }}
           />
           <button
-            onClick={() => void generate()}
+            onClick={() => void onUnifiedGenerate()}
             disabled={loading}
-            title="건물·방·박스 (빠름)"
-            style={{ padding: '12px 18px', borderRadius: 8, border: 'none', background: loading ? '#1f2937' : '#2563eb', color: '#fff', fontSize: 14, fontWeight: 700, cursor: loading ? 'default' : 'pointer' }}
+            title="건물이면 즉시, 그 외(자동차·동물·캐릭터)는 AI가 3D로 — 자동 판별"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 8, border: 'none', background: loading ? '#1f2937' : 'linear-gradient(90deg,#7c3aed,#2563eb)', color: '#fff', fontSize: 15, fontWeight: 800, cursor: loading ? 'default' : 'pointer' }}
           >
-            {loading ? '생성 중…' : '🏠 건물 전개도'}
+            {loading && <span className="pc-spin" aria-hidden="true" />}
+            {loading ? (phase || '만드는 중…') : '✨ 만들기'}
           </button>
-          <button
-            onClick={() => void onAiGenerate()}
-            disabled={loading}
-            title="자동차·동물·캐릭터 등 무엇이든 (AI 3D → 적층 슬라이스)"
-            style={{ padding: '12px 18px', borderRadius: 8, border: 'none', background: loading ? '#1f2937' : 'linear-gradient(90deg,#7c3aed,#2563eb)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: loading ? 'default' : 'pointer' }}
-          >
-            {loading ? 'AI 생성 중… (최대 1분)' : '🤖 AI로 만들기'}
-          </button>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, color: '#8b949e' }}>제작 방식</span>
+          {[{ v: 'slice', l: '🥞 적층(쌓기)', d: '곡면·복잡 모델에 강함' }, { v: 'fold', l: '📦 접기(전개)', d: '단순/저폴리에 적합' }].map(o => (
+            <button key={o.v} onClick={() => setMode(o.v as 'slice' | 'fold')} title={o.d}
+              style={{ padding: '4px 12px', borderRadius: 16, border: `1px solid ${mode === o.v ? '#7c3aed' : '#30363d'}`, background: mode === o.v ? '#241338' : '#161b22', color: mode === o.v ? '#d8b4fe' : '#8b949e', fontSize: 12, cursor: 'pointer' }}>
+              {o.l}
+            </button>
+          ))}
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
@@ -290,7 +327,7 @@ export default function PapercraftDemoPage() {
                 <img src={image} alt="" style={{ height: 36, borderRadius: 4, border: '1px solid #30363d' }} />
                 {imageName} <button onClick={() => onPickImage(null)} style={{ background: 'none', border: 'none', color: '#f85149', cursor: 'pointer', fontSize: 13 }}>✕ 제거</button>
               </span>
-            : <span style={{ fontSize: 13, color: '#8b949e' }}>사진을 올리거나 <b>Ctrl+V로 붙여넣기</b> → 「🏠 건물 전개도」(건물 추정) 또는 「🤖 AI로 만들기」(무엇이든 3D)로 사용.</span>}
+            : <span style={{ fontSize: 13, color: '#8b949e' }}>사진을 올리거나 <b>Ctrl+V로 붙여넣기</b> 후 「✨ 만들기」 — 건물은 추정, 그 외는 AI가 3D로.</span>}
         </div>
 
         {/* Gap 1: generic 3D model → mesh unfold. */}
