@@ -129,12 +129,14 @@ export async function PATCH(
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
-  const body = await req.json() as Partial<NexyfabProject> & {
+  // Guard: an empty/garbled body (e.g. dropped on a 308 redirect) must not 500.
+  const body = (await req.json().catch(() => null)) as (Partial<NexyfabProject> & {
     restoreVersionId?: string;
     archived?: boolean;
     /** Optional — when set, must equal row `updated_at` or 409 (optimistic concurrency). */
     ifMatchUpdatedAt?: number;
-  };
+  }) | null;
+  if (!body) return NextResponse.json({ error: 'Invalid or empty request body' }, { status: 400 });
 
   const db = getDbAdapter();
   const now = Date.now();
