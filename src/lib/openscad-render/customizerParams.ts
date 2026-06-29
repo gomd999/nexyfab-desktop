@@ -34,6 +34,32 @@ export interface CustomizerParam {
   step?: number;
   /** dropdown */
   options?: Array<number | string>;
+  /** display unit for sliders (mm / °), inferred from the label/name */
+  unit?: string;
+}
+
+/** Infer a display unit (mm / °) from a numeric param's name+description and
+ *  strip the redundant unit words out of the label so the UI can show it as a
+ *  clean suffix. Counts (teeth, holes, number-of-…) get no unit. */
+function deriveUnit(name: string, desc: string | null): { unit?: string; label: string | null } {
+  const text = `${name} ${desc ?? ''}`.toLowerCase();
+  let unit: string | undefined;
+  if (/\b(num|number|count|teeth|tooth|holes|sides|segments|qty|quantity|facets|fn)\b/.test(text)) {
+    unit = undefined; // dimensionless counts
+  } else if (/\b(angle|degree|degrees|deg|tilt|rotation)\b/.test(text) || text.includes('°')) {
+    unit = '°';
+  } else if (/\b(mm|millimet\w*|diameter|dia|radius|length|width|height|thick|thickness|depth|bore|pitch|clearance|offset|gap|spacing|wall|fillet|chamfer|distance|size)\b/.test(text)) {
+    unit = 'mm';
+  }
+  let label = desc;
+  if (label) {
+    label = label
+      .replace(/\s*\(\s*(in\s+)?(mm|millimet\w*|degrees?|deg)\s*\)/gi, '')
+      .replace(/\s+in\s+(mm|millimet\w*|degrees?)\b/gi, '')
+      .replace(/[ \t]+/g, ' ')
+      .trim() || null;
+  }
+  return { unit, label };
 }
 
 const GROUP_RE = /^\s*\/\*\s*\[(.+?)\]\s*\*\/\s*$/;
@@ -134,6 +160,11 @@ export function parseCustomizerParams(scad: string): CustomizerParam[] {
           const max = v > 0 ? Math.max(Math.round(v * 2.5), min + 1) : v + 10;
           param = { name, group, description: pendingDesc, kind: 'slider', value: v, min, max, step: decimals(v) ? 0.1 : 1 };
         }
+      }
+      if (param.kind === 'slider') {
+        const u = deriveUnit(param.name, param.description);
+        if (u.unit) param.unit = u.unit;
+        param.description = u.label;
       }
       out.push(param);
       pendingDesc = null;

@@ -146,6 +146,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
 
   const [scad, setScad] = useState('');
   const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [coloredObject, setColoredObject] = useState<THREE.Object3D | null>(null); // per-color group (CADAM-style)
   const [stlB64, setStlB64] = useState<string | null>(null);
   const [genCount, setGenCount] = useState(0);
@@ -793,7 +794,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     );
     if (p.kind === 'slider') { const v = p.value as number; return (
       <div key={p.name} className="flex flex-col gap-0.5">
-        <div className="flex justify-between text-[11px] st-text-2"><span className="truncate" title={p.name}>{label}</span><span className="tabular-nums st-text">{(p.step ?? 1) < 1 ? v.toFixed(1) : Math.round(v)}</span></div>
+        <div className="flex justify-between text-[11px] st-text-2"><span className="truncate" title={p.name}>{label}</span><span className="tabular-nums st-text">{(p.step ?? 1) < 1 ? v.toFixed(1) : Math.round(v)}{p.unit && <span className="st-text-3 ml-0.5">{p.unit}</span>}</span></div>
         <input type="range" min={p.min} max={p.max} step={p.step} value={v} onChange={e => onCustomizer(p.name, parseFloat(e.target.value))} className="w-full accent-blue-500" />
       </div>
     ); }
@@ -816,12 +817,24 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const ParamsBody = () => (
     <div className="flex-1 overflow-auto p-3 flex flex-col gap-3">
       {customizer.length === 0 && <div className="text-[11px] st-text-3">{T('조절 가능한 치수가 여기 나타납니다.', 'Adjustable dimensions appear here.')}</div>}
-      {grouped.map((g, gi) => (
+      {grouped.map((g, gi) => {
+        const isCol = !!g.name && collapsedGroups.has(g.name);
+        return (
         <div key={g.name ?? `g${gi}`} className="flex flex-col gap-2">
-          {g.name && <div className="text-[10px] uppercase tracking-wide text-blue-400/70 font-semibold border-b st-bd pb-1">{g.name}</div>}
-          {g.params.map(renderParam)}
+          {g.name && (
+            <button
+              type="button"
+              onClick={() => setCollapsedGroups(s => { const n = new Set(s); if (n.has(g.name!)) n.delete(g.name!); else n.add(g.name!); return n; })}
+              className="flex items-center justify-between text-[10px] uppercase tracking-wide text-blue-400/70 font-semibold border-b st-bd pb-1 hover:text-blue-300 transition-colors"
+            >
+              <span>{g.name}</span>
+              <span className="st-text-3">{isCol ? '▸' : '▾'}</span>
+            </button>
+          )}
+          {!isCol && g.params.map(renderParam)}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 
