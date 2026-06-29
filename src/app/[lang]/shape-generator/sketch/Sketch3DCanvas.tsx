@@ -881,6 +881,12 @@ export default function Sketch3DCanvas({ profile, onProfileChange, activeTool, s
   const [detectedPlane, setDetectedPlane] = useState<PlaneType | null>(null);
   const [cursorPt, setCursorPt] = useState<SketchPoint | null>(null);
   const [activePreset, setActivePreset] = useState<ViewPreset | null>(null);
+  // Always face the active sketch plane head-on (a flat 2D drawing canvas) on
+  // entry AND whenever the plane changes — fixes the disorienting tilted/iso view
+  // and the "axes flip around" feeling when switching XY/XZ/YZ.
+  useEffect(() => {
+    setActivePreset(sketchPlane === 'xy' ? 'front' : sketchPlane === 'xz' ? 'top' : 'right');
+  }, [sketchPlane]);
   const canUndo = profile.segments.length > 0;
 
   // Keyboard: Ctrl+Z undo, T/F/R/I view shortcuts
