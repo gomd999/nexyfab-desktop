@@ -1606,6 +1606,25 @@ export default function SolverSketchEditorWithExtrude(
       }}>
         <span style={{ fontWeight: 700, color: canExtrude ? '#16a34a' : 'var(--nx-accent-2)', whiteSpace: 'nowrap' }}>{guideTitle}</span>
         <span style={{ color: 'var(--nx-text-2)' }}>{guideHint}</span>
+        {/* Coherent sketch lifecycle, always visible: Finish (keep) vs Cancel (discard). */}
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, whiteSpace: 'nowrap' }}>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('nexyfab:tool', { detail: { id: 'sketch.finish' } }))}
+            title={guideKo ? '스케치를 유지하고 나갑니다' : 'Keep the sketch and exit'}
+            style={{ padding: '4px 12px', fontSize: 12, fontWeight: 700, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+          >
+            ✓ {guideKo ? '마무리' : 'Finish'}
+          </button>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('nexyfab:tool', { detail: { id: 'sketch.cancel' } }))}
+            title={guideKo ? '그린 것을 버리고 나갑니다' : 'Discard what you drew and exit'}
+            style={{ padding: '4px 12px', fontSize: 12, fontWeight: 600, background: 'var(--nx-panel-2)', color: 'var(--nx-text-2)', border: '1px solid var(--nx-border)', borderRadius: 6, cursor: 'pointer' }}
+          >
+            ✗ {guideKo ? '취소' : 'Cancel'}
+          </button>
+        </span>
       </div>
       <div
         ref={sketchViewportRef}

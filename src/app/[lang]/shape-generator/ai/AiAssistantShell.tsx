@@ -77,6 +77,11 @@ export default function AiAssistantShell({
       try { await onScadEdit(prompt); return null; }
       catch (err) { return `AI error: ${(err as Error)?.message ?? err}`; }
     }
+    // If the user is mid-sketch, commit it first so the AI edits a consistent
+    // feature tree (prevents the sketch↔tree desync / orphaned-node corruption
+    // when manual sketching and AI run against the same state). No-op if not in
+    // sketch mode. This makes the manual→AI→manual workflow safe.
+    try { window.dispatchEvent(new CustomEvent('nexyfab:tool', { detail: { id: 'sketch.finish' } })); } catch { /* ok */ }
     try {
       const { intents, explanation } = await promptToIntents(prompt);
       if (intents.length === 0) return explanation || 'No actions inferred.';

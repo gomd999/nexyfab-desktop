@@ -3788,6 +3788,16 @@ export function ShapeGeneratorInner() {
         setIsSketchMode(false);
         return;
       }
+      // Cancel/discard the in-progress sketch: drop the drawn profile + result,
+      // then leave sketch mode (vs. sketch.finish which keeps it). Mirror of
+      // _handleEnterBlankSketch's profile reset.
+      if (id === 'sketch.cancel') {
+        setSketchProfile({ segments: [], closed: false });
+        setSketchResult(null);
+        setSelectedFeatureId(null);
+        setIsSketchMode(false);
+        return;
+      }
       if (id === 'sketch.extrude-active') {
         handleGenerateActiveProfileRef.current?.();
         return;
