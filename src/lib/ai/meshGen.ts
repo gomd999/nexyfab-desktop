@@ -104,35 +104,58 @@ async function meshyRetexture(req: RetextureRequest): Promise<MeshGenResult> {
 }
 
 // ─── Replicate ───────────────────────────────────────────────────────────────
-// Route by input type: image → TRELLIS (image-to-3D, SOTA, warmest ~827k runs);
-// text → Hunyuan3D-3.1 (text-to-3D). Both env-overridable.
-function replicateModel(req: MeshGenRequest): string {
-  return req.image
-    ? (process.env.REPLICATE_IMAGE_MODEL || 'firtoz/trellis')
-    : (process.env.REPLICATE_TEXT_MODEL || 'tencent/hunyuan-3d-3.1');
-}
+// Cost-optimal routing. TRELLIS ($0.035, warm, SOTA) is image-to-3D only, so:
+//   image → TRELLIS directly
+//   text  → cheap text-to-image (flux, ~$0.003) → TRELLIS   (~$0.04 total)
+// vs a direct text-to-3D model like hunyuan-3d-3.1 at ~$0.50 (≈13× pricier).
+// Set REPLICATE_TEXT_MODEL to force a direct text-to-3D model instead.
+const IMAGE_MODEL = () => process.env.REPLICATE_IMAGE_MODEL || 'firtoz/trellis';
+const TEXT_TO_IMAGE_MODEL = () => process.env.REPLICATE_TEXT_TO_IMAGE_MODEL || 'black-forest-labs/flux-schnell';
 
-// Per-model input field names (TRELLIS wants an images[] array; most others take
-// a single `image`; text models take `prompt`). Tune against the live schema
-// once REPLICATE_API_TOKEN is set.
 function replicateInput(model: string, req: MeshGenRequest): Record<string, unknown> {
   if (req.image) return model.toLowerCase().includes('trellis') ? { images: [req.image] } : { image: req.image };
   return { prompt: req.prompt };
 }
 
-async function replicateStart(req: MeshGenRequest): Promise<MeshGenResult> {
-  const key = process.env.REPLICATE_API_TOKEN!;
-  const model = replicateModel(req);
-  // /v1/models/{owner}/{name}/predictions runs the model's LATEST version — no
-  // version hash to pin/maintain.
+async function startOnModel(key: string, model: string, input: Record<string, unknown>): Promise<MeshGenResult> {
   const r = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input: replicateInput(model, req) }),
+    body: JSON.stringify({ input }),
   });
   const j = (await r.json().catch(() => ({}))) as { id?: string; detail?: string };
   if (!r.ok) return { ok: false, status: 'error', provider: 'replicate', error: j.detail || `replicate ${r.status}` };
   return { ok: true, status: 'queued', provider: 'replicate', jobId: j.id };
+}
+
+/** Cheap, warm text→image so a text prompt can feed the image-to-3D model.
+ *  Prefer:wait blocks until the (fast) image is ready and returns its URL. */
+async function replicateTextToImage(key: string, prompt: string): Promise<string | null> {
+  const styled = `${prompt}, single object, centered, plain neutral background, full object in frame, product photo, soft studio lighting`;
+  const r = await fetch(`https://api.replicate.com/v1/models/${TEXT_TO_IMAGE_MODEL()}/predictions`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'wait' },
+    body: JSON.stringify({ input: { prompt: styled, aspect_ratio: '1:1', output_format: 'png' } }),
+  });
+  const j = (await r.json().catch(() => ({}))) as { output?: unknown };
+  const out = j.output;
+  return Array.isArray(out) ? (out[0] as string) ?? null : typeof out === 'string' ? out : null;
+}
+
+async function replicateStart(req: MeshGenRequest): Promise<MeshGenResult> {
+  const key = process.env.REPLICATE_API_TOKEN!;
+  let working = req;
+  if (!req.image) {
+    // Optional escape hatch: a direct text-to-3D model if explicitly configured.
+    const directText = process.env.REPLICATE_TEXT_MODEL;
+    if (directText) return startOnModel(key, directText, { prompt: req.prompt });
+    // Default: text → image → TRELLIS (cheaper + usually better geometry).
+    const imgUrl = await replicateTextToImage(key, req.prompt);
+    if (!imgUrl) return { ok: false, status: 'error', provider: 'replicate', error: 'text→image step produced no image' };
+    working = { ...req, image: imgUrl };
+  }
+  const model = IMAGE_MODEL();
+  return startOnModel(key, model, replicateInput(model, working));
 }
 
 async function replicatePoll(jobId: string): Promise<MeshGenResult> {
