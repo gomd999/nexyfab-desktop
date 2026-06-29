@@ -156,6 +156,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
             );
             return;
           }
+          if (res.status === 401) throw new Error('세션 만료 — 다시 로그인하세요 / Session expired — please log in again');
           throw new Error(patchData.error || `Server ${res.status}`);
         }
         if (patchData.project?.updatedAt != null) {
@@ -199,6 +200,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
             return;
           }
         }
+        if (res.status === 401) throw new Error('세션 만료 — 다시 로그인하세요 / Session expired — please log in again');
         if (!res.ok) throw new Error(`Server ${res.status}`);
         const data = await res.json() as {
           project?: { id: string; updatedAt: number; role?: 'owner' | 'editor' | 'viewer'; canEdit?: boolean };
