@@ -16,6 +16,7 @@ import { checkPlan, consumeMonthlyMetricSlot } from '@/lib/plan-guard';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
+import { pickExemplar } from '@/lib/ai/scadExemplars';
 import { resolveCodegenModel } from '@/lib/ai/codegenModels';
 import { visionCompletion, VisionNotConfiguredError, VisionProviderError } from '@/lib/ai/vision';
 import { getPromptVariant } from '@/lib/ai/prompts';
@@ -208,10 +209,17 @@ export async function POST(req: NextRequest) {
   // identifies the shape unambiguously, we pin it in the prompt (and enforce it
   // post-parse) — origin-independent and deterministic.
   const detectedShape = (refining || freeform) ? null : detectShapeFromText(prompt);
+  // Few-shot: for a fresh freeform request, inject a known-good parametric
+  // pattern for a matching part type so the model copies a working structure
+  // (sharply improves dimensional/geometric accuracy). Skipped on refine/repair.
+  const exemplar = (freeform && !previousScad) ? pickExemplar(prompt) : null;
+  const freeformFresh = exemplar
+    ? `Reference pattern for a SIMILAR part — match this STRUCTURE, style and Customizer-annotation format, but adapt the dimensions and features to the request (do not copy it verbatim):\n\`\`\`\n${exemplar.scad}\n\`\`\`\n\nNow create: ${prompt}`
+    : prompt;
   const userContent = freeform
     ? (previousScad
       ? `Here is the current OpenSCAD program:\n\`\`\`\n${previousScad}\n\`\`\`\n\nApply this change and return the COMPLETE updated program, following ALL the rules above (keep the Customizer parameter annotations and groups; keep parts not mentioned unchanged): ${prompt}`
-      : prompt)
+      : freeformFresh)
     : refining
     ? `Modify this existing design and return the COMPLETE updated intent in the SAME JSON format (catalog shape, "sketch", or assembly "parts"). Keep everything not mentioned unchanged.\n\nCurrent design:\n${JSON.stringify(previousIntent)}\n\nChange requested: ${prompt}`
     : (detectedShape
