@@ -829,49 +829,60 @@ function ExtrudeDepthHandle({
   if (!profile.closed) return null;
 
   return (
-    <group position={[centroid.x, centroid.y, centroid.z]}>
-      {/* Shaft along extrude direction */}
-      <group quaternion={arrowQuat} position={[extrudeDir.x * depth / 2, extrudeDir.y * depth / 2, extrudeDir.z * depth / 2]}>
-        <mesh geometry={shaftGeo}>
-          <meshStandardMaterial color={GL.accent} roughness={0.4} metalness={0.1} transparent opacity={0.7} />
-        </mesh>
-        {/* Cone tip at top of shaft (drag handle) */}
-        <mesh
-          geometry={coneGeo}
-          position={[0, Math.max(depth, 2) / 2 + 3, 0]}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-        >
-          <meshStandardMaterial color="#60a5fa" roughness={0.3} metalness={0.2} />
-        </mesh>
-        {/* Label */}
-        <Html position={[0, Math.max(depth, 2) / 2 + 10, 0]} center style={{ pointerEvents: 'none' }}>
-          <div style={{
-            background: 'rgba(56,139,253,0.9)', color: 'var(--nx-text)',
-            fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
-            fontFamily: 'monospace', whiteSpace: 'nowrap',
-          }}>
-            ↕ {depth}mm
-          </div>
-        </Html>
+    <>
+      <group position={[centroid.x, centroid.y, centroid.z]}>
+        {/* Shaft along extrude direction */}
+        <group quaternion={arrowQuat} position={[extrudeDir.x * depth / 2, extrudeDir.y * depth / 2, extrudeDir.z * depth / 2]}>
+          <mesh geometry={shaftGeo}>
+            <meshStandardMaterial color={GL.accent} roughness={0.4} metalness={0.1} transparent opacity={0.7} />
+          </mesh>
+          {/* Cone tip at top of shaft (drag handle) */}
+          <mesh
+            geometry={coneGeo}
+            position={[0, Math.max(depth, 2) / 2 + 3, 0]}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+          >
+            <meshStandardMaterial color="#60a5fa" roughness={0.3} metalness={0.2} />
+          </mesh>
+          {/* Label */}
+          <Html position={[0, Math.max(depth, 2) / 2 + 10, 0]} center style={{ pointerEvents: 'none' }}>
+            <div style={{
+              background: 'rgba(56,139,253,0.9)', color: 'var(--nx-text)',
+              fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+              fontFamily: 'monospace', whiteSpace: 'nowrap',
+            }}>
+              ↕ {depth}mm
+            </div>
+          </Html>
+        </group>
       </group>
 
-      {/* Ghost wireframe preview of extruded shape */}
-      <group quaternion={arrowQuat} position={[extrudeDir.x * depth / 2, extrudeDir.y * depth / 2, extrudeDir.z * depth / 2]}>
-        {depth > 0 && (() => {
-          const pts = profile.segments.map(s => to3D(s.points[0], plane));
-          if (pts.length < 2) return null;
-          const shape = new THREE.Shape(pts.map(p => new THREE.Vector2(p.x, p.y)));
-          const extGeo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
-          return (
-            <mesh geometry={extGeo} position={[0, -depth / 2, 0]}>
-              <meshBasicMaterial color={GL.accent} wireframe transparent opacity={0.25} />
-            </mesh>
-          );
-        })()}
-      </group>
-    </group>
+      {/* Ghost wireframe preview of the extruded shape. Built from the profile's
+          own 2D sketch coords and placed at WORLD ORIGIN — to3D already yields
+          absolute coords, so on XY this sits exactly on the drawn profile and
+          rises along +Z. It previously lived INSIDE the arrow's centroid +
+          quaternion groups, which double-offset and mis-rotated it, so the prism
+          floated away from the profile (reported #132). */}
+      {depth > 0 && (() => {
+        const pts2d = profile.segments.map(s => s.points[0]);
+        if (pts2d.length < 3) return null;
+        const shape = new THREE.Shape(pts2d.map(p => new THREE.Vector2(p.x, p.y)));
+        const extGeo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
+        // ExtrudeGeometry lies in local XY and extrudes along +Z. Rotate so the
+        // profile lands on the active sketch plane (xy = identity = exact match).
+        const rotation: [number, number, number] =
+          plane === 'xy' ? [0, 0, 0]
+            : plane === 'xz' ? [Math.PI / 2, 0, 0]
+              : [0, -Math.PI / 2, 0];
+        return (
+          <mesh geometry={extGeo} rotation={rotation}>
+            <meshBasicMaterial color={GL.accent} wireframe transparent opacity={0.25} />
+          </mesh>
+        );
+      })()}
+    </>
   );
 }
 
