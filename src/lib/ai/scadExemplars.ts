@@ -149,6 +149,44 @@ module knob() {
 }
 knob();`,
   },
+  {
+    id: 'pulley',
+    keywords: ['pulley', 'belt', 'sheave', 'v-groove', 'idler', '풀리', '벨트', '도르래'],
+    scad: `include <BOSL2/std.scad>
+$fn = 72;
+/* [Pulley] */
+outer_d = 40;      // [20:1:120]
+thick = 12;        // [5:1:40]
+bore_d = 8;        // [3:0.5:20]
+groove_d = 5;      // [1:0.5:12]
+module pulley() {
+  difference() {
+    cylinder(d = outer_d, h = thick);
+    translate([0, 0, thick / 2]) rotate_extrude() translate([outer_d / 2, 0, 0]) circle(d = groove_d);
+    translate([0, 0, -1]) cylinder(d = bore_d, h = thick + 2);
+  }
+}
+pulley();`,
+  },
+  {
+    id: 'vase',
+    keywords: ['vase', 'cup', 'pot', 'bottle', 'bowl', 'planter', 'goblet', '꽃병', '컵', '화분', '병', '그릇'],
+    scad: `include <BOSL2/std.scad>
+$fn = 96;
+/* [Vase] */
+height = 120;      // [40:1:250]
+base_d = 50;       // [20:1:120]
+neck_d = 32;       // [15:1:100]
+wall = 2;          // [1:0.5:6]
+function prof(b, n, h) = [[0, 0], [b / 2, 0], [b / 2 * 0.92, h * 0.45], [n / 2, h], [0, h]];
+module vase() {
+  difference() {
+    rotate_extrude() polygon(prof(base_d, neck_d, height));
+    translate([0, 0, wall]) rotate_extrude() polygon(prof(base_d - 2 * wall, neck_d - 2 * wall, height));
+  }
+}
+vase();`,
+  },
 ];
 
 /** Pick the single most relevant exemplar for a prompt, or null if no decent
