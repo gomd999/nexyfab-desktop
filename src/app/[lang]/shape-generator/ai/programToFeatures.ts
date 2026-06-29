@@ -77,6 +77,7 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
   // 2. downstream features, in program order (a pattern follows its source hole)
   const skipped: string[] = [];
   for (const f of feats) {
+    try {
     switch (f.type) {
       case 'sketchExtrude':
         break;
@@ -116,6 +117,10 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
         break;
       default:
         skipped.push(f.type); // rib / shell / etc. — handled by the imported-geometry fallback
+    }
+    } catch {
+      // A single bad feature must not abort the whole tree reconstruction.
+      skipped.push(`${f.type} (error)`);
     }
   }
   return { ok: true, skipped };
