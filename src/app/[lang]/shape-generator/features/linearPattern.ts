@@ -20,7 +20,8 @@ export const linearPatternFeature: FeatureDefinition = {
   ],
   apply(geometry, params) {
     const axis = Math.round(params.axis);
-    const count = Math.round(params.count);
+    // count ≥ 1 (a 0/negative count would build an empty geometry → merge crash).
+    const count = Math.max(1, Math.round(params.count));
     const spacing = params.spacing;
 
     const copies: THREE.BufferGeometry[] = [];

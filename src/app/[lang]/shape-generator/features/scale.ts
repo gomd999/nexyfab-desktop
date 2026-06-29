@@ -5,7 +5,10 @@ import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback, clearStaleBrepHandle } from './downgradeNotice';
 
 function applyScaleMesh(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry {
-  const { scaleX, scaleY, scaleZ } = params;
+  // A scale factor of 0 (or NaN) collapses the geometry to a plane/line — a
+  // degenerate, unusable solid. Clamp each axis to a small positive minimum.
+  const safe = (v: number): number => (Number.isFinite(v) && Math.abs(v) > 1e-4 ? v : 1);
+  const scaleX = safe(params.scaleX), scaleY = safe(params.scaleY), scaleZ = safe(params.scaleZ);
   const clone = geometry.clone();
   clone.applyMatrix4(new THREE.Matrix4().makeScale(scaleX, scaleY, scaleZ));
   clone.computeVertexNormals();

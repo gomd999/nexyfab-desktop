@@ -155,10 +155,20 @@ export function analyzeSnapHook(spec: SnapHookSpec): SnapHookReport {
   const insAngle = spec.insertionAngleDeg * Math.PI / 180;
   const remAngle = spec.removalAngleDeg * Math.PI / 180;
   const mu = spec.friction;
-  const insertionForce = deflectionForce * (Math.tan(insAngle) + mu) / (1 - mu * Math.tan(insAngle));
-  const removalForce = deflectionForce * (Math.tan(remAngle) + mu) / (1 - mu * Math.tan(remAngle));
+  const insTan = Math.tan(insAngle);
+  const remTan = Math.tan(remAngle);
+  // Guard the (1 − μ·tanθ) denominator: at self-locking it hits 0 → a silent
+  // Infinity (or a negative, physically nonsensical force). Treat ≤0 as
+  // self-locking (force effectively infinite) and warn for BOTH directions.
+  const insDenom = 1 - mu * insTan;
+  const remDenom = 1 - mu * remTan;
+  const insertionForce = insDenom > 1e-6 ? deflectionForce * (insTan + mu) / insDenom : Infinity;
+  const removalForce = remDenom > 1e-6 ? deflectionForce * (remTan + mu) / remDenom : Infinity;
 
-  if (mu * Math.tan(remAngle) >= 1) {
+  if (mu * insTan >= 1) {
+    warnings.push('Insertion geometry self-locking — cannot be assembled');
+  }
+  if (mu * remTan >= 1) {
     warnings.push('Removal geometry self-locking — irreversible snap');
   }
 

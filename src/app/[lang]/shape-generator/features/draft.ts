@@ -6,7 +6,10 @@ import { noteMeshFallback, clearStaleBrepHandle } from './downgradeNotice';
 import { captureKernelFailure } from './kernelCorpus';
 
 function applyDraftMesh(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry {
-  const angleDeg = params.angle;
+  // Clamp away from ±90°: tan(90°) is Infinity and would write NaN coordinates
+  // into every vertex (silent invalid solid). UI bounds are 1–30°, but an
+  // AI/programmatic param could pass 90.
+  const angleDeg = Math.max(-89, Math.min(89, params.angle ?? 0));
   const direction = Math.round(params.direction) === 0 ? 1 : -1;
   const tanAngle = Math.tan((angleDeg * Math.PI) / 180);
 

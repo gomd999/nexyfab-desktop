@@ -91,7 +91,9 @@ export const holeFeature: FeatureDefinition = {
         if (holeType === 2) { // Countersink — cut a cone (apex down) at the top.
           const csHalfAngle = (params.countersinkAngle * Math.PI) / 360;
           const csR = r * 2;
-          const csDepth = csR / Math.tan(csHalfAngle);
+          // Guard tan() singularity (angle→0° or 180°): would give Infinity/NaN depth.
+          const csTan = Math.tan(csHalfAngle);
+          const csDepth = (Number.isFinite(csTan) && Math.abs(csTan) > 1e-6) ? csR / csTan : csR;
           const res2 = occtBoxBooleanWithPrimitive('subtract', host, { shape: 'cone', w: csR * 2, h: csDepth, d: csR * 2, cx: posX, cy: topY, cz: posZ, rx: 0, ry: 0, rz: 0 }, undefined, currentHandle);
           currentHandle = res2.handle ?? currentHandle;
           currentGeo = res2.geometry;
@@ -143,7 +145,9 @@ export const holeFeature: FeatureDefinition = {
     if (holeType === 2) {
       const csHalfAngle = ((params.countersinkAngle) * Math.PI) / 360;
       const csR = r * 2;
-      const csDepth = csR / Math.tan(csHalfAngle);
+      // Guard tan() singularity (angle→0° or 180°): would give Infinity/NaN depth.
+      const csTan = Math.tan(csHalfAngle);
+      const csDepth = (Number.isFinite(csTan) && Math.abs(csTan) > 1e-6) ? csR / csTan : csR;
       const cone = new THREE.ConeGeometry(csR, csDepth, 32);
       cone.rotateX(Math.PI);
       cone.translate(posX, topY, posZ);
