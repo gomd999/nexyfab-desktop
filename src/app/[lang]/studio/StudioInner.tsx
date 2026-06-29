@@ -222,7 +222,8 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const renderScad = useCallback(async (src: string): Promise<RenderResult> => {
     // Client-side WASM render first — no server load, no auth gate, no byte cap.
     // Attached-STL models still use the server (it injects the user's model.stl).
-    if (!importStlRef.current && wasmAvailable()) {
+    // text() needs a font the client WASM build lacks → render on the server.
+    if (!importStlRef.current && wasmAvailable() && !/\btext\s*\(/i.test(src)) {
       const w = await renderScadWasm(src);
       if (w.ok && w.data) {
         const geo = parseSTL(w.data.slice().buffer);
@@ -277,7 +278,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     // worker pool; only fall back to the server when WASM is unavailable.
     const tokens: (string | null)[] = colors.map(c => c.token).slice(0, 24);
     tokens.push(null); // uncoloured remainder → default colour
-    const useWasm = !importStlRef.current && wasmAvailable();
+    const useWasm = !importStlRef.current && wasmAvailable() && !/\btext\s*\(/i.test(src);
     const renderOne = async (tok: string | null) => {
       const iso = isolateColorScad(src, tok);
       try {
@@ -894,17 +895,19 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         <div className="flex flex-col gap-1.5 pt-2 mt-1 border-t st-bd">
           <div className="px-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] st-text-3">{T('빠른 보정', 'Quick fixes')}</div>
           <div className="flex flex-wrap gap-1">
-            {[
-              { ko: '⬇ 바닥 평탄화', en: '⬇ Flatten base', p: 'Flatten the bottom so the whole model sits flat on the build plate at z=0.' },
-              { ko: '🫙 속 비우기', en: '🫙 Hollow', p: 'Hollow it out into a shell with 2mm walls, keeping the outer shape.' },
-              { ko: '🕳 마운팅 홀', en: '🕳 Mount holes', p: 'Add 4 M3 mounting holes near the base corners as a parametric pattern.' },
-              { ko: '🔵 모서리 둥글게', en: '🔵 Round edges', p: 'Round the sharp outer edges with a small fillet.' },
-              { ko: '⤢ 2배', en: '⤢ 2× size', p: 'Make the whole model twice as large, keeping proportions.' },
-              { ko: '⤡ 절반', en: '⤡ Half', p: 'Make the whole model half the size, keeping proportions.' },
-            ].map(a => (
-              <button key={a.en} type="button" disabled={busy} onClick={() => void send(a.p)}
+            {([
+              { label: T('⬇ 바닥 평탄화', '⬇ Flatten base'), run: () => send('Flatten the bottom so the whole model sits flat on the build plate at z=0.') },
+              { label: T('🫙 속 비우기', '🫙 Hollow'), run: () => { const w = window.prompt(T('벽 두께 (mm)', 'Wall thickness (mm)'), '2'); const n = Number(w); if (n > 0) void send(`Hollow it into a shell with ${n}mm walls, keeping the outer shape.`); } },
+              { label: T('🕳 마운팅 홀', '🕳 Mount holes'), run: () => send('Add 4 M3 mounting holes near the base corners as a parametric pattern.') },
+              { label: T('🔵 모서리 둥글게', '🔵 Round edges'), run: () => send('Round the sharp outer edges with a small fillet (small enough to render).') },
+              { label: T('⟋ 모따기', '⟋ Chamfer'), run: () => send('Chamfer the sharp outer edges with a small 45° chamfer (keep it well under half the smallest dimension so it renders).') },
+              { label: T('🔤 텍스트 각인', '🔤 Engrave text'), run: () => { const t = window.prompt(T('각인할 텍스트', 'Text to engrave'), 'NXF'); const s = (t || '').trim().replace(/"/g, ''); if (s) void send(`Engrave the text "${s}" recessed about 1mm into the top face, sized to fit and centered.`); } },
+              { label: T('⤢ 2배', '⤢ 2× size'), run: () => send('Make the whole model twice as large, keeping proportions.') },
+              { label: T('⤡ 절반', '⤡ Half'), run: () => send('Make the whole model half the size, keeping proportions.') },
+            ]).map((a, i) => (
+              <button key={i} type="button" disabled={busy} onClick={() => { void a.run(); }}
                 className="text-[11px] px-2 py-1 rounded-md st-panel-2 border st-bd st-hover disabled:opacity-40 transition-colors">
-                {isKo ? a.ko : a.en}
+                {a.label}
               </button>
             ))}
           </div>
