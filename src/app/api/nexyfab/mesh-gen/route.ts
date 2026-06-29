@@ -1,0 +1,38 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth-middleware';
+import { checkOrigin } from '@/lib/csrf';
+import { generateMesh, pollMesh, isMeshGenConfigured } from '@/lib/ai/meshGen';
+
+// Organic 3D mesh-generation track (text/image → GLB) — the complement to the
+// CSG/OpenSCAD track for shapes CSG can't do (animals, characters, freeform).
+// SCAFFOLD: returns 501 until a provider key (MESHY_API_KEY / REPLICATE_API_TOKEN)
+// is configured. POST starts a job; GET ?job=<id> polls it.
+
+export async function POST(req: NextRequest) {
+  if (!checkOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const authUser = await getAuthUser(req);
+  if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isMeshGenConfigured()) {
+    return NextResponse.json(
+      { status: 'disabled', error: 'Organic mesh generation is not configured. Set MESHY_API_KEY or REPLICATE_API_TOKEN.' },
+      { status: 501 },
+    );
+  }
+  const body = (await req.json().catch(() => ({}))) as { prompt?: string; image?: string };
+  const prompt = (body.prompt ?? '').trim();
+  if (!prompt && !body.image) return NextResponse.json({ error: 'prompt or image is required' }, { status: 400 });
+  const result = await generateMesh({ prompt, image: body.image });
+  return NextResponse.json(result, { status: result.ok ? 200 : 502 });
+}
+
+export async function GET(req: NextRequest) {
+  const authUser = await getAuthUser(req);
+  if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isMeshGenConfigured()) {
+    return NextResponse.json({ status: 'disabled', error: 'Organic mesh generation is not configured.' }, { status: 501 });
+  }
+  const jobId = req.nextUrl.searchParams.get('job');
+  if (!jobId) return NextResponse.json({ error: 'job query param is required' }, { status: 400 });
+  const result = await pollMesh(jobId);
+  return NextResponse.json(result, { status: result.ok ? 200 : 502 });
+}
