@@ -38,7 +38,7 @@ const STORAGE_KEY = 'nexyfab_floating_ai_open_v1';
 
 const COPY = {
   ko: {
-    pill: '✨ AI',
+    pill: '✨ AI로 설계·수정',
     placeholder: '예: 50mm 정육면체 만들고 위쪽에 10mm 구멍 뚫어줘',
     send: '보내기',
     streaming: '생성 중...',
@@ -47,7 +47,7 @@ const COPY = {
     hint: '⌘K',
   },
   en: {
-    pill: '✨ AI',
+    pill: '✨ Design with AI',
     placeholder: 'e.g. Make a 50mm cube with a 10mm hole on top',
     send: 'Send',
     streaming: 'Generating...',
@@ -69,9 +69,10 @@ export default function FloatingAiPrompt({
   const ko = lang === 'ko' || lang === 'kr';
   const t = ko ? COPY.ko : COPY.en;
 
-  // Restore last open state.
+  // Restore last open state. On a FIRST visit (no stored preference) open it, so
+  // new users meet the "just describe it" front door instead of the full ribbon.
   useEffect(() => {
-    try { setOpen(window.localStorage.getItem(STORAGE_KEY) === 'true'); } catch { /* ok */ }
+    try { const v = window.localStorage.getItem(STORAGE_KEY); setOpen(v === null ? true : v === 'true'); } catch { /* ok */ }
   }, []);
   useEffect(() => {
     try { window.localStorage.setItem(STORAGE_KEY, String(open)); } catch { /* ok */ }
