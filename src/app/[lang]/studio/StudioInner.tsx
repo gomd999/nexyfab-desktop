@@ -121,6 +121,18 @@ function ModelPicker({ modelId, onPick, isKo, compact }: { modelId: string; onPi
   );
 }
 
+/** Extract the largest explicit dimension (mm) a user asked for, for scale
+ *  auto-correction. Reads "A×B×C", "N mm", and "⌀N / diameter N" patterns. */
+function parseTargetLargestMm(prompt: string): number | null {
+  const nums: number[] = [];
+  const axb = prompt.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i);
+  if (axb) nums.push(+axb[1]!, +axb[2]!, +axb[3]!);
+  for (const m of prompt.matchAll(/(\d+(?:\.\d+)?)\s*mm\b/gi)) nums.push(+m[1]!);
+  for (const m of prompt.matchAll(/(?:⌀|dia(?:meter)?\.?\s*)(\d+(?:\.\d+)?)/gi)) nums.push(+m[1]!);
+  const valid = nums.filter(n => n >= 3 && n <= 2000);
+  return valid.length ? Math.max(...valid) : null;
+}
+
 export default function StudioInner({ onExpert, initialPrecise = false }: { onExpert?: () => void; initialPrecise?: boolean } = {}) {
   const params = useParams();
   const router = useRouter();
@@ -163,6 +175,8 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     box.getSize(s);
     setModelSize(Number.isFinite(s.x) && s.x > 0 ? { x: s.x, y: s.y, z: s.z } : null);
   }, [geometry, coloredObject]);
+  const lastTargetRef = useRef<number | null>(null); // requested largest dim (mm) of the current fresh model
+  const autoFixedRef = useRef(false);                // one-shot guard for dimension auto-correct
   const [stlB64, setStlB64] = useState<string | null>(null);
   const [genCount, setGenCount] = useState(0);
   const colorReqRef = useRef(0); // guards against stale colored renders
@@ -319,12 +333,18 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     setColoredObject(group);
   }, []);
 
-  const send = useCallback(async () => {
-    const text = input.trim();
+  const send = useCallback(async (override?: string) => {
+    const text = (typeof override === 'string' ? override : input).trim();
     if ((!text && !image) || busy) return;
     const sentImage = image;
     const sentImageName = imageName;
     const refineFromScad = !!scad && !sentImage;
+    // Track the requested largest dimension on a FRESH typed request, so the
+    // render can auto-correct the scale once if it comes out the wrong size.
+    if (!refineFromScad && typeof override !== 'string') {
+      lastTargetRef.current = parseTargetLargestMm(text);
+      autoFixedRef.current = false;
+    }
     const userMsg: ChatMsg = { id: nextId(), role: 'user', text: text || T('(이미지)', '(image)'), image: sentImage };
     const aiId = nextId();
     setMessages(m => [...m, userMsg, { id: aiId, role: 'assistant', text: sentImage ? T('이미지 분석 중…', 'Reading the image…') : precise ? T('정밀 피처 설계 중…', 'Planning precise features…') : T('설계 중…', 'Designing…'), status: 'thinking' }]);
@@ -540,6 +560,20 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
       setBusy(false);
     }
   }, [input, image, busy, scad, precise, modelId, renderScad, renderColored, setAiMsg, refreshDesigns, isKo]);
+
+  // Dimension auto-correct (single-shot): if a fresh model's largest dimension is
+  // off from what the user explicitly asked for, uniformly rescale it once.
+  useEffect(() => {
+    if (!modelSize || busy || autoFixedRef.current) return;
+    const target = lastTargetRef.current;
+    if (!target) return;
+    const largest = Math.max(modelSize.x, modelSize.y, modelSize.z);
+    if (largest <= 0) return;
+    if (Math.abs(largest - target) / target > 0.15) {
+      autoFixedRef.current = true;
+      void send(`The overall size is off: the model's largest dimension is about ${largest.toFixed(0)} mm but it should be ${target} mm. Uniformly scale the whole model so its largest dimension is exactly ${target} mm, keeping all proportions, features and parameters consistent.`);
+    }
+  }, [modelSize, busy, send]);
 
   const onCustomizer = useCallback((name: string, value: number | boolean | string) => {
     setColoredObject(null); // drop to fast monochrome while dragging
@@ -856,6 +890,26 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         </div>
         );
       })}
+      {scad && (
+        <div className="flex flex-col gap-1.5 pt-2 mt-1 border-t st-bd">
+          <div className="px-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] st-text-3">{T('빠른 보정', 'Quick fixes')}</div>
+          <div className="flex flex-wrap gap-1">
+            {[
+              { ko: '⬇ 바닥 평탄화', en: '⬇ Flatten base', p: 'Flatten the bottom so the whole model sits flat on the build plate at z=0.' },
+              { ko: '🫙 속 비우기', en: '🫙 Hollow', p: 'Hollow it out into a shell with 2mm walls, keeping the outer shape.' },
+              { ko: '🕳 마운팅 홀', en: '🕳 Mount holes', p: 'Add 4 M3 mounting holes near the base corners as a parametric pattern.' },
+              { ko: '🔵 모서리 둥글게', en: '🔵 Round edges', p: 'Round the sharp outer edges with a small fillet.' },
+              { ko: '⤢ 2배', en: '⤢ 2× size', p: 'Make the whole model twice as large, keeping proportions.' },
+              { ko: '⤡ 절반', en: '⤡ Half', p: 'Make the whole model half the size, keeping proportions.' },
+            ].map(a => (
+              <button key={a.en} type="button" disabled={busy} onClick={() => void send(a.p)}
+                className="text-[11px] px-2 py-1 rounded-md st-panel-2 border st-bd st-hover disabled:opacity-40 transition-colors">
+                {isKo ? a.ko : a.en}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 
