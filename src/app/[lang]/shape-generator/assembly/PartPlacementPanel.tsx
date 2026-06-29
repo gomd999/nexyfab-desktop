@@ -373,7 +373,7 @@ export default function PartPlacementPanel({ parts, onChange, isKo, currentShape
                           {loc(seg, { ko: '파라미터', en: 'Parameters', ja: 'パラメータ', zh: '参数', es: 'Parámetros', ar: 'المعلمات' })}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {SHAPE_MAP[part.shapeId].params.map(param => (
+                          {(SHAPE_MAP[part.shapeId]?.params ?? []).map(param => (
                             <div key={param.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <span style={{ fontSize: 10, color: 'var(--nx-text-2)' }}>{param.labelKey}</span>
                               <input

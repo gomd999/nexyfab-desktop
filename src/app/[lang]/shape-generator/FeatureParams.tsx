@@ -65,6 +65,17 @@ export default function FeatureParams({
     onExpressionCommit!(instance.id, key, draft);
   };
 
+  // Guard: a feature/shape with no registered definition (e.g. a freshly created
+  // sketchExtrude that isn't in SHAPE_MAP) used to crash the whole panel at
+  // definition.params.map → "Cannot read properties of undefined (reading 'params')".
+  if (!definition?.params || !instance?.params) {
+    return (
+      <div style={{ fontSize: 12, color: 'var(--nx-text-2)', padding: '4px 0' }}>
+        {ko ? '편집할 파라미터가 없습니다' : 'No editable parameters'}
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {definition.params.map(sp => {
