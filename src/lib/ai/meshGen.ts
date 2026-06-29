@@ -104,14 +104,31 @@ async function meshyRetexture(req: RetextureRequest): Promise<MeshGenResult> {
 }
 
 // ─── Replicate ───────────────────────────────────────────────────────────────
+// Route by input type: image → TRELLIS (image-to-3D, SOTA, warmest ~827k runs);
+// text → Hunyuan3D-3.1 (text-to-3D). Both env-overridable.
+function replicateModel(req: MeshGenRequest): string {
+  return req.image
+    ? (process.env.REPLICATE_IMAGE_MODEL || 'firtoz/trellis')
+    : (process.env.REPLICATE_TEXT_MODEL || 'tencent/hunyuan-3d-3.1');
+}
+
+// Per-model input field names (TRELLIS wants an images[] array; most others take
+// a single `image`; text models take `prompt`). Tune against the live schema
+// once REPLICATE_API_TOKEN is set.
+function replicateInput(model: string, req: MeshGenRequest): Record<string, unknown> {
+  if (req.image) return model.toLowerCase().includes('trellis') ? { images: [req.image] } : { image: req.image };
+  return { prompt: req.prompt };
+}
+
 async function replicateStart(req: MeshGenRequest): Promise<MeshGenResult> {
   const key = process.env.REPLICATE_API_TOKEN!;
-  const version = process.env.REPLICATE_MESH_VERSION;
-  if (!version) return { ok: false, status: 'error', provider: 'replicate', error: 'REPLICATE_MESH_VERSION not set (the model version to run).' };
-  const r = await fetch('https://api.replicate.com/v1/predictions', {
+  const model = replicateModel(req);
+  // /v1/models/{owner}/{name}/predictions runs the model's LATEST version — no
+  // version hash to pin/maintain.
+  const r = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ version, input: req.image ? { image: req.image } : { prompt: req.prompt } }),
+    body: JSON.stringify({ input: replicateInput(model, req) }),
   });
   const j = (await r.json().catch(() => ({}))) as { id?: string; detail?: string };
   if (!r.ok) return { ok: false, status: 'error', provider: 'replicate', error: j.detail || `replicate ${r.status}` };
