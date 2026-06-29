@@ -10516,7 +10516,10 @@ export function ShapeGeneratorInner() {
             const editingNode = featureHistory.nodes.find(n => n.id === featureHistory.editingNodeId);
             if (!editingNode || !editingNode.featureType) return null;
             const editingDef = getFeatureDefinition(editingNode.featureType);
-            if (!editingDef) return null;
+            const isSketchExtrudeNode = editingNode.featureType === 'sketchExtrude';
+            // sketchExtrude has no FEATURE_MAP definition — render a dedicated
+            // depth editor (below) instead of bailing with a blank panel.
+            if (!editingDef && !isSketchExtrudeNode) return null;
             return (
               <div style={{
                 position: 'absolute', top: 120, right: 24, width: 320, zIndex: 100,
@@ -10525,20 +10528,47 @@ export function ShapeGeneratorInner() {
                 display: 'flex', flexDirection: 'column', overflow: 'hidden', backdropFilter: 'blur(10px)',
               }}>
                 <div style={{ padding: '8px 12px', background: 'var(--nx-panel-2)', borderBottom: '1px solid #d0d7de', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--nx-text)' }}>Edit {editingNode.label || editingDef.type}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--nx-text)' }}>Edit {editingNode.label || editingDef?.type || 'Sketch extrude'}</span>
                   <button onClick={() => finishEditing?.()} style={{ background: 'transparent', border: 'none', color: 'var(--nx-text-3)', cursor: 'pointer', fontSize: 14 }}>✕</button>
                 </div>
                 <div style={{ padding: '12px', maxHeight: '60vh', overflowY: 'auto' }} className="nf-scroll">
-                  <FeatureParams
-                    instance={{ id: editingNode.id, type: editingNode.featureType, params: editingNode.params, paramExpressions: editingNode.paramExpressions, enabled: editingNode.enabled, error: editingNode.error }}
-                    definition={editingDef}
-                    t={shapeLabels}
-                    onParamChange={(id, key, value) => updateFeatureParamCmd(id, key, value)}
-                    expressions={editingNode.paramExpressions}
-                    variables={featureExprScope}
-                    onExpressionCommit={setFeatureParamExpressionCmd}
-                    lang={lang}
-                  />
+                  {isSketchExtrudeNode ? (() => {
+                    // Depth editor for AI/manual sketch-extrude features (no FEATURE_MAP
+                    // def). Writing sketchData.config.depth via updateNode triggers the
+                    // same recompute path as normal param edits → the solid re-extrudes.
+                    const sd = editingNode.sketchData;
+                    const depth = sd?.config?.depth ?? 50;
+                    const ko = lang === 'ko';
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                          {ko ? '돌출 깊이 (mm)' : 'Extrude depth (mm)'}
+                          <input
+                            type="number" min={0.1} step={1} value={depth}
+                            onChange={(e) => {
+                              const v = Math.max(0.1, Number(e.target.value) || depth);
+                              if (sd) updateNode(editingNode.id, { sketchData: { ...sd, config: { ...sd.config, depth: v } }, error: undefined });
+                            }}
+                            style={{ padding: 6, fontSize: 13, border: '1px solid var(--nx-border)', borderRadius: 4 }}
+                          />
+                        </label>
+                        <div style={{ fontSize: 11, color: 'var(--nx-text-2)' }}>
+                          {ko ? '평면' : 'Plane'}: {sd?.plane ?? 'xy'} · {ko ? '작업' : 'Op'}: {sd?.operation ?? 'add'}
+                        </div>
+                      </div>
+                    );
+                  })() : editingDef ? (
+                    <FeatureParams
+                      instance={{ id: editingNode.id, type: editingNode.featureType, params: editingNode.params, paramExpressions: editingNode.paramExpressions, enabled: editingNode.enabled, error: editingNode.error }}
+                      definition={editingDef}
+                      t={shapeLabels}
+                      onParamChange={(id, key, value) => updateFeatureParamCmd(id, key, value)}
+                      expressions={editingNode.paramExpressions}
+                      variables={featureExprScope}
+                      onExpressionCommit={setFeatureParamExpressionCmd}
+                      lang={lang}
+                    />
+                  ) : null}
                 </div>
                 <div style={{ padding: '8px 12px', background: 'var(--nx-panel-2)', borderTop: '1px solid #d0d7de', display: 'flex', justifyContent: 'flex-end' }}>
                   <button onClick={() => finishEditing?.()} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid var(--nx-border)', background: 'var(--nx-accent)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>OK</button>
