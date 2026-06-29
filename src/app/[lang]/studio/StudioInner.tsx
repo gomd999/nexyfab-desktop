@@ -148,6 +148,21 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [coloredObject, setColoredObject] = useState<THREE.Object3D | null>(null); // per-color group (CADAM-style)
+  const [modelSize, setModelSize] = useState<{ x: number; y: number; z: number } | null>(null);
+  // Dimension verification: the ACTUAL rendered bounding box (mm), so the user
+  // can confirm it matches the requested size.
+  useEffect(() => {
+    const box = new THREE.Box3();
+    if (geometry) {
+      geometry.computeBoundingBox();
+      if (geometry.boundingBox) box.copy(geometry.boundingBox); else { setModelSize(null); return; }
+    } else if (coloredObject) {
+      box.setFromObject(coloredObject);
+    } else { setModelSize(null); return; }
+    const s = new THREE.Vector3();
+    box.getSize(s);
+    setModelSize(Number.isFinite(s.x) && s.x > 0 ? { x: s.x, y: s.y, z: s.z } : null);
+  }, [geometry, coloredObject]);
   const [stlB64, setStlB64] = useState<string | null>(null);
   const [genCount, setGenCount] = useState(0);
   const colorReqRef = useRef(0); // guards against stale colored renders
@@ -816,6 +831,12 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
 
   const ParamsBody = () => (
     <div className="flex-1 overflow-auto p-3 flex flex-col gap-3">
+      {modelSize && (
+        <div className="flex items-center gap-1.5 text-[11px] st-text-3 pb-0.5" title={T('실제 렌더된 크기 (요청 치수와 비교용)', 'Actual rendered size (compare with the requested dimensions)')}>
+          <span>📐</span>
+          <span className="tabular-nums st-text-2">{modelSize.x.toFixed(1)} × {modelSize.y.toFixed(1)} × {modelSize.z.toFixed(1)} mm</span>
+        </div>
+      )}
       {customizer.length === 0 && <div className="text-[11px] st-text-3">{T('조절 가능한 치수가 여기 나타납니다.', 'Adjustable dimensions appear here.')}</div>}
       {grouped.map((g, gi) => {
         const isCol = !!g.name && collapsedGroups.has(g.name);
