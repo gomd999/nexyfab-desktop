@@ -99,7 +99,15 @@ export default function AiAssistantShell({
       }
       onAiBatch?.(batchId, intents.length);
       const applied = results.filter(r => r.applied).length;
-      return `${explanation}\n\nApplied ${applied}/${intents.length} action(s).`;
+      const failed = results.filter(r => !r.applied);
+      let reply = `${explanation}\n\nApplied ${applied}/${intents.length} action(s).`;
+      // Surface WHICH actions failed and WHY, instead of a silent partial apply.
+      if (failed.length > 0) {
+        reply += '\n' + failed
+          .map(r => `⚠️ ${r.summary || 'action'}${r.errorReason ? ` — ${r.errorReason}` : ''}`)
+          .join('\n');
+      }
+      return reply;
     } catch (err) {
       return `AI error: ${(err as Error)?.message ?? err}`;
     }
