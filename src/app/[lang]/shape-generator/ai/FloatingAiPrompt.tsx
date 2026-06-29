@@ -57,6 +57,18 @@ const COPY = {
   },
 } as const;
 
+/** One-click starting points — clicking fills the input with a ready, editable
+ *  prompt so a beginner designs by tweaking an example instead of facing a blank
+ *  box (and never needs the hard manual sketch→extrude flow). */
+const TEMPLATES: { icon: string; ko: string; en: string; promptKo: string; promptEn: string }[] = [
+  { icon: '📐', ko: '브래킷', en: 'Bracket', promptKo: 'L자 브래킷, 다리 60mm, 폭 30mm, 두께 5mm, ⌀6 구멍', promptEn: 'L-bracket, 60mm legs, 30mm wide, 5mm thick, ⌀6 holes' },
+  { icon: '📦', ko: '박스/케이스', en: 'Box', promptKo: '80×60×30 케이스, 벽 2mm, 모서리 라운드 3mm', promptEn: '80×60×30 enclosure, 2mm walls, 3mm rounded corners' },
+  { icon: '⚙️', ko: '기어', en: 'Gear', promptKo: '스퍼기어 24톱니, 두께 10mm, ⌀8 보어', promptEn: 'Spur gear, 24 teeth, 10mm thick, ⌀8 bore' },
+  { icon: '🔘', ko: '플랜지', en: 'Flange', promptKo: '플랜지 외경 80, 보어 30, 두께 8, ⌀8 볼트 6개 PCD 60', promptEn: 'Flange, ⌀80 outer, ⌀30 bore, 8mm thick, 6× ⌀8 bolts on PCD 60' },
+  { icon: '🥤', ko: '컵/화병', en: 'Cup', promptKo: '컵, 지름 50, 높이 80, 벽 2mm', promptEn: 'Cup, ⌀50, 80mm tall, 2mm walls' },
+  { icon: '🔩', ko: '스탠드오프', en: 'Standoff', promptKo: '스탠드오프 높이 15, 외경 8, ⌀3.2 보어', promptEn: 'Standoff, 15mm tall, ⌀8 outer, ⌀3.2 bore' },
+];
+
 export default function FloatingAiPrompt({
   lang, onSubmit, onOpenFullChat, disabled = false,
 }: FloatingAiPromptProps) {
@@ -210,6 +222,30 @@ export default function FloatingAiPrompt({
           {streaming ? '…' : t.send}
         </button>
       </div>
+
+      {!streaming && !response && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 10, color: 'var(--nx-text-2)', marginBottom: 5 }}>
+            {ko ? '예시로 시작 (눌러서 채우고 수정):' : 'Start from a template (click to fill, then edit):'}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {TEMPLATES.map(tpl => (
+              <button
+                key={tpl.en}
+                type="button"
+                onClick={() => { setText(ko ? tpl.promptKo : tpl.promptEn); setTimeout(() => inputRef.current?.focus(), 0); }}
+                style={{
+                  background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)',
+                  borderRadius: 999, padding: '4px 10px', fontSize: 11,
+                  color: 'var(--nx-text)', cursor: 'pointer', whiteSpace: 'nowrap',
+                }}
+              >
+                {tpl.icon} {ko ? tpl.ko : tpl.en}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {streaming && (
         <div style={{ marginTop: 10, padding: '8px 12px', fontSize: 12, color: 'var(--nx-text-2)' }}>
