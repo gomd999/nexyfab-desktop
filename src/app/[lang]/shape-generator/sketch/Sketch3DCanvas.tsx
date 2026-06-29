@@ -921,12 +921,13 @@ export default function Sketch3DCanvas({ profile, onProfileChange, activeTool, s
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onUndo, profile, onProfileChange]);
 
-  // When a preset is chosen, also switch the sketch plane immediately
+  // View presets (Top/Front/Right/Iso) only ORBIT the camera — they must NOT
+  // change the sketch plane. Coupling them remapped the profile and spammed
+  // "Sketch plane switched…" toasts every time the user looked from a new angle.
+  // The sketch plane changes only via the explicit XY/XZ/YZ selector.
   const handleViewPreset = useCallback((preset: ViewPreset) => {
     setActivePreset(preset);
-    const targetPlane = VIEW_PRESETS[preset].plane;
-    if (targetPlane) onPlaneChange?.(targetPlane);
-  }, [onPlaneChange]);
+  }, []);
 
   // Grid orientation per plane
   const gridProps = useMemo(() => {
