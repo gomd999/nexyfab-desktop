@@ -1035,6 +1035,31 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
               <ModelPicker modelId={modelId} onPick={pickModel} isKo={isKo} compact />
             </div>
             {image && <ImagePill />}
+            {scad && !image && (
+              // One-click refine chips — continue the design by clicking instead of
+              // typing. Each sends a complete refine prompt (send() refines when a
+              // model already exists). Mirrors the in-chat example hints.
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { ic: '🕳', ko: '구멍', en: 'Hole', pKo: '가운데에 지름 10mm 구멍을 관통으로 뚫어줘', pEn: 'Drill a 10mm hole straight through the center' },
+                  { ic: '⬆', ko: '2배 크게', en: '2× bigger', pKo: '전체를 2배 크게 만들어줘', pEn: 'Make the whole thing 2× bigger' },
+                  { ic: '🧱', ko: '벽 두껍게', en: 'Thicker walls', pKo: '벽을 3mm로 더 두껍게 해줘', pEn: 'Make the walls thicker (3mm)' },
+                  { ic: '◝', ko: '모서리 둥글게', en: 'Round edges', pKo: '바깥 모서리를 3mm 둥글게 해줘', pEn: 'Round the outer edges by 3mm' },
+                  { ic: '▭', ko: '바닥 평평', en: 'Flat base', pKo: '바닥을 평평하게 해줘', pEn: 'Flatten the base' },
+                  { ic: '🔩', ko: '마운팅 홀', en: 'Mount holes', pKo: '네 모서리에 지름 4mm 마운팅 구멍을 추가해줘', pEn: 'Add 4mm mounting holes at the four corners' },
+                ].map((c, i) => (
+                  <button
+                    key={i}
+                    disabled={busy}
+                    onClick={() => void send(T(c.pKo, c.pEn))}
+                    className="text-[11px] border st-chip rounded-full px-2.5 py-1 disabled:opacity-40"
+                    title={T(c.pKo, c.pEn)}
+                  >
+                    {c.ic} {T(c.ko, c.en)}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex items-end gap-1.5 st-panel-2 border st-bd rounded-xl px-2 py-1.5 focus-within:border-blue-500/60">
               <label className="cursor-pointer text-base shrink-0 leading-none" title={T('사진 첨부', 'Attach photo')}>
                 <input type="file" accept="image/*,.stl,model/stl,.step,.stp,model/step" className="hidden" onChange={e => onPickFile(e.target.files?.[0])} />📎
