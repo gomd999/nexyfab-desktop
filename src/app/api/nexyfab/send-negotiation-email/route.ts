@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   const planCheck = await checkPlan(req, 'pro');
   if (!planCheck.ok) return planCheck.response;
 
-  const body = await req.json() as SendBody;
+  const body = await req.json().catch(() => ({})) as SendBody;
   if (!body.to || !body.subject || !body.body) {
     return NextResponse.json({ error: 'to, subject, body are required' }, { status: 400 });
   }

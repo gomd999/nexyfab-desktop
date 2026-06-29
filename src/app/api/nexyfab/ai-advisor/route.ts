@@ -222,7 +222,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as {
+  const body = await req.json().catch(() => ({})) as {
     shape: string;
     params: Record<string, number>;
     material: string;

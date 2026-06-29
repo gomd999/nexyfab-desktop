@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const body = await req.json() as { id: string; action: 'approve' | 'reject'; note?: string };
+  const body = await req.json().catch(() => ({})) as { id: string; action: 'approve' | 'reject'; note?: string };
   if (!body.id || !['approve', 'reject'].includes(body.action)) {
     return NextResponse.json({ error: 'id and action (approve|reject) required' }, { status: 400 });
   }

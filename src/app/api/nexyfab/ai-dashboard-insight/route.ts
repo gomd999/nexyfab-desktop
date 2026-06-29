@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ insight: '' }, { status: 401 });
 
-  const { summary, lang = 'ko' } = await req.json();
+  const { summary, lang = 'ko' } = await req.json().catch(() => ({}));
   if (!summary) return NextResponse.json({ insight: '' });
 
   const isKo = lang === 'ko';

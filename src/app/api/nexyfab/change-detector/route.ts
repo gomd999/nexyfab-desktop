@@ -216,7 +216,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as RequestBody;
+  const body = await req.json().catch(() => ({})) as RequestBody;
   if (!body.prev || !body.next) {
     return NextResponse.json({ error: 'prev and next design specs are required' }, { status: 400 });
   }

@@ -200,7 +200,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as RequestBody;
+  const body = await req.json().catch(() => ({})) as RequestBody;
   if (!Array.isArray(body.entries) || body.entries.length === 0) {
     return NextResponse.json({ error: 'entries array is required' }, { status: 400 });
   }

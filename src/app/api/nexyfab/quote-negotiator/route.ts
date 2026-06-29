@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as RequestBody;
+  const body = await req.json().catch(() => ({})) as RequestBody;
   if (!body.rfq || !Array.isArray(body.quotes) || body.quotes.length === 0) {
     return NextResponse.json({ error: 'rfq and at least one quote are required' }, { status: 400 });
   }

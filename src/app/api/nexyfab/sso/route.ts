@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as Partial<SSOConfig>;
+  const body = await req.json().catch(() => ({})) as Partial<SSOConfig>;
   const current = await loadConfig();
 
   const updated: SSOConfig = {

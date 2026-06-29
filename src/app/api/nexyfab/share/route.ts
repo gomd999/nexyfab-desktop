@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
   const authUser = await getAuthUser(req);
 
-  const rawBody = await req.json() as Record<string, unknown>;
+  const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
 
   const parsed = createShareSchema.safeParse(rawBody);
   if (!parsed.success) {

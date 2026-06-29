@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as RequestBody;
+  const body = await req.json().catch(() => ({})) as RequestBody;
   if (!body.userMessage || !body.materialId || !body.process) {
     return NextResponse.json({ error: 'userMessage, materialId, and process are required' }, { status: 400 });
   }

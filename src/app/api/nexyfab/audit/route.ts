@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as {
+  const body = await req.json().catch(() => ({})) as {
     userId: string;
     action: string;
     resourceId?: string;

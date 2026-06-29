@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as RequestBody;
+  const body = await req.json().catch(() => ({})) as RequestBody;
   if (!body.rfq) {
     return NextResponse.json({ error: 'rfq is required' }, { status: 400 });
   }

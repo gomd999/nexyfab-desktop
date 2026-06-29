@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as RequestBody;
+  const body = await req.json().catch(() => ({})) as RequestBody;
   if (!body.industry) {
     return NextResponse.json({ error: 'industry is required' }, { status: 400 });
   }

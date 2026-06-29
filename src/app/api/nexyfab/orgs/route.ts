@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '이미 조직에 소속되어 있습니다.' }, { status: 409 });
   }
 
-  const body = await req.json() as {
+  const body = await req.json().catch(() => ({})) as {
     name: string;
     businessNumber?: string;
     country?: string;

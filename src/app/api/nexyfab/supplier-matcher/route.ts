@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as RequestBody;
+  const body = await req.json().catch(() => ({})) as RequestBody;
   if (!Array.isArray(body.candidates) || body.candidates.length === 0 || !body.material || !body.process) {
     return NextResponse.json({ error: 'candidates[], material, and process are required' }, { status: 400 });
   }

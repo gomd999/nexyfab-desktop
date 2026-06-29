@@ -218,7 +218,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as RouterRequest;
+  const body = await req.json().catch(() => ({})) as RouterRequest;
 
   if (!body.metrics || !body.material || !body.quantity || !Array.isArray(body.candidates) || body.candidates.length === 0) {
     return NextResponse.json({ error: 'metrics, material, quantity, and candidates[] are required' }, { status: 400 });

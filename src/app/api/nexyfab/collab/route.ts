@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const rawBody = await req.json() as Record<string, unknown>;
+  const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
 
   const parsed = collabSchema.safeParse(rawBody);
   if (!parsed.success) {

@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as RequestBody;
+  const body = await req.json().catch(() => ({})) as RequestBody;
   if (!Array.isArray(body.quotes) || body.quotes.length === 0) {
     return NextResponse.json({ error: 'quotes array is required' }, { status: 400 });
   }

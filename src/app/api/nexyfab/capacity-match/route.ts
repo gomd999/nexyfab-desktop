@@ -246,7 +246,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as RequestBody;
+  const body = await req.json().catch(() => ({})) as RequestBody;
   if (!body.partner || !body.partner.processes || body.partner.processes.length === 0) {
     return NextResponse.json({ error: 'partner.processes is required' }, { status: 400 });
   }

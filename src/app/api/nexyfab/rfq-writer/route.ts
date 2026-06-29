@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json() as RequestBody;
+  const body = await req.json().catch(() => ({})) as RequestBody;
   if (!body.supplier || !body.material || !body.process || !body.quantity) {
     return NextResponse.json({ error: 'supplier, material, process, quantity are required' }, { status: 400 });
   }
