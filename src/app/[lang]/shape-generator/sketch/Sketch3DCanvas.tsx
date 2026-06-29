@@ -422,10 +422,8 @@ function ClickPlane({
 
 function CameraPlaneIndicator({
   onPlaneDetected,
-  onPlaneChange,
 }: {
   onPlaneDetected: (plane: PlaneType | null) => void;
-  onPlaneChange?: (plane: PlaneType) => void;
 }) {
   const { camera } = useThree();
   const lastPlane = useRef<string | null>(null);
@@ -446,7 +444,9 @@ function CameraPlaneIndicator({
     if (detected !== lastPlane.current) {
       lastPlane.current = detected;
       onPlaneDetected(detected);
-      if (detected) onPlaneChange?.(detected); // auto-switch sketch plane
+      // Auto-switching the sketch plane on camera rotation was removed — it kept
+      // changing the plane + remapping the profile while the user merely orbited
+      // to view in 3D. Plane changes are explicit now (XY/XZ/YZ buttons).
     }
   });
 
@@ -722,7 +722,7 @@ function InfoHUD({
           padding: '3px 10px', borderRadius: 6,
           fontSize: 9, fontWeight: 700, fontFamily: 'monospace', color: 'var(--nx-accent-2)',
         }}>
-          👁 Facing {PLANE_LABELS[detectedPlane]} — auto-switching
+          👁 Facing {PLANE_LABELS[detectedPlane]} — click it to draw here
         </div>
       )}
 
@@ -892,12 +892,9 @@ export default function Sketch3DCanvas({ profile, onProfileChange, activeTool, s
   const [detectedPlane, setDetectedPlane] = useState<PlaneType | null>(null);
   const [cursorPt, setCursorPt] = useState<SketchPoint | null>(null);
   const [activePreset, setActivePreset] = useState<ViewPreset | null>(null);
-  // Always face the active sketch plane head-on (a flat 2D drawing canvas) on
-  // entry AND whenever the plane changes — fixes the disorienting tilted/iso view
-  // and the "axes flip around" feeling when switching XY/XZ/YZ.
-  useEffect(() => {
-    setActivePreset(sketchPlane === 'xy' ? 'front' : sketchPlane === 'xz' ? 'top' : 'right');
-  }, [sketchPlane]);
+  // Open the sketch in the default 3D (iso) camera so all of X/Y/Z are visible —
+  // the user gets spatial context. They can snap flat with the Top/Front/Right
+  // buttons. (We no longer force a flat head-on view on entry.)
   const canUndo = profile.segments.length > 0;
 
   // Keyboard: Ctrl+Z undo, T/F/R/I view shortcuts
@@ -958,7 +955,7 @@ export default function Sketch3DCanvas({ profile, onProfileChange, activeTool, s
         <directionalLight position={[20, 30, 15]} intensity={1} />
 
         {/* Camera plane detector — auto-switches sketch plane */}
-        <CameraPlaneIndicator onPlaneDetected={setDetectedPlane} onPlaneChange={onPlaneChange} />
+        <CameraPlaneIndicator onPlaneDetected={setDetectedPlane} />
 
         {/* Camera preset teleporter */}
         <CameraPresetController preset={activePreset} onDone={() => setActivePreset(null)} />
