@@ -5,6 +5,7 @@
 // Action callbacks come from the parent (page or route) so the existing
 // CommandToolbar / sketch handlers can be reused unmodified.
 
+import { useState } from 'react';
 import { Grp, Ribbon, Tool, type RibbonTabDef } from './Ribbon';
 import type { IconName } from './Icons';
 
@@ -17,6 +18,8 @@ export interface RibbonAction {
   ico: IconName;
   big?: boolean;
   hasCaret?: boolean;
+  /** advanced tool — hidden until the user expands "All tools" (modeling mode) */
+  adv?: boolean;
 }
 
 // Parent supplies handler/active-state for any tool id it cares about.
@@ -50,9 +53,9 @@ const SOLID_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
     rows: [
       [
         { id: 'extrude', lbl: 'Extrude', ico: 'extrude', hasCaret: true },
-        { id: 'revolve', lbl: 'Revolve', ico: 'revolve' },
-        { id: 'sweep', lbl: 'Sweep', ico: 'sweep' },
-        { id: 'loft', lbl: 'Loft', ico: 'loft' },
+        { id: 'revolve', lbl: 'Revolve', ico: 'revolve', adv: true },
+        { id: 'sweep', lbl: 'Sweep', ico: 'sweep', adv: true },
+        { id: 'loft', lbl: 'Loft', ico: 'loft', adv: true },
         { id: 'hole', lbl: 'Hole', ico: 'hole', hasCaret: true },
       ],
     ],
@@ -64,20 +67,20 @@ const SOLID_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
         { id: 'fillet', lbl: 'Fillet', ico: 'fillet', hasCaret: true },
         // Variable-radius fillet (start→end radius along the edge) — the F3
         // OCCT B-rep capability. Select an edge first, like uniform Fillet.
-        { id: 'variableFillet', lbl: 'Variable Fillet', ico: 'fillet' },
+        { id: 'variableFillet', lbl: 'Variable Fillet', ico: 'fillet', adv: true },
         { id: 'chamfer', lbl: 'Chamfer', ico: 'chamfer' },
         { id: 'shell', lbl: 'Shell', ico: 'shell' },
-        { id: 'draft', lbl: 'Draft', ico: 'draft' },
+        { id: 'draft', lbl: 'Draft', ico: 'draft', adv: true },
         // Phase-1 entry — opens the push/pull gizmo on the selected face.
         // The drag → upstream-parameter mapping is wired up in phase-2 (#233).
-        { id: 'push-pull', lbl: 'Push/Pull', ico: 'extrude' },
+        { id: 'push-pull', lbl: 'Push/Pull', ico: 'extrude', adv: true },
       ],
       [
         // Direct editing (Phase 1) — both operate on a pre-selected face.
         // Delete Face = boss/pocket/hole removal + planar healing (B-rep);
         // Offset Face = planar face offset along its normal (±).
-        { id: 'direct.delete-face', lbl: 'Delete Face', ico: 'combine', big: false },
-        { id: 'direct.offset-face', lbl: 'Offset Face', ico: 'draft', big: false },
+        { id: 'direct.delete-face', lbl: 'Delete Face', ico: 'combine', big: false, adv: true },
+        { id: 'direct.offset-face', lbl: 'Offset Face', ico: 'draft', big: false, adv: true },
       ],
     ],
   },
@@ -87,7 +90,7 @@ const SOLID_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
       [
         { id: 'pattern.linear', lbl: 'Linear', ico: 'pattern', hasCaret: true },
         { id: 'mirror', lbl: 'Mirror', ico: 'mirror' },
-        { id: 'combine', lbl: 'Combine', ico: 'combine' },
+        { id: 'combine', lbl: 'Combine', ico: 'combine', adv: true },
       ],
     ],
   },
@@ -97,8 +100,8 @@ const SOLID_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
       [{ id: 'measure', lbl: 'Measure', ico: 'ruler', hasCaret: true }],
       [
         { id: 'section', lbl: 'Section view', ico: 'section', big: false },
-        { id: 'mass-props', lbl: 'Mass props', ico: 'globe', big: false },
-        { id: 'interference', lbl: 'Interference', ico: 'bolt', big: false },
+        { id: 'mass-props', lbl: 'Mass props', ico: 'globe', big: false, adv: true },
+        { id: 'interference', lbl: 'Interference', ico: 'bolt', big: false, adv: true },
       ],
     ],
   },
@@ -107,9 +110,9 @@ const SOLID_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
     rows: [
       [{ id: 'ai.suggest', lbl: 'Suggest', ico: 'ai', hasCaret: true }],
       [
-        { id: 'ai.lighten', lbl: 'Lighten −30%', ico: 'ai', big: false },
-        { id: 'ai.ribs', lbl: 'Add ribs', ico: 'ai', big: false },
-        { id: 'ai.fillet', lbl: 'Auto-fillet', ico: 'ai', big: false },
+        { id: 'ai.lighten', lbl: 'Lighten −30%', ico: 'ai', big: false, adv: true },
+        { id: 'ai.ribs', lbl: 'Add ribs', ico: 'ai', big: false, adv: true },
+        { id: 'ai.fillet', lbl: 'Auto-fillet', ico: 'ai', big: false, adv: true },
       ],
     ],
   },
@@ -345,14 +348,23 @@ const SKETCH_TAB_GROUPS: Record<string, string[]> = {
 };
 
 export function ModeRibbon({ mode, tabs, activeTab, onTabChange, onTool, isActive }: ModeRibbonProps) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
   let groups = GROUPS_BY_MODE[mode];
   if (mode === 'sketch' && SKETCH_TAB_GROUPS[activeTab]) {
     const titles = new Set(SKETCH_TAB_GROUPS[activeTab]);
     groups = groups.filter(g => titles.has(g.title));
   }
+  // Modeling shows ~30 tools — hide advanced ones behind a toggle so beginners
+  // see only the essentials (reduces choice overload). Other modes unchanged.
+  const tiered = mode === 'modeling' && !showAdvanced;
+  const shown = tiered
+    ? groups
+        .map(g => ({ ...g, rows: g.rows.map(r => r.filter(a => !a.adv)).filter(r => r.length > 0) }))
+        .filter(g => g.rows.length > 0)
+    : groups;
   return (
     <Ribbon tabs={tabs} activeTab={activeTab} onTabChange={onTabChange}>
-      {groups.map(g => (
+      {shown.map(g => (
         <Grp key={g.title} title={g.title}>
           {g.rows.map((row, ri) => {
             const isCol = row.every(a => a.big === false);
@@ -378,6 +390,17 @@ export function ModeRibbon({ mode, tabs, activeTab, onTabChange, onTool, isActiv
           })}
         </Grp>
       ))}
+      {mode === 'modeling' && (
+        <Grp key="__tier" title={showAdvanced ? 'Less' : 'More'}>
+          <Tool
+            ico="plus"
+            lbl={showAdvanced ? 'Essentials' : 'All tools'}
+            big
+            active={showAdvanced}
+            onClick={() => setShowAdvanced(s => !s)}
+          />
+        </Grp>
+      )}
     </Ribbon>
   );
 }
