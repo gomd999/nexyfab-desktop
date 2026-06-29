@@ -61,7 +61,10 @@ export const useProjectsStore = create<ProjectsStore>()((set, get) => ({
   fetchProjects: async () => {
     set({ isLoading: true, error: null, lastErrorCode: null });
     try {
-      const res = await fetch('/api/nexyfab/projects', { headers: getAuthHeader() });
+      // authedFetch (not plain fetch) so an expired access token is refreshed
+      // and retried — otherwise the project list 401s and shows "failed to load"
+      // even though the session is still valid (this was the recurring bug).
+      const res = await authedFetch('/api/nexyfab/projects', { headers: getAuthHeader() });
       if (!res.ok) throw new Error('Failed to fetch projects');
       const { projects } = await res.json();
       set({ projects, isLoading: false });
@@ -116,7 +119,7 @@ export const useProjectsStore = create<ProjectsStore>()((set, get) => ({
     try {
       const source = get().projects.find((p: NexyfabProject) => p.id === id);
       if (!source) return null;
-      const res = await fetch('/api/nexyfab/projects', {
+      const res = await authedFetch('/api/nexyfab/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({
@@ -143,7 +146,7 @@ export const useProjectsStore = create<ProjectsStore>()((set, get) => ({
 
   deleteProject: async (id) => {
     try {
-      const res = await fetch(`/api/nexyfab/projects/${id}`, {
+      const res = await authedFetch(`/api/nexyfab/projects/${id}`, {
         method: 'DELETE',
         headers: getAuthHeader(),
       });
