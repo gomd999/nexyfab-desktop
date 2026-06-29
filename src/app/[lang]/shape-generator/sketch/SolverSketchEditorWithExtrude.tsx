@@ -1607,8 +1607,9 @@ export default function SolverSketchEditorWithExtrude(
         )}
       </div>
 
-      {/* Operation toolbar */}
-      <div style={{ display: 'flex', gap: 8 }}>
+      {/* Operation toolbar — sticky to the bottom + wraps, so the green Extrude
+          button is never scrolled off-screen (users couldn't find how to commit). */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', position: 'sticky', bottom: 0, zIndex: 5, background: 'var(--nx-panel)', padding: '8px 0' }}>
         <button
           type="button"
           disabled={!canExtrude}
