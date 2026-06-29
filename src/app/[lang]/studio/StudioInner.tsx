@@ -242,7 +242,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     }
     let res: Response;
     try {
-      res = await fetch('/api/nexyfab/openscad-render', {
+      res = await fetch('/api/nexyfab/openscad-render/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ scad: src, format: 'stl', ...(importStlRef.current ? { importStl: importStlRef.current } : {}) }),
       });
@@ -291,7 +291,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
           }
           if (wasmAvailable()) return null; // genuine empty/error for this colour
         }
-        const res = await fetch('/api/nexyfab/openscad-render', {
+        const res = await fetch('/api/nexyfab/openscad-render/', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ scad: iso, format: 'stl' }),
         });
