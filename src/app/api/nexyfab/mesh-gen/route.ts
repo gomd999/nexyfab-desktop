@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';
-import { generateMesh, pollMesh, isMeshGenConfigured } from '@/lib/ai/meshGen';
+import { generateMesh, retextureMesh, pollMesh, isMeshGenConfigured } from '@/lib/ai/meshGen';
 
 // Organic 3D mesh-generation track (text/image → GLB) — the complement to the
 // CSG/OpenSCAD track for shapes CSG can't do (animals, characters, freeform).
@@ -18,10 +18,19 @@ export async function POST(req: NextRequest) {
       { status: 501 },
     );
   }
-  const body = (await req.json().catch(() => ({}))) as { prompt?: string; image?: string };
+  const body = (await req.json().catch(() => ({}))) as {
+    action?: 'generate' | 'refine' | 'retexture'; prompt?: string; image?: string; seed?: number; modelUrl?: string;
+  };
+  // Retexture: shape fixed, surface regenerated from a style prompt.
+  if (body.action === 'retexture') {
+    if (!body.modelUrl || !body.prompt) return NextResponse.json({ error: 'modelUrl and prompt are required' }, { status: 400 });
+    const r = await retextureMesh({ modelUrl: body.modelUrl, prompt: body.prompt });
+    return NextResponse.json(r, { status: r.ok ? 200 : 502 });
+  }
+  // Generate / refine (refine = edited prompt + pinned seed so it stays close).
   const prompt = (body.prompt ?? '').trim();
   if (!prompt && !body.image) return NextResponse.json({ error: 'prompt or image is required' }, { status: 400 });
-  const result = await generateMesh({ prompt, image: body.image });
+  const result = await generateMesh({ prompt, image: body.image, seed: body.seed });
   return NextResponse.json(result, { status: result.ok ? 200 : 502 });
 }
 

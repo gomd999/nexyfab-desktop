@@ -15,6 +15,15 @@ export interface MeshGenRequest {
   prompt: string;
   /** optional data-URL or public image URL for image-to-3D */
   image?: string;
+  /** pin a seed so a "refine" (edited-prompt regenerate) stays close to the
+   *  original instead of producing a totally different model */
+  seed?: number;
+}
+
+/** Retexture an EXISTING mesh (shape fixed, surface regenerated) — Meshy only. */
+export interface RetextureRequest {
+  modelUrl: string;
+  prompt: string;
 }
 
 export type MeshGenStatus = 'disabled' | 'queued' | 'processing' | 'done' | 'error';
@@ -54,8 +63,8 @@ async function meshyStart(req: MeshGenRequest): Promise<MeshGenResult> {
     ? 'https://api.meshy.ai/openapi/v1/image-to-3d'
     : 'https://api.meshy.ai/openapi/v2/text-to-3d';
   const body = useImage
-    ? { image_url: req.image, enable_pbr: true }
-    : { mode: 'preview', prompt: req.prompt, art_style: 'realistic', ai_model: 'meshy-4' };
+    ? { image_url: req.image, enable_pbr: true, ...(req.seed != null ? { seed: req.seed } : {}) }
+    : { mode: 'preview', prompt: req.prompt, art_style: 'realistic', ai_model: 'meshy-4', ...(req.seed != null ? { seed: req.seed } : {}) };
   const r = await fetch(url, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
@@ -80,6 +89,18 @@ async function meshyPoll(jobId: string): Promise<MeshGenResult> {
   if (j.status === 'SUCCEEDED') return { ok: true, status: 'done', provider: 'meshy', jobId, glbUrl: j.model_urls?.glb };
   if (j.status === 'FAILED' || j.status === 'CANCELED') return { ok: false, status: 'error', provider: 'meshy', error: j.message || 'meshy job failed' };
   return { ok: true, status: 'processing', provider: 'meshy', jobId };
+}
+
+async function meshyRetexture(req: RetextureRequest): Promise<MeshGenResult> {
+  const key = process.env.MESHY_API_KEY!;
+  const r = await fetch('https://api.meshy.ai/openapi/v1/text-to-texture', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model_url: req.modelUrl, object_prompt: 'a 3d model', style_prompt: req.prompt, enable_pbr: true }),
+  });
+  const j = (await r.json().catch(() => ({}))) as { result?: string; id?: string; message?: string };
+  if (!r.ok) return { ok: false, status: 'error', provider: 'meshy', error: j.message || `meshy ${r.status}` };
+  return { ok: true, status: 'queued', provider: 'meshy', jobId: j.result ?? j.id };
 }
 
 // ─── Replicate ───────────────────────────────────────────────────────────────
@@ -123,6 +144,17 @@ export async function generateMesh(req: MeshGenRequest): Promise<MeshGenResult> 
     return p === 'meshy' ? await meshyStart(req) : await replicateStart(req);
   } catch (e) {
     return { ok: false, status: 'error', provider: p, error: e instanceof Error ? e.message : 'mesh-gen failed' };
+  }
+}
+
+export async function retextureMesh(req: RetextureRequest): Promise<MeshGenResult> {
+  const p = meshGenProvider();
+  if (!p) return DISABLED;
+  if (p !== 'meshy') return { ok: false, status: 'error', provider: p, error: 'Retexture is only supported on the Meshy provider.' };
+  try {
+    return await meshyRetexture(req);
+  } catch (e) {
+    return { ok: false, status: 'error', provider: 'meshy', error: e instanceof Error ? e.message : 'retexture failed' };
   }
 }
 
