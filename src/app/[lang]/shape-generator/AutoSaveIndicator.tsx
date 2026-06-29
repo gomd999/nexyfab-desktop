@@ -144,10 +144,10 @@ export default function AutoSaveIndicator({
 
   return (
     <div style={{
-      // Sits BELOW the SCAD mode toggle (빠름/에이전트, fixed top:56 right:16) so
-      // the two top-right pills no longer overlap (reported clutter 2026-06-09).
+      // top:140 sits BELOW the ribbon row so it never overlaps the expanded
+      // ("All tools") ribbon's right-hand tools (reported 2026-06-29).
       // right: 336 clears the 320px right property pane (2026-06-12)
-      position: 'fixed', top: 92, right: 336, zIndex: 45,
+      position: 'fixed', top: 140, right: 336, zIndex: 45,
       display: 'flex', alignItems: 'center', gap: 6,
       padding: '5px 10px', borderRadius: 8,
       background: 'rgba(13,17,23,0.88)',

@@ -91,7 +91,9 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
         if (lastServerUpdatedAtRef.current != null) {
           patchBody.ifMatchUpdatedAt = lastServerUpdatedAtRef.current;
         }
-        const res = await fetch(`/api/nexyfab/projects/${currentProjectId}`, {
+        // trailing slash: trailingSlash:true 308-redirects the bare path, and the
+        // redirect can drop the large sceneData body → "Cloud sync failed".
+        const res = await fetch(`/api/nexyfab/projects/${currentProjectId}/`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(patchBody),
@@ -161,7 +163,7 @@ export function useCloudSaveFlow(isLoggedIn: boolean): UseCloudSaveFlowResult {
         }
       } else {
         // Create new project
-        const res = await fetch('/api/nexyfab/projects', {
+        const res = await fetch('/api/nexyfab/projects/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
