@@ -1585,8 +1585,28 @@ export default function SolverSketchEditorWithExtrude(
     return () => window.removeEventListener('keydown', onKey);
   }, [undoHistory, redoHistory]);
 
+  const guideKo = (editorProps.lang ?? 'en') === 'ko';
+  const guideHasPts = sketch.points.length > 0;
+  const guideTitle = !guideHasPts ? (guideKo ? '① 도형 그리기' : '① Draw a shape')
+    : !canExtrude ? (guideKo ? '① 도형 그리는 중' : '① Drawing…')
+      : (guideKo ? '✓ 도형 완성 — 입체화 준비됨' : '✓ Shape ready to solidify');
+  const guideHint = !guideHasPts ? (guideKo ? '위 툴바의 사각형·원·선으로 닫힌 도형을 그리세요' : 'Use Rectangle / Circle / Line above to draw a closed shape')
+    : !canExtrude ? (guideKo ? '점을 이어 닫힌 도형을 완성하세요' : 'Close the loop to finish the shape')
+      : (guideKo ? '필요하면 치수·구속을 추가한 뒤, 아래 ⬆ Extrude 버튼으로 길이를 입력해 입체화하세요' : 'Add dimensions/constraints if needed, then press ⬆ Extrude below to set a length and solidify');
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* SolidWorks-style linear flow guide — tells the user which step they're on
+          (draw → close → extrude) so the manual workflow is predictable. */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+        background: canExtrude ? 'rgba(22,163,74,0.12)' : 'var(--nx-panel-2)',
+        border: '1px solid ' + (canExtrude ? 'rgba(22,163,74,0.45)' : 'var(--nx-border)'),
+        borderRadius: 8, fontSize: 12, flexWrap: 'wrap',
+      }}>
+        <span style={{ fontWeight: 700, color: canExtrude ? '#16a34a' : 'var(--nx-accent-2)', whiteSpace: 'nowrap' }}>{guideTitle}</span>
+        <span style={{ color: 'var(--nx-text-2)' }}>{guideHint}</span>
+      </div>
       <div
         ref={sketchViewportRef}
         data-testid="solver-collab-viewport"
