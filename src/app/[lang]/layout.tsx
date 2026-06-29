@@ -8,6 +8,7 @@ import LangSetter from '@/components/LangSetter';
 import CookieBanner from '@/components/CookieBanner';
 import ToastProvider from '@/components/ToastProvider';
 import NavigationProgress from '@/components/NavigationProgress';
+import FetchAuthRetry from '@/components/FetchAuthRetry';
 import PlanRefresher from '@/components/PlanRefresher';
 import UtmListener from '@/components/UtmListener';
 import NexyfabSessionHydrator from '@/components/nexyfab/NexyfabSessionHydrator';
@@ -101,6 +102,7 @@ export default async function LangLayout({
                     <div dangerouslySetInnerHTML={{ __html: adminSettings.bodyScripts }} />
                 )}
                 <NavigationProgress />
+                <FetchAuthRetry />
                 <PlanRefresher />
                 <UtmListener />
                 <NexyfabSessionHydrator />
