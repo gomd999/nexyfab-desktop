@@ -51,10 +51,18 @@ export const holeFeature: FeatureDefinition = {
   ],
   apply(geometry, params, ctx) {
     const holeType = Math.round(params.holeType);
+    // Param guards: a non-finite/≤0 diameter makes a degenerate cylinder (NaN
+    // coords → invalid solid). Throw a clear error (the pipeline isolates it and
+    // keeps the prior geometry) rather than silently corrupting the part. Note:
+    // a hole *bigger than the part* is a legitimate user error handled downstream
+    // — we don't auto-shrink the bore here.
+    if (!Number.isFinite(params.diameter) || params.diameter <= 0) {
+      throw new Error('Hole diameter must be a positive number');
+    }
     const r = params.diameter / 2;
-    const posX = params.posX;
-    const posZ = params.posZ;
-    const depth = params.depth;
+    const posX = Number.isFinite(params.posX) ? params.posX : 0;
+    const posZ = Number.isFinite(params.posZ) ? params.posZ : 0;
+    const depth = Number.isFinite(params.depth) ? params.depth : 999;
 
     // Compute bounding box once from the input geometry for accurate Y positioning
     geometry.computeBoundingBox();
@@ -83,9 +91,11 @@ export const holeFeature: FeatureDefinition = {
         if (holeType === 1) { // Counterbore
           const cbR = params.counterboreDia / 2;
           const cbDepth = params.counterboreDepth;
-          const res2 = occtBoxBooleanWithPrimitive('subtract', host, { shape: 'cylinder', w: cbR * 2, h: cbDepth, d: cbR * 2, cx: posX, cy: topY - cbDepth / 2, cz: posZ, rx: 0, ry: 0, rz: 0 }, undefined, currentHandle);
-          currentHandle = res2.handle ?? currentHandle;
-          currentGeo = res2.geometry;
+          if (cbR > 0 && cbDepth > 0) { // skip a degenerate counterbore
+            const res2 = occtBoxBooleanWithPrimitive('subtract', host, { shape: 'cylinder', w: cbR * 2, h: cbDepth, d: cbR * 2, cx: posX, cy: topY - cbDepth / 2, cz: posZ, rx: 0, ry: 0, rz: 0 }, undefined, currentHandle);
+            currentHandle = res2.handle ?? currentHandle;
+            currentGeo = res2.geometry;
+          }
         }
 
         if (holeType === 2) { // Countersink — cut a cone (apex down) at the top.
@@ -129,16 +139,20 @@ export const holeFeature: FeatureDefinition = {
     if (holeType === 1) {
       const cbR = params.counterboreDia / 2;
       const cbDepth = params.counterboreDepth;
-      const cbCyl = new THREE.CylinderGeometry(cbR, cbR, cbDepth, 32);
-      cbCyl.translate(posX, topY - cbDepth / 2, posZ);
-      if (ctx?.featureId) {
-        stampFaceFeatureIdAll(cbCyl, ctx.featureId, { avoidIdsFrom: result.geometry });
+      // Skip a degenerate counterbore (NaN/≤0 dia or depth) instead of cutting a
+      // NaN cylinder — the main hole still applies.
+      if (cbR > 0 && cbDepth > 0) {
+        const cbCyl = new THREE.CylinderGeometry(cbR, cbR, cbDepth, 32);
+        cbCyl.translate(posX, topY - cbDepth / 2, posZ);
+        if (ctx?.featureId) {
+          stampFaceFeatureIdAll(cbCyl, ctx.featureId, { avoidIdsFrom: result.geometry });
+        }
+        configureEvaluatorForProvenance(evaluator, result.geometry, cbCyl);
+        const brushCB = makeBrush(cbCyl);
+        const prev = result.geometry;
+        result = evaluator.evaluate(result, brushCB, SUBTRACTION);
+        propagateFeatureIdMap(result.geometry, prev, cbCyl);
       }
-      configureEvaluatorForProvenance(evaluator, result.geometry, cbCyl);
-      const brushCB = makeBrush(cbCyl);
-      const prev = result.geometry;
-      result = evaluator.evaluate(result, brushCB, SUBTRACTION);
-      propagateFeatureIdMap(result.geometry, prev, cbCyl);
     }
 
     // Countersink: subtract a cone at the top face.

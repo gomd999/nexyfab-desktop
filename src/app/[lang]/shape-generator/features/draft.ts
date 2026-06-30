@@ -8,8 +8,10 @@ import { captureKernelFailure } from './kernelCorpus';
 function applyDraftMesh(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry {
   // Clamp away from ±90°: tan(90°) is Infinity and would write NaN coordinates
   // into every vertex (silent invalid solid). UI bounds are 1–30°, but an
-  // AI/programmatic param could pass 90.
-  const angleDeg = Math.max(-89, Math.min(89, params.angle ?? 0));
+  // AI/programmatic param could pass 90 — or NaN, which slips through Math.min/max
+  // (Math.max(-89, Math.min(89, NaN)) === NaN), so coerce non-finite to 0 first.
+  const rawAngle = Number.isFinite(params.angle) ? params.angle : 0;
+  const angleDeg = Math.max(-89, Math.min(89, rawAngle));
   const direction = Math.round(params.direction) === 0 ? 1 : -1;
   const tanAngle = Math.tan((angleDeg * Math.PI) / 180);
 
@@ -62,7 +64,8 @@ export const draftFeature: FeatureDefinition = {
       const handle = geometry.userData?.occtHandle as string | undefined;
       if (handle) {
         try {
-          const r = occtDraft(handle, params.angle, Math.round(params.direction));
+          const safeAngle = Number.isFinite(params.angle) ? params.angle : 0;
+          const r = occtDraft(handle, safeAngle, Math.round(params.direction));
           if (r.handle) {
             r.geometry.userData.occtHandle = r.handle;
             return r.geometry;
