@@ -7847,7 +7847,7 @@ export function ShapeGeneratorInner() {
     const geo = effectiveResult?.geometry;
     if (!geo) return 0;
     const nonIndexed = geo.index ? geo.toNonIndexed() : geo;
-    return Math.floor(nonIndexed.attributes.position.count / 3);
+    return Math.floor((nonIndexed.attributes.position?.count ?? 0) / 3);
   }, [effectiveResult]);
 
   // ── Mass Properties computation ──

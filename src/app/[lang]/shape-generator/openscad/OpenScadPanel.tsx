@@ -1399,7 +1399,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
         prevGeoRef.current = result.geometry;
         lastGeoRef.current = result.geometry;
         lastVerifyCritiqueRef.current = result.warnings;
-        const tri = result.geometry.attributes.position.count / 3;
+        const tri = (result.geometry.attributes.position?.count ?? 0) / 3;
         setWarnings(result.warnings ? result.warnings.split('\n') : []);
         setTriCount(tri);
         setStatus('done');

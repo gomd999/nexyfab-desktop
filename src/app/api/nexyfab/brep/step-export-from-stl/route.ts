@@ -72,6 +72,10 @@ function meshToStepAp203(
   const faceIds: string[] = [];
   for (let t = 0; t < triangles.length; t += 3) {
     const a = triangles[t], b = triangles[t + 1], c = triangles[t + 2];
+    // Bounds-check indices: an out-of-range tri index would emit `#undefined`
+    // entity refs → a structurally invalid STEP. Skip such triangles.
+    if (pointIds[a] == null || pointIds[b] == null || pointIds[c] == null
+      || vertexPointIds[a] == null || vertexPointIds[b] == null || vertexPointIds[c] == null) continue;
     // Edge curves — use LINE between two CARTESIAN_POINTs.
     const dirAb = next(); lines.push(`${dirAb}=DIRECTION('',(1.0,0.0,0.0));`);
     const lineAb = next(); lines.push(`${lineAb}=VECTOR('',${dirAb},1.0);`);

@@ -131,6 +131,7 @@ export function useImportExport(
   const handleExportOBJ = useCallback(async () => {
     const geo = getEffectiveGeometry();
     if (!geo) return;
+    if (!geo.attributes.position || geo.attributes.position.count === 0) { addToast('warning', 'Cannot export: geometry is empty'); return; }
     const { exportOBJ } = await import('../io/exporters');
     await exportOBJ(geo, 'shape-design');
     reportInfo('mesh_export', 'obj_export', { format: 'obj', source: 'shape-design' });
@@ -140,6 +141,7 @@ export function useImportExport(
   const handleExportPLY = useCallback(async () => {
     const geo = getEffectiveGeometry();
     if (!geo) return;
+    if (!geo.attributes.position || geo.attributes.position.count === 0) { addToast('warning', 'Cannot export: geometry is empty'); return; }
     const { exportPLY } = await import('../io/exporters');
     await exportPLY(geo, 'shape-design');
     reportInfo('mesh_export', 'ply_export', { format: 'ply', source: 'shape-design' });

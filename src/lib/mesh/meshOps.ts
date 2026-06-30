@@ -62,7 +62,10 @@ export async function loadGlb(src: ArrayBuffer | string): Promise<THREE.BufferGe
 /** Bounding-box dimensions (model units, treated as mm). */
 export function dims(geo: THREE.BufferGeometry): { x: number; y: number; z: number } {
   geo.computeBoundingBox();
-  const b = geo.boundingBox!;
+  const b = geo.boundingBox;
+  // Empty/position-less geometry yields an Infinity box → NaN/±Inf dims that
+  // silently corrupt size + fit math. Return zero dims instead.
+  if (!b || b.isEmpty()) return { x: 0, y: 0, z: 0 };
   return { x: b.max.x - b.min.x, y: b.max.y - b.min.y, z: b.max.z - b.min.z };
 }
 
@@ -85,7 +88,8 @@ export function fitToSize(geo: THREE.BufferGeometry, targetMm: number): THREE.Bu
  *  it over the origin in X/Y. */
 export function groundAndCenter(geo: THREE.BufferGeometry): THREE.BufferGeometry {
   geo.computeBoundingBox();
-  const b = geo.boundingBox!;
+  const b = geo.boundingBox;
+  if (!b || b.isEmpty()) return geo.clone();
   const cx = (b.min.x + b.max.x) / 2;
   const cy = (b.min.y + b.max.y) / 2;
   const g = geo.clone();

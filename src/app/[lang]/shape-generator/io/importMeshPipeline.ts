@@ -19,8 +19,9 @@ function finalizeImported(geometry: THREE.BufferGeometry, filename: string, part
   const volume_cm3 = meshVolume(geometry) / 1000;
   const surface_area_cm2 = meshSurfaceArea(geometry) / 100;
   geometry.computeBoundingBox();
-  const bb = geometry.boundingBox!;
-  const size = bb.getSize(new THREE.Vector3());
+  const bb = geometry.boundingBox;
+  // A corrupt/empty import yields an Infinity box → NaN size shown in the UI.
+  const size = bb && !bb.isEmpty() ? bb.getSize(new THREE.Vector3()) : new THREE.Vector3(0, 0, 0);
   const bbox = { w: Math.round(size.x), h: Math.round(size.y), d: Math.round(size.z) };
   return { geometry, edgeGeometry, volume_cm3, surface_area_cm2, bbox, filename, parts };
 }
