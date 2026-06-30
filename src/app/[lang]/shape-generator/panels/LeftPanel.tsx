@@ -624,8 +624,12 @@ function LeftPanel({
   const setSketchTool = useSceneStore(s => s.setSketchTool);
   const renderMode = useSceneStore(s => s.renderMode);
 
-  // Derived
-  const shape = SHAPES.find(s => s.id === selectedId)!;
+  // Derived. Fall back to the first shape when selectedId isn't a catalog shape
+  // (e.g. an imported / sketchExtrude / AI model) — the `!` non-null assertion
+  // used to lie here and crashed the whole panel at `shape.params.map`
+  // ("Cannot read properties of undefined (reading 'params')").
+  const shape = SHAPES.find(s => s.id === selectedId) ?? SHAPES[0];
+  const isCatalogShape = SHAPES.some(s => s.id === selectedId);
 
   // ── Shape search + favorites + recent ───────────────────────────────────────
   const [shapeSearch, setShapeSearch] = React.useState('');
@@ -1294,7 +1298,7 @@ function LeftPanel({
 
                     {/* Parameters — compact single-row: label | slider | number | fx */}
                     <div data-tour="param-panel">
-                      {shape.params.map(sp => {
+                      {isCatalogShape && shape.params.map(sp => {
                         const label = t[sp.labelKey] || sp.key;
                         const val = params[sp.key] ?? sp.default;
                         const isFx = formulaMode.has(sp.key);
@@ -1440,7 +1444,7 @@ function LeftPanel({
                       })}
 
                       {/* ── Formula fields (text input for function-driven shapes) ── */}
-                      {shape.formulaFields && shape.formulaFields.length > 0 && (
+                      {isCatalogShape && shape.formulaFields && shape.formulaFields.length > 0 && (
                         <div style={{ marginTop: 6, borderTop: `1px solid ${theme.cardBg}`, paddingTop: 6 }}>
                           {shape.formulaFields.map(ff => {
                             const label = t[ff.labelKey] || ff.key;
