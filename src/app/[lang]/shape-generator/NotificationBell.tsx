@@ -83,7 +83,15 @@ export default function NotificationBell({ lang }: { lang: string }) {
     setLoading(true);
     try {
       const r = await fetch('/api/nexyfab/notifications');
-      if (!r.ok) return;
+      if (!r.ok) {
+        // Guest (401) → stop polling an authed-only endpoint so we don't hammer
+        // it every 60s and spam the console with 401s for logged-out visitors.
+        if (r.status === 401 && intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        return;
+      }
       const data = await r.json() as { notifications: Notification[]; unreadCount: number };
       setNotifications(data.notifications ?? []);
       setUnreadCount(data.unreadCount ?? 0);
