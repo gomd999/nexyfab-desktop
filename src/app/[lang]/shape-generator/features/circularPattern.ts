@@ -19,9 +19,11 @@ export const circularPatternFeature: FeatureDefinition = {
     { key: 'totalAngle', labelKey: 'paramPatternTotalAngle', default: 360, min: 10, max: 360, step: 5, unit: '°' },
   ],
   apply(geometry, params) {
-    const axis = Math.round(params.axis);
-    const count = Math.max(2, Math.round(params.count));
-    const totalAngleDeg = Math.max(1, params.totalAngle); // prevent 0° producing overlapping copies
+    // Coerce non-finite params (Math.max(2, Math.round(NaN)) === NaN → 0 copies →
+    // empty merge → hard throw; NaN angle → NaN rotation). Sanitize + cap count.
+    const axis = Math.round(Number.isFinite(params.axis) ? params.axis : 1);
+    const count = Math.max(2, Math.min(500, Math.round(Number.isFinite(params.count) ? params.count : 2)));
+    const totalAngleDeg = Math.max(1, Number.isFinite(params.totalAngle) ? params.totalAngle : 360); // prevent 0°/NaN producing overlapping copies
     const totalAngle = (totalAngleDeg * Math.PI) / 180;
     const step = totalAngle / count;
 
@@ -47,7 +49,10 @@ export const circularPatternFeature: FeatureDefinition = {
       const handle = geometry.userData?.occtHandle as string | undefined;
       if (handle) {
         try {
-          const r = occtCircularPattern(handle, Math.round(params.axis), Math.round(params.count), Math.max(1, params.totalAngle));
+          const axisN = Math.round(Number.isFinite(params.axis) ? params.axis : 1);
+          const countN = Math.max(2, Math.min(500, Math.round(Number.isFinite(params.count) ? params.count : 2)));
+          const angleN = Math.max(1, Number.isFinite(params.totalAngle) ? params.totalAngle : 360);
+          const r = occtCircularPattern(handle, axisN, countN, angleN);
           if (r.handle) { r.geometry.userData.occtHandle = r.handle; return r.geometry; }
         } catch (err) {
           console.warn('[circularPattern] OCCT path failed, falling back to mesh:', err);

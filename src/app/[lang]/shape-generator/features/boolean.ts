@@ -46,8 +46,16 @@ function operationCodeToType(code: number): 'union' | 'subtract' | 'intersect' {
 }
 
 function buildToolGeometry(params: Record<string, number>): THREE.BufferGeometry {
-  const toolShape = Math.round(params.toolShape);
-  const { toolWidth, toolHeight, toolDepth, posX, posY, posZ, rotX, rotY, rotZ } = params;
+  const toolShape = Math.round(Number.isFinite(params.toolShape) ? params.toolShape : 0);
+  // Sanitize only NON-FINITE tool params (NaN size/pos/rot makes a NaN tool mesh
+  // → garbage boolean). A deliberate zero size stays zero so it degenerates into
+  // the existing clean "empty result" error rather than a silent tiny artifact.
+  const f = (v: number, d: number) => (Number.isFinite(v) ? v : d);
+  const toolWidth = f(params.toolWidth, 20);
+  const toolHeight = f(params.toolHeight, 20);
+  const toolDepth = f(params.toolDepth, 20);
+  const posX = f(params.posX, 0), posY = f(params.posY, 0), posZ = f(params.posZ, 0);
+  const rotX = f(params.rotX, 0), rotY = f(params.rotY, 0), rotZ = f(params.rotZ, 0);
 
   let toolGeo: THREE.BufferGeometry;
   switch (toolShape) {

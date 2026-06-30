@@ -13,10 +13,22 @@ function crossSection(geometry: THREE.BufferGeometry): { hw: number; hh: number 
 }
 
 function applySweepMesh(geometry: THREE.BufferGeometry, params: Record<string, number>): THREE.BufferGeometry {
-  const pathType = Math.round(params.pathType);
+  const pathType = Math.round(Number.isFinite(params.pathType) ? params.pathType : 0);
   const cs = crossSection(geometry);
   if (!cs) return geometry;
-  const { hw, hh } = cs;
+  // A zero-area section (flat input) makes a degenerate ExtrudeGeometry — floor it.
+  const hw = cs.hw > 0 ? cs.hw : 1;
+  const hh = cs.hh > 0 ? cs.hh : 1;
+
+  // Sanitize non-finite params so a NaN never reaches the curve/extrude maths
+  // (a single NaN propagates to every vertex → invalid solid). Cap helix steps
+  // so a huge turns count can't lock the tab up.
+  const length = Number.isFinite(params.length) ? params.length : 100;
+  const arcAngleDeg = Number.isFinite(params.arcAngle) ? params.arcAngle : 90;
+  const arcRadius = Number.isFinite(params.arcRadius) ? params.arcRadius : 60;
+  const turns = Math.max(1, Math.min(100, Number.isFinite(params.helixTurns) ? params.helixTurns : 3));
+  const pitch = Number.isFinite(params.helixPitch) ? params.helixPitch : 20;
+  const helixSteps = Math.max(2, Math.min(2000, Math.round(turns * 36)));
 
   const shape = new THREE.Shape();
   shape.moveTo(-hw, -hh);
@@ -28,26 +40,21 @@ function applySweepMesh(geometry: THREE.BufferGeometry, params: Record<string, n
   let extrudePath: THREE.Curve<THREE.Vector3>;
 
   if (pathType === 0) {
-    const L = params.length;
-    extrudePath = new THREE.LineCurve3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, L));
+    extrudePath = new THREE.LineCurve3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, length));
   } else if (pathType === 1) {
-    const arcAngle = (params.arcAngle / 180) * Math.PI;
-    const R = params.arcRadius;
+    const arcAngle = (arcAngleDeg / 180) * Math.PI;
     const pts: THREE.Vector3[] = [];
     const steps = 32;
     for (let i = 0; i <= steps; i++) {
       const a = (i / steps) * arcAngle;
-      pts.push(new THREE.Vector3(R * Math.sin(a), 0, R * (1 - Math.cos(a))));
+      pts.push(new THREE.Vector3(arcRadius * Math.sin(a), 0, arcRadius * (1 - Math.cos(a))));
     }
     extrudePath = new THREE.CatmullRomCurve3(pts);
   } else {
-    const turns = params.helixTurns;
-    const pitch = params.helixPitch;
     const helixR = Math.max(hw, hh) * 1.5 + 20;
     const pts: THREE.Vector3[] = [];
-    const steps = Math.round(turns * 36);
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
+    for (let i = 0; i <= helixSteps; i++) {
+      const t = i / helixSteps;
       const a = t * turns * Math.PI * 2;
       pts.push(new THREE.Vector3(helixR * Math.cos(a), t * turns * pitch, helixR * Math.sin(a)));
     }
@@ -55,7 +62,7 @@ function applySweepMesh(geometry: THREE.BufferGeometry, params: Record<string, n
   }
 
   const swept = new THREE.ExtrudeGeometry(shape, {
-    steps: pathType === 2 ? Math.round(params.helixTurns * 36) : 48,
+    steps: pathType === 2 ? helixSteps : 48,
     bevelEnabled: false,
     extrudePath,
   });
@@ -67,13 +74,13 @@ function applySweepMesh(geometry: THREE.BufferGeometry, params: Record<string, n
  *  Returns null for the helix (a true 3D path occtSweepProfile can't represent
  *  with its 2D polyline). */
 function planarPath(params: Record<string, number>): { x: number; y: number }[] | null {
-  const pathType = Math.round(params.pathType);
+  const pathType = Math.round(Number.isFinite(params.pathType) ? params.pathType : 0);
   if (pathType === 0) {
-    return [{ x: 0, y: 0 }, { x: 0, y: params.length }];
+    return [{ x: 0, y: 0 }, { x: 0, y: Number.isFinite(params.length) ? params.length : 100 }];
   }
   if (pathType === 1) {
-    const arcAngle = (params.arcAngle / 180) * Math.PI;
-    const R = params.arcRadius;
+    const arcAngle = ((Number.isFinite(params.arcAngle) ? params.arcAngle : 90) / 180) * Math.PI;
+    const R = Number.isFinite(params.arcRadius) ? params.arcRadius : 60;
     const pts: { x: number; y: number }[] = [];
     const steps = 32;
     for (let i = 0; i <= steps; i++) {
@@ -102,8 +109,8 @@ function applySweepOcct(geometry: THREE.BufferGeometry, params: Record<string, n
     let result;
     if (pathType === 2) {
       // Helix: same radius/pitch/height as the mesh path (height = turns×pitch).
-      const turns = params.helixTurns;
-      const pitch = params.helixPitch;
+      const turns = Math.max(1, Math.min(100, Number.isFinite(params.helixTurns) ? params.helixTurns : 3));
+      const pitch = Number.isFinite(params.helixPitch) ? params.helixPitch : 20;
       const helixR = Math.max(hw, hh) * 1.5 + 20;
       result = occtSweepHelix(profile, pitch, turns * pitch, helixR);
     } else {

@@ -19,10 +19,12 @@ export const linearPatternFeature: FeatureDefinition = {
     { key: 'spacing', labelKey: 'paramPatternSpacing', default: 60, min: 1, max: 500, step: 1, unit: 'mm' },
   ],
   apply(geometry, params) {
-    const axis = Math.round(params.axis);
-    // count ≥ 1 (a 0/negative count would build an empty geometry → merge crash).
-    const count = Math.max(1, Math.round(params.count));
-    const spacing = params.spacing;
+    // Coerce non-finite params: Math.max(1, Math.round(NaN)) === NaN slips a NaN
+    // count through → 0 copies → empty merge → hard throw; a NaN spacing/axis
+    // writes NaN coords. Sanitize + cap count so the pattern always builds.
+    const axis = Math.min(2, Math.max(0, Math.round(Number.isFinite(params.axis) ? params.axis : 0)));
+    const count = Math.max(1, Math.min(500, Math.round(Number.isFinite(params.count) ? params.count : 1)));
+    const spacing = Number.isFinite(params.spacing) ? params.spacing : 60;
 
     const copies: THREE.BufferGeometry[] = [];
     for (let i = 0; i < count; i++) {
@@ -42,7 +44,10 @@ export const linearPatternFeature: FeatureDefinition = {
       const handle = geometry.userData?.occtHandle as string | undefined;
       if (handle) {
         try {
-          const r = occtLinearPattern(handle, Math.round(params.axis), Math.round(params.count), params.spacing);
+          const axisN = Math.min(2, Math.max(0, Math.round(Number.isFinite(params.axis) ? params.axis : 0)));
+          const countN = Math.max(1, Math.min(500, Math.round(Number.isFinite(params.count) ? params.count : 1)));
+          const spacingN = Number.isFinite(params.spacing) ? params.spacing : 60;
+          const r = occtLinearPattern(handle, axisN, countN, spacingN);
           if (r.handle) { r.geometry.userData.occtHandle = r.handle; return r.geometry; }
         } catch (err) {
           console.warn('[linearPattern] OCCT path failed, falling back to mesh:', err);
