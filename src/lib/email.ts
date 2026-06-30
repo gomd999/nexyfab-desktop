@@ -11,6 +11,7 @@
  *   SMTP_FROM_NAME e.g. NexyFab (optional, defaults to 'NexyFab')
  */
 import nodemailer from 'nodemailer';
+import { isSuppressed } from './email-suppression';
 
 export interface SendEmailOptions {
   to: string;
@@ -51,6 +52,12 @@ export async function sendEmail(
   let statusCode = 0;
   let errorMessage: string | undefined;
   try {
+    // Never send to a suppressed address (hard bounce / spam complaint) — doing
+    // so degrades sender reputation and can get the SES account suspended.
+    if (await isSuppressed(opts.to)) {
+      console.warn('[email] skipped suppressed recipient:', opts.to);
+      return { ok: false, error: 'recipient_suppressed' };
+    }
     const fromAddress = process.env.SMTP_FROM || process.env.MAIL_FROM || 'noreply@nexyfab.com';
     const fromName = process.env.SMTP_FROM_NAME || 'NexyFab';
     const from = `"${fromName}" <${fromAddress}>`;
@@ -83,7 +90,7 @@ export async function sendEmail(
       try {
         const { recordApiUsage } = await import('./api-meter');
         recordApiUsage({
-          provider: 'resend',
+          provider: 'ses',
           endpoint: 'mail.send',
           statusCode,
           latencyMs: Date.now() - t0,
