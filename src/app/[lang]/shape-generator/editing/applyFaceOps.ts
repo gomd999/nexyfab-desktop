@@ -24,6 +24,7 @@
  * EdgeContextPanel uses for fillet/chamfer — consistent dispatch shape.
  */
 import * as THREE from 'three';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { UniqueFace } from './useFaceEditing';
 
 /** Re-extract face's unique buffer-vertex indices on a non-indexed geometry
@@ -114,12 +115,28 @@ export async function shellWhole(
   if (!(thicknessMm > 0) || !Number.isFinite(thicknessMm)) {
     throw new Error('THICKNESS_INVALID');
   }
-  if (!source.index) {
-    // shell.ts itself throws this in the CSG path; surface it as a typed code
-    // before we even kick off the dynamic import.
+  if (!source.attributes.position || source.attributes.position.count < 4) {
     throw new Error('NO_GEOMETRY');
   }
-  if (source.attributes.position.count < 4) {
+
+  // shell.ts (mesh-CSG path) needs an INDEXED, welded mesh. Imported STLs and
+  // FaceScene edit geometry are non-indexed (triangle soup), so weld them first
+  // — otherwise shell silently failed on every imported/edited part.
+  let working: THREE.BufferGeometry = source;
+  if (!working.index) {
+    try {
+      working = mergeVertices(source);
+    } catch {
+      // mergeVertices can throw on degenerate input — fall back to a trivial
+      // index so downstream code still sees an indexed geometry.
+      const n = source.attributes.position.count;
+      const idx = new Uint32Array(n);
+      for (let i = 0; i < n; i++) idx[i] = i;
+      working = source.clone();
+      working.setIndex(new THREE.BufferAttribute(idx, 1));
+    }
+  }
+  if (!working.index || working.attributes.position.count < 4) {
     throw new Error('NO_GEOMETRY');
   }
 
@@ -132,7 +149,7 @@ export async function shellWhole(
   const ctx = { featureId: 'face-context-shell' };
 
   if (shellFeature.applyAsync) {
-    return shellFeature.applyAsync(source, params, ctx);
+    return shellFeature.applyAsync(working, params, ctx);
   }
-  return shellFeature.apply(source, params, ctx);
+  return shellFeature.apply(working, params, ctx);
 }

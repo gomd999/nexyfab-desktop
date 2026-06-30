@@ -79,8 +79,17 @@ describe('shellWhole pre-flight', () => {
     await expect(shellWhole(input, NaN)).rejects.toThrow('THICKNESS_INVALID');
   });
 
-  it('throws NO_GEOMETRY for non-indexed input (CSG path needs indexed)', async () => {
+  it('welds non-indexed input instead of rejecting (imported STLs are non-indexed)', async () => {
+    // Previously this threw NO_GEOMETRY, which made Shell silently fail on every
+    // imported/edited mesh. Now we weld (mergeVertices) so the CSG path gets an
+    // indexed mesh. We must NOT see the NO_GEOMETRY pre-flight rejection any more;
+    // the shell op itself may still fail in the headless test env (no real CSG),
+    // which is fine — we only assert the weld pre-flight passed.
     const input = new THREE.BoxGeometry(10, 10, 10).toNonIndexed();
-    await expect(shellWhole(input, 2)).rejects.toThrow('NO_GEOMETRY');
+    let result: unknown;
+    let error: Error | null = null;
+    try { result = await shellWhole(input, 2); } catch (e) { error = e as Error; }
+    if (error) expect(error.message).not.toContain('NO_GEOMETRY');
+    else expect(result).toBeInstanceOf(THREE.BufferGeometry);
   });
 });
