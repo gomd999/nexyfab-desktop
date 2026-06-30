@@ -106,6 +106,23 @@ function parseAssemblyParts(v: unknown): AssemblyPartInput[] {
   return out;
 }
 
+/** Fire-and-forget AI-usage measurement to the central auth-server (measure
+ *  only, no cap). Skips guests (no token to attribute). Never blocks the
+ *  response — failures are swallowed. */
+function meterAiUsage(req: NextRequest): void {
+  try {
+    const bearer = req.headers.get('authorization');
+    const token = bearer && /^Bearer /i.test(bearer)
+      ? bearer.slice(7)
+      : req.cookies.get('nf_access_token')?.value;
+    if (!token) return;
+    void fetch('https://auth.nexysys.com/usage/ai', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  } catch { /* ignore */ }
+}
+
 export async function POST(req: NextRequest) {
   const planCheck = await checkPlan(req, 'free');
   const userPlan = planCheck.ok ? planCheck.plan : 'free';
@@ -376,6 +393,7 @@ ${prompt ? 'User note: ' + prompt : ''}`;
     if (!looksLikeScad) {
       return NextResponse.json({ error: 'AI did not return OpenSCAD code', raw: raw.slice(0, 400) }, { status: 502 });
     }
+    meterAiUsage(req); // measure AI usage (non-cached, real AI call)
     return NextResponse.json({ scad, freeform: true, summary: 'Free-form OpenSCAD', usedProvider: used.provider, usedModel: used.model });
   }
 
