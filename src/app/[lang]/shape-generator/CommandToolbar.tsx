@@ -1483,6 +1483,8 @@ interface CommandToolbarProps {
   onExportDrawingPDF?: () => void;
   onShare?: () => void;
   onManufacturerMatch?: () => void;
+  /** Round-trip back to Studio (AI design) — SCAD resumes parametrically, else mesh. */
+  onSendToStudio?: () => void;
   onBodyManager?: () => void;
   exportingFormat?: string | null;
   /** Called when user picks a CAM post-processor from the menu */
@@ -1814,6 +1816,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
     onExportDrawingPDF,
     onShare,
     onManufacturerMatch,
+    onSendToStudio,
     onBodyManager,
     exportingFormat,
     onSetCamPost,
@@ -2083,6 +2086,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
     { id: 'mg-share', icon: '🔗', label: t.shareLink ?? tt.share, action: () => onShare?.() },
     { id: 'mg-bodies', icon: '⬡', label: tt.bodies, action: () => onBodyManager?.() },
     { id: 'mg-mfg', icon: '🏭', label: tt.mfgMatch, action: () => onManufacturerMatch?.() },
+    { id: 'mg-studio', icon: '🎨', label: 'Studio', action: () => onSendToStudio?.() },
     { id: 'mg-variants', icon: '🔀', label: tt.variants, action: () => onViewVariants?.() },
     'sep',
     { id: 'mg-save', icon: '💾', label: tt.saveScene, action: () => onSaveScene?.() },

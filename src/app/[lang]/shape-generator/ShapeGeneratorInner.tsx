@@ -417,6 +417,9 @@ export function ShapeGeneratorInner() {
   const langRef = useRef(lang);
   langRef.current = lang;
   const router = useRouter();
+  // SCAD this part arrived with from Studio — lets the round-trip back to Studio
+  // resume parametrically instead of degrading to a mesh.
+  const studioScadRef = useRef<string | null>(null);
   const pathname = usePathname();
   const langSeg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const tabLabels = TAB_LABELS[lang] || TAB_LABELS.en;
@@ -6779,6 +6782,25 @@ export function ShapeGeneratorInner() {
   // ══════════════════════════════════════════════════════════════════════════
 
   const getEffectiveGeometry = useCallback(() => effectiveResult?.geometry ?? null, [effectiveResult]);
+
+  // Round-trip back to Studio (AI design). If the part came from Studio with its
+  // SCAD source, resume it parametrically there; otherwise send the current mesh
+  // so the user can keep refining it with AI ("import("model.stl")" base).
+  const returnToStudio = useCallback(() => {
+    try {
+      if (studioScadRef.current) {
+        sessionStorage.setItem('nexyfab:expert-to-studio-scad', studioScadRef.current);
+      } else {
+        const geo = getEffectiveGeometry();
+        const b64 = geo ? geometryToStlBase64(geo) : null;
+        if (!b64) { addToast('warning', '보낼 형상이 없어요 / Nothing to send'); return; }
+        sessionStorage.setItem('nexyfab:expert-to-studio-stl', b64);
+      }
+      router.push(`/${lang}/studio?from=expert`);
+    } catch {
+      addToast('error', 'Studio로 보내지 못했어요 (형상이 너무 큼) / Could not send to Studio (too large)');
+    }
+  }, [getEffectiveGeometry, router, lang, addToast]);
   const {
     importedGeometry, setImportedGeometry,
     importedFilename, setImportedFilename,
@@ -6914,6 +6936,7 @@ export function ShapeGeneratorInner() {
       sheetSpec = sessionStorage.getItem('nexyfab:sheetmetal-handoff-spec');
     } catch { return; }
     if (!scad && !programRaw && !stlB64 && !sheetStep && !sheetSpec) return;
+    if (scad) studioScadRef.current = scad; // remember for the round-trip back to Studio
     try {
       sessionStorage.removeItem('nexyfab:studio-handoff-scad');
       sessionStorage.removeItem('nexyfab:studio-handoff-program');
@@ -9464,6 +9487,7 @@ export function ShapeGeneratorInner() {
             onToggleScript={() => setShowScriptPanel(!showScriptPanel)}
             onExportDrawingPDF={handleExportDrawingPDF}
             onShare={() => setShareOpenKey(shareOpenKey + 1)}
+            onSendToStudio={returnToStudio}
             onManufacturerMatch={() => setShowManufacturerMatch(true)}
             onBodyManager={handleOpenBodyPanel}
             exportingFormat={exportingFormat}

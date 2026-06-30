@@ -582,6 +582,45 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     }
   }, [input, enhancing, busy, lang]);
 
+  // ── Receive a part handed back FROM the expert modeler (Studio ⇄ Expert) ─────
+  // SCAD resumes parametrically; an STL loads as an import("model.stl") base the
+  // AI can keep refining. Runs once on mount.
+  const expertReturnHandled = useRef(false);
+  useEffect(() => {
+    if (expertReturnHandled.current) return;
+    let scadIn: string | null = null, stlIn: string | null = null;
+    try {
+      scadIn = sessionStorage.getItem('nexyfab:expert-to-studio-scad');
+      stlIn = sessionStorage.getItem('nexyfab:expert-to-studio-stl');
+      if (scadIn) sessionStorage.removeItem('nexyfab:expert-to-studio-scad');
+      if (stlIn) sessionStorage.removeItem('nexyfab:expert-to-studio-stl');
+    } catch { return; }
+    if (!scadIn && !stlIn) return;
+    expertReturnHandled.current = true;
+    void (async () => {
+      if (scadIn) {
+        currentIdRef.current = freshId(); setCurrentId(currentIdRef.current); lastThumbRef.current = null;
+        setMessages([{ id: nextId(), role: 'assistant', text: T('전문가형에서 가져왔어요. 계속 AI로 수정하세요 (예: 구멍 8mm, 2배 크게).', 'Brought in from the expert modeler — keep editing with AI (e.g. holes to 8mm, 2× bigger).'), status: 'done' }]);
+        setScad(scadIn); setMobileTab('3d'); setSidebarOpen(false); setGenCount(g => g + 1);
+        await renderScad(scadIn);
+        return;
+      }
+      if (stlIn) {
+        try {
+          const bin = atob(stlIn); const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          const geo = parseSTL(bytes.buffer); geo.computeBoundingBox();
+          const c = new THREE.Vector3(); geo.boundingBox?.getCenter(c); geo.translate(-c.x, -c.y, -c.z);
+          importStlRef.current = stlIn;
+          currentIdRef.current = freshId(); setCurrentId(currentIdRef.current); lastThumbRef.current = null;
+          setMessages([{ id: nextId(), role: 'assistant', text: T('전문가형 모델을 가져왔어요. 무엇을 바꿀까요? (예: 가운데 10mm 구멍, 2배 크게)', 'Brought in the expert model. What should I change? (e.g. a 10mm centre hole, 2× bigger)'), status: 'done' }]);
+          setScad('import("model.stl");'); setGeometry(geo); setColoredObject(null); setStlB64(stlIn); setMobileTab('3d'); setSidebarOpen(false); setGenCount(g => g + 1);
+        } catch { /* invalid STL — ignore */ }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Dimension auto-correct (single-shot): if a fresh model's largest dimension is
   // off from what the user explicitly asked for, uniformly rescale it once.
   useEffect(() => {
