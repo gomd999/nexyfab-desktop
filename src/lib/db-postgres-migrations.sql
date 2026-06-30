@@ -1814,3 +1814,6 @@ ALTER TABLE nf_document_versions    ALTER COLUMN size_bytes TYPE BIGINT;
 CREATE INDEX IF NOT EXISTS idx_nf_documents_owner_updated ON nf_documents (owner_id, updated_at);
 CREATE INDEX IF NOT EXISTS idx_nf_document_perms_user     ON nf_document_permissions (user_id);
 CREATE INDEX IF NOT EXISTS idx_nf_ws_members_user         ON nf_workspace_members (user_id);
+
+-- Trial subscription window for direct (nf_users) login — login blocked 3 days past this (ms epoch)
+ALTER TABLE nf_users ADD COLUMN IF NOT EXISTS subscription_ends_at BIGINT;

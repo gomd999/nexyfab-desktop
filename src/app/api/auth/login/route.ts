@@ -115,6 +115,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Subscription gate: features remain usable after expiry, but login is
+    // blocked 3 days past the subscription end date. null = no expiry.
+    if (dbUser.subscription_ends_at != null) {
+      const subEnd = Number(dbUser.subscription_ends_at);
+      if (Number.isFinite(subEnd) && Date.now() > subEnd + 3 * 24 * 60 * 60 * 1000) {
+        return NextResponse.json(
+          { error: '구독이 만료되었습니다. 연장은 관리자에게 문의하세요.' },
+          { status: 403 },
+        );
+      }
+    }
+
     // Check if 2FA is enabled
     if (toBool(dbUser.totp_enabled)) {
       const totpCode = (body as { totpCode?: string }).totpCode;

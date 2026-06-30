@@ -10,6 +10,8 @@ export interface UserRow {
   email_verified: number; // 0 or 1 (SQLite boolean)
   project_count: number;
   created_at: number;
+  // subscription window (ms epoch). null = no expiry. Login blocked 3 days past this.
+  subscription_ends_at: number | null;
   failed_login_attempts: number;
   locked_until: number | null;
   totp_secret: string | null;
