@@ -5,7 +5,7 @@
 // AI DFM-style evaluation report: strengths / issues / improvements / material
 // fit / producibility / scores. Feeds the design→quote→order funnel.
 
-import { use, useCallback, useEffect, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type * as THREE from 'three';
 import { MATERIAL_PRESETS } from '@/app/[lang]/shape-generator/materials';
@@ -41,6 +41,32 @@ interface Report {
   estCostNote: string;
 }
 
+interface Structural { stressMPa: number; safetyFactor: number; loadN: number; assumption: string }
+
+// Load-based structural ESTIMATE (transparent cantilever-beam approximation —
+// NOT a full FEA). Treats the bounding box as a cantilever: weak-axis section
+// modulus from the two smaller dims, length = longest dim, moment from the tip
+// load + self-weight. Gives a conservative max-bending-stress + safety factor.
+function structuralEstimate(metrics: Metrics, materialId: string, loadN: number): Structural | null {
+  const yieldMPa = MATERIAL_PRESETS.find(m => m.id === materialId)?.yieldStrength;
+  if (!yieldMPa) return null;
+  const dims = [metrics.bbox_mm.w, metrics.bbox_mm.h, metrics.bbox_mm.d].filter(n => n > 0).sort((a, b) => a - b);
+  if (dims.length < 3) return null;
+  const [h, b, L] = dims; // h = smallest (bending depth, worst case), b = middle, L = longest (lever)
+  const Z = (b * h * h) / 6; // mm³ section modulus
+  if (!(Z > 0)) return null;
+  const W = ((metrics.mass_g ?? 0) / 1000) * 9.81; // N self-weight
+  const M = loadN * L + (W * L) / 2; // N·mm
+  const stress = M / Z; // MPa
+  const sf = stress > 0 ? yieldMPa / stress : 999;
+  return {
+    stressMPa: Math.round(stress * 10) / 10,
+    safetyFactor: Math.round(Math.min(sf, 999) * 10) / 10,
+    loadN,
+    assumption: 'cantilever, weak-axis bending',
+  };
+}
+
 const PROCESSES = [
   { id: 'cnc', ko: 'CNC 절삭', en: 'CNC machining' },
   { id: '3d_print', ko: '3D 프린팅', en: '3D printing' },
@@ -58,6 +84,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [material, setMaterial] = useState('aluminum');
   const [process, setProcess] = useState('cnc');
+  const [loadN, setLoadN] = useState(50);
   const [importing, setImporting] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
@@ -78,6 +105,9 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
     } catch { /* guest / offline — no history */ }
   }, []);
   useEffect(() => { void loadHistory(); }, [loadHistory]);
+
+  // Load-based structural estimate (recomputes with metrics / material / load).
+  const structural = useMemo(() => (metrics ? structuralEstimate(metrics, material, loadN) : null), [metrics, material, loadN]);
 
   const onFile = useCallback(async (file: File | undefined) => {
     if (!file) return;
@@ -143,7 +173,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
 
       const res = await fetch('/api/nexyfab/evaluate-report', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ metrics: { ...metrics, mass_g: massG }, material, process, filename, lang, dfmIssues }),
+        body: JSON.stringify({ metrics: { ...metrics, mass_g: massG }, material, process, filename, lang, dfmIssues, structural }),
       });
       const data = await res.json().catch(() => ({})) as { report?: Report; error?: string };
       if (!res.ok || !data.report) { setErr(data.error || T('평가에 실패했어요.', 'Evaluation failed.')); return; }
@@ -158,7 +188,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
     } finally {
       setEvaluating(false);
     }
-  }, [metrics, material, process, filename, lang, T, loadHistory]);
+  }, [metrics, material, process, filename, lang, T, loadHistory, structural]);
 
   const matName = (m: typeof MATERIAL_PRESETS[number]) => (ko ? m.name.ko : m.name.en);
   const scoreColor = (n: number) => (n >= 75 ? '#22c55e' : n >= 50 ? '#eab308' : '#ef4444');
@@ -204,6 +234,11 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
               {PROCESSES.map(p => <option key={p.id} value={p.id}>{ko ? p.ko : p.en}</option>)}
             </select>
           </label>
+          <label title={T('구조 추정용 적용 하중 (보 근사)', 'Applied load for the structural estimate (beam approx)')}>
+            <span className="block text-xs opacity-70 mb-1.5">{T('하중 (N)', 'Load (N)')}</span>
+            <input type="number" min={0} value={loadN} onChange={e => setLoadN(Math.max(0, Number(e.target.value) || 0))}
+              className="w-20 bg-white/5 border border-white/15 rounded-md px-2 py-2 text-sm" />
+          </label>
         </div>
 
         {importing && <div className="mt-4 text-sm text-blue-300">⏳ {T('형상 분석 중…', 'Measuring geometry…')}</div>}
@@ -219,8 +254,15 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
               <Metric label={T('종횡비', 'Aspect')} value={`${metrics.aspect_ratio}×`} />
               <Metric label={T('삼각형', 'Triangles')} value={metrics.triangle_count.toLocaleString()} />
             </div>
+            {structural && (
+              <div className="mt-3 text-xs rounded-lg bg-white/[0.04] border border-white/10 px-3 py-2">
+                🏗 {T('구조 추정 (보 근사)', 'Structural estimate (beam approx)')}: {T('하중', 'load')} {loadN}N → {T('최대응력', 'max stress')} {structural.stressMPa} MPa · {T('안전계수', 'SF')}{' '}
+                <span className="font-bold" style={{ color: structural.safetyFactor >= 2 ? '#22c55e' : structural.safetyFactor >= 1 ? '#eab308' : '#ef4444' }}>{structural.safetyFactor}×</span>
+                <span className="opacity-50"> · {T('정밀 해석은 모델러 FEA에서', 'full FEA in the modeler')}</span>
+              </div>
+            )}
             <button onClick={() => void evaluate()} disabled={evaluating}
-              className="mt-5 w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg py-2.5 text-sm font-bold">
+              className="mt-3 w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg py-2.5 text-sm font-bold">
               {evaluating ? T('평가 중…', 'Evaluating…') : T('✨ 종합 평가하기', '✨ Run full review')}
             </button>
           </div>

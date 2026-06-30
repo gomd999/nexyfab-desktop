@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     filename?: string;
     lang?: string;
     dfmIssues?: Array<{ type: string; severity: string; description: string; suggestion?: string }>;
+    structural?: { stressMPa: number; safetyFactor: number; loadN: number; assumption: string } | null;
   } | null;
   if (!body?.metrics) {
     return NextResponse.json({ error: 'metrics required' }, { status: 400 });
@@ -60,7 +61,9 @@ Intended process: ${body.process ?? 'unspecified'}
 Measured metrics (mm / mm² / mm³ unless noted): ${JSON.stringify(body.metrics)}
 
 Automated DFM analysis findings (real geometry analysis — treat as ground truth):
-${dfm}`;
+${dfm}
+
+Load-based structural estimate (transparent cantilever beam approximation, NOT full FEA): ${body.structural ? `applied load ${body.structural.loadN} N → max bending stress ${body.structural.stressMPa} MPa, safety factor ${body.structural.safetyFactor}× (${body.structural.assumption}). Factor this into the "structure" score: SF<1 is a failure risk, 1-2 marginal, >2 comfortable. Mention it in issues/improvements if marginal.` : '(not provided)'}`;
 
   try {
     const { text } = await chatCompletion({
