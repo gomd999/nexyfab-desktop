@@ -44,6 +44,9 @@ export interface DFMOptions {
   minWallThickness?: number;  // mm, default 1.0
   minDraftAngle?: number;     // degrees, default 1.0
   maxAspectRatio?: number;    // default 4.0
+  /** Injection mold pull direction. '+y' default; 'auto' picks the axis with the
+   *  fewest undercuts (the natural parting direction). */
+  pullAxis?: '+x' | '-x' | '+y' | '-y' | '+z' | '-z' | 'auto';
 }
 
 /* ─── Constants ──────────────────────────────────────────────────────────── */
@@ -417,7 +420,34 @@ function analyzeInjectionMolding(
   nonIndexed: THREE.BufferGeometry,
 ): DFMIssue[] {
   const issues: DFMIssue[] = [];
-  const pullDir = new THREE.Vector3(0, 1, 0); // mold pull direction (Y+)
+
+  // Mold pull direction — configurable (parts arrive in any orientation). 'auto'
+  // picks the axis with the fewest undercuts (the natural parting direction).
+  const PULL_AXES: Record<string, THREE.Vector3> = {
+    '+x': new THREE.Vector3(1, 0, 0), '-x': new THREE.Vector3(-1, 0, 0),
+    '+y': new THREE.Vector3(0, 1, 0), '-y': new THREE.Vector3(0, -1, 0),
+    '+z': new THREE.Vector3(0, 0, 1), '-z': new THREE.Vector3(0, 0, -1),
+  };
+  const countUndercutsFor = (dir: THREE.Vector3): number => {
+    let n = 0;
+    for (let i = 0; i < tris.length; i++) {
+      const dot = tris[i].normal.dot(dir);
+      const perp = Math.sqrt(Math.max(0, 1 - dot * dot));
+      if (dot < -0.1 && perp > 0.5) n++;
+    }
+    return n;
+  };
+  let pullDir: THREE.Vector3;
+  if (opts.pullAxis === 'auto') {
+    let best = '+y'; let bestN = Infinity;
+    for (const [k, v] of Object.entries(PULL_AXES)) {
+      const n = countUndercutsFor(v);
+      if (n < bestN) { bestN = n; best = k; }
+    }
+    pullDir = PULL_AXES[best];
+  } else {
+    pullDir = PULL_AXES[opts.pullAxis] ?? PULL_AXES['+y'];
+  }
 
   // Draft angle check: faces nearly parallel to pull direction need draft
   const lowDraftFaces: number[] = [];
@@ -465,8 +495,10 @@ function analyzeInjectionMolding(
   const undercutFaces: number[] = [];
   for (let i = 0; i < tris.length; i++) {
     const dot = tris[i].normal.dot(pullDir);
-    // Face normal perpendicular to pull and facing inward = undercut
-    if (dot < -0.1 && Math.abs(tris[i].normal.x) + Math.abs(tris[i].normal.z) > 0.5) {
+    // Faces away from pull (dot<0) with a large component perpendicular to pull
+    // (a side wall that the mold half can't release) = undercut. Axis-agnostic.
+    const perp = Math.sqrt(Math.max(0, 1 - dot * dot));
+    if (dot < -0.1 && perp > 0.5) {
       undercutFaces.push(i);
     }
   }
@@ -986,6 +1018,7 @@ export function analyzeDFM(
     minWallThickness: options?.minWallThickness ?? 1.0,
     minDraftAngle: options?.minDraftAngle ?? 1.0,
     maxAspectRatio: options?.maxAspectRatio ?? 4.0,
+    pullAxis: options?.pullAxis ?? '+y',
   };
 
   // Build non-indexed geometry once; used both for triangle extraction and raycasting

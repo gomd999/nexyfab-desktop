@@ -73,6 +73,33 @@ function structuralEstimate(metrics: Metrics, materialId: string, loadN: number)
   };
 }
 
+const UNIT_FACTOR: Record<string, number> = { mm: 1, cm: 10, inch: 25.4 };
+
+/** Build the metric set from the importer's native (mm) values scaled by the
+ *  chosen unit factor — so an inch/cm file gets correct mm-based metrics + DFM. */
+function computeMetrics(
+  rawVolCm3: number, rawSaCm2: number, bbox: { w: number; h: number; d: number },
+  triCount: number, f: number, density: number | null,
+): Metrics {
+  const vol = Math.max(1e-6, rawVolCm3 * 1000 * f * f * f); // mm³
+  const sa = rawSaCm2 * 100 * f * f;                        // mm²
+  const w = bbox.w * f, h = bbox.h * f, d = bbox.d * f;
+  const dims = [w, h, d].filter(n => n > 0);
+  const smallest = dims.length ? Math.min(...dims) : 0;
+  const largest = dims.length ? Math.max(...dims) : 0;
+  const volCm3 = rawVolCm3 * f * f * f;
+  return {
+    volume_mm3: Math.round(vol),
+    surface_area_mm2: Math.round(sa),
+    bbox_mm: { w: Math.round(w), h: Math.round(h), d: Math.round(d) },
+    sa_to_vol_ratio: Math.round((sa / vol) * 1000) / 1000,
+    aspect_ratio: smallest > 0 ? Math.round((largest / smallest) * 10) / 10 : 0,
+    smallest_dim_mm: Math.round(smallest * 10) / 10,
+    triangle_count: triCount,
+    mass_g: density != null ? Math.round(volCm3 * density * 10) / 10 : null,
+  };
+}
+
 const PROCESSES = [
   { id: 'cnc', ko: 'CNC 절삭', en: 'CNC machining' },
   { id: '3d_print', ko: '3D 프린팅', en: '3D printing' },
@@ -92,6 +119,9 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
   const [process, setProcess] = useState('cnc');
   const [loadN, setLoadN] = useState(50);
   const [quantity, setQuantity] = useState(100);
+  const [unit, setUnit] = useState<'mm' | 'cm' | 'inch'>('mm');
+  const [pullAxis, setPullAxis] = useState<'+y' | '-y' | '+x' | '-x' | '+z' | '-z' | 'auto'>('auto');
+  const [meshQuality, setMeshQuality] = useState<{ watertight: boolean; reliable: boolean; openEdgeRatio: number; degenerateRatio: number } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
@@ -103,6 +133,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
   const [fitKey, setFitKey] = useState(0);
   const [history, setHistory] = useState<Array<{ id: string; filename: string; material: string; process: string; created_at: number; report: Report | null }>>([]);
   const geoRef = useRef<THREE.BufferGeometry | null>(null);
+  const rawRef = useRef<{ volume_cm3: number; surface_area_cm2: number; bbox: { w: number; h: number; d: number }; triCount: number } | null>(null);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -128,31 +159,31 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
       setHighlightTris([]);
       setFitKey(k => k + 1);
       setDfmCount(null);
-      const vol = Math.max(1e-6, prepared.volume_cm3 * 1000); // mm³
-      const sa = prepared.surface_area_cm2 * 100; // mm²
-      const { w, h, d } = prepared.bbox;
-      const dims = [w, h, d].filter(n => n > 0);
-      const smallest = dims.length ? Math.min(...dims) : 0;
-      const largest = dims.length ? Math.max(...dims) : 0;
-      const tri = (prepared.geometry.getAttribute('position')?.count ?? 0) / 3;
+      const tri = Math.round((prepared.geometry.getAttribute('position')?.count ?? 0) / 3);
+      rawRef.current = { volume_cm3: prepared.volume_cm3, surface_area_cm2: prepared.surface_area_cm2, bbox: prepared.bbox, triCount: tri };
+      // Mesh quality — non-watertight / degenerate meshes make DFM unreliable.
+      try {
+        const { assessMeshQuality } = await import('@/lib/meshQuality');
+        const q = assessMeshQuality(prepared.geometry);
+        setMeshQuality({ watertight: q.watertight, reliable: q.reliable, openEdgeRatio: q.openEdgeRatio, degenerateRatio: q.degenerateRatio });
+      } catch { setMeshQuality(null); }
       const density = MATERIAL_PRESETS.find(m => m.id === material)?.density ?? null;
-      setMetrics({
-        volume_mm3: Math.round(vol),
-        surface_area_mm2: Math.round(sa),
-        bbox_mm: { w, h, d },
-        sa_to_vol_ratio: Math.round((sa / vol) * 1000) / 1000,
-        aspect_ratio: smallest > 0 ? Math.round((largest / smallest) * 10) / 10 : 0,
-        smallest_dim_mm: Math.round(smallest * 10) / 10,
-        triangle_count: Math.round(tri),
-        mass_g: density != null ? Math.round((prepared.volume_cm3 * density) * 10) / 10 : null,
-      });
+      setMetrics(computeMetrics(prepared.volume_cm3, prepared.surface_area_cm2, prepared.bbox, tri, UNIT_FACTOR[unit], density));
     } catch (e) {
       setErr(T('파일을 읽지 못했어요. STEP/STL을 확인해 주세요.', 'Could not read the file — check the STEP/STL.') + ` (${(e as Error)?.message ?? e})`);
       setFilename(null);
     } finally {
       setImporting(false);
     }
-  }, [material, T]);
+  }, [material, unit, T]);
+
+  // Re-derive metrics when the unit or material changes (without re-importing).
+  useEffect(() => {
+    const raw = rawRef.current;
+    if (!raw) return;
+    const density = MATERIAL_PRESETS.find(m => m.id === material)?.density ?? null;
+    setMetrics(computeMetrics(raw.volume_cm3, raw.surface_area_cm2, raw.bbox, raw.triCount, UNIT_FACTOR[unit], density));
+  }, [unit, material]);
 
   const evaluate = useCallback(async () => {
     if (!metrics) return;
@@ -169,7 +200,11 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
         try {
           const { analyzeDFM } = await import('@/app/[lang]/shape-generator/analysis/dfmAnalysis');
           const proc = (DFM_PROCESS[process] ?? 'cnc_milling') as ManufacturingProcess;
-          const results = analyzeDFM(geoRef.current, [proc]);
+          // Scale to mm for the chosen unit; injection passes the pull axis.
+          const f = UNIT_FACTOR[unit];
+          let dfmGeo = geoRef.current;
+          if (f !== 1) { dfmGeo = geoRef.current.clone(); dfmGeo.scale(f, f, f); }
+          const results = analyzeDFM(dfmGeo, [proc], process === 'injection' ? { pullAxis } : undefined);
           const allIssues = results.flatMap(r => r.issues);
           dfmIssues = allIssues.map(i => ({ type: i.type, severity: i.severity, description: i.description, suggestion: i.suggestion }));
           setDfmCount({ error: dfmIssues.filter(i => i.severity === 'error').length, warning: dfmIssues.filter(i => i.severity === 'warning').length });
@@ -184,7 +219,9 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
         body: JSON.stringify({
           metrics: { ...metrics, mass_g: massG }, material, process, filename, lang, dfmIssues,
           structural: structural?.reliable ? structural : null,
-          quantity,
+          quantity, unit,
+          pullAxis: process === 'injection' ? pullAxis : undefined,
+          meshReliable: meshQuality ? meshQuality.reliable : true,
           materialProps: (() => { const m = MATERIAL_PRESETS.find(x => x.id === material); return m ? { density: m.density, yieldStrength: m.yieldStrength, youngsModulus: m.youngsModulus } : null; })(),
         }),
       });
@@ -201,7 +238,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
     } finally {
       setEvaluating(false);
     }
-  }, [metrics, material, process, filename, lang, T, loadHistory, structural, quantity]);
+  }, [metrics, material, process, filename, lang, T, loadHistory, structural, quantity, unit, pullAxis, meshQuality]);
 
   const matName = (m: typeof MATERIAL_PRESETS[number]) => (ko ? m.name.ko : m.name.en);
   const scoreColor = (n: number) => (n >= 75 ? '#22c55e' : n >= 50 ? '#eab308' : '#ef4444');
@@ -260,6 +297,25 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
               {PROCESSES.map(p => <option key={p.id} value={p.id}>{ko ? p.ko : p.en}</option>)}
             </select>
           </label>
+          {process === 'injection' && (
+            <label title={T('사출 빼기 방향 (드래프트·언더컷 판정 기준축)', 'Mold pull direction (axis for draft/undercut checks)')}>
+              <span className="block text-xs opacity-70 mb-1.5">{T('빼기 방향', 'Pull dir')}</span>
+              <select value={pullAxis} onChange={e => setPullAxis(e.target.value as typeof pullAxis)}
+                className="bg-white/5 border border-white/15 rounded-md px-2 py-2 text-sm">
+                <option value="auto">{T('자동', 'Auto')}</option>
+                <option value="+y">+Y</option><option value="-y">-Y</option>
+                <option value="+x">+X</option><option value="-x">-X</option>
+                <option value="+z">+Z</option><option value="-z">-Z</option>
+              </select>
+            </label>
+          )}
+          <label title={T('파일 단위 (잘못되면 치수·DFM이 전부 어긋남)', 'File unit (wrong unit skews all dimensions & DFM)')}>
+            <span className="block text-xs opacity-70 mb-1.5">{T('단위', 'Unit')}</span>
+            <select value={unit} onChange={e => setUnit(e.target.value as typeof unit)}
+              className="bg-white/5 border border-white/15 rounded-md px-2 py-2 text-sm">
+              <option value="mm">mm</option><option value="cm">cm</option><option value="inch">inch</option>
+            </select>
+          </label>
           <label title={T('경제성(공정 선택)용 목표 수량', 'Target quantity for the economics / process recommendation')}>
             <span className="block text-xs opacity-70 mb-1.5">{T('수량', 'Quantity')}</span>
             <input type="number" min={1} value={quantity} onChange={e => setQuantity(Math.max(1, Number(e.target.value) || 1))}
@@ -285,6 +341,13 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
               <Metric label={T('종횡비', 'Aspect')} value={`${metrics.aspect_ratio}×`} />
               <Metric label={T('삼각형', 'Triangles')} value={metrics.triangle_count.toLocaleString()} />
             </div>
+            {meshQuality && !meshQuality.reliable && (
+              <div className="mt-3 text-xs rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300/90 px-3 py-2">
+                ⚠️ {T(
+                  `메시 품질이 낮습니다 (비방수/퇴화 — 열린 엣지 ${(meshQuality.openEdgeRatio * 100).toFixed(0)}%). 벽두께·언더컷 등 DFM이 부정확(거짓 양성)할 수 있어 참고용입니다. 가능하면 솔리드 STEP로 올려주세요.`,
+                  `Low mesh quality (non-watertight/degenerate — ${(meshQuality.openEdgeRatio * 100).toFixed(0)}% open edges). Wall-thickness / undercut DFM may be inaccurate (false positives) — treat as indicative; prefer a solid STEP.`)}
+              </div>
+            )}
             {structural && (
               structural.reliable ? (
                 <div className="mt-3 text-xs rounded-lg bg-white/[0.04] border border-white/10 px-3 py-2">

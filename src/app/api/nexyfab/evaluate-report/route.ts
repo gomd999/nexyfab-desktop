@@ -54,6 +54,9 @@ export async function POST(req: NextRequest) {
     structural?: { stressMPa: number; safetyFactor: number; loadN: number; assumption: string; reliable?: boolean } | null;
     quantity?: number;
     materialProps?: { density?: number; yieldStrength?: number; youngsModulus?: number } | null;
+    meshReliable?: boolean;
+    unit?: string;
+    pullAxis?: string;
   } | null;
   if (!body?.metrics) {
     return NextResponse.json({ error: 'metrics required' }, { status: 400 });
@@ -72,7 +75,10 @@ Intended process: ${body.process ?? 'unspecified'}
 Target quantity: ${body.quantity && body.quantity > 0 ? `${body.quantity} pcs` : 'unspecified'}
 Measured metrics (mm / mm² / mm³ unless noted): ${JSON.stringify(body.metrics)}
 
-Automated DFM analysis findings (real geometry analysis — treat as ground truth):
+Mesh quality: ${body.meshReliable === false ? 'LOW — non-watertight/degenerate mesh. DFM findings below (esp. thin/zero walls, undercut counts) are UNRELIABLE and likely contain FALSE POSITIVES. Caveat them explicitly, do not tank scores on them alone, and recommend uploading a solid STEP.' : 'OK'}
+${body.pullAxis ? `Injection pull direction: ${body.pullAxis}` : ''}
+
+Automated DFM analysis findings (real geometry analysis${body.meshReliable === false ? ' — TREAT AS INDICATIVE ONLY due to low mesh quality' : ' — treat as ground truth'}):
 ${dfm}
 
 Load-based structural estimate (transparent cantilever beam approximation, NOT full FEA): ${body.structural ? `applied load ${body.structural.loadN} N → max bending stress ${body.structural.stressMPa} MPa, safety factor ${body.structural.safetyFactor}× (${body.structural.assumption}). Factor this into the "structure" score: SF<1 is a failure risk, 1-2 marginal, >2 comfortable. Mention it in issues/improvements if marginal.` : '(not provided)'}`;
