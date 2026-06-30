@@ -28,6 +28,9 @@ export interface FloatingAiPromptProps {
   /** Submit the prompt for AI processing. Caller should route to the
    *  existing intent → SCAD → feature pipeline. */
   onSubmit: (prompt: string) => Promise<string | null>;
+  /** Optional: build a model from an attached photo (vision → SCAD → mesh).
+   *  When set, a 📎 attach button appears; submitting with a photo routes here. */
+  onImageGenerate?: (prompt: string, image: string) => Promise<string | null>;
   /** Optional callback when user wants to open the full sidebar. */
   onOpenFullChat?: () => void;
   /** Optional: disable the prompt (e.g. while WASM loads). */
@@ -70,12 +73,13 @@ const TEMPLATES: { icon: string; ko: string; en: string; promptKo: string; promp
 ];
 
 export default function FloatingAiPrompt({
-  lang, onSubmit, onOpenFullChat, disabled = false,
+  lang, onSubmit, onImageGenerate, onOpenFullChat, disabled = false,
 }: FloatingAiPromptProps) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [response, setResponse] = useState<string | null>(null);
+  const [image, setImage] = useState<string | null>(null); // data URL of an attached photo
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const ko = lang === 'ko' || lang === 'kr';
@@ -109,19 +113,31 @@ export default function FloatingAiPrompt({
   }, [open]);
 
   const handleSubmit = async () => {
-    if (!text.trim() || streaming || disabled) return;
+    if (streaming || disabled) return;
+    if (!text.trim() && !image) return;
     const prompt = text.trim();
     setStreaming(true);
     setResponse(null);
     try {
-      const result = await onSubmit(prompt);
+      const result = (image && onImageGenerate)
+        ? await onImageGenerate(prompt, image)
+        : await onSubmit(prompt);
       setResponse(result ?? null);
       setText('');
+      setImage(null);
     } catch (err) {
       setResponse((err as Error)?.message ?? 'Failed');
     } finally {
       setStreaming(false);
     }
+  };
+
+  const onPickImage = (file: File | undefined) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    if (file.size > 8 * 1024 * 1024) { setResponse(lang === 'ko' ? '이미지가 너무 커요 (최대 8MB)' : 'Image too large (max 8MB)'); return; }
+    const r = new FileReader();
+    r.onload = () => { if (typeof r.result === 'string') setImage(r.result); };
+    r.readAsDataURL(file);
   };
 
   if (!open) {
@@ -184,14 +200,28 @@ export default function FloatingAiPrompt({
         border: '1px solid var(--nx-panel-2)',
       }}
     >
+      {image && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          { }
+          <img src={image} alt="attached" style={{ height: 40, width: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--nx-border)' }} />
+          <span style={{ fontSize: 11, color: 'var(--nx-text-2)', flex: 1 }}>{ko ? '사진 첨부됨 — 보내면 사진에서 모델을 만듭니다' : 'Photo attached — send to build a model from it'}</span>
+          <button type="button" onClick={() => setImage(null)} style={{ background: 'none', border: 'none', color: 'var(--nx-text-2)', cursor: 'pointer', fontSize: 14 }}>✕</button>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 8 }}>
+        {onImageGenerate && (
+          <label title={ko ? '사진 첨부' : 'Attach photo'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, background: 'var(--nx-panel-2)', border: '1px solid var(--nx-border)', borderRadius: 8, cursor: streaming || disabled ? 'default' : 'pointer', fontSize: 16, flexShrink: 0 }}>
+            <input type="file" accept="image/*" style={{ display: 'none' }} disabled={streaming || disabled} onChange={e => { onPickImage(e.target.files?.[0]); e.currentTarget.value = ''; }} />
+            📎
+          </label>
+        )}
         <input
           ref={inputRef}
           type="text"
           value={text}
           onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) handleSubmit(); }}
-          placeholder={t.placeholder}
+          placeholder={image ? (ko ? '사진 설명(선택) — 그냥 보내도 됩니다' : 'Describe the photo (optional) — or just send') : t.placeholder}
           disabled={streaming || disabled}
           style={{
             flex: 1,
@@ -207,16 +237,16 @@ export default function FloatingAiPrompt({
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={!text.trim() || streaming || disabled}
+          disabled={(!text.trim() && !image) || streaming || disabled}
           style={{
-            background: streaming || !text.trim() ? 'var(--nx-border)' : '#3b82f6',
+            background: streaming || (!text.trim() && !image) ? 'var(--nx-border)' : '#3b82f6',
             color: 'white',
             border: 'none',
             borderRadius: 8,
             padding: '0 14px',
             fontSize: 13,
             fontWeight: 600,
-            cursor: streaming || !text.trim() ? 'default' : 'pointer',
+            cursor: streaming || (!text.trim() && !image) ? 'default' : 'pointer',
           }}
         >
           {streaming ? '…' : t.send}

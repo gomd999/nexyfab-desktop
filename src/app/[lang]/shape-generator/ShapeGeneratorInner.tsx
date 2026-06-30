@@ -6801,6 +6801,7 @@ export function ShapeGeneratorInner() {
       addToast('error', 'Studio로 보내지 못했어요 (형상이 너무 큼) / Could not send to Studio (too large)');
     }
   }, [getEffectiveGeometry, router, lang, addToast]);
+
   const {
     importedGeometry, setImportedGeometry,
     importedFilename, setImportedFilename,
@@ -6809,6 +6810,41 @@ export function ShapeGeneratorInner() {
     handleExportOBJ,
     handleExportPLY,
     handleExport3MF } = useImportExport(addToast, getEffectiveGeometry, setSketchResult as React.Dispatch<React.SetStateAction<ShapeResult | null>>, setBomParts, setBomLabel, setIsSketchMode as React.Dispatch<React.SetStateAction<boolean>>, activeTab, resultMesh);
+
+  // Image → model: vision SCAD-gen, then render → import as an editable mesh in
+  // the modeler. Lets the expert modeler accept a photo like Studio does.
+  const generateFromImage = useCallback(async (prompt: string, imageDataUrl: string): Promise<string | null> => {
+    try {
+      addToast('info', '사진 분석 중… / Reading the photo…');
+      const res = await fetch('/api/nexyfab/scad-intent-from-nl', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ prompt: prompt || 'Model this object as a clean parametric part', image: imageDataUrl, freeform: true }),
+      });
+      const data = await res.json().catch(() => ({})) as { scad?: string; code?: string; error?: string };
+      if (data.code === 'VISION_BUSY') return '이미지 분석이 혼잡해요 — 잠시 후 다시 / Image analysis busy — try again';
+      if (data.code === 'VISION_FAILED') return '이미지를 이해하지 못했어요 / Could not read the image';
+      if (!res.ok || !data.scad) return `이미지로 만들지 못했어요 / Could not build from image${data.error ? `: ${data.error}` : ''}`;
+      const scad = data.scad;
+      const rr = await fetch('/api/nexyfab/openscad-render', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ scad, format: 'stl' }),
+      });
+      const rd = await rr.json().catch(() => ({} as { dataBase64?: string; error?: string }));
+      if (!rr.ok || !rd.dataBase64) return rr.status === 401 ? '3D 미리보기는 무료 로그인이 필요합니다 / Free login needed' : '렌더링하지 못했어요 / Render failed';
+      const bin = atob(rd.dataBase64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const { parseSTL } = await import('./io/importers');
+      const geo = parseSTL(bytes.buffer);
+      geo.computeBoundingBox();
+      studioScadRef.current = scad; // enables the Studio round-trip on this part
+      setImportedGeometry(geo);
+      setImportedFilename('ai-from-image');
+      return '✓ 사진에서 모델을 만들었어요 / Built a model from your photo';
+    } catch (e) {
+      return `AI error: ${(e as Error)?.message ?? e}`;
+    }
+  }, [addToast, setImportedGeometry, setImportedFilename]);
 
   // ─── K-series Thicken (kernel-ceiling op) ────────────────────────────────
   // Thicken the active closed line-loop sketch (or a 10×10 demo when none)
@@ -11618,6 +11654,7 @@ export function ShapeGeneratorInner() {
         // which wraps the import and edits it via OpenSCAD.
         scadEditActive={!!importedResult}
         onScadEdit={handleFreeAiPrompt}
+        onImageGenerate={generateFromImage}
         store={{
           features,
           addFeatureWithParams: (type, params) => addFeatureWithParams(type as FeatureType, params),

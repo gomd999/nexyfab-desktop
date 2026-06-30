@@ -341,6 +341,9 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     const sentImage = image;
     const sentImageName = imageName;
     const refineFromScad = !!scad && !sentImage;
+    // Set when Precise fails and we fall through to free-form, so the fallback
+    // generates fresh (not "refine" the half-built precise code).
+    let preciseFellBack = false;
     // Track the requested largest dimension on a FRESH typed request, so the
     // render can auto-correct the scale once if it comes out the wrong size.
     if (!refineFromScad && typeof override !== 'string') {
@@ -353,53 +356,54 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     setInput(''); setImage(null); setImageName(null); setBusy(true);
 
     // ── PRECISE (expert) path: NL → exact feature program → solid ───────────
+    // On any failure (unsupported features / render error / exception) we DON'T
+    // dead-end — we fall through to the free-form path so the user still gets a
+    // model. This makes "OpenSCAD-style" requests work even if sent in Precise.
     if (precise && !sentImage) {
+      let preciseOk = false;
       try {
         const res = await fetch('/api/nexyfab/cad-feature-program', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ prompt: text, modelId, ...(programRef.current ? { previousProgram: programRef.current } : {}) }),
         });
         const data = await res.json().catch(() => ({})) as { part?: string; features?: unknown[]; error?: string };
-        if (!res.ok || !Array.isArray(data.features) || data.features.length === 0) {
-          setAiMsg(aiId, T('정밀 부품 설계에 실패했어요. 치수를 포함해 다시 설명해 주세요 (예: 100×80×10 플레이트, 중앙 30mm 구멍, M5 4개 PCD60).', 'Could not plan the part — describe it with dimensions (e.g. a 100×80×10 plate, 30mm centre hole, 4× M5 on PCD60).'), 'error');
-          return;
+        if (res.ok && Array.isArray(data.features) && data.features.length > 0) {
+          const program = { part: data.part, features: data.features } as FeatureProgram;
+          programRef.current = program;
+          const code = emitScadFromProgram(program);
+          setAiMsg(aiId, T('렌더링…', 'Rendering…'), 'thinking');
+          setScad(code); setColoredObject(null); setMobileTab('3d'); setGenCount(c => c + 1);
+          const r = await renderScad(code);
+          if (r.ok) {
+            preciseOk = true;
+            setAiMsg(aiId, T('완성! 정확한 치수로 만들었어요. 우측 슬라이더로 조정하거나, 계속 말해서 수정하세요 (예: 구멍 8mm로, 리브 더 높게).', 'Done! Built to exact dimensions. Tune with the sliders, or keep chatting (e.g. holes to 8mm, taller ribs).'), 'done');
+            setTimeout(() => {
+              const canvas = document.querySelector('[data-studio-canvas] canvas') as HTMLCanvasElement | null;
+              let thumb: string | null = null;
+              try { const t = canvas?.toDataURL?.('image/png'); if (t && t.length > 1000) thumb = t; } catch { /* hidden */ }
+              if (thumb) lastThumbRef.current = thumb;
+              setMessages(prev => {
+                const updated = thumb ? prev.map(x => (x.id === aiId ? { ...x, thumb } : x)) : prev;
+                saveDesign({ id: currentIdRef.current, title: titleFromMessages(toPersist(updated)), scad: code, messages: toPersist(updated), thumb: thumb ?? lastThumbRef.current, updatedAt: Date.now() });
+                refreshDesigns();
+                return updated;
+              });
+            }, 700);
+          }
         }
-        const program = { part: data.part, features: data.features } as FeatureProgram;
-        programRef.current = program;
-        const code = emitScadFromProgram(program);
-        setAiMsg(aiId, T('렌더링…', 'Rendering…'), 'thinking');
-        setScad(code); setColoredObject(null); setMobileTab('3d'); setGenCount(c => c + 1);
-        const r = await renderScad(code);
-        if (!r.ok) {
-          setAiMsg(aiId, r.auth
-            ? T('3D 미리보기·STL은 무료 로그인이 필요합니다.', '3D preview & STL need a free login.')
-            : T('렌더링하지 못했어요. 치수를 조금 바꿔 다시 시도해 주세요.', 'Could not render — try adjusting the dimensions and retry.'), 'error');
-          return;
-        }
-        setAiMsg(aiId, T('완성! 정확한 치수로 만들었어요. 우측 슬라이더로 조정하거나, 계속 말해서 수정하세요 (예: 구멍 8mm로, 리브 더 높게).', 'Done! Built to exact dimensions. Tune with the sliders, or keep chatting (e.g. holes to 8mm, taller ribs).'), 'done');
-        setTimeout(() => {
-          const canvas = document.querySelector('[data-studio-canvas] canvas') as HTMLCanvasElement | null;
-          let thumb: string | null = null;
-          try { const t = canvas?.toDataURL?.('image/png'); if (t && t.length > 1000) thumb = t; } catch { /* hidden */ }
-          if (thumb) lastThumbRef.current = thumb;
-          setMessages(prev => {
-            const updated = thumb ? prev.map(x => (x.id === aiId ? { ...x, thumb } : x)) : prev;
-            saveDesign({ id: currentIdRef.current, title: titleFromMessages(toPersist(updated)), scad: code, messages: toPersist(updated), thumb: thumb ?? lastThumbRef.current, updatedAt: Date.now() });
-            refreshDesigns();
-            return updated;
-          });
-        }, 700);
       } catch (e) {
-        setAiMsg(aiId, (e instanceof Error ? e.message : String(e)), 'error');
-      } finally {
-        setBusy(false);
+        console.warn('[precise] failed, falling back to free-form:', e);
       }
-      return;
+      if (preciseOk) { setBusy(false); return; }
+      // Precise couldn't build it → fall through to free-form below (fresh, not refine).
+      preciseFellBack = true;
+      programRef.current = null;
+      setAiMsg(aiId, T('정밀로 안 되어 자유형으로 전환합니다…', 'Precise didn\'t fit — switching to free-form…'), 'thinking');
     }
     try {
       const body = sentImage
         ? { prompt: text, image: sentImage, freeform: true, modelId }
-        : refineFromScad
+        : (refineFromScad && !preciseFellBack)
           ? { prompt: text, freeform: true, previousScad: scad, modelId }
           : { prompt: text, freeform: true, modelId };
       // Codegen (DeepSeek Reasoner) occasionally times out / 5xx's / returns no

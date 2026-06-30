@@ -44,13 +44,15 @@ export interface AiAssistantShellProps {
    *  SCAD path that edits the import — instead of parametric feature intents. */
   scadEditActive?: boolean;
   onScadEdit?: (prompt: string) => Promise<void>;
+  /** Optional: build a model from an attached photo (vision → SCAD → mesh). */
+  onImageGenerate?: (prompt: string, image: string) => Promise<string | null>;
   /** Disable when WASM not ready or user is in a modal flow. */
   disabled?: boolean;
 }
 
 export default function AiAssistantShell({
   lang, store, promptToIntents, onAiBatch, onOpenFullChat, disabled,
-  scadEditActive, onScadEdit,
+  scadEditActive, onScadEdit, onImageGenerate,
 }: AiAssistantShellProps) {
   const trackerRef = useRef<EditOriginTracker | null>(null);
   if (!trackerRef.current) trackerRef.current = new EditOriginTracker();
@@ -135,6 +137,7 @@ export default function AiAssistantShell({
     <FloatingAiPrompt
       lang={lang}
       onSubmit={runPrompt}
+      onImageGenerate={onImageGenerate}
       onOpenFullChat={onOpenFullChat}
       disabled={disabled}
     />
