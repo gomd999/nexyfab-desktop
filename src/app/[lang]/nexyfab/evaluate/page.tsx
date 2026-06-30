@@ -6,8 +6,11 @@
 // fit / producibility / scores. Feeds the design→quote→order funnel.
 
 import { use, useCallback, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import type * as THREE from 'three';
 import { MATERIAL_PRESETS } from '@/app/[lang]/shape-generator/materials';
+
+const EvaluateViewer = dynamic(() => import('./EvaluateViewer'), { ssr: false });
 import type { ManufacturingProcess } from '@/app/[lang]/shape-generator/analysis/dfmAnalysis';
 
 // Map the page's process ids → the DFM analyzer's ManufacturingProcess enum.
@@ -60,6 +63,9 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
   const [report, setReport] = useState<Report | null>(null);
   const [dfmCount, setDfmCount] = useState<{ error: number; warning: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [geo, setGeo] = useState<THREE.BufferGeometry | null>(null);
+  const [highlightTris, setHighlightTris] = useState<number[]>([]);
+  const [fitKey, setFitKey] = useState(0);
   const geoRef = useRef<THREE.BufferGeometry | null>(null);
 
   const onFile = useCallback(async (file: File | undefined) => {
@@ -69,6 +75,9 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
       const { prepareImportedShapeFromFile } = await import('@/app/[lang]/shape-generator/io/importMeshPipeline');
       const prepared = await prepareImportedShapeFromFile(file);
       geoRef.current = prepared.geometry;
+      setGeo(prepared.geometry);
+      setHighlightTris([]);
+      setFitKey(k => k + 1);
       setDfmCount(null);
       const vol = Math.max(1e-6, prepared.volume_cm3 * 1000); // mm³
       const sa = prepared.surface_area_cm2 * 100; // mm²
@@ -112,8 +121,12 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
           const { analyzeDFM } = await import('@/app/[lang]/shape-generator/analysis/dfmAnalysis');
           const proc = (DFM_PROCESS[process] ?? 'cnc_milling') as ManufacturingProcess;
           const results = analyzeDFM(geoRef.current, [proc]);
-          dfmIssues = results.flatMap(r => r.issues).map(i => ({ type: i.type, severity: i.severity, description: i.description, suggestion: i.suggestion }));
+          const allIssues = results.flatMap(r => r.issues);
+          dfmIssues = allIssues.map(i => ({ type: i.type, severity: i.severity, description: i.description, suggestion: i.suggestion }));
           setDfmCount({ error: dfmIssues.filter(i => i.severity === 'error').length, warning: dfmIssues.filter(i => i.severity === 'warning').length });
+          // Triangle indices of error/warning faces → 3D overlay highlight.
+          const tris = allIssues.filter(i => i.severity !== 'info').flatMap(i => i.faceIndices ?? []);
+          setHighlightTris(Array.from(new Set(tris)));
         } catch { /* DFM optional — fall back to metrics-only */ }
       }
 
@@ -197,6 +210,23 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
           </div>
         )}
       </div>
+
+      {/* 3D viewer — shows the part and (after evaluation) highlights the DFM
+          problem faces in red. review-noprint: a WebGL canvas prints unreliably,
+          so the PDF stays the clean text report. */}
+      {geo && (
+        <div className="review-noprint rounded-xl border border-white/10 bg-white/[0.03] p-2 mb-6">
+          <div style={{ height: 380 }} className="rounded-lg overflow-hidden">
+            <EvaluateViewer geometry={geo} highlightTris={highlightTris} fitKey={fitKey} />
+          </div>
+          {highlightTris.length > 0 && (
+            <div className="text-xs opacity-70 px-2 py-1.5 flex items-center gap-2">
+              <span className="inline-block w-3 h-3 rounded-sm" style={{ background: '#ef4444' }} />
+              {T('빨간 영역 = DFM 문제 면 (얇은 벽 / 언더컷 / 날카로운 모서리 등)', 'Red = DFM problem faces (thin wall / undercut / sharp corners …)')}
+            </div>
+          )}
+        </div>
+      )}
 
       {err && <div className="review-noprint rounded-lg border border-red-500/40 bg-red-500/10 text-red-300 text-sm p-3 mb-6">{err}</div>}
 
