@@ -53,9 +53,11 @@ const SOLID_GROUPS: { title: string; rows: RibbonAction[][] }[] = [
     rows: [
       [
         { id: 'extrude', lbl: 'Extrude', ico: 'extrude', hasCaret: true },
-        { id: 'revolve', lbl: 'Revolve', ico: 'revolve', adv: true },
-        { id: 'sweep', lbl: 'Sweep', ico: 'sweep', adv: true },
-        { id: 'loft', lbl: 'Loft', ico: 'loft', adv: true },
+        // Curved-surface ops surfaced in the essentials tier (were hidden behind
+        // "All tools" — users couldn't find revolve/sweep/loft for curved design).
+        { id: 'revolve', lbl: 'Revolve', ico: 'revolve' },
+        { id: 'sweep', lbl: 'Sweep', ico: 'sweep' },
+        { id: 'loft', lbl: 'Loft', ico: 'loft' },
         { id: 'hole', lbl: 'Hole', ico: 'hole', hasCaret: true },
       ],
     ],

@@ -139,6 +139,29 @@ export function parseFeatureEditPrompt(
     }
   }
 
+  // 4.5 Relative resize — "make it bigger", "2× larger", "절반으로", "좀더 키우자".
+  //     No specific dimension → uniform scale feature. This is the single most
+  //     common natural phrasing the deterministic parser used to miss entirely.
+  const SCALE_UP = /\b(bigger|larger|grow|enlarge|scale up|upsize|up-?size)\b|키우|크게|확대|더\s*크/i;
+  const SCALE_DOWN = /\b(smaller|shrink|scale down|downsize|down-?size|reduce)\b|작게|줄여|줄이|축소|더\s*작/i;
+  if (SCALE_UP.test(lower) || SCALE_DOWN.test(lower)) {
+    const down = SCALE_DOWN.test(lower) && !SCALE_UP.test(lower);
+    const times = lower.match(/([\d.]+)\s*(?:x|배|times)/);
+    const pct = lower.match(/([\d.]+)\s*%/);
+    const half = /\b(half)\b|절반|반으로/.test(lower);
+    let factor: number;
+    if (times) factor = parseFloat(times[1]!);
+    else if (half) factor = 0.5;
+    else if (pct) { const p = parseFloat(pct[1]!) / 100; factor = down ? p : 1 + p; }
+    else factor = down ? 0.7 : 1.5; // "좀더 키우자" with no number
+    if (!Number.isFinite(factor) || factor <= 0) factor = down ? 0.7 : 1.5;
+    factor = Math.max(0.1, Math.min(5, Math.round(factor * 100) / 100)); // scale feature bounds
+    return {
+      intents: [{ kind: 'add_feature', featureType: 'scale', params: { scaleX: factor, scaleY: factor, scaleZ: factor } }],
+      explanation: `${factor >= 1 ? 'Enlarged' : 'Shrunk'} the model ×${factor} (uniform).`,
+    };
+  }
+
   // 5. Add a feature (keyword match; number → its primary param, else default).
   //    Face/edge-aware: when the matched feature consumes a selection and one
   //    of the right kind is active, attach it (add_feature_on_selection) so the
