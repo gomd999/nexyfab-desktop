@@ -41,7 +41,7 @@ interface Report {
   estCostNote: string;
 }
 
-interface Structural { stressMPa: number; safetyFactor: number; loadN: number; assumption: string }
+interface Structural { stressMPa: number; safetyFactor: number; loadN: number; assumption: string; reliable: boolean }
 
 // Load-based structural ESTIMATE (transparent cantilever-beam approximation —
 // NOT a full FEA). Treats the bounding box as a cantilever: weak-axis section
@@ -59,11 +59,17 @@ function structuralEstimate(metrics: Metrics, materialId: string, loadN: number)
   const M = loadN * L + (W * L) / 2; // N·mm
   const stress = M / Z; // MPa
   const sf = stress > 0 ? yieldMPa / stress : 999;
+  // Solidity = part volume / bbox volume. The beam formula assumes a SOLID bbox
+  // cross-section; for a thin shell / hollow part (low solidity) the stiffness —
+  // and thus the safety factor — is massively overstated, so flag it unreliable.
+  const bboxVol = b * h * L;
+  const solidity = bboxVol > 0 ? metrics.volume_mm3 / bboxVol : 1;
   return {
     stressMPa: Math.round(stress * 10) / 10,
     safetyFactor: Math.round(Math.min(sf, 999) * 10) / 10,
     loadN,
     assumption: 'cantilever, weak-axis bending',
+    reliable: solidity >= 0.4,
   };
 }
 
@@ -85,6 +91,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
   const [material, setMaterial] = useState('aluminum');
   const [process, setProcess] = useState('cnc');
   const [loadN, setLoadN] = useState(50);
+  const [dragOver, setDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
@@ -173,7 +180,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
 
       const res = await fetch('/api/nexyfab/evaluate-report', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ metrics: { ...metrics, mass_g: massG }, material, process, filename, lang, dfmIssues, structural }),
+        body: JSON.stringify({ metrics: { ...metrics, mass_g: massG }, material, process, filename, lang, dfmIssues, structural: structural?.reliable ? structural : null }),
       });
       const data = await res.json().catch(() => ({})) as { report?: Report; error?: string };
       if (!res.ok || !data.report) { setErr(data.error || T('평가에 실패했어요.', 'Evaluation failed.')); return; }
@@ -213,13 +220,26 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
 
       {/* Upload + options */}
       <div className="review-noprint rounded-xl border border-white/10 bg-white/[0.03] p-5 mb-6">
-        <div className="flex flex-col md:flex-row gap-4 md:items-end">
-          <label className="flex-1">
-            <span className="block text-xs opacity-70 mb-1.5">{T('파일 (STEP / STL)', 'File (STEP / STL)')}</span>
-            <input type="file" accept=".step,.stp,.stl,model/step,model/stl"
-              onChange={e => { void onFile(e.target.files?.[0]); }}
-              className="block w-full text-sm file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:bg-blue-600 file:text-white file:cursor-pointer file:text-xs" />
-          </label>
+        {/* Big, obvious drop zone */}
+        <label
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={e => { e.preventDefault(); setDragOver(false); void onFile(e.dataTransfer.files?.[0]); }}
+          className={`block cursor-pointer rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors ${dragOver ? 'border-blue-500 bg-blue-500/10' : 'border-white/20 hover:border-blue-500/60 hover:bg-white/[0.02]'}`}
+        >
+          <div className="text-4xl mb-2">📤</div>
+          <div className="text-sm font-semibold">
+            {filename
+              ? `📄 ${filename}`
+              : T('STEP / STL 파일을 여기로 끌어다 놓거나 클릭하세요', 'Drop a STEP / STL file here, or click to choose')}
+          </div>
+          <div className="text-xs opacity-50 mt-1">.step · .stp · .stl{filename ? T(' — 다른 파일로 바꾸려면 클릭', ' — click to replace') : ''}</div>
+          <input type="file" accept=".step,.stp,.stl,model/step,model/stl" className="hidden"
+            onChange={e => { void onFile(e.target.files?.[0]); }} />
+        </label>
+
+        {/* Options */}
+        <div className="flex flex-wrap gap-4 mt-4">
           <label>
             <span className="block text-xs opacity-70 mb-1.5">{T('재질', 'Material')}</span>
             <select value={material} onChange={e => setMaterial(e.target.value)}
@@ -255,11 +275,18 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
               <Metric label={T('삼각형', 'Triangles')} value={metrics.triangle_count.toLocaleString()} />
             </div>
             {structural && (
-              <div className="mt-3 text-xs rounded-lg bg-white/[0.04] border border-white/10 px-3 py-2">
-                🏗 {T('구조 추정 (보 근사)', 'Structural estimate (beam approx)')}: {T('하중', 'load')} {loadN}N → {T('최대응력', 'max stress')} {structural.stressMPa} MPa · {T('안전계수', 'SF')}{' '}
-                <span className="font-bold" style={{ color: structural.safetyFactor >= 2 ? '#22c55e' : structural.safetyFactor >= 1 ? '#eab308' : '#ef4444' }}>{structural.safetyFactor}×</span>
-                <span className="opacity-50"> · {T('정밀 해석은 모델러 FEA에서', 'full FEA in the modeler')}</span>
-              </div>
+              structural.reliable ? (
+                <div className="mt-3 text-xs rounded-lg bg-white/[0.04] border border-white/10 px-3 py-2">
+                  🏗 {T('구조 추정 (보 근사)', 'Structural estimate (beam approx)')}: {T('하중', 'load')} {loadN}N → {T('최대응력', 'max stress')} {structural.stressMPa} MPa · {T('안전계수', 'SF')}{' '}
+                  <span className="font-bold" style={{ color: structural.safetyFactor >= 2 ? '#22c55e' : structural.safetyFactor >= 1 ? '#eab308' : '#ef4444' }}>{structural.safetyFactor}×</span>
+                  <span className="opacity-50"> · {T('정밀 해석은 모델러 FEA에서', 'full FEA in the modeler')}</span>
+                </div>
+              ) : (
+                <div className="mt-3 text-xs rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300/90 px-3 py-2">
+                  🏗 {T('얇은/중공 형상이라 보 근사 구조 추정은 신뢰도가 낮아 생략합니다. 정확한 구조 해석은 모델러 FEA(하중·구속 설정)를 이용하세요.',
+                    'Thin/hollow geometry — the beam-approx structural estimate is unreliable, so it is skipped. Use the modeler FEA (set loads/constraints) for an accurate analysis.')}
+                </div>
+              )
             )}
             <button onClick={() => void evaluate()} disabled={evaluating}
               className="mt-3 w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg py-2.5 text-sm font-bold">

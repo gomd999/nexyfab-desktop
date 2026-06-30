@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const LANG_NAME: Record<string, string> = {
-  ko: 'Korean', en: 'English', ja: 'Japanese', cn: 'Chinese', es: 'Spanish', ar: 'Arabic',
+  ko: 'Korean', kr: 'Korean', en: 'English', ja: 'Japanese', jp: 'Japanese',
+  cn: 'Chinese', zh: 'Chinese', es: 'Spanish', ar: 'Arabic',
 };
 
 const SYSTEM = `You are a senior manufacturing / design-for-manufacturing (DFM) engineer reviewing a finished 3D part for production. You are given measured geometry metrics plus the intended material and process. Produce a concise, honest, practical evaluation.
@@ -33,6 +34,9 @@ Rules:
 - When automated DFM findings are provided, treat them as GROUND TRUTH: surface each real issue (esp. thin_wall, undercut, deep_pocket, sharp_corner, draft_angle) in "issues", reflect its fix in "improvements", and let error/warning counts drive the manufacturability and structure scores down accordingly.
 - If material/process is "unspecified", recommend a sensible one and say so.
 - Be specific and actionable, not generic.
+- COST: do NOT invent absolute prices or currency amounts — you cannot know real shop rates, and fabricated figures are often off by an order of magnitude. "estCostNote" must describe cost DRIVERS qualitatively (setup complexity, cycle time, material usage, scrap risk, axis count) and end by directing the user to the quote tool for an actual price. Never write a $ / ₩ number.
+- The "structural estimate" provided (if any) is a crude solid-beam approximation. For a thin/hollow/shelled part its safety factor is wildly overstated — do NOT call a part "overdesigned" or give a high structure score based on it when the geometry is thin-walled or the analyzer flagged thin/zero walls; trust the DFM wall findings over the beam SF.
+- Respect the intended process: if the part looks molded/organic (many undercuts, thin shell) but the process is CNC, note the process MISMATCH as the root issue rather than declaring the part broken.
 - Write ALL string values in {LANG}.`;
 
 export async function POST(req: NextRequest) {
@@ -43,7 +47,7 @@ export async function POST(req: NextRequest) {
     filename?: string;
     lang?: string;
     dfmIssues?: Array<{ type: string; severity: string; description: string; suggestion?: string }>;
-    structural?: { stressMPa: number; safetyFactor: number; loadN: number; assumption: string } | null;
+    structural?: { stressMPa: number; safetyFactor: number; loadN: number; assumption: string; reliable?: boolean } | null;
   } | null;
   if (!body?.metrics) {
     return NextResponse.json({ error: 'metrics required' }, { status: 400 });
