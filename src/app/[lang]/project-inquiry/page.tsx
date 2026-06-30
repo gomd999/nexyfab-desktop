@@ -279,6 +279,34 @@ function ProjectInquiryPageInner() {
     setTimeout(() => setSimBanner(''), 10000);
   }, [searchParams]);
 
+  // 빠른 견적(quick-quote)에서 넘어온 경우 자동 pre-fill — 견적 데이터를 문의에 실어
+  // 고객이 재입력하지 않고, 제조사가 견적 맥락을 바로 받게 한다.
+  useEffect(() => {
+    const from = searchParams.get('from');
+    if (from !== 'quick-quote') return;
+    const material = searchParams.get('material') || '';
+    const process = searchParams.get('process') || '';
+    const qty = searchParams.get('qty') || '';
+    const uc = Number(searchParams.get('unitCost') || '');
+    let bboxStr = '';
+    try { const bb = JSON.parse(searchParams.get('bbox') || '{}'); if (bb && bb.w) bboxStr = `${Math.round(bb.w)}×${Math.round(bb.h)}×${Math.round(bb.d)} mm`; } catch { /* ignore */ }
+    if (formRef.current) {
+      const messageArea = formRef.current.querySelector('textarea[name="message"]') as HTMLTextAreaElement | null;
+      if (messageArea) {
+        const lines = ['[빠른 견적 연동 — 제조사 매칭 문의]'];
+        if (process) lines.push(`공정: ${process}`);
+        if (material) lines.push(`재질: ${material}`);
+        if (qty) lines.push(`수량: ${qty}개`);
+        if (Number.isFinite(uc) && uc > 0) lines.push(`예상 단가: ${Math.round(uc).toLocaleString()}원`);
+        if (bboxStr) lines.push(`치수: ${bboxStr}`);
+        lines.push('', '추가 요청 사항:');
+        messageArea.value = lines.join('\n');
+      }
+    }
+    setSimBanner('빠른 견적에서 연결되었습니다 — 견적 내용을 문의에 담았습니다');
+    setTimeout(() => setSimBanner(''), 10000);
+  }, [searchParams]);
+
   // 시뮬레이터에서 넘어온 경우 자동 pre-fill
   useEffect(() => {
     const from = searchParams.get('from');
