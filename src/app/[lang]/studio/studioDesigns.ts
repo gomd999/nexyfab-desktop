@@ -27,6 +27,33 @@ export interface StudioDesign {
 const KEY = 'nexyfab:studio-designs';
 const MAX = 40;
 
+// Designs are browser-local but scoped per account so a shared browser doesn't
+// leak one user's (or a guest's) recent designs into another account. The
+// caller (StudioInner) sets the scope to the logged-in user id, or 'guest'.
+let currentScope = 'guest';
+export function setDesignScope(userId: string | null | undefined): void {
+  currentScope = userId && userId.trim() ? `u:${userId.trim()}` : 'guest';
+}
+function keyFor(): string {
+  return `${KEY}:${currentScope}`;
+}
+
+// One-time migration: older builds stored everything under the unscoped KEY.
+// Move it into the 'guest' bucket (unknown owner — never attribute to an
+// account) and drop the legacy key, so it stops showing for logged-in users.
+let migrated = false;
+function migrateLegacy(s: Storage): void {
+  if (migrated) return;
+  migrated = true;
+  try {
+    const legacy = s.getItem(KEY);
+    if (legacy) {
+      if (!s.getItem(`${KEY}:guest`)) s.setItem(`${KEY}:guest`, legacy);
+      s.removeItem(KEY);
+    }
+  } catch { /* ignore */ }
+}
+
 function store(): Storage | null {
   try {
     return typeof window !== 'undefined' ? window.localStorage : null;
@@ -38,8 +65,9 @@ function store(): Storage | null {
 /** All designs, newest first. */
 export function listDesigns(s: Storage | null = store()): StudioDesign[] {
   if (!s) return [];
+  migrateLegacy(s);
   try {
-    const raw = s.getItem(KEY);
+    const raw = s.getItem(keyFor());
     if (!raw) return [];
     const arr = JSON.parse(raw) as StudioDesign[];
     if (!Array.isArray(arr)) return [];
@@ -62,7 +90,7 @@ export function saveDesign(design: StudioDesign, s: Storage | null = store()): v
     const capped = all
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, MAX);
-    s.setItem(KEY, JSON.stringify(capped));
+    s.setItem(keyFor(), JSON.stringify(capped));
   } catch {
     // Quota / serialization failure — history is best-effort, never block.
   }
@@ -72,7 +100,7 @@ export function deleteDesign(id: string, s: Storage | null = store()): void {
   if (!s) return;
   try {
     const all = listDesigns(s).filter(d => d.id !== id);
-    s.setItem(KEY, JSON.stringify(all));
+    s.setItem(keyFor(), JSON.stringify(all));
   } catch {
     /* ignore */
   }

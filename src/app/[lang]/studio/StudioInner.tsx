@@ -19,7 +19,7 @@ import { parseCustomizerParams, applyCustomizerValue } from '@/lib/openscad-rend
 import { useAuthStore } from '@/hooks/useAuth';
 import { useSessionKeepalive } from '@/hooks/useSessionKeepalive';
 import StudioSidebar from './StudioSidebar';
-import { listDesigns, saveDesign, getDesign, deleteDesign, titleFromMessages, type StudioDesign, type StudioChatMsg } from './studioDesigns';
+import { listDesigns, saveDesign, getDesign, deleteDesign, titleFromMessages, setDesignScope, type StudioDesign, type StudioChatMsg } from './studioDesigns';
 import { parseScadColors, isolateColorScad, defaultColorCss } from './scadColors';
 import { emitScadFromProgram, type FeatureProgram } from './emitScadFromProgram';
 import { CODEGEN_MODELS, DEFAULT_CODEGEN_MODEL } from '@/lib/ai/codegenModels';
@@ -140,6 +140,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const isKo = lang === 'ko' || lang === 'kr';
   const T = (ko: string, en: string) => (isKo ? ko : en);
   const userName = useAuthStore(s => s.user?.name ?? s.user?.email ?? null);
+  const userId = useAuthStore(s => s.user?.id ?? null);
 
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
@@ -213,6 +214,9 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const isEmpty = messages.length === 0 && !scad;
 
   const refreshDesigns = useCallback(() => setDesigns(listDesigns()), []);
+  // Scope recent designs per account (or guest) so a shared browser never shows
+  // one user's designs under another account. Re-runs on login/logout.
+  useEffect(() => { setDesignScope(userId); refreshDesigns(); }, [userId, refreshDesigns]);
   useEffect(() => { currentIdRef.current = freshId(); setCurrentId(currentIdRef.current); refreshDesigns(); }, [refreshDesigns]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
