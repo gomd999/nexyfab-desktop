@@ -147,6 +147,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const [image, setImage] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [enhancing, setEnhancing] = useState(false);
   const [needLogin, setNeedLogin] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [mobileTab, setMobileTab] = useState<'chat' | '3d' | 'params'>('chat');
@@ -561,6 +562,25 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
       setBusy(false);
     }
   }, [input, image, busy, scad, precise, modelId, renderScad, renderColored, setAiMsg, refreshDesigns, isKo]);
+
+  // ── Prompt expansion: rewrite a short request into a precise OpenSCAD brief ──
+  // the user can review/edit before sending. Best for mechanical parts; flags
+  // organic shapes (→ image-to-mesh) in the returned brief.
+  const enhanceInput = useCallback(async () => {
+    const text = input.trim();
+    if (!text || enhancing || busy) return;
+    setEnhancing(true);
+    try {
+      const res = await fetch('/api/nexyfab/enhance-prompt', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ prompt: text }),
+      });
+      const data = await res.json().catch(() => ({})) as { enhanced?: string };
+      if (res.ok && data.enhanced) setInput(data.enhanced);
+    } catch { /* keep the original text on failure */ } finally {
+      setEnhancing(false);
+    }
+  }, [input, enhancing, busy]);
 
   // Dimension auto-correct (single-shot): if a fresh model's largest dimension is
   // off from what the user explicitly asked for, uniformly rescale it once.
@@ -983,9 +1003,14 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
                 <input type="file" accept="image/*,.stl,model/stl,.step,.stp,model/step" className="hidden" onChange={e => onPickFile(e.target.files?.[0])} />
                 📷 {T('사진·STL 올리기', 'Upload photo / STL')}
               </label>
-              <button onClick={() => void send()} disabled={busy || (!input.trim() && !image)} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg px-5 py-1.5 text-sm font-semibold">
-                {busy ? T('생성 중…', 'Working…') : T('생성하기', 'Generate')}
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => void enhanceInput()} disabled={!input.trim() || enhancing || busy} className="text-[12px] border st-bd st-hover disabled:opacity-40 rounded-lg px-2.5 py-1.5" title={T('OpenSCAD용 정밀 프롬프트로 다듬기', 'Refine into a precise OpenSCAD brief')}>
+                  {enhancing ? T('다듬는 중…', 'Refining…') : T('✨ 다듬기', '✨ Refine')}
+                </button>
+                <button onClick={() => void send()} disabled={busy || (!input.trim() && !image)} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg px-5 py-1.5 text-sm font-semibold">
+                  {busy ? T('생성 중…', 'Working…') : T('생성하기', 'Generate')}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1076,6 +1101,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
               <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={onKeyDown}
                 placeholder={T('계속 수정해보세요 (예: 더 높게)…', 'Keep iterating (e.g. make it taller)…')} rows={1}
                 className="flex-1 bg-transparent text-sm resize-none focus:outline-none max-h-28 py-0.5" />
+              <button onClick={() => void enhanceInput()} disabled={!input.trim() || enhancing || busy} className="shrink-0 text-[11px] px-2 h-7 rounded-lg border st-bd st-hover disabled:opacity-40" title={T('OpenSCAD용 정밀 프롬프트로 다듬기', 'Refine into a precise OpenSCAD brief')}>{enhancing ? '…' : T('✨ 다듬기', '✨ Refine')}</button>
               <button onClick={() => void send()} disabled={busy || (!input.trim() && !image)} className="shrink-0 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg w-7 h-7 flex items-center justify-center" title={T('보내기', 'Send')}>↑</button>
             </div>
             <button onClick={quoteHandoff} disabled={!stlB64} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded py-2 text-[12px] font-bold" title={T('이 부품으로 제조 견적받기', 'Get a manufacturing quote for this part')}>{T('💵 견적받기', '💵 Get a quote')}</button>

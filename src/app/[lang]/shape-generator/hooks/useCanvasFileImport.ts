@@ -92,9 +92,26 @@ export function useCanvasFileImport(
 
       setIsSketchMode(false);
       pushRecentImportFile(prepared.filename, ext, file.size);
+      try { sessionStorage.removeItem('nf-chunk-reloaded'); } catch { /* ok */ }
       addToast('success', labels.importedFile(prepared.filename));
     } catch (err) {
-      addToast('error', labels.importFailedFile(err instanceof Error ? err.message : String(err)));
+      const msg = err instanceof Error ? err.message : String(err);
+      // "Loading chunk … failed" = the tab is running against a stale build (a
+      // deploy replaced the lazily-loaded importer chunk). Reload once to pull
+      // fresh chunks so the next import works; guard against a reload loop.
+      const isChunk = /loading chunk|chunkloaderror/i.test(msg)
+        || (err as { name?: string })?.name === 'ChunkLoadError';
+      if (isChunk && typeof window !== 'undefined') {
+        let reloadedOnce = false;
+        try { reloadedOnce = sessionStorage.getItem('nf-chunk-reloaded') === '1'; } catch { /* ok */ }
+        if (!reloadedOnce) {
+          try { sessionStorage.setItem('nf-chunk-reloaded', '1'); } catch { /* ok */ }
+          addToast('error', labels.importFailedFile('새 버전이 적용되어 새로고침합니다 — 다시 가져와 주세요 / New version — reloading, please re-import'));
+          setTimeout(() => window.location.reload(), 1200);
+          return;
+        }
+      }
+      addToast('error', labels.importFailedFile(msg));
     }
   }, [setImportedGeometry, setSketchResult, setBomParts, setBomLabel, setIsSketchMode, addToast, labels]);
 

@@ -74,8 +74,12 @@ export default function AiAssistantShell({
     // Imported mesh: no feature tree to edit — hand off to the SCAD path which
     // wraps import("model.stl") and edits it through OpenSCAD.
     if (scadEditActive && onScadEdit) {
-      try { await onScadEdit(prompt); return null; }
-      catch (err) { return `AI error: ${(err as Error)?.message ?? err}`; }
+      try {
+        await onScadEdit(prompt);
+        // Never return null here — a silent null reads as "no reaction" in the
+        // floating prompt. Give explicit confirmation instead.
+        return '✓ 적용했어요. 3D 미리보기를 확인하세요. / Applied — check the 3D preview.';
+      } catch (err) { return `AI error: ${(err as Error)?.message ?? err}`; }
     }
     // If the user is mid-sketch, commit it first so the AI edits a consistent
     // feature tree (prevents the sketch↔tree desync / orphaned-node corruption
