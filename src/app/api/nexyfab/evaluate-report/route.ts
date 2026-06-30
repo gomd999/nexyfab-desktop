@@ -1,0 +1,78 @@
+// Design Review (완제품 평가): take measured geometry metrics + intended
+// material/process and return a structured DFM-style evaluation report
+// (strengths / issues / improvements / material fit / producibility / scores).
+// Composes the existing AI provider chain (chatCompletion) — the geometry
+// metrics are computed client-side from the uploaded STEP/STL.
+
+import { NextRequest, NextResponse } from 'next/server';
+import { chatCompletion, AiNotConfiguredError, AiProviderError } from '@/lib/ai';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+const LANG_NAME: Record<string, string> = {
+  ko: 'Korean', en: 'English', ja: 'Japanese', cn: 'Chinese', es: 'Spanish', ar: 'Arabic',
+};
+
+const SYSTEM = `You are a senior manufacturing / design-for-manufacturing (DFM) engineer reviewing a finished 3D part for production. You are given measured geometry metrics plus the intended material and process. Produce a concise, honest, practical evaluation.
+Output ONLY valid minified JSON (no markdown, no prose around it) with EXACTLY this shape:
+{
+ "summary": string,
+ "scores": { "manufacturability": number, "cost": number, "structure": number },
+ "strengths": string[],
+ "issues": string[],
+ "improvements": string[],
+ "material": { "fit": string, "note": string },
+ "producibility": { "process": string, "difficulty": "low"|"medium"|"high", "note": string },
+ "estCostNote": string
+}
+Rules:
+- scores are 0-100 integers.
+- 2-4 strengths, 2-5 issues, 2-5 improvements; each a short concrete sentence.
+- Base every claim on the numbers given (volume, surface area, bounding box, SA/volume ratio, aspect ratios, triangle count, wall hints). Infer thin-wall / high-aspect / large-volume risks from them.
+- If material/process is "unspecified", recommend a sensible one and say so.
+- Be specific and actionable, not generic.
+- Write ALL string values in {LANG}.`;
+
+export async function POST(req: NextRequest) {
+  const body = (await req.json().catch(() => null)) as {
+    metrics?: Record<string, unknown>;
+    material?: string;
+    process?: string;
+    filename?: string;
+    lang?: string;
+  } | null;
+  if (!body?.metrics) {
+    return NextResponse.json({ error: 'metrics required' }, { status: 400 });
+  }
+  const langName = LANG_NAME[body.lang ?? 'ko'] ?? 'English';
+  const user = `Part file: ${body.filename ?? 'part'}
+Intended material: ${body.material ?? 'unspecified'}
+Intended process: ${body.process ?? 'unspecified'}
+Measured metrics (mm / mm² / mm³ unless noted): ${JSON.stringify(body.metrics)}`;
+
+  try {
+    const { text } = await chatCompletion({
+      messages: [
+        { role: 'system', content: SYSTEM.replace('{LANG}', langName) },
+        { role: 'user', content: user },
+      ],
+      maxTokens: 1200,
+      temperature: 0.3,
+    });
+    let raw = (text || '').trim();
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (m) raw = m[0];
+    let report: unknown;
+    try {
+      report = JSON.parse(raw);
+    } catch {
+      return NextResponse.json({ error: 'AI returned non-JSON', raw: (text || '').slice(0, 300) }, { status: 502 });
+    }
+    return NextResponse.json({ report });
+  } catch (e) {
+    if (e instanceof AiNotConfiguredError) return NextResponse.json({ error: 'AI not configured' }, { status: 500 });
+    if (e instanceof AiProviderError) return NextResponse.json({ error: 'AI provider error' }, { status: 502 });
+    return NextResponse.json({ error: 'evaluate failed' }, { status: 500 });
+  }
+}
