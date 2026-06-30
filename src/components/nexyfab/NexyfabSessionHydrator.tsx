@@ -12,23 +12,32 @@ function sessionUrl(): string {
 
 const STAGE_RESYNC_MS = 90_000;
 
-function mergeSessionUser(data: { user?: AuthUser } | null) {
-  if (!data?.user) return;
-  const { token } = useAuthStore.getState();
-  const prev = useAuthStore.getState().user;
-  if (!prev) {
-    useAuthStore.getState().setUser(data.user, token);
-    return;
-  }
-  if (data.user.id !== prev.id) return;
-  useAuthStore.getState().setUser(
-    {
-      ...prev,
-      ...data.user,
-      nexyfabStage: data.user.nexyfabStage ?? prev.nexyfabStage ?? 'A',
-    },
-    token,
-  );
+/**
+ * Reconcile the client store with the server session (the cookie is the single
+ * source of truth for IDENTITY). Fixes the case where a shared browser's
+ * persisted store shows one user while the cookie session is a different account.
+ */
+async function reconcileSession() {
+  try {
+    const r = await fetch(sessionUrl(), { credentials: 'include' });
+    // On a transient 401 (access cookie mid-refresh) we keep current state to
+    // avoid kicking out valid users; identity correction happens on the 200 path.
+    if (!r.ok) return;
+    const data = (await r.json()) as { user?: AuthUser } | null;
+    if (!data?.user) return;
+    const { token } = useAuthStore.getState();
+    const prev = useAuthStore.getState().user;
+    if (!prev || prev.id !== data.user.id) {
+      // Empty or a DIFFERENT account in the store → server identity wins.
+      useAuthStore.getState().setUser(data.user, token);
+      return;
+    }
+    // Same account → merge server-side fields (plan/stage) onto the client user.
+    useAuthStore.getState().setUser(
+      { ...prev, ...data.user, nexyfabStage: data.user.nexyfabStage ?? prev.nexyfabStage ?? 'A' },
+      token,
+    );
+  } catch { /* offline — keep current state */ }
 }
 
 /**
@@ -44,44 +53,17 @@ export default function NexyfabSessionHydrator() {
   useEffect(() => {
     if (ran.current) return;
     ran.current = true;
-
-    const { user, token, setUser } = useAuthStore.getState();
-    const needHydrate = !user || !('nexyfabStage' in user);
-
-    if (!needHydrate) return;
-
-    void fetch(sessionUrl(), { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { user?: AuthUser } | null) => {
-        if (!data?.user) return;
-        const prev = useAuthStore.getState().user;
-        if (!prev) {
-          setUser(data.user, token);
-          return;
-        }
-        setUser(
-          {
-            ...prev,
-            ...data.user,
-            nexyfabStage: data.user.nexyfabStage ?? prev.nexyfabStage ?? 'A',
-          },
-          token,
-        );
-      })
-      .catch(() => {});
+    // Always reconcile on load (not only when empty) so a stale/divergent
+    // persisted identity gets corrected against the server session.
+    void reconcileSession();
   }, []);
 
   useEffect(() => {
     const pull = () => {
-      const { user } = useAuthStore.getState();
-      if (!user?.id) return;
       const now = Date.now();
       if (now - lastStageSync.current < STAGE_RESYNC_MS) return;
       lastStageSync.current = now;
-      void fetch(sessionUrl(), { credentials: 'include' })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data: { user?: AuthUser } | null) => mergeSessionUser(data))
-        .catch(() => {});
+      void reconcileSession();
     };
 
     const onVis = () => {
