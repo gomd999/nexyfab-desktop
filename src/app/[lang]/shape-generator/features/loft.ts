@@ -44,13 +44,16 @@ function getRingPoints(shapeType: number, size: number, rot: number): [number, n
 
 /** The ordered set of section rings (shared by the mesh + B-rep paths). */
 function loftSections(params: Record<string, number>) {
-  const sections = Math.round(params.sections);
-  const height = params.height;
-  const startShape = Math.round(params.startShape);
-  const endShape = Math.round(params.endShape);
-  const startSize = params.startSize;
-  const endSize = params.endSize;
-  const twistTotal = (params.twist / 360) * Math.PI * 2;
+  // Sanitize non-finite params: a NaN sections → 0/NaN loop bounds (empty loft),
+  // and sections===0 makes t = s/0 = Infinity. Floor sections ≥ 1, cap at 200,
+  // and default the rest so a single NaN can't write NaN coords into the rings.
+  const sections = Math.max(1, Math.min(200, Math.round(Number.isFinite(params.sections) ? params.sections : 12)));
+  const height = Number.isFinite(params.height) ? params.height : 50;
+  const startShape = Math.round(Number.isFinite(params.startShape) ? params.startShape : 0);
+  const endShape = Math.round(Number.isFinite(params.endShape) ? params.endShape : 0);
+  const startSize = Number.isFinite(params.startSize) ? params.startSize : 20;
+  const endSize = Number.isFinite(params.endSize) ? params.endSize : 20;
+  const twistTotal = ((Number.isFinite(params.twist) ? params.twist : 0) / 360) * Math.PI * 2;
 
   const rings: { points: [number, number][]; y: number }[] = [];
   for (let s = 0; s <= sections; s++) {

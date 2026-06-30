@@ -89,6 +89,9 @@ export function lofted(
 ): SweepResult {
   void guides;
   const opts = { ...DEFAULT_SWEEP_OPTIONS, ...options };
+  // Guard a non-finite/≤1 stationCount: t = i/(stationCount-1) would divide by 0
+  // (Infinity) or go NaN, writing invalid frames into every station. Clamp 2..512.
+  opts.stationCount = Math.max(2, Math.min(512, Math.round(Number.isFinite(opts.stationCount) ? opts.stationCount : 32)));
   const warnings: string[] = [];
 
   if (sections.length < 2) {
