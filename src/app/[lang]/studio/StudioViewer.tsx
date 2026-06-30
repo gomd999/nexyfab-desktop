@@ -7,7 +7,7 @@
  *  grab a thumbnail of the canvas for the chat history. */
 import React, { useMemo, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid, Center, Bounds, ContactShadows } from '@react-three/drei';
+import { OrbitControls, Center, Bounds, ContactShadows } from '@react-three/drei';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import * as THREE from 'three';
 
@@ -63,10 +63,8 @@ export default function StudioViewer({ geometry, object = null, fitKey = 0, them
       {(geometry || object) && <Model geometry={geometry} object={object} fitKey={fitKey} />}
       {/* Soft grounding shadow under the part (premium product-render feel). */}
       <ContactShadows position={[0, -0.01, 0]} scale={400} far={300} blur={2.4} opacity={light ? 0.4 : 0.55} color={light ? '#8b93a0' : '#000000'} resolution={1024} />
-      {/* fadeDistance tightened + fadeStrength raised so distant grid lines fade
-          out before they shimmer/moiré during orbit (reported jitter). near/far
-          on the camera + logDepth keep depth precision stable. */}
-      <Grid args={[600, 600]} cellSize={10} cellColor={light ? '#c4ccd6' : '#2e2e33'} sectionSize={50} sectionColor={light ? '#aab4c0' : '#3a3a42'} position={[0, -0.02, 0]} infiniteGrid fadeDistance={280} fadeStrength={2} />
+      {/* Grid removed (2026-06-30): the infinite grid shimmered/jittered on orbit
+          and the user opted to drop it. ContactShadows still ground the part. */}
       <OrbitControls makeDefault enableDamping dampingFactor={0.1} />
     </Canvas>
   );

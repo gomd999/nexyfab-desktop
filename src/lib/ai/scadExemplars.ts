@@ -110,6 +110,7 @@ standoff();`,
     id: 'spur-gear',
     keywords: ['gear', 'spur', 'cog', 'sprocket', 'pinion', 'teeth', '기어', '톱니', '스퍼'],
     scad: `include <BOSL2/std.scad>
+include <BOSL2/gears.scad>
 $fn = 48;
 /* [Gear] */
 teeth = 24;        // [8:1:80]

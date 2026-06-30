@@ -32,7 +32,7 @@ BOSL2 SAFETY — these mistakes make the render FAIL (they are the #1 cause of f
 - Do not use undefined identifiers as keyword-argument values. Every value must be a number, string, boolean, vector literal, or a declared variable.
 - Prefer plain OpenSCAD (cube/cylinder/translate/difference) when unsure about a BOSL2 signature — a simpler model that renders beats a fancy one that errors.
 - VECTOR / MATRIX SYNTAX: a vector is comma-separated only — \`[a, b, c]\`. A SEMICOLON inside brackets (\`[a, b; c, d]\`, MATLAB/matrix style) is a SYNTAX ERROR and will not parse. Write matrices as nested vectors \`[[a,b],[c,d]]\`. To rotate a 2D point (x,y) by \`ang\`, compute \`[x*cos(ang) - y*sin(ang), x*sin(ang) + y*cos(ang)]\` — never a \`;\`-separated matrix.
-- GEARS: do NOT hand-roll involute tooth math (for-loops assembling tooth polygons are the #1 way a gear render breaks/parses wrong). BOSL2 is available — use its gear modules: \`spur_gear(mod = pitch_diameter/teeth, teeth = teeth, thickness = thickness, pressure_angle = 20, shaft_diam = bore_diameter);\` (also \`bevel_gear()\`, \`worm()\`, \`rack()\`). Add lightening holes via difference() with a for-loop of cylinders. Keep these parametric.
+- GEARS: do NOT hand-roll involute tooth math (for-loops assembling tooth polygons are the #1 way a gear render breaks/parses wrong). BOSL2 is available — use its gear modules: \`spur_gear(circ_pitch = circ_pitch, teeth = teeth, thickness = thickness, pressure_angle = 20);\` (also \`bevel_gear()\`, \`worm()\`, \`rack()\`). CRITICAL: gear modules live in BOSL2/gears.scad, NOT std.scad — you MUST add a SECOND include line \`include <BOSL2/gears.scad>\` right after the std.scad include whenever you use spur_gear/bevel_gear/worm/rack, otherwise OpenSCAD fails with "unknown module 'spur_gear'" and the gear renders as a plain disc. Add lightening holes / the bore via difference() with cylinders. Keep these parametric.
 - STANDARD MECHANICAL PARTS — prefer BOSL2's tested modules over hand-built geometry for anything standardized: THREADS/BOLTS/NUTS use \`threaded_rod(d=, l=, pitch=)\`, \`screw("M6", length=12)\`, \`nut("M6")\` (never model a thread helix by hand — it errors or looks wrong); SPRINGS use \`spiral()\`/\`helix\` helpers; STRUCTURAL profiles via \`cuboid\`/\`prismoid\`. If BOSL2 lacks a clean module for it, fall back to plain primitives, not fragile hand-math.
 
 PARAMETRIC CONTRACT — this is what makes the model adjustable, do NOT skip it:
@@ -72,7 +72,7 @@ Output the .scad program now.`;
 
 const def: PromptDefinition = {
   id: 'scad-freeform',
-  version: '1.13.0',
+  version: '1.14.0',
   description: 'Free-form OpenSCAD generation (CADAM-style): the model writes a complete parametric .scad program with Customizer annotations, so organic/assembled models work and dimensions stay slider-adjustable without an AI re-call. Distinct from the whitelist scad-intent-from-nl path.',
   template: TEMPLATE,
   defaults: {
