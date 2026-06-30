@@ -5,7 +5,7 @@
 // AI DFM-style evaluation report: strengths / issues / improvements / material
 // fit / producibility / scores. Feeds the design→quote→order funnel.
 
-import { use, useCallback, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type * as THREE from 'three';
 import { MATERIAL_PRESETS } from '@/app/[lang]/shape-generator/materials';
@@ -66,7 +66,18 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
   const [geo, setGeo] = useState<THREE.BufferGeometry | null>(null);
   const [highlightTris, setHighlightTris] = useState<number[]>([]);
   const [fitKey, setFitKey] = useState(0);
+  const [history, setHistory] = useState<Array<{ id: string; filename: string; material: string; process: string; created_at: number; report: Report | null }>>([]);
   const geoRef = useRef<THREE.BufferGeometry | null>(null);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await fetch('/api/nexyfab/reviews', { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json().catch(() => ({})) as { reviews?: typeof history };
+      if (Array.isArray(data.reviews)) setHistory(data.reviews);
+    } catch { /* guest / offline — no history */ }
+  }, []);
+  useEffect(() => { void loadHistory(); }, [loadHistory]);
 
   const onFile = useCallback(async (file: File | undefined) => {
     if (!file) return;
@@ -137,12 +148,17 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
       const data = await res.json().catch(() => ({})) as { report?: Report; error?: string };
       if (!res.ok || !data.report) { setErr(data.error || T('평가에 실패했어요.', 'Evaluation failed.')); return; }
       setReport(data.report);
+      // Persist to history (fire-and-forget; guests get 401 and are skipped).
+      void fetch('/api/nexyfab/reviews', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ filename, material, process, metrics, report: data.report }),
+      }).then(r => { if (r.ok) void loadHistory(); }).catch(() => {});
     } catch (e) {
       setErr(String(e));
     } finally {
       setEvaluating(false);
     }
-  }, [metrics, material, process, filename, lang, T]);
+  }, [metrics, material, process, filename, lang, T, loadHistory]);
 
   const matName = (m: typeof MATERIAL_PRESETS[number]) => (ko ? m.name.ko : m.name.en);
   const scoreColor = (n: number) => (n >= 75 ? '#22c55e' : n >= 50 ? '#eab308' : '#ef4444');
@@ -283,6 +299,26 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
           <a href={`/${lang}/quick-quote`} className="block text-center bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg py-2.5 text-sm font-bold">
             {T('💵 이 부품으로 견적받기', '💵 Get a quote for this part')}
           </a>
+        </div>
+      )}
+
+      {/* History — past reviews for this user (server-saved). Click to re-view. */}
+      {history.length > 0 && (
+        <div className="review-noprint mt-8">
+          <div className="text-sm font-bold mb-2 opacity-80">🕘 {T('최근 평가', 'Recent reviews')}</div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            {history.map(h => (
+              <button key={h.id} onClick={() => { if (h.report) { setReport(h.report); window.scrollTo({ top: 0, behavior: 'smooth' }); } }}
+                className="text-left rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] px-3 py-2">
+                <div className="text-sm font-medium truncate">{h.filename}</div>
+                <div className="text-xs opacity-60 flex gap-2 mt-0.5 flex-wrap">
+                  <span>{new Date(h.created_at).toLocaleDateString(ko ? 'ko-KR' : 'en-US')}</span>
+                  {h.material ? <span>· {h.material}</span> : null}
+                  {h.report?.scores ? <span>· {T('제조성', 'Mfg')} {h.report.scores.manufacturability}</span> : null}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
