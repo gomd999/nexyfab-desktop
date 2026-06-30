@@ -121,6 +121,35 @@ function applyFilletMeshCsg(
   return clearStaleBrepHandle(resultBrush.geometry);
 }
 
+/** Retry the mesh fillet at progressively smaller radii. A radius too large for
+ *  the solid collapses the CSG / fails the no-op guard; fit the largest bevel
+ *  that works instead of erroring the whole feature (mirrors chamfer). The OCCT
+ *  path already has its own reduced-radius ladder — this guards the mesh path. */
+function meshFilletWithRetry(
+  geometry: THREE.BufferGeometry,
+  radius: number,
+  segments: number,
+  ctx?: FeatureApplyContext,
+  guardNoOp = false,
+): THREE.BufferGeometry {
+  const candidates: number[] = [radius];
+  for (const f of [0.5, 0.25, 0.1]) {
+    const d = Math.round(radius * f * 1000) / 1000;
+    if (d >= 0.1 && !candidates.includes(d)) candidates.push(d);
+  }
+  let lastErr: unknown = null;
+  for (let i = 0; i < candidates.length; i++) {
+    try {
+      const out = applyFilletMeshCsg(geometry, candidates[i]!, segments, ctx, guardNoOp);
+      if (candidates[i] !== radius) console.warn(`[fillet] reduced ${radius}→${candidates[i]}mm to fit the solid`);
+      return out;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr ?? new Error('Fillet produced no geometry');
+}
+
 /**
  * Materialize an avoidance outcome: attach the B-rep handle and — when the
  * kernel applied something other than what was requested — stamp a 'reduced'
@@ -187,7 +216,7 @@ function applyFilletSync(
   }
   // Reaching the mesh path with wantedOcct=true is a silent downgrade — guard
   // against shipping an unrounded part. Explicit engine=0 keeps the placeholder.
-  return applyFilletMeshCsg(geometry, radius, segments, ctx, wantedOcct);
+  return meshFilletWithRetry(geometry, radius, segments, ctx, wantedOcct);
 }
 
 async function applyFilletWithEdgeFinder(
@@ -214,7 +243,7 @@ async function applyFilletWithEdgeFinder(
       console.warn('[fillet] OCCT path failed, falling back to mesh approximator:', err);
     }
   }
-  return applyFilletMeshCsg(geometry, radius, segments, ctx, wantedOcct);
+  return meshFilletWithRetry(geometry, radius, segments, ctx, wantedOcct);
 }
 
 export const filletFeature: FeatureDefinition = {

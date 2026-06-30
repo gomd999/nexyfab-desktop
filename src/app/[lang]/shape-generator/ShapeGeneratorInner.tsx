@@ -6122,6 +6122,14 @@ export function ShapeGeneratorInner() {
     );
   }, [addToast, lang, handleHistoryUndo]);
 
+  // Direct mesh edits (face offset/shell/push-pull, edge fillet/chamfer, CSG) on
+  // an IMPORTED part must persist onto importedGeometry — otherwise a tab/mode
+  // switch clears the transient sketchResult and the part reverts to the original
+  // import. These refs let handleGeometryApply reach setImportedGeometry even
+  // though it's declared further down (assigned after the useImportExport call).
+  const importedGeometryLiveRef = useRef<BufferGeometry | null>(null);
+  const setImportedGeometryRef = useRef<((g: BufferGeometry) => void) | null>(null);
+
   // Apply a geometry directly (from face editing, fillet/chamfer on edge, or CSG)
   const handleGeometryApply = useCallback((geo: BufferGeometry) => {
     const vol = meshVolume(geo);
@@ -6139,6 +6147,10 @@ export function ShapeGeneratorInner() {
         h: box.max.y - box.min.y,
         d: box.max.z - box.min.z } };
     setSketchResult(newResult);
+    // Persist onto the imported part so the edit survives tab/mode transitions.
+    if (importedGeometryLiveRef.current && setImportedGeometryRef.current) {
+      setImportedGeometryRef.current(geo);
+    }
     setEditMode('none');
   }, [setSketchResult, setEditMode]);
 
@@ -6810,6 +6822,11 @@ export function ShapeGeneratorInner() {
     handleExportOBJ,
     handleExportPLY,
     handleExport3MF } = useImportExport(addToast, getEffectiveGeometry, setSketchResult as React.Dispatch<React.SetStateAction<ShapeResult | null>>, setBomParts, setBomLabel, setIsSketchMode as React.Dispatch<React.SetStateAction<boolean>>, activeTab, resultMesh);
+
+  // Wire the refs used by handleGeometryApply (declared above) so direct mesh
+  // edits on an imported part persist onto importedGeometry.
+  setImportedGeometryRef.current = setImportedGeometry;
+  importedGeometryLiveRef.current = importedGeometry;
 
   // Image → model: vision SCAD-gen, then render → import as an editable mesh in
   // the modeler. Lets the expert modeler accept a photo like Studio does.
