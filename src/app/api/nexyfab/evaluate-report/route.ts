@@ -37,6 +37,10 @@ Rules:
 - COST: do NOT invent absolute prices or currency amounts — you cannot know real shop rates, and fabricated figures are often off by an order of magnitude. "estCostNote" must describe cost DRIVERS qualitatively (setup complexity, cycle time, material usage, scrap risk, axis count) and end by directing the user to the quote tool for an actual price. Never write a $ / ₩ number.
 - The "structural estimate" provided (if any) is a crude solid-beam approximation. For a thin/hollow/shelled part its safety factor is wildly overstated — do NOT call a part "overdesigned" or give a high structure score based on it when the geometry is thin-walled or the analyzer flagged thin/zero walls; trust the DFM wall findings over the beam SF.
 - Respect the intended process: if the part looks molded/organic (many undercuts, thin shell) but the process is CNC, note the process MISMATCH as the root issue rather than declaring the part broken.
+- PROCESS × MATERIAL ECONOMICS: weigh how the chosen material behaves in the chosen process (machinability / moldability / printability, e.g. titanium & stainless are slow/abrasive to machine, aluminum & brass are easy; ABS/PP/nylon mold well, glass-filled grades are abrasive) AND the process cost structure vs the given quantity:
+  • CNC / 3D printing: no tooling cost; per-part cost dominated by time & material — fine at low quantity, expensive per-part at high quantity.
+  • Injection molding / casting: high one-time tooling (mold) cost amortized over volume — only economical above a break-even quantity (often ~1,000+ for injection).
+  Use the quantity to recommend the MOST economical process for that volume; if the chosen process is uneconomical at that quantity, say so in "producibility" and suggest the better one. Reflect this in the "cost" score (low quantity + injection tooling = poor cost score; high quantity + CNC = poor cost score).
 - Write ALL string values in {LANG}.`;
 
 export async function POST(req: NextRequest) {
@@ -48,6 +52,8 @@ export async function POST(req: NextRequest) {
     lang?: string;
     dfmIssues?: Array<{ type: string; severity: string; description: string; suggestion?: string }>;
     structural?: { stressMPa: number; safetyFactor: number; loadN: number; assumption: string; reliable?: boolean } | null;
+    quantity?: number;
+    materialProps?: { density?: number; yieldStrength?: number; youngsModulus?: number } | null;
   } | null;
   if (!body?.metrics) {
     return NextResponse.json({ error: 'metrics required' }, { status: 400 });
@@ -59,9 +65,11 @@ export async function POST(req: NextRequest) {
   const dfm = Array.isArray(body.dfmIssues) && body.dfmIssues.length > 0
     ? body.dfmIssues.slice(0, 25).map(i => `- [${i.severity}] ${i.type}: ${i.description}${i.suggestion ? ` → ${i.suggestion}` : ''}`).join('\n')
     : '(no automated DFM issues detected by the geometry analyzer)';
+  const mp = body.materialProps;
   const user = `Part file: ${body.filename ?? 'part'}
-Intended material: ${body.material ?? 'unspecified'}
+Intended material: ${body.material ?? 'unspecified'}${mp ? ` (density ${mp.density ?? '?'} g/cm³, yield ${mp.yieldStrength ?? '?'} MPa)` : ''}
 Intended process: ${body.process ?? 'unspecified'}
+Target quantity: ${body.quantity && body.quantity > 0 ? `${body.quantity} pcs` : 'unspecified'}
 Measured metrics (mm / mm² / mm³ unless noted): ${JSON.stringify(body.metrics)}
 
 Automated DFM analysis findings (real geometry analysis — treat as ground truth):

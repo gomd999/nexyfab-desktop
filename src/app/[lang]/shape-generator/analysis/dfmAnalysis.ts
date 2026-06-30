@@ -512,6 +512,40 @@ function analyzeInjectionMolding(
     });
   }
 
+  // Thick walls & non-uniformity → sink marks + warpage (the two most common
+  // injection-molding defects after draft). One broad raycast pass captures the
+  // full wall-thickness range; thin is handled above.
+  const maxWallIM = 4.0; // mm — above this risks sink marks + long cycle time
+  const allWalls = measureWallThickness(nonIndexed, 15, 0.03);
+  if (allWalls.length > 0) {
+    const thicknesses = allWalls.map(m => m.thickness);
+    const maxW = Math.max(...thicknesses);
+    const minW = Math.min(...thicknesses);
+    const thickest = allWalls.reduce((a, b) => (a.thickness > b.thickness ? a : b));
+    if (maxW > maxWallIM) {
+      issues.push({
+        id: nextId('injection_molding'),
+        process: 'injection_molding',
+        type: 'thin_wall',
+        severity: maxW > maxWallIM * 1.6 ? 'error' : 'warning',
+        description: `Thick wall up to ${maxW.toFixed(1)}mm (recommended ≤${maxWallIM}mm) — risks sink marks and long cycle time`,
+        suggestion: 'Core out / hollow thick sections to a uniform ~2-3mm wall; use ribs instead of solid bulk',
+        location: [thickest.position.x, thickest.position.y, thickest.position.z],
+      });
+    }
+    // Non-uniform walls → differential shrinkage → warpage + sink.
+    if (minW > 0 && maxW / minW > 3 && maxW - minW > 1.5) {
+      issues.push({
+        id: nextId('injection_molding'),
+        process: 'injection_molding',
+        type: 'uniform_wall',
+        severity: 'warning',
+        description: `Wall thickness varies ${minW.toFixed(1)}-${maxW.toFixed(1)}mm (${(maxW / minW).toFixed(1)}x spread) — uneven shrinkage causes warpage`,
+        suggestion: 'Keep walls uniform (≤15% change); blend thick↔thin transitions with gradual tapers',
+      });
+    }
+  }
+
   // Sharp corners in mold
   const sharpFaces = new Set<number>();
   for (const [, info] of edgeMap) {

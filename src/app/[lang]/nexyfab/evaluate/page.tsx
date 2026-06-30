@@ -91,6 +91,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
   const [material, setMaterial] = useState('aluminum');
   const [process, setProcess] = useState('cnc');
   const [loadN, setLoadN] = useState(50);
+  const [quantity, setQuantity] = useState(100);
   const [dragOver, setDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
@@ -180,7 +181,12 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
 
       const res = await fetch('/api/nexyfab/evaluate-report', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ metrics: { ...metrics, mass_g: massG }, material, process, filename, lang, dfmIssues, structural: structural?.reliable ? structural : null }),
+        body: JSON.stringify({
+          metrics: { ...metrics, mass_g: massG }, material, process, filename, lang, dfmIssues,
+          structural: structural?.reliable ? structural : null,
+          quantity,
+          materialProps: (() => { const m = MATERIAL_PRESETS.find(x => x.id === material); return m ? { density: m.density, yieldStrength: m.yieldStrength, youngsModulus: m.youngsModulus } : null; })(),
+        }),
       });
       const data = await res.json().catch(() => ({})) as { report?: Report; error?: string };
       if (!res.ok || !data.report) { setErr(data.error || T('평가에 실패했어요.', 'Evaluation failed.')); return; }
@@ -195,7 +201,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
     } finally {
       setEvaluating(false);
     }
-  }, [metrics, material, process, filename, lang, T, loadHistory, structural]);
+  }, [metrics, material, process, filename, lang, T, loadHistory, structural, quantity]);
 
   const matName = (m: typeof MATERIAL_PRESETS[number]) => (ko ? m.name.ko : m.name.en);
   const scoreColor = (n: number) => (n >= 75 ? '#22c55e' : n >= 50 ? '#eab308' : '#ef4444');
@@ -253,6 +259,11 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
               className="bg-white/5 border border-white/15 rounded-md px-2 py-2 text-sm">
               {PROCESSES.map(p => <option key={p.id} value={p.id}>{ko ? p.ko : p.en}</option>)}
             </select>
+          </label>
+          <label title={T('경제성(공정 선택)용 목표 수량', 'Target quantity for the economics / process recommendation')}>
+            <span className="block text-xs opacity-70 mb-1.5">{T('수량', 'Quantity')}</span>
+            <input type="number" min={1} value={quantity} onChange={e => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+              className="w-24 bg-white/5 border border-white/15 rounded-md px-2 py-2 text-sm" />
           </label>
           <label title={T('구조 추정용 적용 하중 (보 근사)', 'Applied load for the structural estimate (beam approx)')}>
             <span className="block text-xs opacity-70 mb-1.5">{T('하중 (N)', 'Load (N)')}</span>
