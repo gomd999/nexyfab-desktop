@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo, useCallback, useState } from 'react';
+import { useRef, useMemo, useCallback, useState, useEffect } from 'react';
 import { useThree, ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -221,6 +221,43 @@ function PushPullArrow({
     return q;
   }, [face.normal]);
 
+  // Latest face in a ref so the window-level drag handlers (registered once at
+  // pointer-down) always read the current normal/center.
+  const faceRef = useRef(face);
+  faceRef.current = face;
+
+  // Drag tracking lives on WINDOW listeners, not the mesh's onPointerMove. R3F
+  // only fires a mesh's onPointerMove while the ray actually hits that mesh, so
+  // dragging off the small cone tip used to stop the drag dead (the "gizmo
+  // doesn't move" bug). Native window pointer events track the drag everywhere.
+  const onMove = useCallback(
+    (ev: PointerEvent) => {
+      if (!isDragging.current) return;
+      const rect = gl.domElement.getBoundingClientRect();
+      const ndcX = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+      const ndcY = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+      _raycaster.current.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
+      const hit = _raycaster.current.ray.intersectPlane(dragPlane.current, _hit.current);
+      if (!hit) return;
+      const n = new THREE.Vector3(...faceRef.current.normal).normalize();
+      const currentDist = n.dot(_hit.current);
+      const delta = currentDist - lastDist.current;
+      lastDist.current = currentDist;
+      setDragDist((prev) => prev + delta);
+      onPushPull(faceId, delta);
+    },
+    [camera, gl, faceId, onPushPull],
+  );
+
+  const endDrag = useCallback(() => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    setIsDraggingState(false);
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', endDrag);
+    onDragEnd();
+  }, [onMove, onDragEnd]);
+
   const handlePointerDown = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       e.stopPropagation();
@@ -231,57 +268,20 @@ function PushPullArrow({
       dragPlane.current.setFromNormalAndCoplanarPoint(n, center);
       lastDist.current = n.dot(center);
 
-      (e.nativeEvent.target as HTMLElement)?.setPointerCapture?.(
-        e.nativeEvent.pointerId,
-      );
       setIsDraggingState(true);
       setDragDist(0);
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', endDrag);
       onDragStart();
     },
-    [face.normal, face.center, onDragStart],
+    [face.normal, face.center, onMove, endDrag, onDragStart],
   );
 
-  const handlePointerMove = useCallback(
-    (e: ThreeEvent<PointerEvent>) => {
-      if (!isDragging.current) return;
-      e.stopPropagation();
-
-      const rect = gl.domElement.getBoundingClientRect();
-      const ndcX = ((e.nativeEvent.clientX - rect.left) / rect.width) * 2 - 1;
-      const ndcY = -((e.nativeEvent.clientY - rect.top) / rect.height) * 2 + 1;
-
-      _raycaster.current.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
-      const hit = _raycaster.current.ray.intersectPlane(
-        dragPlane.current,
-        _hit.current,
-      );
-
-      if (hit) {
-        const n = new THREE.Vector3(...face.normal).normalize();
-        const currentDist = n.dot(_hit.current);
-        const delta = currentDist - lastDist.current;
-        lastDist.current = currentDist;
-        setDragDist((prev) => prev + delta);
-        onPushPull(faceId, delta);
-      }
-    },
-    [camera, gl, face.normal, faceId, onPushPull],
-  );
-
-  const handlePointerUp = useCallback(
-    (e: ThreeEvent<PointerEvent>) => {
-      if (!isDragging.current) return;
-      e.stopPropagation();
-      isDragging.current = false;
-
-      (e.nativeEvent.target as HTMLElement)?.releasePointerCapture?.(
-        e.nativeEvent.pointerId,
-      );
-      setIsDraggingState(false);
-      onDragEnd();
-    },
-    [onDragEnd],
-  );
+  // Safety: drop listeners if the arrow unmounts mid-drag.
+  useEffect(() => () => {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', endDrag);
+  }, [onMove, endDrag]);
 
   const [cx, cy, cz] = face.center;
 
@@ -313,8 +313,6 @@ function PushPullArrow({
         geometry={coneGeo}
         position={[0, 13.5, 0]}
         onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
       >
         <meshStandardMaterial color={COLOR_ARROW} roughness={0.3} metalness={0.2} />
       </mesh>
