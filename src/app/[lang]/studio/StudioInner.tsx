@@ -573,14 +573,14 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     try {
       const res = await fetch('/api/nexyfab/enhance-prompt', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ prompt: text }),
+        body: JSON.stringify({ prompt: text, lang }),
       });
       const data = await res.json().catch(() => ({})) as { enhanced?: string };
       if (res.ok && data.enhanced) setInput(data.enhanced);
     } catch { /* keep the original text on failure */ } finally {
       setEnhancing(false);
     }
-  }, [input, enhancing, busy]);
+  }, [input, enhancing, busy, lang]);
 
   // Dimension auto-correct (single-shot): if a fresh model's largest dimension is
   // off from what the user explicitly asked for, uniformly rescale it once.

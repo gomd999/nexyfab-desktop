@@ -19,19 +19,25 @@ Rules:
 - Keep it concise but complete (a tidy spec, not an essay).
 - If the request is an organic shape (vehicle, animal, character, human, terrain), prepend exactly one line:
   "NOTE: organic shape — OpenSCAD/CSG cannot model this well; use an image→3D mesh instead."
-- Do NOT include OpenSCAD code or include/use library statements.
-Write the brief in the same language as the user's request.`;
+- Do NOT include OpenSCAD code or include/use library statements.`;
+
+const LANG_NAME: Record<string, string> = {
+  ko: 'Korean', en: 'English', ja: 'Japanese', cn: 'Chinese', es: 'Spanish', ar: 'Arabic',
+};
 
 export async function POST(req: NextRequest) {
-  const body = (await req.json().catch(() => null)) as { prompt?: string } | null;
+  const body = (await req.json().catch(() => null)) as { prompt?: string; lang?: string } | null;
   const prompt = body?.prompt?.trim();
   if (!prompt) return NextResponse.json({ error: 'prompt is required' }, { status: 400 });
   if (prompt.length > 2000) return NextResponse.json({ error: 'prompt too long (max 2000 chars)' }, { status: 413 });
+  // Pin the output language explicitly — "same language as the request" was
+  // unreliable (a short KO request like "M6 플랜지" came back in Japanese).
+  const langName = LANG_NAME[body?.lang ?? 'ko'] ?? 'English';
 
   try {
     const { text } = await chatCompletion({
       messages: [
-        { role: 'system', content: SYSTEM },
+        { role: 'system', content: `${SYSTEM}\nWrite the entire brief in ${langName}.` },
         { role: 'user', content: prompt },
       ],
       maxTokens: 700,
