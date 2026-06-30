@@ -52,7 +52,7 @@ export default function StudioViewer({ geometry, object = null, fitKey = 0, them
     <Canvas
       shadows
       gl={{ preserveDrawingBuffer: true, antialias: true, logarithmicDepthBuffer: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
-      camera={{ position: [120, 90, 140], fov: 45 }}
+      camera={{ position: [120, 90, 140], fov: 45, near: 1, far: 6000 }}
       style={{ width: '100%', height: '100%', background: light ? 'radial-gradient(circle at 50% 30%, #f3f5f8 0%, #dfe4ea 75%)' : 'radial-gradient(circle at 50% 30%, #232327 0%, #161618 70%)' }}
     >
       <StudioEnv />
@@ -63,7 +63,10 @@ export default function StudioViewer({ geometry, object = null, fitKey = 0, them
       {(geometry || object) && <Model geometry={geometry} object={object} fitKey={fitKey} />}
       {/* Soft grounding shadow under the part (premium product-render feel). */}
       <ContactShadows position={[0, -0.01, 0]} scale={400} far={300} blur={2.4} opacity={light ? 0.4 : 0.55} color={light ? '#8b93a0' : '#000000'} resolution={1024} />
-      <Grid args={[600, 600]} cellSize={10} cellColor={light ? '#c4ccd6' : '#2e2e33'} sectionSize={50} sectionColor={light ? '#aab4c0' : '#3a3a42'} position={[0, -0.02, 0]} infiniteGrid fadeDistance={650} />
+      {/* fadeDistance tightened + fadeStrength raised so distant grid lines fade
+          out before they shimmer/moiré during orbit (reported jitter). near/far
+          on the camera + logDepth keep depth precision stable. */}
+      <Grid args={[600, 600]} cellSize={10} cellColor={light ? '#c4ccd6' : '#2e2e33'} sectionSize={50} sectionColor={light ? '#aab4c0' : '#3a3a42'} position={[0, -0.02, 0]} infiniteGrid fadeDistance={280} fadeStrength={2} />
       <OrbitControls makeDefault enableDamping dampingFactor={0.1} />
     </Canvas>
   );
