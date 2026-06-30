@@ -33,6 +33,18 @@ function classifyFeatureErrorBase(
 ): FeatureDiagnostic {
   const msg = rawMessage.toLowerCase();
 
+  // Hole/cut bigger than the body — the most common AI/manual mistake (e.g. a
+  // ⌀60 hole on a 50×30 box removes everything). Give a specific, actionable
+  // hint instead of the generic "adjust upstream geometry" message.
+  if (msg.includes('larger than the part') || msg.includes('remove all material')) {
+    return {
+      code: 'empty',
+      message: rawMessage,
+      hintKo: '구멍/컷이 부품보다 큽니다 — 지름(또는 깊이)을 부품 크기보다 작게 줄이세요.',
+      hintEn: 'The hole/cut is larger than the part — reduce its diameter (or depth) below the part size.',
+    };
+  }
+
   if (msg.includes('feature produced empty geometry')) {
     return {
       code: 'emptyOutput',
