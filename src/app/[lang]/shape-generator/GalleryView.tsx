@@ -482,7 +482,9 @@ export default function GalleryView({ lang, t, onEnterWorkspace, onChatDesign, o
     return map;
   }, []);
 
-  const selectedShape = useMemo(() => SHAPES.find(s => s.id === selectedId)!, [selectedId]);
+  // Fall back to the first shape if selectedId isn't a catalog shape (imported /
+  // AI model) — the `!` used to crash at selectedShape.params.map.
+  const selectedShape = useMemo(() => SHAPES.find(s => s.id === selectedId) ?? SHAPES[0], [selectedId]);
   const selectedResult = shapeResults[selectedId]?.result ?? null;
 
   // Editable params for selected shape
