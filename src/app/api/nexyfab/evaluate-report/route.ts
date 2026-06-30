@@ -30,6 +30,7 @@ Rules:
 - scores are 0-100 integers.
 - 2-4 strengths, 2-5 issues, 2-5 improvements; each a short concrete sentence.
 - Base every claim on the numbers given (volume, surface area, bounding box, SA/volume ratio, aspect ratios, triangle count, wall hints). Infer thin-wall / high-aspect / large-volume risks from them.
+- When automated DFM findings are provided, treat them as GROUND TRUTH: surface each real issue (esp. thin_wall, undercut, deep_pocket, sharp_corner, draft_angle) in "issues", reflect its fix in "improvements", and let error/warning counts drive the manufacturability and structure scores down accordingly.
 - If material/process is "unspecified", recommend a sensible one and say so.
 - Be specific and actionable, not generic.
 - Write ALL string values in {LANG}.`;
@@ -41,15 +42,25 @@ export async function POST(req: NextRequest) {
     process?: string;
     filename?: string;
     lang?: string;
+    dfmIssues?: Array<{ type: string; severity: string; description: string; suggestion?: string }>;
   } | null;
   if (!body?.metrics) {
     return NextResponse.json({ error: 'metrics required' }, { status: 400 });
   }
   const langName = LANG_NAME[body.lang ?? 'ko'] ?? 'English';
+  // Real DFM findings (computed client-side by analyzeDFM) are GROUND TRUTH —
+  // thin_wall / undercut / aspect_ratio / sharp_corner are the structural &
+  // manufacturability risk signals the AI must base its scores and issues on.
+  const dfm = Array.isArray(body.dfmIssues) && body.dfmIssues.length > 0
+    ? body.dfmIssues.slice(0, 25).map(i => `- [${i.severity}] ${i.type}: ${i.description}${i.suggestion ? ` → ${i.suggestion}` : ''}`).join('\n')
+    : '(no automated DFM issues detected by the geometry analyzer)';
   const user = `Part file: ${body.filename ?? 'part'}
 Intended material: ${body.material ?? 'unspecified'}
 Intended process: ${body.process ?? 'unspecified'}
-Measured metrics (mm / mm² / mm³ unless noted): ${JSON.stringify(body.metrics)}`;
+Measured metrics (mm / mm² / mm³ unless noted): ${JSON.stringify(body.metrics)}
+
+Automated DFM analysis findings (real geometry analysis — treat as ground truth):
+${dfm}`;
 
   try {
     const { text } = await chatCompletion({
