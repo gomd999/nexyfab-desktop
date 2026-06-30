@@ -817,6 +817,15 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     else router.push(`/${lang}/shape-generator?mode=expert`);
   }, [scad, stlB64, lang, router, onExpert]);
 
+  // Manufacturing quote handoff — hand the rendered STL to the instant-quote
+  // page, which extracts volume/dimensions from the file (same path as a manual
+  // upload). Closes the design → quote funnel without a re-upload step.
+  const quoteHandoff = useCallback(() => {
+    if (!stlB64) return;
+    try { sessionStorage.setItem('nexyfab:studio-quote-stl', stlB64); } catch { return; }
+    router.push(`/${lang}/quick-quote?from=studio`);
+  }, [stlB64, lang, router]);
+
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }
   };
@@ -1069,6 +1078,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
                 className="flex-1 bg-transparent text-sm resize-none focus:outline-none max-h-28 py-0.5" />
               <button onClick={() => void send()} disabled={busy || (!input.trim() && !image)} className="shrink-0 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg w-7 h-7 flex items-center justify-center" title={T('보내기', 'Send')}>↑</button>
             </div>
+            <button onClick={quoteHandoff} disabled={!stlB64} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded py-2 text-[12px] font-bold" title={T('이 부품으로 제조 견적받기', 'Get a manufacturing quote for this part')}>{T('💵 견적받기', '💵 Get a quote')}</button>
             <div className="flex gap-2">
               <button onClick={exportStl} disabled={!stlB64} className="flex-1 border st-bd st-hover disabled:opacity-40 rounded py-1.5 text-[11px]">⬇ STL</button>
               <button onClick={() => void exportStep()} disabled={!geometry || stepBusy} className="flex-1 border st-bd st-hover disabled:opacity-40 rounded py-1.5 text-[11px]" title={precise ? T('제조용 analytic STEP (CAD 호환)', 'Analytic STEP for manufacturing (CAD interchange)') : T('제조용 STEP (테셀레이션, CAD 호환)', 'STEP for manufacturing (tessellated, CAD interchange)')}>{stepBusy ? '…' : '⬇ STEP'}</button>
