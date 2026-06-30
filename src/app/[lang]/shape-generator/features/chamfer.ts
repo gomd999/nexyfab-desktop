@@ -151,14 +151,29 @@ function applyChamferSync(
   params: Record<string, number>,
   ctx?: FeatureApplyContext,
 ): THREE.BufferGeometry {
-  const dist = params.distance!;
+  const requested = params.distance!;
   const engine = Math.round(params.engine ?? 0);
   const wantedOcct = wantsOcctEngine(engine);
-  if (shouldUseOcctEngine(engine)) {
-    const out = applyChamferOcct(geometry, dist, null);
-    if (out) return out;
+  // Same fit-the-largest-bevel retry as the async path (see notes there).
+  const candidates: number[] = [requested];
+  for (const f of [0.5, 0.25, 0.1]) {
+    const d = Math.round(requested * f * 1000) / 1000;
+    if (d >= 0.1 && !candidates.includes(d)) candidates.push(d);
   }
-  return applyChamferMeshCsg(geometry, dist, ctx, wantedOcct);
+  let lastErr: unknown = null;
+  for (let i = 0; i < candidates.length; i++) {
+    const dist = candidates[i]!;
+    try {
+      if (shouldUseOcctEngine(engine)) {
+        const out = applyChamferOcct(geometry, dist, null);
+        if (out) return out;
+      }
+      return applyChamferMeshCsg(geometry, dist, ctx, wantedOcct);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr ?? new Error('Chamfer produced no geometry');
 }
 
 async function applyChamferWithEdgeFinder(
@@ -166,30 +181,57 @@ async function applyChamferWithEdgeFinder(
   params: Record<string, number>,
   ctx?: FeatureApplyContext,
 ): Promise<THREE.BufferGeometry> {
-  const dist = params.distance!;
+  const requested = params.distance!;
   const engine = Math.round(params.engine ?? 0);
   const wantedOcct = wantsOcctEngine(engine);
-  if (shouldUseOcctEngine(engine)) {
+
+  // A chamfer larger than the part can hold (e.g. 2mm on a 2.5mm plate)
+  // collapses the solid and the WHOLE feature errors ("Chamfer 1 실행 실패").
+  // Instead of failing outright, fit the largest bevel that actually works:
+  // try the requested distance, then progressively smaller ones.
+  const candidates: number[] = [requested];
+  for (const f of [0.5, 0.25, 0.1]) {
+    const d = Math.round(requested * f * 1000) / 1000;
+    if (d >= 0.1 && !candidates.includes(d)) candidates.push(d);
+  }
+
+  let lastErr: unknown = null;
+  for (let i = 0; i < candidates.length; i++) {
+    const dist = candidates[i]!;
     try {
-      // Async host resolution can bridge a handle-less mesh into a faithful
-      // B-rep (importSTL + simplify) before chamfering; throws fail-clean.
-      const hostHandle = await resolveBrepHostHandleAsync(geometry);
-      const edgeFinder = await buildBestEdgeFinder(ctx, geometry);
-      const out = applyChamferOcct(geometry, dist, edgeFinder, hostHandle);
-      if (out) return out;
+      if (shouldUseOcctEngine(engine)) {
+        try {
+          // Async host resolution can bridge a handle-less mesh into a faithful
+          // B-rep (importSTL + simplify) before chamfering; throws fail-clean.
+          const hostHandle = await resolveBrepHostHandleAsync(geometry);
+          const edgeFinder = await buildBestEdgeFinder(ctx, geometry);
+          const out = applyChamferOcct(geometry, dist, edgeFinder, hostHandle);
+          if (out) {
+            if (dist !== requested) console.warn(`[chamfer] reduced ${requested}→${dist}mm to fit the solid`);
+            return out;
+          }
+        } catch (err) {
+          if (i === 0) {
+            console.warn('[chamfer] OCCT host resolution failed, falling back to mesh approximator:', err);
+            captureKernelFailure({
+              op: 'chamfer',
+              stage: 'host-resolve',
+              params: { distance: dist },
+              geometry,
+              error: err,
+              resolution: { strategy: 'mesh-fallback', requested: { distance: dist } },
+            });
+          }
+        }
+      }
+      const out = applyChamferMeshCsg(geometry, dist, ctx, wantedOcct);
+      if (dist !== requested) console.warn(`[chamfer] reduced ${requested}→${dist}mm to fit the solid`);
+      return out;
     } catch (err) {
-      console.warn('[chamfer] OCCT host resolution failed, falling back to mesh approximator:', err);
-      captureKernelFailure({
-        op: 'chamfer',
-        stage: 'host-resolve',
-        params: { distance: dist },
-        geometry,
-        error: err,
-        resolution: { strategy: 'mesh-fallback', requested: { distance: dist } },
-      });
+      lastErr = err; // too large at this distance — try a smaller bevel
     }
   }
-  return applyChamferMeshCsg(geometry, dist, ctx, wantedOcct);
+  throw lastErr ?? new Error('Chamfer produced no geometry');
 }
 
 export const chamferFeature: FeatureDefinition = {
