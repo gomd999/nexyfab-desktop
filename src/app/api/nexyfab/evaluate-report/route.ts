@@ -6,6 +6,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { chatCompletion, AiNotConfiguredError, AiProviderError } from '@/lib/ai';
+import { estimateCost, type CostProcess, type CostRegion } from '@/lib/costModel';
+import { getCalibrationFactor } from '@/lib/quoteHistory';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -34,7 +36,7 @@ Rules:
 - When automated DFM findings are provided, treat them as GROUND TRUTH: surface each real issue (esp. thin_wall, undercut, deep_pocket, sharp_corner, draft_angle) in "issues", reflect its fix in "improvements", and let error/warning counts drive the manufacturability and structure scores down accordingly.
 - If material/process is "unspecified", recommend a sensible one and say so.
 - Be specific and actionable, not generic.
-- COST: do NOT invent absolute prices or currency amounts — you cannot know real shop rates, and fabricated figures are often off by an order of magnitude. "estCostNote" must describe cost DRIVERS qualitatively (setup complexity, cycle time, material usage, scrap risk, axis count) and end by directing the user to the quote tool for an actual price. Never write a $ / ₩ number.
+- COST: a deterministic parametric estimate RANGE (in KRW) is provided above. In "estCostNote", present THAT range (per part + total) and its main drivers in {LANG}, note it is a budgeting estimate from geometry (not a binding quote), and end by directing the user to get a real quote (실견적) to confirm. Do NOT invent any OTHER numbers or a different currency — only use the provided range. If no estimate was provided, describe cost drivers qualitatively without inventing figures.
 - The "structural estimate" provided (if any) is a crude solid-beam approximation. For a thin/hollow/shelled part its safety factor is wildly overstated — do NOT call a part "overdesigned" or give a high structure score based on it when the geometry is thin-walled or the analyzer flagged thin/zero walls; trust the DFM wall findings over the beam SF.
 - Respect the intended process: if the part looks molded/organic (many undercuts, thin shell) but the process is CNC, note the process MISMATCH as the root issue rather than declaring the part broken.
 - PROCESS × MATERIAL ECONOMICS: weigh how the chosen material behaves in the chosen process (machinability / moldability / printability, e.g. titanium & stainless are slow/abrasive to machine, aluminum & brass are easy; ABS/PP/nylon mold well, glass-filled grades are abrasive) AND the process cost structure vs the given quantity:
@@ -57,6 +59,7 @@ export async function POST(req: NextRequest) {
     meshReliable?: boolean;
     unit?: string;
     pullAxis?: string;
+    region?: string; // 'kr' | 'cn' — for the cost estimate
   } | null;
   if (!body?.metrics) {
     return NextResponse.json({ error: 'metrics required' }, { status: 400 });
@@ -68,6 +71,28 @@ export async function POST(req: NextRequest) {
   const dfm = Array.isArray(body.dfmIssues) && body.dfmIssues.length > 0
     ? body.dfmIssues.slice(0, 25).map(i => `- [${i.severity}] ${i.type}: ${i.description}${i.suggestion ? ` → ${i.suggestion}` : ''}`).join('\n')
     : '(no automated DFM issues detected by the geometry analyzer)';
+  // Deterministic parametric cost estimate (calibrated by real quotes when
+  // available) — the AI narrates THIS range instead of inventing prices.
+  const COST_PROCS = new Set(['cnc', 'injection', 'sheet_metal', '3d_print', 'casting']);
+  const proc = (body.process && COST_PROCS.has(body.process) ? body.process : 'cnc') as CostProcess;
+  const region = (body.region === 'cn' ? 'cn' : 'kr') as CostRegion;
+  const material = body.material ?? 'aluminum';
+  const qty = body.quantity && body.quantity > 0 ? body.quantity : 1;
+  const mtr = (body.metrics ?? {}) as { volume_mm3?: number; surface_area_mm2?: number; bbox_mm?: { w: number; h: number; d: number } };
+  let costEstimate: ReturnType<typeof estimateCost> | null = null;
+  try {
+    const cal = await getCalibrationFactor(proc, material, region);
+    costEstimate = estimateCost({
+      volume_mm3: Number(mtr.volume_mm3) || 0,
+      surface_area_mm2: Number(mtr.surface_area_mm2) || 0,
+      bbox_mm: mtr.bbox_mm ?? { w: 0, h: 0, d: 0 },
+      material, process: proc, quantity: qty, region, calibrationFactor: cal,
+    });
+  } catch { /* estimate is best-effort */ }
+  const costLine = costEstimate
+    ? `Parametric cost estimate (${region.toUpperCase()}, ${costEstimate.calibrated ? 'calibrated by real quotes' : 'uncalibrated seed rates'} — a budgeting RANGE, not a binding quote): per part ${costEstimate.perPart.min.toLocaleString()}-${costEstimate.perPart.max.toLocaleString()} KRW, total for ${qty} pcs ${costEstimate.total.min.toLocaleString()}-${costEstimate.total.max.toLocaleString()} KRW. Drivers: ${costEstimate.drivers.join('; ')}.`
+    : '(no cost estimate)';
+
   const mp = body.materialProps;
   const user = `Part file: ${body.filename ?? 'part'}
 Intended material: ${body.material ?? 'unspecified'}${mp ? ` (density ${mp.density ?? '?'} g/cm³, yield ${mp.yieldStrength ?? '?'} MPa)` : ''}
@@ -81,7 +106,9 @@ ${body.pullAxis ? `Injection pull direction: ${body.pullAxis}` : ''}
 Automated DFM analysis findings (real geometry analysis${body.meshReliable === false ? ' — TREAT AS INDICATIVE ONLY due to low mesh quality' : ' — treat as ground truth'}):
 ${dfm}
 
-Load-based structural estimate (transparent cantilever beam approximation, NOT full FEA): ${body.structural ? `applied load ${body.structural.loadN} N → max bending stress ${body.structural.stressMPa} MPa, safety factor ${body.structural.safetyFactor}× (${body.structural.assumption}). Factor this into the "structure" score: SF<1 is a failure risk, 1-2 marginal, >2 comfortable. Mention it in issues/improvements if marginal.` : '(not provided)'}`;
+Load-based structural estimate (transparent cantilever beam approximation, NOT full FEA): ${body.structural ? `applied load ${body.structural.loadN} N → max bending stress ${body.structural.stressMPa} MPa, safety factor ${body.structural.safetyFactor}× (${body.structural.assumption}). Factor this into the "structure" score: SF<1 is a failure risk, 1-2 marginal, >2 comfortable. Mention it in issues/improvements if marginal.` : '(not provided)'}
+
+${costLine}`;
 
   try {
     const { text } = await chatCompletion({
@@ -101,7 +128,7 @@ Load-based structural estimate (transparent cantilever beam approximation, NOT f
     } catch {
       return NextResponse.json({ error: 'AI returned non-JSON', raw: (text || '').slice(0, 300) }, { status: 502 });
     }
-    return NextResponse.json({ report });
+    return NextResponse.json({ report, costEstimate });
   } catch (e) {
     if (e instanceof AiNotConfiguredError) return NextResponse.json({ error: 'AI not configured' }, { status: 500 });
     if (e instanceof AiProviderError) return NextResponse.json({ error: 'AI provider error' }, { status: 502 });

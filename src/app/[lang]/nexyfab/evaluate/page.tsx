@@ -41,6 +41,17 @@ interface Report {
   estCostNote: string;
 }
 
+interface CostEstimate {
+  currency: string;
+  region: string;
+  perPart: { min: number; max: number };
+  total: { min: number; max: number };
+  confidence: string;
+  calibrated: boolean;
+  drivers: string[];
+  note: string;
+}
+
 interface Structural { stressMPa: number; safetyFactor: number; loadN: number; assumption: string; reliable: boolean }
 
 // Load-based structural ESTIMATE (transparent cantilever-beam approximation —
@@ -126,6 +137,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
   const [importing, setImporting] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
+  const [costEstimate, setCostEstimate] = useState<CostEstimate | null>(null);
   const [dfmCount, setDfmCount] = useState<{ error: number; warning: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [geo, setGeo] = useState<THREE.BufferGeometry | null>(null);
@@ -187,7 +199,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
 
   const evaluate = useCallback(async () => {
     if (!metrics) return;
-    setEvaluating(true); setErr(null); setReport(null);
+    setEvaluating(true); setErr(null); setReport(null); setCostEstimate(null);
     try {
       // Recompute mass for the currently-selected material so it matches the report.
       const density = MATERIAL_PRESETS.find(m => m.id === material)?.density ?? null;
@@ -225,9 +237,10 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
           materialProps: (() => { const m = MATERIAL_PRESETS.find(x => x.id === material); return m ? { density: m.density, yieldStrength: m.yieldStrength, youngsModulus: m.youngsModulus } : null; })(),
         }),
       });
-      const data = await res.json().catch(() => ({})) as { report?: Report; error?: string };
+      const data = await res.json().catch(() => ({})) as { report?: Report; costEstimate?: CostEstimate | null; error?: string };
       if (!res.ok || !data.report) { setErr(data.error || T('평가에 실패했어요.', 'Evaluation failed.')); return; }
       setReport(data.report);
+      setCostEstimate(data.costEstimate ?? null);
       // Persist to history (fire-and-forget; guests get 401 and are skipped).
       void fetch('/api/nexyfab/reviews', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -433,6 +446,16 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
               <div className="text-sm opacity-70 mt-1">{report.producibility?.note}</div>
             </div>
           </div>
+
+          {costEstimate && (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-5">
+              <div className="text-sm font-bold mb-1">📟 {T('예상 견적 범위', 'Estimated price range')} <span className="text-[11px] font-normal opacity-60">({costEstimate.region.toUpperCase()} · {costEstimate.calibrated ? T('실견적 보정', 'calibrated') : T('개략치', 'seed rates')})</span></div>
+              <div className="text-lg font-bold">{costEstimate.perPart.min.toLocaleString()}~{costEstimate.perPart.max.toLocaleString()}{T('원', ' KRW')} <span className="text-xs font-normal opacity-70">/{T('개', 'ea')}</span></div>
+              <div className="text-sm opacity-80">{T('총', 'Total')} {costEstimate.total.min.toLocaleString()}~{costEstimate.total.max.toLocaleString()}{T('원', ' KRW')}</div>
+              {costEstimate.drivers.length > 0 && <div className="text-xs opacity-60 mt-1.5">{costEstimate.drivers.join(' · ')}</div>}
+              <div className="text-[11px] opacity-60 mt-2">⚠️ {costEstimate.note}</div>
+            </div>
+          )}
 
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
             <div className="text-sm font-bold mb-1">💰 {T('비용 메모', 'Cost driver')}</div>
