@@ -6,8 +6,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { chatCompletion, AiNotConfiguredError, AiProviderError } from '@/lib/ai';
-import { estimateCost, type CostProcess, type CostRegion } from '@/lib/costModel';
+import { estimateCost, compareCost, costCurve, type CostProcess, type CostRegion, type DfmSignals, type Tolerance, type Finish } from '@/lib/costModel';
 import { getCalibrationFactor } from '@/lib/quoteHistory';
+import { getAuthUser } from '@/lib/auth-middleware';
+
+const PAID_PLANS = new Set(['pro', 'team', 'enterprise']);
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -60,6 +63,9 @@ export async function POST(req: NextRequest) {
     unit?: string;
     pullAxis?: string;
     region?: string; // 'kr' | 'cn' — for the cost estimate
+    dfmSignals?: DfmSignals;
+    tolerance?: Tolerance;
+    finish?: Finish;
   } | null;
   if (!body?.metrics) {
     return NextResponse.json({ error: 'metrics required' }, { status: 400 });
@@ -79,19 +85,38 @@ export async function POST(req: NextRequest) {
   const material = body.material ?? 'aluminum';
   const qty = body.quantity && body.quantity > 0 ? body.quantity : 1;
   const mtr = (body.metrics ?? {}) as { volume_mm3?: number; surface_area_mm2?: number; bbox_mm?: { w: number; h: number; d: number } };
+  // Plan gate: the DFM/scores report is a free preview; the monetized cost
+  // outputs (estimate range, quantity curve, process×region comparison) are
+  // PRO+ only. Guests/free get the report but a locked cost section.
+  const auth = await getAuthUser(req).catch(() => null);
+  const isPro = PAID_PLANS.has(auth?.plan ?? 'free');
+
   let costEstimate: ReturnType<typeof estimateCost> | null = null;
-  try {
-    const cal = await getCalibrationFactor(proc, material, region);
-    costEstimate = estimateCost({
-      volume_mm3: Number(mtr.volume_mm3) || 0,
-      surface_area_mm2: Number(mtr.surface_area_mm2) || 0,
-      bbox_mm: mtr.bbox_mm ?? { w: 0, h: 0, d: 0 },
-      material, process: proc, quantity: qty, region, calibrationFactor: cal,
-    });
-  } catch { /* estimate is best-effort */ }
+  let costComparison: ReturnType<typeof compareCost> | null = null;
+  let costCurvePoints: ReturnType<typeof costCurve> | null = null;
+  if (isPro) {
+    try {
+      const cal = await getCalibrationFactor(proc, material, region);
+      const geom = {
+        volume_mm3: Number(mtr.volume_mm3) || 0,
+        surface_area_mm2: Number(mtr.surface_area_mm2) || 0,
+        bbox_mm: mtr.bbox_mm ?? { w: 0, h: 0, d: 0 },
+        material, quantity: qty,
+        dfm: body.dfmSignals, tolerance: body.tolerance, finish: body.finish,
+      };
+      costEstimate = estimateCost({ ...geom, process: proc, region, calibrationFactor: cal });
+      // "AI 비교견적": rank viable processes × KR/CN so the report shows alternatives.
+      costComparison = compareCost(geom);
+      // Volume breakpoints for the chosen process/region.
+      costCurvePoints = costCurve({ ...geom, process: proc, region, calibrationFactor: cal });
+    } catch { /* estimate is best-effort */ }
+  }
   const costLine = costEstimate
-    ? `Parametric cost estimate (${region.toUpperCase()}, ${costEstimate.calibrated ? 'calibrated by real quotes' : 'uncalibrated seed rates'} — a budgeting RANGE, not a binding quote): per part ${costEstimate.perPart.min.toLocaleString()}-${costEstimate.perPart.max.toLocaleString()} KRW, total for ${qty} pcs ${costEstimate.total.min.toLocaleString()}-${costEstimate.total.max.toLocaleString()} KRW. Drivers: ${costEstimate.drivers.join('; ')}.`
+    ? `Parametric cost estimate (${region.toUpperCase()}, ${costEstimate.calibrated ? 'calibrated by real quotes' : 'uncalibrated seed rates'} — a budgeting RANGE, not a binding quote): per part ${costEstimate.perPart.min.toLocaleString()}-${costEstimate.perPart.max.toLocaleString()} KRW, total for ${qty} pcs ${costEstimate.total.min.toLocaleString()}-${costEstimate.total.max.toLocaleString()} KRW, lead ${costEstimate.leadDays.min}-${costEstimate.leadDays.max} days. Drivers: ${costEstimate.drivers.join('; ')}.`
     : '(no cost estimate)';
+  const compareLine = costComparison
+    ? `Process/region comparison at qty ${qty} (cheapest first, mid per-part KRW): ${costComparison.options.slice(0, 5).map(o => `${o.process}/${o.region} ~${Math.round((o.perPart.min + o.perPart.max) / 2).toLocaleString()}`).join(', ')}. Cheapest: ${costComparison.cheapest.process}/${costComparison.cheapest.region}. ${costComparison.notes.join(' ')}`
+    : '';
 
   const mp = body.materialProps;
   const user = `Part file: ${body.filename ?? 'part'}
@@ -108,7 +133,8 @@ ${dfm}
 
 Load-based structural estimate (transparent cantilever beam approximation, NOT full FEA): ${body.structural ? `applied load ${body.structural.loadN} N → max bending stress ${body.structural.stressMPa} MPa, safety factor ${body.structural.safetyFactor}× (${body.structural.assumption}). Factor this into the "structure" score: SF<1 is a failure risk, 1-2 marginal, >2 comfortable. Mention it in issues/improvements if marginal.` : '(not provided)'}
 
-${costLine}`;
+${costLine}
+${compareLine}`;
 
   try {
     const { text } = await chatCompletion({
@@ -128,7 +154,7 @@ ${costLine}`;
     } catch {
       return NextResponse.json({ error: 'AI returned non-JSON', raw: (text || '').slice(0, 300) }, { status: 502 });
     }
-    return NextResponse.json({ report, costEstimate });
+    return NextResponse.json({ report, costEstimate, costComparison, costCurve: costCurvePoints, costLocked: !isPro });
   } catch (e) {
     if (e instanceof AiNotConfiguredError) return NextResponse.json({ error: 'AI not configured' }, { status: 500 });
     if (e instanceof AiProviderError) return NextResponse.json({ error: 'AI provider error' }, { status: 502 });

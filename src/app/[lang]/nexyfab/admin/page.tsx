@@ -228,6 +228,7 @@ export default function AdminDashboard({ params }: { params: Promise<{ lang: str
                     { label: isKo ? '📧 이메일 로그' : '📧 Email Logs', href: `/${lang}/nexyfab/admin/email-logs` },
                     { label: isKo ? '📄 이메일 템플릿' : '📄 Email Templates', href: `/${lang}/nexyfab/admin/email-templates` },
                     { label: isKo ? '🔗 RFQ 매칭' : '🔗 RFQ Matching', href: `/${lang}/nexyfab/admin/rfq-matching` },
+                    { label: isKo ? '📥 실견적 입력' : '📥 Real quotes', href: `/${lang}/nexyfab/admin/quotes` },
                   ].map(link => (
                     <a key={link.href} href={link.href} style={{
                       padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,

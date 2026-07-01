@@ -43,14 +43,26 @@ interface Report {
 
 interface CostEstimate {
   currency: string;
+  process?: string;
   region: string;
   perPart: { min: number; max: number };
   total: { min: number; max: number };
+  leadDays?: { min: number; max: number };
   confidence: string;
   calibrated: boolean;
+  complexity?: number;
   drivers: string[];
   note: string;
 }
+
+interface CostComparison {
+  quantity: number;
+  options: CostEstimate[];
+  cheapest: { process: string; region: string; perPartMid: number };
+  notes: string[];
+}
+
+interface CostCurvePoint { quantity: number; perPartMid: number; total: number }
 
 interface Structural { stressMPa: number; safetyFactor: number; loadN: number; assumption: string; reliable: boolean }
 
@@ -138,6 +150,9 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
   const [evaluating, setEvaluating] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
   const [costEstimate, setCostEstimate] = useState<CostEstimate | null>(null);
+  const [costComparison, setCostComparison] = useState<CostComparison | null>(null);
+  const [costCurve, setCostCurve] = useState<CostCurvePoint[] | null>(null);
+  const [costLocked, setCostLocked] = useState(false);
   const [dfmCount, setDfmCount] = useState<{ error: number; warning: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [geo, setGeo] = useState<THREE.BufferGeometry | null>(null);
@@ -199,7 +214,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
 
   const evaluate = useCallback(async () => {
     if (!metrics) return;
-    setEvaluating(true); setErr(null); setReport(null); setCostEstimate(null);
+    setEvaluating(true); setErr(null); setReport(null); setCostEstimate(null); setCostComparison(null); setCostCurve(null); setCostLocked(false);
     try {
       // Recompute mass for the currently-selected material so it matches the report.
       const density = MATERIAL_PRESETS.find(m => m.id === material)?.density ?? null;
@@ -208,6 +223,11 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
       // Real DFM analysis (client-side) for the chosen process → ground-truth
       // issues (thin wall / undercut / aspect / sharp corner …) fed to the AI.
       let dfmIssues: Array<{ type: string; severity: string; description: string; suggestion?: string }> = [];
+      // DFM signals feed the parametric cost model (undercut→5-axis/slides, etc.).
+      let dfmSignals: {
+        undercutCount?: number; sharpCornerCount?: number; featureCount?: number;
+        deepPocket?: boolean; thinWall?: boolean; errorCount?: number; warningCount?: number;
+      } = {};
       if (geoRef.current) {
         try {
           const { analyzeDFM } = await import('@/app/[lang]/shape-generator/analysis/dfmAnalysis');
@@ -219,7 +239,17 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
           const results = analyzeDFM(dfmGeo, [proc], process === 'injection' ? { pullAxis } : undefined);
           const allIssues = results.flatMap(r => r.issues);
           dfmIssues = allIssues.map(i => ({ type: i.type, severity: i.severity, description: i.description, suggestion: i.suggestion }));
-          setDfmCount({ error: dfmIssues.filter(i => i.severity === 'error').length, warning: dfmIssues.filter(i => i.severity === 'warning').length });
+          const errorCount = dfmIssues.filter(i => i.severity === 'error').length;
+          const warningCount = dfmIssues.filter(i => i.severity === 'warning').length;
+          setDfmCount({ error: errorCount, warning: warningCount });
+          const facesOf = (t: string) => allIssues.filter(i => i.type === t).reduce((s, i) => s + (i.faceIndices?.length ?? 0), 0);
+          dfmSignals = {
+            undercutCount: facesOf('undercut'),
+            sharpCornerCount: facesOf('sharp_corner'),
+            deepPocket: allIssues.some(i => i.type === 'deep_pocket' || i.type === 'aspect_ratio'),
+            thinWall: allIssues.some(i => i.type === 'thin_wall' || i.type === 'uniform_wall'),
+            errorCount, warningCount,
+          };
           // Triangle indices of error/warning faces → 3D overlay highlight.
           const tris = allIssues.filter(i => i.severity !== 'info').flatMap(i => i.faceIndices ?? []);
           setHighlightTris(Array.from(new Set(tris)));
@@ -231,16 +261,19 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
         body: JSON.stringify({
           metrics: { ...metrics, mass_g: massG }, material, process, filename, lang, dfmIssues,
           structural: structural?.reliable ? structural : null,
-          quantity, unit,
+          quantity, unit, dfmSignals,
           pullAxis: process === 'injection' ? pullAxis : undefined,
           meshReliable: meshQuality ? meshQuality.reliable : true,
           materialProps: (() => { const m = MATERIAL_PRESETS.find(x => x.id === material); return m ? { density: m.density, yieldStrength: m.yieldStrength, youngsModulus: m.youngsModulus } : null; })(),
         }),
       });
-      const data = await res.json().catch(() => ({})) as { report?: Report; costEstimate?: CostEstimate | null; error?: string };
+      const data = await res.json().catch(() => ({})) as { report?: Report; costEstimate?: CostEstimate | null; costComparison?: CostComparison | null; costCurve?: CostCurvePoint[] | null; costLocked?: boolean; error?: string };
       if (!res.ok || !data.report) { setErr(data.error || T('평가에 실패했어요.', 'Evaluation failed.')); return; }
       setReport(data.report);
       setCostEstimate(data.costEstimate ?? null);
+      setCostComparison(data.costComparison ?? null);
+      setCostCurve(data.costCurve ?? null);
+      setCostLocked(!!data.costLocked);
       // Persist to history (fire-and-forget; guests get 401 and are skipped).
       void fetch('/api/nexyfab/reviews', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -255,6 +288,10 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
 
   const matName = (m: typeof MATERIAL_PRESETS[number]) => (ko ? m.name.ko : m.name.en);
   const scoreColor = (n: number) => (n >= 75 ? '#22c55e' : n >= 50 ? '#eab308' : '#ef4444');
+  // Quote URL prefilled with geometry; extra carries process/region context.
+  const quoteUrl = (extra = '') => (metrics
+    ? `/${lang}/quick-quote?from=shape-generator&volume_cm3=${(metrics.volume_mm3 / 1000).toFixed(2)}&surface_area_cm2=${(metrics.surface_area_mm2 / 100).toFixed(2)}&bbox_w=${Math.round(metrics.bbox_mm.w)}&bbox_h=${Math.round(metrics.bbox_mm.h)}&bbox_d=${Math.round(metrics.bbox_mm.d)}${extra}`
+    : `/${lang}/quick-quote`);
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto text-[var(--nx-text,#e6edf3)]">
@@ -447,13 +484,66 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
             </div>
           </div>
 
+          {costLocked && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-5 text-center">
+              <div className="text-sm font-bold mb-1">🔒 {T('예상 견적·수량곡선·공정비교는 PRO 전용', 'Price estimate · quantity curve · comparison are PRO')}</div>
+              <div className="text-sm opacity-75 mb-3">{T('DFM·재질·구조 평가는 무료로 보셨습니다. AI 비교견적(개당 단가·수량별 곡선·한·중 공정 비교)은 PRO에서 열립니다.', 'The DFM/material/structure review is free. Unlock the AI cost comparison (per-part price, quantity curve, KR/CN process comparison) with PRO.')}</div>
+              <a href={`/${lang}/nexyfab/billing`} className="inline-block bg-amber-500 hover:bg-amber-400 text-black rounded-lg px-4 py-2 text-sm font-bold">{T('⭐ PRO로 업그레이드', '⭐ Upgrade to PRO')}</a>
+            </div>
+          )}
+
           {costEstimate && (
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-5">
               <div className="text-sm font-bold mb-1">📟 {T('예상 견적 범위', 'Estimated price range')} <span className="text-[11px] font-normal opacity-60">({costEstimate.region.toUpperCase()} · {costEstimate.calibrated ? T('실견적 보정', 'calibrated') : T('개략치', 'seed rates')})</span></div>
               <div className="text-lg font-bold">{costEstimate.perPart.min.toLocaleString()}~{costEstimate.perPart.max.toLocaleString()}{T('원', ' KRW')} <span className="text-xs font-normal opacity-70">/{T('개', 'ea')}</span></div>
               <div className="text-sm opacity-80">{T('총', 'Total')} {costEstimate.total.min.toLocaleString()}~{costEstimate.total.max.toLocaleString()}{T('원', ' KRW')}</div>
               {costEstimate.drivers.length > 0 && <div className="text-xs opacity-60 mt-1.5">{costEstimate.drivers.join(' · ')}</div>}
+              {costCurve && costCurve.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-white/10">
+                  <div className="text-[11px] opacity-60 mb-1">{T('수량별 개당 단가', 'Per-part by quantity')}</div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                    {costCurve.map(p => (
+                      <span key={p.quantity}><span className="opacity-55">{p.quantity.toLocaleString()}{T('개', '')}</span> {p.perPartMid.toLocaleString()}{T('원', '')}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="text-[11px] opacity-60 mt-2">⚠️ {costEstimate.note}</div>
+            </div>
+          )}
+
+          {costComparison && costComparison.options.length > 0 && (
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+              <div className="text-sm font-bold mb-2">🔀 {T('공정·지역 비교견적', 'Process × region comparison')} <span className="text-[11px] font-normal opacity-60">({T('수량', 'qty')} {costComparison.quantity.toLocaleString()})</span></div>
+              <table className="w-full text-xs">
+                <thead><tr className="opacity-60 border-b border-white/10">
+                  <th className="text-left py-1 font-medium">{T('공정', 'Process')}</th>
+                  <th className="text-left font-medium">{T('지역', 'Region')}</th>
+                  <th className="text-right font-medium">{T('개당(원)', 'Per ea (KRW)')}</th>
+                  <th className="text-right font-medium">{T('납기(일)', 'Lead (d)')}</th>
+                  <th className="text-right font-medium">{T('요청', 'Act')}</th>
+                </tr></thead>
+                <tbody>
+                  {costComparison.options.slice(0, 6).map((o, i) => {
+                    const label = ({ cnc: 'CNC', injection: T('사출', 'Injection'), sheet_metal: T('판금', 'Sheet'), '3d_print': T('3D 프린팅', '3D print'), casting: T('주조', 'Casting') } as Record<string, string>)[o.process ?? ''] ?? o.process;
+                    const best = i === 0;
+                    return (
+                      <tr key={i} className={best ? 'text-emerald-400 font-semibold' : ''}>
+                        <td className="py-1">{label}{best ? ' ★' : ''}</td>
+                        <td>{o.region.toUpperCase()}</td>
+                        <td className="text-right">{o.perPart.min.toLocaleString()}~{o.perPart.max.toLocaleString()}</td>
+                        <td className="text-right opacity-70">{o.leadDays ? `${o.leadDays.min}~${o.leadDays.max}` : '-'}</td>
+                        <td className="text-right whitespace-nowrap">
+                          <a href={quoteUrl(`&process=${o.process}&region=${o.region}`)} className="text-blue-400 hover:underline mr-2" title={T('이 조건으로 견적요청', 'Request a quote')}>💵</a>
+                          <a href={`/${lang}/factories`} className="text-blue-400 hover:underline" title={T('이 지역 공장 찾기', 'Find factories')}>🏭</a>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {costComparison.notes.length > 0 && <div className="text-[11px] opacity-70 mt-2">💡 {costComparison.notes.join(' ')}</div>}
+              <div className="text-[11px] opacity-50 mt-1">{T('개략치 — 확정은 실견적으로', 'Estimate — confirm with a real quote')}</div>
             </div>
           )}
 
@@ -462,9 +552,20 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
             <div className="text-sm opacity-70">{report.estCostNote}</div>
           </div>
 
-          <a href={`/${lang}/quick-quote`} className="block text-center bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg py-2.5 text-sm font-bold">
-            {T('💵 이 부품으로 견적받기', '💵 Get a quote for this part')}
-          </a>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <a
+              href={metrics
+                ? `/${lang}/quick-quote?from=shape-generator&volume_cm3=${(metrics.volume_mm3 / 1000).toFixed(2)}&surface_area_cm2=${(metrics.surface_area_mm2 / 100).toFixed(2)}&bbox_w=${Math.round(metrics.bbox_mm.w)}&bbox_h=${Math.round(metrics.bbox_mm.h)}&bbox_d=${Math.round(metrics.bbox_mm.d)}`
+                : `/${lang}/quick-quote`}
+              className="block text-center bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg py-2.5 text-sm font-bold">
+              {costComparison
+                ? T(`💵 ${costComparison.cheapest.region.toUpperCase()} 최저가로 실견적 요청`, '💵 Request a real quote (cheapest)')
+                : T('💵 이 부품으로 실견적 요청', '💵 Request a real quote')}
+            </a>
+            <a href={`/${lang}/factories`} className="block text-center bg-white/5 hover:bg-white/10 border border-white/15 rounded-lg py-2.5 text-sm font-bold">
+              {T('🏭 제조사(공장) 찾기', '🏭 Find factories')}
+            </a>
+          </div>
         </div>
       )}
 

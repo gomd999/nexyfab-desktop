@@ -52,6 +52,26 @@ export async function recordQuote(q: QuoteRecord): Promise<void> {
   ).catch(() => {});
 }
 
+export interface QuoteRow {
+  id: string; process: string; material: string | null; region: string | null;
+  quantity: number | null; estimated_krw: number | null; actual_krw: number; created_at: number;
+}
+
+/** Recent recorded real quotes (newest first) — for the admin calibration view. */
+export async function listQuotes(limit = 50): Promise<QuoteRow[]> {
+  try {
+    const db = getDbAdapter();
+    await ensureTable(db);
+    const rows = await db.queryAll<QuoteRow>(
+      'SELECT id, process, material, region, quantity, estimated_krw, actual_krw, created_at FROM nf_quote_history ORDER BY created_at DESC LIMIT ?',
+      limit,
+    );
+    return rows ?? [];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Calibration factor for a bucket = median(actual / estimated) over recorded
  * quotes. Returns 1 when there is not enough data (min 3), so the estimate stays

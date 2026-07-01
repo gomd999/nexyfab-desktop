@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estimateCost, type CostInput } from './costModel';
+import { estimateCost, compareCost, type CostInput } from './costModel';
 
 const base: CostInput = {
   volume_mm3: 30_000,
@@ -50,5 +50,49 @@ describe('estimateCost', () => {
     const cal = estimateCost({ ...base, calibrationFactor: 2 });
     expect(cal.calibrated).toBe(true);
     expect(cal.perPart.min).toBeGreaterThan(raw.perPart.min);
+  });
+
+  it('DFM undercuts push CNC onto 5-axis → costs more + higher complexity', () => {
+    const plain = estimateCost(base);
+    const undercut = estimateCost({ ...base, dfm: { undercutCount: 300, featureCount: 6, deepPocket: true } });
+    expect(undercut.perPart.min).toBeGreaterThan(plain.perPart.min);
+    expect(undercut.complexity).toBeGreaterThan(plain.complexity);
+    expect(undercut.drivers.some(d => d.includes('5축'))).toBe(true);
+  });
+
+  it('tight tolerance costs more than standard', () => {
+    const std = estimateCost(base);
+    const tight = estimateCost({ ...base, tolerance: 'tight' });
+    expect(tight.perPart.min).toBeGreaterThan(std.perPart.min);
+  });
+
+  it('returns a lead-time range', () => {
+    const e = estimateCost(base);
+    expect(e.leadDays.min).toBeGreaterThan(0);
+    expect(e.leadDays.max).toBeGreaterThanOrEqual(e.leadDays.min);
+  });
+});
+
+describe('compareCost', () => {
+  const { process: _omit, ...cmpBase } = base;
+
+  it('ranks processes × regions, cheapest first', () => {
+    const c = compareCost(cmpBase);
+    expect(c.options.length).toBeGreaterThanOrEqual(4);
+    const mids = c.options.map(o => (o.perPart.min + o.perPart.max) / 2);
+    for (let i = 1; i < mids.length; i++) expect(mids[i]!).toBeGreaterThanOrEqual(mids[i - 1]!);
+    expect(c.cheapest.perPartMid).toBeGreaterThan(0);
+  });
+
+  it('plastic material compares injection/3d_print/cnc', () => {
+    const c = compareCost({ ...cmpBase, material: 'abs_white' });
+    const procs = new Set(c.options.map(o => o.process));
+    expect(procs.has('injection')).toBe(true);
+    expect(procs.has('3d_print')).toBe(true);
+  });
+
+  it('low quantity → injection usually not cheapest (mold cost)', () => {
+    const c = compareCost({ ...cmpBase, material: 'abs_white', quantity: 5 });
+    expect(c.cheapest.process).not.toBe('injection');
   });
 });
