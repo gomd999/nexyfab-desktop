@@ -87,5 +87,9 @@
   "rack_load_table": {
     "status": "NOT-APPLICABLE-AS-FORMULA-TARGET (2026-07-11 판정)",
     "note": "랙 제조사 카탈로그 적재하중표는 RMI/KS 시험 기반(유공 기둥 유효단면·세미리지드 커넥터 강성은 물리시험으로 결정) — 순수 공식 역산으로 일치 불가. 랙 계산기 신설 시(P1) 공식部는 KDS 14 31 10 좌굴로, 시험계수는 제조사 시험성적서 입력값으로 분리 설계할 것. 카탈로그 대조는 참고 검산(±20% 수준)으로만."
+  },
+  "mse_external_stability": {
+    "status": "BLOCKED-ON-FIGURES (2026-07-11 판정)",
+    "note": "GEC11(코퍼스 수록)의 MSE 외적안정 예제는 수치가 도판·표 이미지에 있어 텍스트 추출 불가. mse_external_stability 계산기 신설 시(P2) 원문 도판 육안 이관으로 재현 벤치 구성. 방법 자체(Rankine Ka·저면활동 FS 1.5·편심)는 KDS 11 80 10 표 4.4-1과 정합 확인됨(RAG 인덱스 kds-118010)"
   }
 }

@@ -29,7 +29,7 @@ async function sha256hex(s) {
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function authenticate(request, env) {
+async function authenticate(request, env, endpoint) {
   const auth = request.headers.get('Authorization') ?? '';
   const m = auth.match(/^Bearer\s+(\S+)$/);
   if (!m) return { ok: false, error: 'missing Authorization: Bearer <api key>' };
@@ -39,8 +39,40 @@ async function authenticate(request, env) {
   const today = new Date().toISOString().slice(0, 10);
   const used = row.usage_date === today ? row.usage_today : 0;
   if (used >= row.daily_limit) return { ok: false, error: `daily quota exceeded (${row.daily_limit}/day)`, status: 429 };
-  await env.DB.prepare('UPDATE api_keys SET usage_today=?, usage_date=? WHERE id=?').bind(used + 1, today, row.id).run();
+  await env.DB.batch([
+    env.DB.prepare('UPDATE api_keys SET usage_today=?, usage_date=? WHERE id=?').bind(used + 1, today, row.id),
+    env.DB.prepare('INSERT INTO usage_log(key_id,day,endpoint,calls) VALUES(?,?,?,1) ON CONFLICT(key_id,day,endpoint) DO UPDATE SET calls=calls+1').bind(row.id, today, endpoint),
+  ]);
   return { ok: true, key: row };
+}
+
+/** 키 관리(admin) — X-Admin-Secret = wrangler secret ADMIN_SECRET. Wave 3: NexyFab 앱 백엔드가 이 레이어를 호출해 계정·과금 연동(usage_log가 청구 원장). */
+async function handleAdmin(request, env, path) {
+  if (!env.ADMIN_SECRET || (request.headers.get('X-Admin-Secret') ?? '') !== env.ADMIN_SECRET) {
+    return json({ error: 'admin auth failed' }, 403);
+  }
+  if (path === '/v1/admin/keys' && request.method === 'GET') {
+    const keys = await env.DB.prepare('SELECT id,name,plan,daily_limit,usage_today,usage_date,disabled,created_at FROM api_keys').all();
+    const usage = await env.DB.prepare('SELECT key_id,day,endpoint,calls FROM usage_log ORDER BY day DESC LIMIT 200').all();
+    return json({ keys: keys.results, recentUsage: usage.results });
+  }
+  if (path === '/v1/admin/keys' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    if (!body.name) return json({ error: 'name required' }, 400);
+    const raw = new Uint8Array(24);
+    crypto.getRandomValues(raw);
+    const key = 'nxk_' + btoa(String.fromCharCode(...raw)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const hash = await sha256hex(key);
+    await env.DB.prepare('INSERT INTO api_keys(key_hash,name,plan,daily_limit,usage_date,created_at) VALUES(?,?,?,?,?,?)')
+      .bind(hash, body.name, body.plan ?? 'standard', body.dailyLimit ?? 500, '', new Date().toISOString()).run();
+    return json({ apiKey: key, note: '이 키는 재조회 불가 — 즉시 안전한 곳에 보관' }, 201);
+  }
+  const del = path.match(/^\/v1\/admin\/keys\/(\d+)$/);
+  if (del && request.method === 'DELETE') {
+    await env.DB.prepare('UPDATE api_keys SET disabled=1 WHERE id=?').bind(+del[1]).run();
+    return json({ revoked: +del[1] });
+  }
+  return json({ error: 'not found' }, 404);
 }
 
 async function embed(env, text) {
@@ -57,8 +89,9 @@ export default {
     const path = url.pathname.replace(/\/+$/, '');
     try {
       if (path === '/v1/health') return json({ ok: true, service: 'nexyfab-eng-api', calculators: calculators.length });
+      if (path.startsWith('/v1/admin/')) return handleAdmin(request, env, path);
 
-      const auth = await authenticate(request, env);
+      const auth = await authenticate(request, env, path);
       if (!auth.ok) return json({ error: auth.error }, auth.status ?? 401);
 
       if (path === '/v1/calculators' && request.method === 'GET') {
