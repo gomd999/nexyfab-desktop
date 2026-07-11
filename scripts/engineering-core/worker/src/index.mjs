@@ -78,6 +78,34 @@ async function handleAdmin(request, env, path) {
   return json({ error: 'not found' }, 404);
 }
 
+/**
+ * 공개 데모(랜딩 라이브 데모 패널용) — 키 불필요, IP당 일일 30회.
+ * 결정론 계산기만 노출(임베딩/Vectorize 등 비용성 경로 제외).
+ * 쿼터는 api_keys/usage_log(청구 원장)와 분리된 demo_usage 테이블에 기록.
+ */
+const DEMO_DAILY_LIMIT = 30;
+async function handleDemo(request, env, path) {
+  const m = path.match(/^\/v1\/demo\/calc\/([a-z0-9_]+)$/);
+  if (!m || request.method !== 'POST') return json({ error: 'not found', demo: true, endpoints: ['POST /v1/demo/calc/{id}'] }, 404);
+  const ip = request.headers.get('CF-Connecting-IP') ?? '0.0.0.0';
+  const ipHash = (await sha256hex('demo:' + ip)).slice(0, 24);
+  const today = new Date().toISOString().slice(0, 10);
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS demo_usage(ip_hash TEXT NOT NULL, day TEXT NOT NULL, calls INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(ip_hash,day))').run();
+  const row = await env.DB.prepare('SELECT calls FROM demo_usage WHERE ip_hash=? AND day=?').bind(ipHash, today).first();
+  const used = row?.calls ?? 0;
+  if (used >= DEMO_DAILY_LIMIT) {
+    return json({ error: `demo daily limit reached (${DEMO_DAILY_LIMIT}/day) — API 키 발급은 nexyfab@nexysys.com`, demo: true }, 429);
+  }
+  await env.DB.prepare('INSERT INTO demo_usage(ip_hash,day,calls) VALUES(?,?,1) ON CONFLICT(ip_hash,day) DO UPDATE SET calls=calls+1').bind(ipHash, today).run();
+  const body = await request.json().catch(() => ({}));
+  try {
+    const result = runCalculatorCore(STANDARDS, m[1], body.input ?? {}, body.standard ?? 'KDS');
+    return json({ demo: true, remainingToday: DEMO_DAILY_LIMIT - used - 1, ...result });
+  } catch (e) {
+    return json({ error: e.message, code: e.code ?? 'CALC_ERROR', demo: true }, 400);
+  }
+}
+
 async function embed(env, text) {
   const r = await env.AI.run('@cf/baai/bge-m3', { text: [text] });
   const vec = r?.data?.[0] ?? r?.result?.data?.[0];
@@ -93,6 +121,7 @@ export default {
     try {
       if (path === '/v1/health') return json({ ok: true, service: 'nexyfab-eng-api', calculators: calculators.length });
       if (path.startsWith('/v1/admin/')) return handleAdmin(request, env, path);
+      if (path.startsWith('/v1/demo/')) return handleDemo(request, env, path);
 
       const auth = await authenticate(request, env, path);
       if (!auth.ok) return json({ error: auth.error }, auth.status ?? 401);

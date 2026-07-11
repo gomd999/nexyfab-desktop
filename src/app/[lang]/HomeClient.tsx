@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { richText } from '@/lib/richText';
 import type { homeDict } from './homeDict';
 import { useSwipe } from '@/hooks/useSwipe';
+import { EngDemo, EngDomains, EngDev, EngFaq } from './EngVertical';
 
 interface SiteStats {
   factoryCount: string;
@@ -253,6 +254,14 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* ENG VERTICAL — 라이브 데모 (Autodesk형 히어로 직하 행동 패널 자리) */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      <EngDemo langCode={langCode} />
+
+      {/* ENG VERTICAL — 분야 카드 3장 + 해시태그 (MIDAS형, 실재 분야만) */}
+      <EngDomains langCode={langCode} />
+
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
       {/* WORKFLOW — 5 Steps (with Feature hints) */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       <section style={{ background: '#f8fafc', padding: '100px 24px', position: 'relative', overflow: 'hidden' }}>
@@ -474,6 +483,11 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* ENG VERTICAL — 검증 숫자(실측) + REST/MCP 개발자 섹션 */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      <EngDev langCode={langCode} />
+
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
       {/* PERSONA CARDS */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       <section style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)', padding: '100px 24px' }}>
@@ -517,6 +531,9 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
       {/* MANUFACTURER SEARCH — Interactive Tool */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
 
+
+      {/* ENG VERTICAL — FAQ + schema.org FAQPage */}
+      <EngFaq langCode={langCode} />
 
       {/* FINAL CTA */}
       <section id="Nexyfab-final-cta" className="hat-final-cta soft">
