@@ -48,3 +48,15 @@ kcsc.re.kr은 React SPA + 인증 API. 2026-07-11 확인 결과:
 - 인덱스를 Cloudflare Vectorize로, 원본 PDF를 R2 `/knowledge/usgov/`로 업로드, 라이선스 메타데이터 D1 등재 후 Worker 검색 API.
 - KDS: KOGL 유형 확인 + OpenAPI key 발급 후 `kds` 소스 활성화 (`/knowledge/kds/`).
 - 스캔 PDF OCR 경로 (현재 인덱서는 `no-text-ocr-needed`로 플래그만).
+
+## 로컬 구 기준(legacy) 반입 — 2026-07-11
+
+`C:/Users/gomd9/OneDrive/문서/설계 기준/`의 국토교통부 발행 구 기준 중 P1-P3 관련 4권을 반입
+(`krlegacy-*` docId, 나머지 8권(댐·상하수도·터널·조경·설비·도로교)은 스코프 밖 제외):
+
+- 강구조 설계기준 LRFD 2016 (479청크) / 구조물기초 설계기준 2016 (105) / 건설공사 비탈면 설계기준 2011 (53) / 건축구조기준 KBC 2016 (1,051)
+- 라이선스: 국토교통부 고시 본문(공공저작물, KOGL 제1유형 계열) — meta sidecar에 근거 기록
+- ⚠️ **구 기준 — 현행 KDS로 대체됨**: 제목·태그에 `superseded` 명시, RAG 인용 시 현행 조항은 `kds-*` 문서 우선
+- 재인덱싱: PDF를 `data/<docId>.pdf`+`.meta.json`으로 두고 `node index.mjs --only <docId>`
+
+현재 인덱스 합계: **21문서 6,254청크** (미 연방 PD 8 + KDS 현행 9 + 구 기준 4)
