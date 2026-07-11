@@ -79,11 +79,28 @@ const tools = [
       },
     },
   },
+  {
+    name: 'analyze_frame2d',
+    description: '2D 골조 매트릭스 해석(직접강성법, 선형탄성) — 랙 프레임·가설 동바리·경량 골조. 절점하중+부재 등분포. 반환: 변위·반력·부재단부력. P-Δ/비선형 미포함 — 부재검토는 column_buckling/simple_beam 연계. 단위 N·mm.',
+    inputSchema: {
+      type: 'object', required: ['nodes', 'elements', 'supports'],
+      properties: {
+        nodes: { type: 'array', description: '[{id,x,y}] mm' },
+        elements: { type: 'array', description: '[{id,from,to,E(MPa),A(mm²),I(mm⁴),w?(N/mm 국부y)}]' },
+        supports: { type: 'array', description: '[{node,ux?,uy?,rz?}] true=구속' },
+        loads: { type: 'array', description: '[{node,fx?,fy?(N),mz?(N·mm)}]' },
+      },
+    },
+  },
 ];
 
 async function callTool(name, args = {}) {
   if (name === 'eng_rag_search') return ragSearch(args.query, args.k ?? 5);
   if (name === 'eng_list_standards') return loadStandards();
+  if (name === 'analyze_frame2d') {
+    const { analyzeFrame2D } = await import('./analysis/frame2d.mjs');
+    return analyzeFrame2D(args);
+  }
   if (name === 'optimize_section') {
     const { optimizeSection } = await import('./optimize.mjs');
     const ksh = JSON.parse(readFileSync(join(__dirname, 'sections', 'ks-h-beams.json'), 'utf8'));

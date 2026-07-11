@@ -307,3 +307,66 @@ test('optimizer: 전 후보 탈락 시 best=null + audit 전수 보존', () => {
   assert.equal(r.best, null);
   assert.equal(r.audit.length, 3);
 });
+
+// ── 2D 골조 매트릭스 해석 (직접강성법 — 폐형식 정해 대조) ──
+import { analyzeFrame2D } from '../analysis/frame2d.mjs';
+
+test('frame2d: 캔틸레버 끝단하중 — δ=PL³/3EI·θ=PL²/2EI·고정단 M=PL 정해 일치', () => {
+  const r = analyzeFrame2D({
+    nodes: [{ id: 1, x: 0, y: 0 }, { id: 2, x: 2000, y: 0 }],
+    elements: [{ id: 'e1', from: 1, to: 2, E: 200000, A: 5000, I: 1e7 }],
+    supports: [{ node: 1, ux: true, uy: true, rz: true }],
+    loads: [{ node: 2, fy: -10000 }],
+  });
+  const tip = r.displacements.find((d) => d.node === 2);
+  close(tip.uy_mm, -13.3333, 0.1);   // PL³/3EI = 1e4·8e9/(3·2e5·1e7)
+  close(tip.rz_rad, -0.01, 0.1);     // PL²/2EI
+  const R = r.reactions[0];
+  close(R.Ry_N, 10000, 0.05);
+  close(R.Mz_Nmm, 2e7, 0.05);        // M = PL
+});
+
+test('frame2d: 단순보 UDL(2요소) — δmid=5wL⁴/384EI·반력 wL/2 정해 일치', () => {
+  const r = analyzeFrame2D({
+    nodes: [{ id: 1, x: 0, y: 0 }, { id: 2, x: 3000, y: 0 }, { id: 3, x: 6000, y: 0 }],
+    elements: [
+      { id: 'e1', from: 1, to: 2, E: 200000, A: 8000, I: 5e7, w: -10 },
+      { id: 'e2', from: 2, to: 3, E: 200000, A: 8000, I: 5e7, w: -10 },
+    ],
+    supports: [{ node: 1, ux: true, uy: true }, { node: 3, uy: true }],
+  });
+  close(r.displacements.find((d) => d.node === 2).uy_mm, -16.875, 0.1); // 5·10·6000⁴/(384·2e5·5e7)
+  close(r.reactions[0].Ry_N, 30000, 0.05); // wL/2
+  close(r.reactions[1].Ry_N, 30000, 0.05);
+});
+
+test('frame2d: 축하중 기둥 — δ=PL/EA 정해 일치 (수직부재 변환 검증)', () => {
+  const r = analyzeFrame2D({
+    nodes: [{ id: 1, x: 0, y: 0 }, { id: 2, x: 0, y: 3000 }],
+    elements: [{ id: 'c1', from: 1, to: 2, E: 200000, A: 10000, I: 1e7 }],
+    supports: [{ node: 1, ux: true, uy: true, rz: true }],
+    loads: [{ node: 2, fy: -100000 }],
+  });
+  close(r.displacements.find((d) => d.node === 2).uy_mm, -0.15, 0.1); // PL/EA
+  const mf = r.memberForces[0];
+  close(Math.abs(mf.end_i.axial_N), 100000, 0.05);
+});
+
+test('frame2d: 양단고정보 UDL — 고정단모멘트 wL²/12 정해 일치', () => {
+  const r = analyzeFrame2D({
+    nodes: [{ id: 1, x: 0, y: 0 }, { id: 2, x: 4000, y: 0 }],
+    elements: [{ id: 'e1', from: 1, to: 2, E: 200000, A: 8000, I: 5e7, w: -10 }],
+    supports: [{ node: 1, ux: true, uy: true, rz: true }, { node: 2, ux: true, uy: true, rz: true }],
+  });
+  close(Math.abs(r.reactions[0].Mz_Nmm), 10 * 4000 * 4000 / 12, 0.1); // wL²/12 = 1.333e7
+  close(r.reactions[0].Ry_N, 20000, 0.05); // wL/2
+});
+
+test('frame2d: 불안정 구조 게이트 — 지점 부족 시 throw', () => {
+  assert.throws(() => analyzeFrame2D({
+    nodes: [{ id: 1, x: 0, y: 0 }, { id: 2, x: 1000, y: 0 }],
+    elements: [{ id: 'e1', from: 1, to: 2, E: 200000, A: 5000, I: 1e7 }],
+    supports: [{ node: 1, uy: true }],
+    loads: [{ node: 2, fy: -1000 }],
+  }), /support gate/);
+});
