@@ -79,8 +79,8 @@
       "title": "KDS/KCS 국가건설기준 (예: KDS 11 80 05 콘크리트옹벽, KDS 11 80 10 보강토옹벽, KDS 41 건축구조기준)",
       "publisher": "국가건설기준센터 (KCSC, kcsc.re.kr) / 국토교통부 고시",
       "url": "https://www.kcsc.re.kr/standardCode/list",
-      "license": "KCSC-OpenAPI-Authorized",
-      "licenseNote": "✅ 2026-07-11 해결: 회원 OpenAPI 인증키 발급(KCSC_API_KEY in Downloads/.env, 유효 ~2027-07-11). 수집은 crawl.mjs가 아니라 kds.mjs 담당(CodeViewer 조항 단위 JSON, 8종 인덱싱 완료: 118005/118010/143105/143110/143125/215000/216000/411200) — 이 엔트리는 기록용 disabled 유지. 잔여: 원문 재배포/외부 서빙 전 공공누리(KOGL) 유형 확인. KDS는 국토교통부 고시(행정규칙) — 저작권법 §7 검토 여지(법률 확인 선행, plan §6.3).",
+      "license": "KOGL-Type1",
+      "licenseNote": "✅ 2026-07-11 해결: 회원 OpenAPI 인증키 발급(KCSC_API_KEY in Downloads/.env, 유효 ~2027-07-11). 수집은 crawl.mjs가 아니라 kds.mjs 담당(CodeViewer 조항 단위 JSON, 8종 인덱싱 완료: 118005/118010/143105/143110/143125/215000/216000/411200) — 이 엔트리는 기록용 disabled 유지. 공공누리 제1유형 확인(2026-07-11): 출처표시 조건으로 상업 이용·변형·재배포 허용 — RAG 원문 서빙 가능. 서비스 노출 시 credit 표기 필수.",
       "tags": ["korea", "kds", "kcs", "retaining-wall", "P1", "P2"]
     }
   ]

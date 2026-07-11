@@ -74,6 +74,7 @@ export function runCalculator(id, input, standardId = 'KDS') {
     status: calc.status,
     refs: calc.refs,
     disclaimer: '구조 검토 참고자료(비법정) — 법정 계산서는 기술사 날인 영역',
+    ...(std.attribution ? { attribution: std.attribution } : {}),
     ...result,
   };
 }

@@ -6,8 +6,8 @@
  * "KDS 11 80 05 §4.4 표 4.4-1" 수준의 정확한 조항 인용이 가능.
  *
  * 인증키: env KCSC_API_KEY 또는 C:/Users/gomd9/Downloads/.env 의 KCSC_API_KEY.
- * 라이선스: KCSC OpenAPI 승인키 수집(로컬 RAG 사용). 공공누리(KOGL) 유형은 재배포 전
- *   확인 필요 — meta.licenseNote에 명시. provenance 없는 반입 금지 원칙 준수.
+ * 라이선스: 공공누리 제1유형(출처표시) — 확인 2026-07-11. 상업 이용·변형·재배포 허용,
+ *   출처 표시 필수(작은 credit으로 충분: "이용자가 인식 가능한 방법"이면 요건 충족).
  *
  * Usage: node kds.mjs [--force] [--only 118005,143110]
  * Output: data/kds/KDS_<code>.json (원문) + .meta.json / data/index/kds-<code>.jsonl (임베딩)
@@ -106,8 +106,8 @@ async function main() {
       const meta = {
         docId, title, publisher: '국가건설기준센터(KCSC) / 국토교통부 고시',
         sourceUrl: `https://kcsc.re.kr/OpenApi/CodeViewer/KDS/${t.code}`,
-        license: 'KCSC-OpenAPI-Authorized',
-        licenseNote: '회원 발급 OpenAPI 인증키로 수집(유효 2026-07-11~2027-07-11). 내부 RAG·조항 인용용. 원문 재배포/외부 서빙 전 공공누리(KOGL) 유형 확인 필요. KDS는 국토교통부 고시(행정규칙) — 저작권법 §7 검토 여지.',
+        license: 'KOGL-Type1',
+        licenseNote: '공공누리 제1유형(출처표시) — 상업적 이용·변형·2차적 저작물 허용, 출처 표시 필수(확인 2026-07-11). 표준 표기: "본 저작물은 국가건설기준센터(국토교통부)의 건설기준을 공공누리 제1유형에 따라 이용하였습니다. 출처: 국가건설기준센터(https://www.kcsc.re.kr)". 수집: 회원 OpenAPI 인증키(유효 ~2027-07-11).',
         tags: t.tags, fetchedAt: new Date().toISOString(),
         sha256: createHash('sha256').update(JSON.stringify(doc)).digest('hex'),
         clauses: doc.list.length, version: doc.version,
