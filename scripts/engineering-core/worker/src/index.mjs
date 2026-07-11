@@ -95,10 +95,15 @@ export default {
       if (!auth.ok) return json({ error: auth.error }, auth.status ?? 401);
 
       if (path === '/v1/calculators' && request.method === 'GET') {
+        // 분야별 필터: ?domain=civil / steel / temporary-structures / building (부분일치)
+        const domainFilter = (url.searchParams.get('domain') ?? '').trim().toLowerCase();
+        const list = calculators.filter((c) => !domainFilter || c.domain.toLowerCase().includes(domainFilter));
         return json({
           standards: Object.keys(STANDARDS),
+          domains: [...new Set(calculators.map((c) => c.domain))],
+          ...(domainFilter ? { domainFilter } : {}),
           disclaimer: '구조 검토 참고자료(비법정) — 법정 계산서는 기술사 날인 영역',
-          calculators: calculators.map((c) => ({
+          calculators: list.map((c) => ({
             id: c.id, domain: c.domain, title: c.title, description: c.description,
             status: c.status, refs: c.refs, inputSchema: c.inputSchema,
           })),
@@ -121,10 +126,22 @@ export default {
         const query = (body.query ?? '').trim();
         if (!query) return json({ error: 'query required' }, 400);
         const k = Math.min(Math.max(body.k ?? 5, 1), 20);
+        // 분야별 필터: tags(부분일치, 예: 'civil'·'kds'·'retaining-wall') / excludeSuperseded(구 기준 제외)
+        const tagFilter = (body.tags ?? '').trim().toLowerCase();
+        const excludeSuperseded = body.excludeSuperseded === true;
         const vec = await embed(env, query);
-        const res = await env.VECTORIZE.query(vec, { topK: k, returnMetadata: 'all' });
+        const fetchK = tagFilter || excludeSuperseded ? Math.min(k * 4, 50) : k;
+        const res = await env.VECTORIZE.query(vec, { topK: fetchK, returnMetadata: 'all' });
+        if (tagFilter || excludeSuperseded) {
+          res.matches = (res.matches ?? []).filter((m) => {
+            const tags = (m.metadata?.tags ?? '').toLowerCase();
+            if (excludeSuperseded && tags.includes('superseded')) return false;
+            return !tagFilter || tags.includes(tagFilter);
+          }).slice(0, k);
+        }
         return json({
           query, k,
+          ...(tagFilter ? { tags: tagFilter } : {}), ...(excludeSuperseded ? { excludeSuperseded } : {}),
           attribution: 'KDS 원문: 국가건설기준센터(국토교통부) 공공누리 제1유형 / 미 연방 간행물: 퍼블릭 도메인(17 U.S.C. §105)',
           note: 'superseded 태그 문서는 구 기준 — 현행 조항은 kds-* 문서 우선',
           hits: (res.matches ?? []).map((m) => ({
