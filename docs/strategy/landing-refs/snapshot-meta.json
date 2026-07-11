@@ -1,0 +1,84 @@
+{
+  "snapshotDate": "2026-07-11T12:59:00.181Z",
+  "base": "https://nexyfab.com",
+  "purpose": "랜딩 개편 전 NexyFab 공개 페이지 백업 (before 기록)",
+  "results": [
+    {
+      "name": "landing-kr",
+      "path": "/kr/",
+      "status": 200,
+      "bytes": 70576,
+      "finalUrl": "https://nexyfab.com/kr/"
+    },
+    {
+      "name": "landing-en",
+      "path": "/en/",
+      "status": 200,
+      "bytes": 78946,
+      "finalUrl": "https://nexyfab.com/en/"
+    },
+    {
+      "name": "how-it-works-kr",
+      "path": "/kr/how-it-works",
+      "status": 200,
+      "bytes": 55855,
+      "finalUrl": "https://nexyfab.com/kr/how-it-works/"
+    },
+    {
+      "name": "pricing-kr",
+      "path": "/kr/nexyfab/pricing",
+      "status": 200,
+      "bytes": 66716,
+      "finalUrl": "https://nexyfab.com/kr/nexyfab/pricing/"
+    },
+    {
+      "name": "download-kr",
+      "path": "/kr/download",
+      "status": 200,
+      "bytes": 44916,
+      "finalUrl": "https://nexyfab.com/kr/download/"
+    },
+    {
+      "name": "contact-kr",
+      "path": "/kr/contact",
+      "status": 200,
+      "bytes": 40595,
+      "finalUrl": "https://nexyfab.com/kr/contact/"
+    },
+    {
+      "name": "help-kr",
+      "path": "/kr/help",
+      "status": 200,
+      "bytes": 43664,
+      "finalUrl": "https://nexyfab.com/kr/help/"
+    },
+    {
+      "name": "trust-kr",
+      "path": "/kr/trust",
+      "status": 200,
+      "bytes": 43409,
+      "finalUrl": "https://nexyfab.com/kr/trust/"
+    },
+    {
+      "name": "api-docs-kr",
+      "path": "/kr/api-docs",
+      "status": 200,
+      "bytes": 36909,
+      "finalUrl": "https://nexyfab.com/kr/api-docs/"
+    },
+    {
+      "name": "shape-generator-kr",
+      "path": "/kr/shape-generator",
+      "status": 200,
+      "bytes": 26494,
+      "finalUrl": "https://nexyfab.com/kr/shape-generator/"
+    },
+    {
+      "name": "simulator-kr",
+      "path": "/kr/simulator",
+      "status": 200,
+      "bytes": 36643,
+      "finalUrl": "https://nexyfab.com/kr/simulator/"
+    }
+  ]
+}
