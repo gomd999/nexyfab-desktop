@@ -110,3 +110,56 @@ test('registry: KDS standard is flagged draft', () => {
   const r = runCalculator('column_buckling', { Fy: 275, Ag: 5000, L: 3000, r: 60, Pu: 100 }, 'KDS');
   assert.equal(r.standardDraft, true);
 });
+
+// ── 불변량·경계 테스트 (property-based — 공인예제 게이트와 별개로 수학적 정합성 검증) ──
+test('wall invariant: within kern, qmax+qmin == 2V/B (사다리꼴 접지압 보존)', () => {
+  const r = runCalculator('retaining_wall_stability', {
+    H: 4, stemThickness: 0.4, baseWidth: 2.5, baseThickness: 0.4, toeLength: 0.7,
+    gammaBackfill: 18, phiBackfill: 30, baseFriction: 0.5, allowableBearing: 200,
+  }, 'KDS');
+  const { qmax_kPa, qmin_kPa } = r.checks.bearing;
+  close(qmax_kPa + qmin_kPa, (2 * r.intermediate.sumV_kN) / 2.5, 0.05);
+});
+
+test('wall superposition: surcharge q=10kPa adds exactly Ka·q·H & heel weight (손계산)', () => {
+  const r = runCalculator('retaining_wall_stability', {
+    H: 4, stemThickness: 0.4, baseWidth: 2.5, baseThickness: 0.4, toeLength: 0.7,
+    gammaBackfill: 18, phiBackfill: 30, surcharge: 10, baseFriction: 0.5, allowableBearing: 200,
+  }, 'KDS');
+  close(r.intermediate.PaSurcharge_kN, 13.3333, 0.1); // (1/3)*10*4
+  close(r.intermediate.Mo_kNm, 90.6667, 0.1);         // 64 + 13.333*2
+  close(r.intermediate.sumV_kN, 163.28, 0.1);         // 149.28 + 10*1.4
+  close(r.intermediate.Mr_kNm, 249.6, 0.1);           // 224.4 + 14*1.8
+});
+
+test('wall out-of-kern: narrow base B=1.6m → 삼각분포 폴백, FAIL 판정 (손계산 qmax=221.0)', () => {
+  const r = runCalculator('retaining_wall_stability', {
+    H: 4, stemThickness: 0.4, baseWidth: 1.6, baseThickness: 0.4, toeLength: 0.4,
+    gammaBackfill: 18, phiBackfill: 30, baseFriction: 0.5, allowableBearing: 200,
+  }, 'KDS');
+  close(r.intermediate.sumV_kN, 101.76, 0.1);
+  close(r.checks.eccentricity.e_m, 0.49308, 0.3);
+  assert.equal(r.checks.eccentricity.pass, false);
+  assert.equal(r.checks.bearing.qmin_kPa, 0);
+  close(r.checks.bearing.qmax_kPa, 221.03, 0.5);
+  assert.equal(r.verdict, 'FAIL');
+});
+
+test('column continuity: 비탄성↔탄성 분기 경계에서 Fcr 연속 (~0.39Fy)', () => {
+  const E = 200000, Fy = 345;
+  const limit = 4.71 * Math.sqrt(E / Fy); // ≈113.40
+  const mk = (slend) => runCalculator('column_buckling', { Fy, Ag: 10000, L: slend * 100, K: 1.0, r: 100, Pu: 0 }, 'AISC360');
+  const below = mk(limit - 0.1).intermediate.Fcr_MPa;
+  const above = mk(limit + 0.1).intermediate.Fcr_MPa;
+  close(below, above, 0.5);
+  close(below, 0.39 * Fy, 1.0); // 이론값 0.658^(1/0.44493)≈0.877*0.44493≈0.390Fy
+});
+
+test('beam superposition: (w만)+(P만) == (w+P) 모멘트·처짐 가산성', () => {
+  const base = { L: 6000, Fy: 275, E: 205000, Sx: 5e5, Aw: 3000, Ix: 7e7 };
+  const rw = runCalculator('simple_beam', { ...base, w: 10 }, 'AISC360');
+  const rp = runCalculator('simple_beam', { ...base, P: 20 }, 'AISC360');
+  const rb = runCalculator('simple_beam', { ...base, w: 10, P: 20 }, 'AISC360');
+  close(rw.intermediate.Mmax_kNm + rp.intermediate.Mmax_kNm, rb.intermediate.Mmax_kNm, 0.05);
+  close(rw.checks.deflection.delta_mm + rp.checks.deflection.delta_mm, rb.checks.deflection.delta_mm, 0.05);
+});

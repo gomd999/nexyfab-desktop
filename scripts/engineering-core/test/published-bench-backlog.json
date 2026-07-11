@@ -1,0 +1,31 @@
+{
+  "_purpose": "공인 예제 골든벤치 백로그 — §7.0 공개 게이트(공인예제 ≥10/계산기)용 목표 수치. 코퍼스에서 발굴한 published 값을 박제하되, 계산 방법이 현 계산기와 다른 케이스는 blocked_on을 명시하고 '통과했다'고 주장하지 않는다 (정직 게이트).",
+  "retaining_wall_stability": [
+    {
+      "source": "USACE EM 1110-2-2502 (1989) Appendix N, Example 1 — 코퍼스 usace-em-1110-2-2502-retaining-walls p.367-382",
+      "given": {
+        "backfill": { "gamma_kcf": 0.12, "phi_deg": 35, "c": 0 },
+        "foundation": { "gamma_kcf": 0.135, "phi_deg": 40, "c": 0 },
+        "concrete_gamma_kcf": 0.15,
+        "loadCase": "R1"
+      },
+      "published_targets": {
+        "sumV_kips_per_ft": 56.41,
+        "sumH_kips_per_ft": 27.62,
+        "resultant_from_toe_ft": 7.34,
+        "base_in_compression_pct": 100,
+        "overturning": "satisfied (resultant-location criterion, not FS)",
+        "sliding_formula": "(N' tanφ + cL)/T ≥ FS, N'=56.41, T=27.62, φ_found=40°"
+      },
+      "method": "EM 2502 wedge method (developed slip-plane angle, SMF=2/3) — Rankine 아님",
+      "blocked_on": "calculator pressureMethod='EM2502-wedge' 옵션 미구현. 현 Rankine 계산기와 직접 수치비교 불가 — 구현 전까지 이 케이스를 PASS로 집계하지 말 것",
+      "note": "전체 기하(벽높이·저판 치수)는 p.367 도판(래스터)에 있어 PDF 텍스트 추출로는 불완전 — 구현 시 원문 도판 육안 확인 필요"
+    }
+  ],
+  "next_sources": [
+    "EM 1110-2-2502 Appendix M (p.296~): 토압 계산 예제 — 웨지법 검증용",
+    "KDS 11 80 05 해설 예제 (KDS 원문 확보 후) — Rankine 관행과 합치, 1순위 매칭 후보",
+    "FHWA GEC 11 Appendix 예제: MSE 외적안정 — 별도 mse_external_stability 계산기 신설 시 사용",
+    "지반공학 교과서 worked example 수치(사실정보) — Rankine 캔틸레버 옹벽 표준 예제"
+  ]
+}
