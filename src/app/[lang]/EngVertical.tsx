@@ -207,6 +207,8 @@ export function EngDomains({ langCode }: { langCode: string }) {
     { title: t.dom1Title, desc: t.dom1Desc, tags: t.dom1Tags, icon: '⚙️', href: `/${langCode}/shape-generator/`, color: '#3b82f6' },
     { title: t.dom2Title, desc: t.dom2Desc, tags: t.dom2Tags, icon: '🏗️', href: '#eng-demo', color: '#8b5cf6' },
     { title: t.dom3Title, desc: t.dom3Desc, tags: t.dom3Tags, icon: '🧱', href: '#eng-demo', color: '#10b981' },
+    { title: t.dom4Title, desc: t.dom4Desc, tags: t.dom4Tags, icon: '🏢', href: '#eng-demo', color: '#f59e0b' },
+    { title: t.dom5Title, desc: t.dom5Desc, tags: t.dom5Tags, icon: '🌳', href: '#eng-demo', color: '#22c55e' },
   ];
   return (
     <section style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)', padding: '90px 24px' }}>
