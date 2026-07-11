@@ -1,0 +1,58 @@
+{
+ "date": "2026-07-11T16:30:58.505Z",
+ "summary": {
+  "cases": 5,
+  "dimAccuracy": "15/15 (100.0%)",
+  "holeCountOk": "5/5",
+  "holePosAccuracy": "16/16 (100.0%)",
+  "holeDiaAccuracy": "16/16",
+  "geometryGatePass": "5/5"
+ },
+ "report": [
+  {
+   "name": "plate-01",
+   "dims": "3/3",
+   "holes": "2/2",
+   "dia": "2/2",
+   "gate": "PASS",
+   "conf": 1,
+   "err": "-"
+  },
+  {
+   "name": "plate-02",
+   "dims": "3/3",
+   "holes": "4/4",
+   "dia": "4/4",
+   "gate": "PASS",
+   "conf": 1,
+   "err": "-"
+  },
+  {
+   "name": "plate-03",
+   "dims": "3/3",
+   "holes": "4/4",
+   "dia": "4/4",
+   "gate": "PASS",
+   "conf": 1,
+   "err": "-"
+  },
+  {
+   "name": "plate-04",
+   "dims": "3/3",
+   "holes": "4/4",
+   "dia": "4/4",
+   "gate": "PASS",
+   "conf": 1,
+   "err": "-"
+  },
+  {
+   "name": "plate-05",
+   "dims": "3/3",
+   "holes": "2/2",
+   "dia": "2/2",
+   "gate": "PASS",
+   "conf": 1,
+   "err": "-"
+  }
+ ]
+}
