@@ -10,6 +10,8 @@
  * 모든 계산 결과에 비법정 라벨+조항 인용+KOGL 출처표시(attribution) 포함.
  */
 import { calculators, runCalculatorCore } from '../../core.mjs';
+import { optimizeSection } from '../../optimize.mjs';
+import ksh from '../../sections/ks-h-beams.json';
 import kds from '../../standards/kds.json';
 import aisc from '../../standards/aisc360.json';
 import aashto from '../../standards/aashto-lrfd.json';
@@ -121,6 +123,19 @@ export default {
         }
       }
 
+      if (path === '/v1/optimize/section' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        try {
+          const result = optimizeSection(STANDARDS, {
+            calculator: body.calculator, standard: body.standard ?? 'KDS', axis: body.axis ?? 'ry',
+            fixedInput: body.fixedInput ?? {}, sections: body.sections ?? ksh.sections,
+          });
+          return json({ sectionCatalog: body.sections ? 'user-supplied' : ksh.name, ...result });
+        } catch (e) {
+          return json({ error: e.message }, 400);
+        }
+      }
+
       if (path === '/v1/rag/search' && request.method === 'POST') {
         const body = await request.json().catch(() => ({}));
         const query = (body.query ?? '').trim();
@@ -152,7 +167,7 @@ export default {
         });
       }
 
-      return json({ error: 'not found', endpoints: ['GET /v1/health', 'GET /v1/calculators', 'POST /v1/calc/{id}', 'POST /v1/rag/search'] }, 404);
+      return json({ error: 'not found', endpoints: ['GET /v1/health', 'GET /v1/calculators', 'POST /v1/calc/{id}', 'POST /v1/optimize/section', 'POST /v1/rag/search'] }, 404);
     } catch (e) {
       return json({ error: e.message }, 500);
     }

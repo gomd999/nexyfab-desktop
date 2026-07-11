@@ -266,3 +266,44 @@ test('REVERSE-ENG: SBDH DE2A 단일앵글 공표값 Pn=89.1·Pr=84.6 kips 재현
   close(r.checks.capacity_LRFD.phiPn_kN / KIPS, 84.6, 0.3);                      // Pr 재현
   assert.equal(r.verdict, 'PASS'); // Pu=54 < 84.6
 });
+
+// ── 단면 최적선정 (결정론 탐색 — 손계산: 요구 Sx≥372cm³·Ix≥5,145cm⁴ → H-300 최경량) ──
+import { optimizeSection } from '../optimize.mjs';
+import { loadStandards } from '../registry.mjs';
+import { readFileSync } from 'node:fs';
+const KSH = JSON.parse(readFileSync(new URL('../sections/ks-h-beams.json', import.meta.url), 'utf8')).sections;
+
+test('optimizer: 보 w=15kN/m L=6m → H-300 선정 (H-250은 휨 208>181.5·처짐 초과 FAIL)', () => {
+  const r = optimizeSection(loadStandards(), {
+    calculator: 'simple_beam', standard: 'KDS',
+    fixedInput: { L: 6000, w: 15, Fy: 275, E: 205000 },
+    sections: KSH,
+  });
+  assert.equal(r.best, 'H-300x150x6.5x9');
+  const h250 = r.audit.find((a) => a.section === 'H-250x125x6x9');
+  assert.equal(h250.verdict, 'FAIL');
+  assert.equal(r.bestDetail.verdict, 'PASS');
+  close(r.bestDetail.checks.bending.sigma_MPa, 140.3, 0.3); // 67.5e6/4.81e5
+});
+
+test('optimizer: 기둥 Pu=800kN L=3.5m 약축 → H-350 선정 (H-300 φPn≈617 FAIL 손계산)', () => {
+  const r = optimizeSection(loadStandards(), {
+    calculator: 'column_buckling', standard: 'KDS', axis: 'ry',
+    fixedInput: { Fy: 275, L: 3500, K: 1.0, Pu: 800 },
+    sections: KSH,
+  });
+  assert.equal(r.best, 'H-350x175x7x11');
+  const h300 = r.audit.find((a) => a.section === 'H-300x150x6.5x9');
+  assert.equal(h300.verdict, 'FAIL');
+  close(r.bestDetail.checks.capacity_LRFD.phiPn_kN, 1012.6, 0.5);
+});
+
+test('optimizer: 전 후보 탈락 시 best=null + audit 전수 보존', () => {
+  const r = optimizeSection(loadStandards(), {
+    calculator: 'column_buckling', standard: 'KDS', axis: 'ry',
+    fixedInput: { Fy: 275, L: 3500, K: 1.0, Pu: 99999 },
+    sections: KSH.slice(0, 3),
+  });
+  assert.equal(r.best, null);
+  assert.equal(r.audit.length, 3);
+});

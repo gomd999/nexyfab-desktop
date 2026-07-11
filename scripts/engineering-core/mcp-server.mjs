@@ -66,11 +66,29 @@ const tools = [
     description: '적용 가능한 설계기준 파라미터 세트 목록과 튜닝 가능한 계수(φ, 안전율, Fnv 등) 전체 반환.',
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'optimize_section',
+    description: 'H형강 단면 최적선정 — KS 카탈로그 전 후보를 결정론 계산기로 전수 검토 후 PASS 중 최경량 선택. audit에 전 후보 판정 포함(투명). 카탈로그 내 최적일 뿐 전역최적 아님, 단면 데이터 draft(발주 전 정본 대조 필요).',
+    inputSchema: {
+      type: 'object', required: ['calculator', 'fixedInput'],
+      properties: {
+        calculator: { type: 'string', enum: ['simple_beam', 'column_buckling'] },
+        standard: { type: 'string', enum: standardIds },
+        axis: { type: 'string', enum: ['ry', 'rx'], description: '기둥 좌굴축 (기본 ry 약축)' },
+        fixedInput: { type: 'object', description: '단면값 제외 입력 (보: L,w,P,Fy / 기둥: Fy,L,K,Pu)' },
+      },
+    },
+  },
 ];
 
 async function callTool(name, args = {}) {
   if (name === 'eng_rag_search') return ragSearch(args.query, args.k ?? 5);
   if (name === 'eng_list_standards') return loadStandards();
+  if (name === 'optimize_section') {
+    const { optimizeSection } = await import('./optimize.mjs');
+    const ksh = JSON.parse(readFileSync(join(__dirname, 'sections', 'ks-h-beams.json'), 'utf8'));
+    return optimizeSection(loadStandards(), { calculator: args.calculator, standard: args.standard ?? 'KDS', axis: args.axis ?? 'ry', fixedInput: args.fixedInput, sections: ksh.sections });
+  }
   const calc = calculators.find((c) => c.id === name);
   if (!calc) throw new Error(`unknown tool: ${name}`);
   const { standard, ...input } = args;
