@@ -21,6 +21,7 @@ import { buildAssembly } from './assembly.mjs';
 import { verify3d } from './verify.mjs';
 import { renderHtml } from './html-render.mjs';
 import { composeWithGate, emitComposite } from './compose.mjs';
+import { intentToStep } from './to-step.mjs';
 import { gate, toOpenScad } from './reconstruct.mjs';
 import { toComponentIntent } from './to-intent.mjs';
 
@@ -73,6 +74,17 @@ const tools = [
     inputSchema: {
       type: 'object', required: ['assembly'],
       properties: { assembly: { type: 'object', description: '{name, parts:[{id,type,params,at:{tx,ty,tz,rx,ry,rz}}]}' } },
+    },
+  },
+  {
+    name: 'export_step',
+    description:
+      `범용 조합 intent(compose_3d 산출)를 **진짜 B-rep STEP**으로 방출한다(CNC/제조용). ` +
+      `OpenSCAD(메시)와 달리 replicad/OCCT로 해석적 B-rep 빌드 — revolve/extrude/cylinder/box/sphere ` +
+      `+ boolean(fuse/cut) + pattern. outPath에 .step 저장, 엔티티 수 반환. 실증: 200L탱크→480엔티티.`,
+    inputSchema: {
+      type: 'object', required: ['intent', 'outPath'],
+      properties: { intent: { type: 'object', description: 'compose_3d 범용조합 intent' }, outPath: { type: 'string', description: '.step 절대경로' } },
     },
   },
   {
@@ -164,6 +176,12 @@ async function callTool(name, args = {}) {
   }
   if (name === 'verify_3d') {
     return verify3d(args.intent, { tolMm: args.tolMm ?? 0.5 });
+  }
+  if (name === 'export_step') {
+    const { writeFileSync } = await import('node:fs');
+    const { step, entities } = await intentToStep(args.intent);
+    writeFileSync(args.outPath, step);
+    return { path: args.outPath, bytes: step.length, entities, format: 'STEP (B-rep, ISO-10303)' };
   }
   if (name === 'html_render') {
     const { writeFileSync } = await import('node:fs');
