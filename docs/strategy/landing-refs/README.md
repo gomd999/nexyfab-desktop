@@ -19,3 +19,14 @@
 - 로그인 영역(admin/partner/dashboard)은 제외.
 - 소스 자체의 백업은 git 히스토리가 담당 — 이 폴더는 **개편 전 실제 렌더 결과**의 동결본.
 - 재수집: `node snapshot-nexyfab.mjs` (수집 일시·상태는 `snapshot-meta.json`).
+
+## viewable/ — 더블클릭 열람용 자립형 버전
+
+루트의 원본 스냅샷은 CSS/이미지를 라이브 상대경로로 참조해 **로컬에서 열면 깨져 보이고**,
+개편 배포 후엔 해시된 `/_next/static` CSS가 사라져 복원 불가가 된다.
+`viewable/`은 이를 대비한 자립형 변환본 (`node make-viewable.mjs`로 생성):
+
+- 스타일시트 3종 fetch 후 `<style>` 인라인 → 배포 후에도 레이아웃 보존
+- `<script>` 제거 (하이드레이션 오류 방지, 정적 열람 목적)
+- 이미지/폰트 등 잔여 자산 경로는 `https://nexyfab.com` 절대경로화
+- 파일당 ~270KB, 브라우저에서 바로 열면 개편 전 모습 그대로 렌더
