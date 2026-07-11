@@ -1,0 +1,8 @@
+{
+ "type": "bent_sheet",
+ "unit": "mm",
+ "webWidth": 80,
+ "flangeHeight": 30,
+ "length": 100,
+ "thickness": 1.5
+}

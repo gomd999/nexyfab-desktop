@@ -1,19 +1,24 @@
 {
  "type": "plate_with_holes",
  "unit": "mm",
- "width": 140,
+ "width": 190,
  "depth": 60,
- "thickness": 14,
+ "thickness": 18,
  "holes": [
   {
    "x": 12,
    "y": 12,
-   "d": 12
+   "d": 8
   },
   {
-   "x": 128,
+   "x": 178,
    "y": 12,
-   "d": 12
+   "d": 8
+  },
+  {
+   "x": 178,
+   "y": 48,
+   "d": 8
   }
  ]
 }

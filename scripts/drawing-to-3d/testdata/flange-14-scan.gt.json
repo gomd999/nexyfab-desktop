@@ -1,0 +1,10 @@
+{
+ "type": "flange",
+ "unit": "mm",
+ "outerDia": 110,
+ "boreDia": 40,
+ "thickness": 16,
+ "bcd": 80,
+ "boltHoleD": 12,
+ "boltCount": 6
+}

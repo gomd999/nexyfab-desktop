@@ -1,0 +1,9 @@
+{
+ "type": "stepped_plate",
+ "unit": "mm",
+ "width": 80,
+ "depth": 70,
+ "thickness": 18,
+ "stepWidth": 20,
+ "stepThickness": 14
+}
