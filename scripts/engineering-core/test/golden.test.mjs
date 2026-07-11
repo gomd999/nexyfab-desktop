@@ -370,3 +370,35 @@ test('frame2d: 불안정 구조 게이트 — 지점 부족 시 throw', () => {
     loads: [{ node: 2, fy: -1000 }],
   }), /support gate/);
 });
+
+// ── 랙 프레임 원스톱 (해석→검토 결합 — 손계산: 대칭 2단 10kN → 포스트 축력 정확히 10kN) ──
+test('rack_frame: 대칭 수직하중 — 포스트 축력=총하중/2, 빔 σ=39.2MPa, PASS', () => {
+  const r = runCalculator('rack_frame', {
+    bayWidth: 2400, postHeight: 4000, levels: 2, levelPitch: 1500, loadPerLevel: 10,
+    lateralLoadPct: 0, Fy: 275,
+    post: { A: 2190, I: 3.83e6, r: 24.9 },
+    beam: { A: 2190, Ix: 3.83e6, Sx: 7.65e4, Aw: 600 },
+  }, 'KDS');
+  close(r.intermediate.maxPostAxial_kN, 10.0, 1.0);          // 평형: 20kN/2포스트
+  close(r.checks.beam.bending.sigma_MPa, 39.2, 1.0);         // M=wL²/8=3.0kNm/Sx
+  assert.ok(r.checks.sway.pass);                              // 대칭 벌어짐(0.6mm)도 지표에 포함 — 보수측
+  assert.equal(r.verdict, 'PASS');
+});
+
+test('rack_frame: 과적재 → 빔 휨 FAIL 검출', () => {
+  const r = runCalculator('rack_frame', {
+    bayWidth: 2400, postHeight: 4000, levels: 2, levelPitch: 1500, loadPerLevel: 100,
+    Fy: 275,
+    post: { A: 2190, I: 3.83e6, r: 24.9 },
+    beam: { A: 2190, Ix: 3.83e6, Sx: 7.65e4, Aw: 600 },
+  }, 'KDS');
+  assert.equal(r.checks.beam.pass, false); // σ=392MPa > 181.5
+  assert.equal(r.verdict, 'FAIL');
+});
+
+test('rack_frame: 기하 게이트 — levels×pitch > postHeight throw', () => {
+  assert.throws(() => runCalculator('rack_frame', {
+    bayWidth: 2400, postHeight: 4000, levels: 3, levelPitch: 1500, loadPerLevel: 10, Fy: 275,
+    post: { A: 2190, I: 3.83e6, r: 24.9 }, beam: { A: 2190, Ix: 3.83e6, Sx: 7.65e4, Aw: 600 },
+  }, 'KDS'), /geometry gate/);
+});
