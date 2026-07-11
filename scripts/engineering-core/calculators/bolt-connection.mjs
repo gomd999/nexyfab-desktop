@@ -18,7 +18,7 @@ export default {
     type: 'object',
     required: ['boltGrade', 'd', 'nBolts', 'tPlate', 'Fu', 'Vu'],
     properties: {
-      boltGrade: { type: 'string', enum: ['A325-N', 'A325-X', 'A490-N', 'F10T-N', 'F8T-N'], description: '볼트 등급-나사부 조건' },
+      boltGrade: { type: 'string', enum: ['A325-N', 'A325-X', 'A490-N', 'F10T-N', 'F10T-X', 'F8T-N', 'F8T-X', 'F13T-N', 'F13T-X', '4.6-N', '4.6-X'], description: '볼트 등급-나사부 조건' },
       d: { type: 'number', minimum: 12, maximum: 36, description: '볼트 공칭지름 mm' },
       nBolts: { type: 'integer', minimum: 1, maximum: 100, description: '볼트 개수' },
       shearPlanes: { type: 'integer', minimum: 1, maximum: 2, description: '전단면 수 (기본 1)' },

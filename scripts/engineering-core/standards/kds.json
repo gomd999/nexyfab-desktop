@@ -1,12 +1,12 @@
 {
   "id": "KDS",
-  "name": "KDS 국가건설기준 — civil.retaining_wall은 KDS 11 80 05:2025 원문 대조 완료(2026-07-11, KCSC OpenAPI). steel은 KDS 14 31 원문 대조 전 draft.",
+  "name": "KDS 국가건설기준 — 계산기 사용 파라미터 전체 원문 대조 완료 (2026-07-11, KCSC OpenAPI 조항 텍스트+수식 이미지 판독)",
   "tunable": true,
-  "draft": true,
+  "draft": false,
   "license": "KOGL-Type1 (공공누리 제1유형, 출처표시 — 확인 2026-07-11)",
   "attribution": "본 검토는 국가건설기준센터(국토교통부)의 건설기준(KDS)을 공공누리 제1유형에 따라 이용하였습니다. 출처: 국가건설기준센터(https://www.kcsc.re.kr)",
   "steel": {
-    "E_MPa": 205000,
+    "E_MPa": 210000,
     "phi_compression": 0.9,
     "phi_flexure": 0.9,
     "phi_shear": 0.9,
@@ -16,11 +16,14 @@
     "elastic_buckling_coef": 0.877,
     "allowable_bending_ratio_ASD": 0.66,
     "allowable_shear_ratio_ASD": 0.4,
-    "bolt_Fnv_MPa": { "F10T-N": 372, "F8T-N": 280 },
+    "bolt_Fnv_MPa": { "F10T-N": 400, "F10T-X": 500, "F8T-N": 320, "F8T-X": 400, "F13T-N": 520, "F13T-X": 650, "4.6-N": 160, "4.6-X": 200 },
     "bolt_bearing_coef": 2.4,
-    "_draft_note": "KDS 14 31 05/10/25 원문 수집완료(RAG 인덱스 kds-1431xx) — 계수 조항 대조 후 draft 해제 예정"
+    "_verified_note": "원문 대조(2026-07-11): E=210,000(KDS 14 31 05 표 3.5-1 강·주강 — 이전 205,000 오류 수정). φc=0.90(14 31 10 §4.2.1(1) 수식). 좌굴: KL/r≤4.71√(E/Fy) 분기·Fcr=0.658^(Fy/Fe)Fy(식 4.2-2)·0.877Fe(식 4.2-3)·Pn=FcrAg(식 4.2-1)·KL/r≤200 권장(§4.2.2). Fnv=표 4.1-9(14 31 25) — F10T-N 400은 AISC A325-N 372와 다름 주의. 볼트 φ0.75(§4.1.3.2/4.4.4). 지압 1.2LctFu≤2.4dtFu(§4.1.3.5, 표준구멍·변형고려). ASD: Fb=0.66Fy(14 30 10 §4.5.2.1 식 4.5-1, 콤팩트+횡지지), Fv=0.4Fy(§4.5.3.1). 수식은 CodeViewer 이미지 판독."
   },
-  "serviceability": { "deflection_limit_denominator_default": 250 },
+  "serviceability": {
+    "deflection_limit_denominator_default": 250,
+    "_note": "처짐한계는 용도별 상이 — 기본값 L/250은 관행값, 프로젝트별 입력 권장"
+  },
   "civil": {
     "retaining_wall": {
       "verified": true,
@@ -40,9 +43,11 @@
     }
   },
   "citations": {
-    "compression": "KDS 14 31 10:2024 (원문 인덱스 확보 — 계수 대조 대기)",
-    "flexure": "KDS 14 31 10:2024 (원문 인덱스 확보 — 계수 대조 대기)",
-    "bolts": "KDS 14 31 25:2024 (원문 인덱스 확보 — 계수 대조 대기)",
+    "compression": "KDS 14 31 10:2024 §4.2.1(φc=0.90)·§4.2.2(KL/r≤200)·§4.2.3 식 4.2-1~4 — 원문 대조 완료",
+    "flexure_asd": "KDS 14 30 10:2024 §4.5.2.1 식 4.5-1 (Fb=0.66Fy, 콤팩트·횡지지) — 원문 대조 완료",
+    "shear_asd": "KDS 14 30 10:2024 §4.5.3.1 (Fv=0.4Fy) — 원문 대조 완료",
+    "bolts": "KDS 14 31 25:2024 표 4.1-9(Fnv)·§4.1.3.5(지압 1.2LctFu≤2.4dtFu) — 원문 대조 완료",
+    "material": "KDS 14 31 05:2024 표 3.5-1 (E=210,000 MPa)",
     "retaining_wall": "KDS 11 80 05:2025 §4.4 안전율 기준, 표 4.4-1 콘크리트옹벽의 기준안전율"
   }
 }

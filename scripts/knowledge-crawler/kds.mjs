@@ -30,6 +30,7 @@ const TARGETS = [
   { code: '118010', tags: ['korea', 'kds', 'civil', 'retaining-wall', 'mse', 'P2'] }, // 보강토옹벽
   { code: '143105', tags: ['korea', 'kds', 'steel', 'lrfd', 'P1'] },                  // 강구조설계 일반(LRFD)
   { code: '143110', tags: ['korea', 'kds', 'steel', 'member-design', 'P1'] },         // 강구조 부재(LRFD)
+  { code: '143010', tags: ['korea', 'kds', 'steel', 'asd', 'member-design', 'P1'] },                 // 강구조 부재(허용응력)
   { code: '143125', tags: ['korea', 'kds', 'steel', 'connection', 'P1'] },            // 강구조 연결(LRFD)
   { code: '215000', tags: ['korea', 'kds', 'temporary-structures', 'formwork', 'P1'] }, // 거푸집 및 동바리
   { code: '216000', tags: ['korea', 'kds', 'temporary-structures', 'scaffold', 'P1'] }, // 비계 및 안전시설물

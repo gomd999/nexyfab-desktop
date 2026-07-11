@@ -106,9 +106,10 @@ test('bolt connection: thin plate flips governing to bearing', () => {
 test('registry: unknown field rejected', () => {
   assert.throws(() => runCalculator('column_buckling', { Fy: 345, Ag: 10000, L: 5000, r: 100, Pu: 0, hacker: 1 }, 'AISC360'), /unknown field/);
 });
-test('registry: KDS standard is flagged draft', () => {
+test('registry: KDS steel verified — draft lifted (2026-07-11 원문 대조)', () => {
   const r = runCalculator('column_buckling', { Fy: 275, Ag: 5000, L: 3000, r: 60, Pu: 100 }, 'KDS');
-  assert.equal(r.standardDraft, true);
+  assert.equal(r.standardDraft, false);
+  assert.ok(r.attribution.includes('공공누리'));
 });
 
 // ── 불변량·경계 테스트 (property-based — 공인예제 게이트와 별개로 수학적 정합성 검증) ──
@@ -162,4 +163,19 @@ test('beam superposition: (w만)+(P만) == (w+P) 모멘트·처짐 가산성', (
   const rb = runCalculator('simple_beam', { ...base, w: 10, P: 20 }, 'AISC360');
   close(rw.intermediate.Mmax_kNm + rp.intermediate.Mmax_kNm, rb.intermediate.Mmax_kNm, 0.05);
   close(rw.checks.deflection.delta_mm + rp.checks.deflection.delta_mm, rb.checks.deflection.delta_mm, 0.05);
+});
+
+// ── KDS 원문 대조 캘리브레이션 케이스 (2026-07-11: E=210,000·Fnv 표 4.1-9) ──
+test('KDS column: E=210000 (표 3.5-1), KL/r=50, Fy=275 — 손계산 Fe=829.05, Fcr=239.34', () => {
+  const r = runCalculator('column_buckling', { Fy: 275, Ag: 10000, L: 5000, K: 1.0, r: 100, Pu: 2000 }, 'KDS');
+  close(r.intermediate.Fe_MPa, 829.047, 0.1);
+  close(r.intermediate.Fcr_MPa, 239.34, 0.2);
+  close(r.checks.capacity_LRFD.phiPn_kN, 2154.1, 0.3);
+});
+
+test('KDS bolt: F10T-N Fnv=400 (표 4.1-9) — 4×M20 φRn=376.99kN (≠AISC 350.6)', () => {
+  const r = runCalculator('bolt_connection', { boltGrade: 'F10T-N', d: 20, nBolts: 4, tPlate: 10, Fu: 400, Vu: 300 }, 'KDS');
+  close(r.intermediate.rnShear_kN_perBolt, 125.66, 0.1);
+  close(r.checks.capacity_LRFD.phiRn_kN, 376.99, 0.2);
+  assert.equal(r.verdict, 'PASS');
 });
