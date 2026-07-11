@@ -84,6 +84,9 @@ interface FeatureBase {
   id: string;
   at?: Placement;
   pattern?: CircularPattern;
+  /** Boolean role — 'subtract' cuts the feature from the union of adds
+   *  (holes/bores from 2D→3D drawing reconstruction). Default 'add'. */
+  op?: 'add' | 'subtract';
 }
 
 /** #1 Sketch + Revolve — rotational solids (vessels, shafts, flanges). */

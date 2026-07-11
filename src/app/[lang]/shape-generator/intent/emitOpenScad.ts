@@ -114,11 +114,21 @@ export function emitComponent(c: ComponentIntent, fn = DEFAULT_FN): string {
   lines.push(`// component: ${c.name} (${c.shapeClass})`);
   if (c.material) lines.push(`// material: ${c.material.grade}${c.material.thicknessMm ? ` ${c.material.thicknessMm}t` : ''}`);
   lines.push(`module comp_${scadIdent(c.id)}() {`);
-  lines.push(`${INDENT}union() {`);
-  for (const f of c.features) {
-    for (const line of emitFeature(f, fn)) lines.push(`${INDENT}${INDENT}${line}`);
+  const adds = c.features.filter((f) => f.op !== 'subtract');
+  const subs = c.features.filter((f) => f.op === 'subtract');
+  // subtract 피처(2D→3D 구멍 재구성)가 있으면 difference()로 감싼다 — 없으면 기존 출력 유지.
+  const pad = (depth: number, line: string) => `${INDENT.repeat(depth)}${line}`;
+  const base = subs.length > 0 ? 2 : 1;
+  if (subs.length > 0) lines.push(`${INDENT}difference() {`);
+  lines.push(pad(base, `union() {`));
+  for (const f of adds) {
+    for (const line of emitFeature(f, fn)) lines.push(pad(base + 1, line));
   }
-  lines.push(`${INDENT}}`);
+  lines.push(pad(base, `}`));
+  for (const f of subs) {
+    for (const line of emitFeature(f, fn)) lines.push(pad(base, line));
+  }
+  if (subs.length > 0) lines.push(`${INDENT}}`);
   lines.push(`}`);
   return lines.join('\n');
 }
