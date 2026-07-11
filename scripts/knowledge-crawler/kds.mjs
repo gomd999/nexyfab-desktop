@@ -36,6 +36,25 @@ const TARGETS = [
   { code: '215000', tags: ['korea', 'kds', 'temporary-structures', 'formwork', 'P1'] }, // 거푸집 및 동바리
   { code: '216000', tags: ['korea', 'kds', 'temporary-structures', 'scaffold', 'P1'] }, // 비계 및 안전시설물
   { code: '411200', tags: ['korea', 'kds', 'building', 'loads', 'P3'] },              // 건축물 설계하중
+  // ── 건축·콘크리트 (P3 — RC 계산기 근거, 2026-07-11 API 프로브로 실존 확인) ──
+  { code: '142001', tags: ['korea', 'kds', 'concrete', 'building', 'civil', 'P3'] },  // 콘크리트구조 설계(강도설계법) 일반
+  { code: '142010', tags: ['korea', 'kds', 'concrete', 'building', 'civil', 'P3'] },  // 해석과 설계 원칙
+  { code: '142020', tags: ['korea', 'kds', 'concrete', 'building', 'civil', 'flexure-compression', 'P3'] }, // 휨·압축
+  { code: '142022', tags: ['korea', 'kds', 'concrete', 'building', 'civil', 'shear-torsion', 'P3'] },       // 전단·비틀림
+  { code: '142024', tags: ['korea', 'kds', 'concrete', 'strut-tie', 'P3'] },          // 스트럿-타이
+  { code: '142050', tags: ['korea', 'kds', 'concrete', 'rebar-detailing', 'P3'] },    // 철근상세
+  { code: '142052', tags: ['korea', 'kds', 'concrete', 'development-splice', 'P3'] }, // 정착·이음
+  { code: '142054', tags: ['korea', 'kds', 'concrete', 'anchor', 'P1', 'P3'] },       // 앵커 (베이스플레이트 계산기 근거)
+  { code: '411005', tags: ['korea', 'kds', 'building', 'general', 'P3'] },            // 건축구조기준 총칙
+  { code: '413010', tags: ['korea', 'kds', 'building', 'steel', 'P3'] },              // 건축물 강구조
+  // ── 조경 (P4 — 스코프: 공학·구조물·배수. 미학·식재디자인은 생성AI 제안 레이어로 분리) ──
+  { code: '341010', tags: ['korea', 'kds', 'landscape', 'general', 'P4'] },           // 조경설계 일반
+  { code: '342010', tags: ['korea', 'kds', 'landscape', 'grading', 'P4'] },           // 지형설계
+  { code: '343010', tags: ['korea', 'kds', 'landscape', 'planting-base', 'P4'] },     // 일반식재기반
+  { code: '344010', tags: ['korea', 'kds', 'landscape', 'planting', 'P4'] },          // 수목식재
+  { code: '345010', tags: ['korea', 'kds', 'landscape', 'structures', 'P4'] },        // 조경구조물
+  { code: '346010', tags: ['korea', 'kds', 'landscape', 'pavement', 'P4'] },          // 보도포장
+  { code: '347010', tags: ['korea', 'kds', 'landscape', 'river', 'P4'] },             // 자연친화적 하천조경
 ];
 
 const args = process.argv.slice(2);
