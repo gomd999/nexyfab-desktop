@@ -5152,9 +5152,14 @@ export function ShapeGeneratorInner() {
     const timer = setTimeout(async () => {
       if (!dfmAnalysisAllowed(useAuthStore.getState().user?.plan)) return;
       try {
+        // Process-aware DFM (§13 #1): imported meshes (STL/STEP of unknown
+        // process — often welded/fabricated assemblies) must not be judged by
+        // injection-molding rules, or they get false undercut/draft-angle
+        // badges. Molding checks stay on for parametric NexyFab shapes only.
+        const isImportedMesh = effectiveResult.geometry!.userData?.nfImported === true;
         const results = await analyzeDFMWorker(
           effectiveResult.geometry!,
-          ['cnc_milling', 'injection_molding'],
+          isImportedMesh ? ['cnc_milling'] : ['cnc_milling', 'injection_molding'],
           { minWallThickness: 1.0, minDraftAngle: 1.0, maxAspectRatio: 4.0 },
         );
         setDfmResults(results);
