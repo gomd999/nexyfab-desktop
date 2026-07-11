@@ -145,3 +145,18 @@ RAG는 지식 검색이지 계산이 아니다. "RAG로 검증"은 권위 있게
 
 - **검토서**: 입력 echo → 적용 기준·조항 인용(K층) → 계산 과정 수치(C층) → 판정 → "구조 검토 참고자료(비법정)" 라벨 + 골든벤치 버전 표기
 - **분야 = UI 태그일 뿐**: 계산기 레지스트리 하나에 `domain:` 태그, 코퍼스도 `tags:`(이미 sources.json에 구현) — 사이트 IA(§5)가 이 태그를 그대로 노출
+
+## 8. AI-네이티브 인터페이스 — 계산기·RAG를 AI가 도구로 쓴다 (2026-07-11 방향 확정)
+
+**목표**: 사람용 UI 이전에 **AI용 인터페이스가 1급 시민** — Claude 등 어떤 AI 서비스든 NexyFab 계산기·코퍼스를 tool-call로 사용. "AI로 모든 것을 구현·튜닝·개선"의 구체화:
+
+| 축 | 구현 | 상태 |
+|---|---|---|
+| 도구화 | 계산기마다 JSON Schema 입력 + 결정론 실행 + 조항 인용 반환 → MCP tool 자동 노출 | ✅ Wave 1.5 (`scripts/engineering-core/`) |
+| 튜닝 | φ·안전율·Fnv 등 전 계수를 `standards/*.json`으로 분리 — 코드 수정 없이 조정, 기준 추가=JSON 1개 | ✅ (AISC 확정, KDS draft) |
+| 개선 루프 | 골든벤치가 회귀 게이트 — 계수 튜닝/공식 수정 시 `npm test`로 즉시 검증 | ✅ 12케이스 (공개 게이트는 공인예제 ≥10/계산기) |
+| Claude 연동 | MCP 서버(stdio): calc 4종 + eng_rag_search + eng_list_standards | ✅ 스모크 통과 |
+| 외부 AI 연동 | **Wave 2**: Cloudflare Worker HTTP API + **API key 발급**(D1: 키해시·org·플랜·rate limit·과금) — OpenAI function-calling 스펙은 inputSchema에서 자동생성 | 계획 |
+
+- 원칙 불변: **LLM=계획(도구 선택·입력 구성·보고서 문장), 결정론=계산(수치는 전부 코드)**. AI가 계수를 "추정"하는 경로는 존재하지 않음 — 튜닝은 standards JSON 편집+골든벤치 통과로만.
+- Wave 1.5 실측: 계산기 4종(옹벽 안정/압축재 좌굴/단순보/볼트접합) + 골든벤치 12/12 PASS + MCP 풀사이클(초기화→tools/list→계산→한국어 RAG 검색) 검증 완료.

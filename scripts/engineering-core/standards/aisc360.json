@@ -1,0 +1,25 @@
+{
+  "id": "AISC360",
+  "name": "AISC 360-16 (LRFD) — 파라미터만, 원문 미수록 (조항 번호 인용은 사실정보)",
+  "tunable": true,
+  "steel": {
+    "E_MPa": 200000,
+    "phi_compression": 0.9,
+    "phi_flexure": 0.9,
+    "phi_shear": 0.9,
+    "phi_bolt": 0.75,
+    "slenderness_inelastic_limit_coef": 4.71,
+    "inelastic_exponent_base": 0.658,
+    "elastic_buckling_coef": 0.877,
+    "allowable_bending_ratio_ASD": 0.66,
+    "allowable_shear_ratio_ASD": 0.4,
+    "bolt_Fnv_MPa": { "A325-N": 372, "A325-X": 457, "A490-N": 457, "F10T-N": 372 },
+    "bolt_bearing_coef": 2.4
+  },
+  "serviceability": { "deflection_limit_denominator_default": 240 },
+  "citations": {
+    "compression": "AISC 360-16 §E3",
+    "flexure": "AISC 360-16 §F2 / ASD 0.66Fy 관행",
+    "bolts": "AISC 360-16 §J3.6, Table J3.2, §J3.10"
+  }
+}

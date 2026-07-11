@@ -1,0 +1,35 @@
+{
+  "id": "KDS",
+  "name": "KDS 국가건설기준 — 파라미터 프레임 (⚠️ 수치 캘리브레이션 전 draft: KDS 원문 확보(manual-assisted) 후 조항별 확정 필요)",
+  "tunable": true,
+  "draft": true,
+  "steel": {
+    "E_MPa": 205000,
+    "phi_compression": 0.9,
+    "phi_flexure": 0.9,
+    "phi_shear": 0.9,
+    "phi_bolt": 0.75,
+    "slenderness_inelastic_limit_coef": 4.71,
+    "inelastic_exponent_base": 0.658,
+    "elastic_buckling_coef": 0.877,
+    "allowable_bending_ratio_ASD": 0.66,
+    "allowable_shear_ratio_ASD": 0.4,
+    "bolt_Fnv_MPa": { "F10T-N": 372, "F8T-N": 280 },
+    "bolt_bearing_coef": 2.4
+  },
+  "serviceability": { "deflection_limit_denominator_default": 250 },
+  "civil": {
+    "retaining_wall": {
+      "FS_overturning_min": 2.0,
+      "FS_sliding_min": 1.5,
+      "eccentricity_limit_fraction": 0.16667,
+      "note": "KDS 11 80 05 확보 후 조항 대조 — 현 수치는 EM 1110-2-2502/국내 관행 공통값"
+    }
+  },
+  "citations": {
+    "compression": "KDS 14 31 10 (원문 확보 대기)",
+    "flexure": "KDS 14 31 10 (원문 확보 대기)",
+    "bolts": "KDS 14 31 25 (원문 확보 대기)",
+    "retaining_wall": "KDS 11 80 05 / USACE EM 1110-2-2502 §4 (코퍼스 수록)"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "nexyfab-engineering-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "분야별 결정론 계산기(intent 게이트) + 튜닝 가능한 표준 파라미터 + MCP 서버 (domain-expansion-plan.md §7-8). 의존성 0 — node:test로 골든벤치.",
+  "scripts": {
+    "test": "node --test test/golden.test.mjs",
+    "mcp": "node mcp-server.mjs"
+  }
+}
