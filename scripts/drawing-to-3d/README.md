@@ -33,6 +33,20 @@
 ### 잔여 갭 (14%) — 스캔 열화 극단 케이스
 리페어로 26%→14% 감축. 남은 7건은 스캔 열화가 심해 추출 자체가 실패하는 케이스 + l_bracket scan 타입분류 약함(1/5). 실도면은 더 낮을 것 — 프로덕션 전 실스캔 baseline 필요.
 
+## MCP 서버 — Claude/CLI에서 호출 (`mcp-server.mjs`)
+
+```
+claude mcp add nexyfab-drawing -- node <절대경로>/mcp-server.mjs
+```
+
+| 도구 | 입력 → 출력 | Gemini |
+|---|---|---|
+| `extract_drawing` | 도면 PNG 경로 → 파라메트릭 intent | 필요 |
+| `edit_drawing` | intent + 자연어 지시 → 편집본(게이트 검증) | 필요 |
+| `reconstruct_3d` | intent → OpenSCAD + ComponentIntent + 게이트 | 결정론 |
+
+**체인 검증됨**: extract(이미지→intent) → edit("두께 20, 구멍 ⌀10") → reconstruct(→SCAD) 전 구간 MCP 통해 작동. 잘못된 편집은 reconstruct 게이트가 거부. 범위=어휘 5종·깨끗한 도면. (입력이 텍스트가 아니라 **도면 이미지** — 텍스트→도면 입구 B는 미구현)
+
 ## 대화형 편집 (`edit.mjs`) — AI와 소통하며 수정
 자연어 지시로 도면을 고친다. **AI는 구조화 패치만 제안, 형상 변경·검증은 결정론 코드** (방법론 §1.3):
 ```
