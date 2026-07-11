@@ -166,10 +166,11 @@ RAG는 지식 검색이지 계산이 아니다. "RAG로 검증"은 권위 있게
 | 축 | 구현 | 상태 |
 |---|---|---|
 | 도구화 | 계산기마다 JSON Schema 입력 + 결정론 실행 + 조항 인용 반환 → MCP tool 자동 노출 | ✅ Wave 1.5 (`scripts/engineering-core/`) |
-| 튜닝 | φ·안전율·Fnv 등 전 계수를 `standards/*.json`으로 분리 — 코드 수정 없이 조정, 기준 추가=JSON 1개 | ✅ (AISC 확정, KDS draft) |
-| 개선 루프 | 골든벤치가 회귀 게이트 — 계수 튜닝/공식 수정 시 `npm test`로 즉시 검증 | ✅ 12케이스 (공개 게이트는 공인예제 ≥10/계산기) |
-| Claude 연동 | MCP 서버(stdio): calc 4종 + eng_rag_search + eng_list_standards | ✅ 스모크 통과 |
-| 외부 AI 연동 | **Wave 2**: Cloudflare Worker HTTP API + **API key 발급**(D1: 키해시·org·플랜·rate limit·과금) — OpenAI function-calling 스펙은 inputSchema에서 자동생성 | 계획 |
+| 튜닝 | φ·안전율·Fnv 등 전 계수를 `standards/*.json`으로 분리 — 코드 수정 없이 조정, 기준 추가=JSON 1개 | ✅ KDS·AISC·AASHTO 3종 (KDS/AASHTO 원문·예제 검증) |
+| 개선 루프 | 골든벤치가 회귀 게이트 — 계수 튜닝/공식 수정 시 `npm test`로 즉시 검증 | ✅ 26케이스: 공표재현 6·오류검출 1 포함 |
+| Claude 연동 | MCP 서버(stdio): calc 4종 + eng_rag_search + eng_list_standards | ✅ `claude mcp add` 등록·Connected |
+| 외부 AI 연동 | **Wave 2 LIVE**: `https://nexyfab-eng-api.gomd999.workers.dev` — Worker(AI+Vectorize+D1+R2 바인딩), API key 인증(sha256 해시·일일쿼터), `/v1/calculators`(tool 스펙)·`/v1/calc/{id}`·`/v1/rag/search` | ✅ 2026-07-11 배포·E2E 검증 |
 
 - 원칙 불변: **LLM=계획(도구 선택·입력 구성·보고서 문장), 결정론=계산(수치는 전부 코드)**. AI가 계수를 "추정"하는 경로는 존재하지 않음 — 튜닝은 standards JSON 편집+골든벤치 통과로만.
-- Wave 1.5 실측: 계산기 4종(옹벽 안정/압축재 좌굴/단순보/볼트접합) + 골든벤치 12/12 PASS + MCP 풀사이클(초기화→tools/list→계산→한국어 RAG 검색) 검증 완료.
+- Wave 2 인프라(2026-07-11): Vectorize `nexyfab-knowledge` 7,579벡터(코퍼스 27문서) · D1 documents+api_keys · R2 원본 `/knowledge/{usgov|kds|kr-legacy}/`. 검증: 한국어 RAG 라이브 히트(kds-118005 §4.4 조항라벨), 옹벽 계산 API PASS, 무키 401.
+- Wave 3 잔여: API key 발급을 NexyFab 계정/과금과 연동, OpenAI function-calling 스펙 엔드포인트, RUM/사용량 대시보드.

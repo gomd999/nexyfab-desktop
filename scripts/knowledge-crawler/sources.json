@@ -178,6 +178,20 @@
       ]
     },
     {
+      "id": "fhwa-sbdh-example4-tub-girder",
+      "title": "FHWA SBDH Design Example 4: Three-Span Continuous Straight Composite Steel Tub Girder Bridge",
+      "publisher": "U.S. DOT FHWA / ROSA P",
+      "url": "https://rosap.ntl.bts.gov/view/dot/42899/dot_42899_DS1.pdf",
+      "license": "US-Government-Public-Domain",
+      "licenseNote": "US federal government work, 17 U.S.C. §105.",
+      "tags": [
+        "steel",
+        "worked-example",
+        "reverse-eng-source",
+        "P1"
+      ]
+    },
+    {
       "id": "kds-kcs-kcsc",
       "enabled": false,
       "title": "KDS/KCS 국가건설기준 (예: KDS 11 80 05 콘크리트옹벽, KDS 11 80 10 보강토옹벽, KDS 41 건축구조기준)",

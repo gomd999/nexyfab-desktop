@@ -252,3 +252,17 @@ test('REVERSE-ENG: SBDH DE2A 공표예제 오류 검출 — Pe에 Ag 곱 누락 
   close(Pn_kips, 543.2, 0.4);                       // 올바른 Pn (공표 502.1과 8% 차이 — 문서 오류)
   assert.ok(Math.abs(Pn_kips - 502.1) / 502.1 > 0.05, 'published erroneous value should NOT match');
 });
+
+// 원전: SBDH DE2A p.103-105 단부 크로스프레임 대각재 L4x4x5/8 단일앵글 —
+// (KL/r)eff=72+0.75(67.08/1.20)=114 (Eq.6.9.4.4-1), Po=230.5·Pe=101.5: 공표 Pn=89.1·Pr=84.6 kips
+// 탄성분기 경계(4.71√(E/Fy)=113.4) 직후 케이스 — 분기 연속성의 실전 검증
+test('REVERSE-ENG: SBDH DE2A 단일앵글 공표값 Pn=89.1·Pr=84.6 kips 재현 (압축재 #4)', () => {
+  const KIPS = 4.448222, IN = 25.4, KSI = 6.894757;
+  const r = runCalculator('column_buckling', {
+    Fy: 50 * KSI, E: 29000 * KSI, Ag: 4.61 * IN * IN, L: 114 * 1.20 * IN, K: 1.0, r: 1.20 * IN, Pu: 54 * KIPS,
+  }, 'AASHTO');
+  close((r.intermediate.Fe_MPa * 4.61 * IN * IN) / KSI / (IN * IN), 101.5, 0.3); // Pe
+  close((r.intermediate.Fcr_MPa * 4.61 * IN * IN) / KSI / (IN * IN), 89.1, 0.3); // Pn 재현
+  close(r.checks.capacity_LRFD.phiPn_kN / KIPS, 84.6, 0.3);                      // Pr 재현
+  assert.equal(r.verdict, 'PASS'); // Pu=54 < 84.6
+});

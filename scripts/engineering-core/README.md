@@ -56,3 +56,16 @@ node mcp-server.mjs                     # MCP 서버 (stdio)
 3. `test/golden.test.mjs`에 공인 예제 케이스 추가
 4. 코퍼스 태그 추가 수집 (`../knowledge-crawler/sources.json`)
 → MCP/API에는 자동 노출 (레지스트리 순회)
+
+## Wave 2 — HTTP API 라이브 (2026-07-11)
+
+**https://nexyfab-eng-api.gomd999.workers.dev** (Worker `worker/`, 계산기+RAG를 외부 AI 서비스에 노출)
+
+- `GET /v1/health` (무인증) · `GET /v1/calculators` (tool 스펙 자동생성용 JSON Schema 포함)
+- `POST /v1/calc/{id}` — `{"input":{…},"standard":"KDS|AISC360|AASHTO"}` → 판정+조항 인용+비법정 라벨+KOGL attribution
+- `POST /v1/rag/search` — `{"query":"옹벽 전도 안전율","k":5}` → Vectorize 7,579청크 시맨틱 검색(bge-m3, 한국어 OK)
+- 인증: `Authorization: Bearer nxk_…` — D1 `api_keys`(sha256 해시, 일일 쿼터). dev key는 `Downloads/.env`의 `NEXYFAB_ENG_API_KEY`
+- 키 발급: `INSERT INTO api_keys(key_hash,name,plan,daily_limit,…)` — Wave 3에서 NexyFab 계정 연동+과금
+- 인프라: Vectorize `nexyfab-knowledge`(1024-dim cosine, 7,579벡터) · D1 `nexyfab-knowledge`(documents 27건+api_keys) · R2 `nexyfab-knowledge`(원본 `/knowledge/{usgov|kds|kr-legacy}/`)
+- 코드 구조: `core.mjs`(플랫폼 중립) ← `registry.mjs`(node fs 어댑터: CLI·MCP·테스트) / `worker/src`(JSON import)
+- 재배포: `cd worker && npx wrangler deploy`
