@@ -1,0 +1,138 @@
+#!/usr/bin/env node
+/**
+ * KDS 국가건설기준 수집+인덱싱 — KCSC 공식 OpenAPI (회원 발급 인증키; 우회 아님).
+ *
+ * CodeViewer 응답 = 조항 단위 구조화 JSON → PDF보다 우수: 청크에 조항 라벨을 보존해
+ * "KDS 11 80 05 §4.4 표 4.4-1" 수준의 정확한 조항 인용이 가능.
+ *
+ * 인증키: env KCSC_API_KEY 또는 C:/Users/gomd9/Downloads/.env 의 KCSC_API_KEY.
+ * 라이선스: KCSC OpenAPI 승인키 수집(로컬 RAG 사용). 공공누리(KOGL) 유형은 재배포 전
+ *   확인 필요 — meta.licenseNote에 명시. provenance 없는 반입 금지 원칙 준수.
+ *
+ * Usage: node kds.mjs [--force] [--only 118005,143110]
+ * Output: data/kds/KDS_<code>.json (원문) + .meta.json / data/index/kds-<code>.jsonl (임베딩)
+ */
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { embedTexts } from './embed.mjs';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const KDS_DIR = join(__dirname, 'data', 'kds');
+const INDEX_DIR = join(__dirname, 'data', 'index');
+const THROTTLE_MS = 2000;
+const CHUNK_SIZE = 1000;
+
+/** 수집 대상 (plan §7 분야 모듈과 1:1) */
+const TARGETS = [
+  { code: '118005', tags: ['korea', 'kds', 'civil', 'retaining-wall', 'P2'] },       // 콘크리트옹벽
+  { code: '118010', tags: ['korea', 'kds', 'civil', 'retaining-wall', 'mse', 'P2'] }, // 보강토옹벽
+  { code: '143105', tags: ['korea', 'kds', 'steel', 'lrfd', 'P1'] },                  // 강구조설계 일반(LRFD)
+  { code: '143110', tags: ['korea', 'kds', 'steel', 'member-design', 'P1'] },         // 강구조 부재(LRFD)
+  { code: '143125', tags: ['korea', 'kds', 'steel', 'connection', 'P1'] },            // 강구조 연결(LRFD)
+  { code: '215000', tags: ['korea', 'kds', 'temporary-structures', 'formwork', 'P1'] }, // 거푸집 및 동바리
+  { code: '216000', tags: ['korea', 'kds', 'temporary-structures', 'scaffold', 'P1'] }, // 비계 및 안전시설물
+  { code: '411200', tags: ['korea', 'kds', 'building', 'loads', 'P3'] },              // 건축물 설계하중
+];
+
+const args = process.argv.slice(2);
+const FORCE = args.includes('--force');
+const onlyArg = args.find((a) => a.startsWith('--only'));
+const ONLY = onlyArg ? (onlyArg.split('=')[1] ?? args[args.indexOf(onlyArg) + 1] ?? '').split(',').filter(Boolean) : null;
+
+function apiKey() {
+  if (process.env.KCSC_API_KEY) return process.env.KCSC_API_KEY;
+  const env = readFileSync('C:/Users/gomd9/Downloads/.env', 'utf8');
+  const m = env.match(/^KCSC_API_KEY=(\S+)/m);
+  if (!m) throw new Error('KCSC_API_KEY not found (env or Downloads/.env)');
+  return m[1];
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const stripHtml = (h) => h.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+
+/** 조항 리스트 → 조항 라벨 보존 청크 */
+function chunkClauses(list) {
+  const chunks = [];
+  let buf = '', firstLabel = null, lastLabel = null, firstSort = 0;
+  const flush = () => {
+    if (buf.trim().length >= 60) {
+      chunks.push({ text: buf.trim(), clause: firstLabel === lastLabel ? firstLabel : `${firstLabel}~${lastLabel}`, sort: firstSort });
+    }
+    buf = ''; firstLabel = null;
+  };
+  for (const c of list) {
+    const text = stripHtml(c.contents ?? '');
+    if (!text) continue;
+    const labeled = `[${c.title} ${c.label}] ${text}`;
+    if (buf && buf.length + labeled.length > CHUNK_SIZE) flush();
+    if (!firstLabel) { firstLabel = `${c.title} ${c.label}`.trim(); firstSort = c.sort; }
+    lastLabel = `${c.title} ${c.label}`.trim();
+    buf += (buf ? ' ' : '') + labeled;
+  }
+  flush();
+  return chunks;
+}
+
+async function main() {
+  const key = apiKey();
+  mkdirSync(KDS_DIR, { recursive: true });
+  mkdirSync(INDEX_DIR, { recursive: true });
+  let ok = 0, fail = 0, totalChunks = 0;
+
+  for (const t of TARGETS) {
+    if (ONLY && !ONLY.includes(t.code)) continue;
+    const docId = `kds-${t.code}`;
+    const rawPath = join(KDS_DIR, `KDS_${t.code}.json`);
+    const outPath = join(INDEX_DIR, `${docId}.jsonl`);
+    try {
+      let doc;
+      if (existsSync(rawPath) && !FORCE) {
+        doc = JSON.parse(readFileSync(rawPath, 'utf8'));
+        console.log(`[${docId}] using cached raw`);
+      } else {
+        const url = `https://kcsc.re.kr/OpenApi/CodeViewer/KDS/${t.code}?key=${key}`;
+        console.log(`[${docId}] GET CodeViewer/KDS/${t.code}`);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        if (!Array.isArray(json) || !json[0]?.list) throw new Error(`unexpected response: ${JSON.stringify(json).slice(0, 120)}`);
+        doc = json[0];
+        writeFileSync(rawPath, JSON.stringify(doc, null, 1));
+        await sleep(THROTTLE_MS);
+      }
+      const title = `KDS ${t.code.replace(/(\d{2})(\d{2})(\d{2})/, '$1 $2 $3')} ${doc.name} (${doc.version})`;
+      const meta = {
+        docId, title, publisher: '국가건설기준센터(KCSC) / 국토교통부 고시',
+        sourceUrl: `https://kcsc.re.kr/OpenApi/CodeViewer/KDS/${t.code}`,
+        license: 'KCSC-OpenAPI-Authorized',
+        licenseNote: '회원 발급 OpenAPI 인증키로 수집(유효 2026-07-11~2027-07-11). 내부 RAG·조항 인용용. 원문 재배포/외부 서빙 전 공공누리(KOGL) 유형 확인 필요. KDS는 국토교통부 고시(행정규칙) — 저작권법 §7 검토 여지.',
+        tags: t.tags, fetchedAt: new Date().toISOString(),
+        sha256: createHash('sha256').update(JSON.stringify(doc)).digest('hex'),
+        clauses: doc.list.length, version: doc.version,
+      };
+      writeFileSync(join(KDS_DIR, `KDS_${t.code}.meta.json`), JSON.stringify(meta, null, 2));
+
+      if (existsSync(outPath) && !FORCE) { console.log(`[${docId}] index exists — skip embed`); ok++; continue; }
+      const chunks = chunkClauses(doc.list);
+      console.log(`[${docId}] ${doc.list.length} clauses -> ${chunks.length} chunks; embedding…`);
+      const embeddings = await embedTexts(chunks.map((c) => c.text));
+      const lines = chunks.map((c, i) => JSON.stringify({
+        docId, title, page: c.sort, clause: c.clause, chunkId: `${docId}#${i}`,
+        text: c.text, embedding: embeddings[i], license: meta.license, sourceUrl: meta.sourceUrl, tags: t.tags,
+      }));
+      writeFileSync(outPath, lines.join('\n') + '\n');
+      totalChunks += chunks.length;
+      ok++;
+      console.log(`[${docId}] indexed -> ${outPath}`);
+    } catch (e) {
+      fail++;
+      console.error(`[${docId}] FAIL — ${e.message}`);
+    }
+  }
+  console.log(`\ndone: ${ok} docs, +${totalChunks} chunks, ${fail} failed`);
+  if (fail) process.exitCode = 1;
+}
+
+main();

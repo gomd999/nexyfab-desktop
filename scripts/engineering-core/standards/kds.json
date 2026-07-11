@@ -1,6 +1,6 @@
 {
   "id": "KDS",
-  "name": "KDS 국가건설기준 — 파라미터 프레임 (⚠️ 수치 캘리브레이션 전 draft: KDS 원문 확보(manual-assisted) 후 조항별 확정 필요)",
+  "name": "KDS 국가건설기준 — civil.retaining_wall은 KDS 11 80 05:2025 원문 대조 완료(2026-07-11, KCSC OpenAPI). steel은 KDS 14 31 원문 대조 전 draft.",
   "tunable": true,
   "draft": true,
   "steel": {
@@ -15,21 +15,32 @@
     "allowable_bending_ratio_ASD": 0.66,
     "allowable_shear_ratio_ASD": 0.4,
     "bolt_Fnv_MPa": { "F10T-N": 372, "F8T-N": 280 },
-    "bolt_bearing_coef": 2.4
+    "bolt_bearing_coef": 2.4,
+    "_draft_note": "KDS 14 31 05/10/25 원문 수집완료(RAG 인덱스 kds-1431xx) — 계수 조항 대조 후 draft 해제 예정"
   },
   "serviceability": { "deflection_limit_denominator_default": 250 },
   "civil": {
     "retaining_wall": {
+      "verified": true,
       "FS_overturning_min": 2.0,
       "FS_sliding_min": 1.5,
+      "FS_sliding_min_with_passive": 2.0,
+      "FS_bearing_min": 3.0,
+      "FS_overall_stability_min": 1.5,
+      "seismic": {
+        "FS_overturning_min": 1.5,
+        "FS_sliding_min": 1.2,
+        "FS_bearing_min": 2.0,
+        "FS_overall_stability_min": 1.1
+      },
       "eccentricity_limit_fraction": 0.16667,
-      "note": "KDS 11 80 05 확보 후 조항 대조 — 현 수치는 EM 1110-2-2502/국내 관행 공통값"
+      "note": "KDS 11 80 05:2025 §4.4 표 4.4-1 원문 대조 완료. 활동 1.5는 수동토압 미포함 기준(포함 시 2.0 — 표 주석). 현 계산기는 수동토압 무시(보수측)이므로 1.5 적용이 조항과 합치."
     }
   },
   "citations": {
-    "compression": "KDS 14 31 10 (원문 확보 대기)",
-    "flexure": "KDS 14 31 10 (원문 확보 대기)",
-    "bolts": "KDS 14 31 25 (원문 확보 대기)",
-    "retaining_wall": "KDS 11 80 05 / USACE EM 1110-2-2502 §4 (코퍼스 수록)"
+    "compression": "KDS 14 31 10:2024 (원문 인덱스 확보 — 계수 대조 대기)",
+    "flexure": "KDS 14 31 10:2024 (원문 인덱스 확보 — 계수 대조 대기)",
+    "bolts": "KDS 14 31 25:2024 (원문 인덱스 확보 — 계수 대조 대기)",
+    "retaining_wall": "KDS 11 80 05:2025 §4.4 안전율 기준, 표 4.4-1 콘크리트옹벽의 기준안전율"
   }
 }

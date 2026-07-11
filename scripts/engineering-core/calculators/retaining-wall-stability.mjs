@@ -12,10 +12,12 @@ export default {
   description:
     'Rankine 주동토압 기반 캔틸레버 옹벽 외적 안정 3종 검토. 전도 FS + 합력 편심(e≤B/6), 활동 FS, 지지력(사다리꼴 접지압). 수동토압 저항은 보수적으로 무시(옵션).',
   refs: [
+    'KDS 11 80 05:2025 §4.4 표 4.4-1 기준안전율 (활동 1.5·전도 2.0·지지력 3.0 / 지진 1.2·1.5·2.0) — 원문 대조 완료, RAG 인덱스 kds-118005',
+    'KDS 11 80 05:2025 §4.4.3(2) 전도 = 앞굽 중심 저항모멘트/활동모멘트 비 — 본 계산기와 동일 방법. §4.4.3(3) LRFD 대안판정(합력 위치 흙 B/4·암 3/8B)은 미적용',
     'USACE EM 1110-2-2502 §4 (RAG 코퍼스 수록: usace-em-1110-2-2502-retaining-walls)',
-    'FHWA GEC 11 / KDS 11 80 05(원문 확보 대기)',
+    'FHWA GEC 11 (RAG 코퍼스 수록)',
   ],
-  status: 'draft — 골든벤치 3케이스, 공개 게이트(§7.0: 공인예제 ≥10) 미충족',
+  status: 'draft — 안전율·검토방법 KDS 조항 대조 완료, 공개 게이트(§7.0: 공인예제 ≥10) 미충족(KDS 해설 예제 확충 대기)',
   inputSchema: {
     type: 'object',
     required: ['H', 'stemThickness', 'baseWidth', 'baseThickness', 'toeLength', 'gammaBackfill', 'phiBackfill', 'baseFriction', 'allowableBearing'],
