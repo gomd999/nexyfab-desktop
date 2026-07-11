@@ -19,6 +19,7 @@ import { editDrawing } from './edit.mjs';
 import { textToIntent, textToAssembly } from './from-text.mjs';
 import { buildAssembly } from './assembly.mjs';
 import { verify3d } from './verify.mjs';
+import { renderHtml } from './html-render.mjs';
 import { gate, toOpenScad } from './reconstruct.mjs';
 import { toComponentIntent } from './to-intent.mjs';
 
@@ -58,6 +59,22 @@ const tools = [
     inputSchema: {
       type: 'object', required: ['assembly'],
       properties: { assembly: { type: 'object', description: '{name, parts:[{id,type,params,at:{tx,ty,tz,rx,ry,rz}}]}' } },
+    },
+  },
+  {
+    name: 'html_render',
+    description:
+      `intent 또는 어셈블리를 브라우저에서 바로 열리는 자립형 3D 뷰어 HTML로 렌더한다 ` +
+      `(사용자 요청 "html형 랜더링"). 실렌더 STL 임베드 + three.js PBR·조명·궤도컨트롤·📷스크린샷. ` +
+      `outPath에 파일로 저장하고 경로·크기 반환. 제안서/공유용 오프라인 파일.`,
+    inputSchema: {
+      type: 'object', required: ['outPath'],
+      properties: {
+        intent: { type: 'object', description: '단품 intent (intent 또는 assembly 중 하나)' },
+        assembly: { type: 'object', description: '어셈블리 계획' },
+        outPath: { type: 'string', description: '저장할 .html 절대경로' },
+        title: { type: 'string' }, subtitle: { type: 'string' },
+      },
     },
   },
   {
@@ -128,6 +145,13 @@ async function callTool(name, args = {}) {
   }
   if (name === 'verify_3d') {
     return verify3d(args.intent, { tolMm: args.tolMm ?? 0.5 });
+  }
+  if (name === 'html_render') {
+    const { writeFileSync } = await import('node:fs');
+    const spec = args.assembly ? { assembly: args.assembly } : { intent: args.intent };
+    const html = await renderHtml(spec, { title: args.title ?? 'NexyFab 3D', subtitle: args.subtitle ?? '' });
+    writeFileSync(args.outPath, html);
+    return { path: args.outPath, bytes: html.length, note: '브라우저로 열어 3D 확인·📷 스크린샷' };
   }
   if (name === 'extract_drawing') {
     const { intent, usage, model, repaired } = await extractDrawing(args.imagePath, { model: args.model });

@@ -17,7 +17,7 @@ import { toOpenScad, partAabb } from './reconstruct.mjs';
 
 const OSDIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public', 'openscad');
 
-async function renderStl(scad) {
+export async function renderStl(scad) {
   const mod = await import(pathToFileURL(join(OSDIR, 'openscad.js')).href);
   // Node에서는 브라우저 glue의 fetch가 실패 → wasmBinary 직접 주입.
   const inst = await mod.default({ noInitialRun: true, wasmBinary: readFileSync(join(OSDIR, 'openscad.wasm')), print: () => {}, printErr: () => {} });
