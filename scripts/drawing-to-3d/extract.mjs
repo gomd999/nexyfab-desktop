@@ -14,7 +14,7 @@ export function apiKey() {
 }
 
 const NUM = { type: 'NUMBER' };
-const RESPONSE_SCHEMA = {
+export const RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
     type: { type: 'STRING', enum: ['plate_with_holes', 'stepped_plate', 'l_bracket', 'flange', 'bent_sheet', 'unknown'] },

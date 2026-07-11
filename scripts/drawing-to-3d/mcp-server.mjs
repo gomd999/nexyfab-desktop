@@ -16,12 +16,49 @@
 import { createInterface } from 'node:readline';
 import { extractDrawing } from './extract.mjs';
 import { editDrawing } from './edit.mjs';
+import { textToIntent, textToAssembly } from './from-text.mjs';
+import { buildAssembly } from './assembly.mjs';
 import { gate, toOpenScad } from './reconstruct.mjs';
 import { toComponentIntent } from './to-intent.mjs';
 
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
 
 const tools = [
+  {
+    name: 'text_to_intent',
+    description:
+      `입구 B — 자연어 텍스트만으로 파라메트릭 도면 intent를 생성한다(이미지 불필요). 예: ` +
+      `"가로 200 세로 100 두께 10 판, 네 귀퉁이 안쪽 15에 ⌀8 구멍 4개". 어휘 5종. ` +
+      `치수 미기입 시 통상값+confidence↓(오라클 아닌 "계획서"). 출력은 extract_drawing과 동일 형식 — ` +
+      `edit_drawing/reconstruct_3d로 이어진다. AI는 설명→intent까지만, 형상·검증은 결정론.`,
+    inputSchema: {
+      type: 'object', required: ['description'],
+      properties: { description: { type: 'string', description: '부품 자연어 설명' }, model: { type: 'string' } },
+    },
+  },
+  {
+    name: 'text_to_assembly',
+    description:
+      `자연어로 복합 다부품 제품(어셈블리)을 생성한다. 예: "200×200×10 베이스판 위 네 귀퉁이에 ` +
+      `80×60 L브래킷 4개". AI는 어셈블리 계획(부품+배치)까지만; 각 부품은 결정론 재구성, ` +
+      `부품별 기하 게이트 + 부품쌍 AABB 간섭검사. 출력: OpenSCAD + 부품 목록 + 간섭 경고. ` +
+      `범위=어휘 5종 조합·축정렬 배치(자유 조립 아님).`,
+    inputSchema: {
+      type: 'object', required: ['description'],
+      properties: { description: { type: 'string' }, model: { type: 'string' } },
+    },
+  },
+  {
+    name: 'build_assembly',
+    description:
+      `어셈블리 계획(JSON: {name, parts:[{id,type,params,at}]})을 결정론적으로 3D로 빌드·검증한다 ` +
+      `(Gemini 불필요). text_to_assembly 산출을 사람이 수정한 뒤 재빌드하거나, 직접 계획을 넣을 때 사용. ` +
+      `출력: OpenSCAD + 부품 AABB + 게이트/간섭 리포트.`,
+    inputSchema: {
+      type: 'object', required: ['assembly'],
+      properties: { assembly: { type: 'object', description: '{name, parts:[{id,type,params,at:{tx,ty,tz,rx,ry,rz}}]}' } },
+    },
+  },
   {
     name: 'extract_drawing',
     description:
@@ -64,6 +101,18 @@ const tools = [
 ];
 
 async function callTool(name, args = {}) {
+  if (name === 'text_to_intent') {
+    const { intent, model, repaired } = await textToIntent(args.description, { model: args.model });
+    return { ...intent, repaired: !!repaired, _model: model };
+  }
+  if (name === 'text_to_assembly') {
+    const { assembly, model } = await textToAssembly(args.description, { model: args.model });
+    const built = buildAssembly(assembly);
+    return { assembly, ...built, _model: model };
+  }
+  if (name === 'build_assembly') {
+    return buildAssembly(args.assembly);
+  }
   if (name === 'extract_drawing') {
     const { intent, usage, model, repaired } = await extractDrawing(args.imagePath, { model: args.model });
     return { ...intent, repaired: !!repaired, _model: model, _tokens: usage?.totalTokenCount };

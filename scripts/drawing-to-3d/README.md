@@ -41,11 +41,21 @@ claude mcp add nexyfab-drawing -- node <절대경로>/mcp-server.mjs
 
 | 도구 | 입력 → 출력 | Gemini |
 |---|---|---|
-| `extract_drawing` | 도면 PNG 경로 → 파라메트릭 intent | 필요 |
+| **`text_to_intent`** | **자연어 텍스트 → 도면 intent (입구 B, 이미지 불필요)** | 필요 |
+| **`text_to_assembly`** | **자연어 → 복합 다부품 어셈블리(배치+간섭검사)** | 필요 |
+| **`build_assembly`** | 어셈블리 계획 JSON → OpenSCAD+간섭 (결정론) | 결정론 |
+| `extract_drawing` | 도면 PNG 경로 → 파라메트릭 intent (입구 A) | 필요 |
 | `edit_drawing` | intent + 자연어 지시 → 편집본(게이트 검증) | 필요 |
 | `reconstruct_3d` | intent → OpenSCAD + ComponentIntent + 게이트 | 결정론 |
 
-**체인 검증됨**: extract(이미지→intent) → edit("두께 20, 구멍 ⌀10") → reconstruct(→SCAD) 전 구간 MCP 통해 작동. 잘못된 편집은 reconstruct 게이트가 거부. 범위=어휘 5종·깨끗한 도면. (입력이 텍스트가 아니라 **도면 이미지** — 텍스트→도면 입구 B는 미구현)
+**입력 3경로**: 도면 이미지(A) / 텍스트(B) / 어셈블리 계획 — 모두 같은 게이트·재구성으로 합류.
+**체인 검증**: extract·text_to_intent → edit → reconstruct; text_to_assembly → build_assembly.
+잘못된 편집·불완전한 AI 계획은 게이트가 거부·롤백 (AI=계획, 결정론=형상·검증).
+
+### 정직한 한계 (입구 B / 어셈블리)
+- **어휘 5종·축정렬 배치**만 — 자유 조립(임의 각도·유기결합)은 미대응.
+- **gemini-2.5-flash 신뢰성**: 긴 프롬프트·bent_sheet에서 malformed JSON 빈발 → 프롬프트 간결화+리페어+재시도로 완화하나 잔존. 복합 어셈블리는 부품↑일수록 불완전 계획↑ → 게이트가 막지만 재시도/사람 수정 필요.
+- **입구 B=계획서**(오라클 아님): 치수 미기입 시 통상값+confidence↓ — 사람 승인 전제.
 
 ## 대화형 편집 (`edit.mjs`) — AI와 소통하며 수정
 자연어 지시로 도면을 고친다. **AI는 구조화 패치만 제안, 형상 변경·검증은 결정론 코드** (방법론 §1.3):
