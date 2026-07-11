@@ -41,21 +41,32 @@ claude mcp add nexyfab-drawing -- node <절대경로>/mcp-server.mjs
 
 | 도구 | 입력 → 출력 | Gemini |
 |---|---|---|
-| **`text_to_intent`** | **자연어 텍스트 → 도면 intent (입구 B, 이미지 불필요)** | 필요 |
-| **`text_to_assembly`** | **자연어 → 복합 다부품 어셈블리(배치+간섭검사)** | 필요 |
-| **`build_assembly`** | 어셈블리 계획 JSON → OpenSCAD+간섭 (결정론) | 결정론 |
-| `extract_drawing` | 도면 PNG 경로 → 파라메트릭 intent (입구 A) | 필요 |
-| `edit_drawing` | intent + 자연어 지시 → 편집본(게이트 검증) | 필요 |
-| `reconstruct_3d` | intent → OpenSCAD + ComponentIntent + 게이트 | 결정론 |
+| `text_to_intent` | 자연어 텍스트 → 도면 intent (입구 B) | 필요(2단계) |
+| `text_to_assembly` | 자연어 → 복합 다부품 어셈블리(배치+간섭) | 필요 |
+| `build_assembly` | 어셈블리 계획 → OpenSCAD+간섭 | 결정론 |
+| `extract_drawing` | 도면 PNG → 파라메트릭 intent (입구 A) | 필요 |
+| `edit_drawing` | intent + 자연어 지시 → 편집본(게이트) | 필요 |
+| `reconstruct_3d` | intent → OpenSCAD + ComponentIntent | 결정론 |
+| **`verify_3d`** | **intent → 실렌더 STL bbox·manifold 대조** | 결정론 |
 
-**입력 3경로**: 도면 이미지(A) / 텍스트(B) / 어셈블리 계획 — 모두 같은 게이트·재구성으로 합류.
-**체인 검증**: extract·text_to_intent → edit → reconstruct; text_to_assembly → build_assembly.
-잘못된 편집·불완전한 AI 계획은 게이트가 거부·롤백 (AI=계획, 결정론=형상·검증).
+**입력 3경로**(이미지A/텍스트B/계획) → 공통 게이트·재구성. 잘못된 편집·불완전 계획은 게이트가 거부·롤백.
 
-### 정직한 한계 (입구 B / 어셈블리)
-- **어휘 5종·축정렬 배치**만 — 자유 조립(임의 각도·유기결합)은 미대응.
-- **gemini-2.5-flash 신뢰성**: 긴 프롬프트·bent_sheet에서 malformed JSON 빈발 → 프롬프트 간결화+리페어+재시도로 완화하나 잔존. 복합 어셈블리는 부품↑일수록 불완전 계획↑ → 게이트가 막지만 재시도/사람 수정 필요.
-- **입구 B=계획서**(오라클 아님): 치수 미기입 시 통상값+confidence↓ — 사람 승인 전제.
+### 어휘 7종
+plate_with_holes / stepped_plate / l_bracket / flange / bent_sheet / **tube**(원형파이프) / **rect_tube**(각관) — 뒤 2종은 프레임/랙/스키드 형강용.
+
+### 신뢰성: 2단계 추출 (핵심 픽스)
+gemini-2.5-flash/pro가 union 스키마(전 필드)에서 엉뚱한 필드를 채우려다 degenerate-number로 폭주(MAX_TOKENS)하는 실패 → **분류(작은 스키마) → 타입별 최소 스키마 추출** 2단계로 원천 차단. bent_sheet·tube·rect_tube 텍스트 전부 flash로 gate PASS. + flash→pro 폴백 + 503 백오프 + JSON 리페어(폭주 지수·긴소수).
+
+### 정확성 검증 (`verify_3d`)
+재구성 SCAD를 **실제 openscad-wasm으로 렌더 → STL bbox·manifold를 기대 치수와 대조**. 전 어휘 **오차 0mm·manifold** 확인. 치수 정확도엔 VLM보다 결정론 대조가 강함(VLM 왕복 재-추출은 후속).
+
+### 자유배치
+회전 배치 시 로컬 박스 8코너를 회전변환해 **정확한 AABB** 산출 → 임의 각도 간섭검사 정확(축정렬 한정 아님). 단 어셈블리 관절/자유곡선 결합은 미대응.
+
+### 정직한 한계
+- 어휘 7종·**축정렬+회전 배치**(관절·유기결합 아님).
+- 입구 B=**계획서**(오라클 아님): 치수 미기입 시 통상값+confidence↓, 사람 승인 전제.
+- 복합 어셈블리는 부품↑일수록 AI 불완전계획↑ → 게이트가 막지만 재시도/수정 필요.
 
 ## 대화형 편집 (`edit.mjs`) — AI와 소통하며 수정
 자연어 지시로 도면을 고친다. **AI는 구조화 패치만 제안, 형상 변경·검증은 결정론 코드** (방법론 §1.3):

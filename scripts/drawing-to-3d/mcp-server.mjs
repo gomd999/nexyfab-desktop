@@ -18,6 +18,7 @@ import { extractDrawing } from './extract.mjs';
 import { editDrawing } from './edit.mjs';
 import { textToIntent, textToAssembly } from './from-text.mjs';
 import { buildAssembly } from './assembly.mjs';
+import { verify3d } from './verify.mjs';
 import { gate, toOpenScad } from './reconstruct.mjs';
 import { toComponentIntent } from './to-intent.mjs';
 
@@ -57,6 +58,18 @@ const tools = [
     inputSchema: {
       type: 'object', required: ['assembly'],
       properties: { assembly: { type: 'object', description: '{name, parts:[{id,type,params,at:{tx,ty,tz,rx,ry,rz}}]}' } },
+    },
+  },
+  {
+    name: 'verify_3d',
+    description:
+      `정확성 검증 — intent를 실제 openscad-wasm으로 렌더해 STL의 bbox·manifold를 ` +
+      `기대 치수와 대조한다. "만들었다"가 아니라 "만든 것이 치수와 맞다"를 기계 확인. ` +
+      `반환: {pass, manifold, nonManifoldEdges, dims[{axis,expected,actual,errorMm}], maxErrorMm}. ` +
+      `치수 정확도엔 VLM보다 이 결정론 대조가 강함.`,
+    inputSchema: {
+      type: 'object', required: ['intent'],
+      properties: { intent: { type: 'object', description: 'extract/text/edit 산출 intent' }, tolMm: { type: 'number', description: '허용오차(기본 0.5)' } },
     },
   },
   {
@@ -112,6 +125,9 @@ async function callTool(name, args = {}) {
   }
   if (name === 'build_assembly') {
     return buildAssembly(args.assembly);
+  }
+  if (name === 'verify_3d') {
+    return verify3d(args.intent, { tolMm: args.tolMm ?? 0.5 });
   }
   if (name === 'extract_drawing') {
     const { intent, usage, model, repaired } = await extractDrawing(args.imagePath, { model: args.model });
