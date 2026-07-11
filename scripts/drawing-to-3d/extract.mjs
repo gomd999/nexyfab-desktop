@@ -72,19 +72,38 @@ async function callGemini(img, model) {
   return { text, usage: j.usageMetadata };
 }
 
+/**
+ * Repair the two malformed-number patterns gemini-2.5-flash emits under
+ * responseSchema on hard/scan drawings, WITHOUT changing any legitimate value:
+ *   1. degenerate exponent — a fine mantissa + garbage power, e.g.
+ *      "width":80.0000142e-1500000  → drop the ≥4-digit exponent → 80.0000142
+ *   2. duplicated/run-on digits producing an over-long integer that is really
+ *      a truncation artifact is NOT repaired here (left to retry) — we only
+ *      touch the exponent, which is provably not a real dimension (no part is
+ *      1e4000 mm). Conservative by design: never invents a number.
+ */
+export function repairJsonNumbers(text) {
+  return text.replace(/(-?\d+(?:\.\d+)?)[eE][+-]?\d{4,}/g, '$1');
+}
+
 export async function extractDrawing(pngPath, { model = 'gemini-2.5-flash' } = {}) {
   const img = readFileSync(pngPath).toString('base64');
-  // One retry: degraded scans occasionally make the model emit a degenerate
-  // number literal (e.g. width=80e-1500000) that breaks JSON.parse. A second
-  // pass usually recovers; a persistent failure is recorded truthfully by the
-  // caller (run-e2e ERR bucket) rather than masked.
+  // Degraded scans occasionally make the model emit a degenerate number literal
+  // (e.g. width=80e-1500000) that breaks JSON.parse. Three-layer recovery:
+  //   (a) repair the known garbage-exponent pattern in-place, then re-parse;
+  //   (b) retry the API call (up to 3 attempts);
+  //   (c) if all fail, the caller (run-e2e) records ERR truthfully — never mask.
   let lastErr;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const { text, usage } = await callGemini(img, model);
     try {
-      return { intent: JSON.parse(text), usage, model };
-    } catch (e) {
-      lastErr = new Error(`bad extraction JSON: ${e.message.slice(0, 60)}`);
+      return { intent: JSON.parse(text), usage, model, repaired: false };
+    } catch {
+      try {
+        const fixed = repairJsonNumbers(text);
+        if (fixed !== text) return { intent: JSON.parse(fixed), usage, model, repaired: true };
+      } catch { /* repair didn't help — fall through to retry */ }
+      lastErr = new Error('bad extraction JSON (unrepairable)');
     }
   }
   throw lastErr;
