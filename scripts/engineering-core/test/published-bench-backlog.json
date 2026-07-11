@@ -4,8 +4,16 @@
     {
       "source": "USACE EM 1110-2-2502 (1989) Appendix N, Example 1 — 코퍼스 usace-em-1110-2-2502-retaining-walls p.367-382",
       "given": {
-        "backfill": { "gamma_kcf": 0.12, "phi_deg": 35, "c": 0 },
-        "foundation": { "gamma_kcf": 0.135, "phi_deg": 40, "c": 0 },
+        "backfill": {
+          "gamma_kcf": 0.12,
+          "phi_deg": 35,
+          "c": 0
+        },
+        "foundation": {
+          "gamma_kcf": 0.135,
+          "phi_deg": 40,
+          "c": 0
+        },
         "concrete_gamma_kcf": 0.15,
         "loadCase": "R1"
       },
@@ -27,5 +35,19 @@
     "KDS 11 80 05 해설 예제 (KDS 원문 확보 후) — Rankine 관행과 합치, 1순위 매칭 후보",
     "FHWA GEC 11 Appendix 예제: MSE 외적안정 — 별도 mse_external_stability 계산기 신설 시 사용",
     "지반공학 교과서 worked example 수치(사실정보) — Rankine 캔틸레버 옹벽 표준 예제"
-  ]
+  ],
+  "bolt_connection": [
+    {
+      "source": "FHWA SBDH Vol.14 Splice Design (퍼블릭 도메인, 코퍼스 p.48·56·60)",
+      "published_targets": {
+        "Rr_shear_kips_per_bolt": 55.42,
+        "Rn_shear_kips": 69.27,
+        "Rn_bearing_5bolts_kips": 892.5
+      },
+      "method": "AASHTO LRFD 6.13.2.7/6.13.2.9 — standards/aashto-lrfd.json 파라미터로 역산",
+      "status": "REPRODUCED — 골든테스트 REVERSE-ENG 2케이스 PASS (2026-07-11)",
+      "note": "해설서 부재 대체 전략 1호: 공표 예제 역산 재현. 단위환산(imperial→SI) 포함 오차 0.3% 이내"
+    }
+  ],
+  "_strategy": "리버스 엔지니어링 4트랙(2026-07-11 채택): ①공표 예제/내력표 역산 재현(SBDH·EM 부록·제조사 카탈로그 적재표) ②교차표준 정합(동일 역학·계수 분기 비율검증) ③독립 솔버 교차검증(FEA 스위트 1016테스트 vs simple_beam — Wave 2) ④방법 구현 후 재현(EM 2502 웨지법→App.N Example 1). §7.0 공인예제 게이트는 역산 재현을 포함."
 }

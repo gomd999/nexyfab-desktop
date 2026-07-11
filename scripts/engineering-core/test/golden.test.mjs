@@ -179,3 +179,36 @@ test('KDS bolt: F10T-N Fnv=400 (표 4.1-9) — 4×M20 φRn=376.99kN (≠AISC 350
   close(r.checks.capacity_LRFD.phiRn_kN, 376.99, 0.2);
   assert.equal(r.verdict, 'PASS');
 });
+
+// ── 리버스 엔지니어링 검증: 공표 예제 수치 역산 재현 (해설서 대체 전략 §7.0) ──
+// 원전: FHWA SBDH Vol.14 Splice Design (퍼블릭 도메인, RAG 코퍼스 p.48·56·60)
+// A325 7/8" 2면전단(나사 제외): Rn=0.48·Ab·Fub·Ns=69.27kips, φs=0.80 → Rr="55.42 kips/bolt"(p.60 공표)
+test('REVERSE-ENG: SBDH Vol.14 공표값 55.42 kips/bolt 재현 (AASHTO 볼트 전단)', () => {
+  const KIPS = 4.448222; // kN per kip
+  const r = runCalculator('bolt_connection', {
+    boltGrade: 'A325-X', d: 22.225, nBolts: 1, shearPlanes: 2,
+    tPlate: 25.4, Fu: 586.05, Vu: 0, // t=1.0in, Fu=85ksi (flange) — 지압이 전단보다 큼 → 전단 지배
+  }, 'AASHTO');
+  assert.equal(r.intermediate.governing, 'shear');
+  close(r.intermediate.rnShear_kN_perBolt / KIPS, 69.27, 0.3);          // Rn (nominal, double shear)
+  close(r.checks.capacity_LRFD.phiRn_kN / KIPS, 55.42, 0.3);            // 공표값 재현
+});
+
+// p.56 공표: Rn_outer = 5×[2.4(0.875)(1.00)(85)] = 892.5 kips (지압, 표준구멍 Lc>2d)
+test('REVERSE-ENG: SBDH Vol.14 공표값 892.5 kips 재현 (AASHTO 지압 5본)', () => {
+  const KIPS = 4.448222;
+  const r = runCalculator('bolt_connection', {
+    boltGrade: 'A325-X', d: 22.225, nBolts: 5, shearPlanes: 2,
+    tPlate: 25.4, Fu: 586.05, Vu: 0,
+  }, 'AASHTO');
+  close((r.intermediate.rnBearing_kN_perBolt * 5) / KIPS, 892.5, 0.3);  // 공표값 재현
+});
+
+// 교차표준 정합: 동일 역학, 계수만 분기 — KDS/AISC/AASHTO 전단내력 비율 = Fnv·φ 비율과 일치해야 함
+test('REVERSE-ENG: 교차표준 정합 — 볼트 내력비 = (Fnv·φ)비 (KDS vs AISC)', () => {
+  const base = { d: 20, nBolts: 4, shearPlanes: 1, tPlate: 20, Fu: 400, Vu: 0 };
+  const kds = runCalculator('bolt_connection', { ...base, boltGrade: 'F10T-N' }, 'KDS');
+  const aisc = runCalculator('bolt_connection', { ...base, boltGrade: 'A325-N' }, 'AISC360');
+  const ratio = kds.checks.capacity_LRFD.phiRn_kN / aisc.checks.capacity_LRFD.phiRn_kN;
+  close(ratio, (400 * 0.75) / (372 * 0.75), 0.05); // = 400/372
+});

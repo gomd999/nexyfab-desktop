@@ -1,0 +1,27 @@
+{
+  "id": "AASHTO",
+  "name": "AASHTO LRFD Bridge Design Spec — 볼트접합만 SBDH 예제 역산으로 검증(2026-07-11). 압축·휨은 미검증 draft.",
+  "tunable": true,
+  "draft": true,
+  "steel": {
+    "E_MPa": 200000,
+    "phi_compression": 0.9,
+    "phi_flexure": 0.9,
+    "phi_shear": 0.9,
+    "phi_bolt": 0.8,
+    "slenderness_inelastic_limit_coef": 4.71,
+    "inelastic_exponent_base": 0.658,
+    "elastic_buckling_coef": 0.877,
+    "allowable_bending_ratio_ASD": 0.66,
+    "allowable_shear_ratio_ASD": 0.4,
+    "bolt_Fnv_MPa": { "A325-X": 397.1, "A325-N": 314.4, "A490-X": 496.4, "A490-N": 393.0 },
+    "bolt_bearing_coef": 2.4,
+    "_verified_note": "볼트 전단 Fnv = 0.48·Fub(나사 제외 X) / 0.38·Fub(나사 포함 N) — AASHTO Eq. 6.13.2.7-1/-2, Fub: A325=120ksi(827MPa)·A490=150ksi(1034MPa)(Art. 6.4.3). φs=φbb=0.80(Art. 6.5.4.2). 지압 2.4dtFu(Eq. 6.13.2.9). 검증: FHWA SBDH Vol.14 예제 역산 재현(골든테스트) — 55.42 kips/bolt·892.5 kips. ⚠️ 압축·휨 파라미터는 AISC 준용 임시값 — AASHTO 6.9/6.10 대조 전 사용 금지."
+  },
+  "serviceability": { "deflection_limit_denominator_default": 800, "_note": "교량 활하중 처짐 L/800 관행 — 참고용" },
+  "citations": {
+    "bolts": "AASHTO LRFD 6.13.2.7(전단)·6.13.2.9(지압)·6.5.4.2(φ) — FHWA SBDH Vol.14 예제로 역산 검증(RAG 코퍼스 fhwa-sbdh-vol14-splice-design p.48·56·60)",
+    "compression": "미검증 — AASHTO 6.9 대조 대기",
+    "flexure": "미검증 — AASHTO 6.10 대조 대기"
+  }
+}
