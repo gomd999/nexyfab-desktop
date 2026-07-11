@@ -12,57 +12,77 @@
  *
  * usage: node from-text.mjs "가로 200 세로 100 두께 10 판, 네 귀퉁이에 지름 8 구멍"
  */
-import { apiKey, RESPONSE_SCHEMA, repairJsonNumbers } from './extract.mjs';
+import { apiKey, repairJsonNumbers } from './extract.mjs';
+import { CLASSIFY_SCHEMA, TYPE_SCHEMAS, TYPE_HINTS, ALL_TYPES } from './schemas.mjs';
 
-// 프롬프트는 간결하게 — gemini-2.5-flash는 긴 프롬프트에서 구조화 출력이
-// 깨지기 쉽다(malformed JSON). 5타입 필드 매핑만 주고 나머지는 스키마가 강제.
-const PROMPT = (desc) => `자연어 부품 설명을 파라메트릭 JSON으로. 명시 치수는 그대로(mm), 미기입은 통상값, 추정 많을수록 confidence↓.
-plate_with_holes: width,depth,thickness,holes[{x,y,d}] (좌하단 원점, 대칭구멍은 좌표계산)
-stepped_plate: width,depth,thickness,stepWidth,stepThickness
-l_bracket: legA,legB,width,thickness
-flange: outerDia,boreDia,thickness,bcd,boltHoleD,boltCount
-bent_sheet: webWidth,flangeHeight,length,thickness
-설명: "${desc}"`;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function textToIntent(description, { model = 'gemini-2.5-flash' } = {}) {
+/**
+ * 텍스트 프롬프트 → 구조화 JSON, 신뢰성 3중 방어:
+ *   1) 모델 폴백: gemini-2.5-flash(빠름) → 실패 시 gemini-2.5-pro(폭주 거의 없음).
+ *      flash가 텍스트 bent_sheet에서 degenerate-number 폭주로 MAX_TOKENS에 걸리는
+ *      실패를 pro가 안정적으로 처리.
+ *   2) 503/429 지수 백오프.
+ *   3) JSON 리페어(폭주 지수·긴소수) 후 재파싱.
+ * @returns { data, model, repaired }
+ */
+export async function callGeminiJson(promptText, schema, { models = ['gemini-2.5-flash', 'gemini-2.5-pro'], maxOutputTokens = 8192 } = {}) {
   const body = JSON.stringify({
-    contents: [{ parts: [{ text: PROMPT(description) }] }],
-    generationConfig: {
-      temperature: 0, response_mime_type: 'application/json',
-      response_schema: RESPONSE_SCHEMA,
-      // 8192 (not 2048): thinking is enabled and consumes the output budget on
-      // the long 5-type prompt — a tight cap truncated bent_sheet JSON mid-object.
-      maxOutputTokens: 8192,
-    },
+    contents: [{ parts: [{ text: promptText }] }],
+    generationConfig: { temperature: 0, response_mime_type: 'application/json', response_schema: schema, maxOutputTokens },
   });
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   let lastErr;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey()}`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body,
-    });
-    if (!res.ok) {
-      // 503(과부하)/429(rate)는 일시적 — 지수 백오프로 재시도. 그 외는 즉시 실패.
-      if ((res.status === 503 || res.status === 429) && attempt < 3) {
-        await sleep(1500 * (attempt + 1));
-        continue;
-      }
-      throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 160)}`);
-    }
-    const j = await res.json();
-    const text = j.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) { lastErr = new Error('empty response'); continue; }
-    try {
-      return { intent: JSON.parse(text), usage: j.usageMetadata, model, source: 'text', repaired: false };
-    } catch {
+  for (const model of models) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let res;
       try {
-        const fixed = repairJsonNumbers(text);
-        if (fixed !== text) return { intent: JSON.parse(fixed), usage: j.usageMetadata, model, source: 'text', repaired: true };
-      } catch { /* fall through */ }
-      lastErr = new Error('bad JSON from text (unrepairable)');
+        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey()}`, {
+          method: 'POST', headers: { 'content-type': 'application/json' }, body,
+        });
+      } catch (e) { lastErr = e; await sleep(1000); continue; }
+      if (!res.ok) {
+        if (res.status === 503 || res.status === 429) { lastErr = new Error(`${model} ${res.status}`); await sleep(1500 * (attempt + 1)); continue; }
+        lastErr = new Error(`${model} ${res.status}: ${(await res.text()).slice(0, 120)}`);
+        break; // 비-일시적 에러 → 다음 모델로
+      }
+      const j = await res.json();
+      const text = j.candidates?.[0]?.content?.parts?.[0]?.text;
+      const finish = j.candidates?.[0]?.finishReason;
+      if (!text) { lastErr = new Error(`${model} empty (${finish})`); continue; }
+      try { return { data: JSON.parse(text), model, repaired: false }; }
+      catch {
+        try { const fixed = repairJsonNumbers(text); if (fixed !== text) return { data: JSON.parse(fixed), model, repaired: true }; }
+        catch { /* fall through */ }
+        lastErr = new Error(`${model} bad JSON (${finish})`);
+        // MAX_TOKENS 폭주면 재시도 무의미 → 다음 모델로
+        if (finish === 'MAX_TOKENS') break;
+      }
     }
   }
   throw lastErr;
+}
+
+const TYPE_LIST = ALL_TYPES.map((t) => `${t}: ${TYPE_HINTS[t]}`).join('\n');
+
+/**
+ * 텍스트 → 도면 intent (2단계, 신뢰성 픽스):
+ *   1) 분류 — 어떤 부품 유형인가 (작은 스키마)
+ *   2) 추출 — 그 유형의 최소 스키마로만 치수 추출
+ * union 스키마 폭주(MAX_TOKENS)를 원천 차단. AI는 이해까지만.
+ */
+export async function textToIntent(description, { models } = {}) {
+  const opts = models ? { models } : {};
+  // 1) 분류
+  const clsPrompt = `다음 부품 설명이 어떤 유형인가? 하나만 고르라.\n${TYPE_LIST}\n설명: "${description}"`;
+  const cls = await callGeminiJson(clsPrompt, CLASSIFY_SCHEMA, opts);
+  const type = cls.data.type;
+  if (type === 'unknown' || !TYPE_SCHEMAS[type]) {
+    return { intent: { type: 'unknown', confidence: cls.data.confidence ?? 0 }, model: cls.model, source: 'text' };
+  }
+  // 2) 타입별 최소 스키마 추출
+  const exPrompt = `부품 설명에서 ${type}의 치수를 추출하라. 필드: ${TYPE_HINTS[type]}.\n명시 치수는 그대로(mm), 미기입은 통상값(추정 많을수록 confidence↓).\n설명: "${description}"`;
+  const ex = await callGeminiJson(exPrompt, TYPE_SCHEMAS[type], opts);
+  return { intent: { type, ...ex.data }, model: ex.model, source: 'text', repaired: ex.repaired };
 }
 
 // ─── Piece 2: 텍스트 → 복합 어셈블리 계획 ────────────────────────────────────
@@ -72,8 +92,8 @@ const PART_PARAMS = {
   type: 'OBJECT',
   properties: {
     width: NUM, depth: NUM, thickness: NUM, stepWidth: NUM, stepThickness: NUM,
-    legA: NUM, legB: NUM, outerDia: NUM, boreDia: NUM, bcd: NUM, boltHoleD: NUM, boltCount: NUM,
-    webWidth: NUM, flangeHeight: NUM, length: NUM,
+    legA: NUM, legB: NUM, outerDia: NUM, innerDia: NUM, boreDia: NUM, bcd: NUM, boltHoleD: NUM, boltCount: NUM,
+    webWidth: NUM, flangeHeight: NUM, length: NUM, height: NUM, wallThk: NUM,
     holes: { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, y: NUM, d: NUM }, required: ['x', 'y', 'd'] } },
   },
 };
@@ -87,7 +107,7 @@ const ASSEMBLY_SCHEMA = {
         type: 'OBJECT', required: ['id', 'type', 'params'],
         properties: {
           id: { type: 'STRING' },
-          type: { type: 'STRING', enum: ['plate_with_holes', 'stepped_plate', 'l_bracket', 'flange', 'bent_sheet'] },
+          type: { type: 'STRING', enum: ['plate_with_holes', 'stepped_plate', 'l_bracket', 'flange', 'bent_sheet', 'tube', 'rect_tube'] },
           params: PART_PARAMS,
           at: { type: 'OBJECT', properties: { tx: NUM, ty: NUM, tz: NUM, rx: NUM, ry: NUM, rz: NUM } },
         },
@@ -98,7 +118,7 @@ const ASSEMBLY_SCHEMA = {
 
 const ASM_PROMPT = (desc) => `자연어 제품 설명을 복합 어셈블리 계획(JSON)으로 변환하라.
 
-각 부품은 어휘 5종 중 하나: plate_with_holes / stepped_plate / l_bracket / flange / bent_sheet.
+각 부품은 어휘 7종 중 하나: plate_with_holes / stepped_plate / l_bracket / flange / bent_sheet / tube(원형파이프:outerDia,innerDia,length) / rect_tube(각관:width,height,wallThk,length).
 부품별로 type + params(해당 유형 치수) + at(배치: tx,ty,tz 평행이동 mm, rx,ry,rz 회전 deg).
 
 좌표계: 전역 원점(0,0,0). 각 부품의 로컬 원점이 at.translate 위치에 놓인다.
@@ -108,32 +128,9 @@ const ASM_PROMPT = (desc) => `자연어 제품 설명을 복합 어셈블리 계
 
 설명: "${desc}"`;
 
-export async function textToAssembly(description, { model = 'gemini-2.5-flash' } = {}) {
-  const body = JSON.stringify({
-    contents: [{ parts: [{ text: ASM_PROMPT(description) }] }],
-    generationConfig: { temperature: 0, response_mime_type: 'application/json', response_schema: ASSEMBLY_SCHEMA, maxOutputTokens: 8192 },
-  });
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let lastErr;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey()}`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body,
-    });
-    if (!res.ok) {
-      if ((res.status === 503 || res.status === 429) && attempt < 3) { await sleep(1500 * (attempt + 1)); continue; }
-      throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 160)}`);
-    }
-    const j = await res.json();
-    const text = j.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) { lastErr = new Error('empty response'); continue; }
-    try { return { assembly: JSON.parse(text), usage: j.usageMetadata, model }; }
-    catch {
-      try { const fixed = repairJsonNumbers(text); if (fixed !== text) return { assembly: JSON.parse(fixed), usage: j.usageMetadata, model }; }
-      catch { /* fall through */ }
-      lastErr = new Error('bad assembly JSON (unrepairable)');
-    }
-  }
-  throw lastErr;
+export async function textToAssembly(description, { models } = {}) {
+  const { data, model } = await callGeminiJson(ASM_PROMPT(description), ASSEMBLY_SCHEMA, models ? { models } : {});
+  return { assembly: data, model };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('from-text.mjs');

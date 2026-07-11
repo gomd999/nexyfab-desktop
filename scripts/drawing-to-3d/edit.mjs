@@ -28,8 +28,8 @@ const PATCH_SCHEMA = {
       properties: {
         width: NUM, depth: NUM, thickness: NUM,
         stepWidth: NUM, stepThickness: NUM, legA: NUM, legB: NUM,
-        outerDia: NUM, boreDia: NUM, bcd: NUM, boltHoleD: NUM, boltCount: NUM,
-        webWidth: NUM, flangeHeight: NUM, length: NUM,
+        outerDia: NUM, innerDia: NUM, boreDia: NUM, bcd: NUM, boltHoleD: NUM, boltCount: NUM,
+        webWidth: NUM, flangeHeight: NUM, length: NUM, height: NUM, wallThk: NUM,
       },
     },
     holes: {
@@ -74,7 +74,8 @@ export async function buildPatch(extraction, instruction, { model = 'gemini-2.5-
 
 const KNOWN_PARAMS = new Set([
   'width', 'depth', 'thickness', 'stepWidth', 'stepThickness', 'legA', 'legB',
-  'outerDia', 'boreDia', 'bcd', 'boltHoleD', 'boltCount', 'webWidth', 'flangeHeight', 'length',
+  'outerDia', 'innerDia', 'boreDia', 'bcd', 'boltHoleD', 'boltCount', 'webWidth',
+  'flangeHeight', 'length', 'height', 'wallThk',
 ]);
 
 /**

@@ -83,7 +83,12 @@ async function callGemini(img, model) {
  *      1e4000 mm). Conservative by design: never invents a number.
  */
 export function repairJsonNumbers(text) {
-  return text.replace(/(-?\d+(?:\.\d+)?)[eE][+-]?\d{4,}/g, '$1');
+  return text
+    // 1. degenerate exponent: 80.0142e-1500000 → 80.0142
+    .replace(/(-?\d+(?:\.\d+)?)[eE][+-]?\d{4,}/g, '$1')
+    // 2. runaway decimal: 60.00000000000001421085…(수백 자리) → 소수 15자리로 절단.
+    //    gemini-2.5-flash가 자주 빠지는 폭주 패턴(뒤가 MAX_TOKENS로 잘려도 이 필드는 복구).
+    .replace(/(-?\d+\.\d{15})\d{16,}/g, '$1');
 }
 
 export async function extractDrawing(pngPath, { model = 'gemini-2.5-flash' } = {}) {

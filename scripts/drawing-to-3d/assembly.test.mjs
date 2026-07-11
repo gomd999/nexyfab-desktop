@@ -52,3 +52,31 @@ test('부품 게이트 실패는 어셈블리 실패로 전파', () => {
 test('빈 어셈블리 거부', () => {
   assert.equal(buildAssembly({ name: 'x', parts: [] }).ok, false);
 });
+
+test('회전 배치: 90° 회전 시 AABB가 치수를 정확히 스왑', () => {
+  // 100(x)×40(y)×10(z) 판을 z축 90° 회전 → x↔y 스왑 → 40×100×10
+  const asm = {
+    name: 'rot', parts: [
+      { id: 'p', type: 'plate_with_holes', params: { width: 100, depth: 40, thickness: 10, holes: [] }, at: { rz: 90 } },
+    ],
+  };
+  const r = buildAssembly(asm);
+  assert.equal(r.ok, true);
+  const bb = r.parts[0].aabb;
+  const dx = bb.max[0] - bb.min[0], dy = bb.max[1] - bb.min[1];
+  assert.ok(Math.abs(dx - 40) < 1e-6, `dx=${dx} expected 40`);
+  assert.ok(Math.abs(dy - 100) < 1e-6, `dy=${dy} expected 100`);
+});
+
+test('회전 간섭: 옆으로 세운 판이 이웃과 겹치면 검출', () => {
+  const asm = {
+    name: 'rotclash', parts: [
+      { id: 'a', type: 'plate_with_holes', params: { width: 100, depth: 100, thickness: 10, holes: [] }, at: {} },
+      // y축 90° 회전 → 두께10이 x로, 높이100이 z로 서서 a와 겹침
+      { id: 'b', type: 'plate_with_holes', params: { width: 100, depth: 100, thickness: 10, holes: [] }, at: { ry: 90, tx: 5, tz: 50 } },
+    ],
+  };
+  const r = buildAssembly(asm);
+  assert.equal(r.interferences.length, 1);
+  assert.ok(r.interferences[0].note.includes('회전'));
+});

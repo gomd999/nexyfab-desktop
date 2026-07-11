@@ -64,6 +64,28 @@ const MAP = {
       ],
     };
   },
+  tube(x, id) {
+    return {
+      id, name: `tube OD${x.outerDia} ID${x.innerDia} L${x.length}`, shapeClass: 'revolute',
+      features: [
+        { id: 'outer', kind: 'cylinder', diameter: x.outerDia, height: x.length },
+        { id: 'bore', kind: 'cylinder', diameter: x.innerDia, height: x.length + 2, at: { translate: [0, 0, -1] }, op: 'subtract' },
+      ],
+    };
+  },
+  rect_tube(x, id) {
+    return {
+      id, name: `rect-tube ${x.width}x${x.height} t${x.wallThk}`, shapeClass: 'sheetMetal',
+      material: { grade: 'SS275', thicknessMm: x.wallThk },
+      features: [
+        { id: 'outer', kind: 'extrude', profile: rect('rt-o', 0, 0, x.length, x.width), height: x.height },
+        {
+          id: 'bore', kind: 'extrude', profile: rect('rt-i', -1, x.wallThk, x.length + 2, x.width - 2 * x.wallThk),
+          height: x.height - 2 * x.wallThk, at: { translate: [0, 0, x.wallThk] }, op: 'subtract',
+        },
+      ],
+    };
+  },
 };
 
 /** 추출 JSON → ComponentIntent (schema.ts). PMI로 판독 출처를 남긴다. */

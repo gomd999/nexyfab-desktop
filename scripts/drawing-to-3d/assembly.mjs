@@ -18,16 +18,34 @@
 import { readFileSync } from 'node:fs';
 import { gate, scadBody, partAabb } from './reconstruct.mjs';
 
+const DEG = Math.PI / 180;
+/** OpenSCAD rotate([rx,ry,rz]) 순서(X→Y→Z)로 점 회전. */
+function rotatePoint([x, y, z], rx, ry, rz) {
+  let p = [x, y, z];
+  if (rx) { const c = Math.cos(rx * DEG), s = Math.sin(rx * DEG); p = [p[0], p[1] * c - p[2] * s, p[1] * s + p[2] * c]; }
+  if (ry) { const c = Math.cos(ry * DEG), s = Math.sin(ry * DEG); p = [p[0] * c + p[2] * s, p[1], -p[0] * s + p[2] * c]; }
+  if (rz) { const c = Math.cos(rz * DEG), s = Math.sin(rz * DEG); p = [p[0] * c - p[1] * s, p[0] * s + p[1] * c, p[2]]; }
+  return p;
+}
+
+/**
+ * 배치 후 정확한 AABB — 회전이 있으면 로컬 박스 8코너를 회전변환한 뒤 min/max로
+ * 실제 경계상자를 계산한다(임의 각도 배치의 간섭검사가 정확해짐). 축정렬은 그대로.
+ */
 function placedAabb(part) {
   const a = partAabb({ type: part.type, ...part.params });
   const { tx = 0, ty = 0, tz = 0, rx = 0, ry = 0, rz = 0 } = part.at ?? {};
-  // 회전이 있으면 AABB가 부정확해질 수 있어 보수적으로 표시(간섭검사에서 참고).
   const rotated = !!(rx || ry || rz);
-  return {
-    min: [a.min[0] + tx, a.min[1] + ty, a.min[2] + tz],
-    max: [a.max[0] + tx, a.max[1] + ty, a.max[2] + tz],
-    rotated,
-  };
+  if (!rotated) {
+    return { min: [a.min[0] + tx, a.min[1] + ty, a.min[2] + tz], max: [a.max[0] + tx, a.max[1] + ty, a.max[2] + tz], rotated: false };
+  }
+  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+  for (const cx of [a.min[0], a.max[0]]) for (const cy of [a.min[1], a.max[1]]) for (const cz of [a.min[2], a.max[2]]) {
+    const [px, py, pz] = rotatePoint([cx, cy, cz], rx, ry, rz);
+    const w = [px + tx, py + ty, pz + tz];
+    for (let k = 0; k < 3; k++) { if (w[k] < min[k]) min[k] = w[k]; if (w[k] > max[k]) max[k] = w[k]; }
+  }
+  return { min, max, rotated: true };
 }
 
 function overlapVolume(a, b) {
@@ -73,7 +91,7 @@ export function buildAssembly(asm) {
       if (v > 1) { // 1mm³ 초과 겹침
         interferences.push({
           a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v),
-          note: rotated ? 'AABB 근사(회전부품 — 실간섭은 정밀검사 필요)' : 'AABB 겹침',
+          note: rotated ? '회전 AABB 겹침(보수적 — 실솔리드는 더 작을 수 있음)' : 'AABB 겹침',
         });
       }
     }

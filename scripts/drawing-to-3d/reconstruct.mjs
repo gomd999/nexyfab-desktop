@@ -36,6 +36,15 @@ const GATES = {
     if (2 * i.thickness >= i.webWidth) e.push('2t ≥ webWidth');
     if (i.thickness >= i.flangeHeight) e.push('t ≥ flangeHeight');
   },
+  tube(i, e) {
+    for (const k of ['outerDia', 'innerDia', 'length']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (i.innerDia >= i.outerDia) e.push('innerDia ≥ outerDia — 중공 아님');
+  },
+  rect_tube(i, e) {
+    for (const k of ['width', 'height', 'wallThk', 'length']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (2 * i.wallThk >= i.width) e.push('2·wallThk ≥ width');
+    if (2 * i.wallThk >= i.height) e.push('2·wallThk ≥ height');
+  },
 };
 
 export function gate(intent) {
@@ -67,6 +76,12 @@ const SCAD = {
   bent_sheet(i) {
     return `union() {\n  cube([${i.length}, ${i.webWidth}, ${i.thickness}]);\n  cube([${i.length}, ${i.thickness}, ${i.flangeHeight}]);\n  translate([0, ${i.webWidth - i.thickness}, 0]) cube([${i.length}, ${i.thickness}, ${i.flangeHeight}]);\n}`;
   },
+  tube(i) {
+    return `difference() {\n  cylinder(h=${i.length}, d=${i.outerDia}, $fn=96);\n  translate([0,0,-1]) cylinder(h=${i.length + 2}, d=${i.innerDia}, $fn=96);\n}`;
+  },
+  rect_tube(i) {
+    return `difference() {\n  cube([${i.length}, ${i.width}, ${i.height}]);\n  translate([-1, ${i.wallThk}, ${i.wallThk}]) cube([${i.length + 2}, ${i.width - 2 * i.wallThk}, ${i.height - 2 * i.wallThk}]);\n}`;
+  },
 };
 
 export function toOpenScad(intent) {
@@ -94,6 +109,10 @@ export function partAabb(i) {
       return { min: [-i.outerDia / 2, -i.outerDia / 2, 0], max: [i.outerDia / 2, i.outerDia / 2, i.thickness] };
     case 'bent_sheet':
       return { min: [0, 0, 0], max: [i.length, i.webWidth, i.flangeHeight] };
+    case 'tube':
+      return { min: [-i.outerDia / 2, -i.outerDia / 2, 0], max: [i.outerDia / 2, i.outerDia / 2, i.length] };
+    case 'rect_tube':
+      return { min: [0, 0, 0], max: [i.length, i.width, i.height] };
     default:
       throw new Error(`partAabb: unsupported type '${i.type}'`);
   }
@@ -106,4 +125,6 @@ export const PARAMS = {
   l_bracket: ['legA', 'legB', 'width', 'thickness'],
   flange: ['outerDia', 'boreDia', 'thickness', 'bcd', 'boltHoleD', 'boltCount'],
   bent_sheet: ['webWidth', 'flangeHeight', 'length', 'thickness'],
+  tube: ['outerDia', 'innerDia', 'length'],
+  rect_tube: ['width', 'height', 'wallThk', 'length'],
 };
