@@ -212,3 +212,17 @@ test('REVERSE-ENG: 교차표준 정합 — 볼트 내력비 = (Fnv·φ)비 (KDS 
   const ratio = kds.checks.capacity_LRFD.phiRn_kN / aisc.checks.capacity_LRFD.phiRn_kN;
   close(ratio, (400 * 0.75) / (372 * 0.75), 0.05); // = 400/372
 });
+
+// 원전: FHWA SBDH Design Example 3 (curved I-girder) p.154-156 지압보강재 기둥검토 —
+// 유효기둥 As=16.2in², rs=3.45in, KL=0.75D=63in, Fy=50ksi: 공표 Pn=790 kips, Pr=0.95·790=750 kips
+test('REVERSE-ENG: SBDH DE3 공표값 Pn=790·Pr=750 kips 재현 (AASHTO 압축재)', () => {
+  const KIPS = 4.448222, IN = 25.4, KSI = 6.894757;
+  const r = runCalculator('column_buckling', {
+    Fy: 50 * KSI, E: 29000 * KSI, Ag: 16.2 * IN * IN, L: 63 * IN, K: 1.0, r: 3.45 * IN, Pu: 451 * KIPS,
+  }, 'AASHTO');
+  close(r.intermediate.Fe_MPa / KSI, 13905 / 16.2, 0.3);       // Fe = Pe/As = 858.3 ksi
+  assert.match(r.intermediate.branch, /inelastic/);
+  close((r.intermediate.Fcr_MPa * 16.2 * IN * IN) / KSI / (IN * IN), 790, 0.3); // Pn(kips)
+  close(r.checks.capacity_LRFD.phiPn_kN / KIPS, 750, 0.3);     // 공표 Pr 재현 (φc=0.95)
+  assert.equal(r.verdict, 'PASS');                              // Pu=451 < 750
+});

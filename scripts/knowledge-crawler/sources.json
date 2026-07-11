@@ -8,7 +8,13 @@
       "url": "https://www.fhwa.dot.gov/engineering/geotech/pubs/nhi10024/nhi10024.pdf",
       "license": "US-Government-Public-Domain",
       "licenseNote": "US federal government work, 17 U.S.C. §105 — no copyright, free to reproduce.",
-      "tags": ["civil", "retaining-wall", "mse-wall", "geotech", "P2"]
+      "tags": [
+        "civil",
+        "retaining-wall",
+        "mse-wall",
+        "geotech",
+        "P2"
+      ]
     },
     {
       "id": "fhwa-gec7-soil-nail-walls",
@@ -17,7 +23,13 @@
       "url": "https://www.fhwa.dot.gov/engineering/geotech/pubs/nhi14007.pdf",
       "license": "US-Government-Public-Domain",
       "licenseNote": "US federal government work, 17 U.S.C. §105.",
-      "tags": ["civil", "retaining-wall", "soil-nail", "geotech", "P2"]
+      "tags": [
+        "civil",
+        "retaining-wall",
+        "soil-nail",
+        "geotech",
+        "P2"
+      ]
     },
     {
       "id": "usace-em-1110-2-2502-retaining-walls",
@@ -26,7 +38,14 @@
       "url": "https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-2502.pdf",
       "license": "US-Government-Public-Domain",
       "licenseNote": "US federal government work, 17 U.S.C. §105. Approved for public release; distribution unlimited.",
-      "tags": ["civil", "retaining-wall", "overturning", "sliding", "bearing", "P2"]
+      "tags": [
+        "civil",
+        "retaining-wall",
+        "overturning",
+        "sliding",
+        "bearing",
+        "P2"
+      ]
     },
     {
       "id": "usace-em-1110-2-2100-stability",
@@ -35,7 +54,14 @@
       "url": "https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-2100.pdf",
       "license": "US-Government-Public-Domain",
       "licenseNote": "US federal government work, 17 U.S.C. §105.",
-      "tags": ["civil", "stability", "overturning", "sliding", "safety-factor", "P2"]
+      "tags": [
+        "civil",
+        "stability",
+        "overturning",
+        "sliding",
+        "safety-factor",
+        "P2"
+      ]
     },
     {
       "id": "fhwa-sbdh-vol4-structural-behavior-steel",
@@ -44,7 +70,13 @@
       "url": "https://rosap.ntl.bts.gov/view/dot/49743/dot_49743_DS1.pdf",
       "license": "US-Government-Public-Domain",
       "licenseNote": "US federal government work, 17 U.S.C. §105. Archived in USDOT ROSA P repository.",
-      "tags": ["steel", "member-design", "buckling", "limit-state", "P1"]
+      "tags": [
+        "steel",
+        "member-design",
+        "buckling",
+        "limit-state",
+        "P1"
+      ]
     },
     {
       "id": "fhwa-sbdh-vol13-bracing-system-design",
@@ -53,7 +85,13 @@
       "url": "https://rosap.ntl.bts.gov/view/dot/42710/dot_42710_DS1.pdf",
       "license": "US-Government-Public-Domain",
       "licenseNote": "US federal government work, 17 U.S.C. §105. Archived in USDOT ROSA P repository.",
-      "tags": ["steel", "bracing", "stability", "temporary-structures", "P1"]
+      "tags": [
+        "steel",
+        "bracing",
+        "stability",
+        "temporary-structures",
+        "P1"
+      ]
     },
     {
       "id": "fhwa-sbdh-vol14-splice-design",
@@ -62,7 +100,12 @@
       "url": "https://rosap.ntl.bts.gov/view/dot/42902/dot_42902_DS1.pdf",
       "license": "US-Government-Public-Domain",
       "licenseNote": "US federal government work, 17 U.S.C. §105. Archived in USDOT ROSA P repository.",
-      "tags": ["steel", "connection", "bolted-splice", "P1"]
+      "tags": [
+        "steel",
+        "connection",
+        "bolted-splice",
+        "P1"
+      ]
     },
     {
       "id": "osha-3150-scaffold",
@@ -71,7 +114,40 @@
       "url": "https://www.osha.gov/sites/default/files/publications/osha3150.pdf",
       "license": "US-Government-Public-Domain",
       "licenseNote": "US federal government work, 17 U.S.C. §105.",
-      "tags": ["temporary-structures", "scaffold", "construction-safety", "P1"]
+      "tags": [
+        "temporary-structures",
+        "scaffold",
+        "construction-safety",
+        "P1"
+      ]
+    },
+    {
+      "id": "fhwa-sbdh-example3-curved-igirder",
+      "title": "FHWA SBDH Design Example 3: Three-Span Continuous Horizontally Curved Composite Steel I-Girder Bridge (FHWA-HIF-16-002 DE3)",
+      "publisher": "U.S. DOT FHWA / ROSA P",
+      "url": "https://rosap.ntl.bts.gov/view/dot/42903/dot_42903_DS1.pdf",
+      "license": "US-Government-Public-Domain",
+      "licenseNote": "US federal government work, 17 U.S.C. §105.",
+      "tags": [
+        "steel",
+        "worked-example",
+        "reverse-eng-source",
+        "P1"
+      ]
+    },
+    {
+      "id": "fhwa-sbdh-example-2012",
+      "title": "FHWA SBDH Design Example (Nov 2012 series, dot 49753)",
+      "publisher": "U.S. DOT FHWA / ROSA P",
+      "url": "https://rosap.ntl.bts.gov/view/dot/49753/dot_49753_DS1.pdf",
+      "license": "US-Government-Public-Domain",
+      "licenseNote": "US federal government work, 17 U.S.C. §105.",
+      "tags": [
+        "steel",
+        "worked-example",
+        "reverse-eng-source",
+        "P1"
+      ]
     },
     {
       "id": "kds-kcs-kcsc",
@@ -81,7 +157,14 @@
       "url": "https://www.kcsc.re.kr/standardCode/list",
       "license": "KOGL-Type1",
       "licenseNote": "✅ 2026-07-11 해결: 회원 OpenAPI 인증키 발급(KCSC_API_KEY in Downloads/.env, 유효 ~2027-07-11). 수집은 crawl.mjs가 아니라 kds.mjs 담당(CodeViewer 조항 단위 JSON, 8종 인덱싱 완료: 118005/118010/143105/143110/143125/215000/216000/411200) — 이 엔트리는 기록용 disabled 유지. 공공누리 제1유형 확인(2026-07-11): 출처표시 조건으로 상업 이용·변형·재배포 허용 — RAG 원문 서빙 가능. 서비스 노출 시 credit 표기 필수.",
-      "tags": ["korea", "kds", "kcs", "retaining-wall", "P1", "P2"]
+      "tags": [
+        "korea",
+        "kds",
+        "kcs",
+        "retaining-wall",
+        "P1",
+        "P2"
+      ]
     }
   ]
 }
