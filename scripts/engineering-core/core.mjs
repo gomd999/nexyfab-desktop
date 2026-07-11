@@ -10,8 +10,9 @@ import rackFrame from './calculators/rack-frame.mjs';
 import rcBeam from './calculators/rc-beam.mjs';
 import landscapeDrainage from './calculators/landscape-drainage.mjs';
 import rcColumn from './calculators/rc-column.mjs';
+import isolatedFooting from './calculators/isolated-footing.mjs';
 
-export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn];
+export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting];
 
 /** Minimal JSON-Schema-subset validator (type/required/properties/minimum/maximum/enum). */
 export function validateInput(schema, input) {
