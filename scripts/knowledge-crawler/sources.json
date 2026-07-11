@@ -1,0 +1,87 @@
+{
+  "_policy": "domain-expansion-plan.md §2: RAG 원문은 저작권-안전분만. 미 연방정부 저작물=퍼블릭 도메인(17 U.S.C. §105). 문서별 라이선스 메타데이터 필수 — provenance 없는 문서는 코퍼스 반입 금지. robots.txt 준수, 유료 원문 우회 수집 금지.",
+  "sources": [
+    {
+      "id": "fhwa-gec11-mse-walls-vol1",
+      "title": "FHWA GEC 11 — Design and Construction of Mechanically Stabilized Earth Walls and Reinforced Soil Slopes, Vol I (FHWA-NHI-10-024)",
+      "publisher": "U.S. DOT Federal Highway Administration (FHWA)",
+      "url": "https://www.fhwa.dot.gov/engineering/geotech/pubs/nhi10024/nhi10024.pdf",
+      "license": "US-Government-Public-Domain",
+      "licenseNote": "US federal government work, 17 U.S.C. §105 — no copyright, free to reproduce.",
+      "tags": ["civil", "retaining-wall", "mse-wall", "geotech", "P2"]
+    },
+    {
+      "id": "fhwa-gec7-soil-nail-walls",
+      "title": "FHWA GEC 7 — Soil Nail Walls Reference Manual (FHWA-NHI-14-007)",
+      "publisher": "U.S. DOT Federal Highway Administration (FHWA)",
+      "url": "https://www.fhwa.dot.gov/engineering/geotech/pubs/nhi14007.pdf",
+      "license": "US-Government-Public-Domain",
+      "licenseNote": "US federal government work, 17 U.S.C. §105.",
+      "tags": ["civil", "retaining-wall", "soil-nail", "geotech", "P2"]
+    },
+    {
+      "id": "usace-em-1110-2-2502-retaining-walls",
+      "title": "USACE EM 1110-2-2502 — Retaining and Flood Walls",
+      "publisher": "U.S. Army Corps of Engineers (USACE)",
+      "url": "https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-2502.pdf",
+      "license": "US-Government-Public-Domain",
+      "licenseNote": "US federal government work, 17 U.S.C. §105. Approved for public release; distribution unlimited.",
+      "tags": ["civil", "retaining-wall", "overturning", "sliding", "bearing", "P2"]
+    },
+    {
+      "id": "usace-em-1110-2-2100-stability",
+      "title": "USACE EM 1110-2-2100 — Stability Analysis of Concrete Structures",
+      "publisher": "U.S. Army Corps of Engineers (USACE)",
+      "url": "https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-2100.pdf",
+      "license": "US-Government-Public-Domain",
+      "licenseNote": "US federal government work, 17 U.S.C. §105.",
+      "tags": ["civil", "stability", "overturning", "sliding", "safety-factor", "P2"]
+    },
+    {
+      "id": "fhwa-sbdh-vol4-structural-behavior-steel",
+      "title": "FHWA Steel Bridge Design Handbook — Structural Behavior of Steel (FHWA-IF-12-052 Vol.4, Nov 2012)",
+      "publisher": "U.S. DOT FHWA / National Transportation Library ROSA P",
+      "url": "https://rosap.ntl.bts.gov/view/dot/49743/dot_49743_DS1.pdf",
+      "license": "US-Government-Public-Domain",
+      "licenseNote": "US federal government work, 17 U.S.C. §105. Archived in USDOT ROSA P repository.",
+      "tags": ["steel", "member-design", "buckling", "limit-state", "P1"]
+    },
+    {
+      "id": "fhwa-sbdh-vol13-bracing-system-design",
+      "title": "FHWA Steel Bridge Design Handbook — Bracing System Design (FHWA-HIF-16-002 Vol.13)",
+      "publisher": "U.S. DOT FHWA / National Transportation Library ROSA P",
+      "url": "https://rosap.ntl.bts.gov/view/dot/42710/dot_42710_DS1.pdf",
+      "license": "US-Government-Public-Domain",
+      "licenseNote": "US federal government work, 17 U.S.C. §105. Archived in USDOT ROSA P repository.",
+      "tags": ["steel", "bracing", "stability", "temporary-structures", "P1"]
+    },
+    {
+      "id": "fhwa-sbdh-vol14-splice-design",
+      "title": "FHWA Steel Bridge Design Handbook — Splice Design (FHWA-HIF-16-002 Vol.14)",
+      "publisher": "U.S. DOT FHWA / National Transportation Library ROSA P",
+      "url": "https://rosap.ntl.bts.gov/view/dot/42902/dot_42902_DS1.pdf",
+      "license": "US-Government-Public-Domain",
+      "licenseNote": "US federal government work, 17 U.S.C. §105. Archived in USDOT ROSA P repository.",
+      "tags": ["steel", "connection", "bolted-splice", "P1"]
+    },
+    {
+      "id": "osha-3150-scaffold",
+      "title": "OSHA 3150 — A Guide to Scaffold Use in the Construction Industry",
+      "publisher": "U.S. Dept. of Labor, Occupational Safety and Health Administration (OSHA)",
+      "url": "https://www.osha.gov/sites/default/files/publications/osha3150.pdf",
+      "license": "US-Government-Public-Domain",
+      "licenseNote": "US federal government work, 17 U.S.C. §105.",
+      "tags": ["temporary-structures", "scaffold", "construction-safety", "P1"]
+    },
+    {
+      "id": "kds-kcs-kcsc",
+      "enabled": false,
+      "title": "KDS/KCS 국가건설기준 (예: KDS 11 80 05 콘크리트옹벽, KDS 11 80 10 보강토옹벽, KDS 41 건축구조기준)",
+      "publisher": "국가건설기준센터 (KCSC, kcsc.re.kr) / 국토교통부 고시",
+      "url": "https://www.kcsc.re.kr/standardCode/list",
+      "license": "MANUAL-VERIFY-REQUIRED",
+      "licenseNote": "manual-assisted ingestion only — see docs in README §KDS. Document API(/api/v1/tn_document_infos, /api/v1/tn-document-contents)는 로그인 필요(403 인가된 사용자가 아닙니다). OpenAPI(https://kcsc.re.kr/OpenApi/CodeList?key=, /OpenApi/CodeViewer/{KDS|KCS}/{code}?key=)는 회원가입 후 마이페이지에서 발급한 key 필요. 공공누리(KOGL) 유형은 사이트에서 프로그램적으로 확인 불가 — 문서/사이트에서 육안 확인 후 이 필드를 실제 유형(KOGL-Type1 등)으로 교체해야 반입 가능. 참고: KDS/KCS 본문은 국토교통부 고시(행정규칙)로 law.go.kr에도 게재 — 저작권법 §7(보호받지 못하는 저작물) 검토 여지 있으나 법률 확인 선행(plan §6.3).",
+      "tags": ["korea", "kds", "kcs", "retaining-wall", "P1", "P2"]
+    }
+  ]
+}
