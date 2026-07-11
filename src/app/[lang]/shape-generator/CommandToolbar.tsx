@@ -188,6 +188,7 @@ const dict = {
     recentFileItemHint: '다시 불러오려면 Import 버튼을 사용하세요',
     genShapeFirst: '형상을 생성한 후 내보낼 수 있습니다',
     export3MF: '3MF 내보내기 (3D 프린터)',
+    exportHTML: 'HTML 뷰어 내보내기',
     exportingSTEP: 'STEP 변환 중...',
     exportSTEP: 'STEP 내보내기',
     exportSTEPUnsupportedTip: '이 형상은 STEP으로 내보내면 외부 CAD 뷰어에서 깨질 수 있습니다. STL 또는 GLB를 사용하세요.',
@@ -413,6 +414,7 @@ const dict = {
     recentFileItemHint: 'Use Import to re-open',
     genShapeFirst: 'Generate a shape to enable export',
     export3MF: 'Export 3MF (3D print)',
+    exportHTML: 'Export HTML viewer',
     exportingSTEP: 'Exporting STEP...',
     exportSTEP: 'Export STEP',
     exportSTEPUnsupportedTip: 'This shape may not re-open in third-party CAD viewers as STEP. Use STL or GLB instead.',
@@ -638,6 +640,7 @@ const dict = {
     recentFileItemHint: '再度開くには Import ボタンをご利用ください',
     genShapeFirst: '形状を生成するとエクスポートできます',
     export3MF: '3MF エクスポート (3D プリンタ)',
+    exportHTML: 'HTMLビューアをエクスポート',
     exportingSTEP: 'STEP 変換中...',
     exportSTEP: 'STEP エクスポート',
     exportSTEPUnsupportedTip: 'この形状はSTEPで書き出すと外部CADビューアで開けない場合があります。STLまたはGLBを使用してください。',
@@ -863,6 +866,7 @@ const dict = {
     recentFileItemHint: '使用 Import 按钮重新打开',
     genShapeFirst: '生成形状后可导出',
     export3MF: '导出 3MF (3D 打印)',
+    exportHTML: '导出 HTML 查看器',
     exportingSTEP: 'STEP 转换中...',
     exportSTEP: '导出 STEP',
     exportSTEPUnsupportedTip: '此形状导出 STEP 后可能无法在第三方 CAD 查看器中正确打开。请使用 STL 或 GLB。',
@@ -1088,6 +1092,7 @@ const dict = {
     recentFileItemHint: 'Usa Importar para reabrir',
     genShapeFirst: 'Genera una forma para habilitar la exportación',
     export3MF: 'Exportar 3MF (impresión 3D)',
+    exportHTML: 'Exportar visor HTML',
     exportingSTEP: 'Exportando STEP...',
     exportSTEP: 'Exportar STEP',
     exportSTEPUnsupportedTip: 'Esta forma puede no abrirse correctamente en visores CAD de terceros como STEP. Use STL o GLB.',
@@ -1313,6 +1318,7 @@ const dict = {
     recentFileItemHint: 'استخدم استيراد لإعادة الفتح',
     genShapeFirst: 'أنشئ شكلاً لتمكين التصدير',
     export3MF: 'تصدير 3MF (طباعة 3D)',
+    exportHTML: 'تصدير عارض HTML',
     exportingSTEP: 'جاري تصدير STEP...',
     exportSTEP: 'تصدير STEP',
     exportSTEPUnsupportedTip: 'قد لا يفتح هذا الشكل بشكل صحيح في عارضات CAD الخارجية كملف STEP. استخدم STL أو GLB بدلاً منه.',
@@ -1446,6 +1452,7 @@ interface CommandToolbarProps {
   onExportOBJ?: () => void;
   onExportPLY?: () => void;
   onExport3MF?: () => void;
+  onExportHTML?: () => void;
   onExportSTEP?: () => void;
   /**
    * R2 — when false, the STEP export button is greyed out with a tooltip.
@@ -1802,7 +1809,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
     measureActive, onToggleMeasure, measureMode, onSetMeasureMode, sectionActive, onToggleSection,
     onTogglePlanes, showPlanes,
     onImportFile, onSketchInsertReference, onAddFeatureWithParams, fileImportMenuHint,
-    onExportOBJ, onExportPLY, onExport3MF, onExportSTEP, onExportGLTF,
+    onExportOBJ, onExportPLY, onExport3MF, onExportHTML, onExportSTEP, onExportGLTF,
     stepExportSupported = true,
     onExportDXF, onExportFlatPatternDXF, dxfProjection, onDxfProjectionChange,
     onSaveScene, onLoadScene, onExportGLB,
@@ -2323,6 +2330,12 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>🖨️</span>
                 <span>{tt.export3MF}</span>
+              </button>
+              <button style={{ ...S.dropItem, opacity: hasResult ? 1 : 0.4 }} disabled={!hasResult} onClick={() => { if (hasResult) { onExportHTML?.(); closeSub(); } }}
+                onMouseEnter={e => { if (hasResult) e.currentTarget.style.background = C_DARK.hover; }}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>🌐</span>
+                <span>{tt.exportHTML}</span>
               </button>
               <button
                 style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'STEP' || !stepExportSupported) ? 0.4 : 1 }}

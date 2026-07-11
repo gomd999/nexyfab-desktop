@@ -6,6 +6,7 @@ import type { ShapeResult } from '../shapes';
 import { pickImportMeshFile } from '@/lib/platform';
 import { formatCadImportError } from '../io/formatCadImportError';
 import { reportInfo } from '../lib/telemetry';
+import type { PresentationPart } from '../io/exportPresentationHtml';
 
 export interface BomPart {
   name: string;
@@ -31,6 +32,12 @@ export interface ImportExportState {
   handleExportOBJ: () => Promise<void>;
   handleExportPLY: () => Promise<void>;
   handleExport3MF: () => Promise<void>;
+  /**
+   * Export a self-contained presentation HTML viewer. Optional `parts` lets the
+   * caller pass a multi-part assembly (BOM parts + per-part colors); falls back
+   * to the current effective geometry as a single part.
+   */
+  handleExportPresentationHtml: (parts?: PresentationPart[]) => Promise<void>;
 }
 
 export function useImportExport(
@@ -148,6 +155,22 @@ export function useImportExport(
     addToast('success', 'PLY exported successfully');
   }, [getEffectiveGeometry, addToast]);
 
+  const handleExportPresentationHtml = useCallback(async (parts?: PresentationPart[]) => {
+    let exportParts: PresentationPart[];
+    if (parts && parts.length > 0) {
+      exportParts = parts;
+    } else {
+      const geo = getEffectiveGeometry();
+      if (!geo) { addToast('warning', 'Cannot export: geometry is empty'); return; }
+      if (!geo.attributes.position || geo.attributes.position.count === 0) { addToast('warning', 'Cannot export: geometry is empty'); return; }
+      exportParts = [{ name: importedFilename || 'model', geometry: geo }];
+    }
+    const { exportPresentationHtml } = await import('../io/exportPresentationHtml');
+    exportPresentationHtml(exportParts, { filename: importedFilename.replace(/\.[^.]+$/, '') || 'model' });
+    reportInfo('mesh_export', 'presentation_html_export', { format: 'html', source: 'shape-design', parts: exportParts.length });
+    addToast('success', 'HTML viewer exported successfully');
+  }, [getEffectiveGeometry, importedFilename, addToast]);
+
   const handleExport3MF = useCallback(async () => {
     const geo = activeTab === 'optimize' ? resultMesh : getEffectiveGeometry();
     if (!geo) return;
@@ -172,5 +195,6 @@ export function useImportExport(
     handleExportOBJ,
     handleExportPLY,
     handleExport3MF,
+    handleExportPresentationHtml,
   };
 }

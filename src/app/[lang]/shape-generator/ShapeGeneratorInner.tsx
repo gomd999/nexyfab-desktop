@@ -6826,7 +6826,8 @@ export function ShapeGeneratorInner() {
     handleExportCurrentSTL,
     handleExportOBJ,
     handleExportPLY,
-    handleExport3MF } = useImportExport(addToast, getEffectiveGeometry, setSketchResult as React.Dispatch<React.SetStateAction<ShapeResult | null>>, setBomParts, setBomLabel, setIsSketchMode as React.Dispatch<React.SetStateAction<boolean>>, activeTab, resultMesh);
+    handleExport3MF,
+    handleExportPresentationHtml } = useImportExport(addToast, getEffectiveGeometry, setSketchResult as React.Dispatch<React.SetStateAction<ShapeResult | null>>, setBomParts, setBomLabel, setIsSketchMode as React.Dispatch<React.SetStateAction<boolean>>, activeTab, resultMesh);
 
   // Wire the refs used by handleGeometryApply (declared above) so direct mesh
   // edits on an imported part persist onto importedGeometry.
@@ -9521,6 +9522,11 @@ export function ShapeGeneratorInner() {
             onExportOBJ={handleExportOBJ}
             onExportPLY={handleExportPLY}
             onExport3MF={handleExport3MF}
+            onExportHTML={() => {
+              void handleExportPresentationHtml(bomParts.length > 0
+                ? bomParts.map(p => ({ name: p.name, geometry: p.result.geometry, color: assemblyPartColors[p.name] ?? p.color }))
+                : undefined);
+            }}
             onExportSTEP={handleExportSTEP}
             stepExportSupported={!!effectiveResult?.geometry && canExportStepViaBridge(effectiveResult.geometry)}
             onExportGLTF={handleExportGLTF}
