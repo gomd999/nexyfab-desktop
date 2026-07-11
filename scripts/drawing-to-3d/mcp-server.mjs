@@ -20,12 +20,26 @@ import { textToIntent, textToAssembly } from './from-text.mjs';
 import { buildAssembly } from './assembly.mjs';
 import { verify3d } from './verify.mjs';
 import { renderHtml } from './html-render.mjs';
+import { composeWithGate, emitComposite } from './compose.mjs';
 import { gate, toOpenScad } from './reconstruct.mjs';
 import { toComponentIntent } from './to-intent.mjs';
 
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
 
 const tools = [
+  {
+    name: 'compose_3d',
+    description:
+      `★ 범용 자유조합 — 고정 어휘(7종) 없이 AI가 범용 프리미티브(revolve/extrude/cylinder/box/sphere ` +
+      `+ boolean/pattern/placement)를 조합해 임의 형상을 만든다. "수처리 탱크·용기·축·복합부품" 등 ` +
+      `템플릿 밖 형상 대응. 흐름: 텍스트 → AI 조합 → 결정론 게이트(폴리곤 닫힘·회전축·정규화) → ` +
+      `게이트 실패 시 AI 교정루프 → 실렌더 manifold 검증. AI=계획, 형상·검증=결정론. ` +
+      `반환: {intent, gatePassed, rounds, verify(manifold), scad}. 실증: 200L 원뿔탱크 텍스트→manifold.`,
+    inputSchema: {
+      type: 'object', required: ['description'],
+      properties: { description: { type: 'string', description: '만들 부품/장비 자연어 설명' }, maxRounds: { type: 'integer' } },
+    },
+  },
   {
     name: 'text_to_intent',
     description:
@@ -131,6 +145,11 @@ const tools = [
 ];
 
 async function callTool(name, args = {}) {
+  if (name === 'compose_3d') {
+    const r = await composeWithGate(args.description, { maxRounds: args.maxRounds ?? 2 });
+    if (r.gatePassed && !r.scad) r.scad = emitComposite(r.intent);
+    return r;
+  }
   if (name === 'text_to_intent') {
     const { intent, model, repaired } = await textToIntent(args.description, { model: args.model });
     return { ...intent, repaired: !!repaired, _model: model };
