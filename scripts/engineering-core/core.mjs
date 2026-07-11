@@ -7,8 +7,9 @@ import columnBuckling from './calculators/column-buckling.mjs';
 import simpleBeam from './calculators/simple-beam.mjs';
 import boltConnection from './calculators/bolt-connection.mjs';
 import rackFrame from './calculators/rack-frame.mjs';
+import rcBeam from './calculators/rc-beam.mjs';
 
-export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame];
+export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam];
 
 /** Minimal JSON-Schema-subset validator (type/required/properties/minimum/maximum/enum). */
 export function validateInput(schema, input) {

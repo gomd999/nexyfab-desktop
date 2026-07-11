@@ -24,6 +24,33 @@
     "deflection_limit_denominator_default": 250,
     "_note": "처짐한계는 용도별 상이 — 기본값 L/250은 관행값, 프로젝트별 입력 권장"
   },
+  "rc": {
+    "verified": true,
+    "Es_MPa": 200000,
+    "phi_tension": 0.85,
+    "phi_compression_other": 0.65,
+    "phi_compression_spiral": 0.70,
+    "phi_shear": 0.75,
+    "stress_block_table": {
+      "fck": [40, 50, 60, 70, 80, 90],
+      "eps_cu": [0.0033, 0.0032, 0.0031, 0.003, 0.0029, 0.0028],
+      "eta": [1.0, 0.97, 0.95, 0.91, 0.87, 0.84],
+      "beta1": [0.8, 0.8, 0.76, 0.74, 0.72, 0.7]
+    },
+    "tension_ctrl_strain_fy_le400": 0.005,
+    "tension_ctrl_eps_y_mult_fy_gt400": 2.5,
+    "min_flex_strain_fy_le400": 0.004,
+    "min_flex_eps_y_mult_fy_gt400": 2.0,
+    "Vc_coef_inv": 6,
+    "Vs_max_coef": 0.2,
+    "Vs_max_fck_denom": 250,
+    "Av_min_sqrt_coef": 0.0625,
+    "Av_min_floor_coef": 0.35,
+    "stirrup_spacing_d_ratio": 0.5,
+    "stirrup_spacing_max_mm": 600,
+    "spacing_halve_Vs_sqrt_coef_inv": 3,
+    "_verified_note": "원문 대조(2026-07-12, CodeViewer 조항 텍스트+수식 이미지 판독): εcu=0.0033(fck≤40, 14 20 20 §4.1.1(3))·응력블록 η(0.85fck)/β1=0.80(표 4.1-2 — ACI β1=0.85와 다름!). φ: 인장지배 0.85(ACI 0.90과 다름)·압축지배 0.65/나선 0.70·전단 0.75(14 20 10 §4.2.3(2)). 인장지배한계 0.005(fy≤400)/2.5εy·최소허용변형률 0.004/2εy(14 20 20 §4.1.2(4)(5)). Es=200,000(14 20 10 식 4.3-5). Vc=(1/6)λ√fck·bw·d(14 20 22 식 4.2-1)·Vs=Av·fyt·d/s(식 4.3-3)·Vs≤0.2(1−fck/250)fck·bw·d(§4.3.4(9) — 구 (2/3)√fck 아님!)·Av,min=0.0625√fck·bw·s/fyt≥0.35bw·s/fyt(§4.3.3)·간격 d/2·600mm, Vs>(1/3)√fck·bw·d시 절반(§4.3.2). 재료계수(0.65/0.90)는 부록 대안설계법 — 본 계산기는 본문 강도감소계수 방식."
+  },
   "civil": {
     "retaining_wall": {
       "verified": true,
