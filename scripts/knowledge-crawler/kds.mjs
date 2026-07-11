@@ -32,6 +32,7 @@ const TARGETS = [
   { code: '143110', tags: ['korea', 'kds', 'steel', 'member-design', 'P1'] },         // 강구조 부재(LRFD)
   { code: '143010', tags: ['korea', 'kds', 'steel', 'asd', 'member-design', 'P1'] },                 // 강구조 부재(허용응력)
   { code: '143125', tags: ['korea', 'kds', 'steel', 'connection', 'P1'] },            // 강구조 연결(LRFD)
+  { code: '213000', tags: ['korea', 'kds', 'temporary-structures', 'earth-retention', 'P1', 'P2'] }, // 가설흙막이
   { code: '215000', tags: ['korea', 'kds', 'temporary-structures', 'formwork', 'P1'] }, // 거푸집 및 동바리
   { code: '216000', tags: ['korea', 'kds', 'temporary-structures', 'scaffold', 'P1'] }, // 비계 및 안전시설물
   { code: '411200', tags: ['korea', 'kds', 'building', 'loads', 'P3'] },              // 건축물 설계하중

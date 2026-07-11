@@ -150,6 +150,34 @@
       ]
     },
     {
+      "id": "fhwa-sbdh-example1-straight-igirder",
+      "title": "FHWA SBDH Design Example 1: Three-Span Continuous Straight Composite Steel I-Girder Bridge",
+      "publisher": "U.S. DOT FHWA / ROSA P",
+      "url": "https://rosap.ntl.bts.gov/view/dot/42904/dot_42904_DS1.pdf",
+      "license": "US-Government-Public-Domain",
+      "licenseNote": "US federal government work, 17 U.S.C. §105.",
+      "tags": [
+        "steel",
+        "worked-example",
+        "reverse-eng-source",
+        "P1"
+      ]
+    },
+    {
+      "id": "fhwa-sbdh-example2a-2span-igirder",
+      "title": "FHWA SBDH Design Example 2A: Two-Span Continuous Straight Composite Steel I-Girder Bridge",
+      "publisher": "U.S. DOT FHWA / ROSA P",
+      "url": "https://rosap.ntl.bts.gov/view/dot/42891/dot_42891_DS1.pdf",
+      "license": "US-Government-Public-Domain",
+      "licenseNote": "US federal government work, 17 U.S.C. §105.",
+      "tags": [
+        "steel",
+        "worked-example",
+        "reverse-eng-source",
+        "P1"
+      ]
+    },
+    {
       "id": "kds-kcs-kcsc",
       "enabled": false,
       "title": "KDS/KCS 국가건설기준 (예: KDS 11 80 05 콘크리트옹벽, KDS 11 80 10 보강토옹벽, KDS 41 건축구조기준)",

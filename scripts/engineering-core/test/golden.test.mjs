@@ -226,3 +226,29 @@ test('REVERSE-ENG: SBDH DE3 공표값 Pn=790·Pr=750 kips 재현 (AASHTO 압축�
   close(r.checks.capacity_LRFD.phiPn_kN / KIPS, 750, 0.3);     // 공표 Pr 재현 (φc=0.95)
   assert.equal(r.verdict, 'PASS');                              // Pu=451 < 750
 });
+
+// 원전: SBDH Design Example 1 (straight I-girder) p.153-154 지압보강재 —
+// As=13.25in², rs=3.46in, KL=51.8in: 공표 Pe=16,920·Po=662·Pn=651·Pr=618 kips
+test('REVERSE-ENG: SBDH DE1 공표값 Pn=651·Pr=618 kips 재현 (AASHTO 압축재 #2)', () => {
+  const KIPS = 4.448222, IN = 25.4, KSI = 6.894757;
+  const r = runCalculator('column_buckling', {
+    Fy: 50 * KSI, E: 29000 * KSI, Ag: 13.25 * IN * IN, L: 51.8 * IN, K: 1.0, r: 3.46 * IN, Pu: 388 * KIPS,
+  }, 'AASHTO');
+  close((r.intermediate.Fcr_MPa * 13.25 * IN * IN) / KSI / (IN * IN), 651, 0.3); // Pn(kips)
+  close(r.checks.capacity_LRFD.phiPn_kN / KIPS, 618, 0.3);                       // Pr 재현
+  assert.equal(r.verdict, 'PASS'); // Ru=388 < 618
+});
+
+// 원전: SBDH Design Example 2A p.108-109 지압보강재 — ⚠️ 역산으로 공표 예제의 오류 발견:
+// 공표 Pe=2,646 "kips"는 실제로 π²E/(KL/r)²=2,646 ksi(응력)이며 Ag=10.95in² 곱이 누락됨.
+// 올바른 Pe=28,990 kips → Pn=543.2(공표 502.1은 보수측 오류) — DE1·DE3 동일공식 정확재현으로 우리 구현이 옳음을 교차확인.
+test('REVERSE-ENG: SBDH DE2A 공표예제 오류 검출 — Pe에 Ag 곱 누락 (우리 값이 정칙)', () => {
+  const KIPS = 4.448222, IN = 25.4, KSI = 6.894757;
+  const r = runCalculator('column_buckling', {
+    Fy: 50 * KSI, E: 29000 * KSI, Ag: 10.95 * IN * IN, L: 31.5 * IN, K: 1.0, r: 3.03 * IN, Pu: 0,
+  }, 'AASHTO');
+  close(r.intermediate.Fe_MPa / KSI, 2646, 0.4);   // 공표 "2,646"의 정체 = Fe 응력(ksi)
+  const Pn_kips = (r.intermediate.Fcr_MPa * 10.95 * IN * IN) / KSI / (IN * IN);
+  close(Pn_kips, 543.2, 0.4);                       // 올바른 Pn (공표 502.1과 8% 차이 — 문서 오류)
+  assert.ok(Math.abs(Pn_kips - 502.1) / 502.1 > 0.05, 'published erroneous value should NOT match');
+});
