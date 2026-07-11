@@ -12,6 +12,7 @@
 import { calculators, runCalculatorCore } from '../../core.mjs';
 import { optimizeSection } from '../../optimize.mjs';
 import { analyzeFrame2D } from '../../analysis/frame2d.mjs';
+import { takeoff, elementTypes } from '../../quantity/takeoff.mjs';
 import ksh from '../../sections/ks-h-beams.json';
 import kds from '../../standards/kds.json';
 import aisc from '../../standards/aisc360.json';
@@ -171,6 +172,15 @@ export default {
         }
       }
 
+      if (path === '/v1/quantity/takeoff' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        try {
+          return json(takeoff(body.elements));
+        } catch (e) {
+          return json({ error: e.message, code: e.code ?? 'QTO_ERROR', supportedTypes: elementTypes }, 400);
+        }
+      }
+
       if (path === '/v1/rag/search' && request.method === 'POST') {
         const body = await request.json().catch(() => ({}));
         const query = (body.query ?? '').trim();
@@ -202,7 +212,7 @@ export default {
         });
       }
 
-      return json({ error: 'not found', endpoints: ['GET /v1/health', 'GET /v1/calculators', 'POST /v1/calc/{id}', 'POST /v1/optimize/section', 'POST /v1/analyze/frame2d', 'POST /v1/rag/search'] }, 404);
+      return json({ error: 'not found', endpoints: ['GET /v1/health', 'GET /v1/calculators', 'POST /v1/calc/{id}', 'POST /v1/optimize/section', 'POST /v1/analyze/frame2d', 'POST /v1/quantity/takeoff', 'POST /v1/rag/search'] }, 404);
     } catch (e) {
       return json({ error: e.message }, 500);
     }
