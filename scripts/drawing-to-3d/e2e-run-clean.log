@@ -1,0 +1,72 @@
+{"name":"bent-sheet-05","bucket":"clean","type":"OK","params":"4/4","holes":"-","gate":"PASS","err":"-"}
+{"name":"bent-sheet-10-scan","bucket":"scan","type":"OK","params":"1/4","holes":"-","gate":"FAIL","err":"flangeHeight: gt 30 vs undefined | length: gt 60 vs undefined | thickness: gt 2 vs undefined"}
+{"name":"bent-sheet-15","bucket":"clean","type":"OK","params":"4/4","holes":"-","gate":"PASS","err":"-"}
+{"name":"bent-sheet-20-scan","bucket":"scan","type":"OK","params":"4/4","holes":"-","gate":"PASS","err":"-"}
+{"name":"bent-sheet-25","bucket":"clean","type":"OK","params":"4/4","holes":"-","gate":"PASS","err":"-"}
+{"name":"bent-sheet-30-scan","bucket":"scan","type":"OK","params":"1/4","holes":"-","gate":"FAIL","err":"flangeHeight: gt 35 vs undefined | length: gt 120 vs undefined | thickness: gt 1.5 vs undefined"}
+{"name":"bent-sheet-35","bucket":"clean","type":"OK","params":"4/4","holes":"-","gate":"PASS","err":"-"}
+{"name":"bent-sheet-40-scan","bucket":"scan","type":"OK","params":"4/4","holes":"-","gate":"PASS","err":"-"}
+{"name":"bent-sheet-45","bucket":"clean","type":"OK","params":"4/4","holes":"-","gate":"PASS","err":"-"}
+{"name":"bent-sheet-50-scan","bucket":"scan","type":"OK","params":"4/4","holes":"-","gate":"PASS","err":"-"}
+{"name":"flange-04-scan","bucket":"scan","type":"OK","params":"2/6","holes":"-","gate":"FAIL","err":"boreDia: gt 70 vs undefined | bcd: gt 90 vs undefined | boltHoleD: gt 12 vs undefined"}
+{"name":"flange-09","bucket":"clean","type":"OK","params":"6/6","holes":"-","gate":"PASS","err":"-"}
+{"name":"flange-14-scan","bucket":"scan","type":"OK","params":"5/6","holes":"-","gate":"PASS","err":"boltHoleD: gt 12 vs 12.6"}
+{"name":"flange-19","bucket":"clean","type":"OK","params":"6/6","holes":"-","gate":"PASS","err":"-"}
+{"name":"flange-24-scan","bucket":"scan","type":"OK","params":"6/6","holes":"-","gate":"PASS","err":"-"}
+{"name":"flange-29","bucket":"clean","type":"OK","params":"6/6","holes":"-","gate":"PASS","err":"-"}
+{"name":"flange-34-scan","bucket":"scan","type":"OK","params":"6/6","holes":"-","gate":"PASS","err":"-"}
+{"name":"flange-39","bucket":"clean","type":"OK","params":"6/6","holes":"-","gate":"PASS","err":"-"}
+{"name":"flange-44-scan","bucket":"scan","type":"OK","params":"5/6","holes":"-","gate":"PASS","err":"bcd: gt 90 vs 98"}
+{"name":"flange-49","bucket":"clean","type":"OK","params":"6/6","holes":"-","gate":"PASS","err":"-"}
+{"name":"l-bracket-03","bucket":"clean","type":"OK","params":"4/4","holes":"-","gate":"PASS","err":"-"}
+{"name":"l-bracket-08-scan","bucket":"scan","type":"ERR","err":"bad extraction JSON: Expected ',' or '}' after property value in JSON at position"}
+{"name":"l-bracket-13","bucket":"clean","type":"OK","params":"4/4","holes":"-","gate":"PASS","err":"-"}
+{"name":"l-bracket-18-scan","bucket":"scan","type":"ERR","err":"bad extraction JSON: Expected ',' or '}' after property value in JSON at position"}
+{"name":"l-bracket-23","bucket":"clean","type":"ERR","err":"bad extraction JSON: Expected ',' or '}' after property value in JSON at position"}
+{"name":"l-bracket-28-scan","bucket":"scan","type":"OK","params":"4/4","holes":"-","gate":"PASS","err":"-"}
+{"name":"l-bracket-33","bucket":"clean","type":"ERR","err":"bad extraction JSON: Expected ',' or '}' after property value in JSON at position"}
+{"name":"l-bracket-38-scan","bucket":"scan","type":"ERR","err":"bad extraction JSON: Expected ',' or '}' after property value in JSON at position"}
+{"name":"l-bracket-43","bucket":"clean","type":"OK","params":"3/4","holes":"-","gate":"FAIL","err":"thickness: gt 4 vs undefined"}
+{"name":"l-bracket-48-scan","bucket":"scan","type":"ERR","err":"bad extraction JSON: Expected ',' or '}' after property value in JSON at position"}
+{"name":"plate-with-holes-01","bucket":"clean","type":"OK","params":"3/3","holes":"0/2","gate":"PASS","err":"hole(12,12) unmatched | hole(88,12) unmatched"}
+{"name":"plate-with-holes-06-scan","bucket":"scan","type":"ERR","err":"bad extraction JSON: Expected ',' or '}' after property value in JSON at position"}
+{"name":"plate-with-holes-11","bucket":"clean","type":"OK","params":"3/3","holes":"3/3","gate":"PASS","err":"-"}
+{"name":"plate-with-holes-16-scan","bucket":"scan","type":"OK","params":"3/3","holes":"2/2","gate":"PASS","err":"-"}
+{"name":"plate-with-holes-21","bucket":"clean","type":"OK","params":"3/3","holes":"4/4","gate":"PASS","err":"-"}
+{"name":"plate-with-holes-26-scan","bucket":"scan","type":"OK","params":"3/3","holes":"4/4","gate":"PASS","err":"-"}
+{"name":"plate-with-holes-31","bucket":"clean","type":"ERR","err":"Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"}
+{"name":"plate-with-holes-36-scan","bucket":"scan","type":"ERR","err":"Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"}
+{"name":"plate-with-holes-41","bucket":"clean","type":"ERR","err":"Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"}
+{"name":"plate-with-holes-46-scan","bucket":"scan","type":"OK","params":"3/3","holes":"4/4","gate":"PASS","err":"-"}
+{"name":"stepped-plate-02-scan","bucket":"scan","type":"OK","params":"5/5","holes":"-","gate":"PASS","err":"-"}
+{"name":"stepped-plate-07","bucket":"clean","type":"OK","params":"5/5","holes":"-","gate":"PASS","err":"-"}
+{"name":"stepped-plate-12-scan","bucket":"scan","type":"ERR","err":"bad extraction JSON: Expected ',' or '}' after property value in JSON at position"}
+{"name":"stepped-plate-17","bucket":"clean","type":"OK","params":"5/5","holes":"-","gate":"PASS","err":"-"}
+{"name":"stepped-plate-22-scan","bucket":"scan","type":"ERR","err":"bad extraction JSON: Expected ',' or '}' after property value in JSON at position"}
+{"name":"stepped-plate-27","bucket":"clean","type":"OK","params":"5/5","holes":"-","gate":"PASS","err":"-"}
+{"name":"stepped-plate-32-scan","bucket":"scan","type":"OK","params":"5/5","holes":"-","gate":"PASS","err":"-"}
+{"name":"stepped-plate-37","bucket":"clean","type":"ERR","err":"bad extraction JSON: Expected ',' or '}' after property value in JSON at position"}
+{"name":"stepped-plate-42-scan","bucket":"scan","type":"OK","params":"5/5","holes":"-","gate":"PASS","err":"-"}
+{"name":"stepped-plate-47","bucket":"clean","type":"OK","params":"5/5","holes":"-","gate":"PASS","err":"-"}
+
+=== SUMMARY ===
+{
+ "cases": 50,
+ "typeClassification": "37/50 (74.0%)",
+ "paramAccuracy": "156/169 (92.3%)",
+ "holePosAccuracy": "17/19 (89.5%)",
+ "geometryGatePass": "33/50",
+ "apiErrors": 13,
+ "byBucket": {
+  "clean:bent_sheet": "type 5/5, params 20/20",
+  "scan:bent_sheet": "type 5/5, params 14/20",
+  "scan:flange": "type 5/5, params 24/30",
+  "clean:flange": "type 5/5, params 30/30",
+  "clean:l_bracket": "type 3/5, params 11/12",
+  "scan:l_bracket": "type 1/5, params 4/4",
+  "clean:plate_with_holes": "type 3/5, params 9/9",
+  "scan:plate_with_holes": "type 3/5, params 9/9",
+  "scan:stepped_plate": "type 3/5, params 15/15",
+  "clean:stepped_plate": "type 4/5, params 20/20"
+ }
+}

@@ -7,17 +7,28 @@
    gen-drawing.mjs          extract.mjs               reconstruct.mjs(gate)   reconstruct.mjs        run-e2e.mjs
 ```
 
-## 첫 평가 결과 (2026-07-12, gemini-2.5-flash, temperature 0)
+## v1 첫 평가 (5장 plate, gemini-2.5-flash, temp 0)
+외곽 치수 15/15·구멍 위치 16/16·게이트 5/5 = 100% (단일 어휘·깨끗한 도면)
 
-| 지표 | 결과 |
-|---|---|
-| 외곽 치수 (±0.5mm) | **15/15 (100%)** |
-| 구멍 개수 | 5/5 |
-| 구멍 위치 (±1mm) — 치수 미기입 구멍의 대칭·축척 추론 포함 | **16/16 (100%)** |
-| 구멍 지름 | 16/16 |
-| 기하 게이트 통과 | 5/5 |
+## v2 평가 — 어휘 5종 × 증강 50장 (2026-07-12, 정직 결과)
 
-상세: `e2e-report.json` / 산출 SCAD: `out/*.scad`
+| 지표 | 결과 | 해석 |
+|---|---|---|
+| 타입 분류 | 37/50 (74%) | 나머지 13은 추출 자체 실패(아래) |
+| **파라미터 정확도(추출 성공분)** | **156/169 (92.3%)** | 읽히면 정확함 |
+| 구멍 위치 (±1mm) | 17/19 (89.5%) | |
+| 기하 게이트 통과 | 33/50 | |
+| **추출 실패(malformed JSON)** | **13/50 (26%)** | ★ 최대 갭 |
+
+**버킷별 (clean vs scan)** — 깨끗한 도면은 거의 완벽, 스캔 열화가 갉아먹음:
+- clean:bent_sheet 20/20 · clean:flange 30/30 · clean:stepped 20/20 (완벽)
+- scan:bent_sheet 14/20 · scan:flange 24/30 (스캔 시 작은 주석 `t=`·치수 누락)
+- l_bracket thickness·flange의 boreDia/bcd가 자주 undefined (도면 표기 방식 문제)
+
+### ★ 최대 갭 = Gemini 구조화 출력 flakiness (26%)
+scan·복잡 도면에서 gemini-2.5-flash가 degenerate float(`width:80e-1500000`)을 뱉어 JSON.parse 실패. 1회 재시도로 일부 회복하나 13/50 잔존. **프로덕션 전 1순위 하드닝** — 재시도 증가/JSON 리페어/모델 교체 후보.
+
+상세: `e2e-report.json` / 산출 SCAD: `out/*.scad` / 원시 로그: `e2e-run-clean.log`
 
 ## 구성
 
@@ -26,15 +37,17 @@
 - `reconstruct.mjs` — `gate()`: 범위·판재성·구멍 내접 검사 (AI 산출물은 게이트 통과 후에만 형상화) / `toOpenScad()` / `analyticViews()` (재투영 검증용)
 - `run-e2e.mjs` — 전체 평가 파이프라인 + 리포트
 
-## 정직한 한계 (v1)
+## 정직한 한계 (v2)
 
-- **어휘 1종**(plate_with_holes) — 확장 순서: 단차판 → L브래킷 → 플랜지 → 절곡판금
-- **깨끗한 합성 도면** — 스캔·손도면·복잡 주석 미검증 (다음: 노이즈·회전·스캔열화 증강)
-- 검증 루프 ④(재구성→재투영→drawing-diff 픽셀 대조)는 analyticViews까지만 — SheetRenderer 연동 잔여
-- Gemini 호출 비용·키는 `.env` GEMINI_API_KEY, ~1.2k tokens/도면
+- **어휘 5종**(plate/stepped/l_bracket/flange/bent_sheet) — 실제 조립도·복잡 부품 미대응
+- **합성 도면 한정** — 실스캔·손도면 미검증. 증강 스캔열화는 반영(위 scan 버킷)
+- **추출 신뢰성 26% 실패** — 최대 리스크(위 ★). 실도면은 더 낮을 것
+- 검증 루프 ④는 analyticViews/픽셀 대조까지 — shape-generator SheetRenderer 정식 연동 잔여
+- Gemini 키 `.env` GEMINI_API_KEY, ~1.2k tokens/도면
 
-## 다음 단계
+## 다음 단계 (우선순위)
 
-1. 어휘 확장 + 케이스 50장 증강(노이즈·스케일 변형) 평가
-2. shape-generator intent 스키마와 정식 연결 (현 v1 스키마는 축소판)
-3. 실패 케이스 수집 → 프롬프트/스키마 보강 → 필요 시 합성 GT 파인튜닝
+1. **★ 추출 하드닝** — malformed JSON 26% 감축: 재시도 3회+지수백오프, JSON 리페어(degenerate float 교정), 대안 모델(gemini-2.5-pro/구조화 강한 모델) A/B
+2. l_bracket thickness·flange BCD 표기 프롬프트 보강 (undefined 다발 구간)
+3. shape-generator intent 스키마 정식 연결 (`to-intent.mjs`가 op:subtract 브리지 — 이미 있음)
+4. 실도면(AK 랙 DWG 등) 소량 수기 GT로 실환경 baseline

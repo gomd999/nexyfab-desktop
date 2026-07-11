@@ -1,0 +1,70 @@
+{
+ "date": "2026-07-11T17:03:54.970Z",
+ "summary": {
+  "cases": 10,
+  "pixelLoopPass": "9/10",
+  "controlSanity": "10/10 (GT 재작도 diff<0.5%)",
+  "threshold": "2%"
+ },
+ "rows": [
+  {
+   "name": "bent-sheet-05",
+   "inkDiff": "0%",
+   "ctrlDiff": "0%",
+   "verdict": "PASS"
+  },
+  {
+   "name": "bent-sheet-15",
+   "inkDiff": "0%",
+   "ctrlDiff": "0%",
+   "verdict": "PASS"
+  },
+  {
+   "name": "bent-sheet-25",
+   "inkDiff": "0%",
+   "ctrlDiff": "0%",
+   "verdict": "PASS"
+  },
+  {
+   "name": "bent-sheet-35",
+   "verdict": "ERR",
+   "reason": "Expected ',' or '}' after property value in JSON at position 65128 (line 1 colum"
+  },
+  {
+   "name": "bent-sheet-45",
+   "inkDiff": "0%",
+   "ctrlDiff": "0%",
+   "verdict": "PASS"
+  },
+  {
+   "name": "flange-09",
+   "inkDiff": "0%",
+   "ctrlDiff": "0%",
+   "verdict": "PASS"
+  },
+  {
+   "name": "flange-19",
+   "inkDiff": "0%",
+   "ctrlDiff": "0%",
+   "verdict": "PASS"
+  },
+  {
+   "name": "flange-29",
+   "inkDiff": "0%",
+   "ctrlDiff": "0%",
+   "verdict": "PASS"
+  },
+  {
+   "name": "flange-39",
+   "inkDiff": "0%",
+   "ctrlDiff": "0%",
+   "verdict": "PASS"
+  },
+  {
+   "name": "flange-49",
+   "inkDiff": "0%",
+   "ctrlDiff": "0%",
+   "verdict": "PASS"
+  }
+ ]
+}

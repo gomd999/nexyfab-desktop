@@ -1,2 +1,4 @@
 testdata/*.png
 out/
+
+e2e-run.log

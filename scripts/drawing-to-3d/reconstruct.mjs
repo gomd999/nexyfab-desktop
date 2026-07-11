@@ -1,47 +1,85 @@
 /**
- * 2D→3D v1 — 결정론 재구성 (③): intent JSON → OpenSCAD 소스 + 해석적 재투영 뷰.
- * AI 산출물(intent)을 기하 게이트로 검증 후에만 형상 생성 — "LLM=이해, 결정론=형상".
- * 해석적 재투영(④ 검증 루프 입력): 파라메트릭이라 뷰 치수를 폐형식으로 계산 가능.
+ * 2D→3D — 결정론 재구성 v2 (어휘 5종): intent JSON → OpenSCAD + 해석적 재투영.
+ * AI 산출물은 기하 게이트 통과 후에만 형상화 — "LLM=이해, 결정론=형상·검증".
  */
+const pos = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0;
+
+const GATES = {
+  plate_with_holes(i, e) {
+    for (const k of ['width', 'depth', 'thickness']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);
+    if (i.thickness >= Math.min(i.width, i.depth)) e.push('thickness ≥ min(w,d) — 판재 아님');
+    for (const [n, h] of (i.holes ?? []).entries()) {
+      if (!pos(h.d) || h.d >= Math.min(i.width, i.depth)) e.push(`hole[${n}] d invalid`);
+      if (!(h.x - h.d / 2 >= 0 && h.x + h.d / 2 <= i.width)) e.push(`hole[${n}] x outside`);
+      if (!(h.y - h.d / 2 >= 0 && h.y + h.d / 2 <= i.depth)) e.push(`hole[${n}] y outside`);
+    }
+  },
+  stepped_plate(i, e) {
+    for (const k of ['width', 'depth', 'thickness', 'stepWidth', 'stepThickness']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (i.stepWidth >= i.width) e.push('stepWidth ≥ width');
+    if (i.stepThickness >= i.thickness) e.push('stepThickness ≥ thickness');
+  },
+  l_bracket(i, e) {
+    for (const k of ['legA', 'legB', 'width', 'thickness']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (i.thickness >= Math.min(i.legA, i.legB)) e.push('thickness ≥ min(legA,legB)');
+  },
+  flange(i, e) {
+    for (const k of ['outerDia', 'boreDia', 'thickness', 'bcd', 'boltHoleD', 'boltCount']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (i.boreDia >= i.outerDia) e.push('bore ≥ OD');
+    if (!(i.bcd > i.boreDia && i.bcd < i.outerDia)) e.push('BCD not between bore and OD');
+    if (i.bcd + i.boltHoleD >= i.outerDia) e.push('bolt holes break OD rim');
+    if (i.bcd - i.boltHoleD <= i.boreDia) e.push('bolt holes break bore rim');
+    if (!Number.isInteger(i.boltCount) || i.boltCount < 2 || i.boltCount > 36) e.push('boltCount invalid');
+  },
+  bent_sheet(i, e) {
+    for (const k of ['webWidth', 'flangeHeight', 'length', 'thickness']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (2 * i.thickness >= i.webWidth) e.push('2t ≥ webWidth');
+    if (i.thickness >= i.flangeHeight) e.push('t ≥ flangeHeight');
+  },
+};
+
 export function gate(intent) {
   const errs = [];
-  if (intent.type !== 'plate_with_holes') errs.push(`unsupported type '${intent.type}'`);
-  for (const k of ['width', 'depth', 'thickness']) {
-    if (!(intent[k] > 0 && intent[k] < 5000)) errs.push(`${k} out of range: ${intent[k]}`);
-  }
-  if (intent.thickness >= Math.min(intent.width, intent.depth)) errs.push('thickness ≥ min(width,depth) — 판재 아님');
-  for (const [i, h] of (intent.holes ?? []).entries()) {
-    if (!(h.d > 0 && h.d < Math.min(intent.width, intent.depth))) errs.push(`hole[${i}] d invalid`);
-    if (!(h.x - h.d / 2 >= 0 && h.x + h.d / 2 <= intent.width)) errs.push(`hole[${i}] x=${h.x} outside plate`);
-    if (!(h.y - h.d / 2 >= 0 && h.y + h.d / 2 <= intent.depth)) errs.push(`hole[${i}] y=${h.y} outside plate`);
-  }
+  const g = GATES[intent.type];
+  if (!g) { errs.push(`unsupported type '${intent.type}'`); return errs; }
+  g(intent, errs);
   return errs;
 }
+
+const SCAD = {
+  plate_with_holes(i) {
+    const holes = (i.holes ?? []).map((h) => `    translate([${h.x}, ${h.y}, -1]) cylinder(h=${i.thickness + 2}, d=${h.d}, $fn=64);`).join('\n');
+    return `difference() {\n  cube([${i.width}, ${i.depth}, ${i.thickness}]);\n${holes}\n}`;
+  },
+  stepped_plate(i) {
+    return `union() {\n  cube([${i.stepWidth}, ${i.depth}, ${i.stepThickness}]);\n  translate([${i.stepWidth}, 0, 0]) cube([${i.width - i.stepWidth}, ${i.depth}, ${i.thickness}]);\n}`;
+  },
+  l_bracket(i) {
+    return `union() {\n  cube([${i.legA}, ${i.width}, ${i.thickness}]);\n  cube([${i.thickness}, ${i.width}, ${i.legB}]);\n}`;
+  },
+  flange(i) {
+    const bolts = Array.from({ length: i.boltCount }, (_, k) => {
+      const a = (360 / i.boltCount) * k;
+      return `    rotate([0,0,${a}]) translate([${i.bcd / 2}, 0, -1]) cylinder(h=${i.thickness + 2}, d=${i.boltHoleD}, $fn=48);`;
+    }).join('\n');
+    return `difference() {\n  cylinder(h=${i.thickness}, d=${i.outerDia}, $fn=128);\n  translate([0,0,-1]) cylinder(h=${i.thickness + 2}, d=${i.boreDia}, $fn=96);\n${bolts}\n}`;
+  },
+  bent_sheet(i) {
+    return `union() {\n  cube([${i.length}, ${i.webWidth}, ${i.thickness}]);\n  cube([${i.length}, ${i.thickness}, ${i.flangeHeight}]);\n  translate([0, ${i.webWidth - i.thickness}, 0]) cube([${i.length}, ${i.thickness}, ${i.flangeHeight}]);\n}`;
+  },
+};
 
 export function toOpenScad(intent) {
   const errs = gate(intent);
   if (errs.length) throw new Error('geometry gate: ' + errs.join('; '));
-  const holes = (intent.holes ?? [])
-    .map((h) => `    translate([${h.x}, ${h.y}, -1]) cylinder(h=${intent.thickness + 2}, d=${h.d}, $fn=64);`)
-    .join('\n');
-  return `// generated by drawing-to-3d v1 (deterministic reconstruction)
-// intent: ${JSON.stringify(intent)}
-difference() {
-  cube([${intent.width}, ${intent.depth}, ${intent.thickness}]);
-${holes}
-}
-`;
+  return `// generated by drawing-to-3d v2 (deterministic reconstruction)\n// intent: ${JSON.stringify(intent)}\n${SCAD[intent.type](intent)}\n`;
 }
 
-/** 해석적 재투영 — 3면도 외곽 치수+구멍 (검증 루프에서 원 도면 추출값과 대조) */
-export function analyticViews(intent) {
-  return {
-    top: { w: intent.width, h: intent.depth, holes: intent.holes ?? [] },
-    front: { w: intent.width, h: intent.thickness },
-    side: { w: intent.depth, h: intent.thickness },
-    consistency: {
-      frontWidthEqualsTopWidth: true, // 파라메트릭이므로 구조적 보장 — 도면 추출값 대조는 verify에서
-      sideWidthEqualsTopDepth: true,
-    },
-  };
-}
+/** 채점·재투영용 파라미터 목록 (타입별) */
+export const PARAMS = {
+  plate_with_holes: ['width', 'depth', 'thickness'],
+  stepped_plate: ['width', 'depth', 'thickness', 'stepWidth', 'stepThickness'],
+  l_bracket: ['legA', 'legB', 'width', 'thickness'],
+  flange: ['outerDia', 'boreDia', 'thickness', 'bcd', 'boltHoleD', 'boltCount'],
+  bent_sheet: ['webWidth', 'flangeHeight', 'length', 'thickness'],
+};
