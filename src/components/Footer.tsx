@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const dict = {
     ko: {
-        desc: 'AI 기반 개발 및 자동화 설비 프로젝트 파트너 매칭 플랫폼',
+        desc: '설계부터 제조까지 하나로 잇는 AI 제조 플랫폼 — 3D 설계·구조 검증·제조사 연결',
         term1: '이용약관',
         term2: '개인정보 처리방침',
         term3: '보안 정책(NDA)',
@@ -24,7 +24,7 @@ const dict = {
         note: '프로젝트 정보는 내부 검토용으로만 관리되며, 외부로 공개되지 않습니다.'
     },
     en: {
-        desc: 'AI-based Development & Automation Project Partner Matching Platform',
+        desc: 'The AI manufacturing platform from design to production — 3D design, engineering verification, and manufacturer matching',
         term1: 'Terms of Use',
         term2: 'Privacy Policy',
         term3: 'Security Policy (NDA)',
@@ -42,7 +42,7 @@ const dict = {
         note: 'Project information is managed only for internal review purposes and is not disclosed externally.'
     },
     ja: {
-        desc: 'AIベースの開発および自動化設備プロジェクトパートナーマッチングプラットフォーム',
+        desc: '設計から製造までをつなぐAI製造プラットフォーム — 3D設計・構造検証・製造パートナー接続',
         term1: '利用規約',
         term2: 'プライバシーポリシー',
         term3: 'セキュリティポリシー(NDA)',
@@ -60,7 +60,7 @@ const dict = {
         note: 'プロジェクト情報は内部検討用としてのみ管理され、外部には公開されません。'
     },
     cn: {
-        desc: '基于AI的开发与自动化设备项目合作伙伴匹配平台',
+        desc: '从设计到制造一站式的AI制造平台 — 3D设计·结构验证·制造商对接',
         term1: '服务条款',
         term2: '隐私政策',
         term3: '安全政策(NDA)',
@@ -78,7 +78,7 @@ const dict = {
         note: '项目信息仅用于内部审核，不会向外部公开。'
     },
     es: {
-        desc: 'Plataforma de emparejamiento de socios para proyectos de desarrollo y automatización basados en IA',
+        desc: 'La plataforma de fabricación con IA, del diseño a la producción — diseño 3D, verificación de ingeniería y conexión con fabricantes',
         term1: 'Términos de Uso',
         term2: 'Política de Privacidad',
         term3: 'Política de Seguridad (NDA)',
@@ -96,7 +96,7 @@ const dict = {
         note: 'La información del proyecto se gestiona solo para revisión interna y no se divulga externamente.'
     },
     ar: {
-        desc: 'منصة مطابقة شركاء المشاريع للتطوير والأتمتة المدعومة بالذكاء الاصطناعي',
+        desc: 'منصة التصنيع بالذكاء الاصطناعي من التصميم إلى الإنتاج — تصميم ثلاثي الأبعاد وتحقق هندسي وربط بالمصنّعين',
         term1: 'شروط الاستخدام',
         term2: 'سياسة الخصوصية',
         term3: 'سياسة الأمان (NDA)',

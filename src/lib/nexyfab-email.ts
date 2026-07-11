@@ -656,7 +656,7 @@ export function dripD1Html(name: string, locale: NexyfabEmailContentLocale = 'ko
       t2 = '기능 2'; n2 = 'AI 빠른 견적';
       d2 = 'STEP 파일을 업로드하면 AI가 재질별·공정별 제조 원가를 즉시 분석합니다.'; a2 = '견적 받기 →';
       t3 = '기능 3'; n3 = '제조사 매칭';
-      d3 = '30만+ 공장 DB 기반으로 프로젝트에 맞는 최적의 제조 파트너를 AI가 추천합니다.'; a3 = '매칭 요청하기 →';
+      d3 = '28만+ 공장 DB 기반으로 프로젝트에 맞는 최적의 제조 파트너를 AI가 추천합니다.'; a3 = '매칭 요청하기 →';
       cta = 'NexyFab 워크벤치 열기';
       break;
     case 'ja':
@@ -667,7 +667,7 @@ export function dripD1Html(name: string, locale: NexyfabEmailContentLocale = 'ko
       t2 = '機能 2'; n2 = 'AIクイック見積もり';
       d2 = 'STEPをアップロードすると、材料・工程別の概算コストをAIが即時分析します。'; a2 = '見積もりを取る →';
       t3 = '機能 3'; n3 = '製造パートナーマッチング';
-      d3 = '30万件超の工場データから、プロジェクトに最適なパートナーをAIが推薦します。'; a3 = 'マッチングを依頼 →';
+      d3 = '28万件超の工場データから、プロジェクトに最適なパートナーをAIが推薦します。'; a3 = 'マッチングを依頼 →';
       cta = 'NexyFab を開く';
       break;
     case 'cn':
@@ -689,7 +689,7 @@ export function dripD1Html(name: string, locale: NexyfabEmailContentLocale = 'ko
       t2 = 'Feature 2'; n2 = 'AI Quick Quote';
       d2 = 'Upload a STEP file and get instant AI-powered manufacturing cost analysis by material and process.'; a2 = 'Get a quote →';
       t3 = 'Feature 3'; n3 = 'Manufacturer Matching';
-      d3 = 'AI recommends the best manufacturing partners from our 300,000+ factory database.'; a3 = 'Request matching →';
+      d3 = 'AI recommends the best manufacturing partners from our 286,000+ factory database.'; a3 = 'Request matching →';
       cta = 'Open NexyFab Workbench';
       break;
   }
@@ -764,7 +764,7 @@ export function dripD7Html(name: string, locale: NexyfabEmailContentLocale = 'ko
       benTitle = 'Pro 플랜 혜택';
       b1 = '<li><span style="color:#3fb950;">✓</span> <strong style="color:#e6edf3;">무제한 3D 프로젝트</strong> 저장 및 공유</li>';
       b2 = '<li><span style="color:#3fb950;">✓</span> <strong style="color:#e6edf3;">AI 어드밴스드 DFM 분석</strong> — FEA 구조해석 포함</li>';
-      b3 = '<li><span style="color:#3fb950;">✓</span> <strong style="color:#e6edf3;">RFQ 자동 발송</strong> — 30만+ 제조사 직접 연결</li>';
+      b3 = '<li><span style="color:#3fb950;">✓</span> <strong style="color:#e6edf3;">RFQ 자동 발송</strong> — 28만+ 제조사 직접 연결</li>';
       b4 = '<li><span style="color:#3fb950;">✓</span> <strong style="color:#e6edf3;">팀 협업</strong> — 멤버 초대 및 공동 설계</li>';
       b5 = '<li><span style="color:#3fb950;">✓</span> <strong style="color:#e6edf3;">우선 고객 지원</strong></li>';
       ctaPro = 'Pro 시작하기';
@@ -776,7 +776,7 @@ export function dripD7Html(name: string, locale: NexyfabEmailContentLocale = 'ko
       benTitle = 'Pro の主な特典';
       b1 = '<li><span style="color:#3fb950;">✓</span> <strong style="color:#e6edf3;">無制限の3Dプロジェクト</strong> — 保存と共有</li>';
       b2 = '<li><span style="color:#3fb950;">✓</span> <strong style="color:#e6edf3;">高度なAI DFM</strong> — FEA 構造解析を含む</li>';
-      b3 = '<li><span style="color:#3fb950;">✓</span> <strong style="color:#e6edf3;">RFQ 自動送信</strong> — 30万件超の工場へ直接</li>';
+      b3 = '<li><span style="color:#3fb950;">✓</span> <strong style="color:#e6edf3;">RFQ 自動送信</strong> — 28万件超の工場へ直接</li>';
       b4 = '<li><span style="color:#3fb950;">✓</span> <strong style="color:#e6edf3;">チームコラボ</strong> — メンバー招待・共同設計</li>';
       b5 = '<li><span style="color:#3fb950;">✓</span> <strong style="color:#e6edf3;">優先サポート</strong></li>';
       ctaPro = 'Pro を始める';

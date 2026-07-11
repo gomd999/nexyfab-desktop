@@ -51,12 +51,12 @@ type PageMeta = { title: string; description: string };
 
 export const PAGE_META: Record<PageKey, Record<Lang, PageMeta>> = {
     home: {
-        kr: { title: 'Nexyfab | AI 3D 모델링 & 제조 파트너 매칭 플랫폼', description: '브라우저에서 3D 모델링부터 AI 견적까지. 30만+ 공장 DB 기반으로 최적의 제조 파트너를 매칭합니다.' },
-        en: { title: 'Nexyfab | AI 3D Modeling & Manufacturing Partner Matching Platform', description: 'From 3D modeling to AI quoting — all in your browser. Match with the best manufacturers from our 300,000+ factory database.' },
-        ja: { title: 'Nexyfab | AI 3Dモデリング & 製造パートナーマッチングプラットフォーム', description: 'ブラウザで3DモデリングからAI見積もりまで。30万件以上の工場DBから最適な製造パートナーをマッチング。' },
-        cn: { title: 'Nexyfab | AI 3D建模与制造合作伙伴匹配平台', description: '从浏览器中的3D建模到AI报价。基于30万+工厂数据库匹配最优制造合作伙伴。' },
-        es: { title: 'Nexyfab | Plataforma de Modelado 3D con IA y Matching de Manufactura', description: 'Desde modelado 3D hasta cotización con IA en su navegador. Encuentre el mejor socio entre más de 300,000 fábricas.' },
-        ar: { title: 'Nexyfab | منصة النمذجة ثلاثية الأبعاد بالذكاء الاصطناعي ومطابقة التصنيع', description: 'من النمذجة ثلاثية الأبعاد إلى التسعير بالذكاء الاصطناعي في متصفحك. مطابقة مع أفضل المصنعين من قاعدة بيانات تضم أكثر من 300,000 مصنع.' },
+        kr: { title: 'Nexyfab | AI 3D 모델링 & 제조 파트너 매칭 플랫폼', description: '브라우저에서 3D 모델링부터 AI 견적까지. 28만+ 공장 DB 기반으로 최적의 제조 파트너를 매칭합니다.' },
+        en: { title: 'Nexyfab | AI 3D Modeling & Manufacturing Partner Matching Platform', description: 'From 3D modeling to AI quoting — all in your browser. Match with the best manufacturers from our 286,000+ factory database.' },
+        ja: { title: 'Nexyfab | AI 3Dモデリング & 製造パートナーマッチングプラットフォーム', description: 'ブラウザで3DモデリングからAI見積もりまで。28万件以上の工場DBから最適な製造パートナーをマッチング。' },
+        cn: { title: 'Nexyfab | AI 3D建模与制造合作伙伴匹配平台', description: '从浏览器中的3D建模到AI报价。基于28万+工厂数据库匹配最优制造合作伙伴。' },
+        es: { title: 'Nexyfab | Plataforma de Modelado 3D con IA y Matching de Manufactura', description: 'Desde modelado 3D hasta cotización con IA en su navegador. Encuentre el mejor socio entre más de 286,000 fábricas.' },
+        ar: { title: 'Nexyfab | منصة النمذجة ثلاثية الأبعاد بالذكاء الاصطناعي ومطابقة التصنيع', description: 'من النمذجة ثلاثية الأبعاد إلى التسعير بالذكاء الاصطناعي في متصفحك. مطابقة مع أفضل المصنعين من قاعدة بيانات تضم أكثر من 286,000 مصنع.' },
     },
     'how-it-works': {
         kr: { title: 'How we Work | 매칭 프로세스', description: 'DB 기반 검색 → AI 맞춤 분석 → 검증된 파트너 연결. Nexyfab의 3단계 제조 매칭 프로세스를 확인하세요.' },

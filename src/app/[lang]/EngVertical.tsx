@@ -293,11 +293,17 @@ export function EngDev({ langCode }: { langCode: string }) {
         </div>
 
         <div className="reveal" style={{ textAlign: 'center' }}>
-          <Link href={`/${langCode}/contact/`} style={{
-            display: 'inline-block', padding: '12px 30px', borderRadius: '12px', fontSize: '14px', fontWeight: 800,
-            background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)', color: '#fff', textDecoration: 'none',
-            boxShadow: '0 4px 20px rgba(59,130,246,0.35)',
-          }}>{t.devKeyCta} →</Link>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href={`/${langCode}/contact/`} style={{
+              display: 'inline-block', padding: '12px 30px', borderRadius: '12px', fontSize: '14px', fontWeight: 800,
+              background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)', color: '#fff', textDecoration: 'none',
+              boxShadow: '0 4px 20px rgba(59,130,246,0.35)',
+            }}>{t.devKeyCta} →</Link>
+            <Link href={`/${langCode}/nexyfab/pricing/`} style={{
+              display: 'inline-block', padding: '12px 30px', borderRadius: '12px', fontSize: '14px', fontWeight: 700,
+              background: '#fff', color: '#1d4ed8', border: '2px solid #3b82f6', textDecoration: 'none',
+            }}>{t.pricingCta}</Link>
+          </div>
           <p style={{ marginTop: '16px', fontSize: '11px', color: '#94a3b8', wordBreak: 'keep-all' }}>{t.devAttribution}</p>
         </div>
       </div>

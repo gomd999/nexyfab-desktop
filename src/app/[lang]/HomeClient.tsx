@@ -188,22 +188,9 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
             {t.platformDemoMigrate}
           </p>
 
-          {/* Find Factories CTA */}
-          <div style={{ margin: '0 auto 50px', textAlign: 'center' }}>
-            <Link prefetch href={`/${langCode}/factories/`} style={{
-              display: 'inline-flex', alignItems: 'center', gap: '8px',
-              padding: '12px 28px', borderRadius: '14px',
-              background: 'rgba(255,255,255,0.08)', color: '#e2e8f0',
-              border: '1px solid rgba(255,255,255,0.15)',
-              fontSize: '14px', fontWeight: 700, textDecoration: 'none',
-              transition: 'all 0.15s',
-            }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
-            >
-              🏭 {t.factories}
-            </Link>
-          </div>
+          {/* 히어로 CTA는 Primary/Secondary 2개로 제한 — 공장검색은 헤더·페르소나·최종 CTA가 담당
+              (DeepSeek 검토: 히어로 CTA 난립 → 시선 분산) */}
+          <div style={{ marginBottom: '50px' }} />
 
           {/* Mock 3D Viewport Preview */}
           <div style={{
@@ -426,15 +413,7 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
             </>}
           </div>
 
-          {/* CTA */}
-          <div style={{ textAlign: 'center', marginTop: '40px' }} className="reveal">
-            <Link prefetch href={`/${langCode}/shape-generator/`} style={{ display: 'inline-block', padding: '12px 28px', border: '2px solid #3b82f6', color: '#1d4ed8', borderRadius: '12px', fontWeight: 700, fontSize: '14px', textDecoration: 'none', transition: 'all 0.2s', background: 'transparent' }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.color = '#fff'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#1d4ed8'; }}
-            >
-              {t.platformCta1} →
-            </Link>
-          </div>
+          {/* 하단 CTA 제거 — 히어로 platformCta1과 중복 (DeepSeek 검토: CTA 난립) */}
         </div>
       </section>
 
