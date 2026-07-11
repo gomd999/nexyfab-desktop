@@ -62,7 +62,13 @@ for (const f of files) {
   // 3) 잔여 상대경로 절대화 (이미지/폰트 등)
   html = absolutize(html);
 
-  html = `<!-- NexyFab 개편 전 백업 열람본 (2026-07-11) — CSS 인라인, JS 제거, 자산 절대경로 -->\n` + html;
+  // 4) JS 제거로 안 뜨는 scroll-reveal 요소 강제 표시 (.reveal은 JS가 .active를 붙여야 보임)
+  const override = `<style data-static-view-override>
+.reveal,[class*="reveal"]{opacity:1 !important;transform:none !important;visibility:visible !important;}
+</style>`;
+  html = html.includes('</body>') ? html.replace('</body>', `${override}</body>`) : html + override;
+
+  html = `<!-- NexyFab 개편 전 백업 열람본 (2026-07-11) — CSS 인라인, JS 제거, 자산 절대경로, reveal 강제표시 -->\n` + html;
   await writeFile(join(OUT, f), html, 'utf8');
   console.log(`${f} -> viewable/ (${Math.round(html.length / 1024)}KB)`);
 }
