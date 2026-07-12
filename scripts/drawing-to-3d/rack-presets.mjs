@@ -25,7 +25,45 @@ function rackBeamIntent(p) {
   return { name: 'RackBeam', features };
 }
 
+/**
+ * 포털 프레임(다부재): 좌우 포스트 2 + 상부 빔 1(중공 각관). 부재가 코너에서 겹쳐 manifold.
+ * fab는 이를 부재 스케줄(BOM: 부재별 길이·중량·본수)로 산출한다.
+ */
+function portalFrameIntent(p) {
+  const W = num(p.bayWidth, 2400), H = num(p.height, 3000), s = num(p.member, 100), wall = num(p.wall, 4);
+  const inner = s - 2 * wall;
+  const tube = (id, size, translate) => {
+    const f = [{ id, kind: 'box', size, at: { translate } }];
+    const bs = size.map((d) => (d === Math.max(...size) ? d + 2 : d - 2 * wall));
+    if (bs.every((v) => v > 0)) f.push({ id: id + '_bore', kind: 'box', size: bs, op: 'subtract', at: { translate: translate.map((t, i) => t + (size[i] === Math.max(...size) ? -1 : wall)) } });
+    return f;
+  };
+  return {
+    name: 'PortalFrame',
+    features: [
+      ...tube('postL', [s, s, H], [0, 0, 0]),
+      ...tube('postR', [s, s, H], [W - s, 0, 0]),
+      ...tube('beam', [W, s, s], [0, 0, H - s]),
+    ],
+    assembly: [
+      { id: 'postL', kind: 'post', section: [s, s], wall, length: H },
+      { id: 'postR', kind: 'post', section: [s, s], wall, length: H },
+      { id: 'beam', kind: 'beam', section: [s, s], wall, length: W },
+    ],
+    material: 'steel',
+  };
+}
+
 export const RACK_TEMPLATES = [
+  {
+    id: 'portal_frame', labelKo: '포털 프레임 (다부재)', labelEn: 'Portal frame (assembly)', build: portalFrameIntent,
+    params: [
+      { name: 'bayWidth', labelKo: '스팬', unit: 'mm', default: 2400, min: 500, max: 8000 },
+      { name: 'height', labelKo: '높이', unit: 'mm', default: 3000, min: 500, max: 8000 },
+      { name: 'member', labelKo: '부재 한 변', unit: 'mm', default: 100, min: 40, max: 300 },
+      { name: 'wall', labelKo: '벽 두께', unit: 'mm', default: 4, min: 1.6, max: 16 },
+    ],
+  },
   {
     id: 'rack_post',
     labelKo: '랙 포스트 (각관)',

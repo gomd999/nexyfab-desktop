@@ -21,10 +21,13 @@ interface Spec {
   flat?: { lengthMm: number; widthMm: number; bendLines?: { angle: number; BA: number; BD: number }[] };
   // concrete / timber
   volumeM3?: number; formworkM2?: number; rebarKg?: number; concreteWeightKg?: number; rebarBasis?: string;
+  // steel_assembly
+  members?: { id: string; kind: string; lengthMm: number; weightKg: number }[]; memberCount?: number; totalLengthMm?: number;
 }
 
 const KIND_TITLE: Record<string, [string, string]> = {
   steel_member: ['제조 (강재 부재)', 'Manufacture (steel member)'],
+  steel_assembly: ['제조 (강재 어셈블리)', 'Manufacture (steel assembly)'],
   bent: ['제조 (판금 절곡)', 'Manufacture (bent sheet)'],
   concrete: ['제조 (콘크리트 물량)', 'Manufacture (concrete BOQ)'],
   timber: ['제조 (목재 부재)', 'Manufacture (timber)'],
@@ -130,7 +133,14 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
           <div style={{ fontSize: 11.5, marginBottom: 8 }}>
             <div style={{ color: 'var(--nx-text-3, #6b7684)', marginBottom: 3 }}>{ko ? '제조 명세 (정확)' : 'Spec (exact)'}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 8px' }}>
-              {spec.kind === 'steel_member' ? (
+              {spec.kind === 'steel_assembly' ? (
+                <>
+                  <Row k={ko ? '부재 수' : 'Members'} v={`${spec.memberCount}`} />
+                  <Row k={ko ? '총 길이' : 'Total len'} v={`${spec.totalLengthMm} mm`} />
+                  <Row k={ko ? '총 중량' : 'Weight'} v={`${spec.weightKg} kg`} />
+                  <Row k={ko ? '절단' : 'Cuts'} v={`${spec.cuts}`} />
+                </>
+              ) : spec.kind === 'steel_member' ? (
                 <>
                   <Row k={ko ? '부재 길이' : 'Length'} v={`${spec.lengthMm} mm`} />
                   <Row k={ko ? '단면적' : 'Section'} v={`${spec.sectionAreaMm2} mm²`} />
@@ -163,6 +173,18 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
                 </>
               )}
             </div>
+            {/* 부재 스케줄(BOM) */}
+            {spec.kind === 'steel_assembly' && spec.members && (
+              <div style={{ marginTop: 5, paddingTop: 5, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
+                <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginBottom: 2 }}>{ko ? '부재 스케줄' : 'Member schedule'}</div>
+                {spec.members.map((m, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5 }}>
+                    <span>{m.id} · {m.kind} · L{m.lengthMm}</span>
+                    <span style={{ fontWeight: 600 }}>{m.weightKg} kg</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 단가표(편집) */}

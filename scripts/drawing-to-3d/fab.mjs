@@ -228,8 +228,33 @@ function timberSpec(intent) {
   };
 }
 
+/** 다부재 강재 어셈블리 → 부재 스케줄(BOM). intent.assembly[{id,kind,section:[w,h],wall,length}]. */
+function steelAssembly(intent, density) {
+  const asm = Array.isArray(intent?.assembly) ? intent.assembly : null;
+  if (!asm || asm.length < 2) return null;
+  const members = asm.map((m) => {
+    const [w, h] = m.section;
+    const area = m.wall > 0 ? w * h - (w - 2 * m.wall) * (h - 2 * m.wall) : w * h;
+    const weightKg = area * m.length * density;
+    return { id: m.id, kind: m.kind, lengthMm: m.length, sectionAreaMm2: Math.round(area), weightKg: +weightKg.toFixed(2) };
+  });
+  const totalWeightKg = +members.reduce((s, m) => s + m.weightKg, 0).toFixed(2);
+  const totalLengthMm = members.reduce((s, m) => s + m.lengthMm, 0);
+  return {
+    applicable: true, kind: 'steel_assembly',
+    note: `강재 어셈블리 · 부재 ${members.length} · 총중량 ${totalWeightKg}kg`,
+    members, memberCount: members.length,
+    totalLengthMm, weightKg: totalWeightKg,
+    cuts: members.length * 2,
+    bends: 0,
+  };
+}
+
 export function fabSpec(intent, opts = {}) {
   const density = opts.densityKgMm3 ?? STEEL_DENSITY;
+  // 다부재 어셈블리(프레임 등) → 부재 스케줄.
+  const asm = steelAssembly(intent, density);
+  if (asm) return asm;
   // 재료 힌트(프리셋이 intent.material로 표기): 콘크리트·목재는 강판/강재 로직 대신 BOQ.
   if (intent?.material === 'concrete') return concreteBOQ(intent, opts);
   if (intent?.material === 'timber') return timberSpec(intent);
@@ -303,7 +328,7 @@ export function estimateCost(spec, ratesIn = {}) {
 
   const material = spec.weightKg * r.materialPerKg;
   let cut, pierce, bend;
-  if (spec.kind === 'steel_member') {
+  if (spec.kind === 'steel_member' || spec.kind === 'steel_assembly') {
     // 강재: 절단은 절단횟수 기준(레이저 절단길이·피어싱 아님).
     cut = (spec.cuts ?? 2) * (r.cutPerCut ?? DEFAULT_RATES.cutPerCut);
     pierce = 0;
