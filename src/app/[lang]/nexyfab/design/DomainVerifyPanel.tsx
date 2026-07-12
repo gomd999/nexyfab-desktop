@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isKorean } from '@/lib/i18n/normalize';
 
 interface InputSpec {
   name: string; labelKo: string; unit: string;
@@ -34,11 +35,10 @@ interface VerifyResult {
   needInputs?: InputSpec[]; gateError?: string; error?: string; candidates?: unknown[];
 }
 
-const isKo = (lang: string) => lang === 'ko' || lang?.startsWith('ko');
 const num = (v: number | boolean) => (typeof v === 'number' ? (Number.isInteger(v) ? v : +v.toFixed(2)) : String(v));
 
 export default function DomainVerifyPanel({ intent, lang }: { intent: unknown; lang: string }) {
-  const ko = isKo(lang);
+  const ko = isKorean(lang);
   const [domains, setDomains] = useState<DomainSpec[] | null>(null);
   const [domainSlug, setDomainSlug] = useState('');
   const [calcId, setCalcId] = useState('');

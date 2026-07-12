@@ -19,6 +19,7 @@ import Link from 'next/link';
 import * as THREE from 'three';
 import { parseSTL } from '@/app/[lang]/shape-generator/io/importers';
 import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
+import { isKorean } from '@/lib/i18n/normalize';
 import DomainVerifyPanel from './DomainVerifyPanel';
 
 type Verify =
@@ -48,8 +49,6 @@ interface Bbox {
   z: number;
 }
 
-const isKo = (lang: string) => lang === 'ko' || lang?.startsWith('ko');
-
 const EXAMPLES_KO = [
   '내경 500mm 원통형 물탱크, 높이 800mm, 벽두께 5mm, 바닥에 원뿔형 배출구(45도), 중앙에 지름 25mm 교반축',
   '가로 300 세로 200 두께 12 알루미늄 플레이트, 네 모서리에 지름 8 볼트홀, 중앙에 지름 40 관통',
@@ -62,7 +61,7 @@ const EXAMPLES_EN = [
 ];
 
 export default function DesignInner({ lang }: { lang: string }) {
-  const ko = isKo(lang);
+  const ko = isKorean(lang);
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
