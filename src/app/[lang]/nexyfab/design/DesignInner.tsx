@@ -16,7 +16,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import * as THREE from 'three';
 import { parseSTL } from '@/app/[lang]/shape-generator/io/importers';
 import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
@@ -62,10 +61,9 @@ const EXAMPLES_EN = [
   'L-bracket, 80mm legs, 6mm thick, two 6mm holes per face',
 ];
 
-export default function DesignInner({ lang }: { lang: string }) {
+export default function DesignInner({ lang, initialDomain }: { lang: string; initialDomain?: string | null }) {
   const ko = isKorean(lang);
-  const searchParams = useSearchParams();
-  const domain = findDomain(searchParams.get('domain'));
+  const domain = findDomain(initialDomain);
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
