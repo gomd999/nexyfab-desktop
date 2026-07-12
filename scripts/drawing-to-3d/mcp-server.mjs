@@ -24,6 +24,7 @@ import { composeWithGate, emitComposite } from './compose.mjs';
 import { intentToStep } from './to-step.mjs';
 import { gate, toOpenScad } from './reconstruct.mjs';
 import { toComponentIntent } from './to-intent.mjs';
+import { verifyDomain, listDomains } from './domain-verify.mjs';
 
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
 
@@ -154,6 +155,33 @@ const tools = [
       properties: { extraction: { type: 'object', description: 'intent (extract 또는 edit 산출)' } },
     },
   },
+  {
+    name: 'list_domains',
+    description:
+      `분야별 상시검증(②)에 쓸 수 있는 설계 분야·계산기·입력 명세를 반환한다. ` +
+      `분야: 가설·랙·경량철골(좌굴·휨) / 건축 부재(RC 보) / 조경 배수. 각 계산기의 status(draft 등)와 ` +
+      `근거(refs), 사용자 입력 필드(하중·재료)를 준다. 형상이 줄 수 있는 입력(단면·경간)은 verify_domain이 자동 파생.`,
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'verify_domain',
+    description:
+      `설계 형상 + 분야 → 진짜 공학 계산기(engineering-core) 검증. 형상에서 단면특성(A·Ix·Sx·r)·경간 L을 ` +
+      `**결정론 파생**하고, 하중·재료(Fy·Pu·w·P·Mu 등)만 params로 받아 합쳐 계산한다. 반환: {verdict, checks, ` +
+      `derived(형상파생), provenance(geometry/user 분리), refs, status, disclaimer}. 하중 누락 시 값을 지어내지 않고 ` +
+      `{needInputs}로 필요한 입력을 알려준다. 계산기는 draft(비법정 참고).`,
+    inputSchema: {
+      type: 'object', required: ['intent', 'domain', 'calculatorId'],
+      properties: {
+        intent: { type: 'object', description: 'compose_3d 범용조합 intent(features[])' },
+        domain: { type: 'string', description: 'list_domains의 slug (temporary-rack | building-member | landscape)' },
+        calculatorId: { type: 'string', description: '분야 내 계산기 id (column_buckling | simple_beam | rc_beam | landscape_drainage)' },
+        memberRef: { description: '부재 피처 선택(id 또는 index). 생략 시 첫 프리즘형 부재.' },
+        params: { type: 'object', description: '사용자 입력 하중·재료 {Fy, Pu, w, P, Mu, As, fck, fy…}' },
+        standardId: { type: 'string', description: '기준(기본 KDS)' },
+      },
+    },
+  },
 ];
 
 async function callTool(name, args = {}) {
@@ -207,6 +235,15 @@ async function callTool(name, args = {}) {
       openscad: toOpenScad(ex),
       intent: toComponentIntent(ex),
     };
+  }
+  if (name === 'list_domains') {
+    return { domains: listDomains() };
+  }
+  if (name === 'verify_domain') {
+    return verifyDomain({
+      intent: args.intent, domain: args.domain, calculatorId: args.calculatorId,
+      memberRef: args.memberRef, params: args.params ?? {}, standardId: args.standardId ?? 'KDS',
+    });
   }
   throw new Error(`unknown tool: ${name}`);
 }
