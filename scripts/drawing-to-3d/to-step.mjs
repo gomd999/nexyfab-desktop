@@ -10,6 +10,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { gateComposite } from './compose.mjs';
 
 const OCDIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'node_modules', 'replicad-opencascadejs', 'src');
@@ -17,8 +18,14 @@ const OCDIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'node_mo
 let RC = null;
 async function ensureReplicad() {
   if (RC) return RC;
+  // Next 서버(ESM strict) 컨텍스트에서 emscripten glue가 CJS 자유변수(__dirname, require)에
+  // 닿으면 ReferenceError가 난다. glue의 NODE 분기가 참조하는 전역을 미리 채워 우회한다.
+  // (CLI에선 glue가 CJS로 로딩돼 로컬 __dirname/require가 이 전역을 가려 무해하다.)
+  if (typeof globalThis.__dirname === 'undefined') globalThis.__dirname = OCDIR;
+  if (typeof globalThis.require === 'undefined') globalThis.require = createRequire(import.meta.url);
   const ocModule = await import('replicad-opencascadejs/src/replicad_single.js');
-  const oc = await ocModule.default({ locateFile: (p) => (p.endsWith('.wasm') ? join(OCDIR, 'replicad_single.wasm') : p) });
+  const ocFactory = ocModule.default ?? ocModule;
+  const oc = await ocFactory({ locateFile: (p) => (p.endsWith('.wasm') ? join(OCDIR, 'replicad_single.wasm') : p) });
   const replicad = await import('replicad');
   replicad.setOC(oc);
   RC = replicad;

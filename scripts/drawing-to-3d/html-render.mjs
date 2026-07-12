@@ -11,6 +11,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { toOpenScad } from './reconstruct.mjs';
 import { buildAssembly } from './assembly.mjs';
+import { emitComposite } from './compose.mjs';
 import { renderStl } from './verify.mjs';
 
 function bytesToBase64(bytes) {
@@ -31,7 +32,11 @@ export async function renderHtml(spec, { title = 'NexyFab 3D', subtitle = '' } =
     const b = buildAssembly(spec.assembly);
     if (!b.ok) throw new Error('assembly gate: ' + b.gateErrors.join('; '));
     scad = b.openscad; name = spec.assembly.name ?? 'assembly';
+  } else if (spec.intent && Array.isArray(spec.intent.features)) {
+    // 범용 자유조합 intent(compose_3d) — features[].kind
+    scad = emitComposite(spec.intent); name = spec.intent.name ?? 'composite';
   } else if (spec.intent) {
+    // 7어휘 재구성 intent — type
     scad = toOpenScad(spec.intent); name = spec.intent.type;
   } else {
     throw new Error('renderHtml: spec.intent 또는 spec.assembly 필요');
@@ -74,7 +79,7 @@ addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProje
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('html-render.mjs');
 if (isMain && process.argv[2]) {
   const spec = JSON.parse(readFileSync(process.argv[2], 'utf8'));
-  const html = await renderHtml(spec.type ? { intent: spec } : spec);
+  const html = await renderHtml(spec.type || Array.isArray(spec.features) ? { intent: spec } : spec);
   const out = process.argv[3] ?? 'render.html';
   writeFileSync(out, html);
   console.log('written', out, (html.length / 1024).toFixed(0) + 'KB');
