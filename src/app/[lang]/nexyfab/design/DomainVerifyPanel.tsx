@@ -37,7 +37,7 @@ interface VerifyResult {
 
 const num = (v: number | boolean) => (typeof v === 'number' ? (Number.isInteger(v) ? v : +v.toFixed(2)) : String(v));
 
-export default function DomainVerifyPanel({ intent, lang }: { intent: unknown; lang: string }) {
+export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { intent: unknown; lang: string; defaultDomain?: string | null }) {
   const ko = isKorean(lang);
   const [domains, setDomains] = useState<DomainSpec[] | null>(null);
   const [domainSlug, setDomainSlug] = useState('');
@@ -55,11 +55,13 @@ export default function DomainVerifyPanel({ intent, lang }: { intent: unknown; l
       .then((d: { ok: boolean; domains?: DomainSpec[] }) => {
         if (!alive || !d.ok || !d.domains) return;
         setDomains(d.domains);
-        if (d.domains[0]) { setDomainSlug(d.domains[0].slug); setCalcId(d.domains[0].calculators[0]?.id ?? ''); }
+        // 분야 진입(?domain=)이면 그 분야를 기본 선택, 아니면 첫 분야.
+        const pick = (defaultDomain && d.domains.find((x) => x.slug === defaultDomain)) || d.domains[0];
+        if (pick) { setDomainSlug(pick.slug); setCalcId(pick.calculators[0]?.id ?? ''); }
       })
       .catch(() => {});
     return () => { alive = false; };
-  }, []);
+  }, [defaultDomain]);
 
   const domain = useMemo(() => domains?.find((d) => d.slug === domainSlug) ?? null, [domains, domainSlug]);
   const calc = useMemo(() => domain?.calculators.find((c) => c.id === calcId) ?? null, [domain, calcId]);

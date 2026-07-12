@@ -16,11 +16,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import * as THREE from 'three';
 import { parseSTL } from '@/app/[lang]/shape-generator/io/importers';
 import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
 import { isKorean } from '@/lib/i18n/normalize';
 import DomainVerifyPanel from './DomainVerifyPanel';
+import { findDomain } from './designDomains';
 
 type Verify =
   | { manifold?: boolean; triangles?: number; nonManifoldEdges?: number; error?: string }
@@ -62,6 +64,8 @@ const EXAMPLES_EN = [
 
 export default function DesignInner({ lang }: { lang: string }) {
   const ko = isKorean(lang);
+  const searchParams = useSearchParams();
+  const domain = findDomain(searchParams.get('domain'));
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
@@ -331,9 +335,10 @@ export default function DesignInner({ lang }: { lang: string }) {
       {/* Header */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--nx-border, #dfe3e8)' }}>
         <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em' }}>
-          {ko ? '설계' : 'Design'}
+          {domain ? <span style={{ marginRight: 6 }}>{domain.icon}</span> : null}
+          {domain ? (ko ? domain.labelKo : domain.labelEn) : ko ? '설계' : 'Design'}
           <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-            {ko ? '아이디어 → 설계 → 검증(상시) → 제조' : 'idea → design → verify (always) → manufacture'}
+            {domain ? (ko ? domain.descKo : domain.descEn) : ko ? '아이디어 → 설계 → 검증(상시) → 제조' : 'idea → design → verify (always) → manufacture'}
           </span>
         </h1>
       </div>
@@ -369,24 +374,46 @@ export default function DesignInner({ lang }: { lang: string }) {
               {loading ? (status || (ko ? '처리 중…' : 'Working…')) : ko ? '설계 생성 + 검증' : 'Generate + verify'}
             </button>
 
-            {/* examples */}
+            {/* 분야 프리셋(갤러리) 또는 일반 예시 */}
             <div style={{ marginTop: 10 }}>
-              <div style={{ fontSize: 11, color: 'var(--nx-text-3, #6b7684)', marginBottom: 4 }}>{ko ? '예시' : 'Examples'}</div>
-              {(ko ? EXAMPLES_KO : EXAMPLES_EN).map((ex, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => { setPrompt(ex); run(ex); }}
-                  style={{
-                    display: 'block', width: '100%', textAlign: 'left', marginBottom: 4, padding: '6px 8px',
-                    borderRadius: 6, border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent',
-                    color: 'var(--nx-text-2, #46505e)', fontSize: 11.5, lineHeight: 1.4, cursor: loading ? 'default' : 'pointer',
-                  }}
-                >
-                  {ex}
-                </button>
-              ))}
+              <div style={{ fontSize: 11, color: 'var(--nx-text-3, #6b7684)', marginBottom: 4 }}>
+                {domain ? (ko ? '분야 프리셋' : 'Domain presets') : ko ? '예시' : 'Examples'}
+              </div>
+              {domain
+                ? domain.presets.map((p, i) => {
+                    const txt = ko ? p.promptKo : p.promptEn;
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => { setPrompt(txt); run(txt); }}
+                        style={{
+                          display: 'block', width: '100%', textAlign: 'left', marginBottom: 4, padding: '7px 9px',
+                          borderRadius: 6, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)',
+                          color: 'var(--nx-text-2, #46505e)', fontSize: 11.5, lineHeight: 1.4, cursor: loading ? 'default' : 'pointer',
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, color: 'var(--nx-text, #1a2230)', marginBottom: 2 }}>{ko ? p.titleKo : p.titleEn}</div>
+                        <div style={{ fontSize: 10.5 }}>{txt}</div>
+                      </button>
+                    );
+                  })
+                : (ko ? EXAMPLES_KO : EXAMPLES_EN).map((ex, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => { setPrompt(ex); run(ex); }}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left', marginBottom: 4, padding: '6px 8px',
+                        borderRadius: 6, border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent',
+                        color: 'var(--nx-text-2, #46505e)', fontSize: 11.5, lineHeight: 1.4, cursor: loading ? 'default' : 'pointer',
+                      }}
+                    >
+                      {ex}
+                    </button>
+                  ))}
             </div>
 
             {error && (
@@ -445,7 +472,7 @@ export default function DesignInner({ lang }: { lang: string }) {
           </div>
 
           {/* 분야 검증(②) — 형상 + 분야 계산기(상시 게이트 위에 얹는 분야층) */}
-          {intent && <DomainVerifyPanel intent={intent} lang={lang} />}
+          {intent && <DomainVerifyPanel intent={intent} lang={lang} defaultDomain={domain?.verifyDomain ?? undefined} />}
 
           {/* Export + manufacture */}
           {intent && (

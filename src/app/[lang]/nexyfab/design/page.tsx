@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import DesignInner from './DesignInner';
 
 export const metadata: Metadata = {
@@ -9,5 +10,10 @@ export const metadata: Metadata = {
 
 export default async function DesignPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
-  return <DesignInner lang={lang} />;
+  // DesignInner uses useSearchParams(?domain=) → needs a Suspense boundary.
+  return (
+    <Suspense fallback={null}>
+      <DesignInner lang={lang} />
+    </Suspense>
+  );
 }

@@ -72,6 +72,30 @@ export const DOMAIN_VERIFIERS = {
       },
     ],
   },
+  'civil': {
+    labelKo: '토목 소구조물',
+    labelEn: 'Civil small structures',
+    note: '옹벽 안정(전도·활동·지지력). 단면·토질·지지력은 설계 조건 — 전부 입력. (형상검증=치수·manifold는 공통코어)',
+    calculators: [
+      {
+        id: 'retaining_wall_stability',
+        labelKo: '옹벽 안정 (전도·활동·지지력)',
+        derive: () => ({}),
+        // 이 계산기는 치수를 미터(m)로 받는다(형상 mm와 별개 — 전부 사용자 입력).
+        userInputs: [
+          { name: 'H', labelKo: '벽고', unit: 'm', min: 0, max: 12 },
+          { name: 'stemThickness', labelKo: '벽체 두께', unit: 'm', default: 0.3, min: 0 },
+          { name: 'baseWidth', labelKo: '저판 폭', unit: 'm', min: 0 },
+          { name: 'baseThickness', labelKo: '저판 두께', unit: 'm', default: 0.4, min: 0 },
+          { name: 'toeLength', labelKo: '앞굽 길이', unit: 'm', default: 0.6, min: 0 },
+          { name: 'gammaBackfill', labelKo: '뒤채움 단위중량', unit: 'kN/m³', default: 18, min: 10, max: 24 },
+          { name: 'phiBackfill', labelKo: '내부마찰각', unit: '°', default: 30, min: 15, max: 45 },
+          { name: 'baseFriction', labelKo: '기초 마찰계수', unit: '', default: 0.5, min: 0, max: 1 },
+          { name: 'allowableBearing', labelKo: '허용지지력', unit: 'kPa', default: 200, min: 0 },
+        ],
+      },
+    ],
+  },
   'landscape': {
     labelKo: '조경 구조·배수',
     labelEn: 'Landscape / drainage',

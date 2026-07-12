@@ -53,6 +53,12 @@ const SECTIONS: NavSection[] = [
     items: [
       { icon: '🏠', labelKo: '홈',                labelEn: 'Hub',                href: '/nexyfab/hub' },
       { icon: '🧭', labelKo: '설계 (AI)',         labelEn: 'Design (AI)',        href: '/nexyfab/design', badge: 'NEW' },
+      // 설계 — 분야별(각 분야 = 프리셋 갤러리 + 그 분야 검증). design/designDomains.ts와 slug 일치.
+      { icon: '🔧', labelKo: '기계·장비·판금',    labelEn: 'Machinery/sheet',    href: '/nexyfab/design?domain=mech' },
+      { icon: '🏗', labelKo: '가설·랙·경량철골',  labelEn: 'Rack/light steel',   href: '/nexyfab/design?domain=rack' },
+      { icon: '🌉', labelKo: '토목 소구조물',     labelEn: 'Civil structures',   href: '/nexyfab/design?domain=civil' },
+      { icon: '🏢', labelKo: '건축 부재',         labelEn: 'Building member',    href: '/nexyfab/design?domain=building' },
+      { icon: '🌳', labelKo: '조경 구조·배수',    labelEn: 'Landscape/drainage', href: '/nexyfab/design?domain=landscape' },
       { icon: '✨', labelKo: '자유형 Studio',     labelEn: 'Free-form Studio',   href: '/studio' },
       { icon: '🛠️', labelKo: '전문가형 CAD',      labelEn: 'Expert CAD',         href: '/shape-generator?mode=expert' },
       { icon: '📐', labelKo: '종이·레이저컷',     labelEn: 'Papercraft',         href: '/papercraft' },
@@ -116,6 +122,14 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
       if (!matches) return false;
       const isShared = typeof window !== 'undefined' && window.location.search.includes('filter=shared');
       return query?.includes('filter=shared') ? isShared : !isShared;
+    }
+    if (path === '/nexyfab/design') {
+      // "설계 (AI)"(쿼리 없음) vs 분야 진입(?domain=X)을 현재 ?domain으로 구분.
+      const matches = pathname === full || pathname.startsWith(full + '/');
+      if (!matches) return false;
+      const cur = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('domain') : null;
+      const own = query?.startsWith('domain=') ? query.slice('domain='.length) : null;
+      return own ? own === cur : !cur;
     }
     return pathname === full || pathname?.startsWith(full + '/');
   };
