@@ -74,6 +74,22 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 COPY --from=builder /app/node_modules/bindings ./node_modules/bindings
 COPY --from=builder /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-path
+# drawing-to-3d / engineering-core pipelines are loaded at runtime via
+# webpackIgnore dynamic import (process.cwd()/scripts/...), so Next's standalone
+# tracer can't see them — copy explicitly. NOT scripts/knowledge-crawler (323MB data).
+COPY --from=builder /app/scripts/drawing-to-3d ./scripts/drawing-to-3d
+COPY --from=builder /app/scripts/engineering-core ./scripts/engineering-core
+# export_step(to-step.mjs) uses replicad/OCCT via DYNAMIC import (occtEngine also
+# dynamic-imports it), so the tracer omits the whole subtree — copy the closure
+# (computed from package.json deps: replicad→flatbush/flatqueue/opentype.js/…).
+# The OCCT wasm itself is served from public/replicad_single.wasm (to-step wasmPath).
+COPY --from=builder /app/node_modules/replicad ./node_modules/replicad
+COPY --from=builder /app/node_modules/replicad-opencascadejs ./node_modules/replicad-opencascadejs
+COPY --from=builder /app/node_modules/flatbush ./node_modules/flatbush
+COPY --from=builder /app/node_modules/flatqueue ./node_modules/flatqueue
+COPY --from=builder /app/node_modules/opentype.js ./node_modules/opentype.js
+COPY --from=builder /app/node_modules/string.prototype.codepointat ./node_modules/string.prototype.codepointat
+COPY --from=builder /app/node_modules/tiny-inflate ./node_modules/tiny-inflate
 
 # Data directory for SQLite (Railway volume mount 이후에도 writable하도록 root로 실행)
 RUN mkdir -p /app/data /app/adminlink

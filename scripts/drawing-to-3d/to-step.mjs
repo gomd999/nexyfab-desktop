@@ -7,13 +7,24 @@
  *
  * usage: node to-step.mjs '<intent.json>' out.step
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { gateComposite } from './compose.mjs';
 
 const OCDIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'node_modules', 'replicad-opencascadejs', 'src');
+
+/**
+ * OCCT wasm 위치. 프로덕션(Next standalone)에는 node_modules/replicad-opencascadejs의
+ * .wasm이 트레이싱되지 않으므로, 앱이 이미 배포하는 `public/replicad_single.wasm`
+ * (occtEngine과 동일 파일, Dockerfile이 public/ 복사)을 우선 사용한다. 없으면 node_modules.
+ */
+function wasmPath() {
+  const pub = join(process.cwd(), 'public', 'replicad_single.wasm');
+  if (existsSync(pub)) return pub;
+  return join(OCDIR, 'replicad_single.wasm');
+}
 
 let RC = null;
 async function ensureReplicad() {
@@ -25,7 +36,8 @@ async function ensureReplicad() {
   if (typeof globalThis.require === 'undefined') globalThis.require = createRequire(import.meta.url);
   const ocModule = await import('replicad-opencascadejs/src/replicad_single.js');
   const ocFactory = ocModule.default ?? ocModule;
-  const oc = await ocFactory({ locateFile: (p) => (p.endsWith('.wasm') ? join(OCDIR, 'replicad_single.wasm') : p) });
+  const wasm = wasmPath();
+  const oc = await ocFactory({ locateFile: (p) => (p.endsWith('.wasm') ? wasm : p) });
   const replicad = await import('replicad');
   replicad.setOC(oc);
   RC = replicad;
