@@ -13,8 +13,12 @@ import Link from 'next/link';
 import { isKorean } from '@/lib/i18n/normalize';
 
 interface Spec {
-  applicable: boolean; note?: string; thicknessMm?: number; cutLengthMm?: number; cutLengthM?: number;
+  applicable: boolean; kind?: string; note?: string; thicknessMm?: number; cutLengthMm?: number; cutLengthM?: number;
   pierces?: number; footprintMm2?: number; netAreaMm2?: number; weightKg?: number; bends?: number;
+  // steel_member
+  lengthMm?: number; sectionAreaMm2?: number; unitWeightKgM?: number; cuts?: number;
+  // bent
+  flat?: { lengthMm: number; widthMm: number; bendLines?: { angle: number; BA: number; BD: number }[] };
 }
 interface Estimate {
   applicable: boolean; currency?: string; estimate?: boolean;
@@ -79,7 +83,11 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
   return (
     <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--nx-border, #dfe3e8)', paddingTop: 14 }}>
       <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>
-        {ko ? '제조 (판재 레이저)' : 'Manufacture (sheet laser)'}
+        {spec?.kind === 'steel_member'
+          ? ko ? '제조 (강재 부재)' : 'Manufacture (steel member)'
+          : spec?.kind === 'bent'
+            ? ko ? '제조 (판금 절곡)' : 'Manufacture (bent sheet)'
+            : ko ? '제조 (판재 레이저)' : 'Manufacture (sheet laser)'}
       </div>
 
       {spec && !spec.applicable ? (
@@ -88,16 +96,30 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
         </div>
       ) : spec ? (
         <>
-          {/* 명세(결정론) */}
+          {/* 명세(결정론) — kind별 */}
           <div style={{ fontSize: 11.5, marginBottom: 8 }}>
             <div style={{ color: 'var(--nx-text-3, #6b7684)', marginBottom: 3 }}>{ko ? '제조 명세 (정확)' : 'Spec (exact)'}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 8px' }}>
-              <Row k={ko ? '절단 길이' : 'Cut length'} v={`${spec.cutLengthM} m`} />
-              <Row k={ko ? '피어싱' : 'Pierces'} v={`${spec.pierces}`} />
-              <Row k={ko ? '중량' : 'Weight'} v={`${spec.weightKg} kg`} />
-              <Row k={ko ? '절곡' : 'Bends'} v={`${spec.bends}`} />
-              <Row k={ko ? '판 두께' : 'Thickness'} v={`${spec.thicknessMm} mm`} />
-              <Row k={ko ? '순면적' : 'Net area'} v={`${spec.netAreaMm2} mm²`} />
+              {spec.kind === 'steel_member' ? (
+                <>
+                  <Row k={ko ? '부재 길이' : 'Length'} v={`${spec.lengthMm} mm`} />
+                  <Row k={ko ? '단면적' : 'Section'} v={`${spec.sectionAreaMm2} mm²`} />
+                  <Row k={ko ? '단위 중량' : 'Unit wt'} v={`${spec.unitWeightKgM} kg/m`} />
+                  <Row k={ko ? '총 중량' : 'Weight'} v={`${spec.weightKg} kg`} />
+                  <Row k={ko ? '절단' : 'Cuts'} v={`${spec.cuts}`} />
+                </>
+              ) : (
+                <>
+                  <Row k={ko ? '절단 길이' : 'Cut length'} v={`${spec.cutLengthM} m`} />
+                  <Row k={ko ? '피어싱' : 'Pierces'} v={`${spec.pierces}`} />
+                  <Row k={ko ? '중량' : 'Weight'} v={`${spec.weightKg} kg`} />
+                  <Row k={ko ? '절곡' : 'Bends'} v={`${spec.bends}`} />
+                  <Row k={ko ? '두께' : 'Thickness'} v={`${spec.thicknessMm} mm`} />
+                  {spec.kind === 'bent' && spec.flat
+                    ? <Row k={ko ? '전개 길이' : 'Flat length'} v={`${spec.flat.lengthMm} mm`} />
+                    : <Row k={ko ? '순면적' : 'Net area'} v={`${spec.netAreaMm2} mm²`} />}
+                </>
+              )}
             </div>
           </div>
 

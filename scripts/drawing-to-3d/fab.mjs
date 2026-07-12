@@ -14,10 +14,11 @@ const PI = Math.PI;
 
 /** 기본 단가표(대략치 · 반드시 편집·업체 확정 전제). KRW. */
 export const DEFAULT_RATES = {
-  materialPerKg: 2500,   // 소재 ₩/kg (강판, 시세 변동)
-  cutPerM: 2000,         // 절단 ₩/m
+  materialPerKg: 2500,   // 소재 ₩/kg (강재, 시세 변동)
+  cutPerM: 2000,         // 레이저 절단 ₩/m
   piercePerHole: 100,    // 피어싱 ₩/개
   bendPerOp: 500,        // 절곡 ₩/회
+  cutPerCut: 1500,       // 강재 부재 절단 ₩/회(양단)
   setup: 20000,          // 셋업 ₩(고정)
   marginPct: 20,         // 마진 %
   densityKgMm3: STEEL_DENSITY,
@@ -50,11 +51,84 @@ function extractSheet(intent) {
  * 제조 명세(결정론). @returns {applicable, note, thicknessMm, cutLengthMm, cutLengthM,
  *   pierces, footprintMm2, netAreaMm2, weightKg, bends, bbox}
  */
+/** 절곡 전개(K-factor). 각 절곡의 BA/BD로 평판 블랭크 길이를 구한다. */
+function flatPattern(sheet, bends, density) {
+  const t = sheet.thickness;
+  const flanges = sheet.flanges ?? [];
+  let totalBD = 0;
+  const bendLines = [];
+  for (const b of bends) {
+    const ang = (b.angle * PI) / 180;
+    const R = b.radiusMm ?? t;
+    const k = b.k ?? 0.38;
+    const BA = ang * (R + k * t);              // bend allowance
+    const BD = 2 * (R + t) * Math.tan(ang / 2) - BA; // bend deduction
+    totalBD += BD;
+    bendLines.push({ angle: b.angle, radiusMm: R, k, BA: +BA.toFixed(2), BD: +BD.toFixed(2) });
+  }
+  const flatLength = flanges.reduce((s, f) => s + f, 0) - totalBD;
+  const flatWidth = sheet.width;
+  const perimeter = 2 * (flatLength + flatWidth);
+  const area = flatLength * flatWidth;
+  return {
+    applicable: true,
+    kind: 'bent',
+    note: `절곡 ${bends.length}회, 전개 ${flatLength.toFixed(1)}×${flatWidth}×${t}mm (플랜지 ${flanges.join('+')} − BD ${totalBD.toFixed(1)})`,
+    thicknessMm: +t.toFixed(2),
+    cutLengthMm: +perimeter.toFixed(1),
+    cutLengthM: +(perimeter / 1000).toFixed(3),
+    pierces: 1,
+    footprintMm2: +area.toFixed(0),
+    netAreaMm2: +area.toFixed(0),
+    weightKg: +(area * t * density).toFixed(3),
+    bends: bends.length,
+    flat: { lengthMm: +flatLength.toFixed(1), widthMm: flatWidth, bendLines },
+    bbox: { w: flatLength, d: flatWidth, t },
+  };
+}
+
+/** 강재 프리즘 부재(포스트·빔): 길이·단면적·중량·절단. box(중공 포함)·extrude 대상. */
+function steelMember(intent, density) {
+  const feats = Array.isArray(intent?.features) ? intent.features : [];
+  const boxes = feats.filter((f) => f.op !== 'subtract' && f.kind === 'box' && Array.isArray(f.size) && f.size.length === 3);
+  const cutBoxes = feats.filter((f) => f.op === 'subtract' && f.kind === 'box' && Array.isArray(f.size));
+  if (!boxes.length) return null;
+  const o = boxes[0].size;
+  const li = o.indexOf(Math.max(...o)); // 길이축 = 최장
+  const L = o[li];
+  const outerFace = o.filter((_, i) => i !== li);
+  let area = outerFace[0] * outerFace[1];
+  if (cutBoxes.length) {
+    const innerFace = cutBoxes[0].size.filter((_, i) => i !== li);
+    area -= innerFace[0] * innerFace[1]; // 중공
+  }
+  if (area <= 0) return null;
+  const weightKg = area * L * density;
+  return {
+    applicable: true, kind: 'steel_member',
+    note: `강재 부재 · 길이 ${L}mm · 단면적 ${Math.round(area)}mm²`,
+    lengthMm: L,
+    sectionAreaMm2: Math.round(area),
+    unitWeightKgM: +(area * density * 1000).toFixed(2), // kg/m
+    weightKg: +weightKg.toFixed(3),
+    cuts: 2, // 양단 절단
+    bends: 0,
+    bbox: { w: outerFace[0], d: outerFace[1], t: L },
+  };
+}
+
 export function fabSpec(intent, opts = {}) {
-  const { plate, holes } = extractSheet(intent);
   const density = opts.densityKgMm3 ?? STEEL_DENSITY;
+  // 절곡물: intent.bends + sheet 메타가 있으면 전개 계산.
+  if (Array.isArray(intent?.bends) && intent.bends.length && intent?.sheet?.thickness) {
+    return flatPattern(intent.sheet, intent.bends, density);
+  }
+  const { plate, holes } = extractSheet(intent);
   if (!plate) {
-    return { applicable: false, note: '판재 레이저 대상이 아닙니다(평판 아님 — 각관·용기 등은 용접·압출·성형). 실제 견적은 RFQ로.' };
+    // 평판이 아니면 강재 프리즘 부재(포스트·빔)로 시도 → 중량·절단.
+    const steel = steelMember(intent, density);
+    if (steel) return steel;
+    return { applicable: false, note: '판재·강재 부재로 인식 못함(용기 등). 실제 견적은 RFQ로.' };
   }
   const t = opts.thicknessMm ?? plate.t;
   const perimeter = 2 * (plate.w + plate.d);
@@ -85,9 +159,17 @@ export function estimateCost(spec, ratesIn = {}) {
   const r = { ...DEFAULT_RATES, ...ratesIn };
   if (!spec.applicable) return { applicable: false, note: spec.note };
   const material = spec.weightKg * r.materialPerKg;
-  const cut = spec.cutLengthM * r.cutPerM;
-  const pierce = spec.pierces * r.piercePerHole;
-  const bend = (spec.bends ?? 0) * r.bendPerOp;
+  let cut, pierce, bend;
+  if (spec.kind === 'steel_member') {
+    // 강재: 절단은 절단횟수 기준(레이저 절단길이·피어싱 아님).
+    cut = (spec.cuts ?? 2) * (r.cutPerCut ?? DEFAULT_RATES.cutPerCut);
+    pierce = 0;
+    bend = 0;
+  } else {
+    cut = (spec.cutLengthM ?? 0) * r.cutPerM;
+    pierce = (spec.pierces ?? 0) * r.piercePerHole;
+    bend = (spec.bends ?? 0) * r.bendPerOp;
+  }
   const subtotal = material + cut + pierce + bend + r.setup;
   const margin = subtotal * (r.marginPct / 100);
   const total = subtotal + margin;
@@ -107,22 +189,37 @@ export function estimateCost(spec, ratesIn = {}) {
   };
 }
 
-/** 평판 절단용 DXF(R12 ASCII): 외곽 사각형 + 홀 원. 실제 레이저 사용 가능. */
+/**
+ * 절단용 DXF(R12 ASCII). 평판=외곽+홀(CUT). 절곡물=전개 블랭크 외곽(CUT)+절곡선(BEND 레이어).
+ * 실제 레이저·절곡기에 사용 가능.
+ */
 export function toDxf(intent) {
-  const { plate, holes } = extractSheet(intent);
-  if (!plate) return null;
+  const L = [];
+  const p = (code, val) => { L.push(String(code)); L.push(String(val)); };
+  const line = (x1, y1, x2, y2, layer) => { p(0, 'LINE'); p(8, layer); p(10, x1); p(20, y1); p(11, x2); p(21, y2); };
+  p(0, 'SECTION'); p(2, 'ENTITIES');
+
+  // 절곡물: 전개 블랭크 + 절곡선
+  if (Array.isArray(intent?.bends) && intent.bends.length && intent?.sheet?.thickness) {
+    const spec = flatPattern(intent.sheet, intent.bends, STEEL_DENSITY);
+    const W = spec.flat.lengthMm, H = spec.flat.widthMm;
+    line(0, 0, W, 0, 'CUT'); line(W, 0, W, H, 'CUT'); line(W, H, 0, H, 'CUT'); line(0, H, 0, 0, 'CUT');
+    // 절곡선: 첫 플랜지 길이 위치(누적, 근사)에 세로선.
+    const flanges = intent.sheet.flanges ?? [];
+    let x = flanges[0] ?? W / 2;
+    for (let i = 0; i < intent.bends.length; i++) { line(x, 0, x, H, 'BEND'); }
+    p(0, 'ENDSEC'); p(0, 'EOF');
+    return L.join('\n') + '\n';
+  }
+
+  const { plate } = extractSheet(intent);
+  if (!plate) { return null; }
   const feats = Array.isArray(intent?.features) ? intent.features : [];
   const holePos = feats
     .filter((c) => c.op === 'subtract' && c.kind === 'cylinder' && c.diameter > 0)
     .map((c) => ({ dia: c.diameter, x: c.at?.translate?.[0] ?? plate.w / 2, y: c.at?.translate?.[1] ?? plate.d / 2 }));
-  const L = [];
-  const p = (code, val) => { L.push(String(code)); L.push(String(val)); };
-  p(0, 'SECTION'); p(2, 'ENTITIES');
-  const line = (x1, y1, x2, y2) => { p(0, 'LINE'); p(8, 'CUT'); p(10, x1); p(20, y1); p(11, x2); p(21, y2); };
-  line(0, 0, plate.w, 0);
-  line(plate.w, 0, plate.w, plate.d);
-  line(plate.w, plate.d, 0, plate.d);
-  line(0, plate.d, 0, 0);
+  line(0, 0, plate.w, 0, 'CUT'); line(plate.w, 0, plate.w, plate.d, 'CUT');
+  line(plate.w, plate.d, 0, plate.d, 'CUT'); line(0, plate.d, 0, 0, 'CUT');
   for (const h of holePos) { p(0, 'CIRCLE'); p(8, 'CUT'); p(10, h.x); p(20, h.y); p(40, h.dia / 2); }
   p(0, 'ENDSEC'); p(0, 'EOF');
   return L.join('\n') + '\n';

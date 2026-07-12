@@ -25,9 +25,11 @@ interface Applied {
 
 export default function ParametricPresetPanel({
   lang,
+  domain = 'mech',
   onApply,
 }: {
   lang: string;
+  domain?: string;
   onApply: (intent: { name?: string; features?: unknown[] }, scad: string, verify: Applied['verify']) => void | Promise<void>;
 }) {
   const ko = isKorean(lang);
@@ -39,7 +41,7 @@ export default function ParametricPresetPanel({
 
   useEffect(() => {
     let alive = true;
-    fetch('/api/nexyfab/drawing/preset/')
+    fetch(`/api/nexyfab/drawing/preset/?domain=${encodeURIComponent(domain)}`)
       .then((r) => r.json())
       .then((d: { ok: boolean; templates?: Template[] }) => {
         if (!alive || !d.ok || !d.templates) return;
@@ -48,7 +50,7 @@ export default function ParametricPresetPanel({
       })
       .catch(() => {});
     return () => { alive = false; };
-  }, []);
+  }, [domain]);
 
   const tpl = useMemo(() => templates?.find((t) => t.id === tid) ?? null, [templates, tid]);
 
@@ -66,7 +68,7 @@ export default function ParametricPresetPanel({
     try {
       const res = await fetch('/api/nexyfab/drawing/preset/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId: tid, params }),
+        body: JSON.stringify({ domain, templateId: tid, params }),
       });
       const data = (await res.json()) as Applied;
       if (data.ok && data.intent && data.scad) {
@@ -80,7 +82,7 @@ export default function ParametricPresetPanel({
     } finally {
       setBusy(false);
     }
-  }, [tid, params, onApply, ko]);
+  }, [tid, params, onApply, ko, domain]);
 
   if (!templates) return null;
 

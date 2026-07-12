@@ -24,6 +24,27 @@ function plateIntent(p) {
   return { name: 'Plate', features };
 }
 
+/**
+ * 절곡 L 브래킷(판금 1회 절곡). 3D=L단면 압출. 절곡 메타(bends·sheet)를 intent에 실어
+ * fab.mjs가 K-factor 전개(평판 블랭크)를 계산하게 한다.
+ */
+function bentBracketIntent(p) {
+  const legA = num(p.legA, 80), legB = num(p.legB, 60), width = num(p.width, 40);
+  const t = num(p.thickness, 3);
+  const R = num(p.bendRadius, t);
+  const k = num(p.kFactor, 0.38);
+  const angle = num(p.bendAngle, 90);
+  // L 단면 폴리곤(XY) → Z로 width 압출.
+  const profile = [[0, 0], [legA, 0], [legA, t], [t, t], [t, legB], [0, legB]];
+  return {
+    name: 'BentBracket',
+    features: [{ id: 'bracket', kind: 'extrude', profile, height: width }],
+    // 절곡 전개용 메타(형상엔 안 들어감 — fab.mjs 전용).
+    sheet: { thickness: t, width, flanges: [legA, legB] },
+    bends: [{ angle, radiusMm: R, k }],
+  };
+}
+
 /** 정사각 각관: 외곽 box − 내부 box(관통). */
 function squareTubeIntent(p) {
   const s = num(p.side, 50), wall = num(p.wall, 3), L = num(p.length, 1000);
@@ -93,6 +114,21 @@ export const MECH_TEMPLATES = [
       { name: 'holeDia', labelKo: '볼트홀 지름(0=없음)', unit: 'mm', default: 8, min: 0, max: 100 },
       { name: 'holeInset', labelKo: '모서리 여백', unit: 'mm', default: 20, min: 5, max: 300 },
       { name: 'centerDia', labelKo: '중앙 관통(0=없음)', unit: 'mm', default: 40, min: 0, max: 500 },
+    ],
+  },
+  {
+    id: 'bent_bracket',
+    labelKo: '절곡 브래킷 (L, 판금)',
+    labelEn: 'Bent bracket (L, sheet)',
+    build: bentBracketIntent,
+    params: [
+      { name: 'legA', labelKo: '다리 A', unit: 'mm', default: 80, min: 10, max: 1000 },
+      { name: 'legB', labelKo: '다리 B', unit: 'mm', default: 60, min: 10, max: 1000 },
+      { name: 'width', labelKo: '폭', unit: 'mm', default: 40, min: 5, max: 1000 },
+      { name: 'thickness', labelKo: '두께', unit: 'mm', default: 3, min: 0.5, max: 20 },
+      { name: 'bendRadius', labelKo: '절곡 반경', unit: 'mm', default: 3, min: 0.5, max: 50 },
+      { name: 'kFactor', labelKo: 'K-factor', unit: '', default: 0.38, min: 0.2, max: 0.5 },
+      { name: 'bendAngle', labelKo: '절곡 각도', unit: '°', default: 90, min: 30, max: 150 },
     ],
   },
   {

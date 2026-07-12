@@ -354,6 +354,7 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
             {domain?.parametric && (
               <ParametricPresetPanel
                 lang={lang}
+                domain={domain.slug}
                 onApply={async (i, s, v) => {
                   setError(null); setGateErrors(null); setExportMsg(null);
                   await applyDesign(i, s, v ?? null);

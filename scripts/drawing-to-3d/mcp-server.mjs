@@ -26,7 +26,7 @@ import { gate, toOpenScad } from './reconstruct.mjs';
 import { toComponentIntent } from './to-intent.mjs';
 import { verifyDomain, listDomains } from './domain-verify.mjs';
 import { analyzeDfm } from './dfm.mjs';
-import { listMechTemplates, presetWithVerify } from './mech-presets.mjs';
+import { listTemplates, presetWithVerify } from './preset-registry.mjs';
 import { fabSpec, estimateCost, toDxf, DEFAULT_RATES } from './fab.mjs';
 
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
@@ -169,14 +169,15 @@ const tools = [
   {
     name: 'mech_preset',
     description:
-      `기계·장비·판금 **결정론 파라메트릭 프리셋** — AI 없이 파라미터로 형상을 만든다(항상 유효·manifold). ` +
-      `템플릿: 원통용기(원뿔바닥)·플레이트(볼트홀)·각관. templateId 없이 호출하면 템플릿·파라미터 명세를 반환. ` +
-      `반환: {intent, scad, verify} (compose와 동일 형식).`,
+      `분야별 **결정론 파라메트릭 프리셋** — AI 없이 파라미터로 형상을 만든다(항상 유효·manifold). ` +
+      `domain=mech(원통용기·플레이트·절곡브래킷·각관) | rack(랙포스트·랙빔). templateId 없이 호출하면 ` +
+      `그 분야 템플릿·파라미터 명세를 반환. 반환: {intent, scad, verify} (compose와 동일 형식).`,
     inputSchema: {
       type: 'object',
       properties: {
-        templateId: { type: 'string', description: 'tank | plate | square_tube (생략 시 카탈로그)' },
-        params: { type: 'object', description: '파라미터 {innerDia, wall, …} — 명세는 templateId 생략 호출로 확인' },
+        domain: { type: 'string', description: 'mech | rack (기본 mech)' },
+        templateId: { type: 'string', description: '생략 시 그 분야 카탈로그' },
+        params: { type: 'object', description: '파라미터 — 명세는 templateId 생략 호출로 확인' },
       },
     },
   },
@@ -284,8 +285,9 @@ async function callTool(name, args = {}) {
     };
   }
   if (name === 'mech_preset') {
-    if (!args.templateId) return { templates: listMechTemplates() };
-    return presetWithVerify(args.templateId, args.params ?? {});
+    const domain = args.domain ?? 'mech';
+    if (!args.templateId) return { domain, templates: listTemplates(domain) };
+    return presetWithVerify(domain, args.templateId, args.params ?? {});
   }
   if (name === 'analyze_dfm') {
     return analyzeDfm(args.intent, { process: args.process, thicknessMm: args.thicknessMm });

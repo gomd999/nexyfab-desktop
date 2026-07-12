@@ -69,6 +69,7 @@ export const DESIGN_DOMAINS: DesignDomain[] = [
     descKo: '포스트·빔 부재. 검증=압축재 좌굴·단순보 휨(형상서 단면·경간 파생).',
     descEn: 'Posts & beams. Verified by column buckling / beam bending (section & span from geometry).',
     verifyDomain: 'temporary-rack',
+    parametric: true,
     presets: [
       {
         titleKo: '랙 포스트 (각관)',
