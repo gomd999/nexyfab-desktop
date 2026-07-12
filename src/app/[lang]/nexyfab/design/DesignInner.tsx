@@ -19,6 +19,7 @@ import Link from 'next/link';
 import * as THREE from 'three';
 import { parseSTL } from '@/app/[lang]/shape-generator/io/importers';
 import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
+import DomainVerifyPanel from './DomainVerifyPanel';
 
 type Verify =
   | { manifold?: boolean; triangles?: number; nonManifoldEdges?: number; error?: string }
@@ -443,6 +444,9 @@ export default function DesignInner({ lang }: { lang: string }) {
               </div>
             )}
           </div>
+
+          {/* 분야 검증(②) — 형상 + 분야 계산기(상시 게이트 위에 얹는 분야층) */}
+          {intent && <DomainVerifyPanel intent={intent} lang={lang} />}
 
           {/* Export + manufacture */}
           {intent && (
