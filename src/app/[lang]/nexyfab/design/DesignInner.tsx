@@ -22,6 +22,7 @@ import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
 import { isKorean } from '@/lib/i18n/normalize';
 import DomainVerifyPanel from './DomainVerifyPanel';
 import ParametricPresetPanel from './ParametricPresetPanel';
+import DfmPanel from './DfmPanel';
 import { findDomain } from './designDomains';
 
 type Verify =
@@ -483,6 +484,9 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
               </div>
             )}
           </div>
+
+          {/* 제조성(DFM) 상시 — 기계·판금(파라메트릭) 분야 */}
+          {intent && domain?.parametric && <DfmPanel intent={intent} lang={lang} />}
 
           {/* 분야 검증(②) — 형상 + 분야 계산기(상시 게이트 위에 얹는 분야층) */}
           {intent && <DomainVerifyPanel intent={intent} lang={lang} defaultDomain={domain?.verifyDomain ?? undefined} />}

@@ -25,6 +25,8 @@ import { intentToStep } from './to-step.mjs';
 import { gate, toOpenScad } from './reconstruct.mjs';
 import { toComponentIntent } from './to-intent.mjs';
 import { verifyDomain, listDomains } from './domain-verify.mjs';
+import { analyzeDfm } from './dfm.mjs';
+import { listMechTemplates, presetWithVerify } from './mech-presets.mjs';
 
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
 
@@ -164,6 +166,35 @@ const tools = [
     inputSchema: { type: 'object', properties: {} },
   },
   {
+    name: 'mech_preset',
+    description:
+      `기계·장비·판금 **결정론 파라메트릭 프리셋** — AI 없이 파라미터로 형상을 만든다(항상 유효·manifold). ` +
+      `템플릿: 원통용기(원뿔바닥)·플레이트(볼트홀)·각관. templateId 없이 호출하면 템플릿·파라미터 명세를 반환. ` +
+      `반환: {intent, scad, verify} (compose와 동일 형식).`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        templateId: { type: 'string', description: 'tank | plate | square_tube (생략 시 카탈로그)' },
+        params: { type: 'object', description: '파라미터 {innerDia, wall, …} — 명세는 templateId 생략 호출로 확인' },
+      },
+    },
+  },
+  {
+    name: 'analyze_dfm',
+    description:
+      `판금·절삭 제조성(DFM) 검사 — 형상 intent에서 홀·두께·벽을 결정론적으로 읽어 최소 홀·홀-엣지 거리· ` +
+      `홀 간격·최소 두께·얇은 벽 규칙을 검사한다(메시 휴리스틱 아님, 파라미터 직독). process=laser|punch로 임계 조정. ` +
+      `반환: {checks[{rule,severity,title,message}], worst, thickness}. 비법정 참고(샵 관행값).`,
+    inputSchema: {
+      type: 'object', required: ['intent'],
+      properties: {
+        intent: { type: 'object', description: 'compose/preset intent' },
+        process: { type: 'string', description: 'laser | punch (기본 laser)' },
+        thicknessMm: { type: 'number', description: '두께 명시(생략 시 형상서 파생)' },
+      },
+    },
+  },
+  {
     name: 'verify_domain',
     description:
       `설계 형상 + 분야 → 진짜 공학 계산기(engineering-core) 검증. 형상에서 단면특성(A·Ix·Sx·r)·경간 L을 ` +
@@ -235,6 +266,13 @@ async function callTool(name, args = {}) {
       openscad: toOpenScad(ex),
       intent: toComponentIntent(ex),
     };
+  }
+  if (name === 'mech_preset') {
+    if (!args.templateId) return { templates: listMechTemplates() };
+    return presetWithVerify(args.templateId, args.params ?? {});
+  }
+  if (name === 'analyze_dfm') {
+    return analyzeDfm(args.intent, { process: args.process, thicknessMm: args.thicknessMm });
   }
   if (name === 'list_domains') {
     return { domains: listDomains() };

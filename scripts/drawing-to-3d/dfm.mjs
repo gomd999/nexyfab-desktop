@@ -1,0 +1,144 @@
+/**
+ * dfm.mjs — 판금·절삭 제조성(DFM) 상시검증(기계·판금 완벽화 Pillar ②).
+ *
+ * 형상 intent(compose/preset)에서 홀·두께·벽을 **결정론적으로 읽어** 제조 규칙을 검사한다.
+ * 메시 휴리스틱이 아니라 파라미터 직독이라 홀 지름·엣지거리·벽두께가 정확하다.
+ *
+ * 규칙(일반 판금·절삭 지침 — 비법정 참고, 샵 관행값). 프로세스로 임계 조정:
+ *  - min_hole:    펀칭 ⌀ ≥ 두께 t (레이저 ⌀ ≥ 0.5t). 미만=경고
+ *  - hole_edge:   홀 가장자리~판 가장자리 ≥ 2t(펀칭)/1t(레이저). 미만=경고 / 음수=실패(판 밖/겹침)
+ *  - hole_spacing:홀 가장자리 간격 ≥ 2t. 미만=경고
+ *  - min_thickness:t < 1.0mm 경고(기존 dfmAnalysis minWall과 정합)
+ *  - thin_wall:   중공/용기 벽 < 1.0mm 경고, 벽/외경 과소 주의
+ * 임계값은 기존 shape-generator/analysis/dfmAnalysis(minWall 1.0~1.5)와 맞춘다.
+ */
+
+const REF = '일반 판금·절삭 가공 지침(비법정 참고 · 샵 관행값)';
+const MIN_T = 1.0; // mm — dfmAnalysis 기본 minWallThickness와 정합
+
+const dist2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+/** intent에서 판/벽/홀을 추출(결정론). 인식 불가한 부분은 조용히 생략(허위 금지). */
+function extract(intent) {
+  const feats = Array.isArray(intent?.features) ? intent.features : [];
+  const solids = feats.filter((f) => f.op !== 'subtract');
+  const cuts = feats.filter((f) => f.op === 'subtract');
+
+  // 판(plate) 후보: box 솔리드 중 가장 얇은 축을 두께로.
+  let plate = null;
+  for (const f of solids) {
+    if (f.kind === 'box' && Array.isArray(f.size) && f.size.length === 3) {
+      const s = f.size;
+      const tIdx = s.indexOf(Math.min(...s));
+      const face = s.filter((_, i) => i !== tIdx);
+      if (!plate || Math.min(...s) < plate.t) plate = { t: Math.min(...s), face, size: s, tIdx };
+    }
+  }
+
+  // 원형 홀: subtract cylinder — 판 평면(XY, tIdx=2 가정) 내 위치. 대부분 플레이트가 XY판.
+  const holes = [];
+  for (const c of cuts) {
+    if (c.kind === 'cylinder' && c.diameter > 0) {
+      const tr = c.at?.translate ?? [0, 0, 0];
+      holes.push({ dia: c.diameter, pos: [tr[0], tr[1]], id: c.id });
+    }
+  }
+
+  // 중공 각관: 외곽 box − 내부 box → 벽두께.
+  let tubeWall = null;
+  const cutBoxes = cuts.filter((f) => f.kind === 'box' && Array.isArray(f.size));
+  if (plate && cutBoxes.length) {
+    const outer = plate.face;
+    const inner = cutBoxes[0].size.filter((_, i) => i !== plate.tIdx);
+    const w = Math.min((outer[0] - inner[0]) / 2, (outer[1] - inner[1]) / 2);
+    if (Number.isFinite(w) && w > 0) tubeWall = w;
+  }
+
+  // 용기(revolve) 벽: 프로파일 x(반경) 폭.
+  let revolveWall = null;
+  const rev = solids.find((f) => f.kind === 'revolve' && Array.isArray(f.profile));
+  if (rev) {
+    const xs = rev.profile.map((p) => p[0]);
+    revolveWall = Math.max(...xs) - Math.min(...xs);
+  }
+
+  return { plate, holes, tubeWall, revolveWall };
+}
+
+/**
+ * @param intent compose/preset intent
+ * @param opts { process?: 'laser'|'punch', material?: string, thicknessMm?: number }
+ * @returns { checks:[{rule,severity,title,message,ref}], summary, recognized }
+ */
+export function analyzeDfm(intent, opts = {}) {
+  const process = opts.process === 'punch' ? 'punch' : 'laser';
+  const { plate, holes, tubeWall, revolveWall } = extract(intent);
+  const checks = [];
+  const add = (rule, severity, title, message) => checks.push({ rule, severity, title, message, ref: REF });
+
+  const t = opts.thicknessMm ?? plate?.t ?? tubeWall ?? revolveWall ?? null;
+
+  if (t == null) {
+    return { checks: [], summary: 'DFM: 두께를 인식하지 못해 생략(자유형상)', recognized: false };
+  }
+
+  // 최소 두께
+  if (t < MIN_T) add('min_thickness', 'warn', '최소 두께', `두께 ${t.toFixed(2)}mm < 권장 ${MIN_T}mm — 취급·가공 중 변형/파단 주의`);
+
+  // 홀 규칙(판이 있을 때)
+  if (plate && holes.length) {
+    const [W, D] = plate.face;
+    const minHole = process === 'punch' ? t : 0.5 * t;
+    for (const h of holes) {
+      const r = h.dia / 2;
+      // 최소 홀
+      if (h.dia < minHole) add('min_hole', 'warn', '최소 홀 지름', `홀 ${h.id ?? ''} ⌀${h.dia} < ${process === 'punch' ? '두께' : '0.5×두께'}(${minHole.toFixed(1)}) — ${process === 'punch' ? '펀칭 곤란(레이저 권장)' : '가공 곤란'}`);
+      // 엣지 거리(홀 가장자리~판 가장자리)
+      const edge = Math.min(h.pos[0], h.pos[1], W - h.pos[0], D - h.pos[1]) - r;
+      const minEdge = (process === 'punch' ? 2 : 1) * t;
+      if (edge < 0) add('hole_edge', 'fail', '홀 위치 오류', `홀 ${h.id ?? ''}이 판 경계를 벗어나거나 걸침(엣지거리 ${edge.toFixed(1)}mm)`);
+      else if (edge < minEdge) add('hole_edge', 'warn', '홀-엣지 거리', `홀 ${h.id ?? ''} 엣지거리 ${edge.toFixed(1)}mm < 권장 ${minEdge.toFixed(1)}mm(${process === 'punch' ? '2t' : '1t'}) — 가장자리 찢김/변형 위험`);
+    }
+    // 홀 간격
+    for (let i = 0; i < holes.length; i++) {
+      for (let j = i + 1; j < holes.length; j++) {
+        const gap = dist2(holes[i].pos, holes[j].pos) - holes[i].dia / 2 - holes[j].dia / 2;
+        if (gap < 2 * t) add('hole_spacing', 'warn', '홀 간격', `홀 ${holes[i].id ?? i}–${holes[j].id ?? j} 간격 ${gap.toFixed(1)}mm < 권장 ${(2 * t).toFixed(1)}mm(2t)`);
+      }
+    }
+  }
+
+  // 벽(중공/용기)
+  const wall = tubeWall ?? revolveWall;
+  if (wall != null && !plate) {
+    if (wall < MIN_T) add('thin_wall', 'warn', '얇은 벽', `벽두께 ${wall.toFixed(2)}mm < 권장 ${MIN_T}mm`);
+  }
+
+  if (!checks.length) add('ok', 'pass', '제조성 양호', `주요 판금 규칙(홀·엣지·간격·두께) 위반 없음 (${process}, t=${t.toFixed(1)}mm 기준)`);
+
+  const worst = checks.some((c) => c.severity === 'fail') ? 'fail' : checks.some((c) => c.severity === 'warn') ? 'warn' : 'pass';
+  return {
+    checks,
+    summary: `DFM(${process}, t=${t.toFixed(1)}mm): ${worst === 'pass' ? '양호' : worst === 'warn' ? '경고 ' + checks.filter((c) => c.severity === 'warn').length : '오류 ' + checks.filter((c) => c.severity === 'fail').length}`,
+    worst,
+    recognized: true,
+    thickness: t,
+    process,
+  };
+}
+
+// --- CLI ---
+const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('dfm.mjs');
+if (isMain) {
+  const arg = process.argv[2];
+  if (arg) console.log(JSON.stringify(analyzeDfm(JSON.parse(arg), { process: process.argv[3] || 'laser' }), null, 2));
+  else {
+    // self-demo: 얇은 홀-엣지 위반 플레이트
+    const bad = { name: 'p', features: [
+      { id: 'plate', kind: 'box', size: [100, 100, 2] },
+      { id: 'h1', kind: 'cylinder', diameter: 6, op: 'subtract', at: { translate: [5, 50, -1] }, height: 4 },
+      { id: 'h2', kind: 'cylinder', diameter: 1, op: 'subtract', at: { translate: [50, 50, -1] }, height: 4 },
+    ] };
+    console.log(JSON.stringify(analyzeDfm(bad, { process: 'punch' }), null, 2));
+  }
+}
