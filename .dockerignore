@@ -7,6 +7,9 @@ README.md
 .env*.local
 .env
 data/
+# knowledge-crawler holds ~323MB of RAG corpus/index data and is NOT needed in
+# the image (the runner only copies scripts/drawing-to-3d + engineering-core).
+scripts/knowledge-crawler/
 adminlink/
 playwright-report/
 e2e/
