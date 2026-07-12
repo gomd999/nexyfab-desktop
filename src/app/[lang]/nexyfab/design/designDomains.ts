@@ -25,6 +25,8 @@ export interface DesignDomain {
   descEn: string;
   /** domain-verify.mjs의 분야 slug. null이면 공통 코어(manifold·치수)만. */
   verifyDomain: string | null;
+  /** 결정론 파라메트릭 프리셋(GET/POST /api/nexyfab/drawing/preset) 제공 여부. */
+  parametric?: boolean;
   presets: DesignPreset[];
 }
 
@@ -37,6 +39,7 @@ export const DESIGN_DOMAINS: DesignDomain[] = [
     descKo: '파트·판금·프레임 부재. 검증=치수·manifold(공통 코어).',
     descEn: 'Parts, sheet metal, frame members. Verified by manifold & dimensions.',
     verifyDomain: null,
+    parametric: true,
     presets: [
       {
         titleKo: '알루미늄 플레이트 (볼트홀)',

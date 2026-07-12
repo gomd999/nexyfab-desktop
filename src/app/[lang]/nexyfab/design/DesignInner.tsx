@@ -21,6 +21,7 @@ import { parseSTL } from '@/app/[lang]/shape-generator/io/importers';
 import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
 import { isKorean } from '@/lib/i18n/normalize';
 import DomainVerifyPanel from './DomainVerifyPanel';
+import ParametricPresetPanel from './ParametricPresetPanel';
 import { findDomain } from './designDomains';
 
 type Verify =
@@ -212,6 +213,30 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
     o.radius = Math.max(size.x, size.y, size.z) * 2.2 + 40;
   }, []);
 
+  // 설계 결과(compose 또는 결정론 프리셋) → 상태 반영 + 브라우저 렌더. 공통 경로.
+  const applyDesign = useCallback(
+    async (intentObj: ComposeOk['intent'], scadStr: string, verifyObj: Verify) => {
+      setIntent(intentObj);
+      setScad(scadStr);
+      setVerify(verifyObj);
+      setFeatureCount(Array.isArray(intentObj.features) ? intentObj.features.length : null);
+      if (wasmAvailable()) {
+        setStatus(ko ? '3D 렌더 중…' : 'Rendering 3D…');
+        const r = await renderScadWasm(scadStr);
+        if (r.ok && r.data) {
+          const buf = r.data.buffer.slice(r.data.byteOffset, r.data.byteOffset + r.data.byteLength) as ArrayBuffer;
+          showGeometry(parseSTL(buf));
+        } else {
+          setError((ko ? '브라우저 렌더 실패: ' : 'Client render failed: ') + (r.error ?? ''));
+        }
+      } else {
+        setError(ko ? '이 브라우저에서 3D 렌더러를 쓸 수 없습니다.' : '3D renderer unavailable in this browser.');
+      }
+      setStatus('');
+    },
+    [ko, showGeometry],
+  );
+
   const run = useCallback(
     async (text: string) => {
       const desc = text.trim();
@@ -229,34 +254,12 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
         });
         const data = (await res.json()) as ComposeResp;
         if (!data.ok) {
-          if (data.gateErrors?.length) {
-            setGateErrors(data.gateErrors);
-            setStatus('');
-          } else {
-            setError(data.error ?? (ko ? '설계 생성 실패' : 'Design failed'));
-            setStatus('');
-          }
+          if (data.gateErrors?.length) setGateErrors(data.gateErrors);
+          else setError(data.error ?? (ko ? '설계 생성 실패' : 'Design failed'));
+          setStatus('');
           return;
         }
-        setIntent(data.intent);
-        setScad(data.scad);
-        setVerify(data.verify);
-        setFeatureCount(Array.isArray(data.intent.features) ? data.intent.features.length : null);
-
-        // Render SCAD → STL in the browser for the viewer.
-        if (wasmAvailable()) {
-          setStatus(ko ? '3D 렌더 중…' : 'Rendering 3D…');
-          const r = await renderScadWasm(data.scad);
-          if (r.ok && r.data) {
-            const buf = r.data.buffer.slice(r.data.byteOffset, r.data.byteOffset + r.data.byteLength) as ArrayBuffer;
-            showGeometry(parseSTL(buf));
-          } else {
-            setError((ko ? '브라우저 렌더 실패: ' : 'Client render failed: ') + (r.error ?? ''));
-          }
-        } else {
-          setError(ko ? '이 브라우저에서 3D 렌더러를 쓸 수 없습니다.' : '3D renderer unavailable in this browser.');
-        }
-        setStatus('');
+        await applyDesign(data.intent, data.scad, data.verify);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
         setStatus('');
@@ -264,7 +267,7 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
         setLoading(false);
       }
     },
-    [ko, showGeometry],
+    [ko, applyDesign],
   );
 
   const download = (filename: string, content: string, mime: string) => {
@@ -345,8 +348,20 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
         {/* Left: prompt + verify + export */}
         <div style={{ width: 380, minWidth: 380, borderRight: '1px solid var(--nx-border, #dfe3e8)', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
           <div style={{ padding: 16 }}>
+            {/* 결정론 파라메트릭 프리셋(완벽화 Pillar ①) — 해당 분야에서 AI보다 우선 노출 */}
+            {domain?.parametric && (
+              <ParametricPresetPanel
+                lang={lang}
+                onApply={async (i, s, v) => {
+                  setError(null); setGateErrors(null); setExportMsg(null);
+                  await applyDesign(i, s, v ?? null);
+                }}
+              />
+            )}
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text-3, #6b7684)' }}>
-              {ko ? '무엇을 설계할까요?' : 'What do you want to design?'}
+              {domain?.parametric
+                ? ko ? '또는 자유 서술로 설계' : 'Or describe freely'
+                : ko ? '무엇을 설계할까요?' : 'What do you want to design?'}
             </label>
             <textarea
               value={prompt}
