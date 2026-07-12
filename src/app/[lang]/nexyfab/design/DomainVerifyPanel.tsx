@@ -23,6 +23,8 @@ interface InputSpec {
 interface CalcSpec { id: string; labelKo: string; status: string; refs: string[]; userInputs: InputSpec[] }
 interface DomainSpec { slug: string; labelKo: string; labelEn: string; note: string; calculators: CalcSpec[] }
 
+interface MemberCand { index: number; id: string; kind: string; L: number; A: number; rmin: number }
+interface Citation { clause: string; note: string | null; inCorpus: boolean; title: string | null; publisher: string | null; url: string | null; license: string | null }
 interface VerifyResult {
   ok: boolean;
   verdict?: 'PASS' | 'FAIL';
@@ -32,8 +34,15 @@ interface VerifyResult {
   derived?: Record<string, number>;
   provenance?: { geometry: string[]; user: string[] };
   refs?: string[]; status?: string; disclaimer?: string; notes?: string[];
-  needInputs?: InputSpec[]; gateError?: string; error?: string; candidates?: unknown[];
+  needInputs?: InputSpec[]; gateError?: string; error?: string;
+  candidates?: MemberCand[]; citations?: Citation[];
 }
+
+// 형상 파생값 단위(④): 계산기 입력은 mm 계열(길이 mm·면적 mm²·회전반경 mm·단면계수 mm³).
+const DERIVED_UNIT: Record<string, string> = {
+  Ag: 'mm²', A: 'mm²', Aw: 'mm²', L: 'mm', r: 'mm', rx: 'mm', ry: 'mm',
+  Sx: 'mm³', Sy: 'mm³', Ix: 'mm⁴', Iy: 'mm⁴', b: 'mm', d: 'mm', h: 'mm',
+};
 
 const num = (v: number | boolean) => (typeof v === 'number' ? (Number.isInteger(v) ? v : +v.toFixed(2)) : String(v));
 
@@ -43,6 +52,8 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
   const [domainSlug, setDomainSlug] = useState('');
   const [calcId, setCalcId] = useState('');
   const [params, setParams] = useState<Record<string, string>>({});
+  const [memberRef, setMemberRef] = useState<string | number | undefined>(undefined);
+  const [candidates, setCandidates] = useState<MemberCand[]>([]);
   const [result, setResult] = useState<VerifyResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -66,7 +77,7 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
   const domain = useMemo(() => domains?.find((d) => d.slug === domainSlug) ?? null, [domains, domainSlug]);
   const calc = useMemo(() => domain?.calculators.find((c) => c.id === calcId) ?? null, [domain, calcId]);
 
-  // 계산기 바뀌면 입력 기본값 리셋
+  // 계산기 바뀌면 입력 기본값 리셋 + 부재 선택 초기화
   useEffect(() => {
     if (!calc) return;
     const init: Record<string, string> = {};
@@ -74,9 +85,11 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
     setParams(init);
     setResult(null);
     setErr(null);
+    setMemberRef(undefined);
+    setCandidates([]);
   }, [calc]);
 
-  const run = useCallback(async () => {
+  const run = useCallback(async (refOverride?: string | number) => {
     if (!intent || !domainSlug || !calcId) return;
     setLoading(true); setErr(null); setResult(null);
     const numParams: Record<string, number> = {};
@@ -85,20 +98,22 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
       const n = Number(v);
       if (Number.isFinite(n)) numParams[k] = n;
     }
+    const ref = refOverride ?? memberRef;
     try {
       const res = await fetch('/api/nexyfab/drawing/verify-domain/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intent, domain: domainSlug, calculatorId: calcId, params: numParams }),
+        body: JSON.stringify({ intent, domain: domainSlug, calculatorId: calcId, params: numParams, memberRef: ref }),
       });
       const data = (await res.json()) as VerifyResult;
       setResult(data);
+      if (Array.isArray(data.candidates) && data.candidates.length) setCandidates(data.candidates);
       if (!data.ok && data.error && !data.needInputs) setErr(data.error);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, [intent, domainSlug, calcId, params]);
+  }, [intent, domainSlug, calcId, params, memberRef]);
 
   if (!domains) return null;
 
@@ -125,6 +140,23 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
       </div>
       {domain?.note && <div style={{ fontSize: 11, color: 'var(--nx-text-3, #6b7684)', marginBottom: 8, lineHeight: 1.4 }}>{domain.note}</div>}
 
+      {/* ④ 부재 선택 — 프리즘형 부재가 2개 이상이면 무엇을 검증할지 선택 */}
+      {candidates.length > 1 && (
+        <label style={{ display: 'block', fontSize: 11, marginBottom: 8 }}>
+          <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '검증 부재' : 'Member to verify'}</span>
+          <select
+            value={String(memberRef ?? '')}
+            onChange={(e) => { const v = e.target.value; const ref = v === '' ? undefined : v; setMemberRef(ref); run(ref); }}
+            style={{ ...selStyle, marginTop: 2 }}
+          >
+            <option value="">{ko ? '자동(첫 부재)' : 'Auto (first)'}</option>
+            {candidates.map((c) => (
+              <option key={c.id} value={c.id}>{c.id} · {c.kind} · L{c.L}mm · A{c.A}mm²</option>
+            ))}
+          </select>
+        </label>
+      )}
+
       {/* 입력 폼 (하중·재료) */}
       {calc && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
@@ -145,7 +177,7 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
         </div>
       )}
 
-      <button type="button" onClick={run} disabled={loading} style={runStyle}>
+      <button type="button" onClick={() => run()} disabled={loading} style={runStyle}>
         {loading ? (ko ? '검증 중…' : 'Verifying…') : ko ? '분야 검증 실행' : 'Run domain check'}
       </button>
 
@@ -180,7 +212,7 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
               <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '형상 파생 ' : 'from geometry '}</span>
               {Object.entries(result.derived).map(([k, v]) => (
                 <span key={k} style={{ display: 'inline-block', margin: '0 6px 4px 0', padding: '1px 6px', borderRadius: 4, background: 'var(--nx-hover, #eef1f4)' }}>
-                  {k}={num(v)}
+                  {k}={num(v)}{DERIVED_UNIT[k] ? ` ${DERIVED_UNIT[k]}` : ''}
                 </span>
               ))}
             </div>
@@ -209,11 +241,30 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
             </div>
           )}
 
-          {/* 근거 + draft 라벨 + disclaimer */}
+          {/* ③ 구조화된 근거(인용) + draft 라벨 + disclaimer */}
           <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--nx-border, #dfe3e8)', fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)', lineHeight: 1.5 }}>
             {draft && <div style={{ color: '#a15c00', fontWeight: 600 }}>⚠ {ko ? '비법정 참고 — 공개예제 게이트 미충족(draft)' : 'Reference only — draft calculator'}</div>}
             {result.disclaimer && <div>{result.disclaimer}</div>}
-            {result.refs && result.refs.length > 0 && <div>{ko ? '근거: ' : 'Refs: '}{result.refs.join(' · ')}</div>}
+            {result.citations && result.citations.length > 0 && (
+              <div style={{ marginTop: 4 }}>
+                <div style={{ fontWeight: 700, marginBottom: 2 }}>{ko ? '근거' : 'Basis'}</div>
+                {result.citations.map((c, i) => (
+                  <div key={i} style={{ marginBottom: 2 }}>
+                    <span style={{
+                      display: 'inline-block', fontSize: 8.5, fontWeight: 700, padding: '0 3px', borderRadius: 3, marginRight: 4, verticalAlign: 'middle',
+                      background: c.inCorpus ? '#dcfae6' : '#eef1f4', color: c.inCorpus ? '#067647' : '#6b7684',
+                    }}>{c.inCorpus ? 'PD' : 'ref'}</span>
+                    {c.clause}
+                    {c.url ? (
+                      <> — <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--nx-accent, #2563eb)' }}>{c.title}</a></>
+                    ) : c.title ? <> — {c.title}</> : c.note ? <> — {c.note}</> : null}
+                  </div>
+                ))}
+                <div style={{ marginTop: 2, fontStyle: 'italic' }}>
+                  {ko ? 'PD=미 연방 퍼블릭도메인 원문 링크. ref=조항 참조(원문 비수록). 전문 검색(RAG)은 별도.' : 'PD=US-gov public-domain source link. ref=clause reference only.'}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

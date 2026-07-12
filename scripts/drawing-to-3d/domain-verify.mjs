@@ -12,6 +12,7 @@
  */
 import { featureToMember, memberCandidates } from './section-props.mjs';
 import { runCalculator, calculators } from '../engineering-core/registry.mjs';
+import { getCitations } from './citations.mjs';
 
 const round = (v, n = 2) => (typeof v === 'number' && Number.isFinite(v) ? +v.toFixed(n) : v);
 
@@ -190,6 +191,7 @@ export function verifyDomain({ intent, domain, calculatorId, memberRef, params =
       checks: result.checks,
       intermediate: result.intermediate,
       member: member ? { id: member.id, kind: member.kind, L: round(member.L, 1), note: member.note } : null,
+      candidates: needsMember ? memberCandidates(intent) : [],
       derived,
       provenance: { geometry: Object.keys(derived), user: Object.keys(userVals) },
       input,
@@ -197,6 +199,7 @@ export function verifyDomain({ intent, domain, calculatorId, memberRef, params =
       standardDraft: result.standardDraft,
       status: result.status,
       refs: result.refs,
+      citations: getCitations(calculatorId),
       disclaimer: result.disclaimer,
       notes: result.notes,
     };
@@ -204,7 +207,7 @@ export function verifyDomain({ intent, domain, calculatorId, memberRef, params =
     // INPUT_GATE = 필수 입력 누락 → 폼 유도(하중 지어내지 않음)
     if (e.code === 'INPUT_GATE') {
       const missing = calc.userInputs.filter((s) => !s.optional && !s.extraOnly && (params[s.name] === undefined || params[s.name] === null) && s.default === undefined);
-      return { ok: false, needInputs: missing, gateError: e.message, derived, member: member ? { id: member.id, kind: member.kind, L: round(member.L, 1) } : null };
+      return { ok: false, needInputs: missing, gateError: e.message, derived, member: member ? { id: member.id, kind: member.kind, L: round(member.L, 1) } : null, candidates: needsMember ? memberCandidates(intent) : [] };
     }
     return { ok: false, error: e.message };
   }
