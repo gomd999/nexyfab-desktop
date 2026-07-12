@@ -24,7 +24,7 @@ interface CalcSpec { id: string; labelKo: string; status: string; refs: string[]
 interface DomainSpec { slug: string; labelKo: string; labelEn: string; note: string; calculators: CalcSpec[] }
 
 interface MemberCand { index: number; id: string; kind: string; L: number; A: number; rmin: number }
-interface Citation { clause: string; note: string | null; inCorpus: boolean; title: string | null; publisher: string | null; url: string | null; license: string | null }
+interface Citation { clause: string; note: string | null; inCorpus: boolean; page?: number | null; title: string | null; publisher: string | null; url: string | null; license: string | null }
 interface VerifyResult {
   ok: boolean;
   verdict?: 'PASS' | 'FAIL';
@@ -256,7 +256,7 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
                     }}>{c.inCorpus ? 'PD' : 'ref'}</span>
                     {c.clause}
                     {c.url ? (
-                      <> — <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--nx-accent, #2563eb)' }}>{c.title}</a></>
+                      <> — <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--nx-accent, #2563eb)' }}>{c.title}{c.page ? ` (p.${c.page})` : ''}</a></>
                     ) : c.title ? <> — {c.title}</> : c.note ? <> — {c.note}</> : null}
                   </div>
                 ))}

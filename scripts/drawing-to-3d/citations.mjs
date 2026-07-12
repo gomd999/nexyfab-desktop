@@ -49,20 +49,20 @@ const SOURCE_META = {
 /** 계산기 → [{ sourceId?(PD 문서), clause, note? }]. sourceId 없으면 조항-only(코퍼스 미수록). */
 const CALC_CITATIONS = {
   retaining_wall_stability: [
-    { sourceId: 'usace-em-1110-2-2502', clause: '옹벽 안정 — 전도·활동·지지력 안전율', note: '중력식·캔틸레버 옹벽 안정 검토의 1차 근거' },
+    { sourceId: 'usace-em-1110-2-2502', clause: '옹벽 안정 — 임계 파괴면·안전율(전도·활동·지지력)', note: '중력식·캔틸레버 옹벽 안정 검토의 1차 근거', page: 126 },
     { sourceId: 'usace-em-1110-2-2100', clause: '콘크리트 구조 안정 해석 일반', note: '안정 해석 방법론 참조' },
   ],
   column_buckling: [
-    { sourceId: 'fhwa-sbdh-vol4', clause: '압축재 거동 — 휨좌굴', note: '강부재 좌굴 거동 근거(코퍼스 수록)' },
+    { sourceId: 'fhwa-sbdh-vol4', clause: '압축재 거동 — 휨좌굴·유효좌굴길이', note: '강부재 좌굴 거동 근거(코퍼스 수록)', page: 66 },
     { clause: 'AISC 360-16 §E3 (휨좌굴 Fcr)', note: 'AISC 원문 비-PD 미수록 — 조항 참조만' },
   ],
   simple_beam: [
-    { sourceId: 'fhwa-sbdh-vol4', clause: '휨부재 거동 — 휨·전단', note: '강보 거동 근거(코퍼스 수록)' },
+    { sourceId: 'fhwa-sbdh-vol4', clause: '휨부재 거동 — 공칭 휨강도', note: '강보 거동 근거(코퍼스 수록)', page: 213 },
     { clause: 'AISC 360-16 §F2 (허용휨)', note: 'AISC 원문 비-PD 미수록 — 조항 참조만' },
   ],
   rack_frame: [
+    { sourceId: 'fhwa-sbdh-vol13', clause: '브레이싱·횡지지 설계(브레이스 소요력)', note: '횡변위·브레이싱 근거', page: 15 },
     { sourceId: 'osha-3150', clause: '가설 구조(비계) 사용 지침', note: '가설재 안전 일반 지침' },
-    { sourceId: 'fhwa-sbdh-vol13', clause: '브레이싱·횡지지 설계', note: '횡변위·브레이싱 근거' },
   ],
   landscape_drainage: [
     { clause: '합리식 Q=CiA + Manning 유속식', note: '일반 수문·수리(공식=아이디어, 저작권 무관). 코퍼스 미수록' },
@@ -80,14 +80,17 @@ export function getCitations(calculatorId) {
   const specs = CALC_CITATIONS[calculatorId] ?? [];
   return specs.map((c) => {
     const s = c.sourceId ? SOURCE_META[c.sourceId] : null;
+    // 페이지가 있으면 PDF 딥링크(#page=N)로 원문 그 페이지를 바로 연다.
+    const url = s?.url ? (c.page ? `${s.url}#page=${c.page}` : s.url) : null;
     return {
       clause: c.clause,
       note: c.note ?? null,
       statutory: false,
       inCorpus: !!s,
+      page: c.page ?? null,
       title: s?.title ?? null,
       publisher: s?.publisher ?? null,
-      url: s?.url ?? null,
+      url,
       license: s?.license ?? null,
     };
   });
