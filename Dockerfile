@@ -13,7 +13,12 @@ RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt
 COPY package.json package-lock.json* ./
 RUN npm install --legacy-peer-deps --no-audit --no-fund
 
-# Copy source
+# Copy source.
+# Cache-bust: buildkit occasionally reuses a stale `COPY . .` layer on Railway
+# (2026-07-12: shipped old scripts/drawing-to-3d despite changed files). Bump this
+# value to force the copy + build to re-run from fresh source.
+ARG CACHEBUST=20260712-2
+RUN echo "cachebust ${CACHEBUST}"
 COPY . .
 
 # NEXT_PUBLIC_* are inlined into the client bundle at `next build` time.
