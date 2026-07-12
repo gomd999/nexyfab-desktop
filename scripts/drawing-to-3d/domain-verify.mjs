@@ -10,7 +10,7 @@
  * 정직성 게이트(§7.0): 여기 실린 계산기는 전부 status='draft'(공개예제 게이트 미충족).
  * 결과에 그 status와 "비법정 참고" disclaimer를 그대로 전달한다.
  */
-import { featureToMember, memberCandidates } from './section-props.mjs';
+import { featureToMember, memberCandidates, hollowRectProps } from './section-props.mjs';
 import { runCalculator, calculators } from '../engineering-core/registry.mjs';
 import { getCitations } from './citations.mjs';
 
@@ -169,6 +169,20 @@ export function verifyDomain({ intent, domain, calculatorId, memberRef, params =
     member = featureToMember(feat);
     if (!member) return { ok: false, error: '선택한 피처는 프리즘형 부재가 아닙니다.', candidates: memberCandidates(intent) };
     member.id = feat.id ?? null;
+    // 중공 보정: box 부재에 동심 subtract box(내부 보어)가 있으면 중공 단면으로 재계산.
+    // (안 하면 각관을 솔리드로 봐 단면적·강도를 위험측으로 과대평가.)
+    if (feat.kind === 'box' && Array.isArray(feat.size)) {
+      const li = feat.size.indexOf(Math.max(...feat.size));
+      const outerFace = feat.size.filter((_, i) => i !== li);
+      const bore = feats.find((f) => f.op === 'subtract' && f.kind === 'box' && Array.isArray(f.size) && f.size.length === 3);
+      if (bore) {
+        const innerFace = bore.size.filter((_, i) => i !== li);
+        if (innerFace[0] > 0 && innerFace[1] > 0 && innerFace[0] < outerFace[0] && innerFace[1] < outerFace[1]) {
+          member.section = hollowRectProps(outerFace[0], outerFace[1], innerFace[0], innerFace[1]);
+          member.note = (member.note ?? '') + ' · 중공';
+        }
+      }
+    }
   }
 
   // 형상 파생 입력

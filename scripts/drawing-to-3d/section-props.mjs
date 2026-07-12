@@ -63,6 +63,20 @@ export function rectProps(b, h) {
   return polygonProps([[0, 0], [b, 0], [b, h], [0, h]]);
 }
 
+/** 중공 직사각(외곽 bo×ho − 내부 bi×hi, 동심) 단면특성 — 폐형식. */
+export function hollowRectProps(bo, ho, bi, hi) {
+  const A = bo * ho - bi * hi;
+  const Ix = (bo * ho ** 3 - bi * hi ** 3) / 12;
+  const Iy = (ho * bo ** 3 - hi * bi ** 3) / 12;
+  const cmaxY = ho / 2, cmaxX = bo / 2;
+  return {
+    A, Cx: 0, Cy: 0, Ix, Iy,
+    Sx: Ix / cmaxY, Sy: Iy / cmaxX,
+    rx: Math.sqrt(Ix / A), ry: Math.sqrt(Iy / A),
+    cmaxX, cmaxY,
+  };
+}
+
 /** 원형(지름 d) 단면특성 — 폐형식. */
 export function circleProps(d) {
   const R = d / 2;
