@@ -25,17 +25,32 @@ function extract(intent) {
   const cuts = feats.filter((f) => f.op === 'subtract');
 
   // 판(plate) 후보: box 솔리드 중 가장 얇은 축을 두께로.
+  const boxes = solids.filter((f) => f.kind === 'box' && Array.isArray(f.size) && f.size.length === 3);
+  const cutBoxes = cuts.filter((f) => f.kind === 'box' && Array.isArray(f.size) && f.size.length === 3);
+
+  // 중공 각관: 외곽 box + 내부 subtract box. 축별 (외-내)/2 중 양수인 것이 벽(단면 두 축),
+  // 길이축은 ≈0/음수. 벽 = 양수 벽들의 최소.
+  let tubeWall = null;
+  if (boxes.length && cutBoxes.length) {
+    const o = boxes[0].size, inn = cutBoxes[0].size;
+    const walls = o.map((v, i) => (v - inn[i]) / 2).filter((w) => w > 0.05);
+    if (walls.length) tubeWall = Math.min(...walls);
+  }
+
+  // 판(plate): box 중 한 축이 나머지보다 확연히 얇은 것(t < 0.4×중간축). 각관(변≈변)은 제외.
   let plate = null;
-  for (const f of solids) {
-    if (f.kind === 'box' && Array.isArray(f.size) && f.size.length === 3) {
-      const s = f.size;
-      const tIdx = s.indexOf(Math.min(...s));
-      const face = s.filter((_, i) => i !== tIdx);
-      if (!plate || Math.min(...s) < plate.t) plate = { t: Math.min(...s), face, size: s, tIdx };
+  if (!tubeWall) {
+    for (const f of boxes) {
+      const s = f.size.slice().sort((a, b) => a - b); // [t, mid, max]
+      if (s[0] < 0.4 * s[1]) {
+        const tIdx = f.size.indexOf(s[0]);
+        const face = f.size.filter((_, i) => i !== tIdx);
+        if (!plate || s[0] < plate.t) plate = { t: s[0], face, size: f.size, tIdx };
+      }
     }
   }
 
-  // 원형 홀: subtract cylinder — 판 평면(XY, tIdx=2 가정) 내 위치. 대부분 플레이트가 XY판.
+  // 원형 홀: subtract cylinder — 판 평면(대개 XY) 내 위치.
   const holes = [];
   for (const c of cuts) {
     if (c.kind === 'cylinder' && c.diameter > 0) {
@@ -44,25 +59,11 @@ function extract(intent) {
     }
   }
 
-  // 중공 각관: 외곽 box − 내부 box → 벽두께.
-  let tubeWall = null;
-  const cutBoxes = cuts.filter((f) => f.kind === 'box' && Array.isArray(f.size));
-  if (plate && cutBoxes.length) {
-    const outer = plate.face;
-    const inner = cutBoxes[0].size.filter((_, i) => i !== plate.tIdx);
-    const w = Math.min((outer[0] - inner[0]) / 2, (outer[1] - inner[1]) / 2);
-    if (Number.isFinite(w) && w > 0) tubeWall = w;
-  }
+  // 용기(revolve) 벽두께는 일반 프로파일에서 신뢰성 있게 산출 불가(내/외면 대응 모호)
+  // → 추측하지 않는다. 회전체 존재 여부만 표시(두께는 미인식으로 생략).
+  const hasRevolve = solids.some((f) => f.kind === 'revolve' && Array.isArray(f.profile));
 
-  // 용기(revolve) 벽: 프로파일 x(반경) 폭.
-  let revolveWall = null;
-  const rev = solids.find((f) => f.kind === 'revolve' && Array.isArray(f.profile));
-  if (rev) {
-    const xs = rev.profile.map((p) => p[0]);
-    revolveWall = Math.max(...xs) - Math.min(...xs);
-  }
-
-  return { plate, holes, tubeWall, revolveWall };
+  return { plate, holes, tubeWall, hasRevolve };
 }
 
 /**
@@ -72,14 +73,17 @@ function extract(intent) {
  */
 export function analyzeDfm(intent, opts = {}) {
   const process = opts.process === 'punch' ? 'punch' : 'laser';
-  const { plate, holes, tubeWall, revolveWall } = extract(intent);
+  const { plate, holes, tubeWall, hasRevolve } = extract(intent);
   const checks = [];
   const add = (rule, severity, title, message) => checks.push({ rule, severity, title, message, ref: REF });
 
-  const t = opts.thicknessMm ?? plate?.t ?? tubeWall ?? revolveWall ?? null;
+  const t = opts.thicknessMm ?? plate?.t ?? tubeWall ?? null;
 
   if (t == null) {
-    return { checks: [], summary: 'DFM: 두께를 인식하지 못해 생략(자유형상)', recognized: false };
+    const why = hasRevolve
+      ? '회전체(용기) 벽두께는 형상만으론 산출 불가 — 두께 명시 시 검사'
+      : '두께를 인식하지 못해 생략(자유형상)';
+    return { checks: [], summary: 'DFM: ' + why, recognized: false };
   }
 
   // 최소 두께
@@ -108,10 +112,9 @@ export function analyzeDfm(intent, opts = {}) {
     }
   }
 
-  // 벽(중공/용기)
-  const wall = tubeWall ?? revolveWall;
-  if (wall != null && !plate) {
-    if (wall < MIN_T) add('thin_wall', 'warn', '얇은 벽', `벽두께 ${wall.toFixed(2)}mm < 권장 ${MIN_T}mm`);
+  // 벽(중공 각관) — 용기(revolve)는 위에서 생략 처리.
+  if (tubeWall != null && !plate && tubeWall < MIN_T) {
+    add('thin_wall', 'warn', '얇은 벽', `벽두께 ${tubeWall.toFixed(2)}mm < 권장 ${MIN_T}mm`);
   }
 
   if (!checks.length) add('ok', 'pass', '제조성 양호', `주요 판금 규칙(홀·엣지·간격·두께) 위반 없음 (${process}, t=${t.toFixed(1)}mm 기준)`);
