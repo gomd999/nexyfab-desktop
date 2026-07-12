@@ -27,6 +27,7 @@ import { toComponentIntent } from './to-intent.mjs';
 import { verifyDomain, listDomains } from './domain-verify.mjs';
 import { analyzeDfm } from './dfm.mjs';
 import { listMechTemplates, presetWithVerify } from './mech-presets.mjs';
+import { fabSpec, estimateCost, toDxf, DEFAULT_RATES } from './fab.mjs';
 
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
 
@@ -180,6 +181,21 @@ const tools = [
     },
   },
   {
+    name: 'fab_estimate',
+    description:
+      `판재 레이저 제조 명세(결정론) + 예상비용(추정) + 절단 DXF. spec(절단길이·피어싱·중량·면적)은 정확, ` +
+      `estimate.total은 **예상**(편집 단가 × 명세). dxf는 평판 절단용(실사용 가능). 평판만 대상 — 각관·용기는 ` +
+      `applicable:false. 반환: {spec, estimate, dxf}. 확정 견적은 RFQ.`,
+    inputSchema: {
+      type: 'object', required: ['intent'],
+      properties: {
+        intent: { type: 'object', description: 'compose/preset intent' },
+        thicknessMm: { type: 'number', description: '두께 명시(생략 시 형상서)' },
+        rates: { type: 'object', description: `단가표 오버라이드 {materialPerKg,cutPerM,piercePerHole,bendPerOp,setup,marginPct}. 기본=${JSON.stringify(DEFAULT_RATES)}` },
+      },
+    },
+  },
+  {
     name: 'analyze_dfm',
     description:
       `판금·절삭 제조성(DFM) 검사 — 형상 intent에서 홀·두께·벽을 결정론적으로 읽어 최소 홀·홀-엣지 거리· ` +
@@ -273,6 +289,10 @@ async function callTool(name, args = {}) {
   }
   if (name === 'analyze_dfm') {
     return analyzeDfm(args.intent, { process: args.process, thicknessMm: args.thicknessMm });
+  }
+  if (name === 'fab_estimate') {
+    const spec = fabSpec(args.intent, { thicknessMm: args.thicknessMm });
+    return { spec, estimate: estimateCost(spec, args.rates ?? {}), dxf: toDxf(args.intent) };
   }
   if (name === 'list_domains') {
     return { domains: listDomains() };

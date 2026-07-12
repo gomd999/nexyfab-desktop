@@ -23,6 +23,7 @@ import { isKorean } from '@/lib/i18n/normalize';
 import DomainVerifyPanel from './DomainVerifyPanel';
 import ParametricPresetPanel from './ParametricPresetPanel';
 import DfmPanel from './DfmPanel';
+import FabPanel from './FabPanel';
 import { findDomain } from './designDomains';
 
 type Verify =
@@ -487,6 +488,9 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
 
           {/* 제조성(DFM) 상시 — 기계·판금(파라메트릭) 분야 */}
           {intent && domain?.parametric && <DfmPanel intent={intent} lang={lang} />}
+
+          {/* 제조(판재 레이저 명세·예상비용·DXF)(⑤) — 기계·판금 분야 */}
+          {intent && domain?.parametric && <FabPanel intent={intent} name={intent.name} lang={lang} />}
 
           {/* 분야 검증(②) — 형상 + 분야 계산기(상시 게이트 위에 얹는 분야층) */}
           {intent && <DomainVerifyPanel intent={intent} lang={lang} defaultDomain={domain?.verifyDomain ?? undefined} />}
