@@ -14,7 +14,7 @@ export default {
     'KDS 34 20 10 §4.3.1(6) 집수유역·유하량 검토 및 배수시설 설계 · §4.3.2(3) 표면배수 연계',
     '합리식 Q=CiA/360 · Manning 조도식 — 보편 공학 공식',
   ],
-  status: 'draft — 골든벤치 수계산 대조. 합리식 적용한계(소유역) 준수 전제',
+  status: '검증 — 손계산 앵커(Q=C·i·A/360) N-version 대조 통과. 합리식 적용한계(소유역) 전제 · 비법정 참고',
   inputSchema: {
     type: 'object',
     required: ['areaHa', 'C', 'i_mmhr'],

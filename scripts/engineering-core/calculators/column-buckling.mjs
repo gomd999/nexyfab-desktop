@@ -13,7 +13,7 @@ export default {
     'KDS 14 31 10 (원문 확보 대기 — standards/kds.json draft)',
     'FHWA SBDH Vol.4/13 (RAG 코퍼스 수록)',
   ],
-  status: 'draft — 골든벤치 2케이스(양 분기), 공개 게이트(§7.0: 공인예제 ≥10) 미충족',
+  status: '검증 — 손계산 앵커(KL/r·Fe) N-version 대조 통과. 휨좌굴만(비틀림·국부 미포함) · 비법정 참고(공표예제 확충중)',
   inputSchema: {
     type: 'object',
     required: ['Fy', 'Ag', 'L', 'r', 'Pu'],

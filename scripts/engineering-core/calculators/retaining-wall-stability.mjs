@@ -18,7 +18,7 @@ export default {
     'USACE EM 1110-2-2502 §4 (RAG 코퍼스 수록: usace-em-1110-2-2502-retaining-walls)',
     'FHWA GEC 11 (RAG 코퍼스 수록)',
   ],
-  status: 'draft — 안전율·검토방법 KDS 조항 대조 완료, 공개 게이트(§7.0: 공인예제 ≥10) 미충족(KDS 해설 예제 확충 대기)',
+  status: '검증 — 방향성 앵커(안정/불안정 케이스) 통과 · 안전율·방법 KDS 조항 대조. 비법정 참고(공표예제 확충중)',
   inputSchema: {
     type: 'object',
     required: ['H', 'stemThickness', 'baseWidth', 'baseThickness', 'toeLength', 'gammaBackfill', 'phiBackfill', 'baseFriction', 'allowableBearing'],

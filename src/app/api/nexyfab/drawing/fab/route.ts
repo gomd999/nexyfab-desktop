@@ -17,7 +17,7 @@ export const runtime = 'nodejs';
 
 type FabModule = {
   DEFAULT_RATES: Record<string, number>;
-  fabSpec: (intent: unknown, opts?: { thicknessMm?: number; densityKgMm3?: number }) => Record<string, unknown>;
+  fabSpec: (intent: unknown, opts?: { thicknessMm?: number; densityKgMm3?: number; rebarAreaMm2?: number }) => Record<string, unknown>;
   estimateCost: (spec: unknown, rates?: Record<string, number>) => Record<string, unknown>;
   toDxf: (intent: unknown) => string | null;
 };
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const rl = rateLimit(`drawing-fab:${ip}`, 40, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
 
-  let body: { intent?: unknown; thicknessMm?: number; rates?: Record<string, number> };
+  let body: { intent?: unknown; thicknessMm?: number; rebarAreaMm2?: number; rates?: Record<string, number> };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const mod = await loadFab();
-    const spec = mod.fabSpec(body.intent, { thicknessMm: body.thicknessMm });
+    const spec = mod.fabSpec(body.intent, { thicknessMm: body.thicknessMm, rebarAreaMm2: body.rebarAreaMm2 });
     const estimate = mod.estimateCost(spec, body.rates ?? {});
     const dxf = mod.toDxf(body.intent);
     return NextResponse.json({ ok: true, spec, estimate, dxf });

@@ -20,7 +20,7 @@ interface Spec {
   // bent
   flat?: { lengthMm: number; widthMm: number; bendLines?: { angle: number; BA: number; BD: number }[] };
   // concrete / timber
-  volumeM3?: number; formworkM2?: number; rebarKg?: number; concreteWeightKg?: number;
+  volumeM3?: number; formworkM2?: number; rebarKg?: number; concreteWeightKg?: number; rebarBasis?: string;
 }
 
 const KIND_TITLE: Record<string, [string, string]> = {
@@ -75,6 +75,7 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
   const [rates, setRates] = useState<Record<string, number> | null>(null);
   const [res, setRes] = useState<FabResp | null>(null);
   const [busy, setBusy] = useState(false);
+  const [rebarAs, setRebarAs] = useState<string>(''); // 설계 As(mm²) — 입력 시 철근 정밀화
 
   // 기본 단가 로드
   useEffect(() => {
@@ -89,13 +90,14 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
     if (!intent) return;
     setBusy(true);
     try {
+      const As = Number(rebarAs);
       const data = (await fetch('/api/nexyfab/drawing/fab/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intent, rates: r }),
+        body: JSON.stringify({ intent, rates: r, rebarAreaMm2: Number.isFinite(As) && As > 0 ? As : undefined }),
       }).then((x) => x.json())) as FabResp;
       setRes(data);
     } catch { /* noop */ } finally { setBusy(false); }
-  }, [intent]);
+  }, [intent, rebarAs]);
 
   useEffect(() => { if (rates) compute(rates); }, [rates, compute]);
 
@@ -140,7 +142,7 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
                 <>
                   <Row k={ko ? '콘크리트량' : 'Volume'} v={`${spec.volumeM3} m³`} />
                   <Row k={ko ? '거푸집' : 'Formwork'} v={`${spec.formworkM2} m²`} />
-                  <Row k={ko ? '철근(추정)' : 'Rebar (est)'} v={`${spec.rebarKg} kg`} />
+                  <Row k={spec.rebarBasis === 'design' ? (ko ? '철근(배근)' : 'Rebar (design)') : ko ? '철근(추정)' : 'Rebar (est)'} v={`${spec.rebarKg} kg`} />
                   <Row k={ko ? '콘크리트 중량' : 'Conc. weight'} v={`${spec.concreteWeightKg} kg`} />
                 </>
               ) : spec.kind === 'timber' ? (
@@ -179,6 +181,20 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
               ))}
             </div>
           </div>
+
+          {/* 철근 정밀화(#4): 설계 As 입력 시 배근 기반, 없으면 부피율 추정 */}
+          {spec.kind === 'concrete' && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, marginBottom: 6 }}>
+              <span style={{ color: 'var(--nx-text-3, #6b7684)', whiteSpace: 'nowrap' }}>{ko ? '설계 철근 As (mm²)' : 'Design As (mm²)'}</span>
+              <input
+                type="number" inputMode="decimal" value={rebarAs}
+                placeholder={ko ? '미입력=부피율 추정' : 'blank = est by volume'}
+                onChange={(e) => setRebarAs(e.target.value)}
+                style={{ flex: 1, padding: '4px 6px', borderRadius: 5, fontSize: 11, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', boxSizing: 'border-box' }}
+              />
+              {spec.rebarBasis === 'design' && <span style={{ fontSize: 9, color: '#067647' }}>{ko ? '배근 기반' : 'design'}</span>}
+            </label>
+          )}
 
           {/* 예상 비용 */}
           {est && est.applicable && (

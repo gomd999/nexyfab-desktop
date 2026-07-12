@@ -172,19 +172,46 @@ function steelMember(intent, density) {
   };
 }
 
-/** 콘크리트 BOQ(물량 결정론 + 철근 추정). */
+/** 부재 길이(최장 bbox 축) mm. */
+function memberLength(intent) {
+  const feats = Array.isArray(intent?.features) ? intent.features : [];
+  const outer = feats.find((f) => f.op !== 'subtract');
+  if (!outer) return 0;
+  if (outer.kind === 'box') return Math.max(...outer.size);
+  if (outer.kind === 'extrude') return outer.height;
+  if (outer.kind === 'cylinder') return outer.height;
+  return 0;
+}
+
+/**
+ * 콘크리트 BOQ(물량 결정론 + 철근). 철근은:
+ *  - opts.rebarAreaMm2(설계 As) 주어지면 As×부재길이×강재밀도로 **정확** 산정(배근 기반).
+ *  - 없으면 부피×rebarKgPerM3 **추정**(편집 단가).
+ */
 function concreteBOQ(intent, opts) {
   const vol = volumeOf(intent); // mm³
   const m3 = vol / 1e9;
   const form = formworkArea(intent) / 1e6; // m²
   const rebarRate = opts.rebarKgPerM3 ?? DEFAULT_RATES.rebarKgPerM3;
+  const As = opts.rebarAreaMm2;
+  let rebarKg, rebarBasis, note;
+  if (As > 0) {
+    const L = memberLength(intent);
+    rebarKg = As * L * STEEL_DENSITY; // mm²·mm·kg/mm³
+    rebarBasis = 'design'; // 배근(As) 기반
+    note = `콘크리트 부재 · ${m3.toFixed(3)} m³ · 철근 As=${As}mm²×L 기반`;
+  } else {
+    rebarKg = m3 * rebarRate;
+    rebarBasis = 'estimate'; // 부피율 추정
+    note = `콘크리트 부재 · ${m3.toFixed(3)} m³ (철근 ${rebarRate}kg/m³ 추정)`;
+  }
   return {
-    applicable: true, kind: 'concrete',
-    note: `콘크리트 부재 · ${m3.toFixed(3)} m³ (철근 ${rebarRate}kg/m³ 추정)`,
+    applicable: true, kind: 'concrete', note,
     volumeM3: +m3.toFixed(3),
     formworkM2: +form.toFixed(2),
     concreteWeightKg: +(vol * CONCRETE_DENSITY).toFixed(0),
-    rebarKg: +(m3 * rebarRate).toFixed(1),
+    rebarKg: +rebarKg.toFixed(1),
+    rebarBasis,
     bends: 0,
   };
 }

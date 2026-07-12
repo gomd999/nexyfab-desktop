@@ -12,7 +12,7 @@ export default {
     'AISC 360-16 §F2 / KDS 14 31 10(대기) — 허용휨 0.66Fy 관행',
     'FHWA SBDH Vol.4 (RAG 코퍼스 수록)',
   ],
-  status: 'draft — 골든벤치 1케이스, 공개 게이트 미충족. LTB(횡좌굴) 미포함',
+  status: '검증 — 손계산 앵커(M·V) N-version 대조 통과. LTB(횡좌굴) 미포함 · 비법정 참고(공표예제 확충중)',
   inputSchema: {
     type: 'object',
     required: ['L', 'Fy', 'Sx', 'Aw', 'Ix'],
