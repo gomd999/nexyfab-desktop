@@ -19,7 +19,16 @@ interface Spec {
   lengthMm?: number; sectionAreaMm2?: number; unitWeightKgM?: number; cuts?: number;
   // bent
   flat?: { lengthMm: number; widthMm: number; bendLines?: { angle: number; BA: number; BD: number }[] };
+  // concrete / timber
+  volumeM3?: number; formworkM2?: number; rebarKg?: number; concreteWeightKg?: number;
 }
+
+const KIND_TITLE: Record<string, [string, string]> = {
+  steel_member: ['제조 (강재 부재)', 'Manufacture (steel member)'],
+  bent: ['제조 (판금 절곡)', 'Manufacture (bent sheet)'],
+  concrete: ['제조 (콘크리트 물량)', 'Manufacture (concrete BOQ)'],
+  timber: ['제조 (목재 부재)', 'Manufacture (timber)'],
+};
 interface Estimate {
   applicable: boolean; currency?: string; estimate?: boolean;
   breakdown?: Record<string, number>; subtotal?: number; margin?: number; total?: number;
@@ -27,7 +36,8 @@ interface Estimate {
 }
 interface FabResp { ok: boolean; spec?: Spec; estimate?: Estimate; dxf?: string | null; error?: string }
 
-const RATE_FIELDS: { key: string; ko: string; unit: string }[] = [
+type RateField = { key: string; ko: string; unit: string };
+const RATE_FIELDS_METAL: RateField[] = [
   { key: 'materialPerKg', ko: '소재', unit: '₩/kg' },
   { key: 'cutPerM', ko: '절단', unit: '₩/m' },
   { key: 'piercePerHole', ko: '피어싱', unit: '₩/개' },
@@ -35,6 +45,28 @@ const RATE_FIELDS: { key: string; ko: string; unit: string }[] = [
   { key: 'setup', ko: '셋업', unit: '₩' },
   { key: 'marginPct', ko: '마진', unit: '%' },
 ];
+const RATE_FIELDS_CONCRETE: RateField[] = [
+  { key: 'concretePerM3', ko: '콘크리트', unit: '₩/m³' },
+  { key: 'rebarPerKg', ko: '철근', unit: '₩/kg' },
+  { key: 'formworkPerM2', ko: '거푸집', unit: '₩/m²' },
+  { key: 'rebarKgPerM3', ko: '철근량', unit: 'kg/m³' },
+  { key: 'setup', ko: '셋업', unit: '₩' },
+  { key: 'marginPct', ko: '마진', unit: '%' },
+];
+const RATE_FIELDS_TIMBER: RateField[] = [
+  { key: 'timberPerM3', ko: '목재', unit: '₩/m³' },
+  { key: 'setup', ko: '셋업', unit: '₩' },
+  { key: 'marginPct', ko: '마진', unit: '%' },
+];
+function rateFieldsFor(kind?: string): RateField[] {
+  if (kind === 'concrete') return RATE_FIELDS_CONCRETE;
+  if (kind === 'timber') return RATE_FIELDS_TIMBER;
+  return RATE_FIELDS_METAL;
+}
+const BREAKDOWN_KO: Record<string, string> = {
+  material: '소재', cut: '절단', pierce: '피어싱', bend: '절곡', setup: '셋업',
+  concrete: '콘크리트', rebar: '철근', formwork: '거푸집',
+};
 
 const won = (n?: number) => (typeof n === 'number' ? '₩' + n.toLocaleString() : '—');
 
@@ -83,11 +115,7 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
   return (
     <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--nx-border, #dfe3e8)', paddingTop: 14 }}>
       <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>
-        {spec?.kind === 'steel_member'
-          ? ko ? '제조 (강재 부재)' : 'Manufacture (steel member)'
-          : spec?.kind === 'bent'
-            ? ko ? '제조 (판금 절곡)' : 'Manufacture (bent sheet)'
-            : ko ? '제조 (판재 레이저)' : 'Manufacture (sheet laser)'}
+        {(() => { const t = spec?.kind && KIND_TITLE[spec.kind]; return t ? (ko ? t[0] : t[1]) : ko ? '제조 (판재 레이저)' : 'Manufacture (sheet laser)'; })()}
       </div>
 
       {spec && !spec.applicable ? (
@@ -108,6 +136,18 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
                   <Row k={ko ? '총 중량' : 'Weight'} v={`${spec.weightKg} kg`} />
                   <Row k={ko ? '절단' : 'Cuts'} v={`${spec.cuts}`} />
                 </>
+              ) : spec.kind === 'concrete' ? (
+                <>
+                  <Row k={ko ? '콘크리트량' : 'Volume'} v={`${spec.volumeM3} m³`} />
+                  <Row k={ko ? '거푸집' : 'Formwork'} v={`${spec.formworkM2} m²`} />
+                  <Row k={ko ? '철근(추정)' : 'Rebar (est)'} v={`${spec.rebarKg} kg`} />
+                  <Row k={ko ? '콘크리트 중량' : 'Conc. weight'} v={`${spec.concreteWeightKg} kg`} />
+                </>
+              ) : spec.kind === 'timber' ? (
+                <>
+                  <Row k={ko ? '목재량' : 'Volume'} v={`${spec.volumeM3} m³`} />
+                  <Row k={ko ? '중량' : 'Weight'} v={`${spec.weightKg} kg`} />
+                </>
               ) : (
                 <>
                   <Row k={ko ? '절단 길이' : 'Cut length'} v={`${spec.cutLengthM} m`} />
@@ -127,7 +167,7 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
           <div style={{ fontSize: 11, marginBottom: 6 }}>
             <div style={{ color: 'var(--nx-text-3, #6b7684)', marginBottom: 3 }}>{ko ? '단가표 (편집 가능)' : 'Rate card (editable)'}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
-              {RATE_FIELDS.map((f) => (
+              {rateFieldsFor(spec.kind).map((f) => (
                 <label key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                   <span style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{f.ko} ({f.unit})</span>
                   <input
@@ -150,7 +190,8 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
                 <span style={{ fontSize: 15, fontWeight: 800 }}>{won(est.total)}{busy ? '…' : ''}</span>
               </div>
               <div style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 3 }}>
-                {ko ? '소재 ' : 'mat '}{won(est.breakdown?.material)} · {ko ? '절단 ' : 'cut '}{won(est.breakdown?.cut)} · {ko ? '피어싱 ' : 'pierce '}{won(est.breakdown?.pierce)} · {ko ? '셋업 ' : 'setup '}{won(est.breakdown?.setup)} · {ko ? '마진 ' : 'margin '}{won(est.margin)}
+                {Object.entries(est.breakdown ?? {}).map(([k, v]) => `${ko ? (BREAKDOWN_KO[k] ?? k) : k} ${won(v)}`).join(' · ')}
+                {` · ${ko ? '마진' : 'margin'} ${won(est.margin)}`}
               </div>
               <div style={{ fontSize: 9, color: '#a15c00', marginTop: 3, fontStyle: 'italic' }}>{est.disclaimer}</div>
             </div>
@@ -158,9 +199,11 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
 
           {/* 산출물 */}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" onClick={downloadDxf} disabled={!res?.dxf} style={btn}>
-              {ko ? '절단 DXF' : 'Cut DXF'}
-            </button>
+            {res?.dxf && (
+              <button type="button" onClick={downloadDxf} style={btn}>
+                {ko ? '절단 DXF' : 'Cut DXF'}
+              </button>
+            )}
             <Link href={`/${lang}/nexyfab/rfq`} style={{ ...btn, textAlign: 'center', textDecoration: 'none', background: 'var(--nx-accent, #2563eb)', color: '#fff', border: 'none', flex: 1 }}>
               {ko ? '실제 견적 요청 →' : 'Real quote →'}
             </Link>

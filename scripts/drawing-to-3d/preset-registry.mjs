@@ -6,10 +6,16 @@
  */
 import { MECH_TEMPLATES } from './mech-presets.mjs';
 import { RACK_TEMPLATES } from './rack-presets.mjs';
+import { CIVIL_TEMPLATES } from './civil-presets.mjs';
+import { BUILDING_TEMPLATES } from './building-presets.mjs';
+import { LANDSCAPE_TEMPLATES } from './landscape-presets.mjs';
 
 const BY_DOMAIN = {
   mech: MECH_TEMPLATES,
   rack: RACK_TEMPLATES,
+  civil: CIVIL_TEMPLATES,
+  building: BUILDING_TEMPLATES,
+  landscape: LANDSCAPE_TEMPLATES,
 };
 
 function templatesFor(domain) {

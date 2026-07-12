@@ -10,7 +10,55 @@
  */
 
 const STEEL_DENSITY = 7.85e-6; // kg/mm³ (연강 7850 kg/m³)
+const CONCRETE_DENSITY = 2.4e-6; // kg/mm³ (2400 kg/m³)
+const TIMBER_DENSITY = 5.0e-7;  // kg/mm³ (~500 kg/m³)
 const PI = Math.PI;
+
+/** 폴리곤 면적(shoelace, 절대값). */
+function polyArea(pts) {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length];
+    a += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(a) / 2;
+}
+/** 폴리곤 둘레. */
+function polyPerim(pts) {
+  let p = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length];
+    p += Math.hypot(x2 - x1, y2 - y1);
+  }
+  return p;
+}
+/** 피처 부피(mm³). revolve/sphere 등 미지원=0. */
+function featVol(f) {
+  if (f.kind === 'box' && Array.isArray(f.size)) return f.size[0] * f.size[1] * f.size[2];
+  if (f.kind === 'extrude' && Array.isArray(f.profile) && f.height > 0) return polyArea(f.profile) * f.height;
+  if (f.kind === 'cylinder' && f.diameter > 0 && f.height > 0) return PI * (f.diameter / 2) ** 2 * f.height;
+  return 0;
+}
+/** intent 순부피(mm³) = 솔리드 − subtract. */
+function volumeOf(intent) {
+  const feats = Array.isArray(intent?.features) ? intent.features : [];
+  let v = 0;
+  for (const f of feats) v += (f.op === 'subtract' ? -1 : 1) * featVol(f);
+  return Math.max(0, v);
+}
+/** 프리즘 부재의 거푸집(측면) 면적 mm² ≈ 단면 둘레 × 길이. */
+function formworkArea(intent) {
+  const feats = Array.isArray(intent?.features) ? intent.features : [];
+  const outer = feats.find((f) => f.op !== 'subtract');
+  if (!outer) return 0;
+  if (outer.kind === 'box') {
+    const s = outer.size, li = s.indexOf(Math.max(...s));
+    const face = s.filter((_, i) => i !== li);
+    return 2 * (face[0] + face[1]) * s[li];
+  }
+  if (outer.kind === 'extrude') return polyPerim(outer.profile) * outer.height;
+  return 0;
+}
 
 /** 기본 단가표(대략치 · 반드시 편집·업체 확정 전제). KRW. */
 export const DEFAULT_RATES = {
@@ -22,6 +70,13 @@ export const DEFAULT_RATES = {
   setup: 20000,          // 셋업 ₩(고정)
   marginPct: 20,         // 마진 %
   densityKgMm3: STEEL_DENSITY,
+  // 콘크리트 BOQ
+  concretePerM3: 120000, // 콘크리트 ₩/m³(자재+타설)
+  rebarPerKg: 1500,      // 철근 ₩/kg
+  formworkPerM2: 30000,  // 거푸집 ₩/m²
+  rebarKgPerM3: 100,     // 철근량 추정 kg/m³(부재별 변동 — 편집)
+  // 목재
+  timberPerM3: 600000,   // 목재 ₩/m³
 };
 
 /** 평판(얇은 box) + 홀 추출. dfm.mjs와 동일 판별(한 축 < 0.4×중간축). */
@@ -117,8 +172,40 @@ function steelMember(intent, density) {
   };
 }
 
+/** 콘크리트 BOQ(물량 결정론 + 철근 추정). */
+function concreteBOQ(intent, opts) {
+  const vol = volumeOf(intent); // mm³
+  const m3 = vol / 1e9;
+  const form = formworkArea(intent) / 1e6; // m²
+  const rebarRate = opts.rebarKgPerM3 ?? DEFAULT_RATES.rebarKgPerM3;
+  return {
+    applicable: true, kind: 'concrete',
+    note: `콘크리트 부재 · ${m3.toFixed(3)} m³ (철근 ${rebarRate}kg/m³ 추정)`,
+    volumeM3: +m3.toFixed(3),
+    formworkM2: +form.toFixed(2),
+    concreteWeightKg: +(vol * CONCRETE_DENSITY).toFixed(0),
+    rebarKg: +(m3 * rebarRate).toFixed(1),
+    bends: 0,
+  };
+}
+/** 목재 부재(부피·중량). */
+function timberSpec(intent) {
+  const vol = volumeOf(intent);
+  const m3 = vol / 1e9;
+  return {
+    applicable: true, kind: 'timber',
+    note: `목재 부재 · ${m3.toFixed(4)} m³`,
+    volumeM3: +m3.toFixed(4),
+    weightKg: +(vol * TIMBER_DENSITY).toFixed(2),
+    bends: 0,
+  };
+}
+
 export function fabSpec(intent, opts = {}) {
   const density = opts.densityKgMm3 ?? STEEL_DENSITY;
+  // 재료 힌트(프리셋이 intent.material로 표기): 콘크리트·목재는 강판/강재 로직 대신 BOQ.
+  if (intent?.material === 'concrete') return concreteBOQ(intent, opts);
+  if (intent?.material === 'timber') return timberSpec(intent);
   // 절곡물: intent.bends + sheet 메타가 있으면 전개 계산.
   if (Array.isArray(intent?.bends) && intent.bends.length && intent?.sheet?.thickness) {
     return flatPattern(intent.sheet, intent.bends, density);
@@ -158,6 +245,35 @@ export function fabSpec(intent, opts = {}) {
 export function estimateCost(spec, ratesIn = {}) {
   const r = { ...DEFAULT_RATES, ...ratesIn };
   if (!spec.applicable) return { applicable: false, note: spec.note };
+  const round = (v) => Math.round(v);
+
+  // 콘크리트 BOQ 견적: 콘크리트 + 철근 + 거푸집.
+  if (spec.kind === 'concrete') {
+    const concrete = spec.volumeM3 * r.concretePerM3;
+    const rebar = spec.rebarKg * r.rebarPerKg;
+    const formwork = spec.formworkM2 * r.formworkPerM2;
+    const subtotal = concrete + rebar + formwork + r.setup;
+    const margin = subtotal * (r.marginPct / 100);
+    return {
+      applicable: true, currency: 'KRW', estimate: true,
+      breakdown: { concrete: round(concrete), rebar: round(rebar), formwork: round(formwork), setup: round(r.setup) },
+      subtotal: round(subtotal), margin: round(margin), total: round(subtotal + margin), rates: r,
+      disclaimer: '예상 물량·비용(참고) — 철근량·단가는 배근·시세에 따라 변동. 확정은 상세 산출/견적에서.',
+    };
+  }
+  // 목재 견적: 부피 기준.
+  if (spec.kind === 'timber') {
+    const material = spec.volumeM3 * r.timberPerM3;
+    const subtotal = material + r.setup;
+    const margin = subtotal * (r.marginPct / 100);
+    return {
+      applicable: true, currency: 'KRW', estimate: true,
+      breakdown: { material: round(material), setup: round(r.setup) },
+      subtotal: round(subtotal), margin: round(margin), total: round(subtotal + margin), rates: r,
+      disclaimer: '예상 비용(참고) — 수종·등급·시세에 따라 변동.',
+    };
+  }
+
   const material = spec.weightKg * r.materialPerKg;
   let cut, pierce, bend;
   if (spec.kind === 'steel_member') {
@@ -173,7 +289,6 @@ export function estimateCost(spec, ratesIn = {}) {
   const subtotal = material + cut + pierce + bend + r.setup;
   const margin = subtotal * (r.marginPct / 100);
   const total = subtotal + margin;
-  const round = (v) => Math.round(v);
   return {
     applicable: true,
     currency: 'KRW',

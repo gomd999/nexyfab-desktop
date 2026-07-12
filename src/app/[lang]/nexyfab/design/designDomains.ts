@@ -93,6 +93,7 @@ export const DESIGN_DOMAINS: DesignDomain[] = [
     descKo: '옹벽·암거. 검증=옹벽 안정(전도·활동·지지력, 조건 입력).',
     descEn: 'Retaining walls & culverts. Verified by wall stability (overturn / slide / bearing).',
     verifyDomain: 'civil',
+    parametric: true,
     presets: [
       {
         titleKo: '옹벽 단면 (L형)',
@@ -116,6 +117,7 @@ export const DESIGN_DOMAINS: DesignDomain[] = [
     descKo: 'RC 보·기둥 단면. 검증=RC 보 휨·전단(단면 b·d 형상서 파생, 철근·하중 입력).',
     descEn: 'RC beams & columns. Verified by RC beam flexure/shear (b·d from geometry).',
     verifyDomain: 'building-member',
+    parametric: true,
     presets: [
       {
         titleKo: 'RC 보 단면',
@@ -139,6 +141,7 @@ export const DESIGN_DOMAINS: DesignDomain[] = [
     descKo: '데크 부재·측구. 검증=우수 배수(합리식, 유역·강우 입력).',
     descEn: 'Deck members & channels. Verified by stormwater (rational method).',
     verifyDomain: 'landscape',
+    parametric: true,
     presets: [
       {
         titleKo: '데크 보',
