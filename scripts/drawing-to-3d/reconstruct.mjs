@@ -51,6 +51,13 @@ const GATES = {
   cylinder(i, e) {
     for (const k of ['diameter', 'length']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);
   },
+  gusset(i, e) {
+    for (const k of ['legA', 'legB', 'thickness']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);
+  },
+  base_plate(i, e) {
+    for (const k of ['width', 'depth', 'thickness', 'boltDia']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);
+    if (i.boltDia >= Math.min(i.width, i.depth) / 2) e.push('boltDia too large');
+  },
 };
 
 export function gate(intent) {
@@ -94,6 +101,15 @@ const SCAD = {
   cylinder(i) {
     return `cylinder(h=${i.length}, d=${i.diameter}, $fn=96);`;
   },
+  gusset(i) {
+    return `linear_extrude(height=${i.thickness}) polygon(points=[[0,0],[${i.legA},0],[0,${i.legB}]]);`;
+  },
+  base_plate(i) {
+    const m = i.edgeMargin ?? Math.max(12, i.boltDia * 1.5);
+    const holes = [[m, m], [i.width - m, m], [m, i.depth - m], [i.width - m, i.depth - m]]
+      .map(([x, y]) => `  translate([${x}, ${y}, -1]) cylinder(h=${i.thickness + 2}, d=${i.boltDia}, $fn=48);`).join('\n');
+    return `difference() {\n  cube([${i.width}, ${i.depth}, ${i.thickness}]);\n${holes}\n}`;
+  },
 };
 
 export function toOpenScad(intent) {
@@ -129,6 +145,10 @@ export function partAabb(i) {
       return { min: [0, 0, 0], max: [i.width, i.depth, i.height] };
     case 'cylinder':
       return { min: [-i.diameter / 2, -i.diameter / 2, 0], max: [i.diameter / 2, i.diameter / 2, i.length] };
+    case 'gusset':
+      return { min: [0, 0, 0], max: [i.legA, i.legB, i.thickness] };
+    case 'base_plate':
+      return { min: [0, 0, 0], max: [i.width, i.depth, i.thickness] };
     default:
       throw new Error(`partAabb: unsupported type '${i.type}'`);
   }
@@ -145,4 +165,6 @@ export const PARAMS = {
   rect_tube: ['width', 'height', 'wallThk', 'length'],
   box: ['width', 'depth', 'height'],
   cylinder: ['diameter', 'length'],
+  gusset: ['legA', 'legB', 'thickness'],
+  base_plate: ['width', 'depth', 'thickness', 'boltDia'],
 };

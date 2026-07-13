@@ -87,6 +87,22 @@ function holeCount(intent: ComposeIntent | undefined): number {
   const feats = intent?.features;
   return Array.isArray(feats) ? feats.filter(f => (f.kind === 'cylinder' || f.kind === 'hole') && f.op === 'subtract').length : 0;
 }
+// subtract 구멍의 위치(at.translate)+지름 수집 — 정투상 평면뷰에 원으로 표시.
+function collectHoles(intent: ComposeIntent | undefined): Array<{ x: number; y: number; d: number }> {
+  const feats = intent?.features;
+  if (!Array.isArray(feats)) return [];
+  const out: Array<{ x: number; y: number; d: number }> = [];
+  for (const f of feats) {
+    if ((f.kind === 'cylinder' || f.kind === 'hole') && f.op === 'subtract') {
+      const tr = (f.at as { translate?: unknown } | undefined)?.translate;
+      const x = Array.isArray(tr) ? Number(tr[0]) || 0 : 0;
+      const y = Array.isArray(tr) ? Number(tr[1]) || 0 : 0;
+      const d = Number(f.diameter ?? (f as { d?: unknown }).d) || 0;
+      if (d > 0) out.push({ x, y, d });
+    }
+  }
+  return out;
+}
 // 정투상(3각법) 2뷰 SVG — 정면(W×H)+평면(W×D) + 전체치수. 프리즘형 개요도(비법정).
 // 순수 숫자만 템플릿에 삽입(주입 위험 없음). 구멍 위치는 compose 한계로 개수만 표기.
 function buildDrawingSvg(intent: ComposeIntent | undefined): string | null {
@@ -100,7 +116,14 @@ function buildDrawingSvg(intent: ComposeIntent | undefined): string | null {
   const dim = (x1: number, y1: number, x2: number, y2: number, txt: string, below = false) =>
     `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#64748b" stroke-width="0.6"/>` +
     `<text x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 + (below ? 11 : -4)}" fill="#93c5fd" font-size="9" text-anchor="middle" font-family="ui-monospace,monospace">${txt}</text>`;
-  const holes = holeCount(intent);
+  const holes = collectHoles(intent);
+  // 위치가 부여된(원점 아닌) 구멍만 평면뷰에 원으로 — 원점겹침(0,0)은 미배치로 간주.
+  const placed = holes.filter(hh => hh.x > 0 || hh.y > 0);
+  const holeCircles = placed
+    .filter(hh => hh.x <= w && hh.y <= d)
+    .map(hh => `<circle cx="${(ox + hh.x * s).toFixed(1)}" cy="${(topY + hh.y * s).toFixed(1)}" r="${Math.max(1.2, (hh.d * s) / 2).toFixed(1)}" fill="none" stroke="#93c5fd" stroke-width="0.9"/><line x1="${(ox + hh.x * s - 3).toFixed(1)}" y1="${(topY + hh.y * s).toFixed(1)}" x2="${(ox + hh.x * s + 3).toFixed(1)}" y2="${(topY + hh.y * s).toFixed(1)}" stroke="#93c5fd" stroke-width="0.4"/>`)
+    .join('');
+  const note = placed.length < holes.length ? `⌀ holes ×${holes.length} (${holes.length - placed.length} 위치 미부여)` : (holes.length ? `⌀ holes ×${holes.length}` : '');
   return `<svg viewBox="0 0 ${ox + fw + 60} ${topY + tt + 30}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#0b1020;border-radius:8px">
     <text x="${ox}" y="14" fill="#8b949e" font-size="9" font-family="ui-monospace,monospace">FRONT (정면)</text>
     <rect x="${ox}" y="${oy}" width="${fw}" height="${fh}" fill="none" stroke="#cbd5e1" stroke-width="1.1"/>
@@ -108,8 +131,9 @@ function buildDrawingSvg(intent: ComposeIntent | undefined): string | null {
     ${dim(ox - 10, oy, ox - 10, oy + fh, `${h}`)}
     <text x="${ox}" y="${topY - 8}" fill="#8b949e" font-size="9" font-family="ui-monospace,monospace">TOP (평면)</text>
     <rect x="${ox}" y="${topY}" width="${fw}" height="${tt}" fill="none" stroke="#cbd5e1" stroke-width="1.1"/>
+    ${holeCircles}
     ${dim(ox - 10, topY, ox - 10, topY + tt, `${d}`)}
-    ${holes ? `<text x="${ox}" y="${topY + tt + 20}" fill="#6e7681" font-size="9" font-family="ui-monospace,monospace">⌀ holes ×${holes} (위치는 3D 참조)</text>` : ''}
+    ${note ? `<text x="${ox}" y="${topY + tt + 20}" fill="#6e7681" font-size="9" font-family="ui-monospace,monospace">${note}</text>` : ''}
   </svg>`;
 }
 
@@ -168,6 +192,7 @@ async function runAssemblePipeline(prompt: string): Promise<CadResult> {
   return {
     isAssembly: true,
     assembly: j.assembly as AssemblyPlan,
+    composeIntent: (j.composeIntent && typeof j.composeIntent === 'object') ? j.composeIntent as ComposeIntent : undefined,
     scad: typeof j.openscad === 'string' ? j.openscad : undefined,
     interferences: Array.isArray(j.interferences) ? j.interferences : [],
     welds: Array.isArray(j.welds) ? j.welds : [],
@@ -590,6 +615,15 @@ function CadCard({ cad, t, accent, isRtl }: { cad: CadResult; t: (typeof DICT)[L
     const nInterf = cad.interferences?.length ?? 0;
     return (
       <div style={card}>
+        {stepText && (
+          <div style={{ marginBottom: 12 }}>
+            <ChatCadViewer stepText={stepText} accent={accent} onReady={setGeos} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+              <button onClick={() => download(stepText, 'assembly.step', 'application/step')} style={btnPrimary(accent)}>⭳ {t.cadStepDownload}</button>
+              {geos && <button onClick={downloadStl} style={btnGhost}>⭳ {t.cadStlDownload}</button>}
+            </div>
+          </div>
+        )}
         <div style={{ fontSize: 13, fontWeight: 800, color: '#e6edf3', marginBottom: 10 }}>{t.cadAssemblyTitle}</div>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#8b949e', marginBottom: 6 }}>{t.cadParts}</div>
         {specBlock}
@@ -617,6 +651,7 @@ function CadCard({ cad, t, accent, isRtl }: { cad: CadResult; t: (typeof DICT)[L
         {err && <div style={{ fontSize: 12, color: '#fca5a5', marginBottom: 8 }}>⚠️ {err}</div>}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={openGA} disabled={gaBusy} style={btnPrimary(accent)}>{gaBusy ? '…' : `⤢ ${t.cadOpenGA}`}</button>
+          {cad.composeIntent && !stepText && <button onClick={confirmStep} disabled={building} style={btnGhost}>{building ? t.cadBuilding : `⬢ ${t.cadStepDownload}`}</button>}
           {cad.scad && <button onClick={() => download(cad.scad!, 'assembly.scad')} style={btnGhost}>⭳ {t.cadDownload}</button>}
         </div>
         <p style={{ marginTop: 10, fontSize: 10, color: '#6e7681', lineHeight: 1.5 }}>{t.disclaimer}</p>

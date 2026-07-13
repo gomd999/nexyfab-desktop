@@ -162,7 +162,11 @@ const COMPOSE_PROMPT = (desc) => `기계/장비 부품 설명을 "범용 프리�
 - cylinder: diameter,height. 축·노즐·구멍툴.
 - box: size=[w,d,h]. sphere: diameter. 돔.
 공통: at{translate:[x,y,z], rotate:[rx,ry,rz]deg}, op:"add"|"subtract"(구멍/보어), pattern{type:"circular",count,sweep}.
-규칙: 명시 치수 그대로. 회전체 벽은 두께 반영. 구멍/노즐/보어는 op:"subtract". 반복은 pattern. 겹침 접합은 미세 오버랩(0.1mm 이상).
+규칙: 명시 치수 그대로. 회전체 벽은 두께 반영. 반복은 pattern. 겹침 접합은 미세 오버랩(0.1mm 이상).
+**구멍 위치 필수**: box 는 center=false(원점~[w,d,h])다. 모든 구멍/보어(op:"subtract")는 반드시 at.translate 로 실제 위치에 놓아라 — 원점에 겹쳐두지 마라.
+  · 모서리 구멍은 모서리에서 edge margin 만큼 안쪽 좌표. 예) 200×100 판, 모서리 15mm, ⌀8 구멍 4개:
+    구멍 at.translate = [15,15,0] · [185,15,0] · [15,85,0] · [185,85,0] (각 cylinder h=판두께+2, z=-1 로 관통).
+  · 원형 볼트배열은 pattern{type:"circular",count} + 반경만큼 at.translate.
 설명: "${desc}"`;
 
 export async function composeFromText(description, { models = ['gemini-2.5-pro', 'gemini-2.5-flash'] } = {}) {

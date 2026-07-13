@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 type Assembly = { name?: string; parts?: Array<Record<string, unknown>> };
-type BuiltAssembly = { ok: boolean; openscad?: string; parts?: unknown; gateErrors?: string[]; interferences?: unknown[]; welds?: unknown[]; weldTotalMm?: number };
+type BuiltAssembly = { ok: boolean; openscad?: string; parts?: unknown; gateErrors?: string[]; interferences?: unknown[]; welds?: unknown[]; weldTotalMm?: number; composeIntent?: unknown };
 type FromTextModule = {
   callGeminiJson: (prompt: string, schema: unknown, o?: { models?: string[]; maxOutputTokens?: number; thinkingBudget?: number }) => Promise<{ data: Assembly; model?: string; repaired?: boolean }>;
   ASSEMBLY_SCHEMA: unknown;
@@ -49,10 +49,12 @@ const TYPE_SPEC = `각 부품 type 의 params 는 아래 목록만 사용(다른
 - tube: outerDia, innerDia, length   (원형 파이프/중공)
 - rect_tube: width, height, wallThk, length   (각관/중공)
 - box: width, depth, height   (속찬 직육면체 블록)
-- cylinder: diameter, length   (속찬 원기둥 봉·포스트)`;
+- cylinder: diameter, length   (속찬 원기둥 봉·포스트)
+- gusset: legA, legB, thickness   (직각삼각 거셋 보강판)
+- base_plate: width, depth, thickness, boltDia   (4모서리 볼트홀 자동 베이스판)`;
 
 const BASE_PROMPT = (desc: string) => `자연어 제품 설명을 "부품별 독립 body" 복합 어셈블리 계획(JSON)으로 변환하라.
-어휘 9종: plate_with_holes / stepped_plate / l_bracket / flange / bent_sheet / tube / rect_tube / box / cylinder.
+어휘 11종: plate_with_holes / stepped_plate / l_bracket / flange / bent_sheet / tube / rect_tube / box / cylinder / gusset / base_plate.
 ${TYPE_SPEC}
 좌표: 전역 원점(0,0,0), 각 부품 로컬 원점이 at(tx,ty,tz mm; rx,ry,rz deg) 에 놓임. 판재는 z=0 바닥, 위에 얹으면 tz=판두께.
 부피 침투 없이 접촉 배치. 치수 미기입은 통상값.
@@ -123,6 +125,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           parts: built.parts ?? assembly.parts,
           interferences: built.interferences ?? [],
           welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
+          composeIntent: built.composeIntent ?? null,
           gateErrors: [], rounds: round + 1,
         });
       }

@@ -57,8 +57,77 @@ function overlapVolume(a, b) {
 }
 
 /**
+ * 어셈블리 부품(구조 11종)을 compose 범용 intent(kind 기반 features)로 변환한다.
+ * 각 부품 로컬 형상을 compose 프리미티브로 매핑하고 부품 배치(at)를 feature 전역
+ * translate 로 반영 → intentToStep(replicad) 으로 조립체 STEP 방출 재사용.
+ * 비회전·비겹침 어셈블리에서 정확(전역 difference 가 부품별 홀과 일치). 회전 부품은 근사.
+ */
+export function assemblyToComposeIntent(asm) {
+  const feats = [];
+  for (const part of asm.parts ?? []) {
+    const t = part.at ?? {};
+    const tx = t.tx ?? 0, ty = t.ty ?? 0, tz = t.tz ?? 0, rx = t.rx ?? 0, ry = t.ry ?? 0, rz = t.rz ?? 0;
+    const rot = (rx || ry || rz) ? [rx, ry, rz] : undefined;
+    const p = part.params ?? {};
+    const F = (kind, extra, lx = 0, ly = 0, lz = 0, op = 'add') => ({
+      kind, ...extra, op, at: { translate: [lx + tx, ly + ty, lz + tz], ...(rot ? { rotate: rot } : {}) },
+    });
+    switch (part.type) {
+      case 'box': feats.push(F('box', { size: [p.width, p.depth, p.height] })); break;
+      case 'cylinder': feats.push(F('cylinder', { diameter: p.diameter, height: p.length })); break;
+      case 'plate_with_holes':
+        feats.push(F('box', { size: [p.width, p.depth, p.thickness] }));
+        for (const h of p.holes ?? []) feats.push(F('cylinder', { diameter: h.d, height: p.thickness + 2 }, h.x, h.y, -1, 'subtract'));
+        break;
+      case 'base_plate': {
+        const m = p.edgeMargin ?? Math.max(12, p.boltDia * 1.5);
+        feats.push(F('box', { size: [p.width, p.depth, p.thickness] }));
+        for (const [hx, hy] of [[m, m], [p.width - m, m], [m, p.depth - m], [p.width - m, p.depth - m]])
+          feats.push(F('cylinder', { diameter: p.boltDia, height: p.thickness + 2 }, hx, hy, -1, 'subtract'));
+        break;
+      }
+      case 'tube':
+        feats.push(F('cylinder', { diameter: p.outerDia, height: p.length }));
+        feats.push(F('cylinder', { diameter: p.innerDia, height: p.length + 2 }, 0, 0, -1, 'subtract'));
+        break;
+      case 'rect_tube':
+        feats.push(F('box', { size: [p.length, p.width, p.height] }));
+        feats.push(F('box', { size: [p.length + 2, p.width - 2 * p.wallThk, p.height - 2 * p.wallThk] }, -1, p.wallThk, p.wallThk, 'subtract'));
+        break;
+      case 'l_bracket':
+        feats.push(F('box', { size: [p.legA, p.width, p.thickness] }));
+        feats.push(F('box', { size: [p.thickness, p.width, p.legB] }));
+        break;
+      case 'stepped_plate':
+        feats.push(F('box', { size: [p.stepWidth, p.depth, p.stepThickness] }));
+        feats.push(F('box', { size: [p.width - p.stepWidth, p.depth, p.thickness] }, p.stepWidth, 0, 0));
+        break;
+      case 'bent_sheet':
+        feats.push(F('box', { size: [p.length, p.webWidth, p.thickness] }));
+        feats.push(F('box', { size: [p.length, p.thickness, p.flangeHeight] }));
+        feats.push(F('box', { size: [p.length, p.thickness, p.flangeHeight] }, 0, p.webWidth - p.thickness, 0));
+        break;
+      case 'gusset':
+        feats.push(F('extrude', { profile: [[0, 0], [p.legA, 0], [0, p.legB]], height: p.thickness }));
+        break;
+      case 'flange': {
+        feats.push(F('cylinder', { diameter: p.outerDia, height: p.thickness }));
+        feats.push(F('cylinder', { diameter: p.boreDia, height: p.thickness + 2 }, 0, 0, -1, 'subtract'));
+        for (let k = 0; k < p.boltCount; k++) {
+          const a = (2 * Math.PI / p.boltCount) * k;
+          feats.push(F('cylinder', { diameter: p.boltHoleD, height: p.thickness + 2 }, Math.cos(a) * p.bcd / 2, Math.sin(a) * p.bcd / 2, -1, 'subtract'));
+        }
+        break;
+      }
+      default: break; // 미지원 타입은 STEP 에서 생략(GA/SCAD 로는 표시됨)
+    }
+  }
+  return { name: asm.name ?? 'assembly', features: feats };
+}
+
+/**
  * 어셈블리 intent를 결정론적으로 빌드·검증한다 (Gemini 불필요, 순수).
- * @returns { ok, openscad, parts, gateErrors, interferences }
+ * @returns { ok, openscad, parts, gateErrors, interferences, welds, weldTotalMm, composeIntent }
  */
 export function buildAssembly(asm) {
   if (!asm || !Array.isArray(asm.parts) || asm.parts.length === 0) {
@@ -127,7 +196,7 @@ export function buildAssembly(asm) {
     `// assembly: ${asm.name ?? 'unnamed'} — drawing-to-3d (deterministic)\n` +
     `// parts: ${asm.parts.length}\n$fn = 64;\nunion() {\n${bodies.join('\n')}\n}\n`;
 
-  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, welds, weldTotalMm };
+  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, welds, weldTotalMm, composeIntent: assemblyToComposeIntent(asm) };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('assembly.mjs');
