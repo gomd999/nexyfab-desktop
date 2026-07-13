@@ -45,6 +45,12 @@ const GATES = {
     if (2 * i.wallThk >= i.width) e.push('2·wallThk ≥ width');
     if (2 * i.wallThk >= i.height) e.push('2·wallThk ≥ height');
   },
+  box(i, e) {
+    for (const k of ['width', 'depth', 'height']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);
+  },
+  cylinder(i, e) {
+    for (const k of ['diameter', 'length']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);
+  },
 };
 
 export function gate(intent) {
@@ -82,6 +88,12 @@ const SCAD = {
   rect_tube(i) {
     return `difference() {\n  cube([${i.length}, ${i.width}, ${i.height}]);\n  translate([-1, ${i.wallThk}, ${i.wallThk}]) cube([${i.length + 2}, ${i.width - 2 * i.wallThk}, ${i.height - 2 * i.wallThk}]);\n}`;
   },
+  box(i) {
+    return `cube([${i.width}, ${i.depth}, ${i.height}]);`;
+  },
+  cylinder(i) {
+    return `cylinder(h=${i.length}, d=${i.diameter}, $fn=96);`;
+  },
 };
 
 export function toOpenScad(intent) {
@@ -113,6 +125,10 @@ export function partAabb(i) {
       return { min: [-i.outerDia / 2, -i.outerDia / 2, 0], max: [i.outerDia / 2, i.outerDia / 2, i.length] };
     case 'rect_tube':
       return { min: [0, 0, 0], max: [i.length, i.width, i.height] };
+    case 'box':
+      return { min: [0, 0, 0], max: [i.width, i.depth, i.height] };
+    case 'cylinder':
+      return { min: [-i.diameter / 2, -i.diameter / 2, 0], max: [i.diameter / 2, i.diameter / 2, i.length] };
     default:
       throw new Error(`partAabb: unsupported type '${i.type}'`);
   }
@@ -127,4 +143,6 @@ export const PARAMS = {
   bent_sheet: ['webWidth', 'flangeHeight', 'length', 'thickness'],
   tube: ['outerDia', 'innerDia', 'length'],
   rect_tube: ['width', 'height', 'wallThk', 'length'],
+  box: ['width', 'depth', 'height'],
+  cylinder: ['diameter', 'length'],
 };
