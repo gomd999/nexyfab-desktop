@@ -11,6 +11,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { engDict } from './engDict';
+import { DomainIcon, type DomainIconName } from './_domainIcons';
+import { LineIcon } from './_lineIcons';
 
 const ENG_API = 'https://nexyfab-eng-api.gomd999.workers.dev';
 
@@ -203,12 +205,12 @@ export function EngDemo({ langCode }: { langCode: string }) {
 /* ═══════════════ 2. 분야 카드 3장 ═══════════════ */
 export function EngDomains({ langCode }: { langCode: string }) {
   const t = engDict[toEngLang(langCode)];
-  const cards = [
-    { title: t.dom1Title, desc: t.dom1Desc, tags: t.dom1Tags, icon: '⚙️', href: `/${langCode}/shape-generator/`, color: '#3b82f6' },
-    { title: t.dom2Title, desc: t.dom2Desc, tags: t.dom2Tags, icon: '🏗️', href: '#eng-demo', color: '#8b5cf6' },
-    { title: t.dom3Title, desc: t.dom3Desc, tags: t.dom3Tags, icon: '🧱', href: '#eng-demo', color: '#10b981' },
-    { title: t.dom4Title, desc: t.dom4Desc, tags: t.dom4Tags, icon: '🏢', href: '#eng-demo', color: '#f59e0b' },
-    { title: t.dom5Title, desc: t.dom5Desc, tags: t.dom5Tags, icon: '🌳', href: '#eng-demo', color: '#22c55e' },
+  const cards: Array<{ title: string; desc: string; tags: string[]; iconName: DomainIconName; href: string; color: string }> = [
+    { title: t.dom1Title, desc: t.dom1Desc, tags: t.dom1Tags, iconName: 'mechanical', href: '#nf-chat', color: '#3b82f6' },
+    { title: t.dom2Title, desc: t.dom2Desc, tags: t.dom2Tags, iconName: 'civil', href: '#eng-demo', color: '#8b5cf6' },
+    { title: t.dom3Title, desc: t.dom3Desc, tags: t.dom3Tags, iconName: 'concrete', href: '#eng-demo', color: '#10b981' },
+    { title: t.dom4Title, desc: t.dom4Desc, tags: t.dom4Tags, iconName: 'architecture', href: '#eng-demo', color: '#f59e0b' },
+    { title: t.dom5Title, desc: t.dom5Desc, tags: t.dom5Tags, iconName: 'landscape', href: '#eng-demo', color: '#22c55e' },
   ];
   return (
     <section style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)', padding: '90px 24px' }}>
@@ -229,7 +231,7 @@ export function EngDomains({ langCode }: { langCode: string }) {
               onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                <span style={{ fontSize: '30px' }}>{c.icon}</span>
+                <span style={{ color: c.color, display: 'inline-flex' }}><DomainIcon name={c.iconName} size={30} /></span>
                 <span style={{ padding: '3px 10px', borderRadius: '999px', fontSize: '10px', fontWeight: 800, letterSpacing: '0.06em', background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)' }}>● {t.domLive}</span>
               </div>
               <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#f1f5f9', marginBottom: '8px', wordBreak: 'keep-all' }}>{c.title}</h3>
@@ -284,11 +286,11 @@ export function EngDev({ langCode }: { langCode: string }) {
         {/* REST + MCP */}
         <div className="reveal" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '28px' }}>
           <div style={{ background: '#0d1117', borderRadius: '16px', padding: '22px', border: '1px solid #1e293b' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#e2e8f0', marginBottom: '12px' }}>⌨️ {t.devCurlTitle}</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '14px', fontWeight: 800, color: '#e2e8f0', marginBottom: '12px' }}><span style={{ color: '#7dd3fc', display: 'inline-flex' }}><LineIcon name="keyboard" size={17} /></span>{t.devCurlTitle}</h3>
             <pre style={{ margin: 0, fontSize: '11px', lineHeight: 1.6, color: '#7dd3fc', overflowX: 'auto', fontFamily: 'ui-monospace, monospace' }}>{curl}</pre>
           </div>
           <div style={{ background: '#0d1117', borderRadius: '16px', padding: '22px', border: '1px solid #1e293b' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#e2e8f0', marginBottom: '12px' }}>🤖 {t.devMcpTitle}</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '14px', fontWeight: 800, color: '#e2e8f0', marginBottom: '12px' }}><span style={{ color: '#86efac', display: 'inline-flex' }}><LineIcon name="robot" size={17} /></span>{t.devMcpTitle}</h3>
             <pre style={{ margin: '0 0 10px', fontSize: '11px', lineHeight: 1.6, color: '#86efac', overflowX: 'auto', fontFamily: 'ui-monospace, monospace' }}>{mcp}</pre>
             <p style={{ margin: 0, fontSize: '12px', color: '#8b949e', lineHeight: 1.6, wordBreak: 'keep-all' }}>{t.devMcpDesc}</p>
           </div>
