@@ -41,8 +41,11 @@ type CadResult = {
   isAssembly?: boolean;
   assembly?: AssemblyPlan;       // render-html 입력
   interferences?: Array<Record<string, unknown>>;
+  welds?: Array<Record<string, unknown>>;  // 용접 조인트 개산
+  weldTotalMm?: number;
 };
-type Msg = { role: 'user' | 'assistant'; content: string; calc?: CalcResult; cad?: CadResult };
+type CableRow = { from?: unknown; to?: unknown; type?: unknown; cores?: unknown; mm2?: unknown; lengthM?: unknown; note?: unknown };
+type Msg = { role: 'user' | 'assistant'; content: string; calc?: CalcResult; cad?: CadResult; wiring?: CableRow[] };
 
 // 실행형 도메인(엔진 연동). 인테리어는 얕아 대화만(스트리밍 유지).
 const ACTION_DOMAINS: Domain[] = ['civil', 'architecture', 'landscape', 'mechanical'];
@@ -65,6 +68,35 @@ function summarizeFeatures(intent: ComposeIntent | undefined): string[] {
     if (kind === 'revolve' || kind === 'polygon') return `${pre}회전체(단면 프로파일)`;
     return `${pre}${kind || 'feature'}`;
   });
+}
+
+// ISO 2768-m 일반 선형공차 (결정론·표준, 모호성 없음). 개별 GD&T 는 앱(§12.6).
+function iso2768m(dim: number): number {
+  const a = Math.abs(dim);
+  if (a <= 6) return 0.1;
+  if (a <= 30) return 0.2;
+  if (a <= 120) return 0.3;
+  if (a <= 400) return 0.5;
+  if (a <= 1000) return 0.8;
+  return 1.2;
+}
+// intent/assembly 를 순회해 선형 치수만 수집(위치 tx/ty/tz·각도·좌표 제외).
+function collectDims(obj: unknown): number[] {
+  const out: number[] = [];
+  const skip = new Set(['tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'x', 'y', 'op', 'kind', 'type', 'id', 'name', 'boltCount']);
+  const walk = (v: unknown) => {
+    if (typeof v === 'number' && isFinite(v) && v > 0) out.push(v);
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') for (const [k, val] of Object.entries(v as Record<string, unknown>)) if (!skip.has(k)) walk(val);
+  };
+  walk(obj);
+  return out;
+}
+function toleranceRange(obj: unknown): string | null {
+  const tols = collectDims(obj).map(iso2768m);
+  if (!tols.length) return null;
+  const lo = Math.min(...tols), hi = Math.max(...tols);
+  return lo === hi ? `±${lo}` : `±${lo}~±${hi} mm`;
 }
 
 // compose assembly → 부품 목록(독립 body) 사양 라인.
@@ -95,6 +127,8 @@ async function runAssemblePipeline(prompt: string): Promise<CadResult> {
     assembly: j.assembly as AssemblyPlan,
     scad: typeof j.openscad === 'string' ? j.openscad : undefined,
     interferences: Array.isArray(j.interferences) ? j.interferences : [],
+    welds: Array.isArray(j.welds) ? j.welds : [],
+    weldTotalMm: typeof j.weldTotalMm === 'number' ? j.weldTotalMm : 0,
     gateErrors: [],
     spec: summarizeParts(j.assembly as AssemblyPlan),
   };
@@ -167,6 +201,7 @@ const DICT: Record<Lang, {
   cadGenerating: string; cadNoPreview: string; cadDownload: string;
   cadSpecTitle: string; cadConfirm: string; cadBuilding: string; cadStepDownload: string; cadGate: string;
   cadAssemblyTitle: string; cadParts: string; cadInterfNone: string; cadInterf: string; cadOpenGA: string; cadStlDownload: string; cadDfm: string;
+  cadWeld: string; cadWeldTotal: string; cadTol: string; cadGdt: string; cadWiringTitle: string; cadWiringNote: string;
   chips: Record<Domain, string>;
   actDemo: string; actQuote: string; actContact: string;
 }> = {
@@ -185,6 +220,7 @@ const DICT: Record<Lang, {
     cadGenerating: '3D 모델 생성 중…', cadNoPreview: '이 형상의 3D 미리보기는 배포 환경에서 제공됩니다. 아래 SCAD로 확인하세요.', cadDownload: 'SCAD 다운로드',
     cadSpecTitle: '이 사양으로 정밀 3D를 생성할까요?', cadConfirm: '확인 · 정밀 3D 생성', cadBuilding: '정밀 형상(STEP) 생성 중…', cadStepDownload: 'STEP 다운로드', cadGate: '결정론 게이트',
     cadAssemblyTitle: '이 조립체로 생성할까요?', cadParts: '부품 (독립 body)', cadInterfNone: '간섭 없음', cadInterf: '간섭 {n}건', cadOpenGA: 'GA 프레젠테이션 열기', cadStlDownload: 'STL 다운로드', cadDfm: 'DFM·견적',
+    cadWeld: '용접 개산', cadWeldTotal: '총 용접선', cadTol: '일반공차 ISO 2768-m', cadGdt: '개별 GD&T는 정밀검토(앱)', cadWiringTitle: '전기 결선표 (개산)', cadWiringNote: '개산 · 규격/길이 확인 필요 · 3D 하네스는 별도 ECAD',
   },
   en: {
     title: 'What do you want to design?',
@@ -201,6 +237,7 @@ const DICT: Record<Lang, {
     cadGenerating: 'Generating 3D model…', cadNoPreview: 'A 3D preview of this shape is available in the deployed environment — see the SCAD below.', cadDownload: 'Download SCAD',
     cadSpecTitle: 'Generate the precise 3D from this spec?', cadConfirm: 'Confirm · build 3D', cadBuilding: 'Building precise geometry (STEP)…', cadStepDownload: 'Download STEP', cadGate: 'Deterministic gate',
     cadAssemblyTitle: 'Generate this assembly?', cadParts: 'Parts (independent bodies)', cadInterfNone: 'No interference', cadInterf: '{n} interference(s)', cadOpenGA: 'Open GA presentation', cadStlDownload: 'Download STL', cadDfm: 'DFM · estimate',
+    cadWeld: 'Weld estimate', cadWeldTotal: 'Total weld', cadTol: 'General tol. ISO 2768-m', cadGdt: 'per-feature GD&T in app', cadWiringTitle: 'Cable schedule (est.)', cadWiringNote: 'Estimate · verify spec/length · 3D harness = separate ECAD',
   },
   ja: {
     title: '何を設計しますか？',
@@ -217,6 +254,7 @@ const DICT: Record<Lang, {
     cadGenerating: '3Dモデル生成中…', cadNoPreview: 'この形状の3Dプレビューは本番環境で提供されます。下のSCADをご確認ください。', cadDownload: 'SCADをダウンロード',
     cadSpecTitle: 'この仕様で精密3Dを生成しますか？', cadConfirm: '確認 · 精密3D生成', cadBuilding: '精密形状(STEP)を生成中…', cadStepDownload: 'STEPをダウンロード', cadGate: '決定論ゲート',
     cadAssemblyTitle: 'この組立体で生成しますか？', cadParts: '部品 (独立ボディ)', cadInterfNone: '干渉なし', cadInterf: '干渉 {n}件', cadOpenGA: 'GAプレゼンを開く', cadStlDownload: 'STLをダウンロード', cadDfm: 'DFM・見積',
+    cadWeld: '溶接概算', cadWeldTotal: '総溶接長', cadTol: '普通公差 ISO 2768-m', cadGdt: '個別GD&Tはアプリ', cadWiringTitle: '結線表(概算)', cadWiringNote: '概算·仕様/長さ要確認·3DハーネスはECAD別途',
   },
   cn: {
     title: '您想设计什么？',
@@ -233,6 +271,7 @@ const DICT: Record<Lang, {
     cadGenerating: '正在生成3D模型…', cadNoPreview: '该形状的3D预览在部署环境中提供，请查看下方SCAD。', cadDownload: '下载SCAD',
     cadSpecTitle: '按此规格生成精确3D？', cadConfirm: '确认 · 生成3D', cadBuilding: '正在生成精确几何(STEP)…', cadStepDownload: '下载STEP', cadGate: '确定性门控',
     cadAssemblyTitle: '按此组件生成？', cadParts: '零件 (独立实体)', cadInterfNone: '无干涉', cadInterf: '干涉 {n}处', cadOpenGA: '打开GA演示', cadStlDownload: '下载STL', cadDfm: 'DFM·估价',
+    cadWeld: '焊接估算', cadWeldTotal: '总焊缝', cadTol: '一般公差 ISO 2768-m', cadGdt: '单项GD&T在应用', cadWiringTitle: '电缆清单(估算)', cadWiringNote: '估算·核对规格/长度·3D线束另属ECAD',
   },
   es: {
     title: '¿Qué quieres diseñar?',
@@ -249,6 +288,7 @@ const DICT: Record<Lang, {
     cadGenerating: 'Generando modelo 3D…', cadNoPreview: 'La vista 3D de esta forma está disponible en el entorno desplegado — consulta el SCAD abajo.', cadDownload: 'Descargar SCAD',
     cadSpecTitle: '¿Generar el 3D preciso con esta especificación?', cadConfirm: 'Confirmar · generar 3D', cadBuilding: 'Generando geometría precisa (STEP)…', cadStepDownload: 'Descargar STEP', cadGate: 'Compuerta determinista',
     cadAssemblyTitle: '¿Generar este ensamblaje?', cadParts: 'Piezas (cuerpos independientes)', cadInterfNone: 'Sin interferencia', cadInterf: '{n} interferencia(s)', cadOpenGA: 'Abrir presentación GA', cadStlDownload: 'Descargar STL', cadDfm: 'DFM · estimación',
+    cadWeld: 'Estimación de soldadura', cadWeldTotal: 'Soldadura total', cadTol: 'Tol. general ISO 2768-m', cadGdt: 'GD&T por rasgo en la app', cadWiringTitle: 'Lista de cables (est.)', cadWiringNote: 'Estimación · verificar · arnés 3D = ECAD aparte',
   },
   ar: {
     title: 'ماذا تريد أن تُصمّم؟',
@@ -265,6 +305,7 @@ const DICT: Record<Lang, {
     cadGenerating: 'جارٍ إنشاء النموذج ثلاثي الأبعاد…', cadNoPreview: 'تتوفر معاينة ثلاثية الأبعاد لهذا الشكل في بيئة النشر — راجع SCAD أدناه.', cadDownload: 'تنزيل SCAD',
     cadSpecTitle: 'هل تُنشئ نموذجًا دقيقًا بهذه المواصفات؟', cadConfirm: 'تأكيد · بناء 3D', cadBuilding: 'جارٍ بناء الشكل الدقيق (STEP)…', cadStepDownload: 'تنزيل STEP', cadGate: 'بوابة حتمية',
     cadAssemblyTitle: 'هل تُنشئ هذا التجميع؟', cadParts: 'الأجزاء (أجسام مستقلة)', cadInterfNone: 'لا تداخل', cadInterf: '{n} تداخل', cadOpenGA: 'افتح عرض GA', cadStlDownload: 'تنزيل STL', cadDfm: 'DFM · تقدير',
+    cadWeld: 'تقدير اللحام', cadWeldTotal: 'إجمالي اللحام', cadTol: 'تفاوت عام ISO 2768-m', cadGdt: 'GD&T لكل عنصر في التطبيق', cadWiringTitle: 'جدول الكابلات (تقديري)', cadWiringNote: 'تقديري · تحقّق · تسليك 3D = ECAD منفصل',
   },
 };
 
@@ -479,6 +520,12 @@ function CadCard({ cad, t, accent, isRtl }: { cad: CadResult; t: (typeof DICT)[L
       {gateOk ? '✓' : '!'} {t.cadGate}{!gateOk && `: ${cad.gateErrors!.join(', ')}`}
     </div>
   );
+  const tolStr = toleranceRange(cad.isAssembly ? cad.assembly : cad.composeIntent);
+  const tolBadge = tolStr && (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, marginBottom: 12, padding: '3px 10px', borderRadius: 999, background: 'rgba(59,130,246,0.12)', color: '#93c5fd' }}>
+      📐 {t.cadTol} {tolStr} · <span style={{ opacity: 0.75 }}>{t.cadGdt}</span>
+    </div>
+  );
   const scadDetails = cad.scad && (
     <details style={{ marginBottom: 12 }}>
       <summary style={{ fontSize: 12, color: '#8b949e', cursor: 'pointer', fontWeight: 600 }}>SCAD</summary>
@@ -507,7 +554,21 @@ function CadCard({ cad, t, accent, isRtl }: { cad: CadResult; t: (typeof DICT)[L
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: nInterf ? 'rgba(239,68,68,0.14)' : 'rgba(34,197,94,0.14)', color: nInterf ? '#f87171' : '#4ade80' }}>
             {nInterf ? `✕ ${t.cadInterf.replace('{n}', String(nInterf))}` : `✓ ${t.cadInterfNone}`}
           </div>
+          {tolBadge}
         </div>
+        {cad.welds && cad.welds.length > 0 && (
+          <div style={{ marginBottom: 12, fontSize: 12, color: '#cbd5e1', background: '#0b1020', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: '9px 12px' }}>
+            <div style={{ fontWeight: 700, marginBottom: 5 }}>🔩 {t.cadWeld} · {t.cadWeldTotal} ≈ {(cad.weldTotalMm ?? 0).toLocaleString()} mm</div>
+            <div style={{ display: 'grid', gap: 2 }}>
+              {cad.welds.slice(0, 8).map((w, i) => (
+                <div key={i} style={{ fontSize: 11.5, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
+                  {String(w.a)}–{String(w.b)}: {Number(w.lengthMm)}mm · 필렛 {Number(w.legMm)}mm · 목 {Number(w.throatMm)}mm · {Number(w.throatAreaMm2).toLocaleString()}mm²
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 5, fontSize: 10, color: '#6e7681' }}>전둘레 필렛 개산 · AABB 접촉 기준 · 비법정(정밀은 조인트 선언 후속)</div>
+          </div>
+        )}
         {scadDetails}
         {err && <div style={{ fontSize: 12, color: '#fca5a5', marginBottom: 8 }}>⚠️ {err}</div>}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -542,13 +603,32 @@ function CadCard({ cad, t, accent, isRtl }: { cad: CadResult; t: (typeof DICT)[L
     <div style={card}>
       <div style={{ fontSize: 13, fontWeight: 800, color: '#e6edf3', marginBottom: 10 }}>{t.cadSpecTitle}</div>
       {specBlock}
-      {gateBadge}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{gateBadge}{tolBadge}</div>
       {scadDetails}
       {err && <div style={{ fontSize: 12, color: '#fca5a5', marginBottom: 10 }}>⚠️ {err}</div>}
       <button onClick={confirmStep} disabled={building} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: building ? 'wait' : 'pointer', background: building ? 'rgba(148,163,184,0.4)' : `linear-gradient(135deg, ${accent}, #6366f1)`, color: '#fff', border: 'none' }}>
         {building ? t.cadBuilding : `${t.cadConfirm} →`}
       </button>
       <p style={{ marginTop: 10, fontSize: 10, color: '#6e7681', lineHeight: 1.5 }}>{t.disclaimer}</p>
+    </div>
+  );
+}
+
+// 전기 결선표 카드 (개산) — from-to 케이블 목록. 3D 하네스는 별도 ECAD(정직 표기).
+function WiringCard({ wiring, t, accent, isRtl }: { wiring: CableRow[]; t: (typeof DICT)[Lang]; accent: string; isRtl: boolean }) {
+  return (
+    <div style={{ width: 'min(92%, 540px)', background: '#0d1117', border: `1px solid ${accent}44`, borderRadius: 14, padding: 14, textAlign: isRtl ? 'right' : 'left', boxShadow: '0 6px 24px rgba(0,0,0,0.3)' }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: '#e6edf3', marginBottom: 8 }}>🔌 {t.cadWiringTitle}</div>
+      <div style={{ display: 'grid', gap: 4 }}>
+        {wiring.map((w, i) => (
+          <div key={i} style={{ fontSize: 12, color: '#cbd5e1', padding: '6px 11px', borderRadius: 8, background: '#0b1020', border: '1px solid rgba(255,255,255,0.07)', fontVariantNumeric: 'tabular-nums' }}>
+            <b style={{ color: '#e6edf3' }}>{String(w.from ?? '')}</b> → <b style={{ color: '#e6edf3' }}>{String(w.to ?? '')}</b>
+            {w.type ? ` · ${String(w.type)}` : ''}{w.cores ? ` ${Number(w.cores)}C` : ''}{w.mm2 ? `×${Number(w.mm2)}㎟` : ''}{Number(w.lengthM) > 0 ? ` · ${Number(w.lengthM)}m` : ''}
+            {w.note ? <span style={{ color: '#8b949e' }}> · {String(w.note)}</span> : null}
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: 8, fontSize: 10, color: '#6e7681', lineHeight: 1.5 }}>{t.cadWiringNote}</div>
     </div>
   );
 }
@@ -630,6 +710,9 @@ export default function ChatHero({ langCode }: { langCode: string }) {
           } catch (e) {
             setCad({ error: e instanceof Error ? e.message : t.error });
           }
+        } else if (j.type === 'wiring' && Array.isArray(j.cables)) {
+          // ── 전기 결선표(개산) — from-to 케이블 목록 ──
+          setMessages(m => [...m, { role: 'assistant', content: String(j.reply || ''), wiring: j.cables as CableRow[] }]);
         } else {
           setMessages(m => [...m, { role: 'assistant', content: String(j.reply || t.error) }]);
         }
@@ -755,6 +838,7 @@ export default function ChatHero({ langCode }: { langCode: string }) {
                   )}
                   {m.calc && <CalcCard calc={m.calc} t={t} isRtl={isRtl} />}
                   {m.cad && <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} />}
+                  {m.wiring && m.wiring.length > 0 && <WiringCard wiring={m.wiring} t={t} accent={accent} isRtl={isRtl} />}
                 </div>
               );
             })}

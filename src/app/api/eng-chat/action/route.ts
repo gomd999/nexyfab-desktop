@@ -32,6 +32,8 @@ const MECH_SYSTEM = `당신은 NexyFab 기계설계 에이전트입니다. 사�
   {"type":"scad","prompt":"<영어 형상+치수, mm>","reply":"<사용자 언어 한 줄>"}
 - 여러 부품이 결합된 조립체(예: 플레이트+포스트, 프레임 랙, 파이프+플랜지) 생성 요청:
   {"type":"assembly","prompt":"<한국어/영어 조립체 설명: 각 부품 종류·치수·배치>","reply":"<사용자 언어 한 줄>"}
+- 전기 배선/결선 요청(제어반·모터·센서 간 케이블, 배선 계획):
+  {"type":"wiring","reply":"<사용자 언어 한 줄>","cables":[{"from":"<기기>","to":"<기기>","type":"<케이블종류 예 CV/F-CV/제어>","cores":<코어수>,"mm2":<단면적>,"lengthM":<추정길이 m 또는 0>,"note":"<보호관/비고>"}]}
 - 재료 비교·DFM 조언·개념 질문 등:
   {"type":"reply","reply":"<사용자 언어 답변>"}
 
@@ -39,6 +41,7 @@ const MECH_SYSTEM = `당신은 NexyFab 기계설계 에이전트입니다. 사�
 - reply 는 반드시 사용자가 쓴 언어로.
 - 조립체 어휘는 판금/구조 중심(plate·bracket·flange·tube·각관). "여러 개/조립/프레임/랙/체결" 신호면 assembly.
 - 단일 prompt 는 영어·간결·수치 (예: "mounting bracket 200x100x60mm with four 8mm holes").
+- 전기 배선은 결선표(개산)만 낸다 — 길이/규격을 확신 없으면 lengthM:0, note 에 "확인 필요". 정밀 3D 하네스 라우팅은 다루지 않는다.
 - 치수가 전혀 없으면 type:reply 로 되물을 것. 수치를 지어내지 말 것.`;
 
 function catalogPromptBlock(): string {
@@ -145,13 +148,17 @@ export async function POST(req: NextRequest) {
 
     const reply = typeof parsed.reply === 'string' ? parsed.reply : '';
 
-    // 기계설계: 단일부품(scad) / 조립체(assembly) 생성 프롬프트 반환
+    // 기계설계: 단일부품(scad) / 조립체(assembly) / 전기 결선표(wiring) / 질문(reply)
     if (domain === 'mechanical') {
       const p = (parsed as { prompt?: unknown }).prompt;
       if ((parsed.type === 'scad' || parsed.type === 'assembly') && typeof p === 'string' && p.trim()) {
         return NextResponse.json({ type: parsed.type, prompt: p.trim(), reply });
       }
-      return NextResponse.json({ type: 'reply', reply: reply || raw.trim() || '어떤 부품/조립체를 만들까요? 형상과 치수를 알려주세요.' });
+      const cables = (parsed as { cables?: unknown }).cables;
+      if (parsed.type === 'wiring' && Array.isArray(cables) && cables.length > 0) {
+        return NextResponse.json({ type: 'wiring', reply, cables });
+      }
+      return NextResponse.json({ type: 'reply', reply: reply || raw.trim() || '어떤 부품/조립체/배선을 만들까요? 형상·치수 또는 결선 대상을 알려주세요.' });
     }
 
     if (parsed.type === 'calc' && typeof parsed.id === 'string') {

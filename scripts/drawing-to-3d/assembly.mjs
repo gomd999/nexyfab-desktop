@@ -97,11 +97,37 @@ export function buildAssembly(asm) {
     }
   }
 
+  // ③ 용접 조인트 개산 — 면접촉(2축 겹침 + 1축 gap≈0) 부품쌍을 조인트로 보고
+  //    전둘레 필렛 용접선 길이·목두께 면적을 AABB 근사로 산정한다(비법정 개산).
+  //    정밀 용접선은 실제 접촉 기하(면/엣지)에서 나온다 — 여기선 배치 기반 1차 추정.
+  const welds = [];
+  const TOL = 2; // mm — 면접촉 허용오차
+  const FILLET_LEG = 6; // mm — 기본 필렛 다리(개산)
+  const throat = +(0.707 * FILLET_LEG).toFixed(2);
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      const A = boxes[i].box, B = boxes[j].box;
+      const ov = [0, 1, 2].map((k) => Math.min(A.max[k], B.max[k]) - Math.max(A.min[k], B.min[k]));
+      const touch = [0, 1, 2].filter((k) => Math.abs(ov[k]) <= TOL);
+      const over = [0, 1, 2].filter((k) => ov[k] > TOL);
+      if (touch.length === 1 && over.length === 2) {
+        const perim = 2 * (ov[over[0]] + ov[over[1]]);
+        welds.push({
+          a: boxes[i].id, b: boxes[j].id,
+          lengthMm: Math.round(perim), legMm: FILLET_LEG, throatMm: throat,
+          throatAreaMm2: Math.round(perim * throat),
+          note: '전둘레 필렛 개산 · AABB 접촉 기준 · 비법정',
+        });
+      }
+    }
+  }
+  const weldTotalMm = welds.reduce((s, w) => s + w.lengthMm, 0);
+
   const openscad =
     `// assembly: ${asm.name ?? 'unnamed'} — drawing-to-3d (deterministic)\n` +
     `// parts: ${asm.parts.length}\n$fn = 64;\nunion() {\n${bodies.join('\n')}\n}\n`;
 
-  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences };
+  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, welds, weldTotalMm };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('assembly.mjs');
