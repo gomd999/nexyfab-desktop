@@ -250,8 +250,26 @@ function steelAssembly(intent, density) {
   };
 }
 
+/** 인테리어 FF&E: 가구 스케줄(가구·수량·좌석·단가) + 바닥면적. intent.furniture[]. */
+function ffeSchedule(intent) {
+  const list = Array.isArray(intent?.furniture) ? intent.furniture : [];
+  if (!list.length) return null;
+  const items = list.map((f) => ({ id: f.id, name: f.name ?? f.id, count: f.count, seats: (f.seats || 0) * f.count, priceEach: f.priceEach ?? 0, subtotal: (f.priceEach ?? 0) * f.count }));
+  const itemCount = items.reduce((s, i) => s + i.count, 0);
+  const seatTotal = items.reduce((s, i) => s + i.seats, 0);
+  return {
+    applicable: true, kind: 'ffe',
+    note: `FF&E · 품목 ${items.length}종/${itemCount}점 · 좌석 ${seatTotal}`,
+    floorAreaM2: intent.floorAreaM2 ?? null,
+    itemTypes: items.length, itemCount, seatTotal,
+    items, bends: 0,
+  };
+}
+
 export function fabSpec(intent, opts = {}) {
   const density = opts.densityKgMm3 ?? STEEL_DENSITY;
+  // 인테리어 → FF&E 스케줄.
+  if (intent?.material === 'interior') { const ffe = ffeSchedule(intent); if (ffe) return ffe; }
   // 다부재 어셈블리(프레임 등) → 부재 스케줄.
   const asm = steelAssembly(intent, density);
   if (asm) return asm;
@@ -311,6 +329,19 @@ export function estimateCost(spec, ratesIn = {}) {
       breakdown: { concrete: round(concrete), rebar: round(rebar), formwork: round(formwork), setup: round(r.setup) },
       subtotal: round(subtotal), margin: round(margin), total: round(subtotal + margin), rates: r,
       disclaimer: '예상 물량·비용(참고) — 철근량·단가는 배근·시세에 따라 변동. 확정은 상세 산출/견적에서.',
+    };
+  }
+  // 인테리어 FF&E 견적: 가구 소계 합 + 설치/셋업 + 마진.
+  if (spec.kind === 'ffe') {
+    const furniture = (spec.items ?? []).reduce((s, i) => s + i.subtotal, 0);
+    const install = r.setup;
+    const subtotal = furniture + install;
+    const margin = subtotal * (r.marginPct / 100);
+    return {
+      applicable: true, currency: 'KRW', estimate: true,
+      breakdown: { furniture: round(furniture), install: round(install) },
+      subtotal: round(subtotal), margin: round(margin), total: round(subtotal + margin), rates: r,
+      disclaimer: '예상 FF&E 비용(참고) — 가구 단가·사양·시공범위에 따라 변동. 마감·설비·인건비 별도.',
     };
   }
   // 목재 견적: 부피 기준.

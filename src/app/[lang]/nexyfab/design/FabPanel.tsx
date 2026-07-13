@@ -23,6 +23,9 @@ interface Spec {
   volumeM3?: number; formworkM2?: number; rebarKg?: number; concreteWeightKg?: number; rebarBasis?: string;
   // steel_assembly
   members?: { id: string; kind: string; lengthMm: number; weightKg: number }[]; memberCount?: number; totalLengthMm?: number;
+  // ffe (interior)
+  items?: { id: string; name: string; count: number; seats: number; priceEach: number; subtotal: number }[];
+  itemTypes?: number; itemCount?: number; seatTotal?: number; floorAreaM2?: number | null;
 }
 
 const KIND_TITLE: Record<string, [string, string]> = {
@@ -31,6 +34,7 @@ const KIND_TITLE: Record<string, [string, string]> = {
   bent: ['제조 (판금 절곡)', 'Manufacture (bent sheet)'],
   concrete: ['제조 (콘크리트 물량)', 'Manufacture (concrete BOQ)'],
   timber: ['제조 (목재 부재)', 'Manufacture (timber)'],
+  ffe: ['산출 (FF&E 가구)', 'Deliverable (FF&E)'],
 };
 interface Estimate {
   applicable: boolean; currency?: string; estimate?: boolean;
@@ -61,14 +65,19 @@ const RATE_FIELDS_TIMBER: RateField[] = [
   { key: 'setup', ko: '셋업', unit: '₩' },
   { key: 'marginPct', ko: '마진', unit: '%' },
 ];
+const RATE_FIELDS_FFE: RateField[] = [
+  { key: 'setup', ko: '설치/셋업', unit: '₩' },
+  { key: 'marginPct', ko: '마진', unit: '%' },
+];
 function rateFieldsFor(kind?: string): RateField[] {
   if (kind === 'concrete') return RATE_FIELDS_CONCRETE;
   if (kind === 'timber') return RATE_FIELDS_TIMBER;
+  if (kind === 'ffe') return RATE_FIELDS_FFE;
   return RATE_FIELDS_METAL;
 }
 const BREAKDOWN_KO: Record<string, string> = {
   material: '소재', cut: '절단', pierce: '피어싱', bend: '절곡', setup: '셋업',
-  concrete: '콘크리트', rebar: '철근', formwork: '거푸집',
+  concrete: '콘크리트', rebar: '철근', formwork: '거푸집', furniture: '가구', install: '설치',
 };
 
 const won = (n?: number) => (typeof n === 'number' ? '₩' + n.toLocaleString() : '—');
@@ -133,7 +142,14 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
           <div style={{ fontSize: 11.5, marginBottom: 8 }}>
             <div style={{ color: 'var(--nx-text-3, #6b7684)', marginBottom: 3 }}>{ko ? '제조 명세 (정확)' : 'Spec (exact)'}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 8px' }}>
-              {spec.kind === 'steel_assembly' ? (
+              {spec.kind === 'ffe' ? (
+                <>
+                  <Row k={ko ? '바닥면적' : 'Floor area'} v={`${spec.floorAreaM2 ?? '—'} m²`} />
+                  <Row k={ko ? '좌석 수' : 'Seats'} v={`${spec.seatTotal}`} />
+                  <Row k={ko ? '품목 종류' : 'Item types'} v={`${spec.itemTypes}`} />
+                  <Row k={ko ? '가구 수' : 'Items'} v={`${spec.itemCount}`} />
+                </>
+              ) : spec.kind === 'steel_assembly' ? (
                 <>
                   <Row k={ko ? '부재 수' : 'Members'} v={`${spec.memberCount}`} />
                   <Row k={ko ? '총 길이' : 'Total len'} v={`${spec.totalLengthMm} mm`} />
@@ -181,6 +197,18 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5 }}>
                     <span>{m.id} · {m.kind} · L{m.lengthMm}</span>
                     <span style={{ fontWeight: 600 }}>{m.weightKg} kg</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* FF&E 스케줄 */}
+            {spec.kind === 'ffe' && spec.items && (
+              <div style={{ marginTop: 5, paddingTop: 5, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
+                <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginBottom: 2 }}>{ko ? '가구 스케줄 (FF&E)' : 'FF&E schedule'}</div>
+                {spec.items.map((it, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5 }}>
+                    <span>{it.name} × {it.count}{it.seats > 0 ? ` · ${it.seats}석` : ''}</span>
+                    <span style={{ fontWeight: 600 }}>{won(it.subtotal)}</span>
                   </div>
                 ))}
               </div>

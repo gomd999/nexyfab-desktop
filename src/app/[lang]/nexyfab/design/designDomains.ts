@@ -157,6 +157,30 @@ export const DESIGN_DOMAINS: DesignDomain[] = [
       },
     ],
   },
+  {
+    slug: 'interior',
+    icon: '🪑',
+    labelKo: '인테리어 (상업공간)',
+    labelEn: 'Interior (commercial)',
+    descKo: '상업공간 레이아웃. 검증=수용인원·피난(재실자·유효폭·출구), 산출=FF&E BOM·수용인원.',
+    descEn: 'Commercial space layout. Verified by occupancy/egress; delivers FF&E schedule.',
+    verifyDomain: 'interior',
+    parametric: true,
+    presets: [
+      {
+        titleKo: '카페/레스토랑 레이아웃',
+        titleEn: 'Café / restaurant layout',
+        promptKo: '카페 레이아웃, 실 8000×6000, 4인 테이블 2행 3열, 서비스 카운터',
+        promptEn: 'Café layout, room 8000×6000, 4-seat tables 2 rows × 3 cols, service counter',
+      },
+      {
+        titleKo: '리테일 매장 레이아웃',
+        titleEn: 'Retail store layout',
+        promptKo: '리테일 매장, 실 10000×8000, 진열대 3행, 계산 카운터',
+        promptEn: 'Retail store, room 10000×8000, 3 shelf rows, checkout counter',
+      },
+    ],
+  },
 ];
 
 export function findDomain(slug: string | null | undefined): DesignDomain | null {

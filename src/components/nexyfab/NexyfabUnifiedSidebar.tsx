@@ -59,6 +59,7 @@ const SECTIONS: NavSection[] = [
       { icon: '🌉', labelKo: '토목 소구조물',     labelEn: 'Civil structures',   href: '/nexyfab/design?domain=civil' },
       { icon: '🏢', labelKo: '건축 부재',         labelEn: 'Building member',    href: '/nexyfab/design?domain=building' },
       { icon: '🌳', labelKo: '조경 구조·배수',    labelEn: 'Landscape/drainage', href: '/nexyfab/design?domain=landscape' },
+      { icon: '🪑', labelKo: '인테리어·상업공간', labelEn: 'Interior/commercial', href: '/nexyfab/design?domain=interior' },
       { icon: '✨', labelKo: '자유형 Studio',     labelEn: 'Free-form Studio',   href: '/studio' },
       { icon: '🛠️', labelKo: '전문가형 CAD',      labelEn: 'Expert CAD',         href: '/shape-generator?mode=expert' },
       { icon: '📐', labelKo: '종이·레이저컷',     labelEn: 'Papercraft',         href: '/papercraft' },

@@ -16,6 +16,20 @@ import { getCitations } from './citations.mjs';
 
 const round = (v, n = 2) => (typeof v === 'number' && Number.isFinite(v) ? +v.toFixed(n) : v);
 
+/** 바닥 footprint 면적 m² — 가장 큰 박스의 수평 두 변 곱(폴백; 프리셋은 intent.floorAreaM2 직접 제공). */
+function footprintAreaM2(intent) {
+  const feats = Array.isArray(intent?.features) ? intent.features : [];
+  let best = 0;
+  for (const f of feats) {
+    if (f.op === 'subtract') continue;
+    if (f.kind === 'box' && Array.isArray(f.size)) {
+      const s = f.size.slice().sort((a, b) => b - a); // [max, mid, min]
+      best = Math.max(best, s[0] * s[1]);
+    }
+  }
+  return best > 0 ? +(best / 1e6).toFixed(2) : 0;
+}
+
 /**
  * 분야 레지스트리. 각 계산기: derive(member)=형상파생 입력, userInputs=사용자 입력 명세.
  * geom 필드는 사용자가 덮어쓸 수 없음(형상↔검증 정합 보장). derive가 못 만드는 필드만 user.
@@ -93,6 +107,31 @@ export const DOMAIN_VERIFIERS = {
           { name: 'phiBackfill', labelKo: '내부마찰각', unit: '°', default: 30, min: 15, max: 45 },
           { name: 'baseFriction', labelKo: '기초 마찰계수', unit: '', default: 0.5, min: 0, max: 1 },
           { name: 'allowableBearing', labelKo: '허용지지력', unit: 'kPa', default: 200, min: 0 },
+        ],
+      },
+    ],
+  },
+  'interior': {
+    labelKo: '인테리어 (상업공간)',
+    labelEn: 'Interior (commercial space)',
+    note: '수용인원·피난 검토. 바닥면적·좌석은 형상/레이아웃에서 파생, 피난폭·출구·밀도는 용도/기준에서 입력.',
+    calculators: [
+      {
+        id: 'occupancy_egress',
+        labelKo: '수용인원·피난 (재실자·유효폭·출구)',
+        // 바닥면적(m²)·좌석수는 intent(레이아웃)에서 파생.
+        derive: (m, extra) => {
+          const g = {};
+          if (extra?._floorAreaM2 > 0) g.floorAreaM2 = extra._floorAreaM2;
+          if (extra?._seatCount > 0) g.seatCount = extra._seatCount;
+          return g;
+        },
+        userInputs: [
+          { name: 'occupantDensityM2', labelKo: '인당 점유면적', unit: 'm²/인', default: 1.4, min: 0.3, max: 20 },
+          { name: 'egressWidthProvidedMm', labelKo: '확보 피난폭(합)', unit: 'mm', min: 0 },
+          { name: 'egressFactorMmPerOcc', labelKo: '재실자당 피난폭', unit: 'mm/인', default: 5.0, min: 1, max: 20, optional: true },
+          { name: 'exitCount', labelKo: '출구 수', unit: '', default: 2, min: 1 },
+          { name: 'doorClearWidthMm', labelKo: '출입문 유효폭', unit: 'mm', min: 0, optional: true },
         ],
       },
     ],
@@ -185,8 +224,13 @@ export function verifyDomain({ intent, domain, calculatorId, memberRef, params =
     }
   }
 
-  // 형상 파생 입력
-  const derived = member ? calc.derive(member, params) : {};
+  // 레이아웃/형상 스칼라(인테리어 등 부재 아닌 파생용): 바닥면적·좌석수.
+  const floorAreaM2 = intent?.floorAreaM2 ?? footprintAreaM2(intent);
+  const seatCount = Array.isArray(intent?.furniture) ? intent.furniture.reduce((s, f) => s + (f.seats > 0 ? f.count : 0), 0) : 0;
+  const geomCtx = { ...params, _floorAreaM2: floorAreaM2, _seatCount: seatCount };
+
+  // 형상 파생 입력: 부재형(member)이면 단면특성, 아니면 레이아웃 스칼라.
+  const derived = member ? calc.derive(member, geomCtx) : calc.derive(null, geomCtx);
   // 사용자 입력(선언된 것만, geom 필드는 못 덮어씀). extraOnly 필드는 derive 인자로만 쓰이고 계산기 입력엔 안 감.
   const userVals = {};
   for (const spec of calc.userInputs) {
