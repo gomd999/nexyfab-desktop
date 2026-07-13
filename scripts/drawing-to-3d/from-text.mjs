@@ -26,10 +26,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  *   3) JSON 리페어(폭주 지수·긴소수) 후 재파싱.
  * @returns { data, model, repaired }
  */
-export async function callGeminiJson(promptText, schema, { models = ['gemini-2.5-flash', 'gemini-2.5-pro'], maxOutputTokens = 8192 } = {}) {
+export async function callGeminiJson(promptText, schema, { models = ['gemini-2.5-flash', 'gemini-2.5-pro'], maxOutputTokens = 8192, thinkingBudget } = {}) {
+  // schema=null → response_schema 생략(free-form JSON). 플랫/유니온 스키마가 구조화
+  // 출력에서 토큰을 폭주시켜 MAX_TOKENS 절단되는 경우 우회용(강한 프롬프트로 형식 지시).
+  // thinkingBudget=0 → gemini-2.5 "thinking" 비활성(출력토큰을 사고에 소진하는 MAX_TOKENS 방지).
+  const generationConfig = { temperature: 0, response_mime_type: 'application/json', maxOutputTokens };
+  if (schema) generationConfig.response_schema = schema;
+  if (thinkingBudget !== undefined) generationConfig.thinkingConfig = { thinkingBudget };
   const body = JSON.stringify({
     contents: [{ parts: [{ text: promptText }] }],
-    generationConfig: { temperature: 0, response_mime_type: 'application/json', response_schema: schema, maxOutputTokens },
+    generationConfig,
   });
   let lastErr;
   for (const model of models) {
@@ -97,7 +103,7 @@ const PART_PARAMS = {
     holes: { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, y: NUM, d: NUM }, required: ['x', 'y', 'd'] } },
   },
 };
-const ASSEMBLY_SCHEMA = {
+export const ASSEMBLY_SCHEMA = {
   type: 'OBJECT', required: ['name', 'parts'],
   properties: {
     name: { type: 'STRING' },
