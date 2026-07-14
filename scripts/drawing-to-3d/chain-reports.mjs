@@ -18,7 +18,7 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 .honest{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;margin:8px 24px;padding:8px 14px;font-size:11.5px;color:#92400e}.note{font-size:11px;color:#94a3b8;padding:6px 24px}
 @media print{.nf-print-bar{display:none}body{background:#fff}.sheet{box-shadow:none;border:none;margin:0}}</style></head>
 <body><div class="nf-print-bar"><b>${esc(title)}</b><button onclick="print()">🖨 인쇄 / PDF</button></div>
-<div class="sheet"><div class="hd"><h1>${esc(title)}</h1><div class="s">${esc(sub)}</div></div>${body}</div></body></html>`;
+<div class="sheet"><div class="hd"><h1>${esc(title)}</h1><div class="s">${esc(sub)}</div></div>${body}<div class="note" style="border-top:1px solid #e2e8f0;margin-top:10px;padding-top:8px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div></body></html>`;
 
 const checksTable = (checks) => !checks ? '' : `<table><tr><th>검토</th><th>값</th><th>허용/한계</th><th>비율</th><th>판정</th></tr>${
   Object.entries(checks).map(([k, c]) => `<tr><td>${esc(k)}</td><td>${f(c.fb_MPa ?? c.fv_MPa ?? c.delta_mm ?? c.Mn_kNm ?? c.Vc_kN ?? c.FS ?? c.eps_t ?? c.value ?? c.qmax_kPa ?? '-', 2)}</td><td>${f(c.allow_MPa ?? c.limit_mm ?? c.min_allowed ?? c.phiMn_kNm ?? c.phiVn_kN ?? c.allow ?? c.limit ?? '-', 2)}</td><td>${f(c.ratio, 3)}</td><td>${c.pass === true ? '✓' : c.pass === false ? '✕' : '-'}</td></tr>`).join('')}</table>`;
@@ -44,6 +44,11 @@ export function loadPathReport(r, { title = '하중경로 검증' } = {}) {
 ${r.beams[0]?.checks ? checksTable(r.beams[0].checks) : ''}
 <h2>③ 기둥 검토 (rc_column_pm)</h2><table><tr><th>부재</th><th>단면</th><th>Pu kN</th><th>P사용 kN</th><th>Mu</th><th>판정</th></tr>${cols}</table>
 <h2>④ 기초 검토 (isolated_footing)</h2>${ftg}
+${r.rebar ? `<h2>⑤ 철근 개산 (입력 배근 × 형상 길이)</h2>
+<table><tr><th>항목</th><th>산출근거</th><th>중량 kg</th></tr>
+${r.rebar.items.map((i) => `<tr><td style="text-align:left">${esc(i.name)}</td><td style="text-align:left;font-size:10.5px;color:#64748b">${esc(i.basis)}</td><td>${f(i.kg, 1)}</td></tr>`).join('')}
+<tr style="font-weight:700;background:#f8fafc"><td colspan="2">합계</td><td>${f(r.rebar.totalKg, 1)} (${f(r.rebar.totalTon, 2)} t)</td></tr></table>
+<div class="note">${esc(r.rebar.note)}</div>` : ''}
 <div class="honest">⚠ ${esc(r.disclaimer)}</div>
 <div class="note">출처: ${esc(r.loads.usage.ref)} · 계수 전부 KDS 원문 대조 계산기(draft — 공표예제 게이트 진행 중)</div>`);
 }

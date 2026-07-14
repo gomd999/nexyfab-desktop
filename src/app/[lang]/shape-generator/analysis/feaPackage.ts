@@ -142,5 +142,6 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 <tr><td>안전율</td><td style="color:${sfClass};font-weight:700">${f(r.safetyFactor, 2)}</td><td>기준강도 / 최대응력</td></tr></table>
 <div class="honest">⚠ <b>개념 해석(비법정)</b> — 자동 경계조건(바닥 고정·상면 하중)은 실제 지지·하중 조건과 다를 수 있습니다. ${isTet ? (out.refined ? '2-step 재해석(6,000노드) 결과 — 그래도 국부 응력집중(용접 토우·노치)은 과소평가 가능.' : '스크리닝 메시(≈1,200노드) — SF≥2 여유 구간. 국부 응력집중은 과소평가될 수 있음.') : '보 이론 폴백 — 형상이 가늘거나 복잡해 FEM 메시가 성립하지 않은 경우로, 결과는 차원 수준의 개산.'} 최종 설계는 상용 해석(ANSYS 등) 교차검증 필수. ${out.materialKey === 'concrete' || out.materialKey === 'timber' ? '비금속(콘크리트/목재)은 선형등방 근사 — 균열·이방성·크리프 미반영, 참고용.' : ''} 법정 구조검토·상세설계는 전문 해석·기술사 검토가 필요합니다.</div>
 <div class="note">방법: STL(형상 실렌더) → 복셀 사면체화 → TET10 강성 조립 → Jacobi-PCG → von Mises. 폴백: 보 이론. 하중을 지어내지 않음 — 가정은 ① 표에 전부 명시.</div>
+<div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div>
 </div></body></html>`;
 }

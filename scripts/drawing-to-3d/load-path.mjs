@@ -277,9 +277,45 @@ export function loadPathCheck(assembly, params = {}) {
     footing = { verdict: 'INPUT(footing)', needInputs: ['footing.B', 'footing.L', 'footing.t', 'footing.d', 'footing.qAllow'], note: '기초 치수·허용지지력은 설계/지반 조건 — 입력 필요(체인이 Pu·Pservice는 자동 전달)' };
   }
 
+  // ── 철근 개산 (P1 #2) — 입력 배근 × 형상 길이. 가정 제로 원칙:
+  //    배근이 입력된 부재만 산출, 정착·이음·갈고리·슬래브근은 미포함 명시(별도 산정).
+  const RHO_S = 7850; // kg/m³
+  let rebar = null;
+  {
+    const items = [];
+    const cover = params.beamCover ?? 50;
+    const beamCount = floor0Beams.length * nf;
+    if (Number(params.beamAs) > 0 && floor0Beams.length) {
+      const totLenM = floor0Beams.reduce((s, b) => { const bb = box(b); return s + Math.max(bb.dx, bb.dy) / 1000; }, 0) * nf;
+      items.push({ name: '보 하부 주철근', basis: `As ${params.beamAs}mm² × 보 전장 ${round(totLenM, 1)}m`, kg: round(Number(params.beamAs) * totLenM * RHO_S / 1e6, 1) });
+      if (Number(params.beamAsTop) > 0) items.push({ name: '보 상부 주철근 (전장 가정 — 보수)', basis: `AsTop ${params.beamAsTop}mm² × ${round(totLenM, 1)}m`, kg: round(Number(params.beamAsTop) * totLenM * RHO_S / 1e6, 1) });
+      if (Number(params.beamAv) > 0 && Number(params.beamS) > 0) {
+        // 스터럽: 부재당 개수 = 순경간/s + 1, 1개 강재 체적 = Av × 둘레(피복 공제) — 갈고리 미포함 명시
+        const b0 = box(floor0Beams[0]);
+        const bwv = Math.min(b0.dx, b0.dy), bh = b0.dz, ln = Math.max(b0.dx, b0.dy);
+        const per = 2 * ((bwv - 2 * cover) + (bh - 2 * cover));
+        const nSt = Math.floor(ln / Number(params.beamS)) + 1;
+        items.push({ name: '보 스터럽 (갈고리 미포함)', basis: `Av ${params.beamAv}mm² × 둘레 ${round(per, 0)}mm × ${nSt}개/본 × ${beamCount}본`, kg: round(Number(params.beamAv) * per * nSt * beamCount * RHO_S / 1e12 * 1e3, 1) });
+      }
+    }
+    if (Number(params.colAst) > 0) {
+      const colCount = xs.length * ys.length * nf;
+      const colLenM = (cb0.dz / 1000) * colCount;
+      items.push({ name: '기둥 주철근', basis: `Ast ${params.colAst}mm² × 기둥 전장 ${round(colLenM, 1)}m (${colCount}본)`, kg: round(Number(params.colAst) * colLenM * RHO_S / 1e6, 1) });
+    }
+    if (items.length) {
+      const totalKg = round(items.reduce((s, i) => s + i.kg, 0), 1);
+      rebar = {
+        items, totalKg, totalTon: round(totalKg / 1000, 2),
+        note: '입력 배근 × 형상 길이 결정론 산출. 정착·이음·갈고리·띠철근(기둥)·슬래브 배근 미포함(별도 산정 — 통상 총량의 상당분). 물량 개산·비법정.',
+      };
+    }
+  }
+
   return {
     ok: true,
     scope: `직교 격자 라멘 ${xs.length - 1}×${ys.length - 1}베이 ${nf}층 · 중력하중만 (B3)`,
+    rebar,
     loads: {
       usage: { key: usage, label: live.label, live_kNm2: live.v, ref: kds.loads.liveLoad_kNm2._ref },
       slab: { areaM2: round(slabAreaM2), D_kN: round(slabD_kN), L_kN: round(slabL_kN), finish_kNm2: finish, finishNote: finish > 0 ? '입력값' : '마감하중 미포함(미입력)', perFloor: true, floors: nf },
