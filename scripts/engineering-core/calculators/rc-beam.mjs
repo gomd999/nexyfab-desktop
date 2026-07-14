@@ -29,7 +29,7 @@ export default {
     'KDS 14 20 10 §4.2.3(2) 강도감소계수·식(4.3-5) Es=200,000',
     'KDS 14 20 22 식(4.2-1) Vc·식(4.3-3) Vs·§4.3.2 간격·§4.3.3 Av,min·§4.3.4(9) Vs 상한',
   ],
-  status: 'draft — 골든벤치 수계산 대조, 공인 공표예제 재현 대기(§7.0 게이트). 단철근·직사각형 한정',
+  status: 'verified — 원문 계수 대조 + 공표예제 재현(국토부 옹벽 T-7: φMn 3단면·φVc ≤0.1%)',
   inputSchema: {
     type: 'object',
     required: ['b', 'd', 'fck', 'fy', 'As', 'Mu'],

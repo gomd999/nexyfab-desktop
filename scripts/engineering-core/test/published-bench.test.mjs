@@ -159,3 +159,28 @@ test('공표예제: 국토부 P1-16 Winkler+포락선 — 상판 ≤3%·하부 �
   assert.ok(db >= -0.02 && db < 0.13, `하우각 보수측 ${r.moments_kNm.cornerBottom}`);
   assert.ok(dm >= -0.02 && dm < 0.13, `하판중앙 보수측 ${r.moments_kNm.midBottom}`);
 });
+
+// ── 국토부 2008 「도로옹벽 표준도 구조계산서」 T-7 (역T형 H=6.0m) — RC 부재 게이트 ──
+// 출처: CODIL OTMCEC090356 p.128~131. KCI 2007 기준(φf 0.85·φv 0.75·Vc=√fck/6)
+// = KDS 14 20 동일 계보 — φ 차이 없음. 재현: φMn 3단면·φVc 소수점 일치.
+test('공표예제: 국토부 옹벽 T-7 — rc_beam φMn·φVc 3단면 ≤0.1%', () => {
+  const c1 = runCalculator('rc_beam', { b: 1000, d: 520, fck: 24, fy: 400, As: 2292, Mu: 325.827, Vu: 167.364 }, 'KDS');
+  assert.ok(Math.abs(c1.checks.flexure.phiMn_kNm - 387.715) < 0.4, `벽체하단 φMn ${c1.checks.flexure.phiMn_kNm}`);
+  assert.ok(Math.abs(c1.checks.shear.phiVn_kN - 318.434) < 0.4, `벽체하단 φVc ${c1.checks.shear.phiVn_kN}`);
+  const c2 = runCalculator('rc_beam', { b: 1000, d: 370, fck: 24, fy: 400, As: 1146, Mu: 49.943, Vu: 50 }, 'KDS');
+  assert.ok(Math.abs(c2.checks.flexure.phiMn_kNm - 139.789) < 0.2, `벽체중앙 φMn ${c2.checks.flexure.phiMn_kNm}`);
+  const c3 = runCalculator('rc_beam', { b: 1000, d: 520, fck: 24, fy: 400, As: 794.4, Mu: 68.134, Vu: 209.982 }, 'KDS');
+  assert.ok(Math.abs(c3.checks.flexure.phiMn_kNm - 138.346) < 0.2, `앞굽 φMn ${c3.checks.flexure.phiMn_kNm}`);
+});
+
+// ── StructurePoint 띠기둥 P-M 상관도 (ACI 318-14 공개 예제) — 공칭값 비교 ──
+// 16×16in·fc′5000psi·fy60ksi·8-#9. 공칭 Pn·Mn만 비교(φ는 ACI 0.90/0.65 vs KDS
+// 0.85/0.65 상이 — 명시). 단위환산: 1kip=4.4482kN, 1k-ft=1.3558kN·m.
+test('공표예제: SP 기둥 P-M — Po·εs=0점 공칭 ≤0.5%', () => {
+  const inp = { b: 406.4, h: 406.4, dPrime: 63.5, fck: 34.474, fy: 413.685, Ast: 5161.3 };
+  const r0 = runCalculator('rc_column_pm', { ...inp, Pu: 4257, Mu: 353.9 }, 'KDS');
+  assert.ok(Math.abs(r0.intermediate.Po_kN - 1530 * 4.4482) / (1530 * 4.4482) < 0.005, `Po ${r0.intermediate.Po_kN}`);
+  assert.ok(Math.abs(r0.intermediate.Pn_kN - 957 * 4.4482) / (957 * 4.4482) < 0.005, `εs=0 Pn ${r0.intermediate.Pn_kN}`);
+  assert.ok(Math.abs(r0.intermediate.Mn_kNm - 261 * 1.3558) / (261 * 1.3558) < 0.005, `εs=0 Mn ${r0.intermediate.Mn_kNm}`);
+  assert.ok(Math.abs(r0.intermediate.c_mm - 13.5 * 25.4) < 1, `중립축 c ${r0.intermediate.c_mm}`);
+});

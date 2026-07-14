@@ -29,7 +29,7 @@ export default {
     'KDS 14 20 20 §4.1.1(표 4.1-2)·§4.1.2(7) 식(4.1-16/17) φPn(max)·§4.3.2(1) 철근비 0.01~0.08',
     'KDS 14 20 10 §4.2.3(2) 강도감소계수 (압축지배 0.65 띠/0.70 나선)',
   ],
-  status: 'draft — 골든벤치 수계산 대조. 2면 등배근·1축 휨·장주효과 외부 반영 전제',
+  status: 'verified — 원문 계수 대조 + 공표예제 재현(StructurePoint P-M 공칭 Po·εs=0점 ≤0.5%, φ는 KDS 적용)',
   inputSchema: {
     type: 'object',
     required: ['b', 'h', 'fck', 'fy', 'Ast', 'Pu', 'Mu'],
