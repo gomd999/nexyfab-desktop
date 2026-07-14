@@ -35,6 +35,8 @@ export default {
       K: { type: 'number', minimum: 0.2, maximum: 1.0, description: '측방토압계수 (정지토압 K0=1−sinφ 등 — 프로젝트 결정, 입력)' },
       surcharge: { type: 'number', minimum: 0, description: '등분포 상재하중 kPa (기본 0 — 윤하중 등가는 별도 산정 후 입력)' },
       gammaConcrete: { type: 'number', minimum: 20, maximum: 26, description: '콘크리트 단위중량 (기본 24)' },
+      pTopOverride: { type: 'number', minimum: 0, maximum: 500, description: '벽 상단 측압 직접입력 kPa (별도 토압·수압 산정 결과 — 입력 시 K·γ 유도 대체, pBotOverride와 쌍)' },
+      pBotOverride: { type: 'number', minimum: 0, maximum: 800, description: '벽 하단 측압 직접입력 kPa (pTopOverride와 쌍 필수)' },
     },
   },
   run(input) {
@@ -52,8 +54,15 @@ export default {
     const wallSelf = h * t * gc;                    // 벽 1면 자중
     const wb = wv + (2 * wallSelf) / L;             // 저판 상향 순반력 ↑ (저판 자중 상쇄 가정)
     const zTop = hc + t / 2;                        // 벽 상단 중심선 깊이
-    const pTop = K * (g * zTop + q);                // 벽 상단 측압
-    const pBot = K * (g * (zTop + h) + q);          // 벽 하단 측압
+    const hasOverride = input.pTopOverride !== undefined || input.pBotOverride !== undefined;
+    if (hasOverride && (input.pTopOverride === undefined || input.pBotOverride === undefined)) {
+      throw new Error('input gate: 측압 직접입력은 pTopOverride·pBotOverride 쌍 필수');
+    }
+    if (hasOverride && input.pBotOverride < input.pTopOverride) {
+      throw new Error('input gate: pBotOverride ≥ pTopOverride (하단 측압이 상단보다 작을 수 없음 — 특수 분포는 미지원 명시)');
+    }
+    const pTop = hasOverride ? input.pTopOverride : K * (g * zTop + q);   // 벽 상단 측압
+    const pBot = hasOverride ? input.pBotOverride : K * (g * (zTop + h) + q); // 벽 하단 측압
     const pU = pTop;                                // 균등 성분
     const pT = pBot - pTop;                         // 삼각 성분(하단 최대)
 
@@ -120,6 +129,7 @@ export default {
         '처짐각법 정해(등두께·단일셀·스웨이0). 저판 자중은 지반반력 상쇄 가정.',
         '우각부 모멘트=외측 인장, 중앙=내측 인장(통상 배근 방향).',
         'K·상재하중은 입력(윤하중 등가분포는 별도 산정 후 surcharge로).',
+        ...(input.pTopOverride !== undefined ? [`측압 직접입력 모드: pTop ${input.pTopOverride}·pBot ${input.pBotOverride} kPa (K·γ 유도 대체 — 산정 근거는 입력자 책임 명시)`] : []),
         '부재 검토: 각 위치 Mu·Vu를 rc_beam에 입력(1.2D+1.6L 계수는 하중 입력 단계에서).',
       ],
     };

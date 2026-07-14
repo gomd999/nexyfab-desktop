@@ -88,6 +88,47 @@ export function landscapeCheck(assembly, params = {}) {
     };
   }
 
+  // ── ①a 장선↔보 접합부 검토 — 단부반력(형상·하중 파생)을 못/볼트 계산기로 ──
+  let connection = null;
+  if (member && member.load) {
+    const R_N = round(member.load.total_kNm * (member.spanMm / 1000) / 2 * 1000, 0); // 장선 단부반력 N
+    const conn = params.connection;
+    const grpMap = { larch: 'A', pine: 'B', koreanpine: 'C', cedar: 'D' };
+    const group = grpMap[species] ?? 'B';
+    if (conn?.type === 'nail' || conn?.type === 'bolt') {
+      let chk = null;
+      try {
+        chk = conn.type === 'nail'
+          ? runCalculator('timber_nail', {
+              sideThk: conn.sideThk ?? 38, nailLen: conn.nailLen ?? 89, nailDia: conn.nailDia ?? 4.11,
+              group, count: conn.count ?? 2, demandN: R_N,
+              duration: params.duration ?? 'tenYears',
+              // 옥외 조경 = 습윤 기본 (표 4.9-2)
+              serviceWet: params.wetService !== false,
+              ...(conn.endDist !== undefined ? { endDist: conn.endDist } : {}),
+            }, 'KDS')
+          : runCalculator('timber_bolt', {
+              mainThk: conn.mainThk ?? 38, sideThk: conn.sideThk ?? 38, boltDia: conn.boltDia ?? 12,
+              group, count: conn.count ?? 1, demandN: R_N,
+              duration: params.duration ?? 'tenYears', serviceWet: params.wetService !== false,
+              ...(conn.count >= 2 && conn.rowSpacing_mm ? { nRow: conn.count, rowSpacing_mm: conn.rowSpacing_mm, mainWidth: conn.mainWidth ?? 140, sideWidth: conn.sideWidth ?? 140 } : {}),
+            }, 'KDS');
+      } catch (e) {
+        chk = e.code === 'INPUT_GATE' ? { verdict: 'INPUT', error: e.message } : { verdict: 'ERROR', error: e.message };
+      }
+      connection = {
+        type: conn.type, demandN: R_N, verdict: chk?.verdict,
+        checks: chk?.checks ?? null, notes: chk?.notes ?? null, error: chk?.error ?? null,
+        provenance: { geometry: ['단부반력 = w·L/2 (부재 하중·스팬 파생)'], user: ['철물 종류·규격·개수'] },
+      };
+    } else {
+      connection = {
+        type: 'unspecified', demandN: R_N, verdict: 'INPUT',
+        note: `장선↔보 접합 철물 미지정 — 단부반력 ${R_N}N을 지지할 접합 필요 (params.connection={type:'nail'|'bolt',…} 입력 시 자동 검토)`,
+      };
+    }
+  }
+
   // ── ①b 데크보드 검토 (보완 #5) — 보드 스팬 = 장선 간격, 대표 1장 ──────────
   let board = null;
   if (decks.length && member) {
@@ -165,8 +206,8 @@ export function landscapeCheck(assembly, params = {}) {
 
   return {
     ok: true,
-    member, board, wind,
-    refs: ['KDS 41 50 10:2022 (허용응력·CD·CM)', 'KDS 41 12 00:2022 표 3.2-1 (활하중)'],
+    member, connection, board, wind,
+    refs: ['KDS 41 50 10:2022 (허용응력·CD·CM)', 'KDS 41 12 00:2022 표 3.2-1 (활하중)', 'KDS 41 50 30:2022 (접합부 — 못·볼트)'],
     disclaimer: '개념 검토(비법정) — 단순지지·대표부재·강체전도 근사. CM(습윤)·CF·CL 미적용(v1). 실시설계는 구조기술사 검토 필요.',
   };
 }

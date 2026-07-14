@@ -81,6 +81,13 @@ export function landscapeReport(r, { title = '조경 구조 검증' } = {}) {
 <tr><td>${f(m.load.self_kNm, 3)}</td><td>${f(m.load.deckSelf_kNm, 3)}</td><td>${f(m.load.live_kNm, 3)} (${esc(m.load.liveRef)})</td><td>${f(m.load.extra_kNm, 3)}</td></tr></table>
 ${checksTable(m.checks)}
 ${m.notes ? `<div class="note">${m.notes.map(esc).join('<br>')}</div>` : ''}` : '<div class="honest">장선/서까래(role=joist) 없음 — 부재 검토 생략</div>';
+  const c = r.connection;
+  const connSec = !c ? '' : c.type === 'unspecified' ? `
+<h2>①a 장선↔보 접합부</h2><div class="honest">${esc(c.note)}</div>` : `
+<h2>①a 장선↔보 접합부 (${c.type === 'nail' ? '못 — 표 4.4-4' : '볼트 — 표 4.5-2'} · KDS 41 50 30)</h2>
+<table><tr><th>철물</th><th>소요(단부반력)</th><th>내력</th><th>비율</th><th>판정</th></tr>
+<tr><td>${esc(c.type)}</td><td>${c.demandN} N</td><td>${c.checks?.shear?.capacity_N ?? '—'} N</td><td>${c.checks?.shear?.ratio ?? '—'}</td><td>${V(c.verdict)}</td></tr></table>
+${c.notes ? `<div class="note">${c.notes.map(esc).join('<br>')}</div>` : ''}${c.error ? `<div class="honest">${esc(c.error)}</div>` : ''}`;
   const boardSec = r.board ? `
 <h2>①b 데크보드 검토</h2>
 <table><tr><th>부재</th><th>단면</th><th>스팬(장선간격)</th><th>하중</th><th>판정</th></tr>
@@ -97,7 +104,7 @@ ${checksTable(r.board.checks)}<div class="note">${esc(r.board.note)}</div>` : ''
 <tr><td>Y풍</td><td>${f(w.y.areaM2)}</td><td>${f(w.y.F_kN)}</td><td>${f(w.y.zc_m)}</td><td>${f(w.y.Mo_kNm)}</td><td>${f(w.y.Mr_kNm)}</td><td>${f(w.y.FS)}</td></tr></table>
 <div class="note">${esc(w.fsNote)} · ${esc(w.method)}</div>`;
   return SHELL(`${title} — 목재 부재·풍하중`, 'nexyfab · KDS 41 50 10 허용응력×CD×CM(습윤) · 단면·스팬·간격=형상 파생', `
-${memberSec}${boardSec}${windSec}
+${memberSec}${connSec}${boardSec}${windSec}
 <div class="honest">⚠ ${esc(r.disclaimer)}</div>
 <div class="note">근거: ${(r.refs ?? []).map(esc).join(' · ')}</div>`);
 }

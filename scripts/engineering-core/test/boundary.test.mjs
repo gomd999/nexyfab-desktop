@@ -159,3 +159,54 @@ test('접합부: 항복모드식 D≤6.0 전셀 재현 98%+ ±4% (표 지배 유
   const big = runCalculator('timber_nail', { sideThk: 38, nailLen: 139, nailDia: 6.2, group: 'A', count: 1, demandN: 1 }, 'KDS');
   assert.equal(big.intermediate.yieldEq, undefined, 'D>6.0 식 제외');
 });
+
+// ── 볼트 접합 — CΔ·Cg·습윤 (원문식 성질 검증) ────────────────────────────
+test('볼트: CΔ 보간·Cg 성질·습윤 CM·게이트', () => {
+  const base = { mainThk: 38, sideThk: 38, boltDia: 12, group: 'A', demandN: 100 };
+  // CΔ = 실제/총내력최소 (식 4.5-14): 끝면 50, 인장 침엽수 7D=84 → 0.595
+  const r = runCalculator('timber_bolt', { ...base, count: 1, endDist: 50 }, 'KDS');
+  assert.equal(r.intermediate.cDelta, 0.595, 'CΔ 보간');
+  // 감소최소(3.5D=42) 미달 → FAIL
+  assert.equal(runCalculator('timber_bolt', { ...base, count: 1, endDist: 40 }, 'KDS').verdict, 'FAIL', '감소최소 미달');
+  // Cg: n=1 → 1.0 정확, n 증가 단조감소 (식 4.9-1)
+  const cgOf = (nRow, s = 60) => runCalculator('timber_bolt', { ...base, count: nRow, nRow, rowSpacing_mm: s, mainWidth: 140, sideWidth: 140 }, 'KDS').intermediate.Cg;
+  assert.equal(cgOf(1), 1, 'Cg(1)=1');
+  assert.ok(cgOf(4) < cgOf(2) && cgOf(2) <= 1, 'Cg 단조감소');
+  assert.ok(cgOf(4, 120) < cgOf(4, 60), 's 증가 → Cg 감소');
+  // 습윤 (표 4.9-2): 볼트 0.7 · 못 0.7
+  assert.equal(runCalculator('timber_bolt', { ...base, count: 1, serviceWet: true }, 'KDS').intermediate.CM, 0.7);
+  assert.equal(runCalculator('timber_nail', { sideThk: 38, nailLen: 89, nailDia: 4.11, group: 'B', demandN: 100, serviceWet: true }, 'KDS').intermediate.CM, 0.7);
+  // nRow≥2 필수입력 게이트
+  assert.throws(() => runCalculator('timber_bolt', { ...base, count: 3, nRow: 3 }, 'KDS'), /rowSpacing_mm/, 'Cg 입력게이트');
+});
+
+// ── 풍하중 간편법 (식 5.15-1 손검증) ──────────────────────────────────────
+test('풍하중: 식 5.15-1 손검증·최소풍압·적용범위 게이트', () => {
+  // 0.25×30²×10^0.44×1.0×1.1 = 681.7
+  const r = runCalculator('wind_simple', { V0: 30, H: 10, B: 16, D: 10, demandNone: 0 }, 'KDS');
+  assert.equal(r.pressure.design_Nm2, 681.7, '손검증 681.7');
+  assert.equal(r.coefficients.Cf, 1.1, 'Cf=0.6−(−0.5)');
+  // 최소풍압 675 지배
+  const r2 = runCalculator('wind_simple', { V0: 24, H: 4, B: 8, D: 8, demandNone: 0 }, 'KDS');
+  assert.equal(r2.pressure.minGoverns, true);
+  assert.equal(r2.pressure.design_Nm2, 675);
+  // D/B 보간: 1.5 → Cf 1.0
+  assert.equal(runCalculator('wind_simple', { V0: 30, H: 10, B: 12, D: 18, demandNone: 0 }, 'KDS').coefficients.Cf, 1);
+  // 적용범위: H/√BD>1 → 게이트
+  assert.throws(() => runCalculator('wind_simple', { V0: 30, H: 15, B: 5, D: 5, demandNone: 0 }, 'KDS'), /적용범위/);
+  // 해안 Ce=2.0 정비례
+  const rc = runCalculator('wind_simple', { V0: 30, H: 10, B: 16, D: 10, terrain: 'coast', demandNone: 0 }, 'KDS');
+  assert.equal(+(rc.pressure.raw_Nm2 / r.pressure.raw_Nm2).toFixed(3), 2, 'Ce 배율');
+});
+
+// ── 암거 측압 직접입력 (등가성·게이트) ────────────────────────────────────
+test('암거: 측압 오버라이드 등가성·쌍 게이트', () => {
+  const base = { innerWidth: 3, innerHeight: 3, wallThk: 0.3, cover: 2, gammaSoil: 19, K: 0.5 };
+  const auto = runCalculator('box_culvert_frame', base, 'KDS');
+  // 자동 유도값을 그대로 직접 입력 → 동일 결과
+  const manual = runCalculator('box_culvert_frame', { ...base, pTopOverride: auto.loads.pTop_kPa, pBotOverride: auto.loads.pBot_kPa }, 'KDS');
+  assert.equal(manual.moments_kNm.cornerTop, auto.moments_kNm.cornerTop, '오버라이드 등가성');
+  // 쌍 미충족 게이트
+  assert.throws(() => runCalculator('box_culvert_frame', { ...base, pTopOverride: 30 }, 'KDS'), /쌍 필수/);
+  assert.throws(() => runCalculator('box_culvert_frame', { ...base, pTopOverride: 50, pBotOverride: 30 }, 'KDS'), /pBotOverride/);
+});

@@ -820,6 +820,68 @@
       ],
       "validation": "표 4.4-4 전셀 재현 스캔: D≤6.0 → 98/100 셀 ±4%(최대 5.5%, 표 10N 반올림·GIF 판독 한계 2셀). Fyb는 재현 역산으로 확정한 경험 앵커(NDS 계보와 일치) — 원문에 수치 명기 없음을 명시.",
       "largeDiaNote": "D>6.0(6.2·6.68)은 어떤 단일 Fyb로도 재현 불가(역산 산포 355~551) — 별도 근거 추정. 해당 행은 표 직독만 사용, 식 교차검증 제외."
+    },
+    "boltPlacement": {
+      "source": "KDS 41 50 30:2022 §4.5.5 표 4.5-5~4.5-8·식 4.5-12~16 (원문 텍스트+GIF 판독)",
+      "edge_D": {
+        "par_lD_le6": 1.5,
+        "par_lD_gt6": "max(1.5D, 볼트열간격)",
+        "perpLoaded": 4,
+        "perpUnloaded": 1.5
+      },
+      "end_D": {
+        "tensionSoft": [
+          3.5,
+          7
+        ],
+        "tensionHard": [
+          2.5,
+          5
+        ],
+        "compression": [
+          2,
+          4
+        ],
+        "perp": [
+          2,
+          4
+        ]
+      },
+      "spacing_D": [
+        3,
+        5
+      ],
+      "rowSpacing_D": {
+        "par": 1.5,
+        "perp": "l/D≤2→2.5 · 2<l/D<6→(5(l/D)+10)/8 · ≥6→5"
+      },
+      "lD": "l = min(주부재 내 볼트길이, 측면부재 내 볼트길이 합) — 식 4.5-12·13",
+      "cDelta": "CΔ = 실제거리/총내력 최소거리 (식 4.5-14·16 판독). 감소최소 미달 = 사용불가. 전단면 최소치를 전 볼트에 적용(§4.5.5.1(3))"
+    },
+    "connectionWetCM": {
+      "source": "KDS 41 50 30:2022 표 4.9-2 (원문 텍스트)",
+      "nail_lateral": {
+        "dryDry": 1,
+        "otherwise": 0.7
+      },
+      "bolt_lateral": {
+        "serviceDry": 1,
+        "serviceWet": 0.7,
+        "note2_assemblyWetSingleMetal2Rows": 0.4
+      },
+      "scope": "측방하중 전용(못뽑기 별도) — 조립시·사용중 함수율 19% 기준"
+    },
+    "groupAction": {
+      "source": "KDS 41 50 30:2022 §4.9.2.6 식(4.9-1) (GIF 판독: Cg·REA·u·m 전식)",
+      "formula": "Cg = [m(1−m^2n)/(n{(1+REA·m^n)(1+m)−1+m^2n})]·[(1+REA)/(1−m)]; u=1+γ(s/2)(1/EmAm+1/EsAs); m=u−√(u²−1); REA=min(EsAs/EmAm, EmAm/EsAs)",
+      "gamma_Npermm": {
+        "woodWoodBolt": "250·D^1.5",
+        "woodMetalBolt": "375·D^1.5",
+        "splitRing102": 89000,
+        "splitRing64": 71000
+      },
+      "crossCheck": "NDS 계보 단위환산 일치: 180000lb/in·D(in)^1.5→246·D^1.5 N/mm≈250 · 270000→369≈375 · 500000lb/in→87.6kN/mm≈89",
+      "applicability": "2개 이상 파스너 1열 — D≤25mm 볼트·래그·스프리트링(§4.9.2.6(1))"
     }
   },
   "seismicBuilding": {
@@ -910,5 +972,35 @@
     "csFloorCoef": 0.044,
     "csFloorMin": 0.01,
     "note": "SDS=S·2.5·Fa·2/3 (식4.2-4) · SD1=S·Fv·2/3 (식4.2-5) · V=Cs·W · Cs=SDS/(R/IE), ≤SD1/((R/IE)T), ≥0.044·SDS·IE≥0.01 · Fx=Cvx·V, Cvx=wx·hx^k/Σwi·hi^k (k: T≤0.5→1, ≥2.5→2 보간). R=표 6.2-1(시스템별 — 사용자 결정 입력)"
+  },
+  "windSimple": {
+    "source": "KDS 41 12 00:2022 §5.15 간편법 (원문 텍스트+GIF 판독: 식 5.15-1·표 5.15-1·적용조건)",
+    "formula": "W_SF = 0.25·V0²·H^0.44·Ce·Cf·A (N) — 식(5.15-1)",
+    "applicability": {
+      "H_max_m": 20,
+      "HsqrtBD_max": 1,
+      "B_range": "0.5H ≤ B ≤ 30m",
+      "roofSlope_max_deg": 10,
+      "note": "정형·대칭 단면 (⑤)"
+    },
+    "Ce": {
+      "normal": 1,
+      "flatOpen": 1.5,
+      "coast": 2,
+      "hillNote": "지형 할증 시 Kzt² 곱(식 5.5-3)"
+    },
+    "Cpe": {
+      "windward": 0.6,
+      "leeward": "D/B≤1: −0.5 · D/B≥2: −0.3 (직선보간)",
+      "side": "거리별 −0.8/−0.7/−0.3/−0.2",
+      "roof": "−1.0/−0.8/−0.3/−0.2"
+    },
+    "minPressure_Nm2": 675,
+    "V0_note": "기본풍속 V0=그림 5.5-1 지역별 등풍속선(재현기간 500년) — 지도 판독 불가, 필수 사용자 입력(지어내지 않음)",
+    "fullMethodRef": {
+      "Kzr": "c·z^α (표 5.5-2·3 검증: A 0.22/α0.33/zb20 · B 0.45/0.22/15 · C 0.71/0.15/10 · D 0.98/0.10/5)",
+      "importance": "초고층 1.05 / 특·1 1.00 / 2 0.95 / 3 0.90 (표 5.5-5)",
+      "airDensity": 1.225
+    }
   }
 }

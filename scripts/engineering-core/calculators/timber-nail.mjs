@@ -2,7 +2,7 @@
  * P4 조경/목구조 — 못접합부 1면전단 (목재-목재) — KDS 41 50 30 표 4.4-4.
  * Z' = Z(표) × CD(하중기간) × n(개수). 원문이 표 수록값을 항복모드식과 동등 인정(§4.4.3.1).
  * v1 한계(명시): 끝거리·간격·연단거리 상세(§4.4.4) 미검토 — 배치 규정 준수 전제.
- * 습윤 접합부 감소계수는 원문 표 확인 후 적용 예정 — 습윤 환경은 보수적 별도 검토 요.
+ * 습윤 접합부 감소계수는 원문 표 확인 후 적용 예정 — 습윤계수 CM=표 4.9-2 원문 반영.
  */
 export default {
   id: 'timber_nail',
@@ -23,6 +23,8 @@ export default {
       duration: { type: 'string', enum: ['permanent', 'tenYears', 'twoMonths', 'sevenDays', 'tenMinutes', 'impact'], description: '하중기간 (기본 tenYears)' },
       metalSide: { type: 'boolean', description: '금속측면판 (+10%, §4.4.3.2)' },
       demandN: { type: 'number', minimum: 0, description: '소요 전단력 N (접합부 전체)' },
+      assemblyWet: { type: 'boolean', description: '조립 시 함수율>19% (표 4.9-2)' },
+      serviceWet: { type: 'boolean', description: '사용 중 함수율>19% (표 4.9-2)' },
       predrilled: { type: 'boolean', description: '미리 구멍 뚫음 (표 4.4-5 완화 기준 적용)' },
       endDist: { type: 'number', minimum: 0, description: '끝면거리 mm (입력 시 표 4.4-5 게이트 검사)' },
       edgeDist: { type: 'number', minimum: 0, description: '연단거리 mm' },
@@ -38,8 +40,10 @@ export default {
     const gi = { A: 0, B: 1, C: 2, D: 3 }[input.group];
     const CD = std.timber.loadDurationCD[input.duration ?? 'tenYears'] ?? 1.0;
     const n = input.count ?? 1;
+    // 습윤계수 CM (표 4.9-2 원문: 못 측방하중 — 조립·사용 모두 ≤19%면 1.0, 그 외 0.7)
+    const CM = input.assemblyWet !== true && input.serviceWet !== true ? 1.0 : std.timber.connectionWetCM.nail_lateral.otherwise;
     const Z = row[gi] * (input.metalSide ? 1.10 : 1.0);
-    const Zprime = Z * CD;
+    const Zprime = Z * CD * CM;
     const capacity = Zprime * n;
     const ratio = input.demandN / capacity;
 
@@ -93,12 +97,12 @@ export default {
         penetration: { p_mm: +p.toFixed(0), min12D_mm: +(12 * D).toFixed(0), pass: penOk },
         ...(placeFails.length || input.endDist !== undefined ? { placement: { fails: placeFails, pass: placeFails.length === 0 } } : {}),
       },
-      intermediate: { Z_table_N: row[gi], CD, count: n, metalSide: !!input.metalSide, ...(yieldEq ? { yieldEq } : {}) },
+      intermediate: { Z_table_N: row[gi], CD, CM, count: n, metalSide: !!input.metalSide, ...(yieldEq ? { yieldEq } : {}) },
       notes: [
-        `표 4.4-4 기준값 ${row[gi]}N (${input.group}군) × CD ${CD}${input.metalSide ? ' × 1.10(금속측면판)' : ''} × ${n}본`,
+        `표 4.4-4 기준값 ${row[gi]}N (${input.group}군) × CD ${CD} × CM ${CM}${input.metalSide ? ' × 1.10(금속측면판)' : ''} × ${n}본`,
         ...(yieldEq ? [`항복모드식 교차검증: Z_eq ${yieldEq.Z_eq_N}N (${yieldEq.governingMode} 지배, Fyb ${yieldEq.Fyb_MPa}, 편차 ${yieldEq.deviation_pct}%) — 표값 지배`] : []),
         ...(penMsg ? [penMsg] : []),
-        '배치 최소치=표 4.4-5(미입력 항목은 준수 전제 명시). 습윤 접합부 감소 원문 확인 예정.',
+        '배치 최소치=표 4.4-5(미입력 항목은 준수 전제 명시).',
       ],
     };
   },
