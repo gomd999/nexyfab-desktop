@@ -31,7 +31,7 @@ export function resolveToken() {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Embed an array of strings -> array of 1024-dim vectors. Batches + retries. */
-export async function embedTexts(texts, { batchSize = 50, token = resolveToken() } = {}) {
+export async function embedTexts(texts, { batchSize = 20, token = resolveToken() } = {}) {
   const out = [];
   for (let i = 0; i < texts.length; i += batchSize) {
     const batch = texts.slice(i, i + batchSize);

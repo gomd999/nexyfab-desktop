@@ -23,6 +23,11 @@ export default {
       duration: { type: 'string', enum: ['permanent', 'tenYears', 'twoMonths', 'sevenDays', 'tenMinutes', 'impact'], description: '하중기간 (기본 tenYears)' },
       metalSide: { type: 'boolean', description: '금속측면판 (+10%, §4.4.3.2)' },
       demandN: { type: 'number', minimum: 0, description: '소요 전단력 N (접합부 전체)' },
+      predrilled: { type: 'boolean', description: '미리 구멍 뚫음 (표 4.4-5 완화 기준 적용)' },
+      endDist: { type: 'number', minimum: 0, description: '끝면거리 mm (입력 시 표 4.4-5 게이트 검사)' },
+      edgeDist: { type: 'number', minimum: 0, description: '연단거리 mm' },
+      spacingPar: { type: 'number', minimum: 0, description: '섬유 평행 간격 mm' },
+      spacingPerp: { type: 'number', minimum: 0, description: '섬유 수직 간격 mm' },
     },
   },
   run(input, std) {
@@ -37,13 +42,35 @@ export default {
     const Zprime = Z * CD;
     const capacity = Zprime * n;
     const ratio = input.demandN / capacity;
+
+    // 관입깊이 게이트 (§4.4.3.3): 표 기준값 = 관입 p≥12D 전제. p<12D는 식(4.4-6) 보정
+    // 필요(원문 수식 판독 후속) — v1은 12D 미만이면 FAIL(정직 게이트). 최소 6D.
+    const D = input.nailDia;
+    const p = input.nailLen - input.sideThk; // 주부재 관입
+    const penOk = p >= 12 * D;
+    const penMsg = p < 6 * D ? `관입 ${p.toFixed(0)}mm < 6D(${(6 * D).toFixed(0)}) — 불가` : !penOk ? `관입 ${p.toFixed(0)}mm < 12D(${(12 * D).toFixed(0)}) — 식(4.4-6) 보정 필요(v1 게이트 FAIL)` : null;
+
+    // 배치 게이트 (표 4.4-5, 입력 시만): 끝면 20D/10D·연단 5D·평행 20D/10D·수직 10D/3D
+    const pd = input.predrilled === true;
+    const lim = { endDist: (pd ? 10 : 20) * D, edgeDist: 5 * D, spacingPar: (pd ? 10 : 20) * D, spacingPerp: (pd ? 3 : 10) * D };
+    const placeFails = [];
+    for (const kk of ['endDist', 'edgeDist', 'spacingPar', 'spacingPerp']) {
+      if (input[kk] !== undefined && input[kk] < lim[kk]) placeFails.push(`${kk} ${input[kk]} < ${lim[kk]}mm (표 4.4-5${pd ? ' 천공' : ''})`);
+    }
+
+    const pass = ratio <= 1 && penOk && placeFails.length === 0;
     return {
-      verdict: ratio <= 1 ? 'PASS' : 'FAIL',
-      checks: { shear: { demand_N: input.demandN, capacity_N: +capacity.toFixed(0), perNail_N: +Zprime.toFixed(0), ratio: +ratio.toFixed(3), pass: ratio <= 1 } },
+      verdict: pass ? 'PASS' : 'FAIL',
+      checks: {
+        shear: { demand_N: input.demandN, capacity_N: +capacity.toFixed(0), perNail_N: +Zprime.toFixed(0), ratio: +ratio.toFixed(3), pass: ratio <= 1 },
+        penetration: { p_mm: +p.toFixed(0), min12D_mm: +(12 * D).toFixed(0), pass: penOk },
+        ...(placeFails.length || input.endDist !== undefined ? { placement: { fails: placeFails, pass: placeFails.length === 0 } } : {}),
+      },
       intermediate: { Z_table_N: row[gi], CD, count: n, metalSide: !!input.metalSide },
       notes: [
         `표 4.4-4 기준값 ${row[gi]}N (${input.group}군) × CD ${CD}${input.metalSide ? ' × 1.10(금속측면판)' : ''} × ${n}본`,
-        '끝거리·간격·연단거리(§4.4.4) 준수 전제 — 배치 게이트 후속. 습윤 접합부는 별도 감소 필요(원문 표 확인 예정).',
+        ...(penMsg ? [penMsg] : []),
+        '배치 최소치=표 4.4-5(미입력 항목은 준수 전제 명시). 습윤 접합부 감소 원문 확인 예정.',
       ],
     };
   },

@@ -119,3 +119,18 @@ test('지진 등가정적: 구역I·S4·R5 손검증 (SDS 0.4987·V=Cs·W) + R�
   const rf = runCalculator('seismic_static', { ...base, T: 4.9 }, 'KDS');
   assert.ok(rf.intermediate.governing.includes('하한') || rf.intermediate.Cs >= 0.044 * rf.intermediate.SDS * 1.0 - 1e-9, 'Cs 하한 준수');
 });
+
+// ── 목구조 접합부 — 표 스팟 + 배치 게이트 ─────────────────────────────────
+test('접합부: 못·볼트 표 스팟 + 배치·관입 게이트', () => {
+  const n1 = runCalculator('timber_nail', { sideThk: 12, nailLen: 50, nailDia: 2.87, group: 'A', count: 1, demandN: 100 }, 'KDS');
+  assert.equal(n1.intermediate.Z_table_N, 260, '못 표 스팟 260N');
+  assert.equal(n1.checks.penetration.pass, true, '표 조합 관입 자동충족');
+  const b1 = runCalculator('timber_bolt', { mainThk: 38, sideThk: 38, boltDia: 12, group: 'A', demandN: 100 }, 'KDS');
+  assert.equal(b1.intermediate.Z_table_N, 2100, '볼트 ∥ 2100N');
+  const b2 = runCalculator('timber_bolt', { mainThk: 38, sideThk: 38, boltDia: 12, group: 'D', loadDir: 'perp', demandN: 100 }, 'KDS');
+  assert.equal(b2.intermediate.Z_table_N, 600, '볼트 D군 ⊥ 600N');
+  const g = runCalculator('timber_nail', { sideThk: 38, nailLen: 89, nailDia: 4.11, group: 'B', count: 2, demandN: 100, endDist: 50 }, 'KDS');
+  assert.equal(g.verdict, 'FAIL', '끝면거리 20D 미달 차단');
+  const g2 = runCalculator('timber_nail', { sideThk: 38, nailLen: 89, nailDia: 4.11, group: 'B', count: 2, demandN: 100, predrilled: true, endDist: 50 }, 'KDS');
+  assert.equal(g2.verdict, 'PASS', '천공 시 10D 완화');
+});
