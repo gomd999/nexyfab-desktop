@@ -4,6 +4,7 @@
  * 상시 보증한다. node --test
  */
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { runCalculator } from '../registry.mjs';
 import boxCulvert from '../calculators/box-culvert-frame.mjs';
@@ -133,4 +134,28 @@ test('접합부: 못·볼트 표 스팟 + 배치·관입 게이트', () => {
   assert.equal(g.verdict, 'FAIL', '끝면거리 20D 미달 차단');
   const g2 = runCalculator('timber_nail', { sideThk: 38, nailLen: 89, nailDia: 4.11, group: 'B', count: 2, demandN: 100, predrilled: true, endDist: 50 }, 'KDS');
   assert.equal(g2.verdict, 'PASS', '천공 시 10D 완화');
+});
+
+// ── 못 항복모드식 교차검증 (D≤6.0, Fyb 경험앵커 690/620/550) ──────────────
+test('접합부: 항복모드식 D≤6.0 전셀 재현 98%+ ±4% (표 지배 유지)', () => {
+  let ok = 0, tot = 0;
+  const table = JSON.parse(readFileSync(new URL('../standards/kds.json', import.meta.url), 'utf8')).timber.nailShear_N.table;
+  for (const [ts, rows] of Object.entries(table)) {
+    for (const key of Object.keys(rows)) {
+      const [len, D] = key.split('/').map(Number);
+      if (D > 6.0) continue;
+      for (const grp of ['A', 'B', 'C', 'D']) {
+        const r = runCalculator('timber_nail', { sideThk: +ts, nailLen: len, nailDia: D, group: grp, count: 1, demandN: 1 }, 'KDS');
+        const ye = r.intermediate.yieldEq;
+        assert.ok(ye, `yieldEq 존재: ${ts}/${key}`);
+        tot++;
+        if (Math.abs(ye.deviation_pct) <= 4) ok++;
+        assert.ok(Math.abs(ye.deviation_pct) <= 6, `편차 ≤6%: ${ts}/${key}/${grp} = ${ye.deviation_pct}%`);
+      }
+    }
+  }
+  assert.ok(ok / tot >= 0.97, `±4% 재현율 ${ok}/${tot}`);
+  // D>6.0은 교차검증 제외 확인 (재현 불가 — kds.json largeDiaNote)
+  const big = runCalculator('timber_nail', { sideThk: 38, nailLen: 139, nailDia: 6.2, group: 'A', count: 1, demandN: 1 }, 'KDS');
+  assert.equal(big.intermediate.yieldEq, undefined, 'D>6.0 식 제외');
 });

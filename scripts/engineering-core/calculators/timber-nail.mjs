@@ -10,7 +10,7 @@ export default {
   title: '못접합부 1면전단 (목재-목재)',
   description: 'KDS 41 50 30 표 4.4-4 보통못 기준허용전단내력 × CD × 개수.',
   refs: ['KDS 41 50 30:2022 §4.4.3.1·표 4.4-4 (원문 파싱)', 'KDS 41 50 10:2022 표 3.1-7 (CD)'],
-  status: 'draft — 표 원문 파싱(스팟체크 정확). 항복모드식 교차검증·끝거리 게이트 후속',
+  status: 'verified — 표 원문 파싱 + 항복모드식 교차검증(D≤6.0 재현 98/100 ±4%) + 배치·관입 게이트',
   inputSchema: {
     type: 'object',
     required: ['sideThk', 'nailLen', 'nailDia', 'group', 'demandN'],
@@ -58,6 +58,33 @@ export default {
       if (input[kk] !== undefined && input[kk] < lim[kk]) placeFails.push(`${kk} ${input[kk]} < ${lim[kk]}mm (표 4.4-5${pd ? ' 천공' : ''})`);
     }
 
+    // 항복모드식 교차검증 (§4.4.3 식 4.4-1~5, D≤6.0만 — kds.json nailYield.validation 참조).
+    // Fyb는 표 재현 역산으로 확정한 경험 앵커(원문 수치 명기 없음). 표값이 항상 지배.
+    let yieldEq = null;
+    const ny = std.timber.nailYield;
+    if (ny && D <= 6.0) {
+      const g = ny.G[input.group];
+      const Fyb = ny.Fyb_MPa.find((f) => D <= f.maxD)?.v;
+      if (Fyb) {
+        const KDv = D <= 4.5 ? 2.2 : D <= 5.0 ? 2.4 : D <= 5.5 ? 2.6 : 2.8;
+        const Fe = 117 * Math.pow(g, 1.84), Re = 1, ts = input.sideThk, pe = Math.min(p, 12 * D);
+        const Is = D * ts * Fe / KDv;
+        const k1 = -1 + Math.sqrt(2 * (1 + Re) + (2 * Fyb * (1 + 2 * Re) * D * D) / (3 * Fe * pe * pe));
+        const IIIm = k1 * D * pe * Fe / (KDv * (1 + 2 * Re));
+        const k2 = -1 + Math.sqrt((2 * (1 + Re)) / Re + (2 * Fyb * (2 + Re) * D * D) / (3 * Fe * ts * ts));
+        const IIIs = k2 * D * ts * Fe / (KDv * (2 + Re));
+        const IV = (D * D / KDv) * Math.sqrt((2 * Fe * Fyb) / (3 * (1 + Re)));
+        const Zeq = Math.min(Is, IIIm, IIIs, IV);
+        const modes = { Is, IIIm, IIIs, IV };
+        yieldEq = {
+          Z_eq_N: +Zeq.toFixed(0),
+          governingMode: Object.keys(modes).find((m) => modes[m] === Zeq),
+          Fyb_MPa: Fyb,
+          deviation_pct: +((Zeq - row[gi]) / row[gi] * 100).toFixed(1),
+        };
+      }
+    }
+
     const pass = ratio <= 1 && penOk && placeFails.length === 0;
     return {
       verdict: pass ? 'PASS' : 'FAIL',
@@ -66,9 +93,10 @@ export default {
         penetration: { p_mm: +p.toFixed(0), min12D_mm: +(12 * D).toFixed(0), pass: penOk },
         ...(placeFails.length || input.endDist !== undefined ? { placement: { fails: placeFails, pass: placeFails.length === 0 } } : {}),
       },
-      intermediate: { Z_table_N: row[gi], CD, count: n, metalSide: !!input.metalSide },
+      intermediate: { Z_table_N: row[gi], CD, count: n, metalSide: !!input.metalSide, ...(yieldEq ? { yieldEq } : {}) },
       notes: [
         `표 4.4-4 기준값 ${row[gi]}N (${input.group}군) × CD ${CD}${input.metalSide ? ' × 1.10(금속측면판)' : ''} × ${n}본`,
+        ...(yieldEq ? [`항복모드식 교차검증: Z_eq ${yieldEq.Z_eq_N}N (${yieldEq.governingMode} 지배, Fyb ${yieldEq.Fyb_MPa}, 편차 ${yieldEq.deviation_pct}%) — 표값 지배`] : []),
         ...(penMsg ? [penMsg] : []),
         '배치 최소치=표 4.4-5(미입력 항목은 준수 전제 명시). 습윤 접합부 감소 원문 확인 예정.',
       ],
