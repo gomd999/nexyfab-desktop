@@ -53,3 +53,69 @@ if (isMain) {
   console.log(`moving-load self-test: ${ok}/${tot}${ok === tot ? ' PASS' : ' FAIL'}`);
   if (ok !== tot) process.exit(1);
 }
+
+/**
+ * 2경간 연속(등경간 L) — 3연모멘트 폐형해 스위프.
+ * 단위하중 a(경간1 내): M_B = −P·a(L²−a²)/(4L²) (고전 정해 — 최대 위치 a=L/√3, 0.0962PL).
+ * 경간 모멘트 = 단순보 M + M_B 선형보간. 중첩(선형탄성)으로 하중열 합산.
+ * 앵커: 단일 P 최대 지점모멘트 0.09623PL · 등분포 양경간 M_B=−wL²/8 · +M=9wL²/128.
+ */
+export function sweepTwoSpan(L, axles, { steps = 1600, reverse = true } = {}) {
+  const trains = [axles];
+  if (reverse) {
+    const maxX = Math.max(...axles.map((a) => a.x));
+    trains.push(axles.map((a) => ({ P: a.P, x: maxX - a.x })));
+  }
+  const total = 2 * L;
+  let MsupMax = 0, MspanMax = 0, at = 0;
+  const mB_unit = (pos) => {
+    // pos: 0~2L. 경간1: a=pos / 경간2: 대칭 a'=2L−pos
+    const a = pos <= L ? pos : 2 * L - pos;
+    return -(a * (L * L - a * a)) / (4 * L * L); // ×P
+  };
+  for (const tr of trains) {
+    const len = Math.max(...tr.map((a) => a.x));
+    for (let k = 0; k <= steps; k++) {
+      const s = (k / steps) * (total + len);
+      const on = tr.map((a) => ({ P: a.P, pos: s - a.x })).filter((a) => a.pos >= 0 && a.pos <= total);
+      if (!on.length) continue;
+      const MB = on.reduce((sum, a) => sum + a.P * mB_unit(a.pos), 0);
+      if (-MB > MsupMax) MsupMax = -MB;
+      // 각 축 아래 경간 모멘트 (해당 경간의 단순보 성분 + MB 보간)
+      for (const a of on) {
+        const inSpan1 = a.pos <= L;
+        const xa = inSpan1 ? a.pos : a.pos - L;
+        let Msimple = 0;
+        for (const b of on) {
+          const sameSpan = inSpan1 ? b.pos <= L : b.pos > L;
+          if (!sameSpan) continue;
+          const xb = inSpan1 ? b.pos : b.pos - L;
+          // 단순보(경간 L) 하중 b가 위치 xa에 만드는 모멘트
+          Msimple += xb <= xa ? b.P * xb * (L - xa) / L : b.P * xa * (L - xb) / L;
+        }
+        const M = Msimple + MB * (inSpan1 ? xa / L : (L - xa) / L);
+        if (M > MspanMax) { MspanMax = M; at = a.pos; }
+      }
+    }
+  }
+  return { MsupMax_kNm: MsupMax, MspanMax_kNm: MspanMax, at_m: at };
+}
+
+/** 단순지지 중앙 처짐 — 하중열 임계 위치에서 각 축 P의 폐형 δ 중첩 (EI 입력). */
+export function midspanDeflection(L, axles, EI_kNm2, { steps = 800 } = {}) {
+  // 위치 스위프로 중앙 처짐 최대: δ_mid(P at b) = P·b(3L²−4b²)/(48EI), b=지점에서 가까운 쪽 거리
+  let dMax = 0;
+  const len = Math.max(...axles.map((a) => a.x));
+  for (let k = 0; k <= steps; k++) {
+    const s = (k / steps) * (L + len);
+    let d = 0;
+    for (const a of axles) {
+      const pos = s - a.x;
+      if (pos < 0 || pos > L) continue;
+      const b = Math.min(pos, L - pos);
+      d += (a.P * b * (3 * L * L - 4 * b * b)) / (48 * EI_kNm2);
+    }
+    if (d > dMax) dMax = d;
+  }
+  return dMax; // m
+}

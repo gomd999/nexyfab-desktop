@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { isKorean, toIsoLang } from '@/lib/i18n/normalize';
 import type { PickEvent, PickMode } from './AssemblyViewer3D';
+import InteriorPlanEditor, { type Furn } from './InteriorPlanEditor';
 
 // 3D 픽킹 뷰어 — three 청크 분리(ssr 불가·클라 전용)
 const AssemblyViewer3D = dynamic(() => import('./AssemblyViewer3D'), { ssr: false });
@@ -200,6 +201,8 @@ const dict = {
     hsRedo: '다시실행',
     hsList: '이력',
     hsInit: '초기값',
+    inSprkLabel: '스프링클러 수평거리 m',
+    inSprkPh: 'NFTC 103 1.7/2.1/2.3',
   },
   en: {
     tplTitle: 'Assembly template',
@@ -376,6 +379,8 @@ const dict = {
     hsRedo: 'Redo',
     hsList: 'History',
     hsInit: 'initial',
+    inSprkLabel: 'sprinkler radius m',
+    inSprkPh: 'NFTC 103: 1.7/2.1/2.3',
   },
   ja: {
     tplTitle: 'アセンブリテンプレート',
@@ -552,6 +557,8 @@ const dict = {
     hsRedo: 'やり直す',
     hsList: '履歴',
     hsInit: '初期値',
+    inSprkLabel: 'スプリンクラー水平距離 m',
+    inSprkPh: 'NFTC 103 1.7/2.1/2.3',
   },
   zh: {
     tplTitle: '装配模板',
@@ -728,6 +735,8 @@ const dict = {
     hsRedo: '重做',
     hsList: '历史',
     hsInit: '初始值',
+    inSprkLabel: '喷头水平距离 m',
+    inSprkPh: 'NFTC 103 1.7/2.1/2.3',
   },
   es: {
     tplTitle: 'Plantilla de ensamblaje',
@@ -904,6 +913,8 @@ const dict = {
     hsRedo: 'Rehacer',
     hsList: 'Historial',
     hsInit: 'inicial',
+    inSprkLabel: 'radio de rociador m',
+    inSprkPh: 'NFTC 103: 1.7/2.1/2.3',
   },
   ar: {
     tplTitle: 'قالب التجميع',
@@ -1080,6 +1091,8 @@ const dict = {
     hsRedo: 'إعادة',
     hsList: 'السجل',
     hsInit: 'أولي',
+    inSprkLabel: 'نصف قطر المرشّ m',
+    inSprkPh: 'NFTC 103: 1.7/2.1/2.3',
   },
 } as const;
 
@@ -1109,7 +1122,7 @@ const SWEEP_DOMAINS = ['building', 'landscape', 'interior', 'bridge'];
 
 interface BandPoint { value: number; pass: boolean; fails?: string[]; inputs?: number; metric?: { label?: string; value?: number; unit?: string } | null }
 interface SnapInfo { kind?: string; values?: number[]; step?: number; source?: string }
-interface HistEntry { params: Record<string, number>; label: string; verdict?: string }
+interface HistEntry { params: Record<string, number>; furn?: Furn[] | null; label: string; verdict?: string }
 interface DiffSummary { verdict: string; nums: Record<string, { v: number; unit?: string }>; strs: Record<string, string> }
 
 /** ④ 전후 diff — 판정 변화 + 수치 지표 델타(최대 3), 문자열 지표는 변화 시 a→b */
@@ -1144,12 +1157,21 @@ interface Structural { totalMassKg?: number; warnings?: string[]; ok?: boolean }
 interface Usage { key: string; kNm2: number; label: string }
 interface IntResp {
   ok: boolean; error?: string;
-  travel?: { maxTravelM: number; limitM: number; pass: boolean; unreachableM2: number; limitNote?: string };
+  travel?: {
+    maxTravelM: number; limitM: number; pass: boolean; unreachableM2: number; limitNote?: string;
+    farthestPointMm?: number[];
+    grid?: { nx: number; ny: number; cellMm: number; dist_dm: number[]; blocked: number[] };
+  };
   egress?: { verdict?: string; derived?: { doorWidthSumMm: number; seatCount: number }; error?: string | null } | null;
   finishes?: { floorM2: number; wallM2: number; ceilingM2: number };
   lighting?: { verdict?: string; fixtures?: number; layout?: string; avgLuxProvided?: number; roomIndex?: number } | null;
   ventilation?: { verdict?: string; occupants?: number | null; requiredCMH?: number; ACH?: number } | null;
   electrical?: { verdict?: string; totalVA?: number; circuits?: number } | null;
+  fire?: {
+    verdict?: string; note?: string;
+    sprinkler?: { heads?: number; layout?: string; spacingX?: number; spacingY?: number; radiusM?: number } | null;
+    extinguisher?: { units?: number; basisAreaM2?: number } | null;
+  } | null;
   disclaimer?: string;
 }
 interface LsResp {
@@ -1240,9 +1262,11 @@ export default function AssemblyPresetPanel({
   const prevSumRef = useRef<DiffSummary | null>(null);
   const diffArmedRef = useRef(false);
   const [diffCard, setDiffCard] = useState<{ from: string; to: string; deltas: string[] } | null>(null);
-  // ⑤ undo/redo 이력 — 파라미터 스냅샷 스택(최대 30), idx=현재 위치
+  // ⑤ undo/redo 이력 — 파라미터+가구 스냅샷 스택(최대 30), idx=현재 위치
   const [hist, setHist] = useState<{ entries: HistEntry[]; idx: number }>({ entries: [], idx: -1 });
   const [histOpen, setHistOpen] = useState(false);
+  // Round4 — 인테리어 자유배치: null=템플릿 그리드, 배열=customFurniture(빌드 파라미터에 동봉)
+  const [furn, setFurn] = useState<Furn[] | null>(null);
   const generateRef = useRef<() => Promise<void>>(async () => {});
   const reverifyPending = useRef(false);
   const rebuildTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1376,15 +1400,17 @@ export default function AssemblyPresetPanel({
   // 인테리어 체인 (interior 전용, Wave A I2+I3 · 설비 MEP 개산)
   const [intR, setIntR] = useState<IntResp | null>(null);
   const [intBusy, setIntBusy] = useState(false);
-  const [inP, setInP] = useState<Record<string, number>>({ targetLux: 0, lampLumen: 0, ventPerPersonCMH: 0, loadDensityVAm2: 0 });
+  const [inP, setInP] = useState<Record<string, number>>({ targetLux: 0, lampLumen: 0, ventPerPersonCMH: 0, loadDensityVAm2: 0, sprinklerRadiusM: 0 });
   const intBody = useCallback(() => ({
     assembly: built?.assembly,
     params: {
-      // 설비 개산(조명·환기·전기) — 기준값 날조 금지: 입력 시에만 전달
+      returnGrid: true, // Round4 — 피난 히트맵 오버레이용 BFS 격자 동봉
+      // 설비 개산(조명·환기·전기·소방) — 기준값 날조 금지: 입력 시에만 전달
       ...(inP.targetLux > 0 ? { targetLux: inP.targetLux } : {}),
       ...(inP.lampLumen > 0 ? { lampLumen: inP.lampLumen } : {}),
       ...(inP.ventPerPersonCMH > 0 ? { ventPerPersonCMH: inP.ventPerPersonCMH } : {}),
       ...(inP.loadDensityVAm2 > 0 ? { loadDensityVAm2: inP.loadDensityVAm2 } : {}),
+      ...(inP.sprinklerRadiusM > 0 ? { sprinklerRadiusM: inP.sprinklerRadiusM } : {}),
     },
   }), [built, inP]);
   const runInterior = useCallback(async () => {
@@ -1459,7 +1485,8 @@ export default function AssemblyPresetPanel({
     setDiffCard(null);
     prevSumRef.current = null;
     diffArmedRef.current = false;
-    setHist({ entries: [{ params: defs, label: t.hsInit }], idx: 0 });
+    setFurn(null);
+    setHist({ entries: [{ params: defs, furn: null, label: t.hsInit }], idx: 0 });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tpl]);
 
@@ -1469,7 +1496,8 @@ export default function AssemblyPresetPanel({
     try {
       const res = await fetch('/api/nexyfab/drawing/preset/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'assembly', domain, templateId: tid, params }),
+        // Round4: 인테리어 자유배치 가구는 같은 빌드 파라미터에 동봉 — 형상·검증이 그대로 추종
+        body: JSON.stringify({ kind: 'assembly', domain, templateId: tid, params: { ...params, ...(furn ? { customFurniture: furn } : {}) } }),
       });
       const data = (await res.json()) as BuildResp;
       if (data.ok && data.composeIntent && data.openscad) {
@@ -1489,7 +1517,7 @@ export default function AssemblyPresetPanel({
     } finally {
       setBusy(false);
     }
-  }, [tid, params, onApply, t, domain]);
+  }, [tid, params, furn, onApply, t, domain]);
 
   // 면 편집 디바운스 리빌드가 항상 최신 generate(최신 params 클로저)를 부르도록 유지
   useEffect(() => { generateRef.current = generate; }, [generate]);
@@ -1601,11 +1629,11 @@ export default function AssemblyPresetPanel({
   // ── 면 편집(P2) 헬퍼 — 템플릿 파라미터 스텝 편집(디바운스 리빌드 → 자동 재검증 연동) ──
   const stepFor = (v: number) => (Math.abs(v) < 1000 ? 10 : Math.abs(v) < 10000 ? 50 : 100);
 
-  // ⑤ 이력 스택 — push는 "적용된 편집"에서만(스테퍼·스냅칩·밴드·목표적용·NL·블러), 복원/undo/redo는 idx 이동만
-  const pushHist = (nextParams: Record<string, number>, label: string) => {
+  // ⑤ 이력 스택 — push는 "적용된 편집"에서만(스테퍼·스냅칩·밴드·목표적용·NL·블러·가구), 복원/undo/redo는 idx 이동만
+  const pushHist = (nextParams: Record<string, number>, label: string, nextFurn: Furn[] | null = furn) => {
     setHist((h) => {
       const cut = h.entries.slice(0, h.idx + 1);
-      let entries = [...cut, { params: nextParams, label }];
+      let entries = [...cut, { params: nextParams, furn: nextFurn, label }];
       if (entries.length > 30) entries = entries.slice(entries.length - 30);
       return { entries, idx: entries.length - 1 };
     });
@@ -1614,7 +1642,14 @@ export default function AssemblyPresetPanel({
     const e = hist.entries[i];
     if (!e || i === hist.idx || i < 0 || i >= hist.entries.length) return;
     setParams(e.params);
+    setFurn(e.furn ?? null); // 가구 배치도 스냅샷에 포함 — 복원 시 함께 되돌림
     setHist((h) => ({ ...h, idx: i }));
+    scheduleRebuild();
+  };
+  // Round4 — 배치 에디터 커밋: customFurniture 갱신 → 같은 디바운스→리빌드→재검증 파이프
+  const onFurnChange = (list: Furn[] | null, label: string) => {
+    setFurn(list);
+    pushHist({ ...params }, label, list);
     scheduleRebuild();
   };
 
@@ -1653,9 +1688,15 @@ export default function AssemblyPresetPanel({
   const sweepChainParams = (): Record<string, unknown> => {
     if (domain === 'building') return chainBody().params;
     if (domain === 'landscape') return lsBody().params;
-    if (domain === 'interior') return intBody().params;
+    if (domain === 'interior') {
+      const p2: Record<string, unknown> = { ...intBody().params };
+      delete p2.returnGrid; // 스윕 8회에 격자 8개 동봉 방지(전송량)
+      return p2;
+    }
     return {}; // bridge — 패널 체인 입력 없음(서버 기본)
   };
+  // 스윕/빌드 공용 — 템플릿 파라미터 + (인테리어) 자유배치 가구
+  const sweepBuildParams = (): Record<string, unknown> => ({ ...params, ...(furn ? { customFurniture: furn } : {}) });
   const runSweep = async (name: string) => {
     const spec = tpl?.params.find((p) => p.name === name);
     if (!spec || !tid || swBusyP) return;
@@ -1663,7 +1704,7 @@ export default function AssemblyPresetPanel({
     try {
       const res = await fetch('/api/nexyfab/drawing/param-sweep/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain, templateId: tid, params, chainParams: sweepChainParams(), param: name, min: spec.min, max: spec.max, points: 8 }),
+        body: JSON.stringify({ domain, templateId: tid, params: sweepBuildParams(), chainParams: sweepChainParams(), param: name, min: spec.min, max: spec.max, points: 8 }),
       });
       const j = (await res.json()) as { ok?: boolean; band?: BandPoint[]; note?: string; snap?: SnapInfo; error?: string };
       if (!j.ok || !j.band) { setSwErr({ param: name, msg: j.error ?? '—' }); return; }
@@ -1681,7 +1722,7 @@ export default function AssemblyPresetPanel({
     try {
       const res = await fetch('/api/nexyfab/drawing/param-sweep/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain, templateId: tid, params, chainParams: sweepChainParams(), param: name, min: spec.min, max: spec.max, points: 8, goal: goalDir }),
+        body: JSON.stringify({ domain, templateId: tid, params: sweepBuildParams(), chainParams: sweepChainParams(), param: name, min: spec.min, max: spec.max, points: 8, goal: goalDir }),
       });
       const j = (await res.json()) as { ok?: boolean; result?: string; value?: number; band?: BandPoint[]; note?: string; snap?: SnapInfo; error?: string };
       if (!j.ok) { setSwErr({ param: name, msg: j.error ?? '—' }); return; }
@@ -2214,11 +2255,24 @@ export default function AssemblyPresetPanel({
               {t.inSub}
             </span>
           </div>
+          {/* Round4 — 2D 탑뷰 배치 에디터: customFurniture ↔ 같은 빌드/재검증 파이프 */}
+          <InteriorPlanEditor
+            lang={lang}
+            width={Number(params.width) || 8000}
+            depth={Number(params.depth) || 6000}
+            doorWidth={Number(params.doorWidth) || 1000}
+            exitCount={Number(params.exitCount) || 1}
+            rows={Number(params.tableRows) || 2}
+            cols={Number(params.tableCols) || 3}
+            furniture={furn}
+            onChange={onFurnChange}
+            result={intR}
+          />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 6 }}>
-            {([['targetLux', t.inLuxLabel, t.inLuxPh], ['lampLumen', t.inLumenLabel, ''], ['ventPerPersonCMH', t.inVentLabel, ''], ['loadDensityVAm2', t.inLoadLabel, '']] as Array<[string, string, string]>).map(([k, lb, ph]) => (
+            {([['targetLux', t.inLuxLabel, t.inLuxPh], ['lampLumen', t.inLumenLabel, ''], ['ventPerPersonCMH', t.inVentLabel, ''], ['loadDensityVAm2', t.inLoadLabel, ''], ['sprinklerRadiusM', t.inSprkLabel, t.inSprkPh]] as Array<[string, string, string]>).map(([k, lb, ph]) => (
               <label key={k} style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{lb}</span>
-                <input type="number" step="1" placeholder={ph || undefined} value={inP[k] || ''} onChange={(e) => setInP((s) => ({ ...s, [k]: Number(e.target.value) }))} style={inpStyle} />
+                <input type="number" step="0.1" placeholder={ph || undefined} value={inP[k] || ''} onChange={(e) => setInP((s) => ({ ...s, [k]: Number(e.target.value) }))} style={inpStyle} />
               </label>
             ))}
           </div>
