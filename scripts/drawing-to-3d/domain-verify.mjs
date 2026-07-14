@@ -65,7 +65,7 @@ export const DOMAIN_VERIFIERS = {
   'building-member': {
     labelKo: '건축 부재 (RC)',
     labelEn: 'Building member (RC)',
-    note: '직사각 단면 b×h를 형상에서 파생 → RC 보/기둥 검토. 철근량·하중=입력(설계 결정).',
+    note: '직사각 단면 b×h를 형상에서 파생 → RC 보/기둥/기초 검토. 철근량·하중=입력(설계 결정).',
     calculators: [
       {
         id: 'rc_beam',
@@ -83,6 +83,37 @@ export const DOMAIN_VERIFIERS = {
           { name: 'As', labelKo: '인장철근 단면적', unit: 'mm²', min: 0 },
           { name: 'Mu', labelKo: '소요휨모멘트', unit: 'kN·m', min: 0 },
           { name: 'cover', labelKo: '피복(유효깊이 산정)', unit: 'mm', default: 50, min: 20, max: 120, optional: true, extraOnly: true },
+        ],
+      },
+      {
+        id: 'rc_column_pm',
+        labelKo: 'RC 기둥 P-M 상관 (축력+휨)',
+        // 단면 b×h를 형상(프리즘 단면)에서 파생. 철근·하중=입력.
+        derive: (m) => ({ b: round(m.section.cmaxX * 2, 1), h: round(m.section.cmaxY * 2, 1) }),
+        userInputs: [
+          { name: 'fck', labelKo: '콘크리트 강도', unit: 'MPa', default: 24, min: 18, max: 90 },
+          { name: 'fy', labelKo: '철근 항복강도', unit: 'MPa', default: 400, min: 300, max: 600 },
+          { name: 'Ast', labelKo: '주철근 총단면적', unit: 'mm²', min: 0 },
+          { name: 'Pu', labelKo: '계수축력', unit: 'kN', min: 0 },
+          { name: 'Mu', labelKo: '계수휨모멘트(장주효과 반영)', unit: 'kN·m', default: 0, min: 0 },
+        ],
+      },
+      {
+        id: 'isolated_footing',
+        labelKo: '독립기초 (지지력·뚫림·1방향전단)',
+        // 기초 치수·하중·지반은 설계 조건 — 전부 입력 (형상 파생 없음. 하중경로 체인이 Pu·Pservice를 채워줄 수 있음)
+        derive: () => ({}),
+        userInputs: [
+          { name: 'B', labelKo: '기초 폭', unit: 'mm', min: 0 },
+          { name: 'L', labelKo: '기초 길이', unit: 'mm', min: 0 },
+          { name: 't', labelKo: '기초 두께', unit: 'mm', default: 500, min: 0 },
+          { name: 'd', labelKo: '유효깊이', unit: 'mm', default: 420, min: 0 },
+          { name: 'cb', labelKo: '기둥 폭(B방향)', unit: 'mm', min: 0 },
+          { name: 'cl', labelKo: '기둥 깊이(L방향)', unit: 'mm', min: 0 },
+          { name: 'Pu', labelKo: '계수축하중', unit: 'kN', min: 0 },
+          { name: 'Pservice', labelKo: '사용축하중', unit: 'kN', min: 0 },
+          { name: 'qAllow', labelKo: '허용지지력', unit: 'kPa', default: 200, min: 0 },
+          { name: 'fck', labelKo: '콘크리트 강도', unit: 'MPa', default: 24, min: 18, max: 90 },
         ],
       },
     ],

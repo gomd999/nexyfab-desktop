@@ -16,7 +16,16 @@
     "elastic_buckling_coef": 0.877,
     "allowable_bending_ratio_ASD": 0.66,
     "allowable_shear_ratio_ASD": 0.4,
-    "bolt_Fnv_MPa": { "F10T-N": 400, "F10T-X": 500, "F8T-N": 320, "F8T-X": 400, "F13T-N": 520, "F13T-X": 650, "4.6-N": 160, "4.6-X": 200 },
+    "bolt_Fnv_MPa": {
+      "F10T-N": 400,
+      "F10T-X": 500,
+      "F8T-N": 320,
+      "F8T-X": 400,
+      "F13T-N": 520,
+      "F13T-X": 650,
+      "4.6-N": 160,
+      "4.6-X": 200
+    },
     "bolt_bearing_coef": 2.4,
     "_verified_note": "원문 대조(2026-07-11): E=210,000(KDS 14 31 05 표 3.5-1 강·주강 — 이전 205,000 오류 수정). φc=0.90(14 31 10 §4.2.1(1) 수식). 좌굴: KL/r≤4.71√(E/Fy) 분기·Fcr=0.658^(Fy/Fe)Fy(식 4.2-2)·0.877Fe(식 4.2-3)·Pn=FcrAg(식 4.2-1)·KL/r≤200 권장(§4.2.2). Fnv=표 4.1-9(14 31 25) — F10T-N 400은 AISC A325-N 372와 다름 주의. 볼트 φ0.75(§4.1.3.2/4.4.4). 지압 1.2LctFu≤2.4dtFu(§4.1.3.5, 표준구멍·변형고려). ASD: Fb=0.66Fy(14 30 10 §4.5.2.1 식 4.5-1, 콤팩트+횡지지), Fv=0.4Fy(§4.5.3.1). 수식은 CodeViewer 이미지 판독."
   },
@@ -29,18 +38,46 @@
     "Es_MPa": 200000,
     "phi_tension": 0.85,
     "phi_compression_other": 0.65,
-    "phi_compression_spiral": 0.70,
+    "phi_compression_spiral": 0.7,
     "phi_shear": 0.75,
     "stress_block_table": {
-      "fck": [40, 50, 60, 70, 80, 90],
-      "eps_cu": [0.0033, 0.0032, 0.0031, 0.003, 0.0029, 0.0028],
-      "eta": [1.0, 0.97, 0.95, 0.91, 0.87, 0.84],
-      "beta1": [0.8, 0.8, 0.76, 0.74, 0.72, 0.7]
+      "fck": [
+        40,
+        50,
+        60,
+        70,
+        80,
+        90
+      ],
+      "eps_cu": [
+        0.0033,
+        0.0032,
+        0.0031,
+        0.003,
+        0.0029,
+        0.0028
+      ],
+      "eta": [
+        1,
+        0.97,
+        0.95,
+        0.91,
+        0.87,
+        0.84
+      ],
+      "beta1": [
+        0.8,
+        0.8,
+        0.76,
+        0.74,
+        0.72,
+        0.7
+      ]
     },
     "tension_ctrl_strain_fy_le400": 0.005,
     "tension_ctrl_eps_y_mult_fy_gt400": 2.5,
     "min_flex_strain_fy_le400": 0.004,
-    "min_flex_eps_y_mult_fy_gt400": 2.0,
+    "min_flex_eps_y_mult_fy_gt400": 2,
     "Vc_coef_inv": 6,
     "Vs_max_coef": 0.2,
     "Vs_max_fck_denom": 250,
@@ -54,15 +91,15 @@
   "civil": {
     "retaining_wall": {
       "verified": true,
-      "FS_overturning_min": 2.0,
+      "FS_overturning_min": 2,
       "FS_sliding_min": 1.5,
-      "FS_sliding_min_with_passive": 2.0,
-      "FS_bearing_min": 3.0,
+      "FS_sliding_min_with_passive": 2,
+      "FS_bearing_min": 3,
       "FS_overall_stability_min": 1.5,
       "seismic": {
         "FS_overturning_min": 1.5,
         "FS_sliding_min": 1.2,
-        "FS_bearing_min": 2.0,
+        "FS_bearing_min": 2,
         "FS_overall_stability_min": 1.1
       },
       "eccentricity_limit_fraction": 0.16667,
@@ -75,6 +112,152 @@
     "shear_asd": "KDS 14 30 10:2024 §4.5.3.1 (Fv=0.4Fy) — 원문 대조 완료",
     "bolts": "KDS 14 31 25:2024 표 4.1-9(Fnv)·§4.1.3.5(지압 1.2LctFu≤2.4dtFu) — 원문 대조 완료",
     "material": "KDS 14 31 05:2024 표 3.5-1 (E=210,000 MPa)",
-    "retaining_wall": "KDS 11 80 05:2025 §4.4 안전율 기준, 표 4.4-1 콘크리트옹벽의 기준안전율"
+    "retaining_wall": "KDS 11 80 05:2025 §4.4 안전율 기준, 표 4.4-1 콘크리트옹벽의 기준안전율",
+    "design_loads": "KDS 41 12 00:2022 표 3.2-1(기본등분포활하중)·§1.7.1 식(1.7-1)(1.7-2) 하중조합 — 원문 대조 완료"
+  },
+  "loads": {
+    "verified": "KDS 41 12 00:2022 원문 대조 (KCSC 크롤 데이터 표 3.2-1 전문 + §1.7.1 식 1.7-1/1.7-2 GIF 판독) 2026-07-14",
+    "comboGravity": {
+      "U1": {
+        "expr": "1.4(D+F)",
+        "ref": "KDS 41 12 00 식(1.7-1)"
+      },
+      "U2": {
+        "expr": "1.2(D+F+T)+1.6L+0.5(Lr|S|R)",
+        "ref": "KDS 41 12 00 식(1.7-2)"
+      },
+      "note": "중력만·F=T=0·지붕활하중 미고려 시 지배조합 = max(1.4D, 1.2D+1.6L)"
+    },
+    "rcUnitWeight_kNm3": {
+      "value": 24,
+      "ref": "철근콘크리트 단위중량(질량 2400kg/m³ 상당) — structural DENSITY.concrete와 일치"
+    },
+    "liveLoad_kNm2": {
+      "_ref": "KDS 41 12 00:2022 표 3.2-1 기본등분포활하중 (용도별 최소값)",
+      "residence_living": {
+        "v": 2,
+        "label": "주거용 건축물의 거실"
+      },
+      "residence_common": {
+        "v": 5,
+        "label": "공동주택의 공용실"
+      },
+      "hospital_ward": {
+        "v": 2,
+        "label": "병원 병실"
+      },
+      "hospital_lab": {
+        "v": 3,
+        "label": "병원 수술실·공용실·실험실"
+      },
+      "hotel_room": {
+        "v": 2,
+        "label": "숙박시설 객실"
+      },
+      "office": {
+        "v": 2.5,
+        "label": "일반 사무실"
+      },
+      "office_special": {
+        "v": 5,
+        "label": "특수용도사무실·문서보관실"
+      },
+      "classroom": {
+        "v": 3,
+        "label": "학교 교실"
+      },
+      "lab_heavy": {
+        "v": 5,
+        "label": "중량물 실험실"
+      },
+      "store_1f": {
+        "v": 5,
+        "label": "상점·백화점 1층"
+      },
+      "store_upper": {
+        "v": 4,
+        "label": "상점·백화점 2층 이상"
+      },
+      "store_warehouse": {
+        "v": 6,
+        "label": "창고형 매장"
+      },
+      "assembly_fixed": {
+        "v": 4,
+        "label": "극장·집회장(고정 좌석)"
+      },
+      "assembly_moving": {
+        "v": 5,
+        "label": "집회장(이동 좌석)·연회장·무도장"
+      },
+      "dining": {
+        "v": 5,
+        "label": "식당"
+      },
+      "kitchen": {
+        "v": 7,
+        "label": "주방"
+      },
+      "stage": {
+        "v": 7,
+        "label": "무대"
+      },
+      "gym": {
+        "v": 5,
+        "label": "체육관 바닥·옥외경기장"
+      },
+      "library_reading": {
+        "v": 3,
+        "label": "도서관 열람실"
+      },
+      "library_stack": {
+        "v": 7.5,
+        "label": "도서관 서고"
+      },
+      "parking_indoor": {
+        "v": 3,
+        "label": "주차장 옥내(총중량 30kN 이하)"
+      },
+      "parking_outdoor": {
+        "v": 5,
+        "label": "주차장 옥외(총중량 30kN 이하)"
+      },
+      "warehouse_light": {
+        "v": 6,
+        "label": "경량품 저장창고"
+      },
+      "warehouse_heavy": {
+        "v": 12,
+        "label": "중량품 저장창고"
+      },
+      "factory_light": {
+        "v": 6,
+        "label": "경공업 공장"
+      },
+      "factory_heavy": {
+        "v": 12,
+        "label": "중공업 공장"
+      },
+      "roof_no_access": {
+        "v": 1,
+        "label": "점유·사용하지 않는 지붕(지붕활하중)"
+      },
+      "roof_garden": {
+        "v": 5,
+        "label": "지붕 정원·집회 용도"
+      },
+      "mech_room": {
+        "v": 5,
+        "label": "공조실·전기실·기계실"
+      },
+      "lobby_corridor_1f": {
+        "v": 5,
+        "label": "로비·1층 복도"
+      },
+      "stairs": {
+        "v": 5,
+        "label": "계단(기타)"
+      }
+    }
   }
 }
