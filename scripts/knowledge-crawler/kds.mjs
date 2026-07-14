@@ -61,6 +61,7 @@ const TARGETS = [
   { code: '415015', tags: ['korea', 'kds', 'timber', 'building', 'landscape', 'design-req'] },  // 목구조 설계요구사항
   { code: '415020', tags: ['korea', 'kds', 'timber', 'building', 'landscape', 'member-design'] }, // 목구조 부재설계
   { code: '411700', tags: ['korea', 'kds', 'building', 'seismic'] },   // 건축물 내진설계기준 (등가정적 근거)
+  { code: '415030', tags: ['korea', 'kds', 'timber', 'connection'] },  // 목구조 접합부의 설계
 ];
 
 const args = process.argv.slice(2);

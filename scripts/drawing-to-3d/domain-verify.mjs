@@ -208,6 +208,19 @@ export const DOMAIN_VERIFIERS = {
         ],
       },
       {
+        id: 'timber_nail',
+        labelKo: '못접합부 1면전단 (표 4.4-4)',
+        derive: () => ({}),
+        userInputs: [
+          { name: 'sideThk', labelKo: '측재 두께(12/19/25/38)', unit: 'mm', default: 38 },
+          { name: 'nailLen', labelKo: '못 길이', unit: 'mm', default: 89 },
+          { name: 'nailDia', labelKo: '못 지름', unit: 'mm', default: 4.11 },
+          { name: 'group', labelKo: '수종군(A~D)', unit: '', default: 'B' },
+          { name: 'count', labelKo: '못 개수', unit: '', default: 2, min: 1 },
+          { name: 'demandN', labelKo: '소요 전단력', unit: 'N', min: 0 },
+        ],
+      },
+      {
         id: 'landscape_drainage',
         labelKo: '우수 배수 (합리식)',
         derive: () => ({}),
