@@ -17,6 +17,7 @@
  * 범위 밖 구조는 정직하게 거부(scope 오류 반환). 다베이·다층은 B3에서 확장.
  */
 import { runCalculator, loadStandards } from '../engineering-core/registry.mjs';
+import { solveFrame2D } from '../engineering-core/frame2d.mjs';
 import { partVolume } from './structural.mjs';
 import { partAabb } from './reconstruct.mjs';
 
@@ -289,6 +290,78 @@ export function loadPathCheck(assembly, params = {}) {
       const McolX = portal(xs.length - 1, ys.length);
       const McolY = portal(ys.length - 1, xs.length);
       const McolE = Math.max(McolX, McolY);
+      // ── 매트릭스 횡해석 (실시설계급 — frame2d 평면골조, 포탈 대체·교차검증) ──
+      // 대표 내부 골조(X·Y 각 방향): 층력/골조수 재하 → 기둥·보 단부모멘트 + 층간변위.
+      // 강막(rigid diaphragm) 가정·2D 평면골조 근사 명시. 허용층간변위=표 8.2-1(원문).
+      let matrixRes = null;
+      try {
+        const Ec_kPa = 8500 * Math.cbrt((params.fck ?? 24) + 4) * 1000;
+        const runFrame = (lineXs, nFrames) => {
+          const levels = [0, ...hsM.map((h) => h)]; // m (지반 0 + 각층)
+          const nodes = [];
+          for (let lv = 0; lv < levels.length; lv++) for (const x of lineXs) nodes.push([x / 1000, levels[lv]]);
+          const nx2 = lineXs.length;
+          const elements = [];
+          const colI = ((cb0.dy / 1000) * Math.pow(cb0.dx / 1000, 3)) / 12;
+          const colA = (cb0.dx / 1000) * (cb0.dy / 1000);
+          const wb2 = worstBeam ? box(worstBeam) : null;
+          const bw2 = wb2 ? Math.min(wb2.dx, wb2.dy) / 1000 : 0.3;
+          const bh2 = wb2 ? wb2.dz / 1000 : 0.5;
+          const beamI = (bw2 * Math.pow(bh2, 3)) / 12, beamA = bw2 * bh2;
+          for (let lv = 0; lv < levels.length - 1; lv++) for (let i = 0; i < nx2; i++) {
+            elements.push({ i: lv * nx2 + i, j: (lv + 1) * nx2 + i, E: Ec_kPa, A: colA, I: colI });
+          }
+          for (let lv = 1; lv < levels.length; lv++) for (let i = 0; i < nx2 - 1; i++) {
+            elements.push({ i: lv * nx2 + i, j: lv * nx2 + i + 1, E: Ec_kPa, A: beamA, I: beamI });
+          }
+          const fixes = lineXs.map((_, i) => ({ node: i, ux: true, uy: true, rz: true }));
+          const loads = seis.Fx_kN.map((F, fi) => ({ node: (fi + 1) * nx2, fx: F / nFrames }));
+          const sol = solveFrame2D({ nodes, elements, springs: [], fixes, loads });
+          // 층변위(각층 좌측 절점)·기둥 최대모멘트(1층)·보 최대 단부모멘트
+          const dispByLevel = levels.map((_, lv) => sol.disp[3 * (lv * nx2)]);
+          const drifts = [];
+          for (let lv = 1; lv < levels.length; lv++) {
+            drifts.push({ story: lv, drift_m: dispByLevel[lv] - dispByLevel[lv - 1], h_m: levels[lv] - levels[lv - 1] });
+          }
+          const nCols = (levels.length - 1) * nx2;
+          let McolMax = 0, MbeamMax = 0;
+          sol.elementEnd.forEach((el, ei) => {
+            const M = Math.max(Math.abs(el.Mi), Math.abs(el.Mj));
+            if (ei < nCols) { if (M > McolMax) McolMax = M; } else if (M > MbeamMax) MbeamMax = M;
+          });
+          return { drifts, McolMax, MbeamMax, roof_mm: +(dispByLevel[levels.length - 1] * 1000).toFixed(1) };
+        };
+        const fx = runFrame(xs, ys.length);
+        const fy = runFrame(ys, xs.length);
+        const worse = fx.McolMax >= fy.McolMax ? { d: fx, dir: 'X' } : { d: fy, dir: 'Y' };
+        // 층간변위 검토: Δ설계 = δe × Cd / IE ≤ 허용(표 8.2-1)
+        const Cd = Number(sp.Cd) || 0;
+        const IE = seis.intermediate?.IE ?? 1.0;
+        const dl = standards.KDS.seismicBuilding.allowableDrift;
+        const limitRatio = dl[sp.driftClass ?? '1'] ?? dl['1'];
+        const driftRows = worse.d.drifts.map((dr) => {
+          const design = Cd > 0 ? (dr.drift_m * Cd) / IE : null;
+          return {
+            story: dr.story, elastic_mm: +(dr.drift_m * 1000).toFixed(2),
+            design_mm: design !== null ? +(design * 1000).toFixed(2) : null,
+            limit_mm: +(limitRatio * dr.h_m * 1000).toFixed(1),
+            pass: design !== null ? design <= limitRatio * dr.h_m : null,
+          };
+        });
+        matrixRes = {
+          dir: worse.dir, McolMax_kNm: +worse.d.McolMax.toFixed(1), MbeamMax_kNm: +worse.d.MbeamMax.toFixed(1),
+          roof_mm: worse.d.roof_mm, drifts: driftRows,
+          driftLimit: `${limitRatio}·hsx (표 8.2-1, 내진 ${sp.driftClass ?? 'I'}등급)`,
+          Cd: Cd || 'INPUT(Cd — 표 6.2-1 R과 세트)',
+          method: 'frame2d 평면골조 매트릭스(대표 골조·강막·2D 근사 명시) — 포탈 대체. E·I=형상·재료 파생',
+          portalCrossCheck_kNm: null, // 아래에서 채움
+        };
+      } catch (e) {
+        matrixRes = { error: e.message };
+      }
+
+      const McolUse = (matrixRes && !matrixRes.error && matrixRes.McolMax_kNm > 0) ? matrixRes.McolMax_kNm : McolE;
+      if (matrixRes && !matrixRes.error) matrixRes.portalCrossCheck_kNm = round(McolE);
       // 지진조합 축력 (1.2D + 1.0L 부분, 지배기둥) — 층누적
       const PuE = ((1.2 * (wD_m2 + beamSelfPerM2) + 1.0 * wL_m2) * worstColTrib + 1.2 * colSelfD) * nf;
       let colE = null;
@@ -296,17 +369,19 @@ export function loadPathCheck(assembly, params = {}) {
         try {
           colE = runCalculator('rc_column_pm', {
             b: round(cb0.dx, 0), h: round(cb0.dy, 0), fck: params.fck ?? 24, fy: params.fy ?? 400,
-            Ast: Number(params.colAst), Pu: round(PuE), Mu: round(McolE),
+            Ast: Number(params.colAst), Pu: round(PuE), Mu: round(McolUse),
           }, 'KDS');
         } catch (e) { colE = { error: e.message }; }
       }
+
       seismicRes = {
         V_kN: seis.V_kN, Fx_kN: seis.Fx_kN, storyShear_kN: seis.storyShear_kN,
         Cs: seis.intermediate.Cs, governing: seis.intermediate.governing,
         SDS: seis.intermediate.SDS, SD1: seis.intermediate.SD1, Ta_s: seis.intermediate.Ta_s,
         perFloorWeight_kN: +wFloor.toFixed(1),
+        matrix: matrixRes,
         column: {
-          MuE_kNm: round(McolE), PuE_kN: round(PuE),
+          MuE_kNm: round((typeof McolUse !== 'undefined' ? McolUse : McolE)), PuE_kN: round(PuE),
           verdict: colE?.verdict ?? (colE?.error ? 'ERROR' : 'INPUT(colAst)'),
           checks: colE?.checks ?? null,
           method: `포탈법(내부기둥 2v·반곡점 중앙) — X ${round(McolX)}·Y ${round(McolY)} kN·m 중 최대. 조합 1.2D+1.0L+1.0E 근사`,

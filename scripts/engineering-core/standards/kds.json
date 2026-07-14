@@ -971,7 +971,14 @@
     "TL_sec": 5,
     "csFloorCoef": 0.044,
     "csFloorMin": 0.01,
-    "note": "SDS=S·2.5·Fa·2/3 (식4.2-4) · SD1=S·Fv·2/3 (식4.2-5) · V=Cs·W · Cs=SDS/(R/IE), ≤SD1/((R/IE)T), ≥0.044·SDS·IE≥0.01 · Fx=Cvx·V, Cvx=wx·hx^k/Σwi·hi^k (k: T≤0.5→1, ≥2.5→2 보간). R=표 6.2-1(시스템별 — 사용자 결정 입력)"
+    "note": "SDS=S·2.5·Fa·2/3 (식4.2-4) · SD1=S·Fv·2/3 (식4.2-5) · V=Cs·W · Cs=SDS/(R/IE), ≤SD1/((R/IE)T), ≥0.044·SDS·IE≥0.01 · Fx=Cvx·V, Cvx=wx·hx^k/Σwi·hi^k (k: T≤0.5→1, ≥2.5→2 보간). R=표 6.2-1(시스템별 — 사용자 결정 입력)",
+    "allowableDrift": {
+      "1": 0.015,
+      "2": 0.02,
+      "source": "KDS 41 17 00 표 8.2-1 (원문: 내진등급 특/I/II — 허용층간변위 0.010/0.015/0.020 hsx)",
+      "special": 0.01,
+      "note": "설계층간변위 Δ = 탄성해석 변위 × Cd(변위증폭계수, 표 6.2-1 — R과 함께 사용자 입력) / IE (§7.2.8)"
+    }
   },
   "windSimple": {
     "source": "KDS 41 12 00:2022 §5.15 간편법 (원문 텍스트+GIF 판독: 식 5.15-1·표 5.15-1·적용조건)",
@@ -1087,6 +1094,29 @@
         "4": 0.7,
         "5+": 0.65
       }
+    }
+  },
+  "bridgeCombos": {
+    "source": "KDS 24 12 11:2021 표 4.1-1·4.1-2 (원문 판독)",
+    "ultimateI": {
+      "DC_max": 1.25,
+      "DC_min": 0.9,
+      "DW_max": 1.5,
+      "DW_min": 0.65,
+      "LL": 1.8,
+      "note": "극한 I: γp·DC + γp·DW + 1.80(LL+IM) — 풍하중 미고려 조합"
+    },
+    "serviceI": {
+      "DC": 1,
+      "DW": 1,
+      "LL": 1,
+      "WS": 0.3
+    },
+    "serviceIII": {
+      "DC": 1,
+      "DW": 1,
+      "LL": 0.8,
+      "note": "PSC 균열 검토용"
     }
   }
 }

@@ -154,6 +154,47 @@ function retainingWallRunAssembly(p) {
   };
 }
 
+/** 거더교 (단순경간): 바닥판 + I형 거더 N본 + 가로보 3열. role: deck/girder/crossbeam */
+function girderBridgeAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const span = num(p.span, 30000), n = Math.max(2, Math.min(8, Math.round(num(p.nGirders, 4))));
+  const s = num(p.girderSpacing, 2500), H = num(p.girderH, 1800), dt = num(p.deckThk, 240);
+  const oh = num(p.overhang, 1100);
+  const deckW = s * (n - 1) + 2 * oh;
+  // I형 단면 비례(관례 형상 — 구조 치수는 체인에서 검토): 상부플랜지 0.35H·하부 0.30H 폭, 플랜지 두께 0.12H, 복부 0.10H
+  const topW = Math.round(0.35 * H), botW = Math.round(0.30 * H);
+  const ft = Math.round(0.12 * H), webT = Math.max(200, Math.round(0.10 * H));
+  const webH = H - 2 * ft;
+  const parts = [];
+  for (let i = 0; i < n; i++) {
+    parts.push({
+      id: `girder-${i + 1}`, role: 'girder', type: 'i_girder', material: 'concrete',
+      params: { length: span, topW, topT: ft, webT, webH, botW, botT: ft },
+      at: { tx: 0, ty: oh + i * s - Math.max(topW, botW) / 2, tz: 0 },
+    });
+  }
+  // 가로보(단부 2 + 중앙 1)
+  for (const [k, x] of [[0, 0], [1, span / 2 - 150], [2, span - 300]]) {
+    for (let i = 0; i < n - 1; i++) {
+      parts.push({
+        id: `cross-${k}-${i}`, role: 'crossbeam', type: 'box', material: 'concrete',
+        params: { width: 300, depth: s - Math.max(topW, botW), height: Math.round(H * 0.6) },
+        at: { tx: x, ty: oh + i * s + Math.max(topW, botW) / 2, tz: Math.round(H * 0.2) },
+      });
+    }
+  }
+  parts.push({
+    id: 'deck', role: 'deck', type: 'box', material: 'concrete',
+    params: { width: span, depth: deckW, height: dt },
+    at: { tx: 0, ty: 0, tz: H },
+  });
+  return {
+    name: `거더교 ${span / 1000}m×${n}거더`, domain: 'bridge', kind: 'assembly', parts,
+    bridgeMeta: { span, nGirders: n, girderSpacing: s, girderH: H, deckThk: dt, overhang: oh, deckW,
+      section: { topW, topT: ft, webT, webH, botW, botT: ft } },
+  };
+}
+
 export const ASSEMBLY_TEMPLATES = {
   civil: [
     {
@@ -203,6 +244,19 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'depth', labelKo: '깊이', unit: 'mm', default: 2400, min: 1200, max: 10000 },
         { name: 'joistSpacing', labelKo: '장선 간격', unit: 'mm', default: 450, min: 300, max: 600 },
         { name: 'boardWidth', labelKo: '데크보드 폭', unit: 'mm', default: 120, min: 90, max: 200 },
+      ],
+    },
+  ],
+  bridge: [
+    {
+      id: 'girder_bridge', labelKo: '거더교 (단순경간)', labelEn: 'Girder bridge (simple span)', build: girderBridgeAssembly,
+      params: [
+        { name: 'span', labelKo: '지간', unit: 'mm', default: 30000, min: 10000, max: 60000 },
+        { name: 'nGirders', labelKo: '거더 수', unit: '', default: 4, min: 2, max: 8 },
+        { name: 'girderSpacing', labelKo: '거더 간격', unit: 'mm', default: 2500, min: 1500, max: 4000 },
+        { name: 'girderH', labelKo: '거더 춤(플랜지 포함)', unit: 'mm', default: 1800, min: 800, max: 3500 },
+        { name: 'deckThk', labelKo: '바닥판 두께', unit: 'mm', default: 240, min: 180, max: 400 },
+        { name: 'overhang', labelKo: '캔틸레버 내민길이', unit: 'mm', default: 1100, min: 500, max: 2500 },
       ],
     },
   ],

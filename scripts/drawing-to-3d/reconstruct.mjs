@@ -232,6 +232,12 @@ const GATES = {
     if (!e.length && i.segments.some((s) => s < 3 * i.thickness)) e.push('세그먼트 < 3t (최소 플랜지 폭)');
     if (!e.length && !polySimple(sheetPoly(i))) e.push('절곡 단면 자기교차 — 각도/길이 조정');
   },
+  i_girder(i, e) {
+    if (!pos(i.length) || i.length > 60000) e.push('length invalid (≤60m)');
+    for (const k of ['topW', 'topT', 'webT', 'webH', 'botW', 'botT']) if (!pos(i[k]) || i[k] > 4000) e.push(k + ' invalid');
+    if (!e.length && i.webT > Math.min(i.topW, i.botW)) e.push('webT > 플랜지 폭');
+    if (!e.length && (i.botT + i.webH + i.topT) < 300) e.push('거더 춤 < 300mm');
+  },
 };
 
 export function gate(intent) {
@@ -296,6 +302,14 @@ const SCAD = {
   sheet_profile(i) {
     return `linear_extrude(height=${i.width}) ${polyScad(sheetPoly(i))}`;
   },
+  i_girder(i) {
+    const W = Math.max(i.topW, i.botW);
+    return `union() {
+  translate([0, ${(W - i.botW) / 2}, 0]) cube([${i.length}, ${i.botW}, ${i.botT}]);
+  translate([0, ${(W - i.webT) / 2}, ${i.botT}]) cube([${i.length}, ${i.webT}, ${i.webH}]);
+  translate([0, ${(W - i.topW) / 2}, ${i.botT + i.webH}]) cube([${i.length}, ${i.topW}, ${i.topT}]);
+}`;
+  },
   wall_with_openings(i) {
     const ops = (i.openings ?? []).map((o) => `    translate([${o.x}, -1, ${o.sill ?? 0}]) cube([${o.w}, ${i.thickness + 2}, ${o.h}]);`).join('\n');
     if (!ops) return `cube([${i.length}, ${i.thickness}, ${i.height}]);`;
@@ -322,6 +336,8 @@ export function partAabb(i) {
     case 'plate_with_holes':
     case 'stepped_plate':
       return { min: [0, 0, 0], max: [i.width, i.depth, i.thickness] };
+    case 'i_girder':
+      return { min: [0, 0, 0], max: [i.length, Math.max(i.topW, i.botW), i.botT + i.webH + i.topT] };
     case 'l_bracket':
       return { min: [0, 0, 0], max: [i.legA, i.width, i.legB] };
     case 'flange':
@@ -377,4 +393,5 @@ export const PARAMS = {
   hex_bolt: ['threadDia', 'length'],
   sheet_profile: ['thickness', 'width'], // segments[]·angles[]는 배열 — 스키마 특례
   wall_with_openings: ['length', 'thickness', 'height'], // openings[]는 배열 — 스키마 특례
+  i_girder: ['length', 'topW', 'topT', 'webT', 'webH', 'botW', 'botT'],
 };

@@ -54,6 +54,7 @@ export function partVolume(type, p) {
       const cut = (p.openings ?? []).reduce((s, o) => s + o.w * o.h * p.thickness, 0);
       return solid - cut;
     }
+    case 'i_girder': return p.length * (p.botW * p.botT + p.webT * p.webH + p.topW * p.topT);
     default: return 0;
   }
 }
@@ -105,6 +106,11 @@ function localCG(type, p) {
       }
       ar /= 2;
       return [ax / (6 * ar), ay / (6 * ar), p.width / 2];
+    }
+    case 'i_girder': {
+      const Ab = p.botW * p.botT, Aw = p.webT * p.webH, At = p.topW * p.topT;
+      const z = (Ab * p.botT / 2 + Aw * (p.botT + p.webH / 2) + At * (p.botT + p.webH + p.topT / 2)) / (Ab + Aw + At);
+      return [p.length / 2, Math.max(p.topW, p.botW) / 2, z];
     }
     case 'hex_bolt': {
       const { af, hh } = boltDims(p);

@@ -59,6 +59,13 @@ ${r.seismic && !r.seismic.error ? `<h2>⑤ 등가정적 지진 (KDS 41 17 00 §7
 ${r.seismic.Fx_kN.map((fx, i) => `<tr><td>${i + 1}F</td><td>${f(fx, 1)}</td><td>${f(r.seismic.storyShear_kN[i], 1)}</td></tr>`).join('')}</table>
 <table><tr><th>지배기둥 지진조합</th><th>PuE kN</th><th>MuE kN·m</th><th>판정</th></tr>
 <tr><td style="font-size:10.5px;text-align:left">${esc(r.seismic.column.method)}</td><td>${f(r.seismic.column.PuE_kN, 1)}</td><td>${f(r.seismic.column.MuE_kNm, 1)}</td><td>${V(r.seismic.column.verdict)}</td></tr></table>
+${r.seismic.matrix && !r.seismic.matrix.error ? `
+<h3>⑤a 매트릭스 횡해석 (frame2d — 포탈 교차검증)</h3>
+<table><tr><th>지배 방향</th><th>기둥 M (매트릭스)</th><th>포탈 교차검증</th><th>보 M</th><th>옥상 변위</th></tr>
+<tr><td>${esc(r.seismic.matrix.dir)}</td><td>${f(r.seismic.matrix.McolMax_kNm, 1)} kN·m</td><td>${f(r.seismic.matrix.portalCrossCheck_kNm, 1)}</td><td>${f(r.seismic.matrix.MbeamMax_kNm, 1)}</td><td>${r.seismic.matrix.roof_mm} mm</td></tr></table>
+<table><tr><th>층</th><th>탄성 δe</th><th>설계 Δ(×Cd/IE)</th><th>허용</th><th>판정</th></tr>
+${r.seismic.matrix.drifts.map((dr) => `<tr><td>${dr.story}</td><td>${dr.elastic_mm} mm</td><td>${dr.design_mm ?? 'Cd 입력 필요'}</td><td>${dr.limit_mm} mm</td><td>${dr.pass === null ? '—' : dr.pass ? '✓' : '✕'}</td></tr>`).join('')}</table>
+<div class="note">${esc(r.seismic.matrix.method)} · 허용층간변위 ${esc(r.seismic.matrix.driftLimit)}</div>` : ''}
 <div class="honest">⚠ ${esc(r.seismic.disclaimer)}</div>` : ''}
 ${r.wind && !r.wind.error ? `<h2>⑤b 풍하중 (KDS 41 12 00 — ${esc(r.wind.x.method)})</h2>
 <div class="kpi"><div><b>${f(Math.max(r.wind.x.baseShear_kN, r.wind.y.baseShear_kN), 1)} kN</b><span>기단전단 (지배방향)</span></div>
@@ -117,6 +124,28 @@ ${checksTable(r.board.checks)}<div class="note">${esc(r.board.note)}</div>` : ''
 ${memberSec}${connSec}${boardSec}${windSec}
 <div class="honest">⚠ ${esc(r.disclaimer)}</div>
 <div class="note">근거: ${(r.refs ?? []).map(esc).join(' · ')}</div>`);
+}
+
+/** 거더교 리포트 (bridge-check 결과) */
+export function bridgeReport(r, { title = '거더교 검증' } = {}) {
+  if (!r?.ok) return SHELL(title, '실패', `<div class="honest">${esc(r?.error ?? '체인 실패')}</div>`);
+  const d = r.dead, lv = r.live, u = r.ultimate;
+  return SHELL(`${title} — KL-510 · 극한 I`, 'nexyfab · KDS 24 12 21/11 원문 하중·계수 · 영향선 엔진(미 3개주 공표표 재현)', `
+<div class="kpi"><div><b>${f(u.Mu_kNm, 0)} kN·m</b><span>극한 Mu (1.25DC+1.5DW+1.8LL)</span></div>
+<div><b>${f(u.Vu_kN, 0)} kN</b><span>극한 Vu</span></div>
+<div><b>${r.geometry.span_m} m × ${r.geometry.nGirders}거더</b><span>지간 × 거더 (형상 파생)</span></div></div>
+<h2>① 고정하중 (형상×밀도 — 결정론)</h2>
+<table><tr><th>거더 자중</th><th>바닥판 분담</th><th>가로보</th><th>DC 합</th><th>DW(포장)</th></tr>
+<tr><td>${f(d.girderSelf, 2)}</td><td>${f(d.deckShare, 2)}</td><td>${f(d.crossShare, 3)}</td><td>${f(d.wDC_kNm, 2)} kN/m</td><td>${f(d.wDW_kNm, 2)} kN/m</td></tr></table>
+<div class="note">${esc(d.dwNote)} · M_DC ${f(d.M_DC, 0)} · M_DW ${f(d.M_DW, 0)} kN·m</div>
+<h2>② 활하중 KL-510 (영향선 — 검증된 엔진)</h2>
+<table><tr><th>트럭 M(충격 전)</th><th>차로 M</th><th>지배</th><th>DF</th><th>차로수</th><th>거더당 M_LL</th></tr>
+<tr><td>${f(lv.detail.truck.M_kNm, 0)}</td><td>${f(lv.detail.lane.M_kNm, 0)}</td><td>${esc(lv.detail.govern)}</td><td>${lv.DF}</td><td>${lv.nLanes}</td><td>${f(lv.M_LL, 0)} kN·m</td></tr></table>
+<div class="note">DF: ${esc(lv.dfSrc)}</div>
+<h2>③ 극한한계상태 조합</h2>
+<div class="note">${esc(u.combo)} → Mu ${f(u.Mu_kNm, 0)} kN·m · Vu ${f(u.Vu_kN, 0)} kN · 사용 I Ms ${f(r.service.Ms_kNm, 0)} kN·m</div>
+${r.section ? `<h2>④ RC 단면 검토</h2>${r.section.checks ? checksTable(r.section.checks) : ''}<table><tr><th>판정</th><th>${V(r.section.verdict)}</th></tr></table><div class="note">${esc(r.section.note ?? r.section.error ?? '')}</div>` : '<div class="honest">단면 검토: As_mm2 입력 시 rc_beam 연계 (RC 가정 — PSC 미지원 명시)</div>'}
+<div class="honest">⚠ ${esc(r.disclaimer)}</div>`);
 }
 
 /** 인테리어 피난·마감 리포트 */
