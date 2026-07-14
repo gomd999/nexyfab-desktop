@@ -30,6 +30,8 @@ export default {
       Kd: { type: 'number', minimum: 0.85, maximum: 1.0, description: '풍향계수 (기본 1.0 — 관측자료 없을 때, §5.5.3(3)①)' },
       natFreqHz: { type: 'number', exclusiveMinimum: 0, maximum: 20, description: '풍방향 고유진동수 Hz (미입력 시 KDS 41 17 근사주기로 판정 — structType 필요)' },
       structType: { type: 'string', enum: ['rc_moment', 'steel_moment', 'steel_ebf_brb'], description: '근사주기용 구조형식 (natFreqHz 미입력 시)' },
+      dampingRatio: { type: 'number', minimum: 0.005, maximum: 0.05, description: '풍방향 1차 감쇠비 ζD (유연건물 식 5.6-1 필수 — 프로젝트 결정값, 통상 RC 0.02·강구조 0.01 관례는 참고만)' },
+      modeExp: { type: 'number', minimum: 0.5, maximum: 2.0, description: '1차 모드 연직분포 지수 β (기본 1.0 직선 — 원문 §5.6.1 모드 미상 시 기준 제시값, 질량 균등 가정 명시)' },
       storyH: { type: 'number', minimum: 2, maximum: 6, description: '층고 m (층전단 산출용, 기본 3.5)' },
       demandNone: { type: 'number', minimum: 0, maximum: 0, description: '자리표시 0 (하중 산출 계산기)' },
     },
@@ -54,8 +56,9 @@ export default {
       f1 = 1 / Ta;
       fSrc = `근사주기 Ta=${Ta.toFixed(2)}s (KDS 41 17 00 식 — 명시적 근사)`;
     }
-    if (f1 <= 1) {
-      const e = new Error(`고유진동수 ${f1.toFixed(2)}Hz ≤ 1Hz — 유연건축구조물: 식(5.6-1) 공진 가스트 필요(v1 미구현, 정직 게이트)`);
+    const flexible = f1 <= 1;
+    if (flexible && !(input.dampingRatio > 0)) {
+      const e = new Error(`고유진동수 ${f1.toFixed(2)}Hz ≤ 1Hz — 유연건축구조물 식(5.6-1): dampingRatio(감쇠비 ζD) 필수 입력 (지어내지 않음)`);
       e.code = 'INPUT_GATE';
       throw e;
     }
@@ -68,13 +71,33 @@ export default {
     const VH = V0 * Kd * Kzr(H) * Kzt * Iw;
     const qH = 0.5 * wf.airDensity * VH * VH; // N/m²
 
-    // 가스트영향계수 (강체, 식 5.6-2 — 전 구성 원문 판독)
+    // 가스트영향계수 (식 5.6-2 강체 / 식 5.6-1 유연 — 전 구성 원문 GIF 판독)
     const IH = 0.1 * Math.pow(Math.max(H, zb) / zg, -a - 0.05);
     const gammaD = ((3 + 3 * a) / (2 + a)) * IH;
     const LH = H <= 30 ? 100 : 100 * Math.sqrt(H / 30);
     const kk = H >= B ? 0.33 : -0.33;
     const BD = 1 - Math.pow(1 / (1 + 5.1 * Math.pow(LH / Math.sqrt(H * B), 1.3) * Math.pow(B / H, kk)), 1 / 3);
-    const GD = 1 + 4 * gammaD * Math.sqrt(BD);
+    let GD, gustFlex = null;
+    // VH는 아래에서 계산 — 유연식이 VH를 쓰므로 선계산
+    const KzrH_ = Math.min(H, zg) <= zb ? plateau : c * Math.pow(Math.min(H, zg), a);
+    const VH_ = V0 * (input.Kd ?? 1.0) * KzrH_ * (input.Kzt ?? 1.0) * wf.importanceIw[input.importance ?? '1'];
+    if (!flexible) {
+      GD = 1 + 4 * gammaD * Math.sqrt(BD); // 식 5.6-2
+    } else {
+      // 식 5.6-1: GD = 1 + gD·γD·√(BD + φD²·RD)
+      const nD = f1, zeta = input.dampingRatio;
+      const SD = 1 / ((1 + 4.0 * nD * B / VH_) * (1 + 2.3 * nD * H / VH_));          // 5.6-1.h (사이즈)
+      const xF = nD * LH / VH_;
+      const FD = (4.0 * xF) / Math.pow(1 + 71 * xF * xF, 5 / 6);                      // 5.6-1.l (스펙트럼)
+      const RD = (Math.PI / (4 * zeta)) * SD * FD;                                    // 공진계수
+      const beta = input.modeExp ?? 1.0;
+      const lambda = 1.0 - 0.4 * Math.log(beta);                                      // 5.6-1.k
+      const phiD = ((2 * beta + 1) / (2 + beta)) * lambda;                            // 질량 균등 가정: M/M* = 2β+1 (명시)
+      const nuD = nD * Math.sqrt(RD / (BD + RD));                                     // 5.6-1.b
+      const gDp = Math.sqrt(2 * Math.log(600 * nuD)) + 1.2;                           // 5.6-1.a
+      GD = 1 + gDp * gammaD * Math.sqrt(BD + phiD * phiD * RD);
+      gustFlex = { SD: +SD.toFixed(4), FD: +FD.toFixed(4), RD: +RD.toFixed(4), phiD: +phiD.toFixed(3), nuD_Hz: +nuD.toFixed(4), gD: +gDp.toFixed(3), zeta, beta };
+    }
 
     // 외압계수 (표 5.7-1 — v1 보수측 일괄: 풍상 0.8kz+0.05, 풍하 −0.5)
     const kz = (z) => z < zb ? Math.pow(zb / H, 2 * a) : Math.pow(z / H, 2 * a);
@@ -97,15 +120,16 @@ export default {
     return {
       inputsEcho: input,
       verdict: 'INFO',
-      designSpeed: { VH_ms: +VH.toFixed(2), KzrH: +Kzr(H).toFixed(3), Iw, Kzt, Kd, rigidCheck: `f=${f1.toFixed(2)}Hz > 1Hz (${fSrc})` },
+      designSpeed: { VH_ms: +VH.toFixed(2), KzrH: +Kzr(H).toFixed(3), Iw, Kzt, Kd, rigidCheck: flexible ? `f=${f1.toFixed(2)}Hz ≤ 1Hz — 유연 식(5.6-1) 적용 (${fSrc})` : `f=${f1.toFixed(2)}Hz > 1Hz (${fSrc})` },
       pressure: { qH_Nm2: +qH.toFixed(1), GD: +GD.toFixed(3), pTop_Nm2: +pTop_Nm2.toFixed(0) },
-      gustDetail: { IH: +IH.toFixed(4), gammaD: +gammaD.toFixed(4), LH_m: +LH.toFixed(1), BD: +BD.toFixed(4), k: kk },
+      gustDetail: { IH: +IH.toFixed(4), gammaD: +gammaD.toFixed(4), LH_m: +LH.toFixed(1), BD: +BD.toFixed(4), k: kk, ...(gustFlex ? { flexible: gustFlex } : {}) },
       baseShear_kN: +(baseShear_N / 1000).toFixed(1),
       stories,
       combo: wf.combos.wind,
       notes: [
         `VH=${V0}×${Kd}×${Kzr(H).toFixed(2)}×${Kzt}×${Iw}=${VH.toFixed(1)} m/s → qH=${qH.toFixed(0)} N/m² → GD=${GD.toFixed(2)}`,
-        '외압계수 v1 보수측 일괄: 풍상 0.8kz+0.05·풍하 −0.5 (완화조건(−0.35 등) 원문 조건변수 미판독 — 채택 안 함 명시). 내압·지붕풍·비틀림 미포함.',
+        '외압계수 v1 보수측 일괄: 풍상 0.8kz+0.05·풍하 −0.5 (완화조건(−0.35 등) 원문 조건변수 미판독 — 채택 안 함 명시). 내압·지붕풍 미포함.',
+        ...(gustFlex ? [`유연 가스트 식(5.6-1): RD ${gustFlex.RD}(ζ ${gustFlex.zeta})·φD ${gustFlex.phiD}(β ${gustFlex.beta}, 질량 균등 가정)·gD ${gustFlex.gD}. 풍직각방향(5.9)·비틀림(5.10) 풍하중은 별도 검토 필요 — 세장 고층은 필수.`] : []),
         `하중조합: ${wf.combos.wind} — 골조 검토 시 1.3W 적용.`,
       ],
     };

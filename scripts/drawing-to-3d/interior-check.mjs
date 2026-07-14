@@ -227,12 +227,51 @@ export function interiorCheck(assembly, params = {}) {
     }
   }
 
+  // 급수·오수 개산 — 재실인원(피난 산정 재사용) × 인당 급수원단위(용도별 기준 — 입력).
+  let water = null;
+  {
+    const occ2 = egress?.intermediate?.occupants_design ?? null;
+    const unit = Number(params.waterPerPersonLpd) || 0; // L/인·일
+    if (occ2 && unit > 0) {
+      const daily = occ2 * unit;
+      const peak = params.peakFactor ?? 2.0; // 시간최대 배율 관례(명시)
+      const hourlyAvg = daily / (params.useHours ?? 10);
+      water = {
+        verdict: 'INFO', occupants: occ2, unitLpd: unit,
+        daily_L: round(daily, 0), hourlyPeak_Lh: round(hourlyAvg * peak, 0),
+        sewage_L: round(daily * (params.sewageRatio ?? 0.9), 0),
+        note: `급수 ${occ2}인×${unit}L/일 (원단위=건축기계설비 설계기준 용도별 값 참조 입력) · 시간최대=평균×${peak}(관례 명시) · 오수=급수×${params.sewageRatio ?? 0.9}. 기구별 배관 구경은 기구단위법 별도.`,
+      };
+    } else {
+      water = { verdict: 'INPUT', occupants: occ2, note: 'waterPerPersonLpd(용도별 급수원단위 L/인·일 — 건축기계설비 기준 참조) 입력 시 일급수량·시간최대·오수량 개산.' };
+    }
+  }
+
+  // 소방 개산 — 소화기(면적/기준면적) + 스프링클러 헤드 배치(수평거리 r → 정방형 격자, 형상 파생).
+  let fire = null;
+  {
+    const extArea = Number(params.extinguisherAreaM2) || 0; // 능력단위 1당 바닥면적 (소방시설법 별표4 용도·내화 조건 — 입력)
+    const r = Number(params.sprinklerRadiusM) || 0;         // 헤드 수평거리 (NFTC 103 — 용도별 1.7/2.1/2.3 확인 입력)
+    const ext = extArea > 0 ? { units: Math.ceil(areaM2 / extArea), basisAreaM2: extArea } : null;
+    let spk = null;
+    if (r > 0) {
+      const S = Math.SQRT2 * r; // 정방형 배치 최대 간격
+      const cols = Math.max(1, Math.ceil((rb.W / 1000) / S));
+      const rows2 = Math.max(1, Math.ceil((rb.D / 1000) / S));
+      spk = { radiusM: r, maxSpacingM: round(S), heads: cols * rows2, layout: `${cols}×${rows2}`, spacingX: round(rb.W / 1000 / cols), spacingY: round(rb.D / 1000 / rows2) };
+    }
+    fire = (ext || spk) ? {
+      verdict: 'INFO', extinguisher: ext, sprinkler: spk,
+      note: '소화기=바닥면적/능력단위 기준면적(소방시설법 시행령 별표4 — 용도·내화별 값 확인 입력). 스프링클러=정방형 S=√2r(NFTC 103 수평거리 — 용도별 확인 입력), 헤드수·배치는 형상 파생 개산. 법정 소방설계는 소방시설설계업 영역.',
+    } : { verdict: 'INPUT', note: 'extinguisherAreaM2(별표4)·sprinklerRadiusM(NFTC 103) 입력 시 소화기 수·헤드 배치 개산.' };
+  }
+
   return {
     ok: true,
     travel,
     egress: egress ? { verdict: egress.verdict, checks: egress.checks ?? null, derived: { doorWidthSumMm: doorWidthSum, seatCount }, refs: egress.refs ?? null, error: egress.error ?? null } : null,
     finishes,
-    lighting, ventilation, electrical,
+    lighting, ventilation, electrical, water, fire,
     provenance: { geometry: ['보행거리(BFS)', '장애물 풋프린트', '문 폭 합', '마감 면적', '실지수·실체적'], user: ['보행거리 한계', '인당 점유면적', '조도·광속·환기량·부하밀도(기준 참조 입력)'] },
     disclaimer: '개념 검토(비법정) — 격자 근사·가구 배치 기준. 법정 피난·설비 검토는 용도·내화·스프링클러 조건 반영한 건축사·설비기술사 검토 필요.',
   };

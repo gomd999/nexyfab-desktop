@@ -184,3 +184,37 @@ test('공표예제: SP 기둥 P-M — Po·εs=0점 공칭 ≤0.5%', () => {
   assert.ok(Math.abs(r0.intermediate.Mn_kNm - 261 * 1.3558) / (261 * 1.3558) < 0.005, `εs=0 Mn ${r0.intermediate.Mn_kNm}`);
   assert.ok(Math.abs(r0.intermediate.c_mm - 13.5 * 25.4) < 1, `중립축 c ${r0.intermediate.c_mm}`);
 });
+
+// ── 교량 이동하중 엔진 — AASHTO HS-20/HL-93 공표표 재현 ──────────────────
+// HB-17 App.A(절대최대·충격 제외): 40ft 449.8·100ft 1524.0·120ft 1883.3 kip-ft, V 55.2 kip.
+// HS-20 트럭 = 8/32/32 kip @14ft (FHWA HIF-19-010 p.174 판독 — HL-93 트럭 동일).
+import { sweepSimpleSpan } from '../moving-load.mjs';
+test('공표예제: HS-20 절대최대모멘트 표(HB-17) 재현 ≤0.1%', () => {
+  const hs20 = [{ P: 8, x: 0 }, { P: 32, x: 14 }, { P: 32, x: 28 }];
+  const cases = [[40, 449.8, 55.2], [100, 1524.0, 65.3], [120, 1883.3, 66.4]];
+  for (const [L, Mpub, Vpub] of cases) {
+    const r = sweepSimpleSpan(L, hs20);
+    assert.ok(Math.abs(r.Mmax_kNm - Mpub) / Mpub < 0.001, `M(${L}ft) ${r.Mmax_kNm.toFixed(1)} vs ${Mpub}`);
+    assert.ok(Math.abs(r.Vmax_kN - Vpub) / Vpub < 0.002, `V(${L}ft) ${r.Vmax_kN.toFixed(1)} vs ${Vpub}`);
+  }
+});
+
+// Caltrans BDM 4.7 Table 4.7.2: HL-93 조합(트럭×1.33+차선 0.64klf) 100ft → 2821.6 kip-ft
+// (Caltrans는 트럭 1520(중앙 관례) 사용 — 절대최대 1524와 0.3% 차: 허용 0.5%)
+test('공표예제: Caltrans HL-93 조합(IM 33% 트럭만) 재현 ≤0.5%', () => {
+  const hs20 = [{ P: 8, x: 0 }, { P: 32, x: 14 }, { P: 32, x: 28 }];
+  const L = 100;
+  const M = sweepSimpleSpan(L, hs20).Mmax_kNm * 1.33 + 0.64 * L * L / 8;
+  assert.ok(Math.abs(M - 2821.6) / 2821.6 < 0.005, `HL-93 100ft ${M.toFixed(1)} vs 2821.6`);
+});
+
+// KL-510 (KDS 24 12 21 원문): 차로 wL²/8 폐형 + 지배조합 성질
+test('공표예제: girder_line KL-510 — 차로 폐형·조합 성질', () => {
+  const r = runCalculator('girder_line', { span: 30, DF: 1.0 }, 'KDS');
+  assert.equal(r.lane.M_kNm, +(12.7 * 900 / 8).toFixed(1), '차로 wL²/8');
+  assert.ok(r.truck.M_kNm > 192 * 30 / 4, '트럭 M > 최대축 PL/4');
+  assert.ok(r.perLane.M_kNm >= r.truck.M_kNm * 1.25 * 0.999, '조합 ≥ 트럭×(1+IM)');
+  // L>60m 차로 감소식
+  const r2 = runCalculator('girder_line', { span: 90, DF: 1.0 }, 'KDS');
+  assert.equal(r2.lane.w_kNm, +(12.7 * Math.pow(60 / 90, 0.1)).toFixed(2), '차로 감소식 (60/L)^0.1');
+});

@@ -167,7 +167,7 @@ const GATES = {
   },
   box(i, e) {
     // 상한 60m — 건축 다베이 슬래브(4베이×12m+기둥여유)까지 허용 (#6, 감사 260714)
-    for (const k of ['width', 'depth', 'height']) if (!pos(i[k]) || i[k] > 60000) e.push(`${k} invalid`);
+    for (const k of ['width', 'depth', 'height']) if (!pos(i[k]) || i[k] > 90000) e.push(`${k} invalid`);
   },
   cylinder(i, e) {
     for (const k of ['diameter', 'length']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);

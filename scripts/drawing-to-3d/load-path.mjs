@@ -337,8 +337,8 @@ export function loadPathCheck(assembly, params = {}) {
           const r = runCalculator('wind_simple', { V0: Number(wp.V0), H: +Hm.toFixed(1), B: +Bw.toFixed(1), D: +Dd.toFixed(1), terrain: wp.terrain ?? 'normal', ...(Number(wp.Kzt) > 1 ? { Kzt: Number(wp.Kzt) } : {}), demandNone: 0 }, 'KDS');
           return { method: '간편법(§5.15)', baseShear_kN: r.baseShear_kN, p_Nm2: r.pressure.design_Nm2, detail: r };
         }
-        const r = runCalculator('wind_static', { V0: Number(wp.V0), H: +Hm.toFixed(1), B: +Bw.toFixed(1), D: +Dd.toFixed(1), exposure: wp.exposure ?? 'C', importance: wp.importance ?? '1', structType: wp.structType ?? 'rc_moment', storyH: +(pitch2 / 1000).toFixed(2), demandNone: 0 }, 'KDS');
-        return { method: '정식법(§5.2 강체)', baseShear_kN: r.baseShear_kN, p_Nm2: r.pressure.pTop_Nm2, detail: r };
+        const r = runCalculator('wind_static', { V0: Number(wp.V0), H: +Hm.toFixed(1), B: +Bw.toFixed(1), D: +Dd.toFixed(1), exposure: wp.exposure ?? 'C', importance: wp.importance ?? '1', structType: wp.structType ?? 'rc_moment', ...(Number(wp.dampingRatio) > 0 ? { dampingRatio: Number(wp.dampingRatio) } : {}), ...(Number(wp.natFreqHz) > 0 ? { natFreqHz: Number(wp.natFreqHz) } : {}), storyH: +(pitch2 / 1000).toFixed(2), demandNone: 0 }, 'KDS');
+        return { method: r.designSpeed.rigidCheck.includes('유연') ? '정식법(§5.2·식5.6-1 유연)' : '정식법(§5.2 강체)', baseShear_kN: r.baseShear_kN, p_Nm2: r.pressure.pTop_Nm2, detail: r };
       };
       const wx = runDir(By, Bx); // X방향 바람 → 수압면 폭 = By
       const wy = runDir(Bx, By);

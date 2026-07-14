@@ -18,7 +18,7 @@ function rcFrameAssembly(p) {
   const bx = num(p.bayX, 6000), by = num(p.bayY, 6000), H = num(p.storyH, 3300);
   const nbx = Math.max(1, Math.min(4, Math.round(num(p.baysX, 1))));
   const nby = Math.max(1, Math.min(4, Math.round(num(p.baysY, 1))));
-  const nf = Math.max(1, Math.min(5, Math.round(num(p.floors, 1))));
+  const nf = Math.max(1, Math.min(20, Math.round(num(p.floors, 1))));
   const c = num(p.colSize, 500);            // 기둥 c×c
   const bw = num(p.beamWidth, 300), bh = num(p.beamHeight, 600);
   const st = num(p.slabThk, 150);
@@ -174,7 +174,7 @@ export const ASSEMBLY_TEMPLATES = {
       params: [
         { name: 'baysX', labelKo: '베이 수 X', unit: '', default: 1, min: 1, max: 4 },
         { name: 'baysY', labelKo: '베이 수 Y', unit: '', default: 1, min: 1, max: 4 },
-        { name: 'floors', labelKo: '층수', unit: '', default: 1, min: 1, max: 5 },
+        { name: 'floors', labelKo: '층수', unit: '', default: 1, min: 1, max: 20 },
         { name: 'bayX', labelKo: '베이 X (기둥 중심간)', unit: 'mm', default: 6000, min: 3000, max: 12000 },
         { name: 'bayY', labelKo: '베이 Y', unit: 'mm', default: 6000, min: 3000, max: 12000 },
         { name: 'storyH', labelKo: '층고', unit: 'mm', default: 3300, min: 2400, max: 6000 },
