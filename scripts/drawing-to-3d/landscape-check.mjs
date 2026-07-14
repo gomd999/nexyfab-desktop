@@ -73,6 +73,8 @@ export function landscapeCheck(assembly, params = {}) {
       check = runCalculator('timber_beam', {
         species, grade, b: round(b, 0), h: round(h, 0), L: round(L, 0), w,
         duration: params.duration ?? 'tenYears', deflLimit: params.deflLimit ?? 240,
+        // 조경(옥외)은 습윤 사용조건이 기본 — 표 3.1-8 CM 적용 (명시적 false로만 해제)
+        wetService: params.wetService !== false,
       }, 'KDS');
     } catch (e) {
       check = e.code === 'INPUT_GATE' ? { verdict: 'INPUT', error: e.message } : { verdict: 'ERROR', error: e.message };

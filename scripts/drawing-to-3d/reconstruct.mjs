@@ -166,8 +166,8 @@ const GATES = {
     if (2 * i.wallThk >= i.height) e.push('2·wallThk ≥ height');
   },
   box(i, e) {
-    // 상한 20m — 건축 보·슬래브·실 바닥 등 비기계 스케일 허용 (#6)
-    for (const k of ['width', 'depth', 'height']) if (!pos(i[k]) || i[k] > 20000) e.push(`${k} invalid`);
+    // 상한 60m — 건축 다베이 슬래브(4베이×12m+기둥여유)까지 허용 (#6, 감사 260714)
+    for (const k of ['width', 'depth', 'height']) if (!pos(i[k]) || i[k] > 60000) e.push(`${k} invalid`);
   },
   cylinder(i, e) {
     for (const k of ['diameter', 'length']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);
