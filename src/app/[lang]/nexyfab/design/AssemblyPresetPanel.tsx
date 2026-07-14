@@ -38,6 +38,8 @@ interface ChainResp {
   beams?: Array<ChainCheck & { id: string; section: string; Mu_kNm: number; Vu_kN: number; combo: string }>;
   columns?: Array<ChainCheck & { id: string; section: string; Pu_kN: number }>;
   footing?: ChainCheck & { needInputs?: string[] };
+  seismic?: { error?: string; V_kN?: number; Cs?: number; column?: { MuE_kNm?: number; verdict?: string } } | null;
+  slabSLS?: { live: { delta_mm: number; limit_mm: number; pass: boolean }; total: { delta_mm: number; limit_mm: number; pass: boolean }; panelMm?: string } | null;
   disclaimer?: string;
 }
 interface BuildResp {
@@ -70,7 +72,7 @@ export default function AssemblyPresetPanel({
   const [built, setBuilt] = useState<BuildResp | null>(null);
   // 하중경로 체인 (building 전용, Wave A·B1)
   const [usages, setUsages] = useState<Usage[]>([]);
-  const [chainP, setChainP] = useState<Record<string, number | string>>({ usage: 'office', fck: 24, fy: 400, beamAs: 1548, beamAv: 142.7, beamS: 250, colAst: 3097, fB: 2200, fL: 2200, fT: 500, fD: 420, qAllow: 200 });
+  const [chainP, setChainP] = useState<Record<string, number | string>>({ usage: 'office', fck: 24, fy: 400, beamAs: 1548, beamAv: 142.7, beamS: 250, colAst: 3097, fB: 2200, fL: 2200, fT: 500, fD: 420, qAllow: 200, seisZone: '', seisSite: 'S4', seisR: 5 });
   const [chain, setChain] = useState<ChainResp | null>(null);
   const [chainBusy, setChainBusy] = useState(false);
 
@@ -216,6 +218,8 @@ export default function AssemblyPresetPanel({
       beamAs: Number(chainP.beamAs), beamAv: Number(chainP.beamAv), beamS: Number(chainP.beamS),
       colAst: Number(chainP.colAst),
       footing: { B: Number(chainP.fB), L: Number(chainP.fL), t: Number(chainP.fT), d: Number(chainP.fD), qAllow: Number(chainP.qAllow) },
+      // 지진(등가정적) — 구역 선택 시에만 (R=표 6.2-1 시스템 결정)
+      ...(chainP.seisZone ? { seismic: { zone: chainP.seisZone, siteClass: chainP.seisSite, R: Number(chainP.seisR) || 5 } } : {}),
     },
   }), [built, chainP]);
   const runChain = useCallback(async () => {
@@ -589,6 +593,26 @@ export default function AssemblyPresetPanel({
               </label>
             ))}
           </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginBottom: 6 }}>
+            <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? '지진구역 (선택)' : 'Seismic zone'}</span>
+              <select value={String(chainP.seisZone)} onChange={(e) => setChainP((s) => ({ ...s, seisZone: e.target.value }))} style={selStyle}>
+                <option value="">{ko ? '미검토' : 'off'}</option>
+                <option value="I">{ko ? '구역 I (0.11)' : 'Zone I'}</option>
+                <option value="II">{ko ? '구역 II (0.07)' : 'Zone II'}</option>
+              </select>
+            </label>
+            <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? '지반' : 'Site'}</span>
+              <select value={String(chainP.seisSite)} onChange={(e) => setChainP((s) => ({ ...s, seisSite: e.target.value }))} style={selStyle}>
+                {['S1', 'S2', 'S3', 'S4', 'S5'].map((s2) => <option key={s2} value={s2}>{s2}</option>)}
+              </select>
+            </label>
+            <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>R ({ko ? '표 6.2-1' : 'table 6.2-1'})</span>
+              <input type="number" step="0.5" value={chainP.seisR as number} onChange={(e) => setChainP((s) => ({ ...s, seisR: Number(e.target.value) }))} style={inpStyle} />
+            </label>
+          </div>
           <button type="button" onClick={runChain} disabled={chainBusy} style={{ ...genStyle, background: '#0e7490' }}>
             {chainBusy ? (ko ? '체인 검증 중…' : 'Checking…') : ko ? '⛓ 하중경로 검증 실행' : '⛓ Run load-path check'}
           </button>
@@ -600,7 +624,9 @@ export default function AssemblyPresetPanel({
               </div>
               {[...(chain.beams ?? []).map((b) => ({ nm: `${b.id} (${b.section})`, dt: `Mu ${b.Mu_kNm}kN·m · ${b.combo}`, v: b.verdict })),
                 ...(chain.columns ?? []).map((c) => ({ nm: `${c.id}`, dt: `Pu ${c.Pu_kN}kN`, v: c.verdict })),
-                { nm: ko ? '기초' : 'Footing', dt: chain.footing?.needInputs ? (ko ? '입력 필요' : 'inputs needed') : '', v: chain.footing?.verdict }]
+                { nm: ko ? '기초' : 'Footing', dt: chain.footing?.needInputs ? (ko ? '입력 필요' : 'inputs needed') : '', v: chain.footing?.verdict },
+                ...(chain.slabSLS ? [{ nm: ko ? `슬래브 처짐 ${chain.slabSLS.panelMm ?? ''}` : 'Slab SLS', dt: `δL ${chain.slabSLS.live.delta_mm}/${chain.slabSLS.live.limit_mm} · δT ${chain.slabSLS.total.delta_mm}/${chain.slabSLS.total.limit_mm}mm`, v: chain.slabSLS.live.pass && chain.slabSLS.total.pass ? 'PASS' : 'FAIL' }] : []),
+                ...(chain.seismic && !chain.seismic.error ? [{ nm: ko ? `지진 V=${chain.seismic.V_kN}kN (Cs ${chain.seismic.Cs})` : `Seismic V=${chain.seismic.V_kN}kN`, dt: `${ko ? '기둥' : 'col'} MuE ${chain.seismic.column?.MuE_kNm}kN·m`, v: chain.seismic.column?.verdict }] : [])]
                 .map((r, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
                     <span>{r.nm} <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{r.dt}</span></span>

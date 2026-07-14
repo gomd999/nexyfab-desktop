@@ -63,7 +63,49 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const mod = await load();
-    const result = mod.loadPathCheck(body.assembly, body.params ?? {});
+    type LpResult = {
+      ok?: boolean;
+      loads?: { spans?: { xs_mm?: number[]; ys_mm?: number[] }; slab?: { D_kN?: number; areaM2?: number }; usage?: { live_kNm2?: number } };
+      slabSLS?: unknown;
+    };
+    const result = mod.loadPathCheck(body.assembly, body.params ?? {}) as LpResult;
+
+    // ── 슬래브 SLS 처짐 (배치 1+2 ②) — 검증된 Mindlin 솔버 재사용 (fea/plateMindlin) ──
+    //    최대 베이 패널·4변 단순지지·탄성 총단면(Ec=8500∛(fck+Δf), KDS 14 20 10 식 4.3-2).
+    //    균열(Ie)·크리프 장기처짐 미반영 — 실제 장기처짐은 수 배 가능(리포트 명시). 한계=관례값 입력.
+    if (result.ok && body.params?.slabCheck !== false && result.loads?.spans?.xs_mm && result.loads.spans.ys_mm) {
+      try {
+        const { mindlinPlateSolve } = await import('@/app/[lang]/shape-generator/fea/plateMindlin');
+        const xs = result.loads.spans.xs_mm, ys = result.loads.spans.ys_mm;
+        const spanX = Math.max(...xs.slice(1).map((v, i) => v - xs[i]));
+        const spanY = Math.max(...ys.slice(1).map((v, i) => v - ys[i]));
+        const slabPart = body.assembly.parts.find((p) => (p as { role?: string }).role === 'slab') as { params?: { height?: number } } | undefined;
+        const t = Number(slabPart?.params?.height) || 150;
+        const fck = Number(body.params?.fck) || 24;
+        const dF = fck <= 40 ? 4 : fck >= 60 ? 6 : 4 + ((fck - 40) / 20) * 2;
+        const Ec = 8500 * Math.cbrt(fck + dF); // MPa
+        const nu = Number(body.params?.slabPoisson) || 0.18;
+        const wD = (Number(result.loads.slab?.D_kN) || 0) / (Number(result.loads.slab?.areaM2) || 1); // kN/m²
+        const wL = Number(result.loads.usage?.live_kNm2) || 0;
+        const NX = 16;
+        const solve = (q_kPa: number) => mindlinPlateSolve({
+          nx: NX, ny: NX, lx: spanX / NX, ly: spanY / NX,
+          E: Ec, nu, thickness: t, pressure: q_kPa / 1000, // kPa → N/mm² ×10⁻³
+        }).maxDeflection;
+        const limitLn = Number(body.params?.slabDeflLimitL) || 360;   // 활하중 관례 L/360
+        const limitTn = Number(body.params?.slabDeflLimitT) || 240;   // 전체 관례 L/240
+        const Lshort = Math.min(spanX, spanY);
+        const dL = solve(wL), dT = solve(wD + wL);
+        (result as Record<string, unknown>).slabSLS = {
+          panelMm: `${Math.round(spanX)}×${Math.round(spanY)} t${t}`,
+          Ec_MPa: Math.round(Ec), nu, method: `Mindlin 판 FEM ${NX}×${NX} · 4변 단순지지 · 탄성 총단면`,
+          live: { delta_mm: +dL.toFixed(2), limit_mm: +(Lshort / limitLn).toFixed(1), spec: `L/${limitLn}`, pass: dL <= Lshort / limitLn },
+          total: { delta_mm: +dT.toFixed(2), limit_mm: +(Lshort / limitTn).toFixed(1), spec: `L/${limitTn}`, pass: dT <= Lshort / limitTn },
+          note: '균열 유효강성(Ie)·크리프 장기처짐 미반영(탄성 즉시처짐) — 장기는 수 배 가능. 한계값은 관례(입력 가능)·KDS 14 20 30 상세검토 별도.',
+        };
+      } catch { /* 슬래브 검토 실패는 체인을 막지 않음 */ }
+    }
+
     // format=html → 인쇄양식 리포트 HTML 동봉 (설계 패키지 문서들과 동일 스타일)
     if (body.format === 'html') {
       const rpt = await loadRpt();

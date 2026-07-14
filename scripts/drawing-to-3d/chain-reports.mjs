@@ -44,6 +44,13 @@ export function loadPathReport(r, { title = '하중경로 검증' } = {}) {
 ${r.beams[0]?.checks ? checksTable(r.beams[0].checks) : ''}
 <h2>③ 기둥 검토 (rc_column_pm)</h2><table><tr><th>부재</th><th>단면</th><th>Pu kN</th><th>P사용 kN</th><th>Mu</th><th>판정</th></tr>${cols}</table>
 <h2>④ 기초 검토 (isolated_footing)</h2>${ftg}
+${r.slabSLS ? `<h2>④b 슬래브 처짐 SLS (Mindlin 판 FEM)</h2>
+<table><tr><th>패널</th><th>Ec</th><th>활하중 δ</th><th>전체 δ</th><th>판정</th></tr>
+<tr><td>${esc(r.slabSLS.panelMm)}</td><td>${r.slabSLS.Ec_MPa} MPa</td>
+<td>${f(r.slabSLS.live.delta_mm)} / ${f(r.slabSLS.live.limit_mm, 1)}mm (${esc(r.slabSLS.live.spec)})</td>
+<td>${f(r.slabSLS.total.delta_mm)} / ${f(r.slabSLS.total.limit_mm, 1)}mm (${esc(r.slabSLS.total.spec)})</td>
+<td>${V(r.slabSLS.live.pass && r.slabSLS.total.pass ? 'PASS' : 'FAIL')}</td></tr></table>
+<div class="note">${esc(r.slabSLS.method)} · ${esc(r.slabSLS.note)}</div>` : ''}
 ${r.seismic && !r.seismic.error ? `<h2>⑤ 등가정적 지진 (KDS 41 17 00 §7.2)</h2>
 <div class="kpi"><div><b>${f(r.seismic.V_kN, 1)} kN</b><span>밑면전단 V (Cs ${r.seismic.Cs} — ${esc(r.seismic.governing)})</span></div>
 <div><b>${f(r.seismic.SDS, 3)} / ${f(r.seismic.SD1, 3)}</b><span>SDS / SD1</span></div>

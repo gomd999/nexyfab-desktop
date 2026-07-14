@@ -100,6 +100,12 @@
       "negExteriorColumn": 16,
       "shearFirstInteriorFactor": 1.15,
       "note": "ln=순경간. 부모멘트는 받침부면 기준."
+    },
+    "Ec": {
+      "formula": "Ec = 8500·∛(fck+Δf) MPa (보통중량, 식 4.3-2)",
+      "deltaF": "fck≤40→4 · ≥60→6 · 직선보간",
+      "poisson": "원문 미규정 — 통상 0.15~0.20 (입력, 기본 0.18)",
+      "ref": "KDS 14 20 10:2022 §4.3.3 — 원문 대조(수식 GIF 판독) 2026-07-14"
     }
   },
   "civil": {
