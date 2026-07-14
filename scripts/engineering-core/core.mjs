@@ -23,8 +23,12 @@ import drainageNetwork from './calculators/drainage-network.mjs';
 import girderLine from './calculators/girder-line.mjs';
 import slopeInfinite from './calculators/slope-infinite.mjs';
 import fatigueGoodman from './calculators/fatigue-goodman.mjs';
+import vibrationBasic from './calculators/vibration-basic.mjs';
+import thermalStress from './calculators/thermal-stress.mjs';
+import acousticTl from './calculators/acoustic-tl.mjs';
+import ductSizing from './calculators/duct-sizing.mjs';
 
-export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman];
+export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman, vibrationBasic, thermalStress, acousticTl, ductSizing];
 
 /** Minimal JSON-Schema-subset validator (type/required/properties/minimum/maximum/enum). */
 export function validateInput(schema, input) {

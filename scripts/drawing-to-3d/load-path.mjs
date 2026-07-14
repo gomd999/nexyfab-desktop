@@ -350,7 +350,17 @@ export function loadPathCheck(assembly, params = {}) {
             pass: design !== null ? design <= limitRatio * dr.h_m : null,
           };
         });
+        // P-Δ 안정계수 θ = Px·Δ/(Vx·hsx·Cd) (KDS 41 17 00 §7.2.8.2 원문) — θ≤0.1 무시 가능
+        const gravPerFloor = (wD_m2 + beamSelfPerM2 + wL_m2) * slabAreaM2 + colSelfD * xs.length * ys.length; // 층당 수직하중(D+L 근사 명시)
+        const pdelta = worse.d.drifts.map((dr, i) => {
+          const Px = gravPerFloor * (nf - i); // 해당층 이상 누적
+          const Vx = seis.storyShear_kN[i];
+          const theta = Cd > 0 && Vx > 0 ? (Px * dr.drift_m) / (Vx * dr.h_m * Cd) : null;
+          return { story: i + 1, theta: theta !== null ? +theta.toFixed(4) : null, negligible: theta !== null ? theta <= 0.1 : null };
+        });
+        const thetaMax = Math.max(...pdelta.map((p) => p.theta ?? 0));
         matrixRes = {
+          pdelta: { rows: pdelta, thetaMax: +thetaMax.toFixed(4), note: thetaMax <= 0.1 ? 'θ≤0.1 전층 — P-Δ 무시 가능(§7.2.8.2(1))' : 'θ>0.1 층 존재 — 증폭계수 1/(1−θ) 적용 또는 P-Δ 해석 필요(§7.2.8.2(3)) — 자동 증폭은 후속(명시)' },
           dir: worse.dir, McolMax_kNm: +worse.d.McolMax.toFixed(1), MbeamMax_kNm: +worse.d.MbeamMax.toFixed(1),
           roof_mm: worse.d.roof_mm, drifts: driftRows,
           driftLimit: `${limitRatio}·hsx (표 8.2-1, 내진 ${sp.driftClass ?? 'I'}등급)`,
