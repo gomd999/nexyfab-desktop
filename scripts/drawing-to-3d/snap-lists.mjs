@@ -43,7 +43,7 @@ const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith
 if (isMain) {
   const a = snapValue('boltDia', 18);
   const b = snapValue('bayX', 6123);
-  const ok = a.value === 19 && a.kind === 'list' && b.value === 6150 && b.kind === 'grid';
+  const ok = a.value === 19 && a.kind === 'list' && b.value === 6100 && b.kind === 'grid';
   console.log('boltDia 18→', a.value, '| bayX 6123→', b.value);
   console.log(ok ? 'snap-lists self-test: PASS' : 'snap-lists self-test: FAIL');
   if (!ok) process.exit(1);

@@ -9,8 +9,13 @@
  * 어셈블리 템플릿이 없는 분야(mech·rack·civil)에서는 렌더되지 않는다.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { isKorean, toIsoLang } from '@/lib/i18n/normalize';
+import type { PickEvent, PickMode } from './AssemblyViewer3D';
+
+// 3D 픽킹 뷰어 — three 청크 분리(ssr 불가·클라 전용)
+const AssemblyViewer3D = dynamic(() => import('./AssemblyViewer3D'), { ssr: false });
 
 // ─── i18n dictionary (6-lang, identical key sets — see AIAdvisor.tsx pattern) ──
 
@@ -148,6 +153,35 @@ const dict = {
     lsDemand: '반력',
     lsCapacity: '내력',
     lsRatio: '비율',
+    vwTitle: '3D 뷰어 — 면 클릭 편집',
+    vwSub: '면=파라미터 매핑 · 수정 시 자동 재검증',
+    vwHide: '접기',
+    vwShow: '펼치기',
+    fpHint: '부재의 면을 클릭하면 매핑된 파라미터 편집이 열립니다.',
+    fpFace: '면',
+    fpParam: '파라미터',
+    fpReadOnly: '부품 개별 치수 — 읽기 전용 (템플릿 파라미터 아님)',
+    fpSection: '복합 단면 면 — 편집 가능한 템플릿 파라미터만 표시합니다.',
+    fpUnmapped: '이 면은 파라미터 매핑이 없습니다 — 비검증 직접편집(P4)은 전문가 CAD에서.',
+    fpReverify: '수정 반영 → 재검증 중…',
+    fpMapFail: '면 매핑 조회 실패: ',
+    pmFace: '면',
+    pmEdge: '모서리',
+    pmDist: '거리',
+    edHint: '모서리 = 두 치수의 교차 — 수정할 치수를 선택하세요.',
+    dsHint: '거리 모드 — 부재 두 개를 차례로 클릭하세요.',
+    dsPickB: '기준 부재 선택됨 — 두 번째 부재를 클릭하세요.',
+    dsGap: '중심 간격',
+    dsDerived: '이 간격은 배치 수에서 파생 — 개수 파라미터를 수정하세요.',
+    dsNone: '거리 매핑 없음 — 이 부재 쌍의 간격은 템플릿 파라미터가 아닙니다.',
+    nlPh: '말로 수정 — 예: "3500으로", "10% 늘려", "bayX 200 줄여"',
+    nlSend: '적용',
+    nlBusy: '해석 중…',
+    nlSrcRegex: '정규식',
+    nlSrcAi: 'AI',
+    nlApplied: '적용됨: ',
+    nlFail: '해석 실패: ',
+    vcTitle: '음성 입력',
   },
   en: {
     tplTitle: 'Assembly template',
@@ -277,6 +311,35 @@ const dict = {
     lsDemand: 'reaction',
     lsCapacity: 'capacity',
     lsRatio: 'ratio',
+    vwTitle: '3D viewer — click a face to edit',
+    vwSub: 'face=parameter mapping · auto re-verify on change',
+    vwHide: 'Collapse',
+    vwShow: 'Expand',
+    fpHint: 'Click a face of a member to open its mapped parameter.',
+    fpFace: 'face',
+    fpParam: 'parameter',
+    fpReadOnly: 'Per-part dimension — read-only (not a template parameter)',
+    fpSection: 'Composite section face — only editable template parameters are shown.',
+    fpUnmapped: 'This face has no parameter mapping — unverified direct editing (P4) lives in the expert CAD.',
+    fpReverify: 'Applying change → re-verifying…',
+    fpMapFail: 'Face mapping lookup failed: ',
+    pmFace: 'Face',
+    pmEdge: 'Edge',
+    pmDist: 'Distance',
+    edHint: 'An edge crosses two dimensions — choose the one to edit.',
+    dsHint: 'Distance mode — click two members in turn.',
+    dsPickB: 'First member selected — click the second one.',
+    dsGap: 'center spacing',
+    dsDerived: 'This spacing is derived from the layout count — edit the count parameter.',
+    dsNone: "No distance mapping — this pair's spacing is not a template parameter.",
+    nlPh: 'Edit by words — e.g. "set to 3500", "increase 10%", "reduce bayX by 200"',
+    nlSend: 'Apply',
+    nlBusy: 'Interpreting…',
+    nlSrcRegex: 'regex',
+    nlSrcAi: 'AI',
+    nlApplied: 'Applied: ',
+    nlFail: 'Interpretation failed: ',
+    vcTitle: 'Voice input',
   },
   ja: {
     tplTitle: 'アセンブリテンプレート',
@@ -406,6 +469,35 @@ const dict = {
     lsDemand: '反力',
     lsCapacity: '耐力',
     lsRatio: '比率',
+    vwTitle: '3Dビューア — 面をクリックして編集',
+    vwSub: '面=パラメータマッピング · 変更時に自動再検証',
+    vwHide: '折りたたむ',
+    vwShow: '展開',
+    fpHint: '部材の面をクリックすると、マッピングされたパラメータ編集が開きます。',
+    fpFace: '面',
+    fpParam: 'パラメータ',
+    fpReadOnly: '部品個別寸法 — 読み取り専用（テンプレートパラメータではありません）',
+    fpSection: '複合断面の面 — 編集可能なテンプレートパラメータのみ表示します。',
+    fpUnmapped: 'この面にはパラメータマッピングがありません — 非検証の直接編集（P4）はエキスパートCADで。',
+    fpReverify: '変更反映 → 再検証中…',
+    fpMapFail: '面マッピングの取得に失敗: ',
+    pmFace: '面',
+    pmEdge: 'エッジ',
+    pmDist: '距離',
+    edHint: 'エッジは2つの寸法の交差 — 編集する寸法を選択してください。',
+    dsHint: '距離モード — 部材を2つ順にクリックしてください。',
+    dsPickB: '基準部材を選択済み — 2つ目の部材をクリックしてください。',
+    dsGap: '中心間隔',
+    dsDerived: 'この間隔は配置数から導出 — 個数パラメータを修正してください。',
+    dsNone: '距離マッピングなし — この部材ペアの間隔はテンプレートパラメータではありません。',
+    nlPh: '言葉で修正 — 例:「3500に」「10%増やす」「bayXを200減らす」',
+    nlSend: '適用',
+    nlBusy: '解釈中…',
+    nlSrcRegex: '正規表現',
+    nlSrcAi: 'AI',
+    nlApplied: '適用済み: ',
+    nlFail: '解釈失敗: ',
+    vcTitle: '音声入力',
   },
   zh: {
     tplTitle: '装配模板',
@@ -535,6 +627,35 @@ const dict = {
     lsDemand: '反力',
     lsCapacity: '承载力',
     lsRatio: '比值',
+    vwTitle: '3D查看器 — 点击面进行编辑',
+    vwSub: '面=参数映射 · 修改后自动重新验证',
+    vwHide: '收起',
+    vwShow: '展开',
+    fpHint: '点击构件的面即可打开映射的参数编辑。',
+    fpFace: '面',
+    fpParam: '参数',
+    fpReadOnly: '零件单独尺寸 — 只读（非模板参数）',
+    fpSection: '复合截面的面 — 仅显示可编辑的模板参数。',
+    fpUnmapped: '该面没有参数映射 — 非验证直接编辑（P4）请在专家CAD中进行。',
+    fpReverify: '应用修改 → 重新验证中…',
+    fpMapFail: '面映射查询失败: ',
+    pmFace: '面',
+    pmEdge: '棱边',
+    pmDist: '距离',
+    edHint: '棱边是两个尺寸的交线 — 请选择要修改的尺寸。',
+    dsHint: '距离模式 — 请依次点击两个构件。',
+    dsPickB: '已选第一个构件 — 请点击第二个构件。',
+    dsGap: '中心间距',
+    dsDerived: '该间距由布置数量导出 — 请修改数量参数。',
+    dsNone: '无距离映射 — 该构件对的间距不是模板参数。',
+    nlPh: '用语言修改 — 例: "改为3500"、"增加10%"、"bayX减少200"',
+    nlSend: '应用',
+    nlBusy: '解析中…',
+    nlSrcRegex: '正则',
+    nlSrcAi: 'AI',
+    nlApplied: '已应用: ',
+    nlFail: '解析失败: ',
+    vcTitle: '语音输入',
   },
   es: {
     tplTitle: 'Plantilla de ensamblaje',
@@ -664,6 +785,35 @@ const dict = {
     lsDemand: 'reacción',
     lsCapacity: 'capacidad',
     lsRatio: 'relación',
+    vwTitle: 'Visor 3D — haga clic en una cara para editar',
+    vwSub: 'cara=mapeo de parámetros · reverificación automática al cambiar',
+    vwHide: 'Plegar',
+    vwShow: 'Desplegar',
+    fpHint: 'Haga clic en una cara de la pieza para abrir su parámetro mapeado.',
+    fpFace: 'cara',
+    fpParam: 'parámetro',
+    fpReadOnly: 'Dimensión por pieza — solo lectura (no es un parámetro de plantilla)',
+    fpSection: 'Cara de sección compuesta — solo se muestran los parámetros de plantilla editables.',
+    fpUnmapped: 'Esta cara no tiene mapeo de parámetros — la edición directa sin verificar (P4) está en el CAD experto.',
+    fpReverify: 'Aplicando cambio → reverificando…',
+    fpMapFail: 'Fallo al consultar el mapeo de la cara: ',
+    pmFace: 'Cara',
+    pmEdge: 'Arista',
+    pmDist: 'Distancia',
+    edHint: 'Una arista cruza dos cotas — elija la que desea editar.',
+    dsHint: 'Modo distancia — haga clic en dos piezas sucesivamente.',
+    dsPickB: 'Primera pieza seleccionada — haga clic en la segunda.',
+    dsGap: 'separación entre centros',
+    dsDerived: 'Esta separación se deriva del número de elementos — edite el parámetro de cantidad.',
+    dsNone: 'Sin mapeo de distancia — la separación de este par no es un parámetro de plantilla.',
+    nlPh: 'Editar con palabras — p. ej. "a 3500", "aumenta 10%", "reduce bayX 200"',
+    nlSend: 'Aplicar',
+    nlBusy: 'Interpretando…',
+    nlSrcRegex: 'regex',
+    nlSrcAi: 'IA',
+    nlApplied: 'Aplicado: ',
+    nlFail: 'Fallo de interpretación: ',
+    vcTitle: 'Entrada de voz',
   },
   ar: {
     tplTitle: 'قالب التجميع',
@@ -793,13 +943,58 @@ const dict = {
     lsDemand: 'رد الفعل',
     lsCapacity: 'المقاومة',
     lsRatio: 'النسبة',
+    vwTitle: 'عارض ثلاثي الأبعاد — انقر على وجه للتحرير',
+    vwSub: 'الوجه=ربط المعاملات · إعادة تحقق تلقائية عند التعديل',
+    vwHide: 'طيّ',
+    vwShow: 'توسيع',
+    fpHint: 'انقر على وجه العنصر لفتح المعامل المرتبط به.',
+    fpFace: 'وجه',
+    fpParam: 'معامل',
+    fpReadOnly: 'بُعد خاص بالجزء — للقراءة فقط (ليس معامل قالب)',
+    fpSection: 'وجه مقطع مركب — تُعرض معاملات القالب القابلة للتحرير فقط.',
+    fpUnmapped: 'لا يوجد ربط معاملات لهذا الوجه — التحرير المباشر غير المتحقق (P4) في CAD الخبراء.',
+    fpReverify: 'تطبيق التعديل → إعادة التحقق جارية…',
+    fpMapFail: 'فشل استعلام ربط الوجه: ',
+    pmFace: 'وجه',
+    pmEdge: 'حافة',
+    pmDist: 'مسافة',
+    edHint: 'الحافة تقاطع بُعدين — اختر البُعد المراد تحريره.',
+    dsHint: 'وضع المسافة — انقر على عنصرين بالتتابع.',
+    dsPickB: 'تم اختيار العنصر الأول — انقر على العنصر الثاني.',
+    dsGap: 'التباعد المركزي',
+    dsDerived: 'هذا التباعد مشتق من عدد التوزيع — عدّل معامل العدد.',
+    dsNone: 'لا يوجد ربط مسافة — تباعد هذا الزوج ليس معامل قالب.',
+    nlPh: 'التعديل بالكلام — مثال: "اجعلها 3500"، "زد 10%"',
+    nlSend: 'تطبيق',
+    nlBusy: 'جارٍ التفسير…',
+    nlSrcRegex: 'تعبير نمطي',
+    nlSrcAi: 'ذكاء اصطناعي',
+    nlApplied: 'تم التطبيق: ',
+    nlFail: 'فشل التفسير: ',
+    vcTitle: 'إدخال صوتي',
   },
 } as const;
+
+// 거리 픽킹 매핑 — scripts/drawing-to-3d/face-param-map.mjs DISTANCE_MAP 미러 (동기화 유지 — 라우트 추가 없이 클라 판정)
+const DISTANCE_MAP: Record<string, Record<string, { x?: string; y?: string } | null>> = {
+  building: { column: { x: 'bayX', y: 'bayY' }, beam: { x: 'bayX', y: 'bayY' } },
+  bridge: { girder: { y: 'girderSpacing' } },
+  landscape: { joist: { x: 'joistSpacing', y: 'joistSpacing' }, post: { x: 'width', y: 'depth' } },
+  interior: { table: null }, // 테이블 간격은 rows/cols 파생 — 개별 간격 파라미터 없음(정직)
+};
+
+// Web Speech API 언어 — 현재 로케일 기준(기본 ko-KR)
+const VOICE_LANG: Record<string, string> = { ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', zh: 'zh-CN', es: 'es-ES', ar: 'ar-SA' };
 
 interface ParamSpec { name: string; labelKo: string; unit: string; default: number; min: number; max: number }
 interface Template { domain: string; id: string; labelKo: string; labelEn: string; params: ParamSpec[] }
 
-interface AssemblyPart { id?: string; type?: string; material?: string; role?: string }
+interface AssemblyPart {
+  id?: string; type?: string; material?: string; role?: string;
+  params?: Record<string, unknown>;
+  at?: { tx?: number; ty?: number; tz?: number; rx?: number; ry?: number; rz?: number };
+  aabb?: { min: number[]; max: number[] };
+}
 interface Structural { totalMassKg?: number; warnings?: string[]; ok?: boolean }
 interface Usage { key: string; kNm2: number; label: string }
 interface IntResp {
@@ -865,6 +1060,40 @@ export default function AssemblyPresetPanel({
   const [chainP, setChainP] = useState<Record<string, number | string>>({ usage: 'office', fck: 24, fy: 400, beamAs: 1548, beamAv: 142.7, beamS: 250, colAst: 3097, fB: 2200, fL: 2200, fT: 500, fD: 420, qAllow: 200, seisZone: '', seisSite: 'S4', seisR: 5, windV0: '', windExposure: 'C', windTerrain: 'normal' });
   const [chain, setChain] = useState<ChainResp | null>(null);
   const [chainBusy, setChainBusy] = useState(false);
+
+  // P1+P2 — "AI가 초안을 만들고, 사람이 면을 잡아 고친다": 뷰어 픽킹 + 디바운스 리빌드 + 자동 재검증
+  const [viewerOpen, setViewerOpen] = useState(true);
+  const [pickMode, setPickMode] = useState<PickMode>('face');
+  const [pick, setPick] = useState<PickEvent | null>(null);
+  const [edgeSel, setEdgeSel] = useState<string | null>(null); // 모서리 후보 중 선택된 파라미터
+  const handlePick = useCallback((ev: PickEvent) => {
+    setPick(ev);
+    setEdgeSel(ev.kind === 'edge' && ev.candidates.length === 1 ? ev.candidates[0].param : null);
+  }, []);
+  // 말로 수정 (NL edit) — /api/nexyfab/drawing/edit-intent (서버=문장→구조화 변환만, 적용·클램프=클라)
+  const [nlText, setNlText] = useState('');
+  const [nlBusy, setNlBusy] = useState(false);
+  const [nlMsg, setNlMsg] = useState<{ ok: true; source?: string; note?: string; summary: string } | { ok: false; error: string } | null>(null);
+  // 음성 입력 (Web Speech API — 미지원 브라우저는 버튼 숨김)
+  const [voiceAvail, setVoiceAvail] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(false);
+  const recRef = useRef<{ stop: () => void } | null>(null);
+  useEffect(() => {
+    const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+    setVoiceAvail(!!(w.SpeechRecognition ?? w.webkitSpeechRecognition));
+    return () => { try { recRef.current?.stop(); } catch { /* noop */ } };
+  }, []);
+  const generateRef = useRef<() => Promise<void>>(async () => {});
+  const reverifyPending = useRef(false);
+  const rebuildTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (rebuildTimer.current) clearTimeout(rebuildTimer.current); }, []);
+  const scheduleRebuild = useCallback(() => {
+    if (rebuildTimer.current) clearTimeout(rebuildTimer.current);
+    rebuildTimer.current = setTimeout(() => {
+      reverifyPending.current = true; // 리빌드 완료(built 갱신) 후 도메인 체인 자동 재실행
+      void generateRef.current();
+    }, 600);
+  }, []);
 
   useEffect(() => {
     if (domain !== 'building') return;
@@ -1062,6 +1291,9 @@ export default function AssemblyPresetPanel({
     setParams(Object.fromEntries(tpl.params.map((p) => [p.name, p.default])));
     setMsg(null);
     setBuilt(null);
+    setPick(null);
+    setEdgeSel(null);
+    setNlMsg(null);
   }, [tpl]);
 
   const generate = useCallback(async () => {
@@ -1091,6 +1323,19 @@ export default function AssemblyPresetPanel({
       setBusy(false);
     }
   }, [tid, params, onApply, t, domain]);
+
+  // 면 편집 디바운스 리빌드가 항상 최신 generate(최신 params 클로저)를 부르도록 유지
+  useEffect(() => { generateRef.current = generate; }, [generate]);
+
+  // P1 "수정하면 검증이 따라온다" — 면 편집 리빌드 완료 시 해당 도메인 체인 자동 재실행
+  useEffect(() => {
+    if (!built?.assembly || !reverifyPending.current) return;
+    reverifyPending.current = false;
+    if (domain === 'building') void runChain();
+    else if (domain === 'landscape') void runLandscape();
+    else if (domain === 'interior') void runInterior();
+    else if (domain === 'civil') void runCivil();
+  }, [built, domain, runChain, runLandscape, runInterior, runCivil]);
 
   const downloadPackage = useCallback(async () => {
     if (!built?.assembly) return;
@@ -1126,6 +1371,123 @@ export default function AssemblyPresetPanel({
   if (!templates) return null;
 
   const warnings = built?.structural?.warnings ?? [];
+
+  // ── 면 편집(P2) 헬퍼 — 템플릿 파라미터 스텝 편집(디바운스 리빌드 → 자동 재검증 연동) ──
+  const stepFor = (v: number) => (Math.abs(v) < 1000 ? 10 : Math.abs(v) < 10000 ? 50 : 100);
+  const editParam = (name: string, next: number) => {
+    if (!Number.isFinite(next)) return;
+    setParams((s) => ({ ...s, [name]: next }));
+    scheduleRebuild();
+  };
+  const renderParamEditor = (name: string) => {
+    const spec = tpl?.params.find((p) => p.name === name) ?? null;
+    const cur = Number(params[name] ?? spec?.default ?? 0);
+    const clampV = (v: number) => (spec ? Math.min(spec.max, Math.max(spec.min, v)) : v);
+    return (
+      <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}>
+        <span style={{ fontSize: 10.5, flex: 1, color: 'var(--nx-text-2, #46505e)' }}>
+          {spec?.labelKo ?? name}{spec?.unit ? ` (${spec.unit})` : ''} · <code style={{ fontSize: 10 }}>{name}</code>
+        </span>
+        <button type="button" onClick={() => editParam(name, clampV(cur - stepFor(cur)))} style={stepBtn}>−</button>
+        <input
+          type="number" inputMode="decimal" value={cur}
+          onChange={(e) => editParam(name, Number(e.target.value))}
+          style={{ ...inpStyle, width: 84 }}
+        />
+        <button type="button" onClick={() => editParam(name, clampV(cur + stepFor(cur)))} style={stepBtn}>+</button>
+      </div>
+    );
+  };
+  const isTplParam = (name?: string): name is string => !!name && Object.prototype.hasOwnProperty.call(params, name);
+  const pickedPart = pick && (pick.kind === 'face' || pick.kind === 'edge')
+    ? (built?.assembly?.parts?.find((p) => p.id === pick.partId) ?? null)
+    : null;
+  const roParam = pick?.kind === 'face' ? pick.mapResult.param : pick?.kind === 'edge' ? (edgeSel ?? undefined) : undefined;
+  const roValRaw = roParam ? pickedPart?.params?.[roParam] : undefined;
+  const roVal = typeof roValRaw === 'number' ? String(roValRaw) : '—';
+  const anyBusy = busy || chainBusy || lsBusy || intBusy || cvBusy;
+
+  // 거리 픽킹 판정 — DISTANCE_MAP 미러 (role 동일 + 축 매핑 존재 시에만 편집)
+  const distInfo = (() => {
+    if (pick?.kind !== 'dist') return null;
+    const role = pick.roleA;
+    if (!role || pick.roleA !== pick.roleB) return { kind: 'none' as const };
+    const d = DISTANCE_MAP[domain];
+    if (!d || !Object.prototype.hasOwnProperty.call(d, role)) return { kind: 'none' as const };
+    const m = d[role];
+    if (m === null) return { kind: 'derived' as const };
+    const param = m[pick.axis];
+    return param ? { kind: 'param' as const, param } : { kind: 'none' as const };
+  })();
+
+  // NL 편집의 selectedParam — 현재 픽킹에서 잡힌 파라미터(있으면)
+  const selectedParam =
+    pick?.kind === 'face' ? (pick.mapResult.ok ? pick.mapResult.param : undefined)
+    : pick?.kind === 'edge' ? (edgeSel ?? undefined)
+    : pick?.kind === 'dist' ? (distInfo?.kind === 'param' ? distInfo.param : undefined)
+    : undefined;
+
+  // 말로 수정 — 서버(정규식→LLM 폴백)는 구조화 편집만 반환, 적용·min/max 클램프는 여기서(결정론)
+  const sendNl = async () => {
+    const utterance = nlText.trim();
+    if (!utterance || !tpl || nlBusy) return;
+    setNlBusy(true); setNlMsg(null);
+    try {
+      const allowedParams = tpl.params.map((p) => ({ name: p.name, current: Number(params[p.name] ?? p.default), min: p.min, max: p.max, unit: p.unit }));
+      const res = await fetch('/api/nexyfab/drawing/edit-intent/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ utterance, allowedParams, ...(selectedParam ? { selectedParam } : {}) }),
+      });
+      const j = (await res.json()) as { ok?: boolean; edits?: Array<{ param: string; op: 'set' | 'delta'; value: number }>; source?: string; note?: string; error?: string };
+      if (!j.ok || !j.edits?.length) { setNlMsg({ ok: false, error: j.error ?? '—' }); return; }
+      const next = { ...params };
+      const applied: string[] = [];
+      for (const e of j.edits) {
+        const spec = tpl.params.find((p) => p.name === e.param);
+        if (!spec || !Number.isFinite(e.value)) continue;
+        const cur = Number(next[e.param] ?? spec.default);
+        const raw = e.op === 'set' ? e.value : cur + e.value;
+        next[e.param] = Math.min(spec.max, Math.max(spec.min, raw));
+        applied.push(`${e.param} ${e.op === 'set' ? '→' : 'Δ'}${e.value}`);
+      }
+      if (!applied.length) { setNlMsg({ ok: false, error: j.error ?? '—' }); return; }
+      setParams(next);
+      scheduleRebuild();
+      setNlMsg({ ok: true, source: j.source, note: j.note, summary: applied.join(' · ') });
+      setNlText('');
+    } catch (e) {
+      setNlMsg({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setNlBusy(false);
+    }
+  };
+
+  // 음성 입력 — transcript는 입력창을 채울 뿐, 자동 전송하지 않음(확인 후 적용)
+  const startVoice = () => {
+    interface SRec {
+      lang: string; interimResults: boolean; maxAlternatives: number;
+      onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+      onend: (() => void) | null; onerror: (() => void) | null;
+      start: () => void; stop: () => void;
+    }
+    const w = window as unknown as { SpeechRecognition?: new () => SRec; webkitSpeechRecognition?: new () => SRec };
+    const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!Ctor) return;
+    if (voiceOn) { try { recRef.current?.stop(); } catch { /* noop */ } setVoiceOn(false); return; }
+    const rec = new Ctor();
+    rec.lang = VOICE_LANG[toIsoLang(lang)] ?? 'ko-KR';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = (ev) => {
+      const tr = ev.results[0]?.[0]?.transcript;
+      if (tr) setNlText((s) => (s ? s + ' ' : '') + tr);
+    };
+    rec.onend = () => setVoiceOn(false);
+    rec.onerror = () => setVoiceOn(false);
+    recRef.current = rec;
+    setVoiceOn(true);
+    rec.start();
+  };
 
   return (
     <div style={{ marginBottom: 12, padding: 12, borderRadius: 8, background: 'var(--nx-accent-soft, #eef4ff)', border: '1px solid var(--nx-border, #dfe3e8)' }}>
@@ -1215,6 +1577,163 @@ export default function AssemblyPresetPanel({
       {warnings.length > 0 && (
         <div style={{ marginTop: 6, fontSize: 11, color: '#991b1b' }}>
           {warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
+        </div>
+      )}
+
+      {/* P1+P2 — 3D 픽킹 뷰어: AI가 초안, 사람이 면을 잡아 고친다 (면=파라미터 매핑 · 수정 시 자동 재검증) */}
+      {built?.assembly?.parts && built.assembly.parts.length > 0 && (
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
+          <button type="button" onClick={() => setViewerOpen((v) => !v)} style={{ ...rptBtn, width: '100%', marginTop: 0, textAlign: 'left' }}>
+            🧊 {t.vwTitle}
+            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>{t.vwSub}</span>
+            <span style={{ float: 'right' }}>{viewerOpen ? t.vwHide : t.vwShow}</span>
+          </button>
+          {viewerOpen && (
+            <>
+              {/* 픽킹 모드: 면 / 모서리(Alt+클릭도 가능) / 거리 */}
+              <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+                {(['face', 'edge', 'dist'] as const).map((m) => (
+                  <button
+                    key={m} type="button"
+                    onClick={() => { setPickMode(m); setPick(null); setEdgeSel(null); }}
+                    style={{ ...stepBtn, width: 'auto', padding: '0 10px', fontSize: 11, ...(pickMode === m ? { background: 'var(--nx-accent, #2563eb)', color: '#fff', border: '1px solid var(--nx-accent, #2563eb)' } : {}) }}
+                  >
+                    {m === 'face' ? t.pmFace : m === 'edge' ? t.pmEdge : t.pmDist}
+                  </button>
+                ))}
+              </div>
+              <AssemblyViewer3D parts={built.assembly.parts} onPick={handlePick} mode={pickMode} height={260} />
+              {(!pick || pick.kind === 'dist-pending') && (
+                <div style={{ marginTop: 5, fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)' }}>
+                  {pick?.kind === 'dist-pending' ? t.dsPickB : pickMode === 'dist' ? t.dsHint : t.fpHint}
+                </div>
+              )}
+              {pick && pick.kind !== 'dist-pending' && (
+                <div style={{ marginTop: 6, padding: 8, borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', fontSize: 11 }}>
+                  {pick.kind === 'face' && (
+                    <>
+                      <div style={{ fontWeight: 800 }}>
+                        {pick.partId} <span style={{ fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>({pick.type}) · {t.fpFace} {pick.face}</span>
+                      </div>
+                      {pick.mapResult.ok && pick.mapResult.param && (
+                        isTplParam(pick.mapResult.param) ? (
+                          renderParamEditor(pick.mapResult.param)
+                        ) : (
+                          <div style={{ marginTop: 4 }}>
+                            {t.fpParam} <code>{pick.mapResult.param}</code> = {roVal}
+                            <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{t.fpReadOnly}</div>
+                          </div>
+                        )
+                      )}
+                      {pick.mapResult.reason === 'section' && (
+                        <div style={{ marginTop: 4 }}>
+                          <div style={{ fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)' }}>{t.fpSection}</div>
+                          {pick.mapResult.note && <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{pick.mapResult.note}</div>}
+                          {(pick.mapResult.sectionParams ?? []).filter((sp) => isTplParam(sp)).map((sp) => renderParamEditor(sp))}
+                        </div>
+                      )}
+                      {pick.mapResult.ok === false && pick.mapResult.reason && pick.mapResult.reason !== 'section' && (
+                        <div style={{ marginTop: 4, fontSize: 10.5, color: '#b45309' }}>{t.fpUnmapped}</div>
+                      )}
+                      {!pick.mapResult.ok && !pick.mapResult.reason && pick.mapResult.error && (
+                        <div style={{ marginTop: 4, fontSize: 10.5, color: '#991b1b' }}>{t.fpMapFail}{pick.mapResult.error}</div>
+                      )}
+                    </>
+                  )}
+                  {pick.kind === 'edge' && (
+                    <>
+                      <div style={{ fontWeight: 800 }}>
+                        {pick.partId} <span style={{ fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>({pick.type}) · {t.pmEdge} {pick.faces[0]}×{pick.faces[1]}</span>
+                      </div>
+                      {pick.candidates.length > 0 && (
+                        <>
+                          <div style={{ marginTop: 3, fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)' }}>{t.edHint}</div>
+                          <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+                            {pick.candidates.map((c) => (
+                              <button
+                                key={c.param} type="button" onClick={() => setEdgeSel(c.param)}
+                                style={{ ...stepBtn, width: 'auto', height: 22, padding: '0 8px', fontSize: 10.5, ...(edgeSel === c.param ? { background: 'var(--nx-accent, #2563eb)', color: '#fff', border: '1px solid var(--nx-accent, #2563eb)' } : {}) }}
+                              >
+                                {c.param} ({c.face})
+                              </button>
+                            ))}
+                          </div>
+                          {edgeSel && (isTplParam(edgeSel) ? renderParamEditor(edgeSel) : (
+                            <div style={{ marginTop: 4 }}>
+                              {t.fpParam} <code>{edgeSel}</code> = {roVal}
+                              <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{t.fpReadOnly}</div>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                      {pick.candidates.length === 0 && pick.sectionParams && (
+                        <div style={{ marginTop: 4 }}>
+                          <div style={{ fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)' }}>{t.fpSection}</div>
+                          {pick.note && <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{pick.note}</div>}
+                          {pick.sectionParams.filter((sp) => isTplParam(sp)).map((sp) => renderParamEditor(sp))}
+                        </div>
+                      )}
+                      {pick.candidates.length === 0 && !pick.sectionParams && (
+                        <div style={{ marginTop: 4, fontSize: 10.5, color: '#b45309' }}>{t.fpUnmapped}</div>
+                      )}
+                    </>
+                  )}
+                  {pick.kind === 'dist' && (
+                    <>
+                      <div style={{ fontWeight: 800 }}>
+                        {pick.aId} ↔ {pick.bId} <span style={{ fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>· {pick.axis.toUpperCase()} · {t.dsGap} {pick.distanceMm}mm</span>
+                      </div>
+                      {distInfo?.kind === 'param' && (
+                        isTplParam(distInfo.param) ? renderParamEditor(distInfo.param) : (
+                          <div style={{ marginTop: 4 }}>
+                            {t.fpParam} <code>{distInfo.param}</code>
+                            <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{t.fpReadOnly}</div>
+                          </div>
+                        )
+                      )}
+                      {distInfo?.kind === 'derived' && <div style={{ marginTop: 4, fontSize: 10.5, color: '#b45309' }}>{t.dsDerived}</div>}
+                      {distInfo?.kind === 'none' && <div style={{ marginTop: 4, fontSize: 10.5, color: '#b45309' }}>{t.dsNone}</div>}
+                    </>
+                  )}
+                  {anyBusy && <div style={{ marginTop: 4, fontSize: 10.5, color: 'var(--nx-accent, #2563eb)' }}>{t.fpReverify}</div>}
+                </div>
+              )}
+              {/* 말로 수정(NL) — 서버=문장→구조화 편집 변환만, 적용·클램프·재검증=클라 결정론 */}
+              <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
+                <input
+                  value={nlText} onChange={(e) => setNlText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void sendNl(); }}
+                  placeholder={t.nlPh}
+                  style={{ ...inpStyle, flex: 1, width: 'auto' }}
+                />
+                {voiceAvail && (
+                  <button
+                    type="button" title={t.vcTitle} onClick={startVoice}
+                    style={{ ...stepBtn, width: 30, ...(voiceOn ? { background: '#fee2e2', border: '1px solid #dc2626' } : {}) }}
+                  >
+                    🎤
+                  </button>
+                )}
+                <button
+                  type="button" onClick={() => void sendNl()} disabled={nlBusy || !nlText.trim()}
+                  style={{ ...stepBtn, width: 'auto', padding: '0 10px', fontSize: 11, background: 'var(--nx-accent, #2563eb)', color: '#fff', border: '1px solid var(--nx-accent, #2563eb)' }}
+                >
+                  {nlBusy ? t.nlBusy : t.nlSend}
+                </button>
+              </div>
+              {nlMsg && (nlMsg.ok ? (
+                <div style={{ marginTop: 4, fontSize: 10.5 }}>
+                  <span style={{ padding: '1px 6px', borderRadius: 4, fontSize: 9.5, fontWeight: 800, background: 'var(--nx-accent-soft, #eef4ff)', color: 'var(--nx-accent, #2563eb)', border: '1px solid var(--nx-border, #dfe3e8)' }}>
+                    {nlMsg.source === 'llm' ? t.nlSrcAi : t.nlSrcRegex}
+                  </span>{' '}
+                  {t.nlApplied}{nlMsg.summary}
+                  {nlMsg.note && <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{nlMsg.note}</div>}
+                </div>
+              ) : (
+                <div style={{ marginTop: 4, fontSize: 10.5, color: '#991b1b' }}>{t.nlFail}{nlMsg.error}</div>
+              ))}
+            </>
+          )}
         </div>
       )}
 
@@ -1524,5 +2043,9 @@ const genStyle: React.CSSProperties = {
 };
 const rptBtn: React.CSSProperties = {
   marginTop: 5, padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+  border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'var(--nx-text, #1a2230)',
+};
+const stepBtn: React.CSSProperties = {
+  width: 26, height: 26, borderRadius: 6, fontSize: 14, fontWeight: 800, cursor: 'pointer', lineHeight: 1,
   border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'var(--nx-text, #1a2230)',
 };
