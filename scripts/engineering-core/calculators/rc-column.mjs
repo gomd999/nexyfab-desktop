@@ -42,10 +42,46 @@ export default {
       Ast: { type: 'number', exclusiveMinimum: 0, description: '축방향 주철근 총단면적 mm² (2면 균등 분할 가정)' },
       Pu: { type: 'number', exclusiveMinimum: 0, description: '계수축력 kN (압축)' },
       Mu: { type: 'number', minimum: 0, description: '계수휨모멘트 kN·m (장주효과 반영 후)' },
+      lu_mm: { type: 'number', exclusiveMinimum: 0, maximum: 12000, description: '비지지길이 mm (입력 시 장주 검토 §4.4 — 횡구속 가정)' },
+      kFactor: { type: 'number', minimum: 0.5, maximum: 1.0, description: '유효길이계수 k (횡구속 1.0 허용 — §4.4.6(5), 기본 1.0)' },
+      M1_kNm: { type: 'number', minimum: -10000, description: '단부 작은 모멘트 M1 (단곡률 +, 이중곡률 −)' },
+      M2_kNm: { type: 'number', minimum: 0, description: '단부 큰 모멘트 M2 (기본 Mu — 미입력 시 Mu 사용)' },
+      betaDns: { type: 'number', minimum: 0, maximum: 1, description: 'βdns = 지속축력/최대축력 (§4.4.6(4) — 하중조합에서 산정 입력, 기본 0.6 관례 명시)' },
       transverse: { type: 'string', enum: ['tied', 'spiral'], description: '횡철근 형식 (기본 tied)' },
     },
   },
   run(input, std) {
+    // ── 장주효과 (§4.4 원문: 식 4.4-5~9) — lu 입력 시 횡구속 모멘트 확대 후 P-M 검토 ──
+    let slender = null;
+    if (input.lu_mm > 0) {
+      const h = input.h, r = 0.3 * h; // §4.4.5(4) 직사각형
+      const k = input.kFactor ?? 1.0;
+      const lam = (k * input.lu_mm) / r;
+      const M2in = input.M2_kNm ?? input.Mu;
+      const M1 = input.M1_kNm ?? M2in; // 미입력 = 단곡률 동일(보수)
+      const ratio = M2in > 0 ? Math.max(-0.5, Math.min(1, M1 / M2in)) : 1;
+      const limit = Math.min(40, 34 - 12 * ratio);
+      if (lam <= limit) {
+        slender = { lambda: +lam.toFixed(1), limit: +limit.toFixed(1), shortColumn: true, note: 'klu/r ≤ 34−12(M1/M2) — 장주효과 무시 가능(§4.4.1(1))' };
+      } else {
+        const Ec = 8500 * Math.cbrt(input.fck + 4); // MPa (식 4.3-2)
+        const Ig = (input.b * Math.pow(h, 3)) / 12; // mm⁴
+        const bd = input.betaDns ?? 0.6;
+        const EI = (0.4 * Ec * Ig) / (1 + bd); // 식 4.4-8 (간편식 — 4.4-7 정밀식은 배근 상세 필요 명시)
+        const Pc = (Math.PI * Math.PI * EI) / Math.pow(k * input.lu_mm, 2) / 1000; // kN
+        const Cm = Math.max(0.4, 0.6 + 0.4 * ratio);
+        const den = 1 - input.Pu / (0.75 * Pc);
+        if (den <= 0) {
+          slender = { lambda: +lam.toFixed(1), limit: +limit.toFixed(1), Pc_kN: +Pc.toFixed(0), unstable: true, note: 'Pu ≥ 0.75Pc — 좌굴 불안정(단면 증대 필요)' };
+        } else {
+          const dns = Math.max(1.0, Cm / den);
+          const M2min = (input.Pu * (15 + 0.03 * h)) / 1000; // kN·m (식 4.4-9)
+          const Mc = dns * Math.max(M2in, M2min);
+          slender = { lambda: +lam.toFixed(1), limit: +limit.toFixed(1), Pc_kN: +Pc.toFixed(0), Cm: +Cm.toFixed(3), deltaNs: +dns.toFixed(3), M2min_kNm: +M2min.toFixed(1), Mc_kNm: +Mc.toFixed(1), note: '횡구속 확대(식 4.4-6, EI=0.4EcIg/(1+βdns) 간편식 명시) — Mc로 P-M 검토' };
+          input = { ...input, Mu: Mc };
+        }
+      }
+    }
     const rc = std.rc;
     if (!rc) throw new Error(`standard gate: '${std.id}'에 rc 파라미터 미탑재 — 이 계산기는 KDS만 지원`);
     const { b, h, fck, fy, Ast, Pu, Mu } = input;
@@ -124,7 +160,7 @@ export default {
     };
     return {
       inputsEcho: { ...input, dPrime: dP, transverse: spiral ? 'spiral' : 'tied' },
-      intermediate: { c_mm: c, e_mm: eU, Pn_kN: Pn / 1e3, Mn_kNm: Mn / 1e6, eps_t: epsT, phi, section, eta, beta1, eps_cu: epsCu, Po_kN: Po / 1e3 },
+      intermediate: { ...(slender ? { slender } : {}), c_mm: c, e_mm: eU, Pn_kN: Pn / 1e3, Mn_kNm: Mn / 1e6, eps_t: epsT, phi, section, eta, beta1, eps_cu: epsCu, Po_kN: Po / 1e3 },
       checks,
       verdict: Object.values(checks).every((ch) => ch.pass) ? 'PASS' : 'FAIL',
       notes: [
