@@ -22,6 +22,7 @@ import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
 import { isKorean } from '@/lib/i18n/normalize';
 import DomainVerifyPanel from './DomainVerifyPanel';
 import ParametricPresetPanel from './ParametricPresetPanel';
+import AssemblyPresetPanel from './AssemblyPresetPanel';
 import DfmPanel from './DfmPanel';
 import FabPanel from './FabPanel';
 import { findDomain } from './designDomains';
@@ -358,6 +359,17 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
                 onApply={async (i, s, v) => {
                   setError(null); setGateErrors(null); setExportMsg(null);
                   await applyDesign(i, s, v ?? null);
+                }}
+              />
+            )}
+            {/* 도메인 어셈블리 템플릿(#6) — RC 골조·파고라·데크·카페. 템플릿 없는 분야는 자동 미노출 */}
+            {domain && (
+              <AssemblyPresetPanel
+                lang={lang}
+                domain={domain.slug}
+                onApply={async (i, s) => {
+                  setError(null); setGateErrors(null); setExportMsg(null);
+                  await applyDesign(i, s, null);
                 }}
               />
             )}
