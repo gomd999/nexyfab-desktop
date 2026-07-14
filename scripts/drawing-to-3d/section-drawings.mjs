@@ -159,3 +159,38 @@ if (isMain) {
   console.log(`section-drawings self-test: ${ok}/${tot}${ok === tot ? ' PASS' : ' FAIL'}`);
   if (ok !== tot) process.exit(1);
 }
+
+/** ⑤ RC 보 배근 단면 상세도 — As(mm²)+철근 호칭 → 본수·배치 결정론(피복·간격 검사). */
+export function rebarSectionSvg(p, opts = {}) {
+  const { b = 300, h = 600, As = 0, barDia = 22, cover = 40, stirrupDia = 10 } = p;
+  const area1 = Math.PI * barDia * barDia / 4;
+  const n = As > 0 ? Math.ceil(As / area1) : 0;
+  const clearMin = Math.max(25, barDia); // KDS 순간격 관례(25mm·db)
+  const usableW = b - 2 * (cover + stirrupDia) - barDia;
+  const maxPerRow = Math.max(2, Math.floor(usableW / (barDia + clearMin)) + 1);
+  const rows = n > 0 ? Math.ceil(n / maxPerRow) : 0;
+  const M = 70, S = 380 / Math.max(b, h);
+  const W = b * S + 2 * M + 80, Ht = h * S + 2 * M + 60;
+  const x0 = M, y0 = M;
+  let bars = '';
+  let placed = 0;
+  for (let r = 0; r < rows; r++) {
+    const inRow = Math.min(maxPerRow, n - placed);
+    for (let i = 0; i < inRow; i++) {
+      const cx = x0 + (cover + stirrupDia + barDia / 2) * S + (inRow > 1 ? i * ((b - 2 * (cover + stirrupDia) - barDia) / (inRow - 1)) * S : (b / 2 - cover - stirrupDia - barDia / 2) * S);
+      const cy = y0 + (h - cover - stirrupDia - barDia / 2 - r * (barDia + clearMin)) * S;
+      bars += `<circle cx="${cx}" cy="${cy}" r="${(barDia / 2) * S}" fill="#dc2626"/>`;
+      placed++;
+    }
+  }
+  const spacingOk = n <= 1 || usableW / Math.max(1, Math.min(n, maxPerRow) - 1) >= barDia + clearMin;
+  const body = `
+<rect class="out" x="${x0}" y="${y0}" width="${b * S}" height="${h * S}"/>
+<rect fill="none" stroke="#16a34a" stroke-width="1.5" x="${x0 + cover * S}" y="${y0 + cover * S}" width="${(b - 2 * cover) * S}" height="${(h - 2 * cover) * S}" rx="${6 * S}"/>
+${bars}
+${dim(x0, y0 + h * S, x0 + b * S, y0 + h * S, `${b}`, 28)}
+${dim(x0 + b * S, y0, x0 + b * S, y0 + h * S, `${h}`, 24)}
+<text class="note" x="${x0}" y="${Ht - 30}">인장철근 ${n}-D${barDia} (As,req ${Math.round(As)} → As,prov ${Math.round(n * area1)}mm²) · ${rows}단 · 스터럽 D${stirrupDia}(초록)</text>
+<text class="note" x="${x0}" y="${Ht - 12}">피복 ${cover} · 순간격 ${spacingOk ? '적합' : '⚠ 부족 — 단수·지름 조정 필요'}(≥max(25,db)) · 개념 배치(비법정)</text>`;
+  return svgShell(W, Ht, body, opts.title ?? `보 배근 단면 ${b}×${h}`);
+}

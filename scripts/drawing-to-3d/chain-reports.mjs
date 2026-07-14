@@ -24,7 +24,7 @@ const checksTable = (checks) => !checks ? '' : `<table><tr><th>검토</th><th>�
   Object.entries(checks).map(([k, c]) => `<tr><td>${esc(k)}</td><td>${f(c.fb_MPa ?? c.fv_MPa ?? c.delta_mm ?? c.Mn_kNm ?? c.Vc_kN ?? c.FS ?? c.eps_t ?? c.value ?? c.qmax_kPa ?? '-', 2)}</td><td>${f(c.allow_MPa ?? c.limit_mm ?? c.min_allowed ?? c.phiMn_kNm ?? c.phiVn_kN ?? c.allow ?? c.limit ?? '-', 2)}</td><td>${f(c.ratio, 3)}</td><td>${c.pass === true ? '✓' : c.pass === false ? '✕' : '-'}</td></tr>`).join('')}</table>`;
 
 /** 건축 하중경로 리포트 */
-export function loadPathReport(r, { title = '하중경로 검증' } = {}) {
+export function loadPathReport(r, { title = '하중경로 검증', svg = '' } = {}) {
   if (!r?.ok) return SHELL(title, '실패', `<div class="honest">${esc(r?.error ?? '체인 실패')}</div>`);
   const beams = r.beams.map((b) => `<tr><td style="text-align:left">${esc(b.id)}</td><td>${esc(b.section)}</td><td>${b.spanMm}</td><td>${f(b.tribM2)}</td><td>${f(b.wu_kNm)}</td><td>${f(b.Mu_kNm)}${b.MuNeg_kNm != null ? ` / −${f(b.MuNeg_kNm)}` : ''}</td><td>${f(b.Vu_kN)}</td><td>${esc(b.combo)}</td><td>${V(b.verdict)}${b.negVerdict ? `<br><span style="font-size:10px">−M: ${esc(b.negVerdict)}</span>` : ''}</td></tr>`).join('');
   const beamMethod = r.beams[0]?.method ? `<div class="note">해석: ${esc(r.beams[0].method)}</div>` : '';
@@ -67,6 +67,7 @@ ${r.seismic.matrix && !r.seismic.matrix.error ? `
 ${r.seismic.matrix.drifts.map((dr) => `<tr><td>${dr.story}</td><td>${dr.elastic_mm} mm</td><td>${dr.design_mm ?? 'Cd 입력 필요'}</td><td>${dr.limit_mm} mm</td><td>${dr.pass === null ? '—' : dr.pass ? '✓' : '✕'}</td></tr>`).join('')}</table>
 <div class="note">${esc(r.seismic.matrix.method)} · 허용층간변위 ${esc(r.seismic.matrix.driftLimit)}</div>` : ''}
 <div class="honest">⚠ ${esc(r.seismic.disclaimer)}</div>` : ''}
+${svg ? `<h2>배근 단면 상세(개념)</h2><div style="overflow:auto">${svg}</div>` : ''}
 ${r.wind && !r.wind.error ? `<h2>⑤b 풍하중 (KDS 41 12 00 — ${esc(r.wind.x.method)})</h2>
 <div class="kpi"><div><b>${f(Math.max(r.wind.x.baseShear_kN, r.wind.y.baseShear_kN), 1)} kN</b><span>기단전단 (지배방향)</span></div>
 <div><b>${f(Math.max(r.wind.x.p_Nm2, r.wind.y.p_Nm2), 0)} N/m²</b><span>설계풍압</span></div>

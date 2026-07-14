@@ -109,7 +109,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // format=html → 인쇄양식 리포트 HTML 동봉 (설계 패키지 문서들과 동일 스타일)
     if (body.format === 'html') {
       const rpt = await loadRpt();
-      return NextResponse.json({ result, html: rpt.loadPathReport(result, { title: body.assembly?.name ?? '하중경로 검증' }) });
+      return NextResponse.json({ result, html: rpt.loadPathReport(result, { title: body.assembly?.name ?? '하중경로 검증', svg: await (async () => {
+        try {
+          const sp = join(process.cwd(), 'scripts', 'drawing-to-3d', 'section-drawings.mjs');
+          const sd = (await import(/* webpackIgnore: true */ pathToFileURL(sp).href)) as { rebarSectionSvg: (p: unknown, o?: Record<string, unknown>) => string };
+          const bm0 = (result as { beams?: Array<{ section?: string }> }).beams?.[0];
+          const As = Number((body.params as Record<string, unknown> | undefined)?.beamAs) || 0;
+          if (!bm0?.section || !(As > 0)) return '';
+          const [bw, bh] = bm0.section.split('×').map(Number);
+          return sd.rebarSectionSvg({ b: bw, h: bh, As, barDia: Number((body.params as Record<string, unknown> | undefined)?.barDia) || 22, cover: 40 });
+        } catch { return ''; }
+      })() }) });
     }
     return NextResponse.json(result);
   } catch (e) {
