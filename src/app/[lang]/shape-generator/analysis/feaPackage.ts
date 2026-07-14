@@ -13,6 +13,7 @@
  */
 import * as THREE from 'three';
 import { runSimpleFEA, type FEAResult, type FEAMaterial, type FEABoundaryCondition } from './simpleFEA';
+import { runFEM } from './femSolver';
 
 /** 재료 물성 (대표값 — E GPa·ν·기준강도 MPa·밀도 g/cm³). 비금속은 선형등방 근사임을 리포트에 명시. */
 export const FEA_MATERIALS: Record<string, FEAMaterial & { label: string; strengthNote: string }> = {
@@ -72,17 +73,33 @@ export interface FeaPackageOutput {
   loadN: number;
   loadNote: string;
   mesh: { triangles: number; fixedTris: number; loadTris: number };
+  /** 2-step 정밀 재해석 정보 (스크리닝 SF<2 시 자동 수행 — 외부감사 제언) */
+  refined?: { maxNodes: number; screeningSF: number; screeningMaxStress: number } | null;
 }
 
-/** STL → 자동 경계조건 → runSimpleFEA. */
+/** STL → 자동 경계조건 → runSimpleFEA (스크리닝) → SF<2면 고밀도 재해석(2-step). */
 export function feaFromStl({ stl, materialKey = 'STS316', loadN = 0, loadNote = '' }: FeaPackageInput): FeaPackageOutput {
   const mat = FEA_MATERIALS[materialKey] ?? FEA_MATERIALS.STS316;
   const geometry = stlToGeometry(stl);
   const { conditions, fixedTris, loadTris } = autoConditions(geometry, loadN);
-  const result = runSimpleFEA(geometry, { material: mat, conditions });
+  let result = runSimpleFEA(geometry, { material: mat, conditions });
+  // 2-step: 스크리닝(≈1,200노드)에서 여유가 작으면(SF<2) 고밀도(6,000노드) 재해석.
+  // 성긴 메시는 응력집중을 과소평가할 수 있어, 위험 영역에서만 비용을 지불한다.
+  let refined: FeaPackageOutput['refined'] = null;
+  if (result.method === 'linear-fem-tet' && Number.isFinite(result.safetyFactor) && result.safetyFactor < 2) {
+    try {
+      const fine = runFEM(geometry, mat, conditions, 6000);
+      const usable = fine.converged && Number.isFinite(fine.maxStress) && fine.maxDisplacement < 1e6;
+      if (usable) {
+        refined = { maxNodes: 6000, screeningSF: result.safetyFactor, screeningMaxStress: result.maxStress };
+        result = { ...fine, method: 'linear-fem-tet' as const };
+      }
+    } catch { /* 재해석 실패 시 스크리닝 결과 유지 (정직 — refined 미표기) */ }
+  }
   return {
     result, material: mat, materialKey: FEA_MATERIALS[materialKey] ? materialKey : 'STS316', loadN, loadNote,
     mesh: { triangles: (geometry.getAttribute('position').count / 3) | 0, fixedTris, loadTris },
+    refined,
   };
 }
 
@@ -112,7 +129,7 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 <div><b style="color:${sfClass}">${verdict}</b><span>판정(개산)</span></div></div>
 <h2>① 해석 조건</h2><table>
 <tr><th>항목</th><th>값</th></tr>
-<tr><td>해석 방법</td><td>${isTet ? `TET10 선형정적 FEM (요소 ${r.elementCount.toLocaleString()} · DOF ${r.dofCount.toLocaleString()} · ${r.converged ? '수렴' : '미수렴'})` : '보 이론 복셀 근사 (FEM 메시 부적합 → 폴백)'}</td></tr>
+<tr><td>해석 방법</td><td>${isTet ? `TET10 선형정적 FEM (요소 ${r.elementCount.toLocaleString()} · DOF ${r.dofCount.toLocaleString()} · ${r.converged ? '수렴' : '미수렴'})${out.refined ? ` — <b>2-step 정밀 재해석</b>(스크리닝 SF ${out.refined.screeningSF.toFixed(2)}·σ ${out.refined.screeningMaxStress.toFixed(1)}MPa → ${out.refined.maxNodes.toLocaleString()}노드 재해석)` : ''}` : '보 이론 복셀 근사 (FEM 메시 부적합 → 폴백)'}</td></tr>
 <tr><td>재료</td><td>${esc(out.material.label)} — E ${out.material.youngsModulus} GPa · ν ${out.material.poissonRatio} · ρ ${out.material.density} g/cm³</td></tr>
 <tr><td>구속</td><td>최하단 z-평면 전체 고정 (표면 삼각형 ${out.mesh.fixedTris}개)</td></tr>
 <tr><td>하중</td><td>상면 총 ${f(out.loadN / 1000, 2)} kN (-Z) — ${esc(out.loadNote || '사용자 지정')}</td></tr>
@@ -123,7 +140,7 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 <tr><td>최소 von Mises</td><td>${f(r.minStress, 2)} MPa</td><td>-</td></tr>
 <tr><td>최대 변위</td><td>${f(r.maxDisplacement, 3)} mm</td><td>-</td></tr>
 <tr><td>안전율</td><td style="color:${sfClass};font-weight:700">${f(r.safetyFactor, 2)}</td><td>기준강도 / 최대응력</td></tr></table>
-<div class="honest">⚠ <b>개념 해석(비법정)</b> — 자동 경계조건(바닥 고정·상면 하중)은 실제 지지·하중 조건과 다를 수 있습니다. ${isTet ? '요소수 상한(≈1,200노드)의 성긴 메시 — 국부 응력집중은 과소평가될 수 있음.' : '보 이론 폴백 — 형상이 가늘거나 복잡해 FEM 메시가 성립하지 않은 경우로, 결과는 차원 수준의 개산.'} ${out.materialKey === 'concrete' || out.materialKey === 'timber' ? '비금속(콘크리트/목재)은 선형등방 근사 — 균열·이방성·크리프 미반영, 참고용.' : ''} 법정 구조검토·상세설계는 전문 해석·기술사 검토가 필요합니다.</div>
+<div class="honest">⚠ <b>개념 해석(비법정)</b> — 자동 경계조건(바닥 고정·상면 하중)은 실제 지지·하중 조건과 다를 수 있습니다. ${isTet ? (out.refined ? '2-step 재해석(6,000노드) 결과 — 그래도 국부 응력집중(용접 토우·노치)은 과소평가 가능.' : '스크리닝 메시(≈1,200노드) — SF≥2 여유 구간. 국부 응력집중은 과소평가될 수 있음.') : '보 이론 폴백 — 형상이 가늘거나 복잡해 FEM 메시가 성립하지 않은 경우로, 결과는 차원 수준의 개산.'} 최종 설계는 상용 해석(ANSYS 등) 교차검증 필수. ${out.materialKey === 'concrete' || out.materialKey === 'timber' ? '비금속(콘크리트/목재)은 선형등방 근사 — 균열·이방성·크리프 미반영, 참고용.' : ''} 법정 구조검토·상세설계는 전문 해석·기술사 검토가 필요합니다.</div>
 <div class="note">방법: STL(형상 실렌더) → 복셀 사면체화 → TET10 강성 조립 → Jacobi-PCG → von Mises. 폴백: 보 이론. 하중을 지어내지 않음 — 가정은 ① 표에 전부 명시.</div>
 </div></body></html>`;
 }

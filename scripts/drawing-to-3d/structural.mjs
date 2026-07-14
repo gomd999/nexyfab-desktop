@@ -65,11 +65,66 @@ export function fluidVolume(type, p) {
   if (type === 'cylinder') return A * p.diameter ** 2 * p.length; // 속찬 원기둥을 용기로 쓰면 근사
   return 0;
 }
-// 부품 월드 무게중심(AABB 중심 근사)
+/**
+ * 부품 로컬 무게중심 — 타입별 해석식 (AABB 중심 근사 제거, 외부감사 반영).
+ * 대칭 타입은 AABB 중심과 동일하므로 비대칭 타입만 정밀식: gusset(삼각형 도심),
+ * l_bracket·stepped_plate·bent_sheet(합성 도형 1차모멘트), sheet_profile(폴리곤 도심),
+ * hex_bolt(자루+머리 합성), spur_gear·flange·tube(대칭 — 중심).
+ */
+function localCG(type, p) {
+  const A = Math.PI / 4;
+  switch (type) {
+    case 'gusset': // 직각삼각 도심 = 직각꼭짓점에서 각 변의 1/3
+      return [p.legA / 3, p.legB / 3, p.thickness / 2];
+    case 'l_bracket': {
+      const A1 = p.legA * p.thickness, A2 = p.thickness * Math.max(0, p.legB - p.thickness); // 수평판 + 수직판(겹침 제외)
+      const y = p.width / 2;
+      const x = (A1 * (p.legA / 2) + A2 * (p.thickness / 2)) / (A1 + A2);
+      const z = (A1 * (p.thickness / 2) + A2 * (p.thickness + (p.legB - p.thickness) / 2)) / (A1 + A2);
+      return [x, y, z];
+    }
+    case 'stepped_plate': {
+      const V1 = p.stepWidth * p.depth * p.stepThickness, V2 = (p.width - p.stepWidth) * p.depth * p.thickness;
+      const x = (V1 * (p.stepWidth / 2) + V2 * (p.stepWidth + (p.width - p.stepWidth) / 2)) / (V1 + V2);
+      const z = (V1 * (p.stepThickness / 2) + V2 * (p.thickness / 2)) / (V1 + V2);
+      return [x, p.depth / 2, z];
+    }
+    case 'bent_sheet': {
+      const Vw = p.length * p.webWidth * p.thickness;               // 웨브(바닥)
+      const Vf = p.length * p.thickness * p.flangeHeight;           // 플랜지 ×2 (양측 대칭 → y는 중심)
+      const z = (Vw * (p.thickness / 2) + 2 * Vf * (p.flangeHeight / 2)) / (Vw + 2 * Vf);
+      return [p.length / 2, p.webWidth / 2, z];
+    }
+    case 'sheet_profile': {
+      const poly = sheetPoly(p);
+      let ax = 0, ay = 0, ar = 0;
+      for (let i = 0; i < poly.length; i++) {
+        const [x1, y1] = poly[i], [x2, y2] = poly[(i + 1) % poly.length];
+        const c = x1 * y2 - x2 * y1;
+        ar += c; ax += (x1 + x2) * c; ay += (y1 + y2) * c;
+      }
+      ar /= 2;
+      return [ax / (6 * ar), ay / (6 * ar), p.width / 2];
+    }
+    case 'hex_bolt': {
+      const { af, hh } = boltDims(p);
+      const Vs = A * p.threadDia ** 2 * p.length, Vh = (Math.sqrt(3) / 2) * af ** 2 * hh;
+      const z = (Vs * (p.length / 2) + Vh * (p.length + hh / 2)) / (Vs + Vh);
+      return [0, 0, z];
+    }
+    default: {
+      // 대칭 타입(box·plate·flange·tube·cylinder·gear·wall(개구 무시 근사)·base_plate 등) = AABB 중심
+      const a = partAabb({ type, ...p });
+      return [(a.min[0] + a.max[0]) / 2, (a.min[1] + a.max[1]) / 2, (a.min[2] + a.max[2]) / 2];
+    }
+  }
+}
+
+// 부품 월드 무게중심 (타입별 해석식 + 배치 이동. 회전 배치는 코너회전과 동일 규칙 미적용 — 축정렬 전제, 비대칭+회전 조합은 근사 명시)
 export function partCG(part) {
-  const a = partAabb({ type: part.type, ...part.params });
   const { tx = 0, ty = 0, tz = 0 } = part.at ?? {};
-  return [(a.min[0] + a.max[0]) / 2 + tx, (a.min[1] + a.max[1]) / 2 + ty, (a.min[2] + a.max[2]) / 2 + tz];
+  const c = localCG(part.type, part.params);
+  return [c[0] + tx, c[1] + ty, c[2] + tz];
 }
 
 /**
