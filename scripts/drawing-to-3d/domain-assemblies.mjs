@@ -113,14 +113,34 @@ function cafeRoomAssembly(p) {
   parts.push(P('counter_sideL', 'box', { width: 18, depth: 782, height: 1010 }, { tx: cx, ty: cy + 18, tz: 0 }, 'timber', 'counter'));
   parts.push(P('counter_sideR', 'box', { width: 18, depth: 782, height: 1010 }, { tx: cx + cw - 18, ty: cy + 18, tz: 0 }, 'timber', 'counter'));
   // 테이블 — 상판 30t + 다리 4 (통짜 블록 재적 과대 방지)
-  const zoneW = W - 1600, zoneD = D - 2400;
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-    const tx = 800 + (zoneW / cols) * (c + 0.5) - 600, ty = 800 + (zoneD / rows) * (r + 0.5) - 600;
-    parts.push(P(`table_${r}_${c}_top`, 'box', { width: 1200, depth: 1200, height: 30 }, { tx, ty, tz: 720 }, 'timber', 'table'));
-    for (const [k, [lx, ly]] of [[100, 100], [1050, 100], [100, 1050], [1050, 1050]].entries())
-      parts.push(P(`table_${r}_${c}_leg${k + 1}`, 'box', { width: 50, depth: 50, height: 720 }, { tx: tx + lx, ty: ty + ly, tz: 0 }, 'timber', 'table'));
+  // 자유 배치(B 인테리어 에디터): customFurniture=[{kind:'table2'|'table4'|'sofa', x, y}] 입력 시
+  // 그리드 대신 커스텀 배치 — 좌표는 실내 원점 기준 mm(형상·피난 검증이 그대로 추종).
+  const CATALOG = {
+    table2: { w: 700, d: 700, seats: 2, name: '2인 테이블' },
+    table4: { w: 1200, d: 1200, seats: 4, name: '4인 테이블' },
+    sofa: { w: 1800, d: 850, seats: 3, name: '소파' },
+  };
+  const custom = Array.isArray(p.customFurniture) ? p.customFurniture.filter((f) => CATALOG[f.kind] && Number.isFinite(f.x) && Number.isFinite(f.y)).slice(0, 40) : null;
+  let nT = 0, seatSum = 0;
+  if (custom) {
+    for (const [i, f] of custom.entries()) {
+      const c = CATALOG[f.kind];
+      const fx = Math.max(0, Math.min(W - c.w, f.x)), fy = Math.max(0, Math.min(D - c.d, f.y));
+      parts.push(P(`cf_${i}_top`, 'box', { width: c.w, depth: c.d, height: 30 }, { tx: fx, ty: fy, tz: 720 }, 'timber', 'table'));
+      for (const [k, [lx, ly]] of [[60, 60], [c.w - 110, 60], [60, c.d - 110], [c.w - 110, c.d - 110]].entries())
+        parts.push(P(`cf_${i}_leg${k + 1}`, 'box', { width: 50, depth: 50, height: 720 }, { tx: fx + lx, ty: fy + ly, tz: 0 }, 'timber', 'table'));
+      nT++; seatSum += c.seats;
+    }
+  } else {
+    const zoneW = W - 1600, zoneD = D - 2400;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const tx = 800 + (zoneW / cols) * (c + 0.5) - 600, ty = 800 + (zoneD / rows) * (r + 0.5) - 600;
+      parts.push(P(`table_${r}_${c}_top`, 'box', { width: 1200, depth: 1200, height: 30 }, { tx, ty, tz: 720 }, 'timber', 'table'));
+      for (const [k, [lx, ly]] of [[100, 100], [1050, 100], [100, 1050], [1050, 1050]].entries())
+        parts.push(P(`table_${r}_${c}_leg${k + 1}`, 'box', { width: 50, depth: 50, height: 720 }, { tx: tx + lx, ty: ty + ly, tz: 0 }, 'timber', 'table'));
+    }
+    nT = rows * cols;
   }
-  const nT = rows * cols;
   return {
     name: '카페 레이아웃', domain: 'interior', parts,
     floorAreaM2: +((W * D) / 1e6).toFixed(2),
@@ -132,9 +152,10 @@ function cafeRoomAssembly(p) {
     roomBounds: { W, D },
     furniture: [
       { id: 'table', name: '테이블', count: nT, seats: 0 },
-      { id: 'chair', name: '의자', count: nT * seatsPer, seats: 1 },
+      { id: 'chair', name: '의자', count: custom ? seatSum : nT * seatsPer, seats: 1 },
       { id: 'counter', name: '서비스 카운터', count: 1, seats: 0 },
     ],
+    ...(custom ? { customFurniture: custom } : {}),
   };
 }
 

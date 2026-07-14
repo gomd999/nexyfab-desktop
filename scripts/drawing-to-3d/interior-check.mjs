@@ -121,9 +121,17 @@ export function interiorCheck(assembly, params = {}) {
     if (dist[idx] > maxDist) { maxDist = dist[idx]; maxAt = [i * cell + cell / 2, j * cell + cell / 2]; }
   }
   const limit = Number(params.travelLimitMm) || 30000;
+  // 히트맵 오버레이용 격자 (옵션 — B 인테리어 UX): dist(m, -1=미도달)·blocked를 정수 dm로 압축
+  const grid = params.returnGrid === true ? {
+    nx, ny, cellMm: cell,
+    // dist: 0.1m 단위 정수 배열(전송량 절감·결정론), blocked: 0/1
+    dist_dm: Array.from(dist, (v) => v < 0 ? -1 : Math.round(v / 100)),
+    blocked: Array.from(blocked),
+  } : undefined;
   const travel = {
     maxTravelM: round(maxDist / 1000), farthestPointMm: maxAt, limitM: limit / 1000,
     pass: maxDist <= limit,
+    ...(grid ? { grid } : {}),
     unreachableCells: unreachable, unreachableM2: round((unreachable * cell * cell) / 1e6),
     limitNote: '한계 30m = 건축법 시행령 제34조(직통계단 보행거리) 참고 기본값 — 용도·내화구조·스프링클러에 따라 상이, 프로젝트 기준 확인 필요(입력 가능)',
     method: `${cell}mm 격자 8방향 다익스트라(대각 √2·모서리 스침 금지) · 장애물=테이블·카운터·벽 풋프린트(z<1.8m)`,
