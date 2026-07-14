@@ -10,7 +10,791 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { isKorean } from '@/lib/i18n/normalize';
+import { isKorean, toIsoLang } from '@/lib/i18n/normalize';
+
+// ─── i18n dictionary (6-lang, identical key sets — see AIAdvisor.tsx pattern) ──
+
+const dict = {
+  ko: {
+    tplTitle: '어셈블리 템플릿',
+    tplSub: '다부재 · 설계 패키지 지원',
+    buildBusy: '빌드 중…',
+    buildBtn: '어셈블리 생성',
+    builtParts: '생성됨 · 부재 ',
+    clash: '간섭',
+    failed: '실패: ',
+    packaging: '패키지 생성 중…',
+    pkgBtn: '📦 설계 패키지 다운로드',
+    pkgFailed: '패키지 생성 실패',
+    pkgFailPrefix: '패키지 실패: ',
+    papersBtn: '관련 논문 부록 (OpenAlex·Crossref 실인용)',
+    reportFailed: '리포트 HTML 생성 실패',
+    reportHtml: '리포트 HTML',
+    checking: '검증 중…',
+    // 유료 전문 조사 의뢰
+    erBtn: '전문 조사 의뢰 (유료) — 선행기술·회피설계',
+    erDesc: '전문가가 직접 수행(AI 검색 도구 지원)하는 유료 서비스입니다. 접수 후 견적·일정을 회신드립니다. 현재 설계 스냅샷이 자동 첨부됩니다.',
+    erNeedNameEmail: '이름·이메일을 입력해 주세요.',
+    erDone: '✅ 접수 완료 — 검토 후 견적과 일정으로 회신드립니다.',
+    erFailPrefix: '접수 실패: ',
+    erName: '이름/회사',
+    erEmail: '이메일',
+    erMsgPh: '요청사항 (대상 시장·경쟁사·우려 특허 등)',
+    erSubmitting: '접수 중…',
+    erSubmit: '의뢰 접수 (견적 회신)',
+    erDisclaimer: '⚠ 본 서비스는 변리사의 정식 FTO 의견서를 대체하지 않습니다(필요 시 변리사 연계 안내).',
+    svcPriorArt: '선행기술 조사·분석',
+    svcPriorArtD: '특허·논문 정밀 조사, 유사도 분석 리포트',
+    svcDesignAround: '회피 설계 검토',
+    svcDesignAroundD: '조사 결과 기반 설계 변경 포인트 + 재검증',
+    svcGlobal: '글로벌 확장 조사',
+    svcGlobalD: '미국·중국·유럽 특허 랜드스케이프',
+    // 토목 (옹벽)
+    cvTitle: '옹벽 안정 검증',
+    cvSub: '단면 자동 파생 · 토질만 입력',
+    cvGamma: '뒤채움 γ kN/m³',
+    cvPhi: '내부마찰각 °',
+    cvMu: '저면 마찰 μ',
+    cvQa: '허용지지력 kPa',
+    cvSurcharge: '상재하중 kPa',
+    cvKh: '지진계수 kh (0=정적)',
+    cvRun: '🧱 옹벽 안정 검증 실행',
+    cvSeismicMO: '지진시(M-O)',
+    // 인테리어
+    inTitle: '피난·마감 검증',
+    inSub: '보행거리 BFS 실측 · 문폭 형상 파생',
+    inRun: '🚪 피난·마감 검증 실행',
+    inTravel: '최원점 보행거리',
+    inUnreachable: '미도달',
+    inEgress: '수용·피난폭',
+    inDoors: '문폭합',
+    inSeats: '좌석',
+    inFinish: '마감',
+    inFloor: '바닥',
+    inWall: '벽',
+    inCeiling: '천장',
+    // 조경
+    lsTitle: '목재 부재·풍하중 검증',
+    lsSub: 'KDS 41 50 10 허용응력 · 단면·스팬 형상 파생',
+    lsSpecies: '수종군',
+    lsLarch: '낙엽송류',
+    lsPine: '소나무류',
+    lsKoreanPine: '잣나무류',
+    lsCedar: '삼나무류',
+    lsGrade: '등급',
+    gradeSuffix: '등급',
+    lsUsage: '용도(데크 활하중)',
+    lsUseRes: '주거 2.0',
+    lsUseGarden: '정원·집회 5.0',
+    lsUseAssembly: '집회(이동석) 5.0',
+    lsWind: '풍압 kN/m² (0=생략)',
+    lsRun: '🌳 부재·풍하중 검증 실행',
+    lsJoist: '장선/서까래',
+    lsTip: '전도',
+    lsAnchor: '앵커',
+    lsPerPost: '본',
+    // 건축 (하중경로)
+    bdTitle: '하중경로 검증',
+    bdSub: '자중(형상)+활하중(KDS 표 3.2-1) → 보→기둥→기초',
+    bdUsage: '용도(활하중)',
+    bdOffice: '일반 사무실',
+    bdBeamAs: '보 As mm²',
+    bdStirrupAv: '스터럽 Av',
+    bdSpacingS: '간격 s',
+    bdColAst: '기둥 Ast',
+    bdFtgB: '기초 B',
+    bdFtgL: '기초 L',
+    bdQAllow: '지지력 kPa',
+    bdSeisZone: '지진구역 (선택)',
+    bdSeisOff: '미검토',
+    bdZoneI: '구역 I (0.11)',
+    bdZoneII: '구역 II (0.07)',
+    bdSite: '지반',
+    bdRTable: '표 6.2-1',
+    bdChainBusy: '체인 검증 중…',
+    bdRun: '⛓ 하중경로 검증 실행',
+    bdSlab: '슬래브',
+    bdFooting: '기초',
+    bdInputsNeeded: '입력 필요',
+    bdSlabDefl: '슬래브 처짐',
+    bdSeismic: '지진',
+    bdCol: '기둥',
+    bdWindV0: '기본풍속 V0 m/s',
+    bdWindV0Ph: '그림 5.5-1 지역값',
+    bdWindExp: '지표면조도',
+    bdWindTerrain: '지형(간편법)',
+    bdTerrainNormal: '일반',
+    bdTerrainFlatOpen: '평탄 개활지',
+    bdTerrainCoast: '해안',
+    bdWind: '풍하중',
+    inLuxLabel: '목표조도 lx',
+    inLuxPh: 'KS A 3011 용도별',
+    inLumenLabel: '램프광속 lm',
+    inVentLabel: '인당환기량 m³/h·인',
+    inLoadLabel: '부하밀도 VA/m²',
+    inLight: '조명',
+    inFixSuffix: '등',
+    inAvgLux: '평균',
+    inVent: '환기',
+    inElec: '전기',
+    inCircuitSuffix: '회로',
+    lsConn: '접합철물',
+    lsConnNone: '미지정(기본)',
+    lsConnNailOpt: '못 89×4.11 2본',
+    lsConnBoltOpt: '볼트 D12',
+    lsNail: '못',
+    lsBolt: '볼트',
+    lsConnRow: '접합부',
+    lsDemand: '반력',
+    lsCapacity: '내력',
+    lsRatio: '비율',
+  },
+  en: {
+    tplTitle: 'Assembly template',
+    tplSub: 'multi-part · design package',
+    buildBusy: 'Building…',
+    buildBtn: 'Build assembly',
+    builtParts: 'Built · parts ',
+    clash: 'clash',
+    failed: 'Failed: ',
+    packaging: 'Packaging…',
+    pkgBtn: '📦 Download design package',
+    pkgFailed: 'package failed',
+    pkgFailPrefix: 'Package failed: ',
+    papersBtn: 'Related papers (real OpenAlex·Crossref citations)',
+    reportFailed: 'report HTML failed',
+    reportHtml: 'Report HTML',
+    checking: 'Checking…',
+    erBtn: 'Expert research request (paid) — prior art & design-around',
+    erDesc: 'Performed by an expert (AI-assisted). We reply with a quote & schedule. Your design snapshot is attached automatically.',
+    erNeedNameEmail: 'Name & email required.',
+    erDone: '✅ Received — we will reply with a quote & schedule.',
+    erFailPrefix: 'Failed: ',
+    erName: 'Name/Company',
+    erEmail: 'Email',
+    erMsgPh: 'Details (target market, competitors, patents of concern…)',
+    erSubmitting: 'Submitting…',
+    erSubmit: 'Submit request',
+    erDisclaimer: '⚠ Not a substitute for a formal attorney FTO opinion (referral available).',
+    svcPriorArt: 'Prior-art search & analysis',
+    svcPriorArtD: 'patent & paper deep search, similarity report',
+    svcDesignAround: 'Design-around review',
+    svcDesignAroundD: 'design change points + re-verification',
+    svcGlobal: 'Global landscape',
+    svcGlobalD: 'US/CN/EU patent landscape',
+    cvTitle: 'Retaining wall stability',
+    cvSub: 'section from shape · soil only',
+    cvGamma: 'γ backfill kN/m³',
+    cvPhi: 'φ °',
+    cvMu: 'μ base',
+    cvQa: 'qAllow kPa',
+    cvSurcharge: 'surcharge kPa',
+    cvKh: 'seismic kh (0=static)',
+    cvRun: '🧱 Run stability check',
+    cvSeismicMO: 'Seismic (M-O)',
+    inTitle: 'Egress & finish check',
+    inSub: 'travel BFS · door width from shape',
+    inRun: '🚪 Run egress & finish check',
+    inTravel: 'Max travel',
+    inUnreachable: 'unreachable',
+    inEgress: 'Occupancy/egress',
+    inDoors: 'doors',
+    inSeats: 'seats',
+    inFinish: 'Finish',
+    inFloor: 'floor',
+    inWall: 'wall',
+    inCeiling: 'ceiling',
+    lsTitle: 'Timber member & wind check',
+    lsSub: 'KDS 41 50 10 allowable stress · section/span from shape',
+    lsSpecies: 'Species',
+    lsLarch: 'Larch',
+    lsPine: 'Pine',
+    lsKoreanPine: 'Korean pine',
+    lsCedar: 'Cedar',
+    lsGrade: 'Grade',
+    gradeSuffix: '',
+    lsUsage: 'Usage (deck live)',
+    lsUseRes: 'Residential 2.0',
+    lsUseGarden: 'Garden/assembly 5.0',
+    lsUseAssembly: 'Assembly 5.0',
+    lsWind: 'Wind kN/m² (0=skip)',
+    lsRun: '🌳 Run timber & wind check',
+    lsJoist: 'Joist',
+    lsTip: 'Tip-over',
+    lsAnchor: 'anchor',
+    lsPerPost: 'post',
+    bdTitle: 'Load-path check',
+    bdSub: 'dead(shape)+live(KDS table 3.2-1) → beam→column→footing',
+    bdUsage: 'Usage (live load)',
+    bdOffice: 'Office',
+    bdBeamAs: 'beam As mm²',
+    bdStirrupAv: 'stirrup Av',
+    bdSpacingS: 'spacing s',
+    bdColAst: 'col Ast',
+    bdFtgB: 'ftg B',
+    bdFtgL: 'ftg L',
+    bdQAllow: 'qAllow kPa',
+    bdSeisZone: 'Seismic zone (opt.)',
+    bdSeisOff: 'off',
+    bdZoneI: 'Zone I (0.11)',
+    bdZoneII: 'Zone II (0.07)',
+    bdSite: 'Site',
+    bdRTable: 'table 6.2-1',
+    bdChainBusy: 'Checking…',
+    bdRun: '⛓ Run load-path check',
+    bdSlab: 'Slab',
+    bdFooting: 'Footing',
+    bdInputsNeeded: 'inputs needed',
+    bdSlabDefl: 'Slab deflection',
+    bdSeismic: 'Seismic',
+    bdCol: 'col',
+    bdWindV0: 'basic wind speed V0 m/s',
+    bdWindV0Ph: 'regional value, Fig. 5.5-1',
+    bdWindExp: 'Surface roughness (exposure)',
+    bdWindTerrain: 'Terrain (simplified method)',
+    bdTerrainNormal: 'normal',
+    bdTerrainFlatOpen: 'flat open',
+    bdTerrainCoast: 'coastal',
+    bdWind: 'Wind',
+    inLuxLabel: 'target illuminance lx',
+    inLuxPh: 'per use, KS A 3011',
+    inLumenLabel: 'lamp luminous flux lm',
+    inVentLabel: 'ventilation m³/h·person',
+    inLoadLabel: 'load density VA/m²',
+    inLight: 'Lighting',
+    inFixSuffix: ' fixtures',
+    inAvgLux: 'avg',
+    inVent: 'Ventilation',
+    inElec: 'Electrical',
+    inCircuitSuffix: ' circuits',
+    lsConn: 'Connection hardware',
+    lsConnNone: 'none (default)',
+    lsConnNailOpt: 'nails 89×4.11 ×2',
+    lsConnBoltOpt: 'bolt D12',
+    lsNail: 'nail',
+    lsBolt: 'bolt',
+    lsConnRow: 'Connection',
+    lsDemand: 'reaction',
+    lsCapacity: 'capacity',
+    lsRatio: 'ratio',
+  },
+  ja: {
+    tplTitle: 'アセンブリテンプレート',
+    tplSub: '複数部材 · 設計パッケージ対応',
+    buildBusy: 'ビルド中…',
+    buildBtn: 'アセンブリ生成',
+    builtParts: '生成完了 · 部材 ',
+    clash: '干渉',
+    failed: '失敗: ',
+    packaging: 'パッケージ生成中…',
+    pkgBtn: '📦 設計パッケージをダウンロード',
+    pkgFailed: 'パッケージ生成に失敗',
+    pkgFailPrefix: 'パッケージ失敗: ',
+    papersBtn: '関連論文付録（OpenAlex·Crossref 実引用）',
+    reportFailed: 'レポートHTML生成に失敗',
+    reportHtml: 'レポートHTML',
+    checking: '検証中…',
+    erBtn: '専門調査の依頼（有料）— 先行技術·回避設計',
+    erDesc: '専門家が直接実施（AI検索ツール支援）する有料サービスです。受付後、見積·日程をご返信します。現在の設計スナップショットが自動添付されます。',
+    erNeedNameEmail: '氏名·メールアドレスを入力してください。',
+    erDone: '✅ 受付完了 — 検討後、見積と日程をご返信します。',
+    erFailPrefix: '受付失敗: ',
+    erName: '氏名/会社',
+    erEmail: 'メール',
+    erMsgPh: 'ご依頼内容（対象市場·競合·懸念特許など）',
+    erSubmitting: '送信中…',
+    erSubmit: '依頼を送信（見積返信）',
+    erDisclaimer: '⚠ 本サービスは弁理士の正式なFTO鑑定書に代わるものではありません（必要に応じて弁理士をご紹介します）。',
+    svcPriorArt: '先行技術調査·分析',
+    svcPriorArtD: '特許·論文の精密調査、類似度分析レポート',
+    svcDesignAround: '回避設計レビュー',
+    svcDesignAroundD: '調査結果に基づく設計変更ポイント + 再検証',
+    svcGlobal: 'グローバル展開調査',
+    svcGlobalD: '米·中·欧の特許ランドスケープ',
+    cvTitle: '擁壁安定性検証',
+    cvSub: '断面は形状から自動導出 · 土質のみ入力',
+    cvGamma: '裏込め γ kN/m³',
+    cvPhi: '内部摩擦角 °',
+    cvMu: '底面摩擦 μ',
+    cvQa: '許容支持力 kPa',
+    cvSurcharge: '上載荷重 kPa',
+    cvKh: '地震係数 kh（0=静的）',
+    cvRun: '🧱 擁壁安定性検証を実行',
+    cvSeismicMO: '地震時（M-O）',
+    inTitle: '避難·仕上げ検証',
+    inSub: '歩行距離BFS実測 · 扉幅は形状から導出',
+    inRun: '🚪 避難·仕上げ検証を実行',
+    inTravel: '最遠点歩行距離',
+    inUnreachable: '未到達',
+    inEgress: '収容·避難幅',
+    inDoors: '扉幅合計',
+    inSeats: '座席',
+    inFinish: '仕上げ',
+    inFloor: '床',
+    inWall: '壁',
+    inCeiling: '天井',
+    lsTitle: '木部材·風荷重検証',
+    lsSub: 'KDS 41 50 10 許容応力 · 断面·スパンは形状から導出',
+    lsSpecies: '樹種群',
+    lsLarch: 'カラマツ類',
+    lsPine: 'マツ類',
+    lsKoreanPine: 'チョウセンゴヨウ類',
+    lsCedar: 'スギ類',
+    lsGrade: '等級',
+    gradeSuffix: '等級',
+    lsUsage: '用途（デッキ活荷重）',
+    lsUseRes: '住宅 2.0',
+    lsUseGarden: '庭園·集会 5.0',
+    lsUseAssembly: '集会（可動席）5.0',
+    lsWind: '風圧 kN/m²（0=省略）',
+    lsRun: '🌳 部材·風荷重検証を実行',
+    lsJoist: '根太/垂木',
+    lsTip: '転倒',
+    lsAnchor: 'アンカー',
+    lsPerPost: '本',
+    bdTitle: '荷重経路検証',
+    bdSub: '自重（形状）+活荷重（KDS 表3.2-1）→ 梁→柱→基礎',
+    bdUsage: '用途（活荷重）',
+    bdOffice: '一般事務室',
+    bdBeamAs: '梁 As mm²',
+    bdStirrupAv: 'あばら筋 Av',
+    bdSpacingS: '間隔 s',
+    bdColAst: '柱 Ast',
+    bdFtgB: '基礎 B',
+    bdFtgL: '基礎 L',
+    bdQAllow: '支持力 kPa',
+    bdSeisZone: '地震区域（任意）',
+    bdSeisOff: '未検討',
+    bdZoneI: '区域 I（0.11）',
+    bdZoneII: '区域 II（0.07）',
+    bdSite: '地盤',
+    bdRTable: '表6.2-1',
+    bdChainBusy: 'チェーン検証中…',
+    bdRun: '⛓ 荷重経路検証を実行',
+    bdSlab: 'スラブ',
+    bdFooting: '基礎',
+    bdInputsNeeded: '入力が必要',
+    bdSlabDefl: 'スラブたわみ',
+    bdSeismic: '地震',
+    bdCol: '柱',
+    bdWindV0: '基本風速 V0 m/s',
+    bdWindV0Ph: '図5.5-1 地域値',
+    bdWindExp: '地表面粗度',
+    bdWindTerrain: '地形（簡便法）',
+    bdTerrainNormal: '一般',
+    bdTerrainFlatOpen: '平坦開放地',
+    bdTerrainCoast: '海岸',
+    bdWind: '風荷重',
+    inLuxLabel: '目標照度 lx',
+    inLuxPh: 'KS A 3011 用途別',
+    inLumenLabel: 'ランプ光束 lm',
+    inVentLabel: '一人当たり換気量 m³/h·人',
+    inLoadLabel: '負荷密度 VA/m²',
+    inLight: '照明',
+    inFixSuffix: '灯',
+    inAvgLux: '平均',
+    inVent: '換気',
+    inElec: '電気',
+    inCircuitSuffix: '回路',
+    lsConn: '接合金物',
+    lsConnNone: '未指定（既定）',
+    lsConnNailOpt: '釘 89×4.11 2本',
+    lsConnBoltOpt: 'ボルト D12',
+    lsNail: '釘',
+    lsBolt: 'ボルト',
+    lsConnRow: '接合部',
+    lsDemand: '反力',
+    lsCapacity: '耐力',
+    lsRatio: '比率',
+  },
+  zh: {
+    tplTitle: '装配模板',
+    tplSub: '多部件 · 支持设计包',
+    buildBusy: '构建中…',
+    buildBtn: '生成装配体',
+    builtParts: '已生成 · 部件 ',
+    clash: '干涉',
+    failed: '失败: ',
+    packaging: '正在生成设计包…',
+    pkgBtn: '📦 下载设计包',
+    pkgFailed: '设计包生成失败',
+    pkgFailPrefix: '设计包失败: ',
+    papersBtn: '相关论文附录（OpenAlex·Crossref 真实引用）',
+    reportFailed: '报告HTML生成失败',
+    reportHtml: '报告HTML',
+    checking: '验证中…',
+    erBtn: '专家调研委托（付费）— 现有技术·规避设计',
+    erDesc: '由专家亲自执行（AI检索工具辅助）的付费服务。受理后将回复报价与日程。当前设计快照会自动附上。',
+    erNeedNameEmail: '请输入姓名和邮箱。',
+    erDone: '✅ 已受理 — 审核后将回复报价与日程。',
+    erFailPrefix: '受理失败: ',
+    erName: '姓名/公司',
+    erEmail: '邮箱',
+    erMsgPh: '需求说明（目标市场、竞品、担忧的专利等）',
+    erSubmitting: '提交中…',
+    erSubmit: '提交委托（回复报价）',
+    erDisclaimer: '⚠ 本服务不能替代专利代理人出具的正式FTO意见书（如需可推荐专利代理人）。',
+    svcPriorArt: '现有技术检索·分析',
+    svcPriorArtD: '专利·论文深度检索，相似度分析报告',
+    svcDesignAround: '规避设计评审',
+    svcDesignAroundD: '基于调研结果的设计变更点 + 复核',
+    svcGlobal: '全球布局调研',
+    svcGlobalD: '美·中·欧专利布局',
+    cvTitle: '挡土墙稳定性验证',
+    cvSub: '截面自形状自动导出 · 仅需输入土质',
+    cvGamma: '回填土 γ kN/m³',
+    cvPhi: '内摩擦角 °',
+    cvMu: '底面摩擦 μ',
+    cvQa: '容许承载力 kPa',
+    cvSurcharge: '地面超载 kPa',
+    cvKh: '地震系数 kh（0=静力）',
+    cvRun: '🧱 运行挡土墙稳定性验证',
+    cvSeismicMO: '地震工况（M-O）',
+    inTitle: '疏散·装修验证',
+    inSub: '步行距离BFS实测 · 门宽自形状导出',
+    inRun: '🚪 运行疏散·装修验证',
+    inTravel: '最远点步行距离',
+    inUnreachable: '不可达',
+    inEgress: '容纳·疏散宽度',
+    inDoors: '门宽合计',
+    inSeats: '座位',
+    inFinish: '装修',
+    inFloor: '地面',
+    inWall: '墙面',
+    inCeiling: '吊顶',
+    lsTitle: '木构件·风荷载验证',
+    lsSub: 'KDS 41 50 10 容许应力 · 截面·跨度自形状导出',
+    lsSpecies: '树种组',
+    lsLarch: '落叶松类',
+    lsPine: '松类',
+    lsKoreanPine: '红松类',
+    lsCedar: '杉木类',
+    lsGrade: '等级',
+    gradeSuffix: '级',
+    lsUsage: '用途（露台活荷载）',
+    lsUseRes: '住宅 2.0',
+    lsUseGarden: '花园·集会 5.0',
+    lsUseAssembly: '集会（活动座椅）5.0',
+    lsWind: '风压 kN/m²（0=跳过）',
+    lsRun: '🌳 运行构件·风荷载验证',
+    lsJoist: '搁栅/椽条',
+    lsTip: '倾覆',
+    lsAnchor: '锚栓',
+    lsPerPost: '根',
+    bdTitle: '荷载路径验证',
+    bdSub: '自重（形状）+活荷载（KDS 表3.2-1）→ 梁→柱→基础',
+    bdUsage: '用途（活荷载）',
+    bdOffice: '普通办公室',
+    bdBeamAs: '梁 As mm²',
+    bdStirrupAv: '箍筋 Av',
+    bdSpacingS: '间距 s',
+    bdColAst: '柱 Ast',
+    bdFtgB: '基础 B',
+    bdFtgL: '基础 L',
+    bdQAllow: '承载力 kPa',
+    bdSeisZone: '地震分区（可选）',
+    bdSeisOff: '不考虑',
+    bdZoneI: '分区 I（0.11）',
+    bdZoneII: '分区 II（0.07）',
+    bdSite: '场地',
+    bdRTable: '表6.2-1',
+    bdChainBusy: '链式验证中…',
+    bdRun: '⛓ 运行荷载路径验证',
+    bdSlab: '楼板',
+    bdFooting: '基础',
+    bdInputsNeeded: '需要输入',
+    bdSlabDefl: '楼板挠度',
+    bdSeismic: '地震',
+    bdCol: '柱',
+    bdWindV0: '基本风速 V0 m/s',
+    bdWindV0Ph: '图5.5-1 地区值',
+    bdWindExp: '地面粗糙度',
+    bdWindTerrain: '地形（简化法）',
+    bdTerrainNormal: '一般',
+    bdTerrainFlatOpen: '平坦开阔地',
+    bdTerrainCoast: '海岸',
+    bdWind: '风荷载',
+    inLuxLabel: '目标照度 lx',
+    inLuxPh: 'KS A 3011 按用途',
+    inLumenLabel: '灯具光通量 lm',
+    inVentLabel: '人均通风量 m³/h·人',
+    inLoadLabel: '负荷密度 VA/m²',
+    inLight: '照明',
+    inFixSuffix: '盏',
+    inAvgLux: '平均',
+    inVent: '通风',
+    inElec: '电气',
+    inCircuitSuffix: '条回路',
+    lsConn: '连接五金件',
+    lsConnNone: '未指定（默认）',
+    lsConnNailOpt: '钉 89×4.11 2根',
+    lsConnBoltOpt: '螺栓 D12',
+    lsNail: '钉',
+    lsBolt: '螺栓',
+    lsConnRow: '连接节点',
+    lsDemand: '反力',
+    lsCapacity: '承载力',
+    lsRatio: '比值',
+  },
+  es: {
+    tplTitle: 'Plantilla de ensamblaje',
+    tplSub: 'multipieza · paquete de diseño',
+    buildBusy: 'Generando…',
+    buildBtn: 'Generar ensamblaje',
+    builtParts: 'Generado · piezas ',
+    clash: 'interferencia',
+    failed: 'Error: ',
+    packaging: 'Empaquetando…',
+    pkgBtn: '📦 Descargar paquete de diseño',
+    pkgFailed: 'fallo al generar el paquete',
+    pkgFailPrefix: 'Fallo del paquete: ',
+    papersBtn: 'Anexo de artículos relacionados (citas reales OpenAlex·Crossref)',
+    reportFailed: 'fallo al generar el informe HTML',
+    reportHtml: 'Informe HTML',
+    checking: 'Verificando…',
+    erBtn: 'Solicitud de investigación experta (de pago) — estado de la técnica y diseño alternativo',
+    erDesc: 'Servicio de pago realizado por un experto (asistido por IA). Tras la recepción respondemos con presupuesto y calendario. Se adjunta automáticamente la instantánea de su diseño.',
+    erNeedNameEmail: 'Se requieren nombre y correo.',
+    erDone: '✅ Recibido — responderemos con presupuesto y calendario.',
+    erFailPrefix: 'Fallo: ',
+    erName: 'Nombre/Empresa',
+    erEmail: 'Correo',
+    erMsgPh: 'Detalles (mercado objetivo, competidores, patentes de interés…)',
+    erSubmitting: 'Enviando…',
+    erSubmit: 'Enviar solicitud (respuesta con presupuesto)',
+    erDisclaimer: '⚠ Este servicio no sustituye un dictamen FTO formal de un agente de patentes (derivación disponible).',
+    svcPriorArt: 'Búsqueda y análisis del estado de la técnica',
+    svcPriorArtD: 'búsqueda profunda de patentes y artículos, informe de similitud',
+    svcDesignAround: 'Revisión de diseño alternativo',
+    svcDesignAroundD: 'puntos de cambio de diseño + reverificación',
+    svcGlobal: 'Panorama global',
+    svcGlobalD: 'panorama de patentes EE. UU./China/UE',
+    cvTitle: 'Estabilidad de muro de contención',
+    cvSub: 'sección derivada de la forma · solo datos del suelo',
+    cvGamma: 'γ relleno kN/m³',
+    cvPhi: 'φ °',
+    cvMu: 'μ base',
+    cvQa: 'capacidad portante adm. kPa',
+    cvSurcharge: 'sobrecarga kPa',
+    cvKh: 'kh sísmico (0=estático)',
+    cvRun: '🧱 Ejecutar verificación de estabilidad',
+    cvSeismicMO: 'Sísmico (M-O)',
+    inTitle: 'Verificación de evacuación y acabados',
+    inSub: 'recorrido BFS · ancho de puertas de la forma',
+    inRun: '🚪 Ejecutar verificación de evacuación y acabados',
+    inTravel: 'Recorrido máximo',
+    inUnreachable: 'inaccesible',
+    inEgress: 'Aforo/evacuación',
+    inDoors: 'puertas',
+    inSeats: 'asientos',
+    inFinish: 'Acabados',
+    inFloor: 'suelo',
+    inWall: 'pared',
+    inCeiling: 'techo',
+    lsTitle: 'Verificación de miembro de madera y viento',
+    lsSub: 'esfuerzo admisible KDS 41 50 10 · sección/luz de la forma',
+    lsSpecies: 'Especie',
+    lsLarch: 'Alerce',
+    lsPine: 'Pino',
+    lsKoreanPine: 'Pino coreano',
+    lsCedar: 'Cedro',
+    lsGrade: 'Grado',
+    gradeSuffix: '',
+    lsUsage: 'Uso (carga viva de la terraza)',
+    lsUseRes: 'Residencial 2.0',
+    lsUseGarden: 'Jardín/reunión 5.0',
+    lsUseAssembly: 'Reunión 5.0',
+    lsWind: 'Viento kN/m² (0=omitir)',
+    lsRun: '🌳 Ejecutar verificación de madera y viento',
+    lsJoist: 'Vigueta',
+    lsTip: 'Vuelco',
+    lsAnchor: 'anclaje',
+    lsPerPost: 'poste',
+    bdTitle: 'Verificación de trayectoria de cargas',
+    bdSub: 'peso propio (forma)+carga viva (KDS tabla 3.2-1) → viga→columna→zapata',
+    bdUsage: 'Uso (carga viva)',
+    bdOffice: 'Oficina',
+    bdBeamAs: 'viga As mm²',
+    bdStirrupAv: 'estribo Av',
+    bdSpacingS: 'separación s',
+    bdColAst: 'columna Ast',
+    bdFtgB: 'zapata B',
+    bdFtgL: 'zapata L',
+    bdQAllow: 'capacidad kPa',
+    bdSeisZone: 'Zona sísmica (opcional)',
+    bdSeisOff: 'sin considerar',
+    bdZoneI: 'Zona I (0.11)',
+    bdZoneII: 'Zona II (0.07)',
+    bdSite: 'Suelo',
+    bdRTable: 'tabla 6.2-1',
+    bdChainBusy: 'Verificando…',
+    bdRun: '⛓ Ejecutar verificación de trayectoria de cargas',
+    bdSlab: 'Losa',
+    bdFooting: 'Zapata',
+    bdInputsNeeded: 'faltan datos',
+    bdSlabDefl: 'Deflexión de losa',
+    bdSeismic: 'Sísmico',
+    bdCol: 'columna',
+    bdWindV0: 'velocidad básica del viento V0 m/s',
+    bdWindV0Ph: 'valor regional, fig. 5.5-1',
+    bdWindExp: 'Rugosidad superficial (exposición)',
+    bdWindTerrain: 'Terreno (método simplificado)',
+    bdTerrainNormal: 'normal',
+    bdTerrainFlatOpen: 'llano abierto',
+    bdTerrainCoast: 'costero',
+    bdWind: 'Viento',
+    inLuxLabel: 'iluminancia objetivo lx',
+    inLuxPh: 'según uso, KS A 3011',
+    inLumenLabel: 'flujo luminoso de lámpara lm',
+    inVentLabel: 'ventilación m³/h·persona',
+    inLoadLabel: 'densidad de carga VA/m²',
+    inLight: 'Iluminación',
+    inFixSuffix: ' luminarias',
+    inAvgLux: 'media',
+    inVent: 'Ventilación',
+    inElec: 'Eléctrico',
+    inCircuitSuffix: ' circuitos',
+    lsConn: 'Herraje de unión',
+    lsConnNone: 'ninguno (predet.)',
+    lsConnNailOpt: 'clavos 89×4.11 ×2',
+    lsConnBoltOpt: 'perno D12',
+    lsNail: 'clavo',
+    lsBolt: 'perno',
+    lsConnRow: 'Unión',
+    lsDemand: 'reacción',
+    lsCapacity: 'capacidad',
+    lsRatio: 'relación',
+  },
+  ar: {
+    tplTitle: 'قالب التجميع',
+    tplSub: 'متعدد الأجزاء · حزمة تصميم',
+    buildBusy: 'جارٍ البناء…',
+    buildBtn: 'إنشاء التجميع',
+    builtParts: 'تم الإنشاء · الأجزاء ',
+    clash: 'تداخل',
+    failed: 'فشل: ',
+    packaging: 'جارٍ إنشاء الحزمة…',
+    pkgBtn: '📦 تنزيل حزمة التصميم',
+    pkgFailed: 'فشل إنشاء الحزمة',
+    pkgFailPrefix: 'فشل الحزمة: ',
+    papersBtn: 'ملحق الأوراق البحثية ذات الصلة (استشهادات حقيقية OpenAlex·Crossref)',
+    reportFailed: 'فشل إنشاء تقرير HTML',
+    reportHtml: 'تقرير HTML',
+    checking: 'جارٍ التحقق…',
+    erBtn: 'طلب بحث متخصص (مدفوع) — التقنية السابقة والتصميم الالتفافي',
+    erDesc: 'خدمة مدفوعة يقوم بها خبير مباشرة (بمساعدة أدوات بحث الذكاء الاصطناعي). بعد الاستلام نرد بعرض السعر والجدول الزمني. تُرفق لقطة التصميم الحالية تلقائيًا.',
+    erNeedNameEmail: 'يرجى إدخال الاسم والبريد الإلكتروني.',
+    erDone: '✅ تم الاستلام — سنرد بعرض السعر والجدول الزمني بعد المراجعة.',
+    erFailPrefix: 'فشل الاستلام: ',
+    erName: 'الاسم/الشركة',
+    erEmail: 'البريد الإلكتروني',
+    erMsgPh: 'التفاصيل (السوق المستهدف، المنافسون، براءات الاختراع المثيرة للقلق…)',
+    erSubmitting: 'جارٍ الإرسال…',
+    erSubmit: 'إرسال الطلب (رد بعرض السعر)',
+    erDisclaimer: '⚠ هذه الخدمة ليست بديلاً عن رأي FTO رسمي من محامي براءات (الإحالة متاحة عند الحاجة).',
+    svcPriorArt: 'البحث في التقنية السابقة وتحليلها',
+    svcPriorArtD: 'بحث معمق في البراءات والأوراق، تقرير تحليل التشابه',
+    svcDesignAround: 'مراجعة التصميم الالتفافي',
+    svcDesignAroundD: 'نقاط تعديل التصميم + إعادة التحقق',
+    svcGlobal: 'المشهد العالمي',
+    svcGlobalD: 'مشهد البراءات في الولايات المتحدة والصين وأوروبا',
+    cvTitle: 'التحقق من استقرار الجدار الاستنادي',
+    cvSub: 'المقطع مشتق من الشكل · إدخال خصائص التربة فقط',
+    cvGamma: 'γ الردم kN/m³',
+    cvPhi: 'زاوية الاحتكاك الداخلي °',
+    cvMu: 'μ القاعدة',
+    cvQa: 'قدرة التحمل المسموحة kPa',
+    cvSurcharge: 'الحمل الإضافي kPa',
+    cvKh: 'معامل الزلزال kh (0=استاتيكي)',
+    cvRun: '🧱 تشغيل فحص الاستقرار',
+    cvSeismicMO: 'زلزالي (M-O)',
+    inTitle: 'فحص الإخلاء والتشطيبات',
+    inSub: 'مسافة السير BFS · عرض الأبواب من الشكل',
+    inRun: '🚪 تشغيل فحص الإخلاء والتشطيبات',
+    inTravel: 'أقصى مسافة سير',
+    inUnreachable: 'غير قابل للوصول',
+    inEgress: 'الإشغال/عرض الإخلاء',
+    inDoors: 'مجموع عرض الأبواب',
+    inSeats: 'مقاعد',
+    inFinish: 'التشطيبات',
+    inFloor: 'أرضية',
+    inWall: 'جدار',
+    inCeiling: 'سقف',
+    lsTitle: 'فحص العنصر الخشبي وحمل الرياح',
+    lsSub: 'إجهاد مسموح KDS 41 50 10 · المقطع/الباع من الشكل',
+    lsSpecies: 'نوع الخشب',
+    lsLarch: 'أرزية (لاركس)',
+    lsPine: 'صنوبر',
+    lsKoreanPine: 'صنوبر كوري',
+    lsCedar: 'أرز (سيدر)',
+    lsGrade: 'الدرجة',
+    gradeSuffix: '',
+    lsUsage: 'الاستخدام (الحمل الحي للسطح)',
+    lsUseRes: 'سكني 2.0',
+    lsUseGarden: 'حديقة/تجمع 5.0',
+    lsUseAssembly: 'تجمع 5.0',
+    lsWind: 'ضغط الرياح kN/m² (0=تخطي)',
+    lsRun: '🌳 تشغيل فحص العنصر الخشبي والرياح',
+    lsJoist: 'رافدة',
+    lsTip: 'انقلاب',
+    lsAnchor: 'مرساة',
+    lsPerPost: 'عمود',
+    bdTitle: 'فحص مسار الأحمال',
+    bdSub: 'حمل ميت (الشكل)+حمل حي (KDS جدول 3.2-1) → جسر→عمود→أساس',
+    bdUsage: 'الاستخدام (الحمل الحي)',
+    bdOffice: 'مكتب',
+    bdBeamAs: 'الجسر As mm²',
+    bdStirrupAv: 'الكانة Av',
+    bdSpacingS: 'التباعد s',
+    bdColAst: 'العمود Ast',
+    bdFtgB: 'الأساس B',
+    bdFtgL: 'الأساس L',
+    bdQAllow: 'قدرة التحمل kPa',
+    bdSeisZone: 'المنطقة الزلزالية (اختياري)',
+    bdSeisOff: 'بدون',
+    bdZoneI: 'المنطقة I (0.11)',
+    bdZoneII: 'المنطقة II (0.07)',
+    bdSite: 'الموقع',
+    bdRTable: 'الجدول 6.2-1',
+    bdChainBusy: 'جارٍ التحقق…',
+    bdRun: '⛓ تشغيل فحص مسار الأحمال',
+    bdSlab: 'البلاطة',
+    bdFooting: 'الأساس',
+    bdInputsNeeded: 'مطلوب إدخال',
+    bdSlabDefl: 'انحراف البلاطة',
+    bdSeismic: 'زلزالي',
+    bdCol: 'العمود',
+    bdWindV0: 'سرعة الرياح الأساسية V0 m/s',
+    bdWindV0Ph: 'قيمة المنطقة، الشكل 5.5-1',
+    bdWindExp: 'خشونة سطح الأرض (التعرض)',
+    bdWindTerrain: 'التضاريس (الطريقة المبسطة)',
+    bdTerrainNormal: 'عادي',
+    bdTerrainFlatOpen: 'مستوٍ مكشوف',
+    bdTerrainCoast: 'ساحلي',
+    bdWind: 'الرياح',
+    inLuxLabel: 'الإضاءة المستهدفة lx',
+    inLuxPh: 'حسب الاستخدام، KS A 3011',
+    inLumenLabel: 'التدفق الضوئي للمصباح lm',
+    inVentLabel: 'معدل التهوية m³/h·شخص',
+    inLoadLabel: 'كثافة الحمل VA/m²',
+    inLight: 'الإضاءة',
+    inFixSuffix: ' وحدة',
+    inAvgLux: 'متوسط',
+    inVent: 'التهوية',
+    inElec: 'الكهرباء',
+    inCircuitSuffix: ' دارة',
+    lsConn: 'قطع التوصيل المعدنية',
+    lsConnNone: 'غير محدد (افتراضي)',
+    lsConnNailOpt: 'مسامير 89×4.11 ×2',
+    lsConnBoltOpt: 'برغي D12',
+    lsNail: 'مسمار',
+    lsBolt: 'برغي',
+    lsConnRow: 'الوصلة',
+    lsDemand: 'رد الفعل',
+    lsCapacity: 'المقاومة',
+    lsRatio: 'النسبة',
+  },
+} as const;
 
 interface ParamSpec { name: string; labelKo: string; unit: string; default: number; min: number; max: number }
 interface Template { domain: string; id: string; labelKo: string; labelEn: string; params: ParamSpec[] }
@@ -23,12 +807,16 @@ interface IntResp {
   travel?: { maxTravelM: number; limitM: number; pass: boolean; unreachableM2: number; limitNote?: string };
   egress?: { verdict?: string; derived?: { doorWidthSumMm: number; seatCount: number }; error?: string | null } | null;
   finishes?: { floorM2: number; wallM2: number; ceilingM2: number };
+  lighting?: { verdict?: string; fixtures?: number; layout?: string; avgLuxProvided?: number; roomIndex?: number } | null;
+  ventilation?: { verdict?: string; occupants?: number | null; requiredCMH?: number; ACH?: number } | null;
+  electrical?: { verdict?: string; totalVA?: number; circuits?: number } | null;
   disclaimer?: string;
 }
 interface LsResp {
   ok: boolean; error?: string;
   member?: { section: string; spanMm: number; spacingMm: number; verdict?: string; load?: { total_kNm: number; liveRef?: string }; error?: string | null } | null;
   wind?: { skipped?: boolean; note?: string; FS?: number; worst?: string; pass?: boolean; anchorUpliftPerPost_kN?: number; fsLimit?: number } | null;
+  connection?: { type?: string; demandN?: number; verdict?: string; checks?: { shear?: { capacity_N?: number; ratio?: number } } | null; note?: string; error?: string | null } | null;
   disclaimer?: string;
 }
 interface ChainCheck { verdict?: string; error?: string | null }
@@ -39,6 +827,7 @@ interface ChainResp {
   columns?: Array<ChainCheck & { id: string; section: string; Pu_kN: number }>;
   footing?: ChainCheck & { needInputs?: string[] };
   seismic?: { error?: string; V_kN?: number; Cs?: number; column?: { MuE_kNm?: number; verdict?: string } } | null;
+  wind?: { error?: string; H_m?: number; B_m?: number; D_m?: number; x?: { method: string; baseShear_kN: number; p_Nm2: number }; y?: { method: string; baseShear_kN: number; p_Nm2: number }; column?: { MuW_kNm?: number; PuW_kN?: number; verdict?: string }; note?: string } | null;
   slabSLS?: { live: { delta_mm: number; limit_mm: number; pass: boolean }; total: { delta_mm: number; limit_mm: number; pass: boolean }; panelMm?: string } | null;
   disclaimer?: string;
 }
@@ -63,6 +852,7 @@ export default function AssemblyPresetPanel({
   onApply: (intent: { name?: string; features?: unknown[] }, scad: string) => void | Promise<void>;
 }) {
   const ko = isKorean(lang);
+  const t = dict[toIsoLang(lang)] ?? dict.ko;
   const [templates, setTemplates] = useState<Template[] | null>(null);
   const [tid, setTid] = useState('');
   const [params, setParams] = useState<Record<string, number>>({});
@@ -72,7 +862,7 @@ export default function AssemblyPresetPanel({
   const [built, setBuilt] = useState<BuildResp | null>(null);
   // 하중경로 체인 (building 전용, Wave A·B1)
   const [usages, setUsages] = useState<Usage[]>([]);
-  const [chainP, setChainP] = useState<Record<string, number | string>>({ usage: 'office', fck: 24, fy: 400, beamAs: 1548, beamAv: 142.7, beamS: 250, colAst: 3097, fB: 2200, fL: 2200, fT: 500, fD: 420, qAllow: 200, seisZone: '', seisSite: 'S4', seisR: 5 });
+  const [chainP, setChainP] = useState<Record<string, number | string>>({ usage: 'office', fck: 24, fy: 400, beamAs: 1548, beamAv: 142.7, beamS: 250, colAst: 3097, fB: 2200, fL: 2200, fT: 500, fD: 420, qAllow: 200, seisZone: '', seisSite: 'S4', seisR: 5, windV0: '', windExposure: 'C', windTerrain: 'normal' });
   const [chain, setChain] = useState<ChainResp | null>(null);
   const [chainBusy, setChainBusy] = useState(false);
 
@@ -90,12 +880,12 @@ export default function AssemblyPresetPanel({
   const [erBusy, setErBusy] = useState(false);
   const [erMsg, setErMsg] = useState<string | null>(null);
   const ER_SERVICES: Array<[string, string, string]> = [
-    ['prior-art', ko ? '선행기술 조사·분석' : 'Prior-art search & analysis', ko ? '특허·논문 정밀 조사, 유사도 분석 리포트' : 'patent & paper deep search, similarity report'],
-    ['design-around', ko ? '회피 설계 검토' : 'Design-around review', ko ? '조사 결과 기반 설계 변경 포인트 + 재검증' : 'design change points + re-verification'],
-    ['global', ko ? '글로벌 확장 조사' : 'Global landscape', ko ? '미국·중국·유럽 특허 랜드스케이프' : 'US/CN/EU patent landscape'],
+    ['prior-art', t.svcPriorArt, t.svcPriorArtD],
+    ['design-around', t.svcDesignAround, t.svcDesignAroundD],
+    ['global', t.svcGlobal, t.svcGlobalD],
   ];
   const submitExpertRequest = useCallback(async () => {
-    if (!built?.assembly || !erP.name.trim() || !erP.email.trim()) { setErMsg(ko ? '이름·이메일을 입력해 주세요.' : 'Name & email required.'); return; }
+    if (!built?.assembly || !erP.name.trim() || !erP.email.trim()) { setErMsg(t.erNeedNameEmail); return; }
     setErBusy(true); setErMsg(null);
     try {
       const svc = ER_SERVICES.find(([k]) => k === erP.service);
@@ -120,15 +910,15 @@ export default function AssemblyPresetPanel({
       });
       const j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok) throw new Error(j.error ?? 'submit failed');
-      setErMsg(ko ? '✅ 접수 완료 — 검토 후 견적과 일정으로 회신드립니다.' : '✅ Received — we will reply with a quote & schedule.');
+      setErMsg(t.erDone);
       setErP((s) => ({ ...s, message: '' }));
     } catch (e) {
-      setErMsg((ko ? '접수 실패: ' : 'Failed: ') + (e instanceof Error ? e.message : String(e)));
+      setErMsg(t.erFailPrefix + (e instanceof Error ? e.message : String(e)));
     } finally {
       setErBusy(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [built, erP, ko, domain, tid, params]);
+  }, [built, erP, t, domain, tid, params]);
 
   // 공용: 체인 리포트 HTML 다운로드 (라우트 format:'html')
   const downloadHtmlReport = useCallback(async (url: string, bodyObj: Record<string, unknown>, filename: string) => {
@@ -140,9 +930,9 @@ export default function AssemblyPresetPanel({
       const a = document.createElement('a'); a.href = blobUrl; a.download = filename; a.click();
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
     } catch {
-      setMsg(ko ? '리포트 HTML 생성 실패' : 'report HTML failed');
+      setMsg(t.reportFailed);
     }
-  }, [ko]);
+  }, [t]);
 
   // 토목 체인 (civil 전용): 옹벽 안정 — 단면=형상 메타 자동 파생, 토질만 입력
   const [cvP, setCvP] = useState<Record<string, number>>({ gammaBackfill: 18, phiBackfill: 30, baseFriction: 0.5, allowableBearing: 200, surcharge: 0, seismicKh: 0 });
@@ -165,7 +955,7 @@ export default function AssemblyPresetPanel({
   }, [built, civilBody]);
 
   // 조경 체인 (landscape 전용, Wave A 조경 L1+L2)
-  const [lsP, setLsP] = useState<Record<string, number | string>>({ species: 'pine', grade: 2, usage: 'residence_living', windPressure: 0, extraW: 0 });
+  const [lsP, setLsP] = useState<Record<string, number | string>>({ species: 'pine', grade: 2, usage: 'residence_living', windPressure: 0, extraW: 0, connType: 'none' });
   const [ls, setLs] = useState<LsResp | null>(null);
   const [lsBusy, setLsBusy] = useState(false);
 
@@ -175,6 +965,8 @@ export default function AssemblyPresetPanel({
       species: lsP.species, grade: Number(lsP.grade), usage: lsP.usage,
       extraW_kNm: Number(lsP.extraW) || 0,
       ...(Number(lsP.windPressure) > 0 ? { windPressure_kNm2: Number(lsP.windPressure) } : {}),
+      // 접합철물(KDS 41 50 30 못/볼트) — 미지정 시 생략 (규격 기본값=서버)
+      ...(lsP.connType !== 'none' ? { connection: { type: lsP.connType } } : {}),
     },
   }), [built, lsP]);
   const runLandscape = useCallback(async () => {
@@ -192,16 +984,27 @@ export default function AssemblyPresetPanel({
     }
   }, [built, lsBody]);
 
-  // 인테리어 체인 (interior 전용, Wave A I2+I3)
+  // 인테리어 체인 (interior 전용, Wave A I2+I3 · 설비 MEP 개산)
   const [intR, setIntR] = useState<IntResp | null>(null);
   const [intBusy, setIntBusy] = useState(false);
+  const [inP, setInP] = useState<Record<string, number>>({ targetLux: 0, lampLumen: 0, ventPerPersonCMH: 0, loadDensityVAm2: 0 });
+  const intBody = useCallback(() => ({
+    assembly: built?.assembly,
+    params: {
+      // 설비 개산(조명·환기·전기) — 기준값 날조 금지: 입력 시에만 전달
+      ...(inP.targetLux > 0 ? { targetLux: inP.targetLux } : {}),
+      ...(inP.lampLumen > 0 ? { lampLumen: inP.lampLumen } : {}),
+      ...(inP.ventPerPersonCMH > 0 ? { ventPerPersonCMH: inP.ventPerPersonCMH } : {}),
+      ...(inP.loadDensityVAm2 > 0 ? { loadDensityVAm2: inP.loadDensityVAm2 } : {}),
+    },
+  }), [built, inP]);
   const runInterior = useCallback(async () => {
     if (!built?.assembly) return;
     setIntBusy(true); setIntR(null);
     try {
       const res = await fetch('/api/nexyfab/drawing/interior-check/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assembly: built.assembly, params: {} }),
+        body: JSON.stringify(intBody()),
       });
       setIntR((await res.json()) as IntResp);
     } catch (e) {
@@ -209,7 +1012,7 @@ export default function AssemblyPresetPanel({
     } finally {
       setIntBusy(false);
     }
-  }, [built]);
+  }, [built, intBody]);
 
   const chainBody = useCallback(() => ({
     assembly: built?.assembly,
@@ -220,6 +1023,8 @@ export default function AssemblyPresetPanel({
       footing: { B: Number(chainP.fB), L: Number(chainP.fL), t: Number(chainP.fT), d: Number(chainP.fD), qAllow: Number(chainP.qAllow) },
       // 지진(등가정적) — 구역 선택 시에만 (R=표 6.2-1 시스템 결정)
       ...(chainP.seisZone ? { seismic: { zone: chainP.seisZone, siteClass: chainP.seisSite, R: Number(chainP.seisR) || 5 } } : {}),
+      // 풍하중(KDS 41 12 00) — V0 입력 시에만 (H·B·D=형상 파생, 간편법/정식법 자동선택)
+      ...(Number(chainP.windV0) > 0 ? { wind: { V0: Number(chainP.windV0), exposure: chainP.windExposure, terrain: chainP.windTerrain } } : {}),
     },
   }), [built, chainP]);
   const runChain = useCallback(async () => {
@@ -250,7 +1055,7 @@ export default function AssemblyPresetPanel({
     return () => { alive = false; };
   }, [domain]);
 
-  const tpl = useMemo(() => templates?.find((t) => t.id === tid) ?? null, [templates, tid]);
+  const tpl = useMemo(() => templates?.find((tp) => tp.id === tid) ?? null, [templates, tid]);
 
   useEffect(() => {
     if (!tpl) return;
@@ -273,19 +1078,19 @@ export default function AssemblyPresetPanel({
         await onApply(data.composeIntent, data.openscad);
         const mass = data.structural?.totalMassKg;
         setMsg(
-          (ko ? '생성됨 · 부재 ' : 'Built · parts ') + (data.assembly?.parts?.length ?? 0)
+          t.builtParts + (data.assembly?.parts?.length ?? 0)
           + (mass ? ` · ${mass >= 1000 ? (mass / 1000).toFixed(1) + 't' : mass.toFixed(0) + 'kg'}` : '')
-          + (data.interferences?.length ? (ko ? ` · ⚠간섭 ${data.interferences.length}` : ` · ⚠clash ${data.interferences.length}`) : ''),
+          + (data.interferences?.length ? ` · ⚠${t.clash} ${data.interferences.length}` : ''),
         );
       } else {
-        setMsg((ko ? '실패: ' : 'Failed: ') + (data.gateErrors?.join('; ') ?? data.error ?? ''));
+        setMsg(t.failed + (data.gateErrors?.join('; ') ?? data.error ?? ''));
       }
     } catch (e) {
-      setMsg((ko ? '실패: ' : 'Failed: ') + (e instanceof Error ? e.message : String(e)));
+      setMsg(t.failed + (e instanceof Error ? e.message : String(e)));
     } finally {
       setBusy(false);
     }
-  }, [tid, params, onApply, ko, domain]);
+  }, [tid, params, onApply, t, domain]);
 
   const downloadPackage = useCallback(async () => {
     if (!built?.assembly) return;
@@ -296,7 +1101,7 @@ export default function AssemblyPresetPanel({
         body: JSON.stringify({ assembly: built.assembly }),
       });
       const j = (await r.json().catch(() => ({}))) as { ok?: boolean; zipBase64?: string; files?: Array<{ name: string; content: string; mime?: string }>; error?: string };
-      if (!r.ok || !j.ok) throw new Error(j.error ?? (ko ? '패키지 생성 실패' : 'package failed'));
+      if (!r.ok || !j.ok) throw new Error(j.error ?? t.pkgFailed);
       if (typeof j.zipBase64 === 'string') {
         const bin = atob(j.zipBase64);
         const bytes = new Uint8Array(bin.length);
@@ -310,13 +1115,13 @@ export default function AssemblyPresetPanel({
           const a = document.createElement('a'); a.href = url; a.download = f.name; a.click();
           setTimeout(() => URL.revokeObjectURL(url), 1500);
         }
-      } else throw new Error(ko ? '패키지 생성 실패' : 'package failed');
+      } else throw new Error(t.pkgFailed);
     } catch (e) {
-      setMsg((ko ? '패키지 실패: ' : 'Package failed: ') + (e instanceof Error ? e.message : String(e)));
+      setMsg(t.pkgFailPrefix + (e instanceof Error ? e.message : String(e)));
     } finally {
       setPkgBusy(false);
     }
-  }, [built, ko]);
+  }, [built, t]);
 
   if (!templates) return null;
 
@@ -325,14 +1130,14 @@ export default function AssemblyPresetPanel({
   return (
     <div style={{ marginBottom: 12, padding: 12, borderRadius: 8, background: 'var(--nx-accent-soft, #eef4ff)', border: '1px solid var(--nx-border, #dfe3e8)' }}>
       <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 6 }}>
-        {ko ? '어셈블리 템플릿' : 'Assembly template'}
+        {t.tplTitle}
         <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-          {ko ? '다부재 · 설계 패키지 지원' : 'multi-part · design package'}
+          {t.tplSub}
         </span>
       </div>
 
       <select value={tid} onChange={(e) => setTid(e.target.value)} style={selStyle}>
-        {templates.map((t) => <option key={t.id} value={t.id}>{ko ? t.labelKo : t.labelEn}</option>)}
+        {templates.map((tp) => <option key={tp.id} value={tp.id}>{ko ? tp.labelKo : tp.labelEn}</option>)}
       </select>
 
       {tpl && (
@@ -353,12 +1158,12 @@ export default function AssemblyPresetPanel({
       )}
 
       <button type="button" onClick={generate} disabled={busy} style={genStyle}>
-        {busy ? (ko ? '빌드 중…' : 'Building…') : ko ? '어셈블리 생성' : 'Build assembly'}
+        {busy ? t.buildBusy : t.buildBtn}
       </button>
 
       {built && (
         <button type="button" onClick={downloadPackage} disabled={pkgBusy} style={{ ...genStyle, marginTop: 6, background: 'var(--nx-panel, #fff)', color: 'var(--nx-accent, #2563eb)', border: '1px solid var(--nx-accent, #2563eb)' }}>
-          {pkgBusy ? (ko ? '패키지 생성 중…' : 'Packaging…') : ko ? '📦 설계 패키지 다운로드' : '📦 Download design package'}
+          {pkgBusy ? t.packaging : t.pkgBtn}
         </button>
       )}
       {built && (
@@ -367,7 +1172,7 @@ export default function AssemblyPresetPanel({
           onClick={() => downloadHtmlReport('/api/nexyfab/drawing/research/', { assembly: built.assembly, domain }, 'related_research.html')}
           style={{ ...rptBtn, width: '100%' }}
         >
-          📚 {ko ? '관련 논문 부록 (OpenAlex·Crossref 실인용)' : 'Related papers (real citations)'}
+          📚 {t.papersBtn}
         </button>
       )}
 
@@ -375,33 +1180,31 @@ export default function AssemblyPresetPanel({
       {built && (
         <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
           <button type="button" onClick={() => setErOpen((v) => !v)} style={{ ...rptBtn, width: '100%', background: erOpen ? 'var(--nx-accent-soft, #eef4ff)' : 'var(--nx-panel, #fff)' }}>
-            🔎 {ko ? '전문 조사 의뢰 (유료) — 선행기술·회피설계' : 'Expert research request (paid)'}
+            🔎 {t.erBtn}
           </button>
           {erOpen && (
             <div style={{ marginTop: 6, fontSize: 11 }}>
               <div style={{ color: 'var(--nx-text-3, #6b7684)', marginBottom: 5, lineHeight: 1.5 }}>
-                {ko
-                  ? '전문가가 직접 수행(AI 검색 도구 지원)하는 유료 서비스입니다. 접수 후 견적·일정을 회신드립니다. 현재 설계 스냅샷이 자동 첨부됩니다.'
-                  : 'Performed by an expert (AI-assisted). We reply with a quote & schedule. Your design snapshot is attached automatically.'}
+                {t.erDesc}
               </div>
               <select value={erP.service} onChange={(e) => setErP((s) => ({ ...s, service: e.target.value }))} style={selStyle}>
                 {ER_SERVICES.map(([k, lb, desc]) => <option key={k} value={k}>{lb} — {desc}</option>)}
               </select>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, margin: '6px 0' }}>
-                <input placeholder={ko ? '이름/회사' : 'Name/Company'} value={erP.name} onChange={(e) => setErP((s) => ({ ...s, name: e.target.value }))} style={inpStyle} />
-                <input placeholder={ko ? '이메일' : 'Email'} type="email" value={erP.email} onChange={(e) => setErP((s) => ({ ...s, email: e.target.value }))} style={inpStyle} />
+                <input placeholder={t.erName} value={erP.name} onChange={(e) => setErP((s) => ({ ...s, name: e.target.value }))} style={inpStyle} />
+                <input placeholder={t.erEmail} type="email" value={erP.email} onChange={(e) => setErP((s) => ({ ...s, email: e.target.value }))} style={inpStyle} />
               </div>
               <textarea
-                placeholder={ko ? '요청사항 (대상 시장·경쟁사·우려 특허 등)' : 'Details (target market, competitors, patents of concern…)'}
+                placeholder={t.erMsgPh}
                 value={erP.message} onChange={(e) => setErP((s) => ({ ...s, message: e.target.value }))}
                 rows={3} style={{ ...inpStyle, resize: 'vertical' }}
               />
               <button type="button" onClick={submitExpertRequest} disabled={erBusy} style={{ ...genStyle, marginTop: 5, background: '#0f172a' }}>
-                {erBusy ? (ko ? '접수 중…' : 'Submitting…') : ko ? '의뢰 접수 (견적 회신)' : 'Submit request'}
+                {erBusy ? t.erSubmitting : t.erSubmit}
               </button>
               {erMsg && <div style={{ marginTop: 5, color: erMsg.startsWith('✅') ? '#16a34a' : '#991b1b' }}>{erMsg}</div>}
               <div style={{ marginTop: 5, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>
-                {ko ? '⚠ 본 서비스는 변리사의 정식 FTO 의견서를 대체하지 않습니다(필요 시 변리사 연계 안내).' : '⚠ Not a substitute for a formal attorney FTO opinion (referral available).'}
+                {t.erDisclaimer}
               </div>
             </div>
           )}
@@ -419,13 +1222,13 @@ export default function AssemblyPresetPanel({
       {domain === 'civil' && built && (
         <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
           <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4 }}>
-            {ko ? '옹벽 안정 검증' : 'Retaining wall stability'}
+            {t.cvTitle}
             <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-              {ko ? '단면 자동 파생 · 토질만 입력' : 'section from shape · soil only'}
+              {t.cvSub}
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 6 }}>
-            {([['gammaBackfill', ko ? '뒤채움 γ kN/m³' : 'γ backfill'], ['phiBackfill', ko ? '내부마찰각 °' : 'φ'], ['baseFriction', ko ? '저면 마찰 μ' : 'μ base'], ['allowableBearing', ko ? '허용지지력 kPa' : 'qAllow'], ['surcharge', ko ? '상재하중 kPa' : 'surcharge'], ['seismicKh', ko ? '지진계수 kh (0=정적)' : 'seismic kh']] as Array<[string, string]>).map(([k, lb]) => (
+            {([['gammaBackfill', t.cvGamma], ['phiBackfill', t.cvPhi], ['baseFriction', t.cvMu], ['allowableBearing', t.cvQa], ['surcharge', t.cvSurcharge], ['seismicKh', t.cvKh]] as Array<[string, string]>).map(([k, lb]) => (
               <label key={k} style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{lb}</span>
                 <input type="number" step="0.1" value={cvP[k]} onChange={(e) => setCvP((s) => ({ ...s, [k]: Number(e.target.value) }))} style={inpStyle} />
@@ -433,7 +1236,7 @@ export default function AssemblyPresetPanel({
             ))}
           </div>
           <button type="button" onClick={runCivil} disabled={cvBusy} style={{ ...genStyle, background: '#b45309' }}>
-            {cvBusy ? (ko ? '검증 중…' : 'Checking…') : ko ? '🧱 옹벽 안정 검증 실행' : '🧱 Run stability check'}
+            {cvBusy ? t.checking : t.cvRun}
           </button>
           {cv && !cv.ok && <div style={{ marginTop: 5, fontSize: 11, color: '#991b1b' }}>{cv.error}</div>}
           {cv?.ok && (
@@ -446,13 +1249,13 @@ export default function AssemblyPresetPanel({
               ))}
               {cv.seismic && !cv.seismic.error && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
-                  <span>{ko ? '지진시(M-O)' : 'Seismic (M-O)'} kh={cv.seismic.kh}{cv.seismic.checks ? ` · ${Object.entries(cv.seismic.checks).map(([k2, c2]) => `${k2} ${c2.FS?.toFixed(2)}`).join(' · ')}` : ''}</span>
+                  <span>{t.cvSeismicMO} kh={cv.seismic.kh}{cv.seismic.checks ? ` · ${Object.entries(cv.seismic.checks).map(([k2, c2]) => `${k2} ${c2.FS?.toFixed(2)}`).join(' · ')}` : ''}</span>
                   <b style={{ color: cv.seismic.verdict === 'PASS' ? '#16a34a' : '#dc2626' }}>{cv.seismic.verdict}</b>
                 </div>
               )}
               {cv.seismic?.error && <div style={{ color: '#991b1b', padding: '2px 0' }}>{cv.seismic.error}</div>}
               <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/verify-domain/', civilBody(), 'retaining_wall_check.html')} style={rptBtn}>
-                📄 {ko ? '리포트 HTML' : 'Report HTML'}
+                📄 {t.reportHtml}
               </button>
             </div>
           )}
@@ -463,34 +1266,57 @@ export default function AssemblyPresetPanel({
       {domain === 'interior' && built && (
         <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
           <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4 }}>
-            {ko ? '피난·마감 검증' : 'Egress & finish check'}
+            {t.inTitle}
             <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-              {ko ? '보행거리 BFS 실측 · 문폭 형상 파생' : 'travel BFS · door width from shape'}
+              {t.inSub}
             </span>
           </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 6 }}>
+            {([['targetLux', t.inLuxLabel, t.inLuxPh], ['lampLumen', t.inLumenLabel, ''], ['ventPerPersonCMH', t.inVentLabel, ''], ['loadDensityVAm2', t.inLoadLabel, '']] as Array<[string, string, string]>).map(([k, lb, ph]) => (
+              <label key={k} style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{lb}</span>
+                <input type="number" step="1" placeholder={ph || undefined} value={inP[k] || ''} onChange={(e) => setInP((s) => ({ ...s, [k]: Number(e.target.value) }))} style={inpStyle} />
+              </label>
+            ))}
+          </div>
           <button type="button" onClick={runInterior} disabled={intBusy} style={{ ...genStyle, background: '#7c3aed' }}>
-            {intBusy ? (ko ? '검증 중…' : 'Checking…') : ko ? '🚪 피난·마감 검증 실행' : '🚪 Run egress & finish check'}
+            {intBusy ? t.checking : t.inRun}
           </button>
           {intR && !intR.ok && <div style={{ marginTop: 5, fontSize: 11, color: '#991b1b' }}>{intR.error}</div>}
           {intR?.ok && (
             <div style={{ marginTop: 6, fontSize: 11 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
-                <span>{ko ? '최원점 보행거리' : 'Max travel'} {intR.travel?.maxTravelM}m / {intR.travel?.limitM}m{intR.travel && intR.travel.unreachableM2 > 0 ? ` · ⚠${ko ? '미도달' : 'unreachable'} ${intR.travel.unreachableM2}m²` : ''}</span>
+                <span>{t.inTravel} {intR.travel?.maxTravelM}m / {intR.travel?.limitM}m{intR.travel && intR.travel.unreachableM2 > 0 ? ` · ⚠${t.inUnreachable} ${intR.travel.unreachableM2}m²` : ''}</span>
                 <b style={{ color: intR.travel?.pass ? '#16a34a' : '#dc2626' }}>{intR.travel?.pass ? 'PASS' : 'FAIL'}</b>
               </div>
               {intR.egress && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
-                  <span>{ko ? '수용·피난폭' : 'Occupancy/egress'} <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '문폭합' : 'doors'} {intR.egress.derived?.doorWidthSumMm}mm · {ko ? '좌석' : 'seats'} {intR.egress.derived?.seatCount}</span></span>
+                  <span>{t.inEgress} <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{t.inDoors} {intR.egress.derived?.doorWidthSumMm}mm · {t.inSeats} {intR.egress.derived?.seatCount}</span></span>
                   <b style={{ color: intR.egress.verdict === 'PASS' ? '#16a34a' : '#dc2626' }}>{intR.egress.verdict}</b>
                 </div>
               )}
               {intR.finishes && (
                 <div style={{ padding: '2px 0', color: 'var(--nx-text-2, #46505e)' }}>
-                  {ko ? '마감' : 'Finish'}: {ko ? '바닥' : 'floor'} {intR.finishes.floorM2} · {ko ? '벽' : 'wall'} {intR.finishes.wallM2} · {ko ? '천장' : 'ceiling'} {intR.finishes.ceilingM2} m²
+                  {t.inFinish}: {t.inFloor} {intR.finishes.floorM2} · {t.inWall} {intR.finishes.wallM2} · {t.inCeiling} {intR.finishes.ceilingM2} m²
                 </div>
               )}
-              <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/interior-check/', { assembly: built?.assembly, params: {} }, 'egress_finish_check.html')} style={rptBtn}>
-                📄 {ko ? '리포트 HTML' : 'Report HTML'}
+              {intR.lighting?.verdict === 'INFO' && (
+                <div style={{ padding: '2px 0', color: 'var(--nx-text-2, #46505e)' }}>
+                  {t.inLight}: {intR.lighting.fixtures}{t.inFixSuffix} ({intR.lighting.layout}) · {t.inAvgLux} {intR.lighting.avgLuxProvided} lx
+                </div>
+              )}
+              {intR.ventilation?.verdict === 'INFO' && (
+                <div style={{ padding: '2px 0', color: 'var(--nx-text-2, #46505e)' }}>
+                  {t.inVent}: {intR.ventilation.requiredCMH} CMH (ACH {intR.ventilation.ACH})
+                </div>
+              )}
+              {intR.electrical?.verdict === 'INFO' && (
+                <div style={{ padding: '2px 0', color: 'var(--nx-text-2, #46505e)' }}>
+                  {t.inElec}: {intR.electrical.totalVA} VA → {intR.electrical.circuits}{t.inCircuitSuffix}
+                </div>
+              )}
+              <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/interior-check/', intBody(), 'egress_finish_check.html')} style={rptBtn}>
+                📄 {t.reportHtml}
               </button>
               <div style={{ marginTop: 4, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{intR.disclaimer}</div>
             </div>
@@ -502,61 +1328,76 @@ export default function AssemblyPresetPanel({
       {domain === 'landscape' && built && (
         <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
           <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4 }}>
-            {ko ? '목재 부재·풍하중 검증' : 'Timber member & wind check'}
+            {t.lsTitle}
             <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-              {ko ? 'KDS 41 50 10 허용응력 · 단면·스팬 형상 파생' : 'KDS allowable stress · section from shape'}
+              {t.lsSub}
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 6 }}>
             <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? '수종군' : 'Species'}</span>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{t.lsSpecies}</span>
               <select value={String(lsP.species)} onChange={(e) => setLsP((s) => ({ ...s, species: e.target.value }))} style={selStyle}>
-                <option value="larch">{ko ? '낙엽송류' : 'Larch'}</option>
-                <option value="pine">{ko ? '소나무류' : 'Pine'}</option>
-                <option value="koreanpine">{ko ? '잣나무류' : 'Korean pine'}</option>
-                <option value="cedar">{ko ? '삼나무류' : 'Cedar'}</option>
+                <option value="larch">{t.lsLarch}</option>
+                <option value="pine">{t.lsPine}</option>
+                <option value="koreanpine">{t.lsKoreanPine}</option>
+                <option value="cedar">{t.lsCedar}</option>
               </select>
             </label>
             <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? '등급' : 'Grade'}</span>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{t.lsGrade}</span>
               <select value={String(lsP.grade)} onChange={(e) => setLsP((s) => ({ ...s, grade: Number(e.target.value) }))} style={selStyle}>
-                {[1, 2, 3].map((g) => <option key={g} value={g}>{g}{ko ? '등급' : ''}</option>)}
+                {[1, 2, 3].map((g) => <option key={g} value={g}>{g}{t.gradeSuffix}</option>)}
               </select>
             </label>
             <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? '용도(데크 활하중)' : 'Usage (deck live)'}</span>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{t.lsUsage}</span>
               <select value={String(lsP.usage)} onChange={(e) => setLsP((s) => ({ ...s, usage: e.target.value }))} style={selStyle}>
-                <option value="residence_living">{ko ? '주거 2.0' : 'Residential 2.0'}</option>
-                <option value="roof_garden">{ko ? '정원·집회 5.0' : 'Garden/assembly 5.0'}</option>
-                <option value="assembly_moving">{ko ? '집회(이동석) 5.0' : 'Assembly 5.0'}</option>
+                <option value="residence_living">{t.lsUseRes}</option>
+                <option value="roof_garden">{t.lsUseGarden}</option>
+                <option value="assembly_moving">{t.lsUseAssembly}</option>
               </select>
             </label>
             <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? '풍압 kN/m² (0=생략)' : 'Wind kN/m² (0=skip)'}</span>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{t.lsWind}</span>
               <input type="number" step="0.1" value={lsP.windPressure as number} onChange={(e) => setLsP((s) => ({ ...s, windPressure: Number(e.target.value) }))} style={inpStyle} />
+            </label>
+            <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{t.lsConn}</span>
+              <select value={String(lsP.connType)} onChange={(e) => setLsP((s) => ({ ...s, connType: e.target.value }))} style={selStyle}>
+                <option value="none">{t.lsConnNone}</option>
+                <option value="nail">{t.lsConnNailOpt}</option>
+                <option value="bolt">{t.lsConnBoltOpt}</option>
+              </select>
             </label>
           </div>
           <button type="button" onClick={runLandscape} disabled={lsBusy} style={{ ...genStyle, background: '#15803d' }}>
-            {lsBusy ? (ko ? '검증 중…' : 'Checking…') : ko ? '🌳 부재·풍하중 검증 실행' : '🌳 Run timber & wind check'}
+            {lsBusy ? t.checking : t.lsRun}
           </button>
           {ls && !ls.ok && <div style={{ marginTop: 5, fontSize: 11, color: '#991b1b' }}>{ls.error}</div>}
           {ls?.ok && (
             <div style={{ marginTop: 6, fontSize: 11 }}>
               {ls.member && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
-                  <span>{ko ? '장선/서까래' : 'Joist'} {ls.member.section} L{ls.member.spanMm}@{ls.member.spacingMm} <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>w {ls.member.load?.total_kNm}kN/m</span></span>
+                  <span>{t.lsJoist} {ls.member.section} L{ls.member.spanMm}@{ls.member.spacingMm} <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>w {ls.member.load?.total_kNm}kN/m</span></span>
                   <b style={{ color: ls.member.verdict === 'PASS' ? '#16a34a' : '#dc2626' }}>{ls.member.verdict}</b>
                 </div>
               )}
               {ls.wind && !ls.wind.skipped && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
-                  <span>{ko ? '전도' : 'Tip-over'} FS {ls.wind.FS} ({ls.wind.worst}){!ls.wind.pass && ls.wind.anchorUpliftPerPost_kN ? ` — ${ko ? '앵커' : 'anchor'} ${ls.wind.anchorUpliftPerPost_kN}kN/${ko ? '본' : 'post'}` : ''}</span>
+                  <span>{t.lsTip} FS {ls.wind.FS} ({ls.wind.worst}){!ls.wind.pass && ls.wind.anchorUpliftPerPost_kN ? ` — ${t.lsAnchor} ${ls.wind.anchorUpliftPerPost_kN}kN/${t.lsPerPost}` : ''}</span>
                   <b style={{ color: ls.wind.pass ? '#16a34a' : '#dc2626' }}>{ls.wind.pass ? 'PASS' : 'FAIL'}</b>
                 </div>
               )}
               {ls.wind?.skipped && <div style={{ color: 'var(--nx-text-3, #6b7684)' }}>{ls.wind.note}</div>}
+              {ls.connection && ls.connection.type !== 'unspecified' && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
+                  <span>{t.lsConnRow}({ls.connection.type === 'nail' ? t.lsNail : t.lsBolt}): {t.lsDemand} {ls.connection.demandN}N → {t.lsCapacity} {ls.connection.checks?.shear?.capacity_N ?? '—'}N ({t.lsRatio} {ls.connection.checks?.shear?.ratio ?? '—'})</span>
+                  <b style={{ color: ls.connection.verdict === 'PASS' ? '#16a34a' : ls.connection.verdict === 'FAIL' ? '#dc2626' : '#d97706' }}>{ls.connection.verdict}</b>
+                </div>
+              )}
+              {ls.connection?.type === 'unspecified' && <div style={{ color: 'var(--nx-text-3, #6b7684)' }}>{ls.connection.note}</div>}
               <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/landscape-check/', lsBody(), 'timber_wind_check.html')} style={rptBtn}>
-                📄 {ko ? '리포트 HTML' : 'Report HTML'}
+                📄 {t.reportHtml}
               </button>
               <div style={{ marginTop: 4, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{ls.disclaimer}</div>
             </div>
@@ -568,24 +1409,24 @@ export default function AssemblyPresetPanel({
       {domain === 'building' && built && (
         <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
           <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4 }}>
-            {ko ? '하중경로 검증' : 'Load-path check'}
+            {t.bdTitle}
             <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-              {ko ? '자중(형상)+활하중(KDS 표 3.2-1) → 보→기둥→기초' : 'dead(shape)+live(KDS) → beam→column→footing'}
+              {t.bdSub}
             </span>
           </div>
           <label style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
-            <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? '용도(활하중)' : 'Usage (live load)'}</span>
+            <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{t.bdUsage}</span>
             <select value={String(chainP.usage)} onChange={(e) => setChainP((s) => ({ ...s, usage: e.target.value }))} style={selStyle}>
-              {(usages.length ? usages : [{ key: 'office', kNm2: 2.5, label: '일반 사무실' }]).map((u) => (
+              {(usages.length ? usages : [{ key: 'office', kNm2: 2.5, label: t.bdOffice }]).map((u) => (
                 <option key={u.key} value={u.key}>{u.label} — {u.kNm2} kN/m²</option>
               ))}
             </select>
           </label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginBottom: 6 }}>
             {([
-              ['fck', 'fck MPa'], ['fy', 'fy MPa'], ['beamAs', ko ? '보 As mm²' : 'beam As'],
-              ['beamAv', ko ? '스터럽 Av' : 'stirrup Av'], ['beamS', ko ? '간격 s' : 'spacing s'], ['colAst', ko ? '기둥 Ast' : 'col Ast'],
-              ['fB', ko ? '기초 B' : 'ftg B'], ['fL', ko ? '기초 L' : 'ftg L'], ['qAllow', ko ? '지지력 kPa' : 'qAllow'],
+              ['fck', 'fck MPa'], ['fy', 'fy MPa'], ['beamAs', t.bdBeamAs],
+              ['beamAv', t.bdStirrupAv], ['beamS', t.bdSpacingS], ['colAst', t.bdColAst],
+              ['fB', t.bdFtgB], ['fL', t.bdFtgL], ['qAllow', t.bdQAllow],
             ] as Array<[string, string]>).map(([k, lb]) => (
               <label key={k} style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{lb}</span>
@@ -595,46 +1436,70 @@ export default function AssemblyPresetPanel({
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginBottom: 6 }}>
             <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? '지진구역 (선택)' : 'Seismic zone'}</span>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{t.bdSeisZone}</span>
               <select value={String(chainP.seisZone)} onChange={(e) => setChainP((s) => ({ ...s, seisZone: e.target.value }))} style={selStyle}>
-                <option value="">{ko ? '미검토' : 'off'}</option>
-                <option value="I">{ko ? '구역 I (0.11)' : 'Zone I'}</option>
-                <option value="II">{ko ? '구역 II (0.07)' : 'Zone II'}</option>
+                <option value="">{t.bdSeisOff}</option>
+                <option value="I">{t.bdZoneI}</option>
+                <option value="II">{t.bdZoneII}</option>
               </select>
             </label>
             <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? '지반' : 'Site'}</span>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{t.bdSite}</span>
               <select value={String(chainP.seisSite)} onChange={(e) => setChainP((s) => ({ ...s, seisSite: e.target.value }))} style={selStyle}>
                 {['S1', 'S2', 'S3', 'S4', 'S5'].map((s2) => <option key={s2} value={s2}>{s2}</option>)}
               </select>
             </label>
             <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>R ({ko ? '표 6.2-1' : 'table 6.2-1'})</span>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>R ({t.bdRTable})</span>
               <input type="number" step="0.5" value={chainP.seisR as number} onChange={(e) => setChainP((s) => ({ ...s, seisR: Number(e.target.value) }))} style={inpStyle} />
+            </label>
+            <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{t.bdWindV0}</span>
+              <input type="number" step="0.5" placeholder={t.bdWindV0Ph} value={chainP.windV0 as number} onChange={(e) => setChainP((s) => ({ ...s, windV0: e.target.value }))} style={inpStyle} />
+            </label>
+            <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{t.bdWindExp}</span>
+              <select value={String(chainP.windExposure)} onChange={(e) => setChainP((s) => ({ ...s, windExposure: e.target.value }))} style={selStyle}>
+                {['A', 'B', 'C', 'D'].map((x) => <option key={x} value={x}>{x}</option>)}
+              </select>
+            </label>
+            <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{t.bdWindTerrain}</span>
+              <select value={String(chainP.windTerrain)} onChange={(e) => setChainP((s) => ({ ...s, windTerrain: e.target.value }))} style={selStyle}>
+                <option value="normal">{t.bdTerrainNormal}</option>
+                <option value="flatOpen">{t.bdTerrainFlatOpen}</option>
+                <option value="coast">{t.bdTerrainCoast}</option>
+              </select>
             </label>
           </div>
           <button type="button" onClick={runChain} disabled={chainBusy} style={{ ...genStyle, background: '#0e7490' }}>
-            {chainBusy ? (ko ? '체인 검증 중…' : 'Checking…') : ko ? '⛓ 하중경로 검증 실행' : '⛓ Run load-path check'}
+            {chainBusy ? t.bdChainBusy : t.bdRun}
           </button>
           {chain && !chain.ok && <div style={{ marginTop: 5, fontSize: 11, color: '#991b1b' }}>{chain.error}</div>}
           {chain?.ok && (
             <div style={{ marginTop: 6, fontSize: 11 }}>
               <div style={{ color: 'var(--nx-text-2, #46505e)', marginBottom: 3 }}>
-                {ko ? '슬래브' : 'Slab'}: D {chain.loads?.slab.D_kN}kN · L {chain.loads?.slab.L_kN}kN ({chain.loads?.usage.label} {chain.loads?.usage.live_kNm2}kN/m²) · {chain.loads?.slab.finishNote}
+                {t.bdSlab}: D {chain.loads?.slab.D_kN}kN · L {chain.loads?.slab.L_kN}kN ({chain.loads?.usage.label} {chain.loads?.usage.live_kNm2}kN/m²) · {chain.loads?.slab.finishNote}
               </div>
               {[...(chain.beams ?? []).map((b) => ({ nm: `${b.id} (${b.section})`, dt: `Mu ${b.Mu_kNm}kN·m · ${b.combo}`, v: b.verdict })),
                 ...(chain.columns ?? []).map((c) => ({ nm: `${c.id}`, dt: `Pu ${c.Pu_kN}kN`, v: c.verdict })),
-                { nm: ko ? '기초' : 'Footing', dt: chain.footing?.needInputs ? (ko ? '입력 필요' : 'inputs needed') : '', v: chain.footing?.verdict },
-                ...(chain.slabSLS ? [{ nm: ko ? `슬래브 처짐 ${chain.slabSLS.panelMm ?? ''}` : 'Slab SLS', dt: `δL ${chain.slabSLS.live.delta_mm}/${chain.slabSLS.live.limit_mm} · δT ${chain.slabSLS.total.delta_mm}/${chain.slabSLS.total.limit_mm}mm`, v: chain.slabSLS.live.pass && chain.slabSLS.total.pass ? 'PASS' : 'FAIL' }] : []),
-                ...(chain.seismic && !chain.seismic.error ? [{ nm: ko ? `지진 V=${chain.seismic.V_kN}kN (Cs ${chain.seismic.Cs})` : `Seismic V=${chain.seismic.V_kN}kN`, dt: `${ko ? '기둥' : 'col'} MuE ${chain.seismic.column?.MuE_kNm}kN·m`, v: chain.seismic.column?.verdict }] : [])]
+                { nm: t.bdFooting, dt: chain.footing?.needInputs ? t.bdInputsNeeded : '', v: chain.footing?.verdict },
+                ...(chain.slabSLS ? [{ nm: `${t.bdSlabDefl} ${chain.slabSLS.panelMm ?? ''}`, dt: `δL ${chain.slabSLS.live.delta_mm}/${chain.slabSLS.live.limit_mm} · δT ${chain.slabSLS.total.delta_mm}/${chain.slabSLS.total.limit_mm}mm`, v: chain.slabSLS.live.pass && chain.slabSLS.total.pass ? 'PASS' : 'FAIL' }] : []),
+                ...(chain.seismic && !chain.seismic.error ? [{ nm: `${t.bdSeismic} V=${chain.seismic.V_kN}kN (Cs ${chain.seismic.Cs})`, dt: `${t.bdCol} MuE ${chain.seismic.column?.MuE_kNm}kN·m`, v: chain.seismic.column?.verdict }] : []),
+                ...(chain.wind && !chain.wind.error && chain.wind.x && chain.wind.y ? [{
+                  nm: `${t.bdWind} V=${Math.max(chain.wind.x.baseShear_kN, chain.wind.y.baseShear_kN)}kN (${(chain.wind.x.baseShear_kN >= chain.wind.y.baseShear_kN ? chain.wind.x : chain.wind.y).method})`,
+                  dt: `p ${(chain.wind.x.baseShear_kN >= chain.wind.y.baseShear_kN ? chain.wind.x : chain.wind.y).p_Nm2}N/m² · ${t.bdCol} MuW ${chain.wind.column?.MuW_kNm}kN·m`,
+                  v: chain.wind.column?.verdict,
+                }] : [])]
                 .map((r, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
                     <span>{r.nm} <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{r.dt}</span></span>
                     <b style={{ color: r.v === 'PASS' ? '#16a34a' : r.v === 'FAIL' ? '#dc2626' : '#d97706' }}>{r.v}</b>
                   </div>
                 ))}
+              {chain.wind?.error && <div style={{ color: '#991b1b', padding: '2px 0' }}>{chain.wind.error}</div>}
               <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/load-path/', chainBody(), 'load_path_check.html')} style={rptBtn}>
-                📄 {ko ? '리포트 HTML' : 'Report HTML'}
+                📄 {t.reportHtml}
               </button>
               <div style={{ marginTop: 4, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{chain.disclaimer}</div>
             </div>
