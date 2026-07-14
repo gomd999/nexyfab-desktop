@@ -40,7 +40,9 @@ const massKg = (p) => partVolume(p.type, p.params) / 1e9 * (DENSITY[p.material ?
  * }
  */
 export function landscapeCheck(assembly, params = {}) {
-  const parts = assembly?.parts ?? [];
+  const allParts = assembly?.parts ?? [];
+  const unverifiedParts = allParts.filter((p) => p.unverified === true);
+  const parts = allParts.filter((p) => p.unverified !== true);
   if (!parts.length) return { ok: false, error: 'assembly.parts 필요' };
   const joists = parts.filter((p) => p.role === 'joist');
   const columns = parts.filter((p) => p.role === 'column');
@@ -208,7 +210,7 @@ export function landscapeCheck(assembly, params = {}) {
     ok: true,
     member, connection, board, wind,
     refs: ['KDS 41 50 10:2022 (허용응력·CD·CM)', 'KDS 41 12 00:2022 표 3.2-1 (활하중)', 'KDS 41 50 30:2022 (접합부 — 못·볼트)'],
-    disclaimer: '개념 검토(비법정) — 단순지지·대표부재·강체전도 근사. CM(습윤)·CF·CL 미적용(v1). 실시설계는 구조기술사 검토 필요.',
+    disclaimer: '개념 검토(비법정) — 단순지지·대표부재·강체전도 근사. CM(습윤)·CF·CL 미적용(v1). 실시설계는 구조기술사 검토 필요.' + (unverifiedParts.length ? ` ⚠ 비검증 직접편집 파츠 ${unverifiedParts.length}개는 구조 검토에서 제외됨(P4 라벨) — 해당 형상의 안전은 별도 확인 필요.` : ''),
   };
 }
 

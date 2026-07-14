@@ -64,6 +64,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const result = body.kind === 'assembly'
       ? await mod.assemblyPresetWithBuild(body.domain ?? 'building', body.templateId, body.params ?? {})
       : await mod.presetWithVerify(body.domain ?? 'mech', body.templateId, body.params ?? {});
+    // P2 픽킹 뷰어용: 파트별 AABB 동봉 (결정론 — reconstruct.partAabb)
+    const asm = (result as { assembly?: { parts?: Array<Record<string, unknown>> } }).assembly;
+    if (asm?.parts?.length) {
+      try {
+        const rp = join(process.cwd(), 'scripts', 'drawing-to-3d', 'reconstruct.mjs');
+        const rmod = (await import(/* webpackIgnore: true */ pathToFileURL(rp).href)) as {
+          partAabb: (i: Record<string, unknown>) => { min: number[]; max: number[] };
+        };
+        for (const p of asm.parts) {
+          try {
+            p.aabb = rmod.partAabb({ type: p.type, ...(p.params as Record<string, unknown>) });
+          } catch { /* 매핑 불가 타입은 aabb 생략(정직) */ }
+        }
+      } catch { /* aabb 동봉 실패는 비치명 — 뷰어가 생략 처리 */ }
+    }
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json({ ok: false, error: 'preset failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 502 });

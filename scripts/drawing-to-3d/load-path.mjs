@@ -57,7 +57,9 @@ export function loadPathCheck(assembly, params = {}) {
   const kds = standards?.KDS;
   if (!kds?.loads) return { ok: false, error: 'KDS loads 데이터 미탑재(kds.json)' };
 
-  const parts = assembly?.parts ?? [];
+  const allParts = assembly?.parts ?? [];
+  const unverifiedParts = allParts.filter((p) => p.unverified === true);
+  const parts = allParts.filter((p) => p.unverified !== true);
   const columns = parts.filter((p) => p.role === 'column');
   const beams = parts.filter((p) => p.role === 'beam');
   const slabs = parts.filter((p) => p.role === 'slab');
@@ -387,7 +389,7 @@ export function loadPathCheck(assembly, params = {}) {
           method: `포탈법(내부기둥 2v·반곡점 중앙) — X ${round(McolX)}·Y ${round(McolY)} kN·m 중 최대. 조합 1.2D+1.0L+1.0E 근사`,
         },
         notes: seis.notes,
-        disclaimer: '등가정적 적용조건(§7.1)·우발편심·비틀림·보 지진모멘트 미포함 — 포탈법=관례 개산(비법정). 중고층·비정형은 동적해석 필요.',
+        disclaimer: '등가정적 적용조건(§7.1)·우발편심·비틀림·보 지진모멘트 미포함 — 포탈법=관례 개산(비법정). 중고층·비정형은 동적해석 필요.' + (unverifiedParts.length ? ` ⚠ 비검증 직접편집 파츠 ${unverifiedParts.length}개는 구조 검토에서 제외됨(P4 라벨) — 해당 형상의 안전은 별도 확인 필요.` : ''),
       };
     } catch (e) {
       seismicRes = { error: e.message };

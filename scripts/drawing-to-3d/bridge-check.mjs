@@ -29,7 +29,9 @@ const RHO_C = 24.5; // kN/m³ (교량 관례 24.5 — 국토부 표준도와 동
 export function bridgeCheck(assembly, params = {}) {
   const bm = assembly?.bridgeMeta;
   if (!bm) return { ok: false, error: 'bridgeMeta 필요 (girder_bridge 어셈블리)' };
-  const parts = assembly.parts ?? [];
+  const allParts = assembly.parts ?? [];
+  const unverifiedParts = allParts.filter((p) => p.unverified === true);
+  const parts = allParts.filter((p) => p.unverified !== true);
   const girders = parts.filter((p) => p.role === 'girder');
   const deck = parts.find((p) => p.role === 'deck');
   const crosses = parts.filter((p) => p.role === 'crossbeam');
@@ -105,7 +107,7 @@ export function bridgeCheck(assembly, params = {}) {
     service: { Ms_kNm: round(Ms, 1) },
     section,
     provenance: { geometry: ['거더·바닥판·가로보 자중', '지간·간격', '레버룰 DF'], user: ['포장 두께(DW)', 'DF/차로수(선택)', '철근(단면 검토)'] },
-    disclaimer: '실시설계급 계산(원문 하중·계수·영향선 검증) — 단, 법정 설계도서는 교량 기술사 검토·날인 필요. 연속경간·PSC·바닥판·받침·하부공·피로·처짐 미포함(명시).',
+    disclaimer: '실시설계급 계산(원문 하중·계수·영향선 검증) — 단, 법정 설계도서는 교량 기술사 검토·날인 필요. 연속경간·PSC·바닥판·받침·하부공·피로·처짐 미포함(명시).' + (unverifiedParts.length ? ` ⚠ 비검증 직접편집 파츠 ${unverifiedParts.length}개는 구조 검토에서 제외됨(P4 라벨) — 해당 형상의 안전은 별도 확인 필요.` : ''),
   };
 }
 

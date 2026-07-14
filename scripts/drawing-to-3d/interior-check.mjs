@@ -31,7 +31,9 @@ function footprint(part) {
  * @param params { travelLimitMm=30000, occupantDensityM2=1.4, cell=100 }
  */
 export function interiorCheck(assembly, params = {}) {
-  const parts = assembly?.parts ?? [];
+  const allParts = assembly?.parts ?? [];
+  const unverifiedParts = allParts.filter((p) => p.unverified === true);
+  const parts = allParts.filter((p) => p.unverified !== true);
   const rb = assembly?.roomBounds;
   const exits = assembly?.exits ?? [];
   if (!rb?.W || !rb?.D) return { ok: false, error: 'roomBounds{W,D} 메타 필요 (cafe_room형 어셈블리)' };
@@ -273,7 +275,7 @@ export function interiorCheck(assembly, params = {}) {
     finishes,
     lighting, ventilation, electrical, water, fire,
     provenance: { geometry: ['보행거리(BFS)', '장애물 풋프린트', '문 폭 합', '마감 면적', '실지수·실체적'], user: ['보행거리 한계', '인당 점유면적', '조도·광속·환기량·부하밀도(기준 참조 입력)'] },
-    disclaimer: '개념 검토(비법정) — 격자 근사·가구 배치 기준. 법정 피난·설비 검토는 용도·내화·스프링클러 조건 반영한 건축사·설비기술사 검토 필요.',
+    disclaimer: '개념 검토(비법정) — 격자 근사·가구 배치 기준. 법정 피난·설비 검토는 용도·내화·스프링클러 조건 반영한 건축사·설비기술사 검토 필요.' + (unverifiedParts.length ? ` ⚠ 비검증 직접편집 파츠 ${unverifiedParts.length}개는 구조 검토에서 제외됨(P4 라벨) — 해당 형상의 안전은 별도 확인 필요.` : ''),
   };
 }
 
