@@ -9,6 +9,8 @@
  * params 명세로 UI 폼을 생성하고, build로 형상을 만든다. 게이트·manifold는 self-test로 상시 보증.
  */
 
+import { gearPoly, hexPts, sheetPoly, boltDims } from './reconstruct.mjs';
+
 const num = (v, d) => (Number.isFinite(v) ? v : d);
 
 /** 플레이트 + 모서리 볼트홀 4 + 중앙 관통. box 한 개 − 구멍 실린더들. */
@@ -86,6 +88,40 @@ function tankIntent(p) {
   return { name: 'Tank', features };
 }
 
+/** 인벌류트 스퍼기어: 결정론 치형 폴리곤 압출 − 보어. (#3 어휘확장) */
+function spurGearIntent(p) {
+  const m = num(p.module, 2), z = Math.round(num(p.teeth, 24)), t = num(p.thickness, 10), bore = num(p.boreDia, 12);
+  const features = [{ id: 'gear', kind: 'extrude', profile: gearPoly({ module: m, teeth: z }), height: t }];
+  if (bore > 0) features.push({ id: 'bore', kind: 'cylinder', diameter: bore, height: t + 2, op: 'subtract', at: { translate: [0, 0, -1] } });
+  return { name: 'SpurGear', features };
+}
+
+/** 육각볼트(ISO 표준 머리치수): 자루 원통 + 육각머리 압출. 나사산 미형상(도면 관례). */
+function hexBoltIntent(p) {
+  const d = num(p.threadDia, 12), L = num(p.length, 60);
+  const { af, hh } = boltDims({ threadDia: d });
+  const AF = num(p.headFlats, af ?? d * 1.6), HH = num(p.headHeight, hh ?? d * 0.63);
+  return {
+    name: 'HexBolt',
+    features: [
+      { id: 'shank', kind: 'cylinder', diameter: d, height: L },
+      { id: 'head', kind: 'extrude', profile: hexPts(AF), height: HH, at: { translate: [0, 0, L] } },
+    ],
+  };
+}
+
+/** 햇채널(다단 절곡 판금 대표형): sheet_profile 단면(플랜지-웹-톱-웹-플랜지) 압출. */
+function hatChannelIntent(p) {
+  const t = num(p.thickness, 2), flange = num(p.flange, 20), h = num(p.height, 40), top = num(p.top, 60), L = num(p.length, 1000);
+  const spec = { thickness: t, segments: [flange, h, top, h, flange], angles: [90, -90, -90, 90] };
+  return {
+    name: 'HatChannel',
+    features: [{ id: 'hat', kind: 'extrude', profile: sheetPoly(spec), height: L }],
+    sheet: { thickness: t, width: L, flanges: spec.segments },
+    bends: spec.angles.map((a) => ({ angle: Math.abs(a), radiusMm: t, k: 0.38 })),
+  };
+}
+
 /** 파라미터 명세 + 빌더 레지스트리(UI 폼 생성용). unit·기본값·범위는 mm. */
 export const MECH_TEMPLATES = [
   {
@@ -139,6 +175,41 @@ export const MECH_TEMPLATES = [
     params: [
       { name: 'side', labelKo: '한 변', unit: 'mm', default: 50, min: 10, max: 400 },
       { name: 'wall', labelKo: '벽 두께', unit: 'mm', default: 3, min: 1, max: 40 },
+      { name: 'length', labelKo: '길이', unit: 'mm', default: 1000, min: 50, max: 6000 },
+    ],
+  },
+  {
+    id: 'spur_gear',
+    labelKo: '스퍼기어 (인벌류트)',
+    labelEn: 'Spur gear (involute)',
+    build: spurGearIntent,
+    params: [
+      { name: 'module', labelKo: '모듈', unit: 'mm', default: 2, min: 0.5, max: 20 },
+      { name: 'teeth', labelKo: '잇수', unit: '', default: 24, min: 8, max: 150 },
+      { name: 'thickness', labelKo: '치폭', unit: 'mm', default: 10, min: 2, max: 200 },
+      { name: 'boreDia', labelKo: '보어(0=없음)', unit: 'mm', default: 12, min: 0, max: 200 },
+    ],
+  },
+  {
+    id: 'hex_bolt',
+    labelKo: '육각볼트 (ISO)',
+    labelEn: 'Hex bolt (ISO)',
+    build: hexBoltIntent,
+    params: [
+      { name: 'threadDia', labelKo: '호칭경 M', unit: 'mm', default: 12, min: 3, max: 36 },
+      { name: 'length', labelKo: '자루 길이', unit: 'mm', default: 60, min: 8, max: 400 },
+    ],
+  },
+  {
+    id: 'hat_channel',
+    labelKo: '햇채널 (다단 절곡)',
+    labelEn: 'Hat channel (multi-bend)',
+    build: hatChannelIntent,
+    params: [
+      { name: 'thickness', labelKo: '판두께', unit: 'mm', default: 2, min: 0.5, max: 6 },
+      { name: 'flange', labelKo: '플랜지', unit: 'mm', default: 20, min: 8, max: 100 },
+      { name: 'height', labelKo: '높이', unit: 'mm', default: 40, min: 10, max: 200 },
+      { name: 'top', labelKo: '상면 폭', unit: 'mm', default: 60, min: 15, max: 300 },
       { name: 'length', labelKo: '길이', unit: 'mm', default: 1000, min: 50, max: 6000 },
     ],
   },

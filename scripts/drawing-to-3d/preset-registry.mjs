@@ -35,6 +35,23 @@ export function buildPreset(domain, templateId, params = {}) {
   return t ? t.build(params) : null;
 }
 
+// ── 도메인 어셈블리 템플릿 (#6 비-기계 3D) — 단품 프리셋과 별개로 parts[] 어셈블리를 만든다 ──
+export async function listAssemblyPresets(domain) {
+  const { listAssemblyTemplates } = await import('./domain-assemblies.mjs');
+  return listAssemblyTemplates(domain);
+}
+
+/** domain+id+params → { ok, assembly, built } — built=buildAssembly(게이트·간섭·구조·composeIntent). */
+export async function assemblyPresetWithBuild(domain, templateId, params = {}) {
+  const { buildAssemblyTemplate } = await import('./domain-assemblies.mjs');
+  const assembly = buildAssemblyTemplate(domain, templateId, params);
+  if (!assembly) return { ok: false, error: `unknown assembly template: ${domain}/${templateId}` };
+  const { buildAssembly } = await import('./assembly.mjs');
+  const built = buildAssembly(assembly);
+  if (!built.ok) return { ok: false, gatePassed: false, gateErrors: built.gateErrors, assembly };
+  return { ok: true, assembly, openscad: built.openscad, parts: built.parts, interferences: built.interferences, welds: built.welds, weldTotalMm: built.weldTotalMm, composeIntent: built.composeIntent, structural: built.structural };
+}
+
 /** domain+id+params → { ok, intent, scad, verify } (compose와 동일 형식). */
 export async function presetWithVerify(domain, templateId, params = {}) {
   const intent = buildPreset(domain, templateId, params);

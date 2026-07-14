@@ -16,7 +16,33 @@
  * usage: node assembly.mjs '<assembly.json>'
  */
 import { readFileSync } from 'node:fs';
-import { gate, scadBody, partAabb } from './reconstruct.mjs';
+import { gate, scadBody, partAabb, gearPoly, sheetPoly, hexPts, boltDims } from './reconstruct.mjs';
+import { structuralCheck } from './structural.mjs';
+
+// 부품 → 계통색 (service/role 우선, 없으면 type). 계통색 GA 3D·도면 색분류 공용.
+export const SERVICE_COL = {
+  feed: '#2563eb', hp: '#dc2626', permeate: '#0891b2', concentrate: '#ea580c', inlet: '#2563eb', outlet: '#0891b2', frame: '#3f4756', motor: '#4d7c0f', panel: '#59606b', sludge: '#8a5a2b',
+  // 비-기계 role (#6): 건축·조경·인테리어 부재 계통색
+  column: '#475569', beam: '#0e7490', slab: '#94a3b8', joist: '#854d0e', deck: '#a16207', floor: '#d1d5db', table: '#0f766e', counter: '#7c3aed', wall: '#78716c',
+};
+export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6' };
+// 부품 id/name 키워드 → 계통 자동추론 (명시 service 태그 없어도 계통색이 나오게).
+const ID_SERVICE = [
+  [/pump|motor|모터|펌프|impeller|임펠라|blower|fan|송풍/i, 'motor'],
+  [/feed|inlet|원수|입수|suction|흡입|공급/i, 'feed'],
+  [/hp|high.?press|고압|discharge|토출|booster/i, 'hp'],
+  [/perm|permeate|투과|product|제품|상등|정수|clean/i, 'permeate'],
+  [/conc|reject|농축|brine|드레인|drain|waste|폐/i, 'concentrate'],
+  [/sludge|슬러지/i, 'sludge'],
+  [/panel|제어|hmi|plc|control|cabinet|반\b/i, 'panel'],
+  [/frame|프레임|post|기둥|rail|레일|leg|다리|deck|데크|base|베이스|structure|구조|skid|스키드/i, 'frame'],
+];
+function inferService(p) { const id = String(p.id ?? '') + ' ' + String(p.name ?? ''); for (const [re, s] of ID_SERVICE) if (re.test(id)) return s; return null; }
+export const colorOf = (p) => (p.service && SERVICE_COL[p.service]) || (p.role && SERVICE_COL[p.role]) || SERVICE_COL[inferService(p)] || TYPE_COL[p.type] || '#9aa7b5';
+export const COLOR_LABEL = {
+  '#2563eb': '피드/입수', '#dc2626': '고압', '#0891b2': '투과/출수', '#ea580c': '농축', '#4d7c0f': '모터/펌프', '#3f4756': '프레임', '#59606b': '제어반', '#5b6472': '구조', '#9aa7b5': '용기/부품', '#8b98a6': '브래킷', '#78838f': '플랜지', '#8a5a2b': '슬러지',
+  '#475569': '기둥', '#0e7490': '보', '#94a3b8': '슬래브', '#854d0e': '장선/서까래', '#a16207': '데크/기어', '#d1d5db': '바닥', '#0f766e': '테이블', '#7c3aed': '카운터', '#78716c': '벽체', '#6b7280': '볼트/체결',
+};
 
 const DEG = Math.PI / 180;
 /** OpenSCAD rotate([rx,ry,rz]) 순서(X→Y→Z)로 점 회전. */
@@ -69,8 +95,9 @@ export function assemblyToComposeIntent(asm) {
     const tx = t.tx ?? 0, ty = t.ty ?? 0, tz = t.tz ?? 0, rx = t.rx ?? 0, ry = t.ry ?? 0, rz = t.rz ?? 0;
     const rot = (rx || ry || rz) ? [rx, ry, rz] : undefined;
     const p = part.params ?? {};
+    const col = colorOf(part);
     const F = (kind, extra, lx = 0, ly = 0, lz = 0, op = 'add') => ({
-      kind, ...extra, op, at: { translate: [lx + tx, ly + ty, lz + tz], ...(rot ? { rotate: rot } : {}) },
+      kind, ...extra, op, _col: col, at: { translate: [lx + tx, ly + ty, lz + tz], ...(rot ? { rotate: rot } : {}) },
     });
     switch (part.type) {
       case 'box': feats.push(F('box', { size: [p.width, p.depth, p.height] })); break;
@@ -119,6 +146,19 @@ export function assemblyToComposeIntent(asm) {
         }
         break;
       }
+      case 'spur_gear':
+        feats.push(F('extrude', { profile: gearPoly(p), height: p.thickness }));
+        if (p.boreDia > 0) feats.push(F('cylinder', { diameter: p.boreDia, height: p.thickness + 2 }, 0, 0, -1, 'subtract'));
+        break;
+      case 'hex_bolt': {
+        const { af, hh } = boltDims(p);
+        feats.push(F('cylinder', { diameter: p.threadDia, height: p.length }));
+        feats.push(F('extrude', { profile: hexPts(af), height: hh }, 0, 0, p.length));
+        break;
+      }
+      case 'sheet_profile':
+        feats.push(F('extrude', { profile: sheetPoly(p), height: p.width }));
+        break;
       default: break; // 미지원 타입은 STEP 에서 생략(GA/SCAD 로는 표시됨)
     }
   }
@@ -196,7 +236,11 @@ export function buildAssembly(asm) {
     `// assembly: ${asm.name ?? 'unnamed'} — drawing-to-3d (deterministic)\n` +
     `// parts: ${asm.parts.length}\n$fn = 64;\nunion() {\n${bodies.join('\n')}\n}\n`;
 
-  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, welds, weldTotalMm, composeIntent: assemblyToComposeIntent(asm) };
+  // 구조 자동검증 — 형상에서 질량·CG·지지반력·전도 (nexyfab 설계 내장 역량).
+  let structural = null;
+  try { structural = structuralCheck(asm, {}); } catch { /* 구조검토 실패는 빌드를 막지 않음 */ }
+
+  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, welds, weldTotalMm, composeIntent: assemblyToComposeIntent(asm), structural };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('assembly.mjs');

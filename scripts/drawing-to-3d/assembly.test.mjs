@@ -80,3 +80,37 @@ test('회전 간섭: 옆으로 세운 판이 이웃과 겹치면 검출', () => 
   assert.equal(r.interferences.length, 1);
   assert.ok(r.interferences[0].note.includes('회전'));
 });
+
+// ── #3 어휘확장 (spur_gear · hex_bolt · sheet_profile) ──────────────────────
+test('신규 어휘 3종: 게이트 통과 + SCAD + composeIntent 매핑', () => {
+  const asm = {
+    name: 'vocab14',
+    parts: [
+      { id: 'gear', type: 'spur_gear', params: { module: 2, teeth: 24, thickness: 10, boreDia: 12 }, at: {} },
+      { id: 'bolt', type: 'hex_bolt', params: { threadDia: 12, length: 40 }, at: { tx: 100 } },
+      { id: 'hat', type: 'sheet_profile', params: { thickness: 2, width: 100, segments: [20, 40, 60, 40, 20], angles: [90, -90, -90, 90] }, at: { tx: -200 } },
+    ],
+  };
+  const r = buildAssembly(asm);
+  assert.equal(r.ok, true);
+  assert.equal(r.gateErrors.length, 0);
+  assert.equal(r.interferences.length, 0);
+  assert.ok(r.openscad.includes('linear_extrude')); // 기어/판금 폴리곤 압출
+  // composeIntent: 기어(압출+보어) 2 + 볼트(자루+머리) 2 + 판금 1 = 5 피처
+  assert.equal(r.composeIntent.features.length, 5);
+  assert.equal(r.composeIntent.features.filter((f) => f.kind === 'extrude').length, 3);
+});
+
+test('신규 어휘 게이트: 불량 파라미터는 어셈블리 실패', () => {
+  const bad = {
+    name: 'badvocab',
+    parts: [
+      { id: 'g', type: 'spur_gear', params: { module: 2, teeth: 24, thickness: 10, boreDia: 80 }, at: {} }, // 보어가 림 침범
+      { id: 'b', type: 'hex_bolt', params: { threadDia: 14, length: 40 }, at: {} }, // 비표준 호칭
+    ],
+  };
+  const r = buildAssembly(bad);
+  assert.equal(r.ok, false);
+  assert.ok(r.gateErrors.some((e) => e.includes('림')));
+  assert.ok(r.gateErrors.some((e) => e.includes('비표준')));
+});

@@ -18,6 +18,8 @@ export const runtime = 'nodejs';
 type PresetModule = {
   listTemplates: (domain?: string) => unknown;
   presetWithVerify: (domain: string, templateId: string, params: Record<string, number>) => Promise<unknown>;
+  listAssemblyPresets: (domain?: string) => Promise<unknown>;
+  assemblyPresetWithBuild: (domain: string, templateId: string, params: Record<string, number>) => Promise<unknown>;
 };
 
 let _mod: PresetModule | null = null;
@@ -30,8 +32,13 @@ async function loadPreset(): Promise<PresetModule> {
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    const domain = new URL(req.url).searchParams.get('domain') ?? 'mech';
+    const url = new URL(req.url);
+    const domain = url.searchParams.get('domain') ?? 'mech';
     const mod = await loadPreset();
+    // kind=assembly → 도메인 어셈블리 템플릿 카탈로그 (#6: 건축 RC·조경 파고라/데크·인테리어)
+    if (url.searchParams.get('kind') === 'assembly') {
+      return NextResponse.json({ ok: true, kind: 'assembly', templates: await mod.listAssemblyPresets(url.searchParams.get('domain') ?? undefined) });
+    }
     return NextResponse.json({ ok: true, domain, templates: mod.listTemplates(domain) });
   } catch (e) {
     return NextResponse.json({ ok: false, error: 'load failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 });
@@ -43,7 +50,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const rl = rateLimit(`drawing-preset:${ip}`, 40, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
 
-  let body: { domain?: string; templateId?: string; params?: Record<string, number> };
+  let body: { domain?: string; templateId?: string; params?: Record<string, number>; kind?: string };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -53,7 +60,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const mod = await loadPreset();
-    const result = await mod.presetWithVerify(body.domain ?? 'mech', body.templateId, body.params ?? {});
+    // kind=assembly → 어셈블리 빌드(게이트·간섭·구조·composeIntent) — 설계 패키지 라우트에 바로 연결 가능
+    const result = body.kind === 'assembly'
+      ? await mod.assemblyPresetWithBuild(body.domain ?? 'building', body.templateId, body.params ?? {})
+      : await mod.presetWithVerify(body.domain ?? 'mech', body.templateId, body.params ?? {});
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json({ ok: false, error: 'preset failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 502 });
