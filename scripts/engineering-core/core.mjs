@@ -27,8 +27,10 @@ import vibrationBasic from './calculators/vibration-basic.mjs';
 import thermalStress from './calculators/thermal-stress.mjs';
 import acousticTl from './calculators/acoustic-tl.mjs';
 import ductSizing from './calculators/duct-sizing.mjs';
+import slopeBishop from './calculators/slope-bishop.mjs';
+import mseWall from './calculators/mse-wall.mjs';
 
-export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman, vibrationBasic, thermalStress, acousticTl, ductSizing];
+export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman, vibrationBasic, thermalStress, acousticTl, ductSizing, slopeBishop, mseWall];
 
 /** Minimal JSON-Schema-subset validator (type/required/properties/minimum/maximum/enum). */
 export function validateInput(schema, input) {

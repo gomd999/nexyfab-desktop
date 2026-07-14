@@ -218,3 +218,30 @@ test('공표예제: girder_line KL-510 — 차로 폐형·조합 성질', () => 
   const r2 = runCalculator('girder_line', { span: 90, DF: 1.0 }, 'KDS');
   assert.equal(r2.lane.w_kNm, +(12.7 * Math.pow(60 / 90, 0.1)).toFixed(2), '차로 감소식 (60/L)^0.1');
 });
+
+// ── FHWA NHI-10-025 (GEC 11) Example E4 — MSE 외적안정 LRFD 재현 ──────────
+// 원문 p.E4-7~9 판독: 활동 임계 CDR 1.37 · 편심 3.87ft ≤ L/4 · 지지 σv에서 CDR.
+test('공표예제: FHWA MSE E4 — 활동 CDR·편심 정확 재현', () => {
+  const ft = 0.3048, pcf = 0.1571, psf = 0.0479;
+  const r = runCalculator('mse_wall', {
+    H: 25.64 * ft, L: 18 * ft, gammaR: 125 * pcf, phiR: 34, gammaF: 125 * pcf,
+    phiF: 30, phiFd: 30, surcharge: 250 * psf, bearingResistance: 10500 * psf,
+  }, 'KDS');
+  assert.ok(Math.abs(r.checks.sliding.CDR - 1.37) < 0.02, `활동 CDR ${r.checks.sliding.CDR}`);
+  assert.ok(Math.abs(r.checks.eccentricity.e_m / ft - 3.87) < 0.05, `편심 ${(r.checks.eccentricity.e_m / ft).toFixed(2)}ft`);
+  assert.ok(r.checks.bearing.CDR > 1.5 && r.checks.bearing.CDR < 1.85, `지지 CDR ${r.checks.bearing.CDR}`);
+  assert.equal(r.verdict, 'PASS');
+});
+
+// Bishop 엔진 — φ=0 폐형 앵커 (mα=cosα → FS=Σ(cΔL)/ΣWsinα 정확)
+test('Bishop 엔진: φ=0 폐형 앵커', () => {
+  const slices = [
+    { W: 100, alphaDeg: 30, dx: 10, c: 20, phiDeg: 0 },
+    { W: 200, alphaDeg: 10, dx: 10, c: 20, phiDeg: 0 },
+    { W: 100, alphaDeg: -10, dx: 10, c: 20, phiDeg: 0 },
+  ];
+  const closed = slices.reduce((s, x) => s + (x.c * x.dx) / Math.cos(x.alphaDeg * Math.PI / 180), 0)
+    / slices.reduce((s, x) => s + x.W * Math.sin(x.alphaDeg * Math.PI / 180), 0);
+  const r = runCalculator('slope_bishop', { slices, fsRequired: 1.3 }, 'KDS');
+  assert.ok(Math.abs(r.checks.stability.FS - closed) < 0.001, `FS ${r.checks.stability.FS} vs 폐형 ${closed.toFixed(3)}`);
+});
