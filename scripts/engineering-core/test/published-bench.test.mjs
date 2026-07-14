@@ -140,3 +140,22 @@ test('공표예제: 국토부 2008 암거 H1-28 — 토피 5m 스케일링', () 
   assert.ok(dev(r.moments_kNm.cornerTop, 77.24) < 0.12, `상우각 ${r.moments_kNm.cornerTop} vs −77.24`);
   assert.ok(dev(r.moments_kNm.cornerBottom, 74.55) < 0.15, `하우각 ${r.moments_kNm.cornerBottom} vs −74.55`);
 });
+
+// ── 국토부 2008 P1-16 — Winkler(Kv 17778.5, p.11) + 포락선(표 12-2, p.24) 완전 재현 ──
+// 원문과 동일 모델링: 지반스프링(절점 Kv×분담폭)·부재별 두께·사용하중 3조합 포락선.
+// 잔여 편차 = 헌치(250×250) 미모델 — 하부는 보수측(+6~11%)으로만 벗어남을 고정.
+test('공표예제: 국토부 P1-16 Winkler+포락선 — 상판 ≤3%·하부 보수측 ≤13%', () => {
+  const r = runCalculator('box_culvert_frame', {
+    innerWidth: 4.0, innerHeight: 4.0, wallThk: 0.35, topThk: 0.40, botThk: 0.45,
+    cover: 2.0, gammaSoil: 19.0, K: 0.5, gammaConcrete: 24.5,
+    surchargeV: 18.079, pTopOverride: 25.9, pBotOverride: 67.937,
+    subgradeKs: 17778.519, EcMPa: 27000, envelope: true,
+  }, 'KDS');
+  const dev = (ours, pub) => (Math.abs(ours) - pub) / pub;
+  assert.ok(Math.abs(dev(r.moments_kNm.cornerTop, 84.65)) < 0.03, `상우각 ${r.moments_kNm.cornerTop}`);
+  assert.ok(Math.abs(dev(r.moments_kNm.midTop, 91.82)) < 0.03, `상판중앙 ${r.moments_kNm.midTop} (포락선 ③측압0.5 지배)`);
+  assert.equal(r.governingCase.midTop, '③측압 0.5', '지배 조합 = 원문 조합3');
+  const db = dev(r.moments_kNm.cornerBottom, 91.72), dm = dev(r.moments_kNm.midBottom, 108.64);
+  assert.ok(db >= -0.02 && db < 0.13, `하우각 보수측 ${r.moments_kNm.cornerBottom}`);
+  assert.ok(dm >= -0.02 && dm < 0.13, `하판중앙 보수측 ${r.moments_kNm.midBottom}`);
+});

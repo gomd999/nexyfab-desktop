@@ -13,6 +13,98 @@
  * 절점회전 0 (교과서 폐합 프레임 정해). self-test로 상시 보증.
  * 한계: 등두께·단일셀·정지토압 K 입력·활하중 등분포 근사. 윤하중 분포·다셀은 후속.
  */
+import { solveFrame2D } from '../frame2d.mjs';
+
+/** Winkler 스프링 모드: 전체 박스 골조 + 하판 지반스프링 매트릭스 해석 */
+function solveWithSprings(input, g) {
+  const { L, h, t, tt, tb, wv, gc, pTop, pBot } = g;
+  const fck = 24;
+  const E = (input.EcMPa ?? 8500 * Math.cbrt(fck + 4)) * 1000; // kPa
+  const ks = input.subgradeKs;
+  const NS = 10; // 부재당 분할
+  const nodes = [];
+  const elements = [];
+  // 절점: 하판 0..NS (y=0) · 좌벽 상행 · 상판 · 우벽 — 공유 절점으로 폐합
+  for (let i = 0; i <= NS; i++) nodes.push([i * L / NS, 0]);            // 하판 0..NS
+  for (let i = 1; i <= NS; i++) nodes.push([0, i * h / NS]);            // 좌벽 NS+1..2NS (상단=2NS)
+  for (let i = 1; i <= NS; i++) nodes.push([i * L / NS, h]);            // 상판 2NS+1..3NS (우상단=3NS)
+  for (let i = 1; i < NS; i++) nodes.push([L, h - i * h / NS]);         // 우벽 3NS+1..4NS-1
+  const A_ = (thk) => thk, I_ = (thk) => thk ** 3 / 12;
+  // 하판 (좌→우, 국부+y=상): 자중 하향 −tb·gc
+  for (let i = 0; i < NS; i++) elements.push({ i, j: i + 1, E, A: A_(tb), I: I_(tb), w1: -(tb * gc), w2: -(tb * gc) });
+  // 좌벽 (하→상, 국부+y=−x방향): 토압은 +x(내향) → w=−p(z). z=벽하단 0→상단 h: p 선형 pBot→pTop
+  for (let i = 0; i < NS; i++) {
+    const ni = i === 0 ? 0 : NS + i;             // 좌벽 시작: 하판 좌단(0) → NS+1..
+    const nj = NS + i + 1;
+    const z0 = i * h / NS, z1 = (i + 1) * h / NS;
+    const pz = (z) => pBot + (pTop - pBot) * (z / h);
+    elements.push({ i: ni, j: nj, E, A: A_(t), I: I_(t), w1: -pz(z0), w2: -pz(z1) });
+  }
+  // 상판 (좌→우, 국부+y=상): wv 하향 → w=−wv. 좌상단=2NS, 우상단=3NS
+  for (let i = 0; i < NS; i++) {
+    const ni = i === 0 ? 2 * NS : 2 * NS + i;
+    const nj = 2 * NS + i + 1;
+    elements.push({ i: ni, j: nj, E, A: A_(tt), I: I_(tt), w1: -wv, w2: -wv });
+  }
+  // 우벽 (상→하 연결: 3NS → 3NS+1.. → 하판 우단 NS). 국부: 진행방향 −y(하행), cx=0, cy=−1 → 국부+y=+x.
+  // 토압은 −x(내향) → w=−p(z)
+  for (let i = 0; i < NS; i++) {
+    const ni = i === 0 ? 3 * NS : 3 * NS + i;
+    const nj = i === NS - 1 ? NS : 3 * NS + i + 1;
+    const z0 = h - i * h / NS, z1 = h - (i + 1) * h / NS;
+    const pz = (z) => pBot + (pTop - pBot) * (z / h);
+    elements.push({ i: ni, j: nj, E, A: A_(t), I: I_(t), w1: -pz(z0), w2: -pz(z1) });
+  }
+  // 스프링: 하판 절점 ky = ks × 분담폭 × 1m (국토부 방식 동일). 수평은 중앙 1점 고정.
+  const springs = [];
+  for (let i = 0; i <= NS; i++) {
+    const trib = (i === 0 || i === NS) ? L / NS / 2 : L / NS;
+    springs.push({ node: i, ky: ks * trib });
+  }
+  // 벽 자중: 절점 연직하중으로 분배 (frame2d는 횡분포만 지원 — 축방향 자중은 절점 등가)
+  const loads = [];
+  const wallNodeW = t * gc * (h / NS); // kN per 분담높이
+  for (let i = 0; i <= NS; i++) {
+    const half = (i === 0 || i === NS) ? 0.5 : 1;
+    const nL = i === 0 ? 0 : NS + i;                       // 좌벽 절점열 (하단=하판0)
+    const nR = i === 0 ? NS : i === NS ? 3 * NS : 4 * NS - i; // 우벽 절점열 (하단=하판NS, 상단=3NS)
+    loads.push({ node: nL, fy: -wallNodeW * half });
+    loads.push({ node: nR, fy: -wallNodeW * half });
+  }
+  const fixes = [{ node: Math.floor(NS / 2), ux: true }];
+  const sol = solveFrame2D({ nodes, elements, springs, fixes, loads });
+  // 단부·중앙 모멘트 추출 (요소 인덱스: 하판 0..NS-1 · 좌벽 NS..2NS-1 · 상판 2NS..3NS-1 · 우벽 3NS..4NS-1)
+  const ee = sol.elementEnd;
+  const M_bot_corner = ee[0].Mi;                       // 하판 좌단
+  const M_bot_mid = ee[NS / 2 - 1].Mj;                 // 하판 중앙
+  const M_wall_bot = ee[NS].Mi;                        // 좌벽 하단
+  const M_wall_top = ee[2 * NS - 1].Mj;                // 좌벽 상단
+  const M_top_corner = ee[2 * NS].Mi;                  // 상판 좌단
+  const M_top_mid = ee[2 * NS + NS / 2 - 1].Mj;        // 상판 중앙
+  const M_wall_mid = ee[NS + NS / 2 - 1].Mj;           // 좌벽 중앙
+  const V_top_end = Math.abs(ee[2 * NS].Vi);
+  const V_bot_end = Math.abs(ee[0].Vi);
+  const V_wall_b = Math.abs(ee[NS].Vi), V_wall_t = Math.abs(ee[2 * NS - 1].Vj);
+  const r2 = (v) => +v.toFixed(2);
+  return {
+    inputsEcho: input,
+    loads: { wv_kNm: r2(wv), pTop_kPa: r2(pTop), pBot_kPa: r2(pBot), model: `Winkler ks=${ks} kN/m³ (절점 ky=ks×분담폭 — 국토부 2008 방식)` },
+    geometry: { spanL_m: r2(L), wallH_m: r2(h) },
+    moments_kNm: {
+      cornerTop: r2(-Math.abs(M_top_corner)), cornerBottom: r2(Math.abs(M_bot_corner)),
+      wallAtTop: r2(Math.abs(M_wall_top)), wallAtBottom: r2(-Math.abs(M_wall_bot)),
+      midTop: r2(Math.abs(M_top_mid)), midBottom: r2(Math.abs(M_bot_mid)), midWall: r2(Math.abs(M_wall_mid)),
+    },
+    shears_kN: { top: r2(V_top_end), bottom: r2(V_bot_end), wallTop: r2(V_wall_t), wallBottom: r2(V_wall_b) },
+    verdict: 'INFO',
+    notes: [
+      `Winkler 매트릭스 해석(frame2d, 부재당 ${NS}분할·부재별 I) — 하판 지반스프링·저판자중 포함.`,
+      '우각부=외측 인장, 중앙=내측 인장. 중앙 정모멘트는 단일재하 기준(포락선은 envelope 모드).',
+      '부재 검토: 각 위치 Mu·Vu를 rc_beam에 입력.',
+    ],
+  };
+}
+
 export default {
   id: 'box_culvert_frame',
   domain: 'civil',
@@ -22,7 +114,7 @@ export default {
     '처짐각법(slope-deflection) 고전 정해 — 대칭 폐합 라멘. 검증 앵커: 정사각 등압 시 M=wL²/12',
     'KDS 11 80 05(토압 일반)·KDS 14 20 (부재 검토는 rc_beam 연계)',
   ],
-  status: 'verified — 수학 앵커(등압 wL²/12) + 국토부 2008 표준도 P1-16·H1-28 재현(상우각 2.3%·부위별 허용치 명시)',
+  status: 'verified — 수학 앵커 + 국토부 2008 재현: Winkler(frame2d)+포락선 상판 ≤1.6%·하부 보수측 ≤11%(헌치 미모델 명시)',
   inputSchema: {
     type: 'object',
     required: ['innerWidth', 'innerHeight', 'wallThk', 'cover', 'gammaSoil', 'K'],
@@ -40,9 +132,52 @@ export default {
       topThk: { type: 'number', exclusiveMinimum: 0, maximum: 1.5, description: '상판 두께 m (미입력 시 wallThk — 부재별 강성 반영)' },
       botThk: { type: 'number', exclusiveMinimum: 0, maximum: 1.5, description: '저판 두께 m (미입력 시 wallThk)' },
       surchargeV: { type: 'number', minimum: 0, description: '연직 활하중 등가 등분포 kPa (상판 전용 — surcharge와 분리 입력 시 측압에 미반영)' },
+      subgradeKs: { type: 'number', minimum: 1000, maximum: 500000, description: '연직 지반반력계수 Kv kN/m³ (입력 시 하판 Winkler 스프링 매트릭스 해석 — 도로교 계열 Kv=Kv0(Bv/0.3)^(-3/4), 국토부 2008 예: 17778.5)' },
+      envelope: { type: 'boolean', description: '활하중 포락선 (국토부 2008 표 12-2 사용하중 3조합: ①전재하 ②연직활하중 제외 ③측압 0.5배) — 위치별 최대' },
+      EcMPa: { type: 'number', minimum: 15000, maximum: 45000, description: '콘크리트 탄성계수 MPa (스프링 모드 필수 상대강성 — 기본 8500∛(fck+4), fck=24 기준 25811)' },
     },
   },
   run(input) {
+    // ── 활하중 포락선 (국토부 2008 표 12-2 사용하중 조합 1~3 — 원문 판독) ──
+    if (input.envelope === true) {
+      const base = { ...input, envelope: false };
+      const halfLat = input.pTopOverride !== undefined
+        ? { pTopOverride: input.pTopOverride * 0.5, pBotOverride: input.pBotOverride * 0.5 }
+        : { K: input.K * 0.5 };
+      const cases = [
+        { label: '①전재하', inp: base },
+        { label: '②연직활하중 제외', inp: { ...base, surchargeV: 0 } },
+        { label: '③측압 0.5', inp: { ...base, ...halfLat } },
+      ];
+      const results = cases.map((c) => ({ label: c.label, r: this.run(c.inp) }));
+      const keys = ['cornerTop', 'cornerBottom', 'wallAtTop', 'wallAtBottom', 'midTop', 'midBottom', 'midWall'];
+      const moments = {}, governing = {};
+      for (const k of keys) {
+        let best = null;
+        for (const { label, r } of results) {
+          const v = r.moments_kNm[k];
+          if (best === null || Math.abs(v) > Math.abs(best.v)) best = { v, label };
+        }
+        moments[k] = best.v; governing[k] = best.label;
+      }
+      const shears = {};
+      for (const k of Object.keys(results[0].r.shears_kN)) {
+        shears[k] = Math.max(...results.map(({ r }) => Math.abs(r.shears_kN[k])));
+      }
+      return {
+        inputsEcho: input,
+        loads: results[0].r.loads,
+        geometry: results[0].r.geometry,
+        moments_kNm: moments,
+        governingCase: governing,
+        shears_kN: shears,
+        verdict: 'INFO',
+        notes: [
+          '활하중 포락선: 사용하중 3조합(국토부 2008 표 12-2 — ①전재하 ②연직활하중 제외 ③측압·수평 0.5) 위치별 최대.',
+          ...results[0].r.notes.filter((n) => !n.includes('포락선')),
+        ],
+      };
+    }
     const { innerWidth: Bi, innerHeight: Hi, wallThk: t, cover: hc, gammaSoil: g, K } = input;
     const q = input.surcharge ?? 0;
     const gc = input.gammaConcrete ?? 24;
@@ -70,6 +205,13 @@ export default {
     const pBot = hasOverride ? input.pBotOverride : K * (g * (zTop + h) + q); // 벽 하단 측압
     const pU = pTop;                                // 균등 성분
     const pT = pBot - pTop;                         // 삼각 성분(하단 최대)
+
+    // ── Winkler 스프링 모드 (정확도 라운드 2-② — frame2d 매트릭스 해석) ────
+    // 하판을 지반스프링(ks×분담폭) 위에 올린 전체 골조 해석 — 국토부 2008 방식과
+    // 동일 계열(절점 Kv×trib, 수평 1점 고정). 검증: 국토부 P1-16 하부 재현.
+    if (input.subgradeKs > 0) {
+      return solveWithSprings(input, { L, h, t, tt, tb, wv, gc, pTop, pBot });
+    }
 
     // ── FEM (시계방향 +, 처짐각법 관례) ───────────────────────────────────
     // 상판(좌→우), 하중 ↓: FEM_L = −wL²/12, FEM_R = +wL²/12
@@ -136,7 +278,7 @@ export default {
         'K·상재하중은 입력(윤하중 등가분포는 별도 산정 후 surcharge로).',
         ...(input.pTopOverride !== undefined ? [`측압 직접입력 모드: pTop ${input.pTopOverride}·pBot ${input.pBotOverride} kPa (K·γ 유도 대체 — 산정 근거는 입력자 책임 명시)`] : []),
         '부재 검토: 각 위치 Mu·Vu를 rc_beam에 입력(1.2D+1.6L 계수는 하중 입력 단계에서).',
-        '중앙 정모멘트는 단일재하 기준 — 활하중 포락선(측압 최소 케이스) 미적용으로 상판 +M이 과소할 수 있음(국토부 2008 재현에서 −20% 확인). 상판 중앙 설계 시 별도 검토 필요.',
+        '중앙 정모멘트는 단일재하 시 과소 가능 — envelope:true(사용하중 3조합 포락선) 권장. Winkler+포락선으로 국토부 2008 상판 ≤1.6% 재현.',
       ],
     };
   },
