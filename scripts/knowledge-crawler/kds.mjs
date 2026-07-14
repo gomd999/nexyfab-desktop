@@ -60,6 +60,7 @@ const TARGETS = [
   { code: '415010', tags: ['korea', 'kds', 'timber', 'building', 'landscape', 'allowable-stress'] }, // 목구조 재료 및 허용응력
   { code: '415015', tags: ['korea', 'kds', 'timber', 'building', 'landscape', 'design-req'] },  // 목구조 설계요구사항
   { code: '415020', tags: ['korea', 'kds', 'timber', 'building', 'landscape', 'member-design'] }, // 목구조 부재설계
+  { code: '411700', tags: ['korea', 'kds', 'building', 'seismic'] },   // 건축물 내진설계기준 (등가정적 근거)
 ];
 
 const args = process.argv.slice(2);

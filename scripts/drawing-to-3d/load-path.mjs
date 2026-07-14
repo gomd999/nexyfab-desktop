@@ -260,6 +260,65 @@ export function loadPathCheck(assembly, params = {}) {
     checks: colCheck?.checks ?? null, error: colCheck?.error ?? null,
   }];
 
+  // ── 지진 검토 (옵션 params.seismic — KDS 41 17 00 등가정적, 보완라운드) ──────
+  //    층중량=형상 고정하중 파생 → V·Fx → 포탈법(관례 근사)으로 지배기둥 지진모멘트
+  //    → rc_column_pm 지진조합(1.2D+1.0L+1.0E — 식 1.7-3 계열, 근사 명시).
+  let seismicRes = null;
+  const sp = params.seismic;
+  if (sp && Number(sp.R) > 0) {
+    try {
+      const ncols = xs.length * ys.length;
+      const beamSelfFloor = floor0Beams.reduce((s, b) => s + (partVolume(b.type, b.params) / 1e9) * gammaRC, 0);
+      const wFloor = slabD_kN + beamSelfFloor + colSelfD * ncols; // 층 유효중량(고정하중) kN
+      const pitch = zs.length > 1 ? (zs[1] - zs[0]) : (cb0.dz + (sb.dz ?? 150));
+      const hsM = Array.from({ length: nf }, (_, i) => ((i + 1) * pitch) / 1000);
+      const seis = runCalculator('seismic_static', {
+        zone: sp.zone ?? 'I', siteClass: sp.siteClass ?? 'S4', importance: sp.importance ?? 'grade2',
+        R: Number(sp.R), structType: sp.structType ?? 'rc_moment',
+        ...(Number(sp.S) > 0 ? { S: Number(sp.S) } : {}), ...(Number(sp.T) > 0 ? { T: Number(sp.T) } : {}),
+        heightsM: hsM, weightsKN: Array.from({ length: nf }, () => +wFloor.toFixed(1)),
+      }, 'KDS');
+      // 포탈법: 방향별 최하층 층전단 → 프레임 분배 → 내부기둥 전단 2v → M=v_col·h/2
+      const V1 = seis.storyShear_kN[0];
+      const clearH = (cb0.dz) / 1000; // 기둥 순높이 m
+      const portal = (nSpans, nFrames) => {
+        const vExt = V1 / nFrames / (2 * nSpans);
+        const vInt = 2 * vExt;
+        return vInt * clearH / 2; // kN·m (반곡점 중앙 가정)
+      };
+      const McolX = portal(xs.length - 1, ys.length);
+      const McolY = portal(ys.length - 1, xs.length);
+      const McolE = Math.max(McolX, McolY);
+      // 지진조합 축력 (1.2D + 1.0L 부분, 지배기둥) — 층누적
+      const PuE = ((1.2 * (wD_m2 + beamSelfPerM2) + 1.0 * wL_m2) * worstColTrib + 1.2 * colSelfD) * nf;
+      let colE = null;
+      if (Number(params.colAst) > 0) {
+        try {
+          colE = runCalculator('rc_column_pm', {
+            b: round(cb0.dx, 0), h: round(cb0.dy, 0), fck: params.fck ?? 24, fy: params.fy ?? 400,
+            Ast: Number(params.colAst), Pu: round(PuE), Mu: round(McolE),
+          }, 'KDS');
+        } catch (e) { colE = { error: e.message }; }
+      }
+      seismicRes = {
+        V_kN: seis.V_kN, Fx_kN: seis.Fx_kN, storyShear_kN: seis.storyShear_kN,
+        Cs: seis.intermediate.Cs, governing: seis.intermediate.governing,
+        SDS: seis.intermediate.SDS, SD1: seis.intermediate.SD1, Ta_s: seis.intermediate.Ta_s,
+        perFloorWeight_kN: +wFloor.toFixed(1),
+        column: {
+          MuE_kNm: round(McolE), PuE_kN: round(PuE),
+          verdict: colE?.verdict ?? (colE?.error ? 'ERROR' : 'INPUT(colAst)'),
+          checks: colE?.checks ?? null,
+          method: `포탈법(내부기둥 2v·반곡점 중앙) — X ${round(McolX)}·Y ${round(McolY)} kN·m 중 최대. 조합 1.2D+1.0L+1.0E 근사`,
+        },
+        notes: seis.notes,
+        disclaimer: '등가정적 적용조건(§7.1)·우발편심·비틀림·보 지진모멘트 미포함 — 포탈법=관례 개산(비법정). 중고층·비정형은 동적해석 필요.',
+      };
+    } catch (e) {
+      seismicRes = { error: e.message };
+    }
+  }
+
   // ── 기초 검토 (치수·지지력 = 입력) ─────────────────────────────────────────
   let footing = null;
   const f = params.footing;
@@ -314,8 +373,9 @@ export function loadPathCheck(assembly, params = {}) {
 
   return {
     ok: true,
-    scope: `직교 격자 라멘 ${xs.length - 1}×${ys.length - 1}베이 ${nf}층 · 중력하중만 (B3)`,
+    scope: `직교 격자 라멘 ${xs.length - 1}×${ys.length - 1}베이 ${nf}층 · 중력${seismicRes && !seismicRes.error ? '+등가정적 지진' : '하중만'} (B3)`,
     rebar,
+    seismic: seismicRes,
     loads: {
       usage: { key: usage, label: live.label, live_kNm2: live.v, ref: kds.loads.liveLoad_kNm2._ref },
       slab: { areaM2: round(slabAreaM2), D_kN: round(slabD_kN), L_kN: round(slabL_kN), finish_kNm2: finish, finishNote: finish > 0 ? '입력값' : '마감하중 미포함(미입력)', perFloor: true, floors: nf },

@@ -44,7 +44,16 @@ export function loadPathReport(r, { title = '하중경로 검증' } = {}) {
 ${r.beams[0]?.checks ? checksTable(r.beams[0].checks) : ''}
 <h2>③ 기둥 검토 (rc_column_pm)</h2><table><tr><th>부재</th><th>단면</th><th>Pu kN</th><th>P사용 kN</th><th>Mu</th><th>판정</th></tr>${cols}</table>
 <h2>④ 기초 검토 (isolated_footing)</h2>${ftg}
-${r.rebar ? `<h2>⑤ 철근 개산 (입력 배근 × 형상 길이)</h2>
+${r.seismic && !r.seismic.error ? `<h2>⑤ 등가정적 지진 (KDS 41 17 00 §7.2)</h2>
+<div class="kpi"><div><b>${f(r.seismic.V_kN, 1)} kN</b><span>밑면전단 V (Cs ${r.seismic.Cs} — ${esc(r.seismic.governing)})</span></div>
+<div><b>${f(r.seismic.SDS, 3)} / ${f(r.seismic.SD1, 3)}</b><span>SDS / SD1</span></div>
+<div><b>${f(r.seismic.Ta_s, 3)} s</b><span>근사주기 Ta</span></div></div>
+<table><tr><th>층</th><th>Fx kN</th><th>층전단 kN</th></tr>
+${r.seismic.Fx_kN.map((fx, i) => `<tr><td>${i + 1}F</td><td>${f(fx, 1)}</td><td>${f(r.seismic.storyShear_kN[i], 1)}</td></tr>`).join('')}</table>
+<table><tr><th>지배기둥 지진조합</th><th>PuE kN</th><th>MuE kN·m</th><th>판정</th></tr>
+<tr><td style="font-size:10.5px;text-align:left">${esc(r.seismic.column.method)}</td><td>${f(r.seismic.column.PuE_kN, 1)}</td><td>${f(r.seismic.column.MuE_kNm, 1)}</td><td>${V(r.seismic.column.verdict)}</td></tr></table>
+<div class="honest">⚠ ${esc(r.seismic.disclaimer)}</div>` : ''}
+${r.rebar ? `<h2>${r.seismic && !r.seismic.error ? '⑥' : '⑤'} 철근 개산 (입력 배근 × 형상 길이)</h2>
 <table><tr><th>항목</th><th>산출근거</th><th>중량 kg</th></tr>
 ${r.rebar.items.map((i) => `<tr><td style="text-align:left">${esc(i.name)}</td><td style="text-align:left;font-size:10.5px;color:#64748b">${esc(i.basis)}</td><td>${f(i.kg, 1)}</td></tr>`).join('')}
 <tr style="font-weight:700;background:#f8fafc"><td colspan="2">합계</td><td>${f(r.rebar.totalKg, 1)} (${f(r.rebar.totalTon, 2)} t)</td></tr></table>

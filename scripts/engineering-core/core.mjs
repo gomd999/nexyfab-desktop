@@ -14,8 +14,9 @@ import isolatedFooting from './calculators/isolated-footing.mjs';
 import occupancyEgress from './calculators/occupancy-egress.mjs';
 import timberBeam from './calculators/timber-beam.mjs';
 import boxCulvertFrame from './calculators/box-culvert-frame.mjs';
+import seismicStatic from './calculators/seismic-static.mjs';
 
-export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame];
+export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic];
 
 /** Minimal JSON-Schema-subset validator (type/required/properties/minimum/maximum/enum). */
 export function validateInput(schema, input) {

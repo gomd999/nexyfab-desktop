@@ -104,3 +104,18 @@ test('피난폭: 요구폭 경계에서 플립', () => {
   const key = Object.keys(over.checks).find((k) => /width|폭/i.test(k)) ?? Object.keys(over.checks)[0];
   assert.notEqual(under.checks[key].pass, over.checks[key].pass, '경계에서 판정 변화 필요');
 });
+
+// ── 등가정적 (KDS 41 17 00) — 손검증 골든 + 불변식 ─────────────────────────
+test('지진 등가정적: 구역I·S4·R5 손검증 (SDS 0.4987·V=Cs·W) + R↑→V↓', () => {
+  const base = { zone: 'I', siteClass: 'S4', importance: 'grade2', R: 5, structType: 'rc_moment', heightsM: [3.45, 6.9], weightsKN: [1000, 1000] };
+  const r = runCalculator('seismic_static', base, 'KDS');
+  assert.ok(Math.abs(r.intermediate.SDS - 0.4987) < 0.001, 'SDS');
+  assert.ok(Math.abs(r.intermediate.SD1 - 0.2875) < 0.001, 'SD1');
+  assert.ok(Math.abs(r.V_kN - r.intermediate.Cs * 2000) < 0.5, 'V=Cs·W');
+  assert.ok(Math.abs(r.Fx_kN[1] / r.Fx_kN[0] - 2) < 0.01, 'k=1에서 Fx∝h (h비 2배)');
+  const r8 = runCalculator('seismic_static', { ...base, R: 8 }, 'KDS');
+  assert.ok(r8.V_kN < r.V_kN, 'R↑→V↓');
+  // 하한 지배 확인: 초장주기 입력 시 floor(0.044·SDS·IE)
+  const rf = runCalculator('seismic_static', { ...base, T: 4.9 }, 'KDS');
+  assert.ok(rf.intermediate.governing.includes('하한') || rf.intermediate.Cs >= 0.044 * rf.intermediate.SDS * 1.0 - 1e-9, 'Cs 하한 준수');
+});
