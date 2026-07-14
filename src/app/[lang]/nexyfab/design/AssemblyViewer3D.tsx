@@ -143,13 +143,19 @@ export default function AssemblyViewer3D({
     let pickables: THREE.Mesh[] = [];
     const holderByPart = new Map<string, { holder: THREE.Group; part: ViewerPart }>();
     let hovered: THREE.Mesh | null = null;
-    let overlays: THREE.Mesh[] = [];
+    let overlays: THREE.Object3D[] = []; // 면 하이라이트 + ⑦ 치수선(라인·화살촉·라벨 스프라이트)
     let fitted = false;
     let disposed = false;
     let modeLocal: PickMode = modeRef.current;
     let pendingA: { mesh: THREE.Mesh; partId: string; part: ViewerPart } | null = null;
 
     const disposeObj = (o: THREE.Object3D) => {
+      const spr = o as THREE.Sprite;
+      if (spr.isSprite) { // Sprite.geometry는 three 전역 공유 — geometry dispose 금지, 머티리얼·텍스처만
+        if (spr.material.map) spr.material.map.dispose();
+        spr.material.dispose();
+        return;
+      }
       const m = o as THREE.Mesh;
       if (m.geometry) m.geometry.dispose();
       const mat = (m as { material?: THREE.Material | THREE.Material[] }).material;
@@ -197,16 +203,63 @@ export default function AssemblyViewer3D({
       return m;
     };
 
+    /** ⑦ 치수선 — 라인 + 양끝 원뿔 화살촉 + CanvasTexture 스프라이트 라벨. parent 좌표계 기준. */
+    const makeDim = (a: THREE.Vector3, b: THREE.Vector3, text: string, parent: THREE.Object3D) => {
+      const dirV = new THREE.Vector3().subVectors(b, a);
+      const len = dirV.length();
+      if (len < 1) return;
+      const dirN = dirV.clone().normalize();
+      const line = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([a, b]),
+        new THREE.LineBasicMaterial({ color: 0x111827 }),
+      );
+      parent.add(line); overlays.push(line);
+      const coneLen = Math.max(4, len * 0.04), coneR = coneLen * 0.35;
+      for (const [tip, d] of [[a, dirN.clone().negate()], [b, dirN]] as Array<[THREE.Vector3, THREE.Vector3]>) {
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(coneR, coneLen, 10), new THREE.MeshBasicMaterial({ color: 0x111827 }));
+        cone.position.copy(tip).addScaledVector(d, -coneLen / 2);
+        cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
+        parent.add(cone); overlays.push(cone);
+      }
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 64;
+      const ctx = c.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fillRect(0, 0, 256, 64);
+        ctx.strokeStyle = '#94a3b8'; ctx.strokeRect(0, 0, 256, 64);
+        ctx.fillStyle = '#111827'; ctx.font = 'bold 30px system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(text, 128, 32);
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
+        const w = Math.max(len * 0.28, coneLen * 6);
+        sp.scale.set(w, w / 4, 1);
+        sp.position.copy(a).addScaledVector(dirV, 0.5).addScaledVector(new THREE.Vector3(0, 0, 1), Math.max(len * 0.05, coneR * 2));
+        parent.add(sp); overlays.push(sp);
+      }
+    };
+
     const applyOverlays = (partId: string, faces: FaceKey[]) => {
       clearOverlays();
       const rec = holderByPart.get(partId);
-      if (!rec) return;
+      if (!rec?.part.aabb) return;
       for (const face of faces) {
         const plane = makeFacePlane(rec.part, face);
         if (plane) {
           rec.holder.add(plane);
           overlays.push(plane);
         }
+      }
+      // ⑦ 면 픽킹(단일 면)일 때: 매핑 파라미터 축 방향의 AABB 전장 치수선
+      if (faces.length === 1) {
+        const [x0, y0, z0] = rec.part.aabb.min;
+        const [x1, y1, z1] = rec.part.aabb.max;
+        const off = Math.max(x1 - x0, y1 - y0, z1 - z0, 10) * 0.1;
+        const axis = faces[0][1];
+        let a: THREE.Vector3, b: THREE.Vector3, ext: number;
+        if (axis === 'x') { a = new THREE.Vector3(x0, y1 + off, z1 + off); b = new THREE.Vector3(x1, y1 + off, z1 + off); ext = x1 - x0; }
+        else if (axis === 'y') { a = new THREE.Vector3(x1 + off, y0, z1 + off); b = new THREE.Vector3(x1 + off, y1, z1 + off); ext = y1 - y0; }
+        else { a = new THREE.Vector3(x1 + off, y1 + off, z0); b = new THREE.Vector3(x1 + off, y1 + off, z1); ext = z1 - z0; }
+        makeDim(a, b, `${Math.round(ext)}mm`, rec.holder);
       }
     };
 
@@ -391,6 +444,8 @@ export default function AssemblyViewer3D({
       clearPending();
       clearOverlays();
       lastPickRef.current = null;
+      // ⑦ 거리 치수선 — 두 파트 중심을 잇는 라인 + 지배축 간격(mm) 라벨 (다음 픽킹/리빌드 시 제거)
+      makeDim(cA, cB, `${out.distanceMm}mm`, group);
       cbRef.current?.(out);
     };
 

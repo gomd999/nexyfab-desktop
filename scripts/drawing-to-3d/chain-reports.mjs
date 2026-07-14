@@ -127,7 +127,7 @@ ${memberSec}${connSec}${boardSec}${windSec}
 }
 
 /** 거더교 리포트 (bridge-check 결과) */
-export function bridgeReport(r, { title = '거더교 검증' } = {}) {
+export function bridgeReport(r, { title = '거더교 검증', svg = '' } = {}) {
   if (!r?.ok) return SHELL(title, '실패', `<div class="honest">${esc(r?.error ?? '체인 실패')}</div>`);
   const d = r.dead, lv = r.live, u = r.ultimate;
   return SHELL(`${title} — KL-510 · 극한 I`, 'nexyfab · KDS 24 12 21/11 원문 하중·계수 · 영향선 엔진(미 3개주 공표표 재현)', `
@@ -144,7 +144,8 @@ export function bridgeReport(r, { title = '거더교 검증' } = {}) {
 <div class="note">DF: ${esc(lv.dfSrc)}</div>
 <h2>③ 극한한계상태 조합</h2>
 <div class="note">${esc(u.combo)} → Mu ${f(u.Mu_kNm, 0)} kN·m · Vu ${f(u.Vu_kN, 0)} kN · 사용 I Ms ${f(r.service.Ms_kNm, 0)} kN·m</div>
-${r.section ? `<h2>④ RC 단면 검토</h2>${r.section.checks ? checksTable(r.section.checks) : ''}<table><tr><th>판정</th><th>${V(r.section.verdict)}</th></tr></table><div class="note">${esc(r.section.note ?? r.section.error ?? '')}</div>` : '<div class="honest">단면 검토: As_mm2 입력 시 rc_beam 연계 (RC 가정 — PSC 미지원 명시)</div>'}
+${svg ? `<h2>④ 일반도</h2><div style="overflow:auto">${svg}</div>` : ''}
+${r.section ? `<h2>⑤ RC 단면 검토</h2>${r.section.checks ? checksTable(r.section.checks) : ''}<table><tr><th>판정</th><th>${V(r.section.verdict)}</th></tr></table><div class="note">${esc(r.section.note ?? r.section.error ?? '')}</div>` : '<div class="honest">단면 검토: As_mm2 입력 시 rc_beam 연계 (RC 가정 — PSC 미지원 명시)</div>'}
 <div class="honest">⚠ ${esc(r.disclaimer)}</div>`);
 }
 
@@ -165,7 +166,7 @@ function mepSec(r) {
   return `<h2>④ 설비 개산 (조명·환기·전기)</h2><table><tr><th>항목</th><th>산출</th></tr>${liRow}${veRow}${elRow}</table>${notes.length ? `<div class="note">${notes.map(esc).join('<br>')}</div>` : ''}`;
 }
 
-export function interiorReport(r, { title = '피난·마감 검증' } = {}) {
+export function interiorReport(r, { title = '피난·마감 검증', svg = '' } = {}) {
   if (!r?.ok) return SHELL(title, '실패', `<div class="honest">${esc(r?.error ?? '체인 실패')}</div>`);
   const t = r.travel, e = r.egress, fi = r.finishes;
   return SHELL(`${title} — 인테리어`, 'nexyfab · 보행거리 BFS 실측 · 문폭=형상 파생', `
@@ -185,11 +186,12 @@ ${e?.checks ? checksTable(e.checks) : `<div class="honest">${esc(e?.error ?? '�
 <tr><td>${f(fi.floorM2)} m²</td><td>${f(fi.wallM2)} m²</td><td>${f(fi.ceilingM2)} m²</td></tr></table>
 <div class="note">${esc(fi.note)}</div>
 ${mepSec(r)}
+${svg ? `<h2>평면도</h2><div style="overflow:auto">${svg}</div>` : ''}
 <div class="honest">⚠ ${esc(r.disclaimer)}</div>`);
 }
 
 /** 토목 옹벽 안정 리포트 (verifyDomain 결과) */
-export function retainingWallReport(v, { title = '옹벽 안정 검토' } = {}) {
+export function retainingWallReport(v, { title = '옹벽 안정 검토', svg = '' } = {}) {
   if (!v?.ok) return SHELL(title, '실패', `<div class="honest">${esc(v?.error ?? JSON.stringify(v?.needInputs))}</div>`);
   const rows = Object.entries(v.checks ?? {}).map(([k, c]) => `<tr><td>${esc(k)}</td><td>${f(c.FS ?? c.value ?? c.e_m ?? c.qmax_kPa, 2)}</td><td>${f(c.required ?? c.limit ?? c.allow ?? c.min ?? c.limit_m ?? c.allow_kPa, 2)}</td><td>${c.pass ? '✓' : '✕'}</td></tr>`).join('');
   const sz = v.seismic;
@@ -205,6 +207,7 @@ ${Object.entries(sz.checks).map(([k, c]) => `<tr><td>${esc(k)}</td><td>${f(c.FS,
 ${Object.entries(v.derived ?? {}).map(([k, val]) => `<tr><td>${esc(k)}</td><td>${f(val, 2)} m</td></tr>`).join('')}</table>
 <h2>② 안정 검토</h2><table><tr><th>검토</th><th>값</th><th>기준</th><th>판정</th></tr>${rows}</table>
 ${seismicSec}
+${svg ? `<h2>단면도</h2><div style="overflow:auto">${svg}</div>` : ''}
 <div class="honest">⚠ ${esc(v.disclaimer ?? '개념 검토(비법정)')}</div>
 <div class="note">근거: ${(v.refs ?? []).map(esc).join(' · ')}</div>`);
 }

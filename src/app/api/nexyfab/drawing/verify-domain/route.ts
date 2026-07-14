@@ -86,7 +86,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const { join: j2 } = await import('node:path');
       const { pathToFileURL: p2 } = await import('node:url');
       const rpt = (await import(/* webpackIgnore: true */ p2(j2(process.cwd(), 'scripts', 'drawing-to-3d', 'chain-reports.mjs')).href)) as { retainingWallReport: (r: unknown, o?: Record<string, unknown>) => string };
-      return NextResponse.json({ result, html: rpt.retainingWallReport(result, { title: body.title ?? '옹벽 안정 검토' }) });
+      let svg = '';
+      try {
+        const sp3 = j2(process.cwd(), 'scripts', 'drawing-to-3d', 'section-drawings.mjs');
+        const sd = (await import(/* webpackIgnore: true */ p2(sp3).href)) as { retainingWallSectionSvg: (p: unknown, o?: Record<string, unknown>) => string };
+        const wall = (body as { assembly?: { parts?: Array<{ role?: string; params?: unknown }> } }).assembly?.parts?.find((x) => x.role === 'wall' || x.role === 'stem');
+        const meta = (body as { assembly?: { wallParams?: unknown } }).assembly?.wallParams ?? (body as { wallParams?: unknown }).wallParams ?? wall?.params;
+        if (meta) svg = sd.retainingWallSectionSvg(meta);
+      } catch { /* 도면 실패는 비치명 */ }
+      return NextResponse.json({ result, html: rpt.retainingWallReport(result, { title: body.title ?? '옹벽 안정 검토', svg }) });
     }
     return NextResponse.json(result);
   } catch (e) {

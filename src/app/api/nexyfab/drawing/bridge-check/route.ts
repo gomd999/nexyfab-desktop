@@ -52,7 +52,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const result = mod.bridgeCheck(body.assembly, body.params ?? {});
     if (body.format === 'html') {
       const rpt = await loadRpt();
-      return NextResponse.json({ result, html: rpt.bridgeReport(result, { title: body.assembly?.name ?? '거더교 검증' }) });
+      let svg = '';
+      try {
+        const sp = join(process.cwd(), 'scripts', 'drawing-to-3d', 'section-drawings.mjs');
+        const sd = (await import(/* webpackIgnore: true */ pathToFileURL(sp).href)) as { bridgeGeneralSvg: (bm: unknown, o?: Record<string, unknown>) => string };
+        const bm = (body.assembly as { bridgeMeta?: unknown }).bridgeMeta;
+        if (bm) svg = sd.bridgeGeneralSvg(bm);
+      } catch { /* 도면 실패는 비치명 */ }
+      return NextResponse.json({ result, html: rpt.bridgeReport(result, { title: body.assembly?.name ?? '거더교 검증', svg }) });
     }
     return NextResponse.json(result);
   } catch (e) {

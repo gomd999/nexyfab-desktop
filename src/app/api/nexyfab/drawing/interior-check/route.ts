@@ -51,7 +51,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const result = mod.interiorCheck(body.assembly, body.params ?? {});
     if (body.format === 'html') {
       const rpt = await loadRpt();
-      return NextResponse.json({ result, html: rpt.interiorReport(result, { title: body.assembly?.name ?? '피난·마감 검증' }) });
+      let svg = '';
+      try {
+        const sp = join(process.cwd(), 'scripts', 'drawing-to-3d', 'section-drawings.mjs');
+        const sd = (await import(/* webpackIgnore: true */ pathToFileURL(sp).href)) as { interiorPlanSvg: (a: unknown, o?: Record<string, unknown>) => string };
+        const tr = (result as { travel?: { farthestPointMm?: number[]; maxTravelM?: number } }).travel;
+        svg = sd.interiorPlanSvg(body.assembly, { farthestPointMm: tr?.farthestPointMm, maxTravelM: tr?.maxTravelM });
+      } catch { /* 도면 실패는 비치명 */ }
+      return NextResponse.json({ result, html: rpt.interiorReport(result, { title: body.assembly?.name ?? '피난·마감 검증', svg }) });
     }
     return NextResponse.json(result);
   } catch (e) {

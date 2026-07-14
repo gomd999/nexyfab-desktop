@@ -182,6 +182,24 @@ const dict = {
     nlApplied: '적용됨: ',
     nlFail: '해석 실패: ',
     vcTitle: '음성 입력',
+    swBtn: '안전범위',
+    swBusy: '스윕 중… (체인 8회)',
+    swFail: '스윕 실패: ',
+    glBtn: '목표 탐색',
+    glMin: '최소 통과값',
+    glMax: '최대 통과값',
+    glFound: '통과 경계 ≈ ',
+    snLabel: '표준 절점',
+    snSrc: '출처: ',
+    fpTplWide: '템플릿 치수 — 같은 역할 전체에 적용됩니다.',
+    dfTitle: '수정 전후',
+    dfBeamRatio: '보 휨비율',
+    dfMemberRatio: '부재 휨비율',
+    dfSeisCol: '지진 기둥',
+    hsUndo: '실행취소',
+    hsRedo: '다시실행',
+    hsList: '이력',
+    hsInit: '초기값',
   },
   en: {
     tplTitle: 'Assembly template',
@@ -340,6 +358,24 @@ const dict = {
     nlApplied: 'Applied: ',
     nlFail: 'Interpretation failed: ',
     vcTitle: 'Voice input',
+    swBtn: 'Safe range',
+    swBusy: 'Sweeping… (8 chain runs)',
+    swFail: 'Sweep failed: ',
+    glBtn: 'Goal search',
+    glMin: 'min passing value',
+    glMax: 'max passing value',
+    glFound: 'Pass boundary ≈ ',
+    snLabel: 'standard nodes',
+    snSrc: 'source: ',
+    fpTplWide: 'Template dimension — applies to every member of the same role.',
+    dfTitle: 'Before→after',
+    dfBeamRatio: 'beam flexure ratio',
+    dfMemberRatio: 'member flexure ratio',
+    dfSeisCol: 'seismic column',
+    hsUndo: 'Undo',
+    hsRedo: 'Redo',
+    hsList: 'History',
+    hsInit: 'initial',
   },
   ja: {
     tplTitle: 'アセンブリテンプレート',
@@ -498,6 +534,24 @@ const dict = {
     nlApplied: '適用済み: ',
     nlFail: '解釈失敗: ',
     vcTitle: '音声入力',
+    swBtn: '安全範囲',
+    swBusy: 'スイープ中…（チェーン8回）',
+    swFail: 'スイープ失敗: ',
+    glBtn: '目標探索',
+    glMin: '最小合格値',
+    glMax: '最大合格値',
+    glFound: '合格境界 ≈ ',
+    snLabel: '標準節点',
+    snSrc: '出典: ',
+    fpTplWide: 'テンプレート寸法 — 同じ役割の部材すべてに適用されます。',
+    dfTitle: '修正前後',
+    dfBeamRatio: '梁曲げ比率',
+    dfMemberRatio: '部材曲げ比率',
+    dfSeisCol: '地震柱',
+    hsUndo: '元に戻す',
+    hsRedo: 'やり直す',
+    hsList: '履歴',
+    hsInit: '初期値',
   },
   zh: {
     tplTitle: '装配模板',
@@ -656,6 +710,24 @@ const dict = {
     nlApplied: '已应用: ',
     nlFail: '解析失败: ',
     vcTitle: '语音输入',
+    swBtn: '安全范围',
+    swBusy: '扫描中…（链式验证8次）',
+    swFail: '扫描失败: ',
+    glBtn: '目标搜索',
+    glMin: '最小通过值',
+    glMax: '最大通过值',
+    glFound: '通过边界 ≈ ',
+    snLabel: '标准节点',
+    snSrc: '来源: ',
+    fpTplWide: '模板尺寸 — 应用于同一角色的所有构件。',
+    dfTitle: '修改前后',
+    dfBeamRatio: '梁弯曲比',
+    dfMemberRatio: '构件弯曲比',
+    dfSeisCol: '地震柱',
+    hsUndo: '撤销',
+    hsRedo: '重做',
+    hsList: '历史',
+    hsInit: '初始值',
   },
   es: {
     tplTitle: 'Plantilla de ensamblaje',
@@ -814,6 +886,24 @@ const dict = {
     nlApplied: 'Aplicado: ',
     nlFail: 'Fallo de interpretación: ',
     vcTitle: 'Entrada de voz',
+    swBtn: 'Rango seguro',
+    swBusy: 'Barriendo… (8 verificaciones)',
+    swFail: 'Fallo del barrido: ',
+    glBtn: 'Búsqueda de objetivo',
+    glMin: 'valor mínimo que pasa',
+    glMax: 'valor máximo que pasa',
+    glFound: 'Límite de aprobación ≈ ',
+    snLabel: 'nodos estándar',
+    snSrc: 'fuente: ',
+    fpTplWide: 'Cota de plantilla — se aplica a todas las piezas del mismo rol.',
+    dfTitle: 'Antes→después',
+    dfBeamRatio: 'ratio de flexión de viga',
+    dfMemberRatio: 'ratio de flexión del miembro',
+    dfSeisCol: 'columna sísmica',
+    hsUndo: 'Deshacer',
+    hsRedo: 'Rehacer',
+    hsList: 'Historial',
+    hsInit: 'inicial',
   },
   ar: {
     tplTitle: 'قالب التجميع',
@@ -972,6 +1062,24 @@ const dict = {
     nlApplied: 'تم التطبيق: ',
     nlFail: 'فشل التفسير: ',
     vcTitle: 'إدخال صوتي',
+    swBtn: 'النطاق الآمن',
+    swBusy: 'جارٍ المسح… (8 عمليات تحقق)',
+    swFail: 'فشل المسح: ',
+    glBtn: 'بحث عن الهدف',
+    glMin: 'أدنى قيمة ناجحة',
+    glMax: 'أقصى قيمة ناجحة',
+    glFound: 'حد النجاح ≈ ',
+    snLabel: 'قيم قياسية',
+    snSrc: 'المصدر: ',
+    fpTplWide: 'بُعد قالب — يُطبق على جميع العناصر بنفس الدور.',
+    dfTitle: 'قبل→بعد',
+    dfBeamRatio: 'نسبة انحناء الجسر',
+    dfMemberRatio: 'نسبة انحناء العنصر',
+    dfSeisCol: 'عمود زلزالي',
+    hsUndo: 'تراجع',
+    hsRedo: 'إعادة',
+    hsList: 'السجل',
+    hsInit: 'أولي',
   },
 } as const;
 
@@ -985,6 +1093,43 @@ const DISTANCE_MAP: Record<string, Record<string, { x?: string; y?: string } | n
 
 // Web Speech API 언어 — 현재 로케일 기준(기본 ko-KR)
 const VOICE_LANG: Record<string, string> = { ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', zh: 'zh-CN', es: 'es-ES', ar: 'ar-SA' };
+
+// ③ 표준규격 스냅 — scripts/drawing-to-3d/snap-lists.mjs SNAP_LISTS/PARAM_SNAP 미러 (동기화 유지)
+//    출처 명시 절점만 — 지어낸 값 없음. 목록에 없는 mm 파라미터는 입력 블러 시 10mm 그리드 반올림.
+const SNAP_MIRROR: Record<string, { values: number[]; source: string }> = {
+  boltDia: { values: [12, 16, 19, 22, 25], source: 'KDS 41 50 30 표 4.5-2 절점(원문 파싱)' },
+  nailLen: { values: [50, 63, 76, 82, 89, 101, 114, 127, 139, 152], source: 'KDS 41 50 30 표 4.4-4 못 길이 절점' },
+  sideThk: { values: [12, 19, 25, 38], source: 'KDS 41 50 30 표 4.4-4 측면부재 절점' },
+  mainThk: { values: [38, 89, 140], source: 'KDS 41 50 30 표 4.5-2 주부재 두께 절점' },
+  postSize: { values: [38, 89, 140, 184, 235, 286], source: '구조용 제재 관례 규격 계열(38 배수 — 참고용)' },
+};
+
+// ①② param-sweep 지원 도메인 (scripts/drawing-to-3d/param-sweep.mjs CHAINS 미러)
+const SWEEP_DOMAINS = ['building', 'landscape', 'interior', 'bridge'];
+
+interface BandPoint { value: number; pass: boolean; fails?: string[]; inputs?: number; metric?: { label?: string; value?: number; unit?: string } | null }
+interface SnapInfo { kind?: string; values?: number[]; step?: number; source?: string }
+interface HistEntry { params: Record<string, number>; label: string; verdict?: string }
+interface DiffSummary { verdict: string; nums: Record<string, { v: number; unit?: string }>; strs: Record<string, string> }
+
+/** ④ 전후 diff — 판정 변화 + 수치 지표 델타(최대 3), 문자열 지표는 변화 시 a→b */
+function buildDiff(prev: DiffSummary | null, cur: DiffSummary): { from: string; to: string; deltas: string[] } {
+  const deltas: string[] = [];
+  if (prev) {
+    for (const [k, c] of Object.entries(cur.nums)) {
+      const p = prev.nums[k];
+      if (p && Number.isFinite(p.v) && Number.isFinite(c.v) && p.v !== c.v) {
+        const pct = p.v !== 0 ? ((c.v - p.v) / Math.abs(p.v)) * 100 : 0;
+        deltas.push(`${k} ${p.v}→${c.v}${c.unit ?? ''} (${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%)`);
+      }
+    }
+    for (const [k, c] of Object.entries(cur.strs)) {
+      const p = prev.strs[k];
+      if (p && p !== c) deltas.push(`${k} ${p}→${c}`);
+    }
+  }
+  return { from: prev?.verdict ?? '—', to: cur.verdict, deltas: deltas.slice(0, 3) };
+}
 
 interface ParamSpec { name: string; labelKo: string; unit: string; default: number; min: number; max: number }
 interface Template { domain: string; id: string; labelKo: string; labelEn: string; params: ParamSpec[] }
@@ -1009,7 +1154,7 @@ interface IntResp {
 }
 interface LsResp {
   ok: boolean; error?: string;
-  member?: { section: string; spanMm: number; spacingMm: number; verdict?: string; load?: { total_kNm: number; liveRef?: string }; error?: string | null } | null;
+  member?: { section: string; spanMm: number; spacingMm: number; verdict?: string; load?: { total_kNm: number; liveRef?: string }; checks?: { flexure?: { ratio?: number } } | null; error?: string | null } | null;
   wind?: { skipped?: boolean; note?: string; FS?: number; worst?: string; pass?: boolean; anchorUpliftPerPost_kN?: number; fsLimit?: number } | null;
   connection?: { type?: string; demandN?: number; verdict?: string; checks?: { shear?: { capacity_N?: number; ratio?: number } } | null; note?: string; error?: string | null } | null;
   disclaimer?: string;
@@ -1018,7 +1163,7 @@ interface ChainCheck { verdict?: string; error?: string | null }
 interface ChainResp {
   ok: boolean; error?: string;
   loads?: { usage: { label: string; live_kNm2: number }; slab: { D_kN: number; L_kN: number; finishNote: string } };
-  beams?: Array<ChainCheck & { id: string; section: string; Mu_kNm: number; Vu_kN: number; combo: string }>;
+  beams?: Array<ChainCheck & { id: string; section: string; Mu_kNm: number; Vu_kN: number; combo: string; checks?: { flexure?: { ratio?: number }; shear?: { ratio?: number } } }>;
   columns?: Array<ChainCheck & { id: string; section: string; Pu_kN: number }>;
   footing?: ChainCheck & { needInputs?: string[] };
   seismic?: { error?: string; V_kN?: number; Cs?: number; column?: { MuE_kNm?: number; verdict?: string } } | null;
@@ -1083,6 +1228,21 @@ export default function AssemblyPresetPanel({
     setVoiceAvail(!!(w.SpeechRecognition ?? w.webkitSpeechRecognition));
     return () => { try { recRef.current?.stop(); } catch { /* noop */ } };
   }, []);
+
+  // ①② 안전범위 밴드 + 목표 탐색 — /api/nexyfab/drawing/param-sweep (결정론 체인 재실행 8회)
+  const [swBusyP, setSwBusyP] = useState<string | null>(null);
+  const [swRes, setSwRes] = useState<{ param: string; band: BandPoint[]; note?: string; snap?: SnapInfo } | null>(null);
+  const [swErr, setSwErr] = useState<{ param: string; msg: string } | null>(null);
+  const [goalDir, setGoalDir] = useState<'minPass' | 'maxPass'>('minPass');
+  const [goalBusyP, setGoalBusyP] = useState<string | null>(null);
+  const [goalRes, setGoalRes] = useState<{ param: string; result: string; value?: number; note?: string } | null>(null);
+  // ④ 수정 전후 diff 카드 — 재검증 직전 요약을 보관 → 완료 시 비교
+  const prevSumRef = useRef<DiffSummary | null>(null);
+  const diffArmedRef = useRef(false);
+  const [diffCard, setDiffCard] = useState<{ from: string; to: string; deltas: string[] } | null>(null);
+  // ⑤ undo/redo 이력 — 파라미터 스냅샷 스택(최대 30), idx=현재 위치
+  const [hist, setHist] = useState<{ entries: HistEntry[]; idx: number }>({ entries: [], idx: -1 });
+  const [histOpen, setHistOpen] = useState(false);
   const generateRef = useRef<() => Promise<void>>(async () => {});
   const reverifyPending = useRef(false);
   const rebuildTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1288,12 +1448,19 @@ export default function AssemblyPresetPanel({
 
   useEffect(() => {
     if (!tpl) return;
-    setParams(Object.fromEntries(tpl.params.map((p) => [p.name, p.default])));
+    const defs = Object.fromEntries(tpl.params.map((p) => [p.name, p.default]));
+    setParams(defs);
     setMsg(null);
     setBuilt(null);
     setPick(null);
     setEdgeSel(null);
     setNlMsg(null);
+    setSwRes(null); setSwErr(null); setGoalRes(null);
+    setDiffCard(null);
+    prevSumRef.current = null;
+    diffArmedRef.current = false;
+    setHist({ entries: [{ params: defs, label: t.hsInit }], idx: 0 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tpl]);
 
   const generate = useCallback(async () => {
@@ -1327,15 +1494,74 @@ export default function AssemblyPresetPanel({
   // 면 편집 디바운스 리빌드가 항상 최신 generate(최신 params 클로저)를 부르도록 유지
   useEffect(() => { generateRef.current = generate; }, [generate]);
 
+  // ④ 분야별 결과 요약(diff 카드용) — 대표 수치 지표 + 종합 판정 (은폐 없이 결과 트리에서만)
+  const summarize = useCallback((): DiffSummary | null => {
+    if (domain === 'building') {
+      if (!chain?.ok) return null;
+      const verdicts = [
+        ...(chain.beams ?? []).map((b) => b.verdict ?? ''),
+        ...(chain.columns ?? []).map((c) => c.verdict ?? ''),
+        chain.footing?.verdict ?? '',
+        chain.seismic?.column?.verdict ?? '',
+        chain.wind?.column?.verdict ?? '',
+        ...(chain.slabSLS ? [chain.slabSLS.live.pass && chain.slabSLS.total.pass ? 'PASS' : 'FAIL'] : []),
+      ].filter(Boolean);
+      const nums: DiffSummary['nums'] = {};
+      const fr = chain.beams?.[0]?.checks?.flexure?.ratio ?? chain.beams?.[0]?.checks?.shear?.ratio;
+      if (typeof fr === 'number') nums[t.dfBeamRatio] = { v: fr };
+      if (typeof chain.slabSLS?.total.delta_mm === 'number') nums[t.bdSlabDefl] = { v: chain.slabSLS.total.delta_mm, unit: 'mm' };
+      const strs: DiffSummary['strs'] = {};
+      if (chain.seismic?.column?.verdict) strs[t.dfSeisCol] = chain.seismic.column.verdict;
+      return { verdict: verdicts.includes('FAIL') ? 'FAIL' : verdicts.includes('PASS') ? 'PASS' : '—', nums, strs };
+    }
+    if (domain === 'landscape') {
+      if (!ls?.ok) return null;
+      const fail = ls.member?.verdict === 'FAIL' || (!!ls.wind && !ls.wind.skipped && ls.wind.pass === false) || ls.connection?.verdict === 'FAIL';
+      const nums: DiffSummary['nums'] = {};
+      const mr = ls.member?.checks?.flexure?.ratio;
+      if (typeof mr === 'number') nums[t.dfMemberRatio] = { v: mr };
+      return { verdict: fail ? 'FAIL' : ls.member?.verdict === 'PASS' ? 'PASS' : '—', nums, strs: {} };
+    }
+    if (domain === 'interior') {
+      if (!intR?.ok) return null;
+      const fail = intR.travel?.pass === false || intR.egress?.verdict === 'FAIL';
+      const nums: DiffSummary['nums'] = {};
+      if (typeof intR.travel?.maxTravelM === 'number') nums[t.inTravel] = { v: intR.travel.maxTravelM, unit: 'm' };
+      return { verdict: fail ? 'FAIL' : intR.travel?.pass ? 'PASS' : '—', nums, strs: {} };
+    }
+    if (domain === 'civil') {
+      if (!cv?.ok) return null;
+      const checks = Object.values(cv.checks ?? {});
+      const verdict = cv.verdict ?? (checks.length ? (checks.every((c) => c.pass) ? 'PASS' : 'FAIL') : '—');
+      return { verdict, nums: {}, strs: {} };
+    }
+    return null;
+  }, [domain, chain, ls, intR, cv, t]);
+
   // P1 "수정하면 검증이 따라온다" — 면 편집 리빌드 완료 시 해당 도메인 체인 자동 재실행
+  // ④ 재검증 직전 현재 요약 보관 → 완료 시 전후 diff
   useEffect(() => {
     if (!built?.assembly || !reverifyPending.current) return;
     reverifyPending.current = false;
-    if (domain === 'building') void runChain();
-    else if (domain === 'landscape') void runLandscape();
-    else if (domain === 'interior') void runInterior();
-    else if (domain === 'civil') void runCivil();
-  }, [built, domain, runChain, runLandscape, runInterior, runCivil]);
+    prevSumRef.current = summarize();
+    setDiffCard(null);
+    if (domain === 'building') { diffArmedRef.current = true; void runChain(); }
+    else if (domain === 'landscape') { diffArmedRef.current = true; void runLandscape(); }
+    else if (domain === 'interior') { diffArmedRef.current = true; void runInterior(); }
+    else if (domain === 'civil') { diffArmedRef.current = true; void runCivil(); }
+  }, [built, domain, runChain, runLandscape, runInterior, runCivil, summarize]);
+
+  // ④ 재검증 완료 → diff 카드 표시 + ⑤ 현재 이력 엔트리에 verdict 스탬프
+  useEffect(() => {
+    if (!diffArmedRef.current) return;
+    const cur = summarize();
+    if (!cur) return; // 러너가 결과를 null로 초기화한 시점 — 완료 대기
+    diffArmedRef.current = false;
+    setDiffCard(buildDiff(prevSumRef.current, cur));
+    setHist((h) => (h.idx >= 0 && h.entries[h.idx]
+      ? { ...h, entries: h.entries.map((e, i) => (i === h.idx ? { ...e, verdict: cur.verdict } : e)) }
+      : h));
+  }, [chain, ls, intR, cv, summarize]);
 
   const downloadPackage = useCallback(async () => {
     if (!built?.assembly) return;
@@ -1374,27 +1600,194 @@ export default function AssemblyPresetPanel({
 
   // ── 면 편집(P2) 헬퍼 — 템플릿 파라미터 스텝 편집(디바운스 리빌드 → 자동 재검증 연동) ──
   const stepFor = (v: number) => (Math.abs(v) < 1000 ? 10 : Math.abs(v) < 10000 ? 50 : 100);
-  const editParam = (name: string, next: number) => {
-    if (!Number.isFinite(next)) return;
-    setParams((s) => ({ ...s, [name]: next }));
+
+  // ⑤ 이력 스택 — push는 "적용된 편집"에서만(스테퍼·스냅칩·밴드·목표적용·NL·블러), 복원/undo/redo는 idx 이동만
+  const pushHist = (nextParams: Record<string, number>, label: string) => {
+    setHist((h) => {
+      const cut = h.entries.slice(0, h.idx + 1);
+      let entries = [...cut, { params: nextParams, label }];
+      if (entries.length > 30) entries = entries.slice(entries.length - 30);
+      return { entries, idx: entries.length - 1 };
+    });
+  };
+  const restoreHist = (i: number) => {
+    const e = hist.entries[i];
+    if (!e || i === hist.idx || i < 0 || i >= hist.entries.length) return;
+    setParams(e.params);
+    setHist((h) => ({ ...h, idx: i }));
     scheduleRebuild();
   };
+
+  const editParam = (name: string, next: number) => {
+    if (!Number.isFinite(next)) return;
+    const old = Number(params[name]);
+    if (old === next) return;
+    const nextParams = { ...params, [name]: next };
+    setParams(nextParams);
+    pushHist(nextParams, `${name} ${Number.isFinite(old) ? old : '—'}→${next}`);
+    scheduleRebuild();
+  };
+  // 숫자 입력: 타이핑 중은 이력 없이 리빌드만, 블러 시 확정(③ 목록 외 mm 파라미터는 10mm 그리드 반올림)
+  const inputParam = (name: string, v: number) => {
+    if (!Number.isFinite(v)) return;
+    setParams((s) => ({ ...s, [name]: v }));
+    scheduleRebuild();
+  };
+  const blurParam = (name: string) => {
+    const spec = tpl?.params.find((p) => p.name === name);
+    let v = Number(params[name]);
+    if (!Number.isFinite(v)) return;
+    if (!SNAP_MIRROR[name] && spec?.unit === 'mm') {
+      const r = Math.round(v / 10) * 10;
+      v = spec ? Math.min(spec.max, Math.max(spec.min, r)) : r;
+    }
+    const curEntry = hist.entries[hist.idx];
+    if (v === Number(params[name]) && curEntry && Number(curEntry.params[name]) === v) return; // 변경 없음
+    const nextParams = { ...params, [name]: v };
+    setParams(nextParams);
+    pushHist(nextParams, `${name} →${v}`);
+    scheduleRebuild();
+  };
+
+  // ①② 스윕 공통 — 체인 러너와 동일 파라미터(assembly 제외)를 그대로 전달
+  const sweepChainParams = (): Record<string, unknown> => {
+    if (domain === 'building') return chainBody().params;
+    if (domain === 'landscape') return lsBody().params;
+    if (domain === 'interior') return intBody().params;
+    return {}; // bridge — 패널 체인 입력 없음(서버 기본)
+  };
+  const runSweep = async (name: string) => {
+    const spec = tpl?.params.find((p) => p.name === name);
+    if (!spec || !tid || swBusyP) return;
+    setSwBusyP(name); setSwRes(null); setSwErr(null); setGoalRes(null);
+    try {
+      const res = await fetch('/api/nexyfab/drawing/param-sweep/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, templateId: tid, params, chainParams: sweepChainParams(), param: name, min: spec.min, max: spec.max, points: 8 }),
+      });
+      const j = (await res.json()) as { ok?: boolean; band?: BandPoint[]; note?: string; snap?: SnapInfo; error?: string };
+      if (!j.ok || !j.band) { setSwErr({ param: name, msg: j.error ?? '—' }); return; }
+      setSwRes({ param: name, band: j.band, note: j.note, snap: j.snap });
+    } catch (e) {
+      setSwErr({ param: name, msg: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSwBusyP(null);
+    }
+  };
+  const runGoal = async (name: string) => {
+    const spec = tpl?.params.find((p) => p.name === name);
+    if (!spec || !tid || goalBusyP) return;
+    setGoalBusyP(name); setGoalRes(null); setSwErr(null);
+    try {
+      const res = await fetch('/api/nexyfab/drawing/param-sweep/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, templateId: tid, params, chainParams: sweepChainParams(), param: name, min: spec.min, max: spec.max, points: 8, goal: goalDir }),
+      });
+      const j = (await res.json()) as { ok?: boolean; result?: string; value?: number; band?: BandPoint[]; note?: string; snap?: SnapInfo; error?: string };
+      if (!j.ok) { setSwErr({ param: name, msg: j.error ?? '—' }); return; }
+      setGoalRes({ param: name, result: j.result ?? '—', value: j.value, note: j.note });
+      if (j.band) setSwRes({ param: name, band: j.band, note: undefined, snap: j.snap });
+    } catch (e) {
+      setSwErr({ param: name, msg: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setGoalBusyP(null);
+    }
+  };
+
   const renderParamEditor = (name: string) => {
     const spec = tpl?.params.find((p) => p.name === name) ?? null;
     const cur = Number(params[name] ?? spec?.default ?? 0);
     const clampV = (v: number) => (spec ? Math.min(spec.max, Math.max(spec.min, v)) : v);
+    const snap = SNAP_MIRROR[name];
+    const showBand = swRes?.param === name && swRes.band.length > 0;
+    const bandMin = showBand ? swRes.band[0].value : 0;
+    const bandMax = showBand ? swRes.band[swRes.band.length - 1].value : 0;
+    const markerPct = showBand && bandMax > bandMin ? Math.min(100, Math.max(0, ((cur - bandMin) / (bandMax - bandMin)) * 100)) : null;
     return (
-      <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}>
-        <span style={{ fontSize: 10.5, flex: 1, color: 'var(--nx-text-2, #46505e)' }}>
-          {spec?.labelKo ?? name}{spec?.unit ? ` (${spec.unit})` : ''} · <code style={{ fontSize: 10 }}>{name}</code>
-        </span>
-        <button type="button" onClick={() => editParam(name, clampV(cur - stepFor(cur)))} style={stepBtn}>−</button>
-        <input
-          type="number" inputMode="decimal" value={cur}
-          onChange={(e) => editParam(name, Number(e.target.value))}
-          style={{ ...inpStyle, width: 84 }}
-        />
-        <button type="button" onClick={() => editParam(name, clampV(cur + stepFor(cur)))} style={stepBtn}>+</button>
+      <div key={name} style={{ marginTop: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ fontSize: 10.5, flex: 1, color: 'var(--nx-text-2, #46505e)' }}>
+            {spec?.labelKo ?? name}{spec?.unit ? ` (${spec.unit})` : ''} · <code style={{ fontSize: 10 }}>{name}</code>
+          </span>
+          <button type="button" onClick={() => editParam(name, clampV(cur - stepFor(cur)))} style={stepBtn}>−</button>
+          <input
+            type="number" inputMode="decimal" value={cur}
+            onChange={(e) => inputParam(name, Number(e.target.value))}
+            onBlur={() => blurParam(name)}
+            style={{ ...inpStyle, width: 84 }}
+          />
+          <button type="button" onClick={() => editParam(name, clampV(cur + stepFor(cur)))} style={stepBtn}>+</button>
+        </div>
+        {/* ⑥ 템플릿 치수 = 같은 역할 부재 전체에 일괄 적용(명시) */}
+        <div style={{ marginTop: 2, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{t.fpTplWide}</div>
+        {/* ③ 표준규격 스냅 절점 — snap-lists.mjs 미러, 출처 툴팁 */}
+        {snap && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 3, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }} title={t.snSrc + snap.source}>{t.snLabel}:</span>
+            {snap.values.map((v) => (
+              <button
+                key={v} type="button" onClick={() => editParam(name, clampV(v))} title={t.snSrc + snap.source}
+                style={{ ...stepBtn, width: 'auto', height: 18, padding: '0 6px', fontSize: 9.5, ...(cur === v ? { background: 'var(--nx-accent, #2563eb)', color: '#fff', border: '1px solid var(--nx-accent, #2563eb)' } : {}) }}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* ①② 안전범위 밴드 + 목표 탐색 (결정론 스윕 — AI 아님) */}
+        {SWEEP_DOMAINS.includes(domain) && spec && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => void runSweep(name)} disabled={swBusyP !== null} style={{ ...stepBtn, width: 'auto', height: 22, padding: '0 8px', fontSize: 10 }}>
+              {swBusyP === name ? t.swBusy : `📊 ${t.swBtn}`}
+            </button>
+            <select value={goalDir} onChange={(e) => setGoalDir(e.target.value as 'minPass' | 'maxPass')} style={{ ...selStyle, width: 'auto', padding: '2px 4px', fontSize: 10 }}>
+              <option value="minPass">{t.glMin}</option>
+              <option value="maxPass">{t.glMax}</option>
+            </select>
+            <button type="button" onClick={() => void runGoal(name)} disabled={goalBusyP !== null} style={{ ...stepBtn, width: 'auto', height: 22, padding: '0 8px', fontSize: 10 }}>
+              {goalBusyP === name ? t.swBusy : `🎯 ${t.glBtn}`}
+            </button>
+          </div>
+        )}
+        {swErr?.param === name && <div style={{ marginTop: 3, fontSize: 10, color: '#991b1b' }}>{t.swFail}{swErr.msg}</div>}
+        {showBand && (
+          <div style={{ marginTop: 4 }}>
+            <div style={{ position: 'relative', paddingTop: 10 }}>
+              {markerPct !== null && (
+                <div style={{ position: 'absolute', top: -2, left: `calc(${markerPct}% - 5px)`, fontSize: 9 }}>▼</div>
+              )}
+              <div style={{ display: 'flex', height: 14, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--nx-border, #dfe3e8)' }}>
+                {swRes.band.map((bp, bi) => (
+                  <button
+                    key={bi} type="button" onClick={() => editParam(name, clampV(bp.value))}
+                    title={`${bp.value}${spec?.unit ?? 'mm'} · ${bp.pass ? 'PASS' : bp.fails?.length ? 'FAIL: ' + bp.fails[0] : 'INPUT'}${bp.metric && typeof bp.metric.value === 'number' ? ` · ${bp.metric.label ?? ''} ${bp.metric.value}${bp.metric.unit ?? ''}` : ''}`}
+                    style={{ flex: 1, border: 'none', cursor: 'pointer', padding: 0, background: bp.pass ? '#16a34a' : bp.fails?.length ? '#dc2626' : '#9ca3af' }}
+                  />
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--nx-text-3, #6b7684)' }}>
+                <span>{bandMin}</span><span>{bandMax}</span>
+              </div>
+            </div>
+            {swRes.note && <div style={{ marginTop: 2, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{swRes.note}</div>}
+          </div>
+        )}
+        {goalRes?.param === name && (
+          goalRes.result === 'found' && typeof goalRes.value === 'number' ? (
+            <div style={{ marginTop: 3, fontSize: 10.5 }}>
+              🎯 {t.glFound}<b>{goalRes.value}</b>{spec?.unit || 'mm'}
+              <button
+                type="button" onClick={() => editParam(name, clampV(goalRes.value as number))}
+                style={{ ...stepBtn, width: 'auto', height: 20, padding: '0 8px', fontSize: 10, marginLeft: 5, background: 'var(--nx-accent, #2563eb)', color: '#fff', border: '1px solid var(--nx-accent, #2563eb)' }}
+              >
+                {t.nlSend}
+              </button>
+              {goalRes.note && <div style={{ marginTop: 2, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{goalRes.note}</div>}
+            </div>
+          ) : (
+            <div style={{ marginTop: 3, fontSize: 10, color: '#b45309' }}>{goalRes.note ?? goalRes.result}</div>
+          )
+        )}
       </div>
     );
   };
@@ -1452,6 +1845,7 @@ export default function AssemblyPresetPanel({
       }
       if (!applied.length) { setNlMsg({ ok: false, error: j.error ?? '—' }); return; }
       setParams(next);
+      pushHist(next, applied.join(' · ')); // ⑤ NL 편집도 이력 스택에
       scheduleRebuild();
       setNlMsg({ ok: true, source: j.source, note: j.note, summary: applied.join(' · ') });
       setNlText('');
@@ -1590,8 +1984,8 @@ export default function AssemblyPresetPanel({
           </button>
           {viewerOpen && (
             <>
-              {/* 픽킹 모드: 면 / 모서리(Alt+클릭도 가능) / 거리 */}
-              <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+              {/* 픽킹 모드: 면 / 모서리(Alt+클릭도 가능) / 거리 + ⑤ undo/redo·이력 */}
+              <div style={{ display: 'flex', gap: 4, marginTop: 6, alignItems: 'center' }}>
                 {(['face', 'edge', 'dist'] as const).map((m) => (
                   <button
                     key={m} type="button"
@@ -1601,7 +1995,26 @@ export default function AssemblyPresetPanel({
                     {m === 'face' ? t.pmFace : m === 'edge' ? t.pmEdge : t.pmDist}
                   </button>
                 ))}
+                <div style={{ flex: 1 }} />
+                <button type="button" title={t.hsUndo} disabled={hist.idx <= 0} onClick={() => restoreHist(hist.idx - 1)} style={{ ...stepBtn, opacity: hist.idx <= 0 ? 0.4 : 1 }}>↶</button>
+                <button type="button" title={t.hsRedo} disabled={hist.idx >= hist.entries.length - 1} onClick={() => restoreHist(hist.idx + 1)} style={{ ...stepBtn, opacity: hist.idx >= hist.entries.length - 1 ? 0.4 : 1 }}>↷</button>
+                <button type="button" onClick={() => setHistOpen((v) => !v)} style={{ ...stepBtn, width: 'auto', padding: '0 8px', fontSize: 10.5, ...(histOpen ? { background: 'var(--nx-accent-soft, #eef4ff)' } : {}) }}>
+                  {t.hsList}{hist.entries.length > 1 ? ` ${hist.entries.length - 1}` : ''}
+                </button>
               </div>
+              {histOpen && hist.entries.length > 0 && (
+                <div style={{ marginTop: 4, maxHeight: 120, overflowY: 'auto', border: '1px solid var(--nx-border, #dfe3e8)', borderRadius: 6 }}>
+                  {hist.entries.map((e, i) => (
+                    <button
+                      key={i} type="button" onClick={() => restoreHist(i)}
+                      style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', padding: '3px 8px', border: 'none', borderBottom: '1px solid var(--nx-border, #eef1f4)', background: i === hist.idx ? 'var(--nx-accent-soft, #eef4ff)' : 'transparent', cursor: 'pointer', fontSize: 10.5, color: 'inherit', textAlign: 'left' }}
+                    >
+                      <span>{i}. {e.label}</span>
+                      {e.verdict && <b style={{ color: e.verdict === 'PASS' ? '#16a34a' : e.verdict === 'FAIL' ? '#dc2626' : '#6b7684' }}>{e.verdict}</b>}
+                    </button>
+                  ))}
+                </div>
+              )}
               <AssemblyViewer3D parts={built.assembly.parts} onPick={handlePick} mode={pickMode} height={260} />
               {(!pick || pick.kind === 'dist-pending') && (
                 <div style={{ marginTop: 5, fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)' }}>
@@ -1696,6 +2109,17 @@ export default function AssemblyPresetPanel({
                     </>
                   )}
                   {anyBusy && <div style={{ marginTop: 4, fontSize: 10.5, color: 'var(--nx-accent, #2563eb)' }}>{t.fpReverify}</div>}
+                </div>
+              )}
+              {/* ④ 수정 전후 diff 카드 — 재검증 완료 시 판정 변화 + 대표 지표 델타(최대 3) */}
+              {diffCard && (
+                <div style={{ marginTop: 6, padding: '5px 8px', borderRadius: 7, fontSize: 10.5, display: 'flex', alignItems: 'center', gap: 6, border: '1px solid ' + (diffCard.to === 'FAIL' ? '#fecaca' : 'var(--nx-border, #dfe3e8)'), background: diffCard.to === 'FAIL' ? '#fef2f2' : 'var(--nx-panel, #fff)' }}>
+                  <span style={{ fontWeight: 800 }}>{t.dfTitle}</span>
+                  <b style={{ color: diffCard.to === 'FAIL' ? '#dc2626' : diffCard.to === 'PASS' ? '#16a34a' : '#6b7684' }}>
+                    {diffCard.from}→{diffCard.to}
+                  </b>
+                  <span style={{ flex: 1, color: 'var(--nx-text-2, #46505e)' }}>{diffCard.deltas.join(' · ')}</span>
+                  <button type="button" onClick={() => setDiffCard(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 12, color: 'var(--nx-text-3, #6b7684)', padding: 0 }}>×</button>
                 </div>
               )}
               {/* 말로 수정(NL) — 서버=문장→구조화 편집 변환만, 적용·클램프·재검증=클라 결정론 */}
