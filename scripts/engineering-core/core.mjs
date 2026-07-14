@@ -13,8 +13,9 @@ import rcColumn from './calculators/rc-column.mjs';
 import isolatedFooting from './calculators/isolated-footing.mjs';
 import occupancyEgress from './calculators/occupancy-egress.mjs';
 import timberBeam from './calculators/timber-beam.mjs';
+import boxCulvertFrame from './calculators/box-culvert-frame.mjs';
 
-export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam];
+export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame];
 
 /** Minimal JSON-Schema-subset validator (type/required/properties/minimum/maximum/enum). */
 export function validateInput(schema, input) {

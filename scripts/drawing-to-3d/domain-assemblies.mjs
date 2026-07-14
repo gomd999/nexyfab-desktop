@@ -97,11 +97,13 @@ function cafeRoomAssembly(p) {
   const cols = Math.max(1, Math.round(num(p.tableCols, 3)));
   const seatsPer = Math.max(1, Math.round(num(p.seatsPerTable, 4)));
   const wallT = 150, wallH = 2700, doorW = num(p.doorWidth, 1000), doorH = 2100;
+  const nExits = Math.max(1, Math.min(2, Math.round(num(p.exitCount, 1))));
   const parts = [P('floor', 'box', { width: W, depth: D, height: 100 }, { tz: -100 }, 'concrete', 'floor')];
-  // 벽 4면 (바닥 외곽 바깥쪽) — 전면(y=0)에 출입문, 전면 좌측에 창
+  // 벽 4면 (바닥 외곽 바깥쪽) — 전면(y=0)에 출입문, 전면 좌측에 창. exitCount=2면 후면에 비상구.
   const doorX = W / 2 - doorW / 2;
   parts.push(P('wall_front', 'wall_with_openings', { length: W, thickness: wallT, height: wallH, openings: [{ x: doorX, w: doorW, h: doorH, sill: 0 }, { x: 400, w: Math.max(600, doorX - 800), h: 1500, sill: 900 }] }, { tx: 0, ty: -wallT, tz: 0 }, 'concrete', 'wall'));
-  parts.push(P('wall_back', 'wall_with_openings', { length: W, thickness: wallT, height: wallH }, { tx: 0, ty: D, tz: 0 }, 'concrete', 'wall'));
+  const backOpenings = nExits === 2 ? [{ x: W - 1300, w: 900, h: 2100, sill: 0 }] : [];
+  parts.push(P('wall_back', 'wall_with_openings', { length: W, thickness: wallT, height: wallH, ...(backOpenings.length ? { openings: backOpenings } : {}) }, { tx: 0, ty: D, tz: 0 }, 'concrete', 'wall'));
   parts.push(P('wall_left', 'wall_with_openings', { length: D, thickness: wallT, height: wallH }, { tx: 0, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall'));
   parts.push(P('wall_right', 'wall_with_openings', { length: D, thickness: wallT, height: wallH }, { tx: W + wallT, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall'));
   // 카운터 — 통짜 박스는 재적 과대(날조) → 상판+전면+측판 패널 구조
@@ -123,7 +125,10 @@ function cafeRoomAssembly(p) {
     name: '카페 레이아웃', domain: 'interior', parts,
     floorAreaM2: +((W * D) / 1e6).toFixed(2),
     // 피난 검증용 메타 — 출입구(문) 위치·폭 (형상과 동일 소스에서 결정론 생성)
-    exits: [{ x: doorX + doorW / 2, y: 0, widthMm: doorW }],
+    exits: [
+      { x: doorX + doorW / 2, y: 0, widthMm: doorW },
+      ...(nExits === 2 ? [{ x: W - 850, y: D, widthMm: 900 }] : []),
+    ],
     roomBounds: { W, D },
     furniture: [
       { id: 'table', name: '테이블', count: nT, seats: 0 },
@@ -211,6 +216,7 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'tableCols', labelKo: '테이블 열', unit: '', default: 3, min: 1, max: 6 },
         { name: 'seatsPerTable', labelKo: '테이블당 좌석', unit: '', default: 4, min: 1, max: 8 },
         { name: 'doorWidth', labelKo: '출입문 폭', unit: 'mm', default: 1000, min: 800, max: 2400 },
+        { name: 'exitCount', labelKo: '출구 수(2=후면 비상구)', unit: '', default: 1, min: 1, max: 2 },
       ],
     },
   ],

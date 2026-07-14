@@ -34,6 +34,8 @@ function boxCulvertIntent(p) {
       { id: 'bore', kind: 'box', size: [iw, ih, L + 2], op: 'subtract', at: { translate: [wall, wall, -1] } },
     ],
     material: 'concrete',
+    // 형상→라멘 단면력 자동 파생 메타(m 단위) — box_culvert_frame 계산기 geom 입력
+    boxCulvert: { innerWidth: iw / 1000, innerHeight: ih / 1000, wallThk: wall / 1000, length: L / 1000 },
   };
 }
 

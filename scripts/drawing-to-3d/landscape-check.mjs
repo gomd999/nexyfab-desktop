@@ -88,6 +88,35 @@ export function landscapeCheck(assembly, params = {}) {
     };
   }
 
+  // ── ①b 데크보드 검토 (보완 #5) — 보드 스팬 = 장선 간격, 대표 1장 ──────────
+  let board = null;
+  if (decks.length && member) {
+    const db = box(decks[0]);
+    const alongX = db.dx >= db.dy;
+    const bw2 = alongX ? db.dy : db.dx;   // 보드 폭
+    const bt = db.dz;                     // 보드 두께
+    const spanB = member.spacingMm;       // 장선 간격이 보드 스팬
+    const live = standards?.KDS?.loads?.liveLoad_kNm2?.[params.usage ?? 'residence_living'];
+    const selfB = massKg(decks[0]) * G / 1000 / ((alongX ? db.dx : db.dy) / 1000); // kN/m (보드 길이당)
+    const wB = round((live ? live.v * (bw2 / 1000) : 0) + selfB, 3);
+    let chk = null;
+    try {
+      chk = runCalculator('timber_beam', {
+        species, grade, b: round(bw2, 0), h: round(bt, 0), L: round(spanB, 0), w: wB,
+        duration: params.duration ?? 'tenYears', deflLimit: params.deflLimit ?? 240,
+        wetService: params.wetService !== false,
+      }, 'KDS');
+    } catch (e) {
+      chk = e.code === 'INPUT_GATE' ? { verdict: 'INPUT', error: e.message } : { verdict: 'ERROR', error: e.message };
+    }
+    board = {
+      id: decks[0].id ?? 'board', count: decks.length, section: `${round(bw2, 0)}×${round(bt, 0)}`,
+      spanMm: round(spanB, 0), w_kNm: wB,
+      verdict: chk?.verdict, checks: chk?.checks ?? null, error: chk?.error ?? null,
+      note: '보드 스팬=장선 간격(단순지지 근사) · 하중=활하중×보드폭+자중',
+    };
+  }
+
   // ── ② 풍하중 전도 (강체 — 파고라 등 자립 구조) ─────────────────────────────
   let wind = null;
   const wp = Number(params.windPressure_kNm2);
@@ -136,8 +165,8 @@ export function landscapeCheck(assembly, params = {}) {
 
   return {
     ok: true,
-    member, wind,
-    refs: ['KDS 41 50 10:2022 (허용응력·CD)', 'KDS 41 12 00:2022 표 3.2-1 (활하중)'],
+    member, board, wind,
+    refs: ['KDS 41 50 10:2022 (허용응력·CD·CM)', 'KDS 41 12 00:2022 표 3.2-1 (활하중)'],
     disclaimer: '개념 검토(비법정) — 단순지지·대표부재·강체전도 근사. CM(습윤)·CF·CL 미적용(v1). 실시설계는 구조기술사 검토 필요.',
   };
 }

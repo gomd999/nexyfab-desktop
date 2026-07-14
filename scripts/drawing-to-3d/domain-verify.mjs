@@ -142,6 +142,24 @@ export const DOMAIN_VERIFIERS = {
           { name: 'phiBackfill', labelKo: '내부마찰각', unit: '°', default: 30, min: 15, max: 45 },
           { name: 'baseFriction', labelKo: '기초 마찰계수', unit: '', default: 0.5, min: 0, max: 1 },
           { name: 'allowableBearing', labelKo: '허용지지력', unit: 'kPa', default: 200, min: 0 },
+          { name: 'surcharge', labelKo: '상재하중', unit: 'kPa', default: 0, min: 0, optional: true },
+          { name: 'seismicKh', labelKo: '수평지진계수 kh(0=정적만)', unit: '', default: 0, min: 0, max: 0.5, optional: true },
+        ],
+      },
+      {
+        id: 'box_culvert_frame',
+        labelKo: '박스 암거 라멘 단면력',
+        // 내공·벽두께는 형상(boxCulvert 메타)에서 파생, 토피·토압계수·상재=입력
+        derive: (m, extra) => {
+          const bc = extra?._bc;
+          if (!bc) return {};
+          return { innerWidth: bc.innerWidth, innerHeight: bc.innerHeight, wallThk: bc.wallThk };
+        },
+        userInputs: [
+          { name: 'cover', labelKo: '토피고', unit: 'm', default: 1.0, min: 0, max: 20 },
+          { name: 'gammaSoil', labelKo: '흙 단위중량', unit: 'kN/m³', default: 18, min: 10, max: 24 },
+          { name: 'K', labelKo: '측방토압계수', unit: '', default: 0.5, min: 0.2, max: 1.0 },
+          { name: 'surcharge', labelKo: '상재하중', unit: 'kPa', default: 0, min: 0, optional: true },
         ],
       },
     ],
@@ -275,7 +293,7 @@ export function verifyDomain({ intent, domain, calculatorId, memberRef, params =
   // 레이아웃/형상 스칼라(인테리어 등 부재 아닌 파생용): 바닥면적·좌석수·옹벽 단면(C1).
   const floorAreaM2 = intent?.floorAreaM2 ?? footprintAreaM2(intent);
   const seatCount = Array.isArray(intent?.furniture) ? intent.furniture.reduce((s, f) => s + (f.seats > 0 ? f.count : 0), 0) : 0;
-  const geomCtx = { ...params, _floorAreaM2: floorAreaM2, _seatCount: seatCount, _rw: intent?.retainingWall ?? null };
+  const geomCtx = { ...params, _floorAreaM2: floorAreaM2, _seatCount: seatCount, _rw: intent?.retainingWall ?? null, _bc: intent?.boxCulvert ?? null };
 
   // 형상 파생 입력: 부재형(member)이면 단면특성, 아니면 레이아웃 스칼라.
   const derived = member ? calc.derive(member, geomCtx) : calc.derive(null, geomCtx);
@@ -295,6 +313,9 @@ export function verifyDomain({ intent, domain, calculatorId, memberRef, params =
       ok: true,
       verdict: result.verdict,
       checks: result.checks,
+      seismic: result.seismic ?? null,
+      moments: result.moments_kNm ?? null,
+      shears: result.shears_kN ?? null,
       intermediate: result.intermediate,
       member: member ? { id: member.id, kind: member.kind, L: round(member.L, 1), note: member.note } : null,
       candidates: needsMember ? memberCandidates(intent) : [],

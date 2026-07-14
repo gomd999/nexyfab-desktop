@@ -103,6 +103,12 @@ export function loadPathCheck(assembly, params = {}) {
     bays.push({ x0: xs[i], x1: xs[i + 1], y0: ys[j], y1: ys[j + 1], dx: xs[i + 1] - xs[i], dy: ys[j + 1] - ys[j] });
   }
 
+  // 지붕층 활하중 구분 (보완 #2): roofUsage 입력 시 최상층만 해당 활하중 — 미입력 시 전층 동일(보수적)
+  const roofLive = params.roofUsage ? kds.loads.liveLoad_kNm2[params.roofUsage] : null;
+  if (params.roofUsage && !roofLive) return { ok: false, error: `unknown roofUsage '${params.roofUsage}'` };
+  const wL_roof = roofLive ? roofLive.v : wL_m2;
+  const wu_roof = Math.max(1.4 * wD_m2, 1.2 * wD_m2 + 1.6 * wL_roof);
+
   // ── 보 검토 (1개 층 대표 — 층별 동일 하중. 45° 분담을 인접 베이에서 누적) ──
   const floor0Beams = beams.filter((b) => Math.abs((b.at?.tz ?? 0) - Math.min(...beams.map((x) => x.at?.tz ?? 0))) < 1);
   // 같은 z층의 보만 (첫 층). 각 보: 방향·라인·스팬 구간에 인접한 베이의 해당 변 분담 합.
@@ -151,10 +157,33 @@ export function loadPathCheck(assembly, params = {}) {
     const spanM = span / 1000;
     const Wu = Math.max(1.4 * D, 1.2 * D + 1.6 * L);
     const wu = Wu / spanM;
-    const Mu = (wu * spanM * spanM) / 8;
-    const Vu = Wu / 2;
+    const Vu_simple = Wu / 2;
+
+    // 연속보 근사해법 (보완 #4 — KDS 14 20 10 §4.3.1(3)(4)): 조건 충족 시 계수법, 아니면 단순지지.
+    const ac = kds.rc?.approxContinuous;
+    const lineSpans = alongX ? xs : ys; // 보 방향 경간 좌표
+    const spanCount = lineSpans.length - 1;
+    const spanLens = lineSpans.slice(1).map((v, i) => v - lineSpans[i]);
+    const adjOk = spanLens.every((s, i) => i === 0 || Math.abs(s - spanLens[i - 1]) <= Math.min(s, spanLens[i - 1]) * 0.2);
+    const liveOk = L <= 3 * D; // 활하중 ≤ 3×고정 조건
+    const useCoef = ac && params.continuity !== 'simple' && spanCount >= 2 && adjOk && liveOk;
+    const lnM = spanM; // 보 부재 길이 = 기둥면 간 순경간(템플릿 기하)
+    let Mu, MuNeg = null, Vu, method;
+    if (useCoef) {
+      Mu = (wu * lnM * lnM) / ac.posExteriorIntegral;   // 정모멘트 최외측(받침부 일체) — 지배 정모멘트
+      MuNeg = (wu * lnM * lnM) / (spanCount === 2 ? ac.negFirstInterior2Span : ac.negFirstInterior3Span); // 첫 내부받침 부모멘트
+      Vu = (ac.shearFirstInteriorFactor * wu * lnM) / 2;
+      method = `연속보 계수법(§4.3.1(4)): +M=wl²/${ac.posExteriorIntegral}, −M=wl²/${spanCount === 2 ? ac.negFirstInterior2Span : ac.negFirstInterior3Span}, V=1.15wl/2 (${spanCount}경간·조건충족)`;
+    } else {
+      Mu = (wu * spanM * spanM) / 8;
+      Vu = Vu_simple;
+      method = spanCount >= 2
+        ? `단순지지 근사 wl²/8 (계수법 조건 미충족: ${!adjOk ? '경간차>20% ' : ''}${!liveOk ? 'L>3D' : ''})`
+        : '단순지지 wl²/8 (단경간)';
+    }
+
     const cover = params.beamCover ?? 50;
-    let check = null;
+    let check = null, checkNeg = null;
     if (Number(params.beamAs) > 0) {
       try {
         const beamInput = {
@@ -165,13 +194,30 @@ export function loadPathCheck(assembly, params = {}) {
         check = runCalculator('rc_beam', beamInput, 'KDS');
       } catch (e) { check = { error: e.message }; }
     }
+    // 부모멘트(상부철근) — beamAsTop 입력 시만 검토 (없으면 INPUT 표기, 지어내지 않음)
+    if (MuNeg !== null) {
+      if (Number(params.beamAsTop) > 0) {
+        try {
+          checkNeg = runCalculator('rc_beam', {
+            b: bwv, d: bh - cover, fck: params.fck ?? 24, fy: params.fy ?? 400,
+            As: Number(params.beamAsTop), Mu: round(MuNeg),
+          }, 'KDS');
+        } catch (e) { checkNeg = { error: e.message }; }
+      } else {
+        checkNeg = { verdict: 'INPUT(beamAsTop)' };
+      }
+    }
+    const negVerdict = checkNeg ? (checkNeg.verdict ?? (checkNeg.error ? 'ERROR' : null)) : null;
+    const posVerdict = check?.verdict ?? (check?.error ? 'ERROR' : 'INPUT(beamAs)');
     beamResults.push({
       id: `${worstBeam.id ?? 'beam'} (최악 — 층당 보 ${floor0Beams.length}본 중 최대분담)`,
       spanMm: round(span, 0), section: `${round(bwv, 0)}×${round(bh, 0)}`,
       tribM2: round(worstTrib), D_kN: round(D), L_kN: round(L), combo,
-      wu_kNm: round(wu), Mu_kNm: round(Mu), Vu_kN: round(Vu),
-      verdict: check?.verdict ?? (check?.error ? 'ERROR' : 'INPUT(beamAs)'),
-      checks: check?.checks ?? null, error: check?.error ?? null,
+      wu_kNm: round(wu), Mu_kNm: round(Mu), MuNeg_kNm: MuNeg !== null ? round(MuNeg) : null, Vu_kN: round(Vu),
+      method,
+      verdict: negVerdict && negVerdict === 'FAIL' ? 'FAIL' : posVerdict,
+      negVerdict,
+      checks: check?.checks ?? null, checksNeg: checkNeg?.checks ?? null, error: check?.error ?? checkNeg?.error ?? null,
     });
   }
 
@@ -188,10 +234,13 @@ export function loadPathCheck(assembly, params = {}) {
   const colSelfD = (partVolume(col0.type, col0.params) / 1e9) * gammaRC; // kN/층
   // 층당 보 자중을 면적당으로 환산해 분담(개산 명시)
   const beamSelfPerM2 = floor0Beams.reduce((s, b) => s + (partVolume(b.type, b.params) / 1e9) * gammaRC, 0) / slabAreaM2;
+  // 층 누적 — 최상층은 roofUsage 활하중(입력 시), 나머지 층은 usage (보완 #2)
   const perFloorPu = wu_m2 * worstColTrib + 1.2 * beamSelfPerM2 * worstColTrib + 1.2 * colSelfD;
+  const roofFloorPu = wu_roof * worstColTrib + 1.2 * beamSelfPerM2 * worstColTrib + 1.2 * colSelfD;
   const perFloorPs = (wD_m2 + wL_m2 + beamSelfPerM2) * worstColTrib + colSelfD;
-  const Pu_col = perFloorPu * nf;       // 최하층 기둥 = 전층 누적
-  const Pservice_col = perFloorPs * nf;
+  const roofFloorPs = (wD_m2 + wL_roof + beamSelfPerM2) * worstColTrib + colSelfD;
+  const Pu_col = perFloorPu * (nf - 1) + roofFloorPu;       // 최하층 기둥 = 전층 누적
+  const Pservice_col = perFloorPs * (nf - 1) + roofFloorPs;
   let colCheck = null;
   if (Number(params.colAst) > 0) {
     try {

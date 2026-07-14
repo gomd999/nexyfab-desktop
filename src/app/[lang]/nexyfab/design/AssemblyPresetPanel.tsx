@@ -97,8 +97,8 @@ export default function AssemblyPresetPanel({
   }, [ko]);
 
   // 토목 체인 (civil 전용): 옹벽 안정 — 단면=형상 메타 자동 파생, 토질만 입력
-  const [cvP, setCvP] = useState<Record<string, number>>({ gammaBackfill: 18, phiBackfill: 30, baseFriction: 0.5, allowableBearing: 200 });
-  const [cv, setCv] = useState<{ ok?: boolean; verdict?: string; error?: string; checks?: Record<string, { FS?: number; pass?: boolean }> } | null>(null);
+  const [cvP, setCvP] = useState<Record<string, number>>({ gammaBackfill: 18, phiBackfill: 30, baseFriction: 0.5, allowableBearing: 200, surcharge: 0, seismicKh: 0 });
+  const [cv, setCv] = useState<{ ok?: boolean; verdict?: string; error?: string; checks?: Record<string, { FS?: number; pass?: boolean }>; seismic?: { verdict?: string; kh?: number; error?: string; checks?: Record<string, { FS?: number; pass?: boolean }> } | null } | null>(null);
   const [cvBusy, setCvBusy] = useState(false);
   const civilBody = useCallback(() => ({
     intent: built?.assembly, domain: 'civil', calculatorId: 'retaining_wall_stability', params: cvP,
@@ -338,7 +338,7 @@ export default function AssemblyPresetPanel({
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 6 }}>
-            {([['gammaBackfill', ko ? '뒤채움 γ kN/m³' : 'γ backfill'], ['phiBackfill', ko ? '내부마찰각 °' : 'φ'], ['baseFriction', ko ? '저면 마찰 μ' : 'μ base'], ['allowableBearing', ko ? '허용지지력 kPa' : 'qAllow']] as Array<[string, string]>).map(([k, lb]) => (
+            {([['gammaBackfill', ko ? '뒤채움 γ kN/m³' : 'γ backfill'], ['phiBackfill', ko ? '내부마찰각 °' : 'φ'], ['baseFriction', ko ? '저면 마찰 μ' : 'μ base'], ['allowableBearing', ko ? '허용지지력 kPa' : 'qAllow'], ['surcharge', ko ? '상재하중 kPa' : 'surcharge'], ['seismicKh', ko ? '지진계수 kh (0=정적)' : 'seismic kh']] as Array<[string, string]>).map(([k, lb]) => (
               <label key={k} style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{lb}</span>
                 <input type="number" step="0.1" value={cvP[k]} onChange={(e) => setCvP((s) => ({ ...s, [k]: Number(e.target.value) }))} style={inpStyle} />
@@ -357,6 +357,13 @@ export default function AssemblyPresetPanel({
                   <b style={{ color: c.pass ? '#16a34a' : '#dc2626' }}>{c.pass ? 'PASS' : 'FAIL'}</b>
                 </div>
               ))}
+              {cv.seismic && !cv.seismic.error && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
+                  <span>{ko ? '지진시(M-O)' : 'Seismic (M-O)'} kh={cv.seismic.kh}{cv.seismic.checks ? ` · ${Object.entries(cv.seismic.checks).map(([k2, c2]) => `${k2} ${c2.FS?.toFixed(2)}`).join(' · ')}` : ''}</span>
+                  <b style={{ color: cv.seismic.verdict === 'PASS' ? '#16a34a' : '#dc2626' }}>{cv.seismic.verdict}</b>
+                </div>
+              )}
+              {cv.seismic?.error && <div style={{ color: '#991b1b', padding: '2px 0' }}>{cv.seismic.error}</div>}
               <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/verify-domain/', civilBody(), 'retaining_wall_check.html')} style={rptBtn}>
                 📄 {ko ? '리포트 HTML' : 'Report HTML'}
               </button>

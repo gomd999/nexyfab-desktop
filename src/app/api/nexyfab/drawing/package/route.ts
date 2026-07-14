@@ -113,9 +113,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         }
         materialKey = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'STS316';
       }
-      const loadNote = typeof options.feaLoadKg === 'number' && options.feaLoadKg > 0
+      // 혼합 재질 경고 (보완 #9) — TET10은 단일 물성: 최빈값 근사임을 리포트에 명시
+      const allMats = [...new Set(assembly.parts.map((p) => (typeof p.material === 'string' ? p.material : '')).filter(Boolean))];
+      const mixedNote = allMats.length > 1 ? ` ⚠혼합 재질(${allMats.join('·')}) — 최빈값 단일 물성 근사, 부위별 강성차 미반영` : '';
+      const loadNote = (typeof options.feaLoadKg === 'number' && options.feaLoadKg > 0
         ? `사용자 지정 ${options.feaLoadKg} kg`
-        : `총질량 ${totalMassKg} kg × g — 자중 상당을 상면 등가 하중으로(보수적 개산)`;
+        : `총질량 ${totalMassKg} kg × g — 자중 상당을 상면 등가 하중으로(보수적 개산)`) + mixedNote;
       const out = feaFromStl({ stl, materialKey, loadN: loadKg * 9.81, loadNote });
       files.push({ name: 'FEA.html', mime: 'text/html', content: feaReportHtml(out, { title }) });
     } catch (e) { void e; /* FEA 실패는 패키지를 막지 않음 — 파일만 빠짐 */ }

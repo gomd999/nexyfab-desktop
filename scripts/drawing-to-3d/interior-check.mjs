@@ -64,17 +64,49 @@ export function interiorCheck(assembly, params = {}) {
     }
   }
   if (qt === 0) return { ok: false, error: '출입구 셀이 장애물에 막힘 — 문 위치 확인' };
-  const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-  while (qh < qt) {
-    const ci = qx[qh], cj = qy[qh]; qh++;
-    const cd = dist[cj * nx + ci];
-    for (const [dx, dy] of D4) {
+  // 8방향 다익스트라(옥타일 — 대각 √2·모서리 통과 금지). 4방향 맨해튼 대비 실보행에 근접(보완 #6).
+  const D8 = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2]];
+  // 이진 힙 (min-heap by dist)
+  const heap = new Int32Array(nx * ny * 2); // 여유 크기
+  let hn = 0;
+  const push = (idx) => {
+    let i = hn++; heap[i] = idx;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (dist[heap[p]] <= dist[heap[i]]) break;
+      const t = heap[p]; heap[p] = heap[i]; heap[i] = t; i = p;
+    }
+  };
+  const pop = () => {
+    const top = heap[0]; heap[0] = heap[--hn];
+    let i = 0;
+    for (;;) {
+      const l = 2 * i + 1, r = l + 1;
+      let m = i;
+      if (l < hn && dist[heap[l]] < dist[heap[m]]) m = l;
+      if (r < hn && dist[heap[r]] < dist[heap[m]]) m = r;
+      if (m === i) break;
+      const t = heap[m]; heap[m] = heap[i]; heap[i] = t; i = m;
+    }
+    return top;
+  };
+  for (let k = 0; k < qt; k++) push(qy[k] * nx + qx[k]);
+  const done = new Uint8Array(nx * ny);
+  while (hn > 0) {
+    const cur = pop();
+    if (done[cur]) continue;
+    done[cur] = 1;
+    const ci = cur % nx, cj = (cur / nx) | 0;
+    const cd = dist[cur];
+    for (const [dx, dy, cost] of D8) {
       const i = ci + dx, j = cj + dy;
       if (i < 0 || j < 0 || i >= nx || j >= ny) continue;
       const idx = j * nx + i;
-      if (blocked[idx] || dist[idx] >= 0) continue;
-      dist[idx] = cd + cell;
-      qx[qt] = i; qy[qt] = j; qt++;
+      if (blocked[idx] || done[idx]) continue;
+      // 대각 이동은 양측 직교 셀이 모두 열려 있어야 (모서리 스침 금지)
+      if (dx !== 0 && dy !== 0 && (blocked[cj * nx + i] || blocked[j * nx + ci])) continue;
+      const nd = cd + cost * cell;
+      if (dist[idx] < 0 || nd < dist[idx]) { dist[idx] = nd; push(idx); }
     }
   }
   // 최원점(도달 가능한 셀 중 최대) + 미도달 셀
@@ -92,7 +124,7 @@ export function interiorCheck(assembly, params = {}) {
     pass: maxDist <= limit,
     unreachableCells: unreachable, unreachableM2: round((unreachable * cell * cell) / 1e6),
     limitNote: '한계 30m = 건축법 시행령 제34조(직통계단 보행거리) 참고 기본값 — 용도·내화구조·스프링클러에 따라 상이, 프로젝트 기준 확인 필요(입력 가능)',
-    method: `${cell}mm 격자 4방향 BFS · 장애물=테이블·카운터·벽 풋프린트(z<1.8m) · 맨해튼 근사(대각 이동 미허용 → 보수적)`,
+    method: `${cell}mm 격자 8방향 다익스트라(대각 √2·모서리 스침 금지) · 장애물=테이블·카운터·벽 풋프린트(z<1.8m)`,
   };
 
   // ── 수용인원·피난폭 (occupancy_egress — 문 폭 합=형상 파생) ─────────────────

@@ -34,6 +34,7 @@ export default {
       surcharge: { type: 'number', minimum: 0, description: '상재하중 kPa (기본 0)' },
       baseFriction: { type: 'number', exclusiveMinimum: 0, maximum: 1, description: '저면 마찰계수 μ=tanδ' },
       allowableBearing: { type: 'number', exclusiveMinimum: 0, description: '허용지지력 q_allow kPa' },
+      seismicKh: { type: 'number', minimum: 0, maximum: 0.5, description: '수평지진계수 kh (옵션 — >0이면 Mononobe-Okabe 지진시 검토 추가. 내진등급·지반에서 프로젝트가 결정)' },
     },
   },
   run(input, std) {
@@ -79,12 +80,55 @@ export default {
       eccentricity: { e_m: e, limit_m: eLimit, pass: withinKern },
       bearing: { qmax_kPa: qmax, qmin_kPa: qmin, allow_kPa: qa, pass: qmax <= qa },
     };
+
+    // ── 지진시 검토 (옵션 kh>0, Mononobe-Okabe) — KDS 11 80 05 표 4.4-1 지진시 기준
+    //    M-O 가정: 연직벽·수평뒤채움·벽마찰 δ=0(보수측)·kv=0. θ=atan(kh).
+    //    작용점: 정적성분 H/3 + 동적증분 0.6H(Seed-Whitman 관례, 명시). 벽체관성 kh·W(CG).
+    const kh = input.seismicKh ?? 0;
+    let seismic = null;
+    if (kh > 0) {
+      const th = Math.atan(kh);
+      const phiR = deg2rad(phi);
+      if (phiR <= th) {
+        seismic = { error: `M-O 성립 불가: φ(${phi}°) ≤ θ(${(th * 180 / Math.PI).toFixed(1)}°) — 지반 액상화/대변형 영역, 별도 검토` };
+      } else {
+        const num_ = Math.cos(phiR - th) ** 2;
+        const den = Math.cos(th) ** 2 * (1 + Math.sqrt((Math.sin(phiR) * Math.sin(phiR - th)) / Math.cos(th))) ** 2;
+        const Kae = num_ / den;
+        const Pae = 0.5 * Kae * g * H * H + Kae * q * H; // 총 지진시 주동토압(상재 포함)
+        const dPae = Math.max(0, Pae - (PaSoil + PaSur)); // 동적 증분
+        const Wwall = ts * hStem * gc + B * tb * gc; // 콘크리트 자중(관성용)
+        const Fw = kh * Wwall; // 벽체 관성력, 작용고 = 콘크리트 CG
+        const zW = (ts * hStem * gc * (tb + hStem / 2) + B * tb * gc * (tb / 2)) / Wwall;
+        const MoE = (PaSoil * H / 3 + PaSur * H / 2) + dPae * 0.6 * H + Fw * zW;
+        const HE = Pae + Fw;
+        const critE = std.civil?.retaining_wall?.seismic ?? std.civil?.retaining_wall_seismic ?? { FS_overturning_min: 1.5, FS_sliding_min: 1.2, FS_bearing_min: 2.0 };
+        const FSotE = Mr / MoE;
+        const FSslE = (mu * V) / HE;
+        seismic = {
+          kh, theta_deg: +(th * 180 / Math.PI).toFixed(2), Kae: +Kae.toFixed(4),
+          Pae_kN: +Pae.toFixed(2), dPae_kN: +dPae.toFixed(2), wallInertia_kN: +Fw.toFixed(2),
+          checks: {
+            overturning: { FS: FSotE, min: critE.FS_overturning_min, pass: FSotE >= critE.FS_overturning_min },
+            sliding: { FS: FSslE, min: critE.FS_sliding_min, pass: FSslE >= critE.FS_sliding_min },
+          },
+          verdict: FSotE >= critE.FS_overturning_min && FSslE >= critE.FS_sliding_min ? 'PASS' : 'FAIL',
+          method: 'M-O(δ=0·kv=0·연직벽·수평뒤채움) · 동적증분 0.6H(Seed-Whitman) · 지진시 기준 FS=표 4.4-1(활동 1.2·전도 1.5)',
+        };
+      }
+    }
+
+    const verdict = Object.values(checks).every((c) => c.pass) && (!seismic || seismic.error === undefined ? (seismic ? seismic.verdict === 'PASS' : true) : false) ? 'PASS' : 'FAIL';
     return {
       inputsEcho: { ...input, gammaConcrete: gc, surcharge: q },
       intermediate: { Ka, PaSoil_kN: PaSoil, PaSurcharge_kN: PaSur, sumV_kN: V, Mr_kNm: Mr, Mo_kNm: Mo, parts },
       checks,
-      verdict: Object.values(checks).every((c) => c.pass) ? 'PASS' : 'FAIL',
-      notes: ['수동토압 저항 무시(보수측)', '내적 안정(부재 단면·활동면)은 별도 검토 대상'],
+      seismic,
+      verdict,
+      notes: [
+        '수동토압 저항 무시(보수측)', '내적 안정(부재 단면·활동면)은 별도 검토 대상',
+        ...(seismic ? ['지진시: M-O 표준식 — kh는 프로젝트 내진등급/지반에서 결정해 입력(지어내지 않음)'] : []),
+      ],
     };
   },
 };

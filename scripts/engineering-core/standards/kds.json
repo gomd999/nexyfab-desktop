@@ -86,7 +86,21 @@
     "stirrup_spacing_d_ratio": 0.5,
     "stirrup_spacing_max_mm": 600,
     "spacing_halve_Vs_sqrt_coef_inv": 3,
-    "_verified_note": "원문 대조(2026-07-12, CodeViewer 조항 텍스트+수식 이미지 판독): εcu=0.0033(fck≤40, 14 20 20 §4.1.1(3))·응력블록 η(0.85fck)/β1=0.80(표 4.1-2 — ACI β1=0.85와 다름!). φ: 인장지배 0.85(ACI 0.90과 다름)·압축지배 0.65/나선 0.70·전단 0.75(14 20 10 §4.2.3(2)). 인장지배한계 0.005(fy≤400)/2.5εy·최소허용변형률 0.004/2εy(14 20 20 §4.1.2(4)(5)). Es=200,000(14 20 10 식 4.3-5). Vc=(1/6)λ√fck·bw·d(14 20 22 식 4.2-1)·Vs=Av·fyt·d/s(식 4.3-3)·Vs≤0.2(1−fck/250)fck·bw·d(§4.3.4(9) — 구 (2/3)√fck 아님!)·Av,min=0.0625√fck·bw·s/fyt≥0.35bw·s/fyt(§4.3.3)·간격 d/2·600mm, Vs>(1/3)√fck·bw·d시 절반(§4.3.2). 재료계수(0.65/0.90)는 부록 대안설계법 — 본 계산기는 본문 강도감소계수 방식."
+    "_verified_note": "원문 대조(2026-07-12, CodeViewer 조항 텍스트+수식 이미지 판독): εcu=0.0033(fck≤40, 14 20 20 §4.1.1(3))·응력블록 η(0.85fck)/β1=0.80(표 4.1-2 — ACI β1=0.85와 다름!). φ: 인장지배 0.85(ACI 0.90과 다름)·압축지배 0.65/나선 0.70·전단 0.75(14 20 10 §4.2.3(2)). 인장지배한계 0.005(fy≤400)/2.5εy·최소허용변형률 0.004/2εy(14 20 20 §4.1.2(4)(5)). Es=200,000(14 20 10 식 4.3-5). Vc=(1/6)λ√fck·bw·d(14 20 22 식 4.2-1)·Vs=Av·fyt·d/s(식 4.3-3)·Vs≤0.2(1−fck/250)fck·bw·d(§4.3.4(9) — 구 (2/3)√fck 아님!)·Av,min=0.0625√fck·bw·s/fyt≥0.35bw·s/fyt(§4.3.3)·간격 d/2·600mm, Vs>(1/3)√fck·bw·d시 절반(§4.3.2). 재료계수(0.65/0.90)는 부록 대안설계법 — 본 계산기는 본문 강도감소계수 방식.",
+    "approxContinuous": {
+      "ref": "KDS 14 20 10 §4.3.1(3)(4) — 조건: 2경간 이상·인접 경간차 ≤ 짧은 경간의 20%·등분포·(활하중≤3×고정 등 원문 조건)",
+      "posExteriorUnrestrained": 11,
+      "posExteriorIntegral": 14,
+      "posInterior": 16,
+      "negFirstInterior2Span": 9,
+      "negFirstInterior3Span": 10,
+      "negOtherInterior": 11,
+      "negSlabOrStiffCol": 12,
+      "negExteriorSpandrel": 24,
+      "negExteriorColumn": 16,
+      "shearFirstInteriorFactor": 1.15,
+      "note": "ln=순경간. 부모멘트는 받침부면 기준."
+    }
   },
   "civil": {
     "retaining_wall": {
@@ -104,6 +118,12 @@
       },
       "eccentricity_limit_fraction": 0.16667,
       "note": "KDS 11 80 05:2025 §4.4 표 4.4-1 원문 대조 완료. 활동 1.5는 수동토압 미포함 기준(포함 시 2.0 — 표 주석). 현 계산기는 수동토압 무시(보수측)이므로 1.5 적용이 조항과 합치."
+    },
+    "retaining_wall_seismic": {
+      "FS_overturning_min": 1.5,
+      "FS_sliding_min": 1.2,
+      "FS_bearing_min": 2,
+      "ref": "KDS 11 80 05:2025 §4.4 표 4.4-1 지진시 기준안전율 (활동 1.2·전도 1.5·지지력 2.0) — 원문 대조 완료(2026-07-11 크롤)"
     }
   },
   "citations": {

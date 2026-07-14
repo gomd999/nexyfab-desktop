@@ -26,7 +26,8 @@ const checksTable = (checks) => !checks ? '' : `<table><tr><th>검토</th><th>�
 /** 건축 하중경로 리포트 */
 export function loadPathReport(r, { title = '하중경로 검증' } = {}) {
   if (!r?.ok) return SHELL(title, '실패', `<div class="honest">${esc(r?.error ?? '체인 실패')}</div>`);
-  const beams = r.beams.map((b) => `<tr><td style="text-align:left">${esc(b.id)}</td><td>${esc(b.section)}</td><td>${b.spanMm}</td><td>${f(b.tribM2)}</td><td>${f(b.wu_kNm)}</td><td>${f(b.Mu_kNm)}</td><td>${f(b.Vu_kN)}</td><td>${esc(b.combo)}</td><td>${V(b.verdict)}</td></tr>`).join('');
+  const beams = r.beams.map((b) => `<tr><td style="text-align:left">${esc(b.id)}</td><td>${esc(b.section)}</td><td>${b.spanMm}</td><td>${f(b.tribM2)}</td><td>${f(b.wu_kNm)}</td><td>${f(b.Mu_kNm)}${b.MuNeg_kNm != null ? ` / −${f(b.MuNeg_kNm)}` : ''}</td><td>${f(b.Vu_kN)}</td><td>${esc(b.combo)}</td><td>${V(b.verdict)}${b.negVerdict ? `<br><span style="font-size:10px">−M: ${esc(b.negVerdict)}</span>` : ''}</td></tr>`).join('');
+  const beamMethod = r.beams[0]?.method ? `<div class="note">해석: ${esc(r.beams[0].method)}</div>` : '';
   const cols = r.columns.map((c) => `<tr><td style="text-align:left">${esc(c.id)}</td><td>${esc(c.section)}</td><td>${f(c.Pu_kN)}</td><td>${f(c.Pservice_kN)}</td><td>${f(c.Mu_kNm)}</td><td>${V(c.verdict)}</td></tr>`).join('');
   const ftg = r.footing?.needInputs
     ? `<div class="honest">기초 검토 생략 — 입력 필요: ${r.footing.needInputs.join(', ')} (${esc(r.footing.note ?? '')})</div>`
@@ -39,7 +40,7 @@ export function loadPathReport(r, { title = '하중경로 검증' } = {}) {
 <tr><td>하중조합</td><td>${esc(r.loads.combo.U1.expr)} / ${esc(r.loads.combo.U2.expr)} — ${esc(r.loads.combo.U1.ref)}</td></tr>
 <tr><td>단위중량</td><td>${r.loads.unitWeight.value} kN/m³</td></tr>
 <tr><td>기둥 격자</td><td>X ${r.loads.spans.xs_mm.join('·')} / Y ${r.loads.spans.ys_mm.join('·')} mm · ${esc(r.loads.spans.tributary)}</td></tr></table>
-<h2>② 보 검토 (rc_beam)</h2><table><tr><th>부재</th><th>단면</th><th>스팬</th><th>분담m²</th><th>wu</th><th>Mu</th><th>Vu</th><th>지배조합</th><th>판정</th></tr>${beams}</table>
+<h2>② 보 검토 (rc_beam)</h2><table><tr><th>부재</th><th>단면</th><th>스팬</th><th>분담m²</th><th>wu</th><th>Mu(+/−)</th><th>Vu</th><th>지배조합</th><th>판정</th></tr>${beams}</table>${beamMethod}
 ${r.beams[0]?.checks ? checksTable(r.beams[0].checks) : ''}
 <h2>③ 기둥 검토 (rc_column_pm)</h2><table><tr><th>부재</th><th>단면</th><th>Pu kN</th><th>P사용 kN</th><th>Mu</th><th>판정</th></tr>${cols}</table>
 <h2>④ 기초 검토 (isolated_footing)</h2>${ftg}
@@ -59,6 +60,11 @@ export function landscapeReport(r, { title = '조경 구조 검증' } = {}) {
 <tr><td>${f(m.load.self_kNm, 3)}</td><td>${f(m.load.deckSelf_kNm, 3)}</td><td>${f(m.load.live_kNm, 3)} (${esc(m.load.liveRef)})</td><td>${f(m.load.extra_kNm, 3)}</td></tr></table>
 ${checksTable(m.checks)}
 ${m.notes ? `<div class="note">${m.notes.map(esc).join('<br>')}</div>` : ''}` : '<div class="honest">장선/서까래(role=joist) 없음 — 부재 검토 생략</div>';
+  const boardSec = r.board ? `
+<h2>①b 데크보드 검토</h2>
+<table><tr><th>부재</th><th>단면</th><th>스팬(장선간격)</th><th>하중</th><th>판정</th></tr>
+<tr><td style="text-align:left">${esc(r.board.id)} ×${r.board.count}</td><td>${esc(r.board.section)}</td><td>${r.board.spanMm}</td><td>${f(r.board.w_kNm, 3)} kN/m</td><td>${V(r.board.verdict)}</td></tr></table>
+${checksTable(r.board.checks)}<div class="note">${esc(r.board.note)}</div>` : '';
   const w = r.wind;
   const windSec = !w ? '' : w.skipped ? `<h2>② 풍하중 전도</h2><div class="honest">${esc(w.note)}</div>` : `
 <h2>② 풍하중 전도 (강체)</h2>
@@ -69,8 +75,8 @@ ${m.notes ? `<div class="note">${m.notes.map(esc).join('<br>')}</div>` : ''}` : 
 <tr><td>X풍</td><td>${f(w.x.areaM2)}</td><td>${f(w.x.F_kN)}</td><td>${f(w.x.zc_m)}</td><td>${f(w.x.Mo_kNm)}</td><td>${f(w.x.Mr_kNm)}</td><td>${f(w.x.FS)}</td></tr>
 <tr><td>Y풍</td><td>${f(w.y.areaM2)}</td><td>${f(w.y.F_kN)}</td><td>${f(w.y.zc_m)}</td><td>${f(w.y.Mo_kNm)}</td><td>${f(w.y.Mr_kNm)}</td><td>${f(w.y.FS)}</td></tr></table>
 <div class="note">${esc(w.fsNote)} · ${esc(w.method)}</div>`;
-  return SHELL(`${title} — 목재 부재·풍하중`, 'nexyfab · KDS 41 50 10 허용응력×하중기간계수 · 단면·스팬·간격=형상 파생', `
-${memberSec}${windSec}
+  return SHELL(`${title} — 목재 부재·풍하중`, 'nexyfab · KDS 41 50 10 허용응력×CD×CM(습윤) · 단면·스팬·간격=형상 파생', `
+${memberSec}${boardSec}${windSec}
 <div class="honest">⚠ ${esc(r.disclaimer)}</div>
 <div class="note">근거: ${(r.refs ?? []).map(esc).join(' · ')}</div>`);
 }
@@ -101,12 +107,20 @@ ${e?.checks ? checksTable(e.checks) : `<div class="honest">${esc(e?.error ?? '�
 /** 토목 옹벽 안정 리포트 (verifyDomain 결과) */
 export function retainingWallReport(v, { title = '옹벽 안정 검토' } = {}) {
   if (!v?.ok) return SHELL(title, '실패', `<div class="honest">${esc(v?.error ?? JSON.stringify(v?.needInputs))}</div>`);
-  const rows = Object.entries(v.checks ?? {}).map(([k, c]) => `<tr><td>${esc(k)}</td><td>${f(c.FS ?? c.value ?? c.e_m ?? c.qmax_kPa, 2)}</td><td>${f(c.required ?? c.limit ?? c.allow, 2)}</td><td>${c.pass ? '✓' : '✕'}</td></tr>`).join('');
+  const rows = Object.entries(v.checks ?? {}).map(([k, c]) => `<tr><td>${esc(k)}</td><td>${f(c.FS ?? c.value ?? c.e_m ?? c.qmax_kPa, 2)}</td><td>${f(c.required ?? c.limit ?? c.allow ?? c.min ?? c.limit_m ?? c.allow_kPa, 2)}</td><td>${c.pass ? '✓' : '✕'}</td></tr>`).join('');
+  const sz = v.seismic;
+  const seismicSec = sz ? (sz.error ? `<div class="honest">지진시: ${esc(sz.error)}</div>` : `
+<h2>③ 지진시 검토 (Mononobe-Okabe, kh=${sz.kh})</h2>
+<table><tr><th>항목</th><th>값</th></tr><tr><td>KAE</td><td>${sz.Kae}</td></tr><tr><td>지진시 총토압 PAE</td><td>${sz.Pae_kN} kN/m (동적증분 ${sz.dPae_kN})</td></tr><tr><td>벽체 관성력</td><td>${sz.wallInertia_kN} kN/m</td></tr></table>
+<table><tr><th>검토</th><th>FS</th><th>기준(표 4.4-1 지진시)</th><th>판정</th></tr>
+${Object.entries(sz.checks).map(([k, c]) => `<tr><td>${esc(k)}</td><td>${f(c.FS, 2)}</td><td>${c.min}</td><td>${c.pass ? '✓' : '✕'}</td></tr>`).join('')}</table>
+<div class="note">${esc(sz.method)}</div>`) : '';
   return SHELL(`${title} — 전도·활동·지지력`, 'nexyfab · Rankine 주동토압(KDS 11 80 05 의무조항) · 단면=형상 자동 파생', `
 <div class="kpi"><div><b>${V(v.verdict)}</b><span>종합 판정</span></div></div>
 <h2>① 형상 파생 입력 (사용자 덮어쓰기 불가)</h2><table><tr><th>항목</th><th>값</th></tr>
 ${Object.entries(v.derived ?? {}).map(([k, val]) => `<tr><td>${esc(k)}</td><td>${f(val, 2)} m</td></tr>`).join('')}</table>
 <h2>② 안정 검토</h2><table><tr><th>검토</th><th>값</th><th>기준</th><th>판정</th></tr>${rows}</table>
+${seismicSec}
 <div class="honest">⚠ ${esc(v.disclaimer ?? '개념 검토(비법정)')}</div>
 <div class="note">근거: ${(v.refs ?? []).map(esc).join(' · ')}</div>`);
 }
