@@ -205,6 +205,22 @@ const GATES = {
       else if (af <= i.threadDia) e.push('headFlats ≤ threadDia');
     }
   },
+  wall_with_openings(i, e) {
+    // 인테리어/건축 벽체 — X방향 길이·Y두께·Z높이, openings=[{x,w,h,sill}] (문 sill=0, 창 sill>0)
+    if (!pos(i.length) || i.length > 30000) e.push('length invalid');
+    if (!pos(i.thickness) || i.thickness > 600) e.push('thickness invalid');
+    if (!pos(i.height) || i.height > 8000) e.push('height invalid');
+    for (const [n, o] of (i.openings ?? []).entries()) {
+      if (!pos(o.w) || !pos(o.h)) { e.push(`opening[${n}] w/h invalid`); continue; }
+      const sill = o.sill ?? 0;
+      if (!(o.x >= 0 && o.x + o.w <= i.length)) e.push(`opening[${n}] x 범위 밖`);
+      if (!(sill >= 0 && sill + o.h <= i.height)) e.push(`opening[${n}] 높이 범위 밖`);
+      if (o.w >= i.length) e.push(`opening[${n}] 폭 ≥ 벽 길이`);
+    }
+    // 개구 겹침 검사 (v1: X구간 겹침 금지)
+    const ops = (i.openings ?? []).slice().sort((a, b) => a.x - b.x);
+    for (let k = 1; k < ops.length; k++) if (ops[k].x < ops[k - 1].x + ops[k - 1].w) { e.push('openings X구간 겹침'); break; }
+  },
   sheet_profile(i, e) {
     if (!pos(i.thickness) || i.thickness > 30) e.push('thickness invalid (판금 ≤30)');
     if (!pos(i.width) || i.width > 6000) e.push('width invalid');
@@ -280,6 +296,11 @@ const SCAD = {
   sheet_profile(i) {
     return `linear_extrude(height=${i.width}) ${polyScad(sheetPoly(i))}`;
   },
+  wall_with_openings(i) {
+    const ops = (i.openings ?? []).map((o) => `    translate([${o.x}, -1, ${o.sill ?? 0}]) cube([${o.w}, ${i.thickness + 2}, ${o.h}]);`).join('\n');
+    if (!ops) return `cube([${i.length}, ${i.thickness}, ${i.height}]);`;
+    return `difference() {\n  cube([${i.length}, ${i.thickness}, ${i.height}]);\n${ops}\n}`;
+  },
 };
 
 export function toOpenScad(intent) {
@@ -332,6 +353,8 @@ export function partAabb(i) {
       const b = polyBbox(sheetPoly(i));
       return { min: [b.x0, b.y0, 0], max: [b.x1, b.y1, i.width] };
     }
+    case 'wall_with_openings':
+      return { min: [0, 0, 0], max: [i.length, i.thickness, i.height] };
     default:
       throw new Error(`partAabb: unsupported type '${i.type}'`);
   }
@@ -353,4 +376,5 @@ export const PARAMS = {
   spur_gear: ['module', 'teeth', 'thickness', 'boreDia'],
   hex_bolt: ['threadDia', 'length'],
   sheet_profile: ['thickness', 'width'], // segments[]·angles[]는 배열 — 스키마 특례
+  wall_with_openings: ['length', 'thickness', 'height'], // openings[]는 배열 — 스키마 특례
 };

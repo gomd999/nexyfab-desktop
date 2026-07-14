@@ -55,13 +55,14 @@ const TYPE_SPEC = `각 부품 type 의 params 는 아래 목록만 사용(다른
 - spur_gear: module, teeth, thickness, boreDia   (인벌류트 스퍼기어 — 외경=module×(teeth+2), 원점=기어중심, boreDia 0=무보어)
 - hex_bolt: threadDia, length   (육각볼트 M3~M36 표준호칭 — 머리치수 자동, 원점=자루 끝, +Z로 머리)
 - sheet_profile: thickness, width, segments:[len...], angles:[deg...]   (다단 절곡 판금 — 단면=세그먼트 길이열+절곡각열(angles는 segments−1개, |a|≤120), width=압출 길이. 예: 햇채널 segments:[20,40,60,40,20], angles:[90,-90,-90,90])
+- wall_with_openings: length, thickness, height, openings:[{x,w,h,sill}]   (벽체 — X길이·Y두께·Z높이. 문=sill 0(예 w900 h2100), 창=sill>0. 개구 X구간 겹침 금지)
 
 부품 선택 필드(정확도·물량에 중요):
 - material: STS316 | STS304 | steel | aluminum | concrete | timber | PVC 중 하나. 콘크리트 구조물(RC 보·기둥·슬래브·옹벽)은 반드시 "concrete", 목구조(데크·파고라·가구)는 "timber".
 - role: column | beam | slab | joist | deck | floor | wall | table | counter | frame | motor | panel 등 — 계통색·도면 라벨에 쓰임.`;
 
 const BASE_PROMPT = (desc: string) => `자연어 제품 설명을 "부품별 독립 body" 복합 어셈블리 계획(JSON)으로 변환하라.
-어휘 14종: plate_with_holes / stepped_plate / l_bracket / flange / bent_sheet / tube / rect_tube / box / cylinder / gusset / base_plate / spur_gear / hex_bolt / sheet_profile.
+어휘 15종: plate_with_holes / stepped_plate / l_bracket / flange / bent_sheet / tube / rect_tube / box / cylinder / gusset / base_plate / spur_gear / hex_bolt / sheet_profile / wall_with_openings.
 ${TYPE_SPEC}
 좌표: 전역 원점(0,0,0), 각 부품 로컬 원점이 at(tx,ty,tz mm; rx,ry,rz deg) 에 놓임. 판재는 z=0 바닥, 위에 얹으면 tz=판두께.
 부피 침투 없이 접촉 배치. 치수 미기입은 통상값.

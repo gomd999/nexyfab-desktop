@@ -29,6 +29,7 @@ function box(part) {
   const { tx = 0, ty = 0, tz = 0 } = part.at ?? {};
   return {
     cx: (a.min[0] + a.max[0]) / 2 + tx, cy: (a.min[1] + a.max[1]) / 2 + ty,
+    x0: a.min[0] + tx, x1: a.max[0] + tx, y0: a.min[1] + ty, y1: a.max[1] + ty,
     dx: a.max[0] - a.min[0], dy: a.max[1] - a.min[1], dz: a.max[2] - a.min[2],
     z0: a.min[2] + tz,
   };
@@ -59,12 +60,25 @@ export function loadPathCheck(assembly, params = {}) {
   const columns = parts.filter((p) => p.role === 'column');
   const beams = parts.filter((p) => p.role === 'beam');
   const slabs = parts.filter((p) => p.role === 'slab');
-  if (columns.length !== 4 || beams.length !== 4 || slabs.length !== 1) {
-    return {
-      ok: false, scope: 'v1',
-      error: `v1 범위 밖 — 단일 베이(기둥4·보4·슬래브1)만 지원. 현재: 기둥${columns.length}·보${beams.length}·슬래브${slabs.length}`,
-    };
+  if (!columns.length || !beams.length || !slabs.length) {
+    return { ok: false, error: `role 태깅 필요 — 기둥${columns.length}·보${beams.length}·슬래브${slabs.length}` };
   }
+
+  // ── 그리드 파생 (형상에서 — 비균등 스팬 허용) ───────────────────────────────
+  const uniq = (arr, tol = 50) => {
+    const out = [];
+    for (const v of arr.slice().sort((a, b) => a - b)) if (!out.length || v - out[out.length - 1] > tol) out.push(v);
+    return out;
+  };
+  const xs = uniq(columns.map((c) => box(c).cx));
+  const ys = uniq(columns.map((c) => box(c).cy));
+  const zs = uniq(columns.map((c) => (c.at?.tz ?? 0)));
+  const nf = zs.length; // 층수
+  if (columns.length !== xs.length * ys.length * nf) {
+    return { ok: false, scope: 'grid', error: `기둥이 완전 격자가 아님 — ${xs.length}×${ys.length}×${nf}층=${xs.length * ys.length * nf} 기대, 실제 ${columns.length}본. (B3 v2는 직교 격자 라멘만)` };
+  }
+  if (slabs.length !== nf) return { ok: false, error: `슬래브 수(${slabs.length}) ≠ 층수(${nf}) — 층당 1장 필요` };
+  if (xs.length < 2 || ys.length < 2) return { ok: false, error: '기둥 격자 최소 2×2 필요' };
 
   // ── 하중 산정 (전부 근거 있는 값) ─────────────────────────────────────────
   const usage = params.usage ?? 'office';
@@ -73,58 +87,78 @@ export function loadPathCheck(assembly, params = {}) {
   const gammaRC = kds.loads.rcUnitWeight_kNm3.value; // 24 kN/m³
   const finish = Number(params.finish_kNm2) > 0 ? Number(params.finish_kNm2) : 0;
 
-  const slab = slabs[0];
-  const sb = box(slab);
+  const slab0 = slabs[0];
+  const sb = box(slab0);
   const slabAreaM2 = (sb.dx * sb.dy) / 1e6;
-  const slabD_kN = (partVolume(slab.type, slab.params) / 1e9) * gammaRC + finish * slabAreaM2;
+  const slabD_kN = (partVolume(slab0.type, slab0.params) / 1e9) * gammaRC + finish * slabAreaM2;
   const slabL_kN = live.v * slabAreaM2;
-
-  // 스팬 = 기둥 중심 간격 (형상에서 파생)
-  const cxs = [...new Set(columns.map((c) => round(box(c).cx, 0)))].sort((a, b) => a - b);
-  const cys = [...new Set(columns.map((c) => round(box(c).cy, 0)))].sort((a, b) => a - b);
-  if (cxs.length !== 2 || cys.length !== 2) return { ok: false, error: 'v1: 기둥 4개가 직사각 격자를 이뤄야 함' };
-  const bayX = cxs[1] - cxs[0], bayY = cys[1] - cys[0];
-  const lx = Math.min(bayX, bayY), ly = Math.max(bayX, bayY); // 단·장스팬 mm
-
-  // 45° 2방향 분담: 단변 보(스팬 lx) = 삼각형 lx²/4 ×2개, 장변 보(스팬 ly) = 사다리꼴
-  const areaTot = (bayX * bayY) / 1e6; // 분담 기준 면적(베이) m²
-  const triM2 = (lx * lx) / 4 / 1e6;
-  const trapM2 = (areaTot - 2 * triM2) / 2;
-  // 슬래브 면하중 (kN/m²) — 슬래브 전체 하중을 슬래브 면적으로 (오버행 포함 하중도 베이 면적비로 분담)
-  const wD_m2 = slabD_kN / slabAreaM2;
+  const wD_m2 = slabD_kN / slabAreaM2; // 슬래브 자중+마감 면하중
   const wL_m2 = live.v;
+  const wu_m2 = Math.max(1.4 * wD_m2, 1.2 * wD_m2 + 1.6 * wL_m2);
+  const combo = 1.4 * wD_m2 >= 1.2 * wD_m2 + 1.6 * wL_m2 ? '1.4D (식1.7-1)' : '1.2D+1.6L (식1.7-2)';
 
-  // ── 보 검토 ────────────────────────────────────────────────────────────────
-  const beamResults = [];
-  const reactions = []; // 각 보의 계수 단부반력 kN (기둥 집계용)
-  const serviceReactions = [];
-  for (const bm of beams) {
+  // 베이 목록 (비균등 허용)
+  const bays = [];
+  for (let i = 0; i < xs.length - 1; i++) for (let j = 0; j < ys.length - 1; j++) {
+    bays.push({ x0: xs[i], x1: xs[i + 1], y0: ys[j], y1: ys[j + 1], dx: xs[i + 1] - xs[i], dy: ys[j + 1] - ys[j] });
+  }
+
+  // ── 보 검토 (1개 층 대표 — 층별 동일 하중. 45° 분담을 인접 베이에서 누적) ──
+  const floor0Beams = beams.filter((b) => Math.abs((b.at?.tz ?? 0) - Math.min(...beams.map((x) => x.at?.tz ?? 0))) < 1);
+  // 같은 z층의 보만 (첫 층). 각 보: 방향·라인·스팬 구간에 인접한 베이의 해당 변 분담 합.
+  const beamTrib = (bm) => {
     const bb = box(bm);
-    // 스팬 방향 = 보 장축. 단면 = 나머지 두 치수 (b=수평, h=수직)
-    const spanIsX = bb.dx >= bb.dy;
-    const span = spanIsX ? bb.dx : bb.dy;
-    const bw = spanIsX ? bb.dy : bb.dx;
+    const alongX = bb.dx >= bb.dy;
+    const line = alongX ? bb.cy : bb.cx; // 보 중심선(직각 좌표)
+    const s0 = alongX ? bb.x0 : bb.y0, s1 = alongX ? bb.x1 : bb.y1;
+    let trib = 0;
+    for (const bay of bays) {
+      // 이 보가 베이의 X변/Y변에 접하는가
+      if (alongX) {
+        const onEdge = Math.abs(line - bay.y0) < 60 || Math.abs(line - bay.y1) < 60;
+        const overlap = Math.min(s1, bay.x1) - Math.max(s0, bay.x0);
+        if (!onEdge || overlap < bay.dx * 0.5) continue;
+        const tri = (Math.min(bay.dx, bay.dy) ** 2) / 4 / 1e6;
+        const trap = (bay.dx * bay.dy / 1e6 - 2 * tri) / 2;
+        trib += bay.dx <= bay.dy ? tri : trap; // X변이 단변이면 삼각형
+      } else {
+        const onEdge = Math.abs(line - bay.x0) < 60 || Math.abs(line - bay.x1) < 60;
+        const overlap = Math.min(s1, bay.y1) - Math.max(s0, bay.y0);
+        if (!onEdge || overlap < bay.dy * 0.5) continue;
+        const tri = (Math.min(bay.dx, bay.dy) ** 2) / 4 / 1e6;
+        const trap = (bay.dx * bay.dy / 1e6 - 2 * tri) / 2;
+        trib += bay.dy <= bay.dx ? tri : trap;
+      }
+    }
+    return trib;
+  };
+  // 최악 보(최대 분담) + 클래스 요약
+  let worstBeam = null, worstTrib = -1;
+  for (const bm of floor0Beams) {
+    const t = beamTrib(bm);
+    if (t > worstTrib) { worstTrib = t; worstBeam = bm; }
+  }
+  const beamResults = [];
+  if (worstBeam) {
+    const bb = box(worstBeam);
+    const alongX = bb.dx >= bb.dy;
+    const span = alongX ? bb.dx : bb.dy;
+    const bwv = alongX ? bb.dy : bb.dx;
     const bh = bb.dz;
-    const isShort = Math.abs(span - (lx - 0)) <= Math.abs(span - ly) ? span <= lx + 1 : false;
-    const tribM2 = (isShort ? triM2 : trapM2);
-    const selfD = (partVolume(bm.type, bm.params) / 1e9) * gammaRC; // kN
-    const D = wD_m2 * tribM2 + selfD;
-    const L = wL_m2 * tribM2;
+    const selfD = (partVolume(worstBeam.type, worstBeam.params) / 1e9) * gammaRC;
+    const D = wD_m2 * worstTrib + selfD;
+    const L = wL_m2 * worstTrib;
     const spanM = span / 1000;
-    // 하중조합 (KDS 41 12 00 식 1.7-1 / 1.7-2, 중력만)
     const Wu = Math.max(1.4 * D, 1.2 * D + 1.6 * L);
-    const combo = 1.4 * D >= 1.2 * D + 1.6 * L ? '1.4D (식1.7-1)' : '1.2D+1.6L (식1.7-2)';
-    const wu = Wu / spanM;                      // 등가등분포 kN/m (근사 명시)
-    const Mu = (wu * spanM * spanM) / 8;        // 단순지지 근사(중앙부 보수적)
+    const wu = Wu / spanM;
+    const Mu = (wu * spanM * spanM) / 8;
     const Vu = Wu / 2;
-    reactions.push(Wu / 2);
-    serviceReactions.push((D + L) / 2);
     const cover = params.beamCover ?? 50;
     let check = null;
     if (Number(params.beamAs) > 0) {
       try {
         const beamInput = {
-          b: bw, d: bh - cover, fck: params.fck ?? 24, fy: params.fy ?? 400,
+          b: bwv, d: bh - cover, fck: params.fck ?? 24, fy: params.fy ?? 400,
           As: Number(params.beamAs), Mu: round(Mu), Vu: round(Vu),
         };
         if (Number(params.beamAv) > 0 && Number(params.beamS) > 0) { beamInput.Av = Number(params.beamAv); beamInput.s = Number(params.beamS); }
@@ -132,25 +166,32 @@ export function loadPathCheck(assembly, params = {}) {
       } catch (e) { check = { error: e.message }; }
     }
     beamResults.push({
-      id: bm.id ?? 'beam', spanMm: round(span, 0), section: `${round(bw, 0)}×${round(bh, 0)}`,
-      tribM2: round(tribM2), D_kN: round(D), L_kN: round(L), combo,
+      id: `${worstBeam.id ?? 'beam'} (최악 — 층당 보 ${floor0Beams.length}본 중 최대분담)`,
+      spanMm: round(span, 0), section: `${round(bwv, 0)}×${round(bh, 0)}`,
+      tribM2: round(worstTrib), D_kN: round(D), L_kN: round(L), combo,
       wu_kNm: round(wu), Mu_kNm: round(Mu), Vu_kN: round(Vu),
       verdict: check?.verdict ?? (check?.error ? 'ERROR' : 'INPUT(beamAs)'),
       checks: check?.checks ?? null, error: check?.error ?? null,
     });
   }
 
-  // ── 기둥 검토 (대칭 — 각 기둥 = 인접 보 2개 반력 합 + 자중) ─────────────────
-  // 단변보 1 + 장변보 1 이 각 기둥에 접속(직사각 1베이 대칭)
-  const shortR = reactions[beamResults.findIndex((b) => b.tribM2 === round(triM2))] ?? reactions[0];
-  const longR = reactions[beamResults.findIndex((b) => b.tribM2 === round(trapM2))] ?? reactions[1];
-  const shortRs = serviceReactions[0], longRs = serviceReactions[1];
-  const colResults = [];
-  const col = columns[0]; // 대칭 — 대표 1본 (전부 동일 단면·하중)
-  const cb0 = box(col);
-  const colSelfD = (partVolume(col.type, col.params) / 1e9) * gammaRC;
-  const Pu_col = shortR + longR + 1.2 * colSelfD;
-  const Pservice_col = (shortRs + longRs) + colSelfD;
+  // ── 기둥 검토 (지배 기둥 = 최대 분담면적 × 최하층 누적) ─────────────────────
+  // 분담면적법(관례): 기둥 (i,j) = (좌우 반스팬 합)×(상하 반스팬 합). 층 누적 = 상부 전층 합.
+  const halfSum = (arr, k) => ((k > 0 ? arr[k] - arr[k - 1] : 0) / 2 + (k < arr.length - 1 ? arr[k + 1] - arr[k] : 0) / 2) / 1000;
+  let worstColTrib = 0, worstIdx = [0, 0];
+  for (let i = 0; i < xs.length; i++) for (let j = 0; j < ys.length; j++) {
+    const t = halfSum(xs, i) * halfSum(ys, j);
+    if (t > worstColTrib) { worstColTrib = t; worstIdx = [i, j]; }
+  }
+  const col0 = columns[0];
+  const cb0 = box(col0);
+  const colSelfD = (partVolume(col0.type, col0.params) / 1e9) * gammaRC; // kN/층
+  // 층당 보 자중을 면적당으로 환산해 분담(개산 명시)
+  const beamSelfPerM2 = floor0Beams.reduce((s, b) => s + (partVolume(b.type, b.params) / 1e9) * gammaRC, 0) / slabAreaM2;
+  const perFloorPu = wu_m2 * worstColTrib + 1.2 * beamSelfPerM2 * worstColTrib + 1.2 * colSelfD;
+  const perFloorPs = (wD_m2 + wL_m2 + beamSelfPerM2) * worstColTrib + colSelfD;
+  const Pu_col = perFloorPu * nf;       // 최하층 기둥 = 전층 누적
+  const Pservice_col = perFloorPs * nf;
   let colCheck = null;
   if (Number(params.colAst) > 0) {
     try {
@@ -160,14 +201,15 @@ export function loadPathCheck(assembly, params = {}) {
       }, 'KDS');
     } catch (e) { colCheck = { error: e.message }; }
   }
-  colResults.push({
-    id: '기둥(대표 — 4본 대칭)', section: `${round(cb0.dx, 0)}×${round(cb0.dy, 0)}`,
-    Pu_kN: round(Pu_col), Pservice_kN: round(Pservice_col),
+  const colResults = [{
+    id: `지배 기둥 (격자 ${worstIdx[0] + 1},${worstIdx[1] + 1} — 분담 ${round(worstColTrib)}m² × ${nf}층 누적)`,
+    section: `${round(cb0.dx, 0)}×${round(cb0.dy, 0)}`,
+    Pu_kN: round(Pu_col), Pservice_kN: round(Pservice_col), perFloorPu_kN: round(perFloorPu),
     Mu_kNm: round(Number(params.colMu) || 0),
-    note: 'Mu=0 시 φPn(max) 대조 — 최소편심은 0.80φ 계수에 내재(KDS 14 20 20 식 4.1-17). 횡하중·장주효과 미고려.',
+    note: '분담면적법(관례) — Mu=0 시 φPn(max) 대조(최소편심 0.80φ 내재). 횡하중·장주효과·모멘트골조 불균형모멘트 미고려.',
     verdict: colCheck?.verdict ?? (colCheck?.error ? 'ERROR' : 'INPUT(colAst)'),
     checks: colCheck?.checks ?? null, error: colCheck?.error ?? null,
-  });
+  }];
 
   // ── 기초 검토 (치수·지지력 = 입력) ─────────────────────────────────────────
   let footing = null;
@@ -188,13 +230,13 @@ export function loadPathCheck(assembly, params = {}) {
 
   return {
     ok: true,
-    scope: '단일 직사각 베이 (기둥4·보4·슬래브1) · 중력하중만',
+    scope: `직교 격자 라멘 ${xs.length - 1}×${ys.length - 1}베이 ${nf}층 · 중력하중만 (B3)`,
     loads: {
       usage: { key: usage, label: live.label, live_kNm2: live.v, ref: kds.loads.liveLoad_kNm2._ref },
-      slab: { areaM2: round(slabAreaM2), D_kN: round(slabD_kN), L_kN: round(slabL_kN), finish_kNm2: finish, finishNote: finish > 0 ? '입력값' : '마감하중 미포함(미입력)' },
+      slab: { areaM2: round(slabAreaM2), D_kN: round(slabD_kN), L_kN: round(slabL_kN), finish_kNm2: finish, finishNote: finish > 0 ? '입력값' : '마감하중 미포함(미입력)', perFloor: true, floors: nf },
       combo: kds.loads.comboGravity,
       unitWeight: kds.loads.rcUnitWeight_kNm3,
-      spans: { bayX_mm: round(bayX, 0), bayY_mm: round(bayY, 0), tributary: '45° 2방향(삼각/사다리꼴)' },
+      spans: { xs_mm: xs.map((v) => round(v, 0)), ys_mm: ys.map((v) => round(v, 0)), tributary: '보=45° 2방향(삼각/사다리꼴) · 기둥=분담면적법 · 층 누적' },
     },
     beams: beamResults,
     columns: colResults,
@@ -212,24 +254,23 @@ export function loadPathCheck(assembly, params = {}) {
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('load-path.mjs');
 if (isMain) {
   const { buildAssemblyTemplate } = await import('./domain-assemblies.mjs');
-  const asm = buildAssemblyTemplate('building', 'rc_frame', {});
-  const r = loadPathCheck(asm, {
-    usage: 'office', fck: 24, fy: 400,
-    beamAs: 1548, // 4-D22 가정
-    beamAv: 142.7, beamS: 250, // D10@250 2가닥 가정
-    colAst: 3097, // 8-D22 가정
-    footing: { B: 2200, L: 2200, t: 500, d: 420, qAllow: 200 },
-  });
-  if (!r.ok) { console.log('FAIL', r.error); process.exit(1); }
-  console.log('slab D:', r.loads.slab.D_kN, 'kN (손검증: 6.5×6.5×0.15×24=152.1)');
-  console.log('slab L:', r.loads.slab.L_kN, 'kN (42.25m²×2.5)');
-  console.log('스팬:', r.loads.spans.bayX_mm, '×', r.loads.spans.bayY_mm);
-  for (const b of r.beams) console.log(`보 ${b.id}: 분담 ${b.tribM2}m² Mu=${b.Mu_kNm}kN·m → ${b.verdict}`);
-  for (const c of r.columns) console.log(`${c.id}: Pu=${c.Pu_kN}kN → ${c.verdict}`);
-  console.log('기초:', r.footing.verdict);
-  const allRun = r.beams.every((b) => b.verdict && b.verdict !== 'ERROR') && r.columns.every((c) => c.verdict !== 'ERROR') && r.footing.verdict !== 'ERROR';
-  // 손검증: 슬래브 D ≈ 152.1 (±1), L ≈ 105.6 (±1)
-  const dOk = Math.abs(r.loads.slab.D_kN - 152.1) < 2 && Math.abs(r.loads.slab.L_kN - 105.63) < 2;
-  console.log(allRun && dOk ? 'load-path self-test: PASS' : 'load-path self-test: FAIL');
-  if (!(allRun && dOk)) process.exit(1);
+  const rebar = { usage: 'office', fck: 24, fy: 400, beamAs: 1548, beamAv: 142.7, beamS: 250, colAst: 3097, footing: { B: 2200, L: 2200, t: 500, d: 420, qAllow: 200 } };
+  // ① 1베이 1층 (v1 회귀)
+  const asm1 = buildAssemblyTemplate('building', 'rc_frame', {});
+  const r1 = loadPathCheck(asm1, rebar);
+  if (!r1.ok) { console.log('FAIL(1bay)', r1.error); process.exit(1); }
+  console.log('[1×1×1] slab D:', r1.loads.slab.D_kN, 'kN (손검증 152.1) | 보:', r1.beams[0].verdict, 'Mu=' + r1.beams[0].Mu_kNm, '| 기둥 Pu:', r1.columns[0].Pu_kN, '→', r1.columns[0].verdict, '| 기초:', r1.footing.verdict);
+  // ② 2×2베이 3층 — 지배 기둥 = 내부기둥 분담 36m²×3층
+  const asm2 = buildAssemblyTemplate('building', 'rc_frame', { baysX: 2, baysY: 2, floors: 3, colSize: 600 });
+  const r2 = loadPathCheck(asm2, { ...rebar, colAst: 6194, footing: { B: 3000, L: 3000, t: 700, d: 600, qAllow: 300 } });
+  if (!r2.ok) { console.log('FAIL(2x2x3)', r2.error); process.exit(1); }
+  console.log('[2×2×3]', r2.scope, '| 보(최악):', r2.beams[0].tribM2 + 'm²', 'Mu=' + r2.beams[0].Mu_kNm, '→', r2.beams[0].verdict);
+  console.log('  기둥:', r2.columns[0].id, '| 층당', r2.columns[0].perFloorPu_kN, 'kN × 3 =', r2.columns[0].Pu_kN, 'kN →', r2.columns[0].verdict, '| 기초:', r2.footing.verdict);
+  // 손검증: 내부기둥 분담 6×6=36m² ✓ · 층누적 = 층당×3 ✓
+  const dOk = Math.abs(r1.loads.slab.D_kN - 152.1) < 2;
+  const tribOk = r2.columns[0].id.includes('36');
+  const stackOk = Math.abs(r2.columns[0].Pu_kN - r2.columns[0].perFloorPu_kN * 3) < 1;
+  const allRun = [r1, r2].every((r) => r.beams[0].verdict !== 'ERROR' && r.columns[0].verdict !== 'ERROR' && r.footing.verdict !== 'ERROR');
+  console.log(allRun && dOk && tribOk && stackOk ? 'load-path self-test: PASS' : `load-path self-test: FAIL (d:${dOk} trib:${tribOk} stack:${stackOk})`);
+  if (!(allRun && dOk && tribOk && stackOk)) process.exit(1);
 }

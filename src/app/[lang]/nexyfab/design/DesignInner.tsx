@@ -217,6 +217,30 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
   }, []);
 
   // 설계 결과(compose 또는 결정론 프리셋) → 상태 반영 + 브라우저 렌더. 공통 경로.
+  // 실사 컨셉 렌더링(Gemini image-to-image) — 뷰어 캔버스 PNG를 기하 기준으로 전달 (⑤)
+  const [vizBusy, setVizBusy] = useState(false);
+  const [vizImg, setVizImg] = useState<string | null>(null);
+  const [vizErr, setVizErr] = useState<string | null>(null);
+  const runVisualize = useCallback(async () => {
+    const canvas = rendererRef.current?.domElement;
+    if (!canvas) return;
+    setVizBusy(true); setVizErr(null);
+    try {
+      const png = canvas.toDataURL('image/png'); // preserveDrawingBuffer:true
+      const res = await fetch('/api/nexyfab/drawing/visualize/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imagePng: png, domain: domain?.slug ?? 'mech' }),
+      });
+      const j = (await res.json()) as { ok?: boolean; imageBase64?: string; error?: string };
+      if (!res.ok || !j.ok || !j.imageBase64) throw new Error(j.error ?? (ko ? '렌더링 실패' : 'render failed'));
+      setVizImg(j.imageBase64);
+    } catch (e) {
+      setVizErr((ko ? '실사 렌더링 실패: ' : 'AI render failed: ') + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setVizBusy(false);
+    }
+  }, [domain, ko]);
+
   const applyDesign = useCallback(
     async (intentObj: ComposeOk['intent'], scadStr: string, verifyObj: Verify) => {
       setIntent(intentObj);
@@ -552,6 +576,46 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
           {loading && (
             <div style={{ position: 'absolute', top: 12, left: 12, padding: '6px 12px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 12 }}>
               {status || (ko ? '처리 중…' : 'Working…')}
+            </div>
+          )}
+          {/* 실사 컨셉 렌더링(Gemini) — 현재 뷰 캔버스 PNG를 기하 기준으로 image-to-image */}
+          {scad && (
+            <button
+              type="button"
+              disabled={vizBusy}
+              onClick={runVisualize}
+              style={{
+                position: 'absolute', top: 12, right: 12, padding: '8px 14px', borderRadius: 8, border: 'none',
+                background: vizBusy ? 'rgba(0,0,0,0.5)' : 'linear-gradient(135deg,#7c3aed,#2563eb)', color: '#fff',
+                fontSize: 12.5, fontWeight: 700, cursor: vizBusy ? 'wait' : 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,.25)',
+              }}
+            >
+              {vizBusy ? (ko ? '🎨 렌더링 중…' : '🎨 Rendering…') : ko ? '🎨 실사 컨셉 (AI)' : '🎨 Photoreal concept (AI)'}
+            </button>
+          )}
+          {vizErr && (
+            <div style={{ position: 'absolute', top: 56, right: 12, maxWidth: 320, padding: '8px 12px', borderRadius: 8, background: 'rgba(153,27,27,.92)', color: '#fff', fontSize: 11.5 }}>
+              {vizErr}
+            </div>
+          )}
+          {vizImg && (
+            <div style={{ position: 'absolute', inset: 12, borderRadius: 10, background: 'rgba(15,23,42,.96)', display: 'flex', flexDirection: 'column', padding: 12, zIndex: 5 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <b style={{ color: '#fff', fontSize: 13 }}>{ko ? '🎨 실사 컨셉' : '🎨 Photoreal concept'}</b>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <a href={`data:image/png;base64,${vizImg}`} download="concept_render.png" style={{ padding: '5px 12px', borderRadius: 6, background: '#2563eb', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+                    {ko ? '다운로드' : 'Download'}
+                  </a>
+                  <button type="button" onClick={() => setVizImg(null)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: '#334155', color: '#fff', fontSize: 12, cursor: 'pointer' }}>
+                    {ko ? '닫기' : 'Close'}
+                  </button>
+                </div>
+              </div>
+              { }
+              <img src={`data:image/png;base64,${vizImg}`} alt="AI concept render" style={{ flex: 1, minHeight: 0, objectFit: 'contain', borderRadius: 8 }} />
+              <div style={{ marginTop: 8, fontSize: 11, color: '#fbbf24' }}>
+                ⚠ {ko ? '컨셉 이미지(비검증) — 기하는 3D 렌더 기준, 재질·조명·환경은 AI 제안. 치수·형상 근거로 사용 금지.' : 'Concept image (unverified) — geometry from the 3D render; materials/lighting are AI suggestions. Not for dimensional reference.'}
+              </div>
             </div>
           )}
         </div>

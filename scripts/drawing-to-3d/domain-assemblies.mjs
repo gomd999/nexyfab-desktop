@@ -13,25 +13,40 @@
 const num = (v, d) => (Number.isFinite(v) ? v : d);
 const P = (id, type, params, at = {}, material, role) => ({ id, type, params, at, ...(material ? { material } : {}), ...(role ? { role } : {}) });
 
-/** 건축: RC 라멘 1베이 1층 골조 — 기둥4 + 보4(X2·Y2) + 슬래브. 검증=domain-verify rc_beam. */
+/** 건축: RC 라멘 골조 — 다베이·다층(B3). 기둥 그리드 + 층별 외곽·내부 보 + 층별 슬래브. */
 function rcFrameAssembly(p) {
   const bx = num(p.bayX, 6000), by = num(p.bayY, 6000), H = num(p.storyH, 3300);
+  const nbx = Math.max(1, Math.min(4, Math.round(num(p.baysX, 1))));
+  const nby = Math.max(1, Math.min(4, Math.round(num(p.baysY, 1))));
+  const nf = Math.max(1, Math.min(5, Math.round(num(p.floors, 1))));
   const c = num(p.colSize, 500);            // 기둥 c×c
   const bw = num(p.beamWidth, 300), bh = num(p.beamHeight, 600);
   const st = num(p.slabThk, 150);
+  const W = nbx * bx, D = nby * by;
+  const storyT = H + st;                    // 층 피치(기둥+보구간 H, 그 위 슬래브 st)
   const parts = [];
-  // 기둥 4 (모서리, 기둥 중심간격 = bayX/bayY)
-  const cols = [[0, 0], [bx, 0], [0, by], [bx, by]];
-  cols.forEach(([x, y], i) => parts.push(P(`column${i + 1}`, 'box', { width: c, depth: c, height: H }, { tx: x - c / 2, ty: y - c / 2, tz: 0 }, 'concrete', 'column')));
-  // 보 4 — 기둥 상단 사이, 보 상단이 슬래브 하단(z=H)에 맞음
-  const bz = H - bh;
-  parts.push(P('beamX1', 'box', { width: bx - c, depth: bw, height: bh }, { tx: c / 2, ty: -bw / 2, tz: bz }, 'concrete', 'beam'));
-  parts.push(P('beamX2', 'box', { width: bx - c, depth: bw, height: bh }, { tx: c / 2, ty: by - bw / 2, tz: bz }, 'concrete', 'beam'));
-  parts.push(P('beamY1', 'box', { width: bw, depth: by - c, height: bh }, { tx: -bw / 2, ty: c / 2, tz: bz }, 'concrete', 'beam'));
-  parts.push(P('beamY2', 'box', { width: bw, depth: by - c, height: bh }, { tx: bx - bw / 2, ty: c / 2, tz: bz }, 'concrete', 'beam'));
-  // 슬래브 — 보 위(z=H), 외곽 = 베이 + 기둥 반폭 여유
-  parts.push(P('slab', 'box', { width: bx + c, depth: by + c, height: st }, { tx: -c / 2, ty: -c / 2, tz: H }, 'concrete', 'slab'));
-  return { name: 'RC 라멘 골조 (1베이)', domain: 'building', parts, floorAreaM2: +((bx * by) / 1e6).toFixed(2) };
+  for (let f = 0; f < nf; f++) {
+    const z0 = f * storyT;
+    // 기둥 그리드 (nbx+1)×(nby+1)
+    for (let i = 0; i <= nbx; i++) for (let j = 0; j <= nby; j++) {
+      parts.push(P(`col_f${f + 1}_${i}_${j}`, 'box', { width: c, depth: c, height: H }, { tx: i * bx - c / 2, ty: j * by - c / 2, tz: z0 }, 'concrete', 'column'));
+    }
+    // 보 — X방향 (nby+1)행 × nbx스팬, Y방향 (nbx+1)열 × nby스팬. 보 상단 = 슬래브 하단
+    const bz = z0 + H - bh;
+    for (let j = 0; j <= nby; j++) for (let i = 0; i < nbx; i++) {
+      parts.push(P(`bmX_f${f + 1}_${i}_${j}`, 'box', { width: bx - c, depth: bw, height: bh }, { tx: i * bx + c / 2, ty: j * by - bw / 2, tz: bz }, 'concrete', 'beam'));
+    }
+    for (let i = 0; i <= nbx; i++) for (let j = 0; j < nby; j++) {
+      parts.push(P(`bmY_f${f + 1}_${i}_${j}`, 'box', { width: bw, depth: by - c, height: bh }, { tx: i * bx - bw / 2, ty: j * by + c / 2, tz: bz }, 'concrete', 'beam'));
+    }
+    // 슬래브 — 층당 1장 (외곽 기둥 반폭 여유)
+    parts.push(P(`slab_f${f + 1}`, 'box', { width: W + c, depth: D + c, height: st }, { tx: -c / 2, ty: -c / 2, tz: z0 + H }, 'concrete', 'slab'));
+  }
+  return {
+    name: `RC 라멘 골조 (${nbx}×${nby}베이 ${nf}층)`, domain: 'building', parts,
+    floorAreaM2: +((W * D) / 1e6).toFixed(2),
+    frameGrid: { baysX: nbx, baysY: nby, floors: nf, bayX: bx, bayY: by, storyH: H, slabThk: st },
+  };
 }
 
 /** 조경: 목재 파고라 — 기둥4 + 거더2 + 서까래 N. 부재=방부목(timber). */
@@ -59,7 +74,8 @@ function pergolaAssembly(p) {
 /** 조경: 목재 데크 — 장선 N(Y방향) + 데크보드 M(X방향, 5mm 갭). */
 function timberDeckAssembly(p) {
   const W = num(p.width, 3600), D = num(p.depth, 2400);
-  const jw = num(p.joistWidth, 45), jh = num(p.joistHeight, 90);
+  // 장선 기본 45×140 — 스팬 2.4m·주거활하중에서 timber_beam 검토 통과 단면(45×90은 휨 초과)
+  const jw = num(p.joistWidth, 45), jh = num(p.joistHeight, 140);
   const spacing = num(p.joistSpacing, 450);
   const bw = num(p.boardWidth, 120), bt = num(p.boardThk, 21), gap = 5;
   const parts = [];
@@ -74,13 +90,20 @@ function timberDeckAssembly(p) {
   return { name: '목재 데크', domain: 'landscape', parts, floorAreaM2: +((W * D) / 1e6).toFixed(2) };
 }
 
-/** 인테리어: 카페 룸 — 바닥 + 카운터 + 테이블 그리드. furniture 메타로 수용인원 검증(occupancy_egress) 연동. */
+/** 인테리어: 카페 룸 — 바닥 + 벽 4면(출입문·창) + 카운터 + 테이블 그리드. furniture·exits 메타로 피난 검증 연동. */
 function cafeRoomAssembly(p) {
   const W = num(p.width, 8000), D = num(p.depth, 6000);
   const rows = Math.max(1, Math.round(num(p.tableRows, 2)));
   const cols = Math.max(1, Math.round(num(p.tableCols, 3)));
   const seatsPer = Math.max(1, Math.round(num(p.seatsPerTable, 4)));
+  const wallT = 150, wallH = 2700, doorW = num(p.doorWidth, 1000), doorH = 2100;
   const parts = [P('floor', 'box', { width: W, depth: D, height: 100 }, { tz: -100 }, 'concrete', 'floor')];
+  // 벽 4면 (바닥 외곽 바깥쪽) — 전면(y=0)에 출입문, 전면 좌측에 창
+  const doorX = W / 2 - doorW / 2;
+  parts.push(P('wall_front', 'wall_with_openings', { length: W, thickness: wallT, height: wallH, openings: [{ x: doorX, w: doorW, h: doorH, sill: 0 }, { x: 400, w: Math.max(600, doorX - 800), h: 1500, sill: 900 }] }, { tx: 0, ty: -wallT, tz: 0 }, 'concrete', 'wall'));
+  parts.push(P('wall_back', 'wall_with_openings', { length: W, thickness: wallT, height: wallH }, { tx: 0, ty: D, tz: 0 }, 'concrete', 'wall'));
+  parts.push(P('wall_left', 'wall_with_openings', { length: D, thickness: wallT, height: wallH }, { tx: 0, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall'));
+  parts.push(P('wall_right', 'wall_with_openings', { length: D, thickness: wallT, height: wallH }, { tx: W + wallT, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall'));
   // 카운터 — 통짜 박스는 재적 과대(날조) → 상판+전면+측판 패널 구조
   const cw = Math.min(3100, W * 0.4), cx = W - cw - 400, cy = D - 1100;
   parts.push(P('counter_top', 'box', { width: cw, depth: 800, height: 40 }, { tx: cx, ty: cy, tz: 1010 }, 'timber', 'counter'));
@@ -99,6 +122,9 @@ function cafeRoomAssembly(p) {
   return {
     name: '카페 레이아웃', domain: 'interior', parts,
     floorAreaM2: +((W * D) / 1e6).toFixed(2),
+    // 피난 검증용 메타 — 출입구(문) 위치·폭 (형상과 동일 소스에서 결정론 생성)
+    exits: [{ x: doorX + doorW / 2, y: 0, widthMm: doorW }],
+    roomBounds: { W, D },
     furniture: [
       { id: 'table', name: '테이블', count: nT, seats: 0 },
       { id: 'chair', name: '의자', count: nT * seatsPer, seats: 1 },
@@ -107,11 +133,43 @@ function cafeRoomAssembly(p) {
   };
 }
 
+/** 토목: 옹벽 연장 구간(C2) — 벽체+저판 box 분해. civilTakeoff 메타로 수량 룰엔진(터파기·거푸집·되메우기) 연동. */
+function retainingWallRunAssembly(p) {
+  const H = num(p.H, 3000), baseW = num(p.baseWidth, 2000), baseT = num(p.baseThickness, 400);
+  const stemT = num(p.stemThickness, 300), toe = num(p.toeLength, 600), L = num(p.length, 10000);
+  const parts = [
+    P('base', 'box', { width: baseW, depth: L, height: baseT }, { tx: 0, ty: 0, tz: 0 }, 'concrete', 'base'),
+    P('stem', 'box', { width: stemT, depth: L, height: H - baseT }, { tx: toe, ty: 0, tz: baseT }, 'concrete', 'wall'),
+  ];
+  return {
+    name: '옹벽 연장 구간', domain: 'civil', parts,
+    // 검증(C1)·수량(룰엔진) 공용 메타 — m 단위, retaining-wall-stability·takeoff 동일 기하
+    retainingWall: { H: H / 1000, stemThickness: stemT / 1000, baseWidth: baseW / 1000, baseThickness: baseT / 1000, toeLength: toe / 1000, length: L / 1000 },
+    civilTakeoff: [{ id: 'rw1', type: 'retaining_wall', H: H / 1000, stemThickness: stemT / 1000, baseWidth: baseW / 1000, baseThickness: baseT / 1000, length: L / 1000 }],
+  };
+}
+
 export const ASSEMBLY_TEMPLATES = {
+  civil: [
+    {
+      id: 'retaining_wall_run', labelKo: '옹벽 연장 구간', labelEn: 'Retaining wall run', build: retainingWallRunAssembly,
+      params: [
+        { name: 'H', labelKo: '벽고(저면~상단)', unit: 'mm', default: 3000, min: 500, max: 8000 },
+        { name: 'baseWidth', labelKo: '저판 폭', unit: 'mm', default: 2000, min: 500, max: 6000 },
+        { name: 'baseThickness', labelKo: '저판 두께', unit: 'mm', default: 400, min: 150, max: 1200 },
+        { name: 'stemThickness', labelKo: '벽체 두께', unit: 'mm', default: 300, min: 150, max: 1000 },
+        { name: 'toeLength', labelKo: '앞굽 길이', unit: 'mm', default: 600, min: 0, max: 3000 },
+        { name: 'length', labelKo: '연장', unit: 'mm', default: 10000, min: 1000, max: 20000 },
+      ],
+    },
+  ],
   building: [
     {
-      id: 'rc_frame', labelKo: 'RC 라멘 골조 (1베이)', labelEn: 'RC frame (single bay)', build: rcFrameAssembly,
+      id: 'rc_frame', labelKo: 'RC 라멘 골조 (다베이·다층)', labelEn: 'RC frame (multi-bay/story)', build: rcFrameAssembly,
       params: [
+        { name: 'baysX', labelKo: '베이 수 X', unit: '', default: 1, min: 1, max: 4 },
+        { name: 'baysY', labelKo: '베이 수 Y', unit: '', default: 1, min: 1, max: 4 },
+        { name: 'floors', labelKo: '층수', unit: '', default: 1, min: 1, max: 5 },
         { name: 'bayX', labelKo: '베이 X (기둥 중심간)', unit: 'mm', default: 6000, min: 3000, max: 12000 },
         { name: 'bayY', labelKo: '베이 Y', unit: 'mm', default: 6000, min: 3000, max: 12000 },
         { name: 'storyH', labelKo: '층고', unit: 'mm', default: 3300, min: 2400, max: 6000 },
@@ -152,6 +210,7 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'tableRows', labelKo: '테이블 행', unit: '', default: 2, min: 1, max: 5 },
         { name: 'tableCols', labelKo: '테이블 열', unit: '', default: 3, min: 1, max: 6 },
         { name: 'seatsPerTable', labelKo: '테이블당 좌석', unit: '', default: 4, min: 1, max: 8 },
+        { name: 'doorWidth', labelKo: '출입문 폭', unit: 'mm', default: 1000, min: 800, max: 2400 },
       ],
     },
   ],

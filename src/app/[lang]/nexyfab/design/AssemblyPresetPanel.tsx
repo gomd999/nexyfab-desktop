@@ -18,6 +18,19 @@ interface Template { domain: string; id: string; labelKo: string; labelEn: strin
 interface AssemblyPart { id?: string; type?: string; material?: string; role?: string }
 interface Structural { totalMassKg?: number; warnings?: string[]; ok?: boolean }
 interface Usage { key: string; kNm2: number; label: string }
+interface IntResp {
+  ok: boolean; error?: string;
+  travel?: { maxTravelM: number; limitM: number; pass: boolean; unreachableM2: number; limitNote?: string };
+  egress?: { verdict?: string; derived?: { doorWidthSumMm: number; seatCount: number }; error?: string | null } | null;
+  finishes?: { floorM2: number; wallM2: number; ceilingM2: number };
+  disclaimer?: string;
+}
+interface LsResp {
+  ok: boolean; error?: string;
+  member?: { section: string; spanMm: number; spacingMm: number; verdict?: string; load?: { total_kNm: number; liveRef?: string }; error?: string | null } | null;
+  wind?: { skipped?: boolean; note?: string; FS?: number; worst?: string; pass?: boolean; anchorUpliftPerPost_kN?: number; fsLimit?: number } | null;
+  disclaimer?: string;
+}
 interface ChainCheck { verdict?: string; error?: string | null }
 interface ChainResp {
   ok: boolean; error?: string;
@@ -69,21 +82,102 @@ export default function AssemblyPresetPanel({
       .catch(() => {});
   }, [domain]);
 
+  // 공용: 체인 리포트 HTML 다운로드 (라우트 format:'html')
+  const downloadHtmlReport = useCallback(async (url: string, bodyObj: Record<string, unknown>, filename: string) => {
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...bodyObj, format: 'html' }) });
+      const j = (await r.json()) as { html?: string };
+      if (!j.html) throw new Error('no html');
+      const blobUrl = URL.createObjectURL(new Blob([j.html], { type: 'text/html' }));
+      const a = document.createElement('a'); a.href = blobUrl; a.download = filename; a.click();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
+    } catch {
+      setMsg(ko ? '리포트 HTML 생성 실패' : 'report HTML failed');
+    }
+  }, [ko]);
+
+  // 토목 체인 (civil 전용): 옹벽 안정 — 단면=형상 메타 자동 파생, 토질만 입력
+  const [cvP, setCvP] = useState<Record<string, number>>({ gammaBackfill: 18, phiBackfill: 30, baseFriction: 0.5, allowableBearing: 200 });
+  const [cv, setCv] = useState<{ ok?: boolean; verdict?: string; error?: string; checks?: Record<string, { FS?: number; pass?: boolean }> } | null>(null);
+  const [cvBusy, setCvBusy] = useState(false);
+  const civilBody = useCallback(() => ({
+    intent: built?.assembly, domain: 'civil', calculatorId: 'retaining_wall_stability', params: cvP,
+  }), [built, cvP]);
+  const runCivil = useCallback(async () => {
+    if (!built?.assembly) return;
+    setCvBusy(true); setCv(null);
+    try {
+      const r = await fetch('/api/nexyfab/drawing/verify-domain/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(civilBody()) });
+      setCv(await r.json());
+    } catch (e) {
+      setCv({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setCvBusy(false);
+    }
+  }, [built, civilBody]);
+
+  // 조경 체인 (landscape 전용, Wave A 조경 L1+L2)
+  const [lsP, setLsP] = useState<Record<string, number | string>>({ species: 'pine', grade: 2, usage: 'residence_living', windPressure: 0, extraW: 0 });
+  const [ls, setLs] = useState<LsResp | null>(null);
+  const [lsBusy, setLsBusy] = useState(false);
+
+  const lsBody = useCallback(() => ({
+    assembly: built?.assembly,
+    params: {
+      species: lsP.species, grade: Number(lsP.grade), usage: lsP.usage,
+      extraW_kNm: Number(lsP.extraW) || 0,
+      ...(Number(lsP.windPressure) > 0 ? { windPressure_kNm2: Number(lsP.windPressure) } : {}),
+    },
+  }), [built, lsP]);
+  const runLandscape = useCallback(async () => {
+    if (!built?.assembly) return;
+    setLsBusy(true); setLs(null);
+    try {
+      const res = await fetch('/api/nexyfab/drawing/landscape-check/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lsBody()),
+      });
+      setLs((await res.json()) as LsResp);
+    } catch (e) {
+      setLs({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setLsBusy(false);
+    }
+  }, [built, lsBody]);
+
+  // 인테리어 체인 (interior 전용, Wave A I2+I3)
+  const [intR, setIntR] = useState<IntResp | null>(null);
+  const [intBusy, setIntBusy] = useState(false);
+  const runInterior = useCallback(async () => {
+    if (!built?.assembly) return;
+    setIntBusy(true); setIntR(null);
+    try {
+      const res = await fetch('/api/nexyfab/drawing/interior-check/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assembly: built.assembly, params: {} }),
+      });
+      setIntR((await res.json()) as IntResp);
+    } catch (e) {
+      setIntR({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setIntBusy(false);
+    }
+  }, [built]);
+
+  const chainBody = useCallback(() => ({
+    assembly: built?.assembly,
+    params: {
+      usage: chainP.usage, fck: Number(chainP.fck), fy: Number(chainP.fy),
+      beamAs: Number(chainP.beamAs), beamAv: Number(chainP.beamAv), beamS: Number(chainP.beamS),
+      colAst: Number(chainP.colAst),
+      footing: { B: Number(chainP.fB), L: Number(chainP.fL), t: Number(chainP.fT), d: Number(chainP.fD), qAllow: Number(chainP.qAllow) },
+    },
+  }), [built, chainP]);
   const runChain = useCallback(async () => {
     if (!built?.assembly) return;
     setChainBusy(true); setChain(null);
     try {
       const res = await fetch('/api/nexyfab/drawing/load-path/', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assembly: built.assembly,
-          params: {
-            usage: chainP.usage, fck: Number(chainP.fck), fy: Number(chainP.fy),
-            beamAs: Number(chainP.beamAs), beamAv: Number(chainP.beamAv), beamS: Number(chainP.beamS),
-            colAst: Number(chainP.colAst),
-            footing: { B: Number(chainP.fB), L: Number(chainP.fL), t: Number(chainP.fT), d: Number(chainP.fD), qAllow: Number(chainP.qAllow) },
-          },
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(chainBody()),
       });
       setChain((await res.json()) as ChainResp);
     } catch (e) {
@@ -91,7 +185,7 @@ export default function AssemblyPresetPanel({
     } finally {
       setChainBusy(false);
     }
-  }, [built, chainP]);
+  }, [built, chainBody]);
 
   useEffect(() => {
     let alive = true;
@@ -217,11 +311,162 @@ export default function AssemblyPresetPanel({
           {pkgBusy ? (ko ? '패키지 생성 중…' : 'Packaging…') : ko ? '📦 설계 패키지 다운로드' : '📦 Download design package'}
         </button>
       )}
+      {built && (
+        <button
+          type="button"
+          onClick={() => downloadHtmlReport('/api/nexyfab/drawing/research/', { assembly: built.assembly, domain }, 'related_research.html')}
+          style={{ ...rptBtn, width: '100%' }}
+        >
+          📚 {ko ? '관련 논문 부록 (OpenAlex·Crossref 실인용)' : 'Related papers (real citations)'}
+        </button>
+      )}
 
       {msg && <div style={{ marginTop: 6, fontSize: 11, color: 'var(--nx-text-2, #46505e)' }}>{msg}</div>}
       {warnings.length > 0 && (
         <div style={{ marginTop: 6, fontSize: 11, color: '#991b1b' }}>
           {warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
+        </div>
+      )}
+
+      {/* 토목 체인 (civil): 옹벽 안정 — 단면=형상 자동 파생(C1), 토질만 입력 */}
+      {domain === 'civil' && built && (
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
+          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4 }}>
+            {ko ? '옹벽 안정 검증' : 'Retaining wall stability'}
+            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
+              {ko ? '단면 자동 파생 · 토질만 입력' : 'section from shape · soil only'}
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 6 }}>
+            {([['gammaBackfill', ko ? '뒤채움 γ kN/m³' : 'γ backfill'], ['phiBackfill', ko ? '내부마찰각 °' : 'φ'], ['baseFriction', ko ? '저면 마찰 μ' : 'μ base'], ['allowableBearing', ko ? '허용지지력 kPa' : 'qAllow']] as Array<[string, string]>).map(([k, lb]) => (
+              <label key={k} style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{lb}</span>
+                <input type="number" step="0.1" value={cvP[k]} onChange={(e) => setCvP((s) => ({ ...s, [k]: Number(e.target.value) }))} style={inpStyle} />
+              </label>
+            ))}
+          </div>
+          <button type="button" onClick={runCivil} disabled={cvBusy} style={{ ...genStyle, background: '#b45309' }}>
+            {cvBusy ? (ko ? '검증 중…' : 'Checking…') : ko ? '🧱 옹벽 안정 검증 실행' : '🧱 Run stability check'}
+          </button>
+          {cv && !cv.ok && <div style={{ marginTop: 5, fontSize: 11, color: '#991b1b' }}>{cv.error}</div>}
+          {cv?.ok && (
+            <div style={{ marginTop: 6, fontSize: 11 }}>
+              {Object.entries(cv.checks ?? {}).map(([k, c]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
+                  <span>{k}{typeof c.FS === 'number' ? ` FS ${c.FS.toFixed(2)}` : ''}</span>
+                  <b style={{ color: c.pass ? '#16a34a' : '#dc2626' }}>{c.pass ? 'PASS' : 'FAIL'}</b>
+                </div>
+              ))}
+              <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/verify-domain/', civilBody(), 'retaining_wall_check.html')} style={rptBtn}>
+                📄 {ko ? '리포트 HTML' : 'Report HTML'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 인테리어 체인 (interior · Wave A I2+I3): 보행거리 BFS + 피난폭 + 마감 물량 */}
+      {domain === 'interior' && built && (
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
+          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4 }}>
+            {ko ? '피난·마감 검증' : 'Egress & finish check'}
+            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
+              {ko ? '보행거리 BFS 실측 · 문폭 형상 파생' : 'travel BFS · door width from shape'}
+            </span>
+          </div>
+          <button type="button" onClick={runInterior} disabled={intBusy} style={{ ...genStyle, background: '#7c3aed' }}>
+            {intBusy ? (ko ? '검증 중…' : 'Checking…') : ko ? '🚪 피난·마감 검증 실행' : '🚪 Run egress & finish check'}
+          </button>
+          {intR && !intR.ok && <div style={{ marginTop: 5, fontSize: 11, color: '#991b1b' }}>{intR.error}</div>}
+          {intR?.ok && (
+            <div style={{ marginTop: 6, fontSize: 11 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
+                <span>{ko ? '최원점 보행거리' : 'Max travel'} {intR.travel?.maxTravelM}m / {intR.travel?.limitM}m{intR.travel && intR.travel.unreachableM2 > 0 ? ` · ⚠${ko ? '미도달' : 'unreachable'} ${intR.travel.unreachableM2}m²` : ''}</span>
+                <b style={{ color: intR.travel?.pass ? '#16a34a' : '#dc2626' }}>{intR.travel?.pass ? 'PASS' : 'FAIL'}</b>
+              </div>
+              {intR.egress && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
+                  <span>{ko ? '수용·피난폭' : 'Occupancy/egress'} <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '문폭합' : 'doors'} {intR.egress.derived?.doorWidthSumMm}mm · {ko ? '좌석' : 'seats'} {intR.egress.derived?.seatCount}</span></span>
+                  <b style={{ color: intR.egress.verdict === 'PASS' ? '#16a34a' : '#dc2626' }}>{intR.egress.verdict}</b>
+                </div>
+              )}
+              {intR.finishes && (
+                <div style={{ padding: '2px 0', color: 'var(--nx-text-2, #46505e)' }}>
+                  {ko ? '마감' : 'Finish'}: {ko ? '바닥' : 'floor'} {intR.finishes.floorM2} · {ko ? '벽' : 'wall'} {intR.finishes.wallM2} · {ko ? '천장' : 'ceiling'} {intR.finishes.ceilingM2} m²
+                </div>
+              )}
+              <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/interior-check/', { assembly: built?.assembly, params: {} }, 'egress_finish_check.html')} style={rptBtn}>
+                📄 {ko ? '리포트 HTML' : 'Report HTML'}
+              </button>
+              <div style={{ marginTop: 4, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{intR.disclaimer}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 조경 체인 (landscape · Wave A L1+L2): 목재 부재 검토 + 풍하중 전도 */}
+      {domain === 'landscape' && built && (
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
+          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4 }}>
+            {ko ? '목재 부재·풍하중 검증' : 'Timber member & wind check'}
+            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
+              {ko ? 'KDS 41 50 10 허용응력 · 단면·스팬 형상 파생' : 'KDS allowable stress · section from shape'}
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 6 }}>
+            <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? '수종군' : 'Species'}</span>
+              <select value={String(lsP.species)} onChange={(e) => setLsP((s) => ({ ...s, species: e.target.value }))} style={selStyle}>
+                <option value="larch">{ko ? '낙엽송류' : 'Larch'}</option>
+                <option value="pine">{ko ? '소나무류' : 'Pine'}</option>
+                <option value="koreanpine">{ko ? '잣나무류' : 'Korean pine'}</option>
+                <option value="cedar">{ko ? '삼나무류' : 'Cedar'}</option>
+              </select>
+            </label>
+            <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? '등급' : 'Grade'}</span>
+              <select value={String(lsP.grade)} onChange={(e) => setLsP((s) => ({ ...s, grade: Number(e.target.value) }))} style={selStyle}>
+                {[1, 2, 3].map((g) => <option key={g} value={g}>{g}{ko ? '등급' : ''}</option>)}
+              </select>
+            </label>
+            <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? '용도(데크 활하중)' : 'Usage (deck live)'}</span>
+              <select value={String(lsP.usage)} onChange={(e) => setLsP((s) => ({ ...s, usage: e.target.value }))} style={selStyle}>
+                <option value="residence_living">{ko ? '주거 2.0' : 'Residential 2.0'}</option>
+                <option value="roof_garden">{ko ? '정원·집회 5.0' : 'Garden/assembly 5.0'}</option>
+                <option value="assembly_moving">{ko ? '집회(이동석) 5.0' : 'Assembly 5.0'}</option>
+              </select>
+            </label>
+            <label style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? '풍압 kN/m² (0=생략)' : 'Wind kN/m² (0=skip)'}</span>
+              <input type="number" step="0.1" value={lsP.windPressure as number} onChange={(e) => setLsP((s) => ({ ...s, windPressure: Number(e.target.value) }))} style={inpStyle} />
+            </label>
+          </div>
+          <button type="button" onClick={runLandscape} disabled={lsBusy} style={{ ...genStyle, background: '#15803d' }}>
+            {lsBusy ? (ko ? '검증 중…' : 'Checking…') : ko ? '🌳 부재·풍하중 검증 실행' : '🌳 Run timber & wind check'}
+          </button>
+          {ls && !ls.ok && <div style={{ marginTop: 5, fontSize: 11, color: '#991b1b' }}>{ls.error}</div>}
+          {ls?.ok && (
+            <div style={{ marginTop: 6, fontSize: 11 }}>
+              {ls.member && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
+                  <span>{ko ? '장선/서까래' : 'Joist'} {ls.member.section} L{ls.member.spanMm}@{ls.member.spacingMm} <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>w {ls.member.load?.total_kNm}kN/m</span></span>
+                  <b style={{ color: ls.member.verdict === 'PASS' ? '#16a34a' : '#dc2626' }}>{ls.member.verdict}</b>
+                </div>
+              )}
+              {ls.wind && !ls.wind.skipped && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
+                  <span>{ko ? '전도' : 'Tip-over'} FS {ls.wind.FS} ({ls.wind.worst}){!ls.wind.pass && ls.wind.anchorUpliftPerPost_kN ? ` — ${ko ? '앵커' : 'anchor'} ${ls.wind.anchorUpliftPerPost_kN}kN/${ko ? '본' : 'post'}` : ''}</span>
+                  <b style={{ color: ls.wind.pass ? '#16a34a' : '#dc2626' }}>{ls.wind.pass ? 'PASS' : 'FAIL'}</b>
+                </div>
+              )}
+              {ls.wind?.skipped && <div style={{ color: 'var(--nx-text-3, #6b7684)' }}>{ls.wind.note}</div>}
+              <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/landscape-check/', lsBody(), 'timber_wind_check.html')} style={rptBtn}>
+                📄 {ko ? '리포트 HTML' : 'Report HTML'}
+              </button>
+              <div style={{ marginTop: 4, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{ls.disclaimer}</div>
+            </div>
+          )}
         </div>
       )}
 
@@ -272,6 +517,9 @@ export default function AssemblyPresetPanel({
                     <b style={{ color: r.v === 'PASS' ? '#16a34a' : r.v === 'FAIL' ? '#dc2626' : '#d97706' }}>{r.v}</b>
                   </div>
                 ))}
+              <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/load-path/', chainBody(), 'load_path_check.html')} style={rptBtn}>
+                📄 {ko ? '리포트 HTML' : 'Report HTML'}
+              </button>
               <div style={{ marginTop: 4, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{chain.disclaimer}</div>
             </div>
           )}
@@ -292,4 +540,8 @@ const inpStyle: React.CSSProperties = {
 const genStyle: React.CSSProperties = {
   width: '100%', padding: '8px 12px', borderRadius: 7, border: 'none',
   background: 'var(--nx-accent, #2563eb)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+};
+const rptBtn: React.CSSProperties = {
+  marginTop: 5, padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+  border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'var(--nx-text, #1a2230)',
 };

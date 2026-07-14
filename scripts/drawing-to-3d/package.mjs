@@ -11,7 +11,7 @@ import { colorOf } from './assembly.mjs';
 const TYPE_MAT = {
   box: 'STS', plate_with_holes: '판재', stepped_plate: '판재', base_plate: '판재', l_bracket: '브래킷', bent_sheet: '판금',
   flange: '플랜지', tube: '관', rect_tube: '각관', cylinder: '봉/실린더', gusset: '거셋',
-  spur_gear: '기어', hex_bolt: '볼트', sheet_profile: '판금',
+  spur_gear: '기어', hex_bolt: '볼트', sheet_profile: '판금', wall_with_openings: '벽체',
 };
 const styleOf = (p) => ({ c: colorOf(p), mat: p.material || TYPE_MAT[p.type] || '-' });
 
@@ -37,6 +37,7 @@ function dimStr(type, p) {
     case 'spur_gear': return `m${p.module} z${p.teeth} t${p.thickness}${p.boreDia > 0 ? ` ⌀${p.boreDia}` : ''}`;
     case 'hex_bolt': return `M${p.threadDia}×${p.length}`;
     case 'sheet_profile': return `t${p.thickness} L${p.width} ${p.segments?.length ?? 0}면`;
+    case 'wall_with_openings': return `${p.length}×${p.height} t${p.thickness}${p.openings?.length ? ` 개구${p.openings.length}` : ''}`;
     default: return '';
   }
 }

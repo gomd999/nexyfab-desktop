@@ -51,6 +51,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: {
     list?: boolean; intent?: unknown; domain?: string; calculatorId?: string;
     memberRef?: string | number; params?: Record<string, number>; standardId?: string;
+    format?: string; title?: string;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -80,6 +81,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       params: body.params ?? {},
       standardId: body.standardId ?? 'KDS',
     });
+    // format=html — 옹벽 안정 검토 인쇄양식 리포트 (chain-reports)
+    if (body.format === 'html' && body.calculatorId === 'retaining_wall_stability') {
+      const { join: j2 } = await import('node:path');
+      const { pathToFileURL: p2 } = await import('node:url');
+      const rpt = (await import(/* webpackIgnore: true */ p2(j2(process.cwd(), 'scripts', 'drawing-to-3d', 'chain-reports.mjs')).href)) as { retainingWallReport: (r: unknown, o?: Record<string, unknown>) => string };
+      return NextResponse.json({ result, html: rpt.retainingWallReport(result, { title: body.title ?? '옹벽 안정 검토' }) });
+    }
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json({ ok: false, error: 'verify failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 502 });

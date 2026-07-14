@@ -55,6 +55,11 @@ const TARGETS = [
   { code: '345010', tags: ['korea', 'kds', 'landscape', 'structures', 'P4'] },        // 조경구조물
   { code: '346010', tags: ['korea', 'kds', 'landscape', 'pavement', 'P4'] },          // 보도포장
   { code: '347010', tags: ['korea', 'kds', 'landscape', 'river', 'P4'] },             // 자연친화적 하천조경
+  // ── 목구조 (Wave A 조경 — 파고라·데크 부재 계산기 근거. 2026-07-14 API 프로브 실존 확인, 2022 현행) ──
+  { code: '415005', tags: ['korea', 'kds', 'timber', 'building', 'landscape', 'general'] },   // 목구조 일반
+  { code: '415010', tags: ['korea', 'kds', 'timber', 'building', 'landscape', 'allowable-stress'] }, // 목구조 재료 및 허용응력
+  { code: '415015', tags: ['korea', 'kds', 'timber', 'building', 'landscape', 'design-req'] },  // 목구조 설계요구사항
+  { code: '415020', tags: ['korea', 'kds', 'timber', 'building', 'landscape', 'member-design'] }, // 목구조 부재설계
 ];
 
 const args = process.argv.slice(2);

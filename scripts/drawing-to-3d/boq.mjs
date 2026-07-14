@@ -8,6 +8,7 @@
 import { partVolume, DENSITY } from './structural.mjs';
 import { buildAssembly } from './assembly.mjs';
 import { gearPoly, sheetPoly, hexPts, polyArea, polyPerimeter, boltDims } from './reconstruct.mjs';
+import { takeoff } from '../engineering-core/quantity/takeoff.mjs';
 
 const A = Math.PI / 4;
 // 부품 표면적 mm² (도장·산세·도금 물량)
@@ -34,6 +35,10 @@ function surfaceMm2(type, p) {
     case 'sheet_profile': {
       const poly = sheetPoly(p);
       return 2 * polyArea(poly) + polyPerimeter(poly) * p.width;
+    }
+    case 'wall_with_openings': {
+      const face = p.length * p.height - (p.openings ?? []).reduce((s, o) => s + o.w * o.h, 0);
+      return 2 * face + 2 * (p.length + p.height) * p.thickness; // 양면(개구 공제) + 둘레 엣지
     }
     default: return 0;
   }
@@ -110,6 +115,19 @@ export function boqReport(assembly, { title = '물량·작업량 산출서', rat
   if (nonMech) {
     const matRows = Object.entries(b.byMaterial).map(([m, v]) => `<tr><td style="text-align:left">${esc(m)}</td><td>${v.count}</td><td>${f(v.volM3, 3)}</td><td>${f(v.massKg, 1)}</td><td>${f(v.surfaceM2)}</td></tr>`).join('');
     const nmRows = b.items.map((x) => `<tr><td style="text-align:left">${esc(x.id)}</td><td>${esc(x.type)}</td><td>${esc(x.material)}</td><td>${f(x.volM3, 4)}</td><td>${f(x.massKg)}</td><td>${f(x.surfaceM2, 3)}</td></tr>`).join('');
+    // C2: 규칙 기반 형상-밖 물량(터파기·거푸집·되메우기…) — 수량 룰엔진(civilTakeoff 메타) 합본, 산출근거 전항목 공개
+    let ruleSection = '';
+    if (Array.isArray(assembly.civilTakeoff) && assembly.civilTakeoff.length) {
+      try {
+        const to = takeoff(assembly.civilTakeoff);
+        const ruleRows = to.elements.flatMap((el) => el.items.map((it) =>
+          `<tr><td style="text-align:left">${esc(el.elementId)}</td><td style="text-align:left">${esc(it.item)}</td><td>${esc(it.spec)}</td><td>${it.qty}</td><td>${esc(it.unit)}</td><td style="text-align:left;font-size:10px;color:#64748b">${esc(it.basis)}</td></tr>`)).join('');
+        const assum = to.elements.flatMap((el) => el.assumptions ?? []);
+        ruleSection = `<h2>③ 규칙 물량 (토공·거푸집 — 수량 룰엔진)</h2>
+<table><tr><th>요소</th><th>항목</th><th>규격</th><th>수량</th><th>단위</th><th>산출근거</th></tr>${ruleRows}</table>
+${assum.length ? `<div class="note">가정: ${assum.map(esc).join(' · ')}</div>` : ''}`;
+      } catch { ruleSection = ''; }
+    }
     return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>@page{size:A4 portrait;margin:12mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937;font-size:13px}
 .nf-print-bar{position:sticky;top:0;z-index:9;background:#1f2937;color:#fff;padding:7px 16px;font-size:12.5px;display:flex;gap:12px;align-items:center}.nf-print-bar button{background:#2563eb;color:#fff;border:0;padding:5px 13px;border-radius:6px;cursor:pointer}
@@ -124,7 +142,8 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 <div class="kpi"><div><b>${f(b.totalVolM3, 2)} m³</b><span>총 부피(재적)</span></div><div><b>${(b.totalMassKg / 1000).toFixed(1)} t</b><span>총 질량</span></div><div><b>${b.surfaceM2} ㎡</b><span>표면적(거푸집·마감 개산)</span></div><div><b>${b.parts}</b><span>부재 수</span></div></div>
 <h2>① 재질별 집계</h2><table><tr><th>재질</th><th>부재</th><th>부피(m³)</th><th>질량(kg)</th><th>표면적(㎡)</th></tr>${matRows}</table>
 <h2>② 부재별 물량</h2><table><tr><th>부재</th><th>Type</th><th>재질</th><th>부피(m³)</th><th>질량(kg)</th><th>표면적(㎡)</th></tr>${nmRows}</table>
-<div class="note">⚠ 물량=형상 결정론(신뢰) · 표면적=거푸집/도장/마감 개산(공제 미반영) · 철근·배근·기초·마감재는 형상 외 — 미산출 · 비법정 참고자료.</div>
+${ruleSection}
+<div class="note">⚠ 물량=형상 결정론(신뢰) · 규칙 물량=설계수량(표준품셈 할증·품 미적용) · 표면적=거푸집/도장/마감 개산(공제 미반영) · 철근·배근·마감재는 형상 외 — 미산출 · 비법정 참고자료.</div>
 </div></body></html>`;
   }
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>

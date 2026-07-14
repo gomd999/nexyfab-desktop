@@ -28,6 +28,9 @@ export const TYPE_SCHEMAS = Object.fromEntries(ALL_TYPES.map((t) => {
     props.angles = { type: 'ARRAY', items: NUM };
     required.push('segments', 'angles');
   }
+  if (t === 'wall_with_openings') {
+    props.openings = { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, w: NUM, h: NUM, sill: NUM }, required: ['x', 'w', 'h'] } };
+  }
   return [t, { type: 'OBJECT', required, properties: props }];
 }));
 
@@ -47,4 +50,5 @@ export const TYPE_HINTS = {
   spur_gear: 'module,teeth,thickness,boreDia (인벌류트 스퍼기어 — 외경=m(z+2), boreDia 0=무보어)',
   hex_bolt: 'threadDia,length (육각볼트 M3~M36 — 머리치수 ISO 표준표 자동, 나사산 미형상 관례)',
   sheet_profile: 'thickness,width,segments[],angles[] (다단 절곡 판금 — 세그먼트 길이열+절곡각열(|a|≤120°), Z/햇/채널 단면. width=압출 길이)',
+  wall_with_openings: 'length,thickness,height,openings[{x,w,h,sill}] (벽체 — X길이·Y두께·Z높이, 문=sill 0·창=sill>0)',
 };

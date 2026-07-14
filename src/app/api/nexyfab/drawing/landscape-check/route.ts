@@ -1,11 +1,8 @@
 /**
- * /api/nexyfab/drawing/load-path — 건축 하중경로 자동 체인 (Wave A · B1).
+ * /api/nexyfab/drawing/landscape-check — 조경 구조 체인 (Wave A · 조경 L1+L2).
  *
- * GET  → 활하중 용도 목록 (KDS 41 12 00 표 3.2-1)
- * POST { assembly, params } → 슬래브 자중+활하중 → 하중조합 → 보(rc_beam) →
- *        기둥(rc_column_pm) → 기초(isolated_footing) 체인 결과.
- *
- * 하중은 지어내지 않음: 자중=형상 결정론, 활하중=KDS 표(용도 선택), 철근·기초·지반=입력.
+ * POST { assembly, params } → 목재 부재 검토(timber_beam, 단면·스팬·간격 형상 파생)
+ * + 풍하중 전도(입력 풍압 → FS·앵커 인발). 풍압 미입력 시 전도는 정직 생략.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { join } from 'node:path';
@@ -16,17 +13,14 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-type Mod = {
-  loadPathCheck: (assembly: unknown, params: Record<string, unknown>) => unknown;
-  listUsages: () => Array<{ key: string; kNm2: number; label: string }>;
-};
-type RptMod = { loadPathReport: (r: unknown, o?: Record<string, unknown>) => string };
+type Mod = { landscapeCheck: (assembly: unknown, params: Record<string, unknown>) => unknown };
+type RptMod = { landscapeReport: (r: unknown, o?: Record<string, unknown>) => string };
 
 let _mod: Mod | null = null;
 let _rpt: RptMod | null = null;
 async function load(): Promise<Mod> {
   if (_mod) return _mod;
-  const p = join(process.cwd(), 'scripts', 'drawing-to-3d', 'load-path.mjs');
+  const p = join(process.cwd(), 'scripts', 'drawing-to-3d', 'landscape-check.mjs');
   _mod = (await import(/* webpackIgnore: true */ pathToFileURL(p).href)) as Mod;
   return _mod;
 }
@@ -37,18 +31,9 @@ async function loadRpt(): Promise<RptMod> {
   return _rpt;
 }
 
-export async function GET(): Promise<NextResponse> {
-  try {
-    const mod = await load();
-    return NextResponse.json({ ok: true, usages: mod.listUsages(), ref: 'KDS 41 12 00:2022 표 3.2-1' });
-  } catch (e) {
-    return NextResponse.json({ ok: false, error: 'load failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 });
-  }
-}
-
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const ip = getTrustedClientIp(req.headers);
-  const rl = rateLimit(`drawing-loadpath:${ip}`, 20, 60_000);
+  const rl = rateLimit(`drawing-landscape:${ip}`, 20, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
 
   let body: { assembly?: { parts?: unknown[]; name?: string }; params?: Record<string, unknown>; format?: string };
@@ -63,14 +48,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const mod = await load();
-    const result = mod.loadPathCheck(body.assembly, body.params ?? {});
-    // format=html → 인쇄양식 리포트 HTML 동봉 (설계 패키지 문서들과 동일 스타일)
+    const result = mod.landscapeCheck(body.assembly, body.params ?? {});
     if (body.format === 'html') {
       const rpt = await loadRpt();
-      return NextResponse.json({ result, html: rpt.loadPathReport(result, { title: body.assembly?.name ?? '하중경로 검증' }) });
+      return NextResponse.json({ result, html: rpt.landscapeReport(result, { title: body.assembly?.name ?? '조경 구조 검증' }) });
     }
     return NextResponse.json(result);
   } catch (e) {
-    return NextResponse.json({ ok: false, error: 'load-path failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 502 });
+    return NextResponse.json({ ok: false, error: 'landscape-check failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 502 });
   }
 }

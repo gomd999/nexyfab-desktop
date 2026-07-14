@@ -121,13 +121,17 @@ export const DOMAIN_VERIFIERS = {
   'civil': {
     labelKo: '토목 소구조물',
     labelEn: 'Civil small structures',
-    note: '옹벽 안정(전도·활동·지지력). 단면·토질·지지력은 설계 조건 — 전부 입력. (형상검증=치수·manifold는 공통코어)',
+    note: '옹벽 안정(전도·활동·지지력). 옹벽 단면(H·저판·벽체)은 형상에서 자동 파생(C1), 토질·지지력만 입력.',
     calculators: [
       {
         id: 'retaining_wall_stability',
         labelKo: '옹벽 안정 (전도·활동·지지력)',
-        derive: () => ({}),
-        // 이 계산기는 치수를 미터(m)로 받는다(형상 mm와 별개 — 전부 사용자 입력).
+        // C1: 옹벽 프리셋 intent.retainingWall 메타(m)에서 단면 자동 파생 — 없으면 사용자 입력 폴백.
+        derive: (m, extra) => {
+          const rw = extra?._rw;
+          if (!rw) return {};
+          return { H: rw.H, stemThickness: rw.stemThickness, baseWidth: rw.baseWidth, baseThickness: rw.baseThickness, toeLength: rw.toeLength };
+        },
         userInputs: [
           { name: 'H', labelKo: '벽고', unit: 'm', min: 0, max: 12 },
           { name: 'stemThickness', labelKo: '벽체 두께', unit: 'm', default: 0.3, min: 0 },
@@ -170,8 +174,21 @@ export const DOMAIN_VERIFIERS = {
   'landscape': {
     labelKo: '조경 구조·배수',
     labelEn: 'Landscape / drainage',
-    note: '배수는 형상이 아니라 유역·강우 조건 — 전부 입력. (형상검증=치수·manifold는 공통코어가 담당)',
+    note: '목재 부재(장선·보)는 단면·스팬을 형상에서 파생 → timber_beam(KDS 41 50 10). 배수는 유역·강우 조건 — 입력.',
     calculators: [
+      {
+        id: 'timber_beam',
+        labelKo: '목재 휨부재 (장선·보 — 허용응력)',
+        // 단면 b×h·스팬 L을 형상(프리즘 부재)에서 파생. 수종·등급·하중=입력.
+        derive: (m) => ({ b: round(m.section.cmaxX * 2, 0), h: round(m.section.cmaxY * 2, 0), L: round(m.L, 0) }),
+        userInputs: [
+          { name: 'species', labelKo: '수종군(larch/pine/koreanpine/cedar)', unit: '', default: 'pine' },
+          { name: 'grade', labelKo: '육안등급(1~3)', unit: '', default: 2, min: 1, max: 3 },
+          { name: 'w', labelKo: '등분포하중', unit: 'kN/m', min: 0, optional: true },
+          { name: 'P', labelKo: '중앙 집중하중', unit: 'kN', min: 0, optional: true },
+          { name: 'deflLimit', labelKo: '처짐한계 L/n', unit: '', default: 240, min: 100, max: 500, optional: true },
+        ],
+      },
       {
         id: 'landscape_drainage',
         labelKo: '우수 배수 (합리식)',
@@ -255,10 +272,10 @@ export function verifyDomain({ intent, domain, calculatorId, memberRef, params =
     }
   }
 
-  // 레이아웃/형상 스칼라(인테리어 등 부재 아닌 파생용): 바닥면적·좌석수.
+  // 레이아웃/형상 스칼라(인테리어 등 부재 아닌 파생용): 바닥면적·좌석수·옹벽 단면(C1).
   const floorAreaM2 = intent?.floorAreaM2 ?? footprintAreaM2(intent);
   const seatCount = Array.isArray(intent?.furniture) ? intent.furniture.reduce((s, f) => s + (f.seats > 0 ? f.count : 0), 0) : 0;
-  const geomCtx = { ...params, _floorAreaM2: floorAreaM2, _seatCount: seatCount };
+  const geomCtx = { ...params, _floorAreaM2: floorAreaM2, _seatCount: seatCount, _rw: intent?.retainingWall ?? null };
 
   // 형상 파생 입력: 부재형(member)이면 단면특성, 아니면 레이아웃 스칼라.
   const derived = member ? calc.derive(member, geomCtx) : calc.derive(null, geomCtx);

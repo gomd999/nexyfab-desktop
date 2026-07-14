@@ -49,6 +49,11 @@ export function partVolume(type, p) {
       return (Math.sqrt(3) / 2) * af ** 2 * hh + A * p.threadDia ** 2 * p.length; // 육각머리 + 자루
     }
     case 'sheet_profile': return polyArea(sheetPoly(p)) * p.width;
+    case 'wall_with_openings': {
+      const solid = p.length * p.thickness * p.height;
+      const cut = (p.openings ?? []).reduce((s, o) => s + o.w * o.h * p.thickness, 0);
+      return solid - cut;
+    }
     default: return 0;
   }
 }

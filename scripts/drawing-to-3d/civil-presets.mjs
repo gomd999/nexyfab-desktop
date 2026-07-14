@@ -13,7 +13,14 @@ function retainingWallIntent(p) {
     [0, 0], [baseW, 0], [baseW, baseT],
     [sx + stemT, baseT], [sx + stemT, H], [sx, H], [sx, baseT], [0, baseT],
   ];
-  return { name: 'RetainingWall', features: [{ id: 'wall', kind: 'extrude', profile, height: L }], material: 'concrete' };
+  return {
+    name: 'RetainingWall',
+    features: [{ id: 'wall', kind: 'extrude', profile, height: L }],
+    material: 'concrete',
+    // C1: 형상→검증 자동 파생 메타(m 단위) — domain-verify retaining_wall_stability가
+    // 이 값을 geom 입력으로 쓴다(사용자 덮어쓰기 불가 → 형상↔검증 정합).
+    retainingWall: { H: H / 1000, stemThickness: stemT / 1000, baseWidth: baseW / 1000, baseThickness: baseT / 1000, toeLength: toe / 1000, length: L / 1000 },
+  };
 }
 
 /** 박스 암거: 외곽 box − 내부 box(중공). 치수 mm. */
