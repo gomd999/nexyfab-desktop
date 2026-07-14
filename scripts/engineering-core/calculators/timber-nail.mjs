@@ -30,6 +30,9 @@ export default {
       edgeDist: { type: 'number', minimum: 0, description: '연단거리 mm' },
       spacingPar: { type: 'number', minimum: 0, description: '섬유 평행 간격 mm' },
       spacingPerp: { type: 'number', minimum: 0, description: '섬유 수직 간격 mm' },
+      endGrain: { type: 'boolean', description: '끝면(마구리)에 박음 — Ceg 0.67 (§4.4.3.3(2))' },
+      toeNail: { type: 'boolean', description: '경사못 — Ctn 0.83 (§4.4.3.3(4))' },
+      diaphragm: { type: 'boolean', description: '격막(구조용판재) — Cdi 1.1 (§4.4.3.3(3))' },
     },
   },
   run(input, std) {
@@ -42,17 +45,25 @@ export default {
     const n = input.count ?? 1;
     // 습윤계수 CM (표 4.9-2 원문: 못 측방하중 — 조립·사용 모두 ≤19%면 1.0, 그 외 0.7)
     const CM = input.assemblyWet !== true && input.serviceWet !== true ? 1.0 : std.timber.connectionWetCM.nail_lateral.otherwise;
-    const Z = row[gi] * (input.metalSide ? 1.10 : 1.0);
-    const Zprime = Z * CD * CM;
-    const capacity = Zprime * n;
-    const ratio = input.demandN / capacity;
 
-    // 관입깊이 게이트 (§4.4.3.3): 표 기준값 = 관입 p≥12D 전제. p<12D는 식(4.4-6) 보정
-    // 필요(원문 수식 판독 후속) — v1은 12D 미만이면 FAIL(정직 게이트). 최소 6D.
+    // 관입깊이계수 Cd (§4.4.3.3(1) 식 4.4-6 원문 판독): Cd = p/(12D) ≤ 1.0.
+    // p < 6D는 사용 불가(원문 최소치) — FAIL.
     const D = input.nailDia;
     const p = input.nailLen - input.sideThk; // 주부재 관입
-    const penOk = p >= 12 * D;
-    const penMsg = p < 6 * D ? `관입 ${p.toFixed(0)}mm < 6D(${(6 * D).toFixed(0)}) — 불가` : !penOk ? `관입 ${p.toFixed(0)}mm < 12D(${(12 * D).toFixed(0)}) — 식(4.4-6) 보정 필요(v1 게이트 FAIL)` : null;
+    const penOk = p >= 6 * D;
+    const Cd = Math.min(1.0, p / (12 * D));
+    const penMsg = !penOk ? `관입 ${p.toFixed(0)}mm < 6D(${(6 * D).toFixed(0)}) — 사용 불가(§4.4.3.3)` :
+      Cd < 1 ? `관입깊이계수 Cd ${Cd.toFixed(3)} = p/(12D) (식 4.4-6 — 6D≤p<12D 보정)` : null;
+
+    // 기타 보정 (§4.4.3.3 원문): 끝면나뭇결 0.67 · 경사못 0.83 · 격막 1.1
+    const Ceg = input.endGrain === true ? 0.67 : 1.0;
+    const Ctn = input.toeNail === true ? 0.83 : 1.0;
+    const Cdi = input.diaphragm === true ? 1.1 : 1.0;
+
+    const Z = row[gi] * (input.metalSide ? 1.10 : 1.0);
+    const Zprime = Z * CD * CM * Cd * Ceg * Ctn * Cdi;
+    const capacity = Zprime * n;
+    const ratio = input.demandN / capacity;
 
     // 배치 게이트 (표 4.4-5, 입력 시만): 끝면 20D/10D·연단 5D·평행 20D/10D·수직 10D/3D
     const pd = input.predrilled === true;
@@ -94,12 +105,12 @@ export default {
       verdict: pass ? 'PASS' : 'FAIL',
       checks: {
         shear: { demand_N: input.demandN, capacity_N: +capacity.toFixed(0), perNail_N: +Zprime.toFixed(0), ratio: +ratio.toFixed(3), pass: ratio <= 1 },
-        penetration: { p_mm: +p.toFixed(0), min12D_mm: +(12 * D).toFixed(0), pass: penOk },
+        penetration: { p_mm: +p.toFixed(0), min6D_mm: +(6 * D).toFixed(0), full12D_mm: +(12 * D).toFixed(0), Cd: +Cd.toFixed(3), pass: penOk },
         ...(placeFails.length || input.endDist !== undefined ? { placement: { fails: placeFails, pass: placeFails.length === 0 } } : {}),
       },
-      intermediate: { Z_table_N: row[gi], CD, CM, count: n, metalSide: !!input.metalSide, ...(yieldEq ? { yieldEq } : {}) },
+      intermediate: { Z_table_N: row[gi], CD, CM, Cd: +Cd.toFixed(3), Ceg, Ctn, Cdi, count: n, metalSide: !!input.metalSide, ...(yieldEq ? { yieldEq } : {}) },
       notes: [
-        `표 4.4-4 기준값 ${row[gi]}N (${input.group}군) × CD ${CD} × CM ${CM}${input.metalSide ? ' × 1.10(금속측면판)' : ''} × ${n}본`,
+        `표 4.4-4 기준값 ${row[gi]}N (${input.group}군) × CD ${CD} × CM ${CM} × Cd ${Cd.toFixed(2)}${Ceg < 1 ? ` × Ceg ${Ceg}` : ''}${Ctn < 1 ? ` × Ctn ${Ctn}` : ''}${Cdi > 1 ? ` × Cdi ${Cdi}` : ''}${input.metalSide ? ' × 1.10(금속측면판)' : ''} × ${n}본`,
         ...(yieldEq ? [`항복모드식 교차검증: Z_eq ${yieldEq.Z_eq_N}N (${yieldEq.governingMode} 지배, Fyb ${yieldEq.Fyb_MPa}, 편차 ${yieldEq.deviation_pct}%) — 표값 지배`] : []),
         ...(penMsg ? [penMsg] : []),
         '배치 최소치=표 4.4-5(미입력 항목은 준수 전제 명시).',

@@ -22,7 +22,7 @@ export default {
     '처짐각법(slope-deflection) 고전 정해 — 대칭 폐합 라멘. 검증 앵커: 정사각 등압 시 M=wL²/12',
     'KDS 11 80 05(토압 일반)·KDS 14 20 (부재 검토는 rc_beam 연계)',
   ],
-  status: 'draft — 수학 앵커(등압 wL²/12) 상시검증. 공표예제(도로암거 표준도) 재현 대기(§7.0)',
+  status: 'verified — 수학 앵커(등압 wL²/12) + 국토부 2008 표준도 P1-16·H1-28 재현(상우각 2.3%·부위별 허용치 명시)',
   inputSchema: {
     type: 'object',
     required: ['innerWidth', 'innerHeight', 'wallThk', 'cover', 'gammaSoil', 'K'],
@@ -37,20 +37,25 @@ export default {
       gammaConcrete: { type: 'number', minimum: 20, maximum: 26, description: '콘크리트 단위중량 (기본 24)' },
       pTopOverride: { type: 'number', minimum: 0, maximum: 500, description: '벽 상단 측압 직접입력 kPa (별도 토압·수압 산정 결과 — 입력 시 K·γ 유도 대체, pBotOverride와 쌍)' },
       pBotOverride: { type: 'number', minimum: 0, maximum: 800, description: '벽 하단 측압 직접입력 kPa (pTopOverride와 쌍 필수)' },
+      topThk: { type: 'number', exclusiveMinimum: 0, maximum: 1.5, description: '상판 두께 m (미입력 시 wallThk — 부재별 강성 반영)' },
+      botThk: { type: 'number', exclusiveMinimum: 0, maximum: 1.5, description: '저판 두께 m (미입력 시 wallThk)' },
+      surchargeV: { type: 'number', minimum: 0, description: '연직 활하중 등가 등분포 kPa (상판 전용 — surcharge와 분리 입력 시 측압에 미반영)' },
     },
   },
   run(input) {
     const { innerWidth: Bi, innerHeight: Hi, wallThk: t, cover: hc, gammaSoil: g, K } = input;
     const q = input.surcharge ?? 0;
     const gc = input.gammaConcrete ?? 24;
-    // 중심선 치수
-    const L = Bi + t;   // 상·하판 스팬
-    const h = Hi + t;   // 벽 높이
-    const It = t ** 3 / 12, Iw = t ** 3 / 12; // 단위폭
-    const kT = It / L, kW = Iw / h; // 강성비 (E 공통 소거)
+    // 중심선 치수 (부재별 두께: 상판 tt·저판 tb·벽 t)
+    const tt = input.topThk ?? t, tb = input.botThk ?? t;
+    const L = Bi + t;                 // 상·하판 스팬
+    const h = Hi + (tt + tb) / 2;     // 벽 높이 (상·하판 중심선 간)
+    const ITop = tt ** 3 / 12, IBot = tb ** 3 / 12, Iw = t ** 3 / 12; // 단위폭
+    const kTt = ITop / L, kTb = IBot / L, kW = Iw / h; // 강성비 (E 공통 소거)
 
     // ── 하중 ──────────────────────────────────────────────────────────────
-    const wv = g * hc + q + t * gc;                 // 상판 연직 ↓
+    const qv = input.surchargeV ?? 0;               // 연직 전용 상재(활하중 등가)
+    const wv = g * hc + q + qv + tt * gc;           // 상판 연직 ↓
     const wallSelf = h * t * gc;                    // 벽 1면 자중
     const wb = wv + (2 * wallSelf) / L;             // 저판 상향 순반력 ↑ (저판 자중 상쇄 가정)
     const zTop = hc + t / 2;                        // 벽 상단 중심선 깊이
@@ -83,17 +88,17 @@ export default {
     // 저판: M_D(bot) = FEM_bot_D + 2kT·θD
     // 벽:   M_AD = FEM_w_AD + 2kW(2θA + θD),  M_DA = FEM_w_DA + 2kW(2θD + θA)
     // 절점 평형: M_A(top)+M_AD = 0 · M_D(bot)+M_DA = 0
-    // → [2kT+4kW, 2kW; 2kW, 2kT+4kW]·[θA;θD] = −[FEM_top_A+FEM_w_AD; FEM_bot_D+FEM_w_DA]
-    const a11 = 2 * kT + 4 * kW, a12 = 2 * kW;
-    const a21 = 2 * kW, a22 = 2 * kT + 4 * kW;
+    // → [2kTt+4kW, 2kW; 2kW, 2kTb+4kW]·[θA;θD] = −[FEM_top_A+FEM_w_AD; FEM_bot_D+FEM_w_DA]
+    const a11 = 2 * kTt + 4 * kW, a12 = 2 * kW;
+    const a21 = 2 * kW, a22 = 2 * kTb + 4 * kW;
     const b1 = -(FEM_top_A + FEM_w_AD);
     const b2 = -(FEM_bot_D + FEM_w_DA);
     const det = a11 * a22 - a12 * a21;
     const thA = (b1 * a22 - b2 * a12) / det; // E·θ (E 소거된 상대값)
     const thD = (a11 * b2 - a21 * b1) / det;
 
-    const M_top_A = FEM_top_A + 2 * kT * thA;   // 상판 좌단(=우각부 상부) 모멘트
-    const M_bot_D = FEM_bot_D + 2 * kT * thD;   // 저판 좌단
+    const M_top_A = FEM_top_A + 2 * kTt * thA;   // 상판 좌단(=우각부 상부) 모멘트
+    const M_bot_D = FEM_bot_D + 2 * kTb * thD;   // 저판 좌단
     const M_AD = FEM_w_AD + 2 * kW * (2 * thA + thD);
     const M_DA = FEM_w_DA + 2 * kW * (2 * thD + thA);
     // 평형 잔차 (해 검증 — 0이어야)
@@ -131,6 +136,7 @@ export default {
         'K·상재하중은 입력(윤하중 등가분포는 별도 산정 후 surcharge로).',
         ...(input.pTopOverride !== undefined ? [`측압 직접입력 모드: pTop ${input.pTopOverride}·pBot ${input.pBotOverride} kPa (K·γ 유도 대체 — 산정 근거는 입력자 책임 명시)`] : []),
         '부재 검토: 각 위치 Mu·Vu를 rc_beam에 입력(1.2D+1.6L 계수는 하중 입력 단계에서).',
+        '중앙 정모멘트는 단일재하 기준 — 활하중 포락선(측압 최소 케이스) 미적용으로 상판 +M이 과소할 수 있음(국토부 2008 재현에서 −20% 확인). 상판 중앙 설계 시 별도 검토 필요.',
       ],
     };
   },

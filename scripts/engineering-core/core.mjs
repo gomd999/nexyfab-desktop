@@ -18,8 +18,9 @@ import seismicStatic from './calculators/seismic-static.mjs';
 import timberNail from './calculators/timber-nail.mjs';
 import timberBolt from './calculators/timber-bolt.mjs';
 import windSimple from './calculators/wind-simple.mjs';
+import windStatic from './calculators/wind-static.mjs';
 
-export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple];
+export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic];
 
 /** Minimal JSON-Schema-subset validator (type/required/properties/minimum/maximum/enum). */
 export function validateInput(schema, input) {

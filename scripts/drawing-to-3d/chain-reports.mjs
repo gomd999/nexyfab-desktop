@@ -60,6 +60,16 @@ ${r.seismic.Fx_kN.map((fx, i) => `<tr><td>${i + 1}F</td><td>${f(fx, 1)}</td><td>
 <table><tr><th>지배기둥 지진조합</th><th>PuE kN</th><th>MuE kN·m</th><th>판정</th></tr>
 <tr><td style="font-size:10.5px;text-align:left">${esc(r.seismic.column.method)}</td><td>${f(r.seismic.column.PuE_kN, 1)}</td><td>${f(r.seismic.column.MuE_kNm, 1)}</td><td>${V(r.seismic.column.verdict)}</td></tr></table>
 <div class="honest">⚠ ${esc(r.seismic.disclaimer)}</div>` : ''}
+${r.wind && !r.wind.error ? `<h2>⑤b 풍하중 (KDS 41 12 00 — ${esc(r.wind.x.method)})</h2>
+<div class="kpi"><div><b>${f(Math.max(r.wind.x.baseShear_kN, r.wind.y.baseShear_kN), 1)} kN</b><span>기단전단 (지배방향)</span></div>
+<div><b>${f(Math.max(r.wind.x.p_Nm2, r.wind.y.p_Nm2), 0)} N/m²</b><span>설계풍압</span></div>
+<div><b>${r.wind.H_m}×${r.wind.B_m}×${r.wind.D_m} m</b><span>H×B×D (형상 파생)</span></div></div>
+<table><tr><th>풍향</th><th>방법</th><th>기단전단 kN</th><th>풍압 N/m²</th></tr>
+<tr><td>X</td><td>${esc(r.wind.x.method)}</td><td>${f(r.wind.x.baseShear_kN, 1)}</td><td>${f(r.wind.x.p_Nm2, 0)}</td></tr>
+<tr><td>Y</td><td>${esc(r.wind.y.method)}</td><td>${f(r.wind.y.baseShear_kN, 1)}</td><td>${f(r.wind.y.p_Nm2, 0)}</td></tr></table>
+<table><tr><th>기둥 풍하중 검토 (1.3W)</th><th>PuW kN</th><th>MuW kN·m</th><th>판정</th></tr>
+<tr><td style="font-size:10.5px;text-align:left">${esc(r.wind.column.method)}</td><td>${f(r.wind.column.PuW_kN, 1)}</td><td>${f(r.wind.column.MuW_kNm, 1)}</td><td>${V(r.wind.column.verdict)}</td></tr></table>
+<div class="note">${esc(r.wind.note)}</div>` : r.wind?.error ? `<div class="honest">풍하중: ${esc(r.wind.error)}</div>` : ''}
 ${r.rebar ? `<h2>${r.seismic && !r.seismic.error ? '⑥' : '⑤'} 철근 개산 (입력 배근 × 형상 길이)</h2>
 <table><tr><th>항목</th><th>산출근거</th><th>중량 kg</th></tr>
 ${r.rebar.items.map((i) => `<tr><td style="text-align:left">${esc(i.name)}</td><td style="text-align:left;font-size:10.5px;color:#64748b">${esc(i.basis)}</td><td>${f(i.kg, 1)}</td></tr>`).join('')}
@@ -110,6 +120,22 @@ ${memberSec}${connSec}${boardSec}${windSec}
 }
 
 /** 인테리어 피난·마감 리포트 */
+function mepSec(r) {
+  const li = r.lighting, ve = r.ventilation, el = r.electrical;
+  if (!li && !ve && !el) return '';
+  const liRow = !li ? '' : li.verdict === 'INFO'
+    ? `<tr><td>조명(광속법)</td><td>${li.fixtures}등 (${esc(li.layout)}) · 평균 ${li.avgLuxProvided}lx / 목표 ${li.targetLux}lx · 실지수 ${li.roomIndex}</td></tr>`
+    : `<tr><td>조명</td><td>실지수 ${li.roomIndex}(형상) — ${esc(li.note)}</td></tr>`;
+  const veRow = !ve ? '' : ve.verdict === 'INFO'
+    ? `<tr><td>환기</td><td>${ve.occupants}인 × ${ve.perPersonCMH} = ${ve.requiredCMH} CMH (ACH ${ve.ACH})</td></tr>`
+    : `<tr><td>환기</td><td>재실 ${ve.occupants ?? '—'}인·실체적 ${ve.roomVolM3}m³ — ${esc(ve.note)}</td></tr>`;
+  const elRow = !el ? '' : el.verdict === 'INFO'
+    ? `<tr><td>전기</td><td>${el.totalVA} VA → 분기 ${el.circuits}회로 (${esc(el.basis)})</td></tr>`
+    : `<tr><td>전기</td><td>${esc(el.note)}</td></tr>`;
+  const notes = [li?.verdict === 'INFO' ? li.note : null, ve?.verdict === 'INFO' ? ve.note : null, el?.verdict === 'INFO' ? el.note : null].filter(Boolean);
+  return `<h2>④ 설비 개산 (조명·환기·전기)</h2><table><tr><th>항목</th><th>산출</th></tr>${liRow}${veRow}${elRow}</table>${notes.length ? `<div class="note">${notes.map(esc).join('<br>')}</div>` : ''}`;
+}
+
 export function interiorReport(r, { title = '피난·마감 검증' } = {}) {
   if (!r?.ok) return SHELL(title, '실패', `<div class="honest">${esc(r?.error ?? '체인 실패')}</div>`);
   const t = r.travel, e = r.egress, fi = r.finishes;
@@ -129,6 +155,7 @@ ${e?.checks ? checksTable(e.checks) : `<div class="honest">${esc(e?.error ?? '�
 <h2>③ 마감 물량 (개구 공제)</h2><table><tr><th>바닥</th><th>벽(실내 1면)</th><th>천장</th></tr>
 <tr><td>${f(fi.floorM2)} m²</td><td>${f(fi.wallM2)} m²</td><td>${f(fi.ceilingM2)} m²</td></tr></table>
 <div class="note">${esc(fi.note)}</div>
+${mepSec(r)}
 <div class="honest">⚠ ${esc(r.disclaimer)}</div>`);
 }
 

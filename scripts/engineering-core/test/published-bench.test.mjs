@@ -106,3 +106,37 @@ test('[공표·교차] FHWA-IP-83-6 App.D.1: 우각부 모멘트 교차 대조(�
   assert.ok(got > 0 && Number.isFinite(got), '유한 모멘트');
   assert.ok(dev < 25, `교차 편차 ${dev.toFixed(1)}% ≥ 25% — 하중 재구성 확인 필요`);
 });
+
+// ── 국토해양부 2008 「도로암거 표준도 구조계산서」 P1-16 (통로1련 4.0×4.0m, 토피 2.0) ──
+// 출처: CODIL CIGCOS910033 (정부간행물 11-1611000-000332-01, 원문 p.36 사용하중 단면력).
+// 모델 차이(명시): 원문=SAP2000 비등두께+지반스프링(BEF)+헌치+활하중 포락선 / 본 계산기=
+// 처짐각법 강체지지·무헌치·단일재하. → 상우각(스프링 영향 최소)은 근접, 하부는 스프링
+// 차이·상판중앙은 포락선 미적용으로 계통 편차 — 허용치를 부위별로 정직하게 분리.
+test('공표예제: 국토부 2008 암거 P1-16 — 상우각 ≤5%·하부 ≤12% 재현', () => {
+  const r = runCalculator('box_culvert_frame', {
+    innerWidth: 4.0, innerHeight: 4.0, wallThk: 0.35, topThk: 0.40, botThk: 0.45,
+    cover: 2.0, gammaSoil: 19.0, K: 0.5, gammaConcrete: 24.5,
+    surchargeV: 18.079, pTopOverride: 25.9, pBotOverride: 67.937,
+  }, 'KDS');
+  assert.equal(r.geometry.spanL_m, 4.35, '중심선 스팬 = 원문 4.350');
+  assert.equal(r.geometry.wallH_m, 4.42, '중심선 벽고 ≈ 원문 4.425');
+  const dev = (ours, pub) => Math.abs((Math.abs(ours) - pub) / pub);
+  assert.ok(dev(r.moments_kNm.cornerTop, 84.65) < 0.05, `상우각 ${r.moments_kNm.cornerTop} vs −84.65`);
+  assert.ok(dev(r.moments_kNm.cornerBottom, 91.72) < 0.12, `하우각 ${r.moments_kNm.cornerBottom} vs −91.72 (지반스프링 차이)`);
+  assert.ok(dev(r.moments_kNm.midBottom, 108.64) < 0.12, `하판중앙 ${r.moments_kNm.midBottom} vs 108.64`);
+  // 상판중앙: 원문 91.82는 활하중 포락선(측압 최소 케이스) — 단일재하는 하회함을 명시적 문서화
+  assert.ok(r.moments_kNm.midTop < 91.82, '단일재하 midTop < 포락선값 (비보수 방향 — 계산기 노트로 경고)');
+});
+
+// ── 국토부 2008 H1-28 (수로1련 3.0×3.0m, 토피 5.0 — 토압 지배 케이스) ──
+test('공표예제: 국토부 2008 암거 H1-28 — 토피 5m 스케일링', () => {
+  // Wd1=95.0(=19×5), WI1=10.0(토피≥4m 상수), 측압 49.4→81.937 + WI2 5.0
+  const r = runCalculator('box_culvert_frame', {
+    innerWidth: 3.0, innerHeight: 3.0, wallThk: 0.30, topThk: 0.40, botThk: 0.45,
+    cover: 5.0, gammaSoil: 19.0, K: 0.5, gammaConcrete: 24.5,
+    surchargeV: 10.0, pTopOverride: 54.4, pBotOverride: 86.937,
+  }, 'KDS');
+  const dev = (ours, pub) => Math.abs((Math.abs(ours) - pub) / pub);
+  assert.ok(dev(r.moments_kNm.cornerTop, 77.24) < 0.12, `상우각 ${r.moments_kNm.cornerTop} vs −77.24`);
+  assert.ok(dev(r.moments_kNm.cornerBottom, 74.55) < 0.15, `하우각 ${r.moments_kNm.cornerBottom} vs −74.55`);
+});

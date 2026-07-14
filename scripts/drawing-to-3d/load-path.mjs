@@ -319,6 +319,62 @@ export function loadPathCheck(assembly, params = {}) {
     }
   }
 
+  // ── 풍하중 검토 (옵션 params.wind — KDS 41 12 00, 잔여 4축 A) ────────────────
+  //    형상 파생: H=최상층 높이·B/D=평면 외곽. 간편법(§5.15) 적용조건 충족 시 간편법,
+  //    아니면 정식법(§5.2 강체) 자동 선택 → 포탈법 기둥 풍모멘트(1.3W 조합 계수 적용).
+  let windRes = null;
+  const wp = params.wind;
+  if (wp && Number(wp.V0) > 0) {
+    try {
+      const pitch2 = zs.length > 1 ? (zs[1] - zs[0]) : (cb0.dz + (sb.dz ?? 150));
+      const Hm = (nf * pitch2) / 1000;
+      const Bx = (xs[xs.length - 1] - xs[0] + cb0.dx) / 1000; // X방향 폭
+      const By = (ys[ys.length - 1] - ys[0] + cb0.dy) / 1000;
+      // 두 풍향 모두 검토: X풍(수압면 By×H, 깊이 Bx) · Y풍(수압면 Bx×H, 깊이 By)
+      const runDir = (Bw, Dd) => {
+        const simpleOk = Hm <= 20 && Hm / Math.sqrt(Bw * Dd) <= 1.0 && Bw >= 0.5 * Hm && Bw <= 30;
+        if (simpleOk) {
+          const r = runCalculator('wind_simple', { V0: Number(wp.V0), H: +Hm.toFixed(1), B: +Bw.toFixed(1), D: +Dd.toFixed(1), terrain: wp.terrain ?? 'normal', ...(Number(wp.Kzt) > 1 ? { Kzt: Number(wp.Kzt) } : {}), demandNone: 0 }, 'KDS');
+          return { method: '간편법(§5.15)', baseShear_kN: r.baseShear_kN, p_Nm2: r.pressure.design_Nm2, detail: r };
+        }
+        const r = runCalculator('wind_static', { V0: Number(wp.V0), H: +Hm.toFixed(1), B: +Bw.toFixed(1), D: +Dd.toFixed(1), exposure: wp.exposure ?? 'C', importance: wp.importance ?? '1', structType: wp.structType ?? 'rc_moment', storyH: +(pitch2 / 1000).toFixed(2), demandNone: 0 }, 'KDS');
+        return { method: '정식법(§5.2 강체)', baseShear_kN: r.baseShear_kN, p_Nm2: r.pressure.pTop_Nm2, detail: r };
+      };
+      const wx = runDir(By, Bx); // X방향 바람 → 수압면 폭 = By
+      const wy = runDir(Bx, By);
+      // 지배 방향 포탈법 기둥 모멘트 (1.3W)
+      const clearH2 = cb0.dz / 1000;
+      const portalW = (V, nSpans, nFrames) => (2 * (V / nFrames / (2 * nSpans))) * clearH2 / 2;
+      const McolWx = portalW(1.3 * wx.baseShear_kN, xs.length - 1, ys.length);
+      const McolWy = portalW(1.3 * wy.baseShear_kN, ys.length - 1, xs.length);
+      const McolW = Math.max(McolWx, McolWy);
+      const PuW = ((1.2 * (wD_m2 + beamSelfPerM2) + 1.0 * wL_m2) * worstColTrib + 1.2 * colSelfD) * nf;
+      let colW = null;
+      if (Number(params.colAst) > 0) {
+        try {
+          colW = runCalculator('rc_column_pm', {
+            b: round(cb0.dx, 0), h: round(cb0.dy, 0), fck: params.fck ?? 24, fy: params.fy ?? 400,
+            Ast: Number(params.colAst), Pu: round(PuW), Mu: round(McolW),
+          }, 'KDS');
+        } catch (e) { colW = { error: e.message }; }
+      }
+      windRes = {
+        H_m: +Hm.toFixed(1), B_m: +Bx.toFixed(1), D_m: +By.toFixed(1),
+        x: { method: wx.method, baseShear_kN: wx.baseShear_kN, p_Nm2: wx.p_Nm2 },
+        y: { method: wy.method, baseShear_kN: wy.baseShear_kN, p_Nm2: wy.p_Nm2 },
+        column: {
+          MuW_kNm: round(McolW), PuW_kN: round(PuW),
+          verdict: colW?.verdict ?? (colW?.error ? 'ERROR' : 'INPUT(colAst)'),
+          checks: colW?.checks ?? null,
+          method: `포탈법 — 1.3W(U=1.2D+1.3W+1.0L 원문 조합) · X ${round(McolWx)}·Y ${round(McolWy)} kN·m 중 최대`,
+        },
+        note: 'H·B·D=형상 파생. 간편법 적용조건 자동판정(충족 시 §5.15, 아니면 §5.2 강체 정식법). 내압·지붕풍·비틀림 미포함.',
+      };
+    } catch (e) {
+      windRes = { error: e.message };
+    }
+  }
+
   // ── 기초 검토 (치수·지지력 = 입력) ─────────────────────────────────────────
   let footing = null;
   const f = params.footing;
@@ -376,6 +432,7 @@ export function loadPathCheck(assembly, params = {}) {
     scope: `직교 격자 라멘 ${xs.length - 1}×${ys.length - 1}베이 ${nf}층 · 중력${seismicRes && !seismicRes.error ? '+등가정적 지진' : '하중만'} (B3)`,
     rebar,
     seismic: seismicRes,
+    wind: windRes,
     loads: {
       usage: { key: usage, label: live.label, live_kNm2: live.v, ref: kds.loads.liveLoad_kNm2._ref },
       slab: { areaM2: round(slabAreaM2), D_kN: round(slabD_kN), L_kN: round(slabL_kN), finish_kNm2: finish, finishNote: finish > 0 ? '입력값' : '마감하중 미포함(미입력)', perFloor: true, floors: nf },

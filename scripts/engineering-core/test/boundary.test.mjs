@@ -210,3 +210,32 @@ test('암거: 측압 오버라이드 등가성·쌍 게이트', () => {
   assert.throws(() => runCalculator('box_culvert_frame', { ...base, pTopOverride: 30 }, 'KDS'), /쌍 필수/);
   assert.throws(() => runCalculator('box_culvert_frame', { ...base, pTopOverride: 50, pBotOverride: 30 }, 'KDS'), /pBotOverride/);
 });
+
+// ── 풍하중 정식법 — 손검증·게이트 (원문식) ────────────────────────────────
+test('풍하중 정식법: VH·qH 손검증·유연 게이트·Kzr 검증', () => {
+  // C조도 H=30: Kzr=0.71·30^0.15=1.1827 → VH=35.48 → qH=0.6125·VH²=770.9
+  const r = runCalculator('wind_static', { V0: 30, H: 30, B: 20, D: 15, exposure: 'C', structType: 'rc_moment', demandNone: 0 }, 'KDS');
+  assert.equal(r.designSpeed.VH_ms, 35.48, 'VH 손검증');
+  assert.equal(r.pressure.qH_Nm2, 770.9, 'qH 손검증');
+  assert.ok(r.pressure.GD > 1 && r.pressure.GD < 3, 'GD 물리 범위');
+  // 층력 합 ≈ 기단전단
+  const sumF = r.stories.reduce((s, st) => s + st.F_kN, 0);
+  assert.ok(Math.abs(sumF - r.baseShear_kN) / r.baseShear_kN < 0.08, `층력합 ${sumF.toFixed(0)} ≈ V ${r.baseShear_kN}`);
+  // 유연구조물(f≤1Hz) 게이트
+  assert.throws(() => runCalculator('wind_static', { V0: 30, H: 80, B: 20, D: 20, exposure: 'B', structType: 'steel_moment', demandNone: 0 }, 'KDS'), /유연/);
+  // Kzr 표 5.5-2 상수항 재현 (plateau): D조도 z=5 → 1.13
+  const rD = runCalculator('wind_static', { V0: 30, H: 5, B: 10, D: 10, exposure: 'D', structType: 'rc_moment', demandNone: 0 }, 'KDS');
+  assert.equal(rD.designSpeed.KzrH, 1.13, 'Kzr plateau D');
+});
+
+// ── 못 Cd·부가계수 (식 4.4-6·§4.4.3.3 원문) ──────────────────────────────
+test('못: Cd=p/12D·끝면 0.67·경사 0.83·격막 1.1', () => {
+  const r = runCalculator('timber_nail', { sideThk: 38, nailLen: 89, nailDia: 4.11, group: 'B', count: 1, demandN: 100, endGrain: true, toeNail: true }, 'KDS');
+  assert.equal(r.checks.shear.perNail_N, 317, '570×0.67×0.83=317');
+  const r2 = runCalculator('timber_nail', { sideThk: 38, nailLen: 89, nailDia: 4.11, group: 'B', count: 1, demandN: 100, diaphragm: true }, 'KDS');
+  assert.equal(r2.checks.shear.perNail_N, 627, '570×1.1');
+  // 볼트 열간격 표 4.5-8: ∥ 1.5D 미달 FAIL · ⊥ (5l+10D)/8 경계
+  assert.equal(runCalculator('timber_bolt', { mainThk: 38, sideThk: 38, boltDia: 12, group: 'A', demandN: 100, rowGap: 15 }, 'KDS').verdict, 'FAIL');
+  assert.equal(runCalculator('timber_bolt', { mainThk: 38, sideThk: 38, boltDia: 12, group: 'A', demandN: 100, loadDir: 'perp', rowGap: 38 }, 'KDS').verdict, 'FAIL');
+  assert.equal(runCalculator('timber_bolt', { mainThk: 38, sideThk: 38, boltDia: 12, group: 'A', demandN: 100, loadDir: 'perp', rowGap: 40 }, 'KDS').verdict, 'PASS');
+});

@@ -157,13 +157,84 @@ export function interiorCheck(assembly, params = {}) {
     note: '벽=실내측 1면 기준·개구 공제. 걸레받이·몰딩 연장 등 부자재 미포함. 단가 미산출(날조 방지).',
   };
 
+  // ── 설비 개산 (조명·환기·전기) — 형상 파생 + 명시 입력, 기준값 날조 금지 ────
+  const areaM2 = (rb.W * rb.D) / 1e6;
+  const wallH = Math.max(...parts.filter((p) => p.type === 'wall_with_openings').map((p) => p.params.height ?? 0), 0);
+  const ceilH_m = (params.ceilingHmm ?? wallH ?? 2600) / 1000;
+
+  // 조명 — 광속법(lumen method). 실지수 RI = W·D/(Hm(W+D))는 형상 파생.
+  // E(목표조도)·F(램프광속)는 필수 입력(KS A 3011·제품사양 — 지어내지 않음).
+  // UF(이용률)·MF(보수율)는 관례 기본값 명시(제조사 배광표 확인 권고).
+  let lighting = null;
+  {
+    const E = Number(params.targetLux) || 0;
+    const F = Number(params.lampLumen) || 0;
+    const workH = params.workPlaneM ?? 0.85; // 작업면 높이 관례 0.85m
+    const Hm = Math.max(0.3, ceilH_m - workH);
+    const RI = (rb.W / 1000) * (rb.D / 1000) / (Hm * (rb.W / 1000 + rb.D / 1000));
+    if (E > 0 && F > 0) {
+      const UF = params.utilFactor ?? 0.5;
+      const MF = params.maintFactor ?? 0.8;
+      const N = Math.ceil((E * areaM2) / (F * UF * MF));
+      // 격자 배치: 실 비율에 맞춰 rows×cols (형상 파생)
+      const cols = Math.max(1, Math.round(Math.sqrt(N * (rb.W / rb.D))));
+      const rows = Math.max(1, Math.ceil(N / cols));
+      lighting = {
+        verdict: 'INFO', targetLux: E, lampLumen: F, roomIndex: round(RI),
+        UF, MF, mountingH_m: round(Hm), fixtures: N, layout: `${cols}×${rows}`,
+        avgLuxProvided: round((rows * cols * F * UF * MF) / areaM2, 0),
+        note: `광속법 N=E·A/(F·UF·MF). 목표조도는 KS A 3011(용도별 조도기준)·램프광속은 제품사양 참조 — 입력값. UF ${UF}·MF ${MF}=개산 관례(제조사 이용률표 확인 필요).`,
+      };
+    } else {
+      lighting = { verdict: 'INPUT', roomIndex: round(RI), mountingH_m: round(Hm), note: `targetLux(KS A 3011 용도별)·lampLumen(제품사양) 입력 시 광속법 등수·배치 산출. 실지수 ${round(RI)}=형상 파생.` };
+    }
+  }
+
+  // 환기 — 필요환기량 = 재실인원(피난 산정 재사용) × 인당 환기량(법정 기준 용도별 — 입력).
+  let ventilation = null;
+  {
+    const occ = egress?.intermediate?.occupants_design ?? null;
+    const q = Number(params.ventPerPersonCMH) || 0;
+    const vol = areaM2 * ceilH_m;
+    if (occ && q > 0) {
+      const Q = occ * q;
+      ventilation = {
+        verdict: 'INFO', occupants: occ, perPersonCMH: q, requiredCMH: round(Q, 0),
+        roomVolM3: round(vol), ACH: round(Q / vol),
+        note: '필요환기량=재실인원×인당환기량. 인당환기량은 실내공기질관리법·건축법 용도별 기준 확인 입력(예시값 미제공 — 날조 방지). ACH=참고.',
+      };
+    } else {
+      ventilation = { verdict: 'INPUT', occupants: occ, roomVolM3: round(vol), note: 'ventPerPersonCMH(용도별 법정 기준) 입력 시 필요환기량·ACH 산출. 재실인원은 피난 산정 재사용.' };
+    }
+  }
+
+  // 전기 — 회로수 개산: 부하밀도(설계값 입력) × 면적 → 분기회로수.
+  let electrical = null;
+  {
+    const density = Number(params.loadDensityVAm2) || 0;
+    if (density > 0) {
+      const totalVA = density * areaM2;
+      const volt = params.circuitVolt ?? 220, amp = params.breakerA ?? 16, lf = params.circuitLoadFactor ?? 0.8;
+      const perCircuit = volt * amp * lf;
+      electrical = {
+        verdict: 'INFO', loadDensityVAm2: density, totalVA: round(totalVA, 0),
+        circuitVA: round(perCircuit, 0), circuits: Math.ceil(totalVA / perCircuit),
+        basis: `${volt}V×${amp}A×${lf}(여유율) — 분기회로 용량 가정 명시`,
+        note: '조명·콘센트 부하 개산(동력·주방기기 별도). 부하밀도는 KDS 31/내선규정 용도별 설계값 입력.',
+      };
+    } else {
+      electrical = { verdict: 'INPUT', note: 'loadDensityVAm2(용도별 설계 부하밀도) 입력 시 총부하·분기회로수 개산.' };
+    }
+  }
+
   return {
     ok: true,
     travel,
     egress: egress ? { verdict: egress.verdict, checks: egress.checks ?? null, derived: { doorWidthSumMm: doorWidthSum, seatCount }, refs: egress.refs ?? null, error: egress.error ?? null } : null,
     finishes,
-    provenance: { geometry: ['보행거리(BFS)', '장애물 풋프린트', '문 폭 합', '마감 면적'], user: ['보행거리 한계', '인당 점유면적'] },
-    disclaimer: '개념 검토(비법정) — 격자 근사·가구 배치 기준. 법정 피난 검토는 용도·내화·스프링클러 조건 반영한 건축사 검토 필요.',
+    lighting, ventilation, electrical,
+    provenance: { geometry: ['보행거리(BFS)', '장애물 풋프린트', '문 폭 합', '마감 면적', '실지수·실체적'], user: ['보행거리 한계', '인당 점유면적', '조도·광속·환기량·부하밀도(기준 참조 입력)'] },
+    disclaimer: '개념 검토(비법정) — 격자 근사·가구 배치 기준. 법정 피난·설비 검토는 용도·내화·스프링클러 조건 반영한 건축사·설비기술사 검토 필요.',
   };
 }
 

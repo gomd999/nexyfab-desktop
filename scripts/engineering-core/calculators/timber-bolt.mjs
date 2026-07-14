@@ -40,6 +40,7 @@ export default {
       endDist: { type: 'number', minimum: 0, description: '끝면거리 mm (입력 시 CΔ 산정, 감소최소 미달 FAIL)' },
       edgeDist: { type: 'number', minimum: 0, description: '연단거리 mm (게이트 — 미달 FAIL, 보간 없음: 표 4.5-5)' },
       spacing: { type: 'number', minimum: 0, description: '1열 내 간격 mm (입력 시 CΔ 산정 — rowSpacing_mm과 동일 물리량, 게이트 검사용)' },
+      rowGap: { type: 'number', minimum: 0, description: '볼트 열 사이 간격 mm (입력 시 표 4.5-8 게이트: ∥ 1.5D · ⊥ l/D 구간별 2.5D~5D)' },
       demandN: { type: 'number', minimum: 0, description: '소요 전단력 N' },
     },
   },
@@ -74,6 +75,11 @@ export default {
       const [red, full] = std.timber.boltPlacement.spacing_D;
       if (input.spacing < red * D) placeFails.push(`볼트간격 ${input.spacing} < 감소최소 ${red}D=${(red * D).toFixed(0)}mm — 사용불가(표 4.5-7)`);
       else cDelta = Math.min(cDelta, Math.min(1, input.spacing / (full * D)));
+    }
+    if (input.rowGap !== undefined) {
+      // 표 4.5-8 볼트 열의 최소간격: ∥하중 1.5D · ⊥하중 l/D≤2→2.5D, 2<l/D<6→(5l+10D)/8, ≥6→5D
+      const minRow = !perp ? 1.5 * D : lD <= 2 ? 2.5 * D : lD >= 6 ? 5 * D : (5 * (lD * D) + 10 * D) / 8;
+      if (input.rowGap < minRow) placeFails.push(`열간격 ${input.rowGap} < ${minRow.toFixed(0)}mm (표 4.5-8${perp ? ` — l/D=${lD.toFixed(1)}` : ' ∥ 1.5D'})`);
     }
     if (input.edgeDist !== undefined) {
       const min = perp ? 4 * D : lD <= 6 ? 1.5 * D : Math.max(1.5 * D, input.rowSpacing_mm ?? 1.5 * D);
