@@ -66,6 +66,40 @@ export function worldNormalToFace(normal, rz = 0) {
   return nz >= 0 ? '+z' : '-z';
 }
 
+/** 모서리(edge) = 두 면의 교차 → 파라미터 후보 2개 (사용자가 선택). */
+export function mapEdge(type, faceA, faceB) {
+  const a = mapFace(type, faceA), b = mapFace(type, faceB);
+  const cands = [];
+  for (const r of [a, b]) {
+    if (r.ok && !cands.some((c) => c.param === r.param)) cands.push({ param: r.param, face: r.face, dragSign: r.dragSign });
+  }
+  if (!cands.length) {
+    return { ok: false, reason: 'section', note: '이 모서리의 양면 모두 단면/파생 파라미터 — 단면 편집 패널 사용', sectionParams: SECTION_PARAMS[type] ?? [] };
+  }
+  return { ok: true, candidates: cands, note: cands.length === 2 ? '모서리 = 두 치수의 교차 — 수정할 치수 선택' : null };
+}
+
+/**
+ * 거리(치수) 선택: 같은 role 파트 2개 → 간격/스팬 템플릿 파라미터 식별 (그리드 어셈블리).
+ * 결정론 규칙: 두 파트의 role·정렬축으로 템플릿 파라미터 매핑 — 추측 없이 표로만.
+ * axis: 'x' | 'y' (두 파트 중심 차이의 지배축 — 뷰어가 계산해 전달)
+ */
+const DISTANCE_MAP = {
+  building: { column: { x: 'bayX', y: 'bayY' }, beam: { x: 'bayX', y: 'bayY' } },
+  bridge: { girder: { y: 'girderSpacing' } },
+  landscape: { joist: { x: 'joistSpacing', y: 'joistSpacing' }, post: { x: 'width', y: 'depth' } },
+  interior: { table: null }, // 테이블 간격은 rows/cols 파생 — 개별 간격 파라미터 없음(정직)
+};
+export function mapDistance(domain, role, axis) {
+  const d = DISTANCE_MAP[domain];
+  if (!d || !(role in d)) return { ok: false, reason: `'${domain}/${role}' 거리 매핑 없음 — 지원: ${Object.keys(DISTANCE_MAP).join('·')}` };
+  const m = d[role];
+  if (m === null) return { ok: false, reason: 'derived', note: '이 간격은 배치 수(rows/cols)에서 파생 — 개수 파라미터를 수정' };
+  const param = m[axis];
+  if (!param) return { ok: false, reason: `축 '${axis}' 매핑 없음` };
+  return { ok: true, param, kind: 'template' };
+}
+
 /** 전체 어휘 매핑 상태 요약(커버리지 리포트·테스트용). */
 export function coverage() {
   const rows = [];
@@ -89,6 +123,11 @@ if (isMain) {
   chk('rz=90 역회전', worldNormalToFace([0, 1, 0], 90) === '+x');
   const cov = coverage();
   chk('16어휘 전수 매핑', cov.length === 16 && cov.every((c) => c.mapped >= 2));
+  const ed = mapEdge('box', '+x', '+z');
+  chk('모서리 → 후보 2', ed.ok && ed.candidates.length === 2 && ed.candidates.some((c) => c.param === 'width') && ed.candidates.some((c) => c.param === 'height'));
+  chk('거리: 기둥 x → bayX', mapDistance('building', 'column', 'x').param === 'bayX');
+  chk('거리: 거더 y → girderSpacing', mapDistance('bridge', 'girder', 'y').param === 'girderSpacing');
+  chk('거리: 테이블 → 파생 안내', mapDistance('interior', 'table', 'x').reason === 'derived');
   console.log(`face-param-map self-test: ${ok}/${tot}${ok === tot ? ' PASS' : ' FAIL'}`);
   console.log('coverage:', cov.map((c) => `${c.type}:${c.mapped}${c.section ? '+§' : ''}`).join(' '));
   if (ok !== tot) process.exit(1);
