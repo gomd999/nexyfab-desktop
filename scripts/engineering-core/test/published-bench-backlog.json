@@ -91,5 +91,31 @@
   "mse_external_stability": {
     "status": "BLOCKED-ON-FIGURES (2026-07-11 판정)",
     "note": "GEC11(코퍼스 수록)의 MSE 외적안정 예제는 수치가 도판·표 이미지에 있어 텍스트 추출 불가. mse_external_stability 계산기 신설 시(P2) 원문 도판 육안 이관으로 재현 벤치 구성. 방법 자체(Rankine Ka·저면활동 FS 1.5·편심)는 KDS 11 80 10 표 4.4-1과 정합 확인됨(RAG 인덱스 kds-118010)"
-  }
+  },
+  "backlog": [
+    {
+      "calculator": "timber_beam",
+      "source": "KDS 목구조 설계예제집/대한건축학회 목구조 교재 — 장선·보 예제 ≥3건 (KDS 41 50 10 허용응력 기준 일치 소스 필요)",
+      "status": "todo",
+      "note": "원문 계수는 GIF판독+KBC 전사 이중확인 완료 — 예제 재현만 남음"
+    },
+    {
+      "calculator": "box_culvert_frame",
+      "source": "도로암거 표준도(국토부) 구조계산서 — 단면력 대조 ≥3건",
+      "status": "todo",
+      "note": "수학 앵커(4면등압 wL²/12) 상시검증 중 — 실무 하중조합 예제 대조 필요"
+    },
+    {
+      "calculator": "retaining_wall_stability(M-O)",
+      "source": "구조물기초설계기준 해설 지진시 옹벽 예제 ≥2건",
+      "status": "todo",
+      "note": "kh→0 극한 수렴 검증 완료"
+    },
+    {
+      "calculator": "rc_beam/rc_column_pm/isolated_footing",
+      "source": "콘크리트구조 설계예제집(KCI) — KDS 계수 일치 예제 각 ≥10건 (§7.0 게이트)",
+      "status": "todo",
+      "note": "골든 수계산 대조 완료 — 공인 예제 확보가 병목(유료 서적, 사용자 확보 필요)"
+    }
+  ]
 }

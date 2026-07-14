@@ -75,8 +75,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const nonMech = ['building', 'landscape', 'interior', 'civil'].includes(domain);
   const files: Array<{ name: string; mime: string; content: string }> = [];
 
-  // 2D GA 도면
-  try { files.push({ name: 'GA_2D_drawing.html', mime: 'text/html', content: mods.pkg.ga2dDrawing(assembly, { title }) }); } catch (e) { /* skip */ void e; }
+  // 2D GA 도면 (건축=축선 구조평면·조경=배치도 모드 포함)
+  try { files.push({ name: 'GA_2D_drawing.html', mime: 'text/html', content: mods.pkg.ga2dDrawing(assembly, { title, domain }) }); } catch (e) { /* skip */ void e; }
   // 구조/응력 검토
   try { files.push({ name: 'structural.html', mime: 'text/html', content: mods.pkg.structuralReport(assembly, { title, member }) }); } catch (e) { void e; }
   // 물량·작업량 산출서 (BOQ, 금액 제외 — 비기계 분야는 재적 중심·공수 미산출)

@@ -82,6 +82,52 @@ export default function AssemblyPresetPanel({
       .catch(() => {});
   }, [domain]);
 
+  // 유료 전문 조사 의뢰 (컨설팅 신청형) — /api/contact 재사용: nf_support_tickets + 관리자 메일
+  const [erOpen, setErOpen] = useState(false);
+  const [erP, setErP] = useState<Record<string, string>>({ name: '', email: '', service: 'prior-art', message: '' });
+  const [erBusy, setErBusy] = useState(false);
+  const [erMsg, setErMsg] = useState<string | null>(null);
+  const ER_SERVICES: Array<[string, string, string]> = [
+    ['prior-art', ko ? '선행기술 조사·분석' : 'Prior-art search & analysis', ko ? '특허·논문 정밀 조사, 유사도 분석 리포트' : 'patent & paper deep search, similarity report'],
+    ['design-around', ko ? '회피 설계 검토' : 'Design-around review', ko ? '조사 결과 기반 설계 변경 포인트 + 재검증' : 'design change points + re-verification'],
+    ['global', ko ? '글로벌 확장 조사' : 'Global landscape', ko ? '미국·중국·유럽 특허 랜드스케이프' : 'US/CN/EU patent landscape'],
+  ];
+  const submitExpertRequest = useCallback(async () => {
+    if (!built?.assembly || !erP.name.trim() || !erP.email.trim()) { setErMsg(ko ? '이름·이메일을 입력해 주세요.' : 'Name & email required.'); return; }
+    setErBusy(true); setErMsg(null);
+    try {
+      const svc = ER_SERVICES.find(([k]) => k === erP.service);
+      const res = await fetch('/api/contact', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: erP.name.trim(), email: erP.email.trim(), category: 'other',
+          subject: `[전문 조사 의뢰] ${svc?.[1] ?? erP.service} — ${built.assembly.name ?? domain}`,
+          message: (erP.message.trim() || '(요청사항 없음)') + '\n\n— 설계 스냅샷 자동 첨부(context 참조)',
+          // context는 4,000자 제한 — 원시 어셈블리 대신 재현 가능한 템플릿+파라미터 스냅샷
+          context: {
+            type: 'expert-research-request', service: erP.service, domain,
+            template: tid, params,
+            design: {
+              name: built.assembly.name ?? null,
+              parts: built.assembly.parts?.length ?? 0,
+              massKg: built.structural?.totalMassKg ?? null,
+              materials: [...new Set((built.assembly.parts ?? []).map((p) => p.material).filter(Boolean))],
+            },
+          },
+        }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(j.error ?? 'submit failed');
+      setErMsg(ko ? '✅ 접수 완료 — 검토 후 견적과 일정으로 회신드립니다.' : '✅ Received — we will reply with a quote & schedule.');
+      setErP((s) => ({ ...s, message: '' }));
+    } catch (e) {
+      setErMsg((ko ? '접수 실패: ' : 'Failed: ') + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setErBusy(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [built, erP, ko, domain, tid, params]);
+
   // 공용: 체인 리포트 HTML 다운로드 (라우트 format:'html')
   const downloadHtmlReport = useCallback(async (url: string, bodyObj: Record<string, unknown>, filename: string) => {
     try {
@@ -319,6 +365,43 @@ export default function AssemblyPresetPanel({
         >
           📚 {ko ? '관련 논문 부록 (OpenAlex·Crossref 실인용)' : 'Related papers (real citations)'}
         </button>
+      )}
+
+      {/* 유료 전문 조사 의뢰 — 컨설팅 신청형: 신청 → 운영자 직접 수행(AI 도구 지원) → 견적 회신 */}
+      {built && (
+        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
+          <button type="button" onClick={() => setErOpen((v) => !v)} style={{ ...rptBtn, width: '100%', background: erOpen ? 'var(--nx-accent-soft, #eef4ff)' : 'var(--nx-panel, #fff)' }}>
+            🔎 {ko ? '전문 조사 의뢰 (유료) — 선행기술·회피설계' : 'Expert research request (paid)'}
+          </button>
+          {erOpen && (
+            <div style={{ marginTop: 6, fontSize: 11 }}>
+              <div style={{ color: 'var(--nx-text-3, #6b7684)', marginBottom: 5, lineHeight: 1.5 }}>
+                {ko
+                  ? '전문가가 직접 수행(AI 검색 도구 지원)하는 유료 서비스입니다. 접수 후 견적·일정을 회신드립니다. 현재 설계 스냅샷이 자동 첨부됩니다.'
+                  : 'Performed by an expert (AI-assisted). We reply with a quote & schedule. Your design snapshot is attached automatically.'}
+              </div>
+              <select value={erP.service} onChange={(e) => setErP((s) => ({ ...s, service: e.target.value }))} style={selStyle}>
+                {ER_SERVICES.map(([k, lb, desc]) => <option key={k} value={k}>{lb} — {desc}</option>)}
+              </select>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, margin: '6px 0' }}>
+                <input placeholder={ko ? '이름/회사' : 'Name/Company'} value={erP.name} onChange={(e) => setErP((s) => ({ ...s, name: e.target.value }))} style={inpStyle} />
+                <input placeholder={ko ? '이메일' : 'Email'} type="email" value={erP.email} onChange={(e) => setErP((s) => ({ ...s, email: e.target.value }))} style={inpStyle} />
+              </div>
+              <textarea
+                placeholder={ko ? '요청사항 (대상 시장·경쟁사·우려 특허 등)' : 'Details (target market, competitors, patents of concern…)'}
+                value={erP.message} onChange={(e) => setErP((s) => ({ ...s, message: e.target.value }))}
+                rows={3} style={{ ...inpStyle, resize: 'vertical' }}
+              />
+              <button type="button" onClick={submitExpertRequest} disabled={erBusy} style={{ ...genStyle, marginTop: 5, background: '#0f172a' }}>
+                {erBusy ? (ko ? '접수 중…' : 'Submitting…') : ko ? '의뢰 접수 (견적 회신)' : 'Submit request'}
+              </button>
+              {erMsg && <div style={{ marginTop: 5, color: erMsg.startsWith('✅') ? '#16a34a' : '#991b1b' }}>{erMsg}</div>}
+              <div style={{ marginTop: 5, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>
+                {ko ? '⚠ 본 서비스는 변리사의 정식 FTO 의견서를 대체하지 않습니다(필요 시 변리사 연계 안내).' : '⚠ Not a substitute for a formal attorney FTO opinion (referral available).'}
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {msg && <div style={{ marginTop: 6, fontSize: 11, color: 'var(--nx-text-2, #46505e)' }}>{msg}</div>}

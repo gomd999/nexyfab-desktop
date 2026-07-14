@@ -44,8 +44,97 @@ function dimStr(type, p) {
 const PRINT_BAR = (label) => `<div class="nf-print-bar" style="position:sticky;top:0;z-index:99;background:#1f2937;color:#fff;padding:7px 16px;font-size:12.5px;display:flex;gap:12px;align-items:center"><b>${label}</b><button onclick="print()" style="background:#2563eb;color:#fff;border:0;padding:5px 13px;border-radius:6px;cursor:pointer">🖨 인쇄 / PDF</button></div>`;
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
-/** 어셈블리 → 2D GA 도면 HTML (정면·평면 2뷰 + 전체치수 + 밸룬 + BOM, 인쇄양식) */
-export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA-001' } = {}) {
+/**
+ * 건축 축선 평면도 SVG (관례도면 모드 — Wave C ③): 기둥 중심선 축선(Ⓧ①…·Ⓨⓐ…),
+ * 심선 스팬치수, 기둥=채운 사각, 보=이중선, 슬래브 외곽 점선.
+ */
+function axesPlanSvg(parts) {
+  const cols = parts.filter((o) => o.p.role === 'column');
+  const beams = parts.filter((o) => o.p.role === 'beam');
+  const slabs = parts.filter((o) => o.p.role === 'slab');
+  if (!cols.length) return null;
+  // 1개 층만 (최하층 z0 기준)
+  const z0 = Math.min(...cols.map((o) => o.box.z));
+  const fCols = cols.filter((o) => Math.abs(o.box.z - z0) < 1);
+  const uniq = (arr, tol = 50) => { const out = []; for (const v of arr.slice().sort((a, b) => a - b)) if (!out.length || v - out[out.length - 1] > tol) out.push(v); return out; };
+  const xs = uniq(fCols.map((o) => o.box.x + o.box.dx / 2));
+  const ys = uniq(fCols.map((o) => o.box.y + o.box.dy / 2));
+  if (xs.length < 2 || ys.length < 2) return null;
+  const M = 90; // 여백(축선 라벨 공간)
+  const Wm = xs[xs.length - 1] - xs[0], Dm = ys[ys.length - 1] - ys[0];
+  const S = Math.min(760 / Wm, 520 / Dm);
+  const X = (v) => (M + (v - xs[0]) * S).toFixed(1);
+  const Y = (v) => (M + (v - ys[0]) * S).toFixed(1);
+  const el = [];
+  const circled = (n) => String.fromCharCode(0x2460 + n); // ①②…
+  const alpha = (n) => String.fromCharCode(65 + n); // A B…
+  // 축선 (일점쇄선 근사: dash)
+  for (const [i, x] of xs.entries()) {
+    el.push(`<line x1="${X(x)}" y1="${M - 34}" x2="${X(x)}" y2="${(M + Dm * S + 30).toFixed(1)}" stroke="#dc2626" stroke-width=".7" stroke-dasharray="14 4 3 4"/>`);
+    el.push(`<circle cx="${X(x)}" cy="${M - 46}" r="11" fill="#fff" stroke="#dc2626"/><text x="${X(x)}" y="${M - 42}" font-size="11" text-anchor="middle" fill="#dc2626" font-family="sans-serif">${circled(i)}</text>`);
+  }
+  for (const [j, y] of ys.entries()) {
+    el.push(`<line x1="${M - 34}" y1="${Y(y)}" x2="${(M + Wm * S + 30).toFixed(1)}" y2="${Y(y)}" stroke="#dc2626" stroke-width=".7" stroke-dasharray="14 4 3 4"/>`);
+    el.push(`<circle cx="${M - 46}" cy="${Y(y)}" r="11" fill="#fff" stroke="#dc2626"/><text x="${M - 46}" y="${(+Y(y) + 4).toFixed(1)}" font-size="11" text-anchor="middle" fill="#dc2626" font-family="sans-serif">${alpha(j)}</text>`);
+  }
+  // 심선 스팬 치수 (상단·좌측)
+  for (let i = 1; i < xs.length; i++) {
+    const x0 = +X(xs[i - 1]), x1 = +X(xs[i]);
+    el.push(`<line x1="${x0}" y1="${M - 20}" x2="${x1}" y2="${M - 20}" stroke="#1f2937" stroke-width=".6"/><text x="${(x0 + x1) / 2}" y="${M - 24}" font-size="10" text-anchor="middle" font-family="sans-serif">${Math.round(xs[i] - xs[i - 1])}</text>`);
+  }
+  for (let j = 1; j < ys.length; j++) {
+    const y0 = +Y(ys[j - 1]), y1 = +Y(ys[j]);
+    el.push(`<line x1="${M - 20}" y1="${y0}" x2="${M - 20}" y2="${y1}" stroke="#1f2937" stroke-width=".6"/><text x="${M - 24}" y="${(y0 + y1) / 2}" font-size="10" text-anchor="end" font-family="sans-serif" transform="rotate(-90 ${M - 24} ${(y0 + y1) / 2})">${Math.round(ys[j] - ys[j - 1])}</text>`);
+  }
+  // 슬래브 외곽(점선)
+  const sl = slabs[0];
+  if (sl) el.push(`<rect x="${X(sl.box.x + 0)}" y="${Y(sl.box.y)}" width="${(sl.box.dx * S).toFixed(1)}" height="${(sl.box.dy * S).toFixed(1)}" fill="none" stroke="#94a3b8" stroke-width=".8" stroke-dasharray="6 4"/>`);
+  // 보 (이중선) — 최하층
+  for (const o of beams.filter((b) => Math.abs(b.box.z - Math.min(...beams.map((x) => x.box.z))) < 1)) {
+    const b = o.box;
+    el.push(`<rect x="${X(b.x)}" y="${Y(b.y)}" width="${(b.dx * S).toFixed(1)}" height="${(b.dy * S).toFixed(1)}" fill="none" stroke="#0e7490" stroke-width="1"/>`);
+  }
+  // 기둥 (채움) + 단면 표기
+  const c0 = fCols[0];
+  for (const o of fCols) {
+    const b = o.box;
+    el.push(`<rect x="${X(b.x)}" y="${Y(b.y)}" width="${(b.dx * S).toFixed(1)}" height="${(b.dy * S).toFixed(1)}" fill="#475569" stroke="#1f2937" stroke-width=".8"/>`);
+  }
+  el.push(`<text x="${M}" y="${(M + Dm * S + 52).toFixed(1)}" font-size="10" fill="#475569" font-family="sans-serif">기둥 ${Math.round(c0.box.dx)}×${Math.round(c0.box.dy)} · 축선치수=심선(mm) · 구조 평면(최하층)</text>`);
+  return `<svg viewBox="0 0 ${M + Wm * S + 70} ${M + Dm * S + 70}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff"><text x="${M}" y="24" font-size="13" font-weight="700" font-family="sans-serif">구조 평면도 (축선)</text>${el.join('')}</svg>`;
+}
+
+/** 조경 배치도 SVG (관례도면 모드): 평면 심볼 — 데크보드 해치·장선 점선·기둥 심볼·외곽 치수. */
+function landscapePlanSvg(parts) {
+  const all = parts;
+  if (!all.length) return null;
+  const x0 = Math.min(...all.map((o) => o.box.x)), x1 = Math.max(...all.map((o) => o.box.x + o.box.dx));
+  const y0 = Math.min(...all.map((o) => o.box.y)), y1 = Math.max(...all.map((o) => o.box.y + o.box.dy));
+  const M = 60, Wm = x1 - x0, Dm = y1 - y0;
+  const S = Math.min(760 / Math.max(Wm, 1), 520 / Math.max(Dm, 1));
+  const X = (v) => (M + (v - x0) * S).toFixed(1);
+  const Y = (v) => (M + (v - y0) * S).toFixed(1);
+  const el = [];
+  // 데크보드(위→아래 순서로 해치), 장선(점선), 보(실선), 기둥(원+십자)
+  for (const o of all) {
+    const b = o.box, r = o.p.role;
+    if (r === 'deck') el.push(`<rect x="${X(b.x)}" y="${Y(b.y)}" width="${(b.dx * S).toFixed(1)}" height="${(b.dy * S).toFixed(1)}" fill="#d6b98c55" stroke="#a16207" stroke-width=".5"/>`);
+    else if (r === 'joist') el.push(`<rect x="${X(b.x)}" y="${Y(b.y)}" width="${(b.dx * S).toFixed(1)}" height="${(b.dy * S).toFixed(1)}" fill="none" stroke="#854d0e" stroke-width=".7" stroke-dasharray="5 3"/>`);
+    else if (r === 'beam') el.push(`<rect x="${X(b.x)}" y="${Y(b.y)}" width="${(b.dx * S).toFixed(1)}" height="${(b.dy * S).toFixed(1)}" fill="none" stroke="#0e7490" stroke-width="1.1"/>`);
+    else if (r === 'column') {
+      const cx = +X(b.x + b.dx / 2), cy = +Y(b.y + b.dy / 2), rr = Math.max(4, (b.dx * S) / 2);
+      el.push(`<circle cx="${cx}" cy="${cy}" r="${rr.toFixed(1)}" fill="#fff" stroke="#475569" stroke-width="1.2"/><line x1="${cx - rr}" y1="${cy}" x2="${cx + rr}" y2="${cy}" stroke="#475569" stroke-width=".6"/><line x1="${cx}" y1="${cy - rr}" x2="${cx}" y2="${cy + rr}" stroke="#475569" stroke-width=".6"/>`);
+    }
+  }
+  // 외곽 치수
+  el.push(`<line x1="${X(x0)}" y1="${(M + Dm * S + 18).toFixed(1)}" x2="${X(x1)}" y2="${(M + Dm * S + 18).toFixed(1)}" stroke="#dc2626" stroke-width=".6"/><text x="${(+X(x0) + +X(x1)) / 2}" y="${(M + Dm * S + 32).toFixed(1)}" font-size="10" text-anchor="middle" fill="#dc2626" font-family="sans-serif">${Math.round(Wm)}</text>`);
+  el.push(`<line x1="${M - 16}" y1="${Y(y0)}" x2="${M - 16}" y2="${Y(y1)}" stroke="#dc2626" stroke-width=".6"/><text x="${M - 22}" y="${(+Y(y0) + +Y(y1)) / 2}" font-size="10" text-anchor="end" fill="#dc2626" font-family="sans-serif" transform="rotate(-90 ${M - 22} ${(+Y(y0) + +Y(y1)) / 2})">${Math.round(Dm)}</text>`);
+  return `<svg viewBox="0 0 ${M + Wm * S + 50} ${M + Dm * S + 50}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff"><text x="${M}" y="24" font-size="13" font-weight="700" font-family="sans-serif">배치 평면도</text>${el.join('')}<text x="${M}" y="${(M + Dm * S + 46).toFixed(1)}" font-size="9.5" fill="#64748b" font-family="sans-serif">범례: ▨데크보드 · ┅장선 · ─보 · ⊕기둥 · 치수 mm</text></svg>`;
+}
+
+/** 어셈블리 → 2D GA 도면 HTML (정면·평면 2뷰 + 전체치수 + 밸룬 + BOM, 인쇄양식).
+ *  domain='building' → 축선 구조평면 추가 / 'landscape' → 배치 평면도 추가 (관례도면 모드 ③) */
+export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA-001', domain } = {}) {
   const parts = (assembly.parts ?? []).map((p, i) => ({ p, i, box: placed(p), st: styleOf(p) }));
   if (!parts.length) return '<!DOCTYPE html><body>빈 어셈블리</body>';
   const bx0 = Math.min(...parts.map(o => o.box.x)), bx1 = Math.max(...parts.map(o => o.box.x + o.box.dx));
@@ -80,6 +169,12 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   ${dimV((ox - 18).toFixed(1), pz(bz1), pz(bz0), `${Math.round(H)} (H)`)}
   ${dimH(px(bx0, sx0), px(bx1, sx0), (oy + pd + 18).toFixed(1), `${Math.round(W)}`)}
   ${balloons.join('')}</svg>`;
+  // 관례도면 모드 (③): 건축=축선 구조평면 · 조경=배치 평면도
+  let domainSvg = '';
+  try {
+    if (domain === 'building') domainSvg = axesPlanSvg(parts) ?? '';
+    else if (domain === 'landscape') domainSvg = landscapePlanSvg(parts) ?? '';
+  } catch { domainSvg = ''; }
   const bom = parts.map(({ p, i, box, st }) => `<tr><td>${i + 1}</td><td style="text-align:left">${esc(p.id ?? p.type)}</td><td>${esc(p.type)}</td><td>${Math.round(box.dx)}×${Math.round(box.dy)}×${Math.round(box.dz)}</td><td>${esc(st.mat)}</td></tr>`).join('');
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>@page{size:A3 landscape;margin:8mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937}
@@ -87,7 +182,7 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
 table{border-collapse:collapse;width:calc(100% - 40px);margin:0 20px 14px;font-size:11px}td,th{border:1px solid #cbd5e1;padding:3px 8px;text-align:center}th{background:#f1f5f9}
 @media print{.nf-print-bar{display:none}body{background:#fff}.sheet{box-shadow:none;border:none;margin:0}}</style></head>
 <body>${PRINT_BAR('설계 GA 도면 (A3)')}<div class="sheet"><div class="hd"><div><h1>${esc(title)} — 일반배치도 (GA)</h1><div class="sub">nexyfab drawing-to-3d 자동생성 · 부품 ${parts.length}종</div></div><div class="sub">DWG ${esc(dwg)} · mm · 3rd angle</div></div>
-<div class="wrap">${svg}</div><table><thead><tr><th>No.</th><th>품명</th><th>Type</th><th>엔벨로프(mm)</th><th>재질</th></tr></thead><tbody>${bom}</tbody></table>
+<div class="wrap">${svg}</div>${domainSvg ? `<div class="wrap" style="border-top:1px solid #e2e8f0">${domainSvg}</div>` : ''}<table><thead><tr><th>No.</th><th>품명</th><th>Type</th><th>엔벨로프(mm)</th><th>재질</th></tr></thead><tbody>${bom}</tbody></table>
 <div class="sub" style="padding:4px 20px 12px;color:#94a3b8">⚠ 자동생성 GA(비법정) · 부품 엔벨로프 기준 · 상세치수·공차는 후속.</div></div></body></html>`;
 }
 
