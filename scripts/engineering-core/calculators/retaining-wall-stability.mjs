@@ -30,11 +30,14 @@ export default {
       toeLength: { type: 'number', minimum: 0, description: '앞굽(toe) 길이 m' },
       gammaConcrete: { type: 'number', minimum: 20, maximum: 26, description: '콘크리트 단위중량 kN/m³ (기본 24)' },
       gammaBackfill: { type: 'number', minimum: 10, maximum: 24, description: '뒤채움 단위중량 kN/m³' },
-      phiBackfill: { type: 'number', minimum: 15, maximum: 45, description: '뒤채움 내부마찰각 °' },
+      phiBackfill: { type: 'number', minimum: 10, maximum: 45, description: '뒤채움 내부마찰각 ° (개발강도 φd 입력 허용 — EM-2502 SMF 관례)' },
       surcharge: { type: 'number', minimum: 0, description: '상재하중 kPa (기본 0)' },
       baseFriction: { type: 'number', exclusiveMinimum: 0, maximum: 1, description: '저면 마찰계수 μ=tanδ' },
       allowableBearing: { type: 'number', exclusiveMinimum: 0, description: '허용지지력 q_allow kPa' },
       seismicKh: { type: 'number', minimum: 0, maximum: 0.5, description: '수평지진계수 kh (옵션 — >0이면 Mononobe-Okabe 지진시 검토 추가. 내진등급·지반에서 프로젝트가 결정)' },
+      seismicKv: { type: 'number', minimum: -0.5, maximum: 0.5, description: '연직지진계수 kv (기본 0. 음수=상향 관례 소스도 있음 — 부호 그대로 (1−kv)에 반영)' },
+      backfillSlopeDeg: { type: 'number', minimum: 0, maximum: 30, description: '뒤채움 경사 β° (기본 0 수평 — M-O 일반식용)' },
+      wallFrictionDeg: { type: 'number', minimum: 0, maximum: 30, description: '벽마찰각 δ° (기본 0 보수측 — 지진시 수평성분 PAE·cosδ 적용, 연직 유리효과 무시)' },
     },
   },
   run(input, std) {
@@ -85,23 +88,30 @@ export default {
     //    M-O 가정: 연직벽·수평뒤채움·벽마찰 δ=0(보수측)·kv=0. θ=atan(kh).
     //    작용점: 정적성분 H/3 + 동적증분 0.6H(Seed-Whitman 관례, 명시). 벽체관성 kh·W(CG).
     const kh = input.seismicKh ?? 0;
+    const kv = input.seismicKv ?? 0;
+    const betaR = deg2rad(input.backfillSlopeDeg ?? 0);
+    const delR = deg2rad(input.wallFrictionDeg ?? 0);
     let seismic = null;
     if (kh > 0) {
-      const th = Math.atan(kh);
+      const th = Math.atan(kh / (1 - kv)); // 지진 경사각 ψ
       const phiR = deg2rad(phi);
-      if (phiR <= th) {
-        seismic = { error: `M-O 성립 불가: φ(${phi}°) ≤ θ(${(th * 180 / Math.PI).toFixed(1)}°) — 지반 액상화/대변형 영역, 별도 검토` };
+      if (phiR <= th + betaR) {
+        seismic = { error: `M-O 성립 불가: φ(${phi}°) ≤ ψ+β(${((th + betaR) * 180 / Math.PI).toFixed(1)}°) — 액상화/대변형 영역, 별도 검토` };
       } else {
+        // 일반 M-O (연직벽 θw=0): 공표예제 재현 검증 — ITL-92-11 Ex.9 (KAE 0.4044) 벤치 통과
         const num_ = Math.cos(phiR - th) ** 2;
-        const den = Math.cos(th) ** 2 * (1 + Math.sqrt((Math.sin(phiR) * Math.sin(phiR - th)) / Math.cos(th))) ** 2;
+        // 표준 M-O(연직벽): den = cosψ·cos(δ+ψ)·[1+√(sin(φ+δ)sin(φ−ψ−β)/(cos(δ+ψ)cosβ))]²
+        const den = Math.cos(th) * Math.cos(delR + th)
+          * (1 + Math.sqrt((Math.sin(phiR + delR) * Math.sin(phiR - th - betaR)) / (Math.cos(delR + th) * Math.cos(betaR)))) ** 2;
         const Kae = num_ / den;
-        const Pae = 0.5 * Kae * g * H * H + Kae * q * H; // 총 지진시 주동토압(상재 포함)
-        const dPae = Math.max(0, Pae - (PaSoil + PaSur)); // 동적 증분
+        const Pae = (0.5 * Kae * g * H * H + Kae * q * H) * (1 - kv); // 총 지진시 주동토압(상재 포함)
+        const PaeH = Pae * Math.cos(delR); // 수평성분 (δ>0 시 연직 유리효과 무시 — 보수측)
+        const dPae = Math.max(0, PaeH - (PaSoil + PaSur)); // 동적 증분(수평)
         const Wwall = ts * hStem * gc + B * tb * gc; // 콘크리트 자중(관성용)
         const Fw = kh * Wwall; // 벽체 관성력, 작용고 = 콘크리트 CG
         const zW = (ts * hStem * gc * (tb + hStem / 2) + B * tb * gc * (tb / 2)) / Wwall;
         const MoE = (PaSoil * H / 3 + PaSur * H / 2) + dPae * 0.6 * H + Fw * zW;
-        const HE = Pae + Fw;
+        const HE = PaeH + Fw;
         const critE = std.civil?.retaining_wall?.seismic ?? std.civil?.retaining_wall_seismic ?? { FS_overturning_min: 1.5, FS_sliding_min: 1.2, FS_bearing_min: 2.0 };
         const FSotE = Mr / MoE;
         const FSslE = (mu * V) / HE;

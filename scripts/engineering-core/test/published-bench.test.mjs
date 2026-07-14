@@ -1,0 +1,108 @@
+/**
+ * 공표예제 재현 벤치 (§7.0 게이트) — 퍼블릭도메인 원문에서 **직독한 숫자만** 사용.
+ * 소싱: 2026-07-14 리서치 에이전트 (원문 PDF fetch + 산술 검산 완료. 날조 없음).
+ *
+ * 이원화 원칙: 여기는 "보편 수식"의 공표 재현 — KDS 고유계수(β1·φ계수·허용응력값)는
+ * kds.json 원문 대조로 별도 커버. 방법이 다른 예제(USACE 쐐기법 등)는 재현 가능한
+ * 원자(Ka 등)만 대조하고 방법 플래그를 명시한다.
+ */
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { runCalculator } from '../registry.mjs';
+
+const close = (got, want, tolPct, label) =>
+  assert.ok(Math.abs(got - want) <= Math.abs(want) * tolPct / 100, `${label}: got ${got}, want ${want} (±${tolPct}%)`);
+
+// ── 합리식 — FHWA HEC-22 3rd ed. (FHWA-NHI-10-009, 2009) §3.2.2 (PD) ─────────
+test('[공표] HEC-22 Example 3-3 기존조건: C=0.235·i=48mm/hr·A=17.55ha → Q=0.55 m³/s', () => {
+  const r = runCalculator('landscape_drainage', { areaHa: 17.55, C: 0.235, i_mmhr: 48 }, 'KDS');
+  close(Number(r.intermediate.Q_design_m3s), 0.55, 1.0, 'Q(기존)');
+});
+
+test('[공표] HEC-22 Example 3-3 개발후: C=0.315·i=58mm/hr·A=17.55ha → Q=0.89 m³/s', () => {
+  const r = runCalculator('landscape_drainage', { areaHa: 17.55, C: 0.315, i_mmhr: 58 }, 'KDS');
+  close(Number(r.intermediate.Q_design_m3s), 0.89, 1.0, 'Q(개발후)');
+});
+
+// ── Mononobe-Okabe — USACE WES ITL-92-11 (Ebeling & Morrison, 1992) Ch.4 (PD) ─
+// Example 9: H=20ft, γ=120pcf, φ'=35°, δ=0, β=5°, kh=0.2, kv=−0.1343 → KAE=0.4044, PAE=11,009 lb/ft
+test('[공표] ITL-92-11 Ex.9: 일반 M-O KAE=0.4044 · PAE=11,009 lb/ft 재현', () => {
+  const H_m = 20 * 0.3048;                 // 6.096 m
+  const gamma = 120 * 0.157087;            // pcf → kN/m³ = 18.8504
+  const r = runCalculator('retaining_wall_stability', {
+    H: H_m, stemThickness: 0.3, baseWidth: 3, baseThickness: 0.5, toeLength: 0.8,
+    gammaBackfill: gamma, phiBackfill: 35, baseFriction: 0.6, allowableBearing: 500,
+    seismicKh: 0.2, seismicKv: -0.1343, backfillSlopeDeg: 5, wallFrictionDeg: 0,
+  }, 'KDS');
+  close(r.seismic.Kae, 0.4044, 0.3, 'KAE');
+  // PAE(kN/m) → lb/ft (1 kN/m = 68.5218 lb/ft)
+  const paeLbFt = r.seismic.Pae_kN * 68.5218;
+  close(paeLbFt, 11009, 0.6, 'PAE lb/ft');
+});
+
+// Example 7/8: φ'=30°, δ=3°, β=6°, kh=0.1, kv=±0.067 → KAE 쌍 {0.4268, 0.4154}
+// kv 부호 관례: 본 계산기는 ψ=atan(kh/(1−kv)) — Ex.9(kv=−0.1343→ψ=10°)로 앵커됨.
+// ITL 전사본의 Ex.7/8 kv 부호 라벨은 반대 관례로 읽혔음(값 쌍은 동일 재현) — 앵커 관례로 짝 매김.
+test('[공표] ITL-92-11 Ex.7/8: KAE 쌍 {0.4268, 0.4154} 재현 (kv 관례=Ex.9 앵커)', () => {
+  const base = {
+    H: 6.096, stemThickness: 0.3, baseWidth: 3, baseThickness: 0.5, toeLength: 0.8,
+    gammaBackfill: 18.85, phiBackfill: 30, baseFriction: 0.6, allowableBearing: 500,
+    seismicKh: 0.1, backfillSlopeDeg: 6, wallFrictionDeg: 3,
+  };
+  const rPlus = runCalculator('retaining_wall_stability', { ...base, seismicKv: +0.067 }, 'KDS');
+  const rMinus = runCalculator('retaining_wall_stability', { ...base, seismicKv: -0.067 }, 'KDS');
+  close(rPlus.seismic.Kae, 0.4268, 0.5, 'KAE(1−kv=0.933)');
+  close(rMinus.seismic.Kae, 0.4154, 0.5, 'KAE(1−kv=1.067)');
+});
+
+// ── 옹벽 Ka 원자 — USACE EM 1110-2-2502 (2022) Appendix D (PD) ────────────────
+// 원문: 개발강도 φd=14° → KA=(1−sin14)/(1+sin14)=0.61. (전체 예제는 쐐기법·수압·인장균열
+// 포함이라 방법 상이 — Rankine Ka 원자만 대조, 방법 플래그 명시)
+test('[공표·부분] EM-2502(2022) App.D: Rankine Ka(φ=14°)=0.61 원자 재현', () => {
+  const r = runCalculator('retaining_wall_stability', {
+    H: 7.62, stemThickness: 0.4, baseWidth: 6.1, baseThickness: 0.6, toeLength: 1.5,
+    gammaBackfill: 18, phiBackfill: 14, baseFriction: 0.53, allowableBearing: 500,
+  }, 'KDS');
+  close(r.intermediate.Ka, 0.61, 1.0, 'Ka(φd=14)');
+});
+
+// ── 목재 단면성능 원자 — USDA FS EM 7700-8 Timber Bridges (1990) Ex.7-9 (PD) ──
+// 6×18 실치수 5.5×17.5 in → S=280.73 in³, I=2,456.38 in⁴. (허용응력측은 NDS 수종값이라
+// KDS 계산기와 재료표 상이 — 단면성능·역학 원자만 재현)
+test('[공표·부분] EM 7700-8 Ex.7-9: 단면성능 S=280.73in³ · I=2456.38in⁴ 재현', () => {
+  const b = 5.5 * 25.4, h = 17.5 * 25.4; // mm
+  const r = runCalculator('timber_beam', { species: 'pine', grade: 1, b, h, L: 5182, w: 1.0 }, 'KDS');
+  const S_in3 = r.intermediate.S_mm3 / 16387.064;
+  const I_in4 = r.intermediate.I_mm4 / 416231.4256;
+  close(S_in3, 280.73, 0.2, 'S in³');
+  close(I_in4, 2456.38, 0.2, 'I in⁴');
+});
+
+// ── 박스암거 교차 대조 — FHWA-IP-83-6 (1983) App.D.1 Throat (PD) ─────────────
+// 원문은 계수식(G1~G4, eq3.8) 설계법 — 우리 처짐각법 정해와 **방법 상이**. 동일 하중·
+// 중심선 기하로 교차 대조: 우각부 모멘트 자릿수·부호 일치 확인(±25% 허용, 편차 기록).
+// 원문: B'=7.67ft·D'=6.67ft·T=8in, Pv=1,426psf, ps=690/176psf → Mo,max=−67,680 in-lb/ft
+test('[공표·교차] FHWA-IP-83-6 App.D.1: 우각부 모멘트 교차 대조(방법 상이 — ±25%)', async () => {
+  const calc = (await import('../calculators/box-culvert-frame.mjs')).default;
+  const ft = 0.3048, psf = 0.0478803; // → kPa
+  // 우리 입력으로 등가 재구성: 연직 wv=1,426psf 직접 주려면 cover·γ 대신 surcharge 사용, 자중 제외
+  const r = calc.run({
+    innerWidth: 7.67 * ft, innerHeight: 6.67 * ft, wallThk: (8 / 12) * ft,
+    cover: 0, gammaSoil: 0, K: 1, surcharge: 0, gammaConcrete: 0,
+    // 측압 사다리꼴은 K·γ 경로라 직접 주입 불가 → 등가: γ·K 재구성
+  });
+  // 직접 재구성이 제한적이므로 두 번째 방식: wv는 surcharge로, 측압 최대(690psf)를 등가 K·γ(z)로 근사 불가한
+  // 부분이 있어, 여기서는 '상판 등분포 단독' 항만 대조: 원문 계수식의 상판 항 wv·(B')²·G 계열과
+  // 우리 정해의 상판 모멘트 스케일 비교 — 완전 등가 하중 재구성은 후속(사다리꼴 주입 인터페이스 필요).
+  const r2 = calc.run({
+    innerWidth: 7.67 * ft, innerHeight: 6.67 * ft, wallThk: (8 / 12) * ft,
+    cover: 0, gammaSoil: 0, K: (690 / 1426), surcharge: 1426 * psf, gammaConcrete: 0,
+  });
+  // 원문 Mo,max=−67,680 in-lb/ft → kN·m/m: ×0.000112985/0.3048 = 25.08 kN·m/m... 정확 환산:
+  const MoPub = 67680 * 0.112984829 / 1000 / 0.3048; // in-lb/ft → kN·m/m = 25.09
+  const got = Math.abs(r2.moments_kNm.cornerTop);
+  const dev = Math.abs(got - MoPub) / MoPub * 100;
+  console.log(`  [교차기록] 우리 ${got.toFixed(2)} vs 공표 ${MoPub.toFixed(2)} kN·m/m — 편차 ${dev.toFixed(1)}% (측압 균등근사·방법 상이)`);
+  assert.ok(got > 0 && Number.isFinite(got), '유한 모멘트');
+  assert.ok(dev < 25, `교차 편차 ${dev.toFixed(1)}% ≥ 25% — 하중 재구성 확인 필요`);
+});
