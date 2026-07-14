@@ -184,7 +184,7 @@ const parseLayout = (s?: string): [number, number] | null => {
 
 export default function InteriorPlanEditor({
   lang, width, depth, doorWidth, exitCount, rows, cols,
-  furniture, onChange, result,
+  furniture, onChange, result, unit = 'mm',
 }: {
   lang: string;
   width: number; depth: number; doorWidth: number; exitCount: number;
@@ -192,9 +192,11 @@ export default function InteriorPlanEditor({
   furniture: Furn[] | null; // null = 템플릿 그리드 모드
   onChange: (list: Furn[] | null, label: string) => void;
   result: InteriorOverlayData | null;
+  unit?: 'mm' | 'm'; // 치수 라벨 표시 단위 (좌표·스냅은 mm 고정)
 }) {
   const t = dict[toIsoLang(lang)] ?? dict.ko;
   const W = Math.max(1000, width), D = Math.max(1000, depth);
+  const fmtDim = (v: number) => (unit === 'm' ? `${(v / 1000).toFixed(3)} m` : `${v} mm`);
 
   // 로컬 편집 상태 — 드래그 중엔 로컬만 갱신, 놓을 때 onChange로 커밋(리빌드 1회)
   const [items, setItems] = useState<Furn[] | null>(furniture);
@@ -474,8 +476,8 @@ export default function InteriorPlanEditor({
         )}
 
         {/* 치수 라벨 */}
-        <text x={W / 2} y={D + wallT + fs * (hasExit2 ? 2.2 : 1.1)} fontSize={fs * 0.85} fill="var(--nx-text-3, #6b7684)" textAnchor="middle">{W} mm</text>
-        <text x={-wallT - fs * 0.5} y={D / 2} fontSize={fs * 0.85} fill="var(--nx-text-3, #6b7684)" textAnchor="middle" transform={`rotate(-90 ${-wallT - fs * 0.5} ${D / 2})`}>{D} mm</text>
+        <text x={W / 2} y={D + wallT + fs * (hasExit2 ? 2.2 : 1.1)} fontSize={fs * 0.85} fill="var(--nx-text-3, #6b7684)" textAnchor="middle">{fmtDim(W)}</text>
+        <text x={-wallT - fs * 0.5} y={D / 2} fontSize={fs * 0.85} fill="var(--nx-text-3, #6b7684)" textAnchor="middle" transform={`rotate(-90 ${-wallT - fs * 0.5} ${D / 2})`}>{fmtDim(D)}</text>
       </svg>
     </div>
   );

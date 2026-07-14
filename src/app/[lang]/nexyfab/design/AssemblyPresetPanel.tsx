@@ -203,6 +203,26 @@ const dict = {
     hsInit: '초기값',
     inSprkLabel: '스프링클러 수평거리 m',
     inSprkPh: 'NFTC 103 1.7/2.1/2.3',
+    shBtn: '공유',
+    shCopied: '공유 링크가 복사되었습니다.',
+    shTooBig: '설계가 커서 링크로 담을 수 없습니다 — 저장을 사용하세요.',
+    shPrompt: '아래 링크를 복사하세요:',
+    shRestored: '공유 링크에서 복원됨',
+    pjSave: '저장',
+    pjNamePh: '프로젝트 이름',
+    pjLoad: '불러오기',
+    pjDel: '삭제',
+    pjNote: '브라우저 저장 — 기기 간 동기화 없음(서버 저장은 후속).',
+    pjRestored: '불러옴: ',
+    pjSaveFail: '저장 실패(브라우저 저장소)',
+    unitTitle: '표시 단위 전환 — 입력은 mm 고정',
+    hkHelp: 'Ctrl+Z/Y = 실행취소/다시실행 · 1/2/3 = 면/모서리/거리 · Esc = 선택 해제',
+    abBtn: '비교',
+    abEnd: '비교 종료',
+    abRestoreA: 'A로 복원',
+    abTitle: 'A/B 비교',
+    abParamDiff: '파라미터 차이',
+    abNoDiff: '차이 없음',
   },
   en: {
     tplTitle: 'Assembly template',
@@ -381,6 +401,26 @@ const dict = {
     hsInit: 'initial',
     inSprkLabel: 'sprinkler radius m',
     inSprkPh: 'NFTC 103: 1.7/2.1/2.3',
+    shBtn: 'Share',
+    shCopied: 'Share link copied.',
+    shTooBig: 'Design too large for a link — use Save instead.',
+    shPrompt: 'Copy this link:',
+    shRestored: 'Restored from share link',
+    pjSave: 'Save',
+    pjNamePh: 'Project name',
+    pjLoad: 'Load',
+    pjDel: 'Delete',
+    pjNote: 'Browser storage — no cross-device sync (server save later).',
+    pjRestored: 'Loaded: ',
+    pjSaveFail: 'Save failed (browser storage)',
+    unitTitle: 'Display unit toggle — inputs stay in mm',
+    hkHelp: 'Ctrl+Z/Y = undo/redo · 1/2/3 = face/edge/distance · Esc = clear pick',
+    abBtn: 'Compare',
+    abEnd: 'End compare',
+    abRestoreA: 'Restore A',
+    abTitle: 'A/B compare',
+    abParamDiff: 'Parameter diffs',
+    abNoDiff: 'no differences',
   },
   ja: {
     tplTitle: 'アセンブリテンプレート',
@@ -559,6 +599,26 @@ const dict = {
     hsInit: '初期値',
     inSprkLabel: 'スプリンクラー水平距離 m',
     inSprkPh: 'NFTC 103 1.7/2.1/2.3',
+    shBtn: '共有',
+    shCopied: '共有リンクをコピーしました。',
+    shTooBig: '設計が大きすぎてリンク化できません — 保存を使用してください。',
+    shPrompt: 'このリンクをコピーしてください:',
+    shRestored: '共有リンクから復元',
+    pjSave: '保存',
+    pjNamePh: 'プロジェクト名',
+    pjLoad: '読み込み',
+    pjDel: '削除',
+    pjNote: 'ブラウザ保存 — 端末間同期なし（サーバー保存は今後）。',
+    pjRestored: '読み込み完了: ',
+    pjSaveFail: '保存に失敗（ブラウザ保存）',
+    unitTitle: '表示単位切替 — 入力はmm固定',
+    hkHelp: 'Ctrl+Z/Y = 元に戻す/やり直す · 1/2/3 = 面/エッジ/距離 · Esc = 選択解除',
+    abBtn: '比較',
+    abEnd: '比較終了',
+    abRestoreA: 'Aに復元',
+    abTitle: 'A/B比較',
+    abParamDiff: 'パラメータ差分',
+    abNoDiff: '差分なし',
   },
   zh: {
     tplTitle: '装配模板',
@@ -737,6 +797,26 @@ const dict = {
     hsInit: '初始值',
     inSprkLabel: '喷头水平距离 m',
     inSprkPh: 'NFTC 103 1.7/2.1/2.3',
+    shBtn: '分享',
+    shCopied: '分享链接已复制。',
+    shTooBig: '设计过大，无法生成链接 — 请使用保存。',
+    shPrompt: '请复制此链接:',
+    shRestored: '已从分享链接恢复',
+    pjSave: '保存',
+    pjNamePh: '项目名称',
+    pjLoad: '载入',
+    pjDel: '删除',
+    pjNote: '浏览器存储 — 不跨设备同步（服务器保存为后续功能）。',
+    pjRestored: '已载入: ',
+    pjSaveFail: '保存失败（浏览器存储）',
+    unitTitle: '显示单位切换 — 输入固定为mm',
+    hkHelp: 'Ctrl+Z/Y = 撤销/重做 · 1/2/3 = 面/棱边/距离 · Esc = 取消选择',
+    abBtn: '对比',
+    abEnd: '结束对比',
+    abRestoreA: '恢复到A',
+    abTitle: 'A/B对比',
+    abParamDiff: '参数差异',
+    abNoDiff: '无差异',
   },
   es: {
     tplTitle: 'Plantilla de ensamblaje',
@@ -915,6 +995,26 @@ const dict = {
     hsInit: 'inicial',
     inSprkLabel: 'radio de rociador m',
     inSprkPh: 'NFTC 103: 1.7/2.1/2.3',
+    shBtn: 'Compartir',
+    shCopied: 'Enlace copiado.',
+    shTooBig: 'Diseño demasiado grande para un enlace — use Guardar.',
+    shPrompt: 'Copie este enlace:',
+    shRestored: 'Restaurado desde el enlace',
+    pjSave: 'Guardar',
+    pjNamePh: 'Nombre del proyecto',
+    pjLoad: 'Cargar',
+    pjDel: 'Eliminar',
+    pjNote: 'Almacenamiento del navegador — sin sincronización entre dispositivos (guardado en servidor: próximamente).',
+    pjRestored: 'Cargado: ',
+    pjSaveFail: 'Fallo al guardar (almacenamiento del navegador)',
+    unitTitle: 'Cambio de unidad de visualización — las entradas siguen en mm',
+    hkHelp: 'Ctrl+Z/Y = deshacer/rehacer · 1/2/3 = cara/arista/distancia · Esc = quitar selección',
+    abBtn: 'Comparar',
+    abEnd: 'Terminar comparación',
+    abRestoreA: 'Restaurar A',
+    abTitle: 'Comparación A/B',
+    abParamDiff: 'Diferencias de parámetros',
+    abNoDiff: 'sin diferencias',
   },
   ar: {
     tplTitle: 'قالب التجميع',
@@ -1093,6 +1193,26 @@ const dict = {
     hsInit: 'أولي',
     inSprkLabel: 'نصف قطر المرشّ m',
     inSprkPh: 'NFTC 103: 1.7/2.1/2.3',
+    shBtn: 'مشاركة',
+    shCopied: 'تم نسخ رابط المشاركة.',
+    shTooBig: 'التصميم كبير جدًا للرابط — استخدم الحفظ.',
+    shPrompt: 'انسخ هذا الرابط:',
+    shRestored: 'استُعيد من رابط المشاركة',
+    pjSave: 'حفظ',
+    pjNamePh: 'اسم المشروع',
+    pjLoad: 'تحميل',
+    pjDel: 'حذف',
+    pjNote: 'تخزين المتصفح — بلا مزامنة بين الأجهزة (الحفظ على الخادم لاحقًا).',
+    pjRestored: 'تم التحميل: ',
+    pjSaveFail: 'فشل الحفظ (تخزين المتصفح)',
+    unitTitle: 'تبديل وحدة العرض — تبقى المدخلات بالمليمتر',
+    hkHelp: 'Ctrl+Z/Y = تراجع/إعادة · 1/2/3 = وجه/حافة/مسافة · Esc = إلغاء الاختيار',
+    abBtn: 'مقارنة',
+    abEnd: 'إنهاء المقارنة',
+    abRestoreA: 'استعادة A',
+    abTitle: 'مقارنة A/B',
+    abParamDiff: 'فروق المعاملات',
+    abNoDiff: 'لا فروق',
   },
 } as const;
 
@@ -1119,6 +1239,20 @@ const SNAP_MIRROR: Record<string, { values: number[]; source: string }> = {
 
 // ①② param-sweep 지원 도메인 (scripts/drawing-to-3d/param-sweep.mjs CHAINS 미러)
 const SWEEP_DOMAINS = ['building', 'landscape', 'interior', 'bridge'];
+
+// Round5 — 공유 링크/브라우저 저장 스냅샷 (표시·복원용 전체 상태)
+interface SavedState {
+  v?: number; name?: string; at?: number;
+  domain: string; templateId: string;
+  params: Record<string, number>;
+  furn?: Furn[] | null;
+  chainP?: Record<string, number | string>;
+  lsP?: Record<string, number | string>;
+  inP?: Record<string, number>;
+  cvP?: Record<string, number>;
+}
+const PROJ_KEY = 'nf-design-projects'; // localStorage — 최대 20개
+const DOMAIN_EMOJI: Record<string, string> = { building: '🏢', civil: '🧱', landscape: '🌳', interior: '☕', bridge: '🌉' };
 
 interface BandPoint { value: number; pass: boolean; fails?: string[]; inputs?: number; metric?: { label?: string; value?: number; unit?: string } | null }
 interface SnapInfo { kind?: string; values?: number[]; step?: number; source?: string }
@@ -1267,6 +1401,53 @@ export default function AssemblyPresetPanel({
   const [histOpen, setHistOpen] = useState(false);
   // Round4 — 인테리어 자유배치: null=템플릿 그리드, 배열=customFurniture(빌드 파라미터에 동봉)
   const [furn, setFurn] = useState<Furn[] | null>(null);
+  // Round5 — 공통 편의: 단위 토글(표시 전용)·A/B 비교·저장 프로젝트·공유 복원·단축키
+  const [unitM, setUnitM] = useState(false); // true=m 표시 (입력은 mm 고정)
+  const [abA, setAbA] = useState<{ params: Record<string, number>; furn: Furn[] | null; sum: DiffSummary | null; at: number } | null>(null);
+  const [projects, setProjects] = useState<SavedState[]>([]);
+  const [pjSelAt, setPjSelAt] = useState('');
+  const [saveName, setSaveName] = useState('');
+  const restoreRef = useRef<SavedState | null>(null); // ?d= 링크·불러오기 → 템플릿 로드 후 적용
+  const hkRef = useRef<{ undo: () => void; redo: () => void; mode: (m: PickMode) => void; esc: () => void } | null>(null);
+
+  // 저장 프로젝트 로드 (mount)
+  useEffect(() => {
+    try {
+      const a = JSON.parse(window.localStorage.getItem(PROJ_KEY) ?? '[]') as SavedState[];
+      if (Array.isArray(a)) setProjects(a);
+    } catch { /* 손상된 저장소 — 빈 목록 */ }
+  }, []);
+
+  // ?d= 공유 링크 파싱 (base64url → JSON) — 템플릿 로드 후 restoreRef로 적용·자동 빌드
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get('d');
+      if (!q) return;
+      const b64 = q.replace(/-/g, '+').replace(/_/g, '/');
+      const json = new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)));
+      const d = JSON.parse(json) as SavedState;
+      if (d && d.domain === domain && d.templateId && d.params) restoreRef.current = d;
+    } catch { /* 잘못된 링크 — 무시(정직: 복원 안 함) */ }
+  }, [domain]);
+
+  // 키보드 단축키 — Ctrl+Z/Y=undo/redo · 1/2/3=면/모서리/거리 · Esc=선택 해제 (입력 포커스 시 비활성)
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+      const hk = hkRef.current;
+      if (!hk || typing) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); hk.undo(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); hk.redo(); return; }
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === '1') hk.mode('face');
+      else if (e.key === '2') hk.mode('edge');
+      else if (e.key === '3') hk.mode('dist');
+      else if (e.key === 'Escape') hk.esc();
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, []);
   const generateRef = useRef<() => Promise<void>>(async () => {});
   const reverifyPending = useRef(false);
   const rebuildTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1457,6 +1638,23 @@ export default function AssemblyPresetPanel({
     }
   }, [built, chainBody]);
 
+  // Round5 — 공유 링크/저장 프로젝트 복원: 상태 일괄 적용 + 자동 빌드(같은 디바운스→재검증 파이프)
+  const applyRestore = (d: SavedState, label: string) => {
+    setParams({ ...d.params });
+    setFurn(d.furn ?? null);
+    if (d.chainP) setChainP((s) => ({ ...s, ...d.chainP }));
+    if (d.lsP) setLsP((s) => ({ ...s, ...d.lsP }));
+    if (d.inP) setInP((s) => ({ ...s, ...d.inP }));
+    if (d.cvP) setCvP((s) => ({ ...s, ...d.cvP }));
+    setMsg(label);
+    setPick(null); setEdgeSel(null); setNlMsg(null);
+    setSwRes(null); setSwErr(null); setGoalRes(null);
+    setDiffCard(null); setAbA(null);
+    prevSumRef.current = null; diffArmedRef.current = false;
+    setHist({ entries: [{ params: { ...d.params }, furn: d.furn ?? null, label }], idx: 0 });
+    scheduleRebuild();
+  };
+
   useEffect(() => {
     let alive = true;
     fetch(`/api/nexyfab/drawing/preset/?kind=assembly&domain=${encodeURIComponent(domain)}`)
@@ -1464,7 +1662,9 @@ export default function AssemblyPresetPanel({
       .then((d: { ok: boolean; templates?: Template[] }) => {
         if (!alive || !d.ok || !d.templates?.length) return;
         setTemplates(d.templates);
-        setTid(d.templates[0].id);
+        // 공유 링크/불러오기 복원 대기 중이면 해당 템플릿으로 진입
+        const r0 = restoreRef.current;
+        setTid(r0 && d.templates.some((x) => x.id === r0.templateId) ? r0.templateId : d.templates[0].id);
       })
       .catch(() => {});
     return () => { alive = false; };
@@ -1474,6 +1674,14 @@ export default function AssemblyPresetPanel({
 
   useEffect(() => {
     if (!tpl) return;
+    // 복원 대기(공유 링크·불러오기)가 이 템플릿을 향하면 기본값 대신 스냅샷 적용 + 자동 빌드
+    const r0 = restoreRef.current;
+    if (r0 && r0.templateId === tpl.id) {
+      restoreRef.current = null;
+      applyRestore(r0, r0.name ? t.pjRestored + r0.name : t.shRestored);
+      setBuilt(null);
+      return;
+    }
     const defs = Object.fromEntries(tpl.params.map((p) => [p.name, p.default]));
     setParams(defs);
     setMsg(null);
@@ -1759,8 +1967,11 @@ export default function AssemblyPresetPanel({
           />
           <button type="button" onClick={() => editParam(name, clampV(cur + stepFor(cur)))} style={stepBtn}>+</button>
         </div>
-        {/* ⑥ 템플릿 치수 = 같은 역할 부재 전체에 일괄 적용(명시) */}
-        <div style={{ marginTop: 2, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{t.fpTplWide}</div>
+        {/* ⑥ 템플릿 치수 = 같은 역할 부재 전체에 일괄 적용(명시) · Round5 단위 토글 표시(입력은 mm) */}
+        <div style={{ marginTop: 2, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>
+          {t.fpTplWide}
+          {unitM && spec?.unit === 'mm' && <span style={{ marginLeft: 6, color: 'var(--nx-accent, #2563eb)' }}>≈ {(cur / 1000).toFixed(3)} m</span>}
+        </div>
         {/* ③ 표준규격 스냅 절점 — snap-lists.mjs 미러, 출처 툴팁 */}
         {snap && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 3, flexWrap: 'wrap' }}>
@@ -1807,7 +2018,7 @@ export default function AssemblyPresetPanel({
                 ))}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--nx-text-3, #6b7684)' }}>
-                <span>{bandMin}</span><span>{bandMax}</span>
+                <span>{spec?.unit === 'mm' ? fmtLen(bandMin) : bandMin}</span><span>{spec?.unit === 'mm' ? fmtLen(bandMax) : bandMax}</span>
               </div>
             </div>
             {swRes.note && <div style={{ marginTop: 2, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{swRes.note}</div>}
@@ -1816,7 +2027,7 @@ export default function AssemblyPresetPanel({
         {goalRes?.param === name && (
           goalRes.result === 'found' && typeof goalRes.value === 'number' ? (
             <div style={{ marginTop: 3, fontSize: 10.5 }}>
-              🎯 {t.glFound}<b>{goalRes.value}</b>{spec?.unit || 'mm'}
+              🎯 {t.glFound}<b>{spec?.unit === 'mm' ? fmtLen(goalRes.value) : `${goalRes.value}${spec?.unit || ''}`}</b>
               <button
                 type="button" onClick={() => editParam(name, clampV(goalRes.value as number))}
                 style={{ ...stepBtn, width: 'auto', height: 20, padding: '0 8px', fontSize: 10, marginLeft: 5, background: 'var(--nx-accent, #2563eb)', color: '#fff', border: '1px solid var(--nx-accent, #2563eb)' }}
@@ -1836,10 +2047,82 @@ export default function AssemblyPresetPanel({
   const pickedPart = pick && (pick.kind === 'face' || pick.kind === 'edge')
     ? (built?.assembly?.parts?.find((p) => p.id === pick.partId) ?? null)
     : null;
+  // Round5 ③ 단위 토글 — 표시 전용(mm↔m, 입력은 mm 고정)
+  const fmtLen = (v: number | undefined | null): string =>
+    typeof v === 'number' && Number.isFinite(v) ? (unitM ? `${(v / 1000).toFixed(3)} m` : `${v}mm`) : '—';
+
   const roParam = pick?.kind === 'face' ? pick.mapResult.param : pick?.kind === 'edge' ? (edgeSel ?? undefined) : undefined;
   const roValRaw = roParam ? pickedPart?.params?.[roParam] : undefined;
-  const roVal = typeof roValRaw === 'number' ? String(roValRaw) : '—';
+  const roVal = typeof roValRaw === 'number' ? fmtLen(roValRaw) : '—';
   const anyBusy = busy || chainBusy || lsBusy || intBusy || cvBusy;
+
+  // Round5 ④ 단축키 최신 핸들러 유지 (window keydown 효과가 ref로 호출)
+  hkRef.current = {
+    undo: () => restoreHist(hist.idx - 1),
+    redo: () => restoreHist(hist.idx + 1),
+    mode: (m: PickMode) => { if (built?.assembly) { setPickMode(m); setPick(null); setEdgeSel(null); } },
+    esc: () => { setPick(null); setEdgeSel(null); },
+  };
+
+  // Round5 ①② 공유 링크 + 브라우저 저장/불러오기
+  const snapshotState = (): SavedState => ({ v: 1, domain, templateId: tid, params, furn, chainP, lsP, inP, cvP });
+  const shareLink = async () => {
+    try {
+      const bytes = new TextEncoder().encode(JSON.stringify(snapshotState()));
+      let bin = '';
+      bytes.forEach((b) => { bin += String.fromCharCode(b); });
+      const enc = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      if (enc.length > 6144) { setMsg(t.shTooBig); return; } // 정직 한계 — URL 길이
+      const url = `${window.location.origin}${window.location.pathname}?d=${enc}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        setMsg(t.shCopied);
+      } catch {
+        window.prompt(t.shPrompt, url); // 클립보드 불가 브라우저 폴백
+      }
+    } catch {
+      setMsg(t.shTooBig);
+    }
+  };
+  const persistProjects = (list: SavedState[]) => {
+    setProjects(list);
+    try { window.localStorage.setItem(PROJ_KEY, JSON.stringify(list)); } catch { setMsg(t.pjSaveFail); }
+  };
+  const saveProject = () => {
+    const name = saveName.trim();
+    if (!name || !tid) return;
+    const entry: SavedState = { ...snapshotState(), name, at: Date.now() };
+    persistProjects([entry, ...projects.filter((p) => !(p.name === name && p.domain === domain))].slice(0, 20));
+    setSaveName('');
+  };
+  const doRestore = (d: SavedState) => {
+    if (d.templateId === tid) applyRestore(d, d.name ? t.pjRestored + d.name : t.shRestored);
+    else { restoreRef.current = d; setTid(d.templateId); }
+  };
+  const domProjects = projects.filter((p) => p.domain === domain);
+  const selProj = domProjects.find((p) => String(p.at) === pjSelAt) ?? null;
+
+  // Round5 ⑥ A/B 비교 — A=스냅샷(파라미터+가구+요약), B=현재 편집 상태(라이브)
+  const toggleAb = () => {
+    if (abA) { setAbA(null); return; }
+    setAbA({ params: { ...params }, furn: furn ? [...furn] : null, sum: summarize(), at: Date.now() });
+  };
+  const restoreA = () => {
+    if (!abA) return;
+    setParams({ ...abA.params });
+    setFurn(abA.furn);
+    pushHist({ ...abA.params }, 'A', abA.furn);
+    scheduleRebuild();
+  };
+  const abB = abA ? summarize() : null;
+  const abParamDiffs = abA
+    ? Object.keys({ ...abA.params, ...params })
+        .filter((k) => abA.params[k] !== params[k])
+        .map((k) => `${k}: ${abA.params[k] ?? '—'} → ${params[k] ?? '—'}`)
+    : [];
+  if (abA && JSON.stringify(abA.furn) !== JSON.stringify(furn)) {
+    abParamDiffs.push(`customFurniture: ${abA.furn ? abA.furn.length : 'grid'} → ${furn ? furn.length : 'grid'}`);
+  }
 
   // 거리 픽킹 판정 — DISTANCE_MAP 미러 (role 동일 + 축 매핑 존재 시에만 편집)
   const distInfo = (() => {
@@ -1933,9 +2216,26 @@ export default function AssemblyPresetPanel({
         </span>
       </div>
 
-      <select value={tid} onChange={(e) => setTid(e.target.value)} style={selStyle}>
-        {templates.map((tp) => <option key={tp.id} value={tp.id}>{ko ? tp.labelKo : tp.labelEn}</option>)}
-      </select>
+      {/* Round5 ⑤ 템플릿 갤러리 — 카드 그리드(이모지+라벨+파라미터 요약, 지어낸 썸네일 없음) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6 }}>
+        {templates.map((tp) => (
+          <button
+            key={tp.id} type="button" onClick={() => setTid(tp.id)}
+            style={{
+              textAlign: 'left', padding: 8, borderRadius: 8, cursor: 'pointer',
+              border: tid === tp.id ? '2px solid var(--nx-accent, #2563eb)' : '1px solid var(--nx-border, #dfe3e8)',
+              background: tid === tp.id ? 'var(--nx-accent-soft, #eef4ff)' : 'var(--nx-panel, #fff)',
+              color: 'inherit',
+            }}
+          >
+            <div style={{ fontSize: 16, lineHeight: 1 }}>{DOMAIN_EMOJI[tp.domain] ?? '📐'}</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3 }}>{ko ? tp.labelKo : tp.labelEn}</div>
+            <div style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 2, lineHeight: 1.45, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+              {tp.params.slice(0, 4).map((p) => `${p.labelKo} ${p.default}${p.unit}`).join(' · ')}
+            </div>
+          </button>
+        ))}
+      </div>
 
       {tpl && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, margin: '8px 0' }}>
@@ -1957,6 +2257,30 @@ export default function AssemblyPresetPanel({
       <button type="button" onClick={generate} disabled={busy} style={genStyle}>
         {busy ? t.buildBusy : t.buildBtn}
       </button>
+
+      {/* Round5 ①② 공유 링크 + 브라우저 저장/불러오기 */}
+      <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button type="button" onClick={() => void shareLink()} style={{ ...rptBtn, marginTop: 0 }}>🔗 {t.shBtn}</button>
+        <input
+          value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder={t.pjNamePh}
+          onKeyDown={(e) => { if (e.key === 'Enter') saveProject(); }}
+          style={{ ...inpStyle, width: 110 }}
+        />
+        <button type="button" onClick={saveProject} disabled={!saveName.trim()} style={{ ...rptBtn, marginTop: 0 }}>💾 {t.pjSave}</button>
+        {domProjects.length > 0 && (
+          <>
+            <select value={pjSelAt} onChange={(e) => setPjSelAt(e.target.value)} style={{ ...selStyle, width: 'auto', flex: 1, minWidth: 90 }}>
+              <option value="">—</option>
+              {domProjects.map((p) => (
+                <option key={p.at} value={String(p.at)}>{p.name}{p.at ? ` (${new Date(p.at).toLocaleDateString()})` : ''}</option>
+              ))}
+            </select>
+            <button type="button" onClick={() => { if (selProj) doRestore(selProj); }} disabled={!selProj} style={{ ...rptBtn, marginTop: 0 }}>{t.pjLoad}</button>
+            <button type="button" onClick={() => { if (selProj) { persistProjects(projects.filter((p) => p !== selProj)); setPjSelAt(''); } }} disabled={!selProj} style={{ ...rptBtn, marginTop: 0, color: '#991b1b' }}>{t.pjDel}</button>
+          </>
+        )}
+      </div>
+      <div style={{ marginTop: 3, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{t.pjNote}</div>
 
       {built && (
         <button type="button" onClick={downloadPackage} disabled={pkgBusy} style={{ ...genStyle, marginTop: 6, background: 'var(--nx-panel, #fff)', color: 'var(--nx-accent, #2563eb)', border: '1px solid var(--nx-accent, #2563eb)' }}>
@@ -2025,8 +2349,8 @@ export default function AssemblyPresetPanel({
           </button>
           {viewerOpen && (
             <>
-              {/* 픽킹 모드: 면 / 모서리(Alt+클릭도 가능) / 거리 + ⑤ undo/redo·이력 */}
-              <div style={{ display: 'flex', gap: 4, marginTop: 6, alignItems: 'center' }}>
+              {/* 픽킹 모드: 면 / 모서리(Alt+클릭도 가능) / 거리 + ⑤ undo/redo·이력 + Round5 단위·단축키·A/B */}
+              <div style={{ display: 'flex', gap: 4, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 {(['face', 'edge', 'dist'] as const).map((m) => (
                   <button
                     key={m} type="button"
@@ -2036,6 +2360,13 @@ export default function AssemblyPresetPanel({
                     {m === 'face' ? t.pmFace : m === 'edge' ? t.pmEdge : t.pmDist}
                   </button>
                 ))}
+                <button type="button" title={t.unitTitle} onClick={() => setUnitM((v) => !v)} style={{ ...stepBtn, width: 'auto', padding: '0 8px', fontSize: 10.5, ...(unitM ? { background: 'var(--nx-accent-soft, #eef4ff)' } : {}) }}>
+                  {unitM ? 'm' : 'mm'}
+                </button>
+                <span title={t.hkHelp} style={{ fontSize: 12, cursor: 'help', color: 'var(--nx-text-3, #6b7684)' }}>⌨</span>
+                <button type="button" onClick={toggleAb} style={{ ...stepBtn, width: 'auto', padding: '0 8px', fontSize: 10.5, ...(abA ? { background: 'var(--nx-accent, #2563eb)', color: '#fff', border: '1px solid var(--nx-accent, #2563eb)' } : {}) }}>
+                  ⚖ {abA ? t.abEnd : t.abBtn}
+                </button>
                 <div style={{ flex: 1 }} />
                 <button type="button" title={t.hsUndo} disabled={hist.idx <= 0} onClick={() => restoreHist(hist.idx - 1)} style={{ ...stepBtn, opacity: hist.idx <= 0 ? 0.4 : 1 }}>↶</button>
                 <button type="button" title={t.hsRedo} disabled={hist.idx >= hist.entries.length - 1} onClick={() => restoreHist(hist.idx + 1)} style={{ ...stepBtn, opacity: hist.idx >= hist.entries.length - 1 ? 0.4 : 1 }}>↷</button>
@@ -2056,7 +2387,7 @@ export default function AssemblyPresetPanel({
                   ))}
                 </div>
               )}
-              <AssemblyViewer3D parts={built.assembly.parts} onPick={handlePick} mode={pickMode} height={260} />
+              <AssemblyViewer3D parts={built.assembly.parts} onPick={handlePick} mode={pickMode} unit={unitM ? 'm' : 'mm'} height={260} />
               {(!pick || pick.kind === 'dist-pending') && (
                 <div style={{ marginTop: 5, fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)' }}>
                   {pick?.kind === 'dist-pending' ? t.dsPickB : pickMode === 'dist' ? t.dsHint : t.fpHint}
@@ -2135,7 +2466,7 @@ export default function AssemblyPresetPanel({
                   {pick.kind === 'dist' && (
                     <>
                       <div style={{ fontWeight: 800 }}>
-                        {pick.aId} ↔ {pick.bId} <span style={{ fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>· {pick.axis.toUpperCase()} · {t.dsGap} {pick.distanceMm}mm</span>
+                        {pick.aId} ↔ {pick.bId} <span style={{ fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>· {pick.axis.toUpperCase()} · {t.dsGap} {fmtLen(pick.distanceMm)}</span>
                       </div>
                       {distInfo?.kind === 'param' && (
                         isTplParam(distInfo.param) ? renderParamEditor(distInfo.param) : (
@@ -2161,6 +2492,35 @@ export default function AssemblyPresetPanel({
                   </b>
                   <span style={{ flex: 1, color: 'var(--nx-text-2, #46505e)' }}>{diffCard.deltas.join(' · ')}</span>
                   <button type="button" onClick={() => setDiffCard(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 12, color: 'var(--nx-text-3, #6b7684)', padding: 0 }}>×</button>
+                </div>
+              )}
+              {/* Round5 ⑥ A/B 비교 — A=스냅샷, B=현재(라이브). 지표=summarize() 재사용 */}
+              {abA && (
+                <div style={{ marginTop: 6, padding: 8, borderRadius: 7, fontSize: 10.5, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <b>⚖ {t.abTitle}</b>
+                    <div style={{ flex: 1 }} />
+                    <button type="button" onClick={restoreA} style={{ ...stepBtn, width: 'auto', height: 20, padding: '0 8px', fontSize: 10 }}>{t.abRestoreA}</button>
+                    <button type="button" onClick={() => setAbA(null)} style={{ ...stepBtn, width: 'auto', height: 20, padding: '0 8px', fontSize: 10 }}>{t.abEnd}</button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '2px 10px' }}>
+                    <span />
+                    <b>A</b>
+                    <b>B</b>
+                    <span />
+                    <b style={{ color: abA.sum?.verdict === 'PASS' ? '#16a34a' : abA.sum?.verdict === 'FAIL' ? '#dc2626' : '#6b7684' }}>{abA.sum?.verdict ?? '—'}</b>
+                    <b style={{ color: abB?.verdict === 'PASS' ? '#16a34a' : abB?.verdict === 'FAIL' ? '#dc2626' : '#6b7684' }}>{abB?.verdict ?? '—'}</b>
+                    {[...new Set([...Object.keys(abA.sum?.nums ?? {}), ...Object.keys(abB?.nums ?? {})])].map((k) => (
+                      <span key={k} style={{ display: 'contents' }}>
+                        <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{k}</span>
+                        <span>{abA.sum?.nums[k] ? `${abA.sum.nums[k].v}${abA.sum.nums[k].unit ?? ''}` : '—'}</span>
+                        <span>{abB?.nums[k] ? `${abB.nums[k].v}${abB.nums[k].unit ?? ''}` : '—'}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>
+                    {t.abParamDiff}: {abParamDiffs.length ? abParamDiffs.join(' · ') : t.abNoDiff}
+                  </div>
                 </div>
               )}
               {/* 말로 수정(NL) — 서버=문장→구조화 편집 변환만, 적용·클램프·재검증=클라 결정론 */}
@@ -2267,6 +2627,7 @@ export default function AssemblyPresetPanel({
             furniture={furn}
             onChange={onFurnChange}
             result={intR}
+            unit={unitM ? 'm' : 'mm'}
           />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 6 }}>
             {([['targetLux', t.inLuxLabel, t.inLuxPh], ['lampLumen', t.inLumenLabel, ''], ['ventPerPersonCMH', t.inVentLabel, ''], ['loadDensityVAm2', t.inLoadLabel, ''], ['sprinklerRadiusM', t.inSprkLabel, t.inSprkPh]] as Array<[string, string, string]>).map(([k, lb, ph]) => (

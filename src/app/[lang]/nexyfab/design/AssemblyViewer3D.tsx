@@ -86,11 +86,13 @@ export default function AssemblyViewer3D({
   parts,
   onPick,
   mode = 'face',
+  unit = 'mm',
   height = 260,
 }: {
   parts: ViewerPart[];
   onPick?: (pick: PickEvent) => void;
   mode?: PickMode;
+  unit?: 'mm' | 'm'; // 치수선 라벨 표시 단위 (좌표·픽킹은 mm 고정)
   height?: number;
 }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -100,8 +102,10 @@ export default function AssemblyViewer3D({
   cbRef.current = onPick;
   const modeRef = useRef<PickMode>(mode);
   modeRef.current = mode;
+  const unitRef = useRef<'mm' | 'm'>(unit);
+  unitRef.current = unit;
   const lastPickRef = useRef<{ partId: string; faces: FaceKey[] } | null>(null);
-  const apiRef = useRef<{ setParts: (list: ViewerPart[]) => void; setMode: (m: PickMode) => void } | null>(null);
+  const apiRef = useRef<{ setParts: (list: ViewerPart[]) => void; setMode: (m: PickMode) => void; refreshOverlays: () => void } | null>(null);
 
   useEffect(() => {
     apiRef.current?.setParts(parts);
@@ -110,6 +114,11 @@ export default function AssemblyViewer3D({
   useEffect(() => {
     apiRef.current?.setMode(mode);
   }, [mode]);
+
+  // 단위 토글 시 치수선 라벨 재생성 (표시 전용)
+  useEffect(() => {
+    apiRef.current?.refreshOverlays();
+  }, [unit]);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -203,6 +212,9 @@ export default function AssemblyViewer3D({
       return m;
     };
 
+    // Round5 ③ 표시 단위 — 치수선 라벨만 변환(좌표는 mm 고정)
+    const fmtLen = (v: number) => (unitRef.current === 'm' ? `${(v / 1000).toFixed(3)}m` : `${Math.round(v)}mm`);
+
     /** ⑦ 치수선 — 라인 + 양끝 원뿔 화살촉 + CanvasTexture 스프라이트 라벨. parent 좌표계 기준. */
     const makeDim = (a: THREE.Vector3, b: THREE.Vector3, text: string, parent: THREE.Object3D) => {
       const dirV = new THREE.Vector3().subVectors(b, a);
@@ -259,7 +271,7 @@ export default function AssemblyViewer3D({
         if (axis === 'x') { a = new THREE.Vector3(x0, y1 + off, z1 + off); b = new THREE.Vector3(x1, y1 + off, z1 + off); ext = x1 - x0; }
         else if (axis === 'y') { a = new THREE.Vector3(x1 + off, y0, z1 + off); b = new THREE.Vector3(x1 + off, y1, z1 + off); ext = y1 - y0; }
         else { a = new THREE.Vector3(x1 + off, y1 + off, z0); b = new THREE.Vector3(x1 + off, y1 + off, z1); ext = z1 - z0; }
-        makeDim(a, b, `${Math.round(ext)}mm`, rec.holder);
+        makeDim(a, b, fmtLen(ext), rec.holder);
       }
     };
 
@@ -444,8 +456,8 @@ export default function AssemblyViewer3D({
       clearPending();
       clearOverlays();
       lastPickRef.current = null;
-      // ⑦ 거리 치수선 — 두 파트 중심을 잇는 라인 + 지배축 간격(mm) 라벨 (다음 픽킹/리빌드 시 제거)
-      makeDim(cA, cB, `${out.distanceMm}mm`, group);
+      // ⑦ 거리 치수선 — 두 파트 중심을 잇는 라인 + 지배축 간격 라벨 (다음 픽킹/리빌드 시 제거)
+      makeDim(cA, cB, fmtLen(out.distanceMm), group);
       cbRef.current?.(out);
     };
 
@@ -493,6 +505,9 @@ export default function AssemblyViewer3D({
         clearPending();
         clearOverlays();
         lastPickRef.current = null;
+      },
+      refreshOverlays: () => {
+        if (lastPickRef.current) applyOverlays(lastPickRef.current.partId, lastPickRef.current.faces);
       },
     };
     buildParts(partsRef.current);
