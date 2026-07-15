@@ -45,11 +45,29 @@ export function interiorCheck(assembly, params = {}) {
   // ── 장애물 격자 (보행 차단: 테이블·카운터·벽 — z 1800 이하에 존재하는 풋프린트) ──
   const blocked = new Uint8Array(nx * ny);
   const obstacles = parts.filter((p) => ['table', 'counter', 'wall'].includes(p.role) && footprint(p).z0 < 1800);
-  for (const ob of obstacles) {
-    const f = footprint(ob);
+  const blockRect = (f) => {
     const i0 = Math.max(0, Math.floor(f.x0 / cell)), i1 = Math.min(nx - 1, Math.floor((f.x1 - 1) / cell));
     const j0 = Math.max(0, Math.floor(f.y0 / cell)), j1 = Math.min(ny - 1, Math.floor((f.y1 - 1) / cell));
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) blocked[j * nx + i] = 1;
+  };
+  for (const ob of obstacles) {
+    const f = footprint(ob);
+    // 다실 지원: 벽 개구(문 — sill<300·h≥1800)는 통행 가능 → 벽을 개구 사이 세그먼트로 분할 차단
+    const doors = ob.type === 'wall_with_openings'
+      ? (ob.params?.openings ?? []).filter((o) => (o.sill ?? 0) < 300 && o.h >= 1800).sort((a, b) => a.x - b.x)
+      : [];
+    if (!doors.length) { blockRect(f); continue; }
+    const rz90 = (ob.at?.rz ?? 0) === 90;
+    const len = ob.params.length;
+    let cur = 0;
+    const segs = [];
+    for (const d of doors) { if (d.x > cur) segs.push([cur, d.x]); cur = d.x + d.w; }
+    if (cur < len) segs.push([cur, len]);
+    for (const [s0, s1] of segs) {
+      // 로컬 길이축 구간 → 월드 (footprint 사상과 동일 규약)
+      if (!rz90) blockRect({ x0: (ob.at?.tx ?? 0) + s0, x1: (ob.at?.tx ?? 0) + s1, y0: f.y0, y1: f.y1, z0: f.z0 });
+      else blockRect({ x0: f.x0, x1: f.x1, y0: (ob.at?.ty ?? 0) + s0, y1: (ob.at?.ty ?? 0) + s1, z0: f.z0 });
+    }
   }
 
   // ── 다중 소스 BFS (출입구 → 전체 도달거리) ─────────────────────────────────

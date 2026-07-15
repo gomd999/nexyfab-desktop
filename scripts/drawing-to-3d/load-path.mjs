@@ -18,6 +18,7 @@
  */
 import { runCalculator, loadStandards } from '../engineering-core/registry.mjs';
 import { solveFrame2D } from '../engineering-core/frame2d.mjs';
+import { responseSpectrumAnalysis, shearBuildingModes } from '../engineering-core/modal.mjs';
 import { partVolume } from './structural.mjs';
 import { partAabb } from './reconstruct.mjs';
 
@@ -359,7 +360,70 @@ export function loadPathCheck(assembly, params = {}) {
           return { story: i + 1, theta: theta !== null ? +theta.toFixed(4) : null, negligible: theta !== null ? theta <= 0.1 : null };
         });
         const thetaMax = Math.max(...pdelta.map((p) => p.theta ?? 0));
+        // 비횡구속 sway 확대 δs = 1/(1−Q) (식 4.4-3 층안정성지수 Q=ΣPu·Δo/(Vu·h) — 1차 탄성변위)
+        const sway = worse.d.drifts.map((dr, i) => {
+          const Px = gravPerFloor * (nf - i);
+          const Vx = seis.storyShear_kN[i];
+          const Q = Vx > 0 ? (Px * dr.drift_m) / (Vx * dr.h_m) : null;
+          const ds = Q !== null && Q < 1 ? 1 / (1 - Q) : null;
+          return { story: i + 1, Q: Q !== null ? +Q.toFixed(4) : null, deltaS: ds !== null ? +ds.toFixed(3) : null, braced: Q !== null ? Q <= 0.05 : null };
+        });
+        // 응답스펙트럼(RSA) — 층 유연도(frame2d 단위하중 n회) → K=F⁻¹ → 모드 → KDS 스펙트럼 SRSS
+        let rsa = null;
+        if (sp.rsa === true) {
+          try {
+            const n = nf;
+            const lineXs = worse.dir === 'X' ? xs : ys;
+            const nFr = worse.dir === 'X' ? ys.length : xs.length;
+            // 유연도: 층 j에 단위 1kN(골조당) → 각 층 변위
+            const levels = [0, ...hsM];
+            const nx2 = lineXs.length;
+            const nodes = [];
+            for (let lv = 0; lv < levels.length; lv++) for (const x of lineXs) nodes.push([x / 1000, levels[lv]]);
+            const Ec_kPa2 = 8500 * Math.cbrt((params.fck ?? 24) + 4) * 1000;
+            const colI2 = ((cb0.dy / 1000) * Math.pow(cb0.dx / 1000, 3)) / 12, colA2 = (cb0.dx / 1000) * (cb0.dy / 1000);
+            const wb3 = worstBeam ? box(worstBeam) : null;
+            const bw3 = wb3 ? Math.min(wb3.dx, wb3.dy) / 1000 : 0.3, bh3 = wb3 ? wb3.dz / 1000 : 0.5;
+            const bI = (bw3 * Math.pow(bh3, 3)) / 12, bA = bw3 * bh3;
+            const els = [];
+            for (let lv = 0; lv < levels.length - 1; lv++) for (let i = 0; i < nx2; i++) els.push({ i: lv * nx2 + i, j: (lv + 1) * nx2 + i, E: Ec_kPa2, A: colA2, I: colI2 });
+            for (let lv = 1; lv < levels.length; lv++) for (let i = 0; i < nx2 - 1; i++) els.push({ i: lv * nx2 + i, j: lv * nx2 + i + 1, E: Ec_kPa2, A: bA, I: bI });
+            const fixes2 = lineXs.map((_, i) => ({ node: i, ux: true, uy: true, rz: true }));
+            const F = [];
+            for (let j = 1; j <= n; j++) {
+              const sol2 = solveFrame2D({ nodes, elements: els, springs: [], fixes: fixes2, loads: [{ node: j * nx2, fx: 1 }] });
+              F.push(Array.from({ length: n }, (_, i) => sol2.disp[3 * ((i + 1) * nx2)] * 1000)); // mm/kN(골조당)
+            }
+            // K = F⁻¹ (n×n 가우스) — 전체 골조 = ×nFr
+            const A2 = F.map((row, i) => [...row.map((v) => v), ...Array.from({ length: n }, (_, j2) => (i === j2 ? 1 : 0))]);
+            for (let c2 = 0; c2 < n; c2++) {
+              let piv = c2; for (let r2 = c2 + 1; r2 < n; r2++) if (Math.abs(A2[r2][c2]) > Math.abs(A2[piv][c2])) piv = r2;
+              [A2[c2], A2[piv]] = [A2[piv], A2[c2]];
+              const d2 = A2[c2][c2];
+              for (let c3 = 0; c3 < 2 * n; c3++) A2[c2][c3] /= d2;
+              for (let r2 = 0; r2 < n; r2++) { if (r2 === c2) continue; const m2 = A2[r2][c2]; for (let c3 = 0; c3 < 2 * n; c3++) A2[r2][c3] -= m2 * A2[c2][c3]; }
+            }
+            const Kfull = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j2) => A2[i][n + j2] * nFr)); // kN/mm 전체
+            // 층강성 근사(전단빌딩 환산): k_i = −K[i][i-1] (비대각) — 3중대각 가정 명시. 1층은 K[0][0]+K[0][1]
+            const kStory = Array.from({ length: n }, (_, i) => {
+              if (i === 0) return (Kfull[0][0] + (n > 1 ? Kfull[0][1] : 0)) * 1000; // kN/m
+              return -Kfull[i][i - 1] * 1000;
+            });
+            const massTon = Array.from({ length: n }, () => (wFloor / 9.81)); // 층중량→질량
+            const out = responseSpectrumAnalysis({
+              kStory_kNm: kStory, mass_ton: massTon,
+              SDS: seis.intermediate.SDS, SD1: seis.intermediate.SD1, TL: 5,
+              R: Number(sp.R), IE: seis.intermediate?.IE ?? 1, nModes: Math.min(3, n),
+            });
+            rsa = {
+              T1_s: out.modes[0]?.T_s, modes: out.modes, V_srss_kN: out.V_srss_kN, cumEffMass: out.cumEffMass,
+              vsEquivalent: +(out.V_srss_kN / seis.V_kN).toFixed(3),
+              note: '층 유연도(frame2d)→K→모드(Jacobi)→KDS 스펙트럼 SRSS. 전단빌딩 환산(3중대각 가정)·질량=고정하중 층중량 명시. 등가정적 대비 비율 참고(§7.3 하한 0.85V 등 검토는 후속).',
+            };
+          } catch (e) { rsa = { error: e.message }; }
+        }
         matrixRes = {
+          sway, rsa,
           pdelta: { rows: pdelta, thetaMax: +thetaMax.toFixed(4), note: thetaMax <= 0.1 ? 'θ≤0.1 전층 — P-Δ 무시 가능(§7.2.8.2(1))' : 'θ>0.1 층 존재 — 증폭계수 1/(1−θ) 적용 또는 P-Δ 해석 필요(§7.2.8.2(3)) — 자동 증폭은 후속(명시)' },
           dir: worse.dir, McolMax_kNm: +worse.d.McolMax.toFixed(1), MbeamMax_kNm: +worse.d.MbeamMax.toFixed(1),
           roof_mm: worse.d.roof_mm, drifts: driftRows,

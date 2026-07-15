@@ -216,6 +216,35 @@ function girderBridgeAssembly(p = {}) {
   };
 }
 
+/** 다실: 2실+내부벽(문) — 피난 BFS가 내부 문 통과(개구 인식 차단) */
+function twoRoomAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const W = num(p.width, 12000), D = num(p.depth, 6000);
+  const w1 = Math.min(W - 3000, Math.max(3000, num(p.room1W, 7000)));
+  const doorW = num(p.doorWidth, 1000), innerDoorW = num(p.innerDoorWidth, 900);
+  const wallT = 150, wallH = 2700;
+  const parts = [P('floor', 'box', { width: W, depth: D, height: 100 }, { tz: -100 }, 'concrete', 'floor')];
+  const doorX = w1 / 2 - doorW / 2;
+  parts.push(P('wall_front', 'wall_with_openings', { length: W, thickness: wallT, height: wallH, openings: [{ x: doorX, w: doorW, h: 2100, sill: 0 }] }, { tx: 0, ty: -wallT, tz: 0 }, 'concrete', 'wall'));
+  parts.push(P('wall_back', 'wall_with_openings', { length: W, thickness: wallT, height: wallH }, { tx: 0, ty: D, tz: 0 }, 'concrete', 'wall'));
+  parts.push(P('wall_left', 'wall_with_openings', { length: D, thickness: wallT, height: wallH }, { tx: 0, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall'));
+  parts.push(P('wall_right', 'wall_with_openings', { length: D, thickness: wallT, height: wallH }, { tx: W + wallT, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall'));
+  // 내부벽 (rz=90, x=w1) — 중앙에 문
+  parts.push(P('wall_inner', 'wall_with_openings', { length: D, thickness: wallT, height: wallH, openings: [{ x: D / 2 - innerDoorW / 2, w: innerDoorW, h: 2100, sill: 0 }] }, { tx: w1 + wallT, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall'));
+  // 실2에 테이블 2개(점유 확인용)
+  for (const [i, [tx2, ty2]] of [[0, [w1 + 1000, 1200]], [1, [w1 + 1000, 3600]]].entries()) {
+    parts.push(P('t' + i + '_top', 'box', { width: 1200, depth: 1200, height: 30 }, { tx: tx2, ty: ty2, tz: 720 }, 'timber', 'table'));
+  }
+  return {
+    name: '2실 평면', domain: 'interior', kind: 'assembly', parts,
+    floorAreaM2: +((W * D) / 1e6).toFixed(2),
+    exits: [{ x: doorX + doorW / 2, y: 0, widthMm: doorW }],
+    roomBounds: { W, D },
+    furniture: [{ id: 'table', name: '테이블', count: 2, seats: 0 }, { id: 'chair', name: '의자', count: 8, seats: 1 }],
+    multiRoom: { rooms: 2, innerWallX: w1 },
+  };
+}
+
 export const ASSEMBLY_TEMPLATES = {
   civil: [
     {
@@ -282,6 +311,16 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   interior: [
+    {
+      id: 'two_room', labelKo: '2실 평면 (다실)', labelEn: 'Two-room plan', build: twoRoomAssembly,
+      params: [
+        { name: 'width', labelKo: '전체 폭', unit: 'mm', default: 12000, min: 6000, max: 30000 },
+        { name: 'depth', labelKo: '깊이', unit: 'mm', default: 6000, min: 3000, max: 20000 },
+        { name: 'room1W', labelKo: '실1 폭', unit: 'mm', default: 7000, min: 3000, max: 20000 },
+        { name: 'doorWidth', labelKo: '출입문 폭', unit: 'mm', default: 1000, min: 800, max: 2400 },
+        { name: 'innerDoorWidth', labelKo: '내부문 폭', unit: 'mm', default: 900, min: 700, max: 2000 },
+      ],
+    },
     {
       id: 'cafe_room', labelKo: '카페 레이아웃', labelEn: 'Cafe layout', build: cafeRoomAssembly,
       params: [
