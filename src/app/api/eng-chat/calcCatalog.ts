@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(60종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(61종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -3107,6 +3107,9 @@ export const CALC_CATALOG: CalcSpec[] = [
         "type": "number",
         "min": 0.2,
         "max": 0.9
+      },
+      "heads": {
+        "desc": "관수/살수 헤드 배열(선택 — 관수 체인): [{q_Lmin(헤드 유량 — 제품 사양), minP_kPa(최저 작동압)}] — Q 합산·최소압 게이트(잔류수두로 환산 검증)"
       }
     }
   },
@@ -3897,6 +3900,67 @@ export const CALC_CATALOG: CalcSpec[] = [
       },
       "provided": {
         "desc": "제공 철근(검토): { rhoS?(원형 체적비), Ash_mm2?(사각 간격 a당), spacing_mm?(상세 게이트), dbTie_mm?(띠철근 지름) }"
+      }
+    }
+  },
+  {
+    "id": "gear_bending",
+    "domain": "mechanical/power",
+    "title": "기어 굽힘강도 (루이스식)",
+    "description": "σ=Ft/(bmY)·Barth Kv — 20° 폼팩터 공표 표. AGMA 정밀법은 보류(라이선스).",
+    "required": [
+      "power_kW",
+      "rpm",
+      "module_mm",
+      "teeth",
+      "faceWidth_mm",
+      "sigmaAllow_MPa"
+    ],
+    "params": {
+      "power_kW": {
+        "desc": "전달 동력",
+        "type": "number",
+        "min": 0
+      },
+      "rpm": {
+        "desc": "회전수",
+        "type": "number",
+        "min": 0
+      },
+      "module_mm": {
+        "desc": "모듈 m",
+        "type": "number",
+        "min": 0.5,
+        "max": 25
+      },
+      "teeth": {
+        "desc": "잇수 (12~300 — 표 범위)",
+        "type": "integer",
+        "min": 12,
+        "max": 300
+      },
+      "faceWidth_mm": {
+        "desc": "치폭 b (관례 9m~14m 범위 확인)",
+        "type": "number",
+        "min": 0
+      },
+      "sigmaAllow_MPa": {
+        "desc": "허용 굽힘응력 (재료·열처리 입력 원칙 — 지어내지 않음)",
+        "type": "number",
+        "min": 0
+      },
+      "finish": {
+        "desc": "가공 (Barth: 밀링 (3.05+V)/3.05 · 주조/절삭 (6.1+V)/6.1 — 기본 milled)",
+        "enum": [
+          "milled",
+          "cast"
+        ]
+      },
+      "serviceFactor": {
+        "desc": "사용계수 Ks (충격·원동기 — 관례표 입력, 기본 1.0=미반영 명시)",
+        "type": "number",
+        "min": 1,
+        "max": 3
       }
     }
   }
