@@ -223,6 +223,22 @@ const dict = {
     abTitle: 'A/B 비교',
     abParamDiff: '파라미터 차이',
     abNoDiff: '차이 없음',
+    brTitle: '거더교 자동 체인',
+    brSub: 'DC·DW 형상 파생 · KL-510 영향선 · 극한 I 조합',
+    brPav: '포장두께 mm (DW·선택)',
+    brLanes: '차로수 (선택)',
+    brDF: 'DF (미입력=레버룰)',
+    brAs: '거더 As mm² (선택·단면검토)',
+    brRun: '🌉 거더교 체인 실행',
+    brDC: '고정하중 DC',
+    brLL: '활하중',
+    brUlt: '극한',
+    brSection: '단면검토',
+    uniBtn: '통합 리포트',
+    uniBusy: '리포트 구성 중…',
+    uniNone: '포함할 리포트가 없습니다 — 검증이 실패했거나 실행되지 않았습니다.',
+    uniMissing: '누락(실패/미실행): ',
+    uniPrint: '인쇄 / PDF',
   },
   en: {
     tplTitle: 'Assembly template',
@@ -421,6 +437,22 @@ const dict = {
     abTitle: 'A/B compare',
     abParamDiff: 'Parameter diffs',
     abNoDiff: 'no differences',
+    brTitle: 'Girder bridge auto chain',
+    brSub: 'DC·DW from shape · KL-510 influence line · Ultimate I combo',
+    brPav: 'pavement thk mm (DW, opt.)',
+    brLanes: 'lanes (opt.)',
+    brDF: 'DF (blank=lever rule)',
+    brAs: 'girder As mm² (opt., section check)',
+    brRun: '🌉 Run bridge chain',
+    brDC: 'Dead load DC',
+    brLL: 'Live load',
+    brUlt: 'Ultimate',
+    brSection: 'Section check',
+    uniBtn: 'Unified report',
+    uniBusy: 'Composing report…',
+    uniNone: 'No reports to include — checks failed or were not run.',
+    uniMissing: 'Missing (failed/not run): ',
+    uniPrint: 'Print / PDF',
   },
   ja: {
     tplTitle: 'アセンブリテンプレート',
@@ -619,6 +651,22 @@ const dict = {
     abTitle: 'A/B比較',
     abParamDiff: 'パラメータ差分',
     abNoDiff: '差分なし',
+    brTitle: '桁橋自動チェーン',
+    brSub: 'DC·DW形状導出 · KL-510影響線 · 極限I組合せ',
+    brPav: '舗装厚 mm（DW·任意）',
+    brLanes: '車線数（任意）',
+    brDF: 'DF（未入力=てこ法則）',
+    brAs: '桁 As mm²（任意·断面照査）',
+    brRun: '🌉 桁橋チェーンを実行',
+    brDC: '死荷重 DC',
+    brLL: '活荷重',
+    brUlt: '極限',
+    brSection: '断面照査',
+    uniBtn: '統合レポート',
+    uniBusy: 'レポート作成中…',
+    uniNone: '含められるレポートがありません — 検証が失敗したか未実行です。',
+    uniMissing: '欠落（失敗/未実行）: ',
+    uniPrint: '印刷 / PDF',
   },
   zh: {
     tplTitle: '装配模板',
@@ -817,6 +865,22 @@ const dict = {
     abTitle: 'A/B对比',
     abParamDiff: '参数差异',
     abNoDiff: '无差异',
+    brTitle: '梁桥自动链',
+    brSub: 'DC·DW取自形状 · KL-510影响线 · 极限I组合',
+    brPav: '铺装厚度 mm（DW·可选）',
+    brLanes: '车道数（可选）',
+    brDF: 'DF（留空=杠杆法）',
+    brAs: '梁 As mm²（可选·截面验算）',
+    brRun: '🌉 运行梁桥链',
+    brDC: '恒载 DC',
+    brLL: '活载',
+    brUlt: '极限',
+    brSection: '截面验算',
+    uniBtn: '综合报告',
+    uniBusy: '正在生成报告…',
+    uniNone: '没有可包含的报告 — 验证失败或未执行。',
+    uniMissing: '缺失（失败/未执行）: ',
+    uniPrint: '打印 / PDF',
   },
   es: {
     tplTitle: 'Plantilla de ensamblaje',
@@ -1015,6 +1079,22 @@ const dict = {
     abTitle: 'Comparación A/B',
     abParamDiff: 'Diferencias de parámetros',
     abNoDiff: 'sin diferencias',
+    brTitle: 'Cadena automática de puente de vigas',
+    brSub: 'DC·DW de la forma · línea de influencia KL-510 · combinación Última I',
+    brPav: 'espesor de pavimento mm (DW, opc.)',
+    brLanes: 'carriles (opc.)',
+    brDF: 'DF (vacío=regla de la palanca)',
+    brAs: 'As de viga mm² (opc., comprobación de sección)',
+    brRun: '🌉 Ejecutar cadena de puente',
+    brDC: 'Carga muerta DC',
+    brLL: 'Carga viva',
+    brUlt: 'Última',
+    brSection: 'Comprobación de sección',
+    uniBtn: 'Informe unificado',
+    uniBusy: 'Componiendo informe…',
+    uniNone: 'No hay informes que incluir — las verificaciones fallaron o no se ejecutaron.',
+    uniMissing: 'Faltantes (fallidos/no ejecutados): ',
+    uniPrint: 'Imprimir / PDF',
   },
   ar: {
     tplTitle: 'قالب التجميع',
@@ -1213,6 +1293,22 @@ const dict = {
     abTitle: 'مقارنة A/B',
     abParamDiff: 'فروق المعاملات',
     abNoDiff: 'لا فروق',
+    brTitle: 'سلسلة جسر العوارض التلقائية',
+    brSub: 'DC·DW من الشكل · خط تأثير KL-510 · تركيبة الحد الأقصى I',
+    brPav: 'سماكة الرصف mm (DW، اختياري)',
+    brLanes: 'عدد الحارات (اختياري)',
+    brDF: 'DF (فارغ=قاعدة الرافعة)',
+    brAs: 'As للعارضة mm² (اختياري·فحص المقطع)',
+    brRun: '🌉 تشغيل سلسلة الجسر',
+    brDC: 'الحمل الميت DC',
+    brLL: 'الحمل الحي',
+    brUlt: 'الحد الأقصى',
+    brSection: 'فحص المقطع',
+    uniBtn: 'تقرير موحد',
+    uniBusy: 'جارٍ إعداد التقرير…',
+    uniNone: 'لا توجد تقارير للإدراج — فشلت عمليات التحقق أو لم تُنفذ.',
+    uniMissing: 'مفقود (فشل/لم يُنفذ): ',
+    uniPrint: 'طباعة / PDF',
   },
 } as const;
 
@@ -1315,6 +1411,18 @@ interface LsResp {
   connection?: { type?: string; demandN?: number; verdict?: string; checks?: { shear?: { capacity_N?: number; ratio?: number } } | null; note?: string; error?: string | null } | null;
   disclaimer?: string;
 }
+// Round6 — 거더교 자동 체인 (scripts/drawing-to-3d/bridge-check.mjs 응답)
+interface BrResp {
+  ok: boolean; error?: string;
+  geometry?: { span_m?: number; nGirders?: number; spacing_m?: number; deckW_m?: number };
+  dead?: { wDC_kNm?: number; girderSelf?: number; deckShare?: number; crossShare?: number; wDW_kNm?: number; dwNote?: string; M_DC?: number; M_DW?: number };
+  live?: { DF?: number; dfSrc?: string; nLanes?: number; M_LL?: number; V_LL?: number; detail?: { govern?: string } };
+  ultimate?: { Mu_kNm?: number; Vu_kN?: number; combo?: string };
+  service?: { Ms_kNm?: number };
+  section?: { verdict?: string; error?: string; note?: string } | null;
+  disclaimer?: string;
+}
+
 interface ChainCheck { verdict?: string; error?: string | null }
 interface ChainResp {
   ok: boolean; error?: string;
@@ -1408,6 +1516,7 @@ export default function AssemblyPresetPanel({
   const [pjSelAt, setPjSelAt] = useState('');
   const [saveName, setSaveName] = useState('');
   const restoreRef = useRef<SavedState | null>(null); // ?d= 링크·불러오기 → 템플릿 로드 후 적용
+  const [uniBusy, setUniBusy] = useState(false); // Round6 — 통합 리포트 구성 중
   const hkRef = useRef<{ undo: () => void; redo: () => void; mode: (m: PickMode) => void; esc: () => void } | null>(null);
 
   // 저장 프로젝트 로드 (mount)
@@ -1638,6 +1747,34 @@ export default function AssemblyPresetPanel({
     }
   }, [built, chainBody]);
 
+  // Round6 — 거더교 체인 (bridge 전용): DC·DW·KL-510 활하중·극한 I — 전부 선택 입력(미입력=정직 기본)
+  const [brP, setBrP] = useState<Record<string, number>>({ pavementThk_mm: 0, nLanes: 0, DF: 0, As_mm2: 0 });
+  const [br, setBr] = useState<BrResp | null>(null);
+  const [brBusy, setBrBusy] = useState(false);
+  const brBody = useCallback(() => ({
+    assembly: built?.assembly,
+    params: {
+      ...(brP.pavementThk_mm > 0 ? { pavementThk_mm: brP.pavementThk_mm } : {}),
+      ...(brP.nLanes > 0 ? { nLanes: Math.round(brP.nLanes) } : {}),
+      ...(brP.DF > 0 ? { DF: brP.DF } : {}), // 미입력 = 레버룰 자동(서버가 dfSrc로 명시)
+      ...(brP.As_mm2 > 0 ? { As_mm2: brP.As_mm2 } : {}),
+    },
+  }), [built, brP]);
+  const runBridge = useCallback(async () => {
+    if (!built?.assembly) return;
+    setBrBusy(true); setBr(null);
+    try {
+      const res = await fetch('/api/nexyfab/drawing/bridge-check/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(brBody()),
+      });
+      setBr((await res.json()) as BrResp);
+    } catch (e) {
+      setBr({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBrBusy(false);
+    }
+  }, [built, brBody]);
+
   // Round5 — 공유 링크/저장 프로젝트 복원: 상태 일괄 적용 + 자동 빌드(같은 디바운스→재검증 파이프)
   const applyRestore = (d: SavedState, label: string) => {
     setParams({ ...d.params });
@@ -1771,8 +1908,16 @@ export default function AssemblyPresetPanel({
       const verdict = cv.verdict ?? (checks.length ? (checks.every((c) => c.pass) ? 'PASS' : 'FAIL') : '—');
       return { verdict, nums: {}, strs: {} };
     }
+    if (domain === 'bridge') {
+      if (!br?.ok) return null;
+      const nums: DiffSummary['nums'] = {};
+      if (typeof br.ultimate?.Mu_kNm === 'number') nums['Mu'] = { v: br.ultimate.Mu_kNm, unit: 'kN·m' };
+      if (typeof br.live?.M_LL === 'number') nums['M_LL'] = { v: br.live.M_LL, unit: 'kN·m' };
+      // 판정은 단면검토(As 입력) 시에만 존재 — 없으면 '—' (정직)
+      return { verdict: br.section?.verdict === 'PASS' ? 'PASS' : br.section?.verdict === 'FAIL' ? 'FAIL' : '—', nums, strs: {} };
+    }
     return null;
-  }, [domain, chain, ls, intR, cv, t]);
+  }, [domain, chain, ls, intR, cv, br, t]);
 
   // P1 "수정하면 검증이 따라온다" — 면 편집 리빌드 완료 시 해당 도메인 체인 자동 재실행
   // ④ 재검증 직전 현재 요약 보관 → 완료 시 전후 diff
@@ -1785,7 +1930,8 @@ export default function AssemblyPresetPanel({
     else if (domain === 'landscape') { diffArmedRef.current = true; void runLandscape(); }
     else if (domain === 'interior') { diffArmedRef.current = true; void runInterior(); }
     else if (domain === 'civil') { diffArmedRef.current = true; void runCivil(); }
-  }, [built, domain, runChain, runLandscape, runInterior, runCivil, summarize]);
+    else if (domain === 'bridge') { diffArmedRef.current = true; void runBridge(); }
+  }, [built, domain, runChain, runLandscape, runInterior, runCivil, runBridge, summarize]);
 
   // ④ 재검증 완료 → diff 카드 표시 + ⑤ 현재 이력 엔트리에 verdict 스탬프
   useEffect(() => {
@@ -1797,7 +1943,7 @@ export default function AssemblyPresetPanel({
     setHist((h) => (h.idx >= 0 && h.entries[h.idx]
       ? { ...h, entries: h.entries.map((e, i) => (i === h.idx ? { ...e, verdict: cur.verdict } : e)) }
       : h));
-  }, [chain, ls, intR, cv, summarize]);
+  }, [chain, ls, intR, cv, br, summarize]);
 
   const downloadPackage = useCallback(async () => {
     if (!built?.assembly) return;
@@ -1901,7 +2047,8 @@ export default function AssemblyPresetPanel({
       delete p2.returnGrid; // 스윕 8회에 격자 8개 동봉 방지(전송량)
       return p2;
     }
-    return {}; // bridge — 패널 체인 입력 없음(서버 기본)
+    if (domain === 'bridge') return brBody().params; // Round6 — 교량 체인 입력 그대로
+    return {};
   };
   // 스윕/빌드 공용 — 템플릿 파라미터 + (인테리어) 자유배치 가구
   const sweepBuildParams = (): Record<string, unknown> => ({ ...params, ...(furn ? { customFurniture: furn } : {}) });
@@ -2054,7 +2201,7 @@ export default function AssemblyPresetPanel({
   const roParam = pick?.kind === 'face' ? pick.mapResult.param : pick?.kind === 'edge' ? (edgeSel ?? undefined) : undefined;
   const roValRaw = roParam ? pickedPart?.params?.[roParam] : undefined;
   const roVal = typeof roValRaw === 'number' ? fmtLen(roValRaw) : '—';
-  const anyBusy = busy || chainBusy || lsBusy || intBusy || cvBusy;
+  const anyBusy = busy || chainBusy || lsBusy || intBusy || cvBusy || brBusy;
 
   // Round5 ④ 단축키 최신 핸들러 유지 (window keydown 효과가 ref로 호출)
   hkRef.current = {
@@ -2084,6 +2231,66 @@ export default function AssemblyPresetPanel({
       setMsg(t.shTooBig);
     }
   };
+  // Round6 ② 통합 리포트 — 도메인 체인 리포트(format:'html')들을 한 문서로 합쳐 인쇄 창 오픈.
+  // 성공한 리포트만 포함(정직) — 실패/미실행은 문서 하단에 누락 목록으로 명시.
+  const reportSources = (): Array<{ name: string; url: string; body: Record<string, unknown> }> => {
+    if (!built?.assembly) return [];
+    if (domain === 'building') return [{ name: t.bdTitle, url: '/api/nexyfab/drawing/load-path/', body: chainBody() }];
+    if (domain === 'landscape') return [{ name: t.lsTitle, url: '/api/nexyfab/drawing/landscape-check/', body: lsBody() }];
+    if (domain === 'interior') return [{ name: t.inTitle, url: '/api/nexyfab/drawing/interior-check/', body: intBody() }];
+    if (domain === 'civil') return [{ name: t.cvTitle, url: '/api/nexyfab/drawing/verify-domain/', body: civilBody() }];
+    if (domain === 'bridge') return [{ name: t.brTitle, url: '/api/nexyfab/drawing/bridge-check/', body: brBody() }];
+    return [];
+  };
+  const unifiedReport = async () => {
+    if (!built?.assembly || uniBusy) return;
+    setUniBusy(true);
+    try {
+      const srcs = reportSources();
+      const sheets: string[] = [];
+      const missing: string[] = [];
+      let style = '';
+      for (const src of srcs) {
+        try {
+          const r = await fetch(src.url, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...src.body, format: 'html' }),
+          });
+          const j = (await r.json().catch(() => ({}))) as { html?: string };
+          if (!j.html) { missing.push(src.name); continue; }
+          if (!style) style = j.html.match(/<style>[\s\S]*?<\/style>/)?.[0] ?? '';
+          // 리포트 쉘의 시트 블록 추출 — 실패 시 body 폴백(인쇄바 제거)
+          const sheet = j.html.match(/<div class="sheet">[\s\S]*<\/div>(?=\s*<\/body>)/)?.[0]
+            ?? j.html.match(/<body[^>]*>([\s\S]*)<\/body>/)?.[1]?.replace(/<div class="nf-print-bar">[\s\S]*?<\/div>/, '')
+            ?? null;
+          if (sheet) sheets.push(sheet);
+          else missing.push(src.name);
+        } catch {
+          missing.push(src.name);
+        }
+      }
+      if (!sheets.length) { setMsg(t.uniNone); return; }
+      const title = `${built.assembly.name ?? domain} — ${t.uniBtn}`;
+      const doc = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${title}</title>${style}</head><body>`
+        + `<div class="nf-print-bar"><b>${title}</b><button onclick="print()">🖨 ${t.uniPrint}</button></div>`
+        + sheets.map((sh, i) => `<div style="${i < sheets.length - 1 ? 'page-break-after:always' : ''}">${sh}</div>`).join('')
+        + (missing.length ? `<div style="max-width:900px;margin:10px auto 20px;padding:8px 14px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;font-size:12px;color:#92400e">${t.uniMissing}${missing.join(', ')}</div>` : '')
+        + '</body></html>';
+      const w = window.open('about:blank', '_blank');
+      if (w) {
+        w.document.write(doc);
+        w.document.close();
+      } else {
+        // 팝업 차단 폴백 — 파일 다운로드
+        const url = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
+        const a = document.createElement('a'); a.href = url; a.download = 'unified_report.html'; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+      }
+    } finally {
+      setUniBusy(false);
+    }
+  };
+
   const persistProjects = (list: SavedState[]) => {
     setProjects(list);
     try { window.localStorage.setItem(PROJ_KEY, JSON.stringify(list)); } catch { setMsg(t.pjSaveFail); }
@@ -2294,6 +2501,11 @@ export default function AssemblyPresetPanel({
           style={{ ...rptBtn, width: '100%' }}
         >
           📚 {t.papersBtn}
+        </button>
+      )}
+      {built && (
+        <button type="button" onClick={() => void unifiedReport()} disabled={uniBusy} style={{ ...rptBtn, width: '100%' }}>
+          📑 {uniBusy ? t.uniBusy : t.uniBtn}
         </button>
       )}
 
@@ -2860,6 +3072,62 @@ export default function AssemblyPresetPanel({
                 📄 {t.reportHtml}
               </button>
               <div style={{ marginTop: 4, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{chain.disclaimer}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Round6 — 거더교 자동 체인 (bridge): DC·DW 형상 파생 + KL-510 영향선 + 극한 I (+선택 단면검토) */}
+      {domain === 'bridge' && built && (
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--nx-border, #dfe3e8)' }}>
+          <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4 }}>
+            {t.brTitle}
+            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
+              {t.brSub}
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 6 }}>
+            {([['pavementThk_mm', t.brPav], ['nLanes', t.brLanes], ['DF', t.brDF], ['As_mm2', t.brAs]] as Array<[string, string]>).map(([k, lb]) => (
+              <label key={k} style={{ fontSize: 10.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{lb}</span>
+                <input type="number" step="0.01" value={brP[k] || ''} onChange={(e) => setBrP((s) => ({ ...s, [k]: Number(e.target.value) }))} style={inpStyle} />
+              </label>
+            ))}
+          </div>
+          <button type="button" onClick={runBridge} disabled={brBusy} style={{ ...genStyle, background: '#334155' }}>
+            {brBusy ? t.checking : t.brRun}
+          </button>
+          {br && !br.ok && <div style={{ marginTop: 5, fontSize: 11, color: '#991b1b' }}>{br.error}</div>}
+          {br?.ok && (
+            <div style={{ marginTop: 6, fontSize: 11 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
+                <span>
+                  {t.brDC} {br.dead?.wDC_kNm}kN/m
+                  <span style={{ color: 'var(--nx-text-3, #6b7684)' }}> (={br.dead?.girderSelf}+{br.dead?.deckShare}+{br.dead?.crossShare}) · {br.dead?.dwNote}</span>
+                </span>
+                <b>M_DC {br.dead?.M_DC}</b>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
+                <span>
+                  {t.brLL} M_LL {br.live?.M_LL}kN·m
+                  <span style={{ color: 'var(--nx-text-3, #6b7684)' }}> · DF {br.live?.DF} ({br.live?.dfSrc}){br.live?.detail?.govern ? ` · ${br.live.detail.govern}` : ''}</span>
+                </span>
+                <b>V_LL {br.live?.V_LL}</b>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
+                <span>{t.brUlt} Mu {br.ultimate?.Mu_kNm}kN·m · Vu {br.ultimate?.Vu_kN}kN</span>
+              </div>
+              <div style={{ padding: '2px 0', fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{br.ultimate?.combo}</div>
+              {br.section && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid var(--nx-border, #eef1f4)' }}>
+                  <span>{t.brSection}{br.section.note ? <span style={{ color: 'var(--nx-text-3, #6b7684)' }}> · {br.section.note}</span> : null}{br.section.error ? <span style={{ color: '#991b1b' }}> {br.section.error}</span> : null}</span>
+                  <b style={{ color: br.section.verdict === 'PASS' ? '#16a34a' : br.section.verdict === 'FAIL' ? '#dc2626' : '#d97706' }}>{br.section.verdict}</b>
+                </div>
+              )}
+              <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/bridge-check/', brBody(), 'bridge_check.html')} style={rptBtn}>
+                📄 {t.reportHtml}
+              </button>
+              <div style={{ marginTop: 4, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{br.disclaimer}</div>
             </div>
           )}
         </div>
