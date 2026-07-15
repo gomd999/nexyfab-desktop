@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(36종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(38종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -2517,6 +2517,52 @@ export const CALC_CATALOG: CalcSpec[] = [
       },
       "demandP_kN": {
         "desc": "작용하중 (판정용)",
+        "type": "number",
+        "min": 0
+      }
+    }
+  },
+  {
+    "id": "planting_base",
+    "domain": "landscape/planting",
+    "title": "식재기반·수목 검토 (KDS 34 30 10/34 40 10)",
+    "description": "생육토심 게이트·객토깊이·공원 식재밀도·이식 수목중량·규격환산 — 원문 표 전사.",
+    "required": [],
+    "params": {
+      "soilCheck": {
+        "desc": "생육토심 검토: { plantType: 잔디초화류|소관목|대관목|천근성교목|심근성교목, soilKind: artificial|natural|mixed, soilGrade?: mid|high(생육 판정용), providedDepth_cm, hasDrainLayer?: boolean }"
+      },
+      "densityCheck": {
+        "desc": "식재밀도 검토: { parkType(표 4.2-1 키), area_m2, trees?, shrubs?, hedges? (계획 수량) }"
+      },
+      "treeWeight": {
+        "desc": "이식 수목중량: { rootDia_cm?(근원 — 흉고 미지 시 표 4.4-3 환산·범위 밖은 ×0.8), dbh_cm?(흉고 직접), height_m?, trunkGroup: A|B|C|D(표 4.4-1 — A≥1340·B 1300~1340·C 1250~1300·D 1210~1250, 그룹 대표값 명시), leafFactor?(p 0.2~0.3 — 기본 0.25), rootBallVol_m3?(뿌리분 체적 — 별도 산정 입력 시 지하부 1,300kg/m³ 적용 §4.4.4(3)) }"
+      },
+      "soilReplace": {
+        "desc": "객토 검토: { category: 교목|아교목|관목|지피초화류 } → 표 3.1-1 깊이"
+      }
+    }
+  },
+  {
+    "id": "fixture_supply",
+    "domain": "interior/plumbing",
+    "title": "위생기구 급수 검토 (KDS 31 30 15)",
+    "description": "기구별 유량·유동압력·최소관지름 게이트 + 설계유량 합산(동시사용률 입력 원칙).",
+    "required": [
+      "fixtures"
+    ],
+    "params": {
+      "fixtures": {
+        "desc": "기구 목록 [{type(표 키: 세면기·대변기_세정밸브 등), count, plannedDN?(계획 관지름 — 최소치 게이트)}]"
+      },
+      "simultaneity": {
+        "desc": "동시사용률 (기본 1.0=전기구 동시 — 보수. KDS 미규정, 발주기준·기구단위법 산정 입력 원칙)",
+        "type": "number",
+        "min": 0,
+        "max": 1
+      },
+      "supplyPressure_kPa": {
+        "desc": "공급 압력 (기구 최저 유동압력·550kPa 상한 게이트)",
         "type": "number",
         "min": 0
       }

@@ -340,3 +340,15 @@ test('shear_wall boundary element: eq 4.7-2 with 0.007 floor', () => {
   }, 'KDS');
   assert.ok(Math.abs(r.boundaryElement.cLimit_mm - 952) <= 1 && r.boundaryElement.required === false);
 });
+
+test('planting_base: KDS 34 tables — soil depth gate and eq 4.4-1 weight', () => {
+  const r = runCalculator('planting_base', { soilCheck: { plantType: '심근성교목', soilKind: 'natural', soilGrade: 'high', providedDepth_cm: 80 } }, 'KDS');
+  assert.ok(r.checks.soilDepth.surviveMin_cm === 90 && r.checks.soilDepth.growMin_cm === 100 && r.verdict === 'FAIL');
+  const w = runCalculator('planting_base', { treeWeight: { rootDia_cm: 30, trunkGroup: 'B', rootBallVol_m3: 0.35 } }, 'KDS');
+  assert.ok(Math.abs(w.checks.treeWeight.Wtop_kg - 324) < 2 && w.checks.treeWeight.Wroot_kg === 455);
+});
+
+test('fixture_supply: KDS 31 30 15 tables — flow sum and pressure gates', () => {
+  const r = runCalculator('fixture_supply', { fixtures: [{ type: '세면기', count: 2 }, { type: '대변기_세정밸브', count: 2 }, { type: '샤워기', count: 1 }], supplyPressure_kPa: 90 }, 'KDS');
+  assert.ok(Math.abs(r.checks.flow.sumQ_Ls - 3.58) < 0.01 && r.checks.pressure.requiredMin_kPa === 100 && r.verdict === 'FAIL');
+});

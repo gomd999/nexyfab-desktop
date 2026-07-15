@@ -38,8 +38,10 @@ import pscGirder from './calculators/psc-girder.mjs';
 import weldConnection from './calculators/weld-connection.mjs';
 import consolidation from './calculators/consolidation.mjs';
 import pileCapacity from './calculators/pile-capacity.mjs';
+import plantingBase from './calculators/planting-base.mjs';
+import fixtureSupply from './calculators/fixture-supply.mjs';
 
-export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman, vibrationBasic, thermalStress, acousticTl, ductSizing, slopeBishop, mseWall, deckStrip, earthworkGrid, pipeSizing, shearWall, girderDf, pscGirder, weldConnection, consolidation, pileCapacity];
+export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman, vibrationBasic, thermalStress, acousticTl, ductSizing, slopeBishop, mseWall, deckStrip, earthworkGrid, pipeSizing, shearWall, girderDf, pscGirder, weldConnection, consolidation, pileCapacity, plantingBase, fixtureSupply];
 
 /** Minimal JSON-Schema-subset validator (type/required/properties/minimum/maximum/enum). */
 export function validateInput(schema, input) {
