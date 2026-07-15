@@ -260,3 +260,46 @@ test('공표예제: USACE Bishop F-5 — FS 1.33 재현 (±1%)', () => {
   const r = runCalculator('slope_bishop', { slices, fsRequired: 1.3 }, 'KDS');
   assert.ok(Math.abs(r.checks.stability.FS - 1.34) < 0.015, `FS ${r.checks.stability.FS} vs 1.33~1.34`);
 });
+
+// ── 심화 라운드: Bishop 자동탐색·3경간·PSC 솟음·MSE 내적 ─────────────────────
+test('slope_bishop auto: Taylor stability number (phi=0, beta=60) within 1%', () => {
+  // Taylor(1937) Ns=0.191 → FS = c/(γH·Ns) = 20/(18·10·0.191) = 0.582 (공표 안정수)
+  const r = runCalculator('slope_bishop', { geometry: { H: 10, slopeDeg: 60, gamma: 18, c_kPa: 20, phiDeg: 0.01 }, fsRequired: 1.3 }, 'KDS');
+  assert.ok(Math.abs(r.checks.stability.FS - 0.582) / 0.582 < 0.01, `FS ${r.checks.stability.FS}`);
+});
+
+test('threeSpanUdlEnvelope: classic anchors 7wL2/60 and alternate-span 0.10125wL2', async () => {
+  const { threeSpanUdlEnvelope } = await import('../moving-load.mjs');
+  const r = threeSpanUdlEnvelope(10, 10);
+  assert.ok(Math.abs(r.MsupMax_kNm - 116.667) < 0.1, `sup ${r.MsupMax_kNm}`);
+  assert.ok(Math.abs(r.MspanMax_kNm - 101.25) < 0.3, `span ${r.MspanMax_kNm}`);
+});
+
+test('sweepThreeSpan: uniform train reproduces adjacent-span pattern 7wL2/60', async () => {
+  const { sweepThreeSpan } = await import('../moving-load.mjs');
+  const axles = Array.from({ length: 121 }, (_, i) => ({ P: 2.5, x: i * 0.25 })); // w=10kN/m 등가
+  const r = sweepThreeSpan(10, axles, { steps: 800, reverse: false });
+  assert.ok(Math.abs(r.MsupMax_kNm - 116.67) < 2, `sup ${r.MsupMax_kNm}`);
+});
+
+test('psc_girder camber: elastic closed form Pe·e·L2/8EI and 5wL4/384EI', () => {
+  const r = runCalculator('psc_girder', {
+    A_mm2: 600000, I_mm4: 2e11, yt_mm: 800, yb_mm: 700, Pj_kN: 3000, e_mm: 400,
+    lossImmediate_pct: 5, lossTotal_pct: 20, Mo_kNm: 900, Ms_kNm: 2400, fck: 40, fci: 32,
+    camber: { L_m: 30, wSw_kNm: 14.7 },
+  }, 'KDS');
+  const Eci = 8500 * Math.cbrt(36);
+  const up = (2850e3 * 400 * 9e8) / (8 * Eci * 2e11);
+  const sw = (5 * 14.7 * Math.pow(30000, 4)) / (384 * Eci * 2e11);
+  assert.ok(Math.abs(r.camber.transfer.up_mm - up) < 0.15 && Math.abs(r.camber.transfer.selfWt_mm - sw) < 0.15);
+});
+
+test('mse_wall internal: bottom-layer rupture governs (Tmax exceeds Tal) — gate detects', () => {
+  const r = runCalculator('mse_wall', {
+    H: 8, L: 5.6, gammaR: 20, phiR: 34, gammaF: 19, phiF: 30, surcharge: 12, bearingResistance: 600,
+    internal: { Sv_m: 0.8, type: 'steel_strip', Tal_kNm: 50, Rc: 1.0 },
+  }, 'KDS');
+  const layers = r.internal.layers;
+  assert.ok(layers.length === 10 && layers[0].cdrRupture > 3 && layers[layers.length - 1].cdrRupture < 1);
+  assert.equal(r.internal.pass, false);
+});

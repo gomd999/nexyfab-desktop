@@ -119,3 +119,87 @@ export function midspanDeflection(L, axles, EI_kNm2, { steps = 800 } = {}) {
   }
   return dMax; // m
 }
+
+/**
+ * 3등경간 연속 — 3연모멘트 2×2 폐형해 스위프 (지점 B·C 모멘트).
+ * 단위하중(경간 k, 위치 a): 6Aẋ/L 항 → [4 1;1 4][MB;MC] = RHS. 앵커: 등분포
+ * 전경간 동시재하 → M_B=−wL²/10 (고전). 스위프 포락선은 인접 2경간 패턴재하
+ * −7wL²/60(=0.1167wL²)이 지배 — 포락선 앵커. 외측경간 +M 포락 ≈0.08wL².
+ */
+export function sweepThreeSpan(L, axles, { steps = 1500, reverse = true } = {}) {
+  const trains = [axles];
+  if (reverse) {
+    const maxX = Math.max(...axles.map((a) => a.x));
+    trains.push(axles.map((a) => ({ P: a.P, x: maxX - a.x })));
+  }
+  const total = 3 * L;
+  let MsupMax = 0, MspanMax = 0;
+  const rhsUnit = (pos) => {
+    // 6A x̄ / L for 각 경간의 단위하중: 경간 내 위치 a → 좌항 6Aa/L = P·a(L²−a²)/L (우측지점), P·b(L²−b²)/L (좌측지점)
+    const span = Math.min(2, Math.floor(pos / L));
+    const a = pos - span * L, b = L - a;
+    const num1 = (a * (L * L - a * a)) / L; // 해당 경간 좌측 지점식 기여
+    const num2 = (b * (L * L - b * b)) / L;
+    // 3연모멘트: 2(M_left(L1+L2))... 등경간: 식1(지점B): M_A+4M_B+M_C = −(6A1x̄1/L + 6A2x̄2/L)/... 표준화:
+    // 지점 B 식은 경간1·2의 항, 지점 C 식은 경간2·3의 항
+    const r1 = span === 0 ? num1 : span === 1 ? num2 : 0; // 경간1 우측(=B) + 경간2 좌측(=B)
+    const r2 = span === 1 ? num1 : span === 2 ? num2 : 0; // 경간2 우측(=C) + 경간3 좌측(=C)
+    return [r1, r2];
+  };
+  for (const tr of trains) {
+    const len = Math.max(...tr.map((a) => a.x));
+    for (let k = 0; k <= steps; k++) {
+      const s = (k / steps) * (total + len);
+      const on = tr.map((a) => ({ P: a.P, pos: s - a.x })).filter((a) => a.pos >= 0 && a.pos <= total);
+      if (!on.length) continue;
+      let R1 = 0, R2 = 0;
+      for (const a of on) { const [x1, x2] = rhsUnit(a.pos); R1 += a.P * x1; R2 += a.P * x2; }
+      // [4 1;1 4][MB;MC] = [−R1; −R2] → MB=(−4R1+R2)/15, MC=(R1−4R2)/15
+      const MB = (-4 * R1 + R2) / (15 * L), MC = (R1 - 4 * R2) / (15 * L);
+      MsupMax = Math.max(MsupMax, -MB, -MC);
+      // 경간 모멘트: 각 축 아래 = 해당 경간 단순보 M + 지점모멘트 선형보간
+      for (const a of on) {
+        const span = Math.min(2, Math.floor(a.pos / L));
+        const xa = a.pos - span * L;
+        let Ms = 0;
+        for (const b of on) {
+          const sb = Math.min(2, Math.floor(b.pos / L));
+          if (sb !== span) continue;
+          const xb = b.pos - span * L;
+          Ms += xb <= xa ? (b.P * xb * (L - xa)) / L : (b.P * xa * (L - xb)) / L;
+        }
+        const Ml = span === 0 ? 0 : span === 1 ? MB : MC;
+        const Mr = span === 0 ? MB : span === 1 ? MC : 0;
+        const M = Ms + Ml * (1 - xa / L) + Mr * (xa / L);
+        if (M > MspanMax) MspanMax = M;
+      }
+    }
+  }
+  return { MsupMax_kNm: MsupMax, MspanMax_kNm: MspanMax };
+}
+
+/**
+ * 3등경간 UDL 패턴재하 포락 (폐형) — KDS 차로하중 "불리 구간만 재하" 대응.
+ * 7조합(2³−1) 전수: 각 조합 3연모멘트 2×2 폐형 → 지점·경간 최대.
+ * 앵커: 전경간 M_B=−0.100wL² · 인접2 −7/60 wL² · 교호(1·3) +M=0.10125wL²(손계산).
+ */
+export function threeSpanUdlEnvelope(L, w) {
+  let MsupMax = 0, MspanMax = 0;
+  const T = (w * L * L * L) / 4; // 6Ax̄/L (등분포 만재)
+  for (let mask = 1; mask < 8; mask++) {
+    const on = [mask & 1, (mask >> 1) & 1, (mask >> 2) & 1];
+    const R1 = (on[0] + on[1]) * T, R2 = (on[1] + on[2]) * T;
+    const MB = (-4 * R1 + R2) / (15 * L), MC = (R1 - 4 * R2) / (15 * L);
+    MsupMax = Math.max(MsupMax, -MB, -MC);
+    const ends = [[0, MB], [MB, MC], [MC, 0]];
+    for (let sp = 0; sp < 3; sp++) {
+      const [Ml, Mr] = ends[sp], wl = on[sp] ? w : 0;
+      for (let i = 0; i <= 50; i++) {
+        const x = (i / 50) * L;
+        const M = (wl * x * (L - x)) / 2 + Ml * (1 - x / L) + Mr * (x / L);
+        if (M > MspanMax) MspanMax = M;
+      }
+    }
+  }
+  return { MsupMax_kNm: MsupMax, MspanMax_kNm: MspanMax };
+}

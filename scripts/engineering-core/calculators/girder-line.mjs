@@ -6,7 +6,7 @@
  * 고정하중 입력 시 1.25DC+1.5DW? — 아님: 계수조합은 후속(활하중 산출 전용 v1 명시).
  * 검증: 엔진 폐형해 3/3 + 차로 wL²/8 + (HL-93 공표표 재현은 published-bench).
  */
-import { sweepSimpleSpan, sweepTwoSpan, midspanDeflection } from '../moving-load.mjs';
+import { sweepSimpleSpan, sweepTwoSpan, sweepThreeSpan, threeSpanUdlEnvelope, midspanDeflection } from '../moving-load.mjs';
 
 export default {
   id: 'girder_line',
@@ -22,7 +22,7 @@ export default {
     required: ['span', 'DF'],
     properties: {
       span: { type: 'number', minimum: 5, maximum: 200, description: '지간 m (등경간)' },
-      spans: { type: 'integer', minimum: 1, maximum: 2, description: '경간 수 (기본 1 단순지지 · 2=등경간 연속 — 3연모멘트 폐형)' },
+      spans: { type: 'integer', minimum: 1, maximum: 3, description: '경간 수 (기본 1 단순지지 · 2·3=등경간 연속 — 3연모멘트 폐형)' },
       EI_kNm2: { type: 'number', exclusiveMinimum: 0, description: '휨강성 EI kN·m² (입력 시 처짐 검토 §4.3.1.7 — 트럭 vs 25%트럭+차로 중 큰 값)' },
       deflLimitRatio: { type: 'number', minimum: 100, maximum: 2000, description: '처짐 한계 L/n (기본 800 관례 — 발주자 기준 확인 명시)' },
       nLanes: { type: 'integer', minimum: 1, maximum: 8, description: '재하차로 수 (기본 1 — 다차로계수 표 4.3-1 적용)' },
@@ -46,14 +46,19 @@ export default {
     const IM = (input.fatigue ? bl.IM_pct.fatigue : bl.IM_pct.general) / 100;
     const nsp = input.spans ?? 1;
     const scaled = axles.map((a) => ({ P: a.P * truckScale, x: a.x }));
-    const sw = nsp === 2
-      ? (() => { const t = sweepTwoSpan(L, scaled); return { Mmax_kNm: t.MspanMax_kNm, at_m: t.at_m, Vmax_kN: sweepSimpleSpan(L, scaled).Vmax_kN, MsupMax_kNm: t.MsupMax_kNm }; })()
-      : sweepSimpleSpan(L, scaled);
+    const sw = nsp === 3
+      ? (() => { const t = sweepThreeSpan(L, scaled); return { Mmax_kNm: t.MspanMax_kNm, at_m: 0, Vmax_kN: sweepSimpleSpan(L, scaled).Vmax_kN, MsupMax_kNm: t.MsupMax_kNm }; })()
+      : nsp === 2
+        ? (() => { const t = sweepTwoSpan(L, scaled); return { Mmax_kNm: t.MspanMax_kNm, at_m: t.at_m, Vmax_kN: sweepSimpleSpan(L, scaled).Vmax_kN, MsupMax_kNm: t.MsupMax_kNm }; })()
+        : sweepSimpleSpan(L, scaled);
     // 차로하중 (표 4.3-2): 12.7 (L≤60) · 12.7(60/L)^0.1 (L>60) — 충격 미적용
+    // 연속경간 차로하중 = 패턴재하 포락(§ 불리 구간만 재하): 2경간 +M=49wL²/512(1경간 재하 지배,
+    // 만재 9/128보다 큼 — 손계산 폐형) · 3경간=threeSpanUdlEnvelope(7조합 전수, 앵커 재현)
     const w = L <= 60 ? 12.7 : 12.7 * Math.pow(60 / L, 0.10);
     const nsp2 = input.spans ?? 1;
-    const Mlane = nsp2 === 2 ? (9 * w * L * L) / 128 : (w * L * L) / 8;
-    const MlaneSup = nsp2 === 2 ? (w * L * L) / 8 : 0; // 연속 지점부 −M (등분포 양경간 고전해)
+    const udl3 = nsp2 === 3 ? threeSpanUdlEnvelope(L, w) : null;
+    const Mlane = nsp2 === 3 ? udl3.MspanMax_kNm : nsp2 === 2 ? (49 * w * L * L) / 512 : (w * L * L) / 8;
+    const MlaneSup = nsp2 === 3 ? udl3.MsupMax_kNm : nsp2 === 2 ? (w * L * L) / 8 : 0;
     const Vlane = (w * L) / 2;
     // 지배조합 (§4.3.1.5): max(트럭×(1+IM), 0.75트럭×(1+IM) + 차로)
     const Mt = sw.Mmax_kNm * (1 + IM), Vt = sw.Vmax_kN * (1 + IM);
@@ -69,7 +74,7 @@ export default {
     const Vgirder = Math.max(V1, V2) * mf * DF;
     // 연속 지점부 −M (spans=2): 트럭 지점모멘트×(1+IM) 조합 + 차로 지점 −M
     let MgirderNeg = null;
-    if ((input.spans ?? 1) === 2 && sw.MsupMax_kNm !== undefined) {
+    if ((input.spans ?? 1) >= 2 && sw.MsupMax_kNm !== undefined) {
       const Mt_sup = sw.MsupMax_kNm * (1 + IM);
       MgirderNeg = Math.max(Mt_sup, 0.75 * Mt_sup + MlaneSup) * mf * DF;
     }
@@ -97,7 +102,7 @@ export default {
       notes: [
         `KL-510${input.fatigue ? ' 피로(트럭 80%·IM 15%)' : ''}: 트럭 M ${sw.Mmax_kNm.toFixed(0)}×(1+${IM}) vs 0.75트럭+차로 → ${mGov} 지배`,
         `다차로계수 ${mf}(${nl}차로) × DF ${DF}(입력 — KDS 24 10 11 산정) 적용.`,
-        (input.spans ?? 1) === 2 ? '2등경간 연속(3연모멘트 폐형·등경간 한정) — 지점부 −M 별도 보고. 부등경간·3경간+는 후속.' : '단순지지 기준.',
+        (input.spans ?? 1) >= 2 ? `${input.spans}등경간 연속(3연모멘트 폐형·등경간 한정) — 지점부 −M 별도 보고·차로하중 패턴재하 포락(불리 구간만 재하). 부등경간·4경간+는 frame2d 매트릭스 후속.` : '단순지지 기준.',
         '고정하중·계수조합은 bridge-check 체인에서. 내하력 판정 아님.',
       ],
     };

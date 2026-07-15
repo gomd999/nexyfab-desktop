@@ -13,7 +13,7 @@ export default {
   title: 'PSC 거더 응력 검토 (이송·사용)',
   description: '긴장력·편심·단면성능 → 상·하연 응력 2단계 검토. 손실률·허용계수 입력 원칙.',
   refs: ['PSC 고전 응력식 σ=P/A∓Pe·y/I±M·y/I (폐형)', 'KDS 24 14 21 허용응력·손실 산정은 확인 입력(원문 대조 후 계수 승격 예정 — 명시)'],
-  status: 'verified(압축계수) — §4.2.2.1·§1.5.7.2③ 원문 확정(0.6/0.45/0.6fck(t)). 균열폭·긴장재 응력·솟음·극한휨은 후속',
+  status: 'verified(압축계수) — §4.2.2.1·§1.5.7.2③ 원문 확정(0.6/0.45/0.6fck(t)) + 솟음 탄성폐형(앵커식). 균열폭·긴장재 응력·극한휨은 후속',
   inputSchema: {
     type: 'object',
     required: ['A_mm2', 'I_mm4', 'yt_mm', 'yb_mm', 'Pj_kN', 'e_mm', 'fck'],
@@ -33,6 +33,7 @@ export default {
       compFactor: { type: 'number', minimum: 0.4, maximum: 0.7, description: '압축한계 계수 (기본 0.6 — KDS 24 14 21 §4.2.2.1② 원문: 사용조합-I 0.6fck·전달 §1.5.7.2③ 0.6fck(t))' },
       MsSustained_kNm: { type: 'number', minimum: 0, description: '지속하중 모멘트 (입력 시 조합-V 지속 압축한계 0.45fck 검토 — §4.2.2.1① 원문)' },
       tensFactor: { type: 'number', minimum: 0, maximum: 0.63, description: '인장 참고한계 ×√fck (기본 0.25 참고 관례 — 한계상태설계법의 정식 검토는 균열폭/탈압축(§4.2.3, 후속) 명시)' },
+      camber: { description: '솟음 산정(선택 — 탄성 폐형): { L_m(지간), wSw_kNm(자중 등분포), Ec_MPa?(기본 8500∛(fck+4)), Eci_MPa?(전달 시 — 기본 fci 기준), creepMult?(장기배율 — PCI 근사표 등 산정 입력, 기본 미적용 명시) }' },
     },
   },
   run(input) {
@@ -65,10 +66,32 @@ export default {
       const lim045 = 0.45 * input.fck;
       sus = { top_MPa: +st2.top.toFixed(2), bot_MPa: +st2.bot.toFixed(2), allow_MPa: +lim045.toFixed(2), pass: Math.max(st2.top, st2.bot) <= lim045 };
     }
+    // 솟음(camber) — 탄성 폐형: 직선 긴장재(등편심) δp=Pe·e·L²/8EI(↑) − 자중 δw=5wL⁴/384EI(↓)
+    let camber = null;
+    const cb = input.camber;
+    if (cb && Number(cb.L_m) > 0) {
+      const Lmm = cb.L_m * 1000;
+      const Eci = Number(cb.Eci_MPa) > 0 ? Number(cb.Eci_MPa) : 8500 * Math.cbrt(fci + 4);
+      const Ec = Number(cb.Ec_MPa) > 0 ? Number(cb.Ec_MPa) : 8500 * Math.cbrt(input.fck + 4);
+      const w_Nmm = (Number(cb.wSw_kNm) || 0); // kN/m = N/mm
+      const dP_i = (Pi * e * Lmm * Lmm) / (8 * Eci * I);       // 전달 시 상향 (mm)
+      const dW_i = (5 * w_Nmm * Math.pow(Lmm, 4)) / (384 * Eci * I);
+      const net_i = dP_i - dW_i;
+      const dP_e = (Pe * e * Lmm * Lmm) / (8 * Ec * I);         // 유효(전 손실 후)
+      const dW_e = (5 * w_Nmm * Math.pow(Lmm, 4)) / (384 * Ec * I);
+      const mult = Number(cb.creepMult) > 0 ? Number(cb.creepMult) : null;
+      camber = {
+        transfer: { up_mm: +dP_i.toFixed(1), selfWt_mm: +dW_i.toFixed(1), net_mm: +net_i.toFixed(1) },
+        effective: { up_mm: +dP_e.toFixed(1), selfWt_mm: +dW_e.toFixed(1), net_mm: +(dP_e - dW_e).toFixed(1) },
+        ...(mult ? { longTerm_mm: +((dP_e - dW_e) * mult).toFixed(1), creepMult: mult } : {}),
+        note: '탄성 폐형(직선 긴장재 등편심 Pe·e·L²/8EI − 자중 5wL⁴/384EI — 앵커식). 절곡/포물선 배치·크리프 시간이력은 별도(creepMult=산정 입력, 기본 미적용). 시공단계(합성 전후)는 프로젝트 검토.',
+      };
+    }
     const pass = t.compOk && t.tensOk && sv.compOk && sv.tensOk && (sus ? sus.pass : true);
     return {
       verdict: pass ? 'PASS' : 'FAIL',
       checks: { transfer: t, service: sv, ...(sus ? { sustained: sus } : {}) },
+      ...(camber ? { camber } : {}),
       intermediate: { Pi_kN: +(Pi / 1000).toFixed(1), Pe_kN: +(Pe / 1000).toFixed(1), St_mm3: Math.round(St), Sb_mm3: Math.round(Sb) },
       notes: [
         `이송: 상 ${t.top_MPa}/하 ${t.bot_MPa} MPa (허용 압축 ${t.allowComp}·인장 ${t.allowTens}) / 사용: 상 ${sv.top_MPa}/하 ${sv.bot_MPa} (허용 ${sv.allowComp}·${sv.allowTens})`,

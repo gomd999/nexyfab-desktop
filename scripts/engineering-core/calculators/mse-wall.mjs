@@ -13,7 +13,7 @@ export default {
   title: '보강토옹벽 외적 안정 (LRFD)',
   description: '활동·편심·지지력 CDR — FHWA GEC11 방법(공표예제 재현).',
   refs: ['FHWA-NHI-10-025 (GEC 11) Vol.II App.E — Example E4 재현', 'KDS 11 80 10(보강토) 연계는 계수 대조 후속'],
-  status: 'verified — FHWA E4 재현(활동 CDR 1.37·편심 3.87ft·지지 1.79). 내적 안정·경사배면·지진은 후속',
+  status: 'verified — FHWA E4 외적 재현(CDR 1.372·e 3.87ft) + 내적(파단·인발 — GEC11 방법·Kr/Ka 공표 스케줄). 경사배면·지진 후속',
   inputSchema: {
     type: 'object',
     required: ['H', 'L', 'gammaR', 'phiR', 'gammaF', 'phiF', 'bearingResistance'],
@@ -30,6 +30,7 @@ export default {
       gEV: { type: 'number', minimum: 1.0, maximum: 1.5, description: '연직토 하중계수 (기본 1.35 — FHWA Str I max)' },
       gEH: { type: 'number', minimum: 0.9, maximum: 1.75, description: '수평토 (기본 1.50)' },
       gLL: { type: 'number', minimum: 1.0, maximum: 2.0, description: '활하중 (기본 1.75)' },
+      internal: { description: '내적 안정(선택 — FHWA GEC11 방법): { Sv_m(보강 수직간격), type(steel_strip|bar_mat|geosynthetic), Tal_kNm(장기 설계인장강도/폭), Rc(피복비 기본 1), Fstar(인발마찰 — 미입력 시 geosyn (2/3)tanφ·steel 기본 1.2 관례 명시), alphaP(0.8 geosyn/1.0 steel) }' },
     },
   },
   run(input) {
@@ -61,7 +62,44 @@ export default {
     const eB = L / 2 - (MRmax - MOmax) / Vmax;
     const sigmaV = Vmax / (L - 2 * Math.max(0, eB));
     const bearCDR = input.bearingResistance / sigmaV;
-    const pass = slideCDR >= 1 && e <= eLimit && bearCDR >= 1;
+    // ── 내적 안정 (FHWA GEC11 §4.4 방법 — 층별 Tmax·파단·인발) ─────────────
+    let internal = null;
+    const iv = input.internal;
+    if (iv && Number(iv.Sv_m) > 0 && Number(iv.Tal_kNm) > 0) {
+      const KaR = Math.pow(Math.tan(Math.PI / 4 - (input.phiR * Math.PI) / 360), 2);
+      // Kr/Ka 스케줄 (FHWA GEC11 그림 — 공표 표준): steel_strip 1.7→1.2@6m, bar_mat 2.5→1.2@6m, geosyn 1.0
+      const krka = (z) => {
+        const t0 = { steel_strip: 1.7, bar_mat: 2.5, geosynthetic: 1.0 }[iv.type ?? 'geosynthetic'];
+        if (t0 === 1.0) return 1.0;
+        return z >= 6 ? 1.2 : t0 - ((t0 - 1.2) * z) / 6;
+      };
+      const Rc = iv.Rc ?? 1.0;
+      const phiRrad = (input.phiR * Math.PI) / 180;
+      const Fstar = Number(iv.Fstar) > 0 ? Number(iv.Fstar) : (iv.type === 'geosynthetic' ? (2 / 3) * Math.tan(phiRrad) : 1.2);
+      const alphaP = iv.alphaP ?? (iv.type === 'geosynthetic' ? 0.8 : 1.0);
+      const layers = [];
+      let allOk = true;
+      for (let z = iv.Sv_m / 2; z < H; z += iv.Sv_m) {
+        const sigV = gEV * (gammaR * z) + gLL * q; // 계수 수직응력 (kPa)
+        const sigH = krka(z) * KaR * sigV;
+        const Tmax = sigH * iv.Sv_m; // kN/m (폭당)
+        // 파단: φ=0.9(강재)/제품별 — Tal은 이미 감모 반영 장기 설계값 입력 전제(명시) → CDR=Tal·Rc/Tmax
+        const cdrRupture = (iv.Tal_kNm * Rc) / Tmax;
+        // 인발: 활동영역 밖 유효길이 Le = L − (H−z)tan(45−φ/2) (Rankine 쐐기 근사 — 강성벽 관례 명시)
+        const Le = Math.max(0, L - (H - z) * Math.tan(Math.PI / 4 - phiRrad / 2));
+        const sigVp = gammaR * z; // 인발 저항은 비계수 상재(보수) — γp 1.0 명시
+        const Pr = Fstar * alphaP * sigVp * 2 * Le * Rc; // kN/m (C=2 양면)
+        const cdrPullout = Tmax > 0 ? Pr / (1.5 * Tmax) : null; // FS 1.5 관례(LRFD φ=0.9·γ 대체 시 조정 — 명시)
+        const ok = cdrRupture >= 1 && (cdrPullout === null || cdrPullout >= 1) && Le > 0.9;
+        if (!ok) allOk = false;
+        layers.push({ z_m: +z.toFixed(2), Tmax_kNm: +Tmax.toFixed(2), cdrRupture: +cdrRupture.toFixed(2), Le_m: +Le.toFixed(2), cdrPullout: cdrPullout !== null ? +cdrPullout.toFixed(2) : null, ok });
+      }
+      internal = {
+        pass: allOk, layers,
+        note: 'FHWA GEC11 방법: Tmax=Kr·Ka·σv·Sv(Kr/Ka 스케줄=공표 표준)·인발 Pr=F*·α·σv·2Le·Rc(활동쐐기=Rankine 근사·FS 1.5 관례 — 전부 명시). Tal=감모(크리프·시공손상·내구) 반영 장기값 입력 전제. Le<0.9m 층은 부적합.',
+      };
+    }
+    const pass = slideCDR >= 1 && e <= eLimit && bearCDR >= 1 && (internal ? internal.pass : true);
     const r3 = (v) => +v.toFixed(3);
     return {
       verdict: pass ? 'PASS' : 'FAIL',
@@ -71,6 +109,7 @@ export default {
         bearing: { sigmaV_kPa: r3(sigmaV), resistance_kPa: input.bearingResistance, CDR: r3(bearCDR), pass: bearCDR >= 1 },
       },
       intermediate: { Kaf: r3(Kaf), F1: r3(F1), F2: r3(F2), V1: r3(V1), eBearing_m: r3(eB) },
+      ...(internal ? { internal } : {}),
       notes: [
         `LRFD CDR(≥1 충족) — FS 아님 명시. 계수: EV ${gEV}·EH ${gEH}·LL ${gLL}(FHWA Str I 판독값, 변경 가능).`,
         '수평 배면·Rankine Ka — 경사배면·상재 경사·지진(M-O)·내적 안정(파단·인발)은 후속 명시.',
