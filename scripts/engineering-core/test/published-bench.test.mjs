@@ -414,3 +414,29 @@ test('W1: point illuminance inverse-square, pump water power, consolidation ext,
   const pc = runCalculator('pile_capacity', { dia_m: 0.5, length_m: 15, layers: [{ thick_m: 15, type: 'clay', Su_kPa: 50, alpha: 0.9 }], tip: { type: 'clay', Su_kPa: 50 }, group: { rows: 3, cols: 3, spacing_m: 1.5 } }, 'KDS');
   assert.ok(Math.abs(pc.breakdown.group.eta - 0.727) < 0.002);
 });
+
+// ── W2 크롤본 엔진 라운드 ────────────────────────────────────────────────────
+test('steel: Lb=0 phiMn=0.9FyZx, column boundary continuity 0.390Fy', () => {
+  const b = runCalculator('steel_beam', { Zx_mm3: 1286e3, Sx_mm3: 1170e3, ry_mm: 45.4, Fy_MPa: 275, Lb_mm: 0, Mu_kNm: 250 }, 'KDS');
+  assert.ok(Math.abs(b.checks.flexure.phiMn_kNm - (0.9 * 275 * 1286e3) / 1e6) < 0.2);
+  const bound = 4.71 * Math.sqrt(205000 / 275);
+  const cA = runCalculator('steel_column', { Ag_mm2: 10000, r_mm: 100, K: 1, L_mm: bound * 100 - 1, Fy_MPa: 275, Pu_kN: 500 }, 'KDS');
+  const cB = runCalculator('steel_column', { Ag_mm2: 10000, r_mm: 100, K: 1, L_mm: bound * 100 + 1, Fy_MPa: 275, Pu_kN: 500 }, 'KDS');
+  assert.ok(Math.abs(cA.checks.compression.Fcr_MPa - cB.checks.compression.Fcr_MPa) < 0.2 && Math.abs(cA.checks.compression.Fcr_MPa - 0.39 * 275) < 0.5);
+});
+
+test('earth_retention: Peck sand 0.65gHKa, strut sum equals total, heaving hand-check', () => {
+  const r = runCalculator('earth_retention', { H_m: 10, soil: 'sand', gamma: 18, phi: 30, struts: [2, 5, 8], spacing_m: 2.5, D_m: 4, hw_m: 3 }, 'KDS');
+  assert.ok(Math.abs(r.checks.pressure.pMax_kPa - 39) < 0.1);
+  const sumR = r.checks.struts.levels.reduce((s, x) => s + x.R_kNm, 0);
+  assert.ok(Math.abs(sumR - 390) < 1);
+  const h = runCalculator('earth_retention', { H_m: 8, soil: 'softClay', gamma: 17, su_kPa: 30, B_m: 10 }, 'KDS');
+  assert.ok(Math.abs(h.checks.heaving.FS - (5.7 * 30) / (17 * 8 - (30 * 8) / 7)) < 0.01);
+});
+
+test('pavement_walk: joint gates from KDS 34 60 10 (9m/3m)', () => {
+  const r = runCalculator('pavement_walk', { type: 'concrete_linear', length_m: 60, width_m: 2, conJoint_m: 4 }, 'KDS');
+  assert.equal(r.verdict, 'FAIL');
+  const r2 = runCalculator('pavement_walk', { type: 'concrete_linear', length_m: 60, width_m: 2, expJoint_m: 9, conJoint_m: 3 }, 'KDS');
+  assert.equal(r2.verdict, 'PASS');
+});

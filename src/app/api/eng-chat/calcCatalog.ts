@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(49종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(53종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -3107,6 +3107,311 @@ export const CALC_CATALOG: CalcSpec[] = [
         "type": "number",
         "min": 0.2,
         "max": 0.9
+      }
+    }
+  },
+  {
+    "id": "steel_beam",
+    "domain": "architecture/steel",
+    "title": "강재 보 (H형강 콤팩트·강축)",
+    "description": "소성휨·횡비틀림좌굴(Lp/Lr/탄성) 3구간 + 전단 — KDS 14 31 10 원문식.",
+    "required": [
+      "Zx_mm3",
+      "Sx_mm3",
+      "ry_mm",
+      "Fy_MPa",
+      "Lb_mm",
+      "Mu_kNm"
+    ],
+    "params": {
+      "Zx_mm3": {
+        "desc": "소성단면계수 (KS 형강표 입력)",
+        "type": "number",
+        "min": 0
+      },
+      "Sx_mm3": {
+        "desc": "탄성단면계수",
+        "type": "number",
+        "min": 0
+      },
+      "ry_mm": {
+        "desc": "약축 회전반경",
+        "type": "number",
+        "min": 0
+      },
+      "rts_mm": {
+        "desc": "유효 회전반경 (Lb>Lp 시 필요 — 형강표)",
+        "type": "number",
+        "min": 0
+      },
+      "J_mm4": {
+        "desc": "비틀림상수 (Lb>Lp 시 필요)",
+        "type": "number",
+        "min": 0
+      },
+      "h0_mm": {
+        "desc": "플랜지 도심간 거리 (Lb>Lp 시 필요)",
+        "type": "number",
+        "min": 0
+      },
+      "Fy_MPa": {
+        "desc": "항복강도 (SS275→275 등 — 강종 확인)",
+        "type": "number",
+        "min": 235,
+        "max": 460
+      },
+      "E_MPa": {
+        "desc": "탄성계수 (기본 205,000 — KDS 강재 표준값)",
+        "type": "number",
+        "min": 190000,
+        "max": 215000
+      },
+      "Lb_mm": {
+        "desc": "비지지길이",
+        "type": "number",
+        "min": 0
+      },
+      "Cb": {
+        "desc": "횡좌굴 보정계수 (기본 1.0 안전측 — 원문 명시)",
+        "type": "number",
+        "min": 1,
+        "max": 3
+      },
+      "Mu_kNm": {
+        "desc": "계수휨모멘트",
+        "type": "number",
+        "min": 0
+      },
+      "Vu_kN": {
+        "desc": "계수전단력 (선택)",
+        "type": "number",
+        "min": 0
+      },
+      "Aw_mm2": {
+        "desc": "웨브 단면적 d×tw (전단 검토 시)",
+        "type": "number",
+        "min": 0
+      },
+      "h_tw": {
+        "desc": "웨브 h/tw (전단 φv·Cv 판정 — 형강표)",
+        "type": "number",
+        "min": 0
+      },
+      "bf_2tf": {
+        "desc": "플랜지 b/2tf (콤팩트 게이트 — 미입력 시 콤팩트 가정 명시)",
+        "type": "number",
+        "min": 0
+      }
+    }
+  },
+  {
+    "id": "steel_column",
+    "domain": "architecture/steel",
+    "title": "강재 기둥 (휨좌굴 — KDS 원문)",
+    "description": "Fcr 2구간(0.658^λ·0.877Fe)·φc0.90 — 비세장판 단면 한정.",
+    "required": [
+      "Ag_mm2",
+      "r_mm",
+      "K",
+      "L_mm",
+      "Fy_MPa",
+      "Pu_kN"
+    ],
+    "params": {
+      "Ag_mm2": {
+        "desc": "총단면적",
+        "type": "number",
+        "min": 0
+      },
+      "r_mm": {
+        "desc": "지배축 회전반경 (min(rx,ry) 통상)",
+        "type": "number",
+        "min": 0
+      },
+      "K": {
+        "desc": "유효길이계수 (표 4.2-3 — 지지조건 판단 입력)",
+        "type": "number",
+        "min": 0.5,
+        "max": 2.4
+      },
+      "L_mm": {
+        "desc": "비지지길이",
+        "type": "number",
+        "min": 0
+      },
+      "Fy_MPa": {
+        "desc": "항복강도",
+        "type": "number",
+        "min": 235,
+        "max": 460
+      },
+      "E_MPa": {
+        "desc": "탄성계수 (기본 205,000)",
+        "type": "number",
+        "min": 190000,
+        "max": 215000
+      },
+      "Pu_kN": {
+        "desc": "계수축력",
+        "type": "number",
+        "min": 0
+      },
+      "slenderLimit": {
+        "desc": "세장비 한계 (기본 200 건축 관례 — 교량 주부재/가새는 발주·원문 확인 입력)",
+        "type": "number",
+        "min": 100,
+        "max": 250
+      }
+    }
+  },
+  {
+    "id": "earth_retention",
+    "domain": "civil/excavation",
+    "title": "가설흙막이 (경험토압·버팀대·근입·히빙/보일링)",
+    "description": "Peck 토압→버팀 반력→근입 FS 1.2→굴착저면 안정 — KDS 21 30 00 원문.",
+    "required": [
+      "H_m",
+      "soil",
+      "gamma"
+    ],
+    "params": {
+      "H_m": {
+        "desc": "굴착깊이",
+        "type": "number",
+        "min": 0,
+        "max": 30
+      },
+      "soil": {
+        "desc": "지반 (Peck 3분류 — 경험토압은 H≥6m 좁은 굴착 버팀 지지 전제 원문 명시)",
+        "enum": [
+          "sand",
+          "softClay",
+          "stiffClay"
+        ]
+      },
+      "gamma": {
+        "desc": "단위중량 kN/m³",
+        "type": "number",
+        "min": 14,
+        "max": 22
+      },
+      "phi": {
+        "desc": "내부마찰각 (sand 필수)",
+        "type": "number",
+        "min": 20,
+        "max": 45
+      },
+      "su_kPa": {
+        "desc": "비배수전단강도 (clay 필수)",
+        "type": "number",
+        "min": 0
+      },
+      "mCoef": {
+        "desc": "stiffClay 계수 (0.2~0.4γH — 기본 0.3 중앙 명시)",
+        "type": "number",
+        "min": 0.2,
+        "max": 0.4
+      },
+      "struts": {
+        "desc": "버팀 단수 배열 [z_m(지표부터 깊이)] — 1~8단"
+      },
+      "spacing_m": {
+        "desc": "띠장(수평) 방향 버팀보 간격 (기본 2.5 관례)",
+        "type": "number",
+        "min": 0,
+        "max": 10
+      },
+      "D_m": {
+        "desc": "근입깊이 (근입 FS 검토 시)",
+        "type": "number",
+        "min": 0
+      },
+      "hw_m": {
+        "desc": "내외 수위차 (보일링 검토 — 사질)",
+        "type": "number",
+        "min": 0
+      },
+      "gammaSub": {
+        "desc": "수중단위중량 γ′ (보일링 — 기본 γ−9.81)",
+        "type": "number",
+        "min": 7,
+        "max": 13
+      },
+      "B_m": {
+        "desc": "굴착폭 (히빙 검토 — 점토)",
+        "type": "number",
+        "min": 0
+      },
+      "surcharge_kPa": {
+        "desc": "상재하중",
+        "type": "number",
+        "min": 0
+      },
+      "fsBoilHeave": {
+        "desc": "히빙/보일링 요구 안전율 (기본 1.5 관례 — 발주 기준 우선 §3.2.1(6))",
+        "type": "number",
+        "min": 1.2,
+        "max": 3
+      }
+    }
+  },
+  {
+    "id": "pavement_walk",
+    "domain": "landscape/pavement",
+    "title": "보도포장 (줄눈·층구성·수량)",
+    "description": "콘크리트 줄눈 간격 게이트(원문 수치)+층 구성 검증+포장·줄눈 수량.",
+    "required": [
+      "type",
+      "length_m",
+      "width_m"
+    ],
+    "params": {
+      "type": {
+        "desc": "포장 유형 (줄눈 게이트는 콘크리트만)",
+        "enum": [
+          "concrete_linear",
+          "concrete_plaza",
+          "block",
+          "flexible"
+        ]
+      },
+      "length_m": {
+        "desc": "연장 (광장이면 대표 변)",
+        "type": "number",
+        "min": 0,
+        "max": 5000
+      },
+      "width_m": {
+        "desc": "폭",
+        "type": "number",
+        "min": 0,
+        "max": 100
+      },
+      "expJoint_m": {
+        "desc": "계획 팽창줄눈 간격 (선형 — 게이트 9m)",
+        "type": "number",
+        "min": 0
+      },
+      "conJoint_m": {
+        "desc": "계획 수축줄눈 간격 (선형 — 게이트 3m)",
+        "type": "number",
+        "min": 0
+      },
+      "panelArea_m2": {
+        "desc": "광장 분할 패널 면적 (팽창 36m²·수축 9m² 게이트)",
+        "type": "number",
+        "min": 0
+      },
+      "layers": {
+        "desc": "층 구성 배열 [{name, thk_mm}] — 두께=발주/KS 입력(검증은 구성만·두께 합산 수량)"
+      },
+      "structureType": {
+        "desc": "구조 형식 (§1.6.3 구성 검증 — 기본 simple)",
+        "enum": [
+          "flexible",
+          "rigid",
+          "simple"
+        ]
       }
     }
   }
