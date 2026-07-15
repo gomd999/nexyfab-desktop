@@ -2073,23 +2073,22 @@ export const CALC_CATALOG: CalcSpec[] = [
     "domain": "landscape/earthwork",
     "title": "격자 토공량 (점고법)",
     "description": "기존·계획 지반고 격자 → 절토·성토량, 토량환산(입력 계수) 반영.",
-    "required": [
-      "existing",
-      "proposed",
-      "cellSize_m"
-    ],
+    "required": [],
     "params": {
       "existing": {
-        "desc": "기존 지반고 2D 배열 [row][col] (m) — 격자 교점"
+        "desc": "기존 지반고 2D 배열 [row][col] (m) — 격자 교점 (격자 모드)"
       },
       "proposed": {
         "desc": "계획 지반고 2D 배열 (동일 크기)"
       },
       "cellSize_m": {
-        "desc": "격자 간격 m",
+        "desc": "격자 간격 m (격자 모드 필수)",
         "type": "number",
         "min": 0,
         "max": 100
+      },
+      "tin": {
+        "desc": "TIN 모드(선택 — 격자 대신): { points: [[x,y,zExist,zPlan],...], triangles: [[i,j,k],...] } — 불규칙 삼각망. 삼각기둥법 V=A·(dz1+dz2+dz3)/3, 절성 혼재 삼각형은 평면 교선 정확 분할"
       },
       "swellFactor": {
         "desc": "토량변화율 L(흐트러짐 — 운반토량용, 기본 1.0=미반영 명시)",
