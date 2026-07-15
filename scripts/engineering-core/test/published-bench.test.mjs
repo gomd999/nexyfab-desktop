@@ -245,3 +245,18 @@ test('Bishop 엔진: φ=0 폐형 앵커', () => {
   const r = runCalculator('slope_bishop', { slices, fsRequired: 1.3 }, 'KDS');
   assert.ok(Math.abs(r.checks.stability.FS - closed) < 0.001, `FS ${r.checks.stability.FS} vs 폐형 ${closed.toFixed(3)}`);
 });
+
+// ── USACE EM 1110-2-1902 App.F F-5 — Bishop 간편법 재현 (재판독 교정) ──────
+// Figure F-11c 절편표: b열·Δℓ열이 역순 인쇄된 판본 확인(재판독 에이전트 —
+// col13 역산·면적 검증 3중 근거) → 교정 b 사용 시 FS 1.340 (공표 1.33, 표
+// 반올림 정수합 698/524=1.332). c=1.78/1.60 ksf 원값·W=전중량·Δx 기준.
+test('공표예제: USACE Bishop F-5 — FS 1.33 재현 (±1%)', () => {
+  const b = [17, 22, 22, 29, 26, 28, 37, 36, 44, 57]; // 인쇄 역순 교정
+  const W = [30, 108, 158, 251, 241, 257, 320, 275, 253, 129];
+  const alpha = [48, 43, 37, 31, 24, 18, 11, 4, -5, -15];
+  const cc = [1.78, 1.78, 1.78, 1.78, 1.78, 1.6, 1.6, 1.6, 1.6, 1.6];
+  const phi = [5, 5, 5, 5, 5, 2, 2, 2, 2, 2];
+  const slices = b.map((bx, i) => ({ W: W[i], alphaDeg: alpha[i], dx: bx, c: cc[i], phiDeg: phi[i] }));
+  const r = runCalculator('slope_bishop', { slices, fsRequired: 1.3 }, 'KDS');
+  assert.ok(Math.abs(r.checks.stability.FS - 1.34) < 0.015, `FS ${r.checks.stability.FS} vs 1.33~1.34`);
+});

@@ -11,7 +11,7 @@ export default {
   title: 'Bishop 간편법 (원호 — 절편 입력)',
   description: '절편 배열 → FS 반복 수렴. USACE 공표예제 재현 게이트.',
   refs: ['Bishop 간편법 (USACE EM 1110-2-1902 App.F 정식 — 공표예제 F-5 재현)'],
-  status: 'draft — 공식 정형(교과서 Bishop)·φ=0 폐형 앵커 통과. USACE F-5 절편표 열 정의 재판독 후 재현 게이트 승격 예정(전사 ±10% 불일치 정직 보류)',
+  status: 'verified — USACE EM 1110-2-1902 F-5 재현 FS 1.340(공표 1.33, b열 역순 인쇄 교정 판독) + φ=0 폐형 앵커',
   inputSchema: {
     type: 'object',
     required: ['slices', 'fsRequired'],
