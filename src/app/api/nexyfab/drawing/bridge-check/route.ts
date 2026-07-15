@@ -14,7 +14,10 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-type Mod = { bridgeCheck: (assembly: unknown, params: Record<string, unknown>) => unknown };
+type Mod = {
+  bridgeCheck: (assembly: unknown, params: Record<string, unknown>) => unknown;
+  bridgeLoop?: (assembly: unknown, params: Record<string, unknown>) => unknown;
+};
 type RptMod = { bridgeReport: (r: unknown, o?: Record<string, unknown>) => string };
 
 let _mod: Mod | null = null;
@@ -49,7 +52,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const mod = await load();
-    const result = mod.bridgeCheck(body.assembly, body.params ?? {});
+    const result = (body as { mode?: string }).mode === 'loop' && mod.bridgeLoop ? mod.bridgeLoop(body.assembly, body.params ?? {}) : mod.bridgeCheck(body.assembly, body.params ?? {});
     if (body.format === 'html') {
       const rpt = await loadRpt();
       let svg = '';

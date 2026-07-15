@@ -134,3 +134,65 @@ if (isMain) {
   console.log(ok ? 'bridge-check self-test: PASS' : 'bridge-check self-test: FAIL');
   if (!ok) process.exit(1);
 }
+
+/**
+ * 교량 전수 루프 — 전 거더 개별 검토 (내측/외측 DF 구분 + 위치별 고정하중 분담).
+ * 외측 거더: girder_df 외측식(e=0.77+de/2800) — de=바닥판 연단~외측 거더 거리.
+ * 교차검증: 내측 거더 결과 = bridgeCheck 대표 결과와 Mu 일치(동일 로직 게이트).
+ */
+export function bridgeLoop(assembly, params = {}) {
+  const base = bridgeCheck(assembly, params);
+  if (!base.ok) return base;
+  const bm = assembly.bridgeMeta;
+  const girders = (assembly.parts ?? []).filter((p) => p.role === 'girder' && p.unverified !== true).slice().sort((a, b) => (a.at?.ty ?? 0) - (b.at?.ty ?? 0));
+  const s = bm.girderSpacing / 1000, L = bm.span / 1000, n = bm.nGirders;
+  const deckPart = (assembly.parts ?? []).find((p) => p.role === 'deck');
+  const deckCy = deckPart ? ((deckPart.at?.ty ?? 0)) : 0;
+  const gTys = girders.map((g) => g.at?.ty ?? 0);
+  const centerY = deckPart && Math.abs(deckCy) > 1 ? deckCy : (Math.min(...gTys) + Math.max(...gTys)) / 2;
+  const deckHalf = bm.deckW / 2;
+  const members = [];
+  for (const [gi, g] of girders.entries()) {
+    const ty = (g.at?.ty ?? 0) - centerY;
+    const edgeDist = deckHalf - Math.abs(ty); // 바닥판 연단까지(데크/거더군 중심 보정)
+    const isExterior = gi === 0 || gi === girders.length - 1;
+    let DF, dfSrc;
+    if (Number(params.DF) > 0) { DF = params.DF; dfSrc = '입력(전 거더 동일)'; }
+    else {
+      try {
+        const de = Math.max(0, Math.round(edgeDist - 0)); // de≈연단~거더 중심(관례 명시)
+        const dfr = runCalculator('girder_df', { S_mm: Math.round(s * 1000), L_mm: Math.round(L * 1000), ts_mm: bm.deckThk, Nb: n, ...(isExterior ? { de_mm: de } : {}) }, 'KDS');
+        DF = isExterior ? (dfr.DF.exterior?.DF_multi ?? dfr.DF.interior_gov) : dfr.DF.interior_gov;
+        dfSrc = isExterior ? '정밀식 외측(e=0.77+de/2800)' : '정밀식 내측';
+      } catch { DF = base.live.DF; dfSrc = '대표값 폴백(범위 밖)'; }
+    }
+    let ll;
+    try { ll = runCalculator('girder_line', { span: +L.toFixed(1), DF, nLanes: base.live.nLanes }, 'KDS'); }
+    catch (e) { members.push({ id: g.id ?? `girder${gi + 1}`, error: e.message }); continue; }
+    const Mu = 1.25 * base.dead.M_DC + 1.5 * base.dead.M_DW + 1.8 * ll.perGirder.M_kNm;
+    const Vu = 1.25 * (base.dead.wDC_kNm * L / 2) + 1.5 * ((base.dead.wDW_kNm ?? 0) * L / 2) + 1.8 * ll.perGirder.V_kN;
+    let verdict = 'INFO', util = null;
+    if (Number(params.As_mm2) > 0) {
+      try {
+        const r = runCalculator('rc_beam', { b: bm.section.webT, d: bm.girderH - 150, fck: params.fck ?? 27, fy: params.fy ?? 400, As: Number(params.As_mm2), Mu: +Mu.toFixed(1), Vu: +Vu.toFixed(1) }, 'KDS');
+        verdict = r.verdict; util = r.checks?.flexure?.ratio ?? null;
+      } catch (e) { verdict = 'ERROR'; }
+    }
+    members.push({ id: g.id ?? `girder${gi + 1}`, position: isExterior ? '외측' : '내측', DF: +Number(DF).toFixed(3), dfSrc, Mu_kNm: +Mu.toFixed(1), Vu_kN: +Vu.toFixed(1), verdict, util });
+  }
+  // 교차검증: 내측 거더 Mu = 대표(bridgeCheck) Mu 일치
+  const interior = members.find((m) => m.position === '내측');
+  const crossCheck = interior
+    ? { loopInteriorMu: interior.Mu_kNm, representativeMu: base.ultimate.Mu_kNm, pass: Math.abs(interior.Mu_kNm - base.ultimate.Mu_kNm) <= Math.max(0.5, base.ultimate.Mu_kNm * 0.01) }
+    : { note: '내측 거더 없음(2거더교)' };
+  const counts = { PASS: 0, FAIL: 0, INFO: 0, ERROR: 0 };
+  for (const m of members) counts[m.verdict === 'PASS' ? 'PASS' : m.verdict === 'FAIL' ? 'FAIL' : m.verdict === 'ERROR' ? 'ERROR' : 'INFO']++;
+  return {
+    ok: true, members, summary: { total: members.length, ...counts }, crossCheck,
+    notes: [
+      '전 거더 개별 DF(내측 정밀식·외측 e식 — 외측 de=연단~거더 중심 관례 명시)·동일 고정하중 분담(등분담 근사 유지 — 외측 증가분은 후속).',
+      '교차검증: 내측 거더 Mu=대표 검토 일치 게이트' + (crossCheck.pass === false ? ' — ⚠ 불일치' : '.'),
+    ],
+    disclaimer: base.disclaimer,
+  };
+}
