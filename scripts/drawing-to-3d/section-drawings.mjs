@@ -15,15 +15,16 @@ function svgShell(w, h, content, title) {
 ${content}</svg>`;
 }
 
-/** 치수선 (수평/수직) */
-function dim(x1, y1, x2, y2, label, off = 24) {
+/** 치수선 (수평/수직). key 지정 시 data-param 태그 — 프론트 치수 클릭 편집용(값 소스는 폼 상태, 라벨 파싱 아님). */
+function dim(x1, y1, x2, y2, label, off = 24, key = null) {
+  const attr = key ? ` data-param="${key}" style="cursor:pointer" text-decoration="underline"` : '';
   const horiz = Math.abs(y2 - y1) < 0.5;
   if (horiz) {
     const y = y1 + off;
-    return `<g><line class="dim" x1="${x1}" y1="${y1 + 4}" x2="${x1}" y2="${y + 4}"/><line class="dim" x1="${x2}" y1="${y2 + 4}" x2="${x2}" y2="${y + 4}"/><line class="dim" x1="${x1}" y1="${y}" x2="${x2}" y2="${y}"/><text class="dimt" x="${(x1 + x2) / 2}" y="${y - 4}">${H(label)}</text></g>`;
+    return `<g><line class="dim" x1="${x1}" y1="${y1 + 4}" x2="${x1}" y2="${y + 4}"/><line class="dim" x1="${x2}" y1="${y2 + 4}" x2="${x2}" y2="${y + 4}"/><line class="dim" x1="${x1}" y1="${y}" x2="${x2}" y2="${y}"/><text class="dimt"${attr} x="${(x1 + x2) / 2}" y="${y - 4}">${H(label)}</text></g>`;
   }
   const x = x1 + off;
-  return `<g><line class="dim" x1="${x1 + 4}" y1="${y1}" x2="${x + 4}" y2="${y1}"/><line class="dim" x1="${x2 + 4}" y1="${y2}" x2="${x + 4}" y2="${y2}"/><line class="dim" x1="${x}" y1="${y1}" x2="${x}" y2="${y2}"/><text class="dimt" x="${x + 4}" y="${(y1 + y2) / 2}" transform="rotate(90 ${x + 12} ${(y1 + y2) / 2})">${H(label)}</text></g>`;
+  return `<g><line class="dim" x1="${x1 + 4}" y1="${y1}" x2="${x + 4}" y2="${y1}"/><line class="dim" x1="${x2 + 4}" y1="${y2}" x2="${x + 4}" y2="${y2}"/><line class="dim" x1="${x}" y1="${y1}" x2="${x}" y2="${y2}"/><text class="dimt"${attr} x="${x + 4}" y="${(y1 + y2) / 2}" transform="rotate(90 ${x + 12} ${(y1 + y2) / 2})">${H(label)}</text></g>`;
 }
 
 /** ① 옹벽 단면도 (역T: 벽체+저판+앞굽) — params mm */
@@ -41,11 +42,12 @@ ${opts.rebar !== false ? `
 <path class="rebar" d="M ${stemX + 6} ${yBase - hh + 8} V ${yBase - 10} H ${x0 + bw - 8}"/>
 <path class="rebar" d="M ${x0 + 8} ${yBase - bt + 6} H ${x0 + bw - 8}"/>
 <text class="note" x="${stemX + st + 8}" y="${yBase - hh + 24}">주철근(개념 위치 — 본수·간격은 배근 입력 연동)</text>` : ''}
-${dim(x0, yBase, x0 + bw, yBase, `${baseWidth}`, 30)}
-${dim(x0, yBase, stemX, yBase, `${toeLength}`, 56)}
-${dim(stemX + st, yBase - hh, stemX + st, yBase, `${Hw}`, 30)}
-${dim(stemX, yBase - hh, stemX + st, yBase - hh, `${stemThickness}`, -14)}
-<text class="note" x="${x0}" y="${Ht - 12}">치수 mm · 개념 단면(비법정) — 배근 상세는 구조기술사 확정</text>`;
+${dim(x0, yBase, x0 + bw, yBase, `${baseWidth}`, 30, 'baseWidth')}
+${dim(x0, yBase, stemX, yBase, `${toeLength}`, 56, 'toeLength')}
+${dim(stemX + st, yBase - hh, stemX + st, yBase, `${Hw}`, 30, 'H')}
+${dim(stemX, yBase - hh, stemX + st, yBase - hh, `${stemThickness}`, -14, 'stemThickness')}
+${dim(x0, yBase - bt, x0, yBase, `${baseThickness}`, -40, 'baseThickness')}
+<text class="note" x="${x0}" y="${Ht - 12}">치수 mm · 개념 단면(비법정) — 파란 치수 클릭=수정 · 배근 상세는 구조기술사 확정</text>`;
   return svgShell(W, Ht, body, opts.title ?? '옹벽 표준 단면도 (역T)');
 }
 
@@ -239,11 +241,11 @@ export function rebarElevationSvg(p, opts = {}) {
     for (let x = endLen + s2 / 2; x <= L - endLen; x += s2) { const xx = x0 + x * yScale; colTicks += `<line x1="${xx}" y1="${y0 + cov}" x2="${xx}" y2="${y0 + hh - cov}" stroke="#0ea5e9" stroke-width="1"/>`; }
   }
   const endPx = endLen * scale;
-  const dim = (xa, xb, y, label) =>
+  const dim = (xa, xb, y, label, key = null) =>
     `<line x1="${xa}" y1="${y}" x2="${xb}" y2="${y}" stroke="#475569" stroke-width="0.8"/>` +
     `<line x1="${xa}" y1="${y - 4}" x2="${xa}" y2="${y + 4}" stroke="#475569" stroke-width="0.8"/>` +
     `<line x1="${xb}" y1="${y - 4}" x2="${xb}" y2="${y + 4}" stroke="#475569" stroke-width="0.8"/>` +
-    `<text x="${(xa + xb) / 2}" y="${y - 6}" text-anchor="middle" font-size="11" fill="#334155">${label}</text>`;
+    `<text x="${(xa + xb) / 2}" y="${y - 6}" text-anchor="middle" font-size="11" fill="#334155"${key ? ` data-param="${key}" style="cursor:pointer" text-decoration="underline"` : ''}>${label}</text>`;
   const dy = y0 + hh + 28;
   const labelAxis = type === 'beam' ? '경간' : '층고(눕힌 표현 — 표기 명시)';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${Ht}" font-family="system-ui">
@@ -255,13 +257,13 @@ export function rebarElevationSvg(p, opts = {}) {
 ${type === 'beam' ? ticks : colTicks}
 <text x="${x0 + 8}" y="${y0 + cov - 5}" font-size="11" fill="#dc2626">상부 ${topBars}</text>
 <text x="${x0 + 8}" y="${y0 + hh - cov + 14}" font-size="11" fill="#dc2626">하부 ${botBars}</text>
-<text x="${x0 + endPx / 2}" y="${y0 - 6}" text-anchor="middle" font-size="11" fill="#0ea5e9">${tie}@${s1}</text>
-<text x="${x0 + 380}" y="${y0 - 6}" text-anchor="middle" font-size="11" fill="#0ea5e9">${tie}@${s2}</text>
-<text x="${x0 + 760 - endPx / 2}" y="${y0 - 6}" text-anchor="middle" font-size="11" fill="#0ea5e9">${tie}@${s1}</text>
-${dim(x0, x0 + endPx, dy, `단부 ${endLen}`)}
+<text x="${x0 + endPx / 2}" y="${y0 - 6}" text-anchor="middle" font-size="11" fill="#0ea5e9" data-param="sEnd_mm" style="cursor:pointer" text-decoration="underline">${tie}@${s1}</text>
+<text x="${x0 + 380}" y="${y0 - 6}" text-anchor="middle" font-size="11" fill="#0ea5e9" data-param="sMid_mm" style="cursor:pointer" text-decoration="underline">${tie}@${s2}</text>
+<text x="${x0 + 760 - endPx / 2}" y="${y0 - 6}" text-anchor="middle" font-size="11" fill="#0ea5e9" data-param="sEnd_mm" style="cursor:pointer" text-decoration="underline">${tie}@${s1}</text>
+${dim(x0, x0 + endPx, dy, `단부 ${endLen}`, 'endZone_mm')}
 ${dim(x0 + endPx, x0 + 760 - endPx, dy, `중앙 ${L - 2 * endLen}`)}
-${dim(x0 + 760 - endPx, x0 + 760, dy, `단부 ${endLen}`)}
-${dim(x0, x0 + 760, dy + 26, `${labelAxis} L=${L}`)}
+${dim(x0 + 760 - endPx, x0 + 760, dy, `단부 ${endLen}`, 'endZone_mm')}
+${dim(x0, x0 + 760, dy + 26, `${labelAxis} L=${L}`, 'L_mm')}
 <text x="${x0}" y="${Ht - 8}" font-size="10" fill="#64748b">표현용 개략 축척 — 정착·이음 상세는 KDS 14 20 52 별도 설계 명시. 단부구간 ${Number(p.endZone_mm) > 0 ? '입력값' : 'L/4 기본(관례 명시)'}.</text>
 </svg>`;
   return svg;

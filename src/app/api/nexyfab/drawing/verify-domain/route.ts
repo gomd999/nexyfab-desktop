@@ -96,7 +96,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       } catch { /* 도면 실패는 비치명 */ }
       return NextResponse.json({ result, html: rpt.retainingWallReport(result, { title: body.title ?? '옹벽 안정 검토', svg }) });
     }
-    return NextResponse.json(result);
+    // 옹벽: 입력 기하 5키가 모두 있으면 편집형 단면도 동봉(m→mm 변환 — 기본값 날조 방지 위해 부분입력 시 미동봉)
+    let drawingSvg: string | null = null;
+    if (body.calculatorId === 'retaining_wall_stability' && body.params) {
+      const pr = body.params as Record<string, number>;
+      const keys = ['H', 'baseWidth', 'baseThickness', 'stemThickness', 'toeLength'];
+      if (keys.every((k) => Number(pr[k]) > 0)) {
+        try {
+          const sp3 = join(process.cwd(), 'scripts', 'drawing-to-3d', 'section-drawings.mjs');
+          const sd = (await import(/* webpackIgnore: true */ pathToFileURL(sp3).href)) as { retainingWallSectionSvg: (p: unknown) => string };
+          drawingSvg = sd.retainingWallSectionSvg({
+            H: pr.H * 1000, baseWidth: pr.baseWidth * 1000, baseThickness: pr.baseThickness * 1000,
+            stemThickness: pr.stemThickness * 1000, toeLength: pr.toeLength * 1000,
+          });
+        } catch { /* 도면 실패는 비치명 */ }
+      }
+    }
+    return NextResponse.json(drawingSvg ? { ...(result as Record<string, unknown>), drawingSvg } : result);
   } catch (e) {
     return NextResponse.json({ ok: false, error: 'verify failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 502 });
   }

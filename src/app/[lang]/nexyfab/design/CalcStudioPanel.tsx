@@ -148,7 +148,9 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
   const [project, setProject] = useState('');
   const [member, setMember] = useState('');
   // 배근 전개도(rc_beam/rc_column 전용)
-  const [reb, setReb] = useState({ L_mm: '6000', sEnd_mm: '150', sMid_mm: '300', topBars: '2-D22', botBars: '4-D22', stirrup: 'D10' });
+  const [reb, setReb] = useState<Record<string, string>>({ L_mm: '6000', sEnd_mm: '150', sMid_mm: '300', endZone_mm: '', topBars: '2-D22', botBars: '4-D22', stirrup: 'D10' });
+  // 케이스 스택 — 부재 여러 개 검토 후 일괄 계산서(장당 1부재, page-break)
+  const [cases, setCases] = useState<Array<{ calcId: string; member: string; inputUsed: Record<string, Json>; result: CalcRunResult; svg: string | null }>>([]);
   const [rebSvg, setRebSvg] = useState<string | null>(null);
   const showRebar = calcId === 'rc_beam' || calcId === 'rc_column_pm';
 
@@ -185,11 +187,13 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
     } finally { setLoading(false); }
   };
 
-  const drawRebar = async () => {
+  const drawRebar = async (rebOverride?: Record<string, string>) => {
+    const r = rebOverride ?? reb;
     const params: Record<string, Json> = {
       type: calcId === 'rc_column_pm' ? 'column' : 'beam',
-      L_mm: Number(reb.L_mm) || 6000, sEnd_mm: Number(reb.sEnd_mm) || 150, sMid_mm: Number(reb.sMid_mm) || 300,
-      topBars: reb.topBars, botBars: reb.botBars, stirrup: reb.stirrup,
+      L_mm: Number(r.L_mm) || 6000, sEnd_mm: Number(r.sEnd_mm) || 150, sMid_mm: Number(r.sMid_mm) || 300,
+      ...(Number(r.endZone_mm) > 0 ? { endZone_mm: Number(r.endZone_mm) } : {}),
+      topBars: r.topBars, botBars: r.botBars, stirrup: r.stirrup,
     };
     const res = await fetch('/api/nexyfab/drawing/calc/', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -197,6 +201,17 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
     });
     const j = (await res.json()) as { ok: boolean; svg?: string; error?: string };
     if (j.ok && j.svg) setRebSvg(j.svg); else setErr(j.error ?? 'drawing error');
+  };
+
+  const onRebDimClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const t = (e.target as HTMLElement).closest('[data-param]');
+    const key = t?.getAttribute('data-param');
+    if (!key) return;
+    const nv = window.prompt((ko ? '새 값(mm) — ' : 'New value (mm) — ') + key, reb[key] ?? '');
+    if (nv === null || nv.trim() === '' || !Number.isFinite(Number(nv))) return;
+    const next = { ...reb, [key]: nv };
+    setReb(next);
+    void drawRebar(next);
   };
 
   const printSheet = () => {
@@ -207,6 +222,41 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
     w.document.write(html);
     w.document.close();
     setTimeout(() => w.print(), 400);
+  };
+
+  const addCase = () => {
+    if (!spec || !result) return;
+    setCases((s) => [...s, { calcId: spec.id, member: member || `부재 ${s.length + 1}`, inputUsed, result, svg: rebSvg }]);
+  };
+
+  const printAllCases = () => {
+    if (!cases.length) return;
+    const bodies = cases.map((c) => {
+      const sp = CALC_CATALOG.find((x) => x.id === c.calcId);
+      if (!sp) return '';
+      const html = buildSheetHtml(sp, c.inputUsed, c.result, { project, member: c.member, svg: c.svg });
+      const m = html.match(/<body>([\s\S]*)<\/body>/);
+      return `<div style="page-break-after:always">${m ? m[1] : ''}</div>`;
+    }).join('');
+    const first = buildSheetHtml(CALC_CATALOG.find((x) => x.id === cases[0].calcId)!, cases[0].inputUsed, cases[0].result, { project, member: cases[0].member, svg: cases[0].svg });
+    const head = first.slice(0, first.indexOf('<body>') + 6);
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(head + bodies + '</body></html>');
+    w.document.close();
+    setTimeout(() => w.print(), 500);
+  };
+
+  const savePreset = () => {
+    if (!spec) return;
+    try { localStorage.setItem(`nf-calc-preset-${spec.id}`, JSON.stringify(vals)); } catch { /* 저장 실패 무시 */ }
+  };
+  const loadPreset = () => {
+    if (!spec) return;
+    try {
+      const raw = localStorage.getItem(`nf-calc-preset-${spec.id}`);
+      if (raw) setVals(JSON.parse(raw) as Record<string, string>);
+    } catch { /* 무시 */ }
   };
 
   const verdict = result?.verdict ?? null;
@@ -282,9 +332,30 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
                   className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
                   🖨 {ko ? '계산서 출력(1장 양식)' : 'Print calc sheet'}
                 </button>
+                <button onClick={addCase}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">
+                  ＋ {ko ? '케이스 저장' : 'Save case'}
+                </button>
               </>
             )}
+            <span className="mx-1 text-slate-300">|</span>
+            <button onClick={savePreset} className="text-[11px] px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">{ko ? '입력 저장' : 'Save inputs'}</button>
+            <button onClick={loadPreset} className="text-[11px] px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">{ko ? '입력 불러오기' : 'Load inputs'}</button>
           </div>
+          {cases.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap rounded-lg border border-slate-200 dark:border-slate-700 p-2">
+              <span className="text-[11px] font-semibold">{ko ? `케이스 ${cases.length}건` : `${cases.length} cases`}</span>
+              {cases.map((c, i) => (
+                <span key={i} className={`text-[10px] px-2 py-0.5 rounded-full border ${c.result.verdict === 'PASS' ? 'border-green-500 text-green-700' : c.result.verdict === 'FAIL' ? 'border-rose-500 text-rose-700' : 'border-slate-400 text-slate-600'}`}>
+                  {c.member}·{c.result.verdict ?? 'INFO'}
+                  <button onClick={() => setCases((s) => s.filter((_, j) => j !== i))} className="ml-1 text-slate-400 hover:text-rose-500">×</button>
+                </span>
+              ))}
+              <button onClick={printAllCases} className="text-[11px] font-semibold px-3 py-1 rounded-lg border border-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                🖨 {ko ? '일괄 계산서(부재별 1장)' : 'Print all sheets'}
+              </button>
+            </div>
+          )}
           {err && <p className="text-xs text-rose-600 whitespace-pre-wrap">{err}</p>}
           {result && (
             <div className="space-y-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
@@ -312,9 +383,9 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
                       className="rounded border border-slate-300 dark:border-slate-600 bg-transparent px-2 py-0.5 w-24" />
                   </label>
                 ))}
-                <button onClick={drawRebar} className="self-end text-xs font-semibold px-3 py-1 rounded-lg border border-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">{ko ? '전개도 생성' : 'Draw'}</button>
+                <button onClick={() => drawRebar()} className="self-end text-xs font-semibold px-3 py-1 rounded-lg border border-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">{ko ? '전개도 생성' : 'Draw'}</button>
               </div>
-              {rebSvg && <div className="bg-white rounded-lg p-2 overflow-x-auto" dangerouslySetInnerHTML={{ __html: rebSvg }} />}
+              {rebSvg && <div className="bg-white rounded-lg p-2 overflow-x-auto" onClick={onRebDimClick} dangerouslySetInnerHTML={{ __html: rebSvg }} />}
               {rebSvg && <p className="text-[10px] text-slate-500">{ko ? '정착·이음 상세는 KDS 14 20 52 별도 설계 — 도면 소스(판정 없음). 계산서 출력에 자동 포함.' : 'Anchorage/splice per KDS 14 20 52 separately — drawing source only, included in printed sheet.'}</p>}
             </div>
           )}

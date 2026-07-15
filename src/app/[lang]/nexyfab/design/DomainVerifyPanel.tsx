@@ -36,6 +36,7 @@ interface VerifyResult {
   refs?: string[]; status?: string; disclaimer?: string; notes?: string[];
   needInputs?: InputSpec[]; gateError?: string; error?: string;
   candidates?: MemberCand[]; citations?: Citation[];
+  drawingSvg?: string;
 }
 
 // 형상 파생값 단위(④): 계산기 입력은 mm 계열(길이 mm·면적 mm²·회전반경 mm·단면계수 mm³).
@@ -89,11 +90,11 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
     setCandidates([]);
   }, [calc]);
 
-  const run = useCallback(async (refOverride?: string | number) => {
+  const run = useCallback(async (refOverride?: string | number, paramsOverride?: Record<string, string>) => {
     if (!intent || !domainSlug || !calcId) return;
     setLoading(true); setErr(null); setResult(null);
     const numParams: Record<string, number> = {};
-    for (const [k, v] of Object.entries(params)) {
+    for (const [k, v] of Object.entries(paramsOverride ?? params)) {
       if (v.trim() === '') continue;
       const n = Number(v);
       if (Number.isFinite(n)) numParams[k] = n;
@@ -205,6 +206,32 @@ export default function DomainVerifyPanel({ intent, lang, defaultDomain }: { int
               </span>
             )}
           </div>
+
+          {/* 편집형 도면 — 파란 치수 클릭 → 파라미터 수정 → 자동 재검증 (값 소스는 폼 상태) */}
+          {result.drawingSvg && (
+            <div style={{ marginBottom: 8 }}>
+              <div
+                style={{ background: '#fff', borderRadius: 8, padding: 6, overflowX: 'auto' }}
+                onClick={(e) => {
+                  const t = (e.target as HTMLElement).closest('[data-param]');
+                  const key = t?.getAttribute('data-param');
+                  if (!key) return;
+                  const spec = calc?.userInputs.find((s) => s.name === key);
+                  const cur = params[key] ?? (spec?.default !== undefined ? String(spec.default) : '');
+                  const label = spec ? `${spec.labelKo}${spec.unit ? ` (${spec.unit})` : ''}` : key;
+                  const nv = window.prompt((ko ? '새 값 — ' : 'New value — ') + label, cur);
+                  if (nv === null || nv.trim() === '' || !Number.isFinite(Number(nv))) return;
+                  const next = { ...params, [key]: nv };
+                  setParams(next);
+                  void run(memberRef, next);
+                }}
+                dangerouslySetInnerHTML={{ __html: result.drawingSvg }}
+              />
+              <div style={{ fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 2 }}>
+                {ko ? '파란 치수 클릭 = 해당 값 수정 → 재검증·도면 재생성 (폼과 동일 단위)' : 'Click a blue dimension to edit → auto re-verify & redraw (same units as form)'}
+              </div>
+            </div>
+          )}
 
           {/* 형상 파생값(투명성) */}
           {result.derived && Object.keys(result.derived).length > 0 && (

@@ -73,7 +73,10 @@ ${catalogPromptBlock()}
 - 단위 변환 필수 (예: "경간 6m" → L:6000 (mm), "옹벽 4m" → H:4 (m, 스키마대로)).
 - 수치를 지어내지 말 것. 표준 단면·표준 재료값 등 근거 있는 값만 가정하고 reply 에 "가정: ..."로 밝힐 것.
 - 표준 단면(예: H-300x150)의 단면성능(Sx,Ix,Aw 등)을 정확히 모르면 type:reply 로 해당 값을 되물을 것.
-- input 의 값은 순수 숫자만(단위 문자열 금지).`;
+- input 의 숫자 파라미터는 순수 숫자만(단위 문자열 금지). 단, 스키마 설명이 JSON 객체/배열
+  구조를 정의하는 파라미터(예: layers, tip, internal, geometry, camber, tendon, walls,
+  fixtures, soilCheck, treeWeight, detail, boundary, crackControl, crackWidth, ultimate)는
+  그 구조 그대로의 JSON 값으로 채워라(문자열로 감싸지 말 것). 구조 내 숫자도 순수 숫자.`;
 
 function stripJson(raw: string): string {
   let s = raw.replace(/```json?/gi, '').replace(/```/g, '').trim();
