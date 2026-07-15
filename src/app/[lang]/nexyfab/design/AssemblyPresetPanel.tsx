@@ -2617,7 +2617,9 @@ export default function AssemblyPresetPanel({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6 }}>
         {templates.map((tp) => (
           <button
-            key={tp.id} type="button" onClick={() => setTid(tp.id)}
+            // 카드 클릭 = 선택 + 기본값 즉시 빌드(대화-우선 2026-07-16). tpl 이펙트가 기본값을
+            // 깔고, 600ms 디바운스(generateRef)가 최신 클로저로 빌드 — 스테일 params 없음.
+            key={tp.id} type="button" onClick={() => { setTid(tp.id); scheduleRebuild(); }}
             style={{
               textAlign: 'left', padding: 8, borderRadius: 8, cursor: 'pointer',
               border: tid === tp.id ? '2px solid var(--nx-accent, #2563eb)' : '1px solid var(--nx-border, #dfe3e8)',
@@ -2634,21 +2636,27 @@ export default function AssemblyPresetPanel({
         ))}
       </div>
 
+      {/* 접이식 — 숫자 직접 입력(전문가용). 카드 클릭=즉시 빌드가 기본, 폼은 보조(2026-07-16) */}
       {tpl && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, margin: '8px 0' }}>
-          {tpl.params.map((p) => (
-            <label key={p.name} style={{ fontSize: 11, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{p.labelKo}{p.unit ? ` (${p.unit})` : ''}</span>
-              <input
-                type="number" inputMode="decimal"
-                value={params[p.name] ?? ''}
-                min={p.min} max={p.max}
-                onChange={(e) => setParams((s) => ({ ...s, [p.name]: Number(e.target.value) }))}
-                style={inpStyle}
-              />
-            </label>
-          ))}
-        </div>
+        <details style={{ margin: '6px 0 2px' }}>
+          <summary style={{ fontSize: 11, fontWeight: 700, cursor: 'pointer', color: 'var(--nx-text-2, #46505e)' }}>
+            {ko ? '세부 치수 직접 입력' : 'Edit dimensions directly'}
+          </summary>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, margin: '8px 0' }}>
+            {tpl.params.map((p) => (
+              <label key={p.name} style={{ fontSize: 11, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{p.labelKo}{p.unit ? ` (${p.unit})` : ''}</span>
+                <input
+                  type="number" inputMode="decimal"
+                  value={params[p.name] ?? ''}
+                  min={p.min} max={p.max}
+                  onChange={(e) => setParams((s) => ({ ...s, [p.name]: Number(e.target.value) }))}
+                  style={inpStyle}
+                />
+              </label>
+            ))}
+          </div>
+        </details>
       )}
 
       <button type="button" onClick={generate} disabled={busy} style={genStyle}>
