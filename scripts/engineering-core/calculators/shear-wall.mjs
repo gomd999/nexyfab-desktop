@@ -12,7 +12,7 @@ export default {
   title: '전단벽 횡강성·분담 (개략)',
   description: '벽 요소 강성(휨+전단변형)·병렬 분담률·벽체 개략 전단 검토.',
   refs: ['캔틸레버 벽 강성 폐형(휨+전단변형 — 구조역학 표준)', 'KDS 14 20 22 계열 Vc=√fck/6 기본식(벽 전용 상세식은 후속 명시)'],
-  status: 'verified — 폐형 앵커(3EI/h³ 극한·분담 합 1). 연결보·개구부 벽·경계요소 상세는 후속',
+  status: 'verified — 폐형 앵커 + §4.9.2 상세식(4.9-1·2·3 원문 판독). 연결보·경계요소·최소철근 검증은 후속',
   inputSchema: {
     type: 'object',
     required: ['walls', 'storyShear_kN'],
@@ -21,6 +21,7 @@ export default {
       frameStiffness_kNmm: { type: 'number', minimum: 0, description: '병렬 골조 강성 kN/mm (frame2d 산정값 입력 — 선택, 벽·골조 분담)' },
       storyShear_kN: { type: 'number', exclusiveMinimum: 0, description: '층전단력 V (지진·풍 산정값)' },
       fck: { type: 'number', minimum: 18, maximum: 60, description: '콘크리트 강도 (기본 24)' },
+      detail: { description: '벽 상세 전단검토(§4.9 원문식 — 선택): { wallIndex(1~), Nu_kN(압축+), Mu_kNm, Vu_kN, Avh_mm2?, sh_mm?, fy? }' },
     },
   },
   run(input) {
@@ -52,12 +53,38 @@ export default {
         flexNote: `휨: 수직 캔틸레버 M=${(Vi * x.h / 1000).toFixed(0)}kN·m — rc_beam(b=${x.t}, d≈0.8lw)로 수직철근 검토`,
       };
     });
+    // 상세 전단검토 (KDS 14 20 22 §4.9.2 원문 판독: 식 4.9-1·4.9-2 중 작은 값 + 식 4.9-3)
+    let detail = null;
+    const dt = input.detail;
+    if (dt && Number(dt.wallIndex) >= 1 && items[dt.wallIndex - 1]) {
+      const w = items[dt.wallIndex - 1];
+      const d = 0.8 * w.lw; // §4.9.1(3): d=0.8lw 허용
+      const lam = 1.0, h = w.t;
+      const Nu = (Number(dt.Nu_kN) || 0) * 1000, Mu = (Number(dt.Mu_kNm) || 0) * 1e6, Vu = (Number(dt.Vu_kN) || 0) * 1000;
+      const vc1 = 0.28 * lam * Math.sqrt(fck) * h * d + (Nu * d) / (4 * w.lw); // 식 4.9-1 (N)
+      let vc2 = null;
+      if (Vu > 0) {
+        const den = Mu / Vu - w.lw / 2;
+        if (den > 0) vc2 = (0.05 * lam * Math.sqrt(fck) + (w.lw * (0.10 * lam * Math.sqrt(fck) + (0.2 * Nu) / (w.lw * h))) / den) * h * d; // 식 4.9-2
+      }
+      const Vc = vc2 !== null ? Math.min(vc1, vc2) : vc1;
+      let Vs = 0;
+      if (Number(dt.Avh_mm2) > 0 && Number(dt.sh_mm) > 0) Vs = (dt.Avh_mm2 * (dt.fy ?? 400) * d) / dt.sh_mm; // 식 4.9-3
+      const phiVn = 0.75 * (Vc + Vs);
+      detail = {
+        wall: dt.wallIndex, d_mm: d, Vc1_kN: +(vc1 / 1000).toFixed(1), Vc2_kN: vc2 !== null ? +(vc2 / 1000).toFixed(1) : null,
+        Vc_kN: +(Vc / 1000).toFixed(1), Vs_kN: +(Vs / 1000).toFixed(1), phiVn_kN: +(phiVn / 1000).toFixed(1),
+        Vu_kN: Vu / 1000, ratio: Vu > 0 ? +((Vu) / phiVn).toFixed(3) : null, pass: Vu > 0 ? Vu <= phiVn : null,
+        note: '식 4.9-1/2 중 작은 값 + 식 4.9-3(수평철근) — 원문 판독. Mu/Vu−lw/2≤0이면 4.9-2 부적용(원문). Vn 상한·최소철근(§4.9.3)은 별도 확인 명시.',
+      };
+    }
     const frameShare = kFrame > 0 ? +(kFrame / sumK).toFixed(3) : 0;
     const allPass = rows.every((r) => r.pass);
     return {
       verdict: allPass ? 'PASS' : 'FAIL',
       walls: rows,
       distribution: { sumK_kNmm: +sumK.toFixed(2), frameShare, wallShare: +(1 - frameShare).toFixed(3) },
+      ...(detail ? { detail } : {}),
       notes: [
         `강성 분담(강막 가정 명시): 벽 ${rows.length}장${kFrame > 0 ? `+골조(${(frameShare * 100).toFixed(0)}%)` : ''} — 분담 합 1.0.`,
         '벽 강성=휨+전단변형 폐형(ν=0.17 관례). 비틀림(강성중심 편심)·연결보·개구부는 후속 명시.',

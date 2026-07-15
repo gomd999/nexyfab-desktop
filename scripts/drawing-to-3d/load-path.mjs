@@ -415,10 +415,12 @@ export function loadPathCheck(assembly, params = {}) {
               SDS: seis.intermediate.SDS, SD1: seis.intermediate.SD1, TL: 5,
               R: Number(sp.R), IE: seis.intermediate?.IE ?? 1, nModes: Math.min(3, n),
             });
+            const scale = Math.max(1, (0.85 * seis.V_kN) / out.V_srss_kN); // §7.3.3.5(2) 원문: 0.85V 하한 보정(층간변위 제외)
             rsa = {
               T1_s: out.modes[0]?.T_s, modes: out.modes, V_srss_kN: out.V_srss_kN, cumEffMass: out.cumEffMass,
+              scale735: +scale.toFixed(3), V_design_kN: +(out.V_srss_kN * scale).toFixed(1),
               vsEquivalent: +(out.V_srss_kN / seis.V_kN).toFixed(3),
-              note: '층 유연도(frame2d)→K→모드(Jacobi)→KDS 스펙트럼 SRSS. 전단빌딩 환산(3중대각 가정)·질량=고정하중 층중량 명시. 등가정적 대비 비율 참고(§7.3 하한 0.85V 등 검토는 후속).',
+              note: '층 유연도(frame2d)→K→모드(Jacobi)→KDS 스펙트럼 SRSS. §7.3.3.5(2) 보정: Vt<0.85V이면 설계값×0.85V/Vt(층간변위 제외 — 원문). 전단빌딩 환산·질량=고정하중 층중량 명시.',
             };
           } catch (e) { rsa = { error: e.message }; }
         }
