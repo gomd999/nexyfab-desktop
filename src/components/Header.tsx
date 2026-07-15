@@ -143,8 +143,8 @@ export default function Header() {
         { href: `/${lang}/`, label: t.aiDesign, icon: <IconZap />, external: false, highlight: 'blue' as const },
         { href: `/${lang}/nexyfab/design/`, label: t.studio, icon: <IconCube />, external: false, highlight: false as const },
         { href: `/${lang}/factories/`, label: t.factories, icon: <IconFactory />, external: false, highlight: false as const },
-        { href: `/${lang}/pricing/`, label: t.pricing, icon: <IconCalculator />, external: false, highlight: false as const },
-        { href: `/${lang}/quick-quote/`, label: t.quickQuote, icon: <IconFactory />, external: false, highlight: 'gradient' as const },
+        { href: `/${lang}/pricing/`, label: t.pricing, icon: <IconZap />, external: false, highlight: false as const },
+        { href: `/${lang}/quick-quote/`, label: t.quickQuote, icon: <IconCalculator />, external: false, highlight: 'gradient' as const },
     ];
 
     // ── Styles ──────────────────────────────────────────────────────────────
