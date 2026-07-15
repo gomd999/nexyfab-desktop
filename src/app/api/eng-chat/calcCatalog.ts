@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(56종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(57종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -3638,6 +3638,32 @@ export const CALC_CATALOG: CalcSpec[] = [
       "plannedDN": {
         "desc": "계획 관지름 (판정용)",
         "type": "number"
+      }
+    }
+  },
+  {
+    "id": "liquefaction",
+    "domain": "civil/seismic",
+    "title": "액상화 평가 (§4.7 — 예비+본평가)",
+    "description": "층별 예비평가 생략 게이트 + FS=CRR/CSR 본평가 — CRR·rd 산정 입력 원칙.",
+    "required": [
+      "layers"
+    ],
+    "params": {
+      "layers": {
+        "desc": "층 배열(두께 1.5m 이하 단위 — 원문) [{z_m(중심 심도), aboveGWT?(최고지하수위 상부), N_SPT?(미보정), zoneC?(그림4.7-1 영역C 판정 입력), sigmaV_kPa?, sigmaVe_kPa?, CRR?(시험 산정), tauMax_kPa?(지반응답해석 시)}]"
+      },
+      "amax_g": {
+        "desc": "지표면 최대지반가속도 (g — 지반응답해석/성능목표 재현주기 산정 입력)",
+        "type": "number",
+        "min": 0,
+        "max": 1
+      },
+      "rd": {
+        "desc": "응력감소계수 (산정 입력 — 관례식 사용 시 근거 명시. 층별 다르면 layers에 개별 CSR 위해 tauMax 사용 권장)",
+        "type": "number",
+        "min": 0.3,
+        "max": 1
       }
     }
   }
