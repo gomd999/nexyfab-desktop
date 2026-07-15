@@ -1389,6 +1389,10 @@ interface SavedState {
   v?: number; name?: string; at?: number;
   domain: string; templateId: string;
   params: Record<string, number>;
+  // 프로젝트 통합(v2): 검증 요약·전수 루프 요약·편집 타임라인(영구화)
+  chainSummary?: Record<string, unknown> | null;
+  loopSummary?: Record<string, unknown> | null;
+  timeline?: Array<{ at: number; label: string }>;
   furn?: Furn[] | null;
   chainP?: Record<string, number | string>;
   lsP?: Record<string, number | string>;
@@ -1400,7 +1404,7 @@ const DOMAIN_EMOJI: Record<string, string> = { building: '🏢', civil: '🧱', 
 
 interface BandPoint { value: number; pass: boolean; fails?: string[]; inputs?: number; metric?: { label?: string; value?: number; unit?: string } | null }
 interface SnapInfo { kind?: string; values?: number[]; step?: number; source?: string }
-interface HistEntry { params: Record<string, number>; furn?: Furn[] | null; label: string; verdict?: string }
+interface HistEntry { params: Record<string, number>; furn?: Furn[] | null; label: string; verdict?: string; at?: number }
 interface DiffSummary { verdict: string; nums: Record<string, { v: number; unit?: string }>; strs: Record<string, string> }
 
 /** ④ 전후 diff — 판정 변화 + 수치 지표 델타(최대 3), 문자열 지표는 변화 시 a→b */
@@ -2301,7 +2305,16 @@ export default function AssemblyPresetPanel({
   };
 
   // Round5 ①② 공유 링크 + 브라우저 저장/불러오기
-  const snapshotState = (): SavedState => ({ v: 1, domain, templateId: tid, params, furn, chainP, lsP, inP, cvP });
+  const snapshotState = (): SavedState => ({
+    v: 2, domain, templateId: tid, params, furn, chainP, lsP, inP, cvP,
+    // 통합: 마지막 체인 판정 요약 + 전수 루프 요약 + 편집 타임라인(undo 이력 영구화 — 라벨·시각만, 파라미터는 diff로 재현 가능 명시)
+    chainSummary: chain?.ok ? {
+      beams: (chain.beams ?? []).map((b) => ({ id: b.id, v: b.verdict, Mu: b.Mu_kNm })),
+      columns: (chain.columns ?? []).map((c) => ({ id: c.id, v: c.verdict, Pu: c.Pu_kN })),
+    } : null,
+    loopSummary: loop?.ok ? (loop.summary as Record<string, unknown>) : null,
+    timeline: hist.entries.map((e) => ({ at: e.at ?? Date.now(), label: e.label ?? '' })).slice(-100),
+  });
   const shareLink = async () => {
     try {
       const bytes = new TextEncoder().encode(JSON.stringify(snapshotState()));
