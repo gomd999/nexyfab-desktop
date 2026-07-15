@@ -20,11 +20,12 @@ interface CalcRunResult {
   status?: string; disclaimer?: string; attribution?: string; [k: string]: Json | undefined;
 }
 
+const DOMAIN_ALIAS: Record<string, string> = { mech: 'mechanical', building: 'architecture', structure: 'architecture', steel: 'architecture', concrete: 'architecture', timber: 'landscape', 'temporary-structures': 'civil' };
 const DOMAIN_LABEL: Record<string, [string, string]> = {
-  mechanical: ['기계', 'Mechanical'], architecture: ['건축', 'Architecture'], civil: ['토목', 'Civil'],
-  bridge: ['교량', 'Bridge'], landscape: ['조경', 'Landscape'], interior: ['인테리어', 'Interior'],
-  building: ['건축', 'Building'], structure: ['구조', 'Structure'],
+  mechanical: ['기계', 'Mechanical'], architecture: ['건축·구조', 'Architecture'], civil: ['토목·가설', 'Civil'],
+  bridge: ['교량', 'Bridge'], landscape: ['조경·목구조', 'Landscape'], interior: ['인테리어·설비', 'Interior'],
 };
+const domainKey = (d: string) => { const k = d.split('/')[0]; return DOMAIN_ALIAS[k] ?? k; };
 
 function isNumericParam(p: CalcParam): boolean {
   return p.type === 'number' || p.type === 'integer';
@@ -136,7 +137,7 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
   const groups = useMemo(() => {
     const g = new Map<string, CalcSpec[]>();
     for (const c of CALC_CATALOG) {
-      const key = c.domain.split('/')[0];
+      const key = domainKey(c.domain);
       if (!g.has(key)) g.set(key, []);
       g.get(key)!.push(c);
     }
@@ -298,7 +299,7 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
   return (
     <section className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="font-bold text-sm">{ko ? '계산기 스튜디오 — 전 분야 38종' : 'Calculator Studio — 38 engines'}</h3>
+        <h3 className="font-bold text-sm">{ko ? `계산기 스튜디오 — 전 분야 ${CALC_CATALOG.length}종` : `Calculator Studio — ${CALC_CATALOG.length} engines`}</h3>
         <span className="text-[11px] text-slate-500">{ko ? '스키마 자동 폼 · 결과는 엔진 원본 그대로(비법정 참고)' : 'Auto-form from schema · raw engine output (non-statutory)'}</span>
       </div>
       <div className="flex flex-wrap gap-2">
