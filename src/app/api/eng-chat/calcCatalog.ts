@@ -1,5 +1,5 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(10종).
-// 재생성: node -e "..." (커밋 메시지/문서 참조). AI 의도추출 프롬프트에 주입.
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(33종).
+// 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
 export const CALC_CATALOG: CalcSpec[] = [
@@ -59,9 +59,9 @@ export const CALC_CATALOG: CalcSpec[] = [
         "max": 24
       },
       "phiBackfill": {
-        "desc": "뒤채움 내부마찰각 °",
+        "desc": "뒤채움 내부마찰각 ° (개발강도 φd 입력 허용 — EM-2502 SMF 관례)",
         "type": "number",
-        "min": 15,
+        "min": 10,
         "max": 45
       },
       "surcharge": {
@@ -79,6 +79,30 @@ export const CALC_CATALOG: CalcSpec[] = [
         "desc": "허용지지력 q_allow kPa",
         "type": "number",
         "min": 0
+      },
+      "seismicKh": {
+        "desc": "수평지진계수 kh (옵션 — >0이면 Mononobe-Okabe 지진시 검토 추가. 내진등급·지반에서 프로젝트가 결정)",
+        "type": "number",
+        "min": 0,
+        "max": 0.5
+      },
+      "seismicKv": {
+        "desc": "연직지진계수 kv (기본 0. 음수=상향 관례 소스도 있음 — 부호 그대로 (1−kv)에 반영)",
+        "type": "number",
+        "min": -0.5,
+        "max": 0.5
+      },
+      "backfillSlopeDeg": {
+        "desc": "뒤채움 경사 β° (기본 0 수평 — M-O 일반식용)",
+        "type": "number",
+        "min": 0,
+        "max": 30
+      },
+      "wallFrictionDeg": {
+        "desc": "벽마찰각 δ° (기본 0 보수측 — 지진시 수평성분 PAE·cosδ 적용, 연직 유리효과 무시)",
+        "type": "number",
+        "min": 0,
+        "max": 30
       }
     }
   },
@@ -542,6 +566,34 @@ export const CALC_CATALOG: CalcSpec[] = [
         "type": "number",
         "min": 0
       },
+      "lu_mm": {
+        "desc": "비지지길이 mm (입력 시 장주 검토 §4.4 — 횡구속 가정)",
+        "type": "number",
+        "min": 0,
+        "max": 12000
+      },
+      "kFactor": {
+        "desc": "유효길이계수 k (횡구속 1.0 허용 — §4.4.6(5), 기본 1.0)",
+        "type": "number",
+        "min": 0.5,
+        "max": 1
+      },
+      "M1_kNm": {
+        "desc": "단부 작은 모멘트 M1 (단곡률 +, 이중곡률 −)",
+        "type": "number",
+        "min": -10000
+      },
+      "M2_kNm": {
+        "desc": "단부 큰 모멘트 M2 (기본 Mu — 미입력 시 Mu 사용)",
+        "type": "number",
+        "min": 0
+      },
+      "betaDns": {
+        "desc": "βdns = 지속축력/최대축력 (§4.4.6(4) — 하중조합에서 산정 입력, 기본 0.6 관례 명시)",
+        "type": "number",
+        "min": 0,
+        "max": 1
+      },
       "transverse": {
         "desc": "횡철근 형식 (기본 tied)",
         "type": "string",
@@ -706,6 +758,1574 @@ export const CALC_CATALOG: CalcSpec[] = [
         "desc": "주 출입문 유효폭 mm (기본 최소 900)",
         "type": "number",
         "min": 0
+      }
+    }
+  },
+  {
+    "id": "timber_beam",
+    "domain": "timber/landscape/building",
+    "title": "목재 휨부재 검토 (허용응력설계)",
+    "description": "침엽수 육안등급구조재 장선·보의 휨·전단·처짐. 기준허용응력×하중기간계수(KDS 41 50 10).",
+    "required": [
+      "species",
+      "grade",
+      "b",
+      "h",
+      "L"
+    ],
+    "params": {
+      "species": {
+        "desc": "수종군(표 3.1-3): larch 낙엽송류/pine 소나무류/koreanpine 잣나무류/cedar 삼나무류",
+        "type": "string",
+        "enum": [
+          "larch",
+          "pine",
+          "koreanpine",
+          "cedar"
+        ]
+      },
+      "grade": {
+        "desc": "육안등급 (1·2·3등급)",
+        "type": "number",
+        "enum": [
+          1,
+          2,
+          3
+        ]
+      },
+      "b": {
+        "desc": "단면 폭 mm",
+        "type": "number",
+        "min": 0,
+        "max": 600
+      },
+      "h": {
+        "desc": "단면 춤 mm",
+        "type": "number",
+        "min": 0,
+        "max": 1200
+      },
+      "L": {
+        "desc": "스팬 mm (단순지지)",
+        "type": "number",
+        "min": 0,
+        "max": 12000
+      },
+      "w": {
+        "desc": "등분포하중 kN/m (기본 0)",
+        "type": "number",
+        "min": 0
+      },
+      "P": {
+        "desc": "중앙 집중하중 kN (기본 0)",
+        "type": "number",
+        "min": 0
+      },
+      "duration": {
+        "desc": "지배 하중기간(표 3.1-7 — 조합 중 최단 기간, 기본 tenYears)",
+        "type": "string",
+        "enum": [
+          "permanent",
+          "tenYears",
+          "twoMonths",
+          "sevenDays",
+          "tenMinutes",
+          "impact"
+        ]
+      },
+      "deflLimit": {
+        "desc": "처짐 한계 분모 L/n (기본 240 — KDS 41 50 15 정성 규정, 관례값 명시)",
+        "type": "number",
+        "min": 100,
+        "max": 500
+      },
+      "wetService": {
+        "desc": "습윤 사용조건(옥외 데크·파고라 등) — 표 3.1-8 습윤계수 CM 적용 (기본 false=건조)",
+        "type": "boolean"
+      }
+    }
+  },
+  {
+    "id": "box_culvert_frame",
+    "domain": "civil",
+    "title": "박스 암거 강성라멘 단면력 (단일 셀)",
+    "description": "처짐각법 정해로 우각부·중앙 모멘트와 전단력 산출. 이후 rc_beam으로 부재 검토 연계.",
+    "required": [
+      "innerWidth",
+      "innerHeight",
+      "wallThk",
+      "cover",
+      "gammaSoil",
+      "K"
+    ],
+    "params": {
+      "innerWidth": {
+        "desc": "내폭 m",
+        "type": "number",
+        "min": 0,
+        "max": 8
+      },
+      "innerHeight": {
+        "desc": "내고 m",
+        "type": "number",
+        "min": 0,
+        "max": 8
+      },
+      "wallThk": {
+        "desc": "부재 두께 m (등두께)",
+        "type": "number",
+        "min": 0,
+        "max": 1.5
+      },
+      "cover": {
+        "desc": "토피고 m",
+        "type": "number",
+        "min": 0,
+        "max": 20
+      },
+      "gammaSoil": {
+        "desc": "흙 단위중량 kN/m³",
+        "type": "number",
+        "min": 10,
+        "max": 24
+      },
+      "K": {
+        "desc": "측방토압계수 (정지토압 K0=1−sinφ 등 — 프로젝트 결정, 입력)",
+        "type": "number",
+        "min": 0.2,
+        "max": 1
+      },
+      "surcharge": {
+        "desc": "등분포 상재하중 kPa (기본 0 — 윤하중 등가는 별도 산정 후 입력)",
+        "type": "number",
+        "min": 0
+      },
+      "gammaConcrete": {
+        "desc": "콘크리트 단위중량 (기본 24)",
+        "type": "number",
+        "min": 20,
+        "max": 26
+      },
+      "pTopOverride": {
+        "desc": "벽 상단 측압 직접입력 kPa (별도 토압·수압 산정 결과 — 입력 시 K·γ 유도 대체, pBotOverride와 쌍)",
+        "type": "number",
+        "min": 0,
+        "max": 500
+      },
+      "pBotOverride": {
+        "desc": "벽 하단 측압 직접입력 kPa (pTopOverride와 쌍 필수)",
+        "type": "number",
+        "min": 0,
+        "max": 800
+      },
+      "topThk": {
+        "desc": "상판 두께 m (미입력 시 wallThk — 부재별 강성 반영)",
+        "type": "number",
+        "min": 0,
+        "max": 1.5
+      },
+      "botThk": {
+        "desc": "저판 두께 m (미입력 시 wallThk)",
+        "type": "number",
+        "min": 0,
+        "max": 1.5
+      },
+      "surchargeV": {
+        "desc": "연직 활하중 등가 등분포 kPa (상판 전용 — surcharge와 분리 입력 시 측압에 미반영)",
+        "type": "number",
+        "min": 0
+      },
+      "subgradeKs": {
+        "desc": "연직 지반반력계수 Kv kN/m³ (입력 시 하판 Winkler 스프링 매트릭스 해석 — 도로교 계열 Kv=Kv0(Bv/0.3)^(-3/4), 국토부 2008 예: 17778.5)",
+        "type": "number",
+        "min": 1000,
+        "max": 500000
+      },
+      "envelope": {
+        "desc": "활하중 포락선 (국토부 2008 표 12-2 사용하중 3조합: ①전재하 ②연직활하중 제외 ③측압 0.5배) — 위치별 최대",
+        "type": "boolean"
+      },
+      "EcMPa": {
+        "desc": "콘크리트 탄성계수 MPa (스프링 모드 필수 상대강성 — 기본 8500∛(fck+4), fck=24 기준 25811)",
+        "type": "number",
+        "min": 15000,
+        "max": 45000
+      }
+    }
+  },
+  {
+    "id": "seismic_static",
+    "domain": "building/seismic",
+    "title": "등가정적 지진하중 (밑면전단·층별 분포)",
+    "description": "KDS 41 17 00 등가정적해석법 — 유효지반가속도→설계스펙트럼→Cs→V→층별 Fx.",
+    "required": [
+      "R",
+      "weightsKN",
+      "heightsM"
+    ],
+    "params": {
+      "zone": {
+        "desc": "지진구역 (I=0.11·II=0.07, KDS 17 10 00 표 4.2-2). S 직접 입력 시 생략 가능",
+        "type": "string",
+        "enum": [
+          "I",
+          "II"
+        ]
+      },
+      "S": {
+        "desc": "유효지반가속도 직접 입력 (기본: Z×2.0(2400년))",
+        "type": "number",
+        "min": 0.05,
+        "max": 0.5
+      },
+      "siteClass": {
+        "desc": "지반종류 (기본 S4)",
+        "type": "string",
+        "enum": [
+          "S1",
+          "S2",
+          "S3",
+          "S4",
+          "S5"
+        ]
+      },
+      "importance": {
+        "desc": "내진등급 (특 1.5·I 1.2·II 1.0, 기본 grade2)",
+        "type": "string",
+        "enum": [
+          "special",
+          "grade1",
+          "grade2"
+        ]
+      },
+      "R": {
+        "desc": "반응수정계수 (표 6.2-1 — 시스템 결정, 필수 입력)",
+        "type": "number",
+        "min": 1,
+        "max": 8
+      },
+      "structType": {
+        "desc": "약산주기 계수용 구조형식 (기본 rc_moment)",
+        "type": "string",
+        "enum": [
+          "rc_moment",
+          "steel_moment",
+          "steel_ebf_brb"
+        ]
+      },
+      "T": {
+        "desc": "고유주기 직접 입력 s (생략 시 Ta=Ct·hn^x)",
+        "type": "number",
+        "min": 0,
+        "max": 10
+      },
+      "heightsM": {
+        "desc": "층별 바닥 높이 hx (m, 밑면 기준, 하층→상층)",
+        "type": "array"
+      },
+      "weightsKN": {
+        "desc": "층별 유효중량 wx (kN, 고정하중 기준)",
+        "type": "array"
+      }
+    }
+  },
+  {
+    "id": "timber_nail",
+    "domain": "timber/connection",
+    "title": "못접합부 1면전단 (목재-목재)",
+    "description": "KDS 41 50 30 표 4.4-4 보통못 기준허용전단내력 × CD × 개수.",
+    "required": [
+      "sideThk",
+      "nailLen",
+      "nailDia",
+      "group",
+      "demandN"
+    ],
+    "params": {
+      "sideThk": {
+        "desc": "측면부재 두께 mm (표 절점)",
+        "type": "number",
+        "enum": [
+          12,
+          19,
+          25,
+          38
+        ]
+      },
+      "nailLen": {
+        "desc": "못 길이 mm (표 절점)",
+        "type": "number",
+        "min": 50,
+        "max": 152
+      },
+      "nailDia": {
+        "desc": "못 지름 mm (표 절점)",
+        "type": "number",
+        "min": 2.5,
+        "max": 7
+      },
+      "group": {
+        "desc": "수종군 (낙엽송류A~삼나무류D)",
+        "type": "string",
+        "enum": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      },
+      "count": {
+        "desc": "못 개수 (기본 1)",
+        "type": "number",
+        "min": 1,
+        "max": 50
+      },
+      "duration": {
+        "desc": "하중기간 (기본 tenYears)",
+        "type": "string",
+        "enum": [
+          "permanent",
+          "tenYears",
+          "twoMonths",
+          "sevenDays",
+          "tenMinutes",
+          "impact"
+        ]
+      },
+      "metalSide": {
+        "desc": "금속측면판 (+10%, §4.4.3.2)",
+        "type": "boolean"
+      },
+      "demandN": {
+        "desc": "소요 전단력 N (접합부 전체)",
+        "type": "number",
+        "min": 0
+      },
+      "assemblyWet": {
+        "desc": "조립 시 함수율>19% (표 4.9-2)",
+        "type": "boolean"
+      },
+      "serviceWet": {
+        "desc": "사용 중 함수율>19% (표 4.9-2)",
+        "type": "boolean"
+      },
+      "predrilled": {
+        "desc": "미리 구멍 뚫음 (표 4.4-5 완화 기준 적용)",
+        "type": "boolean"
+      },
+      "endDist": {
+        "desc": "끝면거리 mm (입력 시 표 4.4-5 게이트 검사)",
+        "type": "number",
+        "min": 0
+      },
+      "edgeDist": {
+        "desc": "연단거리 mm",
+        "type": "number",
+        "min": 0
+      },
+      "spacingPar": {
+        "desc": "섬유 평행 간격 mm",
+        "type": "number",
+        "min": 0
+      },
+      "spacingPerp": {
+        "desc": "섬유 수직 간격 mm",
+        "type": "number",
+        "min": 0
+      },
+      "endGrain": {
+        "desc": "끝면(마구리)에 박음 — Ceg 0.67 (§4.4.3.3(2))",
+        "type": "boolean"
+      },
+      "toeNail": {
+        "desc": "경사못 — Ctn 0.83 (§4.4.3.3(4))",
+        "type": "boolean"
+      },
+      "diaphragm": {
+        "desc": "격막(구조용판재) — Cdi 1.1 (§4.4.3.3(3))",
+        "type": "boolean"
+      }
+    }
+  },
+  {
+    "id": "timber_bolt",
+    "domain": "timber/connection",
+    "title": "볼트접합부 1면전단 (목재-목재)",
+    "description": "KDS 41 50 30 표 4.5-2 기준허용전단내력(∥/⊥) × CD × CM × CΔ × Cg.",
+    "required": [
+      "mainThk",
+      "sideThk",
+      "boltDia",
+      "group",
+      "demandN"
+    ],
+    "params": {
+      "mainThk": {
+        "desc": "주부재 두께 mm (표 절점)",
+        "type": "number",
+        "enum": [
+          38,
+          89,
+          140
+        ]
+      },
+      "sideThk": {
+        "desc": "측면부재 두께 mm (표 절점 — v1: 38)",
+        "type": "number",
+        "enum": [
+          38
+        ]
+      },
+      "boltDia": {
+        "desc": "볼트 지름 mm",
+        "type": "number",
+        "enum": [
+          12,
+          16,
+          19,
+          22,
+          25
+        ]
+      },
+      "group": {
+        "desc": "수종군",
+        "type": "string",
+        "enum": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      },
+      "grade": {
+        "desc": "등급 (Cg의 E 산정용, 기본 2)",
+        "type": "string",
+        "enum": [
+          "1",
+          "2",
+          "3"
+        ]
+      },
+      "loadDir": {
+        "desc": "하중 방향 (기본 parallel=섬유평행)",
+        "type": "string",
+        "enum": [
+          "parallel",
+          "perp"
+        ]
+      },
+      "count": {
+        "desc": "볼트 총 개수 (기본 1)",
+        "type": "number",
+        "min": 1,
+        "max": 20
+      },
+      "nRow": {
+        "desc": "하중방향 1열 내 볼트 수 (기본 count와 동일 — Cg 산정)",
+        "type": "number",
+        "min": 1,
+        "max": 12
+      },
+      "rowSpacing_mm": {
+        "desc": "1열 내 볼트 중심간격 s mm (nRow≥2 시 Cg 필수)",
+        "type": "number",
+        "min": 0
+      },
+      "mainWidth": {
+        "desc": "주부재 폭 mm (Cg의 Am=주두께×폭, nRow≥2 시 필수)",
+        "type": "number",
+        "min": 10,
+        "max": 1000
+      },
+      "sideWidth": {
+        "desc": "측면부재 폭 mm (Cg의 As, nRow≥2 시 필수)",
+        "type": "number",
+        "min": 10,
+        "max": 1000
+      },
+      "duration": {
+        "desc": "하중기간 (기본 tenYears)",
+        "type": "string",
+        "enum": [
+          "permanent",
+          "tenYears",
+          "twoMonths",
+          "sevenDays",
+          "tenMinutes",
+          "impact"
+        ]
+      },
+      "serviceWet": {
+        "desc": "사용 중 함수율>19% (표 4.9-2: CM 0.7)",
+        "type": "boolean"
+      },
+      "loadType": {
+        "desc": "평행하중 성격 (끝면거리 기준: 인장 침엽수 7D/압축 4D, 기본 tension)",
+        "type": "string",
+        "enum": [
+          "tension",
+          "compression"
+        ]
+      },
+      "hardwood": {
+        "desc": "활엽수 (인장 끝면 5D — 기본 침엽수 7D)",
+        "type": "boolean"
+      },
+      "endDist": {
+        "desc": "끝면거리 mm (입력 시 CΔ 산정, 감소최소 미달 FAIL)",
+        "type": "number",
+        "min": 0
+      },
+      "edgeDist": {
+        "desc": "연단거리 mm (게이트 — 미달 FAIL, 보간 없음: 표 4.5-5)",
+        "type": "number",
+        "min": 0
+      },
+      "spacing": {
+        "desc": "1열 내 간격 mm (입력 시 CΔ 산정 — rowSpacing_mm과 동일 물리량, 게이트 검사용)",
+        "type": "number",
+        "min": 0
+      },
+      "rowGap": {
+        "desc": "볼트 열 사이 간격 mm (입력 시 표 4.5-8 게이트: ∥ 1.5D · ⊥ l/D 구간별 2.5D~5D)",
+        "type": "number",
+        "min": 0
+      },
+      "demandN": {
+        "desc": "소요 전단력 N",
+        "type": "number",
+        "min": 0
+      }
+    }
+  },
+  {
+    "id": "wind_simple",
+    "domain": "architecture/lateral",
+    "title": "수평풍하중 간편법 (저층 주골조)",
+    "description": "KDS 41 12 00 §5.15 간편법 — 설계풍압·기단전단력. 저층(H≤20m) 정형 건물 전용.",
+    "required": [
+      "V0",
+      "H",
+      "B",
+      "D",
+      "demandNone"
+    ],
+    "params": {
+      "V0": {
+        "desc": "기본풍속 m/s (그림 5.5-1 건설지 등풍속선 — 필수 입력, 예: 서울 26·부산 38·제주 44)",
+        "type": "number",
+        "min": 20,
+        "max": 50
+      },
+      "H": {
+        "desc": "기준높이 m (간편법 상한 20)",
+        "type": "number",
+        "min": 0,
+        "max": 20
+      },
+      "B": {
+        "desc": "대표폭(풍직각방향) m",
+        "type": "number",
+        "min": 0,
+        "max": 30
+      },
+      "D": {
+        "desc": "깊이(풍방향) m",
+        "type": "number",
+        "min": 0,
+        "max": 100
+      },
+      "roofSlopeDeg": {
+        "desc": "지붕경사각 ° (기본 0 — ≥10°는 적용 불가)",
+        "type": "number",
+        "min": 0,
+        "max": 45
+      },
+      "terrain": {
+        "desc": "환경계수 Ce: 통상 1.0 / 장애물 없는 평탄지 1.5 / 해안가 2.0 (기본 normal)",
+        "type": "string",
+        "enum": [
+          "normal",
+          "flatOpen",
+          "coast"
+        ]
+      },
+      "Kzt": {
+        "desc": "지형계수 (언덕·산 정상부 할증 시 — Ce에 Kzt² 곱, 기본 1.0)",
+        "type": "number",
+        "min": 1,
+        "max": 2
+      },
+      "demandNone": {
+        "desc": "자리표시 0 입력 (풍하중 산출 계산기 — 판정은 골조 연계)",
+        "type": "number",
+        "min": 0,
+        "max": 0
+      }
+    }
+  },
+  {
+    "id": "wind_static",
+    "domain": "architecture/lateral",
+    "title": "수평풍하중 정식법 (강체 밀폐형)",
+    "description": "KDS 41 12 00 §5.2 — 설계속도압·가스트·풍압분포·기단전단. 간편법(§5.15) 범위 밖 건물용.",
+    "required": [
+      "V0",
+      "H",
+      "B",
+      "D",
+      "exposure",
+      "demandNone"
+    ],
+    "params": {
+      "V0": {
+        "desc": "기본풍속 m/s (그림 5.5-1 — 필수 입력)",
+        "type": "number",
+        "min": 20,
+        "max": 50
+      },
+      "H": {
+        "desc": "기준높이 m (v1 상한 100 — 초고층 별도)",
+        "type": "number",
+        "min": 0,
+        "max": 100
+      },
+      "B": {
+        "desc": "건물폭(풍직각방향) m",
+        "type": "number",
+        "min": 0,
+        "max": 200
+      },
+      "D": {
+        "desc": "깊이(풍방향) m",
+        "type": "number",
+        "min": 0,
+        "max": 200
+      },
+      "exposure": {
+        "desc": "지표면조도 (표 5.5-1: A 대도시밀집~D 해안·평탄)",
+        "type": "string",
+        "enum": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      },
+      "importance": {
+        "desc": "중요도 (표 5.5-5, 기본 1)",
+        "type": "string",
+        "enum": [
+          "skyscraper",
+          "special",
+          "1",
+          "2",
+          "3"
+        ]
+      },
+      "Kzt": {
+        "desc": "지형계수 (기본 1.0 평탄지)",
+        "type": "number",
+        "min": 1,
+        "max": 2
+      },
+      "Kd": {
+        "desc": "풍향계수 (기본 1.0 — 관측자료 없을 때, §5.5.3(3)①)",
+        "type": "number",
+        "min": 0.85,
+        "max": 1
+      },
+      "natFreqHz": {
+        "desc": "풍방향 고유진동수 Hz (미입력 시 KDS 41 17 근사주기로 판정 — structType 필요)",
+        "type": "number",
+        "min": 0,
+        "max": 20
+      },
+      "structType": {
+        "desc": "근사주기용 구조형식 (natFreqHz 미입력 시)",
+        "type": "string",
+        "enum": [
+          "rc_moment",
+          "steel_moment",
+          "steel_ebf_brb"
+        ]
+      },
+      "dampingRatio": {
+        "desc": "풍방향 1차 감쇠비 ζD (유연건물 식 5.6-1 필수 — 프로젝트 결정값, 통상 RC 0.02·강구조 0.01 관례는 참고만)",
+        "type": "number",
+        "min": 0.005,
+        "max": 0.05
+      },
+      "modeExp": {
+        "desc": "1차 모드 연직분포 지수 β (기본 1.0 직선 — 원문 §5.6.1 모드 미상 시 기준 제시값, 질량 균등 가정 명시)",
+        "type": "number",
+        "min": 0.5,
+        "max": 2
+      },
+      "storyH": {
+        "desc": "층고 m (층전단 산출용, 기본 3.5)",
+        "type": "number",
+        "min": 2,
+        "max": 6
+      },
+      "demandNone": {
+        "desc": "자리표시 0 (하중 산출 계산기)",
+        "type": "number",
+        "min": 0,
+        "max": 0
+      }
+    }
+  },
+  {
+    "id": "drainage_network",
+    "domain": "landscape/civil",
+    "title": "우수 배수 네트워크 (합리식 누적)",
+    "description": "다구역 집수 → 간선 순차 누적(CA·tc) → 구간별 관경 검토/제안. 부지·공원 스케일.",
+    "required": [
+      "segments"
+    ],
+    "params": {
+      "segments": {
+        "desc": "상류→하류 순 구간 배열: [{name?, areaHa, C, tcMin, len_m, slope, dia_mm?, n?}] — areaHa=구간 신규 집수면적, tcMin=해당 구역 자체 유입시간(분)"
+      },
+      "iFixed_mmhr": {
+        "desc": "고정 설계 강우강도 mm/hr (입력 시 IDF 무시 — 소규모 개산)",
+        "type": "number",
+        "min": 0,
+        "max": 300
+      },
+      "idfA": {
+        "desc": "Talbot IDF 계수 a — I=a/(tc+b) (지역 확률강우 분석값, 예: 서울 30년 등 — 출처는 프로젝트 자료)",
+        "type": "number",
+        "min": 0,
+        "max": 20000
+      },
+      "idfB": {
+        "desc": "Talbot IDF 계수 b (분)",
+        "type": "number",
+        "min": 0,
+        "max": 120
+      },
+      "fillRatio": {
+        "desc": "허용 충만도 (만관 대비, 기본 1.0 — 실무 0.75 권장 시 입력)",
+        "type": "number",
+        "min": 0.5,
+        "max": 1
+      }
+    }
+  },
+  {
+    "id": "girder_line",
+    "domain": "bridge",
+    "title": "주거더 활하중 단면력 (KL-510 · 단순지지)",
+    "description": "KL-510 표준트럭+차로하중 영향선 최대 M·V — 충격·다차로·분배계수 반영.",
+    "required": [
+      "span",
+      "DF"
+    ],
+    "params": {
+      "span": {
+        "desc": "지간 m (등경간)",
+        "type": "number",
+        "min": 5,
+        "max": 200
+      },
+      "spans": {
+        "desc": "경간 수 (기본 1 단순지지 · 2·3=등경간 연속 — 3연모멘트 폐형)",
+        "type": "integer",
+        "min": 1,
+        "max": 3
+      },
+      "EI_kNm2": {
+        "desc": "휨강성 EI kN·m² (입력 시 처짐 검토 §4.3.1.7 — 트럭 vs 25%트럭+차로 중 큰 값)",
+        "type": "number",
+        "min": 0
+      },
+      "deflLimitRatio": {
+        "desc": "처짐 한계 L/n (기본 800 관례 — 발주자 기준 확인 명시)",
+        "type": "number",
+        "min": 100,
+        "max": 2000
+      },
+      "nLanes": {
+        "desc": "재하차로 수 (기본 1 — 다차로계수 표 4.3-1 적용)",
+        "type": "integer",
+        "min": 1,
+        "max": 8
+      },
+      "DF": {
+        "desc": "거더 분배계수 (KDS 24 10 11 산정값 입력 — 지어내지 않음. 레버룰·강성법 등 프로젝트 산정)",
+        "type": "number",
+        "min": 0,
+        "max": 1.5
+      },
+      "fatigue": {
+        "desc": "피로 검토 모드 (트럭 80%·IM 15% — §4.3.2·표 4.4-1)",
+        "type": "boolean"
+      },
+      "demandM_kNm": {
+        "desc": "비교용 소요 모멘트 (선택 — 판정용)",
+        "type": "number",
+        "min": 0
+      },
+      "demandV_kN": {
+        "desc": "비교용 소요 전단 (선택)",
+        "type": "number",
+        "min": 0
+      }
+    }
+  },
+  {
+    "id": "slope_infinite",
+    "domain": "civil/slope",
+    "title": "무한사면 안정 (평면 파괴)",
+    "description": "한계평형 폐형해 — 얕은 표층 파괴 FS. 절토·성토 사면 개념 검토.",
+    "required": [
+      "slopeDeg",
+      "phiDeg",
+      "depthM",
+      "gamma",
+      "fsRequired"
+    ],
+    "params": {
+      "slopeDeg": {
+        "desc": "사면 경사 β °",
+        "type": "number",
+        "min": 5,
+        "max": 60
+      },
+      "phiDeg": {
+        "desc": "내부마찰각 φ′ ° (지반조사값)",
+        "type": "number",
+        "min": 5,
+        "max": 45
+      },
+      "cohesion": {
+        "desc": "점착력 c′ kPa (기본 0 — 보수측)",
+        "type": "number",
+        "min": 0,
+        "max": 100
+      },
+      "depthM": {
+        "desc": "파괴면 깊이 z m (표층)",
+        "type": "number",
+        "min": 0,
+        "max": 10
+      },
+      "gamma": {
+        "desc": "단위중량 kN/m³",
+        "type": "number",
+        "min": 14,
+        "max": 24
+      },
+      "waterDepthM": {
+        "desc": "침윤 수두 zw m (0=건조, z=완전포화 — 사면 평행 침투 가정)",
+        "type": "number",
+        "min": 0,
+        "max": 10
+      },
+      "fsRequired": {
+        "desc": "요구 안전율 (KDS 11 70 05 — 건기/우기·비탈면 등급별 상이, 프로젝트 값 입력)",
+        "type": "number",
+        "min": 1,
+        "max": 3
+      }
+    }
+  },
+  {
+    "id": "fatigue_goodman",
+    "domain": "mech/fatigue",
+    "title": "피로 안전율 (Goodman 계열)",
+    "description": "평균·교번응력 → Goodman/Gerber/Soderberg 안전율. Se는 입력(날조 금지).",
+    "required": [
+      "sigmaA",
+      "sigmaM",
+      "Se",
+      "Su"
+    ],
+    "params": {
+      "sigmaA": {
+        "desc": "교번응력 진폭 σa MPa",
+        "type": "number",
+        "min": 0
+      },
+      "sigmaM": {
+        "desc": "평균응력 σm MPa (압축 평균은 Goodman에서 σm=0 보수 처리 명시)",
+        "type": "number",
+        "min": -500
+      },
+      "Se": {
+        "desc": "Se MPa — 직접 입력(우선). 0/미입력+아래 보정 입력 시 Shigley 표준 추정",
+        "type": "number",
+        "min": 0
+      },
+      "surface": {
+        "desc": "Se 추정: 표면 (Shigley ka=a·Su^b 공표 계수 — 출처 명시)",
+        "type": "string",
+        "enum": [
+          "ground",
+          "machined",
+          "hotRolled",
+          "asForged"
+        ]
+      },
+      "dia_mm": {
+        "desc": "Se 추정: 회전굽힘 지름 kb (2.79~51: (d/7.62)^−0.107 · 51~254: 1.51d^−0.157)",
+        "type": "number",
+        "min": 0,
+        "max": 254
+      },
+      "loadType": {
+        "desc": "Se 추정: 하중 kc (1.0/0.85/0.59 — Shigley)",
+        "type": "string",
+        "enum": [
+          "bending",
+          "axial",
+          "torsion"
+        ]
+      },
+      "reliability": {
+        "desc": "Se 추정: 신뢰도 ke (1.0/0.897/0.868/0.814/0.753 — Shigley)",
+        "type": "string",
+        "enum": [
+          "50",
+          "90",
+          "95",
+          "99",
+          "99.9"
+        ]
+      },
+      "lifeMode": {
+        "desc": "유한수명 S-N (Basquin, f=0.9 관례 명시) — 등가 완전교번 응력으로 N 산출",
+        "type": "boolean"
+      },
+      "minerBlocks": {
+        "desc": "Miner 누적: [{sigmaA, sigmaM, cycles}] 배열 (lifeMode와 함께)"
+      },
+      "Su": {
+        "desc": "인장강도 Su MPa",
+        "type": "number",
+        "min": 0
+      },
+      "Sy": {
+        "desc": "항복강도 Sy MPa (Soderberg·1차 항복 검토용 — 선택)",
+        "type": "number",
+        "min": 0
+      },
+      "nRequired": {
+        "desc": "요구 안전율 (기본 1.5 관례 명시)",
+        "type": "number",
+        "min": 1,
+        "max": 10
+      }
+    }
+  },
+  {
+    "id": "vibration_basic",
+    "domain": "mech/dynamics",
+    "title": "보 고유진동수·조화응답 전달률",
+    "description": "1차 굽힘 고유진동수(폐형) + 가진 주파수 공진 여유·전달률 검토.",
+    "required": [
+      "support",
+      "E_MPa",
+      "I_mm4",
+      "massPerM_kg",
+      "L_mm"
+    ],
+    "params": {
+      "support": {
+        "desc": "지지 조건",
+        "type": "string",
+        "enum": [
+          "simple",
+          "cantilever",
+          "fixedFixed",
+          "fixedPinned"
+        ]
+      },
+      "E_MPa": {
+        "desc": "탄성계수 MPa",
+        "type": "number",
+        "min": 0
+      },
+      "I_mm4": {
+        "desc": "단면 2차모멘트 mm⁴",
+        "type": "number",
+        "min": 0
+      },
+      "massPerM_kg": {
+        "desc": "단위길이 질량 kg/m (부가질량 환산 포함 — 명시)",
+        "type": "number",
+        "min": 0
+      },
+      "L_mm": {
+        "desc": "길이 mm",
+        "type": "number",
+        "min": 0,
+        "max": 60000
+      },
+      "forcingHz": {
+        "desc": "가진 주파수 Hz (입력 시 공진 여유·전달률 검토)",
+        "type": "number",
+        "min": 0
+      },
+      "zeta": {
+        "desc": "감쇠비 (기본 0.02 관례 명시 — 측정값 권장)",
+        "type": "number",
+        "min": 0.001,
+        "max": 0.5
+      },
+      "marginRequired": {
+        "desc": "공진 이격비 요구 (기본 1.25 관례)",
+        "type": "number",
+        "min": 1.05,
+        "max": 3
+      }
+    }
+  },
+  {
+    "id": "thermal_stress",
+    "domain": "mech/thermal",
+    "title": "구속 열응력·열팽창",
+    "description": "온도변화 구속 응력(σ=kEαΔT)·자유 팽창량 + 허용응력 대조.",
+    "required": [
+      "E_MPa",
+      "alpha_1perC",
+      "deltaT"
+    ],
+    "params": {
+      "E_MPa": {
+        "desc": "탄성계수 MPa",
+        "type": "number",
+        "min": 0
+      },
+      "alpha_1perC": {
+        "desc": "선팽창계수 1/°C (강 ~1.2e-5 — 재료값 입력)",
+        "type": "number",
+        "min": 0,
+        "max": 0.00005
+      },
+      "deltaT": {
+        "desc": "온도변화 °C (+가열)",
+        "type": "number",
+        "min": -300,
+        "max": 600
+      },
+      "restraint": {
+        "desc": "구속도 k (1=완전구속 보수측, 기본 1)",
+        "type": "number",
+        "min": 0,
+        "max": 1
+      },
+      "L_mm": {
+        "desc": "자유 팽창량 계산 길이 mm (선택)",
+        "type": "number",
+        "min": 0
+      },
+      "allowMPa": {
+        "desc": "허용응력 MPa (입력 시 판정)",
+        "type": "number",
+        "min": 0
+      }
+    }
+  },
+  {
+    "id": "acoustic_tl",
+    "domain": "interior/acoustics",
+    "title": "단일벽 차음 (질량법칙)",
+    "description": "면밀도 → 투과손실 TL 개산(주파수 대역) + 요구치 대조.",
+    "required": [
+      "surfaceDensity_kgm2"
+    ],
+    "params": {
+      "surfaceDensity_kgm2": {
+        "desc": "면밀도 kg/m² (콘크리트 150t≈360·석고 12.5t≈10 — 재료값 입력)",
+        "type": "number",
+        "min": 0,
+        "max": 1000
+      },
+      "freqHz": {
+        "desc": "평가 주파수 Hz (기본 500 관례 대표)",
+        "type": "number",
+        "min": 63,
+        "max": 8000
+      },
+      "requiredTL_dB": {
+        "desc": "요구 투과손실 dB (경계벽 법정 기준 등 — 프로젝트 확인 입력)",
+        "type": "number",
+        "min": 20,
+        "max": 80
+      }
+    }
+  },
+  {
+    "id": "duct_sizing",
+    "domain": "interior/hvac",
+    "title": "덕트 사이징 (속도법)",
+    "description": "풍량·허용유속 → 덕트 표준경/각형 치수 + 직관 마찰손실.",
+    "required": [
+      "flowCMH",
+      "velocityLimit"
+    ],
+    "params": {
+      "flowCMH": {
+        "desc": "풍량 m³/h (환기 계산 연동)",
+        "type": "number",
+        "min": 0,
+        "max": 100000
+      },
+      "velocityLimit": {
+        "desc": "허용 유속 m/s (거실 3~5·주덕트 6~8 관례 — 용도 확인 입력)",
+        "type": "number",
+        "min": 1,
+        "max": 20
+      },
+      "lengthM": {
+        "desc": "직관 길이 m (마찰손실 — 선택)",
+        "type": "number",
+        "min": 0
+      },
+      "roughness_mm": {
+        "desc": "조도 mm (아연도강판 0.15 관례, 기본)",
+        "type": "number",
+        "min": 0.01,
+        "max": 3
+      },
+      "aspect": {
+        "desc": "각형 종횡비 (입력 시 각형 치수 제안)",
+        "type": "number",
+        "min": 1,
+        "max": 4
+      }
+    }
+  },
+  {
+    "id": "slope_bishop",
+    "domain": "civil/slope",
+    "title": "Bishop 간편법 (원호 — 절편 입력)",
+    "description": "절편 배열 → FS 반복 수렴. USACE 공표예제 재현 게이트.",
+    "required": [
+      "fsRequired"
+    ],
+    "params": {
+      "slices": {
+        "desc": "절편 배열 [{W, alphaDeg, dx, c, phiDeg, u?}] — geometry 미입력 시 필수"
+      },
+      "geometry": {
+        "desc": "자동 모드(선택): { H(사면고 m), slopeDeg, gamma, c_kPa, phiDeg, nSlices? } — 균질 단일층·수평 지표. 임계원 그리드 탐색 자동"
+      },
+      "fsRequired": {
+        "desc": "요구 안전율 (조건별 기준 — 프로젝트 확인 입력)",
+        "type": "number",
+        "min": 1,
+        "max": 3
+      }
+    }
+  },
+  {
+    "id": "mse_wall",
+    "domain": "civil/retaining",
+    "title": "보강토옹벽 외적 안정 (LRFD)",
+    "description": "활동·편심·지지력 CDR — FHWA GEC11 방법(공표예제 재현).",
+    "required": [
+      "H",
+      "L",
+      "gammaR",
+      "phiR",
+      "gammaF",
+      "phiF",
+      "bearingResistance"
+    ],
+    "params": {
+      "H": {
+        "desc": "설계벽고 m (근입 포함)",
+        "type": "number",
+        "min": 0,
+        "max": 20
+      },
+      "L": {
+        "desc": "보강재 길이 m (통상 0.7H)",
+        "type": "number",
+        "min": 0,
+        "max": 20
+      },
+      "gammaR": {
+        "desc": "보강토체 단위중량 kN/m³",
+        "type": "number",
+        "min": 14,
+        "max": 24
+      },
+      "phiR": {
+        "desc": "보강토체 φ′r ° (기초 마찰에 사용 — min(φr, φfd) 보수)",
+        "type": "number",
+        "min": 25,
+        "max": 45
+      },
+      "gammaF": {
+        "desc": "배면토 단위중량",
+        "type": "number",
+        "min": 14,
+        "max": 24
+      },
+      "phiF": {
+        "desc": "배면토 φ′f ° (Ka 산정)",
+        "type": "number",
+        "min": 20,
+        "max": 45
+      },
+      "phiFd": {
+        "desc": "기초지반 φ′ (기본 phiR과 min — 활동 마찰)",
+        "type": "number",
+        "min": 20,
+        "max": 45
+      },
+      "surcharge": {
+        "desc": "등가 활하중 상재 q kPa (heq×γ)",
+        "type": "number",
+        "min": 0
+      },
+      "bearingResistance": {
+        "desc": "계수 지지저항 kPa (지반조사 — φ_b 포함값 또는 공칭×0.65)",
+        "type": "number",
+        "min": 0
+      },
+      "gEV": {
+        "desc": "연직토 하중계수 (기본 1.35 — FHWA Str I max)",
+        "type": "number",
+        "min": 1,
+        "max": 1.5
+      },
+      "gEH": {
+        "desc": "수평토 (기본 1.50)",
+        "type": "number",
+        "min": 0.9,
+        "max": 1.75
+      },
+      "gLL": {
+        "desc": "활하중 (기본 1.75)",
+        "type": "number",
+        "min": 1,
+        "max": 2
+      },
+      "internal": {
+        "desc": "내적 안정(선택 — FHWA GEC11 방법): { Sv_m(보강 수직간격), type(steel_strip|bar_mat|geosynthetic), Tal_kNm(장기 설계인장강도/폭), Rc(피복비 기본 1), Fstar(인발마찰 — 미입력 시 geosyn (2/3)tanφ·steel 기본 1.2 관례 명시), alphaP(0.8 geosyn/1.0 steel) }"
+      }
+    }
+  },
+  {
+    "id": "deck_strip",
+    "domain": "bridge/deck",
+    "title": "교량 바닥판 휨모멘트 (간략식)",
+    "description": "내측(직각 배근)·캔틸레버 바닥판 활하중 M — 충격·연속 보정 + 단면 검토 연계.",
+    "required": [
+      "mode"
+    ],
+    "params": {
+      "mode": {
+        "desc": "내측(거더 사이) / 캔틸레버(내민)",
+        "type": "string",
+        "enum": [
+          "interior",
+          "cantilever"
+        ]
+      },
+      "span_m": {
+        "desc": "내측: 바닥판 지간 L m (거더 중심 간 — 0.6~6m 간략식 범위)",
+        "type": "number",
+        "min": 0.6,
+        "max": 6
+      },
+      "continuous": {
+        "desc": "내측: 3지점 이상 연속 (×0.8 — 기본 true 관례)",
+        "type": "boolean"
+      },
+      "X_m": {
+        "desc": "캔틸레버: 하중점~지지점 거리 m",
+        "type": "number",
+        "min": 0,
+        "max": 3
+      },
+      "grade": {
+        "desc": "교량 등급 (1등교 P=96kN 기준 — 2등 0.75배·3등 0.5625배, 기본 1)",
+        "type": "string",
+        "enum": [
+          "1",
+          "2",
+          "3"
+        ]
+      },
+      "deckThk_mm": {
+        "desc": "바닥판 두께 (자중 모멘트 포함용 — 선택)",
+        "type": "number",
+        "min": 160,
+        "max": 400
+      },
+      "pavementThk_mm": {
+        "desc": "포장 두께 (DW — 선택, 22.6kN/m³)",
+        "type": "number",
+        "min": 0,
+        "max": 200
+      }
+    }
+  },
+  {
+    "id": "earthwork_grid",
+    "domain": "landscape/earthwork",
+    "title": "격자 토공량 (점고법)",
+    "description": "기존·계획 지반고 격자 → 절토·성토량, 토량환산(입력 계수) 반영.",
+    "required": [
+      "existing",
+      "proposed",
+      "cellSize_m"
+    ],
+    "params": {
+      "existing": {
+        "desc": "기존 지반고 2D 배열 [row][col] (m) — 격자 교점"
+      },
+      "proposed": {
+        "desc": "계획 지반고 2D 배열 (동일 크기)"
+      },
+      "cellSize_m": {
+        "desc": "격자 간격 m",
+        "type": "number",
+        "min": 0,
+        "max": 100
+      },
+      "swellFactor": {
+        "desc": "토량변화율 L(흐트러짐 — 운반토량용, 기본 1.0=미반영 명시)",
+        "type": "number",
+        "min": 1,
+        "max": 1.6
+      },
+      "shrinkFactor": {
+        "desc": "다짐 C(성토 필요 원지반토량 환산, 기본 1.0=미반영)",
+        "type": "number",
+        "min": 0.7,
+        "max": 1
+      }
+    }
+  },
+  {
+    "id": "pipe_sizing",
+    "domain": "interior/plumbing",
+    "title": "급수 배관 사이징 (속도법+HW)",
+    "description": "설계유량·허용유속 → 호칭경 + Hazen-Williams 마찰손실.",
+    "required": [
+      "flowLpm",
+      "velocityLimit"
+    ],
+    "params": {
+      "flowLpm": {
+        "desc": "설계 유량 L/min (동시사용유량 — 프로젝트 산정 입력)",
+        "type": "number",
+        "min": 0,
+        "max": 10000
+      },
+      "velocityLimit": {
+        "desc": "허용 유속 m/s (급수 1.5~2.5 관례 — 소음·수격 고려 확인 입력)",
+        "type": "number",
+        "min": 0.5,
+        "max": 4
+      },
+      "lengthM": {
+        "desc": "배관 길이 m (마찰손실 — 선택)",
+        "type": "number",
+        "min": 0
+      },
+      "hwC": {
+        "desc": "HW 조도계수 C (동관 130·PVC 150·강관 100 — 재질값 입력, 기본 130)",
+        "type": "number",
+        "min": 80,
+        "max": 160
+      },
+      "staticHead_m": {
+        "desc": "정수두 m (필요 급수압 검토용 — 선택)",
+        "type": "number",
+        "min": 0
+      }
+    }
+  },
+  {
+    "id": "shear_wall",
+    "domain": "architecture/lateral",
+    "title": "전단벽 횡강성·분담 (개략)",
+    "description": "벽 요소 강성(휨+전단변형)·병렬 분담률·벽체 개략 전단 검토.",
+    "required": [
+      "walls",
+      "storyShear_kN"
+    ],
+    "params": {
+      "walls": {
+        "desc": "벽 목록 [{lw_mm(벽 길이), t_mm(두께), h_mm(높이), fck?}] — 최대 20"
+      },
+      "frameStiffness_kNmm": {
+        "desc": "병렬 골조 강성 kN/mm (frame2d 산정값 입력 — 선택, 벽·골조 분담)",
+        "type": "number",
+        "min": 0
+      },
+      "storyShear_kN": {
+        "desc": "층전단력 V (지진·풍 산정값)",
+        "type": "number",
+        "min": 0
+      },
+      "fck": {
+        "desc": "콘크리트 강도 (기본 24)",
+        "type": "number",
+        "min": 18,
+        "max": 60
+      },
+      "detail": {
+        "desc": "벽 상세 전단검토(§4.9 원문식 — 선택): { wallIndex(1~), Nu_kN(압축+), Mu_kNm, Vu_kN, Avh_mm2?, sh_mm?, fy? }"
+      }
+    }
+  },
+  {
+    "id": "girder_df",
+    "domain": "bridge",
+    "title": "거더 분배계수 DF (정밀식)",
+    "description": "KDS 24 10 11 표 4.6-5·6 — 내측·외측 휨 분배계수, 적용범위 게이트.",
+    "required": [
+      "S_mm",
+      "L_mm",
+      "ts_mm"
+    ],
+    "params": {
+      "S_mm": {
+        "desc": "거더 간격 S (적용범위 1100~4900)",
+        "type": "number",
+        "min": 1100,
+        "max": 4900
+      },
+      "L_mm": {
+        "desc": "지간 L (6000~73000)",
+        "type": "number",
+        "min": 6000,
+        "max": 73000
+      },
+      "ts_mm": {
+        "desc": "바닥판 두께 ts (110~300)",
+        "type": "number",
+        "min": 110,
+        "max": 300
+      },
+      "KgOverLts3": {
+        "desc": "Kg/(L·ts³) 항 (기본 1.0 — §4.6.3.2② 기본설계 허용. 정밀=n(I+A·eg²)/Lts³ 산정 입력)",
+        "type": "number",
+        "min": 0.5,
+        "max": 5
+      },
+      "Nb": {
+        "desc": "거더 수 (적용범위 ≥4 — 3이면 지렛대 법칙 비교 필요 명시)",
+        "type": "integer",
+        "min": 3,
+        "max": 20
+      },
+      "de_mm": {
+        "desc": "외측: 외측거더 복부~방호책 내면 거리 de (입력 시 외측 DF 산출)",
+        "type": "number",
+        "min": -300,
+        "max": 1700
+      }
+    }
+  },
+  {
+    "id": "psc_girder",
+    "domain": "bridge/psc",
+    "title": "PSC 거더 응력 검토 (이송·사용)",
+    "description": "긴장력·편심·단면성능 → 상·하연 응력 2단계 검토. 손실률·허용계수 입력 원칙.",
+    "required": [
+      "A_mm2",
+      "I_mm4",
+      "yt_mm",
+      "yb_mm",
+      "Pj_kN",
+      "e_mm",
+      "fck"
+    ],
+    "params": {
+      "A_mm2": {
+        "desc": "단면적",
+        "type": "number",
+        "min": 0
+      },
+      "I_mm4": {
+        "desc": "단면 2차모멘트",
+        "type": "number",
+        "min": 0
+      },
+      "yt_mm": {
+        "desc": "도심~상연",
+        "type": "number",
+        "min": 0
+      },
+      "yb_mm": {
+        "desc": "도심~하연",
+        "type": "number",
+        "min": 0
+      },
+      "Pj_kN": {
+        "desc": "재킹 긴장력",
+        "type": "number",
+        "min": 0
+      },
+      "e_mm": {
+        "desc": "긴장재 편심 (도심 아래 +)",
+        "type": "number",
+        "min": 0
+      },
+      "lossImmediate_pct": {
+        "desc": "즉시손실 % (탄성수축 등 — KDS 24 14 21 산정 입력, 기본 0=미반영 명시)",
+        "type": "number",
+        "min": 0,
+        "max": 20
+      },
+      "lossTotal_pct": {
+        "desc": "총손실 % (장기 포함 — 산정 입력. 참고 관례 18~25%는 안내일 뿐)",
+        "type": "number",
+        "min": 0,
+        "max": 40
+      },
+      "Mo_kNm": {
+        "desc": "이송 시 모멘트(자중)",
+        "type": "number",
+        "min": 0
+      },
+      "Ms_kNm": {
+        "desc": "사용 시 전체 모멘트(자중+2차사하중+활하중)",
+        "type": "number",
+        "min": 0
+      },
+      "fck": {
+        "desc": "콘크리트 강도 (PSC ≥30 관례)",
+        "type": "number",
+        "min": 30,
+        "max": 70
+      },
+      "fci": {
+        "desc": "이송 시 강도 (기본 0.8fck 관례 명시)",
+        "type": "number",
+        "min": 20,
+        "max": 60
+      },
+      "compFactor": {
+        "desc": "압축한계 계수 (기본 0.6 — KDS 24 14 21 §4.2.2.1② 원문: 사용조합-I 0.6fck·전달 §1.5.7.2③ 0.6fck(t))",
+        "type": "number",
+        "min": 0.4,
+        "max": 0.7
+      },
+      "MsSustained_kNm": {
+        "desc": "지속하중 모멘트 (입력 시 조합-V 지속 압축한계 0.45fck 검토 — §4.2.2.1① 원문)",
+        "type": "number",
+        "min": 0
+      },
+      "tensFactor": {
+        "desc": "인장 참고한계 ×√fck (기본 0.25 참고 관례 — 한계상태설계법의 정식 검토는 균열폭/탈압축(§4.2.3, 후속) 명시)",
+        "type": "number",
+        "min": 0,
+        "max": 0.63
+      },
+      "camber": {
+        "desc": "솟음 산정(선택 — 탄성 폐형): { L_m(지간), wSw_kNm(자중 등분포), Ec_MPa?(기본 8500∛(fck+4)), Eci_MPa?(전달 시 — 기본 fci 기준), creepMult?(장기배율 — PCI 근사표 등 산정 입력, 기본 미적용 명시) }"
       }
     }
   }
