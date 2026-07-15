@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(58종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(59종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -3749,6 +3749,82 @@ export const CALC_CATALOG: CalcSpec[] = [
       },
       "Ar_mm2": {
         "desc": "유효 재하면적 Ar (변위 감소 반영 — 기본 a×b 명시)",
+        "type": "number",
+        "min": 0
+      }
+    }
+  },
+  {
+    "id": "two_way_slab",
+    "domain": "architecture/slab",
+    "title": "2방향 슬래브 직접설계법 (§4.1.3)",
+    "description": "제한 게이트 → Mo → 경간·주열대/중간대 모멘트 분배 — 배근은 rc_beam 연계.",
+    "required": [
+      "l1_m",
+      "l2_m",
+      "ln_m",
+      "wu_kNm2",
+      "spanType"
+    ],
+    "params": {
+      "l1_m": {
+        "desc": "해석방향 경간(중심간)",
+        "type": "number",
+        "min": 0,
+        "max": 15
+      },
+      "l2_m": {
+        "desc": "직각방향 경간(설계대 폭 — 양측 평균)",
+        "type": "number",
+        "min": 0,
+        "max": 15
+      },
+      "ln_m": {
+        "desc": "순경간 (받침 내면간 — ≥0.65l1 하한 원문 적용)",
+        "type": "number",
+        "min": 0
+      },
+      "wu_kNm2": {
+        "desc": "계수 등분포하중 (1.2D+1.6L 등 산정 입력)",
+        "type": "number",
+        "min": 0
+      },
+      "spanType": {
+        "desc": "내부/단부 경간",
+        "enum": [
+          "interior",
+          "end"
+        ]
+      },
+      "endCase": {
+        "desc": "단부 구분 (표 4.1-1 5열 — 기본 flatNoEdgeBeam)",
+        "enum": [
+          "unrestrained",
+          "beamsAll",
+          "flatNoEdgeBeam",
+          "flatEdgeBeam",
+          "fullyRestrained"
+        ]
+      },
+      "alphaL2L1": {
+        "desc": "α·l2/l1 (보 상대강성 — 플랫플레이트 0. 보 있으면 산정 입력)",
+        "type": "number",
+        "min": 0,
+        "max": 5
+      },
+      "betaT": {
+        "desc": "βt (테두리보 비틀림강성비 — 외부 −M 표 4.1-3. 기본 0)",
+        "type": "number",
+        "min": 0,
+        "max": 5
+      },
+      "nSpans": {
+        "desc": "연속 경간 수 (제한 ①: ≥3)",
+        "type": "integer",
+        "min": 1
+      },
+      "liveOverDead": {
+        "desc": "L/D 비 (제한 ⑥: ≤2)",
         "type": "number",
         "min": 0
       }

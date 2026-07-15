@@ -60,8 +60,9 @@ import longtermDeflection from './calculators/longterm-deflection.mjs';
 import drainageVent from './calculators/drainage-vent.mjs';
 import liquefaction from './calculators/liquefaction.mjs';
 import elastomericBearing from './calculators/elastomeric-bearing.mjs';
+import twoWaySlab from './calculators/two-way-slab.mjs';
 
-export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman, vibrationBasic, thermalStress, acousticTl, ductSizing, slopeBishop, mseWall, deckStrip, earthworkGrid, pipeSizing, shearWall, girderDf, pscGirder, weldConnection, consolidation, pileCapacity, plantingBase, fixtureSupply, couplingBeam, massHaul, boltGroup, shaftDesign, springDesign, bearingLife, toleranceStack, reverbTime, pointIlluminance, expansionJoint, pumpHead, steelBeam, steelColumn, earthRetention, pavementWalk, smfDetail, longtermDeflection, drainageVent, liquefaction, elastomericBearing];
+export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman, vibrationBasic, thermalStress, acousticTl, ductSizing, slopeBishop, mseWall, deckStrip, earthworkGrid, pipeSizing, shearWall, girderDf, pscGirder, weldConnection, consolidation, pileCapacity, plantingBase, fixtureSupply, couplingBeam, massHaul, boltGroup, shaftDesign, springDesign, bearingLife, toleranceStack, reverbTime, pointIlluminance, expansionJoint, pumpHead, steelBeam, steelColumn, earthRetention, pavementWalk, smfDetail, longtermDeflection, drainageVent, liquefaction, elastomericBearing, twoWaySlab];
 
 /** Minimal JSON-Schema-subset validator (type/required/properties/minimum/maximum/enum). */
 export function validateInput(schema, input) {
