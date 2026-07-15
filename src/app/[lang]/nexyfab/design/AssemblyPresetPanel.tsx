@@ -1787,6 +1787,24 @@ export default function AssemblyPresetPanel({
       ...(Number(chainP.windV0) > 0 ? { wind: { V0: Number(chainP.windV0), exposure: chainP.windExposure, terrain: chainP.windTerrain } } : {}),
     },
   }), [built, chainP]);
+  // 검증 A/B — A 시점 체인 판정 스냅샷
+  const [abAChain, setAbAChain] = useState<{ rows: Array<{ id: string; v: string; key: string }> } | null>(null);
+  // 전수 설계 루프 상태
+  const [loop, setLoop] = useState<{ ok: boolean; error?: string; summary?: Record<string, unknown>; crossCheck?: { pass?: boolean }; members?: Array<{ id: string; verdict: string }> } | null>(null);
+  const [loopBusy, setLoopBusy] = useState(false);
+  const runDesignLoop = useCallback(async () => {
+    if (!built?.assembly) return;
+    setLoopBusy(true); setLoop(null);
+    try {
+      const res = await fetch('/api/nexyfab/drawing/design-loop/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(chainBody()),
+      });
+      setLoop((await res.json()) as typeof loop);
+    } catch (e) {
+      setLoop({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally { setLoopBusy(false); }
+  }, [built, chainBody]);
+
   const runChain = useCallback(async () => {
     if (!built?.assembly) return;
     setChainBusy(true); setChain(null);
@@ -2447,8 +2465,15 @@ export default function AssemblyPresetPanel({
 
   // Round5 ⑥ A/B 비교 — A=스냅샷(파라미터+가구+요약), B=현재 편집 상태(라이브)
   const toggleAb = () => {
-    if (abA) { setAbA(null); return; }
+    if (abA) { setAbA(null); setAbAChain(null); return; }
     setAbA({ params: { ...params }, furn: furn ? [...furn] : null, sum: summarize(), at: Date.now() });
+    // 검증판 A/B: A 시점의 체인 판정 스냅샷(체인 실행돼 있으면)
+    setAbAChain(chain?.ok ? {
+      rows: [
+        ...(chain.beams ?? []).map((b) => ({ id: String(b.id).split(' ')[0], v: String(b.verdict), key: `Mu ${b.Mu_kNm}` })),
+        ...(chain.columns ?? []).map((c) => ({ id: String(c.id).split(' ')[0], v: String(c.verdict), key: `Pu ${c.Pu_kN}` })),
+      ],
+    } : null);
   };
   const restoreA = () => {
     if (!abA) return;
@@ -2898,6 +2923,25 @@ export default function AssemblyPresetPanel({
                   <div style={{ marginTop: 4, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>
                     {t.abParamDiff}: {abParamDiffs.length ? abParamDiffs.join(' · ') : t.abNoDiff}
                   </div>
+                  {/* 검증 A/B — A 시점 체인 판정 vs 현재 체인 판정 (둘 다 실행돼 있을 때) */}
+                  {abAChain && chain?.ok && (
+                    <div style={{ marginTop: 4, fontSize: 10.5 }}>
+                      <b>{ko ? '검증 비교(A→B)' : 'Verification diff (A→B)'}:</b>{' '}
+                      {[...(chain.beams ?? []).map((b) => ({ id: String(b.id).split(' ')[0], v: String(b.verdict), key: `Mu ${b.Mu_kNm}` })),
+                        ...(chain.columns ?? []).map((c) => ({ id: String(c.id).split(' ')[0], v: String(c.verdict), key: `Pu ${c.Pu_kN}` }))]
+                        .map((cur, i) => {
+                          const prev = abAChain.rows.find((r) => r.id === cur.id) ?? abAChain.rows[i];
+                          if (!prev) return null;
+                          const changed = prev.v !== cur.v || prev.key !== cur.key;
+                          return (
+                            <span key={i} style={{ display: 'inline-block', margin: '0 6px 2px 0', padding: '0 6px', borderRadius: 4, background: changed ? (cur.v === 'PASS' && prev.v !== 'PASS' ? '#dcfce7' : cur.v === 'FAIL' ? '#fee2e2' : '#fef9c3') : 'var(--nx-hover, #eef1f4)' }}>
+                              {cur.id}: {prev.key}·{prev.v} → {cur.key}·{cur.v}
+                            </span>
+                          );
+                        })}
+                      <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '(A 스냅샷 시점 체인 기준 — B는 체인 재실행 후 비교)' : '(A snapshot chain vs current — rerun chain for B)'}</span>
+                    </div>
+                  )}
                 </div>
               )}
               {/* 말로 수정(NL) — 서버=문장→구조화 편집 변환만, 적용·클램프·재검증=클라 결정론 */}
@@ -3236,6 +3280,25 @@ export default function AssemblyPresetPanel({
               <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/load-path/', chainBody(), 'load_path_check.html')} style={rptBtn}>
                 📄 {t.reportHtml}
               </button>
+              {/* 전수 설계 루프 — 전 부재 자동 순회(교차검증 게이트 포함) */}
+              <button type="button" onClick={runDesignLoop} disabled={loopBusy} style={{ ...rptBtn, background: '#7c3aed', color: '#fff' }}>
+                🔁 {loopBusy ? (ko ? '전수 검토 중…' : 'Looping…') : (ko ? '전수 설계 루프(전 부재)' : 'Full member loop')}
+              </button>
+              {loop && !loop.ok && <div style={{ color: '#991b1b', padding: '2px 0', fontSize: 11 }}>{loop.error}</div>}
+              {loop?.ok && loop.summary && (
+                <div style={{ marginTop: 4, fontSize: 11 }}>
+                  <b>{ko ? '전수 판정' : 'All-member verdicts'}:</b> {String(loop.summary.total)}{ko ? '부재' : ' members'} —
+                  <span style={{ color: '#16a34a' }}> PASS {String(loop.summary.PASS)}</span> ·
+                  <span style={{ color: '#dc2626' }}> FAIL {String(loop.summary.FAIL)}</span> ·
+                  INPUT {String(loop.summary.INPUT)} · {ko ? '교차검증' : 'cross-check'} {loop.crossCheck?.pass === true ? '✓' : '⚠'}
+                  {(loop.members ?? []).filter((m) => m.verdict === 'FAIL').slice(0, 6).map((m, i) => (
+                    <span key={i} style={{ display: 'inline-block', margin: '0 0 0 6px', padding: '0 6px', borderRadius: 4, background: '#fee2e2', color: '#991b1b' }}>{m.id}</span>
+                  ))}
+                  <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/design-loop/', chainBody(), 'design_loop_sheets.html')} style={rptBtn}>
+                    🖨 {ko ? '일괄 계산서(부재별 1장)' : 'All member sheets'}
+                  </button>
+                </div>
+              )}
               <div style={{ marginTop: 4, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{chain.disclaimer}</div>
             </div>
           )}

@@ -16,7 +16,11 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 type RegistryModule = { runCalculator: (id: string, input: unknown, standardId?: string) => Record<string, unknown> };
-type DrawModule = { rebarElevationSvg: (p: Record<string, unknown>) => string };
+type DrawModule = {
+  rebarElevationSvg: (p: Record<string, unknown>) => string;
+  retainingWallSectionSvg: (p: Record<string, unknown>) => string;
+  boxCulvertSectionSvg: (p: Record<string, unknown>) => string;
+};
 
 let _reg: RegistryModule | null = null;
 async function loadRegistry(): Promise<RegistryModule> {
@@ -42,7 +46,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const rl = rateLimit(`drawing-calc:${ip}`, 60, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
   try {
-    const body = (await req.json()) as { id?: string; input?: unknown; standard?: string; drawing?: { kind?: string; params?: Record<string, unknown> } };
+    const body = (await req.json()) as { id?: string; input?: unknown; standard?: string; drawing?: { kind?: string; params?: Record<string, unknown>; format?: string } };
     let result: Record<string, unknown> | null = null;
     if (body.id) {
       if (typeof body.id !== 'string' || typeof body.input !== 'object' || body.input === null) {
@@ -52,12 +56,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       result = reg.runCalculator(body.id, body.input, body.standard ?? 'KDS');
     }
     let svg: string | null = null;
+    let resultSvg: string | null = null;
+    // 계산기별 편집형 단면도 자동 동봉 (필수 기하 전부 입력 시에만 — 기본값 날조 방지)
+    if (result && body.id === 'retaining_wall_stability') {
+      const pr = body.input as Record<string, number>;
+      if (['H', 'baseWidth', 'baseThickness', 'stemThickness', 'toeLength'].every((k) => Number(pr[k]) > 0)) {
+        const d = await loadDraw();
+        resultSvg = d.retainingWallSectionSvg({ H: pr.H * 1000, baseWidth: pr.baseWidth * 1000, baseThickness: pr.baseThickness * 1000, stemThickness: pr.stemThickness * 1000, toeLength: pr.toeLength * 1000 });
+      }
+    } else if (result && body.id === 'box_culvert_frame') {
+      const pr = body.input as Record<string, number>;
+      if (Number(pr.innerWidth) > 0 && Number(pr.innerHeight) > 0 && Number(pr.wallThk) > 0) {
+        const d = await loadDraw();
+        resultSvg = d.boxCulvertSectionSvg(pr);
+      }
+    }
+    let dxf: string | null = null;
     if (body.drawing?.kind === 'rebar_elevation') {
       const draw = await loadDraw();
       svg = draw.rebarElevationSvg(body.drawing.params ?? {});
+      if (body.drawing.format === 'dxf' && svg) {
+        const p2 = join(process.cwd(), 'scripts', 'drawing-to-3d', 'svg-to-dxf.mjs');
+        const conv = (await import(/* webpackIgnore: true */ pathToFileURL(p2).href)) as { svgToDxf: (s: string) => string };
+        dxf = conv.svgToDxf(svg);
+      }
     }
     if (!result && !svg) return NextResponse.json({ ok: false, error: 'id 또는 drawing 필요' }, { status: 400 });
-    return NextResponse.json({ ok: true, ...(result ? { result } : {}), ...(svg ? { svg } : {}) });
+    return NextResponse.json({ ok: true, ...(result ? { result } : {}), ...(svg ? { svg } : {}), ...(resultSvg ? { resultSvg } : {}), ...(dxf ? { dxf } : {}) });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const gate = msg.includes('input gate');

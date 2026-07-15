@@ -16,7 +16,7 @@ export default {
   title: '필릿용접 접합 (KDS 14 31 25)',
   description: '필릿용접 설계강도(0.75·0.6FEXX·Ae)+치수·길이 게이트 — 건축구조물 기준.',
   refs: ['KDS 14 31 25:2024 §4.1.2.2(유효면적·제한사항·식4.1-1)·표 4.1-6(a)·표 4.1-8(φ0.75·0.60FEXX) — 원문 판독'],
-  status: 'verified — 원문 계수·표 전사 + 폐형 손검증. 토목(표 4.1-7)·용접군 편심(순간중심법)·모재 파단 자동검토는 후속',
+  status: 'verified — 원문 계수·표 전사 + 용접군 탄성벡터법(도심·J 손검증). 순간중심법·토목(표 4.1-7)·모재 파단 자동검토는 후속',
   inputSchema: {
     type: 'object',
     required: ['weldSize_mm', 'length_mm', 'FEXX_MPa', 'demandP_kN'],
@@ -30,6 +30,7 @@ export default {
       lapJoint: { type: 'boolean', description: '겹침이음 여부 (최대치수 게이트 §4.1.2.2.2(2))' },
       tEdge_mm: { type: 'number', exclusiveMinimum: 0, description: '겹침이음 시 연단 용접되는 판두께 (최대치수 판정용)' },
       endLoaded: { type: 'boolean', description: '부재 단부 길이방향 재하 여부 (장대 감소 식4.1-1 적용 — 기본 true 보수)' },
+      group: { description: '용접군 편심 검토(선택 — 탄성벡터법, 순간중심법 대비 보수 명시): { segments: [{x1,y1,x2,y2}] mm(용접선 좌표), Px_kN?, Py_kN?, e_mm?(하중 작용점의 도심 편심 — Py 기준 x방향) 또는 Mz_kNm?(직접 모멘트) } — 단위길이 소요 vs 설계강도' },
     },
   },
   run(input) {
@@ -66,14 +67,57 @@ export default {
     const Ae = 0.7 * s * Le; // §4.1.2.2.1(3) 원문 "0.7배"
     const phiRn = (0.75 * 0.60 * input.FEXX_MPa * Ae) / 1000; // kN — 표 4.1-8
     const ratio = input.demandP_kN > 0 ? input.demandP_kN / phiRn : null;
+    // ── 용접군 편심 (탄성벡터법 — 폐형): 선요소 도심·극관성 J = Σ(Ixi+Iyi+li·di²) ─────
+    // 단위길이 소요 = 직접분 P/ΣL + 비틀림분 M·r/J (벡터합) — 순간중심법 대비 보수(명시)
+    let group = null;
+    const gp = input.group;
+    if (gp && Array.isArray(gp.segments) && gp.segments.length) {
+      const segs = gp.segments.map((sg, i) => {
+        for (const k of ['x1', 'y1', 'x2', 'y2']) if (!Number.isFinite(Number(sg[k]))) throw new Error(`input gate: group.segments[${i}].${k}`);
+        const lx = sg.x2 - sg.x1, ly = sg.y2 - sg.y1;
+        const len = Math.hypot(lx, ly);
+        if (len <= 0) throw new Error(`input gate: 세그먼트 ${i + 1} 길이 0`);
+        return { ...sg, len, cx: (sg.x1 + sg.x2) / 2, cy: (sg.y1 + sg.y2) / 2, lx, ly };
+      });
+      const Ltot = segs.reduce((a, x) => a + x.len, 0);
+      const Cx = segs.reduce((a, x) => a + x.cx * x.len, 0) / Ltot;
+      const Cy = segs.reduce((a, x) => a + x.cy * x.len, 0) / Ltot;
+      let J = 0;
+      for (const sg of segs) {
+        const Iown = (sg.len ** 3) / 12; // 선요소 자기축(길이방향) — 극관성엔 방향 무관 l³/12
+        const d2 = (sg.cx - Cx) ** 2 + (sg.cy - Cy) ** 2;
+        J += Iown + sg.len * d2;
+      }
+      const Px = (Number(gp.Px_kN) || 0) * 1000, Py = (Number(gp.Py_kN) || 0) * 1000; // N
+      const Mz = Number(gp.Mz_kNm) ? gp.Mz_kNm * 1e6 : (Number(gp.e_mm) || 0) * Py; // N·mm (e는 Py 기준)
+      // 최대 소요점: 각 세그먼트 양단
+      let fMax = 0, critPt = null;
+      for (const sg of segs) {
+        for (const [px2, py2] of [[sg.x1, sg.y1], [sg.x2, sg.y2]]) {
+          const rx = px2 - Cx, ry = py2 - Cy;
+          const fdx = Px / Ltot + (Mz * -ry) / J; // 비틀림: f = M·r/J, 방향 ⟂r
+          const fdy = Py / Ltot + (Mz * rx) / J;
+          const f = Math.hypot(fdx, fdy); // N/mm
+          if (f > fMax) { fMax = f; critPt = { x: px2, y: py2 }; }
+        }
+      }
+      const phiRw = 0.75 * 0.60 * input.FEXX_MPa * 0.7 * s; // N/mm — 단위길이 설계강도(감소계수 β 미적용: 군은 다방향이라 보수적 별도, 명시)
+      group = {
+        Ltot_mm: +Ltot.toFixed(0), centroid: { x: +Cx.toFixed(1), y: +Cy.toFixed(1) }, J_mm3: Math.round(J),
+        Mz_kNmm: +(Mz / 1000).toFixed(0), fMax_Nmm: +fMax.toFixed(1), phiRw_Nmm: +phiRw.toFixed(1),
+        critical: critPt, ratio: +(fMax / phiRw).toFixed(3), pass: fMax <= phiRw,
+        note: '탄성벡터법(선요소 극관성 J) — 순간중심법 대비 보수(명시). 단위길이 강도=0.75·0.6FEXX·0.7s(방향성 증가·장대 감소 미적용 보수). 세그먼트 좌표=유효길이 반영해 입력 권장.',
+      };
+    }
     const gatesPass = gates.every((g) => g.pass);
-    const strengthPass = ratio === null || ratio <= 1;
+    const strengthPass = (ratio === null || ratio <= 1) && (group === null || group.pass);
     const r1 = (v) => +v.toFixed(1);
     return {
       verdict: gatesPass && strengthPass ? 'PASS' : 'FAIL',
       checks: {
         strength: { phiRn_kN: r1(phiRn), demand_kN: input.demandP_kN, ratio: ratio !== null ? +ratio.toFixed(3) : null, pass: strengthPass },
         gates,
+        ...(group ? { group } : {}),
       },
       intermediate: { Le_mm: r1(Le), Ae_mm2: r1(Ae), throat_mm: r1(0.7 * s), ...(longNote ? { longWeld: longNote } : {}) },
       notes: [

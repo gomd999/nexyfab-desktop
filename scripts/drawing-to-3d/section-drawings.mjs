@@ -66,9 +66,10 @@ ${opts.rebar !== false ? `
 <rect class="rebar" x="${x0 + 45 * S * 10}" y="${y0 + 45 * S * 10}" width="${(OW - 900) * S}" height="${(OH - 900) * S}"/>
 <text class="note" x="${x0 + 8}" y="${y0 - 8}">외측 주철근(개념) — 우각부 헌치·배근 상세 별도</text>` : ''}
 ${dim(x0, y0 + OH * S, x0 + OW * S, y0 + OH * S, `${Math.round(OW)}`, 30)}
-${dim(x0 + t * S, y0 + OH * S, x0 + t * S + Bi * S, y0 + OH * S, `내폭 ${Math.round(Bi)}`, 56)}
+${dim(x0 + t * S, y0 + OH * S, x0 + t * S + Bi * S, y0 + OH * S, `내폭 ${Math.round(Bi)}`, 56, 'innerWidth')}
+${dim(x0 + t * S, y0 + tt * S, x0 + t * S, y0 + tt * S + Hi * S, `내고 ${Math.round(Hi)}`, 14, 'innerHeight')}
 ${dim(x0 + OW * S, y0, x0 + OW * S, y0 + OH * S, `${Math.round(OH)}`, 30)}
-${dim(x0, y0, x0 + t * S, y0, `${Math.round(t)}`, -14)}
+${dim(x0, y0, x0 + t * S, y0, `${Math.round(t)}`, -14, 'wallThk')}
 <text class="note" x="${x0}" y="${Ht - 12}">치수 mm · 상판 ${Math.round(tt)}·저판 ${Math.round(tb)}·벽 ${Math.round(t)} — 개념 단면(비법정)</text>`;
   return svgShell(W, Ht, body, opts.title ?? '박스 암거 단면도');
 }

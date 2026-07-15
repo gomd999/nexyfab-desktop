@@ -142,6 +142,7 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
   const spec = useMemo(() => CALC_CATALOG.find((c) => c.id === calcId) ?? null, [calcId]);
   const [vals, setVals] = useState<Record<string, string>>({});
   const [result, setResult] = useState<CalcRunResult | null>(null);
+  const [resultSvg, setResultSvg] = useState<string | null>(null);
   const [inputUsed, setInputUsed] = useState<Record<string, Json>>({});
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -156,13 +157,14 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
 
   const pick = (id: string) => { setCalcId(id); setVals({}); setResult(null); setErr(null); setRebSvg(null); };
 
-  const run = async () => {
+  const run = async (valsOverride?: Record<string, string>) => {
     if (!spec) return;
+    const useVals = valsOverride ?? vals;
     setLoading(true); setErr(null); setResult(null);
     try {
       const input: Record<string, Json> = {};
       for (const [k, p] of Object.entries(spec.params)) {
-        const raw = vals[k];
+        const raw = useVals[k];
         if (raw === undefined || raw.trim() === '') continue;
         if (isNumericParam(p)) {
           const n = Number(raw);
@@ -179,9 +181,9 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: spec.id, input }),
       });
-      const j = (await res.json()) as { ok: boolean; result?: CalcRunResult; error?: string };
+      const j = (await res.json()) as { ok: boolean; result?: CalcRunResult; resultSvg?: string; error?: string };
       if (!j.ok || !j.result) { setErr(j.error ?? 'error'); return; }
-      setResult(j.result); setInputUsed(input);
+      setResult(j.result); setResultSvg(j.resultSvg ?? null); setInputUsed(input);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally { setLoading(false); }
@@ -245,6 +247,32 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
     w.document.write(head + bodies + '</body></html>');
     w.document.close();
     setTimeout(() => w.print(), 500);
+  };
+
+  const exportCsv = () => {
+    if (!cases.length) return;
+    const esc2 = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const rows = [['member', 'calculator', 'verdict', 'inputs', 'checks'].join(',')];
+    for (const c of cases) {
+      rows.push([esc2(c.member), esc2(c.calcId), esc2(c.result.verdict ?? 'INFO'), esc2(JSON.stringify(c.inputUsed)), esc2(JSON.stringify(c.result.checks ?? {}))].join(','));
+    }
+    const url = URL.createObjectURL(new Blob(['﻿' + rows.join('\n')], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = `calc_cases_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  };
+
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const saveCasesServer = async () => {
+    if (!cases.length) return;
+    try {
+      const res = await fetch('/api/nexyfab/drawing/projects/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: (project || '계산 케이스') + ' — calc-cases', domain: 'calc-cases', snapshot: { cases: cases.map((c) => ({ calcId: c.calcId, member: c.member, inputUsed: c.inputUsed, result: c.result })) } }),
+      });
+      const j = (await res.json()) as { ok: boolean; error?: string };
+      setSaveMsg(j.ok ? (ko ? '서버 저장 완료' : 'Saved') : res.status === 401 ? (ko ? '로그인 필요' : 'Login required') : (j.error ?? 'error'));
+    } catch (e) { setSaveMsg(e instanceof Error ? e.message : String(e)); }
+    setTimeout(() => setSaveMsg(null), 4000);
   };
 
   const savePreset = () => {
@@ -318,7 +346,7 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
             })}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={run} disabled={loading}
+            <button onClick={() => run()} disabled={loading}
               className="text-xs font-semibold px-4 py-1.5 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 disabled:opacity-50">
               {loading ? (ko ? '계산 중…' : 'Running…') : (ko ? '계산 실행' : 'Run')}
             </button>
@@ -354,9 +382,32 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
               <button onClick={printAllCases} className="text-[11px] font-semibold px-3 py-1 rounded-lg border border-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
                 🖨 {ko ? '일괄 계산서(부재별 1장)' : 'Print all sheets'}
               </button>
+              <button onClick={exportCsv} className="text-[11px] px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">
+                ⬇ CSV
+              </button>
+              <button onClick={saveCasesServer} className="text-[11px] px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">
+                ☁ {ko ? '서버 저장' : 'Save to server'}
+              </button>
+              {saveMsg && <span className="text-[10px] text-slate-500">{saveMsg}</span>}
             </div>
           )}
           {err && <p className="text-xs text-rose-600 whitespace-pre-wrap">{err}</p>}
+          {result && resultSvg && (
+            <div className="bg-white rounded-lg p-2 overflow-x-auto"
+              onClick={(e) => {
+                const t = (e.target as HTMLElement).closest('[data-param]');
+                const key = t?.getAttribute('data-param');
+                if (!key || !spec) return;
+                const p = spec.params[key];
+                const nv = window.prompt(`${key}${p ? ` — ${p.desc.slice(0, 60)}` : ''}`, vals[key] ?? '');
+                if (nv === null || nv.trim() === '' || !Number.isFinite(Number(nv))) return;
+                const next = { ...vals, [key]: nv };
+                setVals(next);
+                void run(next);
+              }}
+              dangerouslySetInnerHTML={{ __html: resultSvg }} />
+          )}
+          {result && resultSvg && <p className="text-[10px] text-slate-500 -mt-1">{ko ? '파란 치수 클릭 = 값 수정 → 자동 재계산·도면 재생성 (입력 폼과 동일 단위 — 도면 라벨은 mm 표기)' : 'Click blue dims to edit → auto rerun (form units; labels in mm)'}</p>}
           {result && (
             <div className="space-y-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
               {verdict && (
@@ -386,7 +437,19 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
                 <button onClick={() => drawRebar()} className="self-end text-xs font-semibold px-3 py-1 rounded-lg border border-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">{ko ? '전개도 생성' : 'Draw'}</button>
               </div>
               {rebSvg && <div className="bg-white rounded-lg p-2 overflow-x-auto" onClick={onRebDimClick} dangerouslySetInnerHTML={{ __html: rebSvg }} />}
-              {rebSvg && <p className="text-[10px] text-slate-500">{ko ? '정착·이음 상세는 KDS 14 20 52 별도 설계 — 도면 소스(판정 없음). 계산서 출력에 자동 포함.' : 'Anchorage/splice per KDS 14 20 52 separately — drawing source only, included in printed sheet.'}</p>}
+              {rebSvg && (
+                <button onClick={async () => {
+                  const params: Record<string, Json> = { type: calcId === 'rc_column_pm' ? 'column' : 'beam', L_mm: Number(reb.L_mm) || 6000, sEnd_mm: Number(reb.sEnd_mm) || 150, sMid_mm: Number(reb.sMid_mm) || 300, topBars: reb.topBars, botBars: reb.botBars, stirrup: reb.stirrup };
+                  const res = await fetch('/api/nexyfab/drawing/calc/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ drawing: { kind: 'rebar_elevation', params, format: 'dxf' } }) });
+                  const j = (await res.json()) as { ok: boolean; dxf?: string };
+                  if (j.ok && j.dxf) {
+                    const url = URL.createObjectURL(new Blob([j.dxf], { type: 'application/dxf' }));
+                    const a = document.createElement('a'); a.href = url; a.download = 'rebar_elevation.dxf'; a.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 1500);
+                  }
+                }} className="text-[11px] px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">⬇ DXF</button>
+              )}
+              {rebSvg && <p className="text-[10px] text-slate-500">{ko ? '정착·이음 상세는 KDS 14 20 52 별도 설계 — 도면 소스(판정 없음). 계산서 출력에 자동 포함. DXF=CAD 반입용(개략 축척 명시).' : 'Anchorage/splice per KDS 14 20 52 separately — drawing source only, included in printed sheet. DXF for CAD import.'}</p>}
             </div>
           )}
         </div>

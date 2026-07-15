@@ -352,3 +352,36 @@ test('fixture_supply: KDS 31 30 15 tables — flow sum and pressure gates', () =
   const r = runCalculator('fixture_supply', { fixtures: [{ type: '세면기', count: 2 }, { type: '대변기_세정밸브', count: 2 }, { type: '샤워기', count: 1 }], supplyPressure_kPa: 90 }, 'KDS');
   assert.ok(Math.abs(r.checks.flow.sumQ_Ls - 3.58) < 0.01 && r.checks.pressure.requiredMin_kPa === 100 && r.verdict === 'FAIL');
 });
+
+// ── 검증 강화 라운드: N경간·용접군·연결보·유토곡선 ──────────────────────────
+test('nSpan: n=3 matches threeSpanUdlEnvelope; n=2 truck matches sweepTwoSpan', async () => {
+  const m = await import('../moving-load.mjs');
+  const a = m.nSpanUdlEnvelope(10, 3, 10), b = m.threeSpanUdlEnvelope(10, 10);
+  assert.ok(Math.abs(a.MsupMax_kNm - b.MsupMax_kNm) < 0.01 && Math.abs(a.MspanMax_kNm - b.MspanMax_kNm) < 0.3);
+  const ax = [{ P: 100, x: 0 }, { P: 100, x: 3 }];
+  const s2 = m.sweepNSpan(10, 2, ax, { steps: 800 }), ref = m.sweepTwoSpan(10, ax);
+  assert.ok(Math.abs(s2.MsupMax_kNm - ref.MsupMax_kNm) < 1);
+});
+
+test('weld group: elastic vector method centroid and polar J hand-check', () => {
+  const r = runCalculator('weld_connection', {
+    weldSize_mm: 8, length_mm: 400, nSegments: 3, FEXX_MPa: 490, demandP_kN: 0,
+    group: { segments: [{ x1: 0, y1: 0, x2: 0, y2: 200 }, { x1: 0, y1: 0, x2: 100, y2: 0 }, { x1: 0, y1: 200, x2: 100, y2: 200 }], Py_kN: 100, e_mm: 150 },
+  }, 'KDS');
+  const g = r.checks.group;
+  const Jhand = 200 ** 3 / 12 + 200 * 625 + 2 * (100 ** 3 / 12 + 100 * (625 + 10000));
+  assert.ok(Math.abs(g.centroid.x - 25) < 0.1 && Math.abs(g.J_mm3 - Jhand) < 2);
+});
+
+test('coupling_beam: classification threshold and eq 4.7-3', () => {
+  const r = runCalculator('coupling_beam', { ln_mm: 1500, h_mm: 900, b_mm: 400, fck: 27, Vu_kN: 800 }, 'KDS');
+  assert.ok(Math.abs(r.checks.classification.VuVsThreshold.threshold_kN - 623.5) < 1 && r.verdict === 'FAIL');
+  const r2 = runCalculator('coupling_beam', { ln_mm: 1500, h_mm: 900, b_mm: 400, fck: 27, Vu_kN: 400, diagonal: { Avd_mm2: 2027, fy: 400, zDiag_mm: 600, nBars: 4 } }, 'KDS');
+  const sinHand = 0.4 / Math.hypot(1, 0.4);
+  assert.ok(Math.abs(r2.checks.diagonal.Vn_kN - (2 * 2027 * 400 * sinHand) / 1000) < 1);
+});
+
+test('mass_haul: symmetric cut-fill closes to zero with mid balance', () => {
+  const r = runCalculator('mass_haul', { stations: [{ sta_m: 50, cut_m3: 100, fill_m3: 0 }, { sta_m: 100, cut_m3: 100, fill_m3: 0 }, { sta_m: 150, cut_m3: 0, fill_m3: 100 }, { sta_m: 200, cut_m3: 0, fill_m3: 100 }] }, 'KDS');
+  assert.ok(r.checks.summary.surplus_m3 === 0 && Math.abs(r.checks.haul.avgHaul_m - 100) < 0.5);
+});

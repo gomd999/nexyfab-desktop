@@ -203,3 +203,102 @@ export function threeSpanUdlEnvelope(L, w) {
   }
   return { MsupMax_kNm: MsupMax, MspanMax_kNm: MspanMax };
 }
+
+/**
+ * N등경간 연속 — 3연모멘트 삼중대각 일반해 (지점모멘트 벡터).
+ * 내부지점 i: M(i-1) + 4M(i) + M(i+1) = −(T_L(i) + T_R(i))/L,
+ * T = Σ P·a(L²−a²)/L (좌측경간은 좌단, 우측경간은 우단 기준 거리).
+ * 앵커: n=2·3 기존 폐형과 일치 + n=4 등분포 고전계수 M_B=−3wL²/28·M_C=−2wL²/28.
+ */
+function solveTridiag(a, b, c, d) {
+  const n = d.length, cp = new Array(n), dp = new Array(n);
+  cp[0] = c[0] / b[0]; dp[0] = d[0] / b[0];
+  for (let i = 1; i < n; i++) {
+    const m = b[i] - a[i] * cp[i - 1];
+    cp[i] = c[i] / m;
+    dp[i] = (d[i] - a[i] * dp[i - 1]) / m;
+  }
+  const x = new Array(n);
+  x[n - 1] = dp[n - 1];
+  for (let i = n - 2; i >= 0; i--) x[i] = dp[i] - cp[i] * x[i + 1];
+  return x;
+}
+
+function nSpanSupportMoments(L, nSpans, loadsPerSpan) {
+  // loadsPerSpan[s] = [{P, a(경간 내 좌단부터)}]
+  const nInt = nSpans - 1;
+  if (nInt < 1) return [];
+  const TL = new Array(nSpans).fill(0), TR = new Array(nSpans).fill(0);
+  for (let s = 0; s < nSpans; s++) {
+    for (const { P, a } of loadsPerSpan[s] ?? []) {
+      const b2 = L - a;
+      TL[s] += (P * a * (L * L - a * a)) / L;   // 그 경간 우측 지점식 기여(좌단거리 a)
+      TR[s] += (P * b2 * (L * L - b2 * b2)) / L; // 그 경간 좌측 지점식 기여(우단거리 b)
+    }
+  }
+  const A = new Array(nInt).fill(1), B = new Array(nInt).fill(4), C = new Array(nInt).fill(1), D = new Array(nInt);
+  A[0] = 0; C[nInt - 1] = 0;
+  for (let i = 0; i < nInt; i++) D[i] = -(TL[i] + TR[i + 1]) / L;
+  return solveTridiag(A, B, C, D);
+}
+
+export function sweepNSpan(L, nSpans, axles, { steps = 1200, reverse = true } = {}) {
+  if (nSpans === 1) { const r = sweepSimpleSpan(L, axles); return { MsupMax_kNm: 0, MspanMax_kNm: r.Mmax_kNm }; }
+  const trains = [axles];
+  if (reverse) { const mx = Math.max(...axles.map((a) => a.x)); trains.push(axles.map((a) => ({ P: a.P, x: mx - a.x }))); }
+  const total = nSpans * L;
+  let MsupMax = 0, MspanMax = 0;
+  for (const tr of trains) {
+    const len = Math.max(...tr.map((a) => a.x));
+    for (let k = 0; k <= steps; k++) {
+      const s = (k / steps) * (total + len);
+      const on = tr.map((a) => ({ P: a.P, pos: s - a.x })).filter((a) => a.pos >= 0 && a.pos <= total);
+      if (!on.length) continue;
+      const per = Array.from({ length: nSpans }, () => []);
+      for (const a of on) {
+        const sp = Math.min(nSpans - 1, Math.floor(a.pos / L));
+        per[sp].push({ P: a.P, a: a.pos - sp * L });
+      }
+      const M = nSpanSupportMoments(L, nSpans, per);
+      for (const m of M) MsupMax = Math.max(MsupMax, -m);
+      const Msup = [0, ...M, 0];
+      for (const a of on) {
+        const sp = Math.min(nSpans - 1, Math.floor(a.pos / L));
+        const xa = a.pos - sp * L;
+        let Ms = 0;
+        for (const b2 of per[sp]) Ms += b2.a <= xa ? (b2.P * b2.a * (L - xa)) / L : (b2.P * xa * (L - b2.a)) / L;
+        const Mv = Ms + Msup[sp] * (1 - xa / L) + Msup[sp + 1] * (xa / L);
+        if (Mv > MspanMax) MspanMax = Mv;
+      }
+    }
+  }
+  return { MsupMax_kNm: MsupMax, MspanMax_kNm: MspanMax };
+}
+
+export function nSpanUdlEnvelope(L, nSpans, w) {
+  if (nSpans > 6) throw new Error('input gate: UDL 패턴 포락은 6경간 이하(2^n 조합)');
+  const T = (w * L * L * L) / 4;
+  let MsupMax = 0, MspanMax = 0;
+  for (let mask = 1; mask < (1 << nSpans); mask++) {
+    const on = Array.from({ length: nSpans }, (_, i) => (mask >> i) & 1);
+    const per = on.map((o) => (o ? [{ udl: true }] : []));
+    // UDL 만재 경간: TL=TR=T
+    const nInt = nSpans - 1;
+    const A = new Array(nInt).fill(1), B = new Array(nInt).fill(4), C = new Array(nInt).fill(1), D = new Array(nInt);
+    A[0] = 0; C[nInt - 1] = 0;
+    for (let i = 0; i < nInt; i++) D[i] = -((on[i] ? T : 0) + (on[i + 1] ? T : 0)) / L;
+    const M = solveTridiag(A, B, C, D);
+    for (const m of M) MsupMax = Math.max(MsupMax, -m);
+    const Msup = [0, ...M, 0];
+    for (let sp = 0; sp < nSpans; sp++) {
+      const wl = on[sp] ? w : 0;
+      for (let i = 0; i <= 50; i++) {
+        const x = (i / 50) * L;
+        const Mv = (wl * x * (L - x)) / 2 + Msup[sp] * (1 - x / L) + Msup[sp + 1] * (x / L);
+        if (Mv > MspanMax) MspanMax = Mv;
+      }
+    }
+    void per;
+  }
+  return { MsupMax_kNm: MsupMax, MspanMax_kNm: MspanMax };
+}

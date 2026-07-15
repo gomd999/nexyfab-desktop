@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(38종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(40종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -1531,10 +1531,10 @@ export const CALC_CATALOG: CalcSpec[] = [
         "max": 200
       },
       "spans": {
-        "desc": "경간 수 (기본 1 단순지지 · 2·3=등경간 연속 — 3연모멘트 폐형)",
+        "desc": "경간 수 (기본 1 단순지지 · 2~6=등경간 연속 — 3연모멘트 삼중대각 일반해·차로 패턴재하 포락)",
         "type": "integer",
         "min": 1,
-        "max": 3
+        "max": 6
       },
       "EI_kNm2": {
         "desc": "휨강성 EI kN·m² (입력 시 처짐 검토 §4.3.1.7 — 트럭 vs 25%트럭+차로 중 큰 값)",
@@ -2400,6 +2400,9 @@ export const CALC_CATALOG: CalcSpec[] = [
       "endLoaded": {
         "desc": "부재 단부 길이방향 재하 여부 (장대 감소 식4.1-1 적용 — 기본 true 보수)",
         "type": "boolean"
+      },
+      "group": {
+        "desc": "용접군 편심 검토(선택 — 탄성벡터법, 순간중심법 대비 보수 명시): { segments: [{x1,y1,x2,y2}] mm(용접선 좌표), Px_kN?, Py_kN?, e_mm?(하중 작용점의 도심 편심 — Py 기준 x방향) 또는 Mz_kNm?(직접 모멘트) } — 단위길이 소요 vs 설계강도"
       }
     }
   },
@@ -2563,6 +2566,81 @@ export const CALC_CATALOG: CalcSpec[] = [
       },
       "supplyPressure_kPa": {
         "desc": "공급 압력 (기구 최저 유동압력·550kPa 상한 게이트)",
+        "type": "number",
+        "min": 0
+      }
+    }
+  },
+  {
+    "id": "coupling_beam",
+    "domain": "architecture/lateral",
+    "title": "연결보 (특수전단벽 — §4.7.7)",
+    "description": "세장비 분류·대각보강 필요 판정·식4.7-3 전단강도·상세 게이트.",
+    "required": [
+      "ln_mm",
+      "h_mm",
+      "b_mm",
+      "fck",
+      "Vu_kN"
+    ],
+    "params": {
+      "ln_mm": {
+        "desc": "연결보 순경간",
+        "type": "number",
+        "min": 0
+      },
+      "h_mm": {
+        "desc": "보 깊이",
+        "type": "number",
+        "min": 0
+      },
+      "b_mm": {
+        "desc": "보 폭 (Acp=b·h)",
+        "type": "number",
+        "min": 0
+      },
+      "fck": {
+        "desc": "콘크리트 강도",
+        "type": "number",
+        "min": 21,
+        "max": 70
+      },
+      "Vu_kN": {
+        "desc": "계수전단력",
+        "type": "number",
+        "min": 0
+      },
+      "diagonal": {
+        "desc": "대각보강 검토(선택): { Avd_mm2(한 다발 대각철근 총단면적), fy?, nBars?(다발 가닥수 — ≥4 게이트), alphaDeg?(대각 경사각 — 직접) 또는 zDiag_mm?(상·하 다발 도심 수직거리 — tanα=z/ln 산정), sTrans_mm?(횡철근 간격), db_mm?(대각철근 지름), option?(3|4 — §(4)③ 6db / ④ min(150,6db)) }"
+      },
+      "phiV": {
+        "desc": "전단 강도감수계수 (기본 0.75 관례 — 대각보강 연결보 φ는 발주기준·KDS 14 20 10 확인 입력 명시)",
+        "type": "number",
+        "min": 0.5,
+        "max": 0.9
+      }
+    }
+  },
+  {
+    "id": "mass_haul",
+    "domain": "civil/earthwork",
+    "title": "유토곡선 (누적토량·운반)",
+    "description": "측점별 절/성토 → 누적곡선·균형점·평균운반거리·잉여/부족 — 다짐 보정 반영.",
+    "required": [
+      "stations"
+    ],
+    "params": {
+      "stations": {
+        "desc": "구간 배열 [{sta_m(구간 끝 측점 위치), cut_m3, fill_m3}] — 측점 순서대로(구간장 임의)"
+      },
+      "shrinkC": {
+        "desc": "다짐 토량환산 C (성토 필요 원지반토량 = fill/C, 기본 1.0=미반영 명시)",
+        "type": "number",
+        "min": 0.7,
+        "max": 1
+      },
+      "freeHaul_m": {
+        "desc": "무료 운반거리 (선택 — 초과 구간 표시. 장비·단가 판단은 별도 명시)",
         "type": "number",
         "min": 0
       }
