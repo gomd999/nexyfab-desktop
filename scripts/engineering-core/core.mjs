@@ -42,8 +42,17 @@ import plantingBase from './calculators/planting-base.mjs';
 import fixtureSupply from './calculators/fixture-supply.mjs';
 import couplingBeam from './calculators/coupling-beam.mjs';
 import massHaul from './calculators/mass-haul.mjs';
+import boltGroup from './calculators/bolt-group.mjs';
+import shaftDesign from './calculators/shaft-design.mjs';
+import springDesign from './calculators/spring-design.mjs';
+import bearingLife from './calculators/bearing-life.mjs';
+import toleranceStack from './calculators/tolerance-stack.mjs';
+import reverbTime from './calculators/reverb-time.mjs';
+import pointIlluminance from './calculators/point-illuminance.mjs';
+import expansionJoint from './calculators/expansion-joint.mjs';
+import pumpHead from './calculators/pump-head.mjs';
 
-export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman, vibrationBasic, thermalStress, acousticTl, ductSizing, slopeBishop, mseWall, deckStrip, earthworkGrid, pipeSizing, shearWall, girderDf, pscGirder, weldConnection, consolidation, pileCapacity, plantingBase, fixtureSupply, couplingBeam, massHaul];
+export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman, vibrationBasic, thermalStress, acousticTl, ductSizing, slopeBishop, mseWall, deckStrip, earthworkGrid, pipeSizing, shearWall, girderDf, pscGirder, weldConnection, consolidation, pileCapacity, plantingBase, fixtureSupply, couplingBeam, massHaul, boltGroup, shaftDesign, springDesign, bearingLife, toleranceStack, reverbTime, pointIlluminance, expansionJoint, pumpHead];
 
 /** Minimal JSON-Schema-subset validator (type/required/properties/minimum/maximum/enum). */
 export function validateInput(schema, input) {

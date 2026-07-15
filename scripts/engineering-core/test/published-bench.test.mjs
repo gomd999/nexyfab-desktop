@@ -385,3 +385,32 @@ test('mass_haul: symmetric cut-fill closes to zero with mid balance', () => {
   const r = runCalculator('mass_haul', { stations: [{ sta_m: 50, cut_m3: 100, fill_m3: 0 }, { sta_m: 100, cut_m3: 100, fill_m3: 0 }, { sta_m: 150, cut_m3: 0, fill_m3: 100 }, { sta_m: 200, cut_m3: 0, fill_m3: 100 }] }, 'KDS');
   assert.ok(r.checks.summary.surplus_m3 === 0 && Math.abs(r.checks.haul.avgHaul_m - 100) < 0.5);
 });
+
+// ── W1 폐형 엔진 라운드 ──────────────────────────────────────────────────────
+test('W1 closed-form batch: bolt group, shaft, spring, bearing, stack, reverb, joint', () => {
+  const bg = runCalculator('bolt_group', { bolts: [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 0, y: 200 }, { x: 200, y: 200 }], boltDia_mm: 20, Fnv_MPa: 400, Mz_kNm: 10 }, 'KDS');
+  assert.ok(Math.abs(bg.checks.maxBolt.F_kN - 10e3 / (4 * Math.hypot(100, 100))) < 0.05);
+  const sh = runCalculator('shaft_design', { M_Nm: 0, T_Nm: 500, d_mm: 40, tauAllow_MPa: 55, Kt: 1.0 }, 'KDS');
+  assert.ok(Math.abs(sh.checks.static.tau_MPa - (16 * 5e5) / (Math.PI * 40 ** 3)) < 0.1);
+  const sp = runCalculator('spring_design', { d_mm: 5, D_mm: 40, Na: 10, G_MPa: 79000, F_N: 100, tauAllow_MPa: 400 }, 'KDS');
+  assert.ok(Math.abs(sp.intermediate.k_Nmm - (79000 * 625) / (8 * 64000 * 10)) < 0.05);
+  const bl = runCalculator('bearing_life', { C_kN: 30, type: 'ball', Fr_kN: 30, n_rpm: 1000 }, 'KDS');
+  assert.ok(Math.abs(bl.checks.life.L10_Mrev - 1) < 0.001);
+  const ts = runCalculator('tolerance_stack', { chain: [{ nominal_mm: 10, tol_mm: 0.1, dir: 1 }, { nominal_mm: 10, tol_mm: 0.1, dir: 1 }, { nominal_mm: 10, tol_mm: 0.1, dir: 1 }, { nominal_mm: 30, tol_mm: 0.1, dir: -1 }] }, 'KDS');
+  assert.ok(Math.abs(ts.checks.result.rss_pm - 0.2) < 0.001);
+  const rv = runCalculator('reverb_time', { volume_m3: 1000, surfaces: [{ area_m2: 600, alpha: 0.05 }] }, 'KDS');
+  assert.ok(Math.abs(rv.checks.reverb.sabine_s - (0.161 * 1000) / 30) < 0.01);
+  const ej = runCalculator('expansion_joint', { L_m: 100, dTplus_C: 25, dTminus_C: 30, marginFactor: 1.0 }, 'KDS');
+  assert.ok(Math.abs(ej.checks.movement.total_mm - 55) < 0.1);
+});
+
+test('W1: point illuminance inverse-square, pump water power, consolidation ext, pile group eta', () => {
+  const pi = runCalculator('point_illuminance', { fixtures: [{ x_m: 0, y_m: 0, z_m: 2.85, I_cd: 1000 }], planeZ_m: 0.85, points: [{ x_m: 0, y_m: 0 }], maintenance: 1.0 }, 'KDS');
+  assert.ok(Math.abs(pi.points[0].E_lux - 250) < 1);
+  const ph = runCalculator('pump_head', { Q_Lmin: 600, staticHead_m: 10, pipeDia_mm: 200, pipeLen_m: 0.001 }, 'KDS');
+  assert.ok(Math.abs(ph.checks.power.waterPower_kW - 0.981) < 0.002);
+  const co = runCalculator('consolidation', { H_m: 6, e0: 1.1, Cc: 0.36, sigma0_kPa: 80, dSigma_kPa: 60, immediate: { q_kPa: 100, B_m: 2, Es_kPa: 10000 }, secondary: { Calpha: 0.01, t1_yr: 2, t2_yr: 20 } }, 'KDS');
+  assert.ok(Math.abs(co.checks.settlement.immediate.Se_mm - 18.2) < 0.1 && Math.abs(co.checks.settlement.secondary.Ss_mm - 28.6) < 0.1);
+  const pc = runCalculator('pile_capacity', { dia_m: 0.5, length_m: 15, layers: [{ thick_m: 15, type: 'clay', Su_kPa: 50, alpha: 0.9 }], tip: { type: 'clay', Su_kPa: 50 }, group: { rows: 3, cols: 3, spacing_m: 1.5 } }, 'KDS');
+  assert.ok(Math.abs(pc.breakdown.group.eta - 0.727) < 0.002);
+});

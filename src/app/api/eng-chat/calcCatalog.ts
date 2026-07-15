@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(40종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(49종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -2480,6 +2480,12 @@ export const CALC_CATALOG: CalcSpec[] = [
         "desc": "허용 침하량 (판정용 — 발주 기준 입력)",
         "type": "number",
         "min": 0
+      },
+      "immediate": {
+        "desc": "즉시침하(탄성 — 선택): { q_kPa(순하중), B_m(기초폭), Es_kPa(지반 탄성계수 — 시험 입력), nu?(0.3 기본), If?(영향계수 — 형상·강성 도표 입력, 기본 강성 원형 0.79π/4≈0.79 아님 — 유연 중앙 1.0 관례 명시) } — Se=q·B·(1−ν²)/Es·If 폐형"
+      },
+      "secondary": {
+        "desc": "2차압밀(선택): { Calpha(2차압밀계수 — 시험 입력), t1_yr(1차완료 시점), t2_yr(설계수명) } — Ss=Cα·H/(1+e0)·log(t2/t1)"
       }
     }
   },
@@ -2522,6 +2528,12 @@ export const CALC_CATALOG: CalcSpec[] = [
         "desc": "작용하중 (판정용)",
         "type": "number",
         "min": 0
+      },
+      "group": {
+        "desc": "무리말뚝(선택): { n(본수), rows, cols, spacing_m } — 효율 Converse-Labarre 폐형(관례 명시): η=1−θ(( (rows−1)cols+(cols−1)rows )/(90·rows·cols)), θ=atan(D/s)°"
+      },
+      "negFriction": {
+        "desc": "부주면마찰(선택): { depth_m(중립점 깊이 — 침하해석 산정 입력), fn_kPa(단위 부주면마찰 — α·Su 등 산정 입력) } — Qa에서 차감(보수 관례 명시)"
       }
     }
   },
@@ -2643,6 +2655,458 @@ export const CALC_CATALOG: CalcSpec[] = [
         "desc": "무료 운반거리 (선택 — 초과 구간 표시. 장비·단가 판단은 별도 명시)",
         "type": "number",
         "min": 0
+      }
+    }
+  },
+  {
+    "id": "bolt_group",
+    "domain": "mechanical/connection",
+    "title": "볼트군 편심 (탄성벡터법)",
+    "description": "편심하중 볼트군 — 직접+비틀림 벡터합 최대 볼트력 vs φRn.",
+    "required": [
+      "bolts",
+      "boltDia_mm",
+      "Fnv_MPa"
+    ],
+    "params": {
+      "bolts": {
+        "desc": "볼트 좌표 [{x,y}] mm — 2~36개"
+      },
+      "boltDia_mm": {
+        "desc": "볼트 지름 (Ab=π d²/4 — 나사부 전단이면 유효단면 별도 명시)",
+        "type": "number",
+        "min": 12,
+        "max": 36
+      },
+      "Fnv_MPa": {
+        "desc": "공칭전단강도 Fnv (등급별 — F10T-N 400 등 kds.json 대조 입력)",
+        "type": "number",
+        "min": 150,
+        "max": 600
+      },
+      "Px_kN": {
+        "desc": "수평력 (군 전체)",
+        "type": "number"
+      },
+      "Py_kN": {
+        "desc": "수직력",
+        "type": "number"
+      },
+      "e_mm": {
+        "desc": "편심 (Py 기준 x방향 — 도심에서)",
+        "type": "number"
+      },
+      "Mz_kNm": {
+        "desc": "직접 모멘트 입력(선택 — e 대신)",
+        "type": "number"
+      },
+      "threadsIncluded": {
+        "desc": "나사부 전단면 포함 여부 (true면 0.75Ab 관례 적용 명시)",
+        "type": "boolean"
+      }
+    }
+  },
+  {
+    "id": "shaft_design",
+    "domain": "mechanical/power",
+    "title": "전동축 설계 (굽힘+비틀림)",
+    "description": "MSST/ASME 조합응력 — 소요지름 산정 또는 검토. 피로는 Se 입력 연계.",
+    "required": [
+      "M_Nm",
+      "T_Nm"
+    ],
+    "params": {
+      "M_Nm": {
+        "desc": "굽힘모멘트 (지지점·하중 배치에서 산정 입력)",
+        "type": "number",
+        "min": 0
+      },
+      "T_Nm": {
+        "desc": "비틀림 토크 (동력/각속도 산정 입력)",
+        "type": "number",
+        "min": 0
+      },
+      "d_mm": {
+        "desc": "축 지름 (입력 시 검토 모드 · 미입력 시 소요지름 산정)",
+        "type": "number",
+        "min": 0,
+        "max": 500
+      },
+      "tauAllow_MPa": {
+        "desc": "허용전단응력 (재료·기준 산정 입력 — ASME 관례 0.3Sy·0.18Su 중 작은 값, 키홈 시 75% — 산정 근거 입력 원칙)",
+        "type": "number",
+        "min": 0
+      },
+      "Km": {
+        "desc": "굽힘 충격계수 (기본 1.5 — 회전축 정하중 관례 명시)",
+        "type": "number",
+        "min": 1,
+        "max": 3
+      },
+      "Kt": {
+        "desc": "비틀림 충격계수 (기본 1.0)",
+        "type": "number",
+        "min": 1,
+        "max": 3
+      },
+      "Se_MPa": {
+        "desc": "피로한도 (선택 — 입력 시 Soderberg 피로검토: 굽힘 완전교번·비틀림 정상 가정 명시)",
+        "type": "number",
+        "min": 0
+      },
+      "Sy_MPa": {
+        "desc": "항복강도 (Soderberg용)",
+        "type": "number",
+        "min": 0
+      },
+      "fatigueSF": {
+        "desc": "피로 목표 안전율 (기본 2.0 관례)",
+        "type": "number",
+        "min": 1,
+        "max": 5
+      }
+    }
+  },
+  {
+    "id": "spring_design",
+    "domain": "mechanical/element",
+    "title": "압축 코일스프링 (Wahl)",
+    "description": "전단응력(Wahl 보정)·스프링상수·처짐·좌굴/밀착 게이트.",
+    "required": [
+      "d_mm",
+      "D_mm",
+      "Na",
+      "G_MPa",
+      "F_N"
+    ],
+    "params": {
+      "d_mm": {
+        "desc": "선경",
+        "type": "number",
+        "min": 0,
+        "max": 50
+      },
+      "D_mm": {
+        "desc": "평균 코일경",
+        "type": "number",
+        "min": 0,
+        "max": 500
+      },
+      "Na": {
+        "desc": "유효 감김수",
+        "type": "number",
+        "min": 1,
+        "max": 50
+      },
+      "G_MPa": {
+        "desc": "전단탄성계수 (강 78,500~81,500 — 재료값 입력)",
+        "type": "number",
+        "min": 60000,
+        "max": 90000
+      },
+      "F_N": {
+        "desc": "작용 하중",
+        "type": "number",
+        "min": 0
+      },
+      "tauAllow_MPa": {
+        "desc": "허용전단응력 (재료·선경 의존 — KS 자료 산정 입력. 미입력=INFO)",
+        "type": "number",
+        "min": 0
+      },
+      "freeLen_mm": {
+        "desc": "자유고 (좌굴·밀착 게이트용)",
+        "type": "number",
+        "min": 0
+      },
+      "totalCoils": {
+        "desc": "총 감김수 (밀착고 = d×총감김 — 연삭 단부 관례)",
+        "type": "number",
+        "min": 2
+      }
+    }
+  },
+  {
+    "id": "bearing_life",
+    "domain": "mechanical/element",
+    "title": "베어링 수명 L10 (ISO 281 기본식)",
+    "description": "기본 정격수명 + 신뢰도 보정 — C·X·Y는 카탈로그 입력 원칙.",
+    "required": [
+      "C_kN",
+      "type",
+      "n_rpm"
+    ],
+    "params": {
+      "C_kN": {
+        "desc": "기본 동정격하중 (카탈로그)",
+        "type": "number",
+        "min": 0
+      },
+      "type": {
+        "desc": "볼(p=3) / 롤러(p=10/3)",
+        "enum": [
+          "ball",
+          "roller"
+        ]
+      },
+      "Fr_kN": {
+        "desc": "레이디얼 하중",
+        "type": "number",
+        "min": 0
+      },
+      "Fa_kN": {
+        "desc": "축하중 (X·Y 필요)",
+        "type": "number",
+        "min": 0
+      },
+      "X": {
+        "desc": "레이디얼 계수 (카탈로그 — Fa 있으면 필수)",
+        "type": "number",
+        "min": 0,
+        "max": 1
+      },
+      "Y": {
+        "desc": "축 계수 (카탈로그)",
+        "type": "number",
+        "min": 0,
+        "max": 5
+      },
+      "n_rpm": {
+        "desc": "회전수",
+        "type": "number",
+        "min": 0
+      },
+      "reliability_pct": {
+        "desc": "신뢰도 % (기본 90 — a1=ISO 표준값)",
+        "enum": [
+          90,
+          95,
+          96,
+          97,
+          98,
+          99
+        ]
+      },
+      "aIso": {
+        "desc": "수명수정계수 a_iso (윤활·오염 도표 산정 입력 — 기본 1.0=미반영 명시)",
+        "type": "number",
+        "min": 0.1,
+        "max": 50
+      },
+      "targetHours": {
+        "desc": "목표 수명 h (판정용 — 장비 관례 입력)",
+        "type": "number",
+        "min": 0
+      }
+    }
+  },
+  {
+    "id": "tolerance_stack",
+    "domain": "mechanical/precision",
+    "title": "공차 스택업 (최악/RSS)",
+    "description": "치수 사슬 → 결과 공차(최악·RSS)·목표 범위 판정 — 조립 간극/끼움 검토.",
+    "required": [
+      "chain"
+    ],
+    "params": {
+      "chain": {
+        "desc": "치수 사슬 [{name?, nominal_mm, tol_mm(±대칭), dir(+1|-1 — 닫힘 방향)}] 2~30개"
+      },
+      "targetMin_mm": {
+        "desc": "결과치수 하한 (간극 최소 등 — 판정용)",
+        "type": "number"
+      },
+      "targetMax_mm": {
+        "desc": "결과치수 상한",
+        "type": "number"
+      }
+    }
+  },
+  {
+    "id": "reverb_time",
+    "domain": "interior/acoustics",
+    "title": "잔향시간 (Sabine·Eyring)",
+    "description": "실체적·표면 흡음 → RT60 2법 병기 — 흡음률·목표값 입력 원칙.",
+    "required": [
+      "volume_m3",
+      "surfaces"
+    ],
+    "params": {
+      "volume_m3": {
+        "desc": "실 체적",
+        "type": "number",
+        "min": 0,
+        "max": 100000
+      },
+      "surfaces": {
+        "desc": "표면 배열 [{name?, area_m2, alpha(0~1 — 재료 자료 입력, 주파수 명시 권장)}] 1~30"
+      },
+      "airAbsorb": {
+        "desc": "공기흡음 4mV 반영 (2kHz+ 대역·대공간 — m=0.009/m 관례 명시)",
+        "type": "boolean"
+      },
+      "targetRT_s": {
+        "desc": "권장 잔향시간 (용도 기준 입력 — 판정용)",
+        "type": "number",
+        "min": 0
+      },
+      "tolerance_pct": {
+        "desc": "허용 편차 % (기본 20 관례)",
+        "type": "number",
+        "min": 5,
+        "max": 50
+      }
+    }
+  },
+  {
+    "id": "point_illuminance",
+    "domain": "interior/lighting",
+    "title": "점별 조도 (역제곱·코사인)",
+    "description": "기구 배치 → 임의 점 수평면 조도 그리드 — 광속법의 정밀판. IES는 입력.",
+    "required": [
+      "fixtures",
+      "planeZ_m"
+    ],
+    "params": {
+      "fixtures": {
+        "desc": "기구 [{x_m, y_m, z_m(설치고), flux_lm?(등방 근사용) 또는 I_cd?(하향 대표 광도 — IES 대표값 입력)}] 1~50"
+      },
+      "planeZ_m": {
+        "desc": "작업면 높이 (통상 0.85)",
+        "type": "number",
+        "min": 0
+      },
+      "points": {
+        "desc": "평가점 [{x_m,y_m}] (미입력 시 기구 아래+중간점 자동)"
+      },
+      "maintenance": {
+        "desc": "유지율 MF (기본 0.8 관례)",
+        "type": "number",
+        "min": 0.5,
+        "max": 1
+      },
+      "targetLux": {
+        "desc": "목표 조도 (KS 조도기준 입력 — 판정용)",
+        "type": "number",
+        "min": 0
+      }
+    }
+  },
+  {
+    "id": "expansion_joint",
+    "domain": "bridge/detail",
+    "title": "신축이음 이동량",
+    "description": "온도+크리프+건조수축 합산 → 소요 이동량·유간 — 계수 입력 원칙.",
+    "required": [
+      "L_m",
+      "dTplus_C",
+      "dTminus_C"
+    ],
+    "params": {
+      "L_m": {
+        "desc": "신축 길이 (고정점~이음부 — 지점 배치에서 산정 입력)",
+        "type": "number",
+        "min": 0,
+        "max": 1000
+      },
+      "material": {
+        "desc": "상부 재료 (α 1.0e-5 / 1.2e-5 관례 — 기본 concrete)",
+        "enum": [
+          "concrete",
+          "steel"
+        ]
+      },
+      "dTplus_C": {
+        "desc": "상승 온도차 (가설온도→최고 — 발주 기준 입력)",
+        "type": "number",
+        "min": 0,
+        "max": 60
+      },
+      "dTminus_C": {
+        "desc": "하강 온도차 (가설온도→최저)",
+        "type": "number",
+        "min": 0,
+        "max": 60
+      },
+      "creepStrain_ue": {
+        "desc": "잔여 크리프 변형률 με (PSC — KDS 24 14 21 산정 입력. 0=미반영 명시)",
+        "type": "number",
+        "min": 0,
+        "max": 1000
+      },
+      "shrinkStrain_ue": {
+        "desc": "잔여 건조수축 με (산정 입력)",
+        "type": "number",
+        "min": 0,
+        "max": 1000
+      },
+      "marginFactor": {
+        "desc": "여유율 (기본 1.15 관례 — 발주 기준 확인)",
+        "type": "number",
+        "min": 1,
+        "max": 1.5
+      },
+      "jointCapacity_mm": {
+        "desc": "이음 제품 이동량 용량 (판정용)",
+        "type": "number",
+        "min": 0
+      }
+    }
+  },
+  {
+    "id": "pump_head",
+    "domain": "landscape/water",
+    "title": "펌프 전양정·동력",
+    "description": "정수두+마찰(H-W)+부차손실+잔류수두 → 전양정·수동력/축동력.",
+    "required": [
+      "Q_Lmin",
+      "staticHead_m",
+      "pipeDia_mm",
+      "pipeLen_m"
+    ],
+    "params": {
+      "Q_Lmin": {
+        "desc": "유량 L/min",
+        "type": "number",
+        "min": 0
+      },
+      "staticHead_m": {
+        "desc": "정수두 (흡입저면~토출 최고점)",
+        "type": "number",
+        "min": 0
+      },
+      "pipeDia_mm": {
+        "desc": "관 내경",
+        "type": "number",
+        "min": 0
+      },
+      "pipeLen_m": {
+        "desc": "관 연장",
+        "type": "number",
+        "min": 0
+      },
+      "hwC": {
+        "desc": "Hazen-Williams C (기본 130 PVC 관례 — 재질 확인)",
+        "type": "number",
+        "min": 80,
+        "max": 160
+      },
+      "sumK": {
+        "desc": "부차손실계수 합 ΣK (엘보·밸브 — 자료 입력, 기본 0=미반영 명시)",
+        "type": "number",
+        "min": 0,
+        "max": 100
+      },
+      "residualHead_m": {
+        "desc": "잔류수두 (분수 노즐 사양 등 — 입력)",
+        "type": "number",
+        "min": 0
+      },
+      "efficiency": {
+        "desc": "펌프 효율 (사양 입력 — 미입력 시 수동력만)",
+        "type": "number",
+        "min": 0.2,
+        "max": 0.9
       }
     }
   }

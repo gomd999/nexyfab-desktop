@@ -26,6 +26,8 @@ export default {
       tip: { description: '선단 지반: { type: clay|sand, Su_kPa?(점토), Nc?(기본 9 고전값), sigmaVtip_kPa?(사질 선단 유효응력), Nq?(도표 산정 입력 — 필수, 지어내지 않음) }' },
       FS: { type: 'number', minimum: 2, maximum: 6, description: '안전율 (기본 3.0 정역학 관례 — §4.1.1.4(3) 재하시험도 ≥2)' },
       demandP_kN: { type: 'number', minimum: 0, description: '작용하중 (판정용)' },
+      group: { description: '무리말뚝(선택): { n(본수), rows, cols, spacing_m } — 효율 Converse-Labarre 폐형(관례 명시): η=1−θ(( (rows−1)cols+(cols−1)rows )/(90·rows·cols)), θ=atan(D/s)°' },
+      negFriction: { description: '부주면마찰(선택): { depth_m(중립점 깊이 — 침하해석 산정 입력), fn_kPa(단위 부주면마찰 — α·Su 등 산정 입력) } — Qa에서 차감(보수 관례 명시)' },
     },
   },
   run(input) {
@@ -67,13 +69,30 @@ export default {
     const Qp = qp * Atip;
     const Qu = Qp + Qs;
     const FS = input.FS ?? 3.0;
-    const Qa = Qu / FS;
+    let Qa = Qu / FS;
+    // 무리말뚝 효율 (Converse-Labarre — 관례식 명시)
+    let grp = null;
+    const g = input.group;
+    if (g && Number(g.rows) > 0 && Number(g.cols) > 0 && Number(g.spacing_m) > 0) {
+      const theta = (Math.atan(D / g.spacing_m) * 180) / Math.PI;
+      const eta = 1 - (theta * ((g.rows - 1) * g.cols + (g.cols - 1) * g.rows)) / (90 * g.rows * g.cols);
+      const n = Number(g.n) > 0 ? g.n : g.rows * g.cols;
+      grp = { eta: +eta.toFixed(3), n, QaGroup_kN: +(eta * n * Qa).toFixed(1), note: 'Converse-Labarre 관례식(명시) — 점토 블록파괴 별도 검토 필요. 사질토 조밀 시 η>1 가능하나 1.0 상한 관례.' };
+    }
+    // 부주면마찰 차감 (보수 관례)
+    let neg = null;
+    const nf2 = input.negFriction;
+    if (nf2 && Number(nf2.depth_m) > 0 && Number(nf2.fn_kPa) > 0) {
+      const Qn = nf2.fn_kPa * perim * Math.min(nf2.depth_m, Lp);
+      Qa = Qa - Qn;
+      neg = { Qn_kN: +Qn.toFixed(1), depth_m: nf2.depth_m, note: '부주면마찰=중립점(침하해석 산정 입력)까지 하향력 — Qa에서 직접 차감(보수 관례 명시. 정밀은 하중조합별 별도)' };
+    }
     const pass = Number(input.demandP_kN) > 0 ? input.demandP_kN <= Qa : null;
     const r1 = (v) => +v.toFixed(1);
     return {
       verdict: pass === null ? 'INFO' : pass ? 'PASS' : 'FAIL',
       checks: { capacity: { Qu_kN: r1(Qu), Qa_kN: r1(Qa), FS, ...(pass !== null ? { demand_kN: input.demandP_kN, ratio: +(input.demandP_kN / Qa).toFixed(3), pass } : {}) } },
-      breakdown: { Qp_kN: r1(Qp), qp_kPa: r1(qp), Qs_kN: r1(Qs), shaft: rows },
+      breakdown: { Qp_kN: r1(Qp), qp_kPa: r1(qp), Qs_kN: r1(Qs), shaft: rows, ...(grp ? { group: grp } : {}), ...(neg ? { negFriction: neg } : {}) },
       notes: [
         `Qu=${Qu.toFixed(0)}kN (선단 ${Qp.toFixed(0)}+주면 ${Qs.toFixed(0)}) / FS ${FS} → Qa=${Qa.toFixed(0)}kN.`,
         'α·β·Nq=도표/시험 산정 입력 원칙(기본값 없음 — 지어내지 않음). Nc=9는 깊은기초 고전값(명시). 허용=극한/FS 구조는 KDS 11 50 15 §4.1.1.3 원문.',

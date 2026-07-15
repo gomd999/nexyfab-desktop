@@ -178,11 +178,28 @@ export function interiorCheck(assembly, params = {}) {
     const pp = w.params;
     return s + (pp.length * pp.height - (pp.openings ?? []).reduce((o, x) => o + x.w * x.h, 0));
   }, 0);
+  // 걸레받이·몰딩 연장 = 둘레 − 문 폭(sill<300 통행 개구만 공제 — 창은 미공제)
+  const perimM = (2 * (rb.W + rb.D)) / 1000;
+  const doorWidthM = parts.filter((p) => p.type === 'wall_with_openings').reduce((s, p) => {
+    const ops = Array.isArray(p.params?.openings) ? p.params.openings : [];
+    return s + ops.filter((o) => (o.sill ?? 0) < 300).reduce((a, o) => a + (o.w ?? 0), 0);
+  }, 0) / 1000;
+  const loss = Number(params.finishLossFactor) > 0 ? Math.min(1.3, Math.max(1.0, Number(params.finishLossFactor))) : 1.1; // 할증 기본 10% 관례(명시)
   const finishes = {
     floorM2: round((rb.W * rb.D) / 1e6),
     wallM2: round(wallNet / 1e6),
     ceilingM2: round((rb.W * rb.D) / 1e6),
-    note: '벽=실내측 1면 기준·개구 공제. 걸레받이·몰딩 연장 등 부자재 미포함. 단가 미산출(날조 방지).',
+    baseboardM: round(Math.max(0, perimM - doorWidthM)),
+    crownMoldingM: round(perimM),
+    lossFactor: loss,
+    withLoss: {
+      floorM2: round(((rb.W * rb.D) / 1e6) * loss),
+      wallM2: round((wallNet / 1e6) * loss),
+      ceilingM2: round(((rb.W * rb.D) / 1e6) * loss),
+    },
+    ...(Number(params.wallpaperRollM2) > 0 ? { wallpaperRolls: Math.ceil(((wallNet / 1e6) * loss) / Number(params.wallpaperRollM2)) } : {}),
+    ...(Number(params.tileM2PerBox) > 0 ? { floorTileBoxes: Math.ceil((((rb.W * rb.D) / 1e6) * loss) / Number(params.tileM2PerBox)) } : {}),
+    note: '벽=실내측 1면·개구 공제 / 걸레받이=둘레−문폭·몰딩=둘레(개산). 할증 ' + loss + '(기본 10% 관례 — 입력 가능). 롤/박스 환산=제품 규격 입력 시. 단가 미산출(날조 방지).',
   };
 
   // ── 설비 개산 (조명·환기·전기) — 형상 파생 + 명시 입력, 기준값 날조 금지 ────

@@ -29,6 +29,8 @@ export default {
       drainage: { enum: ['double', 'single'], description: '배수조건 (기본 double — Hdr=H/2)' },
       targetU_pct: { type: 'number', minimum: 10, maximum: 99, description: '목표 압밀도 % (기본 90)' },
       allowSettle_mm: { type: 'number', exclusiveMinimum: 0, description: '허용 침하량 (판정용 — 발주 기준 입력)' },
+      immediate: { description: '즉시침하(탄성 — 선택): { q_kPa(순하중), B_m(기초폭), Es_kPa(지반 탄성계수 — 시험 입력), nu?(0.3 기본), If?(영향계수 — 형상·강성 도표 입력, 기본 강성 원형 0.79π/4≈0.79 아님 — 유연 중앙 1.0 관례 명시) } — Se=q·B·(1−ν²)/Es·If 폐형' },
+      secondary: { description: '2차압밀(선택): { Calpha(2차압밀계수 — 시험 입력), t1_yr(1차완료 시점), t2_yr(설계수명) } — Ss=Cα·H/(1+e0)·log(t2/t1)' },
     },
   },
   run(input) {
@@ -77,11 +79,31 @@ export default {
       });
       time = { targetU_pct: input.targetU_pct ?? 90, Tv: +Tv.toFixed(3), t_yr: +t_yr.toFixed(2), Hdr_m: Hdr, curve };
     }
+    // 즉시침하 (탄성 폐형 — Se = q·B·(1−ν²)/Es·If)
+    let imm = null;
+    const im = input.immediate;
+    if (im && Number(im.q_kPa) > 0) {
+      for (const k of ['B_m', 'Es_kPa']) if (!(Number(im[k]) > 0)) throw new Error('input gate: immediate.' + k);
+      const nu = Number(im.nu) > 0 ? Number(im.nu) : 0.3;
+      const If = Number(im.If) > 0 ? Number(im.If) : 1.0; // 유연기초 중앙 관례(명시)
+      const Se = (im.q_kPa * im.B_m * (1 - nu * nu)) / im.Es_kPa * If * 1000; // mm
+      imm = { Se_mm: +Se.toFixed(1), If, nu, note: 'Se=qB(1−ν²)/Es·If — Es=시험 입력·If=형상/강성 도표 입력(기본 1.0 유연 중앙 관례 명시)' };
+    }
+    // 2차압밀 (Ss = Cα·H/(1+e0)·log(t2/t1))
+    let sec = null;
+    const sc2 = input.secondary;
+    if (sc2 && Number(sc2.Calpha) > 0) {
+      const t1 = Number(sc2.t1_yr), t2 = Number(sc2.t2_yr);
+      if (!(t1 > 0) || !(t2 > t1)) throw new Error('input gate: secondary.t2_yr > t1_yr > 0');
+      const Ss = (sc2.Calpha * H / (1 + e0)) * Math.log10(t2 / t1) * 1000; // mm
+      sec = { Ss_mm: +Ss.toFixed(1), t1_yr: t1, t2_yr: t2, note: 'Cα=시험 입력(Cα/Cc 0.04±0.01 점토 관례는 안내일 뿐)' };
+    }
     const Sc_mm = Sc_m * 1000;
-    const pass = Number(input.allowSettle_mm) > 0 ? Sc_mm <= input.allowSettle_mm : null;
+    const totalSettle = Sc_mm + (imm?.Se_mm ?? 0) + (sec?.Ss_mm ?? 0);
+    const pass = Number(input.allowSettle_mm) > 0 ? totalSettle <= input.allowSettle_mm : null;
     return {
       verdict: pass === null ? 'INFO' : pass ? 'PASS' : 'FAIL',
-      checks: { settlement: { Sc_mm: +Sc_mm.toFixed(1), regime, ...(pass !== null ? { allow_mm: input.allowSettle_mm, pass } : {}) } },
+      checks: { settlement: { Sc_mm: +Sc_mm.toFixed(1), regime, ...(imm ? { immediate: imm } : {}), ...(sec ? { secondary: sec } : {}), total_mm: +totalSettle.toFixed(1), ...(pass !== null ? { allow_mm: input.allowSettle_mm, pass } : {}) } },
       ...(time ? { time } : {}),
       notes: [
         `침하량 ${Sc_mm.toFixed(1)}mm — ${regime}. Δσ는 층 중앙 기준 별도 산정 입력(2:1법·Boussinesq).`,
