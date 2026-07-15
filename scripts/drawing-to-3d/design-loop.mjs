@@ -202,3 +202,87 @@ if (isMain) {
   if (!beams || !cols || !ccOk) process.exit(1);
   console.log('OK');
 }
+
+/**
+ * 자동 설계 제안 — 전수 루프의 FAIL 부재에 배근 목표탐색(이분법)을 적용해
+ * "전부 PASS가 되는 최소 배근 제안안"을 생성. 사람 승인 전제(제안 라벨).
+ * 탐색 변수: 보 As(하한=현재값, 상한=ρmax 근사 0.02·b·d — rc_beam ρ 게이트가 최종 판정),
+ *   기둥 Ast(상한 0.06Ag — smf 상한 준용 관례 명시). 단면 증대는 제안하지 않음(형상 변경
+ *   금지 — 파라미터 수정은 사람 몫 명시). 표준 철근 조합 스냅은 UI 후속.
+ */
+export function designSuggest(assembly, params = {}) {
+  const base = designLoop(assembly, params);
+  if (!base.ok) return base;
+  const fails = base.members.filter((m) => m.verdict === 'FAIL');
+  if (!fails.length) return { ...base, suggestions: [], note: 'FAIL 부재 없음 — 제안 불필요' };
+  const suggestions = [];
+  const rebarById = { ...(params.rebarById ?? {}) };
+  for (const m of fails) {
+    if (m.kind === 'beam') {
+      const [bw, bh] = m.section.split('×').map(Number);
+      const d = bh - (params.beamCover ?? 50);
+      const lo0 = Number(rebarById[m.id]?.As ?? params.beamAs) || 500;
+      // 상한 = 인장지배(εt≥0.004) ρmax 폐형(rc_beam과 동일 KDS 계수: β1 0.80(fck≤40)·εcu 0.0033) × 0.98 여유
+      const fck2 = params.fck ?? 24, fy2 = params.fy ?? 400;
+      const beta1 = fck2 <= 40 ? 0.80 : Math.max(0.64, 0.80 - 0.0016 * (fck2 - 40));
+      const rhoMax = 0.85 * beta1 * (fck2 / fy2) * (0.0033 / (0.0033 + 0.004));
+      const hi0 = 0.98 * rhoMax * bw * d;
+      let lo = lo0, hi = hi0, found = null;
+      // 상한에서도 FAIL이면 단면 부족 — 정직 보고
+      const tryAs = (As) => {
+        try {
+          const inp = { b: bw, d, fck: params.fck ?? 24, fy: params.fy ?? 400, As: Math.round(As), Mu: m.Mu_kNm, Vu: m.Vu_kN };
+          const Av = Number(params.beamAv), sS = Number(params.beamS);
+          if (Av > 0 && sS > 0) { inp.Av = Av; inp.s = sS; }
+          return runCalculator('rc_beam', inp, 'KDS').verdict === 'PASS';
+        } catch { return false; }
+      };
+      if (!tryAs(hi)) {
+        suggestions.push({ id: m.id, kind: 'beam', result: 'SECTION', note: `상한 배근(ρ≈0.02)에도 FAIL — 단면 증대 필요(형상 수정은 사람 몫). Mu=${m.Mu_kNm}` });
+        continue;
+      }
+      for (let it = 0; it < 30; it++) {
+        const mid = (lo + hi) / 2;
+        if (tryAs(mid)) { found = mid; hi = mid; } else lo = mid;
+        if (hi - lo < 10) break;
+      }
+      const AsNew = Math.ceil((found ?? hi) / 10) * 10;
+      rebarById[m.id] = { ...(rebarById[m.id] ?? {}), As: AsNew };
+      suggestions.push({ id: m.id, kind: 'beam', param: 'As', from: lo0, to: AsNew, note: '이분법 최소 PASS 배근(10mm² 절상) — 표준 철근 조합 선택은 승인 시' });
+    } else {
+      const [cb, ch] = m.section.split('×').map(Number);
+      const Ag = cb * ch;
+      const lo0 = Number(rebarById[m.id]?.Ast ?? params.colAst) || 0.01 * Ag;
+      const hi0 = 0.06 * Ag;
+      const tryAst = (Ast) => {
+        try {
+          return runCalculator('rc_column_pm', { b: cb, h: ch, fck: params.fck ?? 24, fy: params.fy ?? 400, Ast: Math.round(Ast), Pu: m.Pu_kN, Mu: Number(params.colMu) || 0 }, 'KDS').verdict === 'PASS';
+        } catch { return false; }
+      };
+      if (!tryAst(hi0)) {
+        suggestions.push({ id: m.id, kind: 'column', result: 'SECTION', note: `ρg 0.06 상한에도 FAIL — 단면 증대 필요. Pu=${m.Pu_kN}` });
+        continue;
+      }
+      let lo = lo0, hi = hi0, found = null;
+      for (let it = 0; it < 30; it++) {
+        const mid = (lo + hi) / 2;
+        if (tryAst(mid)) { found = mid; hi = mid; } else lo = mid;
+        if (hi - lo < 20) break;
+      }
+      const AstNew = Math.ceil((found ?? hi) / 10) * 10;
+      rebarById[m.id] = { ...(rebarById[m.id] ?? {}), Ast: AstNew };
+      suggestions.push({ id: m.id, kind: 'column', param: 'Ast', from: Math.round(lo0), to: AstNew, note: '이분법 최소 PASS 배근' });
+    }
+  }
+  // 제안 적용 후 전수 재검증 (교차확인 — 제안이 진짜 전부 PASS인지)
+  const after = designLoop(assembly, { ...params, rebarById });
+  return {
+    ok: true,
+    before: base.summary,
+    suggestions,
+    afterSummary: after.ok ? after.summary : null,
+    verified: after.ok && after.summary.FAIL === 0,
+    rebarById,
+    disclaimer: '자동 제안(비법정) — 최소 배근 탐색 결과이며 적용 전 사람 승인 필수. 정착·이음·내진상세(smf_detail)·시공성 별도 확인.',
+  };
+}

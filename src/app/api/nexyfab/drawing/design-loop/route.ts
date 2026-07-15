@@ -24,7 +24,14 @@ interface LoopResult {
   summary?: Record<string, unknown>; crossCheck?: Record<string, unknown>;
   excludedUnverified?: string[]; loads?: Record<string, unknown>; notes?: string[]; disclaimer?: string;
 }
-type LoopModule = { designLoop: (assembly: unknown, params: Record<string, unknown>) => LoopResult };
+interface SuggestResult {
+  ok: boolean; error?: string; before?: Record<string, unknown>; afterSummary?: Record<string, unknown> | null;
+  suggestions?: Array<Record<string, unknown>>; verified?: boolean; rebarById?: Record<string, unknown>; disclaimer?: string;
+}
+type LoopModule = {
+  designLoop: (assembly: unknown, params: Record<string, unknown>) => LoopResult;
+  designSuggest: (assembly: unknown, params: Record<string, unknown>) => SuggestResult;
+};
 
 let _mod: LoopModule | null = null;
 async function load(): Promise<LoopModule> {
@@ -86,9 +93,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const rl = rateLimit(`design-loop:${ip}`, 20, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
   try {
-    const body = (await req.json()) as { assembly?: unknown; params?: Record<string, unknown>; format?: string; title?: string };
+    const body = (await req.json()) as { assembly?: unknown; params?: Record<string, unknown>; format?: string; title?: string; mode?: string };
     if (!body.assembly) return NextResponse.json({ ok: false, error: 'assembly 필요' }, { status: 400 });
     const mod = await load();
+    if (body.mode === 'suggest') {
+      const sg = mod.designSuggest(body.assembly, body.params ?? {});
+      return NextResponse.json(sg, { status: sg.ok ? 200 : 422 });
+    }
     const result = mod.designLoop(body.assembly, body.params ?? {});
     if (!result.ok) return NextResponse.json(result, { status: 422 });
     if (body.format === 'html') {

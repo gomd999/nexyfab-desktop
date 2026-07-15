@@ -1805,6 +1805,22 @@ export default function AssemblyPresetPanel({
     } finally { setLoopBusy(false); }
   }, [built, chainBody]);
 
+  // 자동 배근 제안 (FAIL 부재 → 이분법 최소 배근 → 전수 재검증)
+  const [suggest, setSuggest] = useState<{ ok: boolean; suggestions?: Array<Record<string, unknown>>; verified?: boolean; disclaimer?: string } | null>(null);
+  const [suggestBusy, setSuggestBusy] = useState(false);
+  const runSuggest = useCallback(async () => {
+    if (!built?.assembly) return;
+    setSuggestBusy(true); setSuggest(null);
+    try {
+      const res = await fetch('/api/nexyfab/drawing/design-loop/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...chainBody(), mode: 'suggest' }),
+      });
+      setSuggest((await res.json()) as typeof suggest);
+    } catch (e) {
+      setSuggest({ ok: false, disclaimer: e instanceof Error ? e.message : String(e) });
+    } finally { setSuggestBusy(false); }
+  }, [built, chainBody]);
+
   const runChain = useCallback(async () => {
     if (!built?.assembly) return;
     setChainBusy(true); setChain(null);
@@ -3297,6 +3313,27 @@ export default function AssemblyPresetPanel({
                   <button type="button" onClick={() => downloadHtmlReport('/api/nexyfab/drawing/design-loop/', chainBody(), 'design_loop_sheets.html')} style={rptBtn}>
                     🖨 {ko ? '일괄 계산서(부재별 1장)' : 'All member sheets'}
                   </button>
+                  {Number(loop.summary.FAIL) > 0 && (
+                    <button type="button" onClick={runSuggest} disabled={suggestBusy} style={{ ...rptBtn, background: '#16a34a', color: '#fff' }}>
+                      {suggestBusy ? (ko ? '탐색 중…' : 'Searching…') : `✨ ${ko ? 'FAIL 부재 자동 배근 제안' : 'Auto rebar suggestion'}`}
+                    </button>
+                  )}
+                  {suggest && suggest.ok && (
+                    <div style={{ marginTop: 4, fontSize: 11 }}>
+                      <b>{ko ? '자동 제안' : 'Suggestions'}:</b> {(suggest.suggestions ?? []).length}{ko ? '건' : ''} —
+                      {ko ? ' 적용 시 ' : ' after: '}<span style={{ color: suggest.verified ? '#16a34a' : '#d97706', fontWeight: 700 }}>
+                        {suggest.verified ? (ko ? '전 부재 PASS(재검증 완료)' : 'All PASS (re-verified)') : (ko ? '일부 잔여(단면 증대 필요 부재 포함)' : 'partial')}
+                      </span>
+                      <div style={{ maxHeight: 90, overflowY: 'auto', marginTop: 2 }}>
+                        {(suggest.suggestions ?? []).slice(0, 20).map((s, i) => (
+                          <span key={i} style={{ display: 'inline-block', margin: '0 4px 2px 0', padding: '0 6px', borderRadius: 4, background: s.result === 'SECTION' ? '#fee2e2' : '#dcfce7', fontSize: 10 }}>
+                            {String(s.id)} {s.result === 'SECTION' ? (ko ? '단면증대 필요' : 'resize') : `${String(s.param)} ${String(s.from)}→${String(s.to)}`}
+                          </span>
+                        ))}
+                      </div>
+                      <span style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{String(suggest.disclaimer ?? '')}</span>
+                    </div>
+                  )}
                 </div>
               )}
               <div style={{ marginTop: 4, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{chain.disclaimer}</div>
