@@ -35,6 +35,7 @@ export default {
       tensFactor: { type: 'number', minimum: 0, maximum: 0.63, description: '인장 참고한계 ×√fck (기본 0.25 참고 관례 — 한계상태설계법의 정식 검토는 균열폭/탈압축(§4.2.3, 후속) 명시)' },
       camber: { description: '솟음 산정(선택 — 탄성 폐형): { L_m(지간), wSw_kNm(자중 등분포), Ec_MPa?(기본 8500∛(fck+4)), Eci_MPa?(전달 시 — 기본 fci 기준), creepMult?(장기배율 — PCI 근사표 등 산정 입력, 기본 미적용 명시) }' },
       tendon: { description: '긴장재 응력 한계 검토(선택 — §1.5.7.2·§1.5.7.3 원문): { Ap_mm2, fpu_MPa, fpy_MPa(항복 — 뚜렷하지 않으면 fp0.2k 입력·명시) }' },
+      crackControl: { description: '간접 균열 제어(선택 — §4.2.3.3 표 4.2-4·4.2-5 원문): { steelStress_MPa(균열단면 기준 철근응력 — 산정 입력), barDia_mm?, barSpacing_mm?, section: rc_flexure|rc_tension|psc } — 지름 또는 간격 중 하나 만족 시 한계균열폭(PSC 0.2·RC 0.3mm) 충족 간주(§4.2.3.1(6)). 최소철근량(§4.2.3.2 식4.2-1)은 별도 확인' },
     },
   },
   run(input) {
@@ -103,10 +104,35 @@ export default {
         note: '§1.5.7.2(1)① f0,max=min(0.8fpu, 0.9fpy)·§1.5.7.3(1) fpm0=min(0.75fpu, 0.85fpy) — 원문 확정. 초과긴장은 ±5% 계측 시 0.95fpy까지(§1.5.7.2(1)② — 별도 판단). 항복점 불명확 시 fpy=fp0.2k(§3.3.1(6)).',
       };
     }
-    const pass = t.compOk && t.tensOk && sv.compOk && sv.tensOk && (sus ? sus.pass : true) && (tendon ? tendon.jacking.pass && tendon.transfer.pass : true);
+    // 간접 균열 제어 (§4.2.3.3 표 4.2-4·4.2-5 원문 전사 — 보간 없음, 보수적으로 상위 응력행 적용)
+    let crack = null;
+    const cc = input.crackControl;
+    if (cc && Number(cc.steelStress_MPa) > 0) {
+      const STRESS = [160, 200, 240, 280, 320, 360];
+      const DIA = { rc: [32, 25, 16, 14, 10, 8], psc: [25, 16, 13, 8, 6, 5] };           // 표 4.2-4
+      const SPC = { rc_flexure: [300, 250, 200, 150, 100, 50], rc_tension: [200, 150, 125, 75, null, null], psc: [200, 150, 100, 50, null, null] }; // 표 4.2-5
+      const sec = ['rc_flexure', 'rc_tension', 'psc'].includes(cc.section) ? cc.section : 'psc';
+      const ss = Number(cc.steelStress_MPa);
+      const row = STRESS.findIndex((s) => ss <= s);
+      if (row === -1) {
+        crack = { pass: false, note: `철근응력 ${ss}MPa > 360 — 표 범위 밖, 간접 제어 불가. §4.2.3.4 직접 균열폭 계산 필요(후속) 또는 철근량 증가로 응력 저감.` };
+      } else {
+        const maxDia = (sec === 'psc' ? DIA.psc : DIA.rc)[row];
+        const maxSpc = SPC[sec][row];
+        const diaOk = Number(cc.barDia_mm) > 0 ? cc.barDia_mm <= maxDia : null;
+        const spcOk = Number(cc.barSpacing_mm) > 0 ? (maxSpc !== null ? cc.barSpacing_mm <= maxSpc : false) : null;
+        const ok = diaOk === true || spcOk === true; // §4.2.3.3(1): 둘 중 하나 만족
+        crack = {
+          steelStress_MPa: ss, appliedRow_MPa: STRESS[row], maxDia_mm: maxDia, maxSpacing_mm: maxSpc,
+          diaOk, spacingOk: spcOk, pass: ok,
+          note: `표 4.2-4/4.2-5(${sec}) — 지름 또는 간격 중 하나 만족 시 한계균열폭(PSC 0.2·RC 0.3mm — 표 4.2-2 B~E등급) 충족 간주. 응력 ${ss}→${STRESS[row]}행 보수 적용(표 보간 규정 없음). 간접하중(구속) 지배 부재는 지름 조건 필수(§4.2.3.3(2)). 최소철근량 식4.2-1 별도.`,
+        };
+      }
+    }
+    const pass = t.compOk && t.tensOk && sv.compOk && sv.tensOk && (sus ? sus.pass : true) && (tendon ? tendon.jacking.pass && tendon.transfer.pass : true) && (crack ? crack.pass : true);
     return {
       verdict: pass ? 'PASS' : 'FAIL',
-      checks: { transfer: t, service: sv, ...(sus ? { sustained: sus } : {}), ...(tendon ? { tendon } : {}) },
+      checks: { transfer: t, service: sv, ...(sus ? { sustained: sus } : {}), ...(tendon ? { tendon } : {}), ...(crack ? { crackIndirect: crack } : {}) },
       ...(camber ? { camber } : {}),
       intermediate: { Pi_kN: +(Pi / 1000).toFixed(1), Pe_kN: +(Pe / 1000).toFixed(1), St_mm3: Math.round(St), Sb_mm3: Math.round(Sb) },
       notes: [

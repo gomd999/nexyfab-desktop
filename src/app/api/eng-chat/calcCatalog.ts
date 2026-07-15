@@ -2175,7 +2175,7 @@ export const CALC_CATALOG: CalcSpec[] = [
         "max": 60
       },
       "detail": {
-        "desc": "벽 상세 전단검토(§4.9 원문식 — 선택): { wallIndex(1~), Nu_kN(압축+), Mu_kNm, Vu_kN, Avh_mm2?, sh_mm?, fy? }"
+        "desc": "벽 상세 전단검토(§4.9 원문식 — 선택): { wallIndex(1~), Nu_kN(압축+), Mu_kNm, Vu_kN, Avh_mm2?, sh_mm?, fy?, Avv_mm2?, sv_mm? } — Avv/sv 입력 시 §4.9.3 최소철근·간격 검토 포함"
       }
     }
   },
@@ -2329,6 +2329,9 @@ export const CALC_CATALOG: CalcSpec[] = [
       },
       "tendon": {
         "desc": "긴장재 응력 한계 검토(선택 — §1.5.7.2·§1.5.7.3 원문): { Ap_mm2, fpu_MPa, fpy_MPa(항복 — 뚜렷하지 않으면 fp0.2k 입력·명시) }"
+      },
+      "crackControl": {
+        "desc": "간접 균열 제어(선택 — §4.2.3.3 표 4.2-4·4.2-5 원문): { steelStress_MPa(균열단면 기준 철근응력 — 산정 입력), barDia_mm?, barSpacing_mm?, section: rc_flexure|rc_tension|psc } — 지름 또는 간격 중 하나 만족 시 한계균열폭(PSC 0.2·RC 0.3mm) 충족 간주(§4.2.3.1(6)). 최소철근량(§4.2.3.2 식4.2-1)은 별도 확인"
       }
     }
   }
