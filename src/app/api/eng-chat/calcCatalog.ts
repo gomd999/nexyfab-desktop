@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(59종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(60종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -3827,6 +3827,76 @@ export const CALC_CATALOG: CalcSpec[] = [
         "desc": "L/D 비 (제한 ⑥: ≤2)",
         "type": "number",
         "min": 0
+      }
+    }
+  },
+  {
+    "id": "pier_seismic",
+    "domain": "bridge/seismic",
+    "title": "교각 심부구속 철근 (§4.6.3.4)",
+    "description": "원형 ρs·사각 Ash 심부구속량 + 상세 게이트 — KDS 24 17 11 원문식.",
+    "required": [
+      "shape",
+      "fck",
+      "fyh"
+    ],
+    "params": {
+      "shape": {
+        "desc": "단면 형상",
+        "enum": [
+          "circular",
+          "rectangular"
+        ]
+      },
+      "fck": {
+        "desc": "",
+        "type": "number",
+        "min": 21,
+        "max": 60
+      },
+      "fyh": {
+        "desc": "횡방향철근 항복강도",
+        "type": "number",
+        "min": 300,
+        "max": 500
+      },
+      "D_mm": {
+        "desc": "원형: 기둥 지름",
+        "type": "number",
+        "min": 0
+      },
+      "Dc_mm": {
+        "desc": "원형: 심부 지름(나선 외경)",
+        "type": "number",
+        "min": 0
+      },
+      "b_mm": {
+        "desc": "사각: 폭",
+        "type": "number",
+        "min": 0
+      },
+      "h_mm": {
+        "desc": "사각: 깊이",
+        "type": "number",
+        "min": 0
+      },
+      "bc_mm": {
+        "desc": "사각: 심부 폭(후프 외측간)",
+        "type": "number",
+        "min": 0
+      },
+      "hc_mm": {
+        "desc": "사각: 검토 방향 심부 치수 hc",
+        "type": "number",
+        "min": 0
+      },
+      "a_mm": {
+        "desc": "사각: 횡방향철근 수직간격 a",
+        "type": "number",
+        "min": 0
+      },
+      "provided": {
+        "desc": "제공 철근(검토): { rhoS?(원형 체적비), Ash_mm2?(사각 간격 a당), spacing_mm?(상세 게이트), dbTie_mm?(띠철근 지름) }"
       }
     }
   }
