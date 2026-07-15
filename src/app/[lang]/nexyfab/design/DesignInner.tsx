@@ -419,6 +419,20 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             ))}
           </div>
           <div style={{ padding: 16, display: tab === 'create' ? undefined : 'none' }}>
+            {/* 기계 세부분야 칩 — 가설·랙은 사이드바에서 기계로 흡수(2026-07-16 IA) */}
+            {(domain?.slug === 'mech' || domain?.slug === 'rack') && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                {([['mech', ko ? '기계·장비·판금' : 'Machinery/sheet'], ['rack', ko ? '가설·랙·경량철골' : 'Rack/light steel']] as [string, string][]).map(([s, label]) => (
+                  <a key={s} href={`/${lang}/nexyfab/design/?domain=${s}`}
+                    style={{ padding: '5px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 700, textDecoration: 'none',
+                      border: '1px solid ' + (domain.slug === s ? 'var(--nx-accent, #2563eb)' : 'var(--nx-border, #dfe3e8)'),
+                      background: domain.slug === s ? 'var(--nx-accent-soft, rgba(37,99,235,0.12))' : 'transparent',
+                      color: domain.slug === s ? 'var(--nx-accent, #2563eb)' : 'var(--nx-text-2, #46505e)' }}>
+                    {label}
+                  </a>
+                ))}
+              </div>
+            )}
             {/* 결정론 파라메트릭 프리셋(완벽화 Pillar ①) — 해당 분야에서 AI보다 우선 노출 */}
             {domain?.parametric && (
               <ParametricPresetPanel
@@ -511,6 +525,28 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                     </button>
                   ))}
             </div>
+
+            {/* 기계 전문 도구 — 구 사이드바 '도구' 섹션의 새 집(2026-07-16 IA) */}
+            {(domain?.slug === 'mech' || domain?.slug === 'rack') && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 11, color: 'var(--nx-text-3, #6b7684)', marginBottom: 4 }}>{ko ? '기계 전문 도구' : 'Pro tools'}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  {([
+                    ['✨', ko ? '자유형 Studio' : 'Free-form Studio', `/${lang}/studio`],
+                    ['🛠️', ko ? '전문가형 CAD' : 'Expert CAD', `/${lang}/shape-generator?mode=expert`],
+                    ['📐', ko ? '종이·레이저컷' : 'Papercraft', `/${lang}/papercraft`],
+                    ['🔩', ko ? '부품 라이브러리' : 'Part Library', `/${lang}/nexyfab/cots`],
+                  ] as [string, string, string][]).map(([ic, label, href]) => (
+                    <a key={href} href={href}
+                      style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 10px', borderRadius: 8, textDecoration: 'none',
+                        border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)',
+                        color: 'var(--nx-text, #1a2230)', fontSize: 11.5, fontWeight: 700 }}>
+                      <span aria-hidden style={{ fontSize: 14 }}>{ic}</span>{label}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {error && (
               <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: '#fdecec', color: '#b42318', fontSize: 12.5 }}>{error}</div>

@@ -227,6 +227,33 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
         <span style={{ fontSize: 16, fontWeight: 600 }}>
           {isKo ? '내 프로젝트' : 'My Projects'}
         </span>
+        {/* 내 것 | 공유됨 탭 — 구 사이드바 '공유된 항목'의 새 집(2026-07-16 IA) */}
+        <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
+          <button
+            type="button"
+            onClick={() => { setSharedView(false); try { window.history.replaceState(null, '', window.location.pathname); } catch { /* ignore */ } }}
+            style={{
+              padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              border: `1px solid ${!sharedView ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+              background: !sharedView ? 'var(--nx-accent-soft, rgba(37,99,235,0.12))' : 'transparent',
+              color: !sharedView ? 'var(--nx-accent)' : 'var(--nx-text-2)',
+            }}
+          >
+            {isKo ? '내 것' : 'Mine'}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setSharedView(true); try { window.history.replaceState(null, '', '?filter=shared'); } catch { /* ignore */ } }}
+            style={{
+              padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              border: `1px solid ${sharedView ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+              background: sharedView ? 'var(--nx-accent-soft, rgba(37,99,235,0.12))' : 'transparent',
+              color: sharedView ? 'var(--nx-accent)' : 'var(--nx-text-2)',
+            }}
+          >
+            🔗 {isKo ? '공유됨' : 'Shared'}
+          </button>
+        </div>
         <div style={{ flex: 1 }} />
         {tab === 'active' && (
           isFreePlan && total >= FREE_LIMIT ? (

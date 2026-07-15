@@ -46,40 +46,23 @@ interface NavSection {
   items: NavItem[];
 }
 
+// 2026-07-16 IA 결정: 분야-우선 7항목으로 축소(사용자 멘탈 모델 = "무엇을 설계하러 왔나").
+// - 계산기·설계 검토 → 스튜디오 4탭(생성|검증|계산기|출력)이 정식 진입로
+// - 가설·랙 → 기계 페이지 안의 세부분야 칩으로 흡수(isActive에서 rack도 기계로 판정)
+// - 자유형 Studio·전문가형 CAD·종이레이저컷·부품 → 기계 페이지의 전문 도구 카드
+// - 공유된 항목 → 내 프로젝트 페이지의 '공유됨' 탭
 const SECTIONS: NavSection[] = [
   {
-    titleKo: '디자인',
-    titleEn: 'Design',
+    titleKo: '',
+    titleEn: '',
     items: [
-      { icon: '🏠', labelKo: '홈',                labelEn: 'Hub',                href: '/nexyfab/hub' },
-      { icon: '🧭', labelKo: '설계 (AI)',         labelEn: 'Design (AI)',        href: '/nexyfab/design', badge: 'NEW' },
-      { icon: '🧮', labelKo: '계산기 61종',       labelEn: 'Calculators (61)',   href: '/nexyfab/design?tab=calc' },
-      { icon: '📋', labelKo: '설계 검토',         labelEn: 'Design Review',      href: '/nexyfab/evaluate' },
-      { icon: '📁', labelKo: '내 프로젝트',       labelEn: 'My Projects',        href: '/nexyfab/projects' },
-    ],
-  },
-  {
-    titleKo: '분야',
-    titleEn: 'Domains',
-    items: [
-      // 설계 — 분야별(각 분야 = 프리셋 갤러리 + 그 분야 검증). design/designDomains.ts와 slug 일치.
-      { icon: '🔧', labelKo: '기계·장비·판금',    labelEn: 'Machinery/sheet',    href: '/nexyfab/design?domain=mech' },
-      { icon: '🏗', labelKo: '가설·랙·경량철골',  labelEn: 'Rack/light steel',   href: '/nexyfab/design?domain=rack' },
-      { icon: '🌉', labelKo: '토목 소구조물',     labelEn: 'Civil structures',   href: '/nexyfab/design?domain=civil' },
-      { icon: '🏢', labelKo: '건축 부재',         labelEn: 'Building member',    href: '/nexyfab/design?domain=building' },
-      { icon: '🌳', labelKo: '조경 구조·배수',    labelEn: 'Landscape/drainage', href: '/nexyfab/design?domain=landscape' },
-      { icon: '🪑', labelKo: '인테리어·상업공간', labelEn: 'Interior/commercial', href: '/nexyfab/design?domain=interior' },
-    ],
-  },
-  {
-    titleKo: '도구',
-    titleEn: 'Tools',
-    items: [
-      { icon: '✨', labelKo: '자유형 Studio',     labelEn: 'Free-form Studio',   href: '/studio' },
-      { icon: '🛠️', labelKo: '전문가형 CAD',      labelEn: 'Expert CAD',         href: '/shape-generator?mode=expert' },
-      { icon: '📐', labelKo: '종이·레이저컷',     labelEn: 'Papercraft',         href: '/papercraft' },
-      { icon: '🔗', labelKo: '공유된 항목',       labelEn: 'Shared with me',     href: '/nexyfab/projects?filter=shared' },
-      { icon: '🔩', labelKo: '부품 라이브러리',   labelEn: 'Part Library',       href: '/nexyfab/cots' },
+      { icon: '🏠', labelKo: '홈',          labelEn: 'Home',         href: '/nexyfab/hub' },
+      { icon: '🔧', labelKo: '기계',        labelEn: 'Mechanical',   href: '/nexyfab/design?domain=mech' },
+      { icon: '🏢', labelKo: '건축',        labelEn: 'Architecture', href: '/nexyfab/design?domain=building' },
+      { icon: '🌉', labelKo: '토목',        labelEn: 'Civil',        href: '/nexyfab/design?domain=civil' },
+      { icon: '🌳', labelKo: '조경',        labelEn: 'Landscape',    href: '/nexyfab/design?domain=landscape' },
+      { icon: '🪑', labelKo: '인테리어',    labelEn: 'Interior',     href: '/nexyfab/design?domain=interior' },
+      { icon: '📁', labelKo: '내 프로젝트', labelEn: 'My Projects',  href: '/nexyfab/projects' },
     ],
   },
 ];
@@ -130,23 +113,16 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
     const full = `/${lang}${path}`;
     // Don't activate Hub for every nexyfab child route.
     if (path === '/nexyfab/hub') return pathname === full || pathname === full + '/';
-    if (path === '/nexyfab/projects') {
-      // Differentiate "내 프로젝트" vs "공유된 항목" via querystring sniffing.
-      const matches = pathname === full || pathname.startsWith(full + '/');
-      if (!matches) return false;
-      const isShared = typeof window !== 'undefined' && window.location.search.includes('filter=shared');
-      return query?.includes('filter=shared') ? isShared : !isShared;
-    }
     if (path === '/nexyfab/design') {
-      // "설계 (AI)"(쿼리 없음) vs 분야(?domain=X) vs 계산기(?tab=calc)를 현재 쿼리로 구분.
+      // 분야(?domain=X) 판정. 가설·랙(rack)은 기계에 흡수(2026-07-16 IA).
       const matches = pathname === full || pathname.startsWith(full + '/');
       if (!matches) return false;
       const sp = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
       const cur = sp?.get('domain') ?? null;
-      const curTab = sp?.get('tab') ?? null;
-      if (query === 'tab=calc') return curTab === 'calc';
       const own = query?.startsWith('domain=') ? query.slice('domain='.length) : null;
-      return own ? own === cur : (!cur && curTab !== 'calc');
+      if (!own) return !cur;
+      if (own === 'mech') return cur === 'mech' || cur === 'rack';
+      return own === cur;
     }
     return pathname === full || pathname?.startsWith(full + '/');
   };
@@ -206,18 +182,20 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
         <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
           {SECTIONS.map((sec) => (
             <div key={sec.titleEn} style={{ marginBottom: 8 }}>
-              <div
-                className="nf-uni-section-title"
-                style={{
-                  fontSize: 10, fontWeight: 700,
-                  color: 'var(--nx-text-3)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  padding: '10px 14px 4px',
-                }}
-              >
-                {isKo ? sec.titleKo : sec.titleEn}
-              </div>
+              {(isKo ? sec.titleKo : sec.titleEn) !== '' && (
+                <div
+                  className="nf-uni-section-title"
+                  style={{
+                    fontSize: 10, fontWeight: 700,
+                    color: 'var(--nx-text-3)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    padding: '10px 14px 4px',
+                  }}
+                >
+                  {isKo ? sec.titleKo : sec.titleEn}
+                </div>
+              )}
               {sec.items.map((item) => {
                 const active = item.external ? false : isActive(item.href);
                 // External (cross-surface) links — append ?lang to preserve
