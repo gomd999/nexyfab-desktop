@@ -50,8 +50,38 @@ type StructuralResult = {
   warnings?: string[];
 };
 type CableRow = { from?: unknown; to?: unknown; type?: unknown; cores?: unknown; mm2?: unknown; lengthM?: unknown; note?: unknown };
-type Msg = { role: 'user' | 'assistant'; content: string; calc?: CalcResult; cad?: CadResult; wiring?: CableRow[]; image?: string };
+type Msg = { role: 'user' | 'assistant'; content: string; calc?: CalcResult; cad?: CadResult; wiring?: CableRow[]; image?: string; calcId?: string; calcInput?: Record<string, unknown> };
 type Attached = { dataUrl: string; base64: string; mime: string; name: string };
+// 챗 스레드 (좌측 사이드바 — 게스트 localStorage·회원 서버 동기화)
+type Thread = { id: string; title: string; domain: Domain; at: number; updated: number; pinned?: boolean; badge?: string | null; msgs: Msg[] };
+const THREADS_KEY = 'nf_chat_threads_v1';
+const newThreadId = () => 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const titleFrom = (text: string) => { const t2 = text.replace(/\s+/g, ' ').trim(); return t2.length <= 26 ? t2 : t2.slice(0, 26) + '…'; };
+const badgeFrom = (msgs: Msg[]): string | null => { for (let i = msgs.length - 1; i >= 0; i--) { const v = (msgs[i].calc as { verdict?: string } | undefined)?.verdict; if (v) return v; } return null; };
+function loadThreads(): Thread[] {
+  try {
+    const raw = localStorage.getItem(THREADS_KEY);
+    if (raw) return (JSON.parse(raw) as Thread[]).filter((t2) => Array.isArray(t2.msgs));
+    const old = localStorage.getItem('nf_chat_v1');
+    if (old) {
+      const saved = JSON.parse(old) as { domain?: Domain; messages?: Msg[] };
+      if (saved.messages?.length) {
+        const first = saved.messages.find((m) => m.role === 'user');
+        const th: Thread = { id: newThreadId(), title: titleFrom(first?.content ?? 'Chat'), domain: (saved.domain ?? 'mechanical') as Domain, at: Date.now(), updated: Date.now(), badge: badgeFrom(saved.messages), msgs: saved.messages };
+        localStorage.setItem(THREADS_KEY, JSON.stringify([th]));
+        localStorage.removeItem('nf_chat_v1');
+        return [th];
+      }
+    }
+  } catch { /* ignore */ }
+  return [];
+}
+function saveThreadsLocal(list: Thread[]) {
+  try {
+    const trimmed = list.slice(0, 50).map((t2) => ({ ...t2, msgs: t2.msgs.slice(-60).map((m) => (m.image ? { ...m, image: undefined, content: m.content || '📎' } : m)) }));
+    localStorage.setItem(THREADS_KEY, JSON.stringify(trimmed));
+  } catch { /* quota — skip */ }
+}
 
 // 실행형 도메인(엔진 연동). 인테리어는 얕아 대화만(스트리밍 유지).
 const ACTION_DOMAINS: Domain[] = ['civil', 'architecture', 'landscape', 'mechanical'];
@@ -307,6 +337,7 @@ const DICT: Record<Lang, {
   quoteThis: string; saveSignup: string; signup: string; cadStructural: string; cadPackage: string;
   chips: Record<Domain, string>;
   actDemo: string; actQuote: string; actContact: string;
+  newChat: string; guestNote: string; guestLimit: string;
 }> = {
   kr: {
     title: '무엇을 설계할까요?',
@@ -319,6 +350,7 @@ const DICT: Record<Lang, {
     trust: '결정론 계산 엔진 · 엔지니어링 코퍼스 · 결과엔 기준 조항 근거 표시',
     chips: { mechanical: '기계설계', civil: '토목', architecture: '건축', landscape: '조경', interior: '인테리어' },
     actDemo: '검증 엔진 데모', actQuote: '정밀 견적 요청', actContact: '전문가 상담',
+    newChat: '새 대화', guestNote: '게스트: 대화는 이 기기에만 저장', guestLimit: '대화가 이 기기에만 저장됩니다 — 가입하면 어디서나 이어집니다',
     calcRunning: '검토 실행 중…', calcPass: '적합', calcFail: '부적합', calcRefs: '근거',
     cadGenerating: '3D 모델 생성 중…', cadNoPreview: '이 형상의 3D 미리보기는 배포 환경에서 제공됩니다. 아래 SCAD로 확인하세요.', cadDownload: 'SCAD 다운로드',
     cadSpecTitle: '이 사양으로 정밀 3D를 생성할까요?', cadConfirm: '확인 · 정밀 3D 생성', cadBuilding: '정밀 형상(STEP) 생성 중…', cadStepDownload: 'STEP 다운로드', cadGate: '결정론 게이트',
@@ -338,6 +370,7 @@ const DICT: Record<Lang, {
     trust: 'Deterministic calc engine · engineering corpus · every result cites its code clause',
     chips: { mechanical: 'Mechanical', civil: 'Civil', architecture: 'Architecture', landscape: 'Landscape', interior: 'Interior' },
     actDemo: 'Verification engine demo', actQuote: 'Request a quote', actContact: 'Talk to an expert',
+    newChat: 'New chat', guestNote: 'Guest: chats stay on this device', guestLimit: 'Chats are saved on this device only — sign up to sync',
     calcRunning: 'Running check…', calcPass: 'PASS', calcFail: 'FAIL', calcRefs: 'Refs',
     cadGenerating: 'Generating 3D model…', cadNoPreview: 'A 3D preview of this shape is available in the deployed environment — see the SCAD below.', cadDownload: 'Download SCAD',
     cadSpecTitle: 'Generate the precise 3D from this spec?', cadConfirm: 'Confirm · build 3D', cadBuilding: 'Building precise geometry (STEP)…', cadStepDownload: 'Download STEP', cadGate: 'Deterministic gate',
@@ -357,6 +390,7 @@ const DICT: Record<Lang, {
     trust: '決定論的計算エンジン · エンジニアリングコーパス · 結果に基準条項の根拠を明示',
     chips: { mechanical: '機械設計', civil: '土木', architecture: '建築', landscape: '造園', interior: 'インテリア' },
     actDemo: '検証エンジンのデモ', actQuote: '見積もり依頼', actContact: '専門家に相談',
+    newChat: '新しいチャット', guestNote: 'ゲスト：会話はこの端末のみに保存', guestLimit: '会話はこの端末のみに保存 — 登録で同期できます',
     calcRunning: '検討を実行中…', calcPass: '適合', calcFail: '不適合', calcRefs: '根拠',
     cadGenerating: '3Dモデル生成中…', cadNoPreview: 'この形状の3Dプレビューは本番環境で提供されます。下のSCADをご確認ください。', cadDownload: 'SCADをダウンロード',
     cadSpecTitle: 'この仕様で精密3Dを生成しますか？', cadConfirm: '確認 · 精密3D生成', cadBuilding: '精密形状(STEP)を生成中…', cadStepDownload: 'STEPをダウンロード', cadGate: '決定論ゲート',
@@ -376,6 +410,7 @@ const DICT: Record<Lang, {
     trust: '确定性计算引擎 · 工程语料库 · 结果标注规范条款依据',
     chips: { mechanical: '机械设计', civil: '土木', architecture: '建筑', landscape: '景观', interior: '室内' },
     actDemo: '验证引擎演示', actQuote: '请求报价', actContact: '咨询专家',
+    newChat: '新对话', guestNote: '访客：对话仅保存在本设备', guestLimit: '对话仅保存在本设备 — 注册后可同步',
     calcRunning: '正在计算…', calcPass: '合格', calcFail: '不合格', calcRefs: '依据',
     cadGenerating: '正在生成3D模型…', cadNoPreview: '该形状的3D预览在部署环境中提供，请查看下方SCAD。', cadDownload: '下载SCAD',
     cadSpecTitle: '按此规格生成精确3D？', cadConfirm: '确认 · 生成3D', cadBuilding: '正在生成精确几何(STEP)…', cadStepDownload: '下载STEP', cadGate: '确定性门控',
@@ -395,6 +430,7 @@ const DICT: Record<Lang, {
     trust: 'Motor de cálculo determinista · corpus de ingeniería · cada resultado cita su norma',
     chips: { mechanical: 'Mecánico', civil: 'Civil', architecture: 'Arquitectura', landscape: 'Paisajismo', interior: 'Interior' },
     actDemo: 'Demo del motor de verificación', actQuote: 'Solicitar presupuesto', actContact: 'Hablar con un experto',
+    newChat: 'Nuevo chat', guestNote: 'Invitado: los chats quedan en este dispositivo', guestLimit: 'Los chats se guardan solo aquí — regístrate para sincronizar',
     calcRunning: 'Calculando…', calcPass: 'CUMPLE', calcFail: 'NO CUMPLE', calcRefs: 'Refs',
     cadGenerating: 'Generando modelo 3D…', cadNoPreview: 'La vista 3D de esta forma está disponible en el entorno desplegado — consulta el SCAD abajo.', cadDownload: 'Descargar SCAD',
     cadSpecTitle: '¿Generar el 3D preciso con esta especificación?', cadConfirm: 'Confirmar · generar 3D', cadBuilding: 'Generando geometría precisa (STEP)…', cadStepDownload: 'Descargar STEP', cadGate: 'Compuerta determinista',
@@ -414,6 +450,7 @@ const DICT: Record<Lang, {
     trust: 'محرك حساب حتمي · مكتبة هندسية · كل نتيجة تُسنَد إلى بند الكود',
     chips: { mechanical: 'ميكانيكي', civil: 'مدني', architecture: 'معماري', landscape: 'مناظر', interior: 'ديكور' },
     actDemo: 'عرض محرّك التحقق', actQuote: 'اطلب عرض سعر', actContact: 'تحدث مع خبير',
+    newChat: 'محادثة جديدة', guestNote: 'ضيف: تُحفظ المحادثات على هذا الجهاز فقط', guestLimit: 'تُحفظ المحادثات هنا فقط — سجّل للمزامنة',
     calcRunning: 'جارٍ الفحص…', calcPass: 'مطابق', calcFail: 'غير مطابق', calcRefs: 'المراجع',
     cadGenerating: 'جارٍ إنشاء النموذج ثلاثي الأبعاد…', cadNoPreview: 'تتوفر معاينة ثلاثية الأبعاد لهذا الشكل في بيئة النشر — راجع SCAD أدناه.', cadDownload: 'تنزيل SCAD',
     cadSpecTitle: 'هل تُنشئ نموذجًا دقيقًا بهذه المواصفات؟', cadConfirm: 'تأكيد · بناء 3D', cadBuilding: 'جارٍ بناء الشكل الدقيق (STEP)…', cadStepDownload: 'تنزيل STEP', cadGate: 'بوابة حتمية',
@@ -518,7 +555,7 @@ function MarkdownLite({ text }: { text: string }) {
 }
 
 // 결정론 계산 결과 카드 (eng-api demo 응답 → PASS/FAIL + 검토항목 + 근거).
-function CalcCard({ calc, t, isRtl, consultHref }: { calc: CalcResult; t: (typeof DICT)[Lang]; isRtl: boolean; consultHref: string }) {
+function CalcCard({ calc, t, isRtl, consultHref, onRerun, onPrint }: { calc: CalcResult; t: (typeof DICT)[Lang]; isRtl: boolean; consultHref: string; onRerun?: () => void; onPrint?: () => void }) {
   if (calc.error) {
     return (
       <div style={{ maxWidth: '92%', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, padding: '11px 14px', fontSize: 12.5, color: '#fca5a5', textAlign: isRtl ? 'right' : 'left' }}>
@@ -548,6 +585,12 @@ function CalcCard({ calc, t, isRtl, consultHref }: { calc: CalcResult; t: (typeo
       )}
       <a href={consultHref} style={{ display: 'inline-block', marginTop: 10, fontSize: 12, fontWeight: 700, color: '#93c5fd', textDecoration: 'none' }}>{t.actContact} →</a>
       <p style={{ marginTop: 6, fontSize: 10, color: '#6e7681', lineHeight: 1.5 }}>{t.disclaimer}</p>
+      {(onRerun || onPrint) && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          {onRerun && <button type="button" onClick={onRerun} style={{ fontSize: 11, background: 'rgba(59,130,246,0.15)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 7, padding: '4px 10px', cursor: 'pointer' }}>↻ Re-run</button>}
+          {onPrint && <button type="button" onClick={onPrint} style={{ fontSize: 11, background: 'rgba(148,163,184,0.12)', color: '#cbd5e1', border: '1px solid rgba(148,163,184,0.3)', borderRadius: 7, padding: '4px 10px', cursor: 'pointer' }}>🖨</button>}
+        </div>
+      )}
     </div>
   );
 }
@@ -821,6 +864,11 @@ export default function ChatHero({ langCode }: { langCode: string }) {
   const [error, setError] = useState('');
   const [attached, setAttached] = useState<Attached | null>(null);
   const [authed, setAuthed] = useState<boolean | null>(null); // null=미확인, false=게스트, true=회원
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [sideOpen, setSideOpen] = useState(false);
+  const [threadQ, setThreadQ] = useState('');
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -845,24 +893,121 @@ export default function ChatHero({ langCode }: { langCode: string }) {
 
   // 대화 지속성 — 새로고침에도 유지. 이미지 dataUrl·진행중 상태는 저장 제외(용량·정합).
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('nf_chat_v1');
-      if (!raw) return;
-      const saved = JSON.parse(raw) as { domain?: Domain; messages?: Msg[] };
-      const restored = (saved.messages ?? [])
-        .map(m => (m.cad?.composing ? { ...m, cad: undefined } : m))
-        .filter(m => m.content || m.calc || m.cad || m.wiring);
-      if (restored.length) setMessages(restored);
-      if (saved.domain && DOMAINS.includes(saved.domain)) setDomain(saved.domain);
-    } catch { /* corrupt/absent — ignore */ }
+    const list = loadThreads();
+    setThreads(list);
+    const tParam = new URLSearchParams(window.location.search).get('t');
+    const th = tParam ? list.find((x) => x.id === tParam) : null;
+    if (th) {
+      setActiveId(th.id);
+      setDomain(th.domain);
+      setMessages(th.msgs.map((m) => (m.cad?.composing ? { ...m, cad: undefined } : m)).filter((m) => m.content || m.calc || m.cad || m.wiring));
+    }
+    const onPop = () => {
+      const t2 = new URLSearchParams(window.location.search).get('t');
+      if (!t2) { setActiveId(null); setMessages([]); }
+      else {
+        const cur = loadThreads().find((x) => x.id === t2);
+        if (cur) { setActiveId(cur.id); setDomain(cur.domain); setMessages(cur.msgs); }
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
   }, []);
   useEffect(() => {
+    if (!messages.length) return;
+    setThreads((prev) => {
+      let id = activeId;
+      let list = prev.slice();
+      if (!id) {
+        id = newThreadId();
+        const first = messages.find((m) => m.role === 'user');
+        list = [{ id, title: titleFrom(first?.content ?? 'Chat'), domain, at: Date.now(), updated: Date.now(), badge: badgeFrom(messages), msgs: messages }, ...list];
+        setActiveId(id);
+        try { window.history.pushState({ t: id }, '', '?t=' + id); } catch { /* ignore */ }
+      } else {
+        list = list.map((t2) => (t2.id === id ? { ...t2, msgs: messages, domain, updated: Date.now(), badge: badgeFrom(messages) } : t2));
+      }
+      saveThreadsLocal(list);
+      if (authed && id) {
+        const th = list.find((x) => x.id === id);
+        if (th) {
+          if (syncTimer.current) clearTimeout(syncTimer.current);
+          syncTimer.current = setTimeout(() => {
+            void fetch('/api/nexyfab/chat-threads/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ thread: { ...th, msgs: th.msgs.slice(-60) } }) }).catch(() => {});
+          }, 1500);
+        }
+      }
+      return list;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, domain, authed]);
+
+  // 로그인 시: 서버 스레드 로드 + 게스트 스레드 1회 이관
+  useEffect(() => {
+    if (!authed) return;
+    (async () => {
+      try {
+        const local = loadThreads();
+        if (local.length && !localStorage.getItem('nf_chat_migrated_v1')) {
+          await fetch('/api/nexyfab/chat-threads/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ migrate: local.map((t2) => ({ ...t2, msgs: t2.msgs.slice(-60) })) }) }).catch(() => {});
+          localStorage.setItem('nf_chat_migrated_v1', '1');
+        }
+        const r = await fetch('/api/nexyfab/chat-threads/');
+        if (r.ok) {
+          const j = (await r.json()) as { ok: boolean; threads?: Thread[] };
+          if (j.ok && j.threads?.length) {
+            setThreads((prev) => {
+              const ids = new Set(prev.map((x) => x.id));
+              const merged = [...prev, ...(j.threads ?? []).filter((x) => !ids.has(x.id))].sort((a, b) => (b.updated ?? 0) - (a.updated ?? 0));
+              saveThreadsLocal(merged);
+              return merged;
+            });
+          }
+        }
+      } catch { /* offline — local only */ }
+    })();
+  }, [authed]);
+
+  const openThread = (id: string) => {
+    const th = threads.find((x) => x.id === id);
+    if (!th) return;
+    setActiveId(id); setDomain(th.domain); setMessages(th.msgs); setSideOpen(false);
+    try { window.history.pushState({ t: id }, '', '?t=' + id); } catch { /* ignore */ }
+  };
+  const newThread = () => {
+    setActiveId(null); setMessages([]); setInput(''); setSideOpen(false);
+    try { window.history.pushState({}, '', window.location.pathname); } catch { /* ignore */ }
+  };
+  const deleteThread = (id: string) => {
+    setThreads((prev) => { const list = prev.filter((x) => x.id !== id); saveThreadsLocal(list); return list; });
+    if (authed) void fetch('/api/nexyfab/chat-threads/?id=' + id, { method: 'DELETE' }).catch(() => {});
+    if (activeId === id) newThread();
+  };
+  const togglePin = (id: string) => setThreads((prev) => { const list = prev.map((x) => (x.id === id ? { ...x, pinned: !x.pinned } : x)); saveThreadsLocal(list); return list; });
+
+  // 계산 카드 액션 — 재실행(동일 입력·새 카드)·간이 인쇄(원본 JSON 전사)
+  const rerunCalc = async (calcId: string, calcInput: Record<string, unknown>) => {
+    setMessages(m => [...m, { role: 'assistant', content: '↻ ' + calcId }]);
     try {
-      if (!messages.length) { localStorage.removeItem('nf_chat_v1'); return; }
-      const trimmed = messages.map(m => (m.image ? { ...m, image: undefined, content: m.content || '📎' } : m));
-      localStorage.setItem('nf_chat_v1', JSON.stringify({ domain, messages: trimmed }));
-    } catch { /* quota exceeded — skip persist */ }
-  }, [messages, domain]);
+      const calc = await runDemoCalc(calcId, calcInput);
+      setMessages(m => {
+        const copy = m.slice();
+        for (let i = copy.length - 1; i >= 0; i--) { if (copy[i].role === 'assistant') { copy[i] = { ...copy[i], calc, calcId, calcInput }; break; } }
+        return copy;
+      });
+    } catch (e) {
+      setMessages(m => [...m, { role: 'assistant', content: '⚠️ ' + (e instanceof Error ? e.message : t.error) }]);
+    }
+  };
+  const printCalc = (m: Msg) => {
+    if (!m.calc) return;
+    const esc = (x: string) => x.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write('<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>NexyFab 검토 카드</title><style>body{font-family:system-ui;font-size:12px;padding:24px}pre{background:#f1f5f9;padding:12px;border-radius:8px;white-space:pre-wrap;font-size:11px}</style></head><body><h2>NexyFab 검토 결과(참고자료·비법정)</h2>' + (m.calcId ? '<p>계산기: <b>' + esc(m.calcId) + '</b></p><h3>입력</h3><pre>' + esc(JSON.stringify(m.calcInput ?? {}, null, 1)) + '</pre>' : '') + '<h3>결과(엔진 원본)</h3><pre>' + esc(JSON.stringify(m.calc, null, 1)) + '</pre><p style="color:#64748b">정식 계산서 양식은 /design 계산기 스튜디오에서 — 본 출력은 대화 카드 전사.</p></body></html>');
+    w.document.close();
+    setTimeout(() => w.print(), 300);
+  };
 
   // 마지막 assistant 메시지 content 를 갱신 (스트리밍 토큰 누적).
   const updateLastAssistant = (content: string) => setMessages(m => {
@@ -897,10 +1042,11 @@ export default function ChatHero({ langCode }: { langCode: string }) {
           setMessages(m => [...m, { role: 'assistant', content: String(j.reply || t.calcRunning) }]);
           autoscroll();
           try {
-            const calc = await runDemoCalc(String(j.id), (j.input ?? {}) as Record<string, unknown>);
+            const calcInput = (j.input ?? {}) as Record<string, unknown>;
+            const calc = await runDemoCalc(String(j.id), calcInput);
             setMessages(m => {
               const copy = m.slice();
-              for (let i = copy.length - 1; i >= 0; i--) { if (copy[i].role === 'assistant') { copy[i] = { ...copy[i], calc }; break; } }
+              for (let i = copy.length - 1; i >= 0; i--) { if (copy[i].role === 'assistant') { copy[i] = { ...copy[i], calc, calcId: String(j.id), calcInput }; break; } }
               return copy;
             });
           } catch (e) {
@@ -1038,11 +1184,57 @@ export default function ChatHero({ langCode }: { langCode: string }) {
     }}>
       {/* 채팅 활성 시 랜딩 하위 섹션·푸터 숨김 → 전용 채팅 화면 */}
       <style>{`body[data-nf-chat="on"] #nf-chat ~ section, body[data-nf-chat="on"] #nf-chat ~ footer { display: none !important; }`}</style>
+      <style>{`
+        .nf-side { position: fixed; left: 0; top: 64px; bottom: 0; width: 264px; z-index: 40; background: rgba(10,15,30,0.96); border-right: 1px solid rgba(148,163,184,0.15); backdrop-filter: blur(8px); display: flex; flex-direction: column; padding: 12px 10px; transform: translateX(-100%); transition: transform .2s; }
+        .nf-side[data-open="1"] { transform: translateX(0); }
+        @media (min-width: 1100px) { body[data-nf-chat="on"] .nf-side { transform: translateX(0); } body[data-nf-chat="on"] .nf-chat-main { margin-left: 264px; } .nf-side-toggle { display: none !important; } }
+        .nf-th { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 9px; cursor: pointer; color: #cbd5e1; font-size: 13px; text-align: left; width: 100%; background: transparent; border: none; }
+        .nf-th:hover { background: rgba(59,130,246,0.12); }
+        .nf-th[data-active="1"] { background: rgba(59,130,246,0.2); color: #fff; }
+        .nf-th .del, .nf-th .pin { opacity: 0; font-size: 11px; background: none; border: none; color: #94a3b8; cursor: pointer; }
+        .nf-th:hover .del, .nf-th:hover .pin { opacity: 1; }
+      `}</style>
       <div style={{ position: 'absolute', inset: 0, opacity: 0.06, backgroundImage: 'linear-gradient(rgba(59,130,246,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.5) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
       <div style={{ position: 'absolute', top: '12%', left: '50%', transform: 'translateX(-50%)', width: 640, height: 640, background: `radial-gradient(circle, ${accent}22 0%, transparent 70%)`, borderRadius: '50%', filter: 'blur(90px)', transition: 'background .4s' }} />
 
-      <div style={{
-        position: 'relative', zIndex: 1, width: '100%', maxWidth: 780, margin: '0 auto', textAlign: 'center',
+      {/* 좌측 스레드 사이드바 (챗 모드) — 게스트=이 기기 저장·회원=서버 동기화 */}
+      {started && (
+        <>
+          <button type="button" className="nf-side-toggle" onClick={() => setSideOpen(o => !o)} aria-label="threads"
+            style={{ position: 'fixed', left: 12, top: 74, zIndex: 41, background: 'rgba(15,23,42,0.85)', border: '1px solid rgba(148,163,184,0.3)', color: '#cbd5e1', borderRadius: 8, padding: '6px 9px', cursor: 'pointer', fontSize: 14 }}>☰</button>
+          {sideOpen && <div onClick={() => setSideOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39, background: 'rgba(0,0,0,0.4)' }} />}
+          <aside className="nf-side" data-open={sideOpen ? '1' : '0'} dir={isRtl ? 'rtl' : 'ltr'}>
+            <button type="button" className="nf-th" style={{ border: '1px dashed rgba(148,163,184,0.35)', justifyContent: 'center', fontWeight: 700 }} onClick={newThread}>＋ {t.newChat}</button>
+            <input value={threadQ} onChange={(e) => setThreadQ(e.target.value)} placeholder="🔍"
+              style={{ margin: '8px 0', background: 'rgba(30,41,59,0.6)', border: '1px solid rgba(148,163,184,0.2)', borderRadius: 8, padding: '6px 10px', color: '#e2e8f0', fontSize: 12 }} />
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {threads
+                .filter((th) => !threadQ || th.title.toLowerCase().includes(threadQ.toLowerCase()))
+                .sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (b.updated - a.updated))
+                .map((th) => (
+                  <div key={th.id} className="nf-th" data-active={th.id === activeId ? '1' : '0'} onClick={() => openThread(th.id)} role="button" tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter') openThread(th.id); }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', flex: '0 0 7px', background: DOMAIN_ACCENT[th.domain] ?? '#64748b' }} />
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{th.pinned ? '📌 ' : ''}{th.title}</span>
+                    {th.badge && <span style={{ fontSize: 9, fontWeight: 800, color: th.badge === 'PASS' ? '#4ade80' : th.badge === 'FAIL' ? '#f87171' : '#94a3b8' }}>{th.badge === 'PASS' ? '✓' : th.badge === 'FAIL' ? '✗' : 'ⓘ'}</span>}
+                    <button type="button" className="pin" onClick={(e) => { e.stopPropagation(); togglePin(th.id); }} aria-label="pin">📌</button>
+                    <button type="button" className="del" onClick={(e) => { e.stopPropagation(); deleteThread(th.id); }} aria-label="delete">✕</button>
+                  </div>
+                ))}
+            </div>
+            {authed === false && (
+              <div style={{ fontSize: 10.5, color: '#94a3b8', padding: '8px 6px', borderTop: '1px solid rgba(148,163,184,0.15)' }}>
+                {threads.length >= 10
+                  ? <a href="/register" style={{ color: '#60a5fa' }}>{t.guestLimit}</a>
+                  : (t.guestNote)}
+              </div>
+            )}
+          </aside>
+        </>
+      )}
+
+      <div className="nf-chat-main" style={{
+        position: 'relative', zIndex: 1, width: '100%', maxWidth: 780, margin: '0 auto', textAlign: 'center', transition: 'margin .2s',
         ...(started ? { display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 104px)' } : {}),
       }}>
         {!started && (
@@ -1099,8 +1291,21 @@ export default function ChatHero({ langCode }: { langCode: string }) {
                       border: m.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.1)',
                     }}>{m.role === 'assistant' ? <MarkdownLite text={m.content} /> : m.content}</div>
                   )}
-                  {m.calc && <CalcCard calc={m.calc} t={t} isRtl={isRtl} consultHref={consultHref} />}
-                  {m.cad && <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} quoteHref={quoteHref} />}
+                  {m.calc && <CalcCard calc={m.calc} t={t} isRtl={isRtl} consultHref={consultHref}
+                    onRerun={m.calcId ? () => { void rerunCalc(m.calcId!, m.calcInput ?? {}); } : undefined}
+                    onPrint={() => printCalc(m)} />}
+                  {m.cad && (
+                    <>
+                      <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} quoteHref={quoteHref} />
+                      {!m.cad.error && (
+                        <a href={'/' + langCode + '/nexyfab/design/'}
+                          onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: m.cad?.spec ?? m.content ?? '', at: Date.now() })); } catch { /* ignore */ } }}
+                          style={{ display: 'inline-block', marginTop: 6, fontSize: 11.5, color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 7, padding: '4px 10px', textDecoration: 'none' }}>
+                          🛠 Studio →
+                        </a>
+                      )}
+                    </>
+                  )}
                   {m.wiring && m.wiring.length > 0 && <WiringCard wiring={m.wiring} t={t} accent={accent} isRtl={isRtl} />}
                 </div>
               );

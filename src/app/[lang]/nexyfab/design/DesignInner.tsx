@@ -70,6 +70,18 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
   const ko = isKorean(lang);
   const domain = findDomain(initialDomain);
   const [prompt, setPrompt] = useState('');
+
+  // 챗 핸드오프 수신 — 랜딩 챗에서 "Studio →"로 넘어온 사양을 프롬프트에 프리필(1회 소비)
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('nf-chat-handoff');
+      if (!raw) return;
+      sessionStorage.removeItem('nf-chat-handoff');
+      const h = JSON.parse(raw) as { spec?: string; at?: number };
+      if (h.spec && Date.now() - (h.at ?? 0) < 10 * 60 * 1000) setPrompt(String(h.spec).slice(0, 2000));
+    } catch { /* ignore */ }
+     
+  }, []);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
