@@ -36,6 +36,7 @@ export default {
       camber: { description: '솟음 산정(선택 — 탄성 폐형): { L_m(지간), wSw_kNm(자중 등분포), Ec_MPa?(기본 8500∛(fck+4)), Eci_MPa?(전달 시 — 기본 fci 기준), creepMult?(장기배율 — PCI 근사표 등 산정 입력, 기본 미적용 명시) }' },
       tendon: { description: '긴장재 응력 한계 검토(선택 — §1.5.7.2·§1.5.7.3 원문): { Ap_mm2, fpu_MPa, fpy_MPa(항복 — 뚜렷하지 않으면 fp0.2k 입력·명시) }' },
       crackControl: { description: '간접 균열 제어(선택 — §4.2.3.3 표 4.2-4·4.2-5 원문): { steelStress_MPa(균열단면 기준 철근응력 — 산정 입력), barDia_mm?, barSpacing_mm?, section: rc_flexure|rc_tension|psc } — 지름 또는 간격 중 하나 만족 시 한계균열폭(PSC 0.2·RC 0.3mm) 충족 간주(§4.2.3.1(6)). 최소철근량(§4.2.3.2 식4.2-1)은 별도 확인' },
+      crackWidth: { description: '직접 균열폭 계산(선택 — §4.2.3.4 식4.2-4~7 원문): { fso_MPa(균열단면 철근응력), fcte_MPa(유효 인장강도 fctm(t) — 산정 입력), h_mm, d_mm, x_mm(중립축 — 균열환산단면 산정 입력), b_mm(유효폭), cc_mm(최소피복), db_mm, As_mm2, Ap_mm2?, xi1?(부착비 ξ1 — 표 4.2-3, 기본 0=긴장재 무시 보수), barSpacing_mm?, kt?(0.6 단기/0.4 장기 — 기본 0.4), k1?(0.8 이형/1.6 원형·긴장재), k2?(0.5 휨/1.0 인장), Es_MPa?, n?(탄성계수비 — 기본 Es/(8500∛(fck+4)) 관례 명시), limit_mm?(표 4.2-2: PSC 0.2·RC 0.3 기본 0.2) }' },
     },
   },
   run(input) {
@@ -129,10 +130,39 @@ export default {
         };
       }
     }
-    const pass = t.compOk && t.tensOk && sv.compOk && sv.tensOk && (sus ? sus.pass : true) && (tendon ? tendon.jacking.pass && tendon.transfer.pass : true) && (crack ? crack.pass : true);
+    // 직접 균열폭 (§4.2.3.4 원문 GIF 판독 확정):
+    // wk = lr,max(εsm−εcm) [4.2-4] · Δε = fso/Es − kt·fcte/(Es·ρe)·(1+n·ρe) ≥ 0.6fso/Es [4.2-5]
+    // ρe = (As+ξ1²Ap)/Acte [4.2-6] · lr,max = 3.4cc+0.425k1k2db/ρe (간격≤5(cc+db/2)) | 1.3(h−x) [4.2-7a/b]
+    // hc,eff = min(2.5(h−d), (h−x)/3, h/2)
+    let crackW = null;
+    const cw = input.crackWidth;
+    if (cw && Number(cw.fso_MPa) > 0) {
+      for (const k of ['fcte_MPa', 'h_mm', 'd_mm', 'x_mm', 'b_mm', 'cc_mm', 'db_mm', 'As_mm2']) if (!(Number(cw[k]) > 0)) throw new Error('input gate: crackWidth.' + k);
+      const Es = Number(cw.Es_MPa) > 0 ? Number(cw.Es_MPa) : 200000;
+      const n = Number(cw.n) > 0 ? Number(cw.n) : Es / (8500 * Math.cbrt(input.fck + 4));
+      const kt2 = Number(cw.kt) > 0 ? Number(cw.kt) : 0.4;
+      const k1 = Number(cw.k1) > 0 ? Number(cw.k1) : 0.8, k2 = Number(cw.k2) > 0 ? Number(cw.k2) : 0.5;
+      const xi1 = Number(cw.xi1) >= 0 ? Number(cw.xi1) : 0;
+      const hceff = Math.min(2.5 * (cw.h_mm - cw.d_mm), (cw.h_mm - cw.x_mm) / 3, cw.h_mm / 2);
+      const Acte = cw.b_mm * hceff;
+      const rhoE = (cw.As_mm2 + xi1 * xi1 * (Number(cw.Ap_mm2) || 0)) / Acte;
+      const dEps = Math.max(cw.fso_MPa / Es - (kt2 * cw.fcte_MPa * (1 + n * rhoE)) / (Es * rhoE), (0.6 * cw.fso_MPa) / Es);
+      const spcThresh = 5 * (cw.cc_mm + cw.db_mm / 2);
+      const useA = !(Number(cw.barSpacing_mm) > 0) || cw.barSpacing_mm <= spcThresh;
+      const lrmax = useA ? 3.4 * cw.cc_mm + (0.425 * k1 * k2 * cw.db_mm) / rhoE : 1.3 * (cw.h_mm - cw.x_mm);
+      const wk = lrmax * dEps;
+      const lim = Number(cw.limit_mm) > 0 ? Number(cw.limit_mm) : 0.2;
+      crackW = {
+        hceff_mm: +hceff.toFixed(1), rhoE: +rhoE.toFixed(5), dEps: +dEps.toExponential(3),
+        lrmax_mm: +lrmax.toFixed(1), formula: useA ? '4.2-7a (간격≤5(cc+db/2))' : '4.2-7b 1.3(h−x)',
+        wk_mm: +wk.toFixed(3), limit_mm: lim, pass: wk <= lim,
+        note: `§4.2.3.4 원문식. kt=${kt2}(0.6 단기/0.4 장기)·k1=${k1}·k2=${k2}·n=${n.toFixed(2)}${Number(cw.n) > 0 ? '(입력)' : '(Ec=8500∛(fck+4) 관례 — 교량기준 Ec식 확인 입력 권장)'}·ξ1=${xi1}${xi1 === 0 && Number(cw.Ap_mm2) > 0 ? '(긴장재 기여 무시 — 보수, 표 4.2-3 산정 입력 가능)' : ''}. x(중립축)·fso는 균열환산단면 산정 입력. 한계 ${lim}mm=표 4.2-2(설계등급별).`,
+      };
+    }
+    const pass = t.compOk && t.tensOk && sv.compOk && sv.tensOk && (sus ? sus.pass : true) && (tendon ? tendon.jacking.pass && tendon.transfer.pass : true) && (crack ? crack.pass : true) && (crackW ? crackW.pass : true);
     return {
       verdict: pass ? 'PASS' : 'FAIL',
-      checks: { transfer: t, service: sv, ...(sus ? { sustained: sus } : {}), ...(tendon ? { tendon } : {}), ...(crack ? { crackIndirect: crack } : {}) },
+      checks: { transfer: t, service: sv, ...(sus ? { sustained: sus } : {}), ...(tendon ? { tendon } : {}), ...(crack ? { crackIndirect: crack } : {}), ...(crackW ? { crackWidth: crackW } : {}) },
       ...(camber ? { camber } : {}),
       intermediate: { Pi_kN: +(Pi / 1000).toFixed(1), Pe_kN: +(Pe / 1000).toFixed(1), St_mm3: Math.round(St), Sb_mm3: Math.round(Sb) },
       notes: [
