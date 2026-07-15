@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { isKorean } from '@/lib/i18n/normalize';
+import Md from '@/components/nexyfab/Md';
 
 type DockMsg = { role: 'user' | 'assistant'; content: string; calc?: { verdict?: string; notes?: string[] } & Record<string, unknown>; calcId?: string };
 type DockThread = { id: string; title: string; domain: string; at: number; updated: number; badge?: string | null; msgs: DockMsg[] };
@@ -28,6 +29,7 @@ export default function StudioChatDock({ lang, domainSlug, intentName, partCount
   const [msgs, setMsgs] = useState<DockMsg[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState<number | null>(null);
   const threadIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatDomain = DOMAIN_MAP[domainSlug ?? ''] ?? 'mechanical';
@@ -102,7 +104,14 @@ export default function StudioChatDock({ lang, domainSlug, intentName, partCount
               <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '88%', padding: '7px 10px', borderRadius: 10,
                 fontSize: 12.5, lineHeight: 1.5, whiteSpace: 'pre-wrap',
                 background: m.role === 'user' ? 'var(--nx-accent, #2563eb)' : 'var(--nx-hover, #eef1f4)', color: m.role === 'user' ? '#fff' : 'inherit' }}>
-                {m.content}
+                {m.role === 'assistant' ? <Md text={m.content} /> : m.content}
+                {m.role === 'assistant' && m.content && (
+                  <button type="button"
+                    onClick={() => { void navigator.clipboard?.writeText(m.content).then(() => { setCopied(i); setTimeout(() => setCopied(null), 1200); }).catch(() => {}); }}
+                    style={{ display: 'block', marginTop: 5, padding: '2px 8px', borderRadius: 6, fontSize: 10.5, cursor: 'pointer', border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'var(--nx-text-3, #6b7684)' }}>
+                    {copied === i ? (ko ? '복사됨 ✓' : 'Copied ✓') : (ko ? '복사' : 'Copy')}
+                  </button>
+                )}
                 {m.calc && (
                   <div style={{ marginTop: 6, padding: '6px 8px', borderRadius: 8, background: 'rgba(0,0,0,0.06)', fontSize: 11.5 }}>
                     <b style={{ color: m.calc.verdict === 'PASS' ? '#16a34a' : m.calc.verdict === 'FAIL' ? '#dc2626' : undefined }}>{String(m.calc.verdict ?? 'INFO')}</b>
@@ -112,7 +121,7 @@ export default function StudioChatDock({ lang, domainSlug, intentName, partCount
                 )}
               </div>
             ))}
-            {busy && <div style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}>…</div>}
+            {busy && <div style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '응답 생성 중…' : 'Generating…'}</div>}
           </div>
           <div style={{ display: 'flex', gap: 6, padding: 10, borderTop: '1px solid var(--nx-border, #dfe3e8)' }}>
             <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }}

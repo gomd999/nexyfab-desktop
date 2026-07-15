@@ -67,6 +67,23 @@ export async function POST(req: NextRequest) {
       ? (domainRaw as EngDomain)
       : 'mechanical';
 
+    // ── mode:'title' — 스레드 제목 요약(초경량, 슬롯 미소모) ─────────────────────
+    if (body?.mode === 'title') {
+      try {
+        const result = await chatCompletion({
+          messages: [
+            { role: 'system', content: '대화의 주제를 사용자가 쓴 언어로 5단어 이내 명사구 제목으로 요약하라. 따옴표·마침표·접두어 없이 제목만 출력.' },
+            { role: 'user', content: message.slice(0, 1200) },
+          ],
+          maxTokens: 24, temperature: 0.2, timeoutMs: 10_000, task: 'eng-chat-title',
+        });
+        const title = result.text.replace(/^["'「\s]+|["'」\s.]+$/g, '').slice(0, 40);
+        return NextResponse.json({ title });
+      } catch {
+        return NextResponse.json({ title: null }); // 실패 시 클라 폴백(첫 문장 절단) 유지
+      }
+    }
+
     // 로그인 사용자에 한해 예산/쿼터 가드 (익명은 shape-chat 과 동일하게 무슬롯).
     // 슬롯은 shape_chat 과 공유해 별도 한도 신설을 피함.
     if (planCheck.ok) {

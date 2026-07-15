@@ -13,6 +13,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type * as ThreeNS from 'three';
 import { DomainIcon } from './_domainIcons';
+import Md from '@/components/nexyfab/Md';
 
 // three/R3F 뷰어는 SSR 불가 → 클라이언트에서만 로드.
 const ChatCadViewer = dynamic(() => import('./ChatCadViewer'), {
@@ -53,10 +54,11 @@ type CableRow = { from?: unknown; to?: unknown; type?: unknown; cores?: unknown;
 type Msg = { role: 'user' | 'assistant'; content: string; calc?: CalcResult; cad?: CadResult; wiring?: CableRow[]; image?: string; calcId?: string; calcInput?: Record<string, unknown> };
 type Attached = { dataUrl: string; base64: string; mime: string; name: string };
 // 챗 스레드 (좌측 사이드바 — 게스트 localStorage·회원 서버 동기화)
-type Thread = { id: string; title: string; domain: Domain; at: number; updated: number; pinned?: boolean; badge?: string | null; msgs: Msg[] };
+type Thread = { id: string; title: string; domain: Domain; at: number; updated: number; pinned?: boolean; badge?: string | null; aiTitled?: boolean; msgs: Msg[] };
 const THREADS_KEY = 'nf_chat_threads_v1';
 const newThreadId = () => 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const titleFrom = (text: string) => { const t2 = text.replace(/\s+/g, ' ').trim(); return t2.length <= 26 ? t2 : t2.slice(0, 26) + '…'; };
+const GHOST_BTN = { padding: '3px 10px', borderRadius: 8, fontSize: 11, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'rgba(148,163,184,0.9)' };
 const badgeFrom = (msgs: Msg[]): string | null => { for (let i = msgs.length - 1; i >= 0; i--) { const v = (msgs[i].calc as { verdict?: string } | undefined)?.verdict; if (v) return v; } return null; };
 function loadThreads(): Thread[] {
   try {
@@ -338,6 +340,9 @@ const DICT: Record<Lang, {
   chips: Record<Domain, string>;
   actDemo: string; actQuote: string; actContact: string;
   newChat: string; guestNote: string; guestLimit: string;
+  stop: string; copyMsg: string; copied: string; regen: string;
+  stageAnalyze: string; stageCalc: string; stageCad: string;
+  fuText: string[]; fuCalc: string[]; fuCad: string[];
 }> = {
   kr: {
     title: '무엇을 설계할까요?',
@@ -351,6 +356,9 @@ const DICT: Record<Lang, {
     chips: { mechanical: '기계설계', civil: '토목', architecture: '건축', landscape: '조경', interior: '인테리어' },
     actDemo: '검증 엔진 데모', actQuote: '정밀 견적 요청', actContact: '전문가 상담',
     newChat: '새 대화', guestNote: '게스트: 대화는 이 기기에만 저장', guestLimit: '대화가 이 기기에만 저장됩니다 — 가입하면 어디서나 이어집니다',
+    stop: '중단', copyMsg: '복사', copied: '복사됨 ✓', regen: '다시 생성',
+    stageAnalyze: '요청 분석 중…', stageCalc: '계산 실행 중…', stageCad: '3D 모델 생성 중…',
+    fuText: ['더 자세히 설명해줘', '핵심만 요약해줘', '관련 기준(KDS 등)은?'], fuCalc: ['이 결과의 근거를 설명해줘', '어떤 조건이면 부적합이 되나?'], fuCad: ['이 설계의 제조 리스크는?', '적합한 재질을 추천해줘'],
     calcRunning: '검토 실행 중…', calcPass: '적합', calcFail: '부적합', calcRefs: '근거',
     cadGenerating: '3D 모델 생성 중…', cadNoPreview: '이 형상의 3D 미리보기는 배포 환경에서 제공됩니다. 아래 SCAD로 확인하세요.', cadDownload: 'SCAD 다운로드',
     cadSpecTitle: '이 사양으로 정밀 3D를 생성할까요?', cadConfirm: '확인 · 정밀 3D 생성', cadBuilding: '정밀 형상(STEP) 생성 중…', cadStepDownload: 'STEP 다운로드', cadGate: '결정론 게이트',
@@ -371,6 +379,9 @@ const DICT: Record<Lang, {
     chips: { mechanical: 'Mechanical', civil: 'Civil', architecture: 'Architecture', landscape: 'Landscape', interior: 'Interior' },
     actDemo: 'Verification engine demo', actQuote: 'Request a quote', actContact: 'Talk to an expert',
     newChat: 'New chat', guestNote: 'Guest: chats stay on this device', guestLimit: 'Chats are saved on this device only — sign up to sync',
+    stop: 'Stop', copyMsg: 'Copy', copied: 'Copied ✓', regen: 'Regenerate',
+    stageAnalyze: 'Analyzing request…', stageCalc: 'Running calculation…', stageCad: 'Generating 3D model…',
+    fuText: ['Explain in more detail', 'Summarize the key points', 'Which codes/standards apply?'], fuCalc: ['Explain the basis of this result', 'Under what conditions would it fail?'], fuCad: ['What are the manufacturing risks?', 'Recommend a suitable material'],
     calcRunning: 'Running check…', calcPass: 'PASS', calcFail: 'FAIL', calcRefs: 'Refs',
     cadGenerating: 'Generating 3D model…', cadNoPreview: 'A 3D preview of this shape is available in the deployed environment — see the SCAD below.', cadDownload: 'Download SCAD',
     cadSpecTitle: 'Generate the precise 3D from this spec?', cadConfirm: 'Confirm · build 3D', cadBuilding: 'Building precise geometry (STEP)…', cadStepDownload: 'Download STEP', cadGate: 'Deterministic gate',
@@ -391,6 +402,9 @@ const DICT: Record<Lang, {
     chips: { mechanical: '機械設計', civil: '土木', architecture: '建築', landscape: '造園', interior: 'インテリア' },
     actDemo: '検証エンジンのデモ', actQuote: '見積もり依頼', actContact: '専門家に相談',
     newChat: '新しいチャット', guestNote: 'ゲスト：会話はこの端末のみに保存', guestLimit: '会話はこの端末のみに保存 — 登録で同期できます',
+    stop: '停止', copyMsg: 'コピー', copied: 'コピー済み ✓', regen: '再生成',
+    stageAnalyze: 'リクエスト分析中…', stageCalc: '計算実行中…', stageCad: '3Dモデル生成中…',
+    fuText: ['もっと詳しく説明して', '要点をまとめて', '関連する基準は?'], fuCalc: ['この結果の根拠を説明して', 'どんな条件で不適合になる?'], fuCad: ['この設計の製造リスクは?', '適した材質を提案して'],
     calcRunning: '検討を実行中…', calcPass: '適合', calcFail: '不適合', calcRefs: '根拠',
     cadGenerating: '3Dモデル生成中…', cadNoPreview: 'この形状の3Dプレビューは本番環境で提供されます。下のSCADをご確認ください。', cadDownload: 'SCADをダウンロード',
     cadSpecTitle: 'この仕様で精密3Dを生成しますか？', cadConfirm: '確認 · 精密3D生成', cadBuilding: '精密形状(STEP)を生成中…', cadStepDownload: 'STEPをダウンロード', cadGate: '決定論ゲート',
@@ -411,6 +425,9 @@ const DICT: Record<Lang, {
     chips: { mechanical: '机械设计', civil: '土木', architecture: '建筑', landscape: '景观', interior: '室内' },
     actDemo: '验证引擎演示', actQuote: '请求报价', actContact: '咨询专家',
     newChat: '新对话', guestNote: '访客：对话仅保存在本设备', guestLimit: '对话仅保存在本设备 — 注册后可同步',
+    stop: '停止', copyMsg: '复制', copied: '已复制 ✓', regen: '重新生成',
+    stageAnalyze: '正在分析请求…', stageCalc: '正在执行计算…', stageCad: '正在生成3D模型…',
+    fuText: ['再详细解释一下', '总结要点', '适用哪些规范/标准?'], fuCalc: ['解释这个结果的依据', '什么条件下会不合格?'], fuCad: ['这个设计的制造风险是什么?', '推荐合适的材料'],
     calcRunning: '正在计算…', calcPass: '合格', calcFail: '不合格', calcRefs: '依据',
     cadGenerating: '正在生成3D模型…', cadNoPreview: '该形状的3D预览在部署环境中提供，请查看下方SCAD。', cadDownload: '下载SCAD',
     cadSpecTitle: '按此规格生成精确3D？', cadConfirm: '确认 · 生成3D', cadBuilding: '正在生成精确几何(STEP)…', cadStepDownload: '下载STEP', cadGate: '确定性门控',
@@ -431,6 +448,9 @@ const DICT: Record<Lang, {
     chips: { mechanical: 'Mecánico', civil: 'Civil', architecture: 'Arquitectura', landscape: 'Paisajismo', interior: 'Interior' },
     actDemo: 'Demo del motor de verificación', actQuote: 'Solicitar presupuesto', actContact: 'Hablar con un experto',
     newChat: 'Nuevo chat', guestNote: 'Invitado: los chats quedan en este dispositivo', guestLimit: 'Los chats se guardan solo aquí — regístrate para sincronizar',
+    stop: 'Detener', copyMsg: 'Copiar', copied: 'Copiado ✓', regen: 'Regenerar',
+    stageAnalyze: 'Analizando solicitud…', stageCalc: 'Ejecutando cálculo…', stageCad: 'Generando modelo 3D…',
+    fuText: ['Explica con más detalle', 'Resume los puntos clave', '¿Qué normas aplican?'], fuCalc: ['Explica la base de este resultado', '¿En qué condiciones fallaría?'], fuCad: ['¿Riesgos de fabricación?', 'Recomienda un material adecuado'],
     calcRunning: 'Calculando…', calcPass: 'CUMPLE', calcFail: 'NO CUMPLE', calcRefs: 'Refs',
     cadGenerating: 'Generando modelo 3D…', cadNoPreview: 'La vista 3D de esta forma está disponible en el entorno desplegado — consulta el SCAD abajo.', cadDownload: 'Descargar SCAD',
     cadSpecTitle: '¿Generar el 3D preciso con esta especificación?', cadConfirm: 'Confirmar · generar 3D', cadBuilding: 'Generando geometría precisa (STEP)…', cadStepDownload: 'Descargar STEP', cadGate: 'Compuerta determinista',
@@ -451,6 +471,9 @@ const DICT: Record<Lang, {
     chips: { mechanical: 'ميكانيكي', civil: 'مدني', architecture: 'معماري', landscape: 'مناظر', interior: 'ديكور' },
     actDemo: 'عرض محرّك التحقق', actQuote: 'اطلب عرض سعر', actContact: 'تحدث مع خبير',
     newChat: 'محادثة جديدة', guestNote: 'ضيف: تُحفظ المحادثات على هذا الجهاز فقط', guestLimit: 'تُحفظ المحادثات هنا فقط — سجّل للمزامنة',
+    stop: 'إيقاف', copyMsg: 'نسخ', copied: 'تم النسخ ✓', regen: 'إعادة التوليد',
+    stageAnalyze: 'جارٍ تحليل الطلب…', stageCalc: 'جارٍ تنفيذ الحساب…', stageCad: 'جارٍ إنشاء النموذج ثلاثي الأبعاد…',
+    fuText: ['اشرح بمزيد من التفصيل', 'لخّص النقاط الأساسية', 'ما المعايير ذات الصلة؟'], fuCalc: ['اشرح أساس هذه النتيجة', 'في أي ظروف تصبح غير مطابقة؟'], fuCad: ['ما مخاطر التصنيع لهذا التصميم؟', 'اقترح مادة مناسبة'],
     calcRunning: 'جارٍ الفحص…', calcPass: 'مطابق', calcFail: 'غير مطابق', calcRefs: 'المراجع',
     cadGenerating: 'جارٍ إنشاء النموذج ثلاثي الأبعاد…', cadNoPreview: 'تتوفر معاينة ثلاثية الأبعاد لهذا الشكل في بيئة النشر — راجع SCAD أدناه.', cadDownload: 'تنزيل SCAD',
     cadSpecTitle: 'هل تُنشئ نموذجًا دقيقًا بهذه المواصفات؟', cadConfirm: 'تأكيد · بناء 3D', cadBuilding: 'جارٍ بناء الشكل الدقيق (STEP)…', cadStepDownload: 'تنزيل STEP', cadGate: 'بوابة حتمية',
@@ -506,53 +529,6 @@ const SUGGEST: Record<Lang, Record<Domain, string[]>> = {
     interior: ['توزيع المقاعد ومسارات الحركة لمقهى 60م²', 'معايير اختيار تشطيبات المطبخ', 'ما يجب مراعاته عند تخطيط الإضاءة غير المباشرة'],
   },
 };
-
-/* ── 경량 마크다운 렌더러 (assistant 응답 전용) ──────────────────────────────
-   AI가 반환하는 **굵게** / `코드` / - 불릿 / # 제목 / 번호목록 / 줄바꿈을 표시.
-   dangerouslySetInnerHTML 을 쓰지 않고 React 노드로 조립 → XSS 안전. */
-function renderInline(text: string, kp: string): React.ReactNode[] {
-  const out: React.ReactNode[] = [];
-  const re = /(\*\*[^*]+\*\*|`[^`]+`)/g;
-  let last = 0, m: RegExpExecArray | null, i = 0;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) out.push(text.slice(last, m.index));
-    const tok = m[0];
-    if (tok.startsWith('**')) out.push(<strong key={`${kp}b${i}`}>{tok.slice(2, -2)}</strong>);
-    else out.push(<code key={`${kp}c${i}`} style={{ background: 'rgba(255,255,255,0.12)', padding: '1px 5px', borderRadius: 4, fontSize: '0.92em' }}>{tok.slice(1, -1)}</code>);
-    last = m.index + tok.length; i++;
-  }
-  if (last < text.length) out.push(text.slice(last));
-  return out;
-}
-
-function MarkdownLite({ text }: { text: string }) {
-  const lines = text.split('\n');
-  const blocks: React.ReactNode[] = [];
-  let bullets: string[] = [];
-  const flush = () => {
-    if (bullets.length) {
-      const items = bullets;
-      blocks.push(
-        <ul key={`ul${blocks.length}`} style={{ margin: '4px 0', paddingInlineStart: 18, display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {items.map((b, j) => <li key={j}>{renderInline(b, `l${blocks.length}_${j}`)}</li>)}
-        </ul>,
-      );
-      bullets = [];
-    }
-  };
-  lines.forEach((raw, idx) => {
-    const line = raw.replace(/\s+$/, '');
-    const bullet = /^\s*[-*]\s+(.*)/.exec(line);
-    if (bullet) { bullets.push(bullet[1]); return; }
-    flush();
-    const heading = /^\s*#{1,6}\s+(.*)/.exec(line);
-    if (heading) { blocks.push(<div key={idx} style={{ fontWeight: 800, margin: '8px 0 2px' }}>{renderInline(heading[1], `h${idx}`)}</div>); return; }
-    if (line.trim() === '') { blocks.push(<div key={idx} style={{ height: 5 }} />); return; }
-    blocks.push(<div key={idx}>{renderInline(line, `p${idx}`)}</div>);
-  });
-  flush();
-  return <>{blocks}</>;
-}
 
 // 결정론 계산 결과 카드 (eng-api demo 응답 → PASS/FAIL + 검토항목 + 근거).
 function CalcCard({ calc, t, isRtl, consultHref, onRerun, onPrint }: { calc: CalcResult; t: (typeof DICT)[Lang]; isRtl: boolean; consultHref: string; onRerun?: () => void; onPrint?: () => void }) {
@@ -947,6 +923,27 @@ export default function ChatHero({ langCode }: { langCode: string }) {
     }
   }, [threads, authed, activeId]);
 
+  // 스레드 제목 AI 요약 — 첫 문답 완료 후 스레드당 1회. 실패하면 절단 제목 그대로.
+  const titledRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (loading || !activeId || titledRef.current.has(activeId)) return;
+    const th = threads.find((x) => x.id === activeId);
+    if (!th || th.aiTitled) return;
+    const firstUser = th.msgs.find((m) => m.role === 'user');
+    const firstAsst = th.msgs.find((m) => m.role === 'assistant' && m.content && !m.content.startsWith('⚠️'));
+    if (!firstUser || !firstAsst) return;
+    titledRef.current.add(activeId);
+    const tid = activeId;
+    void fetch('/api/eng-chat/', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ mode: 'title', domain, message: firstUser.content.slice(0, 600) + '\n---\n' + firstAsst.content.slice(0, 400) }),
+    }).then((r) => r.json()).then((j: { title?: string | null }) => {
+      const tt = (j?.title ?? '').trim();
+      if (tt) setThreads((prev) => prev.map((x) => (x.id === tid ? { ...x, title: tt, aiTitled: true } : x)));
+    }).catch(() => { /* 폴백: 절단 제목 유지 */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, activeId, threads]);
+
 
   // 로그인 시: 서버 스레드 로드 + 게스트 스레드 1회 이관
   useEffect(() => {
@@ -1024,21 +1021,30 @@ export default function ChatHero({ langCode }: { langCode: string }) {
     return copy;
   });
 
-  const send = useCallback(async (override?: string) => {
+  const abortRef = useRef<AbortController | null>(null);
+  const [stage, setStage] = useState<string | null>(null);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const stopGen = () => { try { abortRef.current?.abort(); } catch { /* ignore */ } };
+
+  const send = useCallback(async (override?: string, historyOverride?: Msg[]) => {
     const text = (override ?? input).trim();
     if (!text || loading) return;
     setError('');
-    const history = messages.slice(-8);
+    const history = historyOverride ?? messages.slice(-8);
     setMessages(m => [...m, { role: 'user', content: text }]);
     setInput('');
     setLoading(true);
+    const ac = new AbortController();
+    abortRef.current = ac;
     const autoscroll = () => requestAnimationFrame(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); });
     try {
       if (ACTION_DOMAINS.includes(domain)) {
+        setStage(t.stageAnalyze);
         // ── 실행형: 의도추출 → (calc면) 라이브 엔진 실행 → 결과카드 ──
         const res = await fetch('/api/eng-chat/action/', {
           method: 'POST', headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ message: text, domain, history }),
+          signal: ac.signal,
         });
         const j = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -1048,6 +1054,7 @@ export default function ChatHero({ langCode }: { langCode: string }) {
           setMessages(m => [...m, { role: 'assistant', content: String(j.reply || t.calcRunning) }]);
           autoscroll();
           try {
+            setStage(t.stageCalc);
             const calcInput = (j.input ?? {}) as Record<string, unknown>;
             const calc = await runDemoCalc(String(j.id), calcInput);
             setMessages(m => {
@@ -1064,6 +1071,7 @@ export default function ChatHero({ langCode }: { langCode: string }) {
             });
           }
         } else if ((j.type === 'scad' || j.type === 'assembly') && j.prompt) {
+          setStage(t.stageCad);
           // ── 기계: 단일부품(compose→STEP) 또는 멀티바디(assemble→GA) ──
           setMessages(m => [...m, { role: 'assistant', content: String(j.reply || t.cadGenerating), cad: { composing: true } }]);
           autoscroll();
@@ -1087,10 +1095,12 @@ export default function ChatHero({ langCode }: { langCode: string }) {
         }
       } else {
       // ── 대화형(기계·인테리어): 스트리밍. 트레일링 슬래시 필수(308 회피) ──
+      setStage(t.stageAnalyze);
       const res = await fetch('/api/eng-chat/', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ message: text, domain, history, stream: true }),
+        signal: ac.signal,
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -1098,6 +1108,7 @@ export default function ChatHero({ langCode }: { langCode: string }) {
         setError(msg);
         setMessages(m => [...m, { role: 'assistant', content: `⚠️ ${msg}` }]);
       } else if (res.headers.get('x-stream') === '1' && res.body) {
+        setStage(null); // 첫 바이트부터는 본문이 곧 진행 표시
         // 스트리밍: 빈 assistant 메시지에 토큰을 누적
         setMessages(m => [...m, { role: 'assistant', content: '' }]);
         const reader = res.body.getReader();
@@ -1122,14 +1133,32 @@ export default function ChatHero({ langCode }: { langCode: string }) {
         }
       }
       }
-    } catch {
-      setError(t.error);
-      setMessages(m => [...m, { role: 'assistant', content: `⚠️ ${t.error}` }]);
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') {
+        // 사용자 중단 — 이미 흘러나온 부분 응답은 그대로 둔다
+      } else {
+        setError(t.error);
+        setMessages(m => [...m, { role: 'assistant', content: `⚠️ ${t.error}` }]);
+      }
     } finally {
       setLoading(false);
+      setStage(null);
+      abortRef.current = null;
       autoscroll();
     }
-  }, [input, loading, messages, domain, t.error]);
+  }, [input, loading, messages, domain, t]);
+
+  // 마지막 user 발화 이후를 걷어내고 재전송 — 히스토리에서 직전 답을 제외해 같은 답 재생산을 피한다
+  const regen = () => {
+    if (loading) return;
+    let ui = -1;
+    for (let i = messages.length - 1; i >= 0; i--) { if (messages[i].role === 'user') { ui = i; break; } }
+    if (ui < 0) return;
+    const text = messages[ui].content;
+    const hist = messages.slice(0, ui).slice(-8);
+    setMessages(messages.slice(0, ui));
+    void send(text, hist);
+  };
 
   // 입력 A(이미지) — 도면/스케치를 첨부해 Vision 판독 → 3D 체크포인트로 잇는다.
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1295,7 +1324,15 @@ export default function ChatHero({ langCode }: { langCode: string }) {
                       background: m.role === 'user' ? accent : 'rgba(255,255,255,0.07)',
                       color: m.role === 'user' ? '#fff' : '#e2e8f0',
                       border: m.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                    }}>{m.role === 'assistant' ? <MarkdownLite text={m.content} /> : m.content}</div>
+                    }}>{m.role === 'assistant' ? <Md text={m.content} /> : m.content}</div>
+                  )}
+                  {m.role === 'assistant' && m.content && !m.content.startsWith('⚠️') && !(loading && i === messages.length - 1) && (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => { void navigator.clipboard?.writeText(m.content).then(() => { setCopiedIdx(i); setTimeout(() => setCopiedIdx(null), 1200); }).catch(() => {}); }} style={GHOST_BTN}>{copiedIdx === i ? t.copied : t.copyMsg}</button>
+                      {!loading && i === messages.length - 1 && (
+                        <button onClick={regen} style={GHOST_BTN}>↻ {t.regen}</button>
+                      )}
+                    </div>
                   )}
                   {m.calc && <CalcCard calc={m.calc} t={t} isRtl={isRtl} consultHref={consultHref}
                     onRerun={m.calcId ? () => { void rerunCalc(m.calcId!, m.calcInput ?? {}); } : undefined}
@@ -1316,11 +1353,26 @@ export default function ChatHero({ langCode }: { langCode: string }) {
                 </div>
               );
             })}
-            {loading && !(messages.length > 0 && messages[messages.length - 1].role === 'assistant' && messages[messages.length - 1].content.length > 0) && (
+            {loading && (stage !== null || !(messages.length > 0 && messages[messages.length - 1].role === 'assistant' && messages[messages.length - 1].content.length > 0)) && (
               <div style={{ display: 'flex', justifyContent: isRtl ? 'flex-end' : 'flex-start' }}>
-                <div style={{ padding: '11px 15px', borderRadius: 14, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: '#93c5fd', fontSize: 13 }}>{t.thinking}</div>
+                <div style={{ padding: '11px 15px', borderRadius: 14, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: '#93c5fd', fontSize: 13 }}>{stage ?? t.thinking}</div>
               </div>
             )}
+            {!loading && messages.length > 0 && (() => {
+              const last = messages[messages.length - 1];
+              if (last.role !== 'assistant' || !last.content || last.content.startsWith('⚠️')) return null;
+              const chips = last.calc && !last.calc.error ? t.fuCalc : last.cad && !last.cad.error ? t.fuCad : t.fuText;
+              return (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: isRtl ? 'flex-end' : 'flex-start' }}>
+                  {chips.map((c, ci) => (
+                    <button key={ci} onClick={() => send(c)} style={{
+                      padding: '6px 13px', borderRadius: 999, fontSize: 12, cursor: 'pointer',
+                      border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.04)', color: 'rgba(203,213,225,0.9)',
+                    }}>{c}</button>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1376,13 +1428,21 @@ export default function ChatHero({ langCode }: { langCode: string }) {
               )}
               <span style={{ color: accent, display: 'inline-flex' }}><DomainIcon name={domain} size={20} /></span>
             </div>
-            <button onClick={submit} disabled={!canSend} style={{
-              padding: '9px 22px', borderRadius: 12, border: 'none',
-              cursor: !canSend ? 'not-allowed' : 'pointer',
-              fontSize: 14, fontWeight: 800, color: '#fff',
-              background: !canSend ? 'rgba(148,163,184,0.4)' : `linear-gradient(135deg, ${accent}, #6366f1)`,
-              transition: 'background .2s',
-            }}>{loading ? t.thinking : t.send}</button>
+            {loading ? (
+              <button onClick={stopGen} style={{
+                padding: '9px 22px', borderRadius: 12, cursor: 'pointer',
+                fontSize: 14, fontWeight: 800, color: '#fca5a5',
+                border: '1px solid rgba(239,68,68,0.5)', background: 'rgba(239,68,68,0.12)',
+              }}>■ {t.stop}</button>
+            ) : (
+              <button onClick={submit} disabled={!canSend} style={{
+                padding: '9px 22px', borderRadius: 12, border: 'none',
+                cursor: !canSend ? 'not-allowed' : 'pointer',
+                fontSize: 14, fontWeight: 800, color: '#fff',
+                background: !canSend ? 'rgba(148,163,184,0.4)' : `linear-gradient(135deg, ${accent}, #6366f1)`,
+                transition: 'background .2s',
+              }}>{t.send}</button>
+            )}
           </div>
         </div>
 
