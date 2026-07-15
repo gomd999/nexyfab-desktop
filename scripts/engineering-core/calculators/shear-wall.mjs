@@ -12,7 +12,7 @@ export default {
   title: '전단벽 횡강성·분담 (개략)',
   description: '벽 요소 강성(휨+전단변형)·병렬 분담률·벽체 개략 전단 검토.',
   refs: ['캔틸레버 벽 강성 폐형(휨+전단변형 — 구조역학 표준)', 'KDS 14 20 22 계열 Vc=√fck/6 기본식(벽 전용 상세식은 후속 명시)'],
-  status: 'verified — 폐형 앵커 + §4.9.2 상세식(4.9-1·2·3 원문 판독). 연결보·경계요소·최소철근 검증은 후속',
+  status: 'verified — 폐형 앵커 + §4.9.2 상세식(4.9-1·2·3) + §4.9.3 최소철근·간격(식4.9-4·φVc/2 문턱 — 원문 판독). 연결보·경계요소는 후속',
   inputSchema: {
     type: 'object',
     required: ['walls', 'storyShear_kN'],
@@ -21,7 +21,7 @@ export default {
       frameStiffness_kNmm: { type: 'number', minimum: 0, description: '병렬 골조 강성 kN/mm (frame2d 산정값 입력 — 선택, 벽·골조 분담)' },
       storyShear_kN: { type: 'number', exclusiveMinimum: 0, description: '층전단력 V (지진·풍 산정값)' },
       fck: { type: 'number', minimum: 18, maximum: 60, description: '콘크리트 강도 (기본 24)' },
-      detail: { description: '벽 상세 전단검토(§4.9 원문식 — 선택): { wallIndex(1~), Nu_kN(압축+), Mu_kNm, Vu_kN, Avh_mm2?, sh_mm?, fy? }' },
+      detail: { description: '벽 상세 전단검토(§4.9 원문식 — 선택): { wallIndex(1~), Nu_kN(압축+), Mu_kNm, Vu_kN, Avh_mm2?, sh_mm?, fy?, Avv_mm2?, sv_mm? } — Avv/sv 입력 시 §4.9.3 최소철근·간격 검토 포함' },
     },
   },
   run(input) {
@@ -74,11 +74,39 @@ export default {
       const Vn = Math.min(Vc + Vs, VnCap);
       const capped = Vc + Vs > VnCap;
       const phiVn = 0.75 * Vn;
+      // §4.9.3 최소철근·간격 (원문 GIF 판독 확정): 문턱 φVc/2 · ρh,min=0.0025(fy≤400,
+      // 초과 시 0.0025·400/fy, fy≤500 캡) · 식4.9-4 ρl=ρh,min+0.5(2.5−hw/lw)(ρh−ρh,min)≤ρh
+      // 간격: 수평 sh≤min(lw/5, 3h, 450) · 수직 sv≤min(lw/3, 3h, 450)
+      let minReinf = null;
+      if (Number(dt.Avh_mm2) > 0 && Number(dt.sh_mm) > 0) {
+        const fy = Math.min(dt.fy ?? 400, 500);
+        const rhoMin = fy <= 400 ? 0.0025 : (0.0025 * 400) / fy;
+        const rhoH = dt.Avh_mm2 / (dt.sh_mm * h);
+        const halfPhiVc = (0.75 * Vc) / 2;
+        const hwlw = w.h / w.lw;
+        let rhoLreq = rhoMin + 0.5 * (2.5 - hwlw) * (rhoH - rhoMin);
+        rhoLreq = Math.max(rhoMin, Math.min(rhoLreq, rhoH)); // §4.9.3(4): ≥ρl,min·≤소요수평비
+        const shLim = Math.min(w.lw / 5, 3 * h, 450);
+        const shOk = dt.sh_mm <= shLim;
+        let vert = null;
+        if (Number(dt.Avv_mm2) > 0 && Number(dt.sv_mm) > 0) {
+          const rhoV = dt.Avv_mm2 / (dt.sv_mm * h);
+          const svLim = Math.min(w.lw / 3, 3 * h, 450);
+          vert = { rhoV: +rhoV.toFixed(5), rhoLreq: +rhoLreq.toFixed(5), pass: rhoV >= rhoLreq, sv_mm: dt.sv_mm, svLimit_mm: +svLim.toFixed(0), svOk: dt.sv_mm <= svLim };
+        }
+        minReinf = {
+          threshold: { Vu_kN: Vu / 1000, halfPhiVc_kN: +(halfPhiVc / 1000).toFixed(1), regime: Vu <= halfPhiVc ? 'Vu≤φVc/2 — §4.9.3(2)~(5) 또는 KDS 14 20 72 배치' : 'Vu>φVc/2 — §4.9.3(2)~(5) 필수' },
+          horizontal: { rhoH: +rhoH.toFixed(5), rhoMin: +rhoMin.toFixed(5), pass: rhoH >= rhoMin, sh_mm: dt.sh_mm, shLimit_mm: +shLim.toFixed(0), shOk },
+          ...(vert ? { vertical: vert } : {}),
+          note: '§4.9.3 원문: ρh,min 0.0025(fy≤400)·식4.9-4 ρl=ρh,min+0.5(2.5−hw/lw)(ρh−ρh,min)(≥ρl,min·≤ρh)·간격 수평 min(lw/5,3h,450)·수직 min(lw/3,3h,450). 단부 후크정착 시 완화 별도(§4.9.3(3) 단서).',
+        };
+      }
       detail = {
         wall: dt.wallIndex, d_mm: d, Vc1_kN: +(vc1 / 1000).toFixed(1), Vc2_kN: vc2 !== null ? +(vc2 / 1000).toFixed(1) : null,
         Vc_kN: +(Vc / 1000).toFixed(1), Vs_kN: +(Vs / 1000).toFixed(1), phiVn_kN: +(phiVn / 1000).toFixed(1),
         Vu_kN: Vu / 1000, ratio: Vu > 0 ? +((Vu) / phiVn).toFixed(3) : null, pass: Vu > 0 ? Vu <= phiVn : null,
-        note: '식 4.9-1/2 중 작은 값 + 식 4.9-3 + Vn≤(5λ√fck/6)hd 상한(§4.9.2(3) 원문)' + (capped ? ' — ⚠ 상한 지배(철근 증가 무효, 단면 증대 필요)' : '') + '. 최소 수평·수직철근(§4.9.3) 별도 확인.',
+        ...(minReinf ? { minReinf } : {}),
+        note: '식 4.9-1/2 중 작은 값 + 식 4.9-3 + Vn≤(5λ√fck/6)hd 상한(§4.9.2(3) 원문)' + (capped ? ' — ⚠ 상한 지배(철근 증가 무효, 단면 증대 필요)' : '') + (minReinf ? '' : '. 최소 수평·수직철근(§4.9.3)은 Avh·sh 입력 시 검토.'),
       };
     }
     const frameShare = kFrame > 0 ? +(kFrame / sumK).toFixed(3) : 0;
