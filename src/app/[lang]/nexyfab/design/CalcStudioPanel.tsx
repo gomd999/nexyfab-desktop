@@ -80,7 +80,10 @@ function ObjTable({ data }: { data: Json }) {
 }
 
 /** 계산서 인쇄 HTML — 입력→중간값→판정→근거 1장 양식(자기완결·A4). */
-function buildSheetHtml(spec: CalcSpec, inputUsed: Record<string, Json>, result: CalcRunResult, opts: { project: string; member: string; svg?: string | null }): string {
+function buildSheetHtml(spec: CalcSpec, inputUsed: Record<string, Json>, result: CalcRunResult, opts: { project: string; member: string; svg?: string | null; en?: boolean; company?: string; engineer?: string }): string {
+  const L = opts.en
+    ? { title: 'Structural Calculation Sheet', proj: 'Project', mem: 'Member', std: 'Code', date: 'Date', s1: '1. Design Inputs', s2: '2. Results (checks & intermediates)', s3: '3. Verdict', s4: '4. Basis & Assumptions', s5: 'Applied Standards', vstat: 'Verification status', drw: 'Drawing (rebar elevation — source)', item: 'Item', val: 'Value', desc: 'Description (schema)', rev: 'Reviewed by', sign: 'Signature', disc: 'Reference material (non-statutory) — statutory calculations require the seal of a licensed engineer.', foot: 'This sheet is a verbatim transcript of the deterministic engine output; review and signature by the engineer of record are required before use in construction documents.' }
+    : { title: '구조계산 검토서', proj: '프로젝트', mem: '부재', std: '기준', date: '일자', s1: '1. 설계 입력', s2: '2. 산출 결과 (검토항목·중간값)', s3: '3. 판정', s4: '4. 산정 근거·가정', s5: '적용 기준', vstat: '검증 상태', drw: '도면(배근 전개 — 소스)', item: '항목', val: '값', desc: '설명(스키마)', rev: '검토', sign: '서명', disc: '구조 검토 참고자료(비법정) — 법정 계산서는 기술사 날인 영역', foot: '${L.foot}' };
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const objRows = (o: Json, pfx = ''): string => {
     if (o === null || typeof o !== 'object') return `<tr><td>${esc(pfx)}</td><td>${esc(renderValue(o))}</td></tr>`;
@@ -97,7 +100,7 @@ function buildSheetHtml(spec: CalcSpec, inputUsed: Record<string, Json>, result:
   }).join('');
   const verdict = result.verdict ?? 'INFO';
   const vColor = verdict === 'PASS' ? '#16a34a' : verdict === 'FAIL' ? '#dc2626' : verdict === 'WARN' ? '#d97706' : '#475569';
-  return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>구조계산 검토서 — ${esc(spec.title)}</title>
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${L.title} — ${esc(spec.title)}</title>
 <style>
 @page{size:A4;margin:18mm}body{font-family:'Malgun Gothic',system-ui,sans-serif;font-size:11px;color:#0f172a;margin:0}
 h1{font-size:16px;border-bottom:2px solid #0f172a;padding-bottom:6px}h2{font-size:12px;margin:14px 0 4px;border-left:3px solid #0f172a;padding-left:6px}
@@ -107,23 +110,24 @@ th{background:#f1f5f9;text-align:left}td.desc{color:#475569;font-size:10px}
 .foot{margin-top:16px;padding-top:8px;border-top:1px solid #94a3b8;font-size:10px;color:#475569}
 pre{margin:0;font-size:10px;white-space:pre-wrap}svg{max-width:100%;height:auto}
 </style></head><body>
-<h1>구조계산 검토서 — ${esc(spec.title)}</h1>
-<table class="meta"><tr><td>프로젝트: ${esc(opts.project || '—')}</td><td>부재: ${esc(opts.member || '—')}</td><td>기준: ${esc((result.standard as string) ?? 'KDS')}</td><td>일자: ${new Date().toISOString().slice(0, 10)}</td></tr></table>
-<h2>1. 설계 입력</h2>
-<table><tr><th>항목</th><th>값</th><th>설명(스키마)</th></tr>${inputRows}</table>
-<h2>2. 산출 결과 (검토항목·중간값)</h2>
-<table><tr><th>항목</th><th>값</th></tr>${objRows(result.checks ?? null)}${result.intermediate ? objRows(result.intermediate, 'intermediate') : ''}</table>
-<h2>3. 판정</h2>
+<h1>${opts.company ? esc(opts.company) + ' · ' : ''}${L.title} — ${esc(spec.title)}</h1>
+<table class="meta"><tr><td>${L.proj}: ${esc(opts.project || '—')}</td><td>${L.mem}: ${esc(opts.member || '—')}</td><td>${L.std}: ${esc((result.standard as string) ?? 'KDS')}</td><td>${L.date}: ${new Date().toISOString().slice(0, 10)}</td></tr></table>
+<h2>${L.s1}</h2>
+<table><tr><th>${L.item}</th><th>${L.val}</th><th>${L.desc}</th></tr>${inputRows}</table>
+<h2>${L.s2}</h2>
+<table><tr><th>${L.item}</th><th>${L.val}</th></tr>${objRows(result.checks ?? null)}${result.intermediate ? objRows(result.intermediate, 'intermediate') : ''}</table>
+<h2>${L.s3}</h2>
 <p><span class="verdict">${esc(verdict)}</span></p>
-${result.notes?.length ? `<h2>4. 산정 근거·가정</h2><ul>${result.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
-<h2>${result.notes?.length ? 5 : 4}. 적용 기준</h2>
-<ul>${(result.refs ?? []).map((r) => `<li>${esc(r)}</li>`).join('')}<li>검증 상태: ${esc(result.status ?? '')}</li></ul>
-${opts.svg ? `<h2>도면(배근 전개 — 소스)</h2>${opts.svg}` : ''}
+${result.notes?.length ? `<h2>${L.s4}</h2><ul>${result.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+<h2>${result.notes?.length ? 5 : 4}. ${L.s5}</h2>
+<ul>${(result.refs ?? []).map((r) => `<li>${esc(r)}</li>`).join('')}<li>${L.vstat}: ${esc(result.status ?? '')}</li></ul>
+${opts.svg ? `<h2>${L.drw}</h2>${opts.svg}` : ''}
 <div class="foot">
-${esc(result.disclaimer ?? '구조 검토 참고자료(비법정) — 법정 계산서는 기술사 날인 영역')}<br/>
+${esc(opts.en ? L.disc : (result.disclaimer ?? L.disc))}<br/>
 본 검토서는 NexyFab 결정론 계산 엔진 출력의 원본 전사이며, 실시설계 반영 전 책임구조기술자의 검토·서명이 필요합니다.
 ${result.attribution ? `<br/>${esc(result.attribution)}` : ''}
 </div>
+<table style="margin-top:14px;width:60%;margin-left:auto"><tr><th style="width:30%">${L.rev}</th><td>${esc(opts.engineer ?? '')}</td><th style="width:20%">${L.sign}</th><td style="width:25%"></td></tr></table>
 </body></html>`;
 }
 
@@ -148,6 +152,9 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
   const [loading, setLoading] = useState(false);
   const [project, setProject] = useState('');
   const [member, setMember] = useState('');
+  const [company, setCompany] = useState('');
+  const [engineer, setEngineer] = useState('');
+  const [sheetEn, setSheetEn] = useState(false);
   // 배근 전개도(rc_beam/rc_column 전용)
   const [reb, setReb] = useState<Record<string, string>>({ L_mm: '6000', sEnd_mm: '150', sMid_mm: '300', endZone_mm: '', topBars: '2-D22', botBars: '4-D22', stirrup: 'D10' });
   // 케이스 스택 — 부재 여러 개 검토 후 일괄 계산서(장당 1부재, page-break)
@@ -218,7 +225,7 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
 
   const printSheet = () => {
     if (!spec || !result) return;
-    const html = buildSheetHtml(spec, inputUsed, result, { project, member, svg: rebSvg });
+    const html = buildSheetHtml(spec, inputUsed, result, { project, member, svg: rebSvg, en: sheetEn, company, engineer });
     const w = window.open('', '_blank');
     if (!w) return;
     w.document.write(html);
@@ -236,11 +243,11 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
     const bodies = cases.map((c) => {
       const sp = CALC_CATALOG.find((x) => x.id === c.calcId);
       if (!sp) return '';
-      const html = buildSheetHtml(sp, c.inputUsed, c.result, { project, member: c.member, svg: c.svg });
+      const html = buildSheetHtml(sp, c.inputUsed, c.result, { project, member: c.member, svg: c.svg, en: sheetEn, company, engineer });
       const m = html.match(/<body>([\s\S]*)<\/body>/);
       return `<div style="page-break-after:always">${m ? m[1] : ''}</div>`;
     }).join('');
-    const first = buildSheetHtml(CALC_CATALOG.find((x) => x.id === cases[0].calcId)!, cases[0].inputUsed, cases[0].result, { project, member: cases[0].member, svg: cases[0].svg });
+    const first = buildSheetHtml(CALC_CATALOG.find((x) => x.id === cases[0].calcId)!, cases[0].inputUsed, cases[0].result, { project, member: cases[0].member, svg: cases[0].svg, en: sheetEn, company, engineer });
     const head = first.slice(0, first.indexOf('<body>') + 6);
     const w = window.open('', '_blank');
     if (!w) return;
@@ -356,6 +363,11 @@ export default function CalcStudioPanel({ lang }: { lang: string }) {
                   className="text-xs rounded border border-slate-300 dark:border-slate-600 bg-transparent px-2 py-1 w-36" />
                 <input value={member} onChange={(e) => setMember(e.target.value)} placeholder={ko ? '부재 표기 예: G1' : 'Member e.g. G1'}
                   className="text-xs rounded border border-slate-300 dark:border-slate-600 bg-transparent px-2 py-1 w-28" />
+                <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder={ko ? '회사명(표지)' : 'Company'}
+                  className="text-xs rounded border border-slate-300 dark:border-slate-600 bg-transparent px-2 py-1 w-28" />
+                <input value={engineer} onChange={(e) => setEngineer(e.target.value)} placeholder={ko ? '검토자(서명란)' : 'Engineer'}
+                  className="text-xs rounded border border-slate-300 dark:border-slate-600 bg-transparent px-2 py-1 w-24" />
+                <label className="text-[11px] flex items-center gap-1"><input type="checkbox" checked={sheetEn} onChange={(e) => setSheetEn(e.target.checked)} />EN</label>
                 <button onClick={printSheet}
                   className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
                   🖨 {ko ? '계산서 출력(1장 양식)' : 'Print calc sheet'}
