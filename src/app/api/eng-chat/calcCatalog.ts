@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(57종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(58종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -3664,6 +3664,93 @@ export const CALC_CATALOG: CalcSpec[] = [
         "type": "number",
         "min": 0.3,
         "max": 1
+      }
+    }
+  },
+  {
+    "id": "elastomeric_bearing",
+    "domain": "bridge/bearing",
+    "title": "탄성받침 (강재보강 — §4.2.3)",
+    "description": "형상계수·압축/전단/회전 변형률·총변형률 — 전단 0.7/1.0 한계 원문.",
+    "required": [
+      "a_mm",
+      "b_mm",
+      "ti_mm",
+      "nLayers",
+      "G_MPa",
+      "Fz_kN"
+    ],
+    "params": {
+      "a_mm": {
+        "desc": "받침 나비 a (유효 a′=강판 치수 — 피복 제외 입력 권장)",
+        "type": "number",
+        "min": 0
+      },
+      "b_mm": {
+        "desc": "받침 길이 b",
+        "type": "number",
+        "min": 0
+      },
+      "ti_mm": {
+        "desc": "개별 고무층 두께",
+        "type": "number",
+        "min": 0,
+        "max": 30
+      },
+      "nLayers": {
+        "desc": "고무층 수",
+        "type": "integer",
+        "min": 2,
+        "max": 30
+      },
+      "G_MPa": {
+        "desc": "전단탄성계수 (표 4.2-4 등급 — 0.9 통상, 제품값 입력)",
+        "type": "number",
+        "min": 0.6,
+        "max": 1.2
+      },
+      "Fz_kN": {
+        "desc": "설계 수직하중",
+        "type": "number",
+        "min": 0
+      },
+      "vxy_mm": {
+        "desc": "수평 상대변위 (온도+크리프 등 벡터합 — expansion_joint 연계)",
+        "type": "number",
+        "min": 0
+      },
+      "limitState": {
+        "desc": "한계상태 (전단 한계 0.7/1.0 — 원문)",
+        "enum": [
+          "service",
+          "ultimate"
+        ]
+      },
+      "alphaA_rad": {
+        "desc": "회전각 a방향 (구조해석 입력)",
+        "type": "number",
+        "min": 0
+      },
+      "alphaB_rad": {
+        "desc": "회전각 b방향",
+        "type": "number",
+        "min": 0
+      },
+      "KL": {
+        "desc": "하중계수 KL (원문 §4.2.3.6 확인 입력 — 기본 1.0)",
+        "type": "number",
+        "min": 1,
+        "max": 2
+      },
+      "totalStrainLimit": {
+        "desc": "총변형률 한계 (원문 §4.2.3.6 확인 입력 — 미입력 시 총변형률 INFO 보고만·판정 안 함)",
+        "type": "number",
+        "min": 0
+      },
+      "Ar_mm2": {
+        "desc": "유효 재하면적 Ar (변위 감소 반영 — 기본 a×b 명시)",
+        "type": "number",
+        "min": 0
       }
     }
   }
