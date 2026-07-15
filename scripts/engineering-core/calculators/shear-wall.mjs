@@ -70,12 +70,15 @@ export default {
       const Vc = vc2 !== null ? Math.min(vc1, vc2) : vc1;
       let Vs = 0;
       if (Number(dt.Avh_mm2) > 0 && Number(dt.sh_mm) > 0) Vs = (dt.Avh_mm2 * (dt.fy ?? 400) * d) / dt.sh_mm; // 식 4.9-3
-      const phiVn = 0.75 * (Vc + Vs);
+      const VnCap = ((5 * lam * Math.sqrt(fck)) / 6) * h * d; // Vn 상한 (§4.9.2(3) 원문: (5λ√fck/6)hd)
+      const Vn = Math.min(Vc + Vs, VnCap);
+      const capped = Vc + Vs > VnCap;
+      const phiVn = 0.75 * Vn;
       detail = {
         wall: dt.wallIndex, d_mm: d, Vc1_kN: +(vc1 / 1000).toFixed(1), Vc2_kN: vc2 !== null ? +(vc2 / 1000).toFixed(1) : null,
         Vc_kN: +(Vc / 1000).toFixed(1), Vs_kN: +(Vs / 1000).toFixed(1), phiVn_kN: +(phiVn / 1000).toFixed(1),
         Vu_kN: Vu / 1000, ratio: Vu > 0 ? +((Vu) / phiVn).toFixed(3) : null, pass: Vu > 0 ? Vu <= phiVn : null,
-        note: '식 4.9-1/2 중 작은 값 + 식 4.9-3(수평철근) — 원문 판독. Mu/Vu−lw/2≤0이면 4.9-2 부적용(원문). Vn 상한·최소철근(§4.9.3)은 별도 확인 명시.',
+        note: '식 4.9-1/2 중 작은 값 + 식 4.9-3 + Vn≤(5λ√fck/6)hd 상한(§4.9.2(3) 원문)' + (capped ? ' — ⚠ 상한 지배(철근 증가 무효, 단면 증대 필요)' : '') + '. 최소 수평·수직철근(§4.9.3) 별도 확인.',
       };
     }
     const frameShare = kFrame > 0 ? +(kFrame / sumK).toFixed(3) : 0;

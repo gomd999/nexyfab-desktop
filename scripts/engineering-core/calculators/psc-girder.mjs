@@ -13,7 +13,7 @@ export default {
   title: 'PSC 거더 응력 검토 (이송·사용)',
   description: '긴장력·편심·단면성능 → 상·하연 응력 2단계 검토. 손실률·허용계수 입력 원칙.',
   refs: ['PSC 고전 응력식 σ=P/A∓Pe·y/I±M·y/I (폐형)', 'KDS 24 14 21 허용응력·손실 산정은 확인 입력(원문 대조 후 계수 승격 예정 — 명시)'],
-  status: 'draft — 응력식 폐형 앵커. 허용계수·손실 KDS 원문 대조·긴장재 응력·처짐(솟음)은 후속',
+  status: 'verified(압축계수) — §4.2.2.1·§1.5.7.2③ 원문 확정(0.6/0.45/0.6fck(t)). 균열폭·긴장재 응력·솟음·극한휨은 후속',
   inputSchema: {
     type: 'object',
     required: ['A_mm2', 'I_mm4', 'yt_mm', 'yb_mm', 'Pj_kN', 'e_mm', 'fck'],
@@ -30,8 +30,9 @@ export default {
       Ms_kNm: { type: 'number', minimum: 0, description: '사용 시 전체 모멘트(자중+2차사하중+활하중)' },
       fck: { type: 'number', minimum: 30, maximum: 70, description: '콘크리트 강도 (PSC ≥30 관례)' },
       fci: { type: 'number', minimum: 20, maximum: 60, description: '이송 시 강도 (기본 0.8fck 관례 명시)' },
-      compFactor: { type: 'number', minimum: 0.4, maximum: 0.7, description: '허용압축 계수 (기본 0.6 관례 — KDS 24 14 21 확인)' },
-      tensFactor: { type: 'number', minimum: 0, maximum: 0.63, description: '허용인장 계수 ×√fck (기본 0.25 관례 — 완전 프리스트레스는 0)' },
+      compFactor: { type: 'number', minimum: 0.4, maximum: 0.7, description: '압축한계 계수 (기본 0.6 — KDS 24 14 21 §4.2.2.1② 원문: 사용조합-I 0.6fck·전달 §1.5.7.2③ 0.6fck(t))' },
+      MsSustained_kNm: { type: 'number', minimum: 0, description: '지속하중 모멘트 (입력 시 조합-V 지속 압축한계 0.45fck 검토 — §4.2.2.1① 원문)' },
+      tensFactor: { type: 'number', minimum: 0, maximum: 0.63, description: '인장 참고한계 ×√fck (기본 0.25 참고 관례 — 한계상태설계법의 정식 검토는 균열폭/탈압축(§4.2.3, 후속) 명시)' },
     },
   },
   run(input) {
@@ -57,15 +58,22 @@ export default {
       allowComp: +l.comp.toFixed(2), allowTens: +l.tens.toFixed(2),
     });
     const t = chk(transfer, lim.transfer), sv = chk(service, lim.service);
-    const pass = t.compOk && t.tensOk && sv.compOk && sv.tensOk;
+    // 지속(조합-V) 0.45fck (§4.2.2.1① 원문) — MsSustained 입력 시
+    let sus = null;
+    if (input.MsSustained_kNm > 0) {
+      const st2 = sig(Pe, input.MsSustained_kNm);
+      const lim045 = 0.45 * input.fck;
+      sus = { top_MPa: +st2.top.toFixed(2), bot_MPa: +st2.bot.toFixed(2), allow_MPa: +lim045.toFixed(2), pass: Math.max(st2.top, st2.bot) <= lim045 };
+    }
+    const pass = t.compOk && t.tensOk && sv.compOk && sv.tensOk && (sus ? sus.pass : true);
     return {
       verdict: pass ? 'PASS' : 'FAIL',
-      checks: { transfer: t, service: sv },
+      checks: { transfer: t, service: sv, ...(sus ? { sustained: sus } : {}) },
       intermediate: { Pi_kN: +(Pi / 1000).toFixed(1), Pe_kN: +(Pe / 1000).toFixed(1), St_mm3: Math.round(St), Sb_mm3: Math.round(Sb) },
       notes: [
         `이송: 상 ${t.top_MPa}/하 ${t.bot_MPa} MPa (허용 압축 ${t.allowComp}·인장 ${t.allowTens}) / 사용: 상 ${sv.top_MPa}/하 ${sv.bot_MPa} (허용 ${sv.allowComp}·${sv.allowTens})`,
         `손실: 즉시 ${input.lossImmediate_pct ?? 0}%·총 ${input.lossTotal_pct ?? 0}% — 입력값(KDS 24 14 21 산정 필요, 0=미반영 명시).`,
-        '허용계수 0.6/0.25√fck=관례(원문 대조 후 승격 예정 명시). 긴장재 응력·솟음·극한 휨은 후속. 압축 +, 인장 −.',
+        '압축한계=원문 확정(§4.2.2.1: 사용-I 0.6fck·지속-V 0.45fck / §1.5.7.2③ 전달 0.6fck(t)). 인장 0.25√fck=참고 관례 — 정식은 균열폭/탈압축 검토(후속). 긴장재 0.65fpu·철근 0.8fy 한계는 별도. 압축 +, 인장 −.',
       ],
     };
   },
