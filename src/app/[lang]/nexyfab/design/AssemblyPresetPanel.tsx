@@ -239,6 +239,14 @@ const dict = {
     uniNone: '포함할 리포트가 없습니다 — 검증이 실패했거나 실행되지 않았습니다.',
     uniMissing: '누락(실패/미실행): ',
     uniPrint: '인쇄 / PDF',
+    svBtn: '서버',
+    svLoginNote: '로그인 시 서버 저장 사용 가능(기기 간 동기화).',
+    svSave: '서버 저장',
+    svBusy: '서버 통신 중…',
+    svFailPrefix: '서버 저장소 오류: ',
+    svSaved: '서버에 저장되었습니다: ',
+    svEmpty: '서버 프로젝트 없음',
+    svNeedName: '프로젝트 이름을 입력하세요.',
   },
   en: {
     tplTitle: 'Assembly template',
@@ -453,6 +461,14 @@ const dict = {
     uniNone: 'No reports to include — checks failed or were not run.',
     uniMissing: 'Missing (failed/not run): ',
     uniPrint: 'Print / PDF',
+    svBtn: 'Server',
+    svLoginNote: 'Sign in to use server save (cross-device sync).',
+    svSave: 'Save to server',
+    svBusy: 'Contacting server…',
+    svFailPrefix: 'Server storage error: ',
+    svSaved: 'Saved to server: ',
+    svEmpty: 'No server projects',
+    svNeedName: 'Enter a project name.',
   },
   ja: {
     tplTitle: 'アセンブリテンプレート',
@@ -667,6 +683,14 @@ const dict = {
     uniNone: '含められるレポートがありません — 検証が失敗したか未実行です。',
     uniMissing: '欠落（失敗/未実行）: ',
     uniPrint: '印刷 / PDF',
+    svBtn: 'サーバー',
+    svLoginNote: 'ログインするとサーバー保存が使えます（端末間同期）。',
+    svSave: 'サーバーに保存',
+    svBusy: 'サーバー通信中…',
+    svFailPrefix: 'サーバー保存エラー: ',
+    svSaved: 'サーバーに保存しました: ',
+    svEmpty: 'サーバープロジェクトなし',
+    svNeedName: 'プロジェクト名を入力してください。',
   },
   zh: {
     tplTitle: '装配模板',
@@ -881,6 +905,14 @@ const dict = {
     uniNone: '没有可包含的报告 — 验证失败或未执行。',
     uniMissing: '缺失（失败/未执行）: ',
     uniPrint: '打印 / PDF',
+    svBtn: '服务器',
+    svLoginNote: '登录后可使用服务器保存（跨设备同步）。',
+    svSave: '保存到服务器',
+    svBusy: '正在连接服务器…',
+    svFailPrefix: '服务器存储错误: ',
+    svSaved: '已保存到服务器: ',
+    svEmpty: '无服务器项目',
+    svNeedName: '请输入项目名称。',
   },
   es: {
     tplTitle: 'Plantilla de ensamblaje',
@@ -1095,6 +1127,14 @@ const dict = {
     uniNone: 'No hay informes que incluir — las verificaciones fallaron o no se ejecutaron.',
     uniMissing: 'Faltantes (fallidos/no ejecutados): ',
     uniPrint: 'Imprimir / PDF',
+    svBtn: 'Servidor',
+    svLoginNote: 'Inicie sesión para usar el guardado en servidor (sincronización entre dispositivos).',
+    svSave: 'Guardar en servidor',
+    svBusy: 'Conectando con el servidor…',
+    svFailPrefix: 'Error de almacenamiento en servidor: ',
+    svSaved: 'Guardado en el servidor: ',
+    svEmpty: 'Sin proyectos en el servidor',
+    svNeedName: 'Introduzca un nombre de proyecto.',
   },
   ar: {
     tplTitle: 'قالب التجميع',
@@ -1309,6 +1349,14 @@ const dict = {
     uniNone: 'لا توجد تقارير للإدراج — فشلت عمليات التحقق أو لم تُنفذ.',
     uniMissing: 'مفقود (فشل/لم يُنفذ): ',
     uniPrint: 'طباعة / PDF',
+    svBtn: 'الخادم',
+    svLoginNote: 'سجّل الدخول لاستخدام الحفظ على الخادم (مزامنة بين الأجهزة).',
+    svSave: 'حفظ على الخادم',
+    svBusy: 'جارٍ الاتصال بالخادم…',
+    svFailPrefix: 'خطأ تخزين الخادم: ',
+    svSaved: 'تم الحفظ على الخادم: ',
+    svEmpty: 'لا مشاريع على الخادم',
+    svNeedName: 'أدخل اسم المشروع.',
   },
 } as const;
 
@@ -1517,6 +1565,13 @@ export default function AssemblyPresetPanel({
   const [saveName, setSaveName] = useState('');
   const restoreRef = useRef<SavedState | null>(null); // ?d= 링크·불러오기 → 템플릿 로드 후 적용
   const [uniBusy, setUniBusy] = useState(false); // Round6 — 통합 리포트 구성 중
+  // Round7 — 서버 프로젝트 저장 (/api/nexyfab/drawing/projects · nf_access_token, 401=비로그인 정직 안내)
+  const [svOpen, setSvOpen] = useState(false);
+  const [svAuth, setSvAuth] = useState<boolean | null>(null); // null=미확인 · false=비로그인(로컬 저장은 계속 가능)
+  const [svList, setSvList] = useState<Array<{ id: string; name: string; domain: string; updated_at?: string }>>([]);
+  const [svSel, setSvSel] = useState('');
+  const [svBusyF, setSvBusyF] = useState(false);
+  const [svMsg, setSvMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const hkRef = useRef<{ undo: () => void; redo: () => void; mode: (m: PickMode) => void; esc: () => void } | null>(null);
 
   // 저장 프로젝트 로드 (mount)
@@ -2307,6 +2362,87 @@ export default function AssemblyPresetPanel({
     else { restoreRef.current = d; setTid(d.templateId); }
   };
   const domProjects = projects.filter((p) => p.domain === domain);
+
+  // Round7 — 서버 저장: 401=비로그인 정직 안내(로컬 저장 차단 안 함), 목록은 현재 도메인만
+  const svCall = async (input: string, init?: RequestInit): Promise<Response | null> => {
+    const r = await fetch(input, init);
+    if (r.status === 401) { setSvAuth(false); setSvList([]); return null; }
+    setSvAuth(true);
+    return r;
+  };
+  const fetchServerList = async () => {
+    setSvBusyF(true); setSvMsg(null);
+    try {
+      const r = await svCall('/api/nexyfab/drawing/projects/');
+      if (!r) return;
+      const j = (await r.json().catch(() => ({}))) as { ok?: boolean; projects?: Array<{ id: string; name: string; domain: string; updated_at?: string }>; error?: string };
+      if (!r.ok || !j.ok) throw new Error(j.error ?? 'list failed');
+      setSvList((j.projects ?? []).filter((p) => p.domain === domain));
+    } catch (e) {
+      setSvMsg({ ok: false, text: t.svFailPrefix + (e instanceof Error ? e.message : String(e)) });
+    } finally {
+      setSvBusyF(false);
+    }
+  };
+  const toggleServer = () => {
+    const next = !svOpen;
+    setSvOpen(next);
+    if (next) void fetchServerList();
+  };
+  const saveServer = async () => {
+    const name = saveName.trim();
+    if (!name) { setSvMsg({ ok: false, text: t.svNeedName }); return; }
+    setSvBusyF(true); setSvMsg(null);
+    try {
+      const r = await svCall('/api/nexyfab/drawing/projects/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, domain, snapshot: snapshotState() }), // 동명 upsert(서버)
+      });
+      if (!r) return;
+      const j = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!r.ok || !j.ok) throw new Error(j.error ?? 'save failed');
+      setSvMsg({ ok: true, text: t.svSaved + name });
+      await fetchServerList();
+    } catch (e) {
+      setSvMsg({ ok: false, text: t.svFailPrefix + (e instanceof Error ? e.message : String(e)) });
+    } finally {
+      setSvBusyF(false);
+    }
+  };
+  const loadServer = async () => {
+    if (!svSel) return;
+    setSvBusyF(true); setSvMsg(null);
+    try {
+      const r = await svCall('/api/nexyfab/drawing/projects/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loadId: svSel }),
+      });
+      if (!r) return;
+      const j = (await r.json().catch(() => ({}))) as { ok?: boolean; snapshot?: SavedState; error?: string };
+      if (!r.ok || !j.ok || !j.snapshot?.templateId || !j.snapshot.params) throw new Error(j.error ?? 'load failed');
+      doRestore({ ...j.snapshot, name: svList.find((p) => p.id === svSel)?.name ?? j.snapshot.name });
+    } catch (e) {
+      setSvMsg({ ok: false, text: t.svFailPrefix + (e instanceof Error ? e.message : String(e)) });
+    } finally {
+      setSvBusyF(false);
+    }
+  };
+  const deleteServer = async () => {
+    if (!svSel) return;
+    setSvBusyF(true); setSvMsg(null);
+    try {
+      const r = await svCall(`/api/nexyfab/drawing/projects/?id=${encodeURIComponent(svSel)}`, { method: 'DELETE' });
+      if (!r) return;
+      const j = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!r.ok || !j.ok) throw new Error(j.error ?? 'delete failed');
+      setSvSel('');
+      await fetchServerList();
+    } catch (e) {
+      setSvMsg({ ok: false, text: t.svFailPrefix + (e instanceof Error ? e.message : String(e)) });
+    } finally {
+      setSvBusyF(false);
+    }
+  };
   const selProj = domProjects.find((p) => String(p.at) === pjSelAt) ?? null;
 
   // Round5 ⑥ A/B 비교 — A=스냅샷(파라미터+가구+요약), B=현재 편집 상태(라이브)
@@ -2488,6 +2624,35 @@ export default function AssemblyPresetPanel({
         )}
       </div>
       <div style={{ marginTop: 3, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{t.pjNote}</div>
+
+      {/* Round7 — 서버 저장 (계정 연동): 401=비로그인 정직 안내, 로컬 저장은 계속 사용 가능 */}
+      <div style={{ marginTop: 4 }}>
+        <button type="button" onClick={toggleServer} style={{ ...rptBtn, marginTop: 0, ...(svOpen ? { background: 'var(--nx-accent-soft, #eef4ff)' } : {}) }}>
+          ☁ {t.svBtn}
+        </button>
+        {svOpen && (
+          <div style={{ marginTop: 4 }}>
+            {svAuth === false && (
+              <div style={{ fontSize: 10, color: '#b45309' }}>{t.svLoginNote}</div>
+            )}
+            {svAuth === true && (
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button type="button" onClick={() => void saveServer()} disabled={svBusyF} style={{ ...rptBtn, marginTop: 0 }}>☁ {t.svSave}</button>
+                <select value={svSel} onChange={(e) => setSvSel(e.target.value)} style={{ ...selStyle, width: 'auto', flex: 1, minWidth: 90 }}>
+                  <option value="">{svList.length ? '—' : t.svEmpty}</option>
+                  {svList.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}{p.updated_at ? ` (${String(p.updated_at).slice(0, 10)})` : ''}</option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => void loadServer()} disabled={svBusyF || !svSel} style={{ ...rptBtn, marginTop: 0 }}>{t.pjLoad}</button>
+                <button type="button" onClick={() => void deleteServer()} disabled={svBusyF || !svSel} style={{ ...rptBtn, marginTop: 0, color: '#991b1b' }}>{t.pjDel}</button>
+              </div>
+            )}
+            {svBusyF && <div style={{ fontSize: 10, marginTop: 2, color: 'var(--nx-accent, #2563eb)' }}>{t.svBusy}</div>}
+            {svMsg && <div style={{ fontSize: 10, marginTop: 2, color: svMsg.ok ? '#16a34a' : '#991b1b' }}>{svMsg.text}</div>}
+          </div>
+        )}
+      </div>
 
       {built && (
         <button type="button" onClick={downloadPackage} disabled={pkgBusy} style={{ ...genStyle, marginTop: 6, background: 'var(--nx-panel, #fff)', color: 'var(--nx-accent, #2563eb)', border: '1px solid var(--nx-accent, #2563eb)' }}>
