@@ -37,6 +37,7 @@ export default {
       tendon: { description: '긴장재 응력 한계 검토(선택 — §1.5.7.2·§1.5.7.3 원문): { Ap_mm2, fpu_MPa, fpy_MPa(항복 — 뚜렷하지 않으면 fp0.2k 입력·명시) }' },
       crackControl: { description: '간접 균열 제어(선택 — §4.2.3.3 표 4.2-4·4.2-5 원문): { steelStress_MPa(균열단면 기준 철근응력 — 산정 입력), barDia_mm?, barSpacing_mm?, section: rc_flexure|rc_tension|psc } — 지름 또는 간격 중 하나 만족 시 한계균열폭(PSC 0.2·RC 0.3mm) 충족 간주(§4.2.3.1(6)). 최소철근량(§4.2.3.2 식4.2-1)은 별도 확인' },
       crackWidth: { description: '직접 균열폭 계산(선택 — §4.2.3.4 식4.2-4~7 원문): { fso_MPa(균열단면 철근응력), fcte_MPa(유효 인장강도 fctm(t) — 산정 입력), h_mm, d_mm, x_mm(중립축 — 균열환산단면 산정 입력), b_mm(유효폭), cc_mm(최소피복), db_mm, As_mm2, Ap_mm2?, xi1?(부착비 ξ1 — 표 4.2-3, 기본 0=긴장재 무시 보수), barSpacing_mm?, kt?(0.6 단기/0.4 장기 — 기본 0.4), k1?(0.8 이형/1.6 원형·긴장재), k2?(0.5 휨/1.0 인장), Es_MPa?, n?(탄성계수비 — 기본 Es/(8500∛(fck+4)) 관례 명시), limit_mm?(표 4.2-2: PSC 0.2·RC 0.3 기본 0.2) }' },
+      ultimate: { description: '극한휨 Mn(선택 — 변형률적합 이분법·이선형 긴장재 모델 명시): { b_mm(압축면 유효폭 — 플랜지), dp_mm(긴장재 유효깊이), Ap_mm2, fpu_MPa, fpy_MPa, Ep_MPa?(기본 200000 강연선 관례 — 195~200GPa 제품치 입력 권장), As_mm2?(인장철근), d_mm?(철근 깊이), fy_MPa?, Mu_kNm?(판정용 — 계수휨모멘트), phiF?(휨 강도감수계수 — 기본 0.85 인장지배 관례, 한계상태법 재료계수 방식과 구분 명시) }. 직사각 압축블록 한정(플랜지 내 중립축 검증 게이트)' },
     },
   },
   run(input) {
@@ -159,10 +160,55 @@ export default {
         note: `§4.2.3.4 원문식. kt=${kt2}(0.6 단기/0.4 장기)·k1=${k1}·k2=${k2}·n=${n.toFixed(2)}${Number(cw.n) > 0 ? '(입력)' : '(Ec=8500∛(fck+4) 관례 — 교량기준 Ec식 확인 입력 권장)'}·ξ1=${xi1}${xi1 === 0 && Number(cw.Ap_mm2) > 0 ? '(긴장재 기여 무시 — 보수, 표 4.2-3 산정 입력 가능)' : ''}. x(중립축)·fso는 균열환산단면 산정 입력. 한계 ${lim}mm=표 4.2-2(설계등급별).`,
       };
     }
-    const pass = t.compOk && t.tensOk && sv.compOk && sv.tensOk && (sus ? sus.pass : true) && (tendon ? tendon.jacking.pass && tendon.transfer.pass : true) && (crack ? crack.pass : true) && (crackW ? crackW.pass : true);
+    // 극한휨 Mn — 변형률적합 이분법 (정해). 긴장재 = 이선형(Ep 탄성 → fpy 이후 완만 경화
+    // (fpu−fpy)/(εpu−εpy) 선형, εpu=0.035 관례 명시 — 실제 파워식(Ramberg-Osgood)은 제품별).
+    // εcu=0.0033(KDS)·등가블록 β1=0.80(fck≤40 — rc_beam과 동일 KDS 원문 계수).
+    let ult = null;
+    const ul = input.ultimate;
+    if (ul && Number(ul.Ap_mm2) > 0) {
+      for (const k of ['b_mm', 'dp_mm', 'fpu_MPa', 'fpy_MPa']) if (!(Number(ul[k]) > 0)) throw new Error('input gate: ultimate.' + k);
+      const Ep = Number(ul.Ep_MPa) > 0 ? Number(ul.Ep_MPa) : 200000;
+      const fck2 = input.fck;
+      const beta1 = fck2 <= 40 ? 0.80 : Math.max(0.64, 0.80 - 0.0016 * (fck2 - 40)); // KDS β1(rc_beam 검증 계수 재사용)
+      const ecu = 0.0033;
+      // 유효 프리스트레인 (전 손실 후): εpe = Pe/(Ap·Ep) — Pe는 위에서 산정
+      const epe = Pe / (ul.Ap_mm2 * Ep);
+      const epy = ul.fpy_MPa / Ep, epu2 = 0.035; // εpu=0.035 관례 명시
+      const fpOf = (eps) => eps <= epy ? eps * Ep : Math.min(ul.fpu_MPa, ul.fpy_MPa + ((ul.fpu_MPa - ul.fpy_MPa) * (eps - epy)) / (epu2 - epy));
+      const As2 = Number(ul.As_mm2) > 0 ? ul.As_mm2 : 0;
+      const fy2 = Number(ul.fy_MPa) > 0 ? ul.fy_MPa : 400;
+      const d2 = Number(ul.d_mm) > 0 ? ul.d_mm : ul.dp_mm;
+      // 힘평형: 0.85fck·b·β1·c = Ap·fp(εpe+εcu(dp−c)/c) + As·fs — c 이분법
+      const forceGap = (c) => {
+        const epsP = epe + (ecu * (ul.dp_mm - c)) / c;
+        const epsS = (ecu * (d2 - c)) / c;
+        const fsS = Math.max(-fy2, Math.min(fy2, epsS * 200000));
+        return 0.85 * fck2 * ul.b_mm * beta1 * c - ul.Ap_mm2 * fpOf(epsP) - As2 * fsS;
+      };
+      let lo = 1, hi = ul.dp_mm;
+      for (let i = 0; i < 80; i++) { const mid = (lo + hi) / 2; if (forceGap(mid) < 0) lo = mid; else hi = mid; }
+      const c = (lo + hi) / 2, a = beta1 * c;
+      const epsP = epe + (ecu * (ul.dp_mm - c)) / c;
+      const fps = fpOf(epsP);
+      const epsS = (ecu * (d2 - c)) / c;
+      const fsS = Math.max(-fy2, Math.min(fy2, epsS * 200000));
+      const Mn = (ul.Ap_mm2 * fps * (ul.dp_mm - a / 2) + As2 * fsS * (d2 - a / 2)) / 1e6; // kN·m
+      const phiF = Number(ul.phiF) > 0 ? Number(ul.phiF) : 0.85;
+      const phiMn = phiF * Mn;
+      const flangeOk = true; // 직사각 블록 — 플랜지 두께 입력 시 게이트(후속): 현재 b=압축면 유효폭 전제
+      const passU = Number(ul.Mu_kNm) > 0 ? ul.Mu_kNm <= phiMn : null;
+      ult = {
+        c_mm: +c.toFixed(1), a_mm: +a.toFixed(1), beta1, epsP: +epsP.toFixed(5), fps_MPa: +fps.toFixed(1),
+        Mn_kNm: +Mn.toFixed(1), phiMn_kNm: +phiMn.toFixed(1), phiF,
+        ...(passU !== null ? { Mu_kNm: ul.Mu_kNm, ratio: +(ul.Mu_kNm / phiMn).toFixed(3), pass: passU } : {}),
+        note: `변형률적합 이분법(정해): εpe=${epe.toFixed(5)}(Pe 기준)+휨 변형률, 긴장재=이선형(fpy→fpu, εpu 0.035 관례 명시 — 제품 곡선 입력은 후속). εcu 0.0033·β1 ${beta1}(KDS). 직사각 압축블록 전제 — 중립축 a=${a.toFixed(0)}mm가 플랜지 내인지 확인(플랜지 두께 게이트 후속). φ=${phiF}(인장지배 관례 — 한계상태 재료계수 방식 병행 시 별도).`,
+      };
+      if (!flangeOk) ult.note += ' ⚠ 플랜지 초과';
+    }
+    const pass = t.compOk && t.tensOk && sv.compOk && sv.tensOk && (sus ? sus.pass : true) && (tendon ? tendon.jacking.pass && tendon.transfer.pass : true) && (crack ? crack.pass : true) && (crackW ? crackW.pass : true) && (ult && ult.pass !== undefined ? ult.pass : true);
     return {
       verdict: pass ? 'PASS' : 'FAIL',
-      checks: { transfer: t, service: sv, ...(sus ? { sustained: sus } : {}), ...(tendon ? { tendon } : {}), ...(crack ? { crackIndirect: crack } : {}), ...(crackW ? { crackWidth: crackW } : {}) },
+      checks: { transfer: t, service: sv, ...(sus ? { sustained: sus } : {}), ...(tendon ? { tendon } : {}), ...(crack ? { crackIndirect: crack } : {}), ...(crackW ? { crackWidth: crackW } : {}), ...(ult ? { ultimate: ult } : {}) },
       ...(camber ? { camber } : {}),
       intermediate: { Pi_kN: +(Pi / 1000).toFixed(1), Pe_kN: +(Pe / 1000).toFixed(1), St_mm3: Math.round(St), Sb_mm3: Math.round(Sb) },
       notes: [

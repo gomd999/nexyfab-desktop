@@ -303,3 +303,40 @@ test('mse_wall internal: bottom-layer rupture governs (Tmax exceeds Tal) — gat
   assert.ok(layers.length === 10 && layers[0].cdrRupture > 3 && layers[layers.length - 1].cdrRupture < 1);
   assert.equal(r.internal.pass, false);
 });
+
+// ── 심화 배치 2: 용접·압밀·말뚝·PSC Mn·경계요소 ─────────────────────────────
+test('consolidation: classic Tv anchors U50=0.197, U90=0.848 (exact series)', () => {
+  const r = runCalculator('consolidation', { H_m: 6, e0: 1.1, Cc: 0.36, sigma0_kPa: 80, dSigma_kPa: 60, cv_m2yr: 2.5 }, 'KDS');
+  const t50 = r.time.curve.find((x) => x.U_pct === 50), t90 = r.time.curve.find((x) => x.U_pct === 90);
+  assert.ok(Math.abs(t50.Tv - 0.197) < 0.001 && Math.abs(t90.Tv - 0.848) < 0.001);
+});
+
+test('weld_connection: closed-form 0.75*0.6*FEXX*0.7s*(L-2s) and beta=1.2-0.002(L/s)', () => {
+  const r = runCalculator('weld_connection', { weldSize_mm: 6, length_mm: 200, FEXX_MPa: 490, demandP_kN: 150 }, 'KDS');
+  assert.ok(Math.abs(r.checks.strength.phiRn_kN - 174.1) < 0.2);
+  const r2 = runCalculator('weld_connection', { weldSize_mm: 6, length_mm: 1000, FEXX_MPa: 490, demandP_kN: 100 }, 'KDS');
+  assert.ok(Math.abs(r2.intermediate.Le_mm / 988 - 0.871) < 0.003);
+});
+
+test('pile_capacity: homogeneous clay alpha-method closed form', () => {
+  const r = runCalculator('pile_capacity', { dia_m: 0.5, length_m: 15, layers: [{ thick_m: 15, type: 'clay', Su_kPa: 50, alpha: 0.9 }], tip: { type: 'clay', Su_kPa: 50 } }, 'KDS');
+  assert.ok(Math.abs(r.checks.capacity.Qu_kN - 1148.6) < 1);
+});
+
+test('psc_girder ultimate: strain compatibility force balance closes', () => {
+  const r = runCalculator('psc_girder', {
+    A_mm2: 600000, I_mm4: 2e11, yt_mm: 800, yb_mm: 700, Pj_kN: 3000, e_mm: 400, lossTotal_pct: 20, Mo_kNm: 900, Ms_kNm: 2400, fck: 40,
+    ultimate: { b_mm: 1000, dp_mm: 800, Ap_mm2: 1664.4, fpu_MPa: 1860, fpy_MPa: 1580 },
+  }, 'KDS');
+  const u = r.checks.ultimate;
+  const cCheck = (1664.4 * u.fps_MPa) / (0.85 * 40 * 1000 * 0.8);
+  assert.ok(Math.abs(cCheck - u.c_mm) < 0.5 && u.fps_MPa > 1580 && u.fps_MPa < 1860);
+});
+
+test('shear_wall boundary element: eq 4.7-2 with 0.007 floor', () => {
+  const r = runCalculator('shear_wall', {
+    walls: [{ lw_mm: 4000, t_mm: 300, h_mm: 30000 }], storyShear_kN: 1000, fck: 27,
+    boundary: { wallIndex: 1, c_mm: 900, deltaU_mm: 120 },
+  }, 'KDS');
+  assert.ok(Math.abs(r.boundaryElement.cLimit_mm - 952) <= 1 && r.boundaryElement.required === false);
+});

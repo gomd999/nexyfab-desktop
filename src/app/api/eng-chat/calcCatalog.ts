@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(33종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(36종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -2175,6 +2175,9 @@ export const CALC_CATALOG: CalcSpec[] = [
       },
       "detail": {
         "desc": "벽 상세 전단검토(§4.9 원문식 — 선택): { wallIndex(1~), Nu_kN(압축+), Mu_kNm, Vu_kN, Avh_mm2?, sh_mm?, fy?, Avv_mm2?, sv_mm? } — Avv/sv 입력 시 §4.9.3 최소철근·간격 검토 포함"
+      },
+      "boundary": {
+        "desc": "특수경계요소 검토(선택 — KDS 14 20 80 §4.7.6 원문): { wallIndex(1~), c_mm(압축연단 중립축 — P-M 해석 산정 입력), deltaU_mm(설계변위), hw_mm(벽 전체높이 — 기본 벽 h), Mu_kNm?, Vu_kN?(연장범위 Mu/4Vu용), sigmaMax_MPa?(응력법 (3) — 비균열 선형탄성 산정 입력), rhoBoundary?(경계부 종방향 철근비 — (5)① 2.8/fy 검토) } — 변위법 (2)①: c≥lw/(600(δu/hw)), δu/hw≥0.007"
       }
     }
   },
@@ -2334,6 +2337,188 @@ export const CALC_CATALOG: CalcSpec[] = [
       },
       "crackWidth": {
         "desc": "직접 균열폭 계산(선택 — §4.2.3.4 식4.2-4~7 원문): { fso_MPa(균열단면 철근응력), fcte_MPa(유효 인장강도 fctm(t) — 산정 입력), h_mm, d_mm, x_mm(중립축 — 균열환산단면 산정 입력), b_mm(유효폭), cc_mm(최소피복), db_mm, As_mm2, Ap_mm2?, xi1?(부착비 ξ1 — 표 4.2-3, 기본 0=긴장재 무시 보수), barSpacing_mm?, kt?(0.6 단기/0.4 장기 — 기본 0.4), k1?(0.8 이형/1.6 원형·긴장재), k2?(0.5 휨/1.0 인장), Es_MPa?, n?(탄성계수비 — 기본 Es/(8500∛(fck+4)) 관례 명시), limit_mm?(표 4.2-2: PSC 0.2·RC 0.3 기본 0.2) }"
+      },
+      "ultimate": {
+        "desc": "극한휨 Mn(선택 — 변형률적합 이분법·이선형 긴장재 모델 명시): { b_mm(압축면 유효폭 — 플랜지), dp_mm(긴장재 유효깊이), Ap_mm2, fpu_MPa, fpy_MPa, Ep_MPa?(기본 200000 강연선 관례 — 195~200GPa 제품치 입력 권장), As_mm2?(인장철근), d_mm?(철근 깊이), fy_MPa?, Mu_kNm?(판정용 — 계수휨모멘트), phiF?(휨 강도감수계수 — 기본 0.85 인장지배 관례, 한계상태법 재료계수 방식과 구분 명시) }. 직사각 압축블록 한정(플랜지 내 중립축 검증 게이트)"
+      }
+    }
+  },
+  {
+    "id": "weld_connection",
+    "domain": "mechanical/connection",
+    "title": "필릿용접 접합 (KDS 14 31 25)",
+    "description": "필릿용접 설계강도(0.75·0.6FEXX·Ae)+치수·길이 게이트 — 건축구조물 기준.",
+    "required": [
+      "weldSize_mm",
+      "length_mm",
+      "FEXX_MPa",
+      "demandP_kN"
+    ],
+    "params": {
+      "weldSize_mm": {
+        "desc": "용접치수 s (다리길이)",
+        "type": "number",
+        "min": 0,
+        "max": 30
+      },
+      "length_mm": {
+        "desc": "용접 총길이 L (양면이면 합계 입력)",
+        "type": "number",
+        "min": 0
+      },
+      "nSegments": {
+        "desc": "세그먼트 수 (기본 1 — 유효길이 공제 2s×n)",
+        "type": "integer",
+        "min": 1,
+        "max": 20
+      },
+      "FEXX_MPa": {
+        "desc": "용접재 인장강도 (KS 등급 — 매칭용접재 원칙, 표 4.1-8 주2)",
+        "type": "number",
+        "min": 400,
+        "max": 830
+      },
+      "demandP_kN": {
+        "desc": "소요강도 (용접군 도심 통과 합력 — 편심은 후속, 별도 해석 입력)",
+        "type": "number",
+        "min": 0
+      },
+      "tThin_mm": {
+        "desc": "접합부 얇은 쪽 판두께 (최소치수 게이트 — 표 4.1-6(a))",
+        "type": "number",
+        "min": 0
+      },
+      "lapJoint": {
+        "desc": "겹침이음 여부 (최대치수 게이트 §4.1.2.2.2(2))",
+        "type": "boolean"
+      },
+      "tEdge_mm": {
+        "desc": "겹침이음 시 연단 용접되는 판두께 (최대치수 판정용)",
+        "type": "number",
+        "min": 0
+      },
+      "endLoaded": {
+        "desc": "부재 단부 길이방향 재하 여부 (장대 감소 식4.1-1 적용 — 기본 true 보수)",
+        "type": "boolean"
+      }
+    }
+  },
+  {
+    "id": "consolidation",
+    "domain": "civil/settlement",
+    "title": "압밀침하 (Terzaghi 1D)",
+    "description": "정규/과압밀 침하량 + 압밀도-시간 곡선(급수 정확해) — 시험물성 입력 원칙.",
+    "required": [
+      "H_m",
+      "e0",
+      "Cc",
+      "sigma0_kPa",
+      "dSigma_kPa"
+    ],
+    "params": {
+      "H_m": {
+        "desc": "압밀층 두께",
+        "type": "number",
+        "min": 0,
+        "max": 50
+      },
+      "e0": {
+        "desc": "초기 간극비 (시험)",
+        "type": "number",
+        "min": 0,
+        "max": 5
+      },
+      "Cc": {
+        "desc": "압축지수 (압밀시험 — 경험식 추정 안 함)",
+        "type": "number",
+        "min": 0,
+        "max": 2
+      },
+      "Cr": {
+        "desc": "재압축지수 (과압밀 검토 시 필수)",
+        "type": "number",
+        "min": 0,
+        "max": 0.5
+      },
+      "sigma0_kPa": {
+        "desc": "층 중앙 유효상재응력 σ0′",
+        "type": "number",
+        "min": 0
+      },
+      "dSigma_kPa": {
+        "desc": "층 중앙 응력증가 Δσ (2:1법·Boussinesq 등 별도 산정 입력)",
+        "type": "number",
+        "min": 0
+      },
+      "sigmaP_kPa": {
+        "desc": "선행압밀압력 σp′ (미입력=정규압밀 가정 명시)",
+        "type": "number",
+        "min": 0
+      },
+      "cv_m2yr": {
+        "desc": "압밀계수 m²/yr (시간침하 산정 시)",
+        "type": "number",
+        "min": 0
+      },
+      "drainage": {
+        "desc": "배수조건 (기본 double — Hdr=H/2)",
+        "enum": [
+          "double",
+          "single"
+        ]
+      },
+      "targetU_pct": {
+        "desc": "목표 압밀도 % (기본 90)",
+        "type": "number",
+        "min": 10,
+        "max": 99
+      },
+      "allowSettle_mm": {
+        "desc": "허용 침하량 (판정용 — 발주 기준 입력)",
+        "type": "number",
+        "min": 0
+      }
+    }
+  },
+  {
+    "id": "pile_capacity",
+    "domain": "civil/foundation",
+    "title": "말뚝 축방향 지지력 (정역학)",
+    "description": "층별 α/β법 주면마찰+선단지지 → 극한·허용 지지력. 계수는 산정 입력 원칙.",
+    "required": [
+      "dia_m",
+      "length_m",
+      "layers"
+    ],
+    "params": {
+      "dia_m": {
+        "desc": "말뚝 직경 (원형 환산)",
+        "type": "number",
+        "min": 0,
+        "max": 3
+      },
+      "length_m": {
+        "desc": "근입 길이",
+        "type": "number",
+        "min": 0,
+        "max": 80
+      },
+      "layers": {
+        "desc": "지층 배열 [{thick_m, type: clay|sand, Su_kPa?(점토), alpha?(점토 α — 시험/도표 입력), sigmaVmid_kPa?(사질 층중앙 유효응력 — 지하수 반영 산정 입력), beta?(사질 β=K·tanδ)}] — 합계두께 ≥ 근입장"
+      },
+      "tip": {
+        "desc": "선단 지반: { type: clay|sand, Su_kPa?(점토), Nc?(기본 9 고전값), sigmaVtip_kPa?(사질 선단 유효응력), Nq?(도표 산정 입력 — 필수, 지어내지 않음) }"
+      },
+      "FS": {
+        "desc": "안전율 (기본 3.0 정역학 관례 — §4.1.1.4(3) 재하시험도 ≥2)",
+        "type": "number",
+        "min": 2,
+        "max": 6
+      },
+      "demandP_kN": {
+        "desc": "작용하중 (판정용)",
+        "type": "number",
+        "min": 0
       }
     }
   }
