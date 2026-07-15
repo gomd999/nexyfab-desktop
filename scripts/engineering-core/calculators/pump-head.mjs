@@ -24,9 +24,18 @@ export default {
       sumK: { type: 'number', minimum: 0, maximum: 100, description: '부차손실계수 합 ΣK (엘보·밸브 — 자료 입력, 기본 0=미반영 명시)' },
       residualHead_m: { type: 'number', minimum: 0, description: '잔류수두 (분수 노즐 사양 등 — 입력)' },
       efficiency: { type: 'number', minimum: 0.2, maximum: 0.9, description: '펌프 효율 (사양 입력 — 미입력 시 수동력만)' },
+      heads: { description: '관수/살수 헤드 배열(선택 — 관수 체인): [{q_Lmin(헤드 유량 — 제품 사양), minP_kPa(최저 작동압)}] — Q 합산·최소압 게이트(잔류수두로 환산 검증)' },
     },
   },
   run(input) {
+    // 관수 체인: 헤드 사양 합산(제품값 입력 원칙) — Q_Lmin 무시하고 헤드 합 사용
+    let headsNote = null, reqHeadP = 0;
+    if (Array.isArray(input.heads) && input.heads.length) {
+      const sumQ = input.heads.reduce((a, h) => a + (Number(h.q_Lmin) || 0), 0);
+      reqHeadP = Math.max(...input.heads.map((h) => Number(h.minP_kPa) || 0));
+      input = { ...input, Q_Lmin: sumQ, residualHead_m: Math.max(Number(input.residualHead_m) || 0, reqHeadP / 9.81) };
+      headsNote = '관수 체인: 헤드 ' + input.heads.length + '개 ΣQ=' + sumQ + 'L/min·최저압 ' + reqHeadP + 'kPa→잔류수두 ' + (reqHeadP / 9.81).toFixed(1) + 'm 반영(제품 사양 입력)';
+    }
     const Q = input.Q_Lmin / 60000; // m³/s
     const D = input.pipeDia_mm / 1000;
     const C = input.hwC ?? 130;
@@ -48,6 +57,7 @@ export default {
       notes: [
         `전양정 ${H.toFixed(2)}m = 정수두 ${input.staticHead_m} + 마찰 ${hf.toFixed(2)}(H-W C=${C}) + 부차 ${hm.toFixed(2)}${Number(input.sumK) > 0 ? `(ΣK=${input.sumK})` : '(미반영 명시)'} + 잔류 ${Number(input.residualHead_m) || 0}.`,
         `유속 ${v.toFixed(2)}m/s (0.6~2.0 관례 범위 확인). NPSH·펌프 선정(H-Q 곡선 교점)은 제품 자료 별도.`,
+        ...(headsNote ? [headsNote] : []),
       ],
     };
   },

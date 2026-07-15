@@ -233,3 +233,32 @@ if (isMain) {
   console.log(pass ? 'landscape-check self-test: PASS' : 'FAIL');
   if (!pass) process.exit(1);
 }
+
+/**
+ * 사면녹화 체인 — 사면 안정(slope_bishop 자동탐색) + 식재기반(planting_base 생육토심)
+ * 순차 실행 컴포지트. 원칙: 안정 FAIL이면 식재 검토 전에 정직하게 중단 보고(사면 보강 우선).
+ */
+export function slopeGreenCheck(params = {}) {
+  const { H_m, slopeDeg, gamma, c_kPa, phiDeg, fsRequired = 1.5, plantType = '잔디초화류', soilKind = 'natural', soilGrade = 'mid', providedDepth_cm } = params;
+  let stability = null;
+  try {
+    stability = runCalculator('slope_bishop', { geometry: { H: H_m, slopeDeg, gamma, c_kPa, phiDeg }, fsRequired }, 'KDS');
+  } catch (e) { return { ok: false, error: '사면 안정: ' + e.message }; }
+  const stable = stability.verdict === 'PASS';
+  let planting = null;
+  if (stable && Number(providedDepth_cm) > 0) {
+    try {
+      planting = runCalculator('planting_base', { soilCheck: { plantType, soilKind, soilGrade, providedDepth_cm } }, 'KDS');
+    } catch (e) { planting = { verdict: 'ERROR', error: e.message }; }
+  }
+  return {
+    ok: true,
+    verdict: !stable ? 'FAIL' : planting ? planting.verdict : 'INFO',
+    stability: { FS: stability.checks.stability.FS, required: fsRequired, pass: stable, criticalCircle: stability.criticalCircle },
+    planting: planting ? { verdict: planting.verdict, soilDepth: planting.checks?.soilDepth ?? null } : { note: '안정 통과 후 providedDepth_cm 입력 시 생육토심 검토' },
+    notes: [
+      !stable ? '⚠ 사면 안정 미달 — 녹화 전 보강(구배 완화·억지공) 우선. 식재 검토 중단(정직 순서).' : '사면 안정 통과 → 식재기반 검토 연계.',
+      '식생 뿌리 보강효과는 정량 미반영(보수 — 연구별 편차 커서 입력 원칙도 곤란 명시). 표층 안정(무한사면 slope_infinite)·침식은 별도.',
+    ],
+  };
+}

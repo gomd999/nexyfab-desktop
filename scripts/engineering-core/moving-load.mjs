@@ -347,3 +347,51 @@ export function unequalSpanUdlEnvelope(spans, w) {
   }
   return { MsupMax_kNm: MsupMax, MspanMax_kNm: MspanMax };
 }
+
+/** 부등경간 트럭 스위프 — 3연모멘트 부등 Li + 점하중 우변(Pa(L²−a²)/L 계열). */
+export function sweepUnequalSpans(spans, axles, { steps = 1200, reverse = true } = {}) {
+  const n = spans.length;
+  const total = spans.reduce((a, b) => a + b, 0);
+  const bounds = [0]; for (const L of spans) bounds.push(bounds[bounds.length - 1] + L);
+  const trains = [axles];
+  if (reverse) { const mx = Math.max(...axles.map((a) => a.x)); trains.push(axles.map((a) => ({ P: a.P, x: mx - a.x }))); }
+  let MsupMax = 0, MspanMax = 0;
+  for (const tr of trains) {
+    const len = Math.max(...tr.map((a) => a.x));
+    for (let k = 0; k <= steps; k++) {
+      const s = (k / steps) * (total + len);
+      const on = tr.map((a) => ({ P: a.P, pos: s - a.x })).filter((a) => a.pos >= 0 && a.pos <= total);
+      if (!on.length) continue;
+      const per = Array.from({ length: n }, () => []);
+      for (const a of on) {
+        let sp = 0; while (sp < n - 1 && a.pos > bounds[sp + 1]) sp++;
+        per[sp].push({ P: a.P, a: a.pos - bounds[sp] });
+      }
+      const nInt = n - 1;
+      if (nInt < 1) continue;
+      const A = new Array(nInt), B = new Array(nInt), C = new Array(nInt), D = new Array(nInt).fill(0);
+      for (let i = 0; i < nInt; i++) {
+        const Ll = spans[i], Lr = spans[i + 1];
+        A[i] = i === 0 ? 0 : Ll; B[i] = 2 * (Ll + Lr); C[i] = i === nInt - 1 ? 0 : Lr;
+        for (const { P, a } of per[i]) D[i] -= (P * a * (Ll * Ll - a * a)) / Ll;        // 좌경간(우단 지점식): x̄=좌단거리 a
+        for (const { P, a } of per[i + 1]) { const b2 = Lr - a; D[i] -= (P * b2 * (Lr * Lr - b2 * b2)) / Lr; } // 우경간: 우단거리 b
+      }
+      const cp = new Array(nInt), dp = new Array(nInt);
+      cp[0] = C[0] / B[0]; dp[0] = D[0] / B[0];
+      for (let i = 1; i < nInt; i++) { const m = B[i] - A[i] * cp[i - 1]; cp[i] = C[i] / m; dp[i] = (D[i] - A[i] * dp[i - 1]) / m; }
+      const M = new Array(nInt); M[nInt - 1] = dp[nInt - 1];
+      for (let i = nInt - 2; i >= 0; i--) M[i] = dp[i] - cp[i] * M[i + 1];
+      for (const m of M) MsupMax = Math.max(MsupMax, -m);
+      const Msup = [0, ...M, 0];
+      for (const a of on) {
+        let sp = 0; while (sp < n - 1 && a.pos > bounds[sp + 1]) sp++;
+        const L = spans[sp], xa = a.pos - bounds[sp];
+        let Ms = 0;
+        for (const b2 of per[sp]) Ms += b2.a <= xa ? (b2.P * b2.a * (L - xa)) / L : (b2.P * xa * (L - b2.a)) / L;
+        const Mv = Ms + Msup[sp] * (1 - xa / L) + Msup[sp + 1] * (xa / L);
+        if (Mv > MspanMax) MspanMax = Mv;
+      }
+    }
+  }
+  return { MsupMax_kNm: MsupMax, MspanMax_kNm: MspanMax };
+}

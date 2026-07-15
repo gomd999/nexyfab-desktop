@@ -462,3 +462,14 @@ test('W4: unequal span envelope matches equal-span solver and classic wL2/8', as
   const c = m.unequalSpanUdlEnvelope([10, 10], 10);
   assert.ok(Math.abs(c.MsupMax_kNm - 125) < 0.5);
 });
+
+test('unequal span truck sweep: equals equal-span solver and closed-form worst position', async () => {
+  const m = await import('../moving-load.mjs');
+  const ax = [{ P: 100, x: 0 }, { P: 100, x: 3 }];
+  const a = m.sweepUnequalSpans([10, 10, 10], ax, { steps: 900 }), b = m.sweepNSpan(10, 3, ax, { steps: 900 });
+  assert.ok(Math.abs(a.MsupMax_kNm - b.MsupMax_kNm) < 1 && Math.abs(a.MspanMax_kNm - b.MspanMax_kNm) < 1);
+  const c = m.sweepUnequalSpans([10, 15], [{ P: 100, x: 0 }], { steps: 3000, reverse: false });
+  const bStar = 15 / Math.sqrt(3);
+  const Mstar = (100 * bStar * (225 - bStar * bStar)) / 15 / 50;
+  assert.ok(Math.abs(c.MsupMax_kNm - Mstar) < 0.3);
+});
