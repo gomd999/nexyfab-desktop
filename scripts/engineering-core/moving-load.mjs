@@ -302,3 +302,48 @@ export function nSpanUdlEnvelope(L, nSpans, w) {
   }
   return { MsupMax_kNm: MsupMax, MspanMax_kNm: MspanMax };
 }
+
+/**
+ * 부등경간 연속 UDL 패턴 포락 — 3연모멘트 일반형(부등 Li).
+ * 내부지점 i: M(i−1)Li + 2Mi(Li+L(i+1)) + M(i+1)L(i+1) = −6(A_L·x̄/L + A_R·x̄/L)
+ * 등분포 만재 경간: 6Ax̄/L = wL³/4 (양단 동일). 2^n 패턴 전수 → 지점·경간 최대.
+ * 앵커: 등경간 입력 시 nSpanUdlEnvelope와 일치(자체 교차검증).
+ */
+export function unequalSpanUdlEnvelope(spans, w) {
+  const n = spans.length;
+  if (n < 2 || n > 6) throw new Error('input gate: 부등경간 2~6');
+  let MsupMax = 0, MspanMax = 0;
+  for (let mask = 1; mask < (1 << n); mask++) {
+    const on = Array.from({ length: n }, (_, i) => (mask >> i) & 1);
+    const nInt = n - 1;
+    const A = new Array(nInt), B = new Array(nInt), C = new Array(nInt), D = new Array(nInt);
+    for (let i = 0; i < nInt; i++) {
+      const Ll = spans[i], Lr = spans[i + 1];
+      A[i] = i === 0 ? 0 : Ll;
+      B[i] = 2 * (Ll + Lr);
+      C[i] = i === nInt - 1 ? 0 : Lr;
+      D[i] = -((on[i] ? (w * Ll ** 3) / 4 : 0) + (on[i + 1] ? (w * Lr ** 3) / 4 : 0)); // 6Ax̄/L=wL³/4 자체가 우변항
+    }
+    // Thomas
+    const cp = new Array(nInt), dp = new Array(nInt);
+    cp[0] = C[0] / B[0]; dp[0] = D[0] / B[0];
+    for (let i = 1; i < nInt; i++) {
+      const m = B[i] - A[i] * cp[i - 1];
+      cp[i] = C[i] / m; dp[i] = (D[i] - A[i] * dp[i - 1]) / m;
+    }
+    const M = new Array(nInt);
+    M[nInt - 1] = dp[nInt - 1];
+    for (let i = nInt - 2; i >= 0; i--) M[i] = dp[i] - cp[i] * M[i + 1];
+    for (const m of M) MsupMax = Math.max(MsupMax, -m);
+    const Msup = [0, ...M, 0];
+    for (let sp = 0; sp < n; sp++) {
+      const L = spans[sp], wl = on[sp] ? w : 0;
+      for (let i = 0; i <= 50; i++) {
+        const x = (i / 50) * L;
+        const Mv = (wl * x * (L - x)) / 2 + Msup[sp] * (1 - x / L) + Msup[sp + 1] * (x / L);
+        if (Mv > MspanMax) MspanMax = Mv;
+      }
+    }
+  }
+  return { MsupMax_kNm: MsupMax, MspanMax_kNm: MspanMax };
+}

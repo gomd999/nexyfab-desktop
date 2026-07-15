@@ -440,3 +440,25 @@ test('pavement_walk: joint gates from KDS 34 60 10 (9m/3m)', () => {
   const r2 = runCalculator('pavement_walk', { type: 'concrete_linear', length_m: 60, width_m: 2, expJoint_m: 9, conJoint_m: 3 }, 'KDS');
   assert.equal(r2.verdict, 'PASS');
 });
+
+// ── W3/W4 라운드 게이트 ─────────────────────────────────────────────────────
+test('W3: drainage DFU, liquefaction CSR, bearing S/epsC, DDM Mo, longterm lambda', () => {
+  const dv = runCalculator('drainage_vent', { fixtures: [{ type: '세면기', count: 2 }, { type: '대변기_6L', count: 2 }, { type: '샤워부스', count: 1 }], segment: 'branch' }, 'KDS');
+  assert.equal(dv.checks.sizing.requiredDN, 65);
+  const lq = runCalculator('liquefaction', { layers: [{ z_m: 8, sigmaV_kPa: 144, sigmaVe_kPa: 100, CRR: 0.25 }], amax_g: 0.154, rd: 0.95 }, 'KDS');
+  assert.ok(Math.abs(lq.checks.layers[0].CSR - 0.137) < 0.001);
+  const br = runCalculator('elastomeric_bearing', { a_mm: 400, b_mm: 500, ti_mm: 12, nLayers: 5, G_MPa: 0.9, Fz_kN: 1000, vxy_mm: 42, limitState: 'service' }, 'KDS');
+  assert.ok(Math.abs(br.checks.shape.S - 9.26) < 0.01 && br.checks.shear.pass === true);
+  const dm = runCalculator('two_way_slab', { l1_m: 6, l2_m: 6, ln_m: 5.5, wu_kNm2: 12, spanType: 'interior', nSpans: 4, liveOverDead: 0.8 }, 'KDS');
+  assert.ok(Math.abs(dm.checks.Mo_kNm - 272.25) < 0.1);
+  const lt = runCalculator('longterm_deflection', { span_mm: 6000, instSustained_mm: 10, duration_months: 60, rhoPrime: 0.01, memberType: 'fragile' }, 'KDS');
+  assert.ok(Math.abs(lt.checks.deflection.lambda - 4 / 3) < 0.001);
+});
+
+test('W4: unequal span envelope matches equal-span solver and classic wL2/8', async () => {
+  const m = await import('../moving-load.mjs');
+  const a = m.unequalSpanUdlEnvelope([10, 10, 10], 10), b = m.nSpanUdlEnvelope(10, 3, 10);
+  assert.ok(Math.abs(a.MsupMax_kNm - b.MsupMax_kNm) < 0.01);
+  const c = m.unequalSpanUdlEnvelope([10, 10], 10);
+  assert.ok(Math.abs(c.MsupMax_kNm - 125) < 0.5);
+});
