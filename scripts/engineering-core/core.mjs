@@ -55,8 +55,9 @@ import steelBeam from './calculators/steel-beam.mjs';
 import steelColumn from './calculators/steel-column.mjs';
 import earthRetention from './calculators/earth-retention.mjs';
 import pavementWalk from './calculators/pavement-walk.mjs';
+import smfDetail from './calculators/smf-detail.mjs';
 
-export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman, vibrationBasic, thermalStress, acousticTl, ductSizing, slopeBishop, mseWall, deckStrip, earthworkGrid, pipeSizing, shearWall, girderDf, pscGirder, weldConnection, consolidation, pileCapacity, plantingBase, fixtureSupply, couplingBeam, massHaul, boltGroup, shaftDesign, springDesign, bearingLife, toleranceStack, reverbTime, pointIlluminance, expansionJoint, pumpHead, steelBeam, steelColumn, earthRetention, pavementWalk];
+export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman, vibrationBasic, thermalStress, acousticTl, ductSizing, slopeBishop, mseWall, deckStrip, earthworkGrid, pipeSizing, shearWall, girderDf, pscGirder, weldConnection, consolidation, pileCapacity, plantingBase, fixtureSupply, couplingBeam, massHaul, boltGroup, shaftDesign, springDesign, bearingLife, toleranceStack, reverbTime, pointIlluminance, expansionJoint, pumpHead, steelBeam, steelColumn, earthRetention, pavementWalk, smfDetail];
 
 /** Minimal JSON-Schema-subset validator (type/required/properties/minimum/maximum/enum). */
 export function validateInput(schema, input) {

@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(53종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(54종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -3412,6 +3412,127 @@ export const CALC_CATALOG: CalcSpec[] = [
           "rigid",
           "simple"
         ]
+      }
+    }
+  },
+  {
+    "id": "smf_detail",
+    "domain": "architecture/seismic",
+    "title": "특수모멘트골조 상세 게이트 (§4.4~4.5)",
+    "description": "SMF 보·기둥 내진 상세(치수·철근비·후프량·간격·강기둥-약보) 전 게이트.",
+    "required": [
+      "member"
+    ],
+    "params": {
+      "member": {
+        "desc": "부재 구분",
+        "enum": [
+          "beam",
+          "column"
+        ]
+      },
+      "b_mm": {
+        "desc": "폭(보)/최소 단면치수(기둥)",
+        "type": "number",
+        "min": 0
+      },
+      "h_mm": {
+        "desc": "깊이(보)/직각방향 치수(기둥)",
+        "type": "number",
+        "min": 0
+      },
+      "d_mm": {
+        "desc": "유효깊이(보)",
+        "type": "number",
+        "min": 0
+      },
+      "ln_mm": {
+        "desc": "순경간(보 — ln≥4d 게이트)",
+        "type": "number",
+        "min": 0
+      },
+      "Pu_kN": {
+        "desc": "계수축력 (적용 구분 Agfck/10)",
+        "type": "number",
+        "min": 0
+      },
+      "fck": {
+        "desc": "",
+        "type": "number",
+        "min": 21,
+        "max": 70
+      },
+      "fy": {
+        "desc": "축방향 철근 fy",
+        "type": "number",
+        "min": 300,
+        "max": 600
+      },
+      "fyh": {
+        "desc": "횡방향 철근 fyh (기둥 후프량)",
+        "type": "number",
+        "min": 300,
+        "max": 600
+      },
+      "As_mm2": {
+        "desc": "주철근량 (보 ρ·기둥 ρg)",
+        "type": "number",
+        "min": 0
+      },
+      "db_mm": {
+        "desc": "축방향 철근 지름 (간격 게이트)",
+        "type": "number",
+        "min": 0
+      },
+      "dbh_mm": {
+        "desc": "후프 지름 (보 24dh)",
+        "type": "number",
+        "min": 0
+      },
+      "s_mm": {
+        "desc": "후프/횡철근 간격 (계획)",
+        "type": "number",
+        "min": 0
+      },
+      "hc_mm": {
+        "desc": "심부 치수 hc (기둥 Ash — 후프 중심간)",
+        "type": "number",
+        "min": 0
+      },
+      "Ach_mm2": {
+        "desc": "심부 면적 (기둥 4.5-3)",
+        "type": "number",
+        "min": 0
+      },
+      "Ash_mm2": {
+        "desc": "제공 후프 단면적 (간격 s당)",
+        "type": "number",
+        "min": 0
+      },
+      "hx_mm": {
+        "desc": "연결철근/후프다리 수평간격 (식4.5-5)",
+        "type": "number",
+        "min": 0
+      },
+      "sumMc_kNm": {
+        "desc": "기둥 설계휨강도 합 (강기둥-약보)",
+        "type": "number",
+        "min": 0
+      },
+      "sumMg_kNm": {
+        "desc": "보 설계휨강도 합",
+        "type": "number",
+        "min": 0
+      },
+      "MposFace_kNm": {
+        "desc": "접합면 정모멘트 강도 (보 §4.4.2(2))",
+        "type": "number",
+        "min": 0
+      },
+      "MnegFace_kNm": {
+        "desc": "접합면 부모멘트 강도",
+        "type": "number",
+        "min": 0
       }
     }
   }
