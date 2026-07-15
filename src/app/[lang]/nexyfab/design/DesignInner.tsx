@@ -21,6 +21,7 @@ import { parseSTL } from '@/app/[lang]/shape-generator/io/importers';
 import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
 import { isKorean } from '@/lib/i18n/normalize';
 import DomainVerifyPanel from './DomainVerifyPanel';
+import CalcStudioPanel from './CalcStudioPanel';
 import ParametricPresetPanel from './ParametricPresetPanel';
 import AssemblyPresetPanel from './AssemblyPresetPanel';
 import DfmPanel from './DfmPanel';
@@ -531,6 +532,9 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
 
           {/* 분야 검증(②) — 형상 + 분야 계산기(상시 게이트 위에 얹는 분야층) */}
           {intent && <DomainVerifyPanel intent={intent} lang={lang} defaultDomain={domain?.verifyDomain ?? undefined} />}
+
+          {/* 계산기 스튜디오 — 전 38종 스키마 자동 폼 + 계산서 출력(형상 없이도 사용 가능) */}
+          <CalcStudioPanel lang={lang} />
 
           {/* Export + manufacture */}
           {intent && (

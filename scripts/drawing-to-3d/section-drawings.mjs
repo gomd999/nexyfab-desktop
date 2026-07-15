@@ -194,3 +194,75 @@ ${dim(x0 + b * S, y0, x0 + b * S, y0 + h * S, `${h}`, 24)}
 <text class="note" x="${x0}" y="${Ht - 12}">피복 ${cover} · 순간격 ${spacingOk ? '적합' : '⚠ 부족 — 단수·지름 조정 필요'}(≥max(25,db)) · 개념 배치(비법정)</text>`;
   return svgShell(W, Ht, body, opts.title ?? `보 배근 단면 ${b}×${h}`);
 }
+
+/**
+ * 배근 전개도(입면) — 보/기둥. 실시도면 소스용 SVG.
+ * 보: 상/하부 주근 라인 + 스터럽 틱(단부 s1 구간·중앙 s2 구간 — KDS 전단설계 관례 배치,
+ *     구간장은 입력(기본 L/4 명시)) + 치수선. 정착/이음 위치는 표기만(상세 설계 별도 명시).
+ * 기둥: 주근 수직 라인 + 띠철근 틱(단부 밀집 s1·중앙 s2) — 이음 구간 표기.
+ * 전 치수 = 입력값 그대로(지어내지 않음). 판정 없음(도면 소스) — 간격 적정성은 계산기 몫.
+ */
+export function rebarElevationSvg(p, opts = {}) {
+  const type = p.type === 'column' ? 'column' : 'beam';
+  const L = Number(p.L_mm) > 0 ? p.L_mm : 6000;          // 보 경간 또는 기둥 층고
+  const h = Number(p.h_mm) > 0 ? p.h_mm : 600;           // 단면 깊이(보) / 폭(기둥 표기)
+  const s1 = Number(p.sEnd_mm) > 0 ? p.sEnd_mm : 150;    // 단부 간격
+  const s2 = Number(p.sMid_mm) > 0 ? p.sMid_mm : 300;    // 중앙 간격
+  const endLen = Number(p.endZone_mm) > 0 ? p.endZone_mm : Math.round(L / 4); // 단부 구간(기본 L/4 관례 — 명시)
+  const topBars = String(p.topBars ?? '2-D22');
+  const botBars = String(p.botBars ?? '4-D22');
+  const tie = String(p.stirrup ?? 'D10');
+  const title = p.title ?? (type === 'beam' ? '보 배근 전개도(입면)' : '기둥 배근 전개도(입면)');
+  const scale = 760 / L;
+  const hh = Math.min(180, h * scale * 2.2);
+  const M = 60, W = 760 + 2 * M, Ht = hh + 2 * M + 90;
+  const x0 = M, y0 = M + 20;
+  const cov = 10; // 표현용 오프셋(px) — 도면 표기이지 실피복 아님(라벨로 명시)
+  // 스터럽/띠 틱: 단부(양측 endLen, s1) + 중앙(s2)
+  let ticks = '';
+  const tickAt = (xmm) => {
+    const x = x0 + xmm * scale;
+    ticks += type === 'beam'
+      ? `<line x1="${x}" y1="${y0 + cov}" x2="${x}" y2="${y0 + hh - cov}" stroke="#0ea5e9" stroke-width="1"/>`
+      : `<line x1="${x0 + cov}" y1="${y0 + xmm * 0}" x2="${x0 + cov}" y2="0" stroke="none"/>`;
+  };
+  if (type === 'beam') {
+    for (let x = s1; x < endLen; x += s1) tickAt(x);
+    for (let x = L - s1; x > L - endLen; x -= s1) tickAt(x);
+    for (let x = endLen + s2 / 2; x <= L - endLen; x += s2) tickAt(x);
+  }
+  let colTicks = '';
+  if (type === 'column') {
+    const yScale = 760 / L; // 기둥은 세로로 — 재사용 위해 가로 그리드 유지: 눕혀 그린 뒤 회전 대신 가로 표현 명시
+    for (let x = s1; x < endLen; x += s1) { const xx = x0 + x * yScale; colTicks += `<line x1="${xx}" y1="${y0 + cov}" x2="${xx}" y2="${y0 + hh - cov}" stroke="#0ea5e9" stroke-width="1"/>`; }
+    for (let x = L - s1; x > L - endLen; x -= s1) { const xx = x0 + x * yScale; colTicks += `<line x1="${xx}" y1="${y0 + cov}" x2="${xx}" y2="${y0 + hh - cov}" stroke="#0ea5e9" stroke-width="1"/>`; }
+    for (let x = endLen + s2 / 2; x <= L - endLen; x += s2) { const xx = x0 + x * yScale; colTicks += `<line x1="${xx}" y1="${y0 + cov}" x2="${xx}" y2="${y0 + hh - cov}" stroke="#0ea5e9" stroke-width="1"/>`; }
+  }
+  const endPx = endLen * scale;
+  const dim = (xa, xb, y, label) =>
+    `<line x1="${xa}" y1="${y}" x2="${xb}" y2="${y}" stroke="#475569" stroke-width="0.8"/>` +
+    `<line x1="${xa}" y1="${y - 4}" x2="${xa}" y2="${y + 4}" stroke="#475569" stroke-width="0.8"/>` +
+    `<line x1="${xb}" y1="${y - 4}" x2="${xb}" y2="${y + 4}" stroke="#475569" stroke-width="0.8"/>` +
+    `<text x="${(xa + xb) / 2}" y="${y - 6}" text-anchor="middle" font-size="11" fill="#334155">${label}</text>`;
+  const dy = y0 + hh + 28;
+  const labelAxis = type === 'beam' ? '경간' : '층고(눕힌 표현 — 표기 명시)';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${Ht}" font-family="system-ui">
+<style>.out{fill:#f8fafc;stroke:#0f172a;stroke-width:1.6}.bar{stroke:#dc2626;stroke-width:2.5}</style>
+<text x="${W / 2}" y="24" text-anchor="middle" font-size="14" font-weight="700" fill="#0f172a">${title}</text>
+<rect class="out" x="${x0}" y="${y0}" width="${760}" height="${hh}"/>
+<line class="bar" x1="${x0 + 6}" y1="${y0 + cov}" x2="${x0 + 754}" y2="${y0 + cov}"/>
+<line class="bar" x1="${x0 + 6}" y1="${y0 + hh - cov}" x2="${x0 + 754}" y2="${y0 + hh - cov}"/>
+${type === 'beam' ? ticks : colTicks}
+<text x="${x0 + 8}" y="${y0 + cov - 5}" font-size="11" fill="#dc2626">상부 ${topBars}</text>
+<text x="${x0 + 8}" y="${y0 + hh - cov + 14}" font-size="11" fill="#dc2626">하부 ${botBars}</text>
+<text x="${x0 + endPx / 2}" y="${y0 - 6}" text-anchor="middle" font-size="11" fill="#0ea5e9">${tie}@${s1}</text>
+<text x="${x0 + 380}" y="${y0 - 6}" text-anchor="middle" font-size="11" fill="#0ea5e9">${tie}@${s2}</text>
+<text x="${x0 + 760 - endPx / 2}" y="${y0 - 6}" text-anchor="middle" font-size="11" fill="#0ea5e9">${tie}@${s1}</text>
+${dim(x0, x0 + endPx, dy, `단부 ${endLen}`)}
+${dim(x0 + endPx, x0 + 760 - endPx, dy, `중앙 ${L - 2 * endLen}`)}
+${dim(x0 + 760 - endPx, x0 + 760, dy, `단부 ${endLen}`)}
+${dim(x0, x0 + 760, dy + 26, `${labelAxis} L=${L}`)}
+<text x="${x0}" y="${Ht - 8}" font-size="10" fill="#64748b">표현용 개략 축척 — 정착·이음 상세는 KDS 14 20 52 별도 설계 명시. 단부구간 ${Number(p.endZone_mm) > 0 ? '입력값' : 'L/4 기본(관례 명시)'}.</text>
+</svg>`;
+  return svg;
+}
