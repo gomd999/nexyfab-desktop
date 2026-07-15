@@ -2326,6 +2326,9 @@ export const CALC_CATALOG: CalcSpec[] = [
       },
       "camber": {
         "desc": "솟음 산정(선택 — 탄성 폐형): { L_m(지간), wSw_kNm(자중 등분포), Ec_MPa?(기본 8500∛(fck+4)), Eci_MPa?(전달 시 — 기본 fci 기준), creepMult?(장기배율 — PCI 근사표 등 산정 입력, 기본 미적용 명시) }"
+      },
+      "tendon": {
+        "desc": "긴장재 응력 한계 검토(선택 — §1.5.7.2·§1.5.7.3 원문): { Ap_mm2, fpu_MPa, fpy_MPa(항복 — 뚜렷하지 않으면 fp0.2k 입력·명시) }"
       }
     }
   }

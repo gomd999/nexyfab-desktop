@@ -13,7 +13,7 @@ export default {
   title: 'PSC 거더 응력 검토 (이송·사용)',
   description: '긴장력·편심·단면성능 → 상·하연 응력 2단계 검토. 손실률·허용계수 입력 원칙.',
   refs: ['PSC 고전 응력식 σ=P/A∓Pe·y/I±M·y/I (폐형)', 'KDS 24 14 21 허용응력·손실 산정은 확인 입력(원문 대조 후 계수 승격 예정 — 명시)'],
-  status: 'verified(압축계수) — §4.2.2.1·§1.5.7.2③ 원문 확정(0.6/0.45/0.6fck(t)) + 솟음 탄성폐형(앵커식). 균열폭·긴장재 응력·극한휨은 후속',
+  status: 'verified(압축·긴장 계수) — §4.2.2.1(0.6/0.45fck)·§1.5.7.2③(0.6fck(t))·긴장 min(0.8fpu,0.9fpy)·전달 min(0.75fpu,0.85fpy) 원문 확정 + 솟음 탄성폐형. 균열폭·극한휨은 후속',
   inputSchema: {
     type: 'object',
     required: ['A_mm2', 'I_mm4', 'yt_mm', 'yb_mm', 'Pj_kN', 'e_mm', 'fck'],
@@ -34,6 +34,7 @@ export default {
       MsSustained_kNm: { type: 'number', minimum: 0, description: '지속하중 모멘트 (입력 시 조합-V 지속 압축한계 0.45fck 검토 — §4.2.2.1① 원문)' },
       tensFactor: { type: 'number', minimum: 0, maximum: 0.63, description: '인장 참고한계 ×√fck (기본 0.25 참고 관례 — 한계상태설계법의 정식 검토는 균열폭/탈압축(§4.2.3, 후속) 명시)' },
       camber: { description: '솟음 산정(선택 — 탄성 폐형): { L_m(지간), wSw_kNm(자중 등분포), Ec_MPa?(기본 8500∛(fck+4)), Eci_MPa?(전달 시 — 기본 fci 기준), creepMult?(장기배율 — PCI 근사표 등 산정 입력, 기본 미적용 명시) }' },
+      tendon: { description: '긴장재 응력 한계 검토(선택 — §1.5.7.2·§1.5.7.3 원문): { Ap_mm2, fpu_MPa, fpy_MPa(항복 — 뚜렷하지 않으면 fp0.2k 입력·명시) }' },
     },
   },
   run(input) {
@@ -87,16 +88,31 @@ export default {
         note: '탄성 폐형(직선 긴장재 등편심 Pe·e·L²/8EI − 자중 5wL⁴/384EI — 앵커식). 절곡/포물선 배치·크리프 시간이력은 별도(creepMult=산정 입력, 기본 미적용). 시공단계(합성 전후)는 프로젝트 검토.',
       };
     }
-    const pass = t.compOk && t.tensOk && sv.compOk && sv.tensOk && (sus ? sus.pass : true);
+    // 긴장재 응력 한계 (§1.5.7.2(1)·§1.5.7.3(1) 원문 GIF 판독 확정):
+    // 재킹 f0,max=min(0.8fpu, 0.9fpy) · 전달 직후 fpm0=min(0.75fpu, 0.85fpy) · 초과긴장(±5% 계측) 0.95fpy
+    let tendon = null;
+    const td = input.tendon;
+    if (td && Number(td.Ap_mm2) > 0 && Number(td.fpu_MPa) > 0 && Number(td.fpy_MPa) > 0) {
+      const fJack = (input.Pj_kN * 1000) / td.Ap_mm2;
+      const fTransfer = Pi / td.Ap_mm2;
+      const limJack = Math.min(0.8 * td.fpu_MPa, 0.9 * td.fpy_MPa);
+      const limTransfer = Math.min(0.75 * td.fpu_MPa, 0.85 * td.fpy_MPa);
+      tendon = {
+        jacking: { f_MPa: +fJack.toFixed(1), limit_MPa: +limJack.toFixed(1), pass: fJack <= limJack },
+        transfer: { f_MPa: +fTransfer.toFixed(1), limit_MPa: +limTransfer.toFixed(1), pass: fTransfer <= limTransfer },
+        note: '§1.5.7.2(1)① f0,max=min(0.8fpu, 0.9fpy)·§1.5.7.3(1) fpm0=min(0.75fpu, 0.85fpy) — 원문 확정. 초과긴장은 ±5% 계측 시 0.95fpy까지(§1.5.7.2(1)② — 별도 판단). 항복점 불명확 시 fpy=fp0.2k(§3.3.1(6)).',
+      };
+    }
+    const pass = t.compOk && t.tensOk && sv.compOk && sv.tensOk && (sus ? sus.pass : true) && (tendon ? tendon.jacking.pass && tendon.transfer.pass : true);
     return {
       verdict: pass ? 'PASS' : 'FAIL',
-      checks: { transfer: t, service: sv, ...(sus ? { sustained: sus } : {}) },
+      checks: { transfer: t, service: sv, ...(sus ? { sustained: sus } : {}), ...(tendon ? { tendon } : {}) },
       ...(camber ? { camber } : {}),
       intermediate: { Pi_kN: +(Pi / 1000).toFixed(1), Pe_kN: +(Pe / 1000).toFixed(1), St_mm3: Math.round(St), Sb_mm3: Math.round(Sb) },
       notes: [
         `이송: 상 ${t.top_MPa}/하 ${t.bot_MPa} MPa (허용 압축 ${t.allowComp}·인장 ${t.allowTens}) / 사용: 상 ${sv.top_MPa}/하 ${sv.bot_MPa} (허용 ${sv.allowComp}·${sv.allowTens})`,
         `손실: 즉시 ${input.lossImmediate_pct ?? 0}%·총 ${input.lossTotal_pct ?? 0}% — 입력값(KDS 24 14 21 산정 필요, 0=미반영 명시).`,
-        '압축한계=원문 확정(§4.2.2.1: 사용-I 0.6fck·지속-V 0.45fck / §1.5.7.2③ 전달 0.6fck(t)). 인장 0.25√fck=참고 관례 — 정식은 균열폭/탈압축 검토(후속). 긴장재 0.65fpu·철근 0.8fy 한계는 별도. 압축 +, 인장 −.',
+        '압축한계=원문 확정(§4.2.2.1: 사용-I 0.6fck·지속-V 0.45fck / §1.5.7.2③ 전달 0.6fck(t)). 인장 0.25√fck=참고 관례 — 정식은 균열폭/탈압축 검토(후속). 긴장재 한계=tendon 입력 시 원문식 검토(재킹 min(0.8fpu,0.9fpy)·전달 min(0.75fpu,0.85fpy)). 압축 +, 인장 −.',
       ],
     };
   },
