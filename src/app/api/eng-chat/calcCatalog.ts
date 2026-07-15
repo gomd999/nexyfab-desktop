@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(55종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(56종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -3586,6 +3586,58 @@ export const CALC_CATALOG: CalcSpec[] = [
           "fragile",
           "nonfragile_attached"
         ]
+      }
+    }
+  },
+  {
+    "id": "drainage_vent",
+    "domain": "interior/plumbing",
+    "title": "배수관 관지름 (DFU법 — KDS 31 30 25)",
+    "description": "기구 DFU 합산 → 수평지관·수직관·수평주관 관지름 선정 + 기울기·대변기 게이트.",
+    "required": [
+      "fixtures",
+      "segment"
+    ],
+    "params": {
+      "fixtures": {
+        "desc": "기구 [{type(표 4.1-2 키), count}] — 키: 욕조·세탁기·식기세척기·음수기·주방싱크·주방싱크_식세기포함·세면기·청소싱크·샤워부스·소변기_4L·소변기_4L초과·대변기_6L·대변기_13L·싱크_DN40·싱크_DN50"
+      },
+      "building": {
+        "desc": "건물 구분 (표 4.1-2 열 — 기본 general. 공동주택 미규정 기구는 일반값 폴백 명시)",
+        "enum": [
+          "general",
+          "apartment"
+        ]
+      },
+      "segment": {
+        "desc": "구간 (수평지관/수직관/수평주관)",
+        "enum": [
+          "branch",
+          "stack",
+          "main"
+        ]
+      },
+      "floors": {
+        "desc": "층수 (수직관 — 3층 이하/4층+ 표 구분)",
+        "type": "integer",
+        "min": 1,
+        "max": 100
+      },
+      "slope": {
+        "desc": "수평주관 기울기 (표 4.1-4 열)",
+        "enum": [
+          "1/200",
+          "1/100",
+          "1/50"
+        ]
+      },
+      "hasWC": {
+        "desc": "대변기 포함 여부 (수평주관 최소 DN80 — 표 4.1-4 주1)",
+        "type": "boolean"
+      },
+      "plannedDN": {
+        "desc": "계획 관지름 (판정용)",
+        "type": "number"
       }
     }
   }
