@@ -53,6 +53,15 @@ const SECTIONS: NavSection[] = [
     items: [
       { icon: '🏠', labelKo: '홈',                labelEn: 'Hub',                href: '/nexyfab/hub' },
       { icon: '🧭', labelKo: '설계 (AI)',         labelEn: 'Design (AI)',        href: '/nexyfab/design', badge: 'NEW' },
+      { icon: '🧮', labelKo: '계산기 61종',       labelEn: 'Calculators (61)',   href: '/nexyfab/design?tab=calc' },
+      { icon: '📋', labelKo: '설계 검토',         labelEn: 'Design Review',      href: '/nexyfab/evaluate' },
+      { icon: '📁', labelKo: '내 프로젝트',       labelEn: 'My Projects',        href: '/nexyfab/projects' },
+    ],
+  },
+  {
+    titleKo: '분야',
+    titleEn: 'Domains',
+    items: [
       // 설계 — 분야별(각 분야 = 프리셋 갤러리 + 그 분야 검증). design/designDomains.ts와 slug 일치.
       { icon: '🔧', labelKo: '기계·장비·판금',    labelEn: 'Machinery/sheet',    href: '/nexyfab/design?domain=mech' },
       { icon: '🏗', labelKo: '가설·랙·경량철골',  labelEn: 'Rack/light steel',   href: '/nexyfab/design?domain=rack' },
@@ -60,11 +69,15 @@ const SECTIONS: NavSection[] = [
       { icon: '🏢', labelKo: '건축 부재',         labelEn: 'Building member',    href: '/nexyfab/design?domain=building' },
       { icon: '🌳', labelKo: '조경 구조·배수',    labelEn: 'Landscape/drainage', href: '/nexyfab/design?domain=landscape' },
       { icon: '🪑', labelKo: '인테리어·상업공간', labelEn: 'Interior/commercial', href: '/nexyfab/design?domain=interior' },
+    ],
+  },
+  {
+    titleKo: '도구',
+    titleEn: 'Tools',
+    items: [
       { icon: '✨', labelKo: '자유형 Studio',     labelEn: 'Free-form Studio',   href: '/studio' },
       { icon: '🛠️', labelKo: '전문가형 CAD',      labelEn: 'Expert CAD',         href: '/shape-generator?mode=expert' },
       { icon: '📐', labelKo: '종이·레이저컷',     labelEn: 'Papercraft',         href: '/papercraft' },
-      { icon: '📋', labelKo: '설계 검토',         labelEn: 'Design Review',      href: '/nexyfab/evaluate' },
-      { icon: '📁', labelKo: '내 프로젝트',       labelEn: 'My Projects',        href: '/nexyfab/projects' },
       { icon: '🔗', labelKo: '공유된 항목',       labelEn: 'Shared with me',     href: '/nexyfab/projects?filter=shared' },
       { icon: '🔩', labelKo: '부품 라이브러리',   labelEn: 'Part Library',       href: '/nexyfab/cots' },
     ],
@@ -125,12 +138,15 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
       return query?.includes('filter=shared') ? isShared : !isShared;
     }
     if (path === '/nexyfab/design') {
-      // "설계 (AI)"(쿼리 없음) vs 분야 진입(?domain=X)을 현재 ?domain으로 구분.
+      // "설계 (AI)"(쿼리 없음) vs 분야(?domain=X) vs 계산기(?tab=calc)를 현재 쿼리로 구분.
       const matches = pathname === full || pathname.startsWith(full + '/');
       if (!matches) return false;
-      const cur = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('domain') : null;
+      const sp = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const cur = sp?.get('domain') ?? null;
+      const curTab = sp?.get('tab') ?? null;
+      if (query === 'tab=calc') return curTab === 'calc';
       const own = query?.startsWith('domain=') ? query.slice('domain='.length) : null;
-      return own ? own === cur : !cur;
+      return own ? own === cur : (!cur && curTab !== 'calc');
     }
     return pathname === full || pathname?.startsWith(full + '/');
   };

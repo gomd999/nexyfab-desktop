@@ -212,7 +212,7 @@ const dict = {
     pjNamePh: '프로젝트 이름',
     pjLoad: '불러오기',
     pjDel: '삭제',
-    pjNote: '브라우저 저장 — 기기 간 동기화 없음(서버 저장은 후속).',
+    pjNote: '저장: 게스트=브라우저 · 로그인=서버 동기화(☁ 서버 버튼).',
     pjRestored: '불러옴: ',
     pjSaveFail: '저장 실패(브라우저 저장소)',
     unitTitle: '표시 단위 전환 — 입력은 mm 고정',

@@ -13,9 +13,9 @@ export default async function DesignPage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ domain?: string }>;
+  searchParams: Promise<{ domain?: string; tab?: string }>;
 }) {
   const { lang } = await params;
-  const { domain } = await searchParams;
-  return <DesignInner lang={lang} initialDomain={domain ?? null} />;
+  const { domain, tab } = await searchParams;
+  return <DesignInner lang={lang} initialDomain={domain ?? null} initialTab={tab ?? null} />;
 }

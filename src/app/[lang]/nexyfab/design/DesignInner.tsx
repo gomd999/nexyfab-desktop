@@ -22,6 +22,7 @@ import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
 import { isKorean } from '@/lib/i18n/normalize';
 import DomainVerifyPanel from './DomainVerifyPanel';
 import CalcStudioPanel from './CalcStudioPanel';
+import StudioChatDock from './StudioChatDock';
 import ParametricPresetPanel from './ParametricPresetPanel';
 import AssemblyPresetPanel from './AssemblyPresetPanel';
 import DfmPanel from './DfmPanel';
@@ -66,10 +67,12 @@ const EXAMPLES_EN = [
   'L-bracket, 80mm legs, 6mm thick, two 6mm holes per face',
 ];
 
-export default function DesignInner({ lang, initialDomain }: { lang: string; initialDomain?: string | null }) {
+export default function DesignInner({ lang, initialDomain, initialTab }: { lang: string; initialDomain?: string | null; initialTab?: string | null }) {
   const ko = isKorean(lang);
   const domain = findDomain(initialDomain);
   const [prompt, setPrompt] = useState('');
+  type StudioTab = 'create' | 'verify' | 'calc' | 'output';
+  const [tab, setTab] = useState<StudioTab>(initialTab === 'calc' ? 'calc' : 'create');
 
   // 챗 핸드오프 수신 — 랜딩 챗에서 "Studio →"로 넘어온 사양을 프롬프트에 프리필(1회 소비)
   useEffect(() => {
@@ -115,7 +118,7 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
     mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xeef1f4);
+    scene.background = new THREE.Color(0x121a2e); // 다크 톤 통일(패널과 일체감)
     const camera = new THREE.PerspectiveCamera(40, mount.clientWidth / mount.clientHeight, 1, 1e5);
 
     const key = new THREE.DirectionalLight(0xffffff, 2.4);
@@ -379,7 +382,24 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
           {domain ? <span style={{ marginRight: 6 }}>{domain.icon}</span> : null}
           {domain ? (ko ? domain.labelKo : domain.labelEn) : ko ? '설계' : 'Design'}
           <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-            {domain ? (ko ? domain.descKo : domain.descEn) : ko ? '아이디어 → 설계 → 검증(상시) → 제조' : 'idea → design → verify (always) → manufacture'}
+            {domain ? (ko ? domain.descKo : domain.descEn) : (
+              (() => {
+                const stage = verify ? 2 : intent ? 1 : 0;
+                const steps = ko ? ['아이디어', '설계', '검증(상시)', '제조'] : ['idea', 'design', 'verify', 'manufacture'];
+                return steps.map((st, i) => (
+                  <span key={st} style={{ color: i === stage ? 'var(--nx-accent, #2563eb)' : undefined, fontWeight: i === stage ? 800 : 600 }}>
+                    {st}{i < steps.length - 1 ? ' → ' : ''}
+                  </span>
+                ));
+              })()
+            )}
+            {verify && !('error' in (verify as object)) && (
+              <span style={{ marginLeft: 10, padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800,
+                background: (verify as { manifold?: boolean }).manifold ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.15)',
+                color: (verify as { manifold?: boolean }).manifold ? '#16a34a' : '#dc2626' }}>
+                {(verify as { manifold?: boolean }).manifold ? (ko ? '검증 통과' : 'VERIFIED') : (ko ? '검증 실패' : 'FAILED')}
+              </span>
+            )}
           </span>
         </h1>
       </div>
@@ -387,7 +407,18 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         {/* Left: prompt + verify + export */}
         <div style={{ width: 380, minWidth: 380, borderRight: '1px solid var(--nx-border, #dfe3e8)', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-          <div style={{ padding: 16 }}>
+          {/* 작업 4탭 — 세로 스택 해체: 생성 | 검증 | 계산기 | 출력 */}
+          <div style={{ display: 'flex', gap: 4, padding: '10px 12px 0', position: 'sticky', top: 0, zIndex: 5, background: 'var(--nx-bg, #fff)' }}>
+            {([['create', ko ? '생성' : 'Create'], ['verify', ko ? '검증' : 'Verify'], ['calc', ko ? '계산기' : 'Calc'], ['output', ko ? '출력' : 'Output']] as [StudioTab, string][]).map(([k, label]) => (
+              <button key={k} type="button" onClick={() => setTab(k)}
+                style={{ flex: 1, padding: '7px 0', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                  border: '1px solid ' + (tab === k ? 'var(--nx-accent, #2563eb)' : 'var(--nx-border, #dfe3e8)'),
+                  background: tab === k ? 'var(--nx-accent, #2563eb)' : 'transparent', color: tab === k ? '#fff' : 'inherit' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div style={{ padding: 16, display: tab === 'create' ? undefined : 'none' }}>
             {/* 결정론 파라메트릭 프리셋(완벽화 Pillar ①) — 해당 분야에서 AI보다 우선 노출 */}
             {domain?.parametric && (
               <ParametricPresetPanel
@@ -495,7 +526,7 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
           </div>
 
           {/* Always-on verification panel */}
-          <div style={{ padding: '0 16px 16px' }}>
+          <div style={{ padding: '0 16px 16px', display: tab === 'verify' ? undefined : 'none', paddingTop: tab === 'verify' ? 16 : 0 }}>
             <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.02em', marginBottom: 6 }}>
               {ko ? '검증 (상시)' : 'Verification (always-on)'}
             </div>
@@ -537,20 +568,20 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
           </div>
 
           {/* 제조성(DFM) 상시 — 기계·판금(파라메트릭) 분야 */}
-          {intent && domain?.parametric && <DfmPanel intent={intent} lang={lang} />}
+          <div style={{ display: tab === 'verify' ? undefined : 'none' }}>{intent && domain?.parametric && <DfmPanel intent={intent} lang={lang} />}</div>
 
           {/* 제조(판재 레이저 명세·예상비용·DXF)(⑤) — 기계·판금 분야 */}
-          {intent && domain?.parametric && <FabPanel intent={intent} name={intent.name} lang={lang} />}
+          <div style={{ display: tab === 'output' ? undefined : 'none' }}>{intent && domain?.parametric && <FabPanel intent={intent} name={intent.name} lang={lang} />}</div>
 
           {/* 분야 검증(②) — 형상 + 분야 계산기(상시 게이트 위에 얹는 분야층) */}
-          {intent && <DomainVerifyPanel intent={intent} lang={lang} defaultDomain={domain?.verifyDomain ?? undefined} />}
+          <div style={{ display: tab === 'verify' ? undefined : 'none' }}>{intent && <DomainVerifyPanel intent={intent} lang={lang} defaultDomain={domain?.verifyDomain ?? undefined} />}</div>
 
           {/* 계산기 스튜디오 — 전 38종 스키마 자동 폼 + 계산서 출력(형상 없이도 사용 가능) */}
-          <CalcStudioPanel lang={lang} />
+          <div style={{ display: tab === 'calc' ? undefined : 'none', padding: tab === 'calc' ? '16px 12px' : 0 }}><CalcStudioPanel lang={lang} /></div>
 
           {/* Export + manufacture */}
           {intent && (
-            <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--nx-border, #dfe3e8)', paddingTop: 14 }}>
+            <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--nx-border, #dfe3e8)', paddingTop: 14, display: tab === 'output' ? undefined : 'none' }}>
               <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>{ko ? '내보내기 · 제조' : 'Export · Manufacture'}</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button type="button" onClick={exportStep} disabled={exporting !== ''} style={exportBtn}>
@@ -583,10 +614,11 @@ export default function DesignInner({ lang, initialDomain }: { lang: string; ini
 
         {/* Right: 3D viewer */}
         <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+          <StudioChatDock lang={lang} domainSlug={domain?.slug ?? initialDomain} intentName={intent?.name ?? null} partCount={Array.isArray(intent?.features) ? intent.features.length : null} />
           <div ref={mountRef} style={{ position: 'absolute', inset: 0 }} />
           {!scad && !loading && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nx-text-3, #6b7684)', fontSize: 13, pointerEvents: 'none' }}>
-              {ko ? '설계를 설명하면 여기에 3D가 나타납니다. (드래그=회전, 휠=줌)' : 'Describe a design to see the 3D here. (drag = rotate, wheel = zoom)'}
+              {ko ? '① 생성 탭에서 템플릿을 고르거나 자유 서술로 시작하세요 · ② 검증이 자동으로 따라옵니다 · ③ 계산기 61종·출력(도면·STEP·계산서)은 상단 탭 (드래그=회전 · 휠=줌)' : 'Pick a template or describe freely in Create · verification follows automatically · 61 calculators & outputs in tabs (drag = rotate, wheel = zoom)'}
             </div>
           )}
           {loading && (
