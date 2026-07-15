@@ -58,8 +58,17 @@ export function bridgeCheck(assembly, params = {}) {
   // 정역학 단순화: 차륜(축의 1/2)들 지렛대 분담 — 3m 점유폭 1개 차로 기준 폐형:
   //   바퀴1 거더 직상(분담 1/2축), 바퀴2 1.8m 옆 → 분담 (s−1.8)/s×1/2 (s>1.8일 때)
   const leverDF = s > 1.8 ? 0.5 * (1 + (s - 1.8) / s) : 0.5;
-  const DF = Number(params.DF) > 0 ? Number(params.DF) : round(leverDF, 3);
-  const dfSrc = Number(params.DF) > 0 ? '입력' : '레버룰(내측 1차로·힌지 가정 — KDS 24 10 11 정밀식은 입력으로 대체 가능)';
+  let DF, dfSrc;
+  if (Number(params.DF) > 0) { DF = Number(params.DF); dfSrc = '입력'; }
+  else {
+    // 정밀식(표 4.6-5) 자동 — 적용범위 내일 때. 범위 밖은 레버룰 폴백(명시)
+    try {
+      const dfr = runCalculator('girder_df', { S_mm: Math.round(s * 1000), L_mm: Math.round(L * 1000), ts_mm: bm.deckThk, Nb: n }, 'KDS');
+      DF = dfr.DF.interior_gov; dfSrc = '정밀식(KDS 24 10 11 표 4.6-5 — Kg항 1.0 기본설계)';
+    } catch (e) {
+      DF = round(leverDF, 3); dfSrc = '레버룰(정밀식 적용범위 밖: ' + e.message.slice(0, 40) + '…)';
+    }
+  }
   const nLanes = params.nLanes ?? Math.max(1, Math.floor(bm.deckW / 1000 / 3.6));
   let ll = null;
   try {
@@ -121,7 +130,7 @@ if (isMain) {
   console.log('DC:', r.dead.wDC_kNm, 'kN/m (거더', r.dead.girderSelf, '+바닥판', r.dead.deckShare, ') | M_DC:', r.dead.M_DC);
   console.log('LL: DF', r.live.DF, '(' + r.live.dfSrc.slice(0, 10) + '…) M_LL:', r.live.M_LL, '| 극한 Mu:', r.ultimate.Mu_kNm, 'kN·m');
   // sanity: 레버룰 DF = 0.5(1+(2.5−1.8)/2.5)=0.64 · M_DC>0 · Mu > M_DC×1.25
-  const ok = Math.abs(r.live.DF - 0.64) < 0.001 && r.ultimate.Mu_kNm > 1.25 * r.dead.M_DC && r.dead.wDC_kNm > 10;
+  const ok = Math.abs(r.live.DF - 0.568) < 0.005 && r.live.dfSrc.includes('정밀식') && r.ultimate.Mu_kNm > 1.25 * r.dead.M_DC && r.dead.wDC_kNm > 10;
   console.log(ok ? 'bridge-check self-test: PASS' : 'bridge-check self-test: FAIL');
   if (!ok) process.exit(1);
 }

@@ -33,8 +33,9 @@ import deckStrip from './calculators/deck-strip.mjs';
 import earthworkGrid from './calculators/earthwork-grid.mjs';
 import pipeSizing from './calculators/pipe-sizing.mjs';
 import shearWall from './calculators/shear-wall.mjs';
+import girderDf from './calculators/girder-df.mjs';
 
-export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman, vibrationBasic, thermalStress, acousticTl, ductSizing, slopeBishop, mseWall, deckStrip, earthworkGrid, pipeSizing, shearWall];
+export const calculators = [retainingWall, columnBuckling, simpleBeam, boltConnection, rackFrame, rcBeam, landscapeDrainage, rcColumn, isolatedFooting, occupancyEgress, timberBeam, boxCulvertFrame, seismicStatic, timberNail, timberBolt, windSimple, windStatic, drainageNetwork, girderLine, slopeInfinite, fatigueGoodman, vibrationBasic, thermalStress, acousticTl, ductSizing, slopeBishop, mseWall, deckStrip, earthworkGrid, pipeSizing, shearWall, girderDf];
 
 /** Minimal JSON-Schema-subset validator (type/required/properties/minimum/maximum/enum). */
 export function validateInput(schema, input) {
