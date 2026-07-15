@@ -65,6 +65,13 @@ const TARGETS = [
   { code: '142080', tags: ['korea', 'kds', 'concrete', 'seismic', 'boundary-element', 'P3'] }, // 콘크리트 내진설계(특수전단벽 경계요소)
   { code: '115015', tags: ['korea', 'kds', 'civil', 'pile', 'foundation'] },  // 깊은기초(말뚝) — 지지력 계산기 근거
   { code: '113005', tags: ['korea', 'kds', 'civil', 'settlement', 'foundation'] }, // 얕은기초/침하 근거(존재 시)
+  { code: '142070', tags: ['korea', 'kds', 'concrete', 'slab', 'P3'] }, // 2방향 슬래브
+  { code: '142030', tags: ['korea', 'kds', 'concrete', 'serviceability', 'P3'] }, // 사용성(처짐·균열)
+  { code: '313025', tags: ['korea', 'kds', 'building', 'plumbing', 'drainage'] }, // 배수·통기
+  { code: '171000', tags: ['korea', 'kds', 'seismic', 'general', 'liquefaction'] }, // 내진설계 일반(액상화)
+  { code: '241711', tags: ['korea', 'kds', 'bridge', 'seismic'] }, // 교량 내진
+  { code: '249011', tags: ['korea', 'kds', 'bridge', 'bearing'] }, // 교량 받침(후보)
+  { code: '613005', tags: ['korea', 'kds', 'sewer', 'pipe'] }, // 하수도 일반(후보)
 ];
 
 const args = process.argv.slice(2);

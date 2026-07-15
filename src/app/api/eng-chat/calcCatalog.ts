@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(54종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(55종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -3533,6 +3533,59 @@ export const CALC_CATALOG: CalcSpec[] = [
         "desc": "접합면 부모멘트 강도",
         "type": "number",
         "min": 0
+      }
+    }
+  },
+  {
+    "id": "longterm_deflection",
+    "domain": "architecture/serviceability",
+    "title": "RC 장기처짐 (λΔ — §4.2.1)",
+    "description": "λΔ=ξ/(1+50ρ′)·표 4.2-2 허용처짐 판정 — 순간처짐은 산정 입력.",
+    "required": [
+      "span_mm",
+      "instSustained_mm",
+      "duration_months",
+      "memberType"
+    ],
+    "params": {
+      "span_mm": {
+        "desc": "경간 l",
+        "type": "number",
+        "min": 0
+      },
+      "instSustained_mm": {
+        "desc": "지속하중(고정+지속활하중)에 의한 순간처짐 (Ie 반영 산정 입력)",
+        "type": "number",
+        "min": 0
+      },
+      "instLive_mm": {
+        "desc": "활하중 순간처짐 (표 4.2-2 조합용)",
+        "type": "number",
+        "min": 0
+      },
+      "duration_months": {
+        "desc": "지속 기간 (60=5년 이상 — ξ 원문 4단)",
+        "enum": [
+          3,
+          6,
+          12,
+          60
+        ]
+      },
+      "rhoPrime": {
+        "desc": "압축철근비 ρ′ (중앙부·캔틸레버는 받침부 — 원문. 0=압축철근 없음)",
+        "type": "number",
+        "min": 0,
+        "max": 0.04
+      },
+      "memberType": {
+        "desc": "표 4.2-2 부재 구분 (손상쉬운 요소 지지 여부)",
+        "enum": [
+          "roof_nofragile",
+          "floor_nofragile",
+          "fragile",
+          "nonfragile_attached"
+        ]
       }
     }
   }
