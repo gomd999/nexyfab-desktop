@@ -212,6 +212,23 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
     setMetrics(computeMetrics(raw.volume_cm3, raw.surface_area_cm2, raw.bbox, raw.triCount, UNIT_FACTOR[unit], density));
   }, [unit, material]);
 
+  // 빠른 견적 → 완제품 평가 핸드오프: quick-quote가 sessionStorage에 실어둔 파일을
+  // 그대로 불러와 자동 분석한다. 한 번만 소비(제거).
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('nexyfab:evaluate-file');
+      if (!raw) return;
+      sessionStorage.removeItem('nexyfab:evaluate-file');
+      const { name, b64 } = JSON.parse(raw) as { name: string; b64: string };
+      if (!name || !b64) return;
+      const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      void onFile(new File([bytes], name, { type: 'application/step' }));
+    } catch { /* 손상된 stash → 사용자가 직접 업로드 */ }
+    // Mount-only: onFile identity changes with material/unit, but the stash is
+    // consumed on first read so re-runs are no-ops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const evaluate = useCallback(async () => {
     if (!metrics) return;
     setEvaluating(true); setErr(null); setReport(null); setCostEstimate(null); setCostComparison(null); setCostCurve(null); setCostLocked(false);

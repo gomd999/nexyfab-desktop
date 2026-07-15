@@ -53,7 +53,8 @@ const IconFactory = () => (
         <path d="M2 20V9l6-4v4l6-4v4l6-4v15H2z" /><path d="M6 20v-4h4v4M12 12h2M12 16h2M16 12h2M16 16h2" />
     </svg>
 );
-const IconDownload = () => (
+// Retained for when the desktop-app download tab is re-enabled (see navItems).
+const _IconDownload = () => (
     <svg aria-hidden="true" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
     </svg>
@@ -143,7 +144,10 @@ export default function Header() {
         { href: `/${lang}/nexyfab/hub/`, label: t.shapeGen, icon: <IconCube />, external: false, highlight: 'blue' as const },
         { href: `/${lang}/factories/`, label: t.factories, icon: <IconFactory />, external: false, highlight: false as const },
         { href: `/${lang}/pricing/`, label: t.pricing, icon: <IconZap />, external: false, highlight: false as const },
-        { href: `/${lang}/download/`, label: t.download, icon: <IconDownload />, external: false, highlight: false as const },
+        // Desktop app is still "출시 준비 중" (Coming Soon) with no working download.
+        // Hide the nav tab until it actually ships — the /download page stays
+        // reachable by URL for the launch waitlist. Re-add this line when the app is out.
+        // { href: `/${lang}/download/`, label: t.download, icon: <_IconDownload />, external: false, highlight: false as const },
         { href: `/${lang}/quick-quote/`, label: t.quickQuote, icon: <IconCalculator />, external: false, highlight: 'gradient' as const },
     ];
 

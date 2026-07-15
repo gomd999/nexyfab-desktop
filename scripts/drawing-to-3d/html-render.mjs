@@ -10,7 +10,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { toOpenScad } from './reconstruct.mjs';
-import { buildAssembly } from './assembly.mjs';
+import { buildAssembly, COLOR_LABEL } from './assembly.mjs';
 import { emitComposite } from './compose.mjs';
 import { renderStl } from './verify.mjs';
 
@@ -73,6 +73,57 @@ ctl.target.copy(c);cam.position.set(c.x+sz.x*1.15,c.y+sz.y*0.75,c.z+sz.z*2.1);
 document.getElementById('shot').onclick=()=>{r.render(sc,cam);const a=document.createElement('a');a.download='render.png';a.href=r.domElement.toDataURL('image/png');a.click();};
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();r.setSize(innerWidth,innerHeight);});
 (function loop(){requestAnimationFrame(loop);ctl.update();r.render(sc,cam);})();
+</script></body></html>`;
+}
+
+/**
+ * 계통색 GA 3D — 피처 `_col`(assemblyToComposeIntent 가 부품 service/type 에서 전파) 별로
+ * STL 을 따로 렌더해 three.js 다중메시로 합성한다. 배관·부품 계통이 색으로 구분됨 + 범례.
+ * @param spec {assembly} 또는 {intent}(features[] with _col)
+ */
+export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle = '' } = {}) {
+  let features, name;
+  if (spec.assembly) {
+    const b = buildAssembly(spec.assembly);
+    if (!b.ok) throw new Error('assembly gate: ' + (b.gateErrors ?? []).join('; '));
+    features = b.composeIntent.features; name = spec.assembly.name ?? 'assembly';
+  } else if (spec.intent && Array.isArray(spec.intent.features)) {
+    features = spec.intent.features; name = spec.intent.name ?? 'composite';
+  } else throw new Error('renderColoredHtml: spec.assembly 또는 spec.intent 필요');
+
+  const groups = [...new Set(features.map((f) => f._col || '#9aa7b5'))];
+  const meshes = [];
+  for (const col of groups) {
+    try {
+      const stl = await renderStl(emitComposite({ name, features: features.filter((f) => (f._col || '#9aa7b5') === col) }));
+      meshes.push({ col, b64: bytesToBase64(stl) });
+    } catch { /* 빈/실패 그룹 skip */ }
+  }
+  if (!meshes.length) throw new Error('renderColoredHtml: 렌더된 메시 없음');
+  const metal = new Set(['#3f4756', '#5b6472', '#59606b', '#9aa7b5', '#8b98a6', '#78838f', '#8a5a2b']);
+  const mj = meshes.map((m) => `{b64:"${m.b64}",col:0x${m.col.slice(1)},metal:${metal.has(m.col) ? 0.9 : 0.28},rough:${metal.has(m.col) ? 0.35 : 0.45}}`).join(',');
+  const legend = groups.map((c) => `<b style="background:${c}"></b>${esc(COLOR_LABEL[c] || '부품')}`).join(' ');
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#eef1f4;font-family:'Segoe UI',sans-serif}#hud{position:fixed;top:14px;left:18px;color:#2a3440;z-index:10}#hud h1{font-size:15px;margin:0 0 3px}#hud p{font-size:11px;margin:0;color:#5a6875}
+#leg{position:fixed;left:18px;bottom:14px;z-index:10;font-size:11px;color:#334155;background:rgba(255,255,255,.82);padding:8px 12px;border-radius:8px;line-height:1.7}#leg b{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:4px;vertical-align:middle}
+#shot{position:fixed;top:14px;right:18px;z-index:10;padding:8px 14px;border:0;border-radius:8px;background:#2a3440;color:#fff;font-size:12px;cursor:pointer}</style></head>
+<body><div id="hud"><h1>${esc(title)}</h1><p>${esc(subtitle || name)}</p></div><button id="shot">📷 PNG</button><div id="leg">${legend}</div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import*as THREE from'three';import{OrbitControls}from'three/addons/controls/OrbitControls.js';import{STLLoader}from'three/addons/loaders/STLLoader.js';import{RoomEnvironment}from'three/addons/environments/RoomEnvironment.js';
+const M=[${mj}];const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});r.setSize(innerWidth,innerHeight);r.setPixelRatio(Math.min(devicePixelRatio,2));r.toneMapping=THREE.ACESFilmicToneMapping;r.shadowMap.enabled=true;r.shadowMap.type=THREE.PCFSoftShadowMap;document.body.appendChild(r.domElement);
+const sc=new THREE.Scene();sc.background=new THREE.Color(0xeef1f4);sc.environment=new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(),0.04).texture;
+const cam=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,1,1e5);const ctl=new OrbitControls(cam,r.domElement);ctl.enableDamping=true;
+function b2a(b){const s=atob(b);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer}
+const root=new THREE.Group();root.rotation.x=-Math.PI/2;const ld=new STLLoader();
+for(const m of M){const g=ld.parse(b2a(m.b64));g.computeVertexNormals();const me=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:m.col,metalness:m.metal,roughness:m.rough}));me.castShadow=me.receiveShadow=true;root.add(me)}sc.add(root);
+const bb=new THREE.Box3().setFromObject(root);const sz=bb.getSize(new THREE.Vector3());const c=bb.getCenter(new THREE.Vector3());
+const gr=new THREE.Mesh(new THREE.CircleGeometry(Math.max(sz.x,sz.y,sz.z)*2,64),new THREE.MeshStandardMaterial({color:0xe3e7eb,roughness:1}));gr.rotation.x=-Math.PI/2;gr.position.y=bb.min.y;gr.receiveShadow=true;sc.add(gr);
+const d=Math.max(sz.x,sz.y,sz.z);const key=new THREE.DirectionalLight(0xffffff,2.2);key.position.set(d*1.3,d*1.8,d);key.castShadow=true;key.shadow.mapSize.set(2048,2048);Object.assign(key.shadow.camera,{left:-d,right:d,top:d,bottom:-d,far:d*6});sc.add(key,new THREE.AmbientLight(0xffffff,0.28));
+ctl.target.copy(c);cam.position.set(c.x+sz.x*1.25,c.y+sz.y*0.7,c.z+sz.z*2.1);
+document.getElementById('shot').onclick=()=>{r.render(sc,cam);const a=document.createElement('a');a.download='GA.png';a.href=r.domElement.toDataURL('image/png');a.click()};
+addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();r.setSize(innerWidth,innerHeight)});
+(function loop(){requestAnimationFrame(loop);ctl.update();r.render(sc,cam)})();
 </script></body></html>`;
 }
 

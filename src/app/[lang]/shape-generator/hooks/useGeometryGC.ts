@@ -35,6 +35,22 @@ export function trackGeometry(geo: THREE.BufferGeometry | THREE.EdgesGeometry | 
 }
 
 /**
+ * Immediately dispose + un-register a single geometry.
+ *
+ * For consumers that borrow the import pipeline for measurement only (e.g. the
+ * quick-quote page reads volume/bbox then discards) and never mount
+ * `useGeometryGC`. Without this the geometry — plus the BVH `trackGeometry`
+ * eagerly computes — lives forever in `trackedGeometries` and accumulates per
+ * upload. Safe to call on geometries not in the registry (dispose is idempotent).
+ */
+export function untrackGeometry(geo: THREE.BufferGeometry | THREE.EdgesGeometry | undefined | null) {
+  if (!geo) return;
+  (geo as BufferGeometryWithBVH).disposeBoundsTree?.();
+  geo.dispose();
+  trackedGeometries.delete(geo);
+}
+
+/**
  * Sweeps the registry and disposes any geometry that is no longer in the active set.
  */
 export function sweepGeometries(mainActiveGeometries: Set<THREE.BufferGeometry | THREE.EdgesGeometry>) {

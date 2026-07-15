@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback, useEffect, Suspense } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -514,6 +514,13 @@ function QuickQuotePageInner() {
     const [geometry, setGeometry] = useState<{ volume_cm3: number; surface_area_cm2: number; bbox: { w: number; h: number; d: number } } | null>(null);
     const [aiAnalysis, setAiAnalysis] = useState<Record<string, unknown> | null>(null);
 
+    // 브라우저 OCCT/mesh 자동 추출 (완제품 평가와 동일 경로). 파일 업로드 즉시
+    // 치수·부피를 뽑아 채워서 서버 파서 실패에 의존하지 않게 한다.
+    type ExtractedGeo = { volume_cm3: number; surface_area_cm2: number; bbox: { w: number; h: number; d: number } };
+    const [clientGeos, setClientGeos] = useState<Record<string, ExtractedGeo>>({});
+    const [extracting, setExtracting] = useState(false);
+    const extractingRef = useRef<Set<string>>(new Set());
+
     // 선택 옵션
     const [material, setMaterial] = useState('aluminum_6061');
     const [process, setProcess] = useState('cnc');
@@ -728,6 +735,8 @@ function QuickQuotePageInner() {
 
     const removeFile = (name: string) => {
         setSelectedFiles(prev => prev.filter(f => f.name !== name));
+        setClientGeos(prev => { const { [name]: _drop, ...rest } = prev; return rest; });
+        extractingRef.current.delete(name);
         setDimRequired(false);
         setDimFieldError({ w: false, h: false, d: false });
     };
@@ -747,6 +756,83 @@ function QuickQuotePageInner() {
         return ['.blend', '.jpg', '.jpeg', '.png', '.webp'].includes(ext);
     });
     const needsDimensions = fileMode === 'image' || (fileMode === 'step' && hasBlendOrImage);
+
+    // ── 브라우저에서 STEP/STL/OBJ 자동 추출 ──
+    // 완제품 평가와 동일한 importMeshPipeline(브라우저 OCCT/mesh)로 파일을 올리는
+    // 즉시 부피·표면적·치수를 뽑는다. 서버 파서 실패에 의존하지 않는다.
+    const CAD_CLIENT_EXTS = ['step', 'stp', 'stl', 'obj', 'ply', 'iges', 'igs', 'brep'];
+    useEffect(() => {
+        const todo = selectedFiles.filter(f => {
+            const ext = f.name.toLowerCase().split('.').pop() || '';
+            return CAD_CLIENT_EXTS.includes(ext) && !clientGeos[f.name] && !extractingRef.current.has(f.name);
+        });
+        if (todo.length === 0) return;
+        todo.forEach(f => extractingRef.current.add(f.name));
+        let cancelled = false;
+        setExtracting(true);
+        (async () => {
+            try {
+                const [{ prepareImportedShapeFromFile }, { untrackGeometry }] = await Promise.all([
+                    import('@/app/[lang]/shape-generator/io/importMeshPipeline'),
+                    import('@/app/[lang]/shape-generator/hooks/useGeometryGC'),
+                ]);
+                const found: Record<string, ExtractedGeo> = {};
+                for (const f of todo) {
+                    try {
+                        const prep = await prepareImportedShapeFromFile(f);
+                        if (prep.volume_cm3 > 0 && prep.bbox.w > 0 && prep.bbox.h > 0 && prep.bbox.d > 0) {
+                            found[f.name] = { volume_cm3: prep.volume_cm3, surface_area_cm2: prep.surface_area_cm2, bbox: prep.bbox };
+                        }
+                        // We only need the numbers — free the mesh + its BVH so uploads
+                        // don't accumulate in the global geometry registry.
+                        untrackGeometry(prep.geometry);
+                        untrackGeometry(prep.edgeGeometry);
+                        prep.parts?.forEach(p => untrackGeometry(p.geometry));
+                    } catch { /* 서버가 폴백으로 재시도 */ }
+                    finally { extractingRef.current.delete(f.name); }
+                }
+                if (cancelled) return;
+                if (Object.keys(found).length > 0) {
+                    setClientGeos(prev => ({ ...prev, ...found }));
+                }
+                // Browser extraction produced nothing for any selected CAD file →
+                // surface the manual-dimension form now instead of waiting for the
+                // server to fail with a 422.
+                const anyGeo = selectedFiles.some(f => found[f.name] || clientGeos[f.name]);
+                if (!anyGeo) setDimRequired(true);
+            } finally {
+                if (!cancelled) setExtracting(false);
+            }
+        })();
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedFiles]);
+
+    // 선택된 CAD 파일들의 추출 결과를 합산 (여러 파일이면 부피 합·bbox 최대).
+    const extractedGeometry = useMemo<ExtractedGeo | null>(() => {
+        const geos = selectedFiles.map(f => clientGeos[f.name]).filter(Boolean) as ExtractedGeo[];
+        if (geos.length === 0) return null;
+        if (geos.length === 1) return geos[0];
+        return {
+            volume_cm3: geos.reduce((s, g) => s + g.volume_cm3, 0),
+            surface_area_cm2: geos.reduce((s, g) => s + g.surface_area_cm2, 0),
+            bbox: {
+                w: Math.max(...geos.map(g => g.bbox.w)),
+                h: Math.max(...geos.map(g => g.bbox.h)),
+                d: Math.max(...geos.map(g => g.bbox.d)),
+            },
+        };
+    }, [selectedFiles, clientGeos]);
+
+    // 추출되면 치수 자동 채움 + 치수 요구 상태 해제.
+    useEffect(() => {
+        if (!extractedGeometry) return;
+        setDimW(String(extractedGeometry.bbox.w));
+        setDimH(String(extractedGeometry.bbox.h));
+        setDimD(String(extractedGeometry.bbox.d));
+        setDimRequired(false);
+        setDimFieldError({ w: false, h: false, d: false });
+    }, [extractedGeometry]);
 
     // ── 분석 시작 ──
     const handleAnalyze = async () => {
@@ -779,6 +865,12 @@ function QuickQuotePageInner() {
             }
             if (dimW && dimH && dimD) {
                 formData.append('dimensions', JSON.stringify({ w: Number(dimW), h: Number(dimH), d: Number(dimD) }));
+            }
+            // 브라우저에서 추출한 지오메트리를 함께 전송 → 서버는 이걸 우선 사용.
+            const geosToSend: Record<string, ExtractedGeo> = {};
+            for (const f of selectedFiles) if (clientGeos[f.name]) geosToSend[f.name] = clientGeos[f.name];
+            if (Object.keys(geosToSend).length > 0) {
+                formData.append('clientGeometries', JSON.stringify(geosToSend));
             }
 
             addProgress(t.step_geometry);
@@ -1069,6 +1161,23 @@ ${aiReport ? `
         router.push(`/${lang}/project-inquiry/?from=quick-quote&material=${material}&process=${process}&qty=${quantity}&unitCost=${estimates.unit_cost}&bbox=${JSON.stringify(geometry.bbox)}`);
     };
 
+    // ── 완제품 평가(DFM) 핸드오프 ──
+    // 업로드한 CAD 파일을 sessionStorage에 실어 완제품평가 페이지로 넘긴다.
+    // 그쪽이 같은 지오메트리로 DFM·재질·구조·비용 풀 리포트를 돌린다(중복 구현 회피).
+    const firstCadFile = selectedFiles.find(f => CAD_CLIENT_EXTS.includes(f.name.toLowerCase().split('.').pop() || ''));
+    const handleEvaluateHandoff = async () => {
+        if (!firstCadFile) return;
+        try {
+            const buf = await firstCadFile.arrayBuffer();
+            const bytes = new Uint8Array(buf);
+            let bin = '';
+            const chunk = 8192;
+            for (let i = 0; i < bytes.length; i += chunk) bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+            sessionStorage.setItem('nexyfab:evaluate-file', JSON.stringify({ name: firstCadFile.name, b64: btoa(bin) }));
+            router.push(`/${lang}/nexyfab/evaluate`);
+        } catch { /* 실패 시 사용자가 평가 페이지에서 직접 업로드 */ router.push(`/${lang}/nexyfab/evaluate`); }
+    };
+
     // ─── 공통 스타일 ──────────────────────────────────────────────────────────
     const card: React.CSSProperties = {
         background: '#fff',
@@ -1215,6 +1324,43 @@ ${aiReport ? `
                         }}>
                             {t.retentionNotice}
                         </div>
+
+                        {/* 브라우저 자동 추출 진행/결과 (STEP·STL·OBJ) */}
+                        {fileMode === 'step' && extracting && !extractedGeometry && (
+                            <div style={{ marginTop: '12px', padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', color: '#1d4ed8', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>🔄</span>
+                                {lang === 'kr' ? '브라우저에서 형상 자동 분석 중… (치수·부피 추출)'
+                                    : lang === 'ja' ? 'ブラウザで形状を自動解析中…'
+                                    : lang === 'cn' ? '正在浏览器中自动分析形状…'
+                                    : lang === 'es' ? 'Analizando la geometría en el navegador…'
+                                    : lang === 'ar' ? 'جارٍ تحليل الشكل في المتصفح…'
+                                    : 'Auto-analyzing geometry in your browser…'}
+                            </div>
+                        )}
+                        {extractedGeometry && (
+                            <div style={{ marginTop: '12px', padding: '14px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px' }}>
+                                <div style={{ fontSize: '13px', fontWeight: 700, color: '#166534', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    ✅ {lang === 'kr' ? '치수·부피 자동 추출 완료'
+                                        : lang === 'ja' ? '寸法・体積を自動抽出しました'
+                                        : lang === 'cn' ? '已自动提取尺寸和体积'
+                                        : lang === 'es' ? 'Dimensiones y volumen extraídos'
+                                        : lang === 'ar' ? 'تم استخراج الأبعاد والحجم'
+                                        : 'Dimensions & volume auto-extracted'}
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                                    {[
+                                        { label: t.size, value: `${extractedGeometry.bbox.w}×${extractedGeometry.bbox.h}×${extractedGeometry.bbox.d} mm` },
+                                        { label: t.volume, value: `${extractedGeometry.volume_cm3.toFixed(1)} cm³` },
+                                        { label: t.surfaceArea, value: `${extractedGeometry.surface_area_cm2.toFixed(1)} cm²` },
+                                    ].map(({ label, value }) => (
+                                        <div key={label} style={{ background: '#fff', borderRadius: '8px', padding: '8px 10px', border: '1px solid #dcfce7' }}>
+                                            <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600 }}>{label}</div>
+                                            <div style={{ fontSize: '14px', fontWeight: 800, color: '#111827', marginTop: '2px' }}>{value}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* 치수 입력 (이미지/blend 모드 또는 STEP 추출 실패 시) */}
                         {(needsDimensions || dimRequired) && (
@@ -2101,6 +2247,30 @@ ${aiReport ? `
                                 }} />
                             )}
                         </div>{/* end position:relative gate section */}
+
+                        {/* 완제품 평가(DFM) 연결 — 업로드한 파일 그대로 넘겨 정밀 분석 */}
+                        {firstCadFile && (
+                            <button
+                                onClick={handleEvaluateHandoff}
+                                style={{
+                                    width: '100%', marginBottom: '12px', padding: '14px',
+                                    background: '#f5f3ff', color: '#6d28d9',
+                                    border: '1.5px solid #ddd6fe', borderRadius: '16px',
+                                    fontWeight: 700, fontSize: '14px', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#ede9fe'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = '#f5f3ff'; }}
+                            >
+                                🔬 {lang === 'kr' ? '이 부품 정밀 DFM·구조 평가 받기 (완제품 평가)'
+                                    : lang === 'ja' ? '精密DFM・構造評価を受ける（完成品評価）'
+                                    : lang === 'cn' ? '获取精密DFM·结构评估（成品评估）'
+                                    : lang === 'es' ? 'Análisis DFM y estructural completo (Design Review)'
+                                    : lang === 'ar' ? 'مراجعة DFM والهيكل الكاملة'
+                                    : 'Run full DFM & structural review'}
+                                <span style={{ opacity: 0.6 }}>→</span>
+                            </button>
+                        )}
 
                         {/* 액션 버튼 */}
                         {isLoggedIn ? (

@@ -159,10 +159,22 @@ function approximateFromDimensions(w: number, h: number, d: number) {
 
 type Geometry = { volume_cm3: number; surface_area_cm2: number; bbox: { w: number; h: number; d: number } };
 
+// A geometry is usable only if it has real, finite, positive measurements.
+// The browser OCCT/mesh pipeline (완제품 평가와 동일) sends these; we trust them
+// over the server-side parse because the client already tessellated the file.
+function isValidGeo(g: unknown): g is Geometry {
+    if (!g || typeof g !== 'object') return false;
+    const o = g as Geometry;
+    const finPos = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n > 0;
+    return finPos(o.volume_cm3) && finPos(o.surface_area_cm2)
+        && !!o.bbox && finPos(o.bbox.w) && finPos(o.bbox.h) && finPos(o.bbox.d);
+}
+
 async function processOneFile(
     file: File,
     buffer: Buffer,
     dimensionsRaw: string | null,
+    clientGeo: Geometry | null,
 ): Promise<{ geometry: Geometry | null; aiAnalysis: Record<string, unknown> | null; fileUrl: string; storageKey: string; fileSize: number }> {
     const safeFilename = sanitizeFileName(file.name);
     const storage = getStorage();
@@ -177,7 +189,15 @@ async function processOneFile(
 
     // ── STEP / STL ──
     if (fileType === 'step') {
-        try {
+        // Prefer the browser-extracted geometry (완제품 평가와 동일한 OCCT WASM 경로).
+        // The client already tessellated the file and measured volume/surface/bbox,
+        // so we skip the flaky server-side parse entirely when it's available.
+        if (isValidGeo(clientGeo)) {
+            geometry = clientGeo;
+            aiAnalysis = { part_type: 'mechanical_part', process: 'cnc', complexity: 5, features: ['client_extracted'], materials: ['steel_s45c', 'aluminum_6061', 'stainless_304'] };
+        }
+        // Server-side parse only as a fallback when the browser didn't send geometry.
+        if (!geometry) try {
             const occtModule = await import('occt-import-js');
             const wasmPath = path.join(process.cwd(), 'node_modules/occt-import-js/dist/occt-import-js.wasm');
             const occt = await occtModule.default({
@@ -223,7 +243,11 @@ async function processOneFile(
 
     // ── OBJ ──
     if (fileType === 'obj') {
-        const parsed = parseOBJ(buffer);
+        if (isValidGeo(clientGeo)) {
+            geometry = clientGeo;
+            aiAnalysis = { part_type: 'mechanical_part', process: 'cnc', complexity: 5, features: ['client_extracted'], materials: ['steel_s45c', 'aluminum_6061', 'stainless_304'] };
+        }
+        const parsed = geometry ? null : parseOBJ(buffer);
         if (parsed && parsed.faces.length > 0) {
             const vol = computeVolume(parsed.vertices, parsed.faces);
             const area = computeSurfaceArea(parsed.vertices, parsed.faces);
@@ -342,6 +366,16 @@ export async function POST(req: NextRequest) {
         const formData = await req.formData();
         const files = formData.getAll('file') as File[];
         const dimensionsRaw = formData.get('dimensions') as string | null;
+        // Browser-extracted geometry keyed by filename (완제품 평가와 동일한 클라 OCCT/mesh 경로).
+        // When present we trust it over the server-side parse.
+        let clientGeometries: Record<string, Geometry> = {};
+        try {
+            const raw = formData.get('clientGeometries');
+            if (typeof raw === 'string' && raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') clientGeometries = parsed as Record<string, Geometry>;
+            }
+        } catch { /* ignore malformed — server parse / dims fallback still runs */ }
         const rfqIdRaw = String(formData.get('rfqId') ?? '').trim();
         const replacesFileIdRaw = String(formData.get('replacesFileId') ?? '').trim();
 
@@ -406,7 +440,8 @@ export async function POST(req: NextRequest) {
             files.map(async (file) => {
                 const ab = await file.arrayBuffer();
                 const buffer = Buffer.from(ab);
-                return processOneFile(file, buffer, dimensionsRaw);
+                const cg = clientGeometries[file.name];
+                return processOneFile(file, buffer, dimensionsRaw, isValidGeo(cg) ? cg : null);
             })
         );
 

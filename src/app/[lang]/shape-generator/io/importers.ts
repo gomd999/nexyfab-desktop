@@ -440,6 +440,13 @@ export async function importPayload(
 
   if (ext === 'stl') {
     geometry = parseSTL(buffer);
+    // CAD-world STL files are Z-up (OpenSCAD, FreeCAD, most slicers/CAD
+    // exports) while the three.js scene is Y-up — without this remap a tank
+    // model lies on its side. Applied only to user-imported STLs here;
+    // internal Studio→modeler STL handoffs bypass importPayload and stay
+    // in scene coordinates. (x,y,z) → (x,z,-y) is a proper rotation, so
+    // winding/normals stay valid.
+    geometry.rotateX(-Math.PI / 2);
   } else if (ext === 'obj') {
     geometry = parseOBJ(textDecoder.decode(buffer));
   } else if (ext === 'ply') {

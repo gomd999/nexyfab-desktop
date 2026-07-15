@@ -15,6 +15,11 @@ export interface PreparedImportedShape {
 }
 
 function finalizeImported(geometry: THREE.BufferGeometry, filename: string, parts?: { geometry: THREE.BufferGeometry; name: string }[]): PreparedImportedShape {
+  // Provenance tag: imported meshes have unknown manufacturing process, so
+  // downstream analysis (auto-DFM) must not assume injection molding — a
+  // welded/fabricated import would otherwise get false undercut/draft-angle
+  // badges (process-aware DFM, methodology §13 #1).
+  geometry.userData.nfImported = true;
   const edgeGeometry = makeEdges(geometry);
   const volume_cm3 = meshVolume(geometry) / 1000;
   const surface_area_cm2 = meshSurfaceArea(geometry) / 100;

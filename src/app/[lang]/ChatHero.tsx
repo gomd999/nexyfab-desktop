@@ -9,8 +9,7 @@
  * AI가 상담·안내한 뒤 필요한 경우에만 결정론 데모/견적/스튜디오로 이어 준다.
  */
 
-import React, { useState, useRef, useCallback } from 'react';
-import Link from 'next/link';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type * as ThreeNS from 'three';
 import { DomainIcon } from './_domainIcons';
@@ -43,9 +42,16 @@ type CadResult = {
   interferences?: Array<Record<string, unknown>>;
   welds?: Array<Record<string, unknown>>;  // 용접 조인트 개산
   weldTotalMm?: number;
+  structural?: StructuralResult;            // 형상기반 자동 구조검증
+};
+type StructuralResult = {
+  totalMassKg?: number; cgHeightM?: number; maxSupportKg?: number;
+  tipover?: { staticAngleDeg?: number; seismicG?: number; seismicFS?: number };
+  warnings?: string[];
 };
 type CableRow = { from?: unknown; to?: unknown; type?: unknown; cores?: unknown; mm2?: unknown; lengthM?: unknown; note?: unknown };
-type Msg = { role: 'user' | 'assistant'; content: string; calc?: CalcResult; cad?: CadResult; wiring?: CableRow[] };
+type Msg = { role: 'user' | 'assistant'; content: string; calc?: CalcResult; cad?: CadResult; wiring?: CableRow[]; image?: string };
+type Attached = { dataUrl: string; base64: string; mime: string; name: string };
 
 // 실행형 도메인(엔진 연동). 인테리어는 얕아 대화만(스트리밍 유지).
 const ACTION_DOMAINS: Domain[] = ['civil', 'architecture', 'landscape', 'mechanical'];
@@ -197,8 +203,35 @@ async function runAssemblePipeline(prompt: string): Promise<CadResult> {
     interferences: Array.isArray(j.interferences) ? j.interferences : [],
     welds: Array.isArray(j.welds) ? j.welds : [],
     weldTotalMm: typeof j.weldTotalMm === 'number' ? j.weldTotalMm : 0,
+    structural: (j.structural && typeof j.structural === 'object') ? j.structural as StructuralResult : undefined,
     gateErrors: [],
     spec: summarizeParts(j.assembly as AssemblyPlan),
+  };
+}
+
+// 입력 A(이미지): 도면·스케치 → drawing/extract(Vision 판독 + 결정론 게이트) → 체크포인트.
+// 성공 시 단일부품 compose intent 를 그대로 CadCard 로 렌더(승인→STEP 은 export-step 재사용).
+async function runExtractPipeline(att: Attached): Promise<{ cad: CadResult; recognized?: { label: string; confidence: number } }> {
+  const r = await fetch('/api/nexyfab/drawing/extract/', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ imageBase64: att.base64, mimeType: att.mime }),
+  });
+  const j = await r.json().catch(() => ({}));
+  const recognized = j?.recognized && typeof j.recognized === 'object'
+    ? { label: String(j.recognized.label ?? j.recognized.type ?? ''), confidence: Number(j.recognized.confidence) || 0 }
+    : undefined;
+  if (!r.ok || !j?.ok || !j.intent) {
+    const ge = Array.isArray(j?.gateErrors) ? j.gateErrors.join(', ') : '';
+    return { cad: { error: (j && (j.error || ge)) || '도면을 3D로 변환하지 못했어요.' }, recognized };
+  }
+  return {
+    cad: {
+      composeIntent: j.intent as ComposeIntent,
+      scad: typeof j.scad === 'string' ? j.scad : undefined,
+      gateErrors: [],
+      spec: Array.isArray(j.spec) ? (j.spec as string[]) : summarizeFeatures(j.intent as ComposeIntent),
+    },
+    recognized,
   };
 }
 
@@ -270,12 +303,14 @@ const DICT: Record<Lang, {
   cadSpecTitle: string; cadConfirm: string; cadBuilding: string; cadStepDownload: string; cadGate: string;
   cadAssemblyTitle: string; cadParts: string; cadInterfNone: string; cadInterf: string; cadOpenGA: string; cadStlDownload: string; cadDfm: string;
   cadWeld: string; cadWeldTotal: string; cadTol: string; cadGdt: string; cadWiringTitle: string; cadWiringNote: string; cadDrawing: string;
+  attach: string; uploadHint: string; imgReading: string; imgRecognized: string; imgConfidence: string;
+  quoteThis: string; saveSignup: string; signup: string; cadStructural: string; cadPackage: string;
   chips: Record<Domain, string>;
   actDemo: string; actQuote: string; actContact: string;
 }> = {
   kr: {
     title: '무엇을 설계할까요?',
-    sub: 'AI에게 물어보세요. 기계설계부터 토목·건축·조경·인테리어까지, 하나의 창구에서.',
+    sub: '설계하고 싶은 것을 자연어로 설명하거나, 도면·스케치 이미지를 올려보세요. 기계설계부터 토목·건축·조경·인테리어까지.',
     placeholder: '예: 200L 스테인리스 응집 탱크를 설계하고 싶어요 / H-300 보 6m 스팬 검토',
     send: '보내기', thinking: '생각 중…',
     disclaimer: 'AI 응답은 비법정 참고자료입니다. 최종 검토·서명은 유자격 기술자의 책임입니다.',
@@ -289,10 +324,12 @@ const DICT: Record<Lang, {
     cadSpecTitle: '이 사양으로 정밀 3D를 생성할까요?', cadConfirm: '확인 · 정밀 3D 생성', cadBuilding: '정밀 형상(STEP) 생성 중…', cadStepDownload: 'STEP 다운로드', cadGate: '결정론 게이트',
     cadAssemblyTitle: '이 조립체로 생성할까요?', cadParts: '부품 (독립 body)', cadInterfNone: '간섭 없음', cadInterf: '간섭 {n}건', cadOpenGA: 'GA 프레젠테이션 열기', cadStlDownload: 'STL 다운로드', cadDfm: 'DFM·견적',
     cadWeld: '용접 개산', cadWeldTotal: '총 용접선', cadTol: '일반공차 ISO 2768-m', cadGdt: '개별 GD&T는 정밀검토(앱)', cadWiringTitle: '전기 결선표 (개산)', cadWiringNote: '개산 · 규격/길이 확인 필요 · 3D 하네스는 별도 ECAD', cadDrawing: '정투상 도면',
+    attach: '도면·스케치 첨부', uploadHint: '도면·스케치를 올리면 정투상을 읽어 3D로 변환해요 (지원: 평판·브래킷·플랜지·파이프·각관·봉·거셋·베이스판 등)', imgReading: '도면을 판독하는 중…', imgRecognized: '도면에서 인식', imgConfidence: '신뢰도',
+    quoteThis: '이 설계로 견적 받기', saveSignup: '결과를 프로젝트로 저장하고 이어서 편집하려면 무료 가입하세요.', signup: '무료 가입', cadStructural: '자동 구조검증', cadPackage: '설계 패키지',
   },
   en: {
     title: 'What do you want to design?',
-    sub: 'Ask the AI. From mechanical design to civil, architecture, landscape and interior — one place.',
+    sub: 'Describe what you want to design in plain language, or upload a drawing/sketch. From mechanical to civil, architecture, landscape and interior.',
     placeholder: 'e.g. Design a 200L stainless coagulation tank / Check an H-300 beam over a 6m span',
     send: 'Send', thinking: 'Thinking…',
     disclaimer: 'AI replies are non-statutory references. Final review and sign-off remain a licensed engineer’s responsibility.',
@@ -306,10 +343,12 @@ const DICT: Record<Lang, {
     cadSpecTitle: 'Generate the precise 3D from this spec?', cadConfirm: 'Confirm · build 3D', cadBuilding: 'Building precise geometry (STEP)…', cadStepDownload: 'Download STEP', cadGate: 'Deterministic gate',
     cadAssemblyTitle: 'Generate this assembly?', cadParts: 'Parts (independent bodies)', cadInterfNone: 'No interference', cadInterf: '{n} interference(s)', cadOpenGA: 'Open GA presentation', cadStlDownload: 'Download STL', cadDfm: 'DFM · estimate',
     cadWeld: 'Weld estimate', cadWeldTotal: 'Total weld', cadTol: 'General tol. ISO 2768-m', cadGdt: 'per-feature GD&T in app', cadWiringTitle: 'Cable schedule (est.)', cadWiringNote: 'Estimate · verify spec/length · 3D harness = separate ECAD', cadDrawing: 'Orthographic drawing',
+    attach: 'Attach drawing/sketch', uploadHint: 'Upload a drawing/sketch and we read the orthographic views into 3D (supported: plate · bracket · flange · pipe · rect tube · bar · gusset · base plate, etc.)', imgReading: 'Reading the drawing…', imgRecognized: 'Recognized from drawing', imgConfidence: 'confidence',
+    quoteThis: 'Get a quote for this design', saveSignup: 'Sign up free to save this as a project and keep editing.', signup: 'Sign up free', cadStructural: 'Auto structural check', cadPackage: 'Design package',
   },
   ja: {
     title: '何を設計しますか？',
-    sub: 'AIに聞いてください。機械設計から土木・建築・造園・インテリアまで、ひとつの窓口で。',
+    sub: '設計したいものを自然文で説明するか、図面・スケッチ画像をアップロードしてください。機械設計から土木・建築・造園・インテリアまで。',
     placeholder: '例：200Lステンレス凝集タンクを設計したい / H-300 梁 6mスパンの検討',
     send: '送信', thinking: '考え中…',
     disclaimer: 'AIの回答は非法定の参考資料です。最終確認と署名は有資格技術者の責任です。',
@@ -323,10 +362,12 @@ const DICT: Record<Lang, {
     cadSpecTitle: 'この仕様で精密3Dを生成しますか？', cadConfirm: '確認 · 精密3D生成', cadBuilding: '精密形状(STEP)を生成中…', cadStepDownload: 'STEPをダウンロード', cadGate: '決定論ゲート',
     cadAssemblyTitle: 'この組立体で生成しますか？', cadParts: '部品 (独立ボディ)', cadInterfNone: '干渉なし', cadInterf: '干渉 {n}件', cadOpenGA: 'GAプレゼンを開く', cadStlDownload: 'STLをダウンロード', cadDfm: 'DFM・見積',
     cadWeld: '溶接概算', cadWeldTotal: '総溶接長', cadTol: '普通公差 ISO 2768-m', cadGdt: '個別GD&Tはアプリ', cadWiringTitle: '結線表(概算)', cadWiringNote: '概算·仕様/長さ要確認·3DハーネスはECAD別途', cadDrawing: '正投影図',
+    attach: '図面・スケッチを添付', uploadHint: '図面・スケッチをアップロードすると正投影を読み取り3D化します（対応：平板・ブラケット・フランジ・パイプ・角管・棒・ガセット・ベースプレート等）', imgReading: '図面を判読中…', imgRecognized: '図面から認識', imgConfidence: '信頼度',
+    quoteThis: 'この設計で見積もり', saveSignup: '結果をプロジェクトとして保存し編集を続けるには無料登録を。', signup: '無料登録', cadStructural: '自動構造検証', cadPackage: '設計パッケージ',
   },
   cn: {
     title: '您想设计什么？',
-    sub: '向 AI 提问。从机械设计到土木、建筑、景观和室内，尽在一处。',
+    sub: '用自然语言描述您想设计的东西，或上传图纸·草图。从机械设计到土木、建筑、景观和室内。',
     placeholder: '例如：设计一个 200L 不锈钢混凝罐 / 复核 6m 跨度的 H-300 梁',
     send: '发送', thinking: '思考中…',
     disclaimer: 'AI 回复为非法定参考资料。最终审核与签署由持证工程师负责。',
@@ -340,10 +381,12 @@ const DICT: Record<Lang, {
     cadSpecTitle: '按此规格生成精确3D？', cadConfirm: '确认 · 生成3D', cadBuilding: '正在生成精确几何(STEP)…', cadStepDownload: '下载STEP', cadGate: '确定性门控',
     cadAssemblyTitle: '按此组件生成？', cadParts: '零件 (独立实体)', cadInterfNone: '无干涉', cadInterf: '干涉 {n}处', cadOpenGA: '打开GA演示', cadStlDownload: '下载STL', cadDfm: 'DFM·估价',
     cadWeld: '焊接估算', cadWeldTotal: '总焊缝', cadTol: '一般公差 ISO 2768-m', cadGdt: '单项GD&T在应用', cadWiringTitle: '电缆清单(估算)', cadWiringNote: '估算·核对规格/长度·3D线束另属ECAD', cadDrawing: '正投影图',
+    attach: '附加图纸·草图', uploadHint: '上传图纸·草图，我们读取正投影并转为3D（支持：平板·支架·法兰·管·方管·棒·加劲板·底板 等）', imgReading: '正在判读图纸…', imgRecognized: '从图纸识别', imgConfidence: '置信度',
+    quoteThis: '按此设计报价', saveSignup: '免费注册即可保存为项目并继续编辑。', signup: '免费注册', cadStructural: '自动结构校核', cadPackage: '设计包',
   },
   es: {
     title: '¿Qué quieres diseñar?',
-    sub: 'Pregúntale a la IA. De diseño mecánico a civil, arquitectura, paisajismo e interiores, en un solo lugar.',
+    sub: 'Describe lo que quieres diseñar en lenguaje natural, o sube un plano/boceto. De lo mecánico a civil, arquitectura, paisajismo e interiores.',
     placeholder: 'ej.: Diseñar un tanque de coagulación de 200L / Verificar una viga H-300 en 6m',
     send: 'Enviar', thinking: 'Pensando…',
     disclaimer: 'Las respuestas de IA son referencias no normativas. La revisión y firma final son responsabilidad de un ingeniero colegiado.',
@@ -357,10 +400,12 @@ const DICT: Record<Lang, {
     cadSpecTitle: '¿Generar el 3D preciso con esta especificación?', cadConfirm: 'Confirmar · generar 3D', cadBuilding: 'Generando geometría precisa (STEP)…', cadStepDownload: 'Descargar STEP', cadGate: 'Compuerta determinista',
     cadAssemblyTitle: '¿Generar este ensamblaje?', cadParts: 'Piezas (cuerpos independientes)', cadInterfNone: 'Sin interferencia', cadInterf: '{n} interferencia(s)', cadOpenGA: 'Abrir presentación GA', cadStlDownload: 'Descargar STL', cadDfm: 'DFM · estimación',
     cadWeld: 'Estimación de soldadura', cadWeldTotal: 'Soldadura total', cadTol: 'Tol. general ISO 2768-m', cadGdt: 'GD&T por rasgo en la app', cadWiringTitle: 'Lista de cables (est.)', cadWiringNote: 'Estimación · verificar · arnés 3D = ECAD aparte', cadDrawing: 'Vista ortográfica',
+    attach: 'Adjuntar plano/boceto', uploadHint: 'Sube un plano/boceto y leemos las vistas ortográficas a 3D (soportado: placa · escuadra · brida · tubo · tubo rect. · barra · cartela · placa base, etc.)', imgReading: 'Leyendo el plano…', imgRecognized: 'Reconocido del plano', imgConfidence: 'confianza',
+    quoteThis: 'Cotizar este diseño', saveSignup: 'Regístrate gratis para guardar esto como proyecto y seguir editando.', signup: 'Registro gratis', cadStructural: 'Verif. estructural', cadPackage: 'Paquete de diseño',
   },
   ar: {
     title: 'ماذا تريد أن تُصمّم؟',
-    sub: 'اسأل الذكاء الاصطناعي. من التصميم الميكانيكي إلى المدني والمعماري والمناظر والديكور، في مكان واحد.',
+    sub: 'صِف ما تريد تصميمه بلغة طبيعية، أو ارفع رسمًا/مخططًا. من التصميم الميكانيكي إلى المدني والمعماري والمناظر والديكور.',
     placeholder: 'مثال: تصميم خزان تخثّر ستانلس 200 لتر / فحص جائز H-300 على بحر 6م',
     send: 'إرسال', thinking: 'يفكّر…',
     disclaimer: 'ردود الذكاء الاصطناعي مراجع غير قانونية. المراجعة والاعتماد النهائي مسؤولية مهندس مرخّص.',
@@ -374,6 +419,8 @@ const DICT: Record<Lang, {
     cadSpecTitle: 'هل تُنشئ نموذجًا دقيقًا بهذه المواصفات؟', cadConfirm: 'تأكيد · بناء 3D', cadBuilding: 'جارٍ بناء الشكل الدقيق (STEP)…', cadStepDownload: 'تنزيل STEP', cadGate: 'بوابة حتمية',
     cadAssemblyTitle: 'هل تُنشئ هذا التجميع؟', cadParts: 'الأجزاء (أجسام مستقلة)', cadInterfNone: 'لا تداخل', cadInterf: '{n} تداخل', cadOpenGA: 'افتح عرض GA', cadStlDownload: 'تنزيل STL', cadDfm: 'DFM · تقدير',
     cadWeld: 'تقدير اللحام', cadWeldTotal: 'إجمالي اللحام', cadTol: 'تفاوت عام ISO 2768-m', cadGdt: 'GD&T لكل عنصر في التطبيق', cadWiringTitle: 'جدول الكابلات (تقديري)', cadWiringNote: 'تقديري · تحقّق · تسليك 3D = ECAD منفصل', cadDrawing: 'مسقط هندسي',
+    attach: 'إرفاق رسم/مخطط', uploadHint: 'ارفع رسمًا/مخططًا وسنقرأ المساقط الهندسية إلى نموذج ثلاثي الأبعاد (المدعوم: لوح · زاوية · شفة · أنبوب · أنبوب مربّع · قضيب · لوح تقوية · لوح قاعدة، إلخ)', imgReading: 'جارٍ قراءة الرسم…', imgRecognized: 'تم التعرف من الرسم', imgConfidence: 'الثقة',
+    quoteThis: 'اطلب عرض سعر لهذا التصميم', saveSignup: 'سجّل مجانًا لحفظ هذا كمشروع ومتابعة التحرير.', signup: 'تسجيل مجاني', cadStructural: 'فحص إنشائي تلقائي', cadPackage: 'حزمة التصميم',
   },
 };
 
@@ -471,7 +518,7 @@ function MarkdownLite({ text }: { text: string }) {
 }
 
 // 결정론 계산 결과 카드 (eng-api demo 응답 → PASS/FAIL + 검토항목 + 근거).
-function CalcCard({ calc, t, isRtl }: { calc: CalcResult; t: (typeof DICT)[Lang]; isRtl: boolean }) {
+function CalcCard({ calc, t, isRtl, consultHref }: { calc: CalcResult; t: (typeof DICT)[Lang]; isRtl: boolean; consultHref: string }) {
   if (calc.error) {
     return (
       <div style={{ maxWidth: '92%', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, padding: '11px 14px', fontSize: 12.5, color: '#fca5a5', textAlign: isRtl ? 'right' : 'left' }}>
@@ -499,6 +546,7 @@ function CalcCard({ calc, t, isRtl }: { calc: CalcResult; t: (typeof DICT)[Lang]
           <strong style={{ color: '#94a3b8' }}>{t.calcRefs}:</strong> {calc.refs.join(' · ')}
         </p>
       )}
+      <a href={consultHref} style={{ display: 'inline-block', marginTop: 10, fontSize: 12, fontWeight: 700, color: '#93c5fd', textDecoration: 'none' }}>{t.actContact} →</a>
       <p style={{ marginTop: 6, fontSize: 10, color: '#6e7681', lineHeight: 1.5 }}>{t.disclaimer}</p>
     </div>
   );
@@ -516,7 +564,7 @@ function download(text: string, name: string, mime = 'text/plain') {
 
 // 기계 CAD 결과 카드 — 단일부품(체크포인트→STEP 3D) / 멀티바디(부품목록+간섭→GA).
 // 출력: STEP·STL·SCAD·GA(render-html). 기본 DFM/견적(fab).
-function CadCard({ cad, t, accent, isRtl }: { cad: CadResult; t: (typeof DICT)[Lang]; accent: string; isRtl: boolean }) {
+function CadCard({ cad, t, accent, isRtl, quoteHref }: { cad: CadResult; t: (typeof DICT)[Lang]; accent: string; isRtl: boolean; quoteHref: string }) {
   const [stepText, setStepText] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
   const [err, setErr] = useState('');
@@ -524,6 +572,27 @@ function CadCard({ cad, t, accent, isRtl }: { cad: CadResult; t: (typeof DICT)[L
   const [gaBusy, setGaBusy] = useState(false);
   const [dfm, setDfm] = useState<{ mass?: number; cost?: number; dxf?: string } | null>(null);
   const [dfmBusy, setDfmBusy] = useState(false);
+  const [pkgBusy, setPkgBusy] = useState(false);
+
+  // 설계 패키지 자동생성 — 어셈블리 → GA 3D·2D 도면·구조·SCAD 일괄 다운로드.
+  const downloadPackage = async () => {
+    if (!cad.assembly) return;
+    setPkgBusy(true); setErr('');
+    try {
+      const r = await fetch('/api/nexyfab/drawing/package/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ assembly: cad.assembly, options: { member: { section: 'SHS50x50x3', spanMm: 1000 } } }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || (Array.isArray(j?.gateErrors) ? j.gateErrors.join(', ') : '패키지 생성 실패'));
+      if (typeof j.zipBase64 === 'string') {
+        const bin = atob(j.zipBase64); const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const url = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }));
+        const a = document.createElement('a'); a.href = url; a.download = 'design_package.zip'; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+      } else if (Array.isArray(j.files)) {
+        for (const f of j.files as Array<{ name: string; content: string; mime?: string }>) download(f.content, f.name, f.mime ?? 'text/html');
+      } else throw new Error('패키지 생성 실패');
+    } catch (e) { setErr(e instanceof Error ? e.message : t.error); } finally { setPkgBusy(false); }
+  };
 
   const confirmStep = async () => {
     if (!cad.composeIntent) return;
@@ -609,6 +678,10 @@ function CadCard({ cad, t, accent, isRtl }: { cad: CadResult; t: (typeof DICT)[L
       <div style={{ marginTop: 4, fontSize: 10, color: '#6e7681' }}>개산(비법정) · 조인트/용접 정량은 다음 단계</div>
     </div>
   );
+  // 맥락형 전환 — 결과 안에서 자연스럽게 견적으로(별도 CTA 버튼 대신).
+  const quoteLink = (
+    <a href={quoteHref} style={{ display: 'inline-block', marginTop: 10, fontSize: 12.5, fontWeight: 700, color: accent, textDecoration: 'none' }}>{t.quoteThis} →</a>
+  );
 
   // ── 멀티바디 조립체 ──
   if (cad.isAssembly) {
@@ -647,13 +720,31 @@ function CadCard({ cad, t, accent, isRtl }: { cad: CadResult; t: (typeof DICT)[L
             <div style={{ marginTop: 5, fontSize: 10, color: '#6e7681' }}>전둘레 필렛 개산 · AABB 접촉 기준 · 비법정(정밀은 조인트 선언 후속)</div>
           </div>
         )}
+        {cad.structural && typeof cad.structural.totalMassKg === 'number' && (() => {
+          const s = cad.structural!; const warn = (s.warnings?.length ?? 0) > 0;
+          return (
+            <div style={{ marginBottom: 12, fontSize: 12, color: '#cbd5e1', background: '#0b1020', border: `1px solid ${warn ? 'rgba(245,158,11,0.3)' : 'rgba(34,197,94,0.25)'}`, borderRadius: 8, padding: '9px 12px' }}>
+              <div style={{ fontWeight: 700, marginBottom: 5 }}>🏗️ {t.cadStructural} {warn ? '⚠️' : '✓'}</div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontVariantNumeric: 'tabular-nums' }}>
+                <span>질량 ≈ {s.totalMassKg} kg</span>
+                {typeof s.cgHeightM === 'number' && <span>CG {s.cgHeightM} m</span>}
+                {typeof s.maxSupportKg === 'number' && <span>지지 ≤ {s.maxSupportKg} kg</span>}
+                {s.tipover && <span>전도 {s.tipover.staticAngleDeg}° · {s.tipover.seismicG}g FS {s.tipover.seismicFS}</span>}
+              </div>
+              {warn && <div style={{ marginTop: 5, color: '#fbbf24', fontSize: 11, lineHeight: 1.5 }}>{s.warnings!.map((w, i) => <div key={i}>• {w}</div>)}</div>}
+              <div style={{ marginTop: 5, fontSize: 10, color: '#6e7681' }}>형상기반 자동 산출 · 강체/단순보 근사 · 비법정(상세 FEA 후속)</div>
+            </div>
+          );
+        })()}
         {scadDetails}
         {err && <div style={{ fontSize: 12, color: '#fca5a5', marginBottom: 8 }}>⚠️ {err}</div>}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={openGA} disabled={gaBusy} style={btnPrimary(accent)}>{gaBusy ? '…' : `⤢ ${t.cadOpenGA}`}</button>
+          <button onClick={downloadPackage} disabled={pkgBusy} style={btnPrimary(accent)}>{pkgBusy ? '…' : `📦 ${t.cadPackage}`}</button>
+          <button onClick={openGA} disabled={gaBusy} style={btnGhost}>{gaBusy ? '…' : `⤢ ${t.cadOpenGA}`}</button>
           {cad.composeIntent && !stepText && <button onClick={confirmStep} disabled={building} style={btnGhost}>{building ? t.cadBuilding : `⬢ ${t.cadStepDownload}`}</button>}
           {cad.scad && <button onClick={() => download(cad.scad!, 'assembly.scad')} style={btnGhost}>⭳ {t.cadDownload}</button>}
         </div>
+        <div>{quoteLink}</div>
         <p style={{ marginTop: 10, fontSize: 10, color: '#6e7681', lineHeight: 1.5 }}>{t.disclaimer}</p>
       </div>
     );
@@ -673,6 +764,7 @@ function CadCard({ cad, t, accent, isRtl }: { cad: CadResult; t: (typeof DICT)[L
         </div>
         {dfmBlock}
         {err && <div style={{ fontSize: 12, color: '#fca5a5', marginTop: 8 }}>⚠️ {err}</div>}
+        <div>{quoteLink}</div>
       </div>
     );
   }
@@ -727,10 +819,50 @@ export default function ChatHero({ langCode }: { langCode: string }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [attached, setAttached] = useState<Attached | null>(null);
+  const [authed, setAuthed] = useState<boolean | null>(null); // null=미확인, false=게스트, true=회원
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const accent = DOMAIN_ACCENT[domain];
   const started = messages.length > 0;
+  const quoteHref = `/${langCode}/quick-quote/`;
+  const consultHref = `/${langCode}/contact/`;
+
+  // 로그인 여부(게스트 가입 유도 판단용). httpOnly 쿠키라 세션 API로만 확인.
+  useEffect(() => {
+    let live = true;
+    fetch('/api/auth/session').then(r => { if (live) setAuthed(r.ok); }).catch(() => { if (live) setAuthed(false); });
+    return () => { live = false; };
+  }, []);
+
+  // 대화 시작 시 = 전용 채팅 화면. 랜딩 하위 마케팅 섹션을 숨겨 "별도 채팅창"처럼.
+  useEffect(() => {
+    document.body.setAttribute('data-nf-chat', started ? 'on' : 'off');
+    if (started) window.scrollTo({ top: 0 });
+    return () => { document.body.removeAttribute('data-nf-chat'); };
+  }, [started]);
+
+  // 대화 지속성 — 새로고침에도 유지. 이미지 dataUrl·진행중 상태는 저장 제외(용량·정합).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('nf_chat_v1');
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { domain?: Domain; messages?: Msg[] };
+      const restored = (saved.messages ?? [])
+        .map(m => (m.cad?.composing ? { ...m, cad: undefined } : m))
+        .filter(m => m.content || m.calc || m.cad || m.wiring);
+      if (restored.length) setMessages(restored);
+      if (saved.domain && DOMAINS.includes(saved.domain)) setDomain(saved.domain);
+    } catch { /* corrupt/absent — ignore */ }
+  }, []);
+  useEffect(() => {
+    try {
+      if (!messages.length) { localStorage.removeItem('nf_chat_v1'); return; }
+      const trimmed = messages.map(m => (m.image ? { ...m, image: undefined, content: m.content || '📎' } : m));
+      localStorage.setItem('nf_chat_v1', JSON.stringify({ domain, messages: trimmed }));
+    } catch { /* quota exceeded — skip persist */ }
+  }, [messages, domain]);
 
   // 마지막 assistant 메시지 content 를 갱신 (스트리밍 토큰 누적).
   const updateLastAssistant = (content: string) => setMessages(m => {
@@ -847,30 +979,72 @@ export default function ChatHero({ langCode }: { langCode: string }) {
     }
   }, [input, loading, messages, domain, t.error]);
 
-  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  // 입력 A(이미지) — 도면/스케치를 첨부해 Vision 판독 → 3D 체크포인트로 잇는다.
+  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = ''; // 같은 파일 재선택 허용
+    if (!f) return;
+    if (!/^image\/(png|jpe?g|webp)$/.test(f.type)) { setError('PNG·JPG·WebP 이미지만 지원합니다.'); return; }
+    if (f.size > 6_000_000) { setError('이미지가 너무 큽니다(6MB 이하).'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      setAttached({ dataUrl, base64: dataUrl.replace(/^data:[^,]+,/, ''), mime: f.type, name: f.name });
+      setError('');
+    };
+    reader.readAsDataURL(f);
   };
 
-  // 도메인별 후속 실동작 (전부 공개 실재 라우트).
-  // expert(shape-generator) 직링크는 노출하지 않는다 — 게이트 취지상 사람은 채팅으로만
-  // 진입하고 정밀 설계·연산은 AI가 백엔드로 수행. 견적/데모/상담으로만 이어 준다.
-  const domainAction = (() => {
-    if (domain === 'mechanical') return { label: t.actQuote, href: `/${langCode}/quick-quote/` };
-    if (domain === 'interior') return { label: t.actContact, href: `/${langCode}/contact/` };
-    return { label: t.actDemo, href: '#eng-demo' };
-  })();
+  const sendImage = useCallback(async () => {
+    if (!attached || loading) return;
+    setError('');
+    const att = attached;
+    setMessages(m => [...m, { role: 'user', content: input.trim(), image: att.dataUrl }, { role: 'assistant', content: t.imgReading }]);
+    setInput(''); setAttached(null); setLoading(true);
+    const autoscroll = () => requestAnimationFrame(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); });
+    autoscroll();
+    const setLast = (patch: Partial<Msg>) => setMessages(m => {
+      const copy = m.slice();
+      for (let i = copy.length - 1; i >= 0; i--) { if (copy[i].role === 'assistant') { copy[i] = { ...copy[i], ...patch }; break; } }
+      return copy;
+    });
+    try {
+      const { cad, recognized } = await runExtractPipeline(att);
+      // 성공/실패 모두 인식 결과를 노출(무엇을 읽었는지) — 실패 시 이유는 카드로.
+      const line = recognized
+        ? `${t.imgRecognized}: **${recognized.label}** · ${t.imgConfidence} ${Math.round(recognized.confidence * 100)}%`
+        : (cad.error ? '' : t.cadSpecTitle);
+      setLast({ content: line, cad });
+    } catch (e) {
+      setLast({ content: '', cad: { error: e instanceof Error ? e.message : t.error } });
+    } finally {
+      setLoading(false); autoscroll();
+    }
+  }, [attached, input, loading, t]);
+
+  const submit = () => { if (attached) void sendImage(); else void send(); };
+  const canSend = attached ? !loading : (!loading && !!input.trim());
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+  };
 
   return (
     <section id="nf-chat" dir={isRtl ? 'rtl' : 'ltr'} style={{
       position: 'relative', overflow: 'hidden',
       background: 'linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 45%, #0b1a38 100%)',
-      minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '104px 20px 64px',
+      minHeight: '100dvh', display: 'flex', alignItems: started ? 'stretch' : 'center', justifyContent: 'center',
+      padding: started ? '84px 16px 20px' : '104px 20px 64px', transition: 'padding .25s',
     }}>
+      {/* 채팅 활성 시 랜딩 하위 섹션·푸터 숨김 → 전용 채팅 화면 */}
+      <style>{`body[data-nf-chat="on"] #nf-chat ~ section, body[data-nf-chat="on"] #nf-chat ~ footer { display: none !important; }`}</style>
       <div style={{ position: 'absolute', inset: 0, opacity: 0.06, backgroundImage: 'linear-gradient(rgba(59,130,246,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.5) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
       <div style={{ position: 'absolute', top: '12%', left: '50%', transform: 'translateX(-50%)', width: 640, height: 640, background: `radial-gradient(circle, ${accent}22 0%, transparent 70%)`, borderRadius: '50%', filter: 'blur(90px)', transition: 'background .4s' }} />
 
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 780, textAlign: 'center' }}>
+      <div style={{
+        position: 'relative', zIndex: 1, width: '100%', maxWidth: 780, margin: '0 auto', textAlign: 'center',
+        ...(started ? { display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 104px)' } : {}),
+      }}>
         {!started && (
           <>
             {/* 브랜드 락업 — N 모노그램 + 워드마크 */}
@@ -905,14 +1079,18 @@ export default function ChatHero({ langCode }: { langCode: string }) {
         {/* 대화 패널 */}
         {started && (
           <div ref={scrollRef} style={{
-            textAlign: isRtl ? 'right' : 'left', maxHeight: '46vh', overflowY: 'auto',
-            marginBottom: 16, padding: '4px 2px', display: 'flex', flexDirection: 'column', gap: 12,
+            textAlign: isRtl ? 'right' : 'left', flex: 1, minHeight: 0, overflowY: 'auto',
+            marginBottom: 14, padding: '4px 2px', display: 'flex', flexDirection: 'column', gap: 12,
           }}>
             {messages.map((m, i) => {
               const alignEnd = m.role === 'user' ? !isRtl : isRtl;
               return (
                 <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: alignEnd ? 'flex-end' : 'flex-start', gap: 8 }}>
-                  {(m.content || m.role === 'user') && (
+                  {m.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.image} alt="" style={{ maxWidth: 220, maxHeight: 220, objectFit: 'contain', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)', background: '#0b1020' }} />
+                  )}
+                  {m.content && (
                     <div style={{
                       maxWidth: '86%', padding: '11px 15px', borderRadius: 14, fontSize: 14, lineHeight: 1.7,
                       whiteSpace: m.role === 'user' ? 'pre-wrap' : 'normal', wordBreak: 'break-word',
@@ -921,8 +1099,8 @@ export default function ChatHero({ langCode }: { langCode: string }) {
                       border: m.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.1)',
                     }}>{m.role === 'assistant' ? <MarkdownLite text={m.content} /> : m.content}</div>
                   )}
-                  {m.calc && <CalcCard calc={m.calc} t={t} isRtl={isRtl} />}
-                  {m.cad && <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} />}
+                  {m.calc && <CalcCard calc={m.calc} t={t} isRtl={isRtl} consultHref={consultHref} />}
+                  {m.cad && <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} quoteHref={quoteHref} />}
                   {m.wiring && m.wiring.length > 0 && <WiringCard wiring={m.wiring} t={t} accent={accent} isRtl={isRtl} />}
                 </div>
               );
@@ -935,17 +1113,37 @@ export default function ChatHero({ langCode }: { langCode: string }) {
           </div>
         )}
 
+        {/* 게스트 가입 유도 — 결과가 나왔고 비로그인일 때만(값은 막지 않고 저장을 권유) */}
+        {started && authed === false && messages.some(m => (m.cad && !m.cad.error) || (m.calc && !m.calc.error) || (m.wiring && m.wiring.length > 0)) && (
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', margin: '0 0 12px', padding: '9px 14px', borderRadius: 12, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)' }}>
+            <span style={{ fontSize: 12.5, color: '#cbd5e1' }}>{t.saveSignup}</span>
+            <a href="/register" style={{ fontSize: 12.5, fontWeight: 800, color: '#fff', background: accent, padding: '6px 14px', borderRadius: 9, textDecoration: 'none', whiteSpace: 'nowrap' }}>{t.signup} →</a>
+          </div>
+        )}
+
         {/* 입력 카드 */}
         <div style={{
           background: 'rgba(255,255,255,0.06)', border: `1px solid ${accent}55`,
           borderRadius: 18, padding: 12, boxShadow: `0 12px 48px rgba(0,0,0,0.4)`,
-          backdropFilter: 'blur(8px)', transition: 'border-color .3s',
+          backdropFilter: 'blur(8px)', transition: 'border-color .3s', flexShrink: 0,
         }}>
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onPickFile} style={{ display: 'none' }} />
+
+          {/* 첨부 도면 미리보기 */}
+          {attached && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 6px 8px' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={attached.dataUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.18)' }} />
+              <span style={{ fontSize: 12, color: '#cbd5e1', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attached.name}</span>
+              <button onClick={() => setAttached(null)} aria-label="remove" style={{ marginInlineStart: 'auto', width: 24, height: 24, borderRadius: 999, border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', cursor: 'pointer', lineHeight: 1, fontSize: 13 }}>×</button>
+            </div>
+          )}
+
           <textarea
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder={t.placeholder}
+            placeholder={attached ? (t.imgRecognized + '…') : t.placeholder}
             rows={started ? 2 : 3}
             style={{
               width: '100%', resize: 'none', border: 'none', outline: 'none', background: 'transparent',
@@ -954,16 +1152,33 @@ export default function ChatHero({ langCode }: { langCode: string }) {
             }}
           />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '4px 4px 2px' }}>
-            <span style={{ color: accent, display: 'inline-flex' }}><DomainIcon name={domain} size={20} /></span>
-            <button onClick={() => send()} disabled={loading || !input.trim()} style={{
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {/* 도면·스케치 첨부 (입력 A) — 기계설계 전용(Vision 어휘가 기계부품). */}
+              {domain === 'mechanical' && (
+                <button onClick={() => fileRef.current?.click()} title={t.attach} aria-label={t.attach} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 10, cursor: 'pointer',
+                  border: `1px solid ${accent}55`, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', fontSize: 12.5, fontWeight: 600,
+                }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden focusable="false"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                  <span style={{ display: started ? 'none' : 'inline' }}>{t.attach}</span>
+                </button>
+              )}
+              <span style={{ color: accent, display: 'inline-flex' }}><DomainIcon name={domain} size={20} /></span>
+            </div>
+            <button onClick={submit} disabled={!canSend} style={{
               padding: '9px 22px', borderRadius: 12, border: 'none',
-              cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+              cursor: !canSend ? 'not-allowed' : 'pointer',
               fontSize: 14, fontWeight: 800, color: '#fff',
-              background: loading || !input.trim() ? 'rgba(148,163,184,0.4)' : `linear-gradient(135deg, ${accent}, #6366f1)`,
+              background: !canSend ? 'rgba(148,163,184,0.4)' : `linear-gradient(135deg, ${accent}, #6366f1)`,
               transition: 'background .2s',
             }}>{loading ? t.thinking : t.send}</button>
           </div>
         </div>
+
+        {/* 업로드 안내 (대화 시작 전, 기계설계 전용) */}
+        {!started && domain === 'mechanical' && (
+          <p style={{ marginTop: 10, fontSize: 11.5, color: 'rgba(148,163,184,0.7)', lineHeight: 1.5, maxWidth: 560, margin: '10px auto 0', wordBreak: 'keep-all' }}>{t.uploadHint}</p>
+        )}
 
         {/* 분야 칩 */}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 18 }}>
@@ -971,7 +1186,7 @@ export default function ChatHero({ langCode }: { langCode: string }) {
             const on = d === domain;
             const c = DOMAIN_ACCENT[d];
             return (
-              <button key={d} onClick={() => setDomain(d)} style={{
+              <button key={d} onClick={() => { setDomain(d); if (d !== 'mechanical') setAttached(null); }} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 7,
                 padding: '8px 16px', borderRadius: 999, cursor: 'pointer',
                 fontSize: 13, fontWeight: on ? 800 : 600,
@@ -1003,17 +1218,13 @@ export default function ChatHero({ langCode }: { langCode: string }) {
           </div>
         )}
 
-        {/* 후속 실동작 + 새 대화 */}
+        {/* 새 대화 (GPT형 — 후속 CTA 제거, 채팅 안에서 결과·다운로드가 완결) */}
         {started && (
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 16 }}>
-            <Link href={domainAction.href} style={{
-              padding: '9px 20px', borderRadius: 11, fontSize: 13, fontWeight: 700, textDecoration: 'none',
-              background: accent, color: '#fff',
-            }}>{domainAction.label} →</Link>
-            <button onClick={() => { setMessages([]); setError(''); }} style={{
-              padding: '9px 18px', borderRadius: 11, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 }}>
+            <button onClick={() => { setMessages([]); setError(''); setAttached(null); }} style={{
+              padding: '8px 18px', borderRadius: 11, fontSize: 13, fontWeight: 600, cursor: 'pointer',
               background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.14)',
-            }}>{t.reset}</button>
+            }}>+ {t.reset}</button>
           </div>
         )}
 
