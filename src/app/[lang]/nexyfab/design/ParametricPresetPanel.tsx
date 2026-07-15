@@ -28,6 +28,8 @@ interface Applied {
 interface DrawRes {
   templateId: string; labelKo?: string; labelEn?: string; confidence: number;
   values: Record<string, number>; filled?: string[]; clamped?: string[]; notes?: string;
+  /** 사진 업로드 경로(§3 역할 분리) — 형태 힌트만, 치수는 사용하지 않음 */
+  photo?: boolean;
 }
 
 const defaultsOf = (tpl: Template): Record<string, number> =>
@@ -55,8 +57,9 @@ export default function ParametricPresetPanel({
   const [nlBusy, setNlBusy] = useState(false);
   const [nlMsg, setNlMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  // 도면·사진 업로드
+  // 업로드 이원화(§3 역할 분리): 도면=치수의 유일한 진실 · 사진=형태 힌트만(치수 결정 금지)
   const fileRef = useRef<HTMLInputElement>(null);
+  const modeRef = useRef<'drawing' | 'photo'>('drawing');
   const [drawBusy, setDrawBusy] = useState(false);
   const [drawRes, setDrawRes] = useState<DrawRes | null>(null);
   const [drawErr, setDrawErr] = useState<string | null>(null);
@@ -159,14 +162,16 @@ export default function ParametricPresetPanel({
     if (!f) return;
     if (!/^image\/(png|jpe?g|webp)$/.test(f.type)) { setDrawErr(ko ? 'PNG·JPG·WebP 이미지만 지원합니다.' : 'PNG/JPG/WebP only.'); return; }
     if (f.size > 6_000_000) { setDrawErr(ko ? '이미지가 너무 큽니다(6MB 이하).' : 'Image too large (max 6MB).'); return; }
+    const mode = modeRef.current;
     const reader = new FileReader();
     reader.onload = () => {
       const b64 = String(reader.result || '').replace(/^data:[^,]+,/, '');
       void (async () => {
         setDrawBusy(true); setDrawErr(null); setDrawRes(null);
         try {
-          // 기계: 11종 부품 어휘 판독(치수 모순 게이트 포함)이 더 풍부 — 먼저 시도
-          if (domain === 'mech') {
+          // 기계 도면: 11종 부품 어휘 판독(치수 모순 게이트 포함)이 더 풍부 — 먼저 시도.
+          // 사진 모드는 제외 — 사진에서 치수를 읽지 않는다(§3, AI 렌더에 속은 치수 방지).
+          if (domain === 'mech' && mode === 'drawing') {
             const r = await fetch('/api/nexyfab/drawing/extract/', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ imageBase64: b64, mimeType: f.type }),
@@ -185,8 +190,10 @@ export default function ParametricPresetPanel({
             body: JSON.stringify({ imageBase64: b64, mimeType: f.type, domain }),
           });
           const j2 = (await r2.json()) as ({ ok: true } & DrawRes) | { ok: false; error?: string };
-          if (j2.ok) setDrawRes(j2);
-          else setDrawErr(j2.error ?? (ko ? '판독 실패' : 'Read failed'));
+          if (j2.ok) {
+            // 사진 = 템플릿 분류(형태)만 사용, 판독 치수는 폐기(§3 — 치수 결정 금지)
+            setDrawRes(mode === 'photo' ? { ...j2, values: {}, filled: undefined, clamped: undefined, photo: true } : j2);
+          } else setDrawErr(j2.error ?? (ko ? '판독 실패' : 'Read failed'));
         } catch (err) {
           setDrawErr(err instanceof Error ? err.message : String(err));
         } finally {
@@ -221,11 +228,21 @@ export default function ParametricPresetPanel({
           </span>
         </div>
         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onPickFile} style={{ display: 'none' }} />
-        <button type="button" onClick={() => fileRef.current?.click()} disabled={drawBusy}
-          style={{ marginLeft: 'auto', padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-            border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }}>
-          📷 {ko ? '도면·사진으로' : 'From drawing'}
-        </button>
+        {/* §3 역할 분리 — 도면=치수의 진실 · 사진=형태 힌트(치수 미사용) */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+          <button type="button" onClick={() => { modeRef.current = 'drawing'; fileRef.current?.click(); }} disabled={drawBusy}
+            title={ko ? '치수 도면 — 치수를 판독합니다' : 'Dimensioned drawing — dims are read'}
+            style={{ padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }}>
+            📐 {ko ? '도면' : 'Drawing'}
+          </button>
+          <button type="button" onClick={() => { modeRef.current = 'photo'; fileRef.current?.click(); }} disabled={drawBusy}
+            title={ko ? '사진·렌더 — 형태 힌트만, 치수는 읽지 않습니다' : 'Photo/render — shape hint only, no dims'}
+            style={{ padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }}>
+            📷 {ko ? '사진' : 'Photo'}
+          </button>
+        </div>
       </div>
 
       {/* 템플릿 카드 갤러리 — 클릭 = 기본값 즉시 생성 */}
@@ -261,7 +278,9 @@ export default function ParametricPresetPanel({
             </span>
           </div>
           <div style={{ marginTop: 4, fontSize: 10.5, lineHeight: 1.6 }}>
-            {Object.entries(drawRes.values).map(([k, v]) => `${k}: ${v}`).join(' · ') || (ko ? '판독된 치수 없음' : 'no dimensions read')}
+            {drawRes.photo
+              ? (ko ? '사진 = 형태 힌트만 — 치수는 사용하지 않습니다(정책 §3). 기본값으로 생성 후 말로 수정하세요.' : 'Photo = shape hint only — dims are not read. Generate with defaults, then adjust.')
+              : Object.entries(drawRes.values).map(([k, v]) => `${k}: ${v}`).join(' · ') || (ko ? '판독된 치수 없음' : 'no dimensions read')}
           </div>
           {!!drawRes.filled?.length && (
             <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>

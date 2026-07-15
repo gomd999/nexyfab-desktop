@@ -28,6 +28,8 @@ import AssemblyPresetPanel from './AssemblyPresetPanel';
 import DfmPanel from './DfmPanel';
 import FabPanel from './FabPanel';
 import { findDomain } from './designDomains';
+import CheckpointPanel, { type CheckpointData } from './CheckpointPanel';
+import VerifyNet, { type NetItem } from './VerifyNet';
 
 type Verify =
   | { manifold?: boolean; triangles?: number; nonManifoldEdges?: number; error?: string }
@@ -93,6 +95,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const [intent, setIntent] = useState<ComposeOk['intent'] | null>(null);
   const [scad, setScad] = useState<string | null>(null);
   const [verify, setVerify] = useState<Verify>(null);
+  // §2.1 입구 B 도면 체크포인트 — 자유 서술(AI 해석)만 승인 게이트, 프리셋·판독은 스킵(§2.2)
+  const [checkpoint, setCheckpoint] = useState<CheckpointData | null>(null);
+  const [cpState, setCpState] = useState<'none' | 'pending' | 'approved' | 'skipped'>('none');
   const [bbox, setBbox] = useState<Bbox | null>(null);
   const [featureCount, setFeatureCount] = useState<number | null>(null);
 
@@ -259,6 +264,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
 
   const applyDesign = useCallback(
     async (intentObj: ComposeOk['intent'], scadStr: string, verifyObj: Verify) => {
+      // 체크포인트 승인 경로가 아니면(프리셋·판독·어셈블리) '생략'으로 정직 표기(§2.2)
+      setCpState((s) => (s === 'approved' ? s : 'skipped'));
       setIntent(intentObj);
       setScad(scadStr);
       setVerify(verifyObj);
@@ -302,7 +309,29 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           setStatus('');
           return;
         }
-        await applyDesign(data.intent, data.scad, data.verify);
+        // §2.1 도면 체크포인트 — 드래프트를 빌드해 3뷰+치수를 먼저 승인받는다(뷰어 적용은 승인 후)
+        if (wasmAvailable()) {
+          setStatus(ko ? '체크포인트 도면 생성 중…' : 'Building checkpoint views…');
+          const r = await renderScadWasm(data.scad);
+          if (r.ok && r.data) {
+            const buf = r.data.buffer.slice(r.data.byteOffset, r.data.byteOffset + r.data.byteLength) as ArrayBuffer;
+            const geom = parseSTL(buf);
+            geom.computeBoundingBox();
+            const bb = geom.boundingBox;
+            const pos = geom.getAttribute('position');
+            if (bb && pos) {
+              setCheckpoint({
+                intent: data.intent, scad: data.scad, verify: data.verify,
+                positions: pos.array as Float32Array,
+                bbox: { x: +(bb.max.x - bb.min.x).toFixed(1), y: +(bb.max.y - bb.min.y).toFixed(1), z: +(bb.max.z - bb.min.z).toFixed(1) },
+              });
+              setCpState('pending');
+              setStatus('');
+              return;
+            }
+          }
+        }
+        await applyDesign(data.intent, data.scad, data.verify); // WASM 불가 폴백 — 체크포인트 생략
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
         setStatus('');
@@ -312,6 +341,16 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     },
     [ko, applyDesign],
   );
+
+  // 체크포인트 승인/취소 — 승인해야 뷰어 적용, 취소하면 프롬프트 수정 재생성 유도
+  const approveCheckpoint = useCallback(async () => {
+    if (!checkpoint) return;
+    const cp = checkpoint;
+    setCheckpoint(null);
+    setCpState('approved');
+    await applyDesign(cp.intent, cp.scad, cp.verify);
+  }, [checkpoint, applyDesign]);
+  const cancelCheckpoint = useCallback(() => { setCheckpoint(null); setCpState('none'); }, []);
 
   const download = (filename: string, content: string, mime: string) => {
     const blob = new Blob([content], { type: mime });
@@ -484,6 +523,11 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
               {loading ? (status || (ko ? '처리 중…' : 'Working…')) : ko ? '설계 생성 + 검증' : 'Generate + verify'}
             </button>
 
+            {/* §2.1 도면 체크포인트 — 자유 서술 결과는 승인 후에만 뷰어 적용 */}
+            {checkpoint && (
+              <CheckpointPanel data={checkpoint} ko={ko} onApprove={approveCheckpoint} onCancel={cancelCheckpoint} />
+            )}
+
             {/* 분야 프리셋(갤러리) 또는 일반 예시 */}
             <div style={{ marginTop: 10 }}>
               <div style={{ fontSize: 11, color: 'var(--nx-text-3, #6b7684)', marginBottom: 4 }}>
@@ -566,6 +610,36 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.02em', marginBottom: 6 }}>
               {ko ? '검증 (상시)' : 'Verification (always-on)'}
             </div>
+            {/* §7 검증 그물 — 통과·실패·미실행 상시 노출(은폐 없음) */}
+            <VerifyNet ko={ko} items={([
+              {
+                label: ko ? '① 도면 체크포인트(의도 오류)' : '① Drawing checkpoint (intent errors)',
+                status: cpState === 'approved' ? 'pass' : cpState === 'pending' ? 'todo' : cpState === 'skipped' ? 'skip' : 'todo',
+                note: cpState === 'approved' ? (ko ? '승인됨' : 'approved')
+                  : cpState === 'skipped' ? (ko ? '생략 — 결정론 프리셋/판독 확인카드 경로' : 'skipped — deterministic path')
+                  : cpState === 'pending' ? (ko ? '승인 대기' : 'awaiting approval') : (ko ? '자유 서술 생성 시 활성' : 'runs on free-text'),
+              },
+              {
+                label: ko ? '② manifold/watertight(기하 결함)' : '② Manifold/watertight',
+                status: verify ? (verify.error ? 'fail' : verify.manifold ? 'pass' : 'fail') : 'todo',
+                note: verify?.triangles ? `${verify.triangles} tri` : undefined,
+              },
+              {
+                label: ko ? '③ 역투영 치수 diff(방출 오류)' : '③ Re-projection dim diff',
+                status: 'todo',
+                note: ko ? '기록 커널 대조 채점기 — 후속(방법론 §8-③)' : 'scorer pending (§8-③)',
+              },
+              {
+                label: ko ? '④ 어셈블리 간섭' : '④ Assembly interference',
+                status: 'skip',
+                note: ko ? '어셈블리 생성 시 결과 카드에 표시' : 'shown on assembly build card',
+              },
+              {
+                label: ko ? '⑤ vision 비평(토폴로지)' : '⑤ Vision critique',
+                status: 'todo',
+                note: ko ? '후속 — scad-vision-critique 배선' : 'wiring pending',
+              },
+            ] as NetItem[])} />
             {!verify && !bbox ? (
               <div style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}>
                 {ko ? '설계를 생성하면 manifold·치수 검증이 자동으로 표시됩니다.' : 'Generate a design to see manifold & dimension checks.'}
@@ -619,6 +693,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           {intent && (
             <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--nx-border, #dfe3e8)', paddingTop: 14, display: tab === 'output' ? undefined : 'none' }}>
               <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>{ko ? '내보내기 · 제조' : 'Export · Manufacture'}</div>
+              <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginBottom: 6, lineHeight: 1.5 }}>
+                {ko ? '뷰어 = 드래프트 프리뷰 · STEP = 기록 커널(OCCT B-rep) 정밀 형상 — 기하 핸드오프 없이 같은 intent에서 재방출' : 'Viewer = draft preview · STEP = record kernel (OCCT B-rep), re-emitted from the same intent'}
+              </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button type="button" onClick={exportStep} disabled={exporting !== ''} style={exportBtn}>
                   {exporting === 'step' ? '…' : ko ? 'STEP (B-rep)' : 'STEP (B-rep)'}
@@ -652,6 +729,12 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
           <StudioChatDock lang={lang} domainSlug={domain?.slug ?? initialDomain} intentName={intent?.name ?? null} partCount={Array.isArray(intent?.features) ? intent.features.length : null} />
           <div ref={mountRef} style={{ position: 'absolute', inset: 0 }} />
+          {/* §6.2 드래프트/기록 분리 — 뷰어는 드래프트임을 정직 표기 */}
+          {scad && (
+            <div style={{ position: 'absolute', bottom: 12, left: 12, padding: '4px 10px', borderRadius: 999, background: 'rgba(0,0,0,0.55)', color: '#cbd5e1', fontSize: 10.5, pointerEvents: 'none' }}>
+              {ko ? '드래프트 프리뷰(브라우저 렌더) · 정밀 형상 = 출력 탭 STEP(OCCT)' : 'Draft preview · precise geometry = STEP (OCCT) in Output'}
+            </div>
+          )}
           {!scad && !loading && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nx-text-3, #6b7684)', fontSize: 13, pointerEvents: 'none' }}>
               {ko ? '① 생성 탭에서 템플릿을 고르거나 자유 서술로 시작하세요 · ② 검증이 자동으로 따라옵니다 · ③ 계산기 61종·출력(도면·STEP·계산서)은 상단 탭 (드래그=회전 · 휠=줌)' : 'Pick a template or describe freely in Create · verification follows automatically · 61 calculators & outputs in tabs (drag = rotate, wheel = zoom)'}
