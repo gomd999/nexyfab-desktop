@@ -12,7 +12,7 @@ export default {
   title: '전단벽 횡강성·분담 (개략)',
   description: '벽 요소 강성(휨+전단변형)·병렬 분담률·벽체 개략 전단 검토.',
   refs: ['캔틸레버 벽 강성 폐형(휨+전단변형 — 구조역학 표준)', 'KDS 14 20 22 계열 Vc=√fck/6 기본식(벽 전용 상세식은 후속 명시)'],
-  status: 'verified — 폐형 앵커 + §4.9.2 상세식(4.9-1·2·3) + §4.9.3 최소철근·간격(식4.9-4·φVc/2 문턱 — 원문 판독). 연결보·경계요소는 후속',
+  status: 'verified — 폐형 앵커 + §4.9.2 상세식 + §4.9.3 최소철근 + §4.7.6 특수경계요소(KDS 14 20 80 — 변위법·응력법·범위·(5) 검토, 원문 판독). 연결보는 후속',
   inputSchema: {
     type: 'object',
     required: ['walls', 'storyShear_kN'],
@@ -22,6 +22,7 @@ export default {
       storyShear_kN: { type: 'number', exclusiveMinimum: 0, description: '층전단력 V (지진·풍 산정값)' },
       fck: { type: 'number', minimum: 18, maximum: 60, description: '콘크리트 강도 (기본 24)' },
       detail: { description: '벽 상세 전단검토(§4.9 원문식 — 선택): { wallIndex(1~), Nu_kN(압축+), Mu_kNm, Vu_kN, Avh_mm2?, sh_mm?, fy?, Avv_mm2?, sv_mm? } — Avv/sv 입력 시 §4.9.3 최소철근·간격 검토 포함' },
+      boundary: { description: '특수경계요소 검토(선택 — KDS 14 20 80 §4.7.6 원문): { wallIndex(1~), c_mm(압축연단 중립축 — P-M 해석 산정 입력), deltaU_mm(설계변위), hw_mm(벽 전체높이 — 기본 벽 h), Mu_kNm?, Vu_kN?(연장범위 Mu/4Vu용), sigmaMax_MPa?(응력법 (3) — 비균열 선형탄성 산정 입력), rhoBoundary?(경계부 종방향 철근비 — (5)① 2.8/fy 검토) } — 변위법 (2)①: c≥lw/(600(δu/hw)), δu/hw≥0.007' },
     },
   },
   run(input) {
@@ -109,6 +110,50 @@ export default {
         note: '식 4.9-1/2 중 작은 값 + 식 4.9-3 + Vn≤(5λ√fck/6)hd 상한(§4.9.2(3) 원문)' + (capped ? ' — ⚠ 상한 지배(철근 증가 무효, 단면 증대 필요)' : '') + (minReinf ? '' : '. 최소 수평·수직철근(§4.9.3)은 Avh·sh 입력 시 검토.'),
       };
     }
+    // ── 특수경계요소 (KDS 14 20 80 §4.7.6 — 원문 GIF 판독 확정) ─────────────
+    // (2)① 변위법: c ≥ lw/(600(δu/hw)) → 필요, δu/hw는 0.007 이상 적용
+    // (2)② 연장(수직): ≥ max(lw, Mu/4Vu) · (3) 응력법: σ>0.2fck 발생·<0.15fck 종료
+    // (4)① 범위(수평): ≥ max(c−0.1lw, c/2) · (5)① ρ>2.8/fy → 횡철근 요건(간격≤200)
+    // (5)② 연단 감싸기: Vu < (√fck/12)Acv 미만이면 제외
+    let boundary = null;
+    const be = input.boundary;
+    if (be && Number(be.wallIndex) >= 1 && items[be.wallIndex - 1]) {
+      const w = items[be.wallIndex - 1];
+      const hw = Number(be.hw_mm) > 0 ? Number(be.hw_mm) : w.h;
+      let need = null, method = null, cLimit = null;
+      if (Number(be.c_mm) > 0 && Number(be.deltaU_mm) > 0) {
+        const drift = Math.max(be.deltaU_mm / hw, 0.007); // §4.7.6(2)① 원문: δu/hw ≥ 0.007
+        cLimit = w.lw / (600 * drift);
+        need = be.c_mm >= cLimit;
+        method = `변위법 식4.7-2: c ${be.c_mm} vs 한계 ${cLimit.toFixed(0)}mm (δu/hw=${drift.toFixed(4)}${be.deltaU_mm / hw < 0.007 ? '←0.007 하한 적용' : ''})`;
+      } else if (Number(be.sigmaMax_MPa) > 0) {
+        need = be.sigmaMax_MPa > 0.2 * fck;
+        method = `응력법 (3): σ ${be.sigmaMax_MPa} vs 0.2fck=${(0.2 * fck).toFixed(1)}MPa (종료점 0.15fck=${(0.15 * fck).toFixed(1)} — 비균열 선형탄성 산정 입력 전제)`;
+      } else {
+        throw new Error('input gate: boundary는 (c_mm+deltaU_mm) 또는 sigmaMax_MPa 필요');
+      }
+      let extent = null;
+      if (need && Number(be.c_mm) > 0) {
+        const horiz = Math.max(be.c_mm - 0.1 * w.lw, be.c_mm / 2);
+        const vert = Number(be.Mu_kNm) > 0 && Number(be.Vu_kN) > 0 ? Math.max(w.lw, (be.Mu_kNm * 1e6) / (4 * be.Vu_kN * 1000)) : w.lw;
+        extent = { horizontal_mm: +horiz.toFixed(0), vertical_mm: +vert.toFixed(0), note: '수평 max(c−0.1lw, c/2)·수직 max(lw, Mu/4Vu) — §4.7.6(4)①·(2)②. 횡철근 상세는 §4.5.4(1)~(3) 준용(식4.5-3 제외·간격 최소단면 1/3).' };
+      }
+      let noBE = null;
+      if (need === false) {
+        const fy = (input.detail?.fy ?? 400);
+        const rhoLim = 2.8 / fy;
+        const rhoChk = Number(be.rhoBoundary) > 0 ? { rho: be.rhoBoundary, limit: +rhoLim.toFixed(5), hoopRequired: be.rhoBoundary > rhoLim } : null;
+        const VuEdge = Number(be.Vu_kN) > 0 ? be.Vu_kN * 1000 : null;
+        const Acv = w.lw * w.t;
+        const edgeWrap = VuEdge !== null ? VuEdge >= (Math.sqrt(fck) / 12) * Acv : null;
+        noBE = { rhoCheck: rhoChk, edgeWrapRequired: edgeWrap, note: '(5)①: ρ>2.8/fy면 경계부 횡철근(§4.5.4(1)③·(3)·간격≤200)·(5)②: Vu≥(√fck/12)Acv면 연단 감싸기(갈고리/U스터럽) 필요.' };
+      }
+      boundary = {
+        wall: be.wallIndex, required: need, method, ...(cLimit !== null ? { cLimit_mm: +cLimit.toFixed(0) } : {}),
+        ...(extent ? { extent } : {}), ...(noBE ? { noBoundaryChecks: noBE } : {}),
+        note: 'KDS 14 20 80 §4.7.6 원문. 변위법은 연속벽체·단일 위험단면 전제((2) — 아니면 응력법). c·δu·σ는 해석 산정 입력(지어내지 않음).',
+      };
+    }
     const frameShare = kFrame > 0 ? +(kFrame / sumK).toFixed(3) : 0;
     const allPass = rows.every((r) => r.pass);
     return {
@@ -116,6 +161,7 @@ export default {
       walls: rows,
       distribution: { sumK_kNmm: +sumK.toFixed(2), frameShare, wallShare: +(1 - frameShare).toFixed(3) },
       ...(detail ? { detail } : {}),
+      ...(boundary ? { boundaryElement: boundary } : {}),
       notes: [
         `강성 분담(강막 가정 명시): 벽 ${rows.length}장${kFrame > 0 ? `+골조(${(frameShare * 100).toFixed(0)}%)` : ''} — 분담 합 1.0.`,
         '벽 강성=휨+전단변형 폐형(ν=0.17 관례). 비틀림(강성중심 편심)·연결보·개구부는 후속 명시.',

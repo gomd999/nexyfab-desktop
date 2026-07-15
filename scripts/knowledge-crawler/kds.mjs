@@ -62,6 +62,9 @@ const TARGETS = [
   { code: '415020', tags: ['korea', 'kds', 'timber', 'building', 'landscape', 'member-design'] }, // 목구조 부재설계
   { code: '411700', tags: ['korea', 'kds', 'building', 'seismic'] },   // 건축물 내진설계기준 (등가정적 근거)
   { code: '415030', tags: ['korea', 'kds', 'timber', 'connection'] },  // 목구조 접합부의 설계
+  { code: '142080', tags: ['korea', 'kds', 'concrete', 'seismic', 'boundary-element', 'P3'] }, // 콘크리트 내진설계(특수전단벽 경계요소)
+  { code: '115015', tags: ['korea', 'kds', 'civil', 'pile', 'foundation'] },  // 깊은기초(말뚝) — 지지력 계산기 근거
+  { code: '113005', tags: ['korea', 'kds', 'civil', 'settlement', 'foundation'] }, // 얕은기초/침하 근거(존재 시)
 ];
 
 const args = process.argv.slice(2);
