@@ -913,34 +913,40 @@ export default function ChatHero({ langCode }: { langCode: string }) {
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
+  // 활성 스레드 동기화 — 부작용(URL·저장·서버)은 업데이터 밖(React 순수성)
   useEffect(() => {
     if (!messages.length) return;
+    let id = activeId;
+    if (!id) {
+      id = newThreadId();
+      setActiveId(id);
+      try { window.history.pushState({ t: id }, '', '?t=' + id); } catch { /* ignore */ }
+    }
+    const tid = id;
     setThreads((prev) => {
-      let id = activeId;
-      let list = prev.slice();
-      if (!id) {
-        id = newThreadId();
-        const first = messages.find((m) => m.role === 'user');
-        list = [{ id, title: titleFrom(first?.content ?? 'Chat'), domain, at: Date.now(), updated: Date.now(), badge: badgeFrom(messages), msgs: messages }, ...list];
-        setActiveId(id);
-        try { window.history.pushState({ t: id }, '', '?t=' + id); } catch { /* ignore */ }
-      } else {
-        list = list.map((t2) => (t2.id === id ? { ...t2, msgs: messages, domain, updated: Date.now(), badge: badgeFrom(messages) } : t2));
-      }
-      saveThreadsLocal(list);
-      if (authed && id) {
-        const th = list.find((x) => x.id === id);
-        if (th) {
-          if (syncTimer.current) clearTimeout(syncTimer.current);
-          syncTimer.current = setTimeout(() => {
-            void fetch('/api/nexyfab/chat-threads/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ thread: { ...th, msgs: th.msgs.slice(-60) } }) }).catch(() => {});
-          }, 1500);
-        }
-      }
-      return list;
+      const exists = prev.some((x) => x.id === tid);
+      if (exists) return prev.map((t2) => (t2.id === tid ? { ...t2, msgs: messages, domain, updated: Date.now(), badge: badgeFrom(messages) } : t2));
+      const first = messages.find((m) => m.role === 'user');
+      return [{ id: tid, title: titleFrom(first?.content ?? 'Chat'), domain, at: Date.now(), updated: Date.now(), badge: badgeFrom(messages), msgs: messages }, ...prev];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, domain, authed]);
+  }, [messages, domain]);
+
+  // 저장·서버 업서트(디바운스) — threads 변경 시 1곳에서 처리
+  useEffect(() => {
+    if (!threads.length) return;
+    saveThreadsLocal(threads);
+    if (authed && activeId) {
+      const th = threads.find((x) => x.id === activeId);
+      if (th && th.msgs.length) {
+        if (syncTimer.current) clearTimeout(syncTimer.current);
+        syncTimer.current = setTimeout(() => {
+          void fetch('/api/nexyfab/chat-threads/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ thread: { ...th, msgs: th.msgs.slice(-60) } }) }).catch(() => {});
+        }, 1500);
+      }
+    }
+  }, [threads, authed, activeId]);
+
 
   // 로그인 시: 서버 스레드 로드 + 게스트 스레드 1회 이관
   useEffect(() => {
@@ -979,11 +985,11 @@ export default function ChatHero({ langCode }: { langCode: string }) {
     try { window.history.pushState({}, '', window.location.pathname); } catch { /* ignore */ }
   };
   const deleteThread = (id: string) => {
-    setThreads((prev) => { const list = prev.filter((x) => x.id !== id); saveThreadsLocal(list); return list; });
+    setThreads((prev) => prev.filter((x) => x.id !== id));
     if (authed) void fetch('/api/nexyfab/chat-threads/?id=' + id, { method: 'DELETE' }).catch(() => {});
     if (activeId === id) newThread();
   };
-  const togglePin = (id: string) => setThreads((prev) => { const list = prev.map((x) => (x.id === id ? { ...x, pinned: !x.pinned } : x)); saveThreadsLocal(list); return list; });
+  const togglePin = (id: string) => setThreads((prev) => prev.map((x) => (x.id === id ? { ...x, pinned: !x.pinned } : x)));
 
   // 계산 카드 액션 — 재실행(동일 입력·새 카드)·간이 인쇄(원본 JSON 전사)
   const rerunCalc = async (calcId: string, calcInput: Record<string, unknown>) => {
