@@ -37,7 +37,7 @@ export function sweepSimpleSpan(L, axles, { steps = 2000, reverse = true } = {})
 }
 
 // ── self-test ────────────────────────────────────────────────────────────────
-const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('moving-load.mjs');
+const isMain = typeof process !== 'undefined' && process.argv?.[1] && process.argv[1].replaceAll('\\', '/').endsWith('moving-load.mjs');
 if (isMain) {
   const near = (a, b, tol = 0.002) => Math.abs(a - b) <= tol * Math.abs(b);
   let ok = 0, tot = 0;

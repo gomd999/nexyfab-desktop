@@ -141,7 +141,7 @@ function gaussSolve(K, F) {
 }
 
 // ── self-test ────────────────────────────────────────────────────────────────
-const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('frame2d.mjs');
+const isMain = typeof process !== 'undefined' && process.argv?.[1] && process.argv[1].replaceAll('\\', '/').endsWith('frame2d.mjs');
 if (isMain) {
   const E = 27e6, A = 0.4, I = 0.4 ** 3 / 12; // kPa·m²·m⁴
   const near = (a, b, tol = 0.005) => Math.abs(a - b) <= tol * Math.abs(b);

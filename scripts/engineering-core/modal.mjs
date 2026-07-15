@@ -93,7 +93,7 @@ export function responseSpectrumAnalysis({ kStory_kNm, mass_ton, SDS, SD1, TL = 
 }
 
 // --- self-test ---
-const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('modal.mjs');
+const isMain = typeof process !== 'undefined' && process.argv?.[1] && process.argv[1].replaceAll('\\', '/').endsWith('modal.mjs');
 if (isMain) {
   const near = (a, b, tol = 1e-3) => Math.abs(a - b) <= tol * Math.abs(b);
   let ok = 0, tot = 0;
