@@ -333,7 +333,22 @@ export function meshLumps(v, triIdx) {
 }
 
 export async function intentToRecordMeasure(intent) {
-  const { solid: result, report: fuseReport } = await buildSolidRobust(intent);
+  const { solid, report } = await buildSolidRobust(intent);
+  return measureFromSolid(intent, solid, report);
+}
+
+/**
+ * 실측+STEP을 한 번의 B-rep 빌드로 — 같은 프로세스에서 buildSolidRobust를 두 번 돌리면
+ * (실측→STEP) 대형 조립체에서 wasm 메모리 고갈로 STEP이 abort한다(위시빌더 253피처 실측).
+ */
+export async function intentToStepAndMeasure(intent) {
+  const { solid, report } = await buildSolidRobust(intent);
+  const measure = measureFromSolid(intent, solid, report);
+  const step = await solid.blobSTEP().text();
+  return { step, entities: (step.match(/^#\d+/gm) ?? []).length, fuseReport: report, measure };
+}
+
+function measureFromSolid(intent, result, fuseReport) {
   let dims = null;
   try { dims = auditDims(intent, result); } catch { /* 감사 실패는 다른 측정을 막지 않음(정직: null) */ }
   const m = result.mesh({ tolerance: 0.05, angularTolerance: 15 });
