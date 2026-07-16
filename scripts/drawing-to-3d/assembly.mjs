@@ -92,6 +92,67 @@ function overlapInfo(a, b) {
 }
 
 /**
+ * AI 배치 결정론 보정기(§12.1-4 v1, 2026-07-16 — "완성체 안 나옴"의 뿌리 교정).
+ * from-text(AI가 좌표를 찍는 경로) 전용 — 템플릿 어셈블리는 이미 정합이라 적용하지 않는다.
+ * 규칙(전부 결정론·보수적):
+ *   ① 부유 드롭: 아무 부품과도 z-접촉이 없으면 바로 아래 부품 상면(없으면 지면 0)까지 내림
+ *   ② 깊은 관통 분리: 관통 깊이 >2mm 쌍은 작은 쪽을 최소 겹침 축으로 밀어 접촉(0.5mm 랩)으로
+ * 반환: { assembly, corrections[] } — 보정 내역을 숨기지 않는다(정직).
+ */
+export function autoPlaceCorrect(asm) {
+  const parts = (asm.parts ?? []).map((p) => ({ ...p, at: { ...(p.at ?? {}) } }));
+  const corrections = [];
+  const box = (p) => placedAabb(p);
+  const xyOverlap = (a, b) =>
+    Math.min(a.max[0], b.max[0]) > Math.max(a.min[0], b.min[0]) &&
+    Math.min(a.max[1], b.max[1]) > Math.max(a.min[1], b.min[1]);
+  // ① 부유 드롭 — z 오름차순으로(아래부터 안정화)
+  const order = parts.map((p, i) => ({ i, z: box(p).min[2] })).sort((a, b) => a.z - b.z).map((o) => o.i);
+  for (const i of order) {
+    const b = box(parts[i]);
+    let touching = false, topBelow = 0; // 지면 기본
+    for (let j = 0; j < parts.length; j++) {
+      if (j === i) continue;
+      const ob = box(parts[j]);
+      if (!xyOverlap(b, ob)) continue;
+      if (ob.min[2] <= b.max[2] + 1 && ob.max[2] >= b.min[2] - 1) { touching = true; break; }
+      if (ob.max[2] <= b.min[2] && ob.max[2] > topBelow) topBelow = ob.max[2];
+    }
+    if (!touching) {
+      const drop = b.min[2] - topBelow;
+      if (drop > 1) {
+        parts[i].at.tz = (parts[i].at.tz ?? 0) - drop;
+        corrections.push({ id: parts[i].id ?? parts[i].type, fix: 'drop', mm: Math.round(drop) });
+      }
+    }
+  }
+  // ② 깊은 관통 분리 — 3패스 반복(연쇄 해소)
+  for (let pass = 0; pass < 3; pass++) {
+    let moved = false;
+    for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) {
+      const A = box(parts[i]), B = box(parts[j]);
+      const ov = [0, 1, 2].map((k) => Math.min(A.max[k], B.max[k]) - Math.max(A.min[k], B.min[k]));
+      if (ov[0] <= 0 || ov[1] <= 0 || ov[2] <= 0) continue;
+      const depth = Math.min(...ov);
+      if (depth <= 2) continue; // 접촉/체결 후보는 존중
+      const ax = ov.indexOf(depth);
+      const volA = (A.max[0] - A.min[0]) * (A.max[1] - A.min[1]) * (A.max[2] - A.min[2]);
+      const volB = (B.max[0] - B.min[0]) * (B.max[1] - B.min[1]) * (B.max[2] - B.min[2]);
+      const mv = volA <= volB ? parts[i] : parts[j];
+      const other = volA <= volB ? B : A;
+      const mine = volA <= volB ? A : B;
+      const dir = (mine.min[ax] + mine.max[ax]) / 2 >= (other.min[ax] + other.max[ax]) / 2 ? 1 : -1;
+      const key = ['tx', 'ty', 'tz'][ax];
+      mv.at[key] = (mv.at[key] ?? 0) + dir * (depth - 0.5); // 0.5mm 랩 = 접촉 후보로 강등
+      corrections.push({ id: mv.id ?? mv.type, fix: 'separate-' + 'xyz'[ax], mm: Math.round(depth) });
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  return { assembly: { ...asm, parts }, corrections };
+}
+
+/**
  * 어셈블리 부품(구조 11종)을 compose 범용 intent(kind 기반 features)로 변환한다.
  * 각 부품 로컬 형상을 compose 프리미티브로 매핑하고 부품 배치(at)를 feature 전역
  * translate 로 반영 → intentToStep(replicad) 으로 조립체 STEP 방출 재사용.

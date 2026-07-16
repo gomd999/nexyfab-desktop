@@ -29,7 +29,7 @@ type FromTextModule = {
 // MAX_TOKENS 원인은 2.5 "thinking"(출력토큰 소진) → thinkingBudget:0 으로 차단.
 // + response_schema 없이 free-form(플랫 스키마 토큰폭주 회피). flash 고정(속도).
 const GEMINI_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 12000, thinkingBudget: 0 };
-type AssemblyModule = { buildAssembly: (asm: Assembly) => BuiltAssembly };
+type AssemblyModule = { buildAssembly: (asm: Assembly) => BuiltAssembly; autoPlaceCorrect: (asm: Assembly) => { assembly: Assembly; corrections: Array<Record<string, unknown>> } };
 
 let _ft: FromTextModule | null = null;
 let _asm: AssemblyModule | null = null;
@@ -117,6 +117,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Gemini 에 되먹여 params 를 고쳐 최대 3라운드 재시도한다(§2.1 교정루프).
     const MAX_ROUNDS = 3;
     let assembly: Assembly | null = null;
+  let placeCorrections: Array<Record<string, unknown>> = [];
     let built: BuiltAssembly | null = null;
     let lastErrors: string[] = [];
 
@@ -129,7 +130,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         lastErrors = ['빈 어셈블리(parts 없음)'];
         continue; // 다음 라운드에서 재시도
       }
-      assembly = data;
+      // AI 배치 결정론 보정(§12.1-4 v1): 부유 드롭·깊은 관통 분리 — 내역은 응답에 공개
+      const corrected = mods.asm.autoPlaceCorrect(data);
+      assembly = corrected.assembly;
+      placeCorrections = corrected.corrections;
       built = mods.asm.buildAssembly(assembly);
       if (built.ok) {
         return NextResponse.json({
@@ -137,6 +141,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           parts: built.parts ?? assembly.parts,
           interferences: built.interferences ?? [],
           contacts: built.contacts ?? [], // §12.7.3 접촉/체결 후보(과탐 분리)
+          placeCorrections, // 자동 배치 보정 내역(정직 공개)
           welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
           composeIntent: built.composeIntent ?? null,
           structural: built.structural ?? null,

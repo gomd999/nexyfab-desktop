@@ -1193,7 +1193,11 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
         // ── 실행형: 의도추출 → (calc면) 라이브 엔진 실행 → 결과카드 ──
         const res = await fetch('/api/eng-chat/action/', {
           method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ message: text, domain, history }),
+          body: JSON.stringify({
+            message: text, domain, history,
+            // 증분 수정(2026-07-16): 직전 설계 스펙을 동봉 — "방금 그거 높이만 바꿔"가 동작
+            lastSpec: (() => { const lc = [...messages].reverse().find((mm) => mm.cad && !mm.cad.error); const sp = lc?.cad?.spec; return Array.isArray(sp) ? sp.join('\n') : typeof sp === 'string' ? sp : undefined; })(),
+          }),
           signal: ac.signal,
         });
         const j = await res.json().catch(() => ({}));

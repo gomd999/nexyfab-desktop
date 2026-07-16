@@ -1508,7 +1508,7 @@ export default function AssemblyPresetPanel({
   domain: string;
   onApply: (intent: { name?: string; features?: unknown[] }, scad: string) => void | Promise<void>;
   /** 빌드 결과 요약(간섭 건수 등) — 검증 그물 ④ 연동(2026-07-16) */
-  onBuildInfo?: (info: { interferences: number }) => void;
+  onBuildInfo?: (info: { interferences: number; assembly?: Record<string, unknown> | null }) => void;
 }) {
   const ko = isKorean(lang);
   const t = dict[toIsoLang(lang)] ?? dict.ko;
@@ -1994,7 +1994,7 @@ export default function AssemblyPresetPanel({
       const data = (await res.json()) as BuildResp;
       if (data.ok && data.composeIntent && data.openscad) {
         setBuilt(data);
-        onBuildInfo?.({ interferences: data.interferences?.length ?? 0 }); // 그물 ④
+        onBuildInfo?.({ interferences: data.interferences?.length ?? 0, assembly: (data as { assembly?: Record<string, unknown> }).assembly ?? null }); // 그물 ④+패키지
         await onApply(data.composeIntent, data.openscad);
         const mass = data.structural?.totalMassKg;
         setMsg(

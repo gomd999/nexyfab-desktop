@@ -51,6 +51,9 @@ const MECH_SYSTEM = `당신은 NexyFab 기계설계 에이전트입니다. 사�
 - 조립체 어휘=판금/구조 중심(plate·bracket·flange·tube·각관·box·cylinder). "여러 개/조립/프레임/랙/체결/장치/시스템" 신호면 assembly.
 - 단일 prompt 는 영어·간결·수치 (예: "mounting bracket 200x100x60mm with four 8mm holes").
 - 전기 배선은 결선표(개산). 규격/길이 불확실 시 lengthM:0, note 에 "확인 필요". 정밀 3D 하네스는 다루지 않음.
+- **직전 설계 수정(증분)**: 대화에 [직전 설계 스펙]이 주어지면, '~바꿔/늘려/추가/삭제/하나 더' 류 요청은
+  새 설계가 아니라 **그 스펙을 기반으로 요청 부분만 반영한 전체 스펙**을 같은 type(assembly/scad)으로
+  다시 출력하라. 바꾸지 않은 부품·치수는 그대로 유지(임의 재배치 금지).
 - 근거 없는 정밀치수 날조는 피하되, 진행 신호 후의 표준·통상값 가정은 "가정/개산"으로 표기(정직 + 무한 되묻기 금지 — 한 번 묻고 진행).`;
 
 function catalogPromptBlock(): string {
@@ -103,6 +106,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    const lastSpec: string = typeof body?.lastSpec === 'string' ? String(body.lastSpec).slice(0, 1500) : '';
     const message: unknown = body?.message;
     const history: unknown = body?.history;
     const domainRaw: unknown = body?.domain;
@@ -139,6 +143,7 @@ export async function POST(req: NextRequest) {
         }
       }
     }
+    if (lastSpec) messages.push({ role: 'assistant', content: '[직전 설계 스펙]\n' + lastSpec }); // 증분 수정 컨텍스트
     messages.push({ role: 'user', content: `[분야:${domain}] ${message.slice(0, 2000)}` });
 
     let raw = '';

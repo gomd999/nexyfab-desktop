@@ -186,6 +186,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   // 설계가 바뀌면 반드시 무효화 — pendingInterfRef를 applyDesign이 소비하는 구조(감사 3차).
   const [interf, setInterf] = useState<number | null>(null);
   const pendingInterfRef = useRef<number | null>(null);
+  const pendingAssemblyRef = useRef<Record<string, unknown> | null>(null); // 설계 패키지용(어셈블리 경로만)
+  const [lastAssembly, setLastAssembly] = useState<Record<string, unknown> | null>(null);
+  const [pkgBusy, setPkgBusy] = useState(false);
   const [bbox, setBbox] = useState<Bbox | null>(null);
   const [featureCount, setFeatureCount] = useState<number | null>(null);
 
@@ -358,6 +361,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setCpState((s) => (s === 'approved' ? s : 'skipped'));
       setInterf(pendingInterfRef.current); // 새 설계의 간섭(어셈블리) 또는 null(단품) — 잔존 방지
       pendingInterfRef.current = null;
+      setLastAssembly(pendingAssemblyRef.current); // 어셈블리면 패키지 생성 가능, 단품이면 null
+      pendingAssemblyRef.current = null;
       setDiffRes(null); // 설계가 바뀌면 이전 듀얼-방출 대조 결과는 무효
       setDiffDraftProfiles(null);
       setVisRes(null); // vision 비평도 무효
@@ -421,7 +426,10 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         const data: ComposeResp = raw.ok && isAssembly
           ? { ok: true, intent: (raw.composeIntent ?? { name: 'assembly' }) as ComposeOk['intent'], scad: String(raw.openscad ?? ''), rounds: (raw as { rounds?: number }).rounds ?? 1, verify: null }
           : raw;
-        if (isAssembly && raw.ok) pendingInterfRef.current = Array.isArray(raw.interferences) ? raw.interferences.length : 0; // 그물 ④ — applyDesign(승인 시점)이 소비
+        if (isAssembly && raw.ok) {
+          pendingInterfRef.current = Array.isArray(raw.interferences) ? raw.interferences.length : 0; // 그물 ④
+          pendingAssemblyRef.current = (raw as { assembly?: Record<string, unknown> }).assembly ?? null;
+        }
         if (!data.ok) {
           setErrCode((raw as { code?: string }).code ?? null);
           if (data.gateErrors?.length) setGateErrors(data.gateErrors);
@@ -560,6 +568,33 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
+
+  // 설계 패키지 zip(챗 카드와 동일 계약) — 어셈블리 경로에서만(단품은 STEP/HTML로 충분)
+  const downloadPackage = useCallback(async () => {
+    if (!lastAssembly) return;
+    setPkgBusy(true);
+    setExportMsg(null);
+    try {
+      const r = await fetch('/api/nexyfab/drawing/package/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assembly: lastAssembly }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { ok?: boolean; zipBase64?: string; error?: string };
+      if (!r.ok || !j.ok || typeof j.zipBase64 !== 'string') throw new Error(j.error ?? '패키지 생성 실패');
+      const bin = atob(j.zipBase64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = 'design_package.zip'; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      setExportMsg(ko ? '설계 패키지(zip) 내려받음 — GA·2D·구조·BOQ·Dossier 포함' : 'Design package downloaded');
+    } catch (e) {
+      setExportMsg((ko ? '패키지 실패: ' : 'Package failed: ') + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setPkgBusy(false);
+    }
+  }, [lastAssembly, ko]);
 
   const exportStep = useCallback(async () => {
     if (!intent) return;
@@ -780,7 +815,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                     setError(null); setGateErrors(null); setExportMsg(null);
                     await applyDesign(i, s, null);
                   }}
-                  onBuildInfo={(info) => { pendingInterfRef.current = info.interferences; }}
+                  onBuildInfo={(info) => { pendingInterfRef.current = info.interferences; pendingAssemblyRef.current = info.assembly ?? null; }}
                 />
               )}
             </div>
@@ -1026,6 +1061,11 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 {ko ? '뷰어 = 드래프트 프리뷰 · STEP = 기록 커널(OCCT B-rep) 정밀 형상 — 기하 핸드오프 없이 같은 intent에서 재방출' : 'Viewer = draft preview · STEP = record kernel (OCCT B-rep), re-emitted from the same intent'}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {lastAssembly && (
+                  <button type="button" onClick={() => void downloadPackage()} disabled={pkgBusy} style={exportBtn}>
+                    {pkgBusy ? '…' : ko ? '📦 설계 패키지' : '📦 Design package'}
+                  </button>
+                )}
                 <button type="button" onClick={exportStep} disabled={exporting !== ''} style={exportBtn}>
                   {exporting === 'step' ? '…' : ko ? 'STEP (B-rep)' : 'STEP (B-rep)'}
                 </button>
