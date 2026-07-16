@@ -137,7 +137,9 @@ function _obPen(s, ob) {
   }
   return Math.min(...[0, 1, 2].map((k) => Math.min(s.max[k], ob.max[k]) - Math.max(s.min[k], ob.min[k])));
 }
-const _nearOb = (p, ob, pad = 60) =>
+// pad 25: 끝점은 장비 표면(stub 기부)에 놓이므로 소패드로 충분 — 60이면 인접 장비 출구가
+// 큰 env를 통째 면제시키는 오탐(위시빌더 ct라인→RO 관통 미검출 사례)
+const _nearOb = (p, ob, pad = 25) =>
   p[0] > ob.min[0] - pad && p[0] < ob.max[0] + pad &&
   p[1] > ob.min[1] - pad && p[1] < ob.max[1] + pad &&
   p[2] > ob.min[2] - pad && p[2] < ob.max[2] + pad;
