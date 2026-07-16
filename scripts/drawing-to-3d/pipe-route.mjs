@@ -157,3 +157,56 @@ export function pipeObstacleCheck(routes, obstacles, { margin = 3 } = {}) {
   }
   return out;
 }
+
+/**
+ * 배관 상호 교차 검사 — 서로 다른 라인이 관통(크로스 커넥션/시공 불가)하는지.
+ * 의도된 티(라이저 끝→헤더 접속)는 끝점 패드로 자동 허용: 최근접점이 어느 한
+ * 경로의 끝점에서 (d1+d2) 이내면 접속으로 본다.
+ * @param routes [{ label, pts, d }]
+ * @returns violations [{ a, b, segA, segB, gapMm }]  (gap<0 = 관통 깊이)
+ */
+function _segDist(p1, q1, p2, q2) {
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const d1 = sub(q1, p1), d2 = sub(q2, p2), r = sub(p1, p2);
+  const a = dot(d1, d1), e = dot(d2, d2), f = dot(d2, r);
+  let s, t;
+  if (a <= 1e-12 && e <= 1e-12) { s = 0; t = 0; }
+  else if (a <= 1e-12) { s = 0; t = Math.max(0, Math.min(1, f / e)); }
+  else {
+    const c = dot(d1, r);
+    if (e <= 1e-12) { t = 0; s = Math.max(0, Math.min(1, -c / a)); }
+    else {
+      const b = dot(d1, d2), den = a * e - b * b;
+      s = den > 1e-12 ? Math.max(0, Math.min(1, (b * f - c * e) / den)) : 0;
+      t = (b * s + f) / e;
+      if (t < 0) { t = 0; s = Math.max(0, Math.min(1, -c / a)); }
+      else if (t > 1) { t = 1; s = Math.max(0, Math.min(1, (b - c) / a)); }
+    }
+  }
+  const c1 = [p1[0] + d1[0] * s, p1[1] + d1[1] * s, p1[2] + d1[2] * s];
+  const c2 = [p2[0] + d2[0] * t, p2[1] + d2[1] * t, p2[2] + d2[2] * t];
+  return { dist: Math.hypot(c1[0] - c2[0], c1[1] - c2[1], c1[2] - c2[2]), mid: [(c1[0] + c2[0]) / 2, (c1[1] + c2[1]) / 2, (c1[2] + c2[2]) / 2] };
+}
+export function pipeCrossCheck(routes, { tol = 0.5 } = {}) {
+  const out = [];
+  const endsOf = (rt) => [rt.pts[0], rt.pts[rt.pts.length - 1]];
+  for (let i = 0; i < routes.length; i++) {
+    for (let j = i; j < routes.length; j++) {
+      const A = routes[i], B = routes[j];
+      const pad = (A.d ?? 26) + (B.d ?? 26);
+      const ends = [...endsOf(A), ...endsOf(B)];
+      for (let ia = 0; ia < A.pts.length - 1; ia++) {
+        const jb0 = i === j ? ia + 2 : 0; // 같은 경로면 인접(엘보 공유) 세그먼트 제외
+        for (let ib = jb0; ib < B.pts.length - 1; ib++) {
+          const { dist, mid } = _segDist(A.pts[ia], A.pts[ia + 1], B.pts[ib], B.pts[ib + 1]);
+          const need = (A.d ?? 26) / 2 + (B.d ?? 26) / 2 - tol;
+          if (dist >= need) continue;
+          if (ends.some((p) => Math.hypot(p[0] - mid[0], p[1] - mid[1], p[2] - mid[2]) <= pad)) continue; // 의도된 티
+          out.push({ a: A.label ?? 'r' + i, b: B.label ?? 'r' + j, segA: ia, segB: ib, gapMm: +(dist - need - tol).toFixed(1) });
+        }
+      }
+    }
+  }
+  return out;
+}

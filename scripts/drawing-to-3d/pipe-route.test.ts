@@ -136,3 +136,29 @@ describe('supportCheck — 지지 체인(연결≠지지)', () => {
     expect(r.floating).toEqual([]);
   });
 });
+
+import { pipeCrossCheck } from './pipe-route.mjs';
+
+describe('pipeCrossCheck — 배관 상호 교차(크로스 커넥션)', () => {
+  it('서로 다른 라인의 직교 관통 → 플래그', () => {
+    const v = pipeCrossCheck([
+      { label: 'A', pts: [[760, 0, 812], [760, 0, 262], [760, 700, 262]], d: 26 },
+      { label: 'B', pts: [[600, 0, 500], [900, 0, 500]], d: 26 },
+    ]);
+    expect(v.length).toBeGreaterThan(0);
+  });
+  it('라이저 끝 → 헤더 접속(의도된 티)은 허용', () => {
+    const v = pipeCrossCheck([
+      { label: 'riser', pts: [[1180, 300, 1166], [1180, 300, 1400]], d: 20 },
+      { label: 'header', pts: [[1180, 150, 1400], [1180, 710, 1400]], d: 20 },
+    ]);
+    expect(v).toEqual([]);
+  });
+  it('평행 레인 30mm 이격(d26)은 통과', () => {
+    const v = pipeCrossCheck([
+      { label: 'A', pts: [[880, 110, 812], [880, 110, 262]], d: 26 },
+      { label: 'B', pts: [[880, 140, 842], [880, 140, 228]], d: 26 },
+    ]);
+    expect(v).toEqual([]);
+  });
+});
