@@ -91,3 +91,48 @@ describe('normalizeFeatures — OCCT 견고화 새니타이즈', () => {
     expect(intent.features[0].diameter).toBe(34);
   });
 });
+
+describe('pipeObstacleCheck — 원통 인식 + 접속 끝점 자동 허용 (위시빌더 260717)', () => {
+  const tankRound = { label: 'coag', min: [50, 120, 150], max: [610, 680, 1350], round: 'z' };
+  it('접속 끝점(장비 근방)은 자동 허용', () => {
+    const v = pipeObstacleCheck([{ label: 'out', pts: [[610, 400, 1085], [900, 400, 1085]], d: 26 }], [tankRound]);
+    expect(v).toEqual([]);
+  });
+  it('AABB 모서리 스침은 원통 인식으로 오탐 제거', () => {
+    // 세그먼트가 env 모서리(x640, y435)를 지나지만 반경상 여유 — round:z 처리로 통과
+    const v = pipeObstacleCheck([{ label: 'hdr', pts: [[640, 435, 900], [640, 435, 1400]], d: 22 }], [tankRound]);
+    expect(v).toEqual([]);
+  });
+  it('실제 반경 침투는 플래그', () => {
+    const v = pipeObstacleCheck([{ label: 'bad', pts: [[330, -100, 800], [330, 900, 800]], d: 26 }], [tankRound]);
+    expect(v.length).toBeGreaterThan(0);
+  });
+});
+
+import { supportCheck } from './support-check.mjs';
+
+describe('supportCheck — 지지 체인(연결≠지지)', () => {
+  const deck = { label: 'deck', min: [0, 0, 142], max: [1900, 800, 151], base: true };
+  it('데크에 얹힌 장비 → supported', () => {
+    const r = supportCheck([deck, { label: 'pump', min: [400, 300, 150], max: [600, 500, 400] }]);
+    expect(r.floating).toEqual([]);
+  });
+  it('허공 장비 → floating (배관 연결만으론 지지 아님)', () => {
+    const r = supportCheck([deck, { label: 'ro', min: [600, 230, 990], max: [1700, 630, 1130] }]);
+    expect(r.floating).toEqual(['ro']);
+  });
+  it('크로스 빔 경유 전파', () => {
+    const beam = { label: 'beam', min: [895, 0, 940], max: [945, 800, 990], base: true };
+    const r = supportCheck([deck, beam, { label: 'ro', min: [600, 230, 964], max: [1700, 630, 1130] }]);
+    expect(r.floating).toEqual([]);
+  });
+  it('스트랩 부피 겹침 = 체결', () => {
+    const strap = { label: 'strap', min: [1858, 290, 190], max: [1890, 340, 950], base: true };
+    const r = supportCheck([strap, { label: 'panel', min: [1790, 260, 300], max: [1890, 580, 920] }]);
+    expect(r.floating).toEqual([]);
+  });
+  it('ghost(옵션 마커)는 검사 제외', () => {
+    const r = supportCheck([deck, { label: 'tray', min: [100, 100, 1290], max: [400, 300, 1490], ghost: true }]);
+    expect(r.floating).toEqual([]);
+  });
+});

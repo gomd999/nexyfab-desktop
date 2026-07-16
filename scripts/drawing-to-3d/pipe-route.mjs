@@ -114,20 +114,44 @@ export function segmentAabbs(pts, d) {
 
 /**
  * 배관 ↔ 장비 엔벨로프 관통 검사(설계 타당성 그물).
- * @param routes  [{ label, pts, d, allow?: string[] }] — allow=이 배관이 접속하는 장비 라벨(관통 아님)
- * @param obstacles [{ label, min:[x,y,z], max:[x,y,z] }]
- * @param margin 허용 침투(mm, 기본 2 — 접속 여유)
+ * - 원통 장비(round:'z'|'x')는 실린더로 취급 — AABB 모서리 스침 오탐 제거(위시빌더 실증)
+ * - 접속 끝점 자동 허용: 경로의 시작/끝이 장비 근방(pad 60mm)이면 그 장비는 관통 아님
+ * @param routes  [{ label, pts, d, allow?: string[] }] — allow=추가 수동 허용 라벨(선택)
+ * @param obstacles [{ label, min:[x,y,z], max:[x,y,z], round?: 'z'|'x' }]
+ * @param margin 허용 침투(mm, 기본 3 — 접속 여유)
  * @returns violations [{ route, seg, obstacle, depthMm }]
  */
-export function pipeObstacleCheck(routes, obstacles, { margin = 2 } = {}) {
+const _clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function _obPen(s, ob) {
+  if (ob.round === 'z') {
+    const cx = (ob.min[0] + ob.max[0]) / 2, cy = (ob.min[1] + ob.max[1]) / 2, r = (ob.max[0] - ob.min[0]) / 2;
+    const dz = Math.min(s.max[2], ob.max[2]) - Math.max(s.min[2], ob.min[2]);
+    if (dz <= 0) return -1;
+    return Math.min(dz, r - Math.hypot(cx - _clamp(cx, s.min[0], s.max[0]), cy - _clamp(cy, s.min[1], s.max[1])));
+  }
+  if (ob.round === 'x') {
+    const cy = (ob.min[1] + ob.max[1]) / 2, cz = (ob.min[2] + ob.max[2]) / 2, r = (ob.max[1] - ob.min[1]) / 2;
+    const dx = Math.min(s.max[0], ob.max[0]) - Math.max(s.min[0], ob.min[0]);
+    if (dx <= 0) return -1;
+    return Math.min(dx, r - Math.hypot(cy - _clamp(cy, s.min[1], s.max[1]), cz - _clamp(cz, s.min[2], s.max[2])));
+  }
+  return Math.min(...[0, 1, 2].map((k) => Math.min(s.max[k], ob.max[k]) - Math.max(s.min[k], ob.min[k])));
+}
+const _nearOb = (p, ob, pad = 60) =>
+  p[0] > ob.min[0] - pad && p[0] < ob.max[0] + pad &&
+  p[1] > ob.min[1] - pad && p[1] < ob.max[1] + pad &&
+  p[2] > ob.min[2] - pad && p[2] < ob.max[2] + pad;
+export function pipeObstacleCheck(routes, obstacles, { margin = 3 } = {}) {
   const out = [];
   for (const rt of routes) {
     const allow = new Set(rt.allow ?? []);
-    for (const s of segmentAabbs(rt.pts, rt.d ?? 26)) {
-      for (const ob of obstacles) {
-        if (allow.has(ob.label)) continue;
-        const pen = [0, 1, 2].map((k) => Math.min(s.max[k], ob.max[k]) - Math.max(s.min[k], ob.min[k]));
-        if (pen.every((v) => v > margin)) out.push({ route: rt.label ?? '?', seg: s.seg, obstacle: ob.label, depthMm: +Math.min(...pen).toFixed(1) });
+    const ends = [rt.pts[0], rt.pts[rt.pts.length - 1]];
+    for (const ob of obstacles) {
+      if (allow.has(ob.label)) continue;
+      if (ends.some((p) => _nearOb(p, ob))) continue; // 접속 장비 자동 허용
+      for (const s of segmentAabbs(rt.pts, rt.d ?? 26)) {
+        const pen = _obPen(s, ob);
+        if (pen > margin) out.push({ route: rt.label ?? '?', seg: s.seg, obstacle: ob.label, depthMm: +pen.toFixed(1) });
       }
     }
   }
