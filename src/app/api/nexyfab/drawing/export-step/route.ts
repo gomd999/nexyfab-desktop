@@ -15,7 +15,8 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-type StepModule = { intentToStep: (intent: unknown) => Promise<{ step: string; entities: number }> };
+type FuseReport = { total: number; jittered: number; dropped: { kind: string; at: number[] | null; op: string }[] };
+type StepModule = { intentToStep: (intent: unknown) => Promise<{ step: string; entities: number; fuseReport?: FuseReport }> };
 
 let _mod: StepModule | null = null;
 async function loadStep(): Promise<StepModule> {
@@ -42,8 +43,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const step = await loadStep();
-    const { step: stepText, entities } = await step.intentToStep(intent);
-    return NextResponse.json({ ok: true, step: stepText, entities, bytes: stepText.length, format: 'STEP (B-rep, ISO-10303)' });
+    const { step: stepText, entities, fuseReport } = await step.intentToStep(intent);
+    // 정직 고지: OCCT 융합서 제외된 피처가 있으면 숨기지 않고 응답에 명시(§14 견고화)
+    const dropped = fuseReport?.dropped?.length ?? 0;
+    return NextResponse.json({
+      ok: true, step: stepText, entities, bytes: stepText.length, format: 'STEP (B-rep, ISO-10303)',
+      ...(dropped > 0 ? { fuseDropped: dropped, fuseNote: dropped + '개 피처가 OCCT 융합 한계로 STEP에서 제외됨(프리뷰·검증 메시에는 포함)' } : {}),
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const status = /gate/.test(msg) ? 422 : 502;

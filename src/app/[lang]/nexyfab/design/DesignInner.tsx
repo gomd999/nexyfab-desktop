@@ -497,7 +497,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   interface DiffCheck { name: string; draft: number; record: number; diff: number; tol: number; pass: boolean }
   interface DimRow { label: string; declared: number; measured: number | null; pos: string; pass: boolean }
   interface DimAudit { rows: DimRow[]; extraFaces: number; note: string }
-  type DiffRes = { ok: true; verdict: string; checks: DiffCheck[]; dims?: DimAudit | null; record?: { profiles?: AxisProfile[] }; notes?: string[] } | { ok: false; stage?: string; error?: string };
+  type Manufacturability = { lumps: number | null; floating: boolean; fuseDropped: number; note: string };
+  type DiffRes = { ok: true; verdict: string; checks: DiffCheck[]; dims?: DimAudit | null; record?: { profiles?: AxisProfile[] }; manufacturability?: Manufacturability; notes?: string[] } | { ok: false; stage?: string; error?: string };
   const [diffRes, setDiffRes] = useState<DiffRes | null>(null);
   const [diffDraftProfiles, setDiffDraftProfiles] = useState<AxisProfile[] | null>(null);
   const [diffBusy, setDiffBusy] = useState(false);
@@ -950,6 +951,14 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                     <div style={{ fontSize: 11, fontWeight: 800, color: diffRes.verdict === 'PASS' ? '#16a34a' : '#dc2626' }}>
                       {diffRes.verdict === 'PASS' ? '✓' : '✗'} {ko ? '듀얼-방출 대조 ' : 'Dual-emission '} {diffRes.verdict}
                     </div>
+                    {diffRes.manufacturability && (diffRes.manufacturability.floating || diffRes.manufacturability.fuseDropped > 0) && (
+                      <div style={{ marginTop: 3, fontSize: 10, color: '#b45309' }}>
+                        ⚠ {diffRes.manufacturability.floating ? diffRes.manufacturability.note : ''}
+                        {diffRes.manufacturability.fuseDropped > 0
+                          ? (ko ? ` · B-rep 융합 제외 ${diffRes.manufacturability.fuseDropped}건(정직 고지)` : ` · ${diffRes.manufacturability.fuseDropped} features dropped in B-rep fuse`)
+                          : ''}
+                      </div>
+                    )}
                     <table style={{ width: '100%', marginTop: 5, borderCollapse: 'collapse', fontSize: 10, fontVariantNumeric: 'tabular-nums' }}>
                       <thead>
                         <tr style={{ color: 'var(--nx-text-3, #6b7684)' }}>

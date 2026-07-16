@@ -25,7 +25,8 @@ export const runtime = 'nodejs';
 interface Profile { axis: string; w1: number[]; w2: number[] }
 interface DimRow { label: string; declared: number; measured: number | null; pos: string; pass: boolean }
 interface DimAudit { rows: DimRow[]; declaredCount: number; measuredCount: number; extraFaces: number; note: string }
-interface Measure { bbox: { x: number; y: number; z: number }; volume: number; triangles?: number; profiles?: Profile[]; dims?: DimAudit | null }
+interface FuseReport { total: number; fused: number; jittered: number; dropped: { kind: string; at: number[] | null; op: string }[] }
+interface Measure { bbox: { x: number; y: number; z: number }; volume: number; triangles?: number; profiles?: Profile[]; dims?: DimAudit | null; lumps?: number; fuseReport?: FuseReport }
 type StepModule = { intentToRecordMeasure: (intent: unknown) => Promise<Measure> };
 
 let _mod: StepModule | null = null;
@@ -122,13 +123,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // 치수 전수 감사(exact, B-rep 면 실측) — 선언 회전체 치수 중 하나라도 미매칭이면 FAIL
   const dimsFail = !!record.dims?.rows?.some((r) => !r.pass);
-  const verdict = checks.every((c) => c.pass) && !dimsFail ? 'PASS' : 'FAIL';
+  // OCCT 융합 드롭이 있으면 기록측이 불완전 → 대조 자체를 PASS로 단정하지 않음(정직)
+  const fuseDropped = record.fuseReport?.dropped?.length ?? 0;
+  const verdict = checks.every((c) => c.pass) && !dimsFail && fuseDropped === 0 ? 'PASS' : 'FAIL';
   return NextResponse.json({
     ok: true,
     verdict,
     checks,
     dims: record.dims ?? null,
     record,
+    manufacturability: {
+      lumps: record.lumps ?? null,
+      floating: (record.lumps ?? 1) > 1,
+      fuseDropped,
+      note: (record.lumps ?? 1) > 1 ? '분리 덩어리 ' + record.lumps + '개 — 허공 부품/미접합 가능(제작 전 확인)' : '단일 연결체',
+    },
     notes: [
       '듀얼-방출 교차검증(§6.2-③): 드래프트=SCAD→WASM 메시, 기록=OCCT B-rep 메시 — 같은 intent 독립 빌드 대조.',
       '허용 밴드 근거: 동일 피처셋이므로 기대 차이=테셀레이션뿐 — 축 max(0.5mm,0.2%) · 부피 1.5% · 단면 max(1.0mm,0.8%).',

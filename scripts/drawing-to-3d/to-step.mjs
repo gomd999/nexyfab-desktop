@@ -99,29 +99,89 @@ function expand(f, base) {
   return [placeSolid(f, base)];
 }
 
-/** intent → replicad Solid (게이트 통과분만). intentToStep/intentToRecordMeasure/치수감사 공용. */
-export async function buildSolid(intent) {
+/**
+ * OCCT fuse 견고화(위시빌더 실전 260717) — 대형 순차 fuse에서 관찰된 3함정:
+ *  ① 동일지름 직교 실린더가 한 점에서 만나면 표면 탄젠트 특이점으로 abort
+ *  ② 동일 솔리드 중복/정확 외접 스피어 → abort (compose.normalizeFeatures가 선제 제거)
+ *  ③ 특정 피처 융합이 누적 형상을 "조용히 붕괴"(예외 없이 bbox가 쪼그라듦) — 최악.
+ * 방어: bbox 가드(융합 결과가 피연산자 bbox union에서 0.5mm 이상 이탈=불량 판정) +
+ * 미세 변형 재시도(이동/지름) + 2차 패스(다른 형상이 다 들어간 뒤 fuse 그래프가 달라져
+ * 성공하는 경우) + 최종 실패는 드롭하되 report에 정직 기록(조용한 누락 금지).
+ */
+function fuseBounds(s) { return s.boundingBox.bounds; }
+function fuseUnionBad(a, b, t) {
+  for (let k = 0; k < 3; k++) {
+    const mn = Math.min(a[0][k], b[0][k]), mx = Math.max(a[1][k], b[1][k]);
+    if (t[0][k] > mn + 0.5 || t[1][k] < mx - 0.5) return true;
+  }
+  return false;
+}
+function fuseVariants(f) {
+  const mk = (dt, dd) => {
+    const c = JSON.parse(JSON.stringify(f));
+    c.at = c.at || {}; c.at.translate = (c.at.translate || [0, 0, 0]).map((v) => v + dt);
+    if (dd && c.diameter) c.diameter = Math.max(2, c.diameter + dd);
+    if (dd && Array.isArray(c.size)) c.size = c.size.map((v) => Math.max(2, v + dd));
+    return c;
+  };
+  return [f, mk(0.037), mk(0.31, -0.4), mk(-0.23, 0.3)];
+}
+
+/** intent → { solid, report } — bbox 가드 순차 융합. report.dropped는 정직 고지용. */
+export async function buildSolidRobust(intent) {
   const errs = gateComposite(intent);
   if (errs.length) throw new Error('composite gate: ' + errs.join('; '));
   const rc = await ensureReplicad();
-  let result = null;
-  const subs = [];
-  for (const f of intent.features) {
-    for (const solid of expand(f, featSolid(rc, f))) {
-      if (f.op === 'subtract') subs.push(solid);
-      else result = result ? result.fuse(solid) : solid;
+  const adds = [], subFeats = [];
+  for (const f of intent.features) (f.op === 'subtract' ? subFeats : adds).push(f);
+  const report = { total: intent.features.length, jittered: 0, dropped: [] };
+  let acc = null;
+  async function tryFuse(f) {
+    for (const fv of fuseVariants(f)) {
+      let solids;
+      try { solids = expand(fv, featSolid(rc, fv)); } catch { continue; }
+      let cur = acc, ok = true;
+      for (const s of solids) {
+        if (!cur) { cur = s; continue; }
+        const A = fuseBounds(cur), B = fuseBounds(s);
+        let t;
+        try { t = cur.fuse(s); } catch { ok = false; break; }
+        if (fuseUnionBad(A, B, fuseBounds(t))) { ok = false; break; }
+        cur = t;
+      }
+      if (ok && cur) { if (fv !== f) report.jittered++; acc = cur; return true; }
     }
+    return false;
   }
-  if (!result) throw new Error('to-step: add 피처 없음');
-  for (const s of subs) result = result.cut(s);
-  return result;
+  const pending = [];
+  for (const f of adds) { if (!(await tryFuse(f))) pending.push(f); }
+  for (const f of pending) { if (!(await tryFuse(f))) report.dropped.push({ kind: f.kind, at: f.at?.translate ?? null, op: 'add' }); }
+  if (!acc) throw new Error('to-step: add 피처 없음(또는 전부 융합 실패)');
+  for (const f of subFeats) {
+    let done = false;
+    for (const fv of fuseVariants(f)) {
+      try {
+        let cur = acc;
+        for (const s of expand(fv, featSolid(rc, fv))) cur = cur.cut(s);
+        const bb = fuseBounds(cur);
+        if (bb.every((c) => c.every(Number.isFinite))) { acc = cur; done = true; break; }
+      } catch { /* 다음 변형 */ }
+    }
+    if (!done) report.dropped.push({ kind: f.kind, at: f.at?.translate ?? null, op: 'subtract' });
+  }
+  return { solid: acc, report };
 }
 
-/** intent → STEP 문자열 (B-rep). */
+/** intent → replicad Solid (게이트 통과분만). intentToStep/intentToRecordMeasure/치수감사 공용. */
+export async function buildSolid(intent) {
+  return (await buildSolidRobust(intent)).solid;
+}
+
+/** intent → STEP 문자열 (B-rep). fuseReport.dropped>0이면 호출측이 정직 고지할 것. */
 export async function intentToStep(intent) {
-  const result = await buildSolid(intent);
-  const step = await result.blobSTEP().text();
-  return { step, entities: (step.match(/^#\d+/gm) ?? []).length };
+  const { solid, report } = await buildSolidRobust(intent);
+  const step = await solid.blobSTEP().text();
+  return { step, entities: (step.match(/^#\d+/gm) ?? []).length, fuseReport: report };
 }
 
 /**
@@ -250,8 +310,30 @@ export function auditDims(intent, solid) {
  * B-rep을 메시화해 AABB·부피·스테이션 프로파일 + 치수 전수 감사(auditDims)를 반환.
  * 드래프트(SCAD→WASM 메시, 클라 실측)와 같은 수학으로 재어 공정 비교가 되게 한다.
  */
+/**
+ * 메시 연결성 → 분리 덩어리(lump) 수. lumps>1 = 허공에 뜬 부품/미접합 배관 —
+ * "실제 제작 불가능" 신호(부유 감지). 정점을 0.01mm 격자로 합치고 union-find.
+ */
+export function meshLumps(v, triIdx) {
+  const key = new Map(); const id = [];
+  for (let i = 0; i < v.length; i += 3) {
+    const k = `${Math.round(v[i] * 100)},${Math.round(v[i + 1] * 100)},${Math.round(v[i + 2] * 100)}`;
+    let g = key.get(k);
+    if (g === undefined) { g = key.size; key.set(k, g); }
+    id.push(g);
+  }
+  const parent = Array.from({ length: key.size }, (_, i) => i);
+  const find = (x) => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+  const uni = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
+  const tri = triIdx ?? Array.from({ length: id.length }, (_, i) => i);
+  for (let i = 0; i < tri.length; i += 3) { uni(id[tri[i]], id[tri[i + 1]]); uni(id[tri[i + 1]], id[tri[i + 2]]); }
+  const roots = new Set();
+  for (let i = 0; i < tri.length; i++) roots.add(find(id[tri[i]]));
+  return roots.size;
+}
+
 export async function intentToRecordMeasure(intent) {
-  const result = await buildSolid(intent);
+  const { solid: result, report: fuseReport } = await buildSolidRobust(intent);
   let dims = null;
   try { dims = auditDims(intent, result); } catch { /* 감사 실패는 다른 측정을 막지 않음(정직: null) */ }
   const m = result.mesh({ tolerance: 0.05, angularTolerance: 15 });
@@ -276,6 +358,9 @@ export async function intentToRecordMeasure(intent) {
     triangles: tri.length / 3,
     profiles: stationProfiles(v, tri),
     dims,
+    // 제작 가능성 신호: lumps>1 = 허공 부품/미접합(부유) · fuseReport.dropped = 융합 제외분(정직 고지)
+    lumps: meshLumps(v, tri),
+    fuseReport: { total: fuseReport.total, fused: fuseReport.total - fuseReport.dropped.length, jittered: fuseReport.jittered, dropped: fuseReport.dropped },
   };
 }
 

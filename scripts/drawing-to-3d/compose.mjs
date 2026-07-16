@@ -66,6 +66,25 @@ export function normalizeFeatures(intent) {
     }
     if (f.kind === 'sphere' && !(f.diameter > 0) && Array.isArray(f.size) && f.size[0] > 0) f.diameter = f.size[0];
   }
+  // ── OCCT 견고화(위시빌더 260717): ① 완전 동일 피처 dedup — 공유 waypoint 스피어 등
+  // 동일 솔리드 자기융합은 OCCT abort. 기하 키만 비교(_col 등 표시속성 제외).
+  if (Array.isArray(intent.features)) {
+    const seen = new Set();
+    intent.features = intent.features.filter((f) => {
+      const k = JSON.stringify([f.kind, f.size, f.diameter, f.height, f.profile, f.at, f.op ?? 'add', f.pattern]);
+      if (seen.has(k)) return false;
+      seen.add(k); return true;
+    });
+    // ② 스피어 정확 외접(중심거리 = 반지름 합) → fuse 탄젠트 특이점. 뒤 스피어 지름 -1.4mm.
+    const sph = intent.features.filter((f) => f.kind === 'sphere' && f.diameter > 0 && Array.isArray(f.at?.translate) && !f.pattern);
+    for (let i = 1; i < sph.length; i++) {
+      for (let j = 0; j < i; j++) {
+        const a = sph[i].at.translate, b = sph[j].at.translate;
+        const dist = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+        if (Math.abs(dist - (sph[i].diameter + sph[j].diameter) / 2) < 0.6) sph[i].diameter = Math.max(2, sph[i].diameter - 1.4);
+      }
+    }
+  }
   return intent;
 }
 
