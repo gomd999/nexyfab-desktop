@@ -49,7 +49,7 @@ export async function assemblyPresetWithBuild(domain, templateId, params = {}) {
   const { buildAssembly } = await import('./assembly.mjs');
   const built = buildAssembly(assembly);
   if (!built.ok) return { ok: false, gatePassed: false, gateErrors: built.gateErrors, assembly };
-  return { ok: true, assembly, openscad: built.openscad, parts: built.parts, interferences: built.interferences, welds: built.welds, weldTotalMm: built.weldTotalMm, composeIntent: built.composeIntent, structural: built.structural };
+  return { ok: true, assembly, openscad: built.openscad, parts: built.parts, interferences: built.interferences, contacts: built.contacts ?? [], welds: built.welds, weldTotalMm: built.weldTotalMm, composeIntent: built.composeIntent, structural: built.structural };
 }
 
 /** domain+id+params → { ok, intent, scad, verify } (compose와 동일 형식). */

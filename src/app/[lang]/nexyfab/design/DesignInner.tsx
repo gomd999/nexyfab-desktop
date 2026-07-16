@@ -170,6 +170,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   // 생성 체감 개선(2026-07-16): 경과 시간·취소 + 어셈블리 스펙은 assemble 파이프로 라우팅
   const [elapsed, setElapsed] = useState(0);
   const runAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => { runAbortRef.current?.abort(); }, []); // 언마운트 시 진행 중 생성 중단
   const handoffTypeRef = useRef<'assembly' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errCode, setErrCode] = useState<string | null>(null); // PLAN_LIMIT 등 — 업셀 CTA 분기
@@ -181,8 +182,10 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   // §2.1 입구 B 도면 체크포인트 — 자유 서술(AI 해석)만 승인 게이트, 프리셋·판독은 스킵(§2.2)
   const [checkpoint, setCheckpoint] = useState<CheckpointData | null>(null);
   const [cpState, setCpState] = useState<'none' | 'pending' | 'approved' | 'skipped'>('none');
-  // 그물 ④ — 어셈블리 빌드 결과의 간섭 건수(null=어셈블리 아님)
+  // 그물 ④ — 어셈블리 빌드 결과의 간섭 건수(null=어셈블리 아님/단품).
+  // 설계가 바뀌면 반드시 무효화 — pendingInterfRef를 applyDesign이 소비하는 구조(감사 3차).
   const [interf, setInterf] = useState<number | null>(null);
+  const pendingInterfRef = useRef<number | null>(null);
   const [bbox, setBbox] = useState<Bbox | null>(null);
   const [featureCount, setFeatureCount] = useState<number | null>(null);
 
@@ -353,6 +356,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       // pending 체크포인트 카드도 정리 — 남겨두면 옛 intent로 재승인해 방금 형상을 덮어쓴다.
       setCheckpoint(null);
       setCpState((s) => (s === 'approved' ? s : 'skipped'));
+      setInterf(pendingInterfRef.current); // 새 설계의 간섭(어셈블리) 또는 null(단품) — 잔존 방지
+      pendingInterfRef.current = null;
       setDiffRes(null); // 설계가 바뀌면 이전 듀얼-방출 대조 결과는 무효
       setDiffDraftProfiles(null);
       setVisRes(null); // vision 비평도 무효
@@ -416,7 +421,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         const data: ComposeResp = raw.ok && isAssembly
           ? { ok: true, intent: (raw.composeIntent ?? { name: 'assembly' }) as ComposeOk['intent'], scad: String(raw.openscad ?? ''), rounds: (raw as { rounds?: number }).rounds ?? 1, verify: null }
           : raw;
-        if (isAssembly && raw.ok) setInterf(Array.isArray(raw.interferences) ? raw.interferences.length : 0); // 그물 ④
+        if (isAssembly && raw.ok) pendingInterfRef.current = Array.isArray(raw.interferences) ? raw.interferences.length : 0; // 그물 ④ — applyDesign(승인 시점)이 소비
         if (!data.ok) {
           setErrCode((raw as { code?: string }).code ?? null);
           if (data.gateErrors?.length) setGateErrors(data.gateErrors);
@@ -761,7 +766,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                     setError(null); setGateErrors(null); setExportMsg(null);
                     await applyDesign(i, s, null);
                   }}
-                  onBuildInfo={(info) => setInterf(info.interferences)}
+                  onBuildInfo={(info) => { pendingInterfRef.current = info.interferences; }}
                 />
               )}
             </div>

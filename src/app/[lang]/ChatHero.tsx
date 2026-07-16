@@ -88,6 +88,7 @@ function saveThreadsLocal(list: Thread[]) {
   try {
     const trimmed = list.slice(0, 50).map((t2) => ({ ...t2, msgs: t2.msgs.slice(-60).map((m) => (m.image ? { ...m, image: undefined, content: m.content || '📎' } : m)) }));
     localStorage.setItem(THREADS_KEY, JSON.stringify(trimmed));
+    try { window.dispatchEvent(new Event('nf-threads-updated')); } catch { /* 사이드바 같은 탭 갱신 */ }
   } catch { /* quota — skip */ }
 }
 
@@ -369,7 +370,7 @@ const DICT: Record<Lang, {
     stop: '중단', copyMsg: '복사', copied: '복사됨 ✓', regen: '다시 생성',
     stageAnalyze: '요청 분석 중…', stageCalc: '계산 실행 중…', stageCad: '3D 모델 생성 중…',
     fuText: ['더 자세히 설명해줘', '핵심만 요약해줘', '관련 기준(KDS 등)은?'], fuCalc: ['이 결과의 근거를 설명해줘', '어떤 조건이면 부적합이 되나?'], fuCad: ['이 설계의 제조 리스크는?', '적합한 재질을 추천해줘'],
-    clashWarn: '부품이 겹칩니다 — 아직 완성체가 아닙니다. 아래 칩으로 교정을 요청하거나 치수를 알려주세요.', fuFixClash: '간섭(부품 겹침)을 해결하도록 배치를 수정해줘', threadLimit: '이 대화는 무료 한도(3회)에 도달했어요 — 새 대화로 계속하거나 Pro에서 무제한으로 이어가세요.', proCta: 'Pro 보기', cadContacts: '접촉 {n}', photoHint: '📷 사진은 형태 힌트로만 씁니다(치수 미판독 — 정책 §3). {label}(으)로 보입니다. 핵심 치수를 알려주시면 생성할게요.', attachDrawing: '도면', attachPhoto: '사진',
+    clashWarn: '부품이 겹칩니다 — 아직 완성체가 아닙니다. 아래 칩으로 교정을 요청하거나 치수를 알려주세요.', fuFixClash: '간섭(부품 겹침)을 해결하도록 배치를 수정해줘', threadLimit: '이 대화는 무료 한도({n}회)에 도달했어요 — 새 대화로 계속하거나 Pro에서 무제한으로 이어가세요.', proCta: 'Pro 보기', cadContacts: '접촉 {n}', photoHint: '📷 사진은 형태 힌트로만 씁니다(치수는 읽지 않아요). {label}(으)로 보입니다. 핵심 치수를 알려주시면 생성할게요.', attachDrawing: '도면', attachPhoto: '사진',
     calcRunning: '검토 실행 중…', calcPass: '적합', calcFail: '부적합', calcRefs: '근거',
     cadGenerating: '3D 모델 생성 중…', cadNoPreview: '이 형상의 3D 미리보기는 배포 환경에서 제공됩니다. 아래 SCAD로 확인하세요.', cadDownload: 'SCAD 다운로드',
     cadSpecTitle: '이 사양으로 정밀 3D를 생성할까요?', cadConfirm: '확인 · 정밀 3D 생성', cadBuilding: '정밀 형상(STEP) 생성 중…', cadStepDownload: 'STEP 다운로드', cadGate: '결정론 게이트',
@@ -393,7 +394,7 @@ const DICT: Record<Lang, {
     stop: 'Stop', copyMsg: 'Copy', copied: 'Copied ✓', regen: 'Regenerate',
     stageAnalyze: 'Analyzing request…', stageCalc: 'Running calculation…', stageCad: 'Generating 3D model…',
     fuText: ['Explain in more detail', 'Summarize the key points', 'Which codes/standards apply?'], fuCalc: ['Explain the basis of this result', 'Under what conditions would it fail?'], fuCad: ['What are the manufacturing risks?', 'Recommend a suitable material'],
-    clashWarn: 'Parts overlap — this is not a finished assembly yet. Ask for a fix below or give exact dims.', fuFixClash: 'Fix the interferences by adjusting part placement', threadLimit: 'This chat reached the free limit (3 turns) — start a new chat or go unlimited with Pro.', proCta: 'See Pro', cadContacts: '{n} contacts', photoHint: '📷 Photos are shape hints only (no dims read). Looks like {label}. Give key dims and I will generate.', attachDrawing: 'Drawing', attachPhoto: 'Photo',
+    clashWarn: 'Parts overlap — this is not a finished assembly yet. Ask for a fix below or give exact dims.', fuFixClash: 'Fix the interferences by adjusting part placement', threadLimit: 'This chat reached the free limit ({n} turns) — start a new chat or go unlimited with Pro.', proCta: 'See Pro', cadContacts: '{n} contacts', photoHint: '📷 Photos are shape hints only (no dims read). Looks like {label}. Give key dims and I will generate.', attachDrawing: 'Drawing', attachPhoto: 'Photo',
     calcRunning: 'Running check…', calcPass: 'PASS', calcFail: 'FAIL', calcRefs: 'Refs',
     cadGenerating: 'Generating 3D model…', cadNoPreview: 'A 3D preview of this shape is available in the deployed environment — see the SCAD below.', cadDownload: 'Download SCAD',
     cadSpecTitle: 'Generate the precise 3D from this spec?', cadConfirm: 'Confirm · build 3D', cadBuilding: 'Building precise geometry (STEP)…', cadStepDownload: 'Download STEP', cadGate: 'Deterministic gate',
@@ -417,7 +418,7 @@ const DICT: Record<Lang, {
     stop: '停止', copyMsg: 'コピー', copied: 'コピー済み ✓', regen: '再生成',
     stageAnalyze: 'リクエスト分析中…', stageCalc: '計算実行中…', stageCad: '3Dモデル生成中…',
     fuText: ['もっと詳しく説明して', '要点をまとめて', '関連する基準は?'], fuCalc: ['この結果の根拠を説明して', 'どんな条件で不適合になる?'], fuCad: ['この設計の製造リスクは?', '適した材質を提案して'],
-    clashWarn: '部品が干渉しています — まだ完成形ではありません。下のチップで修正を依頼するか寸法を指定してください。', fuFixClash: '干渉を解消するよう配置を修正して', threadLimit: 'この会話は無料上限(3回)に達しました — 新しいチャットで続けるか、Proで無制限に。', proCta: 'Proを見る', cadContacts: '接触 {n}', photoHint: '📷 写真は形状ヒントのみ(寸法は読みません)。{label}のようです。主要寸法を教えてください。', attachDrawing: '図面', attachPhoto: '写真',
+    clashWarn: '部品が干渉しています — まだ完成形ではありません。下のチップで修正を依頼するか寸法を指定してください。', fuFixClash: '干渉を解消するよう配置を修正して', threadLimit: 'この会話は無料上限({n}回)に達しました — 新しいチャットで続けるか、Proで無制限に。', proCta: 'Proを見る', cadContacts: '接触 {n}', photoHint: '📷 写真は形状ヒントのみ(寸法は読みません)。{label}のようです。主要寸法を教えてください。', attachDrawing: '図面', attachPhoto: '写真',
     calcRunning: '検討を実行中…', calcPass: '適合', calcFail: '不適合', calcRefs: '根拠',
     cadGenerating: '3Dモデル生成中…', cadNoPreview: 'この形状の3Dプレビューは本番環境で提供されます。下のSCADをご確認ください。', cadDownload: 'SCADをダウンロード',
     cadSpecTitle: 'この仕様で精密3Dを生成しますか？', cadConfirm: '確認 · 精密3D生成', cadBuilding: '精密形状(STEP)を生成中…', cadStepDownload: 'STEPをダウンロード', cadGate: '決定論ゲート',
@@ -441,7 +442,7 @@ const DICT: Record<Lang, {
     stop: '停止', copyMsg: '复制', copied: '已复制 ✓', regen: '重新生成',
     stageAnalyze: '正在分析请求…', stageCalc: '正在执行计算…', stageCad: '正在生成3D模型…',
     fuText: ['再详细解释一下', '总结要点', '适用哪些规范/标准?'], fuCalc: ['解释这个结果的依据', '什么条件下会不合格?'], fuCad: ['这个设计的制造风险是什么?', '推荐合适的材料'],
-    clashWarn: '部件重叠 — 尚未是完整装配体。请用下方按钮要求修正或提供准确尺寸。', fuFixClash: '调整部件位置以消除干涉', threadLimit: '本对话已达免费上限(3次) — 新建对话继续，或升级 Pro 无限使用。', proCta: '查看 Pro', cadContacts: '接触 {n}', photoHint: '📷 照片仅用作形状提示(不读取尺寸)。看起来是{label}。请提供关键尺寸即可生成。', attachDrawing: '图纸', attachPhoto: '照片',
+    clashWarn: '部件重叠 — 尚未是完整装配体。请用下方按钮要求修正或提供准确尺寸。', fuFixClash: '调整部件位置以消除干涉', threadLimit: '本对话已达免费上限({n}次) — 新建对话继续，或升级 Pro 无限使用。', proCta: '查看 Pro', cadContacts: '接触 {n}', photoHint: '📷 照片仅用作形状提示(不读取尺寸)。看起来是{label}。请提供关键尺寸即可生成。', attachDrawing: '图纸', attachPhoto: '照片',
     calcRunning: '正在计算…', calcPass: '合格', calcFail: '不合格', calcRefs: '依据',
     cadGenerating: '正在生成3D模型…', cadNoPreview: '该形状的3D预览在部署环境中提供，请查看下方SCAD。', cadDownload: '下载SCAD',
     cadSpecTitle: '按此规格生成精确3D？', cadConfirm: '确认 · 生成3D', cadBuilding: '正在生成精确几何(STEP)…', cadStepDownload: '下载STEP', cadGate: '确定性门控',
@@ -465,7 +466,7 @@ const DICT: Record<Lang, {
     stop: 'Detener', copyMsg: 'Copiar', copied: 'Copiado ✓', regen: 'Regenerar',
     stageAnalyze: 'Analizando solicitud…', stageCalc: 'Ejecutando cálculo…', stageCad: 'Generando modelo 3D…',
     fuText: ['Explica con más detalle', 'Resume los puntos clave', '¿Qué normas aplican?'], fuCalc: ['Explica la base de este resultado', '¿En qué condiciones fallaría?'], fuCad: ['¿Riesgos de fabricación?', 'Recomienda un material adecuado'],
-    clashWarn: 'Las piezas se superponen — aún no es un conjunto terminado. Pide una corrección abajo o da cotas exactas.', fuFixClash: 'Corrige las interferencias ajustando la posición de las piezas', threadLimit: 'Este chat alcanzó el límite gratis (3 turnos) — abre un chat nuevo o pásate a Pro sin límites.', proCta: 'Ver Pro', cadContacts: '{n} contactos', photoHint: '📷 Las fotos son solo pista de forma (sin cotas). Parece {label}. Dame las cotas clave y lo genero.', attachDrawing: 'Plano', attachPhoto: 'Foto',
+    clashWarn: 'Las piezas se superponen — aún no es un conjunto terminado. Pide una corrección abajo o da cotas exactas.', fuFixClash: 'Corrige las interferencias ajustando la posición de las piezas', threadLimit: 'Este chat alcanzó el límite gratis ({n} turnos) — abre un chat nuevo o pásate a Pro sin límites.', proCta: 'Ver Pro', cadContacts: '{n} contactos', photoHint: '📷 Las fotos son solo pista de forma (sin cotas). Parece {label}. Dame las cotas clave y lo genero.', attachDrawing: 'Plano', attachPhoto: 'Foto',
     calcRunning: 'Calculando…', calcPass: 'CUMPLE', calcFail: 'NO CUMPLE', calcRefs: 'Refs',
     cadGenerating: 'Generando modelo 3D…', cadNoPreview: 'La vista 3D de esta forma está disponible en el entorno desplegado — consulta el SCAD abajo.', cadDownload: 'Descargar SCAD',
     cadSpecTitle: '¿Generar el 3D preciso con esta especificación?', cadConfirm: 'Confirmar · generar 3D', cadBuilding: 'Generando geometría precisa (STEP)…', cadStepDownload: 'Descargar STEP', cadGate: 'Compuerta determinista',
@@ -489,7 +490,7 @@ const DICT: Record<Lang, {
     stop: 'إيقاف', copyMsg: 'نسخ', copied: 'تم النسخ ✓', regen: 'إعادة التوليد',
     stageAnalyze: 'جارٍ تحليل الطلب…', stageCalc: 'جارٍ تنفيذ الحساب…', stageCad: 'جارٍ إنشاء النموذج ثلاثي الأبعاد…',
     fuText: ['اشرح بمزيد من التفصيل', 'لخّص النقاط الأساسية', 'ما المعايير ذات الصلة؟'], fuCalc: ['اشرح أساس هذه النتيجة', 'في أي ظروف تصبح غير مطابقة؟'], fuCad: ['ما مخاطر التصنيع لهذا التصميم؟', 'اقترح مادة مناسبة'],
-    clashWarn: 'الأجزاء متداخلة — ليست مجموعة مكتملة بعد. اطلب تصحيحًا أدناه أو حدّد الأبعاد.', fuFixClash: 'عالج التداخل بتعديل مواضع الأجزاء', threadLimit: 'وصلت هذه المحادثة إلى الحد المجاني (3 رسائل) — ابدأ محادثة جديدة أو انتقل إلى Pro بلا حدود.', proCta: 'عرض Pro', cadContacts: 'تماس {n}', photoHint: '📷 الصور تلميح شكلي فقط (بدون أبعاد). يبدو {label}. أعطني الأبعاد الرئيسية للإنشاء.', attachDrawing: 'مخطط', attachPhoto: 'صورة',
+    clashWarn: 'الأجزاء متداخلة — ليست مجموعة مكتملة بعد. اطلب تصحيحًا أدناه أو حدّد الأبعاد.', fuFixClash: 'عالج التداخل بتعديل مواضع الأجزاء', threadLimit: 'وصلت هذه المحادثة إلى الحد المجاني ({n} رسائل) — ابدأ محادثة جديدة أو انتقل إلى Pro بلا حدود.', proCta: 'عرض Pro', cadContacts: 'تماس {n}', photoHint: '📷 الصور تلميح شكلي فقط (بدون أبعاد). يبدو {label}. أعطني الأبعاد الرئيسية للإنشاء.', attachDrawing: 'مخطط', attachPhoto: 'صورة',
     calcRunning: 'جارٍ الفحص…', calcPass: 'مطابق', calcFail: 'غير مطابق', calcRefs: 'المراجع',
     cadGenerating: 'جارٍ إنشاء النموذج ثلاثي الأبعاد…', cadNoPreview: 'تتوفر معاينة ثلاثية الأبعاد لهذا الشكل في بيئة النشر — راجع SCAD أدناه.', cadDownload: 'تنزيل SCAD',
     cadSpecTitle: 'هل تُنشئ نموذجًا دقيقًا بهذه المواصفات؟', cadConfirm: 'تأكيد · بناء 3D', cadBuilding: 'جارٍ بناء الشكل الدقيق (STEP)…', cadStepDownload: 'تنزيل STEP', cadGate: 'بوابة حتمية',
@@ -1010,7 +1011,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       if (!t2) { setActiveId(null); setMessages([]); }
       else {
         const cur = loadThreads().find((x) => x.id === t2);
-        if (cur) { setActiveId(cur.id); setDomain(cur.domain); setMessages(cur.msgs); }
+        if (cur) { setActiveId(cur.id); setDomain(cur.domain); setMessages(cur.msgs.map((m) => (m.cad?.composing ? { ...m, cad: undefined } : m))); }
       }
     };
     window.addEventListener('popstate', onPop);
@@ -1104,7 +1105,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
   const openThread = (id: string) => {
     const th = threads.find((x) => x.id === id);
     if (!th) return;
-    setActiveId(id); setDomain(th.domain); setMessages(th.msgs); setSideOpen(false);
+    setActiveId(id); setDomain(th.domain); setMessages(th.msgs.map((m) => (m.cad?.composing ? { ...m, cad: undefined } : m))); setSideOpen(false);
     try { window.history.pushState({ t: id }, '', '?t=' + id); } catch { /* ignore */ }
   };
   const newThread = () => {
@@ -1158,12 +1159,12 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
   // 채팅은 좌측, 우측에 상시 3D 패널(Genspark/Canvas 문법). 좁은 화면은 인라인 카드 유지.
   const [wideScreen, setWideScreen] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1100px)');
+    const mq = window.matchMedia(appMode ? '(min-width: 1380px)' : '(min-width: 1100px)'); // appMode=사이드바 220px 감안(1100~1380 잘림 방지)
     const on = () => setWideScreen(mq.matches);
     on();
     mq.addEventListener('change', on);
     return () => mq.removeEventListener('change', on);
-  }, []);
+  }, [appMode]);
   const latestCad = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       const c = messages[i].cad;
@@ -1295,7 +1296,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       abortRef.current = null;
       autoscroll();
     }
-  }, [input, loading, messages, domain, t]);
+  }, [input, loading, messages, domain, t, plan]);
 
   // 마지막 user 발화 이후를 걷어내고 재전송 — 히스토리에서 직전 답을 제외해 같은 답 재생산을 피한다
   const regen = () => {
@@ -1303,6 +1304,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     let ui = -1;
     for (let i = messages.length - 1; i >= 0; i--) { if (messages[i].role === 'user') { ui = i; break; } }
     if (ui < 0) return;
+    if (messages[ui].image || !messages[ui].content.trim()) return; // 이미지 턴은 재생성 미지원(삭제 손실 방지)
     const text = messages[ui].content;
     const hist = messages.slice(0, ui).slice(-8);
     setMessages(messages.slice(0, ui));
@@ -1498,7 +1500,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
                   {m.role === 'assistant' && m.content && !m.content.startsWith('⚠️') && !(loading && i === messages.length - 1) && (
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button onClick={() => { void navigator.clipboard?.writeText(m.content).then(() => { setCopiedIdx(i); setTimeout(() => setCopiedIdx(null), 1200); }).catch(() => {}); }} style={GHOST_BTN}>{copiedIdx === i ? t.copied : t.copyMsg}</button>
-                      {!loading && i === messages.length - 1 && (
+                      {!loading && i === messages.length - 1 && !(messages[i - 1]?.image) && (
                         <button onClick={regen} style={GHOST_BTN}>↻ {t.regen}</button>
                       )}
                     </div>
@@ -1556,7 +1558,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
         {/* 스레드당 무료 3회 한도 배너 — 새 대화 or Pro */}
         {threadLimitReached && (
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', margin: '0 0 12px', padding: '10px 14px', borderRadius: 12, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)' }}>
-            <span style={{ fontSize: 12.5, color: '#fcd34d' }}>{t.threadLimit}</span>
+            <span style={{ fontSize: 12.5, color: '#fcd34d' }}>{t.threadLimit.replace('{n}', String(FREE_TURNS_PER_THREAD))}</span>
             <button type="button" onClick={() => { newThread(); }} style={{ fontSize: 12.5, fontWeight: 800, color: '#fff', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', padding: '6px 14px', borderRadius: 9, cursor: 'pointer' }}>＋ {t.newChat}</button>
             <a href={`/${langCode}/pricing/`} style={{ fontSize: 12.5, fontWeight: 800, color: '#fff', background: accent, padding: '6px 14px', borderRadius: 9, textDecoration: 'none', whiteSpace: 'nowrap' }}>{t.proCta} →</a>
           </div>

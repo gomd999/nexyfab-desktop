@@ -349,7 +349,8 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
           <div className="nf-persona-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
             {[
               { iconName: 'tools' as const, title: t.persona1Title, desc: t.persona1Desc, cta: t.persona1Cta, href: '#nf-chat', color: '#3b82f6' },
-              { iconName: 'clipboard' as const, title: t.persona2Title, desc: t.persona2Desc, cta: t.persona2Cta, href: `/${langCode}/quick-quote/`, color: '#8b5cf6' },
+              // persona2 견적 CTA도 챗 흐름으로(2026-07-16 IA — quick-quote 헤더 제거와 정합)
+              { iconName: 'clipboard' as const, title: t.persona2Title, desc: t.persona2Desc, cta: t.persona2Cta, href: '#nf-chat', color: '#8b5cf6' },
               { iconName: 'rocket' as const, title: t.persona3Title, desc: t.persona3Desc, cta: t.persona3Cta, href: `/${langCode}/project-inquiry/`, color: '#10b981' },
             ].map((p, i) => (
               <article key={i} className="reveal" style={{

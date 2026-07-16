@@ -116,7 +116,8 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
     load();
     window.addEventListener('storage', load);
     window.addEventListener('focus', load);
-    return () => { window.removeEventListener('storage', load); window.removeEventListener('focus', load); };
+    window.addEventListener('nf-threads-updated', load); // 같은 탭 저장(storage 이벤트 미발화) 대응
+    return () => { window.removeEventListener('storage', load); window.removeEventListener('focus', load); window.removeEventListener('nf-threads-updated', load); };
   }, []);
 
   // Close avatar dropdown on outside click / Escape.
@@ -171,7 +172,6 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
           .nf-uni-label { display: none !important; }
           .nf-uni-section-title { display: none !important; }
           .nf-uni-brand-text { display: none !important; }
-          .nf-uni-chat-item { display: none !important; }
         }
       `}</style>
       <aside
@@ -220,7 +220,7 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
 
         {/* Sections */}
         <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
-          {([SECTION_MAIN, 'CHAT', SECTION_BOTTOM] as Array<NavSection | 'CHAT'>).map((sec) => sec === 'CHAT' ? (
+          {([SECTION_MAIN, 'CHAT', SECTION_BOTTOM] as Array<NavSection | 'CHAT'>).map((sec) => sec === 'CHAT' ? (chatThreads.length === 0 ? null : (
             /* 채팅 내역 — AI 설계(랜딩 챗)와 스튜디오 통합 IA(2026-07-16): 대화 재진입 경로 */
             <div key="chat" style={{ marginBottom: 8 }}>
               <div className="nf-uni-section-title" style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '10px 14px 4px' }}>
@@ -243,7 +243,7 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
                 </a>
               ))}
             </div>
-          ) : (
+          )) : (
             <div key={sec.items[0]?.href ?? sec.titleEn} style={{ marginBottom: 8 }}>
               {(isKo ? sec.titleKo : sec.titleEn) !== '' && (
                 <div
