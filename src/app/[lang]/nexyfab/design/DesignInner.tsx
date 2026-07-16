@@ -58,6 +58,75 @@ interface Bbox {
   z: number;
 }
 
+// §12.4/§13-4 스테이션 실루엣 프로파일 — 서버(to-step.mjs stationProfiles)와 동일 수학.
+// 비인덱스 STL(9float=1삼각형) 에지-평면 교차 샘플링(정점 비닝은 긴 삼각형을 놓침).
+interface AxisProfile { axis: string; w1: number[]; w2: number[] }
+function stationProfilesClient(v: Float32Array, N = 24): AxisProfile[] {
+  const mins = [Infinity, Infinity, Infinity], maxs = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < v.length; i += 3) {
+    for (let a = 0; a < 3; a++) { const x = v[i + a]; if (x < mins[a]) mins[a] = x; if (x > maxs[a]) maxs[a] = x; }
+  }
+  const out: AxisProfile[] = [];
+  for (const [A, U, W] of [[0, 1, 2], [1, 0, 2], [2, 0, 1]] as const) {
+    const lo = mins[A], range = (maxs[A] - lo) || 1;
+    const minU = new Array<number>(N).fill(Infinity), maxU = new Array<number>(N).fill(-Infinity);
+    const minW = new Array<number>(N).fill(Infinity), maxW = new Array<number>(N).fill(-Infinity);
+    const edge = (p: number, q: number) => {
+      const a0 = v[p + A], a1 = v[q + A];
+      const sLo = ((Math.min(a0, a1) - lo) / range) * N - 0.5, sHi = ((Math.max(a0, a1) - lo) / range) * N - 0.5;
+      for (let s = Math.max(0, Math.ceil(sLo)); s <= Math.min(N - 1, Math.floor(sHi)); s++) {
+        const station = lo + ((s + 0.5) / N) * range;
+        const denom = a1 - a0;
+        const t = Math.abs(denom) < 1e-12 ? 0 : (station - a0) / denom;
+        if (t < -1e-9 || t > 1 + 1e-9) continue;
+        const u = v[p + U] + t * (v[q + U] - v[p + U]);
+        const w = v[p + W] + t * (v[q + W] - v[p + W]);
+        if (u < minU[s]) minU[s] = u; if (u > maxU[s]) maxU[s] = u;
+        if (w < minW[s]) minW[s] = w; if (w > maxW[s]) maxW[s] = w;
+      }
+    };
+    for (let i = 0; i + 8 < v.length; i += 9) { edge(i, i + 3); edge(i + 3, i + 6); edge(i + 6, i); }
+    out.push({
+      axis: 'xyz'[A],
+      w1: minU.map((m, s) => (m === Infinity ? 0 : +(maxU[s] - m).toFixed(3))),
+      w2: minW.map((m, s) => (m === Infinity ? 0 : +(maxW[s] - m).toFixed(3))),
+    });
+  }
+  return out;
+}
+
+// 실루엣 오버레이 차트 — 드래프트(실선 파랑) vs 기록(점선 빨강), 두 수직 폭을 함께
+function ProfileChart({ d, r, label }: { d: AxisProfile; r: AxisProfile; label: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current; const ctx = c?.getContext('2d');
+    if (!c || !ctx) return;
+    const Wc = c.width, Hc = c.height, PAD = 4;
+    ctx.clearRect(0, 0, Wc, Hc);
+    const all = [...d.w1, ...d.w2, ...r.w1, ...r.w2];
+    const maxV = Math.max(...all, 1);
+    const line = (arr: number[], color: string, dash: boolean) => {
+      ctx.strokeStyle = color; ctx.lineWidth = 1.2; ctx.setLineDash(dash ? [3, 2] : []);
+      ctx.beginPath();
+      arr.forEach((vv, i) => {
+        const x = PAD + (i / (arr.length - 1)) * (Wc - PAD * 2);
+        const y = Hc - PAD - (vv / maxV) * (Hc - PAD * 2);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    };
+    line(d.w1, '#3b82f6', false); line(r.w1, '#ef4444', true);
+    line(d.w2, '#60a5fa', false); line(r.w2, '#f59e0b', true);
+    ctx.setLineDash([]);
+  }, [d, r]);
+  return (
+    <div style={{ flex: 1, textAlign: 'center' }}>
+      <canvas ref={ref} width={110} height={64} style={{ width: '100%', border: '1px solid var(--nx-border, #dfe3e8)', borderRadius: 6, background: 'var(--nx-bg, #f8fafc)' }} />
+      <div style={{ fontSize: 9, color: 'var(--nx-text-3, #6b7684)' }}>{label}</div>
+    </div>
+  );
+}
+
 const EXAMPLES_KO = [
   '내경 500mm 원통형 물탱크, 높이 800mm, 벽두께 5mm, 바닥에 원뿔형 배출구(45도), 중앙에 지름 25mm 교반축',
   '가로 300 세로 200 두께 12 알루미늄 플레이트, 네 모서리에 지름 8 볼트홀, 중앙에 지름 40 관통',
@@ -267,6 +336,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       // 체크포인트 승인 경로가 아니면(프리셋·판독·어셈블리) '생략'으로 정직 표기(§2.2)
       setCpState((s) => (s === 'approved' ? s : 'skipped'));
       setDiffRes(null); // 설계가 바뀌면 이전 듀얼-방출 대조 결과는 무효
+      setDiffDraftProfiles(null);
+      setVisRes(null); // vision 비평도 무효
       setIntent(intentObj);
       setScad(scadStr);
       setVerify(verifyObj);
@@ -296,6 +367,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setError(null);
       setGateErrors(null);
       setExportMsg(null);
+      lastPromptRef.current = desc; // vision 비평의 판정 기준(요청한 물건)으로 사용
       setStatus(ko ? 'AI가 설계를 조합하고 검증하는 중…' : 'Composing & verifying the design…');
       try {
         const res = await fetch('/api/nexyfab/drawing/compose/', {
@@ -355,8 +427,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
 
   // §8-③ 역투영 diff v1 — 듀얼-방출 교차검증: 드래프트(뷰어 메시) 실측 vs 기록(OCCT) 실측
   interface DiffCheck { name: string; draft: number; record: number; diff: number; tol: number; pass: boolean }
-  type DiffRes = { ok: true; verdict: string; checks: DiffCheck[]; notes?: string[] } | { ok: false; stage?: string; error?: string };
+  type DiffRes = { ok: true; verdict: string; checks: DiffCheck[]; record?: { profiles?: AxisProfile[] }; notes?: string[] } | { ok: false; stage?: string; error?: string };
   const [diffRes, setDiffRes] = useState<DiffRes | null>(null);
+  const [diffDraftProfiles, setDiffDraftProfiles] = useState<AxisProfile[] | null>(null);
   const [diffBusy, setDiffBusy] = useState(false);
   const runReprojectDiff = useCallback(async () => {
     const geom = meshRef.current?.geometry;
@@ -376,9 +449,12 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           + a[i + 1] * (a[i + 5] * a[i + 6] - a[i + 3] * a[i + 8])
           + a[i + 2] * (a[i + 3] * a[i + 7] - a[i + 4] * a[i + 6]);
       }
+      const profiles = stationProfilesClient(a);
+      setDiffDraftProfiles(profiles);
       const draft = {
         bbox: { x: +(bb.max.x - bb.min.x).toFixed(3), y: +(bb.max.y - bb.min.y).toFixed(3), z: +(bb.max.z - bb.min.z).toFixed(3) },
         volume: +Math.abs(vol6 / 6).toFixed(1),
+        profiles,
       };
       const res = await fetch('/api/nexyfab/drawing/reproject-diff/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -391,6 +467,31 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setDiffBusy(false);
     }
   }, [intent]);
+
+  // §7 그물 ⑤ vision 비평 — 렌더 스크린샷을 Gemini가 "요청한 물건으로 보이는가"로 판정.
+  // 교정 SCAD는 적용하지 않는다(정직: intent와 어긋난 기하 주입 금지 — 수정은 재생성으로).
+  const [visRes, setVisRes] = useState<{ faithful: boolean; issues: string[] } | { error: string } | null>(null);
+  const [visBusy, setVisBusy] = useState(false);
+  const lastPromptRef = useRef<string>('');
+  const runVisionCritique = useCallback(async () => {
+    const canvas = rendererRef.current?.domElement;
+    if (!canvas || !scad) return;
+    setVisBusy(true);
+    setVisRes(null);
+    try {
+      const subject = lastPromptRef.current.trim() || intent?.name || 'the design';
+      const res = await fetch('/api/nexyfab/scad-vision-critique/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: canvas.toDataURL('image/png'), prompt: subject, scad }),
+      });
+      const j = (await res.json()) as { faithful?: boolean; issues?: string[] };
+      setVisRes({ faithful: j.faithful !== false, issues: Array.isArray(j.issues) ? j.issues : [] });
+    } catch (e) {
+      setVisRes({ error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setVisBusy(false);
+    }
+  }, [scad, intent]);
 
   const download = (filename: string, content: string, mime: string) => {
     const blob = new Blob([content], { type: mime });
@@ -512,32 +613,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 ))}
               </div>
             )}
-            {/* 결정론 파라메트릭 프리셋(완벽화 Pillar ①) — 해당 분야에서 AI보다 우선 노출 */}
-            {domain?.parametric && (
-              <ParametricPresetPanel
-                lang={lang}
-                domain={domain.slug}
-                onApply={async (i, s, v) => {
-                  setError(null); setGateErrors(null); setExportMsg(null);
-                  await applyDesign(i, s, v ?? null);
-                }}
-              />
-            )}
-            {/* 도메인 어셈블리 템플릿(#6) — RC 골조·파고라·데크·카페. 템플릿 없는 분야는 자동 미노출 */}
-            {domain && (
-              <AssemblyPresetPanel
-                lang={lang}
-                domain={domain.slug}
-                onApply={async (i, s) => {
-                  setError(null); setGateErrors(null); setExportMsg(null);
-                  await applyDesign(i, s, null);
-                }}
-              />
-            )}
+            {/* 채팅-우선(2026-07-16 사용자 결정): 자유 서술이 1순위, 템플릿 갤러리는 아래 */}
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text-3, #6b7684)' }}>
-              {domain?.parametric
-                ? ko ? '또는 자유 서술로 설계' : 'Or describe freely'
-                : ko ? '무엇을 설계할까요?' : 'What do you want to design?'}
+              {ko ? '무엇을 설계할까요?' : 'What do you want to design?'}
             </label>
             <textarea
               value={prompt}
@@ -571,7 +649,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             {/* 분야 프리셋(갤러리) 또는 일반 예시 */}
             <div style={{ marginTop: 10 }}>
               <div style={{ fontSize: 11, color: 'var(--nx-text-3, #6b7684)', marginBottom: 4 }}>
-                {domain ? (ko ? '분야 프리셋' : 'Domain presets') : ko ? '예시' : 'Examples'}
+                {domain ? (ko ? '분야 예시 — 누르면 바로 생성' : 'Domain examples — click to generate') : ko ? '예시' : 'Examples'}
               </div>
               {domain
                 ? domain.presets.map((p, i) => {
@@ -608,6 +686,30 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                       {ex}
                     </button>
                   ))}
+            </div>
+
+            {/* 템플릿 갤러리 — 채팅 아래(카드 클릭=즉시 생성은 유지) */}
+            <div style={{ marginTop: 12 }}>
+              {domain?.parametric && (
+                <ParametricPresetPanel
+                  lang={lang}
+                  domain={domain.slug}
+                  onApply={async (i, s, v) => {
+                    setError(null); setGateErrors(null); setExportMsg(null);
+                    await applyDesign(i, s, v ?? null);
+                  }}
+                />
+              )}
+              {domain && (
+                <AssemblyPresetPanel
+                  lang={lang}
+                  domain={domain.slug}
+                  onApply={async (i, s) => {
+                    setError(null); setGateErrors(null); setExportMsg(null);
+                    await applyDesign(i, s, null);
+                  }}
+                />
+              )}
             </div>
 
             {/* 기계 전문 도구 — 구 사이드바 '도구' 섹션의 새 집(2026-07-16 IA) */}
@@ -668,8 +770,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 label: ko ? '③ 역투영 diff(방출 오류 — 듀얼-방출 대조)' : '③ Re-projection diff (dual-emission)',
                 status: diffRes ? (diffRes.ok ? (diffRes.verdict === 'PASS' ? 'pass' : 'fail') : 'skip') : 'todo',
                 note: diffRes
-                  ? (diffRes.ok ? (ko ? `v1: 외형 3축+부피 — ${diffRes.verdict}` : `v1: extents+volume — ${diffRes.verdict}`) : (diffRes.stage === 'unsupported' ? (ko ? '기록 커널 미지원 형상' : 'unsupported by record kernel') : (ko ? '실행 실패' : 'run failed')))
-                  : (ko ? '아래 버튼으로 실행 (v1: 외형 3축+부피)' : 'run below (v1: extents+volume)'),
+                  ? (diffRes.ok ? (ko ? `외형+부피+단면 프로파일 — ${diffRes.verdict}` : `extents+volume+sections — ${diffRes.verdict}`) : (diffRes.stage === 'unsupported' ? (ko ? '기록 커널 미지원 형상' : 'unsupported by record kernel') : (ko ? '실행 실패' : 'run failed')))
+                  : (ko ? '아래 버튼으로 실행 (외형·부피·단면 실루엣)' : 'run below (extents · volume · sections)'),
               },
               {
                 label: ko ? '④ 어셈블리 간섭' : '④ Assembly interference',
@@ -677,9 +779,11 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 note: ko ? '어셈블리 생성 시 결과 카드에 표시' : 'shown on assembly build card',
               },
               {
-                label: ko ? '⑤ vision 비평(토폴로지)' : '⑤ Vision critique',
-                status: 'todo',
-                note: ko ? '후속 — scad-vision-critique 배선' : 'wiring pending',
+                label: ko ? '⑤ vision 비평(토폴로지 블런더)' : '⑤ Vision critique',
+                status: visRes ? ('error' in visRes ? 'skip' : visRes.faithful ? 'pass' : 'fail') : 'todo',
+                note: visRes
+                  ? ('error' in visRes ? (ko ? '실행 실패' : 'run failed') : visRes.faithful ? (ko ? '요청 형상으로 판독됨' : 'reads as requested') : (ko ? `문제 ${visRes.issues.length}건` : `${visRes.issues.length} issues`))
+                  : (ko ? '아래 버튼으로 실행' : 'run below'),
               },
             ] as NetItem[])} />
             {/* §8-③ 역투영 diff v1 실행 — 드래프트(뷰어 메시) vs 기록(OCCT) 듀얼-방출 대조 */}
@@ -719,7 +823,47 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                         ))}
                       </tbody>
                     </table>
+                    {/* 실루엣 오버레이(§13-4 래스터 트랙) — 파랑 실선=드래프트 · 빨강/주황 점선=기록 */}
+                    {diffDraftProfiles && diffRes.record?.profiles && (
+                      <>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                          {[0, 1, 2].map((ai) => (
+                            diffDraftProfiles[ai] && diffRes.record?.profiles?.[ai]
+                              ? <ProfileChart key={ai} d={diffDraftProfiles[ai]} r={diffRes.record.profiles[ai]} label={(ko ? '축 ' : 'axis ') + 'XYZ'[ai]} />
+                              : null
+                          ))}
+                        </div>
+                        <div style={{ marginTop: 2, fontSize: 8.5, color: 'var(--nx-text-3, #6b7684)' }}>
+                          {ko ? '실루엣 오버레이: 실선=드래프트 · 점선=기록(OCCT) — 겹치면 정합' : 'Silhouette overlay: solid=draft · dashed=record'}
+                        </div>
+                      </>
+                    )}
                     {diffRes.notes?.[1] && <div style={{ marginTop: 4, fontSize: 9, color: 'var(--nx-text-3, #6b7684)', lineHeight: 1.5 }}>{diffRes.notes[1]}</div>}
+                  </div>
+                )}
+
+                {/* §7 그물 ⑤ vision 비평 — 판정·문제 나열만, 교정 기하는 주입하지 않음(재생성 유도) */}
+                <button type="button" onClick={() => void runVisionCritique()} disabled={visBusy}
+                  style={{ width: '100%', marginTop: 6, padding: '8px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: visBusy ? 'wait' : 'pointer',
+                    border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit' }}>
+                  {visBusy ? (ko ? '👁 vision이 렌더를 판독 중…' : '👁 Vision reading the render…') : ko ? '👁 vision 비평 실행 — 요청한 물건으로 보이는가' : '👁 Run vision critique'}
+                </button>
+                {visRes && 'error' in visRes && <div style={{ marginTop: 4, fontSize: 11, color: '#991b1b' }}>{visRes.error}</div>}
+                {visRes && !('error' in visRes) && (
+                  <div style={{ marginTop: 6, padding: 9, borderRadius: 8, border: `1px solid ${visRes.faithful ? 'rgba(22,163,74,0.4)' : 'rgba(220,38,38,0.4)'}`, background: 'var(--nx-panel, #fff)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: visRes.faithful ? '#16a34a' : '#dc2626' }}>
+                      {visRes.faithful ? (ko ? '✓ 요청한 형상으로 판독됨' : '✓ Reads as requested') : (ko ? '✗ 토폴로지 문제 발견' : '✗ Topology issues found')}
+                    </div>
+                    {!visRes.faithful && visRes.issues.length > 0 && (
+                      <ul style={{ margin: '4px 0 0', paddingLeft: 16, fontSize: 10.5, lineHeight: 1.6 }}>
+                        {visRes.issues.map((s, i) => <li key={i}>{s}</li>)}
+                      </ul>
+                    )}
+                    {!visRes.faithful && (
+                      <div style={{ marginTop: 4, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>
+                        {ko ? '교정은 프롬프트를 고쳐 재생성하세요 — 검증 없는 기하 주입은 하지 않습니다(intent-STEP 정합 유지).' : 'Fix by revising the prompt — no unverified geometry injection.'}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

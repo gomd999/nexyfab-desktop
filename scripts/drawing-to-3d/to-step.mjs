@@ -125,8 +125,56 @@ export async function intentToStep(intent) {
 }
 
 /**
+ * 스테이션 실루엣 프로파일(§12.4 위치 특정) — 각 축 N스테이션에서 단면 실루엣의
+ * 수직 2방향 폭을 에지-평면 교차 샘플링으로 측정. 정점 비닝만 하면 긴 삼각형
+ * (박스 옆면 등)을 놓치므로 반드시 에지 교차로 잰다. 결정론 — 클라(드래프트)와 동일 수학.
+ * @param {Float32Array|number[]} v 정점(x,y,z…)
+ * @param {Uint32Array|number[]|null} triIdx 삼각형 인덱스(null=비인덱스 9float/tri)
+ */
+export function stationProfiles(v, triIdx, N = 24) {
+  const mins = [Infinity, Infinity, Infinity], maxs = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < v.length; i += 3) {
+    for (let a = 0; a < 3; a++) { const x = v[i + a]; if (x < mins[a]) mins[a] = x; if (x > maxs[a]) maxs[a] = x; }
+  }
+  const out = [];
+  for (const [A, U, W] of [[0, 1, 2], [1, 0, 2], [2, 0, 1]]) {
+    const lo = mins[A], range = (maxs[A] - lo) || 1;
+    const minU = new Array(N).fill(Infinity), maxU = new Array(N).fill(-Infinity);
+    const minW = new Array(N).fill(Infinity), maxW = new Array(N).fill(-Infinity);
+    const edge = (p, q) => {
+      const a0 = v[p + A], a1 = v[q + A];
+      const sLo = ((Math.min(a0, a1) - lo) / range) * N - 0.5, sHi = ((Math.max(a0, a1) - lo) / range) * N - 0.5;
+      for (let s = Math.max(0, Math.ceil(sLo)); s <= Math.min(N - 1, Math.floor(sHi)); s++) {
+        const station = lo + ((s + 0.5) / N) * range;
+        const denom = a1 - a0;
+        const t = Math.abs(denom) < 1e-12 ? 0 : (station - a0) / denom;
+        if (t < -1e-9 || t > 1 + 1e-9) continue;
+        const u = v[p + U] + t * (v[q + U] - v[p + U]);
+        const w = v[p + W] + t * (v[q + W] - v[p + W]);
+        if (u < minU[s]) minU[s] = u; if (u > maxU[s]) maxU[s] = u;
+        if (w < minW[s]) minW[s] = w; if (w > maxW[s]) maxW[s] = w;
+      }
+    };
+    if (triIdx) {
+      for (let i = 0; i < triIdx.length; i += 3) {
+        const a = triIdx[i] * 3, b = triIdx[i + 1] * 3, c = triIdx[i + 2] * 3;
+        edge(a, b); edge(b, c); edge(c, a);
+      }
+    } else {
+      for (let i = 0; i + 8 < v.length; i += 9) { edge(i, i + 3); edge(i + 3, i + 6); edge(i + 6, i); }
+    }
+    out.push({
+      axis: 'xyz'[A],
+      w1: minU.map((m, s) => (m === Infinity ? 0 : +(maxU[s] - m).toFixed(3))),
+      w2: minW.map((m, s) => (m === Infinity ? 0 : +(maxW[s] - m).toFixed(3))),
+    });
+  }
+  return out;
+}
+
+/**
  * intent → 기록 커널(OCCT) 실측 — §8-③ 역투영 diff 채점기의 '기록' 쪽 절반.
- * B-rep을 메시화해 AABB·부피를 결정론으로 측정한다(부호 사면체 합).
+ * B-rep을 메시화해 AABB·부피·스테이션 프로파일을 결정론으로 측정한다.
  * 드래프트(SCAD→WASM 메시, 클라 실측)와 같은 수학으로 재어 공정 비교가 되게 한다.
  */
 export async function intentToRecordMeasure(intent) {
@@ -151,6 +199,7 @@ export async function intentToRecordMeasure(intent) {
     bbox: { x: +(maxX - minX).toFixed(3), y: +(maxY - minY).toFixed(3), z: +(maxZ - minZ).toFixed(3) },
     volume: +Math.abs(vol6 / 6).toFixed(1),
     triangles: tri.length / 3,
+    profiles: stationProfiles(v, tri),
   };
 }
 

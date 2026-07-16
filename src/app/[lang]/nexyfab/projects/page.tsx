@@ -220,8 +220,8 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
         position: 'sticky', top: 0, background: 'var(--nx-bg)', zIndex: 10,
       }}>
         <Link prefetch href={`/${lang}/shape-generator`} style={{ textDecoration: 'none' }}>
-          <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--nx-accent)' }}>Nexy</span>
-          <span style={{ fontSize: 20, fontWeight: 800, color: '#3fb950' }}>Fab</span>
+          <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--nx-text)' }}>Nexy</span>
+          <span style={{ fontSize: 20, fontWeight: 800, color: '#0b5cff' }}>Fab</span>
         </Link>
         <span style={{ color: 'var(--nx-border)' }}>/</span>
         <span style={{ fontSize: 16, fontWeight: 600 }}>

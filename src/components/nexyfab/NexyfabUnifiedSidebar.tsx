@@ -174,8 +174,9 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
             borderBottom: '1px solid var(--nx-border)',
           }}
         >
-          <span style={{ color: 'var(--nx-accent)' }}>Nexy</span>
-          <span className="nf-uni-brand-text" style={{ color: '#3fb950' }}>Fab</span>
+          {/* 메인 사이트 헤더와 동일 팔레트: Nexy=본문색 · Fab=#0b5cff (2026-07-16 통일) */}
+          <span style={{ color: 'var(--nx-text)' }}>Nexy</span>
+          <span className="nf-uni-brand-text" style={{ color: '#0b5cff' }}>Fab</span>
         </Link>
 
         {/* Sections */}

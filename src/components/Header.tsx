@@ -110,7 +110,7 @@ export default function Header() {
     // on every NexyFab app page that already has the unified sidebar chrome —
     // otherwise the white marketing bar stacks on top of the dark app shell.
     if (pathname?.includes('/shape-generator') || pathname?.includes('/studio')) return null;
-    if (pathname && /\/nexyfab\/(hub|projects|cots|billing|settings|dashboard|ai-studio|orders)(\/|$)/.test(pathname)) return null;
+    if (pathname && /\/nexyfab\/(hub|projects|cots|billing|settings|dashboard|ai-studio|orders|design|evaluate)(\/|$)/.test(pathname)) return null;
 
     const parts = pathname?.split('/').filter(Boolean) || [];
     const isAdmin = parts[0] === 'adminlink';

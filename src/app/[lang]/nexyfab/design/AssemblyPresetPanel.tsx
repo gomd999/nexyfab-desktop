@@ -1869,6 +1869,57 @@ export default function AssemblyPresetPanel({
   }, [built, brBody]);
 
   // Round5 — 공유 링크/저장 프로젝트 복원: 상태 일괄 적용 + 자동 빌드(같은 디바운스→재검증 파이프)
+  // 어셈블리 도면→3D(2026-07-16): 이미지 → 템플릿 매칭(extract-preset kind=assembly) →
+  // 판독값 확인 카드 승인 → restoreRef 경로로 파라미터 적용+자동 빌드. 사진=형태 힌트만(§3).
+  const aFileRef = useRef<HTMLInputElement>(null);
+  const aModeRef = useRef<'drawing' | 'photo'>('drawing');
+  const [aDrawBusy, setADrawBusy] = useState(false);
+  const [aDrawErr, setADrawErr] = useState<string | null>(null);
+  const [aDrawRes, setADrawRes] = useState<{ templateId: string; labelKo?: string; labelEn?: string; confidence: number; values: Record<string, number>; filled?: string[]; clamped?: string[]; notes?: string; photo?: boolean } | null>(null);
+  const onPickAsmFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    if (!/^image\/(png|jpe?g|webp)$/.test(f.type)) { setADrawErr(ko ? 'PNG·JPG·WebP 이미지만 지원합니다.' : 'PNG/JPG/WebP only.'); return; }
+    if (f.size > 6_000_000) { setADrawErr(ko ? '이미지가 너무 큽니다(6MB 이하).' : 'Image too large (max 6MB).'); return; }
+    const mode = aModeRef.current;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const b64 = String(reader.result || '').replace(/^data:[^,]+,/, '');
+      void (async () => {
+        setADrawBusy(true); setADrawErr(null); setADrawRes(null);
+        try {
+          const r = await fetch('/api/nexyfab/drawing/extract-preset/', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64: b64, mimeType: f.type, domain, kind: 'assembly' }),
+          });
+          const j = (await r.json()) as ({ ok: true } & NonNullable<typeof aDrawRes>) | { ok: false; error?: string };
+          if (j.ok) setADrawRes(mode === 'photo' ? { ...j, values: {}, filled: undefined, clamped: undefined, photo: true } : j);
+          else setADrawErr(j.error ?? (ko ? '판독 실패' : 'Read failed'));
+        } catch (err) {
+          setADrawErr(err instanceof Error ? err.message : String(err));
+        } finally {
+          setADrawBusy(false);
+        }
+      })();
+    };
+    reader.readAsDataURL(f);
+  };
+  const confirmAsmDraw = () => {
+    if (!aDrawRes || !templates) return;
+    const tp = templates.find((x) => x.id === aDrawRes.templateId);
+    if (!tp) { setADrawErr(ko ? '템플릿을 찾을 수 없습니다.' : 'Template not found.'); return; }
+    const merged = { ...Object.fromEntries(tp.params.map((p) => [p.name, p.default])), ...aDrawRes.values };
+    const snap: SavedState = { domain, templateId: tp.id, params: merged, name: ko ? '도면 판독' : 'from drawing' };
+    setADrawRes(null);
+    if (tid === tp.id) {
+      applyRestore(snap, ko ? '도면 판독 적용 — 자동 빌드' : 'Applied from drawing');
+    } else {
+      restoreRef.current = snap; // tpl 이펙트가 applyRestore(스냅샷 적용+자동 빌드) 수행
+      setTid(tp.id);
+    }
+  };
+
   const applyRestore = (d: SavedState, label: string) => {
     setParams({ ...d.params });
     setFurn(d.furn ?? null);
@@ -2606,11 +2657,27 @@ export default function AssemblyPresetPanel({
 
   return (
     <div style={{ marginBottom: 12, padding: 12, borderRadius: 8, background: 'var(--nx-accent-soft, #eef4ff)', border: '1px solid var(--nx-border, #dfe3e8)' }}>
-      <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 6 }}>
-        {t.tplTitle}
-        <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-          {t.tplSub}
-        </span>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 800 }}>
+          {t.tplTitle}
+          <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
+            {t.tplSub}
+          </span>
+        </div>
+        {/* 어셈블리 도면→3D — §3 역할 분리: 도면=치수 판독 · 사진=형태 힌트만 */}
+        <input ref={aFileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onPickAsmFile} style={{ display: 'none' }} />
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+          <button type="button" onClick={() => { aModeRef.current = 'drawing'; aFileRef.current?.click(); }} disabled={aDrawBusy}
+            title={ko ? '치수 도면 — 치수를 판독합니다' : 'Dimensioned drawing'}
+            style={{ padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }}>
+            📐 {ko ? '도면' : 'Drawing'}
+          </button>
+          <button type="button" onClick={() => { aModeRef.current = 'photo'; aFileRef.current?.click(); }} disabled={aDrawBusy}
+            title={ko ? '사진·렌더 — 형태 힌트만, 치수는 읽지 않습니다' : 'Photo — shape hint only'}
+            style={{ padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }}>
+            📷 {ko ? '사진' : 'Photo'}
+          </button>
+        </div>
       </div>
 
       {/* Round5 ⑤ 템플릿 갤러리 — 카드 그리드(이모지+라벨+파라미터 요약, 지어낸 썸네일 없음) */}
@@ -2635,6 +2702,42 @@ export default function AssemblyPresetPanel({
           </button>
         ))}
       </div>
+
+      {aDrawBusy && <div style={{ marginTop: 6, fontSize: 11, color: 'var(--nx-accent, #2563eb)' }}>{ko ? '이미지 판독 중…' : 'Reading image…'}</div>}
+      {aDrawErr && <div style={{ marginTop: 6, fontSize: 11, color: '#991b1b' }}>{aDrawErr}</div>}
+      {/* 판독 확인 카드 — 승인해야 빌드(허위 형상 방지) */}
+      {aDrawRes && (
+        <div style={{ marginTop: 8, padding: 10, borderRadius: 8, border: '1px solid var(--nx-accent, #2563eb)', background: 'var(--nx-panel, #fff)' }}>
+          <div style={{ fontSize: 11.5, fontWeight: 800 }}>
+            📷 {ko ? aDrawRes.labelKo : aDrawRes.labelEn ?? aDrawRes.labelKo}
+            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
+              {ko ? '판독 신뢰도' : 'confidence'} {Math.round(aDrawRes.confidence * 100)}%
+            </span>
+          </div>
+          <div style={{ marginTop: 4, fontSize: 10.5, lineHeight: 1.6 }}>
+            {aDrawRes.photo
+              ? (ko ? '사진 = 형태 힌트만 — 치수는 사용하지 않습니다(정책 §3). 기본값으로 빌드 후 말로 수정하세요.' : 'Photo = shape hint only — dims not read.')
+              : Object.entries(aDrawRes.values).map(([k, v]) => `${k}: ${v}`).join(' · ') || (ko ? '판독된 치수 없음' : 'no dimensions read')}
+          </div>
+          {!!aDrawRes.filled?.length && (
+            <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '기본값 사용: ' : 'defaults: '}{aDrawRes.filled.join(', ')}</div>
+          )}
+          {!!aDrawRes.clamped?.length && (
+            <div style={{ marginTop: 2, fontSize: 10, color: '#b45309' }}>{ko ? '범위 보정: ' : 'clamped: '}{aDrawRes.clamped.join(', ')}</div>
+          )}
+          {aDrawRes.notes && <div style={{ marginTop: 2, fontSize: 10, color: 'var(--nx-text-3, #6b7684)' }}>{aDrawRes.notes}</div>}
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <button type="button" onClick={confirmAsmDraw} disabled={busy}
+              style={{ flex: 1, padding: '7px 0', borderRadius: 7, border: 'none', background: 'var(--nx-accent, #2563eb)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              {ko ? '이 값으로 어셈블리 빌드' : 'Build with these'}
+            </button>
+            <button type="button" onClick={() => setADrawRes(null)}
+              style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit', fontSize: 12, cursor: 'pointer' }}>
+              {ko ? '취소' : 'Cancel'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 접이식 — 숫자 직접 입력(전문가용). 카드 클릭=즉시 빌드가 기본, 폼은 보조(2026-07-16) */}
       {tpl && (

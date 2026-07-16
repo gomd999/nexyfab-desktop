@@ -22,7 +22,8 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-interface Measure { bbox: { x: number; y: number; z: number }; volume: number; triangles?: number }
+interface Profile { axis: string; w1: number[]; w2: number[] }
+interface Measure { bbox: { x: number; y: number; z: number }; volume: number; triangles?: number; profiles?: Profile[] }
 type StepModule = { intentToRecordMeasure: (intent: unknown) => Promise<Measure> };
 
 let _mod: StepModule | null = null;
@@ -81,6 +82,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     checks.push({ name: 'Volume', draft: d, record: r, diff, tol, pass: diff <= tol });
   }
 
+  // 스테이션 프로파일 대조(§12.4 위치 특정) — 부피는 오류를 탐지만 하고 위치를 못 짚는다.
+  // 밴드 max(1.0mm, 0.8%): 곡면의 $fn 현(chord) 근사 vs OCCT tolerance 메시 차이 상한 근거.
+  if (Array.isArray(draft.profiles) && Array.isArray(record.profiles)) {
+    for (let ai = 0; ai < 3; ai++) {
+      const dp = draft.profiles[ai], rp = record.profiles[ai];
+      if (!dp?.w1 || !rp?.w1) continue;
+      const N = Math.min(dp.w1.length, rp.w1.length);
+      let worst = -1, worstAt = -1, worstD = 0, worstR = 0, worstTol = 1, pass = true;
+      for (let s = 0; s < N; s++) {
+        for (const key of ['w1', 'w2'] as const) {
+          const d = dp[key][s] ?? 0, r = rp[key][s] ?? 0;
+          if (d < 1e-6 && r < 1e-6) continue;
+          const diff = Math.abs(d - r);
+          const tol = Math.max(1.0, r * 0.008);
+          if (diff > tol) pass = false;
+          if (diff > worst) { worst = diff; worstAt = s; worstD = d; worstR = r; worstTol = tol; }
+        }
+      }
+      if (worst < 0) continue;
+      checks.push({
+        name: `${'XYZ'[ai]}-축 단면 (${N}st, max@${worstAt + 1})`,
+        draft: +worstD.toFixed(3), record: +worstR.toFixed(3),
+        diff: +worst.toFixed(3), tol: +worstTol.toFixed(3), pass,
+      });
+    }
+  }
+
   const verdict = checks.every((c) => c.pass) ? 'PASS' : 'FAIL';
   return NextResponse.json({
     ok: true,
@@ -89,8 +117,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     record,
     notes: [
       '듀얼-방출 교차검증(§6.2-③): 드래프트=SCAD→WASM 메시, 기록=OCCT B-rep 메시 — 같은 intent 독립 빌드 대조.',
-      '허용 밴드 근거: 동일 피처셋이므로 기대 차이=테셀레이션($fn 근사)뿐 — 축 max(0.5mm, 0.2%) · 부피 1.5%.',
-      'v1 범위: 외형 3축+부피. 치수선 단위 전수 도면 diff는 후속.',
+      '허용 밴드 근거: 동일 피처셋이므로 기대 차이=테셀레이션뿐 — 축 max(0.5mm,0.2%) · 부피 1.5% · 단면 max(1.0mm,0.8%).',
+      '단면=스테이션 실루엣(§13-4 래스터 트랙, 위치 특정 §12.4). exact HLR 치수선 대조는 후속.',
     ],
   });
 }

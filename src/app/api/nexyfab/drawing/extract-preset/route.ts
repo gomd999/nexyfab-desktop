@@ -21,7 +21,10 @@ export const runtime = 'nodejs';
 
 interface ParamSpec { name: string; labelKo: string; unit: string; default: number; min: number; max: number }
 interface Template { id: string; labelKo: string; labelEn: string; params: ParamSpec[] }
-type PresetModule = { listTemplates: (domain?: string) => Template[] };
+type PresetModule = {
+  listTemplates: (domain?: string) => Template[];
+  listAssemblyPresets: (domain?: string) => Promise<Template[]>;
+};
 type ExtractPresetModule = {
   extractPresetFromImage: (b64: string, mime: string, domainLabel: string, templates: Template[]) =>
     Promise<{ templateId?: string; confidence?: number; unit?: string; notes?: string; params?: Array<{ name: string; value: number }> }>;
@@ -48,12 +51,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const rl = rateLimit(`drawing-extract-preset:${ip}`, 6, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
 
-  let imageBase64: string, mimeType: string, domain: string;
+  let imageBase64: string, mimeType: string, domain: string, kind: string;
   try {
-    const body = (await req.json()) as { imageBase64?: string; mimeType?: string; domain?: string };
+    const body = (await req.json()) as { imageBase64?: string; mimeType?: string; domain?: string; kind?: string };
     imageBase64 = (body.imageBase64 ?? '').replace(/^data:[^,]+,/, '').trim();
     mimeType = (body.mimeType ?? 'image/png').toLowerCase();
     domain = body.domain ?? 'mech';
+    kind = body.kind === 'assembly' ? 'assembly' : 'part';
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
@@ -68,7 +72,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: 'pipeline load failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 });
   }
 
-  const templates = mods.pr.listTemplates(domain);
+  // kind=assembly → 어셈블리 템플릿 카탈로그(RC 골조·파고라·데크·카페 등)와 매칭
+  const templates = kind === 'assembly' ? await mods.pr.listAssemblyPresets(domain) : mods.pr.listTemplates(domain);
   if (!templates?.length) return NextResponse.json({ ok: false, error: '이 분야에는 프리셋 템플릿이 없습니다.' }, { status: 400 });
 
   // ① Vision — 템플릿 분류 + 치수 판독 (AI = 이해만)
