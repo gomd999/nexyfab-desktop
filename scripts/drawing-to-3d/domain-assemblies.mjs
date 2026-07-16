@@ -245,6 +245,59 @@ function twoRoomAssembly(p = {}) {
   };
 }
 
+/**
+ * 주거 아파트 유닛(2026-07-16 — "카페 말고 집도"): 방2 + 거실·주방(LDK) + 욕실.
+ * two_room(벽·문)·cafe_room(가구 점유) 패턴 결합 — 외벽4·현관문·침실구역 수직벽(문2)·
+ * 침실 분할벽·욕실 구획(문1) + 가구(침대2·소파·식탁·주방카운터, 보행 점유물).
+ * interior-check 호환 메타(roomBounds·exits·furniture) 동봉 → 피난동선 검토 그대로 적용.
+ */
+function apartmentUnitAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const W = num(p.width, 9000), D = num(p.depth, 7200);
+  const bedW = Math.min(W - 3000, Math.max(2600, num(p.bedZoneW, 3600)));
+  const ldkW = W - bedW;
+  const doorW = num(p.doorWidth, 1000), inDoorW = num(p.innerDoorWidth, 800);
+  const bathW = Math.min(ldkW - 800, Math.max(1400, num(p.bathW, 1800)));
+  const bathD = Math.min(D - 2000, Math.max(1200, num(p.bathD, 1600)));
+  const wallT = 150, wallH = 2700;
+  const parts = [P('floor', 'box', { width: W, depth: D, height: 100 }, { tz: -100 }, 'concrete', 'floor')];
+  const entryX = ldkW / 2 - doorW / 2;
+  // 외벽 + 현관문(전면, LDK 쪽)
+  parts.push(P('wall_front', 'wall_with_openings', { length: W, thickness: wallT, height: wallH, openings: [{ x: entryX, w: doorW, h: 2100, sill: 0 }] }, { tx: 0, ty: -wallT, tz: 0 }, 'concrete', 'wall'));
+  parts.push(P('wall_back', 'wall_with_openings', { length: W, thickness: wallT, height: wallH }, { tx: 0, ty: D, tz: 0 }, 'concrete', 'wall'));
+  parts.push(P('wall_left', 'wall_with_openings', { length: D, thickness: wallT, height: wallH }, { tx: 0, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall'));
+  parts.push(P('wall_right', 'wall_with_openings', { length: D, thickness: wallT, height: wallH }, { tx: W + wallT, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall'));
+  // 침실 구역 수직벽 — 침실1(전면측)·침실2(후면측) 문 2개
+  parts.push(P('wall_bedzone', 'wall_with_openings', { length: D, thickness: wallT, height: wallH, openings: [
+    { x: D * 0.25 - inDoorW / 2, w: inDoorW, h: 2100, sill: 0 },
+    { x: D * 0.75 - inDoorW / 2, w: inDoorW, h: 2100, sill: 0 },
+  ] }, { tx: ldkW + wallT, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall'));
+  // 침실 분할 수평벽
+  parts.push(P('wall_bed_div', 'wall_with_openings', { length: bedW, thickness: wallT, height: wallH }, { tx: ldkW + wallT, ty: D / 2, tz: 0 }, 'concrete', 'wall'));
+  // 욕실(LDK 뒤쪽 코너) — 수평벽(문) + 수직벽
+  parts.push(P('wall_bath_h', 'wall_with_openings', { length: bathW, thickness: wallT, height: wallH, openings: [{ x: bathW / 2 - inDoorW / 2, w: inDoorW, h: 2100, sill: 0 }] }, { tx: 0, ty: D - bathD - wallT, tz: 0 }, 'concrete', 'wall'));
+  parts.push(P('wall_bath_v', 'wall_with_openings', { length: bathD, thickness: wallT, height: wallH }, { tx: bathW + wallT, ty: D - bathD, tz: 0, rz: 90 }, 'concrete', 'wall'));
+  // 가구(보행 점유물) — 침대2·소파·식탁·주방 카운터
+  parts.push(P('bed1', 'box', { width: 1500, depth: 2000, height: 450 }, { tx: ldkW + wallT + 500, ty: 500, tz: 0 }, 'timber', 'bed'));
+  parts.push(P('bed2', 'box', { width: 1500, depth: 2000, height: 450 }, { tx: ldkW + wallT + 500, ty: D / 2 + wallT + 500, tz: 0 }, 'timber', 'bed'));
+  parts.push(P('sofa', 'box', { width: 2200, depth: 900, height: 750 }, { tx: 500, ty: 1100, tz: 0 }, 'timber', 'sofa'));
+  parts.push(P('dining', 'box', { width: 1400, depth: 800, height: 730 }, { tx: 500, ty: 3000, tz: 0 }, 'timber', 'table'));
+  parts.push(P('kitchen_counter', 'box', { width: Math.max(1500, ldkW - bathW - 1400), depth: 600, height: 850 }, { tx: 300, ty: D - bathD - wallT - 800, tz: 0 }, 'timber', 'counter'));
+  return {
+    name: '아파트 유닛', domain: 'interior', kind: 'assembly', parts,
+    floorAreaM2: +((W * D) / 1e6).toFixed(2),
+    exits: [{ x: entryX + doorW / 2, y: 0, widthMm: doorW }],
+    roomBounds: { W, D },
+    furniture: [
+      { id: 'bed', name: '침대', count: 2, seats: 0 },
+      { id: 'sofa', name: '소파', count: 1, seats: 3 },
+      { id: 'table', name: '식탁', count: 1, seats: 4 },
+      { id: 'counter', name: '주방 카운터', count: 1, seats: 0 },
+    ],
+    multiRoom: { rooms: 4, innerWallX: ldkW },
+  };
+}
+
 export const ASSEMBLY_TEMPLATES = {
   civil: [
     {
@@ -311,6 +364,18 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   interior: [
+    {
+      id: 'apartment_unit', labelKo: '주거 아파트 유닛 (방2·거실주방·욕실)', labelEn: 'Apartment unit (2BR + LDK + bath)', build: apartmentUnitAssembly,
+      params: [
+        { name: 'width', labelKo: '전체 폭', unit: 'mm', default: 9000, min: 6000, max: 20000 },
+        { name: 'depth', labelKo: '깊이', unit: 'mm', default: 7200, min: 5000, max: 16000 },
+        { name: 'bedZoneW', labelKo: '침실 구역 폭', unit: 'mm', default: 3600, min: 2600, max: 8000 },
+        { name: 'doorWidth', labelKo: '현관문 폭', unit: 'mm', default: 1000, min: 800, max: 1600 },
+        { name: 'innerDoorWidth', labelKo: '내부문 폭', unit: 'mm', default: 800, min: 700, max: 1200 },
+        { name: 'bathW', labelKo: '욕실 폭', unit: 'mm', default: 1800, min: 1400, max: 3000 },
+        { name: 'bathD', labelKo: '욕실 깊이', unit: 'mm', default: 1600, min: 1200, max: 3000 },
+      ],
+    },
     {
       id: 'two_room', labelKo: '2실 평면 (다실)', labelEn: 'Two-room plan', build: twoRoomAssembly,
       params: [
