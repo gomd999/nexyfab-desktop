@@ -41,6 +41,7 @@ type CadResult = {
   isAssembly?: boolean;
   assembly?: AssemblyPlan;       // render-html 입력
   interferences?: Array<Record<string, unknown>>;
+  contacts?: Array<Record<string, unknown>>;
   welds?: Array<Record<string, unknown>>;  // 용접 조인트 개산
   weldTotalMm?: number;
   structural?: StructuralResult;            // 형상기반 자동 구조검증
@@ -237,6 +238,7 @@ async function runAssemblePipeline(prompt: string): Promise<CadResult> {
     composeIntent: (j.composeIntent && typeof j.composeIntent === 'object') ? j.composeIntent as ComposeIntent : undefined,
     scad: typeof j.openscad === 'string' ? j.openscad : undefined,
     interferences: Array.isArray(j.interferences) ? j.interferences : [],
+    contacts: Array.isArray(j.contacts) ? j.contacts : [],
     welds: Array.isArray(j.welds) ? j.welds : [],
     weldTotalMm: typeof j.weldTotalMm === 'number' ? j.weldTotalMm : 0,
     structural: (j.structural && typeof j.structural === 'object') ? j.structural as StructuralResult : undefined,
@@ -347,6 +349,7 @@ const DICT: Record<Lang, {
   stop: string; copyMsg: string; copied: string; regen: string;
   clashWarn: string; fuFixClash: string;
   threadLimit: string; proCta: string;
+  cadContacts: string; photoHint: string; attachDrawing: string; attachPhoto: string;
   stageAnalyze: string; stageCalc: string; stageCad: string;
   fuText: string[]; fuCalc: string[]; fuCad: string[];
 }> = {
@@ -365,7 +368,7 @@ const DICT: Record<Lang, {
     stop: '중단', copyMsg: '복사', copied: '복사됨 ✓', regen: '다시 생성',
     stageAnalyze: '요청 분석 중…', stageCalc: '계산 실행 중…', stageCad: '3D 모델 생성 중…',
     fuText: ['더 자세히 설명해줘', '핵심만 요약해줘', '관련 기준(KDS 등)은?'], fuCalc: ['이 결과의 근거를 설명해줘', '어떤 조건이면 부적합이 되나?'], fuCad: ['이 설계의 제조 리스크는?', '적합한 재질을 추천해줘'],
-    clashWarn: '부품이 겹칩니다 — 아직 완성체가 아닙니다. 아래 칩으로 교정을 요청하거나 치수를 알려주세요.', fuFixClash: '간섭(부품 겹침)을 해결하도록 배치를 수정해줘', threadLimit: '이 대화는 무료 한도(3회)에 도달했어요 — 새 대화로 계속하거나 Pro에서 무제한으로 이어가세요.', proCta: 'Pro 보기',
+    clashWarn: '부품이 겹칩니다 — 아직 완성체가 아닙니다. 아래 칩으로 교정을 요청하거나 치수를 알려주세요.', fuFixClash: '간섭(부품 겹침)을 해결하도록 배치를 수정해줘', threadLimit: '이 대화는 무료 한도(3회)에 도달했어요 — 새 대화로 계속하거나 Pro에서 무제한으로 이어가세요.', proCta: 'Pro 보기', cadContacts: '접촉 {n}', photoHint: '📷 사진은 형태 힌트로만 씁니다(치수 미판독 — 정책 §3). {label}(으)로 보입니다. 핵심 치수를 알려주시면 생성할게요.', attachDrawing: '도면', attachPhoto: '사진',
     calcRunning: '검토 실행 중…', calcPass: '적합', calcFail: '부적합', calcRefs: '근거',
     cadGenerating: '3D 모델 생성 중…', cadNoPreview: '이 형상의 3D 미리보기는 배포 환경에서 제공됩니다. 아래 SCAD로 확인하세요.', cadDownload: 'SCAD 다운로드',
     cadSpecTitle: '이 사양으로 정밀 3D를 생성할까요?', cadConfirm: '확인 · 정밀 3D 생성', cadBuilding: '정밀 형상(STEP) 생성 중…', cadStepDownload: 'STEP 다운로드', cadGate: '결정론 게이트',
@@ -389,7 +392,7 @@ const DICT: Record<Lang, {
     stop: 'Stop', copyMsg: 'Copy', copied: 'Copied ✓', regen: 'Regenerate',
     stageAnalyze: 'Analyzing request…', stageCalc: 'Running calculation…', stageCad: 'Generating 3D model…',
     fuText: ['Explain in more detail', 'Summarize the key points', 'Which codes/standards apply?'], fuCalc: ['Explain the basis of this result', 'Under what conditions would it fail?'], fuCad: ['What are the manufacturing risks?', 'Recommend a suitable material'],
-    clashWarn: 'Parts overlap — this is not a finished assembly yet. Ask for a fix below or give exact dims.', fuFixClash: 'Fix the interferences by adjusting part placement', threadLimit: 'This chat reached the free limit (3 turns) — start a new chat or go unlimited with Pro.', proCta: 'See Pro',
+    clashWarn: 'Parts overlap — this is not a finished assembly yet. Ask for a fix below or give exact dims.', fuFixClash: 'Fix the interferences by adjusting part placement', threadLimit: 'This chat reached the free limit (3 turns) — start a new chat or go unlimited with Pro.', proCta: 'See Pro', cadContacts: '{n} contacts', photoHint: '📷 Photos are shape hints only (no dims read). Looks like {label}. Give key dims and I will generate.', attachDrawing: 'Drawing', attachPhoto: 'Photo',
     calcRunning: 'Running check…', calcPass: 'PASS', calcFail: 'FAIL', calcRefs: 'Refs',
     cadGenerating: 'Generating 3D model…', cadNoPreview: 'A 3D preview of this shape is available in the deployed environment — see the SCAD below.', cadDownload: 'Download SCAD',
     cadSpecTitle: 'Generate the precise 3D from this spec?', cadConfirm: 'Confirm · build 3D', cadBuilding: 'Building precise geometry (STEP)…', cadStepDownload: 'Download STEP', cadGate: 'Deterministic gate',
@@ -413,7 +416,7 @@ const DICT: Record<Lang, {
     stop: '停止', copyMsg: 'コピー', copied: 'コピー済み ✓', regen: '再生成',
     stageAnalyze: 'リクエスト分析中…', stageCalc: '計算実行中…', stageCad: '3Dモデル生成中…',
     fuText: ['もっと詳しく説明して', '要点をまとめて', '関連する基準は?'], fuCalc: ['この結果の根拠を説明して', 'どんな条件で不適合になる?'], fuCad: ['この設計の製造リスクは?', '適した材質を提案して'],
-    clashWarn: '部品が干渉しています — まだ完成形ではありません。下のチップで修正を依頼するか寸法を指定してください。', fuFixClash: '干渉を解消するよう配置を修正して', threadLimit: 'この会話は無料上限(3回)に達しました — 新しいチャットで続けるか、Proで無制限に。', proCta: 'Proを見る',
+    clashWarn: '部品が干渉しています — まだ完成形ではありません。下のチップで修正を依頼するか寸法を指定してください。', fuFixClash: '干渉を解消するよう配置を修正して', threadLimit: 'この会話は無料上限(3回)に達しました — 新しいチャットで続けるか、Proで無制限に。', proCta: 'Proを見る', cadContacts: '接触 {n}', photoHint: '📷 写真は形状ヒントのみ(寸法は読みません)。{label}のようです。主要寸法を教えてください。', attachDrawing: '図面', attachPhoto: '写真',
     calcRunning: '検討を実行中…', calcPass: '適合', calcFail: '不適合', calcRefs: '根拠',
     cadGenerating: '3Dモデル生成中…', cadNoPreview: 'この形状の3Dプレビューは本番環境で提供されます。下のSCADをご確認ください。', cadDownload: 'SCADをダウンロード',
     cadSpecTitle: 'この仕様で精密3Dを生成しますか？', cadConfirm: '確認 · 精密3D生成', cadBuilding: '精密形状(STEP)を生成中…', cadStepDownload: 'STEPをダウンロード', cadGate: '決定論ゲート',
@@ -437,7 +440,7 @@ const DICT: Record<Lang, {
     stop: '停止', copyMsg: '复制', copied: '已复制 ✓', regen: '重新生成',
     stageAnalyze: '正在分析请求…', stageCalc: '正在执行计算…', stageCad: '正在生成3D模型…',
     fuText: ['再详细解释一下', '总结要点', '适用哪些规范/标准?'], fuCalc: ['解释这个结果的依据', '什么条件下会不合格?'], fuCad: ['这个设计的制造风险是什么?', '推荐合适的材料'],
-    clashWarn: '部件重叠 — 尚未是完整装配体。请用下方按钮要求修正或提供准确尺寸。', fuFixClash: '调整部件位置以消除干涉', threadLimit: '本对话已达免费上限(3次) — 新建对话继续，或升级 Pro 无限使用。', proCta: '查看 Pro',
+    clashWarn: '部件重叠 — 尚未是完整装配体。请用下方按钮要求修正或提供准确尺寸。', fuFixClash: '调整部件位置以消除干涉', threadLimit: '本对话已达免费上限(3次) — 新建对话继续，或升级 Pro 无限使用。', proCta: '查看 Pro', cadContacts: '接触 {n}', photoHint: '📷 照片仅用作形状提示(不读取尺寸)。看起来是{label}。请提供关键尺寸即可生成。', attachDrawing: '图纸', attachPhoto: '照片',
     calcRunning: '正在计算…', calcPass: '合格', calcFail: '不合格', calcRefs: '依据',
     cadGenerating: '正在生成3D模型…', cadNoPreview: '该形状的3D预览在部署环境中提供，请查看下方SCAD。', cadDownload: '下载SCAD',
     cadSpecTitle: '按此规格生成精确3D？', cadConfirm: '确认 · 生成3D', cadBuilding: '正在生成精确几何(STEP)…', cadStepDownload: '下载STEP', cadGate: '确定性门控',
@@ -461,7 +464,7 @@ const DICT: Record<Lang, {
     stop: 'Detener', copyMsg: 'Copiar', copied: 'Copiado ✓', regen: 'Regenerar',
     stageAnalyze: 'Analizando solicitud…', stageCalc: 'Ejecutando cálculo…', stageCad: 'Generando modelo 3D…',
     fuText: ['Explica con más detalle', 'Resume los puntos clave', '¿Qué normas aplican?'], fuCalc: ['Explica la base de este resultado', '¿En qué condiciones fallaría?'], fuCad: ['¿Riesgos de fabricación?', 'Recomienda un material adecuado'],
-    clashWarn: 'Las piezas se superponen — aún no es un conjunto terminado. Pide una corrección abajo o da cotas exactas.', fuFixClash: 'Corrige las interferencias ajustando la posición de las piezas', threadLimit: 'Este chat alcanzó el límite gratis (3 turnos) — abre un chat nuevo o pásate a Pro sin límites.', proCta: 'Ver Pro',
+    clashWarn: 'Las piezas se superponen — aún no es un conjunto terminado. Pide una corrección abajo o da cotas exactas.', fuFixClash: 'Corrige las interferencias ajustando la posición de las piezas', threadLimit: 'Este chat alcanzó el límite gratis (3 turnos) — abre un chat nuevo o pásate a Pro sin límites.', proCta: 'Ver Pro', cadContacts: '{n} contactos', photoHint: '📷 Las fotos son solo pista de forma (sin cotas). Parece {label}. Dame las cotas clave y lo genero.', attachDrawing: 'Plano', attachPhoto: 'Foto',
     calcRunning: 'Calculando…', calcPass: 'CUMPLE', calcFail: 'NO CUMPLE', calcRefs: 'Refs',
     cadGenerating: 'Generando modelo 3D…', cadNoPreview: 'La vista 3D de esta forma está disponible en el entorno desplegado — consulta el SCAD abajo.', cadDownload: 'Descargar SCAD',
     cadSpecTitle: '¿Generar el 3D preciso con esta especificación?', cadConfirm: 'Confirmar · generar 3D', cadBuilding: 'Generando geometría precisa (STEP)…', cadStepDownload: 'Descargar STEP', cadGate: 'Compuerta determinista',
@@ -485,7 +488,7 @@ const DICT: Record<Lang, {
     stop: 'إيقاف', copyMsg: 'نسخ', copied: 'تم النسخ ✓', regen: 'إعادة التوليد',
     stageAnalyze: 'جارٍ تحليل الطلب…', stageCalc: 'جارٍ تنفيذ الحساب…', stageCad: 'جارٍ إنشاء النموذج ثلاثي الأبعاد…',
     fuText: ['اشرح بمزيد من التفصيل', 'لخّص النقاط الأساسية', 'ما المعايير ذات الصلة؟'], fuCalc: ['اشرح أساس هذه النتيجة', 'في أي ظروف تصبح غير مطابقة؟'], fuCad: ['ما مخاطر التصنيع لهذا التصميم؟', 'اقترح مادة مناسبة'],
-    clashWarn: 'الأجزاء متداخلة — ليست مجموعة مكتملة بعد. اطلب تصحيحًا أدناه أو حدّد الأبعاد.', fuFixClash: 'عالج التداخل بتعديل مواضع الأجزاء', threadLimit: 'وصلت هذه المحادثة إلى الحد المجاني (3 رسائل) — ابدأ محادثة جديدة أو انتقل إلى Pro بلا حدود.', proCta: 'عرض Pro',
+    clashWarn: 'الأجزاء متداخلة — ليست مجموعة مكتملة بعد. اطلب تصحيحًا أدناه أو حدّد الأبعاد.', fuFixClash: 'عالج التداخل بتعديل مواضع الأجزاء', threadLimit: 'وصلت هذه المحادثة إلى الحد المجاني (3 رسائل) — ابدأ محادثة جديدة أو انتقل إلى Pro بلا حدود.', proCta: 'عرض Pro', cadContacts: 'تماس {n}', photoHint: '📷 الصور تلميح شكلي فقط (بدون أبعاد). يبدو {label}. أعطني الأبعاد الرئيسية للإنشاء.', attachDrawing: 'مخطط', attachPhoto: 'صورة',
     calcRunning: 'جارٍ الفحص…', calcPass: 'مطابق', calcFail: 'غير مطابق', calcRefs: 'المراجع',
     cadGenerating: 'جارٍ إنشاء النموذج ثلاثي الأبعاد…', cadNoPreview: 'تتوفر معاينة ثلاثية الأبعاد لهذا الشكل في بيئة النشر — راجع SCAD أدناه.', cadDownload: 'تنزيل SCAD',
     cadSpecTitle: 'هل تُنشئ نموذجًا دقيقًا بهذه المواصفات؟', cadConfirm: 'تأكيد · بناء 3D', cadBuilding: 'جارٍ بناء الشكل الدقيق (STEP)…', cadStepDownload: 'تنزيل STEP', cadGate: 'بوابة حتمية',
@@ -832,6 +835,11 @@ function CadCard({ cad, t, accent, isRtl, preview }: { cad: CadResult; t: (typeo
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: nInterf ? 'rgba(239,68,68,0.14)' : 'rgba(34,197,94,0.14)', color: nInterf ? '#f87171' : '#4ade80' }}>
             {nInterf ? `✕ ${t.cadInterf.replace('{n}', String(nInterf))}` : `✓ ${t.cadInterfNone}`}
           </div>
+          {(cad.contacts?.length ?? 0) > 0 && (
+            <div title="접촉/체결 후보(관통 ≤2mm) — 조인트 선언 정밀검증 후속" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: 'rgba(148,163,184,0.14)', color: '#94a3b8' }}>
+            ◦ {t.cadContacts.replace('{n}', String(cad.contacts!.length))}
+          </div>
+          )}
           {tolBadge}
         </div>
         {cad.welds && cad.welds.length > 0 && (
@@ -957,6 +965,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const attachModeRef = useRef<'drawing' | 'photo'>('drawing'); // §3 역할 분리(2026-07-16)
 
   const accent = DOMAIN_ACCENT[domain];
   const started = messages.length > 0;
@@ -1327,6 +1336,17 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       return copy;
     });
     try {
+      if (attachModeRef.current === 'photo') {
+        // 사진 = 형태 힌트만(§3): 유형 분류만 받고 치수는 버린다 → 핵심 치수 되묻기
+        const rp = await fetch('/api/nexyfab/drawing/extract-preset/', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ imageBase64: att.base64, mimeType: att.mime, domain: STUDIO_DOMAIN[domain] ?? 'mech' }),
+        });
+        const jp = (await rp.json()) as { ok?: boolean; labelKo?: string; labelEn?: string; templateId?: string; error?: string };
+        const label = jp.ok ? ((lang === 'kr' ? jp.labelKo : jp.labelEn) ?? jp.templateId ?? '?') : '?';
+        setLast({ content: jp.ok ? t.photoHint.replace('{label}', String(label)) : '⚠️ ' + (jp.error ?? t.error) });
+        return;
+      }
       const { cad, recognized } = await runExtractPipeline(att);
       // 성공/실패 모두 인식 결과를 노출(무엇을 읽었는지) — 실패 시 이유는 카드로.
       const line = recognized
@@ -1338,7 +1358,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     } finally {
       setLoading(false); autoscroll();
     }
-  }, [attached, input, loading, t]);
+  }, [attached, input, loading, t, domain, lang]);
 
   const FREE_TURNS_PER_THREAD = 3; // 비회원·무료회원 공통(2026-07-16) — Pro 계열 무제한
   const isPaidPlan = plan === 'pro' || plan === 'team' || plan === 'enterprise';
@@ -1572,15 +1592,21 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '4px 4px 2px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               {/* 도면·스케치 첨부 (입력 A) — 기계설계 전용(Vision 어휘가 기계부품). */}
+              {/* §3 역할 분리 — 📐도면(치수 판독, 기계 어휘)·📷사진(형태 힌트, 전 분야) */}
               {domain === 'mechanical' && (
-                <button onClick={() => fileRef.current?.click()} title={t.attach} aria-label={t.attach} style={{
+                <button onClick={() => { attachModeRef.current = 'drawing'; fileRef.current?.click(); }} title={t.attachDrawing} aria-label={t.attachDrawing} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 10, cursor: 'pointer',
                   border: `1px solid ${accent}55`, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', fontSize: 12.5, fontWeight: 600,
                 }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden focusable="false"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
-                  <span style={{ display: started ? 'none' : 'inline' }}>{t.attach}</span>
+                  📐<span style={{ display: started ? 'none' : 'inline' }}>{t.attachDrawing}</span>
                 </button>
               )}
+              <button onClick={() => { attachModeRef.current = 'photo'; fileRef.current?.click(); }} title={t.attachPhoto} aria-label={t.attachPhoto} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 10, cursor: 'pointer',
+                border: '1px solid rgba(148,163,184,0.35)', background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', fontSize: 12.5, fontWeight: 600,
+              }}>
+                📷<span style={{ display: started ? 'none' : 'inline' }}>{t.attachPhoto}</span>
+              </button>
               <span style={{ color: accent, display: 'inline-flex' }}><DomainIcon name={domain} size={20} /></span>
             </div>
             {loading ? (

@@ -160,7 +160,38 @@ export default function ParametricPresetPanel({
     const f = e.target.files?.[0];
     e.target.value = '';
     if (!f) return;
-    if (!/^image\/(png|jpe?g|webp)$/.test(f.type)) { setDrawErr(ko ? 'PNG·JPG·WebP 이미지만 지원합니다.' : 'PNG/JPG/WebP only.'); return; }
+    // DXF 씨앗(입구 A Phase 2, §9): 치수·원을 결정론 파싱해 프롬프트 프리필(사람 검증 전제)
+    if (/\.dxf$/i.test(f.name)) {
+      const tr = new FileReader();
+      tr.onload = () => {
+        void (async () => {
+          setDrawBusy(true); setDrawErr(null); setDrawRes(null);
+          try {
+            const r = await fetch('/api/nexyfab/drawing/dxf-seed/', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dxfText: String(tr.result ?? '') }),
+            });
+            const j = (await r.json()) as { ok?: boolean; seed?: { measurements: number[]; circles: Array<{ r: number }>; extents: { w: number; h: number } | null }; error?: string };
+            if (!j.ok || !j.seed) { setDrawErr(j.error ?? 'DXF 파싱 실패'); return; }
+            const sd = j.seed;
+            const parts: string[] = [];
+            if (sd.extents) parts.push(ko ? `전체 약 ${sd.extents.w}×${sd.extents.h}mm` : `overall ~${sd.extents.w}x${sd.extents.h}mm`);
+            if (sd.measurements.length) parts.push((ko ? '치수값 ' : 'dims ') + sd.measurements.slice(0, 12).join(', '));
+            if (sd.circles.length) parts.push((ko ? '원 Ø' : 'holes Ø') + [...new Set(sd.circles.map((c) => +(c.r * 2).toFixed(2)))].slice(0, 8).join(', Ø') + ` ×${sd.circles.length}`);
+            const seedText = (ko ? 'DXF 씨앗(사람 검증 필요): ' : 'DXF seed (verify): ') + parts.join(' · ') + (ko ? ' — 이 치수로 [부품 설명]을 설계' : ' — design [part] with these dims');
+            window.dispatchEvent(new CustomEvent('nf-dxf-seed', { detail: seedText }));
+            setMsg(ko ? 'DXF 씨앗을 프롬프트에 넣었어요 — 부품 설명을 붙여 생성하세요(자동 생성 아님 · §9 Phase 2).' : 'DXF seed prefilled — add a part description and generate.');
+          } catch (err) {
+            setDrawErr(err instanceof Error ? err.message : String(err));
+          } finally {
+            setDrawBusy(false);
+          }
+        })();
+      };
+      tr.readAsText(f);
+      return;
+    }
+    if (!/^image\/(png|jpe?g|webp)$/.test(f.type)) { setDrawErr(ko ? 'PNG·JPG·WebP 이미지 또는 DXF만 지원합니다.' : 'PNG/JPG/WebP or DXF only.'); return; }
     if (f.size > 6_000_000) { setDrawErr(ko ? '이미지가 너무 큽니다(6MB 이하).' : 'Image too large (max 6MB).'); return; }
     const mode = modeRef.current;
     const reader = new FileReader();
@@ -227,7 +258,7 @@ export default function ParametricPresetPanel({
             {ko ? '카드 클릭=즉시 생성 · AI 없이 항상 유효' : 'click = generate · no AI, always valid'}
           </span>
         </div>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onPickFile} style={{ display: 'none' }} />
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,.dxf" onChange={onPickFile} style={{ display: 'none' }} />
         {/* §3 역할 분리 — 도면=치수의 진실 · 사진=형태 힌트(치수 미사용) */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
           <button type="button" onClick={() => { modeRef.current = 'drawing'; fileRef.current?.click(); }} disabled={drawBusy}

@@ -21,7 +21,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 type Assembly = { name?: string; parts?: Array<Record<string, unknown>> };
-type BuiltAssembly = { ok: boolean; openscad?: string; parts?: unknown; gateErrors?: string[]; interferences?: unknown[]; welds?: unknown[]; weldTotalMm?: number; composeIntent?: unknown; structural?: unknown };
+type BuiltAssembly = { ok: boolean; openscad?: string; parts?: unknown; gateErrors?: string[]; interferences?: unknown[]; contacts?: unknown[]; welds?: unknown[]; weldTotalMm?: number; composeIntent?: unknown; structural?: unknown };
 type FromTextModule = {
   callGeminiJson: (prompt: string, schema: unknown, o?: { models?: string[]; maxOutputTokens?: number; thinkingBudget?: number }) => Promise<{ data: Assembly; model?: string; repaired?: boolean }>;
   ASSEMBLY_SCHEMA: unknown;
@@ -136,6 +136,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           ok: true, assembly, openscad: built.openscad,
           parts: built.parts ?? assembly.parts,
           interferences: built.interferences ?? [],
+          contacts: built.contacts ?? [], // §12.7.3 접촉/체결 후보(과탐 분리)
           welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
           composeIntent: built.composeIntent ?? null,
           structural: built.structural ?? null,

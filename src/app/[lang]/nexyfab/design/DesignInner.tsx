@@ -161,6 +161,12 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   }, []);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
+  // DXF 씨앗 수신(§9 Phase 2) — ParametricPresetPanel이 파싱해 이벤트로 넘긴다(사람 검증 전제)
+  useEffect(() => {
+    const on = (e: Event) => { const d = (e as CustomEvent).detail; if (typeof d === 'string') setPrompt(d.slice(0, 2000)); };
+    window.addEventListener('nf-dxf-seed', on);
+    return () => window.removeEventListener('nf-dxf-seed', on);
+  }, []);
   // 생성 체감 개선(2026-07-16): 경과 시간·취소 + 어셈블리 스펙은 assemble 파이프로 라우팅
   const [elapsed, setElapsed] = useState(0);
   const runAbortRef = useRef<AbortController | null>(null);
@@ -393,6 +399,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       runAbortRef.current = ac;
       setElapsed(0);
       const timer = setInterval(() => setElapsed((e) => e + 1), 1000);
+      let timedOut = false;
+      const killer = setTimeout(() => { timedOut = true; ac.abort(); }, 120_000); // §13-2 상한 타임아웃 v1
       try {
         const res = await fetch(isAssembly ? '/api/nexyfab/drawing/assemble/' : '/api/nexyfab/drawing/compose/', {
           method: 'POST',
@@ -438,13 +446,15 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         await applyDesign(data.intent, data.scad, data.verify); // WASM 불가 폴백 — 체크포인트 생략
       } catch (e) {
         if ((e as Error)?.name === 'AbortError') {
-          setStatus(''); // 사용자 취소 — 에러 아님
+          setStatus('');
+          if (timedOut) setError(ko ? '시간 초과(120초) — 스펙을 더 작게 나누거나 부품 수를 줄여 다시 시도하세요.' : 'Timed out (120s) — try a smaller spec.');
         } else {
           setError(e instanceof Error ? e.message : String(e));
           setStatus('');
         }
       } finally {
         clearInterval(timer);
+        clearTimeout(killer);
         runAbortRef.current = null;
         setLoading(false);
       }

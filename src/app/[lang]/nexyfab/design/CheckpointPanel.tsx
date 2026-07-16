@@ -4,10 +4,11 @@
  * CheckpointPanel — 입구 B 도면 체크포인트 (방법론 §2.1, 2026-07-16).
  *
  * 자유 서술(AI 해석) 경로에서 3D를 뷰어에 올리기 전, 드래프트 지오메트리의
- * 3뷰 실루엣(정면·평면·측면) + 전체 외형 치수(AABB) + intent 스펙을 보여주고
- * 사람이 승인해야 적용한다 — "3D를 만들기 전에 틀린 걸 잡는 것"이 정확도의 엔진.
- * 실루엣은 클라이언트 결정론(삼각형 정투영 채움) — AI 개입 없음.
- * 프리셋·도면판독 경로는 결정론/확인카드가 이미 있어 스킵(§2.2).
+ * 실루엣 뷰 + 치수선(AABB) + intent 스펙을 보여주고 사람이 승인해야 적용한다.
+ * §12.3 뷰 라우팅 v1: 형상 클래스(회전체/각주형/조립체)를 intent에서 판정해
+ * 뷰 구성을 라우팅한다 — 회전체=정면·평면 2뷰(측면=정면과 동일), 그 외=3각법 3뷰.
+ * (반단면·중심선 그래프·판금 전개도 라우팅은 후속 — 정직 표기)
+ * 실루엣·치수는 클라이언트 결정론(삼각형 정투영·AABB) — AI 개입 없음.
  */
 
 import { useEffect, useRef } from 'react';
@@ -20,11 +21,22 @@ export interface CheckpointData {
   bbox: { x: number; y: number; z: number }; // 전체 외형(mm)
 }
 
-// 정투영 실루엣 — 삼각형을 지정 축 평면에 투영해 단색 채움(union = 실루엣)
-function drawView(canvas: HTMLCanvasElement, pos: Float32Array, ax: number, ay: number, flipY: boolean) {
+// §12.3 형상 클래스 판정 v1 — intent add 피처 구성으로 결정(결정론)
+function shapeClass(features?: unknown[]): 'revolve' | 'assembly' | 'prismatic' {
+  if (!Array.isArray(features)) return 'prismatic';
+  const f = features as Array<Record<string, unknown>>;
+  const adds = f.filter((x) => x && x.op !== 'subtract');
+  const rounds = adds.filter((x) => x.kind === 'cylinder' || x.kind === 'sphere').length;
+  if (f.length > 10 || adds.length > 6) return 'assembly';
+  if (adds.length > 0 && rounds === adds.length) return 'revolve';
+  return 'prismatic';
+}
+
+// 정투영 실루엣 + 치수선(하단 폭·좌측 높이 — '치수 박힌 도면' §2.1)
+function drawView(canvas: HTMLCanvasElement, pos: Float32Array, ax: number, ay: number, flipY: boolean, dimW: number, dimH: number) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  const W = canvas.width, H = canvas.height, PAD = 10;
+  const W = canvas.width, H = canvas.height, PAD = 13;
   ctx.clearRect(0, 0, W, H);
   let minA = Infinity, maxA = -Infinity, minB = Infinity, maxB = -Infinity;
   for (let i = 0; i < pos.length; i += 3) {
@@ -39,8 +51,6 @@ function drawView(canvas: HTMLCanvasElement, pos: Float32Array, ax: number, ay: 
   const py = (b: number) => (flipY ? H - (oy + (b - minB) * s) : oy + (b - minB) * s);
   ctx.fillStyle = 'rgba(59,130,246,0.55)';
   ctx.beginPath();
-  // 삼각형 수 상한 — 매우 큰 STL은 성능 위해 스트라이드 샘플(실루엣 근사임을 캡션에 표기하지 않음:
-  // 상한 아래에선 전수라 정확, 상한 초과는 촘촘한 메시라 시각 차이 무시 가능)
   const triCount = pos.length / 9;
   const stride = triCount > 60000 ? Math.ceil(triCount / 60000) * 9 : 9;
   for (let i = 0; i + 8 < pos.length; i += stride) {
@@ -50,6 +60,20 @@ function drawView(canvas: HTMLCanvasElement, pos: Float32Array, ax: number, ay: 
     ctx.closePath();
   }
   ctx.fill();
+  // 치수선 — 값은 AABB 실측(결정론), 하단=폭 · 좌측=높이
+  const x1 = ox, x2 = ox + sw * s;
+  const yT = Math.min(py(minB), py(maxB)), yB = Math.max(py(minB), py(maxB));
+  ctx.strokeStyle = 'rgba(96,165,250,0.85)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x1, H - 4); ctx.lineTo(x2, H - 4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, H - 7); ctx.lineTo(x1, H - 1); ctx.moveTo(x2, H - 7); ctx.lineTo(x2, H - 1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(4, yT); ctx.lineTo(4, yB); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(1, yT); ctx.lineTo(7, yT); ctx.moveTo(1, yB); ctx.lineTo(7, yB); ctx.stroke();
+  ctx.fillStyle = 'rgba(147,197,253,1)';
+  ctx.font = '8px ui-monospace, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(String(dimW), (x1 + x2) / 2, H - 6);
+  ctx.save(); ctx.translate(11, (yT + yB) / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(String(dimH), 0, 0); ctx.restore();
 }
 
 // intent 스펙 라인 — features의 숫자 필드를 있는 그대로 나열(값 날조 없음, 최대 12줄)
@@ -82,18 +106,32 @@ export default function CheckpointPanel({
   const topRef = useRef<HTMLCanvasElement>(null);   // 평면 = X-Y
   const sideRef = useRef<HTMLCanvasElement>(null);  // 측면 = Y-Z
 
-  useEffect(() => {
-    if (frontRef.current) drawView(frontRef.current, data.positions, 0, 2, true);
-    if (topRef.current) drawView(topRef.current, data.positions, 0, 1, true);
-    if (sideRef.current) drawView(sideRef.current, data.positions, 1, 2, true);
-  }, [data]);
+  const cls = shapeClass(data.intent.features);
+  const isRevolve = cls === 'revolve';
 
-  const views: Array<[React.RefObject<HTMLCanvasElement | null>, string, string]> = [
-    [frontRef, ko ? '정면' : 'Front', `W ${data.bbox.x} × H ${data.bbox.z}`],
-    [topRef, ko ? '평면' : 'Top', `W ${data.bbox.x} × D ${data.bbox.y}`],
-    [sideRef, ko ? '측면' : 'Side', `D ${data.bbox.y} × H ${data.bbox.z}`],
-  ];
+  useEffect(() => {
+    if (frontRef.current) drawView(frontRef.current, data.positions, 0, 2, true, data.bbox.x, data.bbox.z);
+    if (topRef.current) drawView(topRef.current, data.positions, 0, 1, true, data.bbox.x, data.bbox.y);
+    if (sideRef.current) drawView(sideRef.current, data.positions, 1, 2, true, data.bbox.y, data.bbox.z);
+  }, [data, isRevolve]);
+
+  // §12.3 뷰 라우팅 v1 — 회전체는 정면·평면 2뷰(측면=정면과 동일), 그 외 3각법 3뷰
+  const views: Array<[React.RefObject<HTMLCanvasElement | null>, string, string]> = isRevolve
+    ? [
+      [frontRef, ko ? '정면(=측면)' : 'Front (=Side)', `Ø/W ${data.bbox.x} × H ${data.bbox.z}`],
+      [topRef, ko ? '평면' : 'Top', `W ${data.bbox.x} × D ${data.bbox.y}`],
+    ]
+    : [
+      [frontRef, ko ? '정면' : 'Front', `W ${data.bbox.x} × H ${data.bbox.z}`],
+      [topRef, ko ? '평면' : 'Top', `W ${data.bbox.x} × D ${data.bbox.y}`],
+      [sideRef, ko ? '측면' : 'Side', `D ${data.bbox.y} × H ${data.bbox.z}`],
+    ];
   const spec = specLines(data.intent.features);
+  const clsLabel = cls === 'revolve'
+    ? (ko ? '회전체/대칭형 — 2뷰로 충분(§12.3)' : 'Revolved — 2 views suffice')
+    : cls === 'assembly'
+      ? (ko ? '조립체 — 3각법(중심선 그래프 뷰는 후속)' : 'Assembly — 3 views (skeleton view later)')
+      : (ko ? '각주형 — 표준 3각법' : 'Prismatic — standard 3 views');
 
   return (
     <div style={{ marginTop: 10, padding: 12, borderRadius: 10, border: '2px solid var(--nx-accent, #2563eb)', background: 'var(--nx-panel, #fff)' }}>
@@ -102,14 +140,15 @@ export default function CheckpointPanel({
       </div>
       <div style={{ fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 2, lineHeight: 1.5 }}>
         {ko
-          ? 'AI가 해석한 설계의 드래프트 3뷰입니다. 치수·형태가 의도와 맞는지 확인 후 적용하세요. 3D를 만들기 전에 잡는 게 가장 쌉니다.'
-          : 'Draft 3-view of the AI-interpreted design. Check shape & overall dims before applying.'}
+          ? 'AI가 해석한 설계의 드래프트 뷰입니다. 치수·형태가 의도와 맞는지 확인 후 적용하세요. 3D를 만들기 전에 잡는 게 가장 쌉니다.'
+          : 'Draft views of the AI-interpreted design. Check shape & dims before applying.'}
       </div>
+      <div style={{ marginTop: 4, fontSize: 9.5, fontWeight: 700, color: 'var(--nx-accent, #2563eb)' }}>{clsLabel}</div>
 
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         {views.map(([ref, label, dims]) => (
           <div key={label} style={{ flex: 1, textAlign: 'center' }}>
-            <canvas ref={ref} width={104} height={86}
+            <canvas ref={ref} width={isRevolve ? 158 : 104} height={92}
               style={{ width: '100%', border: '1px solid var(--nx-border, #dfe3e8)', borderRadius: 6, background: 'var(--nx-bg, #f8fafc)' }} />
             <div style={{ fontSize: 9.5, fontWeight: 700, marginTop: 2 }}>{label}</div>
             <div style={{ fontSize: 9, color: 'var(--nx-text-3, #6b7684)', fontVariantNumeric: 'tabular-nums' }}>{dims} mm</div>
@@ -121,7 +160,7 @@ export default function CheckpointPanel({
         <b>{ko ? '전체 외형' : 'Overall'}:</b> {data.bbox.x} × {data.bbox.y} × {data.bbox.z} mm
         {data.verify && !data.verify.error && (
           <span style={{ marginLeft: 8, color: data.verify.manifold ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
-            {data.verify.manifold ? (ko ? 'manifold ✓' : 'manifold ✓') : (ko ? 'manifold ✗' : 'manifold ✗')}
+            {data.verify.manifold ? 'manifold ✓' : 'manifold ✗'}
           </span>
         )}
       </div>

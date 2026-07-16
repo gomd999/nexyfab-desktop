@@ -82,6 +82,15 @@ function overlapVolume(a, b) {
   return ox * oy * oz;
 }
 
+/** 겹침 부피 + 관통 깊이(최소 겹침 축) — 접촉/간섭 분류(§12.7.3 v1)에 사용 */
+function overlapInfo(a, b) {
+  const ox = Math.min(a.max[0], b.max[0]) - Math.max(a.min[0], b.min[0]);
+  const oy = Math.min(a.max[1], b.max[1]) - Math.max(a.min[1], b.min[1]);
+  const oz = Math.min(a.max[2], b.max[2]) - Math.max(a.min[2], b.min[2]);
+  if (ox <= 0 || oy <= 0 || oz <= 0) return { v: 0, depth: 0 };
+  return { v: ox * oy * oz, depth: Math.min(ox, oy, oz) };
+}
+
 /**
  * 어셈블리 부품(구조 11종)을 compose 범용 intent(kind 기반 features)로 변환한다.
  * 각 부품 로컬 형상을 compose 프리미티브로 매핑하고 부품 배치(at)를 feature 전역
@@ -195,17 +204,23 @@ export function buildAssembly(asm) {
   }
   if (gateErrors.length) return { ok: false, gateErrors, interferences: [] };
 
-  // ② 부품쌍 간섭 — 겹침 부피가 유의미하면 경고(접촉/미세 오버랩은 통과).
+  // ② 부품쌍 간섭 — 기대-접촉 분류(§12.7.3 v1, 2026-07-16): 관통 깊이(최소 겹침 축)
+  //    ≤ CONTACT_MM 는 접촉/체결 후보(용접 랩·끼움)로 별도 분류해 과탐을 줄인다.
+  //    일괄 제외(exemption)가 아니라 분류·표기 — 조인트 "선언" 기반 정밀 검증은 후속.
+  const CONTACT_MM = 2;
   const interferences = [];
+  const contacts = [];
   for (let i = 0; i < boxes.length; i++) {
     for (let j = i + 1; j < boxes.length; j++) {
-      const v = overlapVolume(boxes[i].box, boxes[j].box);
+      const { v, depth } = overlapInfo(boxes[i].box, boxes[j].box);
       const rotated = boxes[i].box.rotated || boxes[j].box.rotated;
       if (v > 1) { // 1mm³ 초과 겹침
-        interferences.push({
-          a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v),
+        const rec = {
+          a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v), depthMm: +depth.toFixed(2),
           note: rotated ? '회전 AABB 겹침(보수적 — 실솔리드는 더 작을 수 있음)' : 'AABB 겹침',
-        });
+        };
+        if (depth <= CONTACT_MM) contacts.push({ ...rec, note: `접촉/체결 후보(관통 ${rec.depthMm}mm ≤ ${CONTACT_MM}mm) — 조인트 선언 정밀검증 후속` });
+        else interferences.push(rec);
       }
     }
   }
@@ -244,7 +259,7 @@ export function buildAssembly(asm) {
   let structural = null;
   try { structural = structuralCheck(asm, {}); } catch { /* 구조검토 실패는 빌드를 막지 않음 */ }
 
-  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, welds, weldTotalMm, composeIntent: assemblyToComposeIntent(asm), structural };
+  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, contacts, welds, weldTotalMm, composeIntent: assemblyToComposeIntent(asm), structural };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('assembly.mjs');
