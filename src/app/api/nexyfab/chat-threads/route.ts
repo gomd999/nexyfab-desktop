@@ -79,6 +79,8 @@ async function upsert(ownerId: string, t: ThreadIn): Promise<boolean> {
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
+  const rlG = rateLimit(`chat-threads-get:${getTrustedClientIp(req.headers)}`, 60, 60_000);
+  if (!rlG.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
   const user = await getAuthUser(req);
   if (!user) return NextResponse.json({ ok: false, error: '로그인 필요' }, { status: 401 });
   await ensureSchema();
@@ -113,6 +115,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
+  const rlD = rateLimit(`chat-threads-del:${getTrustedClientIp(req.headers)}`, 60, 60_000);
+  if (!rlD.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
   const user = await getAuthUser(req);
   if (!user) return NextResponse.json({ ok: false, error: '로그인 필요' }, { status: 401 });
   await ensureSchema();

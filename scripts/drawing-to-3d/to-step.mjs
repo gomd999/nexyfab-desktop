@@ -99,8 +99,8 @@ function expand(f, base) {
   return [placeSolid(f, base)];
 }
 
-/** intent → replicad Solid (게이트 통과분만). intentToStep/intentToRecordMeasure 공용. */
-async function buildSolid(intent) {
+/** intent → replicad Solid (게이트 통과분만). intentToStep/intentToRecordMeasure/치수감사 공용. */
+export async function buildSolid(intent) {
   const errs = gateComposite(intent);
   if (errs.length) throw new Error('composite gate: ' + errs.join('; '));
   const rc = await ensureReplicad();
@@ -173,12 +173,87 @@ export function stationProfiles(v, triIdx, N = 24) {
 }
 
 /**
+ * 선언 치수 전수 감사(§7 치수 diff의 exact 절반, 2026-07-16) — intent의 모든 회전체
+ * 치수(지름·개수·무회전 축위치)를 기록 B-rep의 면에서 실측 대조한다.
+ * 실측 = replicad Face: geomType('CYLINDRE'/'SPHERE') + AABB(원통 면은 w=h=지름이
+ * OCCT 정확값 — face-probe 실증 2026-07-16). 좌표 회전·원형 패턴 피처는 축위치 대조를
+ * 생략하고 그렇다고 표기한다(정직). 평면 외형은 AABB 3축 대조(기존)가 담당.
+ */
+export function auditDims(intent, solid) {
+  const TOL_D = 0.01, TOL_P = 0.01; // B-rep exact — 이탈은 방출 버그
+  // ① 실측: 원통·구 면 수집
+  const measured = [];
+  for (const f of solid.faces) {
+    try {
+      const g = f.geomType;
+      if (g !== 'CYLINDRE' && g !== 'SPHERE') continue;
+      const bb = f.boundingBox;
+      const w = Number(bb.width), h = Number(bb.height), dep = Number(bb.depth);
+      const c = bb.center;
+      const cx = Number(c[0] ?? c.x), cy = Number(c[1] ?? c.y);
+      if (g === 'SPHERE') { measured.push({ kind: 'sph', d: Math.max(w, h, dep), cx, cy }); continue; }
+      // 축 정렬 원통은 세 치수 중 같은 두 개 = 지름. 비정렬은 가까운 페어 평균(근사).
+      const dims = [w, h, dep].sort((a, b) => a - b);
+      const d = Math.abs(dims[0] - dims[1]) <= Math.abs(dims[1] - dims[2])
+        ? (dims[0] + dims[1]) / 2 : (dims[1] + dims[2]) / 2;
+      measured.push({ kind: 'cyl', d, cx, cy });
+    } catch { /* 면 1개 실측 실패가 전체 감사를 막지 않음 */ }
+  }
+  // ② 선언: cylinder/sphere 피처(패턴 전개 반영 — 회전 인스턴스는 위치 대조 생략)
+  const declared = [];
+  for (const f of intent.features ?? []) {
+    const n = f.pattern?.type === 'circular' && f.pattern.count > 1 ? f.pattern.count : 1;
+    const rotated = !!(f.at?.rotate && f.at.rotate.some((r) => r)) || n > 1;
+    if (f.kind === 'cylinder' && Number.isFinite(f.diameter)) {
+      for (let k = 0; k < n; k++) {
+        declared.push({
+          kind: 'cyl', d: f.diameter, rotated,
+          expect: !rotated ? { x: f.at?.translate?.[0] ?? 0, y: f.at?.translate?.[1] ?? 0 } : null,
+          label: `Ø${f.diameter} ${f.op === 'subtract' ? (n > 1 ? `hole ${k + 1}/${n}` : 'hole') : 'boss'}`,
+        });
+      }
+    } else if (f.kind === 'sphere' && Number.isFinite(f.diameter)) {
+      for (let k = 0; k < n; k++) declared.push({ kind: 'sph', d: f.diameter, rotated, expect: null, label: `SØ${f.diameter}` });
+    }
+  }
+  // ③ 그리디 매칭 — 지름(±0.01) 그리고 가능하면 축위치(±0.01)까지
+  const used = new Set();
+  const rows = [];
+  for (const dec of declared) {
+    let hit = -1;
+    for (let i = 0; i < measured.length; i++) {
+      if (used.has(i)) continue;
+      const m = measured[i];
+      if (m.kind !== dec.kind || Math.abs(m.d - dec.d) > TOL_D) continue;
+      if (dec.expect && (Math.abs(m.cx - dec.expect.x) > TOL_P || Math.abs(m.cy - dec.expect.y) > TOL_P)) continue;
+      hit = i; break;
+    }
+    if (hit >= 0) {
+      used.add(hit);
+      rows.push({ label: dec.label, declared: dec.d, measured: +measured[hit].d.toFixed(4), pos: dec.expect ? 'ok' : 'skipped(rot/pattern)', pass: true });
+    } else {
+      const dOnly = measured.findIndex((m, i) => !used.has(i) && m.kind === dec.kind && Math.abs(m.d - dec.d) <= TOL_D);
+      rows.push({ label: dec.label, declared: dec.d, measured: dOnly >= 0 ? +measured[dOnly].d.toFixed(4) : null, pos: dOnly >= 0 ? 'POS-MISMATCH' : 'MISSING', pass: false });
+    }
+  }
+  return {
+    rows,
+    declaredCount: declared.length,
+    measuredCount: measured.length,
+    extraFaces: measured.length - used.size, // 선언 외 회전체 면(불리언 파생 등) — 정보 표기
+    note: '지름 ±0.01mm · 무회전 피처만 축위치 대조(회전·패턴은 지름·개수만) · 평면 외형은 AABB 3축이 담당',
+  };
+}
+
+/**
  * intent → 기록 커널(OCCT) 실측 — §8-③ 역투영 diff 채점기의 '기록' 쪽 절반.
- * B-rep을 메시화해 AABB·부피·스테이션 프로파일을 결정론으로 측정한다.
+ * B-rep을 메시화해 AABB·부피·스테이션 프로파일 + 치수 전수 감사(auditDims)를 반환.
  * 드래프트(SCAD→WASM 메시, 클라 실측)와 같은 수학으로 재어 공정 비교가 되게 한다.
  */
 export async function intentToRecordMeasure(intent) {
   const result = await buildSolid(intent);
+  let dims = null;
+  try { dims = auditDims(intent, result); } catch { /* 감사 실패는 다른 측정을 막지 않음(정직: null) */ }
   const m = result.mesh({ tolerance: 0.05, angularTolerance: 15 });
   const v = m.vertices, tri = m.triangles;
   let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
@@ -200,6 +275,7 @@ export async function intentToRecordMeasure(intent) {
     volume: +Math.abs(vol6 / 6).toFixed(1),
     triangles: tri.length / 3,
     profiles: stationProfiles(v, tri),
+    dims,
   };
 }
 

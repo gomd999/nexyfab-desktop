@@ -343,6 +343,7 @@ const DICT: Record<Lang, {
   actDemo: string; actQuote: string; actContact: string;
   newChat: string; guestNote: string; guestLimit: string;
   stop: string; copyMsg: string; copied: string; regen: string;
+  clashWarn: string; fuFixClash: string;
   stageAnalyze: string; stageCalc: string; stageCad: string;
   fuText: string[]; fuCalc: string[]; fuCad: string[];
 }> = {
@@ -361,6 +362,7 @@ const DICT: Record<Lang, {
     stop: '중단', copyMsg: '복사', copied: '복사됨 ✓', regen: '다시 생성',
     stageAnalyze: '요청 분석 중…', stageCalc: '계산 실행 중…', stageCad: '3D 모델 생성 중…',
     fuText: ['더 자세히 설명해줘', '핵심만 요약해줘', '관련 기준(KDS 등)은?'], fuCalc: ['이 결과의 근거를 설명해줘', '어떤 조건이면 부적합이 되나?'], fuCad: ['이 설계의 제조 리스크는?', '적합한 재질을 추천해줘'],
+    clashWarn: '부품이 겹칩니다 — 아직 완성체가 아닙니다. 아래 칩으로 교정을 요청하거나 치수를 알려주세요.', fuFixClash: '간섭(부품 겹침)을 해결하도록 배치를 수정해줘',
     calcRunning: '검토 실행 중…', calcPass: '적합', calcFail: '부적합', calcRefs: '근거',
     cadGenerating: '3D 모델 생성 중…', cadNoPreview: '이 형상의 3D 미리보기는 배포 환경에서 제공됩니다. 아래 SCAD로 확인하세요.', cadDownload: 'SCAD 다운로드',
     cadSpecTitle: '이 사양으로 정밀 3D를 생성할까요?', cadConfirm: '확인 · 정밀 3D 생성', cadBuilding: '정밀 형상(STEP) 생성 중…', cadStepDownload: 'STEP 다운로드', cadGate: '결정론 게이트',
@@ -384,6 +386,7 @@ const DICT: Record<Lang, {
     stop: 'Stop', copyMsg: 'Copy', copied: 'Copied ✓', regen: 'Regenerate',
     stageAnalyze: 'Analyzing request…', stageCalc: 'Running calculation…', stageCad: 'Generating 3D model…',
     fuText: ['Explain in more detail', 'Summarize the key points', 'Which codes/standards apply?'], fuCalc: ['Explain the basis of this result', 'Under what conditions would it fail?'], fuCad: ['What are the manufacturing risks?', 'Recommend a suitable material'],
+    clashWarn: 'Parts overlap — this is not a finished assembly yet. Ask for a fix below or give exact dims.', fuFixClash: 'Fix the interferences by adjusting part placement',
     calcRunning: 'Running check…', calcPass: 'PASS', calcFail: 'FAIL', calcRefs: 'Refs',
     cadGenerating: 'Generating 3D model…', cadNoPreview: 'A 3D preview of this shape is available in the deployed environment — see the SCAD below.', cadDownload: 'Download SCAD',
     cadSpecTitle: 'Generate the precise 3D from this spec?', cadConfirm: 'Confirm · build 3D', cadBuilding: 'Building precise geometry (STEP)…', cadStepDownload: 'Download STEP', cadGate: 'Deterministic gate',
@@ -407,6 +410,7 @@ const DICT: Record<Lang, {
     stop: '停止', copyMsg: 'コピー', copied: 'コピー済み ✓', regen: '再生成',
     stageAnalyze: 'リクエスト分析中…', stageCalc: '計算実行中…', stageCad: '3Dモデル生成中…',
     fuText: ['もっと詳しく説明して', '要点をまとめて', '関連する基準は?'], fuCalc: ['この結果の根拠を説明して', 'どんな条件で不適合になる?'], fuCad: ['この設計の製造リスクは?', '適した材質を提案して'],
+    clashWarn: '部品が干渉しています — まだ完成形ではありません。下のチップで修正を依頼するか寸法を指定してください。', fuFixClash: '干渉を解消するよう配置を修正して',
     calcRunning: '検討を実行中…', calcPass: '適合', calcFail: '不適合', calcRefs: '根拠',
     cadGenerating: '3Dモデル生成中…', cadNoPreview: 'この形状の3Dプレビューは本番環境で提供されます。下のSCADをご確認ください。', cadDownload: 'SCADをダウンロード',
     cadSpecTitle: 'この仕様で精密3Dを生成しますか？', cadConfirm: '確認 · 精密3D生成', cadBuilding: '精密形状(STEP)を生成中…', cadStepDownload: 'STEPをダウンロード', cadGate: '決定論ゲート',
@@ -430,6 +434,7 @@ const DICT: Record<Lang, {
     stop: '停止', copyMsg: '复制', copied: '已复制 ✓', regen: '重新生成',
     stageAnalyze: '正在分析请求…', stageCalc: '正在执行计算…', stageCad: '正在生成3D模型…',
     fuText: ['再详细解释一下', '总结要点', '适用哪些规范/标准?'], fuCalc: ['解释这个结果的依据', '什么条件下会不合格?'], fuCad: ['这个设计的制造风险是什么?', '推荐合适的材料'],
+    clashWarn: '部件重叠 — 尚未是完整装配体。请用下方按钮要求修正或提供准确尺寸。', fuFixClash: '调整部件位置以消除干涉',
     calcRunning: '正在计算…', calcPass: '合格', calcFail: '不合格', calcRefs: '依据',
     cadGenerating: '正在生成3D模型…', cadNoPreview: '该形状的3D预览在部署环境中提供，请查看下方SCAD。', cadDownload: '下载SCAD',
     cadSpecTitle: '按此规格生成精确3D？', cadConfirm: '确认 · 生成3D', cadBuilding: '正在生成精确几何(STEP)…', cadStepDownload: '下载STEP', cadGate: '确定性门控',
@@ -453,6 +458,7 @@ const DICT: Record<Lang, {
     stop: 'Detener', copyMsg: 'Copiar', copied: 'Copiado ✓', regen: 'Regenerar',
     stageAnalyze: 'Analizando solicitud…', stageCalc: 'Ejecutando cálculo…', stageCad: 'Generando modelo 3D…',
     fuText: ['Explica con más detalle', 'Resume los puntos clave', '¿Qué normas aplican?'], fuCalc: ['Explica la base de este resultado', '¿En qué condiciones fallaría?'], fuCad: ['¿Riesgos de fabricación?', 'Recomienda un material adecuado'],
+    clashWarn: 'Las piezas se superponen — aún no es un conjunto terminado. Pide una corrección abajo o da cotas exactas.', fuFixClash: 'Corrige las interferencias ajustando la posición de las piezas',
     calcRunning: 'Calculando…', calcPass: 'CUMPLE', calcFail: 'NO CUMPLE', calcRefs: 'Refs',
     cadGenerating: 'Generando modelo 3D…', cadNoPreview: 'La vista 3D de esta forma está disponible en el entorno desplegado — consulta el SCAD abajo.', cadDownload: 'Descargar SCAD',
     cadSpecTitle: '¿Generar el 3D preciso con esta especificación?', cadConfirm: 'Confirmar · generar 3D', cadBuilding: 'Generando geometría precisa (STEP)…', cadStepDownload: 'Descargar STEP', cadGate: 'Compuerta determinista',
@@ -476,6 +482,7 @@ const DICT: Record<Lang, {
     stop: 'إيقاف', copyMsg: 'نسخ', copied: 'تم النسخ ✓', regen: 'إعادة التوليد',
     stageAnalyze: 'جارٍ تحليل الطلب…', stageCalc: 'جارٍ تنفيذ الحساب…', stageCad: 'جارٍ إنشاء النموذج ثلاثي الأبعاد…',
     fuText: ['اشرح بمزيد من التفصيل', 'لخّص النقاط الأساسية', 'ما المعايير ذات الصلة؟'], fuCalc: ['اشرح أساس هذه النتيجة', 'في أي ظروف تصبح غير مطابقة؟'], fuCad: ['ما مخاطر التصنيع لهذا التصميم؟', 'اقترح مادة مناسبة'],
+    clashWarn: 'الأجزاء متداخلة — ليست مجموعة مكتملة بعد. اطلب تصحيحًا أدناه أو حدّد الأبعاد.', fuFixClash: 'عالج التداخل بتعديل مواضع الأجزاء',
     calcRunning: 'جارٍ الفحص…', calcPass: 'مطابق', calcFail: 'غير مطابق', calcRefs: 'المراجع',
     cadGenerating: 'جارٍ إنشاء النموذج ثلاثي الأبعاد…', cadNoPreview: 'تتوفر معاينة ثلاثية الأبعاد لهذا الشكل في بيئة النشر — راجع SCAD أدناه.', cadDownload: 'تنزيل SCAD',
     cadSpecTitle: 'هل تُنشئ نموذجًا دقيقًا بهذه المواصفات؟', cadConfirm: 'تأكيد · بناء 3D', cadBuilding: 'جارٍ بناء الشكل الدقيق (STEP)…', cadStepDownload: 'تنزيل STEP', cadGate: 'بوابة حتمية',
@@ -585,7 +592,99 @@ function download(text: string, name: string, mime = 'text/plain') {
 
 // 기계 CAD 결과 카드 — 단일부품(체크포인트→STEP 3D) / 멀티바디(부품목록+간섭→GA).
 // 출력: STEP·STL·SCAD·GA(render-html). 기본 DFM/견적(fab).
-function CadCard({ cad, t, accent, isRtl, quoteHref }: { cad: CadResult; t: (typeof DICT)[Lang]; accent: string; isRtl: boolean; quoteHref: string }) {
+
+/* SCAD 인라인 3D 미리보기 — STEP 승인 전에도 채팅 안에서 바로 본다(2026-07-16 사용자 요청).
+   렌더는 클라 결정론(openscad-wasm→STL→three). 최신 카드만 auto, 과거 카드는 버튼(스레드
+   복원 시 일괄 렌더 방지). three/wasm은 클릭·auto 시점에 동적 로드(랜딩 번들 비대화 방지). */
+function MiniScadViewer({ scad, auto, accent }: { scad: string; auto?: boolean; accent: string }) {
+  const mountRef = useRef<HTMLDivElement>(null);
+  const [st, setSt] = useState<'idle' | 'busy' | 'ok' | 'err'>('idle');
+  const [errMsg, setErrMsg] = useState('');
+  const cleanupRef = useRef<(() => void) | null>(null);
+  const start = useCallback(async () => {
+    if (!mountRef.current) return;
+    setSt('busy');
+    try {
+      const [wr, im, THREE] = await Promise.all([
+        import('@/app/[lang]/studio/wasmRender'),
+        import('@/app/[lang]/shape-generator/io/importers'),
+        import('three'),
+      ]);
+      if (!wr.wasmAvailable()) throw new Error('3D unavailable in this browser');
+      const r = await wr.renderScadWasm(scad);
+      if (!r.ok || !r.data) throw new Error(r.error ?? 'render failed');
+      const buf = r.data.buffer.slice(r.data.byteOffset, r.data.byteOffset + r.data.byteLength) as ArrayBuffer;
+      const geom = im.parseSTL(buf);
+      geom.computeVertexNormals();
+      geom.computeBoundingBox();
+      const mount = mountRef.current;
+      if (!mount) return;
+      const W = mount.clientWidth || 320, H = 240;
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(W, H);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      mount.innerHTML = '';
+      mount.appendChild(renderer.domElement);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0b1020);
+      const cam = new THREE.PerspectiveCamera(45, W / H, 0.1, 200000);
+      scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+      const dl = new THREE.DirectionalLight(0xffffff, 1.1); dl.position.set(1, 1, 1.4); scene.add(dl);
+      const bb = geom.boundingBox!;
+      const size = new THREE.Vector3(); bb.getSize(size);
+      const center = new THREE.Vector3(); bb.getCenter(center);
+      const mesh = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color: 0x60a5fa, metalness: 0.15, roughness: 0.6 }));
+      mesh.position.sub(center);
+      scene.add(mesh);
+      const R = (Math.max(size.x, size.y, size.z) || 100) * 1.7;
+      let theta = Math.PI / 4, phi = Math.PI / 3, drag = false, px = 0, py = 0;
+      const draw = () => {
+        cam.position.set(R * Math.sin(phi) * Math.cos(theta), R * Math.sin(phi) * Math.sin(theta), R * Math.cos(phi));
+        cam.up.set(0, 0, 1); cam.lookAt(0, 0, 0);
+        renderer.render(scene, cam);
+      };
+      const onDown = (e: PointerEvent) => { drag = true; px = e.clientX; py = e.clientY; };
+      const onMove = (e: PointerEvent) => {
+        if (!drag) return;
+        theta -= (e.clientX - px) * 0.01;
+        phi = Math.min(Math.PI - 0.1, Math.max(0.1, phi - (e.clientY - py) * 0.01));
+        px = e.clientX; py = e.clientY; draw();
+      };
+      const onUp = () => { drag = false; };
+      renderer.domElement.addEventListener('pointerdown', onDown);
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      cleanupRef.current = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        renderer.dispose();
+        geom.dispose();
+      };
+      draw();
+      setSt('ok');
+    } catch (e) {
+      setErrMsg(e instanceof Error ? e.message : String(e));
+      setSt('err');
+    }
+  }, [scad]);
+  useEffect(() => () => { cleanupRef.current?.(); }, []);
+  useEffect(() => { if (auto && st === 'idle') void start(); /* 최신 카드만 자동 */ // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto]);
+  return (
+    <div style={{ marginBottom: 10 }}>
+      {st !== 'ok' && (
+        <button type="button" onClick={() => void start()} disabled={st === 'busy'}
+          style={{ padding: '7px 14px', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: st === 'busy' ? 'wait' : 'pointer', border: `1px solid ${accent}55`, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1' }}>
+          {st === 'busy' ? '⏳ 3D…' : '▶ 3D'}
+        </button>
+      )}
+      {st === 'err' && <div style={{ marginTop: 4, fontSize: 11, color: '#f87171' }}>{errMsg}</div>}
+      <div ref={mountRef} style={{ width: '100%', borderRadius: 12, overflow: 'hidden', display: st === 'ok' ? 'block' : 'none', border: '1px solid rgba(255,255,255,0.08)' }} />
+    </div>
+  );
+}
+
+function CadCard({ cad, t, accent, isRtl, quoteHref, preview }: { cad: CadResult; t: (typeof DICT)[Lang]; accent: string; isRtl: boolean; quoteHref: string ; preview?: boolean }) {
   const [stepText, setStepText] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
   const [err, setErr] = useState('');
@@ -718,6 +817,12 @@ function CadCard({ cad, t, accent, isRtl, quoteHref }: { cad: CadResult; t: (typ
             </div>
           </div>
         )}
+        {!stepText && cad.scad && <MiniScadViewer scad={cad.scad} auto={preview} accent={accent} />}
+        {nInterf > 0 && (
+          <div style={{ margin: '0 0 10px', padding: '8px 11px', borderRadius: 9, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5', fontSize: 12, lineHeight: 1.55 }}>
+            ⚠ <b>{t.cadInterf.replace('{n}', String(nInterf))}</b> — {t.clashWarn}
+          </div>
+        )}
         <div style={{ fontSize: 13, fontWeight: 800, color: '#e6edf3', marginBottom: 10 }}>{t.cadAssemblyTitle}</div>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#8b949e', marginBottom: 6 }}>{t.cadParts}</div>
         {specBlock}
@@ -794,6 +899,7 @@ function CadCard({ cad, t, accent, isRtl, quoteHref }: { cad: CadResult; t: (typ
   return (
     <div style={card}>
       <div style={{ fontSize: 13, fontWeight: 800, color: '#e6edf3', marginBottom: 10 }}>{t.cadSpecTitle}</div>
+      {cad.scad && <MiniScadViewer scad={cad.scad} auto={preview} accent={accent} />}
       {specBlock}
       {drawingSvg && (
         <details open style={{ marginBottom: 10 }}>
@@ -1351,7 +1457,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
                     onPrint={() => printCalc(m)} />}
                   {m.cad && (
                     <>
-                      <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} quoteHref={quoteHref} />
+                      <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} quoteHref={quoteHref} preview={i === messages.length - 1} />
                       {!m.cad.error && (
                         <a href={'/' + langCode + '/nexyfab/design/?domain=' + (STUDIO_DOMAIN[domain] ?? 'mech')}
                           onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: m.cad?.spec ?? m.content ?? '', at: Date.now() })); } catch { /* ignore */ } }}
@@ -1373,7 +1479,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
             {!loading && messages.length > 0 && (() => {
               const last = messages[messages.length - 1];
               if (last.role !== 'assistant' || !last.content || last.content.startsWith('⚠️')) return null;
-              const chips = last.calc && !last.calc.error ? t.fuCalc : last.cad && !last.cad.error ? t.fuCad : t.fuText;
+              const chips = last.calc && !last.calc.error ? t.fuCalc : last.cad && !last.cad.error ? (((last.cad.interferences?.length ?? 0) > 0 ? [t.fuFixClash] : []).concat(t.fuCad)) : t.fuText;
               return (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: isRtl ? 'flex-end' : 'flex-start' }}>
                   {chips.map((c, ci) => (

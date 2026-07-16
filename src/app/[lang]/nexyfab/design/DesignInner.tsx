@@ -167,6 +167,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   // §2.1 입구 B 도면 체크포인트 — 자유 서술(AI 해석)만 승인 게이트, 프리셋·판독은 스킵(§2.2)
   const [checkpoint, setCheckpoint] = useState<CheckpointData | null>(null);
   const [cpState, setCpState] = useState<'none' | 'pending' | 'approved' | 'skipped'>('none');
+  // 그물 ④ — 어셈블리 빌드 결과의 간섭 건수(null=어셈블리 아님)
+  const [interf, setInterf] = useState<number | null>(null);
   const [bbox, setBbox] = useState<Bbox | null>(null);
   const [featureCount, setFeatureCount] = useState<number | null>(null);
 
@@ -430,7 +432,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
 
   // §8-③ 역투영 diff v1 — 듀얼-방출 교차검증: 드래프트(뷰어 메시) 실측 vs 기록(OCCT) 실측
   interface DiffCheck { name: string; draft: number; record: number; diff: number; tol: number; pass: boolean }
-  type DiffRes = { ok: true; verdict: string; checks: DiffCheck[]; record?: { profiles?: AxisProfile[] }; notes?: string[] } | { ok: false; stage?: string; error?: string };
+  interface DimRow { label: string; declared: number; measured: number | null; pos: string; pass: boolean }
+  interface DimAudit { rows: DimRow[]; extraFaces: number; note: string }
+  type DiffRes = { ok: true; verdict: string; checks: DiffCheck[]; dims?: DimAudit | null; record?: { profiles?: AxisProfile[] }; notes?: string[] } | { ok: false; stage?: string; error?: string };
   const [diffRes, setDiffRes] = useState<DiffRes | null>(null);
   const [diffDraftProfiles, setDiffDraftProfiles] = useState<AxisProfile[] | null>(null);
   const [diffBusy, setDiffBusy] = useState(false);
@@ -711,6 +715,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                     setError(null); setGateErrors(null); setExportMsg(null);
                     await applyDesign(i, s, null);
                   }}
+                  onBuildInfo={(info) => setInterf(info.interferences)}
                 />
               )}
             </div>
@@ -778,8 +783,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
               },
               {
                 label: ko ? '④ 어셈블리 간섭' : '④ Assembly interference',
-                status: 'skip',
-                note: ko ? '어셈블리 생성 시 결과 카드에 표시' : 'shown on assembly build card',
+                status: interf === null ? 'skip' : interf === 0 ? 'pass' : 'fail',
+                note: interf === null ? (ko ? '어셈블리 빌드 시 활성' : 'runs on assembly build') : interf === 0 ? (ko ? '간섭 없음' : 'no clash') : (ko ? `간섭 ${interf}건` : `${interf} clashes`),
               },
               {
                 label: ko ? '⑤ vision 비평(토폴로지 블런더)' : '⑤ Vision critique',
@@ -826,6 +831,29 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                         ))}
                       </tbody>
                     </table>
+                    {/* 치수 전수 대조(exact) — 선언 회전체 치수 ↔ B-rep 면 실측(±0.01mm) */}
+                    {diffRes.dims && diffRes.dims.rows.length > 0 && (
+                      <div style={{ marginTop: 6 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 800 }}>{ko ? '치수 전수 대조 (선언 ↔ B-rep 실측)' : 'Full dimension audit (declared ↔ B-rep)'}</div>
+                        <table style={{ width: '100%', marginTop: 3, borderCollapse: 'collapse', fontSize: 10, fontVariantNumeric: 'tabular-nums' }}>
+                          <tbody>
+                            {diffRes.dims.rows.map((r, ri) => (
+                              <tr key={ri}>
+                                <td style={{ padding: '2px 4px', fontWeight: 600 }}>{r.label}</td>
+                                <td style={{ padding: '2px 4px' }}>{r.declared}</td>
+                                <td style={{ padding: '2px 4px' }}>{r.measured ?? '—'}</td>
+                                <td style={{ padding: '2px 4px', color: 'var(--nx-text-3, #6b7684)' }}>{r.pos}</td>
+                                <td style={{ padding: '2px 4px', fontWeight: 800, color: r.pass ? '#16a34a' : '#dc2626' }}>{r.pass ? '✓' : '✗'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <div style={{ marginTop: 2, fontSize: 8.5, color: 'var(--nx-text-3, #6b7684)', lineHeight: 1.5 }}>
+                          {diffRes.dims.note}{diffRes.dims.extraFaces > 0 ? (ko ? ` · 선언 외 회전체 면 ${diffRes.dims.extraFaces}개(불리언 파생)` : ` · ${diffRes.dims.extraFaces} extra faces`) : ''}
+                        </div>
+                      </div>
+                    )}
+
                     {/* 실루엣 오버레이(§13-4 래스터 트랙) — 파랑 실선=드래프트 · 빨강/주황 점선=기록 */}
                     {diffDraftProfiles && diffRes.record?.profiles && (
                       <>
