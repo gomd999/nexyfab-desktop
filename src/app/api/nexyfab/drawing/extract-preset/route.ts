@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { guardStudioAi } from '@/lib/studio-ai-guard';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -50,6 +51,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const ip = getTrustedClientIp(req.headers);
   const rl = rateLimit(`drawing-extract-preset:${ip}`, 6, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
+  // 구독 정합(2026-07-16): 로그인=shape_chat 슬롯+예산, 익명=합산 리밋(게스트 데모 유지)
+  const planGuard = await guardStudioAi(req);
+  if (planGuard) return planGuard;
   // 전역 비용 브레이커 — Vision 호출도 AI 일시정지에 복종(감사 2026-07-16)
   try {
     const { getActiveBreaker } = await import('@/lib/cost-breaker');
