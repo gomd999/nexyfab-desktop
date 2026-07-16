@@ -54,10 +54,10 @@ interface NavSection {
 // 2026-07-16 AI 설계+스튜디오 통합 IA: [분야] + 채팅 내역 + 내 프로젝트.
 // 채팅 섹션은 동적(nf_chat_threads_v1 — 랜딩 챗·스튜디오 도크와 같은 저장소)이라
 // SECTIONS 밖에서 렌더한다. 분야와 채팅 사이에 끼워 넣기 위해 섹션을 둘로 나눈다.
+// 2026-07-16 재배치(사용자): 최상단='＋ 새 채팅' CTA(별도 렌더), 홈(허브)은 하단으로.
 const SECTION_MAIN: NavSection = {
   titleKo: '', titleEn: '',
   items: [
-    { icon: '🏠', labelKo: '홈',       labelEn: 'Home',         href: '/nexyfab/hub' },
     { icon: '🔧', labelKo: '기계',     labelEn: 'Mechanical',   href: '/nexyfab/design?domain=mech' },
     { icon: '🏢', labelKo: '건축',     labelEn: 'Architecture', href: '/nexyfab/design?domain=building' },
     { icon: '🌉', labelKo: '토목',     labelEn: 'Civil',        href: '/nexyfab/design?domain=civil' },
@@ -68,11 +68,14 @@ const SECTION_MAIN: NavSection = {
 const SECTION_BOTTOM: NavSection = {
   titleKo: '', titleEn: '',
   items: [
+    { icon: '🏠', labelKo: '홈 (허브)',   labelEn: 'Home (Hub)',  href: '/nexyfab/hub' },
     { icon: '📁', labelKo: '내 프로젝트', labelEn: 'My Projects', href: '/nexyfab/projects' },
   ],
 };
 
-interface ChatThreadLite { id: string; title: string; updated?: number; pinned?: boolean; badge?: string | null }
+interface ChatThreadLite { id: string; title: string; domain?: string; updated?: number; pinned?: boolean; badge?: string | null }
+// 스레드 분야 아이콘 — ChatHero의 도메인 값(mechanical…)과 동일 키
+const THREAD_EMOJI: Record<string, string> = { mechanical: '🔧', civil: '🌉', architecture: '🏢', landscape: '🌳', interior: '🪑' };
 
 // Avatar dropdown items (replaces the old Account sidebar section).
 interface MenuItem { icon: string; labelKo: string; labelEn: string; href: string; external?: boolean; }
@@ -206,6 +209,15 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
           <span className="nf-uni-brand-text" style={{ color: '#0b5cff' }}>Fab</span>
         </Link>
 
+        {/* ＋ 새 채팅 — 최상단 CTA(Gemini 문법, 2026-07-16 사용자 결정) */}
+        <div style={{ padding: '10px 10px 4px' }}>
+          <a href={`/${lang}/nexyfab/ai/`}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '9px 0', borderRadius: 10, textDecoration: 'none', fontSize: 13, fontWeight: 800, color: 'var(--nx-accent)', border: '1.5px dashed var(--nx-accent)', background: 'var(--nx-accent-soft, rgba(37,99,235,0.08))' }}>
+            <span aria-hidden="true">＋</span>
+            <span className="nf-uni-label">{isKo ? '새 채팅' : 'New chat'}</span>
+          </a>
+        </div>
+
         {/* Sections */}
         <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
           {([SECTION_MAIN, 'CHAT', SECTION_BOTTOM] as Array<NavSection | 'CHAT'>).map((sec) => sec === 'CHAT' ? (
@@ -214,20 +226,14 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
               <div className="nf-uni-section-title" style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '10px 14px 4px' }}>
                 {isKo ? '채팅' : 'Chats'}
               </div>
-              {/* <a> 사용: 같은 라우트에서 ?t=만 바뀌면 Link는 재마운트하지 않아 스레드 전환이 안 됨 */}
-              <a href={`/${lang}/nexyfab/ai/`}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', textDecoration: 'none', color: 'var(--nx-text)', fontSize: 13, fontWeight: 500, borderLeft: '2px solid transparent', lineHeight: 1.2 }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-hover)'; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}>
-                <span aria-hidden="true" style={{ fontSize: 16, flex: '0 0 18px', textAlign: 'center' }}>💬</span>
-                <span className="nf-uni-label" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isKo ? '새 채팅 (AI 설계)' : 'New chat (AI design)'}</span>
-              </a>
+              {/* 새 채팅은 최상단 CTA로 승격(중복 제거) — 여기는 스레드 목록만.
+                  <a> 사용: 같은 라우트에서 ?t=만 바뀌면 Link는 재마운트하지 않아 스레드 전환이 안 됨 */}
               {chatThreads.map((th) => (
                 <a key={th.id} className="nf-uni-chat-item" href={`/${lang}/nexyfab/ai/?t=${th.id}`} title={th.title}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px', textDecoration: 'none', color: 'var(--nx-text)', fontSize: 12, borderLeft: '2px solid transparent', lineHeight: 1.2 }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-hover)'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}>
-                  <span aria-hidden="true" style={{ fontSize: 11, flex: '0 0 18px', textAlign: 'center', color: 'var(--nx-text-3)' }}>{th.pinned ? '📌' : '·'}</span>
+                  <span aria-hidden="true" style={{ fontSize: 12, flex: '0 0 18px', textAlign: 'center' }}>{th.pinned ? '📌' : (THREAD_EMOJI[th.domain ?? ''] ?? '💬')}</span>
                   <span className="nf-uni-label" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{th.title}</span>
                   {th.badge && (
                     <span className="nf-uni-label" style={{ fontSize: 9, fontWeight: 800, color: th.badge === 'PASS' || th.badge === '✓' ? '#16a34a' : th.badge === 'FAIL' || th.badge === '✗' ? '#dc2626' : 'var(--nx-text-3)' }}>

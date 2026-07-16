@@ -61,6 +61,8 @@ const titleFrom = (text: string) => { const t2 = text.replace(/\s+/g, ' ').trim(
 const GHOST_BTN = { padding: '3px 10px', borderRadius: 8, fontSize: 11, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'rgba(148,163,184,0.9)' };
 // 챗 도메인 → 스튜디오 분야 슬러그 (Studio 핸드오프에 분야를 함께 넘긴다)
 const STUDIO_DOMAIN: Record<string, string> = { mechanical: 'mech', civil: 'civil', architecture: 'building', landscape: 'landscape', interior: 'interior' };
+// 스레드 분야 아이콘(2026-07-16) — 색점 대신 한눈에 구분
+const DOMAIN_EMOJI_TH: Record<string, string> = { mechanical: '🔧', civil: '🌉', architecture: '🏢', landscape: '🌳', interior: '🪑' };
 const badgeFrom = (msgs: Msg[]): string | null => { for (let i = msgs.length - 1; i >= 0; i--) { const v = (msgs[i].calc as { verdict?: string } | undefined)?.verdict; if (v) return v; } return null; };
 function loadThreads(): Thread[] {
   try {
@@ -1393,7 +1395,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
                 .map((th) => (
                   <div key={th.id} className="nf-th" data-active={th.id === activeId ? '1' : '0'} onClick={() => openThread(th.id)} role="button" tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter') openThread(th.id); }}>
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', flex: '0 0 7px', background: DOMAIN_ACCENT[th.domain] ?? '#64748b' }} />
+                    <span aria-hidden style={{ fontSize: 12, flex: '0 0 16px', textAlign: 'center' }}>{DOMAIN_EMOJI_TH[th.domain] ?? '💬'}</span>
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{th.pinned ? '📌 ' : ''}{th.title}</span>
                     {th.badge && <span style={{ fontSize: 9, fontWeight: 800, color: th.badge === 'PASS' ? '#4ade80' : th.badge === 'FAIL' ? '#f87171' : '#94a3b8' }}>{th.badge === 'PASS' ? '✓' : th.badge === 'FAIL' ? '✗' : 'ⓘ'}</span>}
                     <button type="button" className="pin" onClick={(e) => { e.stopPropagation(); togglePin(th.id); }} aria-label="pin">📌</button>
@@ -1486,7 +1488,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
                       <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} preview={i === messages.length - 1 && !splitMode} />
                       {!m.cad.error && (
                         <a href={'/' + langCode + '/nexyfab/design/?domain=' + (STUDIO_DOMAIN[domain] ?? 'mech')}
-                          onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: m.cad?.spec ?? m.content ?? '', at: Date.now() })); } catch { /* ignore */ } }}
+                          onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: m.cad?.spec ?? m.content ?? '', at: Date.now(), type: m.cad?.isAssembly ? 'assembly' : 'part' })); } catch { /* ignore */ } }}
                           style={{ display: 'inline-block', marginTop: 6, fontSize: 11.5, color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 7, padding: '4px 10px', textDecoration: 'none' }}>
                           🛠 Studio →
                         </a>
@@ -1667,7 +1669,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
                 ? <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 999, background: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>✓ {t.cadInterfNone}</span>
                 : null}
             <a href={'/' + langCode + '/nexyfab/design/?domain=' + (STUDIO_DOMAIN[domain] ?? 'mech')}
-              onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: latestCad.spec ?? '', at: Date.now() })); } catch { /* ignore */ } }}
+              onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: latestCad.spec ?? '', at: Date.now(), type: latestCad.isAssembly ? 'assembly' : 'part' })); } catch { /* ignore */ } }}
               style={{ marginInlineStart: 'auto', fontSize: 11, color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 7, padding: '3px 10px', textDecoration: 'none' }}>
               🛠 Studio →
             </a>

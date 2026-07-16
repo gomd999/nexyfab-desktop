@@ -801,3 +801,11 @@ body.sg-shell-v2 [data-tour="feature-tree"] > div > div {
 .st-chip     { background: var(--nx-panel-2); border-color: var(--nx-border); color: var(--nx-text-2); }
 .st-chip:hover { background: var(--nx-hover); color: var(--nx-text); }
 .st-hero-bg  { background: radial-gradient(120% 80% at 50% 0%, var(--nx-panel-2) 0%, var(--nx-bg) 60%); }
+
+/* ── 커스텀 스크롤바(2026-07-16) — 전 표면 공통, 얇은 라운드·다크/라이트 겸용 ── */
+* { scrollbar-width: thin; scrollbar-color: rgba(148, 163, 184, 0.45) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.35); border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.6); background-clip: content-box; border: 2px solid transparent; }
+*::-webkit-scrollbar-corner { background: transparent; }

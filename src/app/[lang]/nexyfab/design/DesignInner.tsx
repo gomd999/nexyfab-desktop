@@ -151,13 +151,20 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       const raw = sessionStorage.getItem('nf-chat-handoff');
       if (!raw) return;
       sessionStorage.removeItem('nf-chat-handoff');
-      const h = JSON.parse(raw) as { spec?: string; at?: number };
-      if (h.spec && Date.now() - (h.at ?? 0) < 10 * 60 * 1000) setPrompt(String(h.spec).slice(0, 2000));
+      const h = JSON.parse(raw) as { spec?: string; at?: number; type?: string };
+      if (h.spec && Date.now() - (h.at ?? 0) < 10 * 60 * 1000) {
+        setPrompt(String(h.spec).slice(0, 2000));
+        handoffTypeRef.current = h.type === 'assembly' ? 'assembly' : null; // 어셈블리 스펙은 assemble 파이프로
+      }
     } catch { /* ignore */ }
      
   }, []);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
+  // 생성 체감 개선(2026-07-16): 경과 시간·취소 + 어셈블리 스펙은 assemble 파이프로 라우팅
+  const [elapsed, setElapsed] = useState(0);
+  const runAbortRef = useRef<AbortController | null>(null);
+  const handoffTypeRef = useRef<'assembly' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gateErrors, setGateErrors] = useState<string[] | null>(null);
 
@@ -373,20 +380,39 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setExportMsg(null);
       setCheckpoint(null); // 이전 pending 체크포인트는 새 생성 시작 시 무효
       lastPromptRef.current = desc; // vision 비평의 판정 기준(요청한 물건)으로 사용
-      setStatus(ko ? 'AI가 설계를 조합하고 검증하는 중…' : 'Composing & verifying the design…');
+      // 어셈블리 스펙 감지 — 챗 핸드오프 type 우선, 없으면 휴리스틱(부품@좌표 나열 패턴).
+      // 어셈블리를 단품 파이프(compose)에 밀면 왕복·교정이 길어져 "멈춘 듯" 보인다.
+      const isAssembly = handoffTypeRef.current === 'assembly'
+        || /@\(\s*-?\d+\s*,\s*-?\d+/.test(desc)
+        || (desc.length > 240 && (desc.match(/[,·;\n]/g)?.length ?? 0) >= 8 && /(frame|beam|skid|tank|support|bracket|프레임|스키드|탱크|배관|브래킷|조립)/i.test(desc));
+      handoffTypeRef.current = null; // 1회 소비
+      setStatus(isAssembly
+        ? (ko ? 'AI가 부품을 분해·배치하고 간섭을 검사하는 중… (최대 3라운드)' : 'Decomposing parts & checking interference… (≤3 rounds)')
+        : (ko ? 'AI가 설계를 조합하고 검증하는 중…' : 'Composing & verifying the design…'));
+      const ac = new AbortController();
+      runAbortRef.current = ac;
+      setElapsed(0);
+      const timer = setInterval(() => setElapsed((e) => e + 1), 1000);
       try {
-        const res = await fetch('/api/nexyfab/drawing/compose/', {
+        const res = await fetch(isAssembly ? '/api/nexyfab/drawing/assemble/' : '/api/nexyfab/drawing/compose/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ description: desc }),
+          signal: ac.signal,
         });
-        const data = (await res.json()) as ComposeResp;
+        const raw = (await res.json()) as ComposeResp & { openscad?: string; composeIntent?: ComposeOk['intent']; interferences?: unknown[] };
+        // assemble 응답(openscad/composeIntent)을 compose 형식으로 정규화
+        const data: ComposeResp = raw.ok && isAssembly
+          ? { ok: true, intent: (raw.composeIntent ?? { name: 'assembly' }) as ComposeOk['intent'], scad: String(raw.openscad ?? ''), rounds: (raw as { rounds?: number }).rounds ?? 1, verify: null }
+          : raw;
+        if (isAssembly && raw.ok) setInterf(Array.isArray(raw.interferences) ? raw.interferences.length : 0); // 그물 ④
         if (!data.ok) {
           if (data.gateErrors?.length) setGateErrors(data.gateErrors);
           else setError(data.error ?? (ko ? '설계 생성 실패' : 'Design failed'));
           setStatus('');
           return;
         }
+        if (!data.scad) { setError(ko ? '형상이 비어 있습니다.' : 'Empty geometry.'); setStatus(''); return; }
         // §2.1 도면 체크포인트 — 드래프트를 빌드해 3뷰+치수를 먼저 승인받는다(뷰어 적용은 승인 후)
         if (wasmAvailable()) {
           setStatus(ko ? '체크포인트 도면 생성 중…' : 'Building checkpoint views…');
@@ -411,9 +437,15 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         }
         await applyDesign(data.intent, data.scad, data.verify); // WASM 불가 폴백 — 체크포인트 생략
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-        setStatus('');
+        if ((e as Error)?.name === 'AbortError') {
+          setStatus(''); // 사용자 취소 — 에러 아님
+        } else {
+          setError(e instanceof Error ? e.message : String(e));
+          setStatus('');
+        }
       } finally {
+        clearInterval(timer);
+        runAbortRef.current = null;
         setLoading(false);
       }
     },
@@ -1000,8 +1032,15 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             </div>
           )}
           {loading && (
-            <div style={{ position: 'absolute', top: 12, left: 12, padding: '6px 12px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 12 }}>
-              {status || (ko ? '처리 중…' : 'Working…')}
+            <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 8, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 12 }}>
+              <span>{status || (ko ? '처리 중…' : 'Working…')}</span>
+              <span style={{ color: '#93c5fd', fontVariantNumeric: 'tabular-nums' }}>{elapsed}s</span>
+              {runAbortRef.current && (
+                <button type="button" onClick={() => runAbortRef.current?.abort()}
+                  style={{ padding: '2px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: '1px solid rgba(239,68,68,0.6)', background: 'rgba(239,68,68,0.15)', color: '#fca5a5' }}>
+                  {ko ? '취소' : 'Cancel'}
+                </button>
+              )}
             </div>
           )}
           {/* 실사 컨셉 렌더링(Gemini) — 현재 뷰 캔버스 PNG를 기하 기준으로 image-to-image */}
