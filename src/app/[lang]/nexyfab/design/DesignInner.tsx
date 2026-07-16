@@ -671,6 +671,20 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 ))}
               </div>
             )}
+            {/* 토목 세부분야 칩 — 교량 노출(2026-07-16 검증 배터리: 백엔드 완비·UI 미노출 해소) */}
+            {(domain?.slug === 'civil' || domain?.slug === 'bridge') && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                {([['civil', ko ? '토목 소구조물' : 'Civil structures'], ['bridge', ko ? '교량 (거더교)' : 'Bridge (girder)']] as [string, string][]).map(([s, label]) => (
+                  <a key={s} href={`/${lang}/nexyfab/design/?domain=${s}`}
+                    style={{ padding: '5px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 700, textDecoration: 'none',
+                      border: '1px solid ' + (domain.slug === s ? 'var(--nx-accent, #2563eb)' : 'var(--nx-border, #dfe3e8)'),
+                      background: domain.slug === s ? 'var(--nx-accent-soft, rgba(37,99,235,0.12))' : 'transparent',
+                      color: domain.slug === s ? 'var(--nx-accent, #2563eb)' : 'var(--nx-text-2, #46505e)' }}>
+                    {label}
+                  </a>
+                ))}
+              </div>
+            )}
             {/* 채팅-우선(2026-07-16 사용자 결정): 자유 서술이 1순위, 템플릿 갤러리는 아래 */}
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text-3, #6b7684)' }}>
               {ko ? '무엇을 설계할까요?' : 'What do you want to design?'}

@@ -152,6 +152,7 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
       const own = query?.startsWith('domain=') ? query.slice('domain='.length) : null;
       if (!own) return !cur;
       if (own === 'mech') return cur === 'mech' || cur === 'rack';
+      if (own === 'civil') return cur === 'civil' || cur === 'bridge'; // 교량은 토목에 흡수(2026-07-16)
       return own === cur;
     }
     return pathname === full || pathname?.startsWith(full + '/');

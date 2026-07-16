@@ -110,6 +110,26 @@ export const DESIGN_DOMAINS: DesignDomain[] = [
     ],
   },
   {
+    // 교량(2026-07-16 검증 배터리에서 발견): 백엔드(girder_bridge 어셈블리+KL-510 활하중
+    // 검토·내/외측 DF)는 완비인데 UI 진입로가 없었다 — 토목 페이지 세부 칩으로 노출.
+    slug: 'bridge',
+    icon: '🌁',
+    labelKo: '교량 (거더교)',
+    labelEn: 'Bridge (girder)',
+    descKo: '단경간 거더교. 검증=KL-510 활하중(영향선)·분배계수·고정하중 자동.',
+    descEn: 'Single-span girder bridge. Verified with KL-510 live load (influence line) & distribution factors.',
+    verifyDomain: 'bridge',
+    parametric: false,
+    presets: [
+      {
+        titleKo: '거더교 어셈블리(템플릿)',
+        titleEn: 'Girder bridge assembly (template)',
+        promptKo: '아래 어셈블리 템플릿 카드(거더교)를 클릭하면 즉시 생성됩니다 — 경간·거더 수·데크 치수를 조정하세요',
+        promptEn: 'Click the girder-bridge assembly template card below — adjust span, girder count and deck dims',
+      },
+    ],
+  },
+  {
     slug: 'building',
     icon: '🏢',
     labelKo: '건축 부재',
