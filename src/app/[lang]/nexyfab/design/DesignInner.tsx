@@ -366,6 +366,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setDiffRes(null); // 설계가 바뀌면 이전 듀얼-방출 대조 결과는 무효
       setDiffDraftProfiles(null);
       setVisRes(null); // vision 비평도 무효
+      setFeaRes(null); // 간이 FEA 결과도 무효
       setIntent(intentObj);
       setScad(scadStr);
       setVerify(verifyObj);
@@ -486,6 +487,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     setCheckpoint(null);
     setCpState('approved');
     await applyDesign(cp.intent, cp.scad, cp.verify);
+    void runReprojectDiff(cp.intent); // W(2026-07-16): 승인 직후 듀얼-방출 대조 자동 실행
+  // runReprojectDiff는 아래에서 선언(호출은 이벤트 시점이라 안전) — deps 포함 시 TDZ
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkpoint, applyDesign]);
   const cancelCheckpoint = useCallback(() => { setCheckpoint(null); setCpState('none'); }, []);
 
@@ -497,9 +501,10 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const [diffRes, setDiffRes] = useState<DiffRes | null>(null);
   const [diffDraftProfiles, setDiffDraftProfiles] = useState<AxisProfile[] | null>(null);
   const [diffBusy, setDiffBusy] = useState(false);
-  const runReprojectDiff = useCallback(async () => {
+  const runReprojectDiff = useCallback(async (intentArg?: ComposeOk['intent']) => {
+    const it = intentArg ?? intent;
     const geom = meshRef.current?.geometry;
-    if (!intent || !geom) return;
+    if (!it || !geom) return;
     setDiffBusy(true);
     setDiffRes(null);
     try {
@@ -524,7 +529,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       };
       const res = await fetch('/api/nexyfab/drawing/reproject-diff/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intent, draft }),
+        body: JSON.stringify({ intent: it, draft }),
       });
       setDiffRes((await res.json()) as DiffRes);
     } catch (e) {
@@ -538,6 +543,29 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   // 교정 SCAD는 적용하지 않는다(정직: intent와 어긋난 기하 주입 금지 — 수정은 재생성으로).
   const [visRes, setVisRes] = useState<{ faithful: boolean; issues: string[] } | { error: string } | null>(null);
   const [visBusy, setVisBusy] = useState(false);
+  // 그물 ⑥ 간이 FEA(29축 V) — 하중은 사용자 명시 입력(날조 금지)
+  interface FeaRes { ok: true; method: string; maxStressMPa: number; safetyFactor: number | null; maxDispMm: number | null; material: string; yieldMPa: number; refined?: unknown; reportHtml?: string; note?: string }
+  const [feaRes, setFeaRes] = useState<FeaRes | { ok: false; error: string } | null>(null);
+  const [feaBusy, setFeaBusy] = useState(false);
+  const [feaLoad, setFeaLoad] = useState('');
+  const [feaMat, setFeaMat] = useState('steel');
+  const runFeaQuick = useCallback(async () => {
+    const loadKg = Number(feaLoad);
+    if (!scad || !Number.isFinite(loadKg) || loadKg <= 0) return;
+    setFeaBusy(true);
+    setFeaRes(null);
+    try {
+      const r = await fetch('/api/nexyfab/drawing/fea-quick/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scad, materialKey: feaMat, loadKg }),
+      });
+      setFeaRes((await r.json()) as FeaRes | { ok: false; error: string });
+    } catch (e) {
+      setFeaRes({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setFeaBusy(false);
+    }
+  }, [scad, feaLoad, feaMat]);
   const lastPromptRef = useRef<string>('');
   const runVisionCritique = useCallback(async () => {
     const canvas = rendererRef.current?.domElement;
@@ -892,6 +920,13 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 note: interf === null ? (ko ? '어셈블리 빌드 시 활성' : 'runs on assembly build') : interf === 0 ? (ko ? '간섭 없음' : 'no clash') : (ko ? `간섭 ${interf}건` : `${interf} clashes`),
               },
               {
+                label: ko ? '⑥ 간이 FEA(응력·SF — 스크리닝)' : '⑥ Quick FEA (screening)',
+                status: feaRes ? (feaRes.ok ? ((feaRes.safetyFactor ?? 0) >= 1 ? 'pass' : 'fail') : 'skip') : 'todo',
+                note: feaRes
+                  ? (feaRes.ok ? `SF ${feaRes.safetyFactor ?? '—'} · ${feaRes.maxStressMPa}MPa/${feaRes.yieldMPa}MPa` : (ko ? '실행 실패' : 'failed'))
+                  : (ko ? '아래에서 하중 입력 후 실행(비법정)' : 'enter load below'),
+              },
+              {
                 label: ko ? '⑤ vision 비평(토폴로지 블런더)' : '⑤ Vision critique',
                 status: visRes ? ('error' in visRes ? 'skip' : visRes.faithful ? 'pass' : 'fail') : 'todo',
                 note: visRes
@@ -999,6 +1034,40 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                       <div style={{ marginTop: 4, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>
                         {ko ? '교정은 프롬프트를 고쳐 재생성하세요 — 검증 없는 기하 주입은 하지 않습니다(intent-STEP 정합 유지).' : 'Fix by revising the prompt — no unverified geometry injection.'}
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 그물 ⑥ 간이 FEA — 하중(kg) 명시 입력 후 실행(TET10 스크리닝, SF<2면 자동 정밀 재해석) */}
+                <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
+                  <input value={feaLoad} onChange={(e) => setFeaLoad(e.target.value)} inputMode="decimal"
+                    placeholder={ko ? '상면 하중 kg (필수)' : 'top load kg'}
+                    style={{ flex: 1, padding: '7px 9px', borderRadius: 7, fontSize: 11.5, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }} />
+                  <select value={feaMat} onChange={(e) => setFeaMat(e.target.value)}
+                    style={{ padding: '7px 8px', borderRadius: 7, fontSize: 11.5, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit' }}>
+                    {[['steel', ko ? '강(SS275)' : 'Steel'], ['STS304', 'STS304'], ['aluminum', 'AL6061'], ['concrete', ko ? '콘크리트' : 'Concrete'], ['timber', ko ? '목재' : 'Timber']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                  <button type="button" onClick={() => void runFeaQuick()} disabled={feaBusy || !Number(feaLoad)}
+                    style={{ padding: '0 12px', borderRadius: 7, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', border: '1px solid var(--nx-accent, #2563eb)', background: 'transparent', color: 'var(--nx-accent, #2563eb)', opacity: feaBusy || !Number(feaLoad) ? 0.5 : 1 }}>
+                    {feaBusy ? '…' : ko ? '🧮 FEA' : '🧮 FEA'}
+                  </button>
+                </div>
+                {feaRes && !feaRes.ok && <div style={{ marginTop: 4, fontSize: 11, color: '#991b1b' }}>{feaRes.error}</div>}
+                {feaRes?.ok && (
+                  <div style={{ marginTop: 6, padding: 9, borderRadius: 8, border: `1px solid ${(feaRes.safetyFactor ?? 0) >= 1 ? 'rgba(22,163,74,0.4)' : 'rgba(220,38,38,0.4)'}`, background: 'var(--nx-panel, #fff)', fontSize: 11, lineHeight: 1.7 }}>
+                    <b style={{ color: (feaRes.safetyFactor ?? 0) >= 1 ? '#16a34a' : '#dc2626' }}>
+                      {(feaRes.safetyFactor ?? 0) >= 1 ? '✓' : '✗'} SF {feaRes.safetyFactor ?? '—'}
+                    </b>
+                    {' · '}max {feaRes.maxStressMPa} MPa / {ko ? '기준' : 'yield'} {feaRes.yieldMPa} MPa · {feaRes.material}
+                    {feaRes.maxDispMm != null && <> · {ko ? '최대 변위' : 'max disp'} {feaRes.maxDispMm} mm</>}
+                    {feaRes.refined ? <span style={{ color: 'var(--nx-accent, #2563eb)' }}> · {ko ? '정밀 재해석 수행됨' : 'refined'}</span> : null}
+                    <div style={{ marginTop: 3, fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{feaRes.note}</div>
+                    {feaRes.reportHtml && (
+                      <button type="button"
+                        onClick={() => { const w = window.open('', '_blank'); if (w && feaRes.reportHtml) { w.document.write(feaRes.reportHtml); w.document.close(); } }}
+                        style={{ marginTop: 5, padding: '4px 11px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, cursor: 'pointer', border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit' }}>
+                        📄 {ko ? '리포트 열기(A4)' : 'Open report'}
+                      </button>
                     )}
                   </div>
                 )}

@@ -191,6 +191,16 @@ export function assemblyToComposeIntent(asm) {
         feats.push(F('box', { size: [p.length, p.width, p.height] }));
         feats.push(F('box', { size: [p.length + 2, p.width - 2 * p.wallThk, p.height - 2 * p.wallThk] }, -1, p.wallThk, p.wallThk, 'subtract'));
         break;
+      case 'h_section': // §8-② 3박스 분해 — GA·STEP·질량 실단면 정확
+        feats.push(F('box', { size: [p.length, p.B, p.tf] }));
+        feats.push(F('box', { size: [p.length, p.tw, p.H - 2 * p.tf] }, 0, (p.B - p.tw) / 2, p.tf));
+        feats.push(F('box', { size: [p.length, p.B, p.tf] }, 0, 0, p.H - p.tf));
+        break;
+      case 'c_channel':
+        feats.push(F('box', { size: [p.length, p.tw, p.H] }));
+        feats.push(F('box', { size: [p.length, p.B, p.tf] }));
+        feats.push(F('box', { size: [p.length, p.B, p.tf] }, 0, 0, p.H - p.tf));
+        break;
       case 'l_bracket':
         feats.push(F('box', { size: [p.legA, p.width, p.thickness] }));
         feats.push(F('box', { size: [p.thickness, p.width, p.legB] }));
@@ -233,6 +243,13 @@ export function assemblyToComposeIntent(asm) {
         feats.push(F('box', { size: [p.length, p.thickness, p.height] }));
         for (const o of p.openings ?? []) feats.push(F('box', { size: [o.w, p.thickness + 2, o.h] }, o.x, -1, o.sill ?? 0, 'subtract'));
         break;
+      case 'i_girder': { // 감사 2026-07-16: 매핑 누락으로 교량 거더가 GA·STEP에서 통째로 빠져 있었음
+        const W = Math.max(p.topW, p.botW);
+        feats.push(F('box', { size: [p.length, p.botW, p.botT] }, 0, (W - p.botW) / 2, 0));
+        feats.push(F('box', { size: [p.length, p.webT, p.webH] }, 0, (W - p.webT) / 2, p.botT));
+        feats.push(F('box', { size: [p.length, p.topW, p.topT] }, 0, (W - p.topW) / 2, p.botT + p.webH));
+        break;
+      }
       default: break; // 미지원 타입은 STEP 에서 생략(GA/SCAD 로는 표시됨)
     }
   }

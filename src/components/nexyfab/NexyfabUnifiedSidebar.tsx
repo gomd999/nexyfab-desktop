@@ -68,6 +68,7 @@ const SECTION_MAIN: NavSection = {
 const SECTION_BOTTOM: NavSection = {
   titleKo: '', titleEn: '',
   items: [
+    { icon: '🧊', labelKo: '예시 갤러리', labelEn: 'Examples',    href: '/examples' },
     { icon: '🏠', labelKo: '홈 (허브)',   labelEn: 'Home (Hub)',  href: '/nexyfab/hub' },
     { icon: '📁', labelKo: '내 프로젝트', labelEn: 'My Projects', href: '/nexyfab/projects' },
   ],

@@ -41,6 +41,9 @@ export function partVolume(type, p) {
     case 'flange': return A * (p.outerDia ** 2 - p.boreDia ** 2) * p.thickness;
     case 'tube': return A * (p.outerDia ** 2 - p.innerDia ** 2) * p.length;   // 중공
     case 'rect_tube': return (p.width * p.height - (p.width - 2 * p.wallThk) * (p.height - 2 * p.wallThk)) * p.length;
+    // §8-② 형강 실단면(2026-07-16): 플랜지2 + 웨브 — AABB가 아닌 실단면적으로 질량·BOQ 정확
+    case 'h_section': return (2 * p.B * p.tf + p.tw * (p.H - 2 * p.tf)) * p.length;
+    case 'c_channel': return (2 * p.B * p.tf + p.tw * (p.H - 2 * p.tf)) * p.length;
     case 'cylinder': return A * p.diameter ** 2 * p.length;
     case 'gusset': return 0.5 * p.legA * p.legB * p.thickness;
     case 'spur_gear': return (polyArea(gearPoly(p)) - A * (p.boreDia ?? 0) ** 2) * p.thickness;

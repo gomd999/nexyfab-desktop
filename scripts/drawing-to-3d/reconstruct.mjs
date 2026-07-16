@@ -165,6 +165,17 @@ const GATES = {
     if (2 * i.wallThk >= i.width) e.push('2·wallThk ≥ width');
     if (2 * i.wallThk >= i.height) e.push('2·wallThk ≥ height');
   },
+  // §8-② 단면 라이브러리 v1(2026-07-16): H형강·C찬넬 — 실단면(플랜지+웨브)으로 형강 표현
+  h_section(i, e) {
+    for (const k of ['H', 'B', 'tw', 'tf', 'length']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (i.tw >= i.B) e.push('tw ≥ B');
+    if (2 * i.tf >= i.H) e.push('2·tf ≥ H');
+  },
+  c_channel(i, e) {
+    for (const k of ['H', 'B', 'tw', 'tf', 'length']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (i.tw >= i.B) e.push('tw ≥ B');
+    if (2 * i.tf >= i.H) e.push('2·tf ≥ H');
+  },
   box(i, e) {
     // 상한 60m — 건축 다베이 슬래브(4베이×12m+기둥여유)까지 허용 (#6, 감사 260714)
     for (const k of ['width', 'depth', 'height']) if (!pos(i[k]) || i[k] > 90000) e.push(`${k} invalid`);
@@ -275,6 +286,14 @@ const SCAD = {
   rect_tube(i) {
     return `difference() {\n  cube([${i.length}, ${i.width}, ${i.height}]);\n  translate([-1, ${i.wallThk}, ${i.wallThk}]) cube([${i.length + 2}, ${i.width - 2 * i.wallThk}, ${i.height - 2 * i.wallThk}]);\n}`;
   },
+  // H형강 — 하부 플랜지 + 웨브 + 상부 플랜지(길이=X). 실단면이라 질량·BOQ도 정확해진다.
+  h_section(i) {
+    return `union() {\n  cube([${i.length}, ${i.B}, ${i.tf}]);\n  translate([0, ${(i.B - i.tw) / 2}, ${i.tf}]) cube([${i.length}, ${i.tw}, ${i.H - 2 * i.tf}]);\n  translate([0, 0, ${i.H - i.tf}]) cube([${i.length}, ${i.B}, ${i.tf}]);\n}`;
+  },
+  // C찬넬 — 웨브(수직) + 상·하 플랜지 한쪽
+  c_channel(i) {
+    return `union() {\n  cube([${i.length}, ${i.tw}, ${i.H}]);\n  cube([${i.length}, ${i.B}, ${i.tf}]);\n  translate([0, 0, ${i.H - i.tf}]) cube([${i.length}, ${i.B}, ${i.tf}]);\n}`;
+  },
   box(i) {
     return `cube([${i.width}, ${i.depth}, ${i.height}]);`;
   },
@@ -348,6 +367,9 @@ export function partAabb(i) {
       return { min: [-i.outerDia / 2, -i.outerDia / 2, 0], max: [i.outerDia / 2, i.outerDia / 2, i.length] };
     case 'rect_tube':
       return { min: [0, 0, 0], max: [i.length, i.width, i.height] };
+    case 'h_section':
+    case 'c_channel':
+      return { min: [0, 0, 0], max: [i.length, i.B, i.H] };
     case 'box':
       return { min: [0, 0, 0], max: [i.width, i.depth, i.height] };
     case 'cylinder':
@@ -385,6 +407,8 @@ export const PARAMS = {
   bent_sheet: ['webWidth', 'flangeHeight', 'length', 'thickness'],
   tube: ['outerDia', 'innerDia', 'length'],
   rect_tube: ['width', 'height', 'wallThk', 'length'],
+  h_section: ['H', 'B', 'tw', 'tf', 'length'],
+  c_channel: ['H', 'B', 'tw', 'tf', 'length'],
   box: ['width', 'depth', 'height'],
   cylinder: ['diameter', 'length'],
   gusset: ['legA', 'legB', 'thickness'],

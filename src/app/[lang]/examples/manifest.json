@@ -1,0 +1,180 @@
+[
+ {
+  "slug": "mech-tank",
+  "domain": "mech",
+  "studioDomain": "mech",
+  "icon": "🔧",
+  "titleKo": "기계 — 물탱크(원뿔 바닥)",
+  "titleEn": "Mechanical — Water tank",
+  "stats": {
+   "parts": null,
+   "areaM2": null,
+   "massKg": null,
+   "manifold": true,
+   "interferences": null
+  },
+  "descKo": "원통 용기 프리셋 · manifold 상시 검증",
+  "descEn": "Cylindrical vessel preset · always-manifold"
+ },
+ {
+  "slug": "rack-portal",
+  "domain": "rack",
+  "studioDomain": "rack",
+  "icon": "🏗",
+  "titleKo": "가설·랙 — 포털 프레임",
+  "titleEn": "Rack — Portal frame",
+  "stats": {
+   "parts": null,
+   "areaM2": null,
+   "massKg": null,
+   "manifold": true,
+   "interferences": null
+  },
+  "descKo": "다부재 포털 프레임 프리셋",
+  "descEn": "Multi-member portal frame"
+ },
+ {
+  "slug": "civil-wall",
+  "domain": "civil",
+  "studioDomain": "civil",
+  "icon": "🌉",
+  "titleKo": "토목 — 옹벽 연장",
+  "titleEn": "Civil — Retaining wall",
+  "stats": {
+   "parts": 2,
+   "areaM2": null,
+   "massKg": 37920,
+   "manifold": null,
+   "interferences": 0
+  },
+  "descKo": "옹벽 어셈블리 + KDS 안정 3종(계산기 연동)",
+  "descEn": "Retaining wall + KDS stability checks"
+ },
+ {
+  "slug": "bridge-girder",
+  "domain": "bridge",
+  "studioDomain": "bridge",
+  "icon": "🌁",
+  "titleKo": "교량 — 거더교",
+  "titleEn": "Bridge — Girder bridge",
+  "stats": {
+   "parts": 14,
+   "areaM2": null,
+   "massKg": 332283.2,
+   "manifold": null,
+   "interferences": 0
+  },
+  "descKo": "거더교 + KL-510 활하중(영향선·분배계수)",
+  "descEn": "Girder bridge + KL-510 live load"
+ },
+ {
+  "slug": "building-rc",
+  "domain": "building",
+  "studioDomain": "building",
+  "icon": "🏢",
+  "titleKo": "건축 — RC 골조 2×2×3층",
+  "titleEn": "Building — RC frame",
+  "stats": {
+   "parts": 66,
+   "areaM2": 144,
+   "massKg": 307746,
+   "manifold": null,
+   "interferences": 0
+  },
+  "descKo": "RC 라멘 골조 + 하중경로·부재 검증 체인",
+  "descEn": "RC frame + load-path verification chain"
+ },
+ {
+  "slug": "landscape-pergola",
+  "domain": "landscape",
+  "studioDomain": "landscape",
+  "icon": "🌳",
+  "titleKo": "조경 — 목재 파고라",
+  "titleEn": "Landscape — Pergola",
+  "stats": {
+   "parts": 13,
+   "areaM2": null,
+   "massKg": 182.5,
+   "manifold": null,
+   "interferences": 0
+  },
+  "descKo": "파고라 + 부재·풍하중 검토",
+  "descEn": "Pergola + member & wind checks"
+ },
+ {
+  "slug": "interior-studio",
+  "domain": "interior",
+  "studioDomain": "interior",
+  "icon": "🪑",
+  "titleKo": "인테리어 — 원룸",
+  "titleEn": "Interior — Studio unit",
+  "stats": {
+   "parts": 13,
+   "areaM2": 27,
+   "massKg": 31850.1,
+   "manifold": null,
+   "interferences": 1,
+   "egressM": 5.93,
+   "egressPass": true
+  },
+  "descKo": "원룸(욕실·설비·창) + 피난 보행거리",
+  "descEn": "Studio unit + egress check"
+ },
+ {
+  "slug": "interior-apartment",
+  "domain": "interior",
+  "studioDomain": "interior",
+  "icon": "🪑",
+  "titleKo": "인테리어 — 아파트(방2)",
+  "titleEn": "Interior — Apartment (2BR)",
+  "stats": {
+   "parts": 18,
+   "areaM2": 64.8,
+   "massKg": 66626.1,
+   "manifold": null,
+   "interferences": 1,
+   "egressM": 10.34,
+   "egressPass": true
+  },
+  "descKo": "방2·LDK·욕실·설비·창 + 피난 검토",
+  "descEn": "2BR + LDK + bath + egress"
+ },
+ {
+  "slug": "interior-three",
+  "domain": "interior",
+  "studioDomain": "interior",
+  "icon": "🪑",
+  "titleKo": "인테리어 — 3룸",
+  "titleEn": "Interior — 3-room",
+  "stats": {
+   "parts": 22,
+   "areaM2": 85.8,
+   "massKg": 84328.2,
+   "manifold": null,
+   "interferences": 1,
+   "egressM": 10.67,
+   "egressPass": true
+  },
+  "descKo": "방3·LDK·욕실 + 피난 검토",
+  "descEn": "3-room + egress"
+ },
+ {
+  "slug": "interior-cafe",
+  "domain": "interior",
+  "studioDomain": "interior",
+  "icon": "☕",
+  "titleKo": "인테리어 — 카페",
+  "titleEn": "Interior — Cafe",
+  "stats": {
+   "parts": 39,
+   "areaM2": 48,
+   "massKg": 36765.2,
+   "manifold": null,
+   "interferences": 0,
+   "egressM": 8.31,
+   "egressPass": true
+  },
+  "descKo": "카페 레이아웃 + 피난·좌석",
+  "descEn": "Cafe layout + egress & seating"
+ }
+]

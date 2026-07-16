@@ -16,6 +16,7 @@ const PAGES = [
     { path: '/shape-generator/analysis', priority: 0.9, changeFrequency: 'weekly' },
     { path: '/quick-quote', priority: 0.9, changeFrequency: 'weekly' },
     { path: '/nexyfab/ai', priority: 0.95, changeFrequency: 'weekly' },
+    { path: '/examples', priority: 0.9, changeFrequency: 'weekly' },
     { path: '/simulator', priority: 0.85, changeFrequency: 'monthly' },
     { path: '/nexyfab', priority: 0.9, changeFrequency: 'weekly' },
     { path: '/pricing', priority: 0.8, changeFrequency: 'monthly' },
