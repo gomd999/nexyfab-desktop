@@ -59,6 +59,8 @@ const THREADS_KEY = 'nf_chat_threads_v1';
 const newThreadId = () => 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const titleFrom = (text: string) => { const t2 = text.replace(/\s+/g, ' ').trim(); return t2.length <= 26 ? t2 : t2.slice(0, 26) + '…'; };
 const GHOST_BTN = { padding: '3px 10px', borderRadius: 8, fontSize: 11, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'rgba(148,163,184,0.9)' };
+// 챗 도메인 → 스튜디오 분야 슬러그 (Studio 핸드오프에 분야를 함께 넘긴다)
+const STUDIO_DOMAIN: Record<string, string> = { mechanical: 'mech', civil: 'civil', architecture: 'building', landscape: 'landscape', interior: 'interior' };
 const badgeFrom = (msgs: Msg[]): string | null => { for (let i = msgs.length - 1; i >= 0; i--) { const v = (msgs[i].calc as { verdict?: string } | undefined)?.verdict; if (v) return v; } return null; };
 function loadThreads(): Thread[] {
   try {
@@ -1348,7 +1350,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
                     <>
                       <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} quoteHref={quoteHref} />
                       {!m.cad.error && (
-                        <a href={'/' + langCode + '/nexyfab/design/'}
+                        <a href={'/' + langCode + '/nexyfab/design/?domain=' + (STUDIO_DOMAIN[domain] ?? 'mech')}
                           onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: m.cad?.spec ?? m.content ?? '', at: Date.now() })); } catch { /* ignore */ } }}
                           style={{ display: 'inline-block', marginTop: 6, fontSize: 11.5, color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 7, padding: '4px 10px', textDecoration: 'none' }}>
                           🛠 Studio →

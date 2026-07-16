@@ -168,6 +168,7 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
           .nf-uni-label { display: none !important; }
           .nf-uni-section-title { display: none !important; }
           .nf-uni-brand-text { display: none !important; }
+          .nf-uni-chat-item { display: none !important; }
         }
       `}</style>
       <aside
@@ -213,15 +214,16 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
               <div className="nf-uni-section-title" style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '10px 14px 4px' }}>
                 {isKo ? '채팅' : 'Chats'}
               </div>
-              <Link href={`/${lang}/nexyfab/ai/`}
+              {/* <a> 사용: 같은 라우트에서 ?t=만 바뀌면 Link는 재마운트하지 않아 스레드 전환이 안 됨 */}
+              <a href={`/${lang}/nexyfab/ai/`}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', textDecoration: 'none', color: 'var(--nx-text)', fontSize: 13, fontWeight: 500, borderLeft: '2px solid transparent', lineHeight: 1.2 }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-hover)'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}>
                 <span aria-hidden="true" style={{ fontSize: 16, flex: '0 0 18px', textAlign: 'center' }}>💬</span>
                 <span className="nf-uni-label" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isKo ? '새 채팅 (AI 설계)' : 'New chat (AI design)'}</span>
-              </Link>
+              </a>
               {chatThreads.map((th) => (
-                <Link key={th.id} href={`/${lang}/nexyfab/ai/?t=${th.id}`} title={th.title}
+                <a key={th.id} className="nf-uni-chat-item" href={`/${lang}/nexyfab/ai/?t=${th.id}`} title={th.title}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px', textDecoration: 'none', color: 'var(--nx-text)', fontSize: 12, borderLeft: '2px solid transparent', lineHeight: 1.2 }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-hover)'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}>
@@ -232,7 +234,7 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
                       {th.badge === 'PASS' ? '✓' : th.badge === 'FAIL' ? '✗' : th.badge}
                     </span>
                   )}
-                </Link>
+                </a>
               ))}
             </div>
           ) : (

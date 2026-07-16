@@ -2766,7 +2766,11 @@ export default function AssemblyPresetPanel({
         {busy ? t.buildBusy : t.buildBtn}
       </button>
 
-      {/* Round5 ①② 공유 링크 + 브라우저 저장/불러오기 */}
+      {/* Round5 ①② 공유·저장·서버 — 접이식(패널 길이 절감, 2026-07-16 UX) */}
+      <details style={{ marginTop: 6 }}>
+        <summary style={{ fontSize: 11, fontWeight: 700, cursor: 'pointer', color: 'var(--nx-text-2, #46505e)' }}>
+          💾 {ko ? '저장 · 공유 · 서버' : 'Save · Share · Server'}
+        </summary>
       <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         <button type="button" onClick={() => void shareLink()} style={{ ...rptBtn, marginTop: 0 }}>🔗 {t.shBtn}</button>
         <input
@@ -2818,6 +2822,7 @@ export default function AssemblyPresetPanel({
           </div>
         )}
       </div>
+      </details>
 
       {built && (
         <button type="button" onClick={downloadPackage} disabled={pkgBusy} style={{ ...genStyle, marginTop: 6, background: 'var(--nx-panel, #fff)', color: 'var(--nx-accent, #2563eb)', border: '1px solid var(--nx-accent, #2563eb)' }}>

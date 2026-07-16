@@ -5,6 +5,7 @@
  */
 import type { Metadata } from 'next';
 import ChatHero from '../../ChatHero';
+import AiThemeLock from './AiThemeLock';
 import { buildMetadata } from '@/lib/metaHelper';
 
 export async function generateMetadata(
@@ -18,6 +19,7 @@ export default async function NexyfabAiPage({ params }: { params: Promise<{ lang
   const { lang } = await params;
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex' }}>
+      <AiThemeLock />
       <ChatHero langCode={lang} appMode />
     </div>
   );

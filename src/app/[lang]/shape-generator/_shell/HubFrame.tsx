@@ -326,6 +326,18 @@ export function HubFrame({ lang, onShowAuth }: HubFrameProps) {
           >
             <I.plus size={14} /> {d.fmNewDesign}
           </button>
+          {/* AI 설계 스튜디오(대화형, 전 분야) — 홈에서도 진입 가능하게(2026-07-16 IA) */}
+          <a
+            href={`/${lang}/nexyfab/ai/`}
+            className="nx-pillbtn"
+            style={{
+              width: '100%', height: 32, justifyContent: 'center', fontSize: 12,
+              marginTop: 6, textDecoration: 'none', boxSizing: 'border-box',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            💬 {lang === 'kr' || lang === 'ko' ? 'AI 설계 스튜디오' : 'AI Design Studio'}
+          </a>
         </div>
 
         <nav
