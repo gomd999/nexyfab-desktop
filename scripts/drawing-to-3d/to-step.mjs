@@ -99,8 +99,8 @@ function expand(f, base) {
   return [placeSolid(f, base)];
 }
 
-/** intent → STEP 문자열 (B-rep). 게이트 통과분만. */
-export async function intentToStep(intent) {
+/** intent → replicad Solid (게이트 통과분만). intentToStep/intentToRecordMeasure 공용. */
+async function buildSolid(intent) {
   const errs = gateComposite(intent);
   if (errs.length) throw new Error('composite gate: ' + errs.join('; '));
   const rc = await ensureReplicad();
@@ -114,8 +114,44 @@ export async function intentToStep(intent) {
   }
   if (!result) throw new Error('to-step: add 피처 없음');
   for (const s of subs) result = result.cut(s);
+  return result;
+}
+
+/** intent → STEP 문자열 (B-rep). */
+export async function intentToStep(intent) {
+  const result = await buildSolid(intent);
   const step = await result.blobSTEP().text();
   return { step, entities: (step.match(/^#\d+/gm) ?? []).length };
+}
+
+/**
+ * intent → 기록 커널(OCCT) 실측 — §8-③ 역투영 diff 채점기의 '기록' 쪽 절반.
+ * B-rep을 메시화해 AABB·부피를 결정론으로 측정한다(부호 사면체 합).
+ * 드래프트(SCAD→WASM 메시, 클라 실측)와 같은 수학으로 재어 공정 비교가 되게 한다.
+ */
+export async function intentToRecordMeasure(intent) {
+  const result = await buildSolid(intent);
+  const m = result.mesh({ tolerance: 0.05, angularTolerance: 15 });
+  const v = m.vertices, tri = m.triangles;
+  let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  for (let i = 0; i < v.length; i += 3) {
+    if (v[i] < minX) minX = v[i]; if (v[i] > maxX) maxX = v[i];
+    if (v[i + 1] < minY) minY = v[i + 1]; if (v[i + 1] > maxY) maxY = v[i + 1];
+    if (v[i + 2] < minZ) minZ = v[i + 2]; if (v[i + 2] > maxZ) maxZ = v[i + 2];
+  }
+  let vol6 = 0;
+  for (let i = 0; i < tri.length; i += 3) {
+    const a = tri[i] * 3, b = tri[i + 1] * 3, c = tri[i + 2] * 3;
+    const ax = v[a], ay = v[a + 1], az = v[a + 2];
+    const bx = v[b], by = v[b + 1], bz = v[b + 2];
+    const cx = v[c], cy = v[c + 1], cz = v[c + 2];
+    vol6 += ax * (by * cz - bz * cy) + ay * (bz * cx - bx * cz) + az * (bx * cy - by * cx);
+  }
+  return {
+    bbox: { x: +(maxX - minX).toFixed(3), y: +(maxY - minY).toFixed(3), z: +(maxZ - minZ).toFixed(3) },
+    volume: +Math.abs(vol6 / 6).toFixed(1),
+    triangles: tri.length / 3,
+  };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('to-step.mjs');

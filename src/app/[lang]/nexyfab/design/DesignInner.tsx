@@ -266,6 +266,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     async (intentObj: ComposeOk['intent'], scadStr: string, verifyObj: Verify) => {
       // 체크포인트 승인 경로가 아니면(프리셋·판독·어셈블리) '생략'으로 정직 표기(§2.2)
       setCpState((s) => (s === 'approved' ? s : 'skipped'));
+      setDiffRes(null); // 설계가 바뀌면 이전 듀얼-방출 대조 결과는 무효
       setIntent(intentObj);
       setScad(scadStr);
       setVerify(verifyObj);
@@ -351,6 +352,45 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     await applyDesign(cp.intent, cp.scad, cp.verify);
   }, [checkpoint, applyDesign]);
   const cancelCheckpoint = useCallback(() => { setCheckpoint(null); setCpState('none'); }, []);
+
+  // §8-③ 역투영 diff v1 — 듀얼-방출 교차검증: 드래프트(뷰어 메시) 실측 vs 기록(OCCT) 실측
+  interface DiffCheck { name: string; draft: number; record: number; diff: number; tol: number; pass: boolean }
+  type DiffRes = { ok: true; verdict: string; checks: DiffCheck[]; notes?: string[] } | { ok: false; stage?: string; error?: string };
+  const [diffRes, setDiffRes] = useState<DiffRes | null>(null);
+  const [diffBusy, setDiffBusy] = useState(false);
+  const runReprojectDiff = useCallback(async () => {
+    const geom = meshRef.current?.geometry;
+    if (!intent || !geom) return;
+    setDiffBusy(true);
+    setDiffRes(null);
+    try {
+      // 드래프트 실측 — 기록 커널과 같은 수학(부호 사면체 합)으로 재어 공정 비교
+      const pos = geom.getAttribute('position');
+      const a = pos.array as Float32Array;
+      geom.computeBoundingBox();
+      const bb = geom.boundingBox;
+      if (!bb) throw new Error('no bbox');
+      let vol6 = 0;
+      for (let i = 0; i + 8 < a.length; i += 9) {
+        vol6 += a[i] * (a[i + 4] * a[i + 8] - a[i + 5] * a[i + 7])
+          + a[i + 1] * (a[i + 5] * a[i + 6] - a[i + 3] * a[i + 8])
+          + a[i + 2] * (a[i + 3] * a[i + 7] - a[i + 4] * a[i + 6]);
+      }
+      const draft = {
+        bbox: { x: +(bb.max.x - bb.min.x).toFixed(3), y: +(bb.max.y - bb.min.y).toFixed(3), z: +(bb.max.z - bb.min.z).toFixed(3) },
+        volume: +Math.abs(vol6 / 6).toFixed(1),
+      };
+      const res = await fetch('/api/nexyfab/drawing/reproject-diff/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ intent, draft }),
+      });
+      setDiffRes((await res.json()) as DiffRes);
+    } catch (e) {
+      setDiffRes({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setDiffBusy(false);
+    }
+  }, [intent]);
 
   const download = (filename: string, content: string, mime: string) => {
     const blob = new Blob([content], { type: mime });
@@ -625,9 +665,11 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 note: verify?.triangles ? `${verify.triangles} tri` : undefined,
               },
               {
-                label: ko ? '③ 역투영 치수 diff(방출 오류)' : '③ Re-projection dim diff',
-                status: 'todo',
-                note: ko ? '기록 커널 대조 채점기 — 후속(방법론 §8-③)' : 'scorer pending (§8-③)',
+                label: ko ? '③ 역투영 diff(방출 오류 — 듀얼-방출 대조)' : '③ Re-projection diff (dual-emission)',
+                status: diffRes ? (diffRes.ok ? (diffRes.verdict === 'PASS' ? 'pass' : 'fail') : 'skip') : 'todo',
+                note: diffRes
+                  ? (diffRes.ok ? (ko ? `v1: 외형 3축+부피 — ${diffRes.verdict}` : `v1: extents+volume — ${diffRes.verdict}`) : (diffRes.stage === 'unsupported' ? (ko ? '기록 커널 미지원 형상' : 'unsupported by record kernel') : (ko ? '실행 실패' : 'run failed')))
+                  : (ko ? '아래 버튼으로 실행 (v1: 외형 3축+부피)' : 'run below (v1: extents+volume)'),
               },
               {
                 label: ko ? '④ 어셈블리 간섭' : '④ Assembly interference',
@@ -640,6 +682,48 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 note: ko ? '후속 — scad-vision-critique 배선' : 'wiring pending',
               },
             ] as NetItem[])} />
+            {/* §8-③ 역투영 diff v1 실행 — 드래프트(뷰어 메시) vs 기록(OCCT) 듀얼-방출 대조 */}
+            {intent && (
+              <div style={{ marginBottom: 12 }}>
+                <button type="button" onClick={() => void runReprojectDiff()} disabled={diffBusy}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: diffBusy ? 'wait' : 'pointer',
+                    border: '1px solid var(--nx-accent, #2563eb)', background: 'transparent', color: 'var(--nx-accent, #2563eb)' }}>
+                  {diffBusy ? (ko ? '기록 커널(OCCT) 빌드·대조 중…' : 'Building record kernel & comparing…') : ko ? '⇄ 역투영 diff 실행 — 드래프트 vs 기록 커널' : '⇄ Run re-projection diff (draft vs record)'}
+                </button>
+                {diffRes && !diffRes.ok && (
+                  <div style={{ marginTop: 6, fontSize: 11, color: diffRes.stage === 'unsupported' ? '#b45309' : '#991b1b' }}>{diffRes.error}</div>
+                )}
+                {diffRes?.ok && (
+                  <div style={{ marginTop: 6, padding: 9, borderRadius: 8, border: `1px solid ${diffRes.verdict === 'PASS' ? 'rgba(22,163,74,0.4)' : 'rgba(220,38,38,0.4)'}`, background: 'var(--nx-panel, #fff)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: diffRes.verdict === 'PASS' ? '#16a34a' : '#dc2626' }}>
+                      {diffRes.verdict === 'PASS' ? '✓' : '✗'} {ko ? '듀얼-방출 대조 ' : 'Dual-emission '} {diffRes.verdict}
+                    </div>
+                    <table style={{ width: '100%', marginTop: 5, borderCollapse: 'collapse', fontSize: 10, fontVariantNumeric: 'tabular-nums' }}>
+                      <thead>
+                        <tr style={{ color: 'var(--nx-text-3, #6b7684)' }}>
+                          {[ko ? '항목' : 'Item', ko ? '드래프트' : 'Draft', ko ? '기록(OCCT)' : 'Record', 'Δ', ko ? '허용' : 'Tol', ''].map((h) => (
+                            <th key={h} style={{ textAlign: 'left', padding: '2px 4px', borderBottom: '1px solid var(--nx-border, #dfe3e8)' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {diffRes.checks.map((c) => (
+                          <tr key={c.name}>
+                            <td style={{ padding: '2px 4px', fontWeight: 600 }}>{c.name}</td>
+                            <td style={{ padding: '2px 4px' }}>{c.draft}</td>
+                            <td style={{ padding: '2px 4px' }}>{c.record}</td>
+                            <td style={{ padding: '2px 4px' }}>{c.diff}</td>
+                            <td style={{ padding: '2px 4px', color: 'var(--nx-text-3, #6b7684)' }}>≤{c.tol}</td>
+                            <td style={{ padding: '2px 4px', fontWeight: 800, color: c.pass ? '#16a34a' : '#dc2626' }}>{c.pass ? '✓' : '✗'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {diffRes.notes?.[1] && <div style={{ marginTop: 4, fontSize: 9, color: 'var(--nx-text-3, #6b7684)', lineHeight: 1.5 }}>{diffRes.notes[1]}</div>}
+                  </div>
+                )}
+              </div>
+            )}
             {!verify && !bbox ? (
               <div style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}>
                 {ko ? '설계를 생성하면 manifold·치수 검증이 자동으로 표시됩니다.' : 'Generate a design to see manifold & dimension checks.'}
