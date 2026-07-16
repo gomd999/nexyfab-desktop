@@ -9,7 +9,7 @@
  * AI가 상담·안내한 뒤 필요한 경우에만 결정론 데모/견적/스튜디오로 이어 준다.
  */
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import type * as ThreeNS from 'three';
 import { DomainIcon } from './_domainIcons';
@@ -596,7 +596,7 @@ function download(text: string, name: string, mime = 'text/plain') {
 /* SCAD 인라인 3D 미리보기 — STEP 승인 전에도 채팅 안에서 바로 본다(2026-07-16 사용자 요청).
    렌더는 클라 결정론(openscad-wasm→STL→three). 최신 카드만 auto, 과거 카드는 버튼(스레드
    복원 시 일괄 렌더 방지). three/wasm은 클릭·auto 시점에 동적 로드(랜딩 번들 비대화 방지). */
-function MiniScadViewer({ scad, auto, accent }: { scad: string; auto?: boolean; accent: string }) {
+function MiniScadViewer({ scad, auto, accent, height = 240 }: { scad: string; auto?: boolean; accent: string; height?: number }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [st, setSt] = useState<'idle' | 'busy' | 'ok' | 'err'>('idle');
   const [errMsg, setErrMsg] = useState('');
@@ -619,7 +619,7 @@ function MiniScadViewer({ scad, auto, accent }: { scad: string; auto?: boolean; 
       geom.computeBoundingBox();
       const mount = mountRef.current;
       if (!mount) return;
-      const W = mount.clientWidth || 320, H = 240;
+      const W = mount.clientWidth || 320, H = height;
       const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(W, H);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -1137,6 +1137,24 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
   const abortRef = useRef<AbortController | null>(null);
   const [stage, setStage] = useState<string | null>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  // appMode 분할 화면(사용자 제안 2026-07-16): 넓은 화면 + CAD 결과가 있으면
+  // 채팅은 좌측, 우측에 상시 3D 패널(Genspark/Canvas 문법). 좁은 화면은 인라인 카드 유지.
+  const [wideScreen, setWideScreen] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1100px)');
+    const on = () => setWideScreen(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  const latestCad = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const c = messages[i].cad;
+      if (c && !c.error && c.scad) return c;
+    }
+    return null;
+  }, [messages]);
+  const splitMode = appMode && wideScreen && started && !!latestCad;
   const stopGen = () => { try { abortRef.current?.abort(); } catch { /* ignore */ } };
 
   const send = useCallback(async (override?: string, historyOverride?: Msg[]) => {
@@ -1387,7 +1405,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       )}
 
       <div className="nf-chat-main" style={{
-        position: 'relative', zIndex: 1, width: '100%', maxWidth: 780, margin: '0 auto', textAlign: 'center', transition: 'margin .2s',
+        position: 'relative', zIndex: 1, width: '100%', maxWidth: splitMode ? 640 : 780, margin: splitMode ? '0' : '0 auto', textAlign: 'center', transition: 'margin .2s',
         ...(started ? { display: 'flex', flexDirection: 'column', height: appMode ? 'calc(100dvh - 36px)' : 'calc(100dvh - 104px)' } : {}),
       }}>
         {!started && (
@@ -1457,7 +1475,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
                     onPrint={() => printCalc(m)} />}
                   {m.cad && (
                     <>
-                      <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} quoteHref={quoteHref} preview={i === messages.length - 1} />
+                      <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} quoteHref={quoteHref} preview={i === messages.length - 1 && !splitMode} />
                       {!m.cad.error && (
                         <a href={'/' + langCode + '/nexyfab/design/?domain=' + (STUDIO_DOMAIN[domain] ?? 'mech')}
                           onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: m.cad?.spec ?? m.content ?? '', at: Date.now() })); } catch { /* ignore */ } }}
@@ -1620,6 +1638,26 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
 
         <p style={{ marginTop: 22, fontSize: 11, color: 'rgba(148,163,184,0.72)', lineHeight: 1.6, maxWidth: 560, margin: '22px auto 0', wordBreak: 'keep-all' }}>{t.disclaimer}</p>
       </div>
+
+      {/* 우측 상시 3D 패널(appMode·넓은 화면·CAD 결과 존재 시) — 최신 결과를 크게 */}
+      {splitMode && latestCad?.scad && (
+        <aside style={{ position: 'relative', zIndex: 1, width: 'min(44%, 620px)', marginInlineStart: 18, display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 36px)', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#e2e8f0' }}>🧊 3D</span>
+            {(latestCad.interferences?.length ?? 0) > 0
+              ? <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 999, background: 'rgba(239,68,68,0.15)', color: '#f87171' }}>✕ {t.cadInterf.replace('{n}', String(latestCad.interferences!.length))}</span>
+              : latestCad.isAssembly
+                ? <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 999, background: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>✓ {t.cadInterfNone}</span>
+                : null}
+            <a href={'/' + langCode + '/nexyfab/design/?domain=' + (STUDIO_DOMAIN[domain] ?? 'mech')}
+              onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: latestCad.spec ?? '', at: Date.now() })); } catch { /* ignore */ } }}
+              style={{ marginInlineStart: 'auto', fontSize: 11, color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 7, padding: '3px 10px', textDecoration: 'none' }}>
+              🛠 Studio →
+            </a>
+          </div>
+          <MiniScadViewer key={(latestCad.scad ?? '').length + ':' + (latestCad.interferences?.length ?? 0)} scad={latestCad.scad!} auto accent={accent} height={520} />
+        </aside>
+      )}
     </section>
   );
 }
