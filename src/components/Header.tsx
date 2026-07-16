@@ -38,7 +38,8 @@ const IconLogin = () => (
         <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3" />
     </svg>
 );
-const IconCalculator = () => (
+// Retained for when a calculator-flavored nav tab returns (quick-quote removed 2026-07-16).
+const _IconCalculator = () => (
     <svg aria-hidden="true" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
         <rect x="4" y="2" width="16" height="20" rx="2" /><path d="M8 6h8M8 10h2m4 0h2M8 14h2m4 0h2M8 18h2m4 0h2" />
     </svg>
@@ -110,7 +111,7 @@ export default function Header() {
     // on every NexyFab app page that already has the unified sidebar chrome —
     // otherwise the white marketing bar stacks on top of the dark app shell.
     if (pathname?.includes('/shape-generator') || pathname?.includes('/studio')) return null;
-    if (pathname && /\/nexyfab\/(hub|projects|cots|billing|settings|dashboard|ai-studio|orders|design|evaluate)(\/|$)/.test(pathname)) return null;
+    if (pathname && /\/nexyfab\/(hub|projects|cots|billing|settings|dashboard|ai-studio|orders|design|evaluate|ai)(\/|$)/.test(pathname)) return null;
 
     const parts = pathname?.split('/').filter(Boolean) || [];
     const isAdmin = parts[0] === 'adminlink';
@@ -138,13 +139,13 @@ export default function Header() {
 
     const _nexysysUrl = process.env.NEXT_PUBLIC_NEXYSYS_URL || 'https://nexysys.com';
 
-    const navItems = [
-        // AI 설계 + 디자인 스튜디오 통합(2026-07-16 사용자 IA): 랜딩 챗=진입, 스튜디오=작업대.
-        // 별개 메뉴 둘 필요 없음 — 스튜디오 진입은 챗 핸드오프·사이드바 분야가 담당.
-        { href: `/${lang}/`, label: t.aiDesign, icon: <IconCube />, external: false, highlight: 'blue' as const },
+    // highlight 'gradient'는 현재 미사용이지만 렌더 분기가 남아 있어 타입을 넓게 유지.
+    const navItems: Array<{ href: string; label: string; icon: React.ReactNode; external: boolean; highlight: 'blue' | 'gradient' | false }> = [
+        // AI 설계 + 디자인 스튜디오 통합(2026-07-16 사용자 IA): /nexyfab/ai = 전용 앱 창
+        // (통합 사이드바 + 풀챗). 빠른 견적도 제거(사용자 결정) — 견적은 챗·스튜디오 흐름 안에서.
+        { href: `/${lang}/nexyfab/ai/`, label: t.aiDesign, icon: <IconCube />, external: false, highlight: 'blue' as const },
         { href: `/${lang}/factories/`, label: t.factories, icon: <IconFactory />, external: false, highlight: false as const },
         { href: `/${lang}/pricing/`, label: t.pricing, icon: <IconZap />, external: false, highlight: false as const },
-        { href: `/${lang}/quick-quote/`, label: t.quickQuote, icon: <IconCalculator />, external: false, highlight: 'gradient' as const },
     ];
 
     // ── Styles ──────────────────────────────────────────────────────────────

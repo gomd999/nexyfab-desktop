@@ -829,7 +829,9 @@ function WiringCard({ wiring, t, accent, isRtl }: { wiring: CableRow[]; t: (type
   );
 }
 
-export default function ChatHero({ langCode }: { langCode: string }) {
+// appMode(2026-07-16): /nexyfab/ai 전용 앱 창 — 통합 사이드바(채팅 섹션)가 스레드를 담당하므로
+// 내부 스레드 사이드바를 숨기고, 마케팅 헤더가 없는 만큼 패딩을 줄인다. 랜딩(/)은 기존 그대로.
+export default function ChatHero({ langCode, appMode = false }: { langCode: string; appMode?: boolean }) {
   const lang = toLang(langCode);
   const t = DICT[lang];
   const isRtl = lang === 'ar';
@@ -1215,11 +1217,15 @@ export default function ChatHero({ langCode }: { langCode: string }) {
       position: 'relative', overflow: 'hidden',
       background: 'linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 45%, #0b1a38 100%)',
       minHeight: '100dvh', display: 'flex', alignItems: started ? 'stretch' : 'center', justifyContent: 'center',
-      padding: started ? '84px 16px 20px' : '104px 20px 64px', transition: 'padding .25s',
+      padding: appMode
+        ? (started ? '20px 16px 16px' : '48px 20px 48px')
+        : (started ? '84px 16px 20px' : '104px 20px 64px'),
+      transition: 'padding .25s',
+      ...(appMode ? { flex: 1, minWidth: 0 } : {}),
     }}>
       {/* 채팅 활성 시 랜딩 하위 섹션·푸터 숨김 → 전용 채팅 화면 */}
       <style>{`body[data-nf-chat="on"] #nf-chat ~ section, body[data-nf-chat="on"] #nf-chat ~ footer { display: none !important; }`}</style>
-      <style>{`
+      {!appMode && <style>{`
         .nf-side { position: fixed; left: 0; top: 64px; bottom: 0; width: 264px; z-index: 40; background: rgba(10,15,30,0.96); border-right: 1px solid rgba(148,163,184,0.15); backdrop-filter: blur(8px); display: flex; flex-direction: column; padding: 12px 10px; transform: translateX(-100%); transition: transform .2s; }
         .nf-side[data-open="1"] { transform: translateX(0); }
         @media (min-width: 1100px) { body[data-nf-chat="on"] .nf-side { transform: translateX(0); } body[data-nf-chat="on"] .nf-chat-main { margin-left: 264px; } .nf-side-toggle { display: none !important; } }
@@ -1228,12 +1234,13 @@ export default function ChatHero({ langCode }: { langCode: string }) {
         .nf-th[data-active="1"] { background: rgba(59,130,246,0.2); color: #fff; }
         .nf-th .del, .nf-th .pin { opacity: 0; font-size: 11px; background: none; border: none; color: #94a3b8; cursor: pointer; }
         .nf-th:hover .del, .nf-th:hover .pin { opacity: 1; }
-      `}</style>
+      `}</style>}
       <div style={{ position: 'absolute', inset: 0, opacity: 0.06, backgroundImage: 'linear-gradient(rgba(59,130,246,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.5) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
       <div style={{ position: 'absolute', top: '12%', left: '50%', transform: 'translateX(-50%)', width: 640, height: 640, background: `radial-gradient(circle, ${accent}22 0%, transparent 70%)`, borderRadius: '50%', filter: 'blur(90px)', transition: 'background .4s' }} />
 
-      {/* 좌측 스레드 사이드바 (챗 모드) — 게스트=이 기기 저장·회원=서버 동기화 */}
-      {started && (
+      {/* 좌측 스레드 사이드바 (챗 모드) — 게스트=이 기기 저장·회원=서버 동기화.
+          appMode에선 통합 사이드바의 채팅 섹션이 이 역할이라 렌더하지 않음 */}
+      {started && !appMode && (
         <>
           <button type="button" className="nf-side-toggle" onClick={() => setSideOpen(o => !o)} aria-label="threads"
             style={{ position: 'fixed', left: 12, top: 74, zIndex: 41, background: 'rgba(15,23,42,0.85)', border: '1px solid rgba(148,163,184,0.3)', color: '#cbd5e1', borderRadius: 8, padding: '6px 9px', cursor: 'pointer', fontSize: 14 }}>☰</button>
@@ -1270,7 +1277,7 @@ export default function ChatHero({ langCode }: { langCode: string }) {
 
       <div className="nf-chat-main" style={{
         position: 'relative', zIndex: 1, width: '100%', maxWidth: 780, margin: '0 auto', textAlign: 'center', transition: 'margin .2s',
-        ...(started ? { display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 104px)' } : {}),
+        ...(started ? { display: 'flex', flexDirection: 'column', height: appMode ? 'calc(100dvh - 36px)' : 'calc(100dvh - 104px)' } : {}),
       }}>
         {!started && (
           <>
