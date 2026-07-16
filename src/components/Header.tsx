@@ -283,19 +283,8 @@ export default function Header() {
                             <LanguageSelector />
                             {currentUser ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Link href={`/${lang}/studio`} style={{
-                                        display: 'flex', alignItems: 'center', gap: '6px',
-                                        background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff',
-                                        padding: '9px 16px', borderRadius: '16px',
-                                        fontWeight: 800, fontSize: '13px', textDecoration: 'none',
-                                        transition: 'transform 0.15s',
-                                    }}
-                                        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.04)'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-                                        title={String(lang) === 'ko' || String(lang) === 'kr' ? '말/사진으로 3D 만들기' : 'Make 3D from text/photo'}
-                                    >
-                                        <span>✨ Studio</span>
-                                    </Link>
+                                    {/* 구 '✨ Studio'(/studio) 버튼 제거(2026-07-16 IA 감사): 'AI 설계 스튜디오'
+                                        nav와 명칭 충돌 + 모바일 비대칭. 자유형 Studio는 허브·기계 페이지 카드로 진입. */}
                                     <Link href="/dashboard" style={{
                                         display: 'flex', alignItems: 'center', gap: '10px',
                                         background: '#111827', color: '#fff',

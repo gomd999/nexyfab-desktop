@@ -333,7 +333,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
 
   const applyDesign = useCallback(
     async (intentObj: ComposeOk['intent'], scadStr: string, verifyObj: Verify) => {
-      // 체크포인트 승인 경로가 아니면(프리셋·판독·어셈블리) '생략'으로 정직 표기(§2.2)
+      // 체크포인트 승인 경로가 아니면(프리셋·판독·어셈블리) '생략'으로 정직 표기(§2.2).
+      // pending 체크포인트 카드도 정리 — 남겨두면 옛 intent로 재승인해 방금 형상을 덮어쓴다.
+      setCheckpoint(null);
       setCpState((s) => (s === 'approved' ? s : 'skipped'));
       setDiffRes(null); // 설계가 바뀌면 이전 듀얼-방출 대조 결과는 무효
       setDiffDraftProfiles(null);
@@ -367,6 +369,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setError(null);
       setGateErrors(null);
       setExportMsg(null);
+      setCheckpoint(null); // 이전 pending 체크포인트는 새 생성 시작 시 무효
       lastPromptRef.current = desc; // vision 비평의 판정 기준(요청한 물건)으로 사용
       setStatus(ko ? 'AI가 설계를 조합하고 검증하는 중…' : 'Composing & verifying the design…');
       try {
@@ -965,7 +968,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           )}
           {!scad && !loading && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nx-text-3, #6b7684)', fontSize: 13, pointerEvents: 'none' }}>
-              {ko ? '① 생성 탭에서 템플릿을 고르거나 자유 서술로 시작하세요 · ② 검증이 자동으로 따라옵니다 · ③ 계산기 61종·출력(도면·STEP·계산서)은 상단 탭 (드래그=회전 · 휠=줌)' : 'Pick a template or describe freely in Create · verification follows automatically · 61 calculators & outputs in tabs (drag = rotate, wheel = zoom)'}
+              {ko ? '① 생성 탭에서 자유 서술이나 템플릿으로 시작하세요 · ② 검증이 자동으로 따라옵니다 · ③ 계산기·출력(도면·STEP·계산서)은 상단 탭 (드래그=회전 · 휠=줌)' : 'Describe freely or pick a template in Create · verification follows automatically · calculators & outputs in tabs (drag = rotate, wheel = zoom)'}
             </div>
           )}
           {loading && (

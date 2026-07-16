@@ -38,7 +38,7 @@ const SECTIONS: Section[] = [
     blurb_ko: '브라우저에서 바로 3D 모델을 만듭니다. 설치 불필요.',
     blurb_en: '3D model right in the browser — no install.',
     steps: [
-      { text_ko: '상단 메뉴에서 "3D 모델러" 클릭 → shape generator 열림', text_en: 'Click "3D Modeler" in the top menu — shape generator opens.' },
+      { text_ko: '홈(허브) 또는 기계 분야의 "전문가형 CAD" 카드 클릭 → shape generator 열림', text_en: 'Open it from the Hub or the "Expert CAD" card on the Mechanical page.' },
       { text_ko: '왼쪽 패널에서 시작 도형 (큐브/원기둥/구 등) 선택', text_en: 'Pick a starter shape (cube/cylinder/sphere) from the left panel.' },
       { text_ko: '파라미터 슬라이더로 치수 조절. 실시간으로 3D 뷰 갱신', text_en: 'Drag parameter sliders — the 3D view updates live.' },
       { text_ko: '오른쪽 위 메뉴 → "STL 내보내기" 또는 "STEP 내보내기"로 다운로드', text_en: 'Top-right → "Export STL" or "Export STEP" to download.' },

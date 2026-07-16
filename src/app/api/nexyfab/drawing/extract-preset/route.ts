@@ -50,6 +50,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const ip = getTrustedClientIp(req.headers);
   const rl = rateLimit(`drawing-extract-preset:${ip}`, 6, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
+  // 전역 비용 브레이커 — Vision 호출도 AI 일시정지에 복종(감사 2026-07-16)
+  try {
+    const { getActiveBreaker } = await import('@/lib/cost-breaker');
+    if (await getActiveBreaker()) return NextResponse.json({ ok: false, error: 'AI가 일시 중지되어 있습니다. 잠시 후 다시 시도하세요.' }, { status: 503 });
+  } catch { /* 브레이커 조회 실패는 무시하고 진행 */ }
 
   let imageBase64: string, mimeType: string, domain: string, kind: string;
   try {

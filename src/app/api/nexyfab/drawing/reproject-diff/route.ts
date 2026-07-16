@@ -52,6 +52,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   if (!intent || typeof intent !== 'object') return NextResponse.json({ ok: false, error: 'intent가 필요합니다.' }, { status: 400 });
   if (!draft?.bbox || typeof draft.volume !== 'number') return NextResponse.json({ ok: false, error: 'draft 실측(bbox·volume)이 필요합니다.' }, { status: 400 });
+  // 바디 상한 — 거대 intent로 무거운 OCCT 빌드 유발 방지(감사 2026-07-16)
+  const featureCount = Array.isArray((intent as { features?: unknown[] }).features) ? (intent as { features: unknown[] }).features.length : 0;
+  if (featureCount > 200 || JSON.stringify(intent).length > 262_144) {
+    return NextResponse.json({ ok: false, error: 'intent가 너무 큽니다(피처 200개·256KB 이하).' }, { status: 413 });
+  }
+  for (const k of ['x', 'y', 'z'] as const) {
+    if (!Number.isFinite(draft.bbox[k])) return NextResponse.json({ ok: false, error: 'draft.bbox 값이 유효하지 않습니다.' }, { status: 400 });
+  }
 
   // 기록 커널 빌드 + 실측
   let record: Measure;
@@ -87,7 +95,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (Array.isArray(draft.profiles) && Array.isArray(record.profiles)) {
     for (let ai = 0; ai < 3; ai++) {
       const dp = draft.profiles[ai], rp = record.profiles[ai];
-      if (!dp?.w1 || !rp?.w1) continue;
+      // 신뢰불가 클라 입력 방어 — w1·w2 모두 배열이어야 대조(없으면 해당 축 스킵, 크래시 금지)
+      if (!Array.isArray(dp?.w1) || !Array.isArray(dp?.w2) || !Array.isArray(rp?.w1) || !Array.isArray(rp?.w2)) continue;
       const N = Math.min(dp.w1.length, rp.w1.length);
       let worst = -1, worstAt = -1, worstD = 0, worstR = 0, worstTol = 1, pass = true;
       for (let s = 0; s < N; s++) {

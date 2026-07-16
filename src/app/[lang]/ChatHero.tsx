@@ -912,10 +912,13 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, domain]);
 
-  // 저장·서버 업서트(디바운스) — threads 변경 시 1곳에서 처리
+  // 저장·서버 업서트(디바운스) — threads 변경 시 1곳에서 처리.
+  // 로컬 저장도 디바운스: 스트리밍 중 토큰마다 전체 직렬화(50스레드×60msg)하면 잰크.
+  const localSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!threads.length) return;
-    saveThreadsLocal(threads);
+    if (localSaveTimer.current) clearTimeout(localSaveTimer.current);
+    localSaveTimer.current = setTimeout(() => saveThreadsLocal(threads), 400);
     if (authed && activeId) {
       const th = threads.find((x) => x.id === activeId);
       if (th && th.msgs.length) {
@@ -1501,7 +1504,8 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
         {/* 새 대화 (GPT형 — 후속 CTA 제거, 채팅 안에서 결과·다운로드가 완결) */}
         {started && (
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 }}>
-            <button onClick={() => { setMessages([]); setError(''); setAttached(null); }} style={{
+            {/* 반드시 newThread() — messages만 비우면 activeId가 남아 다음 대화가 이전 스레드를 덮어쓴다 */}
+            <button onClick={() => { newThread(); setError(''); setAttached(null); }} style={{
               padding: '8px 18px', borderRadius: 11, fontSize: 13, fontWeight: 600, cursor: 'pointer',
               background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.14)',
             }}>+ {t.reset}</button>

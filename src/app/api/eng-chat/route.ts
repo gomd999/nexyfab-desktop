@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan } from '@/lib/plan-guard';
+import { rateLimit } from '@/lib/rate-limit';
+import { getTrustedClientIp } from '@/lib/client-ip';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
 import { checkUserBudget } from '@/lib/ai/userBudget';
 import { captureServerError } from '@/lib/error-capture';
@@ -50,6 +52,11 @@ const COMMON_RULES = `
   한 줄로 밝히세요.`;
 
 export async function POST(req: NextRequest) {
+  // IP 레이트리밋 — 익명 경로(특히 mode:'title')의 무가드 반복 호출 차단(감사 2026-07-16)
+  const ip = getTrustedClientIp(req.headers);
+  const rl = rateLimit(`eng-chat:${ip}`, 30, 60_000);
+  if (!rl.allowed) return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
+
   const planCheck = await checkPlan(req, 'free');
   const userPlan = planCheck.ok ? planCheck.plan : 'free';
 
@@ -69,6 +76,11 @@ export async function POST(req: NextRequest) {
 
     // ── mode:'title' — 스레드 제목 요약(초경량, 슬롯 미소모) ─────────────────────
     if (body?.mode === 'title') {
+      // 비용 브레이커는 title 경로도 통과해야 한다(감사: 우회 금지)
+      try {
+        const { getActiveBreaker } = await import('@/lib/cost-breaker');
+        if (await getActiveBreaker()) return NextResponse.json({ title: null });
+      } catch { /* 브레이커 조회 실패는 무시 */ }
       try {
         const result = await chatCompletion({
           messages: [
