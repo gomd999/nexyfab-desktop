@@ -51,21 +51,28 @@ interface NavSection {
 // - 가설·랙 → 기계 페이지 안의 세부분야 칩으로 흡수(isActive에서 rack도 기계로 판정)
 // - 자유형 Studio·전문가형 CAD·종이레이저컷·부품 → 기계 페이지의 전문 도구 카드
 // - 공유된 항목 → 내 프로젝트 페이지의 '공유됨' 탭
-const SECTIONS: NavSection[] = [
-  {
-    titleKo: '',
-    titleEn: '',
-    items: [
-      { icon: '🏠', labelKo: '홈',          labelEn: 'Home',         href: '/nexyfab/hub' },
-      { icon: '🔧', labelKo: '기계',        labelEn: 'Mechanical',   href: '/nexyfab/design?domain=mech' },
-      { icon: '🏢', labelKo: '건축',        labelEn: 'Architecture', href: '/nexyfab/design?domain=building' },
-      { icon: '🌉', labelKo: '토목',        labelEn: 'Civil',        href: '/nexyfab/design?domain=civil' },
-      { icon: '🌳', labelKo: '조경',        labelEn: 'Landscape',    href: '/nexyfab/design?domain=landscape' },
-      { icon: '🪑', labelKo: '인테리어',    labelEn: 'Interior',     href: '/nexyfab/design?domain=interior' },
-      { icon: '📁', labelKo: '내 프로젝트', labelEn: 'My Projects',  href: '/nexyfab/projects' },
-    ],
-  },
-];
+// 2026-07-16 AI 설계+스튜디오 통합 IA: [분야] + 채팅 내역 + 내 프로젝트.
+// 채팅 섹션은 동적(nf_chat_threads_v1 — 랜딩 챗·스튜디오 도크와 같은 저장소)이라
+// SECTIONS 밖에서 렌더한다. 분야와 채팅 사이에 끼워 넣기 위해 섹션을 둘로 나눈다.
+const SECTION_MAIN: NavSection = {
+  titleKo: '', titleEn: '',
+  items: [
+    { icon: '🏠', labelKo: '홈',       labelEn: 'Home',         href: '/nexyfab/hub' },
+    { icon: '🔧', labelKo: '기계',     labelEn: 'Mechanical',   href: '/nexyfab/design?domain=mech' },
+    { icon: '🏢', labelKo: '건축',     labelEn: 'Architecture', href: '/nexyfab/design?domain=building' },
+    { icon: '🌉', labelKo: '토목',     labelEn: 'Civil',        href: '/nexyfab/design?domain=civil' },
+    { icon: '🌳', labelKo: '조경',     labelEn: 'Landscape',    href: '/nexyfab/design?domain=landscape' },
+    { icon: '🪑', labelKo: '인테리어', labelEn: 'Interior',     href: '/nexyfab/design?domain=interior' },
+  ],
+};
+const SECTION_BOTTOM: NavSection = {
+  titleKo: '', titleEn: '',
+  items: [
+    { icon: '📁', labelKo: '내 프로젝트', labelEn: 'My Projects', href: '/nexyfab/projects' },
+  ],
+};
+
+interface ChatThreadLite { id: string; title: string; updated?: number; pinned?: boolean; badge?: string | null }
 
 // Avatar dropdown items (replaces the old Account sidebar section).
 interface MenuItem { icon: string; labelKo: string; labelEn: string; href: string; external?: boolean; }
@@ -89,6 +96,25 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
   const isKo = isKorean(lang);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // 채팅 내역 — 랜딩 챗과 같은 로컬 저장소(서버 스레드도 랜딩 방문 시 로컬에 미러됨)
+  const [chatThreads, setChatThreads] = useState<ChatThreadLite[]>([]);
+  useEffect(() => {
+    const load = () => {
+      try {
+        const list = JSON.parse(localStorage.getItem('nf_chat_threads_v1') ?? '[]') as ChatThreadLite[];
+        setChatThreads(
+          list.filter((t) => t && t.id && t.title)
+            .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.updated ?? 0) - (a.updated ?? 0))
+            .slice(0, 6),
+        );
+      } catch { /* ignore */ }
+    };
+    load();
+    window.addEventListener('storage', load);
+    window.addEventListener('focus', load);
+    return () => { window.removeEventListener('storage', load); window.removeEventListener('focus', load); };
+  }, []);
 
   // Close avatar dropdown on outside click / Escape.
   useEffect(() => {
@@ -181,8 +207,36 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
 
         {/* Sections */}
         <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
-          {SECTIONS.map((sec) => (
-            <div key={sec.titleEn} style={{ marginBottom: 8 }}>
+          {([SECTION_MAIN, 'CHAT', SECTION_BOTTOM] as Array<NavSection | 'CHAT'>).map((sec) => sec === 'CHAT' ? (
+            /* 채팅 내역 — AI 설계(랜딩 챗)와 스튜디오 통합 IA(2026-07-16): 대화 재진입 경로 */
+            <div key="chat" style={{ marginBottom: 8 }}>
+              <div className="nf-uni-section-title" style={{ fontSize: 10, fontWeight: 700, color: 'var(--nx-text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '10px 14px 4px' }}>
+                {isKo ? '채팅' : 'Chats'}
+              </div>
+              <Link href={`/${lang}/`}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', textDecoration: 'none', color: 'var(--nx-text)', fontSize: 13, fontWeight: 500, borderLeft: '2px solid transparent', lineHeight: 1.2 }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-hover)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}>
+                <span aria-hidden="true" style={{ fontSize: 16, flex: '0 0 18px', textAlign: 'center' }}>💬</span>
+                <span className="nf-uni-label" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isKo ? '새 채팅 (AI 설계)' : 'New chat (AI design)'}</span>
+              </Link>
+              {chatThreads.map((th) => (
+                <Link key={th.id} href={`/${lang}/?t=${th.id}`} title={th.title}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px', textDecoration: 'none', color: 'var(--nx-text)', fontSize: 12, borderLeft: '2px solid transparent', lineHeight: 1.2 }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--nx-hover)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}>
+                  <span aria-hidden="true" style={{ fontSize: 11, flex: '0 0 18px', textAlign: 'center', color: 'var(--nx-text-3)' }}>{th.pinned ? '📌' : '·'}</span>
+                  <span className="nf-uni-label" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{th.title}</span>
+                  {th.badge && (
+                    <span className="nf-uni-label" style={{ fontSize: 9, fontWeight: 800, color: th.badge === 'PASS' || th.badge === '✓' ? '#16a34a' : th.badge === 'FAIL' || th.badge === '✗' ? '#dc2626' : 'var(--nx-text-3)' }}>
+                      {th.badge === 'PASS' ? '✓' : th.badge === 'FAIL' ? '✗' : th.badge}
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div key={sec.items[0]?.href ?? sec.titleEn} style={{ marginBottom: 8 }}>
               {(isKo ? sec.titleKo : sec.titleEn) !== '' && (
                 <div
                   className="nf-uni-section-title"

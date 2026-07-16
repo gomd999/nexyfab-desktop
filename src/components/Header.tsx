@@ -15,12 +15,12 @@ function readLangCookie(): string | null {
 }
 
 const dict: Record<IsoLang, { pricing: string; factories: string; login: string; dashboard: string; quickQuote: string; shapeGen: string; download: string; logout: string; notifications: string; papercraft: string; aiDesign: string; studio: string }> = {
-    ko: { pricing: '요금', factories: '공장 찾기', login: '로그인', dashboard: '대시보드', quickQuote: '빠른 견적', shapeGen: '3D 모델링', download: '다운로드', logout: '로그아웃', notifications: '알림', papercraft: '종이·레이저컷' , aiDesign: 'AI 설계', studio: '디자인 스튜디오' },
-    en: { pricing: 'Pricing', factories: 'Find Factories', login: 'Sign In', dashboard: 'Dashboard', quickQuote: 'Quick Quote', shapeGen: '3D Modeler', download: 'Download', logout: 'Sign Out', notifications: 'Notifications', papercraft: 'Papercraft' , aiDesign: 'AI Design', studio: 'Design Studio' },
-    ja: { pricing: '料金', factories: '工場を探す', login: 'ログイン', dashboard: 'ダッシュボード', quickQuote: 'クイック見積もり', shapeGen: '3Dモデリング', download: 'ダウンロード', logout: 'ログアウト', notifications: '通知', papercraft: 'ペーパークラフト' , aiDesign: 'AI設計', studio: 'デザインスタジオ' },
-    zh: { pricing: '价格', factories: '找工厂', login: '登录', dashboard: '控制台', quickQuote: '快速报价', shapeGen: '3D建模', download: '下载', logout: '退出', notifications: '通知', papercraft: '纸艺切割' , aiDesign: 'AI设计', studio: '设计工作室' },
-    es: { pricing: 'Precios', factories: 'Fábricas', login: 'Iniciar Sesión', dashboard: 'Panel', quickQuote: 'Cotización Rápida', shapeGen: 'Modelado 3D', download: 'Descargar', logout: 'Cerrar Sesión', notifications: 'Avisos', papercraft: 'Papercraft' , aiDesign: 'Diseño IA', studio: 'Estudio de Diseño' },
-    ar: { pricing: 'الأسعار', factories: 'ابحث عن مصنع', login: 'تسجيل الدخول', dashboard: 'لوحة التحكم', quickQuote: 'عرض سعر سريع', shapeGen: 'نمذجة ثلاثية الأبعاد', download: 'تنزيل', logout: 'خروج', notifications: 'إشعارات', papercraft: 'ورق وليزر' , aiDesign: 'تصميم AI', studio: 'استوديو التصميم' },
+    ko: { pricing: '요금', factories: '공장 찾기', login: '로그인', dashboard: '대시보드', quickQuote: '빠른 견적', shapeGen: '3D 모델링', download: '다운로드', logout: '로그아웃', notifications: '알림', papercraft: '종이·레이저컷' , aiDesign: 'AI 설계 스튜디오', studio: '디자인 스튜디오' },
+    en: { pricing: 'Pricing', factories: 'Find Factories', login: 'Sign In', dashboard: 'Dashboard', quickQuote: 'Quick Quote', shapeGen: '3D Modeler', download: 'Download', logout: 'Sign Out', notifications: 'Notifications', papercraft: 'Papercraft' , aiDesign: 'AI Design Studio', studio: 'Design Studio' },
+    ja: { pricing: '料金', factories: '工場を探す', login: 'ログイン', dashboard: 'ダッシュボード', quickQuote: 'クイック見積もり', shapeGen: '3Dモデリング', download: 'ダウンロード', logout: 'ログアウト', notifications: '通知', papercraft: 'ペーパークラフト' , aiDesign: 'AI設計スタジオ', studio: 'デザインスタジオ' },
+    zh: { pricing: '价格', factories: '找工厂', login: '登录', dashboard: '控制台', quickQuote: '快速报价', shapeGen: '3D建模', download: '下载', logout: '退出', notifications: '通知', papercraft: '纸艺切割' , aiDesign: 'AI设计工作室', studio: '设计工作室' },
+    es: { pricing: 'Precios', factories: 'Fábricas', login: 'Iniciar Sesión', dashboard: 'Panel', quickQuote: 'Cotización Rápida', shapeGen: 'Modelado 3D', download: 'Descargar', logout: 'Cerrar Sesión', notifications: 'Avisos', papercraft: 'Papercraft' , aiDesign: 'Estudio de Diseño IA', studio: 'Estudio de Diseño' },
+    ar: { pricing: 'الأسعار', factories: 'ابحث عن مصنع', login: 'تسجيل الدخول', dashboard: 'لوحة التحكم', quickQuote: 'عرض سعر سريع', shapeGen: 'نمذجة ثلاثية الأبعاد', download: 'تنزيل', logout: 'خروج', notifications: 'إشعارات', papercraft: 'ورق وليزر' , aiDesign: 'استوديو التصميم AI', studio: 'استوديو التصميم' },
 };
 
 const IconZap = () => (
@@ -139,9 +139,9 @@ export default function Header() {
     const _nexysysUrl = process.env.NEXT_PUBLIC_NEXYSYS_URL || 'https://nexysys.com';
 
     const navItems = [
-        // 챗-우선 IA: AI 설계(홈 챗) → 디자인 스튜디오(어셈블리·계산기 61종·검증) → 제조 연결
-        { href: `/${lang}/`, label: t.aiDesign, icon: <IconZap />, external: false, highlight: 'blue' as const },
-        { href: `/${lang}/nexyfab/design/`, label: t.studio, icon: <IconCube />, external: false, highlight: false as const },
+        // AI 설계 + 디자인 스튜디오 통합(2026-07-16 사용자 IA): 랜딩 챗=진입, 스튜디오=작업대.
+        // 별개 메뉴 둘 필요 없음 — 스튜디오 진입은 챗 핸드오프·사이드바 분야가 담당.
+        { href: `/${lang}/`, label: t.aiDesign, icon: <IconCube />, external: false, highlight: 'blue' as const },
         { href: `/${lang}/factories/`, label: t.factories, icon: <IconFactory />, external: false, highlight: false as const },
         { href: `/${lang}/pricing/`, label: t.pricing, icon: <IconZap />, external: false, highlight: false as const },
         { href: `/${lang}/quick-quote/`, label: t.quickQuote, icon: <IconCalculator />, external: false, highlight: 'gradient' as const },
