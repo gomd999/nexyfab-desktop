@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { guardStudioAi } from '@/lib/studio-ai-guard';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -27,6 +28,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const ip = getTrustedClientIp(req.headers);
   const rl = rateLimit(`drawing-visualize:${ip}`, 4, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
+  // 감사 2026-07-16: 요청당 최고비용(이미지 생성) — 플랜 가드+브레이커 복종
+  const planGuard = await guardStudioAi(req);
+  if (planGuard) return planGuard;
+  try {
+    const { getActiveBreaker } = await import('@/lib/cost-breaker');
+    if (await getActiveBreaker()) return NextResponse.json({ ok: false, error: 'AI가 일시 중지되어 있습니다.' }, { status: 503 });
+  } catch { /* ignore */ }
 
   const key = process.env.GEMINI_API_KEY;
   if (!key) return NextResponse.json({ ok: false, error: 'GEMINI_API_KEY 미설정' }, { status: 503 });

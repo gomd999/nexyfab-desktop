@@ -16,6 +16,13 @@ const FEATURE_TYPES = ['fillet', 'chamfer', 'shell', 'hole', 'linearPattern', 'c
    ══════════════════════════════════════════════════════════════════════════════ */
 
 export async function POST(req: NextRequest) {
+  // 전역 비용 브레이커(감사 2026-07-16) — eng-chat과 동일하게 복종
+  try {
+    const { getActiveBreaker } = await import('@/lib/cost-breaker');
+    if (await getActiveBreaker()) {
+      return NextResponse.json({ error: 'AI is temporarily paused. Please try again later.' }, { status: 503 });
+    }
+  } catch { /* ignore */ }
   const planCheck = await checkPlan(req, 'free');
   const userPlan = planCheck.ok ? planCheck.plan : 'free';
 

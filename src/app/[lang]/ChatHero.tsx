@@ -63,6 +63,7 @@ const GHOST_BTN = { padding: '3px 10px', borderRadius: 8, fontSize: 11, cursor: 
 // 챗 도메인 → 스튜디오 분야 슬러그 (Studio 핸드오프에 분야를 함께 넘긴다)
 const STUDIO_DOMAIN: Record<string, string> = { mechanical: 'mech', civil: 'civil', architecture: 'building', landscape: 'landscape', interior: 'interior' };
 // 스레드 분야 아이콘(2026-07-16) — 색점 대신 한눈에 구분
+const scadKey = (x: string) => { let h = 5381; for (let i = 0; i < x.length; i += 37) h = ((h << 5) + h + x.charCodeAt(i)) | 0; return h + ':' + x.length; };
 const DOMAIN_EMOJI_TH: Record<string, string> = { mechanical: '🔧', civil: '🌉', architecture: '🏢', landscape: '🌳', interior: '🪑' };
 const badgeFrom = (msgs: Msg[]): string | null => { for (let i = msgs.length - 1; i >= 0; i--) { const v = (msgs[i].calc as { verdict?: string } | undefined)?.verdict; if (v) return v; } return null; };
 function loadThreads(): Thread[] {
@@ -609,6 +610,8 @@ function MiniScadViewer({ scad, auto, accent, height = 240 }: { scad: string; au
   const cleanupRef = useRef<(() => void) | null>(null);
   const start = useCallback(async () => {
     if (!mountRef.current) return;
+    cleanupRef.current?.(); // 재시도 시 이전 renderer·리스너 정리(누수 방지)
+    cleanupRef.current = null;
     setSt('busy');
     try {
       const [wr, im, THREE] = await Promise.all([
@@ -1296,7 +1299,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
 
   // 마지막 user 발화 이후를 걷어내고 재전송 — 히스토리에서 직전 답을 제외해 같은 답 재생산을 피한다
   const regen = () => {
-    if (loading) return;
+    if (loading || threadLimitReached) return; // 한도 도달 시 regen은 삭제만 하고 재생성 안 됨(감사 HIGH) — 선차단
     let ui = -1;
     for (let i = messages.length - 1; i >= 0; i--) { if (messages[i].role === 'user') { ui = i; break; } }
     if (ui < 0) return;
@@ -1700,7 +1703,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
               🛠 Studio →
             </a>
           </div>
-          <MiniScadViewer key={(latestCad.scad ?? '').length + ':' + (latestCad.interferences?.length ?? 0)} scad={latestCad.scad!} auto accent={accent} height={520} />
+          <MiniScadViewer key={scadKey(latestCad.scad ?? '') + ':' + (latestCad.interferences?.length ?? 0)} scad={latestCad.scad!} auto accent={accent} height={520} />
         </aside>
       )}
     </section>

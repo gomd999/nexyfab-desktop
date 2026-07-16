@@ -30,6 +30,18 @@ export default function StudioChatDock({ lang, domainSlug, intentName, partCount
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
+  // 스레드당 무료 3회(2026-07-16 정책) — ChatHero와 동일 게이트(도크 우회 방지, 감사)
+  const [plan, setPlan] = useState('free');
+  useEffect(() => {
+    fetch('/api/auth/session').then(async (r) => {
+      if (!r.ok) return;
+      try { const j = await r.json(); setPlan(String(j?.user?.plan ?? 'free')); } catch { /* ignore */ }
+    }).catch(() => {});
+  }, []);
+  const isPaid = plan === 'pro' || plan === 'team' || plan === 'enterprise';
+  const userTurns = msgs.filter((m) => m.role === 'user').length;
+  const limited = !isPaid && userTurns >= 3;
+  const resetThread = () => { setMsgs([]); threadIdRef.current = null; };
   const threadIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatDomain = DOMAIN_MAP[domainSlug ?? ''] ?? 'mechanical';
@@ -53,7 +65,7 @@ export default function StudioChatDock({ lang, domainSlug, intentName, partCount
 
   const send = async () => {
     const text = input.trim();
-    if (!text || busy) return;
+    if (!text || busy || limited) return; // 스레드당 무료 3회
     setInput('');
     const ctx = intentName ? (ko ? `[현재 설계: ${intentName}${partCount ? ` · 파츠 ${partCount}` : ''}] ` : `[current design: ${intentName}] `) : '';
     setMsgs((m) => [...m, { role: 'user', content: text }]);
@@ -123,6 +135,13 @@ export default function StudioChatDock({ lang, domainSlug, intentName, partCount
             ))}
             {busy && <div style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '응답 생성 중…' : 'Generating…'}</div>}
           </div>
+          {limited && (
+            <div style={{ padding: '7px 10px', borderTop: '1px solid var(--nx-border, #dfe3e8)', fontSize: 11, color: '#b45309', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span>{ko ? '무료 한도(스레드당 3회) 도달' : 'Free limit (3/thread) reached'}</span>
+              <button type="button" onClick={resetThread} style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit' }}>＋ {ko ? '새 대화' : 'New'}</button>
+              <a href={`/${lang.startsWith('en') ? 'en' : lang}/pricing/`} style={{ fontWeight: 800, color: 'var(--nx-accent, #2563eb)' }}>Pro →</a>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 6, padding: 10, borderTop: '1px solid var(--nx-border, #dfe3e8)' }}>
             <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }}
               placeholder={ko ? '질문·계산 요청…' : 'Ask or calculate…'}

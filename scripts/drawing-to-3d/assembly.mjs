@@ -251,6 +251,11 @@ export function buildAssembly(asm) {
   }
   const weldTotalMm = welds.reduce((s, w) => s + w.lengthMm, 0);
 
+  // 접촉/용접 상호배타(감사 2026-07-16): 면접촉(2축 겹침+1축 gap≈0)으로 용접 계상된
+  // 부품쌍은 접촉 목록에서 제외 — 같은 조인트가 두 번 보이지 않게(용접이 더 구체적 판정).
+  const weldPairs = new Set(welds.map((w) => w.a + '|' + w.b));
+  const contactsFinal = contacts.filter((c) => !weldPairs.has(c.a + '|' + c.b));
+
   const openscad =
     `// assembly: ${asm.name ?? 'unnamed'} — drawing-to-3d (deterministic)\n` +
     `// parts: ${asm.parts.length}\n$fn = 64;\nunion() {\n${bodies.join('\n')}\n}\n`;
@@ -259,7 +264,7 @@ export function buildAssembly(asm) {
   let structural = null;
   try { structural = structuralCheck(asm, {}); } catch { /* 구조검토 실패는 빌드를 막지 않음 */ }
 
-  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, contacts, welds, weldTotalMm, composeIntent: assemblyToComposeIntent(asm), structural };
+  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, contacts: contactsFinal, welds, weldTotalMm, composeIntent: assemblyToComposeIntent(asm), structural };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('assembly.mjs');

@@ -119,10 +119,18 @@ export async function checkPlan(req: NextRequest, required: Plan): Promise<
     const { getAuthUser } = await import('./auth-middleware');
     const user = await getAuthUser(req);
     if (!user) return { ok: false, response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-    if (!meetsPlan(user.plan, required)) {
+    // 토큰 plan은 결제/해지 직후 stale할 수 있다(감사 2026-07-16) — DB 최신 plan으로 보정.
+    // (업그레이드 직후에도 슬롯에 막히는 치명 불일치 방지 · 조회 실패 시 토큰 plan 유지)
+    let plan = user.plan;
+    try {
+      const { getDbAdapter } = await import('./db-adapter');
+      const row = await getDbAdapter().queryOne<{ plan?: string }>('SELECT plan FROM nf_users WHERE id = ?', user.userId);
+      if (row?.plan) plan = String(row.plan);
+    } catch { /* DB 조회 실패 — 토큰 plan으로 진행 */ }
+    if (!meetsPlan(plan, required)) {
       return { ok: false, response: NextResponse.json({ error: 'Plan upgrade required', required }, { status: 403 }) };
     }
-    return { ok: true, userId: user.userId, plan: user.plan };
+    return { ok: true, userId: user.userId, plan };
   } catch (err) {
     console.error('[plan-guard] checkPlan error:', err);
     return { ok: false, response: NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 }) };

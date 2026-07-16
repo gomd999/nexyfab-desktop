@@ -172,6 +172,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const runAbortRef = useRef<AbortController | null>(null);
   const handoffTypeRef = useRef<'assembly' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errCode, setErrCode] = useState<string | null>(null); // PLAN_LIMIT 등 — 업셀 CTA 분기
   const [gateErrors, setGateErrors] = useState<string[] | null>(null);
 
   const [intent, setIntent] = useState<ComposeOk['intent'] | null>(null);
@@ -388,13 +389,15 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       lastPromptRef.current = desc; // vision 비평의 판정 기준(요청한 물건)으로 사용
       // 어셈블리 스펙 감지 — 챗 핸드오프 type 우선, 없으면 휴리스틱(부품@좌표 나열 패턴).
       // 어셈블리를 단품 파이프(compose)에 밀면 왕복·교정이 길어져 "멈춘 듯" 보인다.
+      // 감사 2026-07-16: 콤마·키워드 휴리스틱은 상세 단품을 오라우팅 — 핸드오프 type 또는
+      // 부품@(좌표) 패턴 2회 이상(진짜 배치 나열)일 때만 어셈블리로.
       const isAssembly = handoffTypeRef.current === 'assembly'
-        || /@\(\s*-?\d+\s*,\s*-?\d+/.test(desc)
-        || (desc.length > 240 && (desc.match(/[,·;\n]/g)?.length ?? 0) >= 8 && /(frame|beam|skid|tank|support|bracket|프레임|스키드|탱크|배관|브래킷|조립)/i.test(desc));
+        || ((desc.match(/@\(/g)?.length ?? 0) >= 2);
       handoffTypeRef.current = null; // 1회 소비
       setStatus(isAssembly
         ? (ko ? 'AI가 부품을 분해·배치하고 간섭을 검사하는 중… (최대 3라운드)' : 'Decomposing parts & checking interference… (≤3 rounds)')
         : (ko ? 'AI가 설계를 조합하고 검증하는 중…' : 'Composing & verifying the design…'));
+      runAbortRef.current?.abort(); // 동시 run 방지(감사) — 이전 요청·타이머는 해당 finally가 정리
       const ac = new AbortController();
       runAbortRef.current = ac;
       setElapsed(0);
@@ -415,6 +418,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           : raw;
         if (isAssembly && raw.ok) setInterf(Array.isArray(raw.interferences) ? raw.interferences.length : 0); // 그물 ④
         if (!data.ok) {
+          setErrCode((raw as { code?: string }).code ?? null);
           if (data.gateErrors?.length) setGateErrors(data.gateErrors);
           else setError(data.error ?? (ko ? '설계 생성 실패' : 'Design failed'));
           setStatus('');
@@ -785,7 +789,12 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             )}
 
             {error && (
-              <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: '#fdecec', color: '#b42318', fontSize: 12.5 }}>{error}</div>
+              <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: '#fdecec', color: '#b42318', fontSize: 12.5 }}>
+                {error}
+                {errCode === 'PLAN_LIMIT' && (
+                  <a href={`/${lang}/pricing/`} style={{ display: 'inline-block', marginLeft: 8, fontWeight: 800, color: 'var(--nx-accent, #2563eb)' }}>{ko ? 'Pro 보기 →' : 'See Pro →'}</a>
+                )}
+              </div>
             )}
             {gateErrors && (
               <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: '#fff4e5', color: '#a15c00', fontSize: 12.5 }}>

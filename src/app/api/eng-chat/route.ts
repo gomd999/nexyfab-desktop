@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       const budget = await checkUserBudget(planCheck.userId);
       if (!budget.ok) {
         return NextResponse.json(
-          { error: `Daily AI spend limit reached ($${budget.limitUsd}). Try again later.`, code: 'COST_BUDGET', resetAtMs: budget.resetAtMs },
+          { error: `오늘의 AI 사용 한도($${budget.limitUsd})에 도달했어요. 내일 다시 이용할 수 있습니다.`, code: 'COST_BUDGET', resetAtMs: budget.resetAtMs },
           { status: 402 },
         );
       }
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
       const slot = await consumeMonthlyMetricSlot(planCheck.userId, userPlan, 'shape_chat');
       if (!slot.ok) {
         return NextResponse.json(
-          { error: `Free plan limit reached (${slot.limit}/month). Upgrade to Pro for unlimited AI chat.` },
+          { error: `무료 플랜 월 한도(${slot.limit}회)에 도달했어요. Pro로 업그레이드하면 무제한입니다.`, code: 'PLAN_LIMIT' },
           { status: 429 },
         );
       }

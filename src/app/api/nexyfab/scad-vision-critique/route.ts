@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { chatCompletion } from '@/lib/ai';
 import { visionCompletion } from '@/lib/ai/vision';
 import { getPromptVariant } from '@/lib/ai/prompts';
+import { rateLimit } from '@/lib/rate-limit';
+import { getTrustedClientIp } from '@/lib/client-ip';
+import { guardStudioAi } from '@/lib/studio-ai-guard';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,6 +19,16 @@ export const dynamic = 'force-dynamic';
  * not metered as a new design (guest-friendly, like the render self-repair).
  */
 export async function POST(req: NextRequest) {
+  // 감사 2026-07-16: 완전 무가드였던 그물⑤(요청당 vision+chat 2회 유료 호출) — studio AI 정책 이식
+  const ip = getTrustedClientIp(req.headers);
+  const rl = rateLimit(`scad-vision:${ip}`, 6, 60_000);
+  if (!rl.allowed) return NextResponse.json({ faithful: true, scad: null, error: '요청이 너무 많습니다.' }, { status: 429 });
+  const planGuard = await guardStudioAi(req);
+  if (planGuard) return planGuard;
+  try {
+    const { getActiveBreaker } = await import('@/lib/cost-breaker');
+    if (await getActiveBreaker()) return NextResponse.json({ faithful: true, scad: null });
+  } catch { /* ignore */ }
   const body = (await req.json().catch(() => ({}))) as { image?: string; prompt?: string; scad?: string; multiview?: boolean; refImage?: string };
   const multiview = body.multiview === true;
   const prompt = (body.prompt ?? '').trim();

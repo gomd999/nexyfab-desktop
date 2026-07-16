@@ -38,7 +38,10 @@ export default function ProjectsPage({ params }: { params: Promise<{ lang: strin
   const { lang } = use(params);
   const isKo = isKorean(lang);
   const toast = useToast();
-  const { user } = useAuthStore();
+  const { user, refreshPlan } = useAuthStore();
+  // plan 캐시 stale 방지(감사 2026-07-16) — 결제 직후에도 이 페이지가 최신 플랜을 보게
+  useEffect(() => { void refreshPlan().catch(() => {}); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const isFreePlan = !user?.plan || user.plan === 'free';
   // "공유된 항목" nav links here with ?filter=shared. Project-level sharing has
   // no backend yet (the projects API is owner-scoped), so we show an honest

@@ -6,6 +6,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { chatCompletion, AiNotConfiguredError, AiProviderError } from '@/lib/ai';
+import { rateLimit } from '@/lib/rate-limit';
+import { getTrustedClientIp } from '@/lib/client-ip';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -26,6 +28,14 @@ const LANG_NAME: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
+  // 감사 2026-07-16: 무가드 DeepSeek 프록시였음 — 최소 방어(보조 기능이라 슬롯은 미소모, 정직 표기)
+  const ip = getTrustedClientIp(req.headers);
+  const rl = rateLimit(`enhance-prompt:${ip}`, 12, 60_000);
+  if (!rl.allowed) return NextResponse.json({ error: '요청이 너무 많습니다.' }, { status: 429 });
+  try {
+    const { getActiveBreaker } = await import('@/lib/cost-breaker');
+    if (await getActiveBreaker()) return NextResponse.json({ error: 'AI가 일시 중지되어 있습니다.' }, { status: 503 });
+  } catch { /* ignore */ }
   const body = (await req.json().catch(() => null)) as { prompt?: string; lang?: string } | null;
   const prompt = body?.prompt?.trim();
   if (!prompt) return NextResponse.json({ error: 'prompt is required' }, { status: 400 });

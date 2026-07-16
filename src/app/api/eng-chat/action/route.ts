@@ -4,6 +4,8 @@ import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage
 import { checkUserBudget } from '@/lib/ai/userBudget';
 import { captureServerError } from '@/lib/error-capture';
 import { CALC_CATALOG } from '../calcCatalog';
+import { rateLimit } from '@/lib/rate-limit';
+import { getTrustedClientIp } from '@/lib/client-ip';
 
 /* ══════════════════════════════════════════════════════════════════════════════
    /api/eng-chat/action — 랜딩 챗의 "실행형" 의도추출.
@@ -92,6 +94,10 @@ function stripJson(raw: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  // IP 레이트리밋(감사 2026-07-16) — eng-chat 본 라우트와 동일 30/min
+  const _ip = getTrustedClientIp(req.headers);
+  const _rl = rateLimit(`eng-chat-action:${_ip}`, 30, 60_000);
+  if (!_rl.allowed) return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
   const planCheck = await checkPlan(req, 'free');
   const userPlan = planCheck.ok ? planCheck.plan : 'free';
 
@@ -113,11 +119,9 @@ export async function POST(req: NextRequest) {
       if (!budget.ok) {
         return NextResponse.json({ error: `Daily AI spend limit reached ($${budget.limitUsd}).`, code: 'COST_BUDGET' }, { status: 402 });
       }
-      const { consumeMonthlyMetricSlot } = await import('@/lib/plan-guard');
-      const slot = await consumeMonthlyMetricSlot(planCheck.userId, userPlan, 'shape_chat');
-      if (!slot.ok) {
-        return NextResponse.json({ error: `Free plan limit reached (${slot.limit}/month).` }, { status: 429 });
-      }
+      // 슬롯 미소모(감사 2026-07-16): 한 설계 턴이 action(분류)+compose/assemble 두 번
+      // 차감되던 이중 소모 해소 — 슬롯은 후속 geometry 라우트(guardStudioAi)가 1회만 소모.
+      // 예산·브레이커는 그대로 통과한다(위/아래 가드).
     }
     try {
       const { getActiveBreaker } = await import('@/lib/cost-breaker');
