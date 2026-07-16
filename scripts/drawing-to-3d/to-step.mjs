@@ -313,6 +313,8 @@ export function auditDims(intent, solid) {
 /**
  * 메시 연결성 → 분리 덩어리(lump) 수. lumps>1 = 허공에 뜬 부품/미접합 배관 —
  * "실제 제작 불가능" 신호(부유 감지). 정점을 0.01mm 격자로 합치고 union-find.
+ * ⚠️ 내부 공동(subtract로 파묻힌 보이드)의 표면도 별도 셸로 잡히므로, lump별
+ * 부호 부피를 계산해 음수(공동)는 제외하고 양수 덩어리만 센다(위시빌더 실증 260717).
  */
 export function meshLumps(v, triIdx) {
   const key = new Map(); const id = [];
@@ -327,9 +329,17 @@ export function meshLumps(v, triIdx) {
   const uni = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
   const tri = triIdx ?? Array.from({ length: id.length }, (_, i) => i);
   for (let i = 0; i < tri.length; i += 3) { uni(id[tri[i]], id[tri[i + 1]]); uni(id[tri[i + 1]], id[tri[i + 2]]); }
-  const roots = new Set();
-  for (let i = 0; i < tri.length; i++) roots.add(find(id[tri[i]]));
-  return roots.size;
+  const vol = new Map(); // root → 부호 부피 합(∑ v·(a×b)/6)
+  const P = (idx) => { const j = tri[idx] * 3; return [v[j], v[j + 1], v[j + 2]]; };
+  for (let i = 0; i < tri.length; i += 3) {
+    const a = P(i), b = P(i + 1), c = P(i + 2);
+    const s = a[0] * (b[1] * c[2] - b[2] * c[1]) + a[1] * (b[2] * c[0] - b[0] * c[2]) + a[2] * (b[0] * c[1] - b[1] * c[0]);
+    const r = find(id[tri[i]]);
+    vol.set(r, (vol.get(r) ?? 0) + s / 6);
+  }
+  let n = 0;
+  for (const s of vol.values()) if (s > 1) n++; // 양수(실체)만 — 음수=내부 공동
+  return n;
 }
 
 export async function intentToRecordMeasure(intent) {
