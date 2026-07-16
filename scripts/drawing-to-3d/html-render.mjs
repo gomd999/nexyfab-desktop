@@ -81,12 +81,22 @@ addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProje
  * STL 을 따로 렌더해 three.js 다중메시로 합성한다. 배관·부품 계통이 색으로 구분됨 + 범례.
  * @param spec {assembly} 또는 {intent}(features[] with _col)
  */
-export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle = '' } = {}) {
+export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle = '', parts = null, colorLabels = null } = {}) {
   let features, name;
   if (spec.assembly) {
     const b = buildAssembly(spec.assembly);
     if (!b.ok) throw new Error('assembly gate: ' + (b.gateErrors ?? []).join('; '));
     features = b.composeIntent.features; name = spec.assembly.name ?? 'assembly';
+    if (!parts && Array.isArray(b.parts)) { // 부품 피킹 데이터 자동 유도
+      const { partAabb } = await import('./reconstruct.mjs');
+      parts = b.parts.map((p) => {
+        try {
+          const ab = partAabb(p.type, p.params);
+          const t = Array.isArray(p.at) ? p.at : (p.at?.translate ?? [0, 0, 0]);
+          return { label: p.id ?? p.type, desc: [p.type, p.role, p.service, p.material].filter(Boolean).join(' · '), min: ab.min.map((v, i) => v + t[i]), max: ab.max.map((v, i) => v + t[i]) };
+        } catch { return null; }
+      }).filter(Boolean);
+    }
   } else if (spec.intent && Array.isArray(spec.intent.features)) {
     features = spec.intent.features; name = spec.intent.name ?? 'composite';
   } else throw new Error('renderColoredHtml: spec.assembly 또는 spec.intent 필요');
@@ -101,7 +111,7 @@ export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle =
   }
   if (!meshes.length) throw new Error('renderColoredHtml: 렌더된 메시 없음');
   const metal = new Set(['#3f4756', '#5b6472', '#59606b', '#9aa7b5', '#8b98a6', '#78838f', '#8a5a2b']);
-  const mj = meshes.map((m) => `{b64:"${m.b64}",col:0x${m.col.slice(1)},metal:${metal.has(m.col) ? 0.9 : 0.28},rough:${metal.has(m.col) ? 0.35 : 0.45},label:${JSON.stringify(COLOR_LABEL[m.col] || '부품')}}`).join(',');
+  const mj = meshes.map((m) => `{b64:"${m.b64}",col:0x${m.col.slice(1)},metal:${metal.has(m.col) ? 0.9 : 0.28},rough:${metal.has(m.col) ? 0.35 : 0.45},label:${JSON.stringify((colorLabels && colorLabels[m.col]) || COLOR_LABEL[m.col] || '부품')}}`).join(',');
   // 조정 패널(2026-07-16 사용자 요청): 계통 표시 토글·계통 분해·단면(3축)·엣지·뷰 프리셋·자동회전·치수
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>html,body{margin:0;height:100%;overflow:hidden;background:#eef1f4;font-family:'Segoe UI',sans-serif}
@@ -113,9 +123,12 @@ export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle =
 #panel input[type=range]{width:100%}
 #panel .views{display:flex;gap:4px;flex-wrap:wrap}#panel .views button{flex:1;padding:4px 0;border:1px solid #cdd5de;border-radius:6px;background:#fff;font-size:10.5px;cursor:pointer}
 #panel .sw{display:inline-block;width:10px;height:10px;border-radius:2px}
-#shot{width:100%;margin-top:8px;padding:7px 0;border:0;border-radius:8px;background:#2a3440;color:#fff;font-size:12px;cursor:pointer}</style></head>
+#shot{width:100%;margin-top:8px;padding:7px 0;border:0;border-radius:8px;background:#2a3440;color:#fff;font-size:12px;cursor:pointer}
+#tip{position:fixed;display:none;z-index:20;pointer-events:none;background:rgba(15,23,42,.92);color:#fff;font-size:11px;padding:4px 9px;border-radius:6px;max-width:280px}
+#info{position:fixed;display:none;z-index:20;left:18px;bottom:52px;background:rgba(255,255,255,.95);border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.15);padding:10px 14px;font-size:12px;color:#1f2937;max-width:320px}
+#info .fx{margin-top:3px;font-size:11px;color:#475569;line-height:1.5}#info .sz{margin-top:3px;font-size:11px;color:#0f766e;font-variant-numeric:tabular-nums}#info .cl{margin-top:5px;font-size:9.5px;color:#94a3b8}</style></head>
 <body><div id="hud"><h1>${esc(title)}</h1><p>${esc(subtitle || name)}</p></div>
-<div id="dims"></div>
+<div id="dims"></div><div id="tip"></div><div id="info"></div>
 <div id="panel">
   <h2>계통 표시</h2><div id="grp"></div>
   <h2>계통 분해</h2><input id="explode" type="range" min="0" max="100" value="0">
@@ -133,7 +146,7 @@ export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle =
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 import*as THREE from'three';import{OrbitControls}from'three/addons/controls/OrbitControls.js';import{STLLoader}from'three/addons/loaders/STLLoader.js';import{RoomEnvironment}from'three/addons/environments/RoomEnvironment.js';
-const M=[${mj}];const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});r.setSize(innerWidth,innerHeight);r.setPixelRatio(Math.min(devicePixelRatio,2));r.toneMapping=THREE.ACESFilmicToneMapping;r.shadowMap.enabled=true;r.shadowMap.type=THREE.PCFSoftShadowMap;r.localClippingEnabled=true;document.body.appendChild(r.domElement);
+const M=[${mj}];const PARTS=${JSON.stringify((parts ?? []).map((p) => ({ l: p.label, d: p.desc ?? '', n: p.min, x: p.max })))};const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});r.setSize(innerWidth,innerHeight);r.setPixelRatio(Math.min(devicePixelRatio,2));r.toneMapping=THREE.ACESFilmicToneMapping;r.shadowMap.enabled=true;r.shadowMap.type=THREE.PCFSoftShadowMap;r.localClippingEnabled=true;document.body.appendChild(r.domElement);
 const sc=new THREE.Scene();sc.background=new THREE.Color(0xeef1f4);sc.environment=new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(),0.04).texture;
 const cam=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,1,1e5);const ctl=new OrbitControls(cam,r.domElement);ctl.enableDamping=true;
 function b2a(b){const s=atob(b);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer}
@@ -154,7 +167,34 @@ const d=Math.max(sz.x,sz.y,sz.z);const key=new THREE.DirectionalLight(0xffffff,2
 ctl.target.copy(c);
 const V={iso:[c.x+sz.x*1.25,c.y+sz.y*0.7,c.z+sz.z*2.1],front:[c.x,c.y,c.z+d*2.2],top:[c.x,c.y+d*2.2,c.z+1],side:[c.x+d*2.2,c.y,c.z]};
 cam.position.set(...V.iso);
-document.getElementById('dims').textContent='전체 W '+Math.round(sz.x)+' × D '+Math.round(sz.z)+' × H '+Math.round(sz.y)+' mm · 드래그=회전 · 휠=줌';
+document.getElementById('dims').textContent='전체 W '+Math.round(sz.x)+' × D '+Math.round(sz.z)+' × H '+Math.round(sz.y)+' mm · 드래그=회전 · 휠=줌 · 호버/클릭=부품 정보';
+// 부품 피킹 — 계통별 병합 메시라 개별 메시 선택 불가 → 히트점을 모델좌표로 되돌려
+// 부품 AABB 포함검사(최소 부피 우선). 부품 미매칭이면 계통 라벨 폴백.
+const tip=document.getElementById('tip'),info=document.getElementById('info');
+const ray=new THREE.Raycaster();const mou=new THREE.Vector2();let hiBox=null;
+items.forEach(it=>{it.me.userData.label=it.m.label});
+function pick(ev){const rc=r.domElement.getBoundingClientRect();mou.x=((ev.clientX-rc.left)/rc.width)*2-1;mou.y=-((ev.clientY-rc.top)/rc.height)*2+1;ray.setFromCamera(mou,cam);
+  const hits=ray.intersectObjects(items.filter(i=>i.me.visible).map(i=>i.me),false);if(!hits.length)return null;
+  const h=hits[0];const lp=root.worldToLocal(h.point.clone());const pad=2;let best=null,bv=1e18;
+  for(const p of PARTS){if(lp.x<p.n[0]-pad||lp.x>p.x[0]+pad||lp.y<p.n[1]-pad||lp.y>p.x[1]+pad||lp.z<p.n[2]-pad||lp.z>p.x[2]+pad)continue;
+    const v=(p.x[0]-p.n[0])*(p.x[1]-p.n[1])*(p.x[2]-p.n[2]);if(v<bv){bv=v;best=p}}
+  return {part:best,group:(h.object.userData&&h.object.userData.label)||'',};}
+let rafP=0;
+addEventListener('pointermove',(ev)=>{if(rafP)return;rafP=requestAnimationFrame(()=>{rafP=0;
+  const res=pick(ev);
+  if(res&&(res.part||res.group)){tip.style.display='block';tip.style.left=(ev.clientX+14)+'px';tip.style.top=(ev.clientY+10)+'px';
+    tip.textContent=res.part?res.part.l:res.group;r.domElement.style.cursor='pointer';}
+  else{tip.style.display='none';r.domElement.style.cursor='';}});});
+addEventListener('click',(ev)=>{if(ev.target!==r.domElement)return;const res=pick(ev);
+  if(hiBox){root.remove(hiBox);hiBox=null;}
+  if(!res){info.style.display='none';return}
+  const p=res.part;
+  info.style.display='block';
+  if(p){const w=Math.round(p.x[0]-p.n[0]),dd=Math.round(p.x[1]-p.n[1]),hh=Math.round(p.x[2]-p.n[2]);
+    info.innerHTML='<b>'+p.l+'</b>'+(p.d?'<div class="fx">'+p.d+'</div>':'')+'<div class="sz">'+w+' × '+dd+' × '+hh+' mm (AABB)</div><div class="cl">계통: '+res.group+' · 빈 곳 클릭=닫기</div>';
+    const b3=new THREE.Box3(new THREE.Vector3(p.n[0],p.n[1],p.n[2]),new THREE.Vector3(p.x[0],p.x[1],p.x[2]));
+    hiBox=new THREE.Box3Helper(b3,0xff8800);root.add(hiBox);}
+  else{info.innerHTML='<b>'+res.group+'</b><div class="fx">계통(배관·부속) — 부품 단위 정보 없음</div><div class="cl">빈 곳 클릭=닫기</div>';}});
 // 계통 토글
 const grp=document.getElementById('grp');
 items.forEach((it,i)=>{const l=document.createElement('label');l.innerHTML='<input type="checkbox" checked><span class="sw" style="background:#'+it.m.col.toString(16).padStart(6,'0')+'"></span>'+it.m.label;
