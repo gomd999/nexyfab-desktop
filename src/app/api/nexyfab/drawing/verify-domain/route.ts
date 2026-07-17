@@ -94,7 +94,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const meta = (body as { assembly?: { wallParams?: unknown } }).assembly?.wallParams ?? (body as { wallParams?: unknown }).wallParams ?? wall?.params;
         if (meta) svg = sd.retainingWallSectionSvg(meta);
       } catch { /* 도면 실패는 비치명 */ }
-      return NextResponse.json({ result, html: rpt.retainingWallReport(result, { title: body.title ?? '옹벽 안정 검토', svg }) });
+      const { designNet } = await import('@/lib/design-net');
+      const { net, rev } = await designNet((body as { assembly?: unknown }).assembly, 'civil');
+      return NextResponse.json({ result, html: rpt.retainingWallReport(result, { title: body.title ?? '옹벽 안정 검토', svg, net, rev }) });
     }
     // 옹벽: 입력 기하 5키가 모두 있으면 편집형 단면도 동봉(m→mm 변환 — 기본값 날조 방지 위해 부분입력 시 미동봉)
     let drawingSvg: string | null = null;

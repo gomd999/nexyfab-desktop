@@ -432,7 +432,15 @@ export function buildAssembly(asm) {
         if (sleeveSeen.has(key)) continue;
         sleeveSeen.add(key);
         const rt = routed.routes.find((r) => r.label === v.route);
-        sleeves.push({ route: v.route, through: v.obstacle, d: rt?.d ?? 26, note: `관통 슬리브 필요(⌀${(rt?.d ?? 26) + 20} 내외 개산)` });
+        // 관통 위치(개산): 세그먼트를 부재 AABB 로 클램프한 구간의 중점 — 시공 명세용 좌표·높이
+        let at = null;
+        const ob = obstacles.find((o) => o.label === v.obstacle);
+        if (rt?.pts?.[v.seg + 1] && ob) {
+          const cl = (p) => [0, 1, 2].map((k) => Math.max(ob.min[k], Math.min(ob.max[k], p[k])));
+          const a = cl(rt.pts[v.seg]), b = cl(rt.pts[v.seg + 1]);
+          at = [0, 1, 2].map((k) => Math.round((a[k] + b[k]) / 2));
+        }
+        sleeves.push({ route: v.route, through: v.obstacle, d: rt?.d ?? 26, ...(at ? { at, heightMm: at[2] } : {}), note: `관통 슬리브 필요(⌀${(rt?.d ?? 26) + 20} 내외 개산)` });
       }
       pipes = {
         routes: routed.routes, errors: routed.errors, notes: routed.notes,

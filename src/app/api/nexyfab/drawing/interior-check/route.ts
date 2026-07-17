@@ -58,7 +58,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const tr = (result as { travel?: { farthestPointMm?: number[]; maxTravelM?: number } }).travel;
         svg = sd.interiorPlanSvg(body.assembly, { farthestPointMm: tr?.farthestPointMm, maxTravelM: tr?.maxTravelM });
       } catch { /* 도면 실패는 비치명 */ }
-      return NextResponse.json({ result, html: rpt.interiorReport(result, { title: body.assembly?.name ?? '피난·마감 검증', svg }) });
+      const { designNet } = await import('@/lib/design-net');
+      const { net, rev } = await designNet(body.assembly, 'interior');
+      return NextResponse.json({ result, html: rpt.interiorReport(result, { title: body.assembly?.name ?? '피난·마감 검증', svg, net, rev }) });
     }
     return NextResponse.json(result);
   } catch (e) {

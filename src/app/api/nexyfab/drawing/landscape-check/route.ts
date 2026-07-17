@@ -51,7 +51,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const result = mod.landscapeCheck(body.assembly, body.params ?? {});
     if (body.format === 'html') {
       const rpt = await loadRpt();
-      return NextResponse.json({ result, html: rpt.landscapeReport(result, { title: body.assembly?.name ?? '조경 구조 검증' }) });
+      const { designNet } = await import('@/lib/design-net');
+      const { net, rev } = await designNet(body.assembly, 'landscape');
+      return NextResponse.json({ result, html: rpt.landscapeReport(result, { title: body.assembly?.name ?? '조경 구조 검증', net, rev }) });
     }
     return NextResponse.json(result);
   } catch (e) {

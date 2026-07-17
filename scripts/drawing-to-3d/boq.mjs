@@ -81,6 +81,27 @@ export function computeBOQ(assembly, { material = 'STS316', rates = STD_RATES } 
   const weldJoints = built.ok ? (built.welds?.length ?? 0) : 0;
   const weldAreaMm2 = built.ok ? (built.welds ?? []).reduce((s, w) => s + (Number(w.throatAreaMm2) || 0), 0) : 0;
 
+  // 배관 물량(#6 확산) — 라우트 길이는 형상(라우터) 결정론이라 물량 산출 가능(날조 아님).
+  // 부속류(엘보 개소만 계상)·행거·보온은 미포함 명시.
+  let piping = null;
+  if (built.ok && built.pipes && built.pipes.routes.length) {
+    const segLen = (pts) => { let L = 0; for (let i = 0; i < pts.length - 1; i++) L += Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1], pts[i + 1][2] - pts[i][2]); return L; };
+    const lines = built.pipes.routes.map((r) => ({ label: r.label, service: r.service ?? '-', dn: r.d, lengthM: +(segLen(r.pts) / 1000).toFixed(2), elbows: Math.max(0, r.pts.length - 2) }));
+    const byService = {};
+    for (const l of lines) {
+      byService[l.service] = byService[l.service] ?? { lengthM: 0, lines: 0 };
+      byService[l.service].lengthM = +(byService[l.service].lengthM + l.lengthM).toFixed(2);
+      byService[l.service].lines++;
+    }
+    piping = {
+      lines, byService,
+      totalM: +lines.reduce((s, l) => s + l.lengthM, 0).toFixed(2),
+      elbows: lines.reduce((s, l) => s + l.elbows, 0),
+      sleeves: built.pipes.sleeves?.length ?? 0,
+      unrouted: built.pipes.errors.length,
+    };
+  }
+
   const labor = {
     용접: +((weldTotalMm / 1000) * rates.weldPerM).toFixed(1),
     절단: +(cutCount * rates.cutPerCut).toFixed(1),
@@ -94,9 +115,20 @@ export function computeBOQ(assembly, { material = 'STS316', rates = STD_RATES } 
   return {
     parts: parts.length, items, byMaterial, totalMassKg, totalVolM3: +sum('volM3').toFixed(3), surfaceM2, tubeLenM, holes, bends, cutCount,
     weld: { totalMm: weldTotalMm, totalM: +(weldTotalMm / 1000).toFixed(2), joints: weldJoints, throatAreaMm2: Math.round(weldAreaMm2) },
+    piping,
     laborHr: labor,
     note: '물량=형상 결정론 · 공수=표준 원단위×물량(개산) · 금액 미산출(실단가 없으면 날조).',
   };
+}
+
+// 배관 물량 섹션 HTML (mech·비기계 공용) — piping 없으면 빈 문자열.
+function pipingSection(b, headNo) {
+  if (!b.piping) return '';
+  const rows = b.piping.lines.map((l) => `<tr><td style="text-align:left">${esc(l.label)}</td><td>${esc(l.service)}</td><td>DN${l.dn}</td><td>${l.lengthM}</td><td>${l.elbows}</td></tr>`).join('');
+  return `<h2>${headNo} 배관 물량 (자동 라우팅 실측)</h2>
+<table><tr><th>라인</th><th>계통</th><th>관경</th><th>길이(m)</th><th>엘보</th></tr>${rows}
+<tr style="font-weight:700;background:#f8fafc"><td colspan="3">합계</td><td>${b.piping.totalM}</td><td>${b.piping.elbows}</td></tr></table>
+<div class="note">라우트 길이=결정론 실측 · 관통 슬리브 ${b.piping.sleeves}개소 · 부속류(엘보 개소만)·행거·보온·구배 여유 미포함${b.piping.unrouted ? ` · ⚠미라우팅 ${b.piping.unrouted}라인(물량 제외)` : ''}.</div>`;
 }
 
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -142,6 +174,7 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 <div class="kpi"><div><b>${f(b.totalVolM3, 2)} m³</b><span>총 부피(재적)</span></div><div><b>${(b.totalMassKg / 1000).toFixed(1)} t</b><span>총 질량</span></div><div><b>${b.surfaceM2} ㎡</b><span>표면적(거푸집·마감 개산)</span></div><div><b>${b.parts}</b><span>부재 수</span></div></div>
 <h2>① 재질별 집계</h2><table><tr><th>재질</th><th>부재</th><th>부피(m³)</th><th>질량(kg)</th><th>표면적(㎡)</th></tr>${matRows}</table>
 <h2>② 부재별 물량</h2><table><tr><th>부재</th><th>Type</th><th>재질</th><th>부피(m³)</th><th>질량(kg)</th><th>표면적(㎡)</th></tr>${nmRows}</table>
+${pipingSection(b, '②b')}
 ${ruleSection}
 <div class="note">⚠ 물량=형상 결정론(신뢰) · 규칙 물량=설계수량(표준품셈 할증·품 미적용) · 표면적=거푸집/도장/마감 개산(공제 미반영) · 철근·배근·마감재는 형상 외 — 미산출 · 비법정 참고자료.</div>
 <div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div></body></html>`;
@@ -163,6 +196,7 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 <h2>② 용접·가공 물량</h2><table><tr><th>항목</th><th>물량</th></tr>
 <tr><td>용접선 길이</td><td>${b.weld.totalM} m (${b.weld.totalMm} mm)</td></tr><tr><td>용접 조인트</td><td>${b.weld.joints} 개</td></tr><tr><td>용접 목두께 면적</td><td>${b.weld.throatAreaMm2.toLocaleString()} mm²</td></tr>
 <tr><td>절단</td><td>${b.cutCount} 회</td></tr><tr><td>드릴 홀</td><td>${b.holes} 개</td></tr><tr><td>절곡</td><td>${b.bends} 회</td></tr></table>
+${pipingSection(b, '②b')}
 <h2>③ 공수 (표준 원단위 개산, hr)</h2><table><tr><th>작업</th><th>공수</th></tr>${laborRows}<tr style="font-weight:700;background:#f8fafc"><td>합계</td><td>${b.laborHr.합계} hr</td></tr></table>
 <div class="note">⚠ 물량=형상 결정론(신뢰) · 공수=표준 원단위(용접 ${STD_RATES.weldPerM}h/m·드릴 ${STD_RATES.drillPerHole}h/홀 등) 개산 → 현장/작업방식 따라 조정 · 금액 미산출 · 용접량은 AABB 접촉 개산(정밀은 조인트 선언 후속).</div>
 <div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div></body></html>`;

@@ -338,6 +338,38 @@ describe('buildAssembly — 설계 타당성 그물 제품 배선 (#2·#6 통합
 });
 
 import { buildAssemblyTemplate } from './domain-assemblies.mjs';
+import { computeBOQ } from './boq.mjs';
+import { mepDrainageCheck } from './interior-check.mjs';
+
+describe('제안 배치 — BOQ 배관 물량·rc_frame 입상관·DFU 폐루프·가구 장애물', () => {
+  it('rc_frame 우수 입상관: 층 슬래브 관통 = 층수만큼 슬리브 명세(위치·높이 포함)·designOk', () => {
+    const built = buildAssembly(buildAssemblyTemplate('building', 'rc_frame', { floors: 3, baysX: 2, baysY: 2 }));
+    expect(built.pipes.errors).toEqual([]);
+    expect(built.pipes.sleeves.map((s) => s.through)).toEqual(['slab_f1', 'slab_f2', 'slab_f3']);
+    expect(built.pipes.sleeves.every((s) => Number.isFinite(s.heightMm))).toBe(true);
+    expect(built.designOk).toBe(true);
+  });
+  it('computeBOQ piping: 라우트 길이=결정론 물량(계통별 m·엘보·슬리브)', () => {
+    const b = computeBOQ(buildAssemblyTemplate('interior', 'studio_unit', {}));
+    expect(b.piping).not.toBeNull();
+    expect(b.piping.totalM).toBeGreaterThan(5);
+    expect(b.piping.byService.drain.lines).toBe(3);
+    expect(b.piping.byService.supply.lines).toBe(1);
+    expect(b.piping.sleeves).toBeGreaterThan(0);
+  });
+  it('mepDrainageCheck: 기구 DFU→소요 DN 대 계획 DN 폐루프(KDS 31 30 25)', () => {
+    const m = mepDrainageCheck(buildAssemblyTemplate('interior', 'studio_unit', {}));
+    const toilet = m.lines.find((l) => l.line === 'drain_toilet');
+    expect(toilet).toMatchObject({ fixture: '대변기_6L', requiredDN: 50, plannedDN: 75, verdict: 'PASS' });
+    expect(m.stack).toMatchObject({ requiredDN: 50, plannedDN: 100, verdict: 'PASS' });
+  });
+  it('customFurniture = 배관 장애물 — 드래그 가구를 넣어도 재라우팅으로 위반 0', () => {
+    const built = buildAssembly(buildAssemblyTemplate('interior', 'studio_unit', { customFurniture: [{ kind: 'sofa', x: 2200, y: 3300 }] }));
+    expect(built.pipes.errors).toEqual([]);
+    expect(built.pipes.obstacleViolations).toEqual([]);
+    expect(built.designOk).toBe(true);
+  });
+});
 
 describe('인테리어 MEP — 기계 배관 어휘의 도메인 적용(욕실·주방 급배수)', () => {
   for (const t of ['studio_unit', 'apartment_unit', 'three_room_unit']) {

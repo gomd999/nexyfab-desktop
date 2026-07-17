@@ -23,8 +23,20 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 const checksTable = (checks) => !checks ? '' : `<table><tr><th>검토</th><th>값</th><th>허용/한계</th><th>비율</th><th>판정</th></tr>${
   Object.entries(checks).map(([k, c]) => `<tr><td>${esc(k)}</td><td>${f(c.fb_MPa ?? c.fv_MPa ?? c.delta_mm ?? c.Mn_kNm ?? c.Vc_kN ?? c.FS ?? c.eps_t ?? c.value ?? c.qmax_kPa ?? '-', 2)}</td><td>${f(c.allow_MPa ?? c.limit_mm ?? c.min_allowed ?? c.phiMn_kNm ?? c.phiVn_kN ?? c.allow ?? c.limit ?? '-', 2)}</td><td>${f(c.ratio, 3)}</td><td>${c.pass === true ? '✓' : c.pass === false ? '✕' : '-'}</td></tr>`).join('')}</table>`;
 
+/** 설계 타당성 그물 요약 + REV — 패키지 문서와 동일 어셈블리 해시(위시빌더 REV 정합 원칙의 체인 확장). */
+export function netSection(net, rev) {
+  if (!net && !rev) return '';
+  if (!net) return `<div class="note">REV ${esc(rev)} — 설계 패키지와 동일 어셈블리 기준</div>`;
+  return `<h2>⓪ 설계 타당성 그물${rev ? ` · REV ${esc(rev)}` : ''}</h2>
+<div class="kpi"><div><b style="color:${net.designOk ? '#16a34a' : '#dc2626'}">${net.designOk ? 'PASS' : 'FAIL'}</b><span>종합(부유·간섭·배관)</span></div>
+<div><b>${net.floating.length}</b><span>부유 부품</span></div><div><b>${net.interferences}</b><span>간섭</span></div>
+${net.routes ? `<div><b>${net.routes}</b><span>배관 라인 · 슬리브 ${net.sleeves}</span></div>` : ''}</div>
+${net.floating.length ? `<div class="honest">⚠ 부유(설치 불가 신호): ${net.floating.map(esc).join(', ')}</div>` : ''}
+${net.pipeErrors ? `<div class="honest">⚠ 배관 라우팅 실패 ${net.pipeErrors}건</div>` : ''}`;
+}
+
 /** 건축 하중경로 리포트 */
-export function loadPathReport(r, { title = '하중경로 검증', svg = '' } = {}) {
+export function loadPathReport(r, { title = '하중경로 검증', svg = '', net = null, rev = '' } = {}) {
   if (!r?.ok) return SHELL(title, '실패', `<div class="honest">${esc(r?.error ?? '체인 실패')}</div>`);
   const beams = r.beams.map((b) => `<tr><td style="text-align:left">${esc(b.id)}</td><td>${esc(b.section)}</td><td>${b.spanMm}</td><td>${f(b.tribM2)}</td><td>${f(b.wu_kNm)}</td><td>${f(b.Mu_kNm)}${b.MuNeg_kNm != null ? ` / −${f(b.MuNeg_kNm)}` : ''}</td><td>${f(b.Vu_kN)}</td><td>${esc(b.combo)}</td><td>${V(b.verdict)}${b.negVerdict ? `<br><span style="font-size:10px">−M: ${esc(b.negVerdict)}</span>` : ''}</td></tr>`).join('');
   const beamMethod = r.beams[0]?.method ? `<div class="note">해석: ${esc(r.beams[0].method)}</div>` : '';
@@ -33,6 +45,7 @@ export function loadPathReport(r, { title = '하중경로 검증', svg = '' } = 
     ? `<div class="honest">기초 검토 생략 — 입력 필요: ${r.footing.needInputs.join(', ')} (${esc(r.footing.note ?? '')})</div>`
     : `<table><tr><th>항목</th><th>판정</th></tr><tr><td>독립기초 (지지력·뚫림·1방향전단)</td><td>${V(r.footing?.verdict)}</td></tr></table>${checksTable(r.footing?.checks)}`;
   return SHELL(`${title} — 건축 하중경로 자동 체인`, `nexyfab · ${esc(r.scope)} · 슬래브 자중(형상)→활하중(KDS)→보→기둥→기초`, `
+${netSection(net, rev)}
 <div class="kpi"><div><b>${esc(r.loads.usage.label)}</b><span>활하중 ${r.loads.usage.live_kNm2} kN/m² (표 3.2-1)</span></div>
 <div><b>${f(r.loads.slab.D_kN, 1)} kN</b><span>슬래브 고정하중/층 (${esc(r.loads.slab.finishNote)})</span></div>
 <div><b>${f(r.loads.slab.L_kN, 1)} kN</b><span>활하중/층</span></div></div>
@@ -88,7 +101,7 @@ ${r.rebar.items.map((i) => `<tr><td style="text-align:left">${esc(i.name)}</td><
 }
 
 /** 조경 목재·풍하중 리포트 */
-export function landscapeReport(r, { title = '조경 구조 검증' } = {}) {
+export function landscapeReport(r, { title = '조경 구조 검증', net = null, rev = '' } = {}) {
   if (!r?.ok) return SHELL(title, '실패', `<div class="honest">${esc(r?.error ?? '체인 실패')}</div>`);
   const m = r.member;
   const memberSec = m ? `
@@ -122,6 +135,7 @@ ${checksTable(r.board.checks)}<div class="note">${esc(r.board.note)}</div>` : ''
 <tr><td>Y풍</td><td>${f(w.y.areaM2)}</td><td>${f(w.y.F_kN)}</td><td>${f(w.y.zc_m)}</td><td>${f(w.y.Mo_kNm)}</td><td>${f(w.y.Mr_kNm)}</td><td>${f(w.y.FS)}</td></tr></table>
 <div class="note">${esc(w.fsNote)} · ${esc(w.method)}</div>`;
   return SHELL(`${title} — 목재 부재·풍하중`, 'nexyfab · KDS 41 50 10 허용응력×CD×CM(습윤) · 단면·스팬·간격=형상 파생', `
+${netSection(net, rev)}
 ${memberSec}${connSec}${boardSec}${windSec}
 <div class="honest">⚠ ${esc(r.disclaimer)}</div>
 <div class="note">근거: ${(r.refs ?? []).map(esc).join(' · ')}</div>`);
@@ -167,10 +181,23 @@ function mepSec(r) {
   return `<h2>④ 설비 개산 (조명·환기·전기)</h2><table><tr><th>항목</th><th>산출</th></tr>${liRow}${veRow}${elRow}</table>${notes.length ? `<div class="note">${notes.map(esc).join('<br>')}</div>` : ''}`;
 }
 
-export function interiorReport(r, { title = '피난·마감 검증', svg = '' } = {}) {
+/** MEP 배수 DFU 판정 섹션 (interior-check mepDrainageCheck 결과 — KDS 31 30 25) */
+function dfuSec(m) {
+  if (!m) return '';
+  const rows = m.lines.map((l) => l.note
+    ? `<tr><td>${esc(l.line)}</td><td colspan="4" style="text-align:left;color:#92400e">${esc(l.note)}</td></tr>`
+    : `<tr><td>${esc(l.line)}</td><td>${esc(l.fixture)}</td><td>${l.sumDFU}</td><td>DN${l.requiredDN}</td><td>DN${l.plannedDN} → ${V(l.verdict)}</td></tr>`).join('');
+  const st = !m.stack ? '' : m.stack.note
+    ? `<div class="honest">수직관: ${esc(m.stack.note)}</div>`
+    : `<table><tr><th>수직관(PS)</th><th>ΣDFU</th><th>소요</th><th>계획</th><th>판정</th></tr><tr><td>${esc(m.stack.part)}</td><td>${m.stack.sumDFU}</td><td>DN${m.stack.requiredDN}</td><td>DN${m.stack.plannedDN}</td><td>${V(m.stack.verdict)}</td></tr></table>`;
+  return `<h2>④b 배수 관경 DFU 판정</h2><table><tr><th>라인</th><th>기구</th><th>DFU</th><th>소요 DN</th><th>계획 DN·판정</th></tr>${rows}</table>${st}<div class="note">${esc(m.note)} · ${esc(m.ref)}</div>`;
+}
+
+export function interiorReport(r, { title = '피난·마감 검증', svg = '', net = null, rev = '' } = {}) {
   if (!r?.ok) return SHELL(title, '실패', `<div class="honest">${esc(r?.error ?? '체인 실패')}</div>`);
   const t = r.travel, e = r.egress, fi = r.finishes;
   return SHELL(`${title} — 인테리어`, 'nexyfab · 보행거리 BFS 실측 · 문폭=형상 파생', `
+${netSection(net, rev)}
 <div class="kpi"><div><b style="color:${t.pass ? '#16a34a' : '#dc2626'}">${f(t.maxTravelM, 1)} m</b><span>최원점 보행거리 (한계 ${t.limitM}m)</span></div>
 <div><b>${e?.derived?.doorWidthSumMm ?? '-'} mm</b><span>출입구 유효폭 합(형상)</span></div>
 <div><b>${e?.derived?.seatCount ?? '-'}</b><span>좌석 수</span></div>
@@ -187,12 +214,13 @@ ${e?.checks ? checksTable(e.checks) : `<div class="honest">${esc(e?.error ?? '�
 <tr><td>${f(fi.floorM2)} m²</td><td>${f(fi.wallM2)} m²</td><td>${f(fi.ceilingM2)} m²</td></tr></table>
 <div class="note">${esc(fi.note)}</div>
 ${mepSec(r)}
+${dfuSec(r.mep)}
 ${svg ? `<h2>평면도</h2><div style="overflow:auto">${svg}</div>` : ''}
 <div class="honest">⚠ ${esc(r.disclaimer)}</div>`);
 }
 
 /** 토목 옹벽 안정 리포트 (verifyDomain 결과) */
-export function retainingWallReport(v, { title = '옹벽 안정 검토', svg = '' } = {}) {
+export function retainingWallReport(v, { title = '옹벽 안정 검토', svg = '', net = null, rev = '' } = {}) {
   if (!v?.ok) return SHELL(title, '실패', `<div class="honest">${esc(v?.error ?? JSON.stringify(v?.needInputs))}</div>`);
   const rows = Object.entries(v.checks ?? {}).map(([k, c]) => `<tr><td>${esc(k)}</td><td>${f(c.FS ?? c.value ?? c.e_m ?? c.qmax_kPa, 2)}</td><td>${f(c.required ?? c.limit ?? c.allow ?? c.min ?? c.limit_m ?? c.allow_kPa, 2)}</td><td>${c.pass ? '✓' : '✕'}</td></tr>`).join('');
   const sz = v.seismic;
@@ -203,6 +231,7 @@ export function retainingWallReport(v, { title = '옹벽 안정 검토', svg = '
 ${Object.entries(sz.checks).map(([k, c]) => `<tr><td>${esc(k)}</td><td>${f(c.FS, 2)}</td><td>${c.min}</td><td>${c.pass ? '✓' : '✕'}</td></tr>`).join('')}</table>
 <div class="note">${esc(sz.method)}</div>`) : '';
   return SHELL(`${title} — 전도·활동·지지력`, 'nexyfab · Rankine 주동토압(KDS 11 80 05 의무조항) · 단면=형상 자동 파생', `
+${netSection(net, rev)}
 <div class="kpi"><div><b>${V(v.verdict)}</b><span>종합 판정</span></div></div>
 <h2>① 형상 파생 입력 (사용자 덮어쓰기 불가)</h2><table><tr><th>항목</th><th>값</th></tr>
 ${Object.entries(v.derived ?? {}).map(([k, val]) => `<tr><td>${esc(k)}</td><td>${f(val, 2)} m</td></tr>`).join('')}</table>

@@ -124,3 +124,12 @@ gemini-2.5-flash/pro가 union 스키마(전 필드)에서 엉뚱한 필드를 �
 - **DXF**: 인테리어 평면 신설(WALL/FIXTURE/FURN)+전 도메인 PIPE 레이어(self-test 4/4).
 - **정합 게이트 W 대조 추가 → 실버그 검출**: ga2dDrawing `placed()`가 회전(rz=90) 무시라 GA 외형 6300→10650 부풀림 — placedAabb 단일 소스로 일원화 교정. 그물이 잡은 기존 템플릿 버그 3건도 수정(원룸 침대·책상 관통, 아파트/3룸 분할벽의 외벽 150mm 관통).
 - 정직 한계: MEP 관경·접속 위치=개산, 구배·트랩·통기 미모델(시공도 아님 — DFU 산정은 drainage_vent 계산기).
+
+## 제안 6건 구현 (2026-07-17 3차 배치)
+
+- **BOQ 배관 물량**: computeBOQ `piping`(라인·계통별 m·엘보·슬리브 — 라우트 길이=결정론 실측) + BOQ 리포트 ②b 섹션(기계·비기계 공용). 부속류·행거·보온 미포함 명시.
+- **체인 리포트 그물+REV**: `netSection`(designOk·부유·간섭·배관·슬리브)+어셈블리 REV(sha1, 패키지와 동일 산식)를 하중경로·조경·피난·옹벽 4종 HTML에 ⓪절로 — src/lib/design-net.ts 공용 헬퍼, 4라우트 배선.
+- **DFU 폐루프**: interior-check `mepDrainageCheck` — 기구 role→표 4.1-2 키, 지관(라인별)·수직관(PS) 소요 DN을 drainage_vent 계산기(KDS 31 30 25 원문)로 판정, 계획 관경(선언 d) 대조. 리포트 ④b.
+- **슬리브 위치**: sleeves[]에 `at:[x,y,z]`·heightMm(세그↔부재 클램프 중점) — 시공 명세 좌표.
+- **rc_frame 우수 입상관**: 지붕→지상 원시좌표 수직 배관 1본 — 층 슬래브 관통이 층수만큼 슬리브로 자동 산출(건축 MEP 확산 실증).
+- **유닛 customFurniture**: 에디터 드래그 가구가 유닛 3종에서도 부품화 — 보행 BFS 장애물이자 배관 라우터 장애물(드래그→리빌드 시 MEP 자동 재라우팅).

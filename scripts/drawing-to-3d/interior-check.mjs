@@ -317,8 +317,48 @@ export function interiorCheck(assembly, params = {}) {
     egress: egress ? { verdict: egress.verdict, checks: egress.checks ?? null, derived: { doorWidthSumMm: doorWidthSum, seatCount }, refs: egress.refs ?? null, error: egress.error ?? null } : null,
     finishes,
     lighting, ventilation, electrical, water, fire,
+    mep: mepDrainageCheck(assembly),
     provenance: { geometry: ['보행거리(BFS)', '장애물 풋프린트', '문 폭 합', '마감 면적', '실지수·실체적'], user: ['보행거리 한계', '인당 점유면적', '조도·광속·환기량·부하밀도(기준 참조 입력)'] },
     disclaimer: '개념 검토(비법정) — 격자 근사·가구 배치 기준. 법정 피난·설비 검토는 용도·내화·스프링클러 조건 반영한 건축사·설비기술사 검토 필요.' + (unverifiedParts.length ? ` ⚠ 비검증 직접편집 파츠 ${unverifiedParts.length}개는 구조 검토에서 제외됨(P4 라벨) — 해당 형상의 안전은 별도 확인 필요.` : ''),
+  };
+}
+
+/**
+ * MEP 배수 DFU 판정 — 형상의 배관 선언(pipes[] drain)과 drainage_vent 계산기(KDS 31 30 25
+ * DFU법 원문 전사)를 잇는다. 기구 role→표 4.1-2 키 매핑, 라인=수평지관·PS 스택=수직관 판정.
+ * 계획 관경(선언 d)이 소요 DN 미달이면 FAIL — "관경=개산 선언"을 원문 표로 검증하는 폐루프.
+ */
+const ROLE_FX = { toilet: '대변기_6L', basin: '세면기', bathtub: '욕조', sink: '주방싱크' };
+export function mepDrainageCheck(assembly) {
+  if (!Array.isArray(assembly?.pipes) || !assembly.pipes.length) return null;
+  const byId = new Map((assembly.parts ?? []).map((pp) => [pp.id, pp]));
+  const lines = [];
+  const allFixtures = [];
+  for (const pipe of assembly.pipes) {
+    if (pipe.service !== 'drain') continue;
+    const fromId = typeof pipe.from === 'string' ? pipe.from.split('.')[0] : pipe.from?.part;
+    const fx = ROLE_FX[byId.get(fromId)?.role];
+    if (!fx) { lines.push({ line: pipe.id, note: `기구 role 매핑 없음(${fromId ?? '원시좌표'}) — DFU 판정 생략(정직)` }); continue; }
+    allFixtures.push({ type: fx, count: 1 });
+    try {
+      const r = runCalculator('drainage_vent', { fixtures: [{ type: fx, count: 1 }], segment: 'branch', plannedDN: pipe.d ?? 26 });
+      lines.push({ line: pipe.id, fixture: fx, sumDFU: r.checks.sizing.sumDFU, requiredDN: r.checks.sizing.requiredDN, plannedDN: pipe.d ?? 26, verdict: r.verdict });
+    } catch (e) { lines.push({ line: pipe.id, fixture: fx, note: '판정 불가: ' + (e?.message ?? e) }); }
+  }
+  if (!lines.length) return null;
+  let stack = null;
+  const stackPart = (assembly.parts ?? []).find((pp) => pp.role === 'stack');
+  if (allFixtures.length && stackPart) {
+    try {
+      const dn = stackPart.params?.diameter ?? 100;
+      const r = runCalculator('drainage_vent', { fixtures: allFixtures, segment: 'stack', floors: 1, plannedDN: dn });
+      stack = { part: stackPart.id, sumDFU: r.checks.sizing.sumDFU, requiredDN: r.checks.sizing.requiredDN, plannedDN: dn, verdict: r.verdict };
+    } catch (e) { stack = { part: stackPart.id, note: '판정 불가: ' + (e?.message ?? e) }; }
+  }
+  return {
+    lines, stack,
+    ref: 'KDS 31 30 25 표 4.1-2·4.1-5 (drainage_vent 계산기 — 원문 전사)',
+    note: '기구 1개=지관 1선 단순화 · 구배·트랩·통기 미검토 — 관경 소요치 대조만(비법정).',
   };
 }
 

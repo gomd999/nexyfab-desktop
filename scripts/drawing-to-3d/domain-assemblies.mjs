@@ -42,8 +42,13 @@ function rcFrameAssembly(p) {
     // 슬래브 — 층당 1장 (외곽 기둥 반폭 여유)
     parts.push(P(`slab_f${f + 1}`, 'box', { width: W + c, depth: D + c, height: st }, { tx: -c / 2, ty: -c / 2, tz: z0 + H }, 'concrete', 'slab'));
   }
+  // 우수 입상관(MEP 확산) — 지붕→지상 수직 1본. 원시좌표 배관(스텁 없음), 층 슬래브 관통은
+  // 전부 슬리브 명세로 자동 산출된다. 위치=코너 기둥에서 이격(기둥 c/2+450), 관경 DN100 개산.
+  const topZ = (nf - 1) * storyT + H + st;
+  const rx = W - c / 2 - 450, ry = c / 2 + 450;
+  const pipes = [{ id: 'rain_riser', from: [rx, ry, topZ + 150], to: [rx, ry, 0], d: 100, service: 'drain' }];
   return {
-    name: `RC 라멘 골조 (${nbx}×${nby}베이 ${nf}층)`, domain: 'building', parts,
+    name: `RC 라멘 골조 (${nbx}×${nby}베이 ${nf}층)`, domain: 'building', parts, pipes,
     floorAreaM2: +((W * D) / 1e6).toFixed(2),
     frameGrid: { baysX: nbx, baysY: nby, floors: nf, bayX: bx, bayY: by, storyH: H, slabThk: st },
   };
@@ -262,6 +267,25 @@ function bathFixtures(prefix, bx, by, bathW, bathD) {
 }
 
 /**
+ * 자유 배치 가구(customFurniture) — 인테리어 에디터 드래그 산출물을 부품으로.
+ * cafe_room 의 CATALOG 패턴을 유닛 템플릿에도 공유: 배치 가구는 보행 BFS 장애물이자
+ * **배관 라우터 장애물**이 되어, 드래그 → 디바운스 리빌드 시 MEP 가 자동 재라우팅된다.
+ */
+const FURN_CATALOG = { table2: { w: 700, d: 700 }, table4: { w: 1200, d: 1200 }, sofa: { w: 1800, d: 850 } };
+function customFurnitureParts(p, limit = 40) {
+  const custom = Array.isArray(p.customFurniture) ? p.customFurniture.filter((f) => FURN_CATALOG[f.kind] && Number.isFinite(f.x) && Number.isFinite(f.y)).slice(0, limit) : [];
+  const parts = [];
+  for (const [i, f] of custom.entries()) {
+    const c = FURN_CATALOG[f.kind];
+    if (f.kind === 'sofa') { parts.push(P(`cf_${i}_sofa`, 'box', { width: c.w, depth: c.d, height: 750 }, { tx: f.x, ty: f.y, tz: 0 }, 'timber', 'sofa')); continue; }
+    parts.push(P(`cf_${i}_top`, 'box', { width: c.w, depth: c.d, height: 30 }, { tx: f.x, ty: f.y, tz: 720 }, 'timber', 'table'));
+    for (const [k, [lx, ly]] of [[60, 60], [c.w - 110, 60], [60, c.d - 110], [c.w - 110, c.d - 110]].entries())
+      parts.push(P(`cf_${i}_leg${k + 1}`, 'box', { width: 50, depth: 50, height: 720 }, { tx: f.x + lx, ty: f.y + ly, tz: 0 }, 'timber', 'table'));
+  }
+  return parts;
+}
+
+/**
  * 욕실 MEP 배관(급수·배수) — 기계 pipes[] 어휘의 인테리어 적용(위시빌더 배관 일반화).
  * PS 입상관(스택)을 욕실 밖 벽 뒤에 두고 기구별 배수·급수를 "연결 선언"만 한다 —
  * 경로는 결정론 라우터(autoRoutePipes)가 잡고, 벽 관통은 위반이 아니라 **슬리브 명세**로
@@ -312,6 +336,7 @@ function studioUnitAssembly(p = {}) {
   parts.push(P('bed', 'box', { width: 1500, depth: 2000, height: 450 }, { tx: W - 3500, ty: D - bathD - 2400, tz: 0 }, 'timber', 'bed'));
   parts.push(P('desk', 'box', { width: 1200, depth: 600, height: 730 }, { tx: W - 1600, ty: 400, tz: 0 }, 'timber', 'table'));
   // MEP 배관(급수·배수) — PS 스택 + 기구 연결 선언(경로=결정론 라우터·벽 관통=슬리브 명세)
+  parts.push(...customFurnitureParts(p)); // 에디터 드래그 가구 = 보행·배관 장애물(자동 재라우팅)
   const mep = bathMEP('bath', 0, D - bathD, bathW, bathD, { hasTub: bathW >= 1700 && bathD >= 1500, wallT, sinkId: 'sink' });
   parts.push(...mep.parts);
   return {
@@ -380,6 +405,7 @@ function threeRoomUnitAssembly(p = {}) {
   parts.push(P('dining', 'box', { width: 1400, depth: 800, height: 730 }, { tx: 500, ty: 3000, tz: 0 }, 'timber', 'table'));
   parts.push(P('kitchen_counter', 'box', { width: 2200, depth: 600, height: 850 }, { tx: bathX, ty: D - bathD - wallT - 900, tz: 0 }, 'timber', 'counter'));
   parts.push(P('sink', 'box', { width: 700, depth: 450, height: 180 }, { tx: bathX + 300, ty: D - bathD - wallT - 820, tz: 850 }, 'steel', 'sink'));
+  parts.push(...customFurnitureParts(p));
   const mep = bathMEP('bath', bathX, D - bathD, bathW, bathD, { hasTub: bathW >= 1700 && bathD >= 1500, wallT, sinkId: 'sink' });
   parts.push(...mep.parts);
   return {
@@ -438,6 +464,7 @@ function apartmentUnitAssembly(p = {}) {
   parts.push(P('dining', 'box', { width: 1400, depth: 800, height: 730 }, { tx: 500, ty: 3000, tz: 0 }, 'timber', 'table'));
   parts.push(P('kitchen_counter', 'box', { width: Math.max(1500, ldkW - bathW - 1400), depth: 600, height: 850 }, { tx: 300, ty: D - bathD - wallT - 800, tz: 0 }, 'timber', 'counter'));
   parts.push(P('sink', 'box', { width: 700, depth: 450, height: 180 }, { tx: 500, ty: D - bathD - wallT - 720, tz: 850 }, 'steel', 'sink'));
+  parts.push(...customFurnitureParts(p));
   const mep = bathMEP('bath', 0, D - bathD, bathW, bathD, { hasTub: bathW >= 1700 && bathD >= 1500, wallT, sinkId: 'sink' });
   parts.push(...mep.parts);
   return {

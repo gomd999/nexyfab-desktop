@@ -109,7 +109,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // format=html → 인쇄양식 리포트 HTML 동봉 (설계 패키지 문서들과 동일 스타일)
     if (body.format === 'html') {
       const rpt = await loadRpt();
-      return NextResponse.json({ result, html: rpt.loadPathReport(result, { title: body.assembly?.name ?? '하중경로 검증', svg: await (async () => {
+      const { designNet } = await import('@/lib/design-net');
+      const { net, rev } = await designNet(body.assembly, 'building');
+      return NextResponse.json({ result, html: rpt.loadPathReport(result, { title: body.assembly?.name ?? '하중경로 검증', net, rev, svg: await (async () => {
         try {
           const sp = join(process.cwd(), 'scripts', 'drawing-to-3d', 'section-drawings.mjs');
           const sd = (await import(/* webpackIgnore: true */ pathToFileURL(sp).href)) as { rebarSectionSvg: (p: unknown, o?: Record<string, unknown>) => string };
