@@ -532,10 +532,20 @@ function structureTableSheet(al, used = []) {
 /** 곡선표(§1-1) — IP·Δ·R·TL·L·BC/EC. 표기값 자기정합: EC 표기=원값 반올림(표기끼리 연산 금지). */
 function curveTableSheet(al) {
   if (!al?.curveTable?.length) return '';
-  const rows = al.curveTable.map((ct) => `<tr><td>IP${ct.ip}</td><td>${Math.abs(ct.deltaDeg).toFixed(1)}° (${ct.deltaDeg > 0 ? '좌' : '우'})</td><td>${fmtLen(ct.R)}</td><td>${fmtLen(ct.TLmm)}</td><td>${fmtLen(ct.Lmm)}</td><td>${staLabel(ct.BCmm)}</td><td>${staLabel(ct.ECmm)}</td></tr>`).join('');
-  return `<div style="padding:6px 0"><table style="border-collapse:collapse;width:100%;font-size:11.5px"><caption style="text-align:left;font-size:13px;font-weight:700;padding:4px 0">곡선표 (단곡선 — 완화곡선 보류)</caption>
-<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">IP</th><th style="border:1px solid #cbd5e1;padding:3px 8px">교각 Δ</th><th style="border:1px solid #cbd5e1;padding:3px 8px">R</th><th style="border:1px solid #cbd5e1;padding:3px 8px">TL</th><th style="border:1px solid #cbd5e1;padding:3px 8px">CL</th><th style="border:1px solid #cbd5e1;padding:3px 8px">BC</th><th style="border:1px solid #cbd5e1;padding:3px 8px">EC</th></tr>${rows.replaceAll('<td>', '<td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">')}</table>
-<div style="font-size:10px;color:#94a3b8;padding:3px 0">TL=R·tan(Δ/2) · CL=R·Δ(폐형) · STA 표기=m 반올림(원값 계산 후 반올림 — 표기끼리 연산 금지 규약)</div></div>`;
+  const hasSpiral = al.curveTable.some((ct) => ct.Ls > 0);
+  const rows = al.curveTable.map((ct) => {
+    const base = `<tr><td>IP${ct.ip}</td><td>${Math.abs(ct.deltaDeg).toFixed(1)}° (${ct.deltaDeg > 0 ? '좌' : '우'})</td><td>${fmtLen(ct.R)}</td>`;
+    if (hasSpiral) {
+      return base + `<td>${ct.Ls ? fmtLen(ct.Ls) : '—'}</td><td>${ct.A ? Math.round(ct.A) : '—'}</td><td>${fmtLen(ct.TLmm)}</td><td>${fmtLen(ct.Lmm)}</td><td>${ct.TSmm != null ? staLabel(ct.TSmm) : staLabel(ct.BCmm)}</td><td>${ct.SCmm != null ? staLabel(ct.SCmm) : '—'}</td><td>${ct.CSmm != null ? staLabel(ct.CSmm) : '—'}</td><td>${ct.STmm != null ? staLabel(ct.STmm) : staLabel(ct.ECmm)}</td></tr>`;
+    }
+    return base + `<td>${fmtLen(ct.TLmm)}</td><td>${fmtLen(ct.Lmm)}</td><td>${staLabel(ct.BCmm)}</td><td>${staLabel(ct.ECmm)}</td></tr>`;
+  }).join('');
+  const head = hasSpiral
+    ? '<th>IP</th><th>교각 Δ</th><th>R</th><th>Ls</th><th>A</th><th>TL</th><th>CL</th><th>TS</th><th>SC</th><th>CS</th><th>ST</th>'
+    : '<th>IP</th><th>교각 Δ</th><th>R</th><th>TL</th><th>CL</th><th>BC</th><th>EC</th>';
+  return `<div style="padding:6px 0"><table style="border-collapse:collapse;width:100%;font-size:11.5px"><caption style="text-align:left;font-size:13px;font-weight:700;padding:4px 0">곡선표 (${hasSpiral ? '단곡선+완화곡선(클로소이드)' : '단곡선'})</caption>
+<tr style="background:#f1f5f9">${head.replaceAll('<th>', '<th style="border:1px solid #cbd5e1;padding:3px 8px">')}</tr>${rows.replaceAll('<td>', '<td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">')}</table>
+<div style="font-size:10px;color:#94a3b8;padding:3px 0">TL=${hasSpiral ? '(R+p)tan(Δ/2)+k(Fresnel 급수 폐형)' : 'R·tan(Δ/2)'} · A=√(R·Ls) · STA 표기=m 반올림(원값 계산 후 반올림 — 표기끼리 연산 금지)${hasSpiral ? ' · 완화곡선 형상=정밀 폴리라인(길이오차<0.5mm·현 방위≤0.5° 명시)' : ''}</div></div>`;
 }
 
 /**

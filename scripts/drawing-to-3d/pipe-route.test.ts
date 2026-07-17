@@ -416,6 +416,32 @@ describe('무결성 규약 0단계 — OBB-SAT·chainage 요소열 (폐형 앵�
     // 폐형: x=4000+√(R²−100²), 호상 각도 → s=BC+R·(90°−asin(100/R)... 수치 5470.7
     expect(Math.abs(ix[0].sMm - 5470.7)).toBeLessThan(0.5);
   });
+  it('후속⑥ 클로소이드: Fresnel 폐형(A·L·TS/SC/CS/ST)·폐합 자기검증·τs 게이트·cw 대칭', () => {
+    const r = buildElements([[0, 0], [10000, 0], [10000 + 10000 * Math.cos(Math.PI / 3), 10000 * Math.sin(Math.PI / 3)]], [{ ip: 1, R: 1000, Ls: 500 }], {});
+    expect(r.ok).toBe(true);
+    const ct = r.curveTable[0];
+    expect(Math.round(ct.A)).toBe(707); // A=√(R·Ls)=√500000
+    expect(Math.abs(ct.Lmm - (2 * 500 + 1000 * (Math.PI / 3 - 0.5)))).toBeLessThan(1); // 2Ls+R(Δ−2τs), 이산 길이오차<1mm
+    expect(ct.SCmm - ct.TSmm).toBeCloseTo(500, -1);
+    expect(ct.STmm - ct.CSmm).toBeCloseTo(500, -1);
+    // 접선 이산각 ≤0.5°(명시 공차) — SC/CS 경계
+    const ang = (a, b) => Math.abs(Math.atan2(a[0] * b[1] - a[1] * b[0], a[0] * b[0] + a[1] * b[1])) * 180 / Math.PI;
+    for (const sm of [ct.SCmm, ct.CSmm]) {
+      const d1 = chainAt(r.elements, sm - 0.5).dir, d2 = chainAt(r.elements, sm + 0.5).dir;
+      expect(ang(d1, d2)).toBeLessThan(0.5);
+    }
+    // cw 대칭
+    const r2 = buildElements([[0, 0], [10000, 0], [10000 + 10000 * Math.cos(-Math.PI / 3), 10000 * Math.sin(-Math.PI / 3)]], [{ ip: 1, R: 1000, Ls: 500 }], {});
+    expect(r2.ok).toBe(true);
+    expect(Math.abs(r2.curveTable[0].Lmm - ct.Lmm)).toBeLessThan(0.5);
+    // τs>30° 게이트
+    expect(buildElements([[0, 0], [10000, 0], [10000, 10000]], [{ ip: 1, R: 500, Ls: 600 }], {}).ok).toBe(false);
+    // 템플릿 E2E: 간섭 0
+    const asm = buildAssemblyTemplate('civil', 'retaining_wall_alignment', { leg1: 60000, leg2: 60000, deflectionDeg: 45, curves: [{ ip: 1, R: 20000, Ls: 8000 }] });
+    const built = buildAssembly(asm);
+    expect(built.ok).toBe(true);
+    expect(built.interferences).toEqual([]);
+  });
   it('사전 게이트: TL 초과·교각>90° 정직 거부', () => {
     expect(buildElements([[0, 0], [1500, 0], [1500, 1500]], [{ ip: 1, R: 2000 }], {}).ok).toBe(false);
     expect(buildElements([[0, 0], [5000, 0], [1000, -100]], [{ ip: 1, R: 500 }], {}).ok).toBe(false); // 교각 > 90°

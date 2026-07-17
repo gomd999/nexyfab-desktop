@@ -1528,6 +1528,32 @@ export default function AssemblyPresetPanel({
   const [busy, setBusy] = useState(false);
   const [advJson, setAdvJson] = useState('');
   const [advErr, setAdvErr] = useState<string | null>(null);
+  // §C-v2 선형 에디터 상태 — 산출은 advJson(단일 소스)에 병합 기록
+  const [edIps, setEdIps] = useState<Array<[number, number]>>([[0, 0], [120000, 0]]);
+  const [edCurves, setEdCurves] = useState<Record<number, { R: number; Ls?: number }>>({});
+  const [edSel, setEdSel] = useState<number | null>(null);
+  const [edDrag, setEdDrag] = useState<number | null>(null);
+  const edWorld = useCallback(() => {
+    const xs = edIps.map((p) => p[0]), ys = edIps.map((p) => p[1]);
+    const pad = 20000;
+    const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad;
+    const y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+    // 화면비(640:240) 유지 — 왜곡 없는 자동 맞춤
+    let w = x1 - x0, h = y1 - y0;
+    if (w / h > 640 / 240) h = w * (240 / 640); else w = h * (640 / 240);
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    return { x0: cx - w / 2, x1: cx + w / 2, y0: cy - h / 2, y1: cy + h / 2, w, h };
+  }, [edIps]);
+  const edCommit = useCallback((ips: Array<[number, number]>, curves: Record<number, { R: number; Ls?: number }>) => {
+    // advJson 병합(다른 키 보존) — 파싱 실패 시 에디터 키만으로 재작성(정직: 오류 표시)
+    let base: Record<string, unknown> = {};
+    try { base = advJson.trim() ? JSON.parse(advJson) as Record<string, unknown> : {}; } catch { base = {}; }
+    base.ips = ips;
+    const cArr = Object.entries(curves).map(([k, v]) => ({ ip: Number(k), R: v.R, ...(v.Ls ? { Ls: v.Ls } : {}) }));
+    if (cArr.length) base.curves = cArr; else delete base.curves;
+    setAdvJson(JSON.stringify(base));
+    setAdvErr(null);
+  }, [advJson]);
   const [pkgBusy, setPkgBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [built, setBuilt] = useState<BuildResp | null>(null);
@@ -2787,6 +2813,71 @@ export default function AssemblyPresetPanel({
               </label>
             ))}
           </div>
+        </details>
+      )}
+
+      {tpl && domain === 'civil' && tid === 'retaining_wall_alignment' && (
+        // §C-v2 SVG 선형 에디터 — 클릭=IP 추가·드래그=이동·선택=R/Ls 입력.
+        // 산출은 advJson(단일 소스)에 기록 → 기존 생성 경로가 그대로 소비(결정론 게이트 동일).
+        <details open style={{ margin: '4px 0 2px' }}>
+          <summary style={{ fontSize: 11, fontWeight: 700, cursor: 'pointer', color: 'var(--nx-text-2, #46505e)' }}>
+            {ko ? '선형 에디터 (클릭=IP 추가 · 드래그=이동 · 점 선택=R/Ls)' : 'Alignment editor (click=add IP · drag=move · select=R/Ls)'}
+          </summary>
+          <svg
+            viewBox="0 0 640 240"
+            style={{ width: '100%', height: 200, background: 'var(--nx-bg-1, #fff)', border: '1px solid var(--nx-line, #d6dbe3)', borderRadius: 8, marginTop: 6, touchAction: 'none', cursor: 'crosshair' }}
+            onPointerDown={(e) => {
+              const svg = e.currentTarget;
+              const r = svg.getBoundingClientRect();
+              const px = ((e.clientX - r.left) / r.width) * 640, py = ((e.clientY - r.top) / r.height) * 240;
+              const w = edWorld();
+              const wx = w.x0 + (px / 640) * w.w, wy = w.y1 - (py / 240) * w.h;
+              // 기존 점 히트(월드 반경 = 화면 10px 상당)
+              const hitR = (10 / 640) * w.w;
+              const hit = edIps.findIndex(([x, y]) => Math.hypot(x - wx, y - wy) < hitR);
+              if (hit >= 0) { setEdSel(hit); setEdDrag(hit); }
+              else { const next = [...edIps, [Math.round(wx), Math.round(wy)] as [number, number]]; setEdIps(next); setEdSel(next.length - 1); edCommit(next, edCurves); }
+            }}
+            onPointerMove={(e) => {
+              if (edDrag == null) return;
+              const svg = e.currentTarget;
+              const r = svg.getBoundingClientRect();
+              const w = edWorld();
+              const wx = w.x0 + (((e.clientX - r.left) / r.width) * 640 / 640) * w.w;
+              const wy = w.y1 - (((e.clientY - r.top) / r.height) * 240 / 240) * w.h;
+              setEdIps((s) => s.map((p, i) => (i === edDrag ? [Math.round(wx), Math.round(wy)] : p)));
+            }}
+            onPointerUp={() => { if (edDrag != null) { setEdDrag(null); edCommit(edIps, edCurves); } }}
+          >
+            {(() => {
+              const w = edWorld();
+              const X = (v: number) => ((v - w.x0) / w.w) * 640;
+              const Y = (v: number) => ((w.y1 - v) / w.h) * 240;
+              return (
+                <g>
+                  <polyline points={edIps.map(([x, y]) => `${X(x)},${Y(y)}`).join(' ')} fill="none" stroke="#dc2626" strokeWidth={1.4} strokeDasharray="8 3 2 3" />
+                  {edIps.map(([x, y], i) => (
+                    <g key={i}>
+                      <circle cx={X(x)} cy={Y(y)} r={i === edSel ? 7 : 5} fill={edCurves[i]?.R ? '#2563eb' : '#fff'} stroke={i === edSel ? '#dc2626' : '#0f172a'} strokeWidth={1.4} />
+                      <text x={X(x) + 8} y={Y(y) - 8} fontSize={10} fill="#334155">IP{i}{edCurves[i]?.R ? ` R${Math.round(edCurves[i].R / 1000)}m${edCurves[i].Ls ? `+Ls${Math.round((edCurves[i].Ls ?? 0) / 1000)}m` : ''}` : ''}</text>
+                    </g>
+                  ))}
+                  <text x={6} y={232} fontSize={9} fill="#94a3b8">{ko ? `범위 ${Math.round(w.w / 1000)}m × ${Math.round(w.h / 1000)}m (자동 맞춤) · 곡선·게이트는 생성 시 결정론 검증` : `extent ${Math.round(w.w / 1000)}×${Math.round(w.h / 1000)} m (auto-fit)`}</text>
+                </g>
+              );
+            })()}
+          </svg>
+          {edSel != null && edSel > 0 && edSel < edIps.length - 1 && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4, fontSize: 11 }}>
+              <span>IP{edSel}</span>
+              <label>R(mm) <input type="number" value={edCurves[edSel]?.R ?? ''} style={{ ...inpStyle, width: 90 }} onChange={(e) => { const R = Number(e.target.value); const next = { ...edCurves }; if (R > 0) next[edSel] = { ...next[edSel], R }; else delete next[edSel]; setEdCurves(next); edCommit(edIps, next); }} /></label>
+              <label>Ls(mm) <input type="number" value={edCurves[edSel]?.Ls ?? ''} style={{ ...inpStyle, width: 80 }} onChange={(e) => { const Ls = Number(e.target.value); const next = { ...edCurves }; if (next[edSel]) { if (Ls > 0) next[edSel] = { ...next[edSel], Ls }; else next[edSel] = { R: next[edSel].R }; setEdCurves(next); edCommit(edIps, next); } }} /></label>
+              <button type="button" style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, border: '1px solid var(--nx-line, #d6dbe3)', background: 'transparent', cursor: 'pointer', color: 'inherit' }}
+                onClick={() => { const next = edIps.filter((_, i) => i !== edSel); const nc: Record<number, { R: number; Ls?: number }> = {}; Object.entries(edCurves).forEach(([k, v]) => { const ki = Number(k); if (ki < edSel!) nc[ki] = v; else if (ki > edSel!) nc[ki - 1] = v; }); setEdIps(next); setEdCurves(nc); setEdSel(null); edCommit(next, nc); }}>
+                {ko ? 'IP 삭제' : 'delete'}
+              </button>
+            </div>
+          )}
         </details>
       )}
 

@@ -7,7 +7,13 @@
  * 원곡선(단곡선): IP 별 R 선택 입력. 폐형 —
  *   Δ = 정규화(brg₂−brg₁, (−180°,180°]) · TL = R·tan(|Δ|/2) · L = R·|Δ|(rad)
  * 사전 게이트(§1-1): |Δ|≤90° · TL 합+MIN_TANGENT ≤ IP 간 거리 · R ≥ 최소반경(호출측 전달).
- * 완화곡선(클로소이드)=명시 보류.
+ *
+ * 완화곡선(클로소이드, 후속 ⑥): curves[{ip, R, Ls}] — 대칭 완화곡선. Fresnel 급수 폐형:
+ *   θ(l)=l²/(2RLs) · x=l−l⁵/40R²Ls²+l⁹/3456R⁴Ls⁴ · y=l³/6RLs−l⁷/336R³Ls³+l¹¹/42240R⁵Ls⁵
+ *   τs=Ls/2R · p=Ys−R(1−cosτs) · k=Xs−R·sinτs · T=(R+p)tan(|Δ|/2)+k
+ * 형상=정밀 폴리라인 전개(세그먼트 길이오차 총합 <1mm 보장 분할) — 후속 소비자(chainAt·
+ * 클리핑·현·교차·도면·OBB) 전부 무변경으로 정확. 측점표(TS/SC/CS/ST·A)=급수 폐형.
+ * 게이트: τs≤30°(급수 유효역) · |Δ|≥2τs(원곡선부 존재) · **폐합 자기검증 <0.5mm**(ST 재구성 대조).
  */
 import { EPS, minTangent, SAG_TOL_DEFAULT, CHORDS_PER_ARC_MAX } from './geometry-tolerance.mjs';
 
@@ -44,13 +50,20 @@ export function buildElements(ips, curves = [], opts = {}) {
   }
   P.push(ips[ips.length - 1]);
   const Rof = new Map();
+  const LsOf = new Map();
   for (const c of curves ?? []) {
     if (!(Number(c.R) > 0)) { errors.push(`curves[ip=${c.ip}]: R invalid`); continue; }
     // 원본 ips 인덱스로 지정 → 제거되지 않은 IP 좌표로 매칭
     const idx = P.findIndex((q) => q === ips[c.ip]);
     if (idx <= 0 || idx >= P.length - 1) { if (!errors.some((e) => e.includes(`ip=${c.ip}`))) errors.push(`curves[ip=${c.ip}]: 내부 IP 아님`); continue; }
     Rof.set(idx, Number(c.R));
+    if (Number(c.Ls) > 0) LsOf.set(idx, Number(c.Ls));
   }
+  // 클로소이드 급수(폐형) — θ(l)=l²/(2RLs)
+  const spiralXY = (l, R, Ls) => [
+    l - l ** 5 / (40 * R * R * Ls * Ls) + l ** 9 / (3456 * R ** 4 * Ls ** 4),
+    l ** 3 / (6 * R * Ls) - l ** 7 / (336 * R ** 3 * Ls ** 3) + l ** 11 / (42240 * R ** 5 * Ls ** 5),
+  ];
   // IP별 Δ·TL 산출 + 게이트
   const legLen = (i) => Math.hypot(P[i + 1][0] - P[i][0], P[i + 1][1] - P[i][1]);
   const brg = (i) => Math.atan2(P[i + 1][1] - P[i][1], P[i + 1][0] - P[i][0]); // rad, leg i
@@ -60,7 +73,18 @@ export function buildElements(ips, curves = [], opts = {}) {
     if (Math.abs(d) > 90 + EPS) errors.push(`IP${idx}: 교각 ${Math.abs(d).toFixed(1)}° > 90° — 선형 재설계 필요(정직 거부)`);
     if (opts.minR > 0 && R < opts.minR) errors.push(`IP${idx}: R ${R} < 최소 반경 ${opts.minR}(내측 자기교차 방지)`);
     DELTA.set(idx, d);
-    TL.set(idx, R * Math.tan(rad(Math.abs(d)) / 2));
+    const Ls = LsOf.get(idx) ?? 0;
+    if (Ls > 0) {
+      const tauS = Ls / (2 * R);
+      if (tauS > Math.PI / 6 + EPS) errors.push(`IP${idx}: 완화공선 접선각 τs=${deg(tauS).toFixed(1)}° > 30°(급수 유효역) — Ls 축소 또는 R 확대`);
+      if (rad(Math.abs(d)) < 2 * tauS - EPS) errors.push(`IP${idx}: |Δ| ${Math.abs(d).toFixed(1)}° < 2τs ${deg(2 * tauS).toFixed(1)}° — 원공선부 없음(Ls 축소 필요)`);
+      const [Xs, Ys] = spiralXY(Ls, R, Ls);
+      const pShift = Ys - R * (1 - Math.cos(tauS));
+      const kShift = Xs - R * Math.sin(tauS);
+      TL.set(idx, (R + pShift) * Math.tan(rad(Math.abs(d)) / 2) + kShift);
+    } else {
+      TL.set(idx, R * Math.tan(rad(Math.abs(d)) / 2));
+    }
   }
   const mt = minTangent(opts.baseW);
   for (let i = 0; i < P.length - 1; i++) {
@@ -90,18 +114,86 @@ export function buildElements(ips, curves = [], opts = {}) {
       const R = Rof.get(i + 1);
       const d = DELTA.get(i + 1);
       const ccw = d > 0;
-      // 곡선 중심: BC 에서 진행방향 좌(ccw)/우(cw) 법선으로 R
-      const nx = ccw ? -Math.sin(b) : Math.sin(b);
-      const ny = ccw ? Math.cos(b) : -Math.cos(b);
-      const c = [cursor[0] + nx * R, cursor[1] + ny * R];
-      const a0 = Math.atan2(cursor[1] - c[1], cursor[0] - c[0]);
-      const arcLen = R * rad(Math.abs(d));
-      const a1 = a0 + (ccw ? 1 : -1) * rad(Math.abs(d));
-      const el = { type: 'arc', c, R, a0, a1, ccw, len: arcLen, ch0: ch, ip: i + 1, deltaDeg: d, TL: TL.get(i + 1), BCmm: ch, ECmm: ch + arcLen };
-      elements.push(el);
-      curveTable.push({ ip: i + 1, ipXY: [P[i + 1][0], P[i + 1][1]], deltaDeg: d, R, TLmm: TL.get(i + 1), Lmm: arcLen, BCmm: ch, ECmm: ch + arcLen });
-      ch += arcLen;
-      cursor = [c[0] + R * Math.cos(a1), c[1] + R * Math.sin(a1)]; // EC
+      const sgn = ccw ? 1 : -1;
+      const Ls = LsOf.get(i + 1) ?? 0;
+      if (Ls > 0) {
+        // ─ 클로소이드 대칭 완화공선: TS→(입구 스파이럴)→SC→(원호)→CS→(출구 스파이럴)→ST
+        const tauS = Ls / (2 * R);
+        const dc = rad(Math.abs(d)) - 2 * tauS;
+        // 정밀 폴리라인 분할 — 이중 기준: ①길이오차 총합 <0.5mm(√(Ls·τs²/12))
+        // ②현 방위 이산각 ≤0.5°(스텝 최대 각증분 2τs/n 의 절반 — 접선 연속 표기 오차 상한)
+        const nSeg = Math.max(16, Math.ceil(Math.sqrt((Ls * tauS * tauS) / 12)), Math.ceil(deg(2 * tauS) / 0.5));
+        const TSpt = cursor;
+        const cB = Math.cos(b), sB = Math.sin(b);
+        const toWorld = (lx, ly) => [TSpt[0] + lx * cB - sgn * ly * sB, TSpt[1] + lx * sB + sgn * ly * cB];
+        const TSmm = ch;
+        let prev = TSpt;
+        for (let k2 = 1; k2 <= nSeg; k2++) {
+          const l = (Ls * k2) / nSeg;
+          const [lx, ly] = spiralXY(l, R, Ls);
+          const pt = toWorld(lx, ly);
+          const segL = Math.hypot(pt[0] - prev[0], pt[1] - prev[1]);
+          elements.push({ type: 'line', p0: prev, p1: pt, len: segL, brgDeg: deg(Math.atan2(pt[1] - prev[1], pt[0] - prev[0])), ch0: ch, spiral: i + 1 });
+          ch += segL;
+          prev = pt;
+        }
+        const SCmm = ch;
+        const bSC = b + sgn * tauS;
+        const nx = ccw ? -Math.sin(bSC) : Math.sin(bSC);
+        const ny = ccw ? Math.cos(bSC) : -Math.cos(bSC);
+        const c = [prev[0] + nx * R, prev[1] + ny * R];
+        const a0 = Math.atan2(prev[1] - c[1], prev[0] - c[0]);
+        const a1 = a0 + sgn * dc;
+        const arcLen = R * dc;
+        elements.push({ type: 'arc', c, R, a0, a1, ccw, len: arcLen, ch0: ch, ip: i + 1, deltaDeg: d, TL: TL.get(i + 1), BCmm: ch, ECmm: ch + arcLen });
+        ch += arcLen;
+        const CSpt = [c[0] + R * Math.cos(a1), c[1] + R * Math.sin(a1)];
+        const CSmm = ch;
+        // 출구 스파이럴 — 대칭 거울상: ST에서 역방향 전개 후 뒤집기(ST=IP+출구방위×T 폐형)
+        const bOut = brg(i + 1);
+        const T2 = TL.get(i + 1);
+        const STpt = [P[i + 1][0] + Math.cos(bOut) * T2, P[i + 1][1] + Math.sin(bOut) * T2];
+        const cO = Math.cos(bOut + Math.PI), sO = Math.sin(bOut + Math.PI);
+        const toWorldOut = (lx, ly) => [STpt[0] + lx * cO + sgn * ly * sO, STpt[1] + lx * sO - sgn * ly * cO];
+        const outPts = [];
+        for (let k2 = nSeg; k2 >= 0; k2--) {
+          const l = (Ls * k2) / nSeg;
+          const [lx, ly] = spiralXY(l, R, Ls);
+          outPts.push(toWorldOut(lx, ly));
+        }
+        // 폐합 자기검증(무결 게이트): 원호 끝(CS) ↔ 출구 스파이럴 시작 대조 < 0.5mm
+        const closure = Math.hypot(outPts[0][0] - CSpt[0], outPts[0][1] - CSpt[1]);
+        if (closure > 0.5) {
+          errors.push(`IP${i + 1}: 완화공선 폐합오차 ${closure.toFixed(2)}mm > 0.5mm — 내부 자기검증 실패(정직 거부)`);
+          return { ok: false, errors, elements: [], totalMm: 0, curveTable: [] };
+        }
+        prev = CSpt;
+        for (let k2 = 1; k2 < outPts.length; k2++) {
+          const pt = k2 === outPts.length - 1 ? STpt : outPts[k2];
+          const segL = Math.hypot(pt[0] - prev[0], pt[1] - prev[1]);
+          if (segL > EPS) {
+            elements.push({ type: 'line', p0: prev, p1: pt, len: segL, brgDeg: deg(Math.atan2(pt[1] - prev[1], pt[0] - prev[0])), ch0: ch, spiral: i + 1 });
+            ch += segL;
+          }
+          prev = pt;
+        }
+        const STmm = ch;
+        curveTable.push({ ip: i + 1, ipXY: [P[i + 1][0], P[i + 1][1]], deltaDeg: d, R, Ls, A: Math.sqrt(R * Ls), TLmm: T2, Lmm: STmm - TSmm, BCmm: TSmm, ECmm: STmm, TSmm, SCmm, CSmm, STmm });
+        cursor = STpt;
+      } else {
+        // 곡선 중심: BC 에서 진행방향 좌(ccw)/우(cw) 법선으로 R
+        const nx = ccw ? -Math.sin(b) : Math.sin(b);
+        const ny = ccw ? Math.cos(b) : -Math.cos(b);
+        const c = [cursor[0] + nx * R, cursor[1] + ny * R];
+        const a0 = Math.atan2(cursor[1] - c[1], cursor[0] - c[0]);
+        const arcLen = R * rad(Math.abs(d));
+        const a1 = a0 + sgn * rad(Math.abs(d));
+        const el = { type: 'arc', c, R, a0, a1, ccw, len: arcLen, ch0: ch, ip: i + 1, deltaDeg: d, TL: TL.get(i + 1), BCmm: ch, ECmm: ch + arcLen };
+        elements.push(el);
+        curveTable.push({ ip: i + 1, ipXY: [P[i + 1][0], P[i + 1][1]], deltaDeg: d, R, TLmm: TL.get(i + 1), Lmm: arcLen, BCmm: ch, ECmm: ch + arcLen });
+        ch += arcLen;
+        cursor = [c[0] + R * Math.cos(a1), c[1] + R * Math.sin(a1)]; // EC
+      }
     }
   }
   return { ok: true, errors: [], elements, totalMm: ch, curveTable };
