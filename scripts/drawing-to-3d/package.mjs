@@ -406,6 +406,68 @@ function curveTableSheet(al) {
 <div style="font-size:10px;color:#94a3b8;padding:3px 0">TL=R·tan(Δ/2) · CL=R·Δ(폐형) · STA 표기=m 반올림(원값 계산 후 반올림 — 표기끼리 연산 금지 규약)</div></div>`;
 }
 
+/**
+ * §1-4 토공량·유토곡선 — 지반선(파생 또는 입력) 존재 구간만. 단면=폐형
+ * A=|d|·w+n·d²(양측 사면 사다리꼴), 절↔성 전환은 0점 선형보간 분할(폐형).
+ * 불균등 간격 그대로 평균단면법(재샘플 금지 — 보간 오차 이중화 방지). mass_haul 연계.
+ * 기면고·기면폭·사면경사=입력 원칙(미입력=생략 — 기본값 날조 금지).
+ */
+function earthworkSheet(assembly) {
+  const pf = assembly.profile, ew = assembly.earthwork;
+  if (!pf?.ground || pf.ground.length < 2) {
+    return ew ? `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 14px;font-size:11.5px;color:#92400e;margin:6px 0">토공량: 지반선 없음(등고 입력 또는 profileGround 필요) — 생략(정직)</div>` : '';
+  }
+  const F = Number(ew?.formationElevM), w = Number(ew?.widthM), n = Number(ew?.slopeN);
+  if (!Number.isFinite(F) || !(w > 0) || !(n >= 0)) {
+    return `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 14px;font-size:11.5px;color:#92400e;margin:6px 0">토공량: 입력 필요 — earthwork {formationElevM(기면고), widthM(기면폭), slopeN(사면 1:n)} · 기본값 날조 금지로 생략</div>`;
+  }
+  const secs = pf.ground.map((g) => ({ staM: g.staMm / 1000, d: (g.elevMm - F * 1000) / 1000 })); // d>0=절토
+  const A = (d) => Math.abs(d) * w + n * d * d;
+  const stations = [];
+  let cut = 0, fill = 0;
+  for (let i = 1; i < secs.length; i++) {
+    const a = secs[i - 1], b = secs[i];
+    const spans = [];
+    if ((a.d > 0 && b.d < 0) || (a.d < 0 && b.d > 0)) {
+      const t = Math.abs(a.d) / (Math.abs(a.d) + Math.abs(b.d)); // 0점 선형보간(폐형)
+      const sz = a.staM + t * (b.staM - a.staM);
+      spans.push([a, { staM: sz, d: 0 }], [{ staM: sz, d: 0 }, b]);
+    } else spans.push([a, b]);
+    let segCut = 0, segFill = 0;
+    for (const [p1, p2] of spans) {
+      const V = ((A(p1.d) + A(p2.d)) / 2) * (p2.staM - p1.staM);
+      if ((p1.d + p2.d) / 2 >= 0) segCut += V; else segFill += V;
+    }
+    cut += segCut; fill += segFill;
+    stations.push({ sta_m: +b.staM.toFixed(2), cut_m3: +segCut.toFixed(2), fill_m3: +segFill.toFixed(2) });
+  }
+  let mh = null;
+  try { mh = runCalculator('mass_haul', { stations, ...(Number(ew.shrinkC) > 0 ? { shrinkC: +ew.shrinkC } : {}) }); } catch { mh = null; }
+  // 자기정합: Σ구간 = 총계(원값 EPS)
+  const sumCut = stations.reduce((s, q) => s + q.cut_m3, 0);
+  const selfOk = Math.abs(sumCut - +cut.toFixed(2)) < 0.05 * stations.length;
+  // 유토곡선 SVG
+  let curveSvg = '';
+  if (mh?.curve?.length > 1) {
+    const xs = mh.curve.map((q) => q.sta_m), ys = mh.curve.map((q) => q.cum_m3);
+    const xMax = Math.max(...xs), yMin = Math.min(0, ...ys), yMax = Math.max(0, ...ys);
+    const PW = 760, PH = 120, M2 = 70;
+    const Xc = (v) => (M2 + (v / Math.max(1e-9, xMax)) * PW).toFixed(1);
+    const Yc = (v) => (20 + ((yMax - v) / Math.max(1e-9, yMax - yMin)) * PH).toFixed(1);
+    curveSvg = `<svg viewBox="0 0 ${M2 + PW + 30} ${PH + 60}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff">
+<text x="${M2}" y="14" font-size="12" font-weight="700" font-family="sans-serif">유토곡선 (누적토량 — mass_haul)</text>
+<line x1="${M2}" y1="${Yc(0)}" x2="${+Xc(xMax)}" y2="${Yc(0)}" stroke="#94a3b8" stroke-width=".7"/>
+<polyline points="${mh.curve.map((q) => `${Xc(q.sta_m)},${Yc(q.cum_m3)}`).join(' ')}" fill="none" stroke="#dc2626" stroke-width="1.4"/>
+${(mh.checks.haul.balancePoints_m ?? []).map((b) => `<line x1="${Xc(b)}" y1="20" x2="${Xc(b)}" y2="${20 + PH}" stroke="#2563eb" stroke-width=".8" stroke-dasharray="4 3"/><text x="${Xc(b)}" y="${PH + 34}" font-size="8" text-anchor="middle" fill="#2563eb" font-family="sans-serif">균형 ${b}m</text>`).join('')}
+<text x="${M2}" y="${PH + 50}" font-size="8.5" fill="#64748b" font-family="sans-serif">${(mh.notes ?? []).map(esc).join(' · ')}</text></svg>`;
+  }
+  return `<div style="padding:6px 0"><table style="border-collapse:collapse;width:100%;font-size:11.5px"><caption style="text-align:left;font-size:13px;font-weight:700;padding:4px 0">토공량 (평균단면법 — 불균등 측점 그대로)</caption>
+<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">절토(m³)</th><th style="border:1px solid #cbd5e1;padding:3px 8px">성토(m³)</th><th style="border:1px solid #cbd5e1;padding:3px 8px">잉여/부족</th><th style="border:1px solid #cbd5e1;padding:3px 8px">구간 수</th><th style="border:1px solid #cbd5e1;padding:3px 8px">자기정합</th></tr>
+<tr><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${cut.toFixed(1)}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${fill.toFixed(1)}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${mh ? `${mh.checks.summary.surplus_m3} m³ (${esc(mh.checks.summary.balance)})` : '-'}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${stations.length}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${selfOk ? '✓' : '⚠'}</td></tr></table>
+${curveSvg}
+<div style="font-size:10px;color:#94a3b8;padding:3px 0">단면 A=|d|·w+n·d²(기면폭 ${w}m·사면 1:${n}·기면고 EL.${F}m — 전부 입력값) · 절↔성 전환=0점 보간 분할(폐형) · 평균단면법=근사 명시(프리즘/등고법 후속) · ${esc(pf.groundNote ?? '')}</div></div>`;
+}
+
 /** ② 종단면도 — 계획고(설계선) + 지반선(입력 시만). 종 왜곡 10×(V=H/10) 명기. */
 function profileSvg(assembly) {
   const al = assembly.alignment, pf = assembly.profile;
@@ -441,7 +503,7 @@ function profileSvg(assembly) {
   const Nh = pickScale(total, 1, 360, 999);
   return `<svg viewBox="0 0 ${M + PW + 40} ${30 + PH + 40}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff">
 <text x="${M}" y="18" font-size="13" font-weight="700" font-family="sans-serif">종단면도 · H 1:${Nh} / V 1:${Math.max(1, Math.round(Nh / 10))} (종 10× 왜곡)</text>${el.join('')}
-<text x="${M}" y="${30 + PH + 30}" font-size="8.5" fill="#64748b" font-family="sans-serif">설계선(청): ${esc(pf.designNote ?? '')} · ${pf.ground?.length ? '지반선(갈, 파선)=입력' : '지반선=입력 시 표기(지형을 지어내지 않음)'}</text></svg>`;
+<text x="${M}" y="${30 + PH + 30}" font-size="8.5" fill="#64748b" font-family="sans-serif">설계선(청): ${esc(pf.designNote ?? '')} · ${pf.ground?.length ? `지반선(갈, 파선): ${esc(pf.groundNote ?? '입력')}` : '지반선=입력 시 표기(지형을 지어내지 않음)'}</text></svg>`;
 }
 
 /** 토목: 선형 평면도 SVG — 부재 평면 + 중심선 + 측점(STA 0+000) + 스케일바. km급 연장 대응. */
@@ -565,7 +627,7 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
     else if (domain === 'landscape') domainSvg = (landscapePlanSvg(parts) ?? '') + siteOverlayBlock(assembly);
     else if (domain === 'civil') {
       domainSvg = assembly.alignment
-        ? alignmentSheets(assembly) + curveTableSheet(assembly.alignment) + structureTableSheet(assembly.alignment) + profileSvg(assembly)
+        ? alignmentSheets(assembly) + curveTableSheet(assembly.alignment) + structureTableSheet(assembly.alignment) + profileSvg(assembly) + earthworkSheet(assembly)
         : (civilPlanSvg(parts) ?? '') + siteOverlayBlock(assembly);
     }
   } catch { domainSvg = ''; }

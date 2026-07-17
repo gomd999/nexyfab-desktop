@@ -376,7 +376,7 @@ import { runCalculator } from '../engineering-core/registry.mjs';
 import { ga2dDrawing, fmtLen, pickScale, staLabel } from './package.mjs';
 
 import { obbOverlap, boxPartsInterference } from './obb2d.mjs';
-import { buildElements, chainAt, intersectSegment } from './alignment-geom.mjs';
+import { buildElements, chainAt, intersectSegment, groundFromContours } from './alignment-geom.mjs';
 
 describe('무결성 규약 0단계 — OBB-SAT·chainage 요소열 (폐형 앵커)', () => {
   it('SAT: 분리·정확 접촉 0·관통 깊이·회전쌍', () => {
@@ -431,6 +431,40 @@ describe('무결성 규약 0단계 — OBB-SAT·chainage 요소열 (폐형 앵�
     const html = ga2dDrawing(c, { title: 'c', domain: 'civil' });
     expect(html).toMatch(/<path d="M [\d. ]+A /); // 평면=진짜 원호
     expect(html).toContain('곡선표');
+  });
+  it('3단계 지반선 파생: 교차 폐형·모순 거부·외삽 금지 (§1-3)', () => {
+    const { elements } = buildElements([[0, 0], [100000, 0]], []);
+    const g = groundFromContours(elements, [
+      { elevM: 12, pts: [[20000, -5000], [20000, 5000]] },
+      { elevM: 8, pts: [[70000, -5000], [70000, 5000]] },
+    ]);
+    expect(g.ground).toMatchObject([{ staMm: 20000, elevMm: 12000 }, { staMm: 70000, elevMm: 8000 }]);
+    expect(g.note).toContain('외삽 없음');
+    // 모순(같은 STA 상이 표고) = 평균 금지·거부
+    const bad = groundFromContours(elements, [
+      { elevM: 10, pts: [[50000, -1000], [50000, 1000]] },
+      { elevM: 20, pts: [[50200, -1000], [50200, 1000]] },
+    ]);
+    expect(bad.ground).toBeNull();
+    expect(bad.errors[0]).toContain('모순');
+    // 교차 <2 = 미생성
+    expect(groundFromContours(elements, [{ elevM: 10, pts: [[50000, -1000], [50000, 1000]] }]).ground).toBeNull();
+  });
+  it('4단계 토공·유토: 평균단면법 폐형 + mass_haul 연계 + 미입력 정직 생략 (§1-4)', () => {
+    const contours = [
+      { elevM: 12, pts: [[20000, -50000], [20000, 50000]] },
+      { elevM: 10, pts: [[60000, -50000], [60000, 50000]] },
+      { elevM: 8, pts: [[100000, -50000], [100000, 50000]] },
+    ];
+    const asm = buildAssemblyTemplate('civil', 'retaining_wall_alignment', { contours, earthwork: { formationElevM: 6, widthM: 3, slopeN: 1.5 } });
+    const html = ga2dDrawing(asm, { title: 'e', domain: 'civil' });
+    expect(html).toContain('토공량');
+    expect(html).toContain('유토곡선');
+    // 폐형 검증: 구간1(20~60m) A1=6·3+1.5·36=72, A2=4·3+1.5·16=36 → V=(72+36)/2·40=2160m³
+    // 구간2(60~100m) A2=36, A3=2·3+1.5·4=12 → V=(36+12)/2·40=960 → 총 절토 3120
+    expect(html).toContain('3120.0');
+    const omitted = ga2dDrawing(buildAssemblyTemplate('civil', 'retaining_wall_alignment', { contours }), { title: 'e2', domain: 'civil' });
+    expect(omitted).toContain('입력 필요 — earthwork');
   });
   // §G 무작위 기하 감사 — 결정론 PRNG(시드 재현), 불변식: 게이트 통과·Σ요소장=총연장·
   // 접선 연속·곡선표 원값 자기정합 (100케이스) + 실빌드 OBB 간섭 0 (10케이스)

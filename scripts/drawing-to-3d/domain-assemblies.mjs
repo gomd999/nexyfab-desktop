@@ -10,7 +10,7 @@
  * 검증: 각 템플릿 기본값은 self-test 로 게이트·간섭 0 을 상시 보증.
  */
 
-import { buildElements, chordPolyline, clipElements, chainAt } from './alignment-geom.mjs';
+import { buildElements, chordPolyline, clipElements, chainAt, groundFromContours } from './alignment-geom.mjs';
 import { TOL_TRIM_RESIDUAL, minSeg } from './geometry-tolerance.mjs';
 
 const num = (v, d) => (Number.isFinite(v) ? v : d);
@@ -292,8 +292,20 @@ function retainingWallAlignmentAssembly(p) {
       parts.push(P(`basin${k + 1}`, 'box', { width: st2.along, depth: st2.along, height: 1200 }, { tx: ox2, ty: oy2, tz: 0, rz: +(brg - 90).toFixed(4) }, 'concrete', 'catchbasin'));
     }
   }
+  // §1-3 등고→지반선 결정론 파생(명시 profileGround 입력이 우선·모순=정직 거부)
+  let derivedGround = null, groundNote = null;
+  if (!Array.isArray(p.profileGround) && Array.isArray(p.contours)) {
+    const g = groundFromContours(elements, p.contours);
+    if (g.errors.length) return { name: '옹벽 선형 구간', domain: 'civil', parts: [], alignmentErrors: g.errors };
+    derivedGround = g.ground;
+    groundNote = g.note;
+  }
   return {
     name: '옹벽 선형 구간', domain: 'civil', parts,
+    ...(Array.isArray(p.contours) ? { contours: p.contours } : {}),
+    ...(Array.isArray(p.siteBoundary) ? { siteBoundary: p.siteBoundary } : {}),
+    // §1-4 토공 파라미터 패스스루(기면고·기면폭·사면경사=입력 원칙 — 미입력 시 토공 생략)
+    ...(p.earthwork && typeof p.earthwork === 'object' ? { earthwork: p.earthwork } : {}),
     alignment: {
       ips, curves, elements, totalMm, curveTable, halfWidthMm: baseW / 2, chordNotes,
       structures: structs.map((q) => ({ sta: q.sta, type: q.type, innerWmm: q.innerW, innerHmm: q.innerH, thkMm: q.thk, alongMm: q.along, params: q.prm })),
@@ -303,8 +315,9 @@ function retainingWallAlignmentAssembly(p) {
     // 종단(계획고): 기본=벽정점 일정고(형상 파생). 지반선·계획고 변경=입력 원칙(profileDesign/profileGround)
     profile: {
       design: Array.isArray(p.profileDesign) ? p.profileDesign : [{ staMm: 0, elevMm: H }, { staMm: totalMm, elevMm: H }],
-      ground: Array.isArray(p.profileGround) ? p.profileGround : null,
+      ground: Array.isArray(p.profileGround) ? p.profileGround : derivedGround,
       designNote: Array.isArray(p.profileDesign) ? '계획고=입력' : '계획고=벽정점 일정고(형상 파생 기본)',
+      groundNote: Array.isArray(p.profileGround) ? '지반선=입력' : groundNote,
     },
     retainingWall: { H: H / 1000, stemThickness: stemT / 1000, baseWidth: baseW / 1000, baseThickness: baseT / 1000, toeLength: toe / 1000, length: totalMm / 1000 },
     // 물량=요소(호장) 기준 — 현 합이 아님(§1-1)

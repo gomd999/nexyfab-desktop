@@ -191,6 +191,34 @@ export function intersectPolyline(elements, pts) {
 }
 
 /**
+ * §1-3 등고→지반선 결정론 파생 — 교차점만 보간(외삽 금지), 데이터 모순=거부(평균 금지).
+ * @param contours [{elevM, pts:[[x,y],...]}]
+ * @returns { ground: [{staMm, elevMm}]|null, errors, note }
+ */
+export function groundFromContours(elements, contours) {
+  const pts = [];
+  for (const ct of contours ?? []) {
+    if (!Array.isArray(ct.pts) || ct.pts.length < 2 || !Number.isFinite(Number(ct.elevM))) continue;
+    for (const hit of intersectPolyline(elements, ct.pts)) pts.push({ staMm: hit.sMm, elevMm: Number(ct.elevM) * 1000 });
+  }
+  pts.sort((a, b) => a.staMm - b.staMm);
+  const errors = [];
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].staMm - pts[i - 1].staMm <= 500 && Math.abs(pts[i].elevMm - pts[i - 1].elevMm) > 1) {
+      errors.push(`등고 데이터 모순: STA ${(pts[i].staMm / 1000).toFixed(1)}m 부근 표고 ${(pts[i - 1].elevMm / 1000).toFixed(2)} vs ${(pts[i].elevMm / 1000).toFixed(2)} m — 평균하지 않음(정직 거부)`);
+    }
+  }
+  if (errors.length) return { ground: null, errors, note: null };
+  if (pts.length < 2) return { ground: null, errors: [], note: '등고×선형 교차점 < 2 — 지반선 미생성(등고가 선형을 충분히 덮지 않음)' };
+  const ground = [];
+  for (const q of pts) { const l = ground[ground.length - 1]; if (l && q.staMm - l.staMm <= 500) continue; ground.push({ staMm: q.staMm, elevMm: q.elevMm }); }
+  return {
+    ground, errors: [],
+    note: `지반선=등고 교차 ${ground.length}점 선형보간 파생(측량 성과 아님) · 유효구간 STA ${(ground[0].staMm / 1000).toFixed(0)}~${(ground[ground.length - 1].staMm / 1000).toFixed(0)}m 밖 외삽 없음`,
+  };
+}
+
+/**
  * 요소열 → 현(chord) 폴리라인 (§1-1 3D 형상용). 새그 공차 기반 분할각
  * θc = 2·acos(1−SAG/R), 세그먼트당 상한 CHORDS_PER_ARC_MAX(초과 시 SAG 상향+정직 고지).
  * @returns { pts:[[x,y]...], notes:[] } — pts 는 요소 경계·호 분할점 포함(연속 폴리라인)
