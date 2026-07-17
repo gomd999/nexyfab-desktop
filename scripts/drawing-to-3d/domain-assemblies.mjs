@@ -346,7 +346,7 @@ function retainingWallAlignmentAssembly(p) {
       ips, curves, elements, totalMm, curveTable, halfWidthMm: baseW / 2, chordNotes,
       structures: structs.map((q) => ({ sta: q.sta, type: q.type, innerWmm: q.innerW, innerHmm: q.innerH, thkMm: q.thk, alongMm: q.along, params: q.prm })),
       wallGaps: gaps,
-      note: '곡선=단곡선(완화곡선 보류) · 3D=현 근사(새그 공차 — 평면·DXF는 진짜 원호) · 물량·측점=중심선 호장 기준 · 접합=정확 마이터 트림',
+      note: '곡선=원곡선+클로소이드(Fresnel 정밀 전개·폐합 자기검증<0.5mm) · 3D=현 근사(새그 공차 — 평면·DXF는 진짜 원호) · 물량·측점=중심선 호장 기준 · 접합=정확 마이터 트림',
     },
     // 종단(계획고): 기본=벽정점 일정고(형상 파생). 지반선·계획고 변경=입력 원칙(profileDesign/profileGround)
     profile: {
@@ -402,6 +402,100 @@ function girderBridgeAssembly(p = {}) {
     name: `거더교 ${span / 1000}m×${n}거더`, domain: 'bridge', kind: 'assembly', parts,
     bridgeMeta: { span, nGirders: n, girderSpacing: s, girderH: H, deckThk: dt, overhang: oh, deckW,
       section: { topW, topT: ft, webT, webH, botW, botT: ft } },
+  };
+}
+
+/** 타이드 아치교 + 접속 고가교(260717 신설 — 연륙교류).
+ *  아치 리브=포물선 z=deckTop+4·rise·ξ(1−ξ) 를 현(chord) 분절 box(ry 회전)로 전개 —
+ *  분절 끝점 공유(겹침 0)·행어=수직 실린더(닐센 경사 행어는 후속 명시)·타이=데크 연단 거더.
+ *  구조검토 미포함(형상·물량·도서만 — 아치 해석은 별도 명시). */
+function archBridgeAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const mainSpan = num(p.mainSpan, 120000);
+  const rise = num(p.rise, Math.round(mainSpan * 0.22));
+  const deckW = num(p.deckW, 12000), deckThk = num(p.deckThk, 450);
+  const ribW = num(p.ribW, 900), ribH = num(p.ribH, 1400);
+  const tieW = num(p.tieW, 800), tieH = num(p.tieH, 1800);
+  const hangerSpacing = num(p.hangerSpacing, 6000), hangerDia = num(p.hangerDia, 90);
+  const apLeft = Math.max(0, Math.round(Number(p.approachSpansLeft ?? 8)));
+  const apRight = Math.max(0, Math.round(Number(p.approachSpansRight ?? 1)));
+  const apSpan = num(p.approachSpan, 30000);
+  const pierH = num(p.pierH, 12000), pierW = num(p.pierW, 5000), pierD = num(p.pierD, 2400);
+  const capH = 1500, girderH = num(p.girderH, 1600);
+  const nSeg = Math.max(12, Math.min(40, Math.round(num(p.archSegments, 24))));
+  const deckBot = pierH + capH + girderH;
+  const deckTop = deckBot + deckThk;
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  // ── 접속 고가교(좌/우): 교각(기둥+코핑)+연단 거더 2본+상판 ──
+  const bent = (x, id, big = false) => {
+    const w = big ? pierW * 1.5 : pierW, d2 = big ? pierD * 1.4 : pierD;
+    P(`${id}_col`, 'box', { width: w, depth: d2, height: pierH }, { tx: x - w / 2, ty: (deckW - d2) / 2, tz: 0 }, 'concrete', 'pier');
+    P(`${id}_cap`, 'box', { width: w + 1600, depth: deckW - 1500, height: capH }, { tx: x - (w + 1600) / 2, ty: 750, tz: pierH }, 'concrete', 'crossbeam');
+  };
+  const approach = (x0, spans, tag) => {
+    if (!spans) return;
+    const L = spans * apSpan;
+    for (let k = 0; k <= spans; k++) {
+      const x = x0 + k * apSpan;
+      if (x === 0 || x === mainSpan) continue; // 주경간 교각은 별도(대형)
+      bent(x, `${tag}_pier${k}`);
+    }
+    for (const [side, y] of [['L', 900], ['R', deckW - 900 - tieW]]) {
+      P(`${tag}_girder_${side}`, 'box', { width: L, depth: tieW, height: girderH }, { tx: x0, ty: y, tz: pierH + capH }, 'steel', 'girder');
+    }
+    P(`${tag}_deck`, 'box', { width: L, depth: deckW, height: deckThk }, { tx: x0, ty: 0, tz: deckBot }, 'concrete', 'deck');
+  };
+  approach(-apLeft * apSpan, apLeft, 'apL');
+  approach(mainSpan, apRight, 'apR');
+  // 주경간 교각(대형) 2기
+  bent(0, 'main_pier_A', true);
+  bent(mainSpan, 'main_pier_B', true);
+  // ── 주경간: 타이 거더 2본 + 상판 ──
+  for (const [side, y] of [['L', 900], ['R', deckW - 900 - tieW]]) {
+    P(`tie_${side}`, 'box', { width: mainSpan, depth: tieW, height: tieH }, { tx: 0, ty: y, tz: pierH + capH }, 'steel', 'girder');
+  }
+  P('main_deck', 'box', { width: mainSpan, depth: deckW, height: deckThk }, { tx: 0, ty: 0, tz: deckBot }, 'concrete', 'deck');
+  // ── 아치 리브 2본(포물선 분절, ry 회전 — 로컬 원점 보정) ──
+  const zArch = (x) => deckTop + (4 * rise * (x / mainSpan)) * (1 - x / mainSpan);
+  const ribYs = [900 + (tieW - ribW) / 2, deckW - 900 - tieW + (tieW - ribW) / 2]; // 타이 위 정렬
+  for (const [ri, yRib] of ribYs.entries()) {
+    for (let k = 0; k < nSeg; k++) {
+      const x0 = (mainSpan * k) / nSeg, x1 = (mainSpan * (k + 1)) / nSeg;
+      const z0 = zArch(x0), z1 = zArch(x1);
+      const segL = Math.hypot(x1 - x0, z1 - z0);
+      const thetaDeg = (Math.atan2(z1 - z0, x1 - x0) * 180) / Math.PI;
+      // 로컬 단면중심 c0=(0, ribW/2, ribH/2) 이 회전 후 시작점 P0 에 오도록 평행이동 보정
+      const th = (thetaDeg * Math.PI) / 180;
+      // Ry(θ): x' = x cosθ + z sinθ · z' = −x sinθ + z cosθ (placedAabb rotatePoint 규약 — 프로브 검증)
+      const rcx = (ribH / 2) * Math.sin(th);
+      const rcz = (ribH / 2) * Math.cos(th);
+      P(`arch${ri + 1}_seg${k + 1}`, 'box', { width: segL, depth: ribW, height: ribH },
+        { tx: x0 - rcx, ty: yRib, tz: z0 - rcz, ry: -thetaDeg }, 'steel', 'arch');
+    }
+  }
+  // ── 행어(수직 — 닐센 경사 후속 명시) ──
+  let nH = 0;
+  for (let x = hangerSpacing; x < mainSpan - hangerSpacing / 2; x += hangerSpacing) {
+    const top = zArch(x) - ribH / 2;
+    const L = top - deckTop;
+    if (L < hangerDia * 3) continue; // 스프링잉 부근 초단 행어 생략(시공 관례)
+    for (const [ri, yRib] of ribYs.entries()) {
+      P(`hanger_${ri + 1}_${++nH}`, 'cylinder', { diameter: hangerDia, length: L },
+        { tx: x - hangerDia / 2, ty: yRib + ribW / 2 - hangerDia / 2, tz: deckTop }, 'steel', 'hanger');
+    }
+  }
+  // ── 리브 간 수평 브레이싱(정점부 5개) ──
+  for (let b = 0; b < 5; b++) {
+    const x = mainSpan * (0.3 + 0.1 * b);
+    const z = zArch(x) - ribH / 2;
+    P(`brace_${b + 1}`, 'box', { width: 700, depth: ribYs[1] - ribYs[0] - ribW, height: 500 },
+      { tx: x - 350, ty: ribYs[0] + ribW, tz: z - 250 }, 'steel', 'bracing');
+  }
+  return {
+    name: `아치교 ${mainSpan / 1000}m+접속 ${apLeft + apRight}경간`, domain: 'bridge', kind: 'assembly', parts,
+    archMeta: { mainSpan, rise, nSeg, hangers: nH, apLeft, apRight, apSpan, deckW, deckTop },
+    note: '아치=포물선 현 분절(끝점 공유)·행어=수직(닐센 경사 후속)·구조해석 미포함(형상·물량·도서) — 명시',
   };
 }
 
@@ -746,6 +840,19 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'girderH', labelKo: '거더 춤(플랜지 포함)', unit: 'mm', default: 1800, min: 800, max: 3500 },
         { name: 'deckThk', labelKo: '바닥판 두께', unit: 'mm', default: 240, min: 180, max: 400 },
         { name: 'overhang', labelKo: '캔틸레버 내민길이', unit: 'mm', default: 1100, min: 500, max: 2500 },
+      ],
+    },
+    {
+      id: 'arch_bridge', labelKo: '타이드 아치교 + 접속 고가교', labelEn: 'Tied-arch bridge with approach viaduct', build: archBridgeAssembly,
+      params: [
+        { name: 'mainSpan', labelKo: '주경간', unit: 'mm', default: 120000, min: 40000, max: 300000 },
+        { name: 'rise', labelKo: '아치 라이즈', unit: 'mm', default: 26400, min: 8000, max: 80000 },
+        { name: 'deckW', labelKo: '상판 폭', unit: 'mm', default: 12000, min: 6000, max: 30000 },
+        { name: 'hangerSpacing', labelKo: '행어 간격', unit: 'mm', default: 6000, min: 3000, max: 12000 },
+        { name: 'approachSpansLeft', labelKo: '접속 경간 수(좌)', unit: '', default: 8, min: 0, max: 30 },
+        { name: 'approachSpansRight', labelKo: '접속 경간 수(우)', unit: '', default: 1, min: 0, max: 30 },
+        { name: 'approachSpan', labelKo: '접속 경간장', unit: 'mm', default: 30000, min: 15000, max: 60000 },
+        { name: 'pierH', labelKo: '교각 높이', unit: 'mm', default: 12000, min: 5000, max: 40000 },
       ],
     },
   ],

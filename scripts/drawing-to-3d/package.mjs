@@ -637,7 +637,7 @@ function generalNotesSheet(usedIds) {
 <ol style="font-size:11.5px;line-height:1.7;padding-left:18px">
 <li>본 도면집은 nexyfab drawing-to-3d 가 단일 어셈블리 정의에서 자동 생성 — 전 시트 동일 REV(정합 게이트 검증).</li>
 <li>비법정 개념 설계 — 최종 설계도서·시공에는 등록 기술자(해당 분야 기술사) 검토·확인 필요.</li>
-<li>물량·측점=중심선 호장 기준 · 3D=현 근사(새그 공차) · 곡선=단곡선(완화곡선 보류).</li>
+<li>물량·측점=중심선 호장 기준 · 3D=현 근사(새그 공차) · 곡선=원곡선+클로소이드(폐합 자기검증).</li>
 ${rows ? `<li>적용 기준(실행된 검증 계산기의 원문 근거만 수록):<ul style="padding-left:16px">${rows}</ul></li>` : '<li>본 도면집 생성 시 실행된 검증 계산기 없음 — 적용 기준 목록 생략(근거 없는 인용 금지).</li>'}
 </ol></div>`;
 }
