@@ -13,6 +13,7 @@
  */
 import { runCalculator } from '../engineering-core/registry.mjs';
 import { partAabb } from './reconstruct.mjs';
+import { buildAssembly } from './assembly.mjs';
 
 const round = (v, n = 2) => +Number(v).toFixed(n);
 
@@ -329,9 +330,34 @@ export function interiorCheck(assembly, params = {}) {
  * 계획 관경(선언 d)이 소요 DN 미달이면 FAIL — "관경=개산 선언"을 원문 표로 검증하는 폐루프.
  */
 const ROLE_FX = { toilet: '대변기_6L', basin: '세면기', bathtub: '욕조', sink: '주방싱크' };
+// 표 4.1-1 최소 기울기(관지름별) — drainage-vent.mjs SLOPE_MIN 과 동일 출처(1행 규칙)
+const SLOPE_MIN = (dn) => (dn <= 65 ? { s: 1 / 50, label: '1/50' } : dn <= 150 ? { s: 1 / 100, label: '1/100' } : { s: 1 / 200, label: '1/200' });
 export function mepDrainageCheck(assembly) {
   if (!Array.isArray(assembly?.pipes) || !assembly.pipes.length) return null;
   const byId = new Map((assembly.parts ?? []).map((pp) => [pp.id, pp]));
+  // 라우팅 실경로(결정론) — 구배 검증(수평 연장→소요 낙차)·통기 길이에 사용
+  let routes = [];
+  try { routes = buildAssembly(assembly)?.pipes?.routes ?? []; } catch { routes = []; }
+  const routeOf = (id) => routes.find((rt) => rt.label === id);
+  // 구배 검증: 도식 경로는 무구배(z 정렬·코리도 상승 포함)라 "시공 시 필요한 낙차"를 산출해
+  // 대조한다 — 상승 구간이 있으면 PASS 단정 대신 CHECK(실시공은 바닥 구배 배관으로 대체).
+  const slopeOf = (id, dn) => {
+    const rt = routeOf(id);
+    if (!rt) return null;
+    let horiz = 0, rises = false;
+    for (let i = 0; i < rt.pts.length - 1; i++) {
+      const a = rt.pts[i], b = rt.pts[i + 1];
+      if (Math.abs(b[2] - a[2]) < 1e-6) horiz += Math.hypot(b[0] - a[0], b[1] - a[1]);
+      else if (b[2] > a[2]) rises = true;
+    }
+    const sm = SLOPE_MIN(dn);
+    const requiredDropMm = Math.round(horiz * sm.s);
+    const availableDropMm = Math.round(rt.pts[0][2] - rt.pts[rt.pts.length - 1][2]);
+    return {
+      horizontalM: +(horiz / 1000).toFixed(2), minSlope: sm.label, requiredDropMm, availableDropMm, rises,
+      verdict: rises ? 'CHECK' : availableDropMm >= requiredDropMm ? 'PASS' : 'CHECK',
+    };
+  };
   const lines = [];
   const allFixtures = [];
   for (const pipe of assembly.pipes) {
@@ -342,7 +368,7 @@ export function mepDrainageCheck(assembly) {
     allFixtures.push({ type: fx, count: 1 });
     try {
       const r = runCalculator('drainage_vent', { fixtures: [{ type: fx, count: 1 }], segment: 'branch', plannedDN: pipe.d ?? 26 });
-      lines.push({ line: pipe.id, fixture: fx, sumDFU: r.checks.sizing.sumDFU, requiredDN: r.checks.sizing.requiredDN, plannedDN: pipe.d ?? 26, verdict: r.verdict });
+      lines.push({ line: pipe.id, fixture: fx, sumDFU: r.checks.sizing.sumDFU, requiredDN: r.checks.sizing.requiredDN, plannedDN: pipe.d ?? 26, verdict: r.verdict, slope: slopeOf(pipe.id, pipe.d ?? 26) });
     } catch (e) { lines.push({ line: pipe.id, fixture: fx, note: '판정 불가: ' + (e?.message ?? e) }); }
   }
   if (!lines.length) return null;
@@ -355,10 +381,21 @@ export function mepDrainageCheck(assembly) {
       stack = { part: stackPart.id, sumDFU: r.checks.sizing.sumDFU, requiredDN: r.checks.sizing.requiredDN, plannedDN: dn, verdict: r.verdict };
     } catch (e) { stack = { part: stackPart.id, note: '판정 불가: ' + (e?.message ?? e) }; }
   }
+  // 통기 판정(§4.3 하한) — vent 라인: 담당 배수관=PS 스택 지름, 길이=라우팅 실측
+  let vent = null;
+  const ventPipe = assembly.pipes.find((pp) => pp.service === 'vent');
+  if (ventPipe && stackPart) {
+    try {
+      const rt = routeOf(ventPipe.id);
+      const lenM = rt ? +(rt.pts.reduce((s, p, i) => i ? s + Math.hypot(p[0] - rt.pts[i - 1][0], p[1] - rt.pts[i - 1][1], p[2] - rt.pts[i - 1][2]) : 0, 0) / 1000).toFixed(2) : undefined;
+      const r = runCalculator('drainage_vent', { segment: 'vent', ventKind: 'stack_vent', drainDN: stackPart.params?.diameter ?? 100, ...(lenM !== undefined ? { ventLen_m: lenM } : {}), plannedDN: ventPipe.d ?? 32 });
+      vent = { line: ventPipe.id, drainDN: stackPart.params?.diameter ?? 100, requiredDN: r.checks.sizing.requiredDN, plannedDN: ventPipe.d ?? 32, verdict: r.verdict, notes: r.notes };
+    } catch (e) { vent = { line: ventPipe.id, note: '판정 불가: ' + (e?.message ?? e) }; }
+  }
   return {
-    lines, stack,
-    ref: 'KDS 31 30 25 표 4.1-2·4.1-5 (drainage_vent 계산기 — 원문 전사)',
-    note: '기구 1개=지관 1선 단순화 · 구배·트랩·통기 미검토 — 관경 소요치 대조만(비법정).',
+    lines, stack, vent,
+    ref: 'KDS 31 30 25 표 4.1-2·4.1-5(DFU)·표 4.1-1(기울기)·§4.3(통기 하한) — drainage_vent 계산기',
+    note: '기구 1개=지관 1선 단순화 · 구배=도식 경로 기준 소요 낙차 산출(상승 구간=CHECK, 실시공은 바닥 구배 배관) · 트랩 미모델 · 통기=명문 하한(표 4.3-1 매트릭스 보류) — 비법정.',
   };
 }
 

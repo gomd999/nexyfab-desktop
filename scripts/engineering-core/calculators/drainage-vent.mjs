@@ -21,22 +21,50 @@ export default {
   domain: 'interior/plumbing',
   title: '배수관 관지름 (DFU법 — KDS 31 30 25)',
   description: '기구 DFU 합산 → 수평지관·수직관·수평주관 관지름 선정 + 기울기·대변기 게이트.',
-  refs: ['KDS 31 30 25:2021 표 4.1-2(DFU)·표 4.1-5(지관·수직관)·표 4.1-4(수평주관)·표 4.1-1(기울기) — 원문 전사'],
-  status: 'verified — 원문 표 전사(결정론 선정). 통기관 지름(표 4.3-1)·습통기·브랜치간격 상세는 후속',
+  refs: ['KDS 31 30 25:2021 표 4.1-2(DFU)·표 4.1-5(지관·수직관)·표 4.1-4(수평주관)·표 4.1-1(기울기) — 원문 전사', 'KDS 31 30 25 §4.3(1)·(2) 통기관 하한 규칙 — 원문 조항'],
+  status: 'verified — 원문 표 전사(결정론 선정). 통기 표 4.3-1 매트릭스(신정통기 길이 선정)는 원문 병합셀 구조로 신뢰 전사 불가 — 명문 하한만 구현(정직 보류)·습통기·브랜치간격 상세는 후속',
   inputSchema: {
     type: 'object',
-    required: ['fixtures', 'segment'],
+    required: ['segment'],
     properties: {
-      fixtures: { description: '기구 [{type(표 4.1-2 키), count}] — 키: ' + Object.keys(DFU).join('·') },
+      fixtures: { description: '기구 [{type(표 4.1-2 키), count}] — 키: ' + Object.keys(DFU).join('·') + ' (segment branch/stack/main 필수)' },
       building: { enum: ['general', 'apartment'], description: '건물 구분 (표 4.1-2 열 — 기본 general. 공동주택 미규정 기구는 일반값 폴백 명시)' },
-      segment: { enum: ['branch', 'stack', 'main'], description: '구간 (수평지관/수직관/수평주관)' },
+      segment: { enum: ['branch', 'stack', 'main', 'vent'], description: '구간 (수평지관/수직관/수평주관/통기관)' },
       floors: { type: 'integer', minimum: 1, maximum: 100, description: '층수 (수직관 — 3층 이하/4층+ 표 구분)' },
       slope: { enum: ['1/200', '1/100', '1/50'], description: '수평주관 기울기 (표 4.1-4 열)' },
       hasWC: { type: 'boolean', description: '대변기 포함 여부 (수평주관 최소 DN80 — 표 4.1-4 주1)' },
       plannedDN: { type: 'number', description: '계획 관지름 (판정용)' },
+      drainDN: { type: 'number', description: '통기(vent): 담당 배수관 지름 DN' },
+      ventLen_m: { type: 'number', minimum: 0, description: '통기(vent): 배관길이 m (각개·지관·루프·도피 — ≥12 m 시 한 단계 업, §4.3(2))' },
+      ventKind: { enum: ['stack_vent', 'individual'], description: '통기 종류: stack_vent=신정통기·통기수직관(1/2 초과) / individual=각개·지관·루프·도피(1/2 이상)' },
     },
   },
   run(input) {
+    // 통기관(§4.3) — 명문 하한 규칙만. 표 4.3-1(신정통기 길이·DFU 매트릭스)은 원문이 병합 셀
+    // 구조라 신뢰 전사 불가 → 날조 대신 정직 보류(비전 판독 후속). PASS=하한 충족이며,
+    // 신정통기·통기수직관은 표 4.3-1 정밀 선정에서 더 커질 수 있음을 notes 로 명시.
+    if (input.segment === 'vent') {
+      const DN_SERIES = [32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 380];
+      const drainDN = Number(input.drainDN);
+      if (!(drainDN > 0)) throw new Error('input gate: drainDN(담당 배수관 지름) 필요');
+      const kind = input.ventKind === 'individual' ? 'individual' : 'stack_vent';
+      const half = drainDN / 2;
+      let dn = DN_SERIES.find((d) => (kind === 'stack_vent' ? d > half : d >= half)) ?? DN_SERIES[DN_SERIES.length - 1];
+      if (dn < 32) dn = 32;
+      const notes = [`§4.3(${kind === 'stack_vent' ? '1' : '2'}) 하한: 담당 배수관 DN${drainDN}의 1/2${kind === 'stack_vent' ? ' 초과' : ' 이상'} · 최소 DN32 → DN${dn}.`];
+      if (kind === 'individual' && Number(input.ventLen_m) >= 12) {
+        dn = DN_SERIES[Math.min(DN_SERIES.indexOf(dn) + 1, DN_SERIES.length - 1)];
+        notes.push(`배관길이 ${input.ventLen_m} m ≥ 12 m → 한 단계 큰 지름 DN${dn} (§4.3(2)).`);
+      }
+      if (kind === 'stack_vent') notes.push('⚠ 신정통기·통기수직관의 표 4.3-1(길이·DFU 매트릭스) 정밀 선정은 보류 — 여기 판정은 명문 하한 충족 여부만(실소요는 더 커질 수 있음).');
+      const dnPass = Number(input.plannedDN) > 0 ? input.plannedDN >= dn : null;
+      return {
+        verdict: dnPass === null ? 'INFO' : dnPass ? 'PASS' : 'FAIL',
+        checks: { sizing: { requiredDN: dn, basis: `KDS 31 30 25 §4.3 하한(${kind})`, ...(dnPass !== null ? { plannedDN: input.plannedDN, pass: dnPass } : {}) } },
+        notes,
+      };
+    }
+    if (!Array.isArray(input.fixtures)) throw new Error('input gate: fixtures 필요 (segment branch/stack/main)');
     const bIdx = (input.building ?? 'general') === 'apartment' ? 1 : 0;
     let sum = 0;
     const rows = input.fixtures.map((fx, i) => {

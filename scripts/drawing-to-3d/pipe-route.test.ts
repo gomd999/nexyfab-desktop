@@ -371,6 +371,43 @@ describe('제안 배치 — BOQ 배관 물량·rc_frame 입상관·DFU 폐루프
   });
 });
 
+import { landscapeCheck } from './landscape-check.mjs';
+import { runCalculator } from '../engineering-core/registry.mjs';
+
+describe('잔여 제안 3건 — 통기 하한·구배 검증·관수 체인', () => {
+  it('drainage_vent segment=vent: 신정통기 하한(1/2 초과·DN32↑) — DN100 스택 → DN65', () => {
+    const r = runCalculator('drainage_vent', { segment: 'vent', ventKind: 'stack_vent', drainDN: 100, plannedDN: 65 });
+    expect(r.checks.sizing.requiredDN).toBe(65);
+    expect(r.verdict).toBe('PASS');
+    // 표 4.3-1 매트릭스 보류를 정직 고지
+    expect(r.notes.join(' ')).toContain('표 4.3-1');
+  });
+  it('drainage_vent vent(individual): 12 m 이상이면 한 단계 업(§4.3(2))', () => {
+    const r = runCalculator('drainage_vent', { segment: 'vent', ventKind: 'individual', drainDN: 50, ventLen_m: 15, plannedDN: 32 });
+    expect(r.checks.sizing.requiredDN).toBe(40); // 1/2 이상=DN32 → 12m 업 → DN40
+    expect(r.verdict).toBe('FAIL');
+  });
+  it('mepDrainageCheck: 통기 PASS + 구배(표 4.1-1) 소요 낙차 산출·도식 무구배=CHECK', () => {
+    const m = mepDrainageCheck(buildAssemblyTemplate('interior', 'studio_unit', {}));
+    expect(m.vent).toMatchObject({ requiredDN: 65, plannedDN: 65, verdict: 'PASS' });
+    const sl = m.lines.find((l) => l.line === 'drain_toilet')?.slope;
+    expect(sl.requiredDropMm).toBeGreaterThan(0);
+    expect(['PASS', 'CHECK']).toContain(sl.verdict);
+  });
+  it('파고라 관수 체인: 유량 미입력=정직 INPUT_GATE, 입력 시 pump_head 전양정·동력', () => {
+    const pg = buildAssemblyTemplate('landscape', 'pergola', {});
+    const built = buildAssembly(pg);
+    expect(built.pipes.errors).toEqual([]);
+    expect(built.designOk).toBe(true);
+    const gate = landscapeCheck(pg, {});
+    expect(gate.irrigation.needInputs).toBeTruthy();
+    expect(gate.irrigation.derived.staticHead_m).toBeGreaterThan(2);
+    const run = landscapeCheck(pg, { irrigationQ_Lmin: 30, pumpEfficiency: 0.6 });
+    expect(run.irrigation.head.total_m).toBeGreaterThan(run.irrigation.head.static_m);
+    expect(run.irrigation.power.shaftPower_kW).toBeGreaterThan(0);
+  });
+});
+
 describe('인테리어 MEP — 기계 배관 어휘의 도메인 적용(욕실·주방 급배수)', () => {
   for (const t of ['studio_unit', 'apartment_unit', 'three_room_unit']) {
     it(`${t}: 전 라인 라우팅 완주 · 위반 0 · designOk`, () => {

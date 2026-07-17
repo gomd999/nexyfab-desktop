@@ -9,9 +9,9 @@ import { structuralCheck } from './structural.mjs';
 import { colorOf, COLOR_LABEL, buildAssembly } from './assembly.mjs';
 
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-const SERVICE_KO = { feed: '피드/입수', hp: '고압', permeate: '투과/출수', concentrate: '농축/드레인', motor: '구동(펌프·모터)', panel: '제어', frame: '프레임/구조', sludge: '슬러지', supply: '급수(MEP)', drain: '배수(MEP)', stack: 'PS/입상관' };
+const SERVICE_KO = { feed: '피드/입수', hp: '고압', permeate: '투과/출수', concentrate: '농축/드레인', motor: '구동(펌프·모터)', panel: '제어', frame: '프레임/구조', sludge: '슬러지', supply: '급수(MEP)', drain: '배수(MEP)', vent: '통기(MEP)', stack: 'PS/입상관' };
 // 부품 → 계통 키 (colorOf 색을 역매핑)
-const COL_SVC = { '#2563eb': 'feed', '#dc2626': 'hp', '#0891b2': 'permeate', '#ea580c': 'concentrate', '#4d7c0f': 'motor', '#59606b': 'panel', '#3f4756': 'frame', '#5b6472': 'frame', '#8a5a2b': 'sludge', '#0284c7': 'supply', '#92400e': 'drain', '#7c2d12': 'stack' };
+const COL_SVC = { '#2563eb': 'feed', '#dc2626': 'hp', '#0891b2': 'permeate', '#ea580c': 'concentrate', '#4d7c0f': 'motor', '#59606b': 'panel', '#3f4756': 'frame', '#5b6472': 'frame', '#8a5a2b': 'sludge', '#0284c7': 'supply', '#92400e': 'drain', '#0d9488': 'vent', '#7c2d12': 'stack' };
 const svcOf = (p) => COL_SVC[colorOf(p)] || 'equipment';
 
 function groupBySvc(parts) {

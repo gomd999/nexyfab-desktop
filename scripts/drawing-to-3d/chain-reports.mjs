@@ -134,9 +134,22 @@ ${checksTable(r.board.checks)}<div class="note">${esc(r.board.note)}</div>` : ''
 <tr><td>X풍</td><td>${f(w.x.areaM2)}</td><td>${f(w.x.F_kN)}</td><td>${f(w.x.zc_m)}</td><td>${f(w.x.Mo_kNm)}</td><td>${f(w.x.Mr_kNm)}</td><td>${f(w.x.FS)}</td></tr>
 <tr><td>Y풍</td><td>${f(w.y.areaM2)}</td><td>${f(w.y.F_kN)}</td><td>${f(w.y.zc_m)}</td><td>${f(w.y.Mo_kNm)}</td><td>${f(w.y.Mr_kNm)}</td><td>${f(w.y.FS)}</td></tr></table>
 <div class="note">${esc(w.fsNote)} · ${esc(w.method)}</div>`;
+  const ir = r.irrigation;
+  const irrSec = !ir ? '' : ir.error ? `<h2>③ 관수 체인</h2><div class="honest">${esc(ir.error)}</div>` : ir.needInputs ? `
+<h2>③ 관수 체인 (pump_head)</h2>
+<table><tr><th>정수두(형상)</th><th>관 연장(라우팅 실측)</th><th>관경</th></tr>
+<tr><td>${ir.derived.staticHead_m} m</td><td>${ir.derived.pipeLen_m} m</td><td>DN${ir.derived.pipeDia_mm}</td></tr></table>
+<div class="honest">입력 필요: ${ir.needInputs.map(esc).join(', ')} — ${esc(ir.note)}</div>` : `
+<h2>③ 관수 체인 (pump_head — 전양정·동력)</h2>
+<div class="kpi"><div><b>${f(ir.head.total_m, 2)} m</b><span>전양정</span></div>
+<div><b>${f(ir.power.waterPower_kW, 3)} kW</b><span>수동력${ir.power.shaftPower_kW ? ` · 축동력 ${f(ir.power.shaftPower_kW, 3)}kW` : ''}</span></div>
+<div><b>${f(ir.velocity_ms, 2)} m/s</b><span>유속</span></div></div>
+<table><tr><th>정수두</th><th>마찰(H-W)</th><th>부차</th><th>잔류</th><th>관 연장</th><th>관경</th></tr>
+<tr><td>${ir.head.static_m} m</td><td>${ir.head.friction_m} m</td><td>${ir.head.minor_m} m</td><td>${ir.head.residual_m} m</td><td>${ir.derived.pipeLen_m} m</td><td>DN${ir.derived.pipeDia_mm}</td></tr></table>
+<div class="note">${(ir.notes ?? []).map(esc).join('<br>')} · ${esc(ir.derived.diaNote)}</div>`;
   return SHELL(`${title} — 목재 부재·풍하중`, 'nexyfab · KDS 41 50 10 허용응력×CD×CM(습윤) · 단면·스팬·간격=형상 파생', `
 ${netSection(net, rev)}
-${memberSec}${connSec}${boardSec}${windSec}
+${memberSec}${connSec}${boardSec}${windSec}${irrSec}
 <div class="honest">⚠ ${esc(r.disclaimer)}</div>
 <div class="note">근거: ${(r.refs ?? []).map(esc).join(' · ')}</div>`);
 }
@@ -184,13 +197,18 @@ function mepSec(r) {
 /** MEP 배수 DFU 판정 섹션 (interior-check mepDrainageCheck 결과 — KDS 31 30 25) */
 function dfuSec(m) {
   if (!m) return '';
+  const slopeCell = (s) => !s ? '—' : `${s.horizontalM}m·${s.minSlope} → 낙차 ${s.requiredDropMm}mm${s.rises ? ' (도식 상승구간)' : ` / 가용 ${s.availableDropMm}mm`} ${V(s.verdict)}`;
   const rows = m.lines.map((l) => l.note
-    ? `<tr><td>${esc(l.line)}</td><td colspan="4" style="text-align:left;color:#92400e">${esc(l.note)}</td></tr>`
-    : `<tr><td>${esc(l.line)}</td><td>${esc(l.fixture)}</td><td>${l.sumDFU}</td><td>DN${l.requiredDN}</td><td>DN${l.plannedDN} → ${V(l.verdict)}</td></tr>`).join('');
+    ? `<tr><td>${esc(l.line)}</td><td colspan="5" style="text-align:left;color:#92400e">${esc(l.note)}</td></tr>`
+    : `<tr><td>${esc(l.line)}</td><td>${esc(l.fixture)}</td><td>${l.sumDFU}</td><td>DN${l.requiredDN}</td><td>DN${l.plannedDN} → ${V(l.verdict)}</td><td style="font-size:10px">${slopeCell(l.slope)}</td></tr>`).join('');
   const st = !m.stack ? '' : m.stack.note
     ? `<div class="honest">수직관: ${esc(m.stack.note)}</div>`
     : `<table><tr><th>수직관(PS)</th><th>ΣDFU</th><th>소요</th><th>계획</th><th>판정</th></tr><tr><td>${esc(m.stack.part)}</td><td>${m.stack.sumDFU}</td><td>DN${m.stack.requiredDN}</td><td>DN${m.stack.plannedDN}</td><td>${V(m.stack.verdict)}</td></tr></table>`;
-  return `<h2>④b 배수 관경 DFU 판정</h2><table><tr><th>라인</th><th>기구</th><th>DFU</th><th>소요 DN</th><th>계획 DN·판정</th></tr>${rows}</table>${st}<div class="note">${esc(m.note)} · ${esc(m.ref)}</div>`;
+  const vt = !m.vent ? '' : m.vent.note
+    ? `<div class="honest">통기: ${esc(m.vent.note)}</div>`
+    : `<table><tr><th>통기관(신정)</th><th>담당 배수관</th><th>하한 소요</th><th>계획</th><th>판정</th></tr><tr><td>${esc(m.vent.line)}</td><td>DN${m.vent.drainDN}</td><td>DN${m.vent.requiredDN}</td><td>DN${m.vent.plannedDN}</td><td>${V(m.vent.verdict)}</td></tr></table>
+<div class="note">${(m.vent.notes ?? []).map(esc).join('<br>')}</div>`;
+  return `<h2>④b 배수 관경 DFU·구배·통기 판정</h2><table><tr><th>라인</th><th>기구</th><th>DFU</th><th>소요 DN</th><th>계획 DN·판정</th><th>구배(표 4.1-1)</th></tr>${rows}</table>${st}${vt}<div class="note">${esc(m.note)} · ${esc(m.ref)}</div>`;
 }
 
 export function interiorReport(r, { title = '피난·마감 검증', svg = '', net = null, rev = '' } = {}) {

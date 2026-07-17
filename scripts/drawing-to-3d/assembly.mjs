@@ -24,8 +24,8 @@ import { autoRoutePipes, pipeObstacleCheck, pipeCrossCheck } from './pipe-route.
 // 부품 → 계통색 (service/role 우선, 없으면 type). 계통색 GA 3D·도면 색분류 공용.
 export const SERVICE_COL = {
   feed: '#2563eb', hp: '#dc2626', permeate: '#0891b2', concentrate: '#ea580c', inlet: '#2563eb', outlet: '#0891b2', frame: '#3f4756', motor: '#4d7c0f', panel: '#59606b', sludge: '#8a5a2b',
-  // 건축설비 MEP(위시빌더 배관 어휘의 비기계 적용): 급수·배수
-  supply: '#0284c7', drain: '#92400e',
+  // 건축설비 MEP(위시빌더 배관 어휘의 비기계 적용): 급수·배수·통기
+  supply: '#0284c7', drain: '#92400e', vent: '#0d9488',
   // 비-기계 role (#6): 건축·조경·인테리어 부재 계통색
   column: '#475569', beam: '#0e7490', slab: '#94a3b8', joist: '#854d0e', deck: '#a16207', floor: '#d1d5db', table: '#0f766e', counter: '#7c3aed', wall: '#78716c', base: '#57534e',
   stack: '#7c2d12',
@@ -49,7 +49,7 @@ export const colorOf = (p) => (p.service && SERVICE_COL[p.service]) || (p.role &
 export const COLOR_LABEL = {
   '#2563eb': '피드/입수', '#dc2626': '고압', '#0891b2': '투과/출수', '#ea580c': '농축', '#4d7c0f': '모터/펌프', '#3f4756': '프레임', '#59606b': '제어반', '#5b6472': '구조', '#9aa7b5': '용기/부품', '#8b98a6': '브래킷', '#78838f': '플랜지', '#8a5a2b': '슬러지',
   '#475569': '기둥', '#0e7490': '보', '#94a3b8': '슬래브', '#854d0e': '장선/서까래', '#a16207': '데크/기어', '#d1d5db': '바닥', '#0f766e': '테이블', '#7c3aed': '카운터', '#78716c': '벽체', '#6b7280': '볼트/체결', '#57534e': '기초/저판',
-  '#0284c7': '급수', '#92400e': '배수', '#7c2d12': 'PS/스택',
+  '#0284c7': '급수', '#92400e': '배수', '#0d9488': '통기', '#7c2d12': 'PS/스택',
 };
 
 const DEG = Math.PI / 180;

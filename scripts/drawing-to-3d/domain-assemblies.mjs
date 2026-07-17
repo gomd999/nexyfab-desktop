@@ -73,7 +73,11 @@ function pergolaAssembly(p) {
     const x = (W / (nR - 1)) * k;
     parts.push(P(`rafter${k + 1}`, 'box', { width: rw, depth: D + 2 * oh, height: rh }, { tx: x - rw / 2, ty: -oh, tz: H + gh }, 'timber', 'joist'));
   }
-  return { name: '목재 파고라', domain: 'landscape', parts };
+  // 관수 라인(MEP 확산) — 지중 인입(원시좌표)→입상→서까래 상부 살수 런. 유량·헤드=사양 입력
+  // (landscape-check 관수 체인이 pump_head 로 전양정·동력 산출 — 지어내지 않음).
+  const irr = Math.round(num(p.irrigation, 1));
+  const pipes = irr > 0 ? [{ id: 'irr_line', from: [-500, D / 2, -300], to: [W + oh + 100, D / 2, H + gh + rh + 80], d: 25, service: 'supply' }] : [];
+  return { name: '목재 파고라', domain: 'landscape', parts, ...(pipes.length ? { pipes } : {}) };
 }
 
 /** 조경: 목재 데크 — 장선 N(Y방향) + 데크보드 M(X방향, 5mm 갭). */
@@ -301,7 +305,11 @@ function bathMEP(prefix, bx, by, bathW, bathD, { hasTub = false, wallT = 150, si
   const pipes = [
     { id: 'drain_toilet', from: `${prefix}_toilet.x+`, to: { part: 'ps_stack', face: 'x-', offset: [0, 0, -1140] }, d: 75, service: 'drain' },
     { id: 'drain_basin', from: `${prefix}_basin.x+`, to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -940] }, d: 50, service: 'drain' },
-    { id: 'supply_basin', from: 'ps_stack.z+', to: `${prefix}_basin.z+`, d: 20, service: 'supply' },
+    // 급수 입상 — 지면 인입(원시좌표, PS 샤프트 병설 y+측)에서 상승. 스택 z+ 포트 공유는
+    // 통기와 수직 중첩(교차 위반)·x+측은 싱크 하강선과 근접이라 y+ 후면으로 분리.
+    { id: 'supply_basin', from: [sx, sy + 200, 0], to: `${prefix}_basin.z+`, d: 20, service: 'supply' },
+    // 신정통기 — 스택 상단 연장(지붕 위 대기 개방 개념). DN65 = §4.3(1) 하한(DN100의 1/2 초과).
+    { id: 'vent_stack', from: 'ps_stack.z+', to: [sx, sy, 3400], d: 65, service: 'vent' },
   ];
   if (hasTub) pipes.push({ id: 'drain_tub', from: `${prefix}_tub.x+`, to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -1075] }, d: 50, service: 'drain' });
   if (sinkId) pipes.push({ id: 'drain_sink', from: `${sinkId}.z-`, to: { part: 'ps_stack', face: 'x+', offset: [0, 0, -900] }, d: 50, service: 'drain' });

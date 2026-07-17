@@ -15,6 +15,7 @@
 import { runCalculator, loadStandards } from '../engineering-core/registry.mjs';
 import { partVolume, DENSITY } from './structural.mjs';
 import { partAabb } from './reconstruct.mjs';
+import { buildAssembly } from './assembly.mjs';
 
 const standards = loadStandards();
 const G = 9.81;
@@ -206,9 +207,43 @@ export function landscapeCheck(assembly, params = {}) {
     wind = { skipped: true, note: 'windPressure_kNm2 미입력 — 전도 검토 생략(풍압을 지어내지 않음). KDS 41 12 00 5장 또는 프로젝트 기준으로 산정해 입력.' };
   }
 
+  // 관수 체인(MEP 확산): supply 배관 형상(정수두·연장=라우터 결정론 실측) + 유량·헤드(제품
+  // 사양 입력 — 지어내지 않음) → pump_head 전양정·동력. 관경은 선언 d(외경 개산) 사용 명시.
+  let irrigation = null;
+  const supplyPipes = Array.isArray(assembly?.pipes) ? assembly.pipes.filter((pp) => pp.service === 'supply') : [];
+  if (supplyPipes.length) {
+    try {
+      const routes = (buildAssembly(assembly)?.pipes?.routes ?? []).filter((rt) => supplyPipes.some((sp) => sp.id === rt.label));
+      if (routes.length) {
+        let len = 0, zmin = Infinity, zmax = -Infinity;
+        for (const rt of routes) for (let i = 0; i < rt.pts.length; i++) {
+          const p = rt.pts[i];
+          if (i) len += Math.hypot(p[0] - rt.pts[i - 1][0], p[1] - rt.pts[i - 1][1], p[2] - rt.pts[i - 1][2]);
+          zmin = Math.min(zmin, p[2]); zmax = Math.max(zmax, p[2]);
+        }
+        const derived = { staticHead_m: +((zmax - zmin) / 1000).toFixed(2), pipeLen_m: +(len / 1000).toFixed(2), pipeDia_mm: routes[0].d, diaNote: '선언 관경(외경 개산 — 내경 입력 시 정밀)' };
+        const Q = Number(params.irrigationQ_Lmin);
+        const heads = Array.isArray(params.irrigationHeads) ? params.irrigationHeads : null;
+        if (!(Q > 0) && !heads) {
+          irrigation = { needInputs: ['irrigationQ_Lmin (또는 irrigationHeads[{q_Lmin,minP_kPa}])'], derived, note: '유량·헤드=제품 사양 입력 — 지어내지 않음. 입력 시 pump_head 전양정·수동력 산출.' };
+        } else {
+          const r = runCalculator('pump_head', {
+            Q_Lmin: Q > 0 ? Q : 1, staticHead_m: derived.staticHead_m, pipeDia_mm: derived.pipeDia_mm, pipeLen_m: derived.pipeLen_m,
+            ...(heads ? { heads } : {}),
+            ...(Number(params.hwC) > 0 ? { hwC: +params.hwC } : {}),
+            ...(Number(params.sumK) > 0 ? { sumK: +params.sumK } : {}),
+            ...(Number(params.residualHead_m) > 0 ? { residualHead_m: +params.residualHead_m } : {}),
+            ...(Number(params.pumpEfficiency) > 0 ? { efficiency: +params.pumpEfficiency } : {}),
+          });
+          irrigation = { derived, head: r.checks.head, power: r.checks.power, velocity_ms: r.intermediate.velocity_ms, notes: r.notes };
+        }
+      }
+    } catch (e) { irrigation = { error: '관수 체인 실패: ' + (e?.message ?? e) }; }
+  }
+
   return {
     ok: true,
-    member, connection, board, wind,
+    member, connection, board, wind, irrigation,
     refs: ['KDS 41 50 10:2022 (허용응력·CD·CM)', 'KDS 41 12 00:2022 표 3.2-1 (활하중)', 'KDS 41 50 30:2022 (접합부 — 못·볼트)'],
     disclaimer: '개념 검토(비법정) — 단순지지·대표부재·강체전도 근사. CM(습윤)·CF·CL 미적용(v1). 실시설계는 구조기술사 검토 필요.' + (unverifiedParts.length ? ` ⚠ 비검증 직접편집 파츠 ${unverifiedParts.length}개는 구조 검토에서 제외됨(P4 라벨) — 해당 형상의 안전은 별도 확인 필요.` : ''),
   };
