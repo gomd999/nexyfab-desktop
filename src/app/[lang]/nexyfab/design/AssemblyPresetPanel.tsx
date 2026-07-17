@@ -28,7 +28,7 @@ const dict = {
     buildBtn: '어셈블리 생성',
     builtParts: '생성됨 · 부재 ',
     clash: '간섭',
-    floating: '부유', faceContact: '면접촉(매립 권장)', pipeBad: '배관 위반', pipeOk: '배관', sleeve: '슬리브',
+    advTitle: '고급 입력(JSON — 선형·곡선·구조물·등고·토공·배관)', advHint: '숫자 폼과 병합 · 게이트 거부 문구가 그대로 오류로 표시됩니다', advBad: 'JSON 객체가 필요합니다', floating: '부유', faceContact: '면접촉(매립 권장)', pipeBad: '배관 위반', pipeOk: '배관', sleeve: '슬리브',
     failed: '실패: ',
     packaging: '패키지 생성 중…',
     pkgBtn: '📦 설계 패키지 다운로드',
@@ -256,7 +256,7 @@ const dict = {
     buildBtn: 'Build assembly',
     builtParts: 'Built · parts ',
     clash: 'clash',
-    floating: 'floating', faceContact: 'face-contact (embed advised)', pipeBad: 'pipe violations', pipeOk: 'pipes', sleeve: 'sleeves',
+    advTitle: 'Advanced input (JSON — alignment·curves·structures·contours·earthwork·pipes)', advHint: 'Merged with numeric form · gate refusals shown verbatim', advBad: 'A JSON object is required', floating: 'floating', faceContact: 'face-contact (embed advised)', pipeBad: 'pipe violations', pipeOk: 'pipes', sleeve: 'sleeves',
     failed: 'Failed: ',
     packaging: 'Packaging…',
     pkgBtn: '📦 Download design package',
@@ -479,7 +479,7 @@ const dict = {
     buildBtn: 'アセンブリ生成',
     builtParts: '生成完了 · 部材 ',
     clash: '干渉',
-    floating: '浮遊', faceContact: '面接触（埋込推奨）', pipeBad: '配管違反', pipeOk: '配管', sleeve: 'スリーブ',
+    advTitle: '高度な入力（JSON — 線形・曲線・構造物・等高・土工・配管）', advHint: '数値フォームと結合・ゲート拒否文をそのまま表示', advBad: 'JSONオブジェクトが必要です', floating: '浮遊', faceContact: '面接触（埋込推奨）', pipeBad: '配管違反', pipeOk: '配管', sleeve: 'スリーブ',
     failed: '失敗: ',
     packaging: 'パッケージ生成中…',
     pkgBtn: '📦 設計パッケージをダウンロード',
@@ -702,7 +702,7 @@ const dict = {
     buildBtn: '生成装配体',
     builtParts: '已生成 · 部件 ',
     clash: '干涉',
-    floating: '悬空', faceContact: '面接触（建议嵌入）', pipeBad: '管路违规', pipeOk: '管路', sleeve: '套管',
+    advTitle: '高级输入（JSON — 线形·曲线·构造物·等高·土方·管路）', advHint: '与数值表单合并·门禁拒绝原文显示', advBad: '需要 JSON 对象', floating: '悬空', faceContact: '面接触（建议嵌入）', pipeBad: '管路违规', pipeOk: '管路', sleeve: '套管',
     failed: '失败: ',
     packaging: '正在生成设计包…',
     pkgBtn: '📦 下载设计包',
@@ -925,7 +925,7 @@ const dict = {
     buildBtn: 'Generar ensamblaje',
     builtParts: 'Generado · piezas ',
     clash: 'interferencia',
-    floating: 'flotante', faceContact: 'contacto plano (empotrar)', pipeBad: 'violaciones de tubería', pipeOk: 'tuberías', sleeve: 'pasamuros',
+    advTitle: 'Entrada avanzada (JSON)', advHint: 'Se combina con el formulario · rechazos de puerta mostrados tal cual', advBad: 'Se requiere un objeto JSON', floating: 'flotante', faceContact: 'contacto plano (empotrar)', pipeBad: 'violaciones de tubería', pipeOk: 'tuberías', sleeve: 'pasamuros',
     failed: 'Error: ',
     packaging: 'Empaquetando…',
     pkgBtn: '📦 Descargar paquete de diseño',
@@ -1148,7 +1148,7 @@ const dict = {
     buildBtn: 'إنشاء التجميع',
     builtParts: 'تم الإنشاء · الأجزاء ',
     clash: 'تداخل',
-    floating: 'معلّق', faceContact: 'تلامس سطحي (يُنصح بالدمج)', pipeBad: 'مخالفات الأنابيب', pipeOk: 'أنابيب', sleeve: 'جلبة عبور',
+    advTitle: 'إدخال متقدم (JSON)', advHint: 'يُدمج مع النموذج الرقمي · تُعرض رسائل الرفض كما هي', advBad: 'مطلوب كائن JSON', floating: 'معلّق', faceContact: 'تلامس سطحي (يُنصح بالدمج)', pipeBad: 'مخالفات الأنابيب', pipeOk: 'أنابيب', sleeve: 'جلبة عبور',
     failed: 'فشل: ',
     packaging: 'جارٍ إنشاء الحزمة…',
     pkgBtn: '📦 تنزيل حزمة التصميم',
@@ -1526,6 +1526,8 @@ export default function AssemblyPresetPanel({
   const [tid, setTid] = useState('');
   const [params, setParams] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
+  const [advJson, setAdvJson] = useState('');
+  const [advErr, setAdvErr] = useState<string | null>(null);
   const [pkgBusy, setPkgBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [built, setBuilt] = useState<BuildResp | null>(null);
@@ -1994,12 +1996,19 @@ export default function AssemblyPresetPanel({
 
   const generate = useCallback(async () => {
     if (!tid) return;
+    // §C-v1 고급 입력(JSON) 병합 — 파싱 실패는 정직하게 필드 오류로(빌드 강행 금지)
+    let adv: Record<string, unknown> = {};
+    if (advJson.trim()) {
+      try { adv = JSON.parse(advJson) as Record<string, unknown>; }
+      catch (e) { setAdvErr(`JSON: ${e instanceof Error ? e.message : String(e)}`); return; }
+      if (typeof adv !== 'object' || adv === null || Array.isArray(adv)) { setAdvErr(t.advBad); return; }
+    }
     setBusy(true); setMsg(null); setBuilt(null);
     try {
       const res = await fetch('/api/nexyfab/drawing/preset/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         // Round4: 인테리어 자유배치 가구는 같은 빌드 파라미터에 동봉 — 형상·검증이 그대로 추종
-        body: JSON.stringify({ kind: 'assembly', domain, templateId: tid, params: { ...params, ...(furn ? { customFurniture: furn } : {}) } }),
+        body: JSON.stringify({ kind: 'assembly', domain, templateId: tid, params: { ...params, ...adv, ...(furn ? { customFurniture: furn } : {}) } }),
       });
       const data = (await res.json()) as BuildResp;
       if (data.ok && data.composeIntent && data.openscad) {
@@ -2025,7 +2034,7 @@ export default function AssemblyPresetPanel({
     } finally {
       setBusy(false);
     }
-  }, [tid, params, furn, onApply, t, domain]);
+  }, [tid, params, furn, advJson, onApply, t, domain]);
 
   // 면 편집 디바운스 리빌드가 항상 최신 generate(최신 params 클로저)를 부르도록 유지
   useEffect(() => { generateRef.current = generate; }, [generate]);
@@ -2778,6 +2787,25 @@ export default function AssemblyPresetPanel({
               </label>
             ))}
           </div>
+        </details>
+      )}
+
+      {tpl && (
+        // §C-v1 고급 입력(JSON) — 배열 파라미터(ips·curves·structures·contours·siteBoundary·
+        // profileGround·earthwork·pipes) 입력 수단. 스키마 오류=게이트 문구 그대로 표시.
+        <details style={{ margin: '4px 0 2px' }}>
+          <summary style={{ fontSize: 11, fontWeight: 700, cursor: 'pointer', color: 'var(--nx-text-2, #46505e)' }}>
+            {t.advTitle}
+          </summary>
+          <textarea
+            value={advJson}
+            onChange={(e) => { setAdvJson(e.target.value); setAdvErr(null); }}
+            placeholder={'{ "ips": [[0,0],[120000,0]], "curves": [{"ip":1,"R":30000}], "structures": [{"sta":60000,"type":"culvert"}], "contours": [...], "earthwork": {"formationElevM":6,"widthM":3,"slopeN":1.5} }'}
+            spellCheck={false}
+            style={{ width: '100%', minHeight: 84, fontFamily: 'ui-monospace, monospace', fontSize: 11, padding: 8, borderRadius: 8, border: '1px solid var(--nx-line, #d6dbe3)', background: 'var(--nx-bg-1, #fff)', color: 'inherit', marginTop: 6 }}
+          />
+          {advErr && <div style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>⚠ {advErr}</div>}
+          <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginTop: 2 }}>{t.advHint}</div>
         </details>
       )}
 

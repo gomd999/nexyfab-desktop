@@ -373,7 +373,7 @@ describe('제안 배치 — BOQ 배관 물량·rc_frame 입상관·DFU 폐루프
 
 import { landscapeCheck } from './landscape-check.mjs';
 import { runCalculator } from '../engineering-core/registry.mjs';
-import { ga2dDrawing, fmtLen, pickScale, staLabel } from './package.mjs';
+import { ga2dDrawing, fmtLen, pickScale, staLabel, packageStamp, packageConsistencyCheck } from './package.mjs';
 
 import { obbOverlap, boxPartsInterference } from './obb2d.mjs';
 import { buildElements, chainAt, intersectSegment, groundFromContours } from './alignment-geom.mjs';
@@ -465,6 +465,27 @@ describe('무결성 규약 0단계 — OBB-SAT·chainage 요소열 (폐형 앵�
     expect(html).toContain('3120.0');
     const omitted = ga2dDrawing(buildAssemblyTemplate('civil', 'retaining_wall_alignment', { contours }), { title: 'e2', domain: 'civil' });
     expect(omitted).toContain('입력 필요 — earthwork');
+  });
+  it('5단계 도면집: 시트 레지스트리·목록표·윈도 무결·REV — 역방향 게이트 all-ok (§2)', () => {
+    const asm = buildAssemblyTemplate('civil', 'retaining_wall_alignment', {
+      ips: [[0, 0], [500000, 0], [900000, 300000], [1200000, 300000]],
+      curves: [{ ip: 1, R: 150000 }, { ip: 2, R: 100000 }],
+      structures: [{ sta: 250000, type: 'culvert', params: { cover: 1.5, gammaSoil: 19, K: 0.5 } }],
+    });
+    const built = buildAssembly(asm);
+    expect(built.interferences).toEqual([]);
+    const html = ga2dDrawing(asm, { title: 'd', domain: 'civil' });
+    const dwgs = [...html.matchAll(/data-dwg="([^"]+)"/g)].map((m) => m[1]);
+    expect(new Set(dwgs).size).toBe(dwgs.length); // 도번 유일
+    expect(html).toContain('도면 목록표');
+    expect(html).toContain('일반주기');
+    expect(html).toContain('box_culvert_frame'); // 일람 체인
+    expect(html).toContain('KDS'); // 일반주기 = 실행 계산기 refs 만
+    const files = [{ name: 'GA_2D_drawing.html', content: packageStamp(html, { rev: 'r5test00', massKg: built.structural.totalMassKg, env: [1, 1, 1], parts: asm.parts.length }) }];
+    const cons = packageConsistencyCheck(files, { rev: 'r5test00', massKg: 0, env: [0, 0, 0], parts: 0 }, { alignment: asm.alignment });
+    for (const c of cons.checks.filter((q) => ['도번 유일성', '목록표 매수=실시트(GA 본시트 +1)', '상세 시트 윈도 무결(틈·겹침 0)', 'REV 스탬프 채움'].includes(q.metric))) {
+      expect(c.pass).toBe(true);
+    }
   });
   // §G 무작위 기하 감사 — 결정론 PRNG(시드 재현), 불변식: 게이트 통과·Σ요소장=총연장·
   // 접선 연속·곡선표 원값 자기정합 (100케이스) + 실빌드 OBB 간섭 0 (10케이스)

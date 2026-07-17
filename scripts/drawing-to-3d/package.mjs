@@ -5,7 +5,7 @@
  */
 import { structuralCheck } from './structural.mjs';
 import { colorOf, placedAabb } from './assembly.mjs';
-import { runCalculator } from '../engineering-core/registry.mjs';
+import { runCalculator, calculators } from '../engineering-core/registry.mjs';
 
 // 부품 type → 기본 재질 라벨(도면 BOM). 색은 colorOf(assembly.mjs) 단일 소스 — service/role/추론/type 순.
 const TYPE_MAT = {
@@ -325,27 +325,89 @@ function alignmentPlanSvg(assembly, { staFrom = 0, staTo = null, sheetNo = 0, sh
   el.push(scaleBarSvg(M, M + Dm * S + 40, S, Math.max(Wm, Dm)));
   el.push(northSvg(M + Wm * S + 30, M - 16));
   const title = sheetCount > 0 ? `선형 평면도 — 시트 ${sheetNo}/${sheetCount} · STA ${staLabel(s0)}~${staLabel(s1)}` : `선형 평면도 (연장 ${fmtLen(total)} · 측점 ${fmtLen(step)} 간격)`;
-  return `<svg viewBox="0 0 ${M + Wm * S + 90} ${M + Dm * S + 66}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff"><text x="${M}" y="24" font-size="13" font-weight="700" font-family="sans-serif">${title} · SCALE 1:${N}(A3)</text>${el.join('')}
+  const svg = `<svg viewBox="0 0 ${M + Wm * S + 90} ${M + Dm * S + 66}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff"><text x="${M}" y="24" font-size="13" font-weight="700" font-family="sans-serif">${title} · SCALE 1:${N}(A3)</text>${el.join('')}
 <text x="${M}" y="${(M + Dm * S + 58).toFixed(1)}" font-size="8.5" fill="#64748b" font-family="sans-serif">${esc(al.note ?? '')}</text></svg>`;
+  return { svg, N, s0, s1 };
 }
 
-/** ③ 시트 분할 — 전체도 1장 + 상세 시트 n장(≤6, match line). 상세 불필요(1장 커버)면 전체도만. */
-function alignmentSheets(assembly) {
+/** ③ 시트 분할 계획 — 전체도 + 상세 시트 n장(≤6, 반개구간 윈도·match line). */
+function alignmentSheetPlan(assembly) {
   const al = assembly.alignment;
-  if (!al?.ips?.length) return '';
-  const svgs = [alignmentPlanSvg(assembly) ?? ''];
+  if (!al?.elements?.length) return null;
+  const full = alignmentPlanSvg(assembly);
   const total = al.totalMm;
   const DETAIL = [100, 200, 250, 500, 1000, 2500, 5000];
   const Nd = DETAIL.find((n) => Math.ceil(total / (360 * n)) <= 6) ?? DETAIL[DETAIL.length - 1];
   const cover = 360 * Nd;
   const count = Math.ceil(total / cover);
+  const details = [];
   if (count > 1) {
     for (let i = 0; i < count; i++) {
-      const svg = alignmentPlanSvg(assembly, { staFrom: i * cover, staTo: Math.min(total, (i + 1) * cover), sheetNo: i + 1, sheetCount: count });
-      if (svg) svgs.push(svg);
+      const d = alignmentPlanSvg(assembly, { staFrom: i * cover, staTo: Math.min(total, (i + 1) * cover), sheetNo: i + 1, sheetCount: count });
+      if (d) details.push(d);
     }
   }
-  return svgs.join('<hr style="border:0;border-top:1px dashed #cbd5e1;margin:10px 0">');
+  return { full, details };
+}
+
+/**
+ * §2-1~2-4 토목 선형 도면집(시트 팩) — sheetRegistry(도번 단일 부여)·표제란(REV 스탬프
+ * 대기 span)·도면 목록표·일반주기(실행된 계산기 refs 만 — 근거 없는 일반문구 금지)·
+ * 페이지 분리(@media print). 역방향 게이트는 packageConsistencyCheck 가 data-dwg /
+ * data-sta-from/to 를 재파싱해 대조(생성≠검증).
+ */
+function civilSheetPack(assembly, { mainScaleN }) {
+  const al = assembly.alignment;
+  const used = [];
+  const reg = [];
+  const seqByCode = {};
+  const nextDwg = (code) => { seqByCode[code] = (seqByCode[code] ?? 0) + 1; return `NX-CIV-${code}-${String(seqByCode[code]).padStart(2, '0')}`; };
+  const sections = [];
+  const addSheet = (code, name, scaleTxt, body, attrs = '') => {
+    const no = nextDwg(code);
+    reg.push({ no, name, scaleTxt });
+    sections.push(`<section class="sheet-page" data-dwg="${no}"${attrs}><div class="wrap">${body}</div><div class="tb">도번 <b>${no}</b> · ${esc(name)} · ${esc(scaleTxt)} · REV <span class="nf-rev">—</span></div></section>`);
+    return no;
+  };
+  // 메인 GA 시트(본문에서 렌더) — 도번은 여기(단일 부여처)서
+  const mainDwg = nextDwg('GA');
+  reg.push({ no: mainDwg, name: '일반배치도(GA)', scaleTxt: `1:${mainScaleN}` });
+  const plan = alignmentSheetPlan(assembly);
+  if (plan) {
+    addSheet('PL', '선형 평면 전체도', `1:${plan.full.N}`, plan.full.svg);
+    plan.details.forEach((d, i) => addSheet('PL', `선형 평면 상세 ${i + 1} (STA ${staLabel(d.s0)}~${staLabel(d.s1)})`, `1:${d.N}`, d.svg, ` data-sta-from="${Math.round(d.s0)}" data-sta-to="${Math.round(d.s1)}"`));
+  }
+  const ctBody = curveTableSheet(al);
+  if (ctBody) addSheet('CT', '곡선표', '—', ctBody);
+  const stBody = structureTableSheet(al, used);
+  if (stBody) addSheet('ST', '구조물 일람표', '—', stBody);
+  const pfBody = profileSvg(assembly);
+  if (pfBody) addSheet('PF', '종단면도', '종 10× 왜곡(시트 명기)', pfBody);
+  const ewBody = earthworkSheet(assembly, used);
+  if (ewBody) addSheet('EW', '토공량·유토곡선', '—', ewBody);
+  addSheet('GN', '일반주기', '—', generalNotesSheet(used));
+  // 도면 목록표 — 레지스트리에서 직접 생성(맨 앞 배치), 자기 자신 포함
+  const dlNo = nextDwg('DL');
+  reg.unshift({ no: dlNo, name: '도면 목록표', scaleTxt: '—' });
+  const dlRows = reg.map((r, i) => `<tr><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${i + 1}</td><td style="border:1px solid #cbd5e1;padding:3px 8px">${r.no}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${esc(r.name)}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(r.scaleTxt)}</td></tr>`).join('');
+  const dlBody = `<table style="border-collapse:collapse;width:100%;font-size:11.5px"><caption style="text-align:left;font-size:13px;font-weight:700;padding:4px 0">도면 목록표 (총 ${reg.length}매 · 전 시트 동일 REV — 자동 정합 게이트 대상)</caption>
+<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">No.</th><th style="border:1px solid #cbd5e1;padding:3px 8px">도번</th><th style="border:1px solid #cbd5e1;padding:3px 8px">도면명</th><th style="border:1px solid #cbd5e1;padding:3px 8px">축척</th></tr>${dlRows}</table>`;
+  const dlSection = `<section class="sheet-page" data-dwg="${dlNo}"><div class="wrap">${dlBody}</div><div class="tb">도번 <b>${dlNo}</b> · 도면 목록표 · REV <span class="nf-rev">—</span></div></section>`;
+  return { html: dlSection + sections.join(''), mainDwg, sheetCount: reg.length };
+}
+
+/** §2-4 일반주기 — 실행된 계산기의 refs(원문 조항)만 수집·정렬(근거 없는 일반문구 금지). */
+function generalNotesSheet(usedIds) {
+  const refs = new Set();
+  for (const id of usedIds) for (const r of calculators[id]?.refs ?? []) refs.add(r);
+  const rows = [...refs].sort().map((r) => `<li style="margin:2px 0">${esc(r)}</li>`).join('');
+  return `<div><div style="font-size:13px;font-weight:700;padding:4px 0">일반주기 (General Notes)</div>
+<ol style="font-size:11.5px;line-height:1.7;padding-left:18px">
+<li>본 도면집은 nexyfab drawing-to-3d 가 단일 어셈블리 정의에서 자동 생성 — 전 시트 동일 REV(정합 게이트 검증).</li>
+<li>비법정 개념 설계 — 최종 설계도서·시공에는 등록 기술자(해당 분야 기술사) 검토·확인 필요.</li>
+<li>물량·측점=중심선 호장 기준 · 3D=현 근사(새그 공차) · 곡선=단곡선(완화곡선 보류).</li>
+${rows ? `<li>적용 기준(실행된 검증 계산기의 원문 근거만 수록):<ul style="padding-left:16px">${rows}</ul></li>` : '<li>본 도면집 생성 시 실행된 검증 계산기 없음 — 적용 기준 목록 생략(근거 없는 인용 금지).</li>'}
+</ol></div>`;
 }
 
 /** ④ 부지 계획도 블록 — siteBoundary/contours 입력 시만 별도 시트(조경·비선형 토목용). */
@@ -371,7 +433,7 @@ ${scaleBarSvg(M, M + Dm * S + 36, S, Math.max(Wm, Dm))}${northSvg(M + Wm * S + 2
 
 /** 구조물 일람표(§1-2) — STA·종류·규격·검토. culvert=box_culvert_frame 자동 체인
  *  (cover·gammaSoil·K 미입력=needInputs 정직 게이트). 수량 룰=culvert 타입 미지원 명시(§E). */
-function structureTableSheet(al) {
+function structureTableSheet(al, used = []) {
   if (!al?.structures?.length) return '';
   const rows = al.structures.map((st, i) => {
     const spec = st.type === 'culvert' ? `내공 ${fmtLen(st.innerWmm)}×${fmtLen(st.innerHmm)} t${st.thkMm}` : st.type === 'catch_basin' ? `${fmtLen(st.alongMm)}각 깊이 1200` : '—';
@@ -381,6 +443,7 @@ function structureTableSheet(al) {
       if (need.length) check = `<span style="color:#d97706">입력 필요: ${need.join('·')}</span>`;
       else {
         try {
+          used.push('box_culvert_frame');
           const r = runCalculator('box_culvert_frame', {
             innerWidth: st.innerWmm / 1000, innerHeight: st.innerHmm / 1000, wallThk: st.thkMm / 1000,
             cover: +st.params.cover, gammaSoil: +st.params.gammaSoil, K: +st.params.K,
@@ -412,7 +475,7 @@ function curveTableSheet(al) {
  * 불균등 간격 그대로 평균단면법(재샘플 금지 — 보간 오차 이중화 방지). mass_haul 연계.
  * 기면고·기면폭·사면경사=입력 원칙(미입력=생략 — 기본값 날조 금지).
  */
-function earthworkSheet(assembly) {
+function earthworkSheet(assembly, used = []) {
   const pf = assembly.profile, ew = assembly.earthwork;
   if (!pf?.ground || pf.ground.length < 2) {
     return ew ? `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 14px;font-size:11.5px;color:#92400e;margin:6px 0">토공량: 지반선 없음(등고 입력 또는 profileGround 필요) — 생략(정직)</div>` : '';
@@ -442,7 +505,7 @@ function earthworkSheet(assembly) {
     stations.push({ sta_m: +b.staM.toFixed(2), cut_m3: +segCut.toFixed(2), fill_m3: +segFill.toFixed(2) });
   }
   let mh = null;
-  try { mh = runCalculator('mass_haul', { stations, ...(Number(ew.shrinkC) > 0 ? { shrinkC: +ew.shrinkC } : {}) }); } catch { mh = null; }
+  try { mh = runCalculator('mass_haul', { stations, ...(Number(ew.shrinkC) > 0 ? { shrinkC: +ew.shrinkC } : {}) }); used.push('mass_haul'); } catch { mh = null; }
   // 자기정합: Σ구간 = 총계(원값 EPS)
   const sumCut = stations.reduce((s, q) => s + q.cut_m3, 0);
   const selfOk = Math.abs(sumCut - +cut.toFixed(2)) < 0.05 * stations.length;
@@ -620,17 +683,21 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   ${pipeLines.join('')}
   ${balloons.join('')}</svg>`;
   // 관례도면 모드 (③): 건축=축선 구조평면 · 조경=배치 평면도(+경계·등고) ·
-  // 토목=선형 평면(alignment: STA·IP·시트분할·종단 / 직선 run: 측점 평면)
+  // 토목=선형 도면집(§2 시트 팩: 목록표·평면·곡선표·일람·종단·토공·일반주기) / 직선 run: 측점 평면
   let domainSvg = '';
+  let sheetsHtml = '';
+  let dwgNo = dwg;
   try {
     if (domain === 'building') domainSvg = axesPlanSvg(parts) ?? '';
     else if (domain === 'landscape') domainSvg = (landscapePlanSvg(parts) ?? '') + siteOverlayBlock(assembly);
     else if (domain === 'civil') {
-      domainSvg = assembly.alignment
-        ? alignmentSheets(assembly) + curveTableSheet(assembly.alignment) + structureTableSheet(assembly.alignment) + profileSvg(assembly) + earthworkSheet(assembly)
-        : (civilPlanSvg(parts) ?? '') + siteOverlayBlock(assembly);
+      if (assembly.alignment) {
+        const pack = civilSheetPack(assembly, { mainScaleN: N });
+        sheetsHtml = pack.html;
+        dwgNo = pack.mainDwg;
+      } else domainSvg = (civilPlanSvg(parts) ?? '') + siteOverlayBlock(assembly);
     }
-  } catch { domainSvg = ''; }
+  } catch { domainSvg = ''; sheetsHtml = ''; }
   // BOM = 그룹 단위(규격·재질 동일 부재 수량 집계) — 대량 부품 도면 판독성
   const bom = groups.map((g, gi) => {
     const { p, box, st } = g.rep;
@@ -640,10 +707,12 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
 <style>@page{size:A3 landscape;margin:8mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937}
 .sheet{max-width:1180px;margin:16px auto;background:#fff;border:1px solid #cbd5e1;box-shadow:0 4px 24px rgba(0,0,0,.1)}.hd{display:flex;justify-content:space-between;align-items:flex-end;padding:12px 20px;border-bottom:2px solid #1f2937}.hd h1{font-size:16px;margin:0}.sub{font-size:11px;color:#64748b}.wrap{padding:8px 16px}
 table{border-collapse:collapse;width:calc(100% - 40px);margin:0 20px 14px;font-size:11px}td,th{border:1px solid #cbd5e1;padding:3px 8px;text-align:center}th{background:#f1f5f9}
-@media print{.nf-print-bar{display:none}body{background:#fff}.sheet{box-shadow:none;border:none;margin:0}}</style></head>
-<body>${PRINT_BAR('설계 GA 도면 (A3)')}<div class="sheet"><div class="hd"><div><h1>${esc(title)} — 일반배치도 (GA)</h1><div class="sub">nexyfab drawing-to-3d 자동생성 · 부품 ${parts.length}(그룹 ${groups.length})</div></div><div class="sub">DWG ${esc(dwg)} · <b>SCALE 1:${N}</b> (A3 100% 인쇄 기준 · 화면=가변) · 표기 mm(대형 자동 m/km) · 3rd angle</div></div>
+.sheet-page{max-width:1180px;margin:14px auto;background:#fff;border:1px solid #cbd5e1;box-shadow:0 4px 24px rgba(0,0,0,.08);padding:10px 16px 6px}
+.tb{border-top:2px solid #1f2937;margin-top:8px;padding:6px 4px;font-size:11px;color:#334155;display:flex;gap:14px;flex-wrap:wrap}
+@media print{.nf-print-bar{display:none}body{background:#fff}.sheet{box-shadow:none;border:none;margin:0}.sheet-page{box-shadow:none;border:none;margin:0;page-break-after:always}}</style></head>
+<body>${PRINT_BAR('설계 GA 도면 (A3)')}<div class="sheet"><div class="hd"><div><h1>${esc(title)} — 일반배치도 (GA)</h1><div class="sub">nexyfab drawing-to-3d 자동생성 · 부품 ${parts.length}(그룹 ${groups.length})</div></div><div class="sub">DWG ${esc(dwgNo)} · <b>SCALE 1:${N}</b> (A3 100% 인쇄 기준 · 화면=가변) · 표기 mm(대형 자동 m/km) · 3rd angle · REV <span class="nf-rev">—</span></div></div>
 <div class="wrap">${svg}</div>${domainSvg ? `<div class="wrap" style="border-top:1px solid #e2e8f0">${domainSvg}</div>` : ''}<table><thead><tr><th>No.</th><th>품명(대표)</th><th>Type</th><th>규격(엔벨로프)</th><th>재질</th><th>수량</th></tr></thead><tbody>${bom}</tbody></table>
-<div class="sub" style="padding:4px 20px 12px;color:#94a3b8">⚠ 자동생성 GA(비법정) · 부품 엔벨로프 기준 · 상세치수·공차는 후속.</div><div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div></body></html>`;
+<div class="sub" style="padding:4px 20px 12px;color:#94a3b8">⚠ 자동생성 GA(비법정) · 부품 엔벨로프 기준 · 상세치수·공차는 후속.</div><div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div>${sheetsHtml}</body></html>`;
 }
 
 /** 구조검토 결과 → HTML 리포트 (structuralCheck 출력 기반, 인쇄양식) */
@@ -688,6 +757,8 @@ export function packageStamp(html, basis) {
   const footer = `<div style="max-width:900px;margin:6px auto 14px;font-size:10px;color:#94a3b8;text-align:center">REV ${esc(basis.rev)} · 기준: 질량 ${basis.massKg}kg · 외형 ${basis.env.map(Math.round).join('×')}mm · 부품 ${basis.parts} — 전 산출물 단일 기준(자동 정합 게이트)</div>`;
   let out = html.includes('</head>') ? html.replace('</head>', meta + '</head>') : meta + html;
   out = out.includes('</body>') ? out.replace('</body>', footer + '</body>') : out + footer;
+  // 시트 표제란 REV 채움(§2-1) — 도번·REV 는 단일 basis 에서만 주입(수기 문자열 금지)
+  out = out.replaceAll('<span class="nf-rev">—</span>', `<span class="nf-rev">${esc(basis.rev)}</span>`);
   return out;
 }
 
@@ -733,6 +804,24 @@ export function packageConsistencyCheck(files, basis, { hasFluid = false, alignm
       const label = `STA ${staLabel(st.sta)}`;
       const cnt = (gaHtml.match(new RegExp(label.replace('+', '\\+'), 'g')) ?? []).length;
       checks.push({ file: 'GA_2D_drawing.html', metric: `구조물 ${st.type}@${label} 3자(평면·종단·일람)`, value: cnt, expect: 3, tol: 99, pass: cnt >= 3 });
+    }
+  }
+  // §2 도서 역방향 게이트: data-dwg 재파싱 — 도번 유일·목록표 매수 일치·상세 윈도 무결·REV 채움
+  if (alignment?.totalMm > 0) {
+    const dwgs = [...gaHtml.matchAll(/data-dwg="(NX-CIV-[A-Z]+-\d+)"/g)].map((m) => m[1]);
+    if (dwgs.length) {
+      const uniq = new Set(dwgs);
+      checks.push({ file: 'GA_2D_drawing.html', metric: '도번 유일성', value: dwgs.length, expect: uniq.size, tol: 0, pass: dwgs.length === uniq.size });
+      const dlCount = Number(gaHtml.match(/도면 목록표 \(총 (\d+)매/)?.[1] ?? NaN);
+      checks.push({ file: 'GA_2D_drawing.html', metric: '목록표 매수=실시트(GA 본시트 +1)', value: dwgs.length + 1, expect: dlCount, tol: 0, pass: dwgs.length + 1 === dlCount });
+      const wins = [...gaHtml.matchAll(/data-sta-from="(\d+)" data-sta-to="(\d+)"/g)].map((m) => [+m[1], +m[2]]).sort((a, b) => a[0] - b[0]);
+      if (wins.length) {
+        let okWin = Math.abs(wins[0][0]) <= 1 && Math.abs(wins[wins.length - 1][1] - alignment.totalMm) <= 1;
+        for (let i = 1; i < wins.length; i++) if (Math.abs(wins[i][0] - wins[i - 1][1]) > 1) okWin = false;
+        checks.push({ file: 'GA_2D_drawing.html', metric: '상세 시트 윈도 무결(틈·겹침 0)', value: wins.length, expect: wins.length, tol: 0, pass: okWin });
+      }
+      const unfilled = (gaHtml.match(/<span class="nf-rev">—<\/span>/g) ?? []).length;
+      checks.push({ file: 'GA_2D_drawing.html', metric: 'REV 스탬프 채움', value: unfilled, expect: 0, tol: 0, pass: unfilled === 0 });
     }
   }
   return { pass: checks.every((c) => c.pass), checks, rev: basis.rev };

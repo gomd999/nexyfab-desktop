@@ -276,8 +276,28 @@ export function dxfInteriorPlan(assembly, pipes) {
   return shell(e);
 }
 
+// §F 실좌표(TM 등) 대응 — assembly.origin = { E, N }(mm) 입력 시 DXF 전체를 오프셋 방출.
+// SVG 는 로컬 유지(라벨에 원점 표기) — 대좌표 정밀도는 double(mm)로 충분.
+function applyOrigin(dxf, assembly) {
+  const o = assembly?.origin;
+  if (!dxf || !(Number(o?.E) || Number(o?.N))) return dxf;
+  const E = Number(o.E) || 0, N = Number(o.N) || 0;
+  // 좌표 그룹코드(10/11/12/13=x, 20/21/22/23=y)만 시프트 — R12 라인 단위 치환
+  const lines = dxf.split('\n');
+  for (let i = 0; i < lines.length - 1; i++) {
+    const code = lines[i].trim();
+    if (['10', '11', '12', '13'].includes(code)) lines[i + 1] = String(Number(lines[i + 1]) + E);
+    else if (['20', '21', '22', '23'].includes(code)) lines[i + 1] = String(Number(lines[i + 1]) + N);
+  }
+  return lines.join('\n').replace('ENTITIES\n', `ENTITIES\n${g(0, 'TEXT') + g(8, 'TXT') + g(10, E) + g(20, N - 2000) + g(30, 0) + g(40, 300) + g(1, `ORIGIN OFFSET E=${E} N=${N} (mm) - real-coordinate emission`)}`);
+}
+
 /** 도메인 → DXF (없으면 null). pipes = buildAssembly().pipes.routes — 라우터 단일 결과 재사용(정합). */
 export function dxfPlan(assembly, domain, pipes) {
+  const d0 = dxfPlanLocal(assembly, domain, pipes);
+  return applyOrigin(d0, assembly);
+}
+function dxfPlanLocal(assembly, domain, pipes) {
   if (domain === 'building') { const d = dxfBuildingPlan(assembly); return d && pipes?.length ? injectPipes(d, pipes) : d; }
   if (domain === 'landscape') { const d = dxfLandscapePlan(assembly); return d && pipes?.length ? injectPipes(d, pipes) : d; }
   if (domain === 'interior') return dxfInteriorPlan(assembly, pipes);
