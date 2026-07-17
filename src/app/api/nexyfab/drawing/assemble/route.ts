@@ -88,6 +88,17 @@ ${TYPE_SPEC}
 원래 설명: "${desc}"
 JSON 하나만 출력.`;
 
+// 의도 교정 라운드(260717): 게이트는 통과했지만 요청 정합(intent-match)에서 불일치가
+// 나온 경우, 결정론 판정문을 그대로 되먹여 1회 재수정. 채택은 조건부(불일치 감소+일치 비감소).
+const INTENT_FIX_PROMPT = (desc: string, mismatches: string[], prev: Assembly) => `직전 어셈블리는 형상 게이트는 통과했지만, 사용자 요청과 실측 대조에서 아래 항목이 **불일치**로 판정됐다.
+요청을 다시 읽고 불일치 항목만 고친 전체 JSON 을 다시 내라(스키마 동일, 일치한 값은 유지).
+[사용자 요청] "${desc}"
+[불일치 판정(결정론 실측)]
+${mismatches.map((m) => '- ' + m).join('\n')}
+${TYPE_SPEC}
+직전 계획(수정 대상): ${JSON.stringify(prev).slice(0, 1800)}
+JSON 하나만 출력.`;
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const ip = getTrustedClientIp(req.headers);
   const rl = rateLimit(`drawing-assemble:${ip}`, 8, 60_000);
@@ -200,11 +211,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       placeCorrections = corrected.corrections;
       built = mods.asm.buildAssembly(assembly);
       if (built.ok) {
-        const intentMatch = await intentCheck(mods, description, assembly);
+        let intentMatch = await intentCheck(mods, description, assembly);
         // AI 가 임의로 채운 값 자가보고(라벨 명시) — "조용한 기본값"이 불일치의 주원인
         const assumptions = Array.isArray((data as { assumptions?: unknown[] }).assumptions)
           ? ((data as { assumptions: unknown[] }).assumptions).filter((q) => typeof q === 'string').slice(0, 12)
           : [];
+        // 의도 교정 라운드(1회): 불일치 판정문 되먹임 → 재빌드 → 재검증.
+        // 채택 조건: 게이트 통과 + designOk 악화 없음 + 불일치 감소 + 일치 비감소. 내역은 repair 로 공개.
+        if (intentMatch && intentMatch.mismatched > 0) {
+          const before = intentMatch.mismatched;
+          let adopted = false;
+          try {
+            const notes = intentMatch.results
+              .filter((q) => q.verdict === 'MISMATCH').map((q) => `${q.text} → ${q.note}`).slice(0, 8);
+            const { data: fd } = await mods.ft.callGeminiJson(INTENT_FIX_PROMPT(description, notes, assembly), null, GEMINI_OPTS);
+            if (fd && Array.isArray(fd.parts) && fd.parts.length) {
+              const c2 = mods.asm.autoPlaceCorrect(fd);
+              const b2 = mods.asm.buildAssembly(c2.assembly);
+              const okDesign = !(b2.designOk === false && built.designOk === true);
+              if (b2.ok && okDesign) {
+                const im2 = await intentCheck(mods, description, c2.assembly);
+                if (im2 && im2.mismatched < before && im2.matched >= intentMatch.matched) {
+                  assembly = c2.assembly; placeCorrections = c2.corrections; built = b2; intentMatch = im2;
+                  adopted = true;
+                }
+              }
+            }
+          } catch { /* 교정 실패=원본 유지(생성은 막지 않음) */ }
+          (intentMatch as { repair?: unknown }).repair = { attempted: true, adopted, before, after: intentMatch.mismatched };
+        }
         if (intentMatch && assumptions.length) (intentMatch as { assumptions?: string[] }).assumptions = assumptions as string[];
         return NextResponse.json({
           ok: true, assembly, openscad: built.openscad,
@@ -217,7 +252,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           structural: built.structural ?? null,
           support: built.support ?? null, // 그물: 부유·면접촉(매립 제안)
           pipes: built.pipes ?? null, designOk: built.designOk ?? null,
-          intentMatch, // 요청 정합(의도↔형상 실측 대조 — 불일치 노출)
+          intentMatch, // 요청 정합(의도↔형상 실측 대조 — 불일치 노출 + 교정 라운드 내역)
           gateErrors: [], rounds: round + 1,
         });
       }
