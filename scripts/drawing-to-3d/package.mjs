@@ -5,6 +5,7 @@
  */
 import { structuralCheck } from './structural.mjs';
 import { colorOf, placedAabb } from './assembly.mjs';
+import { runCalculator } from '../engineering-core/registry.mjs';
 
 // 부품 type → 기본 재질 라벨(도면 BOM). 색은 colorOf(assembly.mjs) 단일 소스 — service/role/추론/type 순.
 const TYPE_MAT = {
@@ -262,13 +263,14 @@ function alignmentPlanSvg(assembly, { staFrom = 0, staTo = null, sheetNo = 0, sh
   }
   // 측점(STA) — 윈도 내부만, 접선 법선 방향 틱(chainAt 단일 소스)
   const step = staStep(total);
-  for (let s = Math.ceil(s0 / step) * step; s <= s1 + 1; s += step) {
+  // ⚠종점 측점 버그 이력: 조건 s≤s1+1 이 step 비배수 종점을 배제 — t=min(s,s1) 방출 후 종료
+  for (let s = Math.ceil(s0 / step) * step; ; s += step) {
     const t = Math.min(s, s1);
     const { p, dir } = chainAt(elements, t);
     const nx = -dir[1], ny = dir[0];
     el.push(`<line x1="${X(p[0] - nx * (hw + 600))}" y1="${Y(p[1] - ny * (hw + 600))}" x2="${X(p[0] + nx * (hw + 600))}" y2="${Y(p[1] + ny * (hw + 600))}" stroke="#dc2626" stroke-width=".7"/>`);
     el.push(`<text x="${X(p[0] + nx * (hw + 900))}" y="${Y(p[1] + ny * (hw + 900))}" font-size="8.5" fill="#dc2626" font-family="sans-serif">STA ${staLabel(t)}</text>`);
-    if (t >= s1) break;
+    if (t >= s1 - 1e-6) break;
   }
   // IP 마커(교각·R) + BC/EC 틱 — curveTable 단일 소스
   for (const ct of al.curveTable ?? []) {
@@ -294,6 +296,23 @@ function alignmentPlanSvg(assembly, { staFrom = 0, staTo = null, sheetNo = 0, sh
     let dd = ((b2 - b1) * 180) / Math.PI; while (dd > 180) dd -= 360; while (dd <= -180) dd += 360;
     el.push(`<circle cx="${X(ix)}" cy="${Y(iy)}" r="4" fill="#fff" stroke="#64748b" stroke-width="1"/>`);
     el.push(`<text x="${(+X(ix) + 7).toFixed(1)}" y="${(+Y(iy) - 7).toFixed(1)}" font-size="8.5" fill="#64748b" font-family="sans-serif">IP${i} Δ=${Math.abs(dd).toFixed(1)}°</text>`);
+  }
+  // 구조물 마커(§1-2) — 회전 사각 심볼+라벨(chainAt 단일 소스, 일람표와 동일 STA 표기)
+  for (const st2 of al.structures ?? []) {
+    if (st2.sta < s0 || st2.sta > s1) continue;
+    const { p, dir } = chainAt(elements, st2.sta);
+    const nx = -dir[1], ny = dir[0];
+    const halfAlong = Math.max(st2.alongMm / 2, 300), halfPerp = st2.type === 'culvert' ? hw + 1500 : 450;
+    const cx0 = st2.type === 'catch_basin' ? p[0] + nx * (hw + 700 + halfAlong) : p[0];
+    const cy0 = st2.type === 'catch_basin' ? p[1] + ny * (hw + 700 + halfAlong) : p[1];
+    if (st2.type !== 'expansion_joint') {
+      const cor = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => `${X(cx0 + dir[0] * a * halfAlong + nx * b * halfPerp)},${Y(cy0 + dir[1] * a * halfAlong + ny * b * halfPerp)}`).join(' ');
+      el.push(`<polygon points="${cor}" fill="#33415522" stroke="#334155" stroke-width="1.2"/>`);
+    } else {
+      el.push(`<line x1="${X(p[0] - nx * (hw + 300))}" y1="${Y(p[1] - ny * (hw + 300))}" x2="${X(p[0] + nx * (hw + 300))}" y2="${Y(p[1] + ny * (hw + 300))}" stroke="#334155" stroke-width="1.6" stroke-dasharray="3 3"/>`);
+    }
+    const tag = st2.type === 'culvert' ? 'CULV' : st2.type === 'catch_basin' ? 'CB' : 'EJ';
+    el.push(`<text x="${X(cx0 + nx * (halfPerp + 700))}" y="${Y(cy0 + ny * (halfPerp + 700))}" font-size="8.5" font-weight="700" fill="#334155" font-family="sans-serif">${tag} STA ${staLabel(st2.sta)}</text>`);
   }
   // 매치라인(③) — 윈도 경계
   for (const [s, present] of [[s0, s0 > 0], [s1, s1 < total]]) {
@@ -350,6 +369,34 @@ ${scaleBarSvg(M, M + Dm * S + 36, S, Math.max(Wm, Dm))}${northSvg(M + Wm * S + 2
 <text x="${M}" y="${(M + Dm * S + 54).toFixed(1)}" font-size="8.5" fill="#64748b" font-family="sans-serif">경계·등고=입력 데이터 표기(측량 성과 아님·지형 미생성 — 정직)</text></svg>`;
 }
 
+/** 구조물 일람표(§1-2) — STA·종류·규격·검토. culvert=box_culvert_frame 자동 체인
+ *  (cover·gammaSoil·K 미입력=needInputs 정직 게이트). 수량 룰=culvert 타입 미지원 명시(§E). */
+function structureTableSheet(al) {
+  if (!al?.structures?.length) return '';
+  const rows = al.structures.map((st, i) => {
+    const spec = st.type === 'culvert' ? `내공 ${fmtLen(st.innerWmm)}×${fmtLen(st.innerHmm)} t${st.thkMm}` : st.type === 'catch_basin' ? `${fmtLen(st.alongMm)}각 깊이 1200` : '—';
+    let check = '<span style="color:#64748b">검증 미지원(마커만)</span>';
+    if (st.type === 'culvert') {
+      const need = ['cover', 'gammaSoil', 'K'].filter((k) => !(Number(st.params?.[k]) > 0 || Number(st.params?.[k]) === 0 && k === 'cover'));
+      if (need.length) check = `<span style="color:#d97706">입력 필요: ${need.join('·')}</span>`;
+      else {
+        try {
+          const r = runCalculator('box_culvert_frame', {
+            innerWidth: st.innerWmm / 1000, innerHeight: st.innerHmm / 1000, wallThk: st.thkMm / 1000,
+            cover: +st.params.cover, gammaSoil: +st.params.gammaSoil, K: +st.params.K,
+            ...(Number(st.params.surcharge) >= 0 ? { surcharge: +st.params.surcharge } : {}),
+          });
+          check = r.verdict === 'FAIL' ? '<b style="color:#dc2626">FAIL</b>' : `<b style="color:#16a34a">${esc(r.verdict ?? 'INFO')}</b> <span style="font-size:10px;color:#64748b">(box_culvert_frame)</span>`;
+        } catch (e) { check = `<span style="color:#d97706">판정 불가: ${esc(String(e?.message ?? e).slice(0, 60))}</span>`; }
+      }
+    }
+    return `<tr><td>${i + 1}</td><td>STA ${staLabel(st.sta)}</td><td>${esc(st.type)}</td><td>${spec}</td><td style="text-align:left">${check}</td></tr>`;
+  }).join('');
+  return `<div style="padding:6px 0"><table style="border-collapse:collapse;width:100%;font-size:11.5px"><caption style="text-align:left;font-size:13px;font-weight:700;padding:4px 0">구조물 일람표</caption>
+<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">No.</th><th style="border:1px solid #cbd5e1;padding:3px 8px">측점</th><th style="border:1px solid #cbd5e1;padding:3px 8px">종류</th><th style="border:1px solid #cbd5e1;padding:3px 8px">규격</th><th style="border:1px solid #cbd5e1;padding:3px 8px">검토</th></tr>${rows.replaceAll('<td>', '<td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">')}</table>
+<div style="font-size:10px;color:#94a3b8;padding:3px 0">암거=벽 개구 분절(개구 명세) · 하중 입력(cover·γ·K)=프로젝트 결정(지어내지 않음) · 암거 수량 룰=미지원 명시(§E) · 마구리·날개벽 상세 후속</div></div>`;
+}
+
 /** 곡선표(§1-1) — IP·Δ·R·TL·L·BC/EC. 표기값 자기정합: EC 표기=원값 반올림(표기끼리 연산 금지). */
 function curveTableSheet(al) {
   if (!al?.curveTable?.length) return '';
@@ -386,6 +433,11 @@ function profileSvg(assembly) {
   }
   el.push(`<polyline points="${pf.design.map((q) => `${X(q.staMm)},${Y(q.elevMm)}`).join(' ')}" fill="none" stroke="#2563eb" stroke-width="1.6"/>`);
   if (pf.ground?.length) el.push(`<polyline points="${pf.ground.map((q) => `${X(q.staMm)},${Y(q.elevMm)}`).join(' ')}" fill="none" stroke="#a16207" stroke-width="1.1" stroke-dasharray="6 4"/>`);
+  // 구조물 위치 마커(§1-2, 3자 대조: 평면·일람표와 동일 STA 라벨)
+  for (const st of al.structures ?? []) {
+    el.push(`<line x1="${X(st.sta)}" y1="30" x2="${X(st.sta)}" y2="${30 + PH}" stroke="#334155" stroke-width="1" stroke-dasharray="4 3"/>`);
+    el.push(`<text x="${X(st.sta)}" y="${30 + PH + 26}" font-size="7.5" text-anchor="middle" fill="#334155" font-family="sans-serif">${st.type === 'culvert' ? 'CULV' : st.type === 'catch_basin' ? 'CB' : 'EJ'} STA ${staLabel(st.sta)}</text>`);
+  }
   const Nh = pickScale(total, 1, 360, 999);
   return `<svg viewBox="0 0 ${M + PW + 40} ${30 + PH + 40}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff">
 <text x="${M}" y="18" font-size="13" font-weight="700" font-family="sans-serif">종단면도 · H 1:${Nh} / V 1:${Math.max(1, Math.round(Nh / 10))} (종 10× 왜곡)</text>${el.join('')}
@@ -414,7 +466,7 @@ function civilPlanSvg(parts) {
   if (alongY) el.push(`<line x1="${X(cx)}" y1="${(+Y(y0) - 14).toFixed(1)}" x2="${X(cx)}" y2="${(+Y(y1) + 14).toFixed(1)}" stroke="#dc2626" stroke-width=".7" stroke-dasharray="16 4 3 4"/>`);
   else el.push(`<line x1="${(+X(x0) - 14).toFixed(1)}" y1="${Y(cy)}" x2="${(+X(x1) + 14).toFixed(1)}" y2="${Y(cy)}" stroke="#dc2626" stroke-width=".7" stroke-dasharray="16 4 3 4"/>`);
   const step = staStep(Lmm);
-  for (let s = 0; s <= Lmm + 1; s += step) {
+  for (let s = 0; ; s += step) {
     const t = Math.min(s, Lmm);
     if (alongY) {
       const yy = +Y(y0 + t);
@@ -513,7 +565,7 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
     else if (domain === 'landscape') domainSvg = (landscapePlanSvg(parts) ?? '') + siteOverlayBlock(assembly);
     else if (domain === 'civil') {
       domainSvg = assembly.alignment
-        ? alignmentSheets(assembly) + curveTableSheet(assembly.alignment) + profileSvg(assembly)
+        ? alignmentSheets(assembly) + curveTableSheet(assembly.alignment) + structureTableSheet(assembly.alignment) + profileSvg(assembly)
         : (civilPlanSvg(parts) ?? '') + siteOverlayBlock(assembly);
     }
   } catch { domainSvg = ''; }
@@ -582,7 +634,7 @@ export function packageStamp(html, basis) {
  * hasFluid=true 면 구조(운전질량, 유체 포함) vs BOQ(자재질량) 는 정의가 달라 대조 생략(정직).
  * @returns { pass, checks: [{file, metric, value, expect, tol, pass, note?}] }
  */
-export function packageConsistencyCheck(files, basis, { hasFluid = false } = {}) {
+export function packageConsistencyCheck(files, basis, { hasFluid = false, alignment = null } = {}) {
   const get = (name) => files.find((f) => f.name === name)?.content ?? '';
   const num = (src, re) => { const m = src.match(re); return m ? parseFloat(m[1]) : null; };
   const checks = [];
@@ -610,5 +662,16 @@ export function packageConsistencyCheck(files, basis, { hasFluid = false } = {})
   // W 대조 — FRONT 하단 치수(첫 dimH). 배관 오버레이가 있어도 치수는 부품 엔벨로프 기준.
   const mW = gaHtml.match(/text-anchor="middle" fill="#dc2626">([\d.]+(?:km|m)?)</);
   add('GA_2D_drawing.html', 'W(mm)', mW ? parseLen(mW[1]) : null, basis.env[0], lenTol(basis.env[0]));
+  // 선형 3자 대조(§1-2·2-3): ①문서가 인쇄한 최대 STA ↔ 총연장 ②구조물 STA 라벨이
+  // 평면·종단·일람표에 모두 존재(≥3회) — 생성≠검증(재파싱 회수)
+  if (alignment?.totalMm > 0) {
+    const stas = [...gaHtml.matchAll(/STA (\d+)\+(\d{3})/g)].map((m) => (+m[1] * 1000 + +m[2]) * 1000);
+    add('GA_2D_drawing.html', 'maxSTA(mm)', stas.length ? Math.max(...stas) : null, alignment.totalMm, 501);
+    for (const st of alignment.structures ?? []) {
+      const label = `STA ${staLabel(st.sta)}`;
+      const cnt = (gaHtml.match(new RegExp(label.replace('+', '\\+'), 'g')) ?? []).length;
+      checks.push({ file: 'GA_2D_drawing.html', metric: `구조물 ${st.type}@${label} 3자(평면·종단·일람)`, value: cnt, expect: 3, tol: 99, pass: cnt >= 3 });
+    }
+  }
   return { pass: checks.every((c) => c.pass), checks, rev: basis.rev };
 }

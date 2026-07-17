@@ -10,8 +10,8 @@
  * 검증: 각 템플릿 기본값은 self-test 로 게이트·간섭 0 을 상시 보증.
  */
 
-import { buildElements, chordPolyline } from './alignment-geom.mjs';
-import { TOL_TRIM_RESIDUAL } from './geometry-tolerance.mjs';
+import { buildElements, chordPolyline, clipElements, chainAt } from './alignment-geom.mjs';
+import { TOL_TRIM_RESIDUAL, minSeg } from './geometry-tolerance.mjs';
 
 const num = (v, d) => (Number.isFinite(v) ? v : d);
 const P = (id, type, params, at = {}, material, role) => ({ id, type, params, at, ...(material ? { material } : {}), ...(role ? { role } : {}) });
@@ -205,9 +205,46 @@ function retainingWallAlignmentAssembly(p) {
   const built = buildElements(ips, curves, { minR: 2 * baseW, baseW });
   if (!built.ok) return { name: '옹벽 선형 구간', domain: 'civil', parts: [], alignmentErrors: built.errors };
   const { elements, totalMm, curveTable } = built;
-  const { pts, notes: chordNotes } = chordPolyline(elements);
+  // ── 구조물(§1-2): STA 배치 · 암거=벽 분절(개구) · 게이트(범위·간격·MIN_SEG) ──
+  const structuresIn = Array.isArray(p.structures) ? p.structures : [];
+  const structErrors = [];
+  const structs = [];
+  for (const [si, st] of structuresIn.entries()) {
+    const sta = Number(st.sta);
+    if (!(sta >= 0 && sta <= totalMm)) { structErrors.push(`structures[${si}]: sta ${st.sta} ∉ [0, ${Math.round(totalMm)}]`); continue; }
+    const type = ['culvert', 'catch_basin', 'expansion_joint'].includes(st.type) ? st.type : 'culvert';
+    const prm = st.params ?? {};
+    const innerW = num(prm.innerWidthMm, 2000), innerH = num(prm.innerHeightMm, 2000), thk = num(prm.thkMm, 300);
+    const along = type === 'culvert' ? innerW + 2 * thk : type === 'catch_basin' ? num(prm.sizeMm, 900) : 0;
+    structs.push({ sta, type, innerW, innerH, thk, along, clr: 100, prm, offset: num(st.offset, 0) });
+  }
+  structs.sort((a, b) => a.sta - b.sta);
+  for (let k = 1; k < structs.length; k++) {
+    const gap = (structs[k].sta - structs[k].along / 2) - (structs[k - 1].sta + structs[k - 1].along / 2);
+    if (gap < 500) structErrors.push(`structures: STA ${Math.round(structs[k - 1].sta / 1000)}m·${Math.round(structs[k].sta / 1000)}m 이격 ${Math.round(gap)}mm < 500mm — STA 조정 필요`);
+  }
+  // 벽 분절: 암거 구간을 갭으로(개구 명세) — 분절 후 각 런이 MIN_SEG 미달이면 정직 거부
+  const gaps = structs.filter((q) => q.type === 'culvert').map((q) => [Math.max(0, q.sta - q.along / 2 - q.clr), Math.min(totalMm, q.sta + q.along / 2 + q.clr)]);
+  const runs = [];
+  {
+    let cur = 0;
+    for (const [g0, g1] of gaps) { if (g0 > cur) runs.push([cur, g0]); cur = Math.max(cur, g1); }
+    if (cur < totalMm) runs.push([cur, totalMm]);
+  }
+  const MINSEG = minSeg(stemT);
+  for (const [r0, r1] of runs) if (r1 - r0 < MINSEG) structErrors.push(`분절 후 벽 구간 STA ${Math.round(r0 / 1000)}~${Math.round(r1 / 1000)}m 길이 ${Math.round(r1 - r0)}mm < ${MINSEG}mm — STA 조정 필요(자동 이동 금지)`);
+  if (structErrors.length) return { name: '옹벽 선형 구간', domain: 'civil', parts: [], alignmentErrors: structErrors };
+  const chordNotes = [];
   // 정확 마이터 트림(§0.2): 꼭짓점 교각 Δ에서 스트립(중심선 오프셋 o·반폭 h)의 트림
   //   m = (|o|+h)·tan(|Δ|/2) + TOL_TRIM_RESIDUAL — OBB 겹침 0을 수학으로 보장(갭 최소).
+  const miter = (absDelta, o, h) => (Math.abs(o) + h) * Math.tan(absDelta / 2) + TOL_TRIM_RESIDUAL;
+  const oStem = toe + stemT / 2 - baseW / 2; // 스템 중심선의 정렬 중심선 대비 오프셋
+  const parts = [];
+  for (const [ri, [r0, r1]] of runs.entries()) {
+  const sub = clipElements(elements, r0, r1);
+  const { pts, notes: cn } = chordPolyline(sub);
+  chordNotes.push(...cn);
+  const rp = runs.length > 1 ? `r${ri + 1}_` : '';
   const brgOf = (j) => Math.atan2(pts[j + 1][1] - pts[j][1], pts[j + 1][0] - pts[j][0]);
   const vertexDelta = (j) => {
     let d = brgOf(j) - brgOf(j - 1);
@@ -215,9 +252,6 @@ function retainingWallAlignmentAssembly(p) {
     while (d <= -Math.PI) d += 2 * Math.PI;
     return d;
   };
-  const miter = (absDelta, o, h) => (Math.abs(o) + h) * Math.tan(absDelta / 2) + TOL_TRIM_RESIDUAL;
-  const oStem = toe + stemT / 2 - baseW / 2; // 스템 중심선의 정렬 중심선 대비 오프셋
-  const parts = [];
   for (let j = 0; j < pts.length - 1; j++) {
     const [x1, y1] = pts[j], [x2, y2] = pts[j + 1];
     const len = Math.hypot(x2 - x1, y2 - y1);
@@ -237,13 +271,33 @@ function retainingWallAlignmentAssembly(p) {
       const [bx, by] = off(o - w / 2);
       parts.push(P(id, 'box', { width: w, depth: segLen, height: hh }, { tx: sx + bx, ty: sy + by, tz: z0, rz: +(brgDeg - 90).toFixed(4) }, 'concrete', role));
     };
-    place(`seg${j + 1}_base`, baseW / 2, 0, baseW, 0, baseT, 'base');
-    place(`seg${j + 1}_stem`, stemT / 2, oStem, stemT, baseT, H - baseT, 'wall');
+    place(`${rp}seg${j + 1}_base`, baseW / 2, 0, baseW, 0, baseT, 'base');
+    place(`${rp}seg${j + 1}_stem`, stemT / 2, oStem, stemT, baseT, H - baseT, 'wall');
+  }
+  }
+  // 구조물 부품: 암거=중심선 직교 관통(개산 외형) · 집수정=전면 오프셋 배치 · 신축이음=마커만
+  for (const [k, st2] of structs.entries()) {
+    const { p: cp, dir } = chainAt(elements, st2.sta);
+    const brg = Math.atan2(dir[1], dir[0]) * 180 / Math.PI;
+    const th2 = ((brg - 90) * Math.PI) / 180;
+    const c2 = Math.cos(th2), s2 = Math.sin(th2);
+    const loc = (lx, ly) => [cp[0] + lx * c2 - ly * s2, cp[1] + lx * s2 + ly * c2];
+    if (st2.type === 'culvert') {
+      const W2 = baseW + 3000; // 관통 연장(옹벽 전후 여유 개산)
+      const [ox2, oy2] = loc(-W2 / 2, -st2.along / 2);
+      parts.push(P(`culvert${k + 1}`, 'box', { width: W2, depth: st2.along, height: st2.innerH + 2 * st2.thk }, { tx: ox2, ty: oy2, tz: 0, rz: +(brg - 90).toFixed(4) }, 'concrete', 'culvert'));
+    } else if (st2.type === 'catch_basin') {
+      const off2 = st2.offset || (baseW / 2 + 700);
+      const [ox2, oy2] = loc(-off2 - st2.along / 2, -st2.along / 2);
+      parts.push(P(`basin${k + 1}`, 'box', { width: st2.along, depth: st2.along, height: 1200 }, { tx: ox2, ty: oy2, tz: 0, rz: +(brg - 90).toFixed(4) }, 'concrete', 'catchbasin'));
+    }
   }
   return {
     name: '옹벽 선형 구간', domain: 'civil', parts,
     alignment: {
       ips, curves, elements, totalMm, curveTable, halfWidthMm: baseW / 2, chordNotes,
+      structures: structs.map((q) => ({ sta: q.sta, type: q.type, innerWmm: q.innerW, innerHmm: q.innerH, thkMm: q.thk, alongMm: q.along, params: q.prm })),
+      wallGaps: gaps,
       note: '곡선=단곡선(완화곡선 보류) · 3D=현 근사(새그 공차 — 평면·DXF는 진짜 원호) · 물량·측점=중심선 호장 기준 · 접합=정확 마이터 트림',
     },
     // 종단(계획고): 기본=벽정점 일정고(형상 파생). 지반선·계획고 변경=입력 원칙(profileDesign/profileGround)

@@ -33,7 +33,7 @@ type AsmMod = { buildAssembly: (a: Assembly) => Built };
 type PkgMod = {
   ga2dDrawing: (a: Assembly, o?: Record<string, unknown>) => string; structuralReport: (a: Assembly, o?: Record<string, unknown>) => string;
   packageStamp: (html: string, basis: Basis) => string;
-  packageConsistencyCheck: (files: Array<{ name: string; content: string }>, basis: Basis, o?: { hasFluid?: boolean }) => { pass: boolean; checks: unknown[]; rev: string };
+  packageConsistencyCheck: (files: Array<{ name: string; content: string }>, basis: Basis, o?: { hasFluid?: boolean; alignment?: unknown }) => { pass: boolean; checks: unknown[]; rev: string };
 };
 type BoqMod = { boqReport: (a: Assembly, o?: Record<string, unknown>) => string };
 type PdMod = { dossierReport: (a: Assembly, o?: Record<string, unknown>) => string; pidSkeleton: (a: Assembly, o?: Record<string, unknown>) => string };
@@ -154,7 +154,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     for (const f of files) if (f.mime === 'text/html') f.content = mods.pkg.packageStamp(f.content, basis);
     const hasFluid = assembly.parts.some((p) => !!(p as { fluid?: unknown }).fluid);
-    consistency = mods.pkg.packageConsistencyCheck(files, basis, { hasFluid });
+    const alignment = (assembly as { alignment?: unknown }).alignment ?? null;
+    consistency = mods.pkg.packageConsistencyCheck(files, basis, { hasFluid, alignment });
   } catch (e) { void e; /* 정합 게이트 실패는 패키지를 막지 않되 consistency=null 로 정직 표기 */ }
 
   // 커스텀 생성기 스캐폴드 (#9 — 위시빌더 "단일 소스 → 전 도면 재생성" 워크플로우의 제품화)

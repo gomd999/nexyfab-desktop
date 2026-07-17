@@ -185,7 +185,7 @@ export function dxfCivilPlan(assembly) {
       }
     }
     const step = staStep(al.totalMm);
-    for (let s = 0; s <= al.totalMm + 1; s += step) {
+    for (let s = 0; ; s += step) {
       const t = Math.min(s, al.totalMm);
       const { p, dir } = chainAt(al.elements, t);
       const nx = -dir[1], ny = dir[0];
@@ -226,7 +226,7 @@ export function dxfCivilPlan(assembly) {
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
   if (alongY) e += line('AXIS', cx, y0 - 300 * K, cx, y1 + 300 * K, 'CENTER');
   else e += line('AXIS', x0 - 300 * K, cy, x1 + 300 * K, cy, 'CENTER');
-  for (let s = 0; s <= Lmm + 1; s += step) {
+  for (let s = 0; ; s += step) {
     const t = Math.min(s, Lmm);
     if (alongY) e += line('DIM', cx - 150 * K, y0 + t, cx + 150 * K, y0 + t) + text('DIM', cx + 200 * K, y0 + t - 60 * K, TH, `STA ${staLabel(t)}`);
     else e += line('DIM', x0 + t, cy - 150 * K, x0 + t, cy + 150 * K) + text('DIM', x0 + t - 60 * K, cy + 200 * K, TH, `STA ${staLabel(t)}`);
