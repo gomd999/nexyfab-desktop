@@ -72,6 +72,7 @@ ${TYPE_SPEC}
 {"name":"...","parts":[{"id":"post1","type":"rect_tube","params":{"width":60,"height":60,"wallThk":3,"length":1000},"at":{"tx":0,"ty":0,"tz":0,"rx":0,"ry":0,"rz":0}}]}
 - parts 배열은 최소 2개 이상, 각 부품은 id·type·params·at 을 모두 포함.
 - params 는 그 type 의 정확한 키만(위 목록). at 의 6개 값은 항상 숫자로.
+- 설명에 없어서 네가 정한 값(치수·수량·배치)이 있으면 "assumptions":["높이 미지정 → 700mm 가정", ...] 로 전부 나열(숨기지 마라).
 
 예외 — 옹벽·도로변 벽 등 "선형(노선)" 설계 요청이면 parts 대신 civilAlignment 하나만 선언:
 {"name":"...","civilAlignment":{"ips":[[0,0],[120000,0],[200000,60000]],"curves":[{"ip":1,"R":30000}],"structures":[{"sta":60000,"type":"culvert"}],"H":3000,"baseWidth":2000,"stemThickness":300,"baseThickness":400,"toeLength":600}}
@@ -200,6 +201,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       built = mods.asm.buildAssembly(assembly);
       if (built.ok) {
         const intentMatch = await intentCheck(mods, description, assembly);
+        // AI 가 임의로 채운 값 자가보고(라벨 명시) — "조용한 기본값"이 불일치의 주원인
+        const assumptions = Array.isArray((data as { assumptions?: unknown[] }).assumptions)
+          ? ((data as { assumptions: unknown[] }).assumptions).filter((q) => typeof q === 'string').slice(0, 12)
+          : [];
+        if (intentMatch && assumptions.length) (intentMatch as { assumptions?: string[] }).assumptions = assumptions as string[];
         return NextResponse.json({
           ok: true, assembly, openscad: built.openscad,
           parts: built.parts ?? assembly.parts,
