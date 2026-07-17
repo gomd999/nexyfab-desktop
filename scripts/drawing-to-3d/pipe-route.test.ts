@@ -373,6 +373,42 @@ describe('제안 배치 — BOQ 배관 물량·rc_frame 입상관·DFU 폐루프
 
 import { landscapeCheck } from './landscape-check.mjs';
 import { runCalculator } from '../engineering-core/registry.mjs';
+import { ga2dDrawing, fmtLen, pickScale, staLabel } from './package.mjs';
+
+describe('대축척 도면 코어 — km급 토목·조경·건축 (260717)', () => {
+  it('fmtLen 자동 단위: mm→m→km', () => {
+    expect(fmtLen(6300)).toBe('6300');
+    expect(fmtLen(85000)).toBe('85m');
+    expect(fmtLen(1250000)).toBe('1.25km');
+  });
+  it('pickScale 표준 축척 자동 선정(A3 지면 기준)', () => {
+    expect(pickScale(6300, 2800)).toBe(50);
+    expect(pickScale(500000, 3000)).toBe(5000);
+  });
+  it('staLabel 0+000 형식', () => {
+    expect(staLabel(50000)).toBe('0+050');
+    expect(staLabel(1250000)).toBe('1+250');
+  });
+  it('옹벽 500m 연장: 게이트 통과 + GA에 SCALE·STA·자동 단위·선형 평면', () => {
+    const run = buildAssemblyTemplate('civil', 'retaining_wall_run', { length: 500000 });
+    const built = buildAssembly(run);
+    expect(built.ok).toBe(true);
+    expect(built.designOk).toBe(true);
+    const html = ga2dDrawing(run, { title: 'run', domain: 'civil' });
+    expect(html).toContain('SCALE 1:2500');
+    expect(html).toContain('STA 0+050');
+    expect(html).toContain('500m');
+    expect(html).toContain('선형 평면도');
+  });
+  it('다부품(rc_frame 90부품) BOM 그룹화 — 수량 열·행 수 간축', () => {
+    const rc = buildAssemblyTemplate('building', 'rc_frame', { floors: 3, baysX: 3, baysY: 2 });
+    expect(rc.parts.length).toBeGreaterThan(40);
+    const html = ga2dDrawing(rc, { title: 'rc', domain: 'building' });
+    const rows = (html.match(/<tbody>(.*?)<\/tbody>/s)?.[1].match(/<tr>/g) ?? []).length;
+    expect(rows).toBeLessThan(10);
+    expect(html).toContain('수량');
+  });
+});
 
 describe('잔여 제안 3건 — 통기 하한·구배 검증·관수 체인', () => {
   it('drainage_vent segment=vent: 신정통기 하한(1/2 초과·DN32↑) — DN100 스택 → DN65', () => {

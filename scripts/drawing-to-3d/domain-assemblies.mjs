@@ -501,7 +501,7 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'baseThickness', labelKo: '저판 두께', unit: 'mm', default: 400, min: 150, max: 1200 },
         { name: 'stemThickness', labelKo: '벽체 두께', unit: 'mm', default: 300, min: 150, max: 1000 },
         { name: 'toeLength', labelKo: '앞굽 길이', unit: 'mm', default: 600, min: 0, max: 3000 },
-        { name: 'length', labelKo: '연장', unit: 'mm', default: 10000, min: 1000, max: 20000 },
+        { name: 'length', labelKo: '연장', unit: 'mm', default: 10000, min: 1000, max: 2000000 },
       ],
     },
   ],

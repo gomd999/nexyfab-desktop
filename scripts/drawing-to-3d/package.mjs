@@ -43,6 +43,40 @@ function dimStr(type, p) {
 const PRINT_BAR = (label) => `<div class="nf-print-bar" style="position:sticky;top:0;z-index:99;background:#1f2937;color:#fff;padding:7px 16px;font-size:12.5px;display:flex;gap:12px;align-items:center"><b>${label}</b><button onclick="print()" style="background:#2563eb;color:#fff;border:0;padding:5px 13px;border-radius:6px;cursor:pointer">🖨 인쇄 / PDF</button></div>`;
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
+// ── 대축척 도면 코어(260717) — km급 토목·조경·건축 도면 지원 ────────────────────
+// 기계 스케일(수 m) 가정 제거: ①표준 축척(1:N) 자동 선정 — A3 100% 인쇄 기준 실축척
+// ②치수 표기 자동 단위(mm→m→km) ③스케일바·방위 ④측점(STA) 라벨.
+export const STD_SCALES = [1, 2, 5, 10, 20, 50, 100, 200, 250, 500, 1000, 2500, 5000, 10000];
+const PX_PER_PAPER_MM = 1180 / 420; // sheet 1180px = A3 폭 420mm ⇒ 인쇄 100%에서 1:N 실축척
+export function pickScale(extentWmm, extentHmm = 0, paperWmm = 170, paperHmm = 200) {
+  return STD_SCALES.find((n) => extentWmm / n <= paperWmm && extentHmm / n <= paperHmm) ?? STD_SCALES[STD_SCALES.length - 1];
+}
+/** 길이 표기 자동 단위 — <10 m=mm 정수 · <1 km=m(2자리) · 이상=km(3자리). */
+export function fmtLen(mm) {
+  if (!Number.isFinite(mm)) return '-';
+  const a = Math.abs(mm);
+  if (a < 10000) return String(Math.round(mm));
+  if (a < 1_000_000) return `${Math.round(mm / 10) / 100}m`;
+  return `${Math.round(mm / 1000) / 1000}km`;
+}
+/** 측점(STA) 라벨 — 0+000 형식(km+m). */
+export function staLabel(mm) { const m = Math.round(mm / 1000); return `${Math.floor(m / 1000)}+${String(m % 1000).padStart(3, '0')}`; }
+/** 측점 간격 — 연장에 따라 10/50/100 m. */
+export const staStep = (extentMm) => (extentMm <= 100_000 ? 10_000 : extentMm <= 500_000 ? 50_000 : 100_000);
+// 스케일바 — 눈금=1·2·5×10^k 계열(연장/4 근방), 흑백 교대 2칸
+function scaleBarSvg(x, y, S, extentMm) {
+  const target = Math.max(1, extentMm / 4);
+  const pow = Math.pow(10, Math.floor(Math.log10(target)));
+  const base = [1, 2, 5, 10].map((m) => m * pow).find((v) => v >= target) ?? pow;
+  const segPx = (base / 2) * S;
+  let el = '';
+  for (let i = 0; i < 2; i++) el += `<rect x="${(x + i * segPx).toFixed(1)}" y="${y}" width="${segPx.toFixed(1)}" height="5" fill="${i % 2 ? '#fff' : '#1f2937'}" stroke="#1f2937" stroke-width=".6"/>`;
+  el += `<text x="${x}" y="${y - 3}" font-size="8.5" font-family="sans-serif">0</text>`;
+  el += `<text x="${(x + 2 * segPx).toFixed(1)}" y="${y - 3}" font-size="8.5" text-anchor="end" font-family="sans-serif">${fmtLen(base)}${Math.abs(base) < 10000 ? 'mm' : ''}</text>`;
+  return el;
+}
+const northSvg = (x, y) => `<g font-family="sans-serif"><circle cx="${x}" cy="${y}" r="10" fill="#fff" stroke="#1f2937" stroke-width=".8"/><path d="M ${x} ${y - 7} L ${x + 4} ${y + 5} L ${x} ${y + 2} L ${x - 4} ${y + 5} Z" fill="#1f2937"/><text x="${x}" y="${y - 13}" font-size="8.5" text-anchor="middle">N</text></g>`;
+
 /**
  * 건축 축선 평면도 SVG (관례도면 모드 — Wave C ③): 기둥 중심선 축선(Ⓧ①…·Ⓨⓐ…),
  * 심선 스팬치수, 기둥=채운 사각, 보=이중선, 슬래브 외곽 점선.
@@ -125,15 +159,60 @@ function landscapePlanSvg(parts) {
       el.push(`<circle cx="${cx}" cy="${cy}" r="${rr.toFixed(1)}" fill="#fff" stroke="#475569" stroke-width="1.2"/><line x1="${cx - rr}" y1="${cy}" x2="${cx + rr}" y2="${cy}" stroke="#475569" stroke-width=".6"/><line x1="${cx}" y1="${cy - rr}" x2="${cx}" y2="${cy + rr}" stroke="#475569" stroke-width=".6"/>`);
     }
   }
-  // 외곽 치수
-  el.push(`<line x1="${X(x0)}" y1="${(M + Dm * S + 18).toFixed(1)}" x2="${X(x1)}" y2="${(M + Dm * S + 18).toFixed(1)}" stroke="#dc2626" stroke-width=".6"/><text x="${(+X(x0) + +X(x1)) / 2}" y="${(M + Dm * S + 32).toFixed(1)}" font-size="10" text-anchor="middle" fill="#dc2626" font-family="sans-serif">${Math.round(Wm)}</text>`);
-  el.push(`<line x1="${M - 16}" y1="${Y(y0)}" x2="${M - 16}" y2="${Y(y1)}" stroke="#dc2626" stroke-width=".6"/><text x="${M - 22}" y="${(+Y(y0) + +Y(y1)) / 2}" font-size="10" text-anchor="end" fill="#dc2626" font-family="sans-serif" transform="rotate(-90 ${M - 22} ${(+Y(y0) + +Y(y1)) / 2})">${Math.round(Dm)}</text>`);
+  // 외곽 치수(자동 단위) + 스케일바
+  el.push(`<line x1="${X(x0)}" y1="${(M + Dm * S + 18).toFixed(1)}" x2="${X(x1)}" y2="${(M + Dm * S + 18).toFixed(1)}" stroke="#dc2626" stroke-width=".6"/><text x="${(+X(x0) + +X(x1)) / 2}" y="${(M + Dm * S + 32).toFixed(1)}" font-size="10" text-anchor="middle" fill="#dc2626" font-family="sans-serif">${fmtLen(Wm)}</text>`);
+  el.push(`<line x1="${M - 16}" y1="${Y(y0)}" x2="${M - 16}" y2="${Y(y1)}" stroke="#dc2626" stroke-width=".6"/><text x="${M - 22}" y="${(+Y(y0) + +Y(y1)) / 2}" font-size="10" text-anchor="end" fill="#dc2626" font-family="sans-serif" transform="rotate(-90 ${M - 22} ${(+Y(y0) + +Y(y1)) / 2})">${fmtLen(Dm)}</text>`);
+  el.push(scaleBarSvg(M, M + Dm * S + 44, S, Math.max(Wm, Dm)));
   return `<svg viewBox="0 0 ${M + Wm * S + 50} ${M + Dm * S + 50}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff"><text x="${M}" y="24" font-size="13" font-weight="700" font-family="sans-serif">배치 평면도</text>${el.join('')}<text x="${M}" y="${(M + Dm * S + 46).toFixed(1)}" font-size="9.5" fill="#64748b" font-family="sans-serif">범례: ▨데크보드 · ┅장선 · ─보 · ⊕기둥 · 치수 mm</text></svg>`;
 }
 
+/** 토목: 선형 평면도 SVG — 부재 평면 + 중심선 + 측점(STA 0+000) + 스케일바. km급 연장 대응. */
+function civilPlanSvg(parts) {
+  if (!parts.length) return null;
+  const x0 = Math.min(...parts.map((o) => o.box.x)), x1 = Math.max(...parts.map((o) => o.box.x + o.box.dx));
+  const y0 = Math.min(...parts.map((o) => o.box.y)), y1 = Math.max(...parts.map((o) => o.box.y + o.box.dy));
+  const Wm = Math.max(1, x1 - x0), Dm = Math.max(1, y1 - y0);
+  const alongY = Dm >= Wm; // 장축 = 선형 방향
+  const Lmm = alongY ? Dm : Wm;
+  const M = 70;
+  const S = Math.min(760 / Wm, 460 / Dm);
+  const X = (v) => (M + (v - x0) * S).toFixed(1);
+  const Y = (v) => (M + (v - y0) * S).toFixed(1);
+  const el = [];
+  const ROLE_FILL = { wall: '#78716c55', base: '#57534e33' };
+  for (const o of parts) {
+    el.push(`<rect x="${X(o.box.x)}" y="${Y(o.box.y)}" width="${(o.box.dx * S).toFixed(1)}" height="${(o.box.dy * S).toFixed(1)}" fill="${ROLE_FILL[o.p.role] ?? '#9aa7b522'}" stroke="${o.st.c}" stroke-width=".9"/>`);
+  }
+  // 중심선(일점쇄선) + 측점
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  if (alongY) el.push(`<line x1="${X(cx)}" y1="${(+Y(y0) - 14).toFixed(1)}" x2="${X(cx)}" y2="${(+Y(y1) + 14).toFixed(1)}" stroke="#dc2626" stroke-width=".7" stroke-dasharray="16 4 3 4"/>`);
+  else el.push(`<line x1="${(+X(x0) - 14).toFixed(1)}" y1="${Y(cy)}" x2="${(+X(x1) + 14).toFixed(1)}" y2="${Y(cy)}" stroke="#dc2626" stroke-width=".7" stroke-dasharray="16 4 3 4"/>`);
+  const step = staStep(Lmm);
+  for (let s = 0; s <= Lmm + 1; s += step) {
+    const t = Math.min(s, Lmm);
+    if (alongY) {
+      const yy = +Y(y0 + t);
+      el.push(`<line x1="${(+X(cx) - 7).toFixed(1)}" y1="${yy}" x2="${(+X(cx) + 7).toFixed(1)}" y2="${yy}" stroke="#dc2626" stroke-width=".8"/>`);
+      el.push(`<text x="${(+X(cx) + 10).toFixed(1)}" y="${(yy + 3).toFixed(1)}" font-size="8.5" fill="#dc2626" font-family="sans-serif">STA ${staLabel(t)}</text>`);
+    } else {
+      const xx = +X(x0 + t);
+      el.push(`<line x1="${xx}" y1="${(+Y(cy) - 7).toFixed(1)}" x2="${xx}" y2="${(+Y(cy) + 7).toFixed(1)}" stroke="#dc2626" stroke-width=".8"/>`);
+      el.push(`<text x="${xx}" y="${(+Y(cy) - 10).toFixed(1)}" font-size="8.5" fill="#dc2626" text-anchor="middle" font-family="sans-serif">STA ${staLabel(t)}</text>`);
+    }
+    if (t >= Lmm) break;
+  }
+  // 외곽 치수(자동 단위) + 스케일바 + 방위
+  el.push(`<line x1="${X(x0)}" y1="${(M + Dm * S + 20).toFixed(1)}" x2="${X(x1)}" y2="${(M + Dm * S + 20).toFixed(1)}" stroke="#dc2626" stroke-width=".6"/><text x="${(+X(x0) + +X(x1)) / 2}" y="${(M + Dm * S + 34).toFixed(1)}" font-size="10" text-anchor="middle" fill="#dc2626" font-family="sans-serif">${fmtLen(Wm)}</text>`);
+  el.push(`<line x1="${M - 16}" y1="${Y(y0)}" x2="${M - 16}" y2="${Y(y1)}" stroke="#dc2626" stroke-width=".6"/><text x="${M - 22}" y="${(+Y(y0) + +Y(y1)) / 2}" font-size="10" text-anchor="end" fill="#dc2626" font-family="sans-serif" transform="rotate(-90 ${M - 22} ${(+Y(y0) + +Y(y1)) / 2})">${fmtLen(Dm)}</text>`);
+  el.push(scaleBarSvg(M, M + Dm * S + 52, S, Math.max(Wm, Dm)));
+  el.push(northSvg(M + Wm * S + 30, M - 20));
+  return `<svg viewBox="0 0 ${M + Wm * S + 70} ${M + Dm * S + 80}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff"><text x="${M}" y="24" font-size="13" font-weight="700" font-family="sans-serif">선형 평면도 (측점 ${fmtLen(step)} 간격)</text>${el.join('')}</svg>`;
+}
+
 /** 어셈블리 → 2D GA 도면 HTML (정면·평면 2뷰 + 전체치수 + 밸룬 + BOM, 인쇄양식).
- *  domain='building' → 축선 구조평면 추가 / 'landscape' → 배치 평면도 추가 (관례도면 모드 ③)
- *  pipes = buildAssembly().pipes.routes — 라우터의 단일 결과를 그대로 투영(재계산 금지 — 정합) */
+ *  domain='building' → 축선 구조평면 / 'landscape' → 배치 평면도 / 'civil' → 선형 평면(측점)
+ *  pipes = buildAssembly().pipes.routes — 라우터의 단일 결과를 그대로 투영(재계산 금지 — 정합)
+ *  축척: 표준 축척(1:N) 자동 선정 — A3 100% 인쇄 기준 실축척(표제란 명기), km급 대응. */
 export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA-001', domain, pipes } = {}) {
   const parts = (assembly.parts ?? []).map((p, i) => ({ p, i, box: placed(p), st: styleOf(p) }));
   if (!parts.length) return '<!DOCTYPE html><body>빈 어셈블리</body>';
@@ -141,20 +220,36 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   const by0 = Math.min(...parts.map(o => o.box.y)), by1 = Math.max(...parts.map(o => o.box.y + o.box.dy));
   const bz0 = Math.min(...parts.map(o => o.box.z)), bz1 = Math.max(...parts.map(o => o.box.z + o.box.dz));
   const W = bx1 - bx0, D = by1 - by0, H = bz1 - bz0;
-  const S = Math.min(360 / Math.max(W, 1), 460 / Math.max(H, 1), 0.5);
+  // 표준 축척 자동 선정(뷰당 지면 170×200 paper-mm) — S = 인쇄 100% 기준 px/모델mm
+  const N = pickScale(Math.max(W, 1), Math.max(H, D, 1));
+  const S = PX_PER_PAPER_MM / N;
   const gap = 80, ox = 70, oy = 46;
+  // 부품 그룹(type|role|규격|재질) — 대량 부품 도면의 밸룬·BOM 간축(동일 부재=동일 번호 관례)
+  const gIdx = new Map();
+  const groups = [];
+  for (const o of parts) {
+    const key = `${o.p.type}|${o.p.role ?? ''}|${dimStr(o.p.type, o.p.params)}|${o.st.mat}`;
+    if (!gIdx.has(key)) { gIdx.set(key, groups.length); groups.push({ rep: o, count: 0 }); }
+    o.gi = gIdx.get(key);
+    groups[o.gi].count++;
+  }
+  const MANY = parts.length > 40; // 다부품: 대표 부품만 밸룬·개별 치수문자 생략(판독성)
   const fw = W * S, fh = H * S, pd = D * S;
   const px = (x, o) => (o + (x - bx0) * S).toFixed(1);
   const pz = (z) => (oy + fh - (z - bz0) * S).toFixed(1);
   const rects = [], balloons = [];
   const sx0 = ox + fw + gap;
-  for (const { p, i, box, st } of parts) {
+  for (const o of parts) {
+    const { p, box, st } = o;
     // FRONT (x→right, z→up)
     rects.push(`<rect x="${px(box.x, ox)}" y="${pz(box.z + box.dz)}" width="${(box.dx * S).toFixed(1)}" height="${(box.dz * S).toFixed(1)}" fill="${st.c}22" stroke="${st.c}" stroke-width="1"/>`);
-    const bx = +px(box.x + box.dx / 2, ox), byy = +pz(box.z + box.dz) - 9;
-    balloons.push(`<circle cx="${bx}" cy="${byy}" r="8" fill="#fff" stroke="#0f172a"/><text x="${bx}" y="${byy + 3}" font-size="9" text-anchor="middle" fill="#0f172a" font-family="sans-serif">${i + 1}</text>`);
-    const ds = dimStr(p.type, p.params);
-    if (ds) balloons.push(`<text x="${bx}" y="${(+pz(box.z) + 10).toFixed(1)}" font-size="7.3" text-anchor="middle" fill="#475569" font-family="sans-serif">${esc(ds)}</text>`);
+    // 밸룬 = 그룹 번호(동일 부재 동일 번호) — 다부품 도면은 그룹 대표에만
+    if (!MANY || groups[o.gi].rep === o) {
+      const bx = +px(box.x + box.dx / 2, ox), byy = +pz(box.z + box.dz) - 9;
+      balloons.push(`<circle cx="${bx}" cy="${byy}" r="8" fill="#fff" stroke="#0f172a"/><text x="${bx}" y="${byy + 3}" font-size="9" text-anchor="middle" fill="#0f172a" font-family="sans-serif">${o.gi + 1}</text>`);
+      const ds = dimStr(p.type, p.params);
+      if (ds && !MANY) balloons.push(`<text x="${bx}" y="${(+pz(box.z) + 10).toFixed(1)}" font-size="7.3" text-anchor="middle" fill="#475569" font-family="sans-serif">${esc(ds)}</text>`);
+    }
     // PLAN (x→right, y→down) at side
     rects.push(`<rect x="${px(box.x, sx0)}" y="${(oy + (box.y - by0) * S).toFixed(1)}" width="${(box.dx * S).toFixed(1)}" height="${(box.dy * S).toFixed(1)}" fill="${st.c}22" stroke="${st.c}" stroke-width=".9"/>`);
   }
@@ -177,25 +272,32 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   <text x="${sx0}" y="${oy - 10}" font-size="12" font-weight="700" font-family="sans-serif">평면도 PLAN</text>
   <rect x="${ox}" y="${oy}" width="${fw}" height="${fh}" fill="none" stroke="#0f172a" stroke-width="1.4"/>
   ${rects.join('')}
-  ${dimH(px(bx0, ox), px(bx1, ox), (oy + fh + 18).toFixed(1), `${Math.round(W)}`)}
-  ${dimV((ox - 18).toFixed(1), pz(bz1), pz(bz0), `${Math.round(H)} (H)`)}
-  ${dimH(px(bx0, sx0), px(bx1, sx0), (oy + pd + 18).toFixed(1), `${Math.round(W)}`)}
+  ${dimH(px(bx0, ox), px(bx1, ox), (oy + fh + 18).toFixed(1), fmtLen(W))}
+  ${dimV((ox - 18).toFixed(1), pz(bz1), pz(bz0), `${fmtLen(H)} (H)`)}
+  ${dimH(px(bx0, sx0), px(bx1, sx0), (oy + pd + 18).toFixed(1), fmtLen(W))}
+  ${dimV((sx0 - 18).toFixed(1), (oy).toFixed(1), (oy + pd).toFixed(1), fmtLen(D))}
+  ${domain && domain !== 'mech' ? scaleBarSvg(ox, oy + fh + 42, S, Math.max(W, H)) + northSvg(sx0 + fw + 30, oy - 20) : ''}
   ${pipeLines.join('')}
   ${balloons.join('')}</svg>`;
-  // 관례도면 모드 (③): 건축=축선 구조평면 · 조경=배치 평면도
+  // 관례도면 모드 (③): 건축=축선 구조평면 · 조경=배치 평면도 · 토목=선형 평면(측점)
   let domainSvg = '';
   try {
     if (domain === 'building') domainSvg = axesPlanSvg(parts) ?? '';
     else if (domain === 'landscape') domainSvg = landscapePlanSvg(parts) ?? '';
+    else if (domain === 'civil') domainSvg = civilPlanSvg(parts) ?? '';
   } catch { domainSvg = ''; }
-  const bom = parts.map(({ p, i, box, st }) => `<tr><td>${i + 1}</td><td style="text-align:left">${esc(p.id ?? p.type)}</td><td>${esc(p.type)}</td><td>${Math.round(box.dx)}×${Math.round(box.dy)}×${Math.round(box.dz)}</td><td>${esc(st.mat)}</td></tr>`).join('');
+  // BOM = 그룹 단위(규격·재질 동일 부재 수량 집계) — 대량 부품 도면 판독성
+  const bom = groups.map((g, gi) => {
+    const { p, box, st } = g.rep;
+    return `<tr><td>${gi + 1}</td><td style="text-align:left">${esc(p.id ?? p.type)}${g.count > 1 ? ' 외' : ''}</td><td>${esc(p.type)}</td><td>${fmtLen(box.dx)}×${fmtLen(box.dy)}×${fmtLen(box.dz)}</td><td>${esc(st.mat)}</td><td>${g.count}</td></tr>`;
+  }).join('');
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>@page{size:A3 landscape;margin:8mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937}
 .sheet{max-width:1180px;margin:16px auto;background:#fff;border:1px solid #cbd5e1;box-shadow:0 4px 24px rgba(0,0,0,.1)}.hd{display:flex;justify-content:space-between;align-items:flex-end;padding:12px 20px;border-bottom:2px solid #1f2937}.hd h1{font-size:16px;margin:0}.sub{font-size:11px;color:#64748b}.wrap{padding:8px 16px}
 table{border-collapse:collapse;width:calc(100% - 40px);margin:0 20px 14px;font-size:11px}td,th{border:1px solid #cbd5e1;padding:3px 8px;text-align:center}th{background:#f1f5f9}
 @media print{.nf-print-bar{display:none}body{background:#fff}.sheet{box-shadow:none;border:none;margin:0}}</style></head>
-<body>${PRINT_BAR('설계 GA 도면 (A3)')}<div class="sheet"><div class="hd"><div><h1>${esc(title)} — 일반배치도 (GA)</h1><div class="sub">nexyfab drawing-to-3d 자동생성 · 부품 ${parts.length}종</div></div><div class="sub">DWG ${esc(dwg)} · mm · 3rd angle</div></div>
-<div class="wrap">${svg}</div>${domainSvg ? `<div class="wrap" style="border-top:1px solid #e2e8f0">${domainSvg}</div>` : ''}<table><thead><tr><th>No.</th><th>품명</th><th>Type</th><th>엔벨로프(mm)</th><th>재질</th></tr></thead><tbody>${bom}</tbody></table>
+<body>${PRINT_BAR('설계 GA 도면 (A3)')}<div class="sheet"><div class="hd"><div><h1>${esc(title)} — 일반배치도 (GA)</h1><div class="sub">nexyfab drawing-to-3d 자동생성 · 부품 ${parts.length}(그룹 ${groups.length})</div></div><div class="sub">DWG ${esc(dwg)} · <b>SCALE 1:${N}</b> (A3 100% 인쇄 기준 · 화면=가변) · 표기 mm(대형 자동 m/km) · 3rd angle</div></div>
+<div class="wrap">${svg}</div>${domainSvg ? `<div class="wrap" style="border-top:1px solid #e2e8f0">${domainSvg}</div>` : ''}<table><thead><tr><th>No.</th><th>품명(대표)</th><th>Type</th><th>규격(엔벨로프)</th><th>재질</th><th>수량</th></tr></thead><tbody>${bom}</tbody></table>
 <div class="sub" style="padding:4px 20px 12px;color:#94a3b8">⚠ 자동생성 GA(비법정) · 부품 엔벨로프 기준 · 상세치수·공차는 후속.</div><div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div></body></html>`;
 }
 
@@ -268,11 +370,14 @@ export function packageConsistencyCheck(files, basis, { hasFluid = false } = {})
   if (boqMass !== null && dosMass !== null) add('Dossier.html↔BOQ.html', 'totalMassKg', dosMass, boqMass, Math.max(0.5, boqMass * 0.01, tPad));
   if (!hasFluid) add('BOQ.html', 'totalMassKg(vs 구조)', boqMass, basis.massKg, Math.max(0.5, basis.massKg * 0.01, tPad));
   else if (boqMass !== null) checks.push({ file: 'BOQ.html', metric: 'totalMassKg', value: boqMass, expect: basis.massKg, tol: 0, pass: true, note: '유체(운전질량) 포함차 — 자재질량 대 운전질량은 정의가 달라 대조 생략' });
+  // GA 치수는 자동 단위(fmtLen: mm/m/km) — 회수 후 mm 로 역변환, 허용오차=표기 라운딩 단위
+  const parseLen = (s) => { const m = String(s ?? '').match(/^([\d.]+)(km|m)?$/); if (!m) return null; const v = parseFloat(m[1]); return m[2] === 'km' ? v * 1e6 : m[2] === 'm' ? v * 1000 : v; };
+  const lenTol = (mm) => (Math.abs(mm) < 10000 ? 1 : Math.abs(mm) < 1_000_000 ? 6 : 501);
   const gaHtml = get('GA_2D_drawing.html');
-  const gaH = num(gaHtml, />(\d+) \(H\)</);
-  add('GA_2D_drawing.html', 'H(mm)', gaH, Math.round(basis.env[2]), 1);
+  const mH = gaHtml.match(/>([\d.]+(?:km|m)?) \(H\)</);
+  add('GA_2D_drawing.html', 'H(mm)', mH ? parseLen(mH[1]) : null, basis.env[2], lenTol(basis.env[2]));
   // W 대조 — FRONT 하단 치수(첫 dimH). 배관 오버레이가 있어도 치수는 부품 엔벨로프 기준.
-  const gaW = num(gaHtml, /text-anchor="middle" fill="#dc2626">(\d+)</);
-  add('GA_2D_drawing.html', 'W(mm)', gaW, Math.round(basis.env[0]), 1);
+  const mW = gaHtml.match(/text-anchor="middle" fill="#dc2626">([\d.]+(?:km|m)?)</);
+  add('GA_2D_drawing.html', 'W(mm)', mW ? parseLen(mW[1]) : null, basis.env[0], lenTol(basis.env[0]));
   return { pass: checks.every((c) => c.pass), checks, rev: basis.rev };
 }

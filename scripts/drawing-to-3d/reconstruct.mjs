@@ -177,8 +177,9 @@ const GATES = {
     if (2 * i.tf >= i.H) e.push('2·tf ≥ H');
   },
   box(i, e) {
-    // 상한 60m — 건축 다베이 슬래브(4베이×12m+기둥여유)까지 허용 (#6, 감사 260714)
-    for (const k of ['width', 'depth', 'height']) if (!pos(i[k]) || i[k] > 90000) e.push(`${k} invalid`);
+    // 수평 상한 2km — 토목 선형(옹벽 연장·관로 등) 대축척 지원(260717). 높이는 200m(초고층 여유).
+    for (const k of ['width', 'depth']) if (!pos(i[k]) || i[k] > 2_000_000) e.push(`${k} invalid`);
+    if (!pos(i.height) || i.height > 200_000) e.push('height invalid');
   },
   cylinder(i, e) {
     for (const k of ['diameter', 'length']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);

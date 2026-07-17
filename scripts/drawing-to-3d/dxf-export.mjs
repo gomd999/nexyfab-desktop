@@ -8,8 +8,15 @@
  * 치수는 선+문자 단순표기(연관 치수 아님 — 명시). 검증: 섹션 균형·레이어 참조 self-test.
  */
 import { partAabb } from './reconstruct.mjs';
+import { pickScale, staLabel, staStep } from './package.mjs';
 
 const g = (code, val) => `${code}\n${val}\n`;
+// 대축척(km급) 주석 크기 — 모델공간 1:1(mm) 유지, 문자고·오프셋만 도면 축척(1:N)에 비례.
+// 기준: 1:100에서 문자고 250mm(기존값) — K = N/100 (하한 1).
+const annotK = (extentW, extentH) => {
+  const N = pickScale(Math.max(extentW, 1), Math.max(extentH, 1), 380, 260);
+  return { N, K: Math.max(1, N / 100) };
+};
 
 function box(part) {
   const a = partAabb({ type: part.type, ...part.params });
@@ -64,26 +71,28 @@ export function dxfBuildingPlan(assembly) {
   const xs = uniq(fCols.map((o) => o.b.x + o.b.dx / 2));
   const ys = uniq(fCols.map((o) => o.b.y + o.b.dy / 2));
   if (xs.length < 2 || ys.length < 2) return null;
-  const EXT = 800, TH = 250; // 축선 연장·문자 높이(mm)
+  const { N, K } = annotK(xs[xs.length - 1] - xs[0], ys[ys.length - 1] - ys[0]);
+  const EXT = 800 * K, TH = 250 * K; // 축선 연장·문자 높이(mm) — 도면 축척 비례
   let e = '';
   // 축선 + 버블
   xs.forEach((x, i) => {
     e += line('AXIS', x, ys[0] - EXT, x, ys[ys.length - 1] + EXT, 'CENTER');
-    e += circle('AXIS', x, ys[ys.length - 1] + EXT + 350, 300) + text('AXIS', x - 120, ys[ys.length - 1] + EXT + 230, TH, `X${i + 1}`);
+    e += circle('AXIS', x, ys[ys.length - 1] + EXT + 350 * K, 300 * K) + text('AXIS', x - 120 * K, ys[ys.length - 1] + EXT + 230 * K, TH, `X${i + 1}`);
   });
   ys.forEach((y, j) => {
     e += line('AXIS', xs[0] - EXT, y, xs[xs.length - 1] + EXT, y, 'CENTER');
-    e += circle('AXIS', xs[0] - EXT - 350, y, 300) + text('AXIS', xs[0] - EXT - 500, y - 120, TH, String.fromCharCode(89 /*Y*/) + (j + 1));
+    e += circle('AXIS', xs[0] - EXT - 350 * K, y, 300 * K) + text('AXIS', xs[0] - EXT - 500 * K, y - 120 * K, TH, String.fromCharCode(89 /*Y*/) + (j + 1));
   });
   // 심선 치수 (선+문자 단순표기)
   for (let i = 1; i < xs.length; i++) {
-    const y = ys[ys.length - 1] + EXT + 900;
-    e += line('DIM', xs[i - 1], y, xs[i], y) + text('DIM', (xs[i - 1] + xs[i]) / 2 - 300, y + 80, TH, String(Math.round(xs[i] - xs[i - 1])));
+    const y = ys[ys.length - 1] + EXT + 900 * K;
+    e += line('DIM', xs[i - 1], y, xs[i], y) + text('DIM', (xs[i - 1] + xs[i]) / 2 - 300 * K, y + 80 * K, TH, String(Math.round(xs[i] - xs[i - 1])));
   }
   for (let j = 1; j < ys.length; j++) {
-    const x = xs[0] - EXT - 900;
-    e += line('DIM', x, ys[j - 1], x, ys[j]) + text('DIM', x - 700, (ys[j - 1] + ys[j]) / 2, TH, String(Math.round(ys[j] - ys[j - 1])));
+    const x = xs[0] - EXT - 900 * K;
+    e += line('DIM', x, ys[j - 1], x, ys[j]) + text('DIM', x - 700 * K, (ys[j - 1] + ys[j]) / 2, TH, String(Math.round(ys[j] - ys[j - 1])));
   }
+  e += text('TXT', xs[0], ys[0] - EXT - 1200 * K, TH, `SCALE 1:${N} (annot) - model 1:1 mm`);
   // 슬래브 외곽 (최하층 1장, DASHED)
   const slab = parts.filter((o) => o.p.role === 'slab').sort((a, b) => a.b.z - b.b.z)[0];
   if (slab) e += rect('SLAB', slab.b.x, slab.b.y, slab.b.dx, slab.b.dy, 'DASHED');
@@ -95,7 +104,7 @@ export function dxfBuildingPlan(assembly) {
   }
   // 기둥 — 채움(SOLID)+외곽
   for (const o of fCols) { e += solid('COLUMN', o.b.x, o.b.y, o.b.dx, o.b.dy) + rect('COLUMN', o.b.x, o.b.y, o.b.dx, o.b.dy); }
-  e += text('TXT', xs[0], ys[0] - EXT - 700, TH, `STRUCTURAL PLAN (mm) - auto-generated, dims=centerline, non-statutory`);
+  e += text('TXT', xs[0], ys[0] - EXT - 700 * K, TH, `STRUCTURAL PLAN (mm) - auto-generated, dims=centerline, non-statutory`);
   return shell(e);
 }
 
@@ -116,9 +125,39 @@ export function dxfLandscapePlan(assembly) {
   }
   const x0 = Math.min(...parts.map((o) => o.b.x)), x1 = Math.max(...parts.map((o) => o.b.x + o.b.dx));
   const y0 = Math.min(...parts.map((o) => o.b.y)), y1 = Math.max(...parts.map((o) => o.b.y + o.b.dy));
-  e += line('DIM', x0, y0 - 500, x1, y0 - 500) + text('DIM', (x0 + x1) / 2 - 300, y0 - 420, 200, String(Math.round(x1 - x0)));
-  e += line('DIM', x0 - 500, y0, x0 - 500, y1) + text('DIM', x0 - 1100, (y0 + y1) / 2, 200, String(Math.round(y1 - y0)));
-  e += text('TXT', x0, y0 - 900, 200, 'LANDSCAPE PLAN (mm) - auto-generated, non-statutory');
+  const { N, K } = annotK(x1 - x0, y1 - y0);
+  e += line('DIM', x0, y0 - 500 * K, x1, y0 - 500 * K) + text('DIM', (x0 + x1) / 2 - 300 * K, y0 - 420 * K, 200 * K, String(Math.round(x1 - x0)));
+  e += line('DIM', x0 - 500 * K, y0, x0 - 500 * K, y1) + text('DIM', x0 - 1100 * K, (y0 + y1) / 2, 200 * K, String(Math.round(y1 - y0)));
+  e += text('TXT', x0, y0 - 900 * K, 200 * K, `LANDSCAPE PLAN (mm) - SCALE 1:${N} (annot) - auto-generated, non-statutory`);
+  return shell(e);
+}
+
+/** 토목: 선형 평면 DXF — 부재 외곽 + 중심선(AXIS) + 측점(STA) + 주석 축척 비례. km급 연장. */
+export function dxfCivilPlan(assembly) {
+  const parts = (assembly.parts ?? []).map((p) => ({ p, b: box(p) }));
+  if (!parts.length) return null;
+  const x0 = Math.min(...parts.map((o) => o.b.x)), x1 = Math.max(...parts.map((o) => o.b.x + o.b.dx));
+  const y0 = Math.min(...parts.map((o) => o.b.y)), y1 = Math.max(...parts.map((o) => o.b.y + o.b.dy));
+  const Wm = x1 - x0, Dm = y1 - y0;
+  const { N, K } = annotK(Wm, Dm);
+  const TH = 200 * K;
+  let e = '';
+  for (const o of parts) e += rect(o.p.role === 'wall' ? 'WALL' : 'SLAB', o.b.x, o.b.y, o.b.dx, o.b.dy, o.p.role === 'wall' ? undefined : 'DASHED');
+  // 중심선 + 측점(장축 기준)
+  const alongY = Dm >= Wm;
+  const Lmm = alongY ? Dm : Wm;
+  const step = staStep(Lmm);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  if (alongY) e += line('AXIS', cx, y0 - 300 * K, cx, y1 + 300 * K, 'CENTER');
+  else e += line('AXIS', x0 - 300 * K, cy, x1 + 300 * K, cy, 'CENTER');
+  for (let s = 0; s <= Lmm + 1; s += step) {
+    const t = Math.min(s, Lmm);
+    if (alongY) e += line('DIM', cx - 150 * K, y0 + t, cx + 150 * K, y0 + t) + text('DIM', cx + 200 * K, y0 + t - 60 * K, TH, `STA ${staLabel(t)}`);
+    else e += line('DIM', x0 + t, cy - 150 * K, x0 + t, cy + 150 * K) + text('DIM', x0 + t - 60 * K, cy + 200 * K, TH, `STA ${staLabel(t)}`);
+    if (t >= Lmm) break;
+  }
+  e += line('DIM', x0, y0 - 500 * K, x1, y0 - 500 * K) + text('DIM', (x0 + x1) / 2 - 300 * K, y0 - 420 * K, TH, String(Math.round(Wm)));
+  e += text('TXT', x0, y0 - 900 * K, TH, `CIVIL ALIGNMENT PLAN (mm) - SCALE 1:${N} (annot) - STA every ${Math.round(step / 1000)}m - non-statutory`);
   return shell(e);
 }
 
@@ -165,6 +204,7 @@ export function dxfPlan(assembly, domain, pipes) {
   if (domain === 'building') { const d = dxfBuildingPlan(assembly); return d && pipes?.length ? injectPipes(d, pipes) : d; }
   if (domain === 'landscape') { const d = dxfLandscapePlan(assembly); return d && pipes?.length ? injectPipes(d, pipes) : d; }
   if (domain === 'interior') return dxfInteriorPlan(assembly, pipes);
+  if (domain === 'civil') { const d = dxfCivilPlan(assembly); return d && pipes?.length ? injectPipes(d, pipes) : d; }
   return null;
 }
 // 기존 셸의 ENTITIES 끝에 PIPE 엔티티 삽입(섹션 균형 유지)
@@ -200,6 +240,7 @@ if (isMain) {
     const built = buildAssembly(asm);
     check('interior studio+MEP', dxfInteriorPlan(asm, built.pipes?.routes), 40);
   }
+  check('civil 500m run+STA', dxfCivilPlan(buildAssemblyTemplate('civil', 'retaining_wall_run', { length: 500000 })), 20);
   console.log(`dxf-export self-test: ${pass}/${pass + fail}`);
   if (fail) process.exit(1);
 }
