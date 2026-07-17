@@ -163,7 +163,7 @@ const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt
 export function boqReport(assembly, { title = '물량·작업량 산출서', rates, domain } = {}) {
   const b = computeBOQ(assembly, rates ? { rates } : {});
   const dom = domain ?? assembly.domain ?? 'mech';
-  const nonMech = ['building', 'landscape', 'interior', 'civil'].includes(dom);
+  const nonMech = ['building', 'landscape', 'interior', 'civil', 'bridge'].includes(dom);
   const f = (n, d = 2) => Number(n).toFixed(d);
   const rows = b.items.map((x) => `<tr><td style="text-align:left">${esc(x.id)}</td><td>${esc(x.type)}</td><td>${esc(x.material)}</td><td>${f(x.massKg)}</td><td>${f(x.surfaceM2, 3)}</td><td>${x.linearLenM || '-'}</td><td>${x.holes || '-'}</td><td>${x.bends || '-'}</td></tr>`).join('');
   const laborRows = Object.entries(b.laborHr).filter(([k]) => k !== '합계').map(([k, v]) => `<tr><td style="text-align:left">${k}</td><td>${v} hr</td></tr>`).join('');

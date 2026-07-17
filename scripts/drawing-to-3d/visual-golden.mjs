@@ -35,6 +35,7 @@ function cases() {
     ['building-rc3', buildAssemblyTemplate('building', 'rc_frame', { floors: 3, baysX: 3, baysY: 2 }), 'building'],
     ['interior-studio', buildAssemblyTemplate('interior', 'studio_unit', {}), 'interior'],
     ['landscape-deck-site', deckSite, 'landscape'],
+    ['bridge-girder-30m', buildAssemblyTemplate('bridge', 'girder_bridge', {}), 'bridge'],
   ];
 }
 

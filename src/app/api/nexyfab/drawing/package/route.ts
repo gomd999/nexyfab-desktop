@@ -86,7 +86,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // 분야: assembly.domain(도메인 어셈블리 템플릿) 또는 options.domain — BOQ 물량단위·P&ID 유무를 정한다 (#6)
   const domain = (typeof (assembly as { domain?: unknown }).domain === 'string' ? (assembly as { domain: string }).domain : undefined)
     ?? (typeof options.domain === 'string' ? options.domain : undefined) ?? 'mech';
-  const nonMech = ['building', 'landscape', 'interior', 'civil'].includes(domain);
+  const nonMech = ['building', 'landscape', 'interior', 'civil', 'bridge'].includes(domain);
   const files: Array<{ name: string; mime: string; content: string }> = [];
 
   // 2D GA 도면 (건축=축선 구조평면·조경=배치도 모드 포함 · 배관=라우터 결과 그대로 투영)

@@ -376,6 +376,7 @@ const SHEET_EN = {
   '도면 목록표': 'Drawing List', '일반배치도(GA)': 'General Arrangement', '선형 평면 전체도': 'Alignment Plan (Overall)',
   '곡선표': 'Curve Table', '구조물 일람표': 'Structure Schedule', '종단면도': 'Profile', '토공량·유토곡선': 'Earthwork & Mass Haul',
   '일반주기': 'General Notes',
+  '거더 배치 평면도': 'Girder Layout Plan', '표준 횡단면도': 'Typical Cross Section', '거더 일람표': 'Girder Schedule',
 };
 function civilSheetPack(assembly, { mainScaleN, revHistory = null, lang = 'ko' } = {}) {
   const en = lang === 'en';
@@ -474,6 +475,104 @@ function civilSheetPack(assembly, { mainScaleN, revHistory = null, lang = 'ko' }
   const dlBody = `<table style="border-collapse:collapse;width:100%;font-size:11.5px"><caption style="text-align:left;font-size:13px;font-weight:700;padding:4px 0">${en ? `Drawing List (${reg.length} sheets · single REV — consistency-gated)` : `도면 목록표 (총 ${reg.length}매 · 전 시트 동일 REV — 자동 정합 게이트 대상)`}</caption>
 <tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">No.</th><th style="border:1px solid #cbd5e1;padding:3px 8px">${en ? 'DWG No.' : '도번'}</th><th style="border:1px solid #cbd5e1;padding:3px 8px">${en ? 'Title' : '도면명'}</th><th style="border:1px solid #cbd5e1;padding:3px 8px">${en ? 'Scale' : '축척'}</th></tr>${dlRows}</table>${revTable}${en ? '<div style="font-size:10px;color:#94a3b8;padding:4px 0">Sheet titles/headers in EN — detailed notes remain KO (bilingual full pass = follow-up).</div>' : ''}`;
   const dlSection = `<section class="sheet-page" data-dwg="${dlNo}"><div class="wrap">${dlBody}</div><div class="tb">도번 <b>${dlNo}</b> · 도면 목록표 · REV <span class="nf-rev">—</span></div></section>`;
+  return { html: dlSection + sections.join(''), mainDwg, sheetCount: reg.length };
+}
+
+/** 교량 시트팩(260717 배터리 갭 해소) — 거더교: 목록표·거더 배치 평면·표준 횡단·일람표·일반주기.
+ *  전 수치=bridgeMeta(결정론 템플릿 단일 소스). 단면=관례 비례(명시) — 구조검토는 eng-core 교량 체인 후속. */
+function bridgeSheetPack(assembly, { mainScaleN, revHistory = null, lang = 'ko' } = {}) {
+  const bm = assembly.bridgeMeta;
+  if (!bm) return null;
+  const en = lang === 'en';
+  const T = (ko2) => (en ? (SHEET_EN[ko2] ?? ko2) : ko2);
+  const reg = [];
+  const seqByCode = {};
+  const nextDwg = (code) => { seqByCode[code] = (seqByCode[code] ?? 0) + 1; return `NX-BRG-${code}-${String(seqByCode[code]).padStart(2, '0')}`; };
+  const sections = [];
+  const addSheet = (code, name, scaleTxt, body) => {
+    const no = nextDwg(code);
+    reg.push({ no, name, scaleTxt });
+    sections.push(`<section class="sheet-page" data-dwg="${no}"><div class="wrap">${body}</div><div class="tb">${en ? 'DWG' : '도번'} <b>${no}</b> · ${esc(T(name))} · ${esc(scaleTxt)} · REV <span class="nf-rev">—</span></div></section>`);
+  };
+  const mainDwg = nextDwg('GA');
+  reg.push({ no: mainDwg, name: '일반배치도(GA)', scaleTxt: `1:${mainScaleN}` });
+  const { span, nGirders: n, girderSpacing: s, girderH: Hg, deckThk: dt, overhang: oh, deckW, section: sec } = bm;
+
+  // ── PL 거더 배치 평면(축선) ──
+  {
+    const M = 70, Wm = span, Dm = deckW;
+    const S = Math.min(760 / Wm, 380 / Dm);
+    const N = pickScale(Wm, Dm, 360, 200);
+    const X = (v) => (M + v * S).toFixed(1), Y = (v) => (M + v * S).toFixed(1);
+    const el = [];
+    el.push(`<rect x="${X(0)}" y="${Y(0)}" width="${(span * S).toFixed(1)}" height="${(deckW * S).toFixed(1)}" fill="none" stroke="#0f172a" stroke-width="1.4"/>`);
+    for (let i = 0; i < n; i++) {
+      const gy = oh + i * s;
+      el.push(`<line x1="${X(0)}" y1="${Y(gy)}" x2="${X(span)}" y2="${Y(gy)}" stroke="#dc2626" stroke-width="1" stroke-dasharray="14 4 3 4"/>`);
+      el.push(`<text x="${X(span) - 2}" y="${(+Y(gy) - 3).toFixed(1)}" font-size="8.5" text-anchor="end" fill="#dc2626" font-family="sans-serif">G${i + 1}</text>`);
+    }
+    for (const gx of [0, span / 2 - 150, span - 300]) for (let i = 0; i < n - 1; i++) {
+      el.push(`<rect x="${X(gx)}" y="${Y(oh + i * s + 100)}" width="${(300 * S).toFixed(1)}" height="${((s - 200) * S).toFixed(1)}" fill="#94a3b822" stroke="#64748b" stroke-width=".8"/>`);
+    }
+    el.push(`<line x1="${X(0)}" y1="${(+Y(deckW) + 18).toFixed(1)}" x2="${X(span)}" y2="${(+Y(deckW) + 18).toFixed(1)}" stroke="#dc2626" stroke-width=".6"/><text x="${(+X(0) + +X(span)) / 2}" y="${(+Y(deckW) + 15).toFixed(1)}" font-size="9.5" text-anchor="middle" fill="#dc2626" font-family="sans-serif">${fmtLen(span)} (지간 CL)</text>`);
+    el.push(`<line x1="${(+X(0) - 18).toFixed(1)}" y1="${Y(0)}" x2="${(+X(0) - 18).toFixed(1)}" y2="${Y(oh)}" stroke="#dc2626" stroke-width=".6"/><text x="${(+X(0) - 24).toFixed(1)}" y="${(+Y(oh / 2) + 3).toFixed(1)}" font-size="8" text-anchor="end" fill="#dc2626" font-family="sans-serif">${Math.round(oh)}</text>`);
+    if (n > 1) el.push(`<line x1="${(+X(0) - 18).toFixed(1)}" y1="${Y(oh)}" x2="${(+X(0) - 18).toFixed(1)}" y2="${Y(oh + s)}" stroke="#dc2626" stroke-width=".6"/><text x="${(+X(0) - 24).toFixed(1)}" y="${(+Y(oh + s / 2) + 3).toFixed(1)}" font-size="8" text-anchor="end" fill="#dc2626" font-family="sans-serif">${Math.round(s)}</text>`);
+    el.push(scaleBarSvg(M, +Y(deckW) + 34, S, Math.max(Wm, Dm)));
+    const svg = `<svg viewBox="0 0 ${M + Wm * S + 60} ${M + Dm * S + 80}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff">
+<text x="${M}" y="22" font-size="13" font-weight="700" font-family="sans-serif">${esc(T('거더 배치 평면도'))} · SCALE 1:${N}(A3)</text>${el.join('')}
+<text x="${M}" y="${(M + Dm * S + 72).toFixed(1)}" font-size="8.5" fill="#64748b" font-family="sans-serif">거더 ${n}본 @${Math.round(s)}mm · 내민 ${Math.round(oh)}mm · 가로보 3열(단부 2·중앙 1) · 축선=거더 중심(일점쇄선)</text></svg>`;
+    addSheet('PL', '거더 배치 평면도', `1:${N}`, svg);
+  }
+
+  // ── XS 표준 횡단면(정밀 I형 단면 — bridgeMeta.section 동일 소스) ──
+  {
+    const M = 70, Wm = deckW, Hm = Hg + dt;
+    const S = Math.min(760 / Wm, 360 / Hm);
+    const N = pickScale(Wm, Hm, 360, 180);
+    const X = (v) => (M + v * S).toFixed(1);
+    const Yv = (z) => (30 + (Hm - z) * S).toFixed(1); // z=0 거더 하단, 위로 증가
+    const el = [];
+    el.push(`<rect x="${X(0)}" y="${Yv(Hm)}" width="${(deckW * S).toFixed(1)}" height="${(dt * S).toFixed(1)}" fill="#cbd5e155" stroke="#0f172a" stroke-width="1.2"/>`);
+    const iPoly = (c) => {
+      const { topW, topT, webT, webH, botW, botT } = sec;
+      const p = [
+        [c - topW / 2, Hg], [c + topW / 2, Hg], [c + topW / 2, Hg - topT], [c + webT / 2, Hg - topT],
+        [c + webT / 2, botT], [c + botW / 2, botT], [c + botW / 2, 0], [c - botW / 2, 0],
+        [c - botW / 2, botT], [c - webT / 2, botT], [c - webT / 2, Hg - topT], [c - topW / 2, Hg - topT],
+      ];
+      return p.map(([x, z]) => `${X(x)},${Yv(z)}`).join(' ');
+    };
+    for (let i = 0; i < n; i++) el.push(`<polygon points="${iPoly(oh + i * s)}" fill="#e2e8f0" stroke="#0f172a" stroke-width="1"/>`);
+    el.push(`<line x1="${X(0)}" y1="${(+Yv(0) + 16).toFixed(1)}" x2="${X(deckW)}" y2="${(+Yv(0) + 16).toFixed(1)}" stroke="#dc2626" stroke-width=".6"/><text x="${(+X(0) + +X(deckW)) / 2}" y="${(+Yv(0) + 13).toFixed(1)}" font-size="9.5" text-anchor="middle" fill="#dc2626" font-family="sans-serif">${fmtLen(deckW)}</text>`);
+    el.push(`<line x1="${(+X(deckW) + 14).toFixed(1)}" y1="${Yv(0)}" x2="${(+X(deckW) + 14).toFixed(1)}" y2="${Yv(Hg)}" stroke="#dc2626" stroke-width=".6"/><text x="${(+X(deckW) + 24).toFixed(1)}" y="${(+Yv(Hg / 2) + 3).toFixed(1)}" font-size="8.5" fill="#dc2626" font-family="sans-serif">H=${Math.round(Hg)}</text>`);
+    el.push(`<line x1="${(+X(deckW) + 14).toFixed(1)}" y1="${Yv(Hg)}" x2="${(+X(deckW) + 14).toFixed(1)}" y2="${Yv(Hm)}" stroke="#dc2626" stroke-width=".6"/><text x="${(+X(deckW) + 24).toFixed(1)}" y="${(+Yv(Hg + dt / 2) + 3).toFixed(1)}" font-size="8.5" fill="#dc2626" font-family="sans-serif">t=${Math.round(dt)}</text>`);
+    const svg = `<svg viewBox="0 0 ${M + Wm * S + 120} ${60 + Hm * S + 60}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff">
+<text x="${M}" y="20" font-size="13" font-weight="700" font-family="sans-serif">${esc(T('표준 횡단면도'))} · SCALE 1:${N}(A3)</text>${el.join('')}
+<text x="${M}" y="${(60 + Hm * S + 48).toFixed(1)}" font-size="8.5" fill="#64748b" font-family="sans-serif">I형 단면=관례 비례(상부폭 0.35H·하부 0.30H·플랜지 0.12H·복부 max(200, 0.10H)) — 구조 단면은 설계검토로 확정(비법정)</text></svg>`;
+    addSheet('XS', '표준 횡단면도', `1:${N}`, svg);
+  }
+
+  // ── ST 거더 일람표 ──
+  {
+    const td = (v) => `<td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${v}</td>`;
+    const rows = Array.from({ length: n }, (_, i) => `<tr>${td(`G${i + 1}`)}${td(fmtLen(span))}${td(Math.round(Hg))}${td(Math.round(s))}${td(`${sec.topW}/${sec.botW}`)}${td(`${sec.topT}/${sec.webT}`)}${td('concrete')}</tr>`).join('');
+    addSheet('ST', '거더 일람표', '—', `<table style="border-collapse:collapse;width:100%;font-size:11.5px">
+<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">거더</th><th style="border:1px solid #cbd5e1;padding:3px 8px">지간</th><th style="border:1px solid #cbd5e1;padding:3px 8px">춤 H(mm)</th><th style="border:1px solid #cbd5e1;padding:3px 8px">간격(mm)</th><th style="border:1px solid #cbd5e1;padding:3px 8px">플랜지폭 상/하</th><th style="border:1px solid #cbd5e1;padding:3px 8px">플랜지t/복부t</th><th style="border:1px solid #cbd5e1;padding:3px 8px">재질</th></tr>${rows}</table>
+<div style="font-size:10px;color:#94a3b8;padding:3px 0">가로보 ${3 * (n - 1)}개(3열×${n - 1}) 300×${Math.round(Hg * 0.6)} · 바닥판 t${Math.round(dt)}·폭 ${fmtLen(deckW)} · 전 수치=bridgeMeta 단일 소스 · 분배계수·받침·내진 검토=eng-core 교량 계산기 체인(별도 실행)</div>`);
+  }
+  addSheet('GN', '일반주기', '—', generalNotesSheet([]));
+  // DL 목록표 + 개정 이력(civil 과 동일 규약 — 정합 게이트 공용)
+  const dlNo = nextDwg('DL');
+  reg.unshift({ no: dlNo, name: '도면 목록표', scaleTxt: '—' });
+  const dlRows = reg.map((r, i) => `<tr><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${i + 1}</td><td style="border:1px solid #cbd5e1;padding:3px 8px">${r.no}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${esc(T(r.name))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(r.scaleTxt)}</td></tr>`).join('');
+  const revRows = (Array.isArray(revHistory) ? revHistory : [])
+    .map((r) => `<tr><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.rev ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.date ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${esc(String(r.note ?? ''))}</td></tr>`).join('')
+    + `<tr style="background:#f8fafc"><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center"><span class="nf-rev">—</span></td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${en ? 'current' : '현재'}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${en ? 'This issue (auto)' : '본 발행(자동)'}</td></tr>`;
+  const dlBody = `<table style="border-collapse:collapse;width:100%;font-size:11.5px"><caption style="text-align:left;font-size:13px;font-weight:700;padding:4px 0">${en ? `Drawing List (${reg.length} sheets · single REV — consistency-gated)` : `도면 목록표 (총 ${reg.length}매 · 전 시트 동일 REV — 자동 정합 게이트 대상)`}</caption>
+<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">No.</th><th style="border:1px solid #cbd5e1;padding:3px 8px">${en ? 'DWG No.' : '도번'}</th><th style="border:1px solid #cbd5e1;padding:3px 8px">${en ? 'Title' : '도면명'}</th><th style="border:1px solid #cbd5e1;padding:3px 8px">${en ? 'Scale' : '축척'}</th></tr>${dlRows}</table>
+<table style="border-collapse:collapse;width:60%;font-size:11px;margin-top:10px"><caption style="text-align:left;font-size:12px;font-weight:700;padding:3px 0">${en ? 'Revision History' : '개정 이력'}</caption>
+<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">REV</th><th style="border:1px solid #cbd5e1;padding:3px 8px">${en ? 'Date' : '일자'}</th><th style="border:1px solid #cbd5e1;padding:3px 8px">${en ? 'Description' : '내용'}</th></tr>${revRows}</table>`;
+  const dlSection = `<section class="sheet-page" data-dwg="${dlNo}"><div class="wrap">${dlBody}</div><div class="tb">${en ? 'DWG' : '도번'} <b>${dlNo}</b> · ${esc(T('도면 목록표'))} · REV <span class="nf-rev">—</span></div></section>`;
   return { html: dlSection + sections.join(''), mainDwg, sheetCount: reg.length };
 }
 
@@ -858,6 +957,10 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
         sheetsHtml = pack.html;
         dwgNo = pack.mainDwg;
       } else domainSvg = (civilPlanSvg(parts) ?? '') + siteOverlayBlock(assembly);
+    } else if (domain === 'bridge' && assembly.bridgeMeta) {
+      // 교량 시트팩(260717 배터리 갭 해소): 목록표·거더 배치·표준 횡단·일람표·일반주기
+      const pack = bridgeSheetPack(assembly, { mainScaleN: N, revHistory, lang });
+      if (pack) { sheetsHtml = pack.html; dwgNo = pack.mainDwg; }
     }
   } catch { domainSvg = ''; sheetsHtml = ''; }
   // BOM = 그룹 단위(규격·재질 동일 부재 수량 집계) — 대량 부품 도면 판독성
@@ -986,8 +1089,9 @@ export function packageConsistencyCheck(files, basis, { hasFluid = false, alignm
     }
   }
   // §2 도서 역방향 게이트: data-dwg 재파싱 — 도번 유일·목록표 매수 일치·상세 윈도 무결·REV 채움
-  if (alignment?.totalMm > 0) {
-    const dwgs = [...gaHtml.matchAll(/data-dwg="(NX-CIV-[A-Z]+-\d+)"/g)].map((m) => m[1]);
+  // (도메인 불문 — 시트팩(NX-CIV/NX-BRG…)이 있으면 항상 검사, 없으면 자동 스킵)
+  {
+    const dwgs = [...gaHtml.matchAll(/data-dwg="(NX-[A-Z]+-[A-Z]+-\d+)"/g)].map((m) => m[1]);
     if (dwgs.length) {
       const uniq = new Set(dwgs);
       checks.push({ file: 'GA_2D_drawing.html', metric: '도번 유일성', value: dwgs.length, expect: uniq.size, tol: 0, pass: dwgs.length === uniq.size });

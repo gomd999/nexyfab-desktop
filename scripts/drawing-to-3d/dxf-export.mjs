@@ -47,6 +47,7 @@ const LAYERS = [
   ['JOIST', 32, 'DASHED'], ['DECK', 30, 'CONTINUOUS'], ['WALL', 7, 'CONTINUOUS'], ['DIM', 1, 'CONTINUOUS'], ['TXT', 7, 'CONTINUOUS'],
   ['PIPE', 6, 'CONTINUOUS'], ['FIXTURE', 3, 'CONTINUOUS'], ['FURN', 8, 'DASHED'],
   ['BNDRY', 6, 'CENTER'], ['CONTOUR', 32, 'CONTINUOUS'],
+  ['PART', 7, 'CONTINUOUS'], // 범용(mech·bridge 등) 평면 — 부품 엔벨로프
 ];
 function shell(entities) {
   let s = '';
@@ -135,6 +136,33 @@ export function dxfLandscapePlan(assembly) {
   e += line('DIM', x0 - 500 * K, y0, x0 - 500 * K, y1) + text('DIM', x0 - 1100 * K, (y0 + y1) / 2, 200 * K, String(Math.round(y1 - y0)));
   e += siteEntities(assembly, 200 * K);
   e += text('TXT', x0, y0 - 900 * K, 200 * K, `LANDSCAPE PLAN (mm) - SCALE 1:${N} (annot) - auto-generated, non-statutory`);
+  return shell(e);
+}
+
+/** 범용 평면 DXF(mech·bridge 등 전용 모드 없는 도메인 — 260717 예시 배터리 갭 해소):
+ *  부품 엔벨로프 평면(원형 단면=CIRCLE·그 외 RECT) + id 라벨 + 외곽 치수.
+ *  역할별 레이어(girder/crossbeam/deck→BEAM/DECK), 기본=PART. 비법정 명시. */
+export function dxfGenericPlan(assembly) {
+  const parts = (assembly.parts ?? []).map((p) => ({ p, b: box(p) }));
+  if (!parts.length) return null;
+  const x0 = Math.min(...parts.map((o) => o.b.x)), x1 = Math.max(...parts.map((o) => o.b.x + o.b.dx));
+  const y0 = Math.min(...parts.map((o) => o.b.y)), y1 = Math.max(...parts.map((o) => o.b.y + o.b.dy));
+  const { N, K } = annotK(Math.max(1, x1 - x0), Math.max(1, y1 - y0));
+  const TH = 200 * K;
+  let e = '';
+  for (const o of parts) {
+    const role = o.p.role ?? '';
+    const layer = role === 'girder' || role === 'crossbeam' || role === 'beam' ? 'BEAM' : role === 'deck' ? 'DECK' : 'PART';
+    const roundTypes = ['cylinder', 'spur_gear', 'hex_bolt', 'flange', 'tube', 'pipe'];
+    if (roundTypes.includes(o.p.type)) {
+      const cx = o.b.x + o.b.dx / 2, cy = o.b.y + o.b.dy / 2;
+      e += circle(layer, cx, cy, Math.max(o.b.dx, o.b.dy) / 2);
+    } else e += rect(layer, o.b.x, o.b.y, o.b.dx, o.b.dy);
+    if (o.p.id) e += text('TXT', o.b.x + 40 * K, o.b.y + 40 * K, TH * 0.7, String(o.p.id).slice(0, 24));
+  }
+  e += line('DIM', x0, y0 - 500 * K, x1, y0 - 500 * K) + text('DIM', (x0 + x1) / 2 - 300 * K, y0 - 420 * K, TH, String(Math.round(x1 - x0)));
+  e += line('DIM', x0 - 500 * K, y0, x0 - 500 * K, y1) + text('DIM', x0 - 1100 * K, (y0 + y1) / 2, TH, String(Math.round(y1 - y0)));
+  e += text('TXT', x0, y0 - 900 * K, TH, `GENERAL PLAN (mm, envelope) - SCALE 1:${N} (annot) - auto-generated, non-statutory`);
   return shell(e);
 }
 
@@ -337,7 +365,9 @@ function dxfPlanLocal(assembly, domain, pipes) {
   if (domain === 'landscape') { const d = dxfLandscapePlan(assembly); return d && pipes?.length ? injectPipes(d, pipes) : d; }
   if (domain === 'interior') return dxfInteriorPlan(assembly, pipes);
   if (domain === 'civil') { const d = dxfCivilPlan(assembly); return d && pipes?.length ? injectPipes(d, pipes) : d; }
-  return null;
+  // mech·bridge 등: 범용 엔벨로프 평면(260717 예시 배터리 갭 해소 — 이전엔 null=DXF 미제공)
+  const d = dxfGenericPlan(assembly);
+  return d && pipes?.length ? injectPipes(d, pipes) : d;
 }
 // 기존 셸의 ENTITIES 끝에 PIPE 엔티티 삽입(섹션 균형 유지)
 function injectPipes(dxf, pipes) {
@@ -379,6 +409,11 @@ if (isMain) {
     console.log(`${arcs >= 3 ? 'OK' : 'FAIL'} civil alignment R30m: ARC ${arcs}본(중심선+밴드 2)`);
     check('civil alignment+curve', curved, 20);
   }
+  check('bridge girder generic', dxfGenericPlan(buildAssemblyTemplate('bridge', 'girder_bridge', {})), 20);
+  check('mech generic(round)', dxfGenericPlan({ parts: [
+    { id: 'fr', type: 'box', params: { width: 1000, depth: 800, height: 100 }, at: {} },
+    { id: 'tk', type: 'cylinder', params: { diameter: 500, length: 900 }, at: { tx: 100, ty: 150, tz: 100 } },
+  ] }), 8);
   console.log(`dxf-export self-test: ${pass}/${pass + fail}`);
   if (fail) process.exit(1);
 }
