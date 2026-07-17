@@ -422,9 +422,15 @@ function archBridgeAssembly(p = {}) {
   const apSpan = num(p.approachSpan, 30000);
   const pierH = num(p.pierH, 12000), pierW = num(p.pierW, 5000), pierD = num(p.pierD, 2400);
   const capH = 1500, girderH = num(p.girderH, 1600);
+  if (girderH > tieH) {
+    return { name: '아치교', domain: 'bridge', parts: [], alignmentErrors: [`접속 거더 춤(${girderH}) > 타이 거더 춤(${tieH}) — 노면고 통일 불가(girderH ≤ tieH 필요, 교좌 받침=차이만큼)`] };
+  }
   const nSeg = Math.max(12, Math.min(40, Math.round(num(p.archSegments, 24))));
-  const deckBot = pierH + capH + girderH;
+  // 노면고 통일(260717 마감): 데크 하면 = 타이 상면. 접속 거더는 교좌 받침(bearing,
+  // h=tieH−girderH)으로 동일 노면고 — 실교량 교좌장치 관례.
+  const deckBot = pierH + capH + tieH;
   const deckTop = deckBot + deckThk;
+  const brgH = tieH - girderH;
   const parts = [];
   const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
   // ── 접속 고가교(좌/우): 교각(기둥+코핑)+연단 거더 2본+상판 ──
@@ -440,9 +446,15 @@ function archBridgeAssembly(p = {}) {
       const x = x0 + k * apSpan;
       if (x === 0 || x === mainSpan) continue; // 주경간 교각은 별도(대형)
       bent(x, `${tag}_pier${k}`);
+      // 교좌 받침(거더 2열 아래, h=tieH−girderH — 노면고 통일)
+      if (brgH > 0) {
+        for (const [side, y] of [['L', 900], ['R', deckW - 900 - tieW]]) {
+          P(`${tag}_brg${k}_${side}`, 'box', { width: 400, depth: tieW, height: brgH }, { tx: x - 200, ty: y, tz: pierH + capH }, 'steel', 'bearing');
+        }
+      }
     }
     for (const [side, y] of [['L', 900], ['R', deckW - 900 - tieW]]) {
-      P(`${tag}_girder_${side}`, 'box', { width: L, depth: tieW, height: girderH }, { tx: x0, ty: y, tz: pierH + capH }, 'steel', 'girder');
+      P(`${tag}_girder_${side}`, 'box', { width: L, depth: tieW, height: girderH }, { tx: x0, ty: y, tz: pierH + capH + brgH }, 'steel', 'girder');
     }
     P(`${tag}_deck`, 'box', { width: L, depth: deckW, height: deckThk }, { tx: x0, ty: 0, tz: deckBot }, 'concrete', 'deck');
   };
@@ -457,16 +469,21 @@ function archBridgeAssembly(p = {}) {
   }
   P('main_deck', 'box', { width: mainSpan, depth: deckW, height: deckThk }, { tx: 0, ty: 0, tz: deckBot }, 'concrete', 'deck');
   // ── 아치 리브 2본(포물선 분절, ry 회전 — 로컬 원점 보정) ──
-  const zArch = (x) => deckTop + (4 * rise * (x / mainSpan)) * (1 - x / mainSpan);
+  // 기점 클리어런스: 스프링잉 세그 하면이 데크 상면과 0겹침이 되도록 포물선을
+  // (ribH/2)/cosθ0 만큼 올림(θ0=스프링잉 기울기 — 260717 마감, 회전 하면 폐형).
+  const th0 = Math.atan((4 * rise) / mainSpan);
+  const archClear = (ribH / 2) / Math.cos(th0);
+  const zArch = (x) => deckTop + archClear + (4 * rise * (x / mainSpan)) * (1 - x / mainSpan);
   const ribYs = [900 + (tieW - ribW) / 2, deckW - 900 - tieW + (tieW - ribW) / 2]; // 타이 위 정렬
+  const chord = []; // 세그 현 데이터(행어 폐형 컷용): {x0,x1,z0,z1,thRad}
   for (const [ri, yRib] of ribYs.entries()) {
     for (let k = 0; k < nSeg; k++) {
       const x0 = (mainSpan * k) / nSeg, x1 = (mainSpan * (k + 1)) / nSeg;
       const z0 = zArch(x0), z1 = zArch(x1);
       const segL = Math.hypot(x1 - x0, z1 - z0);
       const thetaDeg = (Math.atan2(z1 - z0, x1 - x0) * 180) / Math.PI;
-      // 로컬 단면중심 c0=(0, ribW/2, ribH/2) 이 회전 후 시작점 P0 에 오도록 평행이동 보정
       const th = (thetaDeg * Math.PI) / 180;
+      if (ri === 0) chord.push({ x0, x1, z0, z1, thRad: th });
       // Ry(θ): x' = x cosθ + z sinθ · z' = −x sinθ + z cosθ (placedAabb rotatePoint 규약 — 프로브 검증)
       const rcx = (ribH / 2) * Math.sin(th);
       const rcz = (ribH / 2) * Math.cos(th);
@@ -474,14 +491,21 @@ function archBridgeAssembly(p = {}) {
         { tx: x0 - rcx, ty: yRib, tz: z0 - rcz, ry: -thetaDeg }, 'steel', 'arch');
     }
   }
-  // ── 행어(수직 — 닐센 경사 후속 명시) ──
+  // ── 행어(수직 사각 단면 box — OBB 정밀 판정 대상. 원형·닐센 경사=후속 명시) ──
+  // 상단 = 세그 '현' 하면 폐형: zc(x)−(ribH/2)/cosθ − (d/2)tan|θ| (경사 하면과 상단
+  // 모서리 0겹침 컷 — 260717 마감. 정착 상세 후속)
+  const chordLowAt = (x) => {
+    const s = chord.find((q) => x >= q.x0 - 1e-6 && x <= q.x1 + 1e-6) ?? chord[chord.length - 1];
+    const zc = s.z0 + ((x - s.x0) / Math.max(1e-9, s.x1 - s.x0)) * (s.z1 - s.z0);
+    return zc - (ribH / 2) / Math.cos(s.thRad) - (hangerDia / 2) * Math.abs(Math.tan(s.thRad));
+  };
   let nH = 0;
   for (let x = hangerSpacing; x < mainSpan - hangerSpacing / 2; x += hangerSpacing) {
-    const top = zArch(x) - ribH / 2;
+    const top = chordLowAt(x);
     const L = top - deckTop;
     if (L < hangerDia * 3) continue; // 스프링잉 부근 초단 행어 생략(시공 관례)
     for (const [ri, yRib] of ribYs.entries()) {
-      P(`hanger_${ri + 1}_${++nH}`, 'cylinder', { diameter: hangerDia, length: L },
+      P(`hanger_${ri + 1}_${++nH}`, 'box', { width: hangerDia, depth: hangerDia, height: L },
         { tx: x - hangerDia / 2, ty: yRib + ribW / 2 - hangerDia / 2, tz: deckTop }, 'steel', 'hanger');
     }
   }
