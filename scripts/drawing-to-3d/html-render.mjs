@@ -69,7 +69,10 @@ const mesh=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0xc8ccd2,metal
 const bb=new THREE.Box3().setFromObject(root);const sz=bb.getSize(new THREE.Vector3());const c=bb.getCenter(new THREE.Vector3());
 const gr=new THREE.Mesh(new THREE.CircleGeometry(Math.max(sz.x,sz.y,sz.z)*2,64),new THREE.MeshStandardMaterial({color:0xe3e7eb,roughness:1}));gr.rotation.x=-Math.PI/2;gr.position.y=bb.min.y;gr.receiveShadow=true;sc.add(gr);
 const d=Math.max(sz.x,sz.y,sz.z);const key=new THREE.DirectionalLight(0xffffff,2.2);key.position.set(d*1.3,d*1.8,d);key.castShadow=true;key.shadow.mapSize.set(2048,2048);Object.assign(key.shadow.camera,{left:-d,right:d,top:d,bottom:-d,far:d*6});sc.add(key,new THREE.AmbientLight(0xffffff,0.25));
-ctl.target.copy(c);cam.position.set(c.x+sz.x*1.15,c.y+sz.y*0.75,c.z+sz.z*2.1);
+// 카메라 FOV 피팅(260717 예시폴더 점검: 축별 배수는 세장 형상 잘림·far 1e5 고정은 km급 클리핑)
+const fit=(d/2)/Math.tan(cam.fov*Math.PI/360)*1.4;
+cam.near=Math.max(d/1000,0.1);cam.far=fit*30;cam.updateProjectionMatrix();
+ctl.target.copy(c);cam.position.copy(c).add(new THREE.Vector3(0.55,0.45,1).normalize().multiplyScalar(fit));
 document.getElementById('shot').onclick=()=>{r.render(sc,cam);const a=document.createElement('a');a.download='render.png';a.href=r.domElement.toDataURL('image/png');a.click();};
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();r.setSize(innerWidth,innerHeight);});
 (function loop(){requestAnimationFrame(loop);ctl.update();r.render(sc,cam);})();
@@ -165,7 +168,11 @@ for(const it of items){const b=new THREE.Box3().setFromObject(it.me);const cc=b.
 const gr=new THREE.Mesh(new THREE.CircleGeometry(Math.max(sz.x,sz.y,sz.z)*2,64),new THREE.MeshStandardMaterial({color:0xe3e7eb,roughness:1}));gr.rotation.x=-Math.PI/2;gr.position.y=bb.min.y;gr.receiveShadow=true;sc.add(gr);
 const d=Math.max(sz.x,sz.y,sz.z);const key=new THREE.DirectionalLight(0xffffff,2.2);key.position.set(d*1.3,d*1.8,d);key.castShadow=true;key.shadow.mapSize.set(2048,2048);Object.assign(key.shadow.camera,{left:-d,right:d,top:d,bottom:-d,far:d*6});sc.add(key,new THREE.AmbientLight(0xffffff,0.28));
 ctl.target.copy(c);
-const V={iso:[c.x+sz.x*1.25,c.y+sz.y*0.7,c.z+sz.z*2.1],front:[c.x,c.y,c.z+d*2.2],top:[c.x,c.y+d*2.2,c.z+1],side:[c.x+d*2.2,c.y,c.z]};
+// FOV 피팅(260717 예시폴더 점검: far 1e5 고정=1.3km 모델 전체 클리핑 → 스케일 연동)
+const fit=(d/2)/Math.tan(cam.fov*Math.PI/360)*1.4;
+cam.near=Math.max(d/1000,0.1);cam.far=fit*30;cam.updateProjectionMatrix();
+const isoD=new THREE.Vector3(0.55,0.45,1).normalize().multiplyScalar(fit);
+const V={iso:[c.x+isoD.x,c.y+isoD.y,c.z+isoD.z],front:[c.x,c.y,c.z+fit],top:[c.x,c.y+fit,c.z+d*0.01],side:[c.x+fit,c.y,c.z]};
 cam.position.set(...V.iso);
 document.getElementById('dims').textContent='전체 W '+Math.round(sz.x)+' × D '+Math.round(sz.z)+' × H '+Math.round(sz.y)+' mm · 드래그=회전 · 휠=줌 · 호버/클릭=부품 정보';
 // 부품 피킹 — 계통별 병합 메시라 개별 메시 선택 불가 → 히트점을 모델좌표로 되돌려
