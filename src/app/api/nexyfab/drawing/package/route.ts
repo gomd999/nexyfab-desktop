@@ -42,7 +42,7 @@ type RenderMod = { renderHtml: (spec: unknown, o?: Record<string, unknown>) => P
 type VerifyMod = { renderStl: (scad: string) => Promise<Uint8Array> };
 type DxfMod = { dxfPlan: (a: Assembly, domain: string, pipes?: unknown[], opts?: Record<string, unknown>) => string | null; dxfProfile: (a: Assembly) => string | null };
 type LxMod = { landxmlAlignment: (a: Assembly, o?: Record<string, unknown>) => string | null };
-type IfcMod = { ifcExport: (a: Assembly, o?: Record<string, unknown>) => string | null };
+type IfcMod = { ifcExport: (a: Assembly, o?: Record<string, unknown>) => string | null; ifcAlignment43: (a: Assembly, o?: Record<string, unknown>) => string | null };
 type XlsxMod = { boqXlsxBase64: (a: Assembly, o?: Record<string, unknown>) => string };
 
 let _asm: AsmMod | null = null, _pkg: PkgMod | null = null, _rnd: RenderMod | null = null, _boq: BoqMod | null = null, _pd: PdMod | null = null, _vfy: VerifyMod | null = null, _dxf: DxfMod | null = null, _lx: LxMod | null = null, _xl: XlsxMod | null = null, _ifc: IfcMod | null = null;
@@ -118,6 +118,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (domain === 'civil' && (assembly as { alignment?: unknown }).alignment && mods.lx) {
       const xml = mods.lx.landxmlAlignment(assembly, { name: title.slice(0, 40), project: 'nexyfab' });
       if (xml) files.push({ name: 'alignment.xml', mime: 'application/xml', content: xml });
+      // IFC4.3 IfcAlignment(인프라 BIM 정식 경로 — buildingSMART 샘플 앵커, 시맨틱 선형)
+      if (mods.ifc) {
+        const a43 = mods.ifc.ifcAlignment43(assembly, { name: title.slice(0, 40), rev: createHash('sha1').update(JSON.stringify({ a: assembly, d: domain })).digest('hex').slice(0, 8) });
+        if (a43) files.push({ name: 'alignment43.ifc', mime: 'application/x-step', content: a43 });
+      }
     }
   } catch (e) { void e; }
   // IFC4(BIM 발주 대응 — LOD200 형상+분류, 비기계 도메인) — 결정론 GlobalId(재생성 동일)
