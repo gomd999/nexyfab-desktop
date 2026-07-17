@@ -264,6 +264,20 @@ describe('autoRoutePipes — 배관 자동 라우터 (#6)', () => {
     expect(routes).toEqual([]);
     expect(errors[0]).toContain('ghost');
   });
+  it('마주보는 포트 좁은 간격+z 오프셋 — 면 중간분할 조그 폴백(260717 예시 배터리)', () => {
+    // 포트 간격 100mm(스텁 40×2 후 팁 간격 20 < 엘보 후퇴 24)·z 375 오프셋 —
+    // 리드 순열은 백트랙/초단 세그먼트로 전멸하던 배치: 면 조그가 정공법 경로를 낸다
+    const pump = { label: 'pump', min: [900, 350, 100], max: [1200, 550, 350] };
+    const vessel = { label: 'vessel', min: [1300, 350, 100], max: [1500, 550, 1100] };
+    const { routes, errors } = autoRoutePipes([{ id: 'p_hp', from: 'pump.x+', to: 'vessel.x-', d: 20 }], [pump, vessel]);
+    expect(errors).toEqual([]);
+    expect(routes).toHaveLength(1);
+    // 경로가 면에서 면까지 — 중간 x 분할점 존재(1250 부근), 세그먼트 전부 ≥ 엘보 후퇴
+    const xs = routes[0].pts.map((p) => p[0]);
+    expect(Math.min(...xs)).toBe(1200);
+    expect(Math.max(...xs)).toBe(1300);
+    expect(pipeObstacleCheck(routes, [pump, vessel])).toEqual([]);
+  });
 });
 
 describe('portPoint', () => {

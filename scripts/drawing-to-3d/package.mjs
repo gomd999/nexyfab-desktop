@@ -167,7 +167,8 @@ function landscapePlanSvg(parts) {
   el.push(`<line x1="${X(x0)}" y1="${(M + Dm * S + 18).toFixed(1)}" x2="${X(x1)}" y2="${(M + Dm * S + 18).toFixed(1)}" stroke="#dc2626" stroke-width=".6"/><text x="${(+X(x0) + +X(x1)) / 2}" y="${(M + Dm * S + 32).toFixed(1)}" font-size="10" text-anchor="middle" fill="#dc2626" font-family="sans-serif">${fmtLen(Wm)}</text>`);
   el.push(`<line x1="${M - 16}" y1="${Y(y0)}" x2="${M - 16}" y2="${Y(y1)}" stroke="#dc2626" stroke-width=".6"/><text x="${M - 22}" y="${(+Y(y0) + +Y(y1)) / 2}" font-size="10" text-anchor="end" fill="#dc2626" font-family="sans-serif" transform="rotate(-90 ${M - 22} ${(+Y(y0) + +Y(y1)) / 2})">${fmtLen(Dm)}</text>`);
   el.push(scaleBarSvg(M, M + Dm * S + 44, S, Math.max(Wm, Dm)));
-  return `<svg viewBox="0 0 ${M + Wm * S + 50} ${M + Dm * S + 50}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff"><text x="${M}" y="24" font-size="13" font-weight="700" font-family="sans-serif">배치 평면도</text>${el.join('')}<text x="${M}" y="${(M + Dm * S + 46).toFixed(1)}" font-size="9.5" fill="#64748b" font-family="sans-serif">범례: ▨데크보드 · ┅장선 · ─보 · ⊕기둥 · 치수 mm</text></svg>`;
+  // 범례는 스케일바(+44) 아래 별도 행(+68) — 동일 y 겹침(260717 예시 배터리 검출) 방지
+  return `<svg viewBox="0 0 ${M + Wm * S + 50} ${M + Dm * S + 84}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff"><text x="${M}" y="24" font-size="13" font-weight="700" font-family="sans-serif">배치 평면도</text>${el.join('')}<text x="${M}" y="${(M + Dm * S + 68).toFixed(1)}" font-size="9.5" fill="#64748b" font-family="sans-serif">범례: ▨데크보드 · ┅장선 · ─보 · ⊕기둥 · 치수 mm</text></svg>`;
 }
 
 // ── 선형(alignment)·종단·시트분할·부지 오버레이 (260717 순차 ①~④) ────────────────
@@ -222,7 +223,7 @@ const arcOffsetPointAt = (elArc, frac, off) => {
 };
 
 /** 선형 평면(① 요소열: 직선+진짜 원호) — 윈도(staFrom~staTo) 지원(③ 시트 분할·매치라인). */
-function alignmentPlanSvg(assembly, { staFrom = 0, staTo = null, sheetNo = 0, sheetCount = 0 } = {}) {
+function alignmentPlanSvg(assembly, { staFrom = 0, staTo = null, sheetNo = 0, sheetCount = 0, fixedN = null, fixedS = null } = {}) {
   const al = assembly.alignment;
   const elements = al?.elements ?? null;
   if (!elements?.length) return null;
@@ -243,8 +244,10 @@ function alignmentPlanSvg(assembly, { staFrom = 0, staTo = null, sheetNo = 0, sh
   const y0 = Math.min(...allPts.map((p) => p[1])) - pad, y1 = Math.max(...allPts.map((p) => p[1])) + pad;
   const Wm = Math.max(1, x1 - x0), Dm = Math.max(1, y1 - y0);
   const M = 70;
-  const S = Math.min(760 / Wm, 430 / Dm);
-  const N = pickScale(Wm, Dm, 360, 230);
+  // 상세 시트 축척 통일(260717 예시 배터리: 잔여 구간 시트만 1:200 으로 튀는 문제) —
+  // 시트 계획이 전 윈도 실측 후 fixedS(최소 fit)·fixedN(최대 표준 축척)을 재주입한다.
+  const S = fixedS ?? Math.min(760 / Wm, 430 / Dm);
+  const N = fixedN ?? pickScale(Wm, Dm, 360, 230);
   const X = (v) => (M + (v - x0) * S).toFixed(1);
   const Y = (v) => (M + (y1 - v) * S).toFixed(1); // 북=위 관례(y 반전)
   const el = [];
@@ -330,7 +333,7 @@ function alignmentPlanSvg(assembly, { staFrom = 0, staTo = null, sheetNo = 0, sh
   const title = sheetCount > 0 ? `선형 평면도 — 시트 ${sheetNo}/${sheetCount} · STA ${staLabel(s0)}~${staLabel(s1)}` : `선형 평면도 (연장 ${fmtLen(total)} · 측점 ${fmtLen(step)} 간격)`;
   const svg = `<svg viewBox="0 0 ${M + Wm * S + 90} ${M + Dm * S + 66}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff"><text x="${M}" y="24" font-size="13" font-weight="700" font-family="sans-serif">${title} · SCALE 1:${N}(A3)</text>${el.join('')}
 <text x="${M}" y="${(M + Dm * S + 58).toFixed(1)}" font-size="8.5" fill="#64748b" font-family="sans-serif">${esc(al.note ?? '')}</text></svg>`;
-  return { svg, N, s0, s1 };
+  return { svg, N, S, s0, s1 };
 }
 
 /** ③ 시트 분할 계획 — 전체도 + 상세 시트 n장(≤6, 반개구간 윈도·match line). */
@@ -345,8 +348,17 @@ function alignmentSheetPlan(assembly) {
   const count = Math.ceil(total / cover);
   const details = [];
   if (count > 1) {
+    // 2패스: ①윈도별 fit 실측 → ②전 시트 동일 축척(fixedN=최대 표준·fixedS=최소 fit)으로
+    // 재렌더 — 잔여 구간 시트만 축척이 튀는 불일치 방지(도면집 관례=상세 동일 축척)
+    const probe = [];
     for (let i = 0; i < count; i++) {
       const d = alignmentPlanSvg(assembly, { staFrom: i * cover, staTo: Math.min(total, (i + 1) * cover), sheetNo: i + 1, sheetCount: count });
+      if (d) probe.push({ i, d });
+    }
+    const Nuni = Math.max(...probe.map((q) => q.d.N));
+    const Suni = Math.min(...probe.map((q) => q.d.S));
+    for (const { i } of probe) {
+      const d = alignmentPlanSvg(assembly, { staFrom: i * cover, staTo: Math.min(total, (i + 1) * cover), sheetNo: i + 1, sheetCount: count, fixedN: Nuni, fixedS: Suni });
       if (d) details.push(d);
     }
   }
@@ -661,7 +673,8 @@ function profileSvg(assembly) {
   // 구조물 위치 마커(§1-2, 3자 대조: 평면·일람표와 동일 STA 라벨)
   for (const st of al.structures ?? []) {
     el.push(`<line x1="${X(st.sta)}" y1="30" x2="${X(st.sta)}" y2="${30 + PH}" stroke="#334155" stroke-width="1" stroke-dasharray="4 3"/>`);
-    el.push(`<text x="${X(st.sta)}" y="${30 + PH + 26}" font-size="7.5" text-anchor="middle" fill="#334155" font-family="sans-serif">${st.type === 'culvert' ? 'CULV' : st.type === 'catch_basin' ? 'CB' : 'EJ'} STA ${staLabel(st.sta)}</text>`);
+    // 라벨=차트 상단 안쪽(260717 예시 배터리: 하단 +26 은 주석(+30)과 겹침) — 경고 배너(y30~44)와도 분리
+    el.push(`<text x="${X(st.sta)}" y="56" font-size="7.5" text-anchor="middle" fill="#334155" font-family="sans-serif">${st.type === 'culvert' ? 'CULV' : st.type === 'catch_basin' ? 'CB' : 'EJ'} STA ${staLabel(st.sta)}</text>`);
   }
   const Nh = pickScale(total, 1, 360, 999);
   return `<svg viewBox="0 0 ${M + PW + 40} ${30 + PH + 40}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff">
@@ -748,7 +761,7 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   const fw = W * S, fh = H * S, pd = D * S;
   const px = (x, o) => (o + (x - bx0) * S).toFixed(1);
   const pz = (z) => (oy + fh - (z - bz0) * S).toFixed(1);
-  const rects = [], balloons = [];
+  const rects = [], balloons = [], dimLabels = [];
   const sx0 = ox + fw + gap;
   for (const o of parts) {
     const { p, box, st } = o;
@@ -759,10 +772,28 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
       const bx = +px(box.x + box.dx / 2, ox), byy = +pz(box.z + box.dz) - 9;
       balloons.push(`<circle cx="${bx}" cy="${byy}" r="8" fill="#fff" stroke="#0f172a"/><text x="${bx}" y="${byy + 3}" font-size="9" text-anchor="middle" fill="#0f172a" font-family="sans-serif">${o.gi + 1}</text>`);
       const ds = dimStr(p.type, p.params);
-      if (ds && !MANY) balloons.push(`<text x="${bx}" y="${(+pz(box.z) + 10).toFixed(1)}" font-size="7.3" text-anchor="middle" fill="#475569" font-family="sans-serif">${esc(ds)}</text>`);
+      // 부품별 치수문자는 기계 도면만: 비기계(벽·바닥 다수가 z=0)는 하단에 문자가 뭉개져
+      // 판독 불가(260717 예시 배터리 검출) — 규격은 BOM 열이 단일 소스.
+      if (ds && !MANY && (!domain || domain === 'mech')) dimLabels.push({ bx, dy: +pz(box.z) + 10, ds });
     }
     // PLAN (x→right, y→down) at side
     rects.push(`<rect x="${px(box.x, sx0)}" y="${(oy + (box.y - by0) * S).toFixed(1)}" width="${(box.dx * S).toFixed(1)}" height="${(box.dy * S).toFixed(1)}" fill="${st.c}22" stroke="${st.c}" stroke-width=".9"/>`);
+  }
+  // 치수문자 충돌 회피(260717 예시 배터리): ①엔벨로프 치수대(+18)와 겹치는 바닥 부품은
+  // 2행째(+30)로 강하 ②같은 높이대(±7px)에서 x-겹침은 그리디 행 패킹(행 간 10px)
+  {
+    dimLabels.sort((a, b) => a.dy - b.dy || a.bx - b.bx);
+    const bands = [];
+    for (const L of dimLabels) {
+      if (L.dy > oy + fh - 1 && L.dy < oy + fh + 26) L.dy = oy + fh + 30;
+      let band = bands.find((b) => Math.abs(b.y0 - L.dy) <= 7);
+      if (!band) { band = { y0: L.dy, rows: [] }; bands.push(band); }
+      const w = L.ds.length * 4.2 + 6;
+      let ri = band.rows.findIndex((end) => L.bx - w / 2 > end);
+      if (ri < 0) { ri = band.rows.length; band.rows.push(-Infinity); }
+      band.rows[ri] = L.bx + w / 2;
+      balloons.push(`<text x="${L.bx}" y="${(band.y0 + ri * 10).toFixed(1)}" font-size="7.3" text-anchor="middle" fill="#475569" font-family="sans-serif">${esc(L.ds)}</text>`);
+    }
   }
   // 배관 오버레이(#6): FRONT(x,z)·PLAN(x,y) 폴리라인 — 라우팅된 실경로만(재계산 없음)
   const pipeLines = [];
@@ -779,8 +810,8 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   const dimV = (x, y1, y2, t) => `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#dc2626" stroke-width=".6"/><text x="${+x - 4}" y="${(+y1 + +y2) / 2}" font-size="9.5" text-anchor="end" fill="#dc2626" transform="rotate(-90 ${+x - 4} ${(+y1 + +y2) / 2})">${t}</text>`;
   const pipeHead = pipes?.length ? 90 : 0; // 오버헤드 코리도 배관이 정면도 위로 나가는 만큼 캔버스 확장
   const svg = `<svg viewBox="0 ${-pipeHead} ${sx0 + fw + 60} ${oy + fh + pd + 60 + pipeHead}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff">
-  <text x="${ox}" y="${oy - 10}" font-size="12" font-weight="700" font-family="sans-serif">정면도 FRONT</text>
-  <text x="${sx0}" y="${oy - 10}" font-size="12" font-weight="700" font-family="sans-serif">평면도 PLAN</text>
+  <text x="${ox}" y="${oy - 26}" font-size="12" font-weight="700" font-family="sans-serif">정면도 FRONT</text>
+  <text x="${sx0}" y="${oy - 26}" font-size="12" font-weight="700" font-family="sans-serif">평면도 PLAN</text>
   <rect x="${ox}" y="${oy}" width="${fw}" height="${fh}" fill="none" stroke="#0f172a" stroke-width="1.4"/>
   ${rects.join('')}
   ${dimH(px(bx0, ox), px(bx1, ox), (oy + fh + 18).toFixed(1), fmtLen(W))}

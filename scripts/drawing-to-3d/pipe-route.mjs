@@ -304,6 +304,24 @@ function _resolveEnd(spec, byLabel) {
 
 const _axStep = (p, axis, dist) => { if (!axis) return [...p]; const q = [...p]; q[AX_IDX[axis[0]]] += (axis[1] === '-' ? -1 : 1) * dist; return q; };
 
+// 마주보는(동일 축) 포트 전용 — 축 중간분할 조그: A→(공유축 중간)→타 축 이동→B.
+// 스텁 리드(L)가 서로를 지나치는 좁은 간격(간격<2L)에서 백트랙·초단 세그먼트 없이
+// 시공 가능한 정공법 경로(260717 예시 배터리 mech-skid 가 검출한 라우팅 공백).
+function _midJogPaths(A, B, k) {
+  const others = [0, 1, 2].filter((i) => i !== k);
+  const mid = (A[k] + B[k]) / 2;
+  const paths = [];
+  for (const ord of [[others[0], others[1]], [others[1], others[0]]]) {
+    const pts = [[...A]];
+    let cur = [...A];
+    if (Math.abs(mid - cur[k]) > 1e-6) { cur = [...cur]; cur[k] = mid; pts.push([...cur]); }
+    for (const i of ord) if (Math.abs(cur[i] - B[i]) > 1e-6) { cur = [...cur]; cur[i] = B[i]; pts.push([...cur]); }
+    if (Math.abs(cur[k] - B[k]) > 1e-6) { cur = [...cur]; cur[k] = B[k]; pts.push([...cur]); }
+    if (pts.length > 1) paths.push(pts);
+  }
+  return paths;
+}
+
 // S→E 후보 경로 생성 — 스텁 축방향 진입/이탈 리드(L) 강제 + 축순서 순열 + 오버헤드 코리도(높이×수평순서)
 function _candidatePaths(S, E, sAx, eAx, corridorZs, L) {
   const out = [];
@@ -364,23 +382,29 @@ export function autoRoutePipes(pipes, items, { clearance = 80, stubLen = 40 } = 
     const E = to.axis && wantStub ? _axStep(to.p, to.axis, stubLen) : to.p;
     const L = Math.max(20, d / 2 + RETREAT_PAD + 5);
     const corridorZs = [zTop + clearance, zTop + clearance + 2 * (d + 10), zTop + clearance + 4 * (d + 10)];
-    const cands = _candidatePaths(S, E, from.axis, to.axis, corridorZs, L);
-    let chosen = null;
+    const cands = _candidatePaths(S, E, from.axis, to.axis, corridorZs, L).map((pts) => ({ pts, noStub: false }));
+    // 마주보는(동일 축) 포트: 스텁 팁 리드가 서로를 지나치는 배치 폴백 —
+    // 면(face)에서 직접 중간분할 조그(경로가 면까지 닿으므로 별도 스텁 생략)
+    if (from.axis && to.axis && AX_IDX[from.axis[0]] === AX_IDX[to.axis[0]]) {
+      cands.push(..._midJogPaths(from.p, to.p, AX_IDX[from.axis[0]]).map((pts) => ({ pts, noStub: true })));
+    }
+    let chosen = null, chosenNoStub = false;
     const reasons = [];
     for (const cand of cands) {
-      const n = normalizeRoute(cand, { startAxis: from.axis, endAxis: to.axis });
+      const n = normalizeRoute(cand.pts, { startAxis: from.axis, endAxis: to.axis });
       const ge = routeGate(n.pts, { d });
       if (ge.length) { reasons.push(ge[0]); continue; }
       const rt = { label: id, pts: n.pts, d, allow: pipe.allow };
       if (pipeObstacleCheck([rt], items).some((v) => !passable.has(v.obstacle))) { reasons.push('장비 관통'); continue; }
       if (pipeCrossCheck([...routes, rt]).some((v) => v.a === id || v.b === id)) { reasons.push('기라우팅 배관 교차'); continue; }
       chosen = n.pts;
+      chosenNoStub = cand.noStub;
       break;
     }
     if (!chosen) { errors.push(`${id}: 자동 라우팅 실패(후보 ${cands.length} 전부 불합격 — ${[...new Set(reasons)].slice(0, 3).join(' · ')})`); continue; }
     routes.push({ label: id, pts: chosen, d, service: pipe.service, col });
-    if (from.axis && wantStub) features.push(...stubFeatures(from.p, from.axis, d, { col }));
-    if (to.axis && wantStub) features.push(...stubFeatures(to.p, to.axis, d, { col }));
+    if (from.axis && wantStub && !chosenNoStub) features.push(...stubFeatures(from.p, from.axis, d, { col }));
+    if (to.axis && wantStub && !chosenNoStub) features.push(...stubFeatures(to.p, to.axis, d, { col }));
     const rf = routeFeatures(chosen, { d, col, normalize: false });
     if (rf.errors.length) { errors.push(`${id}: 피처 생성 실패 — ${rf.errors[0]}`); continue; }
     features.push(...rf.features);

@@ -293,6 +293,17 @@ function retainingWallAlignmentAssembly(p) {
     }
   }
   // §1-3 등고→지반선 결정론 파생(명시 profileGround 입력이 우선·모순=정직 거부)
+  // 스키마 게이트: 등고는 {elevM(미터)·pts[[x,y]mm..]} — 표고 필드가 다르면 조용히 무시되어
+  // "교차<2" 오진으로 이어지므로(260717 예시 배터리 검출) 여기서 명시 거부한다.
+  if (Array.isArray(p.contours)) {
+    const bad = p.contours.filter((c) => !Number.isFinite(Number(c?.elevM)) || !Array.isArray(c?.pts) || c.pts.length < 2);
+    if (bad.length) {
+      return {
+        name: '옹벽 선형 구간', domain: 'civil', parts: [],
+        alignmentErrors: [`contours ${bad.length}건 불량 — 각 등고는 {"elevM": 표고(m), "pts": [[x,y]mm, ...]} 필요(el/elev/elevMm 아님)`],
+      };
+    }
+  }
   let derivedGround = null, groundNote = null;
   if (!Array.isArray(p.profileGround) && Array.isArray(p.contours)) {
     const g = groundFromContours(elements, p.contours);
