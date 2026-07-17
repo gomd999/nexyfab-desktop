@@ -55,7 +55,7 @@ export function buildElements(ips, curves = [], opts = {}) {
     if (!(Number(c.R) > 0)) { errors.push(`curves[ip=${c.ip}]: R invalid`); continue; }
     // 원본 ips 인덱스로 지정 → 제거되지 않은 IP 좌표로 매칭
     const idx = P.findIndex((q) => q === ips[c.ip]);
-    if (idx <= 0 || idx >= P.length - 1) { if (!errors.some((e) => e.includes(`ip=${c.ip}`))) errors.push(`curves[ip=${c.ip}]: 내부 IP 아님`); continue; }
+    if (idx <= 0 || idx >= P.length - 1) { if (!errors.some((e) => e.includes(`ip=${c.ip}`))) errors.push(`curves[ip=${c.ip}]: 내부 IP 아님 — 곡선은 꺾인 중간 IP 에만(ips 를 3점 이상으로 꺾어 선언)`); continue; }
     Rof.set(idx, Number(c.R));
     if (Number(c.Ls) > 0) LsOf.set(idx, Number(c.Ls));
   }

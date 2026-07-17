@@ -82,6 +82,8 @@ ${TYPE_SPEC}
 예외 — 옹벽·도로변 벽 등 "선형(노선)" 설계 요청이면 parts 대신 civilAlignment 하나만 선언:
 {"name":"...","civilAlignment":{"ips":[[0,0],[120000,0],[200000,60000]],"curves":[{"ip":1,"R":30000}],"structures":[{"sta":60000,"type":"culvert"}],"H":3000,"baseWidth":2000,"stemThickness":300,"baseThickness":400,"toeLength":600}}
 - 좌표·측점·곡선 기하·도면집·검증은 결정론 엔진이 수행 — 경로 좌표를 지어내지 마라.
+- **곡선은 방향이 꺾이는 내부 IP 에만 붙는다**: curves 를 쓰려면 ips 가 3점 이상이고 해당 IP 에서 실제로 꺾여야 한다(직선 2점에 곡선 선언 금지 — 곡선 요구가 있으면 중간 IP 를 만들어 꺾어라. 총 연장은 ips 경로 길이로 맞춘다).
+- 구조물 요구(암거·집수정·신축이음)는 structures:[{"sta":측점mm,"type":"culvert"|"catch_basin"|"expansion_joint"}] 로 반드시 선언.
 - 게이트 거부 문구(예: "TL 합>구간장 — R 축소")를 받으면 해당 값만 고쳐 다시 선언하라.
 
 설명: "${desc}"`;
