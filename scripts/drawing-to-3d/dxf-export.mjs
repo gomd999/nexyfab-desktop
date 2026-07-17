@@ -40,6 +40,40 @@ const solid = (layer, x, y, dx, dy) => // SOLID 정점 순서: 3·4번째 스왑
   g(0, 'SOLID') + g(8, layer) + g(10, x) + g(20, y) + g(30, 0) + g(11, x + dx) + g(21, y) + g(31, 0) + g(12, x) + g(22, y + dy) + g(32, 0) + g(13, x + dx) + g(23, y + dy) + g(33, 0);
 const rect = (layer, x, y, dx, dy, ltype) =>
   line(layer, x, y, x + dx, y, ltype) + line(layer, x + dx, y, x + dx, y + dy, ltype) + line(layer, x + dx, y + dy, x, y + dy, ltype) + line(layer, x, y + dy, x, y, ltype);
+// R12 POLYLINE(66=vertices-follow) — 편집 가능한 연속선(Wave 1 실무 호환: 배관·경계·등고)
+const polyline = (layer, pts, { closed = false, ltype } = {}) => {
+  let s = g(0, 'POLYLINE') + g(8, layer) + (ltype ? g(6, ltype) : '') + g(66, 1) + g(70, closed ? 1 : 0);
+  for (const p of pts) s += g(0, 'VERTEX') + g(8, layer) + g(10, p[0]) + g(20, p[1]) + g(30, 0);
+  return s + g(0, 'SEQEND') + g(8, layer);
+};
+// 전개 치수(exploded dim, Wave 1): 치수선+연장선+화살촉(SOLID)+중앙 문자 — R12 호환 실무 표기.
+// (R12 연관 DIMENSION 은 익명 블록 요구 — 뷰어별 재생성 편차가 커서 전개형이 호환 안전)
+function dimLin(layer, x1, y1, x2, y2, off, txt, K) {
+  const L = Math.hypot(x2 - x1, y2 - y1) || 1;
+  const ux = (x2 - x1) / L, uy = (y2 - y1) / L;
+  const nx = -uy, ny = ux; // off 방향 법선
+  const ax = x1 + nx * off, ay = y1 + ny * off, bx = x2 + nx * off, by = y2 + ny * off;
+  const AR = 90 * K; // 화살촉 길이
+  const arrow = (px, py, dx2, dy2) =>
+    g(0, 'SOLID') + g(8, layer) + g(10, px) + g(20, py) + g(30, 0)
+    + g(11, px + dx2 * AR - dy2 * AR * 0.33) + g(21, py + dy2 * AR + dx2 * AR * 0.33) + g(31, 0)
+    + g(12, px + dx2 * AR + dy2 * AR * 0.33) + g(22, py + dy2 * AR - dx2 * AR * 0.33) + g(32, 0)
+    + g(13, px + dx2 * AR + dy2 * AR * 0.33) + g(23, py + dy2 * AR - dx2 * AR * 0.33) + g(33, 0);
+  let s = line(layer, ax, ay, bx, by);
+  s += line(layer, x1, y1, ax + nx * 60 * K, ay + ny * 60 * K) + line(layer, x2, y2, bx + nx * 60 * K, by + ny * 60 * K);
+  s += arrow(ax, ay, ux, uy) + arrow(bx, by, -ux, -uy);
+  s += text(layer, (ax + bx) / 2 - Math.abs(ux) * txt.length * 55 * K, (ay + by) / 2 + 60 * K, 180 * K, txt);
+  return s;
+}
+// 표제란(도곽 우하단) — 도번·도면명·축척·REV(라우트가 발행 시 실값 치환)
+function titleBlockEnts(xr, yb, K, { project = 'nexyfab', dwgNo = 'NX-GA-001', name = '', scaleN = 0 } = {}) {
+  const W = 4200 * K, H = 1500 * K, x = xr - W, y = yb - H - 1400 * K;
+  let s = rect('TXT', x, y, W, H) + line('TXT', x, y + H / 3, x + W, y + H / 3) + line('TXT', x, y + (2 * H) / 3, x + W, y + (2 * H) / 3);
+  s += text('TXT', x + 90 * K, y + H - 380 * K, 200 * K, project.slice(0, 28));
+  s += text('TXT', x + 90 * K, y + H / 3 + 120 * K, 190 * K, `${dwgNo}  ${name}`.slice(0, 34));
+  s += text('TXT', x + 90 * K, y + 110 * K, 180 * K, `SCALE 1:${scaleN || '-'} (annot)  REV NF-REV-PENDING  auto-generated non-statutory`);
+  return s;
+}
 
 // ── 파일 골격 ────────────────────────────────────────────────────────────────
 const LAYERS = [
@@ -51,7 +85,8 @@ const LAYERS = [
 ];
 function shell(entities) {
   let s = '';
-  s += g(0, 'SECTION') + g(2, 'HEADER') + g(9, '$ACADVER') + g(1, 'AC1009') + g(9, '$INSUNITS') + g(70, 4) + g(0, 'ENDSEC');
+  // $DWGCODEPAGE=ANSI_949(Wave 1): 한글 주기·표제란 — 소비측(라우트·다운로드)이 cp949 로 인코딩해 방출
+  s += g(0, 'SECTION') + g(2, 'HEADER') + g(9, '$ACADVER') + g(1, 'AC1009') + g(9, '$DWGCODEPAGE') + g(3, 'ANSI_949') + g(9, '$INSUNITS') + g(70, 4) + g(0, 'ENDSEC');
   s += g(0, 'SECTION') + g(2, 'TABLES');
   s += g(0, 'TABLE') + g(2, 'LTYPE') + g(70, 3);
   s += g(0, 'LTYPE') + g(2, 'CONTINUOUS') + g(70, 0) + g(3, 'Solid line') + g(72, 65) + g(73, 0) + g(40, 0);
@@ -111,6 +146,7 @@ export function dxfBuildingPlan(assembly) {
   // 기둥 — 채움(SOLID)+외곽
   for (const o of fCols) { e += solid('COLUMN', o.b.x, o.b.y, o.b.dx, o.b.dy) + rect('COLUMN', o.b.x, o.b.y, o.b.dx, o.b.dy); }
   e += text('TXT', xs[0], ys[0] - EXT - 700 * K, TH, `STRUCTURAL PLAN (mm) - auto-generated, dims=centerline, non-statutory`);
+  e += titleBlockEnts(xs[xs.length - 1] + EXT, ys[0] - EXT - 1000 * K, K, { dwgNo: 'NX-GA-001', name: 'STRUCTURAL PLAN', scaleN: N });
   return shell(e);
 }
 
@@ -136,13 +172,14 @@ export function dxfLandscapePlan(assembly) {
   e += line('DIM', x0 - 500 * K, y0, x0 - 500 * K, y1) + text('DIM', x0 - 1100 * K, (y0 + y1) / 2, 200 * K, String(Math.round(y1 - y0)));
   e += siteEntities(assembly, 200 * K);
   e += text('TXT', x0, y0 - 900 * K, 200 * K, `LANDSCAPE PLAN (mm) - SCALE 1:${N} (annot) - auto-generated, non-statutory`);
+  e += titleBlockEnts(x1, y0 - 1200 * K, K, { dwgNo: 'NX-GA-001', name: 'LANDSCAPE PLAN', scaleN: N });
   return shell(e);
 }
 
 /** 범용 평면 DXF(mech·bridge 등 전용 모드 없는 도메인 — 260717 예시 배터리 갭 해소):
  *  부품 엔벨로프 평면(원형 단면=CIRCLE·그 외 RECT) + id 라벨 + 외곽 치수.
  *  역할별 레이어(girder/crossbeam/deck→BEAM/DECK), 기본=PART. 비법정 명시. */
-export function dxfGenericPlan(assembly) {
+export function dxfGenericPlan(assembly, opts = {}) {
   const parts = (assembly.parts ?? []).map((p) => ({ p, b: box(p) }));
   if (!parts.length) return null;
   const x0 = Math.min(...parts.map((o) => o.b.x)), x1 = Math.max(...parts.map((o) => o.b.x + o.b.dx));
@@ -160,9 +197,11 @@ export function dxfGenericPlan(assembly) {
     } else e += rect(layer, o.b.x, o.b.y, o.b.dx, o.b.dy);
     if (o.p.id) e += text('TXT', o.b.x + 40 * K, o.b.y + 40 * K, TH * 0.7, String(o.p.id).slice(0, 24));
   }
-  e += line('DIM', x0, y0 - 500 * K, x1, y0 - 500 * K) + text('DIM', (x0 + x1) / 2 - 300 * K, y0 - 420 * K, TH, String(Math.round(x1 - x0)));
-  e += line('DIM', x0 - 500 * K, y0, x0 - 500 * K, y1) + text('DIM', x0 - 1100 * K, (y0 + y1) / 2, TH, String(Math.round(y1 - y0)));
-  e += text('TXT', x0, y0 - 900 * K, TH, `GENERAL PLAN (mm, envelope) - SCALE 1:${N} (annot) - auto-generated, non-statutory`);
+  // Wave 1: 전개 치수(연장선+화살촉) + 표제란
+  e += dimLin('DIM', x0, y0, x1, y0, -500 * K, String(Math.round(x1 - x0)), K);
+  e += dimLin('DIM', x0, y1, x0, y0, -500 * K, String(Math.round(y1 - y0)), K);
+  e += text('TXT', x0, y0 - 1100 * K, TH, `GENERAL PLAN (mm, envelope) - SCALE 1:${N} (annot) - auto-generated, non-statutory`);
+  e += titleBlockEnts(x1, y0 - 1100 * K, K, { project: String(assembly.name ?? 'nexyfab').slice(0, 28), dwgNo: opts.dwgNo ?? 'NX-GA-001', name: opts.title ?? '', scaleN: N });
   return shell(e);
 }
 
@@ -171,12 +210,12 @@ function siteEntities(assembly, TH) {
   let e = '';
   const b = assembly.siteBoundary;
   if (Array.isArray(b) && b.length >= 3) {
-    for (let i = 0; i < b.length; i++) { const [x1, y1] = b[i], [x2, y2] = b[(i + 1) % b.length]; e += line('BNDRY', x1, y1, x2, y2, 'CENTER'); }
+    e += polyline('BNDRY', b, { closed: true, ltype: 'CENTER' }); // Wave 1: 편집 가능 폐합 폴리라인
     e += text('BNDRY', b[0][0], b[0][1] + TH, TH, 'SITE BOUNDARY');
   }
   for (const ct of assembly.contours ?? []) {
     if (!Array.isArray(ct.pts) || ct.pts.length < 2) continue;
-    for (let i = 0; i < ct.pts.length - 1; i++) e += line('CONTOUR', ct.pts[i][0], ct.pts[i][1], ct.pts[i + 1][0], ct.pts[i + 1][1]);
+    e += polyline('CONTOUR', ct.pts);
     const [ex, ey] = ct.pts[ct.pts.length - 1];
     e += text('CONTOUR', ex, ey, TH * 0.8, `EL.${Number(ct.elevM).toFixed(1)}`);
   }
@@ -236,6 +275,7 @@ export function dxfCivilPlan(assembly) {
     }
     e += siteEntities(assembly, TH);
     e += text('TXT', x0, y0 - 900 * K, TH, `CIVIL ALIGNMENT PLAN (mm) - SCALE 1:${N} (annot) - band=schematic +/-${Math.round(hw)}mm - arcs=true R - non-statutory`);
+    e += titleBlockEnts(x1, y0 - 1200 * K, K, { dwgNo: 'NX-CIV-PL-01', name: 'ALIGNMENT PLAN', scaleN: N });
     return shell(e);
   }
   const parts = (assembly.parts ?? []).map((p) => ({ p, b: box(p) }));
@@ -263,6 +303,7 @@ export function dxfCivilPlan(assembly) {
   e += line('DIM', x0, y0 - 500 * K, x1, y0 - 500 * K) + text('DIM', (x0 + x1) / 2 - 300 * K, y0 - 420 * K, TH, String(Math.round(Wm)));
   e += siteEntities(assembly, TH);
   e += text('TXT', x0, y0 - 900 * K, TH, `CIVIL PLAN (mm) - SCALE 1:${N} (annot) - STA every ${Math.round(step / 1000)}m - non-statutory`);
+  e += titleBlockEnts(x1, y0 - 1200 * K, K, { dwgNo: 'NX-CIV-PL-01', name: 'CIVIL PLAN', scaleN: N });
   return shell(e);
 }
 
@@ -270,11 +311,13 @@ export function dxfCivilPlan(assembly) {
 function pipeEntities(pipes) {
   let e = '';
   for (const rt of pipes ?? []) {
-    for (let i = 0; i < rt.pts.length - 1; i++) {
-      const a = rt.pts[i], b = rt.pts[i + 1];
-      if (Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6) continue; // 수직(z) 세그먼트는 평면 투영서 점
-      e += line('PIPE', a[0], a[1], b[0], b[1]);
+    // 평면 투영 + 연속 중복점(수직 z 세그먼트) 제거 → 편집 가능한 1 POLYLINE (Wave 1)
+    const xy = [];
+    for (const p of rt.pts) {
+      const l = xy[xy.length - 1];
+      if (!l || Math.abs(l[0] - p[0]) > 1e-6 || Math.abs(l[1] - p[1]) > 1e-6) xy.push([p[0], p[1]]);
     }
+    if (xy.length >= 2) e += polyline('PIPE', xy);
     e += text('PIPE', rt.pts[0][0] + 60, rt.pts[0][1] + 60, 120, `${rt.label ?? 'pipe'} DN${rt.d ?? 26}`);
   }
   return e;
@@ -301,6 +344,7 @@ export function dxfInteriorPlan(assembly, pipes) {
   e += line('DIM', x0, y0 - 500, x1, y0 - 500) + text('DIM', (x0 + x1) / 2 - 300, y0 - 420, 200, String(Math.round(x1 - x0)));
   e += line('DIM', x0 - 500, y0, x0 - 500, y1) + text('DIM', x0 - 1100, (y0 + y1) / 2, 200, String(Math.round(y1 - y0)));
   e += text('TXT', x0, y0 - 900, 200, 'INTERIOR PLAN (mm) - auto-generated, MEP pipes=schematic run, non-statutory');
+  e += titleBlockEnts(x1, y0 - 1200, 1, { dwgNo: 'NX-GA-001', name: 'INTERIOR PLAN', scaleN: 0 });
   return shell(e);
 }
 
@@ -356,17 +400,17 @@ export function dxfProfile(assembly) {
 }
 
 /** 도메인 → DXF (없으면 null). pipes = buildAssembly().pipes.routes — 라우터 단일 결과 재사용(정합). */
-export function dxfPlan(assembly, domain, pipes) {
-  const d0 = dxfPlanLocal(assembly, domain, pipes);
+export function dxfPlan(assembly, domain, pipes, opts = {}) {
+  const d0 = dxfPlanLocal(assembly, domain, pipes, opts);
   return applyOrigin(d0, assembly);
 }
-function dxfPlanLocal(assembly, domain, pipes) {
+function dxfPlanLocal(assembly, domain, pipes, opts = {}) {
   if (domain === 'building') { const d = dxfBuildingPlan(assembly); return d && pipes?.length ? injectPipes(d, pipes) : d; }
   if (domain === 'landscape') { const d = dxfLandscapePlan(assembly); return d && pipes?.length ? injectPipes(d, pipes) : d; }
   if (domain === 'interior') return dxfInteriorPlan(assembly, pipes);
   if (domain === 'civil') { const d = dxfCivilPlan(assembly); return d && pipes?.length ? injectPipes(d, pipes) : d; }
   // mech·bridge 등: 범용 엔벨로프 평면(260717 예시 배터리 갭 해소 — 이전엔 null=DXF 미제공)
-  const d = dxfGenericPlan(assembly);
+  const d = dxfGenericPlan(assembly, opts);
   return d && pipes?.length ? injectPipes(d, pipes) : d;
 }
 // 기존 셸의 ENTITIES 끝에 PIPE 엔티티 삽입(섹션 균형 유지)

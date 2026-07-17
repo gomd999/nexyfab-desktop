@@ -16,6 +16,7 @@ import { createHash } from 'node:crypto';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import JSZip from 'jszip';
+import iconv from 'iconv-lite';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -39,11 +40,15 @@ type BoqMod = { boqReport: (a: Assembly, o?: Record<string, unknown>) => string 
 type PdMod = { dossierReport: (a: Assembly, o?: Record<string, unknown>) => string; pidSkeleton: (a: Assembly, o?: Record<string, unknown>) => string };
 type RenderMod = { renderHtml: (spec: unknown, o?: Record<string, unknown>) => Promise<string>; renderColoredHtml: (spec: unknown, o?: Record<string, unknown>) => Promise<string> };
 type VerifyMod = { renderStl: (scad: string) => Promise<Uint8Array> };
-type DxfMod = { dxfPlan: (a: Assembly, domain: string, pipes?: unknown[]) => string | null; dxfProfile: (a: Assembly) => string | null };
+type DxfMod = { dxfPlan: (a: Assembly, domain: string, pipes?: unknown[], opts?: Record<string, unknown>) => string | null; dxfProfile: (a: Assembly) => string | null };
+type LxMod = { landxmlAlignment: (a: Assembly, o?: Record<string, unknown>) => string | null };
+type XlsxMod = { boqXlsxBase64: (a: Assembly, o?: Record<string, unknown>) => string };
 
-let _asm: AsmMod | null = null, _pkg: PkgMod | null = null, _rnd: RenderMod | null = null, _boq: BoqMod | null = null, _pd: PdMod | null = null, _vfy: VerifyMod | null = null, _dxf: DxfMod | null = null;
+let _asm: AsmMod | null = null, _pkg: PkgMod | null = null, _rnd: RenderMod | null = null, _boq: BoqMod | null = null, _pd: PdMod | null = null, _vfy: VerifyMod | null = null, _dxf: DxfMod | null = null, _lx: LxMod | null = null, _xl: XlsxMod | null = null;
 async function load() {
   const base = join(process.cwd(), 'scripts', 'drawing-to-3d');
+  if (!_lx) _lx = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'landxml-export.mjs')).href)) as LxMod;
+  if (!_xl) _xl = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'xlsx-export.mjs')).href)) as XlsxMod;
   if (!_asm) _asm = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'assembly.mjs')).href)) as AsmMod;
   if (!_pkg) _pkg = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'package.mjs')).href)) as PkgMod;
   if (!_rnd) _rnd = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'html-render.mjs')).href)) as RenderMod;
@@ -51,7 +56,7 @@ async function load() {
   if (!_pd) _pd = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'pid_dossier.mjs')).href)) as PdMod;
   if (!_vfy) _vfy = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'verify.mjs')).href)) as VerifyMod;
   if (!_dxf) _dxf = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'dxf-export.mjs')).href)) as DxfMod;
-  return { asm: _asm, pkg: _pkg, rnd: _rnd, boq: _boq, pd: _pd, vfy: _vfy, dxf: _dxf };
+  return { asm: _asm, pkg: _pkg, rnd: _rnd, boq: _boq, pd: _pd, vfy: _vfy, dxf: _dxf, lx: _lx, xl: _xl };
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -71,7 +76,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: 'assembly.parts 가 필요합니다.' }, { status: 400 });
   }
 
-  let mods: { asm: AsmMod; pkg: PkgMod; rnd: RenderMod; boq: BoqMod; pd: PdMod; vfy: VerifyMod; dxf: DxfMod };
+  let mods: { asm: AsmMod; pkg: PkgMod; rnd: RenderMod; boq: BoqMod; pd: PdMod; vfy: VerifyMod; dxf: DxfMod; lx: LxMod | null; xl: XlsxMod | null };
   try { mods = await load(); } catch (e) {
     return NextResponse.json({ ok: false, error: 'pipeline load failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 });
   }
@@ -87,7 +92,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const domain = (typeof (assembly as { domain?: unknown }).domain === 'string' ? (assembly as { domain: string }).domain : undefined)
     ?? (typeof options.domain === 'string' ? options.domain : undefined) ?? 'mech';
   const nonMech = ['building', 'landscape', 'interior', 'civil', 'bridge'].includes(domain);
-  const files: Array<{ name: string; mime: string; content: string }> = [];
+  const files: Array<{ name: string; mime: string; content: string; b64?: boolean }> = [];
 
   // 2D GA 도면 (건축=축선 구조평면·조경=배치도 모드 포함 · 배관=라우터 결과 그대로 투영)
   // revHistory=개정 이력(입력 원칙) · lang='en'=시트명·표두 EN(본문 KO 유지 명시)
@@ -103,8 +108,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch (e) { /* skip */ void e; }
   // DXF 평면 (P1 — AutoCAD 편집용, 레이어 분리 R12. 건축·조경·인테리어 + PIPE 레이어)
   try {
-    const dxf = mods.dxf.dxfPlan(assembly, domain, built.pipes?.routes);
+    const dxf = mods.dxf.dxfPlan(assembly, domain, built.pipes?.routes, { title, dwgNo: 'NX-GA-001' });
     if (dxf) files.push({ name: 'GA_plan.dxf', mime: 'application/dxf', content: dxf });
+  } catch (e) { void e; }
+  // LandXML(Wave 1 실무 호환) — 토목 선형: 도로·선형 SW 교환 표준(요소열 단일 소스, 재계산 없음)
+  try {
+    if (domain === 'civil' && (assembly as { alignment?: unknown }).alignment && mods.lx) {
+      const xml = mods.lx.landxmlAlignment(assembly, { name: title.slice(0, 40), project: 'nexyfab' });
+      if (xml) files.push({ name: 'alignment.xml', mime: 'application/xml', content: xml });
+    }
+  } catch (e) { void e; }
+  // 내역서 XLSX(Wave 1) — 현장 견적·기성 표준 포맷(단가·금액=공란, 입력 원칙)
+  try {
+    if (mods.xl) files.push({ name: 'BOQ_내역서.xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', content: mods.xl.boqXlsxBase64(assembly, { domain, title }), b64: true });
   } catch (e) { void e; }
   // 종단면도 DXF(토목 선형 — 종 10× 왜곡 좌표, 주기 명시)
   try {
@@ -170,6 +186,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let consistency: { pass: boolean; checks: unknown[]; rev: string } | null = null;
   try {
     for (const f of files) if (f.mime === 'text/html') f.content = mods.pkg.packageStamp(f.content, basis);
+    // DXF 표제란 REV 치환(Wave 1 — HTML nf-rev 스팬과 동일 발행 규약)
+    for (const f of files) if (f.name.endsWith('.dxf')) f.content = f.content.replaceAll('NF-REV-PENDING', rev);
     const hasFluid = assembly.parts.some((p) => !!(p as { fluid?: unknown }).fluid);
     const alignment = (assembly as { alignment?: unknown }).alignment ?? null;
     consistency = mods.pkg.packageConsistencyCheck(files, basis, { hasFluid, alignment });
@@ -209,7 +227,12 @@ if (data.pipes?.errors?.length) console.warn('⚠ 배관 라우팅 실패:', dat
   let zipBase64: string | null = null;
   try {
     const zip = new JSZip();
-    for (const f of files) zip.file(f.name, f.content);
+    for (const f of files) {
+      // DXF=cp949 인코딩(Wave 1 — $DWGCODEPAGE ANSI_949 와 정합: AutoCAD 한글 주기·표제란)
+      if (f.name.endsWith('.dxf')) zip.file(f.name, iconv.encode(f.content, 'cp949'));
+      else if (f.b64) zip.file(f.name, f.content, { base64: true }); // XLSX 등 바이너리
+      else zip.file(f.name, f.content);
+    }
     zipBase64 = await zip.generateAsync({ type: 'base64', compression: 'DEFLATE' });
   } catch { zipBase64 = null; }
 
