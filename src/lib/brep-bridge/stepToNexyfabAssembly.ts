@@ -19,10 +19,12 @@ export interface StepBridgeResult {
   assembly?: {
     name: string;
     domain: string;
-    parts: Array<{ id: string; type: 'box'; params: { width: number; depth: number; height: number }; at: { tx: number; ty: number; tz: number }; role: string; material: string }>;
+    /** 임포트 box/cyl 근사 표시 — buildAssembly 가 간섭을 '근사 겹침'으로 분류(판정 비대상). */
+    importedApprox?: boolean;
+    parts: Array<{ id: string; type: 'box' | 'cylinder'; params: { width?: number; depth?: number; height?: number; diameter?: number; length?: number }; at: { tx: number; ty: number; tz: number; rx?: number; ry?: number }; role: string; material: string; qty?: number }>;
     note: string;
   };
-  stats?: { partsIn: number; imported: number; skippedNoBounds: number; warnings: number; unsupported: number };
+  stats?: { partsIn: number; imported: number; skippedNoBounds: number; warnings: number; unsupported: number; cylinders?: number; splitParts?: number; representative?: { groups: number; instances: number } };
 }
 
 const MAX_PARTS = 600; // drawing-to-3d PARTS_BUDGET 과 동일 예산
@@ -37,24 +39,54 @@ function rotByQuat(q: { x: number; y: number; z: number; w: number }, v: [number
   return [vx + w * tx + (y * tz - z * ty), vy + w * ty + (z * tx - x * tz), vz + w * tz + (x * ty - y * tx)];
 }
 
-/** STEP 소스 → NexyFab 어셈블리(box 근사). 실패/상한 초과 = ok:false 정직. */
+/** STEP 소스 → NexyFab 어셈블리(box 근사). 실패 = ok:false 정직.
+ *  부품 수 > 예산(600)이면 **대표화 2-pass**(260718): 동일 partTemplateId(같은 부품 정의의
+ *  다인스턴스)당 대표 1개만 임포트 — 그룹 수도 예산 초과면 정직 거부.
+ *  대표 부품에 qty=인스턴스 수 부여 → BOQ·구조질량·IFC Count 에 정밀 반영(260718).
+ *  배치 도해는 대표 1개 위치만(전 인스턴스 배치 도해는 예산 밖 — note 명시). */
 export function stepToNexyfabAssembly(source: string, { name = 'STEP import', material = 'steel' } = {}): StepBridgeResult {
   let r;
+  let representative: { groups: number; instances: number } | null = null;
+  let qtyOf: ((pid: string) => number) | null = null;
   try {
-    r = importStepAssembly(source, { maxClassifyParts: 0, collectBounds: true });
+    // pass 1: 배치만(빠름) — 규모 파악
+    const probe = importStepAssembly(source, { maxClassifyParts: 0, collectBounds: false });
+    const partsIn0 = probe.state.parts.length;
+    if (partsIn0 > MAX_PARTS) {
+      // 대표화: partTemplateId 별 첫 인스턴스만 bounds 수집(화이트리스트 2-pass)
+      const repIds = new Set<string>();
+      const seenTpl = new Set<string>();
+      const tplCount = new Map<string, number>(); // tplId → 인스턴스 수(물량 ×qty 반영용)
+      const repTpl = new Map<string, string>(); // 대표 part.id → tplId
+      for (const p of probe.state.parts) {
+        const tplId = (p as { partTemplateId?: string }).partTemplateId ?? p.id;
+        tplCount.set(tplId, (tplCount.get(tplId) ?? 0) + 1);
+        if (!seenTpl.has(tplId)) { seenTpl.add(tplId); repIds.add(p.id); repTpl.set(p.id, tplId); }
+      }
+      qtyOf = (pid: string) => tplCount.get(repTpl.get(pid) ?? '') ?? 1;
+      if (repIds.size > MAX_PARTS) {
+        return { ok: false, error: `부품 정의 ${repIds.size}종 > 예산 ${MAX_PARTS} — 대표화로도 초과(부분 파일로 나눠주세요)`, stats: { partsIn: partsIn0, imported: 0, skippedNoBounds: 0, warnings: probe.warnings.length, unsupported: probe.unsupported.length } };
+      }
+      representative = { groups: repIds.size, instances: partsIn0 };
+      r = importStepAssembly(source, { maxClassifyParts: 0, collectBounds: true, collectBoundsFor: repIds });
+      // 대표 인스턴스만 남긴다(배치·경계 모두 대표 기준)
+      r.state.parts = r.state.parts.filter((p) => repIds.has(p.id));
+    } else {
+      r = importStepAssembly(source, { maxClassifyParts: 0, collectBounds: true });
+    }
   } catch (e) {
     return { ok: false, error: 'STEP 파싱 실패: ' + String((e as Error)?.message ?? e).slice(0, 160) };
   }
-  const partsIn = r.state.parts.length;
-  if (partsIn === 0) return { ok: false, error: '부품 0 — 어셈블리/솔리드를 찾지 못함(표면 모델 미지원)', stats: { partsIn, imported: 0, skippedNoBounds: 0, warnings: r.warnings.length, unsupported: r.unsupported.length } };
-  if (partsIn > MAX_PARTS) return { ok: false, error: `부품 ${partsIn}개 > 예산 ${MAX_PARTS} — 대형 어셈블리 대표화는 후속(부분 파일로 나눠주세요)`, stats: { partsIn, imported: 0, skippedNoBounds: 0, warnings: r.warnings.length, unsupported: r.unsupported.length } };
+  const partsIn = representative?.instances ?? r.state.parts.length;
+  if (r.state.parts.length === 0) return { ok: false, error: '부품 0 — 어셈블리/형상을 찾지 못함(곡선 전용·빈 모델 미지원)', stats: { partsIn, imported: 0, skippedNoBounds: 0, warnings: r.warnings.length, unsupported: r.unsupported.length } };
   const out: NonNullable<StepBridgeResult['assembly']>['parts'] = [];
   let skipped = 0;
+  let cylCount = 0;
+  let splitParts = 0;
   const used = new Set<string>();
-  for (const p of r.state.parts) {
-    const b = r.bounds?.[p.id];
-    if (!b) { skipped++; continue; }
-    // 로컬 AABB 8코너 → 쿼터니언 회전 + 평행이동 → 월드 AABB
+  type B3 = { min: [number, number, number]; max: [number, number, number] };
+  // 로컬 AABB 8코너 → 쿼터니언 회전 + 평행이동 → 월드 AABB + 원통 인식 방출(공용)
+  const emitOne = (p: (typeof r.state.parts)[number], b: B3, idBase: string, radii: number[] | undefined, qn: number): boolean => {
     const min: [number, number, number] = [Infinity, Infinity, Infinity];
     const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
     for (const cx of [b.min[0], b.max[0]]) for (const cy of [b.min[1], b.max[1]]) for (const cz of [b.min[2], b.max[2]]) {
@@ -63,10 +95,28 @@ export function stepToNexyfabAssembly(source: string, { name = 'STEP import', ma
       for (let k = 0; k < 3; k++) { if (w[k] < min[k]) min[k] = w[k]; if (w[k] > max[k]) max[k] = w[k]; }
     }
     const dims = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
-    if (!dims.every((d) => Number.isFinite(d) && d > 0.01)) { skipped++; continue; }
-    let id = String(p.name ?? p.id).replace(/[^\w가-힣-]/g, '_').slice(0, 40) || p.id;
+    if (!dims.every((d) => Number.isFinite(d) && d > 0.01)) return false;
+    let id = idBase.replace(/[^\w가-힣-]/g, '_').slice(0, 40) || 'part';
     while (used.has(id)) id = `${id}_`;
     used.add(id);
+    // 원통 인식(260718): CYLINDRICAL_SURFACE 반경 R + 월드 AABB 두 축=2R 폐형(축정렬)일 때만
+    if (radii?.length) {
+      const R = Math.max(...radii); // 외경 반경(tube 는 외경이 지배)
+      const tol = Math.max(1, 2 * R * 0.02);
+      const isDia = dims.map((d) => Math.abs(d - 2 * R) <= tol);
+      const axis = isDia[0] && isDia[1] && !isDia[2] ? 2 : isDia[0] && isDia[2] && !isDia[1] ? 1 : isDia[1] && isDia[2] && !isDia[0] ? 0 : -1;
+      if (axis >= 0 && dims[axis] > 0.01) {
+        const cx = (min[0] + max[0]) / 2, cy = (min[1] + max[1]) / 2;
+        const at = axis === 2
+          ? { tx: +cx.toFixed(2), ty: +cy.toFixed(2), tz: +min[2].toFixed(2) }
+          : axis === 0
+            ? { tx: +min[0].toFixed(2), ty: +cy.toFixed(2), tz: +((min[2] + max[2]) / 2).toFixed(2), ry: 90 }
+            : { tx: +cx.toFixed(2), ty: +min[1].toFixed(2), tz: +((min[2] + max[2]) / 2).toFixed(2), rx: -90 };
+        out.push({ id, type: 'cylinder', params: { diameter: +(2 * R).toFixed(2), length: +dims[axis].toFixed(2) }, at, role: 'imported', material, ...(qn > 1 ? { qty: qn } : {}) });
+        cylCount++;
+        return true;
+      }
+    }
     out.push({
       id,
       type: 'box',
@@ -74,7 +124,26 @@ export function stepToNexyfabAssembly(source: string, { name = 'STEP import', ma
       at: { tx: +min[0].toFixed(2), ty: +min[1].toFixed(2), tz: +min[2].toFixed(2) },
       role: 'imported',
       material,
+      ...(qn > 1 ? { qty: qn } : {}),
     });
+    return true;
+  };
+  for (const p of r.state.parts) {
+    const qn = qtyOf ? qtyOf(p.id) : 1;
+    const nameBase = String(p.name ?? p.id);
+    // 멀티솔리드 분해(260718 — 참고파일들2): 1 PD 안의 솔리드 N개를 개별 box/cylinder 로.
+    // 전체 예산(MAX_PARTS) 초과 시 병합 box 폴백(정직 — note 명시).
+    const sArr = r.solidBounds?.[p.id];
+    if (sArr && sArr.filter(Boolean).length > 1 && out.length + sArr.length <= MAX_PARTS) {
+      let any = false;
+      for (const [si, sb] of sArr.entries()) {
+        if (!sb) continue;
+        if (emitOne(p, sb, `${nameBase}_s${si + 1}`, r.solidCylRadii?.[p.id]?.[si], qn)) any = true;
+      }
+      if (any) { splitParts++; continue; }
+    }
+    const b = r.bounds?.[p.id];
+    if (!b || !emitOne(p, b, nameBase, r.cylRadii?.[p.id], qn)) skipped++;
   }
   if (out.length === 0) return { ok: false, error: '경계 추출 0건 — 포인트 없는 표현(테셀레이션 등) 미지원', stats: { partsIn, imported: 0, skippedNoBounds: skipped, warnings: r.warnings.length, unsupported: r.unsupported.length } };
   return {
@@ -82,9 +151,12 @@ export function stepToNexyfabAssembly(source: string, { name = 'STEP import', ma
     assembly: {
       name,
       domain: 'mech',
+      importedApprox: true,
       parts: out,
-      note: 'STEP 임포트 근사(월드 AABB box — 원기하 아님) · 질량/물량=AABB 체적 기준(과대측) · 재질=미해석 기본값 · 배치=NAUO 해석(정확)',
+      note: 'STEP 임포트 근사(월드 AABB box — 원기하 아님) · 축정렬 원통=CYLINDRICAL_SURFACE R+AABB 폐형 대조로 cylinder 방출(질량 정확) · 질량/물량=box 는 AABB 체적 기준(과대측) · 재질=미해석 기본값 · 배치=NAUO 해석(정확)'
+        + (splitParts ? ` · 멀티솔리드 분해: ${splitParts}개 PD 를 솔리드별 부품으로 전개(260718)` : '')
+        + (representative ? ` · 대표화: ${representative.instances}인스턴스→${representative.groups}종 대표 배치(질량·물량=인스턴스 수 qty 반영 — 260718. 배치 도해는 대표 1개 위치만)` : ''),
     },
-    stats: { partsIn, imported: out.length, skippedNoBounds: skipped, warnings: r.warnings.length, unsupported: r.unsupported.length },
+    stats: { partsIn, imported: out.length, skippedNoBounds: skipped, warnings: r.warnings.length, unsupported: r.unsupported.length, ...(cylCount ? { cylinders: cylCount } : {}), ...(splitParts ? { splitParts } : {}), ...(representative ? { representative } : {}) },
   };
 }

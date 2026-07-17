@@ -96,6 +96,12 @@ export interface StepAssemblyImportResult {
   unsupported: string[];
   /** opts.collectBounds 시: PartInstance.id → 로컬 AABB(mm). 포인트 없으면 항목 없음. */
   bounds?: Record<string, { min: [number, number, number]; max: [number, number, number] }>;
+  /** opts.collectBounds 시: PartInstance.id → CYLINDRICAL_SURFACE 반경 목록(mm, 원통 인식 힌트 — 260718). */
+  cylRadii?: Record<string, number[]>;
+  /** 멀티솔리드 PD(솔리드 ≥2, ≤400)의 솔리드별 로컬 AABB — 브리지 분해용(260718). */
+  solidBounds?: Record<string, Array<{ min: [number, number, number]; max: [number, number, number] } | null>>;
+  /** solidBounds 와 동순의 솔리드별 원통 반경 힌트. */
+  solidCylRadii?: Record<string, number[][]>;
 }
 
 export interface ImportStepAssemblyOptions {
@@ -107,6 +113,8 @@ export interface ImportStepAssemblyOptions {
   maxClassifyParts?: number;
   /** 부품별 로컬 AABB 수집(STEP→어셈블리 브리지용 — 솔리드 서브셋의 CARTESIAN_POINT 스캔). */
   collectBounds?: boolean;
+  /** collectBounds 화이트리스트(부품 id) — 대형 어셈블리 대표화 2-pass 용(지정 외는 스킵). */
+  collectBoundsFor?: Set<string>;
 }
 
 /**
@@ -227,34 +235,40 @@ export function importStepAssembly(
   // 분류기 성능 예산(옵션): 상한 초과분은 배치만 — 종료 시 집계 warning
   const maxClassify = Math.max(0, opts.maxClassifyParts ?? 500);
   const bounds: Record<string, { min: [number, number, number]; max: [number, number, number] }> = {};
+  const cylRadii: Record<string, number[]> = {};
+  const solidBounds: Record<string, Array<{ min: [number, number, number]; max: [number, number, number] } | null>> = {};
+  const solidCylRadii: Record<string, number[][]> = {};
   const collectBoundsFromSubset = (id: string, subset: string | null): void => {
     if (!opts.collectBounds || !subset) return;
-    const pts: Array<[number, number, number]> = [];
-    for (const m of subset.matchAll(/CARTESIAN_POINT\s*\(\s*'[^']*'\s*,\s*\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)/g)) {
-      const x = +m[1], y = +m[2], z = +m[3];
-      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) pts.push([x, y, z]);
+    if (opts.collectBoundsFor && !opts.collectBoundsFor.has(id)) return;
+    const g = scanGeomText(subset);
+    if (!g) return;
+    if (g.radii.length) cylRadii[id] = g.radii;
+    if (g.trimmed > 0) warnings.push(`part_${id}:bounds_outliers_trimmed(${g.trimmed} isolated points — datum/reference geometry)`);
+    bounds[id] = { min: g.min, max: g.max };
+  };
+  // 멀티솔리드 분해(260718 — 참고파일들2 검출: 핸드레일 1PD/246솔리드·계단 28·ESC 140):
+  // PD 안의 솔리드별 bounds/반경을 개별 수집 → 브리지가 솔리드별 box/cylinder 로 분해.
+  const collectPerSolid = (id: string, solidIds: number[]): void => {
+    if (!opts.collectBounds || solidIds.length < 2 || solidIds.length > 400) return;
+    if (opts.collectBoundsFor && !opts.collectBoundsFor.has(id)) return;
+    const ctx = subsetContext(source);
+    if (!ctx) return;
+    const arrB: Array<{ min: [number, number, number]; max: [number, number, number] } | null> = [];
+    const arrC: number[][] = [];
+    for (const sid of solidIds) {
+      const keep = reachableIds(ctx.entities, [sid]);
+      let text = '';
+      for (const k of keep) {
+        const b = ctx.bodyMap.get(k);
+        if (b) text += b + ';\n';
+      }
+      const g = scanGeomText(text);
+      arrB.push(g ? { min: g.min, max: g.max } : null);
+      arrC.push(g?.radii ?? []);
     }
-    if (pts.length < 4) return;
-    // 로버스트 경계(260717 실물 검출: SolidWorks datum 고립점 z=400m 가 부품 경계를 폭주시킴):
-    // 축별 정렬 후 하위/상위 2% 구간에서 코어 스팬(p5~p95)의 10배 초과 '절벽 갭' 바깥 고립점 트림 — 사유 기록.
-    const min: [number, number, number] = [0, 0, 0];
-    const max: [number, number, number] = [0, 0, 0];
-    let trimmed = 0;
-    for (let k = 0; k < 3; k++) {
-      const vs = pts.map((p) => p[k]).sort((a, b) => a - b);
-      const n = vs.length;
-      const core = Math.max(1e-6, vs[Math.floor(n * 0.95)] - vs[Math.floor(n * 0.05)]);
-      const edge = Math.max(1, Math.floor(n * 0.02));
-      let lo = 0;
-      for (let i = 0; i < edge; i++) if (vs[i + 1] - vs[i] > 10 * core) { lo = i + 1; }
-      let hi = n - 1;
-      for (let i = n - 1; i > n - 1 - edge; i--) if (vs[i] - vs[i - 1] > 10 * core) { hi = i - 1; }
-      trimmed += lo + (n - 1 - hi);
-      min[k] = vs[lo];
-      max[k] = vs[hi];
-    }
-    if (trimmed > 0) warnings.push(`part_${id}:bounds_outliers_trimmed(${trimmed} isolated points — datum/reference geometry)`);
-    bounds[id] = { min, max };
+    solidBounds[id] = arrB;
+    solidCylRadii[id] = arrC;
   };
   let classified = 0;
   let classifySkipped = 0;
@@ -313,8 +327,10 @@ export function importStepAssembly(
     // Run the single-solid importer on every solid belonging to this PD.
     if (hasGeom) {
       const wantClassify = classifyBudgetOk();
-      const subset = (wantClassify || opts.collectBounds) ? buildSubsetForSolids(source, geom.solidIds) : null;
+      const wantBounds = !!opts.collectBounds && (!opts.collectBoundsFor || opts.collectBoundsFor.has(id));
+      const subset = (wantClassify || wantBounds) ? buildSubsetForSolids(source, geom.solidIds) : null;
       collectBoundsFromSubset(id, subset);
+      collectPerSolid(id, geom.solidIds);
       const trees = wantClassify && subset
         ? importStep(subset, { namePrefix: opts.namePrefix ?? `${id}` })
         : null;
@@ -331,6 +347,12 @@ export function importStepAssembly(
         if (!wantClassify) unsupported.push(`part_${id}:classification_skipped(budget)`);
         else warnings.push(`part_${id}:geometry_subset_build_failed`);
       }
+    } else if (geom && geom.approxIds.length > 0) {
+      // 표면/테셀레이션(260718): 분류 불가 — 경계 box 근사만(사유 명시, 조용한 승격 금지)
+      const wantBounds = !!opts.collectBounds && (!opts.collectBoundsFor || opts.collectBoundsFor.has(id));
+      if (wantBounds) collectBoundsFromSubset(id, buildSubsetForSolids(source, geom.approxIds));
+      featureTrees[id] = { nodes: [] };
+      unsupported.push(`part_${id}:surface_or_tessellated_bounds_approx(${geom.approxIds.length} roots — no solids, bounds-only import)`);
     } else {
       featureTrees[id] = { nodes: [] };
       unsupported.push(`part_${id}:no_solids_found_for_pd`);
@@ -348,9 +370,10 @@ export function importStepAssembly(
     // containers with no placement information).
     for (const { id: pdId } of productDefs) {
       const geom = pdGeometry.get(pdId);
-      if (!geom || geom.solidIds.length === 0) {
-        // 표면 모델(MANIFOLD_SURFACE 등)·형상 없는 PD — 조용히 사라지지 않게 사유 기록(260717)
-        unsupported.push(`pd_${pdId}(${pdName.get(pdId) ?? '?'}):no_solids_found (surface/curve-only models are not supported — solids only)`);
+      const approxOnly = !!geom && geom.solidIds.length === 0 && geom.approxIds.length > 0;
+      if (!geom || (geom.solidIds.length === 0 && !approxOnly)) {
+        // 곡선 전용·형상 없는 PD — 조용히 사라지지 않게 사유 기록(260717)
+        unsupported.push(`pd_${pdId}(${pdName.get(pdId) ?? '?'}):no_solids_found (curve-only/empty models are not supported)`);
         continue;
       }
       const baseLabel = pdName.get(pdId) ?? `Part_${pdId}`;
@@ -364,9 +387,20 @@ export function importStepAssembly(
         orientation: IDENTITY_QUAT,
         fixed: parts.length === 0,
       });
+      if (approxOnly) {
+        // 표면/테셀레이션(260718): 분류 불가 — 경계 box 근사만(NAUO 경로와 동일 규약)
+        const wantBounds = !!opts.collectBounds && (!opts.collectBoundsFor || opts.collectBoundsFor.has(id));
+        if (wantBounds) collectBoundsFromSubset(id, buildSubsetForSolids(source, geom.approxIds));
+        featureTrees[id] = { nodes: [] };
+        unsupported.push(`part_${id}:surface_or_tessellated_bounds_approx(${geom.approxIds.length} roots — no solids, bounds-only import)`);
+        instanceIdx += 1;
+        continue;
+      }
       const wantClassify = classifyBudgetOk();
-      const subset = (wantClassify || opts.collectBounds) ? buildSubsetForSolids(source, geom.solidIds) : null;
+      const wantBounds = !!opts.collectBounds && (!opts.collectBoundsFor || opts.collectBoundsFor.has(id));
+      const subset = (wantClassify || wantBounds) ? buildSubsetForSolids(source, geom.solidIds) : null;
       collectBoundsFromSubset(id, subset);
+      collectPerSolid(id, geom.solidIds);
       const trees = wantClassify && subset
         ? importStep(subset, { namePrefix: opts.namePrefix ?? `${id}` })
         : null;
@@ -396,7 +430,7 @@ export function importStepAssembly(
 
   return {
     state: { parts, mates: [] },
-    ...(opts.collectBounds ? { bounds } : {}),
+    ...(opts.collectBounds ? { bounds, cylRadii, solidBounds, solidCylRadii } : {}),
     featureTrees,
     warnings,
     unsupported,
@@ -408,7 +442,16 @@ export function importStepAssembly(
 interface GeometryForPart {
   /** MANIFOLD_SOLID_BREP / BREP_WITH_VOIDS entity ids attached to this PD. */
   solidIds: number[];
+  /** 표면/테셀레이션 형상 ids(260718) — 솔리드 없을 때 경계 box 근사 전용(분류 불가 명시).
+   *  SHELL_BASED_SURFACE_MODEL·TESSELLATED_SOLID/SHELL·TRIANGULATED/POLYGONAL_FACE_SET.
+   *  곡선 전용(GEOMETRIC_CURVE_SET 등)은 제외 — 체적 근사 불가로 기존 미지원 유지. */
+  approxIds: number[];
 }
+
+const APPROX_GEOM_ROOTS = new Set([
+  'SHELL_BASED_SURFACE_MODEL', 'FACE_BASED_SURFACE_MODEL',
+  'TESSELLATED_SOLID', 'TESSELLATED_SHELL', 'TRIANGULATED_FACE_SET', 'POLYGONAL_FACE_SET',
+]);
 
 interface NauoEdge {
   nauoId: number;
@@ -492,7 +535,7 @@ function findGeometryForProductDef(
   pdId: number,
   entities: Map<number, StepEntity>,
 ): GeometryForPart {
-  const out: GeometryForPart = { solidIds: [] };
+  const out: GeometryForPart = { solidIds: [], approxIds: [] };
 
   // Find PRODUCT_DEFINITION_SHAPE referencing this PD.
   const pdsIds: number[] = [];
@@ -553,6 +596,8 @@ function findGeometryForProductDef(
         target.name === 'BREP_WITH_VOIDS'
       ) {
         out.solidIds.push(item.id);
+      } else if (APPROX_GEOM_ROOTS.has(target.name)) {
+        out.approxIds.push(item.id);
       }
     }
   }
@@ -952,22 +997,65 @@ function fallbackSinglePartImport(
  * Returns null when the source can't be subset-extracted (very rare —
  * only when the original was hand-mangled).
  */
-function buildSubsetForSolids(source: string, solidIds: number[]): string | null {
-  if (solidIds.length === 0) return null;
+/** 형상 텍스트 스캔 코어(260718 공용): CARTESIAN_POINT·COORDINATES_LIST 포인트 →
+ *  로버스트 경계(절벽 갭 트림 — SolidWorks datum 고립점 실측) + CYLINDRICAL_SURFACE 반경. */
+function scanGeomText(text: string): { min: [number, number, number]; max: [number, number, number]; radii: number[]; trimmed: number } | null {
+  const radii: number[] = [];
+  for (const m of text.matchAll(/CYLINDRICAL_SURFACE\s*\(\s*'[^']*'\s*,\s*#\d+\s*,\s*([-\d.eE+]+)\s*\)/g)) {
+    const rr = +m[1];
+    if (Number.isFinite(rr) && rr > 0) radii.push(rr);
+  }
+  const pts: Array<[number, number, number]> = [];
+  for (const m of text.matchAll(/CARTESIAN_POINT\s*\(\s*'[^']*'\s*,\s*\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)/g)) {
+    const x = +m[1], y = +m[2], z = +m[3];
+    if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) pts.push([x, y, z]);
+  }
+  // 테셀레이션(260718): COORDINATES_LIST 의 좌표 삼중항(CARTESIAN_POINT 미사용 표현)
+  for (const cl of text.matchAll(/COORDINATES_LIST\s*\([^;]*;/g)) {
+    for (const m of cl[0].matchAll(/\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)/g)) {
+      const x = +m[1], y = +m[2], z = +m[3];
+      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) pts.push([x, y, z]);
+    }
+  }
+  if (pts.length < 4) return null;
+  const min: [number, number, number] = [0, 0, 0];
+  const max: [number, number, number] = [0, 0, 0];
+  let trimmed = 0;
+  for (let k = 0; k < 3; k++) {
+    const vs = pts.map((p) => p[k]).sort((a, b) => a - b);
+    const n = vs.length;
+    const core = Math.max(1e-6, vs[Math.floor(n * 0.95)] - vs[Math.floor(n * 0.05)]);
+    const edge = Math.max(1, Math.floor(n * 0.02));
+    let lo = 0;
+    for (let i = 0; i < edge; i++) if (vs[i + 1] - vs[i] > 10 * core) { lo = i + 1; }
+    let hi = n - 1;
+    for (let i = n - 1; i > n - 1 - edge; i--) if (vs[i] - vs[i - 1] > 10 * core) { hi = i - 1; }
+    trimmed += lo + (n - 1 - hi);
+    min[k] = vs[lo];
+    max[k] = vs[hi];
+  }
+  return { min, max, radii, trimmed };
+}
+
+// 단일 엔트리 메모(260718): 멀티솔리드 분해는 부품당 수백 회 subset 을 만든다 —
+// heal+본문추출+파싱을 소스별 1회로 캐시(참조 동일성 우선 비교 — V8 포인터 단락).
+let _subsetCtx: { source: string; bodyMap: Map<number, string>; entities: Map<number, StepEntity> } | null = null;
+function subsetContext(source: string): { bodyMap: Map<number, string>; entities: Map<number, StepEntity> } | null {
+  if (_subsetCtx && _subsetCtx.source === source) return _subsetCtx;
   const heal = healStepSource(source);
   const healed = heal.healed;
   const dataIdx = healed.search(/\bDATA\s*;/i);
   if (dataIdx < 0) return null;
   const endIdx = healed.indexOf('END-ISO-10303-21');
   const dataBlock = healed.slice(dataIdx, endIdx >= 0 ? endIdx : undefined);
-  // Re-parse, but ALSO capture each entity's raw body text so we can
-  // copy it verbatim into the subset DATA section.
-  const bodyMap = extractEntityBodies(dataBlock);
-  const entities = parseEntities(dataBlock);
+  _subsetCtx = { source, bodyMap: extractEntityBodies(dataBlock), entities: parseEntities(dataBlock) };
+  return _subsetCtx;
+}
 
-  // BFS from each solid id, collecting reachable entity ids.
+/** BFS 로 solid 하위 그래프 엔티티 id 집합 수집(공용). */
+function reachableIds(entities: Map<number, StepEntity>, rootIds: number[]): Set<number> {
   const keep = new Set<number>();
-  const queue: number[] = [...solidIds];
+  const queue: number[] = [...rootIds];
   while (queue.length > 0) {
     const id = queue.pop()!;
     if (keep.has(id)) continue;
@@ -979,6 +1067,17 @@ function buildSubsetForSolids(source: string, solidIds: number[]): string | null
       for (const se of ent.subEntities) collectRefs(se.args, keep, queue);
     }
   }
+  return keep;
+}
+
+function buildSubsetForSolids(source: string, solidIds: number[]): string | null {
+  if (solidIds.length === 0) return null;
+  const ctx = subsetContext(source);
+  if (!ctx) return null;
+  const { bodyMap, entities } = ctx;
+
+  // BFS from each solid id, collecting reachable entity ids.
+  const keep = reachableIds(entities, solidIds);
   const ids = Array.from(keep).sort((a, b) => a - b);
   const lines: string[] = [];
   for (const id of ids) {

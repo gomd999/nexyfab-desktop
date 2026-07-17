@@ -2020,6 +2020,29 @@ export default function AssemblyPresetPanel({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tpl]);
 
+  // 빌드 응답 공통 소비(260718 — generate·STEP 임포트 공용): 뷰어 적용+그물+상태줄
+  const consumeBuild = useCallback(async (data: BuildResp) => {
+    if (data.ok && data.composeIntent && data.openscad) {
+      setBuilt(data);
+      onBuildInfo?.({ interferences: data.interferences?.length ?? 0, floating: data.support?.floating?.length ?? null, assembly: (data as { assembly?: Record<string, unknown> }).assembly ?? null });
+      await onApply(data.composeIntent, data.openscad);
+      const mass = data.structural?.totalMassKg;
+      const pipeBad = (data.pipes?.errors?.length ?? 0) + (data.pipes?.obstacleViolations?.length ?? 0) + (data.pipes?.crossViolations?.length ?? 0);
+      setMsg(
+        t.builtParts + (data.assembly?.parts?.length ?? 0)
+        + (mass ? ` · ${mass >= 1000 ? (mass / 1000).toFixed(1) + 't' : mass.toFixed(0) + 'kg'}` : '')
+        + (data.interferences?.length ? ` · ⚠${t.clash} ${data.interferences.length}` : '')
+        + (data.support?.floating?.length ? ` · ⚠${t.floating} ${data.support.floating.length}: ${data.support.floating.slice(0, 3).join(',')}` : '')
+        + (data.support?.faceContacts?.length ? ` · ${t.faceContact} ${data.support.faceContacts.length}` : '')
+        + (data.pipes ? (pipeBad ? ` · ⚠${t.pipeBad} ${pipeBad}` : ` · ${t.pipeOk} ${data.pipes.routes?.length ?? 0}`) : '')
+        + (data.pipes?.sleeves?.length ? ` · ${t.sleeve} ${data.pipes.sleeves.length}` : ''),
+      );
+      return true;
+    }
+    setMsg(t.failed + (data.gateErrors?.join('; ') ?? data.error ?? ''));
+    return false;
+  }, [onApply, onBuildInfo, t]);
+
   const generate = useCallback(async () => {
     if (!tid) return;
     // §C-v1 고급 입력(JSON) 병합 — 파싱 실패는 정직하게 필드 오류로(빌드 강행 금지)
@@ -2037,30 +2060,45 @@ export default function AssemblyPresetPanel({
         body: JSON.stringify({ kind: 'assembly', domain, templateId: tid, params: { ...params, ...adv, ...(furn ? { customFurniture: furn } : {}) } }),
       });
       const data = (await res.json()) as BuildResp;
-      if (data.ok && data.composeIntent && data.openscad) {
-        setBuilt(data);
-        onBuildInfo?.({ interferences: data.interferences?.length ?? 0, floating: data.support?.floating?.length ?? null, assembly: (data as { assembly?: Record<string, unknown> }).assembly ?? null }); // 그물 ④+④b+패키지
-        await onApply(data.composeIntent, data.openscad);
-        const mass = data.structural?.totalMassKg;
-        const pipeBad = (data.pipes?.errors?.length ?? 0) + (data.pipes?.obstacleViolations?.length ?? 0) + (data.pipes?.crossViolations?.length ?? 0);
-        setMsg(
-          t.builtParts + (data.assembly?.parts?.length ?? 0)
-          + (mass ? ` · ${mass >= 1000 ? (mass / 1000).toFixed(1) + 't' : mass.toFixed(0) + 'kg'}` : '')
-          + (data.interferences?.length ? ` · ⚠${t.clash} ${data.interferences.length}` : '')
-          + (data.support?.floating?.length ? ` · ⚠${t.floating} ${data.support.floating.length}: ${data.support.floating.slice(0, 3).join(',')}` : '')
-          + (data.support?.faceContacts?.length ? ` · ${t.faceContact} ${data.support.faceContacts.length}` : '')
-          + (data.pipes ? (pipeBad ? ` · ⚠${t.pipeBad} ${pipeBad}` : ` · ${t.pipeOk} ${data.pipes.routes?.length ?? 0}`) : '')
-          + (data.pipes?.sleeves?.length ? ` · ${t.sleeve} ${data.pipes.sleeves.length}` : ''),
-        );
-      } else {
-        setMsg(t.failed + (data.gateErrors?.join('; ') ?? data.error ?? ''));
-      }
+      await consumeBuild(data);
     } catch (e) {
       setMsg(t.failed + (e instanceof Error ? e.message : String(e)));
     } finally {
       setBusy(false);
     }
-  }, [tid, params, furn, advJson, onApply, t, domain]);
+  }, [tid, params, furn, advJson, consumeBuild, t, domain]);
+
+  // 실물 STEP 임포트(260718 — 브리지 UI): 파일→/api/import-step→기존 빌드 플로우 재사용
+  const importStepFile = useCallback(async (file: File) => {
+    const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+    const fmt = ext === 'stl' ? 'stl' : ext === 'igs' || ext === 'iges' ? 'iges' : ['skp', 'dwg', 'f3d', 'sldprt', 'sldasm', 'ipt', 'iam'].includes(ext) ? ext : 'step';
+    if (file.size > (fmt === 'stl' ? 30_000_000 : 15_000_000)) { setMsg(`${fmt.toUpperCase()} ${fmt === 'stl' ? 30 : 15}MB 초과 — 부분 파일로 나눠주세요.`); return; }
+    setBusy(true); setMsg(null); setBuilt(null);
+    try {
+      const name = file.name.replace(/\.[^.]+$/i, '').slice(0, 60);
+      // binary STL 은 base64 로 — 텍스트 경유 시 바이트 손상
+      const payload: Record<string, unknown> = { name, format: fmt };
+      if (fmt === 'stl') {
+        const buf = new Uint8Array(await file.arrayBuffer());
+        let bin = '';
+        for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+        payload.stlBase64 = btoa(bin);
+      } else {
+        payload.step = await file.text();
+      }
+      const res = await fetch('/api/nexyfab/drawing/import-step/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = (await res.json()) as BuildResp & { stats?: { partsIn?: number; imported?: number } };
+      const ok = await consumeBuild(data);
+      if (ok && data.stats) setMsg((m) => `${m ?? ''} · ${fmt.toUpperCase()} ${data.stats!.imported ?? '-'}/${data.stats!.partsIn ?? '-'} 부품(근사·명시)`);
+    } catch (e) {
+      setMsg(t.failed + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setBusy(false);
+    }
+  }, [consumeBuild, t]);
 
   // 면 편집 디바운스 리빌드가 항상 최신 generate(최신 params 클로저)를 부르도록 유지
   useEffect(() => { generateRef.current = generate; }, [generate]);
@@ -2898,6 +2936,11 @@ export default function AssemblyPresetPanel({
           />
           {advErr && <div style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>⚠ {advErr}</div>}
           <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginTop: 2 }}>{t.advHint}</div>
+          <label style={{ display: 'block', fontSize: 10.5, marginTop: 6, color: 'var(--nx-text-3, #6b7684)' }}>
+            실물 STEP 가져오기(≤15MB · 배치=정확, 형상=AABB box 근사 명시):{' '}
+            <input type="file" accept=".step,.stp,.igs,.iges,.stl,.skp,.dwg,.f3d,.sldprt,.sldasm,.ipt,.iam" style={{ fontSize: 10.5 }} disabled={busy}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) void importStepFile(f); e.target.value = ''; }} />
+          </label>
           {domain === 'civil' && (
             // 수치지형도 DXF → contours 인입(결정론 파서·표고 없는 폴리라인 제외) — origin 은 advJson 에 선입력
             <label style={{ display: 'block', fontSize: 10.5, marginTop: 6, color: 'var(--nx-text-3, #6b7684)' }}>

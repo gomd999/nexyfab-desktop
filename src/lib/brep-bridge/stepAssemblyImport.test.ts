@@ -592,8 +592,8 @@ const NIST_DIR = 'C:/Users/gomd9/Downloads/참고파일들/NIST-PMI/NIST-PMI-STE
       const r = importStepAssembly(readFileSync(join(NIST_DIR, f), 'utf8'));
       if (r.state.parts.length === 0) zero.push(f);
     }
-    // -tg(tessellated geometry) 변형=브렙 없음 — 정직 미지원 유지
-    expect(zero.filter((f) => !f.includes('-tg'))).toEqual([]);
+    // 260718: -tg(tessellated) 도 bounds 근사로 임포트 — 전 파일 parts≥1
+    expect(zero).toEqual([]);
   });
   it('빈 분류 트리는 조용히 넘어가지 않는다(unsupported 사유 명시)', () => {
     const f = readdirSync(NIST_DIR).find((q) => q === 'nist_ctc_01_asme1_ap242-e1.stp')!;
@@ -604,5 +604,109 @@ const NIST_DIR = 'C:/Users/gomd9/Downloads/참고파일들/NIST-PMI/NIST-PMI-STE
     if (tree && tree.nodes.length === 0) {
       expect(r.unsupported.length).toBeGreaterThan(0);
     }
+  });
+});
+
+// ─── 9: 갭 해소(260718) — 테셀/표면 bounds 근사 + 원통 인식 힌트 ────────────
+import { stepToNexyfabAssembly } from './stepToNexyfabAssembly';
+
+function flatStepWith(geomEntities: string, repItems: string): string {
+  // NAUO 없는 단품: PRODUCT 체인 + SDR → SHAPE_REPRESENTATION(items)
+  return `${writeStepHeader()}DATA;
+#1=APPLICATION_CONTEXT('automotive design');
+#2=PRODUCT_CONTEXT('',#1,'mechanical');
+#3=PRODUCT_DEFINITION_CONTEXT('part definition',#1,'design');
+#4=PRODUCT('P1','P1','',(#2));
+#5=PRODUCT_DEFINITION_FORMATION_WITH_SPECIFIED_SOURCE(' ',' ',#4,.NOT_KNOWN.);
+#6=PRODUCT_DEFINITION(' ','',#5,#3);
+#7=PRODUCT_DEFINITION_SHAPE('','',#6);
+#8=(GEOMETRIC_REPRESENTATION_CONTEXT(3) REPRESENTATION_CONTEXT('','3D'));
+${geomEntities}
+#90=SHAPE_REPRESENTATION('P1',(${repItems}),#8);
+#91=SHAPE_DEFINITION_REPRESENTATION(#7,#90);
+ENDSEC;
+END-ISO-10303-21;
+`;
+}
+
+describe('importStepAssembly — 테셀레이션/표면 bounds 근사(260718)', () => {
+  it('TRIANGULATED_FACE_SET(COORDINATES_LIST)만 있는 PD 도 임포트 + bounds + 사유 명시', () => {
+    const step = flatStepWith(
+      `#20=COORDINATES_LIST('',4,((0.,0.,0.),(100.,0.,0.),(0.,50.,0.),(0.,0.,30.)));
+#21=TRIANGULATED_FACE_SET('',#20,$,((1,2,3),(1,2,4)),$);`,
+      '#21',
+    );
+    const r = importStepAssembly(step, { collectBounds: true });
+    expect(r.state.parts).toHaveLength(1);
+    expect(r.unsupported.some((u) => u.includes('surface_or_tessellated_bounds_approx'))).toBe(true);
+    const b = r.bounds?.[r.state.parts[0].id];
+    expect(b).toBeDefined();
+    expect(b!.min).toEqual([0, 0, 0]);
+    expect(b!.max).toEqual([100, 50, 30]);
+  });
+  it('곡선 전용 PD 는 여전히 정직 미지원(승격 금지)', () => {
+    const step = flatStepWith(
+      `#20=CARTESIAN_POINT('',(0.,0.,0.));
+#21=GEOMETRIC_CURVE_SET('',(#20));`,
+      '#21',
+    );
+    const r = importStepAssembly(step, { collectBounds: true });
+    expect(r.state.parts).toHaveLength(0);
+    expect(r.unsupported.some((u) => u.includes('no_solids_found'))).toBe(true);
+  });
+});
+
+describe('stepToNexyfabAssembly — 원통 인식(260718)', () => {
+  it('CYLINDRICAL_SURFACE R + AABB 2축=2R 폐형이면 cylinder 방출(z축)', () => {
+    const step = flatStepWith(
+      `#20=CARTESIAN_POINT('',(-25.,-25.,0.));
+#21=CARTESIAN_POINT('',(25.,-25.,0.));
+#22=CARTESIAN_POINT('',(25.,25.,0.));
+#23=CARTESIAN_POINT('',(-25.,25.,0.));
+#24=CARTESIAN_POINT('',(-25.,-25.,80.));
+#25=CARTESIAN_POINT('',(25.,-25.,80.));
+#26=CARTESIAN_POINT('',(25.,25.,80.));
+#27=CARTESIAN_POINT('',(-25.,25.,80.));
+#30=POLY_LOOP('',(#20,#21,#22,#23,#24,#25,#26,#27));
+#31=FACE_OUTER_BOUND('',#30,.T.);
+#32=CARTESIAN_POINT('',(0.,0.,0.));
+#33=DIRECTION('',(0.,0.,1.));
+#34=DIRECTION('',(1.,0.,0.));
+#35=AXIS2_PLACEMENT_3D('',#32,#33,#34);
+#36=CYLINDRICAL_SURFACE('',#35,25.);
+#37=ADVANCED_FACE('',(#31),#36,.T.);
+#38=CLOSED_SHELL('',(#37));
+#39=MANIFOLD_SOLID_BREP('',#38);`,
+      '#39',
+    );
+    const r = stepToNexyfabAssembly(step, { name: 'cyl-e2e' });
+    expect(r.ok).toBe(true);
+    const cyl = r.assembly!.parts.find((p) => p.type === 'cylinder');
+    expect(cyl).toBeDefined();
+    expect(cyl!.params.diameter).toBeCloseTo(50, 1);
+    expect(cyl!.params.length).toBeCloseTo(80, 1);
+    expect(r.stats?.cylinders).toBe(1);
+  });
+  it('AABB 가 2R 과 안 맞으면(경사축·복합형상) box 유지 — 정직', () => {
+    const step = flatStepWith(
+      `#20=CARTESIAN_POINT('',(0.,0.,0.));
+#21=CARTESIAN_POINT('',(100.,0.,0.));
+#22=CARTESIAN_POINT('',(0.,70.,0.));
+#23=CARTESIAN_POINT('',(0.,0.,80.));
+#30=POLY_LOOP('',(#20,#21,#22,#23));
+#31=FACE_OUTER_BOUND('',#30,.T.);
+#32=CARTESIAN_POINT('',(0.,0.,0.));
+#33=DIRECTION('',(0.,0.,1.));
+#34=DIRECTION('',(1.,0.,0.));
+#35=AXIS2_PLACEMENT_3D('',#32,#33,#34);
+#36=CYLINDRICAL_SURFACE('',#35,25.);
+#37=ADVANCED_FACE('',(#31),#36,.T.);
+#38=CLOSED_SHELL('',(#37));
+#39=MANIFOLD_SOLID_BREP('',#38);`,
+      '#39',
+    );
+    const r = stepToNexyfabAssembly(step, { name: 'box-honest' });
+    expect(r.ok).toBe(true);
+    expect(r.assembly!.parts.every((p) => p.type === 'box')).toBe(true);
   });
 });

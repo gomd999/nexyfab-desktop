@@ -182,7 +182,10 @@ const GATES = {
     if (!pos(i.height) || i.height > 200_000) e.push('height invalid');
   },
   cylinder(i, e) {
-    for (const k of ['diameter', 'length']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);
+    // length 60m: 교량 행어·고층 입상관 스케일(i_girder 한계와 정합 — 260717 아치교 신설).
+    // diameter 는 5m 유지(AI 헛값 방어 — 대구경 압력용기는 revolve 어휘).
+    if (!pos(i.diameter) || i.diameter > 5000) e.push('diameter invalid');
+    if (!pos(i.length) || i.length > 60000) e.push('length invalid (≤60m)');
   },
   gusset(i, e) {
     for (const k of ['legA', 'legB', 'thickness']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);

@@ -167,8 +167,11 @@ export function structuralCheck(assembly, opts = {}) {
   for (const part of assembly.parts ?? []) {
     const rho = (DENSITY[part.material ?? dMat] ?? DENSITY.STS316) / 1e9; // kg/mm³
     const vol = partVolume(part.type, part.params);
-    let mass = vol * rho;
-    if (part.fluid) mass += fluidVolume(part.type, part.params) * fluidRho;
+    // qty(260718): 반복 부품(STEP 대표화) — 질량은 ×qty(BOQ 단일 소스 폐합).
+    // CG 는 대표 배치 위치 기준 근사(반복 인스턴스 개별 위치 미반영 — 스케치 용도 명시).
+    const qty = Math.max(1, Math.round(Number(part.qty) || 1));
+    let mass = vol * rho * qty;
+    if (part.fluid) mass += fluidVolume(part.type, part.params) * fluidRho * qty;
     const cg = partCG(part);
     bodies.push({ id: part.id ?? part.type, mass, cg, role: part.role });
   }

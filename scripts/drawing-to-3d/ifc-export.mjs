@@ -150,7 +150,12 @@ export function ifcExport(assembly, { name = 'nexyfab assembly', rev = '' } = {}
       const rho = (DENSITY[p.material] ?? DENSITY.steel ?? 7850) / 1e9; // kg/mm³
       const qv = add(`IFCQUANTITYVOLUME('NetVolume',$,$,${f(volMm3 / 1e9)},$)`);
       const qw = add(`IFCQUANTITYWEIGHT('NetWeight',$,$,${f(volMm3 * rho)},$)`);
-      const eq = add(`IFCELEMENTQUANTITY(${G(`eq-${k}`)},$,'BaseQuantities','deterministic (partVolume x KS density)',$,(#${qv},#${qw}))`);
+      // qty(260718): 반복 부품(STEP 대표화) — 요소 수량은 1개(EA) 기준 유지(요소 수량 날조 금지),
+      // 반복 수는 IfcQuantityCount 로 명시. 총량 = NetWeight × Count (BOQ·구조질량과 폐합).
+      const qn = Math.max(1, Math.round(Number(p.qty) || 1));
+      const qrefs = [`#${qv}`, `#${qw}`];
+      if (qn > 1) qrefs.push(`#${add(`IFCQUANTITYCOUNT('Count',$,$,${qn}.,$)`)}`);
+      const eq = add(`IFCELEMENTQUANTITY(${G(`eq-${k}`)},$,'BaseQuantities','deterministic (partVolume x KS density)${qn > 1 ? '; NetVolume/NetWeight=1EA, total=xCount' : ''}',$,(${qrefs.join(',')}))`);
       add(`IFCRELDEFINESBYPROPERTIES(${G(`rdp-${k}`)},$,$,$,(#${elems[k]}),#${eq})`);
     }
   }
@@ -319,6 +324,18 @@ if (isMain) {
     const { structuralCheck } = await import('./structural.mjs');
     const st = structuralCheck(asmB);
     check('중량 합=구조 총질량 폐형', Math.abs(totalW - st.totalMassKg) < Math.max(1, st.totalMassKg * 0.001), `${totalW.toFixed(1)} vs ${st.totalMassKg}`);
+  }
+  {
+    // qty(대표화 반복 수) — 요소 수량=1EA 유지 + IfcQuantityCount, BOQ·구조질량=×qty 폐형
+    const asmQ = { parts: [{ id: 'rep', type: 'box', params: { width: 100, depth: 100, height: 100 }, at: { tx: 0, ty: 0, tz: 0 }, material: 'steel', role: 'imported', qty: 3 }] };
+    const x = ifcExport(asmQ, { rev: 'q2' });
+    check('qty→IfcQuantityCount 방출', /IFCQUANTITYCOUNT\('Count',\$,\$,3\.,\$\)/.test(x) && x.includes('total=xCount'));
+    const w1 = +([...x.matchAll(/IFCQUANTITYWEIGHT\('NetWeight',\$,\$,([\d.]+),\$\)/g)][0]?.[1] ?? 0);
+    const { structuralCheck } = await import('./structural.mjs');
+    const { computeBOQ } = await import('./boq.mjs');
+    const st = structuralCheck(asmQ);
+    const bq = computeBOQ(asmQ);
+    check('qty 폐형(IFC 1EA×3=구조=BOQ)', Math.abs(w1 * 3 - st.totalMassKg) < 1 && Math.abs(bq.totalMassKg - st.totalMassKg) < 1, `${(w1 * 3).toFixed(1)}/${st.totalMassKg}/${bq.totalMassKg}`);
   }
   {
     // GIS 참조(origin→IfcMapConversion, buildingSMART 샘플 앵커 관례)

@@ -58,8 +58,10 @@ export function computeBOQ(assembly, { material = 'STS316', rates = STD_RATES } 
   const items = parts.map((p) => {
     const rho = (DENSITY[p.material ?? material] ?? DENSITY.STS316) / 1e9;
     const volMm3 = partVolume(p.type, p.params);
-    const massKg = volMm3 * rho;
-    return { id: p.id ?? p.type, type: p.type, material: p.material ?? material, massKg: +massKg.toFixed(2), volM3: +(volMm3 / 1e9).toFixed(4), surfaceM2: +(surfaceMm2(p.type, p.params) / 1e6).toFixed(3), holes: holeCount(p.type, p.params), bends: bendCount(p.type, p.params), linearLenM: +(linearLenMm(p.type, p.params) / 1000).toFixed(2) };
+    // qty(260718): 동일 부품 반복 수(대표 1개 배치 — STEP 대표화 임포트). 물량=1개분×qty.
+    const qty = Math.max(1, Math.round(Number(p.qty) || 1));
+    const massKg = volMm3 * rho * qty;
+    return { id: p.id ?? p.type, type: p.type, material: p.material ?? material, qty, massKg: +massKg.toFixed(2), volM3: +(volMm3 * qty / 1e9).toFixed(4), surfaceM2: +(surfaceMm2(p.type, p.params) * qty / 1e6).toFixed(3), holes: holeCount(p.type, p.params) * qty, bends: bendCount(p.type, p.params) * qty, linearLenM: +(linearLenMm(p.type, p.params) * qty / 1000).toFixed(2) };
   });
   // 재질별 집계 (콘크리트 m³·목재 재적 m³ 등 비기계 물량 단위)
   const byMaterial = {};

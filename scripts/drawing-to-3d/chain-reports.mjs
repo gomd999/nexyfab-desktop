@@ -177,6 +177,25 @@ ${r.section ? `<h2>⑤ RC 단면 검토</h2>${r.section.checks ? checksTable(r.s
 <div class="honest">⚠ ${esc(r.disclaimer)}</div>`);
 }
 
+/** 타이드 아치교 간이 검토 리포트 (archBridgeCheck 결과 — 260718 비법정) */
+export function archBridgeReport(r, { title = '아치교 간이 검토' } = {}) {
+  if (!r?.ok) return SHELL(title, '실패', `<div class="honest">${esc(r?.error ?? '체인 실패')}</div>`);
+  const rows = r.checks.map((c) => `<tr><td style="text-align:left">${esc(c.name)}</td><td>${f(c.force_kN, 0)} kN</td><td>${c.A_mm2}</td><td>${f(c.sigma_MPa, 1)}</td><td>${f(c.allow_MPa, 1)}</td><td>${c.ratio}</td><td>${V(c.ok ? 'PASS' : 'FAIL')}</td></tr>`).join('');
+  return SHELL(`${title} — H=wL²/8f 폐형`, 'nexyfab · 타이드 아치 간이 체인(비법정 — 등가 UDL·축력만·좌굴 미검토 명시)', `
+<div class="kpi"><div><b>${f(r.forces.H_kN, 0)} kN</b><span>수평력 H (양리브 합)</span></div>
+<div><b>${r.geometry.span_m} m / f ${r.geometry.rise_m} m</b><span>지간/라이즈 (f/L=${r.geometry.riseRatio})</span></div>
+<div><b>${V(r.verdict)}</b><span>판정 (0.6Fy 허용 — 간이)</span></div></div>
+<h2>① 하중 (사하중=형상×밀도 결정론 · 활하중=등가 UDL 명시)</h2>
+<table><tr><th>wDC</th><th>wDW</th><th>wLL(등가)</th><th>극한 wu</th></tr>
+<tr><td>${f(r.loads.wDC_kNm, 1)}</td><td>${f(r.loads.wDW_kNm, 2)}</td><td>${f(r.loads.wLL_kNm, 1)}</td><td>${f(r.loads.wu_kNm, 1)} kN/m</td></tr></table>
+<div class="note">${esc(r.loads.combo)} · 행어 형식: ${esc(r.geometry.hangerStyle)} · θ0=${r.forces.theta0_deg}°</div>
+<h2>② 부재 검토 (축력/단면적 — 0.6Fy)</h2>
+<table><tr><th>부재</th><th>힘</th><th>A(mm²)</th><th>σ(MPa)</th><th>허용</th><th>비율</th><th>판정</th></tr>${rows}</table>
+<h2>③ 가정(전항 명시)</h2>
+<div class="note">${(r.assumptions ?? []).map(esc).join('<br>')}</div>
+<div class="honest">⚠ ${esc(r.disclaimer)}</div>`);
+}
+
 /** 인테리어 피난·마감 리포트 */
 function mepSec(r) {
   const li = r.lighting, ve = r.ventilation, el = r.electrical;

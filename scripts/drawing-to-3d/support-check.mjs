@@ -8,7 +8,11 @@
  *   bearing 은 성립하지만 부피 겹침이 없는(0겹침 면접촉) 쌍은 STL/STEP 융합에서 별도
  *   덩어리(lumps)로 떨어진다 — suggestTzMm(-2mm 매립) 수정 제안을 함께 반환한다.
  *
- * @param items [{ label, min:[x,y,z], max:[x,y,z], base?: boolean, ghost?: boolean }]
+ * + 인장 매닮 체인(260718, 현수교·닐센류): **선언된 인장 부재(tension:true — role
+ *   hanger/cable/stay/saddle)에서 매달림**은 지지로 인정한다. 미선언 부품에 매달린
+ *   경우(배관에 매달린 장비)는 종전대로 부유 — "연결≠지지" 원칙은 선언 기반으로만 완화.
+ *
+ * @param items [{ label, min:[x,y,z], max:[x,y,z], base?: boolean, ghost?: boolean, tension?: boolean }]
  * @param tol 수직 지지 간격 허용 mm · minBear xy 겹침 최소 mm(양축 모두)
  * @returns { supported: string[], floating: string[], faceContacts: [{part,on,gapMm,suggestTzMm}] }
  */
@@ -31,6 +35,22 @@ export function supportCheck(items, { tol = 8, minBear = 15, fastenBear = 40, em
     // 아래로 매달림(z 면접촉)은 지지로 안 봄 — "배관에 매달린 장비" 오탐 방지(위시빌더 원칙 유지).
     if (Math.abs(ox) <= tol && oy >= fastenBear && oz >= fastenBear) return true;
     if (Math.abs(oy) <= tol && ox >= fastenBear && oz >= fastenBear) return true;
+    // 인장 매닮(260718): **매닮 링크 어느 한쪽이 선언 인장 부재**면 인정 — b(위)가 인장
+    // (행어에 매달린 보) 또는 a(자신)가 인장(슬래브에 정착된 로드). 무선언 쌍(배관에 매달린
+    // 장비)은 종전대로 부유 — 원칙 완화는 역할 선언 기반으로만.
+    if ((a.tension || b.tension) && ox >= minBear && oy >= minBear) {
+      const hang = b.min[2] - a.max[2]; // b 하면 ↔ a 상면
+      if (hang >= -tol && hang <= tol) return true;
+    }
+    // 덕트 플랜지 체결(260718): 덕트↔덕트 수직 접합은 플랜지 볼팅 관례로 하중 전달 —
+    // 선언 역할(role 'duct') 쌍 한정. 드롭·분기 수직 접합의 정당 지지.
+    if (a.role === 'duct' && b.role === 'duct' && ox >= minBear && oy >= minBear) {
+      const hang = b.min[2] - a.max[2];
+      if (hang >= -tol && hang <= tol) return true;
+    }
+    // 인장 체인(260718): 인장 부재끼리 축방향 미세 갭(미터 컷 — 케이블 밴드 관례)으로
+    // 이웃하면 연결로 인정. 갭 허용 40mm·수직/횡 겹침 필요 — 선언 쌍 한정.
+    if (a.tension && b.tension && oy >= minBear && oz >= minBear && ox >= -40) return true;
     return false;
   };
   let moved = true;

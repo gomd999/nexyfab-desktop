@@ -17,8 +17,9 @@ export const runtime = 'nodejs';
 type Mod = {
   bridgeCheck: (assembly: unknown, params: Record<string, unknown>) => unknown;
   bridgeLoop?: (assembly: unknown, params: Record<string, unknown>) => unknown;
+  archBridgeCheck?: (assembly: unknown, params: Record<string, unknown>) => unknown;
 };
-type RptMod = { bridgeReport: (r: unknown, o?: Record<string, unknown>) => string };
+type RptMod = { bridgeReport: (r: unknown, o?: Record<string, unknown>) => string; archBridgeReport?: (r: unknown, o?: Record<string, unknown>) => string };
 
 let _mod: Mod | null = null;
 let _rpt: RptMod | null = null;
@@ -52,7 +53,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const mod = await load();
-    const result = (body as { mode?: string }).mode === 'loop' && mod.bridgeLoop ? mod.bridgeLoop(body.assembly, body.params ?? {}) : mod.bridgeCheck(body.assembly, body.params ?? {});
+    // 아치교(archMeta)=간이 폐형 체인(260718), 거더교(bridgeMeta)=실시설계급 체인 — 자동 디스패치
+    const isArch = !!(body.assembly as { archMeta?: unknown }).archMeta && !!mod.archBridgeCheck;
+    const result = isArch
+      ? mod.archBridgeCheck!(body.assembly, body.params ?? {})
+      : (body as { mode?: string }).mode === 'loop' && mod.bridgeLoop ? mod.bridgeLoop(body.assembly, body.params ?? {}) : mod.bridgeCheck(body.assembly, body.params ?? {});
     if (body.format === 'html') {
       const rpt = await loadRpt();
       let svg = '';
@@ -62,7 +67,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const bm = (body.assembly as { bridgeMeta?: unknown }).bridgeMeta;
         if (bm) svg = sd.bridgeGeneralSvg(bm);
       } catch { /* 도면 실패는 비치명 */ }
-      return NextResponse.json({ result, html: rpt.bridgeReport(result, { title: body.assembly?.name ?? '거더교 검증', svg }) });
+      const html = isArch && rpt.archBridgeReport
+        ? rpt.archBridgeReport(result, { title: body.assembly?.name ?? '아치교 간이 검토' })
+        : rpt.bridgeReport(result, { title: body.assembly?.name ?? '거더교 검증', svg });
+      return NextResponse.json({ result, html });
     }
     return NextResponse.json(result);
   } catch (e) {

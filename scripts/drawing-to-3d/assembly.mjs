@@ -377,6 +377,12 @@ export function buildAssembly(asm) {
       }
     }
   }
+  // 임포트 근사 어셈블리(260718): box/cyl 근사끼리의 겹침은 실형상 간섭이 아니다(밀집 조립
+  // 실기계에서 645건 실측 — 판정 노이즈). '근사 겹침'으로 분류만 하고 게이트 비대상 — 명시.
+  let approxOverlaps = null;
+  if (asm.importedApprox && interferences.length) {
+    approxOverlaps = interferences.splice(0, interferences.length).map((q) => ({ ...q, note: '임포트 근사 겹침(box/cyl 근사 — 실형상 간섭 판정 비대상, 명시)' }));
+  }
 
   // ③ 용접 조인트 개산 — 면접촉(2축 겹침 + 1축 gap≈0) 부품쌍을 조인트로 보고
   //    전둘레 필렛 용접선 길이·목두께 면적을 AABB 근사로 산정한다(비법정 개산).
@@ -422,6 +428,9 @@ export function buildAssembly(asm) {
       label: b.id, min: b.box.min, max: b.box.max,
       base: b.box.min[2] <= baseZ,
       ghost: !!asm.parts[i]?.ghost,
+      // 인장 부재 선언(260718 — 현수·사장 매닮 체인): 역할 기반, 미선언=기존 원칙 유지
+      tension: ['hanger', 'cable', 'stay', 'saddle'].includes(String(asm.parts[i]?.role ?? '')),
+      role: String(asm.parts[i]?.role ?? ''),
     }));
     support = supportCheck(supItems);
   } catch { /* 그물 실패는 빌드를 막지 않음 — 기본값(검사 안 됨) 유지 */ }
@@ -482,7 +491,7 @@ export function buildAssembly(asm) {
   const designOk = support.floating.length === 0
     && (!pipes || (pipes.errors.length === 0 && pipes.obstacleViolations.length === 0 && pipes.crossViolations.length === 0));
 
-  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, contacts: contactsFinal, welds, weldTotalMm, composeIntent, structural, support, pipes, designOk };
+  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, contacts: contactsFinal, ...(approxOverlaps ? { approxOverlaps } : {}), welds, weldTotalMm, composeIntent, structural, support, pipes, designOk };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('assembly.mjs');

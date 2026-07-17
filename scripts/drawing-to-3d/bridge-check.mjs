@@ -13,7 +13,7 @@
  * 미지원(명시): 연속경간·PSC·처짐(§4.3.1.7)·피로·바닥판 설계·받침·하부공.
  */
 import { runCalculator } from '../engineering-core/registry.mjs';
-import { partVolume } from './structural.mjs';
+import { partVolume, DENSITY } from './structural.mjs';
 
 const round = (v, n = 2) => +Number(v).toFixed(n);
 const RHO_C = 24.5; // kN/m³ (교량 관례 24.5 — 국토부 표준도와 동일)
@@ -120,6 +120,94 @@ export function bridgeCheck(assembly, params = {}) {
   };
 }
 
+/**
+ * 타이드 아치교 간이 검토 (260718 — 고전 폐형·비법정).
+ *
+ * 전부 형상 파생 + 명시된 간이화:
+ *   ① 사하중 = 주경간 부품(데크·타이·아치·행어·브레이싱·페데스탈) 자중 합 ÷ L (등분포 근사 명시)
+ *   ② 활하중 = KL-510 표준차로하중 12.7 kN/m × 재하차로 + 트럭 등가 UDL(510kN/L — 전역 H 보수측 명시)
+ *   ③ 수평력 H = w·L²/(8f) (포물선 아치 등분포 폐형 — 타이드 아치라 지점 수평반력=타이 인장, 하부공 무추력)
+ *   ④ 타이 인장 = H/2(2본 분담) · 리브 축력 = (H/2)/cosθ0(스프링잉) · 행어 장력 = w/2×s(수직)
+ *      닐센 = ÷2cosφ̄(쌍 분담·φ̄=평균 경사 근사 명시)
+ *   ⑤ 응력비 = 힘/단면적 ÷ 0.6Fy — 단면적 기본=모델 중실 근사(실 박스거더는 A 입력 권장 — 명시)
+ *
+ * 미지원(명시): 아치 면내·면외 좌굴, 시공단계, 피로, 비대칭 재하(리브 휨), 풍하중·지진.
+ */
+export function archBridgeCheck(assembly, params = {}) {
+  const am = assembly?.archMeta;
+  if (!am) return { ok: false, error: 'archMeta 필요 (arch_bridge 어셈블리)' };
+  const allParts = assembly.parts ?? [];
+  const unverifiedParts = allParts.filter((p) => p.unverified === true);
+  const parts = allParts.filter((p) => p.unverified !== true);
+  const L = am.mainSpan / 1000, f = am.rise / 1000; // m
+  if (!(L > 0) || !(f > 0)) return { ok: false, error: 'mainSpan·rise 필요' };
+
+  // ── ① 주경간 사하중(형상×밀도 — 결정론. 접속교·교각 제외) ──
+  const mains = parts.filter((p) => !/^ap[LR]_/.test(p.id ?? '') && !/^main_pier/.test(p.id ?? ''));
+  let W_kN = 0;
+  for (const p of mains) {
+    const rho = (DENSITY[p.material ?? 'steel'] ?? DENSITY.steel);
+    const qty = Math.max(1, Math.round(Number(p.qty) || 1));
+    W_kN += (partVolume(p.type, p.params) / 1e9) * rho * qty * 9.80665 / 1000;
+  }
+  const wDC = W_kN / L; // kN/m (등분포 근사 명시)
+  const pvThk = Number(params.pavementThk_mm) || 0;
+  const pvRho = params.pavementRho ?? 22.6;
+  const wDW = pvThk > 0 ? (pvThk / 1000) * pvRho * (am.deckW / 1000) : 0;
+
+  // ── ② 활하중(간이 등가 UDL — 명시) ──
+  const nLanes = params.nLanes ?? Math.max(1, Math.floor(am.deckW / 1000 / 3.6));
+  const wLL = 12.7 * nLanes + 510 / L; // kN/m (차로하중 KL-510 12.7 + 트럭 총중량 등가 UDL)
+
+  // ── ③ 극한 I 근사 조합 + 수평력 폐형 ──
+  const wu = 1.25 * wDC + 1.5 * wDW + 1.8 * wLL; // kN/m
+  const H = (wu * L * L) / (8 * f); // kN (총·양리브 합)
+
+  // ── ④ 부재력 ──
+  const th0 = Math.atan((4 * f) / L);
+  const T_tie = H / 2; // kN/본
+  const N_rib = (H / 2) / Math.cos(th0); // kN/본(스프링잉 축압축)
+  const s_m = am.hangerSpacing / 1000;
+  const T_hv = ((wu / 2) * s_m); // kN/본(수직 — 한쪽 리브 분담)
+  const nielsen = am.hangerStyle === 'nielsen';
+  // 닐센 φ̄: 평균 행어 길이 ≈ 0.67f(포물선 평균 명시) 기준 경사각
+  const phiBar = nielsen ? Math.atan2(s_m / 2, Math.max(0.1, 0.67 * f)) : 0;
+  const T_h = nielsen ? T_hv / (2 * Math.cos(phiBar)) : T_hv;
+
+  // ── ⑤ 응력비(0.6Fy 허용 — 비법정 간이) ──
+  const Fy = params.Fy ?? 355; // MPa (SM355 관례)
+  const sigA = 0.6 * Fy;
+  const A_tie = Number(params.A_tie_mm2) > 0 ? Number(params.A_tie_mm2) : am.tieW * am.tieH;
+  const A_rib = Number(params.A_rib_mm2) > 0 ? Number(params.A_rib_mm2) : am.ribW * am.ribH;
+  const A_h = Number(params.A_hanger_mm2) > 0 ? Number(params.A_hanger_mm2) : am.hangerDia * am.hangerDia;
+  const mk = (name, force_kN, A_mm2, kind) => {
+    const sig = (force_kN * 1000) / A_mm2;
+    return { name, kind, force_kN: round(force_kN, 1), A_mm2: Math.round(A_mm2), sigma_MPa: round(sig, 1), allow_MPa: round(sigA, 1), ratio: round(sig / sigA, 3), ok: sig <= sigA };
+  };
+  const checks = [
+    mk('타이 인장(본당)', T_tie, A_tie, 'tension'),
+    mk('아치 리브 축압축(스프링잉·본당)', N_rib, A_rib, 'compression(좌굴 미검토 명시)'),
+    mk(nielsen ? `닐센 행어 장력(φ̄=${round((phiBar * 180) / Math.PI, 1)}°)` : '행어 장력(본당)', T_h, A_h, 'tension'),
+  ];
+  return {
+    ok: true,
+    geometry: { span_m: round(L, 1), rise_m: round(f, 1), riseRatio: round(f / L, 3), hangerStyle: am.hangerStyle, nLanes },
+    loads: { wDC_kNm: round(wDC, 1), wDW_kNm: round(wDW, 2), wLL_kNm: round(wLL, 1), wu_kNm: round(wu, 1), combo: '극한 I 근사: 1.25DC+1.50DW+1.80LL(등가 UDL — 간이 명시)' },
+    forces: { H_kN: round(H, 0), theta0_deg: round((th0 * 180) / Math.PI, 1) },
+    checks,
+    verdict: checks.every((c) => c.ok) ? 'PASS' : 'FAIL',
+    assumptions: [
+      '사하중=주경간 부품 자중 합/L 등분포 근사(접속교·교각 제외 — 타이드 아치 자기평형계만)',
+      '활하중=차로하중 12.7kN/m×차로 + 트럭 510kN/L 등가 UDL(영향선 미적용 — 전역 H 보수측)',
+      'H=wL²/8f 포물선 등분포 폐형 · 부재력=축력만(비대칭 재하 리브 휨 미포함)',
+      '단면적 기본=모델 중실 근사(실 박스/강관 단면은 A_tie_mm2·A_rib_mm2·A_hanger_mm2 입력 권장)',
+      '모델 중실 강부재(타이·리브) 자중=실교 박스거더 대비 과대측 → 사하중·부재력 보수측(명시)',
+      nielsen ? '닐센 φ̄=atan(s/2 ÷ 0.67f) 평균 경사 근사' : null,
+    ].filter(Boolean),
+    disclaimer: '간이 폐형 검토(비법정) — 아치 좌굴·시공단계·피로·비대칭 재하·풍/지진 미포함. 법정 설계도서는 기술사 검토·날인 필요.' + (unverifiedParts.length ? ` ⚠ 비검증 파츠 ${unverifiedParts.length}개 제외.` : ''),
+  };
+}
+
 // --- self-test ---
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('bridge-check.mjs');
 if (isMain) {
@@ -133,6 +221,19 @@ if (isMain) {
   const ok = Math.abs(r.live.DF - 0.568) < 0.005 && r.live.dfSrc.includes('정밀식') && r.ultimate.Mu_kNm > 1.25 * r.dead.M_DC && r.dead.wDC_kNm > 10;
   console.log(ok ? 'bridge-check self-test: PASS' : 'bridge-check self-test: FAIL');
   if (!ok) process.exit(1);
+  // 아치 간이 검토(260718): H=wL²/8f 수기 재계산 폐형 + 닐센 φ̄ 반영 확인
+  const arch = buildAssemblyTemplate('bridge', 'arch_bridge', {});
+  const ar = archBridgeCheck(arch, {});
+  if (!ar.ok) { console.log('FAIL arch', ar.error); process.exit(1); }
+  const Hman = (ar.loads.wu_kNm * ar.geometry.span_m ** 2) / (8 * ar.geometry.rise_m);
+  const okH = Math.abs(Hman - ar.forces.H_kN) < Math.max(1, ar.forces.H_kN * 0.01);
+  const nz = buildAssemblyTemplate('bridge', 'arch_bridge', { hangerStyle: 'nielsen' });
+  const nr = archBridgeCheck(nz, {});
+  // 닐센=쌍 분담(÷2cosφ̄): 본당 힘은 수직의 절반 초과·수직 미만이라야 폐형
+  const okN = nr.ok && nr.checks[2].name.includes('닐센') && nr.checks[2].force_kN < ar.checks[2].force_kN && nr.checks[2].force_kN > ar.checks[2].force_kN / 2;
+  console.log('arch H:', ar.forces.H_kN, 'kN (수기', Math.round(Hman), ') · 타이', ar.checks[0].ratio, '· 리브', ar.checks[1].ratio, '· 행어', ar.checks[2].ratio, '| 닐센 행어', nr.ok ? nr.checks[2].force_kN : 'ERR');
+  console.log(okH && okN ? 'arch-check self-test: PASS' : 'arch-check self-test: FAIL');
+  if (!okH || !okN) process.exit(1);
 }
 
 /**
