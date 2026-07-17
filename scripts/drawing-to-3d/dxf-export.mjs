@@ -400,6 +400,14 @@ export function dxfProfile(assembly) {
 }
 
 /** 도메인 → DXF (없으면 null). pipes = buildAssembly().pipes.routes — 라우터 단일 결과 재사용(정합). */
+/** DXF 저장 인코더(260717 ezdxf 실파서 검증이 검출): 헤더 $DWGCODEPAGE=ANSI_949 선언과
+ *  저장 인코딩이 소비자마다 어긋나던 것(UTF-8 저장=한글 깨짐)을 단일 지점으로 —
+ *  모든 소비자(라우트·배터리·다운로드)는 이 버퍼로 저장할 것. */
+export async function dxfBuffer(content) {
+  const iconv = (await import('iconv-lite')).default;
+  return iconv.encode(content, 'cp949');
+}
+
 export function dxfPlan(assembly, domain, pipes, opts = {}) {
   const d0 = dxfPlanLocal(assembly, domain, pipes, opts);
   return applyOrigin(d0, assembly);
