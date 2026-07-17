@@ -499,6 +499,79 @@ function archBridgeAssembly(p = {}) {
   };
 }
 
+/** 모듈러 강구조 캐노피(박공 개방형 — 260717, 참고파일들 철골 마켓 코퍼스 대응).
+ *  경사 서까래=rx 회전 box. 회전 AABB 과탐(아치교 보류 원인)을 **옆면 맞댐(0겹침)**으로
+ *  원천 회피: 서까래 y구간=[이브빔 안쪽면, 릿지빔 옆면], 퍼린 하면=서까래 회전 AABB 상면.
+ *  가새·지붕 패널·접합 상세=후속 명시. 구조검토=철골 계산기 체인 별도(형상·물량·도서). */
+function steelCanopyAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const baysX = Math.max(1, Math.min(20, Math.round(num(p.baysX, 6))));
+  const bayX = num(p.bayX, 6000);
+  const W = num(p.spanY, 12000);
+  const colH = num(p.colH, 4000);
+  const pitch = Math.max(3, Math.min(30, num(p.pitchDeg, 12)));
+  const colS = num(p.colSize, 250);
+  const bw = num(p.beamW, 200), bh = num(p.beamH, 300);   // 이브·릿지빔
+  const rw = num(p.rafterW, 150), rh = num(p.rafterH, 250);
+  const purlinSp = num(p.purlinSpacing, 1500);
+  const pw = num(p.purlinW, 100), ph = num(p.purlinH, 80);
+  const L = baysX * bayX;
+  const th = (pitch * Math.PI) / 180;
+  const colC = colS / 2;                                   // 기둥 중심 y(전면)
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  // 기둥(전후 2열 × 프레임)
+  for (let i = 0; i <= baysX; i++) {
+    const x = i * bayX;
+    P(`col_f_${i}`, 'box', { width: colS, depth: colS, height: colH }, { tx: x - colC, ty: 0, tz: 0 }, 'steel', 'column');
+    P(`col_b_${i}`, 'box', { width: colS, depth: colS, height: colH }, { tx: x - colC, ty: W - colS, tz: 0 }, 'steel', 'column');
+  }
+  // 이브빔(전후 x 전장 — 기둥 상면 지지)
+  P('eave_f', 'box', { width: L + colS, depth: bw, height: bh }, { tx: -colC, ty: colC - bw / 2, tz: colH }, 'steel', 'beam');
+  P('eave_b', 'box', { width: L + colS, depth: bw, height: bh }, { tx: -colC, ty: W - colC - bw / 2, tz: colH }, 'steel', 'beam');
+  // 서까래(프레임당 좌우 1쌍) — 옆면 맞댐: y ∈ [이브빔 안쪽면, 릿지빔 옆면]
+  const y0L = colC + bw / 2;                 // 좌서까래 시작(이브빔 안쪽면)
+  const y1L = W / 2 - bw / 2;                // 좌서까래 끝(릿지빔 좌측면)
+  const runL = y1L - y0L;
+  // 회전 AABB y-스팬 = depth·cosθ + rh·sinθ → 목표 스팬(runL)에 정확히 맞춤(양단 0겹침).
+  // 실부재가 이상 경사장보다 rh·tanθ 짧아짐 = 모서리 컷 맞댐 시공 관례(명시).
+  const slope = (runL - rh * Math.sin(th)) / Math.cos(th);
+  const zc0 = colH + bh / 2;                 // 시점 중심 z(이브빔 중심과 동일)
+  const zc1 = zc0 + runL * Math.tan(th);     // 릿지측 중심 z
+  const cy = (rh / 2) * Math.sin(th), cz = (rh / 2) * Math.cos(th); // Rx 단면중심 보정
+  for (let i = 0; i <= baysX; i++) {
+    const x = i * bayX;
+    // 좌: rx=+θ 회전 AABB 의 y-min = ty − rh·sinθ → 이브 안쪽면(y0L)과 0겹침이 되도록 +rh·sinθ
+    P(`raf_L_${i}`, 'box', { width: rw, depth: slope, height: rh },
+      { tx: x - rw / 2, ty: y0L + 2 * cy, tz: zc0 - cz, rx: +pitch }, 'steel', 'rafter');
+    // 우: rx=−θ 회전 AABB 의 y-min = ty 정확 → 릿지 우측면에서 시작
+    P(`raf_R_${i}`, 'box', { width: rw, depth: slope, height: rh },
+      { tx: x - rw / 2, ty: W / 2 + bw / 2, tz: zc1 - cz, rx: -pitch }, 'steel', 'rafter');
+  }
+  // 릿지빔(정점 x 전장) — 좌우 서까래 끝과 y-맞댐(0겹침)
+  P('ridge', 'box', { width: L + colS, depth: bw, height: bh }, { tx: -colC, ty: W / 2 - bw / 2, tz: zc1 - bh / 2 }, 'steel', 'beam');
+  // 퍼린(x 전장 수평 — 정립 근사 명시): 하면 = 서까래 회전 AABB 상연(중심 z + 단면 z성분)
+  const nP = Math.max(2, Math.floor(runL / purlinSp));
+  // 퍼린 하연 = 서까래 경사 상면(폐형 유도, 0겹침 정확):
+  //   좌 상면 z(y) = zc0 + (y−y0L)tanθ + cz · 우 상면 z(y) = zc1 − (y−T_R)tanθ + cz + rh·sinθ·tanθ
+  //   퍼린 폭 구간 최고점 보정 = +(pw/2)tanθ (비회전 퍼린 하연은 수평 — 경사 상면의 높은 쪽 끝 기준)
+  const tanT = Math.tan(th);
+  const TR = W / 2 + bw / 2;
+  for (let k = 1; k <= nP; k++) {
+    const yc = y0L + (runL * k) / (nP + 1);
+    const zL = zc0 + (yc - y0L) * tanT + cz + (pw / 2) * tanT;
+    P(`purlin_L_${k}`, 'box', { width: L + colS, depth: pw, height: ph }, { tx: -colC, ty: yc - pw / 2, tz: zL }, 'steel', 'purlin');
+    const yR = W - yc;
+    const zR = zc1 - (yR - TR) * tanT + cz + rh * Math.sin(th) * tanT + (pw / 2) * tanT;
+    P(`purlin_R_${k}`, 'box', { width: L + colS, depth: pw, height: ph }, { tx: -colC, ty: yR - pw / 2, tz: zR }, 'steel', 'purlin');
+  }
+  return {
+    name: `강구조 캐노피 ${L / 1000}×${W / 1000}m`, domain: 'building', kind: 'assembly', parts,
+    canopyMeta: { L, W, colH, pitchDeg: pitch, frames: baysX + 1, purlinsPerSide: nP },
+    note: '개방형(지붕 패널·가새·접합 상세 후속) · 서까래=rx 경사 box(옆면 맞댐 접합) · 구조검토=철골 계산기 체인 별도',
+  };
+}
+
 /** 다실: 2실+내부벽(문) — 피난 BFS가 내부 문 통과(개구 인식 차단) */
 function twoRoomAssembly(p = {}) {
   const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
@@ -793,6 +866,17 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   building: [
+    {
+      id: 'steel_canopy', labelKo: '강구조 캐노피 (박공 개방형)', labelEn: 'Modular steel canopy (gable, open)', build: steelCanopyAssembly,
+      params: [
+        { name: 'baysX', labelKo: '경간 수(길이)', unit: '', default: 6, min: 1, max: 20 },
+        { name: 'bayX', labelKo: '경간장', unit: 'mm', default: 6000, min: 3000, max: 12000 },
+        { name: 'spanY', labelKo: '스팬(폭)', unit: 'mm', default: 12000, min: 6000, max: 24000 },
+        { name: 'colH', labelKo: '기둥 높이(처마)', unit: 'mm', default: 4000, min: 2500, max: 8000 },
+        { name: 'pitchDeg', labelKo: '지붕 경사', unit: '°', default: 12, min: 3, max: 30 },
+        { name: 'purlinSpacing', labelKo: '퍼린 간격', unit: 'mm', default: 1500, min: 800, max: 3000 },
+      ],
+    },
     {
       id: 'rc_frame', labelKo: 'RC 라멘 골조 (다베이·다층)', labelEn: 'RC frame (multi-bay/story)', build: rcFrameAssembly,
       params: [
