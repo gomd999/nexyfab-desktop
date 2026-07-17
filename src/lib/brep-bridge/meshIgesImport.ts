@@ -33,46 +33,92 @@ function boundsToPart(min: number[], max: number[], id: string, material: string
   };
 }
 
-/** STL(ascii/binary) → 단일 box 근사 어셈블리. */
+/** STL(ascii/binary) → **메시 실체적** 어셈블리(260718d): 발산정리 정밀 체적/CG/표면적 +
+ *  워터타이트(엣지 짝맞춤) 검사. ≤20k 정점=SCAD polyhedron 정밀 표시, 초과=AABB 프록시 표시
+ *  (질량·물량은 어느 쪽이든 정밀값 — "근사 box" 아님). */
 export function stlToNexyfabAssembly(data: Buffer, { name = 'STL import', material = 'steel' } = {}): MeshImportResult {
-  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
-  let pts = 0;
-  const feed = (x: number, y: number, z: number) => {
-    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return;
-    pts++;
-    if (x < min[0]) min[0] = x; if (x > max[0]) max[0] = x;
-    if (y < min[1]) min[1] = y; if (y > max[1]) max[1] = y;
-    if (z < min[2]) min[2] = z; if (z > max[2]) max[2] = z;
-  };
+  const tris: number[][][] = [];
   const head = data.subarray(0, 512).toString('latin1');
   const isAscii = /^\s*solid\b/.test(head) && /facet|endsolid/.test(data.subarray(0, 4096).toString('latin1'));
   let format: 'stl-ascii' | 'stl-binary';
   if (isAscii) {
     format = 'stl-ascii';
-    for (const m of data.toString('latin1').matchAll(/vertex\s+([-\d.eE+]+)\s+([-\d.eE+]+)\s+([-\d.eE+]+)/g)) {
-      feed(+m[1], +m[2], +m[3]);
-    }
+    const vs = [...data.toString('latin1').matchAll(/vertex\s+([-\d.eE+]+)\s+([-\d.eE+]+)\s+([-\d.eE+]+)/g)]
+      .map((m) => [+m[1], +m[2], +m[3]]);
+    for (let i = 0; i + 2 < vs.length; i += 3) tris.push([vs[i], vs[i + 1], vs[i + 2]]);
   } else {
     format = 'stl-binary';
     if (data.length < 84) return { ok: false, error: 'STL 파일이 너무 짧음(84바이트 미만)' };
     const n = data.readUInt32LE(80);
     if (data.length < 84 + n * 50) return { ok: false, error: `STL 삼각형 수(${n}) 대비 파일 크기 부족 — 손상 파일` };
     for (let i = 0; i < n; i++) {
-      const off = 84 + i * 50 + 12; // normal 3float 건너뜀
-      for (let v = 0; v < 3; v++) {
-        feed(data.readFloatLE(off + v * 12), data.readFloatLE(off + v * 12 + 4), data.readFloatLE(off + v * 12 + 8));
-      }
+      const off = 84 + i * 50 + 12;
+      const t: number[][] = [];
+      for (let v = 0; v < 3; v++) t.push([data.readFloatLE(off + v * 12), data.readFloatLE(off + v * 12 + 4), data.readFloatLE(off + v * 12 + 8)]);
+      tris.push(t);
     }
   }
-  if (pts < 3) return { ok: false, error: '정점 0건 — STL 형식 인식 실패' };
+  if (tris.length < 4) return { ok: false, error: '삼각형 4개 미만 — STL 형식 인식 실패' };
+  // 발산정리: V = Σ v0·(v1×v2)/6 · CG = Σ 사면체 도심 가중 / V · A = Σ|cross|/2
+  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+  let vol6 = 0, area2 = 0;
+  const cgAcc = [0, 0, 0];
+  for (const [a, b, c] of tris) {
+    for (const p of [a, b, c]) for (let k = 0; k < 3; k++) { if (p[k] < min[k]) min[k] = p[k]; if (p[k] > max[k]) max[k] = p[k]; }
+    const cx = b[1] * c[2] - b[2] * c[1], cy = b[2] * c[0] - b[0] * c[2], cz = b[0] * c[1] - b[1] * c[0];
+    const d6 = a[0] * cx + a[1] * cy + a[2] * cz;
+    vol6 += d6;
+    for (let k = 0; k < 3; k++) cgAcc[k] += d6 * (a[k] + b[k] + c[k]);
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    area2 += Math.hypot(nx, ny, nz);
+  }
+  const volume = Math.abs(vol6) / 6;
+  const cg = vol6 !== 0 ? cgAcc.map((v) => v / (4 * vol6)) : [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
+  // 워터타이트: 정점 융합(1e-4 그리드) 후 무방향 엣지 사용 횟수 전부 2 — 아니면 열린 메시(체적 신뢰 불가 명시)
+  const vidx = new Map<string, number>();
+  const verts: number[][] = [];
+  const vid = (p: number[]) => {
+    const k = `${Math.round(p[0] * 1e4)}_${Math.round(p[1] * 1e4)}_${Math.round(p[2] * 1e4)}`;
+    let i = vidx.get(k);
+    if (i === undefined) { i = verts.length; verts.push(p); vidx.set(k, i); }
+    return i;
+  };
+  const faces: number[][] = tris.map(([a, b, c]) => [vid(a), vid(b), vid(c)]);
+  const edgeUse = new Map<string, number>();
+  for (const [i0, i1, i2] of faces) {
+    for (const [e0, e1] of [[i0, i1], [i1, i2], [i2, i0]]) {
+      const k = e0 < e1 ? `${e0}_${e1}` : `${e1}_${e0}`;
+      edgeUse.set(k, (edgeUse.get(k) ?? 0) + 1);
+    }
+  }
+  let openEdges = 0;
+  for (const c of edgeUse.values()) if (c !== 2) openEdges++;
+  const watertight = openEdges === 0;
+  const id = name.replace(/[^\w가-힣-]/g, '_').slice(0, 40) || 'stl_part';
+  const embed = verts.length <= 20000;
+  const part = {
+    id,
+    type: 'mesh' as unknown as 'box',
+    params: {
+      volumeMm3: +volume.toFixed(2), areaMm2: +(area2 / 2).toFixed(2), triCount: tris.length,
+      aabb: { min: min.map((v) => +v.toFixed(3)), max: max.map((v) => +v.toFixed(3)) },
+      cg: cg.map((v) => +v.toFixed(3)),
+      ...(embed ? { verts: verts.map((v) => v.map((x) => +x.toFixed(3))), faces } : {}),
+    } as unknown as { width: number; depth: number; height: number },
+    at: { tx: 0, ty: 0, tz: 0 },
+    role: 'imported',
+    material,
+  };
   return {
     ok: true,
     assembly: {
       name, domain: 'mech', importedApprox: true,
-      parts: [boundsToPart(min, max, name.replace(/[^\w가-힣-]/g, '_').slice(0, 40) || 'stl_part', material)],
-      note: 'STL 임포트 근사(정점 AABB 단일 box — 부품 구조·원기하 없음) · 질량=AABB 체적(과대측) · 단위=파일 기재값 그대로(mm 가정 명시)',
+      parts: [part],
+      note: `STL 메시 실체적 임포트(발산정리 — 체적·CG·표면적 정밀${watertight ? '' : ` · ⚠열린 메시(경계 엣지 ${openEdges}) — 체적은 참고값`}) · ${embed ? 'SCAD=polyhedron 정밀' : `표시=AABB 프록시(${tris.length}tris > 표시 예산 — 질량은 정밀 유지)`} · 단위=파일 기재값 그대로(mm 가정 명시)`,
     },
-    stats: { format, points: pts },
+    stats: { format, points: tris.length * 3 },
   };
 }
 

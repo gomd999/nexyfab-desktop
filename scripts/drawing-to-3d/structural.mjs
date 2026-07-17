@@ -68,6 +68,26 @@ export function partVolume(type, p) {
       const frus = (D1, D2) => (Math.PI * p.length / 12) * (D1 * D1 + D1 * D2 + D2 * D2);
       return frus(p.dia1, p.dia2) - frus(Math.max(0, p.dia1 - 2 * t), Math.max(0, p.dia2 - 2 * t)); // 원뿔대 셸
     }
+    // 자유곡면 어휘(260718d): mesh=발산정리 정밀값(빌드 시 산출 — 날조 아님·파일/수식 파생),
+    // revolve=파푸스 정리(폐형: V=2π·r̄·A — 프로파일 도심 반경×면적)
+    case 'mesh': return Number(p.volumeMm3) > 0 ? Number(p.volumeMm3) : 0;
+    case 'cavity_block': { // 금형 블록 − 음형 = 폐형 차 체적(캐비티 체적은 재귀)
+      const cav = p.cavity ? partVolume(p.cavity.type, p.cavity.params) : 0;
+      return Math.max(0, p.blockW * p.blockD * p.blockH - cav);
+    }
+    case 'revolve': {
+      const prof = p.profile ?? [];
+      let area2 = 0, momR = 0; // shoelace(×2) · 도심 r×면적(×6)
+      for (let i = 0; i < prof.length; i++) {
+        const [r1, z1] = prof[i], [r2, z2] = prof[(i + 1) % prof.length];
+        const cr = r1 * z2 - r2 * z1;
+        area2 += cr; momR += (r1 + r2) * cr;
+      }
+      const areaAbs = Math.abs(area2) / 2;
+      const rBar = Math.abs(momR / 6) / Math.max(1e-9, areaAbs);
+      const frac = Math.min(360, Math.max(1, Number(p.angleDeg) || 360)) / 360;
+      return 2 * Math.PI * rBar * areaAbs * frac;
+    }
     default: return 0;
   }
 }

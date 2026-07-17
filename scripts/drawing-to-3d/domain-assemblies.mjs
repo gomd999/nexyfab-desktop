@@ -1051,6 +1051,221 @@ function excavatorBucketAssembly(p = {}) {
   };
 }
 
+/** 금형 캐비티 블록(260718d — 자유곡면 대응 ③). 블록−음형 차 형상(폐형 차 체적).
+ *  기본 음형=회전체 보울(advJson cavity={type,params,at}로 어휘 부품·≤20k 메시 대체 가능).
+ *  파팅면·구배각·수축률·러너/게이트=입력 원칙(미입력=미포함 명시) — 몰드베이스 표준 미적용. */
+function moldCavityAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const W = num(p.blockW, 300), D = num(p.blockD, 250), H = num(p.blockH, 120);
+  const cd = num(p.cavityDia, 160);
+  // 기본 음형: 반구형 보울 revolve(상면 개방 — 8분할 프로파일)
+  const rr = Math.min(cd / 2, W / 2 - 10, D / 2 - 10, H - 15);
+  const prof = [];
+  for (let k = 0; k <= 8; k++) { const a = (Math.PI / 2) * (k / 8); prof.push([rr * Math.cos(a), -rr * Math.sin(a)]); }
+  prof.push([0, 0]);
+  const cavity = p.cavity && p.cavity.type ? p.cavity : { type: 'revolve', params: { profile: prof.map(([r, z]) => [r, z + rr]) }, at: { tx: W / 2, ty: D / 2, tz: H - rr } };
+  const parts = [
+    { id: 'cavity_block', type: 'cavity_block', params: { blockW: W, blockD: D, blockH: H, cavity }, at: { tx: 0, ty: 0, tz: 0 }, material: 'S45C', role: 'mold' },
+  ];
+  return {
+    name: `금형 캐비티 ${W}×${D}×${H}`, domain: 'mech', kind: 'assembly', parts,
+    moldMeta: { blockW: W, blockD: D, blockH: H, cavityType: cavity.type },
+    note: '블록−음형 차 형상(체적=폐형 차). 파팅면·구배각·수축률·러너/게이트/이젝터=입력 원칙(미입력=미포함 명시)·몰드베이스 표준(FUTABA 등) 미적용 — 명시',
+  };
+}
+
+/** 기어 트레인(맞물림 기구학 — 260718d). 인벌류트 스퍼기어열: 중심거리=m(z₁+z₂)/2 **폐형**
+ *  배치·맞물림 위상=반피치 오프셋·기어비 표. 베이스 플레이트+축(cylinder). 동력·강도 검토 미포함. */
+function gearTrainAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const m = num(p.module, 3);
+  const teethArr = Array.isArray(p.teeth) && p.teeth.length >= 2 ? p.teeth.map((z) => Math.max(10, Math.min(120, Math.round(Number(z) || 20)))) : [20, 40, 20, 60];
+  const thk = num(p.thickness, 25), shaftD = num(p.shaftDia, Math.max(10, Math.round(m * 5)));
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  // 중심 x 좌표: x_{i+1} = x_i + m(z_i+z_{i+1})/2 — 표준 맞물림 중심거리(폐형)
+  const xs = [0];
+  for (let i = 1; i < teethArr.length; i++) xs.push(xs[i - 1] + (m * (teethArr[i - 1] + teethArr[i])) / 2);
+  const rTip = (z) => (m * (z + 2)) / 2;
+  const plateW = xs[xs.length - 1] + rTip(teethArr[0]) + rTip(teethArr[teethArr.length - 1]) + 40;
+  const plateY = 2 * Math.max(...teethArr.map(rTip)) + 40;
+  const px0 = -rTip(teethArr[0]) - 20;
+  // 베이스=홀 선언 플레이트(축 관통=핀-보어 폐형 검증 분류)
+  P('base_plate', 'plate_with_holes', {
+    width: plateW, depth: plateY, thickness: 15,
+    holes: xs.map((x) => ({ x: x - px0, y: plateY / 2, d: shaftD + 1 })),
+  }, { tx: px0, ty: -plateY / 2, tz: 0 }, 'steel', 'frame');
+  let ratio = 1;
+  for (const [i, z] of teethArr.entries()) {
+    // 맞물림 위상: 인접 기어는 반피치(180/z°) 회전 — 이빨-골 정합(관례)
+    const phase = i % 2 === 1 ? 180 / z : 0;
+    P(`shaft_${i + 1}`, 'cylinder', { diameter: shaftD, length: 15 + 30 + thk + 10 }, { tx: xs[i], ty: 0, tz: 0 }, 'steel', 'shaft');
+    P(`gear_${i + 1}`, 'spur_gear', { module: m, teeth: z, thickness: thk, boreDia: shaftD }, { tx: xs[i], ty: 0, tz: 45, rz: phase }, 'S45C', 'gear');
+    if (i >= 1) ratio *= teethArr[i] / teethArr[i - 1];
+  }
+  return {
+    name: `기어 트레인 ${teethArr.join('-')} (m${m})`, domain: 'mech', kind: 'assembly', parts,
+    gearMeta: {
+      module: m, teeth: teethArr, thickness: thk,
+      centerDistances: xs.slice(1).map((x, i) => +(x - xs[i]).toFixed(2)),
+      totalRatio: +ratio.toFixed(4), outputPer1000rpm: +(1000 / ratio).toFixed(1),
+      pitchDias: teethArr.map((z) => m * z),
+    },
+    note: '맞물림 중심거리=m(z₁+z₂)/2 폐형 배치·위상=반피치(전위·백래시 0 가정 명시)·기어비 폐형. 강도(굽힘/면압)·윤활·동력 전달 검토 미포함',
+  };
+}
+
+/** 4절 링크(Freudenstein 폐형 포즈 — 260718d). 접지·크랭크·커플러·로커, 입력각 θ₂ →
+ *  θ₄ 폐형해(코사인 법칙 2회)·Grashof 판정 게이트·전달각. z-레이어 적층(실기구 관례 — 링크 비간섭). */
+function fourBarAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const g = num(p.ground, 400), a = num(p.crank, 120), b = num(p.coupler, 350), c = num(p.rocker, 250);
+  const th2 = ((Number(p.inputDeg ?? 60) % 360) * Math.PI) / 180;
+  const lw = num(p.linkW, 40), lt = num(p.linkThk, 12), pinD = num(p.pinDia, 16);
+  // Grashof: s+l ≤ p+q — 회전 가능성 판정(폐형)
+  const sorted = [g, a, b, c].sort((x, y) => x - y);
+  const grashof = sorted[0] + sorted[3] <= sorted[1] + sorted[2];
+  // 폐형해: A=(0,0)·D=(g,0). B=크랭크 끝. BD 대각 → 코사인 법칙으로 C.
+  const B = [a * Math.cos(th2), a * Math.sin(th2)];
+  const dBD = Math.hypot(g - B[0], -B[1]);
+  if (dBD > b + c - 1 || dBD < Math.abs(b - c) + 1) {
+    return { name: '4절 링크', domain: 'mech', parts: [], alignmentErrors: [`입력각 ${Math.round((th2 * 180) / Math.PI)}° 에서 조립 불가(대각 ${Math.round(dBD)} vs 커플러+로커 ${b + c}) — Grashof=${grashof ? '충족' : '미충족'}`] };
+  }
+  const angBD = Math.atan2(-B[1], g - B[0]);
+  const angCBD = Math.acos((b * b + dBD * dBD - c * c) / (2 * b * dBD));
+  const C = [B[0] + b * Math.cos(angBD + angCBD), B[1] + b * Math.sin(angBD + angCBD)];
+  // 전달각(커플러-로커 사이각 — 폐형)
+  const mu = Math.acos(Math.max(-1, Math.min(1, (b * b + c * c - dBD * dBD) / (2 * b * c))));
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  // z-레이어: 접지(0)·크랭크(z1)·커플러(z2)·로커(z1) — 인접 레이어만 핀 공유(실기구 적층 관례).
+  // 링크=**홀 선언 플레이트**(양단 핀홀 — 핀-보어 관통 폐형 검증 분류·SCAD 실구멍)
+  const zG = 0, z1 = 20, z2 = 20 + lt + 3;
+  const bar = (id, A2, B2, z, role) => {
+    const th = Math.atan2(B2[1] - A2[1], B2[0] - A2[0]);
+    const L = Math.hypot(B2[0] - A2[0], B2[1] - A2[1]);
+    // 로컬: x=0..L+lw(보스 연장)·y=0..lw·홀=(lw/2, lw/2)·(L+lw/2, lw/2). 배치=A 보스 원점.
+    const rzDeg = (th * 180) / Math.PI;
+    const ox = A2[0] - (lw / 2) * Math.cos(th) + (lw / 2) * Math.sin(th);
+    const oy = A2[1] - (lw / 2) * Math.sin(th) - (lw / 2) * Math.cos(th);
+    P(id, 'plate_with_holes', {
+      width: L + lw, depth: lw, thickness: lt,
+      holes: [{ x: lw / 2, y: lw / 2, d: pinD + 1 }, { x: L + lw / 2, y: lw / 2, d: pinD + 1 }],
+    }, { tx: ox, ty: oy, tz: z, rz: rzDeg }, 'steel', role);
+  };
+  P('base_bar', 'plate_with_holes', {
+    width: g + lw, depth: lw, thickness: lt,
+    holes: [{ x: lw / 2, y: lw / 2, d: pinD + 1 }, { x: g + lw / 2, y: lw / 2, d: pinD + 1 }],
+  }, { tx: -lw / 2, ty: -lw / 2, tz: zG }, 'steel', 'frame');
+  bar('crank', [0, 0], B, z1, 'link');
+  bar('coupler', B, C, z2, 'link');
+  bar('rocker', [g, 0], C, z1, 'link');
+  // 핀(레이어별 z-구간 — 홀 없는 몸통 관통 방지, 260718d 그리드 검출):
+  //   A/D=접지+크랭크·로커 레이어(z2 커플러 미도달) · B/C=크랭크~커플러 레이어(접지 미도달)
+  for (const [pid, [px, py]] of [['pin_A', [0, 0]], ['pin_D', [g, 0]]]) {
+    P(pid, 'cylinder', { diameter: pinD, length: z2 - zG - 1 }, { tx: px, ty: py, tz: zG }, 'steel', 'joint'); // 상단=커플러 레이어 1mm 아래(침범 방지)
+  }
+  for (const [pid, [px, py]] of [['pin_B', B], ['pin_C', C]]) {
+    P(pid, 'cylinder', { diameter: pinD, length: z2 + lt + 6 - z1 }, { tx: px, ty: py, tz: z1 }, 'steel', 'joint');
+  }
+  const th4 = Math.atan2(C[1], C[0] - g);
+  return {
+    name: `4절 링크 g${g}/a${a}/b${b}/c${c} @${Math.round((th2 * 180) / Math.PI)}°`, domain: 'mech', kind: 'assembly', parts,
+    fourBarMeta: {
+      ground: g, crank: a, coupler: b, rocker: c,
+      inputDeg: +((th2 * 180) / Math.PI).toFixed(1), outputDeg: +((th4 * 180) / Math.PI).toFixed(2),
+      transmissionDeg: +((mu * 180) / Math.PI).toFixed(1), grashof, grashofClass: grashof ? (sorted[0] === a ? 'crank-rocker 후보' : 'Grashof 충족') : 'non-Grashof(요동)',
+      couplerPoint: C.map((v) => +v.toFixed(2)),
+    },
+    note: 'Freudenstein 폐형 포즈(개방 조립모드·백래시 0 명시)·z-레이어 적층=실기구 관례(링크 비간섭)·전달각 폐형. 관성력·핀 전단 검토 미포함',
+  };
+}
+
+/** 프로펠러(축류 — 260718d, 자유곡면 어휘 1호). NACA 4-digit 폐형 단면(Abbott&von Doenhoff
+ *  공표식·닫힌 TE −0.1036) × 반경별 시위/비틀림(β=atan(피치/2πr)) 로프트 → 워터타이트 메시
+ *  (체적=발산정리 정밀 — 날조 아님·공표 수식/기하 파생). 유체역학 성능(추력·효율) 검토 미포함. */
+function propellerAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const D = num(p.diameter, 800), R = D / 2;
+  const nB = Math.max(2, Math.min(6, Math.round(num(p.blades, 3))));
+  const pitch = num(p.pitch, Math.round(D * 0.7));
+  const hubD = num(p.hubDia, Math.round(D * 0.18)), hubL = num(p.hubLen, Math.round(D * 0.12));
+  const boreD = num(p.boreDia, Math.round(hubD * 0.35));
+  const naca = String(p.naca ?? '4412');
+  const mC = (parseInt(naca[0], 10) || 0) / 100, pC = (parseInt(naca[1], 10) || 1) / 10, tC = (parseInt(naca.slice(2), 10) || 12) / 100;
+  const SECS = 12, MPTS = 24; // 반경 분할 × 단면 점(상/하면 합) — 분할 명시
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  // 허브: revolve(보스 원통 + 보어) — 파푸스 정밀
+  P('hub', 'revolve', { profile: [[boreD / 2, 0], [hubD / 2, 0], [hubD / 2, hubL], [boreD / 2, hubL]] }, { tx: 0, ty: 0, tz: 0 }, 'aluminum', 'joint');
+  // NACA 단면(폐루프 — 앞전→상면→뒷전→하면)
+  const nacaLoop = () => {
+    const pts = [];
+    const yt = (x) => 5 * tC * (0.2969 * Math.sqrt(x) - 0.126 * x - 0.3516 * x * x + 0.2843 * x ** 3 - 0.1036 * x ** 4);
+    const camber = (x) => (x < pC ? (mC / (pC * pC)) * (2 * pC * x - x * x) : (mC / ((1 - pC) ** 2)) * (1 - 2 * pC + 2 * pC * x - x * x));
+    const half = MPTS / 2;
+    for (let i = 0; i <= half; i++) { const x = i / half; pts.push([x, camber(x) + yt(x)]); }        // 상면 LE→TE
+    for (let i = half - 1; i > 0; i--) { const x = i / half; pts.push([x, camber(x) - yt(x)]); }     // 하면 TE→LE
+    return pts; // 길이 = MPTS
+  };
+  const base = nacaLoop();
+  // 블레이드 메시: 링 k(반경 r_k)마다 시위 스케일+비틀림 회전 → 로프트 + 양단 캡
+  const rRoot = hubD / 2 + 1; // 허브면 1mm 갭(간섭 0 — 지지=mech 조인트 선언 체결)
+  const blade = (bi) => {
+    const phase = (2 * Math.PI * bi) / nB;
+    const verts = [], faces = [];
+    for (let k = 0; k <= SECS; k++) {
+      const r = rRoot + ((R - rRoot) * k) / SECS;
+      const taper = 0.35 + 0.65 * Math.sin(Math.PI * Math.min(1, 0.15 + (0.85 * k) / SECS)); // 시위 분포(루트·팁 축소)
+      const c = D * 0.16 * taper;
+      const beta = Math.atan(pitch / (2 * Math.PI * r));
+      for (const [xu, yu] of base) {
+        // 단면 로컬(시위 x·두께 y) → 비틀림 β 회전(접선-축 평면) → 반경 r 배치, 허브 중간높이 기준
+        const sx = (xu - 0.35) * c, sy = yu * c;
+        const tangential = sx * Math.cos(beta) - sy * Math.sin(beta);
+        const axial = sx * Math.sin(beta) + sy * Math.cos(beta);
+        // 방위 phase 회전(z=축): 반경 방향 (cosφ,sinφ)·접선 방향 (−sinφ,cosφ)
+        verts.push([
+          r * Math.cos(phase) - tangential * Math.sin(phase),
+          r * Math.sin(phase) + tangential * Math.cos(phase),
+          hubL / 2 + axial,
+        ]);
+      }
+    }
+    const M = MPTS;
+    for (let k = 0; k < SECS; k++) {
+      for (let i = 0; i < M; i++) {
+        const a = k * M + i, b2 = k * M + ((i + 1) % M), c2 = (k + 1) * M + ((i + 1) % M), d2 = (k + 1) * M + i;
+        faces.push([a, b2, c2], [a, c2, d2]);
+      }
+    }
+    // 캡(루트=팬 역방향·팁=팬)
+    const rootC = verts.length; verts.push([0, 0, 0].map((_, j) => base.reduce((s, _q, i) => s + verts[i][j], 0) / M));
+    for (let i = 0; i < M; i++) faces.push([rootC, ((i + 1) % M), i]);
+    const tipC = verts.length; verts.push([0, 0, 0].map((_, j) => base.reduce((s, _q, i) => s + verts[SECS * M + i][j], 0) / M));
+    for (let i = 0; i < M; i++) faces.push([tipC, SECS * M + i, SECS * M + ((i + 1) % M)]);
+    // 발산정리 체적/AABB
+    let vol6 = 0;
+    const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+    for (const v of verts) for (let j = 0; j < 3; j++) { if (v[j] < mn[j]) mn[j] = v[j]; if (v[j] > mx[j]) mx[j] = v[j]; }
+    for (const [a, b2, c2] of faces) {
+      const A2 = verts[a], B2 = verts[b2], C2 = verts[c2];
+      vol6 += A2[0] * (B2[1] * C2[2] - B2[2] * C2[1]) + A2[1] * (B2[2] * C2[0] - B2[0] * C2[2]) + A2[2] * (B2[0] * C2[1] - B2[1] * C2[0]);
+    }
+    P(`blade_${bi + 1}`, 'mesh', {
+      volumeMm3: +Math.abs(vol6 / 6).toFixed(1), triCount: faces.length,
+      aabb: { min: mn.map((v) => +v.toFixed(2)), max: mx.map((v) => +v.toFixed(2)) },
+      verts: verts.map((v) => v.map((x) => +x.toFixed(3))), faces,
+    }, { tx: 0, ty: 0, tz: 0 }, 'aluminum', 'link');
+  };
+  for (let bi = 0; bi < nB; bi++) blade(bi);
+  return {
+    name: `프로펠러 ${nB}익 D${D}`, domain: 'mech', kind: 'assembly', parts,
+    propellerMeta: { diameter: D, blades: nB, pitch, hubDia: hubD, naca, sections: SECS },
+    note: `NACA ${naca} 폐형 단면 ${SECS}분할 로프트(공표식 파생 — 원기하)·체적=발산정리 정밀·허브=파푸스. 추력/효율/공진 등 유체·구조 성능 검토 미포함 — 명시`,
+  };
+}
+
 /** 다관절 로봇 암(5-DOF 포즈 — 260718c, 참고파일들3 robot-5-dof/robotic-arm 대응 간이).
  *  x-z 평면 2D 기구학(전 회전=ry 단일축 — OBB 정밀 판정)·조인트=무회전 하우징 box(링크와
  *  1.5mm 매립 체결=supportCheck 부피겹침 규칙·간섭 분류는 ≤2mm 접촉). 구동·배선·제어 미포함. */
@@ -2106,6 +2321,43 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   mech: [
+    {
+      id: 'mold_cavity', labelKo: '금형 캐비티 블록 (블록−음형)', labelEn: 'Mold cavity block', build: moldCavityAssembly,
+      params: [
+        { name: 'blockW', labelKo: '블록 폭', unit: 'mm', default: 300, min: 50, max: 1500 },
+        { name: 'blockD', labelKo: '블록 깊이', unit: 'mm', default: 250, min: 50, max: 1500 },
+        { name: 'blockH', labelKo: '블록 높이', unit: 'mm', default: 120, min: 30, max: 800 },
+        { name: 'cavityDia', labelKo: '기본 캐비티 지름(회전체 보울)', unit: 'mm', default: 160, min: 20, max: 1200 },
+      ],
+    },
+    {
+      id: 'gear_train', labelKo: '기어 트레인 (맞물림 폐형)', labelEn: 'Gear train (meshing verified)', build: gearTrainAssembly,
+      params: [
+        { name: 'module', labelKo: '모듈', unit: 'mm', default: 3, min: 1, max: 10 },
+        { name: 'thickness', labelKo: '기어 두께', unit: 'mm', default: 25, min: 8, max: 80 },
+        { name: 'shaftDia', labelKo: '축 지름', unit: 'mm', default: 15, min: 6, max: 60 },
+      ],
+    },
+    {
+      id: 'four_bar', labelKo: '4절 링크 (Freudenstein 포즈)', labelEn: 'Four-bar linkage (posed)', build: fourBarAssembly,
+      params: [
+        { name: 'ground', labelKo: '접지 링크', unit: 'mm', default: 400, min: 100, max: 2000 },
+        { name: 'crank', labelKo: '크랭크', unit: 'mm', default: 120, min: 30, max: 1000 },
+        { name: 'coupler', labelKo: '커플러', unit: 'mm', default: 350, min: 50, max: 2000 },
+        { name: 'rocker', labelKo: '로커', unit: 'mm', default: 250, min: 50, max: 1500 },
+        { name: 'inputDeg', labelKo: '입력각 θ₂', unit: '°', default: 60, min: 0, max: 359 },
+      ],
+    },
+    {
+      id: 'propeller', labelKo: '프로펠러 (NACA 로프트)', labelEn: 'Propeller (NACA lofted blades)', build: propellerAssembly,
+      params: [
+        { name: 'diameter', labelKo: '직경', unit: 'mm', default: 800, min: 150, max: 4000 },
+        { name: 'blades', labelKo: '블레이드 수', unit: '', default: 3, min: 2, max: 6 },
+        { name: 'pitch', labelKo: '피치', unit: 'mm', default: 560, min: 80, max: 5000 },
+        { name: 'hubDia', labelKo: '허브 직경', unit: 'mm', default: 144, min: 40, max: 800 },
+        { name: 'naca', labelKo: 'NACA 4-digit', unit: '', default: '4412', enum: ['4412', '2412', '0012', '6409'] },
+      ],
+    },
     {
       id: 'robot_arm', labelKo: '다관절 로봇 암 (5-DOF 포즈)', labelEn: 'Articulated robot arm (5-DOF pose)', build: robotArmAssembly,
       params: [

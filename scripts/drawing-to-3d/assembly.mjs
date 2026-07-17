@@ -32,7 +32,7 @@ export const SERVICE_COL = {
   column: '#475569', beam: '#0e7490', slab: '#94a3b8', joist: '#854d0e', deck: '#a16207', floor: '#d1d5db', table: '#0f766e', counter: '#7c3aed', wall: '#78716c', base: '#57534e',
   stack: '#7c2d12',
 };
-export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5' };
+export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5', mesh: '#7c6f9f', revolve: '#9aa7b5', cavity_block: '#7c6f9f' };
 // 부품 id/name 키워드 → 계통 자동추론 (명시 service 태그 없어도 계통색이 나오게).
 const ID_SERVICE = [
   [/pump|motor|모터|펌프|impeller|임펠라|blower|fan|송풍/i, 'motor'],
@@ -291,6 +291,26 @@ export function assemblyToComposeIntent(asm) {
         feats.push(F('cylinder', { diameter: p.dia2 - 2 * t, height: half + 2 }, 0, 0, half, 'subtract'));
         break;
       }
+      // 자유곡면 어휘(260718d): GA/STEP 피처=프록시(표시용 — SCAD 본체는 정확 명시)
+      case 'mesh': { // AABB 프록시(정밀 메시는 SCAD polyhedron ≤20k 정점·질량=발산정리)
+        const bb = p.aabb;
+        if (bb) feats.push(F('box', { size: [bb.max[0] - bb.min[0], bb.max[1] - bb.min[1], bb.max[2] - bb.min[2]] }, bb.min[0], bb.min[1], bb.min[2]));
+        break;
+      }
+      case 'cavity_block': { // 블록 + 음형 subtract(box/cylinder 만 피처 차감 — 그 외=SCAD 정확·표시 프록시)
+        feats.push(F('box', { size: [p.blockW, p.blockD, p.blockH] }));
+        const cv = p.cavity;
+        if (cv?.type === 'box') feats.push(F('box', { size: [cv.params.width, cv.params.depth, cv.params.height] }, cv.at?.tx ?? 0, cv.at?.ty ?? 0, (cv.at?.tz ?? 0) + 0.01, 'subtract'));
+        else if (cv?.type === 'cylinder') feats.push(F('cylinder', { diameter: cv.params.diameter, height: cv.params.length }, cv.at?.tx ?? 0, cv.at?.ty ?? 0, (cv.at?.tz ?? 0) + 0.01, 'subtract'));
+        break;
+      }
+      case 'revolve': { // 실린더 프록시(rMax×z범위 — SCAD rotate_extrude 는 정확·질량=파푸스)
+        const rMax = Math.max(...(p.profile ?? [[1, 0]]).map((q) => q[0]));
+        const zs = (p.profile ?? [[0, 0]]).map((q) => q[1]);
+        const z0r = Math.min(...zs), z1r = Math.max(...zs);
+        feats.push(F('cylinder', { diameter: 2 * rMax, height: Math.max(1, z1r - z0r) }, 0, 0, z0r));
+        break;
+      }
       default: break; // 미지원 타입은 STEP 에서 생략(GA/SCAD 로는 표시됨)
     }
   }
@@ -386,6 +406,96 @@ export function buildAssembly(asm) {
       const { v, depth } = overlapInfo(boxes[i].box, boxes[j].box);
       const rotated = boxes[i].box.rotated || boxes[j].box.rotated;
       if (v > 1) { // 1mm³ 초과 겹침
+        // 축대칭 정밀(260718d — 프로펠러 허브×블레이드 AABB 과탐): revolve(회전체)는 반경
+        // rMax 원통에 내포 — 메시 정점 최소 반경 ≥ rMax 면 실분리(회전 무관 폐형). 메시가
+        // at 회전을 가지면 판정 불가(보수 유지).
+        {
+          const pi = asm.parts[i], pj = asm.parts[j];
+          const rv = pi.type === 'revolve' ? pi : pj.type === 'revolve' ? pj : null;
+          const me = pi.type === 'mesh' && pi.params?.verts ? pi : pj.type === 'mesh' && pj.params?.verts ? pj : null;
+          const meRot = me?.at && ((me.at.rx ?? 0) || (me.at.ry ?? 0) || (me.at.rz ?? 0));
+          if (rv && me && !meRot) {
+            const rMax = Math.max(...(rv.params.profile ?? [[0, 0]]).map((q) => q[0]));
+            const cx = rv.at?.tx ?? 0, cy = rv.at?.ty ?? 0;
+            const mtx = me.at?.tx ?? 0, mty = me.at?.ty ?? 0;
+            let minR = Infinity;
+            for (const vv of me.params.verts) { const d = Math.hypot(vv[0] + mtx - cx, vv[1] + mty - cy); if (d < minR) { minR = d; if (minR < rMax) break; } }
+            if (minR >= rMax - 0.01) continue;
+          }
+          // 방위각 분리(260718d — 다익 블레이드 쌍): 공통 원점 무회전 메시 쌍이 전부 r>0 이고
+          // 방위각 구간이 서로소면 축 통과 반평면 2장으로 분리 — 실분리 폐형(스팬 37.6°<60° 실측).
+          const m1 = pi.type === 'mesh' && pi.params?.verts ? pi : null;
+          const m2 = pj.type === 'mesh' && pj.params?.verts ? pj : null;
+          const rot1 = m1?.at && ((m1.at.rx ?? 0) || (m1.at.ry ?? 0) || (m1.at.rz ?? 0));
+          const rot2 = m2?.at && ((m2.at.rx ?? 0) || (m2.at.ry ?? 0) || (m2.at.rz ?? 0));
+          if (m1 && m2 && !rot1 && !rot2 && (m1.at?.tx ?? 0) === (m2.at?.tx ?? 0) && (m1.at?.ty ?? 0) === (m2.at?.ty ?? 0)) {
+            const span = (me2) => {
+              const v0 = me2.params.verts[0];
+              const ph = Math.atan2(v0[1], v0[0]);
+              let lo = Infinity, hi = -Infinity, rMin = Infinity;
+              for (const vv of me2.params.verts) {
+                const r = Math.hypot(vv[0], vv[1]);
+                if (r < rMin) rMin = r;
+                let ang = Math.atan2(vv[1], vv[0]) - ph;
+                while (ang > Math.PI) ang -= 2 * Math.PI;
+                while (ang < -Math.PI) ang += 2 * Math.PI;
+                if (ang < lo) lo = ang;
+                if (ang > hi) hi = ang;
+              }
+              return { a: ph + lo, b: ph + hi, rMin, wide: hi - lo >= Math.PI };
+            };
+            const s1 = span(m1), s2 = span(m2);
+            if (!s1.wide && !s2.wide && s1.rMin > 0.01 && s2.rMin > 0.01) {
+              // 원둘레상 구간 서로소 판정(구간1 시작 기준 정규화)
+              const norm = (x) => { let t = x - s1.a; while (t < 0) t += 2 * Math.PI; while (t >= 2 * Math.PI) t -= 2 * Math.PI; return t; };
+              const w1 = norm(s1.b), a2n = norm(s2.a), b2n = norm(s2.b);
+              const disjoint = a2n <= b2n ? (a2n > w1 + 1e-6) : (b2n < -1e-6 + 0); // b2n<a2n=랩어라운드 → 구간1 포함 → 겹침
+              if (disjoint) continue;
+            }
+          }
+        }
+        // 핀-보어 관통(260718d — 기구 어휘): 수직 cylinder(핀/축) × 홀 선언 부재의 축심이
+        // **선언 홀과 정합**(위치 <0.5mm·홀경 ≥ 핀경)이면 관통 정상 — 폐형 검증 분류.
+        // plate_with_holes=월드 홀 좌표(rz 회전 반영)·spur_gear=보어 동심. 정합 실패=실간섭 유지.
+        {
+          const pi2 = asm.parts[i], pj2 = asm.parts[j];
+          const cyl = pi2.type === 'cylinder' && !(pi2.at?.rx || pi2.at?.ry || pi2.at?.rz) ? pi2 : pj2.type === 'cylinder' && !(pj2.at?.rx || pj2.at?.ry || pj2.at?.rz) ? pj2 : null;
+          const host = cyl === pi2 ? pj2 : cyl === pj2 ? pi2 : null;
+          if (cyl && host) {
+            const cxc = cyl.at?.tx ?? 0, cyc = cyl.at?.ty ?? 0, dPin = cyl.params.diameter;
+            let bored = false;
+            if (host.type === 'spur_gear' && (host.params.boreDia ?? 0) >= dPin - 0.01) {
+              bored = Math.hypot((host.at?.tx ?? 0) - cxc, (host.at?.ty ?? 0) - cyc) < 0.5;
+            } else if (host.type === 'plate_with_holes' && Array.isArray(host.params.holes)) {
+              const rz = ((host.at?.rz ?? 0) * Math.PI) / 180;
+              const cR = Math.cos(rz), sR = Math.sin(rz);
+              for (const h of host.params.holes) {
+                if ((h.d ?? 0) < dPin - 0.01) continue;
+                const wx = (host.at?.tx ?? 0) + h.x * cR - h.y * sR;
+                const wy = (host.at?.ty ?? 0) + h.x * sR + h.y * cR;
+                if (Math.hypot(wx - cxc, wy - cyc) < 0.5) { bored = true; break; }
+              }
+            }
+            if (bored) {
+              contacts.push({ a: boxes[i].id, b: boxes[j].id, overlapMm3: 0, depthMm: 0, note: '핀-보어 관통(선언 홀 정합 폐형 검증 — 정상)' });
+              continue;
+            }
+          }
+        }
+        // 기어 맞물림(260718d): 스퍼기어 쌍이 동일 모듈 + 중심거리=m(z₁+z₂)/2(±0.5mm)면
+        // 정상 맞물림(팁원 겹침=이빨 교합 — 간섭 아님·폐형 검증). 거리 불일치=실간섭 유지.
+        {
+          const gi = asm.parts[i], gj = asm.parts[j];
+          if (gi.type === 'spur_gear' && gj.type === 'spur_gear' && gi.params.module === gj.params.module) {
+            const d = Math.hypot((gi.at?.tx ?? 0) - (gj.at?.tx ?? 0), (gi.at?.ty ?? 0) - (gj.at?.ty ?? 0));
+            const std = (gi.params.module * (gi.params.teeth + gj.params.teeth)) / 2;
+            const zOv = Math.min((gi.at?.tz ?? 0) + gi.params.thickness, (gj.at?.tz ?? 0) + gj.params.thickness) - Math.max(gi.at?.tz ?? 0, gj.at?.tz ?? 0);
+            if (zOv > 0 && Math.abs(d - std) < 0.5) {
+              contacts.push({ a: boxes[i].id, b: boxes[j].id, overlapMm3: 0, depthMm: 0, note: `기어 맞물림(중심거리 ${d.toFixed(1)}=m(z₁+z₂)/2 폐형 검증 — 정상 교합)` });
+              continue;
+            }
+          }
+        }
         let useDepth = depth;
         let note = rotated ? '회전 AABB 겹침(보수적 — 실솔리드는 더 작을 수 있음)' : 'AABB 겹침';
         // 회전 쌍은 OBB-SAT 2차 정밀(§0.2) — AABB 과탐 제거(box 쌍만, 그 외 AABB 보수 유지)

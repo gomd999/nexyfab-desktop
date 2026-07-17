@@ -279,6 +279,36 @@ const GATES = {
     const t = i.wallThk ?? Math.max(2, i.dia1 * 0.03);
     if (2 * t >= i.dia2) e.push('벽두께 ≥ 소경 반경');
   },
+  // 자유곡면 어휘(260718d)
+  mesh(i, e) {
+    if (!pos(i.volumeMm3)) e.push('volumeMm3 invalid(발산정리 산출값 필요)');
+    if (!i.aabb?.min || !i.aabb?.max) e.push('aabb 필요');
+    if (i.verts && (!Array.isArray(i.verts) || !Array.isArray(i.faces))) e.push('verts/faces 배열 필요');
+    if (i.verts && i.verts.length > 20000) e.push('메시 정점 > 20k — 표시 예산 초과(volumeMm3/aabb 만 유지)');
+  },
+  revolve(i, e) {
+    const prof = i.profile;
+    if (!Array.isArray(prof) || prof.length < 3) { e.push('profile ≥3점 필요([[r,z]...])'); return; }
+    for (const [n, q] of prof.entries()) {
+      if (!Array.isArray(q) || q.length < 2 || !(q[0] >= 0) || !Number.isFinite(q[1])) e.push(`profile[${n}] invalid(r≥0)`);
+    }
+    if (i.angleDeg != null && !(i.angleDeg > 0 && i.angleDeg <= 360)) e.push('angleDeg (0,360]');
+  },
+  cavity_block(i, e) {
+    for (const k of ['blockW', 'blockD', 'blockH']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (!i.cavity?.type || !i.cavity?.params) { e.push('cavity{type,params,at?} 필요'); return; }
+    // 캐비티가 블록 안에 들어가는지(캐비티 AABB + 오프셋 ⊂ 블록·최소 벽두께 5)
+    try {
+      const cb = partAabb({ type: i.cavity.type, ...i.cavity.params });
+      const off = i.cavity.at ?? { tx: 0, ty: 0, tz: 0 };
+      const lo = [cb.min[0] + (off.tx ?? 0), cb.min[1] + (off.ty ?? 0), cb.min[2] + (off.tz ?? 0)];
+      const hi = [cb.max[0] + (off.tx ?? 0), cb.max[1] + (off.ty ?? 0), cb.max[2] + (off.tz ?? 0)];
+      const box = [i.blockW, i.blockD, i.blockH];
+      for (let k = 0; k < 3; k++) {
+        if (lo[k] < 5 || hi[k] > box[k] - (k === 2 ? -1 : 5)) { e.push(`캐비티가 블록 밖/벽두께<5 (축 ${'xyz'[k]}) — 상면 개방은 z만 허용`); break; }
+      }
+    } catch (err) { e.push('cavity 형상 검증 실패: ' + String(err.message).slice(0, 60)); }
+  },
 };
 
 export function gate(intent) {
@@ -383,6 +413,29 @@ const SCAD = {
     // 원뿔대 셸(rotate_extrude 대신 conical cylinder r1/r2 사용 — OpenSCAD 지원)
     return `difference() {\n  cylinder(h=${i.length}, d1=${i.dia1}, d2=${i.dia2}, $fn=96);\n  translate([0,0,-1]) cylinder(h=${i.length + 2}, d1=${i.dia1 - 2 * t}, d2=${i.dia2 - 2 * t}, $fn=96);\n}`;
   },
+  // 자유곡면 어휘(260718d)
+  mesh(i) {
+    if (i.verts && i.verts.length && i.verts.length <= 20000) {
+      const pts = i.verts.map((v) => `[${v[0]},${v[1]},${v[2]}]`).join(',');
+      const fcs = i.faces.map((f) => `[${f[0]},${f[1]},${f[2]}]`).join(',');
+      return `polyhedron(points=[${pts}], faces=[${fcs}], convexity=10);`;
+    }
+    // 대형 메시=AABB 프록시 표시(체적·질량은 volumeMm3 정밀값 — 명시)
+    const bb = i.aabb;
+    return `// mesh proxy: 표시=AABB(정밀 메시 ${i.triCount ?? '?'}tris 는 표시 예산 밖 — 체적은 발산정리 정밀)\ntranslate([${bb.min[0]},${bb.min[1]},${bb.min[2]}]) cube([${bb.max[0] - bb.min[0]}, ${bb.max[1] - bb.min[1]}, ${bb.max[2] - bb.min[2]}]);`;
+  },
+  revolve(i) {
+    const prof = i.profile.map((q) => `[${q[0]},${q[1]}]`).join(',');
+    const ang = i.angleDeg && i.angleDeg < 360 ? `angle=${i.angleDeg}, ` : '';
+    // rotate_extrude 는 XY 폴리곤을 Z축 회전 — 프로파일 (r,z)를 (x,y)로 그대로 사용
+    return `rotate_extrude(${ang}$fn=96) polygon(points=[${prof}]);`;
+  },
+  cavity_block(i) {
+    const off = i.cavity.at ?? {};
+    const rot = (off.rx || off.ry || off.rz) ? `rotate([${off.rx ?? 0},${off.ry ?? 0},${off.rz ?? 0}]) ` : '';
+    const inner = SCAD[i.cavity.type]({ ...i.cavity.params, type: i.cavity.type });
+    return `difference() {\n  cube([${i.blockW}, ${i.blockD}, ${i.blockH}]);\n  translate([${off.tx ?? 0},${off.ty ?? 0},${(off.tz ?? 0) + 0.01}]) ${rot}${inner}\n}`;
+  },
 };
 
 export function toOpenScad(intent) {
@@ -455,6 +508,19 @@ export function partAabb(i) {
       return { min: [0, 0, 0], max: [i.length, i.B, i.H] };
     case 'pipe_reducer':
       return { min: [-i.dia1 / 2, -i.dia1 / 2, 0], max: [i.dia1 / 2, i.dia1 / 2, i.length] };
+    // 자유곡면 어휘(260718d)
+    case 'mesh': {
+      const bb = i.aabb;
+      if (!bb) throw new Error('mesh: aabb 필요(빌드 시 산출)');
+      return { min: [...bb.min], max: [...bb.max] };
+    }
+    case 'revolve': {
+      const rMax = Math.max(...(i.profile ?? [[1, 0]]).map((q) => q[0]));
+      const zs = (i.profile ?? [[0, 0]]).map((q) => q[1]);
+      return { min: [-rMax, -rMax, Math.min(...zs)], max: [rMax, rMax, Math.max(...zs)] };
+    }
+    case 'cavity_block':
+      return { min: [0, 0, 0], max: [i.blockW, i.blockD, i.blockH] };
     default:
       throw new Error(`partAabb: unsupported type '${i.type}'`);
   }
@@ -485,4 +551,7 @@ export const PARAMS = {
   angle: ['legA', 'legB', 'thickness', 'length'],
   tee_section: ['H', 'B', 'tw', 'tf', 'length'],
   pipe_reducer: ['dia1', 'dia2', 'length', 'wallThk'],
+  mesh: ['volumeMm3'], // verts/faces/aabb 는 배열·객체 — 스키마 특례
+  revolve: [], // profile 은 배열 — 스키마 특례
+  cavity_block: ['blockW', 'blockD', 'blockH'], // cavity 는 객체 — 스키마 특례
 };
