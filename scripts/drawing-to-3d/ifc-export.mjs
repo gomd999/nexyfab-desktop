@@ -315,13 +315,18 @@ if (isMain) {
   // ── ③ 실파일 회귀 하네스(로컬 코퍼스 존재 시만 — repo 미포함·미존재=스킵 정직 표기) ──
   {
     const fs = await import('node:fs');
-    const CORPUS = 'C:/Users/gomd9/Downloads/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models';
+    // 코퍼스 위치 후보(사용자 정리로 이동 가능 — 존재하는 첫 경로 사용)
+    const CORPUS = [
+      'C:/Users/gomd9/Downloads/참고파일들/IFC4.3.x-sample-models-main/models',
+      'C:/Users/gomd9/Downloads/참고파일들/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models',
+      'C:/Users/gomd9/Downloads/IFC4.3.x-sample-models-main/IFC4.3.x-sample-models-main/models',
+    ].find((p) => fs.existsSync(p));
     const refCheck = (text) => { // SPF 참조 무결(공백 허용 — buildingSMART 서식 '#1 = ...')
       const defined = new Set([...text.matchAll(/^#(\d+)\s*=/gm)].map((m) => m[1]));
       const used = [...text.matchAll(/#(\d+)\s*[,)\s]/g)].map((m) => m[1]);
       return used.filter((u) => !defined.has(u));
     };
-    if (fs.existsSync(CORPUS)) {
+    if (CORPUS) {
       const samples = [
         'placements-and-gis-referencing/geographic-referencing-gk/geographic-referencing-gk.ifc',
         'alignment-geometries-and-linear-positioning/linear-placement-of-signal/linear-placement-of-signal.ifc',
@@ -338,8 +343,12 @@ if (isMain) {
   // ── ④ EXPRESS 스키마 정적 검사(mondo IFC4.exp 존재 시 — 방출 엔티티 속성 수 폐형) ──
   {
     const fs = await import('node:fs');
-    const EXP = 'C:/Users/gomd9/Downloads/mondo-openbim-benchmark-master/mondo-openbim-benchmark-master/eu.opensourceprojects.mondo.bencharks.openbim/doc/IFC4.exp';
-    if (fs.existsSync(EXP)) {
+    const EXP = [
+      'C:/Users/gomd9/Downloads/참고파일들/mondo-openbim-benchmark-master/eu.opensourceprojects.mondo.bencharks.openbim/doc/IFC4.exp',
+      'C:/Users/gomd9/Downloads/참고파일들/mondo-openbim-benchmark-master/mondo-openbim-benchmark-master/eu.opensourceprojects.mondo.bencharks.openbim/doc/IFC4.exp',
+      'C:/Users/gomd9/Downloads/mondo-openbim-benchmark-master/mondo-openbim-benchmark-master/eu.opensourceprojects.mondo.bencharks.openbim/doc/IFC4.exp',
+    ].find((p) => fs.existsSync(p));
+    if (EXP) {
       const exp = fs.readFileSync(EXP, 'utf8');
       // ENTITY 블록 → 명시 속성 수 + SUPERTYPE 체인 합
       const ents = {};
