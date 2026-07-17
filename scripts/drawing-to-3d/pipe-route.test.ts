@@ -495,6 +495,44 @@ describe('무결성 규약 0단계 — OBB-SAT·chainage 요소열 (폐형 앵�
     const ga = ga2dDrawing(asm, { title: 't', domain: 'civil' });
     expect(ga).toContain('기준면 불일치');
   });
+  it('잔여① 옹벽 안정 시트: soil 미입력=정직 게이트 / 입력=XS 동일 단면 FS 자동(KDS 11 80 05)', () => {
+    const base = { profileDesign: [{ staMm: 0, elevMm: 3000 }, { staMm: 110000, elevMm: 4500 }, { staMm: 220000, elevMm: 2500 }] };
+    const noSoil = ga2dDrawing(buildAssemblyTemplate('civil', 'retaining_wall_alignment', base), { title: 't', domain: 'civil' });
+    expect(noSoil).toContain('지반 정수 입력 필요');
+    const withSoil = ga2dDrawing(buildAssemblyTemplate('civil', 'retaining_wall_alignment', { ...base, soil: { gammaBackfill: 19, phiBackfill: 30, baseFriction: 0.5, allowableBearing: 300 } }), { title: 't', domain: 'civil' });
+    expect(withSoil).toContain('옹벽 안정 검토 (대표 3단면');
+    expect(withSoil).toContain('전도 FS');
+    // H=3m 단면 PASS · H=4.5m 단면은 B=2m 로 실제 미달 — FAIL 이 찍혀야 정직
+    expect((withSoil.match(/>PASS<\/b>/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(withSoil).toContain('FAIL');
+  });
+  it('잔여④ 배관 티 계상: 끝점이 타 라인 세그먼트 위 접속=티(이경=이경 티)', () => {
+    const built = buildAssembly({
+      name: 'tee', parts: [
+        { id: 'a', type: 'box', params: { width: 400, depth: 400, height: 400 } },
+        { id: 'b', type: 'box', params: { width: 400, depth: 400, height: 400 }, at: { tx: 1200 } },
+        { id: 'c', type: 'box', params: { width: 400, depth: 400, height: 400 }, at: { tx: 500, ty: 1000 } },
+      ],
+      pipes: [
+        { id: 'main', from: 'a.x+', to: 'b.x-', d: 50, service: 'feed' },
+        { id: 'branch', from: 'c.y-', to: [800, 200, 200], d: 25, service: 'feed' }, // 본관 위 원시좌표 접속
+      ],
+    });
+    expect(built.pipes.errors).toEqual([]);
+    const b2 = computeBOQ({
+      name: 'tee', parts: [
+        { id: 'a', type: 'box', params: { width: 400, depth: 400, height: 400 } },
+        { id: 'b', type: 'box', params: { width: 400, depth: 400, height: 400 }, at: { tx: 1200 } },
+        { id: 'c', type: 'box', params: { width: 400, depth: 400, height: 400 }, at: { tx: 500, ty: 1000 } },
+      ],
+      pipes: [
+        { id: 'main', from: 'a.x+', to: 'b.x-', d: 50, service: 'feed' },
+        { id: 'branch', from: 'c.y-', to: [800, 200, 200], d: 25, service: 'feed' },
+      ],
+    });
+    expect(b2.piping.tees).toBe(1);
+    expect(b2.piping.reducingTees).toBe(1); // d50↔d25 이경
+  });
   it('5단계 도면집: 시트 레지스트리·목록표·윈도 무결·REV — 역방향 게이트 all-ok (§2)', () => {
     const asm = buildAssemblyTemplate('civil', 'retaining_wall_alignment', {
       ips: [[0, 0], [500000, 0], [900000, 300000], [1200000, 300000]],

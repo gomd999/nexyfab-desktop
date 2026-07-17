@@ -387,7 +387,7 @@ function civilSheetPack(assembly, { mainScaleN }) {
   const pfBody = profileSvg(assembly);
   if (pfBody) addSheet('PF', '종단면도', '종 10× 왜곡(시트 명기)', pfBody);
   // §B 횡단면도(XS) — 표준횡단 + 계획고 변곡점별 대표 STA(상한 8, 초과=등간격 대표 명시).
-  // 벽고=종단 계획고와 동일 소스(profile.design) — 정합 8번째 축.
+  // 벽고=종단 계획고와 동일 소스(profile.design) — 정합 8번째 축. RW 안정 시트와 STA 공유.
   if (assembly.retainingWall) {
     const rw = assembly.retainingWall;
     const dsg = assembly.profile?.design ?? [];
@@ -402,12 +402,41 @@ function civilSheetPack(assembly, { mainScaleN }) {
       }
       return dsg[dsg.length - 1]?.elevMm ?? rw.H * 1000;
     };
+    const unit = (mm) => `${fmtLen(mm)}${Math.abs(mm) < 10000 ? ' mm' : ''}`; // <10m 표기 단위 명시
     const bodies = xsStas.map((sMm) => {
       const Hmm = elevAt(sMm);
       const svg = retainingWallSectionSvg({ H: Hmm, baseWidth: rw.baseWidth * 1000, baseThickness: rw.baseThickness * 1000, stemThickness: rw.stemThickness * 1000, toeLength: rw.toeLength * 1000 });
-      return `<div style="display:inline-block;vertical-align:top;width:48%;min-width:320px"><div style="font-size:11.5px;font-weight:700">STA ${staLabel(sMm)} · H=${fmtLen(Hmm)}</div>${svg}</div>`;
+      return `<div style="display:inline-block;vertical-align:top;width:48%;min-width:320px"><div style="font-size:11.5px;font-weight:700">STA ${staLabel(sMm)} · H=${unit(Hmm)}</div>${svg}</div>`;
     }).join('');
-    addSheet('XS', `횡단면도 (대표 ${xsStas.length}단면${xsNote})`, '단면별 자동', `<div>${bodies}</div><div style="font-size:10px;color:#94a3b8">벽고=종단 계획고 동일 소스(profile.design 보간) · 배근·지반 조건 별도(옹벽 안정 검토=verify-domain 체인)</div>`);
+    addSheet('XS', `횡단면도 (대표 ${xsStas.length}단면${xsNote})`, '단면별 자동', `<div>${bodies}</div><div style="font-size:10px;color:#94a3b8">벽고=종단 계획고 동일 소스(profile.design 보간) · 치수 단위 mm(1만 이상 자동 m/km) · 배근 상세 후속</div>`);
+    // 옹벽 안정 검토 시트(잔여후보 ①) — XS 대표 STA 와 동일 단면에 retaining_wall_stability
+    // (KDS 11 80 05 Rankine 의무조항) 자동 실행. 지반 정수(γ·φ·μ·qa)=입력 원칙(soil 미입력=정직 게이트).
+    const soil = assembly.soil;
+    const need = ['gammaBackfill', 'phiBackfill', 'baseFriction', 'allowableBearing'].filter((k) => !(Number(soil?.[k]) > 0));
+    if (need.length) {
+      addSheet('RW', '옹벽 안정 검토 — 입력 대기', '—', `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e">
+지반 정수 입력 필요(기본값 날조 금지 — 정직 생략): <b>soil { ${need.join(', ')} }</b><br>
+입력 시 XS 대표 ${xsStas.length}단면 각각에 전도·활동·지지력 FS(KDS 11 80 05 표 4.4-1)를 자동 검토합니다. 고급 입력(JSON)의 "soil" 키로 전달.</div>`);
+    } else {
+      used.push('retaining_wall_stability');
+      const rows = xsStas.map((sMm) => {
+        const Hm = elevAt(sMm) / 1000;
+        try {
+          const r = runCalculator('retaining_wall_stability', {
+            H: Hm, stemThickness: rw.stemThickness, baseWidth: rw.baseWidth, baseThickness: rw.baseThickness, toeLength: rw.toeLength,
+            gammaBackfill: +soil.gammaBackfill, phiBackfill: +soil.phiBackfill, baseFriction: +soil.baseFriction, allowableBearing: +soil.allowableBearing,
+            ...(Number(soil.surcharge) >= 0 ? { surcharge: +soil.surcharge } : {}),
+          });
+          const c = r.checks ?? {};
+          const fs = (k) => c[k]?.FS != null ? Number(c[k].FS).toFixed(2) : '—';
+          const V = r.verdict === 'PASS' ? '<b style="color:#16a34a">PASS</b>' : `<b style="color:#dc2626">${esc(r.verdict ?? 'FAIL')}</b>`;
+          return `<tr><td>STA ${staLabel(sMm)}</td><td>${(Hm).toFixed(2)} m</td><td>${fs('overturning')}</td><td>${fs('sliding')}</td><td>${fs('bearing') !== '—' ? fs('bearing') : (c.bearing?.qmax_kPa != null ? Number(c.bearing.qmax_kPa).toFixed(0) + ' kPa' : '—')}</td><td>${V}</td></tr>`;
+        } catch (e) { return `<tr><td>STA ${staLabel(sMm)}</td><td>${Hm.toFixed(2)} m</td><td colspan="4" style="text-align:left;color:#92400e">판정 불가: ${esc(String(e?.message ?? e).slice(0, 70))}</td></tr>`; }
+      }).join('');
+      addSheet('RW', `옹벽 안정 검토 (대표 ${xsStas.length}단면 — KDS 11 80 05)`, '—', `<table style="border-collapse:collapse;width:100%;font-size:11.5px">
+<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">측점</th><th style="border:1px solid #cbd5e1;padding:3px 8px">벽고 H</th><th style="border:1px solid #cbd5e1;padding:3px 8px">전도 FS</th><th style="border:1px solid #cbd5e1;padding:3px 8px">활동 FS</th><th style="border:1px solid #cbd5e1;padding:3px 8px">지지력</th><th style="border:1px solid #cbd5e1;padding:3px 8px">판정</th></tr>${rows.replaceAll('<td>', '<td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">')}</table>
+<div style="font-size:10px;color:#94a3b8;padding:3px 0">Rankine 주동토압(KDS 11 80 05 §1.7.3(2) 의무조항) · 기준 FS=표 4.4-1(활동 1.5·전도 2.0·지지력 3.0) · 지반 정수=입력값(γ=${soil.gammaBackfill}·φ=${soil.phiBackfill}°·μ=${soil.baseFriction}·qa=${soil.allowableBearing}kPa) · 단면=XS 와 동일 소스</div>`);
+    }
   }
   const ewBody = earthworkSheet(assembly, used);
   if (ewBody) addSheet('EW', '토공량·유토곡선', '—', ewBody);
@@ -588,9 +617,15 @@ function profileSvg(assembly) {
     el.push(`<text x="${X(t)}" y="${30 + PH + 14}" font-size="8" text-anchor="middle" fill="#475569" font-family="sans-serif">${staLabel(t)}</text>`);
     if (t >= total) break;
   }
-  for (const e of [0, Math.round((eMax - 500) / 500) * 500]) {
-    el.push(`<line x1="${M}" y1="${Y(e)}" x2="${M + PW}" y2="${Y(e)}" stroke="#e2e8f0" stroke-width=".6"/>`);
-    el.push(`<text x="${M - 6}" y="${(+Y(e) + 3).toFixed(1)}" font-size="8" text-anchor="end" fill="#475569" font-family="sans-serif">EL.${(e / 1000).toFixed(1)}</text>`);
+  // 표고 그리드 nice-step(1·2·5×10^k) — 4~8줄이 되는 최소 스텝(잔여후보 ②)
+  {
+    const span = Math.max(1, eMax - eMin);
+    const pow = Math.pow(10, Math.floor(Math.log10(span / 5)));
+    const gstep = [1, 2, 5, 10].map((m) => m * pow).find((v) => span / v <= 8) ?? pow * 10;
+    for (let e = Math.ceil(eMin / gstep) * gstep; e <= eMax; e += gstep) {
+      el.push(`<line x1="${M}" y1="${Y(e)}" x2="${M + PW}" y2="${Y(e)}" stroke="#e2e8f0" stroke-width=".6"/>`);
+      el.push(`<text x="${M - 6}" y="${(+Y(e) + 3).toFixed(1)}" font-size="8" text-anchor="end" fill="#475569" font-family="sans-serif">${mixedDatum ? '' : 'EL.'}${(e / 1000).toFixed(1)}</text>`);
+    }
   }
   el.push(`<polyline points="${pf.design.map((q) => `${X(q.staMm)},${Y(q.elevMm)}`).join(' ')}" fill="none" stroke="#2563eb" stroke-width="1.6"/>`);
   if (pf.ground?.length) el.push(`<polyline points="${pf.ground.map((q) => `${X(q.staMm)},${Yg(q.elevMm)}`).join(' ')}" fill="none" stroke="#a16207" stroke-width="1.1" stroke-dasharray="6 4"/>`);

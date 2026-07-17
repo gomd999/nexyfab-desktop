@@ -306,6 +306,8 @@ function retainingWallAlignmentAssembly(p) {
     ...(Array.isArray(p.siteBoundary) ? { siteBoundary: p.siteBoundary } : {}),
     // §1-4 토공 파라미터 패스스루(기면고·기면폭·사면경사=입력 원칙 — 미입력 시 토공 생략)
     ...(p.earthwork && typeof p.earthwork === 'object' ? { earthwork: p.earthwork } : {}),
+    // 옹벽 안정 지반 정수 패스스루(γ·φ·μ·qa=입력 원칙 — 미입력 시 RW 시트가 정직 게이트)
+    ...(p.soil && typeof p.soil === 'object' ? { soil: p.soil } : {}),
     alignment: {
       ips, curves, elements, totalMm, curveTable, halfWidthMm: baseW / 2, chordNotes,
       structures: structs.map((q) => ({ sta: q.sta, type: q.type, innerWmm: q.innerW, innerHmm: q.innerH, thkMm: q.thk, alongMm: q.along, params: q.prm })),

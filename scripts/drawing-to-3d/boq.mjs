@@ -86,6 +86,28 @@ export function computeBOQ(assembly, { material = 'STS316', rates = STD_RATES } 
   let piping = null;
   if (built.ok && built.pipes && built.pipes.routes.length) {
     const segLen = (pts) => { let L = 0; for (let i = 0; i < pts.length - 1; i++) L += Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1], pts[i + 1][2] - pts[i][2]); return L; };
+    // 티 계상(잔여후보 ④): 한 라인 끝점이 다른 라인 세그먼트 위(끝점 아님)에 접속 = 티.
+    // 이경 접속(관경 상이)=이경 티로 함께 계상(리듀서 상세 후속 명시).
+    const p2s = (P, A, B) => { // 점-세그먼트 거리
+      const ab = [B[0] - A[0], B[1] - A[1], B[2] - A[2]];
+      const t = Math.max(0, Math.min(1, ((P[0] - A[0]) * ab[0] + (P[1] - A[1]) * ab[1] + (P[2] - A[2]) * ab[2]) / Math.max(1e-9, ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2)));
+      const q = [A[0] + ab[0] * t, A[1] + ab[1] * t, A[2] + ab[2] * t];
+      return { d: Math.hypot(P[0] - q[0], P[1] - q[1], P[2] - q[2]), t };
+    };
+    let tees = 0, reducingTees = 0;
+    const rts = built.pipes.routes;
+    for (const a of rts) {
+      for (const P of [a.pts[0], a.pts[a.pts.length - 1]]) {
+        for (const b of rts) {
+          if (b === a) continue;
+          const endNear = [b.pts[0], b.pts[b.pts.length - 1]].some((E) => Math.hypot(P[0] - E[0], P[1] - E[1], P[2] - E[2]) <= (a.d + b.d));
+          if (endNear) continue; // 끝점-끝점 = 티 아님(직결/엘보)
+          let hit = false;
+          for (let i = 0; i < b.pts.length - 1 && !hit; i++) hit = p2s(P, b.pts[i], b.pts[i + 1]).d <= (a.d + b.d) / 2 + 2;
+          if (hit) { tees++; if (a.d !== b.d) reducingTees++; break; }
+        }
+      }
+    }
     const lines = built.pipes.routes.map((r) => ({ label: r.label, service: r.service ?? '-', dn: r.d, lengthM: +(segLen(r.pts) / 1000).toFixed(2), elbows: Math.max(0, r.pts.length - 2) }));
     const byService = {};
     for (const l of lines) {
@@ -97,6 +119,7 @@ export function computeBOQ(assembly, { material = 'STS316', rates = STD_RATES } 
       lines, byService,
       totalM: +lines.reduce((s, l) => s + l.lengthM, 0).toFixed(2),
       elbows: lines.reduce((s, l) => s + l.elbows, 0),
+      tees, reducingTees,
       sleeves: built.pipes.sleeves?.length ?? 0,
       unrouted: built.pipes.errors.length,
     };
@@ -128,7 +151,7 @@ function pipingSection(b, headNo) {
   return `<h2>${headNo} 배관 물량 (자동 라우팅 실측)</h2>
 <table><tr><th>라인</th><th>계통</th><th>관경</th><th>길이(m)</th><th>엘보</th></tr>${rows}
 <tr style="font-weight:700;background:#f8fafc"><td colspan="3">합계</td><td>${b.piping.totalM}</td><td>${b.piping.elbows}</td></tr></table>
-<div class="note">라우트 길이=결정론 실측 · 관통 슬리브 ${b.piping.sleeves}개소 · 부속류(엘보 개소만)·행거·보온·구배 여유 미포함${b.piping.unrouted ? ` · ⚠미라우팅 ${b.piping.unrouted}라인(물량 제외)` : ''}.</div>`;
+<div class="note">라우트 길이=결정론 실측 · 티 ${b.piping.tees}개소(이경 티 ${b.piping.reducingTees} 포함 — 리듀서 상세 후속) · 관통 슬리브 ${b.piping.sleeves}개소 · 행거·보온·구배 여유 미포함${b.piping.unrouted ? ` · ⚠미라우팅 ${b.piping.unrouted}라인(물량 제외)` : ''}.</div>`;
 }
 
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
