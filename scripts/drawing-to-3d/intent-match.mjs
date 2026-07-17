@@ -47,6 +47,7 @@ export const CLAIMS_PROMPT = (desc) => `아래 제품 설명문에서 "완성된
 const KW_MAP = [
   [/다리|leg|포스트|post|기둥|column/i, ['column', 'leg', 'post']],
   [/상판|천판|top|판재|plate/i, ['table', 'top', 'plate', 'counter']],
+  [/옹벽|retaining/i, ['retaining', 'stem']], // 구체어 우선(일반 '벽'보다 먼저)
   [/벽|wall/i, ['wall']],
   [/문|door/i, ['door']],
   [/창|window/i, ['window']],
@@ -61,6 +62,26 @@ const KW_MAP = [
   [/파이프|pipe|관|tube/i, ['tube', 'pipe']],
   [/볼트|bolt/i, ['bolt']],
   [/기어|gear/i, ['gear']],
+  // 비기계 도메인 확장(260717): 건축·토목·조경·인테리어 대상어
+  [/계단|stair|디딤/i, ['stair', 'step', 'tread']],
+  [/난간|handrail|baluster/i, ['rail', 'handrail', 'baluster']],
+  [/서까래|rafter/i, ['rafter']],
+  [/장선|joist/i, ['joist']],
+  [/지붕|roof/i, ['roof']],
+  [/천장|ceiling/i, ['ceiling']],
+  [/싱크|sink|개수대/i, ['sink']],
+  [/변기|toilet/i, ['toilet', 'wc']],
+  [/세면대|세면기|lavatory/i, ['basin', 'lavatory']],
+  [/욕조|bathtub|tub/i, ['bath', 'tub']],
+  [/암거|culvert/i, ['culvert']],
+  [/집수정|맨홀|manhole|catch/i, ['basin', 'manhole', 'catch']],
+  [/기초|footing|foundation|매트/i, ['footing', 'foundation', 'base', 'mat']],
+  [/브래킷|bracket|거세트|gusset/i, ['bracket', 'gusset']],
+  [/리브|rib/i, ['rib']],
+  [/수납장|캐비닛|cabinet/i, ['cabinet']],
+  [/서랍|drawer/i, ['drawer']],
+  [/파고라|퍼걸러|pergola/i, ['pergola', 'post', 'rafter']],
+  [/카운터|counter|조리대/i, ['counter']],
 ];
 
 const UNIT_MM = { mm: 1, cm: 10, m: 1000, km: 1e6 };

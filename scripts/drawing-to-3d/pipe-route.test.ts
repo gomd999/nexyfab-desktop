@@ -424,6 +424,22 @@ describe('요청 정합(intent-match) — 결정론 판정부 (AI 추출 없이 
     const bad = verifyAlignmentClaims([{ kind: 'dimension', text: '연장 500m', part: '연장', value: 500, unit: 'm' }], asm.alignment);
     expect(bad.results[0].verdict).toBe('MISMATCH');
   });
+  it('KW_MAP 도메인 확장 — 옹벽·수납장·계단 대상어가 role/id 로 매칭', () => {
+    const asm = {
+      parts: [
+        { id: 'stem1', type: 'box', params: { width: 300, depth: 5000, height: 3000 }, at: {}, role: 'retaining' },
+        { id: 'cab1', type: 'box', params: { width: 600, depth: 350, height: 900 }, at: {}, role: 'cabinet' },
+        { id: 'tread1', type: 'box', params: { width: 900, depth: 280, height: 40 }, at: {}, role: 'stair' },
+        { id: 'tread2', type: 'box', params: { width: 900, depth: 280, height: 40 }, at: { tz: 180 }, role: 'stair' },
+      ],
+    };
+    const r = verifyClaims([
+      { kind: 'exists', text: '옹벽', part: '옹벽' },
+      { kind: 'exists', text: '수납장', part: '수납장' },
+      { kind: 'count', text: '디딤판 2개', part: '계단', count: 2 },
+    ], asm);
+    expect(r.results.map((q) => q.verdict)).toEqual(['MATCH', 'MATCH', 'MATCH']);
+  });
 });
 
 import { obbOverlap, boxPartsInterference } from './obb2d.mjs';
