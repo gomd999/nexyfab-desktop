@@ -145,7 +145,18 @@ export function stepToNexyfabAssembly(source: string, { name = 'STEP import', ma
     const b = r.bounds?.[p.id];
     if (!b || !emitOne(p, b, nameBase, r.cylRadii?.[p.id], qn)) skipped++;
   }
-  if (out.length === 0) return { ok: false, error: '경계 추출 0건 — 포인트 없는 표현(테셀레이션 등) 미지원', stats: { partsIn, imported: 0, skippedNoBounds: skipped, warnings: r.warnings.length, unsupported: r.unsupported.length } };
+  if (out.length === 0) {
+    // 스켈레톤 감지(260718c — 참고파일들3 robotic-arm 실측): PD/NAUO 구조는 있는데 형상 0
+    // = 외부 커널 파일(x_t 등) 참조 어셈블리 — 재내보내기 경로 안내(정직).
+    const skeleton = partsIn >= 2 && skipped === r.state.parts.length;
+    return {
+      ok: false,
+      error: skeleton
+        ? `어셈블리 스켈레톤(부품 ${partsIn}·형상 0) — 지오메트리가 외부 파일(Parasolid .x_t 등)에 있는 배치 전용 STEP 입니다. 원본 CAD 에서 '지오메트리 포함(AP214/AP242 solids)' 옵션으로 STEP 재내보내기 필요`
+        : '경계 추출 0건 — 포인트 없는 표현(테셀레이션 등) 미지원',
+      stats: { partsIn, imported: 0, skippedNoBounds: skipped, warnings: r.warnings.length, unsupported: r.unsupported.length },
+    };
+  }
   return {
     ok: true,
     assembly: {

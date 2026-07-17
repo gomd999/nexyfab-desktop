@@ -970,6 +970,21 @@ function commercialMassingAssembly(p = {}) {
       }
     }
   }
+  // 발코니(260718c — 참고파일들3 주거 SKP 대응): balcony:'true'(평면 파사드 전용 명시) —
+  // 층별·베이별 돌출 슬래브(위층 슬래브 하면 캔틸레버=본 슬래브와 일체 명시) + 난간.
+  if (String(p.balcony) === 'true' && !curved) {
+    const bd = 1400, railH2 = 1100, railT = 60;
+    for (let f = 1; f < floors; f++) {
+      const zS = zOf(f);
+      for (let i = 0; i < nBay; i++) {
+        const xa = (i * W) / nBay + 320, xb = ((i + 1) * W) / nBay - 20;
+        if (xb - xa < 600) continue;
+        // 발코니 슬래브: 본 슬래브에서 전방(-y) 돌출 — 슬래브와 x/z 동일면(일체 타설 명시)
+        P(`balc_${f}_${i}`, 'box', { width: xb - xa, depth: bd, height: slabT }, { tx: xa, ty: -bd, tz: zS }, 'concrete', 'balcony');
+        P(`balcrail_${f}_${i}`, 'box', { width: xb - xa, depth: railT, height: railH2 }, { tx: xa, ty: -bd, tz: zS + slabT }, 'concrete', 'railing');
+      }
+    }
+  }
   // 파라펫: 곡면=베이별 현 세그먼트(최상 슬래브 착지)·평면=전폭 1매.
   // 세그먼트 접합부 코너겹침(각도차)=신축이음 갭 마진으로 분리(마진∝bulge — 명시).
   if (curved) {
@@ -1033,6 +1048,92 @@ function excavatorBucketAssembly(p = {}) {
     name: `굴착기 버킷 ${W / 1000}m`, domain: 'mech', kind: 'assembly', parts,
     bucketMeta: { width: W, depth, height: H, teeth },
     note: '판금 셸 간이(원호=3분절 미터 컷·투스=box 근사·보강 리브/립 플레이트 후속 명시). 굴착력·마모 검토 미포함',
+  };
+}
+
+/** 다관절 로봇 암(5-DOF 포즈 — 260718c, 참고파일들3 robot-5-dof/robotic-arm 대응 간이).
+ *  x-z 평면 2D 기구학(전 회전=ry 단일축 — OBB 정밀 판정)·조인트=무회전 하우징 box(링크와
+ *  1.5mm 매립 체결=supportCheck 부피겹침 규칙·간섭 분류는 ≤2mm 접촉). 구동·배선·제어 미포함. */
+function robotArmAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const L1 = num(p.upperArmLen, 700), L2 = num(p.forearmLen, 600);
+  const a1 = Math.max(-80, Math.min(80, Number(p.shoulderDeg ?? 35)));   // 수직 기준 어깨각
+  const a2 = Math.max(-120, Math.min(120, Number(p.elbowDeg ?? 55)));    // 상완 기준 팔꿈치 상대각
+  const linkW = num(p.linkW, 120), jointS = num(p.jointS, 180);
+  const baseD = num(p.baseDia, 260), baseH = num(p.baseH, 220);
+  const embed = 1.5; // 링크↔하우징 매립(체결 — TOL_CONTACT 이내)
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  // 베이스 플레이트 + J1 요 베이스(원통)
+  P('base_plate', 'box', { width: 340, depth: 340, height: 20 }, { tx: -170, ty: -170, tz: 0 }, 'steel', 'base');
+  P('base_col', 'cylinder', { diameter: baseD, length: baseH }, { tx: 0, ty: 0, tz: 20 }, 'steel', 'joint');
+  // 기구학(x-z): 어깨 S → 팔꿈치 E → 손목 W (각도=수직 기준)
+  const r1 = (a1 * Math.PI) / 180, r2 = ((a1 + a2) * Math.PI) / 180;
+  const S = [0, 20 + baseH + jointS / 2];
+  const E = [S[0] + L1 * Math.sin(r1), S[1] + L1 * Math.cos(r1)];
+  const W = [E[0] + L2 * Math.sin(r2), E[1] + L2 * Math.cos(r2)];
+  if (W[1] < 150 || E[1] < 150) {
+    return { name: '로봇 암', domain: 'mech', parts: [], alignmentErrors: [`포즈 불가(팔꿈치 z=${Math.round(E[1])}·손목 z=${Math.round(W[1])} < 150) — 각도/길이 재조정`] };
+  }
+  // 그리퍼=손목 하향 관례: 전완이 거의 수직 상향(|어깨+팔꿈치|<30°)이면 하향 그리퍼와 교차 — 정직 게이트
+  if (Math.abs(a1 + a2) < 30) {
+    return { name: '로봇 암', domain: 'mech', parts: [], alignmentErrors: [`손목 접근각 |어깨각+팔꿈치각|=${Math.abs(a1 + a2)}° < 30° — 하향 그리퍼와 전완 교차(각도 재조정 또는 그리퍼 방향 후속)`] };
+  }
+  const yC = -linkW / 2;
+  // 조인트 하우징(무회전 box — 어깨는 베이스 원통에 매립 착지)
+  const house = (id, cx, cz) => P(id, 'box', { width: jointS, depth: linkW + 40, height: jointS }, { tx: cx - jointS / 2, ty: yC - 20, tz: cz - jointS / 2 }, 'steel', 'joint');
+  house('shoulder_j2', S[0], S[1] - embed); // 베이스 상면에 매립(체결)
+  house('elbow_j3', E[0], E[1]);
+  house('wrist_j4', W[0], W[1]);
+  // 링크(중심 규약 경사 box): 경사 끝면 **모서리**의 하우징 관통을 수치 풀백으로 정확 해소
+  //   (해석식은 면 선택 분기(코너 영역)로 각도별 오차 — 1mm 스텝 코너-사각형 포함검사 폐형).
+  //   지지 = supportCheck 의 mech 조인트 선언 체결(role joint/link/gripper 근접 쌍 — 볼팅 관례).
+  const link = (id, A, B, dropB = 0) => {
+    const th = Math.atan2(B[1] - A[1], B[0] - A[0]);
+    const c = Math.cos(th), s = Math.sin(th);
+    const dist = Math.hypot(B[0] - A[0], B[1] - A[1]);
+    const rect = (C2, drop = 0) => ({ x0: C2[0] - jointS / 2, x1: C2[0] + jointS / 2, z0: C2[1] - jointS / 2 - drop, z1: C2[1] + jointS / 2 });
+    const rA = rect(A), rB = rect(B, dropB);
+    const inside = (px, pz, r) => px > r.x0 + 0.5 && px < r.x1 - 0.5 && pz > r.z0 + 0.5 && pz < r.z1 - 0.5;
+    // 역방향 침투 검사(그리드 38mm 검출): **하우징 모서리가 링크 몸통 안**에 드는 경우 —
+    // 링크 로컬 좌표(u=축·v=수직)로 사각 포함검사. 양방향 전부 클리어될 때까지 1mm 풀백.
+    const mid = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+    const rectCorners = (r) => [[r.x0, r.z0], [r.x1, r.z0], [r.x0, r.z1], [r.x1, r.z1]];
+    let pull = jointS / 2 - 4; // 시작=하우징 면 4mm 밖
+    for (let it = 0; it < 200; it++) {
+      const gl = dist - 2 * pull;
+      const endA = [A[0] + c * pull, A[1] + s * pull];
+      const endB = [B[0] - c * pull, B[1] - s * pull];
+      const cornerHit = [+1, -1].some((sg) =>
+        inside(endA[0] - s * sg * (linkW / 2), endA[1] + c * sg * (linkW / 2), rA)
+        || inside(endB[0] - s * sg * (linkW / 2), endB[1] + c * sg * (linkW / 2), rB));
+      const bodyHit = [...rectCorners(rA), ...rectCorners(rB)].some(([px, pz]) => {
+        const dx = px - mid[0], dz = pz - mid[1];
+        const u = dx * c + dz * s, v = -dx * s + dz * c;
+        return Math.abs(u) < gl / 2 - 0.5 && Math.abs(v) < linkW / 2 - 0.5;
+      });
+      if (!cornerHit && !bodyHit) break;
+      pull += 1;
+    }
+    const gapLen = dist - 2 * pull;
+    if (gapLen < linkW) return false;
+    chordBoxX(P, id, (A[0] + B[0]) / 2, (A[1] + B[1]) / 2, th, gapLen, linkW, yC, linkW, 'steel', 'link');
+    return true;
+  };
+  if (!link('upper_arm', S, E) || !link('forearm', E, W, 95)) {
+    return { name: '로봇 암', domain: 'mech', parts: [], alignmentErrors: ['링크 기하 퇴화(길이 < 폭) — 링크 길이/조인트 크기 재조정'] };
+  }
+  // 손목 롤(J5 — 하우징 하면 0-접촉 스택) + 그리퍼(팜+핑거 2, 순차 0-접촉)
+  const gz = W[1] - jointS / 2;
+  P('wrist_roll', 'cylinder', { diameter: linkW * 0.8, length: 90 }, { tx: W[0], ty: 0, tz: gz - 90 }, 'steel', 'joint');
+  P('palm', 'box', { width: 140, depth: 100, height: 40 }, { tx: W[0] - 70, ty: -50, tz: gz - 130 }, 'steel', 'gripper');
+  for (const [fi, fx] of [[0, -60], [1, 30]]) {
+    P(`finger_${fi + 1}`, 'box', { width: 30, depth: 100, height: 90 }, { tx: W[0] + fx, ty: -50, tz: gz - 220 }, 'steel', 'gripper');
+  }
+  return {
+    name: `로봇 암 5-DOF (${a1}°/${a2}°)`, domain: 'mech', kind: 'assembly', parts,
+    robotMeta: { dof: 5, upperArmLen: L1, forearmLen: L2, shoulderDeg: a1, elbowDeg: a2, reach: +Math.hypot(W[0], W[1] - S[1]).toFixed(0), wrist: [Math.round(W[0]), Math.round(W[1])] },
+    note: '5-DOF 포즈 매싱 간이(조인트=하우징 box 근사·1.5mm 매립 체결 명시 — 구동·감속기·배선·제어 미포함). 가반하중·작업영역 검토 미포함',
   };
 }
 
@@ -1853,6 +1954,7 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'depth', labelKo: '깊이', unit: 'mm', default: 12000, min: 6000, max: 40000 },
         { name: 'floors', labelKo: '층수', unit: '', default: 4, min: 1, max: 20 },
         { name: 'facade', labelKo: '파사드(flat/curved)', unit: '', default: 'flat', enum: ['flat', 'curved'] },
+        { name: 'balcony', labelKo: '발코니(true/false — 평면 전용)', unit: '', default: 'false', enum: ['false', 'true'] },
         { name: 'groundH', labelKo: '1층 층고', unit: 'mm', default: 4200, min: 3000, max: 6000 },
         { name: 'floorH', labelKo: '기준층 층고', unit: 'mm', default: 3600, min: 2800, max: 5000 },
       ],
@@ -2004,6 +2106,16 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   mech: [
+    {
+      id: 'robot_arm', labelKo: '다관절 로봇 암 (5-DOF 포즈)', labelEn: 'Articulated robot arm (5-DOF pose)', build: robotArmAssembly,
+      params: [
+        { name: 'upperArmLen', labelKo: '상완 길이', unit: 'mm', default: 700, min: 300, max: 2000 },
+        { name: 'forearmLen', labelKo: '전완 길이', unit: 'mm', default: 600, min: 250, max: 1800 },
+        { name: 'shoulderDeg', labelKo: '어깨각(수직 기준)', unit: '°', default: 35, min: -80, max: 80 },
+        { name: 'elbowDeg', labelKo: '팔꿈치 상대각', unit: '°', default: 55, min: -120, max: 120 },
+        { name: 'linkW', labelKo: '링크 폭', unit: 'mm', default: 120, min: 60, max: 300 },
+      ],
+    },
     {
       id: 'machine_line', labelKo: '산업기계 라인 (프레임+스테이션+컨베이어)', labelEn: 'Industrial machine line', build: machineLineAssembly,
       params: [

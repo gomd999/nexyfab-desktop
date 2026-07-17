@@ -51,6 +51,12 @@ export function supportCheck(items, { tol = 8, minBear = 15, fastenBear = 40, em
     // 인장 체인(260718): 인장 부재끼리 축방향 미세 갭(미터 컷 — 케이블 밴드 관례)으로
     // 이웃하면 연결로 인정. 갭 허용 40mm·수직/횡 겹침 필요 — 선언 쌍 한정.
     if (a.tension && b.tension && oy >= minBear && oz >= minBear && ox >= -40) return true;
+    // mech 조인트 선언 체결(260718c — 로봇류): role {joint,link,gripper} 쌍이 근접(전 축
+    // 갭 ≤40mm — 링크 모서리 풀백 구간은 실기계에서 축/베어링이 채움 관례 명시·한 축 이상
+    // 실겹침 ≥minBear)하면 볼팅/감속기 체결로 연결 — 선언 역할 한정.
+    const MECH_J = ['joint', 'link', 'gripper'];
+    if (MECH_J.includes(a.role) && MECH_J.includes(b.role)
+      && ox >= -40 && oy >= -40 && oz >= -40 && Math.max(ox, oy, oz) >= minBear) return true;
     return false;
   };
   let moved = true;
