@@ -147,3 +147,69 @@ packageConsistencyCheck 추가 체크: ①평면 최대 STA ↔ alignment.totalM
 | 5 | 2-1~2-4 도서 체계 | 윈도 무결·도번 유일·역방향 대조 7종 |
 
 각 단계 커밋 분리, 매 단계 vitest+node+dxf+템플릿 스모크+골든 전부 그린 후 다음 진행.
+
+---
+
+## 보강 계획 (계획 자체 감사에서 나온 누락 8축)
+
+### A. 규모·성능 예산 (km 곡선 = 부품 폭증 — OCCT WASM OOM 이력 있음)
+- **부품 수 예산**: 곡선 현 분할 상한 — 현 수 = ceil(|Δ|/θc) 에 **세그먼트당 상한 64**
+  (초과 시 SAG_TOL 자동 상향 + 상향치 정직 고지). 어셈블리 전체 부품 상한 600(게이트,
+  초과=거부 "구간 분할 설계 필요").
+- **3D LOD**: 선형 어셈블리 GA 3D 는 밴드 아닌 실부품이되, STEP 방출은 부품 300 초과 시
+  생략+정직 고지(OCCT wasm OOM 방지 — intentToStepAndMeasure 단일빌드 이력 준수).
+- **원점 재중심**: three.js float32 정밀도(2e6mm에서 ~0.125mm)·카메라 near/far —
+  렌더 직전 무게중심 재중심(re-center) 후 표시(좌표 라벨은 원좌표). km 어셈블리 실측 확인.
+- 패키지 라우트: 선형 대형 어셈블리 생성 시간 측정 → 초과 시 FEA 기본 제외(옵션) 검토.
+
+### B. 횡단면도(XS) 시트 — 이전 구상에 있었으나 계획서 누락, 복원
+- 표준횡단 1장(기존 retainingWallSectionSvg 재사용) + profileDesign 으로 벽고가 변하는
+  경우 **대표 STA별 n장**(변곡점마다, 상한 8장 — 초과 시 등간격 대표 추출 명시).
+- 토공 횡단(절성토 사면 포함)은 1-3 지반선 존재 구간만(기면폭·경사 입력 원칙).
+- 게이트: 횡단 STA ⊂ [0,total] · 횡단 벽고 ↔ 종단 계획고 일치(같은 chainAt 소스) —
+  정합 7종에 8번째로 추가.
+
+### C. 입력 UX — 배열 입력 수단이 현재 전무(숫자 폼뿐)
+- **v1(같은 배치)**: AssemblyPresetPanel 에 "고급 입력(JSON)" 접이식 textarea —
+  ips/curves/structures/contours/siteBoundary/profileGround. 스키마 검증 실패=필드별
+  오류 메시지(게이트 문구 그대로). CSV 붙여넣기 파서(sta,elev / x,y 2열) 포함.
+- **v2(후속)**: SVG 선형 에디터 — 클릭으로 IP 찍기·드래그 수정·R 입력(InteriorPlanEditor
+  패턴 재사용, 디바운스 리빌드 기존 파이프).
+- 서버 저장: 기존 /projects(SavedState v2) 경로로 alignment 어셈블리 저장 확인(신규 개발
+  없이 통과되는지 스모크만).
+
+### D. AI 경로 개방 — "500m 옹벽, 중간에 30° 꺾고 암거 하나"
+- textToAssembly 스키마에 alignment(ips·curves)·structures 선언 개방(pipes 때와 동일
+  패턴: AI=선언만, 좌표·검증=결정론). assemble 라우트 3라운드 재시도가 게이트 거부
+  문구를 다음 라운드 프롬프트에 피드백(기존 패턴 재사용).
+- 게이트 거부 문구는 AI가 고칠 수 있는 형태로("TL 합 X>구간장 Y — R 축소 또는 IP 이동").
+
+### E. BOQ·물량 통합
+- 곡선 물량=호장 기준(1-1에서 확정) → civilTakeoff length 도 호장으로.
+- 토공량(1-4) BOQ 시트 편입(절/성토 분리·평균단면법 명시).
+- 암거 수량: quantity 룰엔진에 culvert 타입 부재 → v1 은 "수량 룰 미지원 명시"(정직),
+  룰 추가는 별도 항목(LH 방법론 산식 공개 원칙 동일).
+
+### F. DXF·좌표계
+- DXF ARC 엔티티 추가(R12: 10/20/40/50/51 그룹) — 곡선 중심선·밴드 옵셋 호.
+  self-test 에 ARC 파스 검사 추가.
+- 실좌표(TM 등 대좌표) 대응: v1=로컬 좌표 명시 + `origin:{E,N}` 오프셋 입력 시 DXF 는
+  실좌표 방출·SVG 는 로컬(라벨에 원점 표기). 대좌표 정밀도는 double(mm)로 충분.
+- 종단면도 DXF 는 보류(HTML/SVG 우선) 명시.
+
+### G. 무작위 기하 감사 (property 테스트 — audit-domains 패턴 재사용)
+- 결정론 PRNG 로 IP 3~8개·R 무작위 100케이스: 불변식 = ①OBB 간섭 0 ②Σ요소장=총연장(EPS)
+  ③chainAt 접선 연속 ④시트 윈도 합집합 무결 ⑤곡선표 자기정합. 실패 케이스는 시드로 재현.
+- 등고 교차도 무작위 폴리라인 50케이스(교차 수 = 홀짝 불변식 등).
+
+### H. 배포 게이트·문서화·후속 표기
+- **배포 체크리스트**(이번 대기 6+커밋 배치용): CACHEBUST 범프 → railway up(워킹트리)
+  → 라이브 E2E(패키지 zip·선형 GA·DXF 다운로드·정합 게이트 응답) → 스크린샷 확인.
+- 사용자 문서: /nexyfab/api-docs 에 alignment/structures/contours 필드 추가,
+  NexyFab 사용설명서(KO) 도면 절 갱신(배포 배치에 포함).
+- REV 이력표(개정 구름 표시)·EN 도면 라벨은 명시 후속(v1 범위 제외).
+
+### 범위 확정
+- **이번 런 포함**: 0(공차·OBB·chainage·골든)+A(예산·재중심)+1-1~1-4+B(횡단)+2-1~2-4
+  +C-v1(JSON 입력)+E(호장·토공 BOQ)+F(DXF ARC)+G(무작위 감사).
+- **명시 후속**: C-v2(SVG 에디터)·D(AI 개방)·암거 수량 룰·종단 DXF·REV 이력·EN 라벨·완화곡선.
