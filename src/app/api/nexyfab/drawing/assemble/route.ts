@@ -32,8 +32,9 @@ type FromTextModule = {
 const GEMINI_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 12000, thinkingBudget: 0 };
 // claims 추출용: thinkingBudget:0 이면 flash 가 조용히 빈 claims 를 낸다(260717 라이브 프로브 확인)
 // — 출력이 작아 MAX_TOKENS 위험이 없으므로 thinking 기본값으로 호출.
-// (thinking 토큰이 maxOutputTokens 를 소모하므로 예산은 넉넉히 — 4096은 MAX_TOKENS 절단 실측)
-const CLAIMS_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 12000 };
+// thinking 은 **유계 512**: 0=빈 claims(무력화)·무제한=1/3 확률 폭주 MAX_TOKENS(둘 다 실측).
+// tb=512 는 2개 설명문 × 3회 반복 전부 성공 + 핵심 클레임(연장·R·수량·존재) 보존 확인.
+const CLAIMS_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 8192, thinkingBudget: 512 };
 type AssemblyModule = { buildAssembly: (asm: Assembly) => BuiltAssembly; autoPlaceCorrect: (asm: Assembly) => { assembly: Assembly; corrections: Array<Record<string, unknown>> } };
 
 let _ft: FromTextModule | null = null;
@@ -163,7 +164,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (alignment) {
         const al = im.verifyAlignmentClaims(claims, alignment);
         for (let i = 0; i < base.results.length; i++) {
-          if (base.results[i].verdict === 'UNVERIFIABLE' && al.results[i] && al.results[i].verdict !== 'UNVERIFIABLE') base.results[i] = al.results[i];
+          // 선형 어휘(연장·R·곡선·구조물)는 부품 매칭이 아니라 alignment 실측이 정답 —
+          // 확정 판정이면 base 의 UNVERIFIABLE 뿐 아니라 거짓 MISMATCH 도 대체(MATCH 는 유지)
+          if (base.results[i].verdict !== 'MATCH' && al.results[i] && al.results[i].verdict !== 'UNVERIFIABLE') base.results[i] = al.results[i];
         }
         base.matched = base.results.filter((q) => q.verdict === 'MATCH').length;
         base.mismatched = base.results.filter((q) => q.verdict === 'MISMATCH').length;

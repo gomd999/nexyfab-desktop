@@ -228,6 +228,13 @@ export function verifyAlignmentClaims(claims, alignment) {
       const hit = (alignment.curveTable ?? []).some((ct) => Math.abs(ct.R - wantMm) <= tol);
       r.verdict = hit ? 'MATCH' : (alignment.curveTable ?? []).length ? 'MISMATCH' : 'MISMATCH';
       r.note = `곡선 R ${(alignment.curveTable ?? []).map((ct) => Math.round(ct.R / 1000) + 'm').join(',') || '없음'}`;
+    } else if ((c.kind === 'count' || c.kind === 'exists') && /곡선|커브|curve/i.test(kw)) {
+      // 곡선 수량/존재 — 곡선은 부품이 아니라 curveTable 이 실측(부품 매칭 거짓 MISMATCH 방지)
+      const got = (alignment.curveTable ?? []).length;
+      const want = c.kind === 'count' ? Number(c.count ?? c.value) : 1;
+      r.found = got;
+      r.verdict = (c.kind === 'count' ? got === want : got >= 1) ? 'MATCH' : 'MISMATCH';
+      r.note = `곡선 ${got}개소`;
     } else if ((c.kind === 'exists' || c.kind === 'count') && /암거|culvert|집수정|basin|신축|joint/i.test(kw)) {
       const map = { 암거: 'culvert', culvert: 'culvert', 집수정: 'catch_basin', basin: 'catch_basin', 신축: 'expansion_joint', joint: 'expansion_joint' };
       const key = Object.entries(map).find(([k]) => kw.toLowerCase().includes(k))?.[1];
