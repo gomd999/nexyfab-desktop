@@ -10,6 +10,9 @@
  * 검증: 각 템플릿 기본값은 self-test 로 게이트·간섭 0 을 상시 보증.
  */
 
+import { buildElements, chordPolyline } from './alignment-geom.mjs';
+import { TOL_TRIM_RESIDUAL } from './geometry-tolerance.mjs';
+
 const num = (v, d) => (Number.isFinite(v) ? v : d);
 const P = (id, type, params, at = {}, material, role) => ({ id, type, params, at, ...(material ? { material } : {}), ...(role ? { role } : {}) });
 
@@ -195,43 +198,63 @@ function retainingWallAlignmentAssembly(p) {
   const stemT = num(p.stemThickness, 300), toe = num(p.toeLength, 600);
   const okIps = Array.isArray(p.ips) && p.ips.length >= 2 && p.ips.every((q) => Array.isArray(q) && q.length >= 2 && Number.isFinite(q[0]) && Number.isFinite(q[1]));
   const L1 = num(p.leg1, 120000), L2 = num(p.leg2, 100000), defl = num(p.deflectionDeg, 30);
-  const rad = (defl * Math.PI) / 180;
-  const ips = okIps ? p.ips.map((q) => [q[0], q[1]]) : [[0, 0], [L1, 0], [L1 + L2 * Math.cos(rad), L2 * Math.sin(rad)]];
+  const rd = (defl * Math.PI) / 180;
+  const ips = okIps ? p.ips.map((q) => [q[0], q[1]]) : [[0, 0], [L1, 0], [L1 + L2 * Math.cos(rd), L2 * Math.sin(rd)]];
+  const curves = Array.isArray(p.curves) ? p.curves : [];
+  // 요소열(직선|원호) — 사전 게이트(교각≤90°·TL합+여유·최소반경 2·baseW) 포함(§1-1)
+  const built = buildElements(ips, curves, { minR: 2 * baseW, baseW });
+  if (!built.ok) return { name: '옹벽 선형 구간', domain: 'civil', parts: [], alignmentErrors: built.errors };
+  const { elements, totalMm, curveTable } = built;
+  const { pts, notes: chordNotes } = chordPolyline(elements);
+  // 정확 마이터 트림(§0.2): 꼭짓점 교각 Δ에서 스트립(중심선 오프셋 o·반폭 h)의 트림
+  //   m = (|o|+h)·tan(|Δ|/2) + TOL_TRIM_RESIDUAL — OBB 겹침 0을 수학으로 보장(갭 최소).
+  const brgOf = (j) => Math.atan2(pts[j + 1][1] - pts[j][1], pts[j + 1][0] - pts[j][0]);
+  const vertexDelta = (j) => {
+    let d = brgOf(j) - brgOf(j - 1);
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d <= -Math.PI) d += 2 * Math.PI;
+    return d;
+  };
+  const miter = (absDelta, o, h) => (Math.abs(o) + h) * Math.tan(absDelta / 2) + TOL_TRIM_RESIDUAL;
+  const oStem = toe + stemT / 2 - baseW / 2; // 스템 중심선의 정렬 중심선 대비 오프셋
   const parts = [];
-  const segments = [];
-  let ch = 0;
-  for (let i = 0; i < ips.length - 1; i++) {
-    const [x1, y1] = ips[i], [x2, y2] = ips[i + 1];
+  for (let j = 0; j < pts.length - 1; j++) {
+    const [x1, y1] = pts[j], [x2, y2] = pts[j + 1];
     const len = Math.hypot(x2 - x1, y2 - y1);
+    const dPrev = j > 0 ? Math.abs(vertexDelta(j)) : 0;
+    const dNext = j < pts.length - 2 ? Math.abs(vertexDelta(j + 1)) : 0;
     const brgDeg = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
-    const trim0 = i > 0 ? baseW : 0, trim1 = i < ips.length - 2 ? baseW : 0;
-    const segLen = len - trim0 - trim1;
-    if (segLen <= 0) continue; // 초단 세그먼트 = 생략(IP 재배치 필요 — 정직 스킵)
     const ux = (x2 - x1) / len, uy = (y2 - y1) / len;
-    // 로컬 관례 = run 템플릿과 동일(x=폭 baseW, y=연장) → rz = brg − 90°.
-    // 저판 중심선(폭 중앙)이 폴리라인에 놓이도록 로컬 (−baseW/2, 0)을 회전해 원점 보정.
     const theta = ((brgDeg - 90) * Math.PI) / 180;
-    const c = Math.cos(theta), s = Math.sin(theta);
-    const off = (lx, ly) => [lx * c - ly * s, lx * s + ly * c];
-    const sx = x1 + ux * trim0, sy = y1 + uy * trim0;
-    const [obx, oby] = off(-baseW / 2, 0);
-    parts.push(P(`seg${i + 1}_base`, 'box', { width: baseW, depth: segLen, height: baseT }, { tx: sx + obx, ty: sy + oby, tz: 0, rz: +brgDeg.toFixed(3) - 90 }, 'concrete', 'base'));
-    const [osx, osy] = off(toe - baseW / 2, 0);
-    parts.push(P(`seg${i + 1}_stem`, 'box', { width: stemT, depth: segLen, height: H - baseT }, { tx: sx + osx, ty: sy + osy, tz: baseT, rz: +brgDeg.toFixed(3) - 90 }, 'concrete', 'wall'));
-    segments.push({ lenMm: len, segLenMm: segLen, bearingDeg: +brgDeg.toFixed(2), chFromMm: ch });
-    ch += len;
+    const cth = Math.cos(theta), sth = Math.sin(theta);
+    const off = (lx) => [lx * cth, lx * sth]; // 로컬 x 오프셋만 회전(로컬 y=0)
+    const place = (id, halfW, o, w, z0, hh, role) => {
+      const t0 = j > 0 ? miter(dPrev, o, halfW) : 0;
+      const t1 = j < pts.length - 2 ? miter(dNext, o, halfW) : 0;
+      const segLen = len - t0 - t1;
+      if (segLen <= 1) return; // 트림 초과 초단 현 — 방어(새그 공차상 미발생)
+      const sx = x1 + ux * t0, sy = y1 + uy * t0;
+      const [bx, by] = off(o - w / 2);
+      parts.push(P(id, 'box', { width: w, depth: segLen, height: hh }, { tx: sx + bx, ty: sy + by, tz: z0, rz: +(brgDeg - 90).toFixed(4) }, 'concrete', role));
+    };
+    place(`seg${j + 1}_base`, baseW / 2, 0, baseW, 0, baseT, 'base');
+    place(`seg${j + 1}_stem`, stemT / 2, oStem, stemT, baseT, H - baseT, 'wall');
   }
   return {
     name: '옹벽 선형 구간', domain: 'civil', parts,
-    alignment: { ips, totalMm: ch, segments, halfWidthMm: baseW / 2, note: 'IP 접합 상세(마이터·코너블록) 후속 — 물량·측점=중심선 연장 기준, 접합부 트림 도식' },
+    alignment: {
+      ips, curves, elements, totalMm, curveTable, halfWidthMm: baseW / 2, chordNotes,
+      note: '곡선=단곡선(완화곡선 보류) · 3D=현 근사(새그 공차 — 평면·DXF는 진짜 원호) · 물량·측점=중심선 호장 기준 · 접합=정확 마이터 트림',
+    },
     // 종단(계획고): 기본=벽정점 일정고(형상 파생). 지반선·계획고 변경=입력 원칙(profileDesign/profileGround)
     profile: {
-      design: Array.isArray(p.profileDesign) ? p.profileDesign : [{ staMm: 0, elevMm: H }, { staMm: ch, elevMm: H }],
+      design: Array.isArray(p.profileDesign) ? p.profileDesign : [{ staMm: 0, elevMm: H }, { staMm: totalMm, elevMm: H }],
       ground: Array.isArray(p.profileGround) ? p.profileGround : null,
       designNote: Array.isArray(p.profileDesign) ? '계획고=입력' : '계획고=벽정점 일정고(형상 파생 기본)',
     },
-    retainingWall: { H: H / 1000, stemThickness: stemT / 1000, baseWidth: baseW / 1000, baseThickness: baseT / 1000, toeLength: toe / 1000, length: ch / 1000 },
-    civilTakeoff: segments.map((sg, i) => ({ id: `rw_seg${i + 1}`, type: 'retaining_wall', H: H / 1000, stemThickness: stemT / 1000, baseWidth: baseW / 1000, baseThickness: baseT / 1000, length: sg.lenMm / 1000 })),
+    retainingWall: { H: H / 1000, stemThickness: stemT / 1000, baseWidth: baseW / 1000, baseThickness: baseT / 1000, toeLength: toe / 1000, length: totalMm / 1000 },
+    // 물량=요소(호장) 기준 — 현 합이 아님(§1-1)
+    civilTakeoff: elements.map((el, i) => ({ id: `rw_el${i + 1}`, type: 'retaining_wall', H: H / 1000, stemThickness: stemT / 1000, baseWidth: baseW / 1000, baseThickness: baseT / 1000, length: el.len / 1000 })),
   };
 }
 

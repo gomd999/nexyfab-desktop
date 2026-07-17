@@ -9,7 +9,7 @@
  * 사전 게이트(§1-1): |Δ|≤90° · TL 합+MIN_TANGENT ≤ IP 간 거리 · R ≥ 최소반경(호출측 전달).
  * 완화곡선(클로소이드)=명시 보류.
  */
-import { EPS, minTangent } from './geometry-tolerance.mjs';
+import { EPS, minTangent, SAG_TOL_DEFAULT, CHORDS_PER_ARC_MAX } from './geometry-tolerance.mjs';
 
 const norm180 = (d) => { let a = d % 360; if (a > 180) a -= 360; if (a <= -180) a += 360; return a; };
 const deg = (r) => (r * 180) / Math.PI;
@@ -99,7 +99,7 @@ export function buildElements(ips, curves = [], opts = {}) {
       const a1 = a0 + (ccw ? 1 : -1) * rad(Math.abs(d));
       const el = { type: 'arc', c, R, a0, a1, ccw, len: arcLen, ch0: ch, ip: i + 1, deltaDeg: d, TL: TL.get(i + 1), BCmm: ch, ECmm: ch + arcLen };
       elements.push(el);
-      curveTable.push({ ip: i + 1, deltaDeg: d, R, TLmm: TL.get(i + 1), Lmm: arcLen, BCmm: ch, ECmm: ch + arcLen });
+      curveTable.push({ ip: i + 1, ipXY: [P[i + 1][0], P[i + 1][1]], deltaDeg: d, R, TLmm: TL.get(i + 1), Lmm: arcLen, BCmm: ch, ECmm: ch + arcLen });
       ch += arcLen;
       cursor = [c[0] + R * Math.cos(a1), c[1] + R * Math.sin(a1)]; // EC
     }
@@ -188,4 +188,51 @@ export function intersectPolyline(elements, pts) {
   const out = [];
   for (let i = 0; i < pts.length - 1; i++) out.push(...intersectSegment(elements, pts[i], pts[i + 1]));
   return out.sort((p, q) => p.sMm - q.sMm);
+}
+
+/**
+ * 요소열 → 현(chord) 폴리라인 (§1-1 3D 형상용). 새그 공차 기반 분할각
+ * θc = 2·acos(1−SAG/R), 세그먼트당 상한 CHORDS_PER_ARC_MAX(초과 시 SAG 상향+정직 고지).
+ * @returns { pts:[[x,y]...], notes:[] } — pts 는 요소 경계·호 분할점 포함(연속 폴리라인)
+ */
+export function chordPolyline(elements, { sagTol = SAG_TOL_DEFAULT } = {}) {
+  const pts = [];
+  const notes = [];
+  const push = (p) => { const l = pts[pts.length - 1]; if (!l || Math.hypot(p[0] - l[0], p[1] - l[1]) > EPS) pts.push([p[0], p[1]]); };
+  for (const el of elements) {
+    if (el.type === 'line') { push(el.p0); push(el.p1); continue; }
+    let thetaC = 2 * Math.acos(Math.max(-1, Math.min(1, 1 - sagTol / el.R)));
+    let n = Math.ceil(Math.abs(el.a1 - el.a0) / thetaC);
+    if (n > CHORDS_PER_ARC_MAX) {
+      n = CHORDS_PER_ARC_MAX;
+      const sagUsed = el.R * (1 - Math.cos(Math.abs(el.a1 - el.a0) / n / 2));
+      notes.push(`IP${el.ip}: 현 분할 상한 ${CHORDS_PER_ARC_MAX} — 새그 공차 ${Math.round(sagUsed)}mm 로 상향(성능 예산 §A)`);
+    }
+    for (let k = 0; k <= n; k++) {
+      const a = el.a0 + ((el.a1 - el.a0) * k) / n;
+      push([el.c[0] + el.R * Math.cos(a), el.c[1] + el.R * Math.sin(a)]);
+    }
+  }
+  return { pts, notes };
+}
+
+/**
+ * 체이니지 윈도 [s0,s1] 로 요소열 클리핑(§③ 시트 분할) — 부분 호는 각도 범위로 정확 절단.
+ * @returns 서브 요소열(ch0 는 원 체이니지 유지)
+ */
+export function clipElements(elements, s0, s1) {
+  const out = [];
+  for (const el of elements) {
+    const e0 = el.ch0, e1 = el.ch0 + el.len;
+    if (e1 <= s0 + EPS || e0 >= s1 - EPS) continue;
+    const t0 = Math.max(0, s0 - e0), t1 = Math.min(el.len, s1 - e0);
+    if (el.type === 'line') {
+      const ux = (el.p1[0] - el.p0[0]) / el.len, uy = (el.p1[1] - el.p0[1]) / el.len;
+      out.push({ ...el, p0: [el.p0[0] + ux * t0, el.p0[1] + uy * t0], p1: [el.p0[0] + ux * t1, el.p0[1] + uy * t1], len: t1 - t0, ch0: e0 + t0 });
+    } else {
+      const sgn = el.ccw ? 1 : -1;
+      out.push({ ...el, a0: el.a0 + sgn * (t0 / el.R), a1: el.a0 + sgn * (t1 / el.R), len: t1 - t0, ch0: e0 + t0 });
+    }
+  }
+  return out;
 }

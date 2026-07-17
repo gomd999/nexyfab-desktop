@@ -21,7 +21,7 @@ import { structuralCheck } from './structural.mjs';
 import { supportCheck } from './support-check.mjs';
 import { autoRoutePipes, pipeObstacleCheck, pipeCrossCheck } from './pipe-route.mjs';
 import { boxPartsInterference } from './obb2d.mjs';
-import { TOL_CONTACT } from './geometry-tolerance.mjs';
+import { TOL_CONTACT, PARTS_BUDGET } from './geometry-tolerance.mjs';
 
 // 부품 → 계통색 (service/role 우선, 없으면 type). 계통색 GA 3D·도면 색분류 공용.
 export const SERVICE_COL = {
@@ -325,7 +325,11 @@ function pipeFeatureScad(features) {
  */
 export function buildAssembly(asm) {
   if (!asm || !Array.isArray(asm.parts) || asm.parts.length === 0) {
-    return { ok: false, gateErrors: ['assembly: parts[] 비어있음'], interferences: [] };
+    return { ok: false, gateErrors: asm?.alignmentErrors?.length ? asm.alignmentErrors : ['assembly: parts[] 비어있음'], interferences: [] };
+  }
+  // 성능 예산(§A) — km 곡선 현 분할 등으로 부품 폭증 시 정직 거부(구간 분할 설계 유도)
+  if (asm.parts.length > PARTS_BUDGET) {
+    return { ok: false, gateErrors: [`부품 ${asm.parts.length} > 예산 ${PARTS_BUDGET} — 구간 분할 설계 필요(성능 예산 §A)`], interferences: [] };
   }
   const gateErrors = [];
   const bodies = [];

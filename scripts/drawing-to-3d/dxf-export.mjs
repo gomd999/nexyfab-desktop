@@ -8,7 +8,8 @@
  * 치수는 선+문자 단순표기(연관 치수 아님 — 명시). 검증: 섹션 균형·레이어 참조 self-test.
  */
 import { partAabb } from './reconstruct.mjs';
-import { pickScale, staLabel, staStep, chainPoint } from './package.mjs';
+import { pickScale, staLabel, staStep } from './package.mjs';
+import { chainAt } from './alignment-geom.mjs';
 
 const g = (code, val) => `${code}\n${val}\n`;
 // 대축척(km급) 주석 크기 — 모델공간 1:1(mm) 유지, 문자고·오프셋만 도면 축척(1:N)에 비례.
@@ -31,6 +32,9 @@ function box(part) {
 const line = (layer, x1, y1, x2, y2, ltype) =>
   g(0, 'LINE') + g(8, layer) + (ltype ? g(6, ltype) : '') + g(10, x1) + g(20, y1) + g(30, 0) + g(11, x2) + g(21, y2) + g(31, 0);
 const circle = (layer, x, y, r) => g(0, 'CIRCLE') + g(8, layer) + g(10, x) + g(20, y) + g(30, 0) + g(40, r);
+// R12 ARC — 각도는 항상 CCW(50=시작, 51=끝, deg). cw 호는 각도 스왑으로 방출(§F).
+const arcEnt = (layer, cx, cy, r, a0deg, a1deg, ltype) =>
+  g(0, 'ARC') + g(8, layer) + (ltype ? g(6, ltype) : '') + g(10, cx) + g(20, cy) + g(30, 0) + g(40, r) + g(50, a0deg) + g(51, a1deg);
 const text = (layer, x, y, h, s) => g(0, 'TEXT') + g(8, layer) + g(10, x) + g(20, y) + g(30, 0) + g(40, h) + g(1, s);
 const solid = (layer, x, y, dx, dy) => // SOLID 정점 순서: 3·4번째 스왑 (DXF 관례)
   g(0, 'SOLID') + g(8, layer) + g(10, x) + g(20, y) + g(30, 0) + g(11, x + dx) + g(21, y) + g(31, 0) + g(12, x) + g(22, y + dy) + g(32, 0) + g(13, x + dx) + g(23, y + dy) + g(33, 0);
@@ -155,32 +159,55 @@ function siteEntities(assembly, TH) {
  *  alignment(IP 폴리라인)가 있으면 중심선·벽 밴드(±halfW)·IP·STA 를 폴리라인 기준으로. */
 export function dxfCivilPlan(assembly) {
   const al = assembly.alignment;
-  if (al?.ips?.length) {
-    const pts = al.ips;
-    const x0 = Math.min(...pts.map((q) => q[0])), x1 = Math.max(...pts.map((q) => q[0]));
-    const y0 = Math.min(...pts.map((q) => q[1])), y1 = Math.max(...pts.map((q) => q[1]));
+  if (al?.elements?.length) {
+    const deg = (r) => ((r * 180) / Math.PI + 360) % 360;
+    // 경계: 직선 끝점 + 호 8점 샘플
+    const bp = [];
+    for (const el2 of al.elements) {
+      if (el2.type === 'line') bp.push(el2.p0, el2.p1);
+      else for (let k = 0; k <= 8; k++) { const a = el2.a0 + (el2.a1 - el2.a0) * (k / 8); bp.push([el2.c[0] + el2.R * Math.cos(a), el2.c[1] + el2.R * Math.sin(a)]); }
+    }
+    const x0 = Math.min(...bp.map((q) => q[0])), x1 = Math.max(...bp.map((q) => q[0]));
+    const y0 = Math.min(...bp.map((q) => q[1])), y1 = Math.max(...bp.map((q) => q[1]));
     const { N, K } = annotK(Math.max(1, x1 - x0), Math.max(1, y1 - y0));
     const TH = 200 * K, hw = al.halfWidthMm ?? 1000;
     let e = '';
-    for (let i = 0; i < pts.length - 1; i++) {
-      const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
-      const L = Math.hypot(bx - ax, by - ay) || 1;
-      const nx = -(by - ay) / L, ny = (bx - ax) / L;
-      e += line('AXIS', ax, ay, bx, by, 'CENTER');
-      for (const sgn of [1, -1]) e += line('WALL', ax + sgn * nx * hw, ay + sgn * ny * hw, bx + sgn * nx * hw, by + sgn * ny * hw);
+    for (const el2 of al.elements) {
+      if (el2.type === 'line') {
+        const L = el2.len || 1;
+        const nx = -(el2.p1[1] - el2.p0[1]) / L, ny = (el2.p1[0] - el2.p0[0]) / L;
+        e += line('AXIS', el2.p0[0], el2.p0[1], el2.p1[0], el2.p1[1], 'CENTER');
+        for (const sgn of [1, -1]) e += line('WALL', el2.p0[0] + sgn * nx * hw, el2.p0[1] + sgn * ny * hw, el2.p1[0] + sgn * nx * hw, el2.p1[1] + sgn * ny * hw);
+      } else {
+        const [aS, aE] = el2.ccw ? [deg(el2.a0), deg(el2.a1)] : [deg(el2.a1), deg(el2.a0)];
+        e += arcEnt('AXIS', el2.c[0], el2.c[1], el2.R, aS, aE, 'CENTER');
+        for (const dR of [hw, -hw]) e += arcEnt('WALL', el2.c[0], el2.c[1], el2.R + dR, aS, aE);
+      }
     }
     const step = staStep(al.totalMm);
     for (let s = 0; s <= al.totalMm + 1; s += step) {
       const t = Math.min(s, al.totalMm);
-      const { p, dir } = chainPoint(pts, t);
+      const { p, dir } = chainAt(al.elements, t);
       const nx = -dir[1], ny = dir[0];
       e += line('DIM', p[0] - nx * (hw + 300 * K), p[1] - ny * (hw + 300 * K), p[0] + nx * (hw + 300 * K), p[1] + ny * (hw + 300 * K));
       e += text('DIM', p[0] + nx * (hw + 450 * K), p[1] + ny * (hw + 450 * K), TH, `STA ${staLabel(t)}`);
       if (t >= al.totalMm) break;
     }
-    for (let i = 1; i < pts.length - 1; i++) e += circle('AXIS', pts[i][0], pts[i][1], 120 * K) + text('AXIS', pts[i][0] + 160 * K, pts[i][1] + 160 * K, TH, `IP${i}`);
+    for (const ct of al.curveTable ?? []) {
+      if (ct.ipXY) e += circle('AXIS', ct.ipXY[0], ct.ipXY[1], 120 * K) + text('AXIS', ct.ipXY[0] + 160 * K, ct.ipXY[1] + 160 * K, TH, `IP${ct.ip} R=${Math.round(ct.R)}`);
+      for (const [sm, lab] of [[ct.BCmm, 'BC'], [ct.ECmm, 'EC']]) {
+        const { p, dir } = chainAt(al.elements, sm);
+        const nx = -dir[1], ny = dir[0];
+        e += line('DIM', p[0] - nx * (hw + 200 * K), p[1] - ny * (hw + 200 * K), p[0] + nx * (hw + 200 * K), p[1] + ny * (hw + 200 * K));
+        e += text('DIM', p[0] - nx * (hw + 400 * K), p[1] - ny * (hw + 400 * K), TH * 0.85, `${lab} ${staLabel(sm)}`);
+      }
+    }
+    for (let i = 1; i < (al.ips?.length ?? 0) - 1; i++) {
+      if ((al.curveTable ?? []).some((ct) => ct.ip === i)) continue;
+      e += circle('AXIS', al.ips[i][0], al.ips[i][1], 100 * K) + text('AXIS', al.ips[i][0] + 140 * K, al.ips[i][1] + 140 * K, TH, `IP${i}`);
+    }
     e += siteEntities(assembly, TH);
-    e += text('TXT', x0, y0 - 900 * K, TH, `CIVIL ALIGNMENT PLAN (mm) - SCALE 1:${N} (annot) - band=schematic +/-${Math.round(hw)}mm - non-statutory`);
+    e += text('TXT', x0, y0 - 900 * K, TH, `CIVIL ALIGNMENT PLAN (mm) - SCALE 1:${N} (annot) - band=schematic +/-${Math.round(hw)}mm - arcs=true R - non-statutory`);
     return shell(e);
   }
   const parts = (assembly.parts ?? []).map((p) => ({ p, b: box(p) }));
@@ -274,7 +301,7 @@ if (isMain) {
     const sec = (dxf.match(/^SECTION$/gm) ?? []).length, end = (dxf.match(/^ENDSEC$/gm) ?? []).length;
     const eof = dxf.trimEnd().endsWith('EOF');
     const entSec = dxf.slice(dxf.indexOf('ENTITIES'));
-    const ents = (entSec.match(/^(LINE|CIRCLE|TEXT|SOLID)$/gm) ?? []).length;
+    const ents = (entSec.match(/^(LINE|CIRCLE|TEXT|SOLID|ARC)$/gm) ?? []).length;
     const layersUsed = [...new Set([...entSec.matchAll(/^8\n(\w+)$/gm)].map((m) => m[1]))];
     const undeclared = layersUsed.filter((l) => !LAYERS.some(([n]) => n === l));
     const ok = sec === end && eof && ents >= minEnt && undeclared.length === 0;
@@ -291,6 +318,12 @@ if (isMain) {
     check('interior studio+MEP', dxfInteriorPlan(asm, built.pipes?.routes), 40);
   }
   check('civil 500m run+STA', dxfCivilPlan(buildAssemblyTemplate('civil', 'retaining_wall_run', { length: 500000 })), 20);
+  {
+    const curved = dxfCivilPlan(buildAssemblyTemplate('civil', 'retaining_wall_alignment', { curves: [{ ip: 1, R: 30000 }] }));
+    const arcs = (curved.match(/^ARC$/gm) ?? []).length;
+    console.log(`${arcs >= 3 ? 'OK' : 'FAIL'} civil alignment R30m: ARC ${arcs}본(중심선+밴드 2)`);
+    check('civil alignment+curve', curved, 20);
+  }
   console.log(`dxf-export self-test: ${pass}/${pass + fail}`);
   if (fail) process.exit(1);
 }

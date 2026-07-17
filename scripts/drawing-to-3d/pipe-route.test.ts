@@ -419,6 +419,71 @@ describe('무결성 규약 0단계 — OBB-SAT·chainage 요소열 (폐형 앵�
     expect(buildElements([[0, 0], [1500, 0], [1500, 1500]], [{ ip: 1, R: 2000 }], {}).ok).toBe(false);
     expect(buildElements([[0, 0], [5000, 0], [1000, -100]], [{ ip: 1, R: 500 }], {}).ok).toBe(false); // 교각 > 90°
   });
+  it('1단계 곡선 템플릿: R30m — TL·CL 폐형·OBB 전수 0·곡선표·진짜 원호·DXF ARC', () => {
+    const c = buildAssemblyTemplate('civil', 'retaining_wall_alignment', { curves: [{ ip: 1, R: 30000 }] });
+    const ct = c.alignment.curveTable[0];
+    expect(Math.round(ct.TLmm)).toBe(Math.round(30000 * Math.tan((15 * Math.PI) / 180)));
+    expect(Math.abs(ct.Lmm - 30000 * (30 * Math.PI) / 180)).toBeLessThan(0.001);
+    expect(Math.abs(ct.BCmm + ct.Lmm - ct.ECmm)).toBeLessThan(1e-6); // 원값 자기정합
+    const built = buildAssembly(c);
+    expect(built.ok).toBe(true);
+    expect(built.interferences).toEqual([]); // 현 마이터 트림 → OBB 겹침 0
+    const html = ga2dDrawing(c, { title: 'c', domain: 'civil' });
+    expect(html).toMatch(/<path d="M [\d. ]+A /); // 평면=진짜 원호
+    expect(html).toContain('곡선표');
+  });
+  // §G 무작위 기하 감사 — 결정론 PRNG(시드 재현), 불변식: 게이트 통과·Σ요소장=총연장·
+  // 접선 연속·곡선표 원값 자기정합 (100케이스) + 실빌드 OBB 간섭 0 (10케이스)
+  it('무작위 선형 100케이스 기하 불변식 + 10케이스 실빌드 간섭 0', () => {
+    let seed = 0x9e3779b9;
+    const rnd = () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    for (let k = 0; k < 100; k++) {
+      const nIp = 3 + Math.floor(rnd() * 4);
+      const ips = [[0, 0]];
+      let brg = 0;
+      for (let i = 1; i < nIp; i++) {
+        if (i > 1) brg += (rnd() - 0.5) * (Math.PI / 1.6); // ±56°
+        const leg = 30000 + rnd() * 170000;
+        const [px, py] = ips[i - 1];
+        ips.push([px + Math.cos(brg) * leg, py + Math.sin(brg) * leg]);
+      }
+      const curves = [];
+      for (let i = 1; i < nIp - 1; i++) {
+        if (rnd() < 0.6) {
+          const legA = Math.hypot(ips[i][0] - ips[i - 1][0], ips[i][1] - ips[i - 1][1]);
+          const legB = Math.hypot(ips[i + 1][0] - ips[i][0], ips[i + 1][1] - ips[i][1]);
+          const b1 = Math.atan2(ips[i][1] - ips[i - 1][1], ips[i][0] - ips[i - 1][0]);
+          const b2 = Math.atan2(ips[i + 1][1] - ips[i][1], ips[i + 1][0] - ips[i][0]);
+          let d = Math.abs(b2 - b1); if (d > Math.PI) d = 2 * Math.PI - d;
+          if (d < 0.02) continue;
+          const R = Math.max(4000, (0.3 * Math.min(legA, legB)) / Math.tan(d / 2));
+          curves.push({ ip: i, R });
+        }
+      }
+      const r = buildElements(ips, curves, { minR: 4000, baseW: 2000 });
+      if (!r.ok) continue; // 게이트 거부는 정당(무작위 조합) — 통과 케이스만 불변식 검사
+      const sum = r.elements.reduce((s, e) => s + e.len, 0);
+      expect(Math.abs(sum - r.totalMm)).toBeLessThan(1e-6);
+      // 접선 연속은 호 경계(BC·EC)만 — 곡선 없는 IP 는 의도된 꺾임(불연속이 정상)
+      for (const e of r.elements.filter((q) => q.type === 'arc')) {
+        for (const j of [e.BCmm, e.ECmm]) {
+          if (j <= 1e-6 || j >= r.totalMm - 1e-6) continue;
+          const d1 = chainAt(r.elements, j - 0.001).dir, d2 = chainAt(r.elements, j + 0.001).dir;
+          const ang = Math.abs(Math.atan2(d1[0] * d2[1] - d1[1] * d2[0], d1[0] * d2[0] + d1[1] * d2[1])) * 180 / Math.PI;
+          expect(ang).toBeLessThan(0.01);
+        }
+      }
+      for (const ct of r.curveTable) expect(Math.abs(ct.BCmm + ct.Lmm - ct.ECmm)).toBeLessThan(1e-6);
+      if (k < 10) {
+        const asm = buildAssemblyTemplate('civil', 'retaining_wall_alignment', { ips, curves });
+        if (asm.parts.length && asm.parts.length <= 600) {
+          const built = buildAssembly(asm);
+          expect(built.ok).toBe(true);
+          expect(built.interferences).toEqual([]);
+        }
+      }
+    }
+  });
 });
 
 describe('대축척 도면 코어 — km급 토목·조경·건축 (260717)', () => {
