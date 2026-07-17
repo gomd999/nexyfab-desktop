@@ -29,6 +29,10 @@ type FromTextModule = {
 // MAX_TOKENS 원인은 2.5 "thinking"(출력토큰 소진) → thinkingBudget:0 으로 차단.
 // + response_schema 없이 free-form(플랫 스키마 토큰폭주 회피). flash 고정(속도).
 const GEMINI_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 12000, thinkingBudget: 0 };
+// claims 추출용: thinkingBudget:0 이면 flash 가 조용히 빈 claims 를 낸다(260717 라이브 프로브 확인)
+// — 출력이 작아 MAX_TOKENS 위험이 없으므로 thinking 기본값으로 호출.
+// (thinking 토큰이 maxOutputTokens 를 소모하므로 예산은 넉넉히 — 4096은 MAX_TOKENS 절단 실측)
+const CLAIMS_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 12000 };
 type AssemblyModule = { buildAssembly: (asm: Assembly) => BuiltAssembly; autoPlaceCorrect: (asm: Assembly) => { assembly: Assembly; corrections: Array<Record<string, unknown>> } };
 
 let _ft: FromTextModule | null = null;
@@ -140,7 +144,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     try {
       const p2 = join(process.cwd(), 'scripts', 'drawing-to-3d', 'intent-match.mjs');
       const im = (await import(/* webpackIgnore: true */ pathToFileURL(p2).href)) as IMMod;
-      const { data: cd } = await mods2.ft.callGeminiJson(im.CLAIMS_PROMPT(description2), im.CLAIMS_SCHEMA, GEMINI_OPTS as never);
+      const { data: cd } = await mods2.ft.callGeminiJson(im.CLAIMS_PROMPT(description2), im.CLAIMS_SCHEMA, CLAIMS_OPTS as never);
       const claims = (cd as { claims?: unknown[] })?.claims ?? [];
       if (!claims.length) return null;
       const base = im.verifyClaims(claims, asm2);

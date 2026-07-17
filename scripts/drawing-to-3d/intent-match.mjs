@@ -34,19 +34,21 @@ export const CLAIMS_SCHEMA = {
   },
 };
 
-export const CLAIMS_PROMPT = (desc) => `아래 제품 설명문에서 "완성된 3D 형상을 재서 검증할 수 있는" 요구만 추출하라.
-종류: count(수량 — "다리 4개"), dimension(치수 — "높이 700"), exists(존재 — "선반이 있어야"), relation(배치 — "상판이 다리 위에").
+// ⚠️ 이 프롬프트는 thinking 기본값으로 호출할 것 — thinkingBudget:0 은 flash 가
+// 조용히 {"claims":[]} 를 내고 pro 는 400 거부(260717 라이브 프로브로 확인).
+export const CLAIMS_PROMPT = (desc) => `아래 제품 설명문에 명시된 요구사항을 항목별로 추출하라.
+종류: count(수량 요구 — 예 "다리 4개" → count:4), dimension(치수 요구 — 예 "높이 700" → value:700, unit, dim), exists(부품 존재 요구 — 예 "선반이 있어야"), relation(배치 요구 — 예 "상판이 다리 위에" → part2, relation은 on|above|inside|beside).
 규칙:
-- 설명문에 명시된 것만. 추측·상식 보충 금지(명시 안 된 요구를 만들지 마라).
-- text 에 원문 해당 구절을 그대로 인용. 치수는 value+unit(원문 단위 그대로).
-- part 는 대상 키워드 1단어(예: "다리", "상판", "벽").
-- 검증 불가능한 요구(재질감·용도·미감)는 추출하지 마라.
+- 설명문에 명시된 것만 추출(추측·상식 보충 금지). 재질·용도·미감 요구는 제외.
+- text = 원문 해당 구절 그대로 인용. 치수는 value 숫자 + unit(mm|cm|m|km, 원문 단위).
+- part = 대상 키워드 1단어(예 "다리", "상판", "벽"). 해당 종류에 필요한 필드만 채워라.
 설명문: "${desc}"`;
 
 // 한국어/영어 키워드 → role/type 후보 (부품 매칭 사전 — 확장 지점)
 const KW_MAP = [
   [/다리|leg|포스트|post|기둥|column/i, ['column', 'leg', 'post']],
   [/상판|천판|top|판재|plate/i, ['table', 'top', 'plate', 'counter']],
+  [/테이블|table|책상|desk/i, ['table', 'desk', 'top']],
   [/옹벽|retaining/i, ['retaining', 'stem']], // 구체어 우선(일반 '벽'보다 먼저)
   [/벽|wall/i, ['wall']],
   [/문|door/i, ['door']],
@@ -149,11 +151,15 @@ export function verifyClaims(claims, assembly) {
         const tol = Math.max(wantMm * 0.02, 5);
         const targets = c.part ? matchParts(parts, c.part) : parts;
         if (!targets.length && c.part) {
-          // 부품 미매칭 → 전체 엔벨로프 대조 폴백(연장·전폭 류)
-          const all = parts.map(dimsOf);
-          const envAll = [0, 1, 2].map((k) => Math.max(...all.map((d) => d.env[k]))); // 근사
-          r.verdict = envAll.some((v) => Math.abs(v - wantMm) <= tol) ? 'MATCH' : 'UNVERIFIABLE';
-          r.note = `부품 '${c.part}' 미매칭 — 엔벨로프 폴백`;
+          // 부품 미매칭 → **전체 조립 외형(월드 AABB union)** 대조 폴백 — "테이블 높이 720"처럼
+          // 대상어가 조립 전체를 가리키는 경우(부품별 최대치는 다리 690 등으로 오판)
+          const world = parts.map((p) => placedAabb(p))
+            .filter((b) => [0, 1, 2].every((k) => Number.isFinite(b.min[k]) && Number.isFinite(b.max[k])));
+          if (world.length) {
+            const envAsm = [0, 1, 2].map((k) => Math.max(...world.map((b) => b.max[k])) - Math.min(...world.map((b) => b.min[k])));
+            r.verdict = envAsm.some((v) => Math.abs(v - wantMm) <= tol) ? 'MATCH' : 'UNVERIFIABLE';
+            r.note = `부품 '${c.part}' 미매칭 — 전체 외형 ${envAsm.map((v) => Math.round(v)).join('×')}mm 대조`;
+          } else r.note = `부품 '${c.part}' 미매칭`;
           results.push(r); continue;
         }
         // 후보 풀 — 부품 자체 치수 + **월드 상면고**(예: "테이블 높이 730"=상판 상면−지면) +
