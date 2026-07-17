@@ -101,3 +101,18 @@ gemini-2.5-flash/pro가 union 스키마(전 필드)에서 엉뚱한 필드를 �
 2. l_bracket thickness·flange BCD 표기 프롬프트 보강 (undefined 다발 구간)
 3. shape-generator intent 스키마 정식 연결 (`to-intent.mjs`가 op:subtract 브리지 — 이미 있음)
 4. 실도면(AK 랙 DWG 등) 소량 수기 GT로 실환경 baseline
+
+## 위시빌더 교훈 일반화 배치 (2026-07-17 — #2~#9)
+
+위시빌더 스키드/탱크 실전(260717)에서 사람이 잡던 결함을 제품 경로가 잡도록 이식:
+
+- **설계 타당성 그물 상시 배선(#2)**: `buildAssembly`가 `supportCheck`(부유=설치 불가)·배관 관통/교차를 항상 실행 — `{ support, pipes, designOk }` 반환. preset/assemble/package 라우트와 /design 그물 패널(④b 지지)에 노출.
+- **routeGate 비우회화(#3)**: `normalizeRoute`(중복 제거·대각 축분해·동일축 병합, startAxis/endAxis=스텁 축방향 진입 엘보 자동) — `routeFeatures` 기본 적용, 백트랙(역주행) 게이트 추가. 남는 문제는 여전히 거부(adjustments로 정직 보고).
+- **부재별 장애물(#4)**: `obstaclesFromAssembly`(부품=부재별, cylinder/tube 축정렬은 round x|y|z 실린더 인식 — y축 추가). 다본 장비 단일 env 근사 금지 규칙의 코드화.
+- **면접촉 매립 제안(#5)**: supportCheck가 0겹침 얹힘 쌍에 `faceContacts[].suggestTzMm`(-2mm) 반환. autoPlaceCorrect 드롭도 부품 위엔 0.5mm 매립 착지.
+- **배관 어셈블리 승격(#6)**: `assembly.pipes[] = { id, from:'부품id.면', to, d, service }` → `autoRoutePipes`(직결 순열+오버헤드 코리도 후보 → 게이트·관통·교차 전수 검사, 전부 불합격=정직 에러) → GA 3D 계통색·2D 폴리라인·SCAD·STEP 자동 포함. textToAssembly 스키마에도 pipes(+box/cylinder·service) 개방 — AI는 연결 계획만, 경로는 결정론.
+- **산출물 정합 게이트(#7)**: package 라우트가 전 HTML에 `nf-basis` 메타+REV 푸터 스탬프(`packageStamp`) 후 `packageConsistencyCheck`로 각 문서가 실제 인쇄한 질량·외형(H)을 회수해 기준과 대조(유체 포함 어셈블리는 자재↔운전질량 차이 정직 스킵). 위시빌더 "카드=REV B vs 도면=REV C" 재발 방지.
+- **질량 자기정합(#8)**: structuralCheck `massBreakdown`(최대잔여법 — 표시값 합계=총계 보장)+구조 리포트 ② 질량 내역 표. 845≠835류 자기모순 차단.
+- **생성기 스캐폴드(#9)**: 패키지 zip에 `generator.mjs` 동봉 — 어셈블리 JSON 내장 단일 소스, 실행하면 공개 API로 전 산출물 재생성(수기 전사 드리프트 0).
+
+테스트: `pipe-route.test.ts` 40+ (vitest) · `assembly.test.mjs` 8 (node --test). ⚠ scripts 테스트는 `.test.ts`만 vitest가 수집.

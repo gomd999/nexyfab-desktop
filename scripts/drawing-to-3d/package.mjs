@@ -133,8 +133,9 @@ function landscapePlanSvg(parts) {
 }
 
 /** 어셈블리 → 2D GA 도면 HTML (정면·평면 2뷰 + 전체치수 + 밸룬 + BOM, 인쇄양식).
- *  domain='building' → 축선 구조평면 추가 / 'landscape' → 배치 평면도 추가 (관례도면 모드 ③) */
-export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA-001', domain } = {}) {
+ *  domain='building' → 축선 구조평면 추가 / 'landscape' → 배치 평면도 추가 (관례도면 모드 ③)
+ *  pipes = buildAssembly().pipes.routes — 라우터의 단일 결과를 그대로 투영(재계산 금지 — 정합) */
+export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA-001', domain, pipes } = {}) {
   const parts = (assembly.parts ?? []).map((p, i) => ({ p, i, box: placed(p), st: styleOf(p) }));
   if (!parts.length) return '<!DOCTYPE html><body>빈 어셈블리</body>';
   const bx0 = Math.min(...parts.map(o => o.box.x)), bx1 = Math.max(...parts.map(o => o.box.x + o.box.dx));
@@ -158,9 +159,21 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
     // PLAN (x→right, y→down) at side
     rects.push(`<rect x="${px(box.x, sx0)}" y="${(oy + (box.y - by0) * S).toFixed(1)}" width="${(box.dx * S).toFixed(1)}" height="${(box.dy * S).toFixed(1)}" fill="${st.c}22" stroke="${st.c}" stroke-width=".9"/>`);
   }
+  // 배관 오버레이(#6): FRONT(x,z)·PLAN(x,y) 폴리라인 — 라우팅된 실경로만(재계산 없음)
+  const pipeLines = [];
+  for (const rt of pipes ?? []) {
+    const c = rt.col ?? '#64748b';
+    const fPts = rt.pts.map((p) => `${px(p[0], ox)},${pz(p[2])}`).join(' ');
+    const pPts = rt.pts.map((p) => `${px(p[0], sx0)},${(oy + (p[1] - by0) * S).toFixed(1)}`).join(' ');
+    pipeLines.push(`<polyline points="${fPts}" fill="none" stroke="${c}" stroke-width="1.6" stroke-linejoin="round" opacity=".85"/>`);
+    pipeLines.push(`<polyline points="${pPts}" fill="none" stroke="${c}" stroke-width="1.4" stroke-linejoin="round" opacity=".85"/>`);
+    const [lx, ly, lz] = rt.pts[0];
+    pipeLines.push(`<text x="${px(lx, ox)}" y="${(+pz(lz) - 4).toFixed(1)}" font-size="7.5" fill="${c}" font-family="sans-serif">${esc(rt.label ?? '')}</text>`);
+  }
   const dimH = (x1, x2, y, t) => `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#dc2626" stroke-width=".6"/><text x="${(+x1 + +x2) / 2}" y="${+y - 3}" font-size="9.5" text-anchor="middle" fill="#dc2626">${t}</text>`;
   const dimV = (x, y1, y2, t) => `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#dc2626" stroke-width=".6"/><text x="${+x - 4}" y="${(+y1 + +y2) / 2}" font-size="9.5" text-anchor="end" fill="#dc2626" transform="rotate(-90 ${+x - 4} ${(+y1 + +y2) / 2})">${t}</text>`;
-  const svg = `<svg viewBox="0 0 ${sx0 + fw + 60} ${oy + fh + pd + 60}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff">
+  const pipeHead = pipes?.length ? 90 : 0; // 오버헤드 코리도 배관이 정면도 위로 나가는 만큼 캔버스 확장
+  const svg = `<svg viewBox="0 ${-pipeHead} ${sx0 + fw + 60} ${oy + fh + pd + 60 + pipeHead}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff">
   <text x="${ox}" y="${oy - 10}" font-size="12" font-weight="700" font-family="sans-serif">정면도 FRONT</text>
   <text x="${sx0}" y="${oy - 10}" font-size="12" font-weight="700" font-family="sans-serif">평면도 PLAN</text>
   <rect x="${ox}" y="${oy}" width="${fw}" height="${fh}" fill="none" stroke="#0f172a" stroke-width="1.4"/>
@@ -168,6 +181,7 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   ${dimH(px(bx0, ox), px(bx1, ox), (oy + fh + 18).toFixed(1), `${Math.round(W)}`)}
   ${dimV((ox - 18).toFixed(1), pz(bz1), pz(bz0), `${Math.round(H)} (H)`)}
   ${dimH(px(bx0, sx0), px(bx1, sx0), (oy + pd + 18).toFixed(1), `${Math.round(W)}`)}
+  ${pipeLines.join('')}
   ${balloons.join('')}</svg>`;
   // 관례도면 모드 (③): 건축=축선 구조평면 · 조경=배치 평면도
   let domainSvg = '';
@@ -192,6 +206,11 @@ export function structuralReport(assembly, { title = '구조/응력 검토', mem
   const f = (n, d = 1) => (typeof n === 'number' ? n.toFixed(d) : '-');
   const v = ok => ok ? '<span style="color:#16a34a;font-weight:700">적합 ✓</span>' : '<span style="color:#dc2626;font-weight:700">검토 ✕</span>';
   const supRows = s.supports.map((x, i) => `<tr><td>지지 ${i + 1}</td><td>(${Math.round(x.pos[0])}, ${Math.round(x.pos[1])})</td><td>${f(x.loadKg)} kg${x.uplift ? ' ⚠uplift' : ''}</td></tr>`).join('');
+  // ② 질량 내역 — 표시값 합계=총계 정합(최대잔여법, 위시빌더 845≠835 자기모순 방지)
+  const massRows = (s.massBreakdown ?? []).map((r) => `<tr><td style="text-align:left">${esc(r.id)}</td><td>${f(r.massKg)}</td></tr>`).join('');
+  const massTable = massRows ? `<h2>② 질량 내역 (부품별)</h2><table><tr><th>부품</th><th>질량(kg)</th></tr>${massRows}
+<tr style="font-weight:700;background:#f8fafc"><td>합계</td><td>${f(s.totalMassKg)}</td></tr></table>
+<div class="note">표시값(0.1kg) 합계 = 총계 ${s.massSumCheck ? '정합 ✓ (최대잔여법 라운딩)' : '⚠불일치 — 산출 버그, 신뢰 금지'}</div>` : '';
   const mem = s.member ? `<h2>③ 부재 검토</h2><table><tr><th>단면</th><th>스팬</th><th>σ</th><th>허용</th><th>이용률</th><th>δ</th><th>판정</th></tr>
   <tr><td>${esc(s.member.section)}</td><td>${s.member.spanMm}mm</td><td>${f(s.member.sigmaMPa)} MPa</td><td>${f(s.member.allowMPa)} MPa</td><td>${f(s.member.utilization, 2)}</td><td>${f(s.member.deflMm, 2)}/${f(s.member.deflLimitMm)}mm</td><td>${v(s.member.pass)}</td></tr></table>` : '';
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>
@@ -203,9 +222,54 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 <body>${PRINT_BAR('구조/응력 검토 (A4)')}<div class="sheet"><div class="hd"><h1>${esc(title)} — 구조/응력 자동검토</h1><div class="s">nexyfab structural · 형상기반 자동산출 · ${esc(s.method)}</div></div>
 <div class="card">총 질량 <b>${f(s.totalMassKg)} kg</b> · 무게중심 높이 <b>${f(s.cgHeightM, 2)} m</b> · 최대 지지반력 <b>${f(s.maxSupportKg)} kg</b></div>
 <h2>① 지지 반력</h2><table><tr><th>지지점</th><th>위치(x,y)</th><th>반력</th></tr>${supRows}</table>
-${mem}<h2>④ 전도 (Tip-over)</h2><table><tr><th>검토</th><th>결과</th><th>기준</th><th>판정</th></tr>
+${massTable}${mem}<h2>④ 전도 (Tip-over)</h2><table><tr><th>검토</th><th>결과</th><th>기준</th><th>판정</th></tr>
 <tr><td>정적 전도각</td><td>${f(s.tipover.staticAngleDeg, 1)}°</td><td>≥15°</td><td>${v(s.tipover.staticAngleDeg >= 15)}</td></tr>
 <tr><td>${s.tipover.seismicG}g 전도 FS</td><td>${f(s.tipover.seismicFS, 2)}</td><td>≥1.5</td><td>${v(s.tipover.seismicFS >= 1.5)}</td></tr></table>
 ${s.warnings.length ? `<div class="card warn"><b>⚠ 경고:</b><ul style="margin:4px 0">${s.warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>` : '<div class="card">경고 없음 — 자동검토 기준 이내.</div>'}
 <div class="note">⚠ 개념 해석(비법정) · 강체/단순보 근사 · 상세 FEA·좌굴·용접·현지 지진은 후속.</div><div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div></body></html>`;
+}
+
+// ── 산출물 크로스 정합 게이트 (#7, 위시빌더 3차 최대 발견의 일반화) ──────────────
+// 위시빌더에서 "인덱스 카드=REV B 숫자 vs 링크된 도면=REV C"·"GA 1740×760 vs DETAIL
+// 1740×680" 드리프트가 최대 결함이었다. 방지책 2단:
+//   ① packageStamp — 전 HTML 에 같은 REV/기준(질량·외형·부품수)을 기계가독으로 박는다
+//   ② packageConsistencyCheck — 생성 직후 각 문서가 실제로 인쇄한 숫자를 회수해 기준과 대조
+
+/** HTML 에 nf-basis 메타 + 가시 REV 푸터 삽입. basis = { rev, massKg, env:[W,D,H], parts } */
+export function packageStamp(html, basis) {
+  const attr = JSON.stringify(basis).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const meta = `<meta name="nf-basis" content="${attr}">`;
+  const footer = `<div style="max-width:900px;margin:6px auto 14px;font-size:10px;color:#94a3b8;text-align:center">REV ${esc(basis.rev)} · 기준: 질량 ${basis.massKg}kg · 외형 ${basis.env.map(Math.round).join('×')}mm · 부품 ${basis.parts} — 전 산출물 단일 기준(자동 정합 게이트)</div>`;
+  let out = html.includes('</head>') ? html.replace('</head>', meta + '</head>') : meta + html;
+  out = out.includes('</body>') ? out.replace('</body>', footer + '</body>') : out + footer;
+  return out;
+}
+
+/**
+ * 산출물 간 숫자 대조 — 각 문서가 "실제로 인쇄한" 값을 정규식으로 회수해 기준과 대조.
+ * hasFluid=true 면 구조(운전질량, 유체 포함) vs BOQ(자재질량) 는 정의가 달라 대조 생략(정직).
+ * @returns { pass, checks: [{file, metric, value, expect, tol, pass, note?}] }
+ */
+export function packageConsistencyCheck(files, basis, { hasFluid = false } = {}) {
+  const get = (name) => files.find((f) => f.name === name)?.content ?? '';
+  const num = (src, re) => { const m = src.match(re); return m ? parseFloat(m[1]) : null; };
+  const checks = [];
+  const add = (file, metric, value, expect, tol, note) => {
+    if (value === null || expect === null) return; // 문서 부재/패턴 부재 = 대조 불가(스킵, 오탐 금지)
+    checks.push({ file, metric, value, expect: +expect.toFixed(2), tol: +tol.toFixed(2), pass: Math.abs(value - expect) <= tol, ...(note ? { note } : {}) });
+  };
+  const stMass = num(get('structural.html'), /총 질량 <b>([\d.]+) kg/);
+  add('structural.html', 'totalMassKg', stMass, basis.massKg, Math.max(0.2, basis.massKg * 0.005));
+  const boqHtml = get('BOQ.html');
+  const boqKg = num(boqHtml, /<b>([\d.]+) kg<\/b><span>총 자재 질량/);
+  const boqT = num(boqHtml, /<b>([\d.]+) t<\/b><span>총 질량/);
+  const boqMass = boqKg ?? (boqT !== null ? boqT * 1000 : null);
+  const tPad = boqKg === null && boqT !== null ? 55 : 0; // t 표시(0.1t 라운딩) 경유 회수는 ±50kg 여유
+  const dosMass = num(get('Dossier.html'), /<b>([\d.]+) kg<\/b><span>총 질량/);
+  if (boqMass !== null && dosMass !== null) add('Dossier.html↔BOQ.html', 'totalMassKg', dosMass, boqMass, Math.max(0.5, boqMass * 0.01, tPad));
+  if (!hasFluid) add('BOQ.html', 'totalMassKg(vs 구조)', boqMass, basis.massKg, Math.max(0.5, basis.massKg * 0.01, tPad));
+  else if (boqMass !== null) checks.push({ file: 'BOQ.html', metric: 'totalMassKg', value: boqMass, expect: basis.massKg, tol: 0, pass: true, note: '유체(운전질량) 포함차 — 자재질량 대 운전질량은 정의가 달라 대조 생략' });
+  const gaH = num(get('GA_2D_drawing.html'), />(\d+) \(H\)</);
+  add('GA_2D_drawing.html', 'H(mm)', gaH, Math.round(basis.env[2]), 1);
+  return { pass: checks.every((c) => c.pass), checks, rev: basis.rev };
 }

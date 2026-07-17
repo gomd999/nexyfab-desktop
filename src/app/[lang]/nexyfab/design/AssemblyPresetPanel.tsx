@@ -28,6 +28,7 @@ const dict = {
     buildBtn: '어셈블리 생성',
     builtParts: '생성됨 · 부재 ',
     clash: '간섭',
+    floating: '부유', faceContact: '면접촉(매립 권장)', pipeBad: '배관 위반', pipeOk: '배관',
     failed: '실패: ',
     packaging: '패키지 생성 중…',
     pkgBtn: '📦 설계 패키지 다운로드',
@@ -255,6 +256,7 @@ const dict = {
     buildBtn: 'Build assembly',
     builtParts: 'Built · parts ',
     clash: 'clash',
+    floating: 'floating', faceContact: 'face-contact (embed advised)', pipeBad: 'pipe violations', pipeOk: 'pipes',
     failed: 'Failed: ',
     packaging: 'Packaging…',
     pkgBtn: '📦 Download design package',
@@ -477,6 +479,7 @@ const dict = {
     buildBtn: 'アセンブリ生成',
     builtParts: '生成完了 · 部材 ',
     clash: '干渉',
+    floating: '浮遊', faceContact: '面接触（埋込推奨）', pipeBad: '配管違反', pipeOk: '配管',
     failed: '失敗: ',
     packaging: 'パッケージ生成中…',
     pkgBtn: '📦 設計パッケージをダウンロード',
@@ -699,6 +702,7 @@ const dict = {
     buildBtn: '生成装配体',
     builtParts: '已生成 · 部件 ',
     clash: '干涉',
+    floating: '悬空', faceContact: '面接触（建议嵌入）', pipeBad: '管路违规', pipeOk: '管路',
     failed: '失败: ',
     packaging: '正在生成设计包…',
     pkgBtn: '📦 下载设计包',
@@ -921,6 +925,7 @@ const dict = {
     buildBtn: 'Generar ensamblaje',
     builtParts: 'Generado · piezas ',
     clash: 'interferencia',
+    floating: 'flotante', faceContact: 'contacto plano (empotrar)', pipeBad: 'violaciones de tubería', pipeOk: 'tuberías',
     failed: 'Error: ',
     packaging: 'Empaquetando…',
     pkgBtn: '📦 Descargar paquete de diseño',
@@ -1143,6 +1148,7 @@ const dict = {
     buildBtn: 'إنشاء التجميع',
     builtParts: 'تم الإنشاء · الأجزاء ',
     clash: 'تداخل',
+    floating: 'معلّق', faceContact: 'تلامس سطحي (يُنصح بالدمج)', pipeBad: 'مخالفات الأنابيب', pipeOk: 'أنابيب',
     failed: 'فشل: ',
     packaging: 'جارٍ إنشاء الحزمة…',
     pkgBtn: '📦 تنزيل حزمة التصميم',
@@ -1494,6 +1500,10 @@ interface BuildResp {
   composeIntent?: { name?: string; features?: unknown[] };
   interferences?: Array<{ a: string; b: string }>;
   structural?: Structural | null;
+  // 설계 타당성 그물(위시빌더 260717 제품 배선): 부유·면접촉 매립 제안·배관 검사
+  support?: { supported: string[]; floating: string[]; faceContacts: Array<{ part: string; on: string; gapMm: number; suggestTzMm: number }> } | null;
+  pipes?: { routes: unknown[]; errors: string[]; obstacleViolations: unknown[]; crossViolations: unknown[] } | null;
+  designOk?: boolean | null;
   gateErrors?: string[];
   error?: string;
 }
@@ -1508,7 +1518,7 @@ export default function AssemblyPresetPanel({
   domain: string;
   onApply: (intent: { name?: string; features?: unknown[] }, scad: string) => void | Promise<void>;
   /** 빌드 결과 요약(간섭 건수 등) — 검증 그물 ④ 연동(2026-07-16) */
-  onBuildInfo?: (info: { interferences: number; assembly?: Record<string, unknown> | null }) => void;
+  onBuildInfo?: (info: { interferences: number; floating?: number | null; assembly?: Record<string, unknown> | null }) => void;
 }) {
   const ko = isKorean(lang);
   const t = dict[toIsoLang(lang)] ?? dict.ko;
@@ -1994,13 +2004,17 @@ export default function AssemblyPresetPanel({
       const data = (await res.json()) as BuildResp;
       if (data.ok && data.composeIntent && data.openscad) {
         setBuilt(data);
-        onBuildInfo?.({ interferences: data.interferences?.length ?? 0, assembly: (data as { assembly?: Record<string, unknown> }).assembly ?? null }); // 그물 ④+패키지
+        onBuildInfo?.({ interferences: data.interferences?.length ?? 0, floating: data.support?.floating?.length ?? null, assembly: (data as { assembly?: Record<string, unknown> }).assembly ?? null }); // 그물 ④+④b+패키지
         await onApply(data.composeIntent, data.openscad);
         const mass = data.structural?.totalMassKg;
+        const pipeBad = (data.pipes?.errors?.length ?? 0) + (data.pipes?.obstacleViolations?.length ?? 0) + (data.pipes?.crossViolations?.length ?? 0);
         setMsg(
           t.builtParts + (data.assembly?.parts?.length ?? 0)
           + (mass ? ` · ${mass >= 1000 ? (mass / 1000).toFixed(1) + 't' : mass.toFixed(0) + 'kg'}` : '')
-          + (data.interferences?.length ? ` · ⚠${t.clash} ${data.interferences.length}` : ''),
+          + (data.interferences?.length ? ` · ⚠${t.clash} ${data.interferences.length}` : '')
+          + (data.support?.floating?.length ? ` · ⚠${t.floating} ${data.support.floating.length}: ${data.support.floating.slice(0, 3).join(',')}` : '')
+          + (data.support?.faceContacts?.length ? ` · ${t.faceContact} ${data.support.faceContacts.length}` : '')
+          + (data.pipes ? (pipeBad ? ` · ⚠${t.pipeBad} ${pipeBad}` : ` · ${t.pipeOk} ${data.pipes.routes?.length ?? 0}`) : ''),
         );
       } else {
         setMsg(t.failed + (data.gateErrors?.join('; ') ?? data.error ?? ''));

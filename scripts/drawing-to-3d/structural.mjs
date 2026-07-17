@@ -207,8 +207,20 @@ export function structuralCheck(assembly, opts = {}) {
   if (seismicFS < 1.5) warnings.push(`${seismic}g 측방 전도 FS ${seismicFS} < 1.5 — 아웃리거/앵커·CG 저감 필요`);
   if (member && !member.pass) warnings.push(`부재 ${member.section} 초과 — 단면 상향 필요`);
 
+  // 질량 내역 자기정합(#8, 위시빌더 3차 "구조표 합계 845 vs 실제합 835" 류 자기모순 방지):
+  // 표시값(0.1kg 라운딩)의 부품 합계가 표시 총계와 정확히 일치하도록 최대잔여법으로 배분.
+  const totalDisp = +totalMass.toFixed(1);
+  const floors = bodies.map((b) => Math.floor(b.mass * 10 + 1e-9) / 10);
+  let remTenths = Math.max(0, Math.round((totalDisp - floors.reduce((s, v) => s + v, 0)) * 10));
+  const byFrac = bodies.map((b, i) => ({ i, f: b.mass * 10 - Math.floor(b.mass * 10 + 1e-9) })).sort((a, b) => b.f - a.f);
+  const disp = [...floors];
+  for (const { i } of byFrac) { if (remTenths <= 0) break; disp[i] = +(disp[i] + 0.1).toFixed(1); remTenths--; }
+  const massBreakdown = bodies.map((b, i) => ({ id: b.id, massKg: +disp[i].toFixed(1), exactKg: +b.mass.toFixed(3) }));
+  const massSumCheck = +massBreakdown.reduce((s, r) => s + r.massKg, 0).toFixed(1) === totalDisp;
+
   return {
     totalMassKg: +totalMass.toFixed(1),
+    massBreakdown, massSumCheck,
     cgWorldMm: cg.map(v => +v.toFixed(1)),
     cgHeightM: +(cgZ / 1000).toFixed(2),
     supports: supportLoads.map(l => ({ pos: l.pos, loadKg: +l.loadKg.toFixed(1) })),

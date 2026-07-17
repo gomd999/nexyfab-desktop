@@ -38,10 +38,16 @@ describe('routeFeatures — OCCT 안전 배관 생성', () => {
     expect(features.some((f) => f.kind === 'sphere')).toBe(false);
     expect(features.filter((f) => f.kind === 'box')).toHaveLength(1);
   });
-  it('불량 경로는 피처 대신 errors 반환(조용한 생성 금지)', () => {
-    const { features, errors } = routeFeatures([[0, 0, 0], [50, 50, 0]], { d: 26 });
+  it('불량 경로는 피처 대신 errors 반환(조용한 생성 금지 — normalize:false 원시 게이트)', () => {
+    const { features, errors } = routeFeatures([[0, 0, 0], [50, 50, 0]], { d: 26, normalize: false });
     expect(features).toEqual([]);
     expect(errors.length).toBeGreaterThan(0);
+  });
+  it('기본(normalize)은 대각 입력을 축분해로 정상화하되 adjustments 로 정직 보고', () => {
+    const { features, errors, adjustments } = routeFeatures([[0, 0, 0], [50, 50, 0]], { d: 26 });
+    expect(errors).toEqual([]);
+    expect(features.length).toBeGreaterThan(0);
+    expect(adjustments.some((a) => a.includes('대각'))).toBe(true);
   });
 });
 
@@ -160,5 +166,157 @@ describe('pipeCrossCheck — 배관 상호 교차(크로스 커넥션)', () => {
       { label: 'B', pts: [[880, 140, 842], [880, 140, 228]], d: 26 },
     ]);
     expect(v).toEqual([]);
+  });
+});
+
+// ── 위시빌더 교훈 일반화 배치 (2026-07-17): #3 게이트 비우회화 · #4 부재별 장애물 ·
+//    #5 면접촉 매립 제안 · #6 배관 어셈블리 승격 ────────────────────────────────
+import { normalizeRoute, portPoint, autoRoutePipes } from './pipe-route.mjs';
+
+describe('routeGate — 백트랙(역주행) 거부 (#3)', () => {
+  it('같은 축 역방향 연속 세그먼트 = 자기 배관 관통 거부', () => {
+    const e = routeGate([[0, 0, 0], [200, 0, 0], [100, 0, 0]], { d: 26 });
+    expect(e.some((m) => m.includes('역주행'))).toBe(true);
+  });
+});
+
+describe('normalizeRoute — 수동 경로 정규화 (#3, routeGate 우회 함정의 코드화)', () => {
+  it('대각 세그먼트를 축순차로 분해하고 endAxis 축을 마지막(축방향 진입)으로', () => {
+    const { pts, adjustments } = normalizeRoute([[0, 0, 0], [300, 200, 0]], { endAxis: 'y+' });
+    expect(adjustments.length).toBeGreaterThan(0);
+    // 마지막 세그먼트는 y축 이동(스텁 축방향 진입 엘보)
+    const a = pts[pts.length - 2], b = pts[pts.length - 1];
+    expect(Math.abs(b[1] - a[1])).toBeGreaterThan(0);
+    expect(Math.abs(b[0] - a[0])).toBeLessThan(1e-6);
+    expect(routeGate(pts, { d: 26 })).toEqual([]);
+  });
+  it('중복 waypoint 제거 + 동일축 연속 병합', () => {
+    const { pts } = normalizeRoute([[0, 0, 0], [0, 0, 0], [100, 0, 0], [250, 0, 0], [250, 0, 300]]);
+    expect(pts).toEqual([[0, 0, 0], [250, 0, 0], [250, 0, 300]]);
+  });
+  it('routeFeatures 기본 normalize — 대각 입력도 축분해 후 생성(오렌더 대신 정상화)', () => {
+    const { features, errors, adjustments } = routeFeatures([[0, 0, 0], [300, 0, 200]], { d: 26 });
+    expect(errors).toEqual([]);
+    expect(adjustments.length).toBeGreaterThan(0);
+    expect(features.filter((f) => f.kind === 'cylinder')).toHaveLength(2);
+  });
+});
+
+describe('pipeObstacleCheck — y축 원통 장애물 (#4 부재별 장애물 일반화)', () => {
+  const roY = { label: 'ro1', min: [600, 100, 900], max: [800, 1100, 1100], round: 'y' };
+  it('반경 밖 모서리 스침은 통과', () => {
+    const v = pipeObstacleCheck([{ label: 'ln', pts: [[790, -200, 1090], [790, -60, 1090]], d: 20 }], [roY]);
+    expect(v).toEqual([]);
+  });
+  it('축심 관통은 플래그', () => {
+    const v = pipeObstacleCheck([{ label: 'bad', pts: [[500, 600, 1000], [900, 600, 1000]], d: 20 }], [roY]);
+    expect(v.length).toBeGreaterThan(0);
+  });
+});
+
+describe('supportCheck — 면접촉 매립 제안 (#5)', () => {
+  const deck = { label: 'deck', min: [0, 0, 0], max: [1000, 800, 150], base: true };
+  it('0겹침 면접촉 → 지지는 OK, 매립 제안 반환', () => {
+    const r = supportCheck([deck, { label: 'pump', min: [200, 200, 150], max: [400, 400, 350] }]);
+    expect(r.floating).toEqual([]);
+    expect(r.faceContacts).toHaveLength(1);
+    expect(r.faceContacts[0]).toMatchObject({ part: 'pump', on: 'deck' });
+    expect(r.faceContacts[0].suggestTzMm).toBeLessThan(0);
+  });
+  it('이미 매립(부피 겹침)된 부품은 제안 없음', () => {
+    const r = supportCheck([deck, { label: 'pump', min: [200, 200, 148], max: [400, 400, 350] }]);
+    expect(r.faceContacts).toEqual([]);
+  });
+});
+
+describe('autoRoutePipes — 배관 자동 라우터 (#6)', () => {
+  const a = { label: 'a', min: [0, 0, 0], max: [400, 400, 400] };
+  const b = { label: 'b', min: [800, 0, 0], max: [1200, 400, 400] };
+  it('마주보는 포트 직결 — 게이트·관통·교차 전부 클린', () => {
+    const { routes, features, errors } = autoRoutePipes([{ id: 'feed1', from: 'a.x+', to: 'b.x-', d: 26, col: '#2563eb' }], [a, b]);
+    expect(errors).toEqual([]);
+    expect(routes).toHaveLength(1);
+    expect(pipeObstacleCheck(routes, [a, b])).toEqual([]);
+    // 스텁(관+플랜지)×2 + 세그먼트
+    expect(features.filter((f) => f.kind === 'cylinder').length).toBeGreaterThanOrEqual(5);
+    expect(features.every((f) => !f._col || f._col === '#2563eb')).toBe(true);
+  });
+  it('사이 장비를 오버헤드 코리도로 회피', () => {
+    const mid = { label: 'mid', min: [500, 0, 0], max: [700, 400, 600] };
+    const { routes, errors } = autoRoutePipes([{ id: 'feed1', from: 'a.x+', to: 'b.x-', d: 26 }], [a, mid, b]);
+    expect(errors).toEqual([]);
+    expect(pipeObstacleCheck(routes, [a, mid, b])).toEqual([]);
+    // 코리도 상승 — 최고 z 가 장비 위
+    expect(Math.max(...routes[0].pts.map((p) => p[2]))).toBeGreaterThan(600);
+  });
+  it('두 라인 교차 회피 — 기라우팅 배관과 교차하는 후보는 버린다', () => {
+    const c = { label: 'c', min: [0, 800, 0], max: [400, 1200, 400] };
+    const d2 = { label: 'd', min: [800, 800, 0], max: [1200, 1200, 400] };
+    const { routes, errors } = autoRoutePipes([
+      { id: 'p1', from: 'a.y+', to: 'd.y-', d: 26 },
+      { id: 'p2', from: 'c.x+', to: 'b.x-', d: 26 },
+    ], [a, b, c, d2]);
+    expect(errors).toEqual([]);
+    expect(pipeCrossCheck(routes)).toEqual([]);
+  });
+  it('없는 부품 참조는 정직한 에러', () => {
+    const { routes, errors } = autoRoutePipes([{ id: 'p1', from: 'a.x+', to: 'ghost.x-' }], [a, b]);
+    expect(routes).toEqual([]);
+    expect(errors[0]).toContain('ghost');
+  });
+});
+
+describe('portPoint', () => {
+  it('면 중심 + 축', () => {
+    const it_ = { min: [0, 0, 0], max: [100, 200, 300] };
+    expect(portPoint(it_, 'x+')).toEqual({ p: [100, 100, 150], axis: 'x+' });
+    expect(portPoint(it_, 'z-')).toEqual({ p: [50, 100, 0], axis: 'z-' });
+  });
+});
+
+import { buildAssembly, obstaclesFromAssembly, roundAxisOf } from './assembly.mjs';
+
+describe('buildAssembly — 설계 타당성 그물 제품 배선 (#2·#6 통합)', () => {
+  it('부유 부품 감지 + designOk=false', () => {
+    const built = buildAssembly({
+      name: 't', parts: [
+        { id: 'base', type: 'box', params: { width: 500, depth: 500, height: 100 } },
+        { id: 'floater', type: 'box', params: { width: 200, depth: 200, height: 100 }, at: { tx: 150, ty: 150, tz: 500 } },
+      ],
+    });
+    expect(built.ok).toBe(true);
+    expect(built.support.floating).toEqual(['floater']);
+    expect(built.designOk).toBe(false);
+  });
+  it('pipes[] 승격 — 라우팅·검사·GA/SCAD 포함, designOk=true', () => {
+    const built = buildAssembly({
+      name: 'skid', parts: [
+        { id: 'a', type: 'box', params: { width: 400, depth: 400, height: 400 }, service: 'feed' },
+        { id: 'b', type: 'box', params: { width: 400, depth: 400, height: 400 }, at: { tx: 800 } },
+      ],
+      pipes: [{ id: 'feed1', from: 'a.x+', to: 'b.x-', d: 26, service: 'feed' }],
+    });
+    expect(built.ok).toBe(true);
+    expect(built.pipes.errors).toEqual([]);
+    expect(built.pipes.routes).toHaveLength(1);
+    expect(built.pipes.obstacleViolations).toEqual([]);
+    expect(built.pipes.crossViolations).toEqual([]);
+    expect(built.designOk).toBe(true);
+    expect(built.openscad).toContain('pipes (auto-routed)');
+    // 계통색 GA — 배관 피처가 feed 색으로 composeIntent 에 포함
+    expect(built.composeIntent.features.some((f) => f._col === '#2563eb' && f.kind === 'cylinder' && !f.diameterHole)).toBe(true);
+  });
+  it('obstaclesFromAssembly — 원통 부품은 round 태그(부재별 장애물, #4)', () => {
+    const obs = obstaclesFromAssembly({
+      parts: [
+        { id: 'vessel', type: 'cylinder', params: { diameter: 200, length: 1000 } },
+        { id: 'ro', type: 'tube', params: { outerDia: 200, innerDia: 180, length: 1000 }, at: { ry: 90 } },
+        { id: 'frame', type: 'box', params: { width: 100, depth: 100, height: 100 } },
+      ],
+    });
+    expect(obs.find((o) => o.label === 'vessel').round).toBe('z');
+    expect(obs.find((o) => o.label === 'ro').round).toBe('x');
+    expect(obs.find((o) => o.label === 'frame').round).toBeUndefined();
+    expect(roundAxisOf({ type: 'cylinder', at: { rx: -90 } })).toBe('y');
   });
 });

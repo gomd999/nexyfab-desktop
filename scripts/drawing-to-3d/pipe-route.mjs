@@ -35,24 +35,84 @@ export function routeGate(pts, { d = 26 } = {}) {
   }
   if (e.length) return e;
   const ret = d / 2 + RETREAT_PAD;
+  let prevSeg = null;
   for (let i = 0; i < pts.length - 1; i++) {
-    const { axis, len } = axisOf(pts[i], pts[i + 1]);
+    const seg = axisOf(pts[i], pts[i + 1]);
+    const { axis, len } = seg;
     if (len < 1e-6) { e.push(`seg${i}: 중복 waypoint`); continue; }
-    if (axis < 0) { e.push(`seg${i}: 대각(비축정렬) 세그먼트 — 맨해튼 경로만 허용`); continue; }
+    if (axis < 0) { e.push(`seg${i}: 대각(비축정렬) 세그먼트 — 맨해튼 경로만 허용`); prevSeg = null; continue; }
+    // 같은 축 역방향 연속(백트랙) = 자기 배관 관통 — 위시빌더 7차 "수동 route 우회" 함정
+    if (prevSeg && prevSeg.axis === axis && prevSeg.sign !== seg.sign) e.push(`seg${i}: 역주행(백트랙) — 직전 세그먼트를 되돌아 관통`);
     // 내부 세그먼트는 양쪽 후퇴, 끝 세그먼트는 한쪽 — 후퇴 후 길이가 남아야 시공 가능
     const cut = (i > 0 ? ret : 0) + (i < pts.length - 2 ? ret : 0);
     if (len <= cut + 0.5) e.push(`seg${i}: 세그먼트 ${len.toFixed(1)}mm — 엘보 후퇴(${cut.toFixed(1)}mm) 불가, 경로 단순화 필요`);
+    prevSeg = seg;
   }
   return e;
 }
 
+const AX_IDX = { x: 0, y: 1, z: 2 };
+
+/**
+ * 경로 정규화 — routeGate 를 우회하는 "수동 route" 함정(위시빌더 7차)의 코드화.
+ * ① 중복 waypoint 제거 ② 같은 축·같은 방향 연속 세그먼트 병합
+ * ③ 대각 세그먼트 → 축순차 분해(startAxis/endAxis 지정 시 첫/마지막 이동축을 스텁 축에 맞춤
+ *    — "스텁 축방향 진입 엘보 필수" 규칙의 자동화). 남는 문제는 여전히 routeGate 가 거부.
+ * @returns { pts, adjustments: string[] }
+ */
+export function normalizeRoute(pts, { startAxis, endAxis } = {}) {
+  const adjustments = [];
+  if (!Array.isArray(pts) || pts.length < 2) return { pts, adjustments };
+  let P = pts.map((p) => [...p]);
+  // ① dedupe
+  const dd = [P[0]];
+  for (let i = 1; i < P.length; i++) {
+    if (Math.hypot(P[i][0] - dd[dd.length - 1][0], P[i][1] - dd[dd.length - 1][1], P[i][2] - dd[dd.length - 1][2]) < 1e-6) { adjustments.push(`pt${i}: 중복 waypoint 제거`); continue; }
+    dd.push(P[i]);
+  }
+  P = dd;
+  // ③ 대각 분해 — 세그먼트별로 다축 이동이면 축순차 waypoint 로 전개
+  const out = [P[0]];
+  for (let i = 0; i < P.length - 1; i++) {
+    const a = P[i], b = P[i + 1];
+    const deltas = [0, 1, 2].map((k) => b[k] - a[k]);
+    const moved = [0, 1, 2].filter((k) => Math.abs(deltas[k]) > 1e-6);
+    if (moved.length <= 1) { out.push(b); continue; }
+    // 축 순서: |이동량| 내림차순 기본, 첫 세그먼트는 startAxis 우선·마지막 세그먼트는 endAxis 를 맨 뒤로
+    let order = moved.slice().sort((p, q) => Math.abs(deltas[q]) - Math.abs(deltas[p]));
+    const sIdx = startAxis ? AX_IDX[startAxis[0]] : -1;
+    const eIdx = endAxis ? AX_IDX[endAxis[0]] : -1;
+    if (i === 0 && sIdx >= 0 && order.includes(sIdx)) order = [sIdx, ...order.filter((k) => k !== sIdx)];
+    if (i === P.length - 2 && eIdx >= 0 && order.includes(eIdx)) order = [...order.filter((k) => k !== eIdx), eIdx];
+    let cur = [...a];
+    for (const k of order) { cur = [...cur]; cur[k] = b[k]; out.push(cur); }
+    adjustments.push(`seg${i}: 대각 세그먼트 → 축순차 ${order.map((k) => 'xyz'[k]).join('→')} 분해`);
+  }
+  // ② 같은 축·같은 방향 연속 병합
+  const merged = [out[0]];
+  for (let i = 1; i < out.length; i++) {
+    if (merged.length >= 2) {
+      const s1 = axisOf(merged[merged.length - 2], merged[merged.length - 1]);
+      const s2 = axisOf(merged[merged.length - 1], out[i]);
+      if (s1.axis >= 0 && s1.axis === s2.axis && s1.sign === s2.sign) { merged[merged.length - 1] = out[i]; continue; }
+    }
+    merged.push(out[i]);
+  }
+  if (merged.length !== out.length) adjustments.push(`동일축 연속 세그먼트 ${out.length - merged.length}건 병합`);
+  return { pts: merged, adjustments };
+}
+
 /**
  * 맨해튼 경로 → 안전 배관 피처(실린더 세그먼트 + 큐브 엘보).
- * @returns {{ features: object[], errors: string[] }}
+ * 기본으로 normalizeRoute(중복 제거·대각 축분해·병합)를 먼저 적용한 뒤 게이트 —
+ * routeGate 미배선 수동 경로가 오렌더되는 우회로를 코드로 차단(위시빌더 7차).
+ * @returns {{ features: object[], errors: string[], adjustments: string[] }}
  */
-export function routeFeatures(pts, { d = 26, col } = {}) {
+export function routeFeatures(pts, { d = 26, col, normalize = true, startAxis, endAxis } = {}) {
+  let adjustments = [];
+  if (normalize) { const n = normalizeRoute(pts, { startAxis, endAxis }); pts = n.pts; adjustments = n.adjustments; }
   const errors = routeGate(pts, { d });
-  if (errors.length) return { features: [], errors };
+  if (errors.length) return { features: [], errors, adjustments };
   const P = pts.map((p) => [...p]);
   const ext = (a, b) => { // a를 b 반대 방향으로 EXT만큼 밀기
     const dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2];
@@ -82,7 +142,7 @@ export function routeFeatures(pts, { d = 26, col } = {}) {
       F.push({ kind: 'box', size: [e, e, e], op: 'add', at: { translate: [P[i][0] - e / 2, P[i][1] - e / 2, P[i][2] - e / 2] }, ...(col ? { _col: col } : {}) });
     }
   }
-  return { features: F, errors: [] };
+  return { features: F, errors: [], adjustments };
 }
 
 /** 노즐 스텁(관 + 플랜지) 피처. axis ∈ x±|y±|z± */
@@ -134,6 +194,12 @@ function _obPen(s, ob) {
     const dx = Math.min(s.max[0], ob.max[0]) - Math.max(s.min[0], ob.min[0]);
     if (dx <= 0) return -1;
     return Math.min(dx, r - Math.hypot(cy - _clamp(cy, s.min[1], s.max[1]), cz - _clamp(cz, s.min[2], s.max[2])));
+  }
+  if (ob.round === 'y') { // 다본 장비 부재별 장애물 일반화(#4) — y축 원통(rx=±90 배치)도 실린더로
+    const cx = (ob.min[0] + ob.max[0]) / 2, cz = (ob.min[2] + ob.max[2]) / 2, r = (ob.max[0] - ob.min[0]) / 2;
+    const dy = Math.min(s.max[1], ob.max[1]) - Math.max(s.min[1], ob.min[1]);
+    if (dy <= 0) return -1;
+    return Math.min(dy, r - Math.hypot(cx - _clamp(cx, s.min[0], s.max[0]), cz - _clamp(cz, s.min[2], s.max[2])));
   }
   return Math.min(...[0, 1, 2].map((k) => Math.min(s.max[k], ob.max[k]) - Math.max(s.min[k], ob.min[k])));
 }
@@ -211,4 +277,111 @@ export function pipeCrossCheck(routes, { tol = 0.5 } = {}) {
     }
   }
   return out;
+}
+
+/** 장비 AABB 면 중심 포트 — face ∈ x±|y±|z± → { p:[x,y,z], axis:'x+'… } */
+export function portPoint(item, face = 'z+') {
+  const c = [0, 1, 2].map((k) => (item.min[k] + item.max[k]) / 2);
+  const i = AX_IDX[face[0]] ?? 2;
+  const s = face[1] === '-' ? -1 : 1;
+  const p = [...c];
+  p[i] = s > 0 ? item.max[i] : item.min[i];
+  return { p, axis: face };
+}
+
+// 배관 끝점 해석: 'partLabel.face' 문자열 | { part, face, offset } | [x,y,z] 원시좌표
+function _resolveEnd(spec, byLabel) {
+  if (Array.isArray(spec)) return { p: spec.slice(), axis: null, label: null };
+  let part, face, offset;
+  if (typeof spec === 'string') { const ix = spec.lastIndexOf('.'); part = ix > 0 ? spec.slice(0, ix) : spec; face = ix > 0 ? spec.slice(ix + 1) : 'z+'; }
+  else if (spec && typeof spec === 'object') { part = spec.part; face = spec.face ?? 'z+'; offset = spec.offset; }
+  const it = byLabel.get(part);
+  if (!it) return { error: `끝점 부품 '${part}' 없음` };
+  const pp = portPoint(it, face);
+  if (Array.isArray(offset)) pp.p = pp.p.map((v, k) => v + (offset[k] ?? 0));
+  return { p: pp.p, axis: pp.axis, label: part };
+}
+
+const _axStep = (p, axis, dist) => { if (!axis) return [...p]; const q = [...p]; q[AX_IDX[axis[0]]] += (axis[1] === '-' ? -1 : 1) * dist; return q; };
+
+// S→E 후보 경로 생성 — 스텁 축방향 진입/이탈 리드(L) 강제 + 축순서 순열 + 오버헤드 코리도(높이×수평순서)
+function _candidatePaths(S, E, sAx, eAx, corridorZs, L) {
+  const out = [];
+  const S1 = sAx ? _axStep(S, sAx, L) : S;
+  const E1 = eAx ? _axStep(E, eAx, L) : E;
+  const head = sAx ? [S, S1] : [S];
+  const tail = eAx ? [E] : [];
+  const manhattan = (from, to, order) => {
+    const pts = [];
+    let cur = [...from];
+    for (const c of order) { const k = AX_IDX[c]; if (Math.abs(cur[k] - to[k]) > 1e-6) { cur = [...cur]; cur[k] = to[k]; pts.push([...cur]); } }
+    return pts;
+  };
+  for (const o of ['xyz', 'xzy', 'yxz', 'yzx', 'zxy', 'zyx']) out.push([...head, ...manhattan(S1, E1, o), ...tail]);
+  // 오버헤드 코리도: 리드 후 상승(기본) + 스텁 팁 직상승(리드 공간이 막힌 밀집 배치 폴백)
+  for (const zc of corridorZs) for (const xy of ['xy', 'yx']) for (const useLead of [true, false]) {
+    const start = useLead && sAx ? S1 : S;
+    const pts = useLead ? [...head] : [S];
+    let cur = [...start];
+    if (Math.abs(cur[2] - zc) > 1e-6) { cur = [...cur]; cur[2] = zc; pts.push([...cur]); }
+    pts.push(...manhattan(cur, [E1[0], E1[1], zc], xy));
+    cur = pts[pts.length - 1];
+    if (Math.abs(cur[2] - E1[2]) > 1e-6) { cur = [...cur]; cur[2] = E1[2]; pts.push([...cur]); }
+    pts.push(...tail);
+    out.push(pts);
+  }
+  return out;
+}
+
+/**
+ * 배관 자동 라우터(#6, 위시빌더 skid 수동 코리도/레인 배치의 제품화) — 어셈블리 pipes[] 를
+ * 결정론적으로 라우팅한다. 후보 경로(직결 순열 + 오버헤드 코리도 3높이×2순서)를 순서대로
+ * 게이트(정규화→routeGate)·장비 관통(pipeObstacleCheck)·기라우팅 배관 교차(pipeCrossCheck)로
+ * 검사해 첫 합격 경로를 채택 — 전 경로 불합격이면 정직하게 errors 보고(강행 렌더 없음).
+ *
+ * @param pipes [{ id, from, to, d?, service?, col?, stub?: boolean }]
+ *   from/to = 'partLabel.face'('x±|y±|z±') | { part, face, offset:[dx,dy,dz] } | [x,y,z]
+ * @param items 장애물 목록 [{ label, min, max, round? }] — obstaclesFromAssembly(assembly.mjs) 산출
+ * @returns { routes, features, errors, notes }
+ */
+export function autoRoutePipes(pipes, items, { clearance = 80, stubLen = 40 } = {}) {
+  const byLabel = new Map(items.map((i) => [i.label, i]));
+  const zTop = items.length ? Math.max(...items.map((i) => i.max[2])) : 0;
+  const routes = [], features = [], errors = [], notes = [];
+  for (const [pi, pipe] of (pipes ?? []).entries()) {
+    const id = pipe.id ?? `pipe${pi + 1}`;
+    const d = pipe.d ?? 26;
+    const from = _resolveEnd(pipe.from, byLabel);
+    const to = _resolveEnd(pipe.to, byLabel);
+    if (from.error || to.error) { errors.push(`${id}: ${from.error ?? to.error}`); continue; }
+    const col = pipe.col;
+    const wantStub = pipe.stub !== false;
+    // 장비 접속이면 노즐 스텁 + 스텁 끝(팁)에서 라우팅 시작
+    const S = from.axis && wantStub ? _axStep(from.p, from.axis, stubLen) : from.p;
+    const E = to.axis && wantStub ? _axStep(to.p, to.axis, stubLen) : to.p;
+    const L = Math.max(20, d / 2 + RETREAT_PAD + 5);
+    const corridorZs = [zTop + clearance, zTop + clearance + 2 * (d + 10), zTop + clearance + 4 * (d + 10)];
+    const cands = _candidatePaths(S, E, from.axis, to.axis, corridorZs, L);
+    let chosen = null;
+    const reasons = [];
+    for (const cand of cands) {
+      const n = normalizeRoute(cand, { startAxis: from.axis, endAxis: to.axis });
+      const ge = routeGate(n.pts, { d });
+      if (ge.length) { reasons.push(ge[0]); continue; }
+      const rt = { label: id, pts: n.pts, d, allow: pipe.allow };
+      if (pipeObstacleCheck([rt], items).length) { reasons.push('장비 관통'); continue; }
+      if (pipeCrossCheck([...routes, rt]).some((v) => v.a === id || v.b === id)) { reasons.push('기라우팅 배관 교차'); continue; }
+      chosen = n.pts;
+      break;
+    }
+    if (!chosen) { errors.push(`${id}: 자동 라우팅 실패(후보 ${cands.length} 전부 불합격 — ${[...new Set(reasons)].slice(0, 3).join(' · ')})`); continue; }
+    routes.push({ label: id, pts: chosen, d, service: pipe.service, col });
+    if (from.axis && wantStub) features.push(...stubFeatures(from.p, from.axis, d, { col }));
+    if (to.axis && wantStub) features.push(...stubFeatures(to.p, to.axis, d, { col }));
+    const rf = routeFeatures(chosen, { d, col, normalize: false });
+    if (rf.errors.length) { errors.push(`${id}: 피처 생성 실패 — ${rf.errors[0]}`); continue; }
+    features.push(...rf.features);
+    if (chosen.length > 2) notes.push(`${id}: ${chosen.length - 1}세그먼트(엘보 ${chosen.length - 2})`);
+  }
+  return { routes, features, errors, notes };
 }

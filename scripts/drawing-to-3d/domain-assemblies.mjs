@@ -232,8 +232,12 @@ function twoRoomAssembly(p = {}) {
   // 내부벽 (rz=90, x=w1) — 중앙에 문
   parts.push(P('wall_inner', 'wall_with_openings', { length: D, thickness: wallT, height: wallH, openings: [{ x: D / 2 - innerDoorW / 2, w: innerDoorW, h: 2100, sill: 0 }] }, { tx: w1 + wallT, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall'));
   // 실2에 테이블 2개(점유 확인용)
-  for (const [i, [tx2, ty2]] of [[0, [w1 + 1000, 1200]], [1, [w1 + 1000, 3600]]].entries()) {
+  // ⚠버그 이력: 수동 인덱스 배열에 .entries() 이중 랩핑 → ty 가 배열(NaN AABB) — supportCheck unknown 가드가 검출
+  for (const [i, [tx2, ty2]] of [[0, [w1 + 1000, 1200]], [1, [w1 + 1000, 3600]]]) {
     parts.push(P('t' + i + '_top', 'box', { width: 1200, depth: 1200, height: 30 }, { tx: tx2, ty: ty2, tz: 720 }, 'timber', 'table'));
+    // 상판만 있으면 supportCheck 부유(정당) — cafe_room 과 동일하게 상판+다리 분해(통짜재적 날조 방지 원칙 공유)
+    for (const [k, [lx, ly]] of [[100, 100], [1050, 100], [100, 1050], [1050, 1050]].entries())
+      parts.push(P(`t${i}_leg${k + 1}`, 'box', { width: 50, depth: 50, height: 720 }, { tx: tx2 + lx, ty: ty2 + ly, tz: 0 }, 'timber', 'table'));
   }
   return {
     name: '2실 평면', domain: 'interior', kind: 'assembly', parts,

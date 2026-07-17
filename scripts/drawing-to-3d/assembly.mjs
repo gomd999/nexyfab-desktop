@@ -18,6 +18,8 @@
 import { readFileSync } from 'node:fs';
 import { gate, scadBody, partAabb, gearPoly, sheetPoly, hexPts, boltDims } from './reconstruct.mjs';
 import { structuralCheck } from './structural.mjs';
+import { supportCheck } from './support-check.mjs';
+import { autoRoutePipes, pipeObstacleCheck, pipeCrossCheck } from './pipe-route.mjs';
 
 // 부품 → 계통색 (service/role 우선, 없으면 type). 계통색 GA 3D·도면 색분류 공용.
 export const SERVICE_COL = {
@@ -121,8 +123,11 @@ export function autoPlaceCorrect(asm) {
     if (!touching) {
       const drop = b.min[2] - topBelow;
       if (drop > 1) {
-        parts[i].at.tz = (parts[i].at.tz ?? 0) - drop;
-        corrections.push({ id: parts[i].id ?? parts[i].type, fix: 'drop', mm: Math.round(drop) });
+        // 부품 위로 내릴 땐 0.5mm 매립(면접촉 = STL 별도 lump — 위시빌더 3차 "얹히는 부품 매립" 규칙).
+        // 지면(0)으로 내릴 땐 정확 착지(지면과는 융합 대상이 아님).
+        const embed = topBelow > 0 ? 0.5 : 0;
+        parts[i].at.tz = (parts[i].at.tz ?? 0) - drop - embed;
+        corrections.push({ id: parts[i].id ?? parts[i].type, fix: embed ? 'drop+embed' : 'drop', mm: Math.round(drop) });
       }
     }
   }
@@ -257,8 +262,47 @@ export function assemblyToComposeIntent(asm) {
 }
 
 /**
+ * 부품 원통축 판정 — cylinder/tube 계열이 축정렬 배치면 실린더 장애물로 취급(모서리 스침 오탐 제거).
+ * 임의 회전은 null(AABB 보수측). #4: 다본 장비(RO 뱅크 등)를 단일 env 로 근사하지 않고
+ * 부품(부재)별 장애물로 자동 전개하는 근거 — 어셈블리에선 부품이 곧 부재다.
+ */
+export function roundAxisOf(part) {
+  if (!['cylinder', 'tube', 'flange', 'hex_bolt'].includes(part.type)) return null;
+  const { rx = 0, ry = 0, rz = 0 } = part.at ?? {};
+  if (!rx && !ry && !rz) return 'z';
+  if (Math.abs(Math.abs(ry) - 90) < 1e-6 && !rx) return 'x';
+  if (Math.abs(Math.abs(rx) - 90) < 1e-6 && !ry) return 'y';
+  return null;
+}
+
+/** 어셈블리 → 배관 관통검사용 장애물 목록(부품=부재별, 원통 인식). pipeObstacleCheck 입력. */
+export function obstaclesFromAssembly(asm) {
+  return (asm.parts ?? []).map((p) => {
+    const b = placedAabb(p);
+    const round = roundAxisOf(p);
+    return { label: p.id ?? p.type, min: b.min, max: b.max, ...(round ? { round } : {}), ...(p.group ? { group: p.group } : {}) };
+  });
+}
+
+// 배관 피처(cylinder/box + translate/rotate) → OpenSCAD 본문 — GA 렌더·SCAD 다운로드에 배관 포함
+function pipeFeatureScad(features) {
+  const lines = [];
+  for (const f of features) {
+    const t = f.at?.translate ?? [0, 0, 0];
+    const r = f.at?.rotate;
+    const tf = `translate([${t.join(', ')}]) ` + (r ? `rotate([${r.join(', ')}]) ` : '');
+    if (f.kind === 'cylinder') lines.push(`${tf}cylinder(d=${f.diameter}, h=${f.height}, $fn=48);`);
+    else if (f.kind === 'box') lines.push(`${tf}cube([${f.size.join(', ')}]);`);
+  }
+  return lines.join('\n');
+}
+
+/**
  * 어셈블리 intent를 결정론적으로 빌드·검증한다 (Gemini 불필요, 순수).
- * @returns { ok, openscad, parts, gateErrors, interferences, welds, weldTotalMm, composeIntent }
+ * pipes[](선택): [{ id, from:'part.face'|{part,face,offset}|[x,y,z], to, d?, service? }] —
+ * 자동 라우팅(코리도·게이트·관통·교차 검사) 후 배관 피처가 GA/SCAD/STEP 에 포함된다.
+ * @returns { ok, openscad, parts, gateErrors, interferences, welds, weldTotalMm, composeIntent,
+ *            support, pipes, designOk }
  */
 export function buildAssembly(asm) {
   if (!asm || !Array.isArray(asm.parts) || asm.parts.length === 0) {
@@ -334,15 +378,59 @@ export function buildAssembly(asm) {
   const weldPairs = new Set(welds.map((w) => w.a + '|' + w.b));
   const contactsFinal = contacts.filter((c) => !weldPairs.has(c.a + '|' + c.b));
 
+  // ④ 지지 체인(그물, 위시빌더 260717 — 이제 제품 경로 상시 실행): base = 지면(전역 최저면)
+  //   접지 부품. "연결 ≠ 지지" — 부유 부품은 설치 불가 신호. 면접촉 쌍은 매립 제안 동봉.
+  let support = { supported: [], floating: [], unknown: [], faceContacts: [] };
+  try {
+    const zs = boxes.map((b) => b.box.min[2]).filter(Number.isFinite);
+    const zmin = zs.length ? Math.min(...zs) : 0;
+    // base = 어셈블리 최저면 접지 부품 + 세계 지면(z≤0) 접지 부품(벽·기둥은 바닥판 밑면보다
+    // 높아도 지면에 선다 — 전역 최저면만 보면 오탐, 도메인 템플릿 전수 스모크로 확인)
+    const baseZ = Math.max(zmin + 2, 2);
+    const supItems = boxes.map((b, i) => ({
+      label: b.id, min: b.box.min, max: b.box.max,
+      base: b.box.min[2] <= baseZ,
+      ghost: !!asm.parts[i]?.ghost,
+    }));
+    support = supportCheck(supItems);
+  } catch { /* 그물 실패는 빌드를 막지 않음 — 기본값(검사 안 됨) 유지 */ }
+
+  // ⑤ 배관(pipes[], #6) — 자동 라우팅 + 독립 재검(관통·교차). 라우터가 이미 회피하지만
+  //   결과를 다시 검사해 게이트로 보고한다(라우터 신뢰가 아니라 결과 검증 — 정직).
+  let pipes = null;
+  const composeIntent = assemblyToComposeIntent(asm);
+  let pipeScadBody = '';
+  if (Array.isArray(asm.pipes) && asm.pipes.length) {
+    try {
+      const obstacles = obstaclesFromAssembly(asm);
+      const pipesIn = asm.pipes.map((pp) => ({ ...pp, col: pp.col ?? (pp.service && SERVICE_COL[pp.service]) ?? '#64748b' }));
+      const routed = autoRoutePipes(pipesIn, obstacles);
+      pipes = {
+        routes: routed.routes, errors: routed.errors, notes: routed.notes,
+        obstacleViolations: pipeObstacleCheck(routed.routes, obstacles),
+        crossViolations: pipeCrossCheck(routed.routes),
+      };
+      composeIntent.features.push(...routed.features);
+      pipeScadBody = pipeFeatureScad(routed.features);
+    } catch (e) {
+      pipes = { routes: [], errors: ['배관 라우팅 예외: ' + (e?.message ?? e)], notes: [], obstacleViolations: [], crossViolations: [] };
+    }
+  }
+
   const openscad =
     `// assembly: ${asm.name ?? 'unnamed'} — drawing-to-3d (deterministic)\n` +
-    `// parts: ${asm.parts.length}\n$fn = 64;\nunion() {\n${bodies.join('\n')}\n}\n`;
+    `// parts: ${asm.parts.length}${pipes ? ` · pipes: ${pipes.routes.length}` : ''}\n$fn = 64;\nunion() {\n${bodies.join('\n')}` +
+    (pipeScadBody ? `\n// pipes (auto-routed)\n${pipeScadBody}` : '') + `\n}\n`;
 
   // 구조 자동검증 — 형상에서 질량·CG·지지반력·전도 (nexyfab 설계 내장 역량).
   let structural = null;
   try { structural = structuralCheck(asm, {}); } catch { /* 구조검토 실패는 빌드를 막지 않음 */ }
 
-  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, contacts: contactsFinal, welds, weldTotalMm, composeIntent: assemblyToComposeIntent(asm), structural };
+  // 종합 설계 타당성 — 부유 0 · 배관 오류/관통/교차 0 이어야 PASS (lumps 규칙과 동일 사상)
+  const designOk = support.floating.length === 0
+    && (!pipes || (pipes.errors.length === 0 && pipes.obstacleViolations.length === 0 && pipes.crossViolations.length === 0));
+
+  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, contacts: contactsFinal, welds, weldTotalMm, composeIntent, structural, support, pipes, designOk };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('assembly.mjs');

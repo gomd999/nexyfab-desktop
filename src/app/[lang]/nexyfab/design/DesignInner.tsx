@@ -186,6 +186,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   // 설계가 바뀌면 반드시 무효화 — pendingInterfRef를 applyDesign이 소비하는 구조(감사 3차).
   const [interf, setInterf] = useState<number | null>(null);
   const pendingInterfRef = useRef<number | null>(null);
+  // 지지 체인(부유) — 위시빌더 260717 그물 제품 배선: 어셈블리 빌드 시 supportCheck 결과
+  const [floatN, setFloatN] = useState<number | null>(null);
+  const pendingFloatRef = useRef<number | null>(null);
   const pendingAssemblyRef = useRef<Record<string, unknown> | null>(null); // 설계 패키지용(어셈블리 경로만)
   const [lastAssembly, setLastAssembly] = useState<Record<string, unknown> | null>(null);
   const [pkgBusy, setPkgBusy] = useState(false);
@@ -361,6 +364,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setCpState((s) => (s === 'approved' ? s : 'skipped'));
       setInterf(pendingInterfRef.current); // 새 설계의 간섭(어셈블리) 또는 null(단품) — 잔존 방지
       pendingInterfRef.current = null;
+      setFloatN(pendingFloatRef.current); // 부유(지지 체인) — 동일 소비 구조
+      pendingFloatRef.current = null;
       setLastAssembly(pendingAssemblyRef.current); // 어셈블리면 패키지 생성 가능, 단품이면 null
       pendingAssemblyRef.current = null;
       setDiffRes(null); // 설계가 바뀌면 이전 듀얼-방출 대조 결과는 무효
@@ -429,6 +434,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           : raw;
         if (isAssembly && raw.ok) {
           pendingInterfRef.current = Array.isArray(raw.interferences) ? raw.interferences.length : 0; // 그물 ④
+          const sup = (raw as { support?: { floating?: string[] } }).support;
+          pendingFloatRef.current = Array.isArray(sup?.floating) ? sup.floating.length : null; // 그물 ④b 지지
           pendingAssemblyRef.current = (raw as { assembly?: Record<string, unknown> }).assembly ?? null;
         }
         if (!data.ok) {
@@ -844,7 +851,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                     setError(null); setGateErrors(null); setExportMsg(null);
                     await applyDesign(i, s, null);
                   }}
-                  onBuildInfo={(info) => { pendingInterfRef.current = info.interferences; pendingAssemblyRef.current = info.assembly ?? null; }}
+                  onBuildInfo={(info) => { pendingInterfRef.current = info.interferences; pendingFloatRef.current = info.floating ?? null; pendingAssemblyRef.current = info.assembly ?? null; }}
                 />
               )}
             </div>
@@ -919,6 +926,11 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 label: ko ? '④ 어셈블리 간섭' : '④ Assembly interference',
                 status: interf === null ? 'skip' : interf === 0 ? 'pass' : 'fail',
                 note: interf === null ? (ko ? '어셈블리 빌드 시 활성' : 'runs on assembly build') : interf === 0 ? (ko ? '간섭 없음' : 'no clash') : (ko ? `간섭 ${interf}건` : `${interf} clashes`),
+              },
+              {
+                label: ko ? '④b 지지 체인(부유 — 연결≠지지)' : '④b Support chain (floating)',
+                status: floatN === null ? 'skip' : floatN === 0 ? 'pass' : 'fail',
+                note: floatN === null ? (ko ? '어셈블리 빌드 시 활성' : 'runs on assembly build') : floatN === 0 ? (ko ? '부유 없음' : 'none floating') : (ko ? `부유 ${floatN}건 — 설치 불가 신호` : `${floatN} floating parts`),
               },
               {
                 label: ko ? '⑥ 간이 FEA(응력·SF — 스크리닝)' : '⑥ Quick FEA (screening)',

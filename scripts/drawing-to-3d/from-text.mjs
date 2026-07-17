@@ -99,7 +99,7 @@ const PART_PARAMS = {
   properties: {
     width: NUM, depth: NUM, thickness: NUM, stepWidth: NUM, stepThickness: NUM,
     legA: NUM, legB: NUM, outerDia: NUM, innerDia: NUM, boreDia: NUM, bcd: NUM, boltHoleD: NUM, boltCount: NUM,
-    webWidth: NUM, flangeHeight: NUM, length: NUM, height: NUM, wallThk: NUM,
+    webWidth: NUM, flangeHeight: NUM, length: NUM, height: NUM, wallThk: NUM, diameter: NUM,
     holes: { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, y: NUM, d: NUM }, required: ['x', 'y', 'd'] } },
   },
 };
@@ -113,9 +113,24 @@ export const ASSEMBLY_SCHEMA = {
         type: 'OBJECT', required: ['id', 'type', 'params'],
         properties: {
           id: { type: 'STRING' },
-          type: { type: 'STRING', enum: ['plate_with_holes', 'stepped_plate', 'l_bracket', 'flange', 'bent_sheet', 'tube', 'rect_tube'] },
+          type: { type: 'STRING', enum: ['plate_with_holes', 'stepped_plate', 'l_bracket', 'flange', 'bent_sheet', 'tube', 'rect_tube', 'box', 'cylinder'] },
           params: PART_PARAMS,
           at: { type: 'OBJECT', properties: { tx: NUM, ty: NUM, tz: NUM, rx: NUM, ry: NUM, rz: NUM } },
+          service: { type: 'STRING', enum: ['feed', 'hp', 'permeate', 'concentrate', 'motor', 'panel', 'frame', 'sludge'] },
+        },
+      },
+    },
+    // 배관 계획(#6) — AI는 "무엇을 무엇에 잇는가"(from/to 포트·계통)까지만.
+    // 경로(waypoint)는 결정론 자동 라우터(autoRoutePipes)가 잡고 관통·교차 게이트로 검증한다.
+    pipes: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT', required: ['id', 'from', 'to'],
+        properties: {
+          id: { type: 'STRING' },
+          from: { type: 'STRING' }, to: { type: 'STRING' },
+          d: NUM,
+          service: { type: 'STRING', enum: ['feed', 'hp', 'permeate', 'concentrate', 'sludge'] },
         },
       },
     },
@@ -124,13 +139,17 @@ export const ASSEMBLY_SCHEMA = {
 
 const ASM_PROMPT = (desc) => `자연어 제품 설명을 복합 어셈블리 계획(JSON)으로 변환하라.
 
-각 부품은 어휘 7종 중 하나: plate_with_holes / stepped_plate / l_bracket / flange / bent_sheet / tube(원형파이프:outerDia,innerDia,length) / rect_tube(각관:width,height,wallThk,length).
-부품별로 type + params(해당 유형 치수) + at(배치: tx,ty,tz 평행이동 mm, rx,ry,rz 회전 deg).
+각 부품은 어휘 9종 중 하나: plate_with_holes / stepped_plate / l_bracket / flange / bent_sheet / tube(원형파이프:outerDia,innerDia,length) / rect_tube(각관:width,height,wallThk,length) / box(속찬 블록·함체:width,depth,height) / cylinder(원기둥 용기·베셀:diameter,length).
+부품별로 type + params(해당 유형 치수) + at(배치: tx,ty,tz 평행이동 mm, rx,ry,rz 회전 deg) + service(계통: feed/hp/permeate/concentrate/motor/panel/frame/sludge — 해당 시만).
 
 좌표계: 전역 원점(0,0,0). 각 부품의 로컬 원점이 at.translate 위치에 놓인다.
 - 판재는 로컬 좌하단이 원점, z=0이 바닥. 다른 부품을 판 위에 얹으려면 tz=판두께.
 - 겹치지 않게(접촉만) 배치하라. 볼트체결·용접 접촉은 허용, 부피 침투는 피하라.
 - 치수 미기입은 통상값. 값을 지어낸 정도만큼 각 부품 신뢰가 낮음을 감안.
+
+배관이 필요한 제품(펌프·탱크·스키드 등)이면 pipes[] 로 연결 계획만 선언하라:
+- from/to = "부품id.면" (면: x+ x- y+ y- z+ z-), d = 관지름 mm(기본 26), service = 계통.
+- 경로 좌표는 쓰지 마라 — 배관 경로는 결정론 라우터가 자동 생성·검증한다.
 
 설명: "${desc}"`;
 
