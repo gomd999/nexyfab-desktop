@@ -386,10 +386,14 @@ describe('무결성 규약 0단계 — OBB-SAT·chainage 요소열 (폐형 앵�
     expect(obbOverlap({ c: [0, 0], h: [100, 10], deg: 0 }, { c: [0, 50], h: [100, 10], deg: 45 }).overlap).toBe(true);
   });
   it('boxPartsInterference: 회전 box 쌍 실풋프린트 — AABB 과탐 제거', () => {
-    // 45° 회전한 긴 벽 두 개 — AABB는 크게 겹치지만 실풋프린트는 분리
+    // 45° 회전한 긴 벽 두 개, 법선 방향 이격 400·√2/2=565.7mm > 폭합 100 — 실풋프린트 분리.
+    // (AABB 는 대각 팽창으로 크게 겹침 → 구 방식이면 오탐)
     const a = { type: 'box', params: { width: 100, depth: 4000, height: 500 }, at: { tx: 0, ty: 0, rz: 45 } };
-    const b = { type: 'box', params: { width: 100, depth: 4000, height: 500 }, at: { tx: 400, ty: -400, rz: 45 } };
+    const b = { type: 'box', params: { width: 100, depth: 4000, height: 500 }, at: { tx: 400, ty: 400, rz: 45 } };
     expect(boxPartsInterference(a, b)).toMatchObject({ overlap: false });
+    // 대조: 겹치게 좁히면 관통 검출
+    const c = { type: 'box', params: { width: 100, depth: 4000, height: 500 }, at: { tx: 50, ty: 50, rz: 45 } };
+    expect(boxPartsInterference(a, c).overlap).toBe(true);
   });
   it('요소열 90° 곡선 R=1000: TL=1000·L=πR/2·총연장 폐형·접선 연속', () => {
     const r = buildElements([[0, 0], [5000, 0], [5000, 5000]], [{ ip: 1, R: 1000 }], { baseW: 100 });
