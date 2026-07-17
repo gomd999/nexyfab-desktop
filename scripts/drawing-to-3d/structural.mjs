@@ -129,10 +129,23 @@ function localCG(type, p) {
   }
 }
 
-// 부품 월드 무게중심 (타입별 해석식 + 배치 이동. 회전 배치는 코너회전과 동일 규칙 미적용 — 축정렬 전제, 비대칭+회전 조합은 근사 명시)
+// OpenSCAD rotate([rx,ry,rz]) 순서(X→Y→Z) — placedAabb(assembly.mjs)와 동일 규칙.
+// (assembly→structural 의존이라 여기 복제 — 역방향 import 는 순환)
+const DEGR = Math.PI / 180;
+function rotCG([x, y, z], rx, ry, rz) {
+  let p = [x, y, z];
+  if (rx) { const c = Math.cos(rx * DEGR), s = Math.sin(rx * DEGR); p = [p[0], p[1] * c - p[2] * s, p[1] * s + p[2] * c]; }
+  if (ry) { const c = Math.cos(ry * DEGR), s = Math.sin(ry * DEGR); p = [p[0] * c + p[2] * s, p[1], -p[0] * s + p[2] * c]; }
+  if (rz) { const c = Math.cos(rz * DEGR), s = Math.sin(rz * DEGR); p = [p[0] * c - p[1] * s, p[0] * s + p[1] * c, p[2]]; }
+  return p;
+}
+
+// 부품 월드 무게중심 — 로컬 CG 를 회전 후 평행이동(⚠버그 이력 260717: 회전 미반영으로
+// rz90 벽 CG 가 (3000,75)≠참값(−75,3000) — 회전 부품 어셈블리의 전도·반력을 왜곡했음)
 export function partCG(part) {
-  const { tx = 0, ty = 0, tz = 0 } = part.at ?? {};
-  const c = localCG(part.type, part.params);
+  const { tx = 0, ty = 0, tz = 0, rx = 0, ry = 0, rz = 0 } = part.at ?? {};
+  let c = localCG(part.type, part.params);
+  if (rx || ry || rz) c = rotCG(c, rx, ry, rz);
   return [c[0] + tx, c[1] + ty, c[2] + tz];
 }
 

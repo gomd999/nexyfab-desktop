@@ -161,22 +161,14 @@ export function intersectSegment(elements, A, B) {
       for (const t of ts) {
         if (t < -EPS || t > 1 + EPS) continue;
         const x = A[0] + t * dx, y = A[1] + t * dy;
-        let ang = Math.atan2(y - el.c[1], x - el.c[0]);
-        // 호 각도 범위 판정(ccw 방향 정규화)
-        const sweep = el.a1 - el.a0;
-        let rel = ang - el.a0;
+        const ang = Math.atan2(y - el.c[1], x - el.c[0]);
+        // 호 각도 범위 판정 — 진행 방향으로 정규화한 각편차가 스윕 이내인가
+        // (cw 앵커: BC(4732,0)·R1000·Δ−30° 에서 y=−50 직격 s5050/x5044 폐형 재현 확인)
         const TAU = 2 * Math.PI;
-        rel = ((rel % TAU) + TAU) % TAU;
-        const sw = ((sweep % TAU) + TAU) % TAU || (Math.abs(sweep) > EPS ? TAU : 0);
-        const on = el.ccw ? rel <= sw + 1e-9 : (TAU - rel) % TAU <= ((TAU - sw) % TAU || sw) + 1e-9;
-        // cw 판정 단순화: cw 호는 a0→a1 감소 — rel' = a0−ang 정규화
-        let inArc;
-        if (el.ccw) inArc = rel <= sw + 1e-9;
-        else { let rel2 = el.a0 - ang; rel2 = ((rel2 % TAU) + TAU) % TAU; inArc = rel2 <= ((el.a0 - el.a1) % TAU + TAU) % TAU + 1e-9; }
-        void on;
-        if (!inArc) continue;
-        const along = el.ccw ? rel * el.R : (((el.a0 - ang) % TAU + TAU) % TAU) * el.R;
-        out.push({ sMm: el.ch0 + along, x, y });
+        const rel = el.ccw ? (((ang - el.a0) % TAU) + TAU) % TAU : (((el.a0 - ang) % TAU) + TAU) % TAU;
+        const sweep = Math.abs(el.a1 - el.a0);
+        if (rel > sweep + 1e-9) continue;
+        out.push({ sMm: el.ch0 + rel * el.R, x, y });
       }
     }
   }

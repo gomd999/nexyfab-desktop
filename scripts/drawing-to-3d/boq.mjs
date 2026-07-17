@@ -176,7 +176,7 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 <h2>② 부재별 물량</h2><table><tr><th>부재</th><th>Type</th><th>재질</th><th>부피(m³)</th><th>질량(kg)</th><th>표면적(㎡)</th></tr>${nmRows}</table>
 ${pipingSection(b, '②b')}
 ${ruleSection}
-<div class="note">⚠ 물량=형상 결정론(신뢰) · 규칙 물량=설계수량(표준품셈 할증·품 미적용) · 표면적=거푸집/도장/마감 개산(공제 미반영) · 철근·배근·마감재는 형상 외 — 미산출 · 비법정 참고자료.</div>
+<div class="note">⚠ 물량=형상 결정론(신뢰) · 규칙 물량=설계수량(표준품셈 할증·품 미적용) · 표면적=거푸집/도장/마감 개산(공제 미반영) · 철근·배근·마감재는 형상 외 — 미산출 · 비법정 참고자료.${assembly.alignment ? ' · <b>선형 주의</b>: 부재별 물량=현(chord) 분할 부품 기준(접합 트림 포함), 규칙 물량=중심선 호장 기준 — 두 기준 차이(트림·현 근사)는 정상이며 정밀 콘크리트량은 규칙 물량이 기준.' : ''}</div>
 <div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div></body></html>`;
   }
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>

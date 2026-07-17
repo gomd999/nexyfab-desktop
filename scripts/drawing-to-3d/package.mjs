@@ -5,6 +5,7 @@
  */
 import { structuralCheck } from './structural.mjs';
 import { colorOf, placedAabb } from './assembly.mjs';
+import { partAabb } from './reconstruct.mjs';
 import { runCalculator, calculators } from '../engineering-core/registry.mjs';
 import { retainingWallSectionSvg } from './section-drawings.mjs';
 const EPS_XS = 1e-6;
@@ -561,13 +562,23 @@ function profileSvg(assembly) {
   const al = assembly.alignment, pf = assembly.profile;
   if (!al || !pf?.design?.length) return '';
   const total = al.totalMm;
-  const pts = pf.design.concat(pf.ground ?? []);
-  const eMin = Math.min(0, ...pts.map((q) => q.elevMm)) - 500;
-  const eMax = Math.max(...pts.map((q) => q.elevMm)) + 500;
+  // 기준면 불일치 감지(정확도 감사 260717): 설계선=상대 벽고(형상 파생) vs 지반선=절대 EL
+  // (등고 파생) — 같은 축에 그리면 오해(벽고 3m 가 EL.12m 아래 지반처럼 보임).
+  // 혼합 시 이중 축(좌=EL 지반 / 우=벽고 설계)으로 분리 + 경고 명기.
+  const mixedDatum = !!(pf.ground?.length && (pf.designNote ?? '').includes('형상 파생'));
+  const dPts = pf.design, gPts = pf.ground ?? [];
+  const dMin = Math.min(0, ...dPts.map((q) => q.elevMm)) - 500, dMax = Math.max(...dPts.map((q) => q.elevMm)) + 500;
+  const allPts = mixedDatum ? dPts : dPts.concat(gPts);
+  const eMin = mixedDatum ? dMin : Math.min(0, ...allPts.map((q) => q.elevMm)) - 500;
+  const eMax = mixedDatum ? dMax : Math.max(...allPts.map((q) => q.elevMm)) + 500;
+  const gMin = gPts.length ? Math.min(...gPts.map((q) => q.elevMm)) - 500 : 0;
+  const gMax = gPts.length ? Math.max(...gPts.map((q) => q.elevMm)) + 500 : 1;
   const M = 80, PW = 760, PH = 170;
   const Sx = PW / total, Sy = PH / Math.max(1, eMax - eMin);
   const X = (s) => (M + s * Sx).toFixed(1);
   const Y = (e) => (30 + (eMax - e) * Sy).toFixed(1);
+  // 지반선 전용 축(혼합 시) — 같은 픽셀 밴드에 EL 범위 매핑
+  const Yg = mixedDatum ? (e) => (30 + ((gMax - e) / Math.max(1, gMax - gMin)) * PH).toFixed(1) : Y;
   const el = [];
   // 격자: STA + 표고
   const step = staStep(total);
@@ -582,7 +593,12 @@ function profileSvg(assembly) {
     el.push(`<text x="${M - 6}" y="${(+Y(e) + 3).toFixed(1)}" font-size="8" text-anchor="end" fill="#475569" font-family="sans-serif">EL.${(e / 1000).toFixed(1)}</text>`);
   }
   el.push(`<polyline points="${pf.design.map((q) => `${X(q.staMm)},${Y(q.elevMm)}`).join(' ')}" fill="none" stroke="#2563eb" stroke-width="1.6"/>`);
-  if (pf.ground?.length) el.push(`<polyline points="${pf.ground.map((q) => `${X(q.staMm)},${Y(q.elevMm)}`).join(' ')}" fill="none" stroke="#a16207" stroke-width="1.1" stroke-dasharray="6 4"/>`);
+  if (pf.ground?.length) el.push(`<polyline points="${pf.ground.map((q) => `${X(q.staMm)},${Yg(q.elevMm)}`).join(' ')}" fill="none" stroke="#a16207" stroke-width="1.1" stroke-dasharray="6 4"/>`);
+  if (mixedDatum) {
+    el.push(`<text x="${M + PW}" y="${Yg(gMax - 500)}" font-size="8" text-anchor="end" fill="#a16207" font-family="sans-serif">지반축 EL.${((gMax - 500) / 1000).toFixed(1)}</text>`);
+    el.push(`<text x="${M + PW}" y="${Yg(gMin + 500)}" font-size="8" text-anchor="end" fill="#a16207" font-family="sans-serif">EL.${((gMin + 500) / 1000).toFixed(1)}</text>`);
+    el.push(`<rect x="${M}" y="30" width="${PW}" height="14" fill="#fffbeb"/><text x="${M + 4}" y="41" font-size="9" fill="#92400e" font-family="sans-serif">⚠ 기준면 불일치 — 설계선=상대 벽고(좌축)·지반선=절대 EL(우축, 별도 축) · 동일 축 비교는 profileDesign 절대표고 입력 시</text>`);
+  }
   // 구조물 위치 마커(§1-2, 3자 대조: 평면·일람표와 동일 STA 라벨)
   for (const st of al.structures ?? []) {
     el.push(`<line x1="${X(st.sta)}" y1="30" x2="${X(st.sta)}" y2="${30 + PH}" stroke="#334155" stroke-width="1" stroke-dasharray="4 3"/>`);
@@ -653,10 +669,18 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   const S = PX_PER_PAPER_MM / N;
   const gap = 80, ox = 70, oy = 46;
   // 부품 그룹(type|role|규격|재질) — 대량 부품 도면의 밸룬·BOM 간축(동일 부재=동일 번호 관례)
+  // 그룹 키 = **로컬 규격**(회전 무관 부재 치수) 2유효숫자 양자화 — 선형 현/트림 미세차와
+  // 회전 AABB 스프레드로 그룹이 전부 갈라져 BOM 이 부품 수만큼 늘던 것 교정
+  // (⚠이력 260717: 1.3km 72부품→70행. 월드 AABB 키도 회전 때문에 무력 — 로컬 기준이 정답).
+  const q2 = (v) => (Number.isFinite(v) && v > 0 ? Number(v).toPrecision(2) : String(v));
+  const localDims = (p2) => {
+    try { const a = partAabb({ type: p2.type, ...p2.params }); return [a.max[0] - a.min[0], a.max[1] - a.min[1], a.max[2] - a.min[2]]; }
+    catch { return [0, 0, 0]; }
+  };
   const gIdx = new Map();
   const groups = [];
   for (const o of parts) {
-    const key = `${o.p.type}|${o.p.role ?? ''}|${dimStr(o.p.type, o.p.params)}|${o.st.mat}`;
+    const key = `${o.p.type}|${o.p.role ?? ''}|${localDims(o.p).map(q2).join('x')}|${o.st.mat}`;
     if (!gIdx.has(key)) { gIdx.set(key, groups.length); groups.push({ rep: o, count: 0 }); }
     o.gi = gIdx.get(key);
     groups[o.gi].count++;
@@ -745,6 +769,23 @@ export function structuralReport(assembly, { title = '구조/응력 검토', mem
   const s = structuralCheck(assembly, member ? { member } : {});
   const f = (n, d = 1) => (typeof n === 'number' ? n.toFixed(d) : '-');
   const v = ok => ok ? '<span style="color:#16a34a;font-weight:700">적합 ✓</span>' : '<span style="color:#dc2626;font-weight:700">검토 ✕</span>';
+  // 선형(alignment) 구조물 — 4점 강체 반력·코너 전도 모델은 연속 기초에 부적합(정확도 감사 260717):
+  // 무의미한 수치 인쇄 대신 m당 자중 + 정식 검토 경로(옹벽 안정 체인) 안내로 대체(정직)
+  if (assembly.alignment?.totalMm > 0) {
+    const wPerM = s.totalMassKg / (assembly.alignment.totalMm / 1000);
+    return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>
+<style>@page{size:A4 portrait;margin:12mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937;font-size:13px}
+.sheet{max-width:900px;margin:16px auto;background:#fff;border:1px solid #cbd5e1;box-shadow:0 4px 24px rgba(0,0,0,.1);padding:0 0 22px}.hd{padding:15px 24px;border-bottom:2px solid #1f2937}.hd h1{margin:0;font-size:18px}.hd .s{color:#64748b;font-size:12px}
+h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}table{border-collapse:collapse;margin:6px 24px;font-size:12px;width:calc(100% - 48px)}td,th{border:1px solid #cbd5e1;padding:4px 9px;text-align:center}th{background:#f1f5f9}
+.card{margin:8px 24px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;line-height:1.8}.honest{margin:8px 24px;padding:9px 14px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;font-size:12px;color:#92400e}.note{font-size:11px;color:#64748b;padding:6px 24px}
+@media print{.nf-print-bar{display:none}body{background:#fff}.sheet{box-shadow:none;border:none;margin:0}}</style></head>
+<body>${PRINT_BAR('구조 검토 — 선형 구조물 (A4)')}<div class="sheet"><div class="hd"><h1>${esc(title)} — 선형 구조물 자중 집계</h1><div class="s">nexyfab structural · 연속 기초 선형(연장 ${fmtLen(assembly.alignment.totalMm)})</div></div>
+<div class="card">총 질량 <b>${f(s.totalMassKg)} kg</b> · <b>m당 자중 ${f(wPerM)} kg/m</b> · 부품 ${s.massBreakdown?.length ?? '-'}</div>
+${(s.massBreakdown ?? []).length ? `<h2>질량 내역 (부품별 — 합계=총계 정합)</h2><table><tr><th>부품</th><th>질량(kg)</th></tr>${s.massBreakdown.map((r) => `<tr><td style="text-align:left">${esc(r.id)}</td><td>${f(r.massKg)}</td></tr>`).join('')}<tr style="font-weight:700;background:#f8fafc"><td>합계</td><td>${f(s.totalMassKg)}</td></tr></table>` : ''}
+<div class="honest">⚠ 선형(연속 기초) 구조물 — 4점 강체 반력·코너 전도 모델은 부적합해 산출하지 않음(정직).
+안정 검토(전도·활동·지지력·지진 M-O)는 <b>옹벽 안정 체인(verify-domain · retaining_wall_stability)</b>이 단면 기준으로 수행 — retainingWall 메타 자동 파생 연결됨. 부등 벽고 구간은 횡단면도(XS) 대표 단면별 검토 권장.</div>
+<div class="note">질량=현 분할 부품 기준(접합 트림 포함 — 중심선 호장 물량은 BOQ 규칙 물량 참조) · 비법정.</div></div></body></html>`;
+  }
   const supRows = s.supports.map((x, i) => `<tr><td>지지 ${i + 1}</td><td>(${Math.round(x.pos[0])}, ${Math.round(x.pos[1])})</td><td>${f(x.loadKg)} kg${x.uplift ? ' ⚠uplift' : ''}</td></tr>`).join('');
   // ② 질량 내역 — 표시값 합계=총계 정합(최대잔여법, 위시빌더 845≠835 자기모순 방지)
   const massRows = (s.massBreakdown ?? []).map((r) => `<tr><td style="text-align:left">${esc(r.id)}</td><td>${f(r.massKg)}</td></tr>`).join('');

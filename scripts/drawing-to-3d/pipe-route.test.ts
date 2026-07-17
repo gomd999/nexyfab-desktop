@@ -373,7 +373,8 @@ describe('제안 배치 — BOQ 배관 물량·rc_frame 입상관·DFU 폐루프
 
 import { landscapeCheck } from './landscape-check.mjs';
 import { runCalculator } from '../engineering-core/registry.mjs';
-import { ga2dDrawing, fmtLen, pickScale, staLabel, packageStamp, packageConsistencyCheck } from './package.mjs';
+import { ga2dDrawing, fmtLen, pickScale, staLabel, packageStamp, packageConsistencyCheck, structuralReport } from './package.mjs';
+import { partCG } from './structural.mjs';
 
 import { obbOverlap, boxPartsInterference } from './obb2d.mjs';
 import { buildElements, chainAt, intersectSegment, groundFromContours } from './alignment-geom.mjs';
@@ -465,6 +466,34 @@ describe('무결성 규약 0단계 — OBB-SAT·chainage 요소열 (폐형 앵�
     expect(html).toContain('3120.0');
     const omitted = ga2dDrawing(buildAssemblyTemplate('civil', 'retaining_wall_alignment', { contours }), { title: 'e2', domain: 'civil' });
     expect(omitted).toContain('입력 필요 — earthwork');
+  });
+  it('정확도 감사 1: partCG 회전 반영 — rz90 벽·45° 세그먼트 폐형', () => {
+    expect(partCG({ type: 'box', params: { width: 6000, depth: 150, height: 2700 }, at: { rz: 90 } }).map(Math.round)).toEqual([-75, 3000, 1350]);
+    const c45 = partCG({ type: 'box', params: { width: 2000, depth: 100000, height: 400 }, at: { rz: -45 } });
+    expect(Math.round(c45[0])).toBe(Math.round((1000 + 50000) * Math.SQRT1_2)); // R(−45)·(1000,50000)
+    expect(Math.round(c45[1])).toBe(Math.round((50000 - 1000) * Math.SQRT1_2));
+  });
+  it('정확도 감사 2: cw(우향) 호 직격 교차 폐형 앵커 s5050/x5044', () => {
+    const r = buildElements([[0, 0], [5000, 0], [5000 + 5000 * Math.cos(-Math.PI / 6), 5000 * Math.sin(-Math.PI / 6)]], [{ ip: 1, R: 1000 }], {});
+    const ix = intersectSegment(r.elements, [4600, -50], [5400, -50]);
+    expect(ix).toHaveLength(1);
+    expect(Math.abs(ix[0].sMm - 5050)).toBeLessThan(2);
+    expect(Math.abs(ix[0].x - 5044)).toBeLessThan(2);
+  });
+  it('정확도 감사 3: BOM 그룹 양자화 — 1.3km 선형 72부품이 소수 그룹으로', () => {
+    const big = buildAssemblyTemplate('civil', 'retaining_wall_alignment', { ips: [[0, 0], [500000, 0], [900000, 300000], [1200000, 300000]], curves: [{ ip: 1, R: 150000 }, { ip: 2, R: 100000 }] });
+    const html = ga2dDrawing(big, { title: 't', domain: 'civil' });
+    const rows = (html.match(/<tbody>(.*?)<\/tbody>/s)?.[1].match(/<tr>/g) ?? []).length;
+    expect(rows).toBeLessThan(20); // 이전: 70행(그룹화 무력)
+  });
+  it('정확도 감사 4·5: 선형 구조=연속기초 정직 리포트 · 종단 기준면 이중 축 경고', () => {
+    const contours = [{ elevM: 12, pts: [[20000, -50000], [20000, 50000]] }, { elevM: 8, pts: [[100000, -50000], [100000, 50000]] }];
+    const asm = buildAssemblyTemplate('civil', 'retaining_wall_alignment', { contours });
+    const st = structuralReport(asm, { title: 't' });
+    expect(st).toContain('m당 자중');
+    expect(st).toContain('4점 강체 반력·코너 전도 모델은 부적합');
+    const ga = ga2dDrawing(asm, { title: 't', domain: 'civil' });
+    expect(ga).toContain('기준면 불일치');
   });
   it('5단계 도면집: 시트 레지스트리·목록표·윈도 무결·REV — 역방향 게이트 all-ok (§2)', () => {
     const asm = buildAssemblyTemplate('civil', 'retaining_wall_alignment', {
