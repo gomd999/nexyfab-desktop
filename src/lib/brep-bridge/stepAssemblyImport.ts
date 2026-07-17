@@ -94,6 +94,8 @@ export interface StepAssemblyImportResult {
   warnings: string[];
   /** Per-solid skips: forwarded from the inner single-solid classifier. */
   unsupported: string[];
+  /** opts.collectBounds 시: PartInstance.id → 로컬 AABB(mm). 포인트 없으면 항목 없음. */
+  bounds?: Record<string, { min: [number, number, number]; max: [number, number, number] }>;
 }
 
 export interface ImportStepAssemblyOptions {
@@ -103,6 +105,8 @@ export interface ImportStepAssemblyOptions {
    *  SRR 수정 후 전 부품 분류가 돌며 실행 시간이 폭증). 초과 부품은 배치만 임포트하고
    *  warnings 에 집계를 정직 기록. 기본 500. */
   maxClassifyParts?: number;
+  /** 부품별 로컬 AABB 수집(STEP→어셈블리 브리지용 — 솔리드 서브셋의 CARTESIAN_POINT 스캔). */
+  collectBounds?: boolean;
 }
 
 /**
@@ -222,6 +226,36 @@ export function importStepAssembly(
   const usedIds = new Set<string>();
   // 분류기 성능 예산(옵션): 상한 초과분은 배치만 — 종료 시 집계 warning
   const maxClassify = Math.max(0, opts.maxClassifyParts ?? 500);
+  const bounds: Record<string, { min: [number, number, number]; max: [number, number, number] }> = {};
+  const collectBoundsFromSubset = (id: string, subset: string | null): void => {
+    if (!opts.collectBounds || !subset) return;
+    const pts: Array<[number, number, number]> = [];
+    for (const m of subset.matchAll(/CARTESIAN_POINT\s*\(\s*'[^']*'\s*,\s*\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)/g)) {
+      const x = +m[1], y = +m[2], z = +m[3];
+      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) pts.push([x, y, z]);
+    }
+    if (pts.length < 4) return;
+    // 로버스트 경계(260717 실물 검출: SolidWorks datum 고립점 z=400m 가 부품 경계를 폭주시킴):
+    // 축별 정렬 후 하위/상위 2% 구간에서 코어 스팬(p5~p95)의 10배 초과 '절벽 갭' 바깥 고립점 트림 — 사유 기록.
+    const min: [number, number, number] = [0, 0, 0];
+    const max: [number, number, number] = [0, 0, 0];
+    let trimmed = 0;
+    for (let k = 0; k < 3; k++) {
+      const vs = pts.map((p) => p[k]).sort((a, b) => a - b);
+      const n = vs.length;
+      const core = Math.max(1e-6, vs[Math.floor(n * 0.95)] - vs[Math.floor(n * 0.05)]);
+      const edge = Math.max(1, Math.floor(n * 0.02));
+      let lo = 0;
+      for (let i = 0; i < edge; i++) if (vs[i + 1] - vs[i] > 10 * core) { lo = i + 1; }
+      let hi = n - 1;
+      for (let i = n - 1; i > n - 1 - edge; i--) if (vs[i] - vs[i - 1] > 10 * core) { hi = i - 1; }
+      trimmed += lo + (n - 1 - hi);
+      min[k] = vs[lo];
+      max[k] = vs[hi];
+    }
+    if (trimmed > 0) warnings.push(`part_${id}:bounds_outliers_trimmed(${trimmed} isolated points — datum/reference geometry)`);
+    bounds[id] = { min, max };
+  };
   let classified = 0;
   let classifySkipped = 0;
   const classifyBudgetOk = () => {
@@ -277,9 +311,11 @@ export function importStepAssembly(
     });
 
     // Run the single-solid importer on every solid belonging to this PD.
-    if (hasGeom && classifyBudgetOk()) {
-      const subset = buildSubsetForSolids(source, geom.solidIds);
-      const trees = subset
+    if (hasGeom) {
+      const wantClassify = classifyBudgetOk();
+      const subset = (wantClassify || opts.collectBounds) ? buildSubsetForSolids(source, geom.solidIds) : null;
+      collectBoundsFromSubset(id, subset);
+      const trees = wantClassify && subset
         ? importStep(subset, { namePrefix: opts.namePrefix ?? `${id}` })
         : null;
       if (trees) {
@@ -292,11 +328,12 @@ export function importStepAssembly(
         }
       } else {
         featureTrees[id] = { nodes: [] };
-        warnings.push(`part_${id}:geometry_subset_build_failed`);
+        if (!wantClassify) unsupported.push(`part_${id}:classification_skipped(budget)`);
+        else warnings.push(`part_${id}:geometry_subset_build_failed`);
       }
     } else {
       featureTrees[id] = { nodes: [] };
-      unsupported.push(hasGeom ? `part_${id}:classification_skipped(budget)` : `part_${id}:no_solids_found_for_pd`);
+      unsupported.push(`part_${id}:no_solids_found_for_pd`);
     }
     instanceIdx += 1;
   }
@@ -327,8 +364,10 @@ export function importStepAssembly(
         orientation: IDENTITY_QUAT,
         fixed: parts.length === 0,
       });
-      const subset = classifyBudgetOk() ? buildSubsetForSolids(source, geom.solidIds) : null;
-      const trees = subset
+      const wantClassify = classifyBudgetOk();
+      const subset = (wantClassify || opts.collectBounds) ? buildSubsetForSolids(source, geom.solidIds) : null;
+      collectBoundsFromSubset(id, subset);
+      const trees = wantClassify && subset
         ? importStep(subset, { namePrefix: opts.namePrefix ?? `${id}` })
         : null;
       if (trees) {
@@ -341,7 +380,8 @@ export function importStepAssembly(
         }
       } else {
         featureTrees[id] = { nodes: [] };
-        warnings.push(classifySkipped > 0 && subset === null ? `part_${id}:classification_skipped(budget)` : `part_${id}:geometry_subset_build_failed`);
+        if (!wantClassify) unsupported.push(`part_${id}:classification_skipped(budget)`);
+        else warnings.push(`part_${id}:geometry_subset_build_failed`);
       }
       instanceIdx += 1;
     }
@@ -356,6 +396,7 @@ export function importStepAssembly(
 
   return {
     state: { parts, mates: [] },
+    ...(opts.collectBounds ? { bounds } : {}),
     featureTrees,
     warnings,
     unsupported,

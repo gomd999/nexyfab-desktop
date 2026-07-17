@@ -12,6 +12,7 @@
  */
 import { createHash } from 'node:crypto';
 import { placedAabb } from './assembly.mjs';
+import { partVolume, DENSITY } from './structural.mjs';
 
 const IFC64 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$';
 /** 결정론 IFC GlobalId(22자) — 128bit(sha1 절단)를 IFC base64 로 압축. */
@@ -85,6 +86,7 @@ export function ifcExport(assembly, { name = 'nexyfab assembly', rev = '' } = {}
   add(`IFCRELAGGREGATES(${G('ra3')},$,$,$,#${bld},(#${sto}))`);
 
   const elems = [];
+  const elemParts = []; // elems 와 병렬(재질·수량 연결용)
   for (const [i, p] of parts.entries()) {
     const at = p.at ?? {};
     const rzOnly = !Number(at.rx) && !Number(at.ry);
@@ -129,13 +131,37 @@ export function ifcExport(assembly, { name = 'nexyfab assembly', rev = '' } = {}
     const cls = ROLE_IFC.find(([re]) => re.test(hay))?.[1] ?? 'IFCBUILDINGELEMENTPROXY';
     const tail = cls === 'IFCBUILDINGELEMENTPROXY' ? ',$' : cls === 'IFCSLAB' || cls === 'IFCWALL' || cls === 'IFCCOLUMN' || cls === 'IFCBEAM' || cls === 'IFCFOOTING' ? ',.NOTDEFINED.' : ',$';
     elems.push(add(`${cls}(${G(p.id ?? `part${i}`)},$,'${esc(p.id ?? p.type)}',${desc},$,#${pl},#${shape},$${tail})`));
+    elemParts.push(p);
   }
   if (!elems.length) return null;
   add(`IFCRELCONTAINEDINSPATIALSTRUCTURE(${G('contain')},$,$,$,(${elems.map((e) => `#${e}`).join(',')}),#${sto})`);
+  // ── LOD300(260717): 재질(IfcMaterial 연결) + 기본 수량(체적·중량 — 결정론 partVolume·DENSITY
+  //    단일 소스, BOQ 와 동일 산식). 속성 시그니처=IFC4 EXPRESS 스키마 원문(정적 검사기 검증). ──
+  const byMat = new Map(); // material명 → element ids
+  for (let k = 0; k < elems.length; k++) {
+    const p = elemParts[k];
+    const mat = String(p.material ?? 'steel');
+    if (!byMat.has(mat)) byMat.set(mat, []);
+    byMat.get(mat).push(elems[k]);
+    // 기본 수량: 어휘 체적식이 있는 타입만(없으면 정직 생략 — AABB 체적 날조 금지)
+    let volMm3 = 0;
+    try { volMm3 = partVolume(p.type, p.params) || 0; } catch { volMm3 = 0; }
+    if (volMm3 > 0) {
+      const rho = (DENSITY[p.material] ?? DENSITY.steel ?? 7850) / 1e9; // kg/mm³
+      const qv = add(`IFCQUANTITYVOLUME('NetVolume',$,$,${f(volMm3 / 1e9)},$)`);
+      const qw = add(`IFCQUANTITYWEIGHT('NetWeight',$,$,${f(volMm3 * rho)},$)`);
+      const eq = add(`IFCELEMENTQUANTITY(${G(`eq-${k}`)},$,'BaseQuantities','deterministic (partVolume x KS density)',$,(#${qv},#${qw}))`);
+      add(`IFCRELDEFINESBYPROPERTIES(${G(`rdp-${k}`)},$,$,$,(#${elems[k]}),#${eq})`);
+    }
+  }
+  for (const [mat, ids] of byMat) {
+    const m = add(`IFCMATERIAL('${esc(mat)}',$,$)`);
+    add(`IFCRELASSOCIATESMATERIAL(${G(`ram-${mat}`)},$,$,$,(${ids.map((e) => `#${e}`).join(',')}),#${m})`);
+  }
 
   return `ISO-10303-21;
 HEADER;
-FILE_DESCRIPTION(('nexyfab drawing-to-3d deterministic export (LOD200: shape+class only; rebar/material/joints not included)'),'2;1');
+FILE_DESCRIPTION(('nexyfab drawing-to-3d deterministic export (LOD300: shape+class+material+base quantities(NetVolume/NetWeight, deterministic); rebar/joints not included)'),'2;1');
 FILE_NAME('assembly.ifc','',('nexyfab'),('nexysys'),'nexyfab drawing-to-3d','','');
 FILE_SCHEMA(('IFC4'));
 ENDSEC;
@@ -280,6 +306,20 @@ if (isMain) {
     { id: 'rot', type: 'box', params: { width: 100, depth: 50, height: 30 }, at: { rx: 90 }, role: 'frame' },
   ] }, { rev: 'r2' });
   check('원기둥=CircleProfile·비rz=AABB 근사 명시', skid.includes('IFCCIRCLEPROFILEDEF') && skid.includes('AABB approx'));
+  {
+    // LOD300 — 재질 연결·수량 폐형(BOQ 와 동일 단일 소스)
+    const asmB = buildAssemblyTemplate('building', 'rc_frame', { floors: 1, baysX: 1, baysY: 1 });
+    const x = ifcExport(asmB, { rev: 'q1' });
+    check('IfcMaterial+RelAssociates(재질 연결)', x.includes("IFCMATERIAL('concrete'") && x.includes('IFCRELASSOCIATESMATERIAL('));
+    const vols = [...x.matchAll(/IFCQUANTITYVOLUME\('NetVolume',\$,\$,([\d.]+),\$\)/g)].map((m) => +m[1]);
+    const wts = [...x.matchAll(/IFCQUANTITYWEIGHT\('NetWeight',\$,\$,([\d.]+),\$\)/g)].map((m) => +m[1]);
+    check('수량 방출(부품 수 일치)', vols.length === asmB.parts.length && wts.length === vols.length, `${vols.length}/${asmB.parts.length}`);
+    // 중량 합 = structuralCheck 총질량과 폐형 대조(단일 소스 검증)
+    const totalW = wts.reduce((s, v) => s + v, 0);
+    const { structuralCheck } = await import('./structural.mjs');
+    const st = structuralCheck(asmB);
+    check('중량 합=구조 총질량 폐형', Math.abs(totalW - st.totalMassKg) < Math.max(1, st.totalMassKg * 0.001), `${totalW.toFixed(1)} vs ${st.totalMassKg}`);
+  }
   {
     // GIS 참조(origin→IfcMapConversion, buildingSMART 샘플 앵커 관례)
     const civ = buildAssemblyTemplate('civil', 'retaining_wall_alignment', { ips: [[0, 0], [200000, 0]] });

@@ -68,6 +68,22 @@ const TYPE_SPEC = `각 부품 type 의 params 는 아래 목록만 사용(다른
 - material: STS316 | STS304 | steel | aluminum | concrete | timber | PVC 중 하나. 콘크리트 구조물(RC 보·기둥·슬래브·옹벽)은 반드시 "concrete", 목구조(데크·파고라·가구)는 "timber".
 - role: column | beam | slab | joist | deck | floor | wall | table | counter | frame | motor | panel 등 — 계통색·도면 라벨에 쓰임.`;
 
+// 템플릿 카탈로그(챗 개방, 260717 — 참고파일들급 복잡물 대화 생성): 결정론 템플릿
+// 레지스트리에서 동적 생성. AI 는 template{domain,id,params} 선언만 — 형상·게이트·도서=엔진.
+let _catalog: string | null = null;
+async function templateCatalog(): Promise<string> {
+  if (_catalog) return _catalog;
+  const p = join(process.cwd(), 'scripts', 'drawing-to-3d', 'domain-assemblies.mjs');
+  const dm = (await import(/* webpackIgnore: true */ pathToFileURL(p).href)) as {
+    listAssemblyTemplates: () => Array<{ domain: string; id: string; labelKo: string; params: Array<{ name: string; labelKo: string; unit: string; default: number; min: number; max: number }> }>;
+  };
+  _catalog = dm.listAssemblyTemplates()
+    .filter((t) => t.id !== 'retaining_wall_alignment') // 선형은 civilAlignment 전용 경로(더 풍부한 입력)
+    .map((t) => `- ${t.domain}/${t.id} (${t.labelKo}): ${t.params.map((q) => `${q.name}=${q.labelKo}${q.unit ? '(' + q.unit + ')' : ''} 기본${q.default} 범위${q.min}~${q.max}`).join(', ')}`)
+    .join('\n');
+  return _catalog;
+}
+
 const BASE_PROMPT = (desc: string) => `자연어 제품 설명을 "부품별 독립 body" 복합 어셈블리 계획(JSON)으로 변환하라.
 어휘 15종: plate_with_holes / stepped_plate / l_bracket / flange / bent_sheet / tube / rect_tube / box / cylinder / gusset / base_plate / spur_gear / hex_bolt / sheet_profile / wall_with_openings.
 ${TYPE_SPEC}
@@ -86,6 +102,11 @@ ${TYPE_SPEC}
 - **곡선은 방향이 꺾이는 내부 IP 에만 붙는다**: curves 를 쓰려면 ips 가 3점 이상이고 해당 IP 에서 실제로 꺾여야 한다(직선 2점에 곡선 선언 금지 — 곡선 요구가 있으면 중간 IP 를 만들어 꺾어라. 총 연장은 ips 경로 길이로 맞춘다).
 - 구조물 요구(암거·집수정·신축이음)는 structures:[{"sta":측점mm,"type":"culvert"|"catch_basin"|"expansion_joint"}] 로 반드시 선언.
 - 게이트 거부 문구(예: "TL 합>구간장 — R 축소")를 받으면 해당 값만 고쳐 다시 선언하라.
+
+예외 2 — 아래 카탈로그의 **정형 구조물**(교량·캐노피·골조·파고라·데크·실내 유닛 등) 요청이면 parts 대신 template 하나만 선언(형상·간섭·도면집·물량=결정론 엔진 — 부품을 직접 만들지 마라):
+{"name":"...","template":{"domain":"bridge","id":"arch_bridge","params":{"mainSpan":120000,"rise":26400}}}
+[템플릿 카탈로그 — params 는 목록의 키만·범위 내 숫자. 미기입=기본값(assumptions 에 병기)]
+{{CATALOG}}
 
 설명: "${desc}"`;
 
@@ -186,15 +207,72 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     let built: BuiltAssembly | null = null;
     let lastErrors: string[] = [];
 
+    const catalog = await templateCatalog().catch(() => '');
     for (let round = 0; round < MAX_ROUNDS; round++) {
-      const prompt = round === 0 || !assembly
+      const prompt = (round === 0 || !assembly
         ? BASE_PROMPT(description)
-        : FIX_PROMPT(description, lastErrors, assembly);
+        : FIX_PROMPT(description, lastErrors, assembly)).replace('{{CATALOG}}', catalog);
       const { data } = await mods.ft.callGeminiJson(prompt, null, GEMINI_OPTS);
       const hasCA = !!(data && typeof (data as { civilAlignment?: unknown }).civilAlignment === 'object');
-      if (!data || (!hasCA && (!Array.isArray(data.parts) || data.parts.length === 0))) {
-        lastErrors = ['빈 어셈블리(parts 없음 — 선형이면 civilAlignment 선언)'];
+      const tpl = (data as { template?: { domain?: string; id?: string; params?: Record<string, unknown> } })?.template;
+      const hasTpl = !!(tpl && typeof tpl === 'object' && typeof tpl.domain === 'string' && typeof tpl.id === 'string');
+      if (!data || (!hasCA && !hasTpl && (!Array.isArray(data.parts) || data.parts.length === 0))) {
+        lastErrors = ['빈 어셈블리(parts 없음 — 선형이면 civilAlignment, 정형 구조물이면 template 선언)'];
         continue; // 다음 라운드에서 재시도
+      }
+      // §템플릿 선언(260717 챗 개방): AI=선언만, 결정론 템플릿이 형상·측점·도서 생성
+      if (hasTpl && !hasCA) {
+        const dp = join(process.cwd(), 'scripts', 'drawing-to-3d', 'domain-assemblies.mjs');
+        const dm = (await import(/* webpackIgnore: true */ pathToFileURL(dp).href)) as { buildAssemblyTemplate: (d: string, t: string, p: Record<string, unknown>) => (Assembly & { alignmentErrors?: string[] }) | null };
+        const built2 = dm.buildAssemblyTemplate(tpl!.domain!, tpl!.id!, tpl!.params ?? {});
+        if (!built2) { lastErrors = [`template ${tpl!.domain}/${tpl!.id}: 카탈로그에 없는 id — 카탈로그의 domain/id 만 사용`]; continue; }
+        if (built2.alignmentErrors?.length) { assembly = { ...built2, template: tpl } as Assembly; lastErrors = built2.alignmentErrors; continue; }
+        assembly = built2;
+        placeCorrections = [];
+        built = mods.asm.buildAssembly(assembly);
+        if (built.ok) {
+          let intentMatch = await intentCheck(mods, description, assembly, (assembly as { alignment?: unknown }).alignment);
+          // 교정 라운드: 불일치 판정문 되먹임 → 템플릿 params 만 재선언(조건부 채택 — parts 경로와 동일 게이트)
+          if (intentMatch && intentMatch.mismatched > 0) {
+            const before = intentMatch.mismatched;
+            let adopted = false;
+            try {
+              const notes = intentMatch.results.filter((q) => q.verdict === 'MISMATCH').map((q) => `${q.text} → ${q.note}`).slice(0, 8);
+              const { data: fd } = await mods.ft.callGeminiJson(
+                `직전 template 선언(${tpl!.domain}/${tpl!.id})의 결과가 요청과 실측 대조에서 불일치했다. params 만 고친 {"template":{...}} JSON 하나만 다시 내라(키·범위는 카탈로그).\n[요청] "${description}"\n[불일치]\n${notes.map((m) => '- ' + m).join('\n')}\n직전: ${JSON.stringify(tpl)}\nJSON 하나만.`,
+                null, GEMINI_OPTS);
+              const t2 = (fd as { template?: { domain?: string; id?: string; params?: Record<string, unknown> } })?.template;
+              if (t2?.domain && t2?.id) {
+                const a2 = dm.buildAssemblyTemplate(t2.domain, t2.id, t2.params ?? {});
+                if (a2 && !a2.alignmentErrors?.length) {
+                  const b2 = mods.asm.buildAssembly(a2);
+                  const okDesign = !(b2.designOk === false && built.designOk === true);
+                  if (b2.ok && okDesign) {
+                    const im2 = await intentCheck(mods, description, a2, (a2 as { alignment?: unknown }).alignment);
+                    if (im2 && im2.mismatched < before && im2.matched >= intentMatch.matched) {
+                      assembly = a2; built = b2; intentMatch = im2; adopted = true;
+                    }
+                  }
+                }
+              }
+            } catch { /* 원본 유지 */ }
+            (intentMatch as { repair?: unknown }).repair = { attempted: true, adopted, before, after: intentMatch.mismatched };
+          }
+          if (intentMatch) await recordIntentMatch(description, tpl!.domain!, intentMatch);
+          return NextResponse.json({
+            ok: true, assembly, openscad: built.openscad,
+            parts: built.parts ?? (assembly as { parts?: unknown[] }).parts,
+            interferences: built.interferences ?? [], contacts: built.contacts ?? [],
+            placeCorrections: [], welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
+            composeIntent: built.composeIntent ?? null, structural: built.structural ?? null,
+            support: built.support ?? null, pipes: built.pipes ?? null, designOk: built.designOk ?? null,
+            intentMatch,
+            domain: tpl!.domain, template: tpl, gateErrors: [], rounds: round + 1,
+          });
+        }
+        assembly = { ...(assembly ?? {}), template: tpl } as Assembly;
+        lastErrors = built.gateErrors ?? ['템플릿 게이트 실패'];
+        continue;
       }
       // §D 토목 선형 개방: AI가 civilAlignment 를 선언하면 parts 가 아니라 **결정론 템플릿**이
       // 형상·측점·곡선·구조물을 생성(자동 배치 보정 불요 — 템플릿=정합). 게이트 거부 문구는
