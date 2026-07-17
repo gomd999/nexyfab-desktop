@@ -16,6 +16,7 @@ import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
+import { recordIntentMatch } from '@/lib/intentTelemetry';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -101,6 +102,15 @@ const INTENT_FIX_PROMPT = (desc: string, mismatches: string[], prev: Assembly) =
 ${mismatches.map((m) => '- ' + m).join('\n')}
 ${TYPE_SPEC}
 직전 계획(수정 대상): ${JSON.stringify(prev).slice(0, 1800)}
+JSON 하나만 출력.`;
+
+// 선형(civilAlignment) 경로용 의도 교정: 형상은 결정론 템플릿이 만들므로 AI 는 선언 값만 고친다.
+const INTENT_FIX_CA_PROMPT = (desc: string, mismatches: string[], prevCa: Record<string, unknown>) => `직전 선형 선언(civilAlignment)으로 생성한 결과가 사용자 요청과 실측 대조에서 아래 항목이 **불일치**로 판정됐다.
+요청을 다시 읽고 값만 고친 {"civilAlignment":{...}} JSON 하나만 다시 내라(기존 키 구조 유지: ips [[x,y],..]·curves [{ip,R,Ls?}]·structures [{sta,type}] 등, 일치한 값은 유지).
+[사용자 요청] "${desc}"
+[불일치 판정(결정론 실측)]
+${mismatches.map((m) => '- ' + m).join('\n')}
+직전 선언(수정 대상): ${JSON.stringify(prevCa).slice(0, 1800)}
 JSON 하나만 출력.`;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -192,7 +202,32 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         placeCorrections = [];
         built = mods.asm.buildAssembly(assembly);
         if (built.ok) {
-          const intentMatch = await intentCheck(mods, description, assembly, (assembly as { alignment?: unknown }).alignment);
+          let intentMatch = await intentCheck(mods, description, assembly, (assembly as { alignment?: unknown }).alignment);
+          // 선형 경로 의도 교정 라운드(1회): AI 는 civilAlignment 선언 값만 고치고
+          // 형상은 결정론 템플릿이 재생성 — 채택 게이트는 parts 경로와 동일.
+          if (intentMatch && intentMatch.mismatched > 0) {
+            const before = intentMatch.mismatched;
+            let adopted = false;
+            try {
+              const notes = intentMatch.results
+                .filter((q) => q.verdict === 'MISMATCH').map((q) => `${q.text} → ${q.note}`).slice(0, 8);
+              const { data: fd } = await mods.ft.callGeminiJson(INTENT_FIX_CA_PROMPT(description, notes, ca), null, GEMINI_OPTS);
+              const ca2 = (fd as { civilAlignment?: Record<string, unknown> })?.civilAlignment;
+              if (ca2 && typeof ca2 === 'object' && Array.isArray((ca2 as { ips?: unknown[] }).ips)) {
+                const asm2 = dm.buildAssemblyTemplate('civil', 'retaining_wall_alignment', ca2);
+                const b2 = mods.asm.buildAssembly(asm2);
+                const okDesign = !(b2.designOk === false && built.designOk === true);
+                if (b2.ok && okDesign) {
+                  const im2 = await intentCheck(mods, description, asm2, (asm2 as { alignment?: unknown }).alignment);
+                  if (im2 && im2.mismatched < before && im2.matched >= intentMatch.matched) {
+                    assembly = asm2; built = b2; intentMatch = im2; adopted = true;
+                  }
+                }
+              }
+            } catch { /* 교정 실패=원본 유지 */ }
+            (intentMatch as { repair?: unknown }).repair = { attempted: true, adopted, before, after: intentMatch.mismatched };
+          }
+          if (intentMatch) await recordIntentMatch(description, 'civil', intentMatch);
           return NextResponse.json({
             ok: true, assembly, openscad: built.openscad,
             parts: built.parts ?? (assembly as { parts?: unknown[] }).parts,
@@ -245,6 +280,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           (intentMatch as { repair?: unknown }).repair = { attempted: true, adopted, before, after: intentMatch.mismatched };
         }
         if (intentMatch && assumptions.length) (intentMatch as { assumptions?: string[] }).assumptions = assumptions as string[];
+        if (intentMatch) await recordIntentMatch(description, (assembly as { domain?: string }).domain ?? null, intentMatch);
         return NextResponse.json({
           ok: true, assembly, openscad: built.openscad,
           parts: built.parts ?? assembly.parts,
