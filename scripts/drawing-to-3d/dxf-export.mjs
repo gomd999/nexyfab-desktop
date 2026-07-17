@@ -34,6 +34,7 @@ const rect = (layer, x, y, dx, dy, ltype) =>
 const LAYERS = [
   ['AXIS', 1, 'CENTER'], ['COLUMN', 7, 'CONTINUOUS'], ['BEAM', 4, 'CONTINUOUS'], ['SLAB', 8, 'DASHED'],
   ['JOIST', 32, 'DASHED'], ['DECK', 30, 'CONTINUOUS'], ['WALL', 7, 'CONTINUOUS'], ['DIM', 1, 'CONTINUOUS'], ['TXT', 7, 'CONTINUOUS'],
+  ['PIPE', 6, 'CONTINUOUS'], ['FIXTURE', 3, 'CONTINUOUS'], ['FURN', 8, 'DASHED'],
 ];
 function shell(entities) {
   let s = '';
@@ -121,11 +122,57 @@ export function dxfLandscapePlan(assembly) {
   return shell(e);
 }
 
-/** 도메인 → DXF (없으면 null). */
-export function dxfPlan(assembly, domain) {
-  if (domain === 'building') return dxfBuildingPlan(assembly);
-  if (domain === 'landscape') return dxfLandscapePlan(assembly);
+/** 배관 라우트(autoRoutePipes 결과) → PIPE 레이어 평면 폴리라인 + 라벨. 기계 배관 어휘의 DXF 반영. */
+function pipeEntities(pipes) {
+  let e = '';
+  for (const rt of pipes ?? []) {
+    for (let i = 0; i < rt.pts.length - 1; i++) {
+      const a = rt.pts[i], b = rt.pts[i + 1];
+      if (Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6) continue; // 수직(z) 세그먼트는 평면 투영서 점
+      e += line('PIPE', a[0], a[1], b[0], b[1]);
+    }
+    e += text('PIPE', rt.pts[0][0] + 60, rt.pts[0][1] + 60, 120, `${rt.label ?? 'pipe'} DN${rt.d ?? 26}`);
+  }
+  return e;
+}
+
+/** 인테리어: 평면 DXF — 벽(WALL)·설비(FIXTURE)·가구(FURN)·배관(PIPE)·외곽 치수. */
+export function dxfInteriorPlan(assembly, pipes) {
+  const parts = (assembly.parts ?? []).map((p) => ({ p, b: box(p) }));
+  const walls = parts.filter((o) => o.p.role === 'wall');
+  if (!walls.length) return null;
+  const FIX = new Set(['toilet', 'basin', 'bathtub', 'sink', 'stack']);
+  let e = '';
+  for (const o of parts) {
+    const r = o.p.role;
+    if (r === 'wall') e += rect('WALL', o.b.x, o.b.y, o.b.dx, o.b.dy);
+    else if (FIX.has(r)) {
+      e += rect('FIXTURE', o.b.x, o.b.y, o.b.dx, o.b.dy);
+      if (r === 'stack') e += circle('FIXTURE', o.b.x + o.b.dx / 2, o.b.y + o.b.dy / 2, o.b.dx / 2);
+    } else if (r && r !== 'floor') e += rect('FURN', o.b.x, o.b.y, o.b.dx, o.b.dy, 'DASHED');
+  }
+  e += pipeEntities(pipes);
+  const x0 = Math.min(...walls.map((o) => o.b.x)), x1 = Math.max(...walls.map((o) => o.b.x + o.b.dx));
+  const y0 = Math.min(...walls.map((o) => o.b.y)), y1 = Math.max(...walls.map((o) => o.b.y + o.b.dy));
+  e += line('DIM', x0, y0 - 500, x1, y0 - 500) + text('DIM', (x0 + x1) / 2 - 300, y0 - 420, 200, String(Math.round(x1 - x0)));
+  e += line('DIM', x0 - 500, y0, x0 - 500, y1) + text('DIM', x0 - 1100, (y0 + y1) / 2, 200, String(Math.round(y1 - y0)));
+  e += text('TXT', x0, y0 - 900, 200, 'INTERIOR PLAN (mm) - auto-generated, MEP pipes=schematic run, non-statutory');
+  return shell(e);
+}
+
+/** 도메인 → DXF (없으면 null). pipes = buildAssembly().pipes.routes — 라우터 단일 결과 재사용(정합). */
+export function dxfPlan(assembly, domain, pipes) {
+  if (domain === 'building') { const d = dxfBuildingPlan(assembly); return d && pipes?.length ? injectPipes(d, pipes) : d; }
+  if (domain === 'landscape') { const d = dxfLandscapePlan(assembly); return d && pipes?.length ? injectPipes(d, pipes) : d; }
+  if (domain === 'interior') return dxfInteriorPlan(assembly, pipes);
   return null;
+}
+// 기존 셸의 ENTITIES 끝에 PIPE 엔티티 삽입(섹션 균형 유지)
+function injectPipes(dxf, pipes) {
+  const marker = g(0, 'ENDSEC') + g(0, 'EOF');
+  const tail = dxf.lastIndexOf(marker);
+  if (tail < 0) return dxf;
+  return dxf.slice(0, tail) + pipeEntities(pipes) + dxf.slice(tail);
 }
 
 // --- self-test: 구조 무결성(섹션 균형·EOF·레이어 참조·엔티티 수) ---
@@ -147,6 +194,12 @@ if (isMain) {
   check('building 3×2×2', dxfBuildingPlan(buildAssemblyTemplate('building', 'rc_frame', { baysX: 3, baysY: 2, floors: 2 })), 60);
   check('landscape deck', dxfLandscapePlan(buildAssemblyTemplate('landscape', 'timber_deck', {})), 30);
   check('landscape pergola', dxfLandscapePlan(buildAssemblyTemplate('landscape', 'pergola', {})), 20);
+  {
+    const { buildAssembly } = await import('./assembly.mjs');
+    const asm = buildAssemblyTemplate('interior', 'studio_unit', {});
+    const built = buildAssembly(asm);
+    check('interior studio+MEP', dxfInteriorPlan(asm, built.pipes?.routes), 40);
+  }
   console.log(`dxf-export self-test: ${pass}/${pass + fail}`);
   if (fail) process.exit(1);
 }

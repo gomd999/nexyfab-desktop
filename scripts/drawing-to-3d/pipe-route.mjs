@@ -341,11 +341,14 @@ function _candidatePaths(S, E, sAx, eAx, corridorZs, L) {
  *
  * @param pipes [{ id, from, to, d?, service?, col?, stub?: boolean }]
  *   from/to = 'partLabel.face'('x±|y±|z±') | { part, face, offset:[dx,dy,dz] } | [x,y,z]
- * @param items 장애물 목록 [{ label, min, max, round? }] — obstaclesFromAssembly(assembly.mjs) 산출
+ * @param items 장애물 목록 [{ label, min, max, round?, passable? }] — obstaclesFromAssembly 산출.
+ *   passable=true(벽·슬래브·바닥 등 건축 부재)는 관통 가능 — 후보 판정에서 제외(슬리브로 통과),
+ *   호출측이 pipeObstacleCheck 결과에서 슬리브 명세로 분리한다(위반 아님·명세 산출, 정직).
  * @returns { routes, features, errors, notes }
  */
 export function autoRoutePipes(pipes, items, { clearance = 80, stubLen = 40 } = {}) {
   const byLabel = new Map(items.map((i) => [i.label, i]));
+  const passable = new Set(items.filter((i) => i.passable).map((i) => i.label));
   const zTop = items.length ? Math.max(...items.map((i) => i.max[2])) : 0;
   const routes = [], features = [], errors = [], notes = [];
   for (const [pi, pipe] of (pipes ?? []).entries()) {
@@ -369,7 +372,7 @@ export function autoRoutePipes(pipes, items, { clearance = 80, stubLen = 40 } = 
       const ge = routeGate(n.pts, { d });
       if (ge.length) { reasons.push(ge[0]); continue; }
       const rt = { label: id, pts: n.pts, d, allow: pipe.allow };
-      if (pipeObstacleCheck([rt], items).length) { reasons.push('장비 관통'); continue; }
+      if (pipeObstacleCheck([rt], items).some((v) => !passable.has(v.obstacle))) { reasons.push('장비 관통'); continue; }
       if (pipeCrossCheck([...routes, rt]).some((v) => v.a === id || v.b === id)) { reasons.push('기라우팅 배관 교차'); continue; }
       chosen = n.pts;
       break;

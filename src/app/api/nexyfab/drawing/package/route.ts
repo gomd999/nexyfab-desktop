@@ -22,7 +22,7 @@ export const runtime = 'nodejs';
 
 type Assembly = { name?: string; parts?: Array<Record<string, unknown>>; pipes?: Array<Record<string, unknown>> };
 type Support = { supported: string[]; floating: string[]; faceContacts: Array<{ part: string; on: string; gapMm: number; suggestTzMm: number }> };
-type Pipes = { routes: Array<{ label: string; pts: number[][]; d: number; col?: string }>; errors: string[]; notes: string[]; obstacleViolations: unknown[]; crossViolations: unknown[] } | null;
+type Pipes = { routes: Array<{ label: string; pts: number[][]; d: number; col?: string }>; errors: string[]; notes: string[]; obstacleViolations: unknown[]; sleeves?: Array<{ route: string; through: string; d: number; note: string }>; crossViolations: unknown[] } | null;
 type Built = {
   ok: boolean; openscad?: string; structural?: unknown; interferences?: unknown[]; welds?: unknown[]; weldTotalMm?: number; gateErrors?: string[];
   parts?: Array<{ id: string; aabb: { min: number[]; max: number[] } }>;
@@ -39,7 +39,7 @@ type BoqMod = { boqReport: (a: Assembly, o?: Record<string, unknown>) => string 
 type PdMod = { dossierReport: (a: Assembly, o?: Record<string, unknown>) => string; pidSkeleton: (a: Assembly, o?: Record<string, unknown>) => string };
 type RenderMod = { renderHtml: (spec: unknown, o?: Record<string, unknown>) => Promise<string>; renderColoredHtml: (spec: unknown, o?: Record<string, unknown>) => Promise<string> };
 type VerifyMod = { renderStl: (scad: string) => Promise<Uint8Array> };
-type DxfMod = { dxfPlan: (a: Assembly, domain: string) => string | null };
+type DxfMod = { dxfPlan: (a: Assembly, domain: string, pipes?: unknown[]) => string | null };
 
 let _asm: AsmMod | null = null, _pkg: PkgMod | null = null, _rnd: RenderMod | null = null, _boq: BoqMod | null = null, _pd: PdMod | null = null, _vfy: VerifyMod | null = null, _dxf: DxfMod | null = null;
 async function load() {
@@ -91,9 +91,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // 2D GA 도면 (건축=축선 구조평면·조경=배치도 모드 포함 · 배관=라우터 결과 그대로 투영)
   try { files.push({ name: 'GA_2D_drawing.html', mime: 'text/html', content: mods.pkg.ga2dDrawing(assembly, { title, domain, pipes: built.pipes?.routes }) }); } catch (e) { /* skip */ void e; }
-  // DXF 평면 (P1 — AutoCAD 편집용, 레이어 분리 R12. 건축·조경 도메인)
+  // DXF 평면 (P1 — AutoCAD 편집용, 레이어 분리 R12. 건축·조경·인테리어 + PIPE 레이어)
   try {
-    const dxf = mods.dxf.dxfPlan(assembly, domain);
+    const dxf = mods.dxf.dxfPlan(assembly, domain, built.pipes?.routes);
     if (dxf) files.push({ name: 'GA_plan.dxf', mime: 'application/dxf', content: dxf });
   } catch (e) { void e; }
   // 구조/응력 검토

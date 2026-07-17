@@ -306,6 +306,22 @@ describe('buildAssembly — 설계 타당성 그물 제품 배선 (#2·#6 통합
     // 계통색 GA — 배관 피처가 feed 색으로 composeIntent 에 포함
     expect(built.composeIntent.features.some((f) => f._col === '#2563eb' && f.kind === 'cylinder' && !f.diameterHole)).toBe(true);
   });
+  it('슬리브 재분류 — 벽(passable) 관통=명세·designOk 유지, 위반 아님 (비기계 일반화)', () => {
+    const built = buildAssembly({
+      name: 'unit', parts: [
+        { id: 'floor', type: 'box', params: { width: 4000, depth: 3000, height: 100 }, role: 'floor' },
+        { id: 'wall_mid', type: 'box', params: { width: 150, depth: 3000, height: 2400 }, at: { tx: 1900, tz: 100 }, role: 'wall' },
+        { id: 'fx_a', type: 'box', params: { width: 400, depth: 400, height: 400 }, at: { tx: 400, ty: 1300, tz: 100 } },
+        { id: 'fx_b', type: 'box', params: { width: 400, depth: 400, height: 400 }, at: { tx: 3200, ty: 1300, tz: 100 } },
+      ],
+      pipes: [{ id: 'ln1', from: 'fx_a.x+', to: 'fx_b.x-', d: 50, service: 'drain' }],
+    });
+    expect(built.ok).toBe(true);
+    expect(built.pipes.errors).toEqual([]);
+    expect(built.pipes.obstacleViolations).toEqual([]);
+    expect(built.pipes.sleeves.map((s) => s.through)).toContain('wall_mid');
+    expect(built.designOk).toBe(true);
+  });
   it('obstaclesFromAssembly — 원통 부품은 round 태그(부재별 장애물, #4)', () => {
     const obs = obstaclesFromAssembly({
       parts: [
@@ -319,4 +335,24 @@ describe('buildAssembly — 설계 타당성 그물 제품 배선 (#2·#6 통합
     expect(obs.find((o) => o.label === 'frame').round).toBeUndefined();
     expect(roundAxisOf({ type: 'cylinder', at: { rx: -90 } })).toBe('y');
   });
+});
+
+import { buildAssemblyTemplate } from './domain-assemblies.mjs';
+
+describe('인테리어 MEP — 기계 배관 어휘의 도메인 적용(욕실·주방 급배수)', () => {
+  for (const t of ['studio_unit', 'apartment_unit', 'three_room_unit']) {
+    it(`${t}: 전 라인 라우팅 완주 · 위반 0 · designOk`, () => {
+      const built = buildAssembly(buildAssemblyTemplate('interior', t, {}));
+      expect(built.ok).toBe(true);
+      expect(built.pipes.errors).toEqual([]);
+      expect(built.pipes.obstacleViolations).toEqual([]);
+      expect(built.pipes.crossViolations).toEqual([]);
+      expect(built.pipes.routes.length).toBeGreaterThanOrEqual(4);
+      expect(built.designOk).toBe(true);
+      // 계통색: 배수(#92400e)·급수(#0284c7) 피처가 GA 3D intent 에 포함
+      const cols = new Set(built.composeIntent.features.map((f) => f._col));
+      expect(cols.has('#92400e')).toBe(true);
+      expect(cols.has('#0284c7')).toBe(true);
+    });
+  }
 });

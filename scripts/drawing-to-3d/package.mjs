@@ -3,9 +3,8 @@
  * 를 범용 생성한다. skid/tank 하드코딩 생성기를 어셈블리 파라메트릭으로 일반화.
  * (P&ID·Dossier 는 공정 의미·서술 필요 → AI 보조 후속. 여기선 형상기반 3종.)
  */
-import { partAabb } from './reconstruct.mjs';
 import { structuralCheck } from './structural.mjs';
-import { colorOf } from './assembly.mjs';
+import { colorOf, placedAabb } from './assembly.mjs';
 
 // 부품 type → 기본 재질 라벨(도면 BOM). 색은 colorOf(assembly.mjs) 단일 소스 — service/role/추론/type 순.
 const TYPE_MAT = {
@@ -15,11 +14,11 @@ const TYPE_MAT = {
 };
 const styleOf = (p) => ({ c: colorOf(p), mat: p.material || TYPE_MAT[p.type] || '-' });
 
-// 배치 후 축정렬 AABB(회전 무시 근사 — 도면 엔벨로프용)
+// 배치 후 축정렬 AABB — placedAabb(회전 정확) 단일 소스. ⚠구현이 "회전 무시 근사"였을 때
+// rz=90 벽이 GA 외형을 6300→10650으로 부풀렸다(정합 게이트 W 대조가 검출, 260717).
 function placed(part) {
-  const a = partAabb({ type: part.type, ...part.params });
-  const { tx = 0, ty = 0, tz = 0 } = part.at ?? {};
-  return { x: a.min[0] + tx, y: a.min[1] + ty, z: a.min[2] + tz, dx: a.max[0] - a.min[0], dy: a.max[1] - a.min[1], dz: a.max[2] - a.min[2] };
+  const b = placedAabb(part);
+  return { x: b.min[0], y: b.min[1], z: b.min[2], dx: b.max[0] - b.min[0], dy: b.max[1] - b.min[1], dz: b.max[2] - b.min[2] };
 }
 
 // 부품 주요치수 문자열 (도면 치수기입용)
@@ -269,7 +268,11 @@ export function packageConsistencyCheck(files, basis, { hasFluid = false } = {})
   if (boqMass !== null && dosMass !== null) add('Dossier.html↔BOQ.html', 'totalMassKg', dosMass, boqMass, Math.max(0.5, boqMass * 0.01, tPad));
   if (!hasFluid) add('BOQ.html', 'totalMassKg(vs 구조)', boqMass, basis.massKg, Math.max(0.5, basis.massKg * 0.01, tPad));
   else if (boqMass !== null) checks.push({ file: 'BOQ.html', metric: 'totalMassKg', value: boqMass, expect: basis.massKg, tol: 0, pass: true, note: '유체(운전질량) 포함차 — 자재질량 대 운전질량은 정의가 달라 대조 생략' });
-  const gaH = num(get('GA_2D_drawing.html'), />(\d+) \(H\)</);
+  const gaHtml = get('GA_2D_drawing.html');
+  const gaH = num(gaHtml, />(\d+) \(H\)</);
   add('GA_2D_drawing.html', 'H(mm)', gaH, Math.round(basis.env[2]), 1);
+  // W 대조 — FRONT 하단 치수(첫 dimH). 배관 오버레이가 있어도 치수는 부품 엔벨로프 기준.
+  const gaW = num(gaHtml, /text-anchor="middle" fill="#dc2626">(\d+)</);
+  add('GA_2D_drawing.html', 'W(mm)', gaW, Math.round(basis.env[0]), 1);
   return { pass: checks.every((c) => c.pass), checks, rev: basis.rev };
 }

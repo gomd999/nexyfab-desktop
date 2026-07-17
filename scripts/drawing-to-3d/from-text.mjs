@@ -130,7 +130,7 @@ export const ASSEMBLY_SCHEMA = {
           id: { type: 'STRING' },
           from: { type: 'STRING' }, to: { type: 'STRING' },
           d: NUM,
-          service: { type: 'STRING', enum: ['feed', 'hp', 'permeate', 'concentrate', 'sludge'] },
+          service: { type: 'STRING', enum: ['feed', 'hp', 'permeate', 'concentrate', 'sludge', 'supply', 'drain'] },
         },
       },
     },

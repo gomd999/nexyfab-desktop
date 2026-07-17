@@ -6,12 +6,12 @@
  */
 import { computeBOQ } from './boq.mjs';
 import { structuralCheck } from './structural.mjs';
-import { colorOf, COLOR_LABEL } from './assembly.mjs';
+import { colorOf, COLOR_LABEL, buildAssembly } from './assembly.mjs';
 
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-const SERVICE_KO = { feed: '피드/입수', hp: '고압', permeate: '투과/출수', concentrate: '농축/드레인', motor: '구동(펌프·모터)', panel: '제어', frame: '프레임/구조', sludge: '슬러지' };
+const SERVICE_KO = { feed: '피드/입수', hp: '고압', permeate: '투과/출수', concentrate: '농축/드레인', motor: '구동(펌프·모터)', panel: '제어', frame: '프레임/구조', sludge: '슬러지', supply: '급수(MEP)', drain: '배수(MEP)', stack: 'PS/입상관' };
 // 부품 → 계통 키 (colorOf 색을 역매핑)
-const COL_SVC = { '#2563eb': 'feed', '#dc2626': 'hp', '#0891b2': 'permeate', '#ea580c': 'concentrate', '#4d7c0f': 'motor', '#59606b': 'panel', '#3f4756': 'frame', '#5b6472': 'frame', '#8a5a2b': 'sludge' };
+const COL_SVC = { '#2563eb': 'feed', '#dc2626': 'hp', '#0891b2': 'permeate', '#ea580c': 'concentrate', '#4d7c0f': 'motor', '#59606b': 'panel', '#3f4756': 'frame', '#5b6472': 'frame', '#8a5a2b': 'sludge', '#0284c7': 'supply', '#92400e': 'drain', '#7c2d12': 'stack' };
 const svcOf = (p) => COL_SVC[colorOf(p)] || 'equipment';
 
 function groupBySvc(parts) {
@@ -20,6 +20,22 @@ function groupBySvc(parts) {
   return g;
 }
 const PB = (label, page) => `<style>${page}@media print{.nf-print-bar{display:none!important}body{background:#fff!important}.sheet,.doc{box-shadow:none!important;border:none!important;margin:0!important}}</style><div class="nf-print-bar" style="position:sticky;top:0;z-index:99;background:#1f2937;color:#fff;padding:7px 16px;font-size:12.5px;display:flex;gap:12px;align-items:center"><b>${label}</b><button onclick="print()" style="background:#2563eb;color:#fff;border:0;padding:5px 13px;border-radius:6px;cursor:pointer">🖨 인쇄 / PDF</button></div>`;
+
+/** 배관(MEP·프로세스) 요약 섹션 — pipes[] 선언 어셈블리만. 라우팅·슬리브는 buildAssembly 단일 결과. */
+function mepSection(assembly) {
+  if (!Array.isArray(assembly.pipes) || !assembly.pipes.length) return '';
+  try {
+    const P = buildAssembly(assembly)?.pipes;
+    if (!P) return '';
+    const rows = P.routes.map((r) => `<tr><td>${esc(r.label)}</td><td>${esc(SERVICE_KO[r.service] ?? r.service ?? '-')}</td><td>DN${r.d}</td><td>${r.pts.length - 1}세그먼트(엘보 ${Math.max(0, r.pts.length - 2)})</td></tr>`).join('');
+    const sl = P.sleeves.map((s) => `<tr><td>${esc(s.route)}</td><td>${esc(s.through)}</td><td>${esc(s.note)}</td></tr>`).join('');
+    return `<h2>5. 배관 (MEP·프로세스 — 자동 라우팅)</h2>
+<table><tr><th>라인</th><th>계통</th><th>관경</th><th>경로</th></tr>${rows}</table>
+${sl ? `<div style="font-size:12px;margin:4px 0 2px"><b>관통 슬리브 명세</b> (벽·바닥 관통 = 위반 아님·시공 명세)</div><table><tr><th>라인</th><th>관통 부재</th><th>비고</th></tr>${sl}` + '</table>' : ''}
+${P.errors.length ? `<div class="risk">⚠ 라우팅 실패 ${P.errors.length}건: ${esc(P.errors.join(' / '))}</div>` : ''}
+<div class="note" style="padding:2px 0">경로=결정론 자동 라우팅(관통·교차 게이트) · 관경·접속 위치=개산 · 구배·트랩·통기 미모델 — 시공도 아님.</div>`;
+  } catch { return ''; }
+}
 
 /** 설계 설명서(Dossier) — 사실 자동요약 + 계통 서술. */
 export function dossierReport(assembly, { title = '설계' } = {}) {
@@ -51,6 +67,7 @@ table{border-collapse:collapse;width:100%;font-size:12.5px;margin:8px 0}th,td{bo
 <div class="risk"><b>${warn ? '⚠ 검토 필요' : '🟢 자동검토 기준 이내'}:</b> 무게중심 ${f(st.cgHeightM, 2)}m · ${st.tipover.seismicG}g 전도 FS <b>${f(st.tipover.seismicFS, 2)}</b>(기준 ≥1.5)${st.member ? ` · 부재 이용률 ${f(st.member.utilization, 2)}` : ''}. ${warn ? esc(st.warnings.join(' / ')) : '경고 없음.'}</div>
 <h2>4. 물량 요약 (금액 제외)</h2><table><tr><th>총 질량</th><th>표면적</th><th>용접선</th><th>홀</th><th>공수(개산)</th></tr>
 <tr><td>${f(boq.totalMassKg)} kg</td><td>${boq.surfaceM2} ㎡</td><td>${boq.weld.totalM} m (${boq.weld.joints}조인트)</td><td>${boq.holes}</td><td>${boq.laborHr.합계} hr</td></tr></table>
+${mepSection(assembly)}
 <div class="note">⚠ 개념/GA(비법정) · 물량=형상 결정론·공수=표준원단위 개산·금액 미산출 · 서술은 계통 기반 자동(정밀 서술·시장/특허는 AI 리서치 후속). 상세=GA 도면·구조검토·BOQ 별첨.</div>
 <div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div></body></html>`;
 }

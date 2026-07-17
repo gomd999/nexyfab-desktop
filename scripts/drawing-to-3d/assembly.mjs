@@ -24,8 +24,11 @@ import { autoRoutePipes, pipeObstacleCheck, pipeCrossCheck } from './pipe-route.
 // 부품 → 계통색 (service/role 우선, 없으면 type). 계통색 GA 3D·도면 색분류 공용.
 export const SERVICE_COL = {
   feed: '#2563eb', hp: '#dc2626', permeate: '#0891b2', concentrate: '#ea580c', inlet: '#2563eb', outlet: '#0891b2', frame: '#3f4756', motor: '#4d7c0f', panel: '#59606b', sludge: '#8a5a2b',
+  // 건축설비 MEP(위시빌더 배관 어휘의 비기계 적용): 급수·배수
+  supply: '#0284c7', drain: '#92400e',
   // 비-기계 role (#6): 건축·조경·인테리어 부재 계통색
   column: '#475569', beam: '#0e7490', slab: '#94a3b8', joist: '#854d0e', deck: '#a16207', floor: '#d1d5db', table: '#0f766e', counter: '#7c3aed', wall: '#78716c', base: '#57534e',
+  stack: '#7c2d12',
 };
 export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c' };
 // 부품 id/name 키워드 → 계통 자동추론 (명시 service 태그 없어도 계통색이 나오게).
@@ -36,6 +39,8 @@ const ID_SERVICE = [
   [/perm|permeate|투과|product|제품|상등|정수|clean/i, 'permeate'],
   [/conc|reject|농축|brine|드레인|drain|waste|폐/i, 'concentrate'],
   [/sludge|슬러지/i, 'sludge'],
+  [/supply|급수|수전/i, 'supply'],
+  [/drain|배수|하수|오수/i, 'drain'],
   [/panel|제어|hmi|plc|control|cabinet|반\b/i, 'panel'],
   [/frame|프레임|post|기둥|rail|레일|leg|다리|deck|데크|base|베이스|structure|구조|skid|스키드/i, 'frame'],
 ];
@@ -44,6 +49,7 @@ export const colorOf = (p) => (p.service && SERVICE_COL[p.service]) || (p.role &
 export const COLOR_LABEL = {
   '#2563eb': '피드/입수', '#dc2626': '고압', '#0891b2': '투과/출수', '#ea580c': '농축', '#4d7c0f': '모터/펌프', '#3f4756': '프레임', '#59606b': '제어반', '#5b6472': '구조', '#9aa7b5': '용기/부품', '#8b98a6': '브래킷', '#78838f': '플랜지', '#8a5a2b': '슬러지',
   '#475569': '기둥', '#0e7490': '보', '#94a3b8': '슬래브', '#854d0e': '장선/서까래', '#a16207': '데크/기어', '#d1d5db': '바닥', '#0f766e': '테이블', '#7c3aed': '카운터', '#78716c': '벽체', '#6b7280': '볼트/체결', '#57534e': '기초/저판',
+  '#0284c7': '급수', '#92400e': '배수', '#7c2d12': 'PS/스택',
 };
 
 const DEG = Math.PI / 180;
@@ -59,8 +65,10 @@ function rotatePoint([x, y, z], rx, ry, rz) {
 /**
  * 배치 후 정확한 AABB — 회전이 있으면 로컬 박스 8코너를 회전변환한 뒤 min/max로
  * 실제 경계상자를 계산한다(임의 각도 배치의 간섭검사가 정확해짐). 축정렬은 그대로.
+ * export: package.mjs(2D GA)·dxf 등 전 소비자가 이 단일 구현을 쓴다 — 회전 무시 사본이
+ * GA 외형을 부풀리던 실버그를 정합 게이트가 검출(260717)한 뒤 일원화.
  */
-function placedAabb(part) {
+export function placedAabb(part) {
   const a = partAabb({ type: part.type, ...part.params });
   const { tx = 0, ty = 0, tz = 0, rx = 0, ry = 0, rz = 0 } = part.at ?? {};
   const rotated = !!(rx || ry || rz);
@@ -275,12 +283,21 @@ export function roundAxisOf(part) {
   return null;
 }
 
+// 배관이 슬리브로 관통 가능한 건축 부재 role — 벽·바닥·슬래브 관통은 "위반"이 아니라
+// "슬리브 명세"다(건축 현실). 장비·가구·구조기둥 관통은 여전히 위반.
+const PASSABLE_ROLES = new Set(['wall', 'floor', 'slab', 'deck', 'ceiling']);
+
 /** 어셈블리 → 배관 관통검사용 장애물 목록(부품=부재별, 원통 인식). pipeObstacleCheck 입력. */
 export function obstaclesFromAssembly(asm) {
   return (asm.parts ?? []).map((p) => {
     const b = placedAabb(p);
     const round = roundAxisOf(p);
-    return { label: p.id ?? p.type, min: b.min, max: b.max, ...(round ? { round } : {}), ...(p.group ? { group: p.group } : {}) };
+    return {
+      label: p.id ?? p.type, min: b.min, max: b.max,
+      ...(round ? { round } : {}), ...(p.group ? { group: p.group } : {}),
+      ...(p.role ? { role: p.role } : {}),
+      ...(PASSABLE_ROLES.has(p.role) ? { passable: true } : {}),
+    };
   });
 }
 
@@ -405,15 +422,28 @@ export function buildAssembly(asm) {
       const obstacles = obstaclesFromAssembly(asm);
       const pipesIn = asm.pipes.map((pp) => ({ ...pp, col: pp.col ?? (pp.service && SERVICE_COL[pp.service]) ?? '#64748b' }));
       const routed = autoRoutePipes(pipesIn, obstacles);
+      // 관통 재검을 슬리브(벽·바닥 등 passable 부재 = 명세)와 위반(장비·가구 = 결함)으로 분리
+      const passable = new Set(obstacles.filter((o) => o.passable).map((o) => o.label));
+      const allPen = pipeObstacleCheck(routed.routes, obstacles);
+      const sleeveSeen = new Set();
+      const sleeves = [];
+      for (const v of allPen.filter((v) => passable.has(v.obstacle))) {
+        const key = v.route + '|' + v.obstacle;
+        if (sleeveSeen.has(key)) continue;
+        sleeveSeen.add(key);
+        const rt = routed.routes.find((r) => r.label === v.route);
+        sleeves.push({ route: v.route, through: v.obstacle, d: rt?.d ?? 26, note: `관통 슬리브 필요(⌀${(rt?.d ?? 26) + 20} 내외 개산)` });
+      }
       pipes = {
         routes: routed.routes, errors: routed.errors, notes: routed.notes,
-        obstacleViolations: pipeObstacleCheck(routed.routes, obstacles),
+        obstacleViolations: allPen.filter((v) => !passable.has(v.obstacle)),
+        sleeves,
         crossViolations: pipeCrossCheck(routed.routes),
       };
       composeIntent.features.push(...routed.features);
       pipeScadBody = pipeFeatureScad(routed.features);
     } catch (e) {
-      pipes = { routes: [], errors: ['배관 라우팅 예외: ' + (e?.message ?? e)], notes: [], obstacleViolations: [], crossViolations: [] };
+      pipes = { routes: [], errors: ['배관 라우팅 예외: ' + (e?.message ?? e)], notes: [], obstacleViolations: [], sleeves: [], crossViolations: [] };
     }
   }
 

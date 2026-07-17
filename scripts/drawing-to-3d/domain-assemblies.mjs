@@ -262,6 +262,29 @@ function bathFixtures(prefix, bx, by, bathW, bathD) {
 }
 
 /**
+ * 욕실 MEP 배관(급수·배수) — 기계 pipes[] 어휘의 인테리어 적용(위시빌더 배관 일반화).
+ * PS 입상관(스택)을 욕실 밖 벽 뒤에 두고 기구별 배수·급수를 "연결 선언"만 한다 —
+ * 경로는 결정론 라우터(autoRoutePipes)가 잡고, 벽 관통은 위반이 아니라 **슬리브 명세**로
+ * 자동 산출된다(passable role). GA 3D 계통색·2D 폴리라인·DXF PIPE 레이어에 그대로 반영.
+ * ⚠관경·접속 위치=개산 표기. 구배·트랩·통기관 미모델(정직 한계) — DFU 산정은 drainage_vent 계산기.
+ */
+function bathMEP(prefix, bx, by, bathW, bathD, { hasTub = false, wallT = 150, sinkId = null } = {}) {
+  const sx = bx + bathW + wallT + 250, sy = by + bathD - 300; // 욕실 수직벽 바깥(PS 샤프트 위치)
+  const parts = [P('ps_stack', 'cylinder', { diameter: 100, length: 2700 }, { tx: sx, ty: sy, tz: 0 }, 'PVC', 'stack')];
+  // 진입면·z 규칙: ①기구마다 스택 진입면을 달리해 코리도 하강 xy 가 겹치지 않게(동일면
+  // 2라인=하강 수직선 중첩→교차 위반) ②진입 z=기구 포트 z 정렬(미세 z단차는 엘보 후퇴가
+  // 안 되는 초단 조그가 됨 — 라우터가 정직 거부하므로 선언 단계에서 제거)
+  const pipes = [
+    { id: 'drain_toilet', from: `${prefix}_toilet.x+`, to: { part: 'ps_stack', face: 'x-', offset: [0, 0, -1140] }, d: 75, service: 'drain' },
+    { id: 'drain_basin', from: `${prefix}_basin.x+`, to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -940] }, d: 50, service: 'drain' },
+    { id: 'supply_basin', from: 'ps_stack.z+', to: `${prefix}_basin.z+`, d: 20, service: 'supply' },
+  ];
+  if (hasTub) pipes.push({ id: 'drain_tub', from: `${prefix}_tub.x+`, to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -1075] }, d: 50, service: 'drain' });
+  if (sinkId) pipes.push({ id: 'drain_sink', from: `${sinkId}.z-`, to: { part: 'ps_stack', face: 'x+', offset: [0, 0, -900] }, d: 50, service: 'drain' });
+  return { parts, pipes };
+}
+
+/**
  * 원룸(스튜디오) 유닛(2026-07-16 후속): 단일 공간 + 욕실 + 주방 카운터·침대·책상.
  * 창호 = wall_with_openings의 sill 있는 개구부(후면 창 1). 설비 = bathFixtures.
  */
@@ -285,10 +308,14 @@ function studioUnitAssembly(p = {}) {
   // 주방 카운터(+싱크) · 침대 · 책상
   parts.push(P('kitchen_counter', 'box', { width: 1800, depth: 600, height: 850 }, { tx: 300, ty: 300, tz: 0 }, 'timber', 'counter'));
   parts.push(P('sink', 'box', { width: 700, depth: 450, height: 180 }, { tx: 500, ty: 380, tz: 850 }, 'steel', 'sink'));
-  parts.push(P('bed', 'box', { width: 1500, depth: 2000, height: 450 }, { tx: W - 1900, ty: D - bathD - 2400, tz: 0 }, 'timber', 'bed'));
+  // 간섭 이력: 침대(W-1900)·책상(W-1600)이 y 700~1000 구간서 관통 — 침대를 좌측으로 이동(그물 검출)
+  parts.push(P('bed', 'box', { width: 1500, depth: 2000, height: 450 }, { tx: W - 3500, ty: D - bathD - 2400, tz: 0 }, 'timber', 'bed'));
   parts.push(P('desk', 'box', { width: 1200, depth: 600, height: 730 }, { tx: W - 1600, ty: 400, tz: 0 }, 'timber', 'table'));
+  // MEP 배관(급수·배수) — PS 스택 + 기구 연결 선언(경로=결정론 라우터·벽 관통=슬리브 명세)
+  const mep = bathMEP('bath', 0, D - bathD, bathW, bathD, { hasTub: bathW >= 1700 && bathD >= 1500, wallT, sinkId: 'sink' });
+  parts.push(...mep.parts);
   return {
-    name: '원룸 유닛', domain: 'interior', kind: 'assembly', parts,
+    name: '원룸 유닛', domain: 'interior', kind: 'assembly', parts, pipes: mep.pipes,
     floorAreaM2: +((W * D) / 1e6).toFixed(2),
     exits: [{ x: entryX + doorW / 2, y: 0, widthMm: doorW }],
     roomBounds: { W, D },
@@ -335,7 +362,7 @@ function threeRoomUnitAssembly(p = {}) {
     { x: D * 0.25 - inDoorW / 2, w: inDoorW, h: 2100, sill: 0 },
     { x: D * 0.75 - inDoorW / 2, w: inDoorW, h: 2100, sill: 0 },
   ] }, { tx: ldkW + wallT, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall'));
-  parts.push(P('wall_bed_div', 'wall_with_openings', { length: bedW, thickness: wallT, height: wallH }, { tx: ldkW + wallT, ty: D / 2, tz: 0 }, 'concrete', 'wall'));
+  parts.push(P('wall_bed_div', 'wall_with_openings', { length: bedW - wallT, thickness: wallT, height: wallH }, { tx: ldkW + wallT, ty: D / 2, tz: 0 }, 'concrete', 'wall'));
   // 방3(좌후 코너) — 수평벽(문) + 수직벽
   parts.push(P('wall_r3_h', 'wall_with_openings', { length: r3W, thickness: wallT, height: wallH, openings: [{ x: r3W / 2 - inDoorW / 2, w: inDoorW, h: 2100, sill: 0 }] }, { tx: 0, ty: D - r3D - wallT, tz: 0 }, 'concrete', 'wall'));
   parts.push(P('wall_r3_v', 'wall_with_openings', { length: r3D, thickness: wallT, height: wallH }, { tx: r3W + wallT, ty: D - r3D, tz: 0, rz: 90 }, 'concrete', 'wall'));
@@ -353,8 +380,10 @@ function threeRoomUnitAssembly(p = {}) {
   parts.push(P('dining', 'box', { width: 1400, depth: 800, height: 730 }, { tx: 500, ty: 3000, tz: 0 }, 'timber', 'table'));
   parts.push(P('kitchen_counter', 'box', { width: 2200, depth: 600, height: 850 }, { tx: bathX, ty: D - bathD - wallT - 900, tz: 0 }, 'timber', 'counter'));
   parts.push(P('sink', 'box', { width: 700, depth: 450, height: 180 }, { tx: bathX + 300, ty: D - bathD - wallT - 820, tz: 850 }, 'steel', 'sink'));
+  const mep = bathMEP('bath', bathX, D - bathD, bathW, bathD, { hasTub: bathW >= 1700 && bathD >= 1500, wallT, sinkId: 'sink' });
+  parts.push(...mep.parts);
   return {
-    name: '3룸 유닛', domain: 'interior', kind: 'assembly', parts,
+    name: '3룸 유닛', domain: 'interior', kind: 'assembly', parts, pipes: mep.pipes,
     floorAreaM2: +((W * D) / 1e6).toFixed(2),
     exits: [{ x: entryX + doorW / 2, y: 0, widthMm: doorW }],
     roomBounds: { W, D },
@@ -397,7 +426,7 @@ function apartmentUnitAssembly(p = {}) {
     { x: D * 0.75 - inDoorW / 2, w: inDoorW, h: 2100, sill: 0 },
   ] }, { tx: ldkW + wallT, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall'));
   // 침실 분할 수평벽
-  parts.push(P('wall_bed_div', 'wall_with_openings', { length: bedW, thickness: wallT, height: wallH }, { tx: ldkW + wallT, ty: D / 2, tz: 0 }, 'concrete', 'wall'));
+  parts.push(P('wall_bed_div', 'wall_with_openings', { length: bedW - wallT, thickness: wallT, height: wallH }, { tx: ldkW + wallT, ty: D / 2, tz: 0 }, 'concrete', 'wall'));
   // 욕실(LDK 뒤쪽 코너) — 수평벽(문) + 수직벽
   parts.push(P('wall_bath_h', 'wall_with_openings', { length: bathW, thickness: wallT, height: wallH, openings: [{ x: bathW / 2 - inDoorW / 2, w: inDoorW, h: 2100, sill: 0 }] }, { tx: 0, ty: D - bathD - wallT, tz: 0 }, 'concrete', 'wall'));
   parts.push(P('wall_bath_v', 'wall_with_openings', { length: bathD, thickness: wallT, height: wallH }, { tx: bathW + wallT, ty: D - bathD, tz: 0, rz: 90 }, 'concrete', 'wall'));
@@ -409,8 +438,10 @@ function apartmentUnitAssembly(p = {}) {
   parts.push(P('dining', 'box', { width: 1400, depth: 800, height: 730 }, { tx: 500, ty: 3000, tz: 0 }, 'timber', 'table'));
   parts.push(P('kitchen_counter', 'box', { width: Math.max(1500, ldkW - bathW - 1400), depth: 600, height: 850 }, { tx: 300, ty: D - bathD - wallT - 800, tz: 0 }, 'timber', 'counter'));
   parts.push(P('sink', 'box', { width: 700, depth: 450, height: 180 }, { tx: 500, ty: D - bathD - wallT - 720, tz: 850 }, 'steel', 'sink'));
+  const mep = bathMEP('bath', 0, D - bathD, bathW, bathD, { hasTub: bathW >= 1700 && bathD >= 1500, wallT, sinkId: 'sink' });
+  parts.push(...mep.parts);
   return {
-    name: '아파트 유닛', domain: 'interior', kind: 'assembly', parts,
+    name: '아파트 유닛', domain: 'interior', kind: 'assembly', parts, pipes: mep.pipes,
     floorAreaM2: +((W * D) / 1e6).toFixed(2),
     exits: [{ x: entryX + doorW / 2, y: 0, widthMm: doorW }],
     roomBounds: { W, D },
