@@ -2898,6 +2898,33 @@ export default function AssemblyPresetPanel({
           />
           {advErr && <div style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>⚠ {advErr}</div>}
           <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginTop: 2 }}>{t.advHint}</div>
+          {domain === 'civil' && (
+            // 수치지형도 DXF → contours 인입(결정론 파서·표고 없는 폴리라인 제외) — origin 은 advJson 에 선입력
+            <label style={{ display: 'block', fontSize: 10.5, marginTop: 6, color: 'var(--nx-text-3, #6b7684)' }}>
+              수치지형도 DXF 등고 가져오기 (advJson 에 {'"origin":{"E":..,"N":..}'}(m) 선입력 필요):{' '}
+              <input
+                type="file"
+                accept=".dxf"
+                style={{ fontSize: 10.5 }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    let base: Record<string, unknown> = {};
+                    try { base = advJson.trim() ? JSON.parse(advJson) : {}; } catch { setAdvErr('advJson 이 유효한 JSON 이 아닙니다 — origin 을 먼저 넣어주세요'); return; }
+                    const origin = base.origin as { E?: number; N?: number } | undefined;
+                    if (!(Number.isFinite(Number(origin?.E)) && Number.isFinite(Number(origin?.N)))) { setAdvErr('advJson.origin {E,N}(m) 필요 — 좌표계 정합 없이 인입 불가'); return; }
+                    const dxf = await file.text();
+                    const r = await fetch('/api/nexyfab/drawing/import-contours', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dxf, origin }) }).then((q) => q.json());
+                    if (!r.ok) { setAdvErr(r.error ?? '인입 실패'); return; }
+                    setAdvJson(JSON.stringify({ ...base, contours: r.contours }, null, 1));
+                    setAdvErr(null);
+                  } catch (err) { setAdvErr(String(err instanceof Error ? err.message : err).slice(0, 120)); }
+                  finally { e.target.value = ''; }
+                }}
+              />
+            </label>
+          )}
         </details>
       )}
 
