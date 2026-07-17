@@ -58,6 +58,16 @@ export function partVolume(type, p) {
       return solid - cut;
     }
     case 'i_girder': return p.length * (p.botW * p.botT + p.webT * p.webH + p.topW * p.topT);
+    // 표준 부품 확장(260718b — 자주 쓰는 부품)
+    case 'hex_nut': return (Math.sqrt(3) / 2) * p.af ** 2 * p.thickness - A * (p.boreDia ?? 0) ** 2 * p.thickness;
+    case 'washer': return A * (p.outerDia ** 2 - p.boreDia ** 2) * p.thickness;
+    case 'angle': return (p.legA + p.legB - p.thickness) * p.thickness * p.length; // L형강(장척)
+    case 'tee_section': return (p.B * p.tf + p.tw * (p.H - p.tf)) * p.length;       // T형강
+    case 'pipe_reducer': {
+      const t = p.wallThk ?? Math.max(2, p.dia1 * 0.03);
+      const frus = (D1, D2) => (Math.PI * p.length / 12) * (D1 * D1 + D1 * D2 + D2 * D2);
+      return frus(p.dia1, p.dia2) - frus(Math.max(0, p.dia1 - 2 * t), Math.max(0, p.dia2 - 2 * t)); // 원뿔대 셸
+    }
     default: return 0;
   }
 }
@@ -120,6 +130,17 @@ function localCG(type, p) {
       const Vs = A * p.threadDia ** 2 * p.length, Vh = (Math.sqrt(3) / 2) * af ** 2 * hh;
       const z = (Vs * (p.length / 2) + Vh * (p.length + hh / 2)) / (Vs + Vh);
       return [0, 0, z];
+    }
+    case 'angle': { // L형강 도심(단면 1차모멘트 — 길이=x 대칭)
+      const A1 = p.legA * p.thickness, A2 = p.thickness * Math.max(0, p.legB - p.thickness);
+      const y = (A1 * (p.legA / 2) + A2 * (p.thickness / 2)) / (A1 + A2);
+      const z = (A1 * (p.thickness / 2) + A2 * (p.thickness + (p.legB - p.thickness) / 2)) / (A1 + A2);
+      return [p.length / 2, y, z];
+    }
+    case 'tee_section': { // T형강 도심(z 비대칭·y 대칭)
+      const Aw = p.tw * (p.H - p.tf), Af = p.B * p.tf;
+      const z = (Aw * ((p.H - p.tf) / 2) + Af * (p.H - p.tf / 2)) / (Aw + Af);
+      return [p.length / 2, p.B / 2, z];
     }
     default: {
       // 대칭 타입(box·plate·flange·tube·cylinder·gear·wall(개구 무시 근사)·base_plate 등) = AABB 중심

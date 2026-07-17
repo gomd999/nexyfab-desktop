@@ -253,6 +253,32 @@ const GATES = {
     if (!e.length && i.webT > Math.min(i.topW, i.botW)) e.push('webT > 플랜지 폭');
     if (!e.length && (i.botT + i.webH + i.topT) < 300) e.push('거더 춤 < 300mm');
   },
+  // 표준 부품 확장(260718b)
+  hex_nut(i, e) {
+    for (const k of ['af', 'thickness']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (i.boreDia != null && !(i.boreDia >= 0 && i.boreDia < i.af / Math.sqrt(3) * 2)) e.push('boreDia ≥ 대각폭');
+  },
+  washer(i, e) {
+    for (const k of ['outerDia', 'boreDia', 'thickness']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (i.boreDia >= i.outerDia) e.push('bore ≥ OD');
+  },
+  angle(i, e) {
+    for (const k of ['legA', 'legB', 'thickness', 'length']) if (!pos(i[k]) || (k !== 'length' && i[k] > 4000)) e.push(`${k} invalid`);
+    if (i.thickness >= Math.min(i.legA, i.legB)) e.push('thickness ≥ min(legA,legB)');
+    if (i.length > 60000) e.push('length invalid (≤60m)');
+  },
+  tee_section(i, e) {
+    for (const k of ['H', 'B', 'tw', 'tf', 'length']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (i.tf >= i.H) e.push('tf ≥ H');
+    if (i.tw >= i.B) e.push('tw ≥ B');
+    if (i.length > 60000) e.push('length invalid (≤60m)');
+  },
+  pipe_reducer(i, e) {
+    for (const k of ['dia1', 'dia2', 'length']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (i.dia2 >= i.dia1) e.push('dia2 ≥ dia1 (리듀서는 dia1>dia2)');
+    const t = i.wallThk ?? Math.max(2, i.dia1 * 0.03);
+    if (2 * t >= i.dia2) e.push('벽두께 ≥ 소경 반경');
+  },
 };
 
 export function gate(intent) {
@@ -338,6 +364,25 @@ const SCAD = {
     if (!ops) return `cube([${i.length}, ${i.thickness}, ${i.height}]);`;
     return `difference() {\n  cube([${i.length}, ${i.thickness}, ${i.height}]);\n${ops}\n}`;
   },
+  // 표준 부품 확장(260718b)
+  hex_nut(i) {
+    const bore = i.boreDia > 0 ? `\n  translate([0,0,-1]) cylinder(h=${i.thickness + 2}, d=${i.boreDia}, $fn=64);` : '';
+    return `difference() {\n  linear_extrude(height=${i.thickness}) ${polyScad(hexPts(i.af))}${bore}\n}`;
+  },
+  washer(i) {
+    return `difference() {\n  cylinder(h=${i.thickness}, d=${i.outerDia}, $fn=96);\n  translate([0,0,-1]) cylinder(h=${i.thickness + 2}, d=${i.boreDia}, $fn=96);\n}`;
+  },
+  angle(i) {
+    return `union() {\n  cube([${i.length}, ${i.legA}, ${i.thickness}]);\n  cube([${i.length}, ${i.thickness}, ${i.legB}]);\n}`;
+  },
+  tee_section(i) {
+    return `union() {\n  translate([0, ${(i.B - i.tw) / 2}, 0]) cube([${i.length}, ${i.tw}, ${i.H - i.tf}]);\n  translate([0, 0, ${i.H - i.tf}]) cube([${i.length}, ${i.B}, ${i.tf}]);\n}`;
+  },
+  pipe_reducer(i) {
+    const t = i.wallThk ?? Math.max(2, i.dia1 * 0.03);
+    // 원뿔대 셸(rotate_extrude 대신 conical cylinder r1/r2 사용 — OpenSCAD 지원)
+    return `difference() {\n  cylinder(h=${i.length}, d1=${i.dia1}, d2=${i.dia2}, $fn=96);\n  translate([0,0,-1]) cylinder(h=${i.length + 2}, d1=${i.dia1 - 2 * t}, d2=${i.dia2 - 2 * t}, $fn=96);\n}`;
+  },
 };
 
 export function toOpenScad(intent) {
@@ -397,6 +442,19 @@ export function partAabb(i) {
     }
     case 'wall_with_openings':
       return { min: [0, 0, 0], max: [i.length, i.thickness, i.height] };
+    // 표준 부품 확장(260718b)
+    case 'hex_nut': {
+      const R = i.af / Math.sqrt(3); // 대각반경
+      return { min: [-R, -i.af / 2, 0], max: [R, i.af / 2, i.thickness] };
+    }
+    case 'washer':
+      return { min: [-i.outerDia / 2, -i.outerDia / 2, 0], max: [i.outerDia / 2, i.outerDia / 2, i.thickness] };
+    case 'angle':
+      return { min: [0, 0, 0], max: [i.length, i.legA, i.legB] };
+    case 'tee_section':
+      return { min: [0, 0, 0], max: [i.length, i.B, i.H] };
+    case 'pipe_reducer':
+      return { min: [-i.dia1 / 2, -i.dia1 / 2, 0], max: [i.dia1 / 2, i.dia1 / 2, i.length] };
     default:
       throw new Error(`partAabb: unsupported type '${i.type}'`);
   }
@@ -422,4 +480,9 @@ export const PARAMS = {
   sheet_profile: ['thickness', 'width'], // segments[]·angles[]는 배열 — 스키마 특례
   wall_with_openings: ['length', 'thickness', 'height'], // openings[]는 배열 — 스키마 특례
   i_girder: ['length', 'topW', 'topT', 'webT', 'webH', 'botW', 'botT'],
+  hex_nut: ['af', 'thickness', 'boreDia'],
+  washer: ['outerDia', 'boreDia', 'thickness'],
+  angle: ['legA', 'legB', 'thickness', 'length'],
+  tee_section: ['H', 'B', 'tw', 'tf', 'length'],
+  pipe_reducer: ['dia1', 'dia2', 'length', 'wallThk'],
 };

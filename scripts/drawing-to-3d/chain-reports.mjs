@@ -196,6 +196,26 @@ export function archBridgeReport(r, { title = '아치교 간이 검토' } = {}) 
 <div class="honest">⚠ ${esc(r.disclaimer)}</div>`);
 }
 
+/** 범용 간이 검토 리포트(트러스·사장·현수·계단 — 260718b 비법정).
+ *  geometry/loads/forces/checks[]/verdict/assumptions/disclaimer 공통 형태 렌더. */
+export function simpleCheckReport(r, { title = '간이 구조검토' } = {}) {
+  if (!r?.ok) return SHELL(title, '실패', `<div class="honest">${esc(r?.error ?? '체인 실패')}</div>`);
+  const kv = (obj) => Object.entries(obj ?? {}).map(([k, v]) => `<tr><td style="text-align:left">${esc(k)}</td><td>${typeof v === 'number' ? f(v, 2) : esc(String(v))}</td></tr>`).join('');
+  const rows = (r.checks ?? []).map((c) => `<tr><td style="text-align:left">${esc(c.name)}</td><td>${c.force_kN != null ? f(c.force_kN, 0) + ' kN' : c.M_kNm != null ? f(c.M_kNm, 2) + ' kN·m' : '—'}</td><td>${c.A_mm2 ?? '—'}</td><td>${f(c.sigma_MPa, 1)}</td><td>${f(c.allow_MPa, 1)}</td><td>${c.ratio}</td><td>${V(c.ok ? 'PASS' : 'FAIL')}</td></tr>`).join('');
+  return SHELL(`${title} — 간이 폐형`, 'nexyfab · 간이 구조검토(비법정 — 축력/휨 폐형·좌굴/동적 미검토 명시)', `
+<div class="kpi"><div><b>${V(r.verdict)}</b><span>종합(0.6Fy 허용 — 간이)</span></div>
+${r.forces?.H_kN != null ? `<div><b>${f(r.forces.H_kN, 0)} kN</b><span>수평력 H</span></div>` : ''}
+${r.forces?.M_kNm != null ? `<div><b>${f(r.forces.M_kNm, 0)} kN·m</b><span>지간 모멘트</span></div>` : ''}
+${r.forces?.N_mast_kN != null ? `<div><b>${f(r.forces.N_mast_kN, 0)} kN</b><span>마스트 축력</span></div>` : ''}</div>
+<h2>① 형상</h2><table>${kv(r.geometry)}</table>
+${r.loads ? `<h2>② 하중</h2><table>${kv(r.loads)}</table>` : ''}
+${r.forces ? `<h2>③ 부재력</h2><table>${kv(r.forces)}</table>` : ''}
+<h2>④ 부재 검토 (응력비)</h2>
+<table><tr><th>부재</th><th>힘/모멘트</th><th>A(mm²)</th><th>σ(MPa)</th><th>허용</th><th>비율</th><th>판정</th></tr>${rows}</table>
+<h2>⑤ 가정(전항 명시)</h2><div class="note">${(r.assumptions ?? []).map(esc).join('<br>')}</div>
+<div class="honest">⚠ ${esc(r.disclaimer)}</div>`);
+}
+
 /** 인테리어 피난·마감 리포트 */
 function mepSec(r) {
   const li = r.lighting, ve = r.ventilation, el = r.electrical;

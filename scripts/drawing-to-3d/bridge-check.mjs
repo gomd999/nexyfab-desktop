@@ -208,6 +208,193 @@ export function archBridgeCheck(assembly, params = {}) {
   };
 }
 
+// ── 공통 헬퍼(간이 검토군 — 260718b) ──────────────────────────────────────
+/** 부품 자중 합(kN) — id 필터(접속교·교각 제외 등)·qty 반영. */
+function selfWeightKN(parts, excludeRe = null) {
+  let w = 0;
+  for (const p of parts) {
+    if (excludeRe && excludeRe.test(p.id ?? '')) continue;
+    const rho = DENSITY[p.material ?? 'steel'] ?? DENSITY.steel;
+    const qty = Math.max(1, Math.round(Number(p.qty) || 1));
+    w += (partVolume(p.type, p.params) / 1e9) * rho * qty * 9.80665 / 1000;
+  }
+  return w;
+}
+/** 응력비 부재 검토행(축력/단면적 ÷ 0.6Fy). */
+function memberCheck(name, force_kN, A_mm2, kind, Fy = 355) {
+  const sig = (Math.abs(force_kN) * 1000) / A_mm2;
+  const allow = 0.6 * Fy;
+  return { name, kind, force_kN: round(force_kN, 1), A_mm2: Math.round(A_mm2), sigma_MPa: round(sig, 1), allow_MPa: round(allow, 1), ratio: round(sig / allow, 3), ok: sig <= allow };
+}
+const LIVE_LANE_KNM = 12.7, LIVE_TRUCK_KN = 510; // KL-510 차로하중·트럭 총중량(간이 등가 UDL용)
+
+/** 트러스교 간이 검토(단면법 폐형 — 260718b, 비법정).
+ *  현재력=M/h(상현 압축·하현 인장, M=wL²/8)·대각재=V/sinθ(지점 최대 전단)·수직재=패널 전단. */
+export function trussBridgeCheck(assembly, params = {}) {
+  const tm = assembly?.trussMeta;
+  if (!tm) return { ok: false, error: 'trussMeta 필요 (truss_bridge 어셈블리)' };
+  const parts = (assembly.parts ?? []).filter((p) => p.unverified !== true);
+  const L = tm.span / 1000, h = tm.trussH / 1000, nP = tm.panels;
+  const W_kN = selfWeightKN(parts, /^abut_/);
+  const wDC = W_kN / L;
+  const pvThk = Number(params.pavementThk_mm) || 0, pvRho = params.pavementRho ?? 22.6;
+  const wDW = pvThk > 0 ? (pvThk / 1000) * pvRho * (tm.deckW / 1000) : 0;
+  const nLanes = params.nLanes ?? Math.max(1, Math.floor(tm.deckW / 1000 / 3.6));
+  const wLL = LIVE_LANE_KNM * nLanes + LIVE_TRUCK_KN / L;
+  const wu = 1.25 * wDC + 1.5 * wDW + 1.8 * wLL;
+  const M = (wu * L * L) / 8, V = (wu * L) / 2;
+  const panelL = (tm.panelL ?? tm.span / nP) / 1000;
+  const thD = Math.atan2(h, panelL);
+  // 부재력(트러스 1면 분담 — 2면이므로 절반)
+  const chordForce = M / h / 2;         // kN/면(상현 압축·하현 인장 동일 크기)
+  const diagForce = V / Math.sin(thD) / 2;
+  const Fy = params.Fy ?? 355;
+  const A_ch = Number(params.A_chord_mm2) > 0 ? Number(params.A_chord_mm2) : tm.chordS * tm.chordS;
+  const A_dg = Number(params.A_diag_mm2) > 0 ? Number(params.A_diag_mm2) : tm.diagS * tm.diagS;
+  const checks = [
+    memberCheck('하현재 인장(면당)', chordForce, A_ch, 'tension', Fy),
+    memberCheck('상현재 압축(면당·좌굴 미검토 명시)', -chordForce, A_ch, 'compression', Fy),
+    memberCheck('단부 대각재(면당)', diagForce, A_dg, 'axial', Fy),
+  ];
+  return {
+    ok: true, type: assembly.trussMeta.trussType ?? 'warren',
+    geometry: { span_m: round(L, 1), trussH_m: round(h, 2), panels: nP, panelL_m: round(panelL, 2), nLanes },
+    loads: { wDC_kNm: round(wDC, 1), wDW_kNm: round(wDW, 2), wLL_kNm: round(wLL, 1), wu_kNm: round(wu, 1), combo: '극한 I 근사: 1.25DC+1.50DW+1.80LL(등가 UDL — 간이)' },
+    forces: { M_kNm: round(M, 0), V_kN: round(V, 0), theta_deg: round((thD * 180) / Math.PI, 1) },
+    checks, verdict: checks.every((c) => c.ok) ? 'PASS' : 'FAIL',
+    assumptions: [
+      '단순보 근사 M=wL²/8·V=wL/2 → 현재력=M/h·대각재=V/sinθ(단면법, 2면 분담)',
+      '활하중=차로하중 12.7kN/m×차로 + 트럭 510kN/L 등가 UDL(영향선 미적용 — 보수측)',
+      '단면적 기본=모델 중실 근사(실 형강은 A_chord_mm2·A_diag_mm2 입력 권장)·상현 좌굴 미검토',
+    ],
+    disclaimer: '간이 폐형 검토(비법정) — 좌굴·2차 응력·시공단계·피로·풍/지진 미포함. 법정 설계도서는 기술사 검토·날인 필요.',
+  };
+}
+
+/** 사장교 간이 검토(260718b, 비법정): 스테이 장력=편측 데크 분담/sinα·마스트 축력=데크 총하중. */
+export function cableStayedCheck(assembly, params = {}) {
+  const cm = assembly?.cableStayedMeta;
+  if (!cm) return { ok: false, error: 'cableStayedMeta 필요 (cable_stayed_bridge 어셈블리)' };
+  const parts = (assembly.parts ?? []).filter((p) => p.unverified !== true);
+  const L = cm.mainSpan / 1000, pylonH = cm.pylonH / 1000, nStays = cm.nStays;
+  // 데크 하중(주경간)만 — 마스트/스테이 제외
+  const wDeck = selfWeightKN(parts.filter((p) => /deck|girder/.test(p.role ?? '')), null) / (L + 2 * cm.sideSpan / 1000);
+  const pvThk = Number(params.pavementThk_mm) || 0, pvRho = params.pavementRho ?? 22.6;
+  const wDW = pvThk > 0 ? (pvThk / 1000) * pvRho * (cm.deckW / 1000) : 0;
+  const nLanes = params.nLanes ?? Math.max(1, Math.floor(cm.deckW / 1000 / 3.6));
+  const wLL = LIVE_LANE_KNM * nLanes + LIVE_TRUCK_KN / L;
+  const wu = 1.25 * wDeck + 1.5 * wDW + 1.8 * wLL;
+  // 스테이 1가닥 분담 = 주경간 절반을 스테이 수로 나눔(편측·2면)
+  const tribLen = (L / 2) / nStays;
+  const alphaBar = Math.atan2(pylonH * 0.6, (L / 4)); // 평균 스테이각 근사
+  const V_stay = (wu * tribLen) / 2;                   // 편측 2면 → /2
+  const T_stay = V_stay / Math.sin(alphaBar);
+  const N_mast = (wu * L) / 2;                          // 마스트 2기 각 절반 데크하중(수직 성분 합 근사)
+  const Fy = params.Fy ?? 355;
+  const A_stay = Number(params.A_stay_mm2) > 0 ? Number(params.A_stay_mm2) : cm.stayS ? cm.stayS * cm.stayS : 250 * 250;
+  const A_mast = Number(params.A_mast_mm2) > 0 ? Number(params.A_mast_mm2) : (cm.mastW ? cm.mastW * cm.mastW : 2500 * 2500);
+  const checks = [
+    memberCheck(`스테이 장력(ᾱ=${round((alphaBar * 180) / Math.PI, 1)}°·가닥)`, T_stay, A_stay, 'tension', Fy),
+    memberCheck('마스트 축압축(기당·좌굴 미검토 명시)', -N_mast, A_mast, 'compression', Fy),
+  ];
+  return {
+    ok: true, arrangement: cm.arrangement ?? 'fan',
+    geometry: { mainSpan_m: round(L, 1), pylonH_m: round(pylonH, 1), nStays, nLanes },
+    loads: { wDeck_kNm: round(wDeck, 1), wDW_kNm: round(wDW, 2), wLL_kNm: round(wLL, 1), wu_kNm: round(wu, 1) },
+    forces: { V_stay_kN: round(V_stay, 1), N_mast_kN: round(N_mast, 0) },
+    checks, verdict: checks.every((c) => c.ok) ? 'PASS' : 'FAIL',
+    assumptions: [
+      '스테이 1가닥=주경간 절반÷스테이 수 분담(편측·2면)·장력=수직분담/sinᾱ',
+      'ᾱ=평균 스테이각 근사·마스트 축력=데크 총하중/2(수직성분 합 근사)',
+      '활하중=차로+트럭 등가 UDL·단면적 기본=중실 근사(A_stay_mm2·A_mast_mm2 입력 권장)·좌굴/케이블 새그 미검토',
+    ],
+    disclaimer: '간이 폐형 검토(비법정) — 케이블 새그·마스트 좌굴·비대칭 재하·시공단계·피로·풍/지진 미포함. 법정 설계도서는 기술사 검토·날인 필요.',
+  };
+}
+
+/** 현수교 간이 검토(260718b, 비법정): 주케이블 수평력 H=wL²/8f·최대장력 T=H/cosθ·행어=w·간격. */
+export function suspensionCheck(assembly, params = {}) {
+  const sm = assembly?.suspensionMeta;
+  if (!sm) return { ok: false, error: 'suspensionMeta 필요 (suspension_bridge 어셈블리)' };
+  const parts = (assembly.parts ?? []).filter((p) => p.unverified !== true);
+  const L = sm.mainSpan / 1000, f = sm.sag / 1000;
+  const wDeck = selfWeightKN(parts.filter((p) => /deck|crossbeam/.test(p.role ?? '')), null) / (L + 2 * sm.sideSpan / 1000);
+  const pvThk = Number(params.pavementThk_mm) || 0, pvRho = params.pavementRho ?? 22.6;
+  const wDW = pvThk > 0 ? (pvThk / 1000) * pvRho * (sm.deckW / 1000) : 0;
+  const nLanes = params.nLanes ?? Math.max(1, Math.floor(sm.deckW / 1000 / 3.6));
+  const wLL = LIVE_LANE_KNM * nLanes + LIVE_TRUCK_KN / L;
+  const wu = 1.25 * wDeck + 1.5 * wDW + 1.8 * wLL;
+  const H = (wu * L * L) / (8 * f);           // 케이블 수평력(양 케이블 합)
+  const thMax = Math.atan((4 * f) / L);
+  const T_cable = (H / 2) / Math.cos(thMax);  // 타워부 최대 장력(케이블 1가닥)
+  const s_m = sm.hangerSpacing / 1000;
+  const T_hanger = (wu / 2) * s_m;            // 행어 1가닥(1면 분담)
+  const N_tower = (H / 2) * Math.tan(thMax) * 2 + (wu * L) / 4; // 타워 축력 근사(케이블 수직성분+반력)
+  const Fy = params.Fy ?? 500;               // 케이블 고강도(간이 — 실제는 1500+급 별도)
+  const A_cable = Number(params.A_cable_mm2) > 0 ? Number(params.A_cable_mm2) : (sm.cableS ? sm.cableS * sm.cableS : 600 * 600);
+  const A_hanger = Number(params.A_hanger_mm2) > 0 ? Number(params.A_hanger_mm2) : (sm.hangerS ? sm.hangerS * sm.hangerS : 150 * 150);
+  const A_tower = Number(params.A_tower_mm2) > 0 ? Number(params.A_tower_mm2) : 3000 * 1800;
+  const checks = [
+    memberCheck('주케이블 최대장력(가닥·타워부)', T_cable, A_cable, 'tension', Fy),
+    memberCheck('행어 장력(가닥)', T_hanger, A_hanger, 'tension', 355),
+    memberCheck('주탑 축압축(기당·좌굴 미검토 명시)', -N_tower, A_tower, 'compression', 30),
+  ];
+  return {
+    ok: true,
+    geometry: { mainSpan_m: round(L, 1), sag_m: round(f, 1), sagRatio: round(f / L, 3), nLanes },
+    loads: { wDeck_kNm: round(wDeck, 1), wDW_kNm: round(wDW, 2), wLL_kNm: round(wLL, 1), wu_kNm: round(wu, 1) },
+    forces: { H_kN: round(H, 0), theta_deg: round((thMax * 180) / Math.PI, 1) },
+    checks, verdict: checks.every((c) => c.ok) ? 'PASS' : 'FAIL',
+    assumptions: [
+      'H=wL²/8f 포물선 등분포 폐형·최대장력 T=H/cosθ(타워부)·행어=w·간격(1면)',
+      '주탑 축력=케이블 수직성분+반력 근사·타워 σ 허용=콘크리트 0.6·30MPa 간이(강주탑은 Fy 입력)',
+      '활하중=차로+트럭 등가 UDL·케이블 단면=등가 중실 근사(A_cable_mm2 등 입력 권장)·좌굴/공탄성 미검토',
+    ],
+    disclaimer: '간이 폐형 검토(비법정) — 케이블 공탄성·주탑 좌굴·비대칭 재하·시공단계·피로·풍(플러터)/지진 미포함. 법정 설계도서는 기술사 검토·날인 필요.',
+  };
+}
+
+/** 산업 계단 간이 검토(260718b, 비법정): 트레드=양단 스트링거 지지 단순보 휨·스트링거=경사보 휨. */
+export function stairCheck(assembly, params = {}) {
+  const sm = assembly?.stairMeta;
+  if (!sm) return { ok: false, error: 'stairMeta 필요 (industrial_stair 어셈블리)' };
+  const w = sm.width / 1000, tread = sm.tread / 1000, nStep = sm.steps, rise = sm.totalRise / 1000;
+  const liveKPa = params.liveKPa ?? 5.0; // 산업 계단 활하중 5kPa 관례(집회 이상)
+  const Fy = params.Fy ?? 235;           // SS275/일반강 간이
+  // 트레드: 단순보 span=w, 등분포 하중 = 활하중×트레드폭 + 자중 무시(보수: 활하중만은 아님, 집중 4.5kN 대안)
+  const wt = liveKPa * tread;            // kN/m (트레드 1장 폭당)
+  const Mt = (wt * w * w) / 8;           // kN·m
+  // 트레드 단면(체커플레이트 근사 t=6, 폭 tread) → 소성계수 Z≈b·t²/4 는 과소 → 실무는 절곡보강.
+  const tThk = params.treadThk_mm ?? 6;
+  const Zt = (tread * 1000 * tThk * tThk) / 4; // mm³ (평판 소성 — 절곡/립 보강 미반영, 보수측)
+  const sigT = (Mt * 1e6) / Zt;          // MPa
+  // 스트링거: 경사 단순보, 스팬=경사장, 하중 = 계단 전체(활+trace) / 2본
+  const runLen = Math.hypot(nStep * tread, rise);
+  const totalLive = liveKPa * (nStep * tread) * w; // kN
+  const wStr = (totalLive / 2) / runLen;           // kN/m per stringer(경사장 기준)
+  const Ms = (wStr * runLen * runLen) / 8;
+  const strH = params.stringerH_mm ?? 300, strT = 60;
+  const Zs = (strT * strH * strH) / 4;             // mm³ 직사각 소성(간이)
+  const sigS = (Ms * 1e6) / Zs;
+  const allow = 0.6 * Fy;
+  const checks = [
+    { name: '트레드 휨(단순보·평판 보수측)', kind: 'flexure', M_kNm: round(Mt, 2), sigma_MPa: round(sigT, 1), allow_MPa: round(allow, 1), ratio: round(sigT / allow, 3), ok: sigT <= allow },
+    { name: '스트링거 휨(경사 단순보)', kind: 'flexure', M_kNm: round(Ms, 2), sigma_MPa: round(sigS, 1), allow_MPa: round(allow, 1), ratio: round(sigS / allow, 3), ok: sigS <= allow },
+  ];
+  return {
+    ok: true,
+    geometry: { totalRise_m: round(rise, 2), steps: nStep, width_m: round(w, 2), tread_m: round(tread, 3), flights: sm.flights ?? 1 },
+    loads: { liveKPa, note: '산업 계단 활하중 5kPa 관례(집회·대피 이상)' },
+    checks, verdict: checks.every((c) => c.ok) ? 'PASS' : 'FAIL',
+    assumptions: [
+      '트레드=양단 스트링거 지지 단순보·등분포 활하중(자중 무시)·단면=평판 소성 Z=bt²/4(절곡/립 보강 미반영 — 보수측 과대응력)',
+      '스트링거=경사 단순보·하중=계단 전체 활하중÷2본·직사각 소성 Z(간이)',
+      '동적/집중하중(4.5kN 점하중)·연결부·처짐·좌굴 미검토 — 실 단면(체커플레이트 절곡·형강 스트링거)은 입력 권장',
+    ],
+    disclaimer: '간이 폐형 검토(비법정) — 처짐·진동·연결부·좌굴·동적하중 미포함. 법정 설계는 건축구조기술사 검토 필요.',
+  };
+}
+
 // --- self-test ---
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('bridge-check.mjs');
 if (isMain) {
@@ -234,6 +421,20 @@ if (isMain) {
   console.log('arch H:', ar.forces.H_kN, 'kN (수기', Math.round(Hman), ') · 타이', ar.checks[0].ratio, '· 리브', ar.checks[1].ratio, '· 행어', ar.checks[2].ratio, '| 닐센 행어', nr.ok ? nr.checks[2].force_kN : 'ERR');
   console.log(okH && okN ? 'arch-check self-test: PASS' : 'arch-check self-test: FAIL');
   if (!okH || !okN) process.exit(1);
+  // 확장 간이 검토 4종(260718b): 트러스 단면법 M=wL²/8 폐형·사장/현수/계단 방출 sanity
+  const tr = trussBridgeCheck(buildAssemblyTemplate('bridge', 'truss_bridge', {}), {});
+  const trM = (tr.loads.wu_kNm * tr.geometry.span_m ** 2) / 8;
+  const okT = tr.ok && Math.abs(trM - tr.forces.M_kNm) < Math.max(1, tr.forces.M_kNm * 0.01) && tr.checks.length === 3;
+  const cs = cableStayedCheck(buildAssemblyTemplate('bridge', 'cable_stayed_bridge', {}), {});
+  const okC = cs.ok && cs.checks.length === 2 && cs.forces.N_mast_kN > 0;
+  const su = suspensionCheck(buildAssemblyTemplate('bridge', 'suspension_bridge', {}), {});
+  const suH = (su.loads.wu_kNm * su.geometry.mainSpan_m ** 2) / (8 * su.geometry.sag_m);
+  const okS = su.ok && Math.abs(suH - su.forces.H_kN) < Math.max(1, su.forces.H_kN * 0.01) && su.checks.length === 3;
+  const st = stairCheck(buildAssemblyTemplate('building', 'industrial_stair', {}), {});
+  const okStair = st.ok && st.checks.length === 2 && st.checks.every((c) => c.M_kNm > 0);
+  console.log('truss M:', tr.forces.M_kNm, '(수기', Math.round(trM), ') 하현', tr.checks[0].ratio, '| 사장 마스트', cs.forces.N_mast_kN, '| 현수 H', su.forces.H_kN, '(수기', Math.round(suH), ') | 계단 트레드σ', st.checks[0].sigma_MPa);
+  console.log(okT && okC && okS && okStair ? 'ext-check self-test: PASS' : 'ext-check self-test: FAIL');
+  if (!(okT && okC && okS && okStair)) process.exit(1);
 }
 
 /**

@@ -40,13 +40,25 @@ function surfaceMm2(type, p) {
       const face = p.length * p.height - (p.openings ?? []).reduce((s, o) => s + o.w * o.h, 0);
       return 2 * face + 2 * (p.length + p.height) * p.thickness; // 양면(개구 공제) + 둘레 엣지
     }
+    // 표준 부품 확장(260718b)
+    case 'hex_nut': {
+      const hexA = (Math.sqrt(3) / 2) * p.af ** 2;
+      return 2 * (hexA - A * (p.boreDia ?? 0) ** 2) + polyPerimeter(hexPts(p.af)) * p.thickness + Math.PI * (p.boreDia ?? 0) * p.thickness;
+    }
+    case 'washer': return 2 * A * (p.outerDia ** 2 - p.boreDia ** 2) + Math.PI * (p.outerDia + p.boreDia) * p.thickness;
+    case 'angle': return (2 * p.legA + 2 * p.legB - p.thickness) * p.length + 2 * (p.legA + p.legB - p.thickness) * p.thickness; // L 둘레×길이 + 단부 2
+    case 'tee_section': return (2 * p.B + 2 * p.H) * p.length + 2 * (p.B * p.tf + p.tw * (p.H - p.tf)); // T 둘레(2B+2H)×길이 + 단부 2
+    case 'pipe_reducer': {
+      const t = p.wallThk ?? Math.max(2, p.dia1 * 0.03), sl = Math.hypot(p.length, (p.dia1 - p.dia2) / 2);
+      return Math.PI * ((p.dia1 + p.dia2) / 2) * sl + Math.PI * ((p.dia1 - 2 * t + p.dia2 - 2 * t) / 2) * sl + A * (p.dia1 ** 2 - (p.dia1 - 2 * t) ** 2 + p.dia2 ** 2 - (p.dia2 - 2 * t) ** 2);
+    }
     default: return 0;
   }
 }
-const holeCount = (type, p) => type === 'plate_with_holes' ? (p.holes?.length ?? 0) : type === 'flange' ? (p.boltCount ?? 0) : type === 'base_plate' ? 4 : type === 'spur_gear' && p.boreDia > 0 ? 1 : 0;
-const bendCount = (type, p) => type === 'bent_sheet' ? 2 : type === 'l_bracket' ? 1 : type === 'sheet_profile' ? (p?.angles ?? []).filter((a) => a !== 0).length : 0;
-const isLinear = (type) => type === 'rect_tube' || type === 'tube' || type === 'cylinder';
-const linearLenMm = (type, p) => type === 'rect_tube' || type === 'tube' ? p.length : type === 'cylinder' ? p.length : 0;
+const holeCount = (type, p) => type === 'plate_with_holes' ? (p.holes?.length ?? 0) : type === 'flange' ? (p.boltCount ?? 0) : type === 'base_plate' ? 4 : type === 'spur_gear' && p.boreDia > 0 ? 1 : type === 'hex_nut' || type === 'washer' ? 1 : 0;
+const bendCount = (type, p) => type === 'bent_sheet' ? 2 : type === 'l_bracket' ? 1 : type === 'angle' ? 1 : type === 'sheet_profile' ? (p?.angles ?? []).filter((a) => a !== 0).length : 0;
+const isLinear = (type) => type === 'rect_tube' || type === 'tube' || type === 'cylinder' || type === 'angle' || type === 'tee_section';
+const linearLenMm = (type, p) => type === 'rect_tube' || type === 'tube' ? p.length : type === 'cylinder' ? p.length : type === 'angle' || type === 'tee_section' ? p.length : 0;
 
 // 표준 원단위 (hr/단위) — 개산 가정. 사용자/현장 조정 대상.
 export const STD_RATES = { weldPerM: 0.15, drillPerHole: 0.03, bendPerBend: 0.10, assyPerPart: 0.20, surfacePerM2: 0.12, cutPerCut: 0.05 };

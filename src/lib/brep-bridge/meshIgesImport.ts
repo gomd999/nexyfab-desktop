@@ -113,12 +113,44 @@ export function igesToNexyfabAssembly(source: string, { name = 'IGES import', ma
   };
   // 124 변환행렬: R11..R13,T1,R21..,T2,R31..,T3 (12 reals)
   const xformOf = new Map<number, number[]>();
+  const xformParent = new Map<number, number>(); // 중첩 변환(124가 또 다른 124를 참조)
   for (const e of entries) {
     if (e.type === 124) {
       const r = realsOf(e.de);
       if (r.length >= 12) xformOf.set(e.de, r.slice(0, 12));
+      if (e.xform > 0) xformParent.set(e.de, e.xform);
     }
   }
+  // 12-real 행렬 합성 A∘B(먼저 B, 그다음 A): R=A.R·B.R, T=A.R·B.T+A.T
+  const compose = (A: number[], B: number[]): number[] => {
+    const rIdx = [0, 1, 2, 4, 5, 6, 8, 9, 10];
+    const out = new Array(12).fill(0);
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+      let s = 0;
+      for (let k = 0; k < 3; k++) s += A[rIdx[i * 3 + k]] * B[rIdx[k * 3 + j]];
+      out[i * 4 + j] = s;
+    }
+    for (let i = 0; i < 3; i++) {
+      out[i * 4 + 3] = A[rIdx[i * 3]] * B[3] + A[rIdx[i * 3 + 1]] * B[7] + A[rIdx[i * 3 + 2]] * B[11] + A[i * 4 + 3];
+    }
+    return out;
+  };
+  // 중첩 변환 해소(부모 체인 합성 — 순환 가드 8)
+  const resolvedXform = new Map<number, number[]>();
+  const resolveXf = (de: number): number[] | undefined => {
+    if (resolvedXform.has(de)) return resolvedXform.get(de);
+    let m = xformOf.get(de);
+    if (!m) return undefined;
+    let parent = xformParent.get(de), guard = 0;
+    while (parent && guard++ < 8) {
+      const pm = xformOf.get(parent);
+      if (!pm) break;
+      m = compose(pm, m);
+      parent = xformParent.get(parent);
+    }
+    resolvedXform.set(de, m);
+    return m;
+  };
   const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
   let pts = 0, used = 0, skippedEnt = 0;
   const feed = (x: number, y: number, z: number, xf?: number[]) => {
@@ -135,11 +167,26 @@ export function igesToNexyfabAssembly(source: string, { name = 'IGES import', ma
     if (z < min[2]) min[2] = z; if (z > max[2]) max[2] = z;
   };
   for (const e of entries) {
-    const xf = e.xform > 0 ? xformOf.get(e.xform) : undefined;
+    const xf = e.xform > 0 ? resolveXf(e.xform) : undefined;
     const r = realsOf(e.de);
     if (!r.length) continue;
     if (e.type === 116) { feed(r[0], r[1], r[2], xf); used++; }
     else if (e.type === 110) { feed(r[0], r[1], r[2], xf); feed(r[3], r[4], r[5], xf); used++; }
+    else if (e.type === 100) {
+      // 원호(Circular Arc): ZT, Xc,Yc(중심), X1,Y1(시점), X2,Y2(종점). 평면 z=ZT.
+      // 경계 근사=외접 원(중심±R 4방위)+시·종점 — 원호 실범위 과대측(안전 명시).
+      const zt = r[0], xc = r[1], yc = r[2], x1 = r[3], y1 = r[4], x2 = r[5], y2 = r[6];
+      const rad = Math.hypot(x1 - xc, y1 - yc);
+      feed(x1, y1, zt, xf); feed(x2, y2, zt, xf);
+      for (const [dx, dy] of [[rad, 0], [-rad, 0], [0, rad], [0, -rad]]) feed(xc + dx, yc + dy, zt, xf);
+      used++;
+    } else if (e.type === 106) {
+      // Copious Data: r[0]=IP(1=2D공통z, 2=3D, 3=3D+법선), r[1]=N, 이후 좌표.
+      const ip = Math.round(r[0]), n = Math.round(r[1]);
+      if (ip === 1) { const z = r[2]; for (let k = 0; k < n && 3 + k * 2 + 1 < r.length; k++) feed(r[3 + k * 2], r[3 + k * 2 + 1], z, xf); }
+      else { const stride = ip === 3 ? 6 : 3; for (let k = 0; k < n && 2 + k * stride + 2 < r.length; k++) feed(r[2 + k * stride], r[2 + k * stride + 1], r[2 + k * stride + 2], xf); }
+      used++;
+    }
     else if (e.type === 502) {
       // VERTEX LIST: N, then N×(x,y,z)
       const n = Math.round(r[0]);
@@ -160,7 +207,7 @@ export function igesToNexyfabAssembly(source: string, { name = 'IGES import', ma
       used++;
     } else if (e.type !== 124) skippedEnt++;
   }
-  if (pts < 4) return { ok: false, error: `IGES 좌표 추출 0건(지원 엔티티 116/110/502/126/128 없음 — 미반영 ${skippedEnt}종)`, stats: { format: 'iges', points: pts, entitiesUsed: used, entitiesSkipped: skippedEnt } };
+  if (pts < 4) return { ok: false, error: `IGES 좌표 추출 0건(지원 엔티티 100/106/110/116/502/126/128 없음 — 미반영 ${skippedEnt}종)`, stats: { format: 'iges', points: pts, entitiesUsed: used, entitiesSkipped: skippedEnt } };
   return {
     ok: true,
     assembly: {

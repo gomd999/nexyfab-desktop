@@ -598,6 +598,23 @@ function inclineBoxZ(P, id, xB, zB, xT, zT, s, ty, material, role) {
   return { Lh, phi };
 }
 
+// (C) 수평면 현-박스(rz 회전 — 반원 유리벽·곡면 파사드용, 260718b). placedAabb 프로브:
+//   rz 는 국소원점(0,0) 기준 CCW·tx/ty=원점 착지점·박스는 국소 [0,L]×[0,thick].
+//   현 (x0,y0)→(x1,y1) 을 중심선으로, 양끝 marginAlong 인셋(멀리언 회피 폐형).
+function chordBoxZrz(P, id, x0, y0, x1, y1, thick, z0, height, material, role, marginAlong = 0) {
+  const dx = x1 - x0, dy = y1 - y0;
+  const th = Math.atan2(dy, dx);
+  const c = Math.cos(th), s = Math.sin(th);
+  const sx = x0 + c * marginAlong, sy = y0 + s * marginAlong;
+  const Lg = Math.hypot(dx, dy) - 2 * marginAlong;
+  if (Lg < thick) return null;
+  // 중심선 정렬: 국소 (0, thick/2) → 회전 → 착지가 (sx,sy) 되도록 tx/ty 보정
+  const tx = sx + (thick / 2) * s;
+  const ty = sy - (thick / 2) * c;
+  P(id, 'box', { width: Lg, depth: thick, height }, { tx, ty, tz: z0, rz: (th * 180) / Math.PI }, material, role);
+  return { Lg, th };
+}
+
 /** 산업용 강재 계단(직선/2련 U턴 — 260718, 참고파일들2 계단·핸드레일 대응).
  *  스트링거=경사 box(chordBoxX 중심 규약)·트레드=스트링거 안쪽 y-면 체결(0겹침)·
  *  난간=트레드 위 포스트 + 경사 레일. 리저 높이 gate ≤ 220(산업 관례). 구조검토 미포함. */
@@ -614,51 +631,78 @@ function industrialStairAssembly(p = {}) {
   }
   const strH = num(p.stringerH, 300), strT = 60;
   const railH = num(p.handrailH, 1000), postS = 50, railS = 50;
-  const run = nStep * tread;
+  const flights = Math.round(num(p.flights, 1)) === 2 ? 2 : 1;
   const parts = [];
   const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
-  // 스트링거 2본: 계단 경사 내접(트러스 대각재와 동일 연립) — AABB [0,run]×[0,rise+strH?]
-  const th = Math.atan2(rise, run);
-  let thS = th;
-  for (let it = 0; it < 4; it++) thS = Math.atan2(rise - strH * Math.cos(thS), run - strH * Math.sin(thS));
-  const Ls = (rise - strH * Math.cos(thS)) / Math.sin(thS);
-  const yStr = [0, width - strT];
-  for (const [si, y] of yStr.entries()) {
-    chordBoxX(P, `stringer_${si + 1}`, run / 2, rise / 2, thS, Ls, strH, y, strT, 'steel', 'stringer');
-  }
-  // 트레드: 스트링거 안쪽 y-면 체결(y 0겹침·ox,oz≥40 — supportCheck 측면 체결 규칙 폐형)
-  for (let k = 0; k < nStep; k++) {
-    P(`tread_${k + 1}`, 'box', { width: tread, depth: width - 2 * strT, height: tThk },
-      { tx: k * tread, ty: strT, tz: (k + 1) * riser - tThk }, 'steel', 'tread');
-  }
-  // 상부 착지 플랫폼(계단 정상 — 짧은 캔틸레버 데크, 스트링거 상단 y-면 체결)
-  P('landing', 'box', { width: tread * 2, depth: width - 2 * strT, height: tThk }, { tx: run, ty: strT, tz: rise - tThk }, 'steel', 'landing');
-  P('landing_leg_1', 'box', { width: 80, depth: 80, height: rise - tThk }, { tx: run + tread * 2 - 80, ty: strT, tz: 0 }, 'steel', 'column');
-  P('landing_leg_2', 'box', { width: 80, depth: 80, height: rise - tThk }, { tx: run + tread * 2 - 80, ty: width - strT - 80, tz: 0 }, 'steel', 'column');
-  // 난간(양측): 포스트=격단 **트레드 위**(스트링거 y-스트립 밖 — 경사 스트링거 관통 방지, 260718 그리드 검출)
-  const postEvery = Math.max(1, Math.floor(nStep / 4));
-  for (const [si] of yStr.entries()) {
-    const yPost = si === 0 ? strT + 5 : width - strT - postS - 5;
-    // 포스트 상단 셰이브: 수평 상면의 내리막 모서리가 경사 레일 하면 위로 (postS/2)tanθ 돌출
-    // (그리드 17mm 검출) → 높이에서 차감. 지지=부피겹침 체결 규칙로 유지(폐형).
-    const shave = (postS / 2) * (riser / tread) + 1;
-    let nP2 = 0;
-    for (let k = 0; k < nStep; k += postEvery) {
-      P(`post_${si + 1}_${++nP2}`, 'box', { width: postS, depth: postS, height: railH - shave },
-        { tx: k * tread + (tread - postS) / 2, ty: yPost, tz: (k + 1) * riser }, 'steel', 'post');
+  // 1개 플라이트(스트링거 2+트레드+포스트+레일) — dir=+1 x증가/−1 x감소, (x0,z0)=하단 기준
+  // 전부 기존 폐형 재사용: 스트링거 내접 연립·트레드 측면 체결·포스트 셰이브·레일 중심 규약.
+  const flight = (tag, n, x0, z0, y0, dir) => {
+    const runF = n * tread;
+    const riseF = n * riser;
+    let thS = Math.atan2(riseF, runF);
+    for (let it = 0; it < 4; it++) thS = Math.atan2(riseF - strH * Math.cos(thS), runF - strH * Math.sin(thS));
+    const Ls = (riseF - strH * Math.cos(thS)) / Math.sin(thS);
+    const yStr = [y0, y0 + width - strT];
+    const xm = x0 + (dir * runF) / 2;
+    for (const [si, y] of yStr.entries()) {
+      chordBoxX(P, `${tag}_stringer_${si + 1}`, xm, z0 + riseF / 2, dir > 0 ? thS : -thS, Ls, strH, y, strT, 'steel', 'stringer');
     }
-    // 레일: 포스트 톱 라인(동일 경사)의 위 — 중심 규약, 하면=포스트 상단 0겹침
-    const kLast = Math.floor((nStep - 1) / postEvery) * postEvery;
-    const x0 = tread / 2, x1 = kLast * tread + tread / 2;
-    const z0 = riser + railH, z1 = (kLast + 1) * riser + railH;
-    const thR = Math.atan2(z1 - z0, x1 - x0);
-    const Lr = Math.hypot(x1 - x0, z1 - z0);
-    chordBoxX(P, `rail_${si + 1}`, (x0 + x1) / 2, (z0 + z1) / 2 + (railS / 2) / Math.cos(thR), thR, Lr, railS, yPost, railS, 'steel', 'handrail');
+    for (let k = 0; k < n; k++) {
+      const txk = dir > 0 ? x0 + k * tread : x0 - (k + 1) * tread;
+      P(`${tag}_tread_${k + 1}`, 'box', { width: tread, depth: width - 2 * strT, height: tThk },
+        { tx: txk, ty: y0 + strT, tz: z0 + (k + 1) * riser - tThk }, 'steel', 'tread');
+    }
+    const postEvery = Math.max(1, Math.floor(n / 4));
+    const shave = (postS / 2) * (riser / tread) + 1;
+    for (const [si] of yStr.entries()) {
+      const yPost = si === 0 ? y0 + strT + 5 : y0 + width - strT - postS - 5;
+      let nP2 = 0;
+      for (let k = 0; k < n; k += postEvery) {
+        const txk = dir > 0 ? x0 + k * tread + (tread - postS) / 2 : x0 - (k + 1) * tread + (tread - postS) / 2;
+        P(`${tag}_post_${si + 1}_${++nP2}`, 'box', { width: postS, depth: postS, height: railH - shave },
+          { tx: txk, ty: yPost, tz: z0 + (k + 1) * riser }, 'steel', 'post');
+      }
+      const kLast = Math.floor((n - 1) / postEvery) * postEvery;
+      const xa = dir > 0 ? x0 + tread / 2 : x0 - tread / 2;
+      const xb = dir > 0 ? x0 + kLast * tread + tread / 2 : x0 - kLast * tread - tread / 2;
+      const za = z0 + riser + railH, zb = z0 + (kLast + 1) * riser + railH;
+      const thR = Math.atan2(zb - za, Math.abs(xb - xa));
+      const Lr = Math.hypot(xb - xa, zb - za);
+      chordBoxX(P, `${tag}_rail_${si + 1}`, (xa + xb) / 2, (za + zb) / 2 + (railS / 2) / Math.cos(thR), dir > 0 ? thR : -thR, Lr, railS, yPost, railS, 'steel', 'handrail');
+    }
+    return { runF, riseF };
+  };
+  const gap = 200; // 플라이트 사이 y 갭(U턴 관례)
+  if (flights === 1) {
+    const { runF } = flight('f1', nStep, 0, 0, 0, +1);
+    P('landing', 'box', { width: tread * 2, depth: width - 2 * strT, height: tThk }, { tx: runF, ty: strT, tz: rise - tThk }, 'steel', 'landing');
+    P('landing_leg_1', 'box', { width: 80, depth: 80, height: rise - tThk }, { tx: runF + tread * 2 - 80, ty: strT, tz: 0 }, 'steel', 'column');
+    P('landing_leg_2', 'box', { width: 80, depth: 80, height: rise - tThk }, { tx: runF + tread * 2 - 80, ty: width - strT - 80, tz: 0 }, 'steel', 'column');
+  } else {
+    // U턴 2련: 플라이트1(+x, y=0열) → 중간참(양 열 전폭) → 플라이트2(−x, y=width+gap 열)
+    const n1 = Math.ceil(nStep / 2), n2 = nStep - n1;
+    const landW = Math.max(width + 100, 1100); // 참 깊이(x)
+    const f1 = flight('f1', n1, 0, 0, 0, +1);
+    const zL = n1 * riser;
+    const totW = 2 * width + gap;
+    P('mid_landing', 'box', { width: landW, depth: totW, height: tThk }, { tx: f1.runF, ty: 0, tz: zL - tThk }, 'steel', 'landing');
+    for (const [li, [lx, ly]] of [[f1.runF + landW - 80, 0], [f1.runF + landW - 80, totW - 80], [f1.runF, 0], [f1.runF, totW - 80]].entries()) {
+      P(`land_leg_${li + 1}`, 'box', { width: 80, depth: 80, height: zL - tThk }, { tx: lx, ty: ly, tz: 0 }, 'steel', 'column');
+    }
+    // 참 난간(회전측 x+ 연단)
+    P('land_rail_post', 'box', { width: postS, depth: postS, height: railH }, { tx: f1.runF + landW - postS - 10, ty: totW / 2 - postS / 2, tz: zL }, 'steel', 'post');
+    P('land_rail', 'box', { width: 60, depth: totW, height: railS }, { tx: f1.runF + landW - railS - 10, ty: 0, tz: zL + railH }, 'steel', 'handrail');
+    if (n2 > 0) flight('f2', n2, f1.runF, zL, width + gap, -1);
+    // 상부 착지(플라이트2 종점 x=f1.runF−n2·tread 쪽)
+    const xTop = f1.runF - n2 * tread;
+    P('top_landing', 'box', { width: tread * 2, depth: width - 2 * strT, height: tThk }, { tx: xTop - tread * 2, ty: width + gap + strT, tz: rise - tThk }, 'steel', 'landing');
+    P('top_leg_1', 'box', { width: 80, depth: 80, height: rise - tThk }, { tx: xTop - tread * 2, ty: width + gap + strT, tz: 0 }, 'steel', 'column');
+    P('top_leg_2', 'box', { width: 80, depth: 80, height: rise - tThk }, { tx: xTop - tread * 2, ty: width + gap + width - strT - 80, tz: 0 }, 'steel', 'column');
   }
   return {
-    name: `산업 계단 H${rise / 1000}m×${nStep}단`, domain: 'building', kind: 'assembly', parts,
-    stairMeta: { totalRise: rise, steps: nStep, riser: +riser.toFixed(1), tread, width, railH },
-    note: '강재 직선 계단(트레드=측면 체결·레일=경사 폐형) — U턴/참·디딤판 무늬·볼트 상세 후속 명시. 구조검토 미포함',
+    name: `산업 계단 H${rise / 1000}m×${nStep}단${flights === 2 ? ' U턴' : ''}`, domain: 'building', kind: 'assembly', parts,
+    stairMeta: { totalRise: rise, steps: nStep, riser: +riser.toFixed(1), tread, width, railH, flights },
+    note: `강재 ${flights === 2 ? 'U턴 2련' : '직선'} 계단(트레드=측면 체결·레일=경사 폐형·참=4주 지지) — 디딤판 무늬·볼트 상세 후속 명시. 구조검토=stairCheck 간이(비법정) 별도`,
   };
 }
 
@@ -676,8 +720,58 @@ function elevatorShaftAssembly(p = {}) {
   const shaftW = carW + 2 * clr + 2 * wallT;
   const shaftD = carD + 2 * clr + 2 * wallT;
   const H = floors * floorH + ohH;
+  const shape = String(p.shape) === 'semicircular' ? 'semicircular' : 'rect';
   const parts = [];
   const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+
+  if (shape === 'semicircular') {
+    // 반원형 파노라마 엘베(참고파일들2 semi-circular/panoramic 대응): 후면 평벽(기계측 도어) +
+    // 전면 반원 유리벽(멀리언 + 현-패널 rz 폐형). 원기하=현 분절 근사 명시.
+    // 반경 R = 카 전면 코너가 반원에 내접하도록 산정(카가 반원 밖으로 관통하지 않게):
+    const R = Math.ceil(Math.hypot(carW / 2, carD + clr) + clr);
+    const sW = 2 * R, sD = R + wallT;         // 지름=2R·깊이=반경+후벽
+    const cx = R, cyC = R;                     // 반원 중심(후벽 안쪽면)
+    const nPan = Math.max(5, Math.min(16, Math.round(num(p.panels, 8))));
+    const mw = 90, glassT = 40;
+    P('pit_slab', 'box', { width: sW, depth: sD, height: 300 }, { tx: 0, ty: 0, tz: 0 }, 'concrete', 'slab');
+    // 후면 평벽: 층별 도어 개구(사이드 2 + 헤더). y=[R, R+wallT]
+    const sideW = (sW - doorW) / 2;
+    for (let f = 0; f < floors; f++) {
+      const z0 = 300 + f * floorH;
+      P(`back_l_${f + 1}`, 'box', { width: sideW, depth: wallT, height: floorH }, { tx: 0, ty: R, tz: z0 }, 'concrete', 'wall');
+      P(`back_r_${f + 1}`, 'box', { width: sideW, depth: wallT, height: floorH }, { tx: sW - sideW, ty: R, tz: z0 }, 'concrete', 'wall');
+      P(`back_hdr_${f + 1}`, 'box', { width: doorW, depth: wallT, height: floorH - doorH }, { tx: sideW, ty: R, tz: z0 + doorH }, 'concrete', 'header');
+    }
+    P('back_top', 'box', { width: sW, depth: wallT, height: ohH }, { tx: 0, ty: R, tz: 300 + floors * floorH }, 'concrete', 'wall');
+    // 반원 유리벽: a∈[0,π] → 점 (R−R·cosa, R−R·sina) — a0=좌코너·aπ=우코너·aπ/2=전면 정점
+    const ptAt = (i) => { const a = Math.PI * (i / nPan); return [cx - R * Math.cos(a), cyC - R * Math.sin(a)]; };
+    for (let i = 0; i <= nPan; i++) {
+      const [px, py] = ptAt(i);
+      // 스프링라인 멀리언(i=0/nPan)=후벽 플러시(코너 0겹침): x 풋프린트 안쪽·y 벽 앞
+      const tx = i === 0 ? 0 : i === nPan ? sW - mw : px - mw / 2;
+      const ty = (i === 0 || i === nPan) ? R - mw : py - mw / 2;
+      P(`mullion_${i}`, 'box', { width: mw, depth: mw, height: H }, { tx, ty, tz: 300 }, 'steel', 'mullion');
+    }
+    for (let i = 0; i < nPan; i++) {
+      const [x0, y0] = ptAt(i), [x1, y1] = ptAt(i + 1);
+      chordBoxZrz(P, `glass_${i + 1}`, x0, y0, x1, y1, glassT, 300, H - 600, 'glass', 'glazing', mw + 15);
+    }
+    // 가이드레일 2(후벽 안쪽) + 카(후벽 앞 clr) + 머신빔 + 완충기
+    const railInY = R - 70;
+    for (const [ri, x] of [[0, wallT], [1, sW - wallT - 90]]) {
+      P(`rail_${ri + 1}`, 'box', { width: 90, depth: 70, height: H - 300 - 450 }, { tx: x, ty: railInY, tz: 300 }, 'steel', 'guiderail');
+    }
+    const carY = R - clr - carD;
+    P('buffer', 'box', { width: 300, depth: 300, height: pitD }, { tx: cx - 150, ty: carY + (carD - 300) / 2, tz: 300 }, 'steel', 'buffer');
+    P('car', 'box', { width: carW, depth: carD, height: carH }, { tx: cx - carW / 2, ty: carY, tz: 300 + pitD }, 'steel', 'car');
+    P('machine_beam', 'box', { width: sW - 2 * wallT, depth: 300, height: 400 }, { tx: wallT, ty: R - 300, tz: 300 + H - 400 }, 'steel', 'beam');
+    return {
+      name: `반원 파노라마 엘베 ${floors}층`, domain: 'building', kind: 'assembly', parts,
+      elevMeta: { floors, floorH, shaftW: sW, shaftD: sD, carW, carD, pitD, ohH, shape: 'semicircular', panels: nPan, radius: R },
+      note: '반원 파노라마 엘베(전면 유리=현 분절 근사·원기하 아님 명시·반경=카 내접 산정·후벽 도어)·카=1층 정지. 승강기 안전기준(KC) 검토 미포함 — 명시',
+    };
+  }
+
   // 피트 바닥 + 3면 벽(후면·좌우) 전고
   P('pit_slab', 'box', { width: shaftW, depth: shaftD, height: 300 }, { tx: 0, ty: 0, tz: 0 }, 'concrete', 'slab');
   P('wall_back', 'box', { width: shaftW, depth: wallT, height: H }, { tx: 0, ty: shaftD - wallT, tz: 300 }, 'concrete', 'wall');
@@ -837,9 +931,15 @@ function commercialMassingAssembly(p = {}) {
   const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
   const zOf = (f) => (f === 0 ? 0 : f1H + (f - 1) * fH);
   const totalH = f1H + (floors - 1) * fH;
-  // 슬래브(층별) + 코어 기둥 그리드(2열)
+  // 곡면 파사드(260718b): 전면(y≈0)이 얕은 원호로 −y 로 부풂. yFront(x)=−bulge·sin(πx/W).
+  // 견고화: 전 파사드 요소는 슬래브 착지 지지(필라스터/스팬드럴 rz 각도차 코너겹침을 마진으로
+  // 분리·슬래브를 전방 −bulge 까지 확장해 부푼 파사드를 받침 — 상부 트랜섬 밴드 생략(개방 storefront)).
+  const curved = String(p.facade) === 'curved';
+  const bulge = curved ? Math.max(300, num(p.facadeBulge, Math.round(W * 0.06))) : 0;
+  const yFront = (x) => (curved ? -bulge * Math.sin((Math.PI * x) / W) : 0);
+  const slabY0 = curved ? -bulge - 100 : 0, slabD = D - slabY0;
   for (let f = 0; f <= floors; f++) {
-    P(`slab_${f}`, 'box', { width: W, depth: D, height: slabT }, { tx: 0, ty: 0, tz: zOf(f) }, 'concrete', 'slab');
+    P(`slab_${f}`, 'box', { width: W, depth: slabD, height: slabT }, { tx: 0, ty: slabY0, tz: zOf(f) }, 'concrete', 'slab');
   }
   const nBay = Math.max(2, Math.round(W / bayW));
   for (let f = 0; f < floors; f++) {
@@ -848,22 +948,39 @@ function commercialMassingAssembly(p = {}) {
       const x = Math.min((i * W) / nBay, W - colS);
       P(`col_${f + 1}_${i}`, 'box', { width: colS, depth: colS, height: h }, { tx: x, ty: D - colS - 300, tz: z0 }, 'concrete', 'column');
     }
-    // 전면 파사드: 필라스터(기둥 라인) + 스팬드럴/트랜섬은 **베이별 세그먼트**(필라스터 사이 —
-    // 겹침 0 폐형, 260718 그리드 검출) + 창=개구 생략
+    // 전면 파사드: 필라스터(기둥 라인, 전고) + 스팬드럴(바닥 밴드, 슬래브 착지) — 베이별 세그먼트.
+    // 곡면=y=yFront(호 절점)·현(chordBoxZrz, 마진 분리)·전 요소 슬래브 착지 / 평면=y0 기존 폐형.
     const pilXs = [];
     for (let i = 0; i <= nBay; i++) {
       const x = Math.min((i * W) / nBay, W - 300);
       pilXs.push(x);
-      P(`pilaster_${f + 1}_${i}`, 'box', { width: 300, depth: wallT, height: h }, { tx: x, ty: 0, tz: z0 }, 'concrete', 'wall');
+      if (curved) chordBoxZrz(P, `pilaster_${f + 1}_${i}`, x, yFront(x), x + 300, yFront(x + 300), wallT, z0, h, 'concrete', 'wall', 2);
+      else P(`pilaster_${f + 1}_${i}`, 'box', { width: 300, depth: wallT, height: h }, { tx: x, ty: 0, tz: z0 }, 'concrete', 'wall');
     }
     for (let i = 0; i < nBay; i++) {
       const xa = pilXs[i] + 300, xb = pilXs[i + 1];
       if (xb - xa < 50) continue;
-      if (f === 0) P(`transom_1_${i}`, 'box', { width: xb - xa, depth: wallT, height: 400 }, { tx: xa, ty: 0, tz: z0 + h - 400 }, 'concrete', 'beam');
-      else P(`spandrel_${f + 1}_${i}`, 'box', { width: xb - xa, depth: wallT, height: 900 }, { tx: xa, ty: 0, tz: z0 }, 'concrete', 'wall');
+      if (curved) {
+        // 스팬드럴 바닥 밴드(슬래브 착지·필라스터 마진 분리) — 상부 개방(트랜섬 생략)
+        chordBoxZrz(P, `spandrel_${f + 1}_${i}`, xa, yFront(xa), xb, yFront(xb), wallT, z0, f === 0 ? 600 : 900, 'concrete', 'wall', 220);
+      } else if (f === 0) {
+        P(`transom_1_${i}`, 'box', { width: xb - xa, depth: wallT, height: 400 }, { tx: xa, ty: 0, tz: z0 + h - 400 }, 'concrete', 'beam');
+      } else {
+        P(`spandrel_${f + 1}_${i}`, 'box', { width: xb - xa, depth: wallT, height: 900 }, { tx: xa, ty: 0, tz: z0 }, 'concrete', 'wall');
+      }
     }
   }
-  P('parapet', 'box', { width: W, depth: wallT, height: 1100 }, { tx: 0, ty: 0, tz: zOf(floors) + slabT }, 'concrete', 'parapet');
+  // 파라펫: 곡면=베이별 현 세그먼트(최상 슬래브 착지)·평면=전폭 1매.
+  // 세그먼트 접합부 코너겹침(각도차)=신축이음 갭 마진으로 분리(마진∝bulge — 명시).
+  if (curved) {
+    const ppMargin = Math.round(60 + (wallT * bulge) / W);
+    for (let i = 0; i < nBay; i++) {
+      const xa = (i * W) / nBay, xb = ((i + 1) * W) / nBay;
+      chordBoxZrz(P, `parapet_${i}`, xa, yFront(xa), xb, yFront(xb), wallT, zOf(floors) + slabT, 1100, 'concrete', 'parapet', ppMargin);
+    }
+  } else {
+    P('parapet', 'box', { width: W, depth: wallT, height: 1100 }, { tx: 0, ty: 0, tz: zOf(floors) + slabT }, 'concrete', 'parapet');
+  }
   // 후면 벽: 층별 세그먼트(슬래브 사이 — 관통 방지 폐형)
   for (let f = 0; f < floors; f++) {
     const z0 = zOf(f) + slabT, h = zOf(f + 1) - z0;
@@ -919,9 +1036,77 @@ function excavatorBucketAssembly(p = {}) {
   };
 }
 
-/** 워런 트러스교(하로교 — 260718 신설). 대각재=등변 지그재그(chordBoxX 폐형 컷),
+/** 산업기계 라인(베이스프레임+스테이션 N+컨베이어+안전가드 — 260718b, 참고파일들2 포장기계 대응 간이).
+ *  각형강 프레임 위에 스테이션 하우징을 일렬 배치, 컨베이어가 관통, 둘레 안전펜스. 기구·구동 미포함. */
+function machineLineAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const nSt = Math.max(1, Math.min(12, Math.round(num(p.stations, 4))));
+  const stPitch = num(p.stationPitch, 1500);
+  const frameH = num(p.frameH, 900), legS = num(p.legSize, 80);
+  const convW = num(p.conveyorW, 500), convH = num(p.conveyorH, 80);
+  const stW = num(p.stationW, 700), stD = num(p.stationD, 900), stH = num(p.stationH, 1400);
+  // 라인 폭 = 컨베이어 존(전) + 스테이션 존(후) 분리 산정(y 겹침 방지)
+  const yGap = 120;
+  const W = num(p.width, 2 * legS + convW + yGap + stD + 100);
+  const L = nSt * stPitch;               // 라인 길이(x)
+  const guard = String(p.guard ?? 'yes') !== 'no';
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  // 지지 스택(각 단이 아래 단에 착지 — box 각형강 근사, 중실 명시):
+  //   다리 → 세로 레일(다리 위) → 가로 빔(레일 위) → 컨베이어·스테이션(가로 빔 위).
+  const zLeg = frameH, zRail = frameH + legS, zTop = frameH + 2 * legS;
+  const yEdge = [0, W - legS];
+  // 가로 빔 x-위치 = 경계 + 스테이션 중앙(스테이션·컨베이어 착지 보장)
+  const crossXs = [];
+  for (let i = 0; i <= nSt; i++) crossXs.push(i * stPitch);
+  for (let i = 0; i < nSt; i++) crossXs.push((i + 0.5) * stPitch);
+  crossXs.sort((a, b) => a - b);
+  // 다리(경계 x × 양 y열)
+  for (let i = 0; i <= nSt; i++) {
+    const x = Math.min(i * stPitch, L - legS);
+    for (const [sy, y] of yEdge.entries()) {
+      P(`leg_${i + 1}_${sy + 1}`, 'box', { width: legS, depth: legS, height: frameH }, { tx: x, ty: y, tz: 0 }, 'steel', 'frame');
+    }
+  }
+  // 세로 레일 2본(x 전장 — 다리 위)
+  for (const [sy, y] of yEdge.entries()) {
+    P(`rail_${sy + 1}`, 'box', { width: L, depth: legS, height: legS }, { tx: 0, ty: y, tz: zLeg }, 'steel', 'frame');
+  }
+  // 가로 빔(전 폭 — 레일 위)
+  for (const [ci, x] of crossXs.entries()) {
+    P(`cross_${ci + 1}`, 'box', { width: legS, depth: W, height: legS }, { tx: Math.min(x, L - legS), ty: 0, tz: zRail }, 'steel', 'frame');
+  }
+  // 컨베이어(전면 존 — 가로 빔 위) / 스테이션(후면 존 — y 분리)
+  const convY = legS + 50;
+  P('conveyor', 'box', { width: L, depth: convW, height: convH }, { tx: 0, ty: convY, tz: zTop }, 'steel', 'conveyor');
+  const stY = convY + convW + yGap;
+  for (let i = 0; i < nSt; i++) {
+    const x = (i + 0.5) * stPitch - stW / 2;
+    P(`station_${i + 1}`, 'box', { width: stW, depth: stD, height: stH }, { tx: x, ty: stY, tz: zTop }, 'steel', 'station');
+    // 작업 헤드(스테이션 위) + 지지 컬럼(스테이션 상면↔헤드)
+    P(`hcol_${i + 1}`, 'box', { width: 100, depth: 100, height: 250 }, { tx: x + stW * 0.25, ty: stY + stD / 2 - 50, tz: zTop + stH }, 'steel', 'frame');
+    P(`head_${i + 1}`, 'box', { width: stW * 0.5, depth: stD, height: 250 }, { tx: x + stW * 0.25, ty: stY, tz: zTop + stH + 250 }, 'steel', 'head');
+  }
+  // 제어반(라인 끝 — 접지)
+  P('control_panel', 'box', { width: 600, depth: 400, height: 1800 }, { tx: L + 300, ty: 0, tz: 0 }, 'steel', 'panel');
+  // 안전 펜스(전·후면 2변 — 프레임 밖 접지). 투입/배출(양단)=개구 생략.
+  if (guard) {
+    const fenceH = 1800;
+    for (const [fi, y0] of [[0, -300], [1, W + 260]].entries()) {
+      P(`fence_${fi + 1}`, 'box', { width: L + 600, depth: 40, height: fenceH }, { tx: -300, ty: y0, tz: 0 }, 'steel', 'fence');
+    }
+  }
+  return {
+    name: `산업기계 라인 ${nSt}스테이션`, domain: 'mech', kind: 'assembly', parts,
+    machineLineMeta: { stations: nSt, stationPitch: stPitch, length: L, width: W, frameH, guard },
+    note: '산업기계 라인 매싱 간이(프레임+스테이션 하우징+컨베이어+안전펜스 — 기구·구동·배선·제어 미포함 명시). 참고파일들2 포장기계류의 정직한 매싱 대응(내부 메커니즘 아님)',
+  };
+}
+
+/** 트러스교(하로교 — 260718 신설, 260718b 프랫/하우 확장). trussType='warren'(등변 지그재그)
+ *  | 'pratt'(수직재+중앙향 인장 대각재) | 'howe'(수직재+지점향 압축 대각재).
  *  바닥판=하현재 위 가로보 사이(트러스면 안쪽 y) — 전 접촉 0겹침 폐형.
- *  프랫/하우·수직재·포털 상세=후속 명시. 구조검토 미포함(형상·물량·도서만). */
+ *  포털 상세=후속 명시. 구조검토=trussBridgeCheck 간이 체인(비법정) 별도. */
 function trussBridgeAssembly(p = {}) {
   const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
   const span = num(p.span, 60000);
@@ -933,6 +1118,7 @@ function trussBridgeAssembly(p = {}) {
   const deckThk = num(p.deckThk, 250);
   const beamW = 400, beamH = num(p.beamH, 500);
   const abutH = num(p.pierH, 8000);
+  const tType = ['warren', 'pratt', 'howe'].includes(String(p.trussType)) ? String(p.trussType) : 'warren';
   const panelL = span / nP;
   const zbc = abutH;               // 하현재 하면
   const zbcTop = zbc + cs;
@@ -944,22 +1130,53 @@ function trussBridgeAssembly(p = {}) {
   for (const [ti, y] of yT.entries()) {
     P(`bchord_${ti + 1}`, 'box', { width: span, depth: cs, height: cs }, { tx: 0, ty: y, tz: zbc }, 'steel', 'chord');
     P(`tchord_${ti + 1}`, 'box', { width: span - 2 * panelL, depth: cs, height: cs }, { tx: panelL, ty: y, tz: ztcBot }, 'steel', 'chord');
-    // 워런 대각재: 하절점(짝수 k)↔상절점(홀수 k) 지그재그 — 중심 배치 폐형.
-    //   회전 AABB 를 패널 순간격 Wx × 현재 순높이 Hz 에 **정확 내접**시키는 (L,θ) 연립 역산
+    // 대각재: 회전 AABB 를 패널 클리어 사각형에 **정확 내접**시키는 (L,θ) 연립 역산
     //   (절점 접합=거셋 관례로 부재가 절점에 못 미침 — 상세 후속 명시):
     //   L·cosθ + ds·sinθ = Wx, L·sinθ + ds·cosθ = Hz → θ 부동점 반복(3회 수렴).
+    // 형식별 방향: warren=지그재그 / pratt=끝기둥 상승·내측은 중앙향 하강(인장) /
+    // howe=끝기둥 동일·내측은 지점향(압축 — pratt 반대). pratt/howe=내부 절점 수직재.
     const Hz = ztcBot - zbcTop;
-    const Wx = panelL - beamW - 2;
-    let thD = Math.atan2(Hz, Wx);
-    for (let it = 0; it < 4; it++) thD = Math.atan2(Hz - ds * Math.cos(thD), Wx - ds * Math.sin(thD));
-    const Ld = (Hz - ds * Math.cos(thD)) / Math.sin(thD);
-    if (!(Ld > ds * 2) || !(thD > 0.1)) {
-      return { name: '트러스교', domain: 'bridge', parts: [], alignmentErrors: [`대각재 기하 퇴화(순높이 ${Math.round(Hz)}·순간격 ${Math.round(Wx)}) — 트러스 높이/패널 수 재조정 필요`] };
-    }
+    const dirOf = (k) => {
+      if (tType === 'warren') return k % 2 === 0 ? +1 : -1;
+      if (k === 0) return +1;
+      if (k === nP - 1) return -1;
+      const left = k < nP / 2;
+      return tType === 'pratt' ? (left ? -1 : +1) : (left ? +1 : -1);
+    };
+    const hasVert = tType !== 'warren';
     for (let k = 0; k < nP; k++) {
-      const up = k % 2 === 0; // 짝수 패널=상승
       const xa = k * panelL, xb = (k + 1) * panelL;
-      chordBoxX(P, `diag_${ti + 1}_${k + 1}`, (xa + xb) / 2, (zbcTop + ztcBot) / 2, up ? thD : -thD, Ld, ds, y + (cs - ds) / 2, ds, 'steel', 'diagonal');
+      // 클리어 존: 좌측=가로보(+수직재는 절점 우측에 서므로 k≥1 패널의 좌측만 차지)
+      const xL = xa + beamW / 2 + 1 + (hasVert && k >= 1 ? ds + 1 : 0);
+      const xR = xb - beamW / 2 - 1;
+      const Wx = xR - xL;
+      let thD = Math.atan2(Hz, Wx);
+      for (let it = 0; it < 4; it++) thD = Math.atan2(Hz - ds * Math.cos(thD), Wx - ds * Math.sin(thD));
+      const Ld = (Hz - ds * Math.cos(thD)) / Math.sin(thD);
+      if (!(Ld > ds * 2) || !(thD > 0.1)) {
+        return { name: '트러스교', domain: 'bridge', parts: [], alignmentErrors: [`대각재 기하 퇴화(순높이 ${Math.round(Hz)}·순간격 ${Math.round(Wx)}) — 트러스 높이/패널 수 재조정 필요`] };
+      }
+      chordBoxX(P, `diag_${ti + 1}_${k + 1}`, (xL + xR) / 2, (zbcTop + ztcBot) / 2, dirOf(k) > 0 ? thD : -thD, Ld, ds, y + (cs - ds) / 2, ds, 'steel', 'diagonal');
+    }
+    // 수직재(pratt/howe — 내부 절점, 절점 우측 +beamW/2+1 오프셋: 가로보 회피 폐형)
+    if (hasVert) {
+      for (let k = 1; k < nP; k++) {
+        P(`vert_${ti + 1}_${k}`, 'box', { width: ds, depth: ds, height: Hz }, { tx: k * panelL + beamW / 2 + 1, ty: y + (cs - ds) / 2, tz: zbcTop }, 'steel', 'vertical');
+      }
+    }
+    // 정착 거셋(opt-in gusset:true — 260718b): 각 내부 절점의 트러스면 **외측**에 거셋 플레이트
+    //   부착(현재 외면과 0겹침 버트 — 부재 간섭 없음). 상·하현 절점 각각. 두께 gt.
+    if (String(p.gusset) === 'true' || p.gusset === true) {
+      const gt = num(p.gussetThk, 16), gsz = Math.round(cs * 1.8);
+      const outY = ti === 0 ? -gt : deckW; // 리브0=전면 외측(y<0)·리브1=후면 외측(y>deckW)
+      for (let k = 0; k <= nP; k++) {
+        const x = Math.min(Math.max(k * panelL - gsz / 2, 0), span - gsz);
+        // 하현 절점(모든 k) + 상현 절점(내부 1..nP-1)
+        P(`gusset_b_${ti + 1}_${k}`, 'box', { width: gsz, depth: gt, height: gsz }, { tx: x, ty: outY, tz: zbcTop - (gsz - cs) / 2 }, 'steel', 'gusset');
+        if (k >= 1 && k <= nP - 1) {
+          P(`gusset_t_${ti + 1}_${k}`, 'box', { width: gsz, depth: gt, height: gsz }, { tx: x, ty: outY, tz: ztcBot + cs - (gsz + cs) / 2 }, 'steel', 'gusset');
+        }
+      }
     }
   }
   // 가로보(내부 패널점, 하현재 상면 위 y 전폭) + 바닥판(가로보 위·트러스면 안쪽)
@@ -977,9 +1194,9 @@ function trussBridgeAssembly(p = {}) {
     P(`abut_${tag}`, 'box', { width: 2000, depth: deckW, height: abutH }, { tx: x0, ty: 0, tz: 0 }, 'concrete', 'abutment');
   }
   return {
-    name: `워런 트러스교 ${span / 1000}m×${nP}패널`, domain: 'bridge', kind: 'assembly', parts,
-    trussMeta: { span, panels: nP, trussH: H, chordS: cs, diagS: ds, deckW, abutH },
-    note: '워런 하로교(등변 대각재 — 프랫/하우·수직재·포털 후속 명시)·구조검토 미포함(형상·물량·도서만)',
+    name: `${tType === 'warren' ? '워런' : tType === 'pratt' ? '프랫' : '하우'} 트러스교 ${span / 1000}m×${nP}패널`, domain: 'bridge', kind: 'assembly', parts,
+    trussMeta: { span, panels: nP, trussH: H, chordS: cs, diagS: ds, deckW, abutH, trussType: tType, panelL },
+    note: `${tType} 하로교(대각재=클리어 내접·거셋 상세 후속 명시)·구조검토=trussBridgeCheck 간이 체인(비법정) 별도`,
   };
 }
 
@@ -1589,9 +1806,10 @@ export const ASSEMBLY_TEMPLATES = {
       ],
     },
     {
-      id: 'industrial_stair', labelKo: '산업용 강재 계단 (직선+난간)', labelEn: 'Industrial steel stair with handrails', build: industrialStairAssembly,
+      id: 'industrial_stair', labelKo: '산업용 강재 계단 (직선/U턴+난간)', labelEn: 'Industrial steel stair (straight/switchback)', build: industrialStairAssembly,
       params: [
         { name: 'totalRise', labelKo: '총 높이', unit: 'mm', default: 4000, min: 1000, max: 12000 },
+        { name: 'flights', labelKo: '플라이트(2=U턴 중간참)', unit: '', default: 1, min: 1, max: 2 },
         { name: 'width', labelKo: '유효 폭', unit: 'mm', default: 900, min: 600, max: 2400 },
         { name: 'treadDepth', labelKo: '디딤판 깊이', unit: 'mm', default: 260, min: 220, max: 400 },
         { name: 'riserH', labelKo: '리저 목표', unit: 'mm', default: 180, min: 120, max: 220 },
@@ -1599,9 +1817,10 @@ export const ASSEMBLY_TEMPLATES = {
       ],
     },
     {
-      id: 'elevator_shaft', labelKo: '엘리베이터 샤프트+카', labelEn: 'Elevator shaft with car', build: elevatorShaftAssembly,
+      id: 'elevator_shaft', labelKo: '엘리베이터 샤프트+카 (직사각/반원)', labelEn: 'Elevator shaft (rect/semicircular)', build: elevatorShaftAssembly,
       params: [
         { name: 'floors', labelKo: '층수', unit: '', default: 4, min: 2, max: 30 },
+        { name: 'shape', labelKo: '형상(rect/semicircular)', unit: '', default: 'rect', enum: ['rect', 'semicircular'] },
         { name: 'floorH', labelKo: '층고', unit: 'mm', default: 3300, min: 2600, max: 6000 },
         { name: 'carW', labelKo: '카 폭', unit: 'mm', default: 1600, min: 1000, max: 2800 },
         { name: 'carD', labelKo: '카 깊이', unit: 'mm', default: 1500, min: 1000, max: 3000 },
@@ -1628,11 +1847,12 @@ export const ASSEMBLY_TEMPLATES = {
       ],
     },
     {
-      id: 'commercial_massing', labelKo: '상가 매스+입면 그리드', labelEn: 'Commercial massing with facade grid', build: commercialMassingAssembly,
+      id: 'commercial_massing', labelKo: '상가 매스+입면 그리드 (평면/곡면)', labelEn: 'Commercial massing (flat/curved facade)', build: commercialMassingAssembly,
       params: [
         { name: 'width', labelKo: '전면 폭', unit: 'mm', default: 15000, min: 6000, max: 60000 },
         { name: 'depth', labelKo: '깊이', unit: 'mm', default: 12000, min: 6000, max: 40000 },
         { name: 'floors', labelKo: '층수', unit: '', default: 4, min: 1, max: 20 },
+        { name: 'facade', labelKo: '파사드(flat/curved)', unit: '', default: 'flat', enum: ['flat', 'curved'] },
         { name: 'groundH', labelKo: '1층 층고', unit: 'mm', default: 4200, min: 3000, max: 6000 },
         { name: 'floorH', labelKo: '기준층 층고', unit: 'mm', default: 3600, min: 2800, max: 5000 },
       ],
@@ -1708,13 +1928,15 @@ export const ASSEMBLY_TEMPLATES = {
       ],
     },
     {
-      id: 'truss_bridge', labelKo: '워런 트러스교 (하로)', labelEn: 'Warren through-truss bridge', build: trussBridgeAssembly,
+      id: 'truss_bridge', labelKo: '트러스교 (워런/프랫/하우, 하로)', labelEn: 'Through-truss bridge (Warren/Pratt/Howe)', build: trussBridgeAssembly,
       params: [
         { name: 'span', labelKo: '지간', unit: 'mm', default: 60000, min: 20000, max: 150000 },
+        { name: 'trussType', labelKo: '형식(warren/pratt/howe)', unit: '', default: 'warren', enum: ['warren', 'pratt', 'howe'] },
         { name: 'panels', labelKo: '패널 수(짝수)', unit: '', default: 8, min: 4, max: 24 },
         { name: 'trussH', labelKo: '트러스 높이', unit: 'mm', default: 7500, min: 3000, max: 20000 },
         { name: 'deckW', labelKo: '상판 폭', unit: 'mm', default: 9000, min: 5000, max: 20000 },
         { name: 'pierH', labelKo: '교대 높이', unit: 'mm', default: 8000, min: 3000, max: 30000 },
+        { name: 'gusset', labelKo: '정착 거셋 상세(true/false)', unit: '', default: 'false', enum: ['false', 'true'] },
       ],
     },
   ],
@@ -1782,6 +2004,16 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   mech: [
+    {
+      id: 'machine_line', labelKo: '산업기계 라인 (프레임+스테이션+컨베이어)', labelEn: 'Industrial machine line', build: machineLineAssembly,
+      params: [
+        { name: 'stations', labelKo: '스테이션 수', unit: '', default: 4, min: 1, max: 12 },
+        { name: 'stationPitch', labelKo: '스테이션 피치', unit: 'mm', default: 1500, min: 800, max: 4000 },
+        { name: 'conveyorW', labelKo: '컨베이어 폭', unit: 'mm', default: 500, min: 200, max: 1500 },
+        { name: 'frameH', labelKo: '프레임 높이', unit: 'mm', default: 900, min: 500, max: 1500 },
+        { name: 'guard', labelKo: '안전펜스(yes/no)', unit: '', default: 'yes', enum: ['yes', 'no'] },
+      ],
+    },
     {
       id: 'excavator_bucket', labelKo: '굴착기 버킷 (판금 셸)', labelEn: 'Excavator bucket (sheet-metal shell)', build: excavatorBucketAssembly,
       params: [

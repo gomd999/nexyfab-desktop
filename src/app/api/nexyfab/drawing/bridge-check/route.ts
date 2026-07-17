@@ -14,12 +14,30 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+type CheckFn = (assembly: unknown, params: Record<string, unknown>) => unknown;
 type Mod = {
-  bridgeCheck: (assembly: unknown, params: Record<string, unknown>) => unknown;
-  bridgeLoop?: (assembly: unknown, params: Record<string, unknown>) => unknown;
-  archBridgeCheck?: (assembly: unknown, params: Record<string, unknown>) => unknown;
+  bridgeCheck: CheckFn;
+  bridgeLoop?: CheckFn;
+  archBridgeCheck?: CheckFn;
+  trussBridgeCheck?: CheckFn;
+  cableStayedCheck?: CheckFn;
+  suspensionCheck?: CheckFn;
+  stairCheck?: CheckFn;
 };
-type RptMod = { bridgeReport: (r: unknown, o?: Record<string, unknown>) => string; archBridgeReport?: (r: unknown, o?: Record<string, unknown>) => string };
+type RptMod = {
+  bridgeReport: (r: unknown, o?: Record<string, unknown>) => string;
+  archBridgeReport?: (r: unknown, o?: Record<string, unknown>) => string;
+  simpleCheckReport?: (r: unknown, o?: Record<string, unknown>) => string;
+};
+
+// meta 필드 → 검토 함수·리포트 제목 디스패치(260718b). archMeta=전용 리포트, 그 외=범용.
+const CHECK_DISPATCH: Array<{ meta: string; fn: keyof Mod; title: string; arch?: boolean }> = [
+  { meta: 'archMeta', fn: 'archBridgeCheck', title: '아치교 간이 검토', arch: true },
+  { meta: 'trussMeta', fn: 'trussBridgeCheck', title: '트러스교 간이 검토' },
+  { meta: 'cableStayedMeta', fn: 'cableStayedCheck', title: '사장교 간이 검토' },
+  { meta: 'suspensionMeta', fn: 'suspensionCheck', title: '현수교 간이 검토' },
+  { meta: 'stairMeta', fn: 'stairCheck', title: '산업 계단 간이 검토' },
+];
 
 let _mod: Mod | null = null;
 let _rpt: RptMod | null = null;
@@ -53,23 +71,30 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const mod = await load();
-    // 아치교(archMeta)=간이 폐형 체인(260718), 거더교(bridgeMeta)=실시설계급 체인 — 자동 디스패치
-    const isArch = !!(body.assembly as { archMeta?: unknown }).archMeta && !!mod.archBridgeCheck;
-    const result = isArch
-      ? mod.archBridgeCheck!(body.assembly, body.params ?? {})
+    // meta 필드 기반 자동 디스패치(260718b): 아치·트러스·사장·현수·계단=간이 폐형 체인,
+    // 거더교(bridgeMeta)=실시설계급 체인. 함수 미탑재 시 거더 체인 폴백.
+    const asmMeta = body.assembly as Record<string, unknown>;
+    const disp = CHECK_DISPATCH.find((d) => asmMeta[d.meta] && typeof mod[d.fn] === 'function');
+    const result = disp
+      ? (mod[disp.fn] as CheckFn)(body.assembly, body.params ?? {})
       : (body as { mode?: string }).mode === 'loop' && mod.bridgeLoop ? mod.bridgeLoop(body.assembly, body.params ?? {}) : mod.bridgeCheck(body.assembly, body.params ?? {});
     if (body.format === 'html') {
       const rpt = await loadRpt();
-      let svg = '';
-      try {
-        const sp = join(process.cwd(), 'scripts', 'drawing-to-3d', 'section-drawings.mjs');
-        const sd = (await import(/* webpackIgnore: true */ pathToFileURL(sp).href)) as { bridgeGeneralSvg: (bm: unknown, o?: Record<string, unknown>) => string };
-        const bm = (body.assembly as { bridgeMeta?: unknown }).bridgeMeta;
-        if (bm) svg = sd.bridgeGeneralSvg(bm);
-      } catch { /* 도면 실패는 비치명 */ }
-      const html = isArch && rpt.archBridgeReport
-        ? rpt.archBridgeReport(result, { title: body.assembly?.name ?? '아치교 간이 검토' })
-        : rpt.bridgeReport(result, { title: body.assembly?.name ?? '거더교 검증', svg });
+      let html: string;
+      if (disp?.arch && rpt.archBridgeReport) {
+        html = rpt.archBridgeReport(result, { title: body.assembly?.name ?? disp.title });
+      } else if (disp && rpt.simpleCheckReport) {
+        html = rpt.simpleCheckReport(result, { title: body.assembly?.name ?? disp.title });
+      } else {
+        let svg = '';
+        try {
+          const sp = join(process.cwd(), 'scripts', 'drawing-to-3d', 'section-drawings.mjs');
+          const sd = (await import(/* webpackIgnore: true */ pathToFileURL(sp).href)) as { bridgeGeneralSvg: (bm: unknown, o?: Record<string, unknown>) => string };
+          const bm = (body.assembly as { bridgeMeta?: unknown }).bridgeMeta;
+          if (bm) svg = sd.bridgeGeneralSvg(bm);
+        } catch { /* 도면 실패는 비치명 */ }
+        html = rpt.bridgeReport(result, { title: body.assembly?.name ?? '거더교 검증', svg });
+      }
       return NextResponse.json({ result, html });
     }
     return NextResponse.json(result);
