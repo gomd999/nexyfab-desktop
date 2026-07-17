@@ -166,6 +166,190 @@ function landscapePlanSvg(parts) {
   return `<svg viewBox="0 0 ${M + Wm * S + 50} ${M + Dm * S + 50}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff"><text x="${M}" y="24" font-size="13" font-weight="700" font-family="sans-serif">배치 평면도</text>${el.join('')}<text x="${M}" y="${(M + Dm * S + 46).toFixed(1)}" font-size="9.5" fill="#64748b" font-family="sans-serif">범례: ▨데크보드 · ┅장선 · ─보 · ⊕기둥 · 치수 mm</text></svg>`;
 }
 
+// ── 선형(alignment)·종단·시트분할·부지 오버레이 (260717 순차 ①~④) ────────────────
+/** 폴리라인 체이니지 보간 — sMm 지점의 좌표·진행방향. (dxf-export 공유) */
+export function chainPoint(ips, sMm) {
+  let acc = 0;
+  for (let i = 0; i < ips.length - 1; i++) {
+    const [x1, y1] = ips[i], [x2, y2] = ips[i + 1];
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    if (sMm <= acc + len || i === ips.length - 2) {
+      const t = Math.max(0, Math.min(1, (sMm - acc) / len));
+      return { p: [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t], dir: [(x2 - x1) / len, (y2 - y1) / len] };
+    }
+    acc += len;
+  }
+  return { p: ips[0], dir: [1, 0] };
+}
+const polyArea2 = (pts) => Math.abs(pts.reduce((s, [x, y], i) => { const [x2, y2] = pts[(i + 1) % pts.length]; return s + x * y2 - x2 * y; }, 0)) / 2;
+
+/** 부지 경계·등고 오버레이(④ — 입력 시만, 지형 지어내지 않음). X/Y=좌표 매퍼. */
+function siteOverlaySvg(X, Y, site) {
+  if (!site) return '';
+  const el = [];
+  if (Array.isArray(site.boundary) && site.boundary.length >= 3) {
+    const pts = site.boundary.map(([x, y]) => `${X(x)},${Y(y)}`).join(' ');
+    el.push(`<polygon points="${pts}" fill="none" stroke="#9333ea" stroke-width="1.4" stroke-dasharray="18 5 4 5"/>`);
+    const [lx, ly] = site.boundary[0];
+    el.push(`<text x="${X(lx)}" y="${(+Y(ly) - 5).toFixed(1)}" font-size="9" fill="#9333ea" font-family="sans-serif">대지경계선 · A=${(polyArea2(site.boundary) / 1e6).toFixed(1)}m²</text>`);
+  }
+  for (const ct of site.contours ?? []) {
+    if (!Array.isArray(ct.pts) || ct.pts.length < 2) continue;
+    const pts = ct.pts.map(([x, y]) => `${X(x)},${Y(y)}`).join(' ');
+    el.push(`<polyline points="${pts}" fill="none" stroke="#a16207" stroke-width=".8" opacity=".8"/>`);
+    const [ex, ey] = ct.pts[ct.pts.length - 1];
+    el.push(`<text x="${X(ex)}" y="${Y(ey)}" font-size="8" fill="#a16207" font-family="sans-serif">EL.${Number(ct.elevM).toFixed(1)}</text>`);
+  }
+  return el.join('');
+}
+
+/** 선형 평면(① IP 폴리라인) — 윈도(staFrom~staTo) 지원(③ 시트 분할·매치라인). */
+function alignmentPlanSvg(assembly, { staFrom = 0, staTo = null, sheetNo = 0, sheetCount = 0 } = {}) {
+  const al = assembly.alignment;
+  if (!al?.ips?.length) return null;
+  const total = al.totalMm;
+  const s0 = Math.max(0, staFrom), s1 = staTo == null ? total : Math.min(total, staTo);
+  // 윈도 서브 폴리라인(경계 보간점 포함)
+  const sub = [chainPoint(al.ips, s0).p];
+  let acc = 0;
+  for (let i = 0; i < al.ips.length - 1; i++) {
+    const len = Math.hypot(al.ips[i + 1][0] - al.ips[i][0], al.ips[i + 1][1] - al.ips[i][1]);
+    if (acc + len > s0 && acc + len < s1) sub.push(al.ips[i + 1]);
+    acc += len;
+  }
+  sub.push(chainPoint(al.ips, s1).p);
+  const hw = al.halfWidthMm ?? 1000;
+  const extra = (assembly.siteBoundary && sheetCount === 0 ? assembly.siteBoundary : []).concat((sheetCount === 0 ? (assembly.contours ?? []) : []).flatMap((c) => c.pts ?? []));
+  const allPts = sub.concat(extra);
+  const pad = hw + 2500;
+  const x0 = Math.min(...allPts.map((p) => p[0])) - pad, x1 = Math.max(...allPts.map((p) => p[0])) + pad;
+  const y0 = Math.min(...allPts.map((p) => p[1])) - pad, y1 = Math.max(...allPts.map((p) => p[1])) + pad;
+  const Wm = Math.max(1, x1 - x0), Dm = Math.max(1, y1 - y0);
+  const M = 70;
+  const S = Math.min(760 / Wm, 430 / Dm);
+  const N = pickScale(Wm, Dm, 360, 230);
+  const X = (v) => (M + (v - x0) * S).toFixed(1);
+  const Y = (v) => (M + (y1 - v) * S).toFixed(1); // 북=위 관례(y 반전)
+  const el = [];
+  el.push(siteOverlaySvg(X, Y, sheetCount === 0 ? { boundary: assembly.siteBoundary, contours: assembly.contours } : null));
+  // 벽 밴드(±halfW 도식 — 부재 상세는 단면도) + 중심선
+  for (let i = 0; i < sub.length - 1; i++) {
+    const [ax, ay] = sub[i], [bx, by] = sub[i + 1];
+    const L = Math.hypot(bx - ax, by - ay) || 1;
+    const nx = -(by - ay) / L, ny = (bx - ax) / L;
+    for (const sgn of [1, -1]) {
+      el.push(`<line x1="${X(ax + sgn * nx * hw)}" y1="${Y(ay + sgn * ny * hw)}" x2="${X(bx + sgn * nx * hw)}" y2="${Y(by + sgn * ny * hw)}" stroke="#78716c" stroke-width="1.1"/>`);
+    }
+  }
+  el.push(`<polyline points="${sub.map(([x, y]) => `${X(x)},${Y(y)}`).join(' ')}" fill="none" stroke="#dc2626" stroke-width=".8" stroke-dasharray="16 4 3 4"/>`);
+  // 측점(STA) — 윈도 내부만, 세그먼트 법선 방향 틱
+  const step = staStep(total);
+  for (let s = Math.ceil(s0 / step) * step; s <= s1 + 1; s += step) {
+    const t = Math.min(s, s1);
+    const { p, dir } = chainPoint(al.ips, t);
+    const nx = -dir[1], ny = dir[0];
+    el.push(`<line x1="${X(p[0] - nx * (hw + 600))}" y1="${Y(p[1] - ny * (hw + 600))}" x2="${X(p[0] + nx * (hw + 600))}" y2="${Y(p[1] + ny * (hw + 600))}" stroke="#dc2626" stroke-width=".7"/>`);
+    el.push(`<text x="${X(p[0] + nx * (hw + 900))}" y="${Y(p[1] + ny * (hw + 900))}" font-size="8.5" fill="#dc2626" font-family="sans-serif">STA ${staLabel(t)}</text>`);
+    if (t >= s1) break;
+  }
+  // IP 마커 + 교각(굴절각)
+  let ch = 0;
+  for (let i = 1; i < al.ips.length - 1; i++) {
+    ch += Math.hypot(al.ips[i][0] - al.ips[i - 1][0], al.ips[i][1] - al.ips[i - 1][1]);
+    if (ch < s0 || ch > s1) continue;
+    const [ix, iy] = al.ips[i];
+    const d1 = al.segments[i - 1]?.bearingDeg ?? 0, d2 = al.segments[i]?.bearingDeg ?? d1;
+    el.push(`<circle cx="${X(ix)}" cy="${Y(iy)}" r="5" fill="#fff" stroke="#0f172a" stroke-width="1"/>`);
+    el.push(`<text x="${(+X(ix) + 8).toFixed(1)}" y="${(+Y(iy) - 8).toFixed(1)}" font-size="9" font-weight="700" font-family="sans-serif">IP${i} Δ=${Math.abs(d2 - d1).toFixed(1)}°</text>`);
+  }
+  // 매치라인(③) — 윈도 경계
+  for (const [s, present] of [[s0, s0 > 0], [s1, s1 < total]]) {
+    if (!present) continue;
+    const { p, dir } = chainPoint(al.ips, s);
+    const nx = -dir[1], ny = dir[0];
+    el.push(`<line x1="${X(p[0] - nx * (hw + 2000))}" y1="${Y(p[1] - ny * (hw + 2000))}" x2="${X(p[0] + nx * (hw + 2000))}" y2="${Y(p[1] + ny * (hw + 2000))}" stroke="#0f172a" stroke-width="1.6" stroke-dasharray="10 6"/>`);
+    el.push(`<text x="${X(p[0] + nx * (hw + 2300))}" y="${Y(p[1] + ny * (hw + 2300))}" font-size="9.5" font-weight="700" font-family="sans-serif">MATCH LINE STA ${staLabel(s)}</text>`);
+  }
+  el.push(scaleBarSvg(M, M + Dm * S + 40, S, Math.max(Wm, Dm)));
+  el.push(northSvg(M + Wm * S + 30, M - 16));
+  const title = sheetCount > 0 ? `선형 평면도 — 시트 ${sheetNo}/${sheetCount} · STA ${staLabel(s0)}~${staLabel(s1)}` : `선형 평면도 (연장 ${fmtLen(total)} · 측점 ${fmtLen(step)} 간격)`;
+  return `<svg viewBox="0 0 ${M + Wm * S + 90} ${M + Dm * S + 66}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff"><text x="${M}" y="24" font-size="13" font-weight="700" font-family="sans-serif">${title} · SCALE 1:${N}(A3)</text>${el.join('')}
+<text x="${M}" y="${(M + Dm * S + 58).toFixed(1)}" font-size="8.5" fill="#64748b" font-family="sans-serif">${esc(al.note ?? '')}</text></svg>`;
+}
+
+/** ③ 시트 분할 — 전체도 1장 + 상세 시트 n장(≤6, match line). 상세 불필요(1장 커버)면 전체도만. */
+function alignmentSheets(assembly) {
+  const al = assembly.alignment;
+  if (!al?.ips?.length) return '';
+  const svgs = [alignmentPlanSvg(assembly) ?? ''];
+  const total = al.totalMm;
+  const DETAIL = [100, 200, 250, 500, 1000, 2500, 5000];
+  const Nd = DETAIL.find((n) => Math.ceil(total / (360 * n)) <= 6) ?? DETAIL[DETAIL.length - 1];
+  const cover = 360 * Nd;
+  const count = Math.ceil(total / cover);
+  if (count > 1) {
+    for (let i = 0; i < count; i++) {
+      const svg = alignmentPlanSvg(assembly, { staFrom: i * cover, staTo: Math.min(total, (i + 1) * cover), sheetNo: i + 1, sheetCount: count });
+      if (svg) svgs.push(svg);
+    }
+  }
+  return svgs.join('<hr style="border:0;border-top:1px dashed #cbd5e1;margin:10px 0">');
+}
+
+/** ④ 부지 계획도 블록 — siteBoundary/contours 입력 시만 별도 시트(조경·비선형 토목용). */
+function siteOverlayBlock(assembly) {
+  const boundary = assembly.siteBoundary, contours = assembly.contours ?? [];
+  const has = (Array.isArray(boundary) && boundary.length >= 3) || contours.some((c) => Array.isArray(c.pts) && c.pts.length >= 2);
+  if (!has) return '';
+  const pts = (Array.isArray(boundary) ? boundary : []).concat(contours.flatMap((c) => c.pts ?? []));
+  const x0 = Math.min(...pts.map((p) => p[0])) - 2000, x1 = Math.max(...pts.map((p) => p[0])) + 2000;
+  const y0 = Math.min(...pts.map((p) => p[1])) - 2000, y1 = Math.max(...pts.map((p) => p[1])) + 2000;
+  const Wm = Math.max(1, x1 - x0), Dm = Math.max(1, y1 - y0);
+  const M = 60;
+  const S = Math.min(760 / Wm, 430 / Dm);
+  const N = pickScale(Wm, Dm, 360, 230);
+  const X = (v) => (M + (v - x0) * S).toFixed(1);
+  const Y = (v) => (M + (y1 - v) * S).toFixed(1);
+  return `<svg viewBox="0 0 ${M + Wm * S + 70} ${M + Dm * S + 60}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff">
+<text x="${M}" y="24" font-size="13" font-weight="700" font-family="sans-serif">부지 계획도 · SCALE 1:${N}(A3)</text>
+${siteOverlaySvg(X, Y, { boundary, contours })}
+${scaleBarSvg(M, M + Dm * S + 36, S, Math.max(Wm, Dm))}${northSvg(M + Wm * S + 26, M - 12)}
+<text x="${M}" y="${(M + Dm * S + 54).toFixed(1)}" font-size="8.5" fill="#64748b" font-family="sans-serif">경계·등고=입력 데이터 표기(측량 성과 아님·지형 미생성 — 정직)</text></svg>`;
+}
+
+/** ② 종단면도 — 계획고(설계선) + 지반선(입력 시만). 종 왜곡 10×(V=H/10) 명기. */
+function profileSvg(assembly) {
+  const al = assembly.alignment, pf = assembly.profile;
+  if (!al || !pf?.design?.length) return '';
+  const total = al.totalMm;
+  const pts = pf.design.concat(pf.ground ?? []);
+  const eMin = Math.min(0, ...pts.map((q) => q.elevMm)) - 500;
+  const eMax = Math.max(...pts.map((q) => q.elevMm)) + 500;
+  const M = 80, PW = 760, PH = 170;
+  const Sx = PW / total, Sy = PH / Math.max(1, eMax - eMin);
+  const X = (s) => (M + s * Sx).toFixed(1);
+  const Y = (e) => (30 + (eMax - e) * Sy).toFixed(1);
+  const el = [];
+  // 격자: STA + 표고
+  const step = staStep(total);
+  for (let s = 0; s <= total + 1; s += step) {
+    const t = Math.min(s, total);
+    el.push(`<line x1="${X(t)}" y1="30" x2="${X(t)}" y2="${30 + PH}" stroke="#e2e8f0" stroke-width=".6"/>`);
+    el.push(`<text x="${X(t)}" y="${30 + PH + 14}" font-size="8" text-anchor="middle" fill="#475569" font-family="sans-serif">${staLabel(t)}</text>`);
+    if (t >= total) break;
+  }
+  for (const e of [0, Math.round((eMax - 500) / 500) * 500]) {
+    el.push(`<line x1="${M}" y1="${Y(e)}" x2="${M + PW}" y2="${Y(e)}" stroke="#e2e8f0" stroke-width=".6"/>`);
+    el.push(`<text x="${M - 6}" y="${(+Y(e) + 3).toFixed(1)}" font-size="8" text-anchor="end" fill="#475569" font-family="sans-serif">EL.${(e / 1000).toFixed(1)}</text>`);
+  }
+  el.push(`<polyline points="${pf.design.map((q) => `${X(q.staMm)},${Y(q.elevMm)}`).join(' ')}" fill="none" stroke="#2563eb" stroke-width="1.6"/>`);
+  if (pf.ground?.length) el.push(`<polyline points="${pf.ground.map((q) => `${X(q.staMm)},${Y(q.elevMm)}`).join(' ')}" fill="none" stroke="#a16207" stroke-width="1.1" stroke-dasharray="6 4"/>`);
+  const Nh = pickScale(total, 1, 360, 999);
+  return `<svg viewBox="0 0 ${M + PW + 40} ${30 + PH + 40}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff">
+<text x="${M}" y="18" font-size="13" font-weight="700" font-family="sans-serif">종단면도 · H 1:${Nh} / V 1:${Math.max(1, Math.round(Nh / 10))} (종 10× 왜곡)</text>${el.join('')}
+<text x="${M}" y="${30 + PH + 30}" font-size="8.5" fill="#64748b" font-family="sans-serif">설계선(청): ${esc(pf.designNote ?? '')} · ${pf.ground?.length ? '지반선(갈, 파선)=입력' : '지반선=입력 시 표기(지형을 지어내지 않음)'}</text></svg>`;
+}
+
 /** 토목: 선형 평면도 SVG — 부재 평면 + 중심선 + 측점(STA 0+000) + 스케일바. km급 연장 대응. */
 function civilPlanSvg(parts) {
   if (!parts.length) return null;
@@ -279,12 +463,17 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   ${domain && domain !== 'mech' ? scaleBarSvg(ox, oy + fh + 42, S, Math.max(W, H)) + northSvg(sx0 + fw + 30, oy - 20) : ''}
   ${pipeLines.join('')}
   ${balloons.join('')}</svg>`;
-  // 관례도면 모드 (③): 건축=축선 구조평면 · 조경=배치 평면도 · 토목=선형 평면(측점)
+  // 관례도면 모드 (③): 건축=축선 구조평면 · 조경=배치 평면도(+경계·등고) ·
+  // 토목=선형 평면(alignment: STA·IP·시트분할·종단 / 직선 run: 측점 평면)
   let domainSvg = '';
   try {
     if (domain === 'building') domainSvg = axesPlanSvg(parts) ?? '';
-    else if (domain === 'landscape') domainSvg = landscapePlanSvg(parts) ?? '';
-    else if (domain === 'civil') domainSvg = civilPlanSvg(parts) ?? '';
+    else if (domain === 'landscape') domainSvg = (landscapePlanSvg(parts) ?? '') + siteOverlayBlock(assembly);
+    else if (domain === 'civil') {
+      domainSvg = assembly.alignment
+        ? alignmentSheets(assembly) + profileSvg(assembly)
+        : (civilPlanSvg(parts) ?? '') + siteOverlayBlock(assembly);
+    }
   } catch { domainSvg = ''; }
   // BOM = 그룹 단위(규격·재질 동일 부재 수량 집계) — 대량 부품 도면 판독성
   const bom = groups.map((g, gi) => {

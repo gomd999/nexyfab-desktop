@@ -151,3 +151,12 @@ gemini-2.5-flash/pro가 union 스키마(전 필드)에서 엉뚱한 필드를 �
 - **DXF 주석 축척 연동**: 모델공간 1:1(mm) 유지, 문자고·오프셋만 K=N/100 비례(km 도면에서 주석 판독 가능).
 - **게이트·템플릿 확장**: box 수평 2km(높이 200m)·옹벽 연장 20m→2km. 500m 연장 실증: 1:2500·STA 50m·질량 1,896t.
 - 다음 후보: 선형(polyline) 어휘·종단면도(설계선)·장척 시트 분할(match line)·부지 경계/등고.
+
+## 선형 도면 4건 (2026-07-17 6차 배치 — km 도안 심화, 순차 ①~④)
+
+- **① 선형(IP 폴리라인) 어휘**: `retaining_wall_alignment` 템플릿 — params.ips=[[x,y],…](미입력=leg1/leg2/교각 L형). 세그먼트별 저판·벽체를 방위각 회전 배치(중심선=폴리라인, 접합부 baseW 트림 — "IP 접합 상세=후속·물량은 중심선 연장 기준" 명시). meta.alignment={ips,totalMm,segments,halfWidthMm} 단일 소스.
+- **② 종단면도** `profileSvg`: 계획고(기본=벽정점 일정고 형상 파생, profileDesign 입력 시 대체)+지반선(입력 시만 — 지형 지어내지 않음). H/V 축척(종 10× 왜곡) 명기, STA 격자·EL 라벨.
+- **③ 장척 시트 분할** `alignmentSheets`: 전체도 1장+상세 시트 n장(상세 축척 자동: 시트 ≤6장 되는 최소 축척, 시트당 360 paper-mm 커버)+**MATCH LINE STA** 양단 표기. 1.3km 3IP → 전체도+4시트 실증.
+- **④ 부지 경계·등고**: assembly.siteBoundary(폴리곤)·contours=[{elevM,pts}] 입력 시만 — 배치도/선형 평면 오버레이+독립 "부지 계획도" 시트(면적 자동·EL 라벨). DXF BNDRY/CONTOUR 레이어.
+- DXF: dxfCivilPlan alignment 모드(AXIS 중심선·WALL ±halfW 밴드·IP 원+라벨·STA 틱).
+- 정직 한계: 곡선(원곡선·완화곡선) 미지원=IP 직선 연결 명시 · 지반선/등고=입력 원칙 · 시트 축척은 A3 100% 인쇄 기준.

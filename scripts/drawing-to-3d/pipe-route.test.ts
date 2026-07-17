@@ -400,6 +400,43 @@ describe('대축척 도면 코어 — km급 토목·조경·건축 (260717)', ()
     expect(html).toContain('500m');
     expect(html).toContain('선형 평면도');
   });
+  it('① 선형 어휘: IP 폴리라인 옹벽 — 회전 세그먼트 간섭 0·designOk·연장 정합', () => {
+    const al = buildAssemblyTemplate('civil', 'retaining_wall_alignment', {});
+    const built = buildAssembly(al);
+    expect(built.ok).toBe(true);
+    expect(built.interferences).toEqual([]);
+    expect(built.designOk).toBe(true);
+    expect(Math.round(al.alignment.totalMm / 1000)).toBe(220); // leg1 120m + leg2 100m
+    const html = ga2dDrawing(al, { title: 'a', domain: 'civil' });
+    expect(html).toContain('선형 평면도');
+    expect(html).toContain('IP1');
+    expect(html).toContain('Δ=30.0°');
+  });
+  it('② 종단면도: 계획고(형상 파생 기본)+지반선 입력 원칙 명시', () => {
+    const al = buildAssemblyTemplate('civil', 'retaining_wall_alignment', {});
+    const html = ga2dDrawing(al, { title: 'a', domain: 'civil' });
+    expect(html).toContain('종단면도');
+    expect(html).toContain('종 10× 왜곡');
+    expect(html).toContain('지반선=입력 시 표기');
+  });
+  it('③ 시트 분할: 1.3km 선형 → 상세 시트+MATCH LINE STA', () => {
+    const big = buildAssemblyTemplate('civil', 'retaining_wall_alignment', { ips: [[0, 0], [500000, 0], [900000, 300000], [1200000, 300000]] });
+    expect(buildAssembly(big).designOk).toBe(true);
+    const html = ga2dDrawing(big, { title: 'b', domain: 'civil' });
+    expect(html).toMatch(/시트 1\/\d/);
+    expect(html).toContain('MATCH LINE STA');
+  });
+  it('④ 부지 경계·등고: 입력 시만 부지 계획도(면적·EL 라벨)', () => {
+    const site = buildAssemblyTemplate('landscape', 'timber_deck', {});
+    const plain = ga2dDrawing(site, { title: 'd', domain: 'landscape' });
+    expect(plain).not.toContain('부지 계획도'); // 미입력=미표기(지형 지어내지 않음)
+    site.siteBoundary = [[-2000, -2000], [16000, -2000], [16000, 10000], [-2000, 10000]];
+    site.contours = [{ elevM: 10, pts: [[-2000, 0], [16000, 2000]] }];
+    const html = ga2dDrawing(site, { title: 'd', domain: 'landscape' });
+    expect(html).toContain('부지 계획도');
+    expect(html).toContain('대지경계선');
+    expect(html).toContain('EL.10.0');
+  });
   it('다부품(rc_frame 90부품) BOM 그룹화 — 수량 열·행 수 간축', () => {
     const rc = buildAssemblyTemplate('building', 'rc_frame', { floors: 3, baysX: 3, baysY: 2 });
     expect(rc.parts.length).toBeGreaterThan(40);

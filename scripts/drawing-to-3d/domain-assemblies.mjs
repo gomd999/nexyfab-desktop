@@ -184,6 +184,57 @@ function retainingWallRunAssembly(p) {
   };
 }
 
+/**
+ * 토목: 옹벽 선형 구간(①선형 어휘) — IP점 폴리라인을 따라 세그먼트별 벽체·저판을 회전 배치.
+ * params.ips = [[x,y],...] mm (미입력=기본 L형 선형). 접합부는 baseW 만큼 트림(회전 AABB
+ * 간섭 회피) — "IP 접합 상세(마이터·코너블록)=후속, 물량·측점은 중심선 연장 기준" 정직 명시.
+ * meta.alignment = { ips, totalMm, segments } → 선형 평면(STA·IP)·종단면도·시트 분할이 공유.
+ */
+function retainingWallAlignmentAssembly(p) {
+  const H = num(p.H, 3000), baseW = num(p.baseWidth, 2000), baseT = num(p.baseThickness, 400);
+  const stemT = num(p.stemThickness, 300), toe = num(p.toeLength, 600);
+  const okIps = Array.isArray(p.ips) && p.ips.length >= 2 && p.ips.every((q) => Array.isArray(q) && q.length >= 2 && Number.isFinite(q[0]) && Number.isFinite(q[1]));
+  const L1 = num(p.leg1, 120000), L2 = num(p.leg2, 100000), defl = num(p.deflectionDeg, 30);
+  const rad = (defl * Math.PI) / 180;
+  const ips = okIps ? p.ips.map((q) => [q[0], q[1]]) : [[0, 0], [L1, 0], [L1 + L2 * Math.cos(rad), L2 * Math.sin(rad)]];
+  const parts = [];
+  const segments = [];
+  let ch = 0;
+  for (let i = 0; i < ips.length - 1; i++) {
+    const [x1, y1] = ips[i], [x2, y2] = ips[i + 1];
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    const brgDeg = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+    const trim0 = i > 0 ? baseW : 0, trim1 = i < ips.length - 2 ? baseW : 0;
+    const segLen = len - trim0 - trim1;
+    if (segLen <= 0) continue; // 초단 세그먼트 = 생략(IP 재배치 필요 — 정직 스킵)
+    const ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+    // 로컬 관례 = run 템플릿과 동일(x=폭 baseW, y=연장) → rz = brg − 90°.
+    // 저판 중심선(폭 중앙)이 폴리라인에 놓이도록 로컬 (−baseW/2, 0)을 회전해 원점 보정.
+    const theta = ((brgDeg - 90) * Math.PI) / 180;
+    const c = Math.cos(theta), s = Math.sin(theta);
+    const off = (lx, ly) => [lx * c - ly * s, lx * s + ly * c];
+    const sx = x1 + ux * trim0, sy = y1 + uy * trim0;
+    const [obx, oby] = off(-baseW / 2, 0);
+    parts.push(P(`seg${i + 1}_base`, 'box', { width: baseW, depth: segLen, height: baseT }, { tx: sx + obx, ty: sy + oby, tz: 0, rz: +brgDeg.toFixed(3) - 90 }, 'concrete', 'base'));
+    const [osx, osy] = off(toe - baseW / 2, 0);
+    parts.push(P(`seg${i + 1}_stem`, 'box', { width: stemT, depth: segLen, height: H - baseT }, { tx: sx + osx, ty: sy + osy, tz: baseT, rz: +brgDeg.toFixed(3) - 90 }, 'concrete', 'wall'));
+    segments.push({ lenMm: len, segLenMm: segLen, bearingDeg: +brgDeg.toFixed(2), chFromMm: ch });
+    ch += len;
+  }
+  return {
+    name: '옹벽 선형 구간', domain: 'civil', parts,
+    alignment: { ips, totalMm: ch, segments, halfWidthMm: baseW / 2, note: 'IP 접합 상세(마이터·코너블록) 후속 — 물량·측점=중심선 연장 기준, 접합부 트림 도식' },
+    // 종단(계획고): 기본=벽정점 일정고(형상 파생). 지반선·계획고 변경=입력 원칙(profileDesign/profileGround)
+    profile: {
+      design: Array.isArray(p.profileDesign) ? p.profileDesign : [{ staMm: 0, elevMm: H }, { staMm: ch, elevMm: H }],
+      ground: Array.isArray(p.profileGround) ? p.profileGround : null,
+      designNote: Array.isArray(p.profileDesign) ? '계획고=입력' : '계획고=벽정점 일정고(형상 파생 기본)',
+    },
+    retainingWall: { H: H / 1000, stemThickness: stemT / 1000, baseWidth: baseW / 1000, baseThickness: baseT / 1000, toeLength: toe / 1000, length: ch / 1000 },
+    civilTakeoff: segments.map((sg, i) => ({ id: `rw_seg${i + 1}`, type: 'retaining_wall', H: H / 1000, stemThickness: stemT / 1000, baseWidth: baseW / 1000, baseThickness: baseT / 1000, length: sg.lenMm / 1000 })),
+  };
+}
+
 /** 거더교 (단순경간): 바닥판 + I형 거더 N본 + 가로보 3열. role: deck/girder/crossbeam */
 function girderBridgeAssembly(p = {}) {
   const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
@@ -502,6 +553,19 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'stemThickness', labelKo: '벽체 두께', unit: 'mm', default: 300, min: 150, max: 1000 },
         { name: 'toeLength', labelKo: '앞굽 길이', unit: 'mm', default: 600, min: 0, max: 3000 },
         { name: 'length', labelKo: '연장', unit: 'mm', default: 10000, min: 1000, max: 2000000 },
+      ],
+    },
+    {
+      id: 'retaining_wall_alignment', labelKo: '옹벽 선형 구간 (IP 폴리라인)', labelEn: 'Retaining wall alignment', build: retainingWallAlignmentAssembly,
+      params: [
+        { name: 'H', labelKo: '벽고(저면~상단)', unit: 'mm', default: 3000, min: 500, max: 8000 },
+        { name: 'baseWidth', labelKo: '저판 폭', unit: 'mm', default: 2000, min: 500, max: 6000 },
+        { name: 'baseThickness', labelKo: '저판 두께', unit: 'mm', default: 400, min: 150, max: 1200 },
+        { name: 'stemThickness', labelKo: '벽체 두께', unit: 'mm', default: 300, min: 150, max: 1000 },
+        { name: 'toeLength', labelKo: '앞굽 길이', unit: 'mm', default: 600, min: 0, max: 3000 },
+        { name: 'leg1', labelKo: '제1구간 연장', unit: 'mm', default: 120000, min: 5000, max: 2000000 },
+        { name: 'leg2', labelKo: '제2구간 연장', unit: 'mm', default: 100000, min: 0, max: 2000000 },
+        { name: 'deflectionDeg', labelKo: 'IP 교각(굴절각)', unit: '°', default: 30, min: -90, max: 90 },
       ],
     },
   ],
