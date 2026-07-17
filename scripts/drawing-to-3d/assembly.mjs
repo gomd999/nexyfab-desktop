@@ -20,6 +20,8 @@ import { gate, scadBody, partAabb, gearPoly, sheetPoly, hexPts, boltDims } from 
 import { structuralCheck } from './structural.mjs';
 import { supportCheck } from './support-check.mjs';
 import { autoRoutePipes, pipeObstacleCheck, pipeCrossCheck } from './pipe-route.mjs';
+import { boxPartsInterference } from './obb2d.mjs';
+import { TOL_CONTACT } from './geometry-tolerance.mjs';
 
 // 부품 → 계통색 (service/role 우선, 없으면 type). 계통색 GA 3D·도면 색분류 공용.
 export const SERVICE_COL = {
@@ -346,7 +348,7 @@ export function buildAssembly(asm) {
   // ② 부품쌍 간섭 — 기대-접촉 분류(§12.7.3 v1, 2026-07-16): 관통 깊이(최소 겹침 축)
   //    ≤ CONTACT_MM 는 접촉/체결 후보(용접 랩·끼움)로 별도 분류해 과탐을 줄인다.
   //    일괄 제외(exemption)가 아니라 분류·표기 — 조인트 "선언" 기반 정밀 검증은 후속.
-  const CONTACT_MM = 2;
+  const CONTACT_MM = TOL_CONTACT;
   const interferences = [];
   const contacts = [];
   for (let i = 0; i < boxes.length; i++) {
@@ -354,11 +356,19 @@ export function buildAssembly(asm) {
       const { v, depth } = overlapInfo(boxes[i].box, boxes[j].box);
       const rotated = boxes[i].box.rotated || boxes[j].box.rotated;
       if (v > 1) { // 1mm³ 초과 겹침
-        const rec = {
-          a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v), depthMm: +depth.toFixed(2),
-          note: rotated ? '회전 AABB 겹침(보수적 — 실솔리드는 더 작을 수 있음)' : 'AABB 겹침',
-        };
-        if (depth <= CONTACT_MM) contacts.push({ ...rec, note: `접촉/체결 후보(관통 ${rec.depthMm}mm ≤ ${CONTACT_MM}mm) — 조인트 선언 정밀검증 후속` });
+        let useDepth = depth;
+        let note = rotated ? '회전 AABB 겹침(보수적 — 실솔리드는 더 작을 수 있음)' : 'AABB 겹침';
+        // 회전 쌍은 OBB-SAT 2차 정밀(§0.2) — AABB 과탐 제거(box 쌍만, 그 외 AABB 보수 유지)
+        if (rotated) {
+          const fine = boxPartsInterference(asm.parts[i], asm.parts[j]);
+          if (fine) {
+            if (!fine.overlap) continue; // 실풋프린트 분리 — 과탐 제거
+            useDepth = fine.depthMm;
+            note = '회전 OBB-SAT 정밀 겹침';
+          }
+        }
+        const rec = { a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v), depthMm: +useDepth.toFixed(2), note };
+        if (useDepth <= CONTACT_MM) contacts.push({ ...rec, note: `접촉/체결 후보(관통 ${rec.depthMm}mm ≤ ${CONTACT_MM}mm) — 조인트 선언 정밀검증 후속` });
         else interferences.push(rec);
       }
     }

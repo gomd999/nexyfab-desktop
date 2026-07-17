@@ -167,20 +167,10 @@ function landscapePlanSvg(parts) {
 }
 
 // ── 선형(alignment)·종단·시트분할·부지 오버레이 (260717 순차 ①~④) ────────────────
-/** 폴리라인 체이니지 보간 — sMm 지점의 좌표·진행방향. (dxf-export 공유) */
-export function chainPoint(ips, sMm) {
-  let acc = 0;
-  for (let i = 0; i < ips.length - 1; i++) {
-    const [x1, y1] = ips[i], [x2, y2] = ips[i + 1];
-    const len = Math.hypot(x2 - x1, y2 - y1);
-    if (sMm <= acc + len || i === ips.length - 2) {
-      const t = Math.max(0, Math.min(1, (sMm - acc) / len));
-      return { p: [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t], dir: [(x2 - x1) / len, (y2 - y1) / len] };
-    }
-    acc += len;
-  }
-  return { p: ips[0], dir: [1, 0] };
-}
+// 폴리라인 체이니지 보간 — alignment-geom 단일 소스(§0.3: 재구현 금지, dxf-export 공유).
+// ⚠`export { x } from`은 로컬 바인딩을 안 만든다 — 내부 사용처가 있으므로 import 후 재수출.
+import { chainPoint } from './alignment-geom.mjs';
+export { chainPoint };
 const polyArea2 = (pts) => Math.abs(pts.reduce((s, [x, y], i) => { const [x2, y2] = pts[(i + 1) % pts.length]; return s + x * y2 - x2 * y; }, 0)) / 2;
 
 /** 부지 경계·등고 오버레이(④ — 입력 시만, 지형 지어내지 않음). X/Y=좌표 매퍼. */

@@ -375,6 +375,48 @@ import { landscapeCheck } from './landscape-check.mjs';
 import { runCalculator } from '../engineering-core/registry.mjs';
 import { ga2dDrawing, fmtLen, pickScale, staLabel } from './package.mjs';
 
+import { obbOverlap, boxPartsInterference } from './obb2d.mjs';
+import { buildElements, chainAt, intersectSegment } from './alignment-geom.mjs';
+
+describe('무결성 규약 0단계 — OBB-SAT·chainage 요소열 (폐형 앵커)', () => {
+  it('SAT: 분리·정확 접촉 0·관통 깊이·회전쌍', () => {
+    expect(obbOverlap({ c: [0, 0], h: [50, 50], deg: 0 }, { c: [200, 0], h: [50, 50], deg: 45 }).overlap).toBe(false);
+    expect(obbOverlap({ c: [0, 0], h: [50, 50], deg: 0 }, { c: [100, 0], h: [50, 50], deg: 0 }).overlap).toBe(false); // 정확 접촉=간섭 아님
+    expect(obbOverlap({ c: [0, 0], h: [50, 50], deg: 0 }, { c: [60, 0], h: [50, 50], deg: 0 })).toMatchObject({ overlap: true, depthMm: 40 });
+    expect(obbOverlap({ c: [0, 0], h: [100, 10], deg: 0 }, { c: [0, 50], h: [100, 10], deg: 45 }).overlap).toBe(true);
+  });
+  it('boxPartsInterference: 회전 box 쌍 실풋프린트 — AABB 과탐 제거', () => {
+    // 45° 회전한 긴 벽 두 개 — AABB는 크게 겹치지만 실풋프린트는 분리
+    const a = { type: 'box', params: { width: 100, depth: 4000, height: 500 }, at: { tx: 0, ty: 0, rz: 45 } };
+    const b = { type: 'box', params: { width: 100, depth: 4000, height: 500 }, at: { tx: 400, ty: -400, rz: 45 } };
+    expect(boxPartsInterference(a, b)).toMatchObject({ overlap: false });
+  });
+  it('요소열 90° 곡선 R=1000: TL=1000·L=πR/2·총연장 폐형·접선 연속', () => {
+    const r = buildElements([[0, 0], [5000, 0], [5000, 5000]], [{ ip: 1, R: 1000 }], { baseW: 100 });
+    expect(r.ok).toBe(true);
+    const arc = r.elements.find((e) => e.type === 'arc');
+    expect(Math.round(arc.TL)).toBe(1000);
+    expect(Math.abs(arc.len - (Math.PI / 2) * 1000)).toBeLessThan(0.001);
+    expect(Math.abs(r.totalMm - (4000 + arc.len + 4000))).toBeLessThan(0.001);
+    // 접선 연속(BC 극한): ε=0.001mm
+    const d1 = chainAt(r.elements, arc.BCmm - 0.001).dir, d2 = chainAt(r.elements, arc.BCmm + 0.001).dir;
+    const ang = Math.abs(Math.atan2(d1[0] * d2[1] - d1[1] * d2[0], d1[0] * d2[0] + d1[1] * d2[1])) * 180 / Math.PI;
+    expect(ang).toBeLessThan(0.01);
+  });
+  it('교차 폐형: 직선부 + 원호(원·선분 판별식) — chainage 정확', () => {
+    const r = buildElements([[0, 0], [5000, 0], [5000, 5000]], [{ ip: 1, R: 1000 }], {});
+    expect(intersectSegment(r.elements, [2000, -500], [2000, 500])).toMatchObject([{ sMm: 2000 }]);
+    const ix = intersectSegment(r.elements, [3000, 900], [6000, 900]);
+    expect(ix).toHaveLength(1);
+    // 폐형: x=4000+√(R²−100²), 호상 각도 → s=BC+R·(90°−asin(100/R)... 수치 5470.7
+    expect(Math.abs(ix[0].sMm - 5470.7)).toBeLessThan(0.5);
+  });
+  it('사전 게이트: TL 초과·교각>90° 정직 거부', () => {
+    expect(buildElements([[0, 0], [1500, 0], [1500, 1500]], [{ ip: 1, R: 2000 }], {}).ok).toBe(false);
+    expect(buildElements([[0, 0], [5000, 0], [1000, -100]], [{ ip: 1, R: 500 }], {}).ok).toBe(false); // 교각 > 90°
+  });
+});
+
 describe('대축척 도면 코어 — km급 토목·조경·건축 (260717)', () => {
   it('fmtLen 자동 단위: mm→m→km', () => {
     expect(fmtLen(6300)).toBe('6300');
