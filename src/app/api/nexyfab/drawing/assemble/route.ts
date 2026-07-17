@@ -73,6 +73,11 @@ ${TYPE_SPEC}
 - parts 배열은 최소 2개 이상, 각 부품은 id·type·params·at 을 모두 포함.
 - params 는 그 type 의 정확한 키만(위 목록). at 의 6개 값은 항상 숫자로.
 
+예외 — 옹벽·도로변 벽 등 "선형(노선)" 설계 요청이면 parts 대신 civilAlignment 하나만 선언:
+{"name":"...","civilAlignment":{"ips":[[0,0],[120000,0],[200000,60000]],"curves":[{"ip":1,"R":30000}],"structures":[{"sta":60000,"type":"culvert"}],"H":3000,"baseWidth":2000,"stemThickness":300,"baseThickness":400,"toeLength":600}}
+- 좌표·측점·곡선 기하·도면집·검증은 결정론 엔진이 수행 — 경로 좌표를 지어내지 마라.
+- 게이트 거부 문구(예: "TL 합>구간장 — R 축소")를 받으면 해당 값만 고쳐 다시 선언하라.
+
 설명: "${desc}"`;
 
 const FIX_PROMPT = (desc: string, errs: string[], prev: Assembly) => `직전 어셈블리 계획이 결정론 게이트에서 실패했다. **각 부품의 type 에 맞는 정확한 params 로만** 고쳐라.
@@ -126,9 +131,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         ? BASE_PROMPT(description)
         : FIX_PROMPT(description, lastErrors, assembly);
       const { data } = await mods.ft.callGeminiJson(prompt, null, GEMINI_OPTS);
-      if (!data || !Array.isArray(data.parts) || data.parts.length === 0) {
-        lastErrors = ['빈 어셈블리(parts 없음)'];
+      const hasCA = !!(data && typeof (data as { civilAlignment?: unknown }).civilAlignment === 'object');
+      if (!data || (!hasCA && (!Array.isArray(data.parts) || data.parts.length === 0))) {
+        lastErrors = ['빈 어셈블리(parts 없음 — 선형이면 civilAlignment 선언)'];
         continue; // 다음 라운드에서 재시도
+      }
+      // §D 토목 선형 개방: AI가 civilAlignment 를 선언하면 parts 가 아니라 **결정론 템플릿**이
+      // 형상·측점·곡선·구조물을 생성(자동 배치 보정 불요 — 템플릿=정합). 게이트 거부 문구는
+      // 기존 3라운드 재시도로 AI 에게 그대로 피드백된다.
+      const ca = (data as { civilAlignment?: Record<string, unknown> }).civilAlignment;
+      if (ca && typeof ca === 'object' && Array.isArray((ca as { ips?: unknown[] }).ips)) {
+        const dp = join(process.cwd(), 'scripts', 'drawing-to-3d', 'domain-assemblies.mjs');
+        const dm = (await import(/* webpackIgnore: true */ pathToFileURL(dp).href)) as { buildAssemblyTemplate: (d: string, t: string, p: Record<string, unknown>) => Assembly & { alignmentErrors?: string[] } };
+        assembly = dm.buildAssemblyTemplate('civil', 'retaining_wall_alignment', ca);
+        placeCorrections = [];
+        built = mods.asm.buildAssembly(assembly);
+        if (built.ok) {
+          return NextResponse.json({
+            ok: true, assembly, openscad: built.openscad,
+            parts: built.parts ?? (assembly as { parts?: unknown[] }).parts,
+            interferences: built.interferences ?? [], contacts: built.contacts ?? [],
+            placeCorrections: [], welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
+            composeIntent: built.composeIntent ?? null, structural: built.structural ?? null,
+            support: built.support ?? null, pipes: built.pipes ?? null, designOk: built.designOk ?? null,
+            domain: 'civil', gateErrors: [], rounds: round + 1,
+          });
+        }
+        // FIX_PROMPT 의 prev 에 원 선언(civilAlignment)이 실리도록 — AI 가 값만 고쳐 재선언 가능
+        assembly = { ...(assembly ?? {}), civilAlignment: ca } as Assembly;
+        lastErrors = built.gateErrors ?? ['선형 게이트 실패'];
+        continue; // 거부 문구를 다음 라운드 프롬프트로 피드백
       }
       // AI 배치 결정론 보정(§12.1-4 v1): 부유 드롭·깊은 관통 분리 — 내역은 응답에 공개
       const corrected = mods.asm.autoPlaceCorrect(data);

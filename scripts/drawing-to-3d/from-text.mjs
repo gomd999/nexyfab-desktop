@@ -120,6 +120,17 @@ export const ASSEMBLY_SCHEMA = {
         },
       },
     },
+    // §D 토목 선형 개방 — AI는 선형 "선언"(IP·R·구조물·단면 파라미터)까지만.
+    // 형상·측점·곡선·게이트·도면집은 결정론 템플릿(retaining_wall_alignment)이 수행.
+    civilAlignment: {
+      type: 'OBJECT',
+      properties: {
+        ips: { type: 'ARRAY', items: { type: 'ARRAY', items: NUM } },
+        curves: { type: 'ARRAY', items: { type: 'OBJECT', required: ['ip', 'R'], properties: { ip: NUM, R: NUM } } },
+        structures: { type: 'ARRAY', items: { type: 'OBJECT', required: ['sta', 'type'], properties: { sta: NUM, type: { type: 'STRING', enum: ['culvert', 'catch_basin', 'expansion_joint'] } } } },
+        H: NUM, baseWidth: NUM, baseThickness: NUM, stemThickness: NUM, toeLength: NUM,
+      },
+    },
     // 배관 계획(#6) — AI는 "무엇을 무엇에 잇는가"(from/to 포트·계통)까지만.
     // 경로(waypoint)는 결정론 자동 라우터(autoRoutePipes)가 잡고 관통·교차 게이트로 검증한다.
     pipes: {
@@ -150,6 +161,13 @@ const ASM_PROMPT = (desc) => `자연어 제품 설명을 복합 어셈블리 계
 배관이 필요한 제품(펌프·탱크·스키드 등)이면 pipes[] 로 연결 계획만 선언하라:
 - from/to = "부품id.면" (면: x+ x- y+ y- z+ z-), d = 관지름 mm(기본 26), service = 계통.
 - 경로 좌표는 쓰지 마라 — 배관 경로는 결정론 라우터가 자동 생성·검증한다.
+
+옹벽·도로변 벽 등 "선형(노선)" 설계 요청이면 parts 대신 civilAlignment 로 선언하라:
+- ips=[[x,y],…] 평면 IP 좌표(mm) · curves=[{ip:내부 IP 인덱스, R:반경 mm}](곡선부만)
+- structures=[{sta:측점 mm, type:'culvert'|'catch_basin'|'expansion_joint'}]
+- H(벽고)·baseWidth·baseThickness·stemThickness·toeLength (mm, 미기입=통상값)
+- 측점·곡선 기하·도면집·검증은 결정론 엔진이 수행 — 좌표 경로를 지어내지 마라.
+- 게이트 거부 문구(예: "TL 합 X>구간장 Y — R 축소 또는 IP 이동")를 받으면 그에 맞춰 수정하라.
 
 설명: "${desc}"`;
 

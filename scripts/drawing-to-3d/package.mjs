@@ -359,7 +359,15 @@ function alignmentSheetPlan(assembly) {
  * 페이지 분리(@media print). 역방향 게이트는 packageConsistencyCheck 가 data-dwg /
  * data-sta-from/to 를 재파싱해 대조(생성≠검증).
  */
-function civilSheetPack(assembly, { mainScaleN }) {
+// §후속 ⑤ EN 도면 라벨 — 시트명·표두·표제란만 이원화(본문 상세 주기=KO 유지 명시). 시트명 키.
+const SHEET_EN = {
+  '도면 목록표': 'Drawing List', '일반배치도(GA)': 'General Arrangement', '선형 평면 전체도': 'Alignment Plan (Overall)',
+  '곡선표': 'Curve Table', '구조물 일람표': 'Structure Schedule', '종단면도': 'Profile', '토공량·유토곡선': 'Earthwork & Mass Haul',
+  '일반주기': 'General Notes',
+};
+function civilSheetPack(assembly, { mainScaleN, revHistory = null, lang = 'ko' } = {}) {
+  const en = lang === 'en';
+  const T = (ko2) => (en ? (SHEET_EN[ko2] ?? ko2) : ko2);
   const al = assembly.alignment;
   const used = [];
   const reg = [];
@@ -369,7 +377,7 @@ function civilSheetPack(assembly, { mainScaleN }) {
   const addSheet = (code, name, scaleTxt, body, attrs = '') => {
     const no = nextDwg(code);
     reg.push({ no, name, scaleTxt });
-    sections.push(`<section class="sheet-page" data-dwg="${no}"${attrs}><div class="wrap">${body}</div><div class="tb">도번 <b>${no}</b> · ${esc(name)} · ${esc(scaleTxt)} · REV <span class="nf-rev">—</span></div></section>`);
+    sections.push(`<section class="sheet-page" data-dwg="${no}"${attrs}><div class="wrap">${body}</div><div class="tb">${en ? 'DWG' : '도번'} <b>${no}</b> · ${esc(T(name))} · ${esc(scaleTxt)} · REV <span class="nf-rev">—</span></div></section>`);
     return no;
   };
   // 메인 GA 시트(본문에서 렌더) — 도번은 여기(단일 부여처)서
@@ -444,9 +452,15 @@ function civilSheetPack(assembly, { mainScaleN }) {
   // 도면 목록표 — 레지스트리에서 직접 생성(맨 앞 배치), 자기 자신 포함
   const dlNo = nextDwg('DL');
   reg.unshift({ no: dlNo, name: '도면 목록표', scaleTxt: '—' });
-  const dlRows = reg.map((r, i) => `<tr><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${i + 1}</td><td style="border:1px solid #cbd5e1;padding:3px 8px">${r.no}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${esc(r.name)}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(r.scaleTxt)}</td></tr>`).join('');
-  const dlBody = `<table style="border-collapse:collapse;width:100%;font-size:11.5px"><caption style="text-align:left;font-size:13px;font-weight:700;padding:4px 0">도면 목록표 (총 ${reg.length}매 · 전 시트 동일 REV — 자동 정합 게이트 대상)</caption>
-<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">No.</th><th style="border:1px solid #cbd5e1;padding:3px 8px">도번</th><th style="border:1px solid #cbd5e1;padding:3px 8px">도면명</th><th style="border:1px solid #cbd5e1;padding:3px 8px">축척</th></tr>${dlRows}</table>`;
+  const dlRows = reg.map((r, i) => `<tr><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${i + 1}</td><td style="border:1px solid #cbd5e1;padding:3px 8px">${r.no}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${esc(T(r.name))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(r.scaleTxt)}</td></tr>`).join('');
+  // REV 이력표(§후속 ④) — 이력=입력 원칙(options.revHistory, 날짜·사유 날조 금지) + 현재 REV 행 자동
+  const revRows = (Array.isArray(revHistory) ? revHistory : [])
+    .map((r) => `<tr><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.rev ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.date ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${esc(String(r.note ?? ''))}</td></tr>`).join('')
+    + `<tr style="background:#f8fafc"><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center"><span class="nf-rev">—</span></td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${en ? 'current' : '현재'}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${en ? 'This issue (auto)' : '본 발행(자동)'}</td></tr>`;
+  const revTable = `<table style="border-collapse:collapse;width:60%;font-size:11px;margin-top:10px"><caption style="text-align:left;font-size:12px;font-weight:700;padding:3px 0">${en ? 'Revision History' : '개정 이력'} ${Array.isArray(revHistory) && revHistory.length ? '' : en ? '(no prior issues supplied)' : '(이전 발행 이력 미입력 — 입력 원칙)'}</caption>
+<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">REV</th><th style="border:1px solid #cbd5e1;padding:3px 8px">${en ? 'Date' : '일자'}</th><th style="border:1px solid #cbd5e1;padding:3px 8px">${en ? 'Description' : '내용'}</th></tr>${revRows}</table>`;
+  const dlBody = `<table style="border-collapse:collapse;width:100%;font-size:11.5px"><caption style="text-align:left;font-size:13px;font-weight:700;padding:4px 0">${en ? `Drawing List (${reg.length} sheets · single REV — consistency-gated)` : `도면 목록표 (총 ${reg.length}매 · 전 시트 동일 REV — 자동 정합 게이트 대상)`}</caption>
+<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">No.</th><th style="border:1px solid #cbd5e1;padding:3px 8px">${en ? 'DWG No.' : '도번'}</th><th style="border:1px solid #cbd5e1;padding:3px 8px">${en ? 'Title' : '도면명'}</th><th style="border:1px solid #cbd5e1;padding:3px 8px">${en ? 'Scale' : '축척'}</th></tr>${dlRows}</table>${revTable}${en ? '<div style="font-size:10px;color:#94a3b8;padding:4px 0">Sheet titles/headers in EN — detailed notes remain KO (bilingual full pass = follow-up).</div>' : ''}`;
   const dlSection = `<section class="sheet-page" data-dwg="${dlNo}"><div class="wrap">${dlBody}</div><div class="tb">도번 <b>${dlNo}</b> · 도면 목록표 · REV <span class="nf-rev">—</span></div></section>`;
   return { html: dlSection + sections.join(''), mainDwg, sheetCount: reg.length };
 }
@@ -512,7 +526,7 @@ function structureTableSheet(al, used = []) {
   }).join('');
   return `<div style="padding:6px 0"><table style="border-collapse:collapse;width:100%;font-size:11.5px"><caption style="text-align:left;font-size:13px;font-weight:700;padding:4px 0">구조물 일람표</caption>
 <tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">No.</th><th style="border:1px solid #cbd5e1;padding:3px 8px">측점</th><th style="border:1px solid #cbd5e1;padding:3px 8px">종류</th><th style="border:1px solid #cbd5e1;padding:3px 8px">규격</th><th style="border:1px solid #cbd5e1;padding:3px 8px">검토</th></tr>${rows.replaceAll('<td>', '<td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">')}</table>
-<div style="font-size:10px;color:#94a3b8;padding:3px 0">암거=벽 개구 분절(개구 명세) · 하중 입력(cover·γ·K)=프로젝트 결정(지어내지 않음) · 암거 수량 룰=미지원 명시(§E) · 마구리·날개벽 상세 후속</div></div>`;
+<div style="font-size:10px;color:#94a3b8;padding:3px 0">암거=벽 개구 분절(개구 명세) · 하중 입력(cover·γ·K)=프로젝트 결정(지어내지 않음) · 암거 수량=culvert 룰(BOQ 규칙 물량 — 산식 공개) · 마구리·날개벽 상세 후속</div></div>`;
 }
 
 /** 곡선표(§1-1) — IP·Δ·R·TL·L·BC/EC. 표기값 자기정합: EC 표기=원값 반올림(표기끼리 연산 금지). */
@@ -692,7 +706,7 @@ function civilPlanSvg(parts) {
  *  domain='building' → 축선 구조평면 / 'landscape' → 배치 평면도 / 'civil' → 선형 평면(측점)
  *  pipes = buildAssembly().pipes.routes — 라우터의 단일 결과를 그대로 투영(재계산 금지 — 정합)
  *  축척: 표준 축척(1:N) 자동 선정 — A3 100% 인쇄 기준 실축척(표제란 명기), km급 대응. */
-export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA-001', domain, pipes } = {}) {
+export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA-001', domain, pipes, revHistory, lang } = {}) {
   const parts = (assembly.parts ?? []).map((p, i) => ({ p, i, box: placed(p), st: styleOf(p) }));
   if (!parts.length) return '<!DOCTYPE html><body>빈 어셈블리</body>';
   const bx0 = Math.min(...parts.map(o => o.box.x)), bx1 = Math.max(...parts.map(o => o.box.x + o.box.dx));
@@ -776,7 +790,7 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
     else if (domain === 'landscape') domainSvg = (landscapePlanSvg(parts) ?? '') + siteOverlayBlock(assembly);
     else if (domain === 'civil') {
       if (assembly.alignment) {
-        const pack = civilSheetPack(assembly, { mainScaleN: N });
+        const pack = civilSheetPack(assembly, { mainScaleN: N, revHistory, lang });
         sheetsHtml = pack.html;
         dwgNo = pack.mainDwg;
       } else domainSvg = (civilPlanSvg(parts) ?? '') + siteOverlayBlock(assembly);

@@ -39,7 +39,7 @@ type BoqMod = { boqReport: (a: Assembly, o?: Record<string, unknown>) => string 
 type PdMod = { dossierReport: (a: Assembly, o?: Record<string, unknown>) => string; pidSkeleton: (a: Assembly, o?: Record<string, unknown>) => string };
 type RenderMod = { renderHtml: (spec: unknown, o?: Record<string, unknown>) => Promise<string>; renderColoredHtml: (spec: unknown, o?: Record<string, unknown>) => Promise<string> };
 type VerifyMod = { renderStl: (scad: string) => Promise<Uint8Array> };
-type DxfMod = { dxfPlan: (a: Assembly, domain: string, pipes?: unknown[]) => string | null };
+type DxfMod = { dxfPlan: (a: Assembly, domain: string, pipes?: unknown[]) => string | null; dxfProfile: (a: Assembly) => string | null };
 
 let _asm: AsmMod | null = null, _pkg: PkgMod | null = null, _rnd: RenderMod | null = null, _boq: BoqMod | null = null, _pd: PdMod | null = null, _vfy: VerifyMod | null = null, _dxf: DxfMod | null = null;
 async function load() {
@@ -90,11 +90,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const files: Array<{ name: string; mime: string; content: string }> = [];
 
   // 2D GA 도면 (건축=축선 구조평면·조경=배치도 모드 포함 · 배관=라우터 결과 그대로 투영)
-  try { files.push({ name: 'GA_2D_drawing.html', mime: 'text/html', content: mods.pkg.ga2dDrawing(assembly, { title, domain, pipes: built.pipes?.routes }) }); } catch (e) { /* skip */ void e; }
+  // revHistory=개정 이력(입력 원칙) · lang='en'=시트명·표두 EN(본문 KO 유지 명시)
+  try {
+    files.push({
+      name: 'GA_2D_drawing.html', mime: 'text/html',
+      content: mods.pkg.ga2dDrawing(assembly, {
+        title, domain, pipes: built.pipes?.routes,
+        ...(Array.isArray(options.revHistory) ? { revHistory: options.revHistory } : {}),
+        ...(options.lang === 'en' ? { lang: 'en' } : {}),
+      }),
+    });
+  } catch (e) { /* skip */ void e; }
   // DXF 평면 (P1 — AutoCAD 편집용, 레이어 분리 R12. 건축·조경·인테리어 + PIPE 레이어)
   try {
     const dxf = mods.dxf.dxfPlan(assembly, domain, built.pipes?.routes);
     if (dxf) files.push({ name: 'GA_plan.dxf', mime: 'application/dxf', content: dxf });
+  } catch (e) { void e; }
+  // 종단면도 DXF(토목 선형 — 종 10× 왜곡 좌표, 주기 명시)
+  try {
+    if (domain === 'civil' && (assembly as { alignment?: unknown }).alignment) {
+      const dxfp = mods.dxf.dxfProfile(assembly);
+      if (dxfp) files.push({ name: 'GA_profile.dxf', mime: 'application/dxf', content: dxfp });
+    }
   } catch (e) { void e; }
   // 구조/응력 검토
   try { files.push({ name: 'structural.html', mime: 'text/html', content: mods.pkg.structuralReport(assembly, { title, member }) }); } catch (e) { void e; }

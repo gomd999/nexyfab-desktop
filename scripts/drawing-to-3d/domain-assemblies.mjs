@@ -322,8 +322,11 @@ function retainingWallAlignmentAssembly(p) {
       groundNote: Array.isArray(p.profileGround) ? '지반선=입력' : groundNote,
     },
     retainingWall: { H: H / 1000, stemThickness: stemT / 1000, baseWidth: baseW / 1000, baseThickness: baseT / 1000, toeLength: toe / 1000, length: totalMm / 1000 },
-    // 물량=요소(호장) 기준 — 현 합이 아님(§1-1)
-    civilTakeoff: elements.map((el, i) => ({ id: `rw_el${i + 1}`, type: 'retaining_wall', H: H / 1000, stemThickness: stemT / 1000, baseWidth: baseW / 1000, baseThickness: baseT / 1000, length: el.len / 1000 })),
+    // 물량=요소(호장) 기준 — 현 합이 아님(§1-1). 암거=culvert 수량 룰(관통 연장 기준)
+    civilTakeoff: [
+      ...elements.map((el, i) => ({ id: `rw_el${i + 1}`, type: 'retaining_wall', H: H / 1000, stemThickness: stemT / 1000, baseWidth: baseW / 1000, baseThickness: baseT / 1000, length: el.len / 1000 })),
+      ...structs.filter((q) => q.type === 'culvert').map((q, i) => ({ id: `culv${i + 1}`, type: 'culvert', innerWidth: q.innerW / 1000, innerHeight: q.innerH / 1000, wallThk: q.thk / 1000, length: (baseW + 3000) / 1000, ...(Number(q.prm?.cover) >= 0 ? { cover: +q.prm.cover } : {}) })),
+    ],
   };
 }
 

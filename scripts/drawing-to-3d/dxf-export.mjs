@@ -292,6 +292,41 @@ function applyOrigin(dxf, assembly) {
   return lines.join('\n').replace('ENTITIES\n', `ENTITIES\n${g(0, 'TEXT') + g(8, 'TXT') + g(10, E) + g(20, N - 2000) + g(30, 0) + g(40, 300) + g(1, `ORIGIN OFFSET E=${E} N=${N} (mm) - real-coordinate emission`)}`);
 }
 
+/**
+ * 종단면도 DXF(후속 ⑤) — x=체이니지(mm)·y=표고×10(종 10× 왜곡, 주기 명시 — 종단도 관례).
+ * 설계선(연속)·지반선(DASHED)·STA 격자·표고 라벨. 기준면 혼합 시 지반선 미방출(정직 —
+ * SVG 이중 축과 달리 DXF 단일 모델공간에선 왜곡 축 2개를 섞을 수 없음).
+ */
+export function dxfProfile(assembly) {
+  const al = assembly.alignment, pf = assembly.profile;
+  if (!al?.totalMm || !pf?.design?.length) return null;
+  const VEX = 10;
+  const mixed = !!(pf.ground?.length && (pf.designNote ?? '').includes('형상 파생'));
+  const pts = pf.design.concat(mixed ? [] : (pf.ground ?? []));
+  const eMin = Math.min(0, ...pts.map((q) => q.elevMm)) - 500, eMax = Math.max(...pts.map((q) => q.elevMm)) + 500;
+  const { N, K } = annotK(al.totalMm, (eMax - eMin) * VEX);
+  const TH = 200 * K;
+  const Yv = (e) => e * VEX;
+  let e = '';
+  const step = staStep(al.totalMm);
+  for (let s = 0; ; s += step) {
+    const t = Math.min(s, al.totalMm);
+    e += line('DIM', t, Yv(eMin), t, Yv(eMax)) + text('DIM', t - 300 * K, Yv(eMin) - 400 * K, TH, `STA ${staLabel(t)}`);
+    if (t >= al.totalMm) break;
+  }
+  const span = Math.max(1, eMax - eMin);
+  const pw = Math.pow(10, Math.floor(Math.log10(span / 5)));
+  const gstep = [1, 2, 5, 10].map((m) => m * pw).find((v) => span / v <= 8) ?? pw * 10;
+  for (let el2 = Math.ceil(eMin / gstep) * gstep; el2 <= eMax; el2 += gstep) {
+    e += line('SLAB', 0, Yv(el2), al.totalMm, Yv(el2), 'DASHED') + text('TXT', -1400 * K, Yv(el2), TH * 0.8, `EL.${(el2 / 1000).toFixed(1)}`);
+  }
+  for (let i = 0; i < pf.design.length - 1; i++) e += line('AXIS', pf.design[i].staMm, Yv(pf.design[i].elevMm), pf.design[i + 1].staMm, Yv(pf.design[i + 1].elevMm));
+  if (!mixed && pf.ground?.length > 1) for (let i = 0; i < pf.ground.length - 1; i++) e += line('CONTOUR', pf.ground[i].staMm, Yv(pf.ground[i].elevMm), pf.ground[i + 1].staMm, Yv(pf.ground[i + 1].elevMm));
+  for (const st2 of al.structures ?? []) e += line('WALL', st2.sta, Yv(eMin), st2.sta, Yv(eMax)) + text('WALL', st2.sta + 200 * K, Yv(eMax) - 600 * K, TH * 0.85, `${st2.type === 'culvert' ? 'CULV' : st2.type === 'catch_basin' ? 'CB' : 'EJ'} STA ${staLabel(st2.sta)}`);
+  e += text('TXT', 0, Yv(eMin) - 1200 * K, TH, `PROFILE (x=chainage mm, y=elev x${VEX} DISTORTED) - SCALE 1:${N} (annot)${mixed ? ' - ground omitted: datum mismatch (relative design vs absolute EL)' : ''} - non-statutory`);
+  return shell(e);
+}
+
 /** 도메인 → DXF (없으면 null). pipes = buildAssembly().pipes.routes — 라우터 단일 결과 재사용(정합). */
 export function dxfPlan(assembly, domain, pipes) {
   const d0 = dxfPlanLocal(assembly, domain, pipes);

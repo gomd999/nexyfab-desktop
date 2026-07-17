@@ -141,7 +141,45 @@ function pavement(el) {
   return { items, assumptions: ['평면적 기준 — 경사 보정 미적용', '절취·단차 부위 미반영'] };
 }
 
-const HANDLERS = { retaining_wall: retainingWall, trench, pavement };
+/** 암거(box culvert) — 등두께 박스 연장 기준 (box_culvert_frame 계산기와 동일 기하 파라미터).
+ *  마구리·날개벽·차수공 미포함(assumptions 명시) — 산식 전부 공개(설계수량, 표준품셈 미적용). */
+function culvert(el) {
+  req(el, ['innerWidth', 'innerHeight', 'wallThk', 'length']);
+  const {
+    innerWidth: Bi, innerHeight: Hi, wallThk: t, length: L,
+    workingSpace: ws = 0.6, excavSlope: s = 0.3, leanThickness: tl = 0.1, leanMargin: lm = 0.1,
+    cover = 0, // 토피(m) — 미입력 0(개거 가정 명시)
+  } = el;
+  const Bo = Bi + 2 * t, Ho = Hi + 2 * t;
+  const D = cover + Ho + tl; // 굴착깊이 = 토피 + 외고 + 버림
+  const items = [];
+  const b = Bo + 2 * ws;
+  const Vexc = (b + s * D) * D * L;
+  items.push(item('터파기', `깊이 ${D.toFixed(2)}m, 경사 1:${s}`, '㎥', Vexc,
+    `(b+s·D)·D·L = (${b.toFixed(2)}+${s}×${D.toFixed(2)})×${D.toFixed(2)}×${L}`, 'formula'));
+  const bl = Bo + 2 * lm;
+  const Vlean = bl * tl * L;
+  items.push(item('버림콘크리트', `t=${tl}m`, '㎥', Vlean, `(Bo+2×${lm})×t×L = ${bl.toFixed(2)}×${tl}×${L}`, 'formula'));
+  const Vconc = (Bo * Ho - Bi * Hi) * L;
+  items.push(item('구체 콘크리트', `외곽 ${Bo.toFixed(2)}×${Ho.toFixed(2)} − 내공 ${Bi}×${Hi}`, '㎥', Vconc,
+    `(Bo·Ho−Bi·Hi)·L = (${(Bo * Ho).toFixed(3)}−${(Bi * Hi).toFixed(3)})×${L}`, 'formula'));
+  const Aform = (2 * (Bi + Hi) + 2 * (Bo + Ho)) * L;
+  items.push(item('거푸집', '내부+외부 둘레(마구리 제외)', '㎡', Aform,
+    `[2(Bi+Hi)+2(Bo+Ho)]·L = [${(2 * (Bi + Hi)).toFixed(2)}+${(2 * (Bo + Ho)).toFixed(2)}]×${L}`, 'formula'));
+  const Vbackfill = Math.max(0, Vexc - Vlean - Bo * Ho * L);
+  items.push(item('되메우기', '내공은 유수단면 — 미충전', '㎥', Vbackfill,
+    `터파기 − 버림 − 외곽체적 = ${Vexc.toFixed(3)}−${Vlean.toFixed(3)}−${(Bo * Ho * L).toFixed(3)}`, 'formula'));
+  items.push(item('잔토처리', '', '㎥', Vexc - Vbackfill, `터파기 − 되메우기`, 'formula'));
+  return {
+    items,
+    assumptions: [
+      `토피 ${cover}m(미입력=0 개거 가정) · 마구리·날개벽·차수공·기초처리 미포함`,
+      '등두께 박스 가정(상·하판=벽두께) · 설계수량(표준품셈 할증·품 미적용)',
+    ],
+  };
+}
+
+const HANDLERS = { retaining_wall: retainingWall, trench, pavement, culvert };
 export const elementTypes = Object.keys(HANDLERS);
 
 /**
