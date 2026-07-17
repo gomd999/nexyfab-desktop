@@ -8,6 +8,8 @@ import { colorOf, placedAabb } from './assembly.mjs';
 import { partAabb } from './reconstruct.mjs';
 import { runCalculator, calculators } from '../engineering-core/registry.mjs';
 import { retainingWallSectionSvg } from './section-drawings.mjs';
+import { rebarBBS } from './rebar-bbs.mjs';
+import { takeoff as takeoffRules } from '../engineering-core/quantity/takeoff.mjs';
 const EPS_XS = 1e-6;
 
 // 부품 type → 기본 재질 라벨(도면 BOM). 색은 colorOf(assembly.mjs) 단일 소스 — service/role/추론/type 순.
@@ -377,6 +379,8 @@ const SHEET_EN = {
   '곡선표': 'Curve Table', '구조물 일람표': 'Structure Schedule', '종단면도': 'Profile', '토공량·유토곡선': 'Earthwork & Mass Haul',
   '일반주기': 'General Notes',
   '거더 배치 평면도': 'Girder Layout Plan', '표준 횡단면도': 'Typical Cross Section', '거더 일람표': 'Girder Schedule',
+  '철근 물량표(BBS)': 'Bar Bending Schedule',
+  '검측 체크리스트(참고 서식)': 'Inspection Checklist (reference)',
 };
 function civilSheetPack(assembly, { mainScaleN, revHistory = null, lang = 'ko' } = {}) {
   const en = lang === 'en';
@@ -461,6 +465,54 @@ function civilSheetPack(assembly, { mainScaleN, revHistory = null, lang = 'ko' }
   }
   const ewBody = earthworkSheet(assembly, used);
   if (ewBody) addSheet('EW', '토공량·유토곡선', '—', ewBody);
+  // 철근 물량표(BBS, Wave 3) — rebar 입력 시만(배근=입력 원칙, 자동 설계 아님)
+  if (assembly.rebar && assembly.retainingWall) {
+    const bb = rebarBBS(assembly.retainingWall, assembly.rebar);
+    if (bb.ok) {
+      const td = (v, alignL) => `<td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:${alignL ? 'left' : 'center'}">${v}</td>`;
+      const rws = bb.rows.map((q) => `<tr>${td(q.loc, 1)}${td('D' + q.dia)}${td('@' + q.spacingMm)}${td(q.count)}${td(q.lenM.toFixed(2))}${td(q.totalM.toFixed(1))}${td(q.unitKgM.toFixed(3))}${td(q.kg.toFixed(1))}</tr>`).join('');
+      addSheet('RB', '철근 물량표(BBS)', '—', `<table style="border-collapse:collapse;width:100%;font-size:11.5px">
+<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">부위</th><th style="border:1px solid #cbd5e1;padding:3px 8px">호칭</th><th style="border:1px solid #cbd5e1;padding:3px 8px">간격</th><th style="border:1px solid #cbd5e1;padding:3px 8px">본수/단수</th><th style="border:1px solid #cbd5e1;padding:3px 8px">1본 길이(m)</th><th style="border:1px solid #cbd5e1;padding:3px 8px">총길이(m)</th><th style="border:1px solid #cbd5e1;padding:3px 8px">단중(kg/m)</th><th style="border:1px solid #cbd5e1;padding:3px 8px">중량(kg)</th></tr>${rws}
+<tr style="background:#f8fafc;font-weight:700"><td colspan="7" style="border:1px solid #cbd5e1;padding:3px 8px;text-align:right">합계</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${bb.totalKg.toFixed(1)}</td></tr></table>
+<div style="font-size:10px;color:#94a3b8;padding:3px 0">${bb.notes.map((n) => esc(n)).join(' · ')}</div>`);
+    } else {
+      addSheet('RB', '철근 물량표(BBS) — 입력 대기', '—', `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 14px;font-size:11.5px;color:#92400e">${bb.errors.map((n) => esc(n)).join('<br>')}</div>`);
+    }
+  }
+  // ── Wave 4 시공 문서(비법정 — 시공계획·발주처 양식이 정본임을 명시) ──
+  const con = assembly.construction;
+  if (con && Number(con.pourCapacityM3PerDay) > 0 && Array.isArray(assembly.civilTakeoff)) {
+    try {
+      const to = takeoffRules(assembly.civilTakeoff);
+      const totalC = (to.boq ?? []).find((q) => q.item.includes('구체'))?.qty ?? 0;
+      if (totalC > 0) {
+        const cap = Number(con.pourCapacityM3PerDay);
+        const n = Math.max(1, Math.ceil(totalC / cap));
+        const per = al.totalMm / n;
+        const tdp = (v) => `<td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${v}</td>`;
+        const rws = Array.from({ length: n }, (_, i) => `<tr>${tdp(i + 1)}${tdp(`STA ${staLabel(i * per)} ~ ${staLabel(Math.min(al.totalMm, (i + 1) * per))}`)}${tdp((totalC / n).toFixed(1))}${tdp(i < n - 1 ? `STA ${staLabel((i + 1) * per)}` : '—')}</tr>`).join('');
+        addSheet('PO', `타설 분할 계획 (구체 ${totalC.toFixed(1)}㎥ · ${n}회)`, '—', `<table style="border-collapse:collapse;width:100%;font-size:11.5px">
+<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">회차</th><th style="border:1px solid #cbd5e1;padding:3px 8px">구간</th><th style="border:1px solid #cbd5e1;padding:3px 8px">물량(㎥)</th><th style="border:1px solid #cbd5e1;padding:3px 8px">시공이음(제안)</th></tr>${rws}</table>
+<div style="font-size:10px;color:#94a3b8;padding:3px 0">1일 타설능력 ${cap}㎥=입력값 · 구간 물량=연장 등분(등단면 근사 명시 — 벽고 변화 시 재배분 필요) · 시공이음 위치=제안(확정=시공계획·감리 협의) · 비법정 참고</div>`);
+      }
+    } catch { /* 룰 실패=시트 생략 */ }
+  }
+  if (con && con.inspectionChecklist) {
+    const IC_ROWS = [
+      ['터파기', '기초 지반 확인(지내력·이토 제거)·터파기 깊이/폭·배수 상태'],
+      ['버림 콘크리트', '두께·평탄성·먹매김 확인'],
+      ['배근', '호칭·간격·피복·이음 위치/길이·결속 상태(BBS 시트 대조)'],
+      ['거푸집', '치수·수직도·박리제·긴결재·청소 상태'],
+      ['콘크리트 타설', '호칭강도 송장 확인·슬럼프·다짐·시공이음 처리·타설 높이'],
+      ['양생', '양생 방법·기간·초기 동해/급건조 방지'],
+      ['되메우기', '뒤채움 재료·다짐(층다짐 두께)·배수공(유공관·배수구) 설치'],
+    ];
+    const tdi = (v, l) => `<td style="border:1px solid #cbd5e1;padding:4px 8px;text-align:${l ? 'left' : 'center'}">${v}</td>`;
+    const rws = IC_ROWS.map(([a, b]) => `<tr>${tdi(a)}${tdi(b, 1)}${tdi('□')}${tdi('')}</tr>`).join('');
+    addSheet('IC', '검측 체크리스트(참고 서식)', '—', `<table style="border-collapse:collapse;width:100%;font-size:11.5px">
+<tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">공종</th><th style="border:1px solid #cbd5e1;padding:3px 8px">검측 항목(관례)</th><th style="border:1px solid #cbd5e1;padding:3px 8px">확인</th><th style="border:1px solid #cbd5e1;padding:3px 8px">비고</th></tr>${rws}</table>
+<div style="font-size:10px;color:#94a3b8;padding:3px 0">참고 서식(관례 항목) — 발주처·감리 지정 검측 양식이 정본이며 본 서식은 대체하지 않음 · 항목별 기준값은 시방서 확인</div>`);
+  }
   addSheet('GN', '일반주기', '—', generalNotesSheet(used));
   // 도면 목록표 — 레지스트리에서 직접 생성(맨 앞 배치), 자기 자신 포함
   const dlNo = nextDwg('DL');

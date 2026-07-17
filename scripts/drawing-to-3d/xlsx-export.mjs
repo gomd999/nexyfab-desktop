@@ -7,6 +7,7 @@
  */
 import { computeBOQ } from './boq.mjs';
 import { takeoff } from '../engineering-core/quantity/takeoff.mjs';
+import { rebarBBS } from './rebar-bbs.mjs';
 
 // ── STORE ZIP (무압축) ───────────────────────────────────────────
 const CRC_T = (() => {
@@ -123,7 +124,25 @@ export function boqXlsxU8(assembly, { domain = 'mech', title = '설계' } = {}) 
   push2(['부품', 'Type', '재질', '질량 kg', '재적 ㎥', '표면적 ㎡', '홀', '절곡']);
   for (const it of q.items ?? []) push2([it.id, it.type, it.material, it.massKg, it.volM3, it.surfaceM2, it.holes || '', it.bends || '']);
   const sheet2 = { name: '부품상세', xml: sheetXml(rows2, [22, 14, 10, 10, 10, 10, 6, 6]) };
-  return workbook([sheet1, sheet2]);
+  const sheets = [sheet1, sheet2];
+  // 철근 BBS 시트(Wave 3 — rebar 입력 시만, 배근=입력 원칙)
+  if (assembly.rebar && assembly.retainingWall) {
+    const bb = rebarBBS(assembly.retainingWall, assembly.rebar);
+    if (bb.ok) {
+      const rows3 = [];
+      let r3 = 1;
+      const push3 = (cells) => { rows3.push(rowXml(r3, cells)); r3++; };
+      push3(['철근 물량표(BBS) — 입력 배근의 결정론 물량(설계 아님)']);
+      push3(['부위', '호칭', '간격(mm)', '본수/단수', '1본 길이(m)', '총길이(m)', '단중(kg/m)', '중량(kg)']);
+      for (const q of bb.rows) push3([q.loc, `D${q.dia}`, q.spacingMm, q.count, q.lenM, q.totalM, q.unitKgM, q.kg]);
+      push3(['합계', '', '', '', '', '', '', bb.totalKg]);
+      push3([]);
+      for (const n of bb.notes) push3([`※ ${n}`]);
+      sheets.push({ name: '철근BBS', xml: sheetXml(rows3, [26, 8, 10, 12, 12, 12, 11, 12]) });
+      // 내역서 시트엔 이미 방출됨 — BBS 합계는 별도 시트가 정본(중복 계상 방지 주석은 시트 내)
+    }
+  }
+  return workbook(sheets);
 }
 
 /** base64 편의 래퍼(라우트 zip 동봉용). */
