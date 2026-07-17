@@ -761,7 +761,7 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   const fw = W * S, fh = H * S, pd = D * S;
   const px = (x, o) => (o + (x - bx0) * S).toFixed(1);
   const pz = (z) => (oy + fh - (z - bz0) * S).toFixed(1);
-  const rects = [], balloons = [], dimLabels = [];
+  const rects = [], balloons = [], dimLabels = [], balloonPts = [];
   const sx0 = ox + fw + gap;
   for (const o of parts) {
     const { p, box, st } = o;
@@ -770,7 +770,7 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
     // 밸룬 = 그룹 번호(동일 부재 동일 번호) — 다부품 도면은 그룹 대표에만
     if (!MANY || groups[o.gi].rep === o) {
       const bx = +px(box.x + box.dx / 2, ox), byy = +pz(box.z + box.dz) - 9;
-      balloons.push(`<circle cx="${bx}" cy="${byy}" r="8" fill="#fff" stroke="#0f172a"/><text x="${bx}" y="${byy + 3}" font-size="9" text-anchor="middle" fill="#0f172a" font-family="sans-serif">${o.gi + 1}</text>`);
+      balloonPts.push({ bx, byy, label: o.gi + 1 });
       const ds = dimStr(p.type, p.params);
       // 부품별 치수문자는 기계 도면만: 비기계(벽·바닥 다수가 z=0)는 하단에 문자가 뭉개져
       // 판독 불가(260717 예시 배터리 검출) — 규격은 BOM 열이 단일 소스.
@@ -778,6 +778,29 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
     }
     // PLAN (x→right, y→down) at side
     rects.push(`<rect x="${px(box.x, sx0)}" y="${(oy + (box.y - by0) * S).toFixed(1)}" width="${(box.dx * S).toFixed(1)}" height="${(box.dy * S).toFixed(1)}" fill="${st.c}22" stroke="${st.c}" stroke-width=".9"/>`);
+  }
+  // 밸룬 충돌 회피(260717 예시 배터리: 욕실 소형 기구 군집에서 밸룬 뭉침) —
+  // 기존 배치와 16px 내로 겹치면 위로 18px 씩 밀고, 이동분은 리더선으로 원위치 연결
+  {
+    const placed = [];
+    const free = (x, y) => !placed.some((q) => Math.abs(q.x - x) < 17 && Math.abs(q.y - y) < 17);
+    for (const B of balloonPts) {
+      const x0 = B.bx, y0 = B.byy;
+      let fx = x0, fy = y0;
+      if (!free(x0, y0)) {
+        // 좌우 발산 우선(도면 리더 관례) — 세로 단일 스택은 군집에서 제목까지 침범
+        outer: for (const dy of [0, -18, -36]) {
+          for (const dx of [0, 20, -20, 40, -40, 60, -60]) {
+            const cy = y0 + dy;
+            if (cy < 30) continue; // 뷰 제목·상단 클리핑 회피
+            if (free(x0 + dx, cy)) { fx = x0 + dx; fy = cy; break outer; }
+          }
+        }
+      }
+      placed.push({ x: fx, y: fy });
+      if (Math.hypot(fx - x0, fy - y0) > 10) balloons.push(`<line x1="${fx.toFixed(1)}" y1="${(fy + (fy < y0 ? 8 : -8)).toFixed(1)}" x2="${x0.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="#0f172a" stroke-width=".6"/>`);
+      balloons.push(`<circle cx="${fx.toFixed(1)}" cy="${fy.toFixed(1)}" r="8" fill="#fff" stroke="#0f172a"/><text x="${fx.toFixed(1)}" y="${(fy + 3).toFixed(1)}" font-size="9" text-anchor="middle" fill="#0f172a" font-family="sans-serif">${B.label}</text>`);
+    }
   }
   // 치수문자 충돌 회피(260717 예시 배터리): ①엔벨로프 치수대(+18)와 겹치는 바닥 부품은
   // 2행째(+30)로 강하 ②같은 높이대(±7px)에서 x-겹침은 그리디 행 패킹(행 간 10px)
