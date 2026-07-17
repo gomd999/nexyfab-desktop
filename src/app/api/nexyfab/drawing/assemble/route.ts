@@ -116,6 +116,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: 'pipeline load failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 });
   }
 
+  // 요청 정합 검사(intent-match, 260717 — "시킨 것과 다른 걸 만든다" 대응):
+  // AI=검증 가능한 요구 추출만 · 판정=결정론 실측 · 검증 불가=UNVERIFIABLE 정직 표기.
+  // 실패해도 생성은 막지 않음(null) — 단, 불일치는 그물 패널에 노출.
+  type IMMod = {
+    CLAIMS_PROMPT: (d: string) => string; CLAIMS_SCHEMA: unknown;
+    verifyClaims: (claims: unknown[], a: unknown) => { results: Array<{ verdict: string; note: string; text: string; kind: string }>; matched: number; mismatched: number; unverifiable: number };
+    verifyAlignmentClaims: (claims: unknown[], al: unknown) => { results: Array<{ verdict: string; note: string; text: string; kind: string }>; matched: number; mismatched: number; unverifiable: number };
+  };
+  const intentCheck = async (mods2: { ft: FromTextModule }, description2: string, asm2: unknown, alignment?: unknown) => {
+    try {
+      const p2 = join(process.cwd(), 'scripts', 'drawing-to-3d', 'intent-match.mjs');
+      const im = (await import(/* webpackIgnore: true */ pathToFileURL(p2).href)) as IMMod;
+      const { data: cd } = await mods2.ft.callGeminiJson(im.CLAIMS_PROMPT(description2), im.CLAIMS_SCHEMA, GEMINI_OPTS as never);
+      const claims = (cd as { claims?: unknown[] })?.claims ?? [];
+      if (!claims.length) return null;
+      const base = im.verifyClaims(claims, asm2);
+      if (alignment) {
+        const al = im.verifyAlignmentClaims(claims, alignment);
+        for (let i = 0; i < base.results.length; i++) {
+          if (base.results[i].verdict === 'UNVERIFIABLE' && al.results[i] && al.results[i].verdict !== 'UNVERIFIABLE') base.results[i] = al.results[i];
+        }
+        base.matched = base.results.filter((q) => q.verdict === 'MATCH').length;
+        base.mismatched = base.results.filter((q) => q.verdict === 'MISMATCH').length;
+        base.unverifiable = base.results.length - base.matched - base.mismatched;
+      }
+      return base;
+    } catch { return null; }
+  };
+
   try {
     // ── 게이트-교정 루프 (compose.composeWithGate 패턴을 어셈블리에 적용) ──
     // textToAssembly 의 스키마 준수 신뢰성이 낮아, buildAssembly 게이트 오류를
@@ -147,6 +176,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         placeCorrections = [];
         built = mods.asm.buildAssembly(assembly);
         if (built.ok) {
+          const intentMatch = await intentCheck(mods, description, assembly, (assembly as { alignment?: unknown }).alignment);
           return NextResponse.json({
             ok: true, assembly, openscad: built.openscad,
             parts: built.parts ?? (assembly as { parts?: unknown[] }).parts,
@@ -154,6 +184,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             placeCorrections: [], welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
             composeIntent: built.composeIntent ?? null, structural: built.structural ?? null,
             support: built.support ?? null, pipes: built.pipes ?? null, designOk: built.designOk ?? null,
+            intentMatch,
             domain: 'civil', gateErrors: [], rounds: round + 1,
           });
         }
@@ -168,6 +199,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       placeCorrections = corrected.corrections;
       built = mods.asm.buildAssembly(assembly);
       if (built.ok) {
+        const intentMatch = await intentCheck(mods, description, assembly);
         return NextResponse.json({
           ok: true, assembly, openscad: built.openscad,
           parts: built.parts ?? assembly.parts,
@@ -179,6 +211,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           structural: built.structural ?? null,
           support: built.support ?? null, // 그물: 부유·면접촉(매립 제안)
           pipes: built.pipes ?? null, designOk: built.designOk ?? null,
+          intentMatch, // 요청 정합(의도↔형상 실측 대조 — 불일치 노출)
           gateErrors: [], rounds: round + 1,
         });
       }

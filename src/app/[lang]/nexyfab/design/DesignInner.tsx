@@ -189,6 +189,10 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   // 지지 체인(부유) — 위시빌더 260717 그물 제품 배선: 어셈블리 빌드 시 supportCheck 결과
   const [floatN, setFloatN] = useState<number | null>(null);
   const pendingFloatRef = useRef<number | null>(null);
+  // 요청 정합(intent-match, 260717) — "시킨 것과 다른 걸 만든다" 노출: 불일치 목록
+  type IntentMatch = { matched: number; mismatched: number; unverifiable: number; results: Array<{ verdict: string; note: string; text: string }> };
+  const [intentM, setIntentM] = useState<IntentMatch | null>(null);
+  const pendingIntentRef = useRef<IntentMatch | null>(null);
   const pendingAssemblyRef = useRef<Record<string, unknown> | null>(null); // 설계 패키지용(어셈블리 경로만)
   const [lastAssembly, setLastAssembly] = useState<Record<string, unknown> | null>(null);
   const [pkgBusy, setPkgBusy] = useState(false);
@@ -366,6 +370,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       pendingInterfRef.current = null;
       setFloatN(pendingFloatRef.current); // 부유(지지 체인) — 동일 소비 구조
       pendingFloatRef.current = null;
+      setIntentM(pendingIntentRef.current); // 요청 정합 — 동일 소비 구조
+      pendingIntentRef.current = null;
       setLastAssembly(pendingAssemblyRef.current); // 어셈블리면 패키지 생성 가능, 단품이면 null
       pendingAssemblyRef.current = null;
       setDiffRes(null); // 설계가 바뀌면 이전 듀얼-방출 대조 결과는 무효
@@ -436,6 +442,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           pendingInterfRef.current = Array.isArray(raw.interferences) ? raw.interferences.length : 0; // 그물 ④
           const sup = (raw as { support?: { floating?: string[] } }).support;
           pendingFloatRef.current = Array.isArray(sup?.floating) ? sup.floating.length : null; // 그물 ④b 지지
+          pendingIntentRef.current = ((raw as { intentMatch?: IntentMatch | null }).intentMatch) ?? null; // 그물 ⑦ 요청 정합
           pendingAssemblyRef.current = (raw as { assembly?: Record<string, unknown> }).assembly ?? null;
         }
         if (!data.ok) {
@@ -931,6 +938,15 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 label: ko ? '④b 지지 체인(부유 — 연결≠지지)' : '④b Support chain (floating)',
                 status: floatN === null ? 'skip' : floatN === 0 ? 'pass' : 'fail',
                 note: floatN === null ? (ko ? '어셈블리 빌드 시 활성' : 'runs on assembly build') : floatN === 0 ? (ko ? '부유 없음' : 'none floating') : (ko ? `부유 ${floatN}건 — 설치 불가 신호` : `${floatN} floating parts`),
+              },
+              {
+                label: ko ? '⑦ 요청 정합(요구 추출→형상 실측 대조)' : '⑦ Intent match (claims vs built)',
+                status: intentM === null ? 'skip' : intentM.mismatched > 0 ? 'fail' : intentM.matched > 0 ? 'pass' : 'skip',
+                note: intentM === null
+                  ? (ko ? '챗 어셈블리 생성 시 활성' : 'runs on chat assembly')
+                  : intentM.mismatched > 0
+                    ? (ko ? `불일치 ${intentM.mismatched}건: ` : `${intentM.mismatched} mismatch: `) + intentM.results.filter((q) => q.verdict === 'MISMATCH').slice(0, 2).map((q) => `"${q.text}" — ${q.note}`).join(' · ')
+                    : (ko ? `일치 ${intentM.matched}` : `${intentM.matched} matched`) + (intentM.unverifiable ? (ko ? ` · 검증불가 ${intentM.unverifiable}(정직 표기)` : ` · ${intentM.unverifiable} unverifiable`) : ''),
               },
               {
                 label: ko ? '⑥ 간이 FEA(응력·SF — 스크리닝)' : '⑥ Quick FEA (screening)',

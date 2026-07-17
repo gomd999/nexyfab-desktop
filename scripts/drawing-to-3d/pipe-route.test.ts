@@ -375,6 +375,56 @@ import { landscapeCheck } from './landscape-check.mjs';
 import { runCalculator } from '../engineering-core/registry.mjs';
 import { ga2dDrawing, fmtLen, pickScale, staLabel, packageStamp, packageConsistencyCheck, structuralReport } from './package.mjs';
 import { partCG } from './structural.mjs';
+import { verifyClaims, verifyAlignmentClaims } from './intent-match.mjs';
+
+describe('요청 정합(intent-match) — 결정론 판정부 (AI 추출 없이 폐형)', () => {
+  const table = {
+    parts: [
+      { id: 'top', type: 'box', params: { width: 1200, depth: 700, height: 30 }, at: { tz: 700 }, role: 'table' },
+      ...[[0, 0], [1150, 0], [0, 650], [1150, 650]].map(([x, y], i) => ({ id: `leg${i + 1}`, type: 'box', params: { width: 50, depth: 50, height: 700 }, at: { tx: x, ty: y }, role: 'column' })),
+    ],
+  };
+  it('count·dimension·relation MATCH — 테이블(다리4·높이730·상판 on 다리)', () => {
+    const r = verifyClaims([
+      { kind: 'count', text: '다리 4개', part: '다리', count: 4 },
+      { kind: 'dimension', text: '높이 730', part: '상판', value: 730, unit: 'mm', dim: 'max' },
+      { kind: 'relation', text: '상판이 다리 위에', part: '상판', part2: '다리', relation: 'on' },
+    ], table);
+    // 높이 730: 상판 max 엔벨로프 z = 700+30=730 ✓
+    expect(r.results.map((q) => q.verdict)).toEqual(['MATCH', 'MATCH', 'MATCH']);
+  });
+  it('MISMATCH 노출 — 다리 3개 요구 vs 4개 생성 · 검증불가=UNVERIFIABLE(억지 판정 금지)', () => {
+    const r = verifyClaims([
+      { kind: 'count', text: '다리 3개', part: '다리', count: 3 },
+      { kind: 'exists', text: '서랍', part: '서랍' },
+      { kind: 'dimension', text: '?', part: '상판' }, // 값 없음
+    ], table);
+    expect(r.results[0].verdict).toBe('MISMATCH');
+    expect(r.results[1].verdict).toBe('MISMATCH'); // 존재 요구 미충족은 명확한 불일치
+    expect(r.results[2].verdict).toBe('UNVERIFIABLE');
+    expect(r.mismatched).toBe(2);
+  });
+  it('문/창 수량 = wall_with_openings 개구 기준(sill 0/양수)', () => {
+    const unit = buildAssemblyTemplate('interior', 'studio_unit', {});
+    const r = verifyClaims([
+      { kind: 'count', text: '문 2개', part: '문', count: 2 }, // 현관 1+욕실 1
+      { kind: 'count', text: '창 1개', part: '창', count: 1 },
+    ], unit);
+    expect(r.results[0].verdict).toBe('MATCH');
+    expect(r.results[1].verdict).toBe('MATCH');
+  });
+  it('선형 대조 — 연장·곡선 R·암거 존재', () => {
+    const asm = buildAssemblyTemplate('civil', 'retaining_wall_alignment', { curves: [{ ip: 1, R: 30000 }], structures: [{ sta: 60000, type: 'culvert' }] });
+    const r = verifyAlignmentClaims([
+      { kind: 'dimension', text: '연장 220m', part: '연장', value: 220, unit: 'm' },
+      { kind: 'dimension', text: 'R 30m', part: '반경', value: 30, unit: 'm' },
+      { kind: 'exists', text: '암거', part: '암거' },
+    ], asm.alignment);
+    expect(r.results.map((q) => q.verdict)).toEqual(['MATCH', 'MATCH', 'MATCH']);
+    const bad = verifyAlignmentClaims([{ kind: 'dimension', text: '연장 500m', part: '연장', value: 500, unit: 'm' }], asm.alignment);
+    expect(bad.results[0].verdict).toBe('MISMATCH');
+  });
+});
 
 import { obbOverlap, boxPartsInterference } from './obb2d.mjs';
 import { buildElements, chainAt, intersectSegment, groundFromContours } from './alignment-geom.mjs';
