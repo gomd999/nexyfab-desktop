@@ -99,6 +99,10 @@ export interface StepAssemblyImportResult {
 export interface ImportStepAssemblyOptions {
   /** Override naming prefix for FeatureNode ids. Default 'imported'. */
   namePrefix?: string;
+  /** 부품별 단일솔리드 분류기 실행 상한(260717 성능 예산 — GrabCAD 17,269부품 실측:
+   *  SRR 수정 후 전 부품 분류가 돌며 실행 시간이 폭증). 초과 부품은 배치만 임포트하고
+   *  warnings 에 집계를 정직 기록. 기본 500. */
+  maxClassifyParts?: number;
 }
 
 /**
@@ -216,6 +220,15 @@ export function importStepAssembly(
   // PD (legitimate "2 bolts from one part definition") get distinct ids.
   let instanceIdx = 0;
   const usedIds = new Set<string>();
+  // 분류기 성능 예산(옵션): 상한 초과분은 배치만 — 종료 시 집계 warning
+  const maxClassify = Math.max(0, opts.maxClassifyParts ?? 500);
+  let classified = 0;
+  let classifySkipped = 0;
+  const classifyBudgetOk = () => {
+    if (classified < maxClassify) { classified++; return true; }
+    classifySkipped++;
+    return false;
+  };
 
   function emitInstance(
     pdId: number,
@@ -264,7 +277,7 @@ export function importStepAssembly(
     });
 
     // Run the single-solid importer on every solid belonging to this PD.
-    if (hasGeom) {
+    if (hasGeom && classifyBudgetOk()) {
       const subset = buildSubsetForSolids(source, geom.solidIds);
       const trees = subset
         ? importStep(subset, { namePrefix: opts.namePrefix ?? `${id}` })
@@ -273,12 +286,17 @@ export function importStepAssembly(
         for (const w of trees.warnings) warnings.push(`part_${id}:${w}`);
         for (const u of trees.unsupported) unsupported.push(`part_${id}:${u}`);
         featureTrees[id] = trees.tree;
+        // 조용한 빈 트리 제거(260717 실물 검증): 솔리드는 있는데 분류 0 — 사유 명시
+        if (trees.tree.nodes.length === 0 && trees.unsupported.length === 0) {
+          unsupported.push(`part_${id}:classifier_empty_tree(${geom.solidIds.length} solids — real-world brep not in classifier vocabulary)`);
+        }
       } else {
         featureTrees[id] = { nodes: [] };
         warnings.push(`part_${id}:geometry_subset_build_failed`);
       }
     } else {
       featureTrees[id] = { nodes: [] };
+      unsupported.push(hasGeom ? `part_${id}:classification_skipped(budget)` : `part_${id}:no_solids_found_for_pd`);
     }
     instanceIdx += 1;
   }
@@ -293,7 +311,11 @@ export function importStepAssembly(
     // containers with no placement information).
     for (const { id: pdId } of productDefs) {
       const geom = pdGeometry.get(pdId);
-      if (!geom || geom.solidIds.length === 0) continue;
+      if (!geom || geom.solidIds.length === 0) {
+        // 표면 모델(MANIFOLD_SURFACE 등)·형상 없는 PD — 조용히 사라지지 않게 사유 기록(260717)
+        unsupported.push(`pd_${pdId}(${pdName.get(pdId) ?? '?'}):no_solids_found (surface/curve-only models are not supported — solids only)`);
+        continue;
+      }
       const baseLabel = pdName.get(pdId) ?? `Part_${pdId}`;
       const id = uniqueId(usedIds, sanitizeId(baseLabel), instanceIdx);
       usedIds.add(id);
@@ -305,7 +327,7 @@ export function importStepAssembly(
         orientation: IDENTITY_QUAT,
         fixed: parts.length === 0,
       });
-      const subset = buildSubsetForSolids(source, geom.solidIds);
+      const subset = classifyBudgetOk() ? buildSubsetForSolids(source, geom.solidIds) : null;
       const trees = subset
         ? importStep(subset, { namePrefix: opts.namePrefix ?? `${id}` })
         : null;
@@ -313,14 +335,21 @@ export function importStepAssembly(
         for (const w of trees.warnings) warnings.push(`part_${id}:${w}`);
         for (const u of trees.unsupported) unsupported.push(`part_${id}:${u}`);
         featureTrees[id] = trees.tree;
+        // 조용한 빈 트리 제거(260717) — NAUO 경로와 동일 규약
+        if (trees.tree.nodes.length === 0 && trees.unsupported.length === 0) {
+          unsupported.push(`part_${id}:classifier_empty_tree(${geom.solidIds.length} solids — real-world brep not in classifier vocabulary)`);
+        }
       } else {
         featureTrees[id] = { nodes: [] };
-        warnings.push(`part_${id}:geometry_subset_build_failed`);
+        warnings.push(classifySkipped > 0 && subset === null ? `part_${id}:classification_skipped(budget)` : `part_${id}:geometry_subset_build_failed`);
       }
       instanceIdx += 1;
     }
   }
 
+  if (classifySkipped > 0) {
+    warnings.push(`perf:classification_capped(${maxClassify} classified, ${classifySkipped} placement-only — raise opts.maxClassifyParts to override)`);
+  }
   if (parts.length === 0) {
     warnings.push('parse:no_part_instances_emitted');
   }
@@ -398,6 +427,26 @@ function productNameForDef(
  * → SHAPE_REPRESENTATION (or any *_SHAPE_REPRESENTATION subtype) and
  * collect every MANIFOLD_SOLID_BREP / BREP_WITH_VOIDS in `items`.
  */
+// SHAPE_REPRESENTATION_RELATIONSHIP 인접 리스트 — 파일당 1회 계산 후 캐시(WeakMap).
+const srrAdjCache = new WeakMap<Map<number, StepEntity>, Map<number, number[]>>();
+function srrAdjacency(entities: Map<number, StepEntity>): Map<number, number[]> {
+  const hit = srrAdjCache.get(entities);
+  if (hit) return hit;
+  const adj = new Map<number, number[]>();
+  for (const [, ent] of entities) {
+    if (ent.name !== 'SHAPE_REPRESENTATION_RELATIONSHIP') continue;
+    const a = ent.args[2];
+    const b = ent.args[3];
+    if (!a || a.kind !== 'ref' || !b || b.kind !== 'ref') continue;
+    if (!adj.has(a.id)) adj.set(a.id, []);
+    if (!adj.has(b.id)) adj.set(b.id, []);
+    adj.get(a.id)!.push(b.id);
+    adj.get(b.id)!.push(a.id);
+  }
+  srrAdjCache.set(entities, adj);
+  return adj;
+}
+
 function findGeometryForProductDef(
   pdId: number,
   entities: Map<number, StepEntity>,
@@ -430,8 +479,25 @@ function findGeometryForProductDef(
     }
   }
 
+  // AP242 실무 파일(NIST CTC/FTC, SolidWorks 단품 등): SDR 이 빈 SHAPE_REPRESENTATION
+  // (축 배치만)을 가리키고 실제 ADVANCED_BREP_* 는 SHAPE_REPRESENTATION_RELATIONSHIP
+  // 으로 형제 연결 — 관계 그래프 폐포로 표현 집합을 확장한다(260717, NIST 13종
+  // parts=0 실측이 검출한 구조적 갭). 폐포 상한 16: 비정상 그래프 폭주 방지.
+  const repSet = new Set(repIds);
+  if (repSet.size > 0) {
+    // SRR 인접 리스트를 1회 구축(대형 어셈블리 성능: 17k 부품×전 엔티티 재스캔 금지)
+    const srrAdj = srrAdjacency(entities);
+    const queue = [...repSet];
+    while (queue.length && repSet.size < 16) {
+      const cur = queue.pop()!;
+      for (const nb of srrAdj.get(cur) ?? []) {
+        if (!repSet.has(nb)) { repSet.add(nb); queue.push(nb); }
+      }
+    }
+  }
+
   // For each representation, walk its items list for solid bodies.
-  for (const repId of repIds) {
+  for (const repId of repSet) {
     const rep = entities.get(repId);
     if (!rep) continue;
     // {ADVANCED_BREP_,SHAPE_,MANIFOLD_SURFACE_}*REPRESENTATION(name, items, context)

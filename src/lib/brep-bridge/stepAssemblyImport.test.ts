@@ -575,3 +575,34 @@ END-ISO-10303-21;
     expect(result.state.parts).toEqual([]);
   });
 });
+
+// ─── 8: 실물 코퍼스 회귀(로컬 전용 — NIST PMI STEP, 공식 '제약 없음') ──────────
+// 260717: SDR→빈 SHAPE_REPRESENTATION + SRR 형제 연결(AP242 실무 관례)을 못 따라가
+// NIST 단품 13/17 이 parts=0 이던 구조적 갭의 재발 방지. 코퍼스 미존재=skip(정직).
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const NIST_DIR = 'C:/Users/gomd9/Downloads/참고파일들/NIST-PMI/NIST-PMI-STEP-Files';
+(existsSync(NIST_DIR) ? describe : describe.skip)('importStepAssembly — NIST PMI 실물 코퍼스', () => {
+  it('AP242 단품(SRR 형제 표현): tessellated 전용 1건 제외 전부 parts≥1', () => {
+    const files = readdirSync(NIST_DIR).filter((f) => f.toLowerCase().endsWith('.stp'));
+    expect(files.length).toBeGreaterThanOrEqual(17);
+    const zero: string[] = [];
+    for (const f of files) {
+      const r = importStepAssembly(readFileSync(join(NIST_DIR, f), 'utf8'));
+      if (r.state.parts.length === 0) zero.push(f);
+    }
+    // -tg(tessellated geometry) 변형=브렙 없음 — 정직 미지원 유지
+    expect(zero.filter((f) => !f.includes('-tg'))).toEqual([]);
+  });
+  it('빈 분류 트리는 조용히 넘어가지 않는다(unsupported 사유 명시)', () => {
+    const f = readdirSync(NIST_DIR).find((q) => q === 'nist_ctc_01_asme1_ap242-e1.stp')!;
+    const r = importStepAssembly(readFileSync(join(NIST_DIR, f), 'utf8'));
+    expect(r.state.parts.length).toBeGreaterThanOrEqual(1);
+    const tree = Object.values(r.featureTrees)[0];
+    // 본질: 트리가 비면 반드시 사유가 남는다(분류기 자체 사유 or 상위 폴백 사유 — 조용한 실패 금지)
+    if (tree && tree.nodes.length === 0) {
+      expect(r.unsupported.length).toBeGreaterThan(0);
+    }
+  });
+});
