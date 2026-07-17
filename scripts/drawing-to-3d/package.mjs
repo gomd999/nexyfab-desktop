@@ -6,6 +6,8 @@
 import { structuralCheck } from './structural.mjs';
 import { colorOf, placedAabb } from './assembly.mjs';
 import { runCalculator, calculators } from '../engineering-core/registry.mjs';
+import { retainingWallSectionSvg } from './section-drawings.mjs';
+const EPS_XS = 1e-6;
 
 // 부품 type → 기본 재질 라벨(도면 BOM). 색은 colorOf(assembly.mjs) 단일 소스 — service/role/추론/type 순.
 const TYPE_MAT = {
@@ -383,6 +385,29 @@ function civilSheetPack(assembly, { mainScaleN }) {
   if (stBody) addSheet('ST', '구조물 일람표', '—', stBody);
   const pfBody = profileSvg(assembly);
   if (pfBody) addSheet('PF', '종단면도', '종 10× 왜곡(시트 명기)', pfBody);
+  // §B 횡단면도(XS) — 표준횡단 + 계획고 변곡점별 대표 STA(상한 8, 초과=등간격 대표 명시).
+  // 벽고=종단 계획고와 동일 소스(profile.design) — 정합 8번째 축.
+  if (assembly.retainingWall) {
+    const rw = assembly.retainingWall;
+    const dsg = assembly.profile?.design ?? [];
+    let xsStas = [...new Set(dsg.map((q) => Math.max(0, Math.min(al.totalMm, q.staMm))))].sort((a, b) => a - b);
+    let xsNote = '';
+    if (xsStas.length > 8) { const stp = Math.ceil(xsStas.length / 8); xsStas = xsStas.filter((_, i) => i % stp === 0).slice(0, 8); xsNote = ' · 변곡점 8+ — 등간격 대표 추출(명시)'; }
+    const elevAt = (sMm) => {
+      for (let i = 1; i < dsg.length; i++) if (sMm <= dsg[i].staMm + EPS_XS) {
+        const a = dsg[i - 1], b = dsg[i];
+        const t = (sMm - a.staMm) / Math.max(1e-9, b.staMm - a.staMm);
+        return a.elevMm + (b.elevMm - a.elevMm) * Math.max(0, Math.min(1, t));
+      }
+      return dsg[dsg.length - 1]?.elevMm ?? rw.H * 1000;
+    };
+    const bodies = xsStas.map((sMm) => {
+      const Hmm = elevAt(sMm);
+      const svg = retainingWallSectionSvg({ H: Hmm, baseWidth: rw.baseWidth * 1000, baseThickness: rw.baseThickness * 1000, stemThickness: rw.stemThickness * 1000, toeLength: rw.toeLength * 1000 });
+      return `<div style="display:inline-block;vertical-align:top;width:48%;min-width:320px"><div style="font-size:11.5px;font-weight:700">STA ${staLabel(sMm)} · H=${fmtLen(Hmm)}</div>${svg}</div>`;
+    }).join('');
+    addSheet('XS', `횡단면도 (대표 ${xsStas.length}단면${xsNote})`, '단면별 자동', `<div>${bodies}</div><div style="font-size:10px;color:#94a3b8">벽고=종단 계획고 동일 소스(profile.design 보간) · 배근·지반 조건 별도(옹벽 안정 검토=verify-domain 체인)</div>`);
+  }
   const ewBody = earthworkSheet(assembly, used);
   if (ewBody) addSheet('EW', '토공량·유토곡선', '—', ewBody);
   addSheet('GN', '일반주기', '—', generalNotesSheet(used));

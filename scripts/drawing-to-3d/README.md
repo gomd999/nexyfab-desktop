@@ -160,3 +160,15 @@ gemini-2.5-flash/pro가 union 스키마(전 필드)에서 엉뚱한 필드를 �
 - **④ 부지 경계·등고**: assembly.siteBoundary(폴리곤)·contours=[{elevM,pts}] 입력 시만 — 배치도/선형 평면 오버레이+독립 "부지 계획도" 시트(면적 자동·EL 라벨). DXF BNDRY/CONTOUR 레이어.
 - DXF: dxfCivilPlan alignment 모드(AXIS 중심선·WALL ±halfW 밴드·IP 원+라벨·STA 틱).
 - 정직 한계: 곡선(원곡선·완화곡선) 미지원=IP 직선 연결 명시 · 지반선/등고=입력 원칙 · 시트 축척은 A3 100% 인쇄 기준.
+
+## 선형 도면집 완성 배치 (2026-07-17 7차 — 계획서 0~5단계+보강 전체 구현)
+
+- **0단계 무결 규약**: geometry-tolerance(공차 사다리)·obb2d(SAT 정밀 간섭 — 회전 box 쌍 AABB 과탐 제거)·alignment-geom(요소열 직선|원호 단일 chainage)·visual-golden(Playwright+sharp 골든 6종, --update 갱신)
+- **1단계 원곡선**: buildElements 사전 게이트 3종(교각≤90°·TL합+여유·minR)·정확 마이터 트림 m=(|o|+h)tan(Δ/2)·새그 공차 현 분할(상한 64)·평면/DXF=진짜 원호(SVG A path·DXF ARC)·곡선표(원값 자기정합)·부품 예산 600
+- **2단계 STA 구조물**: culvert(벽 분절=clipElements 런 분할)·catch_basin·expansion_joint — MIN_SEG 거부·box_culvert_frame 자동 체인(미입력=needInputs)·일람표·평면/종단 마커 3자 대조. ⚠종점 측점 버그(step 비배수) 게이트가 검출→수정
+- **3단계 지반선 파생**: groundFromContours — 등고×선형 폐형 교차(선분·원호)·모순=거부(평균 금지)·외삽 금지
+- **4단계 토공·유토**: A=|d|w+nd² 폐형·0점 분할·불균등 평균단면법(재샘플 금지)·mass_haul 유토곡선·입력 원칙
+- **5단계 도면집**: civilSheetPack — 도번 단일 부여(DL/GA/PL/CT/ST/PF/XS/EW/GN)·표제란 REV 스탬프·page-break·도면 목록표·일반주기(실행 계산기 refs만)·역방향 게이트 4종(도번 유일·목록 매수·윈도 무결·REV 채움)
+- **§B 횡단면도**: 표준횡단+계획고 변곡점별 대표 단면(상한 8) — 벽고=종단 계획고 동일 소스
+- **§C-v1**: 패널 고급 입력(JSON) — 배열 파라미터 입력 수단(6개국). **§F**: DXF 실좌표 origin={E,N} 오프셋 방출. **§G**: 무작위 선형 100케이스 기하 감사(시드 재현)
+- 후속(명시): C-v2 SVG 선형 에디터·D AI 개방·완화곡선·암거 수량 룰·종단 DXF·REV 이력·EN 라벨
