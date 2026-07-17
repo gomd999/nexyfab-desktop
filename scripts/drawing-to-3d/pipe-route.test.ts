@@ -438,6 +438,39 @@ describe('요청 정합(intent-match) — 결정론 판정부 (AI 추출 없이 
     const bad = verifyAlignmentClaims([{ kind: 'dimension', text: '연장 500m', part: '연장', value: 500, unit: 'm' }], asm.alignment);
     expect(bad.results[0].verdict).toBe('MISMATCH');
   });
+  it('closestChainage 호 투영 앵커 — 스윕 내/외 클램프 폐형', async () => {
+    const { closestChainage } = await import('./alignment-geom.mjs');
+    const arc = [{ type: 'arc', c: [0, 0], R: 1000, a0: 0, a1: Math.PI / 2, ccw: true, ch0: 0, len: (Math.PI / 2) * 1000 }];
+    const mid = closestChainage(arc, [0, 1500]); // 각 π/2=스윕 끝 → sta=R·π/2, 측방 500
+    expect(Math.round(mid.sMm)).toBe(1571);
+    expect(Math.round(mid.latMm)).toBe(500);
+    const before = closestChainage(arc, [1200, -100]); // 스윕 밖(시점 쪽) → sta=0 클램프
+    expect(Math.round(before.sMm)).toBe(0);
+  });
+  it('측량점→지반선(Wave 2) — 투영·코리도 제외·origin 게이트 폐형', () => {
+    // 직선 300m, origin(E=200000, N=450000)m — 점 4개: 유효 3(투영 sta 50/150/250m), 코리도 밖 1
+    const mk = (survey: unknown[], origin?: unknown) => buildAssemblyTemplate('civil', 'retaining_wall_alignment', {
+      ips: [[0, 0], [300000, 0]], H: 3000, surveyPoints: survey, ...(origin ? { origin } : {}),
+    });
+    const asm = mk([
+      [200050, 450000.5, 5.0],   // sta 50m(측방 0.5m)
+      [200150, 449999.0, 6.2],   // sta 150m
+      [200250, 450002.0, 4.8],   // sta 250m
+      [200100, 450050.0, 9.9],   // 측방 50m — 코리도(baseW/2+5m) 밖 제외
+    ], { E: 200000, N: 450000 });
+    const g = asm.profile?.ground;
+    expect(g?.length).toBe(3);
+    expect(Math.round(g![0].staMm)).toBe(50000);
+    expect(g![1].elevMm).toBe(6200);
+    expect(asm.profile?.groundNote).toContain('제외 1점');
+    expect(asm.origin).toEqual({ E: 200000000, N: 450000000 }); // mm 규약(§F)
+    // origin 누락 = 정직 거부
+    const noOrigin = mk([[200050, 450000, 5]]);
+    expect(noOrigin.alignmentErrors?.[0]).toContain('origin');
+    // 근접 측점 표고 모순 = 거부
+    const bad = mk([[200100, 450000, 5.0], [200100.2, 450000, 7.0]], { E: 200000, N: 450000 });
+    expect(bad.alignmentErrors?.[0]).toContain('모순');
+  });
   it('KW_MAP 도메인 확장 — 옹벽·수납장·계단 대상어가 role/id 로 매칭', () => {
     const asm = {
       parts: [

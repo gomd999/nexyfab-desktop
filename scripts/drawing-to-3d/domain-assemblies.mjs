@@ -10,7 +10,7 @@
  * 검증: 각 템플릿 기본값은 self-test 로 게이트·간섭 0 을 상시 보증.
  */
 
-import { buildElements, chordPolyline, clipElements, chainAt, groundFromContours } from './alignment-geom.mjs';
+import { buildElements, chordPolyline, clipElements, chainAt, groundFromContours, groundFromSurvey } from './alignment-geom.mjs';
 import { TOL_TRIM_RESIDUAL, minSeg } from './geometry-tolerance.mjs';
 
 const num = (v, d) => (Number.isFinite(v) ? v : d);
@@ -305,7 +305,24 @@ function retainingWallAlignmentAssembly(p) {
     }
   }
   let derivedGround = null, groundNote = null;
-  if (!Array.isArray(p.profileGround) && Array.isArray(p.contours)) {
+  // Wave 2 — 측량점 인입(우선순위: profileGround 직접입력 > surveyPoints 실측 > contours):
+  // surveyPoints=[[E,N,EL] m, 절대 평면직각좌표(TM)] — origin{E,N}(m) 필수(로컬 변환 기준.
+  // 미입력=매칭 불능이므로 정직 거부, 좌표를 지어 맞추지 않음).
+  if (!Array.isArray(p.profileGround) && Array.isArray(p.surveyPoints) && p.surveyPoints.length) {
+    const og = p.origin;
+    if (!(Number.isFinite(Number(og?.E)) && Number.isFinite(Number(og?.N)))) {
+      return { name: '옹벽 선형 구간', domain: 'civil', parts: [], alignmentErrors: ['surveyPoints 에는 origin {E, N}(m, 평면직각좌표 원점=선형 시점) 필수 — 좌표계 정합 없이 투영 불가(정직 거부)'] };
+    }
+    const bad = p.surveyPoints.filter((q) => !Array.isArray(q) || q.length < 3 || q.some((v) => !Number.isFinite(Number(v))));
+    if (bad.length) {
+      return { name: '옹벽 선형 구간', domain: 'civil', parts: [], alignmentErrors: [`surveyPoints ${bad.length}건 불량 — 각 점은 [E(m), N(m), EL(m)] 숫자 3열`] };
+    }
+    const local = p.surveyPoints.map((q) => ({ x: (Number(q[0]) - Number(og.E)) * 1000, y: (Number(q[1]) - Number(og.N)) * 1000, elevMm: Number(q[2]) * 1000 }));
+    const g = groundFromSurvey(elements, local, { corridorMm: baseW / 2 + 5000 });
+    if (g.errors.length) return { name: '옹벽 선형 구간', domain: 'civil', parts: [], alignmentErrors: g.errors };
+    derivedGround = g.ground;
+    groundNote = g.note;
+  } else if (!Array.isArray(p.profileGround) && Array.isArray(p.contours)) {
     const g = groundFromContours(elements, p.contours);
     if (g.errors.length) return { name: '옹벽 선형 구간', domain: 'civil', parts: [], alignmentErrors: g.errors };
     derivedGround = g.ground;
@@ -314,6 +331,8 @@ function retainingWallAlignmentAssembly(p) {
   return {
     name: '옹벽 선형 구간', domain: 'civil', parts,
     ...(Array.isArray(p.contours) ? { contours: p.contours } : {}),
+    // 측량 origin(m)→assembly.origin(mm): DXF·LandXML 실좌표 방출과 단일 규약(§F)
+    ...(Array.isArray(p.surveyPoints) && Number.isFinite(Number(p.origin?.E)) ? { origin: { E: Number(p.origin.E) * 1000, N: Number(p.origin.N) * 1000 } } : {}),
     ...(Array.isArray(p.siteBoundary) ? { siteBoundary: p.siteBoundary } : {}),
     // §1-4 토공 파라미터 패스스루(기면고·기면폭·사면경사=입력 원칙 — 미입력 시 토공 생략)
     ...(p.earthwork && typeof p.earthwork === 'object' ? { earthwork: p.earthwork } : {}),

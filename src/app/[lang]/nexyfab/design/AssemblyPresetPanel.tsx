@@ -2883,7 +2883,8 @@ export default function AssemblyPresetPanel({
 
       {tpl && (
         // §C-v1 고급 입력(JSON) — 배열 파라미터(ips·curves·structures·contours·siteBoundary·
-        // profileGround·earthwork·pipes) 입력 수단. 스키마 오류=게이트 문구 그대로 표시.
+        // profileGround·earthwork·pipes·surveyPoints+origin[Wave 2 실측 지반선]) 입력 수단.
+        // 스키마 오류=게이트 문구 그대로 표시.
         <details style={{ margin: '4px 0 2px' }}>
           <summary style={{ fontSize: 11, fontWeight: 700, cursor: 'pointer', color: 'var(--nx-text-2, #46505e)' }}>
             {t.advTitle}
@@ -2891,7 +2892,7 @@ export default function AssemblyPresetPanel({
           <textarea
             value={advJson}
             onChange={(e) => { setAdvJson(e.target.value); setAdvErr(null); }}
-            placeholder={'{ "ips": [[0,0],[120000,0]], "curves": [{"ip":1,"R":30000}], "structures": [{"sta":60000,"type":"culvert"}], "contours": [...], "earthwork": {"formationElevM":6,"widthM":3,"slopeN":1.5} }'}
+            placeholder={'{ "ips": [[0,0],[120000,0]], "curves": [{"ip":1,"R":30000}], "structures": [{"sta":60000,"type":"culvert"}], "earthwork": {"formationElevM":6,"widthM":3,"slopeN":1.5}, "surveyPoints": [[E,N,EL(m)],...], "origin": {"E":200000,"N":450000} }'}
             spellCheck={false}
             style={{ width: '100%', minHeight: 84, fontFamily: 'ui-monospace, monospace', fontSize: 11, padding: 8, borderRadius: 8, border: '1px solid var(--nx-line, #d6dbe3)', background: 'var(--nx-bg-1, #fff)', color: 'inherit', marginTop: 6 }}
           />

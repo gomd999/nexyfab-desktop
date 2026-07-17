@@ -302,6 +302,66 @@ export function groundFromContours(elements, contours) {
   };
 }
 
+/** 점 → 요소열 최근접 투영(폐형): { sMm, latMm } — 직선=파라미터 클램프·호=각도 클램프.
+ *  Wave 2(측량점 인입): 지반선 파생의 유일한 투영 함수(재구현 금지). */
+export function closestChainage(elements, P) {
+  let best = null;
+  for (const el of elements) {
+    if (el.type === 'line') {
+      const ux = (el.p1[0] - el.p0[0]) / el.len, uy = (el.p1[1] - el.p0[1]) / el.len;
+      const t = Math.max(0, Math.min(el.len, (P[0] - el.p0[0]) * ux + (P[1] - el.p0[1]) * uy));
+      const qx = el.p0[0] + ux * t, qy = el.p0[1] + uy * t;
+      const lat = Math.hypot(P[0] - qx, P[1] - qy);
+      if (!best || lat < best.latMm) best = { sMm: el.ch0 + t, latMm: lat };
+    } else {
+      const ang = Math.atan2(P[1] - el.c[1], P[0] - el.c[0]);
+      const sweep = Math.abs(el.a1 - el.a0);
+      const norm = (a) => { let v = a % (2 * Math.PI); if (v < 0) v += 2 * Math.PI; return v; };
+      const rel = el.ccw ? norm(ang - el.a0) : norm(el.a0 - ang);
+      // 스윕 밖 각도는 가까운 끝단으로 클램프(각거리 비교)
+      const relC = rel <= sweep ? rel : (rel - sweep < 2 * Math.PI - rel ? sweep : 0);
+      const a = el.ccw ? el.a0 + relC : el.a0 - relC;
+      const qx = el.c[0] + el.R * Math.cos(a), qy = el.c[1] + el.R * Math.sin(a);
+      const lat = Math.hypot(P[0] - qx, P[1] - qy);
+      if (!best || lat < best.latMm) best = { sMm: el.ch0 + relC * el.R, latMm: lat };
+    }
+  }
+  return best;
+}
+
+/**
+ * 측량점 → 지반선 파생(Wave 2 — 실측 성과 인입, contours 파생과 동일 정직 규약):
+ *   점을 선형에 투영(closestChainage), 측방 corridor 밖=제외(집계 보고),
+ *   근접 측점 표고 모순=거부·<2점=미생성·유효구간 밖 외삽 없음.
+ * @param points [{x,y,elevMm}] 로컬 mm
+ * @returns { ground|null, errors, note, used, excluded }
+ */
+export function groundFromSurvey(elements, points, { corridorMm = 6000 } = {}) {
+  const pts = [];
+  let excluded = 0;
+  for (const p of points ?? []) {
+    if (![p?.x, p?.y, p?.elevMm].every((v) => Number.isFinite(Number(v)))) { excluded++; continue; }
+    const pr = closestChainage(elements, [Number(p.x), Number(p.y)]);
+    if (!pr || pr.latMm > corridorMm) { excluded++; continue; }
+    pts.push({ staMm: pr.sMm, elevMm: Number(p.elevMm) });
+  }
+  pts.sort((a, b) => a.staMm - b.staMm);
+  const errors = [];
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].staMm - pts[i - 1].staMm <= 500 && Math.abs(pts[i].elevMm - pts[i - 1].elevMm) > 100) {
+      errors.push(`측량점 모순: STA ${(pts[i].staMm / 1000).toFixed(1)}m 부근 표고 ${(pts[i - 1].elevMm / 1000).toFixed(2)} vs ${(pts[i].elevMm / 1000).toFixed(2)} m — 평균하지 않음(정직 거부)`);
+    }
+  }
+  if (errors.length) return { ground: null, errors, note: null, used: 0, excluded };
+  if (pts.length < 2) return { ground: null, errors: [], note: `측량점 유효 ${pts.length}점(<2) — 지반선 미생성(코리도 ${Math.round(corridorMm / 1000)}m 밖 제외 ${excluded}점)`, used: pts.length, excluded };
+  const ground = [];
+  for (const q of pts) { const l = ground[ground.length - 1]; if (l && q.staMm - l.staMm <= 500) continue; ground.push(q); }
+  return {
+    ground, errors: [], used: ground.length, excluded,
+    note: `지반선=측량점 ${ground.length}점 선형 투영·보간(코리도 ${Math.round(corridorMm / 1000)}m 밖 제외 ${excluded}점) · 유효구간 STA ${(ground[0].staMm / 1000).toFixed(0)}~${(ground[ground.length - 1].staMm / 1000).toFixed(0)}m 밖 외삽 없음`,
+  };
+}
+
 /**
  * 요소열 → 현(chord) 폴리라인 (§1-1 3D 형상용). 새그 공차 기반 분할각
  * θc = 2·acos(1−SAG/R), 세그먼트당 상한 CHORDS_PER_ARC_MAX(초과 시 SAG 상향+정직 고지).
