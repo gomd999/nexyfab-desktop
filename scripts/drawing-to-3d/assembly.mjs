@@ -70,6 +70,14 @@ function rotatePoint([x, y, z], rx, ry, rz) {
  * export: package.mjs(2D GA)·dxf 등 전 소비자가 이 단일 구현을 쓴다 — 회전 무시 사본이
  * GA 외형을 부풀리던 실버그를 정합 게이트가 검출(260717)한 뒤 일원화.
  */
+/**
+ * 상세 단계 필터(260719 — 1차 간단→2차 디테일): 부품 detail(기본 1)이 level 이하만.
+ * 1차=골격(케이싱·구조), 2차=하드웨어(볼트·너트·블레이드·내통 등). 형상 무변경 — 부분집합.
+ */
+export function assemblyAtLevel(asm, level = 1) {
+  return { ...asm, parts: (asm.parts ?? []).filter((p) => (p.detail ?? 1) <= level) };
+}
+
 export function placedAabb(part) {
   const a = partAabb({ type: part.type, ...part.params });
   const { tx = 0, ty = 0, tz = 0, rx = 0, ry = 0, rz = 0 } = part.at ?? {};
@@ -195,7 +203,7 @@ export function assemblyToComposeIntent(asm) {
     };
     const F = (kind, extra, lx = 0, ly = 0, lz = 0, op = 'add') => {
       const [wx, wy, wz] = rotLocal(lx, ly, lz);
-      return { kind, ...extra, op, _col: col, _pid: pidx, at: { translate: [wx + tx, wy + ty, wz + tz], ...(rot ? { rotate: rot } : {}) } };
+      return { kind, ...extra, op, _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), at: { translate: [wx + tx, wy + ty, wz + tz], ...(rot ? { rotate: rot } : {}) } };
     };
     switch (part.type) {
       case 'box': feats.push(F('box', { size: [p.width, p.depth, p.height] })); break;

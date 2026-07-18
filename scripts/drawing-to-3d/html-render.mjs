@@ -137,7 +137,10 @@ export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle =
     features = spec.intent.features; name = spec.intent.name ?? 'composite';
   } else throw new Error('renderColoredHtml: spec.assembly 또는 spec.intent 필요');
 
-  const groups = [...new Set(features.map((f) => f._col || '#9aa7b5'))];
+  // 계통 그룹핑(260719): 부품 system 라벨 우선 — 같은 색이라도 계통이 다르면 별도 토글.
+  // system 미지정 피처는 기존 색 그룹 유지(하위호환).
+  const gkey = (f) => f._sys || f._col || '#9aa7b5';
+  const groups = [...new Set(features.map(gkey))];
   const meshes = [];
   // 바이너리 STL 병합(부품별 렌더 결과를 한 색 그룹 메시로)
   const mergeStls = (stls) => {
@@ -149,8 +152,10 @@ export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle =
     for (const s of stls) { const n = cnt(s); out.set(s.subarray(84, 84 + n * 50), o); o += n * 50; }
     return out;
   };
-  for (const col of groups) {
-    const fl = features.filter((f) => (f._col || '#9aa7b5') === col);
+  for (const key of groups) {
+    const fl = features.filter((f) => gkey(f) === key);
+    const col = fl.find((f) => f._col)?._col ?? '#9aa7b5';
+    const label = fl[0]?._sys ?? null;
     try {
       let stl;
       const pids = [...new Set(fl.map((f) => f._pid))];
@@ -167,7 +172,7 @@ export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle =
       } else {
         stl = await renderStl(emitComposite({ name, features: fl }));
       }
-      meshes.push({ col, b64: bytesToBase64(stl) });
+      meshes.push({ col, b64: bytesToBase64(stl), label });
     } catch { /* 빈/실패 그룹 skip */ }
   }
   if (!meshes.length) throw new Error('renderColoredHtml: 렌더된 메시 없음');
@@ -175,7 +180,7 @@ export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle =
   // 뷰 전용 명도 보정(Phase1-③): 짙은 구조색이 ACES+PBR에서 검게 뭉개짐 — 3D 표시만 밝게,
   // 범례·도면 계통색 의미는 불변(SERVICE_COL 원본 유지).
   const viewCol = (c) => ({ '#3f4756': '#5a6478', '#5b6472': '#727c8c', '#59606b': '#6e7683' }[c] ?? c);
-  const mj = meshes.map((m) => `{b64:"${m.b64}",col:0x${viewCol(m.col).slice(1)},metal:${metal.has(m.col) ? 0.85 : 0.3},rough:${metal.has(m.col) ? 0.32 : 0.42},label:${JSON.stringify((colorLabels && colorLabels[m.col]) || COLOR_LABEL[m.col] || '부품')}}`).join(',');
+  const mj = meshes.map((m) => `{b64:"${m.b64}",col:0x${viewCol(m.col).slice(1)},metal:${metal.has(m.col) ? 0.85 : 0.3},rough:${metal.has(m.col) ? 0.32 : 0.42},label:${JSON.stringify(m.label || (colorLabels && colorLabels[m.col]) || COLOR_LABEL[m.col] || '부품')}}`).join(',');
   // 조정 패널(2026-07-16 사용자 요청): 계통 표시 토글·계통 분해·단면(3축)·엣지·뷰 프리셋·자동회전·치수
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>html,body{margin:0;height:100%;overflow:hidden;background:#eef1f4;font-family:'Segoe UI',sans-serif}

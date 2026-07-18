@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildAssembly, assemblyToComposeIntent } from './assembly.mjs';
+import { buildAssembly, assemblyToComposeIntent, assemblyAtLevel } from './assembly.mjs';
 
 /** 보어 내포 폐형(260718t) — 케이싱(tube)×로터/샤프트 동축 내포는 간섭이 아니다. */
 describe('보어 내포 폐형 — 동축 회전체 in 중공 회전체', () => {
@@ -71,6 +71,18 @@ describe('보어 내포 폐형 — 동축 회전체 in 중공 회전체', () => 
       { id: 'ring', type: 'mesh', params: mk(150, 200), at: { tx: 0, ty: 0, tz: 0 }, role: 'mount', material: 'steel' },
     ]);
     expect(r.interferences).toEqual([]);
+  });
+
+  it('계통 태그(_sys)·상세 단계(assemblyAtLevel) — 1차=골격 부분집합', () => {
+    const parts = [
+      { id: 'a', type: 'box', params: { width: 100, depth: 100, height: 100 }, at: { tx: 0, ty: 0, tz: 0 }, system: '시험대' },
+      { id: 'b', type: 'hex_bolt', params: { threadDia: 16, length: 60 }, at: { tx: 300, ty: 0, tz: 0 }, system: '체결', detail: 2 },
+    ];
+    const draft = assemblyAtLevel({ name: 't', parts }, 1) as { parts: Array<{ id: string }> };
+    expect(draft.parts.map((p) => p.id)).toEqual(['a']);
+    const intent = assemblyToComposeIntent({ parts }) as { features: Array<{ _sys?: string }> };
+    expect(intent.features[0]._sys).toBe('시험대');
+    expect(intent.features.some((f) => f._sys === '체결')).toBe(true);
   });
 
   it('revolve 실방출 — composeIntent 에 revolve 피처(실린더 프록시 아님)', () => {
