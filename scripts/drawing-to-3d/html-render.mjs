@@ -114,7 +114,10 @@ export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle =
   }
   if (!meshes.length) throw new Error('renderColoredHtml: 렌더된 메시 없음');
   const metal = new Set(['#3f4756', '#5b6472', '#59606b', '#9aa7b5', '#8b98a6', '#78838f', '#8a5a2b']);
-  const mj = meshes.map((m) => `{b64:"${m.b64}",col:0x${m.col.slice(1)},metal:${metal.has(m.col) ? 0.9 : 0.28},rough:${metal.has(m.col) ? 0.35 : 0.45},label:${JSON.stringify((colorLabels && colorLabels[m.col]) || COLOR_LABEL[m.col] || '부품')}}`).join(',');
+  // 뷰 전용 명도 보정(Phase1-③): 짙은 구조색이 ACES+PBR에서 검게 뭉개짐 — 3D 표시만 밝게,
+  // 범례·도면 계통색 의미는 불변(SERVICE_COL 원본 유지).
+  const viewCol = (c) => ({ '#3f4756': '#5a6478', '#5b6472': '#727c8c', '#59606b': '#6e7683' }[c] ?? c);
+  const mj = meshes.map((m) => `{b64:"${m.b64}",col:0x${viewCol(m.col).slice(1)},metal:${metal.has(m.col) ? 0.85 : 0.3},rough:${metal.has(m.col) ? 0.32 : 0.42},label:${JSON.stringify((colorLabels && colorLabels[m.col]) || COLOR_LABEL[m.col] || '부품')}}`).join(',');
   // 조정 패널(2026-07-16 사용자 요청): 계통 표시 토글·계통 분해·단면(3축)·엣지·뷰 프리셋·자동회전·치수
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>html,body{margin:0;height:100%;overflow:hidden;background:#eef1f4;font-family:'Segoe UI',sans-serif}
