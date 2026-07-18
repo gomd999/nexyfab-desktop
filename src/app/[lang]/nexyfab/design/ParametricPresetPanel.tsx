@@ -160,6 +160,42 @@ export default function ParametricPresetPanel({
     const f = e.target.files?.[0];
     e.target.value = '';
     if (!f) return;
+    // DWG 씨앗(260718): LibreDWG WASM 서버 변환 → DXF 와 동일 씨앗 플로우(사람 검증 전제)
+    if (/\.dwg$/i.test(f.name)) {
+      if (f.size > 60_000_000) { setDrawErr(ko ? 'DWG 60MB 초과' : 'DWG over 60MB'); return; }
+      void (async () => {
+        setDrawBusy(true); setDrawErr(null); setDrawRes(null);
+        try {
+          const buf = new Uint8Array(await f.arrayBuffer());
+          let bin = '';
+          for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+          const r = await fetch('/api/nexyfab/drawing/dwg-convert/', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dwgBase64: btoa(bin) }),
+          });
+          const j = (await r.json()) as { ok?: boolean; seed?: { measurements: number[]; circles: Array<{ r: number }>; extents: { w: number; h: number } | null }; error?: string; mesh3dLikely?: boolean };
+          if (!j.ok || !j.seed) {
+            setDrawErr(j.mesh3dLikely
+              ? (ko ? '3D 메시 DWG 입니다 — 어셈블리 프리셋의 "실물 가져오기"로 업로드하세요(부품 AABB 임포트).' : '3D mesh DWG — upload via assembly panel "import real model".')
+              : (j.error ?? (ko ? 'DWG 파싱 실패' : 'DWG parse failed')));
+            return;
+          }
+          const sd = j.seed;
+          const parts: string[] = [];
+          if (sd.extents) parts.push(ko ? `전체 약 ${sd.extents.w}×${sd.extents.h}mm` : `overall ~${sd.extents.w}x${sd.extents.h}mm`);
+          if (sd.measurements.length) parts.push((ko ? '치수값 ' : 'dims ') + sd.measurements.slice(0, 12).join(', '));
+          if (sd.circles.length) parts.push((ko ? '원 Ø' : 'holes Ø') + [...new Set(sd.circles.map((c) => +(c.r * 2).toFixed(2)))].slice(0, 8).join(', Ø') + ` ×${sd.circles.length}`);
+          const seedText = (ko ? 'DWG 씨앗(LibreDWG 변환·사람 검증 필요): ' : 'DWG seed (verify): ') + parts.join(' · ') + (ko ? ' — 이 치수로 [부품 설명]을 설계' : ' — design [part] with these dims');
+          window.dispatchEvent(new CustomEvent('nf-dxf-seed', { detail: seedText }));
+          setMsg(ko ? 'DWG를 변환해 씨앗을 프롬프트에 넣었어요 — 부품 설명을 붙여 생성하세요(자동 생성 아님).' : 'DWG converted — seed prefilled, add a part description.');
+        } catch (err) {
+          setDrawErr(err instanceof Error ? err.message : String(err));
+        } finally {
+          setDrawBusy(false);
+        }
+      })();
+      return;
+    }
     // DXF 씨앗(입구 A Phase 2, §9): 치수·원을 결정론 파싱해 프롬프트 프리필(사람 검증 전제)
     if (/\.dxf$/i.test(f.name)) {
       const tr = new FileReader();
@@ -258,7 +294,7 @@ export default function ParametricPresetPanel({
             {ko ? '카드 클릭=즉시 생성 · AI 없이 항상 유효' : 'click = generate · no AI, always valid'}
           </span>
         </div>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,.dxf" onChange={onPickFile} style={{ display: 'none' }} />
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,.dxf,.dwg" onChange={onPickFile} style={{ display: 'none' }} />
         {/* §3 역할 분리 — 도면=치수의 진실 · 사진=형태 힌트(치수 미사용) */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
           <button type="button" onClick={() => { modeRef.current = 'drawing'; fileRef.current?.click(); }} disabled={drawBusy}

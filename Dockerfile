@@ -17,7 +17,7 @@ RUN npm install --legacy-peer-deps --no-audit --no-fund
 # Cache-bust: buildkit occasionally reuses a stale `COPY . .` layer on Railway
 # (2026-07-12: shipped old scripts/drawing-to-3d despite changed files). Bump this
 # value to force the copy + build to re-run from fresh source.
-ARG CACHEBUST=20260718-95
+ARG CACHEBUST=20260718-96
 RUN echo "cachebust ${CACHEBUST}"
 COPY . .
 
@@ -89,6 +89,8 @@ COPY --from=builder /app/scripts/engineering-core ./scripts/engineering-core
 # (computed from package.json deps: replicad→flatbush/flatqueue/opentype.js/…).
 # The OCCT wasm itself is served from public/replicad_single.wasm (to-step wasmPath).
 COPY --from=builder /app/node_modules/replicad ./node_modules/replicad
+# DWG 임포트(LibreDWG WASM) — webpackIgnore 동적 import 라 tracer 가 못 본다
+COPY --from=builder /app/node_modules/@mlightcad ./node_modules/@mlightcad
 COPY --from=builder /app/node_modules/replicad-opencascadejs ./node_modules/replicad-opencascadejs
 COPY --from=builder /app/node_modules/flatbush ./node_modules/flatbush
 COPY --from=builder /app/node_modules/flatqueue ./node_modules/flatqueue

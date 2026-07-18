@@ -14,11 +14,11 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 import { stepToNexyfabAssembly } from '@/lib/brep-bridge/stepToNexyfabAssembly';
 import { igesToNexyfabAssembly, stlToNexyfabAssembly } from '@/lib/brep-bridge/meshIgesImport';
 import { ifcToNexyfabAssembly } from '@/lib/brep-bridge/ifcImport';
+import { dwgToNexyfabAssembly } from '@/lib/brep-bridge/dwgImport';
 
 /** 독점 포맷 안내(임포트 불가 시 정직 응답) — 각 툴의 개방 포맷 내보내기 경로. */
 const CONVERT_GUIDE: Record<string, string> = {
   skp: 'SketchUp: 파일→내보내기→3D 모델→STL 또는 (Pro) IFC/DWG — STL 업로드 지원',
-  dwg: 'AutoCAD: SAVEAS→DXF(수치지형도 임포트) 또는 3D 모델은 EXPORT→STEP(ACIS 변환기)',
   f3d: 'Fusion 360: 파일→내보내기→STEP(.step) — STEP 업로드 지원',
   sldprt: 'SolidWorks: 파일→다른 이름으로 저장→STEP AP214 — STEP 업로드 지원',
   sldasm: 'SolidWorks: 파일→다른 이름으로 저장→STEP AP214(어셈블리 유지) — STEP 업로드 지원',
@@ -46,7 +46,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const name = typeof body.name === 'string' && body.name ? body.name.slice(0, 60) : `${fmt.toUpperCase()} import`;
   const matOpt = typeof body.material === 'string' && body.material ? { material: body.material } : {};
   let bridged;
-  if (fmt === 'stl') {
+  if (fmt === 'dwg') {
+    // 3D 메시 DWG(Revit 계열 익스포트) — LibreDWG WASM 파싱, 부품=폴리페이스 AABB box.
+    // 2D 도면 DWG 는 /drawing/dwg-convert(DXF+씨앗) 경로가 담당.
+    const b64 = typeof body.stlBase64 === 'string' ? body.stlBase64 : '';
+    if (!b64) return NextResponse.json({ ok: false, error: 'DWG 바이너리(stlBase64 필드, base64)가 필요합니다.' }, { status: 400 });
+    const buf = Buffer.from(b64, 'base64');
+    if (buf.length > 60_000_000) return NextResponse.json({ ok: false, error: 'DWG 60MB 초과' }, { status: 400 });
+    bridged = await dwgToNexyfabAssembly(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength), { name });
+  } else if (fmt === 'stl') {
     const buf = typeof body.stlBase64 === 'string' && body.stlBase64
       ? Buffer.from(body.stlBase64, 'base64')
       : Buffer.from(body.step ?? '', 'latin1');
