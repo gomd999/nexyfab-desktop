@@ -52,7 +52,7 @@ type StructuralResult = {
   warnings?: string[];
 };
 type CableRow = { from?: unknown; to?: unknown; type?: unknown; cores?: unknown; mm2?: unknown; lengthM?: unknown; note?: unknown };
-type Msg = { role: 'user' | 'assistant'; content: string; calc?: CalcResult; cad?: CadResult; wiring?: CableRow[]; image?: string; calcId?: string; calcInput?: Record<string, unknown> };
+type Msg = { role: 'user' | 'assistant'; content: string; calc?: CalcResult; cad?: CadResult; wiring?: CableRow[]; image?: string; calcId?: string; calcInput?: Record<string, unknown>; genImage?: string; genSrc?: string; genFromImage?: boolean };
 type Attached = { dataUrl: string; base64: string; mime: string; name: string };
 // 챗 스레드 (좌측 사이드바 — 게스트 localStorage·회원 서버 동기화)
 type Thread = { id: string; title: string; domain: Domain; at: number; updated: number; pinned?: boolean; badge?: string | null; aiTitled?: boolean; msgs: Msg[] };
@@ -86,7 +86,7 @@ function loadThreads(): Thread[] {
 }
 function saveThreadsLocal(list: Thread[]) {
   try {
-    const trimmed = list.slice(0, 50).map((t2) => ({ ...t2, msgs: t2.msgs.slice(-60).map((m) => (m.image ? { ...m, image: undefined, content: m.content || '📎' } : m)) }));
+    const trimmed = list.slice(0, 50).map((t2) => ({ ...t2, msgs: t2.msgs.slice(-60).map((m) => (m.image || m.genImage ? { ...m, image: undefined, genImage: undefined, content: m.content || '📎' } : m)) }));
     localStorage.setItem(THREADS_KEY, JSON.stringify(trimmed));
     try { window.dispatchEvent(new Event('nf-threads-updated')); } catch { /* 사이드바 같은 탭 갱신 */ }
   } catch { /* quota — skip */ }
@@ -352,6 +352,7 @@ const DICT: Record<Lang, {
   clashWarn: string; fuFixClash: string;
   threadLimit: string; proCta: string;
   cadContacts: string; photoHint: string; attachDrawing: string; attachPhoto: string;
+  genImg: string; genImgMaking: string; genImgNote: string; genImgUse: string; genImgLimit: string;
   stageAnalyze: string; stageCalc: string; stageCad: string;
   fuText: string[]; fuCalc: string[]; fuCad: string[];
 }> = {
@@ -371,6 +372,7 @@ const DICT: Record<Lang, {
     stageAnalyze: '요청 분석 중…', stageCalc: '계산 실행 중…', stageCad: '3D 모델 생성 중…',
     fuText: ['더 자세히 설명해줘', '핵심만 요약해줘', '관련 기준(KDS 등)은?'], fuCalc: ['이 결과의 근거를 설명해줘', '어떤 조건이면 부적합이 되나?'], fuCad: ['이 설계의 제조 리스크는?', '적합한 재질을 추천해줘'],
     clashWarn: '부품이 겹칩니다 — 아직 완성체가 아닙니다. 아래 칩으로 교정을 요청하거나 치수를 알려주세요.', fuFixClash: '간섭(부품 겹침)을 해결하도록 배치를 수정해줘', threadLimit: '이 대화는 무료 한도({n}회)에 도달했어요 — 새 대화로 계속하거나 Pro에서 무제한으로 이어가세요.', proCta: 'Pro 보기', cadContacts: '접촉 {n}', photoHint: '📷 사진은 형태 힌트로만 씁니다(치수는 읽지 않아요). {label}(으)로 보입니다. 핵심 치수를 알려주시면 생성할게요.', attachDrawing: '도면', attachPhoto: '사진',
+    genImg: '시안', genImgMaking: '시안 이미지를 생성하는 중…(흰 배경 규격)', genImgNote: 'AI 시안(흰 배경) — 치수·형상 근거가 아니에요. 마음에 들면 아래 버튼으로 도안→3D로 진행하세요. (오늘 남은 생성 {n}회)', genImgUse: '이 시안으로 도안→3D', genImgLimit: '오늘 이미지 생성 한도({n}회)를 모두 썼어요 — 내일 다시 오시거나 Pro(50회/일)로 올려보세요.',
     calcRunning: '검토 실행 중…', calcPass: '적합', calcFail: '부적합', calcRefs: '근거',
     cadGenerating: '3D 모델 생성 중…', cadNoPreview: '이 형상의 3D 미리보기는 배포 환경에서 제공됩니다. 아래 SCAD로 확인하세요.', cadDownload: 'SCAD 다운로드',
     cadSpecTitle: '이 사양으로 정밀 3D를 생성할까요?', cadConfirm: '확인 · 정밀 3D 생성', cadBuilding: '정밀 형상(STEP) 생성 중…', cadStepDownload: 'STEP 다운로드', cadGate: '결정론 게이트',
@@ -395,6 +397,7 @@ const DICT: Record<Lang, {
     stageAnalyze: 'Analyzing request…', stageCalc: 'Running calculation…', stageCad: 'Generating 3D model…',
     fuText: ['Explain in more detail', 'Summarize the key points', 'Which codes/standards apply?'], fuCalc: ['Explain the basis of this result', 'Under what conditions would it fail?'], fuCad: ['What are the manufacturing risks?', 'Recommend a suitable material'],
     clashWarn: 'Parts overlap — this is not a finished assembly yet. Ask for a fix below or give exact dims.', fuFixClash: 'Fix the interferences by adjusting part placement', threadLimit: 'This chat reached the free limit ({n} turns) — start a new chat or go unlimited with Pro.', proCta: 'See Pro', cadContacts: '{n} contacts', photoHint: '📷 Photos are shape hints only (no dims read). Looks like {label}. Give key dims and I will generate.', attachDrawing: 'Drawing', attachPhoto: 'Photo',
+    genImg: 'Concept', genImgMaking: 'Generating concept image… (white-background spec)', genImgNote: 'AI concept (white background) — not a source of dims/geometry. Like it? Continue to drawing→3D below. ({n} left today)', genImgUse: 'Drawing→3D from this concept', genImgLimit: 'Daily image limit ({n}) reached — come back tomorrow or go Pro (50/day).',
     calcRunning: 'Running check…', calcPass: 'PASS', calcFail: 'FAIL', calcRefs: 'Refs',
     cadGenerating: 'Generating 3D model…', cadNoPreview: 'A 3D preview of this shape is available in the deployed environment — see the SCAD below.', cadDownload: 'Download SCAD',
     cadSpecTitle: 'Generate the precise 3D from this spec?', cadConfirm: 'Confirm · build 3D', cadBuilding: 'Building precise geometry (STEP)…', cadStepDownload: 'Download STEP', cadGate: 'Deterministic gate',
@@ -419,6 +422,7 @@ const DICT: Record<Lang, {
     stageAnalyze: 'リクエスト分析中…', stageCalc: '計算実行中…', stageCad: '3Dモデル生成中…',
     fuText: ['もっと詳しく説明して', '要点をまとめて', '関連する基準は?'], fuCalc: ['この結果の根拠を説明して', 'どんな条件で不適合になる?'], fuCad: ['この設計の製造リスクは?', '適した材質を提案して'],
     clashWarn: '部品が干渉しています — まだ完成形ではありません。下のチップで修正を依頼するか寸法を指定してください。', fuFixClash: '干渉を解消するよう配置を修正して', threadLimit: 'この会話は無料上限({n}回)に達しました — 新しいチャットで続けるか、Proで無制限に。', proCta: 'Proを見る', cadContacts: '接触 {n}', photoHint: '📷 写真は形状ヒントのみ(寸法は読みません)。{label}のようです。主要寸法を教えてください。', attachDrawing: '図面', attachPhoto: '写真',
+    genImg: '試案', genImgMaking: '試案画像を生成中…（白背景規格）', genImgNote: 'AI試案（白背景）— 寸法・形状の根拠ではありません。気に入ったら下のボタンで図面→3Dへ。（本日残り{n}回）', genImgUse: 'この試案で図面→3D', genImgLimit: '本日の画像生成上限({n}回)に達しました — 明日再度、またはPro(50回/日)へ。',
     calcRunning: '検討を実行中…', calcPass: '適合', calcFail: '不適合', calcRefs: '根拠',
     cadGenerating: '3Dモデル生成中…', cadNoPreview: 'この形状の3Dプレビューは本番環境で提供されます。下のSCADをご確認ください。', cadDownload: 'SCADをダウンロード',
     cadSpecTitle: 'この仕様で精密3Dを生成しますか？', cadConfirm: '確認 · 精密3D生成', cadBuilding: '精密形状(STEP)を生成中…', cadStepDownload: 'STEPをダウンロード', cadGate: '決定論ゲート',
@@ -443,6 +447,7 @@ const DICT: Record<Lang, {
     stageAnalyze: '正在分析请求…', stageCalc: '正在执行计算…', stageCad: '正在生成3D模型…',
     fuText: ['再详细解释一下', '总结要点', '适用哪些规范/标准?'], fuCalc: ['解释这个结果的依据', '什么条件下会不合格?'], fuCad: ['这个设计的制造风险是什么?', '推荐合适的材料'],
     clashWarn: '部件重叠 — 尚未是完整装配体。请用下方按钮要求修正或提供准确尺寸。', fuFixClash: '调整部件位置以消除干涉', threadLimit: '本对话已达免费上限({n}次) — 新建对话继续，或升级 Pro 无限使用。', proCta: '查看 Pro', cadContacts: '接触 {n}', photoHint: '📷 照片仅用作形状提示(不读取尺寸)。看起来是{label}。请提供关键尺寸即可生成。', attachDrawing: '图纸', attachPhoto: '照片',
+    genImg: '概念图', genImgMaking: '正在生成概念图…（白色背景规范）', genImgNote: 'AI概念图（白底）— 不作为尺寸·形状依据。满意的话用下方按钮进入图纸→3D。（今日剩余{n}次）', genImgUse: '用此概念图转图纸→3D', genImgLimit: '今日图片生成额度({n}次)已用完 — 明天再来，或升级Pro(50次/日)。',
     calcRunning: '正在计算…', calcPass: '合格', calcFail: '不合格', calcRefs: '依据',
     cadGenerating: '正在生成3D模型…', cadNoPreview: '该形状的3D预览在部署环境中提供，请查看下方SCAD。', cadDownload: '下载SCAD',
     cadSpecTitle: '按此规格生成精确3D？', cadConfirm: '确认 · 生成3D', cadBuilding: '正在生成精确几何(STEP)…', cadStepDownload: '下载STEP', cadGate: '确定性门控',
@@ -467,6 +472,7 @@ const DICT: Record<Lang, {
     stageAnalyze: 'Analizando solicitud…', stageCalc: 'Ejecutando cálculo…', stageCad: 'Generando modelo 3D…',
     fuText: ['Explica con más detalle', 'Resume los puntos clave', '¿Qué normas aplican?'], fuCalc: ['Explica la base de este resultado', '¿En qué condiciones fallaría?'], fuCad: ['¿Riesgos de fabricación?', 'Recomienda un material adecuado'],
     clashWarn: 'Las piezas se superponen — aún no es un conjunto terminado. Pide una corrección abajo o da cotas exactas.', fuFixClash: 'Corrige las interferencias ajustando la posición de las piezas', threadLimit: 'Este chat alcanzó el límite gratis ({n} turnos) — abre un chat nuevo o pásate a Pro sin límites.', proCta: 'Ver Pro', cadContacts: '{n} contactos', photoHint: '📷 Las fotos son solo pista de forma (sin cotas). Parece {label}. Dame las cotas clave y lo genero.', attachDrawing: 'Plano', attachPhoto: 'Foto',
+    genImg: 'Concepto', genImgMaking: 'Generando imagen de concepto… (fondo blanco)', genImgNote: 'Concepto IA (fondo blanco) — no es base de cotas/geometría. ¿Te gusta? Continúa a plano→3D abajo. (Quedan {n} hoy)', genImgUse: 'Plano→3D con este concepto', genImgLimit: 'Límite diario de imágenes ({n}) alcanzado — vuelve mañana o pasa a Pro (50/día).',
     calcRunning: 'Calculando…', calcPass: 'CUMPLE', calcFail: 'NO CUMPLE', calcRefs: 'Refs',
     cadGenerating: 'Generando modelo 3D…', cadNoPreview: 'La vista 3D de esta forma está disponible en el entorno desplegado — consulta el SCAD abajo.', cadDownload: 'Descargar SCAD',
     cadSpecTitle: '¿Generar el 3D preciso con esta especificación?', cadConfirm: 'Confirmar · generar 3D', cadBuilding: 'Generando geometría precisa (STEP)…', cadStepDownload: 'Descargar STEP', cadGate: 'Compuerta determinista',
@@ -491,6 +497,7 @@ const DICT: Record<Lang, {
     stageAnalyze: 'جارٍ تحليل الطلب…', stageCalc: 'جارٍ تنفيذ الحساب…', stageCad: 'جارٍ إنشاء النموذج ثلاثي الأبعاد…',
     fuText: ['اشرح بمزيد من التفصيل', 'لخّص النقاط الأساسية', 'ما المعايير ذات الصلة؟'], fuCalc: ['اشرح أساس هذه النتيجة', 'في أي ظروف تصبح غير مطابقة؟'], fuCad: ['ما مخاطر التصنيع لهذا التصميم؟', 'اقترح مادة مناسبة'],
     clashWarn: 'الأجزاء متداخلة — ليست مجموعة مكتملة بعد. اطلب تصحيحًا أدناه أو حدّد الأبعاد.', fuFixClash: 'عالج التداخل بتعديل مواضع الأجزاء', threadLimit: 'وصلت هذه المحادثة إلى الحد المجاني ({n} رسائل) — ابدأ محادثة جديدة أو انتقل إلى Pro بلا حدود.', proCta: 'عرض Pro', cadContacts: 'تماس {n}', photoHint: '📷 الصور تلميح شكلي فقط (بدون أبعاد). يبدو {label}. أعطني الأبعاد الرئيسية للإنشاء.', attachDrawing: 'مخطط', attachPhoto: 'صورة',
+    genImg: 'تصور', genImgMaking: 'جارٍ إنشاء صورة التصور… (خلفية بيضاء)', genImgNote: 'تصور بالذكاء الاصطناعي (خلفية بيضاء) — ليس مرجعًا للأبعاد أو الشكل. إن أعجبك تابع إلى مخطط→3D أدناه. (المتبقي اليوم {n})', genImgUse: 'مخطط→3D من هذا التصور', genImgLimit: 'استُنفد حد إنشاء الصور اليومي ({n}) — عد غدًا أو انتقل إلى Pro (50/يوم).',
     calcRunning: 'جارٍ الفحص…', calcPass: 'مطابق', calcFail: 'غير مطابق', calcRefs: 'المراجع',
     cadGenerating: 'جارٍ إنشاء النموذج ثلاثي الأبعاد…', cadNoPreview: 'تتوفر معاينة ثلاثية الأبعاد لهذا الشكل في بيئة النشر — راجع SCAD أدناه.', cadDownload: 'تنزيل SCAD',
     cadSpecTitle: 'هل تُنشئ نموذجًا دقيقًا بهذه المواصفات؟', cadConfirm: 'تأكيد · بناء 3D', cadBuilding: 'جارٍ بناء الشكل الدقيق (STEP)…', cadStepDownload: 'تنزيل STEP', cadGate: 'بوابة حتمية',
@@ -1369,6 +1376,78 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     }
   }, [attached, input, loading, t, domain, lang]);
 
+  // ✨ 시안 이미지 생성 — text→시안→도안→3D · 사진→흰배경 정리→도안→3D (2026-07-18)
+  // 입력 커스텀은 서버(buildGenImagePrompt)가 담당 — 클라는 원문+첨부만 보낸다.
+  const sendGenImage = useCallback(async () => {
+    if (loading || threadLimitReached) return;
+    const text = input.trim();
+    const att = attached;
+    if (!text && !att) return;
+    setError('');
+    setMessages(m => [...m, { role: 'user', content: text || '✨', ...(att ? { image: att.dataUrl } : {}) }, { role: 'assistant', content: t.genImgMaking }]);
+    setInput(''); setAttached(null); setLoading(true);
+    const autoscroll = () => requestAnimationFrame(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); });
+    autoscroll();
+    const setLast = (patch: Partial<Msg>) => setMessages(m => {
+      const copy = m.slice();
+      for (let i = copy.length - 1; i >= 0; i--) { if (copy[i].role === 'assistant') { copy[i] = { ...copy[i], ...patch }; break; } }
+      return copy;
+    });
+    try {
+      const r = await fetch('/api/nexyfab/drawing/genimage/', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ prompt: text, imageBase64: att?.base64, mimeType: att?.mime, domain: STUDIO_DOMAIN[domain] ?? 'mech' }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { ok?: boolean; imageBase64?: string; mime?: string; quota?: { remaining?: number; limit?: number }; code?: string; limit?: number; error?: string };
+      if (!r.ok || !j.ok || !j.imageBase64) {
+        if (j.code === 'IMAGE_QUOTA') setLast({ content: t.genImgLimit.replace('{n}', String(j.limit ?? '')) });
+        else setLast({ content: '⚠️ ' + (j.error ?? t.error) });
+        return;
+      }
+      const dataUrl = `data:${j.mime ?? 'image/png'};base64,${j.imageBase64}`;
+      const remain = typeof j.quota?.remaining === 'number' ? String(j.quota.remaining) : '?';
+      setLast({ content: t.genImgNote.replace('{n}', remain), genImage: dataUrl, genSrc: text, genFromImage: !!att });
+    } catch (e) {
+      setLast({ content: '⚠️ ' + (e instanceof Error ? e.message : t.error) });
+    } finally {
+      setLoading(false); autoscroll();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attached, input, loading, t, domain]);
+
+  // 시안 카드 → 도안→3D 진행: 사진 유래=정리된 시안을 도면 판독(extract, 게이트가 신뢰도 검증),
+  // 텍스트 유래=원문으로 compose(치수는 텍스트가 근거 — 시안 이미지에서 치수를 읽지 않는다, 날조 금지).
+  const proceedFromGen = useCallback(async (m: Msg) => {
+    if (loading || !m.genImage) return;
+    setMessages(prev => [...prev, { role: 'assistant', content: m.genFromImage ? t.imgReading : t.cadGenerating }]);
+    setLoading(true);
+    const autoscroll = () => requestAnimationFrame(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); });
+    autoscroll();
+    const setLast = (patch: Partial<Msg>) => setMessages(prev => {
+      const copy = prev.slice();
+      for (let i = copy.length - 1; i >= 0; i--) { if (copy[i].role === 'assistant') { copy[i] = { ...copy[i], ...patch }; break; } }
+      return copy;
+    });
+    try {
+      if (m.genFromImage) {
+        const base64 = m.genImage.replace(/^data:[^,]+,/, '');
+        const { cad, recognized } = await runExtractPipeline({ dataUrl: m.genImage, base64, mime: 'image/png', name: 'concept.png' });
+        const line = recognized
+          ? `${t.imgRecognized}: **${recognized.label}** · ${t.imgConfidence} ${Math.round(recognized.confidence * 100)}%`
+          : (cad.error ? '' : t.cadSpecTitle);
+        setLast({ content: line, cad });
+      } else {
+        const cad = await runComposePipeline(m.genSrc || '');
+        setLast({ content: cad.error ? '' : t.cadSpecTitle, cad });
+      }
+    } catch (e) {
+      setLast({ content: '', cad: { error: e instanceof Error ? e.message : t.error } });
+    } finally {
+      setLoading(false); autoscroll();
+    }
+   
+  }, [loading, t]);
+
   const FREE_TURNS_PER_THREAD = 3; // 비회원·무료회원 공통(2026-07-16) — Pro 계열 무제한
   const isPaidPlan = plan === 'pro' || plan === 'team' || plan === 'enterprise';
   const userTurns = useMemo(() => messages.filter((m) => m.role === 'user').length, [messages]);
@@ -1492,6 +1571,16 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={m.image} alt="" style={{ maxWidth: 220, maxHeight: 220, objectFit: 'contain', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)', background: '#0b1020' }} />
                   )}
+                  {m.genImage && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: alignEnd ? 'flex-end' : 'flex-start' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={m.genImage} alt="" style={{ maxWidth: 300, maxHeight: 300, objectFit: 'contain', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)', background: '#fff' }} />
+                      <button onClick={() => { void proceedFromGen(m); }} disabled={loading} style={{
+                        padding: '7px 14px', borderRadius: 10, cursor: loading ? 'not-allowed' : 'pointer',
+                        border: `1px solid ${accent}66`, background: `${accent}22`, color: '#e2e8f0', fontSize: 12.5, fontWeight: 700,
+                      }}>▶ {t.genImgUse}</button>
+                    </div>
+                  )}
                   {m.content && (
                     <div style={{
                       maxWidth: '86%', padding: '11px 15px', borderRadius: 14, fontSize: 14, lineHeight: 1.7,
@@ -1608,6 +1697,16 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
                   border: `1px solid ${accent}55`, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', fontSize: 12.5, fontWeight: 600,
                 }}>
                   📐<span style={{ display: started ? 'none' : 'inline' }}>{t.attachDrawing}</span>
+                </button>
+              )}
+              {domain === 'mechanical' && (
+                <button onClick={() => { void sendGenImage(); }} disabled={loading || threadLimitReached || (!input.trim() && !attached)} title={t.genImg} aria-label={t.genImg} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 10,
+                  cursor: loading || threadLimitReached || (!input.trim() && !attached) ? 'not-allowed' : 'pointer',
+                  border: `1px solid ${accent}55`, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', fontSize: 12.5, fontWeight: 600,
+                  opacity: loading || threadLimitReached || (!input.trim() && !attached) ? 0.5 : 1,
+                }}>
+                  ✨<span style={{ display: started ? 'none' : 'inline' }}>{t.genImg}</span>
                 </button>
               )}
               <button onClick={() => { attachModeRef.current = 'photo'; fileRef.current?.click(); }} title={t.attachPhoto} aria-label={t.attachPhoto} style={{
