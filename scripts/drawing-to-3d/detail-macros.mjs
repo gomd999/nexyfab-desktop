@@ -11,6 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { snapPipe, snapFlange10k } from './std-snap.mjs';
 
 const CAL = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'detail-calibration.json'), 'utf8'));
 
@@ -52,12 +53,16 @@ export function casterAssembly({ cx, cy, deckBottomZ, wheelDia = CAL.caster.whee
  */
 export function flangedNozzle({ x, y, z, axis = 'z+', pipeDia, len = null, service = 'feed' }) {
   const f = CAL.flange;
+  // G1 규격 스냅(260718): 관경이 시판 호칭경과 맞으면 KS B 1503 10K 표준치 사용,
+  // 아니면 코퍼스 비례(assumed 명시) 폴백.
+  const ps = snapPipe(pipeDia);
+  const fl = ps.ok ? snapFlange10k(ps.dn) : { ok: false };
   const L = len ?? pipeDia * f.stubLenRatio;
-  const fd = pipeDia * f.odRatio;
-  const ft = Math.max(8, pipeDia * f.thickRatio);
-  const nBolt = pipeDia >= 80 ? 8 : 4;
-  const bd = Math.max(8, pipeDia * f.boltDiaRatio);
-  const pcd = (pipeDia + fd) / 2;
+  const fd = fl.ok ? fl.od : pipeDia * f.odRatio;
+  const ft = fl.ok ? fl.thk : Math.max(8, pipeDia * f.thickRatio);
+  const nBolt = fl.ok ? fl.nBolt : (pipeDia >= 80 ? 8 : 4);
+  const bd = fl.ok ? fl.boltHole - 3 : Math.max(8, pipeDia * f.boltDiaRatio);
+  const pcd = fl.ok ? fl.pcd : (pipeDia + fd) / 2;
   const parts = [];
   const cyl = (id, dia, length, at, role = 'flange') => parts.push({ id: uid(id), type: 'cylinder', params: { diameter: dia, length }, at, role, service, material: 'steel' });
   if (axis === 'z+') {
