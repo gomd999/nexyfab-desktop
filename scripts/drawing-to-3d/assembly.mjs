@@ -319,13 +319,10 @@ export function assemblyToComposeIntent(asm) {
         feats.push(F('box', { size: [p.length, p.tw, p.H - p.tf] }, 0, (p.B - p.tw) / 2, 0));
         feats.push(F('box', { size: [p.length, p.B, p.tf] }, 0, 0, p.H - p.tf));
         break;
-      case 'pipe_reducer': { // 동심 리듀서 — 계단 근사(원뿔대 커널 대신 2단 실린더, 명시)+셸 보어
+      case 'pipe_reducer': { // 동심 리듀서 — 원뿔대 실형상(260719, 계단 근사 폐기: 표시·STEP 정확)
         const t = p.wallThk ?? Math.max(2, p.dia1 * 0.03);
-        const half = p.length / 2;
-        feats.push(F('cylinder', { diameter: p.dia1, height: half }));
-        feats.push(F('cylinder', { diameter: p.dia2, height: half }, 0, 0, half));
-        feats.push(F('cylinder', { diameter: p.dia1 - 2 * t, height: half + 2 }, 0, 0, -1, 'subtract'));
-        feats.push(F('cylinder', { diameter: p.dia2 - 2 * t, height: half + 2 }, 0, 0, half, 'subtract'));
+        feats.push(F('cone', { dia1: p.dia1, dia2: p.dia2, height: p.length }));
+        feats.push(F('cone', { dia1: p.dia1 - 2 * t, dia2: p.dia2 - 2 * t, height: p.length + 2 }, 0, 0, -1, 'subtract'));
         break;
       }
       // 표준부품 확장 2(260718f): 프록시 표시(SCAD 정확·질량 폐형)
@@ -792,7 +789,18 @@ export function buildAssembly(asm) {
   const designOk = support.floating.length === 0
     && (!pipes || (pipes.errors.length === 0 && pipes.obstacleViolations.length === 0 && pipes.crossViolations.length === 0));
 
-  return { ok: true, openscad, parts: boxes.map((b) => ({ id: b.id, aabb: b.box })), gateErrors: [], interferences, contacts: contactsFinal, ...(approxOverlaps ? { approxOverlaps } : {}), welds, weldTotalMm, composeIntent, structural, support, pipes, designOk };
+  // 픽킹 OBB(260719 #3): 회전 부품은 로컬 치수+배치를 동봉 — 클라 프록시가 회전 적용
+  // (AABB 프록시는 회전 부품에서 뚱뚱해져 옆 부품 오픽). 무회전=aabb 만(기존 하위호환).
+  const partsOut = boxes.map((b, i) => {
+    const src = asm.parts.find((q) => (q.id ?? q.type) === b.id) ?? asm.parts[i];
+    const { rx = 0, ry = 0, rz = 0 } = src?.at ?? {};
+    if (!rx && !ry && !rz) return { id: b.id, aabb: b.box };
+    try {
+      const la = partAabb({ type: src.type, ...src.params });
+      return { id: b.id, aabb: b.box, obb: { local: { min: la.min, max: la.max }, at: { tx: src.at?.tx ?? 0, ty: src.at?.ty ?? 0, tz: src.at?.tz ?? 0, rx, ry, rz } } };
+    } catch { return { id: b.id, aabb: b.box }; }
+  });
+  return { ok: true, openscad, parts: partsOut, gateErrors: [], interferences, contacts: contactsFinal, ...(approxOverlaps ? { approxOverlaps } : {}), welds, weldTotalMm, composeIntent, structural, support, pipes, designOk };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('assembly.mjs');

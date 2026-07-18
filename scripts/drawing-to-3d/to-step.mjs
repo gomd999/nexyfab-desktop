@@ -62,6 +62,13 @@ function featSolid(rc, f) {
       const s = rc.drawCircle(f.diameter / 2).sketchOnPlane('XY').extrude(f.height);
       return f.centered ? s.translate([0, 0, -f.height / 2]) : s;
     }
+    case 'cone': { // 원뿔대(260719) — 사다리꼴 프로파일 회전(진짜 원뿔면 B-rep)
+      const r1 = Math.max(0, f.dia1 / 2), r2 = Math.max(0, f.dia2 / 2), h = f.height;
+      const pts = [[0, 0], [Math.max(r1, 1e-6), 0], [Math.max(r2, 1e-6), h], [0, h]];
+      let pen = rc.draw([pts[0][0], pts[0][1]]);
+      for (let i = 1; i < pts.length; i++) pen = pen.lineTo([pts[i][0], pts[i][1]]);
+      return pen.close().sketchOnPlane('XZ').revolve([0, 0, 1]);
+    }
     case 'box': {
       const [w, d, h] = f.size;
       const s = rc.drawRectangle(w, d).sketchOnPlane('XY').extrude(h);

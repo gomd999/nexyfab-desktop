@@ -36,12 +36,16 @@ describe('보어 내포 폐형 — 동축 회전체 in 중공 회전체', () => 
     expect(pairs.some((p) => p.includes('off') && p.includes('case'))).toBe(true);
   });
 
-  it('로컬 오프셋은 부품 회전을 따라 변환 — ry=90 pipe_reducer 2단이 +x 로 진행(월드 z 부유 금지)', () => {
+  it('pipe_reducer=원뿔대 실형상(계단 폐기) + 로컬 오프셋 회전 변환(ry=90 보어 −x 1mm)', () => {
     const intent = assemblyToComposeIntent({
       parts: [{ id: 'r', type: 'pipe_reducer', params: { dia1: 520, dia2: 420, length: 300, wallThk: 10 }, at: { tx: 650, ty: 400, tz: 800, ry: 90 } }],
-    }) as { features: Array<{ op: string; _pid?: number; at: { translate: number[] } }> };
+    }) as { features: Array<{ op: string; kind: string; _pid?: number; at: { translate: number[] } }> };
     const adds = intent.features.filter((f) => f.op !== 'subtract');
-    expect(adds[1].at.translate).toEqual([800, 400, 800]); // 2단=+150 along x(축), z 불변
+    expect(adds.length).toBe(1);
+    expect(adds[0].kind).toBe('cone'); // 진짜 원뿔대 — 표시·STEP 정확
+    const sub = intent.features.find((f) => f.op === 'subtract')!;
+    expect(sub.kind).toBe('cone');
+    expect(sub.at.translate).toEqual([649, 400, 800]); // 보어 lz=-1 → 축(−x) 1mm(회전 변환)
     for (const f of intent.features) expect(f._pid).toBe(0); // 부품 스코프 태그
   });
 

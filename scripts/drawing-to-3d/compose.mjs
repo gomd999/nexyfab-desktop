@@ -104,6 +104,9 @@ export function gateComposite(intent) {
       case 'cylinder': if (!pos(f.diameter) || !pos(f.height)) errs.push(`${tag}: cylinder dims invalid`); break;
       case 'box': if (!Array.isArray(f.size) || !f.size.every(pos)) errs.push(`${tag}: box size invalid`); break;
       case 'sphere': if (!pos(f.diameter)) errs.push(`${tag}: sphere dia invalid`); break;
+      case 'cone': // 원뿔대(260719 — pipe_reducer 실형상: 계단 근사 폐기)
+        if (!pos(f.height) || !(f.dia1 >= 0) || !(f.dia2 >= 0) || (f.dia1 <= 0 && f.dia2 <= 0)) errs.push(`${tag}: cone dia1/dia2/height invalid`);
+        break;
       case 'polyhedron': // 자유곡면(블레이드 로프트 등) — 정점/면 직접(260719, AI 생성 어휘 아님)
         if (!Array.isArray(f.verts) || f.verts.length < 4 || !Array.isArray(f.faces) || f.faces.length < 4) errs.push(`${tag}: polyhedron verts/faces invalid`);
         else if (f.verts.length > 20000) errs.push(`${tag}: polyhedron 정점 > 20k — 표시 예산 초과`);
@@ -125,6 +128,7 @@ function featBody(f) {
     case 'cylinder': return `cylinder(h=${fmt(f.height)}, d=${fmt(f.diameter)}, center=${f.centered ? 'true' : 'false'}, $fn=96);`;
     case 'box': return `cube([${f.size.map(fmt).join(', ')}], center=${f.centered ? 'true' : 'false'});`;
     case 'sphere': return `sphere(d=${fmt(f.diameter)}, $fn=64);`;
+    case 'cone': return `cylinder(h=${fmt(f.height)}, d1=${fmt(f.dia1)}, d2=${fmt(f.dia2)}, $fn=96);`;
     case 'polyhedron': return `polyhedron(points=[${f.verts.map((v) => `[${v.map(fmt).join(',')}]`).join(',')}], faces=[${f.faces.map((q) => `[${q.join(',')}]`).join(',')}], convexity=10);`;
     default: throw new Error(`emit: unknown kind ${f.kind}`);
   }

@@ -52,6 +52,17 @@ interface ComposeErr {
 }
 type ComposeResp = ComposeOk | ComposeErr;
 
+// OpenSCAD rotate([rx,ry,rz]) 순서(Rx→Ry→Rz)로 벡터 회전 — OBB 프록시 로컬 노멀→CAD 월드(#3)
+function rotCadVec(rot: number[], v: number[]): number[] {
+  let [x, y, z] = v;
+  const rad = Math.PI / 180;
+  const [rx, ry, rz] = rot;
+  if (rx) { const c = Math.cos(rx * rad), s = Math.sin(rx * rad); const y2 = y * c - z * s, z2 = y * s + z * c; y = y2; z = z2; }
+  if (ry) { const c = Math.cos(ry * rad), s = Math.sin(ry * rad); const x2 = x * c + z * s, z2 = -x * s + z * c; x = x2; z = z2; }
+  if (rz) { const c = Math.cos(rz * rad), s = Math.sin(rz * rad); const x2 = x * c - y * s, y2 = x * s + y * c; x = x2; y = y2; }
+  return [x, y, z];
+}
+
 interface Bbox {
   x: number;
   y: number;
@@ -197,7 +208,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const [lastAssembly, setLastAssembly] = useState<Record<string, unknown> | null>(null);
   // 🎯 P2 픽킹(260719): 뷰어 부품 클릭=선택 → 프롬프트=그 부품만 수정(edit-part) ·
   // 선택 부품 면 드래그=푸시풀(face-drag, 결정론). 월드 AABB 프록시는 assemble/edit 응답 parts.
-  type PartAabb = { id: string; aabb: { min: number[]; max: number[] } };
+  type PartAabb = { id: string; aabb: { min: number[]; max: number[] }; obb?: { local: { min: number[]; max: number[] }; at: { tx: number; ty: number; tz: number; rx: number; ry: number; rz: number } } };
   const pendingPartsRef = useRef<PartAabb[] | null>(null);
   const [lastPartsAabb, setLastPartsAabb] = useState<PartAabb[] | null>(null);
   const [pickedPart, setPickedPart] = useState<string | null>(null);
@@ -289,6 +300,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       if (box) {
         hl = new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry as THREE.BoxGeometry), new THREE.LineBasicMaterial({ color: 0x3b82f6 }));
         hl.position.copy(box.position);
+        hl.quaternion.copy(box.quaternion); // OBB(#3)
         scene.add(hl);
       }
     };
@@ -312,7 +324,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     let lx = 0;
     let ly = 0;
     let dx0 = 0, dy0 = 0;
-    let df: { id: string; nThree: THREE.Vector3; axis: number; sign: number; dir2: [number, number]; mmPerPx: number; delta: number } | null = null;
+    let df: { id: string; nCad: number[]; axis: number; sign: number; dir2: [number, number]; mmPerPx: number; delta: number } | null = null;
     const onDown = (e: PointerEvent) => {
       dragging = true;
       lx = e.clientX; ly = e.clientY; dx0 = e.clientX; dy0 = e.clientY;
@@ -321,15 +333,18 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       if (!selCur || !pickGroup.children.length) return;
       const hit = castAt(e.clientX, e.clientY);
       if (!hit || String(hit.object.userData.pid) !== selCur || !hit.face) return;
-      const n = hit.face.normal.clone();
-      const axis = Math.abs(n.x) > 0.5 ? 0 : Math.abs(n.y) > 0.5 ? 1 : 2;
-      const sign = [n.x, n.y, n.z][axis] > 0 ? 1 : -1;
+      const nL = hit.face.normal.clone(); // 프록시 로컬(OBB=CAD 로컬)
+      const n = nL.clone().applyQuaternion(hit.object.quaternion); // three 월드(화면 투영)
+      const axis = Math.abs(nL.x) > 0.5 ? 0 : Math.abs(nL.y) > 0.5 ? 1 : 2;
+      const sign = [nL.x, nL.y, nL.z][axis] > 0 ? 1 : -1;
       const s0 = hit.point.clone().project(camera), s1 = hit.point.clone().add(n.clone().multiplyScalar(100)).project(camera);
       const rect = renderer.domElement.getBoundingClientRect();
       const v2: [number, number] = [(s1.x - s0.x) * rect.width / 2, -(s1.y - s0.y) * rect.height / 2];
       const L2 = Math.hypot(v2[0], v2[1]);
       if (L2 < 2) return; // 화면과 수직 — 궤도 유지
-      df = { id: selCur, nThree: n, axis, sign, dir2: [v2[0] / L2, v2[1] / L2], mmPerPx: 100 / L2, delta: 0 };
+      const rotD = hit.object.userData.rot as number[] | null;
+      const nCad = rotD ? rotCadVec(rotD, [nL.x, nL.y, nL.z]) : toCadN(n); // 서버=CAD 월드
+      df = { id: selCur, nCad, axis, sign, dir2: [v2[0] / L2, v2[1] / L2], mmPerPx: 100 / L2, delta: 0 };
     };
     const onMove = (e: PointerEvent) => {
       if (!dragging) return;
@@ -343,7 +358,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             const dims = [bp.width, bp.height, bp.depth];
             hl.scale.setComponent(df.axis, Math.max(0.05, (dims[df.axis] + df.delta) / dims[df.axis]));
             hl.position.copy(box.position);
-            hl.position.setComponent(df.axis, box.position.getComponent(df.axis) + (df.sign * df.delta) / 2);
+            const eAx = new THREE.Vector3(df.axis === 0 ? 1 : 0, df.axis === 1 ? 1 : 0, df.axis === 2 ? 1 : 0).applyQuaternion(box.quaternion);
+            hl.position.addScaledVector(eAx, (df.sign * df.delta) / 2); // 회전 부품=로컬 축 월드 방향
           }
         }
         const rect = renderer.domElement.getBoundingClientRect();
@@ -363,10 +379,10 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       dragging = false;
       dfTip.style.display = 'none';
       if (df) {
-        const { id, nThree, delta } = df;
+        const { id, nCad, delta } = df;
         df = null;
         if (hl) hl.scale.set(1, 1, 1);
-        if (Math.abs(delta) >= 2) { faceDragCbRef.current(id, toCadN(nThree), Math.round(delta)); return; }
+        if (Math.abs(delta) >= 2) { faceDragCbRef.current(id, nCad, Math.round(delta)); return; }
         select(selCur);
         return;
       }
@@ -375,7 +391,12 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       const hit = castAt(e.clientX, e.clientY);
       const id = hit ? String(hit.object.userData.pid ?? '') || null : null;
       select(id);
-      pickCbRef.current(id, hit?.face ? toCadN(hit.face.normal) : null, e.ctrlKey || e.metaKey);
+      const rotU = hit?.object.userData.rot as number[] | null | undefined;
+      pickCbRef.current(
+        id,
+        hit?.face ? (rotU ? rotCadVec(rotU, [hit.face.normal.x, hit.face.normal.y, hit.face.normal.z]) : toCadN(hit.face.normal)) : null,
+        e.ctrlKey || e.metaKey,
+      );
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -416,11 +437,30 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       c.geometry?.dispose?.();
       (c.material as THREE.Material)?.dispose?.();
     }
+    const qC = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2); // CAD Z-up→three Y-up
     for (const p of lastPartsAabb ?? []) {
-      const mn = p.aabb.min, mx = p.aabb.max;
-      const bg = new THREE.BoxGeometry(Math.max(1, mx[0] - mn[0]), Math.max(1, mx[2] - mn[2]), Math.max(1, mx[1] - mn[1]));
-      const m = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
-      m.position.set((mn[0] + mx[0]) / 2, (mn[2] + mx[2]) / 2, -(mn[1] + mx[1]) / 2);
+      let m: THREE.Mesh;
+      const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+      if (p.obb) {
+        // #3 OBB: 회전 부품=로컬 박스+부품 회전(CAD Rx→Ry→Rz)을 three 로 변환해 적용
+        const lm = p.obb.local.min, lx2 = p.obb.local.max;
+        m = new THREE.Mesh(new THREE.BoxGeometry(Math.max(1, lx2[0] - lm[0]), Math.max(1, lx2[1] - lm[1]), Math.max(1, lx2[2] - lm[2])), mat);
+        const { tx, ty, tz, rx, ry, rz } = p.obb.at;
+        const Rcad = new THREE.Matrix4().makeRotationZ((rz * Math.PI) / 180)
+          .multiply(new THREE.Matrix4().makeRotationY((ry * Math.PI) / 180))
+          .multiply(new THREE.Matrix4().makeRotationX((rx * Math.PI) / 180));
+        const qCad = new THREE.Quaternion().setFromRotationMatrix(Rcad);
+        m.quaternion.copy(qC).multiply(qCad);
+        const lc = new THREE.Vector3((lm[0] + lx2[0]) / 2, (lm[1] + lx2[1]) / 2, (lm[2] + lx2[2]) / 2).applyMatrix4(Rcad);
+        const wc = [tx + lc.x, ty + lc.y, tz + lc.z];
+        m.position.set(wc[0], wc[2], -wc[1]);
+        m.userData.rot = [rx, ry, rz];
+      } else {
+        const mn = p.aabb.min, mx = p.aabb.max;
+        m = new THREE.Mesh(new THREE.BoxGeometry(Math.max(1, mx[0] - mn[0]), Math.max(1, mx[2] - mn[2]), Math.max(1, mx[1] - mn[1])), mat);
+        m.position.set((mn[0] + mx[0]) / 2, (mn[2] + mx[2]) / 2, -(mn[1] + mx[1]) / 2);
+        m.userData.rot = null;
+      }
       m.userData.pid = p.id;
       g.add(m);
     }
@@ -583,6 +623,57 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       }
     }
   }, [showGeometry]);
+
+  // #2 저장↔편집 봉합(260719): 편집 결과(assembly+REV+scad+intent)를 프로젝트로 저장/복원
+  const [projList, setProjList] = useState<Array<{ id: string; name: string }> | null>(null);
+  const saveProject = useCallback(async () => {
+    if (!lastAssembly) return;
+    const name = `${String((lastAssembly as { name?: string }).name ?? '어셈블리').slice(0, 60)} (편집)`;
+    try {
+      const res = await fetch('/api/nexyfab/drawing/projects/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, domain: domain?.slug ?? 'mech', snapshot: { kind: 'assembly-edit', assembly: lastAssembly, partsAabb: lastPartsAabb, scad, intent } }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || j.ok === false) { setError(res.status === 401 ? (ko ? '로그인 후 저장할 수 있어요' : 'Sign in to save') : String(j.error ?? 'save')); return; }
+      setStatus(ko ? '프로젝트 저장됨 ✓ (REV 이력 포함)' : 'Saved ✓');
+      setTimeout(() => setStatus(''), 2000);
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+  }, [lastAssembly, lastPartsAabb, scad, intent, domain, ko]);
+  const loadProjects = useCallback(async () => {
+    try {
+      const r = await fetch('/api/nexyfab/drawing/projects/');
+      const j = (await r.json().catch(() => ({}))) as { ok?: boolean; projects?: Array<{ id: string; name: string }> };
+      if (r.ok && Array.isArray(j.projects)) setProjList(j.projects.map((p) => ({ id: p.id, name: p.name })));
+      else if (r.status === 401) setError(ko ? '로그인 필요(서버 저장은 계정 기능)' : 'Sign in required');
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+  }, [ko]);
+  const loadProject = useCallback(async (id: string) => {
+    try {
+      const r = await fetch('/api/nexyfab/drawing/projects/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ loadId: id }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { snapshot?: { kind?: string; assembly?: Record<string, unknown>; partsAabb?: PartAabb[]; scad?: string; intent?: unknown } };
+      const snap = j.snapshot;
+      if (!r.ok || !snap || snap.kind !== 'assembly-edit') { setError(ko ? '이 항목은 편집 스냅샷이 아니에요(프리셋 저장분은 해당 패널에서)' : 'Not an edit snapshot'); return; }
+      setLastAssembly(snap.assembly ?? null);
+      setLastPartsAabb(snap.partsAabb ?? null);
+      if (snap.intent) setIntent(snap.intent as ComposeOk['intent']);
+      editHistRef.current = []; setHistN(0);
+      setPickedPart(null); setPickedNormal(null); setPickedMulti([]);
+      setDiffRes(null); setDiffDraftProfiles(null); setVisRes(null); setFeaRes(null);
+      if (typeof snap.scad === 'string' && wasmAvailable()) {
+        setScad(snap.scad);
+        const rr = await renderScadWasm(snap.scad);
+        if (rr.ok && rr.data) {
+          const buf = rr.data.buffer.slice(rr.data.byteOffset, rr.data.byteOffset + rr.data.byteLength) as ArrayBuffer;
+          showGeometry(parseSTL(buf));
+        }
+      }
+      setStatus(ko ? '편집 스냅샷 복원됨 — 픽킹·수정 이어서 가능' : 'Restored');
+      setTimeout(() => setStatus(''), 2000);
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+  }, [showGeometry, ko]);
 
   // #1 언두 — 마지막 편집 직전 상태로 복원(클라 로컬)
   const undoEdit = useCallback(async () => {
@@ -1099,13 +1190,26 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 🧩 {ko ? `2차 상세 적용 (+${Math.max(0, (fullLodRef.current?.parts?.length ?? 0) - (lastPartsAabb?.length ?? 0))}부품 — 현재는 1차 골격)` : `Apply detail LOD (+${Math.max(0, (fullLodRef.current?.parts?.length ?? 0) - (lastPartsAabb?.length ?? 0))} parts)`}
               </button>
             )}
-            {/* 🎯 편집 툴바(#1·#2·#5·#7) — 결정론 연산(AI 없음) + 교체(AI 지시 자동생성) */}
-            {(pickedPart || histN > 0) && (
+            {/* 🎯 편집 툴바(#1·#2·#5·#7) — 결정론 연산(AI 없음) + 교체(AI 지시 자동생성) + 저장/복원 */}
+            {(pickedPart || histN > 0 || lastAssembly) && (
               <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: 11.5 }}>
                 {histN > 0 && (
                   <button type="button" onClick={() => void undoEdit()} style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer', fontWeight: 700 }}>
                     ↩ {ko ? '되돌리기' : 'Undo'} ({histN})
                   </button>
+                )}
+                {lastAssembly && (
+                  <button type="button" onClick={() => void saveProject()} title={ko ? '편집 결과+REV 이력 서버 저장(로그인)' : 'Save edits+REV'}
+                    style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>💾 {ko ? '저장' : 'Save'}</button>
+                )}
+                {projList === null ? (
+                  <button type="button" onClick={() => void loadProjects()} style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>📂 {ko ? '불러오기' : 'Load'}</button>
+                ) : (
+                  <select defaultValue="" onChange={(e) => { const v = e.target.value; e.target.value = ''; if (v) void loadProject(v); }}
+                    style={{ padding: '4px 7px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', fontSize: 11.5, maxWidth: 180 }}>
+                    <option value="">{ko ? `📂 프로젝트 ${projList.length}개…` : `📂 ${projList.length} projects…`}</option>
+                    {projList.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
                 )}
                 {pickedPart && (
                   <>

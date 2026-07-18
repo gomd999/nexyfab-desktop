@@ -271,6 +271,17 @@ function cadFromEditResp(j: Record<string, unknown>): CadResult {
   };
 }
 const faceTag = (n: number[]) => { const a = Math.abs(n[0]) > 0.5 ? 0 : Math.abs(n[1]) > 0.5 ? 1 : 2; return 'xyz'[a] + (n[a] > 0 ? '+' : '−'); };
+// OpenSCAD rotate([rx,ry,rz]) 순서(Rx→Ry→Rz)로 벡터 회전 — OBB 프록시 로컬 노멀→CAD 월드(#3)
+function rotCadVec(rot: number[], v: number[]): number[] {
+  let [x, y, z] = v;
+  const rad = Math.PI / 180;
+  const [rx, ry, rz] = rot;
+  if (rx) { const c = Math.cos(rx * rad), s = Math.sin(rx * rad); const y2 = y * c - z * s, z2 = y * s + z * c; y = y2; z = z2; }
+  if (ry) { const c = Math.cos(ry * rad), s = Math.sin(ry * rad); const x2 = x * c + z * s, z2 = -x * s + z * c; x = x2; z = z2; }
+  if (rz) { const c = Math.cos(rz * rad), s = Math.sin(rz * rad); const x2 = x * c - y * s, y2 = x * s + y * c; x = x2; y = y2; }
+  return [x, y, z];
+}
+type PartProxy = { id: string; aabb: { min: number[]; max: number[] }; obb?: { local: { min: number[]; max: number[] }; at: { tx: number; ty: number; tz: number; rx: number; ry: number; rz: number } } };
 
 // 입력 A(이미지): 도면·스케치 → drawing/extract(Vision 판독 + 결정론 게이트) → 체크포인트.
 // 성공 시 단일부품 compose intent 를 그대로 CadCard 로 렌더(승인→STEP 은 export-step 재사용).
@@ -691,11 +702,27 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
       // P1 픽킹: 부품 AABB 프록시(투명) 레이캐스트 → 선택=엣지 하이라이트
       const pickGroup = new THREE.Group();
       if (parts?.length) {
-        for (const p of parts) {
-          const mn = p.aabb.min, mx = p.aabb.max;
-          const g = new THREE.BoxGeometry(Math.max(1, mx[0] - mn[0]), Math.max(1, mx[1] - mn[1]), Math.max(1, mx[2] - mn[2]));
-          const pm = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
-          pm.position.set((mn[0] + mx[0]) / 2 - center.x, (mn[1] + mx[1]) / 2 - center.y, (mn[2] + mx[2]) / 2 - center.z);
+        for (const p of parts as PartProxy[]) {
+          let pm: InstanceType<typeof THREE.Mesh>;
+          const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+          if (p.obb) {
+            // #3 OBB: 회전 부품=로컬 치수 박스에 부품 회전 적용(옆 부품 오픽 방지)
+            const lm = p.obb.local.min, lx2 = p.obb.local.max;
+            pm = new THREE.Mesh(new THREE.BoxGeometry(Math.max(1, lx2[0] - lm[0]), Math.max(1, lx2[1] - lm[1]), Math.max(1, lx2[2] - lm[2])), mat);
+            const { tx, ty, tz, rx, ry, rz } = p.obb.at;
+            const R = new THREE.Matrix4().makeRotationZ((rz * Math.PI) / 180)
+              .multiply(new THREE.Matrix4().makeRotationY((ry * Math.PI) / 180))
+              .multiply(new THREE.Matrix4().makeRotationX((rx * Math.PI) / 180));
+            pm.setRotationFromMatrix(R);
+            const lc = new THREE.Vector3((lm[0] + lx2[0]) / 2, (lm[1] + lx2[1]) / 2, (lm[2] + lx2[2]) / 2).applyMatrix4(R);
+            pm.position.set(tx + lc.x - center.x, ty + lc.y - center.y, tz + lc.z - center.z);
+            pm.userData.rot = [rx, ry, rz];
+          } else {
+            const mn = p.aabb.min, mx = p.aabb.max;
+            pm = new THREE.Mesh(new THREE.BoxGeometry(Math.max(1, mx[0] - mn[0]), Math.max(1, mx[1] - mn[1]), Math.max(1, mx[2] - mn[2])), mat);
+            pm.position.set((mn[0] + mx[0]) / 2 - center.x, (mn[1] + mx[1]) / 2 - center.y, (mn[2] + mx[2]) / 2 - center.z);
+            pm.userData.rot = null;
+          }
           pm.userData.pid = p.id;
           pickGroup.add(pm);
         }
@@ -710,6 +737,7 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
         if (box) {
           hl = new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry as never), new THREE.LineBasicMaterial({ color: new THREE.Color(accent) }));
           hl.position.copy(box.position);
+          hl.quaternion.copy(box.quaternion); // OBB(#3) — 회전 부품 하이라이트 정합
           scene.add(hl);
         }
         draw();
@@ -735,9 +763,10 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
         if (!parts?.length || !onFaceDrag || !selCur) return;
         const hit = castAt(e.clientX, e.clientY);
         if (!hit || String(hit.object.userData.pid) !== selCur || !hit.face) return;
-        const n = hit.face.normal; // 프록시=무회전 AABB 박스 — 로컬 노멀=월드 노멀(축정렬)
-        const axis = Math.abs(n.x) > 0.5 ? 0 : Math.abs(n.y) > 0.5 ? 1 : 2;
-        const sign = [n.x, n.y, n.z][axis] > 0 ? 1 : -1;
+        const nL = hit.face.normal.clone(); // 프록시 로컬(=CAD 로컬 — OBB 는 회전 적용됨)
+        const n = nL.clone().applyQuaternion(hit.object.quaternion); // 월드(화면 투영용)
+        const axis = Math.abs(nL.x) > 0.5 ? 0 : Math.abs(nL.y) > 0.5 ? 1 : 2;
+        const sign = [nL.x, nL.y, nL.z][axis] > 0 ? 1 : -1;
         // 노멀의 화면 투영 방향 + mm/px 환산(히트 깊이 기준)
         const p0 = hit.point.clone(), p1 = hit.point.clone().add(n.clone().multiplyScalar(100));
         const s0 = p0.clone().project(cam), s1 = p1.clone().project(cam);
@@ -745,7 +774,9 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
         const v2: [number, number] = [(s1.x - s0.x) * rect.width / 2, -(s1.y - s0.y) * rect.height / 2];
         const L2 = Math.hypot(v2[0], v2[1]);
         if (L2 < 2) return; // 화면과 수직에 가까움 — 궤도로
-        df = { id: selCur, n: [n.x, n.y, n.z], axis, sign, dir2: [v2[0] / L2, v2[1] / L2], mmPerPx: 100 / L2, delta: 0 };
+        const rot = hit.object.userData.rot as number[] | null;
+        const nCad = rot ? rotCadVec(rot, [nL.x, nL.y, nL.z]) : [n.x, n.y, n.z]; // 서버=CAD 월드 노멀
+        df = { id: selCur, n: nCad, axis, sign, dir2: [v2[0] / L2, v2[1] / L2], mmPerPx: 100 / L2, delta: 0 };
       };
       const onMove = (e: PointerEvent) => {
         if (!drag) return;
@@ -760,7 +791,8 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
               const sc = Math.max(0.05, (dims[df.axis] + df.delta) / dims[df.axis]);
               hl.scale.setComponent(df.axis, sc);
               hl.position.copy(box.position);
-              hl.position.setComponent(df.axis, box.position.getComponent(df.axis) + (df.sign * df.delta) / 2);
+              const eAx = new THREE.Vector3(df.axis === 0 ? 1 : 0, df.axis === 1 ? 1 : 0, df.axis === 2 ? 1 : 0).applyQuaternion(box.quaternion);
+              hl.position.addScaledVector(eAx, (df.sign * df.delta) / 2); // 회전 부품=로컬 축의 월드 방향
             }
           }
           const rect = renderer.domElement.getBoundingClientRect();
@@ -791,7 +823,11 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
         const hit = castAt(e.clientX, e.clientY);
         const id = hit ? String(hit.object.userData.pid ?? '') || null : null;
         select(id);
-        onPick(id, hit?.face ? [hit.face.normal.x, hit.face.normal.y, hit.face.normal.z] : null);
+        const rotU = hit?.object.userData.rot as number[] | null | undefined;
+        const nP = hit?.face
+          ? (rotU ? rotCadVec(rotU, [hit.face.normal.x, hit.face.normal.y, hit.face.normal.z]) : [hit.face.normal.x, hit.face.normal.y, hit.face.normal.z])
+          : null;
+        onPick(id, nP);
       };
       const onWheel = (e: WheelEvent) => { e.preventDefault(); R = Math.max(R0 * 0.15, Math.min(R0 * 6, R * (e.deltaY > 0 ? 1.12 : 0.89))); draw(); };
       renderer.domElement.addEventListener('pointerdown', onDown);
