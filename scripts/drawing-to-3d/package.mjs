@@ -968,7 +968,7 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
       }
       placed.push({ x: fx, y: fy });
       if (Math.hypot(fx - x0, fy - y0) > 10) balloons.push(`<line x1="${fx.toFixed(1)}" y1="${(fy + (fy < y0 ? 8 : -8)).toFixed(1)}" x2="${x0.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="#0f172a" stroke-width=".6"/>`);
-      balloons.push(`<circle cx="${fx.toFixed(1)}" cy="${fy.toFixed(1)}" r="8" fill="#fff" stroke="#0f172a"/><text x="${fx.toFixed(1)}" y="${(fy + 3).toFixed(1)}" font-size="9" text-anchor="middle" fill="#0f172a" font-family="sans-serif">${B.label}</text>`);
+      balloons.push(`<g style="cursor:pointer" onclick="var r=document.getElementById('bomrow-${B.label}');if(r){r.scrollIntoView({block:'center'});r.style.background='#fef08a';setTimeout(()=>r.style.background='',1600)}"><circle cx="${fx.toFixed(1)}" cy="${fy.toFixed(1)}" r="8" fill="#fff" stroke="#0f172a"/><text x="${fx.toFixed(1)}" y="${(fy + 3).toFixed(1)}" font-size="9" text-anchor="middle" fill="#0f172a" font-family="sans-serif">${B.label}</text></g>`);
     }
   }
   // 치수문자 충돌 회피(260717 예시 배터리): ①엔벨로프 치수대(+18)와 겹치는 바닥 부품은
@@ -1043,7 +1043,7 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   };
   const bom = groups.map((g, gi) => {
     const { p, box, st } = g.rep;
-    return `<tr><td>${gi + 1}</td><td style="text-align:left">${esc(p.id ?? p.type)}${g.count > 1 ? ' 외' : ''}</td><td>${esc(p.type)}</td><td>${fmtLen(box.dx)}×${fmtLen(box.dy)}×${fmtLen(box.dz)}</td><td style="text-align:left">${esc(stdLabel(p))}</td><td>${esc(st.mat)}</td><td>${g.count}</td></tr>`;
+    return `<tr id="bomrow-${gi + 1}"><td>${gi + 1}</td><td style="text-align:left">${esc(p.id ?? p.type)}${g.count > 1 ? ' 외' : ''}</td><td>${esc(p.type)}</td><td>${fmtLen(box.dx)}×${fmtLen(box.dy)}×${fmtLen(box.dz)}</td><td style="text-align:left">${esc(stdLabel(p))}</td><td>${esc(st.mat)}</td><td>${g.count}</td></tr>`;
   }).join('');
   // ② 단면도 A-A(D3, C2): y=중앙 절단 — 절단 부품=해칭, 후방 부품=실루엣(전방 생략 관례)
   const yc = by0 + (parts.length ? Math.max(...parts.map((o) => o.box.y + o.box.dy)) - by0 : 0) / 2;

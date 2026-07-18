@@ -26,3 +26,12 @@ export function checkDrawingCompleteness(html, { kind = 'ga' } = {}) {
     ok: passed.length === applicable.length,
   };
 }
+
+/** C9 — DXF 레이어 분리 검사(도면 관례: DIM/CENTER 전용 레이어 + 파선 라인타입). */
+export function checkDxfLayers(dxfText) {
+  const need = ['DIM', 'CENTER'];
+  const found = need.filter((l) => dxfText.includes(l));
+  const dashed = dxfText.includes('DASHED');
+  const pass = found.length === need.length && dashed;
+  return { id: 'C9', pass, found, dashed, note: pass ? 'DIM·CENTER 레이어+DASHED 라인타입 확인' : `누락: ${need.filter((l) => !found.includes(l)).join(',')}${dashed ? '' : ' DASHED'}` };
+}

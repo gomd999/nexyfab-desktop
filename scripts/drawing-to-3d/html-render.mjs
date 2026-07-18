@@ -253,6 +253,31 @@ document.querySelectorAll('#panel .views button[data-v]').forEach(b=>b.onclick=(
 document.getElementById('shot').onclick=()=>{r.render(sc,cam);const a=document.createElement('a');a.download='GA.png';a.href=r.domElement.toDataURL('image/png');a.click()};
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();r.setSize(innerWidth,innerHeight)});
 (function loop(){requestAnimationFrame(loop);ctl.update();r.render(sc,cam)})();
+
+// H3 현장 검색(260718): 부품명 검색 → AABB 하이라이트 박스 + 카메라 이동 없음(맥락 유지)
+(function(){
+  if(!PARTS||!PARTS.length)return;
+  var panel=document.getElementById('panel'); if(!panel)return;
+  var wrap=document.createElement('div'); wrap.style.cssText='margin:8px 0;border-top:1px solid #e2e8f0;padding-top:6px';
+  wrap.innerHTML='<input id="nfq" placeholder="부품 검색(예: pump)" style="width:100%;box-sizing:border-box;padding:4px 6px;font-size:11px;border:1px solid #cbd5e1;border-radius:6px"/><div id="nfqr" style="max-height:120px;overflow:auto;margin-top:4px"></div>';
+  panel.insertBefore(wrap, panel.firstChild.nextSibling);
+  var hl=null;
+  function highlight(p){
+    if(hl){sc.remove(hl);hl=null;}
+    var b=new THREE.Box3(new THREE.Vector3(p.n[0],p.n[2],-p.x[1]),new THREE.Vector3(p.x[0],p.x[2],-p.n[1]));
+    hl=new THREE.Box3Helper(b,0xff2d55); sc.add(hl);
+    setTimeout(function(){if(hl){sc.remove(hl);hl=null;}},4000);
+  }
+  document.getElementById('nfq').addEventListener('input',function(){
+    var q=this.value.trim().toLowerCase(); var out=document.getElementById('nfqr'); out.innerHTML='';
+    if(q.length<2)return;
+    PARTS.filter(function(p){return (p.l+' '+(p.d||'')).toLowerCase().includes(q)}).slice(0,12).forEach(function(p){
+      var d2=document.createElement('div'); d2.textContent=p.l; d2.style.cssText='cursor:pointer;padding:2px 4px;border-radius:4px;font-size:11px';
+      d2.onmouseenter=function(){d2.style.background='#eef2ff'}; d2.onmouseleave=function(){d2.style.background=''};
+      d2.onclick=function(){highlight(p)}; out.appendChild(d2);
+    });
+  });
+})();
 </script></body></html>`;
 }
 

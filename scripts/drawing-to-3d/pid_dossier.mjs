@@ -73,7 +73,7 @@ ${mepSection(assembly)}
 }
 
 /** P&ID 스켈레톤 — 계통 흐름 블록도(밸브·계장은 개념). 정밀 P&ID는 AI/공정입력 후속. */
-export function pidSkeleton(assembly, { title = '설계' } = {}) {
+export function pidSkeleton(assembly, { title = '설계', pipes = null } = {}) {
   const parts = assembly.parts ?? [];
   const g = groupBySvc(parts);
   const order = ['feed', 'motor', 'hp', 'equipment', 'permeate', 'concentrate', 'sludge', 'panel'];
@@ -93,13 +93,36 @@ export function pidSkeleton(assembly, { title = '설계' } = {}) {
     el.push(`<text x="${x + 60}" y="${Y - 6}" font-size="11.5" font-weight="700" text-anchor="middle" fill="${c}" font-family="Segoe UI,sans-serif">${esc(SERVICE_KO[s] || s)}</text>`);
     el.push(`<text x="${x + 60}" y="${Y + 12}" font-size="9" text-anchor="middle" fill="#475569" font-family="Segoe UI,sans-serif">${(g[s] || []).length}부품</text>`);
     el.push(`<circle cx="${x + 60}" cy="${Y - 60}" r="15" fill="#fff" stroke="#0b5cff" stroke-width="1.4"/><text x="${x + 60}" y="${Y - 56}" font-size="8.5" text-anchor="middle" fill="#0b5cff">계측</text>`);
-    if (prev !== null) el.push(`<line x1="${prev}" y1="${Y}" x2="${x}" y2="${Y}" stroke="${c}" stroke-width="2.5" marker-end="url(#ar)"/>`);
+    if (prev !== null) {
+      el.push(`<line x1="${prev}" y1="${Y}" x2="${x}" y2="${Y}" stroke="${c}" stroke-width="2.5" marker-end="url(#ar)"/>`);
+      const mx = (prev + x) / 2; // 보타이 밸브 심볼(사양=입력 원칙)
+      el.push(`<path d="M ${mx - 9} ${Y - 7} L ${mx + 9} ${Y + 7} L ${mx + 9} ${Y - 7} L ${mx - 9} ${Y + 7} Z" fill="#fff" stroke="#1f2937" stroke-width="1.1"/>`);
+    }
     prev = x + 120; x += step;
   }
   if (g.panel) el.push(`<rect x="${W / 2 - 110}" y="${H - 46}" width="220" height="34" rx="6" fill="#eef2ff" stroke="#0b5cff" stroke-width="1.4"/><text x="${W / 2}" y="${H - 25}" font-size="11" font-weight="700" text-anchor="middle" fill="#0b5cff">PLC / HMI (제어)</text>`);
+  // G4 정식화(260718): 라인 리스트(pipes → 라인 넘버 계통-호칭경, G1 스냅) + ISA 계기 태그 제안
+  let lineListHtml = '';
+  if (Array.isArray(pipes) && pipes.length) {
+    let snapPipeFn = null;
+    try { snapPipeFn = (globalThis.__nfSnapPipe ??= null); } catch { /* noop */ }
+    const rows = pipes.map((pp, i) => {
+      const svc = pp.service ?? '-';
+      const num = `${String(svc).toUpperCase().slice(0, 4)}-${String(i + 1).padStart(2, '0')}`;
+      return `<tr><td>${num}</td><td>${esc(SERVICE_KO[svc] ?? svc)}</td><td>${pp.dn ? pp.dn + 'A' : (pp.d ? 'Ø' + pp.d + ' (호칭경 스냅=G1 감사 참조)' : '-')}</td><td>${esc(pp.material ?? 'STS316L')}</td><td>입력 원칙</td></tr>`;
+    }).join('');
+    lineListHtml = `<div class="wrap"><b style="font-size:12px">라인 리스트</b><table style="border-collapse:collapse;width:100%;font-size:11px;margin-top:4px"><thead><tr><th style="border:1px solid #cbd5e1;background:#f1f5f9">라인 No.</th><th style="border:1px solid #cbd5e1;background:#f1f5f9">계통</th><th style="border:1px solid #cbd5e1;background:#f1f5f9">호칭경</th><th style="border:1px solid #cbd5e1;background:#f1f5f9">재질</th><th style="border:1px solid #cbd5e1;background:#f1f5f9">보온/트레이싱</th></tr></thead><tbody>${rows.replace(/<td>/g, '<td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">')}</tbody></table></div>`;
+  }
+  const gaugeParts = (assembly.parts ?? []).filter((p) => /gauge/.test(p.id ?? ''));
+  const instrRows = gaugeParts.slice(0, 12).map((p, i) => `<tr><td style="border:1px solid #cbd5e1;padding:3px 8px">PI-${101 + i}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${esc(p.id)}</td><td style="border:1px solid #cbd5e1;padding:3px 8px">압력계(제안 — 태그·레인지 확정=입력)</td></tr>`).join('');
+  const instrHtml = gaugeParts.length
+    ? `<div class="wrap"><b style="font-size:12px">계기 리스트(ISA 태그 제안)</b><table style="border-collapse:collapse;font-size:11px;margin-top:4px"><thead><tr><th style="border:1px solid #cbd5e1;background:#f1f5f9">TAG</th><th style="border:1px solid #cbd5e1;background:#f1f5f9">부품</th><th style="border:1px solid #cbd5e1;background:#f1f5f9">비고</th></tr></thead><tbody>${instrRows}</tbody></table></div>`
+    : `<div class="wrap" style="font-size:11px;color:#94a3b8">계기 부품 미배치 — 계기 리스트는 배치 후 자동 제안</div>`;
+  // 밸브 심볼(보타이) — 라인 화살표 중앙(계통 수 기준)
   const svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff"><defs><marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><polygon points="0,0 8,4 0,8" fill="#1f2937"/></marker></defs>${el.join('')}</svg>`;
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)} P&ID</title>
 <style>@page{size:A3 landscape;margin:8mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937}.sheet{max-width:1100px;margin:16px auto;background:#fff;border:1px solid #cbd5e1;box-shadow:0 4px 24px rgba(0,0,0,.1);padding:0 0 14px}.wrap{padding:8px 16px}.note{font-size:11px;color:#94a3b8;padding:8px 20px}</style></head>
 <body>${PB(esc(title) + ' P&ID 스켈레톤 (A3)', '@page{size:A3 landscape;margin:8mm}')}<div class="sheet"><div class="wrap">${svg}</div>
-<div class="note">⚠ <b>개념 스켈레톤</b>(비법정) — 부품 service 태그 기반 계통 흐름만. <b>밸브·계장·인터록·라인사이즈 등 정밀 P&ID는 공정 입력·AI 보조 후속</b>. 계통: ${present.map(s => esc(SERVICE_KO[s] || s)).join(' → ')}.</div><div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div></body></html>`;
+${lineListHtml}${instrHtml}
+<div class="note">⚠ <b>P&ID(1차 정식화·비법정)</b> — 계통 흐름+라인 리스트(G1 규격 스냅)+계기 태그 제안. <b>인터록·제어 로직·태그 확정·밸브 사양은 공정 입력 원칙</b>. 계통: ${present.map(s => esc(SERVICE_KO[s] || s)).join(' → ')}.</div><div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div></body></html>`;
 }

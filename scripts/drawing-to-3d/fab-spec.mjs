@@ -50,5 +50,14 @@ export async function fabricationSpec(assembly, { title = '제작 사양서', de
 </tbody></table>
 ${lift}
 <div style="font-size:11px;color:#94a3b8;margin-top:16px">nexyfab 자동생성(비법정) — 수치=폐형 산출·관례는 근거 병기, 코드/등급/제품 지정값은 입력 원칙.</div>
-</body></html>`;
+<script>
+// H4 현장 검사 체크(260718): 표 행 체크박스 — localStorage 보존(서버 없음)
+document.querySelectorAll('table tr').forEach(function(r,ri){
+  var key='nf-insp-'+document.title+'-'+ri;
+  var td=r.insertCell(0); td.style.width='26px'; td.style.background='#fff';
+  var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=localStorage.getItem(key)==='1';
+  cb.onchange=function(){localStorage.setItem(key,cb.checked?'1':'0');r.style.opacity=cb.checked?0.5:1};
+  if(cb.checked)r.style.opacity=0.5; td.appendChild(cb);
+});
+</script></body></html>`;
 }

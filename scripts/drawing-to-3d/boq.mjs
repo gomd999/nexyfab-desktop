@@ -214,7 +214,33 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 ${pipingSection(b, '②b')}
 ${ruleSection}
 <div class="note">⚠ 물량=형상 결정론(신뢰) · 규칙 물량=설계수량(표준품셈 할증·품 미적용) · 표면적=거푸집/도장/마감 개산(공제 미반영) · 철근·배근·마감재는 형상 외 — 미산출 · 비법정 참고자료.${assembly.alignment ? ' · <b>선형 주의</b>: 부재별 물량=현(chord) 분할 부품 기준(접합 트림 포함), 규칙 물량=중심선 호장 기준 — 두 기준 차이(트림·현 근사)는 정상이며 정밀 콘크리트량은 규칙 물량이 기준.' : ''}</div>
-<div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div></body></html>`;
+<div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div><script>
+// H5 현장 인터랙션(260718): th 클릭 정렬 · 행 체크오프(localStorage) · CSV 내보내기
+document.querySelectorAll('table').forEach(function(tb,ti){
+  var head=tb.tHead; if(!head||!tb.tBodies[0])return;
+  Array.prototype.forEach.call(head.rows[0].cells,function(th,ci){
+    th.style.cursor='pointer'; th.title='클릭=정렬';
+    th.onclick=function(){
+      var rows=Array.prototype.slice.call(tb.tBodies[0].rows);
+      var asc=th.dataset.asc!=='1'; th.dataset.asc=asc?'1':'0';
+      rows.sort(function(a,b2){var x=a.cells[ci]?a.cells[ci].textContent:'',y=b2.cells[ci]?b2.cells[ci].textContent:'';var nx=parseFloat(x.replace(/[^\d.-]/g,'')),ny=parseFloat(y.replace(/[^\d.-]/g,''));return (isFinite(nx)&&isFinite(ny)?nx-ny:x.localeCompare(y))*(asc?1:-1)});
+      rows.forEach(function(r){tb.tBodies[0].appendChild(r)});
+    };
+  });
+  var key='nf-boq-'+location.pathname+'-'+ti;
+  var saved={}; try{saved=JSON.parse(localStorage.getItem(key)||'{}')}catch(e){}
+  Array.prototype.forEach.call(tb.tBodies[0].rows,function(r,ri){
+    var td=r.insertCell(0); var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!saved[ri];
+    cb.onchange=function(){saved[ri]=cb.checked;localStorage.setItem(key,JSON.stringify(saved));r.style.opacity=cb.checked?0.45:1};
+    if(cb.checked)r.style.opacity=0.45; td.appendChild(cb);
+  });
+  if(head.rows[0]){var th0=head.rows[0].insertCell?null:null; var thEl=document.createElement('th'); thEl.textContent='✓'; head.rows[0].insertBefore(thEl, head.rows[0].cells[0]);}
+});
+var btn=document.createElement('button'); btn.textContent='⬇ CSV 내보내기'; btn.style.cssText='position:fixed;right:16px;bottom:16px;background:#2563eb;color:#fff;border:0;padding:8px 14px;border-radius:8px;cursor:pointer;z-index:99';
+btn.onclick=function(){var t=document.querySelector('table');if(!t)return;var csv=Array.prototype.map.call(t.rows,function(r){return Array.prototype.map.call(r.cells,function(c){return '"'+c.textContent.replace(/"/g,'""')+'"'}).join(',')}).join('
+');var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));a.download='BOQ.csv';a.click()};
+document.body.appendChild(btn);
+</script></body></html>`;
   }
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>@page{size:A4 portrait;margin:12mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937;font-size:13px}
@@ -236,5 +262,31 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 ${pipingSection(b, '②b')}
 <h2>③ 공수 (표준 원단위 개산, hr)</h2><table><tr><th>작업</th><th>공수</th></tr>${laborRows}<tr style="font-weight:700;background:#f8fafc"><td>합계</td><td>${b.laborHr.합계} hr</td></tr></table>
 <div class="note">⚠ 물량=형상 결정론(신뢰) · 공수=표준 원단위(용접 ${STD_RATES.weldPerM}h/m·드릴 ${STD_RATES.drillPerHole}h/홀 등) 개산 → 현장/작업방식 따라 조정 · 금액 미산출 · 용접량은 AABB 접촉 개산(정밀은 조인트 선언 후속).</div>
-<div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div></body></html>`;
+<div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div><script>
+// H5 현장 인터랙션(260718): th 클릭 정렬 · 행 체크오프(localStorage) · CSV 내보내기
+document.querySelectorAll('table').forEach(function(tb,ti){
+  var head=tb.tHead; if(!head||!tb.tBodies[0])return;
+  Array.prototype.forEach.call(head.rows[0].cells,function(th,ci){
+    th.style.cursor='pointer'; th.title='클릭=정렬';
+    th.onclick=function(){
+      var rows=Array.prototype.slice.call(tb.tBodies[0].rows);
+      var asc=th.dataset.asc!=='1'; th.dataset.asc=asc?'1':'0';
+      rows.sort(function(a,b2){var x=a.cells[ci]?a.cells[ci].textContent:'',y=b2.cells[ci]?b2.cells[ci].textContent:'';var nx=parseFloat(x.replace(/[^\d.-]/g,'')),ny=parseFloat(y.replace(/[^\d.-]/g,''));return (isFinite(nx)&&isFinite(ny)?nx-ny:x.localeCompare(y))*(asc?1:-1)});
+      rows.forEach(function(r){tb.tBodies[0].appendChild(r)});
+    };
+  });
+  var key='nf-boq-'+location.pathname+'-'+ti;
+  var saved={}; try{saved=JSON.parse(localStorage.getItem(key)||'{}')}catch(e){}
+  Array.prototype.forEach.call(tb.tBodies[0].rows,function(r,ri){
+    var td=r.insertCell(0); var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!saved[ri];
+    cb.onchange=function(){saved[ri]=cb.checked;localStorage.setItem(key,JSON.stringify(saved));r.style.opacity=cb.checked?0.45:1};
+    if(cb.checked)r.style.opacity=0.45; td.appendChild(cb);
+  });
+  if(head.rows[0]){var th0=head.rows[0].insertCell?null:null; var thEl=document.createElement('th'); thEl.textContent='✓'; head.rows[0].insertBefore(thEl, head.rows[0].cells[0]);}
+});
+var btn=document.createElement('button'); btn.textContent='⬇ CSV 내보내기'; btn.style.cssText='position:fixed;right:16px;bottom:16px;background:#2563eb;color:#fff;border:0;padding:8px 14px;border-radius:8px;cursor:pointer;z-index:99';
+btn.onclick=function(){var t=document.querySelector('table');if(!t)return;var csv=Array.prototype.map.call(t.rows,function(r){return Array.prototype.map.call(r.cells,function(c){return '"'+c.textContent.replace(/"/g,'""')+'"'}).join(',')}).join('
+');var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));a.download='BOQ.csv';a.click()};
+document.body.appendChild(btn);
+</script></body></html>`;
 }
