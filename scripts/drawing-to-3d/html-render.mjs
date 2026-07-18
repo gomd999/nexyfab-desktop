@@ -26,6 +26,28 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
  * intent 또는 assembly → 자립형 HTML 문자열.
  * @param spec {intent} 또는 {assembly}
  */
+
+// ── H1 오프라인 자립화(260718 — 현장 인터넷 없음): three.js 를 data: URL 로 인라인.
+// CDN(unpkg) 의존 제거 — 단일 HTML 파일이 오프라인에서 완전 작동. 메모화(1회 로딩).
+import { createRequire as _cr } from 'node:module';
+let _OFFLINE_IMPORTMAP = null;
+function offlineImportMap() {
+  if (_OFFLINE_IMPORTMAP) return _OFFLINE_IMPORTMAP;
+  const req = _cr(import.meta.url);
+  // three 패키지 루트: resolve 경로에서 /three/ 까지 절단
+  const cand = req.resolve('three').split('\\').join('/');
+  const base = cand.slice(0, cand.indexOf('/three/') + '/three/'.length);
+  const dataUrl = (p) => 'data:text/javascript;base64,' + readFileSync(p).toString('base64');
+  const b = (rel) => dataUrl(base + rel);
+  _OFFLINE_IMPORTMAP = JSON.stringify({ imports: {
+    'three': b('build/three.module.min.js'),
+    'three/addons/controls/OrbitControls.js': b('examples/jsm/controls/OrbitControls.js'),
+    'three/addons/loaders/STLLoader.js': b('examples/jsm/loaders/STLLoader.js'),
+    'three/addons/environments/RoomEnvironment.js': b('examples/jsm/environments/RoomEnvironment.js'),
+  } });
+  return _OFFLINE_IMPORTMAP;
+}
+
 export async function renderHtml(spec, { title = 'NexyFab 3D', subtitle = '' } = {}) {
   let scad, name;
   if (spec.assembly) {
@@ -51,7 +73,7 @@ export async function renderHtml(spec, { title = 'NexyFab 3D', subtitle = '' } =
 #hud{position:fixed;top:16px;left:20px;color:#2a3440;z-index:10}#hud h1{font-size:16px;margin:0 0 3px}#hud p{font-size:12px;margin:0;color:#5a6875}
 #shot{position:fixed;top:16px;right:20px;z-index:10;padding:8px 14px;border:0;border-radius:8px;background:#2a3440;color:#fff;font-size:12px;cursor:pointer}</style></head>
 <body><div id="hud"><h1>${esc(title)}</h1><p>${esc(subtitle || name)}</p></div><button id="shot">📷 PNG</button>
-<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+<script type="importmap">${offlineImportMap()}</script>
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -149,7 +171,7 @@ export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle =
   <h2>뷰</h2><div class="views"><button data-v="iso">ISO</button><button data-v="front">정면</button><button data-v="top">평면</button><button data-v="side">측면</button></div>
   <button id="shot">📷 PNG</button>
 </div>
-<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+<script type="importmap">${offlineImportMap()}</script>
 <script type="module">
 import*as THREE from'three';import{OrbitControls}from'three/addons/controls/OrbitControls.js';import{STLLoader}from'three/addons/loaders/STLLoader.js';import{RoomEnvironment}from'three/addons/environments/RoomEnvironment.js';
 const M=[${mj}];const PARTS=${JSON.stringify((parts ?? []).map((p) => ({ l: p.label, d: p.desc ?? '', n: p.min, x: p.max })))};const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});r.setSize(innerWidth,innerHeight);r.setPixelRatio(Math.min(devicePixelRatio,2));r.toneMapping=THREE.ACESFilmicToneMapping;r.shadowMap.enabled=true;r.shadowMap.type=THREE.PCFSoftShadowMap;r.localClippingEnabled=true;document.body.appendChild(r.domElement);
