@@ -13,6 +13,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { stepToNexyfabAssembly } from '@/lib/brep-bridge/stepToNexyfabAssembly';
 import { igesToNexyfabAssembly, stlToNexyfabAssembly } from '@/lib/brep-bridge/meshIgesImport';
+import { ifcToNexyfabAssembly } from '@/lib/brep-bridge/ifcImport';
 
 /** 독점 포맷 안내(임포트 불가 시 정직 응답) — 각 툴의 개방 포맷 내보내기 경로. */
 const CONVERT_GUIDE: Record<string, string> = {
@@ -51,6 +52,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       : Buffer.from(body.step ?? '', 'latin1');
     if (buf.length > 30_000_000) return NextResponse.json({ ok: false, error: 'STL 30MB 초과' }, { status: 400 });
     bridged = stlToNexyfabAssembly(buf, { name, ...matOpt });
+  } else if (fmt === 'ifc') {
+    const src = body.step ?? '';
+    if (!src) return NextResponse.json({ ok: false, error: 'IFC 텍스트가 필요합니다.' }, { status: 400 });
+    if (src.length > 40_000_000) return NextResponse.json({ ok: false, error: 'IFC 40MB 초과(웹 업로드 예산) — 층/동 분할 내보내기 필요' }, { status: 400 });
+    bridged = ifcToNexyfabAssembly(src, { name });
   } else if (fmt === 'iges' || fmt === 'igs') {
     const src = body.step ?? '';
     if (!src) return NextResponse.json({ ok: false, error: 'IGES 텍스트가 필요합니다.' }, { status: 400 });

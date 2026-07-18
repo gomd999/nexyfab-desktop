@@ -2071,7 +2071,7 @@ export default function AssemblyPresetPanel({
   // 실물 STEP 임포트(260718 — 브리지 UI): 파일→/api/import-step→기존 빌드 플로우 재사용
   const importStepFile = useCallback(async (file: File) => {
     const ext = (file.name.split('.').pop() ?? '').toLowerCase();
-    let fmt = ext === 'stl' ? 'stl' : ext === 'igs' || ext === 'iges' ? 'iges' : ['skp', 'dwg', 'f3d', 'sldprt', 'sldasm', 'ipt', 'iam'].includes(ext) ? ext : 'step';
+    let fmt = ext === 'stl' ? 'stl' : ext === 'ifc' ? 'ifc' : ext === 'igs' || ext === 'iges' ? 'iges' : ['skp', 'dwg', 'f3d', 'sldprt', 'sldasm', 'ipt', 'iam'].includes(ext) ? ext : 'step';
     // 위장 확장자 감지(코퍼스4 실측 — .step 인데 내용은 STL): 헤더 검사로 자동 전환
     if (fmt === 'step') {
       const headBuf = new Uint8Array(await file.slice(0, 512).arrayBuffer());
@@ -2946,7 +2946,7 @@ export default function AssemblyPresetPanel({
           <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginTop: 2 }}>{t.advHint}</div>
           <label style={{ display: 'block', fontSize: 10.5, marginTop: 6, color: 'var(--nx-text-3, #6b7684)' }}>
             실물 STEP 가져오기(≤15MB · 배치=정확, 형상=AABB box 근사 명시):{' '}
-            <input type="file" accept=".step,.stp,.igs,.iges,.stl,.skp,.dwg,.f3d,.sldprt,.sldasm,.ipt,.iam" style={{ fontSize: 10.5 }} disabled={busy}
+            <input type="file" accept=".step,.stp,.igs,.iges,.stl,.ifc,.skp,.dwg,.f3d,.sldprt,.sldasm,.ipt,.iam" style={{ fontSize: 10.5 }} disabled={busy}
               onChange={(e) => { const f = e.target.files?.[0]; if (f) void importStepFile(f); e.target.value = ''; }} />
           </label>
           {domain === 'civil' && (
