@@ -2071,7 +2071,7 @@ export default function AssemblyPresetPanel({
   // 실물 STEP 임포트(260718 — 브리지 UI): 파일→/api/import-step→기존 빌드 플로우 재사용
   const importStepFile = useCallback(async (file: File) => {
     const ext = (file.name.split('.').pop() ?? '').toLowerCase();
-    let fmt = ext === 'stl' ? 'stl' : ext === 'ifc' ? 'ifc' : ext === 'igs' || ext === 'iges' ? 'iges' : ext === 'dwg' ? 'dwg' : ['skp', 'f3d', 'sldprt', 'sldasm', 'ipt', 'iam'].includes(ext) ? ext : 'step';
+    let fmt = ext === 'stl' ? 'stl' : ext === 'ifc' ? 'ifc' : ext === 'igs' || ext === 'iges' ? 'iges' : ext === 'dwg' ? 'dwg' : ext === 'sat' || ext === 'sab' ? 'sat' : ['skp', 'f3d', 'sldprt', 'sldasm', 'ipt', 'iam'].includes(ext) ? ext : 'step';
     // 위장 확장자 감지(코퍼스4 실측 — .step 인데 내용은 STL): 헤더 검사로 자동 전환
     if (fmt === 'step') {
       const headBuf = new Uint8Array(await file.slice(0, 512).arrayBuffer());
@@ -2080,14 +2080,14 @@ export default function AssemblyPresetPanel({
         fmt = 'stl';
       }
     }
-    const capMb = fmt === 'dwg' ? 60 : fmt === 'stl' ? 30 : 15;
+    const capMb = fmt === 'dwg' || fmt === 'sat' ? 60 : fmt === 'stl' ? 30 : 15;
     if (file.size > capMb * 1_000_000) { setMsg(`${fmt.toUpperCase()} ${capMb}MB 초과 — 부분 파일로 나눠주세요.`); return; }
     setBusy(true); setMsg(null); setBuilt(null);
     try {
       const name = file.name.replace(/\.[^.]+$/i, '').slice(0, 60);
-      // binary STL·DWG 는 base64 로 — 텍스트 경유 시 바이트 손상
+      // binary STL·DWG·SAT(SAB) 는 base64 로 — 텍스트 경유 시 바이트 손상
       const payload: Record<string, unknown> = { name, format: fmt };
-      if (fmt === 'stl' || fmt === 'dwg') {
+      if (fmt === 'stl' || fmt === 'dwg' || fmt === 'sat') {
         const buf = new Uint8Array(await file.arrayBuffer());
         let bin = '';
         for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
@@ -2947,7 +2947,7 @@ export default function AssemblyPresetPanel({
           <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginTop: 2 }}>{t.advHint}</div>
           <label style={{ display: 'block', fontSize: 10.5, marginTop: 6, color: 'var(--nx-text-3, #6b7684)' }}>
             실물 STEP 가져오기(≤15MB · DWG 3D 메시 ≤60MB · 배치=정확, 형상=AABB box 근사 명시):{' '}
-            <input type="file" accept=".step,.stp,.igs,.iges,.stl,.ifc,.skp,.dwg,.f3d,.sldprt,.sldasm,.ipt,.iam" style={{ fontSize: 10.5 }} disabled={busy}
+            <input type="file" accept=".step,.stp,.igs,.iges,.stl,.ifc,.skp,.dwg,.sat,.sab,.f3d,.sldprt,.sldasm,.ipt,.iam" style={{ fontSize: 10.5 }} disabled={busy}
               onChange={(e) => { const f = e.target.files?.[0]; if (f) void importStepFile(f); e.target.value = ''; }} />
           </label>
           {domain === 'civil' && (

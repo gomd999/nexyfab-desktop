@@ -95,7 +95,7 @@ const refOf = (s: string | undefined): number | null => {
 };
 
 export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {}): IfcImportResult {
-  if (source.length > 150_000_000) return { ok: false, error: 'IFC 150MB 초과 — 파일 예산 밖(층/동 분할 내보내기 필요, 정직 거부)' };
+  if (source.length > 300_000_000) return { ok: false, error: 'IFC 300MB 초과 — 파일 예산 밖(층/동 분할 내보내기 필요, 정직 거부)' };
   if (!/FILE_SCHEMA\s*\(\s*\(\s*'IFC/i.test(source.slice(0, 4000))) return { ok: false, error: 'IFC 스키마 헤더 없음 — IFC SPF 파일이 아님' };
 
   // ── 1. 엔티티 인덱스(#id=NAME(raw);) ──

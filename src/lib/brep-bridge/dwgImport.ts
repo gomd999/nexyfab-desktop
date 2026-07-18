@@ -16,6 +16,8 @@
  * 소스 공개 의무는 소프트웨어 "배포" 시에만 발생한다(서버 사용은 비배포).
  */
 
+import { parseSabBodies } from './satImport';
+
 interface Pt {
   x?: number;
   y?: number;
@@ -403,10 +405,10 @@ export async function readDwgToDxf(buf: ArrayBuffer, opts: { maxEntities?: numbe
     const db = lib.api.convert(dwg);
     const { dxfText, stats } = dwgDatabaseToDxf(db, opts);
     if (!stats.emitted) {
-      // 2D 요소 부재 — 원시 스캔으로 3D 폴리페이스 메시(Revit·AEC 3D 익스포트 관례) 감지
-      const hasPface = countRawPfaces(lib.api, dwg) > 0;
-      if (hasPface) return { ok: false, mesh3dLikely: true, error: '2D 도면 요소가 없고 3D 폴리페이스 메시가 감지되었습니다 — 3D 임포트 경로로 전환하세요.' };
-      return { ok: false, error: `지원 엔티티가 없습니다 — 발견된 유형: ${Object.keys(stats.skipped).join(', ') || '없음'}${stats.skipped['3DSOLID'] ? ' · 3DSOLID(ACIS)는 파서 없음 — AutoCAD EXPORT→STEP 후 STEP 업로드' : ''}` };
+      // 2D 요소 부재 — 원시 스캔으로 3D 형상(폴리페이스 메시·ACIS 솔리드) 감지
+      const c3 = countRaw3d(lib.api, dwg);
+      if (c3.pfaces > 0 || c3.solids > 0) return { ok: false, mesh3dLikely: true, error: `2D 도면 요소가 없고 3D 형상(폴리페이스 ${c3.pfaces}·솔리드 ${c3.solids})이 감지되었습니다 — 3D 임포트 경로로 전환하세요.` };
+      return { ok: false, error: `지원 엔티티가 없습니다 — 발견된 유형: ${Object.keys(stats.skipped).join(', ') || '없음'}` };
     }
     return { ok: true, dxfText, stats };
   } catch (e) {
@@ -437,17 +439,50 @@ interface RawApi {
   get_next_owned_entity?: (blk: unknown, e: unknown) => unknown;
   get_first_owned_subentity?: (e: unknown) => unknown;
   get_next_owned_subentity?: (e: unknown, s: unknown) => unknown;
+  dwg_ptr_to_unsigned_char_array?: (ptr: number, len: number) => ArrayLike<number>;
 }
 
-function countRawPfaces(api: LibredwgApi, dwg: unknown): number {
+/** 3DSOLID 원시 스캔 → SAB 바이트 배열 수집(version 2=SAB · acis_data 포인터+sab_size). */
+function collectSolidSabs(api: LibredwgApi, dwg: unknown, maxSolids: number, maxTotalBytes: number): Uint8Array[] {
   const raw = api as unknown as RawApi;
-  if (!raw.dwg_get_num_objects || !raw.dwg_get_object || !raw.dwg_object_get_dxfname) return 0;
+  const out: Uint8Array[] = [];
+  if (!raw.dwg_get_num_objects || !raw.dwg_get_object || !raw.dwg_object_get_dxfname || !raw.dwg_object_to_entity_tio || !raw.dwg_dynapi_entity_data || !raw.dwg_ptr_to_unsigned_char_array) return out;
   const n = raw.dwg_get_num_objects(dwg);
-  let c = 0;
-  for (let i = 0; i < n; i++) {
-    if (raw.dwg_object_get_dxfname(raw.dwg_get_object(dwg, i)) === 'POLYLINE_PFACE') c++;
+  let budget = maxTotalBytes;
+  for (let i = 0; i < n && out.length < maxSolids && budget > 0; i++) {
+    const o = raw.dwg_get_object(dwg, i);
+    const dxfname = raw.dwg_object_get_dxfname(o);
+    if (dxfname !== '3DSOLID' && dxfname !== 'REGION' && dxfname !== 'BODY') continue;
+    const tio = raw.dwg_object_to_entity_tio(o);
+    const ptr = Number(raw.dwg_dynapi_entity_data(tio, 'acis_data'));
+    const size = Number(raw.dwg_dynapi_entity_data(tio, 'sab_size'));
+    if (!Number.isFinite(ptr) || ptr <= 0 || !Number.isFinite(size) || size <= 20 || size > budget) continue;
+    try {
+      const arr = raw.dwg_ptr_to_unsigned_char_array(ptr, size);
+      const bytes = Uint8Array.from(arr as ArrayLike<number>);
+      const sig = String.fromCharCode(...bytes.slice(0, 15));
+      if (sig === 'ACIS BinaryFile' || sig === 'ASM BinaryFile4') {
+        out.push(bytes);
+        budget -= size;
+      }
+    } catch {
+      /* 포인터 접근 실패 — 건너뜀 */
+    }
   }
-  return c;
+  return out;
+}
+
+function countRaw3d(api: LibredwgApi, dwg: unknown): { pfaces: number; solids: number } {
+  const raw = api as unknown as RawApi;
+  const out = { pfaces: 0, solids: 0 };
+  if (!raw.dwg_get_num_objects || !raw.dwg_get_object || !raw.dwg_object_get_dxfname) return out;
+  const n = raw.dwg_get_num_objects(dwg);
+  for (let i = 0; i < n; i++) {
+    const t = raw.dwg_object_get_dxfname(raw.dwg_get_object(dwg, i));
+    if (t === 'POLYLINE_PFACE') out.pfaces++;
+    else if (t === '3DSOLID' || t === 'REGION' || t === 'BODY') out.solids++;
+  }
+  return out;
 }
 
 /** 블록명 → 폴리페이스 정점 클라우드 목록(원시 소유 순회). 정점 총량 캡=2M. */
@@ -515,6 +550,53 @@ export interface DwgAssemblyResult {
   stats?: { pfaces: number; blocks: number; inserts: number; parts: number; skippedNestedInserts: number; unit: string; representative?: boolean };
 }
 
+/** ACIS 솔리드(SAB) 목록 → 어셈블리(바디별 AABB box — satImport 공용 파서). */
+function solidsToAssembly(sabs: Uint8Array[], name: string): DwgAssemblyResult {
+  type P = DwgAssemblyResult['assembly'] extends infer A ? (A extends { parts: Array<infer Q> } ? Q : never) : never;
+  const parts: P[] = [];
+  let bodiesTotal = 0;
+  let failed = 0;
+  let unit = 1;
+  for (let si = 0; si < sabs.length; si++) {
+    const r = parseSabBodies(sabs[si]);
+    if (!r.ok || !r.bodies) { failed++; continue; }
+    const s = r.unitMm && r.unitMm > 0 ? r.unitMm : 1;
+    unit = s;
+    for (const b of r.bodies) {
+      if (!b.aabb) continue;
+      bodiesTotal++;
+      if (parts.length >= 600) continue;
+      const [mnx, mny, mnz] = b.aabb.min;
+      const [mxx, mxy, mxz] = b.aabb.max;
+      parts.push({
+        id: `sol${si + 1}_b${parts.length + 1}`,
+        type: 'box',
+        params: {
+          width: +Math.max(0.5, (mxx - mnx) * s).toFixed(1),
+          depth: +Math.max(0.5, (mxy - mny) * s).toFixed(1),
+          height: +Math.max(0.5, (mxz - mnz) * s).toFixed(1),
+        },
+        at: { tx: +(mnx * s).toFixed(1), ty: +(mny * s).toFixed(1), tz: +(mnz * s).toFixed(1) },
+        role: 'imported',
+        material: 'steel',
+      } as P);
+    }
+  }
+  if (!parts.length) return { ok: false, error: `ACIS 솔리드 ${sabs.length}개에서 바디를 추출하지 못했습니다(SAB 부분 파싱 ${failed}건 실패).` };
+  const representative = bodiesTotal > 600;
+  return {
+    ok: true,
+    assembly: {
+      name,
+      domain: 'mech',
+      importedApprox: true,
+      parts,
+      note: `DWG ACIS 솔리드 임포트 근사(바디=SAB 경계 정점 점군의 월드 AABB box — B-rep 곡면 미재구성) · 질량/물량=AABB 체적 기준(과대측) · 재질=미해석 기본값 · 단위=${unit}mm/단위${failed ? ` · SAB ${failed}건 파싱 실패(집계)` : ''}${representative ? ` · 바디 600 예산 초과(전체 ${bodiesTotal}) — 앞 600개만` : ''}`,
+    },
+    stats: { pfaces: 0, blocks: 0, inserts: 0, parts: parts.length, skippedNestedInserts: 0, unit: `${unit}mm/단위(SAB)`, ...(representative ? { representative: true } : {}) },
+  };
+}
+
 /** 3D 메시 DWG(Revit 계열 익스포트) → NexyFab 어셈블리(부품별 월드 AABB box). */
 export async function dwgToNexyfabAssembly(buf: ArrayBuffer, { name = 'DWG import' } = {}): Promise<DwgAssemblyResult> {
   let lib: { mod: LibredwgModule; api: LibredwgApi };
@@ -529,7 +611,14 @@ export async function dwgToNexyfabAssembly(buf: ArrayBuffer, { name = 'DWG impor
     if (!dwg) return { ok: false, error: 'DWG 파싱 실패 — LibreDWG 미지원 버전일 수 있습니다.' };
     const db = lib.api.convert(dwg);
     const clouds = collectPfaceClouds(lib.api, dwg);
-    if (!clouds.size) return { ok: false, error: '3D 폴리페이스 메시가 없습니다 — 2D 도면이면 dwg-convert(씨앗) 경로를 사용하세요.' };
+    if (!clouds.size) {
+      // 폴리페이스가 없으면 ACIS 솔리드(SAB) 경로 — 솔리드별 SAT/SAB 바디 AABB
+      const sabs = collectSolidSabs(lib.api, dwg, 2000, 400_000_000);
+      if (sabs.length) return solidsToAssembly(sabs, name);
+      const c3 = countRaw3d(lib.api, dwg);
+      if (c3.solids > 0) return { ok: false, error: `3DSOLID ${c3.solids}개가 있으나 ACIS 데이터가 비어 있습니다(acis_empty — 저장 시 스트림 제거 또는 LibreDWG 미지원 버전). 원본 CAD에서 STEP 재내보내기가 필요합니다.` };
+      return { ok: false, error: '3D 폴리페이스 메시·ACIS 솔리드가 없습니다 — 2D 도면이면 dwg-convert(씨앗) 경로를 사용하세요.' };
+    }
     const { scale, label } = insunitsScale((db.header as Record<string, unknown> | undefined)?.INSUNITS);
 
     type P = { id: string; type: 'box'; params: { width: number; depth: number; height: number }; at: { tx: number; ty: number; tz: number }; role: string; material: string; qty?: number };
