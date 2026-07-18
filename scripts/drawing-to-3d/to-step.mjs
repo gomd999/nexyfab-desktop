@@ -27,7 +27,7 @@ function wasmPath() {
 }
 
 let RC = null;
-async function ensureReplicad() {
+export async function ensureReplicad() {
   if (RC) return RC;
   // Next 서버(ESM strict) 컨텍스트에서 emscripten glue가 CJS 자유변수(__dirname, require)에
   // 닿으면 ReferenceError가 난다. glue의 NODE 분기가 참조하는 전역을 미리 채워 우회한다.
@@ -177,11 +177,53 @@ export async function buildSolid(intent) {
   return (await buildSolidRobust(intent)).solid;
 }
 
-/** intent → STEP 문자열 (B-rep). fuseReport.dropped>0이면 호출측이 정직 고지할 것. */
-export async function intentToStep(intent) {
+
+/** 실물 STEP 파일 → OCCT 정확 경계(mm). Phase5 혼합 어셈블리 게이트용. */
+export async function stepFileBounds(file) {
+  const { importSTEP } = await ensureReplicad();
+  const buf = readFileSync(file);
+  const shp = await importSTEP(new Blob([buf]));
+  const bb = shp.boundingBox;
+  const [xmin, ymin, zmin] = bb.bounds[0] ?? bb.bounds.slice(0, 3);
+  const [xmax, ymax, zmax] = bb.bounds[1] ?? bb.bounds.slice(3, 6);
+  return { min: [xmin, ymin, zmin], max: [xmax, ymax, zmax] };
+}
+
+/** intent → STEP 문자열 (B-rep). fuseReport.dropped>0이면 호출측이 정직 고지할 것.
+ * opts.imports(Phase5): [{file, offset:[x,y,z]}] — 실물 STEP 을 원기하 그대로 이동해
+ * 컴파운드 병합(사용자 소유 파일 전제 — 게이트는 import-merge.resolveImportParts). */
+export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) {
   const { solid, report } = await buildSolidRobust(intent);
-  const step = await solid.blobSTEP().text();
-  return { step, entities: (step.match(/^#\d+/gm) ?? []).length, fuseReport: report };
+  let out = solid;
+  const importNotes = [];
+  // Phase6(260718): 선택 필렛 — 생성 솔리드 전체 에지에 반경 filletMm.
+  // 복잡 융합 솔리드에서 OCCT 필렛은 실패할 수 있음 → 실패 시 무필렛 정직 폴백(노트).
+  if (filletMm > 0) {
+    try {
+      out = out.fillet(filletMm);
+      importNotes.push(`필렛 r${filletMm} 적용`);
+    } catch (e) {
+      importNotes.push(`필렛 실패(${String(e?.message ?? e).slice(0, 50)}) — 무필렛 폴백(정직)`);
+    }
+  }
+  if (imports.length) {
+    const { importSTEP, compoundShapes } = await ensureReplicad();
+    const shapes = [out];
+    for (const im of imports) {
+      try {
+        const buf = readFileSync(im.file);
+        const shp = await importSTEP(new Blob([buf]));
+        const [dx, dy, dz] = im.offset ?? [0, 0, 0];
+        shapes.push(shp.translate(dx, dy, dz));
+        importNotes.push(`${im.file.split(/[\/]/).pop()}: 병합(원기하 무손실)`);
+      } catch (e) {
+        importNotes.push(`${im.file.split(/[\/]/).pop()}: 병합 실패(${String(e?.message ?? e).slice(0, 60)}) — box 근사만 유지`);
+      }
+    }
+    if (shapes.length > 1) out = compoundShapes(shapes);
+  }
+  const step = await out.blobSTEP().text();
+  return { step, entities: (step.match(/^#\d+/gm) ?? []).length, fuseReport: report, importNotes };
 }
 
 /**
