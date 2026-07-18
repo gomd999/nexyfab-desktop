@@ -38,7 +38,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (assembly.parts.length > 600) return NextResponse.json({ ok: false, error: '부품 수 초과(≤600)' }, { status: 400 });
 
   try {
-    const mod = await import('../../../../../../scripts/drawing-to-3d/edit-part.mjs');
+    const { join } = await import('node:path');
+    const { pathToFileURL } = await import('node:url');
+    const mod = await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'edit-part.mjs')).href);
     const part = (assembly.parts as Array<{ id?: string }>).find((p) => p.id === partId);
     if (!part) return NextResponse.json({ ok: false, error: `부품 '${partId}' 없음` }, { status: 404 });
     // 외부 API/MCP: 명명 면 문자열 직접 수용(뷰어 없이 사용) — 노멀이 오면 서버 명명

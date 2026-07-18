@@ -33,7 +33,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (assembly.parts.length > 600 || partIds.length > 100) return NextResponse.json({ ok: false, error: '규모 초과' }, { status: 400 });
 
   try {
-    const mod = await import('../../../../../../scripts/drawing-to-3d/edit-part.mjs');
+    const { join } = await import('node:path');
+    const { pathToFileURL } = await import('node:url');
+    const mod = await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'edit-part.mjs')).href);
     const r = mod.partOps(assembly, op, partIds, body.opts ?? {});
     if (!r.ok) return NextResponse.json({ ok: false, error: r.error, gateErrors: r.gateErrors ?? [] }, { status: 422 });
     return NextResponse.json({

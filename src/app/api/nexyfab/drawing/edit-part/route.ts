@@ -42,7 +42,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (assembly.parts.length > 600) return NextResponse.json({ ok: false, error: '부품 수 초과(≤600)' }, { status: 400 });
 
   try {
-    const mod = await import('../../../../../../scripts/drawing-to-3d/edit-part.mjs');
+    const { join } = await import('node:path');
+    const { pathToFileURL } = await import('node:url');
+    // webpackIgnore 필수(관례): 상대 dynamic import 는 webpack 이 엔진을 번들하려다
+    // extract.mjs 의 .env URL 해석에서 빌드 실패(260719 배포 FAILED 원인 — 도커 재현으로 확정)
+    const mod = await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'edit-part.mjs')).href);
     // 뷰어는 픽 노멀만 보낼 수 있음(P2) — 서버에서 명명 면으로 해석(클라 중복 로직 금지)
     let face = body.face ?? null;
     if (face?.normal && !face.face) {
