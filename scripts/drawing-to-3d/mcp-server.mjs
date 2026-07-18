@@ -28,10 +28,13 @@ import { verifyDomain, listDomains } from './domain-verify.mjs';
 import { analyzeDfm } from './dfm.mjs';
 import { listTemplates, presetWithVerify } from './preset-registry.mjs';
 import { fabSpec, estimateCost, toDxf, DEFAULT_RATES } from './fab.mjs';
+import { aiEditPart, applyPartPatch, faceOfPart, faceDragPatch, faceDimOf, partOps } from './edit-part.mjs';
+import { autoTagAssembly, assemblyAtLevel } from './assembly.mjs';
+import { bladeRingMesh } from './gen-macros.mjs';
 
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
 
-const tools = [
+export const tools = [
   {
     name: 'compose_3d',
     description:
@@ -212,6 +215,94 @@ const tools = [
     },
   },
   {
+    name: 'edit_part',
+    description:
+      `🎯 선택 부품만 수정(자율 수정 루프) — AI는 「지시→패치」 이해만, 적용·게이트(어휘·간섭·` +
+      `지지·구조)는 결정론. 대상 외 부품 불변은 코드가 보장. face(명명 면 또는 normal)로 면 컨텍스트 ` +
+      `전달 가능. REV 이력 자동 축적. GEMINI_API_KEY 필요. 반환: {assembly, patch, interferences, ` +
+      `floating, massKg, openscad, parts, composeIntent}.`,
+    inputSchema: {
+      type: 'object', required: ['assembly', 'partId', 'instruction'],
+      properties: {
+        assembly: { type: 'object', description: '{name, parts:[{id,type,params,at}...]}' },
+        partId: { type: 'string' },
+        instruction: { type: 'string', description: '예: "높이를 600으로", "중심 유지하고 폭 160"' },
+        face: { type: 'object', description: "{face:'z+|axis+|radial'…} 또는 {normal:[x,y,z]}" },
+      },
+    },
+  },
+  {
+    name: 'face_drag',
+    description:
+      `면 푸시풀(AI 없음, 순수 결정론) — 명명 면(box 6면·회전체 축단±/radial, 회전 배치 포함) 또는 ` +
+      `픽 노멀 + deltaMm(±) 또는 targetMm(치수 직접 지정) → 파라미터/배치 결정론 패치 + 재빌드 게이트. ` +
+      `모호 조합=정직 거부.`,
+    inputSchema: {
+      type: 'object', required: ['assembly', 'partId'],
+      properties: {
+        assembly: { type: 'object' }, partId: { type: 'string' },
+        face: { type: 'string', description: "'z+'|'x-'|'axis+'|'radial'…(faceOfPart 명명)" },
+        normal: { type: 'array', items: { type: 'number' }, description: '월드 노멀 [x,y,z](face 대신)' },
+        deltaMm: { type: 'number', description: '면 확장(+)/축소(−) mm' },
+        targetMm: { type: 'number', description: '해당 면 치수의 목표값(delta 대신)' },
+      },
+    },
+  },
+  {
+    name: 'part_op',
+    description:
+      `부품 일괄 연산(AI 없음) — delete | duplicate(+offset[3]) | translate{dx,dy,dz} | fillet{r}` +
+      `(part.filletMm→STEP B-rep 에만 반영, 표시=무필렛 명시). 재빌드 게이트 + REV 축적.`,
+    inputSchema: {
+      type: 'object', required: ['assembly', 'op', 'partIds'],
+      properties: {
+        assembly: { type: 'object' }, op: { type: 'string', enum: ['delete', 'duplicate', 'translate', 'fillet'] },
+        partIds: { type: 'array', items: { type: 'string' } },
+        opts: { type: 'object', description: '{offset:[x,y,z]} | {dx,dy,dz} | {r}' },
+      },
+    },
+  },
+  {
+    name: 'lod_assembly',
+    description:
+      `1차 골격→2차 상세(LOD) — 계통/상세 자동 태깅(미지정만, detail2=철물·자유곡면) 후 ` +
+      `level 이하 부분집합을 빌드. level=1이면 골격 프리뷰(생성 시간·비용 절약), 2=전체.`,
+    inputSchema: {
+      type: 'object', required: ['assembly'],
+      properties: { assembly: { type: 'object' }, level: { type: 'integer', description: '기본 1(골격)' } },
+    },
+  },
+  {
+    name: 'blade_ring',
+    description:
+      `NACA 4-digit 블레이드 링(자유곡면 생성기, x축 로프트) — 팬/프로펠러/임펠러 블리스크 mesh 부품 ` +
+      `생성. 반환 {params(mesh), gen} 을 assembly 부품 {type:'mesh', params, gen} 으로 사용 — 이후 수정은 ` +
+      `edit_part 가 gen.params 재생성으로 처리(정점 직접 수정 금지·추적성).`,
+    inputSchema: {
+      type: 'object', required: ['nB', 'rRoot', 'rTip', 'chord', 'cx', 'pitch'],
+      properties: {
+        nB: { type: 'integer', description: '블레이드 수(2~60)' }, rRoot: { type: 'number' }, rTip: { type: 'number' },
+        chord: { type: 'number' }, cx: { type: 'number', description: '축방향 중심 x' },
+        cy: { type: 'number' }, cz: { type: 'number' }, pitch: { type: 'number' }, naca: { type: 'string', description: "기본 '4412'" },
+      },
+    },
+  },
+  {
+    name: 'generate_package',
+    description:
+      `실시 도서 세트 일괄 생성(outDir 에 파일 저장) — GA 2D(완성도 체크리스트 게이트)·GA 3D(오프라인 ` +
+      `뷰어)·부품 제작도·BOQ·제작사양서·Dossier·DXF(C9 게이트)·선택 STEP(부품별 B-rep 컴파운드·` +
+      `filletMm 반영). 비법정(제작용 실시도서+검토 계산서 — 인허가 도서=기술사 날인 영역). ` +
+      `반환: 파일 목록 + 완성도/C9 결과.`,
+    inputSchema: {
+      type: 'object', required: ['assembly', 'outDir'],
+      properties: {
+        assembly: { type: 'object' }, outDir: { type: 'string', description: '저장 디렉터리(절대경로)' },
+        title: { type: 'string' }, withStep: { type: 'boolean', description: 'STEP 포함(수십 초 소요 가능)' },
+      },
+    },
+  },
+  {
     name: 'verify_domain',
     description:
       `설계 형상 + 분야 → 진짜 공학 계산기(engineering-core) 검증. 형상에서 단면특성(A·Ix·Sx·r)·경간 L을 ` +
@@ -232,7 +323,7 @@ const tools = [
   },
 ];
 
-async function callTool(name, args = {}) {
+export async function callTool(name, args = {}) {
   if (name === 'compose_3d') {
     const r = await composeWithGate(args.description, { maxRounds: args.maxRounds ?? 2 });
     if (r.gatePassed && !r.scad) r.scad = emitComposite(r.intent);
@@ -299,6 +390,79 @@ async function callTool(name, args = {}) {
   if (name === 'list_domains') {
     return { domains: listDomains() };
   }
+  if (name === 'edit_part') {
+    return aiEditPart(args.assembly, args.partId, args.instruction, { face: args.face ?? null });
+  }
+  if (name === 'face_drag') {
+    const part = (args.assembly?.parts ?? []).find((p) => p.id === args.partId);
+    if (!part) return { ok: false, error: `부품 '${args.partId}' 없음` };
+    const face = args.face ? { face: args.face } : (Array.isArray(args.normal) ? faceOfPart(part, args.normal) : null);
+    if (!face) return { ok: false, error: 'face 또는 normal 필요(명명 불가=정직 거부)' };
+    let d = args.deltaMm;
+    if (Number.isFinite(args.targetMm)) {
+      const dim = faceDimOf(part, face.face);
+      if (!dim) return { ok: false, error: '이 면은 치수 직접 입력 미지원(모호 — 정직 거부)', face };
+      d = Number(args.targetMm) - dim.value;
+    }
+    if (!Number.isFinite(d) || d === 0) return { ok: false, error: 'deltaMm 또는 targetMm 필요(0 제외)' };
+    const fp = faceDragPatch(part, face.face, d);
+    if (!fp.ok) return { ok: false, error: fp.error, face };
+    return { ...applyPartPatch(args.assembly, args.partId, fp.patch, { kind: 'face-drag', note: `${face.face} ${d >= 0 ? '+' : ''}${Math.round(d)}mm` }), face, patch: fp.patch };
+  }
+  if (name === 'part_op') {
+    return partOps(args.assembly, args.op, args.partIds, args.opts ?? {});
+  }
+  if (name === 'lod_assembly') {
+    const tagged = autoTagAssembly(args.assembly);
+    const level = args.level ?? 1;
+    const subset = assemblyAtLevel(tagged, level);
+    const built = buildAssembly(subset);
+    return {
+      ok: !!built.ok, level, assembly: tagged,
+      subsetParts: (subset.parts ?? []).length, totalParts: (tagged.parts ?? []).length,
+      openscad: built.openscad, parts: built.parts ?? [], gateErrors: built.gateErrors ?? [],
+      interferences: built.interferences ?? [],
+    };
+  }
+  if (name === 'blade_ring') {
+    const genParams = { nB: args.nB, rRoot: args.rRoot, rTip: args.rTip, chord: args.chord, cx: args.cx, cy: args.cy ?? 0, cz: args.cz ?? 0, pitch: args.pitch, naca: args.naca ?? '4412' };
+    return { params: bladeRingMesh(genParams), gen: { kind: 'blade_ring', params: genParams }, usage: "assembly 부품으로: {id, type:'mesh', params, gen, at:{tx:0,ty:0,tz:0}}" };
+  }
+  if (name === 'generate_package') {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    fs.mkdirSync(args.outDir, { recursive: true });
+    const built = buildAssembly(args.assembly);
+    if (!built.ok) return { ok: false, gateErrors: built.gateErrors };
+    const title = args.title ?? args.assembly.name ?? 'NexyFab 설계';
+    const pkg = await import('./package.mjs');
+    const boqm = await import('./boq.mjs');
+    const pd = await import('./pid_dossier.mjs');
+    const dxfm = await import('./dxf-export.mjs');
+    const ps = await import('./part-sheets.mjs');
+    const fsp = await import('./fab-spec.mjs');
+    const dc = await import('./drawing-completeness.mjs');
+    const rnd = await import('./html-render.mjs');
+    const files = [];
+    const save = (nm, content) => { const p = path.join(args.outDir, nm); fs.writeFileSync(p, content); files.push({ name: nm, bytes: content.length }); };
+    const revHistory = Array.isArray(args.assembly.revisions)
+      ? args.assembly.revisions.map((r, i) => ({ rev: String(i + 1), date: r.at ? new Date(r.at).toISOString().slice(0, 10) : '', note: `${r.kind ?? 'edit'} ${r.target ?? ''} ${r.note ?? ''}`.trim().slice(0, 90) }))
+      : undefined;
+    let completeness = null, c9 = null;
+    try { const ga = pkg.ga2dDrawing(args.assembly, { title, domain: args.assembly.domain ?? 'mech', welds: built.welds, ...(revHistory ? { revHistory } : {}) }); save('GA_2D_drawing.html', ga); completeness = dc.checkDrawingCompleteness(ga); } catch (e) { files.push({ name: 'GA_2D_drawing.html', error: String(e).slice(0, 120) }); }
+    try { save('structural.html', pkg.structuralReport(args.assembly, { title })); } catch { /* skip */ }
+    try { save('BOQ.html', boqm.boqReport(args.assembly, { title, domain: args.assembly.domain ?? 'mech' })); } catch { /* skip */ }
+    try { save('Dossier.html', pd.dossierReport(args.assembly, { title })); } catch { /* skip */ }
+    try { save('부품제작도.html', ps.partSheets(args.assembly, { title: title + ' — 부품 제작도' })); } catch { /* skip */ }
+    try { save('제작사양서.html', await fsp.fabricationSpec(args.assembly, { title: title + ' — 제작 사양서' })); } catch { /* skip */ }
+    try { const d = dxfm.dxfPlan(args.assembly, args.assembly.domain ?? 'mech', undefined, { title, dwgNo: 'NX-GA-001' }); if (d) { save('GA_plan.dxf', d); c9 = dc.checkDxfLayers(d); } } catch { /* skip */ }
+    try { save('GA_3D.html', await rnd.renderColoredHtml({ assembly: args.assembly }, { title, subtitle: 'nexyfab 자동생성 GA(비법정)' })); } catch (e) { files.push({ name: 'GA_3D.html', error: String(e).slice(0, 120) }); }
+    let step = null;
+    if (args.withStep) {
+      try { const r = await intentToStep(built.composeIntent); save('model.step', r.step); step = { entities: r.entities, dropped: r.fuseReport?.dropped ?? [] }; } catch (e) { step = { error: String(e).slice(0, 120) }; }
+    }
+    return { ok: true, outDir: args.outDir, files, completeness, c9, step, note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.' };
+  }
   if (name === 'verify_domain') {
     return verifyDomain({
       intent: args.intent, domain: args.domain, calculatorId: args.calculatorId,
@@ -308,11 +472,13 @@ async function callTool(name, args = {}) {
   throw new Error(`unknown tool: ${name}`);
 }
 
-// ---- JSON-RPC over stdio ----
-const rl = createInterface({ input: process.stdin });
+// ---- JSON-RPC over stdio ---- (직접 실행 시에만 — cli.mjs 가 import 해 도구면 재사용)
+import { pathToFileURL as _p2f } from 'node:url';
+const IS_MAIN = process.argv[1] && import.meta.url === _p2f(process.argv[1]).href;
+const rl = IS_MAIN ? createInterface({ input: process.stdin }) : null;
 const send = (msg) => process.stdout.write(JSON.stringify(msg) + '\n');
 
-rl.on('line', async (line) => {
+rl?.on('line', async (line) => {
   line = line.trim();
   if (!line) return;
   let req;

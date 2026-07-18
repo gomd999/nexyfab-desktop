@@ -21,7 +21,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const rl = rateLimit(`drawing-face-drag:${ip}`, 30, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
 
-  let body: { assembly?: { parts?: unknown[] }; partId?: string; normal?: number[]; deltaMm?: number; targetMm?: number };
+  let body: { assembly?: { parts?: unknown[] }; partId?: string; normal?: number[]; face?: string; deltaMm?: number; targetMm?: number };
   try {
     const raw = await req.text();
     if (raw.length > 800_000) return NextResponse.json({ ok: false, error: 'assembly 가 너무 큽니다(≤800KB)' }, { status: 400 });
@@ -31,8 +31,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const { assembly, partId, normal, deltaMm, targetMm } = body;
   const hasDelta = Number.isFinite(deltaMm) || Number.isFinite(targetMm);
-  if (!assembly || !Array.isArray(assembly.parts) || !partId || !Array.isArray(normal) || normal.length !== 3 || !hasDelta) {
-    return NextResponse.json({ ok: false, error: 'assembly.parts / partId / normal[3] / deltaMm|targetMm 필요' }, { status: 400 });
+  const hasFaceRef = (Array.isArray(normal) && normal.length === 3) || typeof body.face === 'string';
+  if (!assembly || !Array.isArray(assembly.parts) || !partId || !hasFaceRef || !hasDelta) {
+    return NextResponse.json({ ok: false, error: 'assembly.parts / partId / (normal[3] 또는 face) / deltaMm|targetMm 필요' }, { status: 400 });
   }
   if (assembly.parts.length > 600) return NextResponse.json({ ok: false, error: '부품 수 초과(≤600)' }, { status: 400 });
 
@@ -40,7 +41,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const mod = await import('../../../../../../scripts/drawing-to-3d/edit-part.mjs');
     const part = (assembly.parts as Array<{ id?: string }>).find((p) => p.id === partId);
     if (!part) return NextResponse.json({ ok: false, error: `부품 '${partId}' 없음` }, { status: 404 });
-    const face = mod.faceOfPart(part, normal);
+    // 외부 API/MCP: 명명 면 문자열 직접 수용(뷰어 없이 사용) — 노멀이 오면 서버 명명
+    const face = typeof body.face === 'string' ? { face: body.face, label: body.face } : mod.faceOfPart(part, normal);
     if (!face) return NextResponse.json({ ok: false, error: '면 명명 불가(사면·미지원 타입 — 정직 거부)' }, { status: 422 });
     // #2 치수 직접 입력: targetMm 지정 시 delta = 목표 − 현재(면 치수)
     let d;
