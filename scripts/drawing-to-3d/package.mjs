@@ -1219,7 +1219,8 @@ export function packageConsistencyCheck(files, basis, { hasFluid = false, alignm
   // §2 도서 역방향 게이트: data-dwg 재파싱 — 도번 유일·목록표 매수 일치·상세 윈도 무결·REV 채움
   // (도메인 불문 — 시트팩(NX-CIV/NX-BRG…)이 있으면 항상 검사, 없으면 자동 스킵)
   {
-    const dwgs = [...gaHtml.matchAll(/data-dwg="(NX-[A-Z]+-[A-Z]+-\d+)"/g)].map((m) => m[1]);
+    // 시트 섹션 단위로만 집계 — 표제란은 자기 시트 도번을 재표기(도면 관례)하므로 제외
+    const dwgs = [...gaHtml.matchAll(/<section class="sheet-page" data-dwg="(NX-[A-Z]+-[A-Z]+-\d+)"/g)].map((m) => m[1]);
     if (dwgs.length) {
       const uniq = new Set(dwgs);
       checks.push({ file: 'GA_2D_drawing.html', metric: '도번 유일성', value: dwgs.length, expect: uniq.size, tol: 0, pass: dwgs.length === uniq.size });
