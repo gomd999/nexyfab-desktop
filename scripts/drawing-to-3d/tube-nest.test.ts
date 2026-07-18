@@ -45,6 +45,42 @@ describe('보어 내포 폐형 — 동축 회전체 in 중공 회전체', () => 
     for (const f of intent.features) expect(f._pid).toBe(0); // 부품 스코프 태그
   });
 
+  it('체결 정합 — hex_bolt×flange(BCD)·hex_bolt×hex_nut = 접촉(간섭 아님)', () => {
+    const r = build([
+      { id: 'fl', type: 'flange', params: { outerDia: 580, boreDia: 522, thickness: 25, bcd: 552, boltHoleD: 18, boltCount: 16 }, at: { tx: 400, ty: 400, tz: 800, ry: 90 }, role: 'mount', material: 'steel' },
+      { id: 'b1', type: 'hex_bolt', params: { threadDia: 16, length: 60 }, at: { tx: 435, ty: 400 + 276, tz: 800, ry: -90 }, role: 'mount', material: 'steel' },
+      { id: 'n1', type: 'hex_nut', params: { af: 24, thickness: 13, boreDia: 16 }, at: { tx: 438, ty: 400 + 276, tz: 800, ry: -90 }, role: 'mount', material: 'steel' },
+    ]);
+    expect(r.interferences).toEqual([]);
+    const notes = ((r as unknown as { contacts: Array<{ note?: string }> }).contacts ?? []).map((q) => q.note ?? '');
+    expect(notes.some((n) => n.includes('볼트-플랜지'))).toBe(true);
+    expect(notes.some((n) => n.includes('볼트-너트'))).toBe(true);
+  });
+
+  it('메시 방사 내·외포 — 링 메시가 케이스 보어 안·드럼 밖이면 실분리', () => {
+    // 사각 링 단면의 8정점 프리즘(반경 150..200, x 100..140) — z축 아님 x축 링
+    const mk = (r0: number, r1: number) => {
+      const verts: number[][] = [];
+      for (const r of [r0, r1]) for (const a of [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]) for (const x of [100, 140]) verts.push([x, 400 + r * Math.cos(a), 800 + r * Math.sin(a)]);
+      const faces = [[0, 1, 2], [2, 1, 3], [4, 5, 6], [6, 5, 7]]; // 판정은 정점 기반 — 면은 최소
+      return { volumeMm3: 1000, aabb: { min: [100, 400 - r1, 800 - r1], max: [140, 400 + r1, 800 + r1] }, verts, faces };
+    };
+    const r = build([
+      { id: 'case', type: 'tube', params: { outerDia: 460, innerDia: 440, length: 200 }, at: { tx: 50, ty: 400, tz: 800, ry: 90 }, role: 'vessel', material: 'steel' },
+      { id: 'drum', type: 'tube', params: { outerDia: 260, innerDia: 90, length: 150 }, at: { tx: 60, ty: 400, tz: 800, ry: 90 }, role: 'mount', material: 'steel' },
+      { id: 'ring', type: 'mesh', params: mk(150, 200), at: { tx: 0, ty: 0, tz: 0 }, role: 'mount', material: 'steel' },
+    ]);
+    expect(r.interferences).toEqual([]);
+  });
+
+  it('revolve 실방출 — composeIntent 에 revolve 피처(실린더 프록시 아님)', () => {
+    const intent = assemblyToComposeIntent({
+      parts: [{ id: 's', type: 'revolve', params: { profile: [[0, 0], [90, 200], [0, 200]] }, at: { tx: 200, ty: 400, tz: 800, ry: 90 } }],
+    }) as { features: Array<{ kind: string; profile?: number[][] }> };
+    expect(intent.features[0].kind).toBe('revolve');
+    expect(intent.features[0].profile?.length).toBe(3);
+  });
+
   it('pipe_reducer 케이스 보어=소경-벽두께 보수 판정', () => {
     const r = build([
       { id: 'cone', type: 'pipe_reducer', params: { dia1: 520, dia2: 420, length: 300, wallThk: 10 }, at: { tx: 0, ty: 400, tz: 800, ry: 90 }, role: 'frame', material: 'steel' },

@@ -316,9 +316,13 @@ export function assemblyToComposeIntent(asm) {
         break;
       }
       // 자유곡면 어휘(260718d): GA/STEP 피처=프록시(표시용 — SCAD 본체는 정확 명시)
-      case 'mesh': { // AABB 프록시(정밀 메시는 SCAD polyhedron ≤20k 정점·질량=발산정리)
-        const bb = p.aabb;
-        if (bb) feats.push(F('box', { size: [bb.max[0] - bb.min[0], bb.max[1] - bb.min[1], bb.max[2] - bb.min[2]] }, bb.min[0], bb.min[1], bb.min[2]));
+      case 'mesh': { // 실폴리헤드론(260719 — verts 있으면 GA/3D 에 실형상, 없으면 AABB 프록시)
+        if (Array.isArray(p.verts) && Array.isArray(p.faces)) {
+          feats.push(F('polyhedron', { verts: p.verts, faces: p.faces }));
+        } else {
+          const bb = p.aabb;
+          if (bb) feats.push(F('box', { size: [bb.max[0] - bb.min[0], bb.max[1] - bb.min[1], bb.max[2] - bb.min[2]] }, bb.min[0], bb.min[1], bb.min[2]));
+        }
         break;
       }
       case 'cavity_block': { // 블록 + 음형 subtract(box/cylinder 만 피처 차감 — 그 외=SCAD 정확·표시 프록시)
@@ -328,11 +332,8 @@ export function assemblyToComposeIntent(asm) {
         else if (cv?.type === 'cylinder') feats.push(F('cylinder', { diameter: cv.params.diameter, height: cv.params.length }, cv.at?.tx ?? 0, cv.at?.ty ?? 0, (cv.at?.tz ?? 0) + 0.01, 'subtract'));
         break;
       }
-      case 'revolve': { // 실린더 프록시(rMax×z범위 — SCAD rotate_extrude 는 정확·질량=파푸스)
-        const rMax = Math.max(...(p.profile ?? [[1, 0]]).map((q) => q[0]));
-        const zs = (p.profile ?? [[0, 0]]).map((q) => q[1]);
-        const z0r = Math.min(...zs), z1r = Math.max(...zs);
-        feats.push(F('cylinder', { diameter: 2 * rMax, height: Math.max(1, z1r - z0r) }, 0, 0, z0r));
+      case 'revolve': { // 실형상(260719 — compose revolve=rotate_extrude·STEP=스케치 회전, 프록시 폐기)
+        feats.push(F('revolve', { profile: (p.profile ?? []).map((q) => [q[0], q[1]]), ...(p.angleDeg && p.angleDeg < 360 ? { angle: p.angleDeg } : {}) }));
         break;
       }
       default: break; // 미지원 타입은 STEP 에서 생략(GA/SCAD 로는 표시됨)
@@ -458,39 +459,87 @@ export function buildAssembly(asm) {
             const ny2 = Math.max(byl, Math.min(cy2, byl + bx2.params.depth));
             if (Math.hypot(nx2 - cx2, ny2 - cy2) >= rMax2 - 0.01) continue;
           }
-          // 보어 내포(260718t — 케이싱×로터/샤프트): 중공 회전체(tube/pipe_reducer/flange)와
-          // 동축계 회전체가 「축간 거리+내부 최대반경 ≤ 보어 최소반경」이면 실분리(원환 폐형 —
-          // 축방향 겹침 무관). pipe_reducer 보어=소경/2-벽두께(전 구간 보수), flange 보어=boreDia.
+          // 회전체 정밀규칙(260718t/260719 확장): ①외접 분리 ②보어 내포 ③체결 정합
+          // ④메시 방사 내·외포 — 전부 폐형 판정(축평행 관례 + 정점 샘플링은 기존 메시 규칙 방법론).
           {
             const boreR = (p) => p.type === 'tube' ? p.params.innerDia / 2
               : p.type === 'pipe_reducer' ? Math.min(p.params.dia1, p.params.dia2) / 2 - (p.params.wallThk ?? Math.max(2, p.params.dia1 * 0.03))
-              : p.type === 'flange' ? p.params.boreDia / 2 : null;
+              : p.type === 'flange' ? p.params.boreDia / 2
+              : (p.type === 'hex_nut' || p.type === 'washer') ? (p.params.boreDia ?? 0) / 2 : null;
             const outR = (p) => p.type === 'cylinder' ? p.params.diameter / 2
               : p.type === 'tube' ? p.params.outerDia / 2
               : p.type === 'pipe_reducer' ? Math.max(p.params.dia1, p.params.dia2) / 2
               : p.type === 'revolve' ? Math.max(...(p.params.profile ?? [[0, 0]]).map((q) => q[0]))
-              : p.type === 'flange' ? p.params.outerDia / 2 : null;
+              : p.type === 'flange' ? p.params.outerDia / 2
+              : p.type === 'hex_bolt' ? Math.max(p.params.threadDia / 2, p.params.threadDia * 0.87) // 머리 대각=af/√3≈0.87d(af=1.5d 표준)
+              : p.type === 'hex_nut' ? p.params.af / Math.sqrt(3)
+              : p.type === 'washer' ? p.params.outerDia / 2 : null;
             const axisOf = (p) => {
-              if (!['cylinder', 'tube', 'flange', 'pipe_reducer', 'revolve'].includes(p.type)) return null;
+              if (!['cylinder', 'tube', 'flange', 'pipe_reducer', 'revolve', 'hex_bolt', 'hex_nut', 'washer'].includes(p.type)) return null;
               const { rx = 0, ry = 0, rz = 0 } = p.at ?? {};
               if (!rx && !ry && !rz) return 'z';
               if (Math.abs(Math.abs(ry) - 90) < 1e-6 && !rx && !rz) return 'x';
               if (Math.abs(Math.abs(rx) - 90) < 1e-6 && !ry && !rz) return 'y';
               return null;
             };
-            let contained = false;
-            for (const [host, oth] of [[pi, pj], [pj, pi]]) {
-              const bR = boreR(host), oR = outR(oth);
-              if (bR == null || oR == null) continue;
-              const aH = axisOf(host), aO = axisOf(oth);
-              if (!aH || aH !== aO) continue;
-              // 배치 관례: 축 방향 좌표=시작, 수직 두 좌표=중심(cylinder 계열 공통)
-              const perp = aH === 'z' ? ['tx', 'ty'] : aH === 'x' ? ['ty', 'tz'] : ['tx', 'tz'];
-              const c = (p, k) => p.at?.[k] ?? 0;
-              const dist = Math.hypot(c(host, perp[0]) - c(oth, perp[0]), c(host, perp[1]) - c(oth, perp[1]));
-              if (dist + oR <= bR - 0.01) { contained = true; break; }
+            // 배치 관례: 축 방향 좌표=시작, 수직 두 좌표=중심(cylinder 계열 공통)
+            const perpOf = (ax) => ax === 'z' ? ['tx', 'ty'] : ax === 'x' ? ['ty', 'tz'] : ['tx', 'tz'];
+            const c = (p, k) => p.at?.[k] ?? 0;
+            const aA = axisOf(pi), aB = axisOf(pj);
+            if (aA && aA === aB) {
+              const perp = perpOf(aA);
+              const dist = Math.hypot(c(pi, perp[0]) - c(pj, perp[0]), c(pi, perp[1]) - c(pj, perp[1]));
+              // ① 외접 분리: 평행축 회전체 표면 간격 ≥0 (AABB 사각 코너 과탐 제거 — 볼트원주×케이싱)
+              const rA = outR(pi), rB = outR(pj);
+              if (rA != null && rB != null && dist >= rA + rB - 0.01) continue;
+              // ② 보어 내포: 축간거리+내부 최대반경 ≤ 보어 최소반경(원환 폐형 — 축방향 겹침 무관)
+              let contained = false;
+              for (const [host, oth] of [[pi, pj], [pj, pi]]) {
+                const bR = boreR(host), oR = outR(oth);
+                if (bR != null && oR != null && dist + oR <= bR - 0.01) { contained = true; break; }
+              }
+              if (contained) continue;
+              // ③ 체결 정합(260719): hex_bolt×flange=BCD 원주 정합(홀경≥볼트경) ·
+              //    hex_bolt×(hex_nut|washer)=동축+보어≥볼트경 → 체결 접촉(폐형 검증 — 정상)
+              const bolt = pi.type === 'hex_bolt' ? pi : pj.type === 'hex_bolt' ? pj : null;
+              const mate = bolt === pi ? pj : pi;
+              if (bolt) {
+                const dTh = bolt.params.threadDia;
+                let fastened = null;
+                if (mate.type === 'flange' && (mate.params.boltHoleD ?? 0) >= dTh - 0.01 && Math.abs(dist - (mate.params.bcd ?? 0) / 2) < 0.5) {
+                  fastened = `볼트-플랜지 홀 정합(BCD ${mate.params.bcd}·홀 ⌀${mate.params.boltHoleD}≥⌀${dTh})`;
+                } else if ((mate.type === 'hex_nut' || mate.type === 'washer') && (mate.params.boreDia ?? 0) >= dTh - 0.01 && dist < 0.5) {
+                  fastened = `볼트-${mate.type === 'hex_nut' ? '너트' : '와셔'} 체결(동축·보어 정합)`;
+                }
+                if (fastened) {
+                  contacts.push({ a: boxes[i].id, b: boxes[j].id, overlapMm3: 0, depthMm: 0, note: `${fastened} — 폐형 검증, 정상` });
+                  continue;
+                }
+              }
             }
-            if (contained) continue;
+            // ④ 메시 방사 내·외포(260719 — 블레이드 링×케이싱/드럼/샤프트): 무회전 메시의
+            //    호스트 축 방사범위 [minR,maxR] 가 보어 안(maxR≤boreR) 또는 몸통 밖(minR≥outR)
+            //    이면 실분리 — 정점 샘플링(기존 revolve×mesh 규칙과 동일 방법론).
+            {
+              const me4 = pi.type === 'mesh' && pi.params?.verts ? pi : pj.type === 'mesh' && pj.params?.verts ? pj : null;
+              const host4 = me4 === pi ? pj : me4 === pj ? pi : null;
+              const rot4 = me4?.at && ((me4.at.rx ?? 0) || (me4.at.ry ?? 0) || (me4.at.rz ?? 0));
+              const aH4 = host4 ? axisOf(host4) : null;
+              if (me4 && !rot4 && aH4) {
+                const perp4 = perpOf(aH4);
+                const idx = aH4 === 'z' ? [0, 1] : aH4 === 'x' ? [1, 2] : [0, 2];
+                const off = [me4.at?.tx ?? 0, me4.at?.ty ?? 0, me4.at?.tz ?? 0];
+                const hc = [c(host4, perp4[0]), c(host4, perp4[1])];
+                let minR = Infinity, maxR = -Infinity;
+                for (const vv of me4.params.verts) {
+                  const r = Math.hypot(vv[idx[0]] + off[idx[0]] - hc[0], vv[idx[1]] + off[idx[1]] - hc[1]);
+                  if (r < minR) minR = r;
+                  if (r > maxR) maxR = r;
+                }
+                const bR4 = boreR(host4), oR4 = outR(host4);
+                if ((bR4 != null && maxR <= bR4 - 0.01) || (oR4 != null && minR >= oR4 - 0.01)) continue;
+              }
+            }
           }
           // 방위각 분리(260718d — 다익 블레이드 쌍): 공통 원점 무회전 메시 쌍이 전부 r>0 이고
           // 방위각 구간이 서로소면 축 통과 반평면 2장으로 분리 — 실분리 폐형(스팬 37.6°<60° 실측).
