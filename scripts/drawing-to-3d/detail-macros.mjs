@@ -132,3 +132,48 @@ export function vesselEndCaps({ x0, len, cy, cz, dia, service }) {
     { id: uid('ro_cap'), type: 'cylinder', params: { diameter: capD, length: capT }, at: { tx: x0 + len, ty: cy, tz: cz, ry: 90 }, role: 'mount', ...(service ? { service } : {}), material: 'steel' },
   ];
 }
+
+// ── 탈-프리미티브 형상 헬퍼(260718o — "원통·네모 조합" 탈피): revolve 전면 활용 ──
+
+/** 양단 돔(2:1 타원 근사) 압력용기 프로파일 — RO 베셀·필터 하우징용. z0~length. */
+export function domedVesselProfile({ dia, length, headRatio = 0.25, seg = 6 }) {
+  const r = dia / 2;
+  const h = r * headRatio * 2; // 경판 깊이(2:1 → r/2)
+  const prof = [[0, 0]];
+  for (let k = seg; k >= 0; k--) {
+    const th = (Math.PI / 2) * (k / seg);
+    prof.push([+(r * Math.cos(th)).toFixed(2), +(h - h * Math.sin(th)).toFixed(2)]);
+  }
+  for (let k = 0; k <= seg; k++) {
+    const th = (Math.PI / 2) * (k / seg);
+    prof.push([+(r * Math.cos(th)).toFixed(2), +(length - h + h * Math.sin(th)).toFixed(2)]);
+  }
+  prof.push([0, length]);
+  return prof;
+}
+
+/** 수직 다단 펌프 실루엣 — 단(stage) 링이 보이는 회전체 프로파일. */
+export function multistagePumpProfile({ dia, stages = 5, stageH = 80, baseH = 60, topH = 50 }) {
+  const r = dia / 2, ri = r * 0.86;
+  const prof = [[0, 0], [r, 0], [r, baseH]];
+  let z = baseH;
+  for (let s = 0; s < stages; s++) {
+    prof.push([ri, z + 6], [ri, z + stageH - 6], [r, z + stageH]);
+    z += stageH;
+  }
+  prof.push([r * 0.7, z + topH], [0, z + topH]);
+  return prof;
+}
+
+/** 곡관 엘보(쿼터 토러스) — revolve 부분각. bendR=중심선 곡률반경(코퍼스 실측 1.1D). */
+export function curvedElbowPart({ id, pipeDia, bendR = null, at, rot = {}, angleDeg = 90, service, material = 'steel' }) {
+  const R = bendR ?? pipeDia * CAL.flange.elbowRadiusRatio;
+  const r = pipeDia / 2;
+  const seg = 8;
+  const prof = [];
+  for (let k = 0; k <= seg; k++) {
+    const th = (2 * Math.PI * k) / seg;
+    prof.push([+(R + r * Math.cos(th)).toFixed(2), +(r + r * Math.sin(th)).toFixed(2)]);
+  }
+  return { id: id ?? uid('elbow'), type: 'revolve', params: { profile: prof, angleDeg }, at: { ...at, ...rot }, role: 'pipe', ...(service ? { service } : {}), material };
+}

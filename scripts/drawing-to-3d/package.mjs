@@ -928,7 +928,24 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
       if (ds && !MANY && (!domain || domain === 'mech')) dimLabels.push({ bx, dy: +pz(box.z) + 10, ds });
     }
     // PLAN (x→right, y→down) at side
-    rects.push(`<rect x="${px(box.x, sx0)}" y="${(oy + (box.y - by0) * S).toFixed(1)}" width="${(box.dx * S).toFixed(1)}" height="${(box.dy * S).toFixed(1)}" fill="${st.c}22" stroke="${st.c}" stroke-width=".9"/>`);
+    const vertAxis = (p.type === 'cylinder' || p.type === 'revolve') && !p.at?.rx && !p.at?.ry;
+    if (vertAxis) {
+      // 수직 회전체: 평면=원 + 중심선 십자(일점쇄선 — 코퍼스 도면 관례 260718)
+      const ccx = +px(box.x + box.dx / 2, sx0), ccy = oy + (box.y - by0 + box.dy / 2) * S;
+      const rr = (Math.min(box.dx, box.dy) * S) / 2;
+      rects.push(`<circle cx="${ccx}" cy="${ccy.toFixed(1)}" r="${rr.toFixed(1)}" fill="${st.c}22" stroke="${st.c}" stroke-width=".9"/>`);
+      rects.push(`<line x1="${(ccx - rr - 4).toFixed(1)}" y1="${ccy.toFixed(1)}" x2="${(ccx + rr + 4).toFixed(1)}" y2="${ccy.toFixed(1)}" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="8 2 2 2"/>`);
+      rects.push(`<line x1="${ccx}" y1="${(ccy - rr - 4).toFixed(1)}" x2="${ccx}" y2="${(ccy + rr + 4).toFixed(1)}" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="8 2 2 2"/>`);
+      // FRONT 세로 중심선
+      rects.push(`<line x1="${px(box.x + box.dx / 2, ox)}" y1="${(+pz(box.z + box.dz) - 4).toFixed(1)}" x2="${px(box.x + box.dx / 2, ox)}" y2="${(+pz(box.z) + 4).toFixed(1)}" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="8 2 2 2"/>`);
+    } else {
+      rects.push(`<rect x="${px(box.x, sx0)}" y="${(oy + (box.y - by0) * S).toFixed(1)}" width="${(box.dx * S).toFixed(1)}" height="${(box.dy * S).toFixed(1)}" fill="${st.c}22" stroke="${st.c}" stroke-width=".9"/>`);
+      // 수평 회전체(ry): FRONT 가로 중심선(축선)
+      if ((p.type === 'cylinder' || p.type === 'revolve') && p.at?.ry) {
+        const cz = +pz(box.z + box.dz / 2);
+        rects.push(`<line x1="${(+px(box.x, ox) - 4).toFixed(1)}" y1="${cz.toFixed(1)}" x2="${(+px(box.x + box.dx, ox) + 4).toFixed(1)}" y2="${cz.toFixed(1)}" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="8 2 2 2"/>`);
+      }
+    }
   }
   // 밸룬 충돌 회피(260717 예시 배터리: 욕실 소형 기구 군집에서 밸룬 뭉침) —
   // 기존 배치와 16px 내로 겹치면 위로 18px 씩 밀고, 이동분은 리더선으로 원위치 연결
