@@ -1,21 +1,67 @@
 {
   "_note": "디테일 매크로 보정 상수 — 수치만(기하 없음, GrabCAD 로컬 전용 라이선스 클린). basis: corpus=코퍼스 실측, catalog=카탈로그 관례, assumed=추정(명시)",
   "flange": {
-    "odRatio": 2.1, "thickRatio": 0.14, "boltDiaRatio": 0.12, "stubLenRatio": 0.8, "vesselCapRatio": 1.0,
-    "elbowLegRatio": 1.6, "elbowRadiusRatio": 1.1,
+    "odRatio": 2.1,
+    "thickRatio": 0.14,
+    "boltDiaRatio": 0.12,
+    "stubLenRatio": 0.8,
+    "vesselCapRatio": 1.0,
+    "elbowLegRatio": 1.6,
+    "elbowRadiusRatio": 1.1,
     "basis": "corpus: 3d-models-of-flanged-elbows STEP 실측(90° 레그≈1.6D·중심선 R≈1.1D·플랜지 OD≈2.1D) — 260718"
   },
   "caster": {
-    "wheelDia": 127, "wheelW": 50, "plateW": 110, "plateD": 90, "plateT": 10,
-    "forkW": 60, "forkT": 8, "forkGap": 6, "forkDrop": 20, "swivelDia": 60, "swivelT": 12,
+    "wheelDia": 127,
+    "wheelW": 50,
+    "plateW": 110,
+    "plateD": 90,
+    "plateT": 10,
+    "forkW": 60,
+    "forkT": 8,
+    "forkGap": 6,
+    "forkDrop": 20,
+    "swivelDia": 60,
+    "swivelT": 12,
     "basis": "catalog: 5인치(127mm) 산업용 리지드 관례 — 코퍼스 도너(caster-wheel-5-inch)는 IGES 트림곡면 보류로 실측 대기(Phase4), 분해 구성(상판/포크/휠/베어링)은 도너 파일 목록 확인"
   },
   "cabinet": {
-    "doorMargin": 20, "doorT": 10, "hingeW": 16, "hingeH": 50, "handleDia": 16,
+    "doorMargin": 20,
+    "doorT": 10,
+    "hingeW": 16,
+    "hingeH": 50,
+    "handleDia": 16,
     "basis": "assumed: 산업 전장함 관례 — Phase4에서 electrical-cabinet-21(x_t) 실측 보정 예정"
   },
   "gauge": {
-    "dialDia": 80, "dialT": 24, "nippleDia": 14, "nippleLen": 40,
+    "dialDia": 80,
+    "dialT": 24,
+    "nippleDia": 14,
+    "nippleLen": 40,
     "basis": "catalog: 80A 압력계 관례"
+  },
+  "drawing2d": {
+    "layerConventions": [
+      "DIM/KOTE/QUOTE=치수 전용",
+      "VISIBLE (ANSI)=기계 실선",
+      "A-GLAZ-*=AIA 건축",
+      "WALL",
+      "0"
+    ],
+    "entityMix": {
+      "LWPOLYLINE": 31260,
+      "LINE": 23304,
+      "INSERT_symbols": 6352,
+      "DIMENSION": 1550,
+      "HATCH": 850
+    },
+    "symbolBlocks": {
+      "door": 30,
+      "window": 21,
+      "bolt": 2,
+      "flange": 2,
+      "valve": 1,
+      "motor": 1
+    },
+    "basis": "corpus: 참고파일들4 DWG 40본 실측(260718) — 치수 전용 레이어·심볼 블록 다용·해칭 상용이 실무 관례. layout-plan SVG 반영(격자·DIM 적색 치수선·P&ID 심볼·중심선·제목란)"
   }
 }
