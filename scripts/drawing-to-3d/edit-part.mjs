@@ -69,7 +69,34 @@ export function applyPartPatch(asm, partId, patch) {
   };
 }
 
-/** 월드 노멀 → 명명 면(픽킹 컨텍스트). box 회전은 v1 미지원=null(정직). */
+/** OpenSCAD rotate([rx,ry,rz]) 순서(Rx→Ry→Rz)의 회전 적용/역적용 — 배치 관례와 동일. */
+function rotVec(rot, v) {
+  if (!rot) return v.slice();
+  let [x, y, z] = v;
+  const rad = Math.PI / 180;
+  const [rx, ry, rz] = rot;
+  if (rx) { const c = Math.cos(rx * rad), s = Math.sin(rx * rad); const y2 = y * c - z * s, z2 = y * s + z * c; y = y2; z = z2; }
+  if (ry) { const c = Math.cos(ry * rad), s = Math.sin(ry * rad); const x2 = x * c + z * s, z2 = -x * s + z * c; x = x2; z = z2; }
+  if (rz) { const c = Math.cos(rz * rad), s = Math.sin(rz * rad); const x2 = x * c - y * s, y2 = x * s + y * c; x = x2; y = y2; }
+  return [x, y, z];
+}
+function rotVecInv(rot, v) {
+  if (!rot) return v.slice();
+  let [x, y, z] = v;
+  const rad = Math.PI / 180;
+  const [rx, ry, rz] = rot;
+  // 역회전 = 역순으로 −각
+  if (rz) { const c = Math.cos(-rz * rad), s = Math.sin(-rz * rad); const x2 = x * c - y * s, y2 = x * s + y * c; x = x2; y = y2; }
+  if (ry) { const c = Math.cos(-ry * rad), s = Math.sin(-ry * rad); const x2 = x * c + z * s, z2 = -x * s + z * c; x = x2; z = z2; }
+  if (rx) { const c = Math.cos(-rx * rad), s = Math.sin(-rx * rad); const y2 = y * c - z * s, z2 = y * s + z * c; y = y2; z = z2; }
+  return [x, y, z];
+}
+const rotOf = (part) => {
+  const { rx = 0, ry = 0, rz = 0 } = part.at ?? {};
+  return (rx || ry || rz) ? [rx, ry, rz] : null;
+};
+
+/** 월드 노멀 → 명명 면(픽킹 컨텍스트). 회전 box=역회전으로 로컬 면 명명(#3, 260719). */
 export function faceOfPart(part, normal) {
   const n = normal.map(Number);
   const L = Math.hypot(...n) || 1;
@@ -91,13 +118,37 @@ export function faceOfPart(part, normal) {
     if (d < -0.7) return { face: 'axis-', label: '축단(−) — 시작 끝면' };
     return { face: 'radial', label: '원통면(반경)' };
   }
-  if (part.type === 'box' && !(part.at?.rx || part.at?.ry || part.at?.rz)) {
+  if (part.type === 'box') {
+    // 회전 box(#3): 노멀을 로컬 프레임으로 역회전 — 축정렬 로컬 노멀이면 로컬 면 명명
+    const rot = rotOf(part);
+    const ul = rot ? rotVecInv(rot, u) : u;
     const names = [['x-', '좌면(x−)'], ['x+', '우면(x+)'], ['y-', '전면(y−)'], ['y+', '후면(y+)'], ['z-', '하면(z−)'], ['z+', '상면(z+)']];
     let bi = 0, bv = -Infinity;
-    [[-u[0]], [u[0]], [-u[1]], [u[1]], [-u[2]], [u[2]]].forEach((q, i) => { if (q[0] > bv) { bv = q[0]; bi = i; } });
-    return { face: names[bi][0], label: names[bi][1] };
+    [[-ul[0]], [ul[0]], [-ul[1]], [ul[1]], [-ul[2]], [ul[2]]].forEach((q, i) => { if (q[0] > bv) { bv = q[0]; bi = i; } });
+    if (bv < 0.9) return null; // 로컬 축과 어긋난 노멀(사면 등) — 정직 거부
+    return { face: names[bi][0], label: names[bi][1] + (rot ? ' · 로컬(회전 배치)' : '') };
   }
-  return null; // 회전 box 등 — v1 미지원(정직)
+  return null; // 기타 — 정직 미지원
+}
+
+/** 명명 면의 현재 치수(#2 치수 직접 입력용) — faceDragPatch 와 동일 매핑. */
+export function faceDimOf(part, face) {
+  const t = part.type, p = part.params ?? {};
+  const f = typeof face === 'string' ? face : face?.face;
+  if (!f) return null;
+  if (t === 'box') {
+    const key = f.startsWith('x') ? 'width' : f.startsWith('y') ? 'depth' : f.startsWith('z') ? 'height' : null;
+    return key ? { param: key, value: p[key] ?? 0 } : null;
+  }
+  if (f === 'axis+' || f === 'axis-') {
+    const key = t === 'flange' || t === 'hex_nut' ? 'thickness' : 'length';
+    return p[key] != null ? { param: key, value: p[key] } : null;
+  }
+  if (f === 'radial') {
+    const key = t === 'cylinder' ? 'diameter' : (t === 'tube' || t === 'flange' || t === 'washer') ? 'outerDia' : null;
+    return key && p[key] != null ? { param: key, value: p[key] } : null;
+  }
+  return null;
 }
 
 /**
@@ -112,14 +163,24 @@ export function faceDragPatch(part, face, deltaMm) {
   const t = part.type, p = part.params ?? {};
   const f = typeof face === 'string' ? face : face?.face;
   if (!f) return { ok: false, error: 'face 필요(faceOfPart 결과)' };
-  // box(무회전): 6면 → 치수 + (−면이면 최소코너 이동)
+  // box: 6면 → 로컬 치수 ± (−면이면 로컬 축의 월드 방향으로 at 이동 — 회전 배치 지원 #3)
   if (t === 'box') {
-    if (part.at?.rx || part.at?.ry || part.at?.rz) return { ok: false, error: '회전 box 푸시풀 v1 미지원(정직)' };
-    const map = { 'x+': ['width', null], 'x-': ['width', 'tx'], 'y+': ['depth', null], 'y-': ['depth', 'ty'], 'z+': ['height', null], 'z-': ['height', 'tz'] };
+    const rot = rotOf(part);
+    const map = { 'x+': ['width', 0, +1], 'x-': ['width', 0, -1], 'y+': ['depth', 1, +1], 'y-': ['depth', 1, -1], 'z+': ['height', 2, +1], 'z-': ['height', 2, -1] };
     const m = map[f];
     if (!m) return { ok: false, error: `box 면 '${f}' 미지원` };
     if ((p[m[0]] ?? 0) + d <= 0) return { ok: false, error: '치수가 0 이하가 됨(거부)' };
-    return { ok: true, patch: { params: { [m[0]]: p[m[0]] + d }, ...(m[1] ? { at: { [m[1]]: (part.at?.[m[1]] ?? 0) - d } } : {}) } };
+    const patch = { params: { [m[0]]: p[m[0]] + d } };
+    if (m[2] < 0) {
+      const e = [0, 0, 0]; e[m[1]] = 1;
+      const w = rot ? rotVec(rot, e) : e;
+      const at = {};
+      if (Math.abs(w[0]) > 1e-9) at.tx = +((part.at?.tx ?? 0) - d * w[0]).toFixed(3);
+      if (Math.abs(w[1]) > 1e-9) at.ty = +((part.at?.ty ?? 0) - d * w[1]).toFixed(3);
+      if (Math.abs(w[2]) > 1e-9) at.tz = +((part.at?.tz ?? 0) - d * w[2]).toFixed(3);
+      patch.at = at;
+    }
+    return { ok: true, patch };
   }
   // 회전체: 축단±=길이(−단은 시작 이동), radial=지름(대칭 확장)
   const axisOfR = (q) => {
@@ -148,6 +209,53 @@ export function faceDragPatch(part, face, deltaMm) {
   }
   if (t === 'mesh') return { ok: false, error: '자유곡면은 gen.params 재생성 경로(정점 드래그 비지원 — 제작 추적성)' };
   return { ok: false, error: `${t} 푸시풀 v1 미지원(정직)` };
+}
+
+/**
+ * #5/#7 부품 일괄 연산(결정론, AI 없음): delete | duplicate(+offset) | translate{dx,dy,dz} |
+ * fillet{r}(→part.filletMm — STEP B-rep 에만 반영, 표시 뷰어/SCAD 는 무필렛 명시).
+ */
+export function partOps(asm, op, partIds, opts = {}) {
+  const ids = new Set(partIds ?? []);
+  if (!ids.size) return { ok: false, error: 'partIds 필요' };
+  const missing = [...ids].filter((id) => !(asm.parts ?? []).some((p) => p.id === id));
+  if (missing.length) return { ok: false, error: `부품 없음: ${missing.join(',')}` };
+  let parts;
+  let note = null;
+  if (op === 'delete') {
+    parts = asm.parts.filter((p) => !ids.has(p.id));
+    if (!parts.length) return { ok: false, error: '전체 삭제 불가(빈 어셈블리)' };
+  } else if (op === 'duplicate') {
+    const off = Array.isArray(opts.offset) && opts.offset.length === 3 ? opts.offset : [100, 0, 0];
+    parts = asm.parts.slice();
+    for (const p of asm.parts) {
+      if (!ids.has(p.id)) continue;
+      let nid = `${p.id}_copy`; let k = 2;
+      while (parts.some((q) => q.id === nid)) nid = `${p.id}_copy${k++}`;
+      parts.push({ ...p, id: nid, at: { ...p.at, tx: (p.at?.tx ?? 0) + off[0], ty: (p.at?.ty ?? 0) + off[1], tz: (p.at?.tz ?? 0) + off[2] } });
+    }
+  } else if (op === 'translate') {
+    const dx = Number(opts.dx) || 0, dy = Number(opts.dy) || 0, dz = Number(opts.dz) || 0;
+    parts = asm.parts.map((p) => (ids.has(p.id) ? { ...p, at: { ...p.at, tx: (p.at?.tx ?? 0) + dx, ty: (p.at?.ty ?? 0) + dy, tz: (p.at?.tz ?? 0) + dz } } : p));
+  } else if (op === 'fillet') {
+    const r = Number(opts.r);
+    if (!(r > 0 && r <= 50)) return { ok: false, error: 'fillet r ∈ (0,50] 필요' };
+    parts = asm.parts.map((p) => (ids.has(p.id) ? { ...p, filletMm: r } : p));
+    note = '필렛은 STEP(B-rep)에만 반영 — 표시 뷰어/SCAD 는 무필렛(정직 명시). 실패 시 드롭 보고.';
+  } else {
+    return { ok: false, error: `미지원 op '${op}'` };
+  }
+  const nextAsm = { ...asm, parts };
+  const built = buildAssembly(nextAsm);
+  if (!built.ok) return { ok: false, error: 'gate', gateErrors: built.gateErrors, assembly: nextAsm };
+  return {
+    ok: true, assembly: nextAsm, note, gateErrors: [],
+    interferences: built.interferences ?? [], floating: built.support?.floating ?? [],
+    massKg: built.structural?.totalMassKg ?? null,
+    openscad: built.openscad, parts: built.parts ?? [], composeIntent: built.composeIntent ?? null,
+    contacts: built.contacts ?? [], welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
+    structural: built.structural ?? null,
+  };
 }
 
 /**

@@ -747,7 +747,8 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
       const onMove = (e: PointerEvent) => {
         if (!drag) return;
         if (df) {
-          df.delta = ((e.clientX - dx0) * df.dir2[0] + (e.clientY - dy0) * df.dir2[1]) * df.mmPerPx;
+          // #4 드래그 스냅 — 5mm 그리드
+          df.delta = Math.round((((e.clientX - dx0) * df.dir2[0] + (e.clientY - dy0) * df.dir2[1]) * df.mmPerPx) / 5) * 5;
           if (hl) { // 하이라이트 박스를 해당 축으로 신축(라이브 프리뷰 — 실적용은 서버 게이트)
             const box = pickGroup.children.find((c) => c.userData.pid === df!.id) as InstanceType<typeof THREE.Mesh> | undefined;
             if (box) {
@@ -1579,6 +1580,18 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
   // (edit-part — AI=패치 이해만, 적용·게이트=서버 결정론. 대상 외 부품 불변은 코드 보장)
   const [pickedPart, setPickedPart] = useState<string | null>(null);
   const [pickedNormal, setPickedNormal] = useState<number[] | null>(null); // P2 면 컨텍스트
+  const dragUndoRef = useRef<CadResult[]>([]); // #1 푸시풀 언두 스택(≤5 — in-place 갱신 복원용)
+  const [dragUndoN, setDragUndoN] = useState(0);
+  const undoFaceDrag = useCallback(() => {
+    const prev = dragUndoRef.current.pop();
+    setDragUndoN(dragUndoRef.current.length);
+    if (!prev) return;
+    setMessages((m) => {
+      const copy = m.slice();
+      for (let i = copy.length - 1; i >= 0; i--) { if (copy[i].cad?.assembly) { copy[i] = { ...copy[i], cad: prev }; break; } }
+      return copy;
+    });
+  }, []);
   // P2 면 푸시풀: 뷰어 드래그 → 결정론 face-drag → 최신 CAD 카드 in-place 갱신(대화 오염 없음)
   const applyFaceDrag = useCallback(async (partId: string, normal: number[], deltaMm: number) => {
     const asmCad = latestCad;
@@ -1591,6 +1604,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       });
       const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
       if (!r.ok || !j.ok) { setError(String((j as { error?: string }).error ?? 'face-drag')); return; }
+      if (asmCad) { dragUndoRef.current.push(asmCad); if (dragUndoRef.current.length > 5) dragUndoRef.current.shift(); setDragUndoN(dragUndoRef.current.length); }
       const cad = cadFromEditResp(j);
       setMessages((m) => {
         const copy = m.slice();
@@ -2005,6 +2019,9 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
               : latestCad.isAssembly
                 ? <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 999, background: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>✓ {t.cadInterfNone}</span>
                 : null}
+            {dragUndoN > 0 && (
+              <button onClick={undoFaceDrag} title="푸시풀 되돌리기" style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 999, border: '1px solid rgba(148,163,184,0.4)', background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', cursor: 'pointer' }}>↩ {dragUndoN}</button>
+            )}
             <a href={'/' + langCode + '/nexyfab/design/?domain=' + (STUDIO_DOMAIN[domain] ?? 'mech')}
               onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: latestCad.spec ?? '', at: Date.now(), type: latestCad.isAssembly ? 'assembly' : 'part' })); } catch { /* ignore */ } }}
               style={{ marginInlineStart: 'auto', fontSize: 11, color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 7, padding: '3px 10px', textDecoration: 'none' }}>

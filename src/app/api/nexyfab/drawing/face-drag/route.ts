@@ -21,7 +21,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const rl = rateLimit(`drawing-face-drag:${ip}`, 30, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
 
-  let body: { assembly?: { parts?: unknown[] }; partId?: string; normal?: number[]; deltaMm?: number };
+  let body: { assembly?: { parts?: unknown[] }; partId?: string; normal?: number[]; deltaMm?: number; targetMm?: number };
   try {
     const raw = await req.text();
     if (raw.length > 800_000) return NextResponse.json({ ok: false, error: 'assembly 가 너무 큽니다(≤800KB)' }, { status: 400 });
@@ -29,19 +29,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
-  const { assembly, partId, normal, deltaMm } = body;
-  if (!assembly || !Array.isArray(assembly.parts) || !partId || !Array.isArray(normal) || normal.length !== 3 || !Number.isFinite(deltaMm)) {
-    return NextResponse.json({ ok: false, error: 'assembly.parts / partId / normal[3] / deltaMm 필요' }, { status: 400 });
+  const { assembly, partId, normal, deltaMm, targetMm } = body;
+  const hasDelta = Number.isFinite(deltaMm) || Number.isFinite(targetMm);
+  if (!assembly || !Array.isArray(assembly.parts) || !partId || !Array.isArray(normal) || normal.length !== 3 || !hasDelta) {
+    return NextResponse.json({ ok: false, error: 'assembly.parts / partId / normal[3] / deltaMm|targetMm 필요' }, { status: 400 });
   }
   if (assembly.parts.length > 600) return NextResponse.json({ ok: false, error: '부품 수 초과(≤600)' }, { status: 400 });
-  const d = Math.max(-5000, Math.min(5000, Number(deltaMm)));
 
   try {
     const mod = await import('../../../../../../scripts/drawing-to-3d/edit-part.mjs');
     const part = (assembly.parts as Array<{ id?: string }>).find((p) => p.id === partId);
     if (!part) return NextResponse.json({ ok: false, error: `부품 '${partId}' 없음` }, { status: 404 });
     const face = mod.faceOfPart(part, normal);
-    if (!face) return NextResponse.json({ ok: false, error: '면 명명 불가(회전 box 등 v1 미지원 — 정직 거부)' }, { status: 422 });
+    if (!face) return NextResponse.json({ ok: false, error: '면 명명 불가(사면·미지원 타입 — 정직 거부)' }, { status: 422 });
+    // #2 치수 직접 입력: targetMm 지정 시 delta = 목표 − 현재(면 치수)
+    let d;
+    if (Number.isFinite(targetMm)) {
+      const dim = mod.faceDimOf(part, face.face);
+      if (!dim) return NextResponse.json({ ok: false, error: '이 면은 치수 직접 입력 미지원(모호 — 정직 거부)', face }, { status: 422 });
+      d = Number(targetMm) - dim.value;
+      if (Math.abs(d) < 0.001) return NextResponse.json({ ok: false, error: '이미 해당 치수입니다', face }, { status: 422 });
+    } else {
+      d = Math.max(-5000, Math.min(5000, Number(deltaMm)));
+    }
     const fp = mod.faceDragPatch(part, face.face, d);
     if (!fp.ok) return NextResponse.json({ ok: false, error: fp.error, face }, { status: 422 });
     const r = mod.applyPartPatch(assembly, partId, fp.patch);

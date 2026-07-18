@@ -203,7 +203,7 @@ export function assemblyToComposeIntent(asm) {
     };
     const F = (kind, extra, lx = 0, ly = 0, lz = 0, op = 'add') => {
       const [wx, wy, wz] = rotLocal(lx, ly, lz);
-      return { kind, ...extra, op, _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), at: { translate: [wx + tx, wy + ty, wz + tz], ...(rot ? { rotate: rot } : {}) } };
+      return { kind, ...extra, op, _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), ...(part.filletMm > 0 ? { _fillet: part.filletMm } : {}), at: { translate: [wx + tx, wy + ty, wz + tz], ...(rot ? { rotate: rot } : {}) } };
     };
     switch (part.type) {
       case 'box': feats.push(F('box', { size: [p.width, p.depth, p.height] })); break;

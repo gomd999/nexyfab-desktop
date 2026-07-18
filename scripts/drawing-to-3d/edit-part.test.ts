@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyPartPatch, faceOfPart, faceDragPatch } from './edit-part.mjs';
+import { applyPartPatch, faceOfPart, faceDragPatch, faceDimOf, partOps } from './edit-part.mjs';
 import { bladeRingMesh } from './gen-macros.mjs';
 
 const asm = {
@@ -68,6 +68,45 @@ describe('edit-part 결정론 계층', () => {
     expect(r.part.params.triCount).toBeGreaterThan(ringP.triCount); // 6→10익 재생성
     // 미등록 kind = 정직 거부
     expect((applyPartPatch(asm2, 'ring', { gen: { kind: 'nurbs_magic', params: {} } }) as { ok: boolean }).ok).toBe(false);
+  });
+
+  it('#3 회전 box — 로컬 면 명명 + 푸시풀 at 이동이 월드 방향(rz=90 벽)', () => {
+    // 벽: 로컬 x=길이 3000, rz=90 → 로컬 +x 가 월드 +y
+    const wall = { id: 'w', type: 'box', params: { width: 3000, depth: 200, height: 2500 }, at: { tx: 1000, ty: 0, tz: 0, rz: 90 } };
+    // 월드 +y 노멀 = 로컬 +x 면
+    expect(faceOfPart(wall, [0, 1, 0])?.face).toBe('x+');
+    // 월드 −x 노멀 = 로컬 +y 면(rz90: 로컬 y→월드 −x)
+    expect(faceOfPart(wall, [-1, 0, 0])?.face).toBe('y+');
+    // 로컬 x− 면(월드 −y) 확장 50: width+50, at 는 월드 y 로 −50 (로컬 x 의 월드 방향=+y)
+    const r = faceDragPatch(wall, 'x-', 50) as { ok: boolean; patch: { params: Record<string, number>; at: Record<string, number> } };
+    expect(r.ok).toBe(true);
+    expect(r.patch.params.width).toBe(3050);
+    expect(Math.round(r.patch.at.ty)).toBe(-50);
+    expect(r.patch.at.tx).toBeUndefined(); // rz90 에서 로컬 x 는 월드 x 성분 0
+  });
+
+  it('#2 faceDimOf — 면 → 현재 치수(치수 직접 입력)', () => {
+    expect(faceDimOf(asm.parts[0], 'z+')).toEqual({ param: 'height', value: 80 });
+    expect(faceDimOf(asm.parts[1], 'axis+')).toEqual({ param: 'length', value: 250 });
+    expect(faceDimOf(asm.parts[1], 'radial')).toBeNull(); // 리듀서 반경=모호(정직)
+  });
+
+  it('#5/#7 partOps — 복제/삭제/이동/필렛 결정론 + 게이트', () => {
+    const dup = partOps(asm, 'duplicate', ['noz'], { offset: [500, 0, 0] }) as { ok: boolean; assembly: { parts: Array<{ id: string; at: { tx: number } }> } };
+    expect(dup.ok).toBe(true);
+    expect(dup.assembly.parts.some((p) => p.id === 'noz_copy' && p.at.tx === 800)).toBe(true);
+    const del = partOps(asm, 'delete', ['noz']) as { ok: boolean; assembly: { parts: unknown[] } };
+    expect(del.ok).toBe(true);
+    expect(del.assembly.parts.length).toBe(1);
+    const mv = partOps(asm, 'translate', ['noz'], { dz: 100 }) as { ok: boolean; assembly: { parts: Array<{ id: string; at: { tz: number } }> } };
+    expect(mv.ok).toBe(true);
+    expect(mv.assembly.parts[1].at.tz).toBe(600);
+    const fl = partOps(asm, 'fillet', ['noz'], { r: 5 }) as { ok: boolean; assembly: { parts: Array<{ id: string; filletMm?: number }> }; note: string };
+    expect(fl.ok).toBe(true);
+    expect(fl.assembly.parts[1].filletMm).toBe(5);
+    expect(fl.note).toContain('STEP');
+    expect((partOps(asm, 'delete', ['ghost']) as { ok: boolean }).ok).toBe(false);
+    expect((partOps(asm, 'fillet', ['noz'], { r: 999 }) as { ok: boolean }).ok).toBe(false);
   });
 
   it('faceOfPart — box 6면·회전체 축단/원통면 명명', () => {

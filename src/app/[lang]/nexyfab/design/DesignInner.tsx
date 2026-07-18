@@ -202,9 +202,16 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const [lastPartsAabb, setLastPartsAabb] = useState<PartAabb[] | null>(null);
   const [pickedPart, setPickedPart] = useState<string | null>(null);
   const [pickedNormal, setPickedNormal] = useState<number[] | null>(null); // CAD 좌표계
+  const [pickedMulti, setPickedMulti] = useState<string[]>([]); // #5 다중 선택(ctrl+클릭)
+  const [dimInput, setDimInput] = useState(''); // #2 치수 직접 입력(mm)
+  const [filletInput, setFilletInput] = useState(''); // #7 부품 필렛 r(mm)
+  // #1 언두 — 편집 직전 스냅샷 스택(≤10, 클라 로컬 복원: 서버 불필요)
+  type EditSnap = { assembly: Record<string, unknown> | null; partsAabb: PartAabb[] | null; scad: string | null; intent: unknown; interf: number | null; floatN: number | null };
+  const editHistRef = useRef<EditSnap[]>([]);
+  const [histN, setHistN] = useState(0);
   const pickGroupRef = useRef<THREE.Group | null>(null);
   const pickSelRef = useRef<{ select: (id: string | null) => void }>({ select: () => { /* init 전 */ } });
-  const pickCbRef = useRef<(id: string | null, normalCad: number[] | null) => void>(() => { /* init 전 */ });
+  const pickCbRef = useRef<(id: string | null, normalCad: number[] | null, additive?: boolean) => void>(() => { /* init 전 */ });
   const faceDragCbRef = useRef<(id: string, normalCad: number[], deltaMm: number) => void>(() => { /* init 전 */ });
   const [pkgBusy, setPkgBusy] = useState(false);
   const [bbox, setBbox] = useState<Bbox | null>(null);
@@ -322,7 +329,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     const onMove = (e: PointerEvent) => {
       if (!dragging) return;
       if (df) {
-        df.delta = ((e.clientX - dx0) * df.dir2[0] + (e.clientY - dy0) * df.dir2[1]) * df.mmPerPx;
+        // #4 드래그 스냅 — 5mm 그리드(정확값은 치수 입력/대화 지시)
+        df.delta = Math.round((((e.clientX - dx0) * df.dir2[0] + (e.clientY - dy0) * df.dir2[1]) * df.mmPerPx) / 5) * 5;
         if (hl) {
           const box = pickGroup.children.find((c) => c.userData.pid === df!.id) as THREE.Mesh | undefined;
           if (box) {
@@ -362,7 +370,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       const hit = castAt(e.clientX, e.clientY);
       const id = hit ? String(hit.object.userData.pid ?? '') || null : null;
       select(id);
-      pickCbRef.current(id, hit?.face ? toCadN(hit.face.normal) : null);
+      pickCbRef.current(id, hit?.face ? toCadN(hit.face.normal) : null, e.ctrlKey || e.metaKey);
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -516,6 +524,10 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
 
   // 🎯 edit-part/face-drag 응답 적용(P2) — 검증 상태 갱신 + 재렌더(대상 외 부품 불변은 서버 보장)
   const applyEditResp = useCallback(async (j: Record<string, unknown>) => {
+    // #1 언두 스냅샷(적용 직전 상태) — 스택 ≤10
+    editHistRef.current.push({ assembly: lastAssembly, partsAabb: lastPartsAabb, scad, intent, interf, floatN });
+    if (editHistRef.current.length > 10) editHistRef.current.shift();
+    setHistN(editHistRef.current.length);
     setLastAssembly((j.assembly as Record<string, unknown>) ?? null);
     setLastPartsAabb(Array.isArray(j.parts) ? (j.parts as { id: string; aabb: { min: number[]; max: number[] } }[]) : null);
     setInterf(Array.isArray(j.interferences) ? (j.interferences as unknown[]).length : null);
@@ -535,7 +547,74 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         }
       }
     }
+   
+  }, [showGeometry, lastAssembly, lastPartsAabb, scad, intent, interf, floatN]);
+
+  // #1 언두 — 마지막 편집 직전 상태로 복원(클라 로컬)
+  const undoEdit = useCallback(async () => {
+    const snap = editHistRef.current.pop();
+    setHistN(editHistRef.current.length);
+    if (!snap) return;
+    setLastAssembly(snap.assembly);
+    setLastPartsAabb(snap.partsAabb);
+    setInterf(snap.interf);
+    setFloatN(snap.floatN);
+    if (snap.intent) { setIntent(snap.intent as ComposeOk['intent']); }
+    setDiffRes(null); setDiffDraftProfiles(null); setVisRes(null); setFeaRes(null);
+    if (snap.scad) {
+      setScad(snap.scad);
+      if (wasmAvailable()) {
+        const r = await renderScadWasm(snap.scad);
+        if (r.ok && r.data) {
+          const buf = r.data.buffer.slice(r.data.byteOffset, r.data.byteOffset + r.data.byteLength) as ArrayBuffer;
+          showGeometry(parseSTL(buf));
+        }
+      }
+    }
   }, [showGeometry]);
+
+  // #5/#7 부품 일괄 연산(결정론) — 복제/삭제/필렛
+  const partOpRun = useCallback(async (op: string, ids: string[], opts?: Record<string, unknown>) => {
+    if (!lastAssembly || !ids.length) return;
+    setStatus(ko ? `${op} 적용 중…` : `Applying ${op}…`);
+    setError(null);
+    try {
+      const res = await fetch('/api/nexyfab/drawing/part-op/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assembly: lastAssembly, op, partIds: ids, opts: opts ?? {} }),
+      });
+      const j = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok || !j.ok) { setError(String((j as { error?: string }).error ?? op)); return; }
+      await applyEditResp(j);
+      if (op === 'delete') { setPickedPart(null); setPickedNormal(null); setPickedMulti([]); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setStatus('');
+    }
+  }, [lastAssembly, applyEditResp, ko]);
+
+  // #2 치수 직접 입력 — 선택 면 치수를 목표값으로(결정론 face-drag targetMm)
+  const applyDimInput = useCallback(async () => {
+    const v = parseFloat(dimInput);
+    if (!Number.isFinite(v) || v <= 0 || !pickedPart || !pickedNormal || !lastAssembly) return;
+    setStatus(ko ? '치수 적용 중…' : 'Applying dimension…');
+    setError(null);
+    try {
+      const res = await fetch('/api/nexyfab/drawing/face-drag/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assembly: lastAssembly, partId: pickedPart, normal: pickedNormal, targetMm: v }),
+      });
+      const j = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok || !j.ok) { setError(String((j as { error?: string }).error ?? 'dim')); return; }
+      await applyEditResp(j);
+      setDimInput('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setStatus('');
+    }
+  }, [dimInput, pickedPart, pickedNormal, lastAssembly, applyEditResp, ko]);
 
   const editPartRun = useCallback(async (instruction: string) => {
     if (!pickedPart || !lastAssembly) return;
@@ -576,7 +655,17 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     }
   }, [lastAssembly, applyEditResp, ko]);
   useEffect(() => { faceDragCbRef.current = (id, n, d) => { void onFaceDragStudio(id, n, d); }; }, [onFaceDragStudio]);
-  useEffect(() => { pickCbRef.current = (id, n) => { setPickedPart(id); setPickedNormal(n); }; }, []);
+  useEffect(() => {
+    pickCbRef.current = (id, n, additive) => {
+      if (additive && id) {
+        setPickedMulti((prev) => (prev.includes(id) ? prev.filter((q) => q !== id) : [...prev, id]));
+        setPickedPart(id); setPickedNormal(n);
+      } else {
+        setPickedMulti(id ? [id] : []);
+        setPickedPart(id); setPickedNormal(n);
+      }
+    };
+  }, []);
   // 선택 부품이 어셈블리에서 사라지면 자동 해제
   useEffect(() => {
     if (pickedPart && !lastPartsAabb?.some((p) => p.id === pickedPart)) { setPickedPart(null); setPickedNormal(null); }
@@ -962,8 +1051,47 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
               }}>
                 🎯 {pickedPart}{pickedNormal ? ` · ${'xyz'[Math.abs(pickedNormal[0]) > 0.5 ? 0 : Math.abs(pickedNormal[1]) > 0.5 ? 1 : 2]}${(pickedNormal[Math.abs(pickedNormal[0]) > 0.5 ? 0 : Math.abs(pickedNormal[1]) > 0.5 ? 1 : 2] > 0 ? '+' : '−')}` : ''}
                 <span style={{ fontWeight: 400, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '— 아래 서술이 이 부품만 수정 · 면 드래그=푸시풀' : '— prompt edits only this part · drag face = push-pull'}</span>
-                <button type="button" onClick={() => { setPickedPart(null); setPickedNormal(null); pickSelRef.current.select(null); }} aria-label="clear"
+                <button type="button" onClick={() => { setPickedPart(null); setPickedNormal(null); setPickedMulti([]); pickSelRef.current.select(null); }} aria-label="clear"
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--nx-text-3, #6b7684)', fontSize: 12, padding: 0 }}>✕</button>
+              </div>
+            )}
+            {/* 🎯 편집 툴바(#1·#2·#5·#7) — 결정론 연산(AI 없음) + 교체(AI 지시 자동생성) */}
+            {(pickedPart || histN > 0) && (
+              <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: 11.5 }}>
+                {histN > 0 && (
+                  <button type="button" onClick={() => void undoEdit()} style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer', fontWeight: 700 }}>
+                    ↩ {ko ? '되돌리기' : 'Undo'} ({histN})
+                  </button>
+                )}
+                {pickedPart && (
+                  <>
+                    {pickedMulti.length > 1 && <span style={{ color: 'var(--nx-text-3, #6b7684)' }}>{ko ? `다중 ${pickedMulti.length}개(Ctrl+클릭)` : `${pickedMulti.length} selected`}</span>}
+                    <button type="button" disabled={loading} onClick={() => void partOpRun('duplicate', pickedMulti.length ? pickedMulti : [pickedPart])}
+                      style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>⧉ {ko ? '복제' : 'Dup'}</button>
+                    <button type="button" disabled={loading} onClick={() => void partOpRun('delete', pickedMulti.length ? pickedMulti : [pickedPart])}
+                      style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(239,68,68,.5)', background: 'var(--nx-panel, #fff)', color: '#ef4444', cursor: 'pointer' }}>🗑 {ko ? '삭제' : 'Del'}</button>
+                    {pickedNormal && (
+                      <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                        <input value={dimInput} onChange={(e) => setDimInput(e.target.value)} placeholder={ko ? '면 치수(mm)' : 'dim(mm)'} inputMode="decimal"
+                          style={{ width: 78, padding: '4px 7px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', fontSize: 11.5 }} />
+                        <button type="button" disabled={loading || !parseFloat(dimInput)} onClick={() => void applyDimInput()}
+                          style={{ padding: '4px 9px', borderRadius: 7, border: 'none', background: 'var(--nx-accent, #2563eb)', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>{ko ? '치수 적용' : 'Set'}</button>
+                      </span>
+                    )}
+                    <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                      <input value={filletInput} onChange={(e) => setFilletInput(e.target.value)} placeholder={ko ? '필렛 r' : 'fillet r'} inputMode="decimal"
+                        style={{ width: 58, padding: '4px 7px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', fontSize: 11.5 }} />
+                      <button type="button" disabled={loading || !parseFloat(filletInput)} title={ko ? 'STEP(B-rep)에만 반영 — 표시 뷰어는 무필렛(명시)' : 'STEP only'}
+                        onClick={() => { const r = parseFloat(filletInput); if (r > 0) { void partOpRun('fillet', pickedMulti.length ? pickedMulti : [pickedPart], { r }); setFilletInput(''); } }}
+                        style={{ padding: '4px 9px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>◜ {ko ? '필렛' : 'Fillet'}</button>
+                    </span>
+                    <select defaultValue="" disabled={loading} onChange={(e) => { const t2 = e.target.value; e.target.value = ''; if (t2) void editPartRun(ko ? `이 부품을 type '${t2}' 로 교체해줘. 전체 외형 치수는 유지하고 params 는 새 타입의 전체 파라미터로.` : `Replace this part with type '${t2}', keep overall envelope, output full params for the new type.`); }}
+                      style={{ padding: '4px 7px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', fontSize: 11.5 }}>
+                      <option value="">{ko ? '⇄ 교체…' : '⇄ Replace…'}</option>
+                      {['box', 'cylinder', 'tube', 'rect_tube', 'h_section', 'c_channel', 'angle', 'flange'].map((t2) => <option key={t2} value={t2}>{t2}</option>)}
+                    </select>
+                  </>
+                )}
               </div>
             )}
             <textarea

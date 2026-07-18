@@ -205,7 +205,14 @@ export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) 
       const fl = intent.features.filter((f) => f._pid === pid);
       try {
         const r = await buildSolidRobust({ name: intent.name, features: fl });
-        shapes.push(r.solid);
+        let s = r.solid;
+        // 부품 단위 필렛(#7, _fillet=part.filletMm) — 실패=무필렛 드롭 보고(정직)
+        const fr = fl.find((f) => f._fillet > 0)?._fillet;
+        if (fr) {
+          try { s = s.fillet(fr); }
+          catch (e) { report.dropped.push({ pid, op: 'fillet', err: String(e?.message ?? e).slice(0, 50) }); }
+        }
+        shapes.push(s);
         report.jittered += r.report.jittered;
         report.dropped.push(...r.report.dropped);
       } catch (e) {
