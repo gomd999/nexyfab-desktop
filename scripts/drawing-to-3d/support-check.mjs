@@ -57,6 +57,13 @@ export function supportCheck(items, { tol = 8, minBear = 15, fastenBear = 40, em
     const MECH_J = ['joint', 'link', 'gripper', 'gear', 'shaft'];
     if (MECH_J.includes(a.role) && MECH_J.includes(b.role)
       && ox >= -40 && oy >= -40 && oz >= -40 && Math.max(ox, oy, oz) >= minBear) return true;
+    // 선언 부착(mount, Phase2 260718): 힌지·핸들·루버·게이지 등 면 부착 부품 —
+    // 자중 지지가 아니라 볼트/용접 부착임을 role='mount' 로 명시. 어느 면이든
+    // 접촉/근접(갭 ≤6mm) + 두 축 이상 겹침 ≥ minBear 면 부착 인정("연결≠지지" 원칙의
+    // 명시적 예외 — 선언 없는 쌍은 여전히 부유).
+    if ((a.role === 'mount' || b.role === 'mount')
+      && ox >= -6 && oy >= -6 && oz >= -6
+      && [ox, oy, oz].filter((v) => v >= Math.min(minBear, 10)).length >= 2) return true;
     return false;
   };
   let moved = true;

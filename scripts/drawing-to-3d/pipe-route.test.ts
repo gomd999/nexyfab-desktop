@@ -870,3 +870,31 @@ describe('인테리어 MEP — 기계 배관 어휘의 도메인 적용(욕실·
     });
   }
 });
+
+describe('supportCheck — 선언 부착(mount, Phase2)', () => {
+  it('mount 부품이 면 접촉이면 부착 인정(힌지·게이지류)', () => {
+    const r = supportCheck([
+      { label: 'deck', min: [0, 0, 0], max: [1000, 1000, 100], base: true },
+      { label: 'cab', min: [100, 100, 100], max: [600, 400, 900] },
+      // 전면(y-) 부착 힌지: y 접촉·x/z 겹침 ≥10
+      { label: 'hinge', min: [120, 84, 300], max: [140, 100, 350], role: 'mount' },
+    ] as never);
+    expect(r.floating).toEqual([]);
+  });
+  it('mount 라도 갭 >6mm 면 부유(선언≠만능)', () => {
+    const r = supportCheck([
+      { label: 'deck', min: [0, 0, 0], max: [1000, 1000, 100], base: true },
+      { label: 'cab', min: [100, 100, 100], max: [600, 400, 900] },
+      { label: 'hinge_far', min: [120, 70, 300], max: [140, 90, 350], role: 'mount' }, // 갭 10
+    ] as never);
+    expect(r.floating).toContain('hinge_far');
+  });
+  it('선언 없는 면 접촉은 여전히 부유(연결≠지지 원칙 유지)', () => {
+    const r = supportCheck([
+      { label: 'deck', min: [0, 0, 0], max: [1000, 1000, 100], base: true },
+      { label: 'cab', min: [100, 100, 100], max: [600, 400, 900] },
+      { label: 'plate_nomount', min: [120, 84, 300], max: [140, 100, 350] },
+    ] as never);
+    expect(r.floating).toContain('plate_nomount');
+  });
+});
