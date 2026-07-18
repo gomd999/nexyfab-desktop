@@ -602,7 +602,29 @@ export function buildAssembly(asm) {
   if (Array.isArray(asm.pipes) && asm.pipes.length) {
     try {
       const obstacles = obstaclesFromAssembly(asm);
-      const pipesIn = asm.pipes.map((pp) => ({ ...pp, col: pp.col ?? (pp.service && SERVICE_COL[pp.service]) ?? '#64748b' }));
+      // 포트 해석(Phase3, 260718): 부품 ports[{name,at:[dx,dy,dz]로컬,dia?,service?,clear?}]
+      // → 'partId:portName' 끝점을 월드 좌표로 치환 + d/service 포트 기본값 승계.
+      // clear(기본 60mm): 포트에서 dir 없이도 라우터가 장애물 밖에서 시작하도록
+      // 부품 AABB 밖으로 밀어낸 접속점 오프셋(정직 — 접속 스터브는 시공 상세).
+      const resolvePort = (end) => {
+        if (typeof end !== 'string' || !end.includes(':')) return { end };
+        const [pid, pname] = end.split(':');
+        const part = asm.parts.find((q) => q.id === pid);
+        const port = part?.ports?.find((q) => q.name === pname);
+        if (!part || !port) return { end, err: `포트 미해석: ${end}` };
+        const t = part.at ?? {};
+        const world = [(t.tx ?? 0) + port.at[0], (t.ty ?? 0) + port.at[1], (t.tz ?? 0) + port.at[2]];
+        return { end: world, dia: port.dia, service: port.service };
+      };
+      const portErrs = [];
+      const pipesIn = asm.pipes.map((pp) => {
+        const f = resolvePort(pp.from);
+        const t2 = resolvePort(pp.to);
+        if (f.err) portErrs.push(f.err);
+        if (t2.err) portErrs.push(t2.err);
+        const service = pp.service ?? f.service ?? t2.service;
+        return { ...pp, from: f.end, to: t2.end, d: pp.d ?? f.dia ?? t2.dia ?? 26, service, col: pp.col ?? (service && SERVICE_COL[service]) ?? '#64748b' };
+      });
       const routed = autoRoutePipes(pipesIn, obstacles);
       // 관통 재검을 슬리브(벽·바닥 등 passable 부재 = 명세)와 위반(장비·가구 = 결함)으로 분리
       const passable = new Set(obstacles.filter((o) => o.passable).map((o) => o.label));
@@ -625,7 +647,7 @@ export function buildAssembly(asm) {
         sleeves.push({ route: v.route, through: v.obstacle, d: rt?.d ?? 26, ...(at ? { at, heightMm: at[2] } : {}), note: `관통 슬리브 필요(⌀${(rt?.d ?? 26) + 20} 내외 개산)` });
       }
       pipes = {
-        routes: routed.routes, errors: routed.errors, notes: routed.notes,
+        routes: routed.routes, errors: [...portErrs, ...routed.errors], notes: routed.notes,
         obstacleViolations: allPen.filter((v) => !passable.has(v.obstacle)),
         sleeves,
         crossViolations: pipeCrossCheck(routed.routes),

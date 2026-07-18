@@ -898,3 +898,29 @@ describe('supportCheck — 선언 부착(mount, Phase2)', () => {
     expect(r.floating).toContain('plate_nomount');
   });
 });
+
+describe('배관 포트 해석(Phase3)', () => {
+  it("'partId:portName' 끝점을 월드 좌표로 치환하고 d/service 를 승계한다", () => {
+    const b = buildAssembly({
+      name: 'p', domain: 'mech',
+      parts: [
+        { id: 'deck', type: 'box', params: { width: 2000, depth: 800, height: 100 }, at: { tx: 0, ty: 0, tz: 0 }, role: 'frame', material: 'steel' },
+        { id: 'pump', type: 'cylinder', params: { diameter: 200, length: 500 }, at: { tx: 300, ty: 400, tz: 100 }, role: 'pump', material: 'steel', ports: [{ name: 'out', at: [0, 0, 500], dia: 50, service: 'hp' }] },
+      ],
+      pipes: [{ id: 'P1', from: 'pump:out', to: [1500, 400, 100] }],
+    } as never);
+    expect(b.pipes.errors).toEqual([]);
+    expect(b.pipes.routes).toHaveLength(1);
+    const r = b.pipes.routes[0] as { d: number; pts: number[][] };
+    expect(r.d).toBe(50);
+    expect(r.pts[0]).toEqual([300, 400, 600]); // 포트 월드 좌표(부품 배치+로컬)
+  });
+  it('미정의 포트는 정직 오류로 보고한다', () => {
+    const b = buildAssembly({
+      name: 'p', domain: 'mech',
+      parts: [{ id: 'deck', type: 'box', params: { width: 500, depth: 500, height: 50 }, at: { tx: 0, ty: 0, tz: 0 }, role: 'frame', material: 'steel' }],
+      pipes: [{ id: 'PX', from: 'deck:nope', to: [400, 100, 50], d: 30 }],
+    } as never);
+    expect(b.pipes.errors.join(' ')).toContain('포트 미해석');
+  });
+});
