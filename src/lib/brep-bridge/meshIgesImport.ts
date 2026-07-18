@@ -151,11 +151,36 @@ export function igesToNexyfabAssembly(source: string, { name = 'IGES import', ma
     const xform = parseInt(l1.slice(48, 56), 10) || 0;
     if (Number.isFinite(type)) entries.push({ type, de, xform });
   }
+  // ⚠십진 콤마 수출 버그(caster IGS 실측, 260718): 실수를 `정수부,소수부.` 로 쓰는
+  // 로케일 파손본(1e23 좌표 발산). `,정수12+자리.` 패턴이 다수(>50)인 파일에서만
+  // 병합 휴리스틱 활성 — 정상 파일 오병합(날조) 방지 게이트.
+  const decimalCommaBroken = (() => {
+    let hits = 0;
+    for (const v of pByDe.values()) {
+      const m = v.match(/,\d{12,}\./g);
+      if (m) hits += m.length;
+      if (hits > 50) return true;
+    }
+    return false;
+  })();
   const realsOf = (de: number): number[] => {
     const s = pByDe.get(de);
     if (!s) return [];
     // 첫 필드=엔티티 타입 반복 — 제거 후 콤마 분해(H-string 은 숫자 아님 → NaN 필터)
-    return s.split(/[,;]/).slice(1).map((t) => parseFloat(t)).filter((v) => Number.isFinite(v));
+    const toks = s.split(/[,;]/).slice(1);
+    if (!decimalCommaBroken) return toks.map((t) => parseFloat(t)).filter((v) => Number.isFinite(v));
+    const out: number[] = [];
+    for (let k = 0; k < toks.length; k++) {
+      const t = toks[k].trim();
+      const nxt = toks[k + 1]?.trim();
+      if (/^-?\d+$/.test(t) && nxt && /^\d{7,}\.$/.test(nxt)) {
+        const v = parseFloat(`${t}.${nxt.slice(0, -1)}`);
+        if (Number.isFinite(v)) { out.push(v); k++; continue; }
+      }
+      const v = parseFloat(t);
+      if (Number.isFinite(v)) out.push(v);
+    }
+    return out;
   };
   // 124 변환행렬: R11..R13,T1,R21..,T2,R31..,T3 (12 reals)
   const xformOf = new Map<number, number[]>();
