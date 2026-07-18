@@ -16,6 +16,7 @@ import { igesToNexyfabAssembly, stlToNexyfabAssembly } from '@/lib/brep-bridge/m
 import { ifcToNexyfabAssembly } from '@/lib/brep-bridge/ifcImport';
 import { dwgToNexyfabAssembly } from '@/lib/brep-bridge/dwgImport';
 import { satToNexyfabAssembly } from '@/lib/brep-bridge/satImport';
+import { xtToNexyfabAssembly } from '@/lib/brep-bridge/xtImport';
 
 /** 독점 포맷 안내(임포트 불가 시 정직 응답) — 각 툴의 개방 포맷 내보내기 경로. */
 const CONVERT_GUIDE: Record<string, string> = {
@@ -47,7 +48,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const name = typeof body.name === 'string' && body.name ? body.name.slice(0, 60) : `${fmt.toUpperCase()} import`;
   const matOpt = typeof body.material === 'string' && body.material ? { material: body.material } : {};
   let bridged;
-  if (fmt === 'sat' || fmt === 'sab') {
+  if (fmt === 'x_t' || fmt === 'xt' || fmt === 'xmt_txt') {
+    // Parasolid XT 텍스트 — 공개 스펙 파서(임베디드 V14+ · 점군 AABB · 어긋남=정직 거부)
+    const src = typeof body.stlBase64 === 'string' && body.stlBase64
+      ? Buffer.from(body.stlBase64, 'base64').toString('latin1')
+      : (body.step ?? '');
+    if (!src) return NextResponse.json({ ok: false, error: 'x_t 텍스트가 필요합니다.' }, { status: 400 });
+    if (src.length > 60_000_000) return NextResponse.json({ ok: false, error: 'x_t 60MB 초과(웹 업로드 예산)' }, { status: 400 });
+    bridged = xtToNexyfabAssembly(src, { name });
+  } else if (fmt === 'sat' || fmt === 'sab') {
     // ACIS SAT(텍스트)/SAB(바이너리) — 바디별 점군 AABB box(정직 근사 명시)
     const buf = typeof body.stlBase64 === 'string' && body.stlBase64
       ? Buffer.from(body.stlBase64, 'base64')
