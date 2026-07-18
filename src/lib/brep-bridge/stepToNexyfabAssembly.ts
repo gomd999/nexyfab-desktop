@@ -45,6 +45,16 @@ function rotByQuat(q: { x: number; y: number; z: number; w: number }, v: [number
  *  대표 부품에 qty=인스턴스 수 부여 → BOQ·구조질량·IFC Count 에 정밀 반영(260718).
  *  배치 도해는 대표 1개 위치만(전 인스턴스 배치 도해는 예산 밖 — note 명시). */
 export function stepToNexyfabAssembly(source: string, { name = 'STEP import', material = 'steel' } = {}): StepBridgeResult {
+  // 위장 확장자 감지(260718e — 코퍼스4 실측 2건): 내용 기반 정직 안내
+  const head = source.slice(0, 200);
+  if (!head.includes('ISO-10303')) {
+    if (/^\s*solid\b/.test(head) || head.startsWith('STL file')) {
+      return { ok: false, error: '이 파일은 STL 입니다(.step 확장자 오기 — eDrawings 내보내기 관례). STL 로 업로드하면 메시 실체적 임포트됩니다' };
+    }
+    if (head.startsWith('#UGC')) {
+      return { ok: false, error: '지멘스 NX UGC 파트 파일(.step 위장) — NX 에서 파일→내보내기→STEP AP214 로 재내보내기 필요' };
+    }
+  }
   let r;
   let representative: { groups: number; instances: number } | null = null;
   let qtyOf: ((pid: string) => number) | null = null;

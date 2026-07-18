@@ -159,7 +159,8 @@ export function importStepAssembly(
   // ── 2. inventory PRODUCT_DEFINITIONs ───────────────────────────────────
   const productDefs: Array<{ id: number; ent: StepEntity }> = [];
   for (const [id, ent] of entities) {
-    if (ent.name === 'PRODUCT_DEFINITION') productDefs.push({ id, ent });
+    // CATIA 계열은 PRODUCT_DEFINITION_WITH_ASSOCIATED_DOCUMENTS 사용(선두 4인자 동일 — 260718e 코퍼스4 검출)
+    if (ent.name === 'PRODUCT_DEFINITION' || ent.name === 'PRODUCT_DEFINITION_WITH_ASSOCIATED_DOCUMENTS') productDefs.push({ id, ent });
   }
   if (productDefs.length === 0) {
     warnings.push('parse:no_product_definition, treating as single part');

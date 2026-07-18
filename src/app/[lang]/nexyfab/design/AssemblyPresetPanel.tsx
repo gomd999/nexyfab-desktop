@@ -2071,7 +2071,15 @@ export default function AssemblyPresetPanel({
   // 실물 STEP 임포트(260718 — 브리지 UI): 파일→/api/import-step→기존 빌드 플로우 재사용
   const importStepFile = useCallback(async (file: File) => {
     const ext = (file.name.split('.').pop() ?? '').toLowerCase();
-    const fmt = ext === 'stl' ? 'stl' : ext === 'igs' || ext === 'iges' ? 'iges' : ['skp', 'dwg', 'f3d', 'sldprt', 'sldasm', 'ipt', 'iam'].includes(ext) ? ext : 'step';
+    let fmt = ext === 'stl' ? 'stl' : ext === 'igs' || ext === 'iges' ? 'iges' : ['skp', 'dwg', 'f3d', 'sldprt', 'sldasm', 'ipt', 'iam'].includes(ext) ? ext : 'step';
+    // 위장 확장자 감지(코퍼스4 실측 — .step 인데 내용은 STL): 헤더 검사로 자동 전환
+    if (fmt === 'step') {
+      const headBuf = new Uint8Array(await file.slice(0, 512).arrayBuffer());
+      const headTxt = new TextDecoder('latin1').decode(headBuf);
+      if (!headTxt.includes('ISO-10303') && (/^\s*solid\b/.test(headTxt) || headTxt.startsWith('STL file') || (headBuf.length >= 84 && file.size >= 84 && (file.size - 84) % 50 === 0))) {
+        fmt = 'stl';
+      }
+    }
     if (file.size > (fmt === 'stl' ? 30_000_000 : 15_000_000)) { setMsg(`${fmt.toUpperCase()} ${fmt === 'stl' ? 30 : 15}MB 초과 — 부분 파일로 나눠주세요.`); return; }
     setBusy(true); setMsg(null); setBuilt(null);
     try {
