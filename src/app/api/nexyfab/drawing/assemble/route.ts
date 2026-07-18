@@ -35,7 +35,25 @@ const GEMINI_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 12000, thin
 // thinking 은 **유계 512**: 0=빈 claims(무력화)·무제한=1/3 확률 폭주 MAX_TOKENS(둘 다 실측).
 // tb=512 는 2개 설명문 × 3회 반복 전부 성공 + 핵심 클레임(연장·R·수량·존재) 보존 확인.
 const CLAIMS_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 8192, thinkingBudget: 512 };
-type AssemblyModule = { buildAssembly: (asm: Assembly) => BuiltAssembly; autoPlaceCorrect: (asm: Assembly) => { assembly: Assembly; corrections: Array<Record<string, unknown>> } };
+type AssemblyModule = { buildAssembly: (asm: Assembly) => BuiltAssembly; autoPlaceCorrect: (asm: Assembly) => { assembly: Assembly; corrections: Array<Record<string, unknown>> }; autoTagAssembly: (asm: Assembly) => Assembly; assemblyAtLevel: (asm: Assembly, level: number) => Assembly };
+
+// 1차 골격→2차 상세(260719): 자동 태깅 후 detail≤1 부분집합의 별도 빌드(초안 프리뷰).
+// 실패해도 본 응답을 막지 않음(draft=null).
+function lodExtras(asmMod: AssemblyModule, assembly: Assembly): { assembly: Assembly; draft: { openscad: string; parts: unknown[] } | null } {
+  try {
+    const tagged = asmMod.autoTagAssembly(assembly);
+    const lvl1 = asmMod.assemblyAtLevel(tagged, 1);
+    const n1 = ((lvl1 as { parts?: unknown[] }).parts ?? []).length;
+    const nAll = ((tagged as { parts?: unknown[] }).parts ?? []).length;
+    if (n1 > 0 && n1 < nAll) {
+      const db = asmMod.buildAssembly(lvl1) as unknown as { ok?: boolean; openscad?: string; parts?: unknown[] };
+      if (db.ok && typeof db.openscad === 'string') return { assembly: tagged, draft: { openscad: db.openscad, parts: db.parts ?? [] } };
+    }
+    return { assembly: tagged, draft: null };
+  } catch {
+    return { assembly, draft: null };
+  }
+}
 
 let _ft: FromTextModule | null = null;
 let _asm: AssemblyModule | null = null;
@@ -259,8 +277,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             (intentMatch as { repair?: unknown }).repair = { attempted: true, adopted, before, after: intentMatch.mismatched };
           }
           if (intentMatch) await recordIntentMatch(description, tpl!.domain!, intentMatch);
+          const lodT = lodExtras(mods.asm, assembly as Assembly);
           return NextResponse.json({
-            ok: true, assembly, openscad: built.openscad,
+            ok: true, assembly: lodT.assembly, draft: lodT.draft, openscad: built.openscad,
             parts: built.parts ?? (assembly as { parts?: unknown[] }).parts,
             interferences: built.interferences ?? [], contacts: built.contacts ?? [],
             placeCorrections: [], welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
@@ -311,8 +330,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             (intentMatch as { repair?: unknown }).repair = { attempted: true, adopted, before, after: intentMatch.mismatched };
           }
           if (intentMatch) await recordIntentMatch(description, 'civil', intentMatch);
+          const lodC = lodExtras(mods.asm, assembly as Assembly);
           return NextResponse.json({
-            ok: true, assembly, openscad: built.openscad,
+            ok: true, assembly: lodC.assembly, draft: lodC.draft, openscad: built.openscad,
             parts: built.parts ?? (assembly as { parts?: unknown[] }).parts,
             interferences: built.interferences ?? [], contacts: built.contacts ?? [],
             placeCorrections: [], welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
@@ -364,8 +384,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         }
         if (intentMatch && assumptions.length) (intentMatch as { assumptions?: string[] }).assumptions = assumptions as string[];
         if (intentMatch) await recordIntentMatch(description, (assembly as { domain?: string }).domain ?? null, intentMatch);
+        const lodA = lodExtras(mods.asm, assembly as Assembly);
         return NextResponse.json({
-          ok: true, assembly, openscad: built.openscad,
+          ok: true, assembly: lodA.assembly, draft: lodA.draft, openscad: built.openscad,
           parts: built.parts ?? assembly.parts,
           interferences: built.interferences ?? [],
           contacts: built.contacts ?? [], // §12.7.3 접촉/체결 후보(과탐 분리)

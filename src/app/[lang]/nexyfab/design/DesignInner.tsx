@@ -205,10 +205,15 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const [pickedMulti, setPickedMulti] = useState<string[]>([]); // #5 다중 선택(ctrl+클릭)
   const [dimInput, setDimInput] = useState(''); // #2 치수 직접 입력(mm)
   const [filletInput, setFilletInput] = useState(''); // #7 부품 필렛 r(mm)
+  const [moveInput, setMoveInput] = useState(''); // #6 그룹 이동 "dx,dy,dz"
   // #1 언두 — 편집 직전 스냅샷 스택(≤10, 클라 로컬 복원: 서버 불필요)
   type EditSnap = { assembly: Record<string, unknown> | null; partsAabb: PartAabb[] | null; scad: string | null; intent: unknown; interf: number | null; floatN: number | null };
   const editHistRef = useRef<EditSnap[]>([]);
   const [histN, setHistN] = useState(0);
+  // #1 LOD(1차 골격→2차 상세) — assemble 응답 draft(철물·자유곡면 제외 골격) 우선 표시
+  const pendingDraftRef = useRef<{ openscad: string; parts: PartAabb[] } | null>(null);
+  const fullLodRef = useRef<{ scad: string; parts: PartAabb[] | null } | null>(null);
+  const [lodLevel, setLodLevel] = useState<0 | 1 | 2>(0); // 0=LOD 없음, 1=골격 표시 중, 2=상세
   const pickGroupRef = useRef<THREE.Group | null>(null);
   const pickSelRef = useRef<{ select: (id: string | null) => void }>({ select: () => { /* init 전 */ } });
   const pickCbRef = useRef<(id: string | null, normalCad: number[] | null, additive?: boolean) => void>(() => { /* init 전 */ });
@@ -493,9 +498,20 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setIntentM(pendingIntentRef.current); // 요청 정합 — 동일 소비 구조
       pendingIntentRef.current = null;
       setLastAssembly(pendingAssemblyRef.current); // 어셈블리면 패키지 생성 가능, 단품이면 null
-      setLastPartsAabb(pendingPartsRef.current); // 🎯 픽킹 프록시 — 단품이면 null(픽킹 없음)
+      // #1 LOD: draft(골격)가 있으면 1차 먼저 — 전체 scad/parts 는 fullLodRef 에 보관(승인 후 전환)
+      const draftLod = pendingDraftRef.current;
+      pendingDraftRef.current = null;
+      if (draftLod) {
+        fullLodRef.current = { scad: scadStr, parts: pendingPartsRef.current };
+        setLastPartsAabb(draftLod.parts);
+        setLodLevel(1);
+      } else {
+        fullLodRef.current = null;
+        setLastPartsAabb(pendingPartsRef.current); // 🎯 픽킹 프록시 — 단품이면 null(픽킹 없음)
+        setLodLevel(0);
+      }
       pendingPartsRef.current = null;
-      setPickedPart(null); setPickedNormal(null);
+      setPickedPart(null); setPickedNormal(null); setPickedMulti([]);
       pendingAssemblyRef.current = null;
       setDiffRes(null); // 설계가 바뀌면 이전 듀얼-방출 대조 결과는 무효
       setDiffDraftProfiles(null);
@@ -507,7 +523,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setFeatureCount(Array.isArray(intentObj.features) ? intentObj.features.length : null);
       if (wasmAvailable()) {
         setStatus(ko ? '3D 렌더 중…' : 'Rendering 3D…');
-        const r = await renderScadWasm(scadStr);
+        const r = await renderScadWasm(draftLod ? draftLod.openscad : scadStr); // #1 골격 우선 표시
         if (r.ok && r.data) {
           const buf = r.data.buffer.slice(r.data.byteOffset, r.data.byteOffset + r.data.byteLength) as ArrayBuffer;
           showGeometry(parseSTL(buf));
@@ -536,7 +552,10 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     if (j.composeIntent && typeof j.composeIntent === 'object') {
       setIntent(j.composeIntent as ComposeOk['intent']);
       setFeatureCount(Array.isArray((j.composeIntent as { features?: unknown[] }).features) ? (j.composeIntent as { features: unknown[] }).features.length : null);
+      // #4 수정 후 검증그물 자동 재실행 — 역투영 diff(결정론·저비용). 선언은 아래(이벤트 시점 호출=안전)
+      try { void runReprojectDiff(j.composeIntent as ComposeOk['intent']); } catch { /* diff 실패는 편집을 막지 않음 */ }
     }
+    setLodLevel(2); // 편집=상세 단계 작업으로 승격
     if (typeof j.openscad === 'string') {
       setScad(j.openscad);
       if (wasmAvailable()) {
@@ -549,6 +568,21 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     }
    
   }, [showGeometry, lastAssembly, lastPartsAabb, scad, intent, interf, floatN]);
+
+  // #1 LOD 2차 전환 — 보관해둔 전체 scad/parts 로컬 렌더(서버 불필요)
+  const applyLod2 = useCallback(async () => {
+    const full = fullLodRef.current;
+    if (!full) return;
+    setLodLevel(2);
+    setLastPartsAabb(full.parts);
+    if (wasmAvailable()) {
+      const r = await renderScadWasm(full.scad);
+      if (r.ok && r.data) {
+        const buf = r.data.buffer.slice(r.data.byteOffset, r.data.byteOffset + r.data.byteLength) as ArrayBuffer;
+        showGeometry(parseSTL(buf));
+      }
+    }
+  }, [showGeometry]);
 
   // #1 언두 — 마지막 편집 직전 상태로 복원(클라 로컬)
   const undoEdit = useCallback(async () => {
@@ -721,6 +755,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           pendingPartsRef.current = Array.isArray((raw as { parts?: unknown[] }).parts)
             ? ((raw as { parts?: unknown[] }).parts as { id: string; aabb: { min: number[]; max: number[] } }[])
             : null; // 🎯 픽킹 프록시(월드 AABB)
+          pendingDraftRef.current = ((raw as { draft?: { openscad: string; parts: unknown[] } }).draft ?? null) as { openscad: string; parts: { id: string; aabb: { min: number[]; max: number[] } }[] } | null; // #1 1차 골격
         }
         if (!data.ok) {
           setErrCode((raw as { code?: string }).code ?? null);
@@ -1055,6 +1090,15 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--nx-text-3, #6b7684)', fontSize: 12, padding: 0 }}>✕</button>
               </div>
             )}
+            {/* #1 LOD: 1차 골격 표시 중 → 2차 상세 전환 */}
+            {lodLevel === 1 && (
+              <button type="button" onClick={() => void applyLod2()} style={{
+                marginTop: 6, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--nx-accent, #2563eb)',
+                background: 'rgba(37,99,235,0.1)', color: 'var(--nx-accent, #2563eb)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              }}>
+                🧩 {ko ? `2차 상세 적용 (+${Math.max(0, (fullLodRef.current?.parts?.length ?? 0) - (lastPartsAabb?.length ?? 0))}부품 — 현재는 1차 골격)` : `Apply detail LOD (+${Math.max(0, (fullLodRef.current?.parts?.length ?? 0) - (lastPartsAabb?.length ?? 0))} parts)`}
+              </button>
+            )}
             {/* 🎯 편집 툴바(#1·#2·#5·#7) — 결정론 연산(AI 없음) + 교체(AI 지시 자동생성) */}
             {(pickedPart || histN > 0) && (
               <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: 11.5 }}>
@@ -1084,6 +1128,15 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                       <button type="button" disabled={loading || !parseFloat(filletInput)} title={ko ? 'STEP(B-rep)에만 반영 — 표시 뷰어는 무필렛(명시)' : 'STEP only'}
                         onClick={() => { const r = parseFloat(filletInput); if (r > 0) { void partOpRun('fillet', pickedMulti.length ? pickedMulti : [pickedPart], { r }); setFilletInput(''); } }}
                         style={{ padding: '4px 9px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>◜ {ko ? '필렛' : 'Fillet'}</button>
+                    </span>
+                    <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                      <input value={moveInput} onChange={(e) => setMoveInput(e.target.value)} placeholder={ko ? '이동 dx,dy,dz' : 'move dx,dy,dz'}
+                        style={{ width: 96, padding: '4px 7px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', fontSize: 11.5 }} />
+                      <button type="button" disabled={loading} onClick={() => {
+                        const m2 = moveInput.split(',').map((q) => parseFloat(q.trim()));
+                        if (m2.length === 3 && m2.every(Number.isFinite) && m2.some((q) => q !== 0)) { void partOpRun('translate', pickedMulti.length ? pickedMulti : [pickedPart!], { dx: m2[0], dy: m2[1], dz: m2[2] }); setMoveInput(''); }
+                      }}
+                        style={{ padding: '4px 9px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', cursor: 'pointer' }}>⇢ {ko ? '이동' : 'Move'}</button>
                     </span>
                     <select defaultValue="" disabled={loading} onChange={(e) => { const t2 = e.target.value; e.target.value = ''; if (t2) void editPartRun(ko ? `이 부품을 type '${t2}' 로 교체해줘. 전체 외형 치수는 유지하고 params 는 새 타입의 전체 파라미터로.` : `Replace this part with type '${t2}', keep overall envelope, output full params for the new type.`); }}
                       style={{ padding: '4px 7px', borderRadius: 7, border: '1px solid var(--nx-border, #dfe3e8)', background: 'var(--nx-panel, #fff)', color: 'inherit', fontSize: 11.5 }}>

@@ -41,6 +41,7 @@ type CadResult = {
   isAssembly?: boolean;
   assembly?: AssemblyPlan;       // render-html 입력
   partsAabb?: Array<{ id: string; aabb: { min: number[]; max: number[] } }>; // P1 픽킹(부품 프록시)
+  scadDraft?: string; partsAabbDraft?: CadResult['partsAabb']; // #1 LOD 1차 골격
   interferences?: Array<Record<string, unknown>>;
   contacts?: Array<Record<string, unknown>>;
   welds?: Array<Record<string, unknown>>;  // 용접 조인트 개산
@@ -239,6 +240,8 @@ async function runAssemblePipeline(prompt: string): Promise<CadResult> {
     isAssembly: true,
     assembly: j.assembly as AssemblyPlan,
     partsAabb: Array.isArray(j.parts) ? (j.parts as CadResult['partsAabb']) : undefined,
+    scadDraft: typeof (j as { draft?: { openscad?: string } }).draft?.openscad === 'string' ? (j as { draft: { openscad: string } }).draft.openscad : undefined,
+    partsAabbDraft: Array.isArray((j as { draft?: { parts?: unknown[] } }).draft?.parts) ? ((j as { draft: { parts: unknown[] } }).draft.parts as CadResult['partsAabb']) : undefined,
     composeIntent: (j.composeIntent && typeof j.composeIntent === 'object') ? j.composeIntent as ComposeIntent : undefined,
     scad: typeof j.openscad === 'string' ? j.openscad : undefined,
     interferences: Array.isArray(j.interferences) ? j.interferences : [],
@@ -1105,6 +1108,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const attachModeRef = useRef<'drawing' | 'photo'>('drawing'); // §3 역할 분리(2026-07-16)
+  const [scaleMm, setScaleMm] = useState(''); // #5 사진/시안 기준 치수(사용자 제공값 — 치수 날조 아님)
 
   const accent = DOMAIN_ACCENT[domain];
   const started = messages.length > 0;
@@ -1489,6 +1493,8 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
         const jp = (await rp.json()) as { ok?: boolean; labelKo?: string; labelEn?: string; templateId?: string; error?: string };
         const label = jp.ok ? ((lang === 'kr' ? jp.labelKo : jp.labelEn) ?? jp.templateId ?? '?') : '?';
         setLast({ content: jp.ok ? t.photoHint.replace('{label}', String(label)) : '⚠️ ' + (jp.error ?? t.error) });
+        // #5 기준 치수(사용자 제공값): 다음 생성 문장에 프리필 — 스케일이 실제 생성 텍스트에 실리게(투명)
+        if (jp.ok && scaleMm && parseFloat(scaleMm) > 0) { setInput(`기준 최장변 ${parseFloat(scaleMm)}mm 기준 — `); setScaleMm(''); }
         return;
       }
       const { cad, recognized } = await runExtractPipeline(att);
@@ -1502,7 +1508,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     } finally {
       setLoading(false); autoscroll();
     }
-  }, [attached, input, loading, t, domain, lang]);
+  }, [attached, input, loading, t, domain, lang, scaleMm]);
 
   // ✨ 시안 이미지 생성 — text→시안→도안→3D · 사진→흰배경 정리→도안→3D (2026-07-18)
   // 입력 커스텀은 서버(buildGenImagePrompt)가 담당 — 클라는 원문+첨부만 보낸다.
@@ -1580,6 +1586,9 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
   // (edit-part — AI=패치 이해만, 적용·게이트=서버 결정론. 대상 외 부품 불변은 코드 보장)
   const [pickedPart, setPickedPart] = useState<string | null>(null);
   const [pickedNormal, setPickedNormal] = useState<number[] | null>(null); // P2 면 컨텍스트
+  // #1 LOD: draft(1차 골격)가 있는 카드면 골격 먼저 — 🧩 버튼으로 2차 전환
+  const [lodFull, setLodFull] = useState(true);
+  useEffect(() => { setLodFull(!latestCad?.scadDraft); }, [latestCad]);
   const dragUndoRef = useRef<CadResult[]>([]); // #1 푸시풀 언두 스택(≤5 — in-place 갱신 복원용)
   const [dragUndoN, setDragUndoN] = useState(0);
   const undoFaceDrag = useCallback(() => {
@@ -1879,7 +1888,10 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={attached.dataUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.18)' }} />
               <span style={{ fontSize: 12, color: '#cbd5e1', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attached.name}</span>
-              <button onClick={() => setAttached(null)} aria-label="remove" style={{ marginInlineStart: 'auto', width: 24, height: 24, borderRadius: 999, border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', cursor: 'pointer', lineHeight: 1, fontSize: 13 }}>×</button>
+              <input value={scaleMm} onChange={(e) => setScaleMm(e.target.value)} placeholder="기준 최장변(mm, 선택)" inputMode="decimal"
+                title="사진/시안엔 스케일이 없어요 — 실물의 가장 긴 변을 알려주시면 그 기준으로 생성합니다(사용자 제공값)"
+                style={{ width: 140, padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(148,163,184,0.35)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: 11.5 }} />
+              <button onClick={() => { setAttached(null); setScaleMm(''); }} aria-label="remove" style={{ marginInlineStart: 'auto', width: 24, height: 24, borderRadius: 999, border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', cursor: 'pointer', lineHeight: 1, fontSize: 13 }}>×</button>
             </div>
           )}
 
@@ -2022,13 +2034,16 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
             {dragUndoN > 0 && (
               <button onClick={undoFaceDrag} title="푸시풀 되돌리기" style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 999, border: '1px solid rgba(148,163,184,0.4)', background: 'rgba(255,255,255,0.06)', color: '#cbd5e1', cursor: 'pointer' }}>↩ {dragUndoN}</button>
             )}
+            {latestCad.scadDraft && !lodFull && (
+              <button onClick={() => setLodFull(true)} title="1차 골격 표시 중 — 2차 상세로 전환" style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 999, border: `1px solid ${accent}66`, background: `${accent}1d`, color: '#bfdbfe', cursor: 'pointer' }}>🧩 2차 상세</button>
+            )}
             <a href={'/' + langCode + '/nexyfab/design/?domain=' + (STUDIO_DOMAIN[domain] ?? 'mech')}
               onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: latestCad.spec ?? '', at: Date.now(), type: latestCad.isAssembly ? 'assembly' : 'part' })); } catch { /* ignore */ } }}
               style={{ marginInlineStart: 'auto', fontSize: 11, color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 7, padding: '3px 10px', textDecoration: 'none' }}>
               🛠 Studio →
             </a>
           </div>
-          <MiniScadViewer key={scadKey(latestCad.scad ?? '') + ':' + (latestCad.interferences?.length ?? 0)} scad={latestCad.scad!} auto accent={accent} height={520} parts={latestCad.partsAabb} selectedId={pickedPart} onPick={(id, normal) => { setPickedPart(id); setPickedNormal(normal ?? null); }} onFaceDrag={applyFaceDrag} />
+          <MiniScadViewer key={scadKey(latestCad.scad ?? '') + ':' + (latestCad.interferences?.length ?? 0) + ':' + (lodFull ? 'f' : 'd')} scad={(lodFull ? latestCad.scad : latestCad.scadDraft) ?? latestCad.scad!} auto accent={accent} height={520} parts={lodFull ? latestCad.partsAabb : (latestCad.partsAabbDraft ?? latestCad.partsAabb)} selectedId={pickedPart} onPick={(id, normal) => { setPickedPart(id); setPickedNormal(normal ?? null); }} onFaceDrag={applyFaceDrag} />
         </aside>
       )}
     </section>

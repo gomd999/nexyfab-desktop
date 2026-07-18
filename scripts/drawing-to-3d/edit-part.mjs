@@ -20,7 +20,7 @@ const PATCHABLE = new Set(['type', 'params', 'at', 'material', 'system', 'detail
  * 결정론 적용: 부품 하나에 패치 병합 → 전체 재빌드·게이트.
  * @returns { ok, assembly?, built?, error?, gateErrors?, interferences? }
  */
-export function applyPartPatch(asm, partId, patch) {
+export function applyPartPatch(asm, partId, patch, meta = {}) {
   const idx = (asm.parts ?? []).findIndex((p) => p.id === partId);
   if (idx < 0) return { ok: false, error: `부품 '${partId}' 없음` };
   const bad = Object.keys(patch ?? {}).filter((k) => !PATCHABLE.has(k));
@@ -54,7 +54,11 @@ export function applyPartPatch(asm, partId, patch) {
   }
   const parts = asm.parts.slice();
   parts[idx] = next;
-  const nextAsm = { ...asm, parts };
+  // REV 이력(#3, 260719): 편집마다 축적(≤50) — GA 표제란 개정란·패키지에 반영(실시 추적성)
+  const nextAsm = {
+    ...asm, parts,
+    revisions: [...(asm.revisions ?? []), { at: Date.now(), kind: meta.kind ?? 'edit', target: partId, note: String(meta.note ?? JSON.stringify(patch)).slice(0, 140) }].slice(-50),
+  };
   const built = buildAssembly(nextAsm);
   if (!built.ok) return { ok: false, error: 'gate', gateErrors: built.gateErrors, assembly: nextAsm };
   return {
@@ -245,7 +249,10 @@ export function partOps(asm, op, partIds, opts = {}) {
   } else {
     return { ok: false, error: `미지원 op '${op}'` };
   }
-  const nextAsm = { ...asm, parts };
+  const nextAsm = {
+    ...asm, parts,
+    revisions: [...(asm.revisions ?? []), { at: Date.now(), kind: op, target: [...ids].join(','), note: op === 'fillet' ? `r${opts.r}` : op === 'translate' ? `Δ(${Number(opts.dx) || 0},${Number(opts.dy) || 0},${Number(opts.dz) || 0})` : '' }].slice(-50),
+  };
   const built = buildAssembly(nextAsm);
   if (!built.ok) return { ok: false, error: 'gate', gateErrors: built.gateErrors, assembly: nextAsm };
   return {
@@ -289,7 +296,7 @@ ${face ? `선택 면: ${face.label ?? face.face ?? face} — 지시는 이 면 �
     const body = out?.data ?? out; // callGeminiJson 은 {data, model, repaired} 래퍼
     const patch = body?.patch;
     if (!patch || typeof patch !== 'object') return { ok: false, error: 'AI 패치 형식 오류(정직 거부)', raw: out };
-    const r = applyPartPatch(asm, partId, patch);
+    const r = applyPartPatch(asm, partId, patch, { kind: 'ai-edit', note: `${String(instruction).slice(0, 80)} → ${JSON.stringify(patch).slice(0, 50)}` });
     if (r.ok) return { ...r, patch, note: body.note ?? null, attempts: attempt + 1 };
     if (attempt === 0) {
       out = await callGeminiJson(

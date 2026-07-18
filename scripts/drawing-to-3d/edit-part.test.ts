@@ -109,6 +109,18 @@ describe('edit-part 결정론 계층', () => {
     expect((partOps(asm, 'fillet', ['noz'], { r: 999 }) as { ok: boolean }).ok).toBe(false);
   });
 
+  it('#3 REV 이력 — 편집마다 revisions 축적(kind·target·note)', () => {
+    const r1 = applyPartPatch(asm, 'noz', { params: { dia2: 300 } }, { kind: 'face-drag', note: 'axis+ +40mm' }) as {
+      ok: boolean; assembly: { revisions: Array<{ kind: string; target: string; note: string }> };
+    };
+    expect(r1.ok).toBe(true);
+    expect(r1.assembly.revisions.length).toBe(1);
+    expect(r1.assembly.revisions[0]).toMatchObject({ kind: 'face-drag', target: 'noz', note: 'axis+ +40mm' });
+    const r2 = partOps(r1.assembly, 'duplicate', ['noz']) as { ok: boolean; assembly: { revisions: unknown[] } };
+    expect(r2.ok).toBe(true);
+    expect(r2.assembly.revisions.length).toBe(2);
+  });
+
   it('faceOfPart — box 6면·회전체 축단/원통면 명명', () => {
     expect(faceOfPart(asm.parts[0], [0, 0, 1])?.face).toBe('z+');
     expect(faceOfPart(asm.parts[0], [-1, 0, 0])?.face).toBe('x-');

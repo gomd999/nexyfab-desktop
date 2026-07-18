@@ -54,7 +54,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
     const fp = mod.faceDragPatch(part, face.face, d);
     if (!fp.ok) return NextResponse.json({ ok: false, error: fp.error, face }, { status: 422 });
-    const r = mod.applyPartPatch(assembly, partId, fp.patch);
+    const r = mod.applyPartPatch(assembly, partId, fp.patch, { kind: 'face-drag', note: `${face.face} ${d >= 0 ? '+' : ''}${Math.round(d)}mm` });
     if (!r.ok) return NextResponse.json({ ok: false, error: r.error, gateErrors: r.gateErrors ?? [], face }, { status: 422 });
     return NextResponse.json({
       ok: true, assembly: r.assembly, patch: fp.patch, face,

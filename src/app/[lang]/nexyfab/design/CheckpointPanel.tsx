@@ -11,7 +11,7 @@
  * 실루엣·치수는 클라이언트 결정론(삼각형 정투영·AABB) — AI 개입 없음.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 export interface CheckpointData {
   intent: { name?: string; features?: unknown[] };
@@ -33,7 +33,7 @@ function shapeClass(features?: unknown[]): 'revolve' | 'assembly' | 'prismatic' 
 }
 
 // 정투영 실루엣 + 치수선(하단 폭·좌측 높이 — '치수 박힌 도면' §2.1)
-function drawView(canvas: HTMLCanvasElement, pos: Float32Array, ax: number, ay: number, flipY: boolean, dimW: number, dimH: number) {
+function drawView(canvas: HTMLCanvasElement, pos: Float32Array, ax: number, ay: number, flipY: boolean, dimW: number, dimH: number, balloons?: Array<{ a: number; b: number; n: number }>) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   const W = canvas.width, H = canvas.height, PAD = 13;
@@ -74,22 +74,36 @@ function drawView(canvas: HTMLCanvasElement, pos: Float32Array, ax: number, ay: 
   ctx.textAlign = 'center';
   ctx.fillText(String(dimW), (x1 + x2) / 2, H - 6);
   ctx.save(); ctx.translate(11, (yT + yB) / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(String(dimH), 0, 0); ctx.restore();
+  // #2 밸룬(부품 번호 — 피처 스펙 목록과 연동, 위치=피처 원점 기반 근사 표기)
+  if (balloons?.length) {
+    ctx.font = '7px ui-monospace, monospace';
+    for (const bl of balloons) {
+      const cx = px(bl.a), cy = py(bl.b);
+      ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(15,23,42,0.78)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(96,165,250,0.9)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(String(bl.n), cx, cy + 2.5);
+    }
+  }
 }
 
 // intent 스펙 라인 — features의 숫자 필드를 있는 그대로 나열(값 날조 없음, 최대 12줄)
 function specLines(features: unknown[] | undefined): string[] {
   if (!Array.isArray(features)) return [];
   const out: string[] = [];
+  let n = 0; // 밸룬 번호(#2) — add 피처만 카운트(뷰의 원 번호와 1:1)
   for (const f of features) {
     if (out.length >= 12) { out.push('…'); break; }
     if (!f || typeof f !== 'object') continue;
     const o = f as Record<string, unknown>;
     const kind = String(o.type ?? o.kind ?? o.op ?? 'feature');
+    const isSub = o.op === 'subtract';
+    const prefix = isSub ? '⊖' : `${++n}.`;
     const nums = Object.entries(o)
       .filter(([, v]) => typeof v === 'number' && Number.isFinite(v))
       .slice(0, 6)
       .map(([k, v]) => `${k}=${v}`);
-    out.push(nums.length ? `${kind}: ${nums.join(', ')}` : kind);
+    out.push(`${prefix} ${nums.length ? `${kind}: ${nums.join(', ')}` : kind}`);
   }
   return out;
 }
@@ -109,11 +123,32 @@ export default function CheckpointPanel({
   const cls = shapeClass(data.intent.features);
   const isRevolve = cls === 'revolve';
 
+  // #2 밸룬 좌표(add 피처 중심 근사 — box=원점+size/2·cylinder=축상 중앙, 회전 미반영=근사 명시)
+  const balloonsW = useMemo(() => {
+    const out: Array<{ c: [number, number, number]; n: number }> = [];
+    const fs = Array.isArray(data.intent.features) ? (data.intent.features as Array<Record<string, unknown>>) : [];
+    let n = 0;
+    for (const f of fs) {
+      if (out.length >= 12) break;
+      if (!f || typeof f !== 'object') continue;
+      if (f.op === 'subtract') continue;
+      n += 1;
+      const t = ((f.at as { translate?: number[] } | undefined)?.translate ?? [0, 0, 0]) as number[];
+      const kind = String(f.kind ?? f.type ?? '');
+      let c: [number, number, number] = [t[0] ?? 0, t[1] ?? 0, t[2] ?? 0];
+      if (kind === 'box' && Array.isArray(f.size)) { const sz = f.size as number[]; c = [c[0] + (sz[0] ?? 0) / 2, c[1] + (sz[1] ?? 0) / 2, c[2] + (sz[2] ?? 0) / 2]; }
+      else if (kind === 'cylinder' && typeof f.height === 'number') c = [c[0], c[1], c[2] + (f.height as number) / 2];
+      out.push({ c, n });
+    }
+    return out.length >= 2 ? out : []; // 단일 피처면 밸룬 생략(노이즈)
+  }, [data]);
+
   useEffect(() => {
-    if (frontRef.current) drawView(frontRef.current, data.positions, 0, 2, true, data.bbox.x, data.bbox.z);
-    if (topRef.current) drawView(topRef.current, data.positions, 0, 1, true, data.bbox.x, data.bbox.y);
-    if (sideRef.current) drawView(sideRef.current, data.positions, 1, 2, true, data.bbox.y, data.bbox.z);
-  }, [data, isRevolve]);
+    const bl = (ax: 0 | 1, ay: 1 | 2) => balloonsW.map((q) => ({ a: q.c[ax], b: q.c[ay], n: q.n }));
+    if (frontRef.current) drawView(frontRef.current, data.positions, 0, 2, true, data.bbox.x, data.bbox.z, bl(0, 2));
+    if (topRef.current) drawView(topRef.current, data.positions, 0, 1, true, data.bbox.x, data.bbox.y, bl(0, 1));
+    if (sideRef.current) drawView(sideRef.current, data.positions, 1, 2, true, data.bbox.y, data.bbox.z, bl(1, 2));
+  }, [data, isRevolve, balloonsW]);
 
   // §12.3 뷰 라우팅 v1 — 회전체는 정면·평면 2뷰(측면=정면과 동일), 그 외 3각법 3뷰
   const views: Array<[React.RefObject<HTMLCanvasElement | null>, string, string]> = isRevolve

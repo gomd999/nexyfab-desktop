@@ -71,6 +71,22 @@ function rotatePoint([x, y, z], rx, ry, rz) {
  * GA 외형을 부풀리던 실버그를 정합 게이트가 검출(260717)한 뒤 일원화.
  */
 /**
+ * 계통/상세 자동 태깅(260719 — 1차 골격→2차 상세 웹 배선): 미지정 부품만 role/type
+ * 휴리스틱으로 채움(기지정 값 불변). detail 2=철물·자유곡면(2차 상세), 그 외 1(골격).
+ */
+export function autoTagAssembly(asm) {
+  const SYS_ROLE = { frame: '구조', column: '구조', beam: '구조', support: '구조', wall: '구조', floor: '구조', slab: '구조', deck: '구조', ceiling: '구조', vessel: '용기·장비', tank: '용기·장비', pump: '구동', motor: '구동', cabinet: '전장', pipe: '배관' };
+  const SYS_TYPE = { hex_bolt: '체결', hex_nut: '체결', washer: '체결', flange: '플랜지', spur_gear: '구동', mesh: '자유곡면', coil_spring: '체결' };
+  const DETAIL2 = new Set(['hex_bolt', 'hex_nut', 'washer', 'mesh', 'coil_spring']);
+  const parts = (asm.parts ?? []).map((p) => ({
+    ...p,
+    ...(p.system ? {} : { system: SYS_TYPE[p.type] ?? SYS_ROLE[p.role] ?? '부품' }),
+    ...(p.detail != null ? {} : DETAIL2.has(p.type) ? { detail: 2 } : {}),
+  }));
+  return { ...asm, parts };
+}
+
+/**
  * 상세 단계 필터(260719 — 1차 간단→2차 디테일): 부품 detail(기본 1)이 level 이하만.
  * 1차=골격(케이싱·구조), 2차=하드웨어(볼트·너트·블레이드·내통 등). 형상 무변경 — 부분집합.
  */

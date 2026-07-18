@@ -103,7 +103,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       name: 'GA_2D_drawing.html', mime: 'text/html',
       content: mods.pkg.ga2dDrawing(assembly, {
         title, domain, pipes: built.pipes?.routes,
-        ...(Array.isArray(options.revHistory) ? { revHistory: options.revHistory } : {}),
+        // REV(#3, 260719): 옵션 입력 이력 우선, 없으면 편집 자동 축적(asm.revisions) 반영
+        ...(Array.isArray(options.revHistory)
+          ? { revHistory: options.revHistory }
+          : Array.isArray((assembly as { revisions?: Array<{ at?: number; kind?: string; target?: string; note?: string }> }).revisions)
+            ? { revHistory: (assembly as { revisions: Array<{ at?: number; kind?: string; target?: string; note?: string }> }).revisions.map((r, i) => ({ rev: String(i + 1), date: r.at ? new Date(r.at).toISOString().slice(0, 10) : '', note: `${r.kind ?? 'edit'} ${r.target ?? ''} ${r.note ?? ''}`.trim().slice(0, 90) })) }
+            : {}),
         ...(options.lang === 'en' ? { lang: 'en' } : {}),
       }),
     });

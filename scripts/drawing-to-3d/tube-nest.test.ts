@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildAssembly, assemblyToComposeIntent, assemblyAtLevel } from './assembly.mjs';
+import { buildAssembly, assemblyToComposeIntent, assemblyAtLevel, autoTagAssembly } from './assembly.mjs';
 
 /** 보어 내포 폐형(260718t) — 케이싱(tube)×로터/샤프트 동축 내포는 간섭이 아니다. */
 describe('보어 내포 폐형 — 동축 회전체 in 중공 회전체', () => {
@@ -83,6 +83,22 @@ describe('보어 내포 폐형 — 동축 회전체 in 중공 회전체', () => 
     const intent = assemblyToComposeIntent({ parts }) as { features: Array<{ _sys?: string }> };
     expect(intent.features[0]._sys).toBe('시험대');
     expect(intent.features.some((f) => f._sys === '체결')).toBe(true);
+  });
+
+  it('#1 autoTagAssembly — 미지정만 채움, detail2=철물/자유곡면, 1차=골격 부분집합', () => {
+    const t2 = autoTagAssembly({
+      parts: [
+        { id: 'a', type: 'box', params: { width: 100, depth: 100, height: 100 }, at: { tx: 0, ty: 0, tz: 0 }, role: 'frame' },
+        { id: 'b', type: 'hex_bolt', params: { threadDia: 16, length: 60 }, at: { tx: 300, ty: 0, tz: 0 } },
+        { id: 'c', type: 'cylinder', params: { diameter: 50, length: 100 }, at: { tx: 600, ty: 0, tz: 0 }, system: '커스텀', detail: 2 },
+      ],
+    }) as { parts: Array<Record<string, unknown>> };
+    expect(t2.parts[0].system).toBe('구조');
+    expect(t2.parts[0].detail).toBeUndefined(); // box=골격(1)
+    expect(t2.parts[1].system).toBe('체결');
+    expect(t2.parts[1].detail).toBe(2);
+    expect(t2.parts[2].system).toBe('커스텀'); // 기지정 불변
+    expect((assemblyAtLevel(t2, 1) as { parts: unknown[] }).parts.length).toBe(1); // b·c=detail2 제외
   });
 
   it('revolve 실방출 — composeIntent 에 revolve 피처(실린더 프록시 아님)', () => {
