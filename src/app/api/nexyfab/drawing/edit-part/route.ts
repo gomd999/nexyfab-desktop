@@ -48,6 +48,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       ok: true, assembly: r.assembly, patch: r.patch, note: r.note,
       interferences: r.interferences, floating: r.floating, massKg: r.massKg,
+      openscad: r.openscad, parts: r.parts, contacts: r.contacts,
+      welds: r.welds, weldTotalMm: r.weldTotalMm, structural: r.structural,
     });
   } catch (e) {
     return NextResponse.json({ ok: false, error: 'edit-part failed: ' + (e instanceof Error ? e.message : String(e)).slice(0, 180) }, { status: 502 });

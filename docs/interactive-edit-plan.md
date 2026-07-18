@@ -15,14 +15,14 @@
 - 실증: NX-TJ520 노즐 출구 확경(면 컨텍스트)·받침대 폭(중심 유지 보정)·기어박스 이동
   3연속 체인, 전부 간섭 0 게이트 통과
 
-## P1 — 바디 픽킹 UI (다음)
+## P1 — 바디 픽킹 UI (완료 260719 — 프로덕션 E2E: 어셈블리 생성→우측 3D 클릭 픽(column_2)→지시 전송→edit-part 적용·재검증 카드·하이라이트 복원)
 - ChatHero splitMode 우측 패널 + DesignInner 뷰어: 부품별 AABB 프록시 레이캐스트
   (GA_3D 의 PARTS 픽킹과 동일 데이터 — placedAabb) → 클릭=선택 칩(부품 id)
 - 선택 상태에서 입력창 전송 → `/drawing/edit-part` {assembly, partId, instruction}
   → 응답 assembly 로 재렌더(+검증그물 재실행·placeCorrections 표시)
 - 선택 해제·다중 선택(v1 단일)·선택 부품 하이라이트(THREE.Box3Helper — H3 재사용)
 
-## P2 — 면 픽킹
+## P2 — 면 픽킹 (엔진 선반영: faceDragPatch=면 푸시풀 결정론 매핑 — box 6면/축단±/radial, 모호=정직 거부. gen 재생성: mesh 부품 gen{kind,params}→GEN_REGISTRY(blade_ring) 결정론 재생성=자유곡면 대화수정. 잔여=뷰어 면 노멀 픽+드래그 제스처)
 - 레이캐스트 히트 삼각형의 월드 노멀 → `faceOfPart` → {face,label} 를 edit-part 에 동봉
 - UI: 선택 칩에 면 라벨 표기("nozzle · 축단(+)"). 회전 box 면 명명 확장(역회전 변환)
 
