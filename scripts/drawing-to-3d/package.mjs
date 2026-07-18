@@ -10,6 +10,7 @@ import { runCalculator, calculators } from '../engineering-core/registry.mjs';
 import { retainingWallSectionSvg } from './section-drawings.mjs';
 import { rebarBBS } from './rebar-bbs.mjs';
 import { takeoff as takeoffRules } from '../engineering-core/quantity/takeoff.mjs';
+import { snapPipe, snapSquareTube } from './std-snap.mjs';
 const EPS_XS = 1e-6;
 
 // 부품 type → 기본 재질 라벨(도면 BOM). 색은 colorOf(assembly.mjs) 단일 소스 — service/role/추론/type 순.
@@ -880,7 +881,7 @@ function civilPlanSvg(parts) {
  *  domain='building' → 축선 구조평면 / 'landscape' → 배치 평면도 / 'civil' → 선형 평면(측점)
  *  pipes = buildAssembly().pipes.routes — 라우터의 단일 결과를 그대로 투영(재계산 금지 — 정합)
  *  축척: 표준 축척(1:N) 자동 선정 — A3 100% 인쇄 기준 실축척(표제란 명기), km급 대응. */
-export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA-001', domain, pipes, revHistory, lang } = {}) {
+export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA-001', domain, pipes, revHistory, lang, welds: weldsIn } = {}) {
   const parts = (assembly.parts ?? []).map((p, i) => ({ p, i, box: placed(p), st: styleOf(p) }));
   if (!parts.length) return '<!DOCTYPE html><body>빈 어셈블리</body>';
   const bx0 = Math.min(...parts.map(o => o.box.x)), bx1 = Math.max(...parts.map(o => o.box.x + o.box.dx));
@@ -1033,10 +1034,68 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
     }
   } catch { domainSvg = ''; sheetsHtml = ''; }
   // BOM = 그룹 단위(규격·재질 동일 부재 수량 집계) — 대량 부품 도면 판독성
+  const stdLabel = (p) => { // G7 발주 규격 문자열(std-snap — 규격 외=공란·경고는 감사 리포트)
+    try {
+      if (p.role === 'pipe' && p.type === 'cylinder') { const r = snapPipe(p.params.diameter); return r.ok ? r.label + ' ' + r.spec : ''; }
+      if (p.type === 'box' && (p.role === 'column' || p.role === 'beam') && p.params.width === p.params.depth) { const r = snapSquareTube(p.params.width); return r.ok ? `${r.label} ${r.spec}` : ''; }
+    } catch { /* 규격열 실패는 BOM 을 막지 않음 */ }
+    return '';
+  };
   const bom = groups.map((g, gi) => {
     const { p, box, st } = g.rep;
-    return `<tr><td>${gi + 1}</td><td style="text-align:left">${esc(p.id ?? p.type)}${g.count > 1 ? ' 외' : ''}</td><td>${esc(p.type)}</td><td>${fmtLen(box.dx)}×${fmtLen(box.dy)}×${fmtLen(box.dz)}</td><td>${esc(st.mat)}</td><td>${g.count}</td></tr>`;
+    return `<tr><td>${gi + 1}</td><td style="text-align:left">${esc(p.id ?? p.type)}${g.count > 1 ? ' 외' : ''}</td><td>${esc(p.type)}</td><td>${fmtLen(box.dx)}×${fmtLen(box.dy)}×${fmtLen(box.dz)}</td><td style="text-align:left">${esc(stdLabel(p))}</td><td>${esc(st.mat)}</td><td>${g.count}</td></tr>`;
   }).join('');
+  // ② 단면도 A-A(D3, C2): y=중앙 절단 — 절단 부품=해칭, 후방 부품=실루엣(전방 생략 관례)
+  const yc = by0 + (parts.length ? Math.max(...parts.map((o) => o.box.y + o.box.dy)) - by0 : 0) / 2;
+  const secParts = parts.filter((o) => o.box.y < yc && o.box.y + o.box.dy > yc);
+  const bgParts = parts.filter((o) => o.box.y >= yc);
+  let sectionSvg = '';
+  if (secParts.length) {
+    const el2 = [`<pattern id="nfhatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><line x1="0" y1="0" x2="0" y2="7" stroke="#475569" stroke-width="0.9"/></pattern>`];
+    for (const o of bgParts) el2.push(`<rect x="${px(o.box.x, ox)}" y="${pz(o.box.z + o.box.dz)}" width="${(o.box.dx * S).toFixed(1)}" height="${(o.box.dz * S).toFixed(1)}" fill="none" stroke="#94a3b8" stroke-width=".6" stroke-dasharray="5 3"/>`);
+    for (const o of secParts) el2.push(`<rect x="${px(o.box.x, ox)}" y="${pz(o.box.z + o.box.dz)}" width="${(o.box.dx * S).toFixed(1)}" height="${(o.box.dz * S).toFixed(1)}" fill="url(#nfhatch)" stroke="${o.st.c}" stroke-width="1"/>`);
+    sectionSvg = `<div style="padding:4px 20px"><div style="font-size:12px;font-weight:700;color:#1f2937">SECTION A-A (y=${Math.round(yc)} 절단 · 절단면=해칭, 후방=파선 실루엣, 전방 생략)</div><svg viewBox="0 0 ${(ox + fw + 30).toFixed(0)} ${(oy + fh + 30).toFixed(0)}" style="width:100%;max-width:1100px">${el2.join('')}</svg></div>`;
+  }
+  let detailMarker = '';
+  // ②-b 부분 상세 DETAIL B(D3, C3): 최소 부품 군집(캐스터류) 확대 — 4× 스케일
+  let detailSvg = '';
+  {
+    const small = parts.filter((o) => Math.max(o.box.dx, o.box.dy, o.box.dz) <= 300 && o.box.z < 400);
+    if (small.length >= 2) {
+      const cx0 = Math.min(...small.map((o) => o.box.x));
+      const region = small.filter((o) => o.box.x < cx0 + 400);
+      if (region.length >= 2) {
+        const rx0 = Math.min(...region.map((o) => o.box.x)) - 30, rx1 = Math.max(...region.map((o) => o.box.x + o.box.dx)) + 30;
+        const rz0 = Math.min(...region.map((o) => o.box.z)) - 30, rz1 = Math.max(...region.map((o) => o.box.z + o.box.dz)) + 30;
+        const S2 = Math.min(4 * S, 340 / Math.max(rx1 - rx0, rz1 - rz0));
+        const dw = (rx1 - rx0) * S2, dh = (rz1 - rz0) * S2;
+        const el3 = region.map((o) => `<rect x="${((o.box.x - rx0) * S2).toFixed(1)}" y="${((rz1 - o.box.z - o.box.dz) * S2).toFixed(1)}" width="${(o.box.dx * S2).toFixed(1)}" height="${(o.box.dz * S2).toFixed(1)}" fill="${o.st.c}22" stroke="${o.st.c}" stroke-width="1.2"/>`).join('');
+        const mainCx = +px((rx0 + rx1) / 2, ox), mainCy = (+pz(rz0) + +pz(rz1)) / 2;
+        const mainR = Math.max(rx1 - rx0, rz1 - rz0) * S * 0.6;
+        detailSvg = `<div style="padding:4px 20px;display:flex;gap:18px;align-items:flex-start"><svg width="${(dw + 20).toFixed(0)}" height="${(dh + 34).toFixed(0)}"><g transform="translate(10,24)">${el3}</g><text x="8" y="14" font-size="12" font-weight="700" fill="#1f2937" font-family="sans-serif">DETAIL B (SCALE 1:${Math.max(1, Math.round(1 / (S2 / S) * N))})</text></svg><div style="font-size:11px;color:#64748b;padding-top:22px">본도 FRONT 의 Ⓑ 원 영역 확대 — 소형 부품(캐스터·새들류) 상세</div></div>`;
+        // 본도 마커(원+B)
+        detailMarker = `<circle cx="${mainCx.toFixed(1)}" cy="${mainCy.toFixed(1)}" r="${mainR.toFixed(1)}" fill="none" stroke="#0f766e" stroke-width="1.2" stroke-dasharray="6 3"/><text x="${(mainCx + mainR + 4).toFixed(1)}" y="${mainCy.toFixed(1)}" font-size="12" fill="#0f766e" font-family="sans-serif" font-weight="700">B</text>`;
+      }
+    }
+  }
+  // ③ 용접 일람표(G3, C8): opts.welds(buildAssembly 산출) — 각장 z=0.7t 관례(근거 명시)
+  let weldTable = '';
+  if (Array.isArray(weldsIn) && weldsIn.length) {
+    const rows = weldsIn.slice(0, 40).map((w2, i) => {
+      const tmin = Math.min(w2.tA ?? 6, w2.tB ?? 6);
+      const zleg = Math.max(3, Math.round(0.7 * tmin));
+      return `<tr><td>W${i + 1}</td><td style="text-align:left">${esc(w2.a ?? '-')} ↔ ${esc(w2.b ?? '-')}</td><td>필릿 △${zleg}</td><td>${fmtLen(w2.lengthMm ?? 0)}</td></tr>`;
+    }).join('');
+    weldTable = `<table><thead><tr><th>No.</th><th>조인트(부품쌍)</th><th>기호(각장 z=0.7t 관례)</th><th>용접장</th></tr></thead><tbody>${rows}</tbody></table><div class="sub" style="padding:0 20px 8px;color:#94a3b8">용접 일람 — WPS/검사등급은 입력 원칙(자동 부여 금지)${weldsIn.length > 40 ? ` · 상위 40/${weldsIn.length}` : ''}</div>`;
+  }
+  // ④ 정식 표제란(D2, C1): 우하단 표 — 도번·축척·투상·단위·REV·시트
+  const titleBlock = `<table style="width:420px;margin:6px 20px 14px auto;font-size:10.5px" class="nf-titleblock"><tbody>
+<tr><td style="background:#f1f5f9;width:70px">프로젝트</td><td colspan="3" style="text-align:left">${esc(title)}</td></tr>
+<tr><td style="background:#f1f5f9">도면명</td><td colspan="3" style="text-align:left">일반배치도 (GENERAL ARRANGEMENT)</td></tr>
+<tr><td style="background:#f1f5f9">도번</td><td data-dwg="${esc(dwgNo)}">${esc(dwgNo)}</td><td style="background:#f1f5f9;width:56px">REV</td><td class="nf-rev">—</td></tr>
+<tr><td style="background:#f1f5f9">축척</td><td>1:${N} (A3)</td><td style="background:#f1f5f9">시트</td><td>1 / 1</td></tr>
+<tr><td style="background:#f1f5f9">투상/단위</td><td>3각법 / mm</td><td style="background:#f1f5f9">작성</td><td>nexyfab 자동생성(비법정)</td></tr>
+</tbody></table>`;
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>@page{size:A3 landscape;margin:8mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937}
 .sheet{max-width:1180px;margin:16px auto;background:#fff;border:1px solid #cbd5e1;box-shadow:0 4px 24px rgba(0,0,0,.1)}.hd{display:flex;justify-content:space-between;align-items:flex-end;padding:12px 20px;border-bottom:2px solid #1f2937}.hd h1{font-size:16px;margin:0}.sub{font-size:11px;color:#64748b}.wrap{padding:8px 16px}
@@ -1045,7 +1104,7 @@ table{border-collapse:collapse;width:calc(100% - 40px);margin:0 20px 14px;font-s
 .tb{border-top:2px solid #1f2937;margin-top:8px;padding:6px 4px;font-size:11px;color:#334155;display:flex;gap:14px;flex-wrap:wrap}
 @media print{.nf-print-bar{display:none}body{background:#fff}.sheet{box-shadow:none;border:none;margin:0}.sheet-page{box-shadow:none;border:none;margin:0;page-break-after:always}}</style></head>
 <body>${PRINT_BAR('설계 GA 도면 (A3)')}<div class="sheet"><div class="hd"><div><h1>${esc(title)} — 일반배치도 (GA)</h1><div class="sub">nexyfab drawing-to-3d 자동생성 · 부품 ${parts.length}(그룹 ${groups.length})</div></div><div class="sub">DWG ${esc(dwgNo)} · <b>SCALE 1:${N}</b> (A3 100% 인쇄 기준 · 화면=가변) · 표기 mm(대형 자동 m/km) · 3rd angle · REV <span class="nf-rev">—</span></div></div>
-<div class="wrap">${svg}</div>${domainSvg ? `<div class="wrap" style="border-top:1px solid #e2e8f0">${domainSvg}</div>` : ''}<table><thead><tr><th>No.</th><th>품명(대표)</th><th>Type</th><th>규격(엔벨로프)</th><th>재질</th><th>수량</th></tr></thead><tbody>${bom}</tbody></table>
+<div class="wrap">${svg.replace('</svg>', detailMarker + '</svg>')}</div>${sectionSvg}${detailSvg}${domainSvg ? `<div class="wrap" style="border-top:1px solid #e2e8f0">${domainSvg}</div>` : ''}<table><thead><tr><th>No.</th><th>품명(대표)</th><th>Type</th><th>규격(엔벨로프)</th><th>발주 규격(G1 스냅 · 발주 전 규격서 대조)</th><th>재질</th><th>수량</th></tr></thead><tbody>${bom}</tbody></table>${weldTable}${titleBlock}
 <div class="sub" style="padding:4px 20px 12px;color:#94a3b8">⚠ 자동생성 GA(비법정) · 부품 엔벨로프 기준 · 상세치수·공차는 후속.</div><div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div>${sheetsHtml}</body></html>`;
 }
 
