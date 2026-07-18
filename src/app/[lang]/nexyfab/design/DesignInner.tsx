@@ -195,6 +195,17 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const pendingIntentRef = useRef<IntentMatch | null>(null);
   const pendingAssemblyRef = useRef<Record<string, unknown> | null>(null); // 설계 패키지용(어셈블리 경로만)
   const [lastAssembly, setLastAssembly] = useState<Record<string, unknown> | null>(null);
+  // 🎯 P2 픽킹(260719): 뷰어 부품 클릭=선택 → 프롬프트=그 부품만 수정(edit-part) ·
+  // 선택 부품 면 드래그=푸시풀(face-drag, 결정론). 월드 AABB 프록시는 assemble/edit 응답 parts.
+  type PartAabb = { id: string; aabb: { min: number[]; max: number[] } };
+  const pendingPartsRef = useRef<PartAabb[] | null>(null);
+  const [lastPartsAabb, setLastPartsAabb] = useState<PartAabb[] | null>(null);
+  const [pickedPart, setPickedPart] = useState<string | null>(null);
+  const [pickedNormal, setPickedNormal] = useState<number[] | null>(null); // CAD 좌표계
+  const pickGroupRef = useRef<THREE.Group | null>(null);
+  const pickSelRef = useRef<{ select: (id: string | null) => void }>({ select: () => { /* init 전 */ } });
+  const pickCbRef = useRef<(id: string | null, normalCad: number[] | null) => void>(() => { /* init 전 */ });
+  const faceDragCbRef = useRef<(id: string, normalCad: number[], deltaMm: number) => void>(() => { /* init 전 */ });
   const [pkgBusy, setPkgBusy] = useState(false);
   const [bbox, setBbox] = useState<Bbox | null>(null);
   const [featureCount, setFeatureCount] = useState<number | null>(null);
@@ -253,25 +264,106 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     };
     loop();
 
-    // manual orbit
+    // 🎯 픽킹 인프라(P2): 부품 AABB 프록시 그룹 + 선택 하이라이트 + 면 푸시풀 드래그
+    const pickGroup = new THREE.Group();
+    scene.add(pickGroup);
+    pickGroupRef.current = pickGroup;
+    let hl: THREE.LineSegments | null = null;
+    let selCur: string | null = null;
+    const select = (id: string | null) => {
+      selCur = id;
+      if (hl) { scene.remove(hl); hl.geometry.dispose(); (hl.material as THREE.Material).dispose(); hl = null; }
+      const box = pickGroup.children.find((c) => c.userData.pid === id) as THREE.Mesh | undefined;
+      if (box) {
+        hl = new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry as THREE.BoxGeometry), new THREE.LineBasicMaterial({ color: 0x3b82f6 }));
+        hl.position.copy(box.position);
+        scene.add(hl);
+      }
+    };
+    pickSelRef.current = { select };
+    const ray = new THREE.Raycaster();
+    const castAt = (cx: number, cy: number) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      if (cx < rect.left || cx > rect.right || cy < rect.top || cy > rect.bottom) return null;
+      ray.setFromCamera(new THREE.Vector2(((cx - rect.left) / rect.width) * 2 - 1, -((cy - rect.top) / rect.height) * 2 + 1), camera);
+      return ray.intersectObjects(pickGroup.children, false)[0] ?? null;
+    };
+    const dfTip = document.createElement('div');
+    dfTip.style.cssText = 'position:absolute;display:none;pointer-events:none;z-index:5;background:rgba(15,23,42,.9);color:#fff;font-size:11px;padding:3px 8px;border-radius:6px;font-weight:700';
+    mount.style.position = 'relative';
+    mount.appendChild(dfTip);
+    // three(Y-up) 노멀 → CAD(Z-up): (nx, ny, nz) → (nx, -nz, ny)
+    const toCadN = (n: THREE.Vector3) => [n.x, -n.z, n.y];
+
+    // manual orbit + 픽/푸시풀
     let dragging = false;
     let lx = 0;
     let ly = 0;
+    let dx0 = 0, dy0 = 0;
+    let df: { id: string; nThree: THREE.Vector3; axis: number; sign: number; dir2: [number, number]; mmPerPx: number; delta: number } | null = null;
     const onDown = (e: PointerEvent) => {
       dragging = true;
-      lx = e.clientX;
-      ly = e.clientY;
+      lx = e.clientX; ly = e.clientY; dx0 = e.clientX; dy0 = e.clientY;
       (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      df = null;
+      if (!selCur || !pickGroup.children.length) return;
+      const hit = castAt(e.clientX, e.clientY);
+      if (!hit || String(hit.object.userData.pid) !== selCur || !hit.face) return;
+      const n = hit.face.normal.clone();
+      const axis = Math.abs(n.x) > 0.5 ? 0 : Math.abs(n.y) > 0.5 ? 1 : 2;
+      const sign = [n.x, n.y, n.z][axis] > 0 ? 1 : -1;
+      const s0 = hit.point.clone().project(camera), s1 = hit.point.clone().add(n.clone().multiplyScalar(100)).project(camera);
+      const rect = renderer.domElement.getBoundingClientRect();
+      const v2: [number, number] = [(s1.x - s0.x) * rect.width / 2, -(s1.y - s0.y) * rect.height / 2];
+      const L2 = Math.hypot(v2[0], v2[1]);
+      if (L2 < 2) return; // 화면과 수직 — 궤도 유지
+      df = { id: selCur, nThree: n, axis, sign, dir2: [v2[0] / L2, v2[1] / L2], mmPerPx: 100 / L2, delta: 0 };
     };
     const onMove = (e: PointerEvent) => {
       if (!dragging) return;
+      if (df) {
+        df.delta = ((e.clientX - dx0) * df.dir2[0] + (e.clientY - dy0) * df.dir2[1]) * df.mmPerPx;
+        if (hl) {
+          const box = pickGroup.children.find((c) => c.userData.pid === df!.id) as THREE.Mesh | undefined;
+          if (box) {
+            const bp = (box.geometry as THREE.BoxGeometry).parameters;
+            const dims = [bp.width, bp.height, bp.depth];
+            hl.scale.setComponent(df.axis, Math.max(0.05, (dims[df.axis] + df.delta) / dims[df.axis]));
+            hl.position.copy(box.position);
+            hl.position.setComponent(df.axis, box.position.getComponent(df.axis) + (df.sign * df.delta) / 2);
+          }
+        }
+        const rect = renderer.domElement.getBoundingClientRect();
+        dfTip.style.display = 'block';
+        dfTip.style.left = `${e.clientX - rect.left + 14}px`;
+        dfTip.style.top = `${e.clientY - rect.top - 10}px`;
+        dfTip.textContent = `${df.delta >= 0 ? '+' : ''}${Math.round(df.delta)}mm`;
+        return;
+      }
       const o = orbit.current;
       o.theta -= (e.clientX - lx) * 0.01;
       o.phi -= (e.clientY - ly) * 0.01;
       lx = e.clientX;
       ly = e.clientY;
     };
-    const onUp = () => { dragging = false; };
+    const onUp = (e: PointerEvent) => {
+      dragging = false;
+      dfTip.style.display = 'none';
+      if (df) {
+        const { id, nThree, delta } = df;
+        df = null;
+        if (hl) hl.scale.set(1, 1, 1);
+        if (Math.abs(delta) >= 2) { faceDragCbRef.current(id, toCadN(nThree), Math.round(delta)); return; }
+        select(selCur);
+        return;
+      }
+      if (!pickGroup.children.length) return;
+      if (Math.hypot(e.clientX - dx0, e.clientY - dy0) > 6) return; // 드래그≠클릭
+      const hit = castAt(e.clientX, e.clientY);
+      const id = hit ? String(hit.object.userData.pid ?? '') || null : null;
+      select(id);
+      pickCbRef.current(id, hit?.face ? toCadN(hit.face.normal) : null);
+    };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       orbit.current.radius = Math.max(20, Math.min(50000, orbit.current.radius * (1 + Math.sign(e.deltaY) * 0.12)));
@@ -301,6 +393,26 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       if (el.parentNode) el.parentNode.removeChild(el);
     };
   }, []);
+
+  // 🎯 부품 프록시 재구축(P2) — CAD Z-up → three Y-up: (x,y,z)→(x, z, −y)
+  useEffect(() => {
+    const g = pickGroupRef.current;
+    if (!g) return;
+    while (g.children.length) {
+      const c = g.children.pop() as THREE.Mesh;
+      c.geometry?.dispose?.();
+      (c.material as THREE.Material)?.dispose?.();
+    }
+    for (const p of lastPartsAabb ?? []) {
+      const mn = p.aabb.min, mx = p.aabb.max;
+      const bg = new THREE.BoxGeometry(Math.max(1, mx[0] - mn[0]), Math.max(1, mx[2] - mn[2]), Math.max(1, mx[1] - mn[1]));
+      const m = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+      m.position.set((mn[0] + mx[0]) / 2, (mn[2] + mx[2]) / 2, -(mn[1] + mx[1]) / 2);
+      m.userData.pid = p.id;
+      g.add(m);
+    }
+    pickSelRef.current.select(null);
+  }, [lastPartsAabb]);
 
   // Swap the mesh geometry (CAD Z-up → three Y-up via -90° X rotation).
   const showGeometry = useCallback((geom: THREE.BufferGeometry) => {
@@ -373,6 +485,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setIntentM(pendingIntentRef.current); // 요청 정합 — 동일 소비 구조
       pendingIntentRef.current = null;
       setLastAssembly(pendingAssemblyRef.current); // 어셈블리면 패키지 생성 가능, 단품이면 null
+      setLastPartsAabb(pendingPartsRef.current); // 🎯 픽킹 프록시 — 단품이면 null(픽킹 없음)
+      pendingPartsRef.current = null;
+      setPickedPart(null); setPickedNormal(null);
       pendingAssemblyRef.current = null;
       setDiffRes(null); // 설계가 바뀌면 이전 듀얼-방출 대조 결과는 무효
       setDiffDraftProfiles(null);
@@ -399,10 +514,80 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     [ko, showGeometry],
   );
 
+  // 🎯 edit-part/face-drag 응답 적용(P2) — 검증 상태 갱신 + 재렌더(대상 외 부품 불변은 서버 보장)
+  const applyEditResp = useCallback(async (j: Record<string, unknown>) => {
+    setLastAssembly((j.assembly as Record<string, unknown>) ?? null);
+    setLastPartsAabb(Array.isArray(j.parts) ? (j.parts as { id: string; aabb: { min: number[]; max: number[] } }[]) : null);
+    setInterf(Array.isArray(j.interferences) ? (j.interferences as unknown[]).length : null);
+    setFloatN(Array.isArray(j.floating) ? (j.floating as unknown[]).length : null);
+    setDiffRes(null); setDiffDraftProfiles(null); setVisRes(null); setFeaRes(null); // 설계 변경 — 검증 무효화
+    if (j.composeIntent && typeof j.composeIntent === 'object') {
+      setIntent(j.composeIntent as ComposeOk['intent']);
+      setFeatureCount(Array.isArray((j.composeIntent as { features?: unknown[] }).features) ? (j.composeIntent as { features: unknown[] }).features.length : null);
+    }
+    if (typeof j.openscad === 'string') {
+      setScad(j.openscad);
+      if (wasmAvailable()) {
+        const r = await renderScadWasm(j.openscad);
+        if (r.ok && r.data) {
+          const buf = r.data.buffer.slice(r.data.byteOffset, r.data.byteOffset + r.data.byteLength) as ArrayBuffer;
+          showGeometry(parseSTL(buf));
+        }
+      }
+    }
+  }, [showGeometry]);
+
+  const editPartRun = useCallback(async (instruction: string) => {
+    if (!pickedPart || !lastAssembly) return;
+    setLoading(true); setError(null);
+    setStatus(ko ? `🎯 ${pickedPart} 만 수정하는 중…` : `Editing only ${pickedPart}…`);
+    try {
+      const res = await fetch('/api/nexyfab/drawing/edit-part/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assembly: lastAssembly, partId: pickedPart, instruction, ...(pickedNormal ? { face: { normal: pickedNormal } } : {}) }),
+      });
+      const j = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok || !j.ok) { setError(String((j as { error?: string }).error ?? 'edit failed')); return; }
+      await applyEditResp(j);
+      setPrompt('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false); setStatus('');
+    }
+  }, [pickedPart, pickedNormal, lastAssembly, applyEditResp, ko]);
+
+  const onFaceDragStudio = useCallback(async (partId: string, normalCad: number[], deltaMm: number) => {
+    if (!lastAssembly) return;
+    setStatus(ko ? '푸시풀 적용 중…' : 'Applying push-pull…');
+    setError(null);
+    try {
+      const res = await fetch('/api/nexyfab/drawing/face-drag/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assembly: lastAssembly, partId, normal: normalCad, deltaMm }),
+      });
+      const j = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok || !j.ok) { setError(String((j as { error?: string }).error ?? 'face-drag')); return; }
+      await applyEditResp(j);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setStatus('');
+    }
+  }, [lastAssembly, applyEditResp, ko]);
+  useEffect(() => { faceDragCbRef.current = (id, n, d) => { void onFaceDragStudio(id, n, d); }; }, [onFaceDragStudio]);
+  useEffect(() => { pickCbRef.current = (id, n) => { setPickedPart(id); setPickedNormal(n); }; }, []);
+  // 선택 부품이 어셈블리에서 사라지면 자동 해제
+  useEffect(() => {
+    if (pickedPart && !lastPartsAabb?.some((p) => p.id === pickedPart)) { setPickedPart(null); setPickedNormal(null); }
+  }, [lastPartsAabb, pickedPart]);
+
   const run = useCallback(
     async (text: string) => {
       const desc = text.trim();
       if (desc.length < 4) return;
+      // 🎯 선택 부품이 있으면 프롬프트=그 부품만 수정(edit-part)
+      if (pickedPart && lastAssembly) { void editPartRun(desc); return; }
       setLoading(true);
       setError(null);
       setGateErrors(null);
@@ -444,6 +629,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           pendingFloatRef.current = Array.isArray(sup?.floating) ? sup.floating.length : null; // 그물 ④b 지지
           pendingIntentRef.current = ((raw as { intentMatch?: IntentMatch | null }).intentMatch) ?? null; // 그물 ⑦ 요청 정합
           pendingAssemblyRef.current = (raw as { assembly?: Record<string, unknown> }).assembly ?? null;
+          pendingPartsRef.current = Array.isArray((raw as { parts?: unknown[] }).parts)
+            ? ((raw as { parts?: unknown[] }).parts as { id: string; aabb: { min: number[]; max: number[] } }[])
+            : null; // 🎯 픽킹 프록시(월드 AABB)
         }
         if (!data.ok) {
           setErrCode((raw as { code?: string }).code ?? null);
@@ -491,7 +679,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         setLoading(false);
       }
     },
-    [ko, applyDesign],
+    [ko, applyDesign, pickedPart, lastAssembly, editPartRun],
   );
 
   // 체크포인트 승인/취소 — 승인해야 뷰어 적용, 취소하면 프롬프트 수정 재생성 유도
@@ -767,6 +955,17 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text-3, #6b7684)' }}>
               {ko ? '무엇을 설계할까요?' : 'What do you want to design?'}
             </label>
+            {pickedPart && (
+              <div style={{
+                marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 999,
+                border: '1px solid var(--nx-accent, #2563eb)', background: 'rgba(37,99,235,0.08)', fontSize: 12, fontWeight: 700,
+              }}>
+                🎯 {pickedPart}{pickedNormal ? ` · ${'xyz'[Math.abs(pickedNormal[0]) > 0.5 ? 0 : Math.abs(pickedNormal[1]) > 0.5 ? 1 : 2]}${(pickedNormal[Math.abs(pickedNormal[0]) > 0.5 ? 0 : Math.abs(pickedNormal[1]) > 0.5 ? 1 : 2] > 0 ? '+' : '−')}` : ''}
+                <span style={{ fontWeight: 400, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? '— 아래 서술이 이 부품만 수정 · 면 드래그=푸시풀' : '— prompt edits only this part · drag face = push-pull'}</span>
+                <button type="button" onClick={() => { setPickedPart(null); setPickedNormal(null); pickSelRef.current.select(null); }} aria-label="clear"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--nx-text-3, #6b7684)', fontSize: 12, padding: 0 }}>✕</button>
+              </div>
+            )}
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -788,7 +987,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 color: '#fff', fontSize: 14, fontWeight: 700, cursor: loading ? 'wait' : 'pointer',
               }}
             >
-              {loading ? (status || (ko ? '처리 중…' : 'Working…')) : ko ? '설계 생성 + 검증' : 'Generate + verify'}
+              {loading ? (status || (ko ? '처리 중…' : 'Working…')) : pickedPart ? (ko ? `🎯 ${pickedPart} 수정` : `🎯 Edit ${pickedPart}`) : ko ? '설계 생성 + 검증' : 'Generate + verify'}
             </button>
 
             {/* §2.1 도면 체크포인트 — 자유 서술 결과는 승인 후에만 뷰어 적용 */}

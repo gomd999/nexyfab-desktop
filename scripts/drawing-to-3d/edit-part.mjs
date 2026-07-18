@@ -63,7 +63,7 @@ export function applyPartPatch(asm, partId, patch) {
     floating: built.support?.floating ?? [],
     massKg: built.structural?.totalMassKg ?? null,
     // 클라 재렌더용(P1 픽킹 UI) — 빌드 산출 그대로(재계산 없음)
-    openscad: built.openscad, parts: built.parts ?? [],
+    openscad: built.openscad, parts: built.parts ?? [], composeIntent: built.composeIntent ?? null,
     contacts: built.contacts ?? [], welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
     structural: built.structural ?? null,
   };

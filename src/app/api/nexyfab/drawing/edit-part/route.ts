@@ -27,7 +27,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (await getActiveBreaker()) return NextResponse.json({ ok: false, error: 'AI가 일시 중지되어 있습니다.' }, { status: 503 });
   } catch { /* ignore */ }
 
-  let body: { assembly?: { parts?: unknown[] }; partId?: string; instruction?: string; face?: { face?: string; label?: string } };
+  let body: { assembly?: { parts?: unknown[] }; partId?: string; instruction?: string; face?: { face?: string; label?: string; normal?: number[] } };
   try {
     const raw = await req.text();
     if (raw.length > 800_000) return NextResponse.json({ ok: false, error: 'assembly 가 너무 큽니다(≤800KB)' }, { status: 400 });
@@ -42,13 +42,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (assembly.parts.length > 600) return NextResponse.json({ ok: false, error: '부품 수 초과(≤600)' }, { status: 400 });
 
   try {
-    const { aiEditPart } = await import('../../../../../../scripts/drawing-to-3d/edit-part.mjs');
-    const r = await aiEditPart(assembly, partId, instruction.trim(), { face: (body.face ?? null) as null });
+    const mod = await import('../../../../../../scripts/drawing-to-3d/edit-part.mjs');
+    // 뷰어는 픽 노멀만 보낼 수 있음(P2) — 서버에서 명명 면으로 해석(클라 중복 로직 금지)
+    let face = body.face ?? null;
+    if (face?.normal && !face.face) {
+      const part = (assembly.parts as Array<{ id?: string }>).find((p) => p.id === partId);
+      face = part ? mod.faceOfPart(part, face.normal) : null;
+    }
+    const r = await mod.aiEditPart(assembly, partId, instruction.trim(), { face: face as null });
     if (!r.ok) return NextResponse.json({ ok: false, error: r.error, gateErrors: r.gateErrors ?? [] }, { status: 422 });
     return NextResponse.json({
       ok: true, assembly: r.assembly, patch: r.patch, note: r.note,
       interferences: r.interferences, floating: r.floating, massKg: r.massKg,
-      openscad: r.openscad, parts: r.parts, contacts: r.contacts,
+      openscad: r.openscad, parts: r.parts, contacts: r.contacts, composeIntent: r.composeIntent,
       welds: r.welds, weldTotalMm: r.weldTotalMm, structural: r.structural,
     });
   } catch (e) {

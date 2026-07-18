@@ -22,7 +22,7 @@
   → 응답 assembly 로 재렌더(+검증그물 재실행·placeCorrections 표시)
 - 선택 해제·다중 선택(v1 단일)·선택 부품 하이라이트(THREE.Box3Helper — H3 재사용)
 
-## P2 — 면 픽킹 (엔진 선반영: faceDragPatch=면 푸시풀 결정론 매핑 — box 6면/축단±/radial, 모호=정직 거부. gen 재생성: mesh 부품 gen{kind,params}→GEN_REGISTRY(blade_ring) 결정론 재생성=자유곡면 대화수정. 잔여=뷰어 면 노멀 픽+드래그 제스처)
+## P2 — 면 픽킹+드래그 (완료 260719 — 챗·스튜디오 프로덕션 E2E: 챗=기둥 픽→면 드래그→face-drag 200(radial 인식), 스튜디오=테이블 조립체(인테리어형)→체크포인트 승인→table_top 픽(z+ 면 태그)→'100 더 두껍게' edit-part 200·재렌더. 엔진: faceDragPatch=면 푸시풀 결정론 매핑 — box 6면/축단±/radial, 모호=정직 거부. gen 재생성: mesh 부품 gen{kind,params}→GEN_REGISTRY(blade_ring) 결정론 재생성=자유곡면 대화수정. 잔여=뷰어 면 노멀 픽+드래그 제스처)
 - 레이캐스트 히트 삼각형의 월드 노멀 → `faceOfPart` → {face,label} 를 edit-part 에 동봉
 - UI: 선택 칩에 면 라벨 표기("nozzle · 축단(+)"). 회전 box 면 명명 확장(역회전 변환)
 

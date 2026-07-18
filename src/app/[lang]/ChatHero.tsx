@@ -251,6 +251,24 @@ async function runAssemblePipeline(prompt: string): Promise<CadResult> {
   };
 }
 
+// P2 픽킹: edit-part/face-drag 응답 → CadResult 정규화(공용)
+function cadFromEditResp(j: Record<string, unknown>): CadResult {
+  return {
+    isAssembly: true,
+    assembly: j.assembly as AssemblyPlan,
+    scad: typeof j.openscad === 'string' ? j.openscad : undefined,
+    partsAabb: Array.isArray(j.parts) ? (j.parts as CadResult['partsAabb']) : undefined,
+    interferences: Array.isArray(j.interferences) ? (j.interferences as CadResult['interferences']) : [],
+    contacts: Array.isArray(j.contacts) ? (j.contacts as CadResult['contacts']) : [],
+    welds: Array.isArray(j.welds) ? (j.welds as CadResult['welds']) : [],
+    weldTotalMm: typeof j.weldTotalMm === 'number' ? j.weldTotalMm : 0,
+    structural: j.structural && typeof j.structural === 'object' ? (j.structural as StructuralResult) : undefined,
+    gateErrors: [],
+    spec: summarizeParts(j.assembly as AssemblyPlan),
+  };
+}
+const faceTag = (n: number[]) => { const a = Math.abs(n[0]) > 0.5 ? 0 : Math.abs(n[1]) > 0.5 ? 1 : 2; return 'xyz'[a] + (n[a] > 0 ? '+' : '−'); };
+
 // 입력 A(이미지): 도면·스케치 → drawing/extract(Vision 판독 + 결정론 게이트) → 체크포인트.
 // 성공 시 단일부품 compose intent 를 그대로 CadCard 로 렌더(승인→STEP 은 export-step 재사용).
 async function runExtractPipeline(att: Attached): Promise<{ cad: CadResult; recognized?: { label: string; confidence: number } }> {
@@ -616,7 +634,7 @@ function download(text: string, name: string, mime = 'text/plain') {
 /* SCAD 인라인 3D 미리보기 — STEP 승인 전에도 채팅 안에서 바로 본다(2026-07-16 사용자 요청).
    렌더는 클라 결정론(openscad-wasm→STL→three). 최신 카드만 auto, 과거 카드는 버튼(스레드
    복원 시 일괄 렌더 방지). three/wasm은 클릭·auto 시점에 동적 로드(랜딩 번들 비대화 방지). */
-function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, onPick }: { scad: string; auto?: boolean; accent: string; height?: number; parts?: Array<{ id: string; aabb: { min: number[]; max: number[] } }>; selectedId?: string | null; onPick?: (id: string | null) => void }) {
+function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, onPick, onFaceDrag }: { scad: string; auto?: boolean; accent: string; height?: number; parts?: Array<{ id: string; aabb: { min: number[]; max: number[] } }>; selectedId?: string | null; onPick?: (id: string | null, normal?: number[] | null) => void; onFaceDrag?: (id: string, normal: number[], deltaMm: number) => void }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [st, setSt] = useState<'idle' | 'busy' | 'ok' | 'err'>('idle');
   const [errMsg, setErrMsg] = useState('');
@@ -681,7 +699,9 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
         scene.add(pickGroup);
       }
       let hl: InstanceType<typeof THREE.LineSegments> | null = null;
+      let selCur: string | null = null; // 클로저 내 현재 선택(프롭은 마운트 시점 고정 — 스테일 방지)
       const select = (id: string | null) => {
+        selCur = id;
         if (hl) { scene.remove(hl); hl.geometry.dispose(); (hl.material as { dispose: () => void }).dispose(); hl = null; }
         const box = pickGroup.children.find((c) => c.userData.pid === id) as InstanceType<typeof THREE.Mesh> | undefined;
         if (box) {
@@ -694,24 +714,80 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
       apiRef.current = { select };
       if (selectedId) select(selectedId); // 리마운트(수정 적용 후) 시 선택 하이라이트 복원
       const ray = new THREE.Raycaster();
-      const onDown = (e: PointerEvent) => { drag = true; px = e.clientX; py = e.clientY; dx0 = e.clientX; dy0 = e.clientY; };
+      const castAt = (cx2: number, cy2: number) => {
+        const rect = renderer.domElement.getBoundingClientRect();
+        if (cx2 < rect.left || cx2 > rect.right || cy2 < rect.top || cy2 > rect.bottom) return null;
+        ray.setFromCamera({ x: ((cx2 - rect.left) / rect.width) * 2 - 1, y: -((cy2 - rect.top) / rect.height) * 2 + 1 } as never, cam);
+        return ray.intersectObjects(pickGroup.children, false)[0] ?? null;
+      };
+      // P2 면 푸시풀: 선택된 부품 위에서 드래그 시작=면 드래그(노멀 방향 mm), 그 외=궤도
+      let df: { id: string; n: number[]; axis: number; sign: number; dir2: [number, number]; mmPerPx: number; delta: number } | null = null;
+      const dfTip = document.createElement('div');
+      dfTip.style.cssText = 'position:absolute;display:none;pointer-events:none;z-index:5;background:rgba(15,23,42,.9);color:#fff;font-size:11px;padding:3px 8px;border-radius:6px;font-weight:700';
+      mount.style.position = 'relative';
+      mount.appendChild(dfTip);
+      const onDown = (e: PointerEvent) => {
+        drag = true; px = e.clientX; py = e.clientY; dx0 = e.clientX; dy0 = e.clientY;
+        df = null;
+        if (!parts?.length || !onFaceDrag || !selCur) return;
+        const hit = castAt(e.clientX, e.clientY);
+        if (!hit || String(hit.object.userData.pid) !== selCur || !hit.face) return;
+        const n = hit.face.normal; // 프록시=무회전 AABB 박스 — 로컬 노멀=월드 노멀(축정렬)
+        const axis = Math.abs(n.x) > 0.5 ? 0 : Math.abs(n.y) > 0.5 ? 1 : 2;
+        const sign = [n.x, n.y, n.z][axis] > 0 ? 1 : -1;
+        // 노멀의 화면 투영 방향 + mm/px 환산(히트 깊이 기준)
+        const p0 = hit.point.clone(), p1 = hit.point.clone().add(n.clone().multiplyScalar(100));
+        const s0 = p0.clone().project(cam), s1 = p1.clone().project(cam);
+        const rect = renderer.domElement.getBoundingClientRect();
+        const v2: [number, number] = [(s1.x - s0.x) * rect.width / 2, -(s1.y - s0.y) * rect.height / 2];
+        const L2 = Math.hypot(v2[0], v2[1]);
+        if (L2 < 2) return; // 화면과 수직에 가까움 — 궤도로
+        df = { id: selCur, n: [n.x, n.y, n.z], axis, sign, dir2: [v2[0] / L2, v2[1] / L2], mmPerPx: 100 / L2, delta: 0 };
+      };
       const onMove = (e: PointerEvent) => {
         if (!drag) return;
+        if (df) {
+          df.delta = ((e.clientX - dx0) * df.dir2[0] + (e.clientY - dy0) * df.dir2[1]) * df.mmPerPx;
+          if (hl) { // 하이라이트 박스를 해당 축으로 신축(라이브 프리뷰 — 실적용은 서버 게이트)
+            const box = pickGroup.children.find((c) => c.userData.pid === df!.id) as InstanceType<typeof THREE.Mesh> | undefined;
+            if (box) {
+              const bg = box.geometry as unknown as { parameters: { width: number; height: number; depth: number } };
+              const dims = [bg.parameters.width, bg.parameters.height, bg.parameters.depth];
+              const sc = Math.max(0.05, (dims[df.axis] + df.delta) / dims[df.axis]);
+              hl.scale.setComponent(df.axis, sc);
+              hl.position.copy(box.position);
+              hl.position.setComponent(df.axis, box.position.getComponent(df.axis) + (df.sign * df.delta) / 2);
+            }
+          }
+          const rect = renderer.domElement.getBoundingClientRect();
+          dfTip.style.display = 'block';
+          dfTip.style.left = `${e.clientX - rect.left + 14}px`;
+          dfTip.style.top = `${e.clientY - rect.top - 10}px`;
+          dfTip.textContent = `${df.delta >= 0 ? '+' : ''}${Math.round(df.delta)}mm`;
+          draw();
+          return;
+        }
         theta -= (e.clientX - px) * 0.01;
         phi = Math.min(Math.PI - 0.1, Math.max(0.1, phi - (e.clientY - py) * 0.01));
         px = e.clientX; py = e.clientY; draw();
       };
       const onUp = (e: PointerEvent) => {
         const was = drag; drag = false;
+        dfTip.style.display = 'none';
+        if (df) {
+          const { id, n, delta } = df;
+          df = null;
+          if (hl) { hl.scale.set(1, 1, 1); }
+          if (Math.abs(delta) >= 2 && onFaceDrag) { onFaceDrag(id, n, Math.round(delta)); return; }
+          select(selCur); // 미적용 — 원위치
+          return;
+        }
         if (!was || !parts?.length || !onPick) return;
         if (Math.hypot(e.clientX - dx0, e.clientY - dy0) > 6) return; // 드래그≠클릭
-        const rect = renderer.domElement.getBoundingClientRect();
-        if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return;
-        ray.setFromCamera({ x: ((e.clientX - rect.left) / rect.width) * 2 - 1, y: -((e.clientY - rect.top) / rect.height) * 2 + 1 } as never, cam);
-        const hit = ray.intersectObjects(pickGroup.children, false)[0];
+        const hit = castAt(e.clientX, e.clientY);
         const id = hit ? String(hit.object.userData.pid ?? '') || null : null;
         select(id);
-        onPick(id);
+        onPick(id, hit?.face ? [hit.face.normal.x, hit.face.normal.y, hit.face.normal.z] : null);
       };
       const onWheel = (e: WheelEvent) => { e.preventDefault(); R = Math.max(R0 * 0.15, Math.min(R0 * 6, R * (e.deltaY > 0 ? 1.12 : 0.89))); draw(); };
       renderer.domElement.addEventListener('pointerdown', onDown);
@@ -1502,6 +1578,32 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
   // 🎯 P1 픽킹 편집(260719): 우측 3D에서 부품 클릭=선택 → 다음 메시지는 그 부품만 수정
   // (edit-part — AI=패치 이해만, 적용·게이트=서버 결정론. 대상 외 부품 불변은 코드 보장)
   const [pickedPart, setPickedPart] = useState<string | null>(null);
+  const [pickedNormal, setPickedNormal] = useState<number[] | null>(null); // P2 면 컨텍스트
+  // P2 면 푸시풀: 뷰어 드래그 → 결정론 face-drag → 최신 CAD 카드 in-place 갱신(대화 오염 없음)
+  const applyFaceDrag = useCallback(async (partId: string, normal: number[], deltaMm: number) => {
+    const asmCad = latestCad;
+    if (!asmCad?.assembly || loading) return;
+    setLoading(true); setError('');
+    try {
+      const r = await fetch('/api/nexyfab/drawing/face-drag/', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ assembly: asmCad.assembly, partId, normal, deltaMm }),
+      });
+      const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!r.ok || !j.ok) { setError(String((j as { error?: string }).error ?? 'face-drag')); return; }
+      const cad = cadFromEditResp(j);
+      setMessages((m) => {
+        const copy = m.slice();
+        for (let i = copy.length - 1; i >= 0; i--) { if (copy[i].cad?.assembly) { copy[i] = { ...copy[i], cad }; break; } }
+        return copy;
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'face-drag');
+    } finally {
+      setLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
   const sendPartEdit = useCallback(async () => {
     const text = input.trim();
     const asmCad = latestCad;
@@ -1519,7 +1621,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     try {
       const r = await fetch('/api/nexyfab/drawing/edit-part/', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ assembly: asmCad.assembly, partId: pickedPart, instruction: text }),
+        body: JSON.stringify({ assembly: asmCad.assembly, partId: pickedPart, instruction: text, ...(pickedNormal ? { face: { normal: pickedNormal } } : {}) }),
       });
       const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
       if (!r.ok || !j.ok) {
@@ -1527,30 +1629,17 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
         setLast({ content: '⚠️ ' + String((j as { error?: string }).error ?? t.error) + ge });
         return;
       }
-      const cad: CadResult = {
-        isAssembly: true,
-        assembly: j.assembly as AssemblyPlan,
-        scad: typeof j.openscad === 'string' ? j.openscad : undefined,
-        partsAabb: Array.isArray(j.parts) ? (j.parts as CadResult['partsAabb']) : undefined,
-        interferences: Array.isArray(j.interferences) ? (j.interferences as CadResult['interferences']) : [],
-        contacts: Array.isArray(j.contacts) ? (j.contacts as CadResult['contacts']) : [],
-        welds: Array.isArray(j.welds) ? (j.welds as CadResult['welds']) : [],
-        weldTotalMm: typeof j.weldTotalMm === 'number' ? j.weldTotalMm : 0,
-        structural: j.structural && typeof j.structural === 'object' ? (j.structural as StructuralResult) : undefined,
-        gateErrors: [],
-        spec: summarizeParts(j.assembly as AssemblyPlan),
-      };
-      setLast({ content: t.pickEdited.replace('{id}', pickedPart) + (j.note ? ` — ${String(j.note)}` : ''), cad });
+      setLast({ content: t.pickEdited.replace('{id}', pickedPart) + (j.note ? ` — ${String(j.note)}` : ''), cad: cadFromEditResp(j) });
     } catch (e) {
       setLast({ content: '⚠️ ' + (e instanceof Error ? e.message : t.error) });
     } finally {
       setLoading(false); autoscroll();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, pickedPart, loading, t]);
+  }, [input, pickedPart, pickedNormal, loading, t]);
   // 선택 부품이 최신 어셈블리에 없으면 자동 해제(스레드 전환·재생성 대비)
   useEffect(() => {
-    if (pickedPart && !latestCad?.partsAabb?.some((p) => p.id === pickedPart)) setPickedPart(null);
+    if (pickedPart && !latestCad?.partsAabb?.some((p) => p.id === pickedPart)) { setPickedPart(null); setPickedNormal(null); }
   }, [latestCad, pickedPart]);
 
   const FREE_TURNS_PER_THREAD = 3; // 비회원·무료회원 공통(2026-07-16) — Pro 계열 무제한
@@ -1826,8 +1915,8 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
                   display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 999,
                   border: `1px solid ${accent}77`, background: `${accent}1d`, color: '#e2e8f0', fontSize: 12, fontWeight: 700, maxWidth: 220,
                 }}>
-                  🎯 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pickedPart}</span>
-                  <button onClick={() => setPickedPart(null)} aria-label="clear" style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕</button>
+                  🎯 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pickedPart}{pickedNormal ? ` · ${faceTag(pickedNormal)}` : ''}</span>
+                  <button onClick={() => { setPickedPart(null); setPickedNormal(null); }} aria-label="clear" style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕</button>
                 </span>
               )}
             </div>
@@ -1922,7 +2011,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
               🛠 Studio →
             </a>
           </div>
-          <MiniScadViewer key={scadKey(latestCad.scad ?? '') + ':' + (latestCad.interferences?.length ?? 0)} scad={latestCad.scad!} auto accent={accent} height={520} parts={latestCad.partsAabb} selectedId={pickedPart} onPick={setPickedPart} />
+          <MiniScadViewer key={scadKey(latestCad.scad ?? '') + ':' + (latestCad.interferences?.length ?? 0)} scad={latestCad.scad!} auto accent={accent} height={520} parts={latestCad.partsAabb} selectedId={pickedPart} onPick={(id, normal) => { setPickedPart(id); setPickedNormal(normal ?? null); }} onFaceDrag={applyFaceDrag} />
         </aside>
       )}
     </section>
