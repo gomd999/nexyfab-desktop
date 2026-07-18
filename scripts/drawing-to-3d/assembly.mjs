@@ -422,6 +422,18 @@ export function buildAssembly(asm) {
             for (const vv of me.params.verts) { const d = Math.hypot(vv[0] + mtx - cx, vv[1] + mty - cy); if (d < minR) { minR = d; if (minR < rMax) break; } }
             if (minR >= rMax - 0.01) continue;
           }
+          // revolve×box 반경 정밀(260718f — 사일로 다리/스커트): 무회전 box 의 축심 최근접
+          // 거리 ≥ rMax 면 실분리(원통 내포 폐형 — AABB 사각 코너 과탐 해소).
+          const rv2 = pi.type === 'revolve' && !(pi.at?.rx || pi.at?.ry || pi.at?.rz) ? pi : pj.type === 'revolve' && !(pj.at?.rx || pj.at?.ry || pj.at?.rz) ? pj : null;
+          const bx2 = rv2 === pi ? pj : rv2 === pj ? pi : null;
+          if (rv2 && bx2 && bx2.type === 'box' && !(bx2.at?.rx || bx2.at?.ry || bx2.at?.rz)) {
+            const rMax2 = Math.max(...(rv2.params.profile ?? [[0, 0]]).map((q) => q[0]));
+            const cx2 = rv2.at?.tx ?? 0, cy2 = rv2.at?.ty ?? 0;
+            const bxl = bx2.at?.tx ?? 0, byl = bx2.at?.ty ?? 0;
+            const nx2 = Math.max(bxl, Math.min(cx2, bxl + bx2.params.width));
+            const ny2 = Math.max(byl, Math.min(cy2, byl + bx2.params.depth));
+            if (Math.hypot(nx2 - cx2, ny2 - cy2) >= rMax2 - 0.01) continue;
+          }
           // 방위각 분리(260718d — 다익 블레이드 쌍): 공통 원점 무회전 메시 쌍이 전부 r>0 이고
           // 방위각 구간이 서로소면 축 통과 반평면 2장으로 분리 — 실분리 폐형(스팬 37.6°<60° 실측).
           const m1 = pi.type === 'mesh' && pi.params?.verts ? pi : null;

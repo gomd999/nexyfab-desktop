@@ -1051,6 +1051,85 @@ function excavatorBucketAssembly(p = {}) {
   };
 }
 
+/** 수직 사일로/저장탱크(260718f — 코퍼스4 silo/tank 대응). revolve 셸(원통+콘 호퍼+지붕 콘)
+ *  + 지지 다리 4(대각 배치 — revolve×box 반경 정밀로 간섭 0 폐형). 내압/풍하중 검토 미포함. */
+function tankSiloAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const D = num(p.diameter, 3000), R = D / 2;
+  const shellH = num(p.shellH, 6000);
+  const t = num(p.wallThk, 6);
+  const hopper = String(p.hopper ?? 'yes') !== 'no';
+  const hopperH = hopper ? num(p.hopperH, Math.round(D * 0.7)) : 0;
+  const outletD = num(p.outletDia, 300);
+  const legH = num(p.legH, hopper ? hopperH + 600 : 800);
+  const legS = num(p.legSize, 150);
+  const roofH = Math.round(D * 0.18);
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  const z0 = legH; // 셸 하단(콘 상단 기준선)
+  // 콘 호퍼 셸(원뿔대 링 — 폐단면 사다리꼴 회전) 또는 평 바닥
+  if (hopper) {
+    P('hopper', 'revolve', { profile: [[outletD / 2, z0 - hopperH], [outletD / 2 + t, z0 - hopperH], [R, z0 - t], [R, z0], [outletD / 2, z0 - hopperH + t]] }, { tx: 0, ty: 0, tz: 0 }, 'steel', 'shell');
+  } else {
+    P('bottom', 'revolve', { profile: [[0, z0 - t], [R, z0 - t], [R, z0], [0, z0]] }, { tx: 0, ty: 0, tz: 0 }, 'steel', 'shell');
+  }
+  // 원통 셸(링 단면 회전)
+  P('shell', 'revolve', { profile: [[R - t, z0], [R, z0], [R, z0 + shellH], [R - t, z0 + shellH]] }, { tx: 0, ty: 0, tz: 0 }, 'steel', 'shell');
+  // 지붕 콘
+  P('roof', 'revolve', { profile: [[0, z0 + shellH + roofH], [R, z0 + shellH], [R, z0 + shellH + t], [0, z0 + shellH + roofH + t]] }, { tx: 0, ty: 0, tz: 0 }, 'steel', 'roof');
+  // 지지 다리 4(대각 45° — 안쪽 코너 반경 R+0.1: revolve×box 반경 정밀 폐형으로 간섭 0.
+  // 다리↔셸 러그 용접 상세=후속 명시 — 지지=AABB 체결 규칙로 성립)
+  for (let i = 0; i < 4; i++) {
+    const a = (Math.PI / 4) + (i * Math.PI) / 2;
+    const inner = (R + 0.1) / Math.SQRT2; // 안쪽 코너 좌표(45° 대각)
+    const sx = Math.cos(a) >= 0 ? inner : -inner - legS;
+    const sy = Math.sin(a) >= 0 ? inner : -inner - legS;
+    P(`leg_${i + 1}`, 'box', { width: legS, depth: legS, height: z0 + 300 }, { tx: sx, ty: sy, tz: 0 }, 'steel', 'column');
+  }
+  return {
+    name: `사일로 D${D / 1000}m${hopper ? '+호퍼' : ''}`, domain: 'mech', kind: 'assembly', parts,
+    tankMeta: { diameter: D, shellH, hopper, hopperH, wallThk: t, capacityM3: +((Math.PI * R * R * shellH + (hopper ? (Math.PI * hopperH / 3) * (R * R + R * outletD / 2 + outletD * outletD / 4) : 0)) / 1e9).toFixed(2) },
+    note: '셸=revolve 링 단면(파푸스 정밀 물량)·용량=기하 폐형·러그=셸 접촉 명시. 내압·좌굴·풍/지진·KS B 6283 검토 미포함 — 명시',
+  };
+}
+
+/** 횡형 압력용기(260718f — 코퍼스4 ASME vessel 대응). 원통 셸+2:1 반타원 경판(revolve 8분할)
+ *  rx=90 횡전+새들 2 — 새들 상면=셸 최하선 접선(0겹침). ASME/KS 압력 설계 미포함. */
+function pressureVesselAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const D = num(p.diameter, 1600), R = D / 2;
+  const L = num(p.shellLen, 4000);
+  const t = num(p.wallThk, 12);
+  const saddleH = num(p.saddleH, 600);
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  const zc = saddleH + R; // 축 높이
+  // 셸(rx=90: z→y 축 회전 — 횡형): revolve 링, at.rx=90 로 눕힘. 배치 원점=축 y0 시작.
+  P('shell', 'revolve', { profile: [[R - t, 0], [R, 0], [R, L], [R - t, L]] }, { tx: 0, ty: 0, tz: zc, rx: -90 }, 'steel', 'shell');
+  // 경판 2(2:1 반타원 셸 링 — 8분할 근사 명시): 외피 타원(R, R/2)·내피 타원(R−t, R/2−t) 폐곡선
+  const headProf = (dir) => {
+    const prof = [];
+    for (let k = 0; k <= 8; k++) { const a = (Math.PI / 2) * (k / 8); prof.push([R * Math.cos(a), dir * (R / 2) * Math.sin(a)]); }
+    for (let k = 8; k >= 0; k--) { const a = (Math.PI / 2) * (k / 8); prof.push([Math.max(0, (R - t) * Math.cos(a)), dir * (R / 2 - t) * Math.sin(a)]); }
+    return prof;
+  };
+  P('head_A', 'revolve', { profile: headProf(-1) }, { tx: 0, ty: 0, tz: zc, rx: -90 }, 'steel', 'head');
+  P('head_B', 'revolve', { profile: headProf(+1) }, { tx: 0, ty: L, tz: zc, rx: -90 }, 'steel', 'head');
+  // 새들 2(상면=셸 최하선 z=saddleH — 접선 0겹침·bearing 지지)
+  for (const [si, y] of [[0, L * 0.2], [1, L * 0.8]]) {
+    P(`saddle_${si + 1}`, 'box', { width: D * 0.8, depth: 300, height: saddleH }, { tx: -D * 0.4, ty: y - 150, tz: 0 }, 'steel', 'saddle_sup');
+  }
+  // 노즐(상부 2 — 수직 원통, 셸 상면 접선에서 위로)
+  for (const [ni, y] of [[0, L * 0.3], [1, L * 0.7]]) {
+    P(`nozzle_${ni + 1}`, 'cylinder', { diameter: 200, length: 350 }, { tx: 0, ty: y, tz: zc + R }, 'steel', 'nozzle');
+  }
+  return {
+    name: `압력용기 D${D}×L${L}`, domain: 'mech', kind: 'assembly', parts,
+    vesselMeta: { diameter: D, shellLen: L, wallThk: t, headType: '2:1 반타원(8분할 근사)', volumeM3: +((Math.PI * (R - t) ** 2 * L + 2 * (2 / 3) * Math.PI * (R - t) ** 2 * (R / 2)) / 1e9).toFixed(2) },
+    note: '경판=2:1 반타원 8분할 근사(ASME F&D 아님 명시)·내용적=폐형·새들=접선 지지. 압력 설계(ASME VIII/KS B 6750)·노즐 보강 검토 미포함 — 명시',
+  };
+}
+
 /** 금형 캐비티 블록(260718d — 자유곡면 대응 ③). 블록−음형 차 형상(폐형 차 체적).
  *  기본 음형=회전체 보울(advJson cavity={type,params,at}로 어휘 부품·≤20k 메시 대체 가능).
  *  파팅면·구배각·수축률·러너/게이트=입력 원칙(미입력=미포함 명시) — 몰드베이스 표준 미적용. */
@@ -2321,6 +2400,25 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   mech: [
+    {
+      id: 'tank_silo', labelKo: '수직 사일로/탱크 (호퍼+지지 다리)', labelEn: 'Vertical silo/tank', build: tankSiloAssembly,
+      params: [
+        { name: 'diameter', labelKo: '직경', unit: 'mm', default: 3000, min: 800, max: 12000 },
+        { name: 'shellH', labelKo: '셸 높이', unit: 'mm', default: 6000, min: 1500, max: 30000 },
+        { name: 'hopper', labelKo: '호퍼(yes/no)', unit: '', default: 'yes', enum: ['yes', 'no'] },
+        { name: 'wallThk', labelKo: '벽 두께', unit: 'mm', default: 6, min: 3, max: 30 },
+        { name: 'legH', labelKo: '다리 높이', unit: 'mm', default: 2700, min: 500, max: 8000 },
+      ],
+    },
+    {
+      id: 'pressure_vessel', labelKo: '횡형 압력용기 (반타원 경판+새들)', labelEn: 'Horizontal pressure vessel', build: pressureVesselAssembly,
+      params: [
+        { name: 'diameter', labelKo: '직경', unit: 'mm', default: 1600, min: 400, max: 4000 },
+        { name: 'shellLen', labelKo: '셸 길이', unit: 'mm', default: 4000, min: 1000, max: 15000 },
+        { name: 'wallThk', labelKo: '벽 두께', unit: 'mm', default: 12, min: 4, max: 60 },
+        { name: 'saddleH', labelKo: '새들 높이', unit: 'mm', default: 600, min: 300, max: 1500 },
+      ],
+    },
     {
       id: 'mold_cavity', labelKo: '금형 캐비티 블록 (블록−음형)', labelEn: 'Mold cavity block', build: moldCavityAssembly,
       params: [
