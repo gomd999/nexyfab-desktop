@@ -11,7 +11,7 @@ export function checkDrawingCompleteness(html, { kind = 'ga' } = {}) {
     { id: 'C4', name: '치수 체계(⌀·치수문자)', pass: has('⌀') || has(/\d+×\d+/) },
     { id: 'C5', name: '선 종류(중심선·파선)', pass: has('8 2 2 2') && has('stroke-dasharray="5 3"') },
     { id: 'C6', name: '심볼 표기(원형 장비·P&ID)', pass: has('<circle') },
-    { id: 'C7', name: 'BOM 규격열(발주 규격)', pass: has('발주 규격') && (has('SCH40') || has('SQ TUBE')) },
+    { id: 'C7', name: 'BOM 규격열(발주 규격)', pass: has('발주 규격') && (has('SCH40') || has('SQ TUBE') || has('가공품(도면 제작)')) },
     { id: 'C8', name: '용접 일람(조인트별)', pass: has('필릿 △') },
     { id: 'C9', name: 'DXF 레이어 분리', pass: null, note: 'DXF 파일 별도 검사(HTML 범위 외)' },
   ];

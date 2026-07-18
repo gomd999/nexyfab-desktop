@@ -193,7 +193,31 @@ export async function stepFileBounds(file) {
  * opts.imports(Phase5): [{file, offset:[x,y,z]}] — 실물 STEP 을 원기하 그대로 이동해
  * 컴파운드 병합(사용자 소유 파일 전제 — 게이트는 import-merge.resolveImportParts). */
 export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) {
-  const { solid, report } = await buildSolidRobust(intent);
+  let solid, report;
+  // 부품 스코프(_pid, 260718t): 부품별 robust 빌드 → 컴파운드(실조립 STEP 관례).
+  // 전역 subtract 가 타 부품을 깎던 번짐 수정 — 부품 실패는 드롭 보고(정직).
+  const hasPid = (intent.features ?? []).some((f) => f._pid !== undefined);
+  if (hasPid) {
+    const pids = [...new Set(intent.features.map((f) => f._pid))];
+    const shapes = [];
+    report = { total: intent.features.length, jittered: 0, dropped: [] };
+    for (const pid of pids) {
+      const fl = intent.features.filter((f) => f._pid === pid);
+      try {
+        const r = await buildSolidRobust({ name: intent.name, features: fl });
+        shapes.push(r.solid);
+        report.jittered += r.report.jittered;
+        report.dropped.push(...r.report.dropped);
+      } catch (e) {
+        report.dropped.push({ pid, op: 'part', err: String(e?.message ?? e).slice(0, 60) });
+      }
+    }
+    if (!shapes.length) throw new Error('to-step: 부품 솔리드 없음(전 부품 빌드 실패)');
+    if (shapes.length === 1) solid = shapes[0];
+    else { const { compoundShapes } = await ensureReplicad(); solid = compoundShapes(shapes); }
+  } else {
+    ({ solid, report } = await buildSolidRobust(intent));
+  }
   let out = solid;
   const importNotes = [];
   // Phase6(260718): 선택 필렛 — 생성 솔리드 전체 에지에 반경 filletMm.

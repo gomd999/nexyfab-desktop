@@ -941,10 +941,20 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
       rects.push(`<line x1="${px(box.x + box.dx / 2, ox)}" y1="${(+pz(box.z + box.dz) - 4).toFixed(1)}" x2="${px(box.x + box.dx / 2, ox)}" y2="${(+pz(box.z) + 4).toFixed(1)}" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="8 2 2 2"/>`);
     } else {
       rects.push(`<rect x="${px(box.x, sx0)}" y="${(oy + (box.y - by0) * S).toFixed(1)}" width="${(box.dx * S).toFixed(1)}" height="${(box.dy * S).toFixed(1)}" fill="${st.c}22" stroke="${st.c}" stroke-width=".9"/>`);
-      // 수평 회전체(ry): FRONT 가로 중심선(축선)
-      if ((p.type === 'cylinder' || p.type === 'revolve') && p.at?.ry) {
+      // 수평 회전체(ry): FRONT 가로 중심선(축선) — 중공(tube/pipe_reducer) 포함(260718t)
+      if ((p.type === 'cylinder' || p.type === 'revolve' || p.type === 'tube' || p.type === 'pipe_reducer') && p.at?.ry) {
         const cz = +pz(box.z + box.dz / 2);
         rects.push(`<line x1="${(+px(box.x, ox) - 4).toFixed(1)}" y1="${cz.toFixed(1)}" x2="${(+px(box.x + box.dx, ox) + 4).toFixed(1)}" y2="${cz.toFixed(1)}" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="8 2 2 2"/>`);
+        // 은선(보어) — 중공 회전체는 FRONT 에 내경 상하 파선(도면 관례: 숨은선)
+        const boreD = p.type === 'tube' ? p.params.innerDia
+          : p.type === 'pipe_reducer' ? Math.min(p.params.dia1, p.params.dia2) - 2 * (p.params.wallThk ?? Math.max(2, p.params.dia1 * 0.03))
+          : 0;
+        if (boreD > 0) {
+          for (const sgn of [-1, 1]) {
+            const bz = +pz(box.z + box.dz / 2 + sgn * boreD / 2);
+            rects.push(`<line x1="${px(box.x, ox)}" y1="${bz.toFixed(1)}" x2="${px(box.x + box.dx, ox)}" y2="${bz.toFixed(1)}" stroke="#94a3b8" stroke-width=".55" stroke-dasharray="5 3"/>`);
+          }
+        }
       }
     }
   }
@@ -1039,7 +1049,8 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
       if (p.role === 'pipe' && p.type === 'cylinder') { const r = snapPipe(p.params.diameter); return r.ok ? r.label + ' ' + r.spec : ''; }
       if (p.type === 'box' && (p.role === 'column' || p.role === 'beam') && p.params.width === p.params.depth) { const r = snapSquareTube(p.params.width); return r.ok ? `${r.label} ${r.spec}` : ''; }
     } catch { /* 규격열 실패는 BOM 을 막지 않음 */ }
-    return '';
+    // 시판 규격 외 = 도면 기준 제작 지정(260718t) — 모든 BOM 행이 발주 방법을 말한다
+    return '가공품(도면 제작)';
   };
   const bom = groups.map((g, gi) => {
     const { p, box, st } = g.rep;
@@ -1060,22 +1071,42 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   // ②-b 부분 상세 DETAIL B(D3, C3): 최소 부품 군집(캐스터류) 확대 — 4× 스케일
   let detailSvg = '';
   {
+    let region = null, rx0 = 0, rx1 = 0, rz0 = 0, rz1 = 0, dnote = '소형 부품(캐스터·새들류) 상세';
     const small = parts.filter((o) => Math.max(o.box.dx, o.box.dy, o.box.dz) <= 300 && o.box.z < 400);
     if (small.length >= 2) {
       const cx0 = Math.min(...small.map((o) => o.box.x));
-      const region = small.filter((o) => o.box.x < cx0 + 400);
-      if (region.length >= 2) {
-        const rx0 = Math.min(...region.map((o) => o.box.x)) - 30, rx1 = Math.max(...region.map((o) => o.box.x + o.box.dx)) + 30;
-        const rz0 = Math.min(...region.map((o) => o.box.z)) - 30, rz1 = Math.max(...region.map((o) => o.box.z + o.box.dz)) + 30;
-        const S2 = Math.min(4 * S, 340 / Math.max(rx1 - rx0, rz1 - rz0));
-        const dw = (rx1 - rx0) * S2, dh = (rz1 - rz0) * S2;
-        const el3 = region.map((o) => `<rect x="${((o.box.x - rx0) * S2).toFixed(1)}" y="${((rz1 - o.box.z - o.box.dz) * S2).toFixed(1)}" width="${(o.box.dx * S2).toFixed(1)}" height="${(o.box.dz * S2).toFixed(1)}" fill="${o.st.c}22" stroke="${o.st.c}" stroke-width="1.2"/>`).join('');
-        const mainCx = +px((rx0 + rx1) / 2, ox), mainCy = (+pz(rz0) + +pz(rz1)) / 2;
-        const mainR = Math.max(rx1 - rx0, rz1 - rz0) * S * 0.6;
-        detailSvg = `<div style="padding:4px 20px;display:flex;gap:18px;align-items:flex-start"><svg width="${(dw + 20).toFixed(0)}" height="${(dh + 34).toFixed(0)}"><g transform="translate(10,24)">${el3}</g><text x="8" y="14" font-size="12" font-weight="700" fill="#1f2937" font-family="sans-serif">DETAIL B (SCALE 1:${Math.max(1, Math.round(1 / (S2 / S) * N))})</text></svg><div style="font-size:11px;color:#64748b;padding-top:22px">본도 FRONT 의 Ⓑ 원 영역 확대 — 소형 부품(캐스터·새들류) 상세</div></div>`;
-        // 본도 마커(원+B)
-        detailMarker = `<circle cx="${mainCx.toFixed(1)}" cy="${mainCy.toFixed(1)}" r="${mainR.toFixed(1)}" fill="none" stroke="#0f766e" stroke-width="1.2" stroke-dasharray="6 3"/><text x="${(mainCx + mainR + 4).toFixed(1)}" y="${mainCy.toFixed(1)}" font-size="12" fill="#0f766e" font-family="sans-serif" font-weight="700">B</text>`;
+      const r2 = small.filter((o) => o.box.x < cx0 + 400);
+      if (r2.length >= 2) {
+        region = r2;
+        rx0 = Math.min(...r2.map((o) => o.box.x)) - 30; rx1 = Math.max(...r2.map((o) => o.box.x + o.box.dx)) + 30;
+        rz0 = Math.min(...r2.map((o) => o.box.z)) - 30; rz1 = Math.max(...r2.map((o) => o.box.z + o.box.dz)) + 30;
       }
+    }
+    // 소형 군집이 없으면 박판·조인트 상세(260718t — 플랜지류): 최소 두께 ≤40 부품 주변 윈도 확대
+    if (!region) {
+      const thin = parts.filter((o) => Math.min(o.box.dx, o.box.dy, o.box.dz) <= 40 && Math.max(o.box.dx, o.box.dy, o.box.dz) >= 100);
+      if (thin.length) {
+        const tp = thin[0], win = 80;
+        rx0 = tp.box.x - win; rx1 = tp.box.x + tp.box.dx + win;
+        rz0 = tp.box.z - win; rz1 = tp.box.z + tp.box.dz + win;
+        const r2 = parts.filter((o) => o.box.x < rx1 && o.box.x + o.box.dx > rx0 && o.box.z < rz1 && o.box.z + o.box.dz > rz0);
+        if (r2.length >= 2) { region = r2; dnote = '조인트·박판부(플랜지류) 상세 — 윈도 절취'; }
+      }
+    }
+    if (region) {
+      const S2 = Math.min(4 * S, 340 / Math.max(rx1 - rx0, rz1 - rz0));
+      const dw = (rx1 - rx0) * S2, dh = (rz1 - rz0) * S2;
+      // 윈도 밖은 절취(클램프) — 대형 부품이 조인트 윈도에 걸릴 때 상세 상자를 넘지 않게
+      const el3 = region.map((o) => {
+        const x0 = Math.max(o.box.x, rx0), x1 = Math.min(o.box.x + o.box.dx, rx1);
+        const z0 = Math.max(o.box.z, rz0), z1 = Math.min(o.box.z + o.box.dz, rz1);
+        return `<rect x="${((x0 - rx0) * S2).toFixed(1)}" y="${((rz1 - z1) * S2).toFixed(1)}" width="${((x1 - x0) * S2).toFixed(1)}" height="${((z1 - z0) * S2).toFixed(1)}" fill="${o.st.c}22" stroke="${o.st.c}" stroke-width="1.2"/>`;
+      }).join('');
+      const mainCx = +px((rx0 + rx1) / 2, ox), mainCy = (+pz(rz0) + +pz(rz1)) / 2;
+      const mainR = Math.max(rx1 - rx0, rz1 - rz0) * S * 0.6;
+      detailSvg = `<div style="padding:4px 20px;display:flex;gap:18px;align-items:flex-start"><svg width="${(dw + 20).toFixed(0)}" height="${(dh + 34).toFixed(0)}"><g transform="translate(10,24)">${el3}</g><text x="8" y="14" font-size="12" font-weight="700" fill="#1f2937" font-family="sans-serif">DETAIL B (SCALE 1:${Math.max(1, Math.round(1 / (S2 / S) * N))})</text></svg><div style="font-size:11px;color:#64748b;padding-top:22px">본도 FRONT 의 Ⓑ 원 영역 확대 — ${dnote}</div></div>`;
+      // 본도 마커(원+B)
+      detailMarker = `<circle cx="${mainCx.toFixed(1)}" cy="${mainCy.toFixed(1)}" r="${mainR.toFixed(1)}" fill="none" stroke="#0f766e" stroke-width="1.2" stroke-dasharray="6 3"/><text x="${(mainCx + mainR + 4).toFixed(1)}" y="${mainCy.toFixed(1)}" font-size="12" fill="#0f766e" font-family="sans-serif" font-weight="700">B</text>`;
     }
   }
   // ③ 용접 일람표(G3, C8): opts.welds(buildAssembly 산출) — 각장 z=0.7t 관례(근거 명시)

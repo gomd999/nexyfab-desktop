@@ -39,8 +39,17 @@ function offlineImportMap() {
   const base = cand.slice(0, cand.indexOf('/three/') + '/three/'.length);
   const dataUrl = (p) => 'data:text/javascript;base64,' + readFileSync(p).toString('base64');
   const b = (rel) => dataUrl(base + rel);
+  // three r170+ 는 three.module.min.js 가 ./three.core.min.js 를 상대 임포트 — data: URL
+  // 모듈은 상대 해석 불가(base 비계층). bare 지정자 'three-core' 로 치환 + 맵에 등록.
+  const threeSrc = readFileSync(base + 'build/three.module.min.js', 'utf8');
+  const hasCore = threeSrc.includes('./three.core.min.js');
+  const threePatched = hasCore
+    ? threeSrc.split('"./three.core.min.js"').join('"three-core"').split("'./three.core.min.js'").join("'three-core'")
+    : threeSrc;
+  const toData = (txt) => 'data:text/javascript;base64,' + Buffer.from(txt).toString('base64');
   _OFFLINE_IMPORTMAP = JSON.stringify({ imports: {
-    'three': b('build/three.module.min.js'),
+    'three': toData(threePatched),
+    ...(hasCore ? { 'three-core': b('build/three.core.min.js') } : {}),
     'three/addons/controls/OrbitControls.js': b('examples/jsm/controls/OrbitControls.js'),
     'three/addons/loaders/STLLoader.js': b('examples/jsm/loaders/STLLoader.js'),
     'three/addons/environments/RoomEnvironment.js': b('examples/jsm/environments/RoomEnvironment.js'),
@@ -112,13 +121,15 @@ export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle =
     const b = buildAssembly(spec.assembly);
     if (!b.ok) throw new Error('assembly gate: ' + (b.gateErrors ?? []).join('; '));
     features = b.composeIntent.features; name = spec.assembly.name ?? 'assembly';
-    if (!parts && Array.isArray(b.parts)) { // 부품 피킹 데이터 자동 유도
-      const { partAabb } = await import('./reconstruct.mjs');
-      parts = b.parts.map((p) => {
+    if (!parts && Array.isArray(spec.assembly.parts)) {
+      // 부품 피킹 데이터 자동 유도(260718t 수정: buildAssembly().parts 는 {id,aabb}뿐이라
+      // partAabb(type,params) 호출이 전부 실패 → 검색 패널이 항상 빠지던 버그 —
+      // 원본 assembly.parts + placedAabb(회전 인지 월드 AABB)로 유도)
+      const { placedAabb } = await import('./assembly.mjs');
+      parts = spec.assembly.parts.map((p) => {
         try {
-          const ab = partAabb(p.type, p.params);
-          const t = Array.isArray(p.at) ? p.at : (p.at?.translate ?? [0, 0, 0]);
-          return { label: p.id ?? p.type, desc: [p.type, p.role, p.service, p.material].filter(Boolean).join(' · '), min: ab.min.map((v, i) => v + t[i]), max: ab.max.map((v, i) => v + t[i]) };
+          const ab = placedAabb(p);
+          return { label: p.id ?? p.type, desc: [p.type, p.role, p.service, p.material].filter(Boolean).join(' · '), min: ab.min, max: ab.max };
         } catch { return null; }
       }).filter(Boolean);
     }
@@ -128,9 +139,34 @@ export async function renderColoredHtml(spec, { title = 'NexyFab GA', subtitle =
 
   const groups = [...new Set(features.map((f) => f._col || '#9aa7b5'))];
   const meshes = [];
+  // 바이너리 STL 병합(부품별 렌더 결과를 한 색 그룹 메시로)
+  const mergeStls = (stls) => {
+    const cnt = (s) => new DataView(s.buffer, s.byteOffset).getUint32(80, true);
+    const total = stls.reduce((n, s) => n + cnt(s), 0);
+    const out = new Uint8Array(84 + total * 50);
+    new DataView(out.buffer).setUint32(80, total, true);
+    let o = 84;
+    for (const s of stls) { const n = cnt(s); out.set(s.subarray(84, 84 + n * 50), o); o += n * 50; }
+    return out;
+  };
   for (const col of groups) {
+    const fl = features.filter((f) => (f._col || '#9aa7b5') === col);
     try {
-      const stl = await renderStl(emitComposite({ name, features: features.filter((f) => (f._col || '#9aa7b5') === col) }));
+      let stl;
+      const pids = [...new Set(fl.map((f) => f._pid))];
+      if (pids.length > 1 || pids[0] !== undefined) {
+        // 부품 스코프(_pid, 260718t): 같은 색 그룹이라도 subtract 는 자기 부품만 깎는다
+        // (전역 subtract 가 동색 이웃 부품을 삭제하던 번짐 수정) — 부품별 렌더 후 병합.
+        const per = [];
+        for (const pid of pids) {
+          try { per.push(await renderStl(emitComposite({ name, features: fl.filter((f) => f._pid === pid) }))); }
+          catch { /* 부품 실패 skip — 아래 빈 그룹 검사 */ }
+        }
+        if (!per.length) throw new Error('empty group');
+        stl = mergeStls(per);
+      } else {
+        stl = await renderStl(emitComposite({ name, features: fl }));
+      }
       meshes.push({ col, b64: bytesToBase64(stl) });
     } catch { /* 빈/실패 그룹 skip */ }
   }

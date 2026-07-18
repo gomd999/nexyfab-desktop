@@ -175,15 +175,28 @@ export function autoPlaceCorrect(asm) {
  */
 export function assemblyToComposeIntent(asm) {
   const feats = [];
-  for (const part of asm.parts ?? []) {
+  for (const [pidx, part] of (asm.parts ?? []).entries()) {
     const t = part.at ?? {};
     const tx = t.tx ?? 0, ty = t.ty ?? 0, tz = t.tz ?? 0, rx = t.rx ?? 0, ry = t.ry ?? 0, rz = t.rz ?? 0;
     const rot = (rx || ry || rz) ? [rx, ry, rz] : undefined;
     const p = part.params ?? {};
     const col = colorOf(part);
-    const F = (kind, extra, lx = 0, ly = 0, lz = 0, op = 'add') => ({
-      kind, ...extra, op, _col: col, at: { translate: [lx + tx, ly + ty, lz + tz], ...(rot ? { rotate: rot } : {}) },
-    });
+    // 로컬 오프셋은 부품 회전을 따라 월드로 변환(260718t — 회전 부품의 보어/스텝이 월드축으로
+    // 새던 버그 수정: translate = T + R·local, R=OpenSCAD rotate([x,y,z]) 순서 Rx→Ry→Rz).
+    // _pid=부품 스코프 태그 — 소비자(STEP/색GA)는 부품 단위로 불리언을 닫는다(전역 subtract 번짐 방지).
+    const rotLocal = (lx, ly, lz) => {
+      if (!rot) return [lx, ly, lz];
+      let x = lx, y = ly, z = lz;
+      const rad = Math.PI / 180;
+      if (rx) { const c = Math.cos(rx * rad), s = Math.sin(rx * rad); const y2 = y * c - z * s, z2 = y * s + z * c; y = y2; z = z2; }
+      if (ry) { const c = Math.cos(ry * rad), s = Math.sin(ry * rad); const x2 = x * c + z * s, z2 = -x * s + z * c; x = x2; z = z2; }
+      if (rz) { const c = Math.cos(rz * rad), s = Math.sin(rz * rad); const x2 = x * c - y * s, y2 = x * s + y * c; x = x2; y = y2; }
+      return [x, y, z];
+    };
+    const F = (kind, extra, lx = 0, ly = 0, lz = 0, op = 'add') => {
+      const [wx, wy, wz] = rotLocal(lx, ly, lz);
+      return { kind, ...extra, op, _col: col, _pid: pidx, at: { translate: [wx + tx, wy + ty, wz + tz], ...(rot ? { rotate: rot } : {}) } };
+    };
     switch (part.type) {
       case 'box': feats.push(F('box', { size: [p.width, p.depth, p.height] })); break;
       case 'cylinder': feats.push(F('cylinder', { diameter: p.diameter, height: p.length })); break;
@@ -444,6 +457,40 @@ export function buildAssembly(asm) {
             const nx2 = Math.max(bxl, Math.min(cx2, bxl + bx2.params.width));
             const ny2 = Math.max(byl, Math.min(cy2, byl + bx2.params.depth));
             if (Math.hypot(nx2 - cx2, ny2 - cy2) >= rMax2 - 0.01) continue;
+          }
+          // 보어 내포(260718t — 케이싱×로터/샤프트): 중공 회전체(tube/pipe_reducer/flange)와
+          // 동축계 회전체가 「축간 거리+내부 최대반경 ≤ 보어 최소반경」이면 실분리(원환 폐형 —
+          // 축방향 겹침 무관). pipe_reducer 보어=소경/2-벽두께(전 구간 보수), flange 보어=boreDia.
+          {
+            const boreR = (p) => p.type === 'tube' ? p.params.innerDia / 2
+              : p.type === 'pipe_reducer' ? Math.min(p.params.dia1, p.params.dia2) / 2 - (p.params.wallThk ?? Math.max(2, p.params.dia1 * 0.03))
+              : p.type === 'flange' ? p.params.boreDia / 2 : null;
+            const outR = (p) => p.type === 'cylinder' ? p.params.diameter / 2
+              : p.type === 'tube' ? p.params.outerDia / 2
+              : p.type === 'pipe_reducer' ? Math.max(p.params.dia1, p.params.dia2) / 2
+              : p.type === 'revolve' ? Math.max(...(p.params.profile ?? [[0, 0]]).map((q) => q[0]))
+              : p.type === 'flange' ? p.params.outerDia / 2 : null;
+            const axisOf = (p) => {
+              if (!['cylinder', 'tube', 'flange', 'pipe_reducer', 'revolve'].includes(p.type)) return null;
+              const { rx = 0, ry = 0, rz = 0 } = p.at ?? {};
+              if (!rx && !ry && !rz) return 'z';
+              if (Math.abs(Math.abs(ry) - 90) < 1e-6 && !rx && !rz) return 'x';
+              if (Math.abs(Math.abs(rx) - 90) < 1e-6 && !ry && !rz) return 'y';
+              return null;
+            };
+            let contained = false;
+            for (const [host, oth] of [[pi, pj], [pj, pi]]) {
+              const bR = boreR(host), oR = outR(oth);
+              if (bR == null || oR == null) continue;
+              const aH = axisOf(host), aO = axisOf(oth);
+              if (!aH || aH !== aO) continue;
+              // 배치 관례: 축 방향 좌표=시작, 수직 두 좌표=중심(cylinder 계열 공통)
+              const perp = aH === 'z' ? ['tx', 'ty'] : aH === 'x' ? ['ty', 'tz'] : ['tx', 'tz'];
+              const c = (p, k) => p.at?.[k] ?? 0;
+              const dist = Math.hypot(c(host, perp[0]) - c(oth, perp[0]), c(host, perp[1]) - c(oth, perp[1]));
+              if (dist + oR <= bR - 0.01) { contained = true; break; }
+            }
+            if (contained) continue;
           }
           // 방위각 분리(260718d — 다익 블레이드 쌍): 공통 원점 무회전 메시 쌍이 전부 r>0 이고
           // 방위각 구간이 서로소면 축 통과 반평면 2장으로 분리 — 실분리 폐형(스팬 37.6°<60° 실측).
