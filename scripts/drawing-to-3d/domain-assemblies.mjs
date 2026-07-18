@@ -1051,6 +1051,174 @@ function excavatorBucketAssembly(p = {}) {
   };
 }
 
+// (D) y-z 평면 현-박스(rx 중심 배치 — 260718f 크레인 좌우면 사재용): chordBoxX 의 축 교체판.
+//     회전 AABB = ym±hy, zm±hz — 대칭 폐형 동일.
+function chordBoxYrx(P, id, ym, zm, thetaRad, L, s, tx, width, material, role) {
+  const c = Math.cos(thetaRad), sn = Math.sin(thetaRad);
+  const ty = ym - (L / 2) * c + (s / 2) * sn;
+  const tz = zm - (L / 2) * sn - (s / 2) * c;
+  P(id, 'box', { width, depth: L, height: s }, { tx, ty, tz, rx: (thetaRad * 180) / Math.PI }, material, role);
+  return { hy: (L * Math.abs(c) + s * Math.abs(sn)) / 2, hz: (L * Math.abs(sn) + s * Math.abs(c)) / 2 };
+}
+
+/** 원심 펌프 유닛(260718f — 코퍼스4 pump 대응 매싱). 베이스+받침 2+모터+커플링 가드+볼루트
+ *  +흡입/토출 노즐. 수력 성능(양정·효율)·축계 정렬 검토 미포함 — pump_head 체인 별도. */
+function pumpUnitAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const suctionD = num(p.suctionDia, 150), dischD = num(p.dischargeDia, 100);
+  const voluteD = num(p.voluteDia, Math.round(suctionD * 3.2));
+  const motorD = num(p.motorDia, 350), motorL = num(p.motorLen, 600);
+  const axisH = num(p.axisH, Math.round(voluteD / 2 + 120));
+  const baseL = motorL + voluteD + 500, baseW = Math.max(motorD, voluteD) + 200;
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  P('base', 'box', { width: baseL, depth: baseW, height: 60 }, { tx: 0, ty: -baseW / 2, tz: 0 }, 'steel', 'frame');
+  // 모터(축 x — cylinder ry=90) + 받침
+  const motorX = 150;
+  P('motor_ped', 'box', { width: motorL * 0.7, depth: motorD * 0.8, height: axisH - motorD / 2 - 60 }, { tx: motorX + motorL * 0.15, ty: -motorD * 0.4, tz: 60 }, 'steel', 'frame');
+  P('motor', 'cylinder', { diameter: motorD, length: motorL }, { tx: motorX, ty: 0, tz: axisH, ry: 90 }, 'steel', 'motor');
+  // 커플링 가드(모터-볼루트 사이)
+  const capX = motorX + motorL;
+  P('coupling_guard', 'box', { width: 180, depth: 160, height: axisH + 20 }, { tx: capX + 10, ty: -80, tz: 60 }, 'steel', 'guard'); // 바닥 착지 커버형(관례)
+  // 볼루트 케이싱(원판 revolve — 축 x: ry=90) + 케이싱 받침
+  const volX = capX + 200 + voluteD * 0.28;
+  P('volute', 'revolve', { profile: [[0, 0], [voluteD / 2, 0], [voluteD / 2, voluteD * 0.55], [0, voluteD * 0.55]] }, { tx: volX, ty: 0, tz: axisH, ry: 90 }, 'castiron', 'pump');
+  P('pump_ped', 'box', { width: voluteD * 0.5, depth: voluteD * 0.5, height: axisH - voluteD / 2 - 60 }, { tx: volX + 20, ty: -voluteD * 0.25, tz: 60 }, 'steel', 'frame');
+  // 흡입(축방향 전면) / 토출(상향 수직) 노즐 + 플랜지
+  const sucX = volX + voluteD * 0.55;
+  P('suction_noz', 'cylinder', { diameter: suctionD, length: 200 }, { tx: sucX, ty: 0, tz: axisH, ry: 90 }, 'steel', 'inlet');
+  P('discharge_noz', 'cylinder', { diameter: dischD, length: 250 }, { tx: volX, ty: 0, tz: axisH + voluteD / 2 }, 'steel', 'outlet');
+  P('disch_flange', 'flange', { outerDia: dischD + 100, boreDia: dischD, thickness: 20, bcd: dischD + 55, boltHoleD: 18, boltCount: 8 }, { tx: volX, ty: 0, tz: axisH + voluteD / 2 + 250 }, 'steel', 'outlet');
+  return {
+    name: `원심 펌프 유닛 ${suctionD}/${dischD}`, domain: 'mech', kind: 'assembly', parts,
+    pumpMeta: { suctionDia: suctionD, dischargeDia: dischD, voluteDia: voluteD, motorDia: motorD, axisH },
+    note: '펌프 유닛 매싱(임펠러·축계·메커니컬실 미포함 명시)·수력 성능=pump_head 체인 별도. 축 정렬·기초 볼트 상세 후속',
+  };
+}
+
+/** 게이트 밸브 스탠드 전시(260718f — 코퍼스4 valve 대응 매싱). 몸통 revolve+플랜지 2+보닛+
+ *  스템+핸드휠(토러스). 압력-온도 등급·시트 누설 검토 미포함. */
+function gateValveAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const dn = num(p.dn, 150);
+  const faceL = Math.round(dn * 1.6) + 100; // 면간 근사
+  const bodyD = Math.round(dn * 1.8);
+  const standH = num(p.standH, 500);
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  const zc = standH + bodyD / 2;
+  // 전시 스탠드(받침 2)
+  P('stand_base', 'box', { width: faceL + 200, depth: bodyD, height: 40 }, { tx: -100, ty: -bodyD / 2, tz: 0 }, 'steel', 'frame');
+  for (const [si, x] of [[0, 40], [1, faceL - 120]]) {
+    P(`stand_${si + 1}`, 'box', { width: 80, depth: bodyD * 0.6, height: standH - 40 }, { tx: x, ty: -bodyD * 0.3, tz: 40 }, 'steel', 'frame');
+  }
+  // 몸통(축 x revolve) + 플랜지 2(ry=90)
+  P('body', 'revolve', { profile: [[0, 0], [bodyD / 2, 0], [bodyD / 2, faceL - 40], [0, faceL - 40]] }, { tx: 20, ty: 0, tz: zc, ry: 90 }, 'castiron', 'valve');
+  for (const [fi, x] of [[0, 0], [1, faceL - 20]]) {
+    P(`flange_${fi + 1}`, 'flange', { outerDia: dn + 130, boreDia: dn, thickness: 20, bcd: dn + 75, boltHoleD: 18, boltCount: 8 }, { tx: x, ty: 0, tz: zc, ry: 90 }, 'castiron', 'valve');
+  }
+  // 보닛(수직 원뿔대) + 스템 + 핸드휠(토러스 revolve)
+  const bonX = faceL / 2;
+  P('bonnet', 'revolve', { profile: [[0, 0], [bodyD * 0.32, 0], [bodyD * 0.2, dn * 0.9], [0, dn * 0.9]] }, { tx: bonX, ty: 0, tz: zc + bodyD / 2 }, 'castiron', 'valve');
+  P('stem', 'cylinder', { diameter: Math.max(20, dn * 0.15), length: dn * 0.9 }, { tx: bonX, ty: 0, tz: zc + bodyD / 2 + dn * 0.9 }, 'steel', 'shaft');
+  const hwR = dn * 0.8, hwT = Math.max(16, dn * 0.1);
+  // 핸드휠 토러스 하연=스템 상면(0겹침) — 지지=shaft×joint 선언 체결
+  P('handwheel', 'revolve', { profile: Array.from({ length: 9 }, (_, k) => { const a = (2 * Math.PI * k) / 8; return [hwR + (hwT / 2) * Math.cos(a), (hwT / 2) * Math.sin(a)]; }) }, { tx: bonX, ty: 0, tz: zc + bodyD / 2 + 2 * dn * 0.9 + hwT / 2 }, 'steel', 'joint');
+  return {
+    name: `게이트 밸브 DN${dn}(전시 스탠드)`, domain: 'mech', kind: 'assembly', parts,
+    valveMeta: { dn, faceToFace: faceL, bodyDia: bodyD },
+    note: '밸브 매싱(게이트/시트 내부 미포함 명시)·전시 스탠드 배치. 압력-온도 등급(KS B 2308)·면간 표준 검토 미포함',
+  };
+}
+
+/** 타워 크레인(260718f — 코퍼스4 crane 대응). 마스트=4현재+4면 지그재그 사재(내접 연립,
+ *  전후면 ry=chordBoxX·좌우면 rx=chordBoxYrx)+지브 트러스+카운터지브/웨이트+타이바(인장)+
+ *  운전실+훅(인장 로프). 정격하중표·전도 검토 미포함 — 형상·물량·도서만. */
+function towerCraneAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const mastH = num(p.mastH, 30000);
+  const mastW = num(p.mastW, 1600);         // 마스트 정사각 한 변(현재 중심 간)
+  const jibLen = num(p.jibLen, 35000);
+  const cjLen = num(p.counterJibLen, Math.round(jibLen * 0.32));
+  const chS = num(p.chordS, 160), dS = num(p.diagS, 90);
+  const panelH = num(p.panelH, 1500);
+  const nP = Math.max(4, Math.round(mastH / panelH));
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  // 베이스(십자 앵커 블록)
+  P('base_block', 'box', { width: mastW * 2.2, depth: mastW * 2.2, height: 500 }, { tx: -mastW * 0.6, ty: -mastW * 0.6, tz: 0 }, 'concrete', 'base');
+  // 마스트 현재 4(수직) — 베이스 위
+  const cXY = [[0, 0], [mastW - chS, 0], [0, mastW - chS], [mastW - chS, mastW - chS]];
+  for (const [ci, [x, y]] of cXY.entries()) {
+    P(`chord_${ci + 1}`, 'box', { width: chS, depth: chS, height: mastH }, { tx: x, ty: y, tz: 500 }, 'steel', 'chord');
+  }
+  // 4면 지그재그 사재(면별 내접 연립 — 클리어존: 현재 안쪽면 사이 × 패널 높이)
+  const Wc = mastW - 2 * chS - 2; // 면 내 클리어 폭
+  let thM = Math.atan2(panelH, Wc);
+  for (let it = 0; it < 4; it++) thM = Math.atan2(panelH - dS * Math.cos(thM), Wc - dS * Math.sin(thM));
+  const Lm = (panelH - dS * Math.cos(thM)) / Math.sin(thM);
+  if (Lm > dS * 2) {
+    for (let k = 0; k < nP; k++) {
+      const zm = 500 + k * panelH + panelH / 2;
+      const up = k % 2 === 0;
+      // 전면(y=0 스트립)·후면: x-z 평면 ry
+      chordBoxX(P, `dF_${k + 1}`, mastW / 2 - chS / 2 + chS / 2, zm, up ? thM : -thM, Lm, dS, (chS - dS) / 2, dS, 'steel', 'diagonal');
+      chordBoxX(P, `dB_${k + 1}`, mastW / 2 - chS / 2 + chS / 2, zm, up ? -thM : thM, Lm, dS, mastW - chS + (chS - dS) / 2, dS, 'steel', 'diagonal');
+      // 좌면(x=0 스트립)·우면: y-z 평면 rx
+      chordBoxYrx(P, `dL_${k + 1}`, mastW / 2 - chS / 2 + chS / 2, zm, up ? thM : -thM, Lm, dS, (chS - dS) / 2, dS, 'steel', 'diagonal');
+      chordBoxYrx(P, `dR_${k + 1}`, mastW / 2 - chS / 2 + chS / 2, zm, up ? -thM : thM, Lm, dS, mastW - chS + (chS - dS) / 2, dS, 'steel', 'diagonal');
+    }
+  }
+  const topZ = 500 + mastH;
+  // 턴테이블 + 운전실(슬루 위 — 평면 겹침 확보로 지지 폐형)
+  P('slew', 'cylinder', { diameter: mastW * 1.1, length: 400 }, { tx: mastW / 2, ty: mastW / 2, tz: topZ }, 'steel', 'joint');
+  P('cab', 'box', { width: 1800, depth: 1500, height: 2200 }, { tx: mastW / 2 + 550, ty: (mastW - 1500) / 2, tz: topZ + 400 }, 'steel', 'cab'); // 피벗 우측면 밖(0겹침)·슬루 상면 걸침
+  // 지브 기준면: 캡 상부 클리어(캡×지브 간섭 해소 — 260718f 그리드)
+  const jz = topZ + 400 + 2200 + 200;
+  const jH = 1400, jW2 = 1000;
+  // 피벗 마운트(슬루 상면→지브 하현 하면 — 지브/카운터지브/헤드의 지지 근원)
+  P('pivot', 'box', { width: mastW / 2 + 500 + 300, depth: jW2, height: jz - (topZ + 400) }, { tx: -300, ty: (mastW - jW2) / 2, tz: topZ + 400 }, 'steel', 'joint');
+  const jy = [(mastW - jW2) / 2, (mastW + jW2) / 2 - 120];
+  for (const [ji, y] of jy.entries()) {
+    P(`jib_bot_${ji + 1}`, 'box', { width: jibLen, depth: 120, height: 120 }, { tx: mastW / 2 + 200, ty: y, tz: jz }, 'steel', 'chord');
+  }
+  P('jib_top', 'box', { width: jibLen * 0.85, depth: 120, height: 120 }, { tx: mastW / 2 + 200, ty: mastW / 2 - 60, tz: jz + 120 + jH }, 'steel', 'chord');
+  const nJp = Math.max(4, Math.round(jibLen / 2500));
+  for (let k = 0; k < nJp; k++) {
+    const x = mastW / 2 + 200 + ((k + 0.5) * jibLen * 0.85) / nJp;
+    P(`jib_v_${k + 1}`, 'box', { width: 90, depth: jW2, height: jH }, { tx: x, ty: (mastW - jW2) / 2, tz: jz + 120 }, 'steel', 'vertical'); // 격막형(양 하현 걸침 — 지지 폐형)
+  }
+  // 카운터지브(피벗 상면 착지) + 카운터웨이트
+  P('cjib', 'box', { width: cjLen, depth: jW2, height: 300 }, { tx: -cjLen, ty: (mastW - jW2) / 2, tz: jz }, 'steel', 'deck');
+  P('cweight', 'box', { width: Math.round(cjLen * 0.35), depth: jW2 * 0.9, height: 1400 }, { tx: -cjLen, ty: (mastW - jW2 * 0.9) / 2, tz: jz + 300 }, 'concrete', 'counterweight');
+  // 타워헤드(피벗 상면) + 타이바 2(인장 — 내접 연립 chordBoxX)
+  const headH = 4500;
+  P('head', 'box', { width: 400, depth: 400, height: headH + 120 }, { tx: mastW / 2 - 200, ty: mastW / 2 - 200, tz: jz }, 'steel', 'chord');
+  const tie = (id, x0, x1, z0, z1) => {
+    const Wx = Math.abs(x1 - x0) - 20, Hz = Math.abs(z1 - z0);
+    let th = Math.atan2(Hz, Wx);
+    for (let it = 0; it < 4; it++) th = Math.atan2(Hz - 60 * Math.cos(th), Wx - 60 * Math.sin(th));
+    const Lt = (Hz - 60 * Math.cos(th)) / Math.sin(th);
+    if (Lt > 120) chordBoxX(P, id, (x0 + x1) / 2, (z0 + z1) / 2, x1 > x0 ? -th : th, Lt, 60, mastW / 2 - 30, 60, 'steel', 'stay');
+  };
+  tie('tie_jib', mastW / 2 + 220, mastW / 2 + 200 + jibLen * 0.6, jz + headH + 120, jz + 120 + jH + 120); // 정착=상현 상면(수직재/상현 관통 방지)
+  tie('tie_cjib', mastW / 2 - 200 - (cjLen * 0.8 - 200), mastW / 2 - 200, jz + 250, jz + 120 + headH);
+  // 트롤리 + 훅 로프(인장) + 훅 블록
+  // 트롤리 x=수직재(격막) 사이 갭 중앙 스냅(장지브 충돌 방지 — 260718f 그리드)
+  const jPitch = (jibLen * 0.85) / nJp;
+  const trX = mastW / 2 + 200 + Math.round(nJp * 0.55) * jPitch - 350;
+  // 트롤리=하현 상면 주행 근사(실기계=하부 주행 — 매싱 명시), 로프=인장 매닮
+  P('trolley', 'box', { width: 700, depth: jW2, height: 250 }, { tx: trX, ty: (mastW - jW2) / 2, tz: jz + 120 }, 'steel', 'trolley');
+  const ropeL = num(p.hookDrop, 8000);
+  P('hoist_rope', 'box', { width: 30, depth: 30, height: ropeL }, { tx: trX + 335, ty: mastW / 2 - 15, tz: jz + 120 - ropeL }, 'steel', 'cable');
+  P('hook_block', 'box', { width: 400, depth: 300, height: 600 }, { tx: trX + 150, ty: mastW / 2 - 150, tz: jz + 120 - ropeL - 600 }, 'steel', 'hook');
+  return {
+    name: `타워 크레인 H${mastH / 1000}m·지브 ${jibLen / 1000}m`, domain: 'mech', kind: 'assembly', parts,
+    craneMeta: { mastH, mastW, jibLen, counterJibLen: cjLen, panels: nP },
+    note: '타워 크레인 매싱+격자(지브 트러스 간이·권상 기구 미포함 명시). 정격하중표·전도/풍하중(KS B 6217) 검토 미포함 — 형상·물량·도서만',
+  };
+}
+
 /** 수직 사일로/저장탱크(260718f — 코퍼스4 silo/tank 대응). revolve 셸(원통+콘 호퍼+지붕 콘)
  *  + 지지 다리 4(대각 배치 — revolve×box 반경 정밀로 간섭 0 폐형). 내압/풍하중 검토 미포함. */
 function tankSiloAssembly(p = {}) {
@@ -2400,6 +2568,30 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   mech: [
+    {
+      id: 'tower_crane', labelKo: '타워 크레인 (마스트 격자+지브)', labelEn: 'Tower crane', build: towerCraneAssembly,
+      params: [
+        { name: 'mastH', labelKo: '마스트 높이', unit: 'mm', default: 30000, min: 8000, max: 80000 },
+        { name: 'jibLen', labelKo: '지브 길이', unit: 'mm', default: 35000, min: 10000, max: 80000 },
+        { name: 'mastW', labelKo: '마스트 폭', unit: 'mm', default: 1600, min: 900, max: 3500 },
+        { name: 'hookDrop', labelKo: '훅 내림', unit: 'mm', default: 8000, min: 1000, max: 60000 },
+      ],
+    },
+    {
+      id: 'pump_unit', labelKo: '원심 펌프 유닛 (모터+볼루트)', labelEn: 'Centrifugal pump unit', build: pumpUnitAssembly,
+      params: [
+        { name: 'suctionDia', labelKo: '흡입경', unit: 'mm', default: 150, min: 40, max: 600 },
+        { name: 'dischargeDia', labelKo: '토출경', unit: 'mm', default: 100, min: 25, max: 500 },
+        { name: 'motorDia', labelKo: '모터 외경', unit: 'mm', default: 350, min: 120, max: 900 },
+      ],
+    },
+    {
+      id: 'gate_valve', labelKo: '게이트 밸브 (플랜지+핸드휠)', labelEn: 'Gate valve (flanged)', build: gateValveAssembly,
+      params: [
+        { name: 'dn', labelKo: '호칭경 DN', unit: 'mm', default: 150, min: 25, max: 600 },
+        { name: 'standH', labelKo: '전시 스탠드 높이', unit: 'mm', default: 500, min: 200, max: 1200 },
+      ],
+    },
     {
       id: 'tank_silo', labelKo: '수직 사일로/탱크 (호퍼+지지 다리)', labelEn: 'Vertical silo/tank', build: tankSiloAssembly,
       params: [

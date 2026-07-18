@@ -210,6 +210,7 @@ const GATES = {
     if (beta - psiRa <= 0.004) e.push('이끝 폭 소멸 — teeth 늘리거나 pressureAngle 조정');
     if (Math.PI / z - beta <= 0.004) e.push('이뿌리 갭 소멸 — 치형 성립 불가');
     if ((i.boreDia ?? 0) / 2 > rf - m) e.push('boreDia가 이뿌리 림 침범 (bore/2 ≤ rf − m)');
+    if (i.helixDeg != null && !(i.helixDeg >= 0 && i.helixDeg <= 35)) e.push('helixDeg 0..35');
   },
   hex_bolt(i, e) {
     if (!pos(i.threadDia) || i.threadDia > 100) e.push('threadDia invalid');
@@ -272,6 +273,16 @@ const GATES = {
     if (i.tf >= i.H) e.push('tf ≥ H');
     if (i.tw >= i.B) e.push('tw ≥ B');
     if (i.length > 60000) e.push('length invalid (≤60m)');
+  },
+  coil_spring(i, e) {
+    for (const k of ['wireDia', 'coilDia', 'pitch', 'turns']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (i.wireDia >= i.coilDia / 2) e.push('wireDia ≥ coilDia/2');
+    if (i.pitch < i.wireDia) e.push('pitch < wireDia(밀착 초과 — 코일 겹침)');
+    if (i.turns > 60) e.push('turns > 60');
+  },
+  pillow_block(i, e) {
+    for (const k of ['boreDia', 'width', 'height']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (i.boreDia >= Math.min(i.width, i.height * 2)) e.push('bore ≥ 하우징');
   },
   pipe_reducer(i, e) {
     for (const k of ['dia1', 'dia2', 'length']) if (!pos(i[k])) e.push(`${k} invalid`);
@@ -370,7 +381,9 @@ const SCAD = {
     return `difference() {\n  cube([${i.width}, ${i.depth}, ${i.thickness}]);\n${holes}\n}`;
   },
   spur_gear(i) {
-    const body = `linear_extrude(height=${i.thickness}) ${polyScad(gearPoly(i))}`;
+    // helixDeg(260718f — 헬리컬 기어 옵션): twist=360·b·tanβ/(π·m·z) — 단면 수평투영 근사 명시
+    const tw = i.helixDeg ? -((360 * i.thickness * Math.tan(i.helixDeg * RAD)) / (Math.PI * i.module * i.teeth)).toFixed(3) : 0;
+    const body = `linear_extrude(height=${i.thickness}${tw ? `, twist=${tw}, slices=${Math.max(20, Math.round(i.thickness / 2))}` : ''}) ${polyScad(gearPoly(i))}`;
     if (!(i.boreDia > 0)) return body;
     return `difference() {\n  ${body}\n  translate([0,0,-1]) cylinder(h=${i.thickness + 2}, d=${i.boreDia}, $fn=64);\n}`;
   },
@@ -407,6 +420,25 @@ const SCAD = {
   },
   tee_section(i) {
     return `union() {\n  translate([0, ${(i.B - i.tw) / 2}, 0]) cube([${i.length}, ${i.tw}, ${i.H - i.tf}]);\n  translate([0, 0, ${i.H - i.tf}]) cube([${i.length}, ${i.B}, ${i.tf}]);\n}`;
+  },
+  coil_spring(i) {
+    // 헬리컬 스윕 = twist 압출(단면=수평 투영 원 — 경사 왜곡 소량 근사 명시)
+    const Dm = i.coilDia - i.wireDia;
+    const H = i.turns * i.pitch;
+    return `linear_extrude(height=${H}, twist=${-360 * i.turns}, slices=${Math.max(60, i.turns * 24)}) translate([${Dm / 2}, 0]) circle(d=${i.wireDia}, $fn=24);`;
+  },
+  pillow_block(i) {
+    const d2 = i.depth ?? Math.round(i.boreDia * 1.4);
+    const bp = i.boltPitch ?? Math.round(i.width * 0.8);
+    return `difference() {
+  union() {
+    cube([${i.width}, ${d2}, ${i.height * 0.55}]);
+    translate([${i.width / 2}, ${d2 / 2}, ${i.height * 0.55}]) rotate([-90,0,0]) translate([0,0,${-d2 / 2}]) cylinder(h=${d2}, d=${Math.min(i.width * 0.9, i.height * 1.1)}, $fn=64);
+  }
+  translate([${i.width / 2}, ${-1}, ${i.height}]) rotate([-90,0,0]) cylinder(h=${d2 + 2}, d=${i.boreDia}, $fn=64);
+  translate([${(i.width - bp) / 2}, ${d2 / 2}, -1]) cylinder(h=${i.height}, d=${Math.max(8, i.boreDia * 0.25)}, $fn=32);
+  translate([${(i.width + bp) / 2}, ${d2 / 2}, -1]) cylinder(h=${i.height}, d=${Math.max(8, i.boreDia * 0.25)}, $fn=32);
+}`;
   },
   pipe_reducer(i) {
     const t = i.wallThk ?? Math.max(2, i.dia1 * 0.03);
@@ -521,6 +553,14 @@ export function partAabb(i) {
     }
     case 'cavity_block':
       return { min: [0, 0, 0], max: [i.blockW, i.blockD, i.blockH] };
+    case 'coil_spring': {
+      const r = i.coilDia / 2;
+      return { min: [-r, -r, 0], max: [r, r, i.turns * i.pitch + i.wireDia] };
+    }
+    case 'pillow_block': {
+      const d2 = i.depth ?? Math.round(i.boreDia * 1.4);
+      return { min: [0, 0, 0], max: [i.width, d2, i.height] };
+    }
     default:
       throw new Error(`partAabb: unsupported type '${i.type}'`);
   }
@@ -554,4 +594,6 @@ export const PARAMS = {
   mesh: ['volumeMm3'], // verts/faces/aabb 는 배열·객체 — 스키마 특례
   revolve: [], // profile 은 배열 — 스키마 특례
   cavity_block: ['blockW', 'blockD', 'blockH'], // cavity 는 객체 — 스키마 특례
+  coil_spring: ['wireDia', 'coilDia', 'pitch', 'turns'],
+  pillow_block: ['boreDia', 'width', 'height', 'depth', 'boltPitch'],
 };

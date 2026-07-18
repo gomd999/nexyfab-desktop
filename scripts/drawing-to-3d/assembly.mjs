@@ -32,7 +32,7 @@ export const SERVICE_COL = {
   column: '#475569', beam: '#0e7490', slab: '#94a3b8', joist: '#854d0e', deck: '#a16207', floor: '#d1d5db', table: '#0f766e', counter: '#7c3aed', wall: '#78716c', base: '#57534e',
   stack: '#7c2d12',
 };
-export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5', mesh: '#7c6f9f', revolve: '#9aa7b5', cavity_block: '#7c6f9f' };
+export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5', mesh: '#7c6f9f', revolve: '#9aa7b5', cavity_block: '#7c6f9f', coil_spring: '#6b7280', pillow_block: '#78838f' };
 // 부품 id/name 키워드 → 계통 자동추론 (명시 service 태그 없어도 계통색이 나오게).
 const ID_SERVICE = [
   [/pump|motor|모터|펌프|impeller|임펠라|blower|fan|송풍/i, 'motor'],
@@ -289,6 +289,17 @@ export function assemblyToComposeIntent(asm) {
         feats.push(F('cylinder', { diameter: p.dia2, height: half }, 0, 0, half));
         feats.push(F('cylinder', { diameter: p.dia1 - 2 * t, height: half + 2 }, 0, 0, -1, 'subtract'));
         feats.push(F('cylinder', { diameter: p.dia2 - 2 * t, height: half + 2 }, 0, 0, half, 'subtract'));
+        break;
+      }
+      // 표준부품 확장 2(260718f): 프록시 표시(SCAD 정확·질량 폐형)
+      case 'coil_spring': { // 원통 프록시(코일 외경 × 총높이)
+        feats.push(F('cylinder', { diameter: p.coilDia, height: p.turns * p.pitch + p.wireDia }));
+        break;
+      }
+      case 'pillow_block': {
+        const d2 = p.depth ?? Math.round(p.boreDia * 1.4);
+        feats.push(F('box', { size: [p.width, d2, p.height] }));
+        feats.push(F('cylinder', { diameter: p.boreDia, height: d2 + 2 }, p.width / 2, -1, p.height, 'subtract'));
         break;
       }
       // 자유곡면 어휘(260718d): GA/STEP 피처=프록시(표시용 — SCAD 본체는 정확 명시)

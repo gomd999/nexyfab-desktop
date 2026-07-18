@@ -71,6 +71,15 @@ export function partVolume(type, p) {
     // 자유곡면 어휘(260718d): mesh=발산정리 정밀값(빌드 시 산출 — 날조 아님·파일/수식 파생),
     // revolve=파푸스 정리(폐형: V=2π·r̄·A — 프로파일 도심 반경×면적)
     case 'mesh': return Number(p.volumeMm3) > 0 ? Number(p.volumeMm3) : 0;
+    case 'coil_spring': { // 헬리컬 스프링 = π/4·d²·L_wire (L_wire=n·√((πDm)²+p²)) 폐형
+      const Dm = p.coilDia - p.wireDia; // 평균 코일경
+      const Lw = p.turns * Math.hypot(Math.PI * Dm, p.pitch);
+      return (Math.PI / 4) * p.wireDia ** 2 * Lw;
+    }
+    case 'pillow_block': { // 필로우 블록 하우징 = 본체 − 보어(폐형)
+      const w = p.width, h = p.height, d2 = p.depth ?? Math.round(p.boreDia * 1.4);
+      return w * d2 * h - A * p.boreDia ** 2 * d2;
+    }
     case 'cavity_block': { // 금형 블록 − 음형 = 폐형 차 체적(캐비티 체적은 재귀)
       const cav = p.cavity ? partVolume(p.cavity.type, p.cavity.params) : 0;
       return Math.max(0, p.blockW * p.blockD * p.blockH - cav);
