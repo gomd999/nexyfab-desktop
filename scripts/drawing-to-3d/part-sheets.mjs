@@ -5,7 +5,7 @@
  * 시트 n/N — GA 밸룬 번호와 동일 그룹 번호로 연결). 회전체=평면 원+중심선.
  * 공차·표면 거칠기·판금 전개는 후속(GD&T 연동) — 시트에 입력 원칙 명시.
  */
-import { partAabb, holeFeature } from './reconstruct.mjs';
+import { partAabb, holeFeature, PARAMS } from './reconstruct.mjs';
 import { colorOf } from './assembly.mjs';
 import { snapPipe, snapSquareTube, snapTslot, snapBearingUnit } from './std-snap.mjs';
 
@@ -79,6 +79,7 @@ export function partSheets(assembly, { title = '부품 제작도', dwgPrefix = '
 <tr><td>Type</td><td>${esc(p.type)}</td><td>재질</td><td>${esc(p.material ?? '-')}</td></tr>
 <tr><td>엔벨로프</td><td>${fmt(dx)}×${fmt(dy)}×${fmt(dz)}</td><td>발주 규격</td><td>${esc(std || '- (가공품)')}</td></tr>
 <tr><td>도번</td><td data-dwg="${dwgNo}">${dwgNo}</td><td>시트</td><td>${i + 1} / ${N}</td></tr>
+${PARAMS[p.type] ? `<tr><td>제작 치수</td><td colspan="3" style="text-align:left" class="nf-paramdims">${PARAMS[p.type].map((k) => `${k}=${p.params?.[k] ?? '—'}`).join(' · ')}</td></tr>` : ''}
 </tbody></table>${holeTable}
 <div class="note">공차·표면 거칠기·용접 상세=입력 원칙(GD&T 연동 후속) · 회전체 실형상은 STEP 참조(본 도면=엔벨로프+주요 치수)</div></div>`;
   }).join('');

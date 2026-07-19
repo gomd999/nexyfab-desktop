@@ -1038,6 +1038,23 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
     const [lx, ly, lz] = rt.pts[0];
     pipeLines.push(`<text x="${px(lx, ox)}" y="${(+pz(lz) - 4).toFixed(1)}" font-size="7.5" fill="${c}" font-family="sans-serif">${esc(rt.label ?? '')}</text>`);
   }
+  // M3 용접기호 실배치(T2, 260719 — KS B 0052 사상): 조인트 접촉 중점→지시선(화살)+
+  // 수평 기준선+필릿 △+각장. 판독성: 상위 12개만·나머지=일람표(정직 명시).
+  const weldArrows = [];
+  if (Array.isArray(weldsIn) && weldsIn.length) {
+    const byId = new Map(parts.map((o) => [o.p.id ?? o.p.type, o.box]));
+    for (const [wi, w2] of weldsIn.slice(0, 12).entries()) {
+      const A = byId.get(w2.a), B = byId.get(w2.b);
+      if (!A || !B) continue;
+      // 접촉 중점(x: 겹침 구간 중앙, z: 맞닿는 면 — 상하 관계로 결정)
+      const ox0 = Math.max(A.x, B.x), ox1 = Math.min(A.x + A.dx, B.x + B.dx);
+      if (ox1 <= ox0) continue;
+      const zTouch = Math.abs((A.z + A.dz) - B.z) <= Math.abs((B.z + B.dz) - A.z) ? (A.z + A.dz + B.z) / 2 : (B.z + B.dz + A.z) / 2;
+      const axp = +px((ox0 + ox1) / 2, ox), azp = +pz(zTouch);
+      const lx = axp + 16, ly = azp - 14 - (wi % 3) * 9; // 지시선 꺾임(겹침 완화 3단)
+      weldArrows.push(`<g class="nf-weldarrow"><line x1="${axp}" y1="${azp}" x2="${lx}" y2="${ly}" stroke="#0f172a" stroke-width=".7"/><line x1="${lx}" y1="${ly}" x2="${lx + 26}" y2="${ly}" stroke="#0f172a" stroke-width=".7"/><path d="M${axp} ${azp} l5 -2 l-1.6 3.4 z" fill="#0f172a"/><text x="${lx + 3}" y="${ly - 2}" font-size="8" font-family="sans-serif" fill="#0f172a">△${w2.legMm ?? 6}</text></g>`);
+    }
+  }
   const dimH = (x1, x2, y, t) => `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#dc2626" stroke-width=".6"/><text x="${(+x1 + +x2) / 2}" y="${+y - 3}" font-size="9.5" text-anchor="middle" fill="#dc2626">${t}</text>`;
   const dimV = (x, y1, y2, t) => `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#dc2626" stroke-width=".6"/><text x="${+x - 4}" y="${(+y1 + +y2) / 2}" font-size="9.5" text-anchor="end" fill="#dc2626" transform="rotate(-90 ${+x - 4} ${(+y1 + +y2) / 2})">${t}</text>`;
   const pipeHead = pipes?.length ? 90 : 0; // 오버헤드 코리도 배관이 정면도 위로 나가는 만큼 캔버스 확장
@@ -1052,6 +1069,7 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   ${dimV((sx0 - 18).toFixed(1), (oy).toFixed(1), (oy + pd).toFixed(1), fmtLen(D))}
   ${domain && domain !== 'mech' ? scaleBarSvg(ox, oy + fh + 42, S, Math.max(W, H)) + northSvg(sx0 + fw + 30, oy - 20) : ''}
   ${pipeLines.join('')}
+  ${weldArrows.join('')}
   ${balloons.join('')}</svg>`;
   // 관례도면 모드 (③): 건축=축선 구조평면 · 조경=배치 평면도(+경계·등고) ·
   // 토목=선형 도면집(§2 시트 팩: 목록표·평면·곡선표·일람·종단·토공·일반주기) / 직선 run: 측점 평면
@@ -1160,6 +1178,7 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
 <tr><td style="background:#f1f5f9">도번</td><td data-dwg="${esc(dwgNo)}">${esc(dwgNo)}</td><td style="background:#f1f5f9;width:56px">REV</td><td class="nf-rev">—</td></tr>
 <tr><td style="background:#f1f5f9">축척</td><td>1:${N} (A3)</td><td style="background:#f1f5f9">시트</td><td>1 / 1</td></tr>
 <tr><td style="background:#f1f5f9">투상/단위</td><td>3각법 / mm</td><td style="background:#f1f5f9">작성</td><td>nexyfab 자동생성(비법정)</td></tr>
+<tr><td style="background:#f1f5f9">일반공차</td><td colspan="3" class="nf-gentol" style="text-align:left">${esc(assembly.generalTolerance ?? 'KS B ISO 2768-mK (관례 기본 — 발주 전 확정·입력 시 교체)')}</td></tr>
 </tbody></table>`;
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>@page{size:A3 landscape;margin:8mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937}
