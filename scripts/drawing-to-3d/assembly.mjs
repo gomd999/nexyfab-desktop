@@ -16,7 +16,7 @@
  * usage: node assembly.mjs '<assembly.json>'
  */
 import { readFileSync } from 'node:fs';
-import { gate, scadBody, partAabb, gearPoly, sheetPoly, hexPts, boltDims } from './reconstruct.mjs';
+import { gate, scadBody, partAabb, gearPoly, sheetPoly, hexPts, boltDims, holeFeature } from './reconstruct.mjs';
 import { structuralCheck } from './structural.mjs';
 import { supportCheck } from './support-check.mjs';
 import { autoRoutePipes, pipeObstacleCheck, pipeCrossCheck } from './pipe-route.mjs';
@@ -235,10 +235,34 @@ export function assemblyToComposeIntent(asm) {
     };
     switch (part.type) {
       case 'box': feats.push(F('box', { size: [p.width, p.depth, p.height] })); break;
-      case 'cylinder': feats.push(F('cylinder', { diameter: p.diameter, height: p.length })); break;
+      case 'cylinder': {
+        feats.push(F('cylinder', { diameter: p.diameter, height: p.length }));
+        // T1(260719): 축 키홈(+x측 z=0 시작 관례)·오링 홈(외면 원환) — SCAD/STEP 동일 피처
+        const r = p.diameter / 2;
+        if (p.keyway) {
+          const k = p.keyway;
+          feats.push(F('box', { size: [k.depth + 1, k.w, k.length ?? p.length] }, r - k.depth, -k.w / 2, 0, 'subtract'));
+        }
+        for (const g of p.oringGrooves ?? []) {
+          feats.push(F('revolve', { profile: [[r - g.depth, g.z], [r + 1, g.z], [r + 1, g.z + g.w], [r - g.depth, g.z + g.w]] }, 0, 0, 0, 'subtract'));
+        }
+        break;
+      }
       case 'plate_with_holes':
         feats.push(F('box', { size: [p.width, p.depth, p.thickness] }));
-        for (const h of p.holes ?? []) feats.push(F('cylinder', { diameter: h.d, height: p.thickness + 2 }, h.x, h.y, -1, 'subtract'));
+        // T1(260719): through/blind + cbore/csink/tap — holeFeature 단일 소스(상면 기준)
+        for (const h of p.holes ?? []) {
+          const hf = holeFeature(h, p.thickness);
+          const z0 = hf.depth ? p.thickness - hf.depth : -1;
+          const hh = hf.depth ? hf.depth + 1 : p.thickness + 2;
+          feats.push(F('cylinder', { diameter: hf.drillD, height: hh }, h.x, h.y, z0, 'subtract'));
+          if (hf.cb) feats.push(F('cylinder', { diameter: hf.cb.dia, height: hf.cb.depth + 1 }, h.x, h.y, p.thickness - hf.cb.depth, 'subtract'));
+          if (hf.cs) {
+            const ext = 0.5;
+            const d2 = hf.cs.dia + 2 * ext * Math.tan((hf.cs.angleDeg / 2) * DEG);
+            feats.push(F('cone', { dia1: h.d, dia2: d2, height: hf.cs.depth + ext }, h.x, h.y, p.thickness - hf.cs.depth, 'subtract'));
+          }
+        }
         break;
       case 'base_plate': {
         const m = p.edgeMargin ?? Math.max(12, p.boltDia * 1.5);

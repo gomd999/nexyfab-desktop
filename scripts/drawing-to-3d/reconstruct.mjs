@@ -9,6 +9,43 @@
 const pos = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0;
 const RAD = Math.PI / 180;
 
+// ─── T1 구멍류 제조 피처(260719): 미터 보통나사 암나사 하경(KS B 0201/ISO 724 6H 근사) ──
+// 탭홀 형상 = 하경 드릴 구멍(나사산 자체는 SCAD/STEP 미표현 — 구멍표·주기로 전달, 정직 명시)
+export const TAP_MINOR = { 3: 2.459, 4: 3.242, 5: 4.134, 6: 4.917, 8: 6.647, 10: 8.376, 12: 10.106, 14: 11.835, 16: 13.835, 20: 17.294, 24: 20.752 };
+/** 'M8' → { m:8, minor:6.647 } | null(비표준 — 정직 거부용) */
+export function parseThread(s) {
+  const m = /^M(\d+(?:\.\d+)?)$/.exec(String(s ?? '').trim());
+  if (!m) return null;
+  const nom = Number(m[1]);
+  return TAP_MINOR[nom] ? { m: nom, minor: TAP_MINOR[nom] } : null;
+}
+/**
+ * 구멍 1개의 결정론 파생값(단일 소스 — 게이트·SCAD·STEP·체적·구멍표 공용).
+ * kind: 'through'(기본)|'cbore'|'csink'|'tap'. 상면(z=thickness) 기준 가공(관례 명시).
+ * @returns { kind, drillD(주 구멍 지름), depth(주 구멍 깊이|null=관통), cb?, cs?, thread?, label }
+ */
+export function holeFeature(h, thickness) {
+  const kind = ['cbore', 'csink', 'tap'].includes(h.kind) ? h.kind : 'through';
+  const out = { kind, drillD: h.d, depth: pos(h.depth) ? h.depth : null };
+  if (kind === 'tap') {
+    const th = parseThread(h.thread);
+    if (th) { out.thread = th; out.drillD = th.minor; }
+  } else if (kind === 'cbore') {
+    out.cb = { dia: h.cbDia, depth: h.cbDepth };
+  } else if (kind === 'csink') {
+    const ang = pos(h.csAngleDeg) ? h.csAngleDeg : 90;
+    out.cs = { dia: h.csDia, angleDeg: ang, depth: (h.csDia - h.d) / 2 / Math.tan((ang / 2) * RAD) };
+  }
+  const dEff = out.depth ?? thickness;
+  out.label = kind === 'tap' && out.thread
+    ? `M${out.thread.m}${out.depth ? `×${out.depth}` : ' 관통'}`
+    : kind === 'cbore' ? `⌀${h.d} ⌴⌀${h.cbDia}×${h.cbDepth}`
+      : kind === 'csink' ? `⌀${h.d} ⌵⌀${h.csDia}×${(h.csAngleDeg ?? 90)}°`
+        : `⌀${h.d}${out.depth ? `×${out.depth}` : ' THRU'}`;
+  out.depthEff = dEff;
+  return out;
+}
+
 // ─── 공유 프로파일 생성기 (결정론 — SCAD·STEP·물량이 같은 폴리곤을 쓴다) ────────
 
 /** 인벌류트 스퍼기어 외형 폴리곤 (CCW, 원점 중심). 표준 치형: ha=m, hf=1.25m. */
@@ -132,6 +169,24 @@ const GATES = {
       if (!pos(h.d) || h.d >= Math.min(i.width, i.depth)) e.push(`hole[${n}] d invalid`);
       if (!(h.x - h.d / 2 >= 0 && h.x + h.d / 2 <= i.width)) e.push(`hole[${n}] x outside`);
       if (!(h.y - h.d / 2 >= 0 && h.y + h.d / 2 <= i.depth)) e.push(`hole[${n}] y outside`);
+      // T1 제조 피처 게이트(260719): cbore/csink/tap/blind — 상면 기준(관례 명시)
+      if (h.kind === 'cbore') {
+        if (!pos(h.cbDia) || h.cbDia <= h.d) e.push(`hole[${n}] cbDia ≤ d`);
+        if (!pos(h.cbDepth) || h.cbDepth >= i.thickness) e.push(`hole[${n}] cbDepth ≥ thickness`);
+      } else if (h.kind === 'csink') {
+        if (!pos(h.csDia) || h.csDia <= h.d) e.push(`hole[${n}] csDia ≤ d`);
+        else {
+          const f = holeFeature(h, i.thickness);
+          if (f.cs.depth >= i.thickness) e.push(`hole[${n}] 싱크 깊이 ≥ thickness`);
+        }
+        if (h.csAngleDeg != null && !(h.csAngleDeg >= 60 && h.csAngleDeg <= 120)) e.push(`hole[${n}] csAngleDeg 60~120`);
+      } else if (h.kind === 'tap') {
+        if (!parseThread(h.thread)) e.push(`hole[${n}] thread 비표준(M3~M24 보통나사만 — 목록 외=정직 거부)`);
+      } else if (h.kind != null && h.kind !== 'through') {
+        e.push(`hole[${n}] kind '${h.kind}' 미지원(through/cbore/csink/tap)`);
+      }
+      if (h.depth != null && (!pos(h.depth) || h.depth >= i.thickness) && h.kind !== 'tap') e.push(`hole[${n}] 블라인드 depth ≥ thickness`);
+      if (h.kind === 'tap' && h.depth != null && (!pos(h.depth) || h.depth > i.thickness)) e.push(`hole[${n}] 탭 depth > thickness`);
     }
   },
   stepped_plate(i, e) {
@@ -186,6 +241,17 @@ const GATES = {
     // diameter 는 5m 유지(AI 헛값 방어 — 대구경 압력용기는 revolve 어휘).
     if (!pos(i.diameter) || i.diameter > 5000) e.push('diameter invalid');
     if (!pos(i.length) || i.length > 60000) e.push('length invalid (≤60m)');
+    // T1(260719): 축 키홈(외면 +x측·z=0 시작 관례) · 오링 홈(외면 원환)
+    if (i.keyway) {
+      const k = i.keyway;
+      if (!pos(k.w) || k.w >= i.diameter / 2) e.push('keyway.w invalid(< d/2)');
+      if (!pos(k.depth) || k.depth >= i.diameter / 4) e.push('keyway.depth invalid(< d/4)');
+      if (k.length != null && (!pos(k.length) || k.length > i.length)) e.push('keyway.length > 축장');
+    }
+    for (const [n, g] of (i.oringGrooves ?? []).entries()) {
+      if (!pos(g.w) || !pos(g.depth) || g.depth >= i.diameter / 4) e.push(`oringGrooves[${n}] w/depth invalid`);
+      if (!(g.z >= 0 && g.z + g.w <= i.length)) e.push(`oringGrooves[${n}] z 범위 밖`);
+    }
   },
   gusset(i, e) {
     for (const k of ['legA', 'legB', 'thickness']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);
@@ -358,8 +424,21 @@ export function gate(intent) {
 
 const SCAD = {
   plate_with_holes(i) {
-    const holes = (i.holes ?? []).map((h) => `    translate([${h.x}, ${h.y}, -1]) cylinder(h=${i.thickness + 2}, d=${h.d}, $fn=64);`).join('\n');
-    return `difference() {\n  cube([${i.width}, ${i.depth}, ${i.thickness}]);\n${holes}\n}`;
+    // T1(260719): through/blind + cbore/csink/tap — 상면(z=t) 기준 가공(holeFeature 단일 소스)
+    const cuts = [];
+    for (const h of (i.holes ?? [])) {
+      const f = holeFeature(h, i.thickness);
+      const z0 = f.depth ? i.thickness - f.depth : -1;
+      const hh = f.depth ? f.depth + 1 : i.thickness + 2;
+      cuts.push(`    translate([${h.x}, ${h.y}, ${z0}]) cylinder(h=${hh}, d=${f.drillD}, $fn=64);`);
+      if (f.cb) cuts.push(`    translate([${h.x}, ${h.y}, ${i.thickness - f.cb.depth}]) cylinder(h=${f.cb.depth + 1}, d=${f.cb.dia}, $fn=64);`);
+      if (f.cs) {
+        const ext = 0.5; // 상면 공면 회피 연장(원뿔 기울기 유지)
+        const d2 = f.cs.dia + 2 * ext * Math.tan((f.cs.angleDeg / 2) * RAD);
+        cuts.push(`    translate([${h.x}, ${h.y}, ${i.thickness - f.cs.depth}]) cylinder(h=${f.cs.depth + ext}, d1=${h.d}, d2=${d2}, $fn=64);`);
+      }
+    }
+    return `difference() {\n  cube([${i.width}, ${i.depth}, ${i.thickness}]);\n${cuts.join('\n')}\n}`;
   },
   stepped_plate(i) {
     return `union() {\n  cube([${i.stepWidth}, ${i.depth}, ${i.stepThickness}]);\n  translate([${i.stepWidth}, 0, 0]) cube([${i.width - i.stepWidth}, ${i.depth}, ${i.thickness}]);\n}`;
@@ -395,7 +474,18 @@ const SCAD = {
     return `cube([${i.width}, ${i.depth}, ${i.height}]);`;
   },
   cylinder(i) {
-    return `cylinder(h=${i.length}, d=${i.diameter}, $fn=96);`;
+    const body = `cylinder(h=${i.length}, d=${i.diameter}, $fn=96);`;
+    // T1(260719): 키홈(+x측 z=0 시작 관례)·오링 홈 — composeIntent(STEP)와 동일 수학
+    const cuts = [];
+    const r = i.diameter / 2;
+    if (i.keyway) {
+      const k = i.keyway;
+      cuts.push(`  translate([${r - k.depth}, ${-k.w / 2}, 0]) cube([${k.depth + 1}, ${k.w}, ${k.length ?? i.length}]);`);
+    }
+    for (const g of i.oringGrooves ?? []) {
+      cuts.push(`  translate([0, 0, ${g.z}]) difference() { cylinder(h=${g.w}, d=${i.diameter + 2}, $fn=96); translate([0,0,-1]) cylinder(h=${g.w + 2}, d=${i.diameter - 2 * g.depth}, $fn=96); }`);
+    }
+    return cuts.length ? `difference() {\n  ${body}\n${cuts.join('\n')}\n}` : body;
   },
   gusset(i) {
     return `linear_extrude(height=${i.thickness}) polygon(points=[[0,0],[${i.legA},0],[0,${i.legB}]]);`;

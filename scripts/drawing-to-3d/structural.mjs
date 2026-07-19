@@ -9,7 +9,7 @@
  *
  * usage: structuralCheck(assembly, { material, fluidParts, supports, member, seismicG })
  */
-import { partAabb, gearPoly, sheetPoly, polyArea, boltDims } from './reconstruct.mjs';
+import { partAabb, gearPoly, sheetPoly, polyArea, boltDims, holeFeature } from './reconstruct.mjs';
 
 const g = 9.81;
 
@@ -34,7 +34,17 @@ export function partVolume(type, p) {
   switch (type) {
     case 'box': return p.width * p.depth * p.height;
     // C1 인벤토리(260719) 폐형 정정 4건: 구멍·겹침 공제 — SCAD/STEP 실측과 일치
-    case 'plate_with_holes': return p.width * p.depth * p.thickness - (p.holes ?? []).reduce((s, h) => s + A * h.d ** 2 * p.thickness, 0);
+    case 'plate_with_holes': // T1(260719): through/blind·cbore·csink·tap — holeFeature 파생 폐형
+      return p.width * p.depth * p.thickness - (p.holes ?? []).reduce((s, h) => {
+        const f = holeFeature(h, p.thickness);
+        let v = A * f.drillD ** 2 * f.depthEff;                       // 주 구멍(하경·블라인드 반영)
+        if (f.cb) v += A * (f.cb.dia ** 2 - f.drillD ** 2) * f.cb.depth; // 카운터보어 링
+        if (f.cs) { // 싱크 원뿔대 − 주 구멍 중복
+          const D = f.cs.dia, d0 = h.d, hh = f.cs.depth;
+          v += (Math.PI * hh / 12) * (D * D + D * d0 + d0 * d0) - A * d0 * d0 * hh;
+        }
+        return s + v;
+      }, 0);
     case 'stepped_plate': return p.stepWidth * p.depth * p.stepThickness + (p.width - p.stepWidth) * p.depth * p.thickness;
     case 'base_plate': return p.width * p.depth * p.thickness - 4 * A * p.boltDia ** 2 * p.thickness; // 코너 볼트홀 4(scadBody 동일)
     case 'l_bracket': return (p.legA * p.width * p.thickness) + (p.thickness * p.width * (p.legB - p.thickness)); // 코너 겹침 1회만
@@ -46,7 +56,17 @@ export function partVolume(type, p) {
     // §8-② 형강 실단면(2026-07-16): 플랜지2 + 웨브 — AABB가 아닌 실단면적으로 질량·BOQ 정확
     case 'h_section': return (2 * p.B * p.tf + p.tw * (p.H - 2 * p.tf)) * p.length;
     case 'c_channel': return (2 * p.B * p.tf + p.tw * (p.H - 2 * p.tf)) * p.length;
-    case 'cylinder': return A * p.diameter ** 2 * p.length;
+    case 'cylinder': { // T1(260719): 키홈=원호 절단 정확식, 오링 홈=원환 폐형
+      let v = A * p.diameter ** 2 * p.length;
+      const r = p.diameter / 2;
+      if (p.keyway) { // 절단 영역 = {x≥r−t, |y|≤w/2} ∩ 원판 — 폐형 적분
+        const k = p.keyway, hw = Math.min(k.w / 2, r);
+        const segA = 2 * ((hw / 2) * Math.sqrt(Math.max(0, r * r - hw * hw)) + (r * r / 2) * Math.asin(hw / r)) - (r - k.depth) * k.w;
+        v -= Math.max(0, segA) * (k.length ?? p.length);
+      }
+      for (const g of p.oringGrooves ?? []) v -= Math.PI * (r * r - (r - g.depth) ** 2) * g.w;
+      return v;
+    }
     case 'gusset': return 0.5 * p.legA * p.legB * p.thickness;
     case 'spur_gear': return (polyArea(gearPoly(p)) - A * (p.boreDia ?? 0) ** 2) * p.thickness;
     case 'hex_bolt': {

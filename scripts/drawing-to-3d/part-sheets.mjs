@@ -5,7 +5,7 @@
  * 시트 n/N — GA 밸룬 번호와 동일 그룹 번호로 연결). 회전체=평면 원+중심선.
  * 공차·표면 거칠기·판금 전개는 후속(GD&T 연동) — 시트에 입력 원칙 명시.
  */
-import { partAabb } from './reconstruct.mjs';
+import { partAabb, holeFeature } from './reconstruct.mjs';
 import { colorOf } from './assembly.mjs';
 import { snapPipe, snapSquareTube, snapTslot, snapBearingUnit } from './std-snap.mjs';
 
@@ -57,13 +57,29 @@ export function partSheets(assembly, { title = '부품 제작도', dwgPrefix = '
     const side = `<svg ${vw(dy, dz)}>${rect(dy, dz)}${dimH(dy, (30 + dz * sc + 14), fmt(dy))}</svg>`;
     const dwgNo = `${dwgPrefix}-${String(i + 1).padStart(3, '0')}`;
     const std = stdOf(p);
+    // T1 구멍표(hole table, 260719): 제조 피처 어휘와 짝 — 동일 규격 그룹 N×표기(도면 관례)
+    let holeTable = '';
+    if (p.type === 'plate_with_holes' && (p.params?.holes ?? []).length) {
+      const groups = new Map();
+      for (const h of p.params.holes) {
+        const f = holeFeature(h, p.params.thickness);
+        if (!groups.has(f.label)) groups.set(f.label, []);
+        groups.get(f.label).push(h);
+      }
+      const rows = [...groups.entries()].map(([label, hs], gi) => {
+        const sym = String.fromCharCode(65 + gi); // A, B, C…
+        return `<tr><td>${sym}</td><td>${esc(label)}</td><td>${hs.length}</td><td style="text-align:left">${hs.map((h) => `(${h.x}, ${h.y})`).join(' ')}</td></tr>`;
+      }).join('');
+      holeTable = `<table class="pt" style="margin-top:6px"><thead><tr><th>기호</th><th>구멍 규격</th><th>수량</th><th>위치 (x, y)</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="note">구멍표 — 상면 기준 가공 · 탭=보통나사(형상은 하경 표현, 나사산=표기 전달) · ⌴=카운터보어 ⌵=카운터싱크</div>`;
+    }
     return `<div class="psheet"><div class="ph"><b>부품 No.${i + 1}</b> — ${esc(p.id ?? p.type)}${g.count > 1 ? ` (동일 ${g.count}개)` : ''} <span class="sub">GA 밸룬 ${i + 1} 연동</span></div>
 <div class="views"><div><div class="vt">FRONT</div>${front}</div><div><div class="vt">PLAN</div>${plan}</div><div><div class="vt">SIDE</div>${side}</div></div>
 <table class="pt"><tbody>
 <tr><td>Type</td><td>${esc(p.type)}</td><td>재질</td><td>${esc(p.material ?? '-')}</td></tr>
 <tr><td>엔벨로프</td><td>${fmt(dx)}×${fmt(dy)}×${fmt(dz)}</td><td>발주 규격</td><td>${esc(std || '- (가공품)')}</td></tr>
 <tr><td>도번</td><td data-dwg="${dwgNo}">${dwgNo}</td><td>시트</td><td>${i + 1} / ${N}</td></tr>
-</tbody></table>
+</tbody></table>${holeTable}
 <div class="note">공차·표면 거칠기·용접 상세=입력 원칙(GD&T 연동 후속) · 회전체 실형상은 STEP 참조(본 도면=엔벨로프+주요 치수)</div></div>`;
   }).join('');
   // R2-①(260719): 임포트 STEP 의 AP242 시맨틱 PMI 가 있으면 공차표 표기(어셈블리 수준 —
