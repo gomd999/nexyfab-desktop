@@ -30,7 +30,7 @@ import {
   type ReplicadEdgeFinder,
 } from './occtEngine';
 import {
-  buildEdgeFinderBySignature,
+  resolveEdgeFinderBySignature,
   buildEdgeFinderFromSelection,
 } from './topologyEdgeFinder';
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
@@ -204,16 +204,26 @@ export async function occtFilletWithAvoidanceAsync(
     // Re-resolve THIS selection against the current (possibly already
     // partially-filleted) solid: signature match first, click-point fallback.
     let finder: ReplicadEdgeFinder | null = null;
+    let lostReason: string | null = null;
     try {
       if (runningHandle) {
-        finder = await buildEdgeFinderBySignature(sel, occtEdgeSignatures(runningHandle), currentBbox);
+        const res = await resolveEdgeFinderBySignature(sel, occtEdgeSignatures(runningHandle), currentBbox);
+        if (res.status === 'matched') finder = res.finder;
+        // ⚠ 'lost' means the matcher REFUSED to identify this edge. Retrying
+        // with the stale click point would just launder that refusal into a
+        // silent guess (ADR-017 §D1) — skip this edge and say why instead.
+        else if (res.status === 'lost') lostReason = res.reason;
       }
-      if (!finder) finder = await buildEdgeFinderFromSelection(sel, { currentBbox });
+      if (!finder && !lostReason) finder = await buildEdgeFinderFromSelection(sel, { currentBbox });
     } catch {
       finder = null;
     }
     if (!finder) {
-      attempts.push({ kind: 'per-edge', radius, error: 'edge finder unresolved' });
+      attempts.push({
+        kind: 'per-edge',
+        radius,
+        error: lostReason ? `edge reference lost (${lostReason}) — re-select this edge` : 'edge finder unresolved',
+      });
       continue;
     }
     const out = tryFillet(host, radius, runningHandle, finder);

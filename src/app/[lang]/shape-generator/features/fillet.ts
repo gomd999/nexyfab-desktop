@@ -16,7 +16,9 @@ import {
   buildEdgeFinderFromSelection,
   buildEdgeFinderFromMultiSelection,
   buildEdgeFinderForLoop,
-  buildEdgeFinderBySignature,
+  resolveEdgeFinderBySignature,
+  makeReferenceLostNotice,
+  type EdgeRefResolution,
 } from './topologyEdgeFinder';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
@@ -33,27 +35,54 @@ function currentBboxOf(geometry: THREE.BufferGeometry):
   return { min: [bb.min.x, bb.min.y, bb.min.z], max: [bb.max.x, bb.max.y, bb.max.z] };
 }
 
+/** A finder, or an explicit "the stored reference is gone" verdict. `lost` is
+ *  never accompanied by a finder — see EdgeRefResolution. */
+type FinderOutcome =
+  | { finder: ReplicadEdgeFinder | null; lost?: undefined }
+  | { finder: null; lost: Extract<EdgeRefResolution, { status: 'lost' }> };
+
 /** Build the most-specific EdgeFinder for a selection set.
- *  Priority: loop (axis-aligned cluster) → multi → single → null. */
+ *  Priority: loop (axis-aligned cluster) → multi → single → null.
+ *
+ *  ⚠ When the signature matcher explicitly LOSES the reference we return that
+ *  verdict instead of dropping to the click-point finder. The stale click point
+ *  is less informed than the signature the matcher just rejected, so using it
+ *  would fillet a guessed edge and tell the user nothing (ADR-017 §D1). */
 async function buildBestEdgeFinder(
   ctx?: FeatureApplyContext,
   geometry?: THREE.BufferGeometry,
-): Promise<ReplicadEdgeFinder | null> {
+): Promise<FinderOutcome> {
   const sels = ctx?.edgeSelections;
-  if (!sels || sels.length === 0) return null;
+  if (!sels || sels.length === 0) return { finder: null };
   const currentBbox = geometry ? currentBboxOf(geometry) : undefined;
   if (sels.length >= 2) {
     const loop = await buildEdgeFinderForLoop(sels, { currentBbox });
-    if (loop) return loop;
-    return buildEdgeFinderFromMultiSelection(sels, { currentBbox });
+    if (loop) return { finder: loop };
+    return { finder: await buildEdgeFinderFromMultiSelection(sels, { currentBbox }) };
   }
   // Primary (topology-tolerant): re-anchor to a real current edge by signature.
   const handle = geometry?.userData?.occtHandle as string | undefined;
   if (handle) {
-    const bySig = await buildEdgeFinderBySignature(sels[0]!, occtEdgeSignatures(handle), currentBbox);
-    if (bySig) return bySig;
+    const res = await resolveEdgeFinderBySignature(sels[0]!, occtEdgeSignatures(handle), currentBbox);
+    if (res.status === 'matched') return { finder: res.finder };
+    if (res.status === 'lost') return { finder: null, lost: res };
+    // 'unavailable' — nothing was ruled out, so the click-point path is fair game.
   }
-  return buildEdgeFinderFromSelection(sels[0]!, { currentBbox });
+  return { finder: await buildEdgeFinderFromSelection(sels[0]!, { currentBbox }) };
+}
+
+/** Refuse the feature with a reason the UI can show. Returns the input solid
+ *  unchanged (cloned so the notice never leaks onto the upstream geometry). */
+function refuseWithLostReference(
+  geometry: THREE.BufferGeometry,
+  lost: Extract<EdgeRefResolution, { status: 'lost' }>,
+  ctx?: FeatureApplyContext,
+): THREE.BufferGeometry {
+  const out = geometry.clone();
+  out.userData = { ...geometry.userData };
+  console.warn(`[fillet] edge reference lost (${lost.reason}) — not applying to a guessed edge`);
+  stampDowngrade(out, makeReferenceLostNotice('Fillet', lost.reason, ctx?.featureId));
+  return out;
 }
 
 function applyFilletMeshCsg(
@@ -229,7 +258,11 @@ async function applyFilletWithEdgeFinder(
   const engine = Math.round(params.engine ?? 0);
   const wantedOcct = wantsOcctEngine(engine);
   if (shouldUseOcctEngine(engine)) {
-    const edgeFinder = await buildBestEdgeFinder(ctx, geometry);
+    const outcome = await buildBestEdgeFinder(ctx, geometry);
+    // Reference lost → refuse with a reason. Do NOT fall through: a null finder
+    // would fillet EVERY edge, which is a louder version of the same guess.
+    if (outcome.lost) return refuseWithLostReference(geometry, outcome.lost, ctx);
+    const edgeFinder = outcome.finder;
     try {
       // Async avoidance: reduced-radius ladder + per-edge subset fallback
       // (the latter only when the user picked ≥2 edges).

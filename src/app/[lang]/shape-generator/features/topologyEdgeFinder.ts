@@ -31,7 +31,8 @@
 
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
 import type { ReplicadEdgeFinder } from './occtEngine';
-import { matchEdgeBySignature, matchFaceBySignature, type EdgeSig, type FaceSig } from './edgeCorrespondence';
+import { bestEdgeMatch, matchFaceBySignature, type EdgeMatchRejection, type EdgeSig, type FaceSig } from './edgeCorrespondence';
+import type { MeshDowngradeNotice } from './downgradeNotice';
 import { AXIS_EPS } from './tolerancePolicy';
 
 /** The subset of EdgeFinder builder methods we rely on. Pulled from
@@ -127,36 +128,121 @@ export async function buildEdgeFinderFromSelection(
 }
 
 /**
+ * Outcome of re-resolving a stored edge reference against the current solid.
+ *
+ * ⚠ The three cases are NOT interchangeable, and collapsing them into `null`
+ * is the bug ADR-017 §D1 exists to prevent:
+ *
+ *  - `matched`     — we know which edge this is. Use the finder.
+ *  - `unavailable` — we could not even try (no stored direction, no candidate
+ *                    signatures, replicad not loaded). The caller's click-point
+ *                    fallback is legitimate here: nothing has been ruled out.
+ *  - `lost`        — we DID try and the matcher refused, because the best
+ *                    candidate was unconvincing or indistinguishable from its
+ *                    runner-up. **Falling back to the stale click point here is
+ *                    exactly the silent guess** — the matcher already told us it
+ *                    cannot identify the edge, and a stale absolute point is
+ *                    strictly less informed than the signature it just rejected.
+ *                    Callers must surface this and ask the user to re-select.
+ */
+export type EdgeRefResolution =
+  | { status: 'matched'; finder: ReplicadEdgeFinder }
+  | { status: 'unavailable'; reason: 'no_stored_direction' | 'no_candidates' | 'replicad_unavailable' | 'finder_threw' }
+  | { status: 'lost'; reason: EdgeMatchRejection; suggestion: EdgeSig | null };
+
+/** User-facing notice for a lost edge reference. Severity is 'blocked': the
+ *  feature cannot be applied to the edge the user chose, and guessing a
+ *  different edge would be worse than not applying it. */
+export function makeReferenceLostNotice(
+  op: string,
+  reason: EdgeMatchRejection,
+  featureId?: string,
+): MeshDowngradeNotice {
+  const why = reason === 'ambiguous'
+    ? 'several edges of the rebuilt solid match it equally well'
+    : reason === 'low_confidence'
+      ? 'no edge of the rebuilt solid resembles it closely enough'
+      : reason === 'no_parallel_candidate'
+        ? 'no edge of the rebuilt solid runs in the same direction'
+        : 'the rebuilt solid reported no edges';
+  return {
+    op,
+    featureId,
+    severity: 'blocked',
+    i18nKey: 'reference.lost',
+    fallbackMessage:
+      `${op}: the selected edge could not be identified after the rebuild — ${why}. ` +
+      `The feature was NOT applied to a guessed edge. Please re-select the edge.`,
+    detail: reason,
+  };
+}
+
+/**
  * Topology-tolerant resolution: match the stored selection against the CURRENT
  * solid's edge signatures and anchor the finder at the matched edge's *actual*
  * midpoint + direction. Unlike remapping a stale click point, this re-anchors
  * onto the real edge, so the selection survives topology changes (a feature
- * added elsewhere) as long as the target edge still exists. Returns null when
- * there's no captured direction, no candidates, or no parallel match — callers
- * fall back to the position/bbox-remap finder.
+ * added elsewhere) as long as the target edge still exists.
+ *
+ * Reports `lost` vs `unavailable` distinctly — see `EdgeRefResolution`.
+ */
+export async function resolveEdgeFinderBySignature(
+  selection: EdgeSelectionInfo,
+  candidates: EdgeSig[],
+  currentBbox?: BBox3,
+): Promise<EdgeRefResolution> {
+  if (!selection.direction) return { status: 'unavailable', reason: 'no_stored_direction' };
+  if (candidates.length === 0) return { status: 'unavailable', reason: 'no_candidates' };
+  const Ctor = await getEdgeFinderConstructor();
+  if (!Ctor) return { status: 'unavailable', reason: 'replicad_unavailable' };
+  // Remap the click point as the matcher's starting guess (helps when a
+  // dimension also changed); direction does the heavy lifting.
+  const targetMid = remapPointThroughBbox(selection.position, selection.bbox, currentBbox);
+  const target: EdgeSig = { mid: targetMid, dir: selection.direction, length: selection.length };
+  // Scale the midpoint term by the part size, matching how the ADR-017 spike
+  // (and the gate calibration) drives the matcher.
+  const scale = currentBbox
+    ? Math.max(
+        currentBbox.max[0] - currentBbox.min[0],
+        currentBbox.max[1] - currentBbox.min[1],
+        currentBbox.max[2] - currentBbox.min[2],
+      )
+    : undefined;
+  const m = bestEdgeMatch(target, candidates, scale ? { scale } : {});
+  if (m.lost) {
+    return {
+      status: 'lost',
+      reason: m.reason!,
+      // The candidate the gate refused — offer it for CONFIRMATION, never apply it.
+      suggestion: m.rejectedIndex >= 0 ? candidates[m.rejectedIndex]! : null,
+    };
+  }
+  const matched = candidates[m.index]!;
+  try {
+    return {
+      status: 'matched',
+      finder: new Ctor()
+        .inDirection(matched.dir)
+        .containsPoint(matched.mid, 0.5) as unknown as ReplicadEdgeFinder,
+    };
+  } catch {
+    return { status: 'unavailable', reason: 'finder_threw' };
+  }
+}
+
+/**
+ * @deprecated Collapses `lost` and `unavailable` into `null`, which loses the
+ * one distinction that matters (see `EdgeRefResolution`). Kept for callers that
+ * only need a finder-or-nothing; new code should use
+ * `resolveEdgeFinderBySignature` and handle `lost` explicitly.
  */
 export async function buildEdgeFinderBySignature(
   selection: EdgeSelectionInfo,
   candidates: EdgeSig[],
   currentBbox?: BBox3,
 ): Promise<ReplicadEdgeFinder | null> {
-  if (!selection.direction || candidates.length === 0) return null;
-  const Ctor = await getEdgeFinderConstructor();
-  if (!Ctor) return null;
-  // Remap the click point as the matcher's starting guess (helps when a
-  // dimension also changed); direction does the heavy lifting.
-  const targetMid = remapPointThroughBbox(selection.position, selection.bbox, currentBbox);
-  const target: EdgeSig = { mid: targetMid, dir: selection.direction, length: selection.length };
-  const idx = matchEdgeBySignature(target, candidates);
-  if (idx < 0) return null;
-  const matched = candidates[idx]!;
-  try {
-    return new Ctor()
-      .inDirection(matched.dir)
-      .containsPoint(matched.mid, 0.5) as unknown as ReplicadEdgeFinder;
-  } catch {
-    return null;
-  }
+  const r = await resolveEdgeFinderBySignature(selection, candidates, currentBbox);
+  return r.status === 'matched' ? r.finder : null;
 }
 
 interface FaceFinderBuilder {

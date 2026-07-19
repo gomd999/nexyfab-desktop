@@ -9,8 +9,13 @@ import {
   type ReplicadEdgeFinder,
 } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
-import { noteMeshFallback } from './downgradeNotice';
-import { buildEdgeFinderFromSelection, buildEdgeFinderBySignature } from './topologyEdgeFinder';
+import { noteMeshFallback, stampDowngrade } from './downgradeNotice';
+import {
+  buildEdgeFinderFromSelection,
+  resolveEdgeFinderBySignature,
+  makeReferenceLostNotice,
+  type EdgeRefResolution,
+} from './topologyEdgeFinder';
 
 // ─── Variable Fillet Types ─────────────────────────────────────────────────────
 
@@ -97,19 +102,26 @@ function currentBboxOf(geometry: THREE.BufferGeometry):
 
 /** Re-resolve the stored edge selection to a replicad EdgeFinder. A variable
  *  radius varies along ONE edge, so only the first selection is used. */
+type FinderOutcome =
+  | { finder: ReplicadEdgeFinder | null; lost?: undefined }
+  | { finder: null; lost: Extract<EdgeRefResolution, { status: 'lost' }> };
+
 async function buildEdgeFinder(
   ctx: FeatureApplyContext | undefined,
   geometry: THREE.BufferGeometry,
-): Promise<ReplicadEdgeFinder | null> {
+): Promise<FinderOutcome> {
   const sels = ctx?.edgeSelections;
-  if (!sels || sels.length === 0) return null;
+  if (!sels || sels.length === 0) return { finder: null };
   const currentBbox = currentBboxOf(geometry);
   const handle = geometry.userData?.occtHandle as string | undefined;
   if (handle) {
-    const bySig = await buildEdgeFinderBySignature(sels[0]!, occtEdgeSignatures(handle), currentBbox);
-    if (bySig) return bySig;
+    const res = await resolveEdgeFinderBySignature(sels[0]!, occtEdgeSignatures(handle), currentBbox);
+    if (res.status === 'matched') return { finder: res.finder };
+    // ⚠ 'lost' is NOT the click-point fallback's cue — the matcher already
+    // rejected a better-informed signature (ADR-017 §D1).
+    if (res.status === 'lost') return { finder: null, lost: res };
   }
-  return buildEdgeFinderFromSelection(sels[0]!, { currentBbox });
+  return { finder: await buildEdgeFinderFromSelection(sels[0]!, { currentBbox }) };
 }
 
 // ─── Feature Definition ────────────────────────────────────────────────────────
@@ -147,7 +159,17 @@ export const variableFilletFeature: FeatureDefinition = {
     const engine = Math.round(params.engine ?? 1);
     if (shouldUseOcctEngine(engine)) {
       try {
-        const edgeFinder = await buildEdgeFinder(ctx, geometry);
+        const outcome = await buildEdgeFinder(ctx, geometry);
+        // Reference lost → refuse with a reason rather than varying the radius
+        // along a guessed edge (or, with a null finder, along every edge).
+        if (outcome.lost) {
+          const refused = geometry.clone();
+          refused.userData = { ...geometry.userData };
+          console.warn(`[variableFillet] edge reference lost (${outcome.lost.reason}) — not applying to a guessed edge`);
+          stampDowngrade(refused, makeReferenceLostNotice('Variable fillet', outcome.lost.reason, ctx?.featureId));
+          return refused;
+        }
+        const edgeFinder = outcome.finder;
         // Fail-clean host contract (with the mesh→B-rep bridge) — throws for
         // an unbridgeable handle-less non-box body (→ mesh fallback below)
         // instead of filleting its bounding box.
