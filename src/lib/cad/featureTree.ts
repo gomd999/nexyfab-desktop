@@ -99,6 +99,58 @@ export interface FeatureTree {
   nodes: ReadonlyArray<FeatureNode>;
 }
 
+// ─── upstream references (W2-0 — see docs/design/w2-downstream-regen.md) ──
+//
+// A payload that consumes an upstream BODY must name it by node id, never
+// embed a copy of it. Copies go stale the moment the upstream is edited,
+// which is exactly the bug W2-0 fixes (roadmap §1).
+//
+// Three ref-carrying shapes cover all 12 FeatureKinds:
+//   `childId: string`       — single upstream body  (fillet, chamfer, hole
+//                             host, rib host, pattern seed, …)
+//   `childIds: string[]`    — N upstream bodies     (future multi-body ops)
+//   `bodies: string[]`      — boolean's pre-existing, already-correct form
+//
+// The reader below is deliberately duck-typed on `childId`/`childIds` so
+// W2-A can convert the remaining 10 kinds WITHOUT editing this file.
+
+/**
+ * Node ids whose *rendered body* this payload consumes. Order is
+ * significant (boolean difference is base-first).
+ *
+ * Returns `[]` for self-contained payloads and for legacy payloads still
+ * carrying an embedded copy — those are emitted exactly as before, so
+ * conversion is per-kind and incremental.
+ */
+export function upstreamRefsOf(payload: FeaturePayload): string[] {
+  if (payload.kind === 'boolean') return [...payload.bodies];
+  const single = (payload as { childId?: unknown }).childId;
+  if (typeof single === 'string' && single.length > 0) return [single];
+  const multi = (payload as { childIds?: unknown }).childIds;
+  if (Array.isArray(multi)) {
+    return multi.filter((x): x is string => typeof x === 'string' && x.length > 0);
+  }
+  return [];
+}
+
+/**
+ * Resolution surface handed to a payload's SCAD emitter at replay time.
+ *
+ * Every accessor either returns a LIVE value from the tree currently being
+ * replayed, or throws. There is no fallback to an embedded snapshot and no
+ * silent substitution — ADR-017 D1 (no quiet guessing).
+ */
+export interface EmitContext {
+  /** Live payload of `refId`. Throws if absent or of an unexpected kind. */
+  requirePayload<K extends FeatureKind>(
+    refId: string,
+    forId: string,
+    expectKind: K,
+  ): Extract<FeaturePayload, { kind: K }>;
+  /** Already-emitted SCAD body of `refId`. Throws if not yet rendered. */
+  requireScad(refId: string, forId: string): string;
+}
+
 // ─── validation ───────────────────────────────────────────────────────────
 
 export class FeatureTreeError extends Error {
@@ -135,6 +187,19 @@ export function validateTree(tree: FeatureTree): void {
         );
       }
     }
+    // W2-0 integrity invariant: every upstream body a payload names must
+    // also be a declared dependency. This is what makes "cycle" and
+    // "dangling ref" structurally impossible rather than a runtime hazard:
+    // dependencies are already proven to appear EARLIER in the list, so a
+    // ref can only ever point backwards.
+    for (const ref of upstreamRefsOf(node.payload)) {
+      if (!node.dependencies.includes(ref)) {
+        throw new FeatureTreeError(
+          `node ${node.id} references upstream body ${ref} in its payload but ` +
+            `does not declare it in dependencies (declared: [${node.dependencies.join(', ')}])`,
+        );
+      }
+    }
     seen.add(node.id);
   }
 }
@@ -150,6 +215,10 @@ export interface ReplayResult {
   /** Order in which nodes contributed to `scad`. Matches tree.nodes order
    *  with suppressed nodes filtered out. */
   emittedOrder: ReadonlyArray<string>;
+  /** Nodes skipped because an upstream body they REFERENCE is suppressed
+   *  (not because they were suppressed themselves). Surfaced so the UI can
+   *  show "suppressed (parent)" instead of silently dropping geometry. */
+  autoSuppressed: ReadonlyArray<string>;
 }
 
 /**
@@ -163,34 +232,91 @@ export interface ReplayResult {
 export function replayTree(tree: FeatureTree): ReplayResult {
   validateTree(tree);
   const perNode = new Map<string, string>();
-  // Body nodes consumed by a boolean are rendered INSIDE the boolean's
-  // combinator, so they are not also emitted as standalone top-level parts.
+  const byId = new Map(tree.nodes.map((n) => [n.id, n]));
+
+  // A body consumed by a downstream feature is rendered INSIDE that
+  // feature's output, so it must not ALSO appear as a standalone top-level
+  // part. Previously boolean-only; now uniform across every ref-carrying
+  // payload (a filleted box must not emit the sharp box alongside it).
   const consumed = new Set<string>();
   for (const node of tree.nodes) {
-    if (node.payload.kind === 'boolean') {
-      for (const b of node.payload.bodies) consumed.add(b);
+    for (const ref of upstreamRefsOf(node.payload)) consumed.add(ref);
+  }
+
+  // Suppression cascades along references. Suppressing an extrude cannot
+  // leave a fillet-of-that-extrude standing — there is no body to round.
+  // We skip the dependent rather than guess a substitute geometry, and
+  // report it in `autoSuppressed`. Single forward pass is sufficient
+  // because validateTree proved refs point strictly backwards.
+  const effSuppressed = new Set<string>();
+  const autoSuppressed: string[] = [];
+  for (const node of tree.nodes) {
+    if (node.suppressed) {
+      effSuppressed.add(node.id);
+      continue;
+    }
+    const blocked = upstreamRefsOf(node.payload).find((r) => effSuppressed.has(r));
+    if (blocked !== undefined) {
+      effSuppressed.add(node.id);
+      autoSuppressed.push(node.id);
     }
   }
+
+  function requirePayload<K extends FeatureKind>(
+    refId: string,
+    forId: string,
+    expectKind: K,
+  ): Extract<FeaturePayload, { kind: K }> {
+    const target = byId.get(refId);
+    if (!target) {
+      throw new FeatureTreeError(
+        `node ${forId} references upstream body ${refId}, which is not in the tree`,
+      );
+    }
+    if (target.payload.kind !== expectKind) {
+      throw new FeatureTreeError(
+        `node ${forId} requires upstream ${refId} to be a '${expectKind}' feature, ` +
+          `but it is '${target.payload.kind}'`,
+      );
+    }
+    return target.payload as Extract<FeaturePayload, { kind: K }>;
+  }
+
+  function requireScad(refId: string, forId: string): string {
+    const s = perNode.get(refId);
+    if (s === undefined) {
+      throw new FeatureTreeError(
+        `node ${forId} references upstream body ${refId}, which has not been rendered ` +
+          `(it must appear earlier in the tree)`,
+      );
+    }
+    return s;
+  }
+
+  const ctx: EmitContext = { requirePayload, requireScad };
+
   const emitted: string[] = [];
   const parts: string[] = [];
   for (const node of tree.nodes) {
     let body: string;
     if (node.payload.kind === 'boolean') {
       // Topological order guarantees the body nodes were rendered already.
-      const childScads = node.payload.bodies.map((bid) => perNode.get(bid) ?? '');
+      const childScads = node.payload.bodies.map((bid) => ctx.requireScad(bid, node.id));
       body = booleanToScad(node.payload, childScads);
     } else {
-      body = renderNode(node);
+      body = renderNode(node, ctx);
     }
+    // Suppressed nodes are still RENDERED into perNode (editor previews and
+    // cache-keys want the body); they are only withheld from `scad`.
     perNode.set(node.id, body);
-    if (node.suppressed || consumed.has(node.id)) continue;
+    if (effSuppressed.has(node.id) || consumed.has(node.id)) continue;
     emitted.push(node.id);
     parts.push(`// === ${node.id} (${node.name}) ===\n${body}`);
   }
-  return { scad: parts.join('\n\n'), perNode, emittedOrder: emitted };
+  return { scad: parts.join('\n\n'), perNode, emittedOrder: emitted, autoSuppressed };
 }
 
-function renderNode(node: FeatureNode): string {
+function renderNode(node: FeatureNode, ctx: EmitContext): string {
   const p = node.payload;
   switch (p.kind) {
     case 'extrude':
@@ -208,7 +334,7 @@ function renderNode(node: FeatureNode): string {
     case 'hole':
       return holeToScad(p);
     case 'fillet':
-      return filletToScad(p);
+      return filletToScad(p, ctx, node.id);
     case 'chamfer':
       return chamferToScad(p);
     case 'rib':
@@ -223,6 +349,48 @@ function renderNode(node: FeatureNode): string {
 }
 
 // ─── edit helpers (Phase 2.6.2 lays incremental replay on top of these) ──
+
+/**
+ * W2-0 migration bridge — refresh every stale embedded snapshot in `tree`
+ * from the live upstream node it references.
+ *
+ * Ref-mode payloads keep a `childExtrude`-style snapshot alongside
+ * `childId` for consumers not yet converted (`lib/occt/featurePlan.ts`,
+ * `brep-bridge/stepWriteFilletChamfer.ts`, `featureTreeStats.ts`). Those
+ * consumers read the snapshot, so it must be re-synced before they run or
+ * they see pre-edit geometry — the very staleness W2-0 removes from the
+ * SCAD path.
+ *
+ * Returns a NEW tree; the input is untouched. Nodes with nothing to sync
+ * are passed through by reference so downstream `diffTrees` reference
+ * equality still holds for them.
+ *
+ * This is scaffolding with a fixed lifetime: once every consumer resolves
+ * refs through `EmitContext`, the snapshot fields and this function are
+ * deleted together.
+ */
+export function syncEmbeddedSnapshots(tree: FeatureTree): FeatureTree {
+  const byId = new Map(tree.nodes.map((n) => [n.id, n]));
+  const nodes = tree.nodes.map((node) => {
+    const p = node.payload as { childId?: unknown; childExtrude?: unknown };
+    if (typeof p.childId !== 'string' || p.childExtrude === undefined) return node;
+    const upstream = byId.get(p.childId);
+    if (!upstream) {
+      throw new FeatureTreeError(
+        `syncEmbeddedSnapshots: node ${node.id} references ${p.childId}, which is not in the tree`,
+      );
+    }
+    if (upstream.payload.kind !== 'extrude') {
+      throw new FeatureTreeError(
+        `syncEmbeddedSnapshots: node ${node.id} references ${p.childId}, which is ` +
+          `'${upstream.payload.kind}' and cannot back a childExtrude snapshot`,
+      );
+    }
+    if (p.childExtrude === upstream.payload) return node; // already in sync
+    return { ...node, payload: { ...node.payload, childExtrude: upstream.payload } };
+  });
+  return { nodes };
+}
 
 /**
  * Return the set of node ids that depend (transitively) on `targetId`.

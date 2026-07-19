@@ -338,14 +338,21 @@ export function incrementalReplay(
   }
 
   // Re-stitch the final SCAD with the (possibly cache-merged) per-node bodies.
+  // The emission SET is taken verbatim from the full replay rather than
+  // recomputed here: it encodes suppression cascade and body consumption
+  // (a body rendered inside a fillet/boolean must not also appear at top
+  // level). Duplicating that logic is how the two paths drift apart.
+  const byId = new Map(nextTree.nodes.map((n) => [n.id, n]));
   const parts: string[] = [];
-  const emitted: string[] = [];
-  for (const node of nextTree.nodes) {
-    if (node.suppressed) continue;
-    emitted.push(node.id);
-    parts.push(`// === ${node.id} (${node.name}) ===\n${perNode.get(node.id)!}`);
+  for (const id of fullReplay.emittedOrder) {
+    parts.push(`// === ${id} (${byId.get(id)!.name}) ===\n${perNode.get(id)!}`);
   }
-  return { scad: parts.join('\n\n'), perNode, emittedOrder: emitted };
+  return {
+    scad: parts.join('\n\n'),
+    perNode,
+    emittedOrder: fullReplay.emittedOrder,
+    autoSuppressed: fullReplay.autoSuppressed,
+  };
 }
 
 // ─── undo / redo stack ───────────────────────────────────────────────────
