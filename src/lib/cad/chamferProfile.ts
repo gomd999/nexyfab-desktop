@@ -54,6 +54,7 @@
  */
 
 import type { ExtrudeFeature } from './extrudeProfile';
+import type { EmitContext } from './featureTree';
 import { isAxisAlignedRect } from './shellProfile';
 import { isConvexPolygon, offsetPolygonInward } from './filletProfile';
 
@@ -67,7 +68,29 @@ export type ChamferEdgeSelection = 'all' | 'top' | 'bottom' | 'vertical';
 
 export interface ChamferFeature {
   kind: 'chamfer';
-  /** The body to be chamfered. Phase 2 supports any convex polygon ExtrudeFeature. */
+  /**
+   * W2-A — id of the upstream feature node supplying the body to chamfer.
+   *
+   * Exact mirror of `FilletFeature.childId` (W2-0). When present this is the
+   * ONLY authority for the child geometry: the emitter resolves it against
+   * the tree being replayed, so editing the upstream extrude's depth flows
+   * through to this chamfer. `childExtrude` is then a stale build-time
+   * snapshot and is never read for emission.
+   *
+   * When absent, the feature is a legacy embedded-payload chamfer and emits
+   * from `childExtrude` exactly as before (docs/design/w2-downstream-regen.md §6).
+   */
+  childId?: string;
+  /**
+   * Build-time snapshot of the body to be chamfered. Phase 2 supports any
+   * convex polygon ExtrudeFeature.
+   *
+   * @deprecated as an emission source once `childId` is set. Retained
+   * because consumers outside this track's file scope still read it
+   * (`lib/occt/featurePlan.ts`, `brep-bridge/stepWriteFilletChamfer.ts`,
+   * `featureTreeStats.ts`). Call `syncEmbeddedSnapshots(tree)` before
+   * handing a ref-mode tree to those consumers.
+   */
   childExtrude: ExtrudeFeature;
   /** Chamfer setback distance (mm) — the orthogonal distance the bevel
    *  cuts from the original edge. Must be > 0 and < min(inscribed-clearance)/2;
@@ -315,6 +338,67 @@ export function buildChamferFeature(
   };
 }
 
+// ─── upstream resolution (W2-A — mirror of resolveFilletChild) ────────────
+
+/**
+ * Resolve the body this chamfer operates on.
+ *
+ * Two modes, chosen by the presence of `childId` — never by heuristics:
+ *
+ *   ref mode    (`childId` set): the LIVE upstream payload from the tree.
+ *                A missing context is a hard error, not a silent fallback
+ *                to the stale snapshot — emitting stale geometry is the
+ *                exact defect W2-0 exists to remove (ADR-017 D1).
+ *   legacy mode (`childId` absent): the embedded `childExtrude` snapshot,
+ *                byte-identical to pre-W2-A behaviour.
+ *
+ * Wrong-kind and missing-node failures are raised by `EmitContext`; a
+ * suppressed upstream never reaches here because `replayTree` cascades
+ * suppression to the dependent first.
+ */
+export function resolveChamferChild(
+  feature: ChamferFeature,
+  ctx?: EmitContext,
+  selfId = 'chamfer',
+): ExtrudeFeature {
+  if (feature.childId === undefined) return feature.childExtrude;
+  if (!ctx) {
+    throw new Error(
+      `chamfer '${selfId}' references upstream body '${feature.childId}' but was emitted ` +
+        `without a tree context. Emit it via replayTree/incrementalReplay, or pass an ` +
+        `EmitContext to chamferToScad. (Refusing to fall back to the stale childExtrude snapshot.)`,
+    );
+  }
+  return ctx.requirePayload(feature.childId, selfId, 'extrude');
+}
+
+/**
+ * W2-A — build a chamfer that REFERENCES its upstream body by node id.
+ *
+ * `childSnapshot` is the upstream extrude as it stands at build time. It is
+ * used for validation only (setback bounds are geometry-dependent and must
+ * be checked against something concrete), and is stored in `childExtrude`
+ * purely for consumers not yet migrated off the embedded field. Emission
+ * always re-resolves `childId` against the live tree.
+ *
+ * Same deliberate asymmetry as `buildFilletFeatureRef`: validation is a
+ * build-time check against a snapshot, emission is a replay-time read of
+ * the live tree, so a later upstream edit can invalidate the distance bound
+ * (e.g. shrinking depth below 2d).
+ */
+export function buildChamferFeatureRef(
+  childId: string,
+  childSnapshot: ExtrudeFeature,
+  distanceOrOptions: number | ChamferOptions,
+  edgeSelectionArg?: ChamferEdgeSelection,
+): ChamferFeature {
+  if (typeof childId !== 'string' || childId.length === 0) {
+    throw new Error(`chamfer childId must be a non-empty string, got: ${childId}`);
+  }
+  const base = buildChamferFeature(childSnapshot, distanceOrOptions, edgeSelectionArg);
+  return { ...base, childId };
+}
+
 // ─── SCAD serializer ──────────────────────────────────────────────────────
 
 function formatNum(n: number): string {
@@ -363,16 +447,21 @@ function octahedronScad(d: number): string {
  *                   minkowski(linear_extrude(eps) polygon(offset) translated, octahedron(d)))
  *   - 'bottom': mirror of 'top'.
  */
-export function chamferToScad(feature: ChamferFeature): string {
+export function chamferToScad(
+  feature: ChamferFeature,
+  ctx?: EmitContext,
+  selfId = 'chamfer',
+): string {
+  const child = resolveChamferChild(feature, ctx, selfId);
   const d = feature.distance;
-  const loop = feature.childExtrude.loop;
-  const depth = feature.childExtrude.depth;
+  const loop = child.loop;
+  const depth = child.depth;
   const epsilon = 0.001;
   const halfDiag = (d * Math.SQRT2) / 2;
 
   // ─── Phase 3 path: variable distance (rect-only — guarded by builder) ─
   if (feature.vertexDistances !== undefined) {
-    return chamferVariableDistanceToScad(feature, feature.vertexDistances);
+    return chamferVariableDistanceToScad(feature, feature.vertexDistances, child);
   }
 
   const header =
@@ -518,9 +607,10 @@ export function chamferToScad(feature: ChamferFeature): string {
 function chamferVariableDistanceToScad(
   feature: ChamferFeature,
   vertexDistances: ReadonlyArray<number>,
+  child: ExtrudeFeature,
 ): string {
-  const loop = feature.childExtrude.loop;
-  const depth = feature.childExtrude.depth;
+  const loop = child.loop;
+  const depth = child.depth;
   const edges = feature.edgeSelection;
   const bb = loopBoundingBox(loop);
   const header =

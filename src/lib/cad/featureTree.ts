@@ -328,16 +328,22 @@ function renderNode(node: FeatureNode, ctx: EmitContext): string {
     case 'loft':
       return loftToScad(p);
     case 'linear_pattern':
-      return linearPatternToScad(p);
+      return linearPatternToScad(p, ctx, node.id);
     case 'circular_pattern':
-      return circularPatternToScad(p);
+      return circularPatternToScad(p, ctx, node.id);
     case 'hole':
+      // Leaf: a hole is a self-contained CUT TOOL with no upstream field.
+      // Combining it with a host body is `boolean{op:'difference'}`'s job,
+      // which already references its operands by id. See W2-A report.
       return holeToScad(p);
     case 'fillet':
       return filletToScad(p, ctx, node.id);
     case 'chamfer':
-      return chamferToScad(p);
+      return chamferToScad(p, ctx, node.id);
     case 'rib':
+      // Leaf: a rib's geometry is fully determined by its own centerline /
+      // thickness / height — it reads nothing from a host. Attaching it to
+      // one is `boolean{op:'union'}`'s job. See W2-A report.
       return ribToScad(p);
     case 'sweep_path':
       return sweepPathToScad(p);
