@@ -55,7 +55,9 @@ function components({ ink, w, h }) {
       if (qy > 0 && ink[q - w] && !lab[q - w]) { lab[q - w] = next; stack.push(q - w); }
       if (qy < h - 1 && ink[q + w] && !lab[q + w]) { lab[q + w] = next; stack.push(q + w); }
     }
-    if (bx1 - bx0 >= 40 && by1 - by0 >= 40) out.push({ x0: bx0, y0: by0, x1: bx1, y1: by1, area });
+    // 장축 ≥40(문자 글리프 배제) + 단축 ≥8(얇은 정면 뷰 허용 — D2 260719b: 40/40이 박판
+    // 정면도를 걸러 멀티뷰 대조가 불가능했음)
+    if (Math.max(bx1 - bx0, by1 - by0) >= 40 && Math.min(bx1 - bx0, by1 - by0) >= 8) out.push({ x0: bx0, y0: by0, x1: bx1, y1: by1, area });
   }
   return out;
 }
@@ -196,12 +198,37 @@ export function reprojectDiff(gray, intent) {
   const reasons = [];
   if (support < SUPPORT_MIN) reasons.push(`아웃라인 지지율 ${(support * 100).toFixed(0)}% < ${SUPPORT_MIN * 100}% — 추출 형상이 도면 잉크와 어긋남`);
   if (scaleResidual > RESIDUAL_MAX) reasons.push(`축별 스케일 괴리 ${(scaleResidual * 100).toFixed(1)}% > ${RESIDUAL_MAX * 100}% — 가로/세로 치수 비율 불일치`);
+
+  // D2 멀티뷰 모순(260719b): 도면 뷰들은 동일 축척 관례 — 주 뷰 스케일로 보조 뷰의 기대
+  // 크기(w·s × h·s)를 역산해, 폭이 맞는 컴포넌트의 높이가 어긋나면 공유 치수 모순=거부.
+  // 폭 매칭 컴포넌트가 없으면 해당 뷰 미검증(정직 노트 — 오탐 방지, 강등 없음).
+  const crossViews = [];
+  {
+    const s = (sx + sy) / 2;
+    for (const sv of sils) {
+      if (sv === sil) continue;
+      const expW = sv.w * s, expH = sv.h * s;
+      let m = null;
+      for (const c2 of comps) {
+        if (c2 === c) continue;
+        const bw2 = c2.x1 - c2.x0, bh2 = c2.y1 - c2.y0;
+        if (Math.abs(bw2 - expW) / expW <= 0.15 && (!m || Math.abs(bw2 - expW) < Math.abs((m.x1 - m.x0) - expW))) m = c2;
+      }
+      if (!m) { crossViews.push({ view: sv.view, checked: false, note: '폭 매칭 컴포넌트 없음 — 미검증(정직)' }); continue; }
+      const bh2 = m.y1 - m.y0;
+      const devH = Math.abs(bh2 - expH) / expH;
+      const impliedMm = +(bh2 / s).toFixed(1);
+      crossViews.push({ view: sv.view, checked: true, expectedMm: sv.h, impliedMm, devPct: +(devH * 100).toFixed(1) });
+      if (devH > 0.2) reasons.push(`멀티뷰 모순(${sv.view}): 공유 축척 기준 관측 ${impliedMm}mm ↔ 추출 ${sv.h}mm (${(devH * 100).toFixed(0)}% 괴리)`);
+    }
+  }
   const demote = reasons.length > 0;
   return {
     verdict: demote ? 'DEMOTE' : 'OK',
     view: sil.view,
     support: +support.toFixed(3),
     scaleResidualPct: +(scaleResidual * 100).toFixed(1),
+    crossViews,
     region: { x0: c.x0, y0: c.y0, x1: c.x1, y1: c.y1 },
     confidenceFactor: demote ? 0.5 : 1,
     reasons,

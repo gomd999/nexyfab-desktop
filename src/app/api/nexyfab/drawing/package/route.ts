@@ -52,9 +52,10 @@ type DcMod = { checkDrawingCompleteness: (html: string, o?: Record<string, unkno
 type EgMod = { checkExecutionReadiness: (a: Assembly, o?: { gaHtml?: string; sheetsHtml?: string; welds?: unknown[] }) => { score: string; ok: boolean; items: unknown[]; failed: string[]; na: string[]; note: string } };
 type RtMod = { stepRoundTrip: (a: Assembly) => Promise<unknown> };
 type IrMod = { refineInterferencesMesh: (a: Assembly, i: unknown[], o?: Record<string, unknown>) => Promise<unknown> };
+type FaMod = { autoFasteners: (a: Assembly) => unknown };
 
 let _asm: AsmMod | null = null, _pkg: PkgMod | null = null, _rnd: RenderMod | null = null, _boq: BoqMod | null = null, _pd: PdMod | null = null, _vfy: VerifyMod | null = null, _dxf: DxfMod | null = null, _lx: LxMod | null = null, _xl: XlsxMod | null = null, _ifc: IfcMod | null = null;
-let _ps: PsMod | null = null, _fsp: FspMod | null = null, _dc: DcMod | null = null, _eg: EgMod | null = null, _rt: RtMod | null = null, _ir: IrMod | null = null;
+let _ps: PsMod | null = null, _fsp: FspMod | null = null, _dc: DcMod | null = null, _eg: EgMod | null = null, _rt: RtMod | null = null, _ir: IrMod | null = null, _fa: FaMod | null = null;
 async function load() {
   const base = join(process.cwd(), 'scripts', 'drawing-to-3d');
   if (!_lx) _lx = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'landxml-export.mjs')).href)) as LxMod;
@@ -73,7 +74,8 @@ async function load() {
   if (!_eg) _eg = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'execution-gate.mjs')).href)) as EgMod;
   if (!_rt) _rt = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'roundtrip.mjs')).href)) as RtMod;
   if (!_ir) _ir = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'interference-refine.mjs')).href)) as IrMod;
-  return { asm: _asm, pkg: _pkg, rnd: _rnd, boq: _boq, pd: _pd, vfy: _vfy, dxf: _dxf, lx: _lx, xl: _xl, ifc: _ifc, ps: _ps, fsp: _fsp, dc: _dc, eg: _eg, rt: _rt, ir: _ir };
+  if (!_fa) _fa = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'fastener-auto.mjs')).href)) as FaMod;
+  return { asm: _asm, pkg: _pkg, rnd: _rnd, boq: _boq, pd: _pd, vfy: _vfy, dxf: _dxf, lx: _lx, xl: _xl, ifc: _ifc, ps: _ps, fsp: _fsp, dc: _dc, eg: _eg, rt: _rt, ir: _ir, fa: _fa };
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -93,7 +95,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: 'assembly.parts 가 필요합니다.' }, { status: 400 });
   }
 
-  let mods: { asm: AsmMod; pkg: PkgMod; rnd: RenderMod; boq: BoqMod; pd: PdMod; vfy: VerifyMod; dxf: DxfMod; lx: LxMod | null; xl: XlsxMod | null; ifc: IfcMod | null; ps: PsMod | null; fsp: FspMod | null; dc: DcMod | null; eg: EgMod | null; rt: RtMod | null; ir: IrMod | null };
+  let mods: { asm: AsmMod; pkg: PkgMod; rnd: RenderMod; boq: BoqMod; pd: PdMod; vfy: VerifyMod; dxf: DxfMod; lx: LxMod | null; xl: XlsxMod | null; ifc: IfcMod | null; ps: PsMod | null; fsp: FspMod | null; dc: DcMod | null; eg: EgMod | null; rt: RtMod | null; ir: IrMod | null; fa: FaMod | null };
   try { mods = await load(); } catch (e) {
     return NextResponse.json({ ok: false, error: 'pipeline load failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 });
   }
@@ -231,6 +233,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   //   · T2 실시 검도 M1~M6(GA+부품도 기입 치수 결정론 대조) → 검도 리포트 동봉
   let roundtrip: unknown = null, interferenceRefine: unknown = null;
   let executionGate: ReturnType<EgMod['checkExecutionReadiness']> | null = null;
+  // 체결 자동(260719b): 플랜지 짝 볼트 세트 — 검증과 무관하게 항상 산출(보고 전용)
+  let fasteners: unknown = null;
+  try { fasteners = mods.fa ? mods.fa.autoFasteners(assembly) : null; } catch (e) { void e; }
   if (options.verify !== false) {
     try { roundtrip = mods.rt ? await mods.rt.stepRoundTrip(assembly) : null; } catch (e) { roundtrip = { error: String(e instanceof Error ? e.message : e).slice(0, 120) }; }
     if ((built.interferences ?? []).length && mods.ir) {
@@ -334,6 +339,7 @@ if (data.pipes?.errors?.length) console.warn('⚠ 배관 라우팅 실패:', dat
     roundtrip,
     interferenceRefine,
     executionGate,
+    fasteners,
     note: 'P&ID·Dossier(AI 보조)는 후속. 형상기반 GA 3D·2D 도면·구조·BOQ·SCAD 자동생성 + A1/B1/M1~M6 검증 동봉.',
   });
 }

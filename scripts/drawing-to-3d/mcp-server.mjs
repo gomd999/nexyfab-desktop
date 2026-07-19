@@ -592,7 +592,10 @@ export async function callTool(name, args = {}) {
       const eg = await import('./execution-gate.mjs');
       executionGate = eg.checkExecutionReadiness(args.assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [] });
     } catch (e) { executionGate = { error: String(e).slice(0, 120) }; }
-    return { ok: true, outDir: args.outDir, files, completeness, c9, step, roundtrip, interferenceRefine, executionGate, note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.' };
+    // 체결 자동(260719b): 플랜지 짝 볼트 세트 — BOM 보조(강도등급·개스킷=입력 명시)
+    let fasteners = null;
+    try { const fa = await import('./fastener-auto.mjs'); fasteners = fa.autoFasteners(args.assembly); } catch (e) { fasteners = { error: String(e).slice(0, 120) }; }
+    return { ok: true, outDir: args.outDir, files, completeness, c9, step, roundtrip, interferenceRefine, executionGate, fasteners, note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.' };
   }
   if (name === 'verify_domain') {
     return verifyDomain({
