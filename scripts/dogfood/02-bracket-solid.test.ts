@@ -107,7 +107,10 @@ describe('DOGFOOD 02 — bracket as a real solid', () => {
   // persist 검증기가 boolean 을 모른다(`node[N].payload.kind="boolean" is not a known
   // FeatureKind`). W2-A 가 hole·rib 이 boolean 으로 조립된다고 증명했으므로 그 트리도
   // 저장 불가다. 고쳐지면 이 테스트가 통과하며 붉어져 표식 제거를 강제한다.
-  it.fails('B: boolean-composed bracket — SCAD, volume, persistence (F15 저장 불가)', () => {
+  // F15 fixed: the persistence validator now knows `boolean` (and `rib`,
+  // `sweep_path`). The `it.fails` debt marker is removed — a boolean-composed
+  // part, i.e. any part with a hole in it, round-trips through save/load.
+  it('B: boolean-composed bracket — SCAD, volume, persistence (F15 fixed)', () => {
     const base = plate();
     const tree = solidBracket(base);
     const r = replayTree(tree);

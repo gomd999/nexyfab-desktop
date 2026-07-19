@@ -65,6 +65,31 @@ export type FeatureKind =
   | 'sweep_path'
   | 'boolean';
 
+/**
+ * Runtime mirror of the `FeatureKind` union.
+ *
+ * F15 — a *type* union cannot be enumerated at runtime, so every module that
+ * needs to prove it handles all kinds (persistence validator, replay
+ * dispatch, cross-module conformance tests) had to re-list them by hand.
+ * That is how the persistence validator silently lost `rib`, `sweep_path`
+ * and `boolean`. This array is the single runtime source; the
+ * `Record<FeatureKind, true>` initializer makes omission a compile error.
+ */
+export const ALL_FEATURE_KINDS: ReadonlyArray<FeatureKind> = Object.keys({
+  extrude: true,
+  revolve: true,
+  sweep: true,
+  loft: true,
+  linear_pattern: true,
+  circular_pattern: true,
+  hole: true,
+  fillet: true,
+  chamfer: true,
+  rib: true,
+  sweep_path: true,
+  boolean: true,
+} satisfies Record<FeatureKind, true>) as FeatureKind[];
+
 export type FeaturePayload =
   | ExtrudeFeature
   | RevolveFeature

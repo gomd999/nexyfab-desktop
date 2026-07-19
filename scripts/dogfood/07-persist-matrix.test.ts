@@ -10,6 +10,7 @@ import { buildHoleFeature } from '@/lib/cad/holeProfile';
 import { buildFilletFeatureRef } from '@/lib/cad/filletProfile';
 import { buildChamferFeatureRef } from '@/lib/cad/chamferProfile';
 import { buildLinearPatternRef, buildCircularPatternRef } from '@/lib/cad/pattern';
+import { buildRib } from '@/lib/cad/ribFeature';
 import { validateTree, type FeatureTree, type FeaturePayload } from '@/lib/cad/featureTree';
 import {
   serializeFeatureTree,
@@ -40,8 +41,14 @@ describe('DOGFOOD 07 — FeatureKind persistence matrix', () => {
       ['chamfer', buildChamferFeatureRef('base', base, 2, 'top'), ['base']],
       ['linear_pattern', buildLinearPatternRef('base', { childScad: 'cube(1);', count: 3, spacing: 10, direction: { x: 1, y: 0, z: 0 } }), ['base']],
       ['circular_pattern', buildCircularPatternRef('base', { childScad: 'cube(1);', count: 6, axisOrigin: { x: 0, y: 0, z: 0 }, axisDirection: { x: 0, y: 0, z: 1 }, totalAngleDegrees: 360 }), ['base']],
-      ['rib', { kind: 'rib', centerline: [{ x: 0, y: 0 }, { x: 10, y: 0 }], thickness: 3, height: 8, mode: 'add' } as never, []],
-      ['sweep_path', { kind: 'sweep_path', profile: { points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }] }, path: [{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 10 }], mode: 'add' } as never, []],
+      // NOTE (F15 follow-up): the original fixtures for these two were
+      // invented — `rib` has no `centerline`/`mode` (it is start/end), and
+      // `sweep_path.profile` is a bare point array, not a `{points}` wrapper
+      // like `sweep`. The `as never` casts hid the mismatch, so their
+      // "REJECTED" rows measured the fixtures, not the persistence layer.
+      // Anchored to the real builder / real interface now.
+      ['rib', buildRib({ start: { x: 0, y: 0 }, end: { x: 10, y: 0 }, thickness: 3, height: 8 }), []],
+      ['sweep_path', { kind: 'sweep_path', profile: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }], path: [{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 10 }] } as FeaturePayload, []],
       ['boolean', { kind: 'boolean', op: 'difference', bodies: ['base', 'other'] } as never, ['base', 'other']],
     ];
 

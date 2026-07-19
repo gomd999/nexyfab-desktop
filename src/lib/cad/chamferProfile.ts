@@ -399,6 +399,98 @@ export function buildChamferFeatureRef(
   return { ...base, childId };
 }
 
+// ─── W2-0 regression: emit-time bound re-check ────────────────────────────
+
+/**
+ * Chamfer mirror of `assertFilletBoundsAtEmit` (filletProfile.ts) — see that
+ * docstring for the full rationale.
+ *
+ * Same regression, same shape: once `childId` resolves the LIVE upstream, an
+ * edit that thins or shrinks the host body leaves `distance` unchanged and
+ * the minkowski emitters print negative cube dimensions. The build-time gate
+ * in `buildChamferFeature` ran against the pre-edit snapshot and cannot see
+ * it.
+ *
+ * The bounds are quoted from `buildChamferFeature`:
+ *   1. rect profile:   d < min(bbox W, bbox H) / 2
+ *   2. convex N-gon:   d < min(vertex→edge distance) / 2
+ *   3. top/bottom/all: d < depth / 2 — the octahedron crown eats d from each
+ *      capped face.
+ * 'vertical' spans the full depth and so has no depth bound.
+ *
+ * Refuses with the offending numbers rather than clamping (ADR-017 D1).
+ * Ref mode only, so previously-valid legacy payloads are untouched.
+ */
+function assertChamferBoundsAtEmit(
+  feature: ChamferFeature,
+  child: ExtrudeFeature,
+  selfId: string,
+): void {
+  if (feature.childId === undefined) return;
+
+  const where =
+    `chamfer '${selfId}' is no longer valid against its upstream body ` +
+    `'${feature.childId}'`;
+  const loop = child.loop;
+  const dists =
+    feature.vertexDistances !== undefined
+      ? feature.vertexDistances
+      : [feature.distance];
+  const label = (i: number): string =>
+    feature.vertexDistances !== undefined ? `vertexDistances[${i}]` : 'distance';
+
+  if (!(child.depth > 0) || !Number.isFinite(child.depth)) {
+    throw new Error(
+      `${where}: upstream depth is ${child.depth} — must be a positive number.`,
+    );
+  }
+
+  if (isAxisAlignedRect(loop)) {
+    const bb = loopBoundingBox(loop);
+    const minDim = Math.min(bb.maxX - bb.minX, bb.maxY - bb.minY);
+    for (let i = 0; i < dists.length; i++) {
+      const d = dists[i]!;
+      if (d >= minDim / 2) {
+        throw new Error(
+          `${where}: ${label(i)} ${d} must be < min(profile bbox)/2 = ${minDim / 2}. ` +
+            `The upstream profile was resized after this chamfer was created; ` +
+            `reduce the distance or enlarge the profile.`,
+        );
+      }
+    }
+  } else {
+    const minDist = minVertexToEdgeDistance(loop);
+    for (let i = 0; i < dists.length; i++) {
+      const d = dists[i]!;
+      if (d >= minDist / 2) {
+        throw new Error(
+          `${where}: ${label(i)} ${d} must be < min(edge_distances)/2 = ${minDist / 2}. ` +
+            `The upstream profile was resized after this chamfer was created; ` +
+            `reduce the distance or enlarge the profile.`,
+        );
+      }
+    }
+  }
+
+  const touchesTopOrBottom =
+    feature.edgeSelection === 'all' ||
+    feature.edgeSelection === 'top' ||
+    feature.edgeSelection === 'bottom';
+  if (touchesTopOrBottom) {
+    for (let i = 0; i < dists.length; i++) {
+      const d = dists[i]!;
+      if (d >= child.depth / 2) {
+        throw new Error(
+          `${where}: ${label(i)} ${d} must be < depth/2 = ${child.depth / 2} ` +
+            `when chamfering ${feature.edgeSelection} edges. ` +
+            `The upstream body was thinned to ${child.depth} after this chamfer ` +
+            `was created; reduce the distance or thicken the body.`,
+        );
+      }
+    }
+  }
+}
+
 // ─── SCAD serializer ──────────────────────────────────────────────────────
 
 function formatNum(n: number): string {
@@ -453,6 +545,7 @@ export function chamferToScad(
   selfId = 'chamfer',
 ): string {
   const child = resolveChamferChild(feature, ctx, selfId);
+  assertChamferBoundsAtEmit(feature, child, selfId);
   const d = feature.distance;
   const loop = child.loop;
   const depth = child.depth;

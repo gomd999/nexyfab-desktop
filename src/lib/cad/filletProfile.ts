@@ -586,6 +586,112 @@ export function buildFilletFeatureRef(
   return { ...base, childId };
 }
 
+// ─── W2-0 regression: emit-time bound re-check ────────────────────────────
+
+/**
+ * Re-run the radius bounds against the body the fillet is ACTUALLY being
+ * emitted against.
+ *
+ * Why this exists (W2-0 regression). Before downstream regeneration,
+ * `childExtrude` was a frozen snapshot: a stale fillet, but a geometrically
+ * valid one. Now `childId` resolves to the live upstream, so thinning the
+ * plate under a fillet feeds a smaller depth into an unchanged radius and
+ * the emitters happily print `cube([104, 64, -6])` — a negative-height
+ * solid that no downstream consumer can interpret. The build-time gate in
+ * `buildFilletFeature` cannot catch this: it ran against the OLD snapshot,
+ * before the edit existed. The docstring on `buildFilletFeatureRef` already
+ * promised this check; it simply had never been written.
+ *
+ * The bounds are not invented here — they are the same three the builder
+ * applies, quoted from `buildFilletFeature` so the two can be diffed:
+ *
+ *   1. rect profile:  r < min(bbox W, bbox H) / 2
+ *   2. convex N-gon:  r < min(vertex→edge distance) / 2   (offset must exist)
+ *   3. top/bottom/all: r < depth / 2   — the minkowski crown consumes r from
+ *      each capped face, so 2r must fit inside the depth.
+ *
+ * Refusal, never a clamp. ADR-017 D1: an invalid parameter combination is
+ * reported with the offending numbers so the user reads "radius exceeds half
+ * the thickness", not "my fillet quietly changed size" — and definitely not
+ * a negative-dimension solid that fails much later, somewhere else.
+ *
+ * Scoped to ref mode (`childId` set). In legacy mode the emitted body is the
+ * same snapshot the builder already validated, so re-checking could only
+ * reject payloads that pre-date this rule — a behaviour change unrelated to
+ * the regression being fixed.
+ */
+function assertFilletBoundsAtEmit(
+  feature: FilletFeature,
+  child: ExtrudeFeature,
+  selfId: string,
+): void {
+  if (feature.childId === undefined) return;
+
+  const where =
+    `fillet '${selfId}' is no longer valid against its upstream body ` +
+    `'${feature.childId}'`;
+  const loop = child.loop;
+  const radii =
+    feature.vertexRadii !== undefined ? feature.vertexRadii : [feature.radius];
+  const label = (i: number): string =>
+    feature.vertexRadii !== undefined ? `vertexRadii[${i}]` : 'radius';
+
+  if (!(child.depth > 0) || !Number.isFinite(child.depth)) {
+    throw new Error(
+      `${where}: upstream depth is ${child.depth} — must be a positive number.`,
+    );
+  }
+
+  // Bound 1/2 — in-plane. Use the same discriminator the emitter uses so the
+  // check and the emission can never disagree about which path applies.
+  if (isAxisAlignedRect(loop)) {
+    const bb = loopBoundingBox(loop);
+    const minDim = Math.min(bb.maxX - bb.minX, bb.maxY - bb.minY);
+    for (let i = 0; i < radii.length; i++) {
+      const r = radii[i]!;
+      if (r >= minDim / 2) {
+        throw new Error(
+          `${where}: ${label(i)} ${r} must be < min(profile bbox)/2 = ${minDim / 2}. ` +
+            `The upstream profile was resized after this fillet was created; ` +
+            `reduce the radius or enlarge the profile.`,
+        );
+      }
+    }
+  } else {
+    const minDist = minVertexToEdgeDistance(loop);
+    for (let i = 0; i < radii.length; i++) {
+      const r = radii[i]!;
+      if (r >= minDist / 2) {
+        throw new Error(
+          `${where}: ${label(i)} ${r} must be < min(edge_distances)/2 = ${minDist / 2}. ` +
+            `The upstream profile was resized after this fillet was created; ` +
+            `reduce the radius or enlarge the profile.`,
+        );
+      }
+    }
+  }
+
+  // Bound 3 — through-depth. Only the selections that round a cap consume
+  // depth; 'vertical' extrudes the full depth and is unaffected.
+  const touchesTopOrBottom =
+    feature.edgeSelection === 'all' ||
+    feature.edgeSelection === 'top' ||
+    feature.edgeSelection === 'bottom';
+  if (touchesTopOrBottom) {
+    for (let i = 0; i < radii.length; i++) {
+      const r = radii[i]!;
+      if (r >= child.depth / 2) {
+        throw new Error(
+          `${where}: ${label(i)} ${r} must be < depth/2 = ${child.depth / 2} ` +
+            `when filleting ${feature.edgeSelection} edges. ` +
+            `The upstream body was thinned to ${child.depth} after this fillet ` +
+            `was created; reduce the radius or thicken the body.`,
+        );
+      }
+    }
+  }
+}
+
 // ─── SCAD serializer ──────────────────────────────────────────────────────
 
 function formatNum(n: number): string {
@@ -627,6 +733,7 @@ export function filletToScad(
   selfId = 'fillet',
 ): string {
   const child = resolveFilletChild(feature, ctx, selfId);
+  assertFilletBoundsAtEmit(feature, child, selfId);
   const r = feature.radius;
   const loop = child.loop;
   const depth = child.depth;

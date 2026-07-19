@@ -300,17 +300,36 @@ type PayloadValidationResult =
   | { ok: true; payload: FeaturePayload }
   | { ok: false; error: 'invalid_payload'; message: string };
 
-const KNOWN_KINDS: ReadonlySet<FeatureKind> = new Set<FeatureKind>([
-  'extrude',
-  'revolve',
-  'sweep',
-  'loft',
-  'linear_pattern',
-  'circular_pattern',
-  'hole',
-  'fillet',
-  'chamfer',
-]);
+/**
+ * F15 — the kind table is a `Record<FeatureKind, true>`, NOT a bare Set
+ * literal. That is deliberate: a Set of string literals silently accepts an
+ * incomplete list, which is exactly how `rib`, `sweep_path` and `boolean`
+ * came to be renderable by `replayTree` but unsavable by this validator.
+ * With a total Record, adding a member to `FeatureKind` without adding it
+ * here is a COMPILE error, so the two modules can no longer drift apart.
+ * The `default:` arm of the switch below applies the same lock to the
+ * per-kind field checks.
+ */
+const KNOWN_KIND_TABLE: Record<FeatureKind, true> = {
+  extrude: true,
+  revolve: true,
+  sweep: true,
+  loft: true,
+  linear_pattern: true,
+  circular_pattern: true,
+  hole: true,
+  fillet: true,
+  chamfer: true,
+  rib: true,
+  sweep_path: true,
+  boolean: true,
+};
+
+/** Exported so a conformance test can cross-check it against
+ *  `ALL_FEATURE_KINDS` at runtime as well as at compile time. */
+export const KNOWN_KINDS: ReadonlySet<FeatureKind> = new Set(
+  Object.keys(KNOWN_KIND_TABLE) as FeatureKind[],
+);
 
 /**
  * Per-kind structural validation. We check the fields the IR considers
@@ -421,6 +440,58 @@ function validatePayload(raw: unknown, nodeIndex: number): PayloadValidationResu
       if (typeof p.distance !== 'number') return missing('distance');
       if (typeof p.edgeSelection !== 'string') return missing('edgeSelection');
       break;
+    case 'rib':
+      // RibFeature (ribFeature.ts): start/end are {x,y} in sketch units,
+      // thickness/height are positive numbers, `centered` is optional.
+      // We check presence + type only — positivity is the builder's gate.
+      if (!isPlainObject(p.start)) return missing('start');
+      if (typeof (p.start as { x?: unknown }).x !== 'number') return missing('start.x');
+      if (typeof (p.start as { y?: unknown }).y !== 'number') return missing('start.y');
+      if (!isPlainObject(p.end)) return missing('end');
+      if (typeof (p.end as { x?: unknown }).x !== 'number') return missing('end.x');
+      if (typeof (p.end as { y?: unknown }).y !== 'number') return missing('end.y');
+      if (typeof p.thickness !== 'number') return missing('thickness');
+      if (typeof p.height !== 'number') return missing('height');
+      if (p.centered !== undefined && typeof p.centered !== 'boolean') {
+        return {
+          ok: false,
+          error: 'invalid_payload',
+          message: `node[${nodeIndex}].payload.centered must be boolean or absent`,
+        };
+      }
+      break;
+    case 'sweep_path':
+      // SweepPathFeature (sweepPath.ts): a closed 2D `profile` loop and a 3D
+      // `path` of stations. Distinct from 'sweep', whose profile is an
+      // object wrapper `{points:[...]}` — here `profile` IS the array.
+      if (!Array.isArray(p.profile)) return missing('profile');
+      if (!Array.isArray(p.path)) return missing('path');
+      break;
+    case 'boolean':
+      // BooleanFeature (booleanFeature.ts): `op` is one of union/difference/
+      // intersection and `bodies` is a list of upstream NODE IDS (>= 2, see
+      // validateBooleanFeature). Persistence checks shape only; arity and
+      // duplicate-id rules stay with the IR validator, and the ids
+      // themselves are re-checked by validateTree's forward-ref pass.
+      if (typeof p.op !== 'string') return missing('op');
+      if (!Array.isArray(p.bodies)) return missing('bodies');
+      for (let i = 0; i < (p.bodies as unknown[]).length; i++) {
+        if (typeof (p.bodies as unknown[])[i] !== 'string') {
+          return missing(`bodies[${i}] (must be a node id string)`);
+        }
+      }
+      break;
+    default: {
+      // Exhaustiveness lock — see KNOWN_KIND_TABLE. If `FeatureKind` gains a
+      // member without a case above, `kind` is no longer `never` here and
+      // this assignment fails to compile.
+      const _exhaustive: never = kind as never;
+      return {
+        ok: false,
+        error: 'invalid_payload',
+        message: `node[${nodeIndex}].payload.kind=${JSON.stringify(_exhaustive)} has no persistence schema`,
+      };
+    }
   }
   // Trust the round-trip: pass the raw object through as the payload. We
   // route through `unknown` because TS can't relate `Record<string,unknown>`
