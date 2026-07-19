@@ -243,11 +243,16 @@ export default function ParametricPresetPanel({
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ imageBase64: b64, mimeType: f.type }),
             });
-            const j = (await r.json()) as { ok?: boolean; intent?: { name?: string; features?: unknown[] }; scad?: string; recognized?: { label?: string; confidence?: number } };
+            const j = (await r.json()) as { ok?: boolean; intent?: { name?: string; features?: unknown[] }; scad?: string; recognized?: { label?: string; confidence?: number; reproject?: { verdict?: string; support?: number } } };
             if (j.ok && j.intent && j.scad) {
               await onApply(j.intent, j.scad, null);
               setApplied(true);
-              setMsg((ko ? '도면 판독 → 생성됨: ' : 'Drawing read → generated: ') + (j.recognized?.label ?? '') + (typeof j.recognized?.confidence === 'number' ? ` (${Math.round(j.recognized.confidence * 100)}%)` : ''));
+              // D1 지지율 배지(260719b): 역투영 대조 결과를 성공 시에도 표시(검증됨 vs 추론)
+              const rp = j.recognized?.reproject;
+              const rpBadge = rp?.verdict === 'OK' && typeof rp.support === 'number'
+                ? (ko ? ` · 역투영 검증 ✓ 지지율 ${Math.round(rp.support * 100)}%` : ` · reprojection ✓ ${Math.round(rp.support * 100)}%`)
+                : rp?.verdict === 'UNSUPPORTED' ? (ko ? ' · 역투영 대상 외' : ' · reprojection n/a') : '';
+              setMsg((ko ? '도면 판독 → 생성됨: ' : 'Drawing read → generated: ') + (j.recognized?.label ?? '') + (typeof j.recognized?.confidence === 'number' ? ` (${Math.round(j.recognized.confidence * 100)}%)` : '') + rpBadge);
               return;
             }
             // 부품 어휘 매칭 실패 → 아래 프리셋 템플릿 매칭으로 폴백

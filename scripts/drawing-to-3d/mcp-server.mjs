@@ -340,6 +340,33 @@ export const tools = [
     },
   },
   {
+    name: 'execution_gate',
+    description:
+      `T2 실시 검도 게이트 M1~M6(260719b) — 「이 도면만으로 제작 착수 가능한가」 결정론 판정: ` +
+      `M1 치수충분성(파라미터 자유도↔기입 치수)·M2 구멍표·M3 용접 지시선·M4 나사 표기·` +
+      `M5 재질+일반공차·M6 실윤곽. GA/부품도를 내부 생성해 대조. 반환 {score, ok, items, failed, na}.`,
+    inputSchema: { type: 'object', required: ['assembly'], properties: { assembly: { type: 'object' } } },
+  },
+  {
+    name: 'std_audit',
+    description:
+      `시판 규격 감사(G1+R2-⑪) — 배관 d·각형강관·T슬롯(알루미늄)·필로우 블록(UCP) 부재를 표준 ` +
+      `카탈로그와 대조: 스냅 권고(편차%)·규격 외 정직 경고. 보고 전용(형상 무변경). ` +
+      `반환 {items:[{id,kind,input,snap}], warnings}.`,
+    inputSchema: { type: 'object', required: ['assembly'], properties: { assembly: { type: 'object' } } },
+  },
+  {
+    name: 'dxf_reconcile',
+    description:
+      `T3 DXF DIMENSION 결정론 판독(260719b) — ASCII DXF 치수 엔티티(실측값 42) 분류(선형H/V·` +
+      `지름·반지름) 후 intent 수치 파라미터를 ±tolPct 최근접 실측값으로 교체(추론→판독 격상). ` +
+      `교체 이력·unverified(추론 잔존)·coverage 전부 보고. 반환 {seed, reconciled}.`,
+    inputSchema: {
+      type: 'object', required: ['dxfText', 'intent'],
+      properties: { dxfText: { type: 'string' }, intent: { type: 'object' }, tolPct: { type: 'number' } },
+    },
+  },
+  {
     name: 'import_landxml',
     description:
       `LandXML 1.x 도로 선형 임포트(결정론): Line/Curve(arc) 체인→엔진 선형 입력({ips, curves}) ` +
@@ -446,6 +473,28 @@ export async function callTool(name, args = {}) {
   }
   if (name === 'refine_interferences') {
     return refineInterferencesMesh(args.assembly, args.interferences, { epsMm3: args.epsMm3 ?? 1 });
+  }
+  if (name === 'execution_gate') {
+    // T2(260719b): GA+부품도 내부 생성 → 기입 치수 결정론 대조(도면집과 동일 수학)
+    const built = buildAssembly(args.assembly);
+    if (!built.ok) return { ok: false, gateErrors: built.gateErrors };
+    const pkg = await import('./package.mjs');
+    const ps = await import('./part-sheets.mjs');
+    const eg = await import('./execution-gate.mjs');
+    let gaHtml = '', sheetsHtml = '';
+    try { gaHtml = pkg.ga2dDrawing(args.assembly, { title: args.assembly.name ?? 'gate', domain: args.assembly.domain ?? 'mech', welds: built.welds }); } catch { /* GA 실패=치수 소스 부품도만 */ }
+    try { sheetsHtml = ps.partSheets(args.assembly, { title: 'gate' }); } catch { /* skip */ }
+    return eg.checkExecutionReadiness(args.assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [] });
+  }
+  if (name === 'std_audit') {
+    const std = await import('./std-snap.mjs');
+    return std.auditAssemblyStd(args.assembly);
+  }
+  if (name === 'dxf_reconcile') {
+    const dx = await import('./dxf-seed.mjs');
+    const seed = dx.extractDxfSeed(args.dxfText);
+    const reconciled = dx.reconcileIntentWithDxf(args.intent, seed, args.tolPct > 0 ? { tolPct: args.tolPct } : undefined);
+    return { ok: true, seed, reconciled };
   }
   if (name === 'import_landxml') {
     if (args.xmlPath) return parseLandXmlFile(args.xmlPath);
