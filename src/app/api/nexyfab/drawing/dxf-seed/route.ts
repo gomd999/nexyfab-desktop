@@ -16,8 +16,9 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-interface Seed { measurements: number[]; dimTexts: string[]; circles: Array<{ r: number; cx: number; cy: number }>; extents: { w: number; h: number } | null; entityCounts: Record<string, number> }
-type DxfModule = { extractDxfSeed: (text: string) => Seed };
+interface Seed { measurements: number[]; dims?: Array<{ value: number; kind: string; text?: string }>; dimTexts: string[]; circles: Array<{ r: number; cx: number; cy: number }>; extents: { w: number; h: number } | null; entityCounts: Record<string, number> }
+type Reconciled = { intent: Record<string, unknown>; measured: unknown[]; unverified: string[]; coverage: number; note: string };
+type DxfModule = { extractDxfSeed: (text: string) => Seed; reconcileIntentWithDxf: (intent: Record<string, unknown>, seed: Seed, o?: { tolPct?: number }) => Reconciled };
 
 let _mod: DxfModule | null = null;
 async function load(): Promise<DxfModule> {
@@ -33,9 +34,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
 
   let dxfText: string;
+  let intent: Record<string, unknown> | null = null;
   try {
-    const body = (await req.json()) as { dxfText?: string };
+    const body = (await req.json()) as { dxfText?: string; intent?: Record<string, unknown> };
     dxfText = String(body.dxfText ?? '');
+    if (body.intent && typeof body.intent === 'object') intent = body.intent;
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
@@ -51,7 +54,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (!seed.measurements.length && !seed.circles.length && !seed.extents) {
       return NextResponse.json({ ok: false, error: '치수·원·범위를 찾지 못했어요. 치수(DIMENSION)가 들어있는 도면인지 확인해 주세요.' }, { status: 200 });
     }
-    return NextResponse.json({ ok: true, seed });
+    // T3(260719): intent 동봉 시 DIMENSION 실측값 정합 — 추론→판독 격상(교체 이력 전부 보고)
+    const reconciled = intent ? mod.reconcileIntentWithDxf(intent, seed) : undefined;
+    return NextResponse.json({ ok: true, seed, ...(reconciled ? { reconciled } : {}) });
   } catch (e) {
     return NextResponse.json({ ok: false, error: 'DXF 파싱 실패: ' + (e instanceof Error ? e.message : String(e)).slice(0, 160) }, { status: 502 });
   }
