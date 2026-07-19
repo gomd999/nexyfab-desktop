@@ -1,0 +1,2898 @@
+{
+  "meta": {
+    "adr": "ADR-017 §D2",
+    "generatedAt": "2026-07-19T07:18:49.731Z",
+    "note": "Measurement only. Rates exclude nogt (edge genuinely gone). mismatch = SILENT wrong entity.",
+    "systemA": "topoNaming + composedTopo, resolved via nearestByMidpoint(1e-3) — replica of nodeOcctBridge.resolvePickedEdges",
+    "systemB": "edgeCorrespondence.bestEdgeMatch + remapPointThroughBbox — shape-generator path"
+  },
+  "kernel": {
+    "available": true
+  },
+  "S1": {
+    "measurable": true,
+    "perFamily": {
+      "box": {
+        "authoredEdges": 12,
+        "unnamedAtAuthor": 0,
+        "A": {
+          "cases": 144,
+          "ok": 144,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 144,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 144,
+          "ok": 144,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 144,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "mismatchExamples": []
+      },
+      "lshape": {
+        "authoredEdges": 18,
+        "unnamedAtAuthor": 0,
+        "A": {
+          "cases": 216,
+          "ok": 216,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 216,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 216,
+          "ok": 214,
+          "lost": 0,
+          "mismatch": 2,
+          "nogt": 0,
+          "scored": 216,
+          "survivalPct": 99.1,
+          "lostPct": 0,
+          "mismatchPct": 0.9
+        },
+        "mismatchExamples": [
+          {
+            "fam": "lshape",
+            "cfg": {
+              "w": 70,
+              "d": 18,
+              "h": 35,
+              "skew": 0.05,
+              "holeX": 0.72,
+              "holeY": 0.66
+            },
+            "label": "base.bot.0",
+            "name": "e.bottom.0-1",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "lshape",
+            "cfg": {
+              "w": 70,
+              "d": 18,
+              "h": 35,
+              "skew": 0.05,
+              "holeX": 0.72,
+              "holeY": 0.66
+            },
+            "label": "base.top.0",
+            "name": "e.top.0-1",
+            "A": "ok",
+            "B": "mismatch"
+          }
+        ]
+      },
+      "skew": {
+        "authoredEdges": 12,
+        "unnamedAtAuthor": 0,
+        "A": {
+          "cases": 144,
+          "ok": 144,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 144,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 144,
+          "ok": 144,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 144,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "mismatchExamples": []
+      }
+    },
+    "total": {
+      "A": {
+        "cases": 504,
+        "ok": 504,
+        "lost": 0,
+        "mismatch": 0,
+        "nogt": 0,
+        "scored": 504,
+        "survivalPct": 100,
+        "lostPct": 0,
+        "mismatchPct": 0
+      },
+      "B": {
+        "cases": 504,
+        "ok": 502,
+        "lost": 0,
+        "mismatch": 2,
+        "nogt": 0,
+        "scored": 504,
+        "survivalPct": 99.6,
+        "lostPct": 0,
+        "mismatchPct": 0.4
+      }
+    }
+  },
+  "S2": {
+    "measurable": true,
+    "perFamily": {
+      "movingHole": {
+        "authoredEdges": 24,
+        "unnamedAtAuthor": 0,
+        "A": {
+          "cases": 288,
+          "ok": 276,
+          "lost": 0,
+          "mismatch": 12,
+          "nogt": 0,
+          "scored": 288,
+          "survivalPct": 95.8,
+          "lostPct": 0,
+          "mismatchPct": 4.2
+        },
+        "B": {
+          "cases": 288,
+          "ok": 266,
+          "lost": 0,
+          "mismatch": 22,
+          "nogt": 0,
+          "scored": 288,
+          "survivalPct": 92.4,
+          "lostPct": 0,
+          "mismatchPct": 7.6
+        },
+        "mismatchExamples": [
+          {
+            "fam": "movingHole",
+            "cfg": {
+              "w": 55,
+              "d": 22,
+              "h": 30,
+              "skew": 0.1,
+              "holeX": 0.3,
+              "holeY": 0.5
+            },
+            "label": "H0.vert.0",
+            "name": "b/e.vert.0",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "movingHole",
+            "cfg": {
+              "w": 55,
+              "d": 22,
+              "h": 30,
+              "skew": 0.1,
+              "holeX": 0.3,
+              "holeY": 0.5
+            },
+            "label": "H0.vert.3",
+            "name": "b/e.vert.3",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "movingHole",
+            "cfg": {
+              "w": 55,
+              "d": 22,
+              "h": 30,
+              "skew": 0.1,
+              "holeX": 0.3,
+              "holeY": 0.5
+            },
+            "label": "H0.bot.0",
+            "name": "seam.2",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "movingHole",
+            "cfg": {
+              "w": 55,
+              "d": 22,
+              "h": 30,
+              "skew": 0.1,
+              "holeX": 0.3,
+              "holeY": 0.5
+            },
+            "label": "H0.top.0",
+            "name": "seam.3",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "movingHole",
+            "cfg": {
+              "w": 55,
+              "d": 22,
+              "h": 30,
+              "skew": 0.1,
+              "holeX": 0.3,
+              "holeY": 0.5
+            },
+            "label": "H0.bot.2",
+            "name": "seam.4",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "movingHole",
+            "cfg": {
+              "w": 55,
+              "d": 22,
+              "h": 30,
+              "skew": 0.1,
+              "holeX": 0.3,
+              "holeY": 0.5
+            },
+            "label": "H0.top.2",
+            "name": "seam.5",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "movingHole",
+            "cfg": {
+              "w": 55,
+              "d": 22,
+              "h": 30,
+              "skew": 0.1,
+              "holeX": 0.3,
+              "holeY": 0.5
+            },
+            "label": "H0.bot.3",
+            "name": "seam.0",
+            "A": "mismatch",
+            "B": "mismatch"
+          },
+          {
+            "fam": "movingHole",
+            "cfg": {
+              "w": 55,
+              "d": 22,
+              "h": 30,
+              "skew": 0.1,
+              "holeX": 0.3,
+              "holeY": 0.5
+            },
+            "label": "H0.top.3",
+            "name": "seam.1",
+            "A": "mismatch",
+            "B": "mismatch"
+          },
+          {
+            "fam": "movingHole",
+            "cfg": {
+              "w": 25,
+              "d": 45,
+              "h": 12,
+              "skew": 0.55,
+              "holeX": 0.5,
+              "holeY": 0.28
+            },
+            "label": "H0.vert.0",
+            "name": "b/e.vert.0",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "movingHole",
+            "cfg": {
+              "w": 25,
+              "d": 45,
+              "h": 12,
+              "skew": 0.55,
+              "holeX": 0.5,
+              "holeY": 0.28
+            },
+            "label": "H0.vert.1",
+            "name": "b/e.vert.1",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "movingHole",
+            "cfg": {
+              "w": 25,
+              "d": 45,
+              "h": 12,
+              "skew": 0.55,
+              "holeX": 0.5,
+              "holeY": 0.28
+            },
+            "label": "H0.bot.0",
+            "name": "seam.2",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "movingHole",
+            "cfg": {
+              "w": 25,
+              "d": 45,
+              "h": 12,
+              "skew": 0.55,
+              "holeX": 0.5,
+              "holeY": 0.28
+            },
+            "label": "H0.top.0",
+            "name": "seam.3",
+            "A": "ok",
+            "B": "mismatch"
+          }
+        ]
+      },
+      "blindPocket": {
+        "authoredEdges": 28,
+        "unnamedAtAuthor": 0,
+        "A": {
+          "cases": 336,
+          "ok": 299,
+          "lost": 16,
+          "mismatch": 21,
+          "nogt": 0,
+          "scored": 336,
+          "survivalPct": 89,
+          "lostPct": 4.8,
+          "mismatchPct": 6.3
+        },
+        "B": {
+          "cases": 336,
+          "ok": 291,
+          "lost": 0,
+          "mismatch": 45,
+          "nogt": 0,
+          "scored": 336,
+          "survivalPct": 86.6,
+          "lostPct": 0,
+          "mismatchPct": 13.4
+        },
+        "mismatchExamples": [
+          {
+            "fam": "blindPocket",
+            "cfg": {
+              "w": 40,
+              "d": 60,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "P0.bot.0",
+            "name": "b/e.bottom.0-1",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "blindPocket",
+            "cfg": {
+              "w": 40,
+              "d": 60,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "P0.top.0",
+            "name": "seam.7",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "blindPocket",
+            "cfg": {
+              "w": 40,
+              "d": 60,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "P0.bot.1",
+            "name": "b/e.bottom.1-2",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "blindPocket",
+            "cfg": {
+              "w": 40,
+              "d": 60,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "P0.top.1",
+            "name": "seam.14",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "blindPocket",
+            "cfg": {
+              "w": 40,
+              "d": 60,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "P0.bot.2",
+            "name": "b/e.bottom.2-3",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "blindPocket",
+            "cfg": {
+              "w": 40,
+              "d": 60,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "P0.top.2",
+            "name": "seam.9",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "blindPocket",
+            "cfg": {
+              "w": 40,
+              "d": 60,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "P0.bot.3",
+            "name": "b/e.bottom.0-3",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "blindPocket",
+            "cfg": {
+              "w": 40,
+              "d": 60,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "P0.top.3",
+            "name": "seam.4",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "blindPocket",
+            "cfg": {
+              "w": 55,
+              "d": 22,
+              "h": 30,
+              "skew": 0.1,
+              "holeX": 0.3,
+              "holeY": 0.5
+            },
+            "label": "H0.bot.0",
+            "name": "a/seam.2",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "blindPocket",
+            "cfg": {
+              "w": 55,
+              "d": 22,
+              "h": 30,
+              "skew": 0.1,
+              "holeX": 0.3,
+              "holeY": 0.5
+            },
+            "label": "H0.bot.1",
+            "name": "a/seam.6",
+            "A": "ok",
+            "B": "mismatch"
+          },
+          {
+            "fam": "blindPocket",
+            "cfg": {
+              "w": 55,
+              "d": 22,
+              "h": 30,
+              "skew": 0.1,
+              "holeX": 0.3,
+              "holeY": 0.5
+            },
+            "label": "H0.bot.2",
+            "name": "a/seam.4",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "blindPocket",
+            "cfg": {
+              "w": 55,
+              "d": 22,
+              "h": 30,
+              "skew": 0.1,
+              "holeX": 0.3,
+              "holeY": 0.5
+            },
+            "label": "H0.bot.3",
+            "name": "a/seam.0",
+            "A": "mismatch",
+            "B": "mismatch"
+          }
+        ]
+      },
+      "cornerHoleBait": {
+        "authoredEdges": 24,
+        "unnamedAtAuthor": 0,
+        "A": {
+          "cases": 288,
+          "ok": 252,
+          "lost": 0,
+          "mismatch": 36,
+          "nogt": 0,
+          "scored": 288,
+          "survivalPct": 87.5,
+          "lostPct": 0,
+          "mismatchPct": 12.5
+        },
+        "B": {
+          "cases": 288,
+          "ok": 276,
+          "lost": 0,
+          "mismatch": 12,
+          "nogt": 0,
+          "scored": 288,
+          "survivalPct": 95.8,
+          "lostPct": 0,
+          "mismatchPct": 4.2
+        },
+        "mismatchExamples": [
+          {
+            "fam": "cornerHoleBait",
+            "cfg": {
+              "w": 40,
+              "d": 33,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "B0.bot.0",
+            "name": "seam.2",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "cornerHoleBait",
+            "cfg": {
+              "w": 40,
+              "d": 33,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "B0.top.0",
+            "name": "seam.3",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "cornerHoleBait",
+            "cfg": {
+              "w": 40,
+              "d": 33,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "B0.bot.1",
+            "name": "seam.0",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "cornerHoleBait",
+            "cfg": {
+              "w": 40,
+              "d": 33,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "B0.top.1",
+            "name": "seam.1",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "cornerHoleBait",
+            "cfg": {
+              "w": 40,
+              "d": 33,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "B0.bot.2",
+            "name": "seam.4",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "cornerHoleBait",
+            "cfg": {
+              "w": 40,
+              "d": 33,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "B0.top.2",
+            "name": "seam.5",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "cornerHoleBait",
+            "cfg": {
+              "w": 40,
+              "d": 33,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "B0.bot.3",
+            "name": "seam.6",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "cornerHoleBait",
+            "cfg": {
+              "w": 40,
+              "d": 33,
+              "h": 20,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "B0.top.3",
+            "name": "seam.7",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "cornerHoleBait",
+            "cfg": {
+              "w": 32,
+              "d": 24,
+              "h": 16,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "B0.bot.1",
+            "name": "seam.0",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "cornerHoleBait",
+            "cfg": {
+              "w": 32,
+              "d": 24,
+              "h": 16,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "B0.top.1",
+            "name": "seam.1",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "cornerHoleBait",
+            "cfg": {
+              "w": 32,
+              "d": 24,
+              "h": 16,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "B0.bot.2",
+            "name": "seam.4",
+            "A": "mismatch",
+            "B": "ok"
+          },
+          {
+            "fam": "cornerHoleBait",
+            "cfg": {
+              "w": 32,
+              "d": 24,
+              "h": 16,
+              "skew": 0.3,
+              "holeX": 0.5,
+              "holeY": 0.5
+            },
+            "label": "B0.top.2",
+            "name": "seam.5",
+            "A": "mismatch",
+            "B": "ok"
+          }
+        ]
+      }
+    },
+    "total": {
+      "A": {
+        "cases": 912,
+        "ok": 827,
+        "lost": 16,
+        "mismatch": 69,
+        "nogt": 0,
+        "scored": 912,
+        "survivalPct": 90.7,
+        "lostPct": 1.8,
+        "mismatchPct": 7.6
+      },
+      "B": {
+        "cases": 912,
+        "ok": 833,
+        "lost": 0,
+        "mismatch": 79,
+        "nogt": 0,
+        "scored": 912,
+        "survivalPct": 91.3,
+        "lostPct": 0,
+        "mismatchPct": 8.7
+      }
+    },
+    "s2b_secondCutInserted": {
+      "A": {
+        "cases": 288,
+        "ok": 0,
+        "lost": 144,
+        "mismatch": 144,
+        "nogt": 0,
+        "scored": 288,
+        "survivalPct": 0,
+        "lostPct": 50,
+        "mismatchPct": 50
+      },
+      "B": {
+        "cases": 288,
+        "ok": 259,
+        "lost": 0,
+        "mismatch": 29,
+        "nogt": 0,
+        "scored": 288,
+        "survivalPct": 89.9,
+        "lostPct": 0,
+        "mismatchPct": 10.1
+      },
+      "mismatchExamples": [
+        {
+          "cfg": {
+            "w": 44,
+            "d": 30,
+            "h": 20,
+            "skew": 0.3,
+            "holeX": 0.5,
+            "holeY": 0.5
+          },
+          "label": "H0.vert.0",
+          "name": "b/e.vert.0",
+          "A": "mismatch",
+          "B": "ok"
+        },
+        {
+          "cfg": {
+            "w": 44,
+            "d": 30,
+            "h": 20,
+            "skew": 0.3,
+            "holeX": 0.5,
+            "holeY": 0.5
+          },
+          "label": "H0.vert.1",
+          "name": "b/e.vert.1",
+          "A": "mismatch",
+          "B": "ok"
+        },
+        {
+          "cfg": {
+            "w": 44,
+            "d": 30,
+            "h": 20,
+            "skew": 0.3,
+            "holeX": 0.5,
+            "holeY": 0.5
+          },
+          "label": "H0.vert.2",
+          "name": "b/e.vert.2",
+          "A": "mismatch",
+          "B": "ok"
+        },
+        {
+          "cfg": {
+            "w": 44,
+            "d": 30,
+            "h": 20,
+            "skew": 0.3,
+            "holeX": 0.5,
+            "holeY": 0.5
+          },
+          "label": "H0.vert.3",
+          "name": "b/e.vert.3",
+          "A": "mismatch",
+          "B": "ok"
+        },
+        {
+          "cfg": {
+            "w": 44,
+            "d": 30,
+            "h": 20,
+            "skew": 0.3,
+            "holeX": 0.5,
+            "holeY": 0.5
+          },
+          "label": "H0.bot.0",
+          "name": "seam.2",
+          "A": "mismatch",
+          "B": "ok"
+        },
+        {
+          "cfg": {
+            "w": 44,
+            "d": 30,
+            "h": 20,
+            "skew": 0.3,
+            "holeX": 0.5,
+            "holeY": 0.5
+          },
+          "label": "H0.top.0",
+          "name": "seam.3",
+          "A": "mismatch",
+          "B": "ok"
+        },
+        {
+          "cfg": {
+            "w": 44,
+            "d": 30,
+            "h": 20,
+            "skew": 0.3,
+            "holeX": 0.5,
+            "holeY": 0.5
+          },
+          "label": "H0.bot.1",
+          "name": "seam.6",
+          "A": "mismatch",
+          "B": "ok"
+        },
+        {
+          "cfg": {
+            "w": 44,
+            "d": 30,
+            "h": 20,
+            "skew": 0.3,
+            "holeX": 0.5,
+            "holeY": 0.5
+          },
+          "label": "H0.top.1",
+          "name": "seam.7",
+          "A": "mismatch",
+          "B": "ok"
+        },
+        {
+          "cfg": {
+            "w": 44,
+            "d": 30,
+            "h": 20,
+            "skew": 0.3,
+            "holeX": 0.5,
+            "holeY": 0.5
+          },
+          "label": "H0.bot.2",
+          "name": "seam.4",
+          "A": "mismatch",
+          "B": "ok"
+        },
+        {
+          "cfg": {
+            "w": 44,
+            "d": 30,
+            "h": 20,
+            "skew": 0.3,
+            "holeX": 0.5,
+            "holeY": 0.5
+          },
+          "label": "H0.top.2",
+          "name": "seam.5",
+          "A": "mismatch",
+          "B": "ok"
+        },
+        {
+          "cfg": {
+            "w": 44,
+            "d": 30,
+            "h": 20,
+            "skew": 0.3,
+            "holeX": 0.5,
+            "holeY": 0.5
+          },
+          "label": "H0.bot.3",
+          "name": "seam.0",
+          "A": "mismatch",
+          "B": "ok"
+        },
+        {
+          "cfg": {
+            "w": 44,
+            "d": 30,
+            "h": 20,
+            "skew": 0.3,
+            "holeX": 0.5,
+            "holeY": 0.5
+          },
+          "label": "H0.top.3",
+          "name": "seam.1",
+          "A": "mismatch",
+          "B": "ok"
+        }
+      ]
+    }
+  },
+  "S3": {
+    "measurable": true,
+    "A": {
+      "cases": 264,
+      "ok": 264,
+      "lost": 0,
+      "mismatch": 0,
+      "nogt": 0,
+      "scored": 264,
+      "survivalPct": 100,
+      "lostPct": 0,
+      "mismatchPct": 0
+    },
+    "B": {
+      "cases": 264,
+      "ok": 258,
+      "lost": 0,
+      "mismatch": 6,
+      "nogt": 0,
+      "scored": 264,
+      "survivalPct": 97.7,
+      "lostPct": 0,
+      "mismatchPct": 2.3
+    },
+    "mismatchExamples": [
+      {
+        "fam": "cornerHoleBait",
+        "cfg": {
+          "w": 55,
+          "d": 22,
+          "h": 30,
+          "skew": 0.1,
+          "holeX": 0.3,
+          "holeY": 0.5
+        },
+        "label": "B0.vert.0",
+        "A": "ok",
+        "B": "mismatch"
+      },
+      {
+        "fam": "cornerHoleBait",
+        "cfg": {
+          "w": 55,
+          "d": 22,
+          "h": 30,
+          "skew": 0.1,
+          "holeX": 0.3,
+          "holeY": 0.5
+        },
+        "label": "B0.vert.3",
+        "A": "ok",
+        "B": "mismatch"
+      },
+      {
+        "fam": "cornerHoleBait",
+        "cfg": {
+          "w": 70,
+          "d": 18,
+          "h": 35,
+          "skew": 0.05,
+          "holeX": 0.72,
+          "holeY": 0.66
+        },
+        "label": "B0.vert.0",
+        "A": "ok",
+        "B": "mismatch"
+      },
+      {
+        "fam": "cornerHoleBait",
+        "cfg": {
+          "w": 70,
+          "d": 18,
+          "h": 35,
+          "skew": 0.05,
+          "holeX": 0.72,
+          "holeY": 0.66
+        },
+        "label": "B0.vert.3",
+        "A": "ok",
+        "B": "mismatch"
+      },
+      {
+        "fam": "cornerHoleBait",
+        "cfg": {
+          "w": 18,
+          "d": 55,
+          "h": 8,
+          "skew": 0.48,
+          "holeX": 0.35,
+          "holeY": 0.75
+        },
+        "label": "B0.vert.0",
+        "A": "ok",
+        "B": "mismatch"
+      },
+      {
+        "fam": "cornerHoleBait",
+        "cfg": {
+          "w": 18,
+          "d": 55,
+          "h": 8,
+          "skew": 0.48,
+          "holeX": 0.35,
+          "holeY": 0.75
+        },
+        "label": "B0.vert.1",
+        "A": "ok",
+        "B": "mismatch"
+      }
+    ],
+    "kernelReapply": {
+      "attempted": 36,
+      "succeeded": 36,
+      "failures": []
+    },
+    "postFilletReferenceCoverage": "NOT SUPPORTED — fillet: shape occt_74 has no stable topology — name-based selection unavailable; use ['sel:all']"
+  },
+  "S4": {
+    "measurable": true,
+    "A": {
+      "cases": 144,
+      "ok": 0,
+      "lost": 144,
+      "mismatch": 0,
+      "nogt": 0,
+      "scored": 144,
+      "survivalPct": 0,
+      "lostPct": 100,
+      "mismatchPct": 0
+    },
+    "B": {
+      "cases": 144,
+      "ok": 144,
+      "lost": 0,
+      "mismatch": 0,
+      "nogt": 0,
+      "scored": 144,
+      "survivalPct": 100,
+      "lostPct": 0,
+      "mismatchPct": 0
+    },
+    "planReplay": {
+      "tried": 12,
+      "ok": 12
+    },
+    "note": "Reference authored BEFORE the insert. System A name is the bare `e.vert.i`; after the insert the namespace is re-roled to `a/e.vert.i`.",
+    "notes": []
+  },
+  "S5": {
+    "measurable": true,
+    "revolveNameCoverage": "NO stable names — fillet: shape occt_111 has no stable topology — name-based selection unavailable; use ['sel:all']",
+    "revolveNamerExists": "no buildRevolveTopo in src/lib/cad — buildExtrudeTopo is extrude-only; nodeOcctBridge.buildFromRevolve registers the shape with NO topo",
+    "patternPlanCoverage": {
+      "commands": [],
+      "unsupported": [
+        {
+          "resultId": "lp",
+          "kind": "linear_pattern",
+          "reason": "OCCT path has no primitive for 'linear_pattern' yet — use the SCAD fallback"
+        }
+      ]
+    },
+    "namedEdgeCoverage": {
+      "extrude": "100% (all edges named)",
+      "revolve": "0%",
+      "linearPattern": "0% (not compiled to OCCT at all)",
+      "filletResult": "0% (fillet result registers no topo)"
+    }
+  },
+  "S6": {
+    "measurable": true,
+    "axis": "w × k (d, h, skew, hole position fixed) — anisotropic",
+    "rows": [
+      {
+        "family": "box",
+        "factor": 0.2,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "box",
+        "factor": 0.3,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "box",
+        "factor": 0.5,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "box",
+        "factor": 0.75,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "box",
+        "factor": 0.9,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "box",
+        "factor": 1.1,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "box",
+        "factor": 1.5,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "box",
+        "factor": 2,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "box",
+        "factor": 3,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "box",
+        "factor": 4,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "box",
+        "factor": 5,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "lshape",
+        "factor": 0.2,
+        "A": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "lshape",
+        "factor": 0.3,
+        "A": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "lshape",
+        "factor": 0.5,
+        "A": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "lshape",
+        "factor": 0.75,
+        "A": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "lshape",
+        "factor": 0.9,
+        "A": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "lshape",
+        "factor": 1.1,
+        "A": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "lshape",
+        "factor": 1.5,
+        "A": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "lshape",
+        "factor": 2,
+        "A": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "lshape",
+        "factor": 3,
+        "A": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "lshape",
+        "factor": 4,
+        "A": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "lshape",
+        "factor": 5,
+        "A": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 18,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 18,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "skew",
+        "factor": 0.2,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "skew",
+        "factor": 0.3,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "skew",
+        "factor": 0.5,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "skew",
+        "factor": 0.75,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "skew",
+        "factor": 0.9,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "skew",
+        "factor": 1.1,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "skew",
+        "factor": 1.5,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "skew",
+        "factor": 2,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "skew",
+        "factor": 3,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 8,
+          "lost": 4,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 66.7,
+          "lostPct": 33.3,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "skew",
+        "factor": 4,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 8,
+          "lost": 4,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 66.7,
+          "lostPct": 33.3,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "skew",
+        "factor": 5,
+        "A": {
+          "cases": 12,
+          "ok": 12,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 12,
+          "ok": 8,
+          "lost": 4,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 12,
+          "survivalPct": 66.7,
+          "lostPct": 33.3,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "movingHole",
+        "factor": 0.2,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 20,
+          "lost": 0,
+          "mismatch": 4,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 83.3,
+          "lostPct": 0,
+          "mismatchPct": 16.7
+        }
+      },
+      {
+        "family": "movingHole",
+        "factor": 0.3,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "movingHole",
+        "factor": 0.5,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "movingHole",
+        "factor": 0.75,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "movingHole",
+        "factor": 0.9,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "movingHole",
+        "factor": 1.1,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "movingHole",
+        "factor": 1.5,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "movingHole",
+        "factor": 2,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "movingHole",
+        "factor": 3,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "movingHole",
+        "factor": 4,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "movingHole",
+        "factor": 5,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "blindPocket",
+        "factor": 0.2,
+        "A": {
+          "cases": 28,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 4,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 85.7,
+          "lostPct": 0,
+          "mismatchPct": 14.3
+        },
+        "B": {
+          "cases": 28,
+          "ok": 22,
+          "lost": 0,
+          "mismatch": 6,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 78.6,
+          "lostPct": 0,
+          "mismatchPct": 21.4
+        }
+      },
+      {
+        "family": "blindPocket",
+        "factor": 0.3,
+        "A": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 28,
+          "ok": 26,
+          "lost": 0,
+          "mismatch": 2,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 92.9,
+          "lostPct": 0,
+          "mismatchPct": 7.1
+        }
+      },
+      {
+        "family": "blindPocket",
+        "factor": 0.5,
+        "A": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "blindPocket",
+        "factor": 0.75,
+        "A": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "blindPocket",
+        "factor": 0.9,
+        "A": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "blindPocket",
+        "factor": 1.1,
+        "A": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "blindPocket",
+        "factor": 1.5,
+        "A": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "blindPocket",
+        "factor": 2,
+        "A": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "blindPocket",
+        "factor": 3,
+        "A": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "blindPocket",
+        "factor": 4,
+        "A": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "blindPocket",
+        "factor": 5,
+        "A": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 28,
+          "ok": 28,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 28,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "cornerHoleBait",
+        "factor": 0.2,
+        "A": {
+          "cases": 24,
+          "ok": 20,
+          "lost": 0,
+          "mismatch": 4,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 83.3,
+          "lostPct": 0,
+          "mismatchPct": 16.7
+        },
+        "B": {
+          "cases": 24,
+          "ok": 18,
+          "lost": 0,
+          "mismatch": 6,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 75,
+          "lostPct": 0,
+          "mismatchPct": 25
+        }
+      },
+      {
+        "family": "cornerHoleBait",
+        "factor": 0.3,
+        "A": {
+          "cases": 24,
+          "ok": 20,
+          "lost": 0,
+          "mismatch": 4,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 83.3,
+          "lostPct": 0,
+          "mismatchPct": 16.7
+        },
+        "B": {
+          "cases": 24,
+          "ok": 20,
+          "lost": 0,
+          "mismatch": 4,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 83.3,
+          "lostPct": 0,
+          "mismatchPct": 16.7
+        }
+      },
+      {
+        "family": "cornerHoleBait",
+        "factor": 0.5,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "cornerHoleBait",
+        "factor": 0.75,
+        "A": {
+          "cases": 24,
+          "ok": 16,
+          "lost": 0,
+          "mismatch": 8,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 66.7,
+          "lostPct": 0,
+          "mismatchPct": 33.3
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "cornerHoleBait",
+        "factor": 0.9,
+        "A": {
+          "cases": 24,
+          "ok": 16,
+          "lost": 0,
+          "mismatch": 8,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 66.7,
+          "lostPct": 0,
+          "mismatchPct": 33.3
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "cornerHoleBait",
+        "factor": 1.1,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "cornerHoleBait",
+        "factor": 1.5,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        }
+      },
+      {
+        "family": "cornerHoleBait",
+        "factor": 2,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 20,
+          "lost": 0,
+          "mismatch": 4,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 83.3,
+          "lostPct": 0,
+          "mismatchPct": 16.7
+        }
+      },
+      {
+        "family": "cornerHoleBait",
+        "factor": 3,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 20,
+          "lost": 0,
+          "mismatch": 4,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 83.3,
+          "lostPct": 0,
+          "mismatchPct": 16.7
+        }
+      },
+      {
+        "family": "cornerHoleBait",
+        "factor": 4,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 20,
+          "lost": 0,
+          "mismatch": 4,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 83.3,
+          "lostPct": 0,
+          "mismatchPct": 16.7
+        }
+      },
+      {
+        "family": "cornerHoleBait",
+        "factor": 5,
+        "A": {
+          "cases": 24,
+          "ok": 24,
+          "lost": 0,
+          "mismatch": 0,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
+        },
+        "B": {
+          "cases": 24,
+          "ok": 20,
+          "lost": 0,
+          "mismatch": 4,
+          "nogt": 0,
+          "scored": 24,
+          "survivalPct": 83.3,
+          "lostPct": 0,
+          "mismatchPct": 16.7
+        }
+      }
+    ]
+  },
+  "fidelity": {
+    "measurable": true,
+    "agree": 36,
+    "disagree": 0,
+    "disagreements": [],
+    "note": "compares \"does this NAME resolve to a kernel edge\" between the replica and the shipping nodeOcctBridge"
+  }
+}
