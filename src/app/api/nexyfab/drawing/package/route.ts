@@ -44,8 +44,17 @@ type DxfMod = { dxfPlan: (a: Assembly, domain: string, pipes?: unknown[], opts?:
 type LxMod = { landxmlAlignment: (a: Assembly, o?: Record<string, unknown>) => string | null };
 type IfcMod = { ifcExport: (a: Assembly, o?: Record<string, unknown>) => string | null; ifcAlignment43: (a: Assembly, o?: Record<string, unknown>) => string | null };
 type XlsxMod = { boqXlsxBase64: (a: Assembly, o?: Record<string, unknown>) => string };
+// P0 웹 도면집 동급화(260719b): MCP generate_package 와 동일 구성 — 부품도·제작사양서·
+// 완성도·A1 라운드트립·B1 메시 부울·T2 실시 검도(웹 우선 탑재)
+type PsMod = { partSheets: (a: Assembly, o?: Record<string, unknown>) => string };
+type FspMod = { fabricationSpec: (a: Assembly, o?: Record<string, unknown>) => Promise<string> };
+type DcMod = { checkDrawingCompleteness: (html: string, o?: Record<string, unknown>) => unknown; checkDxfLayers: (dxf: string) => unknown };
+type EgMod = { checkExecutionReadiness: (a: Assembly, o?: { gaHtml?: string; sheetsHtml?: string; welds?: unknown[] }) => { score: string; ok: boolean; items: unknown[]; failed: string[]; na: string[]; note: string } };
+type RtMod = { stepRoundTrip: (a: Assembly) => Promise<unknown> };
+type IrMod = { refineInterferencesMesh: (a: Assembly, i: unknown[], o?: Record<string, unknown>) => Promise<unknown> };
 
 let _asm: AsmMod | null = null, _pkg: PkgMod | null = null, _rnd: RenderMod | null = null, _boq: BoqMod | null = null, _pd: PdMod | null = null, _vfy: VerifyMod | null = null, _dxf: DxfMod | null = null, _lx: LxMod | null = null, _xl: XlsxMod | null = null, _ifc: IfcMod | null = null;
+let _ps: PsMod | null = null, _fsp: FspMod | null = null, _dc: DcMod | null = null, _eg: EgMod | null = null, _rt: RtMod | null = null, _ir: IrMod | null = null;
 async function load() {
   const base = join(process.cwd(), 'scripts', 'drawing-to-3d');
   if (!_lx) _lx = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'landxml-export.mjs')).href)) as LxMod;
@@ -58,7 +67,13 @@ async function load() {
   if (!_pd) _pd = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'pid_dossier.mjs')).href)) as PdMod;
   if (!_vfy) _vfy = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'verify.mjs')).href)) as VerifyMod;
   if (!_dxf) _dxf = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'dxf-export.mjs')).href)) as DxfMod;
-  return { asm: _asm, pkg: _pkg, rnd: _rnd, boq: _boq, pd: _pd, vfy: _vfy, dxf: _dxf, lx: _lx, xl: _xl, ifc: _ifc };
+  if (!_ps) _ps = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'part-sheets.mjs')).href)) as PsMod;
+  if (!_fsp) _fsp = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'fab-spec.mjs')).href)) as FspMod;
+  if (!_dc) _dc = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'drawing-completeness.mjs')).href)) as DcMod;
+  if (!_eg) _eg = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'execution-gate.mjs')).href)) as EgMod;
+  if (!_rt) _rt = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'roundtrip.mjs')).href)) as RtMod;
+  if (!_ir) _ir = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'interference-refine.mjs')).href)) as IrMod;
+  return { asm: _asm, pkg: _pkg, rnd: _rnd, boq: _boq, pd: _pd, vfy: _vfy, dxf: _dxf, lx: _lx, xl: _xl, ifc: _ifc, ps: _ps, fsp: _fsp, dc: _dc, eg: _eg, rt: _rt, ir: _ir };
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -78,7 +93,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: 'assembly.parts 가 필요합니다.' }, { status: 400 });
   }
 
-  let mods: { asm: AsmMod; pkg: PkgMod; rnd: RenderMod; boq: BoqMod; pd: PdMod; vfy: VerifyMod; dxf: DxfMod; lx: LxMod | null; xl: XlsxMod | null; ifc: IfcMod | null };
+  let mods: { asm: AsmMod; pkg: PkgMod; rnd: RenderMod; boq: BoqMod; pd: PdMod; vfy: VerifyMod; dxf: DxfMod; lx: LxMod | null; xl: XlsxMod | null; ifc: IfcMod | null; ps: PsMod | null; fsp: FspMod | null; dc: DcMod | null; eg: EgMod | null; rt: RtMod | null; ir: IrMod | null };
   try { mods = await load(); } catch (e) {
     return NextResponse.json({ ok: false, error: 'pipeline load failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 });
   }
@@ -98,11 +113,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // 2D GA 도면 (건축=축선 구조평면·조경=배치도 모드 포함 · 배관=라우터 결과 그대로 투영)
   // revHistory=개정 이력(입력 원칙) · lang='en'=시트명·표두 EN(본문 KO 유지 명시)
+  // P0(260719b): welds 전달 — 용접 지시선(nf-weldarrow)+일람이 웹 도면집에도 실배치(MCP 동급)
+  let gaHtml = '';
+  let completeness: unknown = null;
   try {
     files.push({
       name: 'GA_2D_drawing.html', mime: 'text/html',
       content: mods.pkg.ga2dDrawing(assembly, {
-        title, domain, pipes: built.pipes?.routes,
+        title, domain, pipes: built.pipes?.routes, welds: built.welds,
         // REV(#3, 260719): 옵션 입력 이력 우선, 없으면 편집 자동 축적(asm.revisions) 반영
         ...(Array.isArray(options.revHistory)
           ? { revHistory: options.revHistory }
@@ -112,7 +130,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         ...(options.lang === 'en' ? { lang: 'en' } : {}),
       }),
     });
+    gaHtml = files[files.length - 1].content;
+    try { completeness = mods.dc?.checkDrawingCompleteness(gaHtml) ?? null; } catch (e) { void e; }
   } catch (e) { /* skip */ void e; }
+  // P0(260719b): 부품 제작도(구멍표·제작치수 행 — M1/M2 단일 소스) + 제작 사양서(MCP 동급)
+  let sheetsHtml = '';
+  try {
+    if (mods.ps) {
+      sheetsHtml = mods.ps.partSheets(assembly, { title: title + ' — 부품 제작도' });
+      files.push({ name: '부품제작도.html', mime: 'text/html', content: sheetsHtml });
+    }
+  } catch (e) { void e; }
+  try {
+    if (mods.fsp) files.push({ name: '제작사양서.html', mime: 'text/html', content: await mods.fsp.fabricationSpec(assembly, { title: title + ' — 제작 사양서' }) });
+  } catch (e) { void e; }
   // DXF 평면 (P1 — AutoCAD 편집용, 레이어 분리 R12. 건축·조경·인테리어 + PIPE 레이어)
   try {
     const dxf = mods.dxf.dxfPlan(assembly, domain, built.pipes?.routes, { title, dwgNo: 'NX-GA-001' });
@@ -195,6 +226,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     } catch (e) { void e; /* FEA 실패는 패키지를 막지 않음 — 파일만 빠짐 */ }
   }
 
+  // P0(260719b) 검증 3종(MCP 동급+T2 웹 우선) — options.verify===false 로 생략 가능
+  //   A1 라운드트립(STEP 재임포트 실측↔폐형 예측) · B1 의심쌍 메시 부울(잔여 간섭 시)
+  //   · T2 실시 검도 M1~M6(GA+부품도 기입 치수 결정론 대조) → 검도 리포트 동봉
+  let roundtrip: unknown = null, interferenceRefine: unknown = null;
+  let executionGate: ReturnType<EgMod['checkExecutionReadiness']> | null = null;
+  if (options.verify !== false) {
+    try { roundtrip = mods.rt ? await mods.rt.stepRoundTrip(assembly) : null; } catch (e) { roundtrip = { error: String(e instanceof Error ? e.message : e).slice(0, 120) }; }
+    if ((built.interferences ?? []).length && mods.ir) {
+      try { interferenceRefine = await mods.ir.refineInterferencesMesh(assembly, built.interferences ?? []); } catch (e) { interferenceRefine = { error: String(e instanceof Error ? e.message : e).slice(0, 120) }; }
+    }
+    try {
+      executionGate = mods.eg ? mods.eg.checkExecutionReadiness(assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [] }) : null;
+      if (executionGate) {
+        const eg = executionGate;
+        const esc = (s: unknown) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+        files.push({
+          name: '실시검도리포트.html', mime: 'text/html',
+          content: `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)} — 실시 검도 M1~M6</title>
+<style>body{font-family:'Segoe UI','Malgun Gothic',sans-serif;max-width:860px;margin:20px auto;color:#1f2937}table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid #cbd5e1;padding:6px 10px}th{background:#f1f5f9}.ok{color:#15803d;font-weight:700}.no{color:#b91c1c;font-weight:700}.na{color:#94a3b8}</style></head><body>
+<h2>실시 검도 게이트 (M1~M6) — ${esc(eg.score)} ${eg.ok ? '<span class="ok">PASS</span>' : '<span class="no">보완 필요</span>'}</h2>
+<table><thead><tr><th>항목</th><th>판정</th><th>상세</th></tr></thead><tbody>
+${(eg.items as Array<{ id: string; name: string; pass: boolean | null; detail: string[] }>).map((i) => `<tr><td>${esc(i.id)} ${esc(i.name)}</td><td class="${i.pass === null ? 'na' : i.pass ? 'ok' : 'no'}">${i.pass === null ? 'N/A' : i.pass ? 'PASS' : 'FAIL'}</td><td style="text-align:left">${esc((i.detail ?? []).join('; ') || '—')}</td></tr>`).join('')}
+</tbody></table>
+<p style="font-size:12px;color:#64748b">${esc(eg.note)}</p></body></html>`,
+        });
+      }
+    } catch (e) { void e; }
+  }
+
   // REV 스탬프 + 산출물 크로스 정합 게이트 (#7 — 위시빌더 "카드=REV B vs 도면=REV C" 재발 방지)
   const rev = createHash('sha1').update(JSON.stringify({ a: assembly, d: domain })).digest('hex').slice(0, 8);
   const st = built.structural as { totalMassKg?: number } | null;
@@ -269,6 +329,11 @@ if (data.pipes?.errors?.length) console.warn('⚠ 배관 라우팅 실패:', dat
     pipes: built.pipes ?? null,
     designOk: built.designOk ?? null,
     consistency,
-    note: 'P&ID·Dossier(AI 보조)는 후속. 형상기반 GA 3D·2D 도면·구조·BOQ·SCAD 자동생성.',
+    // P0(260719b): 검증 3종+완성도 — MCP generate_package 와 동일 필드(웹 동급화)
+    completeness,
+    roundtrip,
+    interferenceRefine,
+    executionGate,
+    note: 'P&ID·Dossier(AI 보조)는 후속. 형상기반 GA 3D·2D 도면·구조·BOQ·SCAD 자동생성 + A1/B1/M1~M6 검증 동봉.',
   });
 }

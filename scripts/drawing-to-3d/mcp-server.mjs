@@ -516,11 +516,12 @@ export async function callTool(name, args = {}) {
       ? args.assembly.revisions.map((r, i) => ({ rev: String(i + 1), date: r.at ? new Date(r.at).toISOString().slice(0, 10) : '', note: `${r.kind ?? 'edit'} ${r.target ?? ''} ${r.note ?? ''}`.trim().slice(0, 90) }))
       : undefined;
     let completeness = null, c9 = null;
-    try { const ga = pkg.ga2dDrawing(args.assembly, { title, domain: args.assembly.domain ?? 'mech', welds: built.welds, ...(revHistory ? { revHistory } : {}) }); save('GA_2D_drawing.html', ga); completeness = dc.checkDrawingCompleteness(ga); } catch (e) { files.push({ name: 'GA_2D_drawing.html', error: String(e).slice(0, 120) }); }
+    let gaHtml = '', sheetsHtml = '';
+    try { const ga = pkg.ga2dDrawing(args.assembly, { title, domain: args.assembly.domain ?? 'mech', welds: built.welds, ...(revHistory ? { revHistory } : {}) }); gaHtml = ga; save('GA_2D_drawing.html', ga); completeness = dc.checkDrawingCompleteness(ga); } catch (e) { files.push({ name: 'GA_2D_drawing.html', error: String(e).slice(0, 120) }); }
     try { save('structural.html', pkg.structuralReport(args.assembly, { title })); } catch { /* skip */ }
     try { save('BOQ.html', boqm.boqReport(args.assembly, { title, domain: args.assembly.domain ?? 'mech' })); } catch { /* skip */ }
     try { save('Dossier.html', pd.dossierReport(args.assembly, { title })); } catch { /* skip */ }
-    try { save('부품제작도.html', ps.partSheets(args.assembly, { title: title + ' — 부품 제작도' })); } catch { /* skip */ }
+    try { sheetsHtml = ps.partSheets(args.assembly, { title: title + ' — 부품 제작도' }); save('부품제작도.html', sheetsHtml); } catch { /* skip */ }
     try { save('제작사양서.html', await fsp.fabricationSpec(args.assembly, { title: title + ' — 제작 사양서' })); } catch { /* skip */ }
     try { const d = dxfm.dxfPlan(args.assembly, args.assembly.domain ?? 'mech', undefined, { title, dwgNo: 'NX-GA-001' }); if (d) { save('GA_plan.dxf', d); c9 = dc.checkDxfLayers(d); } } catch { /* skip */ }
     try { save('GA_3D.html', await rnd.renderColoredHtml({ assembly: args.assembly }, { title, subtitle: 'nexyfab 자동생성 GA(비법정)' })); } catch (e) { files.push({ name: 'GA_3D.html', error: String(e).slice(0, 120) }); }
@@ -536,7 +537,13 @@ export async function callTool(name, args = {}) {
     if ((built.interferences ?? []).length) {
       try { interferenceRefine = await refineInterferencesMesh(args.assembly, built.interferences); } catch (e) { interferenceRefine = { error: String(e).slice(0, 120) }; }
     }
-    return { ok: true, outDir: args.outDir, files, completeness, c9, step, roundtrip, interferenceRefine, note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.' };
+    // T2(260719b): 실시 검도 M1~M6 — GA+부품도 기입 치수 결정론 대조(웹 라우트와 동급)
+    let executionGate = null;
+    try {
+      const eg = await import('./execution-gate.mjs');
+      executionGate = eg.checkExecutionReadiness(args.assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [] });
+    } catch (e) { executionGate = { error: String(e).slice(0, 120) }; }
+    return { ok: true, outDir: args.outDir, files, completeness, c9, step, roundtrip, interferenceRefine, executionGate, note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.' };
   }
   if (name === 'verify_domain') {
     return verifyDomain({
