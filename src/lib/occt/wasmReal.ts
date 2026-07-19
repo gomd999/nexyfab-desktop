@@ -173,7 +173,11 @@ export function buildFromExtrude(
   occt: StubOpenCascadeModule,
   feature: ExtrudeFeature,
 ): ExtrudeBuildResult {
-  const before = { allocs: occt.__tracker__.allocs, disposes: occt.__tracker__.disposes };
+  // W1-A(260719b) 발견: `__tracker__` 는 **스텁 전용** 계측이다. 실 OCCT 모듈에는 없어서
+  // 여기서 곧바로 TypeError 가 났고, 그 탓에 buildFromExtrude/buildUnitBox 가 테스트 밖
+  // (=실커널)에서 사용 불가였다. 없으면 0 으로 읽어 계측만 비활성화한다 — 기하 로직은 불변.
+  const tracker = occt.__tracker__ as { allocs: number; disposes: number } | undefined;
+  const before = { allocs: tracker?.allocs ?? 0, disposes: tracker?.disposes ?? 0 };
 
   // Validate inputs cheaply BEFORE touching the heap.
   if (!Array.isArray(feature.loop) || feature.loop.length < 3) {
@@ -212,7 +216,7 @@ export function buildFromExtrude(
               const shape = prismBuilder.Shape();
               // Snapshot tracker AFTER we've made all temp objects but BEFORE
               // the disposes in `finally` fire — the caller cares about both.
-              const allocs = occt.__tracker__.allocs - before.allocs;
+              const allocs = (tracker?.allocs ?? 0) - before.allocs;
               // Disposes will be at least the temp count we're about to drop.
               // We compute the final number below after the finally blocks run.
               return finishBuild(occt, before.disposes, shape, allocs, prismBuilder, vec, face, faceBuilder, wire, polygon, points);
