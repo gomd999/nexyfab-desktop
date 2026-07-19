@@ -80,6 +80,12 @@ function featSolid(rc, f) {
     }
     case 'sphere':
       return rc.makeSphere(f.diameter / 2);
+    case 'coil': { // C2(260719b): 진짜 B-rep 헬릭스 스윕(sketchHelix+sweepSketch — 실측 오차 ~1.8%
+      // = 곡률 단면 왜곡, 명시). SCAD 는 세그먼트 근사(compose 방출부) — 경로별 정직 표기.
+      const R = (f.coilDia - f.wireDia) / 2;
+      const helix = rc.sketchHelix(f.pitch, f.turns * f.pitch, R, [0, 0, f.wireDia / 2], [0, 0, 1]);
+      return helix.sweepSketch((plane, origin) => rc.sketchCircle(f.wireDia / 2, { plane, origin }));
+    }
     default:
       throw new Error(`to-step: unknown kind ${f.kind}`);
   }

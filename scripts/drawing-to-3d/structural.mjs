@@ -114,9 +114,27 @@ export function partVolume(type, p) {
       const Lw = p.turns * Math.hypot(Math.PI * Dm, p.pitch);
       return (Math.PI / 4) * p.wireDia ** 2 * Lw;
     }
-    case 'pillow_block': { // 필로우 블록 하우징 = 본체 − 보어(폐형)
+    case 'pillow_block': { // C2(260719b): 실형상 폐형 — 베이스+상부 반원통 − 보어(렌즈) − 볼트홀 2
       const w = p.width, h = p.height, d2 = p.depth ?? Math.round(p.boreDia * 1.4);
-      return w * d2 * h - A * p.boreDia ** 2 * d2;
+      const bp = p.boltPitch ?? Math.round(w * 0.8);
+      const R = Math.min(w * 0.9, h * 1.1) / 2;      // 상부 원통 반경(중심 z=0.55h — R ≤ 0.55h 보장)
+      const rb = p.boreDia / 2, db = Math.max(8, p.boreDia * 0.25);
+      // 보어 공제 = 원-원 렌즈(보어 중심 z=h ↔ 원통 중심 z=0.55h, 축간 0.45h) — 하부 침범분은
+      // 베이스 스트립이 전폭이라 렌즈로 수렴(유도 명시). 완전 내포/분리 경계 클램프.
+      const dd = 0.45 * h;
+      let lens;
+      if (dd >= R + rb) lens = 0;
+      else if (dd <= Math.abs(R - rb)) lens = Math.PI * Math.min(R, rb) ** 2;
+      else {
+        lens = R * R * Math.acos((dd * dd + R * R - rb * rb) / (2 * dd * R))
+          + rb * rb * Math.acos((dd * dd + rb * rb - R * R) / (2 * dd * rb))
+          - 0.5 * Math.sqrt((-dd + R + rb) * (dd + R - rb) * (dd - R + rb) * (dd + R + rb));
+      }
+      // 볼트홀: 관통 높이 = 베이스 0.55h + 홀 위치의 원통 여분(중심 x 기준 근사 — 소경 명시)
+      const off = bp / 2;
+      const domeExtra = off < R ? Math.sqrt(R * R - off * off) : 0;
+      const boltV = A * db * db * Math.min(h, 0.55 * h + domeExtra);
+      return w * d2 * 0.55 * h + (Math.PI / 2) * R * R * d2 - lens * d2 - 2 * boltV;
     }
     case 'cavity_block': { // 금형 블록 − 음형 = 폐형 차 체적(캐비티 체적은 재귀)
       const cav = p.cavity ? partVolume(p.cavity.type, p.cavity.params) : 0;

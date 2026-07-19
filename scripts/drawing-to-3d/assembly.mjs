@@ -362,14 +362,26 @@ export function assemblyToComposeIntent(asm) {
         break;
       }
       // 표준부품 확장 2(260718f): 프록시 표시(SCAD 정확·질량 폐형)
-      case 'coil_spring': { // 원통 프록시(코일 외경 × 총높이)
-        feats.push(F('cylinder', { diameter: p.coilDia, height: p.turns * p.pitch + p.wireDia }));
+      case 'coil_spring': { // C2(260719b): 네이티브 coil 피처 단일 방출 — STEP=B-rep 헬릭스 스윕,
+        // SCAD=세그먼트 근사(compose 방출부) — 원통 프록시 해소. 회전 배치도 placeSolid 가 처리.
+        feats.push(F('coil', { wireDia: p.wireDia, coilDia: p.coilDia, pitch: p.pitch, turns: p.turns }));
         break;
       }
-      case 'pillow_block': {
+      case 'pillow_block': { // C2(260719b): SCAD 하우징과 동일 실형상(베이스+원통 상부−보어−볼트홀)
         const d2 = p.depth ?? Math.round(p.boreDia * 1.4);
-        feats.push(F('box', { size: [p.width, d2, p.height] }));
-        feats.push(F('cylinder', { diameter: p.boreDia, height: d2 + 2 }, p.width / 2, -1, p.height, 'subtract'));
+        if (rot) { // 회전 배치=박스 프록시 유지(정직 — 피처 자체 회전과 부품 회전 중첩 미지원)
+          feats.push(F('box', { size: [p.width, d2, p.height] }));
+          feats.push(F('cylinder', { diameter: p.boreDia, height: d2 + 2 }, p.width / 2, -1, p.height, 'subtract'));
+          break;
+        }
+        const bp = p.boltPitch ?? Math.round(p.width * 0.8);
+        const domeD = Math.min(p.width * 0.9, p.height * 1.1);
+        const db = Math.max(8, p.boreDia * 0.25);
+        feats.push(F('box', { size: [p.width, d2, p.height * 0.55] }));
+        feats.push({ kind: 'cylinder', diameter: domeD, height: d2, centered: true, op: 'add', _col: col, _pid: pidx, at: { translate: [tx + p.width / 2, ty + d2 / 2, tz + p.height * 0.55], rotate: [-90, 0, 0] } });
+        feats.push({ kind: 'cylinder', diameter: p.boreDia, height: d2 + 2, op: 'subtract', _col: col, _pid: pidx, at: { translate: [tx + p.width / 2, ty - 1, tz + p.height], rotate: [-90, 0, 0] } });
+        feats.push(F('cylinder', { diameter: db, height: p.height }, (p.width - bp) / 2, d2 / 2, -1, 'subtract'));
+        feats.push(F('cylinder', { diameter: db, height: p.height }, (p.width + bp) / 2, d2 / 2, -1, 'subtract'));
         break;
       }
       // 자유곡면 어휘(260718d): GA/STEP 피처=프록시(표시용 — SCAD 본체는 정확 명시)

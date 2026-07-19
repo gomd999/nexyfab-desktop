@@ -238,20 +238,20 @@
   {
    "type": "coil_spring",
    "analyticMm3": 11414.1,
-   "scadMm3": 982.6,
-   "stepMm3": 105388,
-   "scadDevPct": 91.39,
-   "stepDevPct": 823.31,
-   "verdict": "BOTH_PROXY"
+   "scadMm3": 11248.7,
+   "stepMm3": 11210,
+   "scadDevPct": 1.45,
+   "stepDevPct": 1.79,
+   "verdict": "EXACT"
   },
   {
    "type": "pillow_block",
-   "analyticMm3": 325819.4,
+   "analyticMm3": 252284,
    "scadMm3": 252220.2,
-   "stepMm3": 343000,
-   "scadDevPct": 22.59,
-   "stepDevPct": 5.27,
-   "verdict": "BOTH_PROXY"
+   "stepMm3": 252288.1,
+   "scadDevPct": 0.03,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
   },
   {
    "type": "cavity_block",

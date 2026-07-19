@@ -111,6 +111,10 @@ export function gateComposite(intent) {
         if (!Array.isArray(f.verts) || f.verts.length < 4 || !Array.isArray(f.faces) || f.faces.length < 4) errs.push(`${tag}: polyhedron verts/faces invalid`);
         else if (f.verts.length > 20000) errs.push(`${tag}: polyhedron 정점 > 20k — 표시 예산 초과`);
         break;
+      case 'coil': // C2(260719b) 헬릭스 — STEP=B-rep 스윕, SCAD=세그먼트 근사(방출부 명시)
+        if (!pos(f.wireDia) || !pos(f.coilDia) || !pos(f.pitch) || !pos(f.turns)) errs.push(`${tag}: coil dims invalid`);
+        else if (f.wireDia >= f.coilDia / 2) errs.push(`${tag}: wireDia ≥ coilDia/2`);
+        break;
       default: errs.push(`${tag}: unknown kind '${f.kind}'`);
     }
     if (f.pattern && (!Number.isInteger(f.pattern.count) || f.pattern.count < 1 || f.pattern.count > 200)) errs.push(`${tag}: pattern count invalid`);
@@ -130,6 +134,26 @@ function featBody(f) {
     case 'sphere': return `sphere(d=${fmt(f.diameter)}, $fn=64);`;
     case 'cone': return `cylinder(h=${fmt(f.height)}, d1=${fmt(f.dia1)}, d2=${fmt(f.dia2)}, $fn=96);`;
     case 'polyhedron': return `polyhedron(points=[${f.verts.map((v) => `[${v.map(fmt).join(',')}]`).join(',')}], faces=[${f.faces.map((q) => `[${q.join(',')}]`).join(',')}], convexity=10);`;
+    case 'coil': { // C2(260719b): SCAD 는 세그먼트 스윕 근사(네이티브 스윕 없음 — STEP=B-rep 정확)
+      const R = (f.coilDia - f.wireDia) / 2;
+      const spt = Math.max(8, Math.min(24, Math.floor(960 / Math.max(1, f.turns)))); // 현 근사 −0.3%급
+      const n = Math.max(6, Math.round(f.turns * spt));
+      const segs = [];
+      let prev = [R, 0, f.wireDia / 2];
+      for (let k = 1; k <= n; k++) {
+        const t = (k / n) * f.turns, th = 2 * Math.PI * t;
+        const cur = [R * Math.cos(th), R * Math.sin(th), f.wireDia / 2 + f.pitch * t];
+        const L = Math.hypot(cur[0] - prev[0], cur[1] - prev[1], cur[2] - prev[2]);
+        if (L > 1e-9) {
+          const ay = (Math.acos((cur[2] - prev[2]) / L) * 180) / Math.PI;
+          const az = (Math.atan2(cur[1] - prev[1], cur[0] - prev[0]) * 180) / Math.PI;
+          segs.push(`translate([${fmt(prev[0])}, ${fmt(prev[1])}, ${fmt(prev[2])}]) rotate([0, ${fmt(ay)}, ${fmt(az)}]) cylinder(h=${fmt(L)}, d=${fmt(f.wireDia)}, $fn=24);`);
+          if (k > 1) segs.push(`translate([${fmt(prev[0])}, ${fmt(prev[1])}, ${fmt(prev[2])}]) sphere(d=${fmt(f.wireDia)}, $fn=24);`);
+        }
+        prev = cur;
+      }
+      return `union() { ${segs.join(' ')} }`;
+    }
     default: throw new Error(`emit: unknown kind ${f.kind}`);
   }
 }

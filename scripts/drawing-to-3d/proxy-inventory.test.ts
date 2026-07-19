@@ -5,8 +5,10 @@
 import { describe, it, expect } from 'vitest';
 import { buildProxyInventory, CANONICAL } from './proxy-inventory.mjs';
 
-// 문서화된 프록시(실형상화 우선순위 — accuracy-roadmap C2): 이 외의 프록시 출현=회귀
-const KNOWN_PROXY = new Set(['coil_spring', 'pillow_block', 'mesh']);
+// 문서화된 프록시(실형상화 우선순위 — accuracy-roadmap C2): 이 외의 프록시 출현=회귀.
+// C2(260719b): coil_spring(B-rep 헬릭스 스윕)·pillow_block(실형상+폐형) 실형상화 완료 — 제거.
+// coil_spring 은 SCAD 세그먼트/STEP 곡률 왜곡 각각 ~2% 근사 → 완화 밴드로 EXACT 판정(별도 상수).
+const KNOWN_PROXY = new Set(['mesh']);
 
 describe('C1 어휘 전수 프록시 인벤토리', () => {
   it('전 어휘 3열 대조 — 폐형=EXACT, 프록시=문서화 3종뿐', async () => {

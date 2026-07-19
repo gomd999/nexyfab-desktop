@@ -161,6 +161,21 @@ function polySimple(pts) {
 const r4 = (n) => { const r = Math.round(n * 10000) / 10000; return Object.is(r, -0) ? 0 : r; };
 const polyScad = (pts) => `polygon(points=[${pts.map((p) => `[${r4(p[0])},${r4(p[1])}]`).join(',')}]);`;
 
+/** C2(260719b) 코일 스프링 헬릭스 폴리라인 — SCAD 세그먼트 근사 공유 소스(STEP=B-rep 스윕).
+ *  중심선 반경=(coilDia−wireDia)/2, z 시작=wireDia/2(하단 접지 접선). 턴당 ≤24분할(총 ≤960). */
+export function coilPoints(i) {
+  const R = (i.coilDia - i.wireDia) / 2;
+  const spt = Math.max(8, Math.min(24, Math.floor(960 / Math.max(1, i.turns))));
+  const n = Math.max(6, Math.round(i.turns * spt));
+  const pts = [];
+  for (let k = 0; k <= n; k++) {
+    const t = (k / n) * i.turns;
+    const th = 2 * Math.PI * t;
+    pts.push([R * Math.cos(th), R * Math.sin(th), i.wireDia / 2 + i.pitch * t]);
+  }
+  return pts;
+}
+
 const GATES = {
   plate_with_holes(i, e) {
     for (const k of ['width', 'depth', 'thickness']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);
@@ -538,10 +553,21 @@ const SCAD = {
     return `union() {\n  translate([0, ${(i.B - i.tw) / 2}, 0]) cube([${i.length}, ${i.tw}, ${i.H - i.tf}]);\n  translate([0, 0, ${i.H - i.tf}]) cube([${i.length}, ${i.B}, ${i.tf}]);\n}`;
   },
   coil_spring(i) {
-    // 헬리컬 스윕 = twist 압출(단면=수평 투영 원 — 경사 왜곡 소량 근사 명시)
-    const Dm = i.coilDia - i.wireDia;
-    const H = i.turns * i.pitch;
-    return `linear_extrude(height=${H}, twist=${-360 * i.turns}, slices=${Math.max(60, i.turns * 24)}) translate([${Dm / 2}, 0]) circle(d=${i.wireDia}, $fn=24);`;
+    // C2(260719b): 헬릭스 세그먼트 스윕(2점 실린더+절점 스피어 — rebar 와 동일 수학).
+    // 종전 twist 압출은 수평 슬라이스 부피(A·H)라 실선재 부피(A·L_wire)의 ~1/11 — 프록시 해소.
+    // 세그먼트 현 근사(턴당 ≤12분할 — 부피 −0.5% 급, 명시). STEP 도 동일 폴리라인.
+    const pts = coilPoints(i);
+    const segs = [];
+    for (let k = 0; k < pts.length - 1; k++) {
+      const [x1, y1, z1] = pts[k], [x2, y2, z2] = pts[k + 1];
+      const L = Math.hypot(x2 - x1, y2 - y1, z2 - z1);
+      if (L < 1e-9) continue;
+      const ay = (Math.acos((z2 - z1) / L) * 180) / Math.PI;
+      const az = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+      segs.push(`  translate([${r4(x1)}, ${r4(y1)}, ${r4(z1)}]) rotate([0, ${r4(ay)}, ${r4(az)}]) cylinder(h=${r4(L)}, d=${i.wireDia}, $fn=24);`);
+      if (k > 0) segs.push(`  translate([${r4(x1)}, ${r4(y1)}, ${r4(z1)}]) sphere(d=${i.wireDia}, $fn=24);`);
+    }
+    return `union() {\n${segs.join('\n')}\n}`;
   },
   pillow_block(i) {
     const d2 = i.depth ?? Math.round(i.boreDia * 1.4);
