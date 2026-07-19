@@ -1,6 +1,30 @@
 # ADR-017 — 위상 명명 K2.2 스파이크 + 피처 트리 OCCT 수렴
 
-**Status:** proposed · **Date:** 2026-07-19 · **Risk tier:** P1
+**Status:** **accepted — 스파이크 실행 완료, 판정=불합격(범위 특정됨)** · **Date:** 2026-07-19 · **Risk tier:** P1
+
+> ## 스파이크 결과 (2026-07-19 실측)
+> 산출물: `scripts/spike/topo-naming-k22.test.ts` · `scripts/spike/topo-naming-k22.result.json`
+> 하네스 신뢰도: 실 브릿지 대조 **36/36 일치**. OCCT 실 커널 사용(로드 ~0.9s).
+>
+> | 시나리오 | A 생존 / **오매칭** | B 생존 / **오매칭** | n |
+> |---|---|---|---|
+> | S1 extrude→치수변경 | 100% / **0%** | 99.6% / 0.4% | 504 |
+> | S2 불리언컷→치수변경 | 90.7% / **7.6%** | 91.3% / 8.7% | 912 |
+> | S2b 2번째 컷 삽입 | 0% / **50%** | 89.9% / 10.1% | 288 |
+> | S3 필렛참조→치수변경 | 100% / **0%** | 97.7% / 2.3% | 264 |
+> | S4 EditOp 중간삽입 | 0% / **0%**(전부 명시 상실) | 100% / 0% | 144 |
+>
+> **필수기준(S1~S4 오매칭 0%) 불합격.** 단 파괴는 **불리언에 국한**되고 순수 extrude 는 무결.
+> 근본 원인 ①`composedTopo.ts` seam 이 중점 정렬 **순서**에 붙은 위치 이름 ②역할 접두사
+> `a/`,`b/` 가 **위치 기반** — 툴 추가 시 기존 이름이 새 툴을 가리킴(S2b 50%의 정체).
+> 붕괴 조건은 배율이 아니라 **불리언 피처 간 상대거리 축소**.
+>
+> **채택 경로**: 사전확정 규칙대로 (a) 커널 이력 추적 — **단 불리언에만 적용**.
+> `topoNaming.ts`(extrude)는 손대지 않는다. (b) 재지정 UX 승격 병행. (c) 재생성형 전환은 **불필요**.
+> 즉효 수정: 역할 접두사 위치→피처ID(커널 불필요, S2b 오매칭 50%→명시 상실).
+> 부수: `bestEdgeMatch` 에 신뢰도 하한+2위 마진 게이트(B 는 상실을 보고하지 않아 D1 관점에서 더 위험).
+>
+> 실행 계획은 [`docs/roadmap/REPLACEMENT_ROADMAP.md`](../roadmap/REPLACEMENT_ROADMAP.md) §4 R0~R2.
 **Builds on:** [ADR-013](013-own-pro-cad-track.md)(Path A 확정) · [ADR-014](014-occt-kernel-promotion.md)(K1~K7) · [ADR-016](016-kernel-of-record-and-engine-selection.md)(커널 오브 레코드)
 **Strategy:** [`docs/strategy-path-a.md`](../strategy-path-a.md)
 
