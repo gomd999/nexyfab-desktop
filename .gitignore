@@ -118,3 +118,8 @@ cron-worker/.cron-secret.txt
 # Client-side OpenSCAD render assets (Studio in-browser CAD) — vendored, must deploy
 !/public/openscad/openscad.wasm
 !/public/openscad/bosl2.zip
+
+# 세션 디버그 산출물(루트 _* — 스크린샷·임시 스크립트, 260719b 위생)
+/_*.png
+/_*.mjs
+/_*.json

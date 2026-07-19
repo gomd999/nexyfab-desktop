@@ -27,3 +27,8 @@ build_log.txt
 # Studio client WASM render assets — must deploy despite *.zip rule above
 !public/openscad/bosl2.zip
 !public/openscad/openscad.wasm
+
+# 세션 디버그 산출물(루트 _* — 업로드 제외, 260719b 위생)
+_*.png
+_*.mjs
+_*.json

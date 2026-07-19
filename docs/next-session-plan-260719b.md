@@ -59,3 +59,21 @@ T3 reconcile=dxf-seed 라우트만(MCP/CLI 없음). extract 의 reproject 판정
   직접 순회). AABB 가 문자열 오염되면 supportCheck 가 unknown 으로 정직 분리됨(신호)
 - 골든 재블레스는 육안 확인 후(이번 세션: +21px=표제란 행, 0.2%=E1 협착 — 모두 의도 변경)
 - proxy-inventory.test 의 KNOWN_PROXY 는 실형상화 완료 시 제거해야 통과(가드 의도)
+
+## 3. 260719b 후반 추가 완료(순차 실행 — P0~P2 전소화)
+
+- **P0 웹 도면집 동급화**(1fd58237): package 라우트 welds+부품도+사양서+완성도+A1/B1/T2
+  (실시검도리포트.html 동봉·options.verify=false 생략) — MCP 동급. MCP 에도 T2 동봉
+- **P0-b 정밀 검증**(6cfadba1): /drawing/verify-precision + 스튜디오 🔬 버튼(A1 오차/밴드·
+  B1 확정/해제/랩)
+- **P1 MCP 26종**(0b1326b4): execution_gate·std_audit·dxf_reconcile + extract 지지율 배지
+- **P1-b DXF 체인**(63b922e8): extract 에 dxfText 동봉→실측 교체(recognized.reconcile 배지)
+- **C2 실형상화**(366c060d): coil_spring=네이티브 'coil' 피처(STEP=sketchHelix+sweepSketch
+  B-rep 1.79%·SCAD=세그 1.45%)·pillow_block=실형상+원-원 렌즈 폐형(0.03%) —
+  KNOWN_PROXY=mesh(표시용)만
+- **P2 잔여**(e8bfa984): HLR 스파이크 **판정=가능**(drawProjection visible/hidden·3뷰 697ms
+  — hlr-spike.mjs) · D2 멀티뷰 모순(공유 축척 교차 대조 — 관측값 제시 거부) ·
+  체결 자동(fastener-auto — 플랜지 짝→M 스냅+표준 길이, 도면집 fasteners)
+
+테스트 161/161. 다음 후보: HLR 을 GA 뷰에 정식 편입(치수·밸룬 좌표계 재배선 — 별도 트랙),
+짝(mate) 선언·끼워맞춤 검증, 조립도 판독 트랙, 후순위 포맷(⑤⑫⑬⑥⑭).
