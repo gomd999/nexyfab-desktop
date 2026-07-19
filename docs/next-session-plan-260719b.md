@@ -26,20 +26,29 @@
 
 테스트 158/158 · visual-golden 14/14 · 3면 스모크 통과. 배포 -102(큐 배치)·-103(T 배치).
 
-## 1. 다음 큐(우선순위 순)
+## 1. 다음 큐(우선순위 순 — 260719b 말 배선 감사 반영)
 
-1. **T2 게이트 제품 배선**: checkExecutionReadiness 를 도면집 생성 경로(mcp-server 실시팩·
-   api/cli)에 삽입 — 결과를 도면집 표지/검도 리포트로 동봉. + A1/B1 웹 온디맨드 버튼
-   (스튜디오 "정밀 검증") 같이 배선
-2. **HLR 스파이크**(1일 타임박스, replicad/OCCT projectTo?) — E1 헐을 진짜 은선 제거로 격상
-   가능성 판정만(실패=E1 유지 명시)
-3. **체결 자동**: 플랜지 짝 인식→볼트 세트+길이(그립=t1+t2+너트+와셔 → 표준 L 스냅)+BOM
-4. **C2 실형상화**: coil_spring 헬릭스 스윕(STEP=세그먼트 근사 명시)·pillow_block STEP
-   실형상(SCAD 하우징과 동일 수학) — proxy-inventory KNOWN_PROXY 축소가 곧 진척 지표
-5. **D1 웹 표면화**: 스튜디오 업로드 후 reproject 리포트 표시(region 오버레이) + DXF 업로드
-   시 T3 reconciled 를 추출 플로우에 연결(비전→실측 교체 자동)
+배선 감사 결론(에이전트 전수): **MCP/CLI generate_package = 완전 배선 기준면**(welds+A1+B1+
+부품도+fab-spec — mcp-server.mjs:503~539). **웹 /drawing/package 라우트가 주 격차**:
+ga2dDrawing 에 welds 미전달(route.ts:104)·부품도/fab-spec/A1/B1 전부 미포함.
+미배선 3종(테스트 전용)=checkExecutionReadiness(T2)·auditAssemblyStd·buildProxyInventory(C1).
+T3 reconcile=dxf-seed 라우트만(MCP/CLI 없음). extract 의 reproject 판정은 성공 시 UI 미표시.
+
+1. **P0 웹 도면집 동급화**: /drawing/package 라우트에 ①welds 전달(1줄) ②partSheets+
+   fabricationSpec 동봉 ③A1 stepRoundTrip·B1 refineInterferencesMesh(의심쌍 시)
+   ④checkExecutionReadiness 검도 리포트 동봉 — MCP 경로와 동일 구성으로. 골든/스모크 갱신
+2. **P0-b 스튜디오 정밀 검증 버튼**: A1/B1 온디맨드 라우트 신설(+웹 UI 버튼) —
+   DesignInner ④ 간섭 카운트 옆에서 메시 2차 해제·실측 관통량 표시
+3. **P1 미배선 노출**: T2·auditAssemblyStd(+snapBearing 도달화)·T3 reconcile 을 MCP 도구/
+   generate_package 동봉으로 승격. extract 성공 시에도 reproject 지지율 배지 표시
+4. **P1-b DXF→추출 체인**: 스튜디오 DXF 업로드 시 비전 추출→reconcile 실측 교체 자동
+   (T3 를 이미지 경로와 봉합 — unverified 만 되묻기)
+5. **P2 정확도 잔여**: C2 실형상화(coil_spring 헬릭스·pillow_block STEP — KNOWN_PROXY 축소)
+   · HLR 스파이크(1일 타임박스) · D2 멀티뷰 모순 검출 · 체결 자동(플랜지 짝→볼트 세트)
 6. F1 스냅 적용 모드(옵션)·G1 패치 프리뷰(옵션) — 종전 계획 유지
 7. 짝(mate) 선언(ADR-013 경계 신중) → 끼워맞춤 검증 → 조립도 판독 트랙(별도 설계 문서)
+8. 위생: 저장소 루트 `_*.png/_*.mjs` 디버그 산출물 10개 정리(.gitignore/.railwayignore)
+   · 골든 CI 이식성(동일 머신 전제 문서화됨)
 
 ## 2. 세션 운영 규약(직전 계획에서 유지 + 이번 세션 추가)
 

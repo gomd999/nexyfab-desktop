@@ -1,4 +1,10 @@
-# 정확도 로드맵 (260719) — 축별 진단과 실행 항목
+# 정확도 로드맵 (260719 — 260719b 갱신: A1·B1·C1·D1·E1·E2·F2 완료) — 축별 진단과 실행 항목
+
+> **완료 현황(260719b)**: A1(roundtrip.mjs) · B1(interference-refine.mjs+격자 랩 규칙) ·
+> C1(proxy-inventory — 폐형 4건 정정, 잔여 프록시=coil_spring·pillow_block·mesh=C2) ·
+> D1(reproject-diff — extract/route 배선) · E1(placedCorners 볼록헐) · E2(골든 14종+GA_3D) ·
+> F2=R2-⑪(T슬롯·베어링·UCP). T1~T3 검도 게이트도 완료(execution-gate·holeFeature·dxf reconcile).
+> 잔여: C2 · D2(멀티뷰 모순) · E1 후속=HLR · F1 · G1 · 후순위 포맷들(아래 7).
 
 기준 파이프라인: text/이미지→2D도안→3D 1차→2차→자율 수정→실시 도서.
 원칙 불변: 생성≠검증 · 날조 금지 · 근사는 명시 · 거부는 이유와 함께.
