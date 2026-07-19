@@ -16,6 +16,7 @@ import sharp from 'sharp';
 import { buildAssemblyTemplate } from './domain-assemblies.mjs';
 import { buildAssembly } from './assembly.mjs';
 import { ga2dDrawing } from './package.mjs';
+import { renderColoredHtml } from './html-render.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GOLDEN = join(HERE, 'golden');
@@ -23,6 +24,43 @@ const TMP = join(HERE, 'out', 'golden-tmp');
 const UPDATE = process.argv.includes('--update');
 const DIFF_RATIO_MAX = 0.005; // 0.5%
 const CH_TOL = 16;            // 채널당 허용 차(안티앨리어싱 여유)
+
+/** RC보(철근 어휘 R2-④): 콘크리트 보 + 주철근 4본 + 스터럽 5개소 — 결정론 픽스처. */
+function rcBeamAssembly() {
+  const L = 4000, b = 300, h = 500, c = 40;
+  const parts = [
+    { id: 'beam_conc', type: 'box', params: { width: L, depth: b, height: h }, at: { tx: 0, ty: 0, tz: 0 }, material: 'concrete', role: 'beam' },
+  ];
+  let n = 0;
+  for (const z of [c, h - c]) for (const y of [c, b - c]) {
+    parts.push({ id: `main_${++n}`, type: 'rebar', params: { dia: z === c ? 22 : 16, points: [[c, y, z], [L - c, y, z]] }, at: { tx: 0, ty: 0, tz: 0 }, material: 'steel' });
+  }
+  for (let i = 0; i < 5; i++) {
+    const x = 200 + i * 900;
+    parts.push({ id: `stir_${i + 1}`, type: 'rebar', params: { dia: 10, points: [[x, c, c], [x, b - c, c], [x, b - c, h - c], [x, c, h - c], [x, c, c]] }, at: { tx: 0, ty: 0, tz: 0 }, material: 'steel' });
+  }
+  return { name: 'rc_beam', parts };
+}
+
+/** SWRO 스키드(플랜트 대표): 베이스+고압펌프+베셀 랙 2단+계통 배관 — 결정론 픽스처. */
+function swroSkidAssembly() {
+  return {
+    name: 'swro_skid',
+    parts: [
+      { id: 'skid_base', type: 'box', params: { width: 3600, depth: 1200, height: 100 }, at: { tx: 0, ty: 0, tz: 0 }, material: 'steel', role: 'base' },
+      { id: 'hp_pump', type: 'box', params: { width: 600, depth: 400, height: 400 }, at: { tx: 100, ty: 400, tz: 100 }, material: 'steel', role: 'motor' },
+      { id: 'rack_a', type: 'box', params: { width: 100, depth: 100, height: 700 }, at: { tx: 900, ty: 550, tz: 100 }, material: 'steel', role: 'column' },
+      { id: 'rack_b', type: 'box', params: { width: 100, depth: 100, height: 700 }, at: { tx: 3300, ty: 550, tz: 100 }, material: 'steel', role: 'column' },
+      { id: 'vessel_1', type: 'tube', params: { outerDia: 200, innerDia: 180, length: 2400 }, at: { tx: 900, ty: 600, tz: 500, ry: 90 }, material: 'steel', role: 'vessel' },
+      { id: 'vessel_2', type: 'tube', params: { outerDia: 200, innerDia: 180, length: 2400 }, at: { tx: 900, ty: 600, tz: 800, ry: 90 }, material: 'steel', role: 'vessel' },
+    ],
+    pipes: [
+      { id: 'feed_hp', from: 'hp_pump.x+', to: 'vessel_1.x-', d: 34, service: 'hp' },
+      { id: 'stage12', from: 'vessel_1.x+', to: 'vessel_2.x+', d: 27, service: 'concentrate' },
+      { id: 'permeate', from: 'vessel_2.x-', to: [3500, 100, 300], d: 27, service: 'permeate' },
+    ],
+  };
+}
 
 function cases() {
   const deckSite = buildAssemblyTemplate('landscape', 'timber_deck', {});
@@ -36,13 +74,57 @@ function cases() {
     ['interior-studio', buildAssemblyTemplate('interior', 'studio_unit', {}), 'interior'],
     ['landscape-deck-site', deckSite, 'landscape'],
     ['bridge-girder-30m', buildAssemblyTemplate('bridge', 'girder_bridge', {}), 'bridge'],
+    // E2 확대(260719): 플랜트·기계·철근 GA_2D
+    ['mech-tema-hx', buildAssemblyTemplate('mech', 'heat_exchanger', {}), 'mech'],
+    ['mech-flanged-elbow', buildAssemblyTemplate('mech', 'flanged_fitting', {}), 'mech'],
+    ['rc-beam-rebar', rcBeamAssembly(), 'building'],
+    ['swro-skid', swroSkidAssembly(), 'mech'],
   ];
+}
+
+// E2 확대(260719): GA_3D 캔버스 실렌더 골든 — swiftshader 소프트웨어 래스터 고정 전제
+function cases3d() {
+  return [
+    ['ga3d-tema-hx', buildAssemblyTemplate('mech', 'heat_exchanger', {})],
+    ['ga3d-swro-skid', swroSkidAssembly()],
+    ['ga3d-rc-beam', rcBeamAssembly()],
+  ];
+}
+
+/** 골든 대조(공용): true=PASS. update/최초는 골든 저장. */
+async function compareShot(name, shot, { diffMax = DIFF_RATIO_MAX } = {}) {
+  const gPath = join(GOLDEN, name + '.png');
+  if (UPDATE || !existsSync(gPath)) {
+    writeFileSync(gPath, shot);
+    console.log(`UPDATED ${name}`);
+    return true;
+  }
+  const [a, b] = await Promise.all([
+    sharp(shot).raw().toBuffer({ resolveWithObject: true }),
+    sharp(readFileSync(gPath)).raw().toBuffer({ resolveWithObject: true }),
+  ]);
+  if (a.info.width !== b.info.width || a.info.height !== b.info.height) {
+    console.log(`FAIL ${name}: 크기 ${a.info.width}×${a.info.height} vs 골든 ${b.info.width}×${b.info.height}`);
+    writeFileSync(join(TMP, name + '.actual.png'), shot);
+    return false;
+  }
+  let bad = 0;
+  const n = a.info.width * a.info.height;
+  for (let i = 0; i < a.data.length; i += a.info.channels) {
+    if (Math.abs(a.data[i] - b.data[i]) > CH_TOL || Math.abs(a.data[i + 1] - b.data[i + 1]) > CH_TOL || Math.abs(a.data[i + 2] - b.data[i + 2]) > CH_TOL) bad++;
+  }
+  const ratio = bad / n;
+  if (ratio <= diffMax) { console.log(`OK ${name} (diff ${(ratio * 100).toFixed(3)}%)`); return true; }
+  console.log(`FAIL ${name}: diff ${(ratio * 100).toFixed(3)}% > ${diffMax * 100}% — ${name}.actual.png 저장`);
+  writeFileSync(join(TMP, name + '.actual.png'), shot);
+  return false;
 }
 
 async function main() {
   mkdirSync(GOLDEN, { recursive: true });
   mkdirSync(TMP, { recursive: true });
-  const browser = await chromium.launch();
+  // swiftshader 고정(E2): GA_3D 캔버스 WebGL 을 소프트웨어 래스터로 결정론화(GPU 무관)
+  const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader'] });
   const page = await browser.newPage({ viewport: { width: 1240, height: 900 }, deviceScaleFactor: 1 });
   let pass = 0, fail = 0;
   for (const [name, asm, domain] of cases()) {
@@ -53,31 +135,24 @@ async function main() {
     await page.goto(pathToFileURL(htmlPath).href);
     await page.waitForTimeout(120);
     const shot = await page.screenshot({ fullPage: true });
-    const gPath = join(GOLDEN, name + '.png');
-    if (UPDATE || !existsSync(gPath)) {
-      writeFileSync(gPath, shot);
-      console.log(`UPDATED ${name}`);
-      pass++;
-      continue;
-    }
-    const [a, b] = await Promise.all([
-      sharp(shot).raw().toBuffer({ resolveWithObject: true }),
-      sharp(readFileSync(gPath)).raw().toBuffer({ resolveWithObject: true }),
-    ]);
-    if (a.info.width !== b.info.width || a.info.height !== b.info.height) {
-      console.log(`FAIL ${name}: 크기 ${a.info.width}×${a.info.height} vs 골든 ${b.info.width}×${b.info.height}`);
-      writeFileSync(join(TMP, name + '.actual.png'), shot);
+    (await compareShot(name, shot)) ? pass++ : fail++;
+  }
+  // GA_3D(E2 260719): openscad 실렌더 STL → three.js 캔버스 — 정적 카메라 첫 프레임 대조.
+  // 밴드 2%(2D 0.5% 대비 완화 명시 — 소프트 래스터라도 AA 미세차 여유)
+  for (const [name, asm] of cases3d()) {
+    try {
+      const html = await renderColoredHtml({ assembly: asm }, { title: name, subtitle: 'visual-golden GA_3D(비법정)' });
+      const htmlPath = join(TMP, name + '.html');
+      writeFileSync(htmlPath, html);
+      await page.goto(pathToFileURL(htmlPath).href);
+      await page.waitForSelector('canvas');
+      await page.waitForTimeout(800); // 첫 프레임 안정화(정적 카메라·autoRotate off)
+      const shot = await page.screenshot({ fullPage: false });
+      (await compareShot(name, shot, { diffMax: 0.02 })) ? pass++ : fail++;
+    } catch (e) {
+      console.log(`FAIL ${name}: ${String(e?.message ?? e).slice(0, 120)}`);
       fail++;
-      continue;
     }
-    let bad = 0;
-    const n = a.info.width * a.info.height;
-    for (let i = 0; i < a.data.length; i += a.info.channels) {
-      if (Math.abs(a.data[i] - b.data[i]) > CH_TOL || Math.abs(a.data[i + 1] - b.data[i + 1]) > CH_TOL || Math.abs(a.data[i + 2] - b.data[i + 2]) > CH_TOL) bad++;
-    }
-    const ratio = bad / n;
-    if (ratio <= DIFF_RATIO_MAX) { console.log(`OK ${name} (diff ${(ratio * 100).toFixed(3)}%)`); pass++; }
-    else { console.log(`FAIL ${name}: diff ${(ratio * 100).toFixed(3)}% > ${DIFF_RATIO_MAX * 100}% — ${name}.actual.png 저장`); writeFileSync(join(TMP, name + '.actual.png'), shot); fail++; }
   }
   await browser.close();
   console.log(`visual-golden: ${pass}/${pass + fail}${UPDATE ? ' (update mode)' : ''}`);
