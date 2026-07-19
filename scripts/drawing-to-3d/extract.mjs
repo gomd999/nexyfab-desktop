@@ -224,7 +224,20 @@ export async function extractDrawingFromImage(base64, mimeType = 'image/png', { 
   }
   if (!params) throw lastErr ?? new Error('extract failed');
   if (type === 'flange' && typeof params.boltCount === 'number') params.boltCount = Math.round(params.boltCount);
-  return { intent: { type, confidence, ...params }, model };
+  const intent = { type, confidence, ...params };
+
+  // D1 역투영 diff(260719, 도면 경로만): 추출 실루엣을 원본 잉크에 되그려 지지율·스케일
+  // 잔차 검사 — 낮으면 신뢰도 강등 + 되묻기. 로더 불가 환경이면 생략(정직 — 강등 없음).
+  let reproject;
+  try {
+    const { reprojectDiff, loadGrayPng } = await import('./reproject-diff.mjs');
+    const gray = await loadGrayPng(Buffer.from(base64, 'base64'));
+    reproject = reprojectDiff(gray, intent);
+    if (reproject.verdict === 'DEMOTE' || reproject.verdict === 'NO_VIEW') {
+      intent.confidence = +(confidence * reproject.confidenceFactor).toFixed(3);
+    }
+  } catch (e) { reproject = { verdict: 'SKIPPED', reasons: [String(e?.message ?? e).slice(0, 80)] }; }
+  return { intent, model, reproject };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('extract.mjs');

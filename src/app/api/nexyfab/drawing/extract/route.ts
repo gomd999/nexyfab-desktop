@@ -22,7 +22,8 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 type FlatIntent = { type?: string; confidence?: number; unit?: string; holes?: Array<{ x: number; y: number; d: number }> } & Record<string, unknown>;
-type ExtractModule = { extractDrawingFromImage: (b64: string, mime: string, o?: { model?: string }) => Promise<{ intent: FlatIntent; model?: string }> };
+type ReprojectReport = { verdict?: string; askBack?: string; support?: number; scaleResidualPct?: number; reasons?: string[] };
+type ExtractModule = { extractDrawingFromImage: (b64: string, mime: string, o?: { model?: string }) => Promise<{ intent: FlatIntent; model?: string; reproject?: ReprojectReport }> };
 type ReconstructModule = { PARAMS: Record<string, string[]> };
 type BuiltAssembly = { ok: boolean; openscad?: string; gateErrors?: string[]; composeIntent?: { name?: string; features?: unknown[] } };
 type AssemblyModule = { buildAssembly: (asm: unknown) => BuiltAssembly };
@@ -85,11 +86,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: 'pipeline load failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 });
   }
 
-  // ① Vision 추출 (AI = 이해)
+  // ① Vision 추출 (AI = 이해) + D1 역투영 diff(추출 실루엣↔원본 잉크 — 강등·되묻기)
   let flat: FlatIntent;
+  let reproject: ReprojectReport | undefined;
   try {
     const r = await mods.ex.extractDrawingFromImage(imageBase64, mimeType);
     flat = r.intent ?? {};
+    reproject = r.reproject;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const status = /GEMINI_API_KEY/.test(msg) ? 503 : 502;
@@ -98,11 +101,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const type = String(flat.type ?? 'unknown');
   const confidence = typeof flat.confidence === 'number' ? flat.confidence : 0;
-  const recognized = { type, label: TYPE_LABEL[type] ?? type, confidence: +confidence.toFixed(2), unit: String(flat.unit ?? 'mm') };
+  const recognized = { type, label: TYPE_LABEL[type] ?? type, confidence: +confidence.toFixed(2), unit: String(flat.unit ?? 'mm'), ...(reproject?.verdict && reproject.verdict !== 'SKIPPED' ? { reproject: { verdict: reproject.verdict, support: reproject.support, scaleResidualPct: reproject.scaleResidualPct } } : {}) };
 
   // 판별 불가 / 저신뢰 → 허위 형상 방출 대신 정직하게 텍스트 확인 요청.
   if (type === 'unknown' || !mods.rc.PARAMS[type]) {
     return NextResponse.json({ ok: false, stage: 'recognize', recognized, error: '도면 유형을 확정하지 못했어요. 지원 어휘(평판·브래킷·플랜지·파이프·각관·봉·거셋·베이스판 등) 도면이면 더 선명한 정투상으로, 아니면 치수를 텍스트로 알려주세요.' }, { status: 200 });
+  }
+  // D1 역투영 DEMOTE = 수치 신뢰도와 무관하게 되묻기(자신있게 틀린 판독이 D1 의 표적)
+  if (reproject?.verdict === 'DEMOTE') {
+    return NextResponse.json({ ok: false, stage: 'confidence', recognized, error: reproject.askBack ?? '추출 형상이 도면과 어긋납니다 — 주요 치수를 확인해 주세요.' }, { status: 200 });
   }
   if (confidence < MIN_CONFIDENCE) {
     return NextResponse.json({ ok: false, stage: 'confidence', recognized, error: `판독 신뢰도가 낮아요(${Math.round(confidence * 100)}%). 치수선이 선명한 정투상 도면을 올리거나, 핵심 치수를 텍스트로 확인해 주세요.` }, { status: 200 });
