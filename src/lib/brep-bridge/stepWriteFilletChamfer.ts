@@ -53,7 +53,9 @@
  *     filletProfile.ts / chamferProfile.ts.
  *   - The CHILD EXTRUDE portion of the output (everything between
  *     `ISO-10303-21;` and the inserted annotation) is byte-identical to
- *     calling `writeExtrudeAsStep(feature.childExtrude, opts)` directly.
+ *     calling `writeExtrudeAsStep(<resolved child>, opts)` directly, where
+ *     the child is the live upstream extrude when the feature names one by
+ *     `childId`, else the embedded `childExtrude` snapshot (W2-0).
  *   - Entity ids in the annotation are strictly greater than the maximum
  *     id in the child geometry block (monotonic, non-colliding).
  *
@@ -64,6 +66,9 @@
 
 import type { FilletFeature } from '@/lib/cad/filletProfile';
 import type { ChamferFeature } from '@/lib/cad/chamferProfile';
+import type { EmitContext } from '@/lib/cad/featureTree';
+import { resolveChildExtrude } from '@/lib/cad/upstreamResolve';
+import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import { writeExtrudeAsStep, type ExtrudeToStepOptions } from './stepWrite';
 
 // ─── public option types ──────────────────────────────────────────────────
@@ -82,6 +87,20 @@ export interface FilletChamferStepOptions extends ExtrudeToStepOptions {
    * a unique id avoids name collisions in PDM round-trip.
    */
   featureId?: string;
+  /**
+   * W2-0 upstream resolution context.
+   *
+   * When the feature names its body by `childId` (ref mode), the child
+   * extrude is read LIVE from this context so an upstream depth/profile
+   * edit reaches the STEP output. Build one with
+   * `emitContextForTree(tree)`.
+   *
+   * Omitting it is only valid for legacy features that carry no `childId`.
+   * A ref-mode feature emitted without a context THROWS rather than fall
+   * back to the stale `childExtrude` snapshot — writing silently-wrong
+   * B-rep is the defect W2-0 exists to remove (design note §3).
+   */
+  emitContext?: EmitContext;
 }
 
 /** Result mapping from feature → SHAPE_ASPECT entity id. */
@@ -310,12 +329,43 @@ function spliceAnnotation(
   return { patched, shapeAspectEntityId: shapeAspectId };
 }
 
+// ─── upstream body resolution (W2-0) ─────────────────────────────────────
+
+/**
+ * The extrude whose B-rep this fillet/chamfer annotates.
+ *
+ * Ref mode (`childId` present) reads the live upstream payload out of
+ * `opts.emitContext`; without a context this THROWS instead of quietly
+ * writing the stale snapshot's geometry into a STEP file that a customer
+ * will machine from.
+ *
+ * Legacy mode (no `childId`) reads the embedded snapshot, byte-identical
+ * to the pre-W2 output.
+ */
+function resolveStepChild(
+  feature: FilletFeature | ChamferFeature,
+  opts: FilletChamferStepOptions,
+  selfLabel: string,
+): ExtrudeFeature {
+  const resolved = resolveChildExtrude(
+    feature,
+    opts.featureId ?? selfLabel,
+    opts.emitContext,
+  );
+  if (!resolved) {
+    throw new Error(
+      `${selfLabel}: feature has no child body (neither childId nor childExtrude)`,
+    );
+  }
+  return resolved.child;
+}
+
 // ─── public API ──────────────────────────────────────────────────────────
 
 /**
  * Emit a complete STEP file for a FilletFeature. The CHILD EXTRUDE portion
  * of the output is byte-identical to calling
- * `writeExtrudeAsStep(feature.childExtrude, opts)` directly — Phase 1
+ * `writeExtrudeAsStep(<resolved child>, opts)` directly — Phase 1
  * approximation is bounded by the child's bounding box (see stepWrite
  * module JSDoc for the full list of dropped properties).
  *
@@ -346,7 +396,7 @@ export function writeFilletAsStep(
   validateFilletParams(feature);
 
   // 1. Emit child extrude byte-identical to a direct writeExtrudeAsStep call.
-  const childStep = writeExtrudeAsStep(feature.childExtrude, opts);
+  const childStep = writeExtrudeAsStep(resolveStepChild(feature, opts, 'writeFilletAsStep'), opts);
 
   // 2. Build descriptor with placeholder for the solid id; spliceAnnotation
   //    rewrites it after scanning the actual geometry block.
@@ -367,7 +417,7 @@ export function writeFilletAsStep(
 /**
  * Emit a complete STEP file for a ChamferFeature. Same Phase 1 / Phase 2
  * contract as {@link writeFilletAsStep} — child extrude is byte-identical to
- * `writeExtrudeAsStep(feature.childExtrude, opts)`, chamfer is a
+ * `writeExtrudeAsStep(<resolved child>, opts)`, chamfer is a
  * SHAPE_ASPECT annotation.
  */
 export function writeChamferAsStep(
@@ -381,7 +431,10 @@ export function writeChamferAsStep(
   }
   validateChamferParams(feature);
 
-  const childStep = writeExtrudeAsStep(feature.childExtrude, opts);
+  const childStep = writeExtrudeAsStep(
+    resolveStepChild(feature, opts, 'writeChamferAsStep'),
+    opts,
+  );
 
   const descriptor = buildChamferDescriptor(feature, 0).replace(
     'solid=#0',
@@ -417,7 +470,10 @@ export function previewFilletAnnotationMap(
     );
   }
   validateFilletParams(feature);
-  const childStep = writeExtrudeAsStep(feature.childExtrude, opts);
+  const childStep = writeExtrudeAsStep(
+    resolveStepChild(feature, opts, 'previewFilletAnnotationMap'),
+    opts,
+  );
   const descriptor = buildFilletDescriptor(feature, 0).replace(
     'solid=#0',
     'solid=#__SOLID_ID__',
@@ -443,7 +499,10 @@ export function previewChamferAnnotationMap(
     );
   }
   validateChamferParams(feature);
-  const childStep = writeExtrudeAsStep(feature.childExtrude, opts);
+  const childStep = writeExtrudeAsStep(
+    resolveStepChild(feature, opts, 'previewChamferAnnotationMap'),
+    opts,
+  );
   const descriptor = buildChamferDescriptor(feature, 0).replace(
     'solid=#0',
     'solid=#__SOLID_ID__',

@@ -21,6 +21,7 @@ import type { BooleanFeature } from '@/lib/cad/booleanFeature';
 import type { FilletFeature } from '@/lib/cad/filletProfile';
 import type { ChamferFeature } from '@/lib/cad/chamferProfile';
 import { validateTree } from '@/lib/cad/featureTree';
+import { emitContextForTree, resolveChildExtrude } from '@/lib/cad/upstreamResolve';
 
 // ─── command IR ──────────────────────────────────────────────────────────
 
@@ -44,6 +45,16 @@ export interface OcctPlan {
   finalResultId: string | null;
   /** Nodes the OCCT path can't build yet (caller should SCAD-fallback these). */
   unsupported: UnsupportedNode[];
+  /**
+   * Fillet/chamfer nodes whose child body came from the embedded
+   * `childExtrude` snapshot because the payload names no `childId`
+   * (legacy tree). Their geometry does NOT follow upstream edits.
+   *
+   * Reported rather than silent: a ref-mode node absent from this list is
+   * guaranteed to have been resolved against the live tree. An empty array
+   * means the whole plan is parametric.
+   */
+  embeddedChildNodes: string[];
 }
 
 const BOOLEAN_KIND: Record<BooleanFeature['op'], 'union' | 'subtract' | 'intersect'> = {
@@ -60,8 +71,44 @@ export function featureTreeToOcctPlan(tree: FeatureTree): OcctPlan {
   validateTree(tree);
   const commands: OcctCommand[] = [];
   const unsupported: UnsupportedNode[] = [];
-  // Node ids consumed as a boolean's bodies are not the final result.
+  const embeddedChildNodes: string[] = [];
+  // Node ids consumed by a downstream feature are not the final result:
+  // a boolean's bodies, and (W2-0) any body a fillet/chamfer references.
   const consumed = new Set<string>();
+  // Payload-only context: fillet/chamfer need the upstream extrude's
+  // parameters, never its rendered SCAD, so a static context suffices.
+  const ctx = emitContextForTree(tree);
+
+  /**
+   * Resolve the body a fillet/chamfer operates on and return the resultId
+   * the kernel should apply the edge op to.
+   *
+   * Ref mode targets the upstream node's OWN result — the extrude command
+   * for it was already pushed, so re-extruding a snapshot copy would build
+   * the same solid twice and, worse, from possibly stale parameters. The
+   * upstream is then marked consumed so it cannot win `finalResultId`,
+   * mirroring replayTree's consumption rule.
+   *
+   * Legacy mode (no `childId`) keeps the original synthetic `__body`
+   * extrude, byte-identical to the pre-W2 plan.
+   */
+  function planChildBody(node: { id: string; payload: FeaturePayload }): string {
+    const resolved = resolveChildExtrude(node.payload, node.id, ctx);
+    if (!resolved) {
+      throw new Error(
+        `featureTreeToOcctPlan: '${node.payload.kind}' node ${node.id} has no child body ` +
+          `(neither childId nor childExtrude)`,
+      );
+    }
+    if (resolved.source === 'ref') {
+      consumed.add(resolved.refId!);
+      return resolved.refId!;
+    }
+    embeddedChildNodes.push(node.id);
+    const bodyId = `${node.id}__body`;
+    commands.push({ op: 'extrude', resultId: bodyId, feature: resolved.child });
+    return bodyId;
+  }
 
   for (const node of tree.nodes) {
     const p: FeaturePayload = node.payload;
@@ -86,9 +133,7 @@ export function featureTreeToOcctPlan(tree: FeatureTree): OcctPlan {
       }
       case 'fillet': {
         const f = p as FilletFeature;
-        // Fillet carries its body inline (childExtrude) → build it first.
-        const bodyId = `${node.id}__body`;
-        commands.push({ op: 'extrude', resultId: bodyId, feature: f.childExtrude });
+        const bodyId = planChildBody(node);
         commands.push({
           op: 'fillet',
           resultId: node.id,
@@ -100,8 +145,7 @@ export function featureTreeToOcctPlan(tree: FeatureTree): OcctPlan {
       }
       case 'chamfer': {
         const c = p as ChamferFeature;
-        const bodyId = `${node.id}__body`;
-        commands.push({ op: 'extrude', resultId: bodyId, feature: c.childExtrude });
+        const bodyId = planChildBody(node);
         commands.push({
           op: 'chamfer',
           resultId: node.id,
@@ -129,5 +173,5 @@ export function featureTreeToOcctPlan(tree: FeatureTree): OcctPlan {
     if (produced.has(node.id) && !consumed.has(node.id)) finalResultId = node.id;
   }
 
-  return { commands, finalResultId, unsupported };
+  return { commands, finalResultId, unsupported, embeddedChildNodes };
 }

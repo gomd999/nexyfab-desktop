@@ -68,11 +68,14 @@
  */
 
 import type {
+  EmitContext,
   FeatureTree,
   FeatureNode,
   FeaturePayload,
   FeatureKind,
 } from './featureTree';
+import { emitContextForTree, resolveChildExtrude } from './upstreamResolve';
+import type { ExtrudeFeature } from './extrudeProfile';
 
 // ─── public types ─────────────────────────────────────────────────────────
 
@@ -146,6 +149,15 @@ export interface FeatureTreeStats {
   readonly perFeature: ReadonlyMap<string, FeatureStats>;
   /** Mass in grams, present iff `opts.density` was supplied. */
   readonly mass?: number;
+  /**
+   * Fillet/chamfer nodes whose bbox was derived from the embedded
+   * `childExtrude` snapshot because the payload names no `childId`
+   * (legacy tree). Those bboxes do NOT follow upstream edits.
+   *
+   * Surfaced so a stale read is never invisible: a fillet/chamfer node
+   * absent from this list was resolved against the live tree.
+   */
+  readonly embeddedChildNodes: ReadonlyArray<string>;
 }
 
 export interface ComputeStatsOptions {
@@ -298,6 +310,8 @@ function loopBbox2D(
 function computeNodeStats(
   node: FeatureNode,
   prior: ReadonlyMap<string, FeatureStats>,
+  ctx: EmitContext,
+  embeddedOut: string[],
 ): FeatureStats {
   const p: FeaturePayload = node.payload;
   switch (p.kind) {
@@ -318,9 +332,9 @@ function computeNodeStats(
     case 'fillet':
       // Volume / surface area intentionally undefined — see module caveats.
       // Bbox passes through from the child extrude.
-      return filletStats(p);
+      return filletStats(resolveStatsChild(node, ctx, embeddedOut));
     case 'chamfer':
-      return chamferStats(p);
+      return chamferStats(resolveStatsChild(node, ctx, embeddedOut));
     case 'rib':
       return ribStats(p);
     case 'sweep_path':
@@ -754,22 +768,45 @@ function holeStats(p: Extract<FeaturePayload, { kind: 'hole' }>): FeatureStats {
   return { kind: 'hole', volume: v, surfaceArea: sa, bbox };
 }
 
-function filletStats(p: Extract<FeaturePayload, { kind: 'fillet' }>): FeatureStats {
+/**
+ * Resolve the body a fillet/chamfer node wraps, preferring the live
+ * upstream node named by `childId` over the embedded snapshot (W2-0).
+ *
+ * A node that falls back to the snapshot is recorded in `embeddedOut` —
+ * the bbox it yields is frozen at build time and will not track an
+ * upstream depth edit. Legacy trees are the expected source of that, and
+ * it is reported rather than hidden.
+ */
+function resolveStatsChild(
+  node: FeatureNode,
+  ctx: EmitContext,
+  embeddedOut: string[],
+): ExtrudeFeature {
+  const resolved = resolveChildExtrude(node.payload, node.id, ctx);
+  if (!resolved) {
+    throw new Error(
+      `computeStats: '${node.payload.kind}' node ${node.id} has no child body ` +
+        `(neither childId nor childExtrude)`,
+    );
+  }
+  if (resolved.source === 'embedded') embeddedOut.push(node.id);
+  return resolved.child;
+}
+
+function filletStats(child: ExtrudeFeature): FeatureStats {
   // Pass through the child extrude's bbox unchanged (a fillet never grows
   // the bbox). Volume / surface area intentionally omitted — see module
   // caveats.
-  const child = extrudeStats(p.childExtrude);
   return {
     kind: 'fillet',
-    bbox: child.bbox,
+    bbox: extrudeStats(child).bbox,
   };
 }
 
-function chamferStats(p: Extract<FeaturePayload, { kind: 'chamfer' }>): FeatureStats {
-  const child = extrudeStats(p.childExtrude);
+function chamferStats(child: ExtrudeFeature): FeatureStats {
   return {
     kind: 'chamfer',
-    bbox: child.bbox,
+    bbox: extrudeStats(child).bbox,
   };
 }
 
@@ -893,10 +930,14 @@ export function computeStats(
   let aggSA = 0;
   let aggBbox: Bbox = EMPTY_BBOX;
   let nodeCount = 0;
+  // Payload-only context — fillet/chamfer need the upstream extrude's
+  // parameters, never its rendered SCAD.
+  const ctx = emitContextForTree(tree);
+  const embeddedChildNodes: string[] = [];
 
   for (const node of tree.nodes) {
     if (node.suppressed) continue;
-    const stats = computeNodeStats(node, perFeature);
+    const stats = computeNodeStats(node, perFeature, ctx, embeddedChildNodes);
     perFeature.set(node.id, stats);
     nodeCount += 1;
     if (stats.volume !== undefined && Number.isFinite(stats.volume)) {
@@ -917,6 +958,7 @@ export function computeStats(
     centerOfMass: bboxCenter(aggBbox),
     nodeCount,
     perFeature,
+    embeddedChildNodes,
   };
 
   if (opts.density !== undefined && Number.isFinite(opts.density) && opts.density > 0) {

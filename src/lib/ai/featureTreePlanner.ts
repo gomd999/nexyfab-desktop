@@ -337,6 +337,12 @@ function planCreateBoxWithFillet(
   const boxNode = makeBoxNode(boxId, intent.size);
   const filletPayload: FilletFeature = {
     kind: 'fillet',
+    // W2-0 ref mode: name the upstream body instead of copying it, so a
+    // later edit to the box reaches this fillet. `dependencies` below
+    // declares the same id, satisfying validateTree's refs ⊆ deps rule.
+    childId: boxId,
+    // Snapshot kept for legacy consumers only — never the emission source
+    // while `childId` is set.
     childExtrude: boxNode.payload as ExtrudeFeature,
     radius: intent.filletRadius,
     edgeSelection: 'all',
@@ -430,6 +436,9 @@ function planAddFilletToLast(
   const filletId = idGen('fillet');
   const payload: FilletFeature = {
     kind: 'fillet',
+    // W2-0 ref mode — see planCreateBoxWithFillet. `dependencies: [parent.id]`
+    // below declares the same id.
+    childId: parent.id,
     childExtrude: parent.payload as ExtrudeFeature,
     radius: intent.radius,
     edgeSelection: 'all',
