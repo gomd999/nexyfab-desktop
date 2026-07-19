@@ -59,6 +59,11 @@ import {
   type FeatureKind,
   type FeaturePayload,
 } from './featureTree';
+import {
+  promoteEmbeddedRefs,
+  type PromotionOptions,
+  type PromotionReport,
+} from './featureTreeMigrate';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 // ─── version ──────────────────────────────────────────────────────────────
@@ -195,6 +200,47 @@ export function deserializeFeatureTree(json: string): DeserializeResult {
   }
 
   return { ok: true, tree };
+}
+
+// ─── W2-B: reference promotion on load ────────────────────────────────────
+
+export type DeserializeWithPromotionResult =
+  | { ok: true; tree: FeatureTree; promotion: PromotionReport }
+  | { ok: false; error: DeserializeError; message: string };
+
+/**
+ * `deserializeFeatureTree` + the W2-B upstream-reference promotion pass.
+ *
+ * Kept as a SEPARATE entry point rather than folded into
+ * `deserializeFeatureTree` for two reasons:
+ *
+ *   1. Round-trip fidelity has to remain testable. `deserialize ∘ serialize`
+ *      must be the identity on any saved tree — that is the property that
+ *      proves the save format loses nothing. Promotion deliberately rewrites
+ *      payloads, so it cannot live inside the function that must be an
+ *      identity.
+ *   2. Callers that only want to inspect or repair a file (import preview,
+ *      diagnostics) should see exactly what is on disk.
+ *
+ * Editor load paths should prefer this one: promotion is what makes a saved
+ * model regenerate downstream features again. The returned `promotion`
+ * report is the sole record of which features could NOT be promoted and why
+ * — see `formatPromotionReport`.
+ *
+ * SCHEMA_VERSION is deliberately NOT bumped. `childId` is an additive
+ * optional field and the snapshot fields it supplements are retained and
+ * re-synced, so a promoted tree still satisfies the v1 contract in both
+ * directions (see the backward-compatibility note in
+ * docs/design/w2-downstream-regen.md §5.4).
+ */
+export function deserializeFeatureTreeWithPromotion(
+  json: string,
+  options: PromotionOptions = {},
+): DeserializeWithPromotionResult {
+  const res = deserializeFeatureTree(json);
+  if (!res.ok) return res;
+  const { tree, report } = promoteEmbeddedRefs(res.tree, options);
+  return { ok: true, tree, promotion: report };
 }
 
 type NodeValidationResult =
@@ -614,4 +660,32 @@ export function loadOrEmpty(key: string): FeatureTree {
   const res = deserializeFeatureTree(raw);
   if (!res.ok) return EMPTY_TREE;
   return res.tree;
+}
+
+const EMPTY_PROMOTION: PromotionReport = Object.freeze({
+  promoted: [],
+  skipped: [],
+  alreadyRef: [],
+  considered: 0,
+});
+
+/**
+ * `loadOrEmpty` + W2-B promotion, returning the promotion report alongside
+ * the tree so a wrapper can surface "N features are not parametric" without
+ * re-running the pass.
+ *
+ * A missing / malformed key yields the empty tree and an empty report — the
+ * caller cannot distinguish "nothing saved" from "save was corrupt" here, as
+ * with `loadOrEmpty`; use `deserializeFeatureTreeWithPromotion` directly if
+ * that distinction matters.
+ */
+export function loadOrEmptyPromoted(key: string): {
+  tree: FeatureTree;
+  promotion: PromotionReport;
+} {
+  const raw = readFromStorage(key);
+  if (raw === null) return { tree: EMPTY_TREE, promotion: EMPTY_PROMOTION };
+  const res = deserializeFeatureTreeWithPromotion(raw);
+  if (!res.ok) return { tree: EMPTY_TREE, promotion: EMPTY_PROMOTION };
+  return { tree: res.tree, promotion: res.promotion };
 }
