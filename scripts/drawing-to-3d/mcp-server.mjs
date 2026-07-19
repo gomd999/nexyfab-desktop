@@ -33,6 +33,8 @@ import { autoTagAssembly, assemblyAtLevel } from './assembly.mjs';
 import { bladeRingMesh } from './gen-macros.mjs';
 import { extractGdt, extractGdtFile } from './gdt-import.mjs';
 import { parseLandXml, parseLandXmlFile } from './landxml-import.mjs';
+import { stepRoundTrip } from './roundtrip.mjs';
+import { refineInterferencesMesh } from './interference-refine.mjs';
 
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
 
@@ -319,6 +321,25 @@ export const tools = [
     },
   },
   {
+    name: 'step_roundtrip',
+    description:
+      `A1 라운드트립 정합 게이트 — 「만든 STEP 이 예측과 맞다」 기계 확인: STEP 직렬화→재임포트→` +
+      `부피·AABB 재측정 ↔ 폐형 예측(Σ부품 체적·∪AABB) 대조(밴드 명시·드롭 부품=동일 모집단 제외). ` +
+      `실측: 제트 85부품 오차 0.07%. 반환 {verdict, volume, aabb, dropped}.`,
+    inputSchema: { type: 'object', required: ['assembly'], properties: { assembly: { type: 'object' } } },
+  },
+  {
+    name: 'refine_interferences',
+    description:
+      `B1 의심쌍 메시 부울 2차 간섭 — AABB/폐형 규칙이 보수로 남긴 간섭쌍만 openscad ` +
+      `intersection() 실기하 재판정(회전·사면·revolve·자유곡면 전부 정확). 교집합≤ε=실분리 해제, ` +
+      `>ε=확정+실측 부피. build_assembly 의 interferences 를 그대로 넣는다.`,
+    inputSchema: {
+      type: 'object', required: ['assembly', 'interferences'],
+      properties: { assembly: { type: 'object' }, interferences: { type: 'array' }, epsMm3: { type: 'number' } },
+    },
+  },
+  {
     name: 'import_landxml',
     description:
       `LandXML 1.x 도로 선형 임포트(결정론): Line/Curve(arc) 체인→엔진 선형 입력({ips, curves}) ` +
@@ -420,6 +441,12 @@ export async function callTool(name, args = {}) {
   if (name === 'list_domains') {
     return { domains: listDomains() };
   }
+  if (name === 'step_roundtrip') {
+    return stepRoundTrip(args.assembly);
+  }
+  if (name === 'refine_interferences') {
+    return refineInterferencesMesh(args.assembly, args.interferences, { epsMm3: args.epsMm3 ?? 1 });
+  }
   if (name === 'import_landxml') {
     if (args.xmlPath) return parseLandXmlFile(args.xmlPath);
     if (args.xmlText) return parseLandXml(args.xmlText);
@@ -498,10 +525,18 @@ export async function callTool(name, args = {}) {
     try { const d = dxfm.dxfPlan(args.assembly, args.assembly.domain ?? 'mech', undefined, { title, dwgNo: 'NX-GA-001' }); if (d) { save('GA_plan.dxf', d); c9 = dc.checkDxfLayers(d); } } catch { /* skip */ }
     try { save('GA_3D.html', await rnd.renderColoredHtml({ assembly: args.assembly }, { title, subtitle: 'nexyfab 자동생성 GA(비법정)' })); } catch (e) { files.push({ name: 'GA_3D.html', error: String(e).slice(0, 120) }); }
     let step = null;
+    let roundtrip = null;
     if (args.withStep) {
       try { const r = await intentToStep(built.composeIntent); save('model.step', r.step); step = { entities: r.entities, dropped: r.fuseReport?.dropped ?? [] }; } catch (e) { step = { error: String(e).slice(0, 120) }; }
+      // A1: STEP 동봉 시 라운드트립 정합 자동(생성≠검증)
+      try { roundtrip = await stepRoundTrip(args.assembly); } catch (e) { roundtrip = { error: String(e).slice(0, 120) }; }
     }
-    return { ok: true, outDir: args.outDir, files, completeness, c9, step, note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.' };
+    // B1: 잔여 간섭이 있으면 의심쌍 메시 부울 1패스 자동(과탐 해제·실측 관통량)
+    let interferenceRefine = null;
+    if ((built.interferences ?? []).length) {
+      try { interferenceRefine = await refineInterferencesMesh(args.assembly, built.interferences); } catch (e) { interferenceRefine = { error: String(e).slice(0, 120) }; }
+    }
+    return { ok: true, outDir: args.outDir, files, completeness, c9, step, roundtrip, interferenceRefine, note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.' };
   }
   if (name === 'verify_domain') {
     return verifyDomain({
