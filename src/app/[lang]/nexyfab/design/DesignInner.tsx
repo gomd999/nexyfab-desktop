@@ -25,6 +25,7 @@ import CalcStudioPanel from './CalcStudioPanel';
 import StudioChatDock from './StudioChatDock';
 import ParametricPresetPanel from './ParametricPresetPanel';
 import AssemblyPresetPanel from './AssemblyPresetPanel';
+import EasyWizard from './EasyWizard';
 import DfmPanel from './DfmPanel';
 import FabPanel from './FabPanel';
 import { findDomain } from './designDomains';
@@ -153,6 +154,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const ko = isKorean(lang);
   const domain = findDomain(initialDomain);
   const [prompt, setPrompt] = useState('');
+  // 일반인 진입 위저드(EasyWizard) 개폐 — 결과는 기존 어셈블리 수신 배선으로 합류
+  const [easyOpen, setEasyOpen] = useState(false);
   type StudioTab = 'create' | 'verify' | 'calc' | 'output';
   const [tab, setTab] = useState<StudioTab>(initialTab === 'calc' ? 'calc' : 'create');
 
@@ -1178,6 +1181,33 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
             ))}
           </div>
           <div style={{ padding: 16, display: tab === 'create' ? undefined : 'none' }}>
+            {/* 일반인 진입 — 전문 용어 없이 3~4단계 질문으로 템플릿+치수까지(EasyWizard) */}
+            <button
+              type="button"
+              onClick={() => setEasyOpen(true)}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left', marginBottom: 12, padding: '11px 13px',
+                borderRadius: 9, border: '1px solid var(--nx-accent, #2563eb)',
+                background: 'var(--nx-accent-soft, rgba(37,99,235,0.10))', color: 'var(--nx-text, #1a2230)', cursor: 'pointer',
+              }}
+            >
+              <div style={{ fontWeight: 800, fontSize: 13.5, color: 'var(--nx-accent, #2563eb)' }}>
+                {ko ? '🙋 처음이신가요? 쉬운 설계로 시작' : '🙋 New here? Start with Easy design'}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 3 }}>
+                {ko ? '"마당에 6×3m 데크" 처럼 말하면 됩니다 — 질문 3~4개로 만들어 드립니다.' : 'Say it plainly, e.g. "a 6×3 m deck in the yard" — 3~4 questions and it is built.'}
+              </div>
+            </button>
+            <EasyWizard
+              lang={lang}
+              open={easyOpen}
+              onClose={() => setEasyOpen(false)}
+              onApply={async (i, s) => {
+                setError(null); setGateErrors(null); setExportMsg(null);
+                await applyDesign(i, s, null);
+              }}
+              onBuildInfo={(info) => { pendingInterfRef.current = info.interferences; pendingFloatRef.current = info.floating ?? null; pendingAssemblyRef.current = info.assembly ?? null; }}
+            />
             {/* 기계 세부분야 칩 — 가설·랙은 사이드바에서 기계로 흡수(2026-07-16 IA) */}
             {(domain?.slug === 'mech' || domain?.slug === 'rack') && (
               <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
