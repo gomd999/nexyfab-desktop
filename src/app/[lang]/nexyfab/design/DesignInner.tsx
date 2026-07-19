@@ -999,6 +999,31 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       setFeaBusy(false);
     }
   }, [scad, feaLoad, feaMat]);
+  // P0-b(260719b) 정밀 검증 — A1 라운드트립+B1 의심쌍 메시 부울 온디맨드(어셈블리 경로)
+  interface PrecRes {
+    ok: boolean; error?: string; gateErrors?: string[];
+    roundtrip?: { verdict?: string; volume?: { predictedMm3: number; measuredMm3: number; errMm3: number; bandMm3: number }; error?: string } | null;
+    interferenceRefine?: { interferences: unknown[]; demoted: unknown[]; laps?: unknown[]; checked: number; error?: string } | null;
+    interferences?: unknown[]; designOk?: boolean | null;
+  }
+  const [precRes, setPrecRes] = useState<PrecRes | null>(null);
+  const [precBusy, setPrecBusy] = useState(false);
+  const runPrecision = useCallback(async () => {
+    if (!lastAssembly) return;
+    setPrecBusy(true);
+    setPrecRes(null);
+    try {
+      const r = await fetch('/api/nexyfab/drawing/verify-precision/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assembly: lastAssembly }),
+      });
+      setPrecRes((await r.json()) as PrecRes);
+    } catch (e) {
+      setPrecRes({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setPrecBusy(false);
+    }
+  }, [lastAssembly]);
   const lastPromptRef = useRef<string>('');
   const runVisionCritique = useCallback(async () => {
     const canvas = rendererRef.current?.domElement;
@@ -1608,6 +1633,41 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                         📄 {ko ? '리포트 열기(A4)' : 'Open report'}
                       </button>
                     )}
+                  </div>
+                )}
+              </div>
+            )}
+            {/* P0-b(260719b) 정밀 검증 — 어셈블리 경로: A1 라운드트립+B1 메시 부울 온디맨드 */}
+            {lastAssembly && (
+              <div style={{ marginBottom: 12 }}>
+                <button type="button" onClick={() => void runPrecision()} disabled={precBusy}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: precBusy ? 'wait' : 'pointer',
+                    border: '1px solid var(--nx-accent, #2563eb)', background: 'transparent', color: 'var(--nx-accent, #2563eb)' }}>
+                  {precBusy ? (ko ? 'STEP 재임포트 실측·메시 부울 대조 중…' : 'Round-trip & mesh boolean check…') : ko ? '🔬 정밀 검증 — A1 라운드트립 + B1 메시 부울' : '🔬 Precision verify — A1 round-trip + B1 mesh boolean'}
+                </button>
+                {precRes && !precRes.ok && (
+                  <div style={{ marginTop: 6, fontSize: 11, color: '#991b1b' }}>{precRes.error ?? (precRes.gateErrors ?? []).join('; ')}</div>
+                )}
+                {precRes?.ok && (
+                  <div style={{ marginTop: 6, padding: 9, borderRadius: 8, border: `1px solid ${precRes.roundtrip?.verdict === 'PASS' ? 'rgba(22,163,74,0.4)' : 'rgba(220,38,38,0.4)'}`, background: 'var(--nx-panel, #fff)', fontSize: 11, lineHeight: 1.7 }}>
+                    <div style={{ fontWeight: 800, color: precRes.roundtrip?.verdict === 'PASS' ? '#16a34a' : '#dc2626' }}>
+                      {precRes.roundtrip?.verdict === 'PASS' ? '✓' : '✗'} A1 {ko ? '라운드트립' : 'round-trip'} {precRes.roundtrip?.verdict ?? (precRes.roundtrip?.error ? (ko ? '실행 실패' : 'failed') : '—')}
+                      {precRes.roundtrip?.volume && <span style={{ fontWeight: 400 }}> · {ko ? '부피 오차' : 'vol err'} {precRes.roundtrip.volume.errMm3}mm³ (≤{precRes.roundtrip.volume.bandMm3})</span>}
+                    </div>
+                    {precRes.interferenceRefine && !precRes.interferenceRefine.error && (
+                      <div style={{ marginTop: 3 }}>
+                        B1 {ko ? '메시 부울' : 'mesh boolean'}: {ko ? '확정' : 'confirmed'} <b style={{ color: precRes.interferenceRefine.interferences.length ? '#dc2626' : '#16a34a' }}>{precRes.interferenceRefine.interferences.length}</b>
+                        {' · '}{ko ? '과탐 해제' : 'demoted'} {precRes.interferenceRefine.demoted.length}
+                        {(precRes.interferenceRefine.laps ?? []).length > 0 && <> · {ko ? '절점 랩' : 'laps'} {(precRes.interferenceRefine.laps ?? []).length}</>}
+                        {' '}({precRes.interferenceRefine.checked} {ko ? '쌍 검사' : 'pairs'})
+                      </div>
+                    )}
+                    {!precRes.interferenceRefine && (precRes.interferences ?? []).length === 0 && (
+                      <div style={{ marginTop: 3, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? 'AABB 간섭 0 — B1 생략(검사 대상 없음)' : 'No AABB clashes — B1 skipped'}</div>
+                    )}
+                    <div style={{ marginTop: 3, fontSize: 9, color: 'var(--nx-text-3, #6b7684)' }}>
+                      {ko ? 'A1=STEP 재임포트 실측↔폐형 예측(밴드 명시) · B1=의심쌍 한정(전수 아님)' : 'A1=STEP re-import vs closed-form · B1=suspect pairs only'}
+                    </div>
                   </div>
                 )}
               </div>
