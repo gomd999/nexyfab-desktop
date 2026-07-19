@@ -31,6 +31,7 @@ import { fabSpec, estimateCost, toDxf, DEFAULT_RATES } from './fab.mjs';
 import { aiEditPart, applyPartPatch, faceOfPart, faceDragPatch, faceDimOf, partOps } from './edit-part.mjs';
 import { autoTagAssembly, assemblyAtLevel } from './assembly.mjs';
 import { bladeRingMesh } from './gen-macros.mjs';
+import { extractGdt, extractGdtFile } from './gdt-import.mjs';
 
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
 
@@ -303,6 +304,20 @@ export const tools = [
     },
   },
   {
+    name: 'extract_gdt',
+    description:
+      `STEP AP242 시맨틱 PMI(GD&T) 판독(결정론 — AI 없음): 데이텀(A/B/C…)·기하공차(⊥⌖⏥… 크기+` +
+      `데이텀 참조+MMC/LMC)·치수(공칭±리밋). NIST MBE 검증모델 17파일 전수 무크래시 실측. ` +
+      `그래픽 주석·서피스 텍스처=v1 범위 외(unparsed 정직 보고). 값=모델 내장 공차의 판독.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        stepPath: { type: 'string', description: '.stp/.step 절대경로 (stepText 와 택1)' },
+        stepText: { type: 'string', description: 'STEP 본문 텍스트' },
+      },
+    },
+  },
+  {
     name: 'verify_domain',
     description:
       `설계 형상 + 분야 → 진짜 공학 계산기(engineering-core) 검증. 형상에서 단면특성(A·Ix·Sx·r)·경간 L을 ` +
@@ -389,6 +404,11 @@ export async function callTool(name, args = {}) {
   }
   if (name === 'list_domains') {
     return { domains: listDomains() };
+  }
+  if (name === 'extract_gdt') {
+    if (args.stepPath) return extractGdtFile(args.stepPath);
+    if (args.stepText) return extractGdt(args.stepText);
+    return { ok: false, error: 'stepPath 또는 stepText 필요' };
   }
   if (name === 'edit_part') {
     return aiEditPart(args.assembly, args.partId, args.instruction, { face: args.face ?? null });
