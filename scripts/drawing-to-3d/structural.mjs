@@ -71,6 +71,12 @@ export function partVolume(type, p) {
     // 자유곡면 어휘(260718d): mesh=발산정리 정밀값(빌드 시 산출 — 날조 아님·파일/수식 파생),
     // revolve=파푸스 정리(폐형: V=2π·r̄·A — 프로파일 도심 반경×면적)
     case 'mesh': return Number(p.volumeMm3) > 0 ? Number(p.volumeMm3) : 0;
+    case 'rebar': { // 철근(R2-④) = π/4·d²·경로장(폐형 — 절점 스피어 중복은 미미·보수)
+      let L = 0;
+      const pts = p.points ?? [];
+      for (let k = 0; k < pts.length - 1; k++) L += Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1], pts[k + 1][2] - pts[k][2]);
+      return (Math.PI / 4) * p.dia ** 2 * L;
+    }
     case 'coil_spring': { // 헬리컬 스프링 = π/4·d²·L_wire (L_wire=n·√((πDm)²+p²)) 폐형
       const Dm = p.coilDia - p.wireDia; // 평균 코일경
       const Lw = p.turns * Math.hypot(Math.PI * Dm, p.pitch);

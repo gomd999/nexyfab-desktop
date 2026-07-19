@@ -32,7 +32,7 @@ export const SERVICE_COL = {
   column: '#475569', beam: '#0e7490', slab: '#94a3b8', joist: '#854d0e', deck: '#a16207', floor: '#d1d5db', table: '#0f766e', counter: '#7c3aed', wall: '#78716c', base: '#57534e',
   stack: '#7c2d12',
 };
-export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5', mesh: '#7c6f9f', revolve: '#9aa7b5', cavity_block: '#7c6f9f', coil_spring: '#6b7280', pillow_block: '#78838f' };
+export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5', mesh: '#7c6f9f', revolve: '#9aa7b5', cavity_block: '#7c6f9f', coil_spring: '#6b7280', pillow_block: '#78838f', rebar: '#a16207' };
 // 부품 id/name 키워드 → 계통 자동추론 (명시 service 태그 없어도 계통색이 나오게).
 const ID_SERVICE = [
   [/pump|motor|모터|펌프|impeller|임펠라|blower|fan|송풍/i, 'motor'],
@@ -353,6 +353,27 @@ export function assemblyToComposeIntent(asm) {
         else if (cv?.type === 'cylinder') feats.push(F('cylinder', { diameter: cv.params.diameter, height: cv.params.length }, cv.at?.tx ?? 0, cv.at?.ty ?? 0, (cv.at?.tz ?? 0) + 0.01, 'subtract'));
         break;
       }
+      case 'rebar': { // 철근(R2-④): 세그먼트별 2점 실린더+절점 스피어 — SCAD·STEP 동일 수학
+        if (rot) { // 회전 배치=미지원(배근은 절대좌표 관례) — AABB 프록시 표시(정직)
+          const bb = partAabb({ type: 'rebar', ...p });
+          feats.push(F('box', { size: [bb.max[0] - bb.min[0], bb.max[1] - bb.min[1], bb.max[2] - bb.min[2]] }, bb.min[0], bb.min[1], bb.min[2]));
+          break;
+        }
+        const pts = p.points ?? [];
+        for (let k = 0; k < pts.length - 1; k++) {
+          const [x1, y1, z1] = pts[k], [x2, y2, z2] = pts[k + 1];
+          const dx2 = x2 - x1, dy2 = y2 - y1, dz2 = z2 - z1;
+          const L = Math.hypot(dx2, dy2, dz2);
+          if (L < 1e-9) continue;
+          const ay = (Math.acos(dz2 / L) * 180) / Math.PI;
+          const az = (Math.atan2(dy2, dx2) * 180) / Math.PI;
+          feats.push({ kind: 'cylinder', diameter: p.dia, height: L, op: 'add', _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), ...(part.filletMm > 0 ? { _fillet: part.filletMm } : {}), at: { translate: [x1 + tx, y1 + ty, z1 + tz], rotate: [0, +ay.toFixed(6), +az.toFixed(6)] } });
+        }
+        for (let k = 1; k < pts.length - 1; k++) {
+          feats.push({ kind: 'sphere', diameter: p.dia, op: 'add', _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), at: { translate: [pts[k][0] + tx, pts[k][1] + ty, pts[k][2] + tz] } });
+        }
+        break;
+      }
       case 'revolve': { // 실형상(260719 — compose revolve=rotate_extrude·STEP=스케치 회전, 프록시 폐기)
         feats.push(F('revolve', { profile: (p.profile ?? []).map((q) => [q[0], q[1]]), ...(p.angleDeg && p.angleDeg < 360 ? { angle: p.angleDeg } : {}) }));
         break;
@@ -632,6 +653,23 @@ export function buildAssembly(asm) {
             const zOv = Math.min((gi.at?.tz ?? 0) + gi.params.thickness, (gj.at?.tz ?? 0) + gj.params.thickness) - Math.max(gi.at?.tz ?? 0, gj.at?.tz ?? 0);
             if (zOv > 0 && Math.abs(d - std) < 0.5) {
               contacts.push({ a: boxes[i].id, b: boxes[j].id, overlapMm3: 0, depthMm: 0, note: `기어 맞물림(중심거리 ${d.toFixed(1)}=m(z₁+z₂)/2 폐형 검증 — 정상 교합)` });
+              continue;
+            }
+          }
+        }
+        // 철근 매입/교차(R2-④): rebar 가 부재에 전 구간 내포=매입 정상 · rebar 쌍=결속 교차 정상
+        {
+          const pi6 = asm.parts[i], pj6 = asm.parts[j];
+          if (pi6.type === 'rebar' && pj6.type === 'rebar') {
+            contacts.push({ a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v), depthMm: +depth.toFixed(2), note: '철근 교차(결속 — 배근 정상)' });
+            continue;
+          }
+          const reb = pi6.type === 'rebar' ? i : pj6.type === 'rebar' ? j : -1;
+          if (reb >= 0) {
+            const rb = boxes[reb].box, hb = boxes[reb === i ? j : i].box;
+            const inside = [0, 1, 2].every((k) => rb.min[k] >= hb.min[k] - 0.1 && rb.max[k] <= hb.max[k] + 0.1);
+            if (inside) {
+              contacts.push({ a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v), depthMm: +depth.toFixed(2), note: '철근 매입(전 구간 내포 — 배근 정상 · 피복두께 검토=도메인 계산 영역)' });
               continue;
             }
           }

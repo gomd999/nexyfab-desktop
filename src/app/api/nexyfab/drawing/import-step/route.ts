@@ -96,6 +96,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (!step || typeof step !== 'string') return NextResponse.json({ ok: false, error: 'step 텍스트가 필요합니다.' }, { status: 400 });
     if (step.length > 15_000_000) return NextResponse.json({ ok: false, error: 'STEP 15MB 초과 — 부분 파일로 나눠주세요.' }, { status: 400 });
     bridged = stepToNexyfabAssembly(step, { name, ...matOpt });
+    // R2-①(260719): AP242 시맨틱 PMI(GD&T) 동시 판독 — 있으면 어셈블리에 동봉(부품도 표기용)
+    try {
+      const gmod = await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'gdt-import.mjs')).href) as { extractGdt: (t: string) => { counts: { datums: number; dims: number; geoTols: number } } };
+      const gdt = gmod.extractGdt(step);
+      if (bridged.ok && bridged.assembly && (gdt.counts.geoTols || gdt.counts.dims || gdt.counts.datums)) {
+        (bridged.assembly as { gdt?: unknown }).gdt = gdt;
+      }
+    } catch { /* PMI 판독 실패는 임포트를 막지 않음(정직 — 값 없으면 미표기) */ }
   }
   if (!bridged.ok || !bridged.assembly) return NextResponse.json({ ok: false, error: bridged.error, stats: bridged.stats }, { status: 200 });
 

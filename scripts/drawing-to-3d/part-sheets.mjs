@@ -62,6 +62,19 @@ export function partSheets(assembly, { title = '부품 제작도', dwgPrefix = '
 </tbody></table>
 <div class="note">공차·표면 거칠기·용접 상세=입력 원칙(GD&T 연동 후속) · 회전체 실형상은 STEP 참조(본 도면=엔벨로프+주요 치수)</div></div>`;
   }).join('');
+  // R2-①(260719): 임포트 STEP 의 AP242 시맨틱 PMI 가 있으면 공차표 표기(어셈블리 수준 —
+  // 부품별 형상 연결(shape aspect 매핑)은 v1 범위 외 명시. 값=모델 내장 공차의 판독).
+  const gdt = assembly.gdt;
+  const gdtHtml = gdt && (gdt.geoTols?.length || gdt.dims?.length)
+    ? `<div class="psheet"><div class="ph"><b>공차 판독표 (AP242 시맨틱 PMI)</b> <span class="sub">데이텀 ${esc((gdt.datums ?? []).join(', ') || '—')} · 부품별 형상 매핑=후속(어셈블리 수준 표)</span></div>
+${gdt.geoTols?.length ? `<table class="pt" style="margin-top:8px"><thead><tr><th>기호</th><th>공차</th><th>크기(mm)</th><th>데이텀</th><th>이름</th></tr></thead><tbody>
+${gdt.geoTols.map((g) => `<tr><td style="font-size:15px">${esc(g.symbol)}</td><td>${esc(g.kind.replace(/_TOLERANCE$/, ''))}</td><td>${g.magnitudeMm ?? '<i>미해석</i>'}</td><td>${esc((g.datums ?? []).join('|') || '—')}${g.modifiers?.length ? ' Ⓜ' : ''}</td><td style="text-align:left">${esc(g.name ?? '')}</td></tr>`).join('')}
+</tbody></table>` : ''}
+${gdt.dims?.length ? `<table class="pt" style="margin-top:8px"><thead><tr><th>치수</th><th>공칭</th><th>하한</th><th>상한</th></tr></thead><tbody>
+${gdt.dims.map((d) => `<tr><td style="text-align:left">${esc(d.name || d.kind)}</td><td>${d.value ?? '—'}</td><td>${d.tol ? d.tol.lower : '—'}</td><td>${d.tol ? d.tol.upper : '—'}</td></tr>`).join('')}
+</tbody></table>` : ''}
+<div class="note">판독값(결정론 파스) — 그래픽 주석·서피스 텍스처는 범위 외. 발주 전 원 도면 대조.</div></div>`
+    : '';
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>@page{size:A4 landscape;margin:10mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937}
 .psheet{max-width:1050px;margin:14px auto;background:#fff;border:1px solid #cbd5e1;padding:12px 18px;box-shadow:0 3px 16px rgba(0,0,0,.08)}
@@ -70,5 +83,5 @@ export function partSheets(assembly, { title = '부품 제작도', dwgPrefix = '
 .pt{border-collapse:collapse;font-size:11px}.pt td{border:1px solid #cbd5e1;padding:3px 10px}.pt td:nth-child(odd){background:#f1f5f9}
 .note{font-size:10.5px;color:#94a3b8;margin-top:6px}
 @media print{body{background:#fff}.psheet{box-shadow:none;border:none;page-break-after:always;margin:0}}</style></head>
-<body><div style="max-width:1050px;margin:14px auto;font-size:15px;font-weight:700">${esc(title)} — 그룹 대표 ${N}종(총 부품 ${parts.length})</div>${sheetHtml}</body></html>`;
+<body><div style="max-width:1050px;margin:14px auto;font-size:15px;font-weight:700">${esc(title)} — 그룹 대표 ${N}종(총 부품 ${parts.length})</div>${gdtHtml}${sheetHtml}</body></html>`;
 }

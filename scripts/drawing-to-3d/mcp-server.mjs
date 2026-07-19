@@ -32,6 +32,7 @@ import { aiEditPart, applyPartPatch, faceOfPart, faceDragPatch, faceDimOf, partO
 import { autoTagAssembly, assemblyAtLevel } from './assembly.mjs';
 import { bladeRingMesh } from './gen-macros.mjs';
 import { extractGdt, extractGdtFile } from './gdt-import.mjs';
+import { parseLandXml, parseLandXmlFile } from './landxml-import.mjs';
 
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
 
@@ -318,6 +319,20 @@ export const tools = [
     },
   },
   {
+    name: 'import_landxml',
+    description:
+      `LandXML 1.x 도로 선형 임포트(결정론): Line/Curve(arc) 체인→엔진 선형 입력({ips, curves}) ` +
+      `— IP=탄젠트 교점, 단위 자동 mm 환산(m/ft), 요소장 합↔선언 길이 검산. 종단 PVI 판독. ` +
+      `clothoid·복합곡선=unsupported 정직 보고. 반환 ips/curves 를 civil 템플릿에 그대로 투입 가능.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        xmlPath: { type: 'string', description: '.xml 절대경로(xmlText 와 택1)' },
+        xmlText: { type: 'string' },
+      },
+    },
+  },
+  {
     name: 'verify_domain',
     description:
       `설계 형상 + 분야 → 진짜 공학 계산기(engineering-core) 검증. 형상에서 단면특성(A·Ix·Sx·r)·경간 L을 ` +
@@ -404,6 +419,11 @@ export async function callTool(name, args = {}) {
   }
   if (name === 'list_domains') {
     return { domains: listDomains() };
+  }
+  if (name === 'import_landxml') {
+    if (args.xmlPath) return parseLandXmlFile(args.xmlPath);
+    if (args.xmlText) return parseLandXml(args.xmlText);
+    return { ok: false, error: 'xmlPath 또는 xmlText 필요' };
   }
   if (name === 'extract_gdt') {
     if (args.stepPath) return extractGdtFile(args.stepPath);

@@ -297,6 +297,16 @@ const GATES = {
     if (i.verts && (!Array.isArray(i.verts) || !Array.isArray(i.faces))) e.push('verts/faces 배열 필요');
     if (i.verts && i.verts.length > 20000) e.push('메시 정점 > 20k — 표시 예산 초과(volumeMm3/aabb 만 유지)');
   },
+  // 철근 어휘(R2-④, 260719 — IFC IFCREINFORCINGBAR/SWEPT_DISK 대응): 폴리라인 스윕 봉
+  rebar(i, e) {
+    if (!pos(i.dia)) e.push('dia invalid');
+    const pts = i.points;
+    if (!Array.isArray(pts) || pts.length < 2) { e.push('points ≥2 필요([[x,y,z]...])'); return; }
+    for (const [n, q] of pts.entries()) {
+      if (!Array.isArray(q) || q.length !== 3 || !q.every(Number.isFinite)) e.push(`points[${n}] invalid(3D 좌표)`);
+    }
+    if (pts.length > 200) e.push('points > 200 — 배근 분할 필요(표시 예산)');
+  },
   revolve(i, e) {
     const prof = i.profile;
     if (!Array.isArray(prof) || prof.length < 3) { e.push('profile ≥3점 필요([[r,z]...])'); return; }
@@ -440,6 +450,21 @@ const SCAD = {
   translate([${(i.width + bp) / 2}, ${d2 / 2}, -1]) cylinder(h=${i.height}, d=${Math.max(8, i.boreDia * 0.25)}, $fn=32);
 }`;
   },
+  rebar(i) { // 폴리라인 스윕 봉 — 세그먼트별 2점 실린더 + 절점 스피어(연속성)
+    const out = [];
+    const pts = i.points;
+    for (let k = 0; k < pts.length - 1; k++) {
+      const [x1, y1, z1] = pts[k], [x2, y2, z2] = pts[k + 1];
+      const dx = x2 - x1, dy = y2 - y1, dz = z2 - z1;
+      const L = Math.hypot(dx, dy, dz);
+      if (L < 1e-9) continue;
+      const ay = (Math.acos(dz / L) * 180) / Math.PI;
+      const az = (Math.atan2(dy, dx) * 180) / Math.PI;
+      out.push(`translate([${x1},${y1},${z1}]) rotate([0,${ay.toFixed(4)},${az.toFixed(4)}]) cylinder(h=${L.toFixed(4)}, d=${i.dia}, $fn=24);`);
+    }
+    for (let k = 1; k < pts.length - 1; k++) out.push(`translate([${pts[k].join(',')}]) sphere(d=${i.dia}, $fn=24);`);
+    return `union() {\n  ${out.join('\n  ')}\n}`;
+  },
   pipe_reducer(i) {
     const t = i.wallThk ?? Math.max(2, i.dia1 * 0.03);
     // 원뿔대 셸(rotate_extrude 대신 conical cylinder r1/r2 사용 — OpenSCAD 지원)
@@ -551,6 +576,11 @@ export function partAabb(i) {
       const zs = (i.profile ?? [[0, 0]]).map((q) => q[1]);
       return { min: [-rMax, -rMax, Math.min(...zs)], max: [rMax, rMax, Math.max(...zs)] };
     }
+    case 'rebar': {
+      const r = i.dia / 2;
+      const xs = i.points.map((q) => q[0]), ys = i.points.map((q) => q[1]), zs2 = i.points.map((q) => q[2]);
+      return { min: [Math.min(...xs) - r, Math.min(...ys) - r, Math.min(...zs2) - r], max: [Math.max(...xs) + r, Math.max(...ys) + r, Math.max(...zs2) + r] };
+    }
     case 'cavity_block':
       return { min: [0, 0, 0], max: [i.blockW, i.blockD, i.blockH] };
     case 'coil_spring': {
@@ -593,6 +623,7 @@ export const PARAMS = {
   pipe_reducer: ['dia1', 'dia2', 'length', 'wallThk'],
   mesh: ['volumeMm3'], // verts/faces/aabb 는 배열·객체 — 스키마 특례
   revolve: [], // profile 은 배열 — 스키마 특례
+  rebar: ['dia'], // points 는 배열 — 스키마 특례(R2-④)
   cavity_block: ['blockW', 'blockD', 'blockH'], // cavity 는 객체 — 스키마 특례
   coil_spring: ['wireDia', 'coilDia', 'pitch', 'turns'],
   pillow_block: ['boreDia', 'width', 'height', 'depth', 'boltPitch'],
