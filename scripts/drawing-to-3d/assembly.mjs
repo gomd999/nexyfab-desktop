@@ -531,7 +531,7 @@ export function buildAssembly(asm) {
       ((rx || ry || rz) ? `rotate([${rx}, ${ry}, ${rz}]) ` : '') +
       `{\n${scadBody(intent)}\n}`;
     bodies.push(`// ${p.id ?? p.type} (${p.type})\n${wrap}`);
-    boxes.push({ id: p.id ?? p.type, box: placedAabb(p) });
+    boxes.push({ id: p.id ?? p.type, box: placedAabb(p), type: p.type, at: p.at ?? {} });
   }
   if (gateErrors.length) return { ok: false, gateErrors, interferences: [] };
 
@@ -778,6 +778,18 @@ export function buildAssembly(asm) {
   const TOL = 2; // mm — 면접촉 허용오차
   const FILLET_LEG = 6; // mm — 기본 필렛 다리(개산)
   const throat = +(0.707 * FILLET_LEG).toFixed(2);
+  // F6(도그푸딩 260719b): 접합선 길이는 **실제 단면 둘레**여야 한다. 회전체(사일로 동체·
+  // 호퍼·지붕)의 원주 이음을 AABB 사각 둘레로 재면 2(D+D)=4D 가 되어 πD 대비 +27.3%
+  // 과대(실측 10,972mm vs π×2743=8,617mm). 축이 z 인 회전 단면 부품끼리 z 방향으로
+  // 맞닿으면 이음선은 원(圓)이다.
+  const ROUND_TYPES = new Set(['revolve', 'cylinder', 'tube', 'pipe_reducer', 'pipe_elbow']);
+  const zAxisRound = (b) => {
+    if (!ROUND_TYPES.has(b.type)) return false;
+    // revolve 는 정의상 z축 회전체. 그 외(cylinder·tube 등)는 SCAD 기본 축이 z 이므로
+    // rx/ry 회전이 걸리면 축이 눕는다 — 눕은 관은 원주 이음 판정 대상에서 제외(보수).
+    if (b.type === 'revolve') return true;
+    return !(b.at.rx || b.at.ry);
+  };
   for (let i = 0; i < boxes.length; i++) {
     for (let j = i + 1; j < boxes.length; j++) {
       const A = boxes[i].box, B = boxes[j].box;
@@ -785,12 +797,22 @@ export function buildAssembly(asm) {
       const touch = [0, 1, 2].filter((k) => Math.abs(ov[k]) <= TOL);
       const over = [0, 1, 2].filter((k) => ov[k] > TOL);
       if (touch.length === 1 && over.length === 2) {
-        const perim = 2 * (ov[over[0]] + ov[over[1]]);
+        const [u, v] = [ov[over[0]], ov[over[1]]];
+        let perim = 2 * (u + v);
+        let note = '전둘레 필렛 개산 · AABB 접촉 기준 · 비법정';
+        // 원주 이음: 양쪽이 z축 회전 단면 + 접촉면이 z 평면 + 겹침 XY 범위가 정사각(=원의
+        // 외접 AABB). 이 세 조건이 모두 맞을 때만 π·D 로 바꾼다(그 외는 종전 사각 둘레 유지).
+        const squareish = Math.max(u, v) > 0 && Math.abs(u - v) / Math.max(u, v) <= 0.02;
+        if (touch[0] === 2 && squareish && zAxisRound(boxes[i]) && zAxisRound(boxes[j])) {
+          const dia = (u + v) / 2; // 접합면 지름 = 겹침 XY 외접 정사각의 변
+          perim = Math.PI * dia;
+          note = `원주 이음(Ø${Math.round(dia)} 접합면 π·D) · 회전 단면 실둘레 · 비법정`;
+        }
         welds.push({
           a: boxes[i].id, b: boxes[j].id,
           lengthMm: Math.round(perim), legMm: FILLET_LEG, throatMm: throat,
           throatAreaMm2: Math.round(perim * throat),
-          note: '전둘레 필렛 개산 · AABB 접촉 기준 · 비법정',
+          note,
         });
       }
     }

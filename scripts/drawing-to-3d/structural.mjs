@@ -10,6 +10,7 @@
  * usage: structuralCheck(assembly, { material, fluidParts, supports, member, seismicG })
  */
 import { partAabb, gearPoly, sheetPoly, polyArea, boltDims, holeFeature } from './reconstruct.mjs';
+import { snapSquareTube } from './std-snap.mjs';
 
 const g = 9.81;
 
@@ -156,6 +157,119 @@ export function partVolume(type, p) {
     default: return 0;
   }
 }
+// ══ 실단면 보정 (F1·F12, 도그푸딩 260719b) ═══════════════════════════════════
+// partVolume() 은 "선언된 형상 그대로"의 체적이다. 그런데 어떤 부재는 선언 형상(box)과
+// 발주·제작 실물이 다르다 — 규격 스냅이 각형강관으로 라벨을 붙인 기둥, 판재로 짜는 함체.
+// 여기서 그 둘을 **같은 소스**로 묶는다(모듈 경계 교차검증). 판별 불가 시 중실 유지 =
+// 날조 금지 원칙. 어느 경로를 탔는지는 basis 로 산출물에 항상 드러난다.
+
+/**
+ * F1 — std-snap 이 각형강관으로 스냅한 부재의 실단면(중공).
+ * `auditAssemblyStd`(std-snap.mjs) 의 각관 분기와 **동일 조건**을 쓴다: 라벨을 만든 판정과
+ * 질량을 만드는 판정이 갈라지면 다시 F1 이 재발한다.
+ *   ① type='box' & role ∈ {column, beam}   ② 강재(알루미늄=T슬롯 표 — 카탈로그에 단면적이
+ *   없으므로 중실 유지)   ③ width===depth (정사각)   ④ 스냅 편차 devPct===0
+ * ④가 핵심: 근사 스냅(예 □145→□150, 편차 3.4%)은 **모델 형상이 규격과 다른 것**이므로
+ * 질량을 규격으로 바꾸면 형상과 어긋난다. 정확 일치일 때만 중공으로 본다.
+ * 두께: params.wallThk(사용자 선언) > 카탈로그 두께 후보 중 최대(보수 = 질량 과소평가 방지).
+ * 근사 명시: 코너 R 이 카탈로그에 없어 직각 모서리로 계산 → KS D 3568 공표치 대비 +2~3%
+ *   (SQ150×150×6t: 본 식 27.1 kg/m vs 공표 26.4 kg/m). 중실 대비 −85%.
+ * @returns {{ areaMm2:number, thkMm:number, label:string, spec:string }|null}
+ */
+export function stdHollowSection(part) {
+  if (!part || part.type !== 'box') return null;
+  const role = String(part.role ?? '');
+  if (role !== 'column' && role !== 'beam') return null;
+  if (/alu/i.test(String(part.material ?? ''))) return null; // T슬롯: 단면적 미수록 → 중실
+  const p = part.params ?? {};
+  if (!(p.width > 0) || p.width !== p.depth) return null;
+  const snap = snapSquareTube(p.width);
+  if (!snap.ok || snap.devPct !== 0) return null;
+  const opts = snap.thkOptions ?? [];
+  const declared = Number(p.wallThk);
+  const t = Number.isFinite(declared) && declared > 0 && declared < snap.side / 2
+    ? declared
+    : Math.max(...opts);
+  if (!(t > 0)) return null;
+  const bi = snap.side - 2 * t;
+  return {
+    areaMm2: snap.side * snap.side - bi * bi,
+    thkMm: t,
+    label: `${snap.label}×${t}t`,
+    spec: snap.spec,
+  };
+}
+
+/**
+ * F12 — 판재로 짜는 함체(캐비닛·붙박이장 하부장·걸레받이)를 통짜 목재로 계산하면
+ * 7~10배 과대가 되고, 그 값이 바닥 활하중(kg/m²)으로 환산돼 "개산"으로 제시된다.
+ * 셸로 볼 부재의 기준 = **role 선언**(형상·치수 추정 금지 — 오판단하느니 중실이 낫다):
+ *   cabinet/carcass/casework → 5면 셸(좌·우 측판 + 상·하판 + 뒷판. 전면은 문짝이
+ *     별도 부품으로 이미 계상되므로 개방). 내부 칸막이·서랍은 선언 부품이 아니면 미계상
+ *     (없는 부재를 만들지 않는다) → 실물 대비 보수적 하한.
+ *   plinth → 둘레 프레임(받침대는 상·하가 뚫린 사다리 프레임: 둘레 레일만).
+ * 판 두께 t = params.panelThk > params.thickness > 18mm(가구 판재 상용 기본).
+ * 밀도는 부재 선언 재질을 그대로 쓴다(timber=500). 실제 MDF/PB(650~750 kg/m³)면
+ * 약 1.3~1.5배 — 재질을 임의로 바꾸지 않고 note 로만 밝힌다.
+ * @returns {{ volumeMm3:number, basis:string, note:string }|null}
+ */
+const CABINET_ROLES = new Set(['cabinet', 'carcass', 'casework']);
+export function panelShellVolume(part) {
+  if (!part || part.type !== 'box') return null;
+  const role = String(part.role ?? '');
+  const p = part.params ?? {};
+  const W = p.width, D = p.depth, H = p.height;
+  if (!(W > 0 && D > 0 && H > 0)) return null;
+  const t = Number(p.panelThk) > 0 ? Number(p.panelThk) : Number(p.thickness) > 0 ? Number(p.thickness) : 18;
+  if (CABINET_ROLES.has(role)) {
+    if (!(W > 2 * t && H > 2 * t && D > t)) return null; // 판 두께보다 작은 함체 = 셸 불성립
+    const sides = 2 * t * D * H;                 // 좌·우 측판(전깊이·전높이)
+    const topBot = 2 * (W - 2 * t) * D * t;      // 상·하판(측판 사이)
+    const back = (W - 2 * t) * t * (H - 2 * t);  // 뒷판(상·하판 사이)
+    return {
+      volumeMm3: sides + topBot + back,
+      basis: 'panel-shell',
+      note: `판재 함체 5면 셸(t${t} · 전면 개방=문짝 별도) — 내부 칸막이·서랍 미계상(하한). 재질 밀도 그대로 적용`,
+    };
+  }
+  if (role === 'plinth') {
+    if (!(W > 2 * t && D > 2 * t)) return null;
+    // 둘레 레일 프레임: 전·후 레일(전폭) + 좌·우 레일(사이 채움)
+    const vol = 2 * W * t * H + 2 * (D - 2 * t) * t * H;
+    return {
+      volumeMm3: vol,
+      basis: 'panel-frame',
+      note: `걸레받이 둘레 레일 프레임(t${t} · 상·하 개방) — 중간 보강 레일 미계상(하한)`,
+    };
+  }
+  return null;
+}
+
+/**
+ * 부품 1개분 **실단면 보정 체적**(mm³) + 산출 근거. 질량을 쓰는 모든 경로
+ * (structuralCheck · computeBOQ)는 partVolume 이 아니라 이 함수를 통과해야 한다 —
+ * 그래야 "라벨은 각관인데 질량은 통짜" 같은 한 페이지 자기모순이 구조적으로 불가능해진다.
+ * @returns {{ volumeMm3:number, basis:'solid'|'hollow-std'|'panel-shell'|'panel-frame', note:string, section?:object }}
+ */
+export function partVolumeEffective(part) {
+  const solid = partVolume(part.type, part.params);
+  const hollow = stdHollowSection(part);
+  if (hollow) {
+    const len = part.params.height; // 정사각 단면(width=depth)의 부재 축 = height
+    if (len > 0) {
+      return {
+        volumeMm3: hollow.areaMm2 * len,
+        basis: 'hollow-std',
+        note: `규격 중공 단면 ${hollow.label} (${hollow.spec}) — 단면적 ${Math.round(hollow.areaMm2)}mm². 코너R 미반영으로 공표치 대비 +2~3% 근사`,
+        section: hollow,
+      };
+    }
+  }
+  const shell = panelShellVolume(part);
+  if (shell) return { volumeMm3: shell.volumeMm3, basis: shell.basis, note: shell.note };
+  return { volumeMm3: solid, basis: 'solid', note: '중실(선언 형상 그대로) — 규격 중공/판재 셸 판별 대상 아님' };
+}
+
 // 부품 내부 유체 체적(mm³) — 중공/용기 만수
 export function fluidVolume(type, p) {
   const A = Math.PI / 4;
@@ -272,14 +386,16 @@ export function structuralCheck(assembly, opts = {}) {
   const bodies = [];
   for (const part of assembly.parts ?? []) {
     const rho = (DENSITY[part.material ?? dMat] ?? DENSITY.STS316) / 1e9; // kg/mm³
-    const vol = partVolume(part.type, part.params);
+    // F1·F12(260719b): 선언 형상 체적이 아니라 **실단면 보정 체적**(규격 중공/판재 셸).
+    const eff = partVolumeEffective(part);
+    const vol = eff.volumeMm3;
     // qty(260718): 반복 부품(STEP 대표화) — 질량은 ×qty(BOQ 단일 소스 폐합).
     // CG 는 대표 배치 위치 기준 근사(반복 인스턴스 개별 위치 미반영 — 스케치 용도 명시).
     const qty = Math.max(1, Math.round(Number(part.qty) || 1));
     let mass = vol * rho * qty;
     if (part.fluid) mass += fluidVolume(part.type, part.params) * fluidRho * qty;
     const cg = partCG(part);
-    bodies.push({ id: part.id ?? part.type, mass, cg, role: part.role });
+    bodies.push({ id: part.id ?? part.type, mass, cg, role: part.role, basis: eff.basis, basisNote: eff.note });
   }
   const totalMass = bodies.reduce((s, b) => s + b.mass, 0);
   const cg = [0, 1, 2].map(k => bodies.reduce((s, b) => s + b.mass * b.cg[k], 0) / (totalMass || 1));
@@ -329,20 +445,26 @@ export function structuralCheck(assembly, opts = {}) {
   if (seismicFS < 1.5) warnings.push(`${seismic}g 측방 전도 FS ${seismicFS} < 1.5 — 아웃리거/앵커·CG 저감 필요`);
   if (member && !member.pass) warnings.push(`부재 ${member.section} 초과 — 단면 상향 필요`);
 
-  // 질량 내역 자기정합(#8, 위시빌더 3차 "구조표 합계 845 vs 실제합 835" 류 자기모순 방지):
-  // 표시값(0.1kg 라운딩)의 부품 합계가 표시 총계와 정확히 일치하도록 최대잔여법으로 배분.
-  const totalDisp = +totalMass.toFixed(1);
-  const floors = bodies.map((b) => Math.floor(b.mass * 10 + 1e-9) / 10);
-  let remTenths = Math.max(0, Math.round((totalDisp - floors.reduce((s, v) => s + v, 0)) * 10));
-  const byFrac = bodies.map((b, i) => ({ i, f: b.mass * 10 - Math.floor(b.mass * 10 + 1e-9) })).sort((a, b) => b.f - a.f);
-  const disp = [...floors];
-  for (const { i } of byFrac) { if (remTenths <= 0) break; disp[i] = +(disp[i] + 0.1).toFixed(1); remTenths--; }
-  const massBreakdown = bodies.map((b, i) => ({ id: b.id, massKg: +disp[i].toFixed(1), exactKg: +b.mass.toFixed(3) }));
+  // 질량 내역 자기정합(#8, 위시빌더 3차 "구조표 합계 845 vs 실제합 835" 류 자기모순 방지).
+  // F13(260719b) 재설계 — 종전 최대잔여법은 합계는 맞췄지만 **보정 잔차가 부재 행에 보였다**
+  // (동일 서까래 7개 중 1개만 +0.1kg → 사용자는 다른 부재로 오해한다). 이제 방향을 뒤집는다:
+  //   부재 표시값 = 각자의 반올림(동일 질량 부재는 항상 동일 표시), 표시 총계 = 그 합.
+  // 합계 정합은 그대로 유지되고(정의상 일치), 총계는 참값 대비 최대 0.05kg×부재수 만큼
+  // 표류할 수 있어 참값을 totalExactKg 로 함께 노출한다(숨기지 않음).
+  const disp = bodies.map((b) => Math.round(b.mass * 10) / 10);
+  const totalDisp = +disp.reduce((s, v) => s + v, 0).toFixed(1);
+  const massBreakdown = bodies.map((b, i) => ({
+    id: b.id, massKg: +disp[i].toFixed(1), exactKg: +b.mass.toFixed(3), basis: b.basis, basisNote: b.basisNote,
+  }));
   const massSumCheck = +massBreakdown.reduce((s, r) => s + r.massKg, 0).toFixed(1) === totalDisp;
 
   return {
-    totalMassKg: +totalMass.toFixed(1),
+    // 표시 총계 = 부재 표시값의 합(F13 — 행에 보정 잔차를 심지 않는다). 참값은 totalExactKg.
+    totalMassKg: totalDisp,
+    totalExactKg: +totalMass.toFixed(3),
     massBreakdown, massSumCheck,
+    // 산출 근거 집계(F1·F12) — 어떤 부재가 규격 중공/판재 셸/중실로 잡혔는지 한눈에.
+    massBasis: massBreakdown.reduce((m, r) => { m[r.basis] = (m[r.basis] ?? 0) + 1; return m; }, {}),
     cgWorldMm: cg.map(v => +v.toFixed(1)),
     cgHeightM: +(cgZ / 1000).toFixed(2),
     supports: supportLoads.map(l => ({ pos: l.pos, loadKg: +l.loadKg.toFixed(1) })),
@@ -351,7 +473,7 @@ export function structuralCheck(assembly, opts = {}) {
     tipover: { staticAngleDeg: tipAngleDeg, seismicG: seismic, seismicFS },
     warnings,
     ok: warnings.length === 0,
-    method: 'AABB 체적×밀도 질량 · 강체 반력 · 단순보 부재 · 강체 전도(근사, 비법정)',
+    method: '실단면 보정 체적×밀도 질량(규격 중공/판재 셸/중실 — massBasis 참조) · 강체 반력 · 단순보 부재 · 강체 전도(근사, 비법정)',
   };
 }
 

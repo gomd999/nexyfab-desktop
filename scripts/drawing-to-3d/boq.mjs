@@ -3,9 +3,9 @@
  * ⚠️ 금액(₩) 미산출 = 실단가·노임·지역·시점 데이터 없이는 날조이므로 뺀다(정직).
  *    물량(질량·면적·길이·수량·용접·구멍·절곡) = 형상에서 확정. 공수(hr) = 표준 원단위 × 물량(개산).
  *    금액은 사용자가 단가를 입력할 때만("입력단가 기준" 명시).
- * 재사용: partVolume/DENSITY(structural), welds(buildAssembly). eng-knowledge BOQ 룰엔진 사상.
+ * 재사용: partVolumeEffective/DENSITY(structural), welds(buildAssembly). eng-knowledge BOQ 룰엔진 사상.
  */
-import { partVolume, DENSITY } from './structural.mjs';
+import { partVolumeEffective, DENSITY } from './structural.mjs';
 import { buildAssembly } from './assembly.mjs';
 import { gearPoly, sheetPoly, hexPts, polyArea, polyPerimeter, boltDims } from './reconstruct.mjs';
 import { takeoff } from '../engineering-core/quantity/takeoff.mjs';
@@ -69,11 +69,14 @@ export function computeBOQ(assembly, { material = 'STS316', rates = STD_RATES } 
   const parts = assembly.parts ?? [];
   const items = parts.map((p) => {
     const rho = (DENSITY[p.material ?? material] ?? DENSITY.STS316) / 1e9;
-    const volMm3 = partVolume(p.type, p.params);
+    // F1·F12(260719b): 질량·재적은 structural 과 **같은 소스**(실단면 보정)를 본다 —
+    // 발주 규격 라벨(각관)과 질량(통짜)이 한 페이지에서 어긋나던 자기모순을 구조적으로 차단.
+    const eff = partVolumeEffective(p);
+    const volMm3 = eff.volumeMm3;
     // qty(260718): 동일 부품 반복 수(대표 1개 배치 — STEP 대표화 임포트). 물량=1개분×qty.
     const qty = Math.max(1, Math.round(Number(p.qty) || 1));
     const massKg = volMm3 * rho * qty;
-    return { id: p.id ?? p.type, type: p.type, material: p.material ?? material, qty, massKg: +massKg.toFixed(2), volM3: +(volMm3 * qty / 1e9).toFixed(4), surfaceM2: +(surfaceMm2(p.type, p.params) * qty / 1e6).toFixed(3), holes: holeCount(p.type, p.params) * qty, bends: bendCount(p.type, p.params) * qty, linearLenM: +(linearLenMm(p.type, p.params) * qty / 1000).toFixed(2) };
+    return { id: p.id ?? p.type, type: p.type, material: p.material ?? material, qty, massKg: +massKg.toFixed(2), basis: eff.basis, basisNote: eff.note, volM3: +(volMm3 * qty / 1e9).toFixed(4), surfaceM2: +(surfaceMm2(p.type, p.params) * qty / 1e6).toFixed(3), holes: holeCount(p.type, p.params) * qty, bends: bendCount(p.type, p.params) * qty, linearLenM: +(linearLenMm(p.type, p.params) * qty / 1000).toFixed(2) };
   });
   // 재질별 집계 (콘크리트 m³·목재 재적 m³ 등 비기계 물량 단위)
   const byMaterial = {};
