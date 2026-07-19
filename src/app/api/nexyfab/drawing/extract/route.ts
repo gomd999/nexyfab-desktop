@@ -61,11 +61,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (await getActiveBreaker()) return NextResponse.json({ ok: false, error: 'AI가 일시 중지되어 있습니다. 잠시 후 다시 시도하세요.' }, { status: 503 });
   } catch { /* 브레이커 조회 실패는 무시하고 진행 */ }
 
-  let imageBase64: string, mimeType: string;
+  let imageBase64: string, mimeType: string, dxfText = '';
   try {
-    const body = (await req.json()) as { imageBase64?: string; mimeType?: string };
+    const body = (await req.json()) as { imageBase64?: string; mimeType?: string; dxfText?: string };
     imageBase64 = (body.imageBase64 ?? '').replace(/^data:[^,]+,/, '').trim(); // data: 접두 있으면 제거
     mimeType = (body.mimeType ?? 'image/png').toLowerCase();
+    // P1-b(260719b): 같은 부품의 벡터 도면(DXF) 동봉 시 T3 실측값 직사용 — 비전 추론→판독 격상
+    if (typeof body.dxfText === 'string' && body.dxfText.length >= 20 && body.dxfText.length <= 4_000_000) dxfText = body.dxfText;
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
@@ -101,7 +103,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const type = String(flat.type ?? 'unknown');
   const confidence = typeof flat.confidence === 'number' ? flat.confidence : 0;
-  const recognized = { type, label: TYPE_LABEL[type] ?? type, confidence: +confidence.toFixed(2), unit: String(flat.unit ?? 'mm'), ...(reproject?.verdict && reproject.verdict !== 'SKIPPED' ? { reproject: { verdict: reproject.verdict, support: reproject.support, scaleResidualPct: reproject.scaleResidualPct } } : {}) };
+
+  // P1-b(260719b): DXF 동봉 시 T3 reconcile — 비전 수치를 DIMENSION 실측값으로 교체(이력 보고)
+  let reconcile: { measuredCount: number; unverified: string[]; coverage: number } | undefined;
+  if (dxfText) {
+    try {
+      const base = join(process.cwd(), 'scripts', 'drawing-to-3d');
+      const dx = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'dxf-seed.mjs')).href)) as {
+        extractDxfSeed: (t: string) => unknown;
+        reconcileIntentWithDxf: (i: Record<string, unknown>, s: unknown) => { intent: Record<string, unknown>; measured: unknown[]; unverified: string[]; coverage: number };
+      };
+      const seed = dx.extractDxfSeed(dxfText);
+      const r = dx.reconcileIntentWithDxf(flat as Record<string, unknown>, seed);
+      flat = { ...flat, ...r.intent } as FlatIntent; // 실측 교체본으로 진행(출처·이력=reconcile 필드)
+      reconcile = { measuredCount: r.measured.length, unverified: r.unverified, coverage: r.coverage };
+    } catch { /* DXF 정합 실패=비전 값 유지(정직 — reconcile 필드 없음) */ }
+  }
+  const recognized = { type, label: TYPE_LABEL[type] ?? type, confidence: +confidence.toFixed(2), unit: String(flat.unit ?? 'mm'), ...(reproject?.verdict && reproject.verdict !== 'SKIPPED' ? { reproject: { verdict: reproject.verdict, support: reproject.support, scaleResidualPct: reproject.scaleResidualPct } } : {}), ...(reconcile ? { reconcile } : {}) };
 
   // 판별 불가 / 저신뢰 → 허위 형상 방출 대신 정직하게 텍스트 확인 요청.
   if (type === 'unknown' || !mods.rc.PARAMS[type]) {

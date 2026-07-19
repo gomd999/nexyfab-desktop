@@ -60,6 +60,7 @@ export default function ParametricPresetPanel({
   // 업로드 이원화(§3 역할 분리): 도면=치수의 유일한 진실 · 사진=형태 힌트만(치수 결정 금지)
   const fileRef = useRef<HTMLInputElement>(null);
   const modeRef = useRef<'drawing' | 'photo'>('drawing');
+  const lastDxfTextRef = useRef<string>(''); // P1-b(260719b): 최근 DXF 원문 — 이후 이미지 추출 시 T3 실측 교체 동봉
   const [drawBusy, setDrawBusy] = useState(false);
   const [drawRes, setDrawRes] = useState<DrawRes | null>(null);
   const [drawErr, setDrawErr] = useState<string | null>(null);
@@ -216,7 +217,8 @@ export default function ParametricPresetPanel({
             if (sd.circles.length) parts.push((ko ? '원 Ø' : 'holes Ø') + [...new Set(sd.circles.map((c) => +(c.r * 2).toFixed(2)))].slice(0, 8).join(', Ø') + ` ×${sd.circles.length}`);
             const seedText = (ko ? 'DXF 씨앗(사람 검증 필요): ' : 'DXF seed (verify): ') + parts.join(' · ') + (ko ? ' — 이 치수로 [부품 설명]을 설계' : ' — design [part] with these dims');
             window.dispatchEvent(new CustomEvent('nf-dxf-seed', { detail: seedText }));
-            setMsg(ko ? 'DXF 씨앗을 프롬프트에 넣었어요 — 부품 설명을 붙여 생성하세요(자동 생성 아님 · §9 Phase 2).' : 'DXF seed prefilled — add a part description and generate.');
+            lastDxfTextRef.current = String(tr.result ?? ''); // P1-b: 이후 도면 이미지 추출 시 실측 교체에 사용
+            setMsg(ko ? 'DXF 씨앗을 프롬프트에 넣었어요 — 부품 설명을 붙여 생성하거나, 같은 부품의 도면 이미지를 올리면 치수를 DXF 실측값으로 교체합니다.' : 'DXF seed prefilled — add a description, or upload the drawing image to snap dims to DXF measurements.');
           } catch (err) {
             setDrawErr(err instanceof Error ? err.message : String(err));
           } finally {
@@ -241,9 +243,9 @@ export default function ParametricPresetPanel({
           if (domain === 'mech' && mode === 'drawing') {
             const r = await fetch('/api/nexyfab/drawing/extract/', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ imageBase64: b64, mimeType: f.type }),
+              body: JSON.stringify({ imageBase64: b64, mimeType: f.type, ...(lastDxfTextRef.current ? { dxfText: lastDxfTextRef.current } : {}) }),
             });
-            const j = (await r.json()) as { ok?: boolean; intent?: { name?: string; features?: unknown[] }; scad?: string; recognized?: { label?: string; confidence?: number; reproject?: { verdict?: string; support?: number } } };
+            const j = (await r.json()) as { ok?: boolean; intent?: { name?: string; features?: unknown[] }; scad?: string; recognized?: { label?: string; confidence?: number; reproject?: { verdict?: string; support?: number }; reconcile?: { measuredCount: number; unverified: string[]; coverage: number } } };
             if (j.ok && j.intent && j.scad) {
               await onApply(j.intent, j.scad, null);
               setApplied(true);
@@ -252,7 +254,12 @@ export default function ParametricPresetPanel({
               const rpBadge = rp?.verdict === 'OK' && typeof rp.support === 'number'
                 ? (ko ? ` · 역투영 검증 ✓ 지지율 ${Math.round(rp.support * 100)}%` : ` · reprojection ✓ ${Math.round(rp.support * 100)}%`)
                 : rp?.verdict === 'UNSUPPORTED' ? (ko ? ' · 역투영 대상 외' : ' · reprojection n/a') : '';
-              setMsg((ko ? '도면 판독 → 생성됨: ' : 'Drawing read → generated: ') + (j.recognized?.label ?? '') + (typeof j.recognized?.confidence === 'number' ? ` (${Math.round(j.recognized.confidence * 100)}%)` : '') + rpBadge);
+              // P1-b: DXF 실측 교체 배지 — 교체 건수·잔존 추론 파라미터(정직 구분)
+              const rc = j.recognized?.reconcile;
+              const rcBadge = rc
+                ? (ko ? ` · DXF 실측 교체 ${rc.measuredCount}건${rc.unverified.length ? `(추론 잔존: ${rc.unverified.slice(0, 3).join('·')})` : ''}` : ` · DXF-snapped ${rc.measuredCount}${rc.unverified.length ? ` (${rc.unverified.length} unverified)` : ''}`)
+                : '';
+              setMsg((ko ? '도면 판독 → 생성됨: ' : 'Drawing read → generated: ') + (j.recognized?.label ?? '') + (typeof j.recognized?.confidence === 'number' ? ` (${Math.round(j.recognized.confidence * 100)}%)` : '') + rpBadge + rcBadge);
               return;
             }
             // 부품 어휘 매칭 실패 → 아래 프리셋 템플릿 매칭으로 폴백
