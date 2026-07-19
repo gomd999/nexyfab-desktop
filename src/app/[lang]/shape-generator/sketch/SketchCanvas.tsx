@@ -8,7 +8,8 @@ import type {
 } from './types';
 import {
   SNAP_POINT_PX, genId, segmentsIntersect, snap, snapPoint, dist,
-  arcPathFromPoints, sampleArc, generateCircleSegments, generateRectSegments,
+  arcPathFromPoints, sampleArc, generateRectSegments,
+  makeCircleSegment, circleSegmentGeometry, circleSvgPath,
   generatePolygonSegments, generateEllipseSegments, generateSlotSegments,
   applyFilletAtVertex, mirrorSegments, catmullRomToSegments,
   trimSegmentAtIntersections, offsetSegment, findNearestSegment, findNearestSegmentBody,
@@ -852,7 +853,11 @@ function SketchCanvas({
         const center = tempPoints[0];
         const r = dist(center, pt);
         const radius = r > 0.5 ? r : circleRadius;
-        const circleSegs = generateCircleSegments(center, radius, 32);
+        // Emit ONE real `type:'circle'` segment (centre + rim), not a 32-line
+        // approximation — this is the entity concentric/tangent/radius/
+        // diameter constraints bind to.
+        const rimAngle = r > 0.5 ? Math.atan2(pt.y - center.y, pt.x - center.x) : 0;
+        const circleSegs = [makeCircleSegment(center, radius, { rimAngle })];
         mergeOrStartHoleProfile(profile, circleSegs, onProfileChange, onAddClosedLoopAsNewProfile, () => showToast(L('autoHoleProfile')));
         setTempPoints([]);
       }
@@ -1144,7 +1149,12 @@ function SketchCanvas({
       const nearest = findNearestSegment(profile.segments, pt, 15 / zoom);
       if (nearest && onAddConstraint) {
         const seg = profile.segments[nearest.index];
-        const constraintNeedsTwo = ['perpendicular', 'parallel', 'equal', 'symmetric'].includes(selectedConstraintType);
+        // W1-D: 'concentric' and 'tangent' are BINARY in the solver
+        // (buildResiduals reads entityIds[0] and entityIds[1] and bails out
+        // when either is missing). They were previously routed down the
+        // single-entity path, so the constraint was recorded with one id and
+        // could never produce a residual — i.e. it never fired.
+        const constraintNeedsTwo = ['perpendicular', 'parallel', 'equal', 'symmetric', 'concentric', 'tangent'].includes(selectedConstraintType);
 
         if (constraintNeedsTwo) {
           if (tempPoints.length === 0) {
@@ -1549,7 +1559,7 @@ function SketchCanvas({
           if (r > 0 && isFinite(r)) {
             e.preventDefault();
             const center = tempPoints[0];
-            const circleSegs = generateCircleSegments(center, r, 32);
+            const circleSegs = [makeCircleSegment(center, r)];
             mergeOrStartHoleProfile(profile, circleSegs, onProfileChange, onAddClosedLoopAsNewProfile, () => showToast(L('autoHoleProfile')));
             setTempPoints([]);
             setDimInput('');
@@ -1784,12 +1794,25 @@ function SketchCanvas({
   const allPoints: SketchPoint[] = [];
 
   if (profile.segments.length > 0) {
-    const first = profile.segments[0].points[0];
-    pathD = `M ${first.x} ${-first.y}`;
-    allPoints.push(first);
+    // A `circle` segment is a self-contained closed loop: it opens its own
+    // subpath rather than continuing the polyline. Starting the outer path at
+    // a circle's points[0] (the CENTRE) would draw a spurious spoke from the
+    // centre to whatever follows.
+    const firstOpen = profile.segments.find(s => s.type !== 'circle');
+    const first = firstOpen ? firstOpen.points[0] : null;
+    if (first) {
+      pathD = `M ${first.x} ${-first.y}`;
+      allPoints.push(first);
+    }
 
     for (const seg of profile.segments) {
-      if (seg.type === 'line') {
+      if (seg.type === 'circle') {
+        const cd = circleSvgPath(seg);
+        if (cd) {
+          pathD += (pathD ? ' ' : '') + cd;
+          allPoints.push(seg.points[0], seg.points[1]);
+        }
+      } else if (seg.type === 'line') {
         const end = seg.points[1];
         pathD += ` L ${end.x} ${-end.y}`;
         allPoints.push(end);
@@ -1804,7 +1827,9 @@ function SketchCanvas({
       }
     }
 
-    if (profile.closed) pathD += ' Z';
+    // Only the open-polyline subpath needs an explicit close; circle
+    // subpaths already emit their own Z.
+    if (profile.closed && firstOpen) pathD += ' Z';
   }
 
   // Preview rendering
@@ -2186,6 +2211,14 @@ function SketchCanvas({
           <path d={d} fill="none" stroke="var(--nx-warn)" strokeWidth={4 / zoom} opacity={0.9} strokeLinecap="round" />
         );
       }
+    } else if (seg.type === 'circle') {
+      const g = circleSegmentGeometry(seg);
+      if (g) {
+        selectionHighlight = (
+          <circle cx={g.cx} cy={-g.cy} r={g.r} fill="none"
+            stroke="var(--nx-warn)" strokeWidth={4 / zoom} opacity={0.9} />
+        );
+      }
     }
   }
 
@@ -2271,6 +2304,14 @@ function SketchCanvas({
         for (let i = 1; i < pts.length; i++) d += ` L ${pts[i].x} ${-pts[i].y}`;
         trimHighlight = (
           <path d={d} fill="none" stroke="var(--nx-error)" strokeWidth={3 / zoom} opacity={0.8} />
+        );
+      }
+    } else if (seg.type === 'circle') {
+      const g = circleSegmentGeometry(seg);
+      if (g) {
+        trimHighlight = (
+          <circle cx={g.cx} cy={-g.cy} r={g.r} fill="none"
+            stroke="var(--nx-error)" strokeWidth={3 / zoom} opacity={0.8} />
         );
       }
     }

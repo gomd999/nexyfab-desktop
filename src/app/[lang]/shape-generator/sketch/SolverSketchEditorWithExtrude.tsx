@@ -33,6 +33,10 @@ import type { PlannerLang } from './FeatureTreePlannerPanel';
 import type { PlanIntent, PlanStep } from '@/lib/ai/featureTreePlanner';
 import type { StepImportFetcher, StepImportLang } from './StepImportModal';
 import type { BranchManagerLang } from './FeatureTreeBranchManager';
+import type { ConfigurationsLang } from './ConfigurationsPanel';
+import { ConfigStore } from '../configurations/ConfigStore';
+import { useConfigurations } from '../configurations/useConfigurations';
+import type { Configuration, ConfigurationSet } from '@/lib/cad/configurations';
 import type { FeatureTreeStatsLang } from './FeatureTreeStatsPanel';
 import type { FeatureTreeOptimizerLang } from './FeatureTreeOptimizerPanel';
 import type { SolverViewState } from '@/lib/sketch/solverToProfile';
@@ -154,6 +158,31 @@ const FeatureTreeOptimizerPanel = dynamic(
     loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
   },
 );
+// Configurations (R4 wiring) — BOTH configuration panels were fully
+// implemented + tested but had no importer outside their own tests, so
+// no user could reach them. They mount as a pair behind one toggle:
+//   - ConfigurationsManagerPanel: CRUD (add / rename / delete / switch)
+//     over a ConfigStore. This is the only surface that can *create* a
+//     configuration, so it must be present for the other panel to be
+//     anything but empty.
+//   - ConfigurationsPanel: the FeatureTree overlay view (suppress /
+//     override counts + "apply resolved tree"). It is read-only w.r.t.
+//     the config list, hence the pairing.
+// Both are hidden by default per the orthogonality contract above.
+const ConfigurationsManagerPanel = dynamic(
+  () => import('../configurations/ConfigurationsManagerPanel'),
+  {
+    ssr: false,
+    loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
+  },
+);
+const ConfigurationsPanel = dynamic(
+  () => import('./ConfigurationsPanel'),
+  {
+    ssr: false,
+    loading: () => <div style={{ fontSize: 11, color: 'var(--nx-text-2)', padding: 12 }}>loading…</div>,
+  },
+);
 
 type Lang = NonNullable<SolverSketchEditorProps['lang']>;
 
@@ -215,6 +244,10 @@ interface Dict {
   /** Optimizer panel toggle (B31.5 — FeatureTreeOptimizerPanel wiring). */
   optimizeTree: string;
   hideOptimize: string;
+  /** Configurations panels toggle (R4 wiring — ConfigurationsManagerPanel + ConfigurationsPanel). */
+  configurations: string;
+  showConfigurations: string;
+  hideConfigurations: string;
   /** Multi-loop boolean integration (sketchBoolean → ExtrudeModal). `{N}` is loop count. */
   multipleLoopsDetected: string;
   booleanOp: string;
@@ -261,6 +294,9 @@ const dict: Record<Lang, Dict> = {
     hideStats: '통계 숨기기',
     optimizeTree: '최적화',
     hideOptimize: '최적화 숨기기',
+    configurations: '구성',
+    showConfigurations: '구성 패널 표시',
+    hideConfigurations: '구성 패널 숨기기',
     multipleLoopsDetected: '여러 폐곡선 감지 ({N}개)',
     booleanOp: '불리언 연산',
     opUnion: '합집합',
@@ -302,6 +338,9 @@ const dict: Record<Lang, Dict> = {
     hideStats: 'Hide stats',
     optimizeTree: 'Optimize',
     hideOptimize: 'Hide optimize',
+    configurations: 'Configurations',
+    showConfigurations: 'Show configurations',
+    hideConfigurations: 'Hide configurations',
     multipleLoopsDetected: 'Multiple loops detected ({N})',
     booleanOp: 'Boolean op',
     opUnion: 'Union',
@@ -343,6 +382,9 @@ const dict: Record<Lang, Dict> = {
     hideStats: '統計を隠す',
     optimizeTree: '最適化',
     hideOptimize: '最適化を隠す',
+    configurations: 'コンフィギュレーション',
+    showConfigurations: 'コンフィグを表示',
+    hideConfigurations: 'コンフィグを隠す',
     multipleLoopsDetected: '複数の閉ループを検出 ({N})',
     booleanOp: 'ブール演算',
     opUnion: '和',
@@ -384,6 +426,9 @@ const dict: Record<Lang, Dict> = {
     hideStats: '隐藏统计',
     optimizeTree: '优化',
     hideOptimize: '隐藏优化',
+    configurations: '配置',
+    showConfigurations: '显示配置',
+    hideConfigurations: '隐藏配置',
     multipleLoopsDetected: '检测到多个闭合环 ({N}个)',
     booleanOp: '布尔运算',
     opUnion: '并集',
@@ -425,6 +470,9 @@ const dict: Record<Lang, Dict> = {
     hideStats: 'Ocultar estadísticas',
     optimizeTree: 'Optimizar',
     hideOptimize: 'Ocultar optimización',
+    configurations: 'Configuraciones',
+    showConfigurations: 'Mostrar configuraciones',
+    hideConfigurations: 'Ocultar configuraciones',
     multipleLoopsDetected: 'Se detectaron varios bucles ({N})',
     booleanOp: 'Operación booleana',
     opUnion: 'Unión',
@@ -466,6 +514,9 @@ const dict: Record<Lang, Dict> = {
     hideStats: 'إخفاء الإحصائيات',
     optimizeTree: 'تحسين',
     hideOptimize: 'إخفاء التحسين',
+    configurations: 'التكوينات',
+    showConfigurations: 'إظهار التكوينات',
+    hideConfigurations: 'إخفاء التكوينات',
     multipleLoopsDetected: 'تم اكتشاف عدة حلقات ({N})',
     booleanOp: 'العملية المنطقية',
     opUnion: 'اتحاد',
@@ -1271,6 +1322,91 @@ export default function SolverSketchEditorWithExtrude(
     [featureTree, applyHistoryEdit],
   );
 
+  // ── Configurations panels (R4 wiring) ──────────────────────────────────
+  // Default-off toggle, same below-toolbar zone and orthogonality contract
+  // as the branches / stats / optimize panels.
+  //
+  // Single source of truth: the ConfigStore. ConfigurationsManagerPanel
+  // mutates it directly; ConfigurationsPanel is fed a ConfigurationSet
+  // DERIVED from the very same store (below), so the two panels can never
+  // drift apart. `useConfigurations` is a useSyncExternalStore bridge, so
+  // manager mutations re-render the derived set immediately.
+  const [showConfigs, setShowConfigs] = useState(false);
+  const configurationsLang = (editorProps.lang ?? 'en') as ConfigurationsLang;
+  // Local-mode store, created once. Not Yjs-backed: the collab doc in this
+  // wrapper carries the FeatureTree, not the config table, and migrating
+  // the store into that doc is a separate (unwired) concern.
+  const [configStore] = useState(() => ConfigStore.local());
+  const cfgs = useConfigurations(configStore);
+
+  /**
+   * Synthetic name for "no configuration applied". The ConfigStore models
+   * master as `activeId === null` (no entry), but `ConfigurationSet`
+   * requires `active` to name a real member — so master is projected as a
+   * zero-override configuration. `validateConfigurationSet` will flag it
+   * as a duplicate if a user names their own config "Master"; that is a
+   * genuine authoring collision and the panel is the right place to
+   * surface it.
+   */
+  const MASTER_CONFIG_NAME = 'Master';
+
+  const configurationSet: ConfigurationSet = useMemo(() => {
+    const configs: Configuration[] = [{ name: MASTER_CONFIG_NAME }];
+    for (const entry of cfgs.list) {
+      const suppress: string[] = [];
+      const paramOverrides: Record<string, Record<string, number>> = {};
+      for (const [featureId, ov] of Object.entries(entry.overrides ?? {})) {
+        if (ov.suppressed) suppress.push(featureId);
+        // ConfigOverride.params is `number | string` (string = an
+        // unevaluated expression, per configurations/types.ts). The CAD
+        // `Configuration` model is numeric-only, so expression overrides
+        // are dropped here rather than coerced — coercing would fabricate
+        // a value. They stay visible/editable in the heavy config table.
+        const numeric: Record<string, number> = {};
+        for (const [key, value] of Object.entries(ov.params ?? {})) {
+          if (typeof value === 'number') numeric[key] = value;
+        }
+        if (Object.keys(numeric).length > 0) paramOverrides[featureId] = numeric;
+      }
+      configs.push({ name: entry.name, suppress, paramOverrides });
+    }
+    const activeEntry = cfgs.list.find((e) => e.id === cfgs.activeId);
+    return { active: activeEntry ? activeEntry.name : MASTER_CONFIG_NAME, configs };
+  }, [cfgs.list, cfgs.activeId]);
+
+  const handleActivateConfiguration = useCallback(
+    (name: string) => {
+      if (name === MASTER_CONFIG_NAME) {
+        cfgs.switchTo(null);
+        return;
+      }
+      const entry = cfgs.list.find((e) => e.name === name);
+      if (entry) cfgs.switchTo(entry.id);
+    },
+    [cfgs],
+  );
+
+  /**
+   * Commit the resolved (active-config) tree back into history.
+   *
+   * Uses the same reset+re-insert idiom as `handleLoadTreeFromBranch`
+   * rather than the optimizer's add/remove diff path: resolving a config
+   * REWRITES node payloads (param overrides) and flips `suppressed`, and
+   * the optimizer path is documented as only handling add/remove deltas —
+   * routing through it would silently drop every override.
+   */
+  const handleApplyConfiguration = useCallback(
+    (resolved: FeatureTree) => {
+      resetHistory();
+      for (const node of resolved.nodes) {
+        applyHistoryEdit({ type: 'insert_node', node });
+      }
+      nextNodeIdRef.current = Math.max(nextNodeIdRef.current, resolved.nodes.length);
+      setSelectedFeatureId(undefined);
+    },
+    [resetHistory, applyHistoryEdit],
+  );
+
   const branchStorageKeyPrefix =
     projectId !== undefined
       ? `nexyfab:tree-branches:${projectId}`
@@ -1984,6 +2120,26 @@ export default function SolverSketchEditorWithExtrude(
           </button>
           <button
             type="button"
+            onClick={() => setShowConfigs((v) => !v)}
+            data-testid="solver-configurations-toggle"
+            aria-label={showConfigs ? t.hideConfigurations : t.showConfigurations}
+            aria-expanded={showConfigs}
+            title={showConfigs ? t.hideConfigurations : t.showConfigurations}
+            style={{
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              background: showConfigs ? '#7c3aed' : 'var(--nx-panel)',
+              border: '1px solid ' + (showConfigs ? '#6d28d9' : 'var(--nx-border)'),
+              color: showConfigs ? '#fff' : 'var(--nx-text-2)',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            🗂 {t.configurations}
+          </button>
+          <button
+            type="button"
             onClick={() => setShowOptimize((v) => !v)}
             data-testid="solver-optimize-toggle"
             aria-label={showOptimize ? t.hideOptimize : t.optimizeTree}
@@ -2188,6 +2344,27 @@ export default function SolverSketchEditorWithExtrude(
               tree={featureTree}
               onOptimized={handleOptimizedTree}
             />
+          </div>
+        )}
+        {showConfigs && (
+          <div
+            data-testid="solver-configurations-panel-host"
+            style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}
+          >
+            <ConfigurationsManagerPanel
+              store={configStore}
+              lang={configurationsLang}
+              onClose={() => setShowConfigs(false)}
+            />
+            <div style={{ flex: '1 1 240px', minWidth: 240 }}>
+              <ConfigurationsPanel
+                lang={configurationsLang}
+                tree={featureTree}
+                set={configurationSet}
+                onActivate={handleActivateConfiguration}
+                onApply={handleApplyConfiguration}
+              />
+            </div>
           </div>
         )}
         {plannerToast !== null && (

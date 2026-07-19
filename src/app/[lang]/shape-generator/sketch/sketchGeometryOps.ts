@@ -124,7 +124,168 @@ export function sampleArc(start: SketchPoint, through: SketchPoint, end: SketchP
   return pts;
 }
 
-/** Generate circle points approximated as line segments */
+// ─── True circle entities (W1-D) ────────────────────────────────────────────
+//
+// A circle is stored as ONE `type:'circle'` segment whose points are
+// [center, rim]. Radius = |rim - center|. This is the representation the
+// constraint solver already speaks (`circleIds()` in constraintSolver.ts
+// reads points[0] as centre and points[1] as the rim), which is what makes
+// concentric / tangent / radius / diameter actually solvable. The old
+// 32-line approximation (`generateCircleSegments`, below) produces geometry
+// that no circle constraint can ever bind to.
+
+/** Build a real `type:'circle'` segment — points = [center, rim].
+ *
+ *  `rimAngle` (radians, default 0 = +X) fixes where the rim handle sits.
+ *  It is a pure gauge choice: the circle is identical for any angle, but a
+ *  deterministic default keeps tessellation (`sampleCirclePoints` starts at
+ *  the rim angle) reproducible across sessions. */
+export function makeCircleSegment(
+  center: SketchPoint,
+  radius: number,
+  opts: { construction?: boolean; rimAngle?: number } = {},
+): SketchSegment {
+  const a = opts.rimAngle ?? 0;
+  const seg: SketchSegment = {
+    type: 'circle',
+    points: [
+      { x: center.x, y: center.y, id: center.id ?? genId('cc') },
+      { x: center.x + radius * Math.cos(a), y: center.y + radius * Math.sin(a), id: genId('cr') },
+    ],
+    id: genId('circ'),
+  };
+  if (opts.construction) seg.construction = true;
+  return seg;
+}
+
+/** Centre + radius of a `type:'circle'` segment, or null if it isn't one
+ *  (or is degenerate). */
+export function circleSegmentGeometry(
+  seg: SketchSegment,
+): { cx: number; cy: number; r: number } | null {
+  if (seg.type !== 'circle' || seg.points.length < 2) return null;
+  const [c, rim] = seg.points;
+  const r = dist(c, rim);
+  if (!(r > ENDPOINT_EPSILON)) return null;
+  return { cx: c.x, cy: c.y, r };
+}
+
+/** SVG `d` for a whole circle segment in canvas coordinates (y is flipped).
+ *  A single elliptical-arc command cannot close a full circle (start == end
+ *  is degenerate), so we emit two half-arcs. */
+export function circleSvgPath(seg: SketchSegment): string | null {
+  const g = circleSegmentGeometry(seg);
+  if (!g) return null;
+  const { cx, cy, r } = g;
+  return `M ${cx - r} ${-cy} A ${r} ${r} 0 1 0 ${cx + r} ${-cy} A ${r} ${r} 0 1 0 ${cx - r} ${-cy} Z`;
+}
+
+// ─── Legacy 32-gon back-compat ──────────────────────────────────────────────
+
+/** Minimum consecutive line segments a closed run must have before we are
+ *  willing to call it a circle approximation rather than authored geometry.
+ *  A hexagon/octagon drawn with the polygon tool is indistinguishable from a
+ *  low-side circle approximation, so the floor is deliberately above the
+ *  polygon tool's practical range. */
+export const CIRCLE_APPROX_MIN_SIDES = 12;
+
+export interface CircleApproxMatch {
+  /** Index of the first line segment of the run. */
+  startIdx: number;
+  /** Number of consecutive line segments the run spans. */
+  count: number;
+  center: SketchPoint;
+  radius: number;
+}
+
+/**
+ * Find runs of chained, closed, equal-radius line segments that look like the
+ * legacy `generateCircleSegments` output.
+ *
+ * This is a DETECTOR ONLY — nothing calls it during load. Silently rewriting
+ * a stored sketch would change its geometry (a 32-gon has a smaller area than
+ * its circumscribed circle) behind the user's back. Callers use it to OFFER
+ * promotion; see `promoteCircleApproximations`.
+ */
+export function detectCircleApproximations(
+  segments: SketchSegment[],
+  relTol: number = 1e-6,
+): CircleApproxMatch[] {
+  const out: CircleApproxMatch[] = [];
+  const chained = (a: SketchSegment, b: SketchSegment) =>
+    dist(a.points[1], b.points[0]) < 1e-7;
+
+  let i = 0;
+  while (i < segments.length) {
+    if (segments[i].type !== 'line' || segments[i].points.length < 2) { i++; continue; }
+    // Extend the run while consecutive lines stay end-to-start connected.
+    let j = i;
+    while (
+      j + 1 < segments.length &&
+      segments[j + 1].type === 'line' &&
+      segments[j + 1].points.length >= 2 &&
+      chained(segments[j], segments[j + 1])
+    ) j++;
+
+    const count = j - i + 1;
+    if (count >= CIRCLE_APPROX_MIN_SIDES && chained(segments[j], segments[i])) {
+      // Closed run. Vertices = each segment's start point.
+      const verts = segments.slice(i, j + 1).map(s => s.points[0]);
+      let sx = 0, sy = 0;
+      for (const v of verts) { sx += v.x; sy += v.y; }
+      const center: SketchPoint = { x: sx / verts.length, y: sy / verts.length };
+      const radii = verts.map(v => dist(center, v));
+      const rMean = radii.reduce((a, b) => a + b, 0) / radii.length;
+      if (rMean > ENDPOINT_EPSILON) {
+        const maxDev = Math.max(...radii.map(r => Math.abs(r - rMean)));
+        if (maxDev / rMean <= relTol) {
+          out.push({ startIdx: i, count, center, radius: rMean });
+        }
+      }
+    }
+    i = j + 1;
+  }
+  return out;
+}
+
+/**
+ * Replace every detected legacy approximation with one true circle segment.
+ *
+ * EXPLICIT opt-in: this changes the geometry (polygon → circumscribed
+ * circle). Returns the count so the UI can report what it did.
+ */
+export function promoteCircleApproximations(
+  segments: SketchSegment[],
+  relTol: number = 1e-6,
+): { segments: SketchSegment[]; promoted: number } {
+  const matches = detectCircleApproximations(segments, relTol);
+  if (matches.length === 0) return { segments, promoted: 0 };
+  const out: SketchSegment[] = [];
+  let cursor = 0;
+  for (const m of matches) {
+    for (let k = cursor; k < m.startIdx; k++) out.push(segments[k]);
+    const rimAngle = Math.atan2(
+      segments[m.startIdx].points[0].y - m.center.y,
+      segments[m.startIdx].points[0].x - m.center.x,
+    );
+    out.push(makeCircleSegment(m.center, m.radius, {
+      rimAngle,
+      construction: segments[m.startIdx].construction,
+    }));
+    cursor = m.startIdx + m.count;
+  }
+  for (let k = cursor; k < segments.length; k++) out.push(segments[k]);
+  return { segments: out, promoted: matches.length };
+}
+
+/** Generate circle points approximated as line segments.
+ *
+ *  @deprecated for interactive authoring — the circle tool now emits a real
+ *  `type:'circle'` segment via `makeCircleSegment`, which is what circle
+ *  constraints bind to. Retained because non-interactive producers
+ *  (`ai/programToFeatures.ts`) and the existing unit tests depend on it, and
+ *  because a genuine faceted approximation is occasionally the desired
+ *  output. */
 export function generateCircleSegments(center: SketchPoint, radius: number, sides: number = 32): SketchSegment[] {
   const segs: SketchSegment[] = [];
   for (let i = 0; i < sides; i++) {
@@ -501,6 +662,19 @@ export function findNearestSegment(
       const circle = circleThrough3(seg.points[0], seg.points[1], seg.points[2]);
       if (circle) {
         const d = Math.abs(dist(pt, { x: circle.cx, y: circle.cy }) - circle.r);
+        if (d < bestDist) {
+          bestDist = d;
+          bestIdx = i;
+        }
+      }
+    } else if (seg.type === 'circle') {
+      // W1-D: without this branch the dimension / constraint / trim tools —
+      // which all pick through findNearestSegment — could never select a
+      // circle, so radius / diameter / concentric / tangent were unreachable
+      // from the canvas even though the solver implements them.
+      const g = circleSegmentGeometry(seg);
+      if (g) {
+        const d = Math.abs(dist(pt, { x: g.cx, y: g.cy }) - g.r);
         if (d < bestDist) {
           bestDist = d;
           bestIdx = i;
