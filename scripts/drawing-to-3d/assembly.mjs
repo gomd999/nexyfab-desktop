@@ -32,7 +32,7 @@ export const SERVICE_COL = {
   column: '#475569', beam: '#0e7490', slab: '#94a3b8', joist: '#854d0e', deck: '#a16207', floor: '#d1d5db', table: '#0f766e', counter: '#7c3aed', wall: '#78716c', base: '#57534e',
   stack: '#7c2d12',
 };
-export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5', mesh: '#7c6f9f', revolve: '#9aa7b5', cavity_block: '#7c6f9f', coil_spring: '#6b7280', pillow_block: '#78838f', rebar: '#a16207' };
+export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5', mesh: '#7c6f9f', revolve: '#9aa7b5', cavity_block: '#7c6f9f', coil_spring: '#6b7280', pillow_block: '#78838f', rebar: '#a16207', pipe_elbow: '#9aa7b5', pipe_tee: '#9aa7b5' };
 // 부품 id/name 키워드 → 계통 자동추론 (명시 service 태그 없어도 계통색이 나오게).
 const ID_SERVICE = [
   [/pump|motor|모터|펌프|impeller|임펠라|blower|fan|송풍/i, 'motor'],
@@ -351,6 +351,31 @@ export function assemblyToComposeIntent(asm) {
         const cv = p.cavity;
         if (cv?.type === 'box') feats.push(F('box', { size: [cv.params.width, cv.params.depth, cv.params.height] }, cv.at?.tx ?? 0, cv.at?.ty ?? 0, (cv.at?.tz ?? 0) + 0.01, 'subtract'));
         else if (cv?.type === 'cylinder') feats.push(F('cylinder', { diameter: cv.params.diameter, height: cv.params.length }, cv.at?.tx ?? 0, cv.at?.ty ?? 0, (cv.at?.tz ?? 0) + 0.01, 'subtract'));
+        break;
+      }
+      case 'pipe_elbow': { // 엘보(R2-⑧): 링 단면 revolve 부분각 — 외원 add + 내원 subtract
+        const t = p.wallThk ?? Math.max(2, p.od * 0.05);
+        const a = p.angleDeg ?? 90;
+        const ring = (dia) => Array.from({ length: 24 }, (_, k) => {
+          const th = (k * 2 * Math.PI) / 24;
+          return [+(p.bendR + (dia / 2) * Math.cos(th)).toFixed(4), +((dia / 2) * Math.sin(th)).toFixed(4)];
+        });
+        feats.push(F('revolve', { profile: ring(p.od), ...(a < 360 ? { angle: a } : {}) }));
+        feats.push(F('revolve', { profile: ring(p.od - 2 * t), ...(a < 360 ? { angle: a } : {}) }, 0, 0, 0, 'subtract'));
+        break;
+      }
+      case 'pipe_tee': { // 티(R2-⑧): 본관(x)+지관(+z) — 부품 내 부울(_pid 스코프)로 정확 융합
+        if (rot) { // 회전 배치 미지원 — AABB 프록시(정직)
+          const bb = partAabb({ type: 'pipe_tee', ...p });
+          feats.push(F('box', { size: [bb.max[0] - bb.min[0], bb.max[1] - bb.min[1], bb.max[2] - bb.min[2]] }, bb.min[0], bb.min[1], bb.min[2]));
+          break;
+        }
+        const t2 = p.wallThk ?? Math.max(2, p.runOD * 0.05);
+        const mk = (kind, extra, ltx, lty, ltz, rotv, op = 'add') => ({ kind, ...extra, op, _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), at: { translate: [ltx + tx, lty + ty, ltz + tz], ...(rotv ? { rotate: rotv } : {}) } });
+        feats.push(mk('cylinder', { diameter: p.runOD, height: p.runLen }, 0, 0, 0, [0, 90, 0]));
+        feats.push(mk('cylinder', { diameter: p.runOD - 2 * t2, height: p.runLen + 2 }, -1, 0, 0, [0, 90, 0], 'subtract'));
+        feats.push(mk('cylinder', { diameter: p.branchOD, height: p.branchLen }, p.runLen / 2, 0, 0, null));
+        feats.push(mk('cylinder', { diameter: p.branchOD - 2 * t2, height: p.branchLen + 2 }, p.runLen / 2, 0, -1, null, 'subtract'));
         break;
       }
       case 'rebar': { // 철근(R2-④): 세그먼트별 2점 실린더+절점 스피어 — SCAD·STEP 동일 수학

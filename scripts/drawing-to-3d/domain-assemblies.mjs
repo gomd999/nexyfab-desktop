@@ -1431,6 +1431,39 @@ function fourBarAssembly(p = {}) {
 /** 프로펠러(축류 — 260718d, 자유곡면 어휘 1호). NACA 4-digit 폐형 단면(Abbott&von Doenhoff
  *  공표식·닫힌 TE −0.1036) × 반경별 시위/비틀림(β=atan(피치/2πr)) 로프트 → 워터타이트 메시
  *  (체적=발산정리 정밀 — 날조 아님·공표 수식/기하 파생). 유체역학 성능(추력·효율) 검토 미포함. */
+/** 플랜지 피팅 패밀리(R2-⑧, 260719 — 참고파일들4 elbow/u-bend/manifold 대응).
+ *  elbow=pipe_elbow(파푸스 폐형·revolve 부분각 STEP)·tee=pipe_tee(부품 내 부울 융합).
+ *  플랜지=양단 맞댐(WN 관례 — 용접 상세=입력). DN 치수=KS 10K 표(std-snap) 참조 관례. */
+function flangedFittingAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const kind = ['elbow90', 'ubend180', 'tee'].includes(p.kind) ? p.kind : 'elbow90';
+  const od = num(p.od, 114.3);
+  const t = num(p.wallThk, Math.max(3, Math.round(od * 0.05)));
+  const bendR = num(p.bendR, Math.round(od * 1.5));
+  const flOD = od + 95, flBore = od + 2, flThk = 16, bcd = od + 60;
+  const FL = (id, at) => ({ id, type: 'flange', params: { outerDia: flOD, boreDia: flBore, thickness: flThk, bcd, boltHoleD: 19, boltCount: 8 }, at, role: 'mount', material: 'steel', system: '플랜지' });
+  const parts = [];
+  if (kind === 'tee') {
+    const runLen = num(p.runLen, od * 4), brLen = num(p.branchLen, od * 2.5);
+    parts.push({ id: 'tee', type: 'pipe_tee', params: { runOD: od, branchOD: num(p.branchOD, od), runLen, branchLen: brLen, wallThk: t }, at: { tx: 0, ty: 0, tz: 0 }, role: 'pipe', material: 'steel', system: '피팅' });
+    parts.push(FL('fl_run_a', { tx: -flThk, ty: 0, tz: 0, ry: 90 }));
+    parts.push(FL('fl_run_b', { tx: runLen, ty: 0, tz: 0, ry: 90 }));
+    parts.push(FL('fl_branch', { tx: runLen / 2, ty: 0, tz: brLen }));
+  } else {
+    const a = kind === 'ubend180' ? 180 : 90;
+    parts.push({ id: 'elbow', type: 'pipe_elbow', params: { od, bendR, angleDeg: a, wallThk: t }, at: { tx: 0, ty: 0, tz: 0 }, role: 'pipe', material: 'steel', system: '피팅' });
+    // φ=0 끝면: (bendR,0) 노멀 −y → 플랜지 축 y(rx −90: 로컬 z→−y… rx:90=z→y) — 끝면 바깥(−y)
+    parts.push(FL('fl_a', { tx: bendR, ty: 0, tz: 0, rx: 90 })); // z→+y? 배치 검증은 빌드 간섭·AABB 로
+    if (a === 90) parts.push(FL('fl_b', { tx: 0, ty: bendR, tz: 0, ry: 90 }));
+    else parts.push(FL('fl_b', { tx: -bendR, ty: 0, tz: 0, rx: 90 }));
+  }
+  return {
+    name: `플랜지 ${kind === 'tee' ? '티' : kind === 'ubend180' ? 'U벤드' : '90° 엘보'} OD${od}`,
+    domain: 'mech', kind: 'assembly', parts,
+    note: '피팅 패밀리(비법정) — 플랜지=맞댐 관례(용접 상세·개스킷=입력), 치수=KS 10K 참조 관례. 티 체적=접합부 근사 명시.',
+  };
+}
+
 /** 셸튜브 열교환기 TEMA AEL 단순화(R2-⑦, 260719 — 참고파일들4 shell-and-tube 6예제 대응).
  *  정직 범위: 형식 비례=TEMA 관례 · 튜브=대표 7본(중심+육각, 피치 표시 — 전체 본수·열설계=
  *  계산서/입력 영역) · 배플=원판(세그멘탈 컷 후속) · 노즐=셸 외면 맞댐(관통 용접 상세=입력).
@@ -2701,6 +2734,15 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'coupler', labelKo: '커플러', unit: 'mm', default: 350, min: 50, max: 2000 },
         { name: 'rocker', labelKo: '로커', unit: 'mm', default: 250, min: 50, max: 1500 },
         { name: 'inputDeg', labelKo: '입력각 θ₂', unit: '°', default: 60, min: 0, max: 359 },
+      ],
+    },
+    {
+      id: 'flanged_fitting', labelKo: '플랜지 피팅 (엘보/U벤드/티)', labelEn: 'Flanged fitting (elbow/U-bend/tee)', build: flangedFittingAssembly,
+      params: [
+        { name: 'kind', labelKo: '종류', unit: '', default: 'elbow90', enum: ['elbow90', 'ubend180', 'tee'] },
+        { name: 'od', labelKo: '관 외경', unit: 'mm', default: 114.3, min: 21.7, max: 330 },
+        { name: 'bendR', labelKo: '벤드 반경', unit: 'mm', default: 170, min: 30, max: 1000 },
+        { name: 'wallThk', labelKo: '벽두께', unit: 'mm', default: 6, min: 2, max: 20 },
       ],
     },
     {

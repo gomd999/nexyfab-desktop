@@ -51,7 +51,10 @@ function featSolid(rc, f) {
       // profile [radius,height] — OpenSCAD rotate_extrude와 일치: XZ평면 스케치 후 Z축 회전.
       let pen = rc.draw([f.profile[0][0], f.profile[0][1]]);
       for (let i = 1; i < f.profile.length; i++) pen = pen.lineTo([f.profile[i][0], f.profile[i][1]]);
-      return pen.close().sketchOnPlane('XZ').revolve([0, 0, 1]);
+      // 부분각 회전(R2-⑧ — 엘보/U벤드): angle(도) 지원 실측(90° 부피 오차 0.04%)
+      return f.angle > 0 && f.angle < 360
+        ? pen.close().sketchOnPlane('XZ').revolve([0, 0, 1], { angle: f.angle })
+        : pen.close().sketchOnPlane('XZ').revolve([0, 0, 1]);
     }
     case 'extrude': {
       let pen = rc.draw([f.profile[0][0], f.profile[0][1]]);

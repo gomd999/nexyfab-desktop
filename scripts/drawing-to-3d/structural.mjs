@@ -38,7 +38,8 @@ export function partVolume(type, p) {
     case 'base_plate': return p.width * p.depth * p.thickness;
     case 'l_bracket': return (p.legA * p.width * p.thickness) + (p.thickness * p.width * p.legB);
     case 'bent_sheet': return p.length * p.webWidth * p.thickness + 2 * (p.length * p.thickness * p.flangeHeight);
-    case 'flange': return A * (p.outerDia ** 2 - p.boreDia ** 2) * p.thickness;
+    case 'flange': // 볼트홀 공제(260719 라운드트립 실측 — STEP 은 공제된 실형상, 미공제 시 ~5% 과대)
+      return A * (p.outerDia ** 2 - p.boreDia ** 2) * p.thickness - (p.boltCount ?? 0) * A * (p.boltHoleD ?? 0) ** 2 * p.thickness;
     case 'tube': return A * (p.outerDia ** 2 - p.innerDia ** 2) * p.length;   // 중공
     case 'rect_tube': return (p.width * p.height - (p.width - 2 * p.wallThk) * (p.height - 2 * p.wallThk)) * p.length;
     // §8-② 형강 실단면(2026-07-16): 플랜지2 + 웨브 — AABB가 아닌 실단면적으로 질량·BOQ 정확
@@ -71,6 +72,16 @@ export function partVolume(type, p) {
     // 자유곡면 어휘(260718d): mesh=발산정리 정밀값(빌드 시 산출 — 날조 아님·파일/수식 파생),
     // revolve=파푸스 정리(폐형: V=2π·r̄·A — 프로파일 도심 반경×면적)
     case 'mesh': return Number(p.volumeMm3) > 0 ? Number(p.volumeMm3) : 0;
+    case 'pipe_elbow': { // 엘보(R2-⑧) = 파푸스: 2π·bendR·링단면적·(angle/360) 폐형
+      const t = p.wallThk ?? Math.max(2, p.od * 0.05);
+      const ringA = (Math.PI / 4) * (p.od ** 2 - (p.od - 2 * t) ** 2);
+      return 2 * Math.PI * p.bendR * ringA * ((p.angleDeg ?? 90) / 360);
+    }
+    case 'pipe_tee': { // 티(R2-⑧) = 본관 셸 + 지관 셸(본관 반경 구간 제외) — 접합부 ±수% 근사(명시)
+      const t = p.wallThk ?? Math.max(2, p.runOD * 0.05);
+      const shell = (od, L) => (Math.PI / 4) * (od ** 2 - (od - 2 * t) ** 2) * L;
+      return shell(p.runOD, p.runLen) + shell(p.branchOD, Math.max(0, p.branchLen - p.runOD / 2));
+    }
     case 'rebar': { // 철근(R2-④) = π/4·d²·경로장(폐형 — 절점 스피어 중복은 미미·보수)
       let L = 0;
       const pts = p.points ?? [];

@@ -297,6 +297,22 @@ const GATES = {
     if (i.verts && (!Array.isArray(i.verts) || !Array.isArray(i.faces))) e.push('verts/faces 배열 필요');
     if (i.verts && i.verts.length > 20000) e.push('메시 정점 > 20k — 표시 예산 초과(volumeMm3/aabb 만 유지)');
   },
+  // 파이프 엘보(R2-⑧): 벤드 반경 원환 부분각 — 체적=파푸스 폐형
+  pipe_elbow(i, e) {
+    for (const k of ['od', 'bendR']) if (!pos(i[k])) e.push(`${k} invalid`);
+    const t = i.wallThk ?? Math.max(2, i.od * 0.05);
+    if (2 * t >= i.od) e.push('벽두께 과대(보어 소멸)');
+    if (i.bendR <= i.od / 2) e.push('bendR ≤ 반경 — 자기 교차');
+    const a = i.angleDeg ?? 90;
+    if (!(a > 0 && a <= 180)) e.push('angleDeg (0,180] — 90/180 관례');
+  },
+  // 파이프 티(R2-⑧, 260719): 본관+지관 융합체(부품 내 부울 — 어휘 단품이라 간섭검사 무관)
+  pipe_tee(i, e) {
+    for (const k of ['runOD', 'branchOD', 'runLen', 'branchLen']) if (!pos(i[k])) e.push(`${k} invalid`);
+    const t = i.wallThk ?? Math.max(2, i.runOD * 0.05);
+    if (2 * t >= Math.min(i.runOD, i.branchOD)) e.push('벽두께 과대(보어 소멸)');
+    if (i.branchOD > i.runOD) e.push('지관 > 본관 — 미지원(정직)');
+  },
   // 철근 어휘(R2-④, 260719 — IFC IFCREINFORCINGBAR/SWEPT_DISK 대응): 폴리라인 스윕 봉
   rebar(i, e) {
     if (!pos(i.dia)) e.push('dia invalid');
@@ -450,6 +466,22 @@ const SCAD = {
   translate([${(i.width + bp) / 2}, ${d2 / 2}, -1]) cylinder(h=${i.height}, d=${Math.max(8, i.boreDia * 0.25)}, $fn=32);
 }`;
   },
+  pipe_elbow(i) { // 원환 부분각 — rotate_extrude(angle) difference(외/내 단면)
+    const t = i.wallThk ?? Math.max(2, i.od * 0.05);
+    const a = i.angleDeg ?? 90;
+    return `rotate_extrude(angle=${a}, $fn=96) translate([${i.bendR},0]) difference() { circle(d=${i.od}, $fn=48); circle(d=${i.od - 2 * t}, $fn=48); }`;
+  },
+  pipe_tee(i) { // 본관(x)+지관(+z) 셸 융합 — difference(union(외피), union(보어))
+    const t = i.wallThk ?? Math.max(2, i.runOD * 0.05);
+    return `difference() {
+  union() {
+    rotate([0,90,0]) cylinder(h=${i.runLen}, d=${i.runOD}, $fn=96);
+    translate([${i.runLen / 2},0,0]) cylinder(h=${i.branchLen}, d=${i.branchOD}, $fn=96);
+  }
+  rotate([0,90,0]) translate([0,0,-1]) cylinder(h=${i.runLen + 2}, d=${i.runOD - 2 * t}, $fn=96);
+  translate([${i.runLen / 2},0,-1]) cylinder(h=${i.branchLen + 2}, d=${i.branchOD - 2 * t}, $fn=96);
+}`;
+  },
   rebar(i) { // 폴리라인 스윕 봉 — 세그먼트별 2점 실린더 + 절점 스피어(연속성)
     const out = [];
     const pts = i.points;
@@ -576,6 +608,26 @@ export function partAabb(i) {
       const zs = (i.profile ?? [[0, 0]]).map((q) => q[1]);
       return { min: [-rMax, -rMax, Math.min(...zs)], max: [rMax, rMax, Math.max(...zs)] };
     }
+    case 'pipe_tee': {
+      // 본관 축=x(로컬), 지관=+z 상향, 원점=본관 시작(축심 y=0,z=0)
+      const rr = i.runOD / 2, rb = i.branchOD / 2;
+      return { min: [0, -rr, -rr], max: [i.runLen, rr, i.branchLen] };
+    }
+    case 'pipe_elbow': {
+      // 부분각 원환 표면 파라메트릭 샘플(φ 1°×θ 15°) — 끝단면 축방향 과대마진 없는 정확 AABB
+      const r = i.od / 2, R = i.bendR, a = i.angleDeg ?? 90;
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (let d = 0; d <= a; d++) {
+        const cf = Math.cos((d * Math.PI) / 180), sf = Math.sin((d * Math.PI) / 180);
+        for (let th = 0; th < 360; th += 15) {
+          const rr = R + r * Math.cos((th * Math.PI) / 180);
+          const x = rr * cf, y = rr * sf;
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+      }
+      return { min: [minX, minY, -r], max: [maxX, maxY, r] };
+    }
     case 'rebar': {
       const r = i.dia / 2;
       const xs = i.points.map((q) => q[0]), ys = i.points.map((q) => q[1]), zs2 = i.points.map((q) => q[2]);
@@ -624,6 +676,8 @@ export const PARAMS = {
   mesh: ['volumeMm3'], // verts/faces/aabb 는 배열·객체 — 스키마 특례
   revolve: [], // profile 은 배열 — 스키마 특례
   rebar: ['dia'], // points 는 배열 — 스키마 특례(R2-④)
+  pipe_tee: ['runOD', 'branchOD', 'runLen', 'branchLen', 'wallThk'],
+  pipe_elbow: ['od', 'bendR', 'angleDeg', 'wallThk'],
   cavity_block: ['blockW', 'blockD', 'blockH'], // cavity 는 객체 — 스키마 특례
   coil_spring: ['wireDia', 'coilDia', 'pitch', 'turns'],
   pillow_block: ['boreDia', 'width', 'height', 'depth', 'boltPitch'],

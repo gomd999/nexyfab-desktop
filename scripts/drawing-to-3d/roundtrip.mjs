@@ -57,7 +57,9 @@ export async function stepRoundTrip(asm) {
 
   // 대조(밴드 명시)
   const filletParts = (asm.parts ?? []).filter((p) => p.filletMm > 0).length;
-  const volBand = Math.max(1000, predVol * 0.015) + (filletParts ? predVol * 0.01 : 0);
+  // 근사 체적식 어휘(pipe_tee 접합부 등) 포함 시 밴드 +2%(명시 — 폐형 아님)
+  const approxParts = (asm.parts ?? []).filter((p) => ['pipe_tee'].includes(p.type)).length;
+  const volBand = Math.max(1000, predVol * 0.015) + (filletParts ? predVol * 0.01 : 0) + (approxParts ? predVol * 0.02 : 0);
   const volErr = Math.abs(measuredVol - predVol);
   const volOk = volErr <= volBand;
   let aabbOk = null;
