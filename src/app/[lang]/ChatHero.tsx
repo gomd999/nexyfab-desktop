@@ -757,7 +757,14 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
       dfTip.style.cssText = 'position:absolute;display:none;pointer-events:none;z-index:5;background:rgba(15,23,42,.9);color:#fff;font-size:11px;padding:3px 8px;border-radius:6px;font-weight:700';
       mount.style.position = 'relative';
       mount.appendChild(dfTip);
+      // #6 모바일: 포인터 2개=핀치 줌(궤도·푸시풀 억제) · 탭=픽(포인터 이벤트라 터치 공통)
+      renderer.domElement.style.touchAction = 'none';
+      const ptrs = new Map<number, [number, number]>();
+      let pinch0: number | null = null, pinchR0 = R;
+      const pDist = () => { const v = [...ptrs.values()]; return Math.hypot(v[0][0] - v[1][0], v[0][1] - v[1][1]); };
       const onDown = (e: PointerEvent) => {
+        ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+        if (ptrs.size === 2) { drag = false; df = null; dfTip.style.display = 'none'; pinch0 = pDist(); pinchR0 = R; return; }
         drag = true; px = e.clientX; py = e.clientY; dx0 = e.clientX; dy0 = e.clientY;
         df = null;
         if (!parts?.length || !onFaceDrag || !selCur) return;
@@ -779,6 +786,12 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
         df = { id: selCur, n: nCad, axis, sign, dir2: [v2[0] / L2, v2[1] / L2], mmPerPx: 100 / L2, delta: 0 };
       };
       const onMove = (e: PointerEvent) => {
+        if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+        if (ptrs.size === 2 && pinch0) {
+          const d2 = pDist();
+          if (d2 > 8) { R = Math.max(R0 * 0.15, Math.min(R0 * 6, pinchR0 * (pinch0 / d2))); draw(); }
+          return;
+        }
         if (!drag) return;
         if (df) {
           // #4 드래그 스냅 — 5mm 그리드
@@ -808,6 +821,8 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
         px = e.clientX; py = e.clientY; draw();
       };
       const onUp = (e: PointerEvent) => {
+        ptrs.delete(e.pointerId);
+        if (pinch0 !== null) { if (ptrs.size < 2) pinch0 = null; return; } // 핀치 종료 — 클릭 오발동 방지
         const was = drag; drag = false;
         dfTip.style.display = 'none';
         if (df) {

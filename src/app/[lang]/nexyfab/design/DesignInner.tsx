@@ -325,7 +325,14 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     let ly = 0;
     let dx0 = 0, dy0 = 0;
     let df: { id: string; nCad: number[]; axis: number; sign: number; dir2: [number, number]; mmPerPx: number; delta: number } | null = null;
+    // #6 모바일: 핀치 줌(포인터 2개 — 궤도·푸시풀 억제)
+    renderer.domElement.style.touchAction = 'none';
+    const ptrs = new Map<number, [number, number]>();
+    let pinch0: number | null = null, pinchR0 = orbit.current.radius;
+    const pDist = () => { const v = [...ptrs.values()]; return Math.hypot(v[0][0] - v[1][0], v[0][1] - v[1][1]); };
     const onDown = (e: PointerEvent) => {
+      ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+      if (ptrs.size === 2) { dragging = false; df = null; dfTip.style.display = 'none'; pinch0 = pDist(); pinchR0 = orbit.current.radius; return; }
       dragging = true;
       lx = e.clientX; ly = e.clientY; dx0 = e.clientX; dy0 = e.clientY;
       (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -347,6 +354,12 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       df = { id: selCur, nCad, axis, sign, dir2: [v2[0] / L2, v2[1] / L2], mmPerPx: 100 / L2, delta: 0 };
     };
     const onMove = (e: PointerEvent) => {
+      if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+      if (ptrs.size === 2 && pinch0) {
+        const d2 = pDist();
+        if (d2 > 8) orbit.current.radius = Math.max(20, Math.min(50000, pinchR0 * (pinch0 / d2)));
+        return;
+      }
       if (!dragging) return;
       if (df) {
         // #4 드래그 스냅 — 5mm 그리드(정확값은 치수 입력/대화 지시)
@@ -376,6 +389,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       ly = e.clientY;
     };
     const onUp = (e: PointerEvent) => {
+      ptrs.delete(e.pointerId);
+      if (pinch0 !== null) { if (ptrs.size < 2) pinch0 = null; return; } // 핀치 종료 — 클릭 오발동 방지
       dragging = false;
       dfTip.style.display = 'none';
       if (df) {
@@ -1689,7 +1704,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
 
         {/* Right: 3D viewer */}
         <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
-          <StudioChatDock lang={lang} domainSlug={domain?.slug ?? initialDomain} intentName={intent?.name ?? null} partCount={Array.isArray(intent?.features) ? intent.features.length : null} />
+          <StudioChatDock lang={lang} domainSlug={domain?.slug ?? initialDomain} intentName={intent?.name ?? null} partCount={Array.isArray(intent?.features) ? intent.features.length : null} pickedPart={pickedPart} onPartEdit={editPartRun} />
           <div ref={mountRef} style={{ position: 'absolute', inset: 0 }} />
           {/* §6.2 드래프트/기록 분리 — 뷰어는 드래프트임을 정직 표기 */}
           {scad && (

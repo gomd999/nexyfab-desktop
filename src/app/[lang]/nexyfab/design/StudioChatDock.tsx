@@ -23,7 +23,7 @@ function saveAll(list: DockThread[]) {
   try { localStorage.setItem(THREADS_KEY, JSON.stringify(list.slice(0, 50))); } catch { /* quota */ }
 }
 
-export default function StudioChatDock({ lang, domainSlug, intentName, partCount }: { lang: string; domainSlug?: string | null; intentName?: string | null; partCount?: number | null }) {
+export default function StudioChatDock({ lang, domainSlug, intentName, partCount, pickedPart, onPartEdit }: { lang: string; domainSlug?: string | null; intentName?: string | null; partCount?: number | null; pickedPart?: string | null; onPartEdit?: (instruction: string) => Promise<void> }) {
   const ko = isKorean(lang);
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<DockMsg[]>([]);
@@ -68,6 +68,20 @@ export default function StudioChatDock({ lang, domainSlug, intentName, partCount
     if (!text || busy || limited) return; // 스레드당 무료 3회
     setInput('');
     const ctx = intentName ? (ko ? `[현재 설계: ${intentName}${partCount ? ` · 파츠 ${partCount}` : ''}] ` : `[current design: ${intentName}] `) : '';
+    // 🎯 픽킹 편집(260719 #6): 뷰어에서 부품 선택 상태면 도크 메시지=그 부품만 수정(edit-part)
+    if (pickedPart && onPartEdit) {
+      setMsgs((m) => [...m, { role: 'user', content: `🎯 ${pickedPart}: ${text}` }]);
+      setBusy(true);
+      try {
+        await onPartEdit(text);
+        setMsgs((m) => [...m, { role: 'assistant', content: ko ? `🎯 ${pickedPart} 수정 적용 — 뷰어·검증 갱신됨` : `🎯 ${pickedPart} edited` }]);
+      } catch (e) {
+        setMsgs((m) => [...m, { role: 'assistant', content: '⚠️ ' + (e instanceof Error ? e.message : String(e)) }]);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     setMsgs((m) => [...m, { role: 'user', content: text }]);
     setBusy(true);
     try {
@@ -142,9 +156,14 @@ export default function StudioChatDock({ lang, domainSlug, intentName, partCount
               <a href={`/${lang.startsWith('en') ? 'en' : lang}/pricing/`} style={{ fontWeight: 800, color: 'var(--nx-accent, #2563eb)' }}>Pro →</a>
             </div>
           )}
+          {pickedPart && (
+            <div style={{ padding: '5px 10px', borderTop: '1px solid var(--nx-border, #dfe3e8)', fontSize: 11, fontWeight: 700, color: 'var(--nx-accent, #2563eb)' }}>
+              🎯 {pickedPart} — {ko ? '메시지가 이 부품만 수정합니다(뷰어에서 선택 해제 가능)' : 'messages edit only this part'}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 6, padding: 10, borderTop: '1px solid var(--nx-border, #dfe3e8)' }}>
             <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }}
-              placeholder={ko ? '질문·계산 요청…' : 'Ask or calculate…'}
+              placeholder={pickedPart ? (ko ? `🎯 ${pickedPart} 수정 지시…` : `Edit ${pickedPart}…`) : ko ? '질문·계산 요청…' : 'Ask or calculate…'}
               style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent', color: 'inherit', fontSize: 12.5 }} />
             <button type="button" onClick={() => void send()} disabled={busy || !input.trim()}
               style={{ padding: '8px 12px', borderRadius: 8, border: 'none', background: 'var(--nx-accent, #2563eb)', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', opacity: busy || !input.trim() ? 0.5 : 1 }}>→</button>
