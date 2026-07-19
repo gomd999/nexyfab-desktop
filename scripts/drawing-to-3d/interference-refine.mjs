@@ -28,17 +28,25 @@ export function stlVolume(bytes) {
   return Math.abs(vol6 / 6);
 }
 
+// 격자 절점 랩 접합 역할(R2-⑩ 교차부 규칙): 송전탑·트러스류 격자 부재쌍의 소부피
+// 실교차는 볼트 랩 접합 관례 — 결함이 아니라 접합부. latticeLapMm3 초과분은 여전히 간섭.
+const LATTICE_ROLES = new Set(['column', 'beam', 'brace', 'chord', 'diagonal', 'vertical']);
+
 /**
  * 간섭 목록(의심쌍) → 메시 부울 재판정.
  * @param asm 어셈블리(parts[])
  * @param interferences buildAssembly 산출 간섭 배열({a,b,...})
- * @returns { interferences(확정만·intersectMm3 동봉), demoted(해제 내역), checked }
+ * @param opts.latticeLapMm3 >0 이면 격자 role 쌍의 실교차 ≤ 이 부피를 '절점 랩 접합'으로
+ *   분류(laps 로 분리 보고 — 간섭 목록에서 제외. 볼트·거셋 상세=입력 명시. 기본 0=비활성)
+ * @returns { interferences(확정만·intersectMm3 동봉), demoted(해제 내역), laps, checked }
  */
-export async function refineInterferencesMesh(asm, interferences, { epsMm3 = 1 } = {}) {
+export async function refineInterferencesMesh(asm, interferences, { epsMm3 = 1, latticeLapMm3 = 0 } = {}) {
   const intent = assemblyToComposeIntent(asm);
   const pidOf = new Map((asm.parts ?? []).map((p, i) => [p.id ?? p.type, i]));
+  const roleOf = new Map((asm.parts ?? []).map((p) => [p.id ?? p.type, String(p.role ?? '')]));
   const confirmed = [];
   const demoted = [];
+  const laps = [];
   let checked = 0;
   for (const rec of interferences ?? []) {
     const ia = pidOf.get(rec.a), ib = pidOf.get(rec.b);
@@ -60,9 +68,13 @@ export async function refineInterferencesMesh(asm, interferences, { epsMm3 = 1 }
     }
     if (vol <= epsMm3) {
       demoted.push({ a: rec.a, b: rec.b, intersectMm3: +vol.toFixed(3), note: '메시 부울 실기하 — 실분리(AABB/폐형 보수 과탐 해제)' });
+    } else if (latticeLapMm3 > 0 && vol <= latticeLapMm3
+      && LATTICE_ROLES.has(roleOf.get(rec.a)) && LATTICE_ROLES.has(roleOf.get(rec.b))) {
+      // R2-⑩ 교차부 규칙: 격자 부재쌍 소부피 실교차 = 절점 랩 접합(볼트·거셋 상세=입력)
+      laps.push({ a: rec.a, b: rec.b, intersectMm3: +vol.toFixed(1), note: '격자 절점 랩 접합(관례 분류 — 볼트/거셋 상세=입력 영역)' });
     } else {
       confirmed.push({ ...rec, intersectMm3: +vol.toFixed(1), note: `${rec.note ?? ''} · 메시 부울 확정(교집합 ${vol.toFixed(1)}mm³)`.trim() });
     }
   }
-  return { interferences: confirmed, demoted, checked, note: '의심쌍 한정 2차(전수 아님) — ε=' + epsMm3 + 'mm³' };
+  return { interferences: confirmed, demoted, laps, checked, note: '의심쌍 한정 2차(전수 아님) — ε=' + epsMm3 + 'mm³' + (latticeLapMm3 > 0 ? ' · 격자 랩 한계=' + latticeLapMm3 + 'mm³' : '') };
 }

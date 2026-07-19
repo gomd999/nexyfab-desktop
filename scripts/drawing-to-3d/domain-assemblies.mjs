@@ -1764,6 +1764,132 @@ function machineLineAssembly(p = {}) {
   };
 }
 
+/** 벨트/롤러 컨베이어(R2-⑨, 260719). C찬넬 사이드 프레임 + 다리 + 롤러(실린더 rx90)
+ *  + 벨트(박스)/헤드·테일 풀리 + 구동 모터. 수평 v1(경사=후속 명시). 구동 체인·베어링
+ *  유닛·텐셔너 상세=입력 영역(정직) — BOM 발주는 std-snap(UCP·파이프) 감사로 보강. */
+function conveyorAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const kind = String(p.kind) === 'roller' ? 'roller' : 'belt';
+  const L = num(p.length, 6000);
+  const W = num(p.width, 600);          // 롤러면 폭(프레임 내측)
+  const frameH = num(p.frameH, 750);    // 롤러 상면 높이
+  const legPitch = num(p.legPitch, 1500);
+  const rollerPitch = num(p.rollerPitch, kind === 'belt' ? 900 : 300); // 벨트=캐리어 간격
+  const rollerD = num(p.rollerD, 60);
+  const chH = 150, chB = 75, chT = 6;   // 사이드 C찬넬(150×75)
+  const legS = 60;
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  const zRailBot = frameH - rollerD / 2 - chH / 2; // 롤러 축=찬넬 중심 관례
+  // 사이드 프레임 2본(C찬넬 — 웨브 외측·개구 내향 관례는 상세 입력 명시)
+  for (const [si, y] of [[0, -chB], [1, W]]) {
+    P(`side_ch_${si + 1}`, 'c_channel', { H: chH, B: chB, tw: chT, tf: chT, length: L }, { tx: 0, ty: y, tz: zRailBot }, 'steel', 'frame');
+  }
+  // 다리(문형 — 양측 각관 + 하부 가로대), 레일 하면에 맞댐
+  const nLeg = Math.max(2, Math.floor(L / legPitch) + 1);
+  for (let i = 0; i < nLeg; i++) {
+    const x = Math.min(i * legPitch, L - legS);
+    for (const [si, y] of [[0, -chB], [1, W]]) {
+      P(`leg_${i + 1}_${si + 1}`, 'box', { width: legS, depth: chB, height: zRailBot }, { tx: x, ty: y, tz: 0 }, 'steel', 'frame');
+    }
+    P(`legtie_${i + 1}`, 'box', { width: legS, depth: W, height: legS }, { tx: x, ty: 0, tz: 200 }, 'steel', 'frame'); // 다리 내측면 맞댐(볼트 체결 — 측면 면접촉 규칙)
+  }
+  // 롤러(실린더 rx=-90: 축=+y, 프레임 내측 폭) — 상면=frameH. 프레임 부착=mount 선언
+  // (축단 베어링 볼팅 관례 — 자중 지지 아님 명시). 벨트형은 풀리 구간 회피.
+  const x0R = kind === 'belt' ? 2.5 * rollerD : rollerD / 2;
+  const nRoll = Math.max(2, Math.floor((L - 2 * x0R) / rollerPitch) + 1);
+  let rollers = 0;
+  for (let i = 0; i < nRoll; i++) {
+    const x = x0R + i * rollerPitch;
+    if (x > L - x0R) break;
+    rollers++;
+    P(`roller_${i + 1}`, 'cylinder', { diameter: rollerD, length: W }, { tx: x, ty: 0, tz: frameH - rollerD / 2, rx: -90 }, 'steel', 'mount');
+  }
+  if (kind === 'belt') {
+    // 헤드/테일 풀리(양단 — 상면=벨트 하면 접선) + 벨트(캐리어면 박스 근사 — 리턴측 생략 명시)
+    const pd = 1.6 * rollerD;
+    P('pulley_tail', 'cylinder', { diameter: pd, length: W }, { tx: rollerD, ty: 0, tz: frameH - pd / 2, rx: -90 }, 'steel', 'mount');
+    P('pulley_head', 'cylinder', { diameter: pd, length: W }, { tx: L - rollerD, ty: 0, tz: frameH - pd / 2, rx: -90 }, 'steel', 'mount');
+    P('belt', 'box', { width: L - 2 * rollerD, depth: W, height: 10 }, { tx: rollerD, ty: 0, tz: frameH }, 'rubber', 'conveyor');
+    // 구동 모터+감속기(헤드측 하부 브래킷 — 체인/커플링 상세=입력)
+    P('drive_motor', 'box', { width: 400, depth: 300, height: 300 }, { tx: L - 500, ty: W + chB + 20, tz: zRailBot - 150 }, 'steel', 'motor');
+    P('motor_bracket', 'box', { width: 400, depth: 20, height: 300 }, { tx: L - 500, ty: W + chB, tz: zRailBot - 150 }, 'steel', 'mount');
+  }
+  return {
+    name: kind === 'belt' ? `벨트 컨베이어 ${L / 1000}m` : `롤러 컨베이어 ${L / 1000}m`,
+    domain: 'mech', kind: 'assembly', parts,
+    conveyorMeta: { kind, length: L, width: W, frameH, rollerPitch, rollerD, legs: nLeg, rollers },
+    note: '컨베이어 매싱(수평 v1) — 구동 체인·베어링 유닛·텐셔너·리턴 벨트 상세=입력 영역 명시. 경사·커브=후속.',
+  };
+}
+
+/** 송전탑(R2-⑩, 260719). angle(L형강) 격자 — 4모서리 경사 주주재(패널별 세그먼트)
+ *  + 수평재 + X브레이싱(전·배면 분리 배치 — 교차부 볼트 접합 관례를 면분리로 폐형)
+ *  + 크로스암. 접합 상세(볼트·거셋 플레이트)=입력 영역 명시(부재=계획 배치). */
+function towerAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const H = num(p.height, 30000);
+  const baseW = num(p.baseW, 6000), topW = num(p.topW, 1500);
+  const nP = Math.max(3, Math.min(12, Math.round(num(p.panels, 6))));
+  const legA = num(p.legSize, 120), legT = num(p.legThk, 10);
+  const brA = num(p.braceSize, 75), brT = num(p.braceThk, 6);
+  const armL = num(p.armLen, 2500), armS = 300;
+  const Hp = H / nP;
+  const wAt = (z) => (baseW / 2) + (topW / 2 - baseW / 2) * (z / H); // 반폭 선형 테이퍼
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  // angle 로컬 +x 를 방향 u 로: R=Rz·Ry·Rx, rx=0 → ry=-asin(uz), rz=atan2(uy,ux) (결정론 유도)
+  const angleAt = (id, from, to, a, t, role) => {
+    const v = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
+    const Lm = Math.hypot(...v);
+    const u = v.map((q) => q / Lm);
+    const ry = (-Math.asin(u[2]) * 180) / Math.PI;
+    const rz = (Math.atan2(u[1], u[0]) * 180) / Math.PI;
+    P(id, 'angle', { legA: a, legB: a, thickness: t, length: Lm }, { tx: from[0], ty: from[1], tz: from[2], ry, rz }, 'steel', role);
+  };
+  for (let k = 0; k < nP; k++) {
+    const z0 = k * Hp, z1 = z0 + Hp;
+    const w0 = wAt(z0), w1 = wAt(z1);
+    // 4모서리 주주재(경사) — 단면 중심 근사 배치(플랜지 내향 정렬=상세 입력 명시)
+    for (const [ci, [sx, sy]] of [[1, 1], [1, -1], [-1, 1], [-1, -1]].entries()) {
+      angleAt(`leg_${k + 1}_${ci + 1}`, [sx * w0 - legA / 2, sy * w0 - legA / 2, z0], [sx * w1 - legA / 2, sy * w1 - legA / 2, z1], legA, legT, 'column');
+    }
+    // 패널 상단 수평재 4변 — 전/배면=모서리 풀스팬(주주재 AABB 와 절점 체결),
+    // 좌/우=brA 인셋(전/배면에 맞댐 — 수평재끼리 관통 없음)
+    P(`hz_${k + 1}_f`, 'angle', { legA: brA, legB: brA, thickness: brT, length: 2 * w1 }, { tx: -w1, ty: -w1, tz: z1 - brA }, 'steel', 'beam');
+    P(`hz_${k + 1}_b`, 'angle', { legA: brA, legB: brA, thickness: brT, length: 2 * w1 }, { tx: -w1, ty: w1 - brA, tz: z1 - brA }, 'steel', 'beam');
+    angleAt(`hz_${k + 1}_l`, [-w1 + brA, -w1, z1 - brA], [-w1 + brA, w1, z1 - brA], brA, brT, 'beam');
+    angleAt(`hz_${k + 1}_r`, [w1, -w1, z1 - brA], [w1, w1, z1 - brA], brA, brT, 'beam');
+    // X브레이싱(4면·패널당 2본) — 교차부는 전/배면 분리(back-to-back 관례: ±brT 오프셋 폐형)
+    const wm = (w0 + w1) / 2;
+    for (const [fi, face] of ['yn', 'yp', 'xn', 'xp'].entries()) {
+      const horiz = face[0] === 'y'; // 브레이싱이 x 방향으로 달리는 면
+      const sgn = face[1] === 'n' ? -1 : 1;
+      const off1 = sgn * (wm - brA - brT), off2 = sgn * (wm + brT) - (sgn > 0 ? brA : 0);
+      const a0 = -w0 + legA, a1 = w1 - legA; // 진행축 시작/끝(테이퍼 반영·주주재 인셋)
+      if (horiz) {
+        angleAt(`xb_${k + 1}_${fi + 1}a`, [a0, off1, z0 + brA], [a1, off1, z1 - brA], brA, brT, 'brace');
+        angleAt(`xb_${k + 1}_${fi + 1}b`, [a0, off2, z1 - brA], [a1, off2, z0 + brA], brA, brT, 'brace');
+      } else {
+        angleAt(`xb_${k + 1}_${fi + 1}a`, [off1, a0, z0 + brA], [off1, a1, z1 - brA], brA, brT, 'brace');
+        angleAt(`xb_${k + 1}_${fi + 1}b`, [off2, a0, z1 - brA], [off2, a1, z0 + brA], brA, brT, 'brace');
+      }
+    }
+  }
+  // 크로스암 2단(상부 패널 절점 위 안착 — 절연체·도체 상세=입력 명시) + 정상 피크
+  for (const [ai, zk] of [[0, nP - 2], [1, nP - 1]]) {
+    const za = (zk + 1) * Hp; // 패널 절점(수평재 상면)
+    const wa = wAt(za);
+    P(`crossarm_${ai + 1}`, 'box', { width: armS, depth: 2 * (wa + armL), height: armS }, { tx: -armS / 2, ty: -(wa + armL), tz: za }, 'steel', 'beam');
+  }
+  P('peak', 'box', { width: armS, depth: armS, height: 1200 }, { tx: -armS / 2, ty: -armS / 2, tz: H + armS }, 'steel', 'column'); // 상단 크로스암 위 안착(접선)
+  return {
+    name: `송전탑 ${H / 1000}m×${nP}패널`, domain: 'mech', kind: 'assembly', parts,
+    towerMeta: { height: H, baseW, topW, panels: nP, legSize: legA, braceSize: brA },
+    note: 'angle 격자 송전탑 매싱 — 교차부=전/배면 분리 배치(볼트 접합 상세=입력), 절연체·도체·기초=입력 영역 명시. 회전 부재 AABB 간섭 의심쌍은 B1 메시 부울로 해제 검증.',
+  };
+}
+
 /** 트러스교(하로교 — 260718 신설, 260718b 프랫/하우 확장). trussType='warren'(등변 지그재그)
  *  | 'pratt'(수직재+중앙향 인장 대각재) | 'howe'(수직재+지점향 압축 대각재).
  *  바닥판=하현재 위 가로보 사이(트러스면 안쪽 y) — 전 접촉 0겹침 폐형.
@@ -2783,6 +2909,29 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'conveyorW', labelKo: '컨베이어 폭', unit: 'mm', default: 500, min: 200, max: 1500 },
         { name: 'frameH', labelKo: '프레임 높이', unit: 'mm', default: 900, min: 500, max: 1500 },
         { name: 'guard', labelKo: '안전펜스(yes/no)', unit: '', default: 'yes', enum: ['yes', 'no'] },
+      ],
+    },
+    {
+      id: 'conveyor', labelKo: '벨트/롤러 컨베이어 (C찬넬 프레임)', labelEn: 'Belt/roller conveyor', build: conveyorAssembly,
+      params: [
+        { name: 'kind', labelKo: '형식(belt/roller)', unit: '', default: 'belt', enum: ['belt', 'roller'] },
+        { name: 'length', labelKo: '전장', unit: 'mm', default: 6000, min: 1500, max: 30000 },
+        { name: 'width', labelKo: '롤러면 폭', unit: 'mm', default: 600, min: 300, max: 1500 },
+        { name: 'frameH', labelKo: '롤러 상면고', unit: 'mm', default: 750, min: 400, max: 1500 },
+        { name: 'legPitch', labelKo: '다리 피치', unit: 'mm', default: 1500, min: 800, max: 3000 },
+        { name: 'rollerPitch', labelKo: '롤러 피치', unit: 'mm', default: 300, min: 75, max: 1200 },
+      ],
+    },
+    {
+      id: 'transmission_tower', labelKo: '송전탑 (angle 격자)', labelEn: 'Transmission tower (angle lattice)', build: towerAssembly,
+      params: [
+        { name: 'height', labelKo: '전고', unit: 'mm', default: 30000, min: 10000, max: 80000 },
+        { name: 'baseW', labelKo: '기부 폭', unit: 'mm', default: 6000, min: 2000, max: 15000 },
+        { name: 'topW', labelKo: '정부 폭', unit: 'mm', default: 1500, min: 800, max: 5000 },
+        { name: 'panels', labelKo: '패널 수', unit: '', default: 6, min: 3, max: 12 },
+        { name: 'legSize', labelKo: '주주재 앵글', unit: 'mm', default: 120, min: 65, max: 250 },
+        { name: 'braceSize', labelKo: '브레이스 앵글', unit: 'mm', default: 75, min: 40, max: 150 },
+        { name: 'armLen', labelKo: '크로스암 돌출', unit: 'mm', default: 2500, min: 1000, max: 6000 },
       ],
     },
     {
