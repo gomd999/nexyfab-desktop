@@ -840,7 +840,9 @@ describe('잔여 제안 3건 — 통기 하한·구배 검증·관수 체인', (
     expect(['PASS', 'CHECK']).toContain(sl.verdict);
   });
   it('파고라 관수 체인: 유량 미입력=정직 INPUT_GATE, 입력 시 pump_head 전양정·동력', () => {
-    const pg = buildAssemblyTemplate('landscape', 'pergola', {});
+    // F4(260719): 관수 배관은 더 이상 기본 삽입되지 않는다(부재표에 없는 유령 부품이었다).
+    // 명시적으로 켠 경우에만 관수 체인이 성립한다 — 아래는 그 "켠" 경로.
+    const pg = buildAssemblyTemplate('landscape', 'pergola', { irrigation: 1 });
     const built = buildAssembly(pg);
     expect(built.pipes.errors).toEqual([]);
     expect(built.designOk).toBe(true);

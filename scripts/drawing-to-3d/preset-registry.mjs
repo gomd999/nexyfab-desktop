@@ -45,7 +45,24 @@ export async function listAssemblyPresets(domain) {
 export async function assemblyPresetWithBuild(domain, templateId, params = {}) {
   const { buildAssemblyTemplate } = await import('./domain-assemblies.mjs');
   const assembly = buildAssemblyTemplate(domain, templateId, params);
-  if (!assembly) return { ok: false, error: `unknown assembly template: ${domain}/${templateId}` };
+  // F9(260719) 오진 방지: 같은 id 가 **단품 프리셋**으로는 존재하는데 어셈블리 템플릿에는
+  // 없는 경우가 있다(rack_post·u_channel·rc_beam 등 — intent(features[]) 산출물이라
+  // parts[] 어셈블리 경로가 없다). 그대로 흘려보내면 하류가 "parts[] 비어있음"이라고만
+  // 말해서 사용자가 원인도 조치도 알 수 없었다 → 여기서 원인·조치를 명시한다.
+  if (!assembly) {
+    const single = templatesFor(domain).find((x) => x.id === templateId);
+    if (single) {
+      return {
+        ok: false, error: 'single_part_preset',
+        message: `${domain}/${templateId}("${single.labelKo ?? templateId}") 는 단품 프리셋입니다 — parts[] 어셈블리가 아니라 단품 intent(features[])를 만듭니다. 어셈블리 API(assemblyPresetWithBuild) 대신 presetWithVerify("${domain}","${templateId}") 를 쓰거나, listAssemblyPresets("${domain}") 의 id 중에서 고르세요.`,
+      };
+    }
+    return { ok: false, error: `unknown assembly template: ${domain}/${templateId}` };
+  }
+  // 입력 거부(F3/F10) — 형상을 만들지 않고 사유를 그대로 올린다(기본값 대체 금지).
+  if (assembly.ok === false && assembly.error === 'invalid_params') {
+    return { ok: false, error: 'invalid_params', gatePassed: false, gateErrors: assembly.paramErrors, message: assembly.message };
+  }
   const { buildAssembly } = await import('./assembly.mjs');
   const built = buildAssembly(assembly);
   if (!built.ok) return { ok: false, gatePassed: false, gateErrors: built.gateErrors, assembly };

@@ -188,3 +188,89 @@ describe('템플릿 카탈로그 등록', () => {
     }
   });
 });
+
+/**
+ * 입력 정규화 — 조용한 기본값 대체 금지(F3/F10/F4, 260719).
+ * 도그푸딩에서 `{width:"3657mm", height:"2438"}` 가 경고 0건으로 전량 기본값 도면이 되어
+ * 사용자가 남의 치수를 자기 치수로 알고 받아가던 경로를 고정한다.
+ */
+describe('입력 정규화 — 조용한 대체 금지', () => {
+  type Err = { ok?: boolean; error?: string; paramErrors?: string[]; parts?: Part[]; paramNotes?: string[] };
+  const raw = buildAssemblyTemplate as unknown as (d: string, i: string, p: Record<string, unknown>) => Asm & Err;
+
+  it('F3: 숫자 문자열·단위 접미 치수가 기본값으로 버려지지 않고 실제로 반영된다', () => {
+    const { asm, b } = build('landscape', 'pergola', { width: '3657mm', depth: '2743mm', height: '2438' });
+    expect(b.gateErrors).toEqual([]);
+    const post = asm.parts.find((p) => p.id === 'post2') as unknown as { at: { tx: number }; params: { height: number } };
+    expect(post.params.height).toBe(2438);          // "2438" → 2438 (기본 2400 아님)
+    expect(post.at.tx).toBeCloseTo(3657 - 120 / 2); // "3657mm" → 3657 (기본 3600 아님)
+    // 환산은 조용히 일어나지 않는다 — 무엇을 어떻게 바꿨는지 호출자가 읽을 수 있어야 한다
+    expect((asm as Err).paramNotes?.join(' ')).toContain('3657mm');
+  });
+
+  it('F3: 해석 불가 입력은 기본값으로 대체되지 않고 사유와 함께 거부된다', () => {
+    for (const bad of [NaN, '삼천육백', '3657kg', true]) {
+      const r = raw('landscape', 'pergola', { width: bad });
+      expect(r.ok, `${String(bad)} 가 통과했다`).toBe(false);
+      expect(r.error).toBe('invalid_params');
+      expect(r.paramErrors?.join(' ')).toContain('폭');
+    }
+  });
+
+  it('F3: 미입력(undefined/null/빈문자)만 조용히 기본값을 쓴다 — 그건 대체가 아니다', () => {
+    for (const empty of [undefined, null, '']) {
+      const r = raw('landscape', 'pergola', { width: empty });
+      expect(r.ok).not.toBe(false);
+      expect((r.parts ?? []).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('F10: params 의 min/max 를 강제한다 — 자동 클램프가 아니라 거부+범위 안내', () => {
+    const r = raw('landscape', 'pergola', { rafterCount: 400, height: 99999 });
+    expect(r.ok).toBe(false);
+    expect(r.parts).toEqual([]);
+    expect(r.paramErrors).toHaveLength(2);
+    expect(r.paramErrors?.join(' ')).toContain('3~15');       // 범위를 알려줘야 고칠 수 있다
+    expect(r.paramErrors?.join(' ')).toContain('1800~3600');
+    // 거부 사유는 하류(게이트·쉬운요약)까지 그대로 흘러야 한다 — "parts[] 비어있음" 금지
+    const b = (buildAssembly as unknown as (a: unknown) => Built)(r);
+    expect(b.ok).toBe(false);
+    expect(b.gateErrors.join(' ')).not.toContain('parts[] 비어있음');
+    expect(b.gateErrors.join(' ')).toContain('허용 범위');
+  });
+
+  it('F10: 선언되지 않은 구조적 입력(ips 등)은 통과시킨다 — params 는 UI 카탈로그이지 스키마가 아니다', () => {
+    const r = raw('civil', 'retaining_wall_alignment', { ips: [[0, 0], [200000, 0]] });
+    expect(r.ok).not.toBe(false);
+    expect((r.parts ?? []).length).toBeGreaterThan(0);
+  });
+
+  it('F10: enum 파라미터는 목록 밖 값을 거부하고 선택지를 안내한다', () => {
+    const ok = raw('mech', 'conveyor', { kind: 'roller' });
+    expect((ok.parts ?? []).length).toBeGreaterThan(0);
+    const bad = raw('mech', 'conveyor', { kind: 'chain' });
+    expect(bad.ok).toBe(false);
+    expect(bad.paramErrors?.join(' ')).toContain('"belt" / "roller"');
+  });
+
+  it('F4: 파고라 관수 배관은 기본으로 삽입되지 않고, UI 파라미터로 노출된다', () => {
+    const def = raw('landscape', 'pergola', {}) as unknown as { pipes?: unknown[] };
+    expect(def.pipes).toBeUndefined();                       // 유령 부품 없음
+    const on = raw('landscape', 'pergola', { irrigation: 1 }) as unknown as { pipes?: unknown[] };
+    expect(on.pipes).toHaveLength(1);                        // 원하면 켤 수 있다
+    const spec = (listAssemblyTemplates as unknown as (d: string) => { id: string; params: { name: string }[] }[])('landscape')
+      .find((t) => t.id === 'pergola');
+    expect(spec?.params.map((q) => q.name)).toContain('irrigation'); // UI 미노출 금지
+  });
+
+  it('F8: 회전체 BOM 이 호퍼·동체·지붕을 규격으로 구별한다', () => {
+    const { asm } = build('mech', 'tank_silo', {});
+    const dims = (id: string) => (asm.parts.find((p) => p.id === id) as unknown as { params: Record<string, number> }).params;
+    for (const id of ['hopper', 'shell', 'roof']) {
+      expect(dims(id).outerDia, id).toBeGreaterThan(0);
+      expect(dims(id).height, id).toBeGreaterThan(0);
+      expect(dims(id).thickness, id).toBeGreaterThan(0);
+    }
+    expect(dims('shell').height).not.toBe(dims('roof').height); // 3행이 같은 문구로 뭉개지지 않는다
+  });
+});

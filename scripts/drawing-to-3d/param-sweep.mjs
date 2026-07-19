@@ -67,6 +67,12 @@ export function sweepParam(opts) {
     const value = Math.round(min + (max - min) * (i / (points - 1)));
     const asm = buildAssemblyTemplate(domain, templateId, { ...params, [param]: value });
     if (!asm) return { ok: false, error: `template '${domain}/${templateId}' 없음` };
+    // 스윕 구간이 템플릿 선언 범위를 벗어나면 형상이 만들어지지 않는다(F10) — 체인 오류로
+    // 뭉개지 말고 그 점의 사유를 그대로 싣는다(조용한 대체 금지).
+    if (asm.ok === false && asm.error === 'invalid_params') {
+      band.push({ value, pass: false, fails: asm.paramErrors.slice(0, 4), inputs: 0, metric: null });
+      continue;
+    }
     let entry;
     try {
       const r = chain(asm, chainParams);

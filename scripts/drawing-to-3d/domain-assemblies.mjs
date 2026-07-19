@@ -16,6 +16,95 @@ import { TOL_TRIM_RESIDUAL, minSeg } from './geometry-tolerance.mjs';
 const num = (v, d) => (Number.isFinite(v) ? v : d);
 const P = (id, type, params, at = {}, material, role) => ({ id, type, params, at, ...(material ? { material } : {}), ...(role ? { role } : {}) });
 
+// ── 입력 정규화 (F3/F10 · 260719) ────────────────────────────────────────────
+// 원칙: **조용한 대체 금지.** 지금까지 num() 은 `Number.isFinite` 하나로 걸러서
+// 폼·쿼리스트링이 만들어내는 문자열("2438")까지 통째로 기본값으로 갈아끼웠고,
+// 사용자는 남의 치수 도면을 자기 치수인 줄 알고 받아갔다. 이제 진입점에서:
+//   1) 숫자 문자열("2438")   → 파싱한다(정상 입력으로 취급).
+//   2) 단위 접미("3657mm")   → 선언 단위(mm)로 **환산**하고 환산 사실을 note 로 남긴다.
+//      · 근거: 거부하면 "3657mm" 를 친 일반인이 막히는데, 그 입력의 의도는 100%
+//        명확하다(모호성이 없다). 반면 해석 불가·단위 불일치("3657kg", 각도에 mm)는
+//        의도를 추측할 수 없으므로 **거부**한다. 즉 무손실 환산만 허용.
+//   3) 해석 불가 / 범위 밖   → 기본값으로 대체하지 않고 **거부**하고 사유를 돌려준다
+//      (자동 클램프 금지 — EasyWizard 선례: min~max 를 안내하고 사용자가 고친다).
+// 미입력(undefined/null/'')만이 조용히 기본값을 쓴다 — 그건 대체가 아니라 미입력이다.
+const UNIT_TO_MM = { mm: 1, cm: 10, m: 1000, in: 25.4, '"': 25.4, ft: 304.8, "'": 304.8, 밀리: 1, 센티: 10, 미터: 1000, 인치: 25.4 };
+const NUMLIKE_RE = /^([+-]?(?:\d+\.?\d*|\.\d+))\s*(.*)$/;
+
+/**
+ * 선언 스펙 1개 + 원시값 → { status, value?, note?, message? }
+ * status: 'default'(미입력) | 'ok' | 'error'
+ */
+function coerceParam(spec, raw) {
+  const label = `${spec.labelKo ?? spec.name}(${spec.name})`;
+  const unit = spec.unit ?? '';
+  const unitKo = unit ? ` 단위 ${unit}` : '';
+  if (raw === undefined || raw === null || raw === '') return { status: 'default' };
+  // 선택형(enum)·비수치 파라미터(kind/shape/facade/hopper …) — 숫자 규칙을 적용하면 안 된다.
+  if (Array.isArray(spec.enum)) {
+    return spec.enum.includes(raw) ? { status: 'ok', value: raw }
+      : { status: 'error', message: `${label}: "${raw}" 는 선택할 수 없는 값입니다 — ${spec.enum.map((e) => `"${e}"`).join(' / ')} 중에서 고르세요.` };
+  }
+  if (typeof spec.default !== 'number') return { status: 'ok', value: raw }; // 스펙이 수치형이 아님 → 그대로 전달
+  let v = null, note = null;
+  if (typeof raw === 'number') {
+    if (!Number.isFinite(raw)) return { status: 'error', message: `${label}: ${Number.isNaN(raw) ? 'NaN' : raw} 은 숫자가 아닙니다 — 숫자를 입력해 주세요${unitKo ? `(${unit})` : ''}.` };
+    v = raw;
+  } else if (typeof raw === 'string') {
+    const m = NUMLIKE_RE.exec(raw.trim());
+    if (!m) return { status: 'error', message: `${label}: "${raw}" 를 숫자로 해석할 수 없습니다 — 숫자만 입력해 주세요${unitKo ? `(${unit})` : ''}.` };
+    const n = Number(m[1]);
+    const suffix = m[2].trim();
+    if (!Number.isFinite(n)) return { status: 'error', message: `${label}: "${raw}" 를 숫자로 해석할 수 없습니다.` };
+    if (!suffix) v = n;
+    else if (unit === 'mm' && UNIT_TO_MM[suffix.toLowerCase()] !== undefined) {
+      const f = UNIT_TO_MM[suffix.toLowerCase()];
+      v = n * f;
+      note = `${label}: "${raw}" → ${v} mm 로 환산해 적용했습니다.`;
+    } else if (suffix === unit || (unit === '°' && /^(deg|도)$/i.test(suffix))) {
+      v = n;
+      note = `${label}: "${raw}" 에서 단위 표기를 떼고 ${v}${unit} 로 적용했습니다.`;
+    } else {
+      return { status: 'error', message: `${label}: "${raw}" 의 단위 "${suffix}" 는 이 항목에 쓸 수 없습니다 — ${unit === 'mm' ? 'mm/cm/m/in/ft' : unit ? `${unit}` : '단위 없는 숫자'} 로 입력해 주세요.` };
+    }
+  } else {
+    return { status: 'error', message: `${label}: ${typeof raw} 값은 받을 수 없습니다 — 숫자를 입력해 주세요${unitKo ? `(${unit})` : ''}.` };
+  }
+  // 범위 강제 — 클램프하지 않는다(사용자가 고칠 수 있게 범위를 알려주고 거부).
+  const { min, max } = spec;
+  if (Number.isFinite(min) && v < min) return { status: 'error', message: `${label}: ${v}${unit} 는 허용 범위(${min}~${max}${unit}) 미만입니다 — ${min}${unit} 이상으로 입력해 주세요.` };
+  if (Number.isFinite(max) && v > max) return { status: 'error', message: `${label}: ${v}${unit} 는 허용 범위(${min}~${max}${unit}) 초과입니다 — ${max}${unit} 이하로 입력해 주세요.` };
+  // 개수형(단위 없음·기본값 정수)에 소수가 오면 빌더가 Math.round 로 삼켜버린다 → 최소한 알린다.
+  if (!unit && Number.isInteger(spec.default) && !Number.isInteger(v)) {
+    note = `${label}: ${v} 는 정수가 아니어서 ${Math.round(v)} 로 반올림해 적용됩니다.`;
+  }
+  return { status: 'ok', value: v, ...(note ? { note } : {}) };
+}
+
+/**
+ * 템플릿 params 스펙에 맞춰 입력을 정규화한다.
+ *
+ * 스펙에 없는 키는 **그대로 통과**시킨다 — params 는 UI 카탈로그이지 전체 스키마가
+ * 아니고(ips·contours·surveyPoints·customFurniture·curves 등 구조적 입력은 선언되지
+ * 않는다), 미선언 키를 거부하면 정상 호출자가 대량으로 깨진다.
+ *
+ * @returns {{ values: object, errors: string[], notes: string[] }}
+ */
+export function normalizeTemplateParams(specs, params = {}) {
+  const byName = new Map((specs ?? []).map((s) => [s.name, s]));
+  const values = {}, errors = [], notes = [];
+  for (const [k, raw] of Object.entries(params ?? {})) {
+    const spec = byName.get(k);
+    if (!spec) { values[k] = raw; continue; }
+    const r = coerceParam(spec, raw);
+    if (r.status === 'error') { errors.push(r.message); continue; }
+    if (r.status === 'default') continue;      // 미입력 → 빌더 기본값
+    values[k] = r.value;
+    if (r.note) notes.push(r.note);
+  }
+  return { values, errors, notes };
+}
+
 /** 건축: RC 라멘 골조 — 다베이·다층(B3). 기둥 그리드 + 층별 외곽·내부 보 + 층별 슬래브. */
 function rcFrameAssembly(p) {
   const bx = num(p.bayX, 6000), by = num(p.bayY, 6000), H = num(p.storyH, 3300);
@@ -78,7 +167,11 @@ function pergolaAssembly(p) {
   }
   // 관수 라인(MEP 확산) — 지중 인입(원시좌표)→입상→서까래 상부 살수 런. 유량·헤드=사양 입력
   // (landscape-check 관수 체인이 pump_head 로 전양정·동력 산출 — 지어내지 않음).
-  const irr = Math.round(num(p.irrigation, 1));
+  // F4(260719): 기본값을 1→0 으로 내린다. 이 배관은 pipes[] 메타라 부재표·BOM 에는 절대
+  // 안 나오는데 검토 경고에는 나와서, 주문하지도 않은 부품의 경고만 받는 "유령 부품"이었다.
+  // 부재표에 싣는 쪽(pipes→parts 승격)은 BOM·질량·용접 전 경로를 건드려야 하므로 이 트랙의
+  // 범위를 넘는다 → **끄고, params 에 노출해서 원하는 사람이 켠다**(선택은 사용자에게).
+  const irr = Math.round(num(p.irrigation, 0));
   const pipes = irr > 0 ? [{ id: 'irr_line', from: [-500, D / 2, -300], to: [W + oh + 100, D / 2, H + gh + rh + 80], d: 25, service: 'supply' }] : [];
   return { name: '목재 파고라', domain: 'landscape', parts, ...(pipes.length ? { pipes } : {}) };
 }
@@ -1236,15 +1329,19 @@ function tankSiloAssembly(p = {}) {
   const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
   const z0 = legH; // 셸 하단(콘 상단 기준선)
   // 콘 호퍼 셸(원뿔대 링 — 폐단면 사다리꼴 회전) 또는 평 바닥
+  // F8(260719): 회전체는 params 가 profile 뿐이라 BOM 규격열이 3행 모두 "도면대로 제작"
+  // 으로 뭉개졌다(견적 정보량 0). 형상은 여전히 profile 이 결정하고(assembly.mjs 의
+  // revolve 는 profile/angleDeg 만 읽는다), outerDia·height·thickness 는 **같은 형상을
+  // 설명하는 파생 치수**로 함께 실어 규격열·부재 구분이 서게 한다.
   if (hopper) {
-    P('hopper', 'revolve', { profile: [[outletD / 2, z0 - hopperH], [outletD / 2 + t, z0 - hopperH], [R, z0 - t], [R, z0], [outletD / 2, z0 - hopperH + t]] }, { tx: 0, ty: 0, tz: 0 }, 'steel', 'shell');
+    P('hopper', 'revolve', { profile: [[outletD / 2, z0 - hopperH], [outletD / 2 + t, z0 - hopperH], [R, z0 - t], [R, z0], [outletD / 2, z0 - hopperH + t]], outerDia: D, height: hopperH, thickness: t }, { tx: 0, ty: 0, tz: 0 }, 'steel', 'shell');
   } else {
-    P('bottom', 'revolve', { profile: [[0, z0 - t], [R, z0 - t], [R, z0], [0, z0]] }, { tx: 0, ty: 0, tz: 0 }, 'steel', 'shell');
+    P('bottom', 'revolve', { profile: [[0, z0 - t], [R, z0 - t], [R, z0], [0, z0]], outerDia: D, height: t, thickness: t }, { tx: 0, ty: 0, tz: 0 }, 'steel', 'shell');
   }
   // 원통 셸(링 단면 회전)
-  P('shell', 'revolve', { profile: [[R - t, z0], [R, z0], [R, z0 + shellH], [R - t, z0 + shellH]] }, { tx: 0, ty: 0, tz: 0 }, 'steel', 'shell');
+  P('shell', 'revolve', { profile: [[R - t, z0], [R, z0], [R, z0 + shellH], [R - t, z0 + shellH]], outerDia: D, height: shellH, thickness: t }, { tx: 0, ty: 0, tz: 0 }, 'steel', 'shell');
   // 지붕 콘
-  P('roof', 'revolve', { profile: [[0, z0 + shellH + roofH], [R, z0 + shellH], [R, z0 + shellH + t], [0, z0 + shellH + roofH + t]] }, { tx: 0, ty: 0, tz: 0 }, 'steel', 'roof');
+  P('roof', 'revolve', { profile: [[0, z0 + shellH + roofH], [R, z0 + shellH], [R, z0 + shellH + t], [0, z0 + shellH + roofH + t]], outerDia: D, height: roofH, thickness: t }, { tx: 0, ty: 0, tz: 0 }, 'steel', 'roof');
   // 지지 다리 4(대각 45° — 안쪽 코너 반경 R+0.1: revolve×box 반경 정밀 폐형으로 간섭 0.
   // 다리↔셸 러그 용접 상세=후속 명시 — 지지=AABB 체결 규칙로 성립)
   for (let i = 0; i < 4; i++) {
@@ -3055,6 +3152,7 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'height', labelKo: '기둥 높이', unit: 'mm', default: 2400, min: 1800, max: 3600 },
         { name: 'postSize', labelKo: '기둥 단면', unit: 'mm', default: 120, min: 90, max: 200 },
         { name: 'rafterCount', labelKo: '서까래 수', unit: '', default: 7, min: 3, max: 15 },
+        { name: 'irrigation', labelKo: '관수 배관(0=없음, 1=설치)', unit: '', default: 0, min: 0, max: 1 },
       ],
     },
     {
@@ -3463,10 +3561,30 @@ export function listAssemblyTemplates(domain) {
   return doms.flatMap((d) => (ASSEMBLY_TEMPLATES[d] ?? []).map((t) => ({ domain: d, id: t.id, labelKo: t.labelKo, labelEn: t.labelEn, params: t.params })));
 }
 
-/** domain+id+params → 어셈블리(결정론). 없으면 null. */
+/**
+ * domain+id+params → 어셈블리(결정론). 템플릿이 없으면 null.
+ *
+ * 입력은 먼저 normalizeTemplateParams 로 정규화된다(F3/F10):
+ *  · 문자열 치수·단위 접미는 숫자로 환산되어 **실제로 반영**되고(환산 사실은 paramNotes)
+ *  · 해석 불가·범위 밖 입력은 조용히 기본값으로 대체되지 않고 **거부**된다.
+ * 거부 시 반환값은 `{ ok:false, error:'invalid_params', parts:[], alignmentErrors:[...] }` —
+ * alignmentErrors 는 buildAssembly 가 이미 gateErrors 로 승격하는 기존 통로이므로
+ * 하류(게이트·쉬운요약·라우트)가 "parts[] 비어있음" 대신 **진짜 사유**를 보여준다.
+ */
 export function buildAssemblyTemplate(domain, templateId, params = {}) {
   const t = (ASSEMBLY_TEMPLATES[domain] ?? []).find((x) => x.id === templateId);
-  return t ? t.build(params) : null;
+  if (!t) return null;
+  const { values, errors, notes } = normalizeTemplateParams(t.params, params);
+  if (errors.length) {
+    return {
+      ok: false, error: 'invalid_params', name: t.labelKo, domain, templateId,
+      parts: [], paramErrors: errors, alignmentErrors: errors,
+      message: `입력값 ${errors.length}건을 사용할 수 없어 도면을 만들지 않았습니다(기본값으로 대체하지 않습니다).`,
+    };
+  }
+  const asm = t.build(values);
+  if (asm && notes.length) asm.paramNotes = notes;
+  return asm;
 }
 
 // --- self-test: 각 템플릿 기본값 → buildAssembly 게이트·간섭 0 · 질량 sanity ---
