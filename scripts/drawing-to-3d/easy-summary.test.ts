@@ -115,6 +115,95 @@ describe('일반인용 결과 요약(easySummary)', () => {
     expect(html).toContain('총 무게에서 뺐습니다');
   }, 60_000);
 
+  // F2 — 전도 경고가 일반인 문서에서만 사라지던 결함. structural.warnings 는 반드시 ③에 도달해야 한다.
+  it('③: structural 의 전도 경고가 쉬운 말로 요약에 나타난다(FS 수치는 원본과 동일)', async () => {
+    const { buildAssembly } = await import('./assembly.mjs') as unknown as {
+      buildAssembly: (a: unknown) => { structural: { ok: boolean; warnings: string[]; tipover: { seismicFS: number; staticAngleDeg: number } } };
+    };
+    const asm = buildAssemblyTemplate('mech', 'tower_crane', {});
+    const st = buildAssembly(asm).structural;
+    expect(st.ok, '전제: 이 템플릿은 구조 경고가 있어야 한다').toBe(false);
+    expect(st.warnings.length).toBeGreaterThan(0);
+
+    const html = easySummary(asm, { title: 'tower_crane', domain: 'mech' });
+    expect(html).toContain('넘어질');                    // 전도가 일반인 말로 등장
+    expect(html).toContain('안전 경고');
+    expect(html).toContain('class="warn"');              // 눈에 띄게(경고 스타일)
+    // 수치가 원본과 일치 — 요약이 원본보다 낙관적이면 안 된다
+    expect(html).toContain(String(st.tipover.seismicFS));
+    expect(html).toContain(String(st.tipover.staticAngleDeg));
+    // 종합 판정도 FAIL 로 노출
+    expect(html).toContain('보완 필요');
+    expect(html).toContain('보완 없이 제작에 들어가면 안 됩니다');
+  }, 60_000);
+
+  it('③: 극단 케이스(FS 0.04 급)에서도 안전 경고가 반드시 나온다', () => {
+    // 좁은 받침 위 아주 높은 기둥 — 전도 FS 가 극단적으로 낮아진다
+    const TIPPY = {
+      name: '전도 극단',
+      parts: [
+        { id: 'base', type: 'plate_with_holes', material: 'SS400', params: { width: 200, depth: 200, thickness: 10, holes: [] }, at: { tx: 0, ty: 0, tz: 0 } },
+        { id: 'mast', type: 'box', material: 'SS400', params: { width: 100, depth: 100, height: 6000 }, at: { tx: 50, ty: 50, tz: 10 } },
+      ],
+    };
+    const html = easySummary(TIPPY);
+    expect(html).toContain('안전 경고');
+    expect(html).toContain('넘어질');
+  });
+
+  it('③: 구조 경고가 없으면 없다고만 적고 안전을 보증하지 않는다', () => {
+    // F12(260719b) 이후: 하부장을 통짜 목재가 아닌 판재 셸로 계산하면서 counter_bar 기본값의
+    // 전도 FS 가 1.64→1.47 로 내려갔다(과대 계상된 하부장 자중이 전도를 눌러주고 있었던 것 —
+    // 경고가 새로 뜨는 게 정상이다). 이 테스트가 보려는 건 "경고 없음 경로의 문면"이므로
+    // 여유 있게 안정한 치수(깊은 상판·짧은 내밈, FS 1.81)로 고정한다.
+    const html = easySummary(buildAssemblyTemplate('interior', 'counter_bar', { depth: 900, overhang: 100 }), { domain: 'interior' });
+    expect(html).toContain('걸린 안전 경고는 없습니다');
+    expect(html).toContain('안전 보증 아님');
+    expect(html).not.toContain('안전 경고 — 지금 형상 그대로');
+  });
+
+  // F7 — massProxy 는 질량뿐 아니라 발주(BOM)·접합 계상에서도 빠져야 한다(나무를 용접시키지 않기).
+  it('②③: 표시용 형상(massProxy)은 발주 표·접합 계상에서 제외된다', async () => {
+    const asm = buildAssemblyTemplate('landscape', 'tree_planting', {}) as unknown as { parts: { id: string; massProxy?: boolean }[] };
+    const proxyIds = asm.parts.filter((p) => p.massProxy).map((p) => p.id);
+    expect(proxyIds.length).toBeGreaterThan(0);
+    const html = easySummary(asm, { title: '식재', domain: 'landscape' });
+
+    // 발주 표(②의 첫 표)에는 프록시가 없고, 별도 "표시용 형상" 표로 분리 표기된다
+    const buyTable = html.slice(html.indexOf('② 무엇을 사면 되나요'), html.indexOf('③ 만들 때 주의할 점'));
+    expect(buyTable).toContain('발주·제작 대상이 아닙니다');
+    expect(buyTable).toContain('표시용 형상');
+    const orderRows = buyTable.slice(0, buyTable.indexOf('표시용 형상입니다'));
+    expect(orderRows).not.toContain('회전체'); // 수관(revolve)은 발주 행에 없다
+
+    // 이 템플릿의 접합은 전부 줄기↔수관이므로 접합 계상이 0 이 되어야 한다
+    expect(html).not.toContain('접합해야 하는 곳이');
+    expect(html).not.toMatch(/용접이 \d+군데/);
+  }, 60_000);
+
+  // F11 — 가구 한 점에 건축신고를 요구하지 않는다(단, 애매하면 요구하는 쪽).
+  it('④: 인허가 안내는 대지 정착 구조물 규모일 때만 요구한다', () => {
+    // 실내 가구 규모(높이 1.05 m · 2.4 m²) → 건축신고 요구하지 않음, 대신 관할 확인 안내
+    const bar = buildAssemblyTemplate('interior', 'counter_bar', {});
+    const barHtml = easySummary(bar, { title: '카운터 바', domain: 'interior' });
+    expect(barHtml).not.toContain('건축신고');
+    expect(barHtml).toContain('관할 기관');
+
+    // 건축 도메인 → 항상 요구
+    const canopy = easySummary(buildAssemblyTemplate('building', 'steel_canopy', {}), { domain: 'building' });
+    expect(canopy).toContain('건축신고');
+
+    // 기계라도 구조물 규모(높이 2.4 m 이상)면 요구(안전측)
+    const tall = {
+      name: '대형 가대',
+      parts: [
+        { id: 'base', type: 'plate_with_holes', material: 'SS400', params: { width: 2000, depth: 2000, thickness: 20, holes: [] }, at: { tx: 0, ty: 0, tz: 0 } },
+        { id: 'col', type: 'box', material: 'SS400', params: { width: 200, depth: 200, height: 3000 }, at: { tx: 900, ty: 900, tz: 20 } },
+      ],
+    };
+    expect(easySummary(tall, { domain: 'mech' })).toContain('건축신고');
+  }, 60_000);
+
   it('⑤: 비법정 면책 문구가 들어간다(안전·인허가 보증 표현 없음)', () => {
     const html = easySummary(OK_ASM);
     expect(html).toContain('유자격 기술사의 검토·날인이 필요합니다');

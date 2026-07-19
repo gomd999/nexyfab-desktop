@@ -45,6 +45,31 @@ const GATE_KO = {
   M6: '비스듬히 놓인 부재의 실제 외곽선이 도면에 안 나왔어요 — 도면만 보면 크기를 오해할 수 있습니다.',
 };
 
+// structural.warnings → 쉬운 문장. **새 판정을 만들지 않는다** — structural 이 이미 낸 경고만
+// 옮기고, 수치는 structural.tipover / structural.member 원본값을 그대로 쓴다(요약이 원본보다
+// 낙관적이면 안 된다). 미등록 패턴은 GATE_KO 와 같은 사상으로 원문을 그대로 노출(정직).
+const STRUCT_KO = [
+  {
+    re: /정적 전도각/,
+    ko: (st) => `<b>그대로 두면 넘어질 수 있습니다(전도 위험).</b> 옆으로 ${st?.tipover?.staticAngleDeg ?? '?'}° 만 기울어도 넘어가는 형태입니다 — 안전 기준은 15° 입니다. 무게중심이 높고 바닥에 닿는 폭이 좁다는 뜻이니, <b>바닥 앵커 고정·받침(아웃리거) 확대·위쪽 무게 줄이기</b> 중 하나가 필요합니다.`,
+  },
+  {
+    re: /측방 전도 FS/,
+    ko: (st) => `<b>지진·바람처럼 옆에서 미는 힘에 넘어질 수 있습니다.</b> 옆으로 미는 힘(${st?.tipover?.seismicG ?? '?'}g)에 대한 안전 여유가 <b>${st?.tipover?.seismicFS ?? '?'}</b> 로, 필요한 값 1.5 에 못 미칩니다 — <b>바닥 앵커 고정이나 받침(아웃리거)</b> 없이 세우면 안 됩니다.`,
+  },
+  {
+    re: /^부재 .* 초과/,
+    ko: (st) => `<b>기둥·보로 쓴 규격(${st?.member?.section ?? '해당 부재'})이 하중을 견디지 못합니다.</b> 더 두껍거나 큰 규격으로 바꿔야 합니다.`,
+  },
+];
+/** structural.warnings 를 쉬운 말로. 미등록 경고는 원문 그대로 남긴다(누락 금지). */
+function structuralCautions(st) {
+  return (st?.warnings ?? []).map((w) => {
+    const hit = STRUCT_KO.find((r) => r.re.test(String(w)));
+    return hit ? hit.ko(st) : `구조 검토에서 걸린 항목: ${esc(String(w))}`;
+  });
+}
+
 // 표준 동봉 파일 → 용도 1줄. opts.fileNames 가 오면 그 목록에 있는 것만 설명(없는 파일 안내=거짓말).
 const FILE_USE = {
   'GA_2D_drawing.html': '전체 배치 도면 — 업체에 제일 먼저 보내는 도면입니다.',
@@ -72,11 +97,13 @@ const fmtM = (mm) => (Number.isFinite(mm) ? (mm / 1000).toFixed(mm < 1000 ? 3 : 
 function bomGroups(assembly) {
   const map = new Map();
   for (const p of assembly.parts ?? []) {
-    const key = p.type + '|' + JSON.stringify(p.params ?? {}) + '|' + (p.material ?? '');
+    // massProxy 는 별도 그룹으로 분리 — 발주·접합 대상이 아니므로 같은 줄에 섞이면 안 된다(F7).
+    const proxy = !!p.massProxy;
+    const key = p.type + '|' + JSON.stringify(p.params ?? {}) + '|' + (p.material ?? '') + '|' + proxy;
     const qty = Math.max(1, Math.round(Number(p.qty) || 1));
     const g = map.get(key);
     if (g) { g.qty += qty; g.ids.push(p.id ?? p.type); }
-    else map.set(key, { type: p.type, params: p.params ?? {}, material: p.material ?? '', qty, ids: [p.id ?? p.type] });
+    else map.set(key, { type: p.type, params: p.params ?? {}, material: p.material ?? '', qty, ids: [p.id ?? p.type], proxy });
   }
   return [...map.values()];
 }
@@ -166,7 +193,10 @@ export function easySummary(assembly, opts = {}) {
 <p class="sub">크기는 부재가 차지하는 전체 범위입니다. 무게는 형상×재질 밀도로 계산한 개산값이며, 볼트·마감·부속은 포함되지 않습니다.${esc(proxyNote)}</p></section>`;
 
   // ② 무엇을 사면 되나요
-  const groups = bomGroups(assembly);
+  const allGroups = bomGroups(assembly);
+  // ①에서 "무게에서 뺐다"고 밝힌 표시용 형상을 ②에서 다시 발주 대상으로 세지 않는다(F7).
+  const groups = allGroups.filter((g) => !g.proxy);
+  const proxyGroups = allGroups.filter((g) => g.proxy);
   const rows = groups.map((g) => {
     const sp = specText(g, stdById);
     return `<tr><td class="l">${esc(typeKo(g.type))}</td><td class="l">${esc(sp.text)}${sp.orderable ? ' <span class="tag ok">발주 규격</span>' : ' <span class="tag">제작품</span>'}</td><td>${g.qty}</td><td>${esc(g.material || '입력 필요')}</td></tr>`;
@@ -178,17 +208,24 @@ export function easySummary(assembly, opts = {}) {
   const s2 = `<section><h2>② 무엇을 사면 되나요</h2>
 <table><thead><tr><th>부재</th><th>규격</th><th>개수</th><th>재질</th></tr></thead><tbody>${rows || '<tr><td colspan="4">부재 없음 — 입력 필요</td></tr>'}</tbody></table>
 <p class="sub"><b>발주 규격</b>은 철물점·자재상에서 그대로 주문할 수 있는 시판 규격입니다. <b>제작품</b>은 가공 업체에 도면을 주고 만들어야 합니다.</p>
+${proxyGroups.length ? `<p class="sub"><b>아래는 표시용 형상입니다 — 발주·제작 대상이 아닙니다.</b> 도면에서 자리와 크기를 보여주기 위한 것이며(예: 수목 수관), 무게에도 접합 계산에도 넣지 않았습니다.</p>
+<table><thead><tr><th>표시용 형상</th><th>크기</th><th>개수</th></tr></thead><tbody>${proxyGroups.map((g) => `<tr><td class="l">${esc(typeKo(g.type))}</td><td class="l">${esc(specText(g, new Map()).text.replace('도면대로 제작', '도면 표기'))}</td><td>${g.qty}</td></tr>`).join('')}</tbody></table>` : ''}
 ${stdWarn}</section>`;
 
   // ③ 만들 때 주의할 점
   const cautions = [];
-  const weldM = Number.isFinite(built.weldTotalMm) ? built.weldTotalMm / 1000 : null;
-  if ((built.welds ?? []).length) {
+  // 표시용 형상(massProxy)이 낀 접합은 계상하지 않는다 — 나무를 용접하라고 지시하게 된다(F7).
+  const welds = (built.welds ?? []).filter((w) => !proxyIds.has(w.a) && !proxyIds.has(w.b));
+  const weldMm = welds.reduce((s, w) => s + (Number(w.lengthMm) || 0), 0);
+  const weldM = welds.length === (built.welds ?? []).length && Number.isFinite(built.weldTotalMm)
+    ? built.weldTotalMm / 1000
+    : (Number.isFinite(weldMm) ? weldMm / 1000 : null);
+  if (welds.length) {
     // 비기계 분야는 "용접"으로 단정하지 않는다 — 접합 방식(용접·볼트·목재 철물)은 재질·공법이 정한다.
     // (boq.mjs 가 비기계 분야 용접 공수를 산출하지 않는 것과 같은 사유 — 없는 근거로 단정하지 않음)
     cautions.push(NONMECH.has(domain)
-      ? `부재끼리 맞닿아 <b>접합해야 하는 곳이 ${built.welds.length}군데</b>, 접합선 총 길이 ${weldM == null ? '미산출' : weldM.toFixed(2) + ' m'}입니다 — 접합 방법(용접·볼트·목재 철물 등)은 재질과 공법에 따라 정해야 합니다.`
-      : `용접이 ${built.welds.length}군데, 총 길이 ${weldM == null ? '미산출' : weldM.toFixed(2) + ' m'} 필요합니다 — 용접 가능한 업체를 찾아야 합니다.`);
+      ? `부재끼리 맞닿아 <b>접합해야 하는 곳이 ${welds.length}군데</b>, 접합선 총 길이 ${weldM == null ? '미산출' : weldM.toFixed(2) + ' m'}입니다 — 접합 방법(용접·볼트·목재 철물 등)은 재질과 공법에 따라 정해야 합니다.`
+      : `용접이 ${welds.length}군데, 총 길이 ${weldM == null ? '미산출' : weldM.toFixed(2) + ' m'} 필요합니다 — 용접 가능한 업체를 찾아야 합니다.`);
   }
   const floating = built.support?.floating ?? [];
   if (floating.length) {
@@ -207,10 +244,24 @@ ${stdWarn}</section>`;
       cautions.push(GATE_KO[id] ?? `도면 점검 항목 미충족: ${f}`);
     }
   }
+  // 구조 안전 판정 — structural.html 을 읽지 않을 사람 전용 문서이므로, 여기서 빠지면
+  // 안전 경고가 어디에도 도달하지 않는다(F2). structural 이 낸 것만 옮기고 새로 만들지 않는다.
+  const structCautions = structuralCautions(structural);
+  const safetyBlock = structural == null
+    ? '<p class="sub">구조 검토(무게·전도)가 산출되지 않았습니다 — 안전 판정은 이 요약에 없습니다. 동봉된 구조 검토 문서를 확인하세요.</p>'
+    : structCautions.length
+      ? `<p class="warn"><b>⚠ 안전 경고 — 지금 형상 그대로 만들면 위험합니다.</b> 구조 검토(개산)에서 아래 ${structCautions.length}건이 걸렸습니다. 만들기 전에 반드시 해결하거나 기술사 검토를 받으세요.</p>
+<ul>${structCautions.map((c) => `<li>${c}</li>`).join('')}</ul>`
+      : '<p class="sub">구조 검토(개산)에서 걸린 안전 경고는 없습니다 — 다만 이는 형상·무게 기준 개산이며, 실제 지반·바람·지진·사용 하중은 반영되어 있지 않습니다(안전 보증 아님).</p>';
+  // 종합 판정(구조 + 형상 타당성)을 한 줄로 — 어느 쪽이든 FAIL 이면 요약에서도 FAIL 로 보여야 한다.
+  const verdict = `<p class="${structural?.ok === false || built.designOk === false ? 'warn' : 'sub'}">자동 점검 종합: 구조 안전(개산) <b>${structural == null ? '미산출' : structural.ok ? '이상 없음' : '보완 필요'}</b> · 형상 타당성(부유·간섭·배관) <b>${built.designOk == null ? '미산출' : built.designOk ? '이상 없음' : '보완 필요'}</b>${structural?.ok === false || built.designOk === false ? ' — 보완 없이 제작에 들어가면 안 됩니다.' : ''}</p>`;
+
   const s3 = `<section><h2>③ 만들 때 주의할 점</h2>
+${safetyBlock}
 ${cautions.length
     ? `<ul>${cautions.map((c) => `<li>${c}</li>`).join('')}</ul>`
-    : '<p class="sub">자동 점검에서 걸린 항목이 없습니다. 다만 자동 점검은 형상·표기만 봅니다 — 안전·인허가 판단은 아닙니다.</p>'}
+    : '<p class="sub">형상 점검(부유·간섭·접합·도면 표기)에서 걸린 항목은 없습니다. 이 점검은 형상·표기만 봅니다 — 안전 판정은 위의 구조 검토 결과를 따르세요.</p>'}
+${verdict}
 ${eg ? `<p class="sub">도면 점검 결과: ${esc(eg.score ?? '미산출')} ${eg.ok ? '(제작 착수 가능 수준)' : '(위 항목 보완 필요)'}</p>` : '<p class="sub">도면 점검(실시 검도) 결과는 이 요약에 포함되지 않았습니다 — 동봉된 검도 리포트를 확인하세요.</p>'}</section>`;
 
   // ④ 다음에 뭘 하나요
@@ -224,10 +275,23 @@ ${eg ? `<p class="sub">도면 점검 결과: ${esc(eg.score ?? '미산출')} ${e
       + unknownFiles.map((n) => `<li><code>${esc(n)}</code> — 용도 설명 미등록(파일은 동봉됨)</li>`).join('')
     : '<li>동봉 파일 목록이 전달되지 않았습니다 — 실제 받은 폴더의 파일을 그대로 보내세요.</li>';
   const expertNeeds = [];
-  if (domain !== 'mech') expertNeeds.push('건축물·구조물 인허가(건축신고·구조안전확인)');
+  // 인허가 안내 기준(F11) — 종전 조건은 `domain !== 'mech'` 뿐이라 가구 한 점(카운터 바)에도
+  // 건축신고를 요구했다. 판정을 **대지에 정착하는 구조물인가**로 바꾼다:
+  //  · ALWAYS: building·civil·bridge·process — 정의상 건축물/공작물/플랜트(건축법·국토안전·소방/위험물)
+  //  · landscape: 파고라·정자 등은 건축법 제83조 공작물 축조신고 대상이 되는 일이 잦아 포함(안전측)
+  //  · interior·mech: 원칙적으로 제품·가구이나, **사람이 밑을 지나거나 실 규모를 차지하면**
+  //    (높이 2.4 m 이상 = 통상 실내 층고 수준, 또는 바닥 점유 30 m² 이상) 공작물·대수선 소지가
+  //    있어 포함. 그 미만이라도 "필요 없다"고 단정하지 않고 관할 확인 안내를 남긴다(안전측).
+  // 애매하면 요구하는 쪽으로 기운다 — 빠뜨린 인허가가 불필요한 확인보다 훨씬 비싸기 때문.
+  const PERMIT_DOMAINS = new Set(['building', 'civil', 'bridge', 'process', 'landscape']);
+  const footprintM2 = Number.isFinite(env[0]) && Number.isFinite(env[1]) ? (env[0] / 1000) * (env[1] / 1000) : 0;
+  const structureScale = (Number.isFinite(env[2]) && env[2] >= 2400) || footprintM2 >= 30;
+  if (PERMIT_DOMAINS.has(domain) || structureScale) expertNeeds.push('건축물·구조물 인허가(건축신고·공작물 축조신고·구조안전확인) 해당 여부 — 대지에 정착하는 구조물이면 착공 전 신고가 필요합니다.');
+  else expertNeeds.push('설치 장소에 따라 별도 인허가(소방·전기·가스, 임대 건물이면 건물주 승인)가 필요할 수 있습니다 — 관할 기관·건물 관리주체에 확인하세요.');
   expertNeeds.push('구조 안전성 최종 확인 — 이 문서의 구조 계산은 개산이며 법적 효력이 없습니다.');
-  if ((built.welds ?? []).length) expertNeeds.push(NONMECH.has(domain) ? '부재 접합 방법·접합부 품질 기준' : '용접부 품질 기준(용접사 자격·검사 방법)');
+  if (welds.length) expertNeeds.push(NONMECH.has(domain) ? '부재 접합 방법·접합부 품질 기준' : '용접부 품질 기준(용접사 자격·검사 방법)');
   if (built.pipes?.routes?.length) expertNeeds.push('배관 계통 압력·재질 적합성');
+  if (structCautions.length) expertNeeds.push('③의 안전 경고(전도·부재 하중) 해소 — 앵커·받침·단면 상향 방안은 구조기술사가 정해야 합니다.');
   if (floating.length || itf.length) expertNeeds.push('위 ③의 형상 문제를 고친 뒤 재검토');
   const s4 = `<section><h2>④ 다음에 뭘 하나요</h2>
 <ol class="steps">
