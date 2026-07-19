@@ -60,6 +60,7 @@ import type { RefBinding } from '@/lib/brep-bridge/pmiShapeBinding';
 import { sampleGeometryForSourceId } from '@/lib/drawing/sampleGeometry';
 import { featureToPolyhedron, type Polyhedron } from '@/lib/cad/featureMesh';
 import { exportSheetsToPdf, PdfExportError } from '@/lib/drawing/pdfExport';
+import { sheetToDxf } from '@/lib/drawing/dxfExport';
 import type { CuttingPlane } from './sectionView';
 import { loc } from '../lib/loc';
 import { exportSheetsToPdfVector, VectorPdfError } from '@/lib/drawing/svg2pdfBridge';
@@ -138,6 +139,8 @@ interface PageDict {
   deleteAnnotation: string;
   exportPng: string;
   exportJson: string;
+  /** R4 wiring — DXF (R12 ASCII) sheet export. */
+  exportDxf: string;
   exportStepPmi: string;
   exportStepError: string;
   exportPdf: string;
@@ -236,6 +239,7 @@ const DICT: Record<string, PageDict> = {
     deleteAnnotation: '삭제',
     exportPng: 'PNG 내보내기',
     exportJson: 'JSON 내보내기',
+    exportDxf: 'DXF 내보내기',
     exportStepPmi: 'STEP+PMI 내보내기',
     exportStepError: 'STEP 내보내기 실패',
     exportPdf: 'PDF 내보내기',
@@ -326,6 +330,7 @@ const DICT: Record<string, PageDict> = {
     deleteAnnotation: 'Delete',
     exportPng: 'Export PNG',
     exportJson: 'Export JSON',
+    exportDxf: 'Export DXF',
     exportStepPmi: 'Export STEP+PMI',
     exportStepError: 'STEP export failed',
     exportPdf: 'Export PDF',
@@ -416,6 +421,7 @@ const DICT: Record<string, PageDict> = {
     deleteAnnotation: '削除',
     exportPng: 'PNGエクスポート',
     exportJson: 'JSONエクスポート',
+    exportDxf: 'DXFエクスポート',
     exportStepPmi: 'STEP+PMI エクスポート',
     exportStepError: 'STEP エクスポートに失敗しました',
     exportPdf: 'PDF エクスポート',
@@ -506,6 +512,7 @@ const DICT: Record<string, PageDict> = {
     deleteAnnotation: '删除',
     exportPng: '导出PNG',
     exportJson: '导出JSON',
+    exportDxf: '导出DXF',
     exportStepPmi: '导出STEP+PMI',
     exportStepError: 'STEP 导出失败',
     exportPdf: '导出PDF',
@@ -596,6 +603,7 @@ const DICT: Record<string, PageDict> = {
     deleteAnnotation: 'Eliminar',
     exportPng: 'Exportar PNG',
     exportJson: 'Exportar JSON',
+    exportDxf: 'Exportar DXF',
     exportStepPmi: 'Exportar STEP+PMI',
     exportStepError: 'Error al exportar STEP',
     exportPdf: 'Exportar PDF',
@@ -686,6 +694,7 @@ const DICT: Record<string, PageDict> = {
     deleteAnnotation: 'حذف',
     exportPng: 'تصدير PNG',
     exportJson: 'تصدير JSON',
+    exportDxf: 'تصدير DXF',
     exportStepPmi: 'تصدير STEP+PMI',
     exportStepError: 'فشل تصدير STEP',
     exportPdf: 'تصدير PDF',
@@ -903,6 +912,28 @@ async function exportSheetPng(rootEl: HTMLElement, filename: string): Promise<vo
 function exportSheetJson(sheet: Sheet, filename: string): void {
   const blob = new Blob([JSON.stringify(sheet, null, 2)], {
     type: 'application/json;charset=utf-8',
+  });
+  downloadBlob(blob, filename);
+}
+
+/**
+ * Export the live Sheet IR as an ASCII DXF (R12) stream via
+ * `lib/drawing/dxfExport.sheetToDxf`.
+ *
+ * Scope note (inherited from the serializer, NOT a regression here):
+ * `sheetToDxf` currently emits the sheet border plus one rectangle +
+ * label TEXT per viewport — it does NOT yet emit the projected 3D edges
+ * or dimension entities (dxfExport.ts header, "Phase 4.4.3"). The
+ * download is a real, parseable DXF (the interop round-trip test parses
+ * LINE entities straight back out of it), but it is a layout skeleton
+ * rather than a finished production drawing.
+ *
+ * `image/vnd.dxf` is the de-facto MIME browsers/CAD apps associate with
+ * DXF; the charset suffix keeps the ASCII group codes intact.
+ */
+function exportSheetDxf(sheet: Sheet, filename: string): void {
+  const blob = new Blob([sheetToDxf(sheet)], {
+    type: 'image/vnd.dxf;charset=utf-8',
   });
   downloadBlob(blob, filename);
 }
@@ -1990,6 +2021,11 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
 
   const onExportJson = useCallback(() => {
     exportSheetJson(sheet, `${sheet.id}.json`);
+  }, [sheet]);
+
+  // R4 wiring — sheetToDxf had no UI caller until now.
+  const onExportDxf = useCallback(() => {
+    exportSheetDxf(sheet, `${sheet.id}.dxf`);
   }, [sheet]);
 
   const onExportStep = useCallback(() => {
@@ -3539,6 +3575,21 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               }}
             >
               {dict.exportJson}
+            </button>
+            <button
+              type="button"
+              data-testid="drawing-export-dxf-button"
+              onClick={onExportDxf}
+              style={{
+                padding: '8px 14px',
+                background: '#0f172a',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              {dict.exportDxf}
             </button>
             <button
               type="button"
