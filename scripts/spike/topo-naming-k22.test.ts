@@ -258,22 +258,29 @@ function primitiveAnchors(s: Solid): EdgeAnchorSource {
 }
 
 /** Mirrors `planExecutor.runBoolean` + `nodeOcctBridge.runBool`: each tool is a
- *  separate Cut whose result inherits role 'a' (accumulator) / 'b' (tool). */
+ *  separate Cut. W1-B: the operand prefix is the operand's FEATURE ID (`base`,
+ *  `H0`, …) rather than its slot ('a'/'b'), and each boolean scopes the seams it
+ *  mints under its own id — so inserting a later cut cannot rename or shadow an
+ *  earlier feature's edges. */
 function partAnchors(p: Part): EdgeAnchorSource {
   let acc = primitiveAnchors(p.base);
+  let accId = 'base';
   let shape = prismFromLoop(p.base.loop, p.base.z0, p.base.z1 - p.base.z0);
   for (const t of p.tools) {
     shape = cutShapes(shape, prismFromLoop(t.loop, t.z0, t.z1 - t.z0));
     const mids = kernelEdges(shape).map((e) => e.mid);
     const tb = primitiveAnchors(t);
     const ta = acc;
+    const opId = `cut.${t.id}`;
     acc = composeBooleanTopo(
       [
-        { role: 'a', names: ta.names(), anchorOf: (n) => ta.anchor(n) },
-        { role: 'b', names: tb.names(), anchorOf: (n) => tb.anchor(n) },
+        { featureId: accId, names: ta.names(), anchorOf: (n) => ta.anchor(n) },
+        { featureId: t.id, names: tb.names(), anchorOf: (n) => tb.anchor(n) },
       ],
       mids,
+      { opId },
     );
+    accId = opId;
   }
   return acc;
 }
@@ -418,6 +425,11 @@ describe('ADR-017 K2.2 spike — measurement', () => {
     // S2b — TOPOLOGY change: a SECOND cut is inserted after authoring, then the
     // dimensions change. This is the realistic "insert a boolean cut" case.
     const A2 = newTally(), B2 = newTally();
+    // Attribution: split System A's verdicts by the KIND of name the reference
+    // holds. `seam.*` names are minted by the boolean itself and ordered by
+    // midpoint (ADR-017 root cause ①, Wave 3 / W3-A scope); everything else is a
+    // feature-qualified inherited name (root cause ②, THIS track's target).
+    const A2seam = newTally(), A2feat = newTally();
     const ex2: unknown[] = [];
     const { authored } = author('movingHole', BASE_CFG);
     for (const c1 of SWEEP) {
@@ -437,6 +449,7 @@ describe('ADR-017 K2.2 spike — measurement', () => {
         const va = verdict(resolveA(topo1, au.name, edges1), gt);
         const vb = verdict(resolveB({ sig: au.sig, bbox: au.bbox }, { edges: edges1, bbox: bbox1 }), gt);
         bump(A2, va); bump(B2, vb);
+        bump(/(^|\/)seam\.\d+$/.test(au.name ?? '') ? A2seam : A2feat, va);
         if ((va === 'mismatch' || vb === 'mismatch') && ex2.length < 12) ex2.push({ cfg: c1, label: au.label, name: au.name, A: va, B: vb });
       }
     }
@@ -445,7 +458,14 @@ describe('ADR-017 K2.2 spike — measurement', () => {
       measurable: true,
       perFamily: per,
       total: { A: rates(merge(...allA)), B: rates(merge(...allB)) },
-      s2b_secondCutInserted: { A: rates(A2), B: rates(B2), mismatchExamples: ex2 },
+      s2b_secondCutInserted: {
+        A: rates(A2), B: rates(B2), mismatchExamples: ex2,
+        A_byNameKind: {
+          featureQualified: rates(A2feat),
+          seam: rates(A2seam),
+          note: 'featureQualified = W1-B target (role prefix). seam = W3-A target (midpoint-ordered seam naming), deliberately NOT touched by W1-B.',
+        },
+      },
     };
   }, 240_000);
 
