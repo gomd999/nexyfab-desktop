@@ -1431,6 +1431,71 @@ function fourBarAssembly(p = {}) {
 /** 프로펠러(축류 — 260718d, 자유곡면 어휘 1호). NACA 4-digit 폐형 단면(Abbott&von Doenhoff
  *  공표식·닫힌 TE −0.1036) × 반경별 시위/비틀림(β=atan(피치/2πr)) 로프트 → 워터타이트 메시
  *  (체적=발산정리 정밀 — 날조 아님·공표 수식/기하 파생). 유체역학 성능(추력·효율) 검토 미포함. */
+/** 셸튜브 열교환기 TEMA AEL 단순화(R2-⑦, 260719 — 참고파일들4 shell-and-tube 6예제 대응).
+ *  정직 범위: 형식 비례=TEMA 관례 · 튜브=대표 7본(중심+육각, 피치 표시 — 전체 본수·열설계=
+ *  계산서/입력 영역) · 배플=원판(세그멘탈 컷 후속) · 노즐=셸 외면 맞댐(관통 용접 상세=입력).
+ *  간섭 0 설계: 튜브 세그먼트를 배플 사이에서 분할(갭 0.5)·배플=셸 보어 내포·시트 맞댐. */
+function heatExchangerAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const shellID = num(p.shellID, 600);
+  const thk = num(p.shellThk, 10);
+  const Lt = num(p.tubeLen, 3000);
+  const tubeOD = num(p.tubeOD, 19);
+  const pitch = num(p.tubePitch, Math.round(tubeOD * 1.33));
+  const nBaf = Math.max(0, Math.min(12, Math.round(num(p.baffles, 4))));
+  const nozOD = num(p.nozzleOD, 114.3); // DN100 관례
+  const shellOD = shellID + 2 * thk;
+  const R = shellOD / 2;
+  const CY = R + 60, CZ = R + 120; // 축심(새들 위)
+  const tsThk = 40, chLen = 250, capThk = 30;
+  const x0 = 200; // 전방 채널 시작
+  const xTS1 = x0 + chLen, xShell = xTS1 + tsThk, xTS2 = xShell + Lt, xEnd = xTS2 + tsThk;
+  const parts = [];
+  const P = (part) => parts.push(part);
+  // 새들 2 + 베드 접지(지지 체인)
+  P({ id: 'saddle_front', type: 'box', params: { width: 120, depth: shellOD, height: CZ - R + 2 }, at: { tx: xShell + Lt * 0.2, ty: CY - shellOD / 2, tz: 0 }, role: 'support', material: 'steel', system: '지지' });
+  P({ id: 'saddle_rear', type: 'box', params: { width: 120, depth: shellOD, height: CZ - R + 2 }, at: { tx: xShell + Lt * 0.75, ty: CY - shellOD / 2, tz: 0 }, role: 'support', material: 'steel', system: '지지' });
+  // 셸·시트·채널(A형)·후방 캡(L형 고정시트)
+  P({ id: 'shell', type: 'tube', params: { outerDia: shellOD, innerDia: shellID, length: Lt }, at: { tx: xShell, ty: CY, tz: CZ, ry: 90 }, role: 'vessel', material: 'steel', system: '셸' });
+  P({ id: 'tubesheet_front', type: 'cylinder', params: { diameter: shellOD, length: tsThk }, at: { tx: xTS1, ty: CY, tz: CZ, ry: 90 }, role: 'mount', material: 'steel', system: '셸' });
+  P({ id: 'tubesheet_rear', type: 'cylinder', params: { diameter: shellOD, length: tsThk }, at: { tx: xTS2, ty: CY, tz: CZ, ry: 90 }, role: 'mount', material: 'steel', system: '셸' });
+  P({ id: 'channel', type: 'tube', params: { outerDia: shellOD, innerDia: shellID, length: chLen }, at: { tx: x0, ty: CY, tz: CZ, ry: 90 }, role: 'vessel', material: 'steel', system: '채널' });
+  P({ id: 'channel_cover', type: 'cylinder', params: { diameter: shellOD, length: capThk }, at: { tx: x0 - capThk, ty: CY, tz: CZ, ry: 90 }, role: 'mount', material: 'steel', system: '채널' });
+  P({ id: 'rear_cap', type: 'cylinder', params: { diameter: shellOD, length: capThk }, at: { tx: xEnd, ty: CY, tz: CZ, ry: 90 }, role: 'mount', material: 'steel', system: '채널' });
+  // 대표 튜브 7본(중심+육각) — 배플 사이 세그먼트 분할(갭 0.5, 접촉·간섭 0)
+  const bafThk = 6, gap = 0.5;
+  const bafXs = Array.from({ length: nBaf }, (_, k) => xShell + (Lt * (k + 1)) / (nBaf + 1) - bafThk / 2);
+  const cuts = [xShell, ...bafXs.flatMap((bx) => [bx - gap, bx + bafThk + gap]), xShell + Lt];
+  const tubePos = [[0, 0], ...Array.from({ length: 6 }, (_, k) => [pitch * Math.cos((k * Math.PI) / 3), pitch * Math.sin((k * Math.PI) / 3)])];
+  tubePos.forEach(([dy, dz], ti) => {
+    for (let s = 0; s + 1 < cuts.length; s += 2) {
+      const a = cuts[s], b = cuts[s + 1];
+      if (b - a < 1) continue;
+      P({ id: `tube${ti + 1}_s${s / 2 + 1}`, type: 'cylinder', params: { diameter: tubeOD, length: +(b - a).toFixed(3) }, at: { tx: a, ty: CY + dy, tz: CZ + dz, ry: 90 }, role: 'mount', material: 'steel', system: '튜브 다발', detail: 2 });
+    }
+  });
+  // 배플(원판 — 셸 보어 내포)
+  bafXs.forEach((bx, k) => {
+    P({ id: `baffle_${k + 1}`, type: 'cylinder', params: { diameter: shellID - 6, length: bafThk }, at: { tx: bx, ty: CY, tz: CZ, ry: 90 }, role: 'mount', material: 'steel', system: '배플', detail: 2 });
+  });
+  // 노즐 4(셸 in/out 상부 · 채널 in/out) — 외면 맞댐(원통 곡면 갭=도면 관례 명시)
+  const nozLen = 120, flThk = 16;
+  const noz = (id, x, top) => {
+    const z0 = top ? CZ + R : CZ - R - nozLen;
+    P({ id, type: 'tube', params: { outerDia: nozOD, innerDia: nozOD - 12, length: nozLen }, at: { tx: x, ty: CY, tz: z0 }, role: 'pipe', material: 'steel', system: '노즐', detail: 2 });
+    P({ id: id + '_fl', type: 'flange', params: { outerDia: nozOD + 95, boreDia: nozOD + 2, thickness: flThk, bcd: nozOD + 60, boltHoleD: 19, boltCount: 8 }, at: { tx: x, ty: CY, tz: top ? z0 + nozLen - flThk : z0 }, role: 'mount', material: 'steel', system: '노즐', detail: 2 });
+  };
+  noz('shell_in', xShell + Lt * 0.1, true);
+  noz('shell_out', xShell + Lt * 0.9, true);
+  noz('channel_in', x0 + chLen / 2, true);
+  noz('channel_out', x0 + chLen / 2, false);
+  return {
+    name: `셸튜브 열교환기 TEMA AEL ${shellID}×${Lt}`, domain: 'mech', kind: 'assembly', parts,
+    hxMeta: { temaType: 'AEL', shellID, shellOD, tubeLen: Lt, tubeOD, tubePitch: pitch, baffles: nBaf, tubesShown: 7 },
+    note: 'TEMA AEL 단순화(비법정) — 튜브=대표 7본(피치 표시, 전체 본수·전열 설계=계산서/입력 영역)·배플=원판(세그멘탈 컷 후속)·노즐=외면 맞댐(관통 용접 상세=입력). 형식 비례=관례 명시.',
+  };
+}
+
 function propellerAssembly(p = {}) {
   const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
   const D = num(p.diameter, 800), R = D / 2;
@@ -2636,6 +2701,16 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'coupler', labelKo: '커플러', unit: 'mm', default: 350, min: 50, max: 2000 },
         { name: 'rocker', labelKo: '로커', unit: 'mm', default: 250, min: 50, max: 1500 },
         { name: 'inputDeg', labelKo: '입력각 θ₂', unit: '°', default: 60, min: 0, max: 359 },
+      ],
+    },
+    {
+      id: 'heat_exchanger', labelKo: '셸튜브 열교환기 (TEMA AEL)', labelEn: 'Shell & tube heat exchanger (TEMA AEL)', build: heatExchangerAssembly,
+      params: [
+        { name: 'shellID', labelKo: '셸 내경', unit: 'mm', default: 600, min: 150, max: 2000 },
+        { name: 'tubeLen', labelKo: '튜브 길이', unit: 'mm', default: 3000, min: 500, max: 12000 },
+        { name: 'tubeOD', labelKo: '튜브 외경', unit: 'mm', default: 19, min: 10, max: 50 },
+        { name: 'baffles', labelKo: '배플 수', unit: '', default: 4, min: 0, max: 12 },
+        { name: 'nozzleOD', labelKo: '노즐 외경', unit: 'mm', default: 114.3, min: 34, max: 330 },
       ],
     },
     {
