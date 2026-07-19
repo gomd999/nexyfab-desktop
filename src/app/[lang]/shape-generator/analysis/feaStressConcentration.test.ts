@@ -70,14 +70,42 @@ describe('FEA stress concentration — plate with hole (Track M)', () => {
     expect(res.maxStress).toBeGreaterThan(nominal); // Kt > 1 — a raiser is seen
   });
 
-  // M1 STRESS ACCEPTANCE — re-enable when a boundary-conforming, hole-refined mesh
-  // lands. The structured voxel grid staircases the hole, so Kt comes out ~1.1–1.6
-  // instead of the analytical ~3.0; this is a meshing limitation, not a solver one
-  // (displacement is already within a few %).
-  it.skip('M1: plate-with-hole Kt ≈ 3.0', () => {
+  // M1 STRESS ACCEPTANCE — un-skipped 2026-07-19 (W1-A / R0-0).
+  //
+  // This is the classic Kirsch solution: an infinite plate with a circular hole
+  // under uniaxial tension has Kt = 3.0 exactly. For a FINITE plate of width W
+  // with hole diameter d = 2r, the Howland/Peterson net-section correction is
+  //   Kt = 3.00 - 3.13·(d/W) + 3.66·(d/W)² - 1.53·(d/W)³
+  // At W=120, r=10 → d/W = 1/6 → Kt ≈ 2.577. The band below (2.5–3.5) covers
+  // both the infinite-plate 3.0 and the finite-width 2.58, so it is a fair
+  // acceptance for either convention.
+  //
+  // It is expected to FAIL today, and the number it reports is the point: the
+  // structured voxel mesher staircases the hole and stress is recovered at
+  // element centroids, so the peak at the bore is smeared. The failure message
+  // prints the achieved Kt so the gap is quantified rather than asserted away.
+  // Reaching the band needs a boundary-conforming, hole-refined mesh
+  // (BRepMesh → TetGen). Do NOT re-skip this to make CI green — that is what
+  // hid the gap in the first place.
+  // ⚠ `it.fails` = 알려진 결함의 **자기소멸 부채 표식**(W1-A 260719b).
+  //  · 종전 `it.skip` 은 결함을 숨겼다 — 켜 보니 실측 Kt=1.027 로, 파일 상단이 적어둔
+  //    "1.1~1.6" 보다도 낮았다(복셀 메셔가 집중을 사실상 감지하지 못함).
+  //  · 그래서 목표 단언(2.5<Kt<3.5)은 **그대로 두고** 실패를 기대값으로 선언한다.
+  //    CI 는 녹색이되 이 파일을 여는 사람은 목표와 현실을 동시에 본다.
+  //  · 경계 정합 메시(BRepMesh→TetGen)로 고쳐지면 **이 테스트가 통과하며 붉어진다** →
+  //    표식을 지우도록 강제된다. 조용히 방치될 수 없는 구조.
+  //  · 로드맵: W7-A(fea 해석 심화). 그 전까지 이 저장소의 FEA 는 **변위는 신뢰,
+  //    곡률 라이저의 응력 피크는 신뢰 불가**로 취급한다.
+  it.fails('M1: plate-with-hole Kt ≈ 3.0 — 미달(복셀 메셔 한계, W7-A)', () => {
     const { res, nominal } = solve(120, 200, 8, 10, 100000, 12000);
     const Kt = res.maxStress / nominal;
-    expect(Kt).toBeGreaterThan(2.5);
-    expect(Kt).toBeLessThan(3.5);
+    const dW = 20 / 120;
+    const ktFinite = 3.0 - 3.13 * dW + 3.66 * dW ** 2 - 1.53 * dW ** 3;
+    const msg =
+      `achieved Kt=${Kt.toFixed(3)} (maxStress=${res.maxStress.toFixed(4)}, ` +
+      `nominal=${nominal.toFixed(4)}); Kirsch infinite-plate=3.000, ` +
+      `finite-width Howland=${ktFinite.toFixed(3)}`;
+    expect(Kt, msg).toBeGreaterThan(2.5);
+    expect(Kt, msg).toBeLessThan(3.5);
   });
 });

@@ -161,7 +161,10 @@ describe('F3 step-1 — selection survives an upstream parameter (dimension) cha
   });
 
   describe('B · end-to-end fillet re-applies to the resized solid (gated, real OCCT)', () => {
-    const ENABLED = process.env.RUN_OCCT_FEASIBILITY === '1';
+    // W1-A (R0-0): default ON. This suite is the OCCT kernel's real-behaviour gate;
+// leaving it opt-IN meant it never ran in CI. Measured cost of enabling: ~18s
+// wall across the whole __tests__ dir. Set RUN_OCCT_FEASIBILITY=0 to opt out.
+const ENABLED = process.env.RUN_OCCT_FEASIBILITY !== '0';
     const itMaybe = ENABLED ? it : it.skip;
 
     function box(w: number): THREE.BufferGeometry {

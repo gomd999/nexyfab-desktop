@@ -17,7 +17,10 @@ import { exportToStep, exportToStepAsync } from '../io/stepExporter';
 import { importStepFile } from '../io/stepImporter';
 import { computeSignature } from './geometrySignature';
 
-const ENABLED = process.env.RUN_OCCT_FEASIBILITY === '1';
+// W1-A (R0-0): default ON. This suite is the OCCT kernel's real-behaviour gate;
+// leaving it opt-IN meant it never ran in CI. Measured cost of enabling: ~18s
+// wall across the whole __tests__ dir. Set RUN_OCCT_FEASIBILITY=0 to opt out.
+const ENABLED = process.env.RUN_OCCT_FEASIBILITY !== '0';
 const describeMaybe = ENABLED ? describe : describe.skip;
 
 function makeBox(w: number, h: number, d: number): THREE.BufferGeometry {
