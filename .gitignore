@@ -123,3 +123,6 @@ cron-worker/.cron-secret.txt
 /_*.png
 /_*.mjs
 /_*.json
+
+# 도그푸딩 실행 산출물
+scripts/dogfood/out/
