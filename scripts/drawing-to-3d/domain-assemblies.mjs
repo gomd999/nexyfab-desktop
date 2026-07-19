@@ -2538,6 +2538,406 @@ function apartmentUnitAssembly(p = {}) {
   };
 }
 
+// ══ 조경(landscape) 확충 5종 (260719) ══════════════════════════════════════
+// 공통 규약: 부재는 맞댐(0겹침) 배치 — 지지는 ①얹힘(gap 0) ②측면 면접촉 체결(2축 ≥40mm)
+// ③선언 부착(role='mount') 로만 성립시킨다. 매립 겹침을 쓰지 않으므로 확정 간섭 0.
+
+/** 조경: 울타리/펜스 런 — 기둥(피치) + 가로대 N + 세로 판재(피켓).
+ *  가로대는 기둥 배면 맞댐(볼트·피스 측면 체결), 피켓은 가로대 외면 맞댐. 기초(콘크리트
+ *  근입)·철물(브래킷/피스)·도장은 미포함 — 부재 배치·물량 산출용 매싱. */
+function fenceRunAssembly(p = {}) {
+  const L = num(p.length, 12000);
+  const pitch = num(p.postPitch, 2000);
+  const H = num(p.height, 1200);              // 피켓 상단 높이(지상)
+  const ps = num(p.postSize, 100);            // 기둥 ps×ps
+  const nRail = Math.max(1, Math.min(4, Math.round(num(p.railCount, 2))));
+  const railD = 40, railH = 90;               // 가로대 40(두께)×90(춤)
+  const pw = num(p.picketWidth, 90), pt = 20;
+  const pgap = num(p.picketGap, 30);
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  // 기둥 — 피켓보다 100 높게(캡 없이 노출 마감). 마지막 기둥은 연장 내로 클램프.
+  const nPost = Math.max(2, Math.floor(L / pitch) + 1);
+  for (let i = 0; i < nPost; i++) {
+    const x = Math.min(i * pitch, L - ps);
+    P(`post_${i + 1}`, 'box', { width: ps, depth: ps, height: H + 100 }, { tx: x, ty: 0, tz: 0 }, 'timber', 'column');
+  }
+  // 가로대 — 기둥 배면(y=ps) 맞댐. 등분 높이(하단 최소 80 확보).
+  const railZ = [];
+  for (let k = 0; k < nRail; k++) {
+    const z = Math.max(80, Math.round((H * (k + 1)) / (nRail + 1) - railH / 2));
+    railZ.push(z);
+    P(`rail_${k + 1}`, 'box', { width: L, depth: railD, height: railH }, { tx: 0, ty: ps, tz: z }, 'timber', 'beam');
+  }
+  // 피켓 — 가로대 외면(y=ps+railD) 맞댐, 지면에서 80 띄움(부식 방지 관례).
+  const step = pw + pgap;
+  const nPick = Math.max(1, Math.floor((L - pw) / step) + 1);
+  for (let k = 0; k < nPick; k++) {
+    P(`picket_${k + 1}`, 'box', { width: pw, depth: pt, height: H - 80 }, { tx: k * step, ty: ps + railD, tz: 80 }, 'timber', 'board');
+  }
+  return {
+    name: `목재 울타리 ${L / 1000}m`, domain: 'landscape', kind: 'assembly', parts,
+    fenceMeta: { length: L, postPitch: pitch, posts: nPost, height: H, rails: nRail, railZ, pickets: nPick, picketPitch: step },
+    note: '울타리 매싱 — 기둥 기초(콘크리트 근입·베이스 플레이트)·체결 철물·도장/방부 사양은 미포함(입력 영역). 부재 배치와 재적 산출용이며 풍하중 검토는 별도 구조 체인.',
+  };
+}
+
+/** 조경: 화단 옹벽(플랜터 월) — 버림 콘크리트 + 저판 + 벽체(신축이음 분절) + 캡 + 배수관.
+ *  뒷채움 자갈·부직포·방수는 시공 명세(부재 아님)로 미포함 명시. */
+function planterWallAssembly(p = {}) {
+  const L = num(p.length, 6000);
+  const H = num(p.height, 900);               // 저판 상면~벽체 상단
+  const stemT = num(p.stemThk, 200);
+  const baseW = num(p.baseWidth, 700);
+  const baseT = num(p.baseThk, 250);
+  const toe = Math.min(num(p.toeLength, 200), Math.max(0, baseW - stemT));
+  const segLen = num(p.segLength, 3000);
+  const drainD = num(p.drainDia, 100);
+  const jGap = 20, leanT = 50, capT = 60, capOver = 40;
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  P('lean_concrete', 'box', { width: L + 100, depth: baseW + 100, height: leanT }, { tx: -50, ty: -50, tz: 0 }, 'concrete', 'slab');
+  P('footing', 'box', { width: L, depth: baseW, height: baseT }, { tx: 0, ty: 0, tz: leanT }, 'concrete', 'slab');
+  // 벽체·캡 — 신축이음(20mm) 으로 분절. 캡은 벽체 양면 40 내밈(코핑).
+  const nSeg = Math.max(1, Math.round(L / segLen));
+  const sw = (L - (nSeg - 1) * jGap) / nSeg;
+  const zStem = leanT + baseT;
+  for (let s = 0; s < nSeg; s++) {
+    const x = s * (sw + jGap);
+    P(`stem_${s + 1}`, 'box', { width: sw, depth: stemT, height: H }, { tx: x, ty: toe, tz: zStem }, 'concrete', 'wall');
+    P(`cap_${s + 1}`, 'box', { width: sw, depth: stemT + 2 * capOver, height: capT }, { tx: x, ty: toe - capOver, tz: zStem + H }, 'concrete', 'coping');
+  }
+  // 유공관(배수) — 벽체 배면 뒷굽 위. 축=x(ry 90), 저판 상면 안착.
+  const heelY = toe + stemT;
+  const heel = baseW - heelY;
+  const drainY = heel >= drainD + 40 ? heelY + heel / 2 : baseW - drainD / 2 - 10;
+  P('drain_pipe', 'cylinder', { diameter: drainD, length: L }, { tx: 0, ty: drainY, tz: zStem + drainD / 2, ry: 90 }, 'PVC', 'pipe');
+  return {
+    name: `화단 옹벽 ${L / 1000}m (H${H})`, domain: 'landscape', kind: 'assembly', parts,
+    planterWallMeta: { length: L, height: H, stemThk: stemT, baseWidth: baseW, baseThk: baseT, toeLength: toe, segments: nSeg, segWidth: +sw.toFixed(1), jointGap: jGap, drainDia: drainD },
+    note: '화단 옹벽 매싱 — 뒷채움 자갈·부직포·방수/방근 시트·배수공(weep hole)·식재토는 시공 명세라 부재 미포함 명시. 배근·전도/활동 안정은 civil 구조 체인(별도) 영역.',
+  };
+}
+
+/** 조경: 주차장 포장 — 포장 3층(보조기층/기층/표층) + 경계석(1m 단위) + 주차대수별 휠스토퍼.
+ *  구획선(도색)은 부재가 아니므로 미포함 — 주차 단위는 휠스토퍼 위치로만 표현. */
+function parkingPavementAssembly(p = {}) {
+  const stalls = Math.max(1, Math.min(24, Math.round(num(p.stalls, 6))));
+  const sw = num(p.stallWidth, 2500), sl = num(p.stallLength, 5000);
+  const aisle = num(p.aisleWidth, 6000);
+  const subT = num(p.subbaseThk, 150), basT = num(p.baseThk, 100), surT = num(p.surfaceThk, 50);
+  const curbH = num(p.curbHeight, 500), curbB = 150, curbU = 1000;
+  const W = stalls * sw, D = sl + aisle;
+  const topZ = subT + basT + surT;
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  P('subbase', 'box', { width: W, depth: D, height: subT }, { tx: 0, ty: 0, tz: 0 }, 'concrete', 'pavement');
+  P('base_course', 'box', { width: W, depth: D, height: basT }, { tx: 0, ty: 0, tz: subT }, 'concrete', 'pavement');
+  P('surface_course', 'box', { width: W, depth: D, height: surT }, { tx: 0, ty: 0, tz: subT + basT }, 'concrete', 'pavement');
+  // 경계석 — 배면(y=D)·좌우 2변. 진입면(y=0)은 개구라 미설치. 포장과 맞댐(0겹침).
+  const nBack = Math.max(1, Math.round(W / curbU));
+  for (let i = 0; i < nBack; i++) {
+    const w = i === nBack - 1 ? W - i * curbU : curbU;
+    P(`curb_back_${i + 1}`, 'box', { width: w, depth: curbB, height: curbH }, { tx: i * curbU, ty: D, tz: 0 }, 'concrete', 'curb');
+  }
+  const nSide = Math.max(1, Math.round(D / curbU));
+  for (const [si, x0] of [[0, -curbB], [1, W]]) {
+    for (let i = 0; i < nSide; i++) {
+      const d = i === nSide - 1 ? D - i * curbU : curbU;
+      P(`curb_side${si + 1}_${i + 1}`, 'box', { width: curbB, depth: d, height: curbH }, { tx: x0, ty: i * curbU, tz: 0 }, 'concrete', 'curb');
+    }
+  }
+  // 휠스토퍼 — 주차 1면당 1기, 배면에서 900 이격(차량 오버행 관례). 표층 위 안착.
+  for (let i = 0; i < stalls; i++) {
+    P(`wheelstop_${i + 1}`, 'box', { width: 600, depth: 150, height: 100 }, { tx: i * sw + (sw - 600) / 2, ty: D - 900, tz: topZ }, 'concrete', 'wheelstop');
+  }
+  return {
+    name: `주차장 포장 ${stalls}면`, domain: 'landscape', kind: 'assembly', parts,
+    parkingMeta: { stalls, stallWidth: sw, stallLength: sl, aisleWidth: aisle, width: W, depth: D, pavementThk: topZ, layers: { subbase: subT, base: basT, surface: surT }, curbHeight: curbH, curbUnits: nBack + 2 * nSide, pavedAreaM2: +((W * D) / 1e6).toFixed(2) },
+    note: '주차장 포장 매싱 — 구획선/장애인·경차 표시 도색, 우수받이·측구, 노상 다짐·동상방지층은 미포함(부재 아님/입력 영역). 층별 재료(쇄석·아스콘)는 밀도만 콘크리트로 근사하며 물량은 체적 기준 — 재료 단가는 BOQ 입력.',
+  };
+}
+
+/** 조경: 정자/쉼터 — 기단 + 기둥4 + 처마도리2 + 박공 지붕판2 + 용마루 + 평상 벤치2.
+ *  지붕판 기하는 검증된 박공 규약(하면 라인이 처마도리 상면·정점을 지나도록 tz 역산) 재사용. */
+function pavilionAssembly(p = {}) {
+  const W = num(p.width, 3000);               // x(용마루 방향)
+  const D = num(p.depth, 3000);               // y(경사 방향)
+  const H = num(p.postHeight, 2400);
+  const ps = num(p.postSize, 150);
+  const gh = num(p.girderHeight, 200);
+  const pitch = Math.max(10, Math.min(45, num(p.pitchDeg, 30)));
+  const padT = num(p.padThk, 150);
+  const roofT = num(p.roofThk, 100);
+  const th = (pitch * Math.PI) / 180;
+  const halfD = D / 2;
+  const eaveTop = padT + H + gh;              // 처마도리 상면 = 지붕 하면 기준선
+  const apex = eaveTop + halfD * Math.tan(th);
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  P('pad', 'box', { width: W + 1200, depth: D + 1200, height: padT }, { tx: -600, ty: -600, tz: 0 }, 'concrete', 'slab');
+  for (const [i, xy] of [[0, [0, 0]], [1, [W - ps, 0]], [2, [0, D - ps]], [3, [W - ps, D - ps]]]) {
+    P(`post_${i + 1}`, 'box', { width: ps, depth: ps, height: H }, { tx: xy[0], ty: xy[1], tz: padT }, 'timber', 'column');
+  }
+  // 처마도리 2 — 지붕 하면 기준선(y=0 / y=D) 안쪽으로만 배치(경사면 관통 회피)
+  const ovhX = 300;
+  for (const [i, y] of [[0, 0], [1, D - ps]]) {
+    P(`girder_${i + 1}`, 'box', { width: W + 2 * ovhX, depth: ps, height: gh }, { tx: -ovhX, ty: y, tz: padT + H }, 'timber', 'beam');
+  }
+  // 박공 지붕판 2 — rx 회전=코너 기준(placedAabb 규약), 하면 라인 폐형 역산
+  const ovh = 300;
+  const cy = (roofT / 2) * Math.sin(th);
+  const slopeLen = (halfD + ovh - roofT * Math.sin(th)) / Math.cos(th);
+  P('roof_front', 'box', { width: W + 2 * ovhX, depth: slopeLen, height: roofT },
+    { tx: -ovhX, ty: -ovh + 2 * cy, tz: eaveTop - (ovh - 2 * cy) * Math.tan(th), rx: +pitch }, 'timber', 'roof');
+  P('roof_back', 'box', { width: W + 2 * ovhX, depth: slopeLen, height: roofT },
+    { tx: -ovhX, ty: halfD, tz: apex, rx: -pitch }, 'timber', 'roof');
+  // 용마루 — 상면이 양 판 하면 경사 안쪽에 들어가도록 컷(판·용마루 0겹침 폐형)
+  P('ridge', 'box', { width: W + 2 * ovhX, depth: 100, height: 100 }, { tx: -ovhX, ty: halfD - 50, tz: apex - 50 * Math.tan(th) - 101 }, 'timber', 'beam');
+  // 평상 벤치 2 — 기둥 사이 기단 위(구조 무관, 자립 착석부)
+  const benchD = 400, benchH = 400;
+  if (W - 2 * ps > 600 && D - 2 * ps > 2 * benchD + 200) {
+    for (const [i, y] of [[0, ps + 100], [1, D - ps - 100 - benchD]]) {
+      P(`bench_${i + 1}`, 'box', { width: W - 2 * ps, depth: benchD, height: benchH }, { tx: ps, ty: y, tz: padT }, 'timber', 'furniture');
+    }
+  }
+  return {
+    name: `정자/쉼터 ${W / 1000}×${D / 1000}m`, domain: 'landscape', kind: 'assembly', parts,
+    pavilionMeta: { width: W, depth: D, postHeight: H, postSize: ps, pitchDeg: pitch, eaveTopMm: +eaveTop.toFixed(0), ridgeTopMm: +apex.toFixed(0), padThk: padT, roofAreaM2: +(((W + 2 * ovhX) * (halfD + ovh) * 2) / Math.cos(th) / 1e6).toFixed(2) },
+    note: '정자 매싱 — 지붕은 경사 판 2매 근사(기와·서까래·평고대·처마 상세 미포함), 기둥-도리 접합은 맞댐 표현이며 장부/철물 상세는 입력 영역. 기초는 기단 슬래브 근사(독립기초 상세 미포함).',
+  };
+}
+
+/** 조경: 식재 플랜 — 격자 배치 수목 N주. 수목=간이 프록시(줄기 원통 + 수관 구체 회전체).
+ *  실수종 형상·근분(root ball)·지주목은 미표현 — 위치/이격/수량 검토용. */
+function treePlantingAssembly(p = {}) {
+  const rows = Math.max(1, Math.min(8, Math.round(num(p.rows, 2))));
+  const cols = Math.max(1, Math.min(12, Math.round(num(p.cols, 4))));
+  const sx = num(p.spacingX, 4000), sy = num(p.spacingY, 4000);
+  const trunkD = num(p.trunkDia, 150);
+  const trunkH = num(p.trunkHeight, 1800);
+  const canD = Math.min(num(p.canopyDia, 3000), Math.min(sx, sy) - 200); // 수관 간섭 회피 클램프
+  const R = canD / 2;
+  // 수관 프로파일: 반원(회전체 → 구) — [r, z], 중심 z=0 기준이므로 AABB 하단 = tz - R
+  const prof = [];
+  for (let a = -90; a <= 90; a += 10) {
+    const rad = (a * Math.PI) / 180;
+    prof.push([+(R * Math.cos(rad)).toFixed(3), +(R * Math.sin(rad)).toFixed(3)]);
+  }
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const x = i * sx, y = j * sy, n = j * cols + i + 1;
+    P(`trunk_${n}`, 'cylinder', { diameter: trunkD, length: trunkH }, { tx: x, ty: y, tz: 0 }, 'timber', 'trunk');
+    // 수관=표시 프록시 구체. massProxy=true → 질량 집계에서 제외(구체 체적×목재 밀도는
+    // 실수목 중량과 무관 — 소비자가 "총 무게"로 오독하면 수십 t 오표기, 260719b).
+    parts.push({ id: `canopy_${n}`, type: 'revolve', params: { profile: prof }, at: { tx: x, ty: y, tz: trunkH + R }, material: 'timber', role: 'canopy', massProxy: true });
+  }
+  const trees = rows * cols;
+  return {
+    name: `식재 플랜 ${trees}주`, domain: 'landscape', kind: 'assembly', parts,
+    treePlantingMeta: { rows, cols, trees, spacingX: sx, spacingY: sy, trunkDia: trunkD, trunkHeight: trunkH, canopyDia: canD, plantedAreaM2: +(((cols - 1) * sx + canD) * ((rows - 1) * sy + canD) / 1e6).toFixed(2) },
+    note: '수목은 간이 프록시(줄기=원통·수관=구체 회전체) — 실수종 수형/지엽/근분은 미표현. 질량·재적(BOQ)은 프록시 체적이므로 수목 물량 산출에 쓰지 말 것(수량·위치·이격만 유효). 객토·지주목·관수는 별도 명세.',
+  };
+}
+
+// ══ 인테리어(interior) 확충 4종 (260719) ═══════════════════════════════════
+// 가구/경량 부재는 자중 지지가 아닌 체결 부착이 많다 — 선반·문짝·행거·보드는
+// role='mount'(다보/경첩/피스 부착) 로 선언해 "연결≠지지" 원칙을 우회하지 않고 통과시킨다.
+
+/** 인테리어: 붙박이장 — 걸레받이 + 측판/칸막이 + 상판 + 선반(다보 부착) + 행거바 + 문짝(경첩).
+ *  베이 1은 옷걸이 구간(행거바+상단 선반), 나머지 베이는 선반 구간. */
+function builtInClosetAssembly(p = {}) {
+  const W = num(p.width, 2400), D = num(p.depth, 600), H = num(p.height, 2400);
+  const t = num(p.panelThk, 18);
+  const plH = num(p.plinthHeight, 80);
+  const bays = Math.max(1, Math.min(4, Math.round(num(p.bays, 2))));
+  const nShelf = Math.max(0, Math.min(10, Math.round(num(p.shelfCount, 4))));
+  const rodD = 32, plRecess = 50;
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  const sideH = H - plH - t;                 // 측판 높이(걸레받이 위 ~ 상판 아래)
+  P('plinth', 'box', { width: W, depth: D - plRecess, height: plH }, { tx: 0, ty: plRecess, tz: 0 }, 'timber', 'plinth');
+  // 측판 2 + 칸막이(bays-1) — 걸레받이 위 안착
+  const panelX = [0, W - t];
+  for (const [i, x] of [[0, panelX[0]], [1, panelX[1]]]) {
+    P(`side_${i + 1}`, 'box', { width: t, depth: D, height: sideH }, { tx: x, ty: 0, tz: plH }, 'timber', 'panel');
+  }
+  const bayPitch = W / bays;
+  for (let k = 1; k < bays; k++) {
+    P(`divider_${k}`, 'box', { width: t, depth: D, height: sideH }, { tx: k * bayPitch - t / 2, ty: 0, tz: plH }, 'timber', 'panel');
+  }
+  P('top_panel', 'box', { width: W, depth: D, height: t }, { tx: 0, ty: 0, tz: plH + sideH }, 'timber', 'panel');
+  // 선반/행거 — 베이 내측 폭에 맞춤. 측판/칸막이에 다보 부착(role='mount').
+  for (let b = 0; b < bays; b++) {
+    const xL = b === 0 ? t : b * bayPitch + t / 2;
+    const xR = b === bays - 1 ? W - t : (b + 1) * bayPitch - t / 2;
+    const inW = xR - xL;
+    if (inW < 100) continue;
+    if (b === 0) {
+      const zS = plH + Math.round(sideH * 0.75);
+      P('shelf_hang_top', 'box', { width: inW, depth: D - 20, height: t }, { tx: xL, ty: 0, tz: zS }, 'timber', 'mount');
+      P('hanger_rod', 'cylinder', { diameter: rodD, length: inW }, { tx: xL, ty: D / 2, tz: zS - 100, ry: 90 }, 'steel', 'mount');
+    } else {
+      for (let k = 0; k < nShelf; k++) {
+        const zS = plH + Math.round((sideH * (k + 1)) / (nShelf + 1));
+        P(`shelf_b${b + 1}_${k + 1}`, 'box', { width: inW, depth: D - 20, height: t }, { tx: xL, ty: 0, tz: zS }, 'timber', 'mount');
+      }
+    }
+  }
+  // 문짝 — 전면(y<0) 경첩 부착. 베이당 1짝, 좌우 2mm 클리어런스.
+  for (let b = 0; b < bays; b++) {
+    P(`door_${b + 1}`, 'box', { width: bayPitch - 4, depth: t, height: H - plH - 20 },
+      { tx: b * bayPitch + 2, ty: -t, tz: plH + 10 }, 'timber', 'mount');
+  }
+  return {
+    name: `붙박이장 ${W / 1000}m (${bays}베이)`, domain: 'interior', kind: 'assembly', parts,
+    closetMeta: { width: W, depth: D, height: H, bays, panelThk: t, shelvesPerBay: nShelf, hangerBays: 1, doors: bays, plinthHeight: plH },
+    note: '붙박이장 매싱 — 선반/문짝/행거바는 부착 부재(role=mount: 다보·경첩·피스)로 선언. 하드웨어(경첩·레일·손잡이), 뒷판/등판, 마감(도장·필름), 벽체 고정 앵커는 미포함(입력 영역).',
+  };
+}
+
+/** 인테리어: 카운터/바 — 걸레받이 + 하부장 몸체 + 상판(내밈) + 전면 문짝 + 풋레일(브래킷+환봉). */
+function counterBarAssembly(p = {}) {
+  const L = num(p.length, 2400), D = num(p.depth, 700), H = num(p.height, 1050);
+  const topT = num(p.topThk, 40);
+  const ovr = num(p.overhang, 250);          // 상판 전면 내밈(발/무릎 공간)
+  const plH = 100, plRecess = 60, doorT = 18;
+  const railD = num(p.footRailDia, 50);
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  const carH = H - plH - topT;
+  P('plinth', 'box', { width: L, depth: D - plRecess, height: plH }, { tx: 0, ty: plRecess, tz: 0 }, 'timber', 'plinth');
+  P('carcass', 'box', { width: L, depth: D, height: carH }, { tx: 0, ty: 0, tz: plH }, 'timber', 'cabinet');
+  P('countertop', 'box', { width: L + 80, depth: D + ovr, height: topT }, { tx: -40, ty: -ovr, tz: plH + carH }, 'timber', 'countertop');
+  // 문짝 — 서비스측(y=D, 바텐더 쪽) 경첩 부착. 손님측(y<0)은 풋레일 구간이라 문짝 없음.
+  const nDoor = Math.max(1, Math.round(L / 600));
+  const dw = L / nDoor;
+  for (let i = 0; i < nDoor; i++) {
+    P(`door_${i + 1}`, 'box', { width: dw - 4, depth: doorT, height: carH - 10 }, { tx: i * dw + 2, ty: D, tz: plH + 5 }, 'timber', 'mount');
+  }
+  // 풋레일 — 브래킷(하부장 손님측 면 부착) 위에 환봉 안착
+  const brW = 60, brD = 180, brH = 40, brZ = num(p.footRailHeight, 200);
+  const nBr = Math.max(2, Math.round(L / 900) + 1);
+  for (let i = 0; i < nBr; i++) {
+    const x = Math.min((i * L) / (nBr - 1), L - brW);
+    P(`rail_bracket_${i + 1}`, 'box', { width: brW, depth: brD, height: brH }, { tx: x, ty: -brD, tz: brZ }, 'steel', 'mount');
+  }
+  P('foot_rail', 'cylinder', { diameter: railD, length: L }, { tx: 0, ty: -brD + railD / 2 + 10, tz: brZ + brH + railD / 2, ry: 90 }, 'steel', 'rail');
+  return {
+    name: `카운터/바 ${L / 1000}m`, domain: 'interior', kind: 'assembly', parts,
+    counterMeta: { length: L, depth: D, height: H, topThk: topT, overhang: ovr, doors: nDoor, brackets: nBr, footRailDia: railD, footRailHeight: brZ + brH + railD / 2, seatsApprox: Math.max(1, Math.floor(L / 600)) },
+    note: '카운터/바 매싱 — 상판은 단일 판재 근사(엣지·싱크/제빙기 타공·배관 미포함), 하부장은 단일 매스 근사(내부 선반/서랍·레일 미표현). 문짝·브래킷은 부착 부재(role=mount) 선언. 좌석 수는 600 모듈 개산.',
+  };
+}
+
+/** 인테리어: 경량 파티션 — 하부/상부 러너 + 스터드 + 양면 마감보드, 개구(문틀) 옵션.
+ *  개구가 있으면 러너를 분절하고 개구 양측에 보강 스터드 + 상부 헤더를 배치한다. */
+function partitionWallAssembly(p = {}) {
+  const L = num(p.length, 4000), H = num(p.height, 2700);
+  const sw = num(p.studWidth, 65);           // 스터드 폭(=벽 두께 심재)
+  const pitch = num(p.studPitch, 450);
+  const bt = num(p.boardThk, 12.5);
+  const trkH = 40, hdrH = 90;
+  const openW = Math.max(0, num(p.openingWidth, 900));
+  const openH = num(p.openingHeight, 2100);
+  const hasOpen = openW >= 600 && openW <= L - 2 * pitch && openH < H - hdrH - 100;
+  const openX = hasOpen ? Math.round((L - openW) / 2) : 0;
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  // 하부 러너 — 개구 구간은 생략(문턱 없음)
+  const runSegs = hasOpen ? [[0, openX], [openX + openW, L - openX - openW]] : [[0, L]];
+  for (const [si, seg] of runSegs.entries()) {
+    if (seg[1] < 50) continue;
+    P(`track_bot_${si + 1}`, 'box', { width: seg[1], depth: sw, height: trkH }, { tx: seg[0], ty: 0, tz: 0 }, 'steel', 'track');
+  }
+  // 스터드 — 등피치. 개구 구간은 제외하고 개구 양측 보강 스터드를 정위치에 배치.
+  const studZ = trkH, studH = H - 2 * trkH;
+  const xs = [];
+  const nStud = Math.max(2, Math.floor((L - sw) / pitch) + 1);
+  for (let i = 0; i < nStud; i++) {
+    const x = Math.min(i * pitch, L - sw);
+    if (hasOpen && x > openX - sw - 1 && x < openX + openW + 1) continue;
+    xs.push(x);
+  }
+  if (hasOpen) xs.push(openX - sw, openX + openW);
+  xs.sort((a, b) => a - b);
+  for (const [i, x] of xs.entries()) {
+    P(`stud_${i + 1}`, 'box', { width: sw, depth: sw, height: studH }, { tx: x, ty: 0, tz: studZ }, 'steel', 'stud');
+  }
+  P('track_top', 'box', { width: L, depth: sw, height: trkH }, { tx: 0, ty: 0, tz: H - trkH }, 'steel', 'track');
+  // 개구 헤더 — 보강 스터드 사이 맞댐(측면 면접촉 체결)
+  if (hasOpen) {
+    P('opening_header', 'box', { width: openW, depth: sw, height: hdrH }, { tx: openX, ty: openH, tz: 0 }, 'steel', 'header');
+  }
+  // 마감보드 — 양면. 개구가 있으면 좌/우(보강 스터드 덮음) + 개구 상부(헤더 덮음) 3분할.
+  const faces = [['a', -bt], ['b', sw]];
+  for (const [fi, fy] of faces) {
+    if (!hasOpen) {
+      P(`board_${fi}`, 'box', { width: L, depth: bt, height: H }, { tx: 0, ty: fy, tz: 0 }, 'glass', 'mount');
+      continue;
+    }
+    const xl = openX, xr = openX + openW;
+    P(`board_${fi}_l`, 'box', { width: xl, depth: bt, height: H }, { tx: 0, ty: fy, tz: 0 }, 'glass', 'mount');
+    P(`board_${fi}_r`, 'box', { width: L - xr, depth: bt, height: H }, { tx: xr, ty: fy, tz: 0 }, 'glass', 'mount');
+    P(`board_${fi}_h`, 'box', { width: openW, depth: bt, height: H - openH }, { tx: xl, ty: fy, tz: openH }, 'glass', 'mount');
+  }
+  return {
+    name: `경량 파티션 ${L / 1000}m${hasOpen ? ' (개구 1)' : ''}`, domain: 'interior', kind: 'assembly', parts,
+    partitionMeta: { length: L, height: H, studWidth: sw, studPitch: pitch, studs: xs.length, boardThk: bt, wallThk: sw + 2 * bt, opening: hasOpen ? { width: openW, height: openH, x: openX } : null, boardAreaM2: +((2 * L * H) / 1e6).toFixed(2) },
+    note: '경량 벽체 매싱 — 보드는 부착 부재(role=mount: 스터드 나사 고정) 선언이며 재료 밀도는 유리로 근사(석고보드 밀도 미보유 — 물량은 면적/체적 기준으로 쓸 것). 단열재·차음재·조인트 처리·문틀/문짝·전기 배선 박스는 미포함(입력 영역).',
+  };
+}
+
+/** 인테리어: 천장 마감 그리드 — 메인 티바 + 크로스 티바 + 텍스 + 조명 개구(등기구) + 달대.
+ *  원점 z=0 = 마감 천장면(그리드 레벨). 상부 슬래브/앵커는 미포함(달대 상단이 자유단). */
+function ceilingGridAssembly(p = {}) {
+  const W = num(p.width, 3600), D = num(p.depth, 3000);
+  const tw = num(p.tileWidth, 600), td = num(p.tileDepth, 600);
+  const teeW = 24, teeH = 38;
+  const tileT = num(p.tileThk, 15);
+  const lights = Math.max(0, Math.min(24, Math.round(num(p.lightCount, 4))));
+  const hangH = num(p.hangerHeight, 400), hangS = teeW; // 달대 각재=티바 폭 이내(셀 침범 방지)
+  const nX = Math.max(1, Math.round(W / tw)), nY = Math.max(1, Math.round(D / td));
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  // 메인 티바(x 방향) — y 격자선마다 1본
+  for (let j = 0; j <= nY; j++) {
+    P(`main_tee_${j + 1}`, 'box', { width: W, depth: teeW, height: teeH }, { tx: 0, ty: j * td - teeW / 2, tz: 0 }, 'steel', 'tee');
+  }
+  // 크로스 티바(y 방향) — 셀 행마다 x 격자선 위치에 메인 사이 맞댐
+  for (let j = 0; j < nY; j++) for (let i = 0; i <= nX; i++) {
+    P(`cross_tee_${j + 1}_${i + 1}`, 'box', { width: teeW, depth: td - teeW, height: teeH },
+      { tx: i * tw - teeW / 2, ty: j * td + teeW / 2, tz: 0 }, 'steel', 'tee');
+  }
+  // 텍스/등기구 — 셀 내측(티바와 맞댐). 앞선 lights 개 셀은 등기구로 치환.
+  let cell = 0;
+  for (let j = 0; j < nY; j++) for (let i = 0; i < nX; i++) {
+    const x = i * tw + teeW / 2, y = j * td + teeW / 2;
+    const cw = tw - teeW, cd = td - teeW;
+    cell++;
+    if (cell <= lights) P(`light_${cell}`, 'box', { width: cw, depth: cd, height: 80 }, { tx: x, ty: y, tz: 0 }, 'aluminum', 'light');
+    else P(`tile_${cell}`, 'box', { width: cw, depth: cd, height: tileT }, { tx: x, ty: y, tz: 0 }, 'timber', 'tile');
+  }
+  // 달대 — 메인 티바 상면, x 1200 피치(관례). 상단 앵커/슬래브는 미포함.
+  const hPitch = 1200;
+  let hang = 0;
+  for (let j = 0; j <= nY; j++) {
+    const nH = Math.max(2, Math.floor(W / hPitch) + 1);
+    for (let i = 0; i < nH; i++) {
+      const x = Math.min(i * hPitch, W - hangS);
+      hang++;
+      P(`hanger_${j + 1}_${i + 1}`, 'box', { width: hangS, depth: hangS, height: hangH },
+        { tx: x, ty: j * td - hangS / 2, tz: teeH }, 'steel', 'hanger');
+    }
+  }
+  return {
+    name: `천장 그리드 ${W / 1000}×${D / 1000}m`, domain: 'interior', kind: 'assembly', parts,
+    ceilingMeta: { width: W, depth: D, tileWidth: tw, tileDepth: td, cellsX: nX, cellsY: nY, cells: nX * nY, tiles: Math.max(0, nX * nY - lights), lights, mainTees: nY + 1, crossTees: nY * (nX + 1), hangers: hang, hangerHeight: hangH, ceilingAreaM2: +((W * D) / 1e6).toFixed(2) },
+    note: '천장 그리드 매싱 — 원점 z=0 이 마감 천장면이며 상부 슬래브·앵커·인서트는 미포함(달대 상단 자유단). 티바는 각형 프록시(실단면 T형 플랜지 미표현), 텍스 밀도는 목재로 근사(미네랄울 밀도 미보유 — 물량은 매수/면적 기준). 등기구는 개구 위치 매스이며 기구 사양·배선은 입력 영역.',
+  };
+}
+
 export const ASSEMBLY_TEMPLATES = {
   civil: [
     {
@@ -2666,6 +3066,68 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'boardWidth', labelKo: '데크보드 폭', unit: 'mm', default: 120, min: 90, max: 200 },
       ],
     },
+    {
+      id: 'fence_run', labelKo: '울타리/펜스 (기둥+가로대+판재)', labelEn: 'Fence run', build: fenceRunAssembly,
+      params: [
+        { name: 'length', labelKo: '울타리 연장', unit: 'mm', default: 12000, min: 2000, max: 100000 },
+        { name: 'postPitch', labelKo: '기둥 간격', unit: 'mm', default: 2000, min: 1000, max: 3000 },
+        { name: 'height', labelKo: '울타리 높이', unit: 'mm', default: 1200, min: 600, max: 2400 },
+        { name: 'postSize', labelKo: '기둥 단면', unit: 'mm', default: 100, min: 75, max: 200 },
+        { name: 'railCount', labelKo: '가로대 단수', unit: '', default: 2, min: 1, max: 4 },
+        { name: 'picketWidth', labelKo: '판재(피켓) 폭', unit: 'mm', default: 90, min: 60, max: 200 },
+        { name: 'picketGap', labelKo: '판재 사이 간격', unit: 'mm', default: 30, min: 0, max: 300 },
+      ],
+    },
+    {
+      id: 'planter_wall', labelKo: '화단 옹벽 (플랜터 월+배수)', labelEn: 'Planter retaining wall', build: planterWallAssembly,
+      params: [
+        { name: 'length', labelKo: '화단 연장', unit: 'mm', default: 6000, min: 1500, max: 60000 },
+        { name: 'height', labelKo: '벽체 높이(저판 위)', unit: 'mm', default: 900, min: 300, max: 2500 },
+        { name: 'stemThk', labelKo: '벽체 두께', unit: 'mm', default: 200, min: 150, max: 500 },
+        { name: 'baseWidth', labelKo: '저판 폭', unit: 'mm', default: 700, min: 400, max: 2500 },
+        { name: 'baseThk', labelKo: '저판 두께', unit: 'mm', default: 250, min: 150, max: 600 },
+        { name: 'toeLength', labelKo: '앞굽 길이', unit: 'mm', default: 200, min: 0, max: 1500 },
+        { name: 'segLength', labelKo: '신축이음 분절 길이', unit: 'mm', default: 3000, min: 1500, max: 10000 },
+        { name: 'drainDia', labelKo: '유공관 관경', unit: 'mm', default: 100, min: 50, max: 250 },
+      ],
+    },
+    {
+      id: 'parking_pavement', labelKo: '주차장 포장 (포장층+경계석)', labelEn: 'Parking lot pavement', build: parkingPavementAssembly,
+      params: [
+        { name: 'stalls', labelKo: '주차 대수', unit: '대', default: 6, min: 1, max: 24 },
+        { name: 'stallWidth', labelKo: '주차면 폭', unit: 'mm', default: 2500, min: 2300, max: 3500 },
+        { name: 'stallLength', labelKo: '주차면 길이', unit: 'mm', default: 5000, min: 4500, max: 7000 },
+        { name: 'aisleWidth', labelKo: '차로(통로) 폭', unit: 'mm', default: 6000, min: 3500, max: 12000 },
+        { name: 'subbaseThk', labelKo: '보조기층 두께', unit: 'mm', default: 150, min: 100, max: 400 },
+        { name: 'baseThk', labelKo: '기층 두께', unit: 'mm', default: 100, min: 50, max: 300 },
+        { name: 'surfaceThk', labelKo: '표층 두께', unit: 'mm', default: 50, min: 30, max: 150 },
+        { name: 'curbHeight', labelKo: '경계석 높이', unit: 'mm', default: 500, min: 300, max: 800 },
+      ],
+    },
+    {
+      id: 'pavilion', labelKo: '정자/쉼터 (기둥4+박공 지붕)', labelEn: 'Pavilion / shelter', build: pavilionAssembly,
+      params: [
+        { name: 'width', labelKo: '폭(용마루 방향)', unit: 'mm', default: 3000, min: 1800, max: 8000 },
+        { name: 'depth', labelKo: '깊이(경사 방향)', unit: 'mm', default: 3000, min: 1800, max: 8000 },
+        { name: 'postHeight', labelKo: '기둥 높이', unit: 'mm', default: 2400, min: 1800, max: 4000 },
+        { name: 'postSize', labelKo: '기둥 단면', unit: 'mm', default: 150, min: 100, max: 300 },
+        { name: 'girderHeight', labelKo: '처마도리 춤', unit: 'mm', default: 200, min: 120, max: 400 },
+        { name: 'pitchDeg', labelKo: '지붕 경사', unit: '°', default: 30, min: 10, max: 45 },
+        { name: 'padThk', labelKo: '기단 두께', unit: 'mm', default: 150, min: 100, max: 400 },
+      ],
+    },
+    {
+      id: 'tree_planting', labelKo: '식재 플랜 (수목 배치·수량)', labelEn: 'Tree planting plan', build: treePlantingAssembly,
+      params: [
+        { name: 'rows', labelKo: '열 수(깊이 방향)', unit: '', default: 2, min: 1, max: 8 },
+        { name: 'cols', labelKo: '주 수(폭 방향)', unit: '', default: 4, min: 1, max: 12 },
+        { name: 'spacingX', labelKo: '주간 거리(폭)', unit: 'mm', default: 4000, min: 1500, max: 12000 },
+        { name: 'spacingY', labelKo: '열간 거리(깊이)', unit: 'mm', default: 4000, min: 1500, max: 12000 },
+        { name: 'trunkDia', labelKo: '줄기 지름(근원경 근사)', unit: 'mm', default: 150, min: 50, max: 600 },
+        { name: 'trunkHeight', labelKo: '지하고(가지 아래 높이)', unit: 'mm', default: 1800, min: 500, max: 6000 },
+        { name: 'canopyDia', labelKo: '수관 폭', unit: 'mm', default: 3000, min: 800, max: 10000 },
+      ],
+    },
   ],
   bridge: [
     {
@@ -2788,6 +3250,54 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'seatsPerTable', labelKo: '테이블당 좌석', unit: '', default: 4, min: 1, max: 8 },
         { name: 'doorWidth', labelKo: '출입문 폭', unit: 'mm', default: 1000, min: 800, max: 2400 },
         { name: 'exitCount', labelKo: '출구 수(2=후면 비상구)', unit: '', default: 1, min: 1, max: 2 },
+      ],
+    },
+    {
+      id: 'built_in_closet', labelKo: '붙박이장 (측판·선반·문짝)', labelEn: 'Built-in closet', build: builtInClosetAssembly,
+      params: [
+        { name: 'width', labelKo: '전체 폭', unit: 'mm', default: 2400, min: 600, max: 6000 },
+        { name: 'depth', labelKo: '깊이', unit: 'mm', default: 600, min: 300, max: 900 },
+        { name: 'height', labelKo: '전체 높이', unit: 'mm', default: 2400, min: 1200, max: 3000 },
+        { name: 'bays', labelKo: '칸 수(베이)', unit: '', default: 2, min: 1, max: 4 },
+        { name: 'shelfCount', labelKo: '선반 단수(선반 칸)', unit: '', default: 4, min: 0, max: 10 },
+        { name: 'panelThk', labelKo: '판재 두께', unit: 'mm', default: 18, min: 15, max: 30 },
+        { name: 'plinthHeight', labelKo: '걸레받이 높이', unit: 'mm', default: 80, min: 50, max: 150 },
+      ],
+    },
+    {
+      id: 'counter_bar', labelKo: '카운터/바 (상판+하부장+발판)', labelEn: 'Counter / bar', build: counterBarAssembly,
+      params: [
+        { name: 'length', labelKo: '길이', unit: 'mm', default: 2400, min: 900, max: 8000 },
+        { name: 'depth', labelKo: '하부장 깊이', unit: 'mm', default: 700, min: 400, max: 1200 },
+        { name: 'height', labelKo: '상판 높이', unit: 'mm', default: 1050, min: 750, max: 1200 },
+        { name: 'topThk', labelKo: '상판 두께', unit: 'mm', default: 40, min: 20, max: 100 },
+        { name: 'overhang', labelKo: '상판 앞 내밈', unit: 'mm', default: 250, min: 0, max: 600 },
+        { name: 'footRailDia', labelKo: '발판(풋레일) 지름', unit: 'mm', default: 50, min: 30, max: 80 },
+        { name: 'footRailHeight', labelKo: '발판 브래킷 높이', unit: 'mm', default: 200, min: 120, max: 400 },
+      ],
+    },
+    {
+      id: 'partition_wall', labelKo: '경량 파티션 (스터드+마감판·개구)', labelEn: 'Stud partition wall', build: partitionWallAssembly,
+      params: [
+        { name: 'length', labelKo: '벽 길이', unit: 'mm', default: 4000, min: 1000, max: 30000 },
+        { name: 'height', labelKo: '벽 높이', unit: 'mm', default: 2700, min: 2000, max: 5000 },
+        { name: 'studWidth', labelKo: '스터드 폭(벽 심재 두께)', unit: 'mm', default: 65, min: 50, max: 150 },
+        { name: 'studPitch', labelKo: '스터드 간격', unit: 'mm', default: 450, min: 300, max: 610 },
+        { name: 'boardThk', labelKo: '마감보드 두께', unit: 'mm', default: 12.5, min: 9, max: 25 },
+        { name: 'openingWidth', labelKo: '개구 폭(0=없음)', unit: 'mm', default: 900, min: 0, max: 3000 },
+        { name: 'openingHeight', labelKo: '개구 높이', unit: 'mm', default: 2100, min: 1800, max: 2600 },
+      ],
+    },
+    {
+      id: 'ceiling_grid', labelKo: '천장 그리드 (티바+텍스·조명 개구)', labelEn: 'Suspended ceiling grid', build: ceilingGridAssembly,
+      params: [
+        { name: 'width', labelKo: '천장 폭', unit: 'mm', default: 3600, min: 1200, max: 20000 },
+        { name: 'depth', labelKo: '천장 깊이', unit: 'mm', default: 3000, min: 1200, max: 20000 },
+        { name: 'tileWidth', labelKo: '텍스 모듈 폭', unit: 'mm', default: 600, min: 300, max: 1200 },
+        { name: 'tileDepth', labelKo: '텍스 모듈 깊이', unit: 'mm', default: 600, min: 300, max: 1200 },
+        { name: 'tileThk', labelKo: '텍스 두께', unit: 'mm', default: 15, min: 9, max: 30 },
+        { name: 'lightCount', labelKo: '조명 개구 수', unit: '', default: 4, min: 0, max: 24 },
+        { name: 'hangerHeight', labelKo: '달대 길이(슬래브까지)', unit: 'mm', default: 400, min: 150, max: 2000 },
       ],
     },
   ],

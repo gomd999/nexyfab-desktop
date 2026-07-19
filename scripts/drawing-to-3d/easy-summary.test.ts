@@ -102,6 +102,19 @@ describe('일반인용 결과 요약(easySummary)', () => {
     expect(extra).toContain('용도 설명 미등록');
   });
 
+  it('①: 표시 프록시(massProxy)는 총 무게에서 제외한다 — 수관 구체가 수십 t 로 새지 않음', async () => {
+    const { buildAssemblyTemplate } = await import('./domain-assemblies.mjs');
+    const asm = buildAssemblyTemplate('landscape', 'tree_planting', {}) as { parts: { massProxy?: boolean }[] };
+    expect(asm.parts.some((p) => p.massProxy)).toBe(true);
+    const html = easySummary(asm, { title: '식재', domain: 'landscape' });
+    const m = /<b>([^<]+)<\/b><span>총 무게/.exec(html);
+    expect(m, '총 무게 KPI 를 찾지 못함').not.toBeNull();
+    // 줄기만 계상 → 수백 kg 규모. 프록시가 섞이면 t 단위가 되어 실패한다.
+    expect(m![1]).toMatch(/kg$/);
+    expect(Number(m![1].replace(/[^\d.]/g, ''))).toBeLessThan(1000);
+    expect(html).toContain('총 무게에서 뺐습니다');
+  }, 60_000);
+
   it('⑤: 비법정 면책 문구가 들어간다(안전·인허가 보증 표현 없음)', () => {
     const html = easySummary(OK_ASM);
     expect(html).toContain('유자격 기술사의 검토·날인이 필요합니다');

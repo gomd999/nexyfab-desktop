@@ -140,8 +140,19 @@ export function easySummary(assembly, opts = {}) {
     ? Math.max(...aabbs.map((p) => p.aabb.max[k])) - Math.min(...aabbs.map((p) => p.aabb.min[k]))
     : NaN));
   const structural = built.structural ?? null;
-  const massKg = Number.isFinite(structural?.totalMassKg) ? structural.totalMassKg
+  let massKg = Number.isFinite(structural?.totalMassKg) ? structural.totalMassKg
     : Number.isFinite(boq?.totalMassKg) ? boq.totalMassKg : null;
+  // 표시 프록시(massProxy) 질량 제외 — 수관 구체 등은 체적×밀도가 실중량과 무관하므로
+  // 총 무게에 넣으면 일반인이 수십 t 로 오독한다(260719b). 제외분은 문장으로 고지.
+  const proxyIds = new Set((assembly.parts ?? []).filter((p) => p.massProxy).map((p) => p.id));
+  let proxyNote = '';
+  if (proxyIds.size && massKg != null && Array.isArray(structural?.massBreakdown)) {
+    const proxyMass = structural.massBreakdown.filter((r) => proxyIds.has(r.id)).reduce((s, r) => s + (r.massKg || 0), 0);
+    if (proxyMass > 0) {
+      massKg = Math.max(0, +(massKg - proxyMass).toFixed(1));
+      proxyNote = ` 표시용 형상(${proxyIds.size}개 — 예: 수목 수관)은 실제 무게와 무관하므로 총 무게에서 뺐습니다.`;
+    }
+  }
   const massText = massKg == null ? '미산출' : massKg >= 1000 ? `${(massKg / 1000).toFixed(1)} t (${Math.round(massKg)} kg)` : `${massKg} kg`;
   const partCount = (assembly.parts ?? []).length;
 
@@ -152,7 +163,7 @@ export function easySummary(assembly, opts = {}) {
   <div><b>${esc(massText)}</b><span>총 무게${massKg == null ? ' — 재질 입력 필요' : ' (개산)'}</span></div>
   <div><b>${partCount}개</b><span>부재(부품) 개수</span></div>
 </div>
-<p class="sub">크기는 부재가 차지하는 전체 범위입니다. 무게는 형상×재질 밀도로 계산한 개산값이며, 볼트·마감·부속은 포함되지 않습니다.</p></section>`;
+<p class="sub">크기는 부재가 차지하는 전체 범위입니다. 무게는 형상×재질 밀도로 계산한 개산값이며, 볼트·마감·부속은 포함되지 않습니다.${esc(proxyNote)}</p></section>`;
 
   // ② 무엇을 사면 되나요
   const groups = bomGroups(assembly);
