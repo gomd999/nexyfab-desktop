@@ -4,7 +4,7 @@
  * (P&ID·Dossier 는 공정 의미·서술 필요 → AI 보조 후속. 여기선 형상기반 3종.)
  */
 import { structuralCheck } from './structural.mjs';
-import { colorOf, placedAabb } from './assembly.mjs';
+import { colorOf, placedAabb, placedCorners } from './assembly.mjs';
 import { partAabb } from './reconstruct.mjs';
 import { runCalculator, calculators } from '../engineering-core/registry.mjs';
 import { retainingWallSectionSvg } from './section-drawings.mjs';
@@ -27,6 +27,21 @@ function placed(part) {
   const b = placedAabb(part);
   return { x: b.min[0], y: b.min[1], z: b.min[2], dx: b.max[0] - b.min[0], dy: b.max[1] - b.min[1], dz: b.max[2] - b.min[2] };
 }
+
+// E1 실윤곽 투영(260719): 비90° 회전 부품은 AABB 사각이 실루엣을 부풀림 —
+// 배치 8코너의 2D 사영 볼록헐(monotone chain)로 그린다. HLR 전 단계의 중간 충실도(명시).
+function hull2d(pts) {
+  const P = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], hi = [];
+  for (const p of P) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (const p of P.reverse()) { while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], p) <= 0) hi.pop(); hi.push(p); }
+  return lo.slice(0, -1).concat(hi.slice(0, -1));
+}
+const rotNon90 = (part) => {
+  const { rx = 0, ry = 0, rz = 0 } = part.at ?? {};
+  return [rx, ry, rz].some((a) => Math.abs(a % 90) > 1e-9);
+};
 
 // 부품 주요치수 문자열 (도면 치수기입용)
 function dimStr(type, p) {
@@ -917,8 +932,21 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   const sx0 = ox + fw + gap;
   for (const o of parts) {
     const { p, box, st } = o;
+    // E1(260719): 비90° 회전 부품 = 배치 코너 사영 볼록헐(실루엣) — AABB 부풀림 제거
+    let hullF = null, hullP = null;
+    if (rotNon90(p)) {
+      try {
+        const cs = placedCorners(p);
+        hullF = hull2d(cs.map((c) => [c[0], c[2]]));
+        hullP = hull2d(cs.map((c) => [c[0], c[1]]));
+      } catch { /* 코너 실패 시 AABB 유지(보수) */ }
+    }
     // FRONT (x→right, z→up)
-    rects.push(`<rect x="${px(box.x, ox)}" y="${pz(box.z + box.dz)}" width="${(box.dx * S).toFixed(1)}" height="${(box.dz * S).toFixed(1)}" fill="${st.c}22" stroke="${st.c}" stroke-width="1"/>`);
+    if (hullF) {
+      rects.push(`<polygon points="${hullF.map(([x, z]) => `${px(x, ox)},${pz(z)}`).join(' ')}" fill="${st.c}22" stroke="${st.c}" stroke-width="1"/>`);
+    } else {
+      rects.push(`<rect x="${px(box.x, ox)}" y="${pz(box.z + box.dz)}" width="${(box.dx * S).toFixed(1)}" height="${(box.dz * S).toFixed(1)}" fill="${st.c}22" stroke="${st.c}" stroke-width="1"/>`);
+    }
     // 밸룬 = 그룹 번호(동일 부재 동일 번호) — 다부품 도면은 그룹 대표에만
     if (!MANY || groups[o.gi].rep === o) {
       const bx = +px(box.x + box.dx / 2, ox), byy = +pz(box.z + box.dz) - 9;
@@ -939,6 +967,8 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
       rects.push(`<line x1="${ccx}" y1="${(ccy - rr - 4).toFixed(1)}" x2="${ccx}" y2="${(ccy + rr + 4).toFixed(1)}" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="8 2 2 2"/>`);
       // FRONT 세로 중심선
       rects.push(`<line x1="${px(box.x + box.dx / 2, ox)}" y1="${(+pz(box.z + box.dz) - 4).toFixed(1)}" x2="${px(box.x + box.dx / 2, ox)}" y2="${(+pz(box.z) + 4).toFixed(1)}" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="8 2 2 2"/>`);
+    } else if (hullP) {
+      rects.push(`<polygon points="${hullP.map(([x, y]) => `${px(x, sx0)},${(oy + (y - by0) * S).toFixed(1)}`).join(' ')}" fill="${st.c}22" stroke="${st.c}" stroke-width=".9"/>`);
     } else {
       rects.push(`<rect x="${px(box.x, sx0)}" y="${(oy + (box.y - by0) * S).toFixed(1)}" width="${(box.dx * S).toFixed(1)}" height="${(box.dy * S).toFixed(1)}" fill="${st.c}22" stroke="${st.c}" stroke-width=".9"/>`);
       // 수평 회전체(ry): FRONT 가로 중심선(축선) — 중공(tube/pipe_reducer) 포함(260718t)

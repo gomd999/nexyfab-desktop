@@ -110,6 +110,18 @@ export function placedAabb(part) {
   return { min, max, rotated: true };
 }
 
+/** 배치 후 로컬 AABB 8코너의 월드 좌표(E1 실윤곽 투영용) — placedAabb 와 동일 변환 단일 수학. */
+export function placedCorners(part) {
+  const a = partAabb({ type: part.type, ...part.params });
+  const { tx = 0, ty = 0, tz = 0, rx = 0, ry = 0, rz = 0 } = part.at ?? {};
+  const out = [];
+  for (const cx of [a.min[0], a.max[0]]) for (const cy of [a.min[1], a.max[1]]) for (const cz of [a.min[2], a.max[2]]) {
+    const [px, py, pz] = (rx || ry || rz) ? rotatePoint([cx, cy, cz], rx, ry, rz) : [cx, cy, cz];
+    out.push([px + tx, py + ty, pz + tz]);
+  }
+  return out;
+}
+
 function overlapVolume(a, b) {
   const ox = Math.min(a.max[0], b.max[0]) - Math.max(a.min[0], b.min[0]);
   const oy = Math.min(a.max[1], b.max[1]) - Math.max(a.min[1], b.min[1]);
