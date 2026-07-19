@@ -10,7 +10,7 @@ import { runCalculator, calculators } from '../engineering-core/registry.mjs';
 import { retainingWallSectionSvg } from './section-drawings.mjs';
 import { rebarBBS } from './rebar-bbs.mjs';
 import { takeoff as takeoffRules } from '../engineering-core/quantity/takeoff.mjs';
-import { snapPipe, snapSquareTube } from './std-snap.mjs';
+import { snapPipe, snapSquareTube, snapTslot, snapBearingUnit } from './std-snap.mjs';
 const EPS_XS = 1e-6;
 
 // 부품 type → 기본 재질 라벨(도면 BOM). 색은 colorOf(assembly.mjs) 단일 소스 — service/role/추론/type 순.
@@ -1047,7 +1047,11 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
   const stdLabel = (p) => { // G7 발주 규격 문자열(std-snap — 규격 외=공란·경고는 감사 리포트)
     try {
       if (p.role === 'pipe' && p.type === 'cylinder') { const r = snapPipe(p.params.diameter); return r.ok ? r.label + ' ' + r.spec : ''; }
-      if (p.type === 'box' && (p.role === 'column' || p.role === 'beam') && p.params.width === p.params.depth) { const r = snapSquareTube(p.params.width); return r.ok ? `${r.label} ${r.spec}` : ''; }
+      if (p.type === 'pillow_block') { const r = snapBearingUnit(p.params.boreDia); return r.ok ? `${r.label} ${r.spec}` : ''; } // R2-⑪ 유닛 발주
+      if (p.type === 'box' && (p.role === 'column' || p.role === 'beam')) {
+        if (/alu/i.test(String(p.material ?? ''))) { const r = snapTslot(p.params.width, p.params.depth); return r.ok ? `${r.label} ${r.spec}` : ''; } // R2-⑪ 알루미늄 프레임
+        if (p.params.width === p.params.depth) { const r = snapSquareTube(p.params.width); return r.ok ? `${r.label} ${r.spec}` : ''; }
+      }
     } catch { /* 규격열 실패는 BOM 을 막지 않음 */ }
     // 시판 규격 외 = 도면 기준 제작 지정(260718t) — 모든 BOM 행이 발주 방법을 말한다
     return '가공품(도면 제작)';

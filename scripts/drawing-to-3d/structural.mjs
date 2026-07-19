@@ -33,11 +33,12 @@ export function partVolume(type, p) {
   const A = Math.PI / 4;
   switch (type) {
     case 'box': return p.width * p.depth * p.height;
-    case 'plate_with_holes': return p.width * p.depth * p.thickness;
+    // C1 인벤토리(260719) 폐형 정정 4건: 구멍·겹침 공제 — SCAD/STEP 실측과 일치
+    case 'plate_with_holes': return p.width * p.depth * p.thickness - (p.holes ?? []).reduce((s, h) => s + A * h.d ** 2 * p.thickness, 0);
     case 'stepped_plate': return p.stepWidth * p.depth * p.stepThickness + (p.width - p.stepWidth) * p.depth * p.thickness;
-    case 'base_plate': return p.width * p.depth * p.thickness;
-    case 'l_bracket': return (p.legA * p.width * p.thickness) + (p.thickness * p.width * p.legB);
-    case 'bent_sheet': return p.length * p.webWidth * p.thickness + 2 * (p.length * p.thickness * p.flangeHeight);
+    case 'base_plate': return p.width * p.depth * p.thickness - 4 * A * p.boltDia ** 2 * p.thickness; // 코너 볼트홀 4(scadBody 동일)
+    case 'l_bracket': return (p.legA * p.width * p.thickness) + (p.thickness * p.width * (p.legB - p.thickness)); // 코너 겹침 1회만
+    case 'bent_sheet': return p.length * p.webWidth * p.thickness + 2 * (p.length * p.thickness * (p.flangeHeight - p.thickness)); // 절곡 겹침 공제
     case 'flange': // 볼트홀 공제(260719 라운드트립 실측 — STEP 은 공제된 실형상, 미공제 시 ~5% 과대)
       return A * (p.outerDia ** 2 - p.boreDia ** 2) * p.thickness - (p.boltCount ?? 0) * A * (p.boltHoleD ?? 0) ** 2 * p.thickness;
     case 'tube': return A * (p.outerDia ** 2 - p.innerDia ** 2) * p.length;   // 중공

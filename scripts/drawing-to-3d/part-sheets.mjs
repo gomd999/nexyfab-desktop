@@ -7,7 +7,7 @@
  */
 import { partAabb } from './reconstruct.mjs';
 import { colorOf } from './assembly.mjs';
-import { snapPipe, snapSquareTube } from './std-snap.mjs';
+import { snapPipe, snapSquareTube, snapTslot, snapBearingUnit } from './std-snap.mjs';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = (v) => (Math.abs(v) >= 1000 ? (v / 1000).toFixed(v % 1000 ? 2 : 0) + 'm' : Math.round(v) + '');
@@ -30,7 +30,11 @@ export function partSheets(assembly, { title = '부품 제작도', dwgPrefix = '
   const stdOf = (p) => {
     try {
       if (p.role === 'pipe' && p.type === 'cylinder') { const r = snapPipe(p.params.diameter); return r.ok ? `${r.label} ${r.spec}` : ''; }
-      if (p.type === 'box' && (p.role === 'column' || p.role === 'beam') && p.params.width === p.params.depth) { const r = snapSquareTube(p.params.width); return r.ok ? `${r.label} ${r.spec}` : ''; }
+      if (p.type === 'pillow_block') { const r = snapBearingUnit(p.params.boreDia); return r.ok ? `${r.label} ${r.spec}` : ''; } // R2-⑪
+      if (p.type === 'box' && (p.role === 'column' || p.role === 'beam')) {
+        if (/alu/i.test(String(p.material ?? ''))) { const r = snapTslot(p.params.width, p.params.depth); return r.ok ? `${r.label} ${r.spec}` : ''; } // R2-⑪
+        if (p.params.width === p.params.depth) { const r = snapSquareTube(p.params.width); return r.ok ? `${r.label} ${r.spec}` : ''; }
+      }
     } catch { /* 없음 */ }
     return '';
   };

@@ -1,0 +1,285 @@
+{
+ "bandPct": 2.5,
+ "rows": [
+  {
+   "type": "box",
+   "analyticMm3": 480000,
+   "scadMm3": 480000,
+   "stepMm3": 480000,
+   "scadDevPct": 0,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "plate_with_holes",
+   "analyticMm3": 93738.1,
+   "scadMm3": 93741.7,
+   "stepMm3": 93750.2,
+   "scadDevPct": 0,
+   "stepDevPct": 0.01,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "stepped_plate",
+   "analyticMm3": 144000,
+   "scadMm3": 144000,
+   "stepMm3": 144000,
+   "scadDevPct": 0,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "base_plate",
+   "analyticMm3": 623714,
+   "scadMm3": 623760.5,
+   "stepMm3": 623771.9,
+   "scadDevPct": 0.01,
+   "stepDevPct": 0.01,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "l_bracket",
+   "analyticMm3": 52800,
+   "scadMm3": 52800,
+   "stepMm3": 52800,
+   "scadDevPct": 0,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "bent_sheet",
+   "analyticMm3": 170000,
+   "scadMm3": 170000,
+   "stepMm3": 170000,
+   "scadDevPct": 0,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "flange",
+   "analyticMm3": 238522.3,
+   "scadMm3": 238485.1,
+   "stepMm3": 238504.9,
+   "scadDevPct": 0.02,
+   "stepDevPct": 0.01,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "tube",
+   "analyticMm3": 208042.5,
+   "scadMm3": 207894,
+   "stepMm3": 207917.8,
+   "scadDevPct": 0.07,
+   "stepDevPct": 0.06,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "rect_tube",
+   "analyticMm3": 290816,
+   "scadMm3": 290816,
+   "stepMm3": 290816,
+   "scadDevPct": 0,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "h_section",
+   "analyticMm3": 2612000,
+   "scadMm3": 2612000,
+   "stepMm3": 2612000,
+   "scadDevPct": 0,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "c_channel",
+   "analyticMm3": 1800000,
+   "scadMm3": 1800000,
+   "stepMm3": 1800000,
+   "scadDevPct": 0,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "i_girder",
+   "analyticMm3": 256000000,
+   "scadMm3": 256000000,
+   "stepMm3": 256000000,
+   "scadDevPct": 0,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "cylinder",
+   "analyticMm3": 565486.7,
+   "scadMm3": 565083,
+   "stepMm3": 564875.3,
+   "scadDevPct": 0.07,
+   "stepDevPct": 0.11,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "gusset",
+   "analyticMm3": 40000,
+   "scadMm3": 40000,
+   "stepMm3": 40000,
+   "scadDevPct": 0,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "spur_gear",
+   "analyticMm3": 29200,
+   "scadMm3": 29210.1,
+   "stepMm3": 29220.4,
+   "scadDevPct": 0.03,
+   "stepDevPct": 0.07,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "hex_bolt",
+   "analyticMm3": 8890.3,
+   "scadMm3": 8879.4,
+   "stepMm3": 8853.9,
+   "scadDevPct": 0.12,
+   "stepDevPct": 0.41,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "hex_nut",
+   "analyticMm3": 1995.4,
+   "scadMm3": 1997.2,
+   "stepMm3": 2001.4,
+   "scadDevPct": 0.09,
+   "stepDevPct": 0.3,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "washer",
+   "analyticMm3": 799.1,
+   "scadMm3": 798.6,
+   "stepMm3": 797.7,
+   "scadDevPct": 0.06,
+   "stepDevPct": 0.18,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "angle",
+   "analyticMm3": 372000,
+   "scadMm3": 372000,
+   "stepMm3": 372000,
+   "scadDevPct": 0,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "tee_section",
+   "analyticMm3": 768000,
+   "scadMm3": 768000,
+   "stepMm3": 768000,
+   "scadDevPct": 0,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "sheet_profile",
+   "analyticMm3": 42000,
+   "scadMm3": 42000,
+   "stepMm3": 42000,
+   "scadDevPct": 0,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "wall_with_openings",
+   "analyticMm3": 796500000,
+   "scadMm3": 796500000,
+   "stepMm3": 796500000,
+   "scadDevPct": 0,
+   "stepDevPct": 0,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "pipe_reducer",
+   "analyticMm3": 135686.9,
+   "scadMm3": 136332.4,
+   "stepMm3": 136354.5,
+   "scadDevPct": 0.48,
+   "stepDevPct": 0.49,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "pipe_elbow",
+   "analyticMm3": 77217.7,
+   "scadMm3": 76942.4,
+   "stepMm3": 76320.7,
+   "scadDevPct": 0.36,
+   "stepDevPct": 1.16,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "pipe_tee",
+   "analyticMm3": 129772.6,
+   "scadMm3": 128390.5,
+   "stepMm3": 128415.3,
+   "scadDevPct": 1.07,
+   "stepDevPct": 1.05,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "rebar",
+   "analyticMm3": 286365.3,
+   "scadMm3": 283087,
+   "stepMm3": 285371.7,
+   "scadDevPct": 1.14,
+   "stepDevPct": 0.35,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "coil_spring",
+   "analyticMm3": 11414.1,
+   "scadMm3": 982.6,
+   "stepMm3": 105388,
+   "scadDevPct": 91.39,
+   "stepDevPct": 823.31,
+   "verdict": "BOTH_PROXY"
+  },
+  {
+   "type": "pillow_block",
+   "analyticMm3": 325819.4,
+   "scadMm3": 252220.2,
+   "stepMm3": 343000,
+   "scadDevPct": 22.59,
+   "stepDevPct": 5.27,
+   "verdict": "BOTH_PROXY"
+  },
+  {
+   "type": "cavity_block",
+   "analyticMm3": 538300.9,
+   "scadMm3": 538340.4,
+   "stepMm3": 538375.9,
+   "scadDevPct": 0.01,
+   "stepDevPct": 0.01,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "revolve",
+   "analyticMm3": 402123.9,
+   "scadMm3": 401836.8,
+   "stepMm3": 401956.7,
+   "scadDevPct": 0.07,
+   "stepDevPct": 0.04,
+   "verdict": "EXACT"
+  },
+  {
+   "type": "mesh",
+   "analyticMm3": 123456,
+   "scadMm3": 1000000,
+   "stepMm3": 1000000,
+   "scadDevPct": 710.01,
+   "stepDevPct": 710.01,
+   "verdict": "BOTH_PROXY"
+  }
+ ],
+ "note": "3열=analytic 폐형·SCAD 실렌더·STEP 재임포트 실측 — 편차>band = 프록시(실형상화 우선순위)"
+}

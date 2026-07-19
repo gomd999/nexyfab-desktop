@@ -44,6 +44,44 @@ export function snapSquareTube(side, { tolPct = 15 } = {}) {
   return { ok: true, side: best.side, thkOptions: best.thk, devPct: +devPct.toFixed(1), label: `SQ TUBE ${best.side}×${best.side}`, spec: 'KS D 3568' };
 }
 
+/** 단면 w×h → 알루미늄 T슬롯 프로파일(R2-⑪). 방향 무관(작은변·큰변 정렬 후 대조). */
+export function snapTslot(w, h = w, { tolPct = 10 } = {}) {
+  const a = Math.min(w, h), b = Math.max(w, h);
+  let best = null, bestDev = Infinity;
+  for (const r of STD.tslot.sizes) {
+    const dev = Math.abs(r.w - a) / r.w + Math.abs(r.h - b) / r.h;
+    if (dev < bestDev) { bestDev = dev; best = r; }
+  }
+  const devPct = bestDev / 2 * 100;
+  if (devPct > tolPct) return { ok: false, warning: `${a}×${b} 단면은 T슬롯 표준 시리즈 외(최근접 ${best.series})` };
+  return { ok: true, ...best, devPct: +devPct.toFixed(1), label: `AL T-SLOT ${best.series} (슬롯${best.slot})`, spec: 'AL6063-T5 압출' };
+}
+
+/** 축경(내경) → 깊은홈 볼베어링(R2-⑪). 내경=정확 일치만(베어링은 근사 스냅 금지 — 정직).
+ *  od 지정 시 외경 최근접 시리즈 선택, 미지정 시 경량(60xx) 우선. */
+export function snapBearing(bore, { od } = {}) {
+  const cands = STD.ballBearing.rows.filter((r) => r.d === bore);
+  if (!cands.length) {
+    let near = STD.ballBearing.rows[0];
+    for (const r of STD.ballBearing.rows) if (Math.abs(r.d - bore) < Math.abs(near.d - bore)) near = r;
+    return { ok: false, warning: `내경 ⌀${bore} 표준 베어링 없음(최근접 ${near.code} d${near.d} — 축경 변경 검토)` };
+  }
+  let hit = cands[0];
+  if (od != null) for (const r of cands) if (Math.abs(r.D - od) < Math.abs(hit.D - od)) hit = r;
+  return { ok: true, ...hit, label: `BEARING ${hit.code} (d${hit.d}×D${hit.D}×B${hit.B})`, spec: 'KS B 2023/ISO 15' };
+}
+
+/** 축경 → 필로우 블록 유닛 UCP(R2-⑪). 보어 정확 일치만. */
+export function snapBearingUnit(bore) {
+  const hit = STD.bearingUnit.rows.find((r) => r.bore === bore);
+  if (!hit) {
+    let near = STD.bearingUnit.rows[0];
+    for (const r of STD.bearingUnit.rows) if (Math.abs(r.bore - bore) < Math.abs(near.bore - bore)) near = r;
+    return { ok: false, warning: `축경 ⌀${bore} 표준 유닛 없음(최근접 ${near.code} bore${near.bore} — 축경 변경 검토)` };
+  }
+  return { ok: true, ...hit, label: `PILLOW BLOCK ${hit.code} (bore⌀${hit.bore}·H${hit.H}·J${hit.J}·M${hit.boltM})`, spec: 'JIS B 1559' };
+}
+
 /** 볼트 지름 → M 호칭. */
 export function snapBolt(d) {
   let best = STD.bolt.sizes[0];
@@ -67,9 +105,21 @@ export function auditAssemblyStd(asm) {
     }
   }
   for (const p of asm.parts ?? []) {
-    if (p.type === 'box' && (p.role === 'column' || p.role === 'beam') && p.params?.width === p.params?.depth) {
-      const s = snapSquareTube(p.params.width);
-      items.push({ id: p.id, kind: 'squareTube', input: p.params.width, snap: s });
+    if (p.type === 'box' && (p.role === 'column' || p.role === 'beam')) {
+      // 알루미늄 프레임=T슬롯 표, 강재 정사각=각형강관 표(R2-⑪ 재질 분기)
+      if (/alu/i.test(String(p.material ?? ''))) {
+        const s = snapTslot(p.params.width, p.params.depth);
+        items.push({ id: p.id, kind: 'tslot', input: [p.params.width, p.params.depth], snap: s });
+        if (!s.ok) warnings.push(`${p.id}: ${s.warning}`);
+      } else if (p.params?.width === p.params?.depth) {
+        const s = snapSquareTube(p.params.width);
+        items.push({ id: p.id, kind: 'squareTube', input: p.params.width, snap: s });
+        if (!s.ok) warnings.push(`${p.id}: ${s.warning}`);
+      }
+    }
+    if (p.type === 'pillow_block' && p.params?.boreDia != null) {
+      const s = snapBearingUnit(p.params.boreDia);
+      items.push({ id: p.id, kind: 'bearingUnit', input: p.params.boreDia, snap: s });
       if (!s.ok) warnings.push(`${p.id}: ${s.warning}`);
     }
     if (p.role === 'pipe' && p.type === 'cylinder') {
