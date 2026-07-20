@@ -104,18 +104,20 @@ extrude(depth 10→25) → fillet 재생성됨? true   ← 현재 false
 
 전부 독립 피처라 병렬 이득이 가장 크다.
 
-| 트랙 | 내용 | 전용 파일 |
+| 트랙 | 내용 | 상태 (260721 1차분) |
 |---|---|---|
-| **W5-A** | 로프트 실형상(현재 프리셋 3종 보간) + 스윕 가이드레일·트위스트 | `features/loft.ts`·`sweep*` |
-| **W5-B** | 나사산 실절삭(현재 **아무것도 안 깎음**) + 구멍 위저드 v2 정식화 | `features/thread.ts`·`holeStandards*` |
-| **W5-C** | 면 선택 드래프트(현재 전역 shear) + 쉘 실형상(현재 박스 재구성) | `features/draft.ts`·`occtEngine` 쉘부 |
-| **W5-D** | end condition(관통·면까지·박판) + **피처 단위 패턴**(현재 바디 복제) | `extrudeProfile.ts`·`features/pattern*` |
-| **W5-E** | 웰드먼트 정상화 — **툴바 4버튼이 sectionType 을 무시**하고 동일 호출 · 마이터 조인트 · 컷리스트 | `features/weldment.ts`·`welding/*` |
-| **W5-F** | 어셈블리 mate 실구현 — hinge/slider/**gear(기어비 무시 중)**/rack_pinion/slot/cam | `AssemblyMates.ts`·`lib/assembly/*` |
-| **W5-G** | 인터롭 임포트 실 B-rep — IGES/X_T/SAT 가 현재 **AABB 박스 근사** | `brep-bridge/{meshIgesImport,xtImport,satImport}.ts` |
-| **W5-H** | 익스포트 5종 신설(IGES/DWG/X_T/SAT/IFC) — 현재 **전무** | `io/exporters.ts`·`interop/*` |
+| **W5-A** | 로프트 실형상 + 스윕 트위스트 | **✅ 1차분** — 판정: 종전 로프트는 닫힌 솔리드 아님(부피 67% 오차)+t≤0.5 스위치 가짜 블렌드(면적 점프 28%). loftSolid(호길이 재샘플 대응, relErr ~1e-16)+스윕 twist(RMF). 잔여: 가이드레일 (`6a5b6471`) |
+| **W5-B** | 나사산 실절삭 | **✅** — 판정: UNION이라 제거량 0. ISO 68-1 커터 SUBTRACTION, Pappus 수렴비 0.990, LH 커터 뒤집힘 버그 수정 (`4aac93e1`) |
+| **W5-C** | 면 선택 드래프트 + 쉘 실형상 | **✅** — 판정: 전역 shear(36/36 정점 이동)·쉘 부피 +767%. 면 선택 실구현(1e-6)+정밀 캐비티(relErr ~1e-8), 지원 밖 명시 거부 (`05ea9cf1`+`5ad9e3fa`) |
+| **W5-D** | end condition + 피처 단위 패턴 | ❌ 미착수 (다음 배치) |
+| **W5-E** | 웰드먼트 정상화 | **✅** — 판정: 툴바 4버튼 무인자 호출=메시 바이트 동일. 마이터 엔진(45°±7e-15, 겹침 3712→0mm³)+컷리스트(손계산 일치)+툴바 sectionType 실전달 (`9ec1c9a3`+`a177ffe4`) |
+| **W5-F** | 어셈블리 공개 API + mate | **✅ 1차분(F14 해소)** — solveMates 파사드(partId·converged·parts, ref pre-flight로 가짜 수렴 차단)+dogfood 재현 7케이스. 정직 기록: gear ratio는 정적 솔버 미소비(설계)·newton plane 잔차 과소구속. 잔여: mate 실구현 심화 (`2e5934b8`) |
+| **W5-G** | 인터롭 임포트 실 B-rep | **✅ 1차분(SAT)** — 판정: 3포맷 전부 AABB(L-프리즘 +50% 과대). SAT 실 B-rep 재구성(비볼록 32,000mm³ 정확)+XT/IGES 기계판독 fidelity 플래그. 잔여: XT/IGES 실 재구성 (`bb73f75b`) |
+| **W5-H** | 익스포트 5종 신설 | ❌ 미착수 (다음 배치) |
 
-**웨이브 게이트**: 커버리지 매트릭스 **D등급 항목 절반 이상 A 승격**(재실사로 판정).
+**웨이브 게이트**: 커버리지 매트릭스 **D등급 항목 절반 이상 A 승격**(재실사로 판정) — 1차분
+6/8트랙 landed. 웨이브 종료 검증(260721): 전체 shape-generator **1,121+파일/14,276 통과** ·
+src/lib 5,304 · visual-golden 14/14 · ADR-017 스파이크 재실행 9/9(수치 동일→checkout 복원) · tsc 클린.
 
 ---
 
