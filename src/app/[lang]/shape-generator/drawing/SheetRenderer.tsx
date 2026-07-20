@@ -21,10 +21,14 @@
  * Phase 1 stubs (intentional — Phase 2 will wire OCCT HLR):
  *   - Viewport contents are EMPTY rectangles. No 3D-projected geometry is
  *     drawn inside; only the bounding rect + the label.
- *   - Dimension + GD&T IRs (`src/lib/drawing/dimension.ts`) are NOT
- *     consumed yet.
  *   - The title block is a fixed "TITLE BLOCK" placeholder with no
  *     metadata bind.
+ *
+ * W4-A: Dimension IRs are measured for real when the caller supplies the
+ * source model's named topology (`topologies` prop) — the label shows the
+ * measureDimension() value; explicit measurement failures keep the
+ * placeholder and carry the failure reason as a data attribute (값 날조
+ * 금지 — a number is only printed when it was actually measured).
  *
  * Pure consumer: this file does not mutate the Sheet IR.
  */
@@ -45,6 +49,9 @@ import { formatWeldSymbol } from '@/lib/drawing/weldSymbol';
 import { buildLinearDimension, type Pt } from '@/lib/drawing/dimensionAnchor';
 import { buildHoleTable } from '@/lib/drawing/holeTable';
 import type { BomItemRow, BomBalloon } from '@/lib/drawing/bomBalloon';
+import type { MeasureResult } from '@/lib/drawing/measure';
+import { measureSheetDimension, formatMeasuredValue } from '@/lib/drawing/associativeUpdate';
+import type { NamedTopology } from '@/lib/cad/topoNaming';
 
 // ─── constants ───────────────────────────────────────────────────────────
 
@@ -108,6 +115,15 @@ export interface SheetRendererProps {
    * are normally suppressed for a clean drawing.
    */
   showTangentEdges?: boolean;
+  /**
+   * W4-A — per-sourceId named topology (same keying as `geometry`, built via
+   * `buildExtrudeTopo`). When a dimension's target viewport is a standard view
+   * and its sourceId has a topology here, the dimension label shows the REAL
+   * `measureDimension()` value; an explicit measurement failure keeps the
+   * `<kind>` placeholder and exposes the reason via `data-dim-measured`.
+   * Omitted → all dimensions keep the placeholder (back-compat).
+   */
+  topologies?: ReadonlyMap<string, NamedTopology>;
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────
@@ -137,6 +153,7 @@ export function SheetRenderer({
   autoDimension = false,
   showHiddenLines = true,
   showTangentEdges = false,
+  topologies,
 }: SheetRendererProps): React.ReactElement {
   const dim = paperDimensions(sheet.paperSize, sheet.customPaper);
   const widthPx = dim.width * scale;
@@ -194,18 +211,22 @@ export function SheetRenderer({
         />
       ))}
 
-      {/* Dimensions (Phase 4.2). Each dimension is rendered as a placeholder
-          horizontal call across the target viewport's box — the real refs
-          measurement requires OCCT and lands in Phase 2. */}
+      {/* Dimensions (Phase 4.2 layout + W4-A real values). When the target
+          viewport is a standard view with a supplied topology, the label is
+          the measureDimension() value; otherwise the placeholder stays. */}
       {(sheet.dimensions ?? []).map((d, idx) => {
         const targetVp = sheet.viewports.find((vp) => vp.id === d.viewportId);
         if (!targetVp) return null;
+        // Single resolution rule shared with the drawing page's annotation
+        // list (associativeUpdate) — canvas and list can never disagree.
+        const measured = measureSheetDimension(d, sheet.viewports, topologies);
         return (
           <DimensionLayer
             key={d.id}
             dimension={d}
             box={resolveViewportBox(targetVp, dim.height)}
             index={idx}
+            measured={measured}
           />
         );
       })}
@@ -955,19 +976,25 @@ interface DimensionLayerProps {
   dimension: Dimension;
   box: ResolvedBox;
   index: number;
+  /**
+   * measureDimension() result for this dimension, or null when no topology
+   * was supplied / the target viewport is not a standard view.
+   */
+  measured?: MeasureResult | null;
 }
 
 /**
- * Renders a dimension as a placeholder horizontal call across the middle
- * of its target viewport. The actual measurement of refs against
- * projected geometry requires OCCT (Phase 2); for now we stack each
- * dimension vertically inside the viewport so multiple are visible at
- * once.
+ * Renders a dimension as a horizontal call stacked inside its target
+ * viewport. The label value resolution order (W4-A):
+ *   1. `valueOverride` — existing IR contract, always wins;
+ *   2. a successful measureDimension() value (real, never fabricated);
+ *   3. the `<kind>` placeholder (no topology, non-standard view, or an
+ *      EXPLICIT measurement failure — reason on `data-dim-measured`).
  *
  * Visual layout:
  *   ├─── nominal · tolerance ───┤
  */
-function DimensionLayer({ dimension, box, index }: DimensionLayerProps): React.ReactElement {
+function DimensionLayer({ dimension, box, index, measured }: DimensionLayerProps): React.ReactElement {
   const arrowSize = Math.max(1.5, box.h * 0.02);
   const fontSize = Math.max(2.5, box.h * 0.04);
   // Stack dimensions vertically inside the viewport box.
@@ -978,12 +1005,26 @@ function DimensionLayer({ dimension, box, index }: DimensionLayerProps): React.R
   const inset = Math.min(box.w * 0.1, 4);
   const x1 = box.x + inset;
   const x2 = box.x + box.w - inset;
+  const measuredOk = measured && measured.ok ? measured : null;
+  const measuredFail = measured && !measured.ok ? measured : null;
   const nominal =
     dimension.valueOverride !== undefined
       ? dimension.valueOverride.toString()
-      : `<${dimension.kind}>`;
+      : measuredOk
+        ? formatMeasuredValue(measuredOk.value)
+        : `<${dimension.kind}>`;
+  // Drafting-convention decorations, only around a REAL number and only when
+  // the author didn't set their own prefix/suffix.
+  const autoPrefix =
+    measuredOk && dimension.valueOverride === undefined && dimension.prefix === undefined
+      ? dimension.kind === 'diametric' ? '⌀' : dimension.kind === 'radial' ? 'R' : ''
+      : '';
+  const autoSuffix =
+    measuredOk && dimension.valueOverride === undefined && dimension.suffix === undefined
+      ? measuredOk.unit === 'deg' ? '°' : ''
+      : '';
   const tolerance = dimension.tolerance ? formatTolerance(dimension.tolerance) : '';
-  const label = `${dimension.prefix ?? ''}${nominal}${tolerance}${dimension.suffix ?? ''}`;
+  const label = `${dimension.prefix ?? autoPrefix}${nominal}${autoSuffix}${tolerance}${dimension.suffix ?? ''}`;
 
   return (
     <g
@@ -991,10 +1032,16 @@ function DimensionLayer({ dimension, box, index }: DimensionLayerProps): React.R
       data-dim-id={dimension.id}
       data-dim-kind={dimension.kind}
       data-dim-viewport={dimension.viewportId}
+      data-dim-measured={measuredOk ? 'ok' : measuredFail ? measuredFail.reason : 'none'}
+      data-dim-value={measuredOk ? String(measuredOk.value) : undefined}
+      data-dim-foreshortened={measuredOk?.foreshortened ? 'true' : undefined}
       stroke={DIM_STROKE}
       strokeWidth={0.3}
       fill={DIM_STROKE}
     >
+      {/* Explicit failure diagnosis as an SVG tooltip — visible on hover,
+          never printed as a number (값 날조 금지). */}
+      {measuredFail ? <title>{measuredFail.detail}</title> : null}
       {/* dim line */}
       <line x1={x1} y1={midY} x2={x2} y2={midY} />
       {/* left arrowhead (pointing right) */}
