@@ -106,21 +106,13 @@ function makeResolver(refs: Map<string, ResolvedGeometry>): GeometryResolver {
   };
 }
 
-// ─── replicate the SAME residual used by lagrangianSolver ───────────────
-// We re-import the solver itself only to drive `lagrangianSolve` /
-// `lagrangianSolveAnalytic` tests; the residual function isn't exported,
-// so we mirror its body here. KEEP IN SYNC with computeResidualForMate.
+// ─── residual: the ACTUAL shared residual function ───────────────────────
+// W5-F 2차: `computeMateResidual` is now exported from iterativeSolver and
+// `lagrangianSolver.computeResidualForMate` delegates to it — so the test
+// imports the real function instead of maintaining a hand-synced mirror
+// (the old mirror had already drifted from the engine copies).
 
-import {
-  distanceAxisToAxis,
-} from './mateSolver';
-import { dot, lengthOf, sub } from '@/lib/sketch/sketchPlane';
-
-function directionOf(g: ResolvedGeometry): Vec3 | null {
-  if (g.kind === 'axis') return g.world.direction;
-  if (g.kind === 'plane') return g.world.normal;
-  return null;
-}
+import { computeMateResidual } from './iterativeSolver';
 
 function residualMirror(
   mate: Mate,
@@ -128,96 +120,7 @@ function residualMirror(
   b: PartInstance,
   resolve: GeometryResolver,
 ): number {
-  const ag = resolve(mate.a, a);
-  const bg = resolve(mate.b, b);
-  if (!ag || !bg) return 0;
-  if (mate.kind === 'concentric' && ag.kind === 'axis' && bg.kind === 'axis') {
-    return distanceAxisToAxis(ag.world, bg.world);
-  }
-  if (mate.kind === 'coincident' && ag.kind === 'point' && bg.kind === 'point') {
-    return lengthOf(sub(ag.world, bg.world));
-  }
-  if (mate.kind === 'coincident' && ag.kind === 'plane' && bg.kind === 'plane') {
-    return Math.abs(dot(sub(bg.world.origin, ag.world.origin), ag.world.normal));
-  }
-  if (mate.kind === 'distance' && ag.kind === 'point' && bg.kind === 'point') {
-    return Math.abs(lengthOf(sub(bg.world, ag.world)) - mate.value);
-  }
-  if (mate.kind === 'distance' && ag.kind === 'plane' && bg.kind === 'plane') {
-    const signed = dot(sub(bg.world.origin, ag.world.origin), ag.world.normal);
-    return Math.abs(Math.abs(signed) - mate.value);
-  }
-  if (mate.kind === 'parallel') {
-    const aDir = directionOf(ag);
-    const bDir = directionOf(bg);
-    if (!aDir || !bDir) return 0;
-    return Math.hypot(
-      aDir.y * bDir.z - aDir.z * bDir.y,
-      aDir.z * bDir.x - aDir.x * bDir.z,
-      aDir.x * bDir.y - aDir.y * bDir.x,
-    );
-  }
-  if (mate.kind === 'perpendicular') {
-    const aDir = directionOf(ag);
-    const bDir = directionOf(bg);
-    if (!aDir || !bDir) return 0;
-    return Math.abs(aDir.x * bDir.x + aDir.y * bDir.y + aDir.z * bDir.z);
-  }
-  if (mate.kind === 'angle') {
-    const aDir = directionOf(ag);
-    const bDir = directionOf(bg);
-    if (!aDir || !bDir) return 0;
-    const cos = Math.max(-1, Math.min(1, aDir.x * bDir.x + aDir.y * bDir.y + aDir.z * bDir.z));
-    const angleRad = Math.acos(cos);
-    const targetRad = (mate.value * Math.PI) / 180;
-    return Math.abs(angleRad - targetRad);
-  }
-  // ── advanced mate residuals — mirror lagrangianSolver.computeResidualForMate ──
-  if (mate.kind === 'hinge' && ag.kind === 'axis' && bg.kind === 'axis') {
-    const alignErr = distanceAxisToAxis(ag.world, bg.world);
-    if (mate.limit === undefined) return alignErr;
-    const qa = a.orientation;
-    const qb = b.orientation;
-    const dotQ = qa.x * qb.x + qa.y * qb.y + qa.z * qb.z + qa.w * qb.w;
-    const cosHalf = Math.min(1, Math.abs(dotQ));
-    const approxAngleRad = 2 * Math.acos(cosHalf);
-    const approxAngleDeg = (approxAngleRad * 180) / Math.PI;
-    const minDeg = mate.limit.minAngleDeg;
-    const maxDeg = mate.limit.maxAngleDeg;
-    let limitPenaltyDeg = 0;
-    if (approxAngleDeg > maxDeg) limitPenaltyDeg = approxAngleDeg - maxDeg;
-    else if (-approxAngleDeg < minDeg) limitPenaltyDeg = minDeg - -approxAngleDeg;
-    return alignErr + (limitPenaltyDeg * Math.PI) / 180;
-  }
-  if (mate.kind === 'slot' && ag.kind === 'axis' && bg.kind === 'axis') {
-    const perpDist = distanceAxisToAxis(ag.world, bg.world);
-    const cos = ag.world.direction.x * bg.world.direction.x +
-      ag.world.direction.y * bg.world.direction.y +
-      ag.world.direction.z * bg.world.direction.z;
-    return perpDist + Math.abs(cos);
-  }
-  if (mate.kind === 'gear' && ag.kind === 'axis' && bg.kind === 'axis') {
-    const cx = ag.world.direction.y * bg.world.direction.z -
-      ag.world.direction.z * bg.world.direction.y;
-    const cy = ag.world.direction.z * bg.world.direction.x -
-      ag.world.direction.x * bg.world.direction.z;
-    const cz = ag.world.direction.x * bg.world.direction.y -
-      ag.world.direction.y * bg.world.direction.x;
-    const crossLen = Math.sqrt(cx * cx + cy * cy + cz * cz);
-    if (crossLen < 1e-9) return 0;
-    const dx = bg.world.origin.x - ag.world.origin.x;
-    const dy = bg.world.origin.y - ag.world.origin.y;
-    const dz = bg.world.origin.z - ag.world.origin.z;
-    return Math.abs(dx * cx + dy * cy + dz * cz) / crossLen;
-  }
-  if (mate.kind === 'rack_pinion' && ag.kind === 'axis' && bg.kind === 'axis') {
-    const perpDist = distanceAxisToAxis(ag.world, bg.world);
-    const cos = ag.world.direction.x * bg.world.direction.x +
-      ag.world.direction.y * bg.world.direction.y +
-      ag.world.direction.z * bg.world.direction.z;
-    return Math.abs(perpDist - mate.pinionRadius) + Math.abs(cos);
-  }
-  return 0;
+  return computeMateResidual(mate, a, b, resolve);
 }
 
 /**
@@ -403,7 +306,16 @@ describe('analyticJacobianRow — coincident point/point', () => {
 // ─── 4. coincident plane/plane: analytic vs numeric ──────────────────────
 
 describe('analyticJacobianRow — coincident plane/plane', () => {
-  it('analytic matches numeric within 1e-4', () => {
+  // W5-F 2차: the shared residual gained a normal-alignment term
+  // |n_a × n_b|·(1 + |o_b − o_a|). Consequences for the analytic row:
+  //   - normals ALIGNED → alignment term at its kink minimum (analytic
+  //     contribution 0 by the parallel-mate convention); the classic gap
+  //     row is exact on TRANSLATION columns. Rotation columns are NOT
+  //     comparable against numeric forward-diff, which picks up the
+  //     one-sided kink slope of the alignment term.
+  //   - normals MISALIGNED → no closed form for the length-scaled term:
+  //     empty row (numeric per-row fallback).
+  it('aligned normals: analytic matches numeric on translation cols within 1e-3', () => {
     const a = makePart('a', { position: vec3(0, 0, 0) });
     const b = makePart('b', { position: vec3(0, 0, 5) });
     const refs = new Map<string, ResolvedGeometry>([
@@ -419,15 +331,39 @@ describe('analyticJacobianRow — coincident plane/plane', () => {
     const bg = resolver(mate.b, b)!;
     const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
     const baseR = residualMirror(mate, a, b, resolver);
+    expect(row.cols.length).toBeGreaterThan(0);
 
-    for (let d = 0; d < 6; d++) {
+    for (let d = 0; d < 3; d++) {
       const num = numericPartialDoF(mate, true, a, b, resolver, d, baseR);
       expect(Math.abs(rowValueAt(row, d) - num)).toBeLessThan(1e-3);
     }
-    for (let d = 0; d < 6; d++) {
+    for (let d = 0; d < 3; d++) {
       const num = numericPartialDoF(mate, false, a, b, resolver, d, baseR);
       expect(Math.abs(rowValueAt(row, 6 + d) - num)).toBeLessThan(1e-3);
     }
+  });
+
+  it('misaligned normals: empty row (numeric fallback carries the alignment term)', () => {
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(0, 0, 5) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/pl', { kind: 'plane', world: { origin: vec3(0, 0, 0), normal: vec3(0, 0, 1) } }],
+      ['b/pl', { kind: 'plane', world: { origin: vec3(1, 1, 0), normal: vec3(0, 0.6, 0.8) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 'm', kind: 'coincident',
+      a: ref('a', 'pl', 'plane'), b: ref('b', 'pl', 'plane'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    expect(row.cols).toHaveLength(0);
+    // Residual hand-check: gap = |(oB−oA)·nA| with oB = (1,1,5), oA = 0,
+    // nA = ẑ → 5. sin = |ẑ × (0,.6,.8)| = 0.6. L = 1 + |(1,1,5)| =
+    // 1 + √27. Total = 5 + 0.6·(1 + √27) = 8.717691453623978.
+    const r = residualMirror(mate, a, b, resolver);
+    expect(r).toBeCloseTo(5 + 0.6 * (1 + Math.sqrt(27)), 9);
   });
 });
 
@@ -1394,8 +1330,12 @@ describe('supportsAnalyticJacobian — 4 advanced mate kinds all true', () => {
 // (Slot has no slotLength term in lagrangianSolver's residual — the full
 // residual is `perpDist + |cos|`, and that is the analytic sum we emit.)
 
-describe('analyticJacobianRow — slot with slotLength set: lagrangianSolver ignores length term', () => {
-  it('analytic row equals the no-length version (lagrangianSolver residual omits length penalty)', () => {
+describe('analyticJacobianRow — slot with slotLength: analytic only while the penalty is inactive', () => {
+  // W5-F 2차: the SHARED residual now includes the slotLength segment
+  // penalty in BOTH engines. The analytic row stays valid while the pin's
+  // parametric coord t sits inside [0, slotLength] (penalty ≡ 0 there);
+  // once the penalty activates the row defers to numeric (empty row).
+  it('penalty inactive (t inside segment): analytic row equals the no-length version', () => {
     const a = makePart('a', { position: vec3(0, 0, 0) });
     const b = makePart('b', { position: vec3(0, 4, 0) });
     const refs = new Map<string, ResolvedGeometry>([
@@ -1419,6 +1359,32 @@ describe('analyticJacobianRow — slot with slotLength set: lagrangianSolver ign
     for (let i = 0; i < r1.values.length; i++) {
       expect(r1.values[i]).toBeCloseTo(r2.values[i]!, 12);
     }
+  });
+
+  it('penalty ACTIVE (t = 25 > slotLength = 10): empty row → numeric fallback', () => {
+    const a = makePart('a', { position: vec3(0, 0, 0) });
+    const b = makePart('b', { position: vec3(25, 4, 0) }); // t = 25 along slot dir +X
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/ed', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(1, 0, 0) } }],
+      ['b/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 1, 0) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 's3', kind: 'slot', slotLength: 10,
+      a: ref('a', 'ed', 'edge'), b: ref('b', 'ax', 'axis'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    expect(row.cols).toHaveLength(0);
+    // And the SHARED residual actually carries the length penalty:
+    // perpDist = 4 (pin line y-offset ... actually pin dir +Y crosses the
+    // slot line? pin origin (25,4,0), dir +Y; slot line origin (0,0,0)
+    // dir +X → skew distance = 0 (lines intersect at (25,0,0) in
+    // projection? cross(+X,+Y)=+Z; (Δ=25,4,0)·Z=0) → perpDist = 0,
+    // perpErr = |cos(+X,+Y)| = 0, lengthPenalty = 25 − 10 = 15.
+    const r = residualMirror(mate, a, b, resolver);
+    expect(r).toBeCloseTo(15, 9);
   });
 });
 

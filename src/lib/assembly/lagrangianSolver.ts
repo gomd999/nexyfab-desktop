@@ -42,9 +42,8 @@ import type {
   MateResidual,
   ResolvedGeometry,
 } from './iterativeSolver';
-import { iterativeSolve } from './iterativeSolver';
+import { iterativeSolve, computeMateResidual } from './iterativeSolver';
 import {
-  distanceAxisToAxis,
   quatMul,
   quatNormalize,
   type AxisInWorld,
@@ -53,9 +52,6 @@ import {
 import {
   type Vec3,
   add,
-  dot,
-  sub,
-  lengthOf,
 } from '@/lib/sketch/sketchPlane';
 
 // ─── public API ──────────────────────────────────────────────────────────
@@ -102,110 +98,23 @@ const INITIAL_LAMBDA = 1e-3;
 const MAX_LAMBDA = 1e10;
 
 /** Per-mate residual is a SCALAR (matches iterativeSolver convention).
- *  This keeps the Jacobian assembly simple — one row per mate. */
+ *  This keeps the Jacobian assembly simple — one row per mate.
+ *
+ *  W5-F 2차: DELEGATES to `computeMateResidual` (iterativeSolver) — the
+ *  single source of truth. The previous local copy had drifted: it lacked
+ *  the slot slotLength penalty, the gear backlash penalty, the rack_pinion
+ *  travel penalty, the hinge Phase 2 signed-swing branch, and the
+ *  plane-coincident normal-alignment term (measured under-constraint:
+ *  expected x=20, Newton landed x≈15.91). Analytic Jacobian rows that do
+ *  not cover the extra residual terms fall back to numeric per-row
+ *  differences — see lagrangianJacobian's secondary-term guards. */
 function computeResidualForMate(
   mate: Mate,
   a: PartInstance,
   b: PartInstance,
   resolve: GeometryResolver,
 ): number {
-  const ag = resolve(mate.a, a);
-  const bg = resolve(mate.b, b);
-  if (!ag || !bg) return 0;
-  if (mate.kind === 'concentric' && ag.kind === 'axis' && bg.kind === 'axis') {
-    return distanceAxisToAxis(ag.world, bg.world);
-  }
-  if (mate.kind === 'coincident' && ag.kind === 'point' && bg.kind === 'point') {
-    return lengthOf(sub(ag.world, bg.world));
-  }
-  if (mate.kind === 'coincident' && ag.kind === 'plane' && bg.kind === 'plane') {
-    return Math.abs(dot(sub(bg.world.origin, ag.world.origin), ag.world.normal));
-  }
-  if (mate.kind === 'distance' && ag.kind === 'point' && bg.kind === 'point') {
-    return Math.abs(lengthOf(sub(bg.world, ag.world)) - mate.value);
-  }
-  if (mate.kind === 'distance' && ag.kind === 'plane' && bg.kind === 'plane') {
-    const signed = dot(sub(bg.world.origin, ag.world.origin), ag.world.normal);
-    return Math.abs(Math.abs(signed) - mate.value);
-  }
-  if (mate.kind === 'parallel') {
-    const aDir = directionOf(ag);
-    const bDir = directionOf(bg);
-    if (!aDir || !bDir) return 0;
-    return Math.hypot(
-      aDir.y * bDir.z - aDir.z * bDir.y,
-      aDir.z * bDir.x - aDir.x * bDir.z,
-      aDir.x * bDir.y - aDir.y * bDir.x,
-    );
-  }
-  if (mate.kind === 'perpendicular') {
-    const aDir = directionOf(ag);
-    const bDir = directionOf(bg);
-    if (!aDir || !bDir) return 0;
-    return Math.abs(aDir.x * bDir.x + aDir.y * bDir.y + aDir.z * bDir.z);
-  }
-  if (mate.kind === 'angle') {
-    const aDir = directionOf(ag);
-    const bDir = directionOf(bg);
-    if (!aDir || !bDir) return 0;
-    const cos = Math.max(-1, Math.min(1, aDir.x * bDir.x + aDir.y * bDir.y + aDir.z * bDir.z));
-    const angleRad = Math.acos(cos);
-    const targetRad = (mate.value * Math.PI) / 180;
-    return Math.abs(angleRad - targetRad);
-  }
-  if (mate.kind === 'hinge' && ag.kind === 'axis' && bg.kind === 'axis') {
-    const alignErr = distanceAxisToAxis(ag.world, bg.world);
-    if (mate.limit === undefined) return alignErr;
-    // Phase 1 unsigned proxy for the swing magnitude, identical to
-    // iterativeSolver so residuals are directly comparable.
-    const qa = a.orientation;
-    const qb = b.orientation;
-    const dotQ = qa.x * qb.x + qa.y * qb.y + qa.z * qb.z + qa.w * qb.w;
-    const cosHalf = Math.min(1, Math.abs(dotQ));
-    const approxAngleRad = 2 * Math.acos(cosHalf);
-    const approxAngleDeg = (approxAngleRad * 180) / Math.PI;
-    const minDeg = mate.limit.minAngleDeg;
-    const maxDeg = mate.limit.maxAngleDeg;
-    let limitPenaltyDeg = 0;
-    if (approxAngleDeg > maxDeg) limitPenaltyDeg = approxAngleDeg - maxDeg;
-    else if (-approxAngleDeg < minDeg) limitPenaltyDeg = minDeg - -approxAngleDeg;
-    return alignErr + (limitPenaltyDeg * Math.PI) / 180;
-  }
-  if (mate.kind === 'slot' && ag.kind === 'axis' && bg.kind === 'axis') {
-    const perpDist = distanceAxisToAxis(ag.world, bg.world);
-    const cos = ag.world.direction.x * bg.world.direction.x +
-      ag.world.direction.y * bg.world.direction.y +
-      ag.world.direction.z * bg.world.direction.z;
-    return perpDist + Math.abs(cos);
-  }
-  if (mate.kind === 'gear' && ag.kind === 'axis' && bg.kind === 'axis') {
-    const cx = ag.world.direction.y * bg.world.direction.z -
-      ag.world.direction.z * bg.world.direction.y;
-    const cy = ag.world.direction.z * bg.world.direction.x -
-      ag.world.direction.x * bg.world.direction.z;
-    const cz = ag.world.direction.x * bg.world.direction.y -
-      ag.world.direction.y * bg.world.direction.x;
-    const crossLen = Math.sqrt(cx * cx + cy * cy + cz * cz);
-    if (crossLen < 1e-9) return 0;
-    const dx = bg.world.origin.x - ag.world.origin.x;
-    const dy = bg.world.origin.y - ag.world.origin.y;
-    const dz = bg.world.origin.z - ag.world.origin.z;
-    return Math.abs(dx * cx + dy * cy + dz * cz) / crossLen;
-  }
-  if (mate.kind === 'rack_pinion' && ag.kind === 'axis' && bg.kind === 'axis') {
-    const perpDist = distanceAxisToAxis(ag.world, bg.world);
-    const cos = ag.world.direction.x * bg.world.direction.x +
-      ag.world.direction.y * bg.world.direction.y +
-      ag.world.direction.z * bg.world.direction.z;
-    return Math.abs(perpDist - mate.pinionRadius) + Math.abs(cos);
-  }
-  return 0;
-}
-
-function directionOf(g: ResolvedGeometry): Vec3 | null {
-  if (g.kind === 'axis') return g.world.direction;
-  if (g.kind === 'plane') return g.world.normal;
-  return null;
+  return computeMateResidual(mate, a, b, resolve);
 }
 
 function isAnalyticallySupported(mate: Mate): boolean {

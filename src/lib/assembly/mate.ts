@@ -269,8 +269,15 @@ export interface GearMate extends BaseMate {
   kind: 'gear';
   /** Ratio of (rotation_a / rotation_b). Must be > 0. e.g., 2 = 2:1. */
   ratio: number;
-  /** When true, the gears rotate in opposite senses (default: external
-   *  gear mesh = opposite; internal mesh = same direction). */
+  /**
+   * Rotation-sense flag, consumed by the W5-F 2차 drive layer
+   * (`kinematics.applyDrives`):
+   *   - undefined/false (default) = EXTERNAL mesh — the two gears rotate
+   *     in OPPOSITE senses: rot_b = −rot_a / ratio.
+   *   - true = INTERNAL mesh (ring gear) — SAME sense: rot_b = +rot_a / ratio.
+   * Senses are measured right-hand about each side's own resolved world
+   * axis direction.
+   */
   reverse?: boolean;
   /**
    * Optional backlash zone in radians (Phase 3.2.5.1). Default 0 = no

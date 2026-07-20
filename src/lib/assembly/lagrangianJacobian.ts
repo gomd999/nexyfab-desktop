@@ -94,6 +94,7 @@
 import type { PartInstance } from './assemblyState';
 import type { HingeMate, Mate, MateKind } from './mate';
 import type { ResolvedGeometry } from './iterativeSolver';
+import { quatTwistAboutAxis } from './iterativeSolver';
 import { type Vec3, sub, dot, lengthOf } from '@/lib/sketch/sketchPlane';
 
 // ─── public API ──────────────────────────────────────────────────────────
@@ -175,6 +176,20 @@ export function analyticJacobianRow(
       );
     }
     if (movedResolved.kind === 'plane' && fixedResolved.kind === 'plane') {
+      // W5-F 2차: the shared residual now adds a normal-alignment term
+      // |n_a × n_b| · (1 + |o_b − o_a|) on top of the perpendicular-gap
+      // term. No closed-form row is maintained for the length-scaled
+      // product, so whenever the normals are actually misaligned the row
+      // defers to numeric (empty row → per-row forward differences).
+      // When the normals are aligned (|cross| < 1e-9) the alignment term
+      // sits at its kink minimum — zero-gradient convention, same as the
+      // standalone parallel mate — and the classic gap row is exact.
+      const nA = movedResolved.world.normal;
+      const nB = fixedResolved.world.normal;
+      const cx = nA.y * nB.z - nA.z * nB.y;
+      const cy = nA.z * nB.x - nA.x * nB.z;
+      const cz = nA.x * nB.y - nA.y * nB.x;
+      if (Math.sqrt(cx * cx + cy * cy + cz * cz) >= 1e-9) return EMPTY_ROW();
       return coincidentPlaneRow(
         movedPart, fixedPart,
         movedResolved.world.origin, movedResolved.world.normal,
@@ -253,6 +268,13 @@ export function analyticJacobianRow(
   // to lagrangianSolveAnalytic.
   if (mate.kind === 'hinge') {
     if (movedResolved.kind === 'axis' && fixedResolved.kind === 'axis') {
+      // W5-F 2차: with a Phase 2 zeroAngleRef AND a limit, the shared
+      // residual uses the signed-swing branch whose derivative involves
+      // the body-frame reference vectors — not covered analytically.
+      // Defer the whole row to numeric.
+      if (mate.limit !== undefined && mate.zeroAngleRef !== undefined) {
+        return EMPTY_ROW();
+      }
       if (hingeLimitActive(mate, movedPart, fixedPart)) {
         // Defer to numeric (caller falls back when row is empty).
         return EMPTY_ROW();
@@ -273,6 +295,18 @@ export function analyticJacobianRow(
   // two analytic rows column by column.
   if (mate.kind === 'slot') {
     if (movedResolved.kind === 'axis' && fixedResolved.kind === 'axis') {
+      // W5-F 2차: the shared residual adds a slotLength segment penalty
+      // (pin parametric coord t outside [0, slotLength]). When that
+      // penalty is ACTIVE the analytic sum below is missing its gradient
+      // — defer the row to numeric.
+      if (mate.slotLength !== undefined) {
+        // movedResolved = slot edge (mate.a), fixedResolved = pin (mate.b).
+        const t =
+          (fixedResolved.world.origin.x - movedResolved.world.origin.x) * movedResolved.world.direction.x +
+          (fixedResolved.world.origin.y - movedResolved.world.origin.y) * movedResolved.world.direction.y +
+          (fixedResolved.world.origin.z - movedResolved.world.origin.z) * movedResolved.world.direction.z;
+        if (t < 0 || t > mate.slotLength) return EMPTY_ROW();
+      }
       const cRow = concentricRow(
         movedPart, fixedPart,
         movedResolved.world.origin, movedResolved.world.direction,
@@ -295,6 +329,19 @@ export function analyticJacobianRow(
   // so we emit a ZERO row in that case (no gradient to follow).
   if (mate.kind === 'gear') {
     if (movedResolved.kind === 'axis' && fixedResolved.kind === 'axis') {
+      // W5-F 2차: the shared residual adds a backlash dead-band penalty
+      // max(0, θ − backlash) on shaft-direction misalignment. Outside the
+      // dead-band the analytic coplanarity row is missing that gradient —
+      // defer to numeric. Inside the band the penalty is identically 0
+      // and the coplanarity row remains exact.
+      if (mate.backlash !== undefined) {
+        const dotDirs =
+          movedResolved.world.direction.x * fixedResolved.world.direction.x +
+          movedResolved.world.direction.y * fixedResolved.world.direction.y +
+          movedResolved.world.direction.z * fixedResolved.world.direction.z;
+        const cosClamped = Math.max(-1, Math.min(1, Math.abs(dotDirs)));
+        if (Math.acos(cosClamped) > mate.backlash) return EMPTY_ROW();
+      }
       return gearCoplanarityRow(
         movedPart, fixedPart,
         movedResolved.world.origin, movedResolved.world.direction,
@@ -311,6 +358,18 @@ export function analyticJacobianRow(
   // from the concentric skew formula); second term = perpendicular row.
   if (mate.kind === 'rack_pinion') {
     if (movedResolved.kind === 'axis' && fixedResolved.kind === 'axis') {
+      // W5-F 2차: the shared residual adds a travel penalty derived from
+      // the pinion part's TWIST about its axis. When active, its gradient
+      // (a quaternion derivative) is not in the analytic sum — defer.
+      if (mate.rackTravel !== undefined) {
+        const twistRad = quatTwistAboutAxis(
+          movedPart.orientation, movedResolved.world.direction,
+        );
+        const rackPos = twistRad * mate.pinionRadius;
+        if (rackPos < mate.rackTravel.min || rackPos > mate.rackTravel.max) {
+          return EMPTY_ROW();
+        }
+      }
       const dRow = axisDistanceTargetRow(
         movedPart, fixedPart,
         movedResolved.world.origin, movedResolved.world.direction,

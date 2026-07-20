@@ -137,7 +137,7 @@ export function iterativeSolve(
       const aFree = !a.fixed;
       const bFree = !b.fixed;
       if (!aFree && !bFree) {
-        const r = computeResidual(mate, a, b, resolve);
+        const r = computeMateResidual(mate, a, b, resolve);
         if (r > maxResidual) maxResidual = r;
         continue;
       }
@@ -170,7 +170,7 @@ export function iterativeSolve(
         movedPart.orientation = slerp(movedPart.orientation, newPlacement.orientation, relax);
         movedThisIter.add(movedPart.id);
       }
-      const r = computeResidual(mate, a, b, resolve);
+      const r = computeMateResidual(mate, a, b, resolve);
       if (r > maxResidual) maxResidual = r;
     }
 
@@ -189,7 +189,7 @@ export function iterativeSolve(
     }
     return {
       mateId: m.id,
-      residual: computeResidual(m, a, b, resolve),
+      residual: computeMateResidual(m, a, b, resolve),
       supported: isAnalyticallySupported(m),
     };
   });
@@ -489,7 +489,40 @@ function quatAxisAngle(axis: Vec3, angle: number): Quat {
   return { x: axis.x * s, y: axis.y * s, z: axis.z * s, w: Math.cos(h) };
 }
 
-function computeResidual(
+/**
+ * Signed TWIST component of quaternion `q` about unit axis `u`
+ * (swing-twist decomposition), in radians, wrapped to (−π, π].
+ *
+ * twist = 2·atan2(q_vec · u, q_w) after canonicalizing q to w ≥ 0.
+ * A rotation of angle θ about u returns exactly θ; any rotation about an
+ * axis perpendicular to u returns exactly 0. Exported for the kinematics
+ * drive layer and the rack_pinion travel measurement.
+ */
+export function quatTwistAboutAxis(q: Quat, u: Vec3): number {
+  const len = Math.sqrt(u.x * u.x + u.y * u.y + u.z * u.z);
+  if (len < 1e-12) return 0;
+  const ux = u.x / len;
+  const uy = u.y / len;
+  const uz = u.z / len;
+  // Canonicalize (q and −q are the same rotation; force w ≥ 0 so the
+  // twist lands in (−π, π]).
+  const s = q.w < 0 ? -1 : 1;
+  const proj = s * (q.x * ux + q.y * uy + q.z * uz);
+  const w = s * q.w;
+  return 2 * Math.atan2(proj, w);
+}
+
+/**
+ * Scalar residual for one mate at the given part placements.
+ *
+ * EXPORTED (W5-F 2차): this is the single source of truth for mate
+ * residual semantics. `lagrangianSolver.computeResidualForMate` delegates
+ * here so the Gauss-Seidel and Newton engines can never drift apart again
+ * (they had: the Newton copy lacked the slot slotLength penalty, the gear
+ * backlash penalty, the rack_pinion travel penalty, the hinge Phase 2
+ * signed-swing branch, and the plane-coincident normal-alignment term).
+ */
+export function computeMateResidual(
   mate: Mate,
   a: PartInstance,
   b: PartInstance,
@@ -504,8 +537,34 @@ function computeResidual(
   if (mate.kind === 'coincident' && ag.kind === 'point' && bg.kind === 'point') {
     return lengthOf(sub(ag.world, bg.world));
   }
+  // ── coincident plane/plane: gap along normal + NORMAL ALIGNMENT ──────
+  // W5-F 2차 fix: the scalar residual used to measure only the
+  // perpendicular offset of the fixed plane's origin along the MOVED
+  // plane's normal. That leaves the moved part's rotation DoF unpenalized:
+  // the Newton engine (which has no analytical placement step) could tilt
+  // the part and FALSELY converge on a point of the residual-zero manifold
+  // far from the intended coplanar pose (measured: expected x=20, Newton
+  // landed x≈15.91 — scripts/dogfood/06, test E note).
+  //
+  // Added term: |n_a × n_b| · (1 + |o_b − o_a|).
+  //   - |n_a × n_b| = sin(angle between the normals); 0 for parallel AND
+  //     anti-parallel normals (both are valid coplanar poses).
+  //   - The (1 + |o_b − o_a|) length scale is REQUIRED, not cosmetic:
+  //     the gap term's slope w.r.t. a rotation is bounded by |o_b − o_a|
+  //     (mm/rad), so an unscaled dimensionless sin term (slope ≤ 1/rad)
+  //     loses the tug-of-war at the gap's |·| kink and the Newton engine
+  //     stalls in a spurious local minimum of the summed scalar
+  //     (measured: unscaled → stall at residual 0.81, x≈15.96; scaled →
+  //     see the regression in scripts/dogfood/07). With the scale, the
+  //     alignment slope ≥ the largest possible gap win, so un-tilting is
+  //     always locally profitable. Units become mm-homogeneous as a bonus.
   if (mate.kind === 'coincident' && ag.kind === 'plane' && bg.kind === 'plane') {
-    return Math.abs(dot(sub(bg.world.origin, ag.world.origin), ag.world.normal));
+    const diff = sub(bg.world.origin, ag.world.origin);
+    const gap = Math.abs(dot(diff, ag.world.normal));
+    const nCross = crossVec(ag.world.normal, bg.world.normal);
+    const sinErr = Math.sqrt(nCross.x * nCross.x + nCross.y * nCross.y + nCross.z * nCross.z);
+    const lengthScale = 1 + lengthOf(diff);
+    return gap + sinErr * lengthScale;
   }
   if (mate.kind === 'distance' && ag.kind === 'point' && bg.kind === 'point') {
     return Math.abs(lengthOf(sub(bg.world, ag.world)) - mate.value);
@@ -750,17 +809,20 @@ function computeResidual(
     const mountErr = Math.abs(perpDist - mate.pinionRadius) + perpErr;
     let travelPenalty = 0;
     if (mate.rackTravel !== undefined) {
-      // Phase 1: pinion angle proxy from part `a`'s orientation
-      // quaternion (no body-frame zero-reference vector yet — same
-      // approximation as hinge limit). dot(q, identity) = q.w =
-      // cos(θ/2), so θ = 2·acos(|q.w|).
-      const q = a.orientation;
-      const cosHalf = Math.min(1, Math.abs(q.w));
-      const approxAngleRad = 2 * Math.acos(cosHalf);
-      // Rack position via: linear_displacement = angular_rad × radius.
-      // The task spec ties this to "2π · pinionRadius" (full revolution
-      // = circumference) — equivalent form via angle × radius.
-      const rackPos = approxAngleRad * mate.pinionRadius;
+      // W5-F 2차: the pinion's spin is measured as the TWIST component of
+      // part `a`'s orientation about the resolved pinion axis (swing-twist
+      // decomposition), replacing the old full-quaternion-angle proxy.
+      // The old proxy (2·acos(|q.w|)) penalized ANY rotation of the part
+      // — measured: tilting the part 60° about an axis unrelated to the
+      // pinion axis produced a spurious travel penalty of 5.47 mm. The
+      // twist measurement is exactly 0 for rotations perpendicular to the
+      // pinion axis and exactly the spin angle for rotations about it.
+      // Remaining approximation (documented): the zero reference is part
+      // `a`'s IDENTITY orientation (no body-frame zero vector yet), and
+      // the twist is wrapped to (−π, π] — travel beyond ±half a turn
+      // aliases. Signed rack position: pos = twist_rad × pinionRadius.
+      const twistRad = quatTwistAboutAxis(a.orientation, ag.world.direction);
+      const rackPos = twistRad * mate.pinionRadius;
       if (rackPos < mate.rackTravel.min) {
         travelPenalty = mate.rackTravel.min - rackPos;
       } else if (rackPos > mate.rackTravel.max) {
