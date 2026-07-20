@@ -67,6 +67,7 @@ import {
   residualNorm,
   jacobian,
   solveDense,
+  readPointFromState,
   type Residual,
 } from './constraintSolver';
 import type { SketchSegment, SketchConstraint, SketchDimension } from './types';
@@ -254,11 +255,24 @@ export function dragSolve(
   const tol = opts.tolerance ?? 1e-4;
   const [ix, iy] = k;
 
+  // W3-E: a coupled circle rim's slots store the centre-relative OFFSET, so
+  // the cursor pin must target the same parameter space. Express the target
+  // relative to the centre's position at gesture time — the pin then drives
+  // only the offset (radius/angle), and the centre does not drift toward the
+  // cursor, preserving the pre-W3-E rim-drag feel.
+  let tx = target.x;
+  let ty = target.y;
+  const rimCenterId = vars.rimOf.get(pointId);
+  if (rimCenterId !== undefined) {
+    const c = readPointFromState(rimCenterId, x, vars);
+    if (c) { tx -= c.x; ty -= c.y; }
+  }
+
   // Phase 1 — constraints + soft cursor pin.
   const pinnedRs: Residual[] = [
     ...residuals,
-    xv => w * (xv[ix] - target.x),
-    xv => w * (xv[iy] - target.y),
+    xv => w * (xv[ix] - tx),
+    xv => w * (xv[iy] - ty),
   ];
   runLm(pinnedRs, x, opts.maxPinnedIterations ?? 30, tol);
 
@@ -272,13 +286,13 @@ export function dragSolve(
   }
 
   // Write the solved coordinates back into fresh segment objects.
+  // readPointFromState (not raw slots): coupled rims store offsets.
   const next = segments.map(seg => ({
     ...seg,
     points: seg.points.map(p => {
-      if (!p.id) return p;
-      const slot = vars.idx.get(p.id);
-      if (!slot) return p; // fixed or unknown — untouched
-      return { ...p, x: x[slot[0]], y: x[slot[1]] };
+      if (!p.id || !vars.idx.has(p.id)) return p; // fixed or unknown — untouched
+      const abs = readPointFromState(p.id, x, vars)!;
+      return { ...p, x: abs.x, y: abs.y };
     }),
   }));
   return { segments: next, outcome: 'moved', residual: cErr };
@@ -400,6 +414,11 @@ export function dragSolveSegment(
   // fixed points stay anchored.
   for (const p of seg.points) {
     if (!p.id) continue;
+    // W3-E: a coupled circle rim's slots store the centre-relative offset,
+    // which is translation-invariant — the rim rides along automatically
+    // once its centre slot is translated. Overwriting the offset with an
+    // absolute position would corrupt the radius.
+    if (vars.rimOf.has(p.id)) continue;
     const k = vars.idx.get(p.id);
     if (!k) continue;
     x[k[0]] = p.x + delta.x;
@@ -429,15 +448,16 @@ export function dragSolveSegment(
 
   // Write back: solved coordinates for id'd points; anonymous points of the
   // dragged segment translate raw (the solver can't see them).
+  // readPointFromState (not raw slots): coupled rims store offsets.
   const next = segments.map(sg => ({
     ...sg,
     points: sg.points.map(p => {
       if (!p.id) {
         return sg === seg ? { ...p, x: p.x + delta.x, y: p.y + delta.y } : p;
       }
-      const slot = vars.idx.get(p.id);
-      if (!slot) return p; // fixed or unknown — untouched
-      return { ...p, x: x[slot[0]], y: x[slot[1]] };
+      if (!vars.idx.has(p.id)) return p; // fixed or unknown — untouched
+      const abs = readPointFromState(p.id, x, vars)!;
+      return { ...p, x: abs.x, y: abs.y };
     }),
   }));
   return { segments: next, outcome: 'moved', residual: cErr };

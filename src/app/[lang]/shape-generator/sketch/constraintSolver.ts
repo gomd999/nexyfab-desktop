@@ -257,6 +257,19 @@ export interface VarIndex {
   fixed: Map<string, SketchPoint>;
   /** Flat state vector length (= 2 * free points) */
   n: number;
+  /** W3-E rim coupling: rim pointId → its circle's centre pointId.
+   *
+   *  For a `type:'circle'` segment ([centre, rim]) the rim's two state slots
+   *  store the OFFSET (rim − centre), not the absolute position. `readPt`
+   *  resolves rim ids to centre + offset, so every residual still sees
+   *  absolute coordinates — but any residual that moves only the centre
+   *  (concentric, coincident-on-centre, …) now carries the rim along and the
+   *  radius |offset| is preserved EXACTLY. Under the old absolute packing the
+   *  rim columns of such residuals were identically zero, so dragging the
+   *  centre silently changed the radius (measured: concentric drove r=10 →
+   *  16.008). Serialisation is untouched: segments still store two absolute
+   *  points; only the in-solver parameterisation differs. */
+  rimOf: Map<string, string>;
 }
 
 export function buildVars(
@@ -285,6 +298,37 @@ export function buildVars(
     if (o) fixedPts.set(fid, { ...o });
   }
 
+  // W3-E: identify circle rims to couple to their centres. Only unambiguous
+  // W1-D `type:'circle'` entities are coupled — 'arc' is deliberately left
+  // absolute because the codebase carries two conflicting arc point layouts
+  // ([c, e] in circleIds vs [s, t, e] in drag-solve) and coupling the wrong
+  // slot would corrupt geometry. Degenerate sharing (a rim id reused as a
+  // centre, or as the rim of two different circles) falls back to absolute.
+  const centerIds = new Set<string>();
+  const rimSeen = new Set<string>();
+  const dupRims = new Set<string>();
+  for (const s of segments) {
+    if (s.type !== 'circle' || s.points.length < 2) continue;
+    const cId = s.points[0].id;
+    if (cId) centerIds.add(cId);
+    const rId = s.points[1].id;
+    if (rId) {
+      if (rimSeen.has(rId)) dupRims.add(rId);
+      rimSeen.add(rId);
+    }
+  }
+  const rimOf = new Map<string, string>();
+  for (const s of segments) {
+    if (s.type !== 'circle' || s.points.length < 2) continue;
+    const cId = s.points[0].id;
+    const rId = s.points[1].id;
+    if (!cId || !rId || cId === rId) continue;
+    if (fixedIds.has(rId)) continue;   // user-fixed rim stays absolutely pinned
+    if (centerIds.has(rId)) continue;  // rim doubling as a centre → absolute
+    if (dupRims.has(rId)) continue;    // rim shared by two circles → absolute
+    rimOf.set(rId, cId);
+  }
+
   const idx = new Map<string, [number, number]>();
   let cursor = 0;
   for (const id of ids) {
@@ -295,13 +339,21 @@ export function buildVars(
   const x = new Float64Array(cursor);
   for (const [id, [ix, iy]] of idx) {
     const p = orig.get(id)!;
-    x[ix] = p.x;
-    x[iy] = p.y;
+    const cId = rimOf.get(id);
+    if (cId) {
+      const c = orig.get(cId)!; // centre always in orig (it is a segment point)
+      x[ix] = p.x - c.x;
+      x[iy] = p.y - c.y;
+    } else {
+      x[ix] = p.x;
+      x[iy] = p.y;
+    }
   }
-  return { vars: { idx, fixed: fixedPts, n: cursor }, x };
+  return { vars: { idx, fixed: fixedPts, n: cursor, rimOf }, x };
 }
 
-/** Read x,y of a point from state x (or fixed table). Returns null if unknown. */
+/** Read x,y of a point from state x (or fixed table). Returns null if unknown.
+ *  Offset-aware: rim points of coupled circles resolve to centre + offset. */
 function readPt(
   id: string | undefined,
   x: Float64Array,
@@ -309,10 +361,34 @@ function readPt(
 ): { x: number; y: number } | null {
   if (!id) return null;
   const k = vars.idx.get(id);
-  if (k) return { x: x[k[0]], y: x[k[1]] };
+  if (k) {
+    const cId = vars.rimOf.get(id);
+    if (cId !== undefined) {
+      // Rim slots hold (rim − centre): resolve the centre to absolute first.
+      // buildVars guarantees the centre is either a variable or fixed, and
+      // never itself a rim (rims doubling as centres are not coupled).
+      const ck = vars.idx.get(cId);
+      if (ck) return { x: x[ck[0]] + x[k[0]], y: x[ck[1]] + x[k[1]] };
+      const cf = vars.fixed.get(cId);
+      if (cf) return { x: cf.x + x[k[0]], y: cf.y + x[k[1]] };
+    }
+    return { x: x[k[0]], y: x[k[1]] };
+  }
   const f = vars.fixed.get(id);
   if (f) return { x: f.x, y: f.y };
   return null;
+}
+
+/** Public offset-aware accessor for composing solvers (sketchDragSolve):
+ *  absolute position of a point id given the current state vector. Direct
+ *  `x[idx]` reads are WRONG for coupled circle rims — their slots store the
+ *  centre-relative offset, not the absolute position. */
+export function readPointFromState(
+  id: string | undefined,
+  x: Float64Array,
+  vars: VarIndex,
+): { x: number; y: number } | null {
+  return readPt(id, x, vars);
 }
 
 // ─── Residuals ──────────────────────────────────────────────────────────────
@@ -893,7 +969,12 @@ export function solveConstraints(
 
   const ptsOut = () => {
     const out = new Map<string, SketchPoint>();
-    for (const [id, [ix, iy]] of vars.idx) out.set(id, { id, x: x[ix], y: x[iy] });
+    // readPt (not raw slots): coupled circle rims store offsets internally
+    // and must be written back as absolute coordinates.
+    for (const id of vars.idx.keys()) {
+      const p = readPt(id, x, vars)!;
+      out.set(id, { id, x: p.x, y: p.y });
+    }
     for (const [id, p] of vars.fixed) out.set(id, { id, x: p.x, y: p.y });
     return out;
   };
@@ -948,6 +1029,15 @@ export function solveConstraints(
       if (lambda >= LAMBDA_MAX) break;
     }
   }
+
+  // W3-E fix: a sketch that STARTS satisfied never enters the loop, which used
+  // to leave `lastJ` null so `dof` fell back to n — the raw variable count —
+  // over-reporting DOF and hiding redundancy (measured: identical sketch and
+  // constraints reported dof 1 or 2 depending only on whether the dimension
+  // target already held). Rank-based DOF must not depend on the iteration
+  // count: evaluate the Jacobian at the final state whenever the loop did not
+  // produce one.
+  if (!lastJ && n > 0) lastJ = jacobian(rs, x, r);
 
   // Collect unsatisfied (residual > tolerance) and map back to constraint ids.
   const unsatisfiedSet = new Set<string>();

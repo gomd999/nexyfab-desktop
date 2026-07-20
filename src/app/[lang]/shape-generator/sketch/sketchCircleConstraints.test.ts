@@ -137,33 +137,39 @@ describe('W1-D — concentric actually moves the circles together', () => {
     expect(ga.cy).toBeCloseTo(12.5, 6);
   });
 
-  it('MEASURED LIMITATION: concentric alone is NOT radius-preserving', () => {
-    // Documented, not endorsed. Under the [centre, rim] parameterisation the
-    // radius is the DERIVED quantity |rim - centre|. The concentric residual
-    // touches centre coordinates only, so the rim columns of the Jacobian are
-    // identically zero and the rim handles never move — dragging the centre
-    // therefore changes the radius as a side effect.
+  it('FIXED (W3-E): concentric alone IS radius-preserving — rims ride with their centres', () => {
+    // Reversal of the W1-D "MEASURED LIMITATION" test. The limitation was:
+    // under the [centre, rim] ABSOLUTE parameterisation the concentric
+    // residual only touched centre coordinates, the rim columns of the
+    // Jacobian were identically zero, and moving the centre changed the
+    // radius as a side effect (measured then: r=10 → 16.008, r=4 → 27.060).
     //
-    // SolidWorks/Fusion keep the radius invariant here. Making this match
-    // requires a solver-model change (reparameterise the circle as (cx,cy,r),
-    // or couple the rim to the centre), which is out of W1-D's file scope —
-    // reported to the orchestrator instead of changed unilaterally.
+    // W3-E couples each circle rim to its centre inside the solver state
+    // (rim slots store rim − centre), so a centre move carries the rim along
+    // and |offset| — the radius — is untouched by any centre-only residual.
+    // This is the SolidWorks/Fusion behaviour. Serialisation is unchanged:
+    // the segment still stores two absolute points.
     const a = makeCircleSegment(P(0, 0), 10);
     const b = makeCircleSegment(P(40, 25), 4);
     const segs = [a, b];
     const res = solveConstraints(segs, [con('c1', 'concentric', [a.id!, b.id!])], []);
     const out = applySolved(segs, res.points);
 
-    // Rim handles are untouched...
-    expect(res.points.get(a.points[1].id!)).toMatchObject({ x: 10, y: 0 });
-    expect(res.points.get(b.points[1].id!)).toMatchObject({ x: 44, y: 25 });
-    // ...so the radii drift to |rim - newCentre|.
-    expect(geomOf(out, 0).r).toBeCloseTo(Math.hypot(10 - 20, 0 - 12.5), 6);
-    expect(geomOf(out, 1).r).toBeCloseTo(Math.hypot(44 - 20, 25 - 12.5), 6);
+    expect(res.satisfied).toBe(true);
+    // Radii preserved EXACTLY (measured post-fix: 10 and 4, not 16.008/27.060).
+    expect(geomOf(out, 0).r).toBeCloseTo(10, 6);
+    expect(geomOf(out, 1).r).toBeCloseTo(4, 6);
+    // The rim handles MOVED — they followed their centres to the midpoint
+    // (20, 12.5), keeping their original centre-relative offsets (10,0)/(4,0).
+    expect(res.points.get(a.points[1].id!)!.x).toBeCloseTo(30, 6);
+    expect(res.points.get(a.points[1].id!)!.y).toBeCloseTo(12.5, 6);
+    expect(res.points.get(b.points[1].id!)!.x).toBeCloseTo(24, 6);
+    expect(res.points.get(b.points[1].id!)!.y).toBeCloseTo(12.5, 6);
   });
 
-  it('WORKAROUND: pairing concentric with radial dimensions holds both radii', () => {
-    // The supported way to get SolidWorks-like behaviour today.
+  it('concentric + radial dimensions still co-solve (formerly the WORKAROUND path)', () => {
+    // Before W3-E this was the only way to keep radii through concentric;
+    // it must keep working now that concentric alone preserves them.
     const a = makeCircleSegment(P(0, 0), 10);
     const b = makeCircleSegment(P(40, 25), 4);
     const segs = [a, b];
@@ -322,27 +328,29 @@ describe('W1-D — DOF accounting for circles', () => {
     expect(solveResultOf(res).status).toBe('under-defined');
   });
 
-  it('MEASURED SOLVER-REPORTING BUG: DOF is not computed when the sketch starts already satisfied', () => {
-    // Pre-existing in constraintSolver.ts and NOT circle-specific: `dof` is
-    // derived from the rank of the LAST Jacobian, but the LM loop is
-    // `while (err > tolerance ...)`. A sketch that starts converged never
-    // iterates, so `lastJ` stays null and the code falls back to `dof = n`
-    // (the raw variable count) — over-reporting the DOF.
+  it('FIXED (W3-E): DOF is rank-based even when the sketch starts already satisfied', () => {
+    // Reversal of the W1-D "MEASURED SOLVER-REPORTING BUG" test. The bug:
+    // `dof` came from the rank of the LAST Jacobian, but the LM loop is
+    // `while (err > tolerance ...)` — a sketch that starts converged never
+    // iterates, `lastJ` stayed null, and the code fell back to `dof = n`
+    // (raw variable count), over-reporting DOF. W3-E evaluates the Jacobian
+    // at the final state whenever the loop produced none, so the answer no
+    // longer depends on whether the solver happened to iterate.
     //
     // Same sketch, same constraints; only the dimension TARGET differs.
+    // Analytic answer for both: vars = rim offset (2), radial residual rank
+    // 1 → dof 1 (the rim-angle gauge).
     const c = makeCircleSegment(P(0, 0), 10);
     const build = (target: number) => solveConstraints(
       [c],
       [con('f', 'fixed', [c.points[0].id!])],
       [dim('d1', 'radial', [c.id!], target)],
     );
-    // Target != current radius → solver iterates → correct rank-based DOF.
+    // Target != current radius → solver iterates → rank-based DOF.
     expect(solveResultOf(build(12)).dof).toBe(1);
-    // Target == current radius → zero iterations → DOF falls back to n = 2.
-    expect(solveResultOf(build(10)).dof).toBe(2);
-    // Reported to the orchestrator; the fix belongs in the solver's DOF
-    // reporting (seed the Jacobian before the loop), not in W1-D's scope,
-    // because it shifts DOF numbers for every geometry type at once.
+    // Target == current radius → zero iterations → SAME rank-based DOF
+    // (previously over-reported as n = 2).
+    expect(solveResultOf(build(10)).dof).toBe(1);
   });
 
   it('two circles + concentric removes exactly 2 DOF', () => {
