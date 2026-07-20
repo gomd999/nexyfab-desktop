@@ -2,6 +2,15 @@
 
 **Status:** accepted · **Date:** 2026-06-04 · **Builds on:** [ADR-014](014-occt-kernel-promotion.md) · **Roadmap:** commercial-parity F1
 
+> **⚠️ 정정 추록 (2026-07-21)** — REPLACEMENT_ROADMAP §6 "정직한 재평가"의 지적:
+> 이 ADR을 포함한 요약 문서들이 자산 위치/상태를 실상보다 낙관적으로 전달했다.
+> 실측으로 확정된 현행 사실: ① `src/lib/occt` K-브리지는 "later API route" 상태가
+> 아니라 **검증 게이트 default-ON**(R0-0, 실커널 테스트 상시 실행)이며 topo-naming은
+> ADR-017 스파이크로 오매칭 0%를 실측 통과했다. ② replicad 경로의 다수 피처는
+> 코드 존재≠실형상이었다(예: 나사산 무절삭·쉘 박스 재구성·드래프트 전역 shear —
+> Wave 5에서 실체화 중). 결정 자체(kernel of record=replicad, 정책 모듈 일원화)는
+> 유효하다. 본문은 작성 당시 기록 그대로 보존한다.
+
 ## Context
 
 The commercial-parity roadmap's F1 ("B-rep as the default truth source") flagged a

@@ -5,6 +5,15 @@
 **Target MVP (Onshape-equivalent core):** 2028-12
 **Owner:** gomd9 (solo + AI-assisted)
 
+> **⚠️ 정정 노트 (2026-07-21)** — REPLACEMENT_ROADMAP §6 "정직한 재평가"가 지적한
+> 대로, 이 문서의 Phase 완료 서술은 **코드 존재 기준**이었고 실행 검증 기준이
+> 아니었다(예: "피처 히스토리 구현"은 편집 연산만 진짜였고 재생성 전파는 Wave 2에서야
+> 실제로 landed). 현행 상태의 정본은 `docs/roadmap/REPLACEMENT_ROADMAP.md`(게이트
+> G1·G2 ✅) + `docs/roadmap/EXECUTION_PLAN_PARALLEL.md`(Wave 1~4 결과표)다. 이 문서는
+> 다년 계획의 맥락 기록으로 유지하되, Phase 3(어셈블리)는 **문서 일정과 무관하게
+> mate 솔버 엔진이 이미 존재**하나 공개 API 표면·mate 실구현이 Wave 5(W5-F)
+> 범위임을 명시한다. 아래 본문은 작성 당시 기록 그대로다.
+
 This is the multi-year build plan. Tracking tasks: #99-108. Decision-review gates: 2026-09-15, 2026-12-15, 2027-06-01.
 
 ---
