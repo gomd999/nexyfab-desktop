@@ -73,22 +73,31 @@ function nearestDistance(target: THREE.Vector3, verts: Float32Array): number {
 }
 
 /** Pseudo-random sample of `k` distinct indices from `[0, n)`.
- *  Deterministic for reproducible burn-in comparisons. */
+ *  Deterministic for reproducible burn-in comparisons.
+ *
+ *  Implementation note: a partial Fisher–Yates shuffle driven by a
+ *  `Math.imul`-based LCG — guaranteed k distinct indices in O(n).
+ *  The previous rejection-sampling loop used `state * 1103515245`, which
+ *  overflows 2^53 and collapses the generator into a short cycle of
+ *  already-taken indices — an INFINITE synchronous loop for small n
+ *  (e.g. n=24, k=10). That single loop hung the entire shape-generator
+ *  vitest suite (the 60s test timeout cannot interrupt blocked sync code). */
 function sampleIndices(n: number, k: number, seed = 12345): number[] {
   if (k >= n) return Array.from({ length: n }, (_, i) => i);
-  // LCG-based picker — fixed seed gives stable samples across runs.
-  let state = seed;
-  const taken = new Set<number>();
-  const out: number[] = [];
-  while (out.length < k && taken.size < n) {
-    state = (state * 1103515245 + 12345) & 0x7fffffff;
-    const idx = state % n;
-    if (!taken.has(idx)) {
-      taken.add(idx);
-      out.push(idx);
-    }
+  let state = seed >>> 0;
+  const next = (): number => {
+    // Math.imul keeps the multiply in exact 32-bit space (no float loss).
+    state = (Math.imul(state, 1103515245) + 12345) & 0x7fffffff;
+    return state;
+  };
+  const arr = Array.from({ length: n }, (_, i) => i);
+  for (let i = 0; i < k; i += 1) {
+    const j = i + (next() % (n - i));
+    const tmp = arr[i]!;
+    arr[i] = arr[j]!;
+    arr[j] = tmp;
   }
-  return out;
+  return arr.slice(0, k);
 }
 
 /** Flatten a geometry's positions into a Float32Array for fast scanning. */
