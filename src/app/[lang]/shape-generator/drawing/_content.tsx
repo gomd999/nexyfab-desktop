@@ -40,6 +40,7 @@ import {
   paperDimensions,
   type PaperSize,
   type Sheet,
+  type Viewport,
 } from '@/lib/drawing/sheet';
 import {
   applyTemplate,
@@ -65,6 +66,7 @@ import {
   auditSheetDimensions,
   formatMeasuredValue,
 } from '@/lib/drawing/associativeUpdate';
+import { projectPolyhedron } from '@/lib/drawing/projectView';
 import { exportSheetsToPdf, PdfExportError } from '@/lib/drawing/pdfExport';
 import { sheetToDxf } from '@/lib/drawing/dxfExport';
 import type { CuttingPlane } from './sectionView';
@@ -1225,6 +1227,20 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   // User-added section views (increment 2). Each carries its cutting plane in
   // model space; SheetRenderer cuts the solid and draws the cross-section.
   const [sectionViews, setSectionViews] = useState<Array<{ id: string; label: string; plane: CuttingPlane }>>([]);
+  /**
+   * W4-C — user-added detail / broken views. Positions are stored as
+   * FRACTIONS of the front view's projected bbox (not absolute mm), so a
+   * model change re-derives the absolute geometry automatically — same
+   * associative principle as the W4-B section-plane re-anchoring.
+   */
+  const [detailViews, setDetailViews] = useState<Array<{
+    id: string; label: string;
+    centerFrac: { x: number; y: number }; radiusFrac: number; scaleFactor: number;
+  }>>([]);
+  const [brokenViews, setBrokenViews] = useState<Array<{
+    id: string; label: string;
+    axis: 'x' | 'y'; startFrac: number; endFrac: number;
+  }>>([]);
   const [showHiddenLines, setShowHiddenLines] = useState(true);
   const [showTangentEdges, setShowTangentEdges] = useState(false);
   const [annotations, setAnnotations] = useState<{
@@ -1797,6 +1813,18 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     dict.pipelineSingleRaster,
   ]);
 
+  /**
+   * W4-C — the front view's projected bbox (view-plane mm) for the active
+   * part. Detail circles and break bands are stored as fractions of this
+   * box, so it is the single anchor that keeps them associative.
+   */
+  const frontViewBbox = useMemo(() => {
+    const geo = sampleGeometryForSourceId(sourceId);
+    const poly = 'feature' in geo ? featureToPolyhedron(geo.feature) : null;
+    if (!poly || poly.vertices.length === 0) return null;
+    return projectPolyhedron(poly, 'front').bbox;
+  }, [sourceId]);
+
   const sheet: Sheet = useMemo(() => {
     const built: Sheet = (() => {
     const base = standardThreeViewSheet({
@@ -1835,9 +1863,8 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     };
     return applyTemplate(withAnnotations, merged);
     })();
-    // Append user-added section viewports along the bottom of the sheet.
-    if (sectionViews.length === 0) return built;
-    const sectionVps = sectionViews.map((sv, i) => ({
+    // Append user-added section / detail / broken viewports along the bottom.
+    const extraVps: Viewport[] = sectionViews.map((sv, i) => ({
       id: sv.id,
       sourceId,
       projection: { kind: 'section' as const, cuttingPlaneId: sv.id },
@@ -1846,8 +1873,56 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
       scale,
       label: sv.label,
     }));
-    return { ...built, viewports: [...built.viewports, ...sectionVps] };
-  }, [sourceId, paperSize, scale, annotations, templateKey, titleblockOverrides, sectionViews]);
+    // W4-C — derive absolute detail circles / break bands from the stored
+    // fractions against the CURRENT front-view bbox (associative by
+    // construction; no bbox → the views cannot exist honestly, so skip).
+    if (frontViewBbox) {
+      const bw = frontViewBbox.maxX - frontViewBbox.minX;
+      const bh = frontViewBbox.maxY - frontViewBbox.minY;
+      for (const dv of detailViews) {
+        extraVps.push({
+          id: dv.id,
+          sourceId,
+          projection: {
+            kind: 'detail' as const,
+            sourceViewportId: 'front',
+            center: {
+              x: frontViewBbox.minX + dv.centerFrac.x * bw,
+              y: frontViewBbox.minY + dv.centerFrac.y * bh,
+            },
+            radius: dv.radiusFrac * Math.max(bw, bh),
+            scaleFactor: dv.scaleFactor,
+          },
+          centerOnSheet: { x: 45 + extraVps.length * 60, y: 35 },
+          widthOnSheet: 50,
+          scale,
+          label: dv.label,
+        });
+      }
+      for (const bv of brokenViews) {
+        const span = bv.axis === 'x' ? bw : bh;
+        const lo = bv.axis === 'x' ? frontViewBbox.minX : frontViewBbox.minY;
+        extraVps.push({
+          id: bv.id,
+          sourceId,
+          projection: {
+            kind: 'broken' as const,
+            view: 'front' as const,
+            axis: bv.axis,
+            breakStart: lo + bv.startFrac * span,
+            breakEnd: lo + bv.endFrac * span,
+            // gap omitted → renderer default (clamped below the band).
+          },
+          centerOnSheet: { x: 45 + extraVps.length * 60, y: 35 },
+          widthOnSheet: 50,
+          scale,
+          label: bv.label,
+        });
+      }
+    }
+    if (extraVps.length === 0) return built;
+    return { ...built, viewports: [...built.viewports, ...extraVps] };
+  }, [sourceId, paperSize, scale, annotations, templateKey, titleblockOverrides, sectionViews, detailViews, brokenViews, frontViewBbox]);
 
   // Cutting planes for the section viewports, keyed by viewport id.
   const cuttingPlanes = useMemo(
@@ -2071,6 +2146,38 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   }, [sheetGeometry, sourceId]);
 
   const clearSectionViews = useCallback(() => setSectionViews([]), []);
+
+  // W4-C — add a detail view: centre of the front view, radius 25% of the
+  // larger bbox side, 2× nominal magnification. Fractions, so it follows
+  // model changes automatically.
+  const addDetailView = useCallback(() => {
+    setDetailViews((prev) => {
+      const n = prev.length + 1;
+      return [
+        ...prev,
+        {
+          id: `detail-${n}`,
+          label: `DETAIL ${String.fromCharCode(64 + ((n - 1) % 26) + 1)}`,
+          centerFrac: { x: 0.5, y: 0.5 },
+          radiusFrac: 0.25,
+          scaleFactor: 2,
+        },
+      ];
+    });
+  }, []);
+  const clearDetailViews = useCallback(() => setDetailViews([]), []);
+
+  // W4-C — add a broken view: remove the middle 30% band along view-X.
+  const addBrokenView = useCallback(() => {
+    setBrokenViews((prev) => {
+      const n = prev.length + 1;
+      return [
+        ...prev,
+        { id: `broken-${n}`, label: `BROKEN ${n}`, axis: 'x' as const, startFrac: 0.35, endFrac: 0.65 },
+      ];
+    });
+  }, []);
+  const clearBrokenViews = useCallback(() => setBrokenViews([]), []);
 
   const onExportPng = useCallback(() => {
     if (!sheetRef.current) return;
@@ -3237,6 +3344,86 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                   <button
                     type="button"
                     onClick={clearSectionViews}
+                    style={{ padding: '2px 8px', border: '1px solid #d1d5db', borderRadius: 3, background: 'transparent', color: '#6b7280', fontSize: 11, cursor: 'pointer' }}
+                  >
+                    {loc(langSeg, { ko: '지우기', en: 'Clear', ja: 'クリア', zh: '清除', es: 'Borrar', ar: 'مسح' })}
+                  </button>
+                </div>
+              ) : null}
+
+              {/* ─── W4-C: detail + broken views ─────────────────────── */}
+              <button
+                type="button"
+                data-testid="drawing-add-detail"
+                onClick={addDetailView}
+                disabled={!sheetGeometry}
+                style={{
+                  padding: '6px 10px', height: 30,
+                  border: '1px solid #1d4ed8', borderRadius: 4,
+                  background: sheetGeometry ? '#1d4ed8' : '#9ca3af',
+                  color: '#fff', fontSize: 12, fontWeight: 600,
+                  cursor: sheetGeometry ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {loc(langSeg, {
+                  ko: '상세도 추가', en: 'Add detail view', ja: '詳細図を追加',
+                  zh: '添加局部放大图', es: 'Añadir vista de detalle', ar: 'إضافة منظر تفصيلي',
+                })}
+              </button>
+              {detailViews.length > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: '#6b7280' }}>
+                  <span data-testid="drawing-detail-count">
+                    {loc(langSeg, {
+                      ko: `상세도 ${detailViews.length}개`,
+                      en: `${detailViews.length} detail view${detailViews.length > 1 ? 's' : ''}`,
+                      ja: `詳細図 ${detailViews.length}個`,
+                      zh: `局部放大图 ${detailViews.length} 个`,
+                      es: `${detailViews.length} detalle${detailViews.length > 1 ? 's' : ''}`,
+                      ar: `${detailViews.length} تفصيل`,
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearDetailViews}
+                    style={{ padding: '2px 8px', border: '1px solid #d1d5db', borderRadius: 3, background: 'transparent', color: '#6b7280', fontSize: 11, cursor: 'pointer' }}
+                  >
+                    {loc(langSeg, { ko: '지우기', en: 'Clear', ja: 'クリア', zh: '清除', es: 'Borrar', ar: 'مسح' })}
+                  </button>
+                </div>
+              ) : null}
+              <button
+                type="button"
+                data-testid="drawing-add-broken"
+                onClick={addBrokenView}
+                disabled={!sheetGeometry}
+                style={{
+                  padding: '6px 10px', height: 30,
+                  border: '1px solid #b45309', borderRadius: 4,
+                  background: sheetGeometry ? '#b45309' : '#9ca3af',
+                  color: '#fff', fontSize: 12, fontWeight: 600,
+                  cursor: sheetGeometry ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {loc(langSeg, {
+                  ko: '파단도 추가', en: 'Add broken view', ja: '破断図を追加',
+                  zh: '添加断裂视图', es: 'Añadir vista interrumpida', ar: 'إضافة منظر مقطوع',
+                })}
+              </button>
+              {brokenViews.length > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: '#6b7280' }}>
+                  <span data-testid="drawing-broken-count">
+                    {loc(langSeg, {
+                      ko: `파단도 ${brokenViews.length}개`,
+                      en: `${brokenViews.length} broken view${brokenViews.length > 1 ? 's' : ''}`,
+                      ja: `破断図 ${brokenViews.length}個`,
+                      zh: `断裂视图 ${brokenViews.length} 个`,
+                      es: `${brokenViews.length} vista${brokenViews.length > 1 ? 's' : ''} interrumpida${brokenViews.length > 1 ? 's' : ''}`,
+                      ar: `${brokenViews.length} منظر مقطوع`,
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearBrokenViews}
                     style={{ padding: '2px 8px', border: '1px solid #d1d5db', borderRadius: 3, background: 'transparent', color: '#6b7280', fontSize: 11, cursor: 'pointer' }}
                   >
                     {loc(langSeg, { ko: '지우기', en: 'Clear', ja: 'クリア', zh: '清除', es: 'Borrar', ar: 'مسح' })}
