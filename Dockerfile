@@ -17,7 +17,7 @@ RUN npm install --legacy-peer-deps --no-audit --no-fund
 # Cache-bust: buildkit occasionally reuses a stale `COPY . .` layer on Railway
 # (2026-07-12: shipped old scripts/drawing-to-3d despite changed files). Bump this
 # value to force the copy + build to re-run from fresh source.
-ARG CACHEBUST=20260721-107
+ARG CACHEBUST=20260721-108
 RUN echo "cachebust ${CACHEBUST}"
 COPY . .
 
