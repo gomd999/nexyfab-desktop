@@ -258,3 +258,25 @@ export function distanceAxisToAxis(a: AxisInWorld, b: AxisInWorld): number {
   }
   return Math.abs(dot(sub(b.origin, a.origin), n)) / nLen;
 }
+
+// ─── public programmatic facade (W5-F, dogfood F14) ──────────────────────
+//
+// `solveMates` is the one-call entry point designers reach for first:
+//   solveMates(assembly, mates, opts?) → { converged, parts, ... }
+// It lives in ./api.ts (to keep this module's analytical core focused) and
+// is re-exported here because `@/lib/assembly/mateSolver` is the import
+// path a designer naturally guesses. Purely additive — every pre-existing
+// export above is untouched.
+
+export {
+  solveMates,
+  AssemblyApiError,
+  type SolveAssemblyInput,
+  type SolvePartSpec,
+  type PartRefSpec,
+  type SolveMateSpec,
+  type MateSideSpec,
+  type SolveMatesOptions,
+  type SolveMatesResult,
+  type SolvedPartPlacement,
+} from './api';
