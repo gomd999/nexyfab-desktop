@@ -152,11 +152,13 @@ describe('일반인용 결과 요약(easySummary)', () => {
   });
 
   it('③: 구조 경고가 없으면 없다고만 적고 안전을 보증하지 않는다', () => {
-    // F12(260719b) 이후: 하부장을 통짜 목재가 아닌 판재 셸로 계산하면서 counter_bar 기본값의
-    // 전도 FS 가 1.64→1.47 로 내려갔다(과대 계상된 하부장 자중이 전도를 눌러주고 있었던 것 —
-    // 경고가 새로 뜨는 게 정상이다). 이 테스트가 보려는 건 "경고 없음 경로의 문면"이므로
-    // 여유 있게 안정한 치수(깊은 상판·짧은 내밈, FS 1.81)로 고정한다.
-    const html = easySummary(buildAssemblyTemplate('interior', 'counter_bar', { depth: 900, overhang: 100 }), { domain: 'interior' });
+    // 전도 폴백 수리(260720) 이후 픽스처 갱신: 종전 FS 1.81(d900·o100)은 지지 스팬에
+    // **접지하지 않는** 풋레일 브래킷 CG(y=-145)까지 계상한 값이었다. 지지 기반을 접지
+    // footprint(걸레받이, 전면 전도축 y=60)로 고치면 같은 치수의 FS 는 0.94 — 자립 바
+    // 카운터는 0.5g 에 실제로 앵커가 필요하다(경고가 맞다). 이 테스트가 보려는 건
+    // "경고 없음 경로의 문면"이므로 실제로 안정한 치수(깊이 1200·높이 800·내밈 0,
+    // FS 1.70·전도각 40.4°)로 고정한다.
+    const html = easySummary(buildAssemblyTemplate('interior', 'counter_bar', { depth: 1200, height: 800, overhang: 0 }), { domain: 'interior' });
     expect(html).toContain('걸린 안전 경고는 없습니다');
     expect(html).toContain('안전 보증 아님');
     expect(html).not.toContain('안전 경고 — 지금 형상 그대로');
@@ -208,7 +210,10 @@ describe('일반인용 결과 요약(easySummary)', () => {
     const html = easySummary(OK_ASM);
     expect(html).toContain('유자격 기술사의 검토·날인이 필요합니다');
     expect(html).toContain('비법정');
-    expect(html).not.toMatch(/안전(을)? (보증|보장)|인허가 (보증|통과)/);
+    // "…보증 아님"(면책·부정)은 허용 — 전도 폴백 수리(260720)로 OK_ASM 이 정상적으로
+    // 안정 판정이 되면서 경고-없음 문구 "(안전 보증 아님)"이 나타나기 시작했다(③ 테스트가
+    // 요구하는 바로 그 문구). 이 검사의 의도는 **긍정형 보증 표현** 금지다.
+    expect(html).not.toMatch(/안전(을)? (보증|보장)(?!(되| 되)? ?(아님|않))|인허가 (보증|통과)/);
   });
 
   it('금액(₩)은 어디에도 산출하지 않는다', () => {

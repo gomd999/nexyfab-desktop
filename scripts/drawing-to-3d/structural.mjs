@@ -369,11 +369,56 @@ export function partCG(part) {
   return [c[0] + tx, c[1] + ty, c[2] + tz];
 }
 
+// 부품 배치 후 월드 AABB — assembly.mjs placedAabb 와 동일 수학(로컬 AABB 8코너 회전→이동).
+// assembly→structural 의존이라 여기 복제(rotCG 와 같은 사유 — 역방향 import 는 순환).
+function placedPartAabb(part) {
+  const a = partAabb({ type: part.type, ...part.params });
+  const { tx = 0, ty = 0, tz = 0, rx = 0, ry = 0, rz = 0 } = part.at ?? {};
+  if (!(rx || ry || rz)) {
+    return { min: [a.min[0] + tx, a.min[1] + ty, a.min[2] + tz], max: [a.max[0] + tx, a.max[1] + ty, a.max[2] + tz] };
+  }
+  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+  for (const cx of [a.min[0], a.max[0]]) for (const cy of [a.min[1], a.max[1]]) for (const cz of [a.min[2], a.max[2]]) {
+    const w = rotCG([cx, cy, cz], rx, ry, rz);
+    w[0] += tx; w[1] += ty; w[2] += tz;
+    for (let k = 0; k < 3; k++) { if (w[k] < min[k]) min[k] = w[k]; if (w[k] > max[k]) max[k] = w[k]; }
+  }
+  return { min, max };
+}
+
+/**
+ * supports 미지정 시 지지 기반 폴백 — **접지 부품들의 바닥 footprint** (260720 수리).
+ * 종전 폴백은 "부품 CG 점들의 XY 스팬"이었고 두 방향으로 틀렸다:
+ *   ① 동축 배치(판+기둥 받침대)는 모든 CG 가 한 점 → 지지폭 0 → staticAngleDeg 0° —
+ *      명백히 안정한 구조를 전도 위험으로 **과탐**
+ *   ② 공중 부품(크레인 지브 등)의 CG 도 지지점으로 계상 → 실제 베이스보다 넓은 스팬 —
+ *      **미탐** 방향 왜곡(이번 크레인은 CG 가 워낙 높아 우연히 경고가 살아있었을 뿐)
+ * 수리: 전 부품 배치 AABB 의 최저 z(zMin)에 닿는(접촉 공차 1mm — assembly 접촉 판정과
+ * 동일 스케일) 부품들의 XY AABB **합집합 사각형** = 접지 footprint. 전도축은 그 경계다.
+ * 근사 명시: AABB 합집합 사각(비볼록 실 footprint 아님)·대표 배치(qty 반복 인스턴스 미전개).
+ * @returns {{ rect:[[x,y]...4], grounded:string[] }|null} 접지 부품이 없거나 면적 퇴화면 null
+ */
+function groundFootprint(parts) {
+  const boxed = [];
+  for (const p of parts) {
+    const b = placedPartAabb(p);
+    if (b.min.every(Number.isFinite) && b.max.every(Number.isFinite)) boxed.push({ id: p.id ?? p.type, b });
+  }
+  if (!boxed.length) return null;
+  const zMin = Math.min(...boxed.map(({ b }) => b.min[2]));
+  const CONTACT = 1; // mm
+  const g = boxed.filter(({ b }) => b.min[2] <= zMin + CONTACT);
+  const x0 = Math.min(...g.map(({ b }) => b.min[0])), x1 = Math.max(...g.map(({ b }) => b.max[0]));
+  const y0 = Math.min(...g.map(({ b }) => b.min[1])), y1 = Math.max(...g.map(({ b }) => b.max[1]));
+  if (!(x1 > x0) || !(y1 > y0)) return null; // 면적 퇴화(선·점 접지) — 폴백 상위에서 처리
+  return { rect: [[x0, y0], [x1, y0], [x0, y1], [x1, y1]], grounded: g.map(({ id }) => id) };
+}
+
 /**
  * @param assembly { parts:[{ id, type, params, at, material?, fluid? }] }
  * @param opts {
  *   defaultMaterial='STS316', fluidDensity='water',
- *   supports:[[x,y]...] (캐스터/다리 XY, mm) — 없으면 최하단 4모서리 추정,
+ *   supports:[[x,y]...] (캐스터/다리 XY, mm) — 없으면 접지 부품 footprint 4모서리(groundFootprint),
  *   member:{ section:'SHS50x50x3', spanMm, loadKg } (최악 부재 검토; loadKg 없으면 상부질량/2),
  *   seismicG=0.5, materialFy=205, E=193000
  * }
@@ -402,11 +447,21 @@ export function structuralCheck(assembly, opts = {}) {
 
   // 지지점 반력 (강체, 대칭 근사: CG 편심에 따른 분배)
   let supports = opts.supports;
+  let supportBasis = 'declared';
   if (!supports || !supports.length) {
-    // AABB 하단 4모서리 추정
-    const xs = bodies.flatMap(b => [b.cg[0]]), ys = bodies.flatMap(b => [b.cg[1]]);
-    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-    supports = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]];
+    // 접지 footprint 폴백(260720 수리 — groundFootprint 주석 참조). 종전 "CG 점 XY 스팬"은
+    // 동축 배치에서 지지폭이 0 으로 붕괴(과탐)했고 공중 부품을 지지로 계상(미탐)했다.
+    const fp = groundFootprint(assembly.parts ?? []);
+    if (fp) {
+      supports = fp.rect;
+      supportBasis = 'ground-footprint';
+    } else {
+      // 최후 폴백(접지 판별 불능·면적 퇴화): 종전 CG 스팬 — 보수적 정확도임을 basis 로 명시
+      const xs = bodies.flatMap(b => [b.cg[0]]), ys = bodies.flatMap(b => [b.cg[1]]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      supports = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]];
+      supportBasis = 'cg-span-degenerate';
+    }
   }
   const sx0 = Math.min(...supports.map(s => s[0])), sx1 = Math.max(...supports.map(s => s[0]));
   const sy0 = Math.min(...supports.map(s => s[1])), sy1 = Math.max(...supports.map(s => s[1]));
@@ -434,11 +489,15 @@ export function structuralCheck(assembly, opts = {}) {
     member = { section: opts.member.section, spanMm: L, loadKg: +loadKg.toFixed(1), sigmaMPa: +sigma.toFixed(1), allowMPa: +allow.toFixed(1), utilization: +(sigma / allow).toFixed(2), deflMm: +defl.toFixed(2), deflLimitMm: +(L / 250).toFixed(1), pass: sigma < allow && defl < L / 250 };
   }
 
-  // 전도(tip-over)
-  const baseShort = Math.min(sx1 - sx0, sy1 - sy0);
+  // 전도(tip-over) — 강체 전도 개산. 전도축 = 지지 사각형(footprint)의 경계이고, 팔길이는
+  // CG 에서 **가장 가까운 경계까지의 수평거리**다(260720: 종전 baseShort/2 는 CG 중앙 가정 —
+  // 편심 CG 에서 안정을 과대평가하는 미탐 방향 오차라 교체). CG 가 지지 밖이면 0 = 즉시 전도.
+  // 안 보는 것(종전과 동일·명시): 앵커/볼트 인장, 바닥 마찰·미끄럼, 동적 증폭·충격,
+  // 지지 형상의 비볼록성(AABB 합집합 사각 근사), 부분 들림 후 거동. 상세 검토는 별도.
   const cgZ = cg[2];
-  const tipAngleDeg = +(Math.atan((baseShort / 2) / cgZ) * 180 / Math.PI).toFixed(1);
-  const seismicFS = +((baseShort / 2) / (seismic * cgZ)).toFixed(2);
+  const edgeDist = Math.max(0, Math.min(cg[0] - sx0, sx1 - cg[0], cg[1] - sy0, sy1 - cg[1]));
+  const tipAngleDeg = +(Math.atan(edgeDist / cgZ) * 180 / Math.PI).toFixed(1);
+  const seismicFS = +(edgeDist / (seismic * cgZ)).toFixed(2);
 
   const warnings = [];
   if (tipAngleDeg < 15) warnings.push(`정적 전도각 ${tipAngleDeg}° < 15° — 전도 위험(CG 저감·폭 확대 필요)`);
@@ -470,10 +529,10 @@ export function structuralCheck(assembly, opts = {}) {
     supports: supportLoads.map(l => ({ pos: l.pos, loadKg: +l.loadKg.toFixed(1) })),
     maxSupportKg: +maxSupport.toFixed(1),
     member,
-    tipover: { staticAngleDeg: tipAngleDeg, seismicG: seismic, seismicFS },
+    tipover: { staticAngleDeg: tipAngleDeg, seismicG: seismic, seismicFS, edgeDistMm: +edgeDist.toFixed(1), supportBasis },
     warnings,
     ok: warnings.length === 0,
-    method: '실단면 보정 체적×밀도 질량(규격 중공/판재 셸/중실 — massBasis 참조) · 강체 반력 · 단순보 부재 · 강체 전도(근사, 비법정)',
+    method: '실단면 보정 체적×밀도 질량(규격 중공/판재 셸/중실 — massBasis 참조) · 강체 반력 · 단순보 부재 · 강체 전도(접지 footprint 경계축·CG 최근접 팔길이 — 앵커·마찰·동적하중 미고려 근사, 비법정)',
   };
 }
 
