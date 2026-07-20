@@ -129,8 +129,9 @@ export type Dimension =
   | DiametricDimension
   | AngularDimension;
 
-// Per-kind ref-count expectations.
-const KIND_REF_COUNT: Record<DimensionKind, number> = {
+// Per-kind ref-count expectations. Exported for `measure.ts` (W3-C) so the
+// measurement engine shares the single source of truth for arity.
+export const KIND_REF_COUNT: Record<DimensionKind, number> = {
   linear: 2,      // two parallel surfaces or two points
   aligned: 2,     // two non-parallel points (measures along their line)
   radial: 1,      // single arc/circle edge

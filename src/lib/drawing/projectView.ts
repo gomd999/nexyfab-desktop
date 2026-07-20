@@ -50,7 +50,7 @@ export interface ProjectedView {
   bbox: { minX: number; minY: number; maxX: number; maxY: number };
 }
 
-interface Basis {
+export interface Basis {
   right: Vec3;
   up: Vec3;
   /** Direction the camera looks (into the scene). */
@@ -74,8 +74,10 @@ function normalize(v: Vec3): Vec3 {
   return l < 1e-12 ? { x: 0, y: 0, z: 0 } : scale(v, 1 / l);
 }
 
-/** Build an orthonormal (right, up, viewDir) basis for a standard view. */
-function viewBasis(view: ProjectionView): Basis {
+/** Build an orthonormal (right, up, viewDir) basis for a standard view.
+ *  Exported for `measure.ts` (W3-C) so dimension measurement projects with
+ *  EXACTLY the same basis the drawn view uses — no second projection scheme. */
+export function viewBasis(view: ProjectionView): Basis {
   // viewDir points INTO the scene; toCamera = -viewDir. right × up = toCamera.
   const make = (viewDir: Vec3, up: Vec3): Basis => {
     const vd = normalize(viewDir);
