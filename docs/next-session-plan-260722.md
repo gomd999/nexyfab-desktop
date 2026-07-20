@@ -43,7 +43,8 @@ CACHEBUST -108 = G3+Wave5 2차분 배치 업로드. 전환 판정=셸 청크 지
 
 ## 2. 다음 작업 (우선순위 순)
 
-1. **배포 -108 전환 확인**(지문 변화+smoke-3surface) — 미확인 시 대시보드 직접.
+1. ~~배포 -108 전환 확인~~ **✅ 완료(03:18)** — 지문 `A4FDD769…`→`11268BA0…`
+   전환 + smoke 3면 재통과. **G3+Wave5 완주 배치가 nexyfab.com 라이브.**
 2. **G2·G3 명시 한계 해소 배치**: DXF 치수 엔티티(R6) · RefRelinkPanel 페이지
    mount+리빌드 파이프 배선 · distance plane 법선정렬 · hinge zeroAngleRef 경로 ·
    W5-H 메뉴 버튼/planLimits 편입 · W5-A 가이드레일 · XT/IGES 실 재구성.
