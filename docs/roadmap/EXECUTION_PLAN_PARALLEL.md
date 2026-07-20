@@ -83,17 +83,20 @@ extrude(depth 10→25) → fillet 재생성됨? true   ← 현재 false
 
 ---
 
-## Wave 4 — R3 실측 치수 + 도면 연동 (동시 4트랙, 수 주)
+## Wave 4 — R3 실측 치수 + 도면 연동 (동시 4트랙) — **✅ 완결 260721**
 
-| 트랙 | 내용 | 전용 파일 | 수용 기준 |
-|---|---|---|---|
-| **W4-A** | 치수 렌더 실측 배선 | `drawing/SheetRenderer.tsx` | `<linear>` 리터럴 제거, **실제 수치 표시** |
-| **W4-B** | 도면 연동(associative) | `drawing/_content.tsx` 뷰 갱신부 | 모델 변경 시 단면뷰 **삭제가 아니라 갱신**, 치수 재측정 |
-| **W4-C** | 상세도·파단도 | `sectionView.ts`·`ProjectionKind` | 상세도가 **확대 실형상**(현재 마커만), 파단선 생성 |
-| **W4-D** | GD&T 데이텀 검증·표면거칠기 UI | `gdt*`·표면거칠기 producer | 데이텀 체인 검증 · 작성 UI 도달 가능 |
+| 트랙 | 내용 | 결과 |
+|---|---|---|
+| **W4-A** | 치수 렌더 실측 배선 | ✅ `topologies` prop→measureDimension 실측 라벨, 실패=명시 플레이스홀더+reason. `associativeUpdate.measureSheetDimension`=캔버스·리스트 단일 해석 규칙 (`c93c16c5`) |
+| **W4-B** | 도면 연동(associative) | ✅ 단면뷰 삭제→`reanchorCuttingPlane` 재앵커, 치수 자동 재실측+주석 리스트 `= 값`/`⚠ reason` (`cb289e47`) |
+| **W4-C** | 상세도·파단도 | ✅ BrokenProjection IR+`clipSegmentsToCircle`/`applyViewBreak`, 상세도 확대 실형상·파단선·소스뷰 마커, 페이지는 bbox 프랙션 저장=연관 (`14f0baec`+`b40555ce`) |
+| **W4-D** | GD&T·표면거칠기 UI | ✅ 표면거칠기·용접기호 작성 UI(모달 4종, lib 검증기 게이트) (`0dbaa73a`). GD&T 작성 UI는 기존 완비 확인. ⚠️데이텀 "체인" 검증은 datum 최소개수 수준 — datum feature IR 자체가 없어 실 피처 연결 검증은 불가(정직 기록) |
 
-**웨이브 게이트**: **치수 기입된 제작도면이 PDF 로 나오고, 모델을 바꾸면 따라온다.**
-→ 이 시점에 **G2(기계 단품 제작도) 게이트 통과.**
+**웨이브 게이트 ✅**: "치수 기입 제작도면이 PDF로 나오고 모델을 바꾸면 따라온다"를
+`src/test/drawing/g2MachinedPartGate.test.tsx`가 그대로 실행 — 실측 7종(1e-6)·실제
+벡터 PDF 바이트에 라벨 텍스트·t12→18 재실측. → **G2 통과 (ROADMAP §5 갱신).**
+부수: 전체 스위트 무종료 근본원인(meshCompare LCG 동기 무한루프) 수정 —
+1,121파일/14,198테스트 247s 종결(`7dfcaa27`).
 
 ---
 
