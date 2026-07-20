@@ -64,4 +64,11 @@ describe('xtToNexyfabAssembly', () => {
     expect(r.assembly!.note).toContain('AABB');
     expect(r.stats!.bodies).toBe(1);
   });
+
+  it('결과에 기계 판독 가능한 근사 플래그가 항상 실린다(W5-G — 조용한 박스 근사 금지)', () => {
+    const r = xtToNexyfabAssembly(miniXt([[0, 0, 0], [0.12, 0.05, 0.03]]), { name: 't' });
+    expect(r.ok).toBe(true);
+    expect(r.assembly!.fidelity).toBe('aabb-approximation');
+    expect(r.assembly!.parts[0].fidelity).toBe('aabb-approximation');
+  });
 });

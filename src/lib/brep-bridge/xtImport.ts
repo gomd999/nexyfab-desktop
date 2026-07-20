@@ -299,7 +299,9 @@ export interface XtImportResult {
     name: string;
     domain: string;
     importedApprox?: boolean;
-    parts: Array<{ id: string; type: 'box'; params: { width: number; depth: number; height: number }; at: { tx: number; ty: number; tz: number }; role: string; material: string }>;
+    /** 명시 충실도(W5-G): XT 는 B-rep 미재구성 — 항상 AABB 근사임을 기계가 읽을 수 있게 고정 */
+    fidelity?: 'aabb-approximation';
+    parts: Array<{ id: string; type: 'box'; params: { width: number; depth: number; height: number }; at: { tx: number; ty: number; tz: number }; role: string; material: string; fidelity?: 'aabb-approximation' }>;
     note: string;
   };
   stats?: { nodes: number; bodies: number; points: number; partial?: boolean; schema?: string };
@@ -331,6 +333,7 @@ export function xtToNexyfabAssembly(text: string, { name = 'XT import' } = {}): 
     at: { tx: +(mnx * S).toFixed(1), ty: +(mny * S).toFixed(1), tz: +(mnz * S).toFixed(1) },
     role: 'imported',
     material: 'steel',
+    fidelity: 'aabb-approximation' as const,
   };
   return {
     ok: true,
@@ -338,6 +341,7 @@ export function xtToNexyfabAssembly(text: string, { name = 'XT import' } = {}): 
       name,
       domain: 'mech',
       importedApprox: true,
+      fidelity: 'aabb-approximation',
       parts: [part],
       note: `Parasolid XT 임포트 근사(전체 모델=경계 정점 점군의 월드 AABB box 1개 — 곡면 극값·바디 분해 미포함) · 단위=m→mm · 질량/물량=AABB 체적 기준(과대측)${rr.partial ? ' · 멀티파트 후속 스트림 미포함(부분 파싱 명시)' : ''} · ${rr.schema ?? ''} 바디 ${rr.bodies}·정점 ${rr.points.length}`,
     },

@@ -9,6 +9,9 @@
  *  - 질량/물량 = AABB 체적 기준(과대측) · 재질 = 기본값.
  */
 
+/** 명시 충실도(W5-G): STL=메시 실체적(워터타이트 여부 구분) · IGES=AABB 근사 — 기계 판독 가능 고정 */
+export type MeshImportFidelity = 'mesh-exact' | 'mesh-open-approximation' | 'aabb-approximation';
+
 export interface MeshImportResult {
   ok: boolean;
   error?: string;
@@ -16,7 +19,8 @@ export interface MeshImportResult {
     name: string;
     domain: string;
     importedApprox?: boolean;
-    parts: Array<{ id: string; type: 'box'; params: { width: number; depth: number; height: number }; at: { tx: number; ty: number; tz: number }; role: string; material: string }>;
+    fidelity?: MeshImportFidelity;
+    parts: Array<{ id: string; type: 'box'; params: { width: number; depth: number; height: number }; at: { tx: number; ty: number; tz: number }; role: string; material: string; fidelity?: MeshImportFidelity }>;
     note: string;
   };
   stats?: { format: 'stl-ascii' | 'stl-binary' | 'iges'; points: number; entitiesUsed?: number; entitiesSkipped?: number };
@@ -110,11 +114,13 @@ export function stlToNexyfabAssembly(data: Buffer, { name = 'STL import', materi
     at: { tx: 0, ty: 0, tz: 0 },
     role: 'imported',
     material,
+    fidelity: (watertight ? 'mesh-exact' : 'mesh-open-approximation') as MeshImportFidelity,
   };
   return {
     ok: true,
     assembly: {
       name, domain: 'mech', importedApprox: true,
+      fidelity: watertight ? 'mesh-exact' : 'mesh-open-approximation',
       parts: [part],
       note: `STL 메시 실체적 임포트(발산정리 — 체적·CG·표면적 정밀${watertight ? '' : ` · ⚠열린 메시(경계 엣지 ${openEdges}) — 체적은 참고값`}) · ${embed ? 'SCAD=polyhedron 정밀' : `표시=AABB 프록시(${tris.length}tris > 표시 예산 — 질량은 정밀 유지)`} · 단위=파일 기재값 그대로(mm 가정 명시)`,
     },
@@ -273,7 +279,8 @@ export function igesToNexyfabAssembly(source: string, { name = 'IGES import', ma
     ok: true,
     assembly: {
       name, domain: 'mech', importedApprox: true,
-      parts: [boundsToPart(min, max, name.replace(/[^\w가-힣-]/g, '_').slice(0, 40) || 'iges_part', material)],
+      fidelity: 'aabb-approximation',
+      parts: [{ ...boundsToPart(min, max, name.replace(/[^\w가-힣-]/g, '_').slice(0, 40) || 'iges_part', material), fidelity: 'aabb-approximation' as MeshImportFidelity }],
       note: `IGES 임포트 근사(지원 엔티티 좌표 AABB 단일 box — 원기하 아님) · 미반영 엔티티 ${skippedEnt}종(원호 평면좌표계 등 — 경계 과소 가능 명시) · 질량=AABB 체적(과대측)`,
     },
     stats: { format: 'iges', points: pts, entitiesUsed: used, entitiesSkipped: skippedEnt },
