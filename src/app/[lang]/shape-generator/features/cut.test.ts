@@ -47,10 +47,12 @@ describe('Cut feature (sheet-metal through-slot)', () => {
     expect(big).toBeGreaterThan(small);
   });
 
-  it('is registered with type "cut" and tunable params', () => {
+  it('is registered with type "cut" and tunable params (W5-D adds end condition)', () => {
     expect(cutFeature.type).toBe('cut');
     const keys = cutFeature.params.map(p => p.key).sort();
-    expect(keys).toEqual(['length', 'posX', 'posZ', 'width']);
+    expect(keys).toEqual(['depth', 'endCondition', 'length', 'posX', 'posZ', 'width']);
+    // Default end condition stays through_all — legacy behavior preserved.
+    expect(cutFeature.params.find(p => p.key === 'endCondition')!.default).toBe(1);
   });
 
   it('feature.apply path produces a valid non-empty geometry', () => {

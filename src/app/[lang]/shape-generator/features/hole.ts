@@ -5,6 +5,8 @@ import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry, resolveBrepHostHandle
 import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback } from './downgradeNotice';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
+import { resolveUpToFacePlaneY, assertPlaneOnBody } from './cut';
+import { appendPatternSeed } from './patternHelpers/featureSeed';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -32,6 +34,12 @@ export const holeFeature: FeatureDefinition = {
     { key: 'posX', labelKey: 'paramHolePosX', default: 0, min: -200, max: 200, step: 1, unit: 'mm' },
     { key: 'posZ', labelKey: 'paramHolePosZ', default: 0, min: -200, max: 200, step: 1, unit: 'mm' },
     { key: 'depth', labelKey: 'paramHoleDepth', default: 999, min: 1, max: 500, step: 1, unit: 'mm' },
+    { key: 'endCondition', labelKey: 'paramEndCondition', default: 1, min: 0, max: 2, step: 1, unit: '',
+      options: [
+        { value: 0, labelKey: 'endConditionBlind' },
+        { value: 1, labelKey: 'endConditionThroughAll' },
+        { value: 2, labelKey: 'endConditionUpToFace' },
+      ] },
     { key: 'counterboreDia', labelKey: 'paramCounterboreDia', default: 18, min: 1, max: 150, step: 0.5, unit: 'mm' },
     { key: 'counterboreDepth', labelKey: 'paramCounterboreDepth', default: 5, min: 1, max: 50, step: 0.5, unit: 'mm' },
     { key: 'countersinkAngle', labelKey: 'paramCountersinkAngle', default: 90, min: 60, max: 120, step: 1, unit: '°' },
@@ -71,9 +79,70 @@ export const holeFeature: FeatureDefinition = {
     const bottomY = bb.min.y;
     const centerY = (topY + bottomY) / 2;
 
-    // Use actual depth or full height if depth >= 999 (through hole)
-    const actualDepth = depth >= 999 ? (topY - bottomY) + 10 : depth;
+    // W5-D end conditions. Legacy contract (no endCondition param — e.g. an old
+    // saved project): depth >= 999 → through, otherwise a bore of `depth` mm
+    // CENTERED at mid-body (judgment 260721: a 12 mm "blind" hole on a 20 mm box
+    // removed exactly the centered-slab theory 936.43 mm³ with ZERO opening on
+    // either face — an internal floating cavity). That legacy behavior is kept
+    // bit-for-bit when the param is absent; the new enum gives real semantics:
+    //   0 blind       → advances from the TOP face down by `depth`
+    //   1 through_all → spans the whole bbox (default; equals legacy depth=999)
+    //   2 up_to_face  → depth auto-derived to the selected horizontal face
+    const entryPad = 5; // overshoot above the entry face so the boolean is clean
+    let boreMinY: number;
+    let boreMaxY: number;
+    let resolvedUpToPlaneY: number | undefined;
+    if (!Number.isFinite(params.endCondition)) {
+      // Legacy sentinel path — unchanged.
+      const legacyDepth = depth >= 999 ? (topY - bottomY) + 10 : depth;
+      boreMinY = centerY - legacyDepth / 2;
+      boreMaxY = centerY + legacyDepth / 2;
+    } else {
+      const ec = Math.min(2, Math.max(0, Math.round(params.endCondition)));
+      if (ec === 0) { // blind from the top face
+        if (!Number.isFinite(depth) || depth <= 0 || depth >= 999) {
+          throw new Error('Blind hole rejected: depth must be a positive mm value below the 999 through sentinel (got ' + String(params.depth) + ')');
+        }
+        boreMinY = topY - depth;
+        boreMaxY = topY + entryPad;
+      } else if (ec === 2) { // up to face — plane from selection or a pre-resolved seed value
+        const planeY = Number.isFinite(params.upToPlaneY)
+          ? (assertPlaneOnBody(geometry, params.upToPlaneY), params.upToPlaneY)
+          : resolveUpToFacePlaneY(geometry, ctx?.faceSelections);
+        if (planeY >= topY - 1e-6) {
+          throw new Error(`up_to_face rejected: target plane y=${planeY} is at/above the top face y=${topY} — derived depth would be ≤ 0`);
+        }
+        resolvedUpToPlaneY = planeY;
+        boreMinY = planeY;
+        boreMaxY = topY + entryPad;
+      } else { // through_all
+        boreMinY = bottomY - entryPad;
+        boreMaxY = topY + entryPad;
+      }
+    }
+    const actualDepth = boreMaxY - boreMinY;
+    const boreCenterY = (boreMinY + boreMaxY) / 2;
     const engine = Math.round(params.engine ?? 0);
+
+    // W5-D feature-unit pattern: numeric spec snapshot logged onto the output
+    // so a downstream pattern in feature mode can re-drill this hole per
+    // instance. up_to_face carries the RESOLVED plane (re-checked against the
+    // body at re-apply time) so no face-selection object is needed.
+    const patternSeedParams: Record<string, number> = {
+      holeType,
+      diameter: params.diameter,
+      posX,
+      posZ,
+      depth,
+      ...(Number.isFinite(params.endCondition)
+        ? { endCondition: Math.min(2, Math.max(0, Math.round(params.endCondition))) }
+        : {}),
+      ...(resolvedUpToPlaneY != null ? { upToPlaneY: resolvedUpToPlaneY } : {}),
+      ...(Number.isFinite(params.counterboreDia) ? { counterboreDia: params.counterboreDia } : {}),
+      ...(Number.isFinite(params.counterboreDepth) ? { counterboreDepth: params.counterboreDepth } : {}),
+      ...(Number.isFinite(params.countersinkAngle) ? { countersinkAngle: params.countersinkAngle } : {}),
+      engine,
+    };
 
     if (shouldUseOcctEngine(engine)) {
       try {
@@ -84,7 +153,7 @@ export const holeFeature: FeatureDefinition = {
         const host = hostBoxFromGeometry(geometry);
 
         // Main hole
-        const res1 = occtBoxBooleanWithPrimitive('subtract', host, { shape: 'cylinder', w: r * 2, h: actualDepth, d: r * 2, cx: posX, cy: centerY, cz: posZ, rx: 0, ry: 0, rz: 0 }, undefined, currentHandle);
+        const res1 = occtBoxBooleanWithPrimitive('subtract', host, { shape: 'cylinder', w: r * 2, h: actualDepth, d: r * 2, cx: posX, cy: boreCenterY, cz: posZ, rx: 0, ry: 0, rz: 0 }, undefined, currentHandle);
         currentHandle = res1.handle ?? currentHandle;
         currentGeo = res1.geometry;
 
@@ -110,6 +179,11 @@ export const holeFeature: FeatureDefinition = {
         }
 
         if (currentHandle) currentGeo.userData.occtHandle = currentHandle;
+        appendPatternSeed(currentGeo, geometry, {
+          featureId: ctx?.featureId ?? null,
+          type: 'hole',
+          params: patternSeedParams,
+        });
         return currentGeo;
       } catch (err) {
         console.warn('[hole] OCCT path failed, falling back to three-bvh-csg:', err);
@@ -124,7 +198,7 @@ export const holeFeature: FeatureDefinition = {
     // result resolves back to "this hole" via getFaceFeatureId, not the
     // most-recently-touched feature.
     const holeCyl = new THREE.CylinderGeometry(r, r, actualDepth, 32);
-    holeCyl.translate(posX, centerY, posZ);
+    holeCyl.translate(posX, boreCenterY, posZ);
     if (ctx?.featureId) {
       stampFaceFeatureIdAll(holeCyl, ctx.featureId, { avoidIdsFrom: geometry });
     }
@@ -180,6 +254,11 @@ export const holeFeature: FeatureDefinition = {
     if (!result.geometry.attributes.position || result.geometry.attributes.position.count === 0) {
       throw new Error('Hole is larger than the part — it would remove all material; reduce the diameter or depth');
     }
+    appendPatternSeed(result.geometry, geometry, {
+      featureId: ctx?.featureId ?? null,
+      type: 'hole',
+      params: patternSeedParams,
+    });
     return noteMeshFallback(result.geometry, { op: 'Hole', engine, featureId: ctx?.featureId });
   },
 };
