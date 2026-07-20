@@ -47,16 +47,23 @@ export const FEATURE_PARAM_RANGES: Record<string, Record<string, ParamRange>> = 
     counterboreDepth: { min: 1, max: 50, default: 5 },
     countersinkAngle: { min: 60, max: 120, default: 90 },
     engine: { min: 0, max: 1, default: 1, integer: true },
+    // W5-D end condition: 0 blind / 1 through_all(legacy-equivalent default) / 2 up_to_face
+    endCondition: { min: 0, max: 2, default: 1, integer: true },
   },
   linearPattern: {
     axis: { min: 0, max: 2, default: 0, integer: true },
     count: { min: 2, max: 20, default: 3, integer: true },
     spacing: { min: 1, max: 500, default: 60 },
+    // W5-D: 0 body copy (legacy) / 1 feature re-apply
+    patternTarget: { min: 0, max: 1, default: 0, integer: true },
+    seedBack: { min: 0, max: 15, default: 0, integer: true },
   },
   circularPattern: {
     axis: { min: 0, max: 2, default: 1, integer: true },
     count: { min: 2, max: 36, default: 6, integer: true },
     totalAngle: { min: 10, max: 360, default: 360 },
+    patternTarget: { min: 0, max: 1, default: 0, integer: true },
+    seedBack: { min: 0, max: 15, default: 0, integer: true },
   },
   mirror: {
     plane: { min: 0, max: 2, default: 0, integer: true },

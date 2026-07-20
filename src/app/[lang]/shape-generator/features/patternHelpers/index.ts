@@ -35,6 +35,19 @@ export {
   expandCircularPattern,
   expandRectPattern,
 };
+
+// W5-D feature-unit pattern seed log (lightweight — type-only THREE import).
+// `reapplySeedAt` intentionally NOT re-exported here: it pulls the full
+// cut/hole CSG graph, which the wizard-side consumers of this barrel don't
+// need — import it from './featureReapply' directly.
+export {
+  readPatternSeeds,
+  appendPatternSeed,
+  setPatternSeeds,
+  PATTERN_SEED_KEY,
+  PATTERN_SEED_CAP,
+} from './featureSeed';
+export type { PatternSeed, PatternSeedType } from './featureSeed';
 export type {
   LinearPatternParams,
   Linear2DPatternParams,
