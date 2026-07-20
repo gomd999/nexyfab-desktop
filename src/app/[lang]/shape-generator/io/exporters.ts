@@ -277,6 +277,80 @@ export async function exportPrintReady(
   return { stlSize: stlBlob.size, threeMfSize: threeMfBlob.size };
 }
 
+// ─── SAT / IGES / IFC Export (W5-H, 260721 — brep-bridge 라이터 등록부) ─────
+//
+// 3종 모두 "생성≠검증" 원칙으로 라이터가 자체 검증 실패 시 사유와 함께 거부한다
+// (writeSatText/writeIfcText = 폐다면체 요건, writeIgesText = 좌표 유한성).
+// 거부는 Error 로 throw — 호출부(핸들러)는 catch 후 사유를 토스트로 노출할 것.
+//
+// ⚠️ 정직 제외 선언(W5-H 범위 밖 — 겉핥기 생성 금지):
+//  - DWG: 바이너리 포맷(버전별 오브젝트 맵·CRC·핸들 스트림) — LibreDWG급 라이터 없이
+//    유효 파일을 생성할 수 없고, 유사-DWG 바이트 방출은 날조다. DXF 익스포트
+//    (dxfExporter.ts)가 AutoCAD 호환 대체 경로.
+//  - X_T: Parasolid 전용 스키마(커널 덤프) — 공개 스펙 기반의 검증 가능한 라이터가
+//    없는 상태에서 텍스트 골격만 흉내내면 어떤 커널도 열지 못한다. STEP 익스포트가
+//    표준 대체 경로.
+export const UNSUPPORTED_EXPORT_FORMATS = {
+  dwg: 'DWG 는 바이너리 사양(LibreDWG급 라이터 필요) — 유사 파일 생성은 날조라 제외. 대체=DXF 익스포트.',
+  x_t: 'X_T 는 Parasolid 전용 스키마 — 검증 가능한 라이터 부재로 제외. 대체=STEP 익스포트.',
+} as const;
+
+/** three.js 지오메트리 → 융합 폴리메시(brep-bridge 공용 입력). 퇴화 삼각형 드랍 수 포함. */
+async function geometryToWeldedMesh(geometry: THREE.BufferGeometry) {
+  const { weldTriangleSoup } = await import('@/lib/brep-bridge/satExport');
+  const geo = geometry.index ? geometry.toNonIndexed() : geometry;
+  const pos = geo.attributes.position;
+  if (!pos || pos.count === 0) throw new Error('Empty geometry — nothing to export');
+  const welded = weldTriangleSoup(pos.array as unknown as ArrayLike<number>);
+  if (geo !== geometry) geo.dispose();
+  return welded;
+}
+
+/** SAT 텍스트 생성(다운로드 없음 — 테스트/파이프라인용). 검증 실패 = throw(사유 포함). */
+export async function buildSATText(geometry: THREE.BufferGeometry): Promise<string> {
+  const { writeSatText } = await import('@/lib/brep-bridge/satExport');
+  const { mesh } = await geometryToWeldedMesh(geometry);
+  const r = writeSatText(mesh);
+  if (!r.ok) throw new Error(`SAT export refused: ${r.error}`);
+  return r.text;
+}
+
+/** ACIS SAT ASCII 익스포트 — 평면 페이스 폐다면체만(라이터가 검증·거부). */
+export async function exportSAT(geometry: THREE.BufferGeometry, filename = 'model'): Promise<void> {
+  const text = await buildSATText(geometry);
+  await downloadBlob(`${filename}.sat`, new Blob([text], { type: 'application/octet-stream' }));
+}
+
+/** IGES 텍스트 생성 — ⚠폴리라인 와이어프레임(106 form 12)·B-Rep 아님(파일 내 명시). */
+export async function buildIGESText(geometry: THREE.BufferGeometry, filename = 'model'): Promise<string> {
+  const { writeIgesText } = await import('@/lib/brep-bridge/igesExport');
+  const { mesh } = await geometryToWeldedMesh(geometry);
+  const r = writeIgesText(mesh, { filename: `${filename}.igs` });
+  if (!r.ok) throw new Error(`IGES export refused: ${r.error}`);
+  return r.text;
+}
+
+/** IGES 5.x 익스포트(폴리라인 와이어프레임 — 서피스/솔리드 아님, S섹션에 선언). */
+export async function exportIGES(geometry: THREE.BufferGeometry, filename = 'model'): Promise<void> {
+  const text = await buildIGESText(geometry, filename);
+  await downloadBlob(`${filename}.igs`, new Blob([text], { type: 'text/plain' }));
+}
+
+/** IFC 텍스트 생성 — IfcFacetedBrep(폐셸 검증·거부) + SITE/BUILDING/STOREY/PROXY 최소 계층. */
+export async function buildIFCText(geometry: THREE.BufferGeometry, filename = 'model'): Promise<string> {
+  const { writeIfcText } = await import('@/lib/brep-bridge/ifcExport');
+  const { mesh } = await geometryToWeldedMesh(geometry);
+  const r = writeIfcText(mesh, { name: filename });
+  if (!r.ok) throw new Error(`IFC export refused: ${r.error}`);
+  return r.text;
+}
+
+/** IFC2X3 익스포트(IfcFacetedBrep — mm 단위). */
+export async function exportIFC(geometry: THREE.BufferGeometry, filename = 'model'): Promise<void> {
+  const text = await buildIFCText(geometry, filename);
+  await downloadBlob(`${filename}.ifc`, new Blob([text], { type: 'application/x-step' }));
+}
+
 // ─── Rhino JSON / Grasshopper re-exports ───────────────────────────────────
 
 export { exportRhinoJSON, exportGrasshopperPoints } from './rhinoExport';
