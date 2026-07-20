@@ -29,14 +29,22 @@ async function runBoolean(
   const base = handles.get(cmd.base);
   if (!base) return { ok: false, error: `boolean ${cmd.resultId}: base ${cmd.base} not built` };
   let acc = base;
+  // W1-B/W3-A (ADR-017): thread the plan's STABLE node ids into the bridge so
+  // inherited edge names are feature-scoped (`base/e.vert.0`, not the
+  // positional `a/e.vert.0`) and seams are scoped per boolean. A multi-tool
+  // fold runs one kernel boolean per tool, so each step gets its own opId
+  // (`cut:t2`) — deterministic across rebuilds because node ids are.
+  let accId = cmd.base;
   const warnings: string[] = [];
   for (const toolId of cmd.tools) {
     const tool = handles.get(toolId);
     if (!tool) return { ok: false, error: `boolean ${cmd.resultId}: tool ${toolId} not built` };
-    const r = await bridge.boolean[cmd.kind](acc, tool);
+    const opId = cmd.tools.length === 1 ? cmd.resultId : `${cmd.resultId}:${toolId}`;
+    const r = await bridge.boolean[cmd.kind](acc, tool, { baseId: accId, toolId, opId });
     if (!r.ok || !r.shape) return { ok: false, error: `boolean ${cmd.resultId} (${cmd.kind}): ${r.error ?? 'no shape'}` };
     warnings.push(...r.warnings);
     acc = r.shape;
+    accId = opId;
   }
   return { ok: true, shape: acc, warnings };
 }

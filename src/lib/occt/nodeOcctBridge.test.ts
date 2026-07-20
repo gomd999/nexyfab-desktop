@@ -74,6 +74,23 @@ describe('nodeOcctBridge (real OCCT)', () => {
     expect(r.shape!.volume).toBeCloseTo((Math.PI * 100 * 20) / 2, -1); // ≈3142
   });
 
+  it('W3 wiring: name-based fillet works on a revolve (e.lat.* → real OCCT edge)', async () => {
+    if (!okLoad) return;
+    // Cylinder R=10, H=20. Off-axis vertex i=2 is (10,20) → e.lat.2 = top rim circle.
+    const r = await bridge.buildFromRevolve({
+      kind: 'revolve',
+      loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 20 }, { x: 0, y: 20 }],
+      angleDegrees: 360,
+      mode: 'add',
+    });
+    expect(r.ok).toBe(true);
+    const f = await bridge.fillet(r.shape!, ['e.lat.2'], 1);
+    expect(f.ok).toBe(true);
+    // Pappus: removed area (1−π/4)·r², centroid at R − (1 − 1/(6(1−π/4)))·r ≈ 9.7766
+    // → V = 2000π − 0.214602·2π·9.77662 ≈ 6283.19 − 13.18 = 6270.00.
+    expect(f.shape?.volume).toBeCloseTo(6270.0, 0);
+  });
+
   it('real boolean subtract removes the tool volume', async () => {
     if (!okLoad) return;
     const base = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
@@ -180,6 +197,44 @@ describe('nodeOcctBridge (real OCCT)', () => {
     expect(f.ok).toBe(true);
     expect(f.shape!.volume).toBeLessThan(420);   // one corner rounded
     expect(f.shape!.volume).toBeGreaterThan(415);
+  });
+
+  it('W1-B/W3-A: boolean with ids names edges by FEATURE and seams by KERNEL HISTORY', async () => {
+    if (!okLoad) return;
+    const base = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const tool = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(3, 7), depth: 7, direction: 'two_sided', mode: 'cut' });
+    const cut = await bridge.boolean.subtract(base.shape!, tool.shape!, { baseId: 'base', toolId: 'hole', opId: 'cut' });
+    expect(cut.ok).toBe(true);
+    // Inherited edge: feature-scoped, not positional.
+    const f = await bridge.fillet(cut.shape!, ['base/e.vert.0'], 1);
+    expect(f.ok).toBe(true);
+    // Seam edge: named by the pair of operand faces the kernel says generated
+    // it (Generated() history) — top rim segment over the hole's side.0 wall.
+    const s = await bridge.fillet(cut.shape!, ['cut/seam(base/f.cap.top∩hole/f.side.0)'], 0.5);
+    expect(s.ok).toBe(true);
+    expect(s.shape!.volume).toBeLessThan(cut.shape!.volume!);
+  });
+
+  it('W3-A: the SAME seam name survives an upstream dimension change', async () => {
+    if (!okLoad) return;
+    // Rebuild with different base + tool depths: the kernel re-orders edges and
+    // every midpoint moves, but the history-derived name is unchanged.
+    const base = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 14), depth: 9, direction: 'one_sided', mode: 'add' });
+    const tool = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(3, 7), depth: 11, direction: 'two_sided', mode: 'cut' });
+    const cut = await bridge.boolean.subtract(base.shape!, tool.shape!, { baseId: 'base', toolId: 'hole', opId: 'cut' });
+    expect(cut.ok).toBe(true);
+    const s = await bridge.fillet(cut.shape!, ['cut/seam(base/f.cap.top∩hole/f.side.0)'], 0.5);
+    expect(s.ok).toBe(true);
+  });
+
+  it('W3-A: a stale positional seam name is an explicit loss, not a guess', async () => {
+    if (!okLoad) return;
+    const base = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(0, 10), depth: 5, direction: 'one_sided', mode: 'add' });
+    const tool = await bridge.buildFromExtrude({ kind: 'extrude', loop: SQ(3, 7), depth: 7, direction: 'two_sided', mode: 'cut' });
+    const cut = await bridge.boolean.subtract(base.shape!, tool.shape!, { baseId: 'base', toolId: 'hole', opId: 'cut' });
+    const f = await bridge.fillet(cut.shape!, ['cut/seam.0'], 0.5); // pre-W3-A ordinal
+    expect(f.ok).toBe(false);
+    expect(f.error).toMatch(/unresolved/);
   });
 
   it('K2.2: an unknown name on a composed shape still errors clearly', async () => {

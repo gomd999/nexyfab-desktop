@@ -64,10 +64,26 @@ import { polyhedronToMesh, polyhedronFeatureEdges, meshBounds } from './occtView
 
 // ─── public bridge interface ──────────────────────────────────────────────
 
+/**
+ * Stable identities for a boolean op (W1-B/W3-A of ADR-017). When provided,
+ * a naming-capable bridge (nodeOcctBridge) prefixes inherited edge names with
+ * the operand's FEATURE id instead of its positional slot, and scopes the
+ * kernel-history seam names it mints under `opId`. Bridges without stable
+ * naming (stub, mesh) may ignore this argument entirely.
+ */
+export interface BooleanOperandIds {
+  /** Stable feature/node id of the left operand (base / accumulator). */
+  baseId?: string;
+  /** Stable feature/node id of the right operand (tool). */
+  toolId?: string;
+  /** Stable id of this boolean op itself — scopes the seam names it mints. */
+  opId?: string;
+}
+
 export interface OcctBooleanOps {
-  union(a: OcctShape, b: OcctShape): Promise<OcctOperationResult>;
-  subtract(a: OcctShape, b: OcctShape): Promise<OcctOperationResult>;
-  intersect(a: OcctShape, b: OcctShape): Promise<OcctOperationResult>;
+  union(a: OcctShape, b: OcctShape, ids?: BooleanOperandIds): Promise<OcctOperationResult>;
+  subtract(a: OcctShape, b: OcctShape, ids?: BooleanOperandIds): Promise<OcctOperationResult>;
+  intersect(a: OcctShape, b: OcctShape, ids?: BooleanOperandIds): Promise<OcctOperationResult>;
 }
 
 export interface OcctBridge {

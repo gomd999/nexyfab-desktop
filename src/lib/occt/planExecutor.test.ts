@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { executeOcctPlan } from './planExecutor';
 import { featureTreeToOcctPlan } from './featurePlan';
-import type { OcctBridge } from './bridge';
+import type { OcctBridge, BooleanOperandIds } from './bridge';
 import type { OcctShape, OcctOperationResult } from './types';
 import type { FeatureTree, FeatureNode } from '@/lib/cad/featureTree';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
@@ -20,12 +20,14 @@ function extrudeNode(id: string): FeatureNode {
 interface MockTracker {
   calls: string[];
   released: string[];
+  /** ids passed to each boolean call (W1-B/W3-A threading). */
+  booleanIds: Array<BooleanOperandIds | undefined>;
 }
 
 /** Mock bridge: every op mints a fresh solid handle and records the call. */
 function makeMockBridge(opts: { failOn?: string } = {}): { bridge: OcctBridge; track: MockTracker } {
   let n = 0;
-  const track: MockTracker = { calls: [], released: [] };
+  const track: MockTracker = { calls: [], released: [], booleanIds: [] };
   const mint = (): OcctShape => ({ id: `occt${++n}`, kind: 'solid' });
   const ok = (): OcctOperationResult => ({ ok: true, shape: mint(), warnings: [] });
   const failIf = (op: string): OcctOperationResult | null =>
@@ -35,9 +37,9 @@ function makeMockBridge(opts: { failOn?: string } = {}): { bridge: OcctBridge; t
     async buildFromExtrude() { track.calls.push('extrude'); return failIf('extrude') ?? ok(); },
     async buildFromRevolve() { track.calls.push('revolve'); return failIf('revolve') ?? ok(); },
     boolean: {
-      async union() { track.calls.push('union'); return failIf('union') ?? ok(); },
-      async subtract() { track.calls.push('subtract'); return failIf('subtract') ?? ok(); },
-      async intersect() { track.calls.push('intersect'); return failIf('intersect') ?? ok(); },
+      async union(_a, _b, ids) { track.calls.push('union'); track.booleanIds.push(ids); return failIf('union') ?? ok(); },
+      async subtract(_a, _b, ids) { track.calls.push('subtract'); track.booleanIds.push(ids); return failIf('subtract') ?? ok(); },
+      async intersect(_a, _b, ids) { track.calls.push('intersect'); track.booleanIds.push(ids); return failIf('intersect') ?? ok(); },
     },
     async fillet() { track.calls.push('fillet'); return failIf('fillet') ?? ok(); },
     async chamfer() { track.calls.push('chamfer'); return failIf('chamfer') ?? ok(); },
@@ -90,6 +92,38 @@ describe('executeOcctPlan', () => {
     expect(r.ok).toBe(true);
     expect(track.calls).toEqual(['extrude', 'fillet']);
     expect(r.finalShape).toBeDefined();
+  });
+
+  it('threads stable node ids into the boolean (W1-B/W3-A): base/tool/op', async () => {
+    const { bridge, track } = makeMockBridge();
+    const tree: FeatureTree = {
+      nodes: [
+        extrudeNode('base'),
+        extrudeNode('tool'),
+        { id: 'cut', name: 'cut', dependencies: ['base', 'tool'], payload: { kind: 'boolean', op: 'difference', bodies: ['base', 'tool'] } },
+      ],
+    };
+    const r = await executeOcctPlan(featureTreeToOcctPlan(tree), bridge);
+    expect(r.ok).toBe(true);
+    expect(track.booleanIds).toEqual([{ baseId: 'base', toolId: 'tool', opId: 'cut' }]);
+  });
+
+  it('a multi-tool fold gives each kernel boolean its own deterministic opId', async () => {
+    const { bridge, track } = makeMockBridge();
+    const tree: FeatureTree = {
+      nodes: [
+        extrudeNode('base'),
+        extrudeNode('t1'),
+        extrudeNode('t2'),
+        { id: 'cut', name: 'cut', dependencies: ['base', 't1', 't2'], payload: { kind: 'boolean', op: 'difference', bodies: ['base', 't1', 't2'] } },
+      ],
+    };
+    const r = await executeOcctPlan(featureTreeToOcctPlan(tree), bridge);
+    expect(r.ok).toBe(true);
+    expect(track.booleanIds).toEqual([
+      { baseId: 'base', toolId: 't1', opId: 'cut:t1' },
+      { baseId: 'cut:t1', toolId: 't2', opId: 'cut:t2' },
+    ]);
   });
 
   it('aborts on the first failed op and releases what was built', async () => {

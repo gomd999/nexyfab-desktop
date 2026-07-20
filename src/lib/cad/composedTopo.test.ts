@@ -184,3 +184,57 @@ describe('composeBooleanTopo — stability under feature insertion', () => {
     expect(isLegacyRoleName('base/e.vert.0')).toBe(false);
   });
 });
+
+// ── W3-A (ADR-017 route (a)): seams named by kernel history, not position ──
+
+describe('composeBooleanTopo — kernel-history seams', () => {
+  const mid = (x: number): Vec3 => ({ x, y: 0, z: 0 });
+  const noNames: BooleanInput = { featureId: 'base', names: [], anchorOf: () => null };
+
+  it('names seams by their generating-face key, invariant to kernel edge order', () => {
+    const mids = [mid(9), mid(1), mid(5)];
+    const keys = [
+      'H0/f.side.0∩base/f.cap.top',
+      'H0/f.side.1∩base/f.cap.top',
+      'H0/f.side.0∩base/f.cap.bottom',
+    ];
+    const t1 = composeBooleanTopo([noNames], mids, { opId: 'cut.H0', seamKeys: keys });
+    const t2 = composeBooleanTopo([noNames], [...mids].reverse(), { opId: 'cut.H0', seamKeys: [...keys].reverse() });
+    // Same physical edge (mid 9) under the same name in BOTH kernel orders —
+    // the legacy midpoint sort gave it a different ordinal per order.
+    expect(t1.anchor('cut.H0/seam(H0/f.side.0∩base/f.cap.top)')).toEqual(mid(9));
+    expect(t2.anchor('cut.H0/seam(H0/f.side.0∩base/f.cap.top)')).toEqual(mid(9));
+    // Positional seam names are gone in history mode.
+    expect(t1.anchor('cut.H0/seam.0')).toBeNull();
+    expect(t1.lossReason?.('cut.H0/seam.0')).toBe('legacy-seam');
+  });
+
+  it('a keyless seam stays unnamed — explicit loss, never a positional guess', () => {
+    const t = composeBooleanTopo([noNames], [mid(1), mid(2)], { opId: 'op', seamKeys: ['k1', null] });
+    expect(t.names()).toEqual(['op/seam(k1)']);
+    expect(t.anchor('op/seam.1')).toBeNull();
+  });
+
+  it('duplicate keys refuse ALL their edges (ambiguous, D1)', () => {
+    const t = composeBooleanTopo([noNames], [mid(1), mid(2)], { opId: 'op', seamKeys: ['k', 'k'] });
+    expect(t.names()).toEqual([]);
+    expect(t.anchor('op/seam(k)')).toBeNull();
+    expect(t.lossReason?.('op/seam(k)')).toBe('ambiguous');
+  });
+
+  it('a new seam key colliding with an inherited pass-through name refuses both', () => {
+    // The operand carries a seam name minted by an id-less earlier boolean and
+    // the new boolean's history mints the same composed name.
+    const prev: BooleanInput = { names: ['seam(k)'], anchorOf: () => mid(0) };
+    const t = composeBooleanTopo([prev], [mid(0), mid(5)], { seamKeys: [null, 'k'] });
+    expect(t.anchor('seam(k)')).toBeNull();
+    expect(t.lossReason?.('seam(k)')).toBe('ambiguous');
+  });
+
+  it('legacy-seam diagnosis applies only to unresolved positional seam names', () => {
+    const t = composeBooleanTopo([noNames], [mid(1)], { opId: 'op', seamKeys: ['k'] });
+    expect(t.lossReason?.('seam.3')).toBe('legacy-seam');
+    expect(t.lossReason?.('nope')).toBe('unknown');
+    expect(t.lossReason?.('op/seam(k)')).toBeNull(); // resolves fine
+  });
+});

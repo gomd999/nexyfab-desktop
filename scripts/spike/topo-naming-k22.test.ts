@@ -8,10 +8,11 @@
  * Systems under test
  * ──────────────────
  *  A) PROVENANCE naming — `src/lib/cad/topoNaming.ts` (extrude primitives) +
- *     `composedTopo.ts` (boolean inheritance + `seam.k`), resolved through
- *     `edgeMatch.nearestByMidpoint(tol 1e-3)`. This replicates
- *     `nodeOcctBridge.resolvePickedEdges` / `runBool` exactly, including the
- *     role-prefix chaining a multi-tool boolean produces (`a/a/e.vert.0`).
+ *     `composedTopo.ts` (boolean inheritance, W1-B feature-id prefixes, W3-A
+ *     kernel-history seam keys from `BRepAlgoAPI.Generated()`), resolved
+ *     through `edgeMatch.nearestByMidpoint(tol 1e-3)`. This replicates
+ *     `nodeOcctBridge.resolvePickedEdges` / `runBool` exactly, via the same
+ *     exported history helpers the shipping bridge uses.
  *     A reference is a stable NAME.
  *  B) GEOMETRIC SIGNATURE — `edgeCorrespondence.bestEdgeMatch` +
  *     `topologyEdgeFinder.remapPointThroughBbox` (the shape-generator path).
@@ -38,7 +39,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { loadOcctNode, type OcctModule } from '@/lib/occt/nodeOcctLoader';
-import { createNodeOcctBridge } from '@/lib/occt/nodeOcctBridge';
+import {
+  createNodeOcctBridge, classifyPrismFaces, booleanSeamKeys, propagateBooleanFaceNames,
+  booleanModifiedEdgeNames, namedKernelEdges,
+  type NamedKernelFace,
+} from '@/lib/occt/nodeOcctBridge';
 import type { OcctBridge } from '@/lib/occt/bridge';
 import { buildExtrudeTopo, edgeMidpoint, namesOf } from '@/lib/cad/topoNaming';
 import { composeBooleanTopo, fromAnchors, type EdgeAnchorSource } from '@/lib/cad/composedTopo';
@@ -82,7 +87,7 @@ let loadReason = '';
 const ctor = (n: string) => oc![n] as unknown as new (...a: unknown[]) => OcctInstance;
 const inst = (n: string, ...a: unknown[]) => new (ctor(n))(...a);
 
-interface KEdge { mid: V3; dir: [number, number, number]; length: number }
+interface KEdge { mid: V3; dir: [number, number, number]; length: number; edge: OcctInstance }
 
 /** Unique kernel edges. Dedupe key REPLICATES `nodeOcctBridge.uniqueEdges`
  *  (round to 1e-3), so System A's indices match the shipping bridge's. */
@@ -103,7 +108,7 @@ function kernelEdges(shape: OcctInstance): KEdge[] {
       seen.add(key);
       const dx = p1.x - p0.x, dy = p1.y - p0.y, dz = p1.z - p0.z;
       const len = Math.hypot(dx, dy, dz);
-      out.push({ mid, dir: len > 1e-12 ? [dx / len, dy / len, dz / len] : [0, 0, 0], length: len });
+      out.push({ mid, dir: len > 1e-12 ? [dx / len, dy / len, dz / len] : [0, 0, 0], length: len, edge });
     }
     exp.Next();
   }
@@ -261,25 +266,43 @@ function primitiveAnchors(s: Solid): EdgeAnchorSource {
  *  separate Cut. W1-B: the operand prefix is the operand's FEATURE ID (`base`,
  *  `H0`, …) rather than its slot ('a'/'b'), and each boolean scopes the seams it
  *  mints under its own id — so inserting a later cut cannot rename or shadow an
- *  earlier feature's edges. */
+ *  earlier feature's edges. W3-A: seams are named from the kernel's OWN
+ *  `Generated()` history (via the same exported helpers the shipping bridge
+ *  uses), not from the midpoint sort order. */
 function partAnchors(p: Part): EdgeAnchorSource {
   let acc = primitiveAnchors(p.base);
   let accId = 'base';
   let shape = prismFromLoop(p.base.loop, p.base.z0, p.base.z1 - p.base.z0);
+  let accFaces: ReadonlyArray<NamedKernelFace> =
+    classifyPrismFaces(oc!, shape, p.base.loop, p.base.z0, p.base.z1);
   for (const t of p.tools) {
-    shape = cutShapes(shape, prismFromLoop(t.loop, t.z0, t.z1 - t.z0));
-    const mids = kernelEdges(shape).map((e) => e.mid);
+    const toolShape = prismFromLoop(t.loop, t.z0, t.z1 - t.z0);
+    const toolFaces = classifyPrismFaces(oc!, toolShape, t.loop, t.z0, t.z1);
+    const accShape = shape;
+    const algo = inst('BRepAlgoAPI_Cut_3', accShape, toolShape);
+    shape = algo.Shape() as OcctInstance;
+    const resultEdges = kernelEdges(shape);
+    const operands = [
+      { featureId: accId, faces: accFaces },
+      { featureId: t.id, faces: toolFaces },
+    ];
+    const seamKeys = booleanSeamKeys(oc!, algo, operands, resultEdges);
     const tb = primitiveAnchors(t);
     const ta = acc;
+    const historyInherited = booleanModifiedEdgeNames(oc!, algo, [
+      { featureId: accId, namedEdges: namedKernelEdges(oc!, accShape, ta) },
+      { featureId: t.id, namedEdges: namedKernelEdges(oc!, toolShape, tb) },
+    ], resultEdges);
     const opId = `cut.${t.id}`;
     acc = composeBooleanTopo(
       [
         { featureId: accId, names: ta.names(), anchorOf: (n) => ta.anchor(n) },
         { featureId: t.id, names: tb.names(), anchorOf: (n) => tb.anchor(n) },
       ],
-      mids,
-      { opId },
+      resultEdges.map((e) => e.mid),
+      { opId, seamKeys, historyInherited },
     );
+    accFaces = propagateBooleanFaceNames(oc!, algo, operands, shape);
     accId = opId;
   }
   return acc;
@@ -383,7 +406,7 @@ const report: Record<string, unknown> = {
     adr: 'ADR-017 §D2',
     generatedAt: new Date().toISOString(),
     note: 'Measurement only. Rates exclude nogt (edge genuinely gone). mismatch = SILENT wrong entity.',
-    systemA: 'topoNaming + composedTopo, resolved via nearestByMidpoint(1e-3) — replica of nodeOcctBridge.resolvePickedEdges',
+    systemA: 'topoNaming + composedTopo (feature-id prefixes W1-B, kernel-history seam keys W3-A), resolved via nearestByMidpoint(1e-3) — replica of nodeOcctBridge.resolvePickedEdges',
     systemB: 'edgeCorrespondence.bestEdgeMatch + remapPointThroughBbox — shape-generator path',
   },
 };
@@ -449,7 +472,8 @@ describe('ADR-017 K2.2 spike — measurement', () => {
         const va = verdict(resolveA(topo1, au.name, edges1), gt);
         const vb = verdict(resolveB({ sig: au.sig, bbox: au.bbox }, { edges: edges1, bbox: bbox1 }), gt);
         bump(A2, va); bump(B2, vb);
-        bump(/(^|\/)seam\.\d+$/.test(au.name ?? '') ? A2seam : A2feat, va);
+        // seam names: legacy positional `seam.k` OR kernel-history `seam(...)`.
+      bump(/(^|\/)seam[.(]/.test(au.name ?? '') ? A2seam : A2feat, va);
         if ((va === 'mismatch' || vb === 'mismatch') && ex2.length < 12) ex2.push({ cfg: c1, label: au.label, name: au.name, A: va, B: vb });
       }
     }
@@ -463,7 +487,7 @@ describe('ADR-017 K2.2 spike — measurement', () => {
         A_byNameKind: {
           featureQualified: rates(A2feat),
           seam: rates(A2seam),
-          note: 'featureQualified = W1-B target (role prefix). seam = W3-A target (midpoint-ordered seam naming), deliberately NOT touched by W1-B.',
+          note: 'featureQualified = W1-B target (role prefix → feature id). seam = W3-A target — now named by kernel Generated() history (face-pair keys), no longer by midpoint order.',
         },
       },
     };
@@ -568,7 +592,7 @@ describe('ADR-017 K2.2 spike — measurement', () => {
     report.S4 = {
       measurable: true, A: rates(A), B: rates(B),
       planReplay: { tried: replayTried, ok: replayOk },
-      note: 'Reference authored BEFORE the insert. System A name is the bare `e.vert.i`; after the insert the namespace is re-roled to `a/e.vert.i`.',
+      note: 'Reference authored BEFORE the insert. System A name is the bare `e.vert.i`; after the insert the namespace is feature-qualified (`base/e.vert.i`), so the bare name is an explicit loss (never a mismatch).',
       notes,
     };
   }, 300_000);
@@ -654,21 +678,38 @@ describe('ADR-017 K2.2 spike — measurement', () => {
       const cutRes = await bridge.boolean.subtract(sb.shape, st.shape);
       if (!cutRes.ok || !cutRes.shape) continue;
 
-      // Replica of the same composed topology.
-      const shape = cutShapes(
-        prismFromLoop(base.loop, 0, h),
-        prismFromLoop(tool.loop, -h, 2 * h),
-      );
+      // Replica of the same composed topology — id-less bridge call, so the
+      // prefixes fall back to the positional 'a'/'b' and the seam keys are
+      // qualified the same way (exactly what runBool does without ids).
+      const shapeA = prismFromLoop(base.loop, 0, h);
+      const shapeB = prismFromLoop(tool.loop, -h, 2 * h);
+      const algo = inst('BRepAlgoAPI_Cut_3', shapeA, shapeB);
+      const shape = algo.Shape() as OcctInstance;
       const edges = kernelEdges(shape);
       const ta = primitiveAnchors({ loop: [...base.loop], z0: 0, z1: h });
       const tb = primitiveAnchors({ loop: [...tool.loop], z0: -h, z1: h });
+      const seamKeys = booleanSeamKeys(oc!, algo, [
+        { featureId: 'a', faces: classifyPrismFaces(oc!, shapeA, base.loop, 0, h) },
+        { featureId: 'b', faces: classifyPrismFaces(oc!, shapeB, tool.loop, -h, h) },
+      ], edges);
+      const historyInherited = booleanModifiedEdgeNames(oc!, algo, [
+        { featureId: 'a', namedEdges: namedKernelEdges(oc!, shapeA, ta) },
+        { featureId: 'b', namedEdges: namedKernelEdges(oc!, shapeB, tb) },
+      ], edges);
       const topo = composeBooleanTopo(
         [{ role: 'a', names: ta.names(), anchorOf: (n) => ta.anchor(n) },
          { role: 'b', names: tb.names(), anchorOf: (n) => tb.anchor(n) }],
         edges.map((e) => e.mid),
+        { seamKeys, historyInherited },
       );
-      // Probe a mix of real names and one deliberately bogus name.
-      const probes = [...topo.names().slice(0, 10), 'e.vert.0', 'no.such.edge'];
+      // Probe a mix of real names, a kernel-history seam name, and one
+      // deliberately bogus name.
+      const seamProbe = topo.names().find((n) => n.includes('seam('));
+      const probes = [
+        ...topo.names().slice(0, 10),
+        ...(seamProbe ? [seamProbe] : []),
+        'e.vert.0', 'no.such.edge',
+      ];
       for (const name of probes) {
         const replicaResolves = resolveA(topo, name, edges) >= 0;
         const fr = await bridge.fillet(cutRes.shape, [name], 0.5);

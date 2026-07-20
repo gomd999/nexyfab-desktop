@@ -1,9 +1,9 @@
 {
   "meta": {
     "adr": "ADR-017 §D2",
-    "generatedAt": "2026-07-19T09:47:12.799Z",
+    "generatedAt": "2026-07-20T12:42:34.473Z",
     "note": "Measurement only. Rates exclude nogt (edge genuinely gone). mismatch = SILENT wrong entity.",
-    "systemA": "topoNaming + composedTopo, resolved via nearestByMidpoint(1e-3) — replica of nodeOcctBridge.resolvePickedEdges",
+    "systemA": "topoNaming + composedTopo (feature-id prefixes W1-B, kernel-history seam keys W3-A), resolved via nearestByMidpoint(1e-3) — replica of nodeOcctBridge.resolvePickedEdges",
     "systemB": "edgeCorrespondence.bestEdgeMatch + remapPointThroughBbox — shape-generator path"
   },
   "kernel": {
@@ -127,14 +127,14 @@
         "unnamedAtAuthor": 0,
         "A": {
           "cases": 288,
-          "ok": 276,
+          "ok": 288,
           "lost": 0,
-          "mismatch": 12,
+          "mismatch": 0,
           "nogt": 0,
           "scored": 288,
-          "survivalPct": 95.8,
+          "survivalPct": 100,
           "lostPct": 0,
-          "mismatchPct": 4.2
+          "mismatchPct": 0
         },
         "B": {
           "cases": 288,
@@ -147,202 +147,21 @@
           "lostPct": 26.4,
           "mismatchPct": 0
         },
-        "mismatchExamples": [
-          {
-            "fam": "movingHole",
-            "cfg": {
-              "w": 55,
-              "d": 22,
-              "h": 30,
-              "skew": 0.1,
-              "holeX": 0.3,
-              "holeY": 0.5
-            },
-            "label": "H0.bot.0",
-            "name": "cut.H0/seam.2",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "movingHole",
-            "cfg": {
-              "w": 55,
-              "d": 22,
-              "h": 30,
-              "skew": 0.1,
-              "holeX": 0.3,
-              "holeY": 0.5
-            },
-            "label": "H0.top.0",
-            "name": "cut.H0/seam.3",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "movingHole",
-            "cfg": {
-              "w": 55,
-              "d": 22,
-              "h": 30,
-              "skew": 0.1,
-              "holeX": 0.3,
-              "holeY": 0.5
-            },
-            "label": "H0.bot.2",
-            "name": "cut.H0/seam.4",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "movingHole",
-            "cfg": {
-              "w": 55,
-              "d": 22,
-              "h": 30,
-              "skew": 0.1,
-              "holeX": 0.3,
-              "holeY": 0.5
-            },
-            "label": "H0.top.2",
-            "name": "cut.H0/seam.5",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "movingHole",
-            "cfg": {
-              "w": 55,
-              "d": 22,
-              "h": 30,
-              "skew": 0.1,
-              "holeX": 0.3,
-              "holeY": 0.5
-            },
-            "label": "H0.bot.3",
-            "name": "cut.H0/seam.0",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "movingHole",
-            "cfg": {
-              "w": 55,
-              "d": 22,
-              "h": 30,
-              "skew": 0.1,
-              "holeX": 0.3,
-              "holeY": 0.5
-            },
-            "label": "H0.top.3",
-            "name": "cut.H0/seam.1",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "movingHole",
-            "cfg": {
-              "w": 18,
-              "d": 55,
-              "h": 8,
-              "skew": 0.48,
-              "holeX": 0.35,
-              "holeY": 0.75
-            },
-            "label": "H0.bot.0",
-            "name": "cut.H0/seam.2",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "movingHole",
-            "cfg": {
-              "w": 18,
-              "d": 55,
-              "h": 8,
-              "skew": 0.48,
-              "holeX": 0.35,
-              "holeY": 0.75
-            },
-            "label": "H0.top.0",
-            "name": "cut.H0/seam.3",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "movingHole",
-            "cfg": {
-              "w": 18,
-              "d": 55,
-              "h": 8,
-              "skew": 0.48,
-              "holeX": 0.35,
-              "holeY": 0.75
-            },
-            "label": "H0.bot.2",
-            "name": "cut.H0/seam.4",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "movingHole",
-            "cfg": {
-              "w": 18,
-              "d": 55,
-              "h": 8,
-              "skew": 0.48,
-              "holeX": 0.35,
-              "holeY": 0.75
-            },
-            "label": "H0.top.2",
-            "name": "cut.H0/seam.5",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "movingHole",
-            "cfg": {
-              "w": 18,
-              "d": 55,
-              "h": 8,
-              "skew": 0.48,
-              "holeX": 0.35,
-              "holeY": 0.75
-            },
-            "label": "H0.bot.3",
-            "name": "cut.H0/seam.0",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "movingHole",
-            "cfg": {
-              "w": 18,
-              "d": 55,
-              "h": 8,
-              "skew": 0.48,
-              "holeX": 0.35,
-              "holeY": 0.75
-            },
-            "label": "H0.top.3",
-            "name": "cut.H0/seam.1",
-            "A": "mismatch",
-            "B": "lost"
-          }
-        ]
+        "mismatchExamples": []
       },
       "blindPocket": {
         "authoredEdges": 28,
         "unnamedAtAuthor": 0,
         "A": {
           "cases": 336,
-          "ok": 299,
-          "lost": 16,
-          "mismatch": 21,
+          "ok": 336,
+          "lost": 0,
+          "mismatch": 0,
           "nogt": 0,
           "scored": 336,
-          "survivalPct": 89,
-          "lostPct": 4.8,
-          "mismatchPct": 6.3
+          "survivalPct": 100,
+          "lostPct": 0,
+          "mismatchPct": 0
         },
         "B": {
           "cases": 336,
@@ -355,202 +174,21 @@
           "lostPct": 38.7,
           "mismatchPct": 0
         },
-        "mismatchExamples": [
-          {
-            "fam": "blindPocket",
-            "cfg": {
-              "w": 55,
-              "d": 22,
-              "h": 30,
-              "skew": 0.1,
-              "holeX": 0.3,
-              "holeY": 0.5
-            },
-            "label": "H0.bot.0",
-            "name": "cut.H0/seam.2",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "blindPocket",
-            "cfg": {
-              "w": 55,
-              "d": 22,
-              "h": 30,
-              "skew": 0.1,
-              "holeX": 0.3,
-              "holeY": 0.5
-            },
-            "label": "H0.bot.2",
-            "name": "cut.H0/seam.4",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "blindPocket",
-            "cfg": {
-              "w": 55,
-              "d": 22,
-              "h": 30,
-              "skew": 0.1,
-              "holeX": 0.3,
-              "holeY": 0.5
-            },
-            "label": "H0.bot.3",
-            "name": "cut.H0/seam.0",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "blindPocket",
-            "cfg": {
-              "w": 55,
-              "d": 22,
-              "h": 30,
-              "skew": 0.1,
-              "holeX": 0.3,
-              "holeY": 0.5
-            },
-            "label": "P0.vert.0",
-            "name": "cut.P0/seam.3",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "blindPocket",
-            "cfg": {
-              "w": 55,
-              "d": 22,
-              "h": 30,
-              "skew": 0.1,
-              "holeX": 0.3,
-              "holeY": 0.5
-            },
-            "label": "P0.vert.3",
-            "name": "cut.P0/seam.5",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "blindPocket",
-            "cfg": {
-              "w": 55,
-              "d": 22,
-              "h": 30,
-              "skew": 0.1,
-              "holeX": 0.3,
-              "holeY": 0.5
-            },
-            "label": "P0.top.0",
-            "name": "cut.P0/seam.7",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "blindPocket",
-            "cfg": {
-              "w": 55,
-              "d": 22,
-              "h": 30,
-              "skew": 0.1,
-              "holeX": 0.3,
-              "holeY": 0.5
-            },
-            "label": "P0.top.3",
-            "name": "cut.P0/seam.4",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "blindPocket",
-            "cfg": {
-              "w": 25,
-              "d": 45,
-              "h": 12,
-              "skew": 0.55,
-              "holeX": 0.5,
-              "holeY": 0.28
-            },
-            "label": "P0.vert.0",
-            "name": "cut.P0/seam.3",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "blindPocket",
-            "cfg": {
-              "w": 25,
-              "d": 45,
-              "h": 12,
-              "skew": 0.55,
-              "holeX": 0.5,
-              "holeY": 0.28
-            },
-            "label": "P0.vert.3",
-            "name": "cut.P0/seam.5",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "blindPocket",
-            "cfg": {
-              "w": 25,
-              "d": 45,
-              "h": 12,
-              "skew": 0.55,
-              "holeX": 0.5,
-              "holeY": 0.28
-            },
-            "label": "P0.top.0",
-            "name": "cut.P0/seam.7",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "blindPocket",
-            "cfg": {
-              "w": 25,
-              "d": 45,
-              "h": 12,
-              "skew": 0.55,
-              "holeX": 0.5,
-              "holeY": 0.28
-            },
-            "label": "P0.top.3",
-            "name": "cut.P0/seam.4",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "blindPocket",
-            "cfg": {
-              "w": 70,
-              "d": 18,
-              "h": 35,
-              "skew": 0.05,
-              "holeX": 0.72,
-              "holeY": 0.66
-            },
-            "label": "P0.vert.3",
-            "name": "cut.P0/seam.5",
-            "A": "mismatch",
-            "B": "lost"
-          }
-        ]
+        "mismatchExamples": []
       },
       "cornerHoleBait": {
         "authoredEdges": 24,
         "unnamedAtAuthor": 0,
         "A": {
           "cases": 288,
-          "ok": 252,
+          "ok": 288,
           "lost": 0,
-          "mismatch": 36,
+          "mismatch": 0,
           "nogt": 0,
           "scored": 288,
-          "survivalPct": 87.5,
+          "survivalPct": 100,
           "lostPct": 0,
-          "mismatchPct": 12.5
+          "mismatchPct": 0
         },
         "B": {
           "cases": 288,
@@ -563,201 +201,20 @@
           "lostPct": 56.3,
           "mismatchPct": 0
         },
-        "mismatchExamples": [
-          {
-            "fam": "cornerHoleBait",
-            "cfg": {
-              "w": 40,
-              "d": 33,
-              "h": 20,
-              "skew": 0.3,
-              "holeX": 0.5,
-              "holeY": 0.5
-            },
-            "label": "B0.bot.0",
-            "name": "cut.B0/seam.2",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "cornerHoleBait",
-            "cfg": {
-              "w": 40,
-              "d": 33,
-              "h": 20,
-              "skew": 0.3,
-              "holeX": 0.5,
-              "holeY": 0.5
-            },
-            "label": "B0.top.0",
-            "name": "cut.B0/seam.3",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "cornerHoleBait",
-            "cfg": {
-              "w": 40,
-              "d": 33,
-              "h": 20,
-              "skew": 0.3,
-              "holeX": 0.5,
-              "holeY": 0.5
-            },
-            "label": "B0.bot.1",
-            "name": "cut.B0/seam.0",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "cornerHoleBait",
-            "cfg": {
-              "w": 40,
-              "d": 33,
-              "h": 20,
-              "skew": 0.3,
-              "holeX": 0.5,
-              "holeY": 0.5
-            },
-            "label": "B0.top.1",
-            "name": "cut.B0/seam.1",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "cornerHoleBait",
-            "cfg": {
-              "w": 40,
-              "d": 33,
-              "h": 20,
-              "skew": 0.3,
-              "holeX": 0.5,
-              "holeY": 0.5
-            },
-            "label": "B0.bot.2",
-            "name": "cut.B0/seam.4",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "cornerHoleBait",
-            "cfg": {
-              "w": 40,
-              "d": 33,
-              "h": 20,
-              "skew": 0.3,
-              "holeX": 0.5,
-              "holeY": 0.5
-            },
-            "label": "B0.top.2",
-            "name": "cut.B0/seam.5",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "cornerHoleBait",
-            "cfg": {
-              "w": 40,
-              "d": 33,
-              "h": 20,
-              "skew": 0.3,
-              "holeX": 0.5,
-              "holeY": 0.5
-            },
-            "label": "B0.bot.3",
-            "name": "cut.B0/seam.6",
-            "A": "mismatch",
-            "B": "ok"
-          },
-          {
-            "fam": "cornerHoleBait",
-            "cfg": {
-              "w": 40,
-              "d": 33,
-              "h": 20,
-              "skew": 0.3,
-              "holeX": 0.5,
-              "holeY": 0.5
-            },
-            "label": "B0.top.3",
-            "name": "cut.B0/seam.7",
-            "A": "mismatch",
-            "B": "ok"
-          },
-          {
-            "fam": "cornerHoleBait",
-            "cfg": {
-              "w": 32,
-              "d": 24,
-              "h": 16,
-              "skew": 0.3,
-              "holeX": 0.5,
-              "holeY": 0.5
-            },
-            "label": "B0.bot.1",
-            "name": "cut.B0/seam.0",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "cornerHoleBait",
-            "cfg": {
-              "w": 32,
-              "d": 24,
-              "h": 16,
-              "skew": 0.3,
-              "holeX": 0.5,
-              "holeY": 0.5
-            },
-            "label": "B0.top.1",
-            "name": "cut.B0/seam.1",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "cornerHoleBait",
-            "cfg": {
-              "w": 32,
-              "d": 24,
-              "h": 16,
-              "skew": 0.3,
-              "holeX": 0.5,
-              "holeY": 0.5
-            },
-            "label": "B0.bot.2",
-            "name": "cut.B0/seam.4",
-            "A": "mismatch",
-            "B": "lost"
-          },
-          {
-            "fam": "cornerHoleBait",
-            "cfg": {
-              "w": 32,
-              "d": 24,
-              "h": 16,
-              "skew": 0.3,
-              "holeX": 0.5,
-              "holeY": 0.5
-            },
-            "label": "B0.top.2",
-            "name": "cut.B0/seam.5",
-            "A": "mismatch",
-            "B": "lost"
-          }
-        ]
+        "mismatchExamples": []
       }
     },
     "total": {
       "A": {
         "cases": 912,
-        "ok": 827,
-        "lost": 16,
-        "mismatch": 69,
+        "ok": 912,
+        "lost": 0,
+        "mismatch": 0,
         "nogt": 0,
         "scored": 912,
-        "survivalPct": 90.7,
-        "lostPct": 1.8,
-        "mismatchPct": 7.6
+        "survivalPct": 100,
+        "lostPct": 0,
+        "mismatchPct": 0
       },
       "B": {
         "cases": 912,
@@ -774,14 +231,14 @@
     "s2b_secondCutInserted": {
       "A": {
         "cases": 288,
-        "ok": 276,
+        "ok": 288,
         "lost": 0,
-        "mismatch": 12,
+        "mismatch": 0,
         "nogt": 0,
         "scored": 288,
-        "survivalPct": 95.8,
+        "survivalPct": 100,
         "lostPct": 0,
-        "mismatchPct": 4.2
+        "mismatchPct": 0
       },
       "B": {
         "cases": 288,
@@ -794,176 +251,7 @@
         "lostPct": 32.6,
         "mismatchPct": 0
       },
-      "mismatchExamples": [
-        {
-          "cfg": {
-            "w": 55,
-            "d": 22,
-            "h": 30,
-            "skew": 0.1,
-            "holeX": 0.3,
-            "holeY": 0.5
-          },
-          "label": "H0.bot.0",
-          "name": "cut.H0/seam.2",
-          "A": "mismatch",
-          "B": "lost"
-        },
-        {
-          "cfg": {
-            "w": 55,
-            "d": 22,
-            "h": 30,
-            "skew": 0.1,
-            "holeX": 0.3,
-            "holeY": 0.5
-          },
-          "label": "H0.top.0",
-          "name": "cut.H0/seam.3",
-          "A": "mismatch",
-          "B": "lost"
-        },
-        {
-          "cfg": {
-            "w": 55,
-            "d": 22,
-            "h": 30,
-            "skew": 0.1,
-            "holeX": 0.3,
-            "holeY": 0.5
-          },
-          "label": "H0.bot.2",
-          "name": "cut.H0/seam.4",
-          "A": "mismatch",
-          "B": "lost"
-        },
-        {
-          "cfg": {
-            "w": 55,
-            "d": 22,
-            "h": 30,
-            "skew": 0.1,
-            "holeX": 0.3,
-            "holeY": 0.5
-          },
-          "label": "H0.top.2",
-          "name": "cut.H0/seam.5",
-          "A": "mismatch",
-          "B": "lost"
-        },
-        {
-          "cfg": {
-            "w": 55,
-            "d": 22,
-            "h": 30,
-            "skew": 0.1,
-            "holeX": 0.3,
-            "holeY": 0.5
-          },
-          "label": "H0.bot.3",
-          "name": "cut.H0/seam.0",
-          "A": "mismatch",
-          "B": "lost"
-        },
-        {
-          "cfg": {
-            "w": 55,
-            "d": 22,
-            "h": 30,
-            "skew": 0.1,
-            "holeX": 0.3,
-            "holeY": 0.5
-          },
-          "label": "H0.top.3",
-          "name": "cut.H0/seam.1",
-          "A": "mismatch",
-          "B": "lost"
-        },
-        {
-          "cfg": {
-            "w": 18,
-            "d": 55,
-            "h": 8,
-            "skew": 0.48,
-            "holeX": 0.35,
-            "holeY": 0.75
-          },
-          "label": "H0.bot.0",
-          "name": "cut.H0/seam.2",
-          "A": "mismatch",
-          "B": "lost"
-        },
-        {
-          "cfg": {
-            "w": 18,
-            "d": 55,
-            "h": 8,
-            "skew": 0.48,
-            "holeX": 0.35,
-            "holeY": 0.75
-          },
-          "label": "H0.top.0",
-          "name": "cut.H0/seam.3",
-          "A": "mismatch",
-          "B": "lost"
-        },
-        {
-          "cfg": {
-            "w": 18,
-            "d": 55,
-            "h": 8,
-            "skew": 0.48,
-            "holeX": 0.35,
-            "holeY": 0.75
-          },
-          "label": "H0.bot.2",
-          "name": "cut.H0/seam.4",
-          "A": "mismatch",
-          "B": "lost"
-        },
-        {
-          "cfg": {
-            "w": 18,
-            "d": 55,
-            "h": 8,
-            "skew": 0.48,
-            "holeX": 0.35,
-            "holeY": 0.75
-          },
-          "label": "H0.top.2",
-          "name": "cut.H0/seam.5",
-          "A": "mismatch",
-          "B": "lost"
-        },
-        {
-          "cfg": {
-            "w": 18,
-            "d": 55,
-            "h": 8,
-            "skew": 0.48,
-            "holeX": 0.35,
-            "holeY": 0.75
-          },
-          "label": "H0.bot.3",
-          "name": "cut.H0/seam.0",
-          "A": "mismatch",
-          "B": "lost"
-        },
-        {
-          "cfg": {
-            "w": 18,
-            "d": 55,
-            "h": 8,
-            "skew": 0.48,
-            "holeX": 0.35,
-            "holeY": 0.75
-          },
-          "label": "H0.top.3",
-          "name": "cut.H0/seam.1",
-          "A": "mismatch",
-          "B": "lost"
-        }
-      ],
+      "mismatchExamples": [],
       "A_byNameKind": {
         "featureQualified": {
           "cases": 192,
@@ -978,16 +266,16 @@
         },
         "seam": {
           "cases": 96,
-          "ok": 84,
+          "ok": 96,
           "lost": 0,
-          "mismatch": 12,
+          "mismatch": 0,
           "nogt": 0,
           "scored": 96,
-          "survivalPct": 87.5,
+          "survivalPct": 100,
           "lostPct": 0,
-          "mismatchPct": 12.5
+          "mismatchPct": 0
         },
-        "note": "featureQualified = W1-B target (role prefix). seam = W3-A target (midpoint-ordered seam naming), deliberately NOT touched by W1-B."
+        "note": "featureQualified = W1-B target (role prefix → feature id). seam = W3-A target — now named by kernel Generated() history (face-pair keys), no longer by midpoint order."
       }
     }
   },
@@ -1051,12 +339,12 @@
       "tried": 12,
       "ok": 12
     },
-    "note": "Reference authored BEFORE the insert. System A name is the bare `e.vert.i`; after the insert the namespace is re-roled to `a/e.vert.i`.",
+    "note": "Reference authored BEFORE the insert. System A name is the bare `e.vert.i`; after the insert the namespace is feature-qualified (`base/e.vert.i`), so the bare name is an explicit loss (never a mismatch).",
     "notes": []
   },
   "S5": {
     "measurable": true,
-    "revolveNameCoverage": "NO stable names — fillet: shape occt_111 has no stable topology — name-based selection unavailable; use ['sel:all']",
+    "revolveNameCoverage": "NO stable names — fillet: unresolved edges — e.vert.0 (unknown). known: e.lat.1,e.lat.2,e.seam.1",
     "revolveNamerExists": "no buildRevolveTopo in src/lib/cad — buildExtrudeTopo is extrude-only; nodeOcctBridge.buildFromRevolve registers the shape with NO topo",
     "patternPlanCoverage": {
       "commands": [],
@@ -2228,14 +1516,14 @@
         "factor": 0.2,
         "A": {
           "cases": 28,
-          "ok": 24,
+          "ok": 28,
           "lost": 0,
-          "mismatch": 4,
+          "mismatch": 0,
           "nogt": 0,
           "scored": 28,
-          "survivalPct": 85.7,
+          "survivalPct": 100,
           "lostPct": 0,
-          "mismatchPct": 14.3
+          "mismatchPct": 0
         },
         "B": {
           "cases": 28,
@@ -2514,14 +1802,14 @@
         "factor": 0.2,
         "A": {
           "cases": 24,
-          "ok": 20,
+          "ok": 24,
           "lost": 0,
-          "mismatch": 4,
+          "mismatch": 0,
           "nogt": 0,
           "scored": 24,
-          "survivalPct": 83.3,
+          "survivalPct": 100,
           "lostPct": 0,
-          "mismatchPct": 16.7
+          "mismatchPct": 0
         },
         "B": {
           "cases": 24,
@@ -2540,14 +1828,14 @@
         "factor": 0.3,
         "A": {
           "cases": 24,
-          "ok": 20,
+          "ok": 24,
           "lost": 0,
-          "mismatch": 4,
+          "mismatch": 0,
           "nogt": 0,
           "scored": 24,
-          "survivalPct": 83.3,
+          "survivalPct": 100,
           "lostPct": 0,
-          "mismatchPct": 16.7
+          "mismatchPct": 0
         },
         "B": {
           "cases": 24,
@@ -2592,14 +1880,14 @@
         "factor": 0.75,
         "A": {
           "cases": 24,
-          "ok": 16,
+          "ok": 24,
           "lost": 0,
-          "mismatch": 8,
+          "mismatch": 0,
           "nogt": 0,
           "scored": 24,
-          "survivalPct": 66.7,
+          "survivalPct": 100,
           "lostPct": 0,
-          "mismatchPct": 33.3
+          "mismatchPct": 0
         },
         "B": {
           "cases": 24,
@@ -2618,14 +1906,14 @@
         "factor": 0.9,
         "A": {
           "cases": 24,
-          "ok": 16,
+          "ok": 24,
           "lost": 0,
-          "mismatch": 8,
+          "mismatch": 0,
           "nogt": 0,
           "scored": 24,
-          "survivalPct": 66.7,
+          "survivalPct": 100,
           "lostPct": 0,
-          "mismatchPct": 33.3
+          "mismatchPct": 0
         },
         "B": {
           "cases": 24,
@@ -2799,7 +2087,7 @@
   },
   "fidelity": {
     "measurable": true,
-    "agree": 36,
+    "agree": 39,
     "disagree": 0,
     "disagreements": [],
     "note": "compares \"does this NAME resolve to a kernel edge\" between the replica and the shipping nodeOcctBridge"

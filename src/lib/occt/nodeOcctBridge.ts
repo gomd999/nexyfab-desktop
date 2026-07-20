@@ -12,19 +12,19 @@
  * Node/server/test-only. The browser uses the worker bridge.
  */
 
-import type { OcctBridge, OcctBooleanOps } from './bridge';
+import type { OcctBridge, OcctBooleanOps, BooleanOperandIds } from './bridge';
 import type { OcctShape, OcctShapeKind, OcctOperationResult, Vec3 } from './types';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
 import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 import type { OcctModule } from './nodeOcctLoader';
-import { buildExtrudeTopo, edgeMidpoint, namesOf } from '@/lib/cad/topoNaming';
+import { buildExtrudeTopo, edgeMidpoint, namesOf, buildRevolveTopo, revolveEdgeAnchors } from '@/lib/cad/topoNaming';
 import { nearestByMidpoint } from '@/lib/cad/edgeMatch';
-import { composeBooleanTopo, fromAnchors, type EdgeAnchorSource } from '@/lib/cad/composedTopo';
+import { composeBooleanTopo, fromAnchors, qualifyName, type EdgeAnchorSource, type BooleanInput } from '@/lib/cad/composedTopo';
 import { tessellateToMesh } from './occtViewerMesh';
 
 // ─── embind typing helpers (no `any`) ──────────────────────────────────────
 
-type OcctInstance = Record<string, (...args: unknown[]) => unknown>;
+export type OcctInstance = Record<string, (...args: unknown[]) => unknown>;
 type OcctCtor = new (...args: unknown[]) => OcctInstance;
 
 /** Emscripten MEMFS surface used for STEP I/O (K4). */
@@ -167,6 +167,301 @@ function uniqueEdges(oc: OcctModule, shape: OcctInstance): Array<{ edge: OcctIns
   return out;
 }
 
+// ─── W3-A: kernel-history boolean naming (ADR-017 route (a), booleans only) ──
+//
+// A boolean's seam edges used to be named by their MIDPOINT SORT ORDER
+// (`seam.k`) — a positional name that silently pointed at a different edge
+// whenever a dimension change reordered the sort (S2 7.6% / S2b 4.2% silent
+// mismatch, all seam-attributed). The kernel itself knows better:
+// `BRepAlgoAPI_BooleanOperation.Generated(face)` lists the section edges each
+// operand FACE generated, so a seam's identity is the PAIR of operand faces
+// that intersect there — invariant to ordering. These helpers extract that
+// history. They are exported so the ADR-017 spike harness replicates the
+// shipping bridge with the SAME code (FIDELITY check).
+//
+// opencascade.js@1.1.1 exposure (probed 2026-07-20): `Modified(s)` /
+// `Generated(s)` / `IsDeleted(s)` exist on the BRepAlgoAPI_* instances
+// (inherited from BRepBuilderAPI_MakeShape), returning TopTools_ListOfShape.
+// The list's embind `begin()/end()` iterators are UNBOUND — iterate by copying
+// (`TopTools_ListOfShape_1` + `Assign`) then `First_1`/`RemoveFirst`, which
+// leaves the underlying history intact.
+
+/** A kernel face paired with its stable (possibly feature-qualified) name. */
+export interface NamedKernelFace {
+  face: OcctInstance;
+  name: string;
+}
+
+/** One boolean operand's face-name table, for history extraction. */
+export interface BooleanHistoryOperand {
+  /** Stable feature id qualifying this operand's unqualified face names. */
+  featureId?: string;
+  faces: ReadonlyArray<NamedKernelFace>;
+}
+
+/** Copy a TopTools_ListOfShape into a JS array (history left untouched). */
+function listToShapes(oc: OcctModule, list: OcctInstance): OcctInstance[] {
+  const copy = new (oc.TopTools_ListOfShape_1 as OcctCtor)();
+  copy.Assign(list);
+  const out: OcctInstance[] = [];
+  while ((copy.Size() as number) > 0) {
+    out.push(copy.First_1() as OcctInstance);
+    copy.RemoveFirst();
+  }
+  return out;
+}
+
+/** Area centroid of a face via BRepGProp, or null on kernel failure. */
+function faceCentroid(oc: OcctModule, face: OcctInstance): Vec3 | null {
+  try {
+    const m = maker(oc);
+    const props = m.inst('GProp_GProps_1');
+    m.stat('BRepGProp').SurfaceProperties_1(face, props, false, false);
+    const p = props.CentreOfMass() as OcctInstance;
+    return { x: p.X() as number, y: p.Y() as number, z: p.Z() as number };
+  } catch {
+    return null;
+  }
+}
+
+/** Unique faces of a shape (deduped by IsSame). */
+function uniqueFaces(oc: OcctModule, shape: OcctInstance): OcctInstance[] {
+  const m = maker(oc);
+  const en = oc.TopAbs_ShapeEnum as unknown as { TopAbs_FACE: unknown; TopAbs_SHAPE: unknown };
+  const topoDS = oc.TopoDS as unknown as { Face_1: (s: unknown) => OcctInstance };
+  const exp = m.inst('TopExp_Explorer_2', shape, en.TopAbs_FACE, en.TopAbs_SHAPE);
+  const out: OcctInstance[] = [];
+  while (exp.More()) {
+    const face = topoDS.Face_1(exp.Current());
+    exp.Next();
+    if (out.some((f) => f.IsSame(face) as boolean)) continue;
+    out.push(face);
+  }
+  return out;
+}
+
+/** Mirrors featureMesh.dedupeLoop so `f.side.{i}` indices match topoNaming. */
+function dedupeLoop(loop: ReadonlyArray<{ x: number; y: number }>): Array<{ x: number; y: number }> {
+  const out: Array<{ x: number; y: number }> = [];
+  const EPS = 1e-9;
+  for (const p of loop) {
+    const prev = out[out.length - 1];
+    if (prev && Math.abs(prev.x - p.x) < EPS && Math.abs(prev.y - p.y) < EPS) continue;
+    out.push({ x: p.x, y: p.y });
+  }
+  const first = out[0];
+  const last = out[out.length - 1];
+  if (out.length > 1 && Math.abs(first.x - last.x) < EPS && Math.abs(first.y - last.y) < EPS) out.pop();
+  return out;
+}
+
+/**
+ * Stable names for the faces of an extrude prism, matched ANALYTICALLY (caps by
+ * centroid z; each side face's area centroid IS the profile segment midpoint at
+ * mid-height, exactly — prism sides are parallelograms). Names follow
+ * topoNaming (`f.cap.bottom`, `f.cap.top`, `f.side.{i}`). A face that matches
+ * nothing — or matches ambiguously — is left out rather than guessed (D1).
+ */
+export function classifyPrismFaces(
+  oc: OcctModule,
+  shape: OcctInstance,
+  loop: ReadonlyArray<{ x: number; y: number }>,
+  z0: number,
+  z1: number,
+  tol = 1e-4,
+): NamedKernelFace[] {
+  const profile = dedupeLoop(loop);
+  const zMid = (z0 + z1) / 2;
+  const sides = profile.map((p, i) => {
+    const q = profile[(i + 1) % profile.length];
+    return { name: `f.side.${i}`, x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
+  });
+
+  const out: NamedKernelFace[] = [];
+  const used = new Map<string, number>(); // name → count (dup names dropped)
+  for (const face of uniqueFaces(oc, shape)) {
+    const c = faceCentroid(oc, face);
+    if (!c) continue;
+    let name: string | null = null;
+    if (Math.abs(c.z - z0) <= tol) name = 'f.cap.bottom';
+    else if (Math.abs(c.z - z1) <= tol) name = 'f.cap.top';
+    else if (Math.abs(c.z - zMid) <= tol) {
+      let best: string | null = null;
+      let bd = Infinity;
+      let second = Infinity;
+      for (const s of sides) {
+        const d = Math.hypot(c.x - s.x, c.y - s.y);
+        if (d < bd) { second = bd; bd = d; best = s.name; }
+        else if (d < second) second = d;
+      }
+      if (bd <= tol && second > tol) name = best; // ambiguous double-hit → skip
+    }
+    if (!name) continue;
+    used.set(name, (used.get(name) ?? 0) + 1);
+    out.push({ face, name });
+  }
+  return out.filter((f) => used.get(f.name) === 1);
+}
+
+/**
+ * Per-result-edge seam keys from the boolean's own history: for each named
+ * operand face, `Generated(face)` lists the section edges it minted; a result
+ * edge generated by ≥2 distinctly-named faces gets the sorted pair as its key
+ * (`base/f.cap.top∩H0/f.side.2`). Fewer than 2 names is under-determined (the
+ * sibling seam from the same single face would collide) → `null`, and
+ * composeBooleanTopo leaves that edge explicitly unnamed. Never guesses.
+ */
+export function booleanSeamKeys(
+  oc: OcctModule,
+  algo: OcctInstance,
+  operands: ReadonlyArray<BooleanHistoryOperand>,
+  resultEdges: ReadonlyArray<{ edge: OcctInstance; mid: Vec3 }>,
+): Array<string | null> {
+  const edgeEnum = (oc.TopAbs_ShapeEnum as unknown as { TopAbs_EDGE: { value: number } }).TopAbs_EDGE;
+  const gens: Array<Set<string>> = resultEdges.map(() => new Set());
+  for (const op of operands) {
+    for (const { face, name } of op.faces) {
+      const qualified = qualifyName(op.featureId, name);
+      let generated: OcctInstance[];
+      try {
+        generated = listToShapes(oc, algo.Generated(face) as OcctInstance);
+      } catch {
+        continue; // no history for this face → its seams stay unnamed
+      }
+      for (const g of generated) {
+        try {
+          const st = g.ShapeType() as { value?: number };
+          if ((st?.value ?? st) !== edgeEnum.value) continue; // vertices etc.
+        } catch {
+          continue;
+        }
+        const idx = resultEdges.findIndex((re) => {
+          try { return re.edge.IsSame(g) as boolean; } catch { return false; }
+        });
+        if (idx >= 0) gens[idx].add(qualified);
+      }
+    }
+  }
+  return gens.map((s) => (s.size >= 2 ? [...s].sort().join('∩') : null));
+}
+
+/** One boolean operand's named kernel EDGES, for Modified() inheritance. */
+export interface BooleanEdgeHistoryOperand {
+  /** Stable feature id qualifying this operand's unqualified edge names. */
+  featureId?: string;
+  namedEdges: ReadonlyArray<{ edge: OcctInstance; name: string }>;
+}
+
+/**
+ * Kernel-history edge inheritance: for each named operand edge, `Modified()`
+ * lists its descendants in the result — a TRIMMED edge whose midpoint moved
+ * (so midpoint-coincidence inheritance cannot see it) still keeps its name.
+ * Returns result-edge-index → composed-name bindings; collisions are left to
+ * composeBooleanTopo, which refuses every colliding binding (D1).
+ */
+export function booleanModifiedEdgeNames(
+  oc: OcctModule,
+  algo: OcctInstance,
+  operands: ReadonlyArray<BooleanEdgeHistoryOperand>,
+  resultEdges: ReadonlyArray<{ edge: OcctInstance; mid: Vec3 }>,
+): Array<{ index: number; name: string }> {
+  const edgeEnum = (oc.TopAbs_ShapeEnum as unknown as { TopAbs_EDGE: { value: number } }).TopAbs_EDGE;
+  const out: Array<{ index: number; name: string }> = [];
+  for (const op of operands) {
+    for (const { edge, name } of op.namedEdges) {
+      const qualified = qualifyName(op.featureId, name);
+      let modified: OcctInstance[];
+      try {
+        modified = listToShapes(oc, algo.Modified(edge) as OcctInstance);
+      } catch {
+        continue; // no history for this edge → it can only inherit by anchor
+      }
+      for (const g of modified) {
+        try {
+          const st = g.ShapeType() as { value?: number };
+          if ((st?.value ?? st) !== edgeEnum.value) continue;
+        } catch {
+          continue;
+        }
+        const index = resultEdges.findIndex((re) => {
+          try { return re.edge.IsSame(g) as boolean; } catch { return false; }
+        });
+        if (index >= 0) out.push({ index, name: qualified });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Resolve a topo's stable edge names onto a live operand shape's kernel edges
+ * (same-config midpoint anchoring, the standard K3 resolve — NOT a cross-config
+ * guess). Input to {@link booleanModifiedEdgeNames}.
+ */
+export function namedKernelEdges(
+  oc: OcctModule,
+  live: OcctInstance,
+  topo: EdgeAnchorSource | undefined,
+  edges?: ReadonlyArray<{ edge: OcctInstance; mid: Vec3 }>,
+): Array<{ edge: OcctInstance; name: string }> {
+  if (!topo) return [];
+  const opEdges = edges ?? uniqueEdges(oc, live);
+  const mids = opEdges.map((e) => e.mid);
+  const out: Array<{ edge: OcctInstance; name: string }> = [];
+  for (const name of topo.names()) {
+    const anchor = topo.anchor(name);
+    if (!anchor) continue;
+    const match = nearestByMidpoint(mids, anchor, 1e-3);
+    if (match.index >= 0) out.push({ edge: opEdges[match.index].edge, name });
+  }
+  return out;
+}
+
+/**
+ * Face-name table for a boolean RESULT, from kernel history: a result face
+ * that IS an operand face (IsSame) or descends from one (`Modified`) inherits
+ * that face's qualified name. 0 or ≥2 distinct candidates → unnamed (a split
+ * face's parts DO share their source's name — that only ever degrades a later
+ * seam key to an explicit ambiguity, never to a wrong pick).
+ */
+export function propagateBooleanFaceNames(
+  oc: OcctModule,
+  algo: OcctInstance,
+  operands: ReadonlyArray<BooleanHistoryOperand>,
+  resultShape: OcctInstance,
+): NamedKernelFace[] {
+  const resultFaces = uniqueFaces(oc, resultShape);
+  const candidates: Array<Set<string>> = resultFaces.map(() => new Set());
+  for (const op of operands) {
+    for (const { face, name } of op.faces) {
+      const qualified = qualifyName(op.featureId, name);
+      try {
+        if (algo.IsDeleted(face) as boolean) continue;
+      } catch { /* keep going — IsSame/Modified below still decide */ }
+      for (let i = 0; i < resultFaces.length; i++) {
+        try {
+          if (resultFaces[i].IsSame(face) as boolean) candidates[i].add(qualified);
+        } catch { /* skip this pair */ }
+      }
+      try {
+        for (const mShape of listToShapes(oc, algo.Modified(face) as OcctInstance)) {
+          const idx = resultFaces.findIndex((rf) => {
+            try { return rf.IsSame(mShape) as boolean; } catch { return false; }
+          });
+          if (idx >= 0) candidates[idx].add(qualified);
+        }
+      } catch { /* no modification history → unnamed */ }
+    }
+  }
+  const out: NamedKernelFace[] = [];
+  for (let i = 0; i < resultFaces.length; i++) {
+    if (candidates[i].size === 1) {
+      out.push({ face: resultFaces[i], name: [...candidates[i]][0] });
+    }
+  }
+  return out;
+}
+
 // ─── bridge ─────────────────────────────────────────────────────────────────
 
 export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
@@ -174,19 +469,33 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
   const registry = new Map<string, OcctInstance>();
   /** Stable edge-name source per shape (primitive provenance or composed). */
   const topos = new Map<string, EdgeAnchorSource>();
+  /** Stable face-name table per shape — feeds boolean seam keys (W3-A). */
+  const faceTables = new Map<string, ReadonlyArray<NamedKernelFace>>();
   let seq = 0;
 
-  const register = (shape: OcctInstance, topo?: EdgeAnchorSource, kind: OcctShapeKind = 'solid'): OcctShape => {
+  const register = (
+    shape: OcctInstance,
+    topo?: EdgeAnchorSource,
+    kind: OcctShapeKind = 'solid',
+    faces?: ReadonlyArray<NamedKernelFace>,
+  ): OcctShape => {
     const id = `occt_${++seq}`;
     registry.set(id, shape);
     if (topo) topos.set(id, topo);
+    if (faces && faces.length > 0) faceTables.set(id, faces);
     // Volume is only meaningful for closed solids; lower-dim shapes (face/shell/
     // compound from a section) report it as undefined.
     const volume = kind === 'solid' ? volumeOf(oc, shape) : undefined;
     return { id, kind, volume, bbox: bboxOf(oc, shape) };
   };
-  const result = (shape: OcctInstance, warnings: string[] = [], topo?: EdgeAnchorSource, kind: OcctShapeKind = 'solid'): OcctOperationResult => ({
-    ok: true, shape: register(shape, topo, kind), warnings,
+  const result = (
+    shape: OcctInstance,
+    warnings: string[] = [],
+    topo?: EdgeAnchorSource,
+    kind: OcctShapeKind = 'solid',
+    faces?: ReadonlyArray<NamedKernelFace>,
+  ): OcctOperationResult => ({
+    ok: true, shape: register(shape, topo, kind, faces), warnings,
   });
   const lookup = (s: OcctShape, where: string): OcctInstance => {
     const live = registry.get(s.id);
@@ -195,30 +504,61 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
   };
 
   const boolean: OcctBooleanOps = {
-    async union(a, b) { return runBool('Fuse', a, b); },
-    async subtract(a, b) { return runBool('Cut', a, b); },
-    async intersect(a, b) { return runBool('Common', a, b); },
+    async union(a, b, ids) { return runBool('Fuse', a, b, ids); },
+    async subtract(a, b, ids) { return runBool('Cut', a, b, ids); },
+    async intersect(a, b, ids) { return runBool('Common', a, b, ids); },
   };
-  function runBool(kind: 'Fuse' | 'Cut' | 'Common', a: OcctShape, b: OcctShape): OcctOperationResult {
+  function runBool(kind: 'Fuse' | 'Cut' | 'Common', a: OcctShape, b: OcctShape, ids?: BooleanOperandIds): OcctOperationResult {
     try {
       const algo = m.inst(`BRepAlgoAPI_${kind}_3`, lookup(a, kind), lookup(b, kind));
       const shape = algo.Shape() as OcctInstance;
       // K2.2: re-derive a stable naming for the composed result by inheriting
       // the operands' edge names onto whichever edges survived the boolean.
+      // W1-B: the inherited-name prefix is the operand's stable FEATURE id when
+      // the caller provides one; the positional 'a'/'b' role is only the legacy
+      // fallback (it degrades to explicit loss, never a silent mismatch).
+      // W3-A: seams are named from the kernel's own Generated() history.
       const topoA = topos.get(a.id);
       const topoB = topos.get(b.id);
+      const facesA = faceTables.get(a.id) ?? [];
+      const facesB = faceTables.get(b.id) ?? [];
+      const operands: BooleanHistoryOperand[] = [
+        { featureId: ids?.baseId ?? 'a', faces: facesA },
+        { featureId: ids?.toolId ?? 'b', faces: facesB },
+      ];
+      const haveFaces = facesA.length > 0 || facesB.length > 0;
+      const resultEdges = uniqueEdges(oc, shape);
+      const seamKeys = haveFaces ? booleanSeamKeys(oc, algo, operands, resultEdges) : undefined;
       let composed: EdgeAnchorSource | undefined;
       if (topoA || topoB) {
-        const resultMids = uniqueEdges(oc, shape).map((e) => e.mid);
+        const liveA = lookup(a, kind);
+        const liveB = lookup(b, kind);
+        // Kernel-history edge inheritance: trimmed operand edges keep their
+        // names even though their anchors moved (Modified()).
+        const historyInherited = booleanModifiedEdgeNames(oc, algo, [
+          { featureId: ids?.baseId ?? 'a', namedEdges: namedKernelEdges(oc, liveA, topoA) },
+          { featureId: ids?.toolId ?? 'b', namedEdges: namedKernelEdges(oc, liveB, topoB) },
+        ], resultEdges);
+        const inputA: BooleanInput = {
+          ...(ids?.baseId ? { featureId: ids.baseId } : { role: 'a' }),
+          names: topoA ? topoA.names() : [],
+          anchorOf: (n) => (topoA ? topoA.anchor(n) : null),
+        };
+        const inputB: BooleanInput = {
+          ...(ids?.toolId ? { featureId: ids.toolId } : { role: 'b' }),
+          names: topoB ? topoB.names() : [],
+          anchorOf: (n) => (topoB ? topoB.anchor(n) : null),
+        };
         composed = composeBooleanTopo(
-          [
-            { role: 'a', names: topoA ? topoA.names() : [], anchorOf: (n) => (topoA ? topoA.anchor(n) : null) },
-            { role: 'b', names: topoB ? topoB.names() : [], anchorOf: (n) => (topoB ? topoB.anchor(n) : null) },
-          ],
-          resultMids,
+          [inputA, inputB],
+          resultEdges.map((e) => e.mid),
+          { opId: ids?.opId, seamKeys, historyInherited },
         );
       }
-      return result(shape, [], composed);
+      const resultFaceTable = haveFaces
+        ? propagateBooleanFaceNames(oc, algo, operands, shape)
+        : undefined;
+      return result(shape, [], composed, 'solid', resultFaceTable);
     } catch (e) {
       return { ok: false, error: `${kind}: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
     }
@@ -528,7 +868,10 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
           const mid = edgeMidpoint(topo, name);
           if (mid) anchors.set(name, mid);
         }
-        return result(shape, [], fromAnchors(anchors));
+        // Face-name table (f.cap.*, f.side.i) — feeds kernel-history seam
+        // naming when this shape becomes a boolean operand (W3-A).
+        const faces = classifyPrismFaces(oc, shape, feature.loop, z0, z0 + h);
+        return result(shape, [], fromAnchors(anchors), 'solid', faces);
       } catch (e) {
         return { ok: false, error: `extrude: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
       }
@@ -544,7 +887,12 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
         const axis = m.inst('gp_Ax1_2', m.inst('gp_Pnt_3', 0, 0, 0), m.inst('gp_Dir_4', 0, 1, 0));
         const angle = (Math.max(0, Math.min(360, feature.angleDegrees)) * Math.PI) / 180;
         const revol = m.inst('BRepPrimAPI_MakeRevol_1', face, axis, angle, false);
-        return result(revol.Shape() as OcctInstance);
+        // W3 통합 배선: revolve 위상 명명 등록 — W3-B 의 생성-이력 명명(755케이스 오매칭 0
+        // 실측)을 브리지에 물려 revolve 부품에도 이름 기반 참조(필렛 선택 등)가 발화한다.
+        // 명명 실패(위반 입력 등)는 topo 없이 등록 → 이름 선택 시 종전대로 명시 거부(D1).
+        let revTopo: EdgeAnchorSource | undefined;
+        try { revTopo = fromAnchors(revolveEdgeAnchors(buildRevolveTopo(feature))); } catch { revTopo = undefined; }
+        return result(revol.Shape() as OcctInstance, [], revTopo);
       } catch (e) {
         return { ok: false, error: `revolve: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
       }
@@ -641,6 +989,8 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
       const live = registry.get(shape.id);
       if (live && typeof live.delete === 'function') live.delete();
       registry.delete(shape.id);
+      topos.delete(shape.id);
+      faceTables.delete(shape.id);
     },
   };
 }

@@ -238,28 +238,37 @@ describe('wasmReal — REAL OCCT kernel acceptance (R0-0)', () => {
   });
 
   /**
-   * DISCOVERED 2026-07-19 (W1-A). Not a test of OUR code — a pinned
-   * characterisation of a defect in this opencascade.js build that our code
-   * currently trips over.
+   * DISCOVERED 2026-07-19 (W1-A), root-caused + repaired 2026-07-20 (W3-D).
+   * Not a test of OUR code — a pinned characterisation of a defect in this
+   * opencascade.js build.
    *
    * `STEPControl_Writer::Write` and `STEPControl_Reader::ReadFile` take a
-   * `Standard_CString`. In this Embind build the marshalled path is corrupted
-   * once it reaches 11 characters: `Write` throws Emscripten FS errno 44
-   * (ENOENT) and leaves garbage entries in the MEMFS root (observed: `@\u{104053}`,
-   * `\u{2A301}`), while `ReadFile` fails SILENTLY — it returns
-   * IFSelect_RetDone and then `TransferRoots()` yields 0.
+   * `Standard_CString`. Once the path reaches 11 characters the bytes that
+   * reach the underlying file open are stale heap garbage: `Write` either
+   * throws Emscripten FS errno 44 or SILENTLY lands the output in a
+   * garbage-named MEMFS entry (observed: `@\u{104053}`, `\u{2A301}`), and
+   * `ReadFile` opens a nonexistent garbage path — `TransferRoots()` yields 0.
    *
    * Boundary is exact and reproducible: <= 10 chars OK, >= 11 chars broken,
    * independent of directory depth (`/w/a.stp` = 8 works, `/tmp/out.step` = 13
    * does not).
    *
-   * IMPACT — both real-kernel STEP paths in
-   * `public/occt-worker/occt-worker-real.js` are over the limit today:
-   *   exportSTEP() writes '/tmp/out.step' (13) → throws → "empty result"
-   *   importSTEP() reads  'cadr_in.step'  (12) → 0 roots → "no transferable
-   *                                                        B-rep roots"
-   * Fixing those two string literals is outside this track's file ownership;
-   * this test exists so the constraint cannot be re-broken silently.
+   * ROOT CAUSE (probed 2026-07-20): NOT the Embind JS→C++ marshalling —
+   * `TCollection_AsciiString_2` round-trips 11- and 22-char strings exactly,
+   * and an FS.open trace shows the CORRECT path also reaching the C side in
+   * the same op. NOT Emscripten MEMFS — FS.writeFile/readFile handle 38-char
+   * names. The corruption sits inside the compiled OCCT stream-open path, and
+   * the 10/11 boundary is exactly libc++-on-wasm32 std::string SSO capacity
+   * (10 chars inline + NUL): an SSO-resident path survives a stale/dangling
+   * copy by accident, a heap-backed one does not.
+   *
+   * REPAIR — `occt-worker/occt-worker-real.js` (and its public/ copy) now
+   * pins both MEMFS paths under the limit ('/o.step' export, 'in.step'
+   * import) behind a runtime assert (STEP_FS_PATH_MAX = 10), and both ops
+   * fail LOUDLY on missing output / 0 roots. Round-trip through the worker's
+   * own ops is proven on the real kernel in
+   * `occtWorkerReal.stepRoundtrip.test.ts`. This test stays as the boundary
+   * regression guard so the constraint cannot be re-broken silently.
    */
   it('KNOWN KERNEL DEFECT: STEP filenames >= 11 chars are corrupted', () => {
     const box = makeBox(oc, 10, 10, 10);
@@ -274,7 +283,10 @@ describe('wasmReal — REAL OCCT kernel acceptance (R0-0)', () => {
     expect('/ok123.stp'.length).toBe(10);
     expect(write('/ok123.stp').length).toBeGreaterThan(0);
 
-    // 11 characters — throws FS errno 44.
+    // 11 characters — broken. Write either throws FS errno 44 itself, or
+    // "succeeds" while landing the bytes in a garbage-named entry, in which
+    // case the read-back of the requested path throws ENOENT. Both symptoms
+    // are the same defect; the helper reads back, so it throws either way.
     expect('/bad123.stp'.length).toBe(11);
     expect(() => write('/bad123.stp')).toThrow();
 
