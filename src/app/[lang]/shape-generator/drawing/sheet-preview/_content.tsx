@@ -24,7 +24,7 @@ import {
 } from '@/lib/drawing/sheet';
 import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
 import { SheetRenderer } from '../SheetRenderer';
-import DimensionAnnotationModal from '../DimensionAnnotationModal';
+import DimensionAnnotationModal, { type DrawingAnnotation } from '../DimensionAnnotationModal';
 
 function buildDemoSheet(): Sheet {
   const base = standardThreeViewSheet({
@@ -95,7 +95,7 @@ function pickHeading(lang: string): { title: string; subtitle: string; addAnnota
   return HEADING_DICT[key] ?? HEADING_DICT.en;
 }
 
-function isDimension(a: Dimension | GdtCallout): a is Dimension {
+function isDimension(a: DrawingAnnotation): a is Dimension {
   return 'kind' in a && (
     a.kind === 'linear' || a.kind === 'aligned' || a.kind === 'radial'
     || a.kind === 'diametric' || a.kind === 'angular'
@@ -108,7 +108,7 @@ export function SheetPreviewPageContent({ lang }: { lang: string }): React.React
   const heading = pickHeading(lang);
   const firstViewportId = useMemo(() => sheet.viewports[0]?.id ?? '', [sheet.viewports]);
 
-  function handleAdd(annotation: Dimension | GdtCallout): void {
+  function handleAdd(annotation: DrawingAnnotation): void {
     setSheet((prev) => {
       if (isDimension(annotation)) {
         return {
@@ -116,9 +116,16 @@ export function SheetPreviewPageContent({ lang }: { lang: string }): React.React
           dimensions: [...(prev.dimensions ?? []), annotation],
         };
       }
+      // W4-D — same routing as the production drawing page.
+      if ('weldType' in annotation) {
+        return { ...prev, weldSymbols: [...(prev.weldSymbols ?? []), annotation] };
+      }
+      if ('toleranceValue' in annotation) {
+        return { ...prev, gdtCallouts: [...(prev.gdtCallouts ?? []), annotation] };
+      }
       return {
         ...prev,
-        gdtCallouts: [...(prev.gdtCallouts ?? []), annotation],
+        surfaceFinishSymbols: [...(prev.surfaceFinishSymbols ?? []), annotation],
       };
     });
     setModalOpen(false);

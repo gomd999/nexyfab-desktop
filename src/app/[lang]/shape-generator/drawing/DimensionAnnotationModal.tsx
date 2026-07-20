@@ -10,16 +10,22 @@
  * arrays.
  *
  * Layout:
- *   1. Kind selector — radio "dimension" vs "gd&t"
+ *   1. Kind selector — radio "dimension" / "gd&t" / "surface" / "weld"
  *   2. If dimension: kind (linear/aligned/radial/diametric/angular) +
  *      refs (N text inputs, N = KIND_REF_COUNT) + tolerance form +
  *      prefix/suffix
  *   3. If GD&T: symbol + target ref + tolerance value + datums (comma list)
  *      + material condition
- *   4. Submit + Cancel
+ *   4. If surface finish (W4-D): ISO 1302 base symbol + target ref + Ra +
+ *      production method + lay + all-around
+ *   5. If weld (W4-D): AWS/ISO weld type + side + target ref + size/length/
+ *      pitch + field/all-around flags + tail note
+ *   6. Submit + Cancel
  *
- * Validation: light client-side — the produced IR is validated by the
- * caller (validateDimension / validateGdt) before persisting.
+ * Validation: surface/weld IRs run their lib validators before onAdd
+ * (validateSurfaceFinish / validateWeldSymbol — every problem surfaced at
+ * once); dimension/gd&t keep the light client-side guard with the caller
+ * re-validating (validateDimension / validateGdt).
  */
 
 import * as React from 'react';
@@ -31,8 +37,23 @@ import type {
   GdtKind,
   Tolerance,
 } from '@/lib/drawing/dimension';
+import {
+  validateSurfaceFinish,
+  type SurfaceFinishSymbol,
+  type SurfaceFinishKind,
+  type SurfaceLay,
+} from '@/lib/drawing/surfaceFinishSymbol';
+import {
+  validateWeldSymbol,
+  type WeldSymbol,
+  type WeldType,
+  type WeldSide,
+} from '@/lib/drawing/weldSymbol';
 
 // ─── props ───────────────────────────────────────────────────────────────
+
+/** Everything this modal can author (W4-D adds surface finish + weld). */
+export type DrawingAnnotation = Dimension | GdtCallout | SurfaceFinishSymbol | WeldSymbol;
 
 export interface DimensionAnnotationModalProps {
   lang: string;
@@ -40,7 +61,7 @@ export interface DimensionAnnotationModalProps {
   /** Which viewport the new annotation will attach to. */
   viewportId: string;
   /** Receiver for the new annotation. */
-  onAdd: (annotation: Dimension | GdtCallout) => void;
+  onAdd: (annotation: DrawingAnnotation) => void;
   onClose: () => void;
 }
 
@@ -50,6 +71,23 @@ interface ModalDict {
   title: string;
   kindDimension: string;
   kindGdt: string;
+  kindSurface: string;
+  kindWeld: string;
+  sfKindLabel: string;
+  sfTargetLabel: string;
+  sfRaMaxLabel: string;
+  sfMethodLabel: string;
+  sfLayLabel: string;
+  sfAllAroundLabel: string;
+  weldTypeLabel: string;
+  weldSideLabel: string;
+  weldTargetLabel: string;
+  weldSizeLabel: string;
+  weldLengthLabel: string;
+  weldPitchLabel: string;
+  weldFieldLabel: string;
+  weldAllAroundLabel: string;
+  weldTailLabel: string;
   dimKindLabel: string;
   refsLabel: string;
   refPlaceholder: (i: number) => string;
@@ -76,6 +114,23 @@ const DICT: Record<string, ModalDict> = {
     title: 'Add Annotation',
     kindDimension: 'Dimension',
     kindGdt: 'GD&T',
+    kindSurface: 'Surface finish',
+    kindWeld: 'Weld',
+    sfKindLabel: 'Base symbol (ISO 1302)',
+    sfTargetLabel: 'Target ref (face/edge id)',
+    sfRaMaxLabel: 'Ra max (µm, optional)',
+    sfMethodLabel: 'Production method (optional)',
+    sfLayLabel: 'Lay',
+    sfAllAroundLabel: 'All-around',
+    weldTypeLabel: 'Weld type',
+    weldSideLabel: 'Side',
+    weldTargetLabel: 'Target ref (edge/joint id)',
+    weldSizeLabel: 'Size (mm, optional)',
+    weldLengthLabel: 'Length (mm, optional)',
+    weldPitchLabel: 'Pitch (mm, needs length)',
+    weldFieldLabel: 'Field weld',
+    weldAllAroundLabel: 'All-around',
+    weldTailLabel: 'Tail note (process/spec)',
     dimKindLabel: 'Dimension kind',
     refsLabel: 'Geometry refs',
     refPlaceholder: (i) => `ref ${i + 1} (e.g. f.side.0 / e.vert.1)`,
@@ -100,6 +155,23 @@ const DICT: Record<string, ModalDict> = {
     title: '주석 추가',
     kindDimension: '치수',
     kindGdt: 'GD&T (기하공차)',
+    kindSurface: '표면거칠기',
+    kindWeld: '용접기호',
+    sfKindLabel: '기본 기호 (ISO 1302)',
+    sfTargetLabel: '대상 ref (페이스/엣지 id)',
+    sfRaMaxLabel: 'Ra 최대 (µm, 선택)',
+    sfMethodLabel: '가공 방법 (선택)',
+    sfLayLabel: '줄무늬 방향(lay)',
+    sfAllAroundLabel: '전체 둘레',
+    weldTypeLabel: '용접 종류',
+    weldSideLabel: '기준선 측',
+    weldTargetLabel: '대상 ref (엣지/조인트 id)',
+    weldSizeLabel: '치수 (mm, 선택)',
+    weldLengthLabel: '길이 (mm, 선택)',
+    weldPitchLabel: '피치 (mm, 길이 필요)',
+    weldFieldLabel: '현장 용접',
+    weldAllAroundLabel: '전체 둘레',
+    weldTailLabel: '꼬리 노트 (공정/규격)',
     dimKindLabel: '치수 종류',
     refsLabel: '형상 참조',
     refPlaceholder: (i) => `참조 ${i + 1} (예: f.side.0 / e.vert.1)`,
@@ -156,7 +228,7 @@ export default function DimensionAnnotationModal(
   const { lang, viewportId, onAdd, onClose } = props;
   const dict = pickDict(lang);
 
-  const [annotationKind, setAnnotationKind] = React.useState<'dimension' | 'gdt'>('dimension');
+  const [annotationKind, setAnnotationKind] = React.useState<'dimension' | 'gdt' | 'surface' | 'weld'>('dimension');
 
   // ─── dimension state ─────────────────────────────────────────────────
   const [dimKind, setDimKind] = React.useState<DimensionKind>('linear');
@@ -186,6 +258,25 @@ export default function DimensionAnnotationModal(
   const [gdtToleranceValue, setGdtToleranceValue] = React.useState('0.05');
   const [gdtDatumsStr, setGdtDatumsStr] = React.useState('');
   const [gdtMaterialCondition, setGdtMaterialCondition] = React.useState<'' | 'M' | 'L'>('');
+
+  // ─── surface finish state (W4-D) ─────────────────────────────────────
+  const [sfKind, setSfKind] = React.useState<SurfaceFinishKind>('machining_required');
+  const [sfTarget, setSfTarget] = React.useState('');
+  const [sfRaMax, setSfRaMax] = React.useState('3.2');
+  const [sfMethod, setSfMethod] = React.useState('');
+  const [sfLay, setSfLay] = React.useState<'' | SurfaceLay>('');
+  const [sfAllAround, setSfAllAround] = React.useState(false);
+
+  // ─── weld state (W4-D) ───────────────────────────────────────────────
+  const [weldType, setWeldType] = React.useState<WeldType>('fillet');
+  const [weldSide, setWeldSide] = React.useState<WeldSide>('arrow');
+  const [weldTarget, setWeldTarget] = React.useState('');
+  const [weldSize, setWeldSize] = React.useState('6');
+  const [weldLength, setWeldLength] = React.useState('');
+  const [weldPitch, setWeldPitch] = React.useState('');
+  const [weldField, setWeldField] = React.useState(false);
+  const [weldAllAround, setWeldAllAround] = React.useState(false);
+  const [weldTail, setWeldTail] = React.useState('');
 
   const [error, setError] = React.useState<string | null>(null);
 
@@ -238,6 +329,41 @@ export default function DimensionAnnotationModal(
     };
   }
 
+  function buildSurface(): SurfaceFinishSymbol {
+    const built: SurfaceFinishSymbol = {
+      id: `sf-${Date.now()}`,
+      viewportId,
+      targetRef: sfTarget,
+      kind: sfKind,
+      raMax: sfRaMax === '' ? undefined : Number(sfRaMax),
+      productionMethod: sfMethod || undefined,
+      lay: sfLay === '' ? undefined : sfLay,
+      allAround: sfAllAround || undefined,
+    };
+    const v = validateSurfaceFinish(built);
+    if (!v.ok) throw new Error(v.errors.join('; '));
+    return built;
+  }
+
+  function buildWeld(): WeldSymbol {
+    const built: WeldSymbol = {
+      id: `weld-${Date.now()}`,
+      viewportId,
+      targetRef: weldTarget,
+      weldType,
+      side: weldSide,
+      size: weldSize === '' ? undefined : Number(weldSize),
+      length: weldLength === '' ? undefined : Number(weldLength),
+      pitch: weldPitch === '' ? undefined : Number(weldPitch),
+      fieldWeld: weldField || undefined,
+      allAround: weldAllAround || undefined,
+      tail: weldTail || undefined,
+    };
+    const v = validateWeldSymbol(built);
+    if (!v.ok) throw new Error(v.errors.join('; '));
+    return built;
+  }
+
   function handleSubmit(): void {
     setError(null);
     try {
@@ -248,7 +374,7 @@ export default function DimensionAnnotationModal(
           throw new Error('all refs must be filled');
         }
         onAdd(built);
-      } else {
+      } else if (annotationKind === 'gdt') {
         const built = buildGdt();
         if (!built.targetRef) {
           throw new Error('targetRef is required');
@@ -257,6 +383,10 @@ export default function DimensionAnnotationModal(
           throw new Error('tolerance value must be positive');
         }
         onAdd(built);
+      } else if (annotationKind === 'surface') {
+        onAdd(buildSurface());
+      } else {
+        onAdd(buildWeld());
       }
     } catch (e) {
       setError((e as Error).message);
@@ -317,6 +447,26 @@ export default function DimensionAnnotationModal(
               onChange={() => setAnnotationKind('gdt')}
             />
             {dict.kindGdt}
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input
+              type="radio"
+              name="annotation-kind"
+              data-testid="solver-dim-kind-surface"
+              checked={annotationKind === 'surface'}
+              onChange={() => setAnnotationKind('surface')}
+            />
+            {dict.kindSurface}
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input
+              type="radio"
+              name="annotation-kind"
+              data-testid="solver-dim-kind-weld"
+              checked={annotationKind === 'weld'}
+              onChange={() => setAnnotationKind('weld')}
+            />
+            {dict.kindWeld}
           </label>
         </div>
 
@@ -454,7 +604,7 @@ export default function DimensionAnnotationModal(
               )}
             </fieldset>
           </div>
-        ) : (
+        ) : annotationKind === 'gdt' ? (
           <div data-testid="solver-dim-gdt-form">
             <label style={{ display: 'block', marginBottom: 8 }}>
               {dict.gdtSymbolLabel}
@@ -508,6 +658,171 @@ export default function DimensionAnnotationModal(
                 <option value="M">M (max material)</option>
                 <option value="L">L (least material)</option>
               </select>
+            </label>
+          </div>
+        ) : annotationKind === 'surface' ? (
+          <div data-testid="solver-dim-surface-form">
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              {dict.sfKindLabel}
+              <select
+                data-testid="solver-dim-sf-kind-select"
+                value={sfKind}
+                onChange={(e) => setSfKind(e.target.value as SurfaceFinishKind)}
+                style={{ marginLeft: 8 }}
+              >
+                <option value="basic">basic</option>
+                <option value="machining_required">machining_required</option>
+                <option value="machining_prohibited">machining_prohibited</option>
+              </select>
+            </label>
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              {dict.sfTargetLabel}
+              <input
+                data-testid="solver-dim-sf-target-input"
+                value={sfTarget}
+                onChange={(e) => setSfTarget(e.target.value)}
+                placeholder="f.side.0"
+                style={{ marginLeft: 8 }}
+              />
+            </label>
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              {dict.sfRaMaxLabel}
+              <input
+                data-testid="solver-dim-sf-ramax-input"
+                value={sfRaMax}
+                onChange={(e) => setSfRaMax(e.target.value)}
+                style={{ marginLeft: 8, width: 80 }}
+              />
+            </label>
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              {dict.sfMethodLabel}
+              <input
+                data-testid="solver-dim-sf-method-input"
+                value={sfMethod}
+                onChange={(e) => setSfMethod(e.target.value)}
+                placeholder="milled / ground"
+                style={{ marginLeft: 8 }}
+              />
+            </label>
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              {dict.sfLayLabel}
+              <select
+                data-testid="solver-dim-sf-lay-select"
+                value={sfLay}
+                onChange={(e) => setSfLay(e.target.value as '' | SurfaceLay)}
+                style={{ marginLeft: 8 }}
+              >
+                <option value="">(none)</option>
+                <option value="=">=</option>
+                <option value="X">X</option>
+                <option value="M">M</option>
+                <option value="C">C</option>
+                <option value="R">R</option>
+                <option value="P">P</option>
+              </select>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <input
+                type="checkbox"
+                data-testid="solver-dim-sf-allaround-input"
+                checked={sfAllAround}
+                onChange={(e) => setSfAllAround(e.target.checked)}
+              />
+              {dict.sfAllAroundLabel}
+            </label>
+          </div>
+        ) : (
+          <div data-testid="solver-dim-weld-form">
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              {dict.weldTypeLabel}
+              <select
+                data-testid="solver-dim-weld-type-select"
+                value={weldType}
+                onChange={(e) => setWeldType(e.target.value as WeldType)}
+                style={{ marginLeft: 8 }}
+              >
+                {(['fillet', 'square', 'bevel', 'vee', 'plug', 'spot'] as const).map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </label>
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              {dict.weldSideLabel}
+              <select
+                data-testid="solver-dim-weld-side-select"
+                value={weldSide}
+                onChange={(e) => setWeldSide(e.target.value as WeldSide)}
+                style={{ marginLeft: 8 }}
+              >
+                <option value="arrow">arrow</option>
+                <option value="other">other</option>
+                <option value="both">both</option>
+              </select>
+            </label>
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              {dict.weldTargetLabel}
+              <input
+                data-testid="solver-dim-weld-target-input"
+                value={weldTarget}
+                onChange={(e) => setWeldTarget(e.target.value)}
+                placeholder="e.vert.0"
+                style={{ marginLeft: 8 }}
+              />
+            </label>
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              {dict.weldSizeLabel}
+              <input
+                data-testid="solver-dim-weld-size-input"
+                value={weldSize}
+                onChange={(e) => setWeldSize(e.target.value)}
+                style={{ marginLeft: 8, width: 80 }}
+              />
+            </label>
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              {dict.weldLengthLabel}
+              <input
+                data-testid="solver-dim-weld-length-input"
+                value={weldLength}
+                onChange={(e) => setWeldLength(e.target.value)}
+                style={{ marginLeft: 8, width: 80 }}
+              />
+            </label>
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              {dict.weldPitchLabel}
+              <input
+                data-testid="solver-dim-weld-pitch-input"
+                value={weldPitch}
+                onChange={(e) => setWeldPitch(e.target.value)}
+                style={{ marginLeft: 8, width: 80 }}
+              />
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <input
+                type="checkbox"
+                data-testid="solver-dim-weld-field-input"
+                checked={weldField}
+                onChange={(e) => setWeldField(e.target.checked)}
+              />
+              {dict.weldFieldLabel}
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <input
+                type="checkbox"
+                data-testid="solver-dim-weld-allaround-input"
+                checked={weldAllAround}
+                onChange={(e) => setWeldAllAround(e.target.checked)}
+              />
+              {dict.weldAllAroundLabel}
+            </label>
+            <label style={{ display: 'block', marginBottom: 8 }}>
+              {dict.weldTailLabel}
+              <input
+                data-testid="solver-dim-weld-tail-input"
+                value={weldTail}
+                onChange={(e) => setWeldTail(e.target.value)}
+                placeholder="GMAW"
+                style={{ marginLeft: 8 }}
+              />
             </label>
           </div>
         )}

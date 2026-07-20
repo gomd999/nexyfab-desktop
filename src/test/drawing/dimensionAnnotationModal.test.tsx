@@ -9,7 +9,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
-import DimensionAnnotationModal from '@/app/[lang]/shape-generator/drawing/DimensionAnnotationModal';
+import DimensionAnnotationModal, { type DrawingAnnotation } from '@/app/[lang]/shape-generator/drawing/DimensionAnnotationModal';
 import type { Sheet, Viewport } from '@/lib/drawing/sheet';
 import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
 
@@ -30,7 +30,7 @@ function sheet(): Sheet {
 }
 
 function mountModal(opts: {
-  onAdd?: (a: Dimension | GdtCallout) => void;
+  onAdd?: (a: DrawingAnnotation) => void;
   onClose?: () => void;
   lang?: string;
 } = {}) {

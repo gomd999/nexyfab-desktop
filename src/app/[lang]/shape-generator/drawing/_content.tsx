@@ -67,6 +67,9 @@ import {
   formatMeasuredValue,
 } from '@/lib/drawing/associativeUpdate';
 import { projectPolyhedron } from '@/lib/drawing/projectView';
+import { formatSurfaceFinish, type SurfaceFinishSymbol } from '@/lib/drawing/surfaceFinishSymbol';
+import { formatWeldSymbol, type WeldSymbol } from '@/lib/drawing/weldSymbol';
+import type { DrawingAnnotation } from './DimensionAnnotationModal';
 import { exportSheetsToPdf, PdfExportError } from '@/lib/drawing/pdfExport';
 import { sheetToDxf } from '@/lib/drawing/dxfExport';
 import type { CuttingPlane } from './sectionView';
@@ -821,7 +824,7 @@ function isLargePaper(
 
 // ─── type guard ──────────────────────────────────────────────────────────
 
-function isDimension(a: Dimension | GdtCallout): a is Dimension {
+function isDimension(a: DrawingAnnotation): a is Dimension {
   return (
     'kind' in a &&
     (a.kind === 'linear'
@@ -1247,7 +1250,10 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     dimensions: Dimension[];
     gdtCallouts: GdtCallout[];
     ordinateChains: OrdinateDimensionChain[];
-  }>({ dimensions: [], gdtCallouts: [], ordinateChains: [] });
+    /** W4-D — surface finish + weld callouts (renderer existed; authoring UI now feeds it). */
+    surfaceFinishSymbols: SurfaceFinishSymbol[];
+    weldSymbols: WeldSymbol[];
+  }>({ dimensions: [], gdtCallouts: [], ordinateChains: [], surfaceFinishSymbols: [], weldSymbols: [] });
   const ordinateSeq = React.useRef<number>(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
@@ -1839,6 +1845,8 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
       dimensions: annotations.dimensions,
       gdtCallouts: annotations.gdtCallouts,
       ordinateChains: annotations.ordinateChains,
+      surfaceFinishSymbols: annotations.surfaceFinishSymbols,
+      weldSymbols: annotations.weldSymbols,
     };
     if (templateKey === 'none') return withAnnotations;
     const registryTemplate = TEMPLATES[templateKey];
@@ -1979,12 +1987,20 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     setSnapScreenPos(null);
   }, []);
 
-  const handleAdd = useCallback((annotation: Dimension | GdtCallout) => {
+  const handleAdd = useCallback((annotation: DrawingAnnotation) => {
     setAnnotations((prev) => {
       if (isDimension(annotation)) {
         return { ...prev, dimensions: [...prev.dimensions, annotation] };
       }
-      return { ...prev, gdtCallouts: [...prev.gdtCallouts, annotation] };
+      // W4-D — weld carries `weldType`; GD&T carries `toleranceValue`;
+      // what remains is a surface-finish symbol.
+      if ('weldType' in annotation) {
+        return { ...prev, weldSymbols: [...prev.weldSymbols, annotation] };
+      }
+      if ('toleranceValue' in annotation) {
+        return { ...prev, gdtCallouts: [...prev.gdtCallouts, annotation] };
+      }
+      return { ...prev, surfaceFinishSymbols: [...prev.surfaceFinishSymbols, annotation] };
     });
     setModalOpen(false);
   }, []);
@@ -1994,6 +2010,8 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
       dimensions: prev.dimensions.filter((d) => d.id !== id),
       gdtCallouts: prev.gdtCallouts.filter((g) => g.id !== id),
       ordinateChains: prev.ordinateChains.filter((c) => c.id !== id),
+      surfaceFinishSymbols: prev.surfaceFinishSymbols.filter((s) => s.id !== id),
+      weldSymbols: prev.weldSymbols.filter((w) => w.id !== id),
     }));
     setSelectedAnnotationId((cur) => (cur === id ? null : cur));
   }, []);
@@ -2077,9 +2095,9 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     id: string;
     tag: string;
     label: string;
-    kind: 'dimension' | 'gdt' | 'ordinate';
+    kind: 'dimension' | 'gdt' | 'ordinate' | 'surface' | 'weld';
   }> = useMemo(() => {
-    const out: Array<{ id: string; tag: string; label: string; kind: 'dimension' | 'gdt' | 'ordinate' }> = [];
+    const out: Array<{ id: string; tag: string; label: string; kind: 'dimension' | 'gdt' | 'ordinate' | 'surface' | 'weld' }> = [];
     for (const d of annotations.dimensions) {
       const res = dimensionAudit.get(d.id) ?? null;
       // "= value" when actually measured, "⚠ reason" on explicit failure,
@@ -2096,6 +2114,24 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
         tag: dict.ordinateTag,
         label: `${c.axis} · ${c.points.length} pt`,
         kind: 'ordinate',
+      });
+    }
+    // W4-D — surface finish + weld entries; labels reuse the same lib
+    // formatters the renderer prints, so list and canvas always agree.
+    for (const s of annotations.surfaceFinishSymbols) {
+      out.push({
+        id: s.id,
+        tag: '⌵',
+        label: `${formatSurfaceFinish(s)} · ${s.viewportId}`,
+        kind: 'surface',
+      });
+    }
+    for (const w of annotations.weldSymbols) {
+      out.push({
+        id: w.id,
+        tag: '⊳',
+        label: `${formatWeldSymbol(w)} · ${w.viewportId}`,
+        kind: 'weld',
       });
     }
     return out;
