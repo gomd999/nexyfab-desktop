@@ -1993,11 +1993,26 @@ export default function CommandToolbar(props: CommandToolbarProps) {
     },
     'sep',
     { id: 'ft-weld', icon: '🔧', label: tt.ftWeld, action: () => {},
+      // W5-E: each button carries its real sectionType (0 rect tube / 1 I-beam
+      // / 2 L-angle / 3 round tube — weldment engine order). The old no-arg
+      // calls made all four buttons byte-identical (schema default section).
       sub: [
-        { id: 'w-recttube', icon: '▭', label: tt.wRectTube, action: () => onAddFeature('weldment') },
-        { id: 'w-ibeam', icon: 'Ι', label: tt.wIBeam, action: () => onAddFeature('weldment') },
-        { id: 'w-angle', icon: 'L', label: tt.wAngle, action: () => onAddFeature('weldment') },
-        { id: 'w-roundtube', icon: '○', label: tt.wRoundTube, action: () => onAddFeature('weldment') },
+        { id: 'w-recttube', icon: '▭', label: tt.wRectTube,
+          action: () => (onAddFeatureWithParams
+            ? onAddFeatureWithParams('weldment', { sectionType: 0 })
+            : onAddFeature('weldment')) },
+        { id: 'w-ibeam', icon: 'Ι', label: tt.wIBeam,
+          action: () => (onAddFeatureWithParams
+            ? onAddFeatureWithParams('weldment', { sectionType: 1 })
+            : onAddFeature('weldment')) },
+        { id: 'w-angle', icon: 'L', label: tt.wAngle,
+          action: () => (onAddFeatureWithParams
+            ? onAddFeatureWithParams('weldment', { sectionType: 2 })
+            : onAddFeature('weldment')) },
+        { id: 'w-roundtube', icon: '○', label: tt.wRoundTube,
+          action: () => (onAddFeatureWithParams
+            ? onAddFeatureWithParams('weldment', { sectionType: 3 })
+            : onAddFeature('weldment')) },
       ]
     },
     'sep',
