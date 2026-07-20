@@ -228,3 +228,144 @@ export function projectPolyhedron(poly: Polyhedron, view: ProjectionView): Proje
   }
   return { visible, hidden, tangent, bbox: { minX, minY, maxX, maxY } };
 }
+
+// ─── view operations (W4-C: detail + broken views) ───────────────────────
+// Pure segment-level operations on a projected view's line work, in the same
+// view-plane mm frame `projectPolyhedron` emits. No fabrication: both clip
+// EXACTLY (line/circle and line/band intersections solved analytically);
+// nothing is approximated or resampled.
+
+/**
+ * Clip segments to the inside of a circle (a detail view's magnifier region).
+ * Segments fully outside are dropped; crossing segments are cut at the exact
+ * line–circle intersection parameters. Throws on a non-positive radius.
+ */
+export function clipSegmentsToCircle(
+  segments: ReadonlyArray<Segment2D>,
+  center: { x: number; y: number },
+  radius: number,
+): Segment2D[] {
+  if (!(radius > 0) || !Number.isFinite(radius)) {
+    throw new Error(`clipSegmentsToCircle: radius must be positive (got ${radius})`);
+  }
+  const out: Segment2D[] = [];
+  for (const s of segments) {
+    const dx = s.x2 - s.x1;
+    const dy = s.y2 - s.y1;
+    const fx = s.x1 - center.x;
+    const fy = s.y1 - center.y;
+    // |f + t·d|² = r²  →  (d·d)t² + 2(f·d)t + (f·f − r²) = 0
+    const a = dx * dx + dy * dy;
+    const b = 2 * (fx * dx + fy * dy);
+    const c = fx * fx + fy * fy - radius * radius;
+    let t0 = 0;
+    let t1 = 1;
+    if (a < 1e-18) {
+      // Degenerate (point) segment: keep iff inside.
+      if (c <= 0) out.push({ ...s });
+      continue;
+    }
+    const disc = b * b - 4 * a * c;
+    if (disc < 0) {
+      // No intersection: fully inside (c<0) or fully outside (c>0).
+      if (c <= 0) out.push({ ...s });
+      continue;
+    }
+    const sq = Math.sqrt(disc);
+    const tA = (-b - sq) / (2 * a);
+    const tB = (-b + sq) / (2 * a);
+    t0 = Math.max(0, tA);
+    t1 = Math.min(1, tB);
+    if (t1 <= t0) continue; // inside-circle interval misses [0,1]
+    out.push({
+      x1: s.x1 + t0 * dx,
+      y1: s.y1 + t0 * dy,
+      x2: s.x1 + t1 * dx,
+      y2: s.y1 + t1 * dy,
+    });
+  }
+  return out;
+}
+
+export interface ViewBreakOptions {
+  /** Break axis in the view plane: 'x' removes a vertical band, 'y' a horizontal one. */
+  axis: 'x' | 'y';
+  /** Removed band [breakStart, breakEnd] in view-plane mm (breakEnd > breakStart). */
+  breakStart: number;
+  breakEnd: number;
+  /** Visual gap left between the two halves after collapsing, in view-plane mm. */
+  gap: number;
+}
+
+export interface BrokenView {
+  segments: Segment2D[];
+  /** Post-collapse axis positions of the two break edges (near, far). */
+  nearBreakAt: number;
+  farBreakAt: number;
+  /** How far the far side moved toward the near side ((band width) − gap). */
+  shift: number;
+}
+
+/**
+ * Apply a broken-view collapse to projected segments: everything inside the
+ * band is removed, everything past `breakEnd` slides toward the near side so
+ * the band collapses to `gap`. Crossing segments are cut exactly at the band
+ * edges. Throws (explicit refusal, no guessing) when the band is empty or the
+ * gap is not smaller than the band — a "break" that removes nothing is a lie.
+ */
+export function applyViewBreak(
+  segments: ReadonlyArray<Segment2D>,
+  opts: ViewBreakOptions,
+): BrokenView {
+  const { axis, breakStart, breakEnd, gap } = opts;
+  if (!(breakEnd > breakStart)) {
+    throw new Error(`applyViewBreak: breakEnd (${breakEnd}) must exceed breakStart (${breakStart})`);
+  }
+  if (!(gap > 0) || !(gap < breakEnd - breakStart)) {
+    throw new Error(
+      `applyViewBreak: gap (${gap}) must be positive and smaller than the band (${breakEnd - breakStart})`,
+    );
+  }
+  const shift = breakEnd - breakStart - gap;
+  const coord = (x: number, y: number): number => (axis === 'x' ? x : y);
+  const out: Segment2D[] = [];
+
+  /** Emit the sub-segment of s over parameter interval [t0, t1], displaced by d along the axis. */
+  const emit = (s: Segment2D, t0: number, t1: number, d: number): void => {
+    if (!(t1 > t0)) return;
+    const px = (t: number): number => s.x1 + t * (s.x2 - s.x1);
+    const py = (t: number): number => s.y1 + t * (s.y2 - s.y1);
+    const ox = axis === 'x' ? -d : 0;
+    const oy = axis === 'y' ? -d : 0;
+    out.push({ x1: px(t0) + ox, y1: py(t0) + oy, x2: px(t1) + ox, y2: py(t1) + oy });
+  };
+
+  for (const s of segments) {
+    const a1 = coord(s.x1, s.y1);
+    const a2 = coord(s.x2, s.y2);
+    const da = a2 - a1;
+    /** Parameter where the segment crosses axis value v (assumes da ≠ 0). */
+    const tAt = (v: number): number => (v - a1) / da;
+    if (Math.abs(da) < 1e-18) {
+      // Axis-constant segment: entirely in one region.
+      if (a1 <= breakStart) emit(s, 0, 1, 0);
+      else if (a1 >= breakEnd) emit(s, 0, 1, shift);
+      continue; // inside the band → removed
+    }
+    const lo = Math.min(a1, a2);
+    const hi = Math.max(a1, a2);
+    // Near-side piece (axis ≤ breakStart), kept in place.
+    if (lo < breakStart) {
+      const tS = hi > breakStart ? tAt(breakStart) : (a1 < a2 ? 1 : 0);
+      if (a1 < a2) emit(s, 0, Math.min(1, tS), 0);
+      else emit(s, Math.max(0, tS), 1, 0);
+    }
+    // Far-side piece (axis ≥ breakEnd), shifted toward the near side.
+    if (hi > breakEnd) {
+      const tE = lo < breakEnd ? tAt(breakEnd) : (a1 > a2 ? 1 : 0);
+      if (a1 < a2) emit(s, Math.max(0, tE), 1, shift);
+      else emit(s, 0, Math.min(1, tE), shift);
+    }
+  }
+  return { segments: out, nearBreakAt: breakStart, farBreakAt: breakStart + gap, shift };
+}

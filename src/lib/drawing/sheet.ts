@@ -139,11 +139,35 @@ export interface DetailProjection {
   scaleFactor: number;
 }
 
+/**
+ * W4-C — broken (interrupted) view: a standard view with a band of the model
+ * removed along one view-plane axis and the far side slid up so the band
+ * collapses to a small visual gap (long shafts / extrusions fit the sheet
+ * without shrinking the interesting ends). Dimensions are NOT measurable on a
+ * broken view (the view lies about length by construction) — the measurement
+ * engine only accepts `kind: 'standard'`, so dims targeting a broken view
+ * keep their explicit placeholder.
+ */
+export interface BrokenProjection {
+  kind: 'broken';
+  /** Underlying standard view being broken. */
+  view: StandardProjectionView;
+  /** Break axis in the view plane: 'x' removes a vertical band, 'y' a horizontal one. */
+  axis: 'x' | 'y';
+  /** Removed band [breakStart, breakEnd] in view-plane mm (breakEnd > breakStart). */
+  breakStart: number;
+  breakEnd: number;
+  /** Visual gap between the halves after collapsing, in view-plane mm.
+   *  Absent ⇒ renderer default. Must be smaller than the band when set. */
+  gap?: number;
+}
+
 export type ProjectionKind =
   | StandardProjection
   | AuxiliaryProjection
   | SectionProjection
-  | DetailProjection;
+  | DetailProjection
+  | BrokenProjection;
 
 // ─── viewport ────────────────────────────────────────────────────────────
 
@@ -314,6 +338,19 @@ export function validateSheet(sheet: Sheet): void {
       }
       if (vp.projection.radius <= 0) {
         throw new SheetValidationError(`viewport ${vp.id} (detail): radius must be positive`);
+      }
+    }
+    if (vp.projection.kind === 'broken') {
+      const p = vp.projection;
+      if (!Number.isFinite(p.breakStart) || !Number.isFinite(p.breakEnd) || p.breakEnd <= p.breakStart) {
+        throw new SheetValidationError(
+          `viewport ${vp.id} (broken): breakEnd (${p.breakEnd}) must exceed breakStart (${p.breakStart})`,
+        );
+      }
+      if (p.gap !== undefined && (!(p.gap > 0) || p.gap >= p.breakEnd - p.breakStart)) {
+        throw new SheetValidationError(
+          `viewport ${vp.id} (broken): gap (${p.gap}) must be positive and smaller than the band`,
+        );
       }
     }
   }

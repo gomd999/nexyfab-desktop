@@ -42,7 +42,11 @@ import { formatGdt, formatTolerance } from '@/lib/drawing/dimension';
 import type { OrdinateDimensionChain } from '@/lib/drawing/ordinateDimension';
 import { buildOrdinateRenderHints } from '@/lib/drawing/ordinateDimension';
 import type { Polyhedron } from '@/lib/cad/featureMesh';
-import { projectPolyhedron } from '@/lib/drawing/projectView';
+import {
+  projectPolyhedron,
+  clipSegmentsToCircle,
+  applyViewBreak,
+} from '@/lib/drawing/projectView';
 import { generateSection, planeBasis, project2D, type CuttingPlane, type SectionKind } from './sectionView';
 import { formatSurfaceFinish } from '@/lib/drawing/surfaceFinishSymbol';
 import { formatWeldSymbol } from '@/lib/drawing/weldSymbol';
@@ -130,6 +134,15 @@ export interface SheetRendererProps {
 
 interface ResolvedBox { x: number; y: number; w: number; h: number }
 
+type ProjView = 'front' | 'back' | 'top' | 'bottom' | 'left' | 'right' | 'iso';
+
+/** A detail circle drawn ON a source viewport (view-plane mm + letter). */
+interface DetailMarker {
+  center: { x: number; y: number };
+  radius: number;
+  letter: string;
+}
+
 function resolveViewportBox(vp: Viewport, paperHeightMm: number): ResolvedBox {
   // viewportSheetBox returns mm in Sheet-IR space (bottom-left origin).
   // Convert top-left for SVG: SVG-y = paperHeight - (y + h).
@@ -195,21 +208,46 @@ export function SheetRenderer({
         strokeWidth={SHEET_BORDER_WIDTH}
       />
 
-      {/* Viewports. */}
-      {sheet.viewports.map((vp, idx) => (
-        <ViewportLayer
-          key={vp.id}
-          viewport={vp}
-          paperHeightMm={dim.height}
-          // Detail-view marker letters cycle A, B, C, ... per detail viewport.
-          detailLetter={letterForIndex(idx)}
-          geometry={geometry?.get(vp.sourceId) ?? null}
-          cuttingPlane={vp.projection.kind === 'section' ? (cuttingPlanes?.get(vp.projection.cuttingPlaneId) ?? null) : null}
-          autoDimension={autoDimension}
-          showHiddenLines={showHiddenLines}
-          showTangentEdges={showTangentEdges}
-        />
-      ))}
+      {/* Viewports. W4-C: each detail viewport's circle is also drawn ON its
+          source viewport (drafting convention), and the detail viewport itself
+          shows the real magnified line work when geometry is available. */}
+      {sheet.viewports.map((vp, idx) => {
+        // Detail circles targeting THIS viewport (letters match the detail
+        // viewport's own marker letter — same index-based cycle).
+        const markers: DetailMarker[] = [];
+        sheet.viewports.forEach((other, otherIdx) => {
+          if (other.projection.kind === 'detail' && other.projection.sourceViewportId === vp.id) {
+            markers.push({
+              center: other.projection.center,
+              radius: other.projection.radius,
+              letter: letterForIndex(otherIdx),
+            });
+          }
+        });
+        // A detail viewport magnifies its source viewport's STANDARD view.
+        let detailSourceView: ProjView | null = null;
+        if (vp.projection.kind === 'detail') {
+          const srcId = vp.projection.sourceViewportId;
+          const src = sheet.viewports.find((v) => v.id === srcId);
+          if (src && src.projection.kind === 'standard') detailSourceView = src.projection.view;
+        }
+        return (
+          <ViewportLayer
+            key={vp.id}
+            viewport={vp}
+            paperHeightMm={dim.height}
+            // Detail-view marker letters cycle A, B, C, ... per detail viewport.
+            detailLetter={letterForIndex(idx)}
+            geometry={geometry?.get(vp.sourceId) ?? null}
+            cuttingPlane={vp.projection.kind === 'section' ? (cuttingPlanes?.get(vp.projection.cuttingPlaneId) ?? null) : null}
+            autoDimension={autoDimension}
+            showHiddenLines={showHiddenLines}
+            showTangentEdges={showTangentEdges}
+            detailMarkers={markers.length > 0 ? markers : null}
+            detailSourceView={detailSourceView}
+          />
+        );
+      })}
 
       {/* Dimensions (Phase 4.2 layout + W4-A real values). When the target
           viewport is a standard view with a supplied topology, the label is
@@ -325,6 +363,10 @@ interface ViewportLayerProps {
   autoDimension?: boolean;
   showHiddenLines?: boolean;
   showTangentEdges?: boolean;
+  /** W4-C — detail circles referencing THIS viewport as their source. */
+  detailMarkers?: ReadonlyArray<DetailMarker> | null;
+  /** W4-C — for a detail viewport: its source viewport's standard view. */
+  detailSourceView?: ProjView | null;
 }
 
 function ViewportLayer({
@@ -336,6 +378,8 @@ function ViewportLayer({
   autoDimension,
   showHiddenLines = true,
   showTangentEdges = false,
+  detailMarkers,
+  detailSourceView,
 }: ViewportLayerProps): React.ReactElement {
   const box = resolveViewportBox(viewport, paperHeightMm);
   // Real projected geometry for standard views when a polyhedron is supplied.
@@ -349,6 +393,31 @@ function ViewportLayer({
           autoDimension={autoDimension}
           showHiddenLines={showHiddenLines}
           showTangentEdges={showTangentEdges}
+          detailMarkers={detailMarkers}
+        />
+      : null;
+  // W4-C — real broken-view line work (standard projection + band collapse).
+  const broken =
+    geometry && viewport.projection.kind === 'broken'
+      ? <BrokenGeometry
+          viewportId={viewport.id}
+          poly={geometry}
+          projection={viewport.projection}
+          box={box}
+          showHiddenLines={showHiddenLines}
+        />
+      : null;
+  // W4-C — real magnified detail content (clip source view to the circle).
+  const detail =
+    geometry && viewport.projection.kind === 'detail' && detailSourceView
+      ? <DetailGeometry
+          viewportId={viewport.id}
+          poly={geometry}
+          sourceView={detailSourceView}
+          center={viewport.projection.center}
+          radius={viewport.projection.radius}
+          box={box}
+          showHiddenLines={showHiddenLines}
         />
       : null;
   const labelHeight = Math.max(3, box.h * 0.05);
@@ -380,6 +449,8 @@ function ViewportLayer({
       />
 
       {projected}
+      {broken}
+      {detail}
 
       {viewport.label ? (
         <text
@@ -422,11 +493,13 @@ function ViewportLayer({
 interface ProjectedGeometryProps {
   viewportId: string;
   poly: Polyhedron;
-  view: 'front' | 'back' | 'top' | 'bottom' | 'left' | 'right' | 'iso';
+  view: ProjView;
   box: ResolvedBox;
   autoDimension?: boolean;
   showHiddenLines?: boolean;
   showTangentEdges?: boolean;
+  /** W4-C — detail circles to draw over this view (view-plane mm). */
+  detailMarkers?: ReadonlyArray<DetailMarker> | null;
 }
 
 const GEOM_VISIBLE_STROKE = '#0f172a';
@@ -449,6 +522,7 @@ function ProjectedGeometry({
   autoDimension,
   showHiddenLines = true,
   showTangentEdges = false,
+  detailMarkers,
 }: ProjectedGeometryProps): React.ReactElement | null {
   const { visible, hidden, tangent, bbox } = projectPolyhedron(poly, view);
   const geomW = bbox.maxX - bbox.minX;
@@ -513,7 +587,237 @@ function ProjectedGeometry({
           strokeWidth={strokeW}
         />
       ))}
+      {/* W4-C — detail circles on the source view, mapped through the same
+          fit transform as the line work so they ring the actual geometry. */}
+      {detailMarkers?.map((m, i) => (
+        <g
+          key={`dm${i}`}
+          data-testid={`sheet-renderer-detail-marker-${viewportId}-${m.letter}`}
+        >
+          <circle
+            cx={tx(m.center.x)}
+            cy={ty(m.center.y)}
+            r={m.radius * s}
+            fill="none"
+            stroke={DETAIL_CIRCLE_COLOR}
+            strokeWidth={strokeW * 0.8}
+            strokeDasharray={`${strokeW * 4} ${strokeW * 2.5}`}
+          />
+          <text
+            x={tx(m.center.x) + m.radius * s + 1}
+            y={ty(m.center.y) - m.radius * s - 1}
+            fontSize={Math.max(2.5, box.h * 0.045)}
+            fontFamily="system-ui, sans-serif"
+            fontWeight={600}
+            fill={DETAIL_CIRCLE_COLOR}
+          >
+            {m.letter}
+          </text>
+        </g>
+      ))}
       {dims}
+    </g>
+  );
+}
+
+// ─── broken view (W4-C): band collapse of a standard projection ──────────
+
+const BREAK_LINE_COLOR = '#b45309';
+/** Renderer default for the visual gap when the IR leaves it unset (mm in
+ *  view-plane units, clamped below the band so the collapse stays valid). */
+function defaultBreakGap(bandWidth: number): number {
+  return Math.min(4, bandWidth / 2);
+}
+
+interface BrokenGeometryProps {
+  viewportId: string;
+  poly: Polyhedron;
+  projection: {
+    view: ProjView;
+    axis: 'x' | 'y';
+    breakStart: number;
+    breakEnd: number;
+    gap?: number;
+  };
+  box: ResolvedBox;
+  showHiddenLines?: boolean;
+}
+
+/**
+ * Project the standard view, collapse the break band (applyViewBreak — exact
+ * segment clipping, no resampling), fit the RESULT into the viewport box and
+ * draw it with zigzag break lines at the two cut edges. An invalid band
+ * (applyViewBreak throws) renders nothing rather than an un-broken view that
+ * would silently misrepresent the IR.
+ */
+function BrokenGeometry({
+  viewportId,
+  poly,
+  projection,
+  box,
+  showHiddenLines = true,
+}: BrokenGeometryProps): React.ReactElement | null {
+  const { view, axis, breakStart, breakEnd } = projection;
+  const gap = projection.gap ?? defaultBreakGap(breakEnd - breakStart);
+  const projected = projectPolyhedron(poly, view);
+  let visible: ReturnType<typeof applyViewBreak>;
+  let hidden: ReturnType<typeof applyViewBreak>;
+  try {
+    visible = applyViewBreak(projected.visible, { axis, breakStart, breakEnd, gap });
+    hidden = applyViewBreak(projected.hidden, { axis, breakStart, breakEnd, gap });
+  } catch {
+    return null;
+  }
+  const all = [...visible.segments, ...hidden.segments];
+  if (all.length === 0) return null;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const e of all) {
+    minX = Math.min(minX, e.x1, e.x2); maxX = Math.max(maxX, e.x1, e.x2);
+    minY = Math.min(minY, e.y1, e.y2); maxY = Math.max(maxY, e.y1, e.y2);
+  }
+  const geomW = maxX - minX;
+  const geomH = maxY - minY;
+  if (!(geomW > 0) && !(geomH > 0)) return null;
+  const margin = Math.min(box.w, box.h) * GEOM_MARGIN_FRAC;
+  const availW = Math.max(1e-6, box.w - 2 * margin);
+  const availH = Math.max(1e-6, box.h - 2 * margin);
+  const s = Math.min(geomW > 0 ? availW / geomW : Infinity, geomH > 0 ? availH / geomH : Infinity);
+  const offX = box.x + (box.w - geomW * s) / 2;
+  const offY = box.y + (box.h - geomH * s) / 2;
+  const tx = (u: number): number => offX + (u - minX) * s;
+  const ty = (v: number): number => offY + (maxY - v) * s;
+  const strokeW = Math.max(0.15, Math.min(box.w, box.h) * 0.006);
+
+  /** Zigzag break line at view-plane axis position `at`, spanning the
+   *  perpendicular extent of the drawn geometry. */
+  const zigzag = (at: number, key: string): React.ReactElement => {
+    const periods = 6;
+    const amp = Math.min(box.w, box.h) * 0.02;
+    const pts: string[] = [];
+    for (let i = 0; i <= periods * 2; i += 1) {
+      const f = i / (periods * 2);
+      const wave = (i % 2 === 0 ? 0 : i % 4 === 1 ? amp : -amp);
+      if (axis === 'x') {
+        const y = minY + f * geomH;
+        pts.push(`${tx(at) + wave},${ty(y)}`);
+      } else {
+        const x = minX + f * geomW;
+        pts.push(`${tx(x)},${ty(at) + wave}`);
+      }
+    }
+    return (
+      <polyline
+        key={key}
+        data-testid={`sheet-renderer-break-line-${viewportId}-${key}`}
+        points={pts.join(' ')}
+        fill="none"
+        stroke={BREAK_LINE_COLOR}
+        strokeWidth={strokeW * 0.8}
+      />
+    );
+  };
+
+  return (
+    <g
+      data-testid={`sheet-renderer-broken-geometry-${viewportId}`}
+      data-visible={visible.segments.length}
+      data-hidden={showHiddenLines ? hidden.segments.length : 0}
+      data-break-shift={visible.shift}
+    >
+      {showHiddenLines
+        ? hidden.segments.map((e, i) => (
+            <line
+              key={`h${i}`}
+              x1={tx(e.x1)} y1={ty(e.y1)} x2={tx(e.x2)} y2={ty(e.y2)}
+              stroke={GEOM_HIDDEN_STROKE}
+              strokeWidth={strokeW}
+              strokeDasharray={`${strokeW * 4} ${strokeW * 3}`}
+            />
+          ))
+        : null}
+      {visible.segments.map((e, i) => (
+        <line
+          key={`v${i}`}
+          x1={tx(e.x1)} y1={ty(e.y1)} x2={tx(e.x2)} y2={ty(e.y2)}
+          stroke={GEOM_VISIBLE_STROKE}
+          strokeWidth={strokeW}
+        />
+      ))}
+      {zigzag(visible.nearBreakAt, 'near')}
+      {zigzag(visible.farBreakAt, 'far')}
+    </g>
+  );
+}
+
+// ─── detail view (W4-C): real magnified content ──────────────────────────
+
+interface DetailGeometryProps {
+  viewportId: string;
+  poly: Polyhedron;
+  sourceView: ProjView;
+  /** Detail circle center + radius in the SOURCE view's view-plane mm. */
+  center: { x: number; y: number };
+  radius: number;
+  box: ResolvedBox;
+  showHiddenLines?: boolean;
+}
+
+/**
+ * Real detail-view content: project the source view, clip its line work to
+ * the detail circle (exact line–circle intersections), and map the circle
+ * region onto the DetailCircle ring the viewport already draws (radius
+ * 0.4·min(w,h), centered) — so the ring doubles as the clip boundary and the
+ * magnification factor is implicit in the fit. Nothing outside the circle is
+ * drawn (a detail view showing out-of-region geometry would be fabrication).
+ */
+function DetailGeometry({
+  viewportId,
+  poly,
+  sourceView,
+  center,
+  radius,
+  box,
+  showHiddenLines = true,
+}: DetailGeometryProps): React.ReactElement | null {
+  if (!(radius > 0)) return null;
+  const projected = projectPolyhedron(poly, sourceView);
+  const visible = clipSegmentsToCircle(projected.visible, center, radius);
+  const hidden = clipSegmentsToCircle(projected.hidden, center, radius);
+  if (visible.length === 0 && hidden.length === 0) return null;
+  // Map the circle (center, radius) onto the DetailCircle ring.
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  const ringR = Math.min(box.w, box.h) * 0.4;
+  const s = ringR / radius;
+  const tx = (u: number): number => cx + (u - center.x) * s;
+  const ty = (v: number): number => cy - (v - center.y) * s;
+  const strokeW = Math.max(0.15, Math.min(box.w, box.h) * 0.006);
+
+  return (
+    <g
+      data-testid={`sheet-renderer-detail-geometry-${viewportId}`}
+      data-visible={visible.length}
+      data-hidden={showHiddenLines ? hidden.length : 0}
+    >
+      {showHiddenLines
+        ? hidden.map((e, i) => (
+            <line
+              key={`h${i}`}
+              x1={tx(e.x1)} y1={ty(e.y1)} x2={tx(e.x2)} y2={ty(e.y2)}
+              stroke={GEOM_HIDDEN_STROKE}
+              strokeWidth={strokeW}
+              strokeDasharray={`${strokeW * 4} ${strokeW * 3}`}
+            />
+          ))
+        : null}
+      {visible.map((e, i) => (
+        <line
+          key={`v${i}`}
+          x1={tx(e.x1)} y1={ty(e.y1)} x2={tx(e.x2)} y2={ty(e.y2)}
+          stroke={GEOM_VISIBLE_STROKE}
+          strokeWidth={strokeW}
+        />
+      ))}
     </g>
   );
 }
