@@ -227,3 +227,23 @@ G5(금형·서피싱·초대형)는 [전략 §5](../strategy-path-a.md) 대로 *
 | W3-C | 측정 엔진(R3 선행) |
 | **W3-D** | **브라우저 STEP 워커 파일명 버그 수리**(신규 — 죽은 기능 복구) |
 | **W3-E** | **솔버 모델**: 원 (cx,cy,r) 재파라미터화 + DOF 초기만족 계산(신규) |
+
+## Wave 3 결과 (2026-07-20 — 게이트 통과)
+
+실행은 6트랙(W3-F 전도 지지기반이 도그푸딩 후속으로 추가). 전 트랙 완료·오케스트레이터 검증.
+
+| 트랙 | 결과 | 게이트 실측 |
+|---|---|---|
+| W3-A | 심 명명 `seam(생성면쌍키)` + BooleanOperandIds 스레딩 | **스파이크 재실측: System A 전 시나리오 오매칭 0%** — ADR-017 필수 기준 최초 충족. S2 100%/0%(종전 90.7%/7.6%), S2b 100%/0%(종전 0%/50%) |
+| W3-B | `buildRevolveTopo`+`patternTopo` 생성-이력 명명 | 실커널 755케이스 오매칭 0(전 실패=명시 상실). 브리지 배선 완료 — `e.lat.*` 이름 필렛 파푸스 손계산 일치 |
+| W3-C | `measure.ts` 실측 치수 코어 | 27/27 at 1e-6, 8종 명시 거부. W4-A 소비 표면(`Basis`/`KIND_REF_COUNT`) 노출 |
+| W3-D | STEP 왕복 SSO 경계 수리 | 왕복 체적/면적 rel 1e-9 (6/6). 근본원인=wasm32 SSO 10자 경계, `assertStepPathMarshalSafe`로 재발 차단 |
+| W3-E | 원 rim-offset 커플링 + rank 기반 DOF | 23/23 — W1-D 한계 테스트 2건 FIXED 반전(concentric 단독=반경 보존, 초기만족 스케치 DOF 정상) |
+| W3-F | 전도 팔길이 CG스팬→접지 footprint | 4/4 손계산 일치. counter_bar 종전 FS 1.81=유령 베이스 산물(실측 0.94) 적발 |
+
+회귀: tsc 클린 · src/lib 5080통과 · drawing-to-3d 219 · dogfood 20 · visual-golden 14/14.
+
+잔여(정직 기록): ① System B(기하 서명)만 S6 극단 스케일 1행 4/24 오매칭 — 마진 게이트가 방어
+② face 앵커 매칭 미검증(edge만 실측) ③ pattern 커널 배선 없음(featurePlan 미지원 유지)
+④ `childExtrude` 완전 제거는 SCHEMA_VERSION 2 대기 ⑤ 브라우저 워커 심 명명은 여전히
+legacy midpoint 서수(worker 경로에서 seamKeys 미공급 — Wave 5 후보).
