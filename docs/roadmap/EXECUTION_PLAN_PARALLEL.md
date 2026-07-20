@@ -109,11 +109,11 @@ extrude(depth 10→25) → fillet 재생성됨? true   ← 현재 false
 | **W5-A** | 로프트 실형상 + 스윕 트위스트 | **✅ 1차분** — 판정: 종전 로프트는 닫힌 솔리드 아님(부피 67% 오차)+t≤0.5 스위치 가짜 블렌드(면적 점프 28%). loftSolid(호길이 재샘플 대응, relErr ~1e-16)+스윕 twist(RMF). 잔여: 가이드레일 (`6a5b6471`) |
 | **W5-B** | 나사산 실절삭 | **✅** — 판정: UNION이라 제거량 0. ISO 68-1 커터 SUBTRACTION, Pappus 수렴비 0.990, LH 커터 뒤집힘 버그 수정 (`4aac93e1`) |
 | **W5-C** | 면 선택 드래프트 + 쉘 실형상 | **✅** — 판정: 전역 shear(36/36 정점 이동)·쉘 부피 +767%. 면 선택 실구현(1e-6)+정밀 캐비티(relErr ~1e-8), 지원 밖 명시 거부 (`05ea9cf1`+`5ad9e3fa`) |
-| **W5-D** | end condition + 피처 단위 패턴 | ❌ 미착수 (다음 배치) |
+| **W5-D** | end condition + 피처 단위 패턴 | **✅ 2차분(260721b)** — 판정: hole depth는 내부 부유 공동(블라인드 아님)·cut은 깊이 파라미터 부재·패턴은 메시 복제(signed 부피비 3.0 이중계상). blind/through_all/up_to_face(자동 깊이·명시 거부)+피처 재적용 패턴(실보어, 곡면 차이 고정, 레거시 비트 동일 보존) (`f1a2db5b`+`a8e67974`) |
 | **W5-E** | 웰드먼트 정상화 | **✅** — 판정: 툴바 4버튼 무인자 호출=메시 바이트 동일. 마이터 엔진(45°±7e-15, 겹침 3712→0mm³)+컷리스트(손계산 일치)+툴바 sectionType 실전달 (`9ec1c9a3`+`a177ffe4`) |
-| **W5-F** | 어셈블리 공개 API + mate | **✅ 1차분(F14 해소)** — solveMates 파사드(partId·converged·parts, ref pre-flight로 가짜 수렴 차단)+dogfood 재현 7케이스. 정직 기록: gear ratio는 정적 솔버 미소비(설계)·newton plane 잔차 과소구속. 잔여: mate 실구현 심화 (`2e5934b8`) |
+| **W5-F** | 어셈블리 공개 API + mate | **✅ 1차분(F14 해소)** — solveMates 파사드(partId·converged·parts, ref pre-flight로 가짜 수렴 차단)+dogfood 재현 7케이스 (`2e5934b8`) · **✅ 2차분(260721b)** — 잔차 단일 진실원(computeMateResidual, newton plane 가짜 수렴 x=15.91→20.000 수정)+kinematics 구동층(gear 기어비 실반영 90°→−45°/−18°/reverse, rack r·θ, hinge 절대각+한계 거부, BFS 전파) (`4aa838b5`+`600d77ae`). 잔여: distance plane 법선 미벌점·hinge Phase-1 프록시 |
 | **W5-G** | 인터롭 임포트 실 B-rep | **✅ 1차분(SAT)** — 판정: 3포맷 전부 AABB(L-프리즘 +50% 과대). SAT 실 B-rep 재구성(비볼록 32,000mm³ 정확)+XT/IGES 기계판독 fidelity 플래그. 잔여: XT/IGES 실 재구성 (`bb73f75b`) |
-| **W5-H** | 익스포트 5종 신설 | ❌ 미착수 (다음 배치) |
+| **W5-H** | 익스포트 신설 | **✅ 2차분(260721b, 정직 범위)** — SAT 실 B-rep 방출(자체 실 임포터 라운드트립 1e-6, 비볼록 판별)+IGES 와이어프레임(NOT a B-Rep 파일 내 명문)+IFC2X3 FacetedBrep(자기검사+임포터 라운드트립). **DWG/X_T 정직 제외**(UNSUPPORTED_EXPORT_FORMATS 기계판독 선언, 대체 DXF/STEP). 외부 CAD 실수입 미검증 명시 (`a2d87490`+`f380280d`) |
 
 **웨이브 게이트**: 커버리지 매트릭스 **D등급 항목 절반 이상 A 승격**(재실사로 판정) — 1차분
 6/8트랙 landed. 웨이브 종료 검증(260721): 전체 shape-generator **1,121+파일/14,276 통과** ·
