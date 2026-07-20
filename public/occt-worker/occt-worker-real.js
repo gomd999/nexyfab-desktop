@@ -499,6 +499,49 @@
     }
   }
 
+  // ─── STEP MEMFS paths — ⚠ 10-CHAR HARD CEILING (kernel defect, W3-D) ──
+  //
+  // MEASURED 2026-07-20 (opencascade.js@1.1.1, fresh module, Node probes):
+  //   - STEPControl_Writer.Write / STEPControl_Reader.ReadFile corrupt the
+  //     path once it reaches 11 characters: the bytes handed to the
+  //     underlying file open are stale heap garbage, so a write lands in a
+  //     garbage-named MEMFS entry (observed "@ˁ") — sometimes
+  //     WITHOUT throwing — or throws Emscripten FS errno 44, and a read
+  //     opens a nonexistent garbage path → RetError / 0 transfer roots.
+  //     <= 10 characters is always correct. The old literals
+  //     '/tmp/out.step' (13) and 'cadr_in.step' (12) both exceeded the
+  //     limit, so the browser STEP paths had never worked.
+  //   - NOT the JS→C++ argument marshalling: TCollection_AsciiString_2
+  //     round-trips 11- and 22-char strings perfectly, and an FS.open trace
+  //     shows the CORRECT path also reaching the C side during the same op.
+  //   - NOT Emscripten MEMFS: FS.writeFile/readFile handle 38-char names.
+  //   → The defect sits inside the compiled OCCT stream-open path. The
+  //     10/11 boundary is exactly libc++-on-wasm32 std::string SSO capacity
+  //     (10 chars inline + NUL in the 12-byte object): an SSO-resident path
+  //     survives a dangling/stale copy by accident; a heap-backed (>= 11
+  //     chars) one does not.
+  //
+  // Therefore every path handed to Write/ReadFile MUST be <= 10 chars and
+  // must not point into a missing subdirectory ('/t/o.step' fails silently
+  // when /t does not exist). Re-break is guarded three ways: the runtime
+  // assert below, the pinned boundary test in wasmReal.placeholder.test.ts
+  // ("KNOWN KERNEL DEFECT"), and the real-kernel round-trip through THIS
+  // file's ops in occtWorkerReal.stepRoundtrip.test.ts.
+  var STEP_FS_PATH_MAX = 10;
+  /** exportSTEP MEMFS path — root-level absolute is safe for the writer. */
+  var STEP_EXPORT_PATH = '/o.step'; // 7 chars
+  /** importSTEP MEMFS path — MUST stay a bare relative name (see importSTEP). */
+  var STEP_IMPORT_PATH = 'in.step'; // 7 chars
+  function assertStepPathMarshalSafe(p) {
+    if (typeof p !== 'string' || p.length === 0 || p.length > STEP_FS_PATH_MAX) {
+      throw new Error(
+        'occt-real: STEP MEMFS path "' + p + '" exceeds ' + STEP_FS_PATH_MAX +
+        ' chars — this opencascade.js build corrupts >= 11-char paths ' +
+        '(writes land in garbage MEMFS entries, reads transfer 0 roots). ' +
+        'Keep it <= 10 chars.');
+    }
+  }
+
   function exportSTEP(handle) {
     if (!occt) return notReady();
     var shape = handles.get(handle);
@@ -511,14 +554,39 @@
     try {
       writer = new Writer();
       var modelType = (occt.STEPControl_StepModelType && (occt.STEPControl_StepModelType.AsIs ?? 0)) || 0;
-      // Embind: Transfer(shape, modelType) → IFSelect_ReturnStatus
-      writer.Transfer(shape, modelType);
-      var path = '/tmp/out.step';
+      // Embind: Transfer(shape, modelType, compgraph) → IFSelect_ReturnStatus.
+      // This build REQUIRES all 3 args — the old 2-arg call threw
+      // "Transfer called with 2 arguments, expected 3 args!" (measured in
+      // occtWorkerReal.stepRoundtrip.test.ts), so export died even before
+      // the corrupted-path defect. Mirrors wasmReal.placeholder.test.ts's
+      // proven call: Transfer(shape, STEPControl_AsIs = 0, compgraph = true).
+      writer.Transfer(shape, modelType, true);
+      // ⚠ <= 10 chars — see STEP_FS_PATH_MAX above. '/tmp/out.step' (13)
+      // used to land the output in a garbage MEMFS entry / throw errno 44.
+      var path = STEP_EXPORT_PATH;
+      assertStepPathMarshalSafe(path);
+      if (!occt.FS || typeof occt.FS.readFile !== 'function') {
+        return { ok: false, error: 'exportSTEP: occt.FS unavailable', warnings: [] };
+      }
+      // Remove any previous export first so the read-back below can only see
+      // BYTES FROM THIS Write — never a stale earlier result.
+      if (typeof occt.FS.unlink === 'function') {
+        try { occt.FS.unlink(path); } catch (_u) { void _u; }
+      }
       // Real OCCT supports Write(path) (writes to MEMFS) — read back via FS.
       writer.Write(path);
       var step = null;
-      if (occt.FS && typeof occt.FS.readFile === 'function') {
+      try {
         step = occt.FS.readFile(path, { encoding: 'utf8' });
+      } catch (fsErr) {
+        // Write "succeeded" but nothing landed at the requested path — the
+        // known corrupted-path failure mode. Loud, never a silent empty step.
+        return {
+          ok: false,
+          error: 'exportSTEP: kernel did not write ' + path +
+            ' (FS errno ' + (fsErr && fsErr.errno) + ') — STEP output missing',
+          warnings: [],
+        };
       }
       if (typeof step !== 'string' || step.length === 0) {
         return { ok: false, error: 'exportSTEP: empty result', warnings: [] };
@@ -541,15 +609,18 @@
 
     var reader = null;
     try {
-      // IMPORTANT: a BARE relative filename in the FS CWD. opencascade.js's
-      // STEPControl_Reader.ReadFile returns IFSelect_RetError for ABSOLUTE
-      // paths like '/tmp/in.step' on real-world AP203/AP214 files, but parses
-      // the identical bytes fine from a relative name. The node bridge already
-      // uses this workaround ('cadr.step'); the worker did not, which is why
-      // real STEP B-rep import failed in the browser. Verified against a 1MB
-      // Rhino/ST-Developer AP203 file: '/tmp/in.step' → RetError, 'cadr_in.step'
-      // → RetDone with a transferable root.
-      var path = 'cadr_in.step';
+      // IMPORTANT — TWO path constraints stack here:
+      //  1. A BARE relative filename in the FS CWD. opencascade.js's
+      //     STEPControl_Reader.ReadFile returns IFSelect_RetError for ABSOLUTE
+      //     paths like '/tmp/in.step' on real-world AP203/AP214 files, but
+      //     parses the identical bytes fine from a relative name (the node
+      //     bridge uses the same workaround, 'cadr.step').
+      //  2. <= 10 characters — see STEP_FS_PATH_MAX above. The previous name
+      //     'cadr_in.step' (12) hit the corrupted-path defect: ReadFile
+      //     opened a garbage path and TransferRoots() yielded 0, so browser
+      //     B-rep STEP import had never worked.
+      var path = STEP_IMPORT_PATH;
+      assertStepPathMarshalSafe(path);
       if (occt.FS && typeof occt.FS.writeFile === 'function') {
         occt.FS.writeFile(path, source);
       } else {
@@ -572,9 +643,15 @@
       }
       var n = reader.TransferRoots();
       if (!n || n < 1) {
-        return { ok: false, error: 'importSTEP: no transferable B-rep roots (ReadFile status=' + status + ')', warnings: [] };
+        // GUARD — the reader can "succeed" (RetDone) and still transfer
+        // nothing. A 0-root result must NEVER become a silent empty shape:
+        // fail loudly with the status for diagnosis.
+        return { ok: false, error: 'importSTEP: no transferable B-rep roots (ReadFile status=' + status + ') — refusing to return an empty shape', warnings: [] };
       }
       var shape = reader.OneShape();
+      if (!shape || (typeof shape.IsNull === 'function' && shape.IsNull())) {
+        return { ok: false, error: 'importSTEP: kernel returned a null shape despite ' + n + ' transfer root(s)', warnings: [] };
+      }
       var h = alloc(shape);
       return { ok: true, handle: h, kind: 'solid', warnings: ['imported B-rep — no stable edge names (use sel:all)'] };
     } catch (err) {
