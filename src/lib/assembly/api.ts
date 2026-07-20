@@ -53,6 +53,7 @@ import {
 } from './iterativeSolver';
 import { lagrangianSolveAnalytic } from './lagrangianSolver';
 import { rotateVec } from './mateSolver';
+import { applyDrives, type DriveEffect, type DriveSpec } from './kinematics';
 
 // ─── errors ──────────────────────────────────────────────────────────────
 
@@ -151,6 +152,16 @@ export interface SolveMatesOptions extends IterativeSolverOptions {
    * When provided it takes precedence over the declared `refs` registries.
    */
   resolver?: GeometryResolver;
+  /**
+   * W5-F 2차: transmission drives, applied AFTER the static solve.
+   * Each drive rotates a gear / rack_pinion / hinge mate (see DriveSpec
+   * for the per-kind semantics) and propagates through the transmission
+   * graph; the assembly is then re-solved to verify the driven pose still
+   * satisfies every mate. Rejections (out-of-limit hinge target, fixed
+   * part in the chain, inconsistent loop, …) throw KinematicsError with
+   * the reason.
+   */
+  drives?: ReadonlyArray<DriveSpec>;
 }
 
 // ─── result types ────────────────────────────────────────────────────────
@@ -177,6 +188,11 @@ export interface SolveMatesResult {
   state: AssemblyState;
   /** Raw engine result. */
   raw: IterativeSolveResult;
+  /**
+   * W5-F 2차: per-part motions applied by `opts.drives` (empty when no
+   * drives were requested). Order = application order (seed part first).
+   */
+  driveEffects: ReadonlyArray<DriveEffect>;
 }
 
 // ─── normalization ───────────────────────────────────────────────────────
@@ -476,10 +492,25 @@ export function solveMates(
     ...(opts.tolerance !== undefined ? { tolerance: opts.tolerance } : {}),
     ...(opts.relaxation !== undefined ? { relaxation: opts.relaxation } : {}),
   };
-  const raw =
+  const runEngine = (s: AssemblyState): IterativeSolveResult =>
     engine === 'newton'
-      ? lagrangianSolveAnalytic(state, resolve, engineOpts)
-      : iterativeSolve(state, resolve, engineOpts);
+      ? lagrangianSolveAnalytic(s, resolve, engineOpts)
+      : iterativeSolve(s, resolve, engineOpts);
+
+  let raw = runEngine(state);
+  let driveEffects: ReadonlyArray<DriveEffect> = [];
+
+  // ── W5-F 2차: transmission drives (gear / rack_pinion / hinge) ────────
+  // Applied on the STATICS-SOLVED state, then re-solved so the returned
+  // residuals/convergence reflect the driven pose (a drive that fights
+  // another mate surfaces as non-convergence instead of being hidden).
+  if (opts.drives && opts.drives.length > 0) {
+    const preIterations = raw.iterations;
+    const driven = applyDrives(raw.state, resolve, opts.drives);
+    driveEffects = driven.effects;
+    const verified = runEngine(driven.state);
+    raw = { ...verified, iterations: preIterations + verified.iterations };
+  }
 
   const solvedParts: SolvedPartPlacement[] = raw.state.parts.map((p) => ({
     partId: p.id,
@@ -506,5 +537,11 @@ export function solveMates(
     },
     state: raw.state,
     raw,
+    driveEffects,
   };
 }
+
+// ─── kinematics re-exports (W5-F 2차 — additive) ─────────────────────────
+
+export { applyDrives, KinematicsError, measureHingeSwingRad } from './kinematics';
+export type { DriveSpec, DriveEffect, DriveResult } from './kinematics';

@@ -279,4 +279,11 @@ export {
   type SolveMatesOptions,
   type SolveMatesResult,
   type SolvedPartPlacement,
+  // ── W5-F 2차: transmission drive layer (additive) ──────────────────────
+  applyDrives,
+  KinematicsError,
+  measureHingeSwingRad,
+  type DriveSpec,
+  type DriveEffect,
+  type DriveResult,
 } from './api';

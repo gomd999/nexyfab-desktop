@@ -34,6 +34,7 @@ import {
   type IterativeSolverOptions,
   type IterativeSolveResult,
 } from './iterativeSolver';
+import { applyDrives } from './kinematics';
 
 export interface MotionSweepRequest {
   /** Mate to drive. Must have a numeric `value` field (distance or angle). */
@@ -78,8 +79,12 @@ export class MotionStudyError extends Error {
  *
  * Throws `MotionStudyError` if:
  *   - the named mate doesn't exist in the state
- *   - the mate kind doesn't carry a `value` (only 'distance' and 'angle' do)
+ *   - the mate kind is not sweepable — 'distance'/'angle' (value sweep) or
+ *     'gear'/'rack_pinion'/'hinge' (W5-F 2차 drive sweep; hinge requires
+ *     zeroAngleRef)
  *   - steps < 1
+ * `KinematicsError` from the drive layer (e.g. hinge limit exceeded mid-
+ * sweep, fixed part in the transmission chain) propagates unchanged.
  */
 export function runMotionSweep(
   initialState: AssemblyState,
@@ -93,9 +98,17 @@ export function runMotionSweep(
   if (!mate) {
     throw new MotionStudyError(`mate ${request.mateId} not found`);
   }
-  if (mate.kind !== 'distance' && mate.kind !== 'angle') {
+  const isValueSweep = mate.kind === 'distance' || mate.kind === 'angle';
+  const isDriveSweep =
+    mate.kind === 'gear' || mate.kind === 'rack_pinion' || mate.kind === 'hinge';
+  if (!isValueSweep && !isDriveSweep) {
     throw new MotionStudyError(
       `mate ${request.mateId} kind '${mate.kind}' has no numeric parameter to sweep`,
+    );
+  }
+  if (mate.kind === 'hinge' && mate.zeroAngleRef === undefined) {
+    throw new MotionStudyError(
+      `mate ${request.mateId}: hinge sweep requires zeroAngleRef (Phase 2 signed swing)`,
     );
   }
 
@@ -103,6 +116,41 @@ export function runMotionSweep(
   let currentState = initialState;
   let firstFailure = -1;
   const totalFrames = request.steps + 1;
+
+  // ── W5-F 2차: DRIVE sweep (gear / rack_pinion / hinge) ────────────────
+  // parameterValue = drive angle in degrees.
+  //   - gear / rack_pinion: cumulative angle measured from the INITIAL
+  //     configuration; per frame the incremental delta (v_i − v_{i−1},
+  //     with v_{−1} = 0) is applied via applyDrives.
+  //   - hinge: absolute target swing per frame (applyDrives semantics).
+  // Statics are pre-solved once so the drive layer sees aligned axes,
+  // then each frame is drive → re-solve (the re-solve result is the
+  // frame's `solve`, so residuals reflect the driven pose).
+  if (isDriveSweep) {
+    const preSolve = iterativeSolve(currentState, resolve, request.solverOptions);
+    currentState = preSolve.state;
+    let prevValue = 0;
+    for (let i = 0; i < totalFrames; i++) {
+      const t = request.steps === 0 ? 0 : i / request.steps;
+      const value = request.fromValue + (request.toValue - request.fromValue) * t;
+      const driveAngle = mate.kind === 'hinge' ? value : value - prevValue;
+      // applyDrives throws KinematicsError (with the reason) on refusal
+      // — e.g. a hinge sweep beyond its limit. Deliberately propagated.
+      const driven = applyDrives(currentState, resolve, [
+        { mateId: request.mateId, angleDeg: driveAngle },
+      ]);
+      const solve = iterativeSolve(driven.state, resolve, request.solverOptions);
+      if (!solve.success && firstFailure < 0) firstFailure = i;
+      frames.push({ index: i, parameterValue: value, solve });
+      currentState = solve.state;
+      prevValue = value;
+    }
+    return {
+      frames,
+      allConverged: firstFailure < 0,
+      firstFailureFrame: firstFailure,
+    };
+  }
 
   for (let i = 0; i < totalFrames; i++) {
     const t = request.steps === 0 ? 0 : i / request.steps;
