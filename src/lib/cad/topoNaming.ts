@@ -20,6 +20,7 @@
 import type { Polyhedron, PolyFace, PolyEdge } from './featureMesh';
 import { extrudePolyhedron, polyhedronEdges } from './featureMesh';
 import type { ExtrudeFeature } from './extrudeProfile';
+import type { RevolveFeature } from './revolveProfile';
 import type { Vec3 } from '@/lib/sketch/sketchPlane';
 import { add, scale } from '@/lib/sketch/sketchPlane';
 
@@ -108,4 +109,215 @@ export function namesOf(topo: NamedTopology, kind: TopoKind): string[] {
   const out: string[] = [];
   for (const [name, loc] of topo.byName) if (loc.kind === kind) out.push(name);
   return out.sort();
+}
+
+// ─── revolve (ADR-017 S5 — coverage was 0%) ─────────────────────────────────
+//
+// Same generative-provenance doctrine as buildExtrudeTopo, applied to the
+// B-rep topology of a revolve: names derive from PROFILE indices + role, never
+// from kernel enumeration order or geometry. Unlike the extrude namer (whose
+// polyhedron edges coincide with the kernel's), a revolve's faceted mesh does
+// NOT match the B-rep (32 chords ≠ 1 circle), so the revolve namer carries
+// ANALYTIC anchors instead of a polyhedron: for every named edge, the exact 3D
+// point where the kernel's curve-parameter midpoint sits. All anchor formulas
+// below are MEASURED against the real kernel (BRepPrimAPI_MakeRevol about +Y,
+// probe 2026-07-20, see revolveTopo.test.ts):
+//
+//   - rotation is right-handed about +Y:  (x, y, 0) @ θ → (x·cosθ, y, −x·sinθ)
+//   - a partial arc's curve midpoint is the point at θ = angle/2
+//   - a full circle's curve midpoint is the point at θ = 180°
+//
+// TOPOLOGY SPLIT — a partial sweep (angle < 360) and a full revolve are
+// DIFFERENT topologies and get different name sets:
+//
+//   partial: e.lat.{i}        arc swept by off-axis profile vertex i
+//            e.mer.start.{i}  profile edge i on the θ=0 cap
+//            e.mer.end.{i}    profile edge i on the θ=angle cap
+//            e.axis.{i}       profile edge i lying ON the axis (one shared
+//                             edge — both caps border it)
+//            f.side.{i} / f.cap.start / f.cap.end
+//   full:    e.lat.{i}        full circle swept by off-axis profile vertex i
+//            e.seam.{i}       seam of the PERIODIC surface swept by profile
+//                             edge i (exists only when the edge sweeps a
+//                             cylinder/cone, i.e. y varies; a radial edge
+//                             sweeps a planar annulus — no seam, measured)
+//            f.side.{i}       (no caps, no meridians, no axis edge — measured)
+//
+// Crossing full ↔ partial therefore drops the topology-bound names
+// (caps/meridians/axis/seam) — an EXPLICIT loss per ADR-017 D1, never a silent
+// reinterpretation (a seam is not the same entity as a cap-boundary meridian
+// even though both sit at θ=0). `e.lat.{i}` and `f.side.{i}` survive the
+// crossing, because the entity genuinely persists.
+
+/** Vertex/edge counts as "on the revolve axis" below this |x|. */
+const REVOLVE_AXIS_EPS = 1e-9;
+/** angle ≥ 360 − ε ⇒ full (periodic) revolve. Matches featureMesh/the bridge. */
+const REVOLVE_FULL_EPS = 1e-9;
+
+export interface RevolveTopoEntity {
+  kind: TopoKind;
+  /**
+   * Analytic anchor. For an EDGE: the exact point the kernel's curve-parameter
+   * midpoint evaluates to (verified 1e-6 against MakeRevol). For a FACE: a
+   * representative point ON the carrier surface at mid-sweep (caps: the
+   * profile vertex centroid on the cap plane — may fall outside the boundary
+   * of a non-convex profile; faces are not midpoint-matched by the bridge).
+   */
+  anchor: Vec3;
+}
+
+export interface RevolveNamedTopology {
+  feature: RevolveFeature;
+  /** Canonical deduped profile (axis = Y, X ≥ 0) that name indices refer to. */
+  profile: ReadonlyArray<{ x: number; y: number }>;
+  /** True when the sweep is a full 360° (periodic — no caps/meridians). */
+  full: boolean;
+  byName: Map<string, RevolveTopoEntity>;
+}
+
+/** Rotate a canonical profile point about +Y by θ degrees (right-handed). */
+function rotProfilePoint(p: { x: number; y: number }, thetaDeg: number): Vec3 {
+  const t = (thetaDeg * Math.PI) / 180;
+  return { x: p.x * Math.cos(t), y: p.y, z: -p.x * Math.sin(t) };
+}
+
+/**
+ * Deduplicate consecutive coincident points + a closing duplicate. Mirrors
+ * featureMesh's loop canonicalisation AND BRepBuilderAPI_MakePolygon (which
+ * skips coincident consecutive points), so name indices agree with both the
+ * mesh and the kernel build.
+ */
+function dedupeProfile(loop: ReadonlyArray<{ x: number; y: number }>): { x: number; y: number }[] {
+  const EPS = 1e-9;
+  const out: { x: number; y: number }[] = [];
+  for (const p of loop) {
+    const prev = out[out.length - 1];
+    if (prev && Math.abs(prev.x - p.x) < EPS && Math.abs(prev.y - p.y) < EPS) continue;
+    out.push({ x: p.x, y: p.y });
+  }
+  if (out.length > 1) {
+    const f = out[0];
+    const l = out[out.length - 1];
+    if (Math.abs(f.x - l.x) < EPS && Math.abs(f.y - l.y) < EPS) out.pop();
+  }
+  return out;
+}
+
+/**
+ * Build the stable-named topology of a revolve. Names derive purely from
+ * profile vertex/edge indices + role (generative provenance) — invariant to
+ * radius/height/angle edits that keep the profile's vertex count and
+ * axis-touching pattern, which is exactly the invariance buildExtrudeTopo
+ * provides for prisms.
+ *
+ * Refuses (throws) rather than guessing on: < 3 distinct profile points, a
+ * profile point at x < 0 (revolveProfile guarantees the canonical X ≥ 0
+ * frame — a violation means the caller skipped canonicalisation), or a
+ * non-positive/non-finite angle.
+ */
+export function buildRevolveTopo(feature: RevolveFeature): RevolveNamedTopology {
+  const profile = dedupeProfile(feature.loop);
+  if (profile.length < 3) {
+    throw new Error(`topoNaming: revolve profile needs ≥ 3 distinct points, got ${profile.length}`);
+  }
+  for (const p of profile) {
+    if (p.x < -REVOLVE_AXIS_EPS) {
+      throw new Error(
+        `topoNaming: revolve profile point x=${p.x} < 0 — not in the canonical axis frame (axis = Y, X ≥ 0)`,
+      );
+    }
+  }
+  const angle = feature.angleDegrees;
+  if (!Number.isFinite(angle) || angle <= 0 || angle > 360) {
+    throw new Error(`topoNaming: revolve angle must be in (0, 360], got ${angle}`);
+  }
+  const full = angle >= 360 - REVOLVE_FULL_EPS;
+  const n = profile.length;
+  const onAxis = profile.map((p) => Math.abs(p.x) <= REVOLVE_AXIS_EPS);
+
+  const byName = new Map<string, RevolveTopoEntity>();
+  const put = (name: string, kind: TopoKind, anchor: Vec3) => byName.set(name, { kind, anchor });
+
+  // Latitude edges — one per OFF-AXIS profile vertex (an on-axis vertex sweeps
+  // to a point, not an edge). Anchor = the kernel curve midpoint: θ = angle/2
+  // for an arc, θ = 180° for a full circle (measured).
+  for (let i = 0; i < n; i++) {
+    if (onAxis[i]) continue;
+    put(`e.lat.${i}`, 'edge', rotProfilePoint(profile[i], full ? 180 : angle / 2));
+  }
+
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const a = profile[i];
+    const b = profile[j];
+    const bothOnAxis = onAxis[i] && onAxis[j];
+    const mid2d = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+
+    if (bothOnAxis) {
+      // Sweeps no surface. Partial: one straight edge ON the axis, shared by
+      // both caps (measured). Full: nothing at all (measured).
+      if (!full) put(`e.axis.${i}`, 'edge', { x: 0, y: mid2d.y, z: 0 });
+      continue;
+    }
+
+    // Swept surface of profile edge i.
+    put(`f.side.${i}`, 'face', rotProfilePoint(mid2d, full ? 180 : angle / 2));
+
+    if (full) {
+      // Periodic surfaces (y varies ⇒ cylinder/cone) expose a seam edge at
+      // θ = 0 — geometrically the profile edge itself. A radial edge
+      // (y constant) sweeps a planar annulus: no seam (measured).
+      if (Math.abs(a.y - b.y) > REVOLVE_AXIS_EPS) {
+        put(`e.seam.${i}`, 'edge', { x: mid2d.x, y: mid2d.y, z: 0 });
+      }
+    } else {
+      // Cap-boundary meridians: the profile edge at θ = 0 and at θ = angle.
+      put(`e.mer.start.${i}`, 'edge', { x: mid2d.x, y: mid2d.y, z: 0 });
+      put(`e.mer.end.${i}`, 'edge', rotProfilePoint(mid2d, angle));
+    }
+  }
+
+  // Cap faces (partial only — a full revolve has none).
+  if (!full) {
+    let cx = 0;
+    let cy = 0;
+    for (const p of profile) {
+      cx += p.x;
+      cy += p.y;
+    }
+    const centroid = { x: cx / n, y: cy / n };
+    put('f.cap.start', 'face', { x: centroid.x, y: centroid.y, z: 0 });
+    put('f.cap.end', 'face', rotProfilePoint(centroid, angle));
+  }
+
+  return { feature, profile, full, byName };
+}
+
+/**
+ * Anchor of a named revolve edge — the point the kernel's curve-parameter
+ * midpoint sits at — or null when the name doesn't exist in THIS topology
+ * (unknown, or bound to the other full/partial topology). Feed the result to
+ * `nearestByMidpoint` against the kernel's edge midpoints, exactly like
+ * `edgeMidpoint` for extrudes.
+ */
+export function revolveEdgeAnchor(topo: RevolveNamedTopology, name: string): Vec3 | null {
+  const e = topo.byName.get(name);
+  return e && e.kind === 'edge' ? e.anchor : null;
+}
+
+/** All stable revolve names of a given kind (for UI pickers / fillet selection). */
+export function revolveNamesOf(topo: RevolveNamedTopology, kind: TopoKind): string[] {
+  const out: string[] = [];
+  for (const [name, e] of topo.byName) if (e.kind === kind) out.push(name);
+  return out.sort();
+}
+
+/**
+ * Edge name → anchor map, ready for `composedTopo.fromAnchors` — the same
+ * interop shape extrude primitives use on the boolean path.
+ */
+export function revolveEdgeAnchors(topo: RevolveNamedTopology): Map<string, Vec3> {
+  const out = new Map<string, Vec3>();
+  for (const [name, e] of topo.byName) if (e.kind === 'edge') out.set(name, e.anchor);
+  return out;
 }
