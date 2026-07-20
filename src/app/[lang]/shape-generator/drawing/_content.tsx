@@ -59,6 +59,12 @@ import type { OcctPmiBinding, OcctShapeMeta } from '@/lib/brep-bridge/pmiOcctBin
 import type { RefBinding } from '@/lib/brep-bridge/pmiShapeBinding';
 import { sampleGeometryForSourceId } from '@/lib/drawing/sampleGeometry';
 import { featureToPolyhedron, type Polyhedron } from '@/lib/cad/featureMesh';
+import { buildExtrudeTopo, type NamedTopology } from '@/lib/cad/topoNaming';
+import {
+  reanchorCuttingPlane,
+  auditSheetDimensions,
+  formatMeasuredValue,
+} from '@/lib/drawing/associativeUpdate';
 import { exportSheetsToPdf, PdfExportError } from '@/lib/drawing/pdfExport';
 import { sheetToDxf } from '@/lib/drawing/dxfExport';
 import type { CuttingPlane } from './sectionView';
@@ -1952,6 +1958,46 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     setSelectedAnnotationId((cur) => (cur === id ? null : cur));
   }, []);
 
+  /**
+   * Polyhedron for the active part, keyed by its sourceId, so SheetRenderer can
+   * draw real projected HLR edges in the standard views. All sample parts are
+   * extrude features (cube / N-gon prisms), so featureToPolyhedron meshes them.
+   */
+  const sheetGeometry = useMemo<ReadonlyMap<string, Polyhedron> | undefined>(() => {
+    const geo = sampleGeometryForSourceId(sourceId);
+    // Single-part geometries carry a `feature`; assembly inputs don't.
+    const poly = 'feature' in geo ? featureToPolyhedron(geo.feature) : null;
+    return poly ? new Map([[sourceId, poly]]) : undefined;
+  }, [sourceId]);
+
+  /**
+   * W4-A — named topology for the active part (same keying as sheetGeometry)
+   * so SheetRenderer can measure Dimension refs (`f.side.0`, `e.vert.1`, …)
+   * for real. All sample parts are extrude prisms, so buildExtrudeTopo covers
+   * them; a build failure yields undefined and the renderer keeps its
+   * explicit placeholders (측정 불가 시 값 날조 금지).
+   */
+  const sheetTopologies = useMemo<ReadonlyMap<string, NamedTopology> | undefined>(() => {
+    const geo = sampleGeometryForSourceId(sourceId);
+    if (!('feature' in geo)) return undefined;
+    try {
+      return new Map([[sourceId, buildExtrudeTopo(geo.feature)]]);
+    } catch {
+      return undefined;
+    }
+  }, [sourceId]);
+
+  /**
+   * W4-B — real measured status for every sheet dimension (same resolution
+   * rule the SheetRenderer canvas labels use, via associativeUpdate). Feeds
+   * the annotation list so a model change immediately shows re-measured
+   * values or explicit losses.
+   */
+  const dimensionAudit = useMemo(
+    () => auditSheetDimensions(sheet, sheetTopologies),
+    [sheet, sheetTopologies],
+  );
+
   const allAnnotations: ReadonlyArray<{
     id: string;
     tag: string;
@@ -1960,7 +2006,11 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   }> = useMemo(() => {
     const out: Array<{ id: string; tag: string; label: string; kind: 'dimension' | 'gdt' | 'ordinate' }> = [];
     for (const d of annotations.dimensions) {
-      out.push({ id: d.id, tag: dict.dimensionTag, label: `${d.kind} · ${d.viewportId}`, kind: 'dimension' });
+      const res = dimensionAudit.get(d.id) ?? null;
+      // "= value" when actually measured, "⚠ reason" on explicit failure,
+      // nothing when there is no measurement context (값 날조 금지).
+      const status = res ? (res.ok ? ` · = ${formatMeasuredValue(res.value, res.unit)}` : ` · ⚠ ${res.reason}`) : '';
+      out.push({ id: d.id, tag: dict.dimensionTag, label: `${d.kind} · ${d.viewportId}${status}`, kind: 'dimension' });
     }
     for (const g of annotations.gdtCallouts) {
       out.push({ id: g.id, tag: dict.gdtTag, label: `${g.kind} · ${g.viewportId}`, kind: 'gdt' });
@@ -1974,22 +2024,30 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
       });
     }
     return out;
-  }, [annotations, dict.dimensionTag, dict.gdtTag, dict.ordinateTag]);
+  }, [annotations, dimensionAudit, dict.dimensionTag, dict.gdtTag, dict.ordinateTag]);
 
   /**
-   * Polyhedron for the active part, keyed by its sourceId, so SheetRenderer can
-   * draw real projected HLR edges in the standard views. All sample parts are
-   * extrude features (cube / N-gon prisms), so featureToPolyhedron meshes them.
+   * W4-B associative pipe — when the model changes, section views are
+   * RE-ANCHORED onto the new body (same normal, same relative station along
+   * it) instead of deleted. Dimensions need no handling here: their
+   * topo-name refs re-measure automatically (or fail explicitly) on render.
    */
-  const sheetGeometry = useMemo<ReadonlyMap<string, Polyhedron> | undefined>(() => {
-    const geo = sampleGeometryForSourceId(sourceId);
-    // Single-part geometries carry a `feature`; assembly inputs don't.
-    const poly = 'feature' in geo ? featureToPolyhedron(geo.feature) : null;
-    return poly ? new Map([[sourceId, poly]]) : undefined;
-  }, [sourceId]);
-
-  // Stale section planes (model-space) don't apply to a different part.
-  useEffect(() => { setSectionViews([]); }, [sourceId]);
+  const prevSectionPolyRef = React.useRef<Polyhedron | null>(null);
+  useEffect(() => {
+    const nextPoly = sheetGeometry?.get(sourceId) ?? null;
+    const oldPoly = prevSectionPolyRef.current;
+    prevSectionPolyRef.current = nextPoly;
+    setSectionViews((prev) => {
+      if (prev.length === 0) return prev;
+      // No meshable body → nothing to cut; dropping the views is the only
+      // honest outcome (a cutting plane through nothing is a fabrication).
+      if (!nextPoly || nextPoly.vertices.length === 0) return [];
+      return prev.map((sv) => ({
+        ...sv,
+        plane: reanchorCuttingPlane(sv.plane, oldPoly, nextPoly),
+      }));
+    });
+  }, [sourceId, sheetGeometry]);
 
   // Add a section view: a vertical cut (⊥X) through the part's bounding-box
   // centre → a YZ cross-section. SheetRenderer cuts the solid and draws it.
@@ -3204,7 +3262,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               position: 'relative',
             }}
           >
-            <SheetRenderer sheet={sheet} geometry={sheetGeometry} cuttingPlanes={cuttingPlanes} showHiddenLines={showHiddenLines} showTangentEdges={showTangentEdges} autoDimension />
+            <SheetRenderer sheet={sheet} geometry={sheetGeometry} topologies={sheetTopologies} cuttingPlanes={cuttingPlanes} showHiddenLines={showHiddenLines} showTangentEdges={showTangentEdges} autoDimension />
             {snapEnabled ? (
               <SheetSnapIndicator
                 snap={snapTarget}
