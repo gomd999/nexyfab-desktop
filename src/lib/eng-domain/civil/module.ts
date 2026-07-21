@@ -1,40 +1,29 @@
 /**
- * eng-domain/civil/module — CIVIL DomainModule (다분야 확장 Batch 2 + 어휘 확장).
+ * eng-domain/civil/module — CIVIL DomainModule (통합판: 새 스파인 + 기존 엔진).
  *
- * The FIRST non-mechanical domain to run the full driver end-to-end via the
- * domain-agnostic `runDomainDriver` spine. Member vocabulary (each = its own
- * measured code-check gate(s)):
- *   - beam           : bending stress + deflection
- *   - column         : Euler buckling (Pcr/SF + slenderness)
- *   - retaining-wall : overturning stability (Rankine)
- *   - slope          : infinite-slope factor of safety
+ * The multi-member plan → gate-chain → atomic package spine (this session's new
+ * value) now drives the REAL, verified, KDS-cited engineering-core calculators
+ * (`scripts/engineering-core`, audited correct + 121-test) via `engineAdapter`,
+ * instead of the pure-TS re-derivations it shipped with. So each member's gates
+ * carry the ENGINE's full check set:
+ *   - beam           → simple_beam            (휨 + 전단 + 처짐)
+ *   - column         → column_buckling        (Euler 휨좌굴 + 세장비)
+ *   - retaining-wall → retaining_wall_stability(전도 + 활동 + 지지력 + 편심 + 지진)
+ *   - slope          → slope_infinite         (무한사면 FS)
  *
- * Ceiling (정직·불변): a VERIFIED DRAFT calc package. Civil/structural design is
- * legally a licensed engineer's stamped responsibility — engineer COPILOT
- * (단계 3~4), NOT replacement (5). The package carries that disclosure.
+ * Member IR fields are named for the calculator inputs (Sx/Aw/Fy/Ag/…) — the
+ * planner must supply what the real calc needs; a missing load/input makes the
+ * calc THROW (하중 날조 금지) and the gate FAILS with that reason (패키지 미산출).
  *
- * A check THROWS on a structurally-invalid parameter (caller bug); the gate
- * wrapper (`safeGate`) converts that into a failed gate (clean verify refusal),
- * so the spine never sees an unhandled throw.
+ * Ceiling (정직·불변): a VERIFIED DRAFT calc package — 법정 구조검토·날인은 면허
+ * 보유자(구조기술사)의 책임. 코파일럿(단계 3~4)이지 "대체"(5)가 아님.
  */
 
 import type { DomainGateResult, DomainModule } from '@/lib/domain-driver';
 import { chatCompletionCivilPlanner } from './llmPlanner';
-import {
-  checkBeamBendingStress,
-  checkBeamDeflection,
-  checkColumnBucklingEuler,
-  checkInfiniteSlopeStability,
-  checkRetainingWallOverturning,
-  maxSimpleSpanMomentKNm,
-  STEEL_E_MPA,
-  CONCRETE_E_MPA,
-  type BeamLoad,
-  type CivilCheckResult,
-  type DeflectionLoad,
-} from './checks';
+import { checkMetrics, runEngineCalc, type EngineCalcResult } from './engineAdapter';
 
-// ─── IR ──────────────────────────────────────────────────────────────────────
+// ─── IR (fields named for the engineering-core calculator inputs) ────────────
 
 export interface CivilBrief {
   id: string;
@@ -42,33 +31,34 @@ export interface CivilBrief {
   params?: Record<string, number | string>;
 }
 
+/** simple_beam: required L, Fy, Sx, Aw, Ix + a load (w or P). */
 export interface CivilBeamMember {
   kind: 'beam';
   id: string;
   name: string;
-  material?: 'steel' | 'concrete';
-  spanM: number;
-  load: BeamLoad;
+  spanMm: number;
+  yieldStrengthMPa: number;
   sectionModulusMm3: number;
+  webShearAreaMm2: number;
   inertiaMm4: number;
-  allowableStressMPa: number;
-  deflectionLimitDenominator?: number;
+  udlKNpm?: number;
+  pointLoadKN?: number;
 }
 
+/** column_buckling: required Fy, Ag, L, r, Pu + K. */
 export interface CivilColumnMember {
   kind: 'column';
   id: string;
   name: string;
-  material?: 'steel' | 'concrete';
-  inertiaMm4: number;
-  effectiveLengthFactorK: number;
+  yieldStrengthMPa: number;
+  grossAreaMm2: number;
   unbracedLengthMm: number;
   radiusOfGyrationMm: number;
   axialDemandKN: number;
-  requiredSF: number;
-  slendernessLimit?: number;
+  effectiveLengthFactorK?: number;
 }
 
+/** retaining_wall_stability: overturning + sliding + bearing + eccentricity (+seismic). */
 export interface CivilWallMember {
   kind: 'retaining-wall';
   id: string;
@@ -80,21 +70,23 @@ export interface CivilWallMember {
   toeLengthM: number;
   gammaBackfillKNm3: number;
   phiBackfillDeg: number;
-  surchargeKPa?: number;
-  requiredFS: number;
+  baseFriction: number;
+  allowableBearingKPa: number;
+  seismicKh?: number;
 }
 
+/** slope_infinite: required slopeDeg, phiDeg, depthM, gamma, fsRequired. */
 export interface CivilSlopeMember {
   kind: 'slope';
   id: string;
   name: string;
   slopeDeg: number;
   phiDeg: number;
-  cohesionKPa?: number;
   depthM: number;
   gammaKNm3: number;
+  fsRequired: number;
+  cohesionKPa?: number;
   waterDepthM?: number;
-  requiredFS: number;
 }
 
 export type CivilMember = CivilBeamMember | CivilColumnMember | CivilWallMember | CivilSlopeMember;
@@ -113,7 +105,9 @@ export interface CivilMemberPackage {
   id: string;
   name: string;
   kind: CivilMember['kind'];
-  checks: Array<{ id: string; pass: boolean; metrics: Record<string, number>; basis: string }>;
+  /** Engineering-core honesty status ('검증'/'draft'), restated. */
+  status?: string;
+  checks: Array<{ id: string; pass: boolean; metrics: Record<string, number> }>;
 }
 
 export interface CivilPackage {
@@ -125,11 +119,119 @@ export interface CivilPackage {
 
 const CIVIL_DISCLAIMER =
   '검증된 초안 구조계산 — 법정 구조검토·날인은 면허 보유자(구조기술사)의 책임. ' +
-  '본 패키지는 엔지니어 코파일럿 산출물이며 기존 설계의 "대체"가 아님.';
+  '본 패키지는 엔지니어 코파일럿 산출물이며 기존 설계의 "대체"가 아님. ' +
+  '엔진: engineering-core(KDS 대조·공표예제 벤치).';
 
-// ─── planner (deterministic fixtures) ─────────────────────────────────────────
+// ─── member → engineering-core calc mapping ──────────────────────────────────
 
-/** Simply-supported steel beam: L6 UDL20, Z=1.5e6, I=3e8, σ_allow 160. */
+interface CalcSpec {
+  calcId: string;
+  input: Record<string, number>;
+}
+
+function calcFor(m: CivilMember): CalcSpec {
+  switch (m.kind) {
+    case 'beam':
+      return {
+        calcId: 'simple_beam',
+        input: {
+          L: m.spanMm,
+          Fy: m.yieldStrengthMPa,
+          Sx: m.sectionModulusMm3,
+          Aw: m.webShearAreaMm2,
+          Ix: m.inertiaMm4,
+          ...(m.udlKNpm !== undefined ? { w: m.udlKNpm } : {}),
+          ...(m.pointLoadKN !== undefined ? { P: m.pointLoadKN } : {}),
+        },
+      };
+    case 'column':
+      return {
+        calcId: 'column_buckling',
+        input: {
+          Fy: m.yieldStrengthMPa,
+          Ag: m.grossAreaMm2,
+          L: m.unbracedLengthMm,
+          r: m.radiusOfGyrationMm,
+          Pu: m.axialDemandKN,
+          ...(m.effectiveLengthFactorK !== undefined ? { K: m.effectiveLengthFactorK } : {}),
+        },
+      };
+    case 'retaining-wall':
+      return {
+        calcId: 'retaining_wall_stability',
+        input: {
+          H: m.heightM,
+          stemThickness: m.stemThicknessM,
+          baseWidth: m.baseWidthM,
+          baseThickness: m.baseThicknessM,
+          toeLength: m.toeLengthM,
+          gammaBackfill: m.gammaBackfillKNm3,
+          phiBackfill: m.phiBackfillDeg,
+          baseFriction: m.baseFriction,
+          allowableBearing: m.allowableBearingKPa,
+          ...(m.seismicKh !== undefined ? { seismicKh: m.seismicKh } : {}),
+        },
+      };
+    case 'slope':
+      return {
+        calcId: 'slope_infinite',
+        input: {
+          slopeDeg: m.slopeDeg,
+          phiDeg: m.phiDeg,
+          depthM: m.depthM,
+          gamma: m.gammaKNm3,
+          fsRequired: m.fsRequired,
+          ...(m.cohesionKPa !== undefined ? { cohesion: m.cohesionKPa } : {}),
+          ...(m.waterDepthM !== undefined ? { waterDepth: m.waterDepthM } : {}),
+        },
+      };
+  }
+}
+
+/**
+ * One member → ONE gate, whose pass/fail is the engine's authoritative VERDICT.
+ * (Some calculator checks — e.g. column_buckling's ASD reference — are
+ * informational and do NOT bind the verdict; treating each check as a hard gate
+ * would wrongly reject a design the engine passes.) Every check's numbers ride
+ * along as metrics (`{check}_{field}`) and its OK/NG in notes, so granularity is
+ * preserved without over-refusing. A calc throw (missing load/input) → a failed
+ * input gate (하중 날조 금지).
+ */
+function gateFromEngine(memberId: string, res: EngineCalcResult): DomainGateResult {
+  const base = `structural:${memberId}`;
+  if (!res.ok) {
+    return {
+      id: `${base}:input`,
+      kind: 'structural',
+      pass: false,
+      metrics: {},
+      reason: `엔진 검증 불가: ${res.reason ?? 'unknown'}`,
+      notes: ['engineering-core INPUT_GATE / 하중 없음 — 값을 지어내지 않는다'],
+    };
+  }
+  const checks = res.checks ?? {};
+  const metrics: Record<string, number> = {};
+  const checkNotes: string[] = [];
+  const failed: string[] = [];
+  for (const [name, chk] of Object.entries(checks)) {
+    for (const [k, v] of Object.entries(checkMetrics(chk))) metrics[`${name}_${k}`] = v;
+    checkNotes.push(`${name}: ${chk.pass ? 'OK' : 'NG'}`);
+    if (chk.pass === false) failed.push(name);
+  }
+  const pass = res.verdict === 'PASS';
+  return {
+    id: base,
+    kind: 'structural',
+    pass,
+    metrics,
+    ...(pass ? {} : { reason: `engineering-core verdict FAIL — 미충족: ${failed.join(', ') || 'verdict'}` }),
+    notes: [res.status ? `engineering-core: ${res.status}` : 'engineering-core', ...checkNotes],
+  };
+}
+
+// ─── planner (deterministic fixtures — engine-input schema) ───────────────────
+
+/** Steel beam L6.0 UDL20: Fy355, Sx1.5e6, Aw3000, Ix3e8 → simple_beam PASS. */
 export function steelBeamPlan(): CivilPlan {
   return {
     planId: 'fixture-steel-beam',
@@ -139,19 +241,18 @@ export function steelBeamPlan(): CivilPlan {
         kind: 'beam',
         id: 'B1',
         name: 'Floor Beam B1',
-        material: 'steel',
-        spanM: 6,
-        load: { type: 'udl', w_kNpm: 20, span_m: 6 },
+        spanMm: 6000,
+        yieldStrengthMPa: 355,
         sectionModulusMm3: 1.5e6,
+        webShearAreaMm2: 3000,
         inertiaMm4: 3e8,
-        allowableStressMPa: 160,
-        deflectionLimitDenominator: 360,
+        udlKNpm: 20,
       },
     ],
   };
 }
 
-/** One member of each kind — all adequately proportioned (all gates pass). */
+/** One member of each kind — all adequately proportioned (engine PASS). */
 export function mixedStructurePlan(): CivilPlan {
   return {
     planId: 'fixture-mixed-structure',
@@ -162,26 +263,25 @@ export function mixedStructurePlan(): CivilPlan {
         kind: 'column',
         id: 'C1',
         name: 'Steel Column C1',
-        material: 'steel',
-        inertiaMm4: 3e8,
-        effectiveLengthFactorK: 1.0,
+        yieldStrengthMPa: 355,
+        grossAreaMm2: 5000,
         unbracedLengthMm: 3000,
-        radiusOfGyrationMm: 100, // KL/r = 30 ≤ 200
-        axialDemandKN: 500, // ≪ Pcr/SF
-        requiredSF: 2.0,
+        radiusOfGyrationMm: 50, // KL/r = 60
+        axialDemandKN: 500,
       },
       {
         kind: 'retaining-wall',
         id: 'W1',
         name: 'Cantilever Retaining Wall W1',
-        heightM: 4,
+        heightM: 6,
         stemThicknessM: 0.4,
-        baseWidthM: 3.0, // generous base → comfortable overturning FS
-        baseThicknessM: 0.4,
-        toeLengthM: 0.8,
+        baseWidthM: 4,
+        baseThicknessM: 0.6,
+        toeLengthM: 1.0,
         gammaBackfillKNm3: 18,
         phiBackfillDeg: 30,
-        requiredFS: 2.0,
+        baseFriction: 0.5,
+        allowableBearingKPa: 300,
       },
       {
         kind: 'slope',
@@ -189,11 +289,10 @@ export function mixedStructurePlan(): CivilPlan {
         name: 'Cut Slope S1',
         slopeDeg: 20,
         phiDeg: 30,
-        cohesionKPa: 5,
         depthM: 3,
         gammaKNm3: 18,
-        waterDepthM: 0,
-        requiredFS: 1.3,
+        fsRequired: 1.3,
+        cohesionKPa: 5,
       },
     ],
   };
@@ -216,126 +315,11 @@ export function civilFixturePlanner(brief: CivilBrief): CivilPlan {
   return build();
 }
 
-// ─── check → gate mapping (throw-safe) ────────────────────────────────────────
-
-function memberE(m: { material?: 'steel' | 'concrete' }): number {
-  return m.material === 'concrete' ? CONCRETE_E_MPA : STEEL_E_MPA;
-}
-
-function deflectionLoad(load: BeamLoad): DeflectionLoad | null {
-  if (load.type === 'udl') return { type: 'udl', w_kNpm: load.w_kNpm };
-  if (load.type === 'point') return { type: 'point', P_kN: load.P_kN };
-  return null;
-}
-
-/**
- * Run a check and map to a gate. A check THROW (invalid param = caller bug)
- * becomes a FAILED gate (clean verify refusal) rather than an unhandled throw.
- */
-function safeGate(id: string, produce: () => CivilCheckResult): DomainGateResult {
-  try {
-    const r = produce();
-    return {
-      id,
-      kind: 'structural',
-      pass: r.pass,
-      metrics: r.metrics,
-      ...(r.reason ? { reason: r.reason } : {}),
-      notes: [r.basis],
-    };
-  } catch (e) {
-    return {
-      id,
-      kind: 'structural',
-      pass: false,
-      metrics: {},
-      reason: `invalid parameter: ${e instanceof Error ? e.message : String(e)}`,
-      notes: ['parameter validation failed before the check could run'],
-    };
-  }
-}
-
-function memberGates(m: CivilMember): DomainGateResult[] {
-  const base = `structural:${m.id}`;
-  switch (m.kind) {
-    case 'beam': {
-      const gates = [
-        safeGate(`${base}:beam-bending-stress`, () =>
-          checkBeamBendingStress({ load: m.load, sectionModulus_mm3: m.sectionModulusMm3, allowableStress_MPa: m.allowableStressMPa }),
-        ),
-      ];
-      const dl = deflectionLoad(m.load);
-      if (dl) {
-        gates.push(
-          safeGate(`${base}:beam-deflection`, () =>
-            checkBeamDeflection({
-              load: dl,
-              span_mm: m.spanM * 1000,
-              E_MPa: memberE(m),
-              I_mm4: m.inertiaMm4,
-              ...(m.deflectionLimitDenominator !== undefined ? { limitDenominator: m.deflectionLimitDenominator } : {}),
-            }),
-          ),
-        );
-      }
-      return gates;
-    }
-    case 'column':
-      return [
-        safeGate(`${base}:column-buckling-euler`, () =>
-          checkColumnBucklingEuler({
-            E_MPa: memberE(m),
-            I_mm4: m.inertiaMm4,
-            K: m.effectiveLengthFactorK,
-            L_mm: m.unbracedLengthMm,
-            r_mm: m.radiusOfGyrationMm,
-            demand_kN: m.axialDemandKN,
-            requiredSF: m.requiredSF,
-            ...(m.slendernessLimit !== undefined ? { slendernessLimit: m.slendernessLimit } : {}),
-          }),
-        ),
-      ];
-    case 'retaining-wall':
-      return [
-        safeGate(`${base}:retaining-wall-overturning`, () =>
-          checkRetainingWallOverturning({
-            H: m.heightM,
-            stemThickness_m: m.stemThicknessM,
-            baseWidth_m: m.baseWidthM,
-            baseThickness_m: m.baseThicknessM,
-            toeLength_m: m.toeLengthM,
-            gammaBackfill_kNm3: m.gammaBackfillKNm3,
-            phiBackfillDeg: m.phiBackfillDeg,
-            ...(m.surchargeKPa !== undefined ? { surcharge_kPa: m.surchargeKPa } : {}),
-            requiredFS: m.requiredFS,
-          }),
-        ),
-      ];
-    case 'slope':
-      return [
-        safeGate(`${base}:slope-infinite-stability`, () =>
-          checkInfiniteSlopeStability({
-            slopeDeg: m.slopeDeg,
-            phiDeg: m.phiDeg,
-            ...(m.cohesionKPa !== undefined ? { cohesion_kPa: m.cohesionKPa } : {}),
-            depth_m: m.depthM,
-            gamma_kNm3: m.gammaKNm3,
-            ...(m.waterDepthM !== undefined ? { waterDepth_m: m.waterDepthM } : {}),
-            requiredFS: m.requiredFS,
-          }),
-        ),
-      ];
-  }
-}
-
 // ─── the module ───────────────────────────────────────────────────────────────
 
 export const civilModule: DomainModule<CivilBrief, CivilPlan, CivilArtifacts, CivilPackage> = {
   name: 'civil',
 
-  // Composite planner (mechanical DEFAULT_PLANNER pattern): a fixture key ⇒ the
-  // deterministic fixture planner; free text ⇒ the LLM planner (#2). The LLM path
-  // is exercised in tests via makeCivilLlmPlanner with an injected mock.
   plan(brief) {
     const hasFixture = typeof brief.params?.fixture === 'string' && brief.params.fixture.length > 0;
     if (hasFixture) return civilFixturePlanner(brief);
@@ -355,25 +339,38 @@ export const civilModule: DomainModule<CivilBrief, CivilPlan, CivilArtifacts, Ci
   },
 
   build(plan) {
-    // Deterministic pre-flight: beam moments throw on bad load/span (→ verify
-    // refusal via the runner). Other members are validated inside their gates.
-    for (const m of plan.members) {
-      if (m.kind === 'beam') maxSimpleSpanMomentKNm(m.load);
-    }
     return { members: plan.members };
   },
 
-  gates(_plan, artifacts) {
-    return artifacts.members.flatMap((m) => memberGates(m));
+  async gates(_plan, artifacts) {
+    const all: DomainGateResult[] = [];
+    for (const m of artifacts.members) {
+      const { calcId, input } = calcFor(m);
+      const res = await runEngineCalc(calcId, input);
+      all.push(gateFromEngine(m.id, res));
+    }
+    return all;
   },
 
   package(plan, artifacts, gates) {
     const members: CivilMemberPackage[] = artifacts.members.map((m) => {
-      const prefix = `structural:${m.id}:`;
-      const checks = gates
-        .filter((g) => g.id.startsWith(prefix))
-        .map((g) => ({ id: g.id.slice(prefix.length), pass: g.pass, metrics: g.metrics, basis: g.notes[0] ?? '' }));
-      return { id: m.id, name: m.name, kind: m.kind, checks };
+      // The member gate is `structural:{id}` (verdict) or `structural:{id}:input`.
+      const g = gates.find((x) => x.id === `structural:${m.id}` || x.id === `structural:${m.id}:input`);
+      const status = g?.notes.find((n) => n.startsWith('engineering-core:'))?.replace('engineering-core: ', '');
+      // Per-check OK/NG lines were recorded in the gate notes ("bending: OK").
+      const checks = (g?.notes ?? [])
+        .filter((n) => n.includes(': OK') || n.includes(': NG'))
+        .map((n) => {
+          const [name, ok] = n.split(': ');
+          return { id: name, pass: ok === 'OK', metrics: {} as Record<string, number> };
+        });
+      return {
+        id: m.id,
+        name: m.name,
+        kind: m.kind,
+        ...(status ? { status } : {}),
+        checks,
+      };
     });
     return { planId: plan.planId, name: plan.name, members, disclaimer: CIVIL_DISCLAIMER };
   },

@@ -1,18 +1,11 @@
 /**
- * eng-domain/civil/llmPlanner — WA-D pattern for CIVIL (다분야 확장 #2 LLM 플래너).
+ * eng-domain/civil/llmPlanner — WA-D pattern for CIVIL (통합판: 엔진-입력 스키마).
  *
- * The LLM's role is CONFINED to producing a `CivilPlan` from a free-text brief —
- * exactly the mechanical llmPlanner contract, replicated per domain. Model text
- * never reaches the gate chain unchecked:
- *   1. call an INJECTED `complete(messages)` (deterministic mock in tests),
- *   2. extract JSON (markdown-fence tolerant),
- *   3. coerce into the CivilPlan schema — unknown fields dropped, every required
- *      field + member kind type-checked; any violation THROWS (계획 날조 금지),
- *   4. the runner turns a throw into a stage:'plan' refusal.
- *
- * Determinism note: a live LLM is not byte-deterministic; the schema coercion
- * guarantees only that whatever passes is a structurally valid, gate-eligible
- * plan — correctness is still decided by the real civil gates.
+ * Free text → LLM → JSON → coerced `CivilPlan` → the civil module runs each
+ * member through the REAL engineering-core calculators. The plan therefore
+ * carries the CALCULATOR inputs (Sx/Aw/Fy/Ag/baseFriction/allowableBearing…) —
+ * the LLM must supply what the real calc needs; a missing load makes the calc
+ * THROW and the gate fail (하중 날조 금지). Coercion rejects any malformed member.
  */
 
 import { chatCompletion, type ChatMessage } from '@/lib/ai';
@@ -25,7 +18,6 @@ import type {
   CivilSlopeMember,
   CivilWallMember,
 } from './module';
-import type { BeamLoad } from './checks';
 
 // ─── coercion primitives (violation ⇒ throw = plan refusal) ─────────────────
 
@@ -51,60 +43,41 @@ function reqNum(v: unknown, path: string): number {
 function optNum(v: unknown, path: string): number | undefined {
   return v === undefined || v === null ? undefined : reqNum(v, path);
 }
-function optMaterial(v: unknown, path: string): 'steel' | 'concrete' | undefined {
-  if (v === undefined || v === null) return undefined;
-  const s = reqStr(v, path);
-  if (s !== 'steel' && s !== 'concrete') throw new Error(`${path}='${s}' invalid (steel|concrete)`);
-  return s;
-}
 
-// ─── beam load ───────────────────────────────────────────────────────────────
-
-function coerceBeamLoad(v: unknown, path: string): BeamLoad {
-  const o = reqObj(v, path);
-  const type = reqStr(o.type, `${path}.type`);
-  if (type === 'moment') return { type: 'moment', momentKNm: reqNum(o.momentKNm, `${path}.momentKNm`) };
-  if (type === 'udl') return { type: 'udl', w_kNpm: reqNum(o.w_kNpm, `${path}.w_kNpm`), span_m: reqNum(o.span_m, `${path}.span_m`) };
-  if (type === 'point') return { type: 'point', P_kN: reqNum(o.P_kN, `${path}.P_kN`), span_m: reqNum(o.span_m, `${path}.span_m`) };
-  throw new Error(`${path}.type='${type}' invalid (moment|udl|point)`);
-}
-
-// ─── member coercion by kind ──────────────────────────────────────────────────
+// ─── member coercion by kind (engine-input fields) ────────────────────────────
 
 function coerceMember(v: unknown, path: string): CivilMember {
   const o = reqObj(v, path);
   const kind = reqStr(o.kind, `${path}.kind`);
   const id = reqStr(o.id, `${path}.id`);
   const name = reqStr(o.name, `${path}.name`);
-  const material = optMaterial(o.material, `${path}.material`);
 
   if (kind === 'beam') {
     const m: CivilBeamMember = {
       kind: 'beam', id, name,
-      spanM: reqNum(o.spanM, `${path}.spanM`),
-      load: coerceBeamLoad(o.load, `${path}.load`),
+      spanMm: reqNum(o.spanMm, `${path}.spanMm`),
+      yieldStrengthMPa: reqNum(o.yieldStrengthMPa, `${path}.yieldStrengthMPa`),
       sectionModulusMm3: reqNum(o.sectionModulusMm3, `${path}.sectionModulusMm3`),
+      webShearAreaMm2: reqNum(o.webShearAreaMm2, `${path}.webShearAreaMm2`),
       inertiaMm4: reqNum(o.inertiaMm4, `${path}.inertiaMm4`),
-      allowableStressMPa: reqNum(o.allowableStressMPa, `${path}.allowableStressMPa`),
     };
-    if (material) m.material = material;
-    const dld = optNum(o.deflectionLimitDenominator, `${path}.deflectionLimitDenominator`);
-    if (dld !== undefined) m.deflectionLimitDenominator = dld;
+    const w = optNum(o.udlKNpm, `${path}.udlKNpm`);
+    if (w !== undefined) m.udlKNpm = w;
+    const P = optNum(o.pointLoadKN, `${path}.pointLoadKN`);
+    if (P !== undefined) m.pointLoadKN = P;
     return m;
   }
   if (kind === 'column') {
     const m: CivilColumnMember = {
       kind: 'column', id, name,
-      inertiaMm4: reqNum(o.inertiaMm4, `${path}.inertiaMm4`),
-      effectiveLengthFactorK: reqNum(o.effectiveLengthFactorK, `${path}.effectiveLengthFactorK`),
+      yieldStrengthMPa: reqNum(o.yieldStrengthMPa, `${path}.yieldStrengthMPa`),
+      grossAreaMm2: reqNum(o.grossAreaMm2, `${path}.grossAreaMm2`),
       unbracedLengthMm: reqNum(o.unbracedLengthMm, `${path}.unbracedLengthMm`),
       radiusOfGyrationMm: reqNum(o.radiusOfGyrationMm, `${path}.radiusOfGyrationMm`),
       axialDemandKN: reqNum(o.axialDemandKN, `${path}.axialDemandKN`),
-      requiredSF: reqNum(o.requiredSF, `${path}.requiredSF`),
     };
-    if (material) m.material = material;
-    const sl = optNum(o.slendernessLimit, `${path}.slendernessLimit`);
-    if (sl !== undefined) m.slendernessLimit = sl;
+    const k = optNum(o.effectiveLengthFactorK, `${path}.effectiveLengthFactorK`);
+    if (k !== undefined) m.effectiveLengthFactorK = k;
     return m;
   }
   if (kind === 'retaining-wall') {
@@ -117,10 +90,11 @@ function coerceMember(v: unknown, path: string): CivilMember {
       toeLengthM: reqNum(o.toeLengthM, `${path}.toeLengthM`),
       gammaBackfillKNm3: reqNum(o.gammaBackfillKNm3, `${path}.gammaBackfillKNm3`),
       phiBackfillDeg: reqNum(o.phiBackfillDeg, `${path}.phiBackfillDeg`),
-      requiredFS: reqNum(o.requiredFS, `${path}.requiredFS`),
+      baseFriction: reqNum(o.baseFriction, `${path}.baseFriction`),
+      allowableBearingKPa: reqNum(o.allowableBearingKPa, `${path}.allowableBearingKPa`),
     };
-    const sur = optNum(o.surchargeKPa, `${path}.surchargeKPa`);
-    if (sur !== undefined) m.surchargeKPa = sur;
+    const kh = optNum(o.seismicKh, `${path}.seismicKh`);
+    if (kh !== undefined) m.seismicKh = kh;
     return m;
   }
   if (kind === 'slope') {
@@ -130,7 +104,7 @@ function coerceMember(v: unknown, path: string): CivilMember {
       phiDeg: reqNum(o.phiDeg, `${path}.phiDeg`),
       depthM: reqNum(o.depthM, `${path}.depthM`),
       gammaKNm3: reqNum(o.gammaKNm3, `${path}.gammaKNm3`),
-      requiredFS: reqNum(o.requiredFS, `${path}.requiredFS`),
+      fsRequired: reqNum(o.fsRequired, `${path}.fsRequired`),
     };
     const coh = optNum(o.cohesionKPa, `${path}.cohesionKPa`);
     if (coh !== undefined) m.cohesionKPa = coh;
@@ -174,29 +148,29 @@ function extractJson(raw: string): unknown {
 
 // ─── system prompt ─────────────────────────────────────────────────────────────
 
-export const CIVIL_SYSTEM_PROMPT = `You are the planning stage of a CIVIL/STRUCTURAL design driver. Your ONLY output is a CivilPlan as a single JSON object. You never compute stresses or safety factors — a deterministic engine REAL-checks every member against code. Fabricated numbers are worthless; only a structurally valid plan the engine can verify is useful.
+export const CIVIL_SYSTEM_PROMPT = `You are the planning stage of a CIVIL/STRUCTURAL design driver. Your ONLY output is a CivilPlan as a single JSON object. You never compute stresses or safety factors — a deterministic, KDS-verified engine (engineering-core) REAL-checks every member. Fabricated numbers are worthless; only a structurally valid plan the engine can verify is useful.
 
-Return ONLY the JSON object (no prose, no markdown). If the request cannot be expressed within the schema, return {"error":"unsupported","reason":"<why>"} instead of guessing.
+Return ONLY the JSON object (no prose, no markdown). If a required quantity (a LOAD, a section property, a soil parameter) is not given or clearly implied by the brief, do NOT invent it — return {"error":"unsupported","reason":"<what is missing>"} instead.
 
-CivilPlan schema (unknown fields dropped; wrong types rejected):
+CivilPlan schema (unknown fields dropped; wrong types rejected). Each member's fields are the ENGINE's inputs:
 {
   "planId": string, "name": string,
-  "members": [                       // >= 1; each member is ONE of:
-    { "kind":"beam", "id":string, "name":string, "material":"steel"|"concrete"?,
-      "spanM":number, "load":{"type":"udl","w_kNpm":number,"span_m":number} | {"type":"point","P_kN":number,"span_m":number} | {"type":"moment","momentKNm":number},
-      "sectionModulusMm3":number, "inertiaMm4":number, "allowableStressMPa":number, "deflectionLimitDenominator":number? },
-    { "kind":"column", "id":string, "name":string, "material":"steel"|"concrete"?,
-      "inertiaMm4":number, "effectiveLengthFactorK":number, "unbracedLengthMm":number, "radiusOfGyrationMm":number,
-      "axialDemandKN":number, "requiredSF":number, "slendernessLimit":number? },
+  "members": [                          // >= 1; each is ONE of:
+    { "kind":"beam", "id":string, "name":string,
+      "spanMm":number, "yieldStrengthMPa":number, "sectionModulusMm3":number, "webShearAreaMm2":number, "inertiaMm4":number,
+      "udlKNpm":number?, "pointLoadKN":number? },          // at least one load required — else the engine refuses
+    { "kind":"column", "id":string, "name":string,
+      "yieldStrengthMPa":number, "grossAreaMm2":number, "unbracedLengthMm":number, "radiusOfGyrationMm":number,
+      "axialDemandKN":number, "effectiveLengthFactorK":number? },
     { "kind":"retaining-wall", "id":string, "name":string,
       "heightM":number, "stemThicknessM":number, "baseWidthM":number, "baseThicknessM":number, "toeLengthM":number,
-      "gammaBackfillKNm3":number, "phiBackfillDeg":number, "surchargeKPa":number?, "requiredFS":number },
+      "gammaBackfillKNm3":number, "phiBackfillDeg":number, "baseFriction":number, "allowableBearingKPa":number, "seismicKh":number? },
     { "kind":"slope", "id":string, "name":string,
-      "slopeDeg":number, "phiDeg":number, "cohesionKPa":number?, "depthM":number, "gammaKNm3":number, "waterDepthM":number?, "requiredFS":number }
+      "slopeDeg":number, "phiDeg":number, "depthM":number, "gammaKNm3":number, "fsRequired":number, "cohesionKPa":number?, "waterDepthM":number? }
   ]
 }
 
-HONESTY: never fabricate section properties or loads not implied by the brief — if a needed quantity is missing, REFUSE with {"error":"unsupported","reason":...}. A verified draft is a licensed engineer's copilot output, NOT a replacement.`;
+HONESTY: never fabricate section properties, loads, or soil parameters. If the brief lacks them, REFUSE with {"error":"unsupported",...}. A verified draft is a licensed engineer's copilot output, NOT a replacement.`;
 
 // ─── the planner ───────────────────────────────────────────────────────────────
 
@@ -216,7 +190,6 @@ function buildMessages(brief: CivilBrief, systemPrompt: string): ChatMessage[] {
   ];
 }
 
-/** Build a CivilPlan LLM planner over an injected completion (tests pass a mock). */
 export function makeCivilLlmPlanner(deps: CivilLlmPlannerDeps): (brief: CivilBrief) => Promise<CivilPlan> {
   const systemPrompt = deps.systemPrompt ?? CIVIL_SYSTEM_PROMPT;
   return async (brief) => {
@@ -226,7 +199,6 @@ export function makeCivilLlmPlanner(deps: CivilLlmPlannerDeps): (brief: CivilBri
   };
 }
 
-/** Production planner: wired to the shared chatCompletion provider chain. */
 export function chatCompletionCivilPlanner(): (brief: CivilBrief) => Promise<CivilPlan> {
   return makeCivilLlmPlanner({
     complete: async (messages) => {
