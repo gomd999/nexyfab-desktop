@@ -140,6 +140,85 @@ describe('distance plane/plane mate', () => {
     // g should end at z=20.
     expect(movedG.position.z).toBeCloseTo(20, 3);
   });
+
+  // ── W5-F 3차: normal misalignment is penalized (no fake convergence) ──
+  // Before this fix the residual measured only ||signed gap| − target|
+  // along the side-A normal: a block tilted 30° with the gap numerically
+  // at target reported residual 0 and BOTH engines claimed convergence
+  // (measured: gauss residual 0.0e+0 / newton 1.5e-11, tilt 30.000°).
+  const s30 = Math.sin(Math.PI / 6);
+  const c30 = Math.cos(Math.PI / 6);
+
+  it('W5-F3: 30°-tilted plane at numerically-correct gap → residual 10.5, NOT 0', () => {
+    // Both parts FIXED so the reported residual is measured, not solved
+    // away. Old residual here was exactly 0 (fake): signed gap along the
+    // side-A normal = 20 = target. New alignment term:
+    //   |n_a × n_b| · (1 + |o_b − o_a|) = sin(30°) · (1 + 20) = 10.5.
+    const fixed = makePart('f', true);
+    const tilted = makePart('g', true, vec3(0, 0, 20));
+    const state: AssemblyState = {
+      parts: [fixed, tilted],
+      mates: [
+        { id: 'd', kind: 'distance', a: ref('f', 'pl', 'plane'), b: ref('g', 'pl', 'plane'), value: 20 } as Mate,
+      ],
+    };
+    const refs = new Map<string, ResolvedGeometry>([
+      ['f/pl', { kind: 'plane', world: { origin: vec3(0, 0, 0), normal: vec3(0, 0, 1) } }],
+      ['g/pl', { kind: 'plane', world: { origin: vec3(0, 0, 0), normal: vec3(s30, 0, c30) } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.success).toBe(false); // honest: misaligned ≠ converged
+    expect(r.residuals[0]!.residual).toBeCloseTo(10.5, 6);
+  });
+
+  it('W5-F3: gauss un-tilts a 30°-misaligned free block and genuinely converges', () => {
+    // Placement now rotates the moved normal into the nearest alignment
+    // before translating. Measured: converged=true, z=20.000000, tilt 0.000°.
+    const fixed = makePart('f', true);
+    const free = makePart('g', false, vec3(0, 0, 5));
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        { id: 'd', kind: 'distance', a: ref('f', 'pl', 'plane'), b: ref('g', 'pl', 'plane'), value: 20 } as Mate,
+      ],
+    };
+    const refs = new Map<string, ResolvedGeometry>([
+      ['f/pl', { kind: 'plane', world: { origin: vec3(0, 0, 0), normal: vec3(0, 0, 1) } }],
+      ['g/pl', { kind: 'plane', world: { origin: vec3(0, 0, 0), normal: vec3(s30, 0, c30) } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.success).toBe(true);
+    expect(r.finalMaxResidual).toBeLessThan(1e-4);
+    const movedG = r.state.parts.find((p) => p.id === 'g')!;
+    expect(movedG.position.z).toBeCloseTo(20, 3);
+    // The tilted local normal must now point at world +Z (tilt ≈ 0).
+    const nWorld = rotateVec(vec3(s30, 0, c30), movedG.orientation);
+    expect(nWorld.z).toBeCloseTo(1, 6);
+  });
+
+  it('W5-F3: anti-parallel normals stay a valid gap pose (residual 0, no rotation needed)', () => {
+    // |n_a × n_b| = 0 for anti-parallel too — an unsigned gap accepts
+    // both facings, and the placement picks the NEAREST alignment so an
+    // already-anti-parallel block is not flipped 180°.
+    const fixed = makePart('f', true);
+    const free = makePart('g', false, vec3(0, 0, 5));
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        { id: 'd', kind: 'distance', a: ref('f', 'pl', 'plane'), b: ref('g', 'pl', 'plane'), value: 20 } as Mate,
+      ],
+    };
+    const refs = new Map<string, ResolvedGeometry>([
+      ['f/pl', { kind: 'plane', world: { origin: vec3(0, 0, 0), normal: vec3(0, 0, 1) } }],
+      ['g/pl', { kind: 'plane', world: { origin: vec3(0, 0, 0), normal: vec3(0, 0, -1) } }],
+    ]);
+    const r = iterativeSolve(state, makeResolver(refs));
+    expect(r.success).toBe(true);
+    const movedG = r.state.parts.find((p) => p.id === 'g')!;
+    expect(movedG.position.z).toBeCloseTo(20, 3);
+    // No rotation applied: orientation stays identity.
+    expect(movedG.orientation.w).toBeCloseTo(1, 9);
+  });
 });
 
 // ─── distance point/point ────────────────────────────────────────────────

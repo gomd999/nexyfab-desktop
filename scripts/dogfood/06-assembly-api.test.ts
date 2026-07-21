@@ -161,15 +161,18 @@ describe('DOGFOOD 06 — assembly programmatic API (F14)', () => {
   });
 
   it('E: newton engine — translation-unique system reaches the same point', () => {
-    // NOTE (measured, not assumed): on the plane+distance system of test C
-    // the Newton engine also reports converged=true but at a DIFFERENT
-    // placement (x ≈ 15.91): the engine's scalar plane-coincident residual
-    // measures only the perpendicular offset of one plane point, not
-    // normal alignment, so Newton can exploit the rotation DoF and land
-    // elsewhere on the residual-zero manifold. Gauss-Seidel (default
-    // engine) uses the analytic full placement and does not — hence it is
-    // the default. Here we use a translation-unique system where the
-    // residual zero-set is a single point.
+    // NOTE (measured, not assumed — re-measured after W5-F2/F3): on the
+    // plane+distance system of test C the Newton engine used to report
+    // converged=true at a DIFFERENT placement (x ≈ 15.91) because the
+    // plane-coincident residual lacked a normal-alignment term. Since the
+    // W5-F2 alignment term, Newton no longer fake-converges there — it
+    // now honestly reports converged=false (measured at this commit:
+    // finalMaxResidual ≈ 3.617, x ≈ 16.38 at the default iteration
+    // budget; the summed |·|-kinked scalar is hard for LM on that
+    // fixture). Gauss-Seidel (default engine) solves it exactly via the
+    // analytic full placement — hence it is the default. Here we use a
+    // translation-unique system where the residual zero-set is a single
+    // point, which Newton does solve.
     const result = solveMates(
       [
         {

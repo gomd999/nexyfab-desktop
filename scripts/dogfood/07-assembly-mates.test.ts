@@ -341,3 +341,112 @@ describe('DOGFOOD 07 — motionStudy gear sweep (drive path)', () => {
     expect(Math.abs(degMid - -30)).toBeLessThan(1e-9);
   });
 });
+
+// ── W5-F3: 잔여 2건 해소 — distance plane 법선정렬 + hinge 프록시 정직화 ──
+//
+// W5-F2 커밋(4aa838b5)이 정직 기록으로 남긴 두 한계의 해소를 공개
+// facade(solveMates) 레벨에서 고정한다:
+//   1. distance plane/plane: 법선 30° 어긋남 + 갭 수치 일치 → 종전엔 양
+//      엔진 모두 converged=true·residual≈0 (가짜 수렴, 실측). 이제 gauss는
+//      회전 정렬로 진짜 수렴(z=20·tilt 0°), 잔차는 어긋남을 벌점한다.
+//   2. hinge limit(zeroAngleRef 無): in-limit +30°가 0.5236 rad 허위
+//      벌점 — 유지되되(하위호환) 결과에 'hinge-unsigned-proxy' 근사
+//      마커가 명시된다. zeroAngleRef 공급 시 벌점 정확히 0.
+
+describe('DOGFOOD 07 — W5-F3 distance plane/plane 법선정렬', () => {
+  const s30 = Math.sin(Math.PI / 6);
+  const c30 = Math.cos(Math.PI / 6);
+  const tiltedParts = (): SolvePartSpec[] => [
+    {
+      partId: 'base',
+      fixed: true,
+      refs: { top: { kind: 'plane', origin: { x: 0, y: 0, z: 0 }, normal: { x: 0, y: 0, z: 1 } } },
+    },
+    {
+      partId: 'block',
+      position: { x: 0, y: 0, z: 5 },
+      refs: { bottom: { kind: 'plane', origin: { x: 0, y: 0, z: 0 }, normal: { x: s30, y: 0, z: c30 } } },
+    },
+  ];
+  const gapMate: SolveMateSpec[] = [
+    { id: 'gap', kind: 'distance', value: 20, a: { partId: 'base', refId: 'top' }, b: { partId: 'block', refId: 'bottom' } },
+  ];
+
+  it('gauss: 30° 어긋난 블록을 회전 정렬해 진짜 수렴 (z=20, tilt 0°)', () => {
+    const r = solveMates(tiltedParts(), gapMate, { tolerance: 1e-6 });
+    expect(r.converged).toBe(true);
+    expect(r.finalMaxResidual).toBeLessThan(1e-6);
+    const block = r.part('block');
+    expect(Math.abs(block.position.z - 20)).toBeLessThan(1e-3);
+    const nWorld = rotateVec({ x: s30, y: 0, z: c30 }, block.orientation);
+    expect(Math.abs(nWorld.z - 1)).toBeLessThan(1e-6); // tilt ≈ 0
+  });
+
+  it('newton: 가짜 수렴 없음 — 기본 예산 정직 실패 or 정렬 자세 수렴, 확장 예산 진짜 수렴', () => {
+    // 기본 예산(100회): 실측 converged=false·residual≈14.6 (정직 실패 —
+    // 종전의 converged=true·tilt 30°가짜 수렴이 사라졌다는 것이 요점).
+    const rDefault = solveMates(tiltedParts(), gapMate, { engine: 'newton', tolerance: 1e-6 });
+    const blockD = rDefault.part('block');
+    const nD = rotateVec({ x: s30, y: 0, z: c30 }, blockD.orientation);
+    if (rDefault.converged) {
+      expect(Math.abs(Math.abs(nD.z) - 1)).toBeLessThan(1e-3);
+    } else {
+      expect(rDefault.finalMaxResidual).toBeGreaterThan(0.01);
+    }
+    // 확장 예산(1000회): 실측 converged=true·z=20.000000·tilt 0.000°.
+    const r = solveMates(tiltedParts(), gapMate, { engine: 'newton', tolerance: 1e-6, maxIterations: 1000 });
+    expect(r.converged).toBe(true);
+    const block = r.part('block');
+    expect(Math.abs(block.position.z - 20)).toBeLessThan(1e-3);
+    const nWorld = rotateVec({ x: s30, y: 0, z: c30 }, block.orientation);
+    expect(Math.abs(nWorld.z - 1)).toBeLessThan(1e-4);
+  });
+});
+
+describe('DOGFOOD 07 — W5-F3 hinge limit 프록시 근사 명시 + signed 정확화', () => {
+  const hingeParts = (yawDeg: number): SolvePartSpec[] => [
+    {
+      partId: 'frame',
+      fixed: true,
+      refs: { shaft: { kind: 'axis', origin: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: 0, z: 1 } } },
+    },
+    {
+      partId: 'door',
+      fixed: true, // 자세 고정 — 잔차 측정 목적
+      orientation: { x: 0, y: 0, z: Math.sin((yawDeg * Math.PI) / 360), w: Math.cos((yawDeg * Math.PI) / 360) },
+    },
+  ];
+  const zeroRef = {
+    a: { x: 1, y: 0, z: 0 },
+    b: { x: 1, y: 0, z: 0 },
+    axisA: { x: 0, y: 0, z: 1 },
+    axisB: { x: 0, y: 0, z: 1 },
+  };
+
+  it('프록시(zeroAngleRef 無): in-limit +30°에 0.5236 rad 허위 벌점 + 근사 마커 (양 엔진)', () => {
+    const mates: SolveMateSpec[] = [
+      { id: 'h', kind: 'hinge', limit: { minAngleDeg: 0, maxAngleDeg: 90 }, a: { partId: 'frame', refId: 'shaft' }, b: { partId: 'door', refId: 'z_axis' } },
+    ];
+    for (const engine of ['gauss-seidel', 'newton'] as const) {
+      const r = solveMates(hingeParts(30), mates, { engine });
+      const res = r.residuals.find((x) => x.mateId === 'h')!;
+      expect(Math.abs(res.residual - 0.523599)).toBeLessThan(1e-4);
+      expect(res.approximation).toBe('hinge-unsigned-proxy');
+    }
+  });
+
+  it('zeroAngleRef 공급: in-limit +30° 벌점 정확히 0·마커 없음, out-limit +120° 정확 벌점 0.5236', () => {
+    const mkMates = (): SolveMateSpec[] => [
+      { id: 'h', kind: 'hinge', limit: { minAngleDeg: 0, maxAngleDeg: 90 }, zeroAngleRef: zeroRef, a: { partId: 'frame', refId: 'shaft' }, b: { partId: 'door', refId: 'z_axis' } },
+    ];
+    const rIn = solveMates(hingeParts(30), mkMates());
+    const resIn = rIn.residuals.find((x) => x.mateId === 'h')!;
+    expect(resIn.residual).toBeLessThan(1e-9);
+    expect(resIn.approximation).toBeUndefined();
+
+    const rOut = solveMates(hingeParts(120), mkMates());
+    const resOut = rOut.residuals.find((x) => x.mateId === 'h')!;
+    expect(Math.abs(resOut.residual - 0.523599)).toBeLessThan(1e-4);
+    expect(resOut.approximation).toBeUndefined();
+  });
+});

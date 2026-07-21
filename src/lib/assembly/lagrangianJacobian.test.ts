@@ -465,7 +465,17 @@ describe('analyticJacobianRow — distance point/point', () => {
 // ─── 8. distance plane/plane: analytic vs numeric ────────────────────────
 
 describe('analyticJacobianRow — distance plane/plane', () => {
-  it('analytic matches numeric within 1e-3', () => {
+  // W5-F 3차: the shared residual gained the SAME normal-alignment term
+  // as coincident plane/plane — |n_a × n_b|·(1 + |o_b − o_a|). Identical
+  // test convention as section 4:
+  //   - normals ALIGNED → alignment term at its kink minimum (analytic
+  //     contribution 0, zero-gradient convention); the classic gap row is
+  //     exact on TRANSLATION columns. Rotation columns are NOT comparable
+  //     against numeric forward-diff, which picks up the one-sided kink
+  //     slope of the alignment term.
+  //   - normals MISALIGNED → no closed form for the length-scaled term:
+  //     empty row (numeric per-row fallback).
+  it('aligned normals: analytic matches numeric on translation cols within 1e-3', () => {
     const a = makePart('a');
     const b = makePart('b', { position: vec3(0, 0, 7) });
     const refs = new Map<string, ResolvedGeometry>([
@@ -481,15 +491,40 @@ describe('analyticJacobianRow — distance plane/plane', () => {
     const bg = resolver(mate.b, b)!;
     const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
     const baseR = residualMirror(mate, a, b, resolver);
+    expect(row.cols.length).toBeGreaterThan(0);
 
-    for (let d = 0; d < 6; d++) {
+    for (let d = 0; d < 3; d++) {
       const num = numericPartialDoF(mate, true, a, b, resolver, d, baseR);
       expect(Math.abs(rowValueAt(row, d) - num)).toBeLessThan(1e-3);
     }
-    for (let d = 0; d < 6; d++) {
+    for (let d = 0; d < 3; d++) {
       const num = numericPartialDoF(mate, false, a, b, resolver, d, baseR);
       expect(Math.abs(rowValueAt(row, 6 + d) - num)).toBeLessThan(1e-3);
     }
+  });
+
+  it('misaligned normals: empty row (numeric fallback carries the alignment term)', () => {
+    const a = makePart('a');
+    const b = makePart('b', { position: vec3(0, 0, 7) });
+    const refs = new Map<string, ResolvedGeometry>([
+      ['a/pl', { kind: 'plane', world: { origin: vec3(0, 0, 0), normal: vec3(0, 0, 1) } }],
+      ['b/pl', { kind: 'plane', world: { origin: vec3(1, 1, 0), normal: vec3(0, 0.6, 0.8) } }],
+    ]);
+    const resolver = makeResolver(refs);
+    const mate: Mate = {
+      id: 'm', kind: 'distance', value: 3,
+      a: ref('a', 'pl', 'plane'), b: ref('b', 'pl', 'plane'),
+    };
+    const ag = resolver(mate.a, a)!;
+    const bg = resolver(mate.b, b)!;
+    const row = analyticJacobianRow(mate, a, b, ag, bg, 0, 6);
+    expect(row.cols).toHaveLength(0);
+    // Residual hand-check: signed gap = (oB−oA)·nA with oB = (1,1,7),
+    // oA = 0, nA = ẑ → 7; gapErr = |7 − 3| = 4. sin = |ẑ × (0,.6,.8)| =
+    // 0.6. L = 1 + |(1,1,7)| = 1 + √51.
+    // Total = 4 + 0.6·(1 + √51) = expected below.
+    const r = residualMirror(mate, a, b, resolver);
+    expect(r).toBeCloseTo(4 + 0.6 * (1 + Math.sqrt(51)), 9);
   });
 });
 

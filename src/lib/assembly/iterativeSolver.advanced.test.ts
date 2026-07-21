@@ -808,6 +808,60 @@ describe('iterativeSolve — Phase 2 hinge with signed-swing zeroAngleRef', () =
     expect(() => validateMate(m)).not.toThrow();
   });
 
+  // ── W5-F3: the proxy's pessimistic false penalty is PINNED + MARKED ──
+  // The unsigned proxy cannot resolve the swing's sign, so the limit is
+  // applied to both sign candidates. With limit [0°, 90°] a genuinely
+  // in-limit +30° swing is still penalized (its −30° mirror is out of
+  // range) — 0.5236 rad of FALSE penalty. Kept for back-compat; the
+  // residual report now carries a machine-readable approximation marker
+  // ('hinge-unsigned-proxy', same honesty convention as brep-bridge
+  // fidelity) so consumers can tell approximate from exact. The fix path
+  // is supplying zeroAngleRef — pinned below at exactly 0 penalty.
+  it('W5-F3: proxy false penalty pinned — limit [0°,90°], swing +30° → 0.5236 rad + marker', () => {
+    const { state, resolver } = buildSignedHingeFixture({
+      freeYawRad: (30 * Math.PI) / 180,
+      limit: { minAngleDeg: 0, maxAngleDeg: 90 },
+      withZeroRef: false,
+    });
+    const r = iterativeSolve(state, resolver);
+    // (30°→rad) = 0.523599 — measured false penalty, documented approximation.
+    expect(r.residuals[0]!.residual).toBeCloseTo(0.523599, 4);
+    expect(r.residuals[0]!.approximation).toBe('hinge-unsigned-proxy');
+  });
+
+  it('W5-F3: same geometry WITH zeroAngleRef → penalty exactly 0, NO marker', () => {
+    const { state, resolver } = buildSignedHingeFixture({
+      freeYawRad: (30 * Math.PI) / 180,
+      limit: { minAngleDeg: 0, maxAngleDeg: 90 },
+      withZeroRef: true,
+    });
+    const r = iterativeSolve(state, resolver);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-9);
+    expect(r.residuals[0]!.approximation).toBeUndefined();
+  });
+
+  it('W5-F3: out-of-limit swing WITH zeroAngleRef → exact signed penalty, NO marker', () => {
+    // +120° under [0°, 90°] → exactly 30° = 0.523599 rad of REAL penalty.
+    const { state, resolver } = buildSignedHingeFixture({
+      freeYawRad: (120 * Math.PI) / 180,
+      limit: { minAngleDeg: 0, maxAngleDeg: 90 },
+      withZeroRef: true,
+    });
+    const r = iterativeSolve(state, resolver);
+    expect(r.residuals[0]!.residual).toBeCloseTo(0.523599, 4);
+    expect(r.residuals[0]!.approximation).toBeUndefined();
+  });
+
+  it('W5-F3: hinge without limit never carries the proxy marker', () => {
+    const { state, resolver } = buildSignedHingeFixture({
+      freeYawRad: (30 * Math.PI) / 180,
+      withZeroRef: false,
+    });
+    const r = iterativeSolve(state, resolver);
+    expect(r.residuals[0]!.residual).toBeLessThan(1e-9);
+    expect(r.residuals[0]!.approximation).toBeUndefined();
+  });
+
   it('Phase 1 proxy still in effect when zeroAngleRef is absent (back-compat)', () => {
     // Same fixture as the existing "h_over" test but assert sentinel
     // values directly here to lock the Phase 1 branch in place.

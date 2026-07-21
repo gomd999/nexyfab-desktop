@@ -83,6 +83,22 @@ export interface IterativeSolverOptions {
   relaxation?: number;
 }
 
+/**
+ * Machine-readable approximation markers for a mate residual — same
+ * honesty convention as brep-bridge's `fidelity` field (a silent
+ * approximation is forbidden; the result must say so in a form code can
+ * branch on).
+ *
+ *   - 'hinge-unsigned-proxy': the hinge has an angular `limit` but no
+ *     `zeroAngleRef`, so the swing angle is the Phase 1 UNSIGNED
+ *     quaternion-dot proxy. Because the sign is unresolved, the limit is
+ *     applied pessimistically to both sign candidates — an in-limit
+ *     +30° swing under limit [0°, 90°] still reports a 0.5236 rad
+ *     penalty (measured; pinned in iterativeSolver.advanced.test.ts).
+ *     Supply `zeroAngleRef` to get the exact signed measurement.
+ */
+export type MateResidualApproximation = 'hinge-unsigned-proxy';
+
 export interface MateResidual {
   mateId: string;
   /** Distance/angle error from the mate being satisfied (in mm or radians,
@@ -90,6 +106,30 @@ export interface MateResidual {
   residual: number;
   /** True if this kind has an analytical placement implemented yet. */
   supported: boolean;
+  /**
+   * Present when the residual value is a documented APPROXIMATION rather
+   * than an exact measurement. Absent = exact semantics. Additive field
+   * (W5-F 3차) — existing consumers are unaffected.
+   */
+  approximation?: MateResidualApproximation;
+}
+
+/**
+ * The approximation marker (if any) that applies to `mate`'s residual
+ * under the current mate parameters. Single source of truth — both
+ * engines stamp their residual reports through this.
+ */
+export function mateResidualApproximation(
+  mate: Mate,
+): MateResidualApproximation | undefined {
+  if (
+    mate.kind === 'hinge' &&
+    mate.limit !== undefined &&
+    mate.zeroAngleRef === undefined
+  ) {
+    return 'hinge-unsigned-proxy';
+  }
+  return undefined;
 }
 
 export interface IterativeSolveResult {
@@ -187,10 +227,12 @@ export function iterativeSolve(
     if (!a || !b || m.suppressed) {
       return { mateId: m.id, residual: 0, supported: true };
     }
+    const approximation = mateResidualApproximation(m);
     return {
       mateId: m.id,
       residual: computeMateResidual(m, a, b, resolve),
       supported: isAnalyticallySupported(m),
+      ...(approximation !== undefined ? { approximation } : {}),
     };
   });
 
@@ -336,14 +378,33 @@ function applyAnalyticalPlacement(
     const shift = sub(newMovedWorld, movedG.world);
     return { position: add(curPos, shift), orientation: curOri };
   }
-  // ── distance plane/plane: translate along normal to target gap ───────
+  // ── distance plane/plane: align normals + translate to target gap ────
+  // W5-F 3차: this placement used to translate ONLY, leaving the moved
+  // part's rotation untouched — matching a residual that never penalized
+  // normal misalignment (documented leftover of W5-F 2차). The residual
+  // now carries a |n_a × n_b|·(1 + |o_b − o_a|) alignment term, so the
+  // placement must consume it: rotate the moved plane's normal into the
+  // NEAREST alignment with the fixed normal (parallel when dot ≥ 0,
+  // anti-parallel otherwise — an unsigned gap accepts both, and choosing
+  // the nearest keeps this a minimal correction), then translate along
+  // the fixed normal to the target gap. Same rotate-about-part-pivot
+  // origin bookkeeping as the coincident plane/plane placement above.
   if (mate.kind === 'distance' && movedG.kind === 'plane' && fixedG.kind === 'plane') {
     const target = mate.value;
+    const towardFixed = dot(movedG.world.normal, fixedG.world.normal) >= 0;
+    const targetNormal = towardFixed ? fixedG.world.normal : scale(fixedG.world.normal, -1);
+    const rot = quatFromTo(movedG.world.normal, targetNormal);
+    const newOri = quatNormalize(quatMul(rot, curOri));
+    // The rotation happens around the part pivot (curPos) — recompute the
+    // plane origin's world position after the rotation.
+    const relOrigin = sub(movedG.world.origin, curPos);
+    const rotatedRelOrigin = rotateVec(relOrigin, rot);
+    const newPlaneOriginWorld = add(curPos, rotatedRelOrigin);
     // Signed perpendicular distance from fixed plane to moved plane.
-    const currentSigned = dot(sub(movedG.world.origin, fixedG.world.origin), fixedG.world.normal);
+    const currentSigned = dot(sub(newPlaneOriginWorld, fixedG.world.origin), fixedG.world.normal);
     const targetSigned = currentSigned >= 0 ? target : -target;
     const adjust = targetSigned - currentSigned;
-    return { position: add(curPos, scale(fixedG.world.normal, adjust)), orientation: curOri };
+    return { position: add(curPos, scale(fixedG.world.normal, adjust)), orientation: newOri };
   }
 
   // ── angle: rotate moved direction to target angle from fixed direction ──
@@ -569,9 +630,35 @@ export function computeMateResidual(
   if (mate.kind === 'distance' && ag.kind === 'point' && bg.kind === 'point') {
     return Math.abs(lengthOf(sub(bg.world, ag.world)) - mate.value);
   }
+  // ── distance plane/plane: gap error + NORMAL ALIGNMENT ───────────────
+  // W5-F 3차 fix (was the documented leftover of the W5-F 2차 commit):
+  // the residual measured only ||signed gap| − target| along the side-A
+  // normal. With the normals misaligned the "gap" is not even well
+  // defined, yet the scalar could still hit 0 — measured fake
+  // convergence on a 30°-tilted block: BOTH engines reported
+  // converged=true, residual 0.0e+0 (gauss) / 1.5e-11 (newton), z=20,
+  // tilt=30.000° (repro in iterativeSolver.extended.test.ts).
+  //
+  // Added term: |n_a × n_b| · (1 + |o_b − o_a|) — identical structure and
+  // length-scale rationale as the plane-coincident residual above (the
+  // gap term's slope w.r.t. rotation is bounded by |o_b − o_a| mm/rad,
+  // so the unscaled sin term can lose the tug-of-war at the |·| kink).
+  // |n_a × n_b| is 0 for BOTH parallel and anti-parallel normals — both
+  // are valid poses for an unsigned gap constraint.
+  //
+  // The Gauss-Seidel placement step for this mate kind now rotates the
+  // moved plane into the nearest (±) normal alignment before translating
+  // (see applyAnalyticalPlacement), so the gauss engine consumes this
+  // term analytically; the Newton engine falls back to numeric rows
+  // while misaligned (lagrangianJacobian guard, same as coincident).
   if (mate.kind === 'distance' && ag.kind === 'plane' && bg.kind === 'plane') {
-    const signed = dot(sub(bg.world.origin, ag.world.origin), ag.world.normal);
-    return Math.abs(Math.abs(signed) - mate.value);
+    const diff = sub(bg.world.origin, ag.world.origin);
+    const signed = dot(diff, ag.world.normal);
+    const gapErr = Math.abs(Math.abs(signed) - mate.value);
+    const nCross = crossVec(ag.world.normal, bg.world.normal);
+    const sinErr = Math.sqrt(nCross.x * nCross.x + nCross.y * nCross.y + nCross.z * nCross.z);
+    const lengthScale = 1 + lengthOf(diff);
+    return gapErr + sinErr * lengthScale;
   }
   if (mate.kind === 'parallel') {
     const aDir = directionOf(ag);

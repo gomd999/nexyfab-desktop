@@ -22,7 +22,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { lagrangianSolve } from './lagrangianSolver';
+import { lagrangianSolve, lagrangianSolveAnalytic } from './lagrangianSolver';
 import {
   iterativeSolve,
   type GeometryResolver,
@@ -724,5 +724,94 @@ describe('lagrangianSolve — options respected', () => {
     expect(tight.finalMaxResidual).toBeLessThan(1e-6);
     const capped = lagrangianSolve(state, makeResolver(refs), { maxIterations: 1 });
     expect(capped.iterations).toBeLessThanOrEqual(2); // 1 newton step + 0 final break-out increment
+  });
+});
+
+// ─── 28. W5-F3: distance plane/plane normal alignment (newton engine) ────
+//
+// Before W5-F3 the distance plane/plane residual carried no normal-
+// alignment term: a block tilted 30° with the gap numerically at target
+// reported residual 1.5e-11 and converged=true on this engine (fake
+// convergence, measured). The residual now adds |n_a × n_b|·(1+|o_b−o_a|)
+// (same structure as plane-coincident), and the analytic Jacobian defers
+// to numeric rows while normals are misaligned.
+
+describe('lagrangianSolveAnalytic — W5-F3 distance plane/plane normal alignment', () => {
+  const s30 = Math.sin(Math.PI / 6);
+  const c30 = Math.cos(Math.PI / 6);
+  const buildTilted = () => {
+    const fixed = makePart('f', { fixed: true });
+    const free = makePart('g', { position: vec3(0, 0, 5) });
+    const state: AssemblyState = {
+      parts: [fixed, free],
+      mates: [
+        { id: 'd', kind: 'distance', a: ref('f', 'pl', 'plane'), b: ref('g', 'pl', 'plane'), value: 20 } as Mate,
+      ],
+    };
+    const refs = new Map<string, ResolvedGeometry>([
+      ['f/pl', { kind: 'plane', world: { origin: vec3(0, 0, 0), normal: vec3(0, 0, 1) } }],
+      ['g/pl', { kind: 'plane', world: { origin: vec3(0, 0, 0), normal: vec3(s30, 0, c30) } }],
+    ]);
+    return { state, resolver: makeResolver(refs) };
+  };
+
+  it('default budget: no fake convergence — success implies an aligned pose', () => {
+    // Measured at this commit: success=false, finalMaxResidual ≈ 14.6
+    // (honest failure at the default 100-iteration budget). The invariant
+    // pinned here is engine-version-robust: EITHER it fails with a
+    // non-trivial residual, OR it succeeds at a genuinely aligned pose.
+    const { state, resolver } = buildTilted();
+    const r = lagrangianSolveAnalytic(state, resolver);
+    const g = r.state.parts.find((p) => p.id === 'g')!;
+    const nWorld = rotateVec(vec3(s30, 0, c30), g.orientation);
+    if (r.success) {
+      expect(Math.abs(nWorld.z)).toBeCloseTo(1, 3); // aligned (±) or nothing
+      expect(Math.abs(g.position.z)).toBeCloseTo(20, 3);
+    } else {
+      expect(r.finalMaxResidual).toBeGreaterThan(0.01);
+    }
+  });
+
+  it('budget 1000: genuinely converges — z=20, tilt 0 (measured)', () => {
+    const { state, resolver } = buildTilted();
+    const r = lagrangianSolveAnalytic(state, resolver, { maxIterations: 1000 });
+    expect(r.success).toBe(true);
+    expect(r.finalMaxResidual).toBeLessThan(1e-4);
+    const g = r.state.parts.find((p) => p.id === 'g')!;
+    expect(g.position.z).toBeCloseTo(20, 3);
+    const nWorld = rotateVec(vec3(s30, 0, c30), g.orientation);
+    expect(nWorld.z).toBeCloseTo(1, 4);
+  });
+});
+
+// ─── 29. W5-F3: hinge unsigned-proxy approximation marker (newton path) ──
+
+describe('lagrangianSolveAnalytic — hinge residual approximation marker', () => {
+  function quatZ(rad: number) {
+    return { x: 0, y: 0, z: Math.sin(rad / 2), w: Math.cos(rad / 2) };
+  }
+  it('limit without zeroAngleRef → residual report carries hinge-unsigned-proxy', () => {
+    // Both parts FIXED at +30° relative yaw with limit [0°, 90°]: the
+    // swing is in-limit, yet the unsigned proxy pessimistically reports
+    // 0.5236 rad — the marker makes that approximation machine-readable.
+    const f = makePart('f', { fixed: true });
+    const g = makePart('g', { fixed: true, orientation: quatZ(Math.PI / 6) });
+    const state: AssemblyState = {
+      parts: [f, g],
+      mates: [
+        {
+          id: 'h', kind: 'hinge',
+          a: ref('f', 'ax', 'axis'), b: ref('g', 'ax', 'axis'),
+          limit: { minAngleDeg: 0, maxAngleDeg: 90 },
+        } as Mate,
+      ],
+    };
+    const refs = new Map<string, ResolvedGeometry>([
+      ['f/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+      ['g/ax', { kind: 'axis', world: { origin: vec3(0, 0, 0), direction: vec3(0, 0, 1) } }],
+    ]);
+    const r = lagrangianSolveAnalytic(state, makeResolver(refs));
+    expect(r.residuals[0]!.residual).toBeCloseTo(0.5236, 3);
+    expect(r.residuals[0]!.approximation).toBe('hinge-unsigned-proxy');
   });
 });

@@ -240,6 +240,19 @@ export function analyticJacobianRow(
       );
     }
     if (movedResolved.kind === 'plane' && fixedResolved.kind === 'plane') {
+      // W5-F 3차: the shared residual now adds the same normal-alignment
+      // term |n_a × n_b| · (1 + |o_b − o_a|) as coincident plane/plane.
+      // Identical guard: while the normals are actually misaligned, no
+      // closed-form row exists for the length-scaled product → defer to
+      // numeric per-row forward differences (empty row). When aligned
+      // (|cross| < 1e-9) the alignment term sits at its kink minimum
+      // (zero-gradient convention) and the classic gap row is exact.
+      const nA = movedResolved.world.normal;
+      const nB = fixedResolved.world.normal;
+      const cx = nA.y * nB.z - nA.z * nB.y;
+      const cy = nA.z * nB.x - nA.x * nB.z;
+      const cz = nA.x * nB.y - nA.y * nB.x;
+      if (Math.sqrt(cx * cx + cy * cy + cz * cz) >= 1e-9) return EMPTY_ROW();
       return distancePlaneRow(
         movedPart, fixedPart,
         movedResolved.world.origin, movedResolved.world.normal,

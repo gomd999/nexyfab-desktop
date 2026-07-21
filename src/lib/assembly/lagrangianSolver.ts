@@ -42,7 +42,7 @@ import type {
   MateResidual,
   ResolvedGeometry,
 } from './iterativeSolver';
-import { iterativeSolve, computeMateResidual } from './iterativeSolver';
+import { iterativeSolve, computeMateResidual, mateResidualApproximation } from './iterativeSolver';
 import {
   quatMul,
   quatNormalize,
@@ -374,10 +374,12 @@ function buildResiduals(
     if (!a || !b || m.suppressed) {
       return { mateId: m.id, residual: 0, supported: true };
     }
+    const approximation = mateResidualApproximation(m);
     return {
       mateId: m.id,
       residual: computeResidualForMate(m, a, b, resolve),
       supported: isAnalyticallySupported(m),
+      ...(approximation !== undefined ? { approximation } : {}),
     };
   });
 }
