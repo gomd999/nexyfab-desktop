@@ -193,6 +193,121 @@ function renderReport(ex: Example, n: Norm): string {
   return L.join('\n');
 }
 
+// ─── single self-contained HTML renderer (브라우저에서 바로 열람) ─────────────────
+const esc = (s: unknown): string =>
+  String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function badge(n: Norm): string {
+  if (!n.ok) return '<span class="bd bd-no">⛔ 거절</span>';
+  if (n.autoFixed) return '<span class="bd bd-fix">🔧 자동수정 · 검토대기</span>';
+  return '<span class="bd bd-ok">✅ 검증됨</span>';
+}
+
+function exampleHtml(ex: Example, n: Norm, i: number): string {
+  const H: string[] = [];
+  H.push(`<section class="card" id="ex-${i}">`);
+  H.push(`<div class="card-h"><h3>${esc(ex.titleKo)}</h3>${badge(n)}</div>`);
+  H.push(`<div class="meta"><span class="tag">${esc(ex.domainKo)}</span> <code>${esc(ex.surface)}</code></div>`);
+  H.push(`<p class="brief">📝 ${esc(ex.briefDesc)}</p>`);
+
+  if (n.gates.length) {
+    H.push('<table><thead><tr><th>게이트</th><th>통과</th><th>핵심 실측치</th><th>사유</th></tr></thead><tbody>');
+    for (const g of n.gates) {
+      H.push(
+        `<tr><td><code>${esc(g.id)}</code></td><td class="c">${g.pass ? '✅' : '❌'}</td>` +
+          `<td class="mx">${esc(compactMetrics(g.metrics))}</td><td>${g.reason ? esc(g.reason.slice(0, 120)) : '—'}</td></tr>`,
+      );
+    }
+    H.push('</tbody></table>');
+  } else {
+    H.push('<p class="muted">계획/입력 단계 거절 — 게이트 미실행</p>');
+  }
+
+  if (n.autoFixed && n.adjustments) {
+    H.push('<div class="box box-fix"><b>🔧 자동수정 (Step ② · 사람 검토 대기)</b><ul>');
+    for (const a of n.adjustments) H.push(`<li><code>${esc(a.target)}</code>: <b>${esc(a.from)} → ${esc(a.to)}</b> — ${esc(a.basis)}</li>`);
+    H.push('</ul><small>형상·물성은 절대 자동변경하지 않음. 계산으로 확정되는 청구값만 정합 + 검토 플래그.</small></div>');
+  }
+  if (!n.ok) {
+    H.push(`<div class="box box-no"><b>⛔ 거절 (${esc(n.refusal?.stage)}) — 패키지 미산출</b><p>${esc(n.refusal?.reason)}</p>`);
+    H.push('<small>값을 지어내지 않음. 필요한 입력이 없으면 초안을 만들지 않고 거절 — 정직한 코파일럿의 핵심.</small></div>');
+  } else {
+    const hi = pkgHighlights(n.pkg).map((s) => '<li>' + esc(s.replace(/^- /, '').replace(/\*\*/g, '')) + '</li>').join('');
+    H.push(`<details><summary>산출물 요약 (검증 패키지)</summary><ul class="pkg">${hi}</ul></details>`);
+  }
+  H.push('</section>');
+  return H.join('\n');
+}
+
+function renderHtml(results: Array<{ ex: Example; n: Norm; passed: number }>): string {
+  const summaryRows = results
+    .map(
+      ({ ex, n, passed }, i) =>
+        `<tr><td>${esc(ex.domainKo)}</td><td><a href="#ex-${i}">${esc(ex.titleKo)}</a></td><td>${badge(n)}</td><td class="c">${passed}/${n.gates.length}</td></tr>`,
+    )
+    .join('\n');
+  const cards = results.map(({ ex, n }, i) => exampleHtml(ex, n, i)).join('\n');
+  const ok = results.filter((r) => r.n.ok && !r.n.autoFixed).length;
+  const fix = results.filter((r) => r.n.autoFixed).length;
+  const no = results.filter((r) => !r.n.ok).length;
+
+  return `<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexyFab — 설계부터 인테리어까지, 실물 검증 예시</title>
+<style>
+:root{--bg:#f7f8fa;--fg:#1b1f24;--mut:#6a7280;--line:#e3e7ec;--card:#fff;--ok:#137a3f;--okbg:#e7f6ed;--fix:#8a5a00;--fixbg:#fff4de;--no:#b0203a;--nobg:#fdeaed;--acc:#2b5cff;--code:#f0f2f5}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1216;--fg:#e6e9ee;--mut:#98a1ad;--line:#242a31;--card:#161a20;--ok:#5fd08a;--okbg:#13291c;--fix:#e6b567;--fixbg:#2a2010;--no:#ff8098;--nobg:#2a1218;--acc:#7aa2ff;--code:#1d2229}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Malgun Gothic",sans-serif}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 20px 80px}
+h1{font-size:26px;margin:0 0 6px}.sub{color:var(--mut);margin:0 0 22px}
+.banner{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:0 0 24px}
+.banner b{color:var(--acc)}.banner .ax{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+.banner .ax>div{flex:1;min-width:240px;background:var(--code);border-radius:8px;padding:10px 12px;font-size:13.5px}
+.kpis{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 22px}
+.kpi{flex:1;min-width:120px;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+.kpi b{display:block;font-size:22px}.kpi span{color:var(--mut);font-size:12.5px}
+table{width:100%;border-collapse:collapse;margin:6px 0;font-size:13.5px;overflow-x:auto;display:block}
+@media(min-width:640px){table{display:table}}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:12.5px}.c{text-align:center}.mx{color:var(--mut);font-size:12px}
+code{background:var(--code);padding:1px 5px;border-radius:5px;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin:0 0 16px}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:12px}.card-h h3{margin:0;font-size:17px}
+.meta{margin:6px 0 2px;color:var(--mut);font-size:12.5px}.tag{background:var(--acc);color:#fff;border-radius:20px;padding:1px 9px;font-size:11.5px;margin-right:6px}
+.brief{color:var(--fg);margin:8px 0 12px}
+.bd{border-radius:20px;padding:3px 11px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.bd-ok{background:var(--okbg);color:var(--ok)}.bd-fix{background:var(--fixbg);color:var(--fix)}.bd-no{background:var(--nobg);color:var(--no)}
+.box{border-radius:9px;padding:11px 13px;margin:10px 0 4px;font-size:13.5px}.box ul{margin:6px 0 4px;padding-left:20px}.box small{color:var(--mut)}
+.box-fix{background:var(--fixbg)}.box-no{background:var(--nobg)}
+details{margin-top:8px}summary{cursor:pointer;color:var(--acc);font-size:13.5px}.pkg{color:var(--mut);font-size:13px}
+.muted{color:var(--mut)}a{color:var(--acc)}h2{font-size:15px;color:var(--mut);margin:28px 0 10px;text-transform:uppercase;letter-spacing:.04em}
+</style></head><body><div class="wrap">
+<h1>NexyFab — 설계부터 인테리어까지, 실물 검증 예시</h1>
+<p class="sub">실제 제품 엔진이 뽑은 검증 결과입니다. 감이 아니라 코드가 실행한 실측.</p>
+<div class="banner">
+<b>정직한 경계 (두 축으로 읽기)</b>
+<div class="ax">
+<div><b>축 A · 커버리지</b><br>5개 분야에서 검증 패키지가 실제로 나옴 — 이 페이지가 증거. ✅</div>
+<div><b>축 B · 무인 자율 대체</b><br>완전 브리프 zero-touch + 안전 자동수정까지는 실물. 단, 실무 브리프 실사용 통과율은 <b>미측정</b> — "대체 수준(4~5)"은 아직 아님.</div>
+</div>
+<p style="margin:12px 0 0;font-size:13px;color:var(--mut)">출처: 비기계 4분야=<code>runDomainDesign()</code>(웹 API·MCP·CLI가 호출하는 그 함수), 기계설계=<code>runDesignDriver()</code>. 입력이 없으면 값을 지어내지 않고 거절합니다.</p>
+</div>
+<div class="kpis">
+<div class="kpi"><b>${results.length}</b><span>예시</span></div>
+<div class="kpi"><b style="color:var(--ok)">${ok}</b><span>✅ zero-touch</span></div>
+<div class="kpi"><b style="color:var(--fix)">${fix}</b><span>🔧 자동수정</span></div>
+<div class="kpi"><b style="color:var(--no)">${no}</b><span>⛔ 정직 거절</span></div>
+</div>
+<h2>결과 요약</h2>
+<table><thead><tr><th>분야</th><th>예시</th><th>판정</th><th class="c">게이트</th></tr></thead><tbody>
+${summaryRows}
+</tbody></table>
+<h2>상세</h2>
+${cards}
+<p class="sub" style="margin-top:30px">재생성: <code>GEN_DEMO=1 npx vitest run scripts/demo/generate-domain-demo</code> · 원자료는 각 예시 폴더의 <code>package.json</code>.</p>
+</div></body></html>`;
+}
+
 // ─── the generator (GEN_DEMO=1 gated; inert on normal test runs) ────────────────
 const OUT = process.env.DEMO_OUT || 'C:/Users/gomd9/Downloads/nexyfab-design-demo';
 
@@ -203,6 +318,7 @@ describe.skipIf(!process.env.GEN_DEMO)('실물 예시 폴더 생성 (설계→�
     mkdirSync(OUT, { recursive: true });
 
     const rows: string[] = [];
+    const results: Array<{ ex: Example; n: Norm; passed: number }> = [];
     for (const ex of EXAMPLES) {
       const n = await ex.run();
       const dir = join(OUT, ex.group, ex.slug);
@@ -212,10 +328,14 @@ describe.skipIf(!process.env.GEN_DEMO)('실물 예시 폴더 생성 (설계→�
       writeFileSync(join(dir, 'report.md'), renderReport(ex, n), 'utf8');
 
       const passed = n.gates.filter((g) => g.pass).length;
+      results.push({ ex, n, passed });
       rows.push(`| ${ex.domainKo} | [${ex.titleKo}](${ex.group}/${ex.slug}/report.md) | ${verdictLabel(n)} | ${passed}/${n.gates.length} |`);
       // never silently ship a broken showcase: a case we expect to verify must not crash
       expect(Array.isArray(n.gates)).toBe(true);
     }
+
+    // the headline deliverable: a single self-contained HTML page (open in a browser)
+    writeFileSync(join(OUT, 'index.html'), renderHtml(results), 'utf8');
 
     const summary = [
       '# NexyFab 설계 예시 — 결과 요약',
