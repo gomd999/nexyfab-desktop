@@ -36,6 +36,7 @@ import {
   type FormworkElement,
   type RebarGroup,
 } from './checks';
+import { chatCompletionConstructionPlanner } from './llmPlanner';
 
 // ─── IR ──────────────────────────────────────────────────────────────────────
 
@@ -168,7 +169,8 @@ export const constructionModule: DomainModule<
   name: 'construction',
 
   plan(brief) {
-    return constructionFixturePlanner(brief);
+    const hasFixture = typeof brief.params?.fixture === 'string' && brief.params.fixture.length > 0;
+    return hasFixture ? constructionFixturePlanner(brief) : chatCompletionConstructionPlanner()(brief);
   },
 
   structuralError(plan) {
