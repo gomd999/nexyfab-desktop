@@ -25,6 +25,16 @@ import {
   resolveConflict,
   type MergeResult,
 } from './conflictResolution';
+import {
+  recordAiRun,
+  approveRun,
+  buildRevisionDirective,
+  type AiRunInput,
+  type AiRunRecord,
+  type ApproveOutcome,
+  type ReviewComment,
+  type RevisionDirective,
+} from './reviewQueue';
 import type { FeatureInstance } from '../features/types';
 
 export interface PendingMerge {
@@ -59,6 +69,18 @@ export interface PdmSessionState {
   /** Records the 2-parent merge commit. Null until all conflicts resolved. */
   applyMerge: (author: string) => Commit | null;
   abortMerge: () => void;
+
+  // ── Wave A WA-C: AI review queue (additive — wraps pdm/reviewQueue) ──────
+  /** AI runs recorded as `ai/<runId>` branch commits, awaiting review. */
+  aiRuns: AiRunRecord[];
+  /** Record an AI run (branch + commit) and enqueue it. Null when no repo
+   *  or duplicate runId — the run is NOT silently re-recorded. */
+  enqueueAiRun: (input: AiRunInput) => AiRunRecord | null;
+  /** Approve = 3-way merge into main. Refusals (gate fail / conflict) come
+   *  back as the ApproveOutcome IR — conflicts are never auto-resolved. */
+  approveAiRun: (runId: string, approver: string) => ApproveOutcome | null;
+  /** Request changes → RevisionDirective IR (next AI run's input contract). */
+  requestAiChanges: (runId: string, comments: ReviewComment[]) => RevisionDirective | null;
 }
 
 const demoFeature = (
@@ -109,6 +131,7 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
   rev: 0,
   isDemo: false,
   pendingMerge: null,
+  aiRuns: [],
 
   init: (features, author) => {
     if (get().repo) return; // idempotent — never clobber an existing history
@@ -120,7 +143,7 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
     set({ repo: buildDemoRepo(), isDemo: true, rev: get().rev + 1 });
   },
 
-  reset: () => set({ repo: null, isDemo: false, pendingMerge: null, rev: get().rev + 1 }),
+  reset: () => set({ repo: null, isDemo: false, pendingMerge: null, aiRuns: [], rev: get().rev + 1 }),
 
   commit: (features, message, author) => {
     const { repo } = get();
@@ -226,4 +249,59 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
   },
 
   abortMerge: () => set({ pendingMerge: null }),
+
+  // ── Wave A WA-C: AI review queue ──────────────────────────────────────────
+
+  enqueueAiRun: (input) => {
+    const { repo } = get();
+    if (!repo) return null;
+    try {
+      const run = recordAiRun(repo, input);
+      set(s => ({ aiRuns: [...s.aiRuns, run], rev: s.rev + 1 }));
+      return run;
+    } catch {
+      // Duplicate runId (branch exists) — refuse rather than re-record.
+      return null;
+    }
+  },
+
+  approveAiRun: (runId, approver) => {
+    const { repo, aiRuns } = get();
+    if (!repo) return null;
+    const run = aiRuns.find(r => r.runId === runId);
+    if (!run) return null;
+    const outcome = approveRun(repo, run, approver);
+    if (outcome.ok) {
+      set(s => ({
+        aiRuns: s.aiRuns.map(r =>
+          r.runId === runId
+            ? { ...r, status: 'approved' as const, mergeCommitId: outcome.mergeCommit.id }
+            : r,
+        ),
+        rev: s.rev + 1,
+      }));
+    }
+    // Refusals (gate_failed / conflict / not_pending) leave the run as-is —
+    // the outcome IR is returned to the caller for display / human action.
+    return outcome;
+  },
+
+  requestAiChanges: (runId, comments) => {
+    const { aiRuns } = get();
+    const run = aiRuns.find(r => r.runId === runId);
+    if (!run || run.status !== 'pending') return null;
+    let directive: RevisionDirective;
+    try {
+      directive = buildRevisionDirective(run, comments);
+    } catch {
+      return null; // no comments — not actionable
+    }
+    set(s => ({
+      aiRuns: s.aiRuns.map(r =>
+        r.runId === runId ? { ...r, status: 'changes_requested' as const } : r,
+      ),
+      rev: s.rev + 1,
+    }));
+    return directive;
+  },
 }));
