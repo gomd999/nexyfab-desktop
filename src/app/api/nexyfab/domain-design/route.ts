@@ -22,8 +22,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan } from '@/lib/plan-guard';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { checkUserBudget } from '@/lib/ai/userBudget';
 import { captureServerError } from '@/lib/error-capture';
 import { DOMAIN_NAMES, isKnownDomain, runDomainDesign, type DomainBrief } from '@/lib/eng-domain/registry';
+
+/** A brief with a fixture key is deterministic (no AI spend); free text hits the
+ *  LLM planner (real cost) and must pass the per-user $ budget gate. */
+function isLlmBrief(brief: DomainBrief): boolean {
+  return !(typeof brief.params?.fixture === 'string' && brief.params.fixture.length > 0);
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +62,19 @@ export async function POST(req: NextRequest) {
   const planCheck = await checkPlan(req, 'free');
   if (!planCheck.ok) return planCheck.response;
 
-  // Burst guard (deterministic runs — no AI budget/monthly-slot gate).
+  // Free-text briefs hit the LLM planner (real AI spend) → per-user daily $ gate.
+  // Fixture briefs are deterministic (no spend) and skip it.
+  if (isLlmBrief(parsed.brief)) {
+    const budget = await checkUserBudget(planCheck.userId);
+    if (!budget.ok) {
+      return NextResponse.json(
+        { error: `Daily AI spend limit reached ($${budget.limitUsd}).`, code: 'COST_BUDGET', usedCents: budget.usedCents, limitUsd: budget.limitUsd, resetAtMs: budget.resetAtMs },
+        { status: 402 },
+      );
+    }
+  }
+
+  // Burst guard.
   const ip = getTrustedClientIp(req.headers);
   const rl = rateLimit(`domain-design:${planCheck.userId}:${ip}`, 60, 3_600_000);
   if (!rl.allowed) {
