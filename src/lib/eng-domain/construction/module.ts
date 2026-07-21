@@ -18,7 +18,7 @@
  * failed gate (clean verify refusal) so the spine never sees an unhandled throw.
  */
 
-import type { DomainGateResult, DomainModule } from '@/lib/domain-driver';
+import type { DomainAutoFixResult, DomainGateResult, DomainModule } from '@/lib/domain-driver';
 import {
   checkConcreteVolumeTakeoff,
   checkCostRollup,
@@ -248,6 +248,46 @@ export const constructionModule: DomainModule<
     return gates;
   },
 
+  /**
+   * Step ② auto-fix — SCOPE: only the concrete ORDER-COVERAGE reconcile. When the
+   * ordered volume is LESS than the geometry-derived required order (computed ×
+   * (1+할증)), the required order is deterministically authoritative — computing it
+   * is exactly a quantity surveyor's takeoff, so we adopt it and flag for review.
+   *
+   * Deliberately NOT auto-fixed (남겨둠, 정직):
+   *   - a rebar / formwork / concrete-no-waste MATCH mismatch — that is a checksum
+   *     divergence a human should reconcile (auto-overwriting would hide a possible
+   *     data-entry error), so it stays a refusal;
+   *   - anything requiring a geometry / section / physical-parameter change — the
+   *     principled autonomy ceiling (형상·물성은 사람 몫).
+   */
+  autoFix(plan, failedGates): DomainAutoFixResult<ConstructionPlan> | null {
+    const concreteFailed = failedGates.some((g) => g.id === 'quantity:concrete');
+    // Only the coverage form (with 할증) is an order-quantity we may compute; the
+    // no-waste form is a pure |computed − claimed| checksum and is left to a human.
+    if (!concreteFailed || plan.wasteFactor === undefined) return null;
+
+    const computed = concreteVolume_m3(plan.concreteElements);
+    const required = computed * (1 + plan.wasteFactor);
+    if (!(plan.claimedConcreteM3 < required)) return null; // not an under-order → nothing to reconcile
+
+    const to = Math.ceil(required * 100) / 100; // round the order UP to cover (0.01 m³)
+    return {
+      plan: { ...plan, claimedConcreteM3: to },
+      adjustments: [
+        {
+          target: 'claimedConcreteM3',
+          from: plan.claimedConcreteM3,
+          to,
+          kind: 'reconcile',
+          basis:
+            `기하 산정 ${round2(computed)} m³ × 할증 ${round2(1 + plan.wasteFactor)} = 필요 주문 ` +
+            `${round2(required)} m³ (계산 확정값; 형상 불변 — 검토 요망).`,
+        },
+      ],
+    };
+  },
+
   package(plan, artifacts, gates) {
     return {
       planId: plan.planId,
@@ -260,3 +300,5 @@ export const constructionModule: DomainModule<
     };
   },
 };
+
+const round2 = (v: number): number => Math.round(v * 100) / 100;

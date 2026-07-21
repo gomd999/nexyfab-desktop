@@ -52,8 +52,43 @@ export interface DomainRefusal {
   failedGateIds: string[];
 }
 
+/**
+ * A transparent auto-adjustment the driver applied in the Step ② auto-fix pass
+ * (자동수정). ONLY a deterministically-computed CLAIM/assertion field is ever
+ * reconciled to its computed value — never geometry or a physical design parameter
+ * (형상·물성 변경은 사람 몫, 원리적 천장). Every adjustment is surfaced on the
+ * successful result so a human reviews it (제안 라벨, 승인 전제); it is NOT hidden.
+ */
+export interface DomainAdjustment {
+  /** The plan field that was reconciled, e.g. 'claimedConcreteM3'. */
+  target: string;
+  from: number;
+  to: number;
+  /** Why `to` is authoritative, e.g. '기하 산정 필요주문 3.28 m³'. */
+  basis: string;
+  /** Only 'reconcile' today: an inadequate/divergent claim → its computed value. */
+  kind: 'reconcile';
+}
+
+/** The result of a module's optional auto-fix pass. */
+export interface DomainAutoFixResult<Plan> {
+  /** The revised plan (claims reconciled; geometry unchanged). */
+  plan: Plan;
+  /** What was changed and why — always non-empty (return null instead if nothing). */
+  adjustments: DomainAdjustment[];
+}
+
 export type DomainDriverResult<Plan, Package> =
-  | { ok: true; domain: string; plan: Plan; gates: DomainGateResult[]; package: Package }
+  | {
+      ok: true;
+      domain: string;
+      plan: Plan;
+      gates: DomainGateResult[];
+      package: Package;
+      /** Present iff the Step ② auto-fix pass reconciled one or more claims. A package
+       *  carrying adjustments is verified but PENDING HUMAN REVIEW of those claims. */
+      adjustments?: DomainAdjustment[];
+    }
   | { ok: false; domain: string; plan?: Plan; gates: DomainGateResult[]; refusal: DomainRefusal };
 
 /**
@@ -89,6 +124,17 @@ export interface DomainModule<Brief, Plan, Artifacts, Package> {
    * a gate failure — a failure is a `pass:false` result with a `reason`.
    */
   gates(plan: Plan, artifacts: Artifacts): DomainGateResult[] | Promise<DomainGateResult[]>;
+  /**
+   * Optional Step ② auto-fix. The runner calls this ONLY when one or more gates
+   * failed. Return a revised plan + the adjustments made, or `null` if nothing is
+   * SAFELY auto-fixable. The runner then re-builds + re-gates ONCE; if it now
+   * passes, the package is produced WITH the adjustments recorded (human-review
+   * flag). CONTRACT: only reconcile a claim/assertion to its deterministically-
+   * computed value — NEVER change geometry or a physical design parameter (that
+   * stays a human decision — the principled autonomy ceiling). A throw here is
+   * swallowed by the runner (treated as "not fixable"), never a crash.
+   */
+  autoFix?(plan: Plan, failedGates: DomainGateResult[]): DomainAutoFixResult<Plan> | null;
   /**
    * Package assembly. The runner calls this ONLY after every gate passed, so the
    * package never contains an unverified value.

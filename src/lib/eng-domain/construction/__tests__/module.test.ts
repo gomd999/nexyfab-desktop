@@ -43,14 +43,33 @@ describe('Batch 3 — construction DomainModule runs end-to-end via the shared s
     expect(res.refusal.failedGateIds).toContain('cost:rollup');
   });
 
-  it('under-ordered concrete is REFUSED (ordered < computed × waste → 패키지 미산출)', async () => {
+  it('under-ordered concrete is AUTO-RECONCILED to the takeoff (Step ② — 검토 플래그 동반)', async () => {
+    // BEHAVIOR CHANGE (Step ②): an under-ORDERED quantity is not a design flaw — the
+    // geometry-derived takeoff is authoritative, so the driver computes the correct
+    // order and re-verifies, surfacing the change as a reviewable adjustment (형상 불변).
     const plan = rcFramePlan();
     plan.claimedConcreteM3 = 2.0; // < required 3.276
     const res = await runDomainDriver({ id: 'short-order' }, { ...constructionModule, plan: () => plan });
+    expect(res.ok, res.ok ? '' : res.refusal.reason).toBe(true);
+    if (!res.ok) return;
+    // the package is produced BUT carries the reconcile adjustment for human review
+    expect(res.adjustments?.length).toBe(1);
+    const adj = res.adjustments![0]!;
+    expect(adj.target).toBe('claimedConcreteM3');
+    expect(adj.from).toBe(2.0);
+    expect(adj.to).toBeGreaterThanOrEqual(3.276); // rounded UP to cover the takeoff
+    expect(adj.kind).toBe('reconcile');
+  });
+
+  it('a MATCH-checksum mismatch (rebar) is still REFUSED, NOT auto-overwritten (정직)', async () => {
+    // A pure |computed − claimed| divergence is a possible data-entry error a human
+    // must see — auto-fix deliberately does NOT silently overwrite it.
+    const plan = rcFramePlan();
+    plan.claimedRebarKg = 100; // ≠ computed (~295), well beyond tolerance
+    const res = await runDomainDriver({ id: 'rebar-mismatch' }, { ...constructionModule, plan: () => plan });
     expect(res.ok).toBe(false);
     if (res.ok) return;
-    expect(res.refusal.stage).toBe('verify');
-    expect(res.refusal.failedGateIds).toContain('quantity:concrete');
+    expect(res.refusal.failedGateIds).toContain('quantity:rebar');
   });
 
   it('a schedule exceeding the deadline is REFUSED', async () => {

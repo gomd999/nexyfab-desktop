@@ -11,5 +11,7 @@ export type {
   DomainGateResult,
   DomainRefusal,
   DomainDriverResult,
+  DomainAdjustment,
+  DomainAutoFixResult,
 } from './types';
 export { runDomainDriver } from './runner';
