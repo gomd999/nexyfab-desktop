@@ -1,123 +1,401 @@
 'use client';
 
-// PDM version tree panel — visualises a project's commit graph. Lives in
-// the BottomDrawer; future revision swaps the in-memory VersionRepo for
-// the production nf_projects table via parent_id column.
+// PDM version tree panel — Wave 6 Track W6-D.
+//
+// Renders the CURRENT SESSION's real PDM state (pdm/sessionRepoStore wrapping
+// the tested versionBranch engine) instead of the former hard-coded DEMO_SEED.
+//
+//   - No commits yet → explicit "no commits" empty state. The first commit is
+//     recorded from the REAL live feature snapshot Inner publishes to
+//     useShellBridge.featureItems (adapter: pdm/shellFeatureAdapter).
+//   - Demo history is OPT-IN only and visibly labeled as sample data.
+//   - Merge flow: pick a source branch → 3-way mergeFeatures (LCA base) →
+//     conflict list with per-conflict ours/theirs resolution → 2-parent
+//     merge commit via VersionRepo.merge.
+//
+// Honest-limits note (rendered in the UI as captions, not hidden):
+//   - History is in-memory per session (no backend persistence yet).
+//   - Checkout moves the PDM HEAD only — restoring the live model from a
+//     commit snapshot is not wired (Inner's feature pipeline owns that).
 
 import { useMemo, useState } from 'react';
-import { VersionRepo, type VersionNode } from '@/lib/nexyfab/versionTree';
 import { useLang } from '../hooks/useLang';
 import { loc } from '../lib/loc';
+import { useShellBridge } from './shellBridgeStore';
+import { useAuthStore } from '@/hooks/useAuth';
+import { usePdmSessionStore } from '../pdm/sessionRepoStore';
+import { shellItemsToFeatureInstances } from '../pdm/shellFeatureAdapter';
+import { layoutCommitGraph, diffCommits } from '../pdm/historyView';
+import type { Commit } from '../pdm/versionBranch';
+import type { MergeConflict } from '../pdm/conflictResolution';
+import type { FeatureInstance } from '../features/types';
 
 export interface VersionTreePanelProps {
   isKo: boolean;
 }
 
-// Demo seed — replaced by real repo state when the production backend
-// adds the parent_id column. In the meantime the panel showcases the
-// branching/merging UX with a realistic-looking history.
-const DEMO_SEED: VersionNode[] = (() => {
-  const now = Date.now();
-  return [
-    { id: 'c1', parentId: null,  branch: 'main', createdAt: now - 7 * 86400_000, author: 'gomd9', message: 'Initial bracket', payload: null, tags: ['v0.1'] },
-    { id: 'c2', parentId: 'c1',  branch: 'main', createdAt: now - 6 * 86400_000, author: 'gomd9', message: 'Add mounting holes', payload: null },
-    { id: 'c3', parentId: 'c2',  branch: 'main', createdAt: now - 5 * 86400_000, author: 'gomd9', message: 'Fillet R 2.0', payload: null, tags: ['v0.2'] },
-    { id: 'c4', parentId: 'c3',  branch: 'experiment/lighter', createdAt: now - 4 * 86400_000, author: 'kim', message: 'Pocket array test', payload: null },
-    { id: 'c5', parentId: 'c4',  branch: 'experiment/lighter', createdAt: now - 3 * 86400_000, author: 'kim', message: 'Shell 1.5mm', payload: null },
-    { id: 'c6', parentId: 'c3',  branch: 'main', createdAt: now - 2 * 86400_000, author: 'gomd9', message: 'Counterbore holes', payload: null, tags: ['v0.3'] },
-    { id: 'c7', parentId: 'c6',  branch: 'main', createdAt: now - 86400_000,    author: 'moon',  message: 'Spec review fixes', payload: null },
-  ];
-})();
+const BRANCH_COLORS = ['#4f8bff', '#a855f7', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
+
+function paramsSummary(f: FeatureInstance | undefined, deletedLabel: string): string {
+  if (!f) return deletedLabel;
+  const entries = Object.entries(f.params);
+  const head = entries.slice(0, 3).map(([k, v]) => `${k}: ${v}`).join(', ');
+  return `${f.type}${head ? ` (${head}${entries.length > 3 ? ', …' : ''})` : ''}${f.enabled ? '' : ' [off]'}`;
+}
 
 export function VersionTreePanel({ isKo }: VersionTreePanelProps) {
   void isKo;
   const lang = useLang();
-  // Production hookup: replace with useProjectsStore version state.
-  const [repo] = useState(() => new VersionRepo(DEMO_SEED));
-  const [selectedId, setSelectedId] = useState<string | null>(DEMO_SEED[DEMO_SEED.length - 1].id);
+  const user = useAuthStore(s => s.user);
+  const author = user?.name || user?.email || 'guest';
 
-  const layout = useMemo(() => layoutGraph(repo.list()), [repo]);
+  // Real per-session model snapshot published by ShapeGeneratorInner.
+  const featureItems = useShellBridge(s => s.featureItems);
 
-  const selected = selectedId ? repo.ancestors(selectedId)[0] : null;
+  const repo = usePdmSessionStore(s => s.repo);
+  const rev = usePdmSessionStore(s => s.rev);
+  const isDemo = usePdmSessionStore(s => s.isDemo);
+  const pendingMerge = usePdmSessionStore(s => s.pendingMerge);
+  const init = usePdmSessionStore(s => s.init);
+  const loadDemo = usePdmSessionStore(s => s.loadDemo);
+  const reset = usePdmSessionStore(s => s.reset);
+  const commit = usePdmSessionStore(s => s.commit);
+  const createBranch = usePdmSessionStore(s => s.createBranch);
+  const checkout = usePdmSessionStore(s => s.checkout);
+  const startMerge = usePdmSessionStore(s => s.startMerge);
+  const resolvePending = usePdmSessionStore(s => s.resolvePending);
+  const applyMerge = usePdmSessionStore(s => s.applyMerge);
+  const abortMerge = usePdmSessionStore(s => s.abortMerge);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [commitMsg, setCommitMsg] = useState('');
+  const [branchName, setBranchName] = useState('');
+  const [mergeSource, setMergeSource] = useState('');
+
+  // rev is the mutation counter for the mutable repo class — recompute below.
+  const commits = useMemo(() => (repo ? repo.listCommits() : []), [repo, rev]);
+  const branches = useMemo(() => (repo ? repo.listBranches() : []), [repo, rev]);
+  const current = useMemo(() => (repo ? repo.current() : null), [repo, rev]);
+
+  const graph = useMemo(
+    () =>
+      layoutCommitGraph(
+        commits,
+        branches.map(b => ({ branch: b.name, commitId: b.headCommitId })),
+      ),
+    [commits, branches],
+  );
+  const commitById = useMemo(() => new Map(commits.map(c => [c.id, c])), [commits]);
+  const headsByCommit = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const b of branches) {
+      const arr = m.get(b.headCommitId) ?? [];
+      arr.push(b.name);
+      m.set(b.headCommitId, arr);
+    }
+    return m;
+  }, [branches]);
+
+  const selected: Commit | null = selectedId ? commitById.get(selectedId) ?? null : null;
+  const selectedParent: Commit | null =
+    selected && selected.parents.length > 0
+      ? commitById.get(selected.parents[0]!) ?? null
+      : null;
+  const selectedDiff = useMemo(
+    () => (selected && selectedParent ? diffCommits(selectedParent, selected) : null),
+    [selected, selectedParent],
+  );
+
+  const deletedLabel = loc(lang, { ko: '삭제됨', en: 'deleted', ja: '削除済み', zh: '已删除', es: 'eliminado', ar: 'محذوف' });
+
+  // ─── Empty state — no session history yet ─────────────────────────────────
+  if (!repo) {
+    return (
+      <div data-testid="pdm-empty" style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start', padding: 8, fontSize: 12, color: 'var(--nx-text)' }}>
+        <div style={{ fontWeight: 700 }}>
+          {loc(lang, { ko: '커밋 없음', en: 'No commits', ja: 'コミットなし', zh: '暂无提交', es: 'Sin commits', ar: 'لا توجد التزامات' })}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--nx-text-3)', maxWidth: 420 }}>
+          {loc(lang, {
+            ko: '이 세션에는 아직 버전 이력이 없습니다. 현재 모델 상태를 첫 커밋으로 기록하면 브랜치·머지를 사용할 수 있습니다. (세션 메모리 저장 — 서버 저장 미지원)',
+            en: 'This session has no version history yet. Record the current model as the first commit to enable branching and merging. (In-memory only — no server persistence yet)',
+            ja: 'このセッションにはまだバージョン履歴がありません。現在のモデルを最初のコミットとして記録すると、ブランチ・マージが使えます。（セッションメモリのみ — サーバ保存は未対応）',
+            zh: '本会话尚无版本历史。将当前模型记录为第一个提交后即可使用分支与合并。（仅会话内存 — 暂不支持服务器保存）',
+            es: 'Esta sesión aún no tiene historial de versiones. Registre el modelo actual como primer commit para habilitar ramas y fusiones. (Solo en memoria — sin persistencia en servidor)',
+            ar: 'لا يوجد سجل إصدارات لهذه الجلسة بعد. سجّل النموذج الحالي كأول التزام لتفعيل التفريع والدمج. (في الذاكرة فقط — لا حفظ على الخادم بعد)',
+          })}
+        </div>
+        <button
+          data-testid="pdm-init-btn"
+          onClick={() => init(shellItemsToFeatureInstances(featureItems), author)}
+          style={primaryBtn}
+        >
+          {loc(lang, { ko: '현재 모델로 첫 커밋 기록', en: 'Record first commit from current model', ja: '現在のモデルで最初のコミットを記録', zh: '以当前模型记录首次提交', es: 'Registrar primer commit del modelo actual', ar: 'تسجيل أول التزام من النموذج الحالي' })}
+          {` (${featureItems.length} ${loc(lang, { ko: '피처', en: 'features', ja: 'フィーチャー', zh: '特征', es: 'operaciones', ar: 'ميزات' })})`}
+        </button>
+        <button data-testid="pdm-demo-btn" onClick={loadDemo} style={ghostBtn}>
+          {loc(lang, {
+            ko: '샘플 데모 이력 보기 (실제 데이터 아님)',
+            en: 'View sample demo history (not real data)',
+            ja: 'サンプルデモ履歴を見る（実データではありません）',
+            zh: '查看示例演示历史（非真实数据）',
+            es: 'Ver historial de demostración (no son datos reales)',
+            ar: 'عرض سجل تجريبي (ليست بيانات حقيقية)',
+          })}
+        </button>
+      </div>
+    );
+  }
+
+  // ─── Merge-in-progress view ───────────────────────────────────────────────
+  const mergeView = pendingMerge && (
+    <div data-testid="pdm-merge-view" style={{ display: 'flex', flexDirection: 'column', gap: 6, overflow: 'auto' }}>
+      <div style={{ fontSize: 11, fontWeight: 700 }}>
+        {loc(lang, { ko: '머지', en: 'Merge', ja: 'マージ', zh: '合并', es: 'Fusión', ar: 'دمج' })}
+        {`: ${pendingMerge.sourceBranch} → ${pendingMerge.targetBranch}`}
+      </div>
+      <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
+        {loc(lang, { ko: '충돌', en: 'Conflicts', ja: '競合', zh: '冲突', es: 'Conflictos', ar: 'تعارضات' })}
+        {`: ${pendingMerge.result.conflicts.length} · `}
+        {loc(lang, { ko: '자동 병합', en: 'auto-merged', ja: '自動マージ', zh: '自动合并', es: 'auto-fusionadas', ar: 'مدموجة تلقائيًا' })}
+        {`: ${pendingMerge.result.merged.length}`}
+      </div>
+      {pendingMerge.result.conflicts.map((c: MergeConflict) => (
+        <div key={c.featureId} data-testid="pdm-conflict-row" style={{ border: '1px solid var(--nx-border)', borderRadius: 4, padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 10, fontWeight: 700 }}>
+            {c.featureId} <span style={{ color: 'var(--nx-warn, #f59e0b)' }}>[{c.kind}]</span>
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
+            {loc(lang, { ko: '내 쪽', en: 'ours', ja: '自分側', zh: '我方', es: 'nuestro', ar: 'جانبنا' })}: {paramsSummary(c.ours, deletedLabel)}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
+            {loc(lang, { ko: '상대 쪽', en: 'theirs', ja: '相手側', zh: '对方', es: 'suyo', ar: 'جانبهم' })}: {paramsSummary(c.theirs, deletedLabel)}
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button data-testid="pdm-conflict-ours" onClick={() => resolvePending(c.featureId, 'ours')} style={miniBtn}>
+              {loc(lang, { ko: '내 것 선택', en: 'Take ours', ja: '自分側を採用', zh: '采用我方', es: 'Usar nuestro', ar: 'اختيار جانبنا' })}
+            </button>
+            <button data-testid="pdm-conflict-theirs" onClick={() => resolvePending(c.featureId, 'theirs')} style={miniBtn}>
+              {loc(lang, { ko: '상대 것 선택', en: 'Take theirs', ja: '相手側を採用', zh: '采用对方', es: 'Usar suyo', ar: 'اختيار جانبهم' })}
+            </button>
+          </div>
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: 4 }}>
+        <button
+          data-testid="pdm-merge-apply"
+          disabled={pendingMerge.result.conflicts.length > 0}
+          onClick={() => applyMerge(author)}
+          style={{ ...primaryBtn, opacity: pendingMerge.result.conflicts.length > 0 ? 0.5 : 1 }}
+        >
+          {loc(lang, { ko: '머지 커밋 적용', en: 'Apply merge commit', ja: 'マージコミットを適用', zh: '应用合并提交', es: 'Aplicar commit de fusión', ar: 'تطبيق التزام الدمج' })}
+        </button>
+        <button data-testid="pdm-merge-abort" onClick={abortMerge} style={ghostBtn}>
+          {loc(lang, { ko: '취소', en: 'Cancel', ja: 'キャンセル', zh: '取消', es: 'Cancelar', ar: 'إلغاء' })}
+        </button>
+      </div>
+    </div>
+  );
+
+  // ─── Main view ────────────────────────────────────────────────────────────
+  const COL_W = 34;
+  const ROW_H = 26;
+  const graphWidth = Math.max(280, 24 + graph.columnCount * COL_W + 260);
+  const graphHeight = 18 + graph.nodes.length * ROW_H + 10;
 
   return (
-    <div style={{ display: 'flex', gap: 12, height: '100%', fontSize: 12 }}>
-      {/* Graph */}
-      <div style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
-        <svg width={layout.width} height={layout.height} style={{ display: 'block' }}>
-          {/* Edges */}
-          {layout.nodes.map(n => {
-            if (!n.parent) return null;
-            const p = layout.byId.get(n.parent);
-            if (!p) return null;
-            return (
-              <path
-                key={`e-${n.node.id}`}
-                d={`M${p.x},${p.y} C${p.x},${(p.y + n.y) / 2} ${n.x},${(p.y + n.y) / 2} ${n.x},${n.y}`}
-                fill="none"
-                stroke={n.branchColor}
-                strokeWidth="1.5"
-                opacity={0.8}
-              />
-            );
-          })}
-          {/* Nodes */}
-          {layout.nodes.map(n => (
-            <g
-              key={n.node.id}
-              onClick={() => setSelectedId(n.node.id)}
-              style={{ cursor: 'pointer' }}
-            >
-              <circle
-                cx={n.x} cy={n.y} r={n.node.id === selectedId ? 7 : 5}
-                fill={n.branchColor}
-                stroke={n.node.id === selectedId ? 'var(--nx-text)' : 'transparent'}
-                strokeWidth="2"
-              />
-              <text
-                x={n.x + 12} y={n.y + 3}
-                fontSize="10"
-                fill="var(--nx-text)"
-                style={{ pointerEvents: 'none' }}
-              >
-                {n.node.message}
-                {n.node.tags && n.node.tags.length > 0 && (
-                  <tspan fill="var(--nx-accent-2)" dx="6">[{n.node.tags.join(', ')}]</tspan>
-                )}
-              </text>
-            </g>
-          ))}
-        </svg>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%', fontSize: 12, color: 'var(--nx-text)' }}>
+      {isDemo && (
+        <div data-testid="pdm-demo-banner" style={{ background: 'var(--nx-warn-bg, rgba(245,158,11,0.15))', border: '1px solid var(--nx-warn, #f59e0b)', borderRadius: 4, padding: '4px 8px', fontSize: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span>
+            {loc(lang, {
+              ko: '데모 데이터 (샘플) — 실제 프로젝트 이력이 아닙니다',
+              en: 'Demo data (sample) — not your real project history',
+              ja: 'デモデータ（サンプル）— 実際のプロジェクト履歴ではありません',
+              zh: '演示数据（示例）— 并非您的真实项目历史',
+              es: 'Datos de demostración (muestra) — no es su historial real',
+              ar: 'بيانات تجريبية (عينة) — ليست سجل مشروعك الحقيقي',
+            })}
+          </span>
+          <button onClick={reset} style={miniBtn} data-testid="pdm-demo-exit">
+            {loc(lang, { ko: '데모 종료', en: 'Exit demo', ja: 'デモ終了', zh: '退出演示', es: 'Salir de demo', ar: 'إنهاء التجربة' })}
+          </button>
+        </div>
+      )}
 
-      {/* Detail */}
-      <div style={{ width: 220, borderLeft: '1px solid var(--nx-border)', paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {selected ? (
-          <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text)' }}>{selected.message}</div>
-            <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
-              <div>{selected.author}</div>
-              <div>{new Date(selected.createdAt).toLocaleString()}</div>
-              <div>branch: <span style={{ color: 'var(--nx-accent-2)' }}>{selected.branch}</span></div>
-              {selected.tags && <div>tags: {selected.tags.join(', ')}</div>}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <button onClick={() => alert(loc(lang, { ko: '체크아웃 — 백엔드 연동 필요', en: 'Checkout — backend wiring pending', ja: 'チェックアウト — バックエンド連携待ち', zh: '检出 — 后端对接待定', es: 'Checkout — integración de backend pendiente', ar: 'سحب — ربط الخلفية قيد الانتظار' }))} style={primaryBtn}>
-                {loc(lang, { ko: '이 버전으로 체크아웃', en: 'Checkout this version', ja: 'このバージョンをチェックアウト', zh: '检出此版本', es: 'Hacer checkout de esta versión', ar: 'سحب هذا الإصدار' })}
-              </button>
-              <button onClick={() => alert(loc(lang, { ko: '분기 — 백엔드 연동 필요', en: 'Branch — backend wiring pending', ja: 'ブランチ — バックエンド連携待ち', zh: '分支 — 后端对接待定', es: 'Rama — integración de backend pendiente', ar: 'تفريع — ربط الخلفية قيد الانتظار' }))} style={ghostBtn}>
-                {loc(lang, { ko: '여기서 분기', en: 'Branch from here', ja: 'ここから分岐', zh: '从此处分支', es: 'Ramificar desde aquí', ar: 'تفريع من هنا' })}
-              </button>
-              <button onClick={() => alert(loc(lang, { ko: '머지 — 백엔드 연동 필요', en: 'Merge — backend wiring pending', ja: 'マージ — バックエンド連携待ち', zh: '合并 — 后端对接待定', es: 'Fusión — integración de backend pendiente', ar: 'دمج — ربط الخلفية قيد الانتظار' }))} style={ghostBtn}>
-                {loc(lang, { ko: 'main 으로 머지', en: 'Merge into main', ja: 'main へマージ', zh: '合并到 main', es: 'Fusionar en main', ar: 'دمج في main' })}
-              </button>
-            </div>
-          </>
-        ) : (
-          <div style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
-            {loc(lang, { ko: '커밋을 선택하세요', en: 'Select a commit', ja: 'コミットを選択してください', zh: '请选择一个提交', es: 'Seleccione un commit', ar: 'اختر التزامًا' })}
-          </div>
-        )}
+      <div style={{ display: 'flex', gap: 12, flex: 1, minHeight: 0 }}>
+        {/* Graph */}
+        <div style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
+          <svg width={graphWidth} height={graphHeight} style={{ display: 'block' }}>
+            {graph.nodes.map(n => n.parents.map(p => {
+              const x1 = 24 + p.column * COL_W;
+              const y1 = 18 + p.row * ROW_H;
+              const x2 = 24 + n.column * COL_W;
+              const y2 = 18 + n.row * ROW_H;
+              return (
+                <path
+                  key={`e-${n.commitId}-${p.commitId}`}
+                  d={`M${x1},${y1} C${x1},${(y1 + y2) / 2} ${x2},${(y1 + y2) / 2} ${x2},${y2}`}
+                  fill="none"
+                  stroke={BRANCH_COLORS[p.column % BRANCH_COLORS.length]}
+                  strokeWidth="1.5"
+                  opacity={0.8}
+                />
+              );
+            }))}
+            {graph.nodes.map(n => {
+              const c = commitById.get(n.commitId);
+              if (!c) return null;
+              const x = 24 + n.column * COL_W;
+              const y = 18 + n.row * ROW_H;
+              const heads = headsByCommit.get(c.id) ?? [];
+              const isSel = c.id === selectedId;
+              return (
+                <g key={c.id} data-testid="pdm-graph-node" onClick={() => setSelectedId(c.id)} style={{ cursor: 'pointer' }}>
+                  <circle
+                    cx={x} cy={y} r={isSel ? 7 : 5}
+                    fill={BRANCH_COLORS[n.column % BRANCH_COLORS.length]}
+                    stroke={isSel ? 'var(--nx-text)' : c.parents.length > 1 ? 'var(--nx-accent-2)' : 'transparent'}
+                    strokeWidth="2"
+                  />
+                  <text x={24 + graph.columnCount * COL_W + 8} y={y + 3} fontSize="10" fill="var(--nx-text)" style={{ pointerEvents: 'none' }}>
+                    {c.message}
+                    {c.tags && c.tags.length > 0 && (
+                      <tspan fill="var(--nx-accent-2)" dx="6">[{c.tags.join(', ')}]</tspan>
+                    )}
+                    {heads.length > 0 && (
+                      <tspan fill="var(--nx-ok, #22c55e)" dx="6">
+                        {heads.map(h => (h === current?.branchName ? `● ${h}` : h)).join(' · ')}
+                      </tspan>
+                    )}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Controls / detail / merge */}
+        <div style={{ width: 240, borderLeft: '1px solid var(--nx-border)', paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 8, overflow: 'auto' }}>
+          {mergeView ?? (
+            <>
+              {/* Branch checkout */}
+              <label style={{ fontSize: 10, color: 'var(--nx-text-3)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {loc(lang, { ko: '현재 브랜치', en: 'Current branch', ja: '現在のブランチ', zh: '当前分支', es: 'Rama actual', ar: 'الفرع الحالي' })}
+                <select
+                  data-testid="pdm-branch-select"
+                  value={current?.branchName ?? ''}
+                  onChange={e => checkout(e.target.value)}
+                  style={inputStyle}
+                >
+                  {branches.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
+                </select>
+              </label>
+              <div style={{ fontSize: 9, color: 'var(--nx-text-3)' }}>
+                {loc(lang, {
+                  ko: '체크아웃은 PDM HEAD만 이동합니다 — 모델 복원은 아직 미지원',
+                  en: 'Checkout moves the PDM HEAD only — restoring the model is not wired yet',
+                  ja: 'チェックアウトはPDM HEADの移動のみ — モデル復元は未対応',
+                  zh: '检出仅移动 PDM HEAD — 尚不支持恢复模型',
+                  es: 'El checkout solo mueve el HEAD de PDM — restaurar el modelo aún no está conectado',
+                  ar: 'السحب يحرك رأس PDM فقط — استعادة النموذج غير مفعلة بعد',
+                })}
+              </div>
+
+              {/* Commit current snapshot */}
+              <div style={{ display: 'flex', gap: 4 }}>
+                <input
+                  data-testid="pdm-commit-msg"
+                  value={commitMsg}
+                  onChange={e => setCommitMsg(e.target.value)}
+                  placeholder={loc(lang, { ko: '커밋 메시지', en: 'Commit message', ja: 'コミットメッセージ', zh: '提交信息', es: 'Mensaje de commit', ar: 'رسالة الالتزام' })}
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                <button
+                  data-testid="pdm-commit-btn"
+                  onClick={() => {
+                    if (!commitMsg.trim()) return;
+                    commit(shellItemsToFeatureInstances(featureItems), commitMsg.trim(), author);
+                    setCommitMsg('');
+                  }}
+                  style={miniBtn}
+                >
+                  {loc(lang, { ko: '커밋', en: 'Commit', ja: 'コミット', zh: '提交', es: 'Commit', ar: 'التزام' })}
+                </button>
+              </div>
+
+              {/* New branch */}
+              <div style={{ display: 'flex', gap: 4 }}>
+                <input
+                  data-testid="pdm-branch-name"
+                  value={branchName}
+                  onChange={e => setBranchName(e.target.value)}
+                  placeholder={loc(lang, { ko: '새 브랜치 이름', en: 'New branch name', ja: '新しいブランチ名', zh: '新分支名', es: 'Nombre de rama', ar: 'اسم الفرع الجديد' })}
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                <button
+                  data-testid="pdm-branch-btn"
+                  onClick={() => { if (createBranch(branchName)) setBranchName(''); }}
+                  style={miniBtn}
+                >
+                  {loc(lang, { ko: '브랜치', en: 'Branch', ja: 'ブランチ', zh: '分支', es: 'Rama', ar: 'فرع' })}
+                </button>
+              </div>
+
+              {/* Merge */}
+              <div style={{ display: 'flex', gap: 4 }}>
+                <select
+                  data-testid="pdm-merge-source"
+                  value={mergeSource}
+                  onChange={e => setMergeSource(e.target.value)}
+                  style={{ ...inputStyle, flex: 1 }}
+                >
+                  <option value="">
+                    {loc(lang, { ko: '머지할 브랜치…', en: 'Branch to merge…', ja: 'マージするブランチ…', zh: '要合并的分支…', es: 'Rama a fusionar…', ar: 'فرع للدمج…' })}
+                  </option>
+                  {branches
+                    .filter(b => b.name !== current?.branchName)
+                    .map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
+                </select>
+                <button
+                  data-testid="pdm-merge-btn"
+                  disabled={!mergeSource}
+                  onClick={() => { if (mergeSource) { startMerge(mergeSource); setMergeSource(''); } }}
+                  style={{ ...miniBtn, opacity: mergeSource ? 1 : 0.5 }}
+                >
+                  {loc(lang, { ko: '머지', en: 'Merge', ja: 'マージ', zh: '合并', es: 'Fusionar', ar: 'دمج' })}
+                </button>
+              </div>
+
+              {/* Selected commit detail */}
+              {selected ? (
+                <div data-testid="pdm-detail" style={{ borderTop: '1px solid var(--nx-border)', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700 }}>{selected.message}</div>
+                  <div style={{ fontSize: 10, color: 'var(--nx-text-3)' }}>
+                    <div>{selected.authorUserId}</div>
+                    <div>{new Date(selected.timestamp).toLocaleString()}</div>
+                    <div>
+                      {loc(lang, { ko: '피처', en: 'features', ja: 'フィーチャー', zh: '特征', es: 'operaciones', ar: 'ميزات' })}: {selected.features.length}
+                      {selected.parents.length > 1 && (
+                        <span style={{ color: 'var(--nx-accent-2)' }}> · merge</span>
+                      )}
+                    </div>
+                    {selectedDiff && (
+                      <div data-testid="pdm-detail-diff">
+                        {`+${selectedDiff.added} −${selectedDiff.removed} ~${selectedDiff.modified}`}
+                      </div>
+                    )}
+                    {selected.tags && selected.tags.length > 0 && <div>tags: {selected.tags.join(', ')}</div>}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: 'var(--nx-text-3)' }}>
+                  {loc(lang, { ko: '커밋을 선택하세요', en: 'Select a commit', ja: 'コミットを選択してください', zh: '请选择一个提交', es: 'Seleccione un commit', ar: 'اختر التزامًا' })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -134,51 +412,15 @@ const ghostBtn: React.CSSProperties = {
   background: 'transparent', color: 'var(--nx-text)',
   fontSize: 11, cursor: 'pointer',
 };
-
-// ─── Layout ──────────────────────────────────────────────────────────────
-
-const BRANCH_COLORS = ['#4f8bff', '#a855f7', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
-
-interface LaidOutNode {
-  node: VersionNode;
-  x: number;
-  y: number;
-  branchColor: string;
-  parent: string | null;
-}
-
-interface Layout {
-  nodes: LaidOutNode[];
-  byId: Map<string, LaidOutNode>;
-  width: number;
-  height: number;
-}
-
-function layoutGraph(nodes: VersionNode[]): Layout {
-  const sorted = [...nodes].sort((a, b) => a.createdAt - b.createdAt);
-  const branchX = new Map<string, number>();
-  const branchColor = new Map<string, string>();
-  let nextX = 30;
-  for (const n of sorted) {
-    if (!branchX.has(n.branch)) {
-      branchX.set(n.branch, nextX);
-      branchColor.set(n.branch, BRANCH_COLORS[branchX.size - 1 % BRANCH_COLORS.length]);
-      nextX += 30;
-    }
-  }
-  const ROW = 28;
-  const laidOut: LaidOutNode[] = sorted.map((n, i) => ({
-    node: n,
-    x: branchX.get(n.branch) ?? 30,
-    y: 20 + i * ROW,
-    branchColor: branchColor.get(n.branch) ?? '#888',
-    parent: n.parentId,
-  }));
-  const byId = new Map(laidOut.map(n => [n.node.id, n]));
-  return {
-    nodes: laidOut,
-    byId,
-    width: Math.max(280, nextX + 240),
-    height: 20 + laidOut.length * ROW + 10,
-  };
-}
+const miniBtn: React.CSSProperties = {
+  padding: '3px 8px', height: 22,
+  border: '1px solid var(--nx-border)', borderRadius: 4,
+  background: 'transparent', color: 'var(--nx-text)',
+  fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap',
+};
+const inputStyle: React.CSSProperties = {
+  height: 22, fontSize: 10, padding: '0 6px',
+  border: '1px solid var(--nx-border)', borderRadius: 4,
+  background: 'var(--nx-bg-2, transparent)', color: 'var(--nx-text)',
+  minWidth: 0,
+};

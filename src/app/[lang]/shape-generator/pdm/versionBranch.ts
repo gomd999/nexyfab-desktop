@@ -163,6 +163,39 @@ export class VersionRepo {
     return null;
   }
 
+  /**
+   * Record a merge of `otherParentId` into the current branch — a
+   * two-parent commit whose feature snapshot is the (conflict-resolved)
+   * result produced by `mergeFeatures` + `resolveConflict`.
+   *
+   * Merging INTO a protected branch is allowed by design: "protected"
+   * means "no direct commit — changes arrive via merge" (see `commit`).
+   */
+  merge(opts: {
+    authorUserId: string;
+    message: string;
+    features: FeatureInstance[];
+    otherParentId: string;
+  }): Commit {
+    const head = this.branches.get(this.headBranch);
+    if (!head) throw new Error(`Branch "${this.headBranch}" not found`);
+    if (!this.commits.has(opts.otherParentId)) {
+      throw new Error(`Commit ${opts.otherParentId} not found`);
+    }
+    if (head.headCommitId === opts.otherParentId) {
+      throw new Error('Cannot merge a branch into itself');
+    }
+    const c = this.makeCommit({
+      parents: [head.headCommitId, opts.otherParentId],
+      authorUserId: opts.authorUserId,
+      message: opts.message,
+      features: opts.features,
+    });
+    this.commits.set(c.id, c);
+    head.headCommitId = c.id;
+    return c;
+  }
+
   /** Cherry-pick — apply a single commit's diff onto the current head. */
   cherryPick(commitId: string, authorUserId: string): Commit {
     const source = this.commits.get(commitId);
