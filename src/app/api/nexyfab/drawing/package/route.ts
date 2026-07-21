@@ -211,6 +211,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch (e) { void e; }
   // 구조/응력 검토
   try { files.push({ name: 'structural.html', mime: 'text/html', content: mods.pkg.structuralReport(assembly, { title, member }) }); } catch (e) { void e; }
+  // ③ 형상+검증: 어셈블리 검증 메타(옹벽 등) → 분야 KDS 계산기 실행값(전도·활동·지지력…). 메타 없으면 미생성(정직).
+  try {
+    const dv = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'domain-dossier-verify.mjs')).href)) as { verificationReportHtml: (a: Assembly, o?: { title?: string; params?: Record<string, unknown> }) => string | null };
+    const vh = dv.verificationReportHtml(assembly, { title });
+    if (vh) files.push({ name: '검증.html', mime: 'text/html', content: vh });
+  } catch (e) { void e; }
   // 물량·작업량 산출서 (BOQ, 금액 제외 — 비기계 분야는 재적 중심·공수 미산출)
   try { files.push({ name: 'BOQ.html', mime: 'text/html', content: mods.boq.boqReport(assembly, { title, domain }) }); } catch (e) { void e; }
   // 설계 설명서 (Dossier) + P&ID 스켈레톤 (계통 기반 — 공정 없는 비기계 분야는 P&ID 제외)

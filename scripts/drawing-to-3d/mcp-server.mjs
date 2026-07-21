@@ -635,6 +635,8 @@ export async function callTool(name, args = {}) {
     let gaHtml = '', sheetsHtml = '';
     try { const ga = pkg.ga2dDrawing(args.assembly, { title, domain: args.assembly.domain ?? 'mech', welds: built.welds, ...(revHistory ? { revHistory } : {}) }); gaHtml = ga; save('GA_2D_drawing.html', ga); completeness = dc.checkDrawingCompleteness(ga); } catch (e) { files.push({ name: 'GA_2D_drawing.html', error: String(e).slice(0, 120) }); }
     try { save('structural.html', pkg.structuralReport(args.assembly, { title })); } catch { /* skip */ }
+    // ③ 형상+검증: 어셈블리 검증 메타(옹벽 등) → 분야 KDS 계산기 실행값(전도·활동·지지력…). 메타 없으면 미생성(정직).
+    try { const dv = await import('./domain-dossier-verify.mjs'); const vh = dv.verificationReportHtml(args.assembly, { title, params: args.verifyParams ?? {} }); if (vh) save('검증.html', vh); } catch { /* skip */ }
     try { save('BOQ.html', boqm.boqReport(args.assembly, { title, domain: args.assembly.domain ?? 'mech' })); } catch { /* skip */ }
     try { save('Dossier.html', pd.dossierReport(args.assembly, { title })); } catch { /* skip */ }
     try { sheetsHtml = ps.partSheets(args.assembly, { title: title + ' — 부품 제작도' }); save('부품제작도.html', sheetsHtml); } catch { /* skip */ }
