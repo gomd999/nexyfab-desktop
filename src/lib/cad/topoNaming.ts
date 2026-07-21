@@ -18,7 +18,7 @@
  */
 
 import type { Polyhedron, PolyFace, PolyEdge } from './featureMesh';
-import { extrudePolyhedron, polyhedronEdges } from './featureMesh';
+import { extrudePolyhedron, polyhedronEdges, revolvePolyhedron } from './featureMesh';
 import type { ExtrudeFeature } from './extrudeProfile';
 import type { RevolveFeature } from './revolveProfile';
 import type { Vec3 } from '@/lib/sketch/sketchPlane';
@@ -320,4 +320,107 @@ export function revolveEdgeAnchors(topo: RevolveNamedTopology): Map<string, Vec3
   const out = new Map<string, Vec3>();
   for (const [name, e] of topo.byName) if (e.kind === 'edge') out.set(name, e.anchor);
   return out;
+}
+
+// ─── revolve → measure adapter (WB-1 · coverage matrix ② A 승격) ─────────────
+//
+// `measureDimension` (lib/drawing/measure.ts) consumes a `NamedTopology`:
+// a TESSELLATED polyhedron whose named faces carry vertex LOOPS, so it can
+// verify concyclicity of a circular cap and read parallel-face separations.
+// `RevolveNamedTopology` above carries ANALYTIC anchors (single points) for
+// KERNEL edge matching — a different job, structurally incompatible with the
+// measurer (no loops, and the ⌀-bearing latitude circle is named as an EDGE,
+// which measure rejects because polyhedral edges are straight).
+//
+// This adapter bridges the gap the honest way (생성≠검증): it does NOT assert
+// "radius = profile.x". It builds the REAL revolve mesh (featureMesh's
+// `revolvePolyhedron`, the same tessellation the drawing draws) and exposes,
+// for every OFF-AXIS profile vertex i, a circular cross-section FACE
+// `f.lat.{i}` whose loop is that vertex's swept ring of mesh vertices. Those
+// vertices sit on the true circle r = profile[i].x by construction, so
+// measure's own circumcircle fit + concyclicity check (default 1e-6) MEASURES
+// them and confirms it — the tessellation is verified, not trusted.
+//
+// Naming — same generative-provenance doctrine, shared index space with the
+// analytic namer: `f.lat.{i}` is the planar cross-section circle bounded by the
+// latitude circle `e.lat.{i}`. A dimension attaches to it as:
+//   diametric / radial  f.lat.{i}   ⌀ / R of the rim at (profile[i].x, .y),
+//                                    measured on the axis-normal view (the view
+//                                    whose viewDir ∥ the revolve axis = +Y,
+//                                    i.e. 'front'/'back'). Other views fail
+//                                    'oblique-in-view' — no ellipse fabrication.
+//   linear  f.lat.{i}, f.lat.{k}    axial length |y_i − y_k| between two rims,
+//                                    measured on an axis-parallel view ('top'
+//                                    etc.) where both disks are edge-on.
+// On-axis profile vertices sweep to a point (no rim) and get no name.
+
+/**
+ * Build the MEASURE-facing named topology of a revolve — a `NamedTopology`
+ * (tessellated) that `measureDimension` consumes directly, exposing each rim
+ * as a circular cross-section face `f.lat.{i}`. Same canonical-frame refusals
+ * as `buildRevolveTopo` (≥ 3 distinct points; X ≥ 0 axis frame; angle ∈ (0,360]).
+ *
+ * The polyhedron's vertices ARE the drawn revolve mesh's vertices (identical
+ * `revolvePolyhedron` tessellation), so a measured ⌀ is the model's real rim,
+ * not an analytic shortcut. `segments` must match the mesh used elsewhere for
+ * the names to co-refer (default 32, featureMesh's default).
+ */
+export function buildRevolveMeasureTopo(
+  feature: RevolveFeature,
+  segments = 32,
+): NamedTopology {
+  // Mirror buildRevolveTopo's canonical-frame refusals (explicit, no guessing).
+  const profile = dedupeProfile(feature.loop);
+  if (profile.length < 3) {
+    throw new Error(
+      `topoNaming: revolve profile needs ≥ 3 distinct points, got ${profile.length}`,
+    );
+  }
+  for (const p of profile) {
+    if (p.x < -REVOLVE_AXIS_EPS) {
+      throw new Error(
+        `topoNaming: revolve profile point x=${p.x} < 0 — not in the canonical axis frame (axis = Y, X ≥ 0)`,
+      );
+    }
+  }
+  const angle = feature.angleDegrees;
+  if (!Number.isFinite(angle) || angle <= 0 || angle > 360) {
+    throw new Error(`topoNaming: revolve angle must be in (0, 360], got ${angle}`);
+  }
+
+  // The actual drawn tessellation — vertices ordered ring-major: idx(i, j) =
+  // j * n + i, matching featureMesh (which dedupes the loop identically).
+  const mesh = revolvePolyhedron(feature, segments);
+  const n = profile.length;
+  const full = angle >= 360 - REVOLVE_FULL_EPS;
+  const rings = full ? segments : segments + 1;
+  const onAxis = profile.map((p) => Math.abs(p.x) <= REVOLVE_AXIS_EPS);
+
+  const faces: PolyFace[] = [];
+  const byName = new Map<string, { kind: TopoKind; index: number }>();
+  const faceNameByIndex: string[] = [];
+
+  for (let i = 0; i < n; i++) {
+    if (onAxis[i]) continue; // sweeps to a point — no rim circle
+    const loopIdx: number[] = [];
+    for (let j = 0; j < rings; j++) loopIdx.push(j * n + i);
+    // Cross-section plane is y = profile[i].y ⇒ plane normal ∥ +Y. measure uses
+    // the normal only up to sign (radial: |n × viewDir|; linear: |n · Δ|).
+    const faceIndex = faces.length;
+    faces.push({ vertices: loopIdx, normal: { x: 0, y: 1, z: 0 } });
+    const name = `f.lat.${i}`;
+    byName.set(name, { kind: 'face', index: faceIndex });
+    faceNameByIndex[faceIndex] = name;
+  }
+
+  const poly: Polyhedron = { vertices: mesh.vertices, faces };
+  const edges: PolyEdge[] = []; // ⌀/axial dims are face-based; no named edges here
+
+  return {
+    poly,
+    edges,
+    byName,
+    faceName: (i: number) => faceNameByIndex[i] ?? `f.unknown.${i}`,
+    edgeName: (i: number) => `e.unknown.${i}`,
+  };
 }
