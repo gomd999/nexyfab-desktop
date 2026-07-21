@@ -80,8 +80,8 @@ curl -s https://nexyfab.com/api/nexyfab/drawing/face-drag/ \\
       <H>2. MCP (Claude Code · Claude Desktop {ko ? '등' : 'etc.'})</H>
       <P>
         {ko
-          ? '단일 파일 MCP 서버를 내려받아 등록하면 Claude가 도구 호출로 설계·수정합니다(Node 18+, 의존성 없음). 도구 5종: design_assembly · compose_part · edit_part · face_drag · part_op.'
-          : 'Download the single-file MCP server and register it; Claude then designs/edits via tool calls (Node 18+, zero deps). Tools: design_assembly · compose_part · edit_part · face_drag · part_op.'}
+          ? '단일 파일 MCP 서버를 내려받아 등록하면 Claude가 도구 호출로 설계·수정합니다(Node 18+, 의존성 없음). 도구 6종: design_assembly · compose_part · edit_part · face_drag · part_op · domain_design(토목·인테리어·건설·조경 검증 초안).'
+          : 'Download the single-file MCP server and register it; Claude then designs/edits via tool calls (Node 18+, zero deps). Tools: design_assembly · compose_part · edit_part · face_drag · part_op · domain_design (civil/interior/construction/landscape verified draft).'}
       </P>
       <P><a href="/downloads/nexyfab-mcp.mjs" download style={{ color: 'var(--nx-accent, #2563eb)', fontWeight: 700 }}>⬇ nexyfab-mcp.mjs {ko ? '다운로드' : 'download'}</a></P>
       <Code>{`# Claude Code 등록 (API 키는 Pro 이상 발급)

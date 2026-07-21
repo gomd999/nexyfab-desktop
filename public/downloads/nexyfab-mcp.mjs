@@ -54,6 +54,24 @@ const tools = [
       properties: { assembly: { type: 'object', description: ASM_DESC }, op: { type: 'string', enum: ['delete', 'duplicate', 'translate', 'fillet'] }, partIds: { type: 'array', items: { type: 'string' } }, opts: { type: 'object' } },
     },
   },
+  {
+    name: 'domain_design',
+    description: '비-기계 도메인 설계 검증(토목·인테리어·건설·조경) — 자연어 브리프 → LLM 계획 + 결정론 코드 게이트(토목: 휨·처짐·좌굴·옹벽·사면 / 인테리어: 피난동선·유효폭·수용인원·복도·위생·반자 / 건설: 물량·철근·공정·거푸집·비용·토공 / 조경: 관수·배수·식재·조경면적·객토) → 검증 패키지 또는 명시 거부(stage·reason·failedGateIds). 산출물=검토 초안(면허 기술사/건축사 최종 책임·"대체" 아님).',
+    inputSchema: {
+      type: 'object', required: ['domain', 'brief'],
+      properties: {
+        domain: { type: 'string', enum: ['civil', 'interior', 'construction', 'landscape'], description: 'civil(토목)|interior(인테리어)|construction(건설)|landscape(조경)' },
+        brief: {
+          type: 'object', required: ['id'],
+          properties: {
+            id: { type: 'string' },
+            text: { type: 'string', description: '자유텍스트 설계 요구(예: "6m 강재 보, 등분포하중 20kN/m")' },
+            params: { type: 'object', description: "결정론 픽스처 사용 시 {fixture:'steel-beam'|'office-floor'|'rc-frame'|'park-plaza'}" },
+          },
+        },
+      },
+    },
+  },
 ];
 
 const ROUTE = {
@@ -62,6 +80,7 @@ const ROUTE = {
   edit_part: '/api/nexyfab/drawing/edit-part/',
   face_drag: '/api/nexyfab/drawing/face-drag/',
   part_op: '/api/nexyfab/drawing/part-op/',
+  domain_design: '/api/nexyfab/domain-design/',
 };
 
 async function callTool(name, args = {}) {
