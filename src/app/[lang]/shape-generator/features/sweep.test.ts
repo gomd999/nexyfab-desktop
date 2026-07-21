@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { sweepFeature } from './sweep';
+import { sweepFeature, computeGuideRailScales } from './sweep';
 import { meshSignedVolume } from './loft';
 
 function volumeOf(geo: THREE.BufferGeometry): number {
@@ -110,9 +110,138 @@ describe('sweep — twist (W5-A)', () => {
   });
 });
 
+describe('sweep — guide rail (W5-A remainder)', () => {
+  const A1 = 200; // 20×10 section
+
+  it('(a) straight + linear converging guide 20→10mm = frustum V = h/3·(A1+A2+√(A1A2))', () => {
+    const g = sweepFeature.apply(box, { ...base, guideMode: 1, guideStart: 20, guideEnd: 10 }) as THREE.BufferGeometry;
+    const v = volumeOf(g);
+    const A2 = A1 * 0.25; // k(1) = 10/20 = 0.5 → area ×0.25
+    const frustum = (100 / 3) * (A1 + A2 + Math.sqrt(A1 * A2)); // 35000/3
+    const relErr = Math.abs(v - frustum) / frustum;
+    console.log('[W5-A guide] straight frustum volume =', v, '(theory', frustum, ', relErr', relErr, ')');
+    // Linear-in-t vertices → planar lateral faces → geometrically exact;
+    // residual is float32 vertex quantization only.
+    expect(relErr).toBeLessThan(1e-6);
+  });
+
+  it('(b) constant-distance guide → volume matches the no-guide sweep (straight)', () => {
+    const vBase = volumeOf(sweepFeature.apply(box, { ...base }) as THREE.BufferGeometry);
+    const vGuide = volumeOf(sweepFeature.apply(box, { ...base, guideMode: 1, guideStart: 20, guideEnd: 20 }) as THREE.BufferGeometry);
+    const relErr = Math.abs(vGuide - vBase) / vBase;
+    console.log('[W5-A guide] constant-guide volume =', vGuide, '(no-guide', vBase, ', relErr', relErr, ')');
+    expect(relErr).toBeLessThan(1e-6);
+  });
+
+  it('(b) API: constant-distance guide yields all-1 scales', () => {
+    const spine = [
+      { t: 0, position: { x: 0, y: 0, z: 0 }, tangent: { x: 0, y: 0, z: 1 } },
+      { t: 1, position: { x: 0, y: 0, z: 100 }, tangent: { x: 0, y: 0, z: 1 } },
+    ];
+    const guide = [
+      { t: 0, position: { x: 0, y: 20, z: 0 } },
+      { t: 1, position: { x: 0, y: 20, z: 100 } },
+    ];
+    const res = computeGuideRailScales(spine, guide, 65);
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.scales).toHaveLength(65);
+      for (const k of res.scales) expect(Math.abs(k - 1)).toBeLessThan(1e-12);
+    }
+  });
+
+  it('(c) arc R60 90° + converging guide k:1→0.5: V = A1·R·θ·(1+k+k²)/3 within 1e-3', () => {
+    const g = sweepFeature.apply(box, { ...base, pathType: 1, guideMode: 1, guideStart: 20, guideEnd: 10 }) as THREE.BufferGeometry;
+    const v = volumeOf(g);
+    // Section stays centered on the spine (uniform scale about the spine
+    // point) → generalized Pappus V = R·∫A(θ)dθ = A1·R·θ·(1+k1+k1²)/3.
+    const theory = A1 * 60 * (Math.PI / 2) * (1 + 0.5 + 0.25) / 3;
+    const relErr = Math.abs(v - theory) / theory;
+    console.log('[W5-A guide] arc+guide volume =', v, '(theory', theory, ', relErr', relErr, ')');
+    // Gate 1e-3: 128-segment polygonal arc + RMF discretization.
+    expect(relErr).toBeLessThan(1e-3);
+  });
+
+  it('guide + twist combine: straight + 90° twist + constant guide keeps V = A·L within 1e-3', () => {
+    const g = sweepFeature.apply(box, { ...base, twist: 90, guideMode: 1, guideStart: 20, guideEnd: 20 }) as THREE.BufferGeometry;
+    const v = volumeOf(g);
+    const relErr = Math.abs(v - 20000) / 20000;
+    console.log('[W5-A guide] twist90+constant-guide volume =', v, '(A·L 20000, relErr', relErr, ')');
+    expect(relErr).toBeLessThan(1e-3);
+  });
+
+  it('(d) rejects zero/negative guide distances with a reason', () => {
+    expect(() => sweepFeature.apply(box, { ...base, guideMode: 1, guideStart: 20, guideEnd: 0 }))
+      .toThrow(/Sweep guide rail rejected: .*positive/);
+    expect(() => sweepFeature.apply(box, { ...base, guideMode: 1, guideStart: -5, guideEnd: 20 }))
+      .toThrow(/Sweep guide rail rejected/);
+  });
+
+  it('(d) API rejects a guide that crosses the spine (negative scale not representable)', () => {
+    const spine = [
+      { t: 0, position: { x: 0, y: 0, z: 0 }, tangent: { x: 0, y: 0, z: 1 } },
+      { t: 1, position: { x: 0, y: 0, z: 100 }, tangent: { x: 0, y: 0, z: 1 } },
+    ];
+    const guide = [
+      { t: 0, position: { x: 0, y: 20, z: 0 } },
+      { t: 1, position: { x: 0, y: -19, z: 100 } },
+    ];
+    const res = computeGuideRailScales(spine, guide, 65);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toMatch(/crosses the spine|touches the spine/);
+  });
+
+  it('(d) API rejects an out-of-plane guide offset (nearly parallel to the tangent)', () => {
+    const spine = [
+      { t: 0, position: { x: 0, y: 0, z: 0 }, tangent: { x: 0, y: 0, z: 1 } },
+      { t: 1, position: { x: 0, y: 0, z: 100 }, tangent: { x: 0, y: 0, z: 1 } },
+    ];
+    // Offset (0, 5, 30) at every station: along-tangent 30 > 50% of in-plane 5.
+    const guide = [
+      { t: 0, position: { x: 0, y: 5, z: 30 } },
+      { t: 1, position: { x: 0, y: 5, z: 130 } },
+    ];
+    const res = computeGuideRailScales(spine, guide, 65);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toMatch(/unreachable/);
+  });
+
+  it('(d) API rejects degenerate guides (<2 samples, guide on the spine)', () => {
+    const spine = [
+      { t: 0, position: { x: 0, y: 0, z: 0 }, tangent: { x: 0, y: 0, z: 1 } },
+      { t: 1, position: { x: 0, y: 0, z: 100 }, tangent: { x: 0, y: 0, z: 1 } },
+    ];
+    const single = computeGuideRailScales(spine, [{ t: 0, position: { x: 0, y: 20, z: 0 } }], 65);
+    expect(single.ok).toBe(false);
+    if (!single.ok) expect(single.reason).toMatch(/at least 2 samples/);
+    const onSpine = computeGuideRailScales(spine, [
+      { t: 0, position: { x: 0, y: 0, z: 0 } },
+      { t: 1, position: { x: 0, y: 0, z: 100 } },
+    ], 65);
+    expect(onSpine.ok).toBe(false);
+    if (!onSpine.ok) expect(onSpine.reason).toMatch(/touches the spine/);
+  });
+
+  it('guideMode=0 leaves the no-guide sweep bit-identical (regression pin)', () => {
+    const g0 = sweepFeature.apply(box, { ...base }) as THREE.BufferGeometry;
+    const g1 = sweepFeature.apply(box, { ...base, guideMode: 0, guideStart: 20, guideEnd: 10 }) as THREE.BufferGeometry;
+    const p0 = g0.getAttribute('position') as THREE.BufferAttribute;
+    const p1 = g1.getAttribute('position') as THREE.BufferAttribute;
+    expect(p1.count).toBe(p0.count);
+    let mismatches = 0;
+    const a0 = p0.array as Float32Array;
+    const a1 = p1.array as Float32Array;
+    for (let i = 0; i < a0.length; i++) if (a0[i] !== a1[i]) mismatches++;
+    expect(mismatches).toBe(0);
+  });
+});
+
 describe('sweep API', () => {
-  it('exposes a twist param (guide-rail sweep remains unimplemented — documented limit)', () => {
+  it('exposes twist + guide-rail params (W5-A complete)', () => {
     const keys = sweepFeature.params.map(p => p.key);
     expect(keys).toContain('twist');
+    expect(keys).toContain('guideMode');
+    expect(keys).toContain('guideStart');
+    expect(keys).toContain('guideEnd');
   });
 });

@@ -130,7 +130,10 @@ export function sweepVariableSection(
 
 // ── Spine sampling ──────────────────────────────────────────────
 
-function sampleSpine(spine: SpinePathSample[], stationCount: number): SpinePathSample[] {
+/** Exported so guide-rail scale computation (sweep.ts) can evaluate the
+ *  guide at *exactly* the stations sweepVariableSection will emit — any
+ *  drift between the two samplings would misalign scale vs. station. */
+export function sampleSpine(spine: SpinePathSample[], stationCount: number): SpinePathSample[] {
   if (spine.length === 0 || stationCount <= 0) return [];
   const out: SpinePathSample[] = [];
   for (let i = 0; i < stationCount; i++) {
