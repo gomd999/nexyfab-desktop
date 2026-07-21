@@ -12,11 +12,12 @@
 // This component owns NO planner choice and NO gate logic — the server's shared
 // runner does, and the same brief yields the same payload as the MCP tool/API.
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLang } from '../hooks/useLang';
 import { loc } from '../lib/loc';
 import { AiReviewQueuePanel } from '../_shell/AiReviewQueuePanel';
 import { usePdmSessionStore } from '../pdm/sessionRepoStore';
+import { useAutonomySessionStore } from '../_shell/autonomySessionStore';
 import type { ReviewComment } from '../pdm/reviewQueue';
 
 interface MeasuredDim { id: string; kind: string; value: number; unit: string; expected?: number; deviation?: number }
@@ -62,6 +63,17 @@ export function DesignBriefPanel({ onClose, fetchImpl }: DesignBriefPanelProps) 
   const approveAiRun = usePdmSessionStore((s) => s.approveAiRun);
   const requestAiChanges = usePdmSessionStore((s) => s.requestAiChanges);
 
+  // Wave A · WA-E autonomy emitters — REAL actions only (submit outcome +
+  // review-queue interactions). No fabricated events. See autonomySessionStore.
+  const autonomyRunStarted = useAutonomySessionStore((s) => s.runStarted);
+  const autonomyAbandoned = useAutonomySessionStore((s) => s.abandoned);
+  const autonomyReviewStarted = useAutonomySessionStore((s) => s.reviewStarted);
+  const autonomyReviewEnded = useAutonomySessionStore((s) => s.reviewEnded);
+  const autonomyApproved = useAutonomySessionStore((s) => s.approved);
+  const autonomyChangesRequested = useAutonomySessionStore((s) => s.changesRequested);
+  /** One driver-run id per submit that reaches an outcome (package/refusal). */
+  const briefRunSeq = useRef(0);
+
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (busy || !text.trim()) return;
@@ -85,6 +97,11 @@ export function DesignBriefPanel({ onClose, fetchImpl }: DesignBriefPanelProps) 
         setErrorMsg(data.error ?? loc(lang, { ko: '요청 실패.', en: 'Request failed.', ja: 'リクエスト失敗。', zh: '请求失败。', es: 'Solicitud fallida.', ar: 'فشل الطلب.' }));
       } else {
         setPayload(data);
+        // WA-E autonomy: a driver run reached an outcome (package or refusal).
+        // Auth/plan/network failures above emit NOTHING — no driver run happened.
+        const runId = data.package?.planId ?? `brief-run-${++briefRunSeq.current}`;
+        autonomyRunStarted(runId);
+        if (!data.ok && data.refusal) autonomyAbandoned(runId); // 승인 없이 종료
       }
     } catch {
       setErrorMsg(loc(lang, { ko: '네트워크 오류.', en: 'Network error.', ja: 'ネットワークエラー。', zh: '网络错误。', es: 'Error de red.', ar: 'خطأ في الشبكة.' }));
@@ -209,8 +226,10 @@ export function DesignBriefPanel({ onClose, fetchImpl }: DesignBriefPanelProps) 
             isKo={lang === 'ko'}
             runs={aiRuns}
             resolveCommit={(id) => repo?.getCommit(id) ?? null}
-            onApprove={(runId) => { approveAiRun(runId, 'me'); }}
-            onRequestChanges={(runId, comments: ReviewComment[]) => { requestAiChanges(runId, comments); }}
+            onApprove={(runId) => { approveAiRun(runId, 'me'); autonomyApproved(runId); }}
+            onRequestChanges={(runId, comments: ReviewComment[]) => { requestAiChanges(runId, comments); autonomyChangesRequested(runId, comments.length); }}
+            onReviewOpen={(runId) => autonomyReviewStarted(runId)}
+            onReviewClose={(runId) => autonomyReviewEnded(runId)}
           />
         </div>
       </div>

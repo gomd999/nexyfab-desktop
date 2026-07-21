@@ -196,6 +196,8 @@ import { generateLinearSweep } from './panels/DesignVariantsPanel';
 const CopilotPanel = dynamic(() => import('./copilot/CopilotPanel'), { ssr: false });
 // Wave A · WA-D3 — AI design-brief entry + AiReviewQueuePanel (self-contained).
 const DesignBriefPanel = dynamic(() => import('./design-brief/DesignBriefPanel'), { ssr: false });
+// Wave A · WA-E / §GA3 — autonomy dashboard bound to autonomySessionStore.
+const AutonomyDashboardConnected = dynamic(() => import('./_shell/AutonomyDashboardConnected'), { ssr: false });
 
 import PipelineProgressOverlay from './PipelineProgressOverlay';
 import HeaderOverlays from './panels/HeaderOverlays';
@@ -12311,10 +12313,15 @@ export function ShapeGeneratorInner() {
         </div>
       )}
 
-      {/* ═══ AI Design-Brief panel (Wave A · WA-D3) ═══ */}
+      {/* ═══ AI Design-Brief panel (Wave A · WA-D3) + autonomy dashboard (WA-E/GA3) ═══ */}
       {showDesignBrief && (
-        <div style={{ position: 'fixed', top: 60, right: 360, zIndex: 600 }}>
+        <div style={{ position: 'fixed', top: 60, right: 360, zIndex: 600, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <DesignBriefPanel onClose={() => setShowDesignBrief(false)} />
+          {/* Bound to autonomySessionStore. Renders "측정 없음(n=0)" until real
+              partner-session actions accrue — measurement prep, not a claim. */}
+          <div style={{ width: 360, maxHeight: '38vh', overflow: 'auto', padding: 10, background: 'var(--nx-panel, #161b22)', border: '1px solid var(--nx-border, #30363d)', borderRadius: 8 }}>
+            <AutonomyDashboardConnected />
+          </div>
         </div>
       )}
 

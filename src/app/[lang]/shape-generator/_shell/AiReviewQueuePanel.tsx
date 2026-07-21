@@ -34,6 +34,19 @@ export interface AiReviewQueuePanelProps {
   resolveCommit: (commitId: string) => Commit | null;
   onApprove: (runId: string) => void;
   onRequestChanges: (runId: string, comments: ReviewComment[]) => void;
+  /**
+   * Wave A · WA-E autonomy-measurement hooks (additive, optional — the panel
+   * behaves identically when omitted). Fired ONLY from real reviewer actions:
+   *   - onReviewOpen  when a run's detail is expanded (human_review_started)
+   *   - onReviewClose when it is collapsed / an action closes it (…_ended)
+   * The shell wires these to autonomySessionStore. Approve / request-changes
+   * autonomy events are emitted by the parent from onApprove/onRequestChanges;
+   * the panel guarantees the review is CLOSED (…_ended) before it fires
+   * onApprove, so the store sequence never places an event after the terminal
+   * 'approved'.
+   */
+  onReviewOpen?: (runId: string) => void;
+  onReviewClose?: (runId: string) => void;
 }
 
 function gateStats(gates: GateResultLike[]): { pass: number; total: number; failed: GateResultLike[] } {
@@ -54,12 +67,23 @@ export function AiReviewQueuePanel({
   resolveCommit,
   onApprove,
   onRequestChanges,
+  onReviewOpen,
+  onReviewClose,
 }: AiReviewQueuePanelProps) {
   void isKo;
   const lang = useLang();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [featureIdDraft, setFeatureIdDraft] = useState('');
+
+  // Single entry point for expand/collapse so review-session open/close events
+  // are emitted exactly once per real transition (no nested/duplicate sessions).
+  const changeExpanded = (nextId: string | null) => {
+    if (expandedId === nextId) return;
+    if (expandedId) onReviewClose?.(expandedId);
+    if (nextId) onReviewOpen?.(nextId);
+    setExpandedId(nextId);
+  };
 
   const pending = useMemo(() => runs.filter(r => r.status === 'pending'), [runs]);
 
@@ -96,7 +120,7 @@ export function AiReviewQueuePanel({
     onRequestChanges(run.runId, [comment]);
     setNoteDraft('');
     setFeatureIdDraft('');
-    setExpandedId(null);
+    changeExpanded(null);
   };
 
   return (
@@ -121,7 +145,7 @@ export function AiReviewQueuePanel({
             {/* Header row: branch + gate badge */}
             <button
               data-testid="arq-run-toggle"
-              onClick={() => setExpandedId(isOpen ? null : run.runId)}
+              onClick={() => changeExpanded(isOpen ? null : run.runId)}
               style={{ ...rowBtn }}
             >
               <span style={{ fontWeight: 700, fontSize: 11 }}>{run.branchName}</span>
@@ -187,7 +211,7 @@ export function AiReviewQueuePanel({
                   <button
                     data-testid="arq-approve"
                     disabled={hasFail}
-                    onClick={() => { if (!hasFail) { onApprove(run.runId); setExpandedId(null); } }}
+                    onClick={() => { if (!hasFail) { changeExpanded(null); onApprove(run.runId); } }}
                     style={{ ...primaryBtn, opacity: hasFail ? 0.5 : 1, cursor: hasFail ? 'not-allowed' : 'pointer' }}
                   >
                     {loc(lang, { ko: '승인 (main 머지)', en: 'Approve (merge into main)', ja: '承認（main へマージ）', zh: '批准（合并到 main）', es: 'Aprobar (fusionar en main)', ar: 'موافقة (دمج في main)' })}
