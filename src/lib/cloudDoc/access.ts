@@ -141,8 +141,24 @@ export async function ensureCloudDocTables(): Promise<void> {
       branch_name       TEXT,
       is_explicit       INTEGER NOT NULL DEFAULT 0,
       size_bytes        BIGINT  NOT NULL DEFAULT 0,
+      restored_from     TEXT,
       created_by        TEXT    NOT NULL,
       created_at        BIGINT  NOT NULL
+    )
+  `).catch(() => {});
+  // W6-C backfill: tables created before the restored_from column existed.
+  // SQLite has no ADD COLUMN IF NOT EXISTS — idempotent-by-catch (duplicate
+  // column errors are swallowed on both backends).
+  await db.execute('ALTER TABLE nf_document_versions ADD COLUMN restored_from TEXT').catch(() => {});
+  // W6-B: exclusive check-out locks. document_id PRIMARY KEY = at most one
+  // lock row per document; expires_at (BIGINT ms) discriminates active/stale.
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS nf_document_locks (
+      document_id  TEXT   PRIMARY KEY,
+      holder_id    TEXT   NOT NULL,
+      acquired_at  BIGINT NOT NULL,
+      refreshed_at BIGINT NOT NULL,
+      expires_at   BIGINT NOT NULL
     )
   `).catch(() => {});
   _tablesEnsured = true;

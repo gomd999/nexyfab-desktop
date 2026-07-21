@@ -30,41 +30,12 @@ import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
 import {
   ensureCloudDocTables,
   resolveDocAccess,
-  asNum,
 } from '@/lib/cloudDoc/access';
+import { publicVersionShape, type VersionRow } from '@/lib/cloudDoc/versions';
+import { getLockHeldByOther, lockConflictPayload } from '@/lib/cloudDoc/locks';
 
 const MAX_LABEL_LEN = 100;
 const MAX_BRANCH_LEN = 80;
-
-interface VersionRow {
-  id: string;
-  document_id: string;
-  parent_version_id: string | null;
-  blob_r2_key: string;
-  oplog_r2_key: string | null;
-  label: string | null;
-  branch_name: string | null;
-  is_explicit: number;
-  size_bytes: number;
-  created_by: string;
-  created_at: number;
-}
-
-function publicVersionShape(row: VersionRow) {
-  return {
-    id:              row.id,
-    documentId:      row.document_id,
-    parentVersionId: row.parent_version_id,
-    blobKey:         row.blob_r2_key,
-    oplogKey:        row.oplog_r2_key,
-    label:           row.label,
-    branchName:      row.branch_name,
-    isExplicit:      row.is_explicit === 1,
-    sizeBytes:       asNum(row.size_bytes),
-    createdBy:       row.created_by,
-    createdAt:       asNum(row.created_at),
-  };
-}
 
 // ─── GET /api/documents/[id]/versions ───────────────────────────────────────
 
@@ -123,6 +94,13 @@ export async function POST(
       { error: 'Editor role required', code: 'document.permission_denied' },
       { status: 403 },
     );
+  }
+
+  // W6-B: snapshot creation is an edit — blocked while another user holds
+  // an active check-out (423 with holder + expiry; expired locks never block).
+  const heldByOther = await getLockHeldByOther(db, id, authUser.userId);
+  if (heldByOther) {
+    return NextResponse.json(lockConflictPayload(heldByOther), { status: 423 });
   }
 
   let body: { label?: unknown; branchName?: unknown; parentVersionId?: unknown };
@@ -234,6 +212,7 @@ export async function POST(
       branch_name: branchName,
       is_explicit: 1,
       size_bytes: copiedSize,
+      restored_from: null,
       created_by: authUser.userId,
       created_at: now,
     }),

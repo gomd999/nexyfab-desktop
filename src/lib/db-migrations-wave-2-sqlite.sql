@@ -150,6 +150,12 @@ CREATE TABLE IF NOT EXISTS nf_document_versions (
   branch_name        TEXT,
   is_explicit        INTEGER NOT NULL DEFAULT 0,  -- 0=auto, 1=user-named
   size_bytes         INTEGER NOT NULL DEFAULT 0,
+  -- W6-C: restore provenance — id of the source version a restore snapshot
+  -- copied its payload from (NULL for ordinary snapshots). Fresh installs get
+  -- the column here; DBs created before W6-C are backfilled at runtime by
+  -- ensureCloudDocTables() (catch-guarded ALTER — SQLite has no ADD COLUMN
+  -- IF NOT EXISTS, so no bare ALTER in this re-runnable file).
+  restored_from      TEXT    REFERENCES nf_document_versions(id),
   created_by         TEXT    NOT NULL REFERENCES nf_users(id),
   created_at         BIGINT  NOT NULL,
   CHECK ((branch_name IS NULL) OR (parent_version_id IS NOT NULL))
@@ -165,6 +171,26 @@ CREATE INDEX IF NOT EXISTS idx_nf_document_versions_explicit
 CREATE INDEX IF NOT EXISTS idx_nf_document_versions_gc
   ON nf_document_versions (created_at)
   WHERE is_explicit = 0;
+
+-- ─── Exclusive locks (W6-B check-out / check-in) ───────────────────────────
+-- document_id is the PRIMARY KEY: at most ONE lock row per document, ever —
+-- the uniqueness invariant is structural, not application-enforced. Active vs
+-- expired is discriminated by expires_at (BIGINT ms-epoch): a row whose
+-- expires_at <= now is stale and is silently taken over by the next acquirer
+-- (prevents a crashed client from blocking the document forever).
+CREATE TABLE IF NOT EXISTS nf_document_locks (
+  document_id  TEXT   PRIMARY KEY REFERENCES nf_documents(id) ON DELETE CASCADE,
+  holder_id    TEXT   NOT NULL REFERENCES nf_users(id) ON DELETE CASCADE,
+  acquired_at  BIGINT NOT NULL,
+  refreshed_at BIGINT NOT NULL,
+  expires_at   BIGINT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_nf_document_locks_holder
+  ON nf_document_locks (holder_id);
+
+CREATE INDEX IF NOT EXISTS idx_nf_document_locks_expires
+  ON nf_document_locks (expires_at);
 
 -- ─── Audit log ─────────────────────────────────────────────────────────────
 -- BIGSERIAL → INTEGER PRIMARY KEY AUTOINCREMENT (SQLite's ROWID-backed sequence).

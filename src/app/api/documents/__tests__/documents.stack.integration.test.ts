@@ -22,6 +22,13 @@
  *   - BIGINT-ms: stored timestamps are ms-epoch (> 1.7e12) and serialized
  *     as JS numbers on both backends.
  *
+ * W6-B/W6-C additions (2-user check-out + restore scenario):
+ *   - 배타 잠금: A 획득 201 → B 획득/편집/스냅샷/복원 423 → A 편집 200 →
+ *     refresh 연장 → holder/owner만 해제 → B 획득 201
+ *   - 만료 승계: expires_at 되감기 후 획득 201 takenOver, 만료 잠금은 편집
+ *     비차단
+ *   - 버전복원: 새 버전 적층(히스토리 보존) + restored_from 기록, 404 비누설
+ *
  * Only auth / storage / audit / client-ip are mocked — SQL runs for real.
  */
 
@@ -114,6 +121,10 @@ let verGET: typeof import('../[id]/versions/route').GET;
 let verPOST: typeof import('../[id]/versions/route').POST;
 let permPOST: typeof import('../[id]/permissions/route').POST;
 let permDELETE: typeof import('../[id]/permissions/[userId]/route').DELETE;
+let lockPOST: typeof import('../[id]/lock/route').POST;
+let lockPUT: typeof import('../[id]/lock/route').PUT;
+let lockDELETE: typeof import('../[id]/lock/route').DELETE;
+let restorePOST: typeof import('../[id]/versions/[versionId]/restore/route').POST;
 
 let db: import('@/lib/db-adapter').DbAdapter;
 const IS_PG = !!process.env.DOCS_IT_PG_URL;
@@ -127,6 +138,7 @@ beforeAll(async () => {
     // also work (idempotent); once is the prod-equivalent boot.
     await dbMod.initPostgresSchema();
     // Clean any leftovers from previous runs (test rows are prefixed).
+    await db.execute(`DELETE FROM nf_document_locks WHERE holder_id LIKE 'it-docs-%'`);
     await db.execute(`DELETE FROM nf_document_versions WHERE created_by LIKE 'it-docs-%'`);
     await db.execute(`DELETE FROM nf_document_permissions WHERE user_id LIKE 'it-docs-%' OR granted_by LIKE 'it-docs-%'`);
     await db.execute(`DELETE FROM nf_documents WHERE owner_id LIKE 'it-docs-%'`);
@@ -159,6 +171,8 @@ beforeAll(async () => {
   ({ GET: verGET, POST: verPOST } = await import('../[id]/versions/route'));
   ({ POST: permPOST } = await import('../[id]/permissions/route'));
   ({ DELETE: permDELETE } = await import('../[id]/permissions/[userId]/route'));
+  ({ POST: lockPOST, PUT: lockPUT, DELETE: lockDELETE } = await import('../[id]/lock/route'));
+  restorePOST = (await import('../[id]/versions/[versionId]/restore/route')).POST;
 });
 
 afterAll(async () => {
@@ -324,5 +338,258 @@ describe(`documents stack integration (${IS_PG ? 'postgres' : 'sqlite'})`, () =>
     const listRestored = await colGET(jsonReq('GET', '/api/documents'));
     const lrBody = await listRestored.json();
     expect(lrBody.documents.map((d: { id: string }) => d.id)).toContain(docId);
+  });
+});
+
+// ─── W6-B: exclusive check-out locks + W6-C: version restore ────────────────
+// Continues the same sequential state: docId live (version 4), ALICE owner,
+// CAROL editor, BOB revoked. Versions so far: 'first snapshot', 'second snapshot'.
+
+const lockCtx = () => ctx({ id: docId });
+const restoreCtx = (versionId: string) => ctx({ id: docId, versionId });
+
+const DEFAULT_TTL = 30 * 60 * 1000;
+
+let firstSnapshotId = '';
+
+describe(`W6-B exclusive locks (${IS_PG ? 'postgres' : 'sqlite'})`, () => {
+  it('401 unauth / 404 stranger (no leak) / 400 bad ttlMs', async () => {
+    actAs(null);
+    expect((await lockPOST(jsonReq('POST', `/api/documents/${docId}/lock`), lockCtx())).status).toBe(401);
+
+    actAs(BOB); // revoked — must not learn the doc exists
+    expect((await lockPOST(jsonReq('POST', `/api/documents/${docId}/lock`), lockCtx())).status).toBe(404);
+
+    actAs(ALICE);
+    const bad = await lockPOST(jsonReq('POST', `/api/documents/${docId}/lock`, { ttlMs: 'soon' }), lockCtx());
+    expect(bad.status).toBe(400);
+    expect((await bad.json()).code).toBe('validation.ttlMs');
+  });
+
+  it('viewer cannot check out → 403 (editor role required)', async () => {
+    actAs(ALICE);
+    expect((await permPOST(
+      jsonReq('POST', `/api/documents/${docId}/permissions`, { userId: BOB.userId, role: 'viewer' }),
+      ctx({ id: docId }),
+    )).status).toBe(201);
+
+    actAs(BOB);
+    const res = await lockPOST(jsonReq('POST', `/api/documents/${docId}/lock`), lockCtx());
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe('document.permission_denied');
+  });
+
+  it('A acquires → 201, TTL exactly 30 min default; GET document surfaces the lock', async () => {
+    actAs(ALICE);
+    const res = await lockPOST(jsonReq('POST', `/api/documents/${docId}/lock`), lockCtx());
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.lock.holderId).toBe(ALICE.userId);
+    expect(body.takenOver).toBe(false);
+    expect(body.lock.expiresAt - body.lock.acquiredAt).toBe(DEFAULT_TTL);
+    expect(body.lock.acquiredAt).toBeGreaterThan(1.7e12); // BIGINT ms-epoch
+
+    const read = await docGET(jsonReq('GET', `/api/documents/${docId}`), ctx({ id: docId }));
+    expect(read.status).toBe(200);
+    const rBody = await read.json();
+    expect(rBody.lock.holderId).toBe(ALICE.userId);
+    expect(typeof rBody.lock.expiresAt).toBe('number');
+  });
+
+  it('B acquire while A holds → 423 Locked with holder + expiry info', async () => {
+    actAs(CAROL);
+    const res = await lockPOST(jsonReq('POST', `/api/documents/${docId}/lock`), lockCtx());
+    expect(res.status).toBe(423);
+    const body = await res.json();
+    expect(body.code).toBe('document.locked');
+    expect(body.lock.holderId).toBe(ALICE.userId);
+    expect(typeof body.lock.expiresAt).toBe('number');
+  });
+
+  it('B edit paths blocked while A holds: PUT doc 423, POST version 423, restore 423 (listing stays open)', async () => {
+    actAs(CAROL);
+    expect((await docPUT(jsonReq('PUT', `/api/documents/${docId}`, { name: 'blocked' }), ctx({ id: docId }))).status).toBe(423);
+    expect((await verPOST(jsonReq('POST', `/api/documents/${docId}/versions`, { label: 'blocked' }), ctx({ id: docId }))).status).toBe(423);
+
+    // Reads are NOT blocked by a check-out — grab a snapshot id for restore.
+    const list = await verGET(jsonReq('GET', `/api/documents/${docId}/versions`), ctx({ id: docId }));
+    expect(list.status).toBe(200);
+    const versions = (await list.json()).versions as Array<{ id: string; label: string }>;
+    firstSnapshotId = versions.find((v) => v.label === 'first snapshot')!.id;
+    expect(firstSnapshotId).toBeTruthy();
+
+    const restore = await restorePOST(
+      jsonReq('POST', `/api/documents/${docId}/versions/${firstSnapshotId}/restore`),
+      restoreCtx(firstSnapshotId),
+    );
+    expect(restore.status).toBe(423);
+    expect((await restore.json()).code).toBe('document.locked');
+  });
+
+  it('A (holder) edits freely: PUT 200 → version 5, snapshot 201 → version 6', async () => {
+    actAs(ALICE);
+    const put = await docPUT(jsonReq('PUT', `/api/documents/${docId}`, { name: 'Bracket v3' }), ctx({ id: docId }));
+    expect(put.status).toBe(200);
+    expect((await put.json()).document.version).toBe(5);
+
+    const snap = await verPOST(jsonReq('POST', `/api/documents/${docId}/versions`, { label: 'locked edit snapshot' }), ctx({ id: docId }));
+    expect(snap.status).toBe(201);
+    expect((await snap.json()).docVersion).toBe(6);
+  });
+
+  it('A refresh (PUT lock) → 200 with extended expiry (exact ttl from refreshed_at)', async () => {
+    actAs(ALICE);
+    const res = await lockPUT(jsonReq('PUT', `/api/documents/${docId}/lock`, { ttlMs: 60 * 60 * 1000 }), lockCtx());
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.lock.expiresAt - body.lock.refreshedAt).toBe(60 * 60 * 1000);
+  });
+
+  it('release: B 403 (not holder/owner) → A 200 released → repeat idempotent released:false', async () => {
+    actAs(CAROL);
+    const denied = await lockDELETE(jsonReq('DELETE', `/api/documents/${docId}/lock`), lockCtx());
+    expect(denied.status).toBe(403);
+    expect((await denied.json()).code).toBe('lock.not_holder');
+
+    actAs(ALICE);
+    const rel = await lockDELETE(jsonReq('DELETE', `/api/documents/${docId}/lock`), lockCtx());
+    expect(rel.status).toBe(200);
+    expect((await rel.json()).released).toBe(true);
+
+    const again = await lockDELETE(jsonReq('DELETE', `/api/documents/${docId}/lock`), lockCtx());
+    expect(again.status).toBe(200);
+    expect((await again.json()).released).toBe(false);
+  });
+
+  it('B acquires after release → 201; refresh without a lock → 404 lock.not_found', async () => {
+    actAs(ALICE); // holds nothing now
+    const stale = await lockPUT(jsonReq('PUT', `/api/documents/${docId}/lock`), lockCtx());
+    expect(stale.status).toBe(404);
+    expect((await stale.json()).code).toBe('lock.not_found');
+
+    actAs(CAROL);
+    const res = await lockPOST(jsonReq('POST', `/api/documents/${docId}/lock`), lockCtx());
+    expect(res.status).toBe(201);
+    expect((await res.json()).lock.holderId).toBe(CAROL.userId);
+  });
+});
+
+describe(`W6-C version restore (${IS_PG ? 'postgres' : 'sqlite'})`, () => {
+  it('B restores while holding own lock → 201: stacked as NEW version, restoredFrom recorded, history intact', async () => {
+    actAs(CAROL);
+    const before = await verGET(jsonReq('GET', `/api/documents/${docId}/versions`), ctx({ id: docId }));
+    const beforeBody = await before.json();
+    const beforeIds = beforeBody.versions.map((v: { id: string }) => v.id) as string[];
+    expect(beforeIds).toHaveLength(3); // first, second, locked edit snapshot
+    const docVersionBefore = beforeBody.docVersion as number; // 6
+
+    const res = await restorePOST(
+      jsonReq('POST', `/api/documents/${docId}/versions/${firstSnapshotId}/restore`),
+      restoreCtx(firstSnapshotId),
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.docVersion).toBe(docVersionBefore + 1); // 7 — monotonic, never rewound
+    expect(body.version.restoredFrom).toBe(firstSnapshotId);
+    expect(body.version.parentVersionId).toBe(firstSnapshotId);
+    expect(body.version.isExplicit).toBe(true);
+
+    // History preserved: every prior version still present + the new one on top.
+    const after = await verGET(jsonReq('GET', `/api/documents/${docId}/versions`), ctx({ id: docId }));
+    const afterBody = await after.json();
+    const afterIds = afterBody.versions.map((v: { id: string }) => v.id) as string[];
+    expect(afterIds).toHaveLength(4);
+    for (const idPrev of beforeIds) expect(afterIds).toContain(idPrev);
+    expect(afterBody.versions[0].id).toBe(body.version.id); // newest first
+    expect(afterBody.versions[0].restoredFrom).toBe(firstSnapshotId);
+
+    // DB-level: restored_from column actually persisted (not just serialized).
+    const row = await db.queryOne<{ restored_from: string | null }>(
+      'SELECT restored_from FROM nf_document_versions WHERE id = ?', body.version.id,
+    );
+    expect(row?.restored_from).toBe(firstSnapshotId);
+
+    const read = await docGET(jsonReq('GET', `/api/documents/${docId}`), ctx({ id: docId }));
+    const rBody = await read.json();
+    expect(rBody.document.version).toBe(docVersionBefore + 1);
+    expect(rBody.lock.holderId).toBe(CAROL.userId); // restore does not drop the lock
+  });
+
+  it('restore nonexistent version → 404 version.not_found (non-leak)', async () => {
+    actAs(CAROL);
+    const res = await restorePOST(
+      jsonReq('POST', `/api/documents/${docId}/versions/nope/restore`),
+      restoreCtx('does-not-exist'),
+    );
+    expect(res.status).toBe(404);
+    expect((await res.json()).code).toBe('version.not_found');
+  });
+
+  it("restore a version belonging to ANOTHER document → 404 (same non-leak shape)", async () => {
+    actAs(ALICE);
+    const doc2 = await colPOST(jsonReq('POST', '/api/documents', { name: 'Other doc' }));
+    expect(doc2.status).toBe(201);
+    const doc2Id = (await doc2.json()).document.id as string;
+    const v2 = await verPOST(jsonReq('POST', `/api/documents/${doc2Id}/versions`, { label: 'foreign' }), ctx({ id: doc2Id }));
+    expect(v2.status).toBe(201);
+    const foreignVersionId = (await v2.json()).version.id as string;
+
+    // Attempt as CAROL — she holds docId's lock, so the lock guard passes and
+    // the version-ownership check is what must reject (non-leak 404).
+    actAs(CAROL);
+    const res = await restorePOST(
+      jsonReq('POST', `/api/documents/${docId}/versions/${foreignVersionId}/restore`),
+      restoreCtx(foreignVersionId),
+    );
+    expect(res.status).toBe(404);
+    expect((await res.json()).code).toBe('version.not_found');
+  });
+});
+
+describe(`W6-B expiry takeover (${IS_PG ? 'postgres' : 'sqlite'})`, () => {
+  it('owner force-releases B lock → 200 forced:true; B re-acquires → 201', async () => {
+    actAs(ALICE);
+    const force = await lockDELETE(jsonReq('DELETE', `/api/documents/${docId}/lock`), lockCtx());
+    expect(force.status).toBe(200);
+    const fBody = await force.json();
+    expect(fBody.released).toBe(true);
+    expect(fBody.forced).toBe(true);
+
+    actAs(CAROL);
+    expect((await lockPOST(jsonReq('POST', `/api/documents/${docId}/lock`), lockCtx())).status).toBe(201);
+  });
+
+  it('expired lock blocks nothing and is taken over on acquire (승계, takenOver:true)', async () => {
+    // Short-TTL injection: rewind expires_at below now directly in the DB —
+    // exercises the exact takeover predicate (expires_at <= now) the API uses.
+    const rewound = await db.execute(
+      'UPDATE nf_document_locks SET expires_at = ? WHERE document_id = ?',
+      Date.now() - 1_000, docId,
+    );
+    expect(rewound.changes).toBe(1);
+
+    // Expired lock does not block another editor's write…
+    actAs(ALICE);
+    const put = await docPUT(jsonReq('PUT', `/api/documents/${docId}`, { name: 'Bracket v4' }), ctx({ id: docId }));
+    expect(put.status).toBe(200);
+
+    // …and GET reports the document as unlocked.
+    const read = await docGET(jsonReq('GET', `/api/documents/${docId}`), ctx({ id: docId }));
+    expect((await read.json()).lock).toBeNull();
+
+    // Acquire takes the stale row over.
+    const res = await lockPOST(jsonReq('POST', `/api/documents/${docId}/lock`), lockCtx());
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.takenOver).toBe(true);
+    expect(body.lock.holderId).toBe(ALICE.userId);
+
+    // The expired ex-holder is now on the wrong side of the lock.
+    actAs(CAROL);
+    expect((await docPUT(jsonReq('PUT', `/api/documents/${docId}`, { name: 'late' }), ctx({ id: docId }))).status).toBe(423);
+
+    // Cleanup so later suites (if any) see an unlocked doc.
+    actAs(ALICE);
+    expect((await lockDELETE(jsonReq('DELETE', `/api/documents/${docId}/lock`), lockCtx())).status).toBe(200);
   });
 });

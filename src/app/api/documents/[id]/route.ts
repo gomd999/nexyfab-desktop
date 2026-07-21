@@ -33,6 +33,12 @@ import {
   type DocAccess,
 } from '@/lib/cloudDoc/access';
 import { assertIfMatchDocVersion } from '@/lib/cloudDoc/versionConflict';
+import {
+  getActiveLock,
+  getLockHeldByOther,
+  publicLockShape,
+  lockConflictPayload,
+} from '@/lib/cloudDoc/locks';
 
 const SIGNED_URL_TTL_SEC = 600;     // 10 min, per spec §4.3
 const MAX_NAME_LEN = 200;
@@ -108,9 +114,14 @@ export async function GET(
     console.warn('[documents.GET] signed URL failed:', (err as Error).message);
   }
 
+  // W6-B: surface the active check-out (null when unlocked / expired) so
+  // clients can render "checked out by X until T" without an extra call.
+  const lockRow = await getActiveLock(getDbAdapter(), id);
+
   return NextResponse.json({
     ok: true,
     document: publicDocShape(access.row, access.role),
+    lock: lockRow ? publicLockShape(lockRow) : null,
     blobUrl,
     blobUrlExpiresAt: blobUrl ? Date.now() + SIGNED_URL_TTL_SEC * 1000 : null,
   });
@@ -170,6 +181,13 @@ export async function PUT(
       { error: 'Editor role required', code: 'document.permission_denied' },
       { status: 403 },
     );
+  }
+
+  // W6-B: exclusive check-out — an ACTIVE lock held by another user blocks
+  // all edits (423 Locked with holder + expiry). Expired locks never block.
+  const heldByOther = await getLockHeldByOther(db, id, userId);
+  if (heldByOther) {
+    return NextResponse.json(lockConflictPayload(heldByOther), { status: 423 });
   }
 
   let body: { name?: unknown; workspaceId?: unknown; thumbnailKey?: unknown; ifMatchVersion?: unknown };

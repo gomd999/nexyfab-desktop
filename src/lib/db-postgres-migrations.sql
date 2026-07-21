@@ -1815,5 +1815,22 @@ CREATE INDEX IF NOT EXISTS idx_nf_documents_owner_updated ON nf_documents (owner
 CREATE INDEX IF NOT EXISTS idx_nf_document_perms_user     ON nf_document_permissions (user_id);
 CREATE INDEX IF NOT EXISTS idx_nf_ws_members_user         ON nf_workspace_members (user_id);
 
+-- W6-B: exclusive check-out locks. document_id PRIMARY KEY = at most ONE lock
+-- row per document (structural uniqueness). expires_at (BIGINT ms-epoch)
+-- discriminates active vs stale; stale rows are taken over by the next
+-- acquirer so a crashed client can never block a document permanently.
+CREATE TABLE IF NOT EXISTS nf_document_locks (
+  document_id  TEXT   PRIMARY KEY,
+  holder_id    TEXT   NOT NULL,
+  acquired_at  BIGINT NOT NULL,
+  refreshed_at BIGINT NOT NULL,
+  expires_at   BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_nf_document_locks_holder  ON nf_document_locks (holder_id);
+CREATE INDEX IF NOT EXISTS idx_nf_document_locks_expires ON nf_document_locks (expires_at);
+-- W6-C: restore provenance — id of the source version a restore snapshot
+-- copied its payload from (NULL for ordinary snapshots). Idempotent.
+ALTER TABLE nf_document_versions ADD COLUMN IF NOT EXISTS restored_from TEXT;
+
 -- Trial subscription window for direct (nf_users) login — login blocked 3 days past this (ms epoch)
 ALTER TABLE nf_users ADD COLUMN IF NOT EXISTS subscription_ends_at BIGINT;
