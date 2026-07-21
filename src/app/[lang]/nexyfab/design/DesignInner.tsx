@@ -1181,6 +1181,19 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
               </button>
             ))}
           </div>
+          {/* T2 — 숨은 고급 모델러(파라메트릭 CAD: 불리언·필렛·쉘·NURBS, 로컬 OCCT) 발견 가능한 진입점.
+              expert 게이트는 유지(?expert=1 로 opt-in), 실험 라벨. */}
+          <div style={{ padding: '8px 12px 0' }}>
+            <a
+              href={`/${lang}/shape-generator?expert=1`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={ko ? '불리언·필렛·쉘·NURBS·피처 히스토리 트리 파라메트릭 CAD 모델러(로컬 OCCT WASM). 실험 기능.' : 'Parametric CAD modeler — boolean/fillet/shell/NURBS, feature history tree (local OCCT). Experimental.'}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, color: 'var(--nx-accent, #2563eb)', textDecoration: 'none' }}
+            >
+              🧩 {ko ? '고급 CAD 모델러 열기 (실험)' : 'Open advanced CAD modeler (beta)'}
+            </a>
+          </div>
           <div style={{ padding: 16, display: tab === 'create' ? undefined : 'none' }}>
             {/* 일반인 진입 — 전문 용어 없이 3~4단계 질문으로 템플릿+치수까지(EasyWizard) */}
             <button
