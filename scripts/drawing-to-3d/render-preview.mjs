@@ -11,6 +11,7 @@
  */
 import zlib from 'node:zlib';
 import { partAabb } from './reconstruct.mjs';
+import { resolveConstraints } from './assembly-constraints.mjs'; // ⓑ 관계배치 어셈블리도 미리보기
 
 const DEG = Math.PI / 180;
 function rot(p, rx = 0, ry = 0, rz = 0) {
@@ -131,7 +132,10 @@ export function encodePng(img, W, H) {
 
 /** 어셈블리 → { [view]: PNG Buffer }. views 기본 iso/side/top. */
 export function renderPreview(assembly, { views = ['iso', 'side', 'top'], W = 1000, H = 560 } = {}) {
-  const tris = assemblyTriangles(assembly);
+  // ⓑ 관계배치: constraints 있으면 절대좌표로 해석 후 렌더(미리보기가 실제 배치를 보여주도록)
+  const asm = (assembly?.parts ?? []).some((p) => Array.isArray(p.constraints) && p.constraints.length > 0)
+    ? resolveConstraints(assembly) : assembly;
+  const tris = assemblyTriangles(asm);
   if (!tris.length) throw new Error('no renderable geometry (parts[] 비었거나 지오메트리 없음)');
   const out = {};
   for (const v of views) out[v] = encodePng(rasterize(tris, v, W, H), W, H);

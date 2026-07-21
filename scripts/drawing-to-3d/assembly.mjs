@@ -22,6 +22,7 @@ import { supportCheck } from './support-check.mjs';
 import { autoRoutePipes, pipeObstacleCheck, pipeCrossCheck } from './pipe-route.mjs';
 import { boxPartsInterference } from './obb2d.mjs';
 import { TOL_CONTACT, PARTS_BUDGET } from './geometry-tolerance.mjs';
+import { resolveConstraints } from './assembly-constraints.mjs'; // ⓑ 관계 배치(런타임 호출 — 순환 안전)
 
 // 부품 → 계통색 (service/role 우선, 없으면 type). 계통색 GA 3D·도면 색분류 공용.
 export const SERVICE_COL = {
@@ -512,6 +513,12 @@ function pipeFeatureScad(features) {
 export function buildAssembly(asm) {
   if (!asm || !Array.isArray(asm.parts) || asm.parts.length === 0) {
     return { ok: false, gateErrors: asm?.alignmentErrors?.length ? asm.alignmentErrors : ['assembly: parts[] 비어있음'], interferences: [] };
+  }
+  // ⓑ 관계 배치: 부품에 constraints 가 있으면 절대좌표(at)로 먼저 해석한다(좌표 없이 관계로 배치).
+  // 해석 실패(순환·미지 참조 등)는 조용히 넘기지 않고 정직 게이트 에러로 되돌린다.
+  if (asm.parts.some((p) => Array.isArray(p.constraints) && p.constraints.length > 0)) {
+    try { asm = resolveConstraints(asm); }
+    catch (e) { return { ok: false, gateErrors: [`구속 해석 실패: ${e instanceof Error ? e.message : String(e)}`], interferences: [] }; }
   }
   // 성능 예산(§A) — km 곡선 현 분할 등으로 부품 폭증 시 정직 거부(구간 분할 설계 유도)
   if (asm.parts.length > PARTS_BUDGET) {

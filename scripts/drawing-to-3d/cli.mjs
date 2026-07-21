@@ -17,6 +17,8 @@
  *   node cli.mjs step asm.json --out model.step           # B-rep STEP(부품별 컴파운드·filletMm 반영)
  *   node cli.mjs html asm.json --out ga3d.html            # 오프라인 3D 뷰어
  *   node cli.mjs preview asm.json --out <dir> [--views iso,side,top]  # 헤드리스 렌더→PNG(배치 검증용 눈)
+ *   node cli.mjs loft loftspec.json --out part.json      # ⓒ 프로파일+스테이션 → 매끈한 곡면 mesh 부품
+ *   node cli.mjs constraints asm.json --out resolved.json # ⓑ 관계배치 구속 해석(좌표 확정)
  *   node cli.mjs package asm.json --out <dir> [--step] [--title "제목"]  # 실시 도서 세트(어셈블리→도시에)
  *   node cli.mjs templates [domain]                                     # 분야 어셈블리 템플릿 목록(형상 합성기 앞문)
  *   node cli.mjs dossier <domain> <templateId> --out <dir> [--step] [--params '{..}']  # 템플릿→완제 도시에 원샷
@@ -149,6 +151,14 @@ async function main() {
   } else if (cmd === 'preview') {
     name = 'render_preview';
     args = { assembly: loadAsm(argv[1]), outDir: resolve(flag('out', 'nexyfab-preview')), ...(flag('views') ? { views: flag('views').split(',') } : {}) };
+  } else if (cmd === 'loft') {
+    name = 'loft_part';
+    args = JSON.parse(readFileSync(resolve(argv[1]), 'utf8')); // 로프트 스펙 JSON {profile,stations,...}
+    if (flag('out')) { const r = await callTool(name, args); writeFileSync(resolve(flag('out')), JSON.stringify(r.part, null, 1)); out({ ok: r.ok, savedPart: resolve(flag('out')), volumeMm3: r.volumeMm3, triCount: r.triCount }); return; }
+  } else if (cmd === 'constraints') {
+    name = 'resolve_constraints';
+    args = { assembly: loadAsm(argv[1]) };
+    if (flag('out')) { const r = await callTool(name, args); writeFileSync(resolve(flag('out')), JSON.stringify(r.assembly, null, 1)); out({ ok: r.ok, savedAssembly: resolve(flag('out')), parts: r.assembly.parts.length }); return; }
   } else if (cmd === 'templates') {
     name = 'list_templates';
     args = argv[1] && !argv[1].startsWith('--') ? { domain: argv[1] } : {};

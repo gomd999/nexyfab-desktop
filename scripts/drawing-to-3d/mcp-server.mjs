@@ -355,6 +355,29 @@ export const tools = [
     },
   },
   {
+    name: 'loft_part',
+    description:
+      'ⓒ 로프트 저작 — 프로파일+스테이션 스펙으로 매끈한 곡면 mesh 부품 생성(박스 아님). ' +
+      'profile.type=circle|superellipse|naca|roundedRect|polygon, stations=[{at:[x,y,z],scale,rot}], ' +
+      'axis=z|x|y. 동체·덕트·날개·블레이드 등 단면을 이어 만드는 형상. 반환: mesh 부품(verts/faces/체적).',
+    inputSchema: {
+      type: 'object', required: ['profile', 'stations'],
+      properties: {
+        id: { type: 'string' }, profile: { type: 'object', description: '{type, ...params}' },
+        stations: { type: 'array', items: { type: 'object' } },
+        axis: { type: 'string', enum: ['x', 'y', 'z'] }, material: { type: 'string' }, role: { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'resolve_constraints',
+    description:
+      'ⓑ 조립 구속 — 부품을 절대좌표가 아니라 관계로 배치. 각 부품 constraints[](offset·concentric·' +
+      'onFace·mirror·centerline)를 to 의존성 위상정렬로 해석해 at 확정. 순환·미지참조 등은 정직 throw. ' +
+      '반환: at가 확정된 어셈블리(buildAssembly/render_preview/generate_package 에 그대로 투입).',
+    inputSchema: { type: 'object', required: ['assembly'], properties: { assembly: { type: 'object' } } },
+  },
+  {
     name: 'render_preview',
     description:
       '헤드리스 렌더→PNG(ⓐ) — 어셈블리를 top/side/iso 그레이스케일 PNG로 (브라우저·GL 없이 ' +
@@ -611,6 +634,17 @@ export async function callTool(name, args = {}) {
     const genParams = { nB: args.nB, rRoot: args.rRoot, rTip: args.rTip, chord: args.chord, cx: args.cx, cy: args.cy ?? 0, cz: args.cz ?? 0, pitch: args.pitch, naca: args.naca ?? '4412' };
     return { params: bladeRingMesh(genParams), gen: { kind: 'blade_ring', params: genParams }, usage: "assembly 부품으로: {id, type:'mesh', params, gen, at:{tx:0,ty:0,tz:0}}" };
   }
+  if (name === 'loft_part') {
+    const { loftPartFromSpec } = await import('./loft.mjs');
+    const part = loftPartFromSpec(args);
+    return { ok: true, part, volumeMm3: part.params.volumeMm3, triCount: part.params.triCount };
+  }
+
+  if (name === 'resolve_constraints') {
+    const { resolveConstraints } = await import('./assembly-constraints.mjs');
+    return { ok: true, assembly: resolveConstraints(args.assembly) };
+  }
+
   if (name === 'render_preview') {
     const { renderPreview } = await import('./render-preview.mjs');
     const { pngs, triCount } = renderPreview(args.assembly, { ...(Array.isArray(args.views) && args.views.length ? { views: args.views } : {}) });

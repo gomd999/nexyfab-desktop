@@ -295,6 +295,33 @@ export function loftAlongAxis(profile2d, stations, opts = {}) {
   return { ...mesh, rings };
 }
 
+// ─────────────── 스펙 기반(JSON 저작: CLI/MCP/라우트에서 함수 없이 로프트) ───────────────
+
+/** 프로파일 스펙(JSON) → 2D 프로파일. type: circle|superellipse|naca|roundedRect|polygon. */
+export function profileFromSpec(spec) {
+  if (!spec || typeof spec !== 'object') throw new Error('profile spec 객체 필요');
+  switch (spec.type) {
+    case 'circle': return circleProfile(spec.r ?? spec.radius, spec.n);
+    case 'superellipse': return superellipseProfile(spec.a, spec.b, spec.n, spec.exp);
+    case 'naca': return nacaProfile(spec.code, spec.n);
+    case 'roundedRect': return roundedRectProfile(spec.w ?? spec.width, spec.h ?? spec.height, spec.r ?? 0, spec.n);
+    case 'polygon': return polygonProfile(spec.points);
+    default: throw new Error(`알 수 없는 profile type '${spec?.type}' (circle|superellipse|naca|roundedRect|polygon)`);
+  }
+}
+
+/** 로프트 스펙(JSON) → mesh 부품. { id?, profile:<spec>, stations:[{at,scale,rot}], axis?, material?, role? }. */
+export function loftPartFromSpec(spec) {
+  if (!spec || typeof spec !== 'object') throw new Error('loft spec 객체 필요');
+  const prof = profileFromSpec(spec.profile);
+  const mesh = loftAlongAxis(prof, spec.stations, { axis: spec.axis ?? 'z', ...(spec.caps === false ? { caps: false } : {}) });
+  return {
+    id: spec.id ?? 'loft', type: 'mesh', material: spec.material ?? 'composite', role: spec.role ?? 'body',
+    at: { tx: 0, ty: 0, tz: 0 },
+    params: { verts: mesh.verts, faces: mesh.faces, aabb: mesh.aabb, volumeMm3: mesh.volumeMm3, triCount: mesh.triCount },
+  };
+}
+
 // ───────────────────────── 데모 ─────────────────────────
 
 /** 로프트 바디 하나(페어링 덕트 — 원형 흡입구가 라운드 사각 배기구로 매끈히 전이)로
