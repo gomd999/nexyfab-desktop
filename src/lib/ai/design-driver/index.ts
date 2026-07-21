@@ -38,6 +38,7 @@ export {
 } from './interferencePrecise';
 export { manufacturingGate } from './manufacturingGate';
 export { buildFlatPatternArtifact, flatPatternGate, type FlatPatternArtifact } from './flatPatternGate';
+export { buildWeldmentArtifact, weldmentGate, type WeldmentArtifact } from './weldmentGate';
 export { buildGdtArtifact, gdtGate, type GdtArtifact } from './gdtGate';
 export { buildDrawingArtifact, drawingGate, type DrawingArtifact, type PlannedMeasurement } from './drawingGate';
 export { buildDesignPackage, buildVerificationReport, planBomRows, REPORT_LIMITATIONS } from './packager';

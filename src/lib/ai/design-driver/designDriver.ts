@@ -31,6 +31,11 @@ import {
   flatPatternGate,
   type FlatPatternArtifact,
 } from './flatPatternGate';
+import {
+  buildWeldmentArtifact,
+  weldmentGate,
+  type WeldmentArtifact,
+} from './weldmentGate';
 import { buildDrawingArtifact, drawingGate } from './drawingGate';
 import { buildGdtArtifact, gdtGate } from './gdtGate';
 import { buildDesignPackage } from './packager';
@@ -117,6 +122,16 @@ export async function runDesignDriver(
       flatPatterns.set(part.partId, null);
     }
   }
+  // Weldment cut list (WB-3). Build failures CAPTURED as null (gate refuses).
+  const weldments = new Map<string, WeldmentArtifact | null>();
+  for (const part of plan.parts) {
+    if (!part.weldment) continue;
+    try {
+      weldments.set(part.partId, buildWeldmentArtifact(part));
+    } catch {
+      weldments.set(part.partId, null);
+    }
+  }
   const drawingArtifact = buildDrawingArtifact(plan);
   // WB-5: GD&T auto-propose + verify over the named topology; declared specs are
   // enforced (build never throws — refusals become gate reasons).
@@ -146,6 +161,11 @@ export async function runDesignDriver(
       gates.push(flatPatternGate(part, flatPatterns.get(part.partId) ?? null));
     }
   }
+  for (const part of plan.parts) {
+    if (part.weldment) {
+      gates.push(weldmentGate(part, weldments.get(part.partId) ?? null));
+    }
+  }
   gates.push(drawingGate(plan, drawingArtifact));
   gates.push(gdtGate(plan, gdtArtifact));
 
@@ -172,6 +192,7 @@ export async function runDesignDriver(
     drawing: drawingArtifact,
     assembly: assemblyArtifact,
     flatPatterns,
+    weldments,
     gdt: gdtArtifact,
   });
   return { ok: true, plan, gates, package: pkg };

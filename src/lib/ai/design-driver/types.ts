@@ -138,6 +138,45 @@ export interface SheetMetalSpec {
   devTolMm?: number;
 }
 
+// ─── plan: weldment (WB-3 웰드먼트 편입) ───────────────────────────────────
+
+/** One structural-frame member as an axis segment (endpoints in PART frame, mm). */
+export interface WeldmentSegment {
+  start: [number, number, number];
+  end: [number, number, number];
+}
+
+/**
+ * A welded structural frame. Consumed by the real weldment engine
+ * (welding/miterFrame): members are mitered at shared corners and a cut list
+ * (per-member stock length + end-miter angles + mass) is REAL-measured off the
+ * mitered solids — so the weldmentGate verifies fabrication data, not claims.
+ *
+ * `bodies[0]` stays a simple representative-stock prism (dimensioned by the
+ * geometry/drawing gates); this spec drives the ADDITIONAL cut-list gate.
+ */
+export interface WeldmentSpec {
+  /** miterFrame SECTION_TYPE: 0 rect-tube · 1 I-beam · 2 L-angle · 3 round-tube · 4 solid-rod. */
+  sectionType: number;
+  /** Section envelope size, mm. */
+  sizeMm: number;
+  /** Wall / web thickness, mm. */
+  thicknessMm: number;
+  /** Cut-list material designation. Default 'SS400'. */
+  material?: string;
+  /** Frame member axis segments. */
+  segments: WeldmentSegment[];
+  /** Apply bisector miters at 2-member corners. Default true. */
+  miter?: boolean;
+  /**
+   * Optional INDEPENDENT hand-calc of the total raw stock length (Σ cut lengths),
+   * mm. When present the gate checks |measured − expected| ≤ stockTolMm.
+   */
+  expectedTotalStockMm?: number;
+  /** Absolute tolerance for the total-stock cross-check, mm. Default 1e-6. */
+  stockTolMm?: number;
+}
+
 export interface PlanPart {
   partId: string;
   name: string;
@@ -153,6 +192,8 @@ export interface PlanPart {
   process?: DfmProcess;
   /** When present, the flat-pattern gate unfolds this sheet-metal part (WB-2). */
   sheetMetal?: SheetMetalSpec;
+  /** When present, the cut-list gate mitres this weldment frame (WB-3). */
+  weldment?: WeldmentSpec;
 }
 
 // ─── plan: assembly ──────────────────────────────────────────────────────
@@ -266,7 +307,7 @@ export interface DesignPlan {
 
 // ─── gate IR ─────────────────────────────────────────────────────────────
 
-export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern' | 'gdt';
+export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern' | 'gdt' | 'weldment';
 
 export interface GateResult {
   /** `${kind}:${scope}` — e.g. 'geometry:bracket', 'assembly', 'drawing:pin'. */
@@ -322,6 +363,30 @@ export interface SheetMetalFlatPattern {
   bendTable: SheetMetalBendRow[];
 }
 
+/** WB-3: one cut-list member row (real-measured off the mitered frame). */
+export interface WeldmentCutRow {
+  memberIndex: number;
+  /** Section profile label (e.g. 'RECT-TUBE 40x40x3'). */
+  profile: string;
+  /** Stock length the saw must cut — longest fibre after miters, mm. */
+  cutLengthMm: number;
+  /** Axis endpoint distance (pre-miter), mm. */
+  axisLengthMm: number;
+  startMiterDeg: number;
+  endMiterDeg: number;
+}
+
+export interface WeldmentCutList {
+  members: WeldmentCutRow[];
+  /** Σ cut lengths (raw stock before nesting), mm. */
+  totalStockMm: number;
+  /** Total weldment mass, kg (linear density × length). */
+  totalMassKg: number;
+  material: string;
+  /** Aggregated cut-list line count (grouped by profile+material+length). */
+  entryCount: number;
+}
+
 export interface PartPackage {
   partId: string;
   /** Drawing sheet IR (3 views + iso, plus auxiliary body viewports). */
@@ -333,6 +398,8 @@ export interface PartPackage {
   volumeMm3: number;
   /** Present iff the part declared a sheetMetal spec (WB-2 flat pattern). */
   sheetMetal?: SheetMetalFlatPattern;
+  /** Present iff the part declared a weldment spec (WB-3 cut list). */
+  weldment?: WeldmentCutList;
 }
 
 export interface AssemblyPackage {

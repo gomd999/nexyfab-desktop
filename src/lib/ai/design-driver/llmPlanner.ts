@@ -54,6 +54,8 @@ import type {
   PlanPart,
   SheetMetalOp,
   SheetMetalSpec,
+  WeldmentSegment,
+  WeldmentSpec,
 } from './types';
 
 // ─── revision context (proposed optional brief extension — hook only) ───────
@@ -238,6 +240,39 @@ function coerceSheetMetal(v: unknown, path: string): SheetMetalSpec {
   return spec;
 }
 
+function coerceVec3(v: unknown, path: string): [number, number, number] {
+  const arr = reqArray(v, path);
+  if (arr.length !== 3) throw new PlannerError(`${path}: expected [x,y,z]`);
+  return [reqNum(arr[0], `${path}[0]`), reqNum(arr[1], `${path}[1]`), reqNum(arr[2], `${path}[2]`)];
+}
+
+function coerceWeldmentSegment(v: unknown, path: string): WeldmentSegment {
+  const o = reqObj(v, path);
+  return { start: coerceVec3(o.start, `${path}.start`), end: coerceVec3(o.end, `${path}.end`) };
+}
+
+function coerceWeldment(v: unknown, path: string): WeldmentSpec {
+  const o = reqObj(v, path);
+  const segsRaw = reqArray(o.segments, `${path}.segments`);
+  if (segsRaw.length === 0) throw new PlannerError(`${path}.segments: at least one member required`);
+  const spec: WeldmentSpec = {
+    sectionType: reqNum(o.sectionType, `${path}.sectionType`),
+    sizeMm: reqNum(o.sizeMm, `${path}.sizeMm`),
+    thicknessMm: reqNum(o.thicknessMm, `${path}.thicknessMm`),
+    segments: segsRaw.map((s, i) => coerceWeldmentSegment(s, `${path}.segments[${i}]`)),
+  };
+  if (o.material !== undefined) spec.material = reqStr(o.material, `${path}.material`);
+  if (o.miter !== undefined) {
+    if (typeof o.miter !== 'boolean') throw new PlannerError(`${path}.miter: expected a boolean`);
+    spec.miter = o.miter;
+  }
+  const expected = optNum(o.expectedTotalStockMm, `${path}.expectedTotalStockMm`);
+  if (expected !== undefined) spec.expectedTotalStockMm = expected;
+  const tol = optNum(o.stockTolMm, `${path}.stockTolMm`);
+  if (tol !== undefined) spec.stockTolMm = tol;
+  return spec;
+}
+
 function coercePart(v: unknown, path: string): PlanPart {
   const o = reqObj(v, path);
   const bodiesRaw = reqArray(o.bodies, `${path}.bodies`);
@@ -262,6 +297,9 @@ function coercePart(v: unknown, path: string): PlanPart {
   }
   if (o.sheetMetal !== undefined && o.sheetMetal !== null) {
     part.sheetMetal = coerceSheetMetal(o.sheetMetal, `${path}.sheetMetal`);
+  }
+  if (o.weldment !== undefined && o.weldment !== null) {
+    part.weldment = coerceWeldment(o.weldment, `${path}.weldment`);
   }
   return part;
 }
@@ -495,6 +533,18 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
       // When sheetMetal is present, bodies[0] should be the FLAT base-panel blank
       // (an extrude of baseWidthMm × baseLengthMm × thicknessMm) so the geometry/
       // drawing gates dimension it; the flat-pattern gate REAL-unfolds the ops.
+      "weldment": {              // optional; a WELDED STRUCTURAL FRAME
+        "sectionType": number,  // 0 rect-tube · 1 I-beam · 2 L-angle · 3 round-tube · 4 solid-rod
+        "sizeMm": number, "thicknessMm": number,
+        "material": string?,    // cut-list material designation (default SS400)
+        "segments": [ { "start": [x,y,z], "end": [x,y,z] } ],  // frame member axes (mm)
+        "miter": boolean?,      // bisector miters at 2-member corners (default true)
+        "expectedTotalStockMm": number?,   // optional hand-calc Σ cut lengths; gate cross-checks
+        "stockTolMm": number?
+      }
+      // When weldment is present, bodies[0] should be a representative-stock prism
+      // (extrude sizeMm × sizeMm × a member length) for the geometry/drawing gates;
+      // the weldment gate mitres the frame and emits the REAL cut list.
     }
   ],
   "assembly": {                   // optional

@@ -346,6 +346,68 @@ export function sheetUChannelPlan(): DesignPlan {
   };
 }
 
+// ─── fixture 6: weldment portal frame (WB-3 — cut list via real miter) ───────
+
+/**
+ * A 300×300 square portal frame of 40×40×3 rect-tube (4 mitred members).
+ * bodies[0] is a representative-stock prism (40×40 × 300, one member's stock),
+ * dimensioned by the geometry/drawing gates; the `weldment` spec drives the
+ * cut-list gate, which mitres the frame and REAL-measures each member's stock
+ * cut length + 45° end miters (welding/miterFrame engine).
+ *
+ * expectedTotalStockMm is omitted: the engine MEASURES the mitred stock; the
+ * acceptance test cross-checks it by re-running the same engine.
+ */
+export function weldmentFramePlan(): DesignPlan {
+  const SIZE = 40, T = 3, L = 300;
+  const stock = extrude(
+    [
+      { x: 0, y: 0 },
+      { x: SIZE, y: 0 },
+      { x: SIZE, y: SIZE },
+      { x: 0, y: SIZE },
+    ],
+    L,
+  );
+  return {
+    planId: 'fixture-weldment-frame',
+    name: `Weldment Portal Frame ${L}×${L} · RECT-TUBE ${SIZE}×${SIZE}×${T}`,
+    parts: [
+      {
+        partId: 'frame',
+        name: 'Portal Frame',
+        material: 'SS400',
+        process: 'cnc',
+        bodies: [{ bodyId: 'stock', feature: stock }],
+        expectedVolume: {
+          valueMm3: SIZE * SIZE * L, // 480000 — representative solid-stock prism (envelope)
+          basis: `exact prism: representative member stock ${SIZE}×${SIZE} mm² × length ${L} mm — no tessellation (true tube net section + per-member cuts are verified by the weldment gate)`,
+        },
+        weldment: {
+          sectionType: 0, // rect-tube
+          sizeMm: SIZE,
+          thicknessMm: T,
+          material: 'SS400',
+          segments: [
+            { start: [0, 0, 0], end: [L, 0, 0] },
+            { start: [L, 0, 0], end: [L, L, 0] },
+            { start: [L, L, 0], end: [0, L, 0] },
+            { start: [0, L, 0], end: [0, 0, 0] },
+          ],
+        },
+      },
+    ],
+    drawing: {
+      paperSize: 'A3',
+      scale: 1,
+      dimensions: [
+        { id: 'd_sec_w', partId: 'frame', bodyId: 'stock', view: 'top', kind: 'linear', refs: ['e.vert.0', 'e.vert.1'], expected: SIZE },
+        { id: 'd_member_l', partId: 'frame', bodyId: 'stock', view: 'front', kind: 'linear', refs: ['f.cap.bottom', 'f.cap.top'], expected: L },
+      ],
+    },
+  };
+}
+
 // ─── the planner ─────────────────────────────────────────────────────────
 
 export type FixtureKey =
@@ -353,7 +415,8 @@ export type FixtureKey =
   | 'stepped-shaft'
   | 'pin-block-assembly'
   | 'revolve-bushing'
-  | 'sheet-uchannel';
+  | 'sheet-uchannel'
+  | 'weldment-frame';
 
 const FIXTURES: Record<FixtureKey, () => DesignPlan> = {
   'l-bracket': lBracketPlan,
@@ -361,6 +424,7 @@ const FIXTURES: Record<FixtureKey, () => DesignPlan> = {
   'pin-block-assembly': pinBlockAssemblyPlan,
   'revolve-bushing': revolveBushingPlan,
   'sheet-uchannel': sheetUChannelPlan,
+  'weldment-frame': weldmentFramePlan,
 };
 
 /** Deterministic planner: dispatches on `brief.params.fixture` (fallback:
