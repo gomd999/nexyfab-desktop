@@ -16,7 +16,9 @@
  *   node cli.mjs lod asm.json [--level 1]                 # 1차 골격 빌드 요약
  *   node cli.mjs step asm.json --out model.step           # B-rep STEP(부품별 컴파운드·filletMm 반영)
  *   node cli.mjs html asm.json --out ga3d.html            # 오프라인 3D 뷰어
- *   node cli.mjs package asm.json --out <dir> [--step] [--title "제목"]  # 실시 도서 세트
+ *   node cli.mjs package asm.json --out <dir> [--step] [--title "제목"]  # 실시 도서 세트(어셈블리→도시에)
+ *   node cli.mjs templates [domain]                                     # 분야 어셈블리 템플릿 목록(형상 합성기 앞문)
+ *   node cli.mjs dossier <domain> <templateId> --out <dir> [--step] [--params '{..}']  # 템플릿→완제 도시에 원샷
  * 다분야(토목·인테리어·건설·조경, 원격 전용 — NEXYFAB_API_KEY 필요):
  *   node cli.mjs domain <civil|interior|construction|landscape> "브리프 텍스트" [--out pkg.json]  # 자유 브리프→LLM 계획
  *   node cli.mjs domain civil --fixture steel-beam [--out pkg.json]                                # 결정론 픽스처
@@ -143,6 +145,25 @@ async function main() {
   } else if (cmd === 'package') {
     name = 'generate_package';
     args = { assembly: loadAsm(argv[1]), outDir: resolve(flag('out', 'nexyfab-package')), title: flag('title'), withStep: has('step') };
+  } else if (cmd === 'templates') {
+    name = 'list_templates';
+    args = argv[1] && !argv[1].startsWith('--') ? { domain: argv[1] } : {};
+  } else if (cmd === 'dossier') {
+    name = 'generate_domain_package';
+    const domain = argv[1];
+    const templateId = argv[2];
+    if (!domain || !templateId || domain.startsWith('--') || templateId.startsWith('--')) {
+      out({ ok: false, error: 'usage: node cli.mjs dossier <domain> <templateId> --out <dir> [--step] [--params \'{"...":..}\'] — 목록: node cli.mjs templates [domain]' });
+      process.exitCode = 1;
+      return;
+    }
+    args = {
+      domain, templateId,
+      ...(flag('params') ? { params: JSON.parse(flag('params')) } : {}),
+      outDir: resolve(flag('out', 'nexyfab-dossier')),
+      ...(flag('title') ? { title: flag('title') } : {}),
+      withStep: has('step'),
+    };
   } else if (cmd === 'domain') {
     name = 'domain_design';
     const domain = argv[1];

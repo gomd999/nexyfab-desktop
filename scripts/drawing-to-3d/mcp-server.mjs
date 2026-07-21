@@ -18,6 +18,7 @@ import { extractDrawing } from './extract.mjs';
 import { editDrawing } from './edit.mjs';
 import { textToIntent, textToAssembly } from './from-text.mjs';
 import { buildAssembly } from './assembly.mjs';
+import { buildAssemblyTemplate, listAssemblyTemplates } from './domain-assemblies.mjs';
 import { verify3d } from './verify.mjs';
 import { renderHtml } from './html-render.mjs';
 import { composeWithGate, emitComposite } from './compose.mjs';
@@ -327,6 +328,33 @@ export const tools = [
     },
   },
   {
+    name: 'list_templates',
+    description:
+      '분야별 결정론 어셈블리 템플릿 목록(형상 합성기의 앞문). domain 생략 시 전 분야. ' +
+      '반환 각 항목: { domain, id, labelKo, labelEn, params[] }. ' +
+      'generate_domain_package 의 domain/templateId/params 로 그대로 사용.',
+    inputSchema: {
+      type: 'object',
+      properties: { domain: { type: 'string', description: '예: building|civil|interior|landscape (생략=전 분야)' } },
+    },
+  },
+  {
+    name: 'generate_domain_package',
+    description:
+      '분야 템플릿 → 완제 실시 도서(도시에) 원샷. buildAssemblyTemplate(형상 결정론 합성) 후 ' +
+      'generate_package 와 동일 산출(GA 2D·GA 3D·부품제작도·BOQ·제작사양서·Dossier·DXF·선택 STEP). ' +
+      '입력값 불가 시 기본값으로 대체하지 않고 정직 거부(paramErrors). 비법정(기술사 날인=별도).',
+    inputSchema: {
+      type: 'object', required: ['domain', 'templateId', 'outDir'],
+      properties: {
+        domain: { type: 'string' }, templateId: { type: 'string' },
+        params: { type: 'object', description: '템플릿 파라미터(치수 등) — 생략 시 기본값' },
+        outDir: { type: 'string', description: '저장 디렉터리(절대경로)' },
+        title: { type: 'string' }, withStep: { type: 'boolean' },
+      },
+    },
+  },
+  {
     name: 'extract_gdt',
     description:
       `STEP AP242 시맨틱 PMI(GD&T) 판독(결정론 — AI 없음): 데이텀(A/B/C…)·기하공차(⊥⌖⏥… 크기+` +
@@ -568,6 +596,21 @@ export async function callTool(name, args = {}) {
     const genParams = { nB: args.nB, rRoot: args.rRoot, rTip: args.rTip, chord: args.chord, cx: args.cx, cy: args.cy ?? 0, cz: args.cz ?? 0, pitch: args.pitch, naca: args.naca ?? '4412' };
     return { params: bladeRingMesh(genParams), gen: { kind: 'blade_ring', params: genParams }, usage: "assembly 부품으로: {id, type:'mesh', params, gen, at:{tx:0,ty:0,tz:0}}" };
   }
+  if (name === 'list_templates') {
+    return { ok: true, ...(args.domain ? { domain: args.domain } : {}), templates: listAssemblyTemplates(args.domain) };
+  }
+
+  if (name === 'generate_domain_package') {
+    // 앞문: 분야 템플릿 → 결정론 어셈블리 → generate_package 와 동일 도시에.
+    const asm = buildAssemblyTemplate(args.domain, args.templateId, args.params ?? {});
+    if (!asm) return { ok: false, error: `unknown template '${args.domain}/${args.templateId}' — list_templates 로 확인` };
+    if (asm.ok === false || (Array.isArray(asm.alignmentErrors) && asm.alignmentErrors.length)) {
+      // 정직 거부: 입력값 불가를 기본값으로 덮지 않는다.
+      return { ok: false, error: asm.error ?? 'invalid_params', paramErrors: asm.paramErrors ?? asm.alignmentErrors ?? [], message: asm.message };
+    }
+    return callTool('generate_package', { assembly: asm, outDir: args.outDir, title: args.title ?? asm.name, withStep: args.withStep });
+  }
+
   if (name === 'generate_package') {
     const fs = await import('node:fs');
     const path = await import('node:path');
