@@ -25,7 +25,6 @@ import CalcStudioPanel from './CalcStudioPanel';
 import StudioChatDock from './StudioChatDock';
 import ParametricPresetPanel from './ParametricPresetPanel';
 import AssemblyPresetPanel from './AssemblyPresetPanel';
-import LoftStudioPanel from './LoftStudioPanel';
 import EasyWizard from './EasyWizard';
 import DfmPanel from './DfmPanel';
 import FabPanel from './FabPanel';
@@ -157,7 +156,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   const [prompt, setPrompt] = useState('');
   // 일반인 진입 위저드(EasyWizard) 개폐 — 결과는 기존 어셈블리 수신 배선으로 합류
   const [easyOpen, setEasyOpen] = useState(false);
-  type StudioTab = 'create' | 'verify' | 'calc' | 'output' | 'loft';
+  type StudioTab = 'create' | 'verify' | 'calc' | 'output';
   const [tab, setTab] = useState<StudioTab>(initialTab === 'calc' ? 'calc' : 'create');
 
   // 챗 핸드오프 수신 — 랜딩 챗에서 "Studio →"로 넘어온 사양을 프롬프트에 프리필(1회 소비)
@@ -1172,7 +1171,7 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
         <div style={{ width: 380, minWidth: 380, borderRight: '1px solid var(--nx-border, #dfe3e8)', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
           {/* 작업 4탭 — 세로 스택 해체: 생성 | 검증 | 계산기 | 출력 */}
           <div style={{ display: 'flex', gap: 4, padding: '10px 12px 0', position: 'sticky', top: 0, zIndex: 5, background: 'var(--nx-bg, #fff)' }}>
-            {([['create', ko ? '생성' : 'Create'], ['verify', ko ? '검증' : 'Verify'], ['calc', ko ? '계산기' : 'Calc'], ['loft', ko ? '로프트' : 'Loft'], ['output', ko ? '출력' : 'Output']] as [StudioTab, string][]).map(([k, label]) => (
+            {([['create', ko ? '생성' : 'Create'], ['verify', ko ? '검증' : 'Verify'], ['calc', ko ? '계산기' : 'Calc'], ['output', ko ? '출력' : 'Output']] as [StudioTab, string][]).map(([k, label]) => (
               <button key={k} type="button" onClick={() => setTab(k)}
                 style={{ flex: 1, padding: '7px 0', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                   border: '1px solid ' + (tab === k ? 'var(--nx-accent, #2563eb)' : 'var(--nx-border, #dfe3e8)'),
@@ -1180,19 +1179,6 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 {label}
               </button>
             ))}
-          </div>
-          {/* T2 — 숨은 고급 모델러(파라메트릭 CAD: 불리언·필렛·쉘·NURBS, 로컬 OCCT) 발견 가능한 진입점.
-              expert 게이트는 유지(?expert=1 로 opt-in), 실험 라벨. */}
-          <div style={{ padding: '8px 12px 0' }}>
-            <a
-              href={`/${lang}/shape-generator?expert=1`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={ko ? '불리언·필렛·쉘·NURBS·피처 히스토리 트리 파라메트릭 CAD 모델러(로컬 OCCT WASM). 실험 기능.' : 'Parametric CAD modeler — boolean/fillet/shell/NURBS, feature history tree (local OCCT). Experimental.'}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, color: 'var(--nx-accent, #2563eb)', textDecoration: 'none' }}
-            >
-              🧩 {ko ? '고급 CAD 모델러 열기 (실험)' : 'Open advanced CAD modeler (beta)'}
-            </a>
           </div>
           <div style={{ padding: 16, display: tab === 'create' ? undefined : 'none' }}>
             {/* 일반인 진입 — 전문 용어 없이 3~4단계 질문으로 템플릿+치수까지(EasyWizard) */}
@@ -1764,7 +1750,6 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
 
           {/* 계산기 스튜디오 — 전 38종 스키마 자동 폼 + 계산서 출력(형상 없이도 사용 가능) */}
           <div style={{ display: tab === 'calc' ? undefined : 'none', padding: tab === 'calc' ? '16px 12px' : 0 }}><CalcStudioPanel lang={lang} /></div>
-          <div style={{ display: tab === 'loft' ? undefined : 'none', padding: tab === 'loft' ? '16px 12px' : 0 }}>{tab === 'loft' && <LoftStudioPanel lang={lang} />}</div>
 
           {/* Export + manufacture */}
           {intent && (
