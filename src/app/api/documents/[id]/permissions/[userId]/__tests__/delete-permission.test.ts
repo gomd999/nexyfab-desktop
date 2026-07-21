@@ -37,10 +37,14 @@ vi.mock('@/lib/db-adapter', () => ({
   })),
 }));
 
-vi.mock('@/lib/cloudDoc/access', () => ({
-  ensureCloudDocTables: vi.fn().mockResolvedValue(undefined),
-  resolveDocAccess: vi.fn(),
-}));
+vi.mock('@/lib/cloudDoc/access', async (orig) => {
+  const real = await orig<typeof import('@/lib/cloudDoc/access')>();
+  return {
+    ...real,
+    ensureCloudDocTables: vi.fn().mockResolvedValue(undefined),
+    resolveDocAccess: vi.fn(),
+  };
+});
 
 import { getAuthUser } from '@/lib/auth-middleware';
 import { checkOrigin } from '@/lib/csrf';

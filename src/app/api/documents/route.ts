@@ -28,7 +28,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { getStorage } from '@/lib/storage';
 import { logAudit } from '@/lib/audit';
 import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
-import { ensureCloudDocTables, ensurePersonalWorkspace, type DocumentRow } from '@/lib/cloudDoc/access';
+import { ensureCloudDocTables, ensurePersonalWorkspace, asNum, asNumOrNull, type DocumentRow } from '@/lib/cloudDoc/access';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -50,14 +50,14 @@ function publicDocShape(row: DocumentRow) {
     version:          row.version,
     nfabFormat:       row.nfab_format,
     yjsProto:         row.yjs_proto,
-    sizeBytes:        row.size_bytes,
+    sizeBytes:        asNum(row.size_bytes),
     featureCount:     row.feature_count,
     partCount:        row.part_count,
     thumbnailKey:     row.thumbnail_r2_key,
-    createdAt:        row.created_at,
-    updatedAt:        row.updated_at,
+    createdAt:        asNum(row.created_at),
+    updatedAt:        asNum(row.updated_at),
     lastEditedBy:     row.last_edited_by,
-    deletedAt:        row.deleted_at,
+    deletedAt:        asNumOrNull(row.deleted_at),
   };
 }
 
@@ -147,7 +147,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     documents: rows.map(publicDocShape),
-    pagination: { page, pageSize, total: countRow?.total ?? 0 },
+    // COUNT(*) is int8 on Postgres → node-postgres returns it as a string;
+    // coerce so `total` is a number on both backends.
+    pagination: { page, pageSize, total: asNum(countRow?.total ?? 0) },
   });
 }
 

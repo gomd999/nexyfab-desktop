@@ -25,6 +25,8 @@ import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
 import {
   ensureCloudDocTables,
   resolveDocAccess,
+  asNum,
+  asNumOrNull,
   type DocRole,
 } from '@/lib/cloudDoc/access';
 
@@ -43,8 +45,8 @@ function publicPermissionShape(row: PermissionRow) {
     userId:     row.user_id,
     role:       row.role,
     grantedBy:  row.granted_by,
-    grantedAt:  row.granted_at,
-    expiresAt:  row.expires_at,
+    grantedAt:  asNum(row.granted_at),
+    expiresAt:  asNumOrNull(row.expires_at),
   };
 }
 

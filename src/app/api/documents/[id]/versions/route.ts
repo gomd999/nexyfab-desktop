@@ -30,6 +30,7 @@ import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
 import {
   ensureCloudDocTables,
   resolveDocAccess,
+  asNum,
 } from '@/lib/cloudDoc/access';
 
 const MAX_LABEL_LEN = 100;
@@ -59,9 +60,9 @@ function publicVersionShape(row: VersionRow) {
     label:           row.label,
     branchName:      row.branch_name,
     isExplicit:      row.is_explicit === 1,
-    sizeBytes:       row.size_bytes,
+    sizeBytes:       asNum(row.size_bytes),
     createdBy:       row.created_by,
-    createdAt:       row.created_at,
+    createdAt:       asNum(row.created_at),
   };
 }
 

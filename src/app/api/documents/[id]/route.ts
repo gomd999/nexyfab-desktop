@@ -27,6 +27,8 @@ import { logAudit } from '@/lib/audit';
 import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
 import {
   resolveDocAccess,
+  asNum,
+  asNumOrNull,
   type DocumentRow,
   type DocAccess,
 } from '@/lib/cloudDoc/access';
@@ -45,14 +47,14 @@ function publicDocShape(row: DocumentRow, role: string) {
     version:      row.version,
     nfabFormat:   row.nfab_format,
     yjsProto:     row.yjs_proto,
-    sizeBytes:    row.size_bytes,
+    sizeBytes:    asNum(row.size_bytes),
     featureCount: row.feature_count,
     partCount:    row.part_count,
     thumbnailKey: row.thumbnail_r2_key,
-    createdAt:    row.created_at,
-    updatedAt:    row.updated_at,
+    createdAt:    asNum(row.created_at),
+    updatedAt:    asNum(row.updated_at),
     lastEditedBy: row.last_edited_by,
-    deletedAt:    row.deleted_at,
+    deletedAt:    asNumOrNull(row.deleted_at),
     role,
   };
 }

@@ -395,11 +395,12 @@ export async function initPostgresSchema(): Promise<void> {
   }
 
   await adapter.executeRaw(sql);
-  // NOTE: the wave-2 cloud-document tables (nf_workspaces/nf_documents/…) live in
-  // db-migrations-wave-2.sql, written with TIMESTAMPTZ + triggers — incompatible
-  // with this app's BIGINT-ms timestamp convention (running it throws "operator
-  // does not exist: integer = boolean"). So /api/documents 500s (tables absent).
-  // Fixing it = porting wave-2 to BIGINT-ms, tracked separately — do NOT auto-run.
+  // NOTE (W6-A, 260722): the wave-2 cloud-document tables (nf_workspaces/
+  // nf_documents/…) are now defined in db-postgres-migrations.sql §wave-2 with
+  // the BIGINT-ms convention (idempotent CREATE + int4→BIGINT ALTER guards),
+  // so they exist at startup and /api/documents no longer 500s. The original
+  // db-migrations-wave-2.sql (TIMESTAMPTZ + triggers) remains incompatible —
+  // still do NOT auto-run that legacy file.
   console.log('[db-adapter] PostgreSQL schema initialized');
 }
 

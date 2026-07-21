@@ -63,9 +63,13 @@ export interface DocumentRow {
  *   - id columns are TEXT (UUID-as-string) because SQLite has no native UUID.
  *     Postgres production uses real UUID; the adapter doesn't transform the
  *     value either way, so a string flows through unchanged.
- *   - timestamps are stored as ms-epoch INTEGER (matches existing nf_users /
- *     nf_projects convention). Postgres TIMESTAMPTZ on prod is parsed by
- *     the adapter into a Date, but our queries always coerce to numbers.
+ *   - timestamps are stored as ms-epoch BIGINT (matches existing nf_users /
+ *     nf_projects convention). BIGINT is required: on Postgres, INTEGER is
+ *     int4 and Date.now() (~1.79e12) overflows it → "integer out of range"
+ *     on every insert → /api/documents 500 (W6-A root cause). On SQLite the
+ *     BIGINT keyword has INTEGER affinity, so behavior is unchanged there.
+ *     The canonical startup DDL lives in db-postgres-migrations.sql (wave-2
+ *     section, BIGINT-ms port) — this lazy fallback must stay type-aligned.
  *   - the partial unique index on document-owner is *not* created here; that
  *     constraint is Postgres-only (SQLite supports partial indexes but the
  *     CHECK syntax differs). The application enforces single-owner via the
@@ -80,9 +84,9 @@ export async function ensureCloudDocTables(): Promise<void> {
       id          TEXT    PRIMARY KEY,
       owner_id    TEXT    NOT NULL,
       name        TEXT    NOT NULL,
-      created_at  INTEGER NOT NULL,
-      updated_at  INTEGER NOT NULL,
-      deleted_at  INTEGER
+      created_at  BIGINT  NOT NULL,
+      updated_at  BIGINT  NOT NULL,
+      deleted_at  BIGINT
     )
   `).catch(() => {});
   await db.execute(`
@@ -91,7 +95,7 @@ export async function ensureCloudDocTables(): Promise<void> {
       user_id      TEXT NOT NULL,
       role         TEXT NOT NULL,
       invited_by   TEXT,
-      joined_at    INTEGER NOT NULL,
+      joined_at    BIGINT NOT NULL,
       PRIMARY KEY (workspace_id, user_id)
     )
   `).catch(() => {});
@@ -106,13 +110,13 @@ export async function ensureCloudDocTables(): Promise<void> {
       nfab_format      INTEGER NOT NULL DEFAULT 2,
       yjs_proto        INTEGER NOT NULL DEFAULT 1,
       thumbnail_r2_key TEXT,
-      size_bytes       INTEGER NOT NULL DEFAULT 0,
+      size_bytes       BIGINT  NOT NULL DEFAULT 0,
       feature_count    INTEGER NOT NULL DEFAULT 0,
       part_count       INTEGER NOT NULL DEFAULT 0,
-      created_at       INTEGER NOT NULL,
-      updated_at       INTEGER NOT NULL,
+      created_at       BIGINT  NOT NULL,
+      updated_at       BIGINT  NOT NULL,
       last_edited_by   TEXT,
-      deleted_at       INTEGER
+      deleted_at       BIGINT
     )
   `).catch(() => {});
   await db.execute(`
@@ -121,8 +125,8 @@ export async function ensureCloudDocTables(): Promise<void> {
       user_id     TEXT NOT NULL,
       role        TEXT NOT NULL,
       granted_by  TEXT,
-      granted_at  INTEGER NOT NULL,
-      expires_at  INTEGER,
+      granted_at  BIGINT NOT NULL,
+      expires_at  BIGINT,
       PRIMARY KEY (document_id, user_id)
     )
   `).catch(() => {});
@@ -136,9 +140,9 @@ export async function ensureCloudDocTables(): Promise<void> {
       label             TEXT,
       branch_name       TEXT,
       is_explicit       INTEGER NOT NULL DEFAULT 0,
-      size_bytes        INTEGER NOT NULL DEFAULT 0,
+      size_bytes        BIGINT  NOT NULL DEFAULT 0,
       created_by        TEXT    NOT NULL,
-      created_at        INTEGER NOT NULL
+      created_at        BIGINT  NOT NULL
     )
   `).catch(() => {});
   _tablesEnsured = true;
@@ -147,6 +151,26 @@ export async function ensureCloudDocTables(): Promise<void> {
 /** Reset the table-bootstrap memo. Tests use this between cases. */
 export function _resetCloudDocTables(): void {
   _tablesEnsured = false;
+}
+
+/**
+ * Coerce a DB numeric to a JS number.
+ *
+ * node-postgres returns BIGINT (int8) columns as *strings* (no default type
+ * parser for int8 — JS numbers can't hold the full range). All BIGINT-ms
+ * timestamp/size columns in the wave-2 tables therefore arrive as strings on
+ * Postgres but as numbers on SQLite. Response shapes must be backend-uniform,
+ * so coerce at the serialization boundary. Safe: ms-epoch values (~1.8e12)
+ * are far below Number.MAX_SAFE_INTEGER (9e15).
+ */
+export function asNum(v: unknown): number {
+  return typeof v === 'number' ? v : Number(v);
+}
+
+/** Like asNum but preserves NULL (e.g. deleted_at, expires_at). */
+export function asNumOrNull(v: unknown): number | null {
+  if (v === null || v === undefined) return null;
+  return typeof v === 'number' ? v : Number(v);
 }
 
 /** True iff `role` (the user's effective role) ≥ `required`. */
