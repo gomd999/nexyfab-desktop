@@ -48,6 +48,28 @@ describe('Batch 3 — landscape DomainModule runs end-to-end via the shared spin
     expect(res.refusal.failedGateIds).toContain('landscape:soil:soil-depth');
   });
 
+  it('a coercible-but-invalid plan is REFUSED cleanly, never crashes (safeGate/runner guard)', async () => {
+    // landscapedAreaM2 > siteAreaM2 makes checkGreenAreaRatio THROW; without the
+    // guard this escaped runDomainDriver as a 500. Now it must be a clean refusal.
+    const plan = parkPlazaPlan();
+    plan.landscapedAreaM2 = 2000; // > siteAreaM2 1000
+    const res = await runDomainDriver({ id: 'invalid' }, { ...landscapeModule, plan: () => plan });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.refusal.stage).toBe('verify');
+    expect(res.refusal.failedGateIds).toContain('landscape:site:green-area-ratio');
+  });
+
+  it('a zero soil depth (throws in the check) is REFUSED cleanly, not a crash', async () => {
+    const plan = parkPlazaPlan();
+    plan.soil.providedDepthM = 0; // requirePositive throws
+    const res = await runDomainDriver({ id: 'bad-soil' }, { ...landscapeModule, plan: () => plan });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.refusal.stage).toBe('verify');
+    expect(res.refusal.failedGateIds).toContain('landscape:soil:soil-depth');
+  });
+
   it('an unknown brief is REFUSED at the plan stage', async () => {
     const res = await runDomainDriver({ id: 'nope', params: { fixture: 'nonexistent' } }, landscapeModule);
     expect(res.ok).toBe(false);

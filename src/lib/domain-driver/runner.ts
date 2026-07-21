@@ -15,7 +15,7 @@
  * module's real results into the refusal / package IR.
  */
 
-import type { DomainDriverResult, DomainModule } from './types';
+import type { DomainDriverResult, DomainGateResult, DomainModule } from './types';
 
 export async function runDomainDriver<Brief, Plan, Artifacts, Package>(
   brief: Brief,
@@ -75,7 +75,27 @@ export async function runDomainDriver<Brief, Plan, Artifacts, Package>(
   }
 
   // ── ③ verify — every gate runs; one fail ⇒ 패키지 미산출 ───────────────────
-  const gates = await module.gates(plan, artifacts);
+  // A gate that THROWS (a coercible-but-invalid parameter reaching a check that
+  // guards with a throw) becomes a clean verify-stage refusal here, never an
+  // uncaught exception — the same honesty as a failed gate (패키지 미산출). Each
+  // module SHOULD still wrap per-gate for granular ids, but this is the spine's
+  // systemic safety net so no domain can crash the driver on bad input.
+  let gates: DomainGateResult[];
+  try {
+    gates = await module.gates(plan, artifacts);
+  } catch (err) {
+    return {
+      ok: false,
+      domain,
+      plan,
+      gates: [],
+      refusal: {
+        stage: 'verify',
+        reason: `gate chain failed: ${(err as Error).message}`,
+        failedGateIds: [],
+      },
+    };
+  }
   const failed = gates.filter((g) => !g.pass);
   if (failed.length > 0) {
     return {

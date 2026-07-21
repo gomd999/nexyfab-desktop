@@ -106,15 +106,33 @@ export function landscapeFixturePlanner(brief: LandscapeBrief): LandscapePlan {
 
 // ─── check → gate mapping ─────────────────────────────────────────────────────
 
-function toGate(scope: string, r: LandscapeCheckResult): DomainGateResult {
-  return {
-    id: `landscape:${scope}:${r.id}`,
-    kind: 'landscape',
-    pass: r.pass,
-    metrics: r.metrics,
-    ...(r.reason ? { reason: r.reason } : {}),
-    notes: [r.basis],
-  };
+/**
+ * Run a check and map to a gate. A check THROW (invalid param = caller/coercion
+ * bug) becomes a FAILED gate (clean verify refusal) rather than an uncaught
+ * throw — parity with civil/construction safeGate.
+ */
+function safeGate(scope: string, id: string, produce: () => LandscapeCheckResult): DomainGateResult {
+  const gid = `landscape:${scope}:${id}`;
+  try {
+    const r = produce();
+    return {
+      id: `landscape:${scope}:${r.id}`,
+      kind: 'landscape',
+      pass: r.pass,
+      metrics: r.metrics,
+      ...(r.reason ? { reason: r.reason } : {}),
+      notes: [r.basis],
+    };
+  } catch (e) {
+    return {
+      id: gid,
+      kind: 'landscape',
+      pass: false,
+      metrics: {},
+      reason: `invalid parameter: ${e instanceof Error ? e.message : String(e)}`,
+      notes: ['parameter validation failed before the check could run'],
+    };
+  }
 }
 
 // ─── the module ───────────────────────────────────────────────────────────────
@@ -139,30 +157,30 @@ export const landscapeModule: DomainModule<LandscapeBrief, LandscapePlan, Landsc
 
   gates(plan) {
     return [
-      toGate('site', checkGreenAreaRatio({
+      safeGate('site', 'green-area-ratio', () => checkGreenAreaRatio({
         landscapedAreaM2: plan.landscapedAreaM2,
         siteAreaM2: plan.siteAreaM2,
         ...(plan.zone !== undefined ? { zone: plan.zone } : {}),
         ...(plan.greenMinRatioOverride !== undefined ? { minRatioOverride: plan.greenMinRatioOverride } : {}),
       })),
-      toGate('irrigation', checkIrrigationCoverage({
+      safeGate('irrigation', 'irrigation-coverage', () => checkIrrigationCoverage({
         headCount: plan.irrigation.headCount,
         coverageRadiusM: plan.irrigation.coverageRadiusM,
         targetAreaM2: plan.irrigation.targetAreaM2,
         ...(plan.irrigation.overlapFactor !== undefined ? { overlapFactor: plan.irrigation.overlapFactor } : {}),
         ...(plan.irrigation.requiredUniformity !== undefined ? { requiredUniformity: plan.irrigation.requiredUniformity } : {}),
       })),
-      toGate('drainage', checkDrainageSlope({
+      safeGate('drainage', 'drainage-slope', () => checkDrainageSlope({
         measuredGradePct: plan.drainage.measuredGradePct,
         ...(plan.drainage.surfaceType !== undefined ? { surfaceType: plan.drainage.surfaceType } : {}),
       })),
-      toGate('planting', checkPlantingSpacing({
+      safeGate('planting', 'planting-spacing', () => checkPlantingSpacing({
         plantCount: plan.planting.plantCount,
         areaM2: plan.planting.areaM2,
         ...(plan.planting.category !== undefined ? { category: plan.planting.category } : {}),
         ...(plan.planting.minSpacingMOverride !== undefined ? { minSpacingMOverride: plan.planting.minSpacingMOverride } : {}),
       })),
-      toGate('soil', checkSoilDepth({ category: plan.soil.category, providedDepthM: plan.soil.providedDepthM })),
+      safeGate('soil', 'soil-depth', () => checkSoilDepth({ category: plan.soil.category, providedDepthM: plan.soil.providedDepthM })),
     ];
   },
 
