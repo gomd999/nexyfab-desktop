@@ -60,12 +60,23 @@ import type { OcctPmiBinding, OcctShapeMeta } from '@/lib/brep-bridge/pmiOcctBin
 import type { RefBinding } from '@/lib/brep-bridge/pmiShapeBinding';
 import { sampleGeometryForSourceId } from '@/lib/drawing/sampleGeometry';
 import { featureToPolyhedron, type Polyhedron } from '@/lib/cad/featureMesh';
-import { buildExtrudeTopo, type NamedTopology } from '@/lib/cad/topoNaming';
+import { buildExtrudeTopo, edgeMidpoint, type NamedTopology } from '@/lib/cad/topoNaming';
+import { fromAnchors, type EdgeAnchorSource } from '@/lib/cad/composedTopo';
 import {
   reanchorCuttingPlane,
   auditSheetDimensions,
   formatMeasuredValue,
 } from '@/lib/drawing/associativeUpdate';
+import {
+  collectLostRefs,
+  suggestRelinkCandidates,
+  applyRelink,
+  formatRelinkRecord,
+  type LostRef,
+  type RelinkRecord,
+  type RelinkTarget,
+} from '../features/refRelink';
+import RefRelinkPanel, { type RefRelinkItem } from '../panels/RefRelinkPanel';
 import { projectPolyhedron } from '@/lib/drawing/projectView';
 import { formatSurfaceFinish, type SurfaceFinishSymbol } from '@/lib/drawing/surfaceFinishSymbol';
 import { formatWeldSymbol, type WeldSymbol } from '@/lib/drawing/weldSymbol';
@@ -116,6 +127,54 @@ const SAMPLE_PARTS: ReadonlyArray<{ sourceId: string; labelKey: string }> = [
 
 const PAPER_SIZES: ReadonlyArray<PaperSize> = ['A4', 'A3', 'A2', 'A1', 'A0'];
 
+// ─── R5 named-channel relink helpers ─────────────────────────────────────
+
+/**
+ * R5 — anchor source over a part's full named topology: every stable name →
+ * one 3D anchor point. Edges use their true midpoint (`edgeMidpoint`); faces
+ * use the loop-vertex centroid, which is an APPROXIMATE anchor used for
+ * candidate distance-ranking only — it is never presented as a measurement
+ * (근사 명시). Covering faces too is what keeps `collectLostRefs` honest on
+ * this page: a face ref that still resolves must not be reported as lost.
+ */
+function topoAnchorSource(topo: NamedTopology): EdgeAnchorSource {
+  const map = new Map<string, { x: number; y: number; z: number }>();
+  for (const [name, entry] of topo.byName) {
+    if (entry.kind === 'edge') {
+      const m = edgeMidpoint(topo, name);
+      if (m) map.set(name, m);
+      continue;
+    }
+    const f = topo.poly.faces[entry.index];
+    if (!f || f.vertices.length === 0) continue;
+    let x = 0, y = 0, z = 0;
+    for (const vi of f.vertices) {
+      const v = topo.poly.vertices[vi];
+      x += v.x; y += v.y; z += v.z;
+    }
+    const n = f.vertices.length;
+    map.set(name, { x: x / n, y: y / n, z: z / n });
+  }
+  return fromAnchors(map);
+}
+
+/**
+ * Restrict relink candidates to the lost name's own entity family
+ * ('f.*' → faces only, 'e.*' → edges only) so a lost face ref is never
+ * offered an edge substitute that the measure layer would then refuse as
+ * wrong-ref-type. Names outside both families pass through unfiltered.
+ */
+function sameKindAnchors(src: EdgeAnchorSource, lostName: string): EdgeAnchorSource {
+  const prefix = lostName.startsWith('f.') ? 'f.' : lostName.startsWith('e.') ? 'e.' : null;
+  if (!prefix) return src;
+  const lossReason = src.lossReason?.bind(src);
+  return {
+    anchor: (n) => (n.startsWith(prefix) ? src.anchor(n) : null),
+    names: () => src.names().filter((n) => n.startsWith(prefix)),
+    ...(lossReason ? { lossReason } : {}),
+  };
+}
+
 // ─── Phase 4.1.3 sheet-template picker keys ──────────────────────────────
 /**
  * Ordered list of template keys exposed in the dropdown. `'none'` is the
@@ -165,6 +224,10 @@ interface PageDict {
   gdtTag: string;
   ordinateTag: string;
   editAnnotation: string;
+  /** R5 — named-channel relink: button on ⚠ unresolved-ref dimension rows. */
+  relinkAnnotation: string;
+  /** R5 — toast prefix after a user-confirmed ref substitution. */
+  relinkApplied: string;
   assemblyMode: string;
   addSheet: string;
   exportAssemblyStep: string;
@@ -263,6 +326,8 @@ const DICT: Record<string, PageDict> = {
     dimensionTag: '치수',
     ordinateTag: '기준선',
     editAnnotation: '편집',
+    relinkAnnotation: '재지정',
+    relinkApplied: '참조 재지정 적용됨',
     gdtTag: 'GD&T',
     assemblyMode: '조립체 모드',
     addSheet: '시트 추가',
@@ -410,6 +475,8 @@ const DICT: Record<string, PageDict> = {
     hideCompareButton: 'Hide compare panel',
     ordinateTag: 'ORD',
     editAnnotation: 'Edit',
+    relinkAnnotation: 'Relink',
+    relinkApplied: 'Reference relinked',
     enablePngExport: 'High-res PNG export',
     enableOrdinateChain: 'Ordinate dimensions',
     hideOrdinateChain: 'Hide ordinate dimensions',
@@ -445,6 +512,8 @@ const DICT: Record<string, PageDict> = {
     dimensionTag: '寸法',
     ordinateTag: '基準線',
     editAnnotation: '編集',
+    relinkAnnotation: '再指定',
+    relinkApplied: '参照を再指定しました',
     gdtTag: 'GD&T',
     assemblyMode: 'アセンブリモード',
     addSheet: 'シート追加',
@@ -536,6 +605,8 @@ const DICT: Record<string, PageDict> = {
     dimensionTag: '尺寸',
     ordinateTag: '基准线',
     editAnnotation: '编辑',
+    relinkAnnotation: '重新指定',
+    relinkApplied: '已重新指定参照',
     gdtTag: 'GD&T',
     assemblyMode: '装配模式',
     addSheet: '添加图纸',
@@ -683,6 +754,8 @@ const DICT: Record<string, PageDict> = {
     hideCompareButton: 'Ocultar panel de comparación',
     ordinateTag: 'ORD',
     editAnnotation: 'Editar',
+    relinkAnnotation: 'Reasignar',
+    relinkApplied: 'Referencia reasignada',
     enablePngExport: 'Exportación PNG alta resolución',
     enableOrdinateChain: 'Cotas de ordenada',
     hideOrdinateChain: 'Ocultar cotas de ordenada',
@@ -718,6 +791,8 @@ const DICT: Record<string, PageDict> = {
     dimensionTag: 'البُعد',
     ordinateTag: 'خط الأساس',
     editAnnotation: 'تعديل',
+    relinkAnnotation: 'إعادة ربط',
+    relinkApplied: 'تمت إعادة ربط المرجع',
     gdtTag: 'GD&T',
     assemblyMode: 'وضع التجميع',
     addSheet: 'إضافة ورقة',
@@ -2090,6 +2165,106 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     () => auditSheetDimensions(sheet, sheetTopologies),
     [sheet, sheetTopologies],
   );
+
+  // ── R5 — named-channel relink wiring (도면 페이지) ───────────────────────
+  /** Anchor source over the ACTIVE part's full named topology. */
+  const currentAnchors = useMemo<EdgeAnchorSource | null>(() => {
+    const topo = sheetTopologies?.get(sourceId);
+    return topo ? topoAnchorSource(topo) : null;
+  }, [sheetTopologies, sourceId]);
+
+  /**
+   * PREVIOUS part's anchors, kept one part-switch behind `currentAnchors`
+   * (prevSectionPolyRef 패턴): a dimension ref lost in a part switch is
+   * ranked against where it USED to sit. Downstream honesty is refRelink's:
+   * named-channel candidates are midpoint-distance-ranked only and never
+   * marked confident. No prior part yet → no ranking (unranked list).
+   */
+  const priorAnchorsRef = React.useRef<EdgeAnchorSource | null>(null);
+  const lastAnchorsRef = React.useRef<{ sourceId: string; anchors: EdgeAnchorSource } | null>(null);
+  useEffect(() => {
+    const last = lastAnchorsRef.current;
+    if (last && last.sourceId !== sourceId) priorAnchorsRef.current = last.anchors;
+    if (currentAnchors) lastAnchorsRef.current = { sourceId, anchors: currentAnchors };
+  }, [sourceId, currentAnchors]);
+
+  /** Dimension currently being relinked (⚠ row's 재지정 button), or null. */
+  const [relinkDimId, setRelinkDimId] = useState<string | null>(null);
+  /** Audit trail of applied relinks (RefRelinkPanel history pane). */
+  const [relinkHistory, setRelinkHistory] = useState<RelinkRecord[]>([]);
+  const [relinkToast, setRelinkToast] = useState<string | null>(null);
+
+  /**
+   * Dimensions whose audit failure is `unresolved-ref` AND whose refs really
+   * fail to resolve on the anchor source — the only rows where a relink is
+   * applicable. Other explicit failures (not-parallel 등) keep their ⚠ with
+   * no relink button: their refs resolve, so there is nothing to relink.
+   */
+  const relinkableDimIds = useMemo<ReadonlySet<string>>(() => {
+    const out = new Set<string>();
+    if (!currentAnchors) return out;
+    for (const d of annotations.dimensions) {
+      const res = dimensionAudit.get(d.id);
+      if (
+        res && !res.ok && res.reason === 'unresolved-ref' &&
+        d.refs.some((r) => currentAnchors.anchor(r) === null)
+      ) {
+        out.add(d.id);
+      }
+    }
+    return out;
+  }, [annotations.dimensions, dimensionAudit, currentAnchors]);
+
+  /** Lost refs + ranked candidates for the dimension being relinked. */
+  const relinkItems = useMemo<RefRelinkItem[]>(() => {
+    if (!relinkDimId || !currentAnchors) return [];
+    const dim = annotations.dimensions.find((d) => d.id === relinkDimId);
+    if (!dim) return [];
+    const lost = collectLostRefs({
+      dimensions: [{ id: dim.id, label: `${dict.dimensionTag} · ${dim.kind}`, refs: dim.refs }],
+      anchors: currentAnchors,
+      ...(priorAnchorsRef.current ? { priorAnchors: priorAnchorsRef.current } : {}),
+    });
+    return lost.map((lostRef) => ({
+      lostRef,
+      suggestion: suggestRelinkCandidates(lostRef, {
+        anchors: lostRef.name ? sameKindAnchors(currentAnchors, lostRef.name) : currentAnchors,
+      }),
+    }));
+  }, [relinkDimId, currentAnchors, annotations.dimensions, dict.dimensionTag]);
+
+  /**
+   * Apply one user-confirmed candidate: substitute the lost name in the
+   * dimension's refs (applyRelink — immutable + audit record), splice the
+   * updated refs into the sheet state, and toast the record. The dimension
+   * then re-measures on render (or refuses explicitly) — no value is written
+   * here. `confident: false` is exact, not an approximation: named-channel
+   * candidates are never gate-confident by refRelink's honesty rules.
+   */
+  const handleRelinkApply = useCallback((lostRef: LostRef, target: RelinkTarget) => {
+    if (target.kind !== 'name') return; // this page wires the named channel only
+    const dim = annotations.dimensions.find((d) => d.id === lostRef.consumer.id);
+    if (!dim) return;
+    try {
+      const applied = applyRelink(
+        { type: 'dimension', id: dim.id, refs: dim.refs },
+        lostRef,
+        target,
+        { confident: false },
+      );
+      if (!('refs' in applied.consumer)) return; // dimension consumers always carry refs
+      const nextRefs = [...applied.consumer.refs];
+      setAnnotations((prev) => ({
+        ...prev,
+        dimensions: prev.dimensions.map((d) => (d.id === dim.id ? { ...d, refs: nextRefs } : d)),
+      }));
+      setRelinkHistory((h) => [...h, applied.record]);
+      setRelinkToast(`${dict.relinkApplied}: ${formatRelinkRecord(applied.record)}`);
+    } catch (err) {
+      // applyRelink refuses (never partially applies) — surface the reason verbatim.
+      setRelinkToast(err instanceof Error ? err.message : String(err));
+    }
+  }, [annotations.dimensions, dict.relinkApplied]);
 
   const allAnnotations: ReadonlyArray<{
     id: string;
@@ -3528,6 +3703,36 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
               </button>
             </div>
 
+            {/* R5 — relink history toast: the applied record verbatim
+                (formatRelinkRecord), dismissible; latest apply wins. */}
+            {relinkToast ? (
+              <div
+                data-testid="drawing-relink-toast"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                  fontSize: 11,
+                  background: '#ecfdf5',
+                  color: '#065f46',
+                  border: '1px solid #a7f3d0',
+                  borderRadius: 4,
+                  padding: '6px 8px',
+                }}
+              >
+                <span style={{ wordBreak: 'break-all' }}>{relinkToast}</span>
+                <button
+                  type="button"
+                  data-testid="drawing-relink-toast-close"
+                  onClick={() => setRelinkToast(null)}
+                  style={{ background: 'none', border: 'none', color: '#065f46', cursor: 'pointer', fontSize: 12, lineHeight: 1, padding: 0 }}
+                >
+                  ✕
+                </button>
+              </div>
+            ) : null}
+
             {allAnnotations.length === 0 ? (
               <p
                 data-testid="drawing-page-no-annotations"
@@ -3564,6 +3769,27 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                         {a.label}
                       </span>
                       <span style={{ display: 'flex', gap: 4 }}>
+                        {a.kind === 'dimension' && relinkableDimIds.has(a.id) ? (
+                          <button
+                            type="button"
+                            data-testid={`drawing-page-relink-annotation-${a.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRelinkDimId(a.id);
+                            }}
+                            style={{
+                              padding: '2px 8px',
+                              background: '#b45309',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 3,
+                              cursor: 'pointer',
+                              fontSize: 11,
+                            }}
+                          >
+                            {dict.relinkAnnotation}
+                          </button>
+                        ) : null}
                         {a.kind === 'ordinate' ? (
                           <button
                             type="button"
@@ -4093,6 +4319,20 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
           viewportId={firstViewportId}
           onAdd={handleAdd}
           onClose={() => setModalOpen(false)}
+        />
+      ) : null}
+
+      {/* R5 — props-injected relink panel, scoped to the one dimension whose
+          ⚠ row was clicked. The panel is pure presentation over the engine's
+          suggestion (never confident on the named channel); it unmounts
+          itself once the dimension has no lost refs left (items empty). */}
+      {relinkDimId && !assemblyMode ? (
+        <RefRelinkPanel
+          lang={lang}
+          items={relinkItems}
+          onApply={handleRelinkApply}
+          onClose={() => setRelinkDimId(null)}
+          history={relinkHistory}
         />
       ) : null}
     </main>

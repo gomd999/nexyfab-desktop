@@ -7238,7 +7238,9 @@ export function ShapeGeneratorInner() {
   // 라이터는 자체 검증 실패 시 사유째 throw(생성≠검증) → 사유 원문을 토스트.
   const handleBrepFormatExport = useCallback((format: BrepExportFormat) => {
     void runBrepExport(format, effectiveResult?.geometry, planLimits.exportFormats, {
-      onGated: () => promptUpgrade(`${format.toUpperCase()} Export`),
+      onGated: () => promptUpgrade(
+        format === 'sat' ? lt.satExportFeature : format === 'iges' ? lt.igesExportFeature : lt.ifcExportFeature,
+      ),
       onStart: () => setExportingFormat(format.toUpperCase()),
       onSuccess: () => {
         analytics.shapeDownload(format.toUpperCase());
@@ -7247,7 +7249,7 @@ export function ShapeGeneratorInner() {
       onRefused: (reason) => addToast('error', reason),
       onFinally: () => setExportingFormat(null),
     });
-  }, [effectiveResult, planLimits.exportFormats, promptUpgrade, addToast]);
+  }, [effectiveResult, planLimits.exportFormats, promptUpgrade, addToast, lt]);
   const handleExportSAT = useCallback(() => handleBrepFormatExport('sat'), [handleBrepFormatExport]);
   const handleExportIGES = useCallback(() => handleBrepFormatExport('iges'), [handleBrepFormatExport]);
   const handleExportIFC = useCallback(() => handleBrepFormatExport('ifc'), [handleBrepFormatExport]);
