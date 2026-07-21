@@ -19,6 +19,7 @@ export {
 export { runDesignDriver, type DriverDeps } from './designDriver';
 export { polyhedronVolume, manifoldVolume, buildPartGeometry, geometryGate, type ManifoldVolumeResult, type PartGeometry, type BodyGeometry, type Aabb } from './geometryGate';
 export { solvePlanAssembly, assemblyGate, ASSEMBLY_DEFAULT_TOL, type AssemblySolveArtifact } from './assemblyGate';
+export { buildInterferenceArtifact, interferenceGate, INTERFERENCE_CONTACT_TOL, type InterferenceArtifact } from './interferenceGate';
 export { manufacturingGate } from './manufacturingGate';
 export { buildDrawingArtifact, drawingGate, type DrawingArtifact, type PlannedMeasurement } from './drawingGate';
 export { buildDesignPackage, buildVerificationReport, planBomRows, REPORT_LIMITATIONS } from './packager';

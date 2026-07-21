@@ -24,6 +24,7 @@ import {
   type AssemblySolveArtifact,
 } from './assemblyGate';
 import { buildPartGeometry, geometryGate, type PartGeometry } from './geometryGate';
+import { buildInterferenceArtifact, interferenceGate } from './interferenceGate';
 import { manufacturingGate } from './manufacturingGate';
 import { buildDrawingArtifact, drawingGate } from './drawingGate';
 import { buildDesignPackage } from './packager';
@@ -108,6 +109,14 @@ export async function runDesignDriver(
   }
   if (plan.assembly && assemblyArtifact) {
     gates.push(assemblyGate(plan, assemblyArtifact));
+    // Interference is checked ONLY on a CONVERGED placement (실행한 배치만
+    // 판정 — a non-converged pose is meaningless to collision-check, and the
+    // assembly gate already refuses that plan).
+    if (assemblyArtifact.result?.converged) {
+      gates.push(
+        interferenceGate(plan, buildInterferenceArtifact(plan, assemblyArtifact, geometries)),
+      );
+    }
   }
   for (const part of plan.parts) {
     gates.push(manufacturingGate(part, geometries.get(part.partId)!));

@@ -149,7 +149,7 @@ export interface DesignPlan {
 
 // ─── gate IR ─────────────────────────────────────────────────────────────
 
-export type GateKind = 'geometry' | 'assembly' | 'dfm' | 'drawing';
+export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing';
 
 export interface GateResult {
   /** `${kind}:${scope}` — e.g. 'geometry:bracket', 'assembly', 'drawing:pin'. */
