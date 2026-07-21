@@ -36,6 +36,7 @@ import { variableShellFeature } from './variableShell';
 import { ribFeature } from './rib';
 import { deleteFaceFeature } from './deleteFace';
 import { offsetFaceFeature } from './offsetFace';
+import { variableSectionSweepFeature, multiSectionSweepFeature } from './advancedSweepFeatures';
 
 // ─── Registry ────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,8 @@ export const FEATURE_DEFS: FeatureDefinition[] = [
   ribFeature,
   deleteFaceFeature,
   offsetFaceFeature,
+  variableSectionSweepFeature,
+  multiSectionSweepFeature,
 ];
 
 export const FEATURE_MAP: Record<MapBackedFeatureType, FeatureDefinition> =

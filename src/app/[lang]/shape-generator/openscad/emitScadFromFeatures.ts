@@ -171,6 +171,8 @@ function emitFeature(f: FeatureInstance, prior: string): string {
     case 'sweep':
     case 'loft':
     case 'boundarySurface':
+    case 'variableSectionSweep':
+    case 'multiSectionSweep':
       return `${nfabTag(f.type)}\n${prior}`;
     case 'thread':
     case 'helix':

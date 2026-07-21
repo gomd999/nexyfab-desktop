@@ -41,6 +41,8 @@ function allMapBackedFeatureTypes(): MapBackedFeatureType[] {
     'cut',
     'deleteFace',
     'offsetFace',
+    'variableSectionSweep',
+    'multiSectionSweep',
   ];
   return all.filter((t): t is MapBackedFeatureType => t !== 'sketchExtrude');
 }

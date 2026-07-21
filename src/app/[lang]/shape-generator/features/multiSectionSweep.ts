@@ -87,7 +87,6 @@ export function lofted(
   guides: GuideCurve[] = [],
   options: Partial<SweepOptions> = {},
 ): SweepResult {
-  void guides;
   const opts = { ...DEFAULT_SWEEP_OPTIONS, ...options };
   // Guard a non-finite/≤1 stationCount: t = i/(stationCount-1) would divide by 0
   // (Infinity) or go NaN, writing invalid frames into every station. Clamp 2..512.
@@ -109,14 +108,32 @@ export function lofted(
     return emptyResult(warnings);
   }
 
+  // Guide curves (multi-guide reflection). When any guide is supplied the
+  // primary guide (guides[0]) PULLS each station: the station origin is
+  // translated by the in-plane component of (guide − spineOrigin), so the
+  // section centroid tracks the rail — the classic SolidWorks guide-curve
+  // effect. A SECOND guide additionally drives a uniform section scale =
+  // spacing(t) / spacing(0) (a width rail). Malformed guides throw
+  // deterministically (never silently ignored). No guides → the legacy path
+  // runs bit-for-bit unchanged.
+  const guideCtx = prepareGuides(guides);
+
   // For each station, compute the frame + interpolated section.
   const stations: Array<{ origin: Point3D; tangent: Point3D; normal: Point3D; binormal: Point3D; profile: Array<{ x: number; y: number }> }> = [];
 
   for (let i = 0; i < opts.stationCount; i++) {
     const t = i / (opts.stationCount - 1);
     const frame = spine ? sampleSpineFrame(spine, t, opts.frame) : axisAlignedFrame(t);
-    const profile = interpolateSection(resampled, t, opts.interpolation);
-    stations.push({ ...frame, profile });
+    let profile = interpolateSection(resampled, t, opts.interpolation);
+    let origin = frame.origin;
+    if (guideCtx) {
+      const adj = guideAdjust(guideCtx, frame, t);
+      origin = adj.origin;
+      if (adj.scale !== 1) {
+        profile = profile.map(p => ({ x: p.x * adj.scale, y: p.y * adj.scale }));
+      }
+    }
+    stations.push({ origin, tangent: frame.tangent, normal: frame.normal, binormal: frame.binormal, profile });
   }
 
   // Build the swept mesh: each station's profile placed into world
@@ -172,6 +189,111 @@ function emptyResult(warnings: string[]): SweepResult {
     profilePointCount: 0,
     warnings,
   };
+}
+
+// ── Guide-curve reflection (multi-guide) ────────────────────────
+//
+// The primary guide translates each station in-plane so the section tracks it.
+// A second guide provides a uniform scale (in-plane spacing ratio). This is the
+// minimal, deterministic form of a guide-curve sweep — no per-station shear /
+// independent rotation (matching the documented limits in sweep.ts). Explicit
+// rejections (throw): a guide with < 2 samples, a non-finite guide sample, or a
+// first-two-guides pair that coincides at t = 0 (no scale reference).
+
+const GUIDE_SCALE_EPS = 1e-9;
+
+interface GuideContext {
+  guides: GuideCurve[];
+  /** In-plane-free 3D spacing of guides[0]→guides[1] at t = 0 (≥2 guides). */
+  refSpacing: number;
+}
+
+interface StationFrame {
+  origin: Point3D;
+  tangent: Point3D;
+  normal: Point3D;
+  binormal: Point3D;
+}
+
+/** Piecewise-linear evaluation of a guide polyline at parameter t ∈ [0,1]. */
+function interpGuideCurve(guide: GuideCurve, t: number): Point3D {
+  const s = guide.samples;
+  if (t <= s[0]!.t) return s[0]!.position;
+  const last = s[s.length - 1]!;
+  if (t >= last.t) return last.position;
+  for (let i = 0; i < s.length - 1; i++) {
+    const a = s[i]!;
+    const b = s[i + 1]!;
+    if (b.t >= t) {
+      const u = b.t > a.t ? (t - a.t) / (b.t - a.t) : 0;
+      return {
+        x: a.position.x + (b.position.x - a.position.x) * u,
+        y: a.position.y + (b.position.y - a.position.y) * u,
+        z: a.position.z + (b.position.z - a.position.z) * u,
+      };
+    }
+  }
+  return last.position;
+}
+
+/** Validate guides once and precompute the scale reference. Returns null when
+ *  there are no guides (legacy path). Throws on malformed guides. */
+function prepareGuides(guides: GuideCurve[]): GuideContext | null {
+  if (guides.length === 0) return null;
+  for (const g of guides) {
+    if (g.samples.length < 2) {
+      throw new Error(`guide '${g.id}' needs at least 2 samples (got ${g.samples.length})`);
+    }
+    for (const s of g.samples) {
+      if (
+        !Number.isFinite(s.t) ||
+        !Number.isFinite(s.position.x) ||
+        !Number.isFinite(s.position.y) ||
+        !Number.isFinite(s.position.z)
+      ) {
+        throw new Error(`guide '${g.id}' has a non-finite sample`);
+      }
+    }
+  }
+  let refSpacing = 0;
+  if (guides.length >= 2) {
+    const a = interpGuideCurve(guides[0]!, 0);
+    const b = interpGuideCurve(guides[1]!, 0);
+    refSpacing = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    if (!(refSpacing > GUIDE_SCALE_EPS)) {
+      throw new Error('the first two guide curves coincide at t=0 — cannot derive a section scale');
+    }
+  }
+  return { guides, refSpacing };
+}
+
+/** Per-station guide adjustment: in-plane translation toward guides[0] plus an
+ *  optional uniform scale from the guides[0]→guides[1] spacing ratio. */
+function guideAdjust(ctx: GuideContext, frame: StationFrame, t: number): { origin: Point3D; scale: number } {
+  const g0 = interpGuideCurve(ctx.guides[0]!, t);
+  const off: Point3D = {
+    x: g0.x - frame.origin.x,
+    y: g0.y - frame.origin.y,
+    z: g0.z - frame.origin.z,
+  };
+  const along = off.x * frame.tangent.x + off.y * frame.tangent.y + off.z * frame.tangent.z;
+  const inPlane: Point3D = {
+    x: off.x - along * frame.tangent.x,
+    y: off.y - along * frame.tangent.y,
+    z: off.z - along * frame.tangent.z,
+  };
+  const origin: Point3D = {
+    x: frame.origin.x + inPlane.x,
+    y: frame.origin.y + inPlane.y,
+    z: frame.origin.z + inPlane.z,
+  };
+  let scale = 1;
+  if (ctx.guides.length >= 2) {
+    const g1 = interpGuideCurve(ctx.guides[1]!, t);
+    const spacing = Math.hypot(g1.x - g0.x, g1.y - g0.y, g1.z - g0.z);
+    scale = spacing / ctx.refSpacing;
+  }
+  return { origin, scale };
 }
 
 // ── Section resampling ──────────────────────────────────────────

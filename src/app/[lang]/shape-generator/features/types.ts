@@ -49,7 +49,9 @@ export type FeatureType =
   | 'variableShell'
   | 'rib'
   | 'deleteFace'
-  | 'offsetFace';
+  | 'offsetFace'
+  | 'variableSectionSweep'
+  | 'multiSectionSweep';
 
 /** Types dispatched through `FEATURE_MAP` / registry (not the inline sketchExtrude path). */
 export type MapBackedFeatureType = Exclude<FeatureType, 'sketchExtrude'>;

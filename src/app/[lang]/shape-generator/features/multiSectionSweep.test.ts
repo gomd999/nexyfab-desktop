@@ -6,6 +6,7 @@ import {
   analyzeCompatibility,
   type SectionProfile,
   type SweepSpine,
+  type GuideCurve,
 } from './multiSectionSweep';
 
 function squareSection(id: string, spineParam: number, size = 1): SectionProfile {
@@ -75,6 +76,111 @@ describe('lofted', () => {
     const profileCount = r.profilePointCount;
     const lastRingFirst = (r.stationCount - 1) * profileCount;
     expect(r.positions[lastRingFirst * 3 + 2]).toBeCloseTo(50, 0);
+  });
+});
+
+// ── Guide-curve reflection (multi-guide) ────────────────────────
+
+const zSpine: SweepSpine = {
+  samples: [
+    { t: 0, position: { x: 0, y: 0, z: 0 }, tangent: { x: 0, y: 0, z: 1 } },
+    { t: 1, position: { x: 0, y: 0, z: 50 }, tangent: { x: 0, y: 0, z: 1 } },
+  ],
+};
+
+/** Max/min of a component across a single ring's vertices. */
+function ringComponentRange(
+  positions: Float32Array,
+  ring: number,
+  profileCount: number,
+  comp: 0 | 1 | 2,
+): { min: number; max: number } {
+  let min = Infinity;
+  let max = -Infinity;
+  const base = ring * profileCount * 3;
+  for (let p = 0; p < profileCount; p++) {
+    const v = positions[base + p * 3 + comp]!;
+    min = Math.min(min, v);
+    max = Math.max(max, v);
+  }
+  return { min, max };
+}
+
+describe('lofted — guide-curve reflection', () => {
+  it('a single guide pulls each station toward the rail (in-plane translation)', () => {
+    // Rail shares the spine Z (offset is purely in-plane +X), growing 0 → 40.
+    const rail: GuideCurve = {
+      id: 'rail',
+      samples: [
+        { t: 0, position: { x: 0, y: 0, z: 0 } },
+        { t: 1, position: { x: 40, y: 0, z: 50 } },
+      ],
+    };
+    const withGuide = lofted([squareSection('a', 0), squareSection('b', 1)], zSpine, [rail], { stationCount: 8 });
+    const noGuide = lofted([squareSection('a', 0), squareSection('b', 1)], zSpine, [], { stationCount: 8 });
+
+    const pc = withGuide.profilePointCount;
+    const lastWith = ringComponentRange(withGuide.positions, withGuide.stationCount - 1, pc, 0);
+    const lastNo = ringComponentRange(noGuide.positions, noGuide.stationCount - 1, pc, 0);
+    // Section is a unit square, so without a guide the last ring spans X∈[-1,1];
+    // with the rail it is shifted by ≈ +40 → X∈[39,41].
+    expect(lastNo.max).toBeCloseTo(1, 5);
+    expect(lastWith.min).toBeCloseTo(39, 4);
+    expect(lastWith.max).toBeCloseTo(41, 4);
+    // First ring (t=0, rail offset 0) is untouched.
+    const firstWith = ringComponentRange(withGuide.positions, 0, pc, 0);
+    expect(firstWith.max).toBeCloseTo(1, 5);
+  });
+
+  it('leaves geometry identical to the no-guide path when guides is empty', () => {
+    const a = lofted([squareSection('a', 0), squareSection('b', 1)], zSpine, [], { stationCount: 8 });
+    const b = lofted([squareSection('a', 0), squareSection('b', 1)], zSpine, undefined, { stationCount: 8 });
+    expect(Array.from(a.positions)).toEqual(Array.from(b.positions));
+  });
+
+  it('a second guide drives a uniform section scale from the rail spacing ratio', () => {
+    // guide0 coincides with the spine (no translation); guide1 spacing grows
+    // 10 → 30, so the section scale runs 1 → 3.
+    const g0: GuideCurve = {
+      id: 'g0',
+      samples: [{ t: 0, position: { x: 0, y: 0, z: 0 } }, { t: 1, position: { x: 0, y: 0, z: 50 } }],
+    };
+    const g1: GuideCurve = {
+      id: 'g1',
+      samples: [{ t: 0, position: { x: 10, y: 0, z: 0 } }, { t: 1, position: { x: 30, y: 0, z: 50 } }],
+    };
+    const r = lofted([squareSection('a', 0), squareSection('b', 1)], zSpine, [g0, g1], { stationCount: 8 });
+    const pc = r.profilePointCount;
+    const first = ringComponentRange(r.positions, 0, pc, 1);
+    const last = ringComponentRange(r.positions, r.stationCount - 1, pc, 1);
+    // Unit square in Y: first ring ×1 → [-1,1], last ring ×3 → [-3,3].
+    expect(last.max).toBeCloseTo(3, 4);
+    expect(first.max).toBeCloseTo(1, 4);
+  });
+
+  it('throws on a guide with fewer than 2 samples', () => {
+    const bad: GuideCurve = { id: 'bad', samples: [{ t: 0, position: { x: 0, y: 0, z: 0 } }] };
+    expect(() => lofted([squareSection('a', 0), squareSection('b', 1)], zSpine, [bad])).toThrow(/at least 2 samples/);
+  });
+
+  it('throws on a non-finite guide sample', () => {
+    const bad: GuideCurve = {
+      id: 'nan',
+      samples: [{ t: 0, position: { x: 0, y: 0, z: 0 } }, { t: 1, position: { x: NaN, y: 0, z: 50 } }],
+    };
+    expect(() => lofted([squareSection('a', 0), squareSection('b', 1)], zSpine, [bad])).toThrow(/non-finite/);
+  });
+
+  it('throws when the first two guides coincide at t=0 (no scale reference)', () => {
+    const g0: GuideCurve = {
+      id: 'g0',
+      samples: [{ t: 0, position: { x: 5, y: 0, z: 0 } }, { t: 1, position: { x: 5, y: 0, z: 50 } }],
+    };
+    const g1: GuideCurve = {
+      id: 'g1',
+      samples: [{ t: 0, position: { x: 5, y: 0, z: 0 } }, { t: 1, position: { x: 20, y: 0, z: 50 } }],
+    };
+    expect(() => lofted([squareSection('a', 0), squareSection('b', 1)], zSpine, [g0, g1])).toThrow(/coincide/);
   });
 });
 
