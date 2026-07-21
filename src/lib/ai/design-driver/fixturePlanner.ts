@@ -521,6 +521,62 @@ export function spurGearPlan(): DesignPlan {
   };
 }
 
+// ─── fixture 9: filleted housing block (WB-6 — real OCCT fillet, ③→A) ────────
+
+/**
+ * A 40×40×20 housing block with all edges rounded R3. bodies[0] is the base
+ * extrude box (meshed + dimensioned by the geometry/drawing gates); the `curved`
+ * spec drives the curved gate, which builds the box in the OCCT kernel, applies
+ * a REAL BRepFilletAPI fillet to every edge, and measures the resulting solid
+ * volume (< the box volume — rounding convex edges removes material).
+ *
+ * expectedVolumeMm3 is omitted: the kernel MEASURES it; the acceptance test
+ * asserts the fillet succeeded and removed material (skips when OCCT wasm is
+ * unavailable, like the sibling OCCT tests).
+ */
+export function filletedBlockPlan(): DesignPlan {
+  const W = 40, D = 20, R = 3;
+  return {
+    planId: 'fixture-filleted-block',
+    name: `Filleted Housing Block ${W}×${W}×${D} R${R}`,
+    parts: [
+      {
+        partId: 'block',
+        name: 'Housing Block',
+        material: 'AL6061',
+        process: 'cnc',
+        bodies: [
+          {
+            bodyId: 'main',
+            feature: extrude(
+              [
+                { x: 0, y: 0 },
+                { x: W, y: 0 },
+                { x: W, y: W },
+                { x: 0, y: W },
+              ],
+              D,
+            ),
+          },
+        ],
+        expectedVolume: {
+          valueMm3: W * W * D, // 32000 — base box (pre-fillet); the fillet delta is verified by the curved gate
+          basis: `exact prism: ${W}×${W} mm² × depth ${D} mm — no tessellation (edge rounds verified by the OCCT curved gate)`,
+        },
+        curved: { kind: 'fillet', radiusMm: R, edges: ['sel:all'] },
+      },
+    ],
+    drawing: {
+      paperSize: 'A3',
+      scale: 1,
+      dimensions: [
+        { id: 'd_width', partId: 'block', bodyId: 'main', view: 'top', kind: 'linear', refs: ['e.vert.0', 'e.vert.1'], expected: W },
+        { id: 'd_depth', partId: 'block', bodyId: 'main', view: 'front', kind: 'linear', refs: ['f.cap.bottom', 'f.cap.top'], expected: D },
+      ],
+    },
+  };
+}
+
 // ─── the planner ─────────────────────────────────────────────────────────
 
 export type FixtureKey =
@@ -531,7 +587,8 @@ export type FixtureKey =
   | 'sheet-uchannel'
   | 'weldment-frame'
   | 'tapped-plate'
-  | 'spur-gear';
+  | 'spur-gear'
+  | 'filleted-block';
 
 const FIXTURES: Record<FixtureKey, () => DesignPlan> = {
   'l-bracket': lBracketPlan,
@@ -542,6 +599,7 @@ const FIXTURES: Record<FixtureKey, () => DesignPlan> = {
   'weldment-frame': weldmentFramePlan,
   'tapped-plate': tappedPlatePlan,
   'spur-gear': spurGearPlan,
+  'filleted-block': filletedBlockPlan,
 };
 
 /** Deterministic planner: dispatches on `brief.params.fixture` (fallback:

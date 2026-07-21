@@ -46,6 +46,11 @@ import {
   patternGate,
   type PatternArtifact,
 } from './patternGate';
+import {
+  buildCurvedArtifact,
+  curvedGate,
+  type CurvedArtifact,
+} from './curvedGate';
 import { buildDrawingArtifact, drawingGate } from './drawingGate';
 import { buildGdtArtifact, gdtGate } from './gdtGate';
 import { buildDesignPackage } from './packager';
@@ -162,6 +167,17 @@ export async function runDesignDriver(
       patterns.set(part.partId, null);
     }
   }
+  // Curved (OCCT fillet/shell) — async kernel op (WB-6). Only runs for parts that
+  // declare `curved`, so no OCCT load happens otherwise. Failures CAPTURED.
+  const curveds = new Map<string, CurvedArtifact | null>();
+  for (const part of plan.parts) {
+    if (!part.curved) continue;
+    try {
+      curveds.set(part.partId, await buildCurvedArtifact(part));
+    } catch {
+      curveds.set(part.partId, null);
+    }
+  }
   const drawingArtifact = buildDrawingArtifact(plan);
   // WB-5: GD&T auto-propose + verify over the named topology; declared specs are
   // enforced (build never throws — refusals become gate reasons).
@@ -206,6 +222,11 @@ export async function runDesignDriver(
       gates.push(patternGate(part, patterns.get(part.partId) ?? null));
     }
   }
+  for (const part of plan.parts) {
+    if (part.curved) {
+      gates.push(curvedGate(part, curveds.get(part.partId) ?? null));
+    }
+  }
   gates.push(drawingGate(plan, drawingArtifact));
   gates.push(gdtGate(plan, gdtArtifact));
 
@@ -235,6 +256,7 @@ export async function runDesignDriver(
     weldments,
     fasteners,
     patterns,
+    curveds,
     gdt: gdtArtifact,
   });
   return { ok: true, plan, gates, package: pkg };

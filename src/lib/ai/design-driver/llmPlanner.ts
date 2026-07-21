@@ -58,6 +58,7 @@ import type {
   WeldmentSpec,
   FastenerSpec,
   PatternSpec,
+  CurvedSpec,
 } from './types';
 
 // ─── revision context (proposed optional brief extension — hook only) ───────
@@ -329,6 +330,28 @@ function coercePattern(v: unknown, path: string): PatternSpec {
   return spec;
 }
 
+const CURVED_KINDS = new Set(['fillet', 'shell']);
+
+function coerceCurved(v: unknown, path: string): CurvedSpec {
+  const o = reqObj(v, path);
+  const kind = reqStr(o.kind, `${path}.kind`);
+  if (!CURVED_KINDS.has(kind)) throw new PlannerError(`${path}.kind='${kind}' invalid (fillet|shell)`);
+  const spec: CurvedSpec = { kind: kind as CurvedSpec['kind'] };
+  const radius = optNum(o.radiusMm, `${path}.radiusMm`);
+  if (radius !== undefined) spec.radiusMm = radius;
+  const wall = optNum(o.wallMm, `${path}.wallMm`);
+  if (wall !== undefined) spec.wallMm = wall;
+  if (o.edges !== undefined) {
+    const eRaw = reqArray(o.edges, `${path}.edges`);
+    spec.edges = eRaw.map((e, i) => reqStr(e, `${path}.edges[${i}]`));
+  }
+  const expected = optNum(o.expectedVolumeMm3, `${path}.expectedVolumeMm3`);
+  if (expected !== undefined) spec.expectedVolumeMm3 = expected;
+  const tol = optNum(o.tolRel, `${path}.tolRel`);
+  if (tol !== undefined) spec.tolRel = tol;
+  return spec;
+}
+
 function coercePart(v: unknown, path: string): PlanPart {
   const o = reqObj(v, path);
   const bodiesRaw = reqArray(o.bodies, `${path}.bodies`);
@@ -364,6 +387,9 @@ function coercePart(v: unknown, path: string): PlanPart {
   if (o.patterns !== undefined && o.patterns !== null) {
     const pRaw = reqArray(o.patterns, `${path}.patterns`);
     part.patterns = pRaw.map((p, i) => coercePattern(p, `${path}.patterns[${i}]`));
+  }
+  if (o.curved !== undefined && o.curved !== null) {
+    part.curved = coerceCurved(o.curved, `${path}.curved`);
   }
   return part;
 }
@@ -632,6 +658,15 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
       ]
       // The pattern gate verifies LAYOUT (count/spacing/non-overlap/gear pitch);
       // it does NOT generate involute teeth or a CSG union of instances.
+      "curved": {              // optional; a REAL OCCT fillet on bodies[0] (must be an extrude solid)
+        "kind": "fillet",      // 'shell' is declared but not yet wired (refused)
+        "radiusMm": number,    // fillet inner radius
+        "edges": [string]?,    // stable extrude edge names, or ["sel:all"] (default all edges)
+        "expectedVolumeMm3": number?,  // optional cross-check on the real kernel volume
+        "tolRel": number?
+      }
+      // The curved gate runs the OCCT kernel (BRepFilletAPI) and REAL-measures the
+      // filleted solid volume; a radius too large for an edge FAILS the gate.
     }
   ],
   "assembly": {                   // optional

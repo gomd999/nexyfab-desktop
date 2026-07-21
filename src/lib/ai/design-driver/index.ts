@@ -41,6 +41,7 @@ export { buildFlatPatternArtifact, flatPatternGate, type FlatPatternArtifact } f
 export { buildWeldmentArtifact, weldmentGate, type WeldmentArtifact } from './weldmentGate';
 export { buildFastenerArtifact, fastenerGate, type FastenerArtifact } from './fastenerGate';
 export { buildPatternArtifact, patternGate, type PatternArtifact } from './patternGate';
+export { buildCurvedArtifact, curvedGate, type CurvedArtifact } from './curvedGate';
 export { buildGdtArtifact, gdtGate, type GdtArtifact } from './gdtGate';
 export { buildDrawingArtifact, drawingGate, type DrawingArtifact, type PlannedMeasurement } from './drawingGate';
 export { buildDesignPackage, buildVerificationReport, planBomRows, REPORT_LIMITATIONS } from './packager';

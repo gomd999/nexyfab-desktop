@@ -226,6 +226,39 @@ export interface PlanPart {
   fasteners?: FastenerSpec[];
   /** When present, the pattern gate verifies these feature patterns (WB-7). */
   patterns?: PatternSpec[];
+  /** When present, the curved gate applies a real OCCT fillet/shell (WB-6). */
+  curved?: CurvedSpec;
+}
+
+// ─── plan: curved features / OCCT (WB-6 곡면 쉘·필렛 편입) ────────────────────
+
+export type CurvedKind = 'fillet' | 'shell';
+
+/**
+ * A real B-rep curved operation applied to `bodies[0]` (which MUST be an extrude
+ * solid). The curved gate runs the OCCT kernel (nodeOcctBridge): builds the
+ * extrude, applies the op, and REAL-measures the resulting solid volume — so a
+ * rounded/hollowed housing is verified by executed geometry, not approximated.
+ *
+ *   - 'fillet': round `edges` (stable topo names, or ['sel:all']) at `radiusMm`.
+ *   - 'shell':  hollow the solid to wall `wallMm` (BRepOffsetAPI thicken).
+ */
+export interface CurvedSpec {
+  kind: CurvedKind;
+  /** fillet: inner blend radius, mm. */
+  radiusMm?: number;
+  /** fillet: edge selection — stable extrude edge names, or ['sel:all']. Default ['sel:all']. */
+  edges?: string[];
+  /** shell: wall thickness, mm. */
+  wallMm?: number;
+  /**
+   * Optional INDEPENDENT expected result volume, mm³. When present the gate
+   * checks |measured − expected| ≤ tolRel·expected (a cross-check on the real
+   * kernel volume). Omit to only assert the op succeeded + material direction.
+   */
+  expectedVolumeMm3?: number;
+  /** Relative tolerance for the volume cross-check. Default 1e-6. */
+  tolRel?: number;
 }
 
 // ─── plan: feature patterns / gear sizing (WB-7 패턴 편입) ───────────────────
@@ -378,7 +411,7 @@ export interface DesignPlan {
 
 // ─── gate IR ─────────────────────────────────────────────────────────────
 
-export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern' | 'gdt' | 'weldment' | 'fastener' | 'pattern';
+export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern' | 'gdt' | 'weldment' | 'fastener' | 'pattern' | 'curved';
 
 export interface GateResult {
   /** `${kind}:${scope}` — e.g. 'geometry:bracket', 'assembly', 'drawing:pin'. */
@@ -496,6 +529,24 @@ export interface PartPackage {
   fasteners?: FastenerRecord[];
   /** Present iff the part declared patterns (WB-7 instance layout). */
   patterns?: PatternRecord[];
+  /** Present iff the part declared a curved op (WB-6 OCCT fillet/shell). */
+  curved?: CurvedResult;
+}
+
+// ─── WB-6: curved (OCCT) result ─────────────────────────────────────────────
+
+export interface CurvedResult {
+  kind: CurvedKind;
+  /** REAL kernel volume of the base extrude solid, mm³. */
+  baseVolumeMm3: number;
+  /** REAL kernel volume after the curved op, mm³. */
+  resultVolumeMm3: number;
+  /** Signed volume change (result − base), mm³. */
+  deltaVolumeMm3: number;
+  /** fillet: radius / shell: wall, mm. */
+  sizeMm: number;
+  /** STEP (ISO-10303-21) of the curved solid — real B-rep deliverable. */
+  step?: string;
 }
 
 // ─── WB-7: pattern layout record (real instance transforms) ─────────────────
