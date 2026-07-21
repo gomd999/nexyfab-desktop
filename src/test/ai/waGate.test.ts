@@ -24,6 +24,8 @@ import {
   fixturePlanner,
   type DriverResult,
 } from '@/lib/ai/design-driver';
+import { lBracketPlan } from '@/lib/ai/design-driver/fixturePlanner';
+import { makeLlmPlanner } from '@/lib/ai/design-driver/llmPlanner';
 import {
   computeRunAutonomy,
   type AutonomyEvent,
@@ -85,6 +87,34 @@ describe('Wave A gates — GA1 driver package + GA2 review cycle (executed)', ()
     if (res.ok) return;
     expect(res.refusal.stage).toBe('plan');
     expect(res.refusal.reason).toContain('unknown brief');
+  });
+
+  it('WA-D1 봉합: 모의 LLM completion → llmPlanner → 드라이버 → 전 게이트 통과 패키지 (실 LLM 경로 배관)', async () => {
+    // "LLM"이 유효한 DesignPlan JSON을 뱉는 상황 — 파싱→coerce→preflight→
+    // 결정론 빌드→실측 게이트까지 실 LLM 경로를 (호출만 mock으로) 전부 탄다.
+    const mockLlm = makeLlmPlanner({
+      complete: async () => JSON.stringify(lBracketPlan()),
+    });
+    const res = await runDesignDriver(
+      { id: 'llm-bracket', text: 'a mounting L-bracket, 60x40, 8 thick' },
+      { planner: mockLlm },
+    );
+    if (!res.ok) throw new Error(`llm-path refused: ${res.refusal.reason}`);
+    expect(res.package.report.allPassed).toBe(true);
+    expect(res.package.parts[0]!.dxf).toContain('60');
+  });
+
+  it('WA-D1 봉합(프리플라이트): LLM이 스키마 밖 JSON을 뱉으면 계획 단계 명시 거부', async () => {
+    const mockLlm = makeLlmPlanner({
+      complete: async () => JSON.stringify({ planId: 'x', name: 'x', parts: [] }), // parts 비어있음
+    });
+    const res = await runDesignDriver(
+      { id: 'llm-empty', text: 'nonsense' },
+      { planner: mockLlm },
+    );
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.refusal.stage).toBe('plan');
   });
 
   it('GA2: 커밋→수정요청→재실행→승인(2-parent 머지) + 게이트 실패물 승인 불가 + 자동화율 계측', async () => {
