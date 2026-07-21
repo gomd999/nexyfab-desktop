@@ -1,22 +1,39 @@
 /**
  * NURBS Freeform Surface Feature
  *
- * Creates a freeform surface from a parametric control-point grid.
- * Uses replicad's loft() through interpolated wire profiles when OCCT is
- * available; falls back to a Catmull-Rom bicubic THREE.js surface otherwise.
+ * Creates a freeform surface from a parametric control-point grid using a
+ * genuine **tensor-product B-spline surface**:
+ *
+ *   S(u,v) = Σ_i Σ_j  N_{i,p}(u) · M_{j,q}(v) · P_{i,j}
+ *
+ * where N_{i,p} / M_{j,q} are the Cox-de Boor B-spline basis functions in the
+ * u / v directions (degrees p / q) evaluated over clamped uniform knot vectors.
+ * Rational (NURBS) evaluation is supported when per-control weights are given:
+ *
+ *   S(u,v) = [Σ_i Σ_j N M w_{i,j} P_{i,j}] / [Σ_i Σ_j N M w_{i,j}]
+ *
+ * The basis evaluation is reused from `curveFitting` (`basisFunction`, the same
+ * Cox-de Boor recurrence that drives the interpolation/approximation solvers),
+ * so this is a real basis evaluation — not a Catmull-Rom or loft stand-in.
+ *
+ * With clamped knot vectors (degree+1 repeated end knots) the surface
+ * interpolates the four corner control points exactly, which the tests assert.
  */
 
 import * as THREE from 'three';
 import type { FeatureDefinition } from './types';
-import { ensureOcctReady, isOcctReady } from './occtEngine';
-
-// ─── Fallback: Catmull-Rom bicubic parametric surface ─────────────────────────
+import { basisFunction } from './curveFitting';
 
 // ─── Control point helpers ────────────────────────────────────────────────────
 
 /** Encode a control point position key into params */
 export function cpKey(i: number, j: number, axis: 0 | 1 | 2): string {
   return `cp_${i}_${j}_${axis}`;
+}
+
+/** Encode a control point rational weight key into params (NURBS). */
+export function cpWeightKey(i: number, j: number): string {
+  return `cpw_${i}_${j}`;
 }
 
 /** Build the CP grid from params. Uses custom CPs if encoded, else default sinusoidal. */
@@ -51,61 +68,176 @@ export function buildCpGrid(
   return cp;
 }
 
-function buildFallbackSurface(params: Record<string, number>): THREE.BufferGeometry {
+/** Build the per-control weight grid. Absent keys default to 1 (non-rational). */
+export function buildWeightGrid(
+  params: Record<string, number>,
+  uCount: number,
+  vCount: number,
+): number[][] {
+  const w: number[][] = [];
+  for (let i = 0; i < uCount; i++) {
+    w[i] = [];
+    for (let j = 0; j < vCount; j++) {
+      const raw = params[cpWeightKey(i, j)];
+      w[i][j] = raw !== undefined && raw > 0 ? raw : 1;
+    }
+  }
+  return w;
+}
+
+// ─── Tensor-product B-spline surface core ─────────────────────────────────────
+
+export interface BSplineSurface {
+  /** Control net, indexed [i][j] → [x,y,z]. i spans u, j spans v. */
+  controlPoints: [number, number, number][][];
+  /** Per-control rational weights, same shape as controlPoints. */
+  weights: number[][];
+  degreeU: number;
+  degreeV: number;
+  /** Clamped knot vector, length = uCount + degreeU + 1. */
+  knotsU: number[];
+  /** Clamped knot vector, length = vCount + degreeV + 1. */
+  knotsV: number[];
+}
+
+/**
+ * Clamped uniform knot vector for `n` control points at the given `degree`.
+ * The first and last `degree+1` knots are repeated so the curve/surface is
+ * clamped (interpolates the boundary control points); interior knots are
+ * evenly spaced over [0,1].
+ */
+export function clampedUniformKnotVector(n: number, degree: number): number[] {
+  const m = n + degree + 1;
+  const knots: number[] = [];
+  for (let i = 0; i < m; i++) {
+    if (i <= degree) knots.push(0);
+    else if (i >= m - degree - 1) knots.push(1);
+    else knots.push((i - degree) / (n - degree));
+  }
+  return knots;
+}
+
+/**
+ * Assemble a tensor-product B-spline surface over a control net with clamped
+ * uniform knot vectors. Degrees are clamped to (count - 1) so the surface is
+ * always well-formed even for small grids.
+ */
+export function makeUniformBSplineSurface(
+  controlPoints: [number, number, number][][],
+  degreeU: number,
+  degreeV: number,
+  weights?: number[][],
+): BSplineSurface {
+  const uCount = controlPoints.length;
+  const vCount = controlPoints[0]?.length ?? 0;
+  const pU = Math.max(1, Math.min(degreeU, uCount - 1));
+  const pV = Math.max(1, Math.min(degreeV, vCount - 1));
+  const w = weights ?? controlPoints.map(row => row.map(() => 1));
+  return {
+    controlPoints,
+    weights: w,
+    degreeU: pU,
+    degreeV: pV,
+    knotsU: clampedUniformKnotVector(uCount, pU),
+    knotsV: clampedUniformKnotVector(vCount, pV),
+  };
+}
+
+/**
+ * Evaluate the u-direction basis row [N_{0,p}(u) … N_{n-1,p}(u)] via the same
+ * Cox-de Boor recurrence used by the curve fitter. Sums to 1 (partition of
+ * unity) for any u inside the knot domain.
+ */
+function basisRow(u: number, degree: number, knots: number[], n: number): number[] {
+  const row = new Array<number>(n);
+  for (let i = 0; i < n; i++) row[i] = basisFunction(i, degree, u, knots);
+  return row;
+}
+
+/**
+ * Evaluate the surface point S(u,v) for u,v ∈ [0,1]. Rational when any weight
+ * ≠ 1; reduces exactly to the polynomial B-spline surface when all weights = 1.
+ */
+export function evalBSplineSurface(
+  surf: BSplineSurface,
+  u: number,
+  v: number,
+): [number, number, number] {
+  const uCount = surf.controlPoints.length;
+  const vCount = surf.controlPoints[0]!.length;
+  const nu = basisRow(u, surf.degreeU, surf.knotsU, uCount);
+  const nv = basisRow(v, surf.degreeV, surf.knotsV, vCount);
+
+  let x = 0, y = 0, z = 0, wsum = 0;
+  for (let i = 0; i < uCount; i++) {
+    const ni = nu[i]!;
+    if (ni === 0) continue;
+    const row = surf.controlPoints[i]!;
+    const wrow = surf.weights[i]!;
+    for (let j = 0; j < vCount; j++) {
+      const b = ni * nv[j]!;
+      if (b === 0) continue;
+      const wb = b * wrow[j]!;
+      const p = row[j]!;
+      x += wb * p[0];
+      y += wb * p[1];
+      z += wb * p[2];
+      wsum += wb;
+    }
+  }
+  if (wsum === 0) return [0, 0, 0];
+  return [x / wsum, y / wsum, z / wsum];
+}
+
+// ─── Mesh construction ────────────────────────────────────────────────────────
+
+function buildBSplineSurfaceGeometry(params: Record<string, number>): THREE.BufferGeometry {
   const uCount = Math.max(2, Math.round(params.uCount ?? 5));
   const vCount = Math.max(2, Math.round(params.vCount ?? 5));
   const seg = Math.max(8, Math.round(params.tessellation ?? 32));
+  const degree = Math.max(1, Math.round(params.degree ?? 3));
 
   const cp = buildCpGrid(params, uCount, vCount);
-
-  const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
-
-  // Catmull-Rom 1D spline through 4 points at parameter t ∈ [0,1]
-  const catmull = (p0: [number, number, number], p1: [number, number, number], p2: [number, number, number], p3: [number, number, number], t: number): [number, number, number] =>
-    [0, 1, 2].map(k => {
-      const a = -0.5 * p0[k] + 1.5 * p1[k] - 1.5 * p2[k] + 0.5 * p3[k];
-      const b = p0[k] - 2.5 * p1[k] + 2 * p2[k] - 0.5 * p3[k];
-      const c = -0.5 * p0[k] + 0.5 * p2[k];
-      return a * t ** 3 + b * t ** 2 + c * t + p1[k];
-    }) as [number, number, number];
-
-  const evalSurface = (u: number, v: number): [number, number, number] => {
-    const uf = u * (uCount - 1), vf = v * (vCount - 1);
-    const ui = clamp(Math.floor(uf), 0, uCount - 2);
-    const vi = clamp(Math.floor(vf), 0, vCount - 2);
-    const ut = uf - ui, vt = vf - vi;
-    const rows = [-1, 0, 1, 2].map(di => {
-      const ri = clamp(ui + di, 0, uCount - 1);
-      return catmull(
-        cp[ri][clamp(vi - 1, 0, vCount - 1)], cp[ri][clamp(vi, 0, vCount - 1)],
-        cp[ri][clamp(vi + 1, 0, vCount - 1)], cp[ri][clamp(vi + 2, 0, vCount - 1)],
-        vt,
-      );
-    });
-    return catmull(rows[0], rows[1], rows[2], rows[3], ut);
-  };
+  const weights = buildWeightGrid(params, uCount, vCount);
+  const surf = makeUniformBSplineSurface(cp, degree, degree, weights);
 
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
   const indices: number[] = [];
-  const eps = 0.001;
+  const eps = 1e-4;
+
+  const evalAt = (u: number, v: number): [number, number, number] =>
+    evalBSplineSurface(surf, u, v);
 
   for (let i = 0; i <= seg; i++) {
     for (let j = 0; j <= seg; j++) {
-      const u = i / seg, v = j / seg;
-      const [x, y, z] = evalSurface(u, v);
+      const u = i / seg;
+      const v = j / seg;
+      const [x, y, z] = evalAt(u, v);
       positions.push(x, y, z);
       uvs.push(u, v);
-      const [x1, y1, z1] = evalSurface(Math.min(u + eps, 1), v);
-      const [x2, y2, z2] = evalSurface(u, Math.min(v + eps, 1));
-      const n = new THREE.Vector3(x1 - x, y1 - y, z1 - z).cross(new THREE.Vector3(x2 - x, y2 - y, z2 - z)).normalize();
+
+      // Central/one-sided finite differences of the analytic surface for normals.
+      const [xu, yu, zu] = evalAt(Math.min(u + eps, 1), v);
+      const [xu0, yu0, zu0] = evalAt(Math.max(u - eps, 0), v);
+      const [xv, yv, zv] = evalAt(u, Math.min(v + eps, 1));
+      const [xv0, yv0, zv0] = evalAt(u, Math.max(v - eps, 0));
+      const du = new THREE.Vector3(xu - xu0, yu - yu0, zu - zu0);
+      const dv = new THREE.Vector3(xv - xv0, yv - yv0, zv - zv0);
+      const n = du.cross(dv);
+      if (n.lengthSq() < 1e-20) n.set(0, 1, 0);
+      else n.normalize();
       normals.push(n.x, n.y, n.z);
     }
   }
+
   for (let i = 0; i < seg; i++) {
     for (let j = 0; j < seg; j++) {
-      const a = i * (seg + 1) + j, b = a + 1, c = (i + 1) * (seg + 1) + j, d = c + 1;
+      const a = i * (seg + 1) + j;
+      const b = a + 1;
+      const c = (i + 1) * (seg + 1) + j;
+      const d = c + 1;
       indices.push(a, c, b, b, c, d);
     }
   }
@@ -116,55 +248,6 @@ function buildFallbackSurface(params: Record<string, number>): THREE.BufferGeome
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geo.setIndex(indices);
   return geo;
-}
-
-// ─── OCCT-backed surface via replicad loft ────────────────────────────────────
-
-async function buildOcctNurbs(params: Record<string, number>): Promise<THREE.BufferGeometry | null> {
-  try {
-    await ensureOcctReady();
-    const replicad = (await import('replicad')) as typeof import('replicad');
-
-    const uCount = Math.max(3, Math.round(params.uCount ?? 5));
-    const vCount = Math.max(3, Math.round(params.vCount ?? 5));
-    void (params.thickness ?? 2); // thickness reserved for shell offset
-
-    const cpGrid = buildCpGrid(params, uCount, vCount);
-
-    // Build wire profiles (one per U slice) then loft through them
-    const profiles: ReturnType<typeof replicad.drawPointsInterpolation>[] = [];
-
-    for (let i = 0; i < uCount; i++) {
-      // Points along this profile (varying v)
-      const pts: [number, number, number][] = [];
-      for (let j = 0; j < vCount; j++) {
-        pts.push(cpGrid[i][j]);
-      }
-
-      // drawPointsInterpolation creates a smooth spline wire through points
-      const wire = replicad.drawPointsInterpolation(pts.map(([x, , z]): [number, number] => [x, z]));
-      profiles.push(wire);
-    }
-
-    // Loft through the profiles to create the surface solid
-    const solid = replicad.loft(
-      profiles as unknown as Parameters<typeof replicad.loft>[0],
-      { startCap: true, endCap: true } as Parameters<typeof replicad.loft>[1],
-    );
-
-    // Tessellate
-    const mesh = solid.mesh({ tolerance: 0.3, angularTolerance: 5 });
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(mesh.vertices, 3));
-    if (mesh.normals) geo.setAttribute('normal', new THREE.Float32BufferAttribute(mesh.normals, 3));
-    geo.setIndex(new THREE.Uint32BufferAttribute(mesh.triangles, 1));
-    if (!mesh.normals) geo.computeVertexNormals();
-    return geo;
-  } catch (e) {
-    console.warn('[NURBS] OCCT loft failed, using Catmull-Rom fallback:', e);
-    return null;
-  }
 }
 
 // ─── Feature definition ───────────────────────────────────────────────────────
@@ -178,17 +261,12 @@ export const nurbsSurfaceFeature: FeatureDefinition = {
     { key: 'amplitude',    labelKey: 'paramNurbsAmplitude',    default: 20,  min: 0,   max: 100, step: 1,   unit: 'mm' },
     { key: 'uCount',       labelKey: 'paramNurbsUCount',       default: 5,   min: 3,   max: 12,  step: 1,   unit: '' },
     { key: 'vCount',       labelKey: 'paramNurbsVCount',       default: 5,   min: 3,   max: 12,  step: 1,   unit: '' },
+    { key: 'degree',       labelKey: 'paramNurbsDegree',       default: 3,   min: 1,   max: 5,   step: 1,   unit: '' },
     { key: 'tessellation', labelKey: 'paramNurbsTessellation', default: 32,  min: 8,   max: 128, step: 8,   unit: '' },
     { key: 'thickness',    labelKey: 'paramNurbsThickness',    default: 2,   min: 0,   max: 20,  step: 0.5, unit: 'mm' },
   ],
 
   apply(_geometry, params) {
-    return buildFallbackSurface(params);
-  },
-
-  async applyAsync(_geometry, params) {
-    if (!isOcctReady()) await ensureOcctReady();
-    const occtResult = await buildOcctNurbs(params);
-    return occtResult ?? buildFallbackSurface(params);
+    return buildBSplineSurfaceGeometry(params);
   },
 };
