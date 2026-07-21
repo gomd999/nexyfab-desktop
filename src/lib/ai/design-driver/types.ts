@@ -177,6 +177,34 @@ export interface WeldmentSpec {
   stockTolMm?: number;
 }
 
+// ─── plan: fasteners / threads (WB-8 나사산·규격품 편입) ─────────────────────
+
+export type FastenerThreadType = 'external' | 'internal';
+export type FastenerMateMaterial = 'steel' | 'castIron' | 'aluminum' | 'brass';
+
+/**
+ * A standard ISO metric threaded feature (tapped hole or external thread). The
+ * fastener gate resolves the nominal against the ISO 261 coarse-pitch table
+ * (annotations/GDTTypes METRIC_COARSE_PITCHES — real standard data), derives the
+ * thread geometry from ISO 68-1/724 formulas, and screens thread engagement.
+ */
+export interface FastenerSpec {
+  id: string;
+  /** ISO metric nominal major diameter, mm (M-designation: 8 ⇒ M8). */
+  nominalDiameterMm: number;
+  /** Thread pitch, mm. Omit ⇒ the ISO coarse pitch for this diameter. */
+  pitchMm?: number;
+  type: FastenerThreadType;
+  /** Threaded engagement length, mm (external thread length / tapped depth). */
+  engagementMm: number;
+  /** Mating material for the engagement screen. Default 'steel'. */
+  mateMaterial?: FastenerMateMaterial;
+  /** Tolerance class (6g external / 6H internal / …) — passthrough to the callout. */
+  fit?: string;
+  /** Property class for external fasteners (e.g. '8.8'). */
+  grade?: string;
+}
+
 export interface PlanPart {
   partId: string;
   name: string;
@@ -194,6 +222,8 @@ export interface PlanPart {
   sheetMetal?: SheetMetalSpec;
   /** When present, the cut-list gate mitres this weldment frame (WB-3). */
   weldment?: WeldmentSpec;
+  /** When present, the fastener gate verifies these standard threads (WB-8). */
+  fasteners?: FastenerSpec[];
 }
 
 // ─── plan: assembly ──────────────────────────────────────────────────────
@@ -307,7 +337,7 @@ export interface DesignPlan {
 
 // ─── gate IR ─────────────────────────────────────────────────────────────
 
-export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern' | 'gdt' | 'weldment';
+export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern' | 'gdt' | 'weldment' | 'fastener';
 
 export interface GateResult {
   /** `${kind}:${scope}` — e.g. 'geometry:bracket', 'assembly', 'drawing:pin'. */
@@ -387,6 +417,27 @@ export interface WeldmentCutList {
   entryCount: number;
 }
 
+/** WB-8: one resolved standard-thread record (ISO 261 pitch + ISO 68-1 dims). */
+export interface FastenerRecord {
+  id: string;
+  /** ISO callout string, e.g. 'M8×1.25-6H' (formatThreadCallout). */
+  callout: string;
+  type: FastenerThreadType;
+  nominalDiameterMm: number;
+  pitchMm: number;
+  /** Pitch diameter d2 = d − 0.6495·P, mm. */
+  pitchDiameterMm: number;
+  /** Minor diameter (external d3 = d − 1.2269·P; internal D1 = d − 1.0825·P), mm. */
+  minorDiameterMm: number;
+  /** Tap drill (internal) ≈ d − P, mm. Present for internal threads. */
+  tapDrillMm?: number;
+  engagementMm: number;
+  /** Recommended minimum engagement for the mate material, mm (screening). */
+  minEngagementMm: number;
+  /** True when the pitch equals the ISO coarse pitch (false ⇒ declared fine pitch). */
+  coarse: boolean;
+}
+
 export interface PartPackage {
   partId: string;
   /** Drawing sheet IR (3 views + iso, plus auxiliary body viewports). */
@@ -400,6 +451,8 @@ export interface PartPackage {
   sheetMetal?: SheetMetalFlatPattern;
   /** Present iff the part declared a weldment spec (WB-3 cut list). */
   weldment?: WeldmentCutList;
+  /** Present iff the part declared fasteners (WB-8 standard-thread schedule). */
+  fasteners?: FastenerRecord[];
 }
 
 export interface AssemblyPackage {

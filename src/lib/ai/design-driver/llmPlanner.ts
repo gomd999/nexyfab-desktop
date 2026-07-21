@@ -56,6 +56,7 @@ import type {
   SheetMetalSpec,
   WeldmentSegment,
   WeldmentSpec,
+  FastenerSpec,
 } from './types';
 
 // ─── revision context (proposed optional brief extension — hook only) ───────
@@ -273,6 +274,31 @@ function coerceWeldment(v: unknown, path: string): WeldmentSpec {
   return spec;
 }
 
+const FASTENER_TYPES = new Set(['external', 'internal']);
+const FASTENER_MATE = new Set(['steel', 'castIron', 'aluminum', 'brass']);
+
+function coerceFastener(v: unknown, path: string): FastenerSpec {
+  const o = reqObj(v, path);
+  const type = reqStr(o.type, `${path}.type`);
+  if (!FASTENER_TYPES.has(type)) throw new PlannerError(`${path}.type='${type}' invalid (external|internal)`);
+  const spec: FastenerSpec = {
+    id: reqStr(o.id, `${path}.id`),
+    nominalDiameterMm: reqNum(o.nominalDiameterMm, `${path}.nominalDiameterMm`),
+    type: type as FastenerSpec['type'],
+    engagementMm: reqNum(o.engagementMm, `${path}.engagementMm`),
+  };
+  const pitch = optNum(o.pitchMm, `${path}.pitchMm`);
+  if (pitch !== undefined) spec.pitchMm = pitch;
+  if (o.mateMaterial !== undefined) {
+    const mate = reqStr(o.mateMaterial, `${path}.mateMaterial`);
+    if (!FASTENER_MATE.has(mate)) throw new PlannerError(`${path}.mateMaterial='${mate}' invalid (${[...FASTENER_MATE].join('|')})`);
+    spec.mateMaterial = mate as FastenerSpec['mateMaterial'];
+  }
+  if (o.fit !== undefined) spec.fit = reqStr(o.fit, `${path}.fit`);
+  if (o.grade !== undefined) spec.grade = reqStr(o.grade, `${path}.grade`);
+  return spec;
+}
+
 function coercePart(v: unknown, path: string): PlanPart {
   const o = reqObj(v, path);
   const bodiesRaw = reqArray(o.bodies, `${path}.bodies`);
@@ -300,6 +326,10 @@ function coercePart(v: unknown, path: string): PlanPart {
   }
   if (o.weldment !== undefined && o.weldment !== null) {
     part.weldment = coerceWeldment(o.weldment, `${path}.weldment`);
+  }
+  if (o.fasteners !== undefined && o.fasteners !== null) {
+    const fRaw = reqArray(o.fasteners, `${path}.fasteners`);
+    part.fasteners = fRaw.map((f, i) => coerceFastener(f, `${path}.fasteners[${i}]`));
   }
   return part;
 }
@@ -545,6 +575,17 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
       // When weldment is present, bodies[0] should be a representative-stock prism
       // (extrude sizeMm × sizeMm × a member length) for the geometry/drawing gates;
       // the weldment gate mitres the frame and emits the REAL cut list.
+      "fasteners": [            // optional; STANDARD ISO metric threads (tapped holes / bolts)
+        { "id": string,
+          "nominalDiameterMm": number,  // ISO nominal (8 ⇒ M8); MUST be a standard size
+          "pitchMm": number?,           // omit ⇒ ISO coarse pitch for the diameter
+          "type": "internal"|"external",
+          "engagementMm": number,       // thread engagement / tapped depth
+          "mateMaterial": "steel"|"castIron"|"aluminum"|"brass"?,  // engagement screen (default steel)
+          "fit": string?, "grade": string? }
+      ]
+      // Fasteners are verified against the ISO 261 pitch table + ISO 68-1 formulas;
+      // a non-standard nominal or under-engaged thread FAILS the gate.
     }
   ],
   "assembly": {                   // optional

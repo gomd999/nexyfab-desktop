@@ -408,6 +408,61 @@ export function weldmentFramePlan(): DesignPlan {
   };
 }
 
+// ─── fixture 7: tapped plate (WB-8 — standard ISO threads) ───────────────────
+
+/**
+ * A 40×40×15 steel plate carrying two STANDARD fasteners: an M8 tapped hole and
+ * an M6 external stud. bodies[0] is the plate (dimensioned by the geometry/
+ * drawing gates); the `fasteners` list drives the fastener gate, which resolves
+ * each against the ISO 261 coarse-pitch table + ISO 68-1 formulas (callout,
+ * pitch/minor diameter, tap drill) and screens thread engagement.
+ */
+export function tappedPlatePlan(): DesignPlan {
+  const W = 40, T = 15;
+  return {
+    planId: 'fixture-tapped-plate',
+    name: `Tapped Plate ${W}×${W}×${T} · M8 tapped + M6 stud`,
+    parts: [
+      {
+        partId: 'plate',
+        name: 'Tapped Plate',
+        material: 'S45C',
+        process: 'cnc',
+        bodies: [
+          {
+            bodyId: 'main',
+            feature: extrude(
+              [
+                { x: 0, y: 0 },
+                { x: W, y: 0 },
+                { x: W, y: W },
+                { x: 0, y: W },
+              ],
+              T,
+            ),
+          },
+        ],
+        expectedVolume: {
+          valueMm3: W * W * T, // 24000 — exact prism
+          basis: `exact prism: ${W}×${W} mm² × thickness ${T} mm — no tessellation (thread features are verified by the fastener gate, not this volume)`,
+        },
+        fasteners: [
+          { id: 'tap_m8', nominalDiameterMm: 8, type: 'internal', engagementMm: 12, mateMaterial: 'steel' },
+          { id: 'stud_m6', nominalDiameterMm: 6, type: 'external', engagementMm: 10, grade: '8.8' },
+        ],
+      },
+    ],
+    drawing: {
+      paperSize: 'A3',
+      scale: 1,
+      dimensions: [
+        { id: 'd_width', partId: 'plate', bodyId: 'main', view: 'top', kind: 'linear', refs: ['e.vert.0', 'e.vert.1'], expected: W },
+        { id: 'd_thick', partId: 'plate', bodyId: 'main', view: 'front', kind: 'linear', refs: ['f.cap.bottom', 'f.cap.top'], expected: T },
+      ],
+    },
+  };
+}
+
 // ─── the planner ─────────────────────────────────────────────────────────
 
 export type FixtureKey =
@@ -416,7 +471,8 @@ export type FixtureKey =
   | 'pin-block-assembly'
   | 'revolve-bushing'
   | 'sheet-uchannel'
-  | 'weldment-frame';
+  | 'weldment-frame'
+  | 'tapped-plate';
 
 const FIXTURES: Record<FixtureKey, () => DesignPlan> = {
   'l-bracket': lBracketPlan,
@@ -425,6 +481,7 @@ const FIXTURES: Record<FixtureKey, () => DesignPlan> = {
   'revolve-bushing': revolveBushingPlan,
   'sheet-uchannel': sheetUChannelPlan,
   'weldment-frame': weldmentFramePlan,
+  'tapped-plate': tappedPlatePlan,
 };
 
 /** Deterministic planner: dispatches on `brief.params.fixture` (fallback:
