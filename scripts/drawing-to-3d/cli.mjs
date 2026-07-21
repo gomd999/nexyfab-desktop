@@ -153,8 +153,8 @@ async function main() {
     args = { assembly: loadAsm(argv[1]), outDir: resolve(flag('out', 'nexyfab-preview')), ...(flag('views') ? { views: flag('views').split(',') } : {}) };
   } else if (cmd === 'loft') {
     name = 'loft_part';
-    args = JSON.parse(readFileSync(resolve(argv[1]), 'utf8')); // 로프트 스펙 JSON {profile,stations,...}
-    if (flag('out')) { const r = await callTool(name, args); writeFileSync(resolve(flag('out')), JSON.stringify(r.part, null, 1)); out({ ok: r.ok, savedPart: resolve(flag('out')), volumeMm3: r.volumeMm3, triCount: r.triCount }); return; }
+    args = JSON.parse(readFileSync(resolve(argv[1]), 'utf8')); // 로프트/스윕 스펙 JSON (단일 또는 {bodies:[...]})
+    if (flag('out')) { const r = await callTool(name, args); writeFileSync(resolve(flag('out')), JSON.stringify(r.assembly ?? r.part, null, 1)); out({ ok: r.ok, saved: resolve(flag('out')), parts: r.parts ?? 1, volumeMm3: r.volumeMm3, triCount: r.triCount }); return; }
   } else if (cmd === 'constraints') {
     name = 'resolve_constraints';
     args = { assembly: loadAsm(argv[1]) };

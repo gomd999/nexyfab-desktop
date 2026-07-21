@@ -16,7 +16,8 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 type LoftPart = { id: string; type: string; material: string; role: string; at: Record<string, number>; params: { volumeMm3: number; triCount: number; aabb: { min: number[]; max: number[] }; verts: number[][]; faces: number[][] } };
-type LoftMod = { loftPartFromSpec: (spec: unknown) => LoftPart };
+type LoftAssembly = { name: string; domain: string; kind: string; parts: LoftPart[] };
+type LoftMod = { loftPartFromSpec: (spec: unknown) => LoftPart; assemblyFromSpec: (spec: unknown) => LoftAssembly };
 
 let _loft: LoftMod | null = null;
 async function load(): Promise<LoftMod> {
@@ -36,14 +37,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try { mod = await load(); } catch (e) { return NextResponse.json({ ok: false, error: 'loft 모듈 로드 실패: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 }); }
 
   try {
-    const part = mod.loftPartFromSpec(spec);
-    const name = typeof (spec as { id?: unknown })?.id === 'string' ? (spec as { id: string }).id : 'loft';
+    // 단일 바디(loft/sweep)든 다중 바디({bodies:[...]}/배열)든 assemblyFromSpec 가 처리.
+    const assembly = mod.assemblyFromSpec(spec);
+    const volumeMm3 = assembly.parts.reduce((s, p) => s + (p.params.volumeMm3 || 0), 0);
+    const triCount = assembly.parts.reduce((s, p) => s + (p.params.triCount || 0), 0);
     return NextResponse.json({
       ok: true,
-      part,
-      assembly: { name, domain: 'mech', kind: 'assembly', parts: [part] },
-      volumeMm3: part.params.volumeMm3,
-      triCount: part.params.triCount,
+      assembly,
+      part: assembly.parts[0], // 하위호환(단일 바디 소비자)
+      parts: assembly.parts.length,
+      volumeMm3,
+      triCount,
     });
   } catch (e) {
     // 정직: 잘못된 스펙(프로파일 미지·점개수 불일치·스테이션<2 등)은 사유를 그대로 되돌린다.

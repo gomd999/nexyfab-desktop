@@ -136,3 +136,48 @@ test('demoLoftAssembly: 빌드 + 체적>0', () => {
   assert.ok(p.params.triCount > 0);
   assert.ok(Number.isFinite(p.params.aabb.min[0]));
 });
+
+// ───────────── ② 심화: 스윕 + 다중 바디 ─────────────
+import { sweepMesh, sweepPart, bodyFromSpec, assemblyFromSpec } from './loft.mjs';
+
+test('sweepMesh: 직선 경로 원 스윕 = 원기둥 (체적 ≈ πr²L)', () => {
+  const r = 50, L = 400, path = [];
+  for (let i = 0; i <= 8; i++) path.push([0, 0, (i * L) / 8]);
+  const g = sweepMesh(circleProfile(1, 48), path, { scale: r });
+  const exact = Math.PI * r * r * L;
+  assert.ok(Math.abs(g.volumeMm3 - exact) / exact < 0.02, `체적 ${g.volumeMm3} vs ${exact}`);
+  assert.ok(g.triCount > 0 && Number.isFinite(g.aabb.max[2]));
+});
+
+test('sweepMesh: 곡선(L) 경로도 비틀림 없이 생성', () => {
+  const path = [[0, 0, 0], [300, 0, 0], [300, 300, 0], [300, 300, 300]];
+  const g = sweepMesh(circleProfile(1, 16), path, { scale: 30 });
+  assert.ok(g.volumeMm3 > 0 && g.verts.length > 0);
+});
+
+test('sweepMesh: path <2 또는 퇴화 프로파일 → throw', () => {
+  assert.throws(() => sweepMesh(circleProfile(1, 12), [[0, 0, 0]], {}));
+  assert.throws(() => sweepMesh([[0, 0], [1, 0], [2, 0]], [[0, 0, 0], [0, 0, 10]], {}));
+});
+
+test('sweepPart / bodyFromSpec(kind:sweep) → mesh 부품', () => {
+  const p = sweepPart('duct', circleProfile(1, 20), [[0, 0, 0], [100, 0, 0], [100, 100, 0]], { scale: 20 });
+  assert.equal(p.type, 'mesh');
+  assert.ok(p.params.volumeMm3 > 0);
+  const b = bodyFromSpec({ id: 'd2', kind: 'sweep', profile: { type: 'circle', r: 1, n: 16 }, path: [[0, 0, 0], [0, 0, 200]], scale: 25 });
+  assert.equal(b.id, 'd2');
+  assert.ok(b.params.triCount > 0);
+});
+
+test('assemblyFromSpec: 다중 바디(loft+sweep) → 어셈블리, id 자동/중복거부', () => {
+  const asm = assemblyFromSpec({ name: 'multi', bodies: [
+    { id: 'tube', kind: 'sweep', profile: { type: 'circle', r: 1, n: 12 }, path: [[0, 0, 0], [200, 0, 0]], scale: 30 },
+    { kind: 'loft', profile: { type: 'roundedRect', w: 2, h: 1, r: 0.2, n: 24 }, stations: [{ at: [0, 0, 300], scale: 80 }, { at: [0, 0, 600], scale: 50 }] },
+  ] });
+  assert.equal(asm.parts.length, 2);
+  assert.deepEqual(asm.parts.map((p) => p.id), ['tube', 'body_1']);
+  assert.throws(() => assemblyFromSpec({ bodies: [
+    { id: 'x', kind: 'sweep', profile: { type: 'circle', r: 1, n: 8 }, path: [[0, 0, 0], [10, 0, 0]], scale: 5 },
+    { id: 'x', kind: 'sweep', profile: { type: 'circle', r: 1, n: 8 }, path: [[0, 0, 0], [10, 0, 0]], scale: 5 },
+  ] }), /중복/);
+});

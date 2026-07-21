@@ -310,16 +310,90 @@ export function profileFromSpec(spec) {
   }
 }
 
-/** 로프트 스펙(JSON) → mesh 부품. { id?, profile:<spec>, stations:[{at,scale,rot}], axis?, material?, role? }. */
+/** 로프트/스윕 스펙(JSON) → mesh 부품(단일 바디). loft(기본)와 sweep(kind:'sweep') 모두 처리. */
 export function loftPartFromSpec(spec) {
-  if (!spec || typeof spec !== 'object') throw new Error('loft spec 객체 필요');
-  const prof = profileFromSpec(spec.profile);
-  const mesh = loftAlongAxis(prof, spec.stations, { axis: spec.axis ?? 'z', ...(spec.caps === false ? { caps: false } : {}) });
+  return bodyFromSpec(spec);
+}
+
+// ───────────────── ② 심화: 스윕(경로 압출) + 다중 바디 ─────────────────
+
+const _sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const _add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const _cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const _dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const _scale = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+const _norm = (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+
+/**
+ * 스윕 — 2D 단면 프로파일을 3D 경로(path3d)를 따라 압출. 회전-최소화 프레임(RMF)으로
+ * 단면을 접선에 수직 유지(비틀림 최소). closed 경로 캡 없음. profile scale 상수.
+ * 반환: loftMesh 결과({verts,faces,aabb,volumeMm3,triCount}).
+ */
+export function sweepMesh(profile2d, path3d, { caps = true, scale = 1 } = {}) {
+  if (!Array.isArray(profile2d) || profile2d.length < 3) throw new Error(`sweepMesh: profile2d 점 ≥3개 필요 (받음 ${profile2d?.length})`);
+  if (Math.abs(shoelaceArea(profile2d)) < EPS_AREA) throw new Error('sweepMesh: 퇴화(면적 0) 프로파일');
+  if (!Array.isArray(path3d) || path3d.length < 2) throw new Error(`sweepMesh: path 점 ≥2개 필요 (받음 ${path3d?.length})`);
+  for (const p of path3d) if (!isFinite3(p)) throw new Error(`sweepMesh: path 점은 유한 [x,y,z] 필요 (받음 ${JSON.stringify(p)})`);
+  if (!(scale > 0)) throw new Error(`sweepMesh: scale>0 필요 (받음 ${scale})`);
+  const n = path3d.length;
+  const T = path3d.map((_, i) => {
+    const a = path3d[Math.max(0, i - 1)], b = path3d[Math.min(n - 1, i + 1)];
+    const t = _norm(_sub(b, a));
+    return (t[0] || t[1] || t[2]) ? t : [0, 0, 1];
+  });
+  const ref = Math.abs(T[0][2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
+  let N0 = _norm(_cross(ref, T[0]));
+  if (!(N0[0] || N0[1] || N0[2])) N0 = _norm(_cross([0, 1, 0], T[0]));
+  const N = [N0], B = [_norm(_cross(T[0], N0))];
+  for (let i = 1; i < n; i++) {
+    const axis = _cross(T[i - 1], T[i]);
+    const sinA = Math.hypot(axis[0], axis[1], axis[2]), cosA = _dot(T[i - 1], T[i]);
+    let Ni;
+    if (sinA < 1e-8) { Ni = N[i - 1]; } // 거의 평행 → 프레임 유지
+    else {
+      const k = _norm(axis), ang = Math.atan2(sinA, cosA), v = N[i - 1], c = Math.cos(ang), s = Math.sin(ang);
+      Ni = _add(_add(_scale(v, c), _scale(_cross(k, v), s)), _scale(k, _dot(k, v) * (1 - c))); // 로드리게스
+    }
+    Ni = _norm(_sub(Ni, _scale(T[i], _dot(Ni, T[i])))); // T에 재직교화
+    N.push(Ni); B.push(_norm(_cross(T[i], Ni)));
+  }
+  const rings = path3d.map((p, i) => profile2d.map(([u, v]) => _add(p, _add(_scale(N[i], u * scale), _scale(B[i], v * scale)))));
+  return loftMesh(rings, { caps });
+}
+
+/** 스윕 부품(id 포함). */
+export function sweepPart(id, profile2d, path3d, { material = 'composite', role = 'body', caps = true, scale = 1 } = {}) {
+  const g = sweepMesh(profile2d, path3d, { caps, scale });
+  return { id, type: 'mesh', material, role, at: { tx: 0, ty: 0, tz: 0 }, params: { verts: g.verts, faces: g.faces, aabb: g.aabb, volumeMm3: g.volumeMm3, triCount: g.triCount } };
+}
+
+/** 단일 바디 스펙 → mesh 부품. kind:'sweep'(경로) 또는 loft(기본, 스테이션). */
+export function bodyFromSpec(b) {
+  if (!b || typeof b !== 'object') throw new Error('body spec 객체 필요');
+  const prof = profileFromSpec(b.profile);
+  const g = b.kind === 'sweep'
+    ? sweepMesh(prof, b.path, { scale: b.scale ?? 1, ...(b.caps === false ? { caps: false } : {}) })
+    : loftAlongAxis(prof, b.stations, { axis: b.axis ?? 'z', ...(b.caps === false ? { caps: false } : {}) });
   return {
-    id: spec.id ?? 'loft', type: 'mesh', material: spec.material ?? 'composite', role: spec.role ?? 'body',
+    id: b.id ?? 'body', type: 'mesh', material: b.material ?? 'composite', role: b.role ?? 'body',
     at: { tx: 0, ty: 0, tz: 0 },
-    params: { verts: mesh.verts, faces: mesh.faces, aabb: mesh.aabb, volumeMm3: mesh.volumeMm3, triCount: mesh.triCount },
+    params: { verts: g.verts, faces: g.faces, aabb: g.aabb, volumeMm3: g.volumeMm3, triCount: g.triCount },
   };
+}
+
+/** 다중 바디 스펙 → 어셈블리. spec=배열 | {bodies:[...]} | 단일 바디. 각 바디는 loft|sweep. */
+export function assemblyFromSpec(spec) {
+  const bodies = Array.isArray(spec) ? spec : Array.isArray(spec?.bodies) ? spec.bodies : [spec];
+  if (!bodies.length) throw new Error('assemblyFromSpec: 바디 최소 1개 필요');
+  const seen = new Set();
+  const parts = bodies.map((b, i) => {
+    const p = bodyFromSpec(b);
+    if (p.id === 'body') p.id = `body_${i}`;
+    if (seen.has(p.id)) throw new Error(`assemblyFromSpec: 중복 바디 id '${p.id}'`);
+    seen.add(p.id);
+    return p;
+  });
+  return { name: (Array.isArray(spec) ? undefined : spec?.name) ?? 'loft', domain: 'mech', kind: 'assembly', parts };
 }
 
 // ───────────────────────── 데모 ─────────────────────────

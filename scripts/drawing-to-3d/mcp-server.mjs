@@ -357,15 +357,19 @@ export const tools = [
   {
     name: 'loft_part',
     description:
-      'ⓒ 로프트 저작 — 프로파일+스테이션 스펙으로 매끈한 곡면 mesh 부품 생성(박스 아님). ' +
-      'profile.type=circle|superellipse|naca|roundedRect|polygon, stations=[{at:[x,y,z],scale,rot}], ' +
-      'axis=z|x|y. 동체·덕트·날개·블레이드 등 단면을 이어 만드는 형상. 반환: mesh 부품(verts/faces/체적).',
+      'ⓒ 로프트/스윕 저작 — 단면을 이어 매끈한 곡면 mesh 생성(박스 아님). ' +
+      'profile.type=circle|superellipse|naca|roundedRect|polygon. 방식: (a) 로프트=stations[{at:[x,y,z],' +
+      'scale,rot}]+axis, (b) 스윕=kind:"sweep"+path[[x,y,z]...]+scale(단면을 경로 따라 압출, 회전최소화 ' +
+      '프레임). 다중 바디는 {bodies:[<바디스펙>...]} 또는 배열 → 어셈블리 반환. 반환: assembly + 체적/삼각형수.',
     inputSchema: {
-      type: 'object', required: ['profile', 'stations'],
+      type: 'object',
       properties: {
         id: { type: 'string' }, profile: { type: 'object', description: '{type, ...params}' },
-        stations: { type: 'array', items: { type: 'object' } },
+        stations: { type: 'array', items: { type: 'object' }, description: '로프트' },
+        path: { type: 'array', items: { type: 'array' }, description: '스윕(kind:sweep) 경로 [[x,y,z]...]' },
+        kind: { type: 'string', enum: ['loft', 'sweep'] }, scale: { type: 'number' },
         axis: { type: 'string', enum: ['x', 'y', 'z'] }, material: { type: 'string' }, role: { type: 'string' },
+        bodies: { type: 'array', items: { type: 'object' }, description: '다중 바디' },
       },
     },
   },
@@ -635,9 +639,12 @@ export async function callTool(name, args = {}) {
     return { params: bladeRingMesh(genParams), gen: { kind: 'blade_ring', params: genParams }, usage: "assembly 부품으로: {id, type:'mesh', params, gen, at:{tx:0,ty:0,tz:0}}" };
   }
   if (name === 'loft_part') {
-    const { loftPartFromSpec } = await import('./loft.mjs');
-    const part = loftPartFromSpec(args);
-    return { ok: true, part, volumeMm3: part.params.volumeMm3, triCount: part.params.triCount };
+    // 단일 바디(loft/sweep) 또는 다중 바디({bodies:[...]}/배열) 통합 처리.
+    const { assemblyFromSpec } = await import('./loft.mjs');
+    const assembly = assemblyFromSpec(args);
+    const volumeMm3 = assembly.parts.reduce((s, p) => s + (p.params.volumeMm3 || 0), 0);
+    const triCount = assembly.parts.reduce((s, p) => s + (p.params.triCount || 0), 0);
+    return { ok: true, assembly, part: assembly.parts[0], parts: assembly.parts.length, volumeMm3, triCount };
   }
 
   if (name === 'resolve_constraints') {
