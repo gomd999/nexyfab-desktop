@@ -1,0 +1,518 @@
+/**
+ * design-driver/llmPlanner — WA-D1: the LLM-backed `DesignPlanner`.
+ *
+ * The LLM's role stays CONFINED to the `DesignPlanner` contract (planner.ts):
+ * brief in, `DesignPlan` IR out. This module never lets model text reach the
+ * deterministic build path unchecked — it is the security boundary between an
+ * unreliable generator and the executable pipeline:
+ *
+ *   1. call an INJECTED `complete(messages)` (never a live call in tests —
+ *      비용·비결정 금지; production wraps `chatCompletion`),
+ *   2. extract JSON from the reply (markdown-fence tolerant),
+ *   3. **coerce into the DesignPlan schema** — unknown fields dropped, every
+ *      required field type-checked; any violation ⇒ `PlannerError` (날조 금지:
+ *      a guessed/half-formed plan is refused, not repaired into a lie),
+ *   4. **plan preflight** (WA-D1 핵심 — 게이트에 가기 전 명시 거부):
+ *        (a) reference validity — every dimension targets a real part/body and
+ *            its `refs` are in the extrude topology namespace,
+ *        (b) gate measurability — a dimension on a revolve/loft/sweep body is
+ *            refused up-front ("measurement not available for revolve bodies
+ *            (WB backlog)") because those kinds have no NamedTopology builder,
+ *            so the drawing gate could only ever fail on them,
+ *        (c) empty plan / unsupported feature kind.
+ *      A preflight failure is a `PlannerError` carrying the reason — the driver
+ *      turns it into a stage:'plan' refusal (패키지 미산출).
+ *
+ * The completion function is the ONLY dependency, so tests inject a
+ * deterministic mock. `chatCompletionPlanner()` is the production binding.
+ *
+ * File ownership (WA-D1): this file + its test only. Everything else in
+ * design-driver (types/planner/fixturePlanner/designDriver/gates) is CONSUMED,
+ * never modified.
+ *
+ * Honesty / limitations (근사 명시):
+ *   - A live LLM is NOT byte-deterministic even at temperature 0; determinism
+ *     is a property of the fixture/mock planner, not this one. The schema +
+ *     preflight guarantee only that whatever DOES pass is a structurally valid,
+ *     gate-eligible plan — correctness is still decided by the real gates.
+ *   - `feature` payloads are whitelisted by `kind` only (the meshable set) and
+ *     otherwise passed through to `featureToPolyhedron`, which validates the
+ *     kind-specific fields. We do not re-enumerate every feature's geometry
+ *     schema here; a malformed feature surfaces as a geometry-gate failure.
+ */
+
+import { chatCompletion, type ChatMessage } from '@/lib/ai';
+import { PlannerError, type DesignPlanner } from './planner';
+import type {
+  DesignBrief,
+  DesignPlan,
+  ExpectedVolumeSpec,
+  PlanAssembly,
+  PlanBody,
+  PlanDimensionSpec,
+  PlanDrawing,
+  PlanPart,
+} from './types';
+
+// ─── revision context (proposed optional brief extension — hook only) ───────
+
+/**
+ * A reviewer's change request, carried into the planner on a re-run. WA-D2
+ * wires PDM's `RevisionDirective` to this shape; WA-D1 only provides the
+ * injection hook. `comments` accepts bare strings or `{ note, featureId? }`
+ * (the PDM `ReviewComment` shape) so the two sides can meet without a type
+ * import.
+ *
+ * NOTE (proposed schema addition, not applied here — types.ts is not owned by
+ * this track): `DesignBrief` could gain an optional `revision?: RevisionContext`.
+ * Until then this planner reads it off the brief defensively via `LlmDesignBrief`.
+ */
+export interface RevisionContext {
+  briefSummary?: string;
+  comments: Array<string | { note: string; featureId?: string }>;
+  /** Gate ids that blocked approval on the reviewed run — must re-pass. */
+  failedGates?: string[];
+}
+
+/** `DesignBrief` plus the (optional) revision hook this planner understands. */
+export interface LlmDesignBrief extends DesignBrief {
+  revision?: RevisionContext;
+}
+
+// ─── deps ────────────────────────────────────────────────────────────────
+
+export interface LlmPlannerDeps {
+  /** Injected completion — brief messages in, raw model text out. The ONLY
+   *  external dependency, so tests pass a deterministic mock. */
+  complete: (messages: ChatMessage[]) => Promise<string>;
+  /** Planner identity (WA-E hooks). Default 'llm'. */
+  name?: string;
+  /** Override the system prompt (default = DEFAULT_SYSTEM_PROMPT). */
+  systemPrompt?: string;
+}
+
+// ─── schema constants ──────────────────────────────────────────────────────
+
+/** Feature kinds `featureToPolyhedron` can mesh (src/lib/cad/featureMesh). */
+const MESHABLE_KINDS = new Set(['extrude', 'revolve', 'sweep', 'sweep_path', 'loft']);
+const DIMENSION_KINDS = new Set(['linear', 'aligned', 'radial', 'diametric', 'angular']);
+const DIMENSION_VIEWS = new Set(['front', 'top', 'right']);
+const DFM_PROCESSES = new Set(['fdm', 'sla', 'cnc', 'injection', 'sheetMetal']);
+
+/**
+ * Grammar of a valid extrude-topology stable name (src/lib/cad/topoNaming):
+ *   faces: f.cap.top | f.cap.bottom | f.side.{i}
+ *   edges: e.vert.{i} | e.top.{i}-{j} | e.bottom.{i}-{j}
+ * A dimension `ref` outside this grammar can never resolve → preflight refuses.
+ */
+const EXTRUDE_TOPO_NAME = /^(f\.cap\.(top|bottom)|f\.side\.\d+|e\.vert\.\d+|e\.(top|bottom)\.\d+-\d+)$/;
+
+// ─── coercion primitives (violation ⇒ PlannerError) ────────────────────────
+
+function isObj(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+function reqStr(v: unknown, path: string): string {
+  if (typeof v !== 'string' || v.length === 0) {
+    throw new PlannerError(`${path}: expected a non-empty string`);
+  }
+  return v;
+}
+
+function reqNum(v: unknown, path: string): number {
+  if (typeof v !== 'number' || !Number.isFinite(v)) {
+    throw new PlannerError(`${path}: expected a finite number`);
+  }
+  return v;
+}
+
+function optNum(v: unknown, path: string): number | undefined {
+  if (v === undefined || v === null) return undefined;
+  return reqNum(v, path);
+}
+
+function reqObj(v: unknown, path: string): Record<string, unknown> {
+  if (!isObj(v)) throw new PlannerError(`${path}: expected an object`);
+  return v;
+}
+
+function reqArray(v: unknown, path: string): unknown[] {
+  if (!Array.isArray(v)) throw new PlannerError(`${path}: expected an array`);
+  return v;
+}
+
+// ─── coercion: DesignPlan (drops unknown fields; type-checks required) ──────
+
+function coerceFeature(v: unknown, path: string): PlanBody['feature'] {
+  const o = reqObj(v, path);
+  const kind = reqStr(o.kind, `${path}.kind`);
+  if (!MESHABLE_KINDS.has(kind)) {
+    throw new PlannerError(
+      `${path}.kind='${kind}' is not a meshable feature (supported: ${[...MESHABLE_KINDS].join(', ')})`,
+    );
+  }
+  // Payload passed through to featureToPolyhedron (kind-specific validation
+  // lives there). We keep the whole object rather than re-enumerate every
+  // feature schema — documented as a limitation.
+  return o as unknown as PlanBody['feature'];
+}
+
+function coerceTranslate(v: unknown, path: string): PlanBody['translate'] {
+  if (v === undefined || v === null) return undefined;
+  const o = reqObj(v, path);
+  return { x: reqNum(o.x, `${path}.x`), y: reqNum(o.y, `${path}.y`), z: reqNum(o.z, `${path}.z`) };
+}
+
+function coerceBody(v: unknown, path: string): PlanBody {
+  const o = reqObj(v, path);
+  const body: PlanBody = {
+    bodyId: reqStr(o.bodyId, `${path}.bodyId`),
+    feature: coerceFeature(o.feature, `${path}.feature`),
+  };
+  const translate = coerceTranslate(o.translate, `${path}.translate`);
+  if (translate) body.translate = translate;
+  return body;
+}
+
+function coerceExpectedVolume(v: unknown, path: string): ExpectedVolumeSpec {
+  const o = reqObj(v, path);
+  const spec: ExpectedVolumeSpec = {
+    valueMm3: reqNum(o.valueMm3, `${path}.valueMm3`),
+    // basis is REQUIRED by the honesty invariant (types.ts): a theoretical
+    // volume with no stated derivation is not accepted.
+    basis: reqStr(o.basis, `${path}.basis`),
+  };
+  const tolRel = optNum(o.tolRel, `${path}.tolRel`);
+  if (tolRel !== undefined) spec.tolRel = tolRel;
+  return spec;
+}
+
+function coercePart(v: unknown, path: string): PlanPart {
+  const o = reqObj(v, path);
+  const bodiesRaw = reqArray(o.bodies, `${path}.bodies`);
+  if (bodiesRaw.length === 0) throw new PlannerError(`${path}.bodies: at least one body required`);
+  const part: PlanPart = {
+    partId: reqStr(o.partId, `${path}.partId`),
+    name: reqStr(o.name, `${path}.name`),
+    bodies: bodiesRaw.map((b, i) => coerceBody(b, `${path}.bodies[${i}]`)),
+  };
+  const qty = optNum(o.qty, `${path}.qty`);
+  if (qty !== undefined) part.qty = qty;
+  if (o.material !== undefined) part.material = reqStr(o.material, `${path}.material`);
+  if (o.process !== undefined) {
+    const proc = reqStr(o.process, `${path}.process`);
+    if (!DFM_PROCESSES.has(proc)) {
+      throw new PlannerError(`${path}.process='${proc}' unsupported (${[...DFM_PROCESSES].join(', ')})`);
+    }
+    part.process = proc as PlanPart['process'];
+  }
+  if (o.expectedVolume !== undefined && o.expectedVolume !== null) {
+    part.expectedVolume = coerceExpectedVolume(o.expectedVolume, `${path}.expectedVolume`);
+  }
+  return part;
+}
+
+function coerceDimension(v: unknown, path: string): PlanDimensionSpec {
+  const o = reqObj(v, path);
+  const view = reqStr(o.view, `${path}.view`);
+  if (!DIMENSION_VIEWS.has(view)) {
+    throw new PlannerError(`${path}.view='${view}' invalid (front|top|right)`);
+  }
+  const kind = reqStr(o.kind, `${path}.kind`);
+  if (!DIMENSION_KINDS.has(kind)) {
+    throw new PlannerError(`${path}.kind='${kind}' invalid (${[...DIMENSION_KINDS].join(', ')})`);
+  }
+  const refsRaw = reqArray(o.refs, `${path}.refs`);
+  if (refsRaw.length === 0) throw new PlannerError(`${path}.refs: at least one ref required`);
+  const dim: PlanDimensionSpec = {
+    id: reqStr(o.id, `${path}.id`),
+    partId: reqStr(o.partId, `${path}.partId`),
+    bodyId: reqStr(o.bodyId, `${path}.bodyId`),
+    view: view as PlanDimensionSpec['view'],
+    kind: kind as PlanDimensionSpec['kind'],
+    refs: refsRaw.map((r, i) => reqStr(r, `${path}.refs[${i}]`)),
+  };
+  const expected = optNum(o.expected, `${path}.expected`);
+  if (expected !== undefined) dim.expected = expected;
+  // tolerance is an opaque passthrough (drawing.dimension owns its schema).
+  if (isObj(o.tolerance)) dim.tolerance = o.tolerance as PlanDimensionSpec['tolerance'];
+  return dim;
+}
+
+function coerceDrawing(v: unknown, path: string): PlanDrawing {
+  const o = reqObj(v, path);
+  const dimsRaw = reqArray(o.dimensions, `${path}.dimensions`);
+  const drawing: PlanDrawing = {
+    dimensions: dimsRaw.map((d, i) => coerceDimension(d, `${path}.dimensions[${i}]`)),
+  };
+  if (o.paperSize !== undefined) drawing.paperSize = reqStr(o.paperSize, `${path}.paperSize`) as PlanDrawing['paperSize'];
+  const scale = optNum(o.scale, `${path}.scale`);
+  if (scale !== undefined) drawing.scale = scale;
+  return drawing;
+}
+
+function coerceAssembly(v: unknown, path: string): PlanAssembly {
+  const o = reqObj(v, path);
+  const partsRaw = reqArray(o.parts, `${path}.parts`);
+  const matesRaw = reqArray(o.mates, `${path}.mates`);
+  // Assembly part/mate specs are consumed verbatim by solveMates, which
+  // validates their internals; we require the array-of-objects skeleton and
+  // pass through. Convergence is decided by the assembly gate.
+  partsRaw.forEach((p, i) => reqObj(p, `${path}.parts[${i}]`));
+  matesRaw.forEach((m, i) => reqObj(m, `${path}.mates[${i}]`));
+  const asm: PlanAssembly = {
+    parts: partsRaw as PlanAssembly['parts'],
+    mates: matesRaw as PlanAssembly['mates'],
+  };
+  const tol = optNum(o.tolerance, `${path}.tolerance`);
+  if (tol !== undefined) asm.tolerance = tol;
+  if (o.engine !== undefined) {
+    const engine = reqStr(o.engine, `${path}.engine`);
+    if (engine !== 'gauss-seidel' && engine !== 'newton') {
+      throw new PlannerError(`${path}.engine='${engine}' invalid (gauss-seidel|newton)`);
+    }
+    asm.engine = engine;
+  }
+  return asm;
+}
+
+/** Coerce arbitrary parsed JSON into a DesignPlan, or throw PlannerError. */
+export function coerceDesignPlan(v: unknown): DesignPlan {
+  const o = reqObj(v, 'plan');
+  const partsRaw = reqArray(o.parts, 'plan.parts');
+  if (partsRaw.length === 0) throw new PlannerError('plan.parts: at least one part required');
+  const plan: DesignPlan = {
+    planId: reqStr(o.planId, 'plan.planId'),
+    name: reqStr(o.name, 'plan.name'),
+    parts: partsRaw.map((p, i) => coercePart(p, `plan.parts[${i}]`)),
+    drawing: coerceDrawing(o.drawing, 'plan.drawing'),
+  };
+  if (o.assembly !== undefined && o.assembly !== null) {
+    plan.assembly = coerceAssembly(o.assembly, 'plan.assembly');
+  }
+  return plan;
+}
+
+// ─── plan preflight (게이트 전 명시 거부) ────────────────────────────────────
+
+/** Preflight the plan for gate eligibility. Returns a refusal reason, or null. */
+export function preflightPlan(plan: DesignPlan): string | null {
+  if (plan.parts.length === 0) return 'empty plan: no parts';
+  const partMap = new Map(plan.parts.map((p) => [p.partId, p]));
+
+  for (const dim of plan.drawing.dimensions) {
+    // (a) reference validity — the dimension must target a real part/body.
+    const part = partMap.get(dim.partId);
+    if (!part) return `dimension '${dim.id}' references unknown part '${dim.partId}'`;
+    const body = part.bodies.find((b) => b.bodyId === dim.bodyId);
+    if (!body) return `dimension '${dim.id}' references unknown body '${dim.partId}:${dim.bodyId}'`;
+
+    // (b) gate measurability — only extrude bodies have a NamedTopology builder;
+    // a dimension on any other kind can never be measured, so refuse up-front.
+    if (body.feature.kind !== 'extrude') {
+      return (
+        `dimension '${dim.id}' targets a ${body.feature.kind} body — ` +
+        `measurement not available for ${body.feature.kind} bodies (WB backlog): ` +
+        `revolve/loft/sweep have no NamedTopology builder, so the drawing gate could only fail on them`
+      );
+    }
+
+    // (a cont.) every ref must be a valid extrude-topology name.
+    for (const ref of dim.refs) {
+      if (!EXTRUDE_TOPO_NAME.test(ref)) {
+        return (
+          `dimension '${dim.id}' ref '${ref}' is not a valid extrude topology name ` +
+          `(namespace: f.cap.{top|bottom}, f.side.{i}, e.vert.{i}, e.{top|bottom}.{i}-{j})`
+        );
+      }
+    }
+  }
+  return null;
+}
+
+// ─── JSON extraction (markdown-fence tolerant) ─────────────────────────────
+
+function extractJson(raw: string): unknown {
+  if (typeof raw !== 'string' || raw.trim().length === 0) {
+    throw new PlannerError('planner returned an empty response');
+  }
+  // Strip markdown code fences, then take the outermost brace span — mirrors
+  // the proven scad-intent-from-nl extraction.
+  const stripped = raw.replace(/```json?\s*/gi, '').replace(/```/g, '');
+  const first = stripped.indexOf('{');
+  const last = stripped.lastIndexOf('}');
+  if (first === -1 || last <= first) {
+    throw new PlannerError('planner response contains no JSON object');
+  }
+  try {
+    return JSON.parse(stripped.slice(first, last + 1).trim());
+  } catch {
+    throw new PlannerError('planner response is not valid JSON');
+  }
+}
+
+// ─── message construction ──────────────────────────────────────────────────
+
+function normalizeComment(c: string | { note: string; featureId?: string }): string {
+  if (typeof c === 'string') return c;
+  return c.featureId ? `[${c.featureId}] ${c.note}` : c.note;
+}
+
+function buildMessages(brief: DesignBrief, systemPrompt: string): ChatMessage[] {
+  const rev = (brief as LlmDesignBrief).revision;
+  let user = (brief.text ?? '').trim();
+  if (brief.params && Object.keys(brief.params).length > 0) {
+    user += `\n\nStructured parameters (JSON): ${JSON.stringify(brief.params)}`;
+  }
+  if (rev && rev.comments.length > 0) {
+    const lines = rev.comments.map((c, i) => `  ${i + 1}. ${normalizeComment(c)}`).join('\n');
+    user +=
+      `\n\nThis is a REVISION of a previous plan` +
+      (rev.briefSummary ? ` (previous: ${rev.briefSummary})` : '') +
+      `. Address EVERY reviewer comment and keep everything not mentioned unchanged:\n${lines}`;
+    if (rev.failedGates && rev.failedGates.length > 0) {
+      user += `\nGates that failed before and MUST pass now: ${rev.failedGates.join(', ')}`;
+    }
+  }
+  return [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: user.length > 0 ? user : '(empty brief)' },
+  ];
+}
+
+// ─── system prompt ─────────────────────────────────────────────────────────
+
+export const DEFAULT_SYSTEM_PROMPT = `You are the planning stage of a CAD design driver. Your ONLY output is a DesignPlan as a single JSON object. You never write CAD code, geometry math, or measurements — a deterministic engine executes your plan and REAL-measures every result. Fabricated code or numbers are worthless: only a structurally valid plan that the engine can build and verify is useful.
+
+Return ONLY the JSON object (no prose, no markdown fences). If the request cannot be expressed within the schema below, return {"error":"unsupported","reason":"<why>"} instead of guessing.
+
+DesignPlan schema (unknown fields are dropped; wrong types are rejected):
+{
+  "planId": string,               // stable id for this plan
+  "name": string,
+  "parts": [                      // >= 1
+    {
+      "partId": string,           // unique within the plan
+      "name": string,
+      "qty": number?,             // BOM quantity, default 1
+      "material": string?,
+      "process": "cnc"|"fdm"|"sla"|"injection"|"sheetMetal"?,  // default cnc
+      "bodies": [                 // >= 1; bodies[0] is the primary drawing source
+        {
+          "bodyId": string,       // unique within the part
+          "feature": <MeshableFeature>,   // kind in: extrude|revolve|sweep|sweep_path|loft
+          "translate": {"x":number,"y":number,"z":number}?  // placement in PART frame
+        }
+      ],
+      "expectedVolume": {         // optional; when present the geometry gate checks it
+        "valueMm3": number,
+        "basis": string,          // REQUIRED: how the theory was derived, incl. any tessellation approximation
+        "tolRel": number?
+      }
+    }
+  ],
+  "assembly": {                   // optional
+    "parts": [ SolvePartSpec ],   // solveMates input form (partId, fixed?, position?, refs{})
+    "mates": [ SolveMateSpec ],   // {id, kind, a:{partId,refId}, b:{partId,refId}}
+    "tolerance": number?,
+    "engine": "gauss-seidel"|"newton"?
+  },
+  "drawing": {
+    "paperSize": string?,         // default A3
+    "scale": number?,             // default 1
+    "dimensions": [
+      {
+        "id": string,
+        "partId": string, "bodyId": string,   // MUST reference an existing part/body
+        "view": "front"|"top"|"right",
+        "kind": "linear"|"aligned"|"radial"|"diametric"|"angular",
+        "refs": [string],         // stable topology names (see rules)
+        "expected": number?,      // nominal from the brief; gate checks |measured-expected| <= 1e-6
+        "tolerance": object?
+      }
+    ]
+  }
+}
+
+STABLE TOPOLOGY NAMING (dimension refs) — these are the ONLY measurable names, and ONLY on extrude bodies:
+  faces:  f.cap.top, f.cap.bottom, f.side.{i}      (i = profile-edge index, 0-based)
+  edges:  e.vert.{i}, e.top.{i}-{j}, e.bottom.{i}-{j}
+A dimension whose refs are outside this grammar, or that targets a revolve/sweep/loft body, WILL be refused before any gate — those kinds have no topology namer yet (backlog). For circular sections that must be dimensioned, use a polygon-tessellated EXTRUDE whose cap vertices lie exactly on the true circle, and state the tessellation deviation in expectedVolume.basis.
+
+HONESTY RULES:
+- Never fabricate geometry, code, or measured values — you plan, the engine measures.
+- expectedVolume.basis is mandatory whenever expectedVolume is present; state any approximation explicitly.
+- If a shape cannot be expressed with the meshable feature kinds and measurable topology above, REFUSE with {"error":"unsupported","reason":...} rather than emitting an unmeasurable plan.`;
+
+// ─── the planner ─────────────────────────────────────────────────────────
+
+/**
+ * Build an LLM-backed DesignPlanner over an injected completion function.
+ * The returned planner: prompts → parses → schema-coerces → preflights, and
+ * throws `PlannerError` (which the driver converts to a stage:'plan' refusal)
+ * for empty/non-JSON responses, an explicit unsupported refusal, a schema
+ * violation, or a failed preflight.
+ */
+export function makeLlmPlanner(deps: LlmPlannerDeps): DesignPlanner {
+  const systemPrompt = deps.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
+  const name = deps.name ?? 'llm';
+  return {
+    name,
+    async plan(brief: DesignBrief): Promise<DesignPlan> {
+      const messages = buildMessages(brief, systemPrompt);
+      const raw = await deps.complete(messages);
+      const parsed = extractJson(raw);
+
+      // Explicit model refusal sentinel — surfaced as a plan-stage refusal.
+      if (isObj(parsed) && parsed.error === 'unsupported') {
+        const reason = typeof parsed.reason === 'string' ? parsed.reason : 'no reason given';
+        throw new PlannerError(`planner declined the brief as unsupported: ${reason}`);
+      }
+
+      const plan = coerceDesignPlan(parsed);
+      const preflight = preflightPlan(plan);
+      if (preflight) {
+        throw new PlannerError(`plan preflight rejected: ${preflight}`);
+      }
+      return plan;
+    },
+  };
+}
+
+// ─── production binding ────────────────────────────────────────────────────
+
+export interface ChatCompletionPlannerOptions {
+  name?: string;
+  /** Force a model (otherwise provider default). */
+  model?: string;
+  /** Sampling temperature — default 0 (as deterministic as the provider allows). */
+  temperature?: number;
+  maxTokens?: number;
+  timeoutMs?: number;
+  systemPrompt?: string;
+}
+
+/**
+ * Production planner: `makeLlmPlanner` wired to the shared `chatCompletion`
+ * provider chain (aiMeter/budget/telemetry live inside chatCompletion). Uses
+ * temperature 0; note a live LLM is still not byte-deterministic (see file
+ * header) — determinism belongs to the fixture planner, not this one.
+ */
+export function chatCompletionPlanner(opts: ChatCompletionPlannerOptions = {}): DesignPlanner {
+  return makeLlmPlanner({
+    name: opts.name ?? 'llm',
+    ...(opts.systemPrompt ? { systemPrompt: opts.systemPrompt } : {}),
+    complete: async (messages) => {
+      const res = await chatCompletion({
+        messages,
+        temperature: opts.temperature ?? 0,
+        maxTokens: opts.maxTokens ?? 4000,
+        timeoutMs: opts.timeoutMs ?? 60_000,
+        task: 'design-brief-plan',
+        ...(opts.model ? { model: opts.model } : {}),
+      });
+      return res.text;
+    },
+  });
+}
