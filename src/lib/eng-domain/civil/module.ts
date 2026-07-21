@@ -19,6 +19,7 @@
  */
 
 import type { DomainGateResult, DomainModule } from '@/lib/domain-driver';
+import { chatCompletionCivilPlanner } from './llmPlanner';
 import {
   checkBeamBendingStress,
   checkBeamDeflection,
@@ -332,8 +333,13 @@ function memberGates(m: CivilMember): DomainGateResult[] {
 export const civilModule: DomainModule<CivilBrief, CivilPlan, CivilArtifacts, CivilPackage> = {
   name: 'civil',
 
+  // Composite planner (mechanical DEFAULT_PLANNER pattern): a fixture key ⇒ the
+  // deterministic fixture planner; free text ⇒ the LLM planner (#2). The LLM path
+  // is exercised in tests via makeCivilLlmPlanner with an injected mock.
   plan(brief) {
-    return civilFixturePlanner(brief);
+    const hasFixture = typeof brief.params?.fixture === 'string' && brief.params.fixture.length > 0;
+    if (hasFixture) return civilFixturePlanner(brief);
+    return chatCompletionCivilPlanner()(brief);
   },
 
   structuralError(plan) {
