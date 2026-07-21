@@ -23,6 +23,7 @@ import {
   type InteriorCheckResult,
   type UseGroup,
 } from './checks';
+import { chatCompletionInteriorPlanner } from './llmPlanner';
 
 // ─── IR ──────────────────────────────────────────────────────────────────────
 
@@ -136,7 +137,9 @@ export const interiorModule: DomainModule<InteriorBrief, InteriorPlan, InteriorA
   name: 'interior',
 
   plan(brief) {
-    return interiorFixturePlanner(brief);
+    const hasFixture = typeof brief.params?.fixture === 'string' && brief.params.fixture.length > 0;
+    if (hasFixture) return interiorFixturePlanner(brief);
+    return chatCompletionInteriorPlanner()(brief);
   },
 
   structuralError(plan) {
