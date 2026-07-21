@@ -154,3 +154,43 @@ interface DomainModule {
 - **B. 먼저 결정:** Phase 0(기계 파트너) — 틀 증명. 이걸 열면 A의 근거가 생김.
 - **권고:** **A와 B 병렬** — 추상화(A)는 코드라 지금 하고, 파트너(B)는 사용자님이
   여는 결정. 그 뒤 토목(Phase 2)부터 순차. 인벌류트·shell 등 기계 잔여는 저우선 유지.
+
+---
+
+## 8. Batch 1 실행 계획 — 지금 코드 착수 + 병렬 (근거화됨)
+
+**확인된 자산(실측, 260721):** `src/app/api/eng-chat/calcCatalog.ts` = **도메인 태그된
+계산기 61종** — civil/slope·bridge·concrete/steel/timber(토목·구조 ≈17)·
+interior/plumbing·acoustics(인테리어)·landscape/civil(조경)·mechanical·temporary-
+structures. **각 도메인 게이트의 측정 재료가 이미 존재** → 스캐폴드는 밑바닥이 아니다.
+
+### 경합 구조 (무엇이 직렬·무엇이 병렬)
+
+design-driver 코어(계획 IR·runDriver·packager 계약)를 건드리는 작업만 직렬이고,
+**새 순수 도메인 모듈은 코어 무접촉이라 병렬** (WB-4b/WB-5가 병렬 가능했던 것과 동일).
+
+**직렬 (척추·단일 작성자 = 나):**
+- **S1 — `DomainModule` 추상화 뼈대.** design-driver 척추(거부 IR·게이트 체인·
+  packager 계약)를 `DomainModule` 인터페이스로 승격 + 기계를 첫 참조 구현(얇은
+  어댑터, **무회귀 — 기계 전 테스트 그린 유지**). ⚠️코어 경합 → 직렬. 규모 중(1~2 세션).
+
+**병렬 독립 (새 순수 모듈, 코어 무접촉 — 워크트리 에이전트):**
+- **P-토목 — `eng-domain/civil` 게이트 재료.** calcCatalog의 civil/bridge/slope/
+  concrete/steel/timber(≈17종)를 **순수 게이트 함수**(응력·처짐·안전율 실측 판정)로
+  래핑 + 결정론 픽스처. design-driver 무접촉.
+- **P-인테리어 — `eng-domain/interior` 게이트 재료.** interior/plumbing·acoustics +
+  피난동선/유효폭/수용인원/이격 코드 테이블 + 순수 체크 함수. design-driver 무접촉.
+- (조경·건설은 자산 얇음 → Batch 2. 여유 시 `eng-domain/landscape` 관수/구배
+  스캐폴드 하나 추가 병렬 가능.)
+
+### 봉합 (Batch 2에서)
+S1 + P-* 착지 후, 각 게이트 재료를 `DomainModule` 구현으로 배선(토목 드라이버부터).
+이 배선만 코어 경합 → 그때 직렬 1트랙씩(기계 WB-* 리듬과 동일).
+
+### Batch 1 산출·검증
+- 산출: `DomainModule` 인터페이스(+기계 어댑터) · `eng-domain/civil`·`/interior`
+  순수 게이트 재료(테스트 포함).
+- 검증: 기계 design-driver 무회귀(전 테스트 그린)·각 도메인 게이트 재료 단위 테스트·
+  tsc 클린·오매칭 0%.
+- **정직:** Batch 1은 "게이트 재료 + 토대"까지. 실제 도메인 계획→게이트→패키지
+  전 경로(단계 3~4)는 Batch 2 봉합에서. 단계 상승은 봉합 후 매트릭스 재실사로만.
