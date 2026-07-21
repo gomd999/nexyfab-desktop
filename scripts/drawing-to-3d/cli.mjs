@@ -17,6 +17,9 @@
  *   node cli.mjs step asm.json --out model.step           # B-rep STEP(부품별 컴파운드·filletMm 반영)
  *   node cli.mjs html asm.json --out ga3d.html            # 오프라인 3D 뷰어
  *   node cli.mjs package asm.json --out <dir> [--step] [--title "제목"]  # 실시 도서 세트
+ * 다분야(토목·인테리어·건설·조경, 원격 전용 — NEXYFAB_API_KEY 필요):
+ *   node cli.mjs domain <civil|interior|construction|landscape> "브리프 텍스트" [--out pkg.json]  # 자유 브리프→LLM 계획
+ *   node cli.mjs domain civil --fixture steel-beam [--out pkg.json]                                # 결정론 픽스처
  * 출력: 결과 JSON 을 stdout(기계 파싱), 파일은 --out 경로. 비법정(제작용 실시도서+검토 계산서).
  */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -32,7 +35,11 @@ const REMOTE_ROUTE = {
   edit_part: '/api/nexyfab/drawing/edit-part/',
   face_drag: '/api/nexyfab/drawing/face-drag/',
   part_op: '/api/nexyfab/drawing/part-op/',
+  domain_design: '/api/nexyfab/domain-design/',
 };
+/** Remote-only tools: no local engine in scripts/ (domain checks live server-side). */
+const REMOTE_ONLY = new Set(['domain_design']);
+const DOMAINS = ['civil', 'interior', 'construction', 'landscape'];
 const API_KEY = process.env.NEXYFAB_API_KEY;
 const API_URL = (process.env.NEXYFAB_API_URL ?? 'https://nexyfab.com').replace(/\/$/, '');
 // TTY 프리티 출력(파이프=순수 JSON 유지 — 기계 파싱 불변). --raw 로 강제 순수.
@@ -56,6 +63,13 @@ function pretty(r) {
   if (r.face?.face) seg.push(`면 ${C.b}${r.face.face}${C.x}`);
   if (r.subsetParts != null) seg.push(`LOD ${C.b}${r.subsetParts}/${r.totalParts}${C.x}`);
   if (Array.isArray(r.files)) seg.push(`파일 ${C.b}${r.files.length}${C.x}`);
+  // domain_design summary
+  if (r.domain) seg.push(`${C.b}${r.domain}${C.x}`);
+  if (Array.isArray(r.gates)) {
+    const p = r.gates.filter((g) => g.pass).length;
+    seg.push(`게이트 ${p === r.gates.length ? C.g : C.r}${p}/${r.gates.length}${C.x}`);
+  }
+  if (r.refusal) seg.push(`${C.r}${r.refusal.stage}: ${(r.refusal.failedGateIds ?? []).join(',') || (r.refusal.reason ?? '').slice(0, 48)}${C.x}`);
   process.stdout.write(`${C.B}◆ nexyfab${API_KEY ? `${C.d}(remote)${C.x}` : ''}${C.x} ${seg.join(` ${C.d}·${C.x} `)}\n`);
 }
 const flag = (name, def = undefined) => {
@@ -67,7 +81,9 @@ const out = (obj) => process.stdout.write(JSON.stringify(obj, null, 2) + '\n');
 const loadAsm = (p) => JSON.parse(readFileSync(resolve(p), 'utf8'));
 const saveAsmMaybe = (r) => {
   const o = flag('out');
-  if (o && r?.assembly) { writeFileSync(resolve(o), JSON.stringify(r.assembly, null, 1)); return { savedAssembly: resolve(o) }; }
+  if (!o) return {};
+  if (r?.package) { writeFileSync(resolve(o), JSON.stringify(r.package, null, 1)); return { savedPackage: resolve(o) }; }
+  if (r?.assembly) { writeFileSync(resolve(o), JSON.stringify(r.assembly, null, 1)); return { savedAssembly: resolve(o) }; }
   return {};
 };
 // 요약(대형 필드 절단 — 전체는 --full)
@@ -77,6 +93,9 @@ const summarize = (r) => {
   for (const k of ['openscad', 'scad', 'step']) if (typeof c[k] === 'string') c[k] = `<${c[k].length} chars — --full 로 전체>`;
   if (Array.isArray(c.parts) && c.parts.length > 8) c.parts = [...c.parts.slice(0, 8), `…+${c.parts.length - 8}`];
   if (c.assembly?.parts?.length > 0) c.assembly = `<assembly ${c.assembly.parts.length} parts — --out 으로 저장>`;
+  // domain_design: gates 는 id/pass/reason 만(전체 metrics 는 --full), package 는 --out 저장 안내.
+  if (Array.isArray(c.gates)) c.gates = c.gates.map((g) => ({ id: g.id, pass: g.pass, ...(g.reason ? { reason: g.reason } : {}) }));
+  if (c.package && flag('out')) c.package = `<package — ${flag('out')} 로 저장>`;
   return c;
 };
 
@@ -124,6 +143,24 @@ async function main() {
   } else if (cmd === 'package') {
     name = 'generate_package';
     args = { assembly: loadAsm(argv[1]), outDir: resolve(flag('out', 'nexyfab-package')), title: flag('title'), withStep: has('step') };
+  } else if (cmd === 'domain') {
+    name = 'domain_design';
+    const domain = argv[1];
+    if (!DOMAINS.includes(domain)) {
+      out({ ok: false, error: `domain 은 ${DOMAINS.join('|')} 중 하나 — 예: node cli.mjs domain civil "6m 강재 보 20kN/m"` });
+      process.exitCode = 1;
+      return;
+    }
+    const briefText = argv[2] && !argv[2].startsWith('--') ? argv[2] : undefined;
+    const fixture = flag('fixture');
+    args = {
+      domain,
+      brief: {
+        id: flag('id', `${domain}-cli`),
+        ...(briefText ? { text: briefText } : {}),
+        ...(fixture ? { params: { fixture } } : {}),
+      },
+    };
   } else {
     // 임의 도구 직접 호출(MCP 동일)
     const j = flag('json') ?? (flag('json-file') ? readFileSync(resolve(flag('json-file')), 'utf8') : null);
@@ -131,6 +168,11 @@ async function main() {
     args = JSON.parse(j);
   }
   let r;
+  if (REMOTE_ONLY.has(name) && !API_KEY) {
+    out({ ok: false, error: `'${cmd}' 는 원격 전용 — NEXYFAB_API_KEY 설정 필요(Pro 이상, nexyfab.com → 계정 → API Keys)` });
+    process.exitCode = 1;
+    return;
+  }
   if (API_KEY && REMOTE_ROUTE[name]) {
     const res = await fetch(API_URL + REMOTE_ROUTE[name], {
       method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${API_KEY}` },
