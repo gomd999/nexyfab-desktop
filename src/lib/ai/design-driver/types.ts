@@ -187,12 +187,71 @@ export interface PlanDimensionSpec {
   tolerance?: Tolerance;
 }
 
+// ─── WB-5: GD&T IR (additive OPTIONAL — feature/process kinds untouched) ────
+
+/** Geometric characteristics the GD&T gate REAL-verifies from named topology
+ *  (form + orientation of planar features). WB-5. */
+export type GdtCharacteristicKind =
+  | 'flatness'
+  | 'perpendicularity'
+  | 'parallelism'
+  | 'angularity';
+
+/**
+ * Optional plan-DECLARED GD&T design tolerance (WB-5). A declared spec is an
+ * enforced design REQUIREMENT: the GD&T gate FAILS the plan when the feature /
+ * datum can't resolve to real topology OR the real geometry violates the zone
+ * — the same force as a declared dimension `expected`. Absent ⇒ the gate only
+ * auto-proposes (advisory, verify-or-drop; never fails the plan).
+ */
+export interface PlanGdtSpec {
+  id: string;
+  partId: string;
+  bodyId: string;
+  characteristic: GdtCharacteristicKind;
+  /** Controlled feature — a stable topo FACE name (e.g. 'f.side.0', 'f.cap.top'). */
+  feature: string;
+  /** Datum face name(s); required for orientation characteristics. */
+  datums?: string[];
+  /** Declared tolerance zone width (mm). */
+  toleranceMm: number;
+  /** Nominal surface angle vs the primary datum (deg): 90 perpendicular, 0
+   *  parallel, else angularity. Ignored for flatness; defaults per kind. */
+  nominalAngleDeg?: number;
+}
+
+/**
+ * A REAL-verified GD&T callout for the package/report (WB-5). Every value is
+ * measured off the model topology — never fabricated (the package exists only
+ * post-gate, and a callout is emitted only when it verifies within its zone).
+ */
+export interface GdtCalloutRecord {
+  id: string;
+  partId: string;
+  bodyId: string;
+  characteristic: GdtCharacteristicKind;
+  feature: string;
+  datums: string[];
+  /** Declared/proposed tolerance zone width (mm). */
+  toleranceMm: number;
+  /** REAL-measured zone the feature actually occupies (mm) — ≤ toleranceMm. */
+  actualMm: number;
+  /** Orientation kinds only: measured angular deviation from nominal (deg). */
+  angularDeviationDeg?: number;
+  /** true = auto-proposed (advisory); false = plan-declared (enforced). */
+  proposed: boolean;
+  /** Explicit derivation statement (근사 명시). */
+  basis: string;
+}
+
 export interface PlanDrawing {
   /** Default 'A3'. */
   paperSize?: PaperSize;
   /** Drawing scale. Default 1. */
   scale?: number;
   dimensions: PlanDimensionSpec[];
+  /** WB-5: optional plan-DECLARED GD&T design tolerances (enforced by gdtGate). */
+  gdt?: PlanGdtSpec[];
 }
 
 // ─── plan ────────────────────────────────────────────────────────────────
@@ -207,7 +266,7 @@ export interface DesignPlan {
 
 // ─── gate IR ─────────────────────────────────────────────────────────────
 
-export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern';
+export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern' | 'gdt';
 
 export interface GateResult {
   /** `${kind}:${scope}` — e.g. 'geometry:bracket', 'assembly', 'drawing:pin'. */
@@ -292,6 +351,9 @@ export interface VerificationReport {
   approximations: string[];
   /** Fixed honesty disclosures (계획 문서 §4). */
   limitations: string[];
+  /** WB-5: REAL-verified GD&T callouts (auto-proposed + declared). Present iff
+   *  the GD&T gate emitted any (additive optional). */
+  gdt?: GdtCalloutRecord[];
 }
 
 export interface DesignPackage {

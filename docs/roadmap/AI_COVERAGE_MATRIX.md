@@ -81,7 +81,7 @@ WAVE_A_AI_DRIVER §0·§4 도메인 순서 및 정직 고지에 따름:
 | ~~④ 판금 전개/굽힘 어휘 부재~~ **✅ WB-2 완료(260722)** — sheetMetal 스펙+flatPatternGate 실전개 | ~~WB-2~~ (헴/조그/폴딩 솔리드 메시는 잔여) |
 | ⑤ 웰드먼트/마이터/컷리스트 어휘 부재 | **WB-3** 웰드먼트 편입(마이터 프레임+컷리스트) |
 | ~~⑧ 간섭 게이트 미포함~~ **✅ WB-4 + WB-4b 완료(260722)** — 간섭 게이트+정밀 삼각형 SAT | ~~WB-4~~ (penetration 깊이 재측정은 잔여) |
-| (도면 GD&T 자동화 미편입) | **WB-5** GD&T 자동 제안 편입(gdtSuggestion → 도면 게이트) |
+| ~~(도면 GD&T 자동화 미편입)~~ **✅ WB-5 완료(260722)** — gdtGate 자동 제안+실측 검증(flatness/orientation) | ~~WB-5~~ (position/cylindricity/profile은 잔여) |
 | ③ 곡면 쉘/필렛 하우징 미실증 (OCCT 전용) | **WB-6** 곡면 쉘/필렛 체인의 게이트 경로(OCCT 게이트 통합) |
 | ⑥ 기어 등 피처 패턴 미편입 | **WB-7** 피처 패턴·end condition의 AI 계획 어휘 편입 |
 

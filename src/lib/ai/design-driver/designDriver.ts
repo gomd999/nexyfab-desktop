@@ -32,6 +32,7 @@ import {
   type FlatPatternArtifact,
 } from './flatPatternGate';
 import { buildDrawingArtifact, drawingGate } from './drawingGate';
+import { buildGdtArtifact, gdtGate } from './gdtGate';
 import { buildDesignPackage } from './packager';
 import type { DesignBrief, DesignPlan, DriverResult, GateResult } from './types';
 
@@ -117,6 +118,9 @@ export async function runDesignDriver(
     }
   }
   const drawingArtifact = buildDrawingArtifact(plan);
+  // WB-5: GD&T auto-propose + verify over the named topology; declared specs are
+  // enforced (build never throws — refusals become gate reasons).
+  const gdtArtifact = buildGdtArtifact(plan, drawingArtifact.topologies);
 
   // ── ③ verify — gate chain ─────────────────────────────────────────────
   const gates: GateResult[] = [];
@@ -143,6 +147,7 @@ export async function runDesignDriver(
     }
   }
   gates.push(drawingGate(plan, drawingArtifact));
+  gates.push(gdtGate(plan, gdtArtifact));
 
   const failed = gates.filter((g) => !g.pass);
   if (failed.length > 0) {
@@ -167,6 +172,7 @@ export async function runDesignDriver(
     drawing: drawingArtifact,
     assembly: assemblyArtifact,
     flatPatterns,
+    gdt: gdtArtifact,
   });
   return { ok: true, plan, gates, package: pkg };
 }
