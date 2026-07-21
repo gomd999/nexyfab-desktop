@@ -78,7 +78,10 @@ const MATERIAL_PROPS: Record<TopOptInput['material'], { densityGCm3: number; yie
 function rng(seed: number): () => number {
   let s = seed | 0 || 1;
   return () => {
-    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    // Math.imul keeps the multiply exact in 32-bit space. The float form
+    // (s * 1103515245) overflows 2^53 and collapses the LCG into a ~10k
+    // cycle with heavy bin bias (see meshCompare.ts sampleIndices).
+    s = (Math.imul(s, 1103515245) + 12345) & 0x7fffffff;
     return s / 0x7fffffff;
   };
 }

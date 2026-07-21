@@ -256,7 +256,10 @@ function reapDead(system: ParticleSystem): void {
 // ── RNG ─────────────────────────────────────────────────────────
 
 function nextRandom(system: ParticleSystem): number {
-  system.rngSeed = (system.rngSeed * 1103515245 + 12345) & 0x7fffffff;
+  // Math.imul keeps the multiply exact in 32-bit space. The float form
+  // (rngSeed * 1103515245) overflows 2^53 and collapses the LCG into a
+  // ~10k cycle with heavy bin bias (see meshCompare.ts sampleIndices).
+  system.rngSeed = (Math.imul(system.rngSeed, 1103515245) + 12345) & 0x7fffffff;
   return system.rngSeed / 0x7fffffff;
 }
 

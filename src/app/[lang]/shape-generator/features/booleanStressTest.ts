@@ -188,7 +188,10 @@ export function jitterPositions(mesh: MeshArrays, tolerance: number): MeshArrays
   const positions = mesh.positions.slice();
   // Deterministic jitter via index-based pseudo-random.
   for (let i = 0; i < positions.length; i++) {
-    const r = ((i * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    // Math.imul: exact 32-bit product. The float form (i * 1103515245) is
+    // identical below i = 8,162,280 (product < 2^53) but loses low bits for
+    // larger meshes (≥ ~2.72M vertices, positions.length = 3 × verts).
+    const r = ((Math.imul(i, 1103515245) + 12345) & 0x7fffffff) / 0x7fffffff;
     positions[i] += (r - 0.5) * tolerance;
   }
   return { positions, indices: mesh.indices.slice() };

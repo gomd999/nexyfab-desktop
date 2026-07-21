@@ -34,7 +34,10 @@ const PERLIN_PERMUTATION: number[] = (() => {
   // Seeded Fisher-Yates shuffle (deterministic permutation).
   let seed = 42;
   for (let i = p.length - 1; i > 0; i--) {
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    // Math.imul keeps the multiply exact in 32-bit space. The float form
+    // (seed * 1103515245) overflows 2^53, zeroing ~8 low bits per state
+    // and biasing the shuffle (see meshCompare.ts sampleIndices).
+    seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff;
     const j = seed % (i + 1);
     [p[i], p[j]] = [p[j]!, p[i]!];
   }
