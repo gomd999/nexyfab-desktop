@@ -12,6 +12,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { gateComposite } from './compose.mjs';
+import { profileFromSpec } from './loft.mjs';
 
 const OCDIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'node_modules', 'replicad-opencascadejs', 'src');
 
@@ -44,9 +45,122 @@ export async function ensureReplicad() {
   return replicad;
 }
 
+// ── T1 브리지: 로프트/스윕 스펙 → 진짜 OCCT B-rep(loft/genericSweep) ──────────
+// loft.mjs 의 mesh 백엔드와 같은 스펙(로프트=profile/stations/axis, 스윕=profile/path/scale)을
+// 받아 삼각 메시가 아니라 OCCT ThruSections(loft)·MakePipeShell(genericSweep)로 B-rep 를
+// 만든다(→ 진짜 STEP). profileFromSpec(loft.mjs)로 2D 닫힌 루프를 얻고, 스테이션/경로 프레임에
+// 3D 임베드해 각 단면을 닫힌 Wire 로 만든 뒤 loft(단면들)·genericSweep(단면+스파인)을 부른다.
+// 프로파일 Wire 는 profileFromSpec 이 준 n개 점을 직선분으로 이은 다각형 근사(스펙 점 충실
+// 재현) — 곡선 에지가 아니라 n-각형 단면임을 정직 명시. loft/sweep 가 못 다루면 throw(무폴백).
+const _v = {
+  sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  norm: (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+};
+
+/** 3D 링 점들(닫힘 가정·끝점 중복 없음) → replicad 닫힌 Wire(연속 선분). */
+function ringToWire(rc, ring) {
+  const edges = [];
+  for (let i = 0; i < ring.length; i++) edges.push(rc.makeLine(ring[i], ring[(i + 1) % ring.length]));
+  return rc.assembleWire(edges);
+}
+
+/** 2D 프로파일 [[u,v]] → loft.mjs loftAlongAxis 와 동일 임베드로 3D 링.
+ *  station={at:[x,y,z], scale, rot(rad)}, axis='x'|'y'|'z'(프로파일 평면 법선). */
+function embedStation(profile2d, st, axis) {
+  const s = st.scale ?? 1, th = st.rot ?? 0, at = st.at;
+  if (!Array.isArray(at) || at.length !== 3 || !at.every(Number.isFinite)) {
+    throw new Error(`loft(step): station.at는 유한 [x,y,z] 필요 (받음 ${JSON.stringify(at)})`);
+  }
+  if (!(s > 0)) throw new Error(`loft(step): station.scale>0 필요 (받음 ${s})`);
+  return profile2d.map(([u, v]) => {
+    const ru = (u * Math.cos(th) - v * Math.sin(th)) * s;
+    const rv = (u * Math.sin(th) + v * Math.cos(th)) * s;
+    if (axis === 'z') return [at[0] + ru, at[1] + rv, at[2]];
+    if (axis === 'x') return [at[0], at[1] + ru, at[2] + rv];
+    return [at[0] + ru, at[1], at[2] + rv]; // 'y' → 평면 XZ
+  });
+}
+
+/** 로프트 스펙 → OCCT Shape3D. spec={profile, stations:[{at,scale,rot}], axis, ruled?}. */
+function loftSolid(rc, spec) {
+  const profile2d = profileFromSpec(spec.profile);
+  if (!Array.isArray(spec.stations) || spec.stations.length < 2) {
+    throw new Error(`loft(step): 스테이션 ≥2개 필요 (받음 ${spec.stations?.length})`);
+  }
+  const axis = spec.axis ?? 'z';
+  if (!['x', 'y', 'z'].includes(axis)) throw new Error(`loft(step): axis는 'x'|'y'|'z' (받음 '${axis}')`);
+  const wires = spec.stations.map((st) => ringToWire(rc, embedStation(profile2d, st, axis)));
+  // ruled=false: 단면 사이 매끈 전이(기본, 실 CAD 로프트) · true: 직선(룰드) 전이.
+  let solid;
+  try { solid = rc.loft(wires, { ruled: spec.ruled === true }); }
+  catch (e) { throw new Error(`loft(step): OCCT ThruSections 실패 — ${String(e?.message ?? e).slice(0, 80)}`); }
+  if (!solid || !solid.faces?.length) throw new Error('loft(step): 로프트 결과가 솔리드가 아님(퇴화/열림)');
+  return solid;
+}
+
+/** 스윕 스펙 → OCCT Shape3D. spec={kind:'sweep', profile, path:[[x,y,z]...], scale?}. */
+function sweepSolid(rc, spec) {
+  const profile2d = profileFromSpec(spec.profile);
+  const path = spec.path;
+  if (!Array.isArray(path) || path.length < 2) throw new Error(`sweep(step): path 점 ≥2개 필요 (받음 ${path?.length})`);
+  for (const p of path) {
+    if (!Array.isArray(p) || p.length !== 3 || !p.every(Number.isFinite)) {
+      throw new Error(`sweep(step): path 점은 유한 [x,y,z] 필요 (받음 ${JSON.stringify(p)})`);
+    }
+  }
+  const sc = spec.scale ?? 1;
+  if (!(sc > 0)) throw new Error(`sweep(step): scale>0 필요 (받음 ${sc})`);
+  // 스파인 = path 폴리라인 와이어(세그먼트별 직선).
+  const spineEdges = [];
+  for (let i = 0; i < path.length - 1; i++) {
+    if (_v.norm(_v.sub(path[i + 1], path[i])).every((c) => c === 0)) {
+      throw new Error(`sweep(step): path 연속 중복점(${i}) — 세그먼트 길이 0`);
+    }
+    spineEdges.push(rc.makeLine(path[i], path[i + 1]));
+  }
+  const spine = rc.assembleWire(spineEdges);
+  // 프로파일 = 스파인 시작 접선에 수직인 평면에 배치(sweepMesh 초기 프레임과 동일 수학).
+  const T0 = _v.norm(_v.sub(path[1], path[0]));
+  const ref = Math.abs(T0[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
+  let N0 = _v.norm(_v.cross(ref, T0));
+  if (!(N0[0] || N0[1] || N0[2])) N0 = _v.norm(_v.cross([0, 1, 0], T0));
+  const B0 = _v.norm(_v.cross(T0, N0));
+  const ring0 = profile2d.map(([u, v]) => [
+    path[0][0] + (u * N0[0] + v * B0[0]) * sc,
+    path[0][1] + (u * N0[1] + v * B0[1]) * sc,
+    path[0][2] + (u * N0[2] + v * B0[2]) * sc,
+  ]);
+  const profileWire = ringToWire(rc, ring0);
+  let solid;
+  // frenet=false → OCCT '보정 프레네' 프레임(비틀림 최소, sweepMesh RMF 취지와 동일).
+  // transitionMode round → 폴리라인 꺾임에서 자기교차 대신 라운드 처리.
+  try { solid = rc.genericSweep(profileWire, spine, { frenet: false, transitionMode: 'round' }); }
+  catch (e) { throw new Error(`sweep(step): OCCT MakePipeShell 실패 — ${String(e?.message ?? e).slice(0, 80)}`); }
+  if (!solid || !solid.faces?.length) throw new Error('sweep(step): 스윕 결과가 솔리드가 아님(열림/퇴화)');
+  return solid;
+}
+
+/**
+ * 로프트/스윕 스펙 하나 → 진짜 STEP(B-rep). loft.mjs bodyFromSpec(mesh)의 OCCT 대응 —
+ * 두 지오메트리 세계를 잇는 브리지. 로프트={profile, stations, axis} · 스윕={kind:'sweep',
+ * profile, path, scale}. 기존 blobSTEP() export 경로 그대로 사용(진짜 ISO-10303 방출).
+ */
+export async function bodySpecToStep(spec) {
+  if (!spec || typeof spec !== 'object') throw new Error('bodySpecToStep: spec 객체 필요');
+  const rc = await ensureReplicad();
+  const solid = spec.kind === 'sweep' ? sweepSolid(rc, spec) : loftSolid(rc, spec);
+  const step = await solid.blobSTEP().text();
+  return { step, entities: (step.match(/^#\d+/gm) ?? []).length };
+}
+
 /** 단일 피처 → replicad Solid (배치·패턴 전). */
 function featSolid(rc, f) {
   switch (f.kind) {
+    case 'loft':
+      return loftSolid(rc, f);
+    case 'sweep':
+      return sweepSolid(rc, f);
     case 'revolve': {
       // profile [radius,height] — OpenSCAD rotate_extrude와 일치: XZ평면 스케치 후 Z축 회전.
       let pen = rc.draw([f.profile[0][0], f.profile[0][1]]);
