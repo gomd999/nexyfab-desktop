@@ -355,6 +355,21 @@ export const tools = [
     },
   },
   {
+    name: 'render_preview',
+    description:
+      '헤드리스 렌더→PNG(ⓐ) — 어셈블리를 top/side/iso 그레이스케일 PNG로 (브라우저·GL 없이 ' +
+      '순수 노드 테셀레이션·투영·z버퍼). 저작 루프의 "눈": 만든 배치를 이미지로 되받아 검증·수정. ' +
+      'outDir 지정 시 파일 저장, 미지정 시 뷰별 base64 반환(AI/자동화가 바로 판독).',
+    inputSchema: {
+      type: 'object', required: ['assembly'],
+      properties: {
+        assembly: { type: 'object' },
+        outDir: { type: 'string', description: '저장 디렉터리(생략 시 base64 반환)' },
+        views: { type: 'array', items: { type: 'string', enum: ['iso', 'side', 'top', 'front'] } },
+      },
+    },
+  },
+  {
     name: 'extract_gdt',
     description:
       `STEP AP242 시맨틱 PMI(GD&T) 판독(결정론 — AI 없음): 데이텀(A/B/C…)·기하공차(⊥⌖⏥… 크기+` +
@@ -596,6 +611,23 @@ export async function callTool(name, args = {}) {
     const genParams = { nB: args.nB, rRoot: args.rRoot, rTip: args.rTip, chord: args.chord, cx: args.cx, cy: args.cy ?? 0, cz: args.cz ?? 0, pitch: args.pitch, naca: args.naca ?? '4412' };
     return { params: bladeRingMesh(genParams), gen: { kind: 'blade_ring', params: genParams }, usage: "assembly 부품으로: {id, type:'mesh', params, gen, at:{tx:0,ty:0,tz:0}}" };
   }
+  if (name === 'render_preview') {
+    const { renderPreview } = await import('./render-preview.mjs');
+    const { pngs, triCount } = renderPreview(args.assembly, { ...(Array.isArray(args.views) && args.views.length ? { views: args.views } : {}) });
+    const res = { ok: true, triCount, parts: args.assembly?.parts?.length ?? 0 };
+    if (args.outDir) {
+      const fs = await import('node:fs'), path = await import('node:path');
+      fs.mkdirSync(args.outDir, { recursive: true });
+      res.files = [];
+      for (const [v, buf] of Object.entries(pngs)) { const fp = path.join(args.outDir, `preview_${v}.png`); fs.writeFileSync(fp, buf); res.files.push({ name: `preview_${v}.png`, bytes: buf.length }); }
+      res.outDir = args.outDir;
+    } else {
+      res.views = {};
+      for (const [v, buf] of Object.entries(pngs)) res.views[v] = buf.toString('base64');
+    }
+    return res;
+  }
+
   if (name === 'list_templates') {
     return { ok: true, ...(args.domain ? { domain: args.domain } : {}), templates: listAssemblyTemplates(args.domain) };
   }
