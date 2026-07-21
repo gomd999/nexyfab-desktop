@@ -52,6 +52,8 @@ import type {
   PlanDimensionSpec,
   PlanDrawing,
   PlanPart,
+  SheetMetalOp,
+  SheetMetalSpec,
 } from './types';
 
 // ─── revision context (proposed optional brief extension — hook only) ───────
@@ -192,6 +194,50 @@ function coerceExpectedVolume(v: unknown, path: string): ExpectedVolumeSpec {
   return spec;
 }
 
+const SHEET_METAL_OP_KINDS = new Set(['bend', 'flange']);
+
+function coerceSheetMetalOp(v: unknown, path: string): SheetMetalOp {
+  const o = reqObj(v, path);
+  const kind = reqStr(o.kind, `${path}.kind`);
+  if (!SHEET_METAL_OP_KINDS.has(kind)) {
+    throw new PlannerError(`${path}.kind='${kind}' invalid (bend|flange)`);
+  }
+  const op: SheetMetalOp = {
+    kind: kind as SheetMetalOp['kind'],
+    angle: reqNum(o.angle, `${path}.angle`),
+    radius: reqNum(o.radius, `${path}.radius`),
+  };
+  const position = optNum(o.position, `${path}.position`);
+  if (position !== undefined) op.position = position;
+  const edgeIndex = optNum(o.edgeIndex, `${path}.edgeIndex`);
+  if (edgeIndex !== undefined) op.edgeIndex = edgeIndex;
+  const height = optNum(o.height, `${path}.height`);
+  if (height !== undefined) op.height = height;
+  if (o.direction !== undefined) {
+    const dir = reqStr(o.direction, `${path}.direction`);
+    if (dir !== 'up' && dir !== 'down') throw new PlannerError(`${path}.direction='${dir}' invalid (up|down)`);
+    op.direction = dir;
+  }
+  return op;
+}
+
+function coerceSheetMetal(v: unknown, path: string): SheetMetalSpec {
+  const o = reqObj(v, path);
+  const opsRaw = reqArray(o.ops, `${path}.ops`);
+  const spec: SheetMetalSpec = {
+    thicknessMm: reqNum(o.thicknessMm, `${path}.thicknessMm`),
+    baseWidthMm: reqNum(o.baseWidthMm, `${path}.baseWidthMm`),
+    baseLengthMm: reqNum(o.baseLengthMm, `${path}.baseLengthMm`),
+    ops: opsRaw.map((op, i) => coerceSheetMetalOp(op, `${path}.ops[${i}]`)),
+  };
+  if (o.material !== undefined) spec.material = reqStr(o.material, `${path}.material`);
+  const expected = optNum(o.expectedDevelopedLengthMm, `${path}.expectedDevelopedLengthMm`);
+  if (expected !== undefined) spec.expectedDevelopedLengthMm = expected;
+  const devTol = optNum(o.devTolMm, `${path}.devTolMm`);
+  if (devTol !== undefined) spec.devTolMm = devTol;
+  return spec;
+}
+
 function coercePart(v: unknown, path: string): PlanPart {
   const o = reqObj(v, path);
   const bodiesRaw = reqArray(o.bodies, `${path}.bodies`);
@@ -213,6 +259,9 @@ function coercePart(v: unknown, path: string): PlanPart {
   }
   if (o.expectedVolume !== undefined && o.expectedVolume !== null) {
     part.expectedVolume = coerceExpectedVolume(o.expectedVolume, `${path}.expectedVolume`);
+  }
+  if (o.sheetMetal !== undefined && o.sheetMetal !== null) {
+    part.sheetMetal = coerceSheetMetal(o.sheetMetal, `${path}.sheetMetal`);
   }
   return part;
 }
@@ -426,7 +475,26 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
         "valueMm3": number,
         "basis": string,          // REQUIRED: how the theory was derived, incl. any tessellation approximation
         "tolRel": number?
+      },
+      "sheetMetal": {             // optional; a SHEET-METAL part (process must be "sheetMetal")
+        "thicknessMm": number,
+        "material": string?,      // mildSteel|stainless304|aluminum5052|aluminum6061|galvanized|brass|copper (default mildSteel)
+        "baseWidthMm": number,    // base blank width (along the bend-line axis)
+        "baseLengthMm": number,   // base blank length (along the unfold axis)
+        "ops": [                  // ordered forming ops on the base panel
+          { "kind": "bend"|"flange",
+            "angle": number, "radius": number,   // inner bend radius mm
+            "position": number?,                  // bend: fraction 0-1 along unfold axis
+            "direction": "up"|"down"?,            // bend fold direction
+            "edgeIndex": number?,                 // flange: 0=+Z 1=-Z 2=+X 3=-X
+            "height": number? }                   // flange: leg height mm
+        ],
+        "expectedDevelopedLengthMm": number?,     // optional independent hand-calc; gate cross-checks |measured-expected|<=devTol
+        "devTolMm": number?
       }
+      // When sheetMetal is present, bodies[0] should be the FLAT base-panel blank
+      // (an extrude of baseWidthMm × baseLengthMm × thicknessMm) so the geometry/
+      // drawing gates dimension it; the flat-pattern gate REAL-unfolds the ops.
     }
   ],
   "assembly": {                   // optional

@@ -279,15 +279,88 @@ export function revolveBushingPlan(): DesignPlan {
   };
 }
 
+// ─── fixture 5: sheet-metal U-channel (WB-2 — flat pattern via real unfold) ──
+
+/**
+ * A mild-steel U-channel: 120×60 base panel (t=2) with two 90° flanges of
+ * height 30 (edges +Z/−Z). bodies[0] is the FLAT base panel (dimensioned by the
+ * geometry/drawing gates); the `sheetMetal` spec drives the flat-pattern gate,
+ * which reconstructs the folded stack and REAL-unfolds it (developed length +
+ * bend schedule from the material K-factor tables, laser-ready flat DXF).
+ *
+ * expectedDevelopedLengthMm is omitted: the engine MEASURES the developed
+ * length; the acceptance test cross-checks it against the same public bend-
+ * allowance formula (getKFactor + bendAllowance), so the number is proven, not
+ * asserted here.
+ */
+export function sheetUChannelPlan(): DesignPlan {
+  const W = 60, L = 120, T = 2, FLANGE_H = 30, R = 3;
+  return {
+    planId: 'fixture-sheet-uchannel',
+    name: `Sheet U-Channel ${L}×${W} t=${T} +2×flange h=${FLANGE_H}`,
+    parts: [
+      {
+        partId: 'channel',
+        name: 'U-Channel',
+        material: 'SPCC',
+        process: 'sheetMetal',
+        bodies: [
+          {
+            bodyId: 'blank',
+            feature: extrude(
+              [
+                { x: 0, y: 0 },
+                { x: W, y: 0 },
+                { x: W, y: L },
+                { x: 0, y: L },
+              ],
+              T,
+            ),
+          },
+        ],
+        expectedVolume: {
+          valueMm3: W * L * T, // 14400 — flat base panel, exact prism
+          basis: `exact prism: base panel ${W}×${L} mm² × thickness ${T} mm — no tessellation (folded legs are verified by the flat-pattern gate, not this volume)`,
+        },
+        sheetMetal: {
+          thicknessMm: T,
+          material: 'mildSteel',
+          baseWidthMm: W,
+          baseLengthMm: L,
+          ops: [
+            { kind: 'flange', angle: 90, radius: R, edgeIndex: 0, height: FLANGE_H },
+            { kind: 'flange', angle: 90, radius: R, edgeIndex: 1, height: FLANGE_H },
+          ],
+        },
+      },
+    ],
+    drawing: {
+      paperSize: 'A3',
+      scale: 1,
+      dimensions: [
+        { id: 'd_width', partId: 'channel', bodyId: 'blank', view: 'top', kind: 'linear', refs: ['e.vert.0', 'e.vert.1'], expected: W },
+        { id: 'd_length', partId: 'channel', bodyId: 'blank', view: 'top', kind: 'linear', refs: ['e.vert.1', 'e.vert.2'], expected: L },
+        { id: 'd_thickness', partId: 'channel', bodyId: 'blank', view: 'front', kind: 'linear', refs: ['f.cap.bottom', 'f.cap.top'], expected: T },
+      ],
+    },
+  };
+}
+
 // ─── the planner ─────────────────────────────────────────────────────────
 
-export type FixtureKey = 'l-bracket' | 'stepped-shaft' | 'pin-block-assembly' | 'revolve-bushing';
+export type FixtureKey =
+  | 'l-bracket'
+  | 'stepped-shaft'
+  | 'pin-block-assembly'
+  | 'revolve-bushing'
+  | 'sheet-uchannel';
 
 const FIXTURES: Record<FixtureKey, () => DesignPlan> = {
   'l-bracket': lBracketPlan,
   'stepped-shaft': steppedShaftPlan,
   'pin-block-assembly': pinBlockAssemblyPlan,
   'revolve-bushing': revolveBushingPlan,
+  'sheet-uchannel': sheetUChannelPlan,
 };
 
 /** Deterministic planner: dispatches on `brief.params.fixture` (fallback:

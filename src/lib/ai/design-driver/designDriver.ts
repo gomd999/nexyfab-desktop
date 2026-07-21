@@ -26,6 +26,11 @@ import {
 import { buildPartGeometry, geometryGate, type PartGeometry } from './geometryGate';
 import { buildInterferenceArtifact, interferenceGate } from './interferenceGate';
 import { manufacturingGate } from './manufacturingGate';
+import {
+  buildFlatPatternArtifact,
+  flatPatternGate,
+  type FlatPatternArtifact,
+} from './flatPatternGate';
 import { buildDrawingArtifact, drawingGate } from './drawingGate';
 import { buildDesignPackage } from './packager';
 import type { DesignBrief, DesignPlan, DriverResult, GateResult } from './types';
@@ -100,6 +105,17 @@ export async function runDesignDriver(
   const assemblyArtifact: AssemblySolveArtifact | null = plan.assembly
     ? solvePlanAssembly(plan.assembly)
     : null;
+  // Sheet-metal unfold (WB-2). Build failures are CAPTURED (stored as null) so
+  // the flat-pattern gate refuses the plan rather than throwing out the pipeline.
+  const flatPatterns = new Map<string, FlatPatternArtifact | null>();
+  for (const part of plan.parts) {
+    if (!part.sheetMetal) continue;
+    try {
+      flatPatterns.set(part.partId, buildFlatPatternArtifact(part));
+    } catch {
+      flatPatterns.set(part.partId, null);
+    }
+  }
   const drawingArtifact = buildDrawingArtifact(plan);
 
   // ── ③ verify — gate chain ─────────────────────────────────────────────
@@ -120,6 +136,11 @@ export async function runDesignDriver(
   }
   for (const part of plan.parts) {
     gates.push(manufacturingGate(part, geometries.get(part.partId)!));
+  }
+  for (const part of plan.parts) {
+    if (part.sheetMetal) {
+      gates.push(flatPatternGate(part, flatPatterns.get(part.partId) ?? null));
+    }
   }
   gates.push(drawingGate(plan, drawingArtifact));
 
@@ -145,6 +166,7 @@ export async function runDesignDriver(
     geometries,
     drawing: drawingArtifact,
     assembly: assemblyArtifact,
+    flatPatterns,
   });
   return { ok: true, plan, gates, package: pkg };
 }

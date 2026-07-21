@@ -82,6 +82,62 @@ export interface ExpectedVolumeSpec {
   basis: string;
 }
 
+// ─── plan: sheet metal (WB-2 판금 전개 편입) ───────────────────────────────
+
+/**
+ * One forming op applied to the flat blank, in order. Consumed by the real
+ * sheet-metal engine (features/sheetMetal: applyBend / applyFlange), so the
+ * flat-pattern gate REAL-measures the developed length instead of asserting it.
+ *   - 'bend'   folds the existing blank at a fraction along the unfold axis
+ *              (consumes its bend allowance OUT of the blank — developed length
+ *              unchanged).
+ *   - 'flange' grows a NEW leg off an edge (arc + straight leg = added
+ *              material — developed length increases by leg + bend allowance).
+ */
+export interface SheetMetalOp {
+  kind: 'bend' | 'flange';
+  /** Bend angle, degrees (0–180]. */
+  angle: number;
+  /** Inner bend radius, mm. */
+  radius: number;
+  /** 'bend': fraction 0–1 along the unfold axis. */
+  position?: number;
+  /** 'bend': fold direction. Default 'up'. */
+  direction?: 'up' | 'down';
+  /** 'flange': edge index 0=+Z 1=−Z 2=+X 3=−X (features/sheetMetal convention). */
+  edgeIndex?: number;
+  /** 'flange': leg height (reach from bend root), mm. */
+  height?: number;
+}
+
+/**
+ * A sheet-metal part definition. The part's `bodies[0]` is the flat base-panel
+ * blank (a normal extrude — so geometry/drawing gates measure it unchanged);
+ * this spec drives the ADDITIONAL flat-pattern gate, which reconstructs the
+ * folded stack from `ops` via the real engine, unfolds it, and verifies the
+ * developed length + emits a laser-ready flat DXF (CUT outline + BEND lines).
+ */
+export interface SheetMetalSpec {
+  /** Sheet thickness, mm. */
+  thicknessMm: number;
+  /** Material key (features/sheetMetal SHEET_METAL_MATERIAL_ORDER). Default 'mildSteel'. */
+  material?: string;
+  /** Base blank panel width (along the bend-line axis), mm. */
+  baseWidthMm: number;
+  /** Base blank panel length (along the unfold axis), mm. */
+  baseLengthMm: number;
+  /** Ordered forming ops applied to the base panel. */
+  ops: SheetMetalOp[];
+  /**
+   * Optional INDEPENDENT hand-calc of the developed (flat) length, mm. When
+   * present the flat-pattern gate checks |measured − expected| ≤ devTolMm — a
+   * cross-check against the engine's real unfold (mirrors expectedVolume).
+   */
+  expectedDevelopedLengthMm?: number;
+  /** Absolute tolerance for the developed-length cross-check, mm. Default 1e-6. */
+  devTolMm?: number;
+}
+
 export interface PlanPart {
   partId: string;
   name: string;
@@ -95,6 +151,8 @@ export interface PlanPart {
   expectedVolume?: ExpectedVolumeSpec;
   /** Manufacturing process for the DFM gate. Default 'cnc'. */
   process?: DfmProcess;
+  /** When present, the flat-pattern gate unfolds this sheet-metal part (WB-2). */
+  sheetMetal?: SheetMetalSpec;
 }
 
 // ─── plan: assembly ──────────────────────────────────────────────────────
@@ -149,7 +207,7 @@ export interface DesignPlan {
 
 // ─── gate IR ─────────────────────────────────────────────────────────────
 
-export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing';
+export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern';
 
 export interface GateResult {
   /** `${kind}:${scope}` — e.g. 'geometry:bracket', 'assembly', 'drawing:pin'. */
@@ -179,6 +237,32 @@ export interface MeasuredDimensionEntry {
   deviation?: number;
 }
 
+/** WB-2: flat-pattern deliverable for a sheet-metal part (real-unfolded). */
+export interface SheetMetalBendRow {
+  index: number;
+  /** Bend-line position along the developed length, mm. */
+  positionMm: number;
+  angleDeg: number;
+  radiusMm: number;
+  direction: 'up' | 'down';
+  /** Bend allowance consumed (BA = π·(R+K·T)·A/180), mm. */
+  bendAllowanceMm: number;
+  /** Material K-factor used. */
+  kFactor: number;
+}
+
+export interface SheetMetalFlatPattern {
+  /** REAL developed (flat) length from the engine unfold, mm. */
+  developedLengthMm: number;
+  /** Blank width perpendicular to the bend lines, mm. */
+  blankWidthMm: number;
+  thicknessMm: number;
+  material: string;
+  /** Laser-ready flat DXF: CUT outline + BEND fold lines (netDxf segmentsToDxf). */
+  dxf: string;
+  bendTable: SheetMetalBendRow[];
+}
+
 export interface PartPackage {
   partId: string;
   /** Drawing sheet IR (3 views + iso, plus auxiliary body viewports). */
@@ -188,6 +272,8 @@ export interface PartPackage {
   dimensions: MeasuredDimensionEntry[];
   /** Measured mesh volume, mm³ (geometry gate value, restated). */
   volumeMm3: number;
+  /** Present iff the part declared a sheetMetal spec (WB-2 flat pattern). */
+  sheetMetal?: SheetMetalFlatPattern;
 }
 
 export interface AssemblyPackage {
