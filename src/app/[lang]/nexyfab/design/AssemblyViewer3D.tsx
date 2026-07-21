@@ -286,21 +286,39 @@ export default function AssemblyViewer3D({
       holderByPart.clear();
 
       list.forEach((p, i) => {
-        if (!p.aabb?.min || !p.aabb?.max || p.aabb.min.length !== 3 || p.aabb.max.length !== 3) return;
         const partId = p.id ?? `${p.type ?? 'part'}_${i}`;
-        const [x0, y0, z0] = p.aabb.min;
-        const [x1, y1, z1] = p.aabb.max;
-        const dx = Math.max(0.5, x1 - x0), dy = Math.max(0.5, y1 - y0), dz = Math.max(0.5, z1 - z0);
-        const geo = new THREE.BoxGeometry(dx, dy, dz);
+        // mesh 부품(ⓒ 로프트·프로펠러 등): verts/faces 로 실제 곡면 렌더. 없으면 aabb 박스 프록시.
+        const pp = p.params as { verts?: number[][]; faces?: number[][] } | undefined;
+        const md = p.type === 'mesh' && Array.isArray(pp?.verts) && Array.isArray(pp?.faces) ? (pp as { verts: number[][]; faces: number[][] }) : null;
+        let geo: THREE.BufferGeometry;
+        let center: [number, number, number] = [0, 0, 0];
+        if (md) {
+          const pos = new Float32Array(md.verts.length * 3);
+          for (let k = 0; k < md.verts.length; k++) { pos[3 * k] = md.verts[k][0]; pos[3 * k + 1] = md.verts[k][1]; pos[3 * k + 2] = md.verts[k][2]; }
+          const idx: number[] = [];
+          for (const f of md.faces) idx.push(f[0], f[1], f[2]);
+          geo = new THREE.BufferGeometry();
+          geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+          geo.setIndex(idx);
+          geo.computeVertexNormals();
+        } else {
+          if (!p.aabb?.min || !p.aabb?.max || p.aabb.min.length !== 3 || p.aabb.max.length !== 3) return;
+          const [x0, y0, z0] = p.aabb.min;
+          const [x1, y1, z1] = p.aabb.max;
+          const dx = Math.max(0.5, x1 - x0), dy = Math.max(0.5, y1 - y0), dz = Math.max(0.5, z1 - z0);
+          geo = new THREE.BoxGeometry(dx, dy, dz);
+          center = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
+        }
         const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: new THREE.Color(colorOf(p)) }));
-        mesh.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+        mesh.position.set(center[0], center[1], center[2]);
         mesh.userData.part = p;
         mesh.userData.partId = partId;
-        const edges = new THREE.LineSegments(
+        // 박스만 에지 오버레이(고폴리 mesh는 에지 폭증 → 생략)
+        const edges = md ? null : new THREE.LineSegments(
           new THREE.EdgesGeometry(geo),
           new THREE.LineBasicMaterial({ color: 0x1f2937, transparent: true, opacity: 0.35 }),
         );
-        edges.position.copy(mesh.position);
+        if (edges) edges.position.copy(mesh.position);
 
         // OpenSCAD 규약: world = T(tx,ty,tz) · R(rx→ry→rz, 월드축 순) · local
         // three 'ZYX' 내재 회전 = 외재 X→Y→Z 와 동일 행렬 (rz=90: x'=tx−y, y'=ty+x 재현)
@@ -309,7 +327,7 @@ export default function AssemblyViewer3D({
         holder.position.set(at.tx ?? 0, at.ty ?? 0, at.tz ?? 0);
         holder.rotation.set(deg(at.rx), deg(at.ry), deg(at.rz), 'ZYX');
         holder.add(mesh);
-        holder.add(edges);
+        if (edges) holder.add(edges);
         group.add(holder);
         pickables.push(mesh);
         holderByPart.set(partId, { holder, part: p });
