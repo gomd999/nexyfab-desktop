@@ -57,6 +57,7 @@ import type {
   WeldmentSegment,
   WeldmentSpec,
   FastenerSpec,
+  PatternSpec,
 } from './types';
 
 // ─── revision context (proposed optional brief extension — hook only) ───────
@@ -299,6 +300,35 @@ function coerceFastener(v: unknown, path: string): FastenerSpec {
   return spec;
 }
 
+const PATTERN_KINDS = new Set(['linear', 'circular']);
+
+function coercePattern(v: unknown, path: string): PatternSpec {
+  const o = reqObj(v, path);
+  const kind = reqStr(o.kind, `${path}.kind`);
+  if (!PATTERN_KINDS.has(kind)) throw new PlannerError(`${path}.kind='${kind}' invalid (linear|circular)`);
+  const spec: PatternSpec = {
+    id: reqStr(o.id, `${path}.id`),
+    kind: kind as PatternSpec['kind'],
+    count: reqNum(o.count, `${path}.count`),
+  };
+  const pitch = optNum(o.pitchMm, `${path}.pitchMm`);
+  if (pitch !== undefined) spec.pitchMm = pitch;
+  if (o.axis !== undefined) spec.axis = coerceVec3(o.axis, `${path}.axis`);
+  const angle = optNum(o.angleDeg, `${path}.angleDeg`);
+  if (angle !== undefined) spec.angleDeg = angle;
+  const radius = optNum(o.radiusMm, `${path}.radiusMm`);
+  if (radius !== undefined) spec.radiusMm = radius;
+  const seed = optNum(o.seedSizeMm, `${path}.seedSizeMm`);
+  if (seed !== undefined) spec.seedSizeMm = seed;
+  if (o.gear !== undefined && o.gear !== null) {
+    const g = reqObj(o.gear, `${path}.gear`);
+    spec.gear = { moduleMm: reqNum(g.moduleMm, `${path}.gear.moduleMm`), teeth: reqNum(g.teeth, `${path}.gear.teeth`) };
+  }
+  const expected = optNum(o.expectedInstances, `${path}.expectedInstances`);
+  if (expected !== undefined) spec.expectedInstances = expected;
+  return spec;
+}
+
 function coercePart(v: unknown, path: string): PlanPart {
   const o = reqObj(v, path);
   const bodiesRaw = reqArray(o.bodies, `${path}.bodies`);
@@ -330,6 +360,10 @@ function coercePart(v: unknown, path: string): PlanPart {
   if (o.fasteners !== undefined && o.fasteners !== null) {
     const fRaw = reqArray(o.fasteners, `${path}.fasteners`);
     part.fasteners = fRaw.map((f, i) => coerceFastener(f, `${path}.fasteners[${i}]`));
+  }
+  if (o.patterns !== undefined && o.patterns !== null) {
+    const pRaw = reqArray(o.patterns, `${path}.patterns`);
+    part.patterns = pRaw.map((p, i) => coercePattern(p, `${path}.patterns[${i}]`));
   }
   return part;
 }
@@ -586,6 +620,18 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
       ]
       // Fasteners are verified against the ISO 261 pitch table + ISO 68-1 formulas;
       // a non-standard nominal or under-engaged thread FAILS the gate.
+      "patterns": [            // optional; LINEAR/CIRCULAR feature patterns (layout only)
+        { "id": string, "kind": "linear"|"circular", "count": number,  // count >= 2
+          "pitchMm": number?,           // linear: spacing between instances
+          "axis": [x,y,z]?,             // linear: direction (default +X)
+          "angleDeg": number?,          // circular: total sweep (default 360)
+          "radiusMm": number?,          // circular: pitch-circle radius (XZ about +Y)
+          "seedSizeMm": number?,        // instance footprint for the overlap screen
+          "gear": { "moduleMm": number, "teeth": number }?,  // spur-gear SIZING (involute profile NOT generated)
+          "expectedInstances": number? }
+      ]
+      // The pattern gate verifies LAYOUT (count/spacing/non-overlap/gear pitch);
+      // it does NOT generate involute teeth or a CSG union of instances.
     }
   ],
   "assembly": {                   // optional

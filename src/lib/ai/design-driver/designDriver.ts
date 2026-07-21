@@ -41,6 +41,11 @@ import {
   fastenerGate,
   type FastenerArtifact,
 } from './fastenerGate';
+import {
+  buildPatternArtifact,
+  patternGate,
+  type PatternArtifact,
+} from './patternGate';
 import { buildDrawingArtifact, drawingGate } from './drawingGate';
 import { buildGdtArtifact, gdtGate } from './gdtGate';
 import { buildDesignPackage } from './packager';
@@ -147,6 +152,16 @@ export async function runDesignDriver(
       fasteners.set(part.partId, null);
     }
   }
+  // Feature-pattern layout (WB-7). Build failures CAPTURED as null.
+  const patterns = new Map<string, PatternArtifact | null>();
+  for (const part of plan.parts) {
+    if (!part.patterns || part.patterns.length === 0) continue;
+    try {
+      patterns.set(part.partId, buildPatternArtifact(part));
+    } catch {
+      patterns.set(part.partId, null);
+    }
+  }
   const drawingArtifact = buildDrawingArtifact(plan);
   // WB-5: GD&T auto-propose + verify over the named topology; declared specs are
   // enforced (build never throws — refusals become gate reasons).
@@ -186,6 +201,11 @@ export async function runDesignDriver(
       gates.push(fastenerGate(part, fasteners.get(part.partId) ?? null));
     }
   }
+  for (const part of plan.parts) {
+    if (part.patterns && part.patterns.length > 0) {
+      gates.push(patternGate(part, patterns.get(part.partId) ?? null));
+    }
+  }
   gates.push(drawingGate(plan, drawingArtifact));
   gates.push(gdtGate(plan, gdtArtifact));
 
@@ -214,6 +234,7 @@ export async function runDesignDriver(
     flatPatterns,
     weldments,
     fasteners,
+    patterns,
     gdt: gdtArtifact,
   });
   return { ok: true, plan, gates, package: pkg };

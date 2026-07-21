@@ -224,6 +224,47 @@ export interface PlanPart {
   weldment?: WeldmentSpec;
   /** When present, the fastener gate verifies these standard threads (WB-8). */
   fasteners?: FastenerSpec[];
+  /** When present, the pattern gate verifies these feature patterns (WB-7). */
+  patterns?: PatternSpec[];
+}
+
+// ─── plan: feature patterns / gear sizing (WB-7 패턴 편입) ───────────────────
+
+export type PatternKind = 'linear' | 'circular';
+
+/** Optional spur-gear SIZING carried on a circular pattern. Verifies module /
+ *  teeth / pitch-diameter consistency — the involute tooth PROFILE is NOT
+ *  generated (explicit ⑥ '부분' boundary; stated, not faked). */
+export interface PatternGearSpec {
+  moduleMm: number;
+  teeth: number;
+}
+
+/**
+ * A linear or circular instance pattern of a seed feature. The pattern gate
+ * computes the REAL instance transforms and screens layout validity (count,
+ * non-overlap, gear pitch consistency) — it verifies the LAYOUT, not a CSG-
+ * meshed union of instances (근사 명시).
+ */
+export interface PatternSpec {
+  id: string;
+  kind: PatternKind;
+  /** Total instance count including the seed (≥ 2). */
+  count: number;
+  /** linear: spacing between adjacent instances, mm. */
+  pitchMm?: number;
+  /** linear: unit axis direction. Default [1,0,0]. */
+  axis?: [number, number, number];
+  /** circular: total sweep angle, deg. Default 360 (angular pitch = angle/count). */
+  angleDeg?: number;
+  /** circular: pitch-circle radius the instances sit on (XZ plane, about +Y), mm. */
+  radiusMm?: number;
+  /** Seed footprint size for the non-overlap screen, mm. */
+  seedSizeMm?: number;
+  /** Optional spur-gear sizing (circular patterns only). */
+  gear?: PatternGearSpec;
+  /** Optional independent instance-count cross-check. */
+  expectedInstances?: number;
 }
 
 // ─── plan: assembly ──────────────────────────────────────────────────────
@@ -337,7 +378,7 @@ export interface DesignPlan {
 
 // ─── gate IR ─────────────────────────────────────────────────────────────
 
-export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern' | 'gdt' | 'weldment' | 'fastener';
+export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern' | 'gdt' | 'weldment' | 'fastener' | 'pattern';
 
 export interface GateResult {
   /** `${kind}:${scope}` — e.g. 'geometry:bracket', 'assembly', 'drawing:pin'. */
@@ -453,6 +494,40 @@ export interface PartPackage {
   weldment?: WeldmentCutList;
   /** Present iff the part declared fasteners (WB-8 standard-thread schedule). */
   fasteners?: FastenerRecord[];
+  /** Present iff the part declared patterns (WB-7 instance layout). */
+  patterns?: PatternRecord[];
+}
+
+// ─── WB-7: pattern layout record (real instance transforms) ─────────────────
+
+export interface PatternInstance {
+  index: number;
+  position: [number, number, number];
+  /** circular only: instance angle about +Y, deg. */
+  angleDeg?: number;
+}
+
+export interface PatternGearRecord {
+  moduleMm: number;
+  teeth: number;
+  /** Pitch diameter = module × teeth, mm. */
+  pitchDiameterMm: number;
+  /** Circular pitch = π × module, mm. */
+  circularPitchMm: number;
+}
+
+export interface PatternRecord {
+  id: string;
+  kind: PatternKind;
+  count: number;
+  instances: PatternInstance[];
+  /** linear: total span = pitch × (count − 1), mm. */
+  linearSpanMm?: number;
+  /** circular: angular pitch = angle / count, deg. */
+  angularPitchDeg?: number;
+  /** circular: arc spacing at the pitch radius, mm. */
+  arcSpacingMm?: number;
+  gear?: PatternGearRecord;
 }
 
 export interface AssemblyPackage {

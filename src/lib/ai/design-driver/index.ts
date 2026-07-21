@@ -40,6 +40,7 @@ export { manufacturingGate } from './manufacturingGate';
 export { buildFlatPatternArtifact, flatPatternGate, type FlatPatternArtifact } from './flatPatternGate';
 export { buildWeldmentArtifact, weldmentGate, type WeldmentArtifact } from './weldmentGate';
 export { buildFastenerArtifact, fastenerGate, type FastenerArtifact } from './fastenerGate';
+export { buildPatternArtifact, patternGate, type PatternArtifact } from './patternGate';
 export { buildGdtArtifact, gdtGate, type GdtArtifact } from './gdtGate';
 export { buildDrawingArtifact, drawingGate, type DrawingArtifact, type PlannedMeasurement } from './drawingGate';
 export { buildDesignPackage, buildVerificationReport, planBomRows, REPORT_LIMITATIONS } from './packager';

@@ -463,6 +463,64 @@ export function tappedPlatePlan(): DesignPlan {
   };
 }
 
+// ─── fixture 8: spur gear blank + tooth pattern (WB-7 — ⑥ 부분) ──────────────
+
+/**
+ * A module-2, 20-tooth spur gear. bodies[0] is the gear blank (⌀44 addendum-
+ * circle disk, tessellated); the circular `pattern` places 20 tooth instances
+ * on the ⌀40 pitch circle and the pattern gate verifies the gear SIZING
+ * (pitch diameter 40, circular pitch π·2, 18° angular pitch, no tooth overlap).
+ *
+ * ⑥ '부분' boundary (근사 명시): the involute tooth PROFILE is NOT generated —
+ * this verifies gear pitch/tooth-count layout, not the meshing flank geometry.
+ */
+export function spurGearPlan(): DesignPlan {
+  const MODULE = 2, TEETH = 20;
+  const pitchRadius = (MODULE * TEETH) / 2; // 20
+  const odRadius = ((TEETH + 2) * MODULE) / 2; // 22 (addendum circle)
+  const width = 10;
+  const n = CIRCLE_SEGMENTS;
+  const vol = tessellatedCylinderVolume(odRadius, n, width);
+  const analytic = Math.PI * odRadius * odRadius * width;
+  return {
+    planId: 'fixture-spur-gear',
+    name: `Spur Gear m=${MODULE} z=${TEETH} (⌀${MODULE * TEETH} pitch)`,
+    parts: [
+      {
+        partId: 'gear',
+        name: 'Spur Gear',
+        material: 'S45C',
+        process: 'cnc',
+        bodies: [{ bodyId: 'blank', feature: extrude(circleLoop(odRadius, n), width) }],
+        expectedVolume: {
+          valueMm3: vol,
+          basis:
+            `${n}-gon tessellated blank disk (n/2)·r²·sin(2π/n)·h = ${vol} mm³ (as-meshed 정확); ` +
+            `analytic ⌀${2 * odRadius} cylinder πr²h = ${analytic} mm³ (근사 명시). 치형은 미생성(⑥ 부분)`,
+        },
+        patterns: [
+          {
+            id: 'teeth',
+            kind: 'circular',
+            count: TEETH,
+            angleDeg: 360,
+            radiusMm: pitchRadius,
+            seedSizeMm: 3, // tooth thickness at pitch < arc spacing π·2 ≈ 6.283
+            gear: { moduleMm: MODULE, teeth: TEETH },
+          },
+        ],
+      },
+    ],
+    drawing: {
+      paperSize: 'A3',
+      scale: 1,
+      dimensions: [
+        { id: 'd_od', partId: 'gear', bodyId: 'blank', view: 'top', kind: 'diametric', refs: ['f.cap.top'], expected: 2 * odRadius },
+      ],
+    },
+  };
+}
+
 // ─── the planner ─────────────────────────────────────────────────────────
 
 export type FixtureKey =
@@ -472,7 +530,8 @@ export type FixtureKey =
   | 'revolve-bushing'
   | 'sheet-uchannel'
   | 'weldment-frame'
-  | 'tapped-plate';
+  | 'tapped-plate'
+  | 'spur-gear';
 
 const FIXTURES: Record<FixtureKey, () => DesignPlan> = {
   'l-bracket': lBracketPlan,
@@ -482,6 +541,7 @@ const FIXTURES: Record<FixtureKey, () => DesignPlan> = {
   'sheet-uchannel': sheetUChannelPlan,
   'weldment-frame': weldmentFramePlan,
   'tapped-plate': tappedPlatePlan,
+  'spur-gear': spurGearPlan,
 };
 
 /** Deterministic planner: dispatches on `brief.params.fixture` (fallback:
