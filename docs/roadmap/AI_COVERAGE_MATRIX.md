@@ -1,0 +1,152 @@
+# WB-0 — AI 경로 커버리지 매트릭스 (정본)
+
+**작성일**: 2026-07-21 · **트랙**: Wave B / WB-0 (WAVE_A_AI_DRIVER §5 Wave B)
+**대상 코드**: `src/lib/ai/design-driver/**` (260722 실재 자산)
+
+> **이 문서의 지위**: "거의 다 됐나 / 대체 수준인가?"를 **의견이 아니라 표**로
+> 답하는 유일한 정본. 각 칸은 **실행 근거(테스트 실행 · 코드 실독 · grep 실행)**
+> 로만 채운다. **코드가 존재한다는 사실만으로 "가능" 판정을 내리지 않는다.**
+> **"대체 수준" 판정은 이 표의 수치로만 하며, zero-touch 실측(GA3) 전까지 유보한다.**
+
+---
+
+## 0. 판정 어휘 정의
+
+| 기호 | 의미 |
+|---|---|
+| **A** | 실행 근거로 이 카테고리 형상이 계획→게이트→패키지 전 경로를 통과함을 확인 |
+| **부분** | 일부 하위형상/경로만 통과. 우회로(테셀-압출)로만 되거나, 게이트 일부만 적용 |
+| **불가** | 드라이버 계획 어휘 또는 게이트 경로에 이 카테고리가 편입되지 않음(실행/실독으로 확인) |
+| **미측정 (n=0)** | design-partner 실측 부재. 날조 금지 — 빈 칸을 추정으로 채우지 않음 |
+
+3열 정의 (WAVE_A_AI_DRIVER §5):
+- **`AI 계획 가능?`** — fixturePlanner/llmPlanner 스키마가 이 카테고리 형상을
+  `DesignPlan` IR로 표현 가능한가. (`llmPlanner.coerceDesignPlan` 실독 + 픽스처 실행)
+- **`게이트 검증 가능?`** — 그 계획이 4게이트(geometry·assembly·dfm·drawing,
+  **특히 치수 실측 ≤1e-6**)를 통과할 수 있나. (실행 증거 필수)
+- **`zero-touch 실측치`** — 실사용자 부품군에서 개입 없이 통과한 실측 비율.
+  **현재 전 카테고리 n=0** — GA3(파트너)에서만 채울 수 있음.
+
+---
+
+## 1. 매트릭스 (기계 카테고리 — "대체" 대상 영역)
+
+| 카테고리 | AI 계획 가능? | 게이트 검증 가능? | zero-touch 실측치 |
+|---|---|---|---|
+| **① 브래킷 / 플레이트** | **A** — L-프로파일 각기둥 extrude. `lBracketPlan()` 실행 → 패키지 산출. llmPlanner가 동일 JSON 강제-코어스 통과 | **A** — 4게이트 전부 pass. 부피 relErr≤1e-9, 치수 5종 실측 ≤1e-6, DXF 실측 라벨 | **미측정 (n=0)** |
+| **② 축 / 샤프트 (회전체)** | **부분** — 테셀-압출(24각형) 우회로만 치수화 가능. 진짜 `revolve` 솔리드는 스키마 표현은 되나(MESHABLE_KINDS ∋ revolve) **치수 부착 시 프리플라이트가 거부** | **부분** — 테셀-압출 경로 **A**(⌀ 정확 측정 `%%c24`/`%%c16`, relErr≤1e-9, 테셀 편차 근사 명시). 진짜 revolve 치수 경로 **불가**(NamedTopology 부재 → 프리플라이트 거부) | **미측정 (n=0)** |
+| **③ 하우징 / 박스** | **부분** — 단순 각기둥 박스 **A**(pin-block의 40×40×20 block). 포켓/쉘/필렛 하우징은 미실증(곡면 쉘=OCCT 전용 한계) | **부분** — 단순 박스 게이트 **A**(치수 실측 통과). 쉘/포켓/보스 하우징 픽스처 미실행 | **미측정 (n=0)** |
+| **④ 판금** | **불가** — 판금 **피처 종류 없음**. `sheetMetal`은 DFM 공정 태그로만 존재. 굽힘/플랜지/전개 어휘 부재(grep: unfold/flatten/bend 0건). 평판을 extrude로 근사하는 것 외 표현 불가 | **불가** — 전개(flat-pattern) 게이트 없음. sheetMetal은 manufacturingGate에서 minWall=0.5mm AABB 스크리닝으로만 관여. 판금 픽스처 미실행 | **미측정 (n=0)** |
+| **⑤ 용접 프레임 (웰드먼트)** | **불가** — 구조부재/마이터/컷리스트 어휘 부재(grep: weldment/weld/miter 0건). 다수 extrude 바디는 가능하나 프레임 개념·컷리스트 미표현 | **불가** — 용접/컷리스트 게이트 없음 | **미측정 (n=0)** |
+| **⑥ 기어 / 전동** | **불가** — 기어 피처 없음. 인벌류트/모듈/치수 어휘 부재. 패턴 어휘도 드라이버 미편입(grep: pattern 0건) | **불가** — 치합/간섭 검증 없음(간섭 게이트 자체가 미포함) | **미측정 (n=0)** |
+| **⑦ 체결 / 규격품** | **불가** — 나사산 피처 드라이버 미편입(grep: thread 0건). 규격품 라이브러리 미연결. 볼트를 테셀-실린더로 근사해도 나사산은 표현·측정 불가 | **불가** — 나사산/피치 실측 경로 없음 | **미측정 (n=0)** |
+| **⑧ 복합 어셈블리** | **A** — 2부품+mate(concentric/coincident)+BOM. `pinBlockAssemblyPlan()` 실행 → 패키지. llmPlanner가 assembly 스펙(solveMates 입력형) 코어스 통과 | **부분** — mate 수렴 **A**(finalMaxResidual≤1e-6, mateCount=2, 해 배치 실측), BOM/치수 A. **간섭(interference) 게이트 미포함** → 부품 관통도 통과 가능(정직 한계) | **미측정 (n=0)** |
+
+### A 비율 산술 (실행 근거 기반)
+
+| 열 | A | 부분 | 불가 | A 비율 |
+|---|---|---|---|---|
+| **AI 계획 가능?** | ①⑧ = **2** | ②③ = 2 | ④⑤⑥⑦ = 4 | **2/8 = 25%** (부분 포함 시 4/8 = 50%) |
+| **게이트 검증 가능?** | ① = **1** | ②③⑧ = 3 | ④⑤⑥⑦ = 4 | **1/8 = 12.5%** (부분 포함 시 4/8 = 50%) |
+| **zero-touch 실측치** | 0 | 0 | 0 | **n=0 (전 카테고리 미측정)** |
+
+> **대체 수준 판정 (WB-0 결론)**: 현행 드라이버는 **각기둥형 기계부품(브래킷·플레이트·
+> 단순 박스)과 그 mate 어셈블리**에 대해 계획→실측 게이트→패키지 전 경로가 실행으로
+> 검증된다. **회전체·하우징은 부분(우회로/단순형상 한정), 판금·웰드먼트·기어·체결은
+> 계획 어휘 자체가 부재.** 자동화율(zero-touch)은 **전 카테고리 n=0**이므로 "대체
+> 수준" 정량 판정은 **GA3 첫 실측 전까지 유보**한다(측정 없는 목표는 날조 — 불변 원칙).
+
+---
+
+## 2. 기계 외 도메인 (각주 — "대체" 대상 아님)
+
+WAVE_A_AI_DRIVER §0·§4 도메인 순서 및 정직 고지에 따름:
+
+- **조경 · 인테리어 (일반인 트랙)**: `design_brief` 연결로 AI 비중 확대는 쉬우나,
+  본 매트릭스의 "대체 수준"(전문가 툴 대체) 판정 대상이 **아니다**. 별도 트랙.
+- **토목 · 건설**: 보조 도구 심화 영역. **"면허 보유자 최종 책임" 고지 라벨 고정,
+  "대체" 언어 금지**(제품 표면·문서 공통). 본 표에 카테고리로 편입하지 않음.
+
+---
+
+## 3. 커버리지 경계 → Wave B 백로그 매핑
+
+"불가/부분" 판정의 각 경계는 WAVE_A_AI_DRIVER §5 "WB 확장 백로그" 항목과 1:1 대응한다.
+백로그 1건 소화 → 해당 행 재실사 → zero-touch 재측정 → 반복.
+
+| 매트릭스 경계 (불가/부분 사유) | 대응 백로그 (WAVE_A §5) |
+|---|---|
+| ② 진짜 revolve 축류 치수 불가 (NamedTopology 부재) | **WB-1** revolve/loft NamedTopology → 회전체 치수 실측 |
+| ④ 판금 전개/굽힘 어휘 부재 | **WB-2** 판금 전개를 드라이버에 편입(G1 자산: 계획→전개→DXF) |
+| ⑤ 웰드먼트/마이터/컷리스트 어휘 부재 | **WB-3** 웰드먼트 편입(마이터 프레임+컷리스트) |
+| ⑧ 간섭 게이트 미포함 (관통 통과 가능) | **WB-4** 간섭 게이트를 어셈블리 표준 게이트로 승격 |
+| (도면 GD&T 자동화 미편입) | **WB-5** GD&T 자동 제안 편입(gdtSuggestion → 도면 게이트) |
+| ③ 곡면 쉘/필렛 하우징 미실증 (OCCT 전용) | **WB-6** 곡면 쉘/필렛 체인의 게이트 경로(OCCT 게이트 통합) |
+| ⑥ 기어 등 피처 패턴 미편입 | **WB-7** 피처 패턴·end condition의 AI 계획 어휘 편입 |
+
+> **주의**: 판금(G1 라이브)·웰드먼트(W5-E 마이터)·나사산(W5-B)·패턴(W5-D)은 **앱 피처로
+> 존재**하나, 본 실사(grep + 스키마 실독)로 **드라이버 계획 어휘에는 미편입** 확인됨.
+> "피처 존재 ≠ 드라이버 편입" — 백로그가 이 간극을 닫는 작업이다.
+
+---
+
+## 4. 판정 뒷받침 실행 증거 (재현 가능)
+
+모든 판정은 아래 명령의 실제 실행 결과에 근거한다. (2026-07-21 실행, Windows/PowerShell)
+
+### 4.1 fixture 3종 + 실패주입 + llmPlanner 전 경로 실행
+
+```
+npx vitest run \
+  src/lib/ai/design-driver/__tests__/designDriver.fixtures.test.ts \
+  src/lib/ai/design-driver/__tests__/designDriver.failures.test.ts \
+  src/lib/ai/design-driver/llmPlanner.test.ts
+```
+
+**결과: `Test Files 3 passed (3) · Tests 28 passed (28)` · Duration 1.49s.**
+
+이 실행이 표의 다음 칸을 뒷받침한다:
+
+| 표의 칸 | 뒷받침 테스트 (실행 통과) | 검증된 수치 |
+|---|---|---|
+| ① 브래킷 A/A | `WA-A fixture ① L-bracket` | `geometry:bracket` totalVolume≈14720mm³, volumeRelError≤1e-9; 치수 5종(60/40/8/20/90°) 실측 편차≤1e-6; DXF 라벨 `60`/`8`/`20`/`90%%d` |
+| ② 축 테셀-압출 A | `WA-A fixture ② stepped shaft` | ⌀ 실측 `%%c24`/`%%c16`, 길이 30/25, relErr≤1e-9, notes에 "tessellation deviation" 명시 |
+| ② 진짜 revolve 치수 **불가** | `makeLlmPlanner — plan preflight > refuses a dimension on a revolve body` | 거부 메시지 `measurement not available for revolve bodies (WB backlog)` |
+| ③ 단순 박스 A / ⑧ 어셈블리 A·부분 | `WA-A fixture ③ pin-block assembly` | `assembly` finalMaxResidual≤1e-6, mateCount=2, pin 배치 (20,20,20) 실측, BOM 2행 |
+| (게이트가 실제로 측정함) | `WA-A failure injection ①②③④` | ① drawing `unresolved-ref e.vert.99` 거부, ② assembly `did not converge`+잔차>tol, ③ geometry `degenerate` 부피≤1e-9, ④ 미지 브리프 stage:'plan' 거부 |
+
+### 4.2 판금/웰드먼트/나사산/패턴 드라이버 편입 여부 — grep 실행
+
+```
+grep -rniE 'sheetMetal|weldment|weld|miter|thread|pattern|unfold|flatten' src/lib/ai/design-driver
+```
+
+**결과 (전 3건)**:
+```
+llmPlanner.ts:100  const DFM_PROCESSES = new Set([... 'sheetMetal']);   ← DFM 공정 태그
+llmPlanner.ts:400  "process": "cnc"|"fdm"|"sla"|"injection"|"sheetMetal"?   ← 스키마 enum(공정)
+manufacturingGate.ts:39  sheetMetal: 0.5,   ← minWall 스크리닝 상수
+```
+
+→ `sheetMetal`은 **DFM 공정 태그로만** 존재(전개/굽힘 피처 아님). `weldment`·`miter`·
+`thread`·`pattern`·`unfold`·`flatten`은 **0건** — ④⑤⑥⑦ "불가" 판정의 실행 근거.
+
+### 4.3 스키마·프리플라이트 실독 근거 (계획 표현 한계)
+
+- `llmPlanner.ts:97` `MESHABLE_KINDS = {extrude, revolve, sweep, sweep_path, loft}`
+  — 회전체 **솔리드**는 스키마 표현 가능(② "부분"의 근거).
+- `llmPlanner.ts:300-332` `preflightPlan` — 치수 대상 바디가 `extrude`가 아니면
+  즉시 거부("no NamedTopology builder"). 회전체 **치수**는 불가(② 게이트 "부분").
+- `packager.ts:37-43` `REPORT_LIMITATIONS` — 고정 정직 고지: PDF 미포함·DXF 비연관
+  치수·FEA 비법정·**간섭 게이트 미포함**·곡면 테셀레이션. ⑧ "부분"·③ 경계의 근거.
+- `manufacturingGate.ts:24` 자체 명시: 최소두께=AABB 스크리닝 프록시(내부 리브/국부
+  벽 미검출) — DFM 열의 근사 한계.
+
+---
+
+## 5. 다음 갱신 규칙
+
+1. **백로그 1건 소화 시** §1 해당 행을 재실사(실행)로 갱신하고, §3 매핑에서 제거.
+2. **GA3 파트너 실측 개시 시** `zero-touch 실측치` 열을 **n 병기**로 채운다
+   (예: `72% (n=25)`). 그 전까지 전 칸 `미측정 (n=0)` 고정 — 추정 기입 금지.
+3. **웨이브 게이트(GB) 목표치**는 GA3 첫 실측 후 설정. 측정 없는 목표는 날조.
