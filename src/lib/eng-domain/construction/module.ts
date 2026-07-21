@@ -1,23 +1,29 @@
 /**
- * eng-domain/construction/module — CONSTRUCTION DomainModule (다분야 확장 Batch 3).
+ * eng-domain/construction/module — CONSTRUCTION DomainModule
+ * (다분야 확장 Batch 3 + 어휘 확장).
  *
- * Runs the full driver via the shared `runDomainDriver` spine: construction brief
- * → project plan → quantity/schedule build → takeoff + CPM gate chain
- * (eng-domain/construction pure checks) → verified quantity/schedule package.
+ * Runs the full driver via the shared `runDomainDriver` spine. Element/gate
+ * vocabulary:
+ *   - concrete volume takeoff (always)   - rebar weight takeoff (always)
+ *   - schedule feasibility / CPM (always)
+ *   - formwork area takeoff  (when formworkElements present)
+ *   - cost rollup vs budget  (when costLineItems present)
+ *   - earthwork cut-fill balance (when earthwork present)
  *
- * Ceiling (정직): quantity takeoff & scheduling have a LIGHTER legal ceiling than
- * structural design (no stamp on a BOQ), so this domain can approach 단계 5 for
- * those outputs — but any structural member it quantifies is still a licensed
- * engineer's design responsibility. The package carries that split disclosure.
+ * Ceiling (정직): quantity takeoff & scheduling have a lighter legal ceiling than
+ * structural design (no stamp on a BOQ) — those outputs can approach 단계 5. Any
+ * structural member quantified is still a licensed engineer's responsibility.
  *
- * Scope: concrete volume + rebar weight + schedule feasibility as the first
- * class. Formwork / cost / earthwork checks exist in ./checks and become further
- * gates as the plan vocabulary is extended.
+ * A check THROWS on invalid params (caller bug); `safeGate` converts that into a
+ * failed gate (clean verify refusal) so the spine never sees an unhandled throw.
  */
 
 import type { DomainGateResult, DomainModule } from '@/lib/domain-driver';
 import {
   checkConcreteVolumeTakeoff,
+  checkCostRollup,
+  checkEarthworkCutFillBalance,
+  checkFormworkAreaTakeoff,
   checkRebarWeightTakeoff,
   checkScheduleFeasibility,
   concreteVolume_m3,
@@ -26,6 +32,8 @@ import {
   type Activity,
   type ConcreteElement,
   type ConstructionCheckResult,
+  type CostLineItem,
+  type FormworkElement,
   type RebarGroup,
 } from './checks';
 
@@ -41,18 +49,21 @@ export interface ConstructionPlan {
   planId: string;
   name: string;
   concreteElements: ConcreteElement[];
-  /** ordered concrete volume (m³) to reconcile. */
   claimedConcreteM3: number;
-  /** order = computed·(1+waste); pass iff ordered ≥ required. */
   wasteFactor?: number;
   rebarGroups: RebarGroup[];
-  /** delivered rebar weight (kg) to reconcile. */
   claimedRebarKg: number;
-  /** absolute rebar tolerance (kg). */
   rebarToleranceKg?: number;
   activities: Activity[];
-  /** optional project deadline (days). */
   deadlineDays?: number;
+  // ── vocabulary expansion (optional gates) ──
+  formworkElements?: FormworkElement[];
+  claimedFormworkM2?: number;
+  formworkToleranceM2?: number;
+  costLineItems?: CostLineItem[];
+  budget?: number;
+  contingencyFactor?: number;
+  earthwork?: { cutBankM3: number; fillCompactedM3: number; compactionFactor?: number; toleranceM3?: number };
 }
 
 export interface ConstructionArtifacts {
@@ -77,7 +88,7 @@ const CONSTRUCTION_DISCLAIMER =
 
 // ─── planner (deterministic fixture) ──────────────────────────────────────────
 
-/** Small RC frame: 2 beams (0.3×0.6×6) + 2 columns (0.4×0.4×3), rebar, 2-activity schedule. */
+/** RC frame bay: concrete + rebar + schedule + formwork + cost + earthwork (all pass). */
 export function rcFramePlan(): ConstructionPlan {
   return {
     planId: 'fixture-rc-frame',
@@ -92,13 +103,29 @@ export function rcFramePlan(): ConstructionPlan {
       { tag: 'beam-main', nominalDia_mm: 16, length_m: 12, count: 8 },
       { tag: 'column-main', nominalDia_mm: 22, length_m: 3, count: 16 },
     ],
-    claimedRebarKg: 295, // computed ≈ 294.75; tol 10 ✓
+    claimedRebarKg: 295,
     rebarToleranceKg: 10,
     activities: [
       { id: 'excavate', duration_days: 5 },
       { id: 'pour', duration_days: 6, predecessors: ['excavate'] },
     ],
-    deadlineDays: 15, // critical path 11 ≤ 15 ✓
+    deadlineDays: 15,
+    // formwork: beams (2·0.6+0.3)·6=9 ×2 + columns 2(0.4+0.4)·3=4.8 ×2 = 18 + 9.6 = 27.6 m²
+    formworkElements: [
+      { type: 'beam', count: 2, b_m: 0.3, h_m: 0.6, L_m: 6 },
+      { type: 'column', count: 2, b_m: 0.4, h_m: 0.4, L_m: 3 },
+    ],
+    claimedFormworkM2: 27.6,
+    // cost: concrete 3.5×150000 + rebar 295×1500 + formwork 27.6×60000 = 2,623,500 (·1.1 ≤ 3.5M)
+    costLineItems: [
+      { description: 'concrete m³', quantity: 3.5, unitRate: 150000 },
+      { description: 'rebar kg', quantity: 295, unitRate: 1500 },
+      { description: 'formwork m²', quantity: 27.6, unitRate: 60000 },
+    ],
+    budget: 3_500_000,
+    contingencyFactor: 0.1,
+    // earthwork: required bank = 90/0.9 = 100 = cut → net 0 ✓
+    earthwork: { cutBankM3: 100, fillCompactedM3: 90, compactionFactor: 0.9 },
   };
 }
 
@@ -118,17 +145,16 @@ export function constructionFixturePlanner(brief: ConstructionBrief): Constructi
   return build();
 }
 
-// ─── check → gate mapping ─────────────────────────────────────────────────────
+// ─── check → gate mapping (throw-safe) ────────────────────────────────────────
 
-function toGate(kind: string, scope: string, r: ConstructionCheckResult): DomainGateResult {
-  return {
-    id: `${kind}:${scope}`,
-    kind,
-    pass: r.pass,
-    metrics: r.metrics,
-    ...(r.reason ? { reason: r.reason } : {}),
-    notes: [r.basis],
-  };
+function safeGate(kind: string, scope: string, produce: () => ConstructionCheckResult): DomainGateResult {
+  const id = `${kind}:${scope}`;
+  try {
+    const r = produce();
+    return { id, kind, pass: r.pass, metrics: r.metrics, ...(r.reason ? { reason: r.reason } : {}), notes: [r.basis] };
+  } catch (e) {
+    return { id, kind, pass: false, metrics: {}, reason: `invalid parameter: ${e instanceof Error ? e.message : String(e)}`, notes: ['parameter validation failed'] };
+  }
 }
 
 // ─── the module ───────────────────────────────────────────────────────────────
@@ -153,7 +179,6 @@ export const constructionModule: DomainModule<
   },
 
   build(plan) {
-    // Deterministic takeoff (throws on bad params → verify-stage refusal).
     return {
       concreteVolumeM3: concreteVolume_m3(plan.concreteElements),
       rebarWeightKg: rebarWeight_kg(plan.rebarGroups),
@@ -162,39 +187,62 @@ export const constructionModule: DomainModule<
   },
 
   gates(plan) {
-    const gates: DomainGateResult[] = [];
-    gates.push(
-      toGate(
-        'quantity',
-        'concrete',
+    const gates: DomainGateResult[] = [
+      safeGate('quantity', 'concrete', () =>
         checkConcreteVolumeTakeoff({
           elements: plan.concreteElements,
           claimedVolume_m3: plan.claimedConcreteM3,
           ...(plan.wasteFactor !== undefined ? { wasteFactor: plan.wasteFactor } : {}),
         }),
       ),
-    );
-    gates.push(
-      toGate(
-        'quantity',
-        'rebar',
+      safeGate('quantity', 'rebar', () =>
         checkRebarWeightTakeoff({
           groups: plan.rebarGroups,
           claimedWeight_kg: plan.claimedRebarKg,
           ...(plan.rebarToleranceKg !== undefined ? { toleranceKg: plan.rebarToleranceKg } : {}),
         }),
       ),
-    );
-    gates.push(
-      toGate(
-        'schedule',
-        'critical-path',
+      safeGate('schedule', 'critical-path', () =>
         checkScheduleFeasibility({
           activities: plan.activities,
           ...(plan.deadlineDays !== undefined ? { deadline_days: plan.deadlineDays } : {}),
         }),
       ),
-    );
+    ];
+    if (plan.formworkElements && plan.claimedFormworkM2 !== undefined) {
+      gates.push(
+        safeGate('quantity', 'formwork', () =>
+          checkFormworkAreaTakeoff({
+            elements: plan.formworkElements!,
+            claimedArea_m2: plan.claimedFormworkM2!,
+            ...(plan.formworkToleranceM2 !== undefined ? { toleranceM2: plan.formworkToleranceM2 } : {}),
+          }),
+        ),
+      );
+    }
+    if (plan.costLineItems && plan.budget !== undefined) {
+      gates.push(
+        safeGate('cost', 'rollup', () =>
+          checkCostRollup({
+            lineItems: plan.costLineItems!,
+            budget: plan.budget!,
+            ...(plan.contingencyFactor !== undefined ? { contingencyFactor: plan.contingencyFactor } : {}),
+          }),
+        ),
+      );
+    }
+    if (plan.earthwork) {
+      gates.push(
+        safeGate('earthwork', 'cut-fill', () =>
+          checkEarthworkCutFillBalance({
+            cutBank_m3: plan.earthwork!.cutBankM3,
+            fillCompacted_m3: plan.earthwork!.fillCompactedM3,
+            ...(plan.earthwork!.compactionFactor !== undefined ? { compactionFactor: plan.earthwork!.compactionFactor } : {}),
+            ...(plan.earthwork!.toleranceM3 !== undefined ? { toleranceM3: plan.earthwork!.toleranceM3 } : {}),
+          }),
+        ),
+      );
+    }
     return gates;
   },
 
