@@ -55,6 +55,9 @@ type IrMod = { refineInterferencesMesh: (a: Assembly, i: unknown[], o?: Record<s
 type FaMod = { autoFasteners: (a: Assembly) => unknown };
 // 일반인용 결과 요약(260719) — 전문가 산출물을 쉬운 말 5섹션 1페이지로. 새 계산 없음(기존 모듈 재사용).
 type EsMod = { easySummary: (a: Assembly, o?: Record<string, unknown>) => string };
+// B2 앞문(260721): 분야 템플릿 → 결정론 어셈블리. templateId 지정 시 assembly 를 대신 합성.
+type TemplateAsm = Assembly & { domain?: string; ok?: boolean; error?: string; message?: string; paramErrors?: unknown[]; alignmentErrors?: unknown[] };
+type TplMod = { buildAssemblyTemplate: (domain: string, id: string, params?: Record<string, unknown>) => TemplateAsm | null; listAssemblyTemplates: (domain?: string) => unknown[] };
 
 let _asm: AsmMod | null = null, _pkg: PkgMod | null = null, _rnd: RenderMod | null = null, _boq: BoqMod | null = null, _pd: PdMod | null = null, _vfy: VerifyMod | null = null, _dxf: DxfMod | null = null, _lx: LxMod | null = null, _xl: XlsxMod | null = null, _ifc: IfcMod | null = null;
 let _ps: PsMod | null = null, _fsp: FspMod | null = null, _dc: DcMod | null = null, _eg: EgMod | null = null, _rt: RtMod | null = null, _ir: IrMod | null = null, _fa: FaMod | null = null, _es: EsMod | null = null;
@@ -87,15 +90,37 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
 
   let assembly: Assembly, options: Record<string, unknown>;
+  let tpl: { templateId?: string; domain?: string; params?: Record<string, unknown> } = {};
   try {
-    const body = (await req.json()) as { assembly?: Assembly; options?: Record<string, unknown> };
+    const body = (await req.json()) as { assembly?: Assembly; options?: Record<string, unknown>; templateId?: string; domain?: string; params?: Record<string, unknown> };
     assembly = body.assembly ?? {};
     options = body.options ?? {};
+    if (typeof body.templateId === 'string') tpl = { templateId: body.templateId, domain: body.domain, params: body.params };
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
+
+  // B2 앞문: templateId 가 오면 분야 템플릿을 결정론 합성해 assembly 를 대신 만든다(4면 통일).
+  // 입력값 불가는 기본값으로 덮지 않고 정직 거부(paramErrors) — 나머지 파이프라인은 동일.
+  if (tpl.templateId) {
+    if (typeof tpl.domain !== 'string') {
+      return NextResponse.json({ ok: false, error: 'templateId 사용 시 domain 이 필요합니다 (예: building/rc_frame).' }, { status: 400 });
+    }
+    try {
+      const tm = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'domain-assemblies.mjs')).href)) as TplMod;
+      const asm = tm.buildAssemblyTemplate(tpl.domain, tpl.templateId, tpl.params ?? {});
+      if (!asm) return NextResponse.json({ ok: false, error: `unknown template '${tpl.domain}/${tpl.templateId}'` }, { status: 404 });
+      if (asm.ok === false || (Array.isArray(asm.alignmentErrors) && asm.alignmentErrors.length > 0)) {
+        return NextResponse.json({ ok: false, stage: 'params', error: asm.error ?? 'invalid_params', paramErrors: asm.paramErrors ?? asm.alignmentErrors ?? [], message: asm.message }, { status: 200 });
+      }
+      assembly = asm as Assembly;
+    } catch (e) {
+      return NextResponse.json({ ok: false, error: 'template load failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 });
+    }
+  }
+
   if (!Array.isArray(assembly.parts) || assembly.parts.length === 0) {
-    return NextResponse.json({ ok: false, error: 'assembly.parts 가 필요합니다.' }, { status: 400 });
+    return NextResponse.json({ ok: false, error: 'assembly.parts 또는 templateId+domain 이 필요합니다.' }, { status: 400 });
   }
 
   let mods: { asm: AsmMod; pkg: PkgMod; rnd: RenderMod; boq: BoqMod; pd: PdMod; vfy: VerifyMod; dxf: DxfMod; lx: LxMod | null; xl: XlsxMod | null; ifc: IfcMod | null; ps: PsMod | null; fsp: FspMod | null; dc: DcMod | null; eg: EgMod | null; rt: RtMod | null; ir: IrMod | null; fa: FaMod | null; es: EsMod | null };
