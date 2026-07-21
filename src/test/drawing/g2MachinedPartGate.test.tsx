@@ -12,9 +12,13 @@
  *   2. 렌더된 SVG(=PDF 파이프라인의 입력)를 실제 jspdf+svg2pdf.js로
  *      벡터 PDF Blob까지 생성.
  *   3. 모델 편집(두께 12→18) 후 같은 refs가 새 값으로 재실측 — 연동.
- *   4. 정직 기록: DXF(R12) 경로는 아직 치수 엔티티 미탑재 — 제작도
- *      반출은 벡터 PDF 기준. 이 한계는 테스트로 고정해 두어 DXF에
- *      치수가 실리면 이 assert가 뒤집혀 문서 갱신을 강제한다.
+ *   4. DXF(R12) 경로도 치수 탑재 — 한때 "치수 엔티티 미탑재"가 이
+ *      게이트의 고정 한계였으나 해소됨: topologies 공급 시 실측값이
+ *      DIM_<id> 레이어의 LINE+SOLID+TEXT(전개 프리미티브)로 실린다.
+ *      진짜 DIMENSION 엔티티가 아닌 이유(익명 *D 블록 의존 → 블록 없는
+ *      DIMENSION은 엄격 뷰어에서 공백)는 dxfExport.ts 헤더에 명시.
+ *      topologies 미공급 시엔 종전과 비트 동일(하위호환) — 이 두 방향
+ *      모두 아래 마지막 테스트가 실측으로 고정한다.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { render } from '@testing-library/react';
@@ -197,11 +201,37 @@ describe('G2 gate — machined part drawing with REAL measured dimensions', () =
     expect(width && width.ok && width.value).toBeCloseTo(60, 9);
   });
 
-  it('honest record: the R12 DXF path still has NO dimension entities (PDF is the dimensioned output)', () => {
-    const dxf = sheetToDxf(makeSheet());
+  it('the R12 DXF path now CARRIES the measured dimensions (limitation lifted)', () => {
+    // 종전 한계 고정 테스트(expect(dxf).not.toContain('DIMENSION'))의 반전.
+    // 게이트 표의 "DXF 치수 R6 이월" 문구를 갱신할 것 — 이제 DXF에도
+    // 실측 치수가 실린다. 형태는 진짜 DIMENSION 엔티티가 아니라 전개
+    // LINE+SOLID+TEXT(사유: R12 DIMENSION은 익명 *D 블록 필수 — 블록
+    // 없는 미니멀 스트림에선 공백 렌더. dxfExport.ts 헤더 참조).
+    const sheet = makeSheet();
+    const { topologies } = maps();
+
+    // 하위호환: topologies 미공급이면 종전대로 치수 없음.
+    expect(sheetToDxf(sheet)).not.toContain('DIM_');
+
+    const dxf = sheetToDxf(sheet, { topologies });
     expect(dxf).toContain('ENTITIES');
-    // 이 assert가 실패하기 시작하면 DXF에 치수가 실린 것 — 게이트 표의
-    // "DXF 치수 R6 이월" 문구를 갱신할 것.
-    expect(dxf).not.toContain('DIMENSION');
+    // 치수마다 전용 레이어.
+    for (const { dim } of DIMS) {
+      expect(dxf, dim.id).toContain(`DIM_${dim.id}`);
+    }
+    // 실측값이 TEXT 페이로드로 실렸는지 — 그룹코드 1('  1') 다음 줄만
+    // 수집해 좌표 문자열('160' 등) 오탐을 배제한다. ⌀/°는 R12 텍스트
+    // 관례인 %%c/%%d 제어코드로 이동한다.
+    const lines = dxf.split('\n');
+    const texts = lines.flatMap((l, i) => (l === '  1' && i + 1 < lines.length ? [lines[i + 1]!] : []));
+    expect(texts).toContain('60');
+    expect(texts).toContain('12');
+    expect(texts).toContain('50');
+    expect(texts).toContain('20');
+    expect(texts).toContain('90%%d'); // 90°
+    expect(texts).toContain('%%c50'); // ⌀50
+    // 전부 실측 성공 픽스처 — 플레이스홀더/실패 코멘트가 없어야 한다.
+    expect(dxf).not.toContain('NEXYFAB_DIM_UNMEASURED');
+    expect(texts.some((t) => t.startsWith('<'))).toBe(false);
   });
 });
