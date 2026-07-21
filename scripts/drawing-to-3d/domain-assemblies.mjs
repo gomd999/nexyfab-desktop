@@ -265,6 +265,43 @@ function cafeRoomAssembly(p) {
 }
 
 /** 토목: 옹벽 연장 구간(C2) — 벽체+저판 box 분해. civilTakeoff 메타로 수량 룰엔진(터파기·거푸집·되메우기) 연동. */
+// 박스 암거(RC 1련) — 상·하 슬래브 + 좌·우 벽체가 닫힌 사각 프레임(연장 압출). 검증 메타
+// boxCulvert(m) 를 실어 도시에 검증(box_culvert_frame 라멘 단면력)이 형상에서 바로 돈다.
+function boxCulvertAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const innerW = num(p.innerWidth, 3000), innerH = num(p.innerHeight, 3000);
+  const wallT = num(p.wallThk, 350), L = num(p.length, 10000);
+  const outerW = innerW + 2 * wallT;
+  const mk = (id, params, at, role) => ({ id, type: 'box', params, at, material: 'concrete', role });
+  const parts = [
+    mk('bot_slab', { width: outerW, depth: L, height: wallT }, { tx: -outerW / 2, ty: -L / 2, tz: 0 }, 'slab'),
+    mk('top_slab', { width: outerW, depth: L, height: wallT }, { tx: -outerW / 2, ty: -L / 2, tz: wallT + innerH }, 'slab'),
+    mk('wall_L', { width: wallT, depth: L, height: innerH }, { tx: -outerW / 2, ty: -L / 2, tz: wallT }, 'wall'),
+    mk('wall_R', { width: wallT, depth: L, height: innerH }, { tx: innerW / 2, ty: -L / 2, tz: wallT }, 'wall'),
+  ];
+  return {
+    name: `박스 암거 (내공 ${innerW}×${innerH})`, domain: 'civil', parts,
+    boxCulvert: { innerWidth: innerW / 1000, innerHeight: innerH / 1000, wallThk: wallT / 1000, length: L / 1000 },
+  };
+}
+
+// RC 물탱크(개방 상부) — 저판 + 전·후벽(전폭) + 좌·우벽(내측 인셋으로 모서리 겹침 방지).
+function waterTankAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const innerW = num(p.innerWidth, 4000), innerD = num(p.innerDepth, 3000), innerH = num(p.wallHeight, 2500);
+  const wallT = num(p.wallThk, 300), baseT = num(p.baseThk, 400);
+  const outerW = innerW + 2 * wallT, outerD = innerD + 2 * wallT;
+  const mk = (id, params, at, role) => ({ id, type: 'box', params, at, material: 'concrete', role });
+  const parts = [
+    mk('base_slab', { width: outerW, depth: outerD, height: baseT }, { tx: -outerW / 2, ty: -outerD / 2, tz: 0 }, 'slab'),
+    mk('wall_front', { width: outerW, depth: wallT, height: innerH }, { tx: -outerW / 2, ty: -outerD / 2, tz: baseT }, 'wall'),
+    mk('wall_back', { width: outerW, depth: wallT, height: innerH }, { tx: -outerW / 2, ty: outerD / 2 - wallT, tz: baseT }, 'wall'),
+    mk('wall_left', { width: wallT, depth: innerD, height: innerH }, { tx: -outerW / 2, ty: -innerD / 2, tz: baseT }, 'wall'),
+    mk('wall_right', { width: wallT, depth: innerD, height: innerH }, { tx: innerW / 2, ty: -innerD / 2, tz: baseT }, 'wall'),
+  ];
+  return { name: `RC 물탱크 (내공 ${innerW}×${innerD}×${innerH})`, domain: 'building', parts };
+}
+
 function retainingWallRunAssembly(p) {
   const H = num(p.H, 3000), baseW = num(p.baseWidth, 2000), baseT = num(p.baseThickness, 400);
   const stemT = num(p.stemThickness, 300), toe = num(p.toeLength, 600), L = num(p.length, 10000);
@@ -3049,6 +3086,15 @@ export const ASSEMBLY_TEMPLATES = {
       ],
     },
     {
+      id: 'box_culvert', labelKo: '박스 암거 (RC 1련)', labelEn: 'RC box culvert (single cell)', build: boxCulvertAssembly,
+      params: [
+        { name: 'innerWidth', labelKo: '내폭', unit: 'mm', default: 3000, min: 800, max: 8000 },
+        { name: 'innerHeight', labelKo: '내고', unit: 'mm', default: 3000, min: 800, max: 8000 },
+        { name: 'wallThk', labelKo: '부재 두께(등두께)', unit: 'mm', default: 350, min: 150, max: 1500 },
+        { name: 'length', labelKo: '연장', unit: 'mm', default: 10000, min: 1000, max: 200000 },
+      ],
+    },
+    {
       id: 'retaining_wall_alignment', labelKo: '옹벽 선형 구간 (IP 폴리라인)', labelEn: 'Retaining wall alignment', build: retainingWallAlignmentAssembly,
       params: [
         { name: 'H', labelKo: '벽고(저면~상단)', unit: 'mm', default: 3000, min: 500, max: 8000 },
@@ -3063,6 +3109,16 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   building: [
+    {
+      id: 'water_tank', labelKo: 'RC 물탱크 (개방 상부)', labelEn: 'RC water tank (open top)', build: waterTankAssembly,
+      params: [
+        { name: 'innerWidth', labelKo: '내폭', unit: 'mm', default: 4000, min: 1000, max: 12000 },
+        { name: 'innerDepth', labelKo: '내경(깊이방향)', unit: 'mm', default: 3000, min: 1000, max: 12000 },
+        { name: 'wallHeight', labelKo: '벽 높이', unit: 'mm', default: 2500, min: 800, max: 6000 },
+        { name: 'wallThk', labelKo: '벽체 두께', unit: 'mm', default: 300, min: 150, max: 800 },
+        { name: 'baseThk', labelKo: '저판 두께', unit: 'mm', default: 400, min: 200, max: 1000 },
+      ],
+    },
     {
       id: 'steel_canopy', labelKo: '강구조 캐노피 (박공 개방형)', labelEn: 'Modular steel canopy (gable, open)', build: steelCanopyAssembly,
       params: [

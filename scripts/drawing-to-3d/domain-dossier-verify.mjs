@@ -37,9 +37,10 @@ export function runDossierVerifications(assembly, params = {}) {
 }
 
 const badge = (verdict) => {
-  const ok = verdict === 'PASS';
-  const c = ok ? '#16a34a' : '#dc2626';
-  return `<span style="color:${c};font-weight:700">${ok ? '적합 ✓' : '검토 ✕'} (${esc(verdict)})</span>`;
+  if (verdict === 'PASS') return '<span style="color:#16a34a;font-weight:700">적합 ✓ (PASS)</span>';
+  if (verdict === 'FAIL') return '<span style="color:#dc2626;font-weight:700">검토 ✕ (FAIL)</span>';
+  if (verdict === 'INFO') return '<span style="color:#2563eb;font-weight:700">단면력 산출 ℹ (INFO)</span>';
+  return `<span style="color:#64748b;font-weight:700">${esc(verdict ?? '—')}</span>`;
 };
 
 /** check 객체의 숫자 필드를 "키=값" 압축(FS·값 위주). */
@@ -60,7 +61,8 @@ function renderRun(run) {
   const L = [];
   L.push(`<h2>${esc(run.label)}</h2>`);
   if (r.ok) {
-    L.push(`<div class="card">종합 판정: ${badge(r.verdict)}</div>`);
+    const isInfo = r.verdict === 'INFO';
+    L.push(`<div class="card">${isInfo ? '결과' : '종합 판정'}: ${badge(r.verdict)}${isInfo ? ' — 단면력 산출(합·불 판정 아님, 배근·단면 검토는 별도)' : ''}</div>`);
     const checks = r.checks && typeof r.checks === 'object' ? Object.entries(r.checks) : [];
     if (checks.length) {
       L.push('<table><tr><th>검토 항목</th><th>실측값</th><th>판정</th></tr>');
@@ -68,6 +70,12 @@ function renderRun(run) {
         if (!c || typeof c !== 'object') continue;
         L.push(`<tr><td style="text-align:left">${esc(c.labelKo ?? c.label ?? k)}</td><td>${esc(checkNums(c))}</td><td>${c.pass ? '적합 ✓' : '검토 ✕'}</td></tr>`);
       }
+      L.push('</table>');
+    }
+    // 단면력(모멘트) — box_culvert 등 INFO형 계산기의 실체 산출값
+    if (r.moments && typeof r.moments === 'object' && Object.keys(r.moments).length) {
+      L.push('<table><tr><th>부재 위치</th><th>모멘트 (kN·m)</th></tr>');
+      for (const [k, v] of Object.entries(r.moments)) if (typeof v === 'number') L.push(`<tr><td style="text-align:left">${esc(k)}</td><td>${f(v, 2)}</td></tr>`);
       L.push('</table>');
     }
     // 형상 파생 vs 가정(기본값) — 정직 표기
