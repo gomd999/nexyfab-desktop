@@ -111,15 +111,27 @@ describe('revolvePolyhedron', () => {
     expect(poly.faces).toHaveLength(8 * 4 + 2);
   });
 
-  it('all face normals point outward', () => {
+  it('normals are a consistent outward shell — inner walls face the axis, outer walls face away', () => {
+    // A tube is NON-CONVEX: the mesh centroid sits on the (hollow) axis, so
+    // "outward = away from centroid" is FALSE for the inner wall. The correct
+    // invariant is a globally-consistent shell whose raw signed volume is the
+    // POSITIVE faceted tube volume (hole subtracted, not doubled).
     const poly = revolvePolyhedron(revolveFeat(360), 12);
-    const c = poly.vertices.reduce(
-      (a, v) => ({ x: a.x + v.x / poly.vertices.length, y: a.y + v.y / poly.vertices.length, z: a.z + v.z / poly.vertices.length }),
-      { x: 0, y: 0, z: 0 },
-    );
+    // Radial normal test on axis-aligned side walls (skip caps: none for 360°).
     for (const f of poly.faces) {
       const p0 = poly.vertices[f.vertices[0]];
-      expect(dot(f.normal, sub(c, p0))).toBeLessThan(1e-6);
+      const radial = { x: p0.x, y: 0, z: p0.z }; // outward radial dir (axis = Y)
+      const rl = Math.hypot(radial.x, radial.z);
+      if (rl < 1e-9) continue;
+      const rn = { x: radial.x / rl, y: 0, z: radial.z / rl };
+      const align = dot(f.normal, rn);
+      // Inner wall (radius ≈ 4) faces the axis (align < 0); outer wall
+      // (radius ≈ 6) faces away (align > 0). Either way |align| ≈ 1.
+      if (Math.abs(align) > 0.5) {
+        const inner = rl < 5;
+        expect(align).toBeGreaterThan(inner ? -1.0001 : 0.5);
+        expect(align).toBeLessThan(inner ? -0.5 : 1.0001);
+      }
     }
   });
 
@@ -198,6 +210,100 @@ describe('loftPolyhedron', () => {
         mode: 'add',
       }),
     ).toThrow(/same point count/);
+  });
+});
+
+// ── centroid-independent outward orientation (WA-A non-convex fix) ──────────
+//
+// The as-stored winding must be a globally-consistent OUTWARD shell so the
+// raw divergence-theorem sum equals the true volume even for NON-CONVEX solids
+// whose centroid lies outside the material. Regression for the L-bracket /
+// tube mis-orientation the design-driver geometry gate measured.
+
+/** Raw signed volume with faces' AS-STORED winding (fan from vs[0]). */
+function rawSignedVolume(poly: { vertices: { x: number; y: number; z: number }[]; faces: { vertices: number[] }[] }): number {
+  let six = 0;
+  for (const f of poly.faces) {
+    const vs = f.vertices;
+    const v0 = poly.vertices[vs[0]];
+    for (let i = 1; i < vs.length - 1; i++) {
+      const v1 = poly.vertices[vs[i]];
+      const v2 = poly.vertices[vs[i + 1]];
+      six +=
+        v0.x * (v1.y * v2.z - v1.z * v2.y) +
+        v0.y * (v1.z * v2.x - v1.x * v2.z) +
+        v0.z * (v1.x * v2.y - v1.y * v2.x);
+    }
+  }
+  return six / 6;
+}
+
+/** Count manifold edges traversed in the SAME direction by both faces (winding
+ * inconsistencies). 0 ⇒ globally consistent orientation. */
+function inconsistentEdges(poly: { faces: { vertices: number[] }[] }): number {
+  const dir = new Map<string, number>();
+  let bad = 0;
+  for (const f of poly.faces) {
+    const vs = f.vertices;
+    for (let i = 0; i < vs.length; i++) {
+      const a = vs[i], b = vs[(i + 1) % vs.length];
+      const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+      const fwd = a < b ? 1 : -1;
+      const prev = dir.get(key);
+      if (prev === undefined) dir.set(key, fwd);
+      else if (prev === fwd) bad++;
+    }
+  }
+  return bad;
+}
+
+const L_PROFILE: ReadonlyArray<{ x: number; y: number }> = [
+  { x: 0, y: 0 }, { x: 60, y: 0 }, { x: 60, y: 8 },
+  { x: 8, y: 8 }, { x: 8, y: 40 }, { x: 0, y: 40 },
+];
+
+describe('outward orientation is centroid-independent (non-convex)', () => {
+  it('L-profile prism: raw signed volume = exact 14720 mm³ (was 5760 mis-oriented)', () => {
+    const poly = extrudePolyhedron({ kind: 'extrude', loop: L_PROFILE, depth: 20, direction: 'one_sided', mode: 'add' });
+    // area = 60·8 + 8·32 = 736; × depth 20 = 14720.
+    expect(rawSignedVolume(poly)).toBeCloseTo(14720, 6);
+    expect(inconsistentEdges(poly)).toBe(0);
+    expect(polyhedronEdges(poly).every((e) => e.faces.length === 2)).toBe(true);
+  });
+
+  it('revolved tube (360°) has a subtractive hole: raw signed volume < smooth Pappus 60π and > 0', () => {
+    const poly = revolvePolyhedron(revolveFeat(360), 16);
+    const v = rawSignedVolume(poly);
+    expect(v).toBeGreaterThan(0);
+    expect(v).toBeLessThan(60 * Math.PI); // faceted ⇒ under the smooth solid; the hole is subtracted, not doubled
+    expect(v).toBeCloseTo(183.688, 2);
+    expect(inconsistentEdges(poly)).toBe(0);
+  });
+
+  it('a face on the reentrant (concave) wall is oriented outward — the case the centroid heuristic broke', () => {
+    const poly = extrudePolyhedron({ kind: 'extrude', loop: L_PROFILE, depth: 20, direction: 'one_sided', mode: 'add' });
+    // The horizontal-leg top wall at y=8 (x from 8..60) borders the notch; its
+    // outward normal must point +Y (out of the material below it), NOT −Y.
+    const topOfHorizLeg = poly.faces.find((f) => {
+      const pts = f.vertices.map((i) => poly.vertices[i]);
+      return pts.every((p) => Math.abs(p.y - 8) < 1e-9) && pts.some((p) => p.x > 8 + 1e-9);
+    });
+    expect(topOfHorizLeg).toBeDefined();
+    expect(topOfHorizLeg!.normal.y).toBeGreaterThan(0.99); // +Y outward (a naive centroid flip made it −Y)
+  });
+});
+
+describe('convex shells are unchanged (bit-identical winding + normals)', () => {
+  it('box prism faces match the exact pre-fix winding & normals', () => {
+    const poly = extrudePolyhedron(extrude());
+    expect(poly.faces).toEqual([
+      { vertices: [3, 2, 1, 0], normal: { x: 0, y: 0, z: -1 } },
+      { vertices: [4, 5, 6, 7], normal: { x: 0, y: 0, z: 1 } },
+      { vertices: [0, 1, 5, 4], normal: { x: 0, y: -1, z: 0 } },
+      { vertices: [1, 2, 6, 5], normal: { x: 1, y: 0, z: 0 } },
+      { vertices: [2, 3, 7, 6], normal: { x: 0, y: 1, z: 0 } },
+      { vertices: [3, 0, 4, 7], normal: { x: -1, y: 0, z: 0 } },
+    ]);
   });
 });
 

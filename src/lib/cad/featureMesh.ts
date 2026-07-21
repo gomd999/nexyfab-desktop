@@ -11,9 +11,20 @@
  *   - Right-handed world frame; the sketch XY plane is the world XY plane and
  *     extrude grows along +Z (per extrudeProfile's direction modes).
  *   - Faces store a CCW vertex loop AS SEEN FROM OUTSIDE and an outward unit
- *     normal. Normals are computed from the loop and flipped if they point
- *     toward the solid centroid, so winding mistakes can't produce inward
- *     normals — the HLR pass relies on this.
+ *     normal. Orientation is made globally consistent by `orientConsistent`:
+ *     the raw per-builder winding is aligned across shared edges (each
+ *     manifold edge traversed in opposite directions by its two faces), then
+ *     the whole shell is flipped iff its divergence-theorem signed volume is
+ *     negative — so every normal points OUT of the solid. This is centroid-
+ *     INDEPENDENT: it is correct for non-convex solids (L-profiles, tubes)
+ *     whose centroid can lie outside the material, where the old
+ *     "flip toward centroid" heuristic mis-oriented concavity-bordering
+ *     faces (measured 260722: L-bracket signed sum 5760 ≠ true 14720 mm³).
+ *     For convex shells the result is bit-identical to the old heuristic.
+ *     Meshes that are not a clean orientable closed 2-manifold (open /
+ *     self-touching / non-manifold — e.g. an axis-touching revolve profile)
+ *     fall back to the legacy per-face centroid heuristic, so nothing that
+ *     previously meshed regresses. The HLR pass relies on the outward normals.
  */
 
 import type { Vec3 } from '@/lib/sketch/sketchPlane';
@@ -80,20 +91,19 @@ export function extrudePolyhedron(feature: ExtrudeFeature): Polyhedron {
   for (const p of loop) vertices.push({ x: p.x, y: p.y, z: z0 });
   for (const p of loop) vertices.push({ x: p.x, y: p.y, z: z1 });
 
-  const centroid = polyCentroid(vertices);
   const faces: PolyFace[] = [];
 
   // Bottom cap (loop reversed so it reads CCW from below).
-  faces.push(orientedFace([...Array(n).keys()].reverse(), vertices, centroid));
+  faces.push(rawFace([...Array(n).keys()].reverse(), vertices));
   // Top cap.
-  faces.push(orientedFace([...Array(n).keys()].map((i) => i + n), vertices, centroid));
+  faces.push(rawFace([...Array(n).keys()].map((i) => i + n), vertices));
   // Sides: quad per loop edge.
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
-    faces.push(orientedFace([i, j, j + n, i + n], vertices, centroid));
+    faces.push(rawFace([i, j, j + n, i + n], vertices));
   }
 
-  return { vertices, faces };
+  return orientConsistent({ vertices, faces });
 }
 
 // ─── revolve → solid of revolution ──────────────────────────────────────────
@@ -134,7 +144,6 @@ export function revolvePolyhedron(
     }
   }
   const idx = (i: number, j: number): number => j * n + i;
-  const centroid = polyCentroid(vertices);
   const faces: PolyFace[] = [];
 
   // Side quads.
@@ -142,16 +151,16 @@ export function revolvePolyhedron(
     const jn = full ? (j + 1) % segments : j + 1;
     for (let i = 0; i < n; i++) {
       const inx = (i + 1) % n;
-      faces.push(orientedFace([idx(i, j), idx(inx, j), idx(inx, jn), idx(i, jn)], vertices, centroid));
+      faces.push(rawFace([idx(i, j), idx(inx, j), idx(inx, jn), idx(i, jn)], vertices));
     }
   }
   // End caps for a partial sweep (the profile face at θ=0 and θ=angle).
   if (!full) {
-    faces.push(orientedFace([...Array(n).keys()].map((i) => idx(i, 0)), vertices, centroid));
-    faces.push(orientedFace([...Array(n).keys()].map((i) => idx(i, segments)), vertices, centroid));
+    faces.push(rawFace([...Array(n).keys()].map((i) => idx(i, 0)), vertices));
+    faces.push(rawFace([...Array(n).keys()].map((i) => idx(i, segments)), vertices));
   }
 
-  return { vertices, faces };
+  return orientConsistent({ vertices, faces });
 }
 
 // ─── sweep → profile swept along a 3D path ───────────────────────────────────
@@ -242,18 +251,17 @@ function sweepAlongPath(
     }
   }
   const idx = (pi: number, si: number): number => si * m + pi;
-  const centroid = polyCentroid(vertices);
   const faces: PolyFace[] = [];
   for (let si = 0; si < path.length - 1; si++) {
     for (let pi = 0; pi < m; pi++) {
       const pin = (pi + 1) % m;
-      faces.push(orientedFace([idx(pi, si), idx(pin, si), idx(pin, si + 1), idx(pi, si + 1)], vertices, centroid));
+      faces.push(rawFace([idx(pi, si), idx(pin, si), idx(pin, si + 1), idx(pi, si + 1)], vertices));
     }
   }
   // End caps.
-  faces.push(orientedFace([...Array(m).keys()].map((pi) => idx(pi, 0)), vertices, centroid));
-  faces.push(orientedFace([...Array(m).keys()].map((pi) => idx(pi, path.length - 1)), vertices, centroid));
-  return { vertices, faces };
+  faces.push(rawFace([...Array(m).keys()].map((pi) => idx(pi, 0)), vertices));
+  faces.push(rawFace([...Array(m).keys()].map((pi) => idx(pi, path.length - 1)), vertices));
+  return orientConsistent({ vertices, faces });
 }
 
 /** Mesh a sweep feature (profile.points swept along path). */
@@ -294,18 +302,17 @@ export function loftPolyhedron(feature: LoftFeature): Polyhedron {
     for (const p of s.profile.points) vertices.push({ x: p.x, y: p.y, z: s.z });
   }
   const idx = (pi: number, si: number): number => si * n + pi;
-  const centroid = polyCentroid(vertices);
   const faces: PolyFace[] = [];
   for (let si = 0; si < sections.length - 1; si++) {
     for (let pi = 0; pi < n; pi++) {
       const pin = (pi + 1) % n;
-      faces.push(orientedFace([idx(pi, si), idx(pin, si), idx(pin, si + 1), idx(pi, si + 1)], vertices, centroid));
+      faces.push(rawFace([idx(pi, si), idx(pin, si), idx(pin, si + 1), idx(pi, si + 1)], vertices));
     }
   }
   // End caps (first + last section).
-  faces.push(orientedFace([...Array(n).keys()].map((pi) => idx(pi, 0)), vertices, centroid));
-  faces.push(orientedFace([...Array(n).keys()].map((pi) => idx(pi, sections.length - 1)), vertices, centroid));
-  return { vertices, faces };
+  faces.push(rawFace([...Array(n).keys()].map((pi) => idx(pi, 0)), vertices));
+  faces.push(rawFace([...Array(n).keys()].map((pi) => idx(pi, sections.length - 1)), vertices));
+  return orientConsistent({ vertices, faces });
 }
 
 // ─── dispatcher ────────────────────────────────────────────────────────────
@@ -396,20 +403,138 @@ function polyCentroid(vertices: Vec3[]): Vec3 {
 }
 
 /**
- * Build a face from a vertex-index loop, computing the outward normal via the
- * first non-degenerate corner and flipping it (plus reversing the loop) if it
- * points toward the solid centroid.
+ * Build a face from a vertex-index loop with its winding AS GIVEN by the
+ * builder (no flip). `orientConsistent` decides the global orientation.
  */
-function orientedFace(loopIdx: number[], vertices: Vec3[], centroid: Vec3): PolyFace {
-  const normal = faceNormal(loopIdx, vertices);
-  // Vector from a point on the face to the centroid.
-  const p0 = vertices[loopIdx[0]];
-  const toCentroid = sub(centroid, p0);
-  if (dot(normal, toCentroid) > 0) {
-    // Normal points inward → flip normal + reverse winding.
-    return { vertices: [...loopIdx].reverse(), normal: scale(normal, -1) };
+function rawFace(loopIdx: number[], vertices: Vec3[]): PolyFace {
+  return { vertices: loopIdx, normal: faceNormal(loopIdx, vertices) };
+}
+
+/**
+ * Divergence-theorem contribution of ONE face loop (fan from vs[0]), ×6. The
+ * signed sum of these over a consistently-wound closed shell is 6·volume;
+ * its sign tells us whether the shell's normals point out (+) or in (−).
+ */
+function faceSixVolume(loopIdx: number[], vertices: Vec3[]): number {
+  const v0 = vertices[loopIdx[0]];
+  let six = 0;
+  for (let i = 1; i < loopIdx.length - 1; i++) {
+    const v1 = vertices[loopIdx[i]];
+    const v2 = vertices[loopIdx[i + 1]];
+    six +=
+      v0.x * (v1.y * v2.z - v1.z * v2.y) +
+      v0.y * (v1.z * v2.x - v1.x * v2.z) +
+      v0.z * (v1.x * v2.y - v1.y * v2.x);
   }
-  return { vertices: loopIdx, normal };
+  return six;
+}
+
+/** Legacy per-face centroid heuristic — fallback for meshes we can't globally
+ * orient (open / non-manifold / non-orientable). Preserves prior behavior. */
+function orientedFace(face: PolyFace, vertices: Vec3[], centroid: Vec3): PolyFace {
+  const p0 = vertices[face.vertices[0]];
+  const toCentroid = sub(centroid, p0);
+  if (dot(face.normal, toCentroid) > 0) {
+    return { vertices: [...face.vertices].reverse(), normal: scale(face.normal, -1) };
+  }
+  return face;
+}
+
+/**
+ * Make a shell's face winding globally consistent and outward-facing, WITHOUT
+ * relying on the solid centroid (which can lie outside a non-convex body).
+ *
+ * 1. Align every face across its shared edges by BFS propagation: a manifold
+ *    edge must be traversed in OPPOSITE directions by its two faces. This
+ *    yields one of the two globally-consistent orientations of the surface.
+ * 2. Flip the whole shell iff its divergence-theorem signed volume is negative,
+ *    so all normals point OUT of the solid.
+ *
+ * Exact for any closed orientable 2-manifold and independent of the builder's
+ * raw winding. For convex shells (already consistent + already outward) it
+ * flips nothing → bit-identical to the previous output. Meshes that are not a
+ * clean orientable closed 2-manifold fall back to the legacy centroid
+ * heuristic so nothing that meshed before regresses.
+ */
+function orientConsistent(poly: Polyhedron): Polyhedron {
+  const { vertices, faces } = poly;
+  const faceCount = faces.length;
+
+  // Undirected edge → per-face traversal (index-based, matches polyhedronEdges).
+  const edgeUses = new Map<string, Array<{ face: number; forward: boolean }>>();
+  for (let f = 0; f < faceCount; f++) {
+    const vs = faces[f].vertices;
+    for (let i = 0; i < vs.length; i++) {
+      const a = vs[i];
+      const b = vs[(i + 1) % vs.length];
+      const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+      const uses = edgeUses.get(key);
+      if (uses) uses.push({ face: f, forward: a < b });
+      else edgeUses.set(key, [{ face: f, forward: a < b }]);
+    }
+  }
+
+  // Only a clean closed 2-manifold (every edge shared by exactly two faces)
+  // is globally orientable by edge propagation.
+  let manifold = true;
+  for (const uses of edgeUses.values()) {
+    if (uses.length !== 2) { manifold = false; break; }
+  }
+
+  if (manifold) {
+    const flip = new Array<boolean>(faceCount).fill(false);
+    const visited = new Array<boolean>(faceCount).fill(false);
+    let orientable = true;
+    for (let seed = 0; seed < faceCount && orientable; seed++) {
+      if (visited[seed]) continue;
+      visited[seed] = true;
+      const queue = [seed];
+      while (queue.length > 0 && orientable) {
+        const f = queue.pop()!;
+        const vs = faces[f].vertices;
+        for (let i = 0; i < vs.length; i++) {
+          const a = vs[i];
+          const b = vs[(i + 1) % vs.length];
+          const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+          const uses = edgeUses.get(key)!;
+          const mine = uses.find((u) => u.face === f)!;
+          const other = uses.find((u) => u.face !== f);
+          if (!other) continue;
+          const effMine = mine.forward !== flip[f]; // effective direction after this face's flip
+          const requiredFlipOther = other.forward === effMine; // must traverse the edge oppositely
+          if (!visited[other.face]) {
+            visited[other.face] = true;
+            flip[other.face] = requiredFlipOther;
+            queue.push(other.face);
+          } else if (flip[other.face] !== requiredFlipOther) {
+            orientable = false; // non-orientable (e.g. Möbius) — bail to fallback
+            break;
+          }
+        }
+      }
+    }
+
+    if (orientable) {
+      // Global sign: outward normals ⇒ positive divergence volume.
+      let six = 0;
+      for (let f = 0; f < faceCount; f++) {
+        const c = faceSixVolume(faces[f].vertices, vertices);
+        six += flip[f] ? -c : c;
+      }
+      const invert = six < 0;
+      const out = faces.map((face, f) => {
+        const doFlip = flip[f] !== invert; // XOR with the global sign flip
+        return doFlip
+          ? { vertices: [...face.vertices].reverse(), normal: scale(face.normal, -1) }
+          : face;
+      });
+      return { vertices, faces: out };
+    }
+  }
+
+  // Fallback: legacy per-face centroid heuristic (unchanged prior behavior).
+  const centroid = polyCentroid(vertices);
+  return { vertices, faces: faces.map((face) => orientedFace(face, vertices, centroid)) };
 }
 
 /** Newell's method — robust face normal for a (possibly non-planar) loop. */
