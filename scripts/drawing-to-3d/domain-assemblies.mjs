@@ -302,6 +302,34 @@ function waterTankAssembly(p = {}) {
   return { name: `RC 물탱크 (내공 ${innerW}×${innerD}×${innerH})`, domain: 'building', parts };
 }
 
+// 아파트 단지 배치(매싱) — 동(RC 박스) 격자 + 동간 녹지 + 대지. 상세 식재가 아닌
+// 배치계획/매싱 레벨(GA 배치도·3D 매싱·면적 BOQ). 동수·층수 파라메트릭.
+function apartmentComplexAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const nX = Math.max(1, Math.min(5, Math.round(num(p.towersX, 3))));
+  const nY = Math.max(1, Math.min(4, Math.round(num(p.towersY, 2))));
+  const floors = Math.max(5, Math.min(40, Math.round(num(p.floors, 15))));
+  const towerW = num(p.towerW, 20000), towerD = num(p.towerD, 15000), storyH = num(p.storyH, 2900);
+  const gapX = num(p.gapX, 25000), gapY = num(p.gapY, 35000);
+  const towerH = floors * storyH;
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  const spanX = nX * towerW + (nX - 1) * gapX, spanY = nY * towerD + (nY - 1) * gapY;
+  const siteW = spanX + 2 * gapX, siteD = spanY + 2 * gapY;
+  P('site_ground', 'box', { width: siteW, depth: siteD, height: 200 }, { tx: -siteW / 2, ty: -siteD / 2, tz: -200 }, '토공', 'ground');
+  const x0 = -spanX / 2, y0 = -spanY / 2;
+  for (let i = 0; i < nX; i++) for (let j = 0; j < nY; j++) {
+    const tx = x0 + i * (towerW + gapX), ty = y0 + j * (towerD + gapY);
+    P(`tower_${i}_${j}`, 'box', { width: towerW, depth: towerD, height: towerH }, { tx, ty, tz: 0 }, 'RC', 'building');
+  }
+  for (let i = 0; i < nX - 1; i++) for (let j = 0; j < nY; j++) {
+    const gx = x0 + i * (towerW + gapX) + towerW + gapX * 0.2;
+    const ty = y0 + j * (towerD + gapY);
+    P(`green_${i}_${j}`, 'box', { width: gapX * 0.6, depth: towerD, height: 120 }, { tx: gx, ty, tz: 0 }, '조경', 'green');
+  }
+  return { name: `아파트 단지 (${nX * nY}개동 ${floors}층)`, domain: 'landscape', parts };
+}
+
 function retainingWallRunAssembly(p) {
   const H = num(p.H, 3000), baseW = num(p.baseWidth, 2000), baseT = num(p.baseThickness, 400);
   const stemT = num(p.stemThickness, 300), toe = num(p.toeLength, 600), L = num(p.length, 10000);
@@ -3200,6 +3228,18 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   landscape: [
+    {
+      id: 'apartment_complex', labelKo: '아파트 단지 배치 (매싱)', labelEn: 'Apartment complex site (massing)', build: apartmentComplexAssembly,
+      params: [
+        { name: 'towersX', labelKo: '동 배열(가로)', unit: '', default: 3, min: 1, max: 5 },
+        { name: 'towersY', labelKo: '동 배열(세로)', unit: '', default: 2, min: 1, max: 4 },
+        { name: 'floors', labelKo: '층수', unit: '', default: 15, min: 5, max: 40 },
+        { name: 'towerW', labelKo: '동 폭', unit: 'mm', default: 20000, min: 10000, max: 40000 },
+        { name: 'towerD', labelKo: '동 깊이', unit: 'mm', default: 15000, min: 8000, max: 30000 },
+        { name: 'gapX', labelKo: '동간 거리(가로)', unit: 'mm', default: 25000, min: 10000, max: 80000 },
+        { name: 'gapY', labelKo: '동간 거리(세로)', unit: 'mm', default: 35000, min: 15000, max: 100000 },
+      ],
+    },
     {
       id: 'pergola', labelKo: '목재 파고라', labelEn: 'Timber pergola', build: pergolaAssembly,
       params: [
