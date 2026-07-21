@@ -35,12 +35,31 @@ import {
   type ReviewComment,
   type RevisionDirective,
 } from './reviewQueue';
+import {
+  pushCommitVersion,
+  fetchVersionHistory,
+  reconstructGraph,
+  PersistenceError,
+  type PersistFailureReason,
+  type ReconstructedGraph,
+} from './documentPersistence';
 import type { FeatureInstance } from '../features/types';
 
 export interface PendingMerge {
   sourceBranch: string;
   targetBranch: string;
   result: MergeResult;
+}
+
+/** Result IR for a persistence action — success carries the server version id,
+ *  failure carries a typed reason (never a silent drop). */
+export interface PersistResult {
+  ok: boolean;
+  reason?: PersistFailureReason;
+  /** Server version id the commit was snapshotted to (push) — on success. */
+  versionId?: string;
+  /** Reconstructed graph read-model (load) — on success. */
+  graph?: ReconstructedGraph;
 }
 
 export interface PdmSessionState {
@@ -81,6 +100,40 @@ export interface PdmSessionState {
   approveAiRun: (runId: string, approver: string) => ApproveOutcome | null;
   /** Request changes → RevisionDirective IR (next AI run's input contract). */
   requestAiChanges: (runId: string, comments: ReviewComment[]) => RevisionDirective | null;
+
+  // ── G4 carry-over: opt-in server persistence (documents version API) ────────
+  // Additive & opt-in: an UNBOUND session (documentId === null) is unchanged —
+  // pure in-memory, no network, no behavioural difference. Persistence engages
+  // ONLY after bindDocument(). Failures are surfaced as typed reasons; a commit
+  // snapshot is never silently lost.
+
+  /** Bound document id, or null for a pure in-memory session (the default). */
+  documentId: string | null;
+  /** Fetch impl used for persistence (injectable for tests). */
+  persistFetch: typeof fetch | null;
+  /** Last persistence failure reason + message, or null. Cleared on success. */
+  lastPersistError: { reason: PersistFailureReason; message: string } | null;
+  /** PDM commit id → server version id, filled as commits are pushed/loaded. */
+  versionIdByCommit: Record<string, string>;
+  /** Read-model of the last loaded server history (for the history view). */
+  restoredGraph: ReconstructedGraph | null;
+
+  /** Opt into persistence by binding a server document. No repo mutation. */
+  bindDocument: (documentId: string, opts?: { fetchImpl?: typeof fetch }) => void;
+  /** Leave persistence (repo + history untouched; only the binding is dropped). */
+  unbindDocument: () => void;
+  /** Push a commit to the server as an explicit version snapshot. Unbound →
+   *  { ok:false, reason:'not_bound' } (a no-op, not an error). */
+  persistCommit: (commit: Commit) => Promise<PersistResult>;
+  /** commit() + persistCommit() — the "commit → POST snapshot" wiring. When
+   *  unbound, this is exactly the old in-memory commit (persist is a no-op). */
+  commitAndPersist: (
+    features: FeatureInstance[],
+    message: string,
+    author: string,
+  ) => Promise<{ commit: Commit | null; persist: PersistResult }>;
+  /** Load the server version history and rebuild the commit graph read-model. */
+  loadHistory: () => Promise<PersistResult>;
 }
 
 const demoFeature = (
@@ -132,6 +185,12 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
   isDemo: false,
   pendingMerge: null,
   aiRuns: [],
+
+  documentId: null,
+  persistFetch: null,
+  lastPersistError: null,
+  versionIdByCommit: {},
+  restoredGraph: null,
 
   init: (features, author) => {
     if (get().repo) return; // idempotent — never clobber an existing history
@@ -303,5 +362,92 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
       rev: s.rev + 1,
     }));
     return directive;
+  },
+
+  // ── G4 carry-over: opt-in server persistence ────────────────────────────────
+
+  bindDocument: (documentId, opts = {}) => {
+    if (!documentId) return; // never bind to an empty id
+    set({
+      documentId,
+      persistFetch: opts.fetchImpl ?? null,
+      lastPersistError: null,
+    });
+  },
+
+  unbindDocument: () =>
+    set({
+      documentId: null,
+      persistFetch: null,
+      lastPersistError: null,
+      versionIdByCommit: {},
+      restoredGraph: null,
+    }),
+
+  persistCommit: async (commit) => {
+    const { documentId, persistFetch, versionIdByCommit, repo } = get();
+    // Unbound session → pure in-memory, no network. Opt-in, so this is a
+    // no-op result rather than an error (nothing was lost — nothing to save to).
+    if (!documentId) return { ok: false, reason: 'not_bound' };
+
+    // Branch the commit lives on — needed so the graph round-trips per-branch.
+    // Fall back to the repo's current branch, else 'main'.
+    const branch = repo?.current().branchName ?? 'main';
+    // Server rule: branchName requires the first-parent's version id.
+    const firstParent = commit.parents[0];
+    const parentVersionId = firstParent ? versionIdByCommit[firstParent] ?? null : null;
+
+    try {
+      const version = await pushCommitVersion(documentId, commit, branch, {
+        fetchImpl: persistFetch ?? undefined,
+        parentVersionId,
+      });
+      set(s => ({
+        versionIdByCommit: { ...s.versionIdByCommit, [commit.id]: version.id },
+        lastPersistError: null,
+      }));
+      return { ok: true, versionId: version.id };
+    } catch (err) {
+      const reason: PersistFailureReason =
+        err instanceof PersistenceError ? err.reason : 'server_error';
+      const message = err instanceof Error ? err.message : String(err);
+      set({ lastPersistError: { reason, message } });
+      return { ok: false, reason };
+    }
+  },
+
+  commitAndPersist: async (features, message, author) => {
+    const commit = get().commit(features, message, author);
+    if (!commit) return { commit: null, persist: { ok: false, reason: 'not_bound' } };
+    const persist = await get().persistCommit(commit);
+    return { commit, persist };
+  },
+
+  loadHistory: async () => {
+    const { documentId, persistFetch } = get();
+    if (!documentId) return { ok: false, reason: 'not_bound' };
+    try {
+      const versions = await fetchVersionHistory(documentId, {
+        fetchImpl: persistFetch ?? undefined,
+      });
+      const graph = reconstructGraph(versions);
+      // Rebuild the commit→version map so a subsequent branch-commit push can
+      // still supply parentVersionId (lineage survives the reload).
+      const map: Record<string, string> = {};
+      for (const c of graph.commits) map[c.id] = c.versionId;
+      set(s => ({
+        restoredGraph: graph,
+        versionIdByCommit: { ...s.versionIdByCommit, ...map },
+        lastPersistError: null,
+        rev: s.rev + 1,
+      }));
+      return { ok: true, graph };
+    } catch (err) {
+      const reason: PersistFailureReason =
+        err instanceof PersistenceError ? err.reason : 'server_error';
+      const message = err instanceof Error ? err.message : String(err);
+      set({ lastPersistError: { reason, message } });
+      return { ok: false, reason };
+    }
   },
 }));
