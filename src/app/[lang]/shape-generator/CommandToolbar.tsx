@@ -1461,6 +1461,12 @@ interface CommandToolbarProps {
    * cleanly into third-party CAD viewers.
    */
   stepExportSupported?: boolean;
+  /** W5-H — ACIS SAT ASCII (평면 페이스 폐다면체만; 라이터가 검증·거부). */
+  onExportSAT?: () => void;
+  /** W5-H — IGES 5.x 폴리라인 와이어프레임 (B-Rep 아님 — 파일 S섹션에 명시). */
+  onExportIGES?: () => void;
+  /** W5-H — IFC2X3 IfcFacetedBrep (mm). */
+  onExportIFC?: () => void;
   onExportGLTF?: () => void;
   onExportDXF?: () => void;
   onExportFlatPatternDXF?: () => void;
@@ -1810,6 +1816,7 @@ export default function CommandToolbar(props: CommandToolbarProps) {
     onTogglePlanes, showPlanes,
     onImportFile, onSketchInsertReference, onAddFeatureWithParams, fileImportMenuHint,
     onExportOBJ, onExportPLY, onExport3MF, onExportHTML, onExportSTEP, onExportGLTF,
+    onExportSAT, onExportIGES, onExportIFC,
     stepExportSupported = true,
     onExportDXF, onExportFlatPatternDXF, dxfProjection, onDxfProjectionChange,
     onSaveScene, onLoadScene, onExportGLB,
@@ -2363,6 +2370,34 @@ export default function CommandToolbar(props: CommandToolbarProps) {
                 <span>{exportingFormat === 'STEP' ? tt.exportingSTEP : tt.exportSTEP}</span>
                 {!stepExportSupported && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--nx-border-strong)', color: 'var(--nx-text-2)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }} title={tt.exportSTEPUnsupportedTip}>⚠</span>}
                 {lockedFormats.includes('step') && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--nx-accent-2)', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
+              </button>
+              {/* W5-H — SAT/IGES/IFC (라이터 자체검증·거부는 핸들러 토스트로 표면화) */}
+              <button data-testid="export-sat" style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'SAT') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'SAT'}
+                title="ACIS SAT (planar-face closed solids only — writer validates and refuses otherwise)"
+                onClick={() => { onExportSAT?.(); closeSub(); }}
+                onMouseEnter={e => (e.currentTarget.style.background = C_DARK.hover)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'SAT' ? <span className="__nf_exporting">⟳</span> : '💾'}</span>
+                <span>Export SAT</span>
+                {lockedFormats.includes('sat') && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--nx-accent-2)', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
+              </button>
+              <button data-testid="export-iges" style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'IGES') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'IGES'}
+                title="IGES 5.x polyline wireframe — NOT a surface/solid B-Rep (declared in the file header)"
+                onClick={() => { onExportIGES?.(); closeSub(); }}
+                onMouseEnter={e => (e.currentTarget.style.background = C_DARK.hover)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'IGES' ? <span className="__nf_exporting">⟳</span> : '💾'}</span>
+                <span>Export IGES (wireframe)</span>
+                {lockedFormats.includes('iges') && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--nx-accent-2)', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
+              </button>
+              <button data-testid="export-ifc" style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'IFC') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'IFC'}
+                title="IFC2X3 IfcFacetedBrep (mm) — closed-shell validated by the writer"
+                onClick={() => { onExportIFC?.(); closeSub(); }}
+                onMouseEnter={e => (e.currentTarget.style.background = C_DARK.hover)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <span style={{ fontSize: 15, width: 18, textAlign: 'center' }}>{exportingFormat === 'IFC' ? <span className="__nf_exporting">⟳</span> : '🏗️'}</span>
+                <span>Export IFC</span>
+                {lockedFormats.includes('ifc') && <span style={{ marginLeft: 'auto', fontSize: 9, background: 'var(--nx-accent-2)', color: 'var(--nx-text)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>🔒 PRO</span>}
               </button>
               <button style={{ ...S.dropItem, opacity: (!hasResult || exportingFormat === 'GLTF') ? 0.4 : 1 }} disabled={!hasResult || exportingFormat === 'GLTF'} onClick={() => { onExportGLTF?.(); closeSub(); }}
                 onMouseEnter={e => (e.currentTarget.style.background = C_DARK.hover)}

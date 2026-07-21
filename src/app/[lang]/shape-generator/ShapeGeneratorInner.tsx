@@ -224,6 +224,9 @@ import BodyCsgDock from './panels/BodyCsgDock';
 import ComposeIndicator from './panels/ComposeIndicator';
 import CanvasGizmoOverlays from './panels/CanvasGizmoOverlays';
 import { collectDowngrades } from './features/downgradeNotice';
+import RefRelinkPanel from './panels/RefRelinkPanel';
+import { useRefRelinkWiring } from './panels/useRefRelinkWiring';
+import { runBrepExport, type BrepExportFormat } from './io/brepExportActions';
 import StatusFooter from './panels/StatusFooter';
 import AuthModelPlacementDock from './panels/AuthModelPlacementDock';
 import SplitExportDock from './panels/SplitExportDock';
@@ -4398,6 +4401,19 @@ export function ShapeGeneratorInner() {
     topoMap.update(geo, activeFeatureId);
   }, [effectiveResult?.geometry]);
 
+  // ── G3: RefRelink 배선 — 리빌드 상실(reference.lost) 수집 → 패널 → 적용 ──
+  // 적용은 updateNode(featureId, { edgeSelections }) 한 줄: nodeMap → features
+  // 메모가 바뀌므로 위의 파이프라인 effect([features] dep)가 재빌드를 트리거한다.
+  const refRelink = useRefRelinkWiring({
+    geometry: effectiveResult?.geometry ?? null,
+    features,
+    onApplyFeatureSelections: (featureId, edgeSelections) => {
+      updateNode(featureId, { edgeSelections });
+      addToast('success', lang === 'ko' ? '참조 재지정 적용 — 재빌드합니다' : 'Reference relinked — rebuilding');
+    },
+    onRefused: (reason) => addToast('error', reason),
+  });
+
   // Shell-v2 bridge: feature stats. Declared here (after effectiveResult is in scope).
   useEffect(() => {
     const featureCount = features?.length ?? 0;
@@ -7218,6 +7234,24 @@ export function ShapeGeneratorInner() {
     }
   }, [effectiveResult, addToast]);
 
+  // ── W5-H: SAT / IGES / IFC — brep-bridge 라이터 경유(io/brepExportActions).
+  // 라이터는 자체 검증 실패 시 사유째 throw(생성≠검증) → 사유 원문을 토스트.
+  const handleBrepFormatExport = useCallback((format: BrepExportFormat) => {
+    void runBrepExport(format, effectiveResult?.geometry, planLimits.exportFormats, {
+      onGated: () => promptUpgrade(`${format.toUpperCase()} Export`),
+      onStart: () => setExportingFormat(format.toUpperCase()),
+      onSuccess: () => {
+        analytics.shapeDownload(format.toUpperCase());
+        addToast('success', `${format.toUpperCase()} exported`);
+      },
+      onRefused: (reason) => addToast('error', reason),
+      onFinally: () => setExportingFormat(null),
+    });
+  }, [effectiveResult, planLimits.exportFormats, promptUpgrade, addToast]);
+  const handleExportSAT = useCallback(() => handleBrepFormatExport('sat'), [handleBrepFormatExport]);
+  const handleExportIGES = useCallback(() => handleBrepFormatExport('iges'), [handleBrepFormatExport]);
+  const handleExportIFC = useCallback(() => handleBrepFormatExport('ifc'), [handleBrepFormatExport]);
+
   const [dxfProjection, setDxfProjection] = useState<'xy' | 'xz' | 'yz'>('xy');
 
   const handleExportDXF = useCallback(async () => {
@@ -9530,6 +9564,9 @@ export function ShapeGeneratorInner() {
             onExportSTEP={handleExportSTEP}
             stepExportSupported={!!effectiveResult?.geometry && canExportStepViaBridge(effectiveResult.geometry)}
             onExportGLTF={handleExportGLTF}
+            onExportSAT={handleExportSAT}
+            onExportIGES={handleExportIGES}
+            onExportIFC={handleExportIFC}
             onExportDXF={handleExportDXF}
             onExportFlatPatternDXF={handleExportFlatPatternDXF}
             onSaveScene={handleSaveScene}
@@ -9537,7 +9574,7 @@ export function ShapeGeneratorInner() {
             onExportGLB={handleExportGLB}
             onExportRhino={handleExportRhino}
             onExportGrasshopper={handleExportGrasshopper}
-            lockedFormats={(['step','gltf','obj','dxf','ply','rhino','grasshopper'] as const).filter(f => !planLimits.exportFormats.includes(f))}
+            lockedFormats={(['step','gltf','obj','dxf','ply','sat','iges','ifc','rhino','grasshopper'] as const).filter(f => !planLimits.exportFormats.includes(f))}
             dxfProjection={dxfProjection}
             onDxfProjectionChange={setDxfProjection}
             onMeshProcess={handleMeshProcess}
@@ -11617,6 +11654,18 @@ export function ShapeGeneratorInner() {
         setStlExportDialogOpen={setStlExportDialogOpen}
         onExportSTL={(choice) => { void handleExportCurrentSTL(choice); }}
       />
+
+      {/* ═══ G3: 참조 상실 재지정 패널 — 리빌드 margin-gate 거부를 액션화.
+          items 가 비면 훅이 [] 를 주고 패널은 스스로 null 렌더(이중 안전). ═══ */}
+      {refRelink.items.length > 0 && (
+        <RefRelinkPanel
+          lang={lang}
+          items={refRelink.items}
+          onApply={refRelink.apply}
+          onClose={refRelink.dismiss}
+          history={refRelink.history}
+        />
+      )}
 
       {/* ═══ Upgrade Modals (all 8 paywall dialogs) — see panels/UpgradeModalsDock.tsx ═══ */}
       <UpgradeModalsDock lang={lang} />
