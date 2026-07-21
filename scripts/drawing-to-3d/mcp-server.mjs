@@ -35,10 +35,30 @@ import { extractGdt, extractGdtFile } from './gdt-import.mjs';
 import { parseLandXml, parseLandXmlFile } from './landxml-import.mjs';
 import { stepRoundTrip } from './roundtrip.mjs';
 import { refineInterferencesMesh } from './interference-refine.mjs';
+import { runDesignBriefTool } from './design-brief.mjs';
 
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
 
 export const tools = [
+  {
+    name: 'design_brief',
+    description:
+      `★ Wave A AI 설계 드라이버 — 한 문장 brief → **검증된 설계 패키지** 또는 명시 거부. ` +
+      `LLM은 계획(DesignPlan)까지만, 그 아래는 전부 결정론: 지오메트리(부피·워터타이트)→조립 수렴→` +
+      `DFM→치수 실측 게이트를 모두 실행하고, 전 게이트 통과 시에만 패키지(부품별 3뷰 시트 IR·DXF·` +
+      `실측 치수·BOM·검증 리포트)를 낸다. 하나라도 실패하면 패키지 없이 거부 IR(stage·reason·failed ` +
+      `게이트 id — 값 날조 없음). API/웹과 동일 계약(결정론 플래너 기준). 현재 플래너는 fixture 3종` +
+      `(l-bracket·stepped-shaft·pin-block-assembly); 미지 brief는 정직 거부(LLM 플래너=WA-D1).`,
+    inputSchema: {
+      type: 'object', required: ['text'],
+      properties: {
+        text: { type: 'string', description: '설계 요청 자연어(brief.text)' },
+        id: { type: 'string', description: 'brief id(생략 시 fixture/text에서 파생)' },
+        fixture: { type: 'string', description: '결정론 플래너 라우팅 키: l-bracket | stepped-shaft | pin-block-assembly' },
+        params: { type: 'object', description: '구조화 파라미터(숫자/문자)' },
+      },
+    },
+  },
   {
     name: 'compose_3d',
     description:
@@ -402,6 +422,10 @@ export const tools = [
 ];
 
 export async function callTool(name, args = {}) {
+  if (name === 'design_brief') {
+    // 동일 계약: API 라우트와 같은 shared runner(결정론 플래너)를 tsx 서브프로세스로 실행.
+    return runDesignBriefTool({ text: args.text, id: args.id, fixture: args.fixture, params: args.params });
+  }
   if (name === 'compose_3d') {
     const r = await composeWithGate(args.description, { maxRounds: args.maxRounds ?? 2 });
     if (r.gatePassed && !r.scad) r.scad = emitComposite(r.intent);

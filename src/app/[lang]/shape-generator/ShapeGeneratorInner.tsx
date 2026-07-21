@@ -194,6 +194,8 @@ const CollabChat = dynamic(() => import('./collab/CollabChat'), { ssr: false });
 const DesignVariantsPanel = dynamic(() => import('./panels/DesignVariantsPanel'), { ssr: false });
 import { generateLinearSweep } from './panels/DesignVariantsPanel';
 const CopilotPanel = dynamic(() => import('./copilot/CopilotPanel'), { ssr: false });
+// Wave A · WA-D3 — AI design-brief entry + AiReviewQueuePanel (self-contained).
+const DesignBriefPanel = dynamic(() => import('./design-brief/DesignBriefPanel'), { ssr: false });
 
 import PipelineProgressOverlay from './PipelineProgressOverlay';
 import HeaderOverlays from './panels/HeaderOverlays';
@@ -729,6 +731,7 @@ export function ShapeGeneratorInner() {
   // ── Assembly mates / interference / exploded view ──
   const showAssemblyPanel = useUIStore(s => s.showAssemblyPanel);
   const setShowAssemblyPanel = useUIStore(s => s.setShowAssemblyPanel);
+  const [showDesignBrief, setShowDesignBrief] = useState(false); // WA-D3 AI design-brief entry (declared before the URL-effect that reads it)
   const explodeFactor = useSceneStore(s => s.explodeFactor);
 
   // ── Render mode ──
@@ -1171,11 +1174,23 @@ export function ShapeGeneratorInner() {
       router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
       return;
     }
+    if (searchParams?.get('entry') === 'design-brief') {
+      // WA-D3 deep-link: open the AI design-brief entry (+ AI review queue).
+      urlWorkspaceOrTabAppliedRef.current = true;
+      setIsSketchMode(false);
+      applyCadWorkspace('design', { isSketchMode: false });
+      setShowDesignBrief(true);
+      const qs = new URLSearchParams(searchParams?.toString() ?? '');
+      qs.delete('entry');
+      const n = qs.toString();
+      router.replace(n ? `${pathname}?${n}` : pathname, { scroll: false });
+      return;
+    }
     if (searchParams?.get('tab') === 'optimize') {
       urlWorkspaceOrTabAppliedRef.current = true;
       applyCadWorkspace('optimize', { isSketchMode });
     }
-  }, [searchParams, isSketchMode, isReadOnly, pathname, router, setIsSketchMode, setShowAssemblyPanel, setShowChatPanel]);
+  }, [searchParams, isSketchMode, isReadOnly, pathname, router, setIsSketchMode, setShowAssemblyPanel, setShowChatPanel, setShowDesignBrief]);
 
   const sketchViewMode = useSceneStore(s => s.sketchViewMode);
   const splitMode = useSceneStore(s => s.splitMode);
@@ -12293,6 +12308,13 @@ export function ShapeGeneratorInner() {
             }}
             onClose={() => setShowCopilot(false)}
           />
+        </div>
+      )}
+
+      {/* ═══ AI Design-Brief panel (Wave A · WA-D3) ═══ */}
+      {showDesignBrief && (
+        <div style={{ position: 'fixed', top: 60, right: 360, zIndex: 600 }}>
+          <DesignBriefPanel onClose={() => setShowDesignBrief(false)} />
         </div>
       )}
 
