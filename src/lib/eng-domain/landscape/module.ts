@@ -14,6 +14,7 @@
  */
 
 import type { DomainGateResult, DomainModule } from '@/lib/domain-driver';
+import { chatCompletionLandscapePlanner } from './llmPlanner';
 import {
   checkDrainageSlope,
   checkGreenAreaRatio,
@@ -122,7 +123,8 @@ export const landscapeModule: DomainModule<LandscapeBrief, LandscapePlan, Landsc
   name: 'landscape',
 
   plan(brief) {
-    return landscapeFixturePlanner(brief);
+    const hasFixture = typeof brief.params?.fixture === 'string' && brief.params.fixture.length > 0;
+    return hasFixture ? landscapeFixturePlanner(brief) : chatCompletionLandscapePlanner()(brief);
   },
 
   structuralError(plan) {
