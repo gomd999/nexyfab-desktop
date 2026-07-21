@@ -19,6 +19,7 @@
  */
 
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
+import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 import { PlannerError, type DesignPlanner } from './planner';
 import type { DesignBrief, DesignPlan } from './types';
 
@@ -230,14 +231,63 @@ export function pinBlockAssemblyPlan(): DesignPlan {
   };
 }
 
+// ─── fixture 4: revolve bushing (WB-1 — a TRUE revolve body, dims via f.lat) ─
+
+/**
+ * ⌀50 × 60 bushing built as a genuine `revolve` feature (not a tessellated
+ * extrude) — the WB-1 path: buildRevolveMeasureTopo exposes the rim faces
+ * `f.lat.{i}`, and the drawing gate REAL-measures ⌀/axial-length off them.
+ * Profile [(0,0),(25,0),(25,60),(0,60)] swept 360° about Y; off-axis rims at
+ * profile index 1 (y=0) and 2 (y=60) → f.lat.1 / f.lat.2.
+ *
+ * expectedVolume is omitted: the revolve mesh's watertight positive volume is
+ * checked by the geometry gate, and the DIMENSIONS (⌀50, L60 measured on the
+ * real rim vertices) are the rigorous correctness proof. (Adding a hand
+ * tessellated-volume basis is deferred; the measured ⌀ already verifies the
+ * rim is the true circle.)
+ */
+export function revolveBushingPlan(): DesignPlan {
+  const R = 25, H = 60;
+  const revolve: RevolveFeature = {
+    kind: 'revolve',
+    loop: [{ x: 0, y: 0 }, { x: R, y: 0 }, { x: R, y: H }, { x: 0, y: H }],
+    angleDegrees: 360,
+    mode: 'add',
+  };
+  return {
+    planId: 'fixture-revolve-bushing',
+    name: `Revolve Bushing ⌀${2 * R}×${H}`,
+    parts: [
+      {
+        partId: 'bushing',
+        name: 'Revolve Bushing',
+        material: 'S45C',
+        process: 'cnc',
+        bodies: [{ bodyId: 'body', feature: revolve }],
+      },
+    ],
+    drawing: {
+      paperSize: 'A3',
+      scale: 1,
+      dimensions: [
+        // ⌀ on the axis-normal view (front); axial length on the axis-parallel
+        // view (top). Refs are revolve rim faces f.lat.{i} (WB-1 namespace).
+        { id: 'd_od', partId: 'bushing', bodyId: 'body', view: 'front', kind: 'diametric', refs: ['f.lat.1'], expected: 2 * R },
+        { id: 'd_len', partId: 'bushing', bodyId: 'body', view: 'top', kind: 'linear', refs: ['f.lat.1', 'f.lat.2'], expected: H },
+      ],
+    },
+  };
+}
+
 // ─── the planner ─────────────────────────────────────────────────────────
 
-export type FixtureKey = 'l-bracket' | 'stepped-shaft' | 'pin-block-assembly';
+export type FixtureKey = 'l-bracket' | 'stepped-shaft' | 'pin-block-assembly' | 'revolve-bushing';
 
 const FIXTURES: Record<FixtureKey, () => DesignPlan> = {
   'l-bracket': lBracketPlan,
   'stepped-shaft': steppedShaftPlan,
   'pin-block-assembly': pinBlockAssemblyPlan,
+  'revolve-bushing': revolveBushingPlan,
 };
 
 /** Deterministic planner: dispatches on `brief.params.fixture` (fallback:

@@ -21,8 +21,9 @@
  * surface concern, recorded as a limitation.
  */
 
-import { buildExtrudeTopo, type NamedTopology } from '@/lib/cad/topoNaming';
+import { buildExtrudeTopo, buildRevolveMeasureTopo, type NamedTopology } from '@/lib/cad/topoNaming';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
+import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 import {
   paperDimensions,
   standardThreeViewSheet,
@@ -97,11 +98,17 @@ export function buildDrawingArtifact(plan: DesignPlan): DrawingArtifact {
   const topologies = new Map<string, NamedTopology>();
   for (const part of plan.parts) {
     for (const body of part.bodies) {
-      if (body.feature.kind !== 'extrude') continue; // no topo builder — explicit gap
+      // extrude → f.cap/f.side/e.* namespace; revolve → f.lat.{i} rim faces
+      // (WB-1, buildRevolveMeasureTopo — the drawn tessellation, so a measured
+      // ⌀ is the real rim). loft/sweep still have no builder → explicit gap.
       try {
-        topologies.set(bodyKey(part.partId, body.bodyId), buildExtrudeTopo(body.feature as ExtrudeFeature));
+        if (body.feature.kind === 'extrude') {
+          topologies.set(bodyKey(part.partId, body.bodyId), buildExtrudeTopo(body.feature as ExtrudeFeature));
+        } else if (body.feature.kind === 'revolve') {
+          topologies.set(bodyKey(part.partId, body.bodyId), buildRevolveMeasureTopo(body.feature as RevolveFeature));
+        }
       } catch {
-        // Degenerate extrude — the geometry gate reports the real reason;
+        // Degenerate feature — the geometry gate reports the real reason;
         // dims on this body fail as no-measurement-context.
       }
     }

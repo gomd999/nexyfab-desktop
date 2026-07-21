@@ -137,7 +137,7 @@ describe('makeLlmPlanner — schema enforcement', () => {
 // ─── preflight refusals (게이트 전 명시 거부) ────────────────────────────────
 
 describe('makeLlmPlanner — plan preflight', () => {
-  it('refuses a dimension on a revolve body (measurement not available)', async () => {
+  it('refuses a revolve dimension with a non-f.lat ref (WB-1: revolve now measurable, but namespace enforced)', async () => {
     const plan: DesignPlan = {
       planId: 'p_rev',
       name: 'Revolved knob',
@@ -170,8 +170,10 @@ describe('makeLlmPlanner — plan preflight', () => {
       },
     };
     const { planner } = plannerReturning(JSON.stringify(plan));
+    // WB-1: revolve bodies are now measurable (buildRevolveMeasureTopo), but the
+    // ref must be the revolve namespace f.lat.{i}; an extrude name is refused.
     await expect(planner.plan(BRIEF)).rejects.toThrow(
-      /measurement not available for revolve bodies \(WB backlog\)/,
+      /is not a valid revolve topology name \(namespace: f\.lat/,
     );
   });
 

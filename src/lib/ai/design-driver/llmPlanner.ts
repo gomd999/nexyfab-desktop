@@ -106,6 +106,10 @@ const DFM_PROCESSES = new Set(['fdm', 'sla', 'cnc', 'injection', 'sheetMetal']);
  * A dimension `ref` outside this grammar can never resolve → preflight refuses.
  */
 const EXTRUDE_TOPO_NAME = /^(f\.cap\.(top|bottom)|f\.side\.\d+|e\.vert\.\d+|e\.(top|bottom)\.\d+-\d+)$/;
+/** WB-1 — revolve measure topology: circular cross-section face at off-axis
+ *  profile vertex i (buildRevolveMeasureTopo). ⌀/R on the axis-normal view,
+ *  axial length between two rims on an axis-parallel view. */
+const REVOLVE_TOPO_NAME = /^f\.lat\.\d+$/;
 
 // ─── coercion primitives (violation ⇒ PlannerError) ────────────────────────
 
@@ -308,24 +312,37 @@ export function preflightPlan(plan: DesignPlan): string | null {
     const body = part.bodies.find((b) => b.bodyId === dim.bodyId);
     if (!body) return `dimension '${dim.id}' references unknown body '${dim.partId}:${dim.bodyId}'`;
 
-    // (b) gate measurability — only extrude bodies have a NamedTopology builder;
-    // a dimension on any other kind can never be measured, so refuse up-front.
-    if (body.feature.kind !== 'extrude') {
+    // (b) gate measurability — extrude and revolve have NamedTopology builders
+    // (buildExtrudeTopo / buildRevolveMeasureTopo, WB-1). loft/sweep still have
+    // none, so a dimension on them could only fail — refuse up-front.
+    if (body.feature.kind === 'extrude') {
+      // (a cont.) every ref must be a valid extrude-topology name.
+      for (const ref of dim.refs) {
+        if (!EXTRUDE_TOPO_NAME.test(ref)) {
+          return (
+            `dimension '${dim.id}' ref '${ref}' is not a valid extrude topology name ` +
+            `(namespace: f.cap.{top|bottom}, f.side.{i}, e.vert.{i}, e.{top|bottom}.{i}-{j})`
+          );
+        }
+      }
+    } else if (body.feature.kind === 'revolve') {
+      // Revolve dims reference circular rim faces f.lat.{i}. ⌀/R must be on the
+      // axis-normal view; the drawing gate's measure refuses oblique views, so
+      // an off-axis view is caught there — no ellipse fabrication.
+      for (const ref of dim.refs) {
+        if (!REVOLVE_TOPO_NAME.test(ref)) {
+          return (
+            `dimension '${dim.id}' ref '${ref}' is not a valid revolve topology name ` +
+            `(namespace: f.lat.{i} — circular section at off-axis profile vertex i)`
+          );
+        }
+      }
+    } else {
       return (
         `dimension '${dim.id}' targets a ${body.feature.kind} body — ` +
         `measurement not available for ${body.feature.kind} bodies (WB backlog): ` +
-        `revolve/loft/sweep have no NamedTopology builder, so the drawing gate could only fail on them`
+        `loft/sweep have no NamedTopology builder, so the drawing gate could only fail on them`
       );
-    }
-
-    // (a cont.) every ref must be a valid extrude-topology name.
-    for (const ref of dim.refs) {
-      if (!EXTRUDE_TOPO_NAME.test(ref)) {
-        return (
-          `dimension '${dim.id}' ref '${ref}' is not a valid extrude topology name ` +
-          `(namespace: f.cap.{top|bottom}, f.side.{i}, e.vert.{i}, e.{top|bottom}.{i}-{j})`
-        );
-      }
     }
   }
   return null;
