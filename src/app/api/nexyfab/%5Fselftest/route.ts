@@ -136,6 +136,12 @@ async function handleFleet(n: number, attempts: number, budgetMs: number): Promi
     attemptsUsed: number;
     seriesSwitched: boolean;
     familiesUsed?: string[];
+    // DIAGNOSTIC — pinpoint where a non-pass breaks (see reconstructWithFleet).
+    renderOk?: boolean;
+    hasGeometry?: boolean;
+    gateStatus?: 'pass' | 'fail' | 'unverified-null';
+    gateFeedback?: string | null;
+    scadPreview?: string;
     wallMs: number;
     error?: boolean;
   };
@@ -174,6 +180,16 @@ async function handleFleet(n: number, attempts: number, budgetMs: number): Promi
         attemptsUsed: fleet.attemptsUsed,
         seriesSwitched: fleet.seriesSwitched,
         familiesUsed: fleet.familiesUsed,
+        // DIAGNOSTIC — reveal the exact break point on a non-pass:
+        //   renderOk=false            -> proposer never produced a valid render
+        //   renderOk & !hasGeometry   -> rendered but geometry unmeasurable
+        //   gateStatus='unverified-null' -> the "did-not-verify" symptom's root
+        //   gateStatus='fail'         -> a real, caught wrong answer (with feedback)
+        renderOk: fleet.renderOk,
+        hasGeometry: fleet.hasGeometry,
+        gateStatus: fleet.gateStatus,
+        gateFeedback: fleet.gateFeedback,
+        scadPreview: fleet.scadPreview,
         wallMs: Date.now() - p0,
       });
     } catch (e) {

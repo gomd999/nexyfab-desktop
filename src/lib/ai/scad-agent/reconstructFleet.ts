@@ -234,6 +234,14 @@ export interface ReconstructFleetOptions {
   maxAttempts?: number;
   /** Consecutive same-family failures before switching. Default 1. */
   switchAfter?: number;
+  /**
+   * Count an UNVERIFIABLE gate result (null verdict = nothing measurable was
+   * built) as a retry/series-switch trigger rather than a silent stop. Default
+   * TRUE for the fleet: a reconstruction the gate cannot even measure is not a
+   * success and deserves another family/approach while budget remains. Set
+   * false to restore the plain "stop on unverified" behavior.
+   */
+  retryOnUnverified?: boolean;
   /** Per-attempt budget caps forwarded to the repair loop. */
   tokensCap?: number;
   turnsCap?: number;
@@ -263,6 +271,17 @@ export interface ReconstructFleetResult {
   references: CitedRefPart[];
   /** True when the vision critic flagged the returned attempt. */
   visionFlagged: boolean;
+  /** DIAGNOSTIC — did OpenSCAD render succeed on the returned attempt's session. */
+  renderOk: boolean;
+  /** DIAGNOSTIC — was a measurable bounding box present (the gate's precondition). */
+  hasGeometry: boolean;
+  /** DIAGNOSTIC — gate outcome for the returned attempt: passed / caught-fail /
+   *  could-not-measure (the last is exactly the "did-not-verify" symptom). */
+  gateStatus: 'pass' | 'fail' | 'unverified-null';
+  /** DIAGNOSTIC — the gate's feedback string, or null when it could not run. */
+  gateFeedback: string | null;
+  /** DIAGNOSTIC — first ~200 chars of the proposed SCAD (empty when none built). */
+  scadPreview: string;
   /**
    * Honest human-readable summary. On a non-pass this carries the gate's
    * feedback + "did not verify" so the caller never mistakes it for a pass.
@@ -310,6 +329,9 @@ export async function reconstructWithFleet(
     tools: opts.tools,
     gate: opts.gate ?? makeReconstructionGateEvaluator(opts.sourceIr),
     visionCritic: opts.visionCritic,
+    // Fleet-scoped: an unverifiable reconstruction is not a success — retry
+    // (and series-switch) instead of stopping silently after one attempt.
+    retryOnUnverified: opts.retryOnUnverified !== false,
     maxAttempts: opts.maxAttempts ?? 3,
     switchAfter: opts.switchAfter,
     tokensCap: opts.tokensCap,
@@ -325,6 +347,20 @@ export async function reconstructWithFleet(
   const session: AgentSession = loop.session;
   const scad = effectiveScadSource(session);
   const intent = session.lastIntent;
+
+  // DIAGNOSTIC surfacing — expose exactly WHERE a non-pass happened so a live
+  // self-test tells us the cause: nothing built (no scad)? render failed
+  // (renderOk=false)? render ok but geometry unmeasurable (hasGeometry=false)?
+  // or a real measured fail (gateStatus='fail')? These read the returned
+  // (best) attempt's session + verdict.
+  const renderOk = session.render?.ok === true;
+  const hasGeometry = !!session.geometry?.bbox;
+  const gateStatus: 'pass' | 'fail' | 'unverified-null' =
+    loop.finalVerdict == null
+      ? 'unverified-null'
+      : (loop.finalVerdict.passed ? 'pass' : 'fail');
+  const gateFeedback = loop.finalVerdict?.feedback ?? null;
+  const scadPreview = scad.slice(0, 200);
 
   const note = loop.passed
     ? 'Reconstruction VERIFIED against the source by the deterministic gate '
@@ -345,6 +381,11 @@ export async function reconstructWithFleet(
     singleFamily: loop.singleFamily,
     references,
     visionFlagged: loop.visionFlagged,
+    renderOk,
+    hasGeometry,
+    gateStatus,
+    gateFeedback,
+    scadPreview,
     note,
   };
 }

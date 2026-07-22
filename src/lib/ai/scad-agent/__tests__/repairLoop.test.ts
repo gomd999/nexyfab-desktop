@@ -179,6 +179,50 @@ describe('runRepairLoop (orchestration)', () => {
     expect(res.finalVerdict).toBeNull();
   });
 
+  it('retryOnUnverified: a null verdict now retries and series-switches (not a silent stop)', async () => {
+    const prompts: string[] = [];
+    const logs: string[] = [];
+    const families: AiFamily[] = [
+      { family: 'alpha', client: recordingAi('alpha', prompts) },
+      { family: 'beta', client: recordingAi('beta', prompts) },
+    ];
+    const res = await runRepairLoop({
+      userPrompt: 'reconstruct a box',
+      aiFamilies: families,
+      tools: noTools,
+      maxAttempts: 3,
+      switchAfter: 1,
+      retryOnUnverified: true,
+      log: (m) => logs.push(m),
+      gate: scriptedGate([null, null, null]),
+    });
+
+    // Unverified is now actionable: the loop keeps trying instead of stopping at 1.
+    expect(res.attemptsUsed).toBe(3);
+    expect(res.seriesSwitched).toBe(true);
+    expect(res.familiesUsed).toEqual(['alpha', 'beta']);
+    expect(res.passed).toBe(false);
+    expect(res.finalVerdict).toBeNull(); // still honest: never a fabricated pass
+    // The retry prompt explains the concrete cause + fix.
+    expect(prompts[1]).toContain('NO measurable geometry');
+  });
+
+  it('retryOnUnverified stays OFF by default: null verdict still stops at 1', async () => {
+    const families: AiFamily[] = [
+      { family: 'alpha', client: recordingAi('alpha', []) },
+      { family: 'beta', client: recordingAi('beta', []) },
+    ];
+    const res = await runRepairLoop({
+      userPrompt: 'x',
+      aiFamilies: families,
+      tools: noTools,
+      maxAttempts: 3,
+      gate: scriptedGate([null, null, null]),
+    });
+    expect(res.attemptsUsed).toBe(1);
+    expect(res.seriesSwitched).toBe(false);
+  });
+
   it('vision critic requests a repair on a geometric pass but never flips it to fail', async () => {
     const prompts: string[] = [];
     const families: AiFamily[] = [{ family: 'alpha', client: recordingAi('alpha', prompts) }];

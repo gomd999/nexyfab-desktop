@@ -97,6 +97,18 @@ export interface RepairLoopOptions {
    *  (switch on the very next attempt), matching the pilot's finding that a
    *  same-model retry rarely rescues what the family already failed. */
   switchAfter?: number;
+  /**
+   * Treat an UNVERIFIABLE gate result (null verdict = nothing measurable was
+   * built) as an actionable failure worth another attempt / series-switch,
+   * instead of a silent stop. Default FALSE so the normal generation loop is
+   * unchanged: there, a null verdict with no vision signal means "nothing to
+   * repair, hand back". The RECONSTRUCTION fleet sets this TRUE — a
+   * reconstruction the deterministic gate cannot even measure is NOT a
+   * success, so we retry (and, with 2+ families, switch) while budget remains.
+   * When true, the repair prompt receives a concrete "you produced nothing
+   * measurable — build + render a valid solid" instruction so the next attempt
+   * has a real fix to make. */
+  retryOnUnverified?: boolean;
   /** Continuation session (or null to start fresh). */
   session?: AgentSession | null;
   /** Per-attempt budget caps (each attempt gets a fresh budget slice so a
@@ -151,6 +163,21 @@ export interface RepairLoopResult {
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
+
+/**
+ * Repair instruction used when `retryOnUnverified` is set and the gate could
+ * not measure the geometry. It states precisely WHY the attempt was not
+ * verifiable (no measured solid) and what to do — build AND render a valid
+ * solid — so the retry has a concrete fix rather than repeating the miss.
+ */
+const UNVERIFIED_REPAIR_HINT =
+  'The previous attempt produced NO measurable geometry, so the deterministic '
+  + 'gate could not verify it. This almost always means a valid solid was never '
+  + 'built and rendered. You MUST, in order: (1) build the solid with '
+  + 'add_feature_intent (or add_composite_intent / write_scad for shapes that '
+  + 'need it); (2) call render and read its result — if it reports errors, fix '
+  + 'the SCAD and render again until it succeeds; (3) confirm a bounding box was '
+  + 'measured. Do not hand back until render succeeds and geometry is measurable.';
 
 /** Rank an attempt for "best so far" selection. Geometric pass dominates,
  *  then vision match, then gate score. Lexicographic via a single number. */
@@ -263,7 +290,13 @@ export async function runRepairLoop(opts: RepairLoopOptions): Promise<RepairLoop
     //   - vision critic said clear NO (semantic mismatch the geometric gate
     //     is blind to, e.g. right bbox but wrong shape).
     const geomFailed = verdict?.passed === false;
-    const needsRepair = geomFailed || visionFlagged;
+    // A null verdict means the gate could not measure the geometry (nothing
+    // built / render failed / not verifiable). Normally that is "nothing to
+    // repair"; the reconstruction fleet opts INTO treating it as a retry so an
+    // unverifiable proposal gets another family/approach, not a silent stop.
+    const gateUnverified = verdict == null;
+    const retryUnverified = opts.retryOnUnverified === true && gateUnverified;
+    const needsRepair = geomFailed || visionFlagged || retryUnverified;
 
     if (!needsRepair) {
       // Either a clean geometric pass, or unverified with no vision signal —
@@ -278,6 +311,7 @@ export async function runRepairLoop(opts: RepairLoopOptions): Promise<RepairLoop
     const parts: string[] = [];
     if (verdict && !verdict.passed) parts.push(verdict.feedback);
     if (visionFlagged && vision) parts.push(`Vision critic (semantic check): ${vision.note}`);
+    if (retryUnverified) parts.push(UNVERIFIED_REPAIR_HINT);
     nextPrompt =
       'The previous attempt did NOT pass verification. Fix EXACTLY the issues '
       + 'below and regenerate the model. Do not change anything that was already '

@@ -207,6 +207,51 @@ describe('reconstructWithFleet (orchestration)', () => {
     expect(Array.isArray(res.references)).toBe(true);
   });
 
+  it('surfaces diagnostic fields and retries unverified by default', async () => {
+    const prompts: string[] = [];
+    const families: AiFamily[] = [
+      { family: 'alpha', client: recordingAi('alpha', prompts) },
+      { family: 'beta', client: recordingAi('beta', prompts) },
+    ];
+    // A gate that can never measure (null) mimics the production symptom:
+    // the mock proposer builds nothing, so nothing is verifiable.
+    const res = await reconstructWithFleet({
+      sourceIr: sampleIr(),
+      tools: noTools,
+      aiFamilies: families,
+      references: false,
+      maxAttempts: 3,
+      switchAfter: 1,
+      gate: scriptedGate([null, null, null]),
+    });
+
+    // Diagnostic fields name the exact break point instead of a bare non-pass.
+    expect(res.gateStatus).toBe('unverified-null');
+    expect(res.hasGeometry).toBe(false);
+    expect(res.renderOk).toBe(false);
+    expect(res.gateFeedback).toBeNull();
+    expect(typeof res.scadPreview).toBe('string');
+    // Default retry-on-unverified: the fleet no longer gives up after 1 attempt.
+    expect(res.attemptsUsed).toBe(3);
+    expect(res.seriesSwitched).toBe(true);
+    expect(res.passed).toBe(false); // honest — never a fabricated pass
+  });
+
+  it('retryOnUnverified:false restores the plain stop-on-unverified behavior', async () => {
+    const families: AiFamily[] = [{ family: 'alpha', client: recordingAi('alpha', []) }];
+    const res = await reconstructWithFleet({
+      sourceIr: sampleIr(),
+      tools: noTools,
+      aiFamilies: families,
+      references: false,
+      maxAttempts: 3,
+      retryOnUnverified: false,
+      gate: scriptedGate([null, null, null]),
+    });
+    expect(res.attemptsUsed).toBe(1);
+    expect(res.gateStatus).toBe('unverified-null');
+  });
+
   it('throws when no families are supplied', async () => {
     await expect(
       reconstructWithFleet({
