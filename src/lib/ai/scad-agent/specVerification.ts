@@ -140,7 +140,17 @@ export interface SpecVerificationResult {
       intent: { x: number; y: number; diameter: number };
       detected: { cx: number; cy: number; diameter: number } | null;
       distMm: number;
+      /** Position match: closest detected peak is within holePosTolMm. */
       withinTolerance: boolean;
+      /** True when the matched peak's diameter is within the diameter
+       *  tolerance (max(0.5 mm, 10%)). Vacuously true when the intent hole
+       *  declares no diameter, or when no peak matched (position already
+       *  failed). This is what surfaces a "built Ø8 where Ø10 was intended"
+       *  bug even though the hole is in the right place. */
+      diameterOk: boolean;
+      /** detected.diameter - intent.diameter for a matched peak; null when
+       *  no peak matched this intent hole. */
+      diameterDeltaMm: number | null;
     }>;
     /** Detected peaks that didn't match any intent hole (extras the AI drilled). */
     extras: Array<{ axis: 'x' | 'y' | 'z'; cx: number; cy: number; diameter: number }>;
@@ -342,8 +352,12 @@ export function expectedBboxFromIntent(intent: IntentInput): ExpectedBbox | null
       return { centered: true, wMm: W, hMm: H, dMm: L };
     }
     case 'lBracket': {
-      const W = num(p.width, 50);
-      const H = num(p.height, 50);
+      // Mirror intentToScad's lBracket aliases so the derived-expected bbox
+      // tracks the built solid: "legs N" sets both legs; width/height override.
+      const leg = num(p.legLength ?? p.legs ?? p.leg ?? p.armLength ?? p.arm ?? p.size, NaN);
+      const legFallback = Number.isFinite(leg) ? leg : 50;
+      const W = num(p.width ?? p.w, legFallback);
+      const H = num(p.height ?? p.h, legFallback);
       const D = num(p.depth ?? p.length, 50);
       // L-bracket is built at origin (not centered).
       return { centered: false, wMm: W, hMm: H, dMm: D };
@@ -1143,12 +1157,21 @@ export function verifyAgainstSpec(
         if (bestIdx >= 0 && bestDist <= tol) {
           usedDetectedIdx.add(bestIdx);
           const d = detectedHoles[bestIdx]!;
+          // Diameter tolerance: absolute 0.5 mm or 10% of the intended Ø,
+          // whichever is larger — facet discretization shifts a measured Ø by
+          // ~1% so this only fires on a real sizing error. Vacuously OK when
+          // the intent hole declared no diameter.
+          const diaTol = Math.max(0.5, idia * 0.1);
+          const diameterDeltaMm = d.diameter - idia;
+          const diameterOk = idia <= 0 || Math.abs(diameterDeltaMm) <= diaTol;
           matches.push({
             axis: intentAxis,
             intent: { x: ix, y: iy, diameter: idia },
             detected: { cx: d.cx, cy: d.cy, diameter: d.diameter },
             distMm: bestDist,
             withinTolerance: true,
+            diameterOk,
+            diameterDeltaMm,
           });
         } else {
           matches.push({
@@ -1161,6 +1184,9 @@ export function verifyAgainstSpec(
             } : null,
             distMm: bestDist === Infinity ? Number.POSITIVE_INFINITY : bestDist,
             withinTolerance: false,
+            // Position already failed — diameter is moot for the verdict.
+            diameterOk: false,
+            diameterDeltaMm: null,
           });
         }
       }
@@ -1170,7 +1196,8 @@ export function verifyAgainstSpec(
       holePositions = {
         matches,
         extras,
-        allMatched: matches.every(m => m.withinTolerance) && extras.length === 0,
+        allMatched:
+          matches.every(m => m.withinTolerance && m.diameterOk) && extras.length === 0,
       };
     }
   }
@@ -1402,14 +1429,25 @@ export function formatSpecCritique(result: SpecVerificationResult): string {
   }
   if (result.holePositions && !result.holePositions.allMatched) {
     for (const m of result.holePositions.matches) {
-      if (m.withinTolerance) continue;
-      if (m.detected) {
+      if (m.withinTolerance && m.diameterOk) continue;
+      if (!m.withinTolerance) {
+        if (m.detected) {
+          lines.push(
+            `  hole position: intent (${m.intent.x.toFixed(1)}, ${m.intent.y.toFixed(1)}) Ø${m.intent.diameter} — closest detected at (${m.detected.cx.toFixed(1)}, ${m.detected.cy.toFixed(1)}) Ø${m.detected.diameter.toFixed(1)}, off by ${m.distMm.toFixed(2)} mm.`,
+          );
+        } else {
+          lines.push(
+            `  hole position: intent (${m.intent.x.toFixed(1)}, ${m.intent.y.toFixed(1)}) Ø${m.intent.diameter} — no matching cylindrical feature detected in the mesh.`,
+          );
+        }
+        continue;
+      }
+      // Position is right but the hole is the WRONG SIZE — name the exact
+      // diameter delta so the repair sets the one number that is off.
+      if (m.detected && m.diameterDeltaMm !== null) {
+        const sign = m.diameterDeltaMm >= 0 ? '+' : '';
         lines.push(
-          `  hole position: intent (${m.intent.x.toFixed(1)}, ${m.intent.y.toFixed(1)}) Ø${m.intent.diameter} — closest detected at (${m.detected.cx.toFixed(1)}, ${m.detected.cy.toFixed(1)}) Ø${m.detected.diameter.toFixed(1)}, off by ${m.distMm.toFixed(2)} mm.`,
-        );
-      } else {
-        lines.push(
-          `  hole position: intent (${m.intent.x.toFixed(1)}, ${m.intent.y.toFixed(1)}) Ø${m.intent.diameter} — no matching cylindrical feature detected in the mesh.`,
+          `  hole diameter: intent Ø${m.intent.diameter} at (${m.intent.x.toFixed(1)}, ${m.intent.y.toFixed(1)}) — built hole measures Ø${m.detected.diameter.toFixed(1)} (${sign}${m.diameterDeltaMm.toFixed(2)} mm). Set this hole's diameter to ${m.intent.diameter} mm.`,
         );
       }
     }

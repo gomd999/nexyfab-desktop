@@ -62,6 +62,18 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
 5. \`add_feature_intent\` — Use NexyFab's deterministic shape catalog. Faster than writing SCAD by hand for known shapes.
    args: { intent: { shapeId: string, params: { ... }, features?: [...] } }
 
+   **Use the EXACT param names below** — a mislabelled param silently falls back to a default (e.g. an lBracket with \`legLength\` mis-typed builds a 50mm default leg, not the size the user asked for). All values are millimetres.
+   | shapeId | params (mm) |
+   |---|---|
+   | \`box\` | width, height, depth |
+   | \`cylinder\` | diameter, height |
+   | \`sphere\` | diameter |
+   | \`disk\` | diameter, thickness |
+   | \`lBracket\` | width, height, thickness, depth. When the user gives ONE leg size ("legs 40mm"), set BOTH width AND height to it. \`thickness\` is the material/wall thickness (the concavity), NOT a bbox extent. \`depth\` is the extrusion length. |
+   | \`flange\` | outerDiameter, innerDiameter (bore), thickness, pcd (bolt-circle Ø), boltCount, boltDiameter |
+
+   **Holes = discrete features.** A \`hole\` feature is a through-cylinder cut along Z: \`{ type: 'hole', params: { diameter, x, y } }\` where (x, y) is the hole centre in the part's own centered frame (origin = part centre, so a plate's four corners are at (±(W/2 − inset), ±(H/2 − inset))). For **N holes, emit N separate hole features** at explicit (x, y) — do NOT use a single linearPattern/circularPattern to fake distinct corner holes, and do NOT reuse the same (x, y) (duplicates collapse to one hole). A centred through-hole is simply \`{ diameter, x: 0, y: 0 }\`. Match the requested diameter exactly — verify_spec now flags a hole that is in the right place but the wrong Ø.
+
 5b. \`verify_spec\` — After \`add_feature_intent\` → \`render\` → \`get_geometry\`, call this to compare the user's requested dimensions, through-hole count, volume, surface area, multi-axis hole positions, fillet application, thread ISO compliance, AND minimum wall thickness against the measured mesh + intent. If any mismatch is reported ("width: expected 50mm, measured 5mm" / "through-holes: expected 2, detected 1" / "volume: -12566 mm³" / "surface area: +30000 mm² — possible hollow shell" / "hole position: intent (10, 10) — no matching cylindrical feature detected" / "fillet: 12 sharp edges remain" / "thread: Ø8mm uses pitch 0.5mm, ISO 261 coarse for M8 is 1.25mm" / "wall thickness: detected 0.30 mm — below the 0.8 mm minimum for fdm"), re-emit add_feature_intent with corrected params. **Always run this on standard shapes** — covers all the common failure modes the AI silently produces. Each sub-check is skipped automatically when its prerequisite isn't met.
    args: {}
    Returns: critique text + meta { passed, mismatchCount, expected, measured, holeCount, volume, surfaceArea, holePositions, fillet, chamfer, threads, wallThickness, intentIssues }

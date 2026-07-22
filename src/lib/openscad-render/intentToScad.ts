@@ -284,11 +284,16 @@ function emitBaseShape(shapeId: string, p: Record<string, number>): string {
       return `linear_extrude(height=${L}, center=true) polygon(points=[${pts}]);`;
     }
     case 'lBracket': {
-      // Two flanges joined at an inner corner.
-      const W = num(p.width, 50);
-      const H = num(p.height, 50);
+      // Two flanges joined at an inner corner. A single "legs N" (or
+      // legLength / leg / arm / armLength / size) sets BOTH leg extents — the
+      // common phrasing "L-bracket, legs 40mm" gives one number for both arms.
+      // width/height still override each leg individually when supplied.
+      const leg = num(p.legLength ?? p.legs ?? p.leg ?? p.armLength ?? p.arm ?? p.size, NaN);
+      const legFallback = Number.isFinite(leg) ? leg : 50;
+      const W = num(p.width ?? p.w, legFallback);
+      const H = num(p.height ?? p.h, legFallback);
       const D = num(p.depth ?? p.length, 50);
-      const t = num(p.thickness, 4);
+      const t = num(p.thickness ?? p.wallThickness ?? p.t, 4);
       return `union() {\n  translate([0, 0, 0]) cube([${W}, ${t}, ${D}]);\n  translate([0, 0, 0]) cube([${t}, ${H}, ${D}]);\n}`;
     }
     case 'flange': {

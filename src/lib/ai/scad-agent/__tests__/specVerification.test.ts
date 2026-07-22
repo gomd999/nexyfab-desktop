@@ -97,6 +97,20 @@ describe('expectedBboxFromIntent', () => {
     expect(r).toEqual({ centered: false, wMm: 50, hMm: 40, dMm: 30 });
   });
 
+  it('lBracket: single "legLength" sets BOTH legs (the "legs 40mm" phrasing)', () => {
+    const r = expectedBboxFromIntent({ shapeId: 'lBracket', params: { legLength: 40, thickness: 5 } });
+    // Both footprint legs 40; depth defaults to 50. Matches the built solid so
+    // the gate's expected tracks intentToScad's lBracket alias, not a 50 default.
+    expect(r).toEqual({ centered: false, wMm: 40, hMm: 40, dMm: 50 });
+  });
+
+  it('lBracket: "legs" alias sets both legs; explicit width overrides one', () => {
+    expect(expectedBboxFromIntent({ shapeId: 'lBracket', params: { legs: 30 } }))
+      .toEqual({ centered: false, wMm: 30, hMm: 30, dMm: 50 });
+    expect(expectedBboxFromIntent({ shapeId: 'lBracket', params: { legs: 30, width: 45 } }))
+      .toEqual({ centered: false, wMm: 45, hMm: 30, dMm: 50 });
+  });
+
   it('wedge: not centered', () => {
     const r = expectedBboxFromIntent({ shapeId: 'wedge', params: { width: 50, height: 50, depth: 50 } });
     expect(r?.centered).toBe(false);
@@ -705,6 +719,35 @@ describe('Phase X6 — hole position matching', () => {
       holePosTolMm: 5,
     });
     expect(loose.holePositions?.allMatched).toBe(true);
+  });
+
+  it('flags a hole placed correctly but built the WRONG diameter, naming the delta', () => {
+    // Intent asks Ø10 at (0,0); the mesh has a hole in the right place but Ø8.
+    const r = verifyAgainstSpec(boxWithHoleAt(0, 0, 10), bboxFromSize(50, 50, 50), {
+      detectedHoles: [{ cx: 0, cy: 0, diameter: 8 }],
+    });
+    // Position matched, but the diameter is off beyond max(0.5mm, 10%).
+    expect(r.holePositions?.matches[0].withinTolerance).toBe(true);
+    expect(r.holePositions?.matches[0].diameterOk).toBe(false);
+    expect(r.holePositions?.matches[0].diameterDeltaMm).toBeCloseTo(-2, 5);
+    expect(r.holePositions?.allMatched).toBe(false);
+    expect(r.ok).toBe(false);
+    const text = formatSpecCritique(r);
+    // The critique must name the SPECIFIC dimension delta so the repair is
+    // actionable — not a vague "holes mismatch".
+    expect(text).toMatch(/hole diameter: intent Ø10 at \(0\.0, 0\.0\)/);
+    expect(text).toMatch(/built hole measures Ø8\.0 \(-2\.00 mm\)/);
+    expect(text).toMatch(/Set this hole's diameter to 10 mm\./);
+  });
+
+  it('accepts a hole diameter within tolerance (facet discretization)', () => {
+    // Ø10 intent, Ø10.4 measured — within max(0.5, 1.0) so no false positive.
+    const r = verifyAgainstSpec(boxWithHoleAt(0, 0, 10), bboxFromSize(50, 50, 50), {
+      detectedHoles: [{ cx: 0, cy: 0, diameter: 10.4 }],
+    });
+    expect(r.holePositions?.matches[0].diameterOk).toBe(true);
+    expect(r.holePositions?.allMatched).toBe(true);
+    expect(r.ok).toBe(true);
   });
 });
 

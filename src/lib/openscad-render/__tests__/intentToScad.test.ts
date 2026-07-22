@@ -11,6 +11,19 @@ describe('intentToScad', () => {
     }
   });
 
+  it('lBracket: a single leg size ("legs 40mm") builds a 40x40 footprint, not 50 default', () => {
+    // "L-bracket, legs 40mm, thickness 5mm" — the LLM emits legLength (or legs/
+    // leg/arm), not width+height. The alias must map that onto BOTH legs so the
+    // built footprint is 40x40, not the 50mm default that fails the bbox gate.
+    const r = intentToScad({ shapeId: 'lBracket', params: { legLength: 40, thickness: 5 } });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.scad).toContain('cube([40, 5,');   // horizontal leg: width=40, t=5
+      expect(r.scad).toContain('cube([5, 40,');    // vertical leg: t=5, height=40
+      expect(r.scad).not.toContain('cube([50,');   // no silent 50mm default leg
+    }
+  });
+
   it('uses radius (not diameter) for cylinder', () => {
     const r = intentToScad({ shapeId: 'cylinder', params: { diameter: 40, height: 25 } });
     expect(r.ok).toBe(true);
