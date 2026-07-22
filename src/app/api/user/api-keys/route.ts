@@ -3,7 +3,10 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import { z } from 'zod';
-import { randomBytes, createHash } from 'crypto';
+import { generateApiKey } from '@/lib/api-key';
+import { rateLimit } from '@/lib/rate-limit';
+import { getTrustedClientIp } from '@/lib/client-ip';
+import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +56,11 @@ export async function POST(req: NextRequest) {
   const authUser = await getAuthUser(req);
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  // 발급은 민감·비용 없는 연산이지만 남용(무한 생성) 방어 — 사용자별 시간당 20회.
+  const ip = getTrustedClientIp(req.headers);
+  const rl = rateLimit(`api-key-issue:${authUser.userId}`, 20, 3_600_000);
+  if (!rl.allowed) return NextResponse.json({ error: 'API Key 발급 요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }, { status: 429 });
+
   const limit = PLAN_KEY_LIMITS[authUser.plan] ?? 0;
   if (limit === 0) return NextResponse.json({ error: 'API Key는 Pro 플랜 이상에서 사용할 수 있습니다.' }, { status: 403 });
 
@@ -75,10 +83,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `이 플랜에서는 최대 ${limit}개의 API Key를 생성할 수 있습니다.` }, { status: 400 });
   }
 
-  // Generate: nf_live_<32 random bytes hex>
-  const rawKey = `nf_live_${randomBytes(32).toString('hex')}`;
-  const keyHash = createHash('sha256').update(rawKey).digest('hex');
-  const keyPrefix = rawKey.slice(0, 16); // "nf_live_xxxxxxxx"
+  // Generate: nf_live_<32 random bytes hex>. 해시·접두만 저장하고 평문은 1회만 반환.
+  const { raw: rawKey, hash: keyHash, prefix: keyPrefix } = generateApiKey();
 
   const id = `ak-${crypto.randomUUID()}`;
   const now = Date.now();
@@ -94,6 +100,9 @@ export async function POST(req: NextRequest) {
     JSON.stringify(parsed.data.ipWhitelist),
     expiresAt, now,
   );
+
+  // 감사: 발급 사실만 기록(평문 키·해시는 절대 로깅하지 않음 — 접두/이름만).
+  logAudit({ userId: authUser.userId, action: 'api_key.create', resourceId: id, metadata: { keyPrefix, name: parsed.data.name }, ip });
 
   // Return the raw key ONCE — it cannot be retrieved again
   return NextResponse.json({
@@ -124,5 +133,7 @@ export async function DELETE(req: NextRequest) {
   );
 
   if (result.changes === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  // 감사: 즉시 취소 기록(다음 인증부터 status='active' 조건에서 탈락).
+  logAudit({ userId: authUser.userId, action: 'api_key.revoke', resourceId: id, ip: getTrustedClientIp(req.headers) });
   return NextResponse.json({ ok: true });
 }

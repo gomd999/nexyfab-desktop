@@ -1,7 +1,10 @@
 /**
- * /nexyfab/developers — 외부 사용 가이드(API·CLI·MCP). Pro 이상 API 키 기준.
+ * /nexyfab/developers — 외부 사용 가이드(API·CLI·MCP) + API 키 자가발급 패널.
  * 정직 원칙: 실제 작동하는 사용법만 기재(목업·과장 금지). 산출물=비법정 명시.
+ * 키 발급 UI 는 클라이언트 섬(ApiKeysPanel) — 기존 /api/user/api-keys 라우트 사용.
  */
+import ApiKeysPanel from './ApiKeysPanel';
+
 export const dynamic = 'force-static';
 
 const CODE_STYLE: React.CSSProperties = {
@@ -20,8 +23,8 @@ export default async function DevelopersPage({ params }: { params: Promise<{ lan
   const H = ({ children }: { children: React.ReactNode }) => (
     <h2 style={{ fontSize: 19, fontWeight: 800, marginTop: 34, marginBottom: 8 }}>{children}</h2>
   );
-  const P = ({ children }: { children: React.ReactNode }) => (
-    <p style={{ fontSize: 13.5, lineHeight: 1.75, color: 'var(--nx-text-2, #46505e)', margin: '6px 0' }}>{children}</p>
+  const P = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
+    <p style={{ fontSize: 13.5, lineHeight: 1.75, color: 'var(--nx-text-2, #46505e)', margin: '6px 0', ...style }}>{children}</p>
   );
   return (
     <main style={{ maxWidth: 860, margin: '0 auto', padding: '48px 20px 80px' }}>
@@ -33,9 +36,17 @@ export default async function DevelopersPage({ params }: { params: Promise<{ lan
       </P>
       <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--nx-accent, #2563eb)', background: 'rgba(37,99,235,0.07)', fontSize: 13, fontWeight: 600 }}>
         🔑 {ko
-          ? 'API 키는 Pro 플랜 이상에서 발급됩니다: 로그인 → 계정 → API Keys. 키는 nf_live_ 로 시작하며 Authorization: Bearer 헤더로 전달합니다. 미인증 호출은 게스트 레이트리밋(분당 합산 10회)이 적용됩니다.'
-          : 'API keys require a Pro plan or higher: Sign in → Account → API Keys. Keys start with nf_live_ and are sent as Authorization: Bearer. Unauthenticated calls fall under guest rate limits (10/min combined).'}
+          ? 'API 키는 Pro 플랜 이상에서 아래 패널로 직접 발급합니다(수동 문의 불필요). 키는 nf_live_ 로 시작하며 Authorization: Bearer 헤더로 전달합니다. 미인증 호출은 게스트 레이트리밋(분당 합산 10회)이 적용됩니다.'
+          : 'Issue API keys yourself in the panel below (Pro plan or higher — no manual request). Keys start with nf_live_ and are sent as Authorization: Bearer. Unauthenticated calls fall under guest rate limits (10/min combined).'}
       </div>
+
+      <H>{ko ? '0. API 키 발급 (자가발급)' : '0. Issue an API key (self-serve)'}</H>
+      <P>
+        {ko
+          ? '아래에서 바로 키를 만들고, 목록을 확인하고, 즉시 취소할 수 있습니다. 서버는 키의 해시(sha256)와 표시용 접두만 저장하며, 평문 키는 발급 순간 한 번만 표시됩니다 — 반드시 안전한 곳(비밀번호 관리자·CI 시크릿)에 저장하세요. 분실 시 새 키를 발급하고 기존 키를 취소하면 됩니다.'
+          : 'Create a key, view your keys, and revoke instantly below. The server stores only a sha256 hash + a short display prefix; the plaintext key is shown exactly once at creation — save it in a password manager or CI secret. If lost, issue a new key and revoke the old one.'}
+      </P>
+      <ApiKeysPanel ko={ko} />
 
       <H>1. HTTP API</H>
       <P>{ko ? '핵심 엔드포인트(모두 POST · JSON). 응답의 assembly 객체를 다음 호출에 그대로 전달하면 수정 체인이 이어지고, 편집마다 REV 이력이 자동 축적됩니다.' : 'Core endpoints (POST · JSON). Pass the returned assembly into the next call to chain edits; a REV history accumulates automatically.'}</P>
@@ -61,34 +72,62 @@ export default async function DevelopersPage({ params }: { params: Promise<{ lan
           ))}
         </tbody>
       </table>
-      <Code>{`# 1) 생성
-curl -s https://nexyfab.com/api/nexyfab/drawing/assemble/ \\
-  -H "Authorization: Bearer nf_live_XXXX" -H "Content-Type: application/json" \\
+      <Code>{`# 공통: 모든 호출은 nf_live_ 키를 Bearer 로. 응답은 {"ok":true, "assembly":{…}, …} 형태.
+KEY=nf_live_XXXX ; BASE=https://nexyfab.com/api/nexyfab/drawing
+
+# 1) 생성  { description } -> { ok, assembly, openscad?, parts?, interferences?, gateErrors? }
+curl -s "$BASE/assemble/" \\
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \\
   -d '{"description":"베이스 플레이트 1000x800x20 위에 지름 200 높이 400 원통 기둥 2개"}' > r1.json
 
-# 2) 부품만 수정 (r1.json 의 .assembly 를 그대로)
-curl -s https://nexyfab.com/api/nexyfab/drawing/edit-part/ \\
-  -H "Authorization: Bearer nf_live_XXXX" -H "Content-Type: application/json" \\
+# 2) 부품만 AI 수정  { assembly, partId, instruction } -> { ok, assembly, patch, note, interferences, massKg }
+curl -s "$BASE/edit-part/" \\
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \\
   -d "{\\"assembly\\": $(jq .assembly r1.json), \\"partId\\":\\"column_1\\", \\"instruction\\":\\"높이를 600으로\\"}"
 
-# 3) 면 치수 직접 지정 (결정론 — AI 미사용)
-#    face: x±/y±/z± (box) · axis±/radial (회전체)
-curl -s https://nexyfab.com/api/nexyfab/drawing/face-drag/ \\
-  -H "Authorization: Bearer nf_live_XXXX" -H "Content-Type: application/json" \\
-  -d '{"assembly": {…}, "partId":"column_1", "face":"axis+", "targetMm":600}'`}</Code>
+# 3) 면 치수 직접 지정 (결정론 · AI 미사용)  face: x±/y±/z± (box) · axis±/radial (회전체)
+curl -s "$BASE/face-drag/" \\
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \\
+  -d '{"assembly": {…}, "partId":"column_1", "face":"axis+", "targetMm":600}'
+
+# 4) 부품 일괄 연산 (결정론)  op: delete|duplicate|translate|fillet · partIds[] · opts
+curl -s "$BASE/part-op/" \\
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \\
+  -d '{"assembly": {…}, "op":"duplicate", "partIds":["column_1"], "opts":{"offset":[300,0,0]}}'
+
+# 5) 실시 도서 세트  { assembly, options? } -> { ok, files, structural, interferences, welds }
+curl -s "$BASE/package/" \\
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \\
+  -d '{"assembly": {…}, "options":{"title":"기둥 조립체","withStep":true}}'`}</Code>
+      <P style={{ fontSize: 12.5 }}>
+        {ko
+          ? '엔지니어링 계산 API(빔·용접·볼트 등)는 별도 게이트로 검증되어 있으며 응답에 근거식·중간값을 함께 반환합니다. 형상 API 와 동일한 Bearer 키를 사용합니다.'
+          : 'The engineering-calc API (beams, welds, bolts, …) is separately gated and returns formulas/intermediate values; it uses the same Bearer key as the geometry API.'}
+      </P>
 
       <H>2. MCP (Claude Code · Claude Desktop {ko ? '등' : 'etc.'})</H>
       <P>
         {ko
-          ? '단일 파일 MCP 서버를 내려받아 등록하면 Claude가 도구 호출로 설계·수정합니다(Node 18+, 의존성 없음). 도구 6종: design_assembly · compose_part · edit_part · face_drag · part_op · domain_design(토목·인테리어·건설·조경 검증 초안).'
-          : 'Download the single-file MCP server and register it; Claude then designs/edits via tool calls (Node 18+, zero deps). Tools: design_assembly · compose_part · edit_part · face_drag · part_op · domain_design (civil/interior/construction/landscape verified draft).'}
+          ? '단일 파일 MCP 서버를 내려받아 등록하면 Claude가 도구 호출로 설계·수정합니다(Node 18+, 의존성 없음). 핵심 도구 6종: text_to_assembly · compose_3d · edit_part · face_drag · part_op · generate_domain_package(토목·인테리어·건설·조경 검증 초안). 이 외에 build_assembly · export_step · generate_package · verify_3d · analyze_dfm 등 총 30여 종이 노출됩니다(정확한 이름·인자는 서버 tools/list 또는 저장소 scripts/drawing-to-3d/mcp-server.mjs 참조).'
+          : 'Download the single-file MCP server and register it; Claude then designs/edits via tool calls (Node 18+, zero deps). Core tools: text_to_assembly · compose_3d · edit_part · face_drag · part_op · generate_domain_package (civil/interior/construction/landscape verified draft). ~30 tools total (build_assembly, export_step, generate_package, verify_3d, analyze_dfm, …) — see the server tools/list or scripts/drawing-to-3d/mcp-server.mjs for exact names/args.'}
       </P>
       <P><a href="/downloads/nexyfab-mcp.mjs" download style={{ color: 'var(--nx-accent, #2563eb)', fontWeight: 700 }}>⬇ nexyfab-mcp.mjs {ko ? '다운로드' : 'download'}</a></P>
-      <Code>{`# Claude Code 등록 (API 키는 Pro 이상 발급)
-claude mcp add nexyfab -e NEXYFAB_API_KEY=nf_live_XXXX -- node /절대경로/nexyfab-mcp.mjs
+      <Code>{`# 1) MCP 서버 내려받기
+curl -sL https://nexyfab.com/downloads/nexyfab-mcp.mjs -o ~/nexyfab-mcp.mjs
 
-# 이후 Claude 에게:
+# 2) Claude Code 에 등록 (API 키는 위 0번 패널에서 Pro 발급 · 절대경로 필요)
+claude mcp add nexyfab -e NEXYFAB_API_KEY=nf_live_XXXX -- node /absolute/path/nexyfab-mcp.mjs
+
+# 3) 등록 확인
+claude mcp list
+
+# 4) 이후 Claude 에게 자연어로:
 #   "nexyfab 으로 1000x800 베이스에 기둥 2개 조립체 만들고, column_1 높이를 600으로 수정해줘"`}</Code>
+      <P style={{ fontSize: 12.5 }}>
+        {ko
+          ? 'Claude Desktop 은 claude_desktop_config.json 의 mcpServers 에 동일하게 {"command":"node","args":["/absolute/path/nexyfab-mcp.mjs"],"env":{"NEXYFAB_API_KEY":"nf_live_XXXX"}} 를 추가하면 됩니다.'
+          : 'For Claude Desktop, add the same under mcpServers in claude_desktop_config.json: {"command":"node","args":["/absolute/path/nexyfab-mcp.mjs"],"env":{"NEXYFAB_API_KEY":"nf_live_XXXX"}}.'}
+      </P>
 
       <H>3. CLI</H>
       <P>
@@ -96,12 +135,25 @@ claude mcp add nexyfab -e NEXYFAB_API_KEY=nf_live_XXXX -- node /절대경로/nex
           ? '저장소의 scripts/drawing-to-3d/cli.mjs 는 MCP와 동일한 도구면을 명령행으로 제공합니다(로컬 엔진 실행 — 저장소 보유 시). NEXYFAB_API_KEY 를 설정하면 생성·수정 5종은 호스팅 API 로 호출됩니다(원격 모드). 파이프에 물리면 순수 JSON, 터미널에선 요약 라인이 함께 출력됩니다.'
           : 'scripts/drawing-to-3d/cli.mjs offers the same tool surface on the command line (local engine when you have the repo). With NEXYFAB_API_KEY set, the 5 generation/edit tools call the hosted API (remote mode). Piped = pure JSON; TTY adds a summary line.'}
       </P>
-      <Code>{`export NEXYFAB_API_KEY=nf_live_XXXX     # 원격 모드(Pro) — 미설정 시 로컬 엔진
-node cli.mjs assemble "베이스 플레이트 위 기둥 2개" --out asm.json
-node cli.mjs face-drag asm.json column_1 --face axis+ --target 600 --out asm.json
+      <Code>{`cd scripts/drawing-to-3d                 # 저장소 보유 시 로컬 엔진
+export NEXYFAB_API_KEY=nf_live_XXXX      # 설정 시 생성·수정 5종은 호스팅 API(원격 모드) — 미설정=로컬
+
+node cli.mjs assemble "베이스 플레이트 1000x800x20 위 기둥 2개" --out asm.json   # 텍스트→어셈블리
+node cli.mjs build asm.json                                    # 결정론 재빌드·게이트 요약
+node cli.mjs edit-part asm.json column_1 "높이를 600으로" --out asm.json          # AI 부품 수정
+node cli.mjs face-drag asm.json column_1 --face axis+ --target 600 --out asm.json  # 면 치수(결정론)
 node cli.mjs part-op asm.json --op duplicate --ids column_1 --offset 300,0,0 --out asm.json
-node cli.mjs package asm.json --out ./도서 --step      # GA·부품도·BOQ·사양서·DXF·STEP
-node cli.mjs list                                       # 도구 21종 목록`}</Code>
+node cli.mjs step asm.json --out model.step                    # B-rep STEP 내보내기
+node cli.mjs preview asm.json --out ./png --views iso,side,top # 헤드리스 렌더→PNG
+node cli.mjs package asm.json --out ./도서 --step              # GA·부품도·BOQ·사양서·DXF·STEP
+node cli.mjs domain civil "옹벽 H=3m 연장 200m" --out pkg.json # 다분야(원격 전용 — 키 필요)
+node cli.mjs templates bridge                                  # 분야 템플릿 목록
+node cli.mjs list                                              # 전체 도구·명령 목록`}</Code>
+      <P style={{ fontSize: 12.5 }}>
+        {ko
+          ? '파이프에 물리면 순수 JSON(기계 파싱), 터미널에선 통과/거부 요약 라인이 함께 나옵니다(--raw 로 순수 강제). loft·constraints·dossier·domain 등 추가 명령은 cli.mjs 헤더 주석과 list 출력에 정리되어 있습니다.'
+          : 'Piped output is pure JSON (machine-parseable); a TTY adds a pass/reject summary line (force pure with --raw). Extra commands (loft, constraints, dossier, domain) are documented in the cli.mjs header and list output.'}
+      </P>
 
       <H>{ko ? '한도·정직 고지' : 'Limits & honesty'}</H>
       <P>
