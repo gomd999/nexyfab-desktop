@@ -1,5 +1,10 @@
 import * as THREE from 'three';
 import type { FEAMaterial, FEABoundaryCondition } from './simpleFEA';
+import { blockJacobi3x3, incompleteCholesky0 } from './ichol';
+
+/** Preconditioner selection for {@link sparsePCG}. Default 'jacobi' keeps the
+ *  small validation cases (A1-A4) byte-for-byte identical. */
+export type PrecondStrategy = 'jacobi' | 'block' | 'ic0';
 
 /**
  * Linear Finite Element Method solver.
@@ -486,15 +491,52 @@ export function sparsePCG(
   b: Float64Array,
   maxIter = 2000,
   tol = 1e-8,
-): { x: Float64Array; converged: boolean; iterations: number } {
+  strategy: PrecondStrategy = 'jacobi',
+): { x: Float64Array; converged: boolean; iterations: number; preconditioner: string } {
   const n = b.length;
   const x = new Float64Array(n);
 
-  // Jacobi preconditioner: M_inv[i] = 1/A[i,i]
+  // --- Preconditioner (scalar Jacobi is the DEFAULT and the ultimate fallback) ---
+  // Scalar Jacobi: M_inv[i] = 1/A[i,i]. Always built so it can back up the
+  // stronger strategies without a second diagonal pass. With strategy='jacobi'
+  // the path below is byte-for-byte the original solver (A1-A4 unchanged).
   const diag = A.getDiagonal();
   const Minv = new Float64Array(n);
   for (let i = 0; i < n; i++) {
     Minv[i] = Math.abs(diag[i]) > 1e-15 ? 1.0 / diag[i] : 1.0;
+  }
+  const jacobiInto = (rr: Float64Array, zz: Float64Array): void => {
+    for (let i = 0; i < n; i++) zz[i] = Minv[i] * rr[i];
+  };
+
+  // Resolve the requested strategy, degrading gracefully so the solve NEVER
+  // crashes:  ic0 -> (on failure) block -> jacobi ;  block -> (on failure) jacobi.
+  let applyPre: (rr: Float64Array, zz: Float64Array) => void = jacobiInto;
+  let usedPre = 'jacobi';
+  if (strategy === 'block') {
+    try {
+      const bp = blockJacobi3x3(A);
+      applyPre = (rr, zz) => bp.applyInto(rr, zz);
+      usedPre = bp.name;
+    } catch { applyPre = jacobiInto; usedPre = 'jacobi'; }
+  } else if (strategy === 'ic0') {
+    try {
+      const ic = incompleteCholesky0(A);
+      if (ic.ok) {
+        applyPre = (rr, zz) => ic.applyInto(rr, zz);
+        usedPre = ic.shift > 0 ? `${ic.name}(shift=${ic.shift})` : ic.name;
+      } else {
+        const bp = blockJacobi3x3(A);
+        applyPre = (rr, zz) => bp.applyInto(rr, zz);
+        usedPre = bp.name;
+      }
+    } catch {
+      try {
+        const bp = blockJacobi3x3(A);
+        applyPre = (rr, zz) => bp.applyInto(rr, zz);
+        usedPre = bp.name;
+      } catch { applyPre = jacobiInto; usedPre = 'jacobi'; }
+    }
   }
 
   // r = b - A*x (x=0 initially, so r=b)
@@ -502,7 +544,7 @@ export function sparsePCG(
 
   // z = M_inv * r
   const z = new Float64Array(n);
-  for (let i = 0; i < n; i++) z[i] = Minv[i] * r[i];
+  applyPre(r, z);
 
   const p = new Float64Array(z);
   let rz = 0;
@@ -538,8 +580,8 @@ export function sparsePCG(
     rNorm = Math.sqrt(rNorm);
     if (rNorm / bNorm < tol) { converged = true; break; }
 
-    // z = M_inv * r
-    for (let i = 0; i < n; i++) z[i] = Minv[i] * r[i];
+    // z = M_inv * r  (pluggable preconditioner; scalar Jacobi is the default)
+    applyPre(r, z);
 
     // beta = r_new^T z_new / r_old^T z_old
     let rzNew = 0;
@@ -551,7 +593,7 @@ export function sparsePCG(
     for (let i = 0; i < n; i++) p[i] = z[i] + beta * p[i];
   }
 
-  return { x, converged, iterations };
+  return { x, converged, iterations, preconditioner: usedPre };
 }
 
 /**
