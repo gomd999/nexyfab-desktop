@@ -64,12 +64,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # `git` is needed for the BOSL2 clone step only; pruned in the same RUN to
 # keep the image lean.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openscad git ca-certificates fonts-dejavu-core \
+ && apt-get install -y --no-install-recommends openscad gmsh git ca-certificates fonts-dejavu-core \
  && git clone --depth 1 https://github.com/BelfrySCAD/BOSL2.git /opt/openscad-libs/BOSL2 \
  && apt-get purge -y --auto-remove git \
  && rm -rf /var/lib/apt/lists/*
 ENV OPENSCAD_BIN=/usr/bin/openscad
 ENV OPENSCADPATH=/opt/openscad-libs
+# gmsh: out-of-process boundary-conforming tet mesher for the FEA precise path
+# (server-only, execFile shell-out like the openscad CLI; GPL-as-subprocess).
+ENV GMSH_BIN=/usr/bin/gmsh
 
 # Copy only what's needed
 COPY --from=builder /app/public ./public

@@ -40,8 +40,15 @@ export interface FEMResult {
   converged: boolean;
   /** Number of PCG iterations taken */
   iterations: number;
-  /** Which meshing path produced this result. */
-  meshMode?: 'uniform' | 'refined';
+  /** Which meshing path produced this result.
+   *  'gmsh-conforming' = an out-of-process gmsh boundary-conforming tet mesh
+   *  (certification-candidate grade); 'refined' = in-repo graded octree-snap
+   *  (engineering grade); 'uniform' = structured voxel grid (screening grade). */
+  meshMode?: 'uniform' | 'refined' | 'gmsh-conforming';
+  /** Honest self-assessed accuracy tier derived from the meshing path (NOT a
+   *  legal certification). 'certification-candidate' = conforming mesh capable
+   *  of certification-grade accuracy pending external cross-check. */
+  grade?: 'certification-candidate' | 'engineering' | 'screening';
   /** Diagnostics from the graded refine+snap pass (refined path only). */
   refineDiag?: RefineDiagnostics;
   /** Preconditioner the PCG actually used. */
@@ -693,7 +700,7 @@ export function runFEM(
   material: FEAMaterial,
   conditions: FEABoundaryCondition[],
   maxNodes = 1200,
-  opts: { refine?: 'auto' | 'on' | 'off'; targetSize?: number; band?: number; maxCornerNodes?: number } = {},
+  opts: { refine?: 'auto' | 'on' | 'off'; targetSize?: number; band?: number; maxCornerNodes?: number; prebuiltMesh?: { nodes: Float32Array; tets: Tet[] } } = {},
 ): FEMResult {
   // Work with non-indexed triangles so face indices are contiguous triples
   const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry.clone();
@@ -716,12 +723,17 @@ export function runFEM(
   // raiser (bore/fillet) switches to GRADED refinement + boundary snap (femRefine)
   // and the IC(0) preconditioner — a fine conforming mesh Jacobi cannot converge.
   const refineMode = opts.refine ?? 'auto';
-  const useRefine = refineMode === 'on' || (refineMode !== 'off' && hasCurvedStressRaiser(pos));
+  const useRefine = !opts.prebuiltMesh && (refineMode === 'on' || (refineMode !== 'off' && hasCurvedStressRaiser(pos)));
   let meshNodes: Float32Array;
   let meshTets: Tet[];
-  let meshMode: 'uniform' | 'refined';
+  let meshMode: 'uniform' | 'refined' | 'gmsh-conforming';
   let refineDiag: RefineDiagnostics | undefined;
-  if (useRefine) {
+  if (opts.prebuiltMesh) {
+    // Stage 4: an out-of-process gmsh boundary-conforming tet mesh. Bypass the
+    // in-repo voxel/octree mesher entirely and use the conforming linear tets
+    // directly; buildTet10Mesh below promotes them to quadratic TET10.
+    meshNodes = opts.prebuiltMesh.nodes; meshTets = opts.prebuiltMesh.tets; meshMode = 'gmsh-conforming';
+  } else if (useRefine) {
     const coarse = generateTetMesh(pos, Math.max(300, Math.min(2200, Math.floor(maxNodes / 6))));
     const refined = generateRefinedTetMesh(pos, coarse, {
       targetSize: opts.targetSize,
@@ -900,7 +912,7 @@ export function runFEM(
 
   // --- Solve K * u = F (Preconditioned Conjugate Gradient, Jacobi preconditioner) ---
   const { x: u, converged, iterations: solverIterations, preconditioner } =
-    sparsePCG(K, F, 2000, 1e-7, useRefine ? 'ic0' : 'jacobi');
+    sparsePCG(K, F, 2000, 1e-7, (useRefine || opts.prebuiltMesh) ? 'ic0' : 'jacobi');
 
   // --- Recover stress with NODAL sampling + stress-TENSOR averaging ---
   // Centroid-only recovery samples the strain at the element centre, which smears
@@ -1015,6 +1027,7 @@ export function runFEM(
     converged,
     iterations: solverIterations,
     meshMode,
+    grade: meshMode === 'gmsh-conforming' ? 'certification-candidate' : meshMode === 'refined' ? 'engineering' : 'screening',
     refineDiag,
     preconditioner,
   };

@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
-import { feaFromStl, feaReportHtml, FEA_MATERIALS } from '@/app/[lang]/shape-generator/analysis/feaPackage';
+import { feaFromStlAsync, feaReportHtml, FEA_MATERIALS } from '@/app/[lang]/shape-generator/analysis/feaPackage';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -53,7 +53,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const vfy = await loadVfy();
     const stl = await vfy.renderStl(scad);
-    const out = feaFromStl({
+    // precise 경로: gmsh 경계정합 메시(인증후보급) 우선, 부재 시 octree-snap(엔지니어링급) 자동 폴백.
+    const out = await feaFromStlAsync({
       stl, materialKey, loadN: loadKg * 9.81, precise,
       loadNote: `사용자 지정 ${loadKg} kg × g — 상면 등가(선형등방·스크리닝 한계는 리포트에 명시)`,
     });

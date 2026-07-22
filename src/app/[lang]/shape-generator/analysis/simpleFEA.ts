@@ -26,9 +26,14 @@ export interface FEAResult {
   /** Whether the iterative solver converged (always true for beam-theory) */
   converged: boolean;
   /** Which TET10 meshing path produced this result: 'uniform' (fast screening
-   *  grid) vs 'refined' (graded curved-raiser mesh). Undefined for beam-theory.
-   *  Lets callers report honestly whether a curved-raiser peak was resolved. */
-  meshMode?: 'uniform' | 'refined';
+   *  grid), 'refined' (graded octree-snap curved-raiser mesh), or
+   *  'gmsh-conforming' (out-of-process gmsh boundary-conforming mesh).
+   *  Undefined for beam-theory. Lets callers report honestly whether a
+   *  curved-raiser peak was resolved and at what grade. */
+  meshMode?: 'uniform' | 'refined' | 'gmsh-conforming';
+  /** Honest self-assessed accuracy tier mirrored from femSolver (NOT a legal
+   *  certification): 'certification-candidate' | 'engineering' | 'screening'. */
+  grade?: 'certification-candidate' | 'engineering' | 'screening';
 }
 
 export interface FEAMaterial {

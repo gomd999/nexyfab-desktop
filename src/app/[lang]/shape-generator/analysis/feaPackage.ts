@@ -13,7 +13,7 @@
  */
 import * as THREE from 'three';
 import { runSimpleFEA, type FEAResult, type FEAMaterial, type FEABoundaryCondition } from './simpleFEA';
-import { runFEM } from './femSolver';
+import { runFEM, type Tet } from './femSolver';
 import { hasCurvedStressRaiser } from './femRefine';
 
 /** 재료 물성 (대표값 — E GPa·ν·기준강도 MPa·밀도 g/cm³). 비금속은 선형등방 근사임을 리포트에 명시. */
@@ -84,7 +84,9 @@ export interface FeaPackageOutput {
   raiser?: {
     detected: boolean;
     applied: boolean;
-    grade: 'engineering' | 'screening';
+    grade: 'certification-candidate' | 'engineering' | 'screening';
+    /** Which mesher produced the applied precise solve (when applied). */
+    meshMode?: 'refined' | 'gmsh-conforming';
     dofCount: number;
     converged: boolean;
     wallMs: number;
@@ -165,6 +167,113 @@ export function feaFromStl({ stl, materialKey = 'STS316', loadN = 0, loadNote = 
         result = { ...fine, method: 'linear-fem-tet' as const };
       }
     } catch { /* 재해석 실패 시 스크리닝 결과 유지 (정직 — refined 미표기) */ }
+  }
+  return {
+    result, material: mat, materialKey: FEA_MATERIALS[materialKey] ? materialKey : 'STS316', loadN, loadNote,
+    mesh: { triangles: (geometry.getAttribute('position').count / 3) | 0, fixedTris, loadTris },
+    refined, raiser,
+  };
+}
+
+/**
+ * feaFromStlAsync — SERVER precise path (Stage 4). Identical screening + 2-step
+ * logic to feaFromStl, but when precise:true and a curved stress-raiser is
+ * present it PREFERS an out-of-process gmsh boundary-conforming tet mesh
+ * (certification-candidate grade). If the gmsh binary is absent or the mesh is
+ * unusable it falls back to the in-repo octree-snap ENGINEERING path (the proven
+ * A5 Kt ~5.6% floor) — never crashing, never fabricating. Sync feaFromStl is
+ * left byte-identical for its existing callers.
+ */
+export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, loadNote = '', precise = false }: FeaPackageInput): Promise<FeaPackageOutput> {
+  const mat = FEA_MATERIALS[materialKey] ?? FEA_MATERIALS.STS316;
+  const geometry = stlToGeometry(stl);
+  const pos = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const raiserDetected = hasCurvedStressRaiser(pos);
+  const { conditions, fixedTris, loadTris } = autoConditions(geometry, loadN);
+  let result = runSimpleFEA(geometry, { material: mat, conditions });
+
+  let raiser: FeaPackageOutput['raiser'] = raiserDetected
+    ? {
+        detected: true, applied: false, grade: 'screening',
+        dofCount: result.dofCount, converged: result.converged, wallMs: 0,
+        note: '곡률 응력집중부 감지 — 정밀 재해석 미적용(스크리닝): 보어/필렛 피크 응력 과소평가. precise 옵션으로 정밀 해석(서버) 요청 가능.',
+      }
+    : null;
+
+  if (precise && raiserDetected && result.method === 'linear-fem-tet') {
+    // (1) PREFER a gmsh boundary-conforming mesh (certification-candidate) when the
+    //     binary is available. gmsh runs as a SEPARATE PROCESS (GPL-as-subprocess =
+    //     mere aggregation, same arm's-length posture as our OpenSCAD CLI).
+    let gmshMesh: { nodes: Float32Array; tets: Tet[] } | null = null;
+    try {
+      const bb = new THREE.Box3().setFromBufferAttribute(pos);
+      const size = new THREE.Vector3(); bb.getSize(size);
+      const minDim = Math.max(1e-6, Math.min(size.x, size.y, size.z));
+      const { gmshTetMeshFromStl } = await import('./gmshMesh');
+      const g = await gmshTetMeshFromStl(stl, { targetSizeMm: Math.max(0.5, minDim / 4), maxNodes: 120_000 });
+      if (g) gmshMesh = { nodes: g.nodes, tets: g.tets };
+    } catch { gmshMesh = null; }
+
+    if (gmshMesh) {
+      const t0 = Date.now();
+      try {
+        const fine = runFEM(geometry, mat, conditions, 12000, { prebuiltMesh: gmshMesh });
+        const wallMs = Date.now() - t0;
+        const usable = fine.converged && Number.isFinite(fine.maxStress) && fine.maxDisplacement < 1e6;
+        if (usable) {
+          result = { ...fine, method: 'linear-fem-tet' as const };
+          raiser = {
+            detected: true, applied: true, grade: 'certification-candidate', meshMode: 'gmsh-conforming',
+            dofCount: fine.dofCount, converged: fine.converged, wallMs,
+            note: `곡률 응력집중부 정밀 재해석 — gmsh 경계정합 사면체 메시(별도 프로세스), DOF ${fine.dofCount.toLocaleString()}·${fine.converged ? '수렴' : '미수렴'}·벽시계 ${(wallMs / 1000).toFixed(1)}s. 인증후보급(외부 상용해석 교차검증 전).`,
+          };
+        }
+      } catch { /* fall through to octree-snap */ }
+    }
+
+    // (2) FALLBACK: octree-snap ENGINEERING path (A5 Kt ~5.6% proven). Runs when gmsh
+    //     is absent or produced an unusable mesh.
+    if (!raiser || !raiser.applied) {
+      const t0 = Date.now();
+      try {
+        const fine = runFEM(geometry, mat, conditions, 12000, { refine: 'on', maxCornerNodes: 8000 });
+        const wallMs = Date.now() - t0;
+        const usable = fine.converged && Number.isFinite(fine.maxStress) && fine.maxDisplacement < 1e6;
+        if (usable) {
+          result = { ...fine, method: 'linear-fem-tet' as const };
+          raiser = {
+            detected: true, applied: true, grade: 'engineering', meshMode: 'refined',
+            dofCount: fine.dofCount, converged: fine.converged, wallMs,
+            note: `곡률 응력집중부 정밀 재해석 적용 — graded refine + boundary-snap + IC(0)(gmsh 부재 폴백), DOF ${fine.dofCount.toLocaleString()}·${fine.converged ? '수렴' : '미수렴'}·벽시계 ${(wallMs / 1000).toFixed(1)}s. 엔지니어링급(Kirsch 기준 ±~6%, 인증급 아님).`,
+          };
+        } else {
+          raiser = {
+            detected: true, applied: false, grade: 'screening',
+            dofCount: result.dofCount, converged: result.converged, wallMs,
+            note: '정밀 재해석 결과 부적합(미수렴/비유한) — 스크리닝 결과 유지(정직).',
+          };
+        }
+      } catch {
+        raiser = {
+          detected: true, applied: false, grade: 'screening',
+          dofCount: result.dofCount, converged: result.converged, wallMs: Date.now() - t0,
+          note: '정밀 재해석 실패(예외) — 스크리닝 결과 유지(정직).',
+        };
+      }
+    }
+  }
+
+  // 2-step (비-라이저 각기둥 전용) — feaFromStl과 동일.
+  let refined: FeaPackageOutput['refined'] = null;
+  if (!raiserDetected && result.method === 'linear-fem-tet' && Number.isFinite(result.safetyFactor) && result.safetyFactor < 2) {
+    try {
+      const fine = runFEM(geometry, mat, conditions, 6000);
+      const usable = fine.converged && Number.isFinite(fine.maxStress) && fine.maxDisplacement < 1e6;
+      if (usable) {
+        refined = { maxNodes: 6000, screeningSF: result.safetyFactor, screeningMaxStress: result.maxStress };
+        result = { ...fine, method: 'linear-fem-tet' as const };
+      }
+    } catch { /* 재해석 실패 시 스크리닝 결과 유지 */ }
   }
   return {
     result, material: mat, materialKey: FEA_MATERIALS[materialKey] ? materialKey : 'STS316', loadN, loadNote,
