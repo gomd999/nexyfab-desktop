@@ -22,7 +22,7 @@ import { ifcToNexyfabAssembly } from '@/lib/brep-bridge/ifcImport';
 import { dwgToNexyfabAssembly } from '@/lib/brep-bridge/dwgImport';
 import { satToNexyfabAssembly } from '@/lib/brep-bridge/satImport';
 import { xtToNexyfabAssembly } from '@/lib/brep-bridge/xtImport';
-import { stepToIr, meshSoupToStepIr, gateIntentTriangles } from '@/lib/cad-ir';
+import { stepToIr, meshSoupToStepIr, gateIntentTriangles, acisReconstructionGate } from '@/lib/cad-ir';
 
 /** 독점 포맷 안내(임포트 불가 시 정직 응답) — 각 툴의 개방 포맷 내보내기 경로. */
 const CONVERT_GUIDE: Record<string, string> = {
@@ -187,6 +187,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       } catch (e) {
         reconstructionGate = { status: 'unavailable', reason: `gate_threw_${String(e instanceof Error ? e.message : e).slice(0, 80)}` };
       }
+    }
+
+    // ── ACIS / Parasolid 재구성 게이트(dwg/sat/x_t) — STEP 과 동일 계약 ──────────────
+    // 평면 ACIS 솔리드는 satImport.reconstructPlanarBody 로 실재구성된 다면체가 곧 작동
+    // 바디이므로 SOURCE=CANDIDATE(라운드트립 동일) → 실 passthrough pass/fail. 곡면 ACIS·
+    // 폴리페이스 box 는 커널이 없어 faithful 측정 불가 → 정직하게 'unavailable'(가짜 통과 금지).
+    if (!reconstructionGate && (fmt === 'sat' || fmt === 'sab' || fmt === 'dwg' || fmt === 'x_t' || fmt === 'xt' || fmt === 'xmt_txt')) {
+      const isXt = fmt === 'x_t' || fmt === 'xt' || fmt === 'xmt_txt';
+      reconstructionGate = acisReconstructionGate(bridged.assembly, {
+        fallbackReason: isXt ? 'parasolid_curved_no_kernel' : 'acis_curved_no_kernel',
+        format: isXt ? 'X_T' : 'SAT',
+        name,
+      });
     }
 
     // preset 응답 계약과 동일(composeIntent·openscad 포함) — 패널·뷰어·패키지 플로우 재사용

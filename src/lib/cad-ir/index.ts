@@ -29,6 +29,13 @@ export {
 export * from './gate';
 export { parseStl, stlToIr } from './ingestStl';
 export { stepToIr, meshSoupToStepIr, type StepToIrResult, type StepToIrMeta } from './ingestStep';
+export {
+  polyhedronToIr,
+  polyhedronToSoup,
+  acisReconstructionGate,
+  type AcisIrResult,
+  type AcisGateVerdict,
+} from './ingestAcis';
 
 import { normalizeIr, type Ir } from './schema';
 import { parseStl } from './ingestStl';

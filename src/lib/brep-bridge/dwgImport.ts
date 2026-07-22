@@ -544,30 +544,62 @@ export interface DwgAssemblyResult {
     name: string;
     domain: string;
     importedApprox?: boolean;
-    parts: Array<{ id: string; type: 'box'; params: { width: number; depth: number; height: number }; at: { tx: number; ty: number; tz: number }; role: string; material: string; qty?: number }>;
+    fidelity?: 'brep-polyhedron' | 'aabb-approximation' | 'mixed';
+    parts: Array<{ id: string; type: 'box'; params: { width: number; depth: number; height: number }; at: { tx: number; ty: number; tz: number }; role: string; material: string; qty?: number; fidelity?: 'brep-polyhedron' | 'aabb-approximation' }>;
     note: string;
   };
-  stats?: { pfaces: number; blocks: number; inserts: number; parts: number; skippedNestedInserts: number; unit: string; representative?: boolean };
+  stats?: { pfaces: number; blocks: number; inserts: number; parts: number; polyParts?: number; skippedNestedInserts: number; unit: string; representative?: boolean };
 }
 
-/** ACIS 솔리드(SAB) 목록 → 어셈블리(바디별 AABB box — satImport 공용 파서). */
+/**
+ * ACIS 솔리드(SAB) 목록 → 어셈블리. 평면 페이스 바디는 satImport.reconstructPlanarBody 로
+ * 실재구성(정점·페이스·체적=소스 좌표, type='mesh', fidelity='brep-polyhedron') → 재구성
+ * 게이트가 실 pass/fail 을 매긴다. 곡면(cone/sphere/torus/spline) 바디는 ACIS 커널이 없어
+ * AABB box 근사(fidelity='aabb-approximation') — 게이트에서 정직하게 unavailable 처리.
+ */
 function solidsToAssembly(sabs: Uint8Array[], name: string): DwgAssemblyResult {
   type P = DwgAssemblyResult['assembly'] extends infer A ? (A extends { parts: Array<infer Q> } ? Q : never) : never;
   const parts: P[] = [];
   let bodiesTotal = 0;
   let failed = 0;
   let unit = 1;
+  let polyParts = 0;
+  const reasons = new Set<string>();
+  const r6 = (v: number) => +v.toFixed(6);
   for (let si = 0; si < sabs.length; si++) {
     const r = parseSabBodies(sabs[si]);
     if (!r.ok || !r.bodies) { failed++; continue; }
     const s = r.unitMm && r.unitMm > 0 ? r.unitMm : 1;
     unit = s;
     for (const b of r.bodies) {
-      if (!b.aabb) continue;
+      if (!b.aabb && !b.poly) continue;
       bodiesTotal++;
       if (parts.length >= 600) continue;
-      const [mnx, mny, mnz] = b.aabb.min;
-      const [mxx, mxy, mxz] = b.aabb.max;
+      if (b.poly) {
+        // 평면 다면체 실재구성 — 정점·페이스·체적=소스 좌표(단위만 mm 환산). satImport 와 동일 규약.
+        polyParts++;
+        const sv = b.poly.verts.map(([x, y, z]) => [r6(x * s), r6(y * s), r6(z * s)]);
+        parts.push({
+          id: `sol${si + 1}_b${parts.length + 1}`,
+          type: 'mesh' as unknown as 'box', // STL 임포터와 동일 규약(SCAD polyhedron 표시 경로)
+          params: {
+            volumeMm3: r6(b.poly.volume * s * s * s),
+            areaMm2: r6(b.poly.area * s * s),
+            faceCount: b.poly.faces.length,
+            cg: b.poly.cg.map((v) => r6(v * s)),
+            verts: sv,
+            faces: b.poly.faces,
+          } as unknown as { width: number; depth: number; height: number },
+          at: { tx: 0, ty: 0, tz: 0 },
+          role: 'imported',
+          material: 'steel',
+          fidelity: 'brep-polyhedron',
+        } as P);
+        continue;
+      }
+      if (b.fallbackReason) reasons.add(b.fallbackReason);
+      const [mnx, mny, mnz] = b.aabb!.min;
+      const [mxx, mxy, mxz] = b.aabb!.max;
       parts.push({
         id: `sol${si + 1}_b${parts.length + 1}`,
         type: 'box',
@@ -579,21 +611,31 @@ function solidsToAssembly(sabs: Uint8Array[], name: string): DwgAssemblyResult {
         at: { tx: +(mnx * s).toFixed(1), ty: +(mny * s).toFixed(1), tz: +(mnz * s).toFixed(1) },
         role: 'imported',
         material: 'steel',
+        fidelity: 'aabb-approximation',
       } as P);
     }
   }
   if (!parts.length) return { ok: false, error: `ACIS 솔리드 ${sabs.length}개에서 바디를 추출하지 못했습니다(SAB 부분 파싱 ${failed}건 실패).` };
+  const boxParts = parts.length - polyParts;
+  const fidelity: NonNullable<DwgAssemblyResult['assembly']>['fidelity'] =
+    boxParts === 0 ? 'brep-polyhedron' : polyParts === 0 ? 'aabb-approximation' : 'mixed';
   const representative = bodiesTotal > 600;
+  const reasonNote = reasons.size ? ` · box 근사 사유: ${[...reasons].slice(0, 3).join(' | ')}` : '';
+  const note =
+    boxParts === 0
+      ? `DWG ACIS 솔리드 실 B-rep 임포트 — 평면 페이스 다면체 ${polyParts}바디 재구성(정점·페이스·체적=소스 좌표, 법선 교차검증 통과) · 단위=${unit}mm/단위${failed ? ` · SAB ${failed}건 파싱 실패(집계)` : ''}`
+      : `DWG ACIS 솔리드 임포트${polyParts ? ` — 다면체 실재구성 ${polyParts} + AABB box 근사 ${boxParts}` : ' 근사(바디=SAB 경계 정점 점군의 월드 AABB box — B-rep 곡면 미재구성)'}${reasonNote} · box 부품 질량/물량=AABB 체적 기준(과대측) · 재질=미해석 기본값 · 단위=${unit}mm/단위${failed ? ` · SAB ${failed}건 파싱 실패(집계)` : ''}${representative ? ` · 바디 600 예산 초과(전체 ${bodiesTotal}) — 앞 600개만` : ''}`;
   return {
     ok: true,
     assembly: {
       name,
       domain: 'mech',
-      importedApprox: true,
+      ...(boxParts > 0 ? { importedApprox: true } : {}),
+      fidelity,
       parts,
-      note: `DWG ACIS 솔리드 임포트 근사(바디=SAB 경계 정점 점군의 월드 AABB box — B-rep 곡면 미재구성) · 질량/물량=AABB 체적 기준(과대측) · 재질=미해석 기본값 · 단위=${unit}mm/단위${failed ? ` · SAB ${failed}건 파싱 실패(집계)` : ''}${representative ? ` · 바디 600 예산 초과(전체 ${bodiesTotal}) — 앞 600개만` : ''}`,
+      note,
     },
-    stats: { pfaces: 0, blocks: 0, inserts: 0, parts: parts.length, skippedNestedInserts: 0, unit: `${unit}mm/단위(SAB)`, ...(representative ? { representative: true } : {}) },
+    stats: { pfaces: 0, blocks: 0, inserts: 0, parts: parts.length, polyParts, skippedNestedInserts: 0, unit: `${unit}mm/단위(SAB)`, ...(representative ? { representative: true } : {}) },
   };
 }
 
