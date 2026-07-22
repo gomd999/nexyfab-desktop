@@ -63,11 +63,22 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # (intentToScad emits BOSL2 calls for gear/threadedRod/roundedBox/screw).
 # `git` is needed for the BOSL2 clone step only; pruned in the same RUN to
 # keep the image lean.
+# gmsh (FEA precise-path tet mesher) links OpenGL/GLU + OpenCASCADE even for
+# batch `-3` runs; with --no-install-recommends the GL/GLU runtime libs are
+# NOT pulled automatically, so gmsh can fail to LOAD (loader error) at runtime
+# and the FEA path silently falls back to octree. Install them explicitly and
+# then run `gmsh --version` so a broken/unloadable binary FAILS THE BUILD here
+# instead of degrading silently in production. `command -v gmsh` also confirms
+# the binary is on PATH at /usr/bin/gmsh (must match ENV GMSH_BIN below).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openscad gmsh git ca-certificates fonts-dejavu-core \
+ && apt-get install -y --no-install-recommends \
+      openscad gmsh git ca-certificates fonts-dejavu-core \
+      libglu1-mesa libgl1 libgomp1 \
  && git clone --depth 1 https://github.com/BelfrySCAD/BOSL2.git /opt/openscad-libs/BOSL2 \
  && apt-get purge -y --auto-remove git \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* \
+ && command -v gmsh \
+ && gmsh --version
 ENV OPENSCAD_BIN=/usr/bin/openscad
 ENV OPENSCADPATH=/opt/openscad-libs
 # gmsh: out-of-process boundary-conforming tet mesher for the FEA precise path

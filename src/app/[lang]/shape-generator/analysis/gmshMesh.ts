@@ -176,6 +176,23 @@ function stlBBox(stl: Uint8Array): { dx: number; dy: number; dz: number } {
   return { dx: mxx - mnx, dy: mxy - mny, dz: mxz - mnz };
 }
 
+/** Mutable diagnostics sink. When gmshTetMeshFromStl returns null it writes the
+ *  CONCRETE reason here so the caller (feaPackage) can thread it up to the FEA
+ *  self-test response — turning a silent `gmshUsed:false` into an actionable
+ *  cause (ENOENT / non-zero exit / empty msh / timeout / oversize). */
+export interface GmshDiag {
+  /** Short human-readable failure reason (undefined on success). */
+  reason?: string;
+  /** Node error code when the exec itself failed (e.g. 'ENOENT'). */
+  code?: string;
+  /** Process exit code when gmsh ran but exited non-zero. */
+  exitCode?: number | null;
+  /** Tail of gmsh stderr/stdout (trimmed) for the concrete gmsh message. */
+  stderr?: string;
+  /** Resolved binary that was invoked. */
+  bin?: string;
+}
+
 export interface GmshMeshOptions {
   /** Subprocess timeout (ms). Default 120 s (a fine conforming mesh is slow). */
   timeoutMs?: number;
@@ -184,6 +201,8 @@ export interface GmshMeshOptions {
   /** Reject (return null → fall back) above this node count, so a runaway mesh
    *  never hangs a live request. Default 200_000. */
   maxNodes?: number;
+  /** Optional diagnostics sink — receives the concrete failure reason on null. */
+  diag?: GmshDiag;
 }
 
 /** Probe whether the gmsh binary resolves. Returns the resolved path, or null
@@ -206,6 +225,8 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
   const timeoutMs = opts.timeoutMs ?? 120_000;
   const maxNodes = opts.maxNodes ?? 200_000;
   const bin = gmshBinary();
+  const setDiag = (d: Partial<GmshDiag>) => { if (opts.diag) Object.assign(opts.diag, d); };
+  setDiag({ bin });
 
   const id = randomBytes(8).toString('hex');
   const workDir = join(tmpdir(), `nf-gmsh-${id}`);
@@ -242,28 +263,62 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
     await writeFile(stlPath, Buffer.from(stl.buffer, stl.byteOffset, stl.byteLength));
     await writeFile(geoPath, geo, 'utf8');
 
-    await new Promise<void>((resolve, reject) => {
-      execFile(bin, [geoPath, '-3', '-format', 'msh2', '-o', mshPath], {
+    const { stdout, stderr } = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+      // `-nopopup` suppresses any GUI/error dialog in batch mode. We deliberately
+      // do NOT pass `-v 0`: gmsh's info/error stream is exactly what we capture and
+      // thread up as the concrete failure reason (ClassifySurfaces / CreateGeometry
+      // failures, OCC tolerance warnings, missing-lib loader errors) so a live
+      // self-test pinpoints the cause instead of just reporting gmshUsed:false.
+      execFile(bin, [geoPath, '-3', '-format', 'msh2', '-nopopup', '-o', mshPath], {
         cwd: workDir, timeout: timeoutMs, windowsHide: true,
         maxBuffer: 64 * 1024 * 1024, env: process.env,
-      }, (err) => {
+      }, (err, out, errOut) => {
         if (err) {
-          const e = err as NodeJS.ErrnoException;
-          // ENOENT (binary absent) is the expected dev-host case — silent fallback.
-          return reject(Object.assign(new Error(e.message), { _gmshFail: true, code: e.code }));
+          const e = err as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
+          const tail = String(errOut || out || '').trim().split(/\r?\n/).slice(-6).join(' | ').slice(0, 600);
+          let reason: string;
+          if (e.code === 'ENOENT') {
+            reason = `gmsh binary not found (ENOENT) at "${bin}" — not installed, or GMSH_BIN points to the wrong path`;
+          } else if (e.killed || e.signal === 'SIGTERM') {
+            reason = `gmsh timed out after ${timeoutMs}ms (mesh too fine or hung)${tail ? ` — ${tail}` : ''}`;
+          } else if (typeof e.code === 'number') {
+            reason = `gmsh exited ${e.code}${e.signal ? ` (signal ${e.signal})` : ''}: ${tail || e.message}`;
+          } else {
+            reason = `gmsh failed to run: ${e.message}${tail ? ` — ${tail}` : ''}`;
+          }
+          setDiag({ reason, code: e.code, exitCode: typeof e.code === 'number' ? e.code : null, stderr: tail });
+          return reject(Object.assign(new Error(reason), { _gmshFail: true, code: e.code }));
         }
-        resolve();
+        resolve({ stdout: String(out || ''), stderr: String(errOut || '') });
       });
     });
 
-    const text = await readFile(mshPath, 'utf8');
+    const text = await readFile(mshPath, 'utf8').catch((e) => {
+      setDiag({ reason: `gmsh ran (exit 0) but no .msh was written to "${mshPath}": ${(e as Error)?.message ?? 'read failed'}` });
+      throw e;
+    });
     const parsed = parseMshTets(text);
-    if (parsed.tets.length === 0) return null;        // surface-only / empty → fall back
+    if (parsed.tets.length === 0) {
+      const tail = String(stderr || stdout || '').trim().split(/\r?\n/).slice(-6).join(' | ').slice(0, 600);
+      setDiag({
+        reason: `gmsh produced NO volume tetrahedra (empty / surface-only msh) — the .geo remesh (ClassifySurfaces + CreateGeometry + Volume) did not fill a 3-D volume${tail ? `. gmsh: ${tail}` : ''}`,
+        stderr: tail,
+      });
+      return null; // surface-only / empty → fall back
+    }
     const nodeCount = parsed.nodes.length / 3;
-    if (nodeCount > maxNodes) return null;            // oversize → fall back, don't hang
+    if (nodeCount > maxNodes) {
+      setDiag({ reason: `gmsh mesh too large (${nodeCount} nodes > cap ${maxNodes}) — rejected to protect the live request` });
+      return null; // oversize → fall back, don't hang
+    }
     return { nodes: parsed.nodes, tets: parsed.tets, source: 'gmsh', nodeCount, tetCount: parsed.tets.length };
-  } catch {
+  } catch (err) {
     // Never crash, never fabricate — any gmsh failure degrades to the octree path.
+    // A concrete reason was recorded into opts.diag above; if not (e.g. a throw from
+    // parseMshTets on a malformed msh), record a generic one here so it is never blank.
+    if (opts.diag && !opts.diag.reason) {
+      setDiag({ reason: `gmsh meshing failed: ${(err as Error)?.message ?? String(err)}` });
+    }
     return null;
   } finally {
     await rm(workDir, { recursive: true, force: true }).catch(() => undefined);

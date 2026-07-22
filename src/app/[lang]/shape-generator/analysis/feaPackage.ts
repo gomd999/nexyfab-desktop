@@ -87,6 +87,8 @@ export interface FeaPackageOutput {
     grade: 'certification-candidate' | 'engineering' | 'screening';
     /** Which mesher produced the applied precise solve (when applied). */
     meshMode?: 'refined' | 'gmsh-conforming';
+    /** Concrete reason gmsh was NOT used (set only on the octree fallback path). */
+    gmshError?: string;
     dofCount: number;
     converged: boolean;
     wallMs: number;
@@ -205,14 +207,17 @@ export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, 
     //     binary is available. gmsh runs as a SEPARATE PROCESS (GPL-as-subprocess =
     //     mere aggregation, same arm's-length posture as our OpenSCAD CLI).
     let gmshMesh: { nodes: Float32Array; tets: Tet[] } | null = null;
+    let gmshError: string | undefined;
     try {
       const bb = new THREE.Box3().setFromBufferAttribute(pos);
       const size = new THREE.Vector3(); bb.getSize(size);
       const minDim = Math.max(1e-6, Math.min(size.x, size.y, size.z));
       const { gmshTetMeshFromStl } = await import('./gmshMesh');
-      const g = await gmshTetMeshFromStl(stl, { targetSizeMm: Math.max(0.5, minDim / 4), maxNodes: 120_000 });
+      const diag: { reason?: string } = {};
+      const g = await gmshTetMeshFromStl(stl, { targetSizeMm: Math.max(0.5, minDim / 4), maxNodes: 120_000, diag });
       if (g) gmshMesh = { nodes: g.nodes, tets: g.tets };
-    } catch { gmshMesh = null; }
+      else gmshError = diag.reason ?? 'gmsh returned null without a recorded reason';
+    } catch (e) { gmshMesh = null; gmshError = `gmsh adapter threw: ${(e as Error)?.message ?? String(e)}`; }
 
     if (gmshMesh) {
       const t0 = Date.now();
@@ -227,8 +232,10 @@ export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, 
             dofCount: fine.dofCount, converged: fine.converged, wallMs,
             note: `곡률 응력집중부 정밀 재해석 — gmsh 경계정합 사면체 메시(별도 프로세스), DOF ${fine.dofCount.toLocaleString()}·${fine.converged ? '수렴' : '미수렴'}·벽시계 ${(wallMs / 1000).toFixed(1)}s. 인증후보급(외부 상용해석 교차검증 전).`,
           };
+        } else {
+          gmshError = `gmsh 메시는 생성됐으나 FEM 해가 부적합(미수렴/비유한) — DOF ${fine.dofCount.toLocaleString()}`;
         }
-      } catch { /* fall through to octree-snap */ }
+      } catch (e) { gmshError = `gmsh 메시 FEM 조립/해석 예외: ${(e as Error)?.message ?? String(e)}`; }
     }
 
     // (2) FALLBACK: octree-snap ENGINEERING path (A5 Kt ~5.6% proven). Runs when gmsh
@@ -242,22 +249,22 @@ export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, 
         if (usable) {
           result = { ...fine, method: 'linear-fem-tet' as const };
           raiser = {
-            detected: true, applied: true, grade: 'engineering', meshMode: 'refined',
+            detected: true, applied: true, grade: 'engineering', meshMode: 'refined', gmshError,
             dofCount: fine.dofCount, converged: fine.converged, wallMs,
-            note: `곡률 응력집중부 정밀 재해석 적용 — graded refine + boundary-snap + IC(0)(gmsh 부재 폴백), DOF ${fine.dofCount.toLocaleString()}·${fine.converged ? '수렴' : '미수렴'}·벽시계 ${(wallMs / 1000).toFixed(1)}s. 엔지니어링급(Kirsch 기준 ±~6%, 인증급 아님).`,
+            note: `곡률 응력집중부 정밀 재해석 적용 — graded refine + boundary-snap + IC(0)(gmsh 미사용 폴백: ${gmshError ?? '사유 미상'}), DOF ${fine.dofCount.toLocaleString()}·${fine.converged ? '수렴' : '미수렴'}·벽시계 ${(wallMs / 1000).toFixed(1)}s. 엔지니어링급(Kirsch 기준 ±~6%, 인증급 아님).`,
           };
         } else {
           raiser = {
-            detected: true, applied: false, grade: 'screening',
+            detected: true, applied: false, grade: 'screening', gmshError,
             dofCount: result.dofCount, converged: result.converged, wallMs,
-            note: '정밀 재해석 결과 부적합(미수렴/비유한) — 스크리닝 결과 유지(정직).',
+            note: `정밀 재해석 결과 부적합(미수렴/비유한) — 스크리닝 결과 유지(정직).${gmshError ? ` gmsh 미사용: ${gmshError}` : ''}`,
           };
         }
       } catch {
         raiser = {
-          detected: true, applied: false, grade: 'screening',
+          detected: true, applied: false, grade: 'screening', gmshError,
           dofCount: result.dofCount, converged: result.converged, wallMs: Date.now() - t0,
-          note: '정밀 재해석 실패(예외) — 스크리닝 결과 유지(정직).',
+          note: `정밀 재해석 실패(예외) — 스크리닝 결과 유지(정직).${gmshError ? ` gmsh 미사용: ${gmshError}` : ''}`,
         };
       }
     }
