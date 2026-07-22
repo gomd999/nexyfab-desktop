@@ -22,6 +22,7 @@ import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
 import { isKorean } from '@/lib/i18n/normalize';
 import BriefClarifier from './BriefClarifier';
 import DomainVerifyPanel from './DomainVerifyPanel';
+import CodeCheckPanel from './CodeCheckPanel';
 import CalcStudioPanel from './CalcStudioPanel';
 import StudioChatDock from './StudioChatDock';
 import ParametricPresetPanel from './ParametricPresetPanel';
@@ -1750,6 +1751,9 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
 
           {/* 분야 검증(②) — 형상 + 분야 계산기(상시 게이트 위에 얹는 분야층) */}
           <div style={{ display: tab === 'verify' ? undefined : 'none' }}>{intent && <DomainVerifyPanel intent={intent} lang={lang} defaultDomain={domain?.verifyDomain ?? undefined} />}</div>
+
+          {/* 코드체크·감리(결정론) — 실제 법령 조항 인용. 학습모델 감리와 차별화 */}
+          <div style={{ display: tab === 'verify' ? undefined : 'none' }}><CodeCheckPanel lang={lang} /></div>
 
           {/* 계산기 스튜디오 — 전 38종 스키마 자동 폼 + 계산서 출력(형상 없이도 사용 가능) */}
           <div style={{ display: tab === 'calc' ? undefined : 'none', padding: tab === 'calc' ? '16px 12px' : 0 }}><CalcStudioPanel lang={lang} /></div>
