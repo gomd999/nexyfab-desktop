@@ -128,6 +128,11 @@ claude mcp list
           ? 'Claude Desktop 은 claude_desktop_config.json 의 mcpServers 에 동일하게 {"command":"node","args":["/absolute/path/nexyfab-mcp.mjs"],"env":{"NEXYFAB_API_KEY":"nf_live_XXXX"}} 를 추가하면 됩니다.'
           : 'For Claude Desktop, add the same under mcpServers in claude_desktop_config.json: {"command":"node","args":["/absolute/path/nexyfab-mcp.mjs"],"env":{"NEXYFAB_API_KEY":"nf_live_XXXX"}}.'}
       </P>
+      <P style={{ fontSize: 12.5 }}>
+        {ko
+          ? '신규 하드 능력 4종(웹과 동일): analyze_fea(간이 FEA — 구조·열·모달, scad+재료+하중) · reconstruct_verify(검증된 역설계 — STL/STEP/DWG/SAT를 재구성 게이트로 bbox·genus·watertight 대조) · reconstruct_fleet(AI 재구성 함대 — 다모델 파라메트릭 SCAD, Pro·비용) · code_check(코드체크/감리 — 공개 법령 조항 인용 PASS/FAIL/NA). 앞 3종은 원격 전용(NEXYFAB_API_KEY 필요 — 서버 OpenSCAD/gmsh/OCCT·LLM 사용, 키 없으면 명시적 거부), code_check 는 로컬·오프라인(순수 결정론 룰셋). 모두 비법정(엔지니어링급 스크리닝·결정론 감리 보조 — 상세 해석·법정 감리는 유자격 전문가 몫).'
+          : 'Four new hard capabilities (parity with the web): analyze_fea (quick FEA — structural/thermal/modal from scad+material+load) · reconstruct_verify (verified reverse-engineering — STL/STEP/DWG/SAT vs a reconstruction gate on bbox/genus/watertight) · reconstruct_fleet (AI reconstruction fleet — multi-model parametric SCAD, Pro + budget) · code_check (code-check/audit citing PASS/FAIL/NA against public statutes). The first three are REMOTE-only (need NEXYFAB_API_KEY — hosted OpenSCAD/gmsh/OCCT/LLM; explicit refusal without a key); code_check runs LOCALLY offline (pure deterministic ruleset). All non-statutory (engineering-grade screening / deterministic review aid — detailed analysis and statutory review remain a licensed professional duty).'}
+      </P>
 
       <H>3. CLI</H>
       <P>
@@ -148,6 +153,10 @@ node cli.mjs preview asm.json --out ./png --views iso,side,top # 헤드리스 �
 node cli.mjs package asm.json --out ./도서 --step              # GA·부품도·BOQ·사양서·DXF·STEP
 node cli.mjs domain civil "옹벽 H=3m 연장 200m" --out pkg.json # 다분야(원격 전용 — 키 필요)
 node cli.mjs templates bridge                                  # 분야 템플릿 목록
+node cli.mjs fea asm.json --load 500 --material steel          # 간이 FEA(원격 — 서버 OpenSCAD/gmsh)
+node cli.mjs reconstruct part.stl                             # 검증된 역설계(원격 — 재구성 게이트)
+node cli.mjs fleet part.stl                                   # AI 재구성 함대(원격+Pro·비용)
+node cli.mjs codecheck features.json                          # 코드체크/감리(로컬·오프라인·키 불필요)
 node cli.mjs list                                              # 전체 도구·명령 목록`}</Code>
       <P style={{ fontSize: 12.5 }}>
         {ko

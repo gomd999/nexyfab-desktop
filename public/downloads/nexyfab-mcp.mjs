@@ -72,6 +72,26 @@ const tools = [
       },
     },
   },
+  {
+    name: 'analyze_fea',
+    description: '간이 FEA(구조·열·모달·열탄성) — scad + 재료(materialKey) + 상면 등가 하중(loadKg, 날조 금지·명시 필수) → 안전율/최대응력/변위/리포트. precise=true 면 gmsh 정밀 메시(느림). 원격(서버 OpenSCAD/gmsh)·선형등방 스크리닝·비법정.',
+    inputSchema: { type: 'object', required: ['scad', 'loadKg'], properties: { scad: { type: 'string', description: 'OpenSCAD 텍스트' }, materialKey: { type: 'string', description: '기본 steel' }, loadKg: { type: 'number', description: '상면 등가 하중 kg(0 초과)' }, precise: { type: 'boolean' } } },
+  },
+  {
+    name: 'reconstruct_verify',
+    description: '검증된 역설계 — format=stl → reverse-engineer(라운드트립), step/iges/ifc/dwg/sat/x_t → import-step(B-rep 대조). 반환 reconstructionGate{status:pass|fail|unavailable, mode, checks(bbox/genus/watertight), feedback} + suggestion(export_step). 곡면/복합=정직 실패. 원격·Pro.',
+    inputSchema: { type: 'object', properties: { format: { type: 'string', description: 'stl|step|iges|ifc|dwg|sat|x_t (기본 stl)' }, stlBase64: { type: 'string', description: 'STL/바이너리(dwg·sat) base64' }, step: { type: 'string', description: 'STEP/IGES/IFC/X_T 텍스트' }, name: { type: 'string' } } },
+  },
+  {
+    name: 'reconstruct_fleet',
+    description: 'AI 재구성 함대 — STL → 다모델 파라메트릭 SCAD 제안 + 결정론 게이트 검증(피드백·계열 전환). 반환 aiFleet{passed,verified,attemptsUsed,seriesSwitched,familiesUsed,feedback}. 원격+Pro·비용 소모(복잡 부품 비통과 정상·날조 통과 없음).',
+    inputSchema: { type: 'object', required: ['stlBase64'], properties: { stlBase64: { type: 'string' }, attempts: { type: 'integer', description: '서버 상한 적용(현재 3)' } } },
+  },
+  {
+    name: 'code_check',
+    description: '코드체크/감리 보조(결정론) — 측정 피처(주차·경사로·복도·계단·난간·출입구·위생) → 공개 법령 조항 인용 PASS/FAIL/NA + 실측 vs 요구. 피처 미제공=NA(준수 가정 안 함). {list:true}=룰 카탈로그. 순수 룰셋 — 키 없이도 동작(공개 라우트). 비법정(disclaimer 동봉).',
+    inputSchema: { type: 'object', properties: { features: { type: 'object' }, list: { type: 'boolean' } } },
+  },
 ];
 
 const ROUTE = {
@@ -81,16 +101,33 @@ const ROUTE = {
   face_drag: '/api/nexyfab/drawing/face-drag/',
   part_op: '/api/nexyfab/drawing/part-op/',
   domain_design: '/api/nexyfab/domain-design/',
+  analyze_fea: '/api/nexyfab/drawing/fea-quick/',
+  code_check: '/api/nexyfab/codecheck/',
 };
 
+function resolveCall(name, args) {
+  if (name === 'reconstruct_fleet') return { path: '/api/nexyfab/reverse-engineer/', body: { stlBase64: args.stlBase64, mode: 'ai-fleet', ...(Number.isFinite(args.attempts) ? { attempts: args.attempts } : {}) } };
+  if (name === 'reconstruct_verify') {
+    const fmt = String(args.format ?? (args.step ? 'step' : 'stl')).toLowerCase();
+    const textFmts = { step: 'step', stp: 'step', iges: 'iges', igs: 'iges', ifc: 'ifc', x_t: 'x_t', xt: 'x_t', xmt_txt: 'x_t' };
+    const binFmts = { dwg: 'dwg', sat: 'sat', sab: 'sab' };
+    if (fmt === 'stl') return { path: '/api/nexyfab/reverse-engineer/', body: { stlBase64: args.stlBase64 } };
+    if (textFmts[fmt]) return { path: '/api/nexyfab/drawing/import-step/', body: { step: args.step, format: textFmts[fmt], ...(args.name ? { name: args.name } : {}) } };
+    if (binFmts[fmt]) return { path: '/api/nexyfab/drawing/import-step/', body: { stlBase64: args.stlBase64, format: binFmts[fmt], ...(args.name ? { name: args.name } : {}) } };
+    return { path: '/api/nexyfab/reverse-engineer/', body: { stlBase64: args.stlBase64 } };
+  }
+  return { path: ROUTE[name], body: args };
+}
+
 async function callTool(name, args = {}) {
-  const path = ROUTE[name];
+  const { path, body } = resolveCall(name, args);
   if (!path) throw new Error(`unknown tool: ${name}`);
-  if (!KEY) throw new Error('NEXYFAB_API_KEY 미설정 — Pro 이상 계정에서 발급(nexyfab.com → 계정 → API Keys)');
+  // code_check 는 공개 라우트(순수 결정론 룰셋) — 키 없이도 동작. 그 외 원격 도구는 Pro 키 필요.
+  if (!KEY && name !== 'code_check') throw new Error('NEXYFAB_API_KEY 미설정 — Pro 이상 계정에서 발급(nexyfab.com → 계정 → API Keys)');
   const res = await fetch(BASE + path, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${KEY}` },
-    body: JSON.stringify(args),
+    headers: { 'content-type': 'application/json', ...(KEY ? { authorization: `Bearer ${KEY}` } : {}) },
+    body: JSON.stringify(body),
   });
   const text = await res.text();
   let json;

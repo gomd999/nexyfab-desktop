@@ -37,8 +37,87 @@ import { parseLandXml, parseLandXmlFile } from './landxml-import.mjs';
 import { stepRoundTrip } from './roundtrip.mjs';
 import { refineInterferencesMesh } from './interference-refine.mjs';
 import { runDesignBriefTool } from './design-brief.mjs';
+import { runCodeCheckTool } from './codecheck.mjs';
 
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
+
+// ── Remote proxy (analyze_fea·reconstruct_verify·reconstruct_fleet) ───────────
+// 이 3종은 호스팅 서버의 바이너리(OpenSCAD·gmsh·OCCT·메시 처리) 또는 AI 함대가 필요 —
+// scripts/ 에 로컬 엔진이 없으므로 NEXYFAB_API_KEY(Pro 이상)로 nexyfab.com API 를 호출한다.
+// 키가 없으면 조용히 실패하지 않고 명시적으로 원격 전용임을 반환(정직). code_check 는 순수
+// 룰셋이라 로컬(오프라인) 실행 — 이 프록시를 쓰지 않는다.
+const _apiUrl = () => (process.env.NEXYFAB_API_URL ?? 'https://nexyfab.com').replace(/\/$/, '');
+async function remoteCall(route, body, toolName) {
+  const key = process.env.NEXYFAB_API_KEY;
+  if (!key) {
+    return {
+      ok: false, remoteOnly: true,
+      error: `'${toolName}' 는 원격 전용 — NEXYFAB_API_KEY 가 필요합니다. 이 도구는 호스팅 서버의 바이너리(OpenSCAD/gmsh/OCCT·LLM)를 사용하므로 로컬 엔진이 없습니다. Pro 이상 계정에서 키를 발급(nexyfab.com → 계정 → API Keys)한 뒤 환경변수 NEXYFAB_API_KEY 로 설정하세요.`,
+    };
+  }
+  let res;
+  try {
+    res = await fetch(_apiUrl() + route, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    return { ok: false, error: `원격 호출 실패(${_apiUrl()}${route}): ${String(e?.message ?? e)}` };
+  }
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); } catch { json = { ok: false, error: `HTTP ${res.status}: ${text.slice(0, 200)}` }; }
+  if (!res.ok && json && json.ok === undefined && json.error === undefined) json = { ok: false, error: `HTTP ${res.status}`, body: json };
+  return json;
+}
+
+// reconstruct_verify 입력 정형: 확장자/format 으로 STL↔B-rep 경로와 요청 바디를 결정.
+async function shapeReconstructInput(args) {
+  const fs = await import('node:fs');
+  let fmt = typeof args.format === 'string' ? args.format.toLowerCase() : '';
+  if (!fmt && typeof args.file === 'string') fmt = (args.file.split('.').pop() ?? '').toLowerCase();
+  if (!fmt) fmt = args.stlBase64 ? 'stl' : (typeof args.step === 'string' ? 'step' : '');
+  if (!fmt) return { error: 'file(.stl/.step/.iges/.ifc/.dwg/.sat/.x_t) 또는 format 이 필요합니다.' };
+  const textFmts = { step: 'step', stp: 'step', iges: 'iges', igs: 'iges', ifc: 'ifc', x_t: 'x_t', xt: 'x_t', xmt_txt: 'x_t' };
+  const binFmts = { dwg: 'dwg', sat: 'sat', sab: 'sab' };
+  try {
+    if (fmt === 'stl') {
+      const stlBase64 = typeof args.stlBase64 === 'string' && args.stlBase64 ? args.stlBase64 : fs.readFileSync(args.file).toString('base64');
+      return { route: '/api/nexyfab/reverse-engineer/', body: { stlBase64 } };
+    }
+    if (textFmts[fmt]) {
+      const step = typeof args.step === 'string' && args.step ? args.step : fs.readFileSync(args.file, 'utf8');
+      return { route: '/api/nexyfab/drawing/import-step/', body: { step, format: textFmts[fmt], ...(args.name ? { name: args.name } : {}) } };
+    }
+    if (binFmts[fmt]) {
+      const stlBase64 = typeof args.stlBase64 === 'string' && args.stlBase64 ? args.stlBase64 : fs.readFileSync(args.file).toString('base64');
+      return { route: '/api/nexyfab/drawing/import-step/', body: { stlBase64, format: binFmts[fmt], ...(args.name ? { name: args.name } : {}) } };
+    }
+    return { error: `지원하지 않는 포맷 '${fmt}' — stl|step|iges|ifc|dwg|sat|x_t` };
+  } catch (e) {
+    return { error: `파일 읽기 실패: ${String(e?.message ?? e)}` };
+  }
+}
+
+// reconstruct_verify 응답 정형: 게이트 판정 + export_step 넛지(정직한 실패를 다음 행동으로).
+function finalizeReconstruct(r) {
+  if (!r || r.ok === false) return r ?? { ok: false, error: '원격 응답 없음' };
+  const gate = r.reconstructionGate;
+  let suggestion;
+  if (gate && gate.status !== 'pass') {
+    if (gate.suggestion === 'export_step') suggestion = gate.message ?? '원본을 STEP(AP242)로 재내보내기 하면 B-rep 충실 측정이 가능합니다.';
+    else suggestion = '재구성 게이트 미통과 — 곡면/복합 형상은 원본 CAD 에서 STEP(AP242)로 재내보내기(export_step) 하면 충실 대조가 가능합니다.';
+  }
+  return {
+    ok: true,
+    reconstructionGate: gate ?? { status: 'unavailable', reason: 'no_gate_in_response' },
+    ...(r.observedStats ? { observedStats: r.observedStats } : {}),
+    ...(r.stats ? { stats: r.stats } : {}),
+    ...(Array.isArray(r.candidates) ? { candidateCount: r.candidates.length } : {}),
+    ...(suggestion ? { suggestion } : {}),
+  };
+}
 
 export const tools = [
   {
@@ -489,6 +568,77 @@ export const tools = [
       },
     },
   },
+  {
+    name: 'analyze_fea',
+    description:
+      `★ 간이 FEA(구조·열·모달·열탄성) — 형상을 실제 메시로 이산화해 선형정적 응력/안전율을 낸다. ` +
+      `AI 없음(결정론+수치해석). 입력=scad(또는 compose_3d intent) + 재료(materialKey) + 상면 등가 하중(loadKg, ` +
+      `날조 금지·명시 필수). precise=true 면 gmsh 경계정합 메시(인증후보급, ~수십초). 반환: {method, ` +
+      `safetyFactor, maxStressMPa, maxDispMm, material, yieldMPa, mesh, raiser, reportHtml}. ` +
+      `⚠원격 전용 — 호스팅 서버의 OpenSCAD/gmsh 바이너리가 필요(NEXYFAB_API_KEY 미설정 시 정직 거부). ` +
+      `선형등방·자동 경계조건(스크리닝)·비법정 — 상세 해석은 유자격 기술자.`,
+    inputSchema: {
+      type: 'object', required: ['loadKg'],
+      properties: {
+        scad: { type: 'string', description: 'OpenSCAD 텍스트(intent 와 택1)' },
+        intent: { type: 'object', description: 'compose_3d 범용조합 intent(scad 미지정 시 로컬 emitComposite 로 변환)' },
+        materialKey: { type: 'string', description: '재료 키(steel|al|... 기본 steel)' },
+        loadKg: { type: 'number', description: '상면 등가 하중(kg, 0 초과 — 날조 금지·명시 필수)' },
+        precise: { type: 'boolean', description: 'gmsh 경계정합 정밀 메시(느림)' },
+      },
+    },
+  },
+  {
+    name: 'reconstruct_verify',
+    description:
+      `★ 검증된 역설계 — 실물 형상을 NexyFab 재구성하고 게이트로 「재구성이 원본과 맞다」를 기계 대조. ` +
+      `STL(.stl)→reverse-engineer(휴리스틱 분류→렌더 라운드트립), STEP/IGES/IFC/DWG/SAT/X_T→import-step ` +
+      `(B-rep 판독→bbox/genus/watertight 대조). 반환: {reconstructionGate:{status:pass|fail|unavailable, ` +
+      `mode, checks(bbox/genus/watertight), feedback}, suggestion(export_step)}. 곡면/복합은 정직 실패, ` +
+      `측정 불가는 unavailable(가짜 통과 금지). ⚠원격 전용(서버 OCCT/메시 처리·Pro) — 키 미설정 시 거부.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: '입력 파일 절대경로(.stl/.step/.iges/.ifc/.dwg/.sat/.x_t) — 확장자로 포맷 추론' },
+        format: { type: 'string', description: '포맷 강제(stl|step|iges|ifc|dwg|sat|x_t)' },
+        stlBase64: { type: 'string', description: 'STL/바이너리(dwg·sat) base64(file 대신)' },
+        step: { type: 'string', description: 'STEP/IGES/IFC/X_T 텍스트(file 대신)' },
+        name: { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'reconstruct_fleet',
+    description:
+      `★ AI 재구성 함대(lever F) — 휴리스틱이 못 여는 부품을 여러 모델 계열이 파라메트릭 SCAD 를 제안하고 ` +
+      `결정론 재구성 게이트가 원본과 대조·통과분만 채택(피드백·계열 전환으로 재시도). 반환: {aiFleet:{passed, ` +
+      `verified, attemptsUsed, seriesSwitched, familiesUsed, feedback}}. ⚠원격 전용 + Pro + 비용 예산 소모 ` +
+      `(시도마다 LLM+렌더). 정직: 복잡 부품 비통과는 정상이며 날조된 통과는 없음. 키 미설정 시 거부.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'STL 파일 절대경로(.stl)' },
+        stlBase64: { type: 'string', description: 'STL base64(file 대신)' },
+        attempts: { type: 'integer', description: '시도 상한 힌트(서버가 자체 상한으로 제한, 현재 3)' },
+      },
+    },
+  },
+  {
+    name: 'code_check',
+    description:
+      `★ 코드체크 / 감리 보조(결정론·LOCAL) — 측정된 설계 피처(주차·경사로·복도·계단·난간·출입구·위생 등)를 ` +
+      `실제 공개 법령/공표기준 조항과 대조해 룰별 PASS/FAIL/NA + 인용 조항 + 실측 vs 요구값을 낸다. ` +
+      `숫자 날조 없음(피처 미제공=NA, 준수 가정 안 함). ✔로컬 실행(순수 룰셋 — NEXYFAB_API_KEY 불필요, 오프라인 ` +
+      `가능). {list:true} 로 룰 카탈로그. 비법정 감리 보조(면허 감리자·기술사의 법정 감리를 대체하지 않음, ` +
+      `disclaimer 항상 동봉).`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        features: { type: 'object', description: '측정 피처(단위 m·경사=rise/run). 예: {rampSlope:0.09, doorEffectiveWidth_m:0.9, corridorCategory:"school", corridorBothSidesRooms:true, corridorWidth_m:2.1}' },
+        list: { type: 'boolean', description: '룰 카탈로그만 반환(id·category·clause·source·requirement)' },
+      },
+    },
+  },
 ];
 
 export async function callTool(name, args = {}) {
@@ -746,6 +896,31 @@ export async function callTool(name, args = {}) {
       intent: args.intent, domain: args.domain, calculatorId: args.calculatorId,
       memberRef: args.memberRef, params: args.params ?? {}, standardId: args.standardId ?? 'KDS',
     });
+  }
+  if (name === 'analyze_fea') {
+    let scad = typeof args.scad === 'string' && args.scad ? args.scad : null;
+    if (!scad && args.intent) { try { scad = emitComposite(args.intent); } catch (e) { return { ok: false, error: `intent → scad 변환 실패: ${String(e?.message ?? e)}` }; } }
+    if (!scad) return { ok: false, error: 'scad 또는 intent(compose_3d 산출)가 필요합니다.' };
+    const loadKg = Number(args.loadKg);
+    if (!Number.isFinite(loadKg) || loadKg <= 0) return { ok: false, error: '상면 등가 하중(loadKg, 0 초과)을 명시하세요 — 하중 날조 금지.' };
+    return remoteCall('/api/nexyfab/drawing/fea-quick/', { scad, materialKey: args.materialKey ?? 'steel', loadKg, precise: args.precise === true }, 'analyze_fea');
+  }
+  if (name === 'reconstruct_verify') {
+    const shaped = await shapeReconstructInput(args);
+    if (shaped.error) return { ok: false, error: shaped.error };
+    const r = await remoteCall(shaped.route, shaped.body, 'reconstruct_verify');
+    return finalizeReconstruct(r);
+  }
+  if (name === 'reconstruct_fleet') {
+    let stlBase64 = typeof args.stlBase64 === 'string' && args.stlBase64 ? args.stlBase64 : null;
+    if (!stlBase64 && args.file) { try { const fs = await import('node:fs'); stlBase64 = fs.readFileSync(args.file).toString('base64'); } catch (e) { return { ok: false, error: `STL 읽기 실패: ${String(e?.message ?? e)}` }; } }
+    if (!stlBase64) return { ok: false, error: 'STL 파일(file) 또는 stlBase64 가 필요합니다.' };
+    const r = await remoteCall('/api/nexyfab/reverse-engineer/', { stlBase64, mode: 'ai-fleet', ...(Number.isFinite(args.attempts) ? { attempts: args.attempts } : {}) }, 'reconstruct_fleet');
+    if (!r || r.ok === false) return r;
+    return { ok: true, aiFleet: r.aiFleet ?? { note: '응답에 aiFleet 없음(모드 미적용?)' }, ...(r.observedStats ? { observedStats: r.observedStats } : {}), ...(r.usage ? { usage: r.usage } : {}) };
+  }
+  if (name === 'code_check') {
+    return runCodeCheckTool({ features: args.features, list: args.list === true });
   }
   throw new Error(`unknown tool: ${name}`);
 }

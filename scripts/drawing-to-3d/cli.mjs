@@ -25,6 +25,12 @@
  * 다분야(토목·인테리어·건설·조경, 원격 전용 — NEXYFAB_API_KEY 필요):
  *   node cli.mjs domain <civil|interior|construction|landscape> "브리프 텍스트" [--out pkg.json]  # 자유 브리프→LLM 계획
  *   node cli.mjs domain civil --fixture steel-beam [--out pkg.json]                                # 결정론 픽스처
+ * NEW 하드 능력(FEA·검증 역설계·AI 함대=원격 전용, 코드체크=로컬 오프라인):
+ *   node cli.mjs fea asm.json --load 500 [--material steel] [--precise]     # 간이 FEA(원격 — 서버 OpenSCAD/gmsh)
+ *   node cli.mjs fea --scad part.scad --load 500                            # scad 직접 입력
+ *   node cli.mjs reconstruct part.stl [--format stl]  # 검증된 역설계(STL→reverse-engineer / STEP·DWG·SAT→import-step; 원격)
+ *   node cli.mjs fleet part.stl [--attempts 3]                              # AI 재구성 함대(원격+Pro·비용)
+ *   node cli.mjs codecheck features.json              # 코드체크/감리(로컬·오프라인·키 불필요) | --list 룰 카탈로그
  * 출력: 결과 JSON 을 stdout(기계 파싱), 파일은 --out 경로. 비법정(제작용 실시도서+검토 계산서).
  */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -95,7 +101,7 @@ const saveAsmMaybe = (r) => {
 const summarize = (r) => {
   if (has('full') || !r || typeof r !== 'object') return r;
   const c = { ...r };
-  for (const k of ['openscad', 'scad', 'step']) if (typeof c[k] === 'string') c[k] = `<${c[k].length} chars — --full 로 전체>`;
+  for (const k of ['openscad', 'scad', 'step', 'reportHtml', 'topScad']) if (typeof c[k] === 'string') c[k] = `<${c[k].length} chars — --full 로 전체>`;
   if (Array.isArray(c.parts) && c.parts.length > 8) c.parts = [...c.parts.slice(0, 8), `…+${c.parts.length - 8}`];
   if (c.assembly?.parts?.length > 0) c.assembly = `<assembly ${c.assembly.parts.length} parts — --out 으로 저장>`;
   // domain_design: gates 는 id/pass/reason 만(전체 metrics 는 --full), package 는 --out 저장 안내.
@@ -178,6 +184,35 @@ async function main() {
       ...(flag('title') ? { title: flag('title') } : {}),
       withStep: has('step'),
     };
+  } else if (cmd === 'fea') {
+    name = 'analyze_fea';
+    const loadKg = parseFloat(flag('load') ?? flag('loadKg') ?? '');
+    const base = { materialKey: flag('material', 'steel'), loadKg, precise: has('precise') };
+    if (flag('scad')) {
+      args = { scad: readFileSync(resolve(flag('scad')), 'utf8'), ...base };
+    } else if (argv[1] && !argv[1].startsWith('--')) {
+      const { buildAssembly } = await import('./assembly.mjs');
+      const built = buildAssembly(loadAsm(argv[1]));
+      if (!built.ok) { out({ ok: false, gateErrors: built.gateErrors }); process.exitCode = 1; return; }
+      args = { scad: built.openscad, ...base };
+    } else {
+      out({ ok: false, error: 'usage: node cli.mjs fea <asm.json> | --scad file.scad  --load <kg> [--material steel] [--precise]' });
+      process.exitCode = 1; return;
+    }
+  } else if (cmd === 'reconstruct') {
+    name = 'reconstruct_verify';
+    if (!argv[1] || argv[1].startsWith('--')) { out({ ok: false, error: 'usage: node cli.mjs reconstruct <file .stl|.step|.iges|.ifc|.dwg|.sat|.x_t> [--format stl]' }); process.exitCode = 1; return; }
+    args = { file: resolve(argv[1]), ...(flag('format') ? { format: flag('format') } : {}) };
+  } else if (cmd === 'fleet') {
+    name = 'reconstruct_fleet';
+    if (!argv[1] || argv[1].startsWith('--')) { out({ ok: false, error: 'usage: node cli.mjs fleet <file.stl> [--attempts 3]' }); process.exitCode = 1; return; }
+    args = { file: resolve(argv[1]), ...(flag('attempts') ? { attempts: parseInt(flag('attempts'), 10) } : {}) };
+  } else if (cmd === 'codecheck') {
+    name = 'code_check';
+    if (has('list')) args = { list: true };
+    else if (argv[1] && !argv[1].startsWith('--')) args = { features: JSON.parse(readFileSync(resolve(argv[1]), 'utf8')) };
+    else if (flag('json')) args = { features: JSON.parse(flag('json')) };
+    else { out({ ok: false, error: "usage: node cli.mjs codecheck <features.json> | --json '{...}' | --list" }); process.exitCode = 1; return; }
   } else if (cmd === 'domain') {
     name = 'domain_design';
     const domain = argv[1];
