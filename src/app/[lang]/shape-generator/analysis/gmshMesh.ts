@@ -24,10 +24,17 @@
  * Pipeline:
  *   1. write the incoming binary STL (the conforming surface triangulation from
  *      replicad `.mesh()` / three-bvh-csg) to a temp file;
- *   2. write a .geo script that Merges the STL, reclassifies it into a geometry,
- *      builds a volume, and sets a mesh size;
- *   3. `gmsh model.geo -3 -format msh2 -o out.msh` (3-D volume mesh, MSH 2.2
- *      ASCII so the parser below is small and deterministic);
+ *   2. write a .geo script that Merges the STL and fills it with tets. We try
+ *      TWO recipes in order (see gmshTetMeshFromStl):
+ *        (A) KEEP-SURFACE — heal/weld the raw triangulation, wrap it in a
+ *            Surface Loop + Volume and Delaunay-fill WITHOUT reparametrising.
+ *            Most robust + exact for a clean watertight OpenSCAD (CSG) STL.
+ *        (B) REPARAM — ClassifySurfaces + CreateGeometry, then Volume. Remeshes
+ *            the surface; the fallback for triangulations (A) cannot fill.
+ *   3. `gmsh model.geo -3 -format msh2 -nopopup -v 3 -o out.msh` (3-D volume
+ *      mesh, MSH 2.2 ASCII so the parser below is small and deterministic; `-v 3`
+ *      keeps gmsh's Error/Warning lines in the captured stream so the CONCRETE
+ *      cause is threaded up to the self-test — see extractGmshError);
  *   4. parse the conforming linear (TET4) tetrahedra into the {nodes, tets}
  *      shape femSolver consumes — the existing buildTet10Mesh then promotes the
  *      corners to quadratic TET10 mid-side nodes.
@@ -176,10 +183,35 @@ function stlBBox(stl: Uint8Array): { dx: number; dy: number; dz: number } {
   return { dx: mxx - mnx, dy: mxy - mny, dz: mxz - mnz };
 }
 
+/**
+ * Pull the FIRST concrete gmsh `Error   :` line out of a captured log, SKIPPING
+ * the trailing summary banner ("Mesh generation error summary" / "1 error" /
+ * "Check the full log for details" / the `----` rules). gmsh prints the real
+ * cause EARLIER in the stream (e.g. "PLC Error:  A segment and a facet
+ * intersect", "No elements in volume", "Self-intersecting surface mesh",
+ * "Unable to recover edge", "Invalid boundary mesh") and then repeats a generic
+ * banner at the very end — so a plain `.slice(-6)` tail only ever captures the
+ * useless banner. This surfaces the actionable line instead. Returns undefined
+ * if no real error line is present. PURE — unit-testable with inline logs.
+ */
+export function extractGmshError(text: string): string | undefined {
+  const banner = /^(-+|mesh generation error summary|\d+\s+errors?|check the full log.*|warnings?\s+can be ignored.*)$/i;
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    const m = /^\s*Error\s*:\s*(.*\S)\s*$/i.exec(raw.trim());
+    if (!m) continue;
+    const msg = m[1].trim();
+    if (!msg || banner.test(msg)) continue;
+    return msg;
+  }
+  return undefined;
+}
+
 /** Mutable diagnostics sink. When gmshTetMeshFromStl returns null it writes the
  *  CONCRETE reason here so the caller (feaPackage) can thread it up to the FEA
  *  self-test response — turning a silent `gmshUsed:false` into an actionable
- *  cause (ENOENT / non-zero exit / empty msh / timeout / oversize). */
+ *  cause (ENOENT / non-zero exit / empty msh / timeout / oversize) that now
+ *  includes the SPECIFIC gmsh error line (e.g. "PLC Error: a segment and a
+ *  facet intersect"), not just gmsh's generic trailing summary banner. */
 export interface GmshDiag {
   /** Short human-readable failure reason (undefined on success). */
   reason?: string;
@@ -217,9 +249,22 @@ export function resolveGmshBinary(timeoutMs = 10_000): Promise<string | null> {
   });
 }
 
+/** Trailing lines of a captured gmsh log (fallback context when no `Error :` line). */
+function logTail(log: string, n = 6): string {
+  return String(log || '').trim().split(/\r?\n/).filter(Boolean).slice(-n).join(' | ').slice(0, 600);
+}
+
 /**
  * Shell gmsh to volume-mesh the closed surface in `stl` and return the
  * conforming linear-tet mesh, or `null` on ANY failure (caller falls back).
+ *
+ * Robustness: we attempt TWO .geo recipes in order and take the first that
+ * yields tets. (A) KEEP-SURFACE fills the healed watertight triangulation
+ * directly (no reparametrisation → no ClassifySurfaces/CreateGeometry
+ * self-intersection failures, and it preserves the exact OpenSCAD boundary).
+ * (B) REPARAM reclassifies the STL into geometry then fills — the fallback for
+ * triangulations that (A) cannot close into a volume. On total failure the
+ * diag carries the SPECIFIC gmsh error line from the more informative attempt.
  */
 export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions = {}): Promise<GmshMeshResult | null> {
   const timeoutMs = opts.timeoutMs ?? 120_000;
@@ -237,85 +282,153 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
   const bb = stlBBox(stl);
   const maxDim = Math.max(bb.dx, bb.dy, bb.dz, 1e-6);
   const size = opts.targetSizeMm && opts.targetSizeMm > 0 ? opts.targetSizeMm : maxDim / 24;
+  const near = (size / 4).toFixed(6);
+  const far = size.toFixed(6);
 
-  // .geo remesh recipe (gmsh tutorial t13 lineage): merge the discrete STL
-  // surface, reclassify it into a parametrised geometry, wrap it in a volume,
-  // then let `gmsh -3` fill it with tets. Curvature-based sizing refines the
-  // element size around bores/fillets; the min/max clamp bounds the count.
-  const geo = [
-    `Merge "surf.stl";`,
-    `Mesh.MeshSizeMin = ${(size / 4).toFixed(6)};`,
-    `Mesh.MeshSizeMax = ${size.toFixed(6)};`,
+  // STL-conditioning options MUST precede `Merge` (they are consulted while the
+  // STL is read): weld duplicate facets, and tolerate small facet overlaps so a
+  // seam in an OpenSCAD CSG export does not read as a non-manifold defect.
+  const stlConditioning = [
+    `Geometry.Tolerance = 1e-5;`,
+    `Mesh.AngleToleranceFacetOverlap = 0.02;`,
+    `Mesh.StlRemoveDuplicateTriangles = 1;`,
+  ];
+  const meshControls = [
+    `Mesh.Algorithm3D = 1;`,          // Delaunay — robust for arbitrary closed surfaces
+    `Mesh.MeshSizeMin = ${near};`,
+    `Mesh.MeshSizeMax = ${far};`,
     `Mesh.MeshSizeFromCurvature = 12;`,
-    `Mesh.Algorithm3D = 1;`,      // Delaunay — robust for arbitrary closed surfaces
     `Mesh.Optimize = 1;`,
     `Mesh.OptimizeNetgen = 1;`,
-    `Geometry.Tolerance = 1e-6;`,
-    // reclassify the merged STL facets into geometric surfaces (40deg feature angle)
+  ];
+
+  // (A) KEEP-SURFACE: weld the raw STL vertices (`Coherence Mesh`), wrap the
+  // discrete surface(s) in a Surface Loop + Volume, and Delaunay-fill. No
+  // ClassifySurfaces / CreateGeometry, so nothing to self-intersect during
+  // reparametrisation; the exact watertight OpenSCAD boundary is preserved.
+  const recipeKeep = [
+    ...stlConditioning,
+    `Merge "surf.stl";`,
+    `Coherence Mesh;`,                // weld coincident STL vertices (heal seams)
+    `Surface Loop(1) = Surface{:};`,
+    `Volume(1) = {1};`,
+    ...meshControls,
+  ].join('\n');
+
+  // (B) REPARAM: reclassify the merged STL facets into geometric surfaces
+  // (40deg feature angle) and rebuild the parametrisation before filling. This
+  // REMESHES the surface — the fallback for triangulations that (A) cannot fill.
+  const recipeReparam = [
+    ...stlConditioning,
+    `Merge "surf.stl";`,
+    `Coherence Mesh;`,
     `ClassifySurfaces{40 * Pi/180, 1, 1, 180 * Pi/180};`,
     `CreateGeometry;`,
     `Surface Loop(1) = Surface{:};`,
     `Volume(1) = {1};`,
+    ...meshControls,
   ].join('\n');
+
+  /** Run one .geo recipe. Never rejects — returns the outcome for the driver. */
+  const runGmsh = async (geoText: string): Promise<{
+    ranOk: boolean; log: string; errCode?: string; exitCode: number | null; killed: boolean; signal?: string;
+  }> => {
+    await writeFile(geoPath, geoText, 'utf8');
+    return new Promise((resolve) => {
+      // `-nopopup` suppresses any GUI/error dialog in batch mode; `-v 3` keeps
+      // Error+Warning lines in the stream so extractGmshError can surface the
+      // real cause. We deliberately do NOT pass `-v 0`.
+      execFile(bin, [geoPath, '-3', '-format', 'msh2', '-nopopup', '-v', '3', '-o', mshPath], {
+        cwd: workDir, timeout: timeoutMs, windowsHide: true,
+        maxBuffer: 64 * 1024 * 1024, env: process.env,
+      }, (err, out, errOut) => {
+        const log = `${String(out || '')}\n${String(errOut || '')}`;
+        if (err) {
+          const e = err as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
+          resolve({ ranOk: false, log, errCode: e.code, exitCode: typeof e.code === 'number' ? e.code : null, killed: !!e.killed, signal: e.signal });
+        } else {
+          resolve({ ranOk: true, log, exitCode: 0, killed: false });
+        }
+      });
+    });
+  };
 
   try {
     await mkdir(workDir, { recursive: true });
     await writeFile(stlPath, Buffer.from(stl.buffer, stl.byteOffset, stl.byteLength));
-    await writeFile(geoPath, geo, 'utf8');
 
-    const { stdout, stderr } = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-      // `-nopopup` suppresses any GUI/error dialog in batch mode. We deliberately
-      // do NOT pass `-v 0`: gmsh's info/error stream is exactly what we capture and
-      // thread up as the concrete failure reason (ClassifySurfaces / CreateGeometry
-      // failures, OCC tolerance warnings, missing-lib loader errors) so a live
-      // self-test pinpoints the cause instead of just reporting gmshUsed:false.
-      execFile(bin, [geoPath, '-3', '-format', 'msh2', '-nopopup', '-o', mshPath], {
-        cwd: workDir, timeout: timeoutMs, windowsHide: true,
-        maxBuffer: 64 * 1024 * 1024, env: process.env,
-      }, (err, out, errOut) => {
-        if (err) {
-          const e = err as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
-          const tail = String(errOut || out || '').trim().split(/\r?\n/).slice(-6).join(' | ').slice(0, 600);
-          let reason: string;
-          if (e.code === 'ENOENT') {
-            reason = `gmsh binary not found (ENOENT) at "${bin}" — not installed, or GMSH_BIN points to the wrong path`;
-          } else if (e.killed || e.signal === 'SIGTERM') {
-            reason = `gmsh timed out after ${timeoutMs}ms (mesh too fine or hung)${tail ? ` — ${tail}` : ''}`;
-          } else if (typeof e.code === 'number') {
-            reason = `gmsh exited ${e.code}${e.signal ? ` (signal ${e.signal})` : ''}: ${tail || e.message}`;
-          } else {
-            reason = `gmsh failed to run: ${e.message}${tail ? ` — ${tail}` : ''}`;
-          }
-          setDiag({ reason, code: e.code, exitCode: typeof e.code === 'number' ? e.code : null, stderr: tail });
-          return reject(Object.assign(new Error(reason), { _gmshFail: true, code: e.code }));
+    const attempts: Array<{ tag: string; geo: string }> = [
+      { tag: 'keep-surface', geo: recipeKeep },
+      { tag: 'reparam', geo: recipeReparam },
+    ];
+
+    let lastReason: string | undefined;
+    let lastCode: string | undefined;
+    let lastExit: number | null = null;
+    let lastTail: string | undefined;
+
+    for (const attempt of attempts) {
+      const r = await runGmsh(attempt.geo);
+      const specific = extractGmshError(r.log);   // the ACTUAL gmsh cause, if any
+      const tail = logTail(r.log);
+      const detail = specific ?? tail;            // prefer the concrete line, else the raw tail
+
+      if (!r.ranOk) {
+        if (r.errCode === 'ENOENT') {
+          // binary missing — retrying the other recipe cannot help.
+          const reason = `gmsh binary not found (ENOENT) at "${bin}" — not installed, or GMSH_BIN points to the wrong path`;
+          setDiag({ reason, code: r.errCode, exitCode: null, stderr: tail });
+          return null;
         }
-        resolve({ stdout: String(out || ''), stderr: String(errOut || '') });
-      });
-    });
+        if (r.killed || r.signal === 'SIGTERM') {
+          lastReason = `gmsh [${attempt.tag}] timed out after ${timeoutMs}ms (mesh too fine or hung)${detail ? ` — ${detail}` : ''}`;
+        } else {
+          lastReason = `gmsh [${attempt.tag}] exited ${r.exitCode ?? '?'}${r.signal ? ` (signal ${r.signal})` : ''}: ${detail || 'no message captured'}`;
+        }
+        lastCode = r.errCode; lastExit = r.exitCode; lastTail = detail;
+        continue; // try the next recipe
+      }
 
-    const text = await readFile(mshPath, 'utf8').catch((e) => {
-      setDiag({ reason: `gmsh ran (exit 0) but no .msh was written to "${mshPath}": ${(e as Error)?.message ?? 'read failed'}` });
-      throw e;
+      // exit 0 — read + parse the .msh
+      const text = await readFile(mshPath, 'utf8').catch(() => null);
+      if (text == null) {
+        lastReason = `gmsh [${attempt.tag}] ran (exit 0) but wrote no .msh to "${mshPath}"${specific ? ` — ${specific}` : ''}`;
+        lastTail = detail;
+        continue;
+      }
+      let parsed: { nodes: Float32Array; tets: Tet[] };
+      try {
+        parsed = parseMshTets(text);
+      } catch (e) {
+        lastReason = `gmsh [${attempt.tag}] produced a .msh the parser rejected: ${(e as Error)?.message ?? String(e)}`;
+        lastTail = detail;
+        continue;
+      }
+
+      if (parsed.tets.length === 0) {
+        // surface-only / empty → this recipe did not fill a volume; try the next.
+        lastReason = `gmsh [${attempt.tag}] produced NO volume tetrahedra (empty / surface-only msh)${specific ? ` — ${specific}` : tail ? `. gmsh: ${tail}` : ''}`;
+        lastTail = detail;
+        continue;
+      }
+      const nodeCount = parsed.nodes.length / 3;
+      if (nodeCount > maxNodes) {
+        setDiag({ reason: `gmsh mesh too large (${nodeCount} nodes > cap ${maxNodes}) — rejected to protect the live request` });
+        return null; // oversize → fall back, don't hang
+      }
+      return { nodes: parsed.nodes, tets: parsed.tets, source: 'gmsh', nodeCount, tetCount: parsed.tets.length };
+    }
+
+    // Both recipes failed — surface the most informative reason we captured.
+    setDiag({
+      reason: lastReason ?? 'gmsh failed to produce a volume mesh (no reason captured)',
+      code: lastCode,
+      exitCode: lastExit,
+      stderr: lastTail,
     });
-    const parsed = parseMshTets(text);
-    if (parsed.tets.length === 0) {
-      const tail = String(stderr || stdout || '').trim().split(/\r?\n/).slice(-6).join(' | ').slice(0, 600);
-      setDiag({
-        reason: `gmsh produced NO volume tetrahedra (empty / surface-only msh) — the .geo remesh (ClassifySurfaces + CreateGeometry + Volume) did not fill a 3-D volume${tail ? `. gmsh: ${tail}` : ''}`,
-        stderr: tail,
-      });
-      return null; // surface-only / empty → fall back
-    }
-    const nodeCount = parsed.nodes.length / 3;
-    if (nodeCount > maxNodes) {
-      setDiag({ reason: `gmsh mesh too large (${nodeCount} nodes > cap ${maxNodes}) — rejected to protect the live request` });
-      return null; // oversize → fall back, don't hang
-    }
-    return { nodes: parsed.nodes, tets: parsed.tets, source: 'gmsh', nodeCount, tetCount: parsed.tets.length };
+    return null;
   } catch (err) {
     // Never crash, never fabricate — any gmsh failure degrades to the octree path.
-    // A concrete reason was recorded into opts.diag above; if not (e.g. a throw from
-    // parseMshTets on a malformed msh), record a generic one here so it is never blank.
     if (opts.diag && !opts.diag.reason) {
       setDiag({ reason: `gmsh meshing failed: ${(err as Error)?.message ?? String(err)}` });
     }
