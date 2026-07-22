@@ -7,12 +7,25 @@
  * 설계 피처(주차면 폭·경사·경사로·계단·난간·복도·출입구·화장실)를 입력하면 POST
  * /api/nexyfab/codecheck 가 룰별 PASS/FAIL/NA + 인용 조항 + 실측 vs 요구를 반환한다.
  *
+ * 도면에서 불러오기(260723): DWG/DXF 를 올리면 기존 dwg-convert / dxf-seed 경로가 도면의
+ * 측정값(치수·원·범위)을 뽑고, featuresFromDrawing 이 이를 후보 픽리스트로 제시한다. 도면은
+ * 의미 라벨을 스스로 갖지 않으므로 자동배정은 "치수 텍스트가 카테고리+역할을 확정하고 단위가
+ * 선언된" 명백한 경우로 한정하고(편집 가능), 나머지는 사람이 슬롯에 배정한다 — 맹목 자동배정으로
+ * 인한 거짓 PASS/FAIL 을 막는다.
+ *
  * 정직성: 피처 미입력 = NA(준수로 가정하지 않음). 위반(FAIL)을 먼저 나열하고 각 지적에 인용
  * 조항을 붙인다. 비법정 감리 보조 disclaimer를 항상 노출한다.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isKorean } from '@/lib/i18n/normalize';
+import {
+  suggestFeaturesFromIr2d,
+  suggestFeaturesFromSeed,
+  type DrawingFeatureSuggestion,
+  type DrawingFeatureCandidate,
+} from '@/lib/eng-domain/codecheck/featuresFromDrawing';
+import type { CodeCheckFeatures } from '@/lib/eng-domain/codecheck/rules';
 
 type Status = 'pass' | 'fail' | 'na';
 interface RuleResult {
@@ -180,9 +193,18 @@ const GROUPS: Group[] = [
   },
 ];
 
+// Metre-length numeric slots a drawing measurement can be assigned to (reuse existing labels).
+const METRE_FIELDS: Array<{ key: string; labelKo: string }> = GROUPS.flatMap((g) => g.fields)
+  .filter((f) => f.kind === 'number' && f.unit === 'm')
+  .map((f) => ({ key: f.key, labelKo: f.labelKo }));
+const FIELD_LABEL: Record<string, string> = Object.fromEntries(
+  GROUPS.flatMap((g) => g.fields).map((f) => [f.key, f.labelKo]),
+);
+
 const STATUS_COLOR: Record<Status, string> = { pass: '#12b76a', fail: '#f04438', na: '#9aa4b0' };
 const STATUS_LABEL_KO: Record<Status, string> = { pass: '적합', fail: '위반', na: '해당없음' };
 const STATUS_LABEL_EN: Record<Status, string> = { pass: 'PASS', fail: 'FAIL', na: 'NA' };
+const SOURCE_LABEL_KO: Record<DrawingFeatureCandidate['source'], string> = { extent: '범위', dimension: '치수', circle: '원' };
 
 export default function CodeCheckPanel({ lang }: { lang: string }) {
   const ko = isKorean(lang);
@@ -191,6 +213,16 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+
+  // ── 도면에서 불러오기 상태 ──────────────────────────────────────────────────
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importErr, setImportErr] = useState<string | null>(null);
+  const [suggestion, setSuggestion] = useState<DrawingFeatureSuggestion | null>(null);
+  // per-candidate slot assignment (index → feature key or '' = 무시). Seeded from guessedKey.
+  const [assign, setAssign] = useState<Record<number, string>>({});
+  // when a drawing declares NO units, the user picks one to convert candidates (honest opt-in, no guess).
+  const [unitOverride, setUnitOverride] = useState<'' | 'mm' | 'in'>('');
 
   // warm the catalog once (traceability preview; also proves the endpoint is up)
   useEffect(() => {
@@ -205,6 +237,93 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
   const setField = useCallback((key: string, v: string | boolean) => {
     setValues((p) => ({ ...p, [key]: v }));
   }, []);
+
+  // convert a candidate to metres, honouring a user unit-override when the drawing declared none.
+  const candMeters = useCallback((c: DrawingFeatureCandidate): number | null => {
+    if (c.meters !== null) return c.meters;
+    if (unitOverride === 'mm') return Math.round((c.value / 1000) * 10000) / 10000;
+    if (unitOverride === 'in') return Math.round(((c.value * 25.4) / 1000) * 10000) / 10000;
+    return null;
+  }, [unitOverride]);
+
+  const onPickDrawing = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setSuggestion(null); setAssign({}); setUnitOverride(''); setImportErr(null);
+
+    const apply = (s: DrawingFeatureSuggestion) => {
+      setSuggestion(s);
+      // pre-seed slot assignment from each candidate's guessedKey (user confirms / edits)
+      const seed: Record<number, string> = {};
+      s.candidates.forEach((c, i) => { if (c.guessedKey && !c.autoFilled) seed[i] = String(c.guessedKey); });
+      setAssign(seed);
+    };
+
+    if (/\.dwg$/i.test(f.name)) {
+      if (f.size > 60_000_000) { setImportErr(ko ? 'DWG 60MB 초과' : 'DWG over 60MB'); return; }
+      void (async () => {
+        setImportBusy(true);
+        try {
+          const buf = new Uint8Array(await f.arrayBuffer());
+          let bin = '';
+          for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+          const r = await fetch('/api/nexyfab/drawing/dwg-convert/', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dwgBase64: btoa(bin) }),
+          });
+          const j = (await r.json()) as { ok?: boolean; ir2d?: Parameters<typeof suggestFeaturesFromIr2d>[0]; error?: string };
+          if (!j.ok || !j.ir2d) { setImportErr(j.error ?? (ko ? 'DWG에서 측정값을 찾지 못했어요.' : 'No measurements found in DWG.')); return; }
+          apply(suggestFeaturesFromIr2d(j.ir2d));
+        } catch (err2) {
+          setImportErr(err2 instanceof Error ? err2.message : String(err2));
+        } finally { setImportBusy(false); }
+      })();
+      return;
+    }
+    if (/\.dxf$/i.test(f.name)) {
+      const tr = new FileReader();
+      tr.onload = () => {
+        void (async () => {
+          setImportBusy(true);
+          try {
+            const r = await fetch('/api/nexyfab/drawing/dxf-seed/', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dxfText: String(tr.result ?? '') }),
+            });
+            const j = (await r.json()) as { ok?: boolean; seed?: Parameters<typeof suggestFeaturesFromSeed>[0]; error?: string };
+            if (!j.ok || !j.seed) { setImportErr(j.error ?? (ko ? 'DXF에서 측정값을 찾지 못했어요.' : 'No measurements found in DXF.')); return; }
+            apply(suggestFeaturesFromSeed(j.seed));
+          } catch (err2) {
+            setImportErr(err2 instanceof Error ? err2.message : String(err2));
+          } finally { setImportBusy(false); }
+        })();
+      };
+      tr.readAsText(f);
+      return;
+    }
+    setImportErr(ko ? 'DWG 또는 DXF 파일만 지원합니다.' : 'DWG or DXF files only.');
+  }, [ko]);
+
+  // apply auto-filled slots + user-assigned candidates into the measured-feature form
+  const applyImported = useCallback(() => {
+    if (!suggestion) return;
+    setValues((prev) => {
+      const next = { ...prev };
+      // 1) auto-filled (unambiguous + unit-safe) metre values
+      for (const [k, v] of Object.entries(suggestion.autoFilled)) {
+        if (typeof v === 'number' && Number.isFinite(v)) next[k] = String(v);
+      }
+      // 2) user-assigned candidates (only when a metre value is resolvable — never a unit guess)
+      suggestion.candidates.forEach((c, i) => {
+        const key = assign[i];
+        if (!key) return;
+        const m = candMeters(c);
+        if (m !== null) next[key] = String(m);
+      });
+      return next;
+    });
+  }, [suggestion, assign, candMeters]);
 
   const run = useCallback(async () => {
     setLoading(true);
@@ -245,6 +364,11 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
     return [...report.results].sort((a, b) => rank[a.status] - rank[b.status]);
   }, [report]);
 
+  const autoFilledKeys = useMemo(
+    () => (suggestion ? (Object.keys(suggestion.autoFilled) as Array<keyof CodeCheckFeatures>) : []),
+    [suggestion],
+  );
+
   return (
     <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--nx-border, #dfe3e8)', paddingTop: 14 }}>
       <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4 }}>
@@ -257,6 +381,92 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
         {ko
           ? '측정한 설계 피처를 입력하면 룰별 적합/위반/해당없음 + 인용 조항 + 실측 vs 요구를 반환합니다. 미입력 항목은 준수로 가정하지 않고 해당없음(NA)으로 둡니다.'
           : 'Enter measured design features. Each rule returns PASS/FAIL/NA with the cited clause and actual-vs-required. Absent inputs are NA (never assumed compliant).'}
+      </div>
+
+      {/* ── 도면에서 불러오기 (후보 제안 — 사람이 슬롯 배정 확인) ─────────────── */}
+      <div style={{ marginBottom: 12, padding: 10, borderRadius: 8, border: '1px dashed var(--nx-accent, #2563eb)', background: 'var(--nx-panel-2, #f6f9ff)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <input ref={fileRef} type="file" accept=".dxf,.dwg" onChange={onPickDrawing} style={{ display: 'none' }} />
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={importBusy} style={importBtnStyle}>
+            {importBusy ? (ko ? '도면 읽는 중…' : 'Reading…') : ko ? '도면에서 불러오기 (DWG/DXF)' : 'Load from drawing (DWG/DXF)'}
+          </button>
+          <span style={{ fontSize: 10, color: '#a15c00', fontWeight: 700 }}>
+            {ko ? '도면 추출은 후보 제안 — 사람이 슬롯 배정 확인' : 'extraction suggests candidates — you confirm slot assignment'}
+          </span>
+        </div>
+        {importErr && <div style={{ marginTop: 6, fontSize: 11, color: '#b42318' }}>{importErr}</div>}
+
+        {suggestion && (
+          <div style={{ marginTop: 10 }}>
+            {/* units + notes */}
+            <div style={{ fontSize: 10.5, color: 'var(--nx-text-2, #46505e)', marginBottom: 6 }}>
+              <span style={{ fontWeight: 700 }}>
+                {ko ? '도면 단위' : 'Drawing units'}: {suggestion.units ?? (ko ? '미선언' : 'undeclared')}
+              </span>
+              {suggestion.units === null && (
+                <span style={{ marginLeft: 8 }}>
+                  {ko ? '환산 단위 선택(추측 아님): ' : 'pick unit to convert (not a guess): '}
+                  <select value={unitOverride} onChange={(ev) => setUnitOverride(ev.target.value as '' | 'mm' | 'in')} style={miniSel}>
+                    <option value="">{ko ? '선택 안 함' : 'none'}</option>
+                    <option value="mm">mm</option>
+                    <option value="in">in</option>
+                  </select>
+                </span>
+              )}
+            </div>
+            {suggestion.notes.map((n, i) => (
+              <div key={i} style={{ fontSize: 10, color: '#a15c00', lineHeight: 1.5, marginBottom: 3 }}>⚠ {n}</div>
+            ))}
+
+            {/* auto-filled (unambiguous + unit-safe) */}
+            {autoFilledKeys.length > 0 && (
+              <div style={{ marginTop: 6, marginBottom: 6 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#067647', marginBottom: 3 }}>
+                  {ko ? '자동배정(명백·편집 가능)' : 'Auto-filled (unambiguous, editable)'}
+                </div>
+                {autoFilledKeys.map((k) => (
+                  <div key={String(k)} style={{ fontSize: 10.5, color: 'var(--nx-text-2, #46505e)' }}>
+                    <span style={{ display: 'inline-block', fontSize: 8.5, fontWeight: 700, padding: '0 3px', borderRadius: 3, marginRight: 4, background: '#dcfae6', color: '#067647' }}>자동</span>
+                    {FIELD_LABEL[String(k)] ?? String(k)} = {String(suggestion.autoFilled[k])} m
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* candidate pick-list — user maps each measured value to a slot (or 무시) */}
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--nx-text-2, #46505e)', margin: '6px 0 4px' }}>
+              {ko ? '측정값 후보 — 슬롯 배정' : 'Measured-value candidates — assign a slot'}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
+              {suggestion.candidates.map((c, i) => {
+                const m = candMeters(c);
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5 }}>
+                    <span style={{ minWidth: 30, fontSize: 9, fontWeight: 700, color: 'var(--nx-text-3, #6b7684)' }}>{SOURCE_LABEL_KO[c.source]}</span>
+                    <span style={{ minWidth: 96 }}>
+                      {c.value}{c.unit ? c.unit : ''}
+                      {m !== null ? <span style={{ color: '#067647' }}> = {m}m</span> : <span style={{ color: '#a15c00' }}> ({ko ? 'm환산 불가' : 'no m'})</span>}
+                      {c.label ? <span style={{ color: 'var(--nx-text-3, #6b7684)' }}> · {c.label}</span> : null}
+                    </span>
+                    <select
+                      value={c.autoFilled ? '' : (assign[i] ?? '')}
+                      disabled={c.autoFilled}
+                      onChange={(ev) => setAssign((p) => ({ ...p, [i]: ev.target.value }))}
+                      style={{ ...miniSel, flex: 1 }}
+                    >
+                      <option value="">{c.autoFilled ? (ko ? '자동배정됨' : 'auto-filled') : (ko ? '— 무시 —' : '— ignore —')}</option>
+                      {METRE_FIELDS.map((mf) => <option key={mf.key} value={mf.key}>{mf.labelKo}</option>)}
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button type="button" onClick={applyImported} style={{ ...importBtnStyle, marginTop: 8, width: '100%' }}>
+              {ko ? '선택한 값을 입력폼에 적용' : 'Apply selected values to the form'}
+            </button>
+          </div>
+        )}
       </div>
 
       {open && GROUPS.map((g) => (
@@ -342,4 +552,12 @@ const inpStyle: React.CSSProperties = {
 const runStyle: React.CSSProperties = {
   width: '100%', padding: '8px 12px', borderRadius: 7, border: '1px solid var(--nx-accent, #2563eb)',
   background: 'transparent', color: 'var(--nx-accent, #2563eb)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+};
+const importBtnStyle: React.CSSProperties = {
+  padding: '6px 10px', borderRadius: 6, border: '1px solid var(--nx-accent, #2563eb)',
+  background: 'var(--nx-accent, #2563eb)', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+};
+const miniSel: React.CSSProperties = {
+  padding: '3px 5px', borderRadius: 5, fontSize: 10.5, border: '1px solid var(--nx-border, #dfe3e8)',
+  background: 'var(--nx-panel, #fff)', color: 'inherit', boxSizing: 'border-box',
 };

@@ -5,3 +5,4 @@
  */
 export * from './rules';
 export * from './runCodeCheck';
+export * from './featuresFromDrawing';
