@@ -1516,6 +1516,9 @@ interface BuildResp {
     // passthrough=진짜 OCCT 솔리드 라운드트립(곡면 실측), approximation=박스 근사 복원.
     // 통과가 어느 경로에서 나왔는지 정직하게 노출.
     mode?: 'passthrough' | 'approximation';
+    // 곡면 ACIS/Parasolid 처럼 커널이 없어 측정 불가(unavailable)일 때 STEP 재내보내기 권유.
+    suggestion?: 'export_step';
+    message?: string;
   };
   error?: string;
 }
@@ -3144,6 +3147,18 @@ export default function AssemblyPresetPanel({
                     : `Could not render/compare the reconstruction (${stepGate.reason ?? 'unknown'}). Not reported as a pass.`)
               : (stepGate.feedback ?? '')}
           </div>
+          {/* 곡면 ACIS/Parasolid 는 자유 커널이 없어 AABB box 로만 읽힌다 — 막다른 길 대신
+              STEP 재내보내기(OCCT 가 곡면 실판독)를 정직·실행가능하게 안내한다. */}
+          {stepGate.status === 'unavailable' && stepGate.suggestion === 'export_step' && (
+            <div
+              data-testid="step-export-suggestion"
+              style={{ marginTop: 4, paddingTop: 4, borderTop: '1px dashed #d9770655', fontSize: 10.5, fontWeight: 600 }}
+            >
+              {ko
+                ? '▸ 곡면 ACIS/Parasolid는 파라메트릭으로 못 읽습니다 — CAD에서 STEP으로 내보내 올리면 전체 곡면 형상을 읽습니다.'
+                : '▸ Curved ACIS/Parasolid cannot be read parametrically — export STEP from your CAD and upload it to read the full curved geometry.'}
+            </div>
+          )}
           {/* passthrough PASS 는 OCCT 가 자기 임포트를 메시화한 라운드트립 항등성 —
               근사(박스 후보 vs 충실 IR)의 적대적 대조보다 약한 검증임을 정직하게 표기. */}
           {stepGate.status === 'pass' && stepGate.mode === 'passthrough' && (

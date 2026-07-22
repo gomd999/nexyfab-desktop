@@ -126,6 +126,28 @@ describe('curved / box-only ACIS reports HONESTLY (no fake pass)', () => {
     expect(verdict!.status).toBe('unavailable');
     if (verdict!.status === 'unavailable') {
       expect(verdict!.reason).toContain('acis_curved_no_kernel');
+      // free 커널이 없으니 막다른 길 대신 STEP 재내보내기를 실행가능하게 권한다(정직한 실패 -> 다음 행동).
+      expect(verdict!.suggestion).toBe('export_step');
+      expect(verdict!.message).toContain('STEP');
+      expect(verdict!.message).toContain('ACIS');
+    }
+  });
+
+  it('curved x_t (Parasolid) box-only -> unavailable + export_step, message names Parasolid', () => {
+    const assembly = {
+      parts: [
+        { id: 'b1', type: 'box', fidelity: 'aabb-approximation', params: { width: 8, depth: 8, height: 8 } },
+      ],
+      note: 'curved Parasolid sphere -> AABB box',
+    };
+    const verdict = acisReconstructionGate(assembly, { fallbackReason: 'parasolid_curved_no_kernel', format: 'X_T' });
+    expect(verdict).toBeDefined();
+    expect(verdict!.status).toBe('unavailable');
+    if (verdict!.status === 'unavailable') {
+      expect(verdict!.reason).toContain('parasolid_curved_no_kernel');
+      expect(verdict!.suggestion).toBe('export_step');
+      expect(verdict!.message).toContain('Parasolid');
+      expect(verdict!.message).toContain('STEP');
     }
   });
 
@@ -144,6 +166,9 @@ describe('curved / box-only ACIS reports HONESTLY (no fake pass)', () => {
     expect(verdict!.status).toBe('unavailable');
     if (verdict!.status === 'unavailable') {
       expect(verdict!.reason).toContain('acis_curved_partial');
+      // 일부라도 box 면 통과로 위장하지 않되, STEP 재내보내기로 전체 곡면을 얻는 길을 안내한다.
+      expect(verdict!.suggestion).toBe('export_step');
+      expect(verdict!.message).toContain('STEP');
     }
   });
 

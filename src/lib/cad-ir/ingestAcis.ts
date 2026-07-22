@@ -41,7 +41,24 @@ export interface AcisIrResult {
  */
 export type AcisGateVerdict =
   | { status: 'pass' | 'fail'; score: number; stage: string; checks: unknown; feedback: string; mode: 'passthrough' | 'approximation' }
-  | { status: 'unavailable'; reason: string };
+  | { status: 'unavailable'; reason: string; suggestion?: 'export_step'; message?: string };
+
+/**
+ * Honest, actionable nudge for the ONLY free path out of a curved ACIS / Parasolid solid: there is
+ * no free B-rep kernel in this repo that reads it (OCCT / replicad do NOT read ACIS or Parasolid),
+ * so the gate can only offer a bounding box. STEP (AP203/214/242) IS readable by OCCT, so instead of
+ * a dead end we tell the user exactly what to export. Bilingual (KO / EN) so API consumers get both;
+ * the panel UI localizes on its own.
+ */
+export function exportStepSuggestionMessage(format: CadFormat): string {
+  const isParasolid = format === 'X_T';
+  const koKind = isParasolid ? '곡면 Parasolid' : '곡면 ACIS';
+  const enKind = isParasolid ? 'Curved Parasolid' : 'Curved ACIS';
+  return (
+    `${koKind}는 파라메트릭으로 못 읽습니다 — CAD에서 STEP으로 내보내 올리면 전체 곡면 형상을 읽습니다. / ` +
+    `${enKind} solids cannot be read parametrically here — export STEP from your CAD and upload it to read the full curved geometry (OCCT reads STEP).`
+  );
+}
 
 /**
  * Fan-triangulate a planar polyhedron (ngon face cycles into `verts`) into a gate TriangleSoup,
@@ -227,6 +244,8 @@ export function acisReconstructionGate(
       reason:
         `${fallbackReason}: ${approxParts} body(ies) are AABB-box approximations with no faithful B-rep ` +
         `(planar-only reconstruction — curved ACIS / Parasolid needs a geometry kernel).`,
+      suggestion: 'export_step',
+      message: exportStepSuggestionMessage(format),
     };
   }
 
@@ -246,6 +265,8 @@ export function acisReconstructionGate(
         `acis_curved_partial: ${polyParts.length} planar body(ies) faithfully gated ` +
         `(${g.passed ? 'pass' : 'fail'}, match ${Math.round(g.score * 100)}%), ` +
         `${approxParts} curved/box body(ies) unverified — ${fallbackReason}.`,
+      suggestion: 'export_step',
+      message: exportStepSuggestionMessage(format),
     };
   }
 

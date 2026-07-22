@@ -41,10 +41,12 @@ export const runtime = 'nodejs';
 type AsmMod = { buildAssembly: (a: unknown) => { ok: boolean; gateErrors?: string[]; interferences?: unknown[]; contacts?: unknown[]; structural?: unknown; support?: unknown; pipes?: unknown; designOk?: boolean; parts?: unknown; openscad?: string; composeIntent?: unknown; welds?: unknown[]; weldTotalMm?: number } };
 let _asm: AsmMod | null = null;
 
-/** reconstructionGate 응답 형태 — STL 경로(reverse-engineer)와 동일 계약. */
+/** reconstructionGate 응답 형태 — STL 경로(reverse-engineer)와 동일 계약.
+ * unavailable 에는 곡면 ACIS/Parasolid 처럼 커널이 없어 측정 불가할 때 STEP 재내보내기를 권하는
+ * suggestion='export_step' + 사용자 메시지를 실어 정직한 실패를 다음 행동으로 잇는다. */
 type ReconstructionGate =
   | { status: 'pass' | 'fail'; score: number; stage: string; checks: unknown; feedback: string; mode: 'passthrough' | 'approximation' }
-  | { status: 'unavailable'; reason: string };
+  | { status: 'unavailable'; reason: string; suggestion?: 'export_step'; message?: string };
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const ip = getTrustedClientIp(req.headers);

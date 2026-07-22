@@ -427,6 +427,22 @@ export async function readDwgToDxf(buf: ArrayBuffer, opts: { maxEntities?: numbe
 // mlightcad 변환기가 이 유형을 건너뛰므로 LibreDWG 원시 API(소유 엔티티 순회)로 직접 추출.
 // 면 인덱스(vertind)는 WASM dynapi 로 접근 불가 → 부품 형상은 정점 클라우드의 AABB box
 // 근사로 방출(배치·치수=정확, 형상=box 근사 명시). 부피=AABB 기준 과대측 — note 에 명시.
+//
+// ── 디스플레이 테셀레이션 재감사(260722) — "곡면 솔리드에 free 삼각망이 있는가?" = 아니오 ──
+// @mlightcad/libredwg-web 실측(node_modules 원본 대조):
+//  · 3DSOLID/BODY/REGION → convert3dSolid 이 노출하는 건 acis_data(SAT/SAB 원문) + acis_empty
+//    플래그뿐. 곡면 표면 삼각망·와이어프레임·실루엣 곡선을 하나도 노출하지 않는다. LibreDWG 는
+//    ACIS 를 테셀레이트하지 않으므로 곡면 3DSOLID 의 표면 삼각망은 애초에 존재하지 않는다.
+//  · POLYLINE_PFACE(폴리페이스) → convertPolyline2d 가 정점을 {x,y,z,flag}로만 매핑하고
+//    face-record 의 vertind(=.d.ts 의 polyfaceIndex0..3)는 읽지 않는다. 타입 선언엔 있으나
+//    변환기가 채우지 않아 상위 db 로도 면 연결성은 도달 불가(원시 dynapi 도 정점 클라우드뿐).
+//  · MESH(AcDbSubDMesh, DWG_TYPE_MESH=663) → 전용 컨버터 없음(unknown 으로 드롭). 면/정점 배열은
+//    원시 dynapi 로만 있으나 가용 헬퍼는 unsigned_char·object_ref 배열뿐(정수/포인트 배열 헬퍼 없음)
+//    이라 면 인덱스 판독 불가.
+//  · ACAD_PROXY_ENTITY.graphicsData → 표준 곡면 3DSOLID 엔 부재하며, 있어도 독점 WMF 계열 벡터
+//    바이트코드(삼각형 아님)라 별도 인터프리터 없이는 메시가 아니다.
+// 결론: 곡면 ACIS DWG 의 free 삼각망 경로는 없다 — box 근사를 실메시로 위장하지 않는다.
+// 유일한 free 대안 = STEP 재내보내기 권유(acisReconstructionGate.suggestion='export_step').
 
 interface RawApi {
   dwg_get_num_objects?: (dwg: unknown) => number;
