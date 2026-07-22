@@ -25,12 +25,14 @@
  *   1. write the incoming binary STL (the conforming surface triangulation from
  *      replicad `.mesh()` / three-bvh-csg) to a temp file;
  *   2. write a .geo script that Merges the STL and fills it with tets. We try
- *      TWO recipes in order (see gmshTetMeshFromStl):
- *        (A) KEEP-SURFACE — heal/weld the raw triangulation, wrap it in a
- *            Surface Loop + Volume and Delaunay-fill WITHOUT reparametrising.
- *            Most robust + exact for a clean watertight OpenSCAD (CSG) STL.
- *        (B) REPARAM — ClassifySurfaces + CreateGeometry, then Volume. Remeshes
- *            the surface; the fallback for triangulations (A) cannot fill.
+ *      TWO recipes (see gmshTetMeshFromStl):
+ *        (B) REPARAM (PRIMARY) — ClassifySurfaces + CreateGeometry rebuild
+ *            parametrised geometry so Mesh.MeshSizeFromCurvature refines the
+ *            bore/fillet arc (the accuracy lever). Tried FIRST.
+ *        (A) KEEP-SURFACE (FALLBACK) — heal/weld the raw triangulation, wrap it
+ *            in a Surface Loop + Volume and Delaunay-fill WITHOUT reparametrising.
+ *            Exact for a clean watertight CSG STL but never remeshes (curvature
+ *            control is inert), so used only when reparam cannot reclassify.
  *   3. `gmsh model.geo -3 -format msh2 -nopopup -v 3 -o out.msh` (3-D volume
  *      mesh, MSH 2.2 ASCII so the parser below is small and deterministic; `-v 3`
  *      keeps gmsh's Error/Warning lines in the captured stream so the CONCRETE
@@ -258,13 +260,14 @@ function logTail(log: string, n = 6): string {
  * Shell gmsh to volume-mesh the closed surface in `stl` and return the
  * conforming linear-tet mesh, or `null` on ANY failure (caller falls back).
  *
- * Robustness: we attempt TWO .geo recipes in order and take the first that
- * yields tets. (A) KEEP-SURFACE fills the healed watertight triangulation
- * directly (no reparametrisation → no ClassifySurfaces/CreateGeometry
- * self-intersection failures, and it preserves the exact OpenSCAD boundary).
- * (B) REPARAM reclassifies the STL into geometry then fills — the fallback for
- * triangulations that (A) cannot close into a volume. On total failure the
- * diag carries the SPECIFIC gmsh error line from the more informative attempt.
+ * Robustness + accuracy: we attempt TWO .geo recipes. (B) REPARAM runs FIRST —
+ * ClassifySurfaces + CreateGeometry remesh the surface so Mesh.MeshSizeFromCurvature
+ * governs the bore/fillet resolution (this is what lifts DOF into the tens of
+ * thousands and resolves the Kirsch peak). If reparam clears the resolution floor
+ * we take it; otherwise we also run (A) KEEP-SURFACE (fills the healed watertight
+ * triangulation as-is, no reparametrisation, exact CSG boundary) and keep the
+ * HIGHER-DOF of the two. On total failure the diag carries the SPECIFIC gmsh error
+ * line from the more informative attempt.
  */
 export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions = {}): Promise<GmshMeshResult | null> {
   const timeoutMs = opts.timeoutMs ?? 120_000;
@@ -376,15 +379,35 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
     await mkdir(workDir, { recursive: true });
     await writeFile(stlPath, Buffer.from(stl.buffer, stl.byteOffset, stl.byteLength));
 
+    // REPARAM is PRIMARY (accuracy): it reclassifies + rebuilds parametrised
+    // geometry so Mesh.MeshSizeFromCurvature actually governs the bore/fillet arc
+    // — the whole reason we shell gmsh. This path is ONLY entered for parts with a
+    // detected curved stress-raiser (feaPackage: precise && raiserDetected), i.e.
+    // exactly the geometry curvature-remeshing is built for. KEEP-SURFACE is the
+    // FALLBACK: it preserves the exact STL boundary but never remeshes, so
+    // MeshSizeFromCurvature is INERT and DOF is capped by the coarse input STL
+    // facets (this is why the earlier reparam-last ordering plateaued at ~2k DOF /
+    // ~52% Kirsch error — keep-surface always won first and the bore was never
+    // refined). We take keep-surface only when reparam cannot reclassify the STL.
     const attempts: Array<{ tag: string; geo: string }> = [
-      { tag: 'keep-surface', geo: recipeKeep },
       { tag: 'reparam', geo: recipeReparam },
+      { tag: 'keep-surface', geo: recipeKeep },
     ];
+
+    // Resolution floor for a stress-raiser mesh. A conforming mesh that resolves a
+    // bore/fillet with curvature refinement lands in the tens of thousands of
+    // nodes; anything at/below this is under-resolved (the coarse-STL plateau). If
+    // the PRIMARY (reparam) mesh clears this, accept it immediately — no need to
+    // also run keep-surface. If it does not, run keep-surface too and keep the
+    // HIGHER-DOF of the two (never regress below today's keep-surface behaviour).
+    const MIN_RAISER_NODES = 8_000;
 
     let lastReason: string | undefined;
     let lastCode: string | undefined;
     let lastExit: number | null = null;
     let lastTail: string | undefined;
+    // Best usable candidate so far (highest node count = finest at the raiser).
+    let best: GmshMeshResult | null = null;
 
     for (const attempt of attempts) {
       const r = await runGmsh(attempt.geo);
@@ -432,11 +455,27 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
       }
       const nodeCount = parsed.nodes.length / 3;
       if (nodeCount > maxNodes) {
-        setDiag({ reason: `gmsh mesh too large (${nodeCount} nodes > cap ${maxNodes}) — rejected to protect the live request` });
+        // Oversize for THIS recipe. Reparam + curvature can overshoot on a large
+        // part; rather than ship a mesh that could hang the request we honour the
+        // cap and fall back to the octree-snap engineering path (Kirsch ~±6%).
+        setDiag({ reason: `gmsh [${attempt.tag}] mesh too large (${nodeCount} nodes > cap ${maxNodes}) — rejected to protect the live request` });
         return null; // oversize → fall back, don't hang
       }
-      return { nodes: parsed.nodes, tets: parsed.tets, source: 'gmsh', nodeCount, tetCount: parsed.tets.length };
+
+      const candidate: GmshMeshResult = {
+        nodes: parsed.nodes, tets: parsed.tets, source: 'gmsh', nodeCount, tetCount: parsed.tets.length,
+      };
+      if (!best || candidate.nodeCount > best.nodeCount) best = candidate;
+
+      // PRIMARY reparam already well-resolved the raiser → accept without also
+      // paying for the keep-surface run. (Coarse reparam falls through to compare.)
+      if (attempt.tag === 'reparam' && nodeCount >= MIN_RAISER_NODES) return candidate;
     }
+
+    // At least one recipe filled a volume — return the finest (highest-DOF) mesh.
+    // This never regresses below the old keep-surface result, and lets a properly
+    // remeshed reparam mesh win whenever it refined the bore (higher node count).
+    if (best) return best;
 
     // Both recipes failed — surface the most informative reason we captured.
     setDiag({
