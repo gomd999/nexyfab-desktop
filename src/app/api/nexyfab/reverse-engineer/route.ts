@@ -1,19 +1,31 @@
 /**
  * POST /api/nexyfab/reverse-engineer
  *
- * Mesh reverse-engineering: user uploads a scanned STL (e.g. from a 3D scan
- * or an imported part with no source CAD), heuristic shape classifier
- * proposes the most likely IntentInput(s). Pure CPU pipeline — no AI call.
+ * Mesh reverse-engineering. Two modes:
  *
- * Caller flow: POST { stlBase64 } → receive { ok, candidates, observedStats,
- * topScad? }. Push the top candidate into the /verify-spec textarea, or
- * pipe `topScad` straight to /api/nexyfab/openscad-render to round-trip.
+ *   - DEFAULT (cheap, no AI): heuristic shape classifier proposes the most
+ *     likely IntentInput(s). Pure CPU pipeline — no model call. Covers ~6
+ *     primitive classes; the top candidate is rendered + gate-verified against
+ *     the SOURCE mesh so the caller sees a measured round-trip.
+ *
+ *   - AI-FLEET (opt-in, Pro-gated, expensive): body flag `{ mode: 'ai-fleet' }`.
+ *     Runs the RECONSTRUCTION FLEET (lever F) for parts the heuristic can't do:
+ *     source STL -> IR -> LLM proposes parametric SCAD -> the deterministic
+ *     reconstruction gate verifies each proposal against the source -> gate
+ *     feedback + series-switch drive the next attempt -> accept ONLY a
+ *     gate-verified reconstruction. Honest non-pass on exhaustion — never a
+ *     fabricated pass. Because the fleet is expensive (LLM + render per
+ *     attempt) it costs against the user's daily AI budget and one monthly slot.
+ *
+ * Caller flow: POST { stlBase64, mode? } → receive { ok, candidates,
+ * observedStats, topScad?, reconstructionGate?, aiFleet? }.
  *
  * Pro+ gated because mesh processing (genus, dihedral, wall sampling) is
- * server-side CPU work. Free users see PLAN_LOCKED.
+ * server-side CPU work; the AI-fleet mode is additionally LLM-metered.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan, consumeMonthlyMetricSlot } from '@/lib/plan-guard';
+import { checkUserBudget } from '@/lib/ai/userBudget';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { captureServerError } from '@/lib/error-capture';
@@ -23,6 +35,10 @@ import { parseStlBufferToGeometry } from '@/lib/ai/scad-agent/renderToGeometry';
 import { intentToScad } from '@/lib/openscad-render/intentToScad';
 import { renderScadToStl } from '@/lib/openscad-render/renderStl';
 import { stlToIr, gateScadStl } from '@/lib/cad-ir';
+import { makeTools } from '@/lib/ai/scad-agent/tools';
+import { SERVER_HOST_ADAPTERS } from '@/lib/ai/scad-agent/serverAdapters';
+import { makeServerAiFamilies, makeVisionCritic } from '@/lib/ai/scad-agent/repairLoop';
+import { reconstructWithFleet } from '@/lib/ai/scad-agent/reconstructFleet';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,6 +48,10 @@ const RATE_LIMIT_PER_HOUR = 30;
 /** Decoded STL size cap. 8 MB binary STL ≈ 165k triangles — well above any
  *  realistic hand-scanned part; larger uploads point at malformed input. */
 const STL_MAX_BYTES = 8 * 1024 * 1024;
+/** AI-fleet attempt cap — the fleet's OWN budget guard on top of the route's
+ *  rate-limit / monthly-slot / daily-$ gates. Each attempt is one agent run
+ *  (LLM + render), so this bounds the worst-case cost of an opt-in fleet call. */
+const FLEET_MAX_ATTEMPTS = 3;
 
 /** Decode either a data URL or bare base64 into a Buffer. Returns null on
  *  parse failure so the caller can return a friendly 400 instead of throwing. */
@@ -75,6 +95,8 @@ export async function POST(req: NextRequest) {
   // (3) Body + decode.
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const stlBase64 = typeof body.stlBase64 === 'string' ? body.stlBase64 : '';
+  // Opt-in AI-fleet mode. Default stays the cheap heuristic path.
+  const fleetMode = body.mode === 'ai-fleet';
   if (!stlBase64) {
     return NextResponse.json(
       { ok: false, error: 'stlBase64 is required (data URL or raw base64)', code: 'STL_REQUIRED' },
@@ -99,6 +121,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // (3b) AI-fleet is LLM-metered — gate on the shared daily $ budget BEFORE
+  // doing any model work. Cheap heuristic mode skips this entirely.
+  if (fleetMode) {
+    const budget = await checkUserBudget(userId);
+    if (!budget.ok) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Daily AI spend limit reached ($${budget.limitUsd}). Try again later.`,
+          code: 'COST_BUDGET',
+          usedCents: budget.usedCents,
+          limitUsd: budget.limitUsd,
+          resetAtMs: budget.resetAtMs,
+        },
+        { status: 429 },
+      );
+    }
+  }
+
   // (4) Parse STL → geometry. Catch parser errors so a malformed file
   // becomes a clean 422 instead of a 500.
   let geometry;
@@ -114,7 +155,9 @@ export async function POST(req: NextRequest) {
   }
 
   // (5) Run the heuristic classifier — wall-thickness variant so the
-  // diagnostics block includes min-wall sampling.
+  // diagnostics block includes min-wall sampling. Runs in BOTH modes: it is
+  // cheap CPU and gives the AI-fleet caller useful context (candidates +
+  // observed stats) alongside the verified reconstruction.
   let result;
   try {
     result = await reverseEngineerWithWallThickness({ geometry });
@@ -207,6 +250,70 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // (7c) AI-FLEET (lever F) — opt-in, Pro-gated frontier attack for parts the
+  // heuristic classifier can't reconstruct. Source STL -> IR, then the fleet
+  // proposes parametric SCAD and the deterministic reconstruction gate verifies
+  // each proposal against the source; gate feedback + series-switch drive the
+  // next attempt. Accept ONLY a gate-verified pass; surface an HONEST non-pass
+  // on exhaustion. Failures here never poison the (already computed) heuristic
+  // response — they attach an { error } note instead.
+  let aiFleet:
+    | {
+        passed: boolean;
+        attemptsUsed: number;
+        seriesSwitched: boolean;
+        familiesUsed: string[];
+        singleFamily: boolean;
+        scad: string;
+        verified: boolean;
+        feedback: string | null;
+        note: string;
+        referenceCount: number;
+      }
+    | { error: string }
+    | undefined;
+  if (fleetMode) {
+    try {
+      const sourceIr = stlToIr(
+        new Uint8Array(decoded.buffer, decoded.byteOffset, decoded.byteLength),
+        { path: 'upload.stl', name: 'upload.stl' },
+      );
+      const aiFamilies = await makeServerAiFamilies({ task: 'reconstruct-fleet' });
+      if (aiFamilies.length === 0) {
+        aiFleet = { error: 'no model family configured — set an AI provider key' };
+      } else {
+        const fleet = await reconstructWithFleet({
+          sourceIr,
+          tools: makeTools(SERVER_HOST_ADAPTERS),
+          aiFamilies,
+          visionCritic: makeVisionCritic(SERVER_HOST_ADAPTERS.vision),
+          maxAttempts: FLEET_MAX_ATTEMPTS,
+          signal: req.signal,
+        });
+        aiFleet = {
+          passed: fleet.passed,
+          attemptsUsed: fleet.attemptsUsed,
+          seriesSwitched: fleet.seriesSwitched,
+          familiesUsed: fleet.familiesUsed,
+          singleFamily: fleet.singleFamily,
+          scad: fleet.reconstruction.scad,
+          verified: fleet.passed,
+          feedback: fleet.verdict?.feedback ?? null,
+          note: fleet.note,
+          referenceCount: fleet.references.length,
+        };
+      }
+    } catch (e) {
+      captureServerError(e instanceof Error ? e : new Error(String(e)), {
+        route: '/api/nexyfab/reverse-engineer',
+        method: 'POST',
+        errorClass: 'fleetThrew',
+        userId,
+      });
+      aiFleet = { error: `ai-fleet failed: ${(e as Error).message.slice(0, 160)}` };
+    }
+  }
+
   // (8) Audit — non-blocking. Pro+ only.
   try {
     logCadPipelineAudit({
@@ -220,6 +327,10 @@ export async function POST(req: NextRequest) {
         topConfidence: result.candidates[0]!.confidence,
         genus: result.observedStats.genus,
         componentCount: result.observedStats.componentCount,
+        mode: fleetMode ? 'ai-fleet' : 'heuristic',
+        ...(aiFleet && 'passed' in aiFleet
+          ? { fleetPassed: aiFleet.passed, fleetAttempts: aiFleet.attemptsUsed }
+          : {}),
       },
       ip,
     });
@@ -231,6 +342,7 @@ export async function POST(req: NextRequest) {
     observedStats: result.observedStats,
     ...(topScad ? { topScad } : {}),
     ...(reconstructionGate ? { reconstructionGate } : {}),
+    ...(aiFleet ? { aiFleet } : {}),
     ...(usage ? { usage } : {}),
   });
 }
