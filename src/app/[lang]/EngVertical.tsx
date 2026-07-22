@@ -263,8 +263,8 @@ export function EngDev({ langCode }: { langCode: string }) {
   const mcp = `claude mcp add nexyfab \\
   -e NEXYFAB_API_KEY=nf_live_... \\
   -- node nexyfab-mcp.mjs
-# 6 tools: design_assembly, compose_part, edit_part,
-#          face_drag, part_op, domain_design`;
+# core tools: text_to_assembly, compose_3d, edit_part,
+#          face_drag, part_op, generate_domain_package`;
   const cli = `node cli.mjs assemble "2 columns on a base plate" --out asm.json
 node cli.mjs package asm.json --out ./out --step
 # GA drawing, part drawings, BOQ, spec, DXF, STEP`;
