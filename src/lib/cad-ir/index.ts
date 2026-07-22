@@ -28,7 +28,7 @@ export {
 } from './meshAnalysis';
 export * from './gate';
 export { parseStl, stlToIr } from './ingestStl';
-export { stepToIr, type StepToIrResult, type StepToIrMeta } from './ingestStep';
+export { stepToIr, meshSoupToStepIr, type StepToIrResult, type StepToIrMeta } from './ingestStep';
 
 import { normalizeIr, type Ir } from './schema';
 import { parseStl } from './ingestStl';

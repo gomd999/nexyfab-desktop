@@ -318,6 +318,43 @@ export async function stepFileBounds(file) {
   const [xmax, ymax, zmax] = bb.bounds[1] ?? bb.bounds.slice(3, 6);
   return { min: [xmin, ymin, zmin], max: [xmax, ymax, zmax] };
 }
+/**
+ * 실물 STEP 텍스트 → 진짜 OCCT B-rep 삼각 메시(수프). importSTEP(Blob).mesh 로 실 커널
+ * 테셀레이션(원뿔·구·토러스·BSPLINE·필렛 충실 — box 근사 아님). 소스 IR 충실 측정
+ * (meshSoupToStepIr)과 게이트 패스스루 후보(실솔리드 라운드트립) 양쪽이 재사용하는
+ * 인프로세스 메셔. importSTEP 실패(opencascade RetError 등)는 throw — 호출측이 'unavailable'.
+ * 반환 soup = [[x,y,z],[x,y,z],[x,y,z]] 배열(meshAnalysis/gate TriangleSoup 계약과 동일).
+ */
+export async function stepTextToMesh(stepText, { tolerance = 0.05, angularTolerance = 15 } = {}) {
+  if (typeof stepText !== 'string' || !stepText) throw new Error('stepTextToMesh: STEP 텍스트 필요');
+  const { importSTEP } = await ensureReplicad();
+  const buf = Buffer.from(stepText, 'latin1');
+  const shp = await importSTEP(new Blob([buf]));
+  const m = shp.mesh({ tolerance, angularTolerance });
+  const v = m.vertices, tri = m.triangles;
+  const soup = [];
+  for (let i = 0; i < tri.length; i += 3) {
+    const a = tri[i] * 3, b = tri[i + 1] * 3, c = tri[i + 2] * 3;
+    soup.push([
+      [v[a], v[a + 1], v[a + 2]],
+      [v[b], v[b + 1], v[b + 2]],
+      [v[c], v[c + 1], v[c + 2]],
+    ]);
+  }
+  let mnx = Infinity, mny = Infinity, mnz = Infinity, mxx = -Infinity, mxy = -Infinity, mxz = -Infinity;
+  for (let i = 0; i < v.length; i += 3) {
+    if (v[i] < mnx) mnx = v[i]; if (v[i] > mxx) mxx = v[i];
+    if (v[i + 1] < mny) mny = v[i + 1]; if (v[i + 1] > mxy) mxy = v[i + 1];
+    if (v[i + 2] < mnz) mnz = v[i + 2]; if (v[i + 2] > mxz) mxz = v[i + 2];
+  }
+  return {
+    soup,
+    vertices: v.length / 3,
+    triangles: tri.length / 3,
+    bbox: { min: [mnx, mny, mnz], max: [mxx, mxy, mxz] },
+  };
+}
+
 
 /** intent → STEP 문자열 (B-rep). fuseReport.dropped>0이면 호출측이 정직 고지할 것.
  * opts.imports(Phase5): [{file, offset:[x,y,z]}] — 실물 STEP 을 원기하 그대로 이동해

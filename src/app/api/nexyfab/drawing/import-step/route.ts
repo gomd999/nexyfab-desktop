@@ -22,7 +22,7 @@ import { ifcToNexyfabAssembly } from '@/lib/brep-bridge/ifcImport';
 import { dwgToNexyfabAssembly } from '@/lib/brep-bridge/dwgImport';
 import { satToNexyfabAssembly } from '@/lib/brep-bridge/satImport';
 import { xtToNexyfabAssembly } from '@/lib/brep-bridge/xtImport';
-import { stepToIr, gateIntentTriangles } from '@/lib/cad-ir';
+import { stepToIr, meshSoupToStepIr, gateIntentTriangles } from '@/lib/cad-ir';
 
 /** 독점 포맷 안내(임포트 불가 시 정직 응답) — 각 툴의 개방 포맷 내보내기 경로. */
 const CONVERT_GUIDE: Record<string, string> = {
@@ -42,7 +42,7 @@ let _asm: AsmMod | null = null;
 
 /** reconstructionGate 응답 형태 — STL 경로(reverse-engineer)와 동일 계약. */
 type ReconstructionGate =
-  | { status: 'pass' | 'fail'; score: number; stage: string; checks: unknown; feedback: string }
+  | { status: 'pass' | 'fail'; score: number; stage: string; checks: unknown; feedback: string; mode: 'passthrough' | 'approximation' }
   | { status: 'unavailable'; reason: string };
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -132,17 +132,56 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     let reconstructionGate: ReconstructionGate | undefined;
     if (stepSourceForGate) {
       try {
-        const src = stepToIr(stepSourceForGate, { path: `${name}.step`, name: `${name}.step` });
-        if (!src.ok || !src.ir) {
-          reconstructionGate = { status: 'unavailable', reason: src.reason ?? 'no_faithful_geometry' };
-        } else {
-          const rp = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'render-preview.mjs')).href)) as { assemblyTriangles: (a: unknown) => [number, number, number][][] };
-          const candTris = rp.assemblyTriangles({ parts: built.parts ?? bridged.assembly.parts });
-          if (!Array.isArray(candTris) || candTris.length === 0) {
-            reconstructionGate = { status: 'unavailable', reason: 'candidate_tessellation_empty' };
+        // SOURCE IR: pure-TS B-rep reader first (fast, no wasm). It faithfully recovers
+        // boxes / prisms / cylinders but flags curved / complex solids as 'unsupported'.
+        const fast = stepToIr(stepSourceForGate, { path: `${name}.step`, name: `${name}.step` });
+        const preferOcct = !fast.ok || fast.meta.unsupported.length > 0;
+        let handled = false;
+
+        // ── PASSTHROUGH mode (curved / complex) — reuse the in-process replicad OCCT mesher.
+        // Mesh the REAL importSTEP solid once: that soup is BOTH the faithful source
+        // measurement AND the gate candidate (round-trip identity), so genuinely-curved STEP
+        // geometry PASSES on its true shape instead of being flattened to a bounding box.
+        if (preferOcct) {
+          try {
+            const ts = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'to-step.mjs')).href)) as {
+              stepTextToMesh: (t: string) => Promise<{ soup: [number, number, number][][]; triangles: number }>;
+            };
+            const mesh = await ts.stepTextToMesh(stepSourceForGate); // throws on opencascade RetError
+            const srcOcct = meshSoupToStepIr(mesh.soup, stepSourceForGate, { path: `${name}.step`, name: `${name}.step` });
+            if (!srcOcct.ok || !srcOcct.ir) {
+              reconstructionGate = { status: 'unavailable', reason: srcOcct.reason ?? 'no_faithful_geometry' };
+            } else {
+              const g = gateIntentTriangles(mesh.soup, srcOcct.ir);
+              reconstructionGate = { status: g.passed ? 'pass' : 'fail', score: g.score, stage: g.stage, checks: g.checks, feedback: g.feedback, mode: 'passthrough' };
+            }
+            handled = true;
+          } catch (e) {
+            // OCCT unavailable (wasm/ESM) or importSTEP failed. If the pure-TS reader still
+            // produced a faithful (boxy) IR, fall through to APPROXIMATION honestly; otherwise
+            // report 'unavailable' — never a fabricated pass on a curved part we cannot measure.
+            if (!(fast.ok && fast.ir)) {
+              reconstructionGate = { status: 'unavailable', reason: `occt_unavailable: ${String(e instanceof Error ? e.message : e).slice(0, 100)}` };
+              handled = true;
+            }
+          }
+        }
+
+        // ── APPROXIMATION mode (boxy fast-path, or OCCT-unavailable fallback) — SOURCE is the
+        // faithful pure-TS IR; CANDIDATE is the box/cyl reconstruction tessellated by
+        // render-preview. Boxy parts PASS (box == box); curved reconstructions FAIL honestly.
+        if (!handled) {
+          if (!fast.ok || !fast.ir) {
+            reconstructionGate = { status: 'unavailable', reason: fast.reason ?? 'no_faithful_geometry' };
           } else {
-            const g = gateIntentTriangles(candTris, src.ir);
-            reconstructionGate = { status: g.passed ? 'pass' : 'fail', score: g.score, stage: g.stage, checks: g.checks, feedback: g.feedback };
+            const rp = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'render-preview.mjs')).href)) as { assemblyTriangles: (a: unknown) => [number, number, number][][] };
+            const candTris = rp.assemblyTriangles({ parts: built.parts ?? bridged.assembly.parts });
+            if (!Array.isArray(candTris) || candTris.length === 0) {
+              reconstructionGate = { status: 'unavailable', reason: 'candidate_tessellation_empty' };
+            } else {
+              const g = gateIntentTriangles(candTris, fast.ir);
+              reconstructionGate = { status: g.passed ? 'pass' : 'fail', score: g.score, stage: g.stage, checks: g.checks, feedback: g.feedback, mode: 'approximation' };
+            }
           }
         }
       } catch (e) {
