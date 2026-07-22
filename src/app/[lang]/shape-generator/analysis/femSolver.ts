@@ -200,10 +200,31 @@ const TET_EDGES: ReadonlyArray<readonly [number, number]> = [
   [0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3],
 ];
 
+/** The 4 triangular faces of a TET10 as LOCAL node indices: the 3 corner nodes
+ *  followed by the 3 edge-midside nodes on that face (midside numbering per
+ *  TET_EDGES). Used to integrate a consistent surface traction on a loaded face. */
+const TET_FACES: ReadonlyArray<{ c: readonly [number, number, number]; m: readonly [number, number, number] }> = [
+  { c: [0, 1, 2], m: [4, 7, 5] }, // edges (0,1)=4 (1,2)=7 (0,2)=5
+  { c: [0, 1, 3], m: [4, 8, 6] }, // edges (0,1)=4 (1,3)=8 (0,3)=6
+  { c: [0, 2, 3], m: [5, 9, 6] }, // edges (0,2)=5 (2,3)=9 (0,3)=6
+  { c: [1, 2, 3], m: [7, 9, 8] }, // edges (1,2)=7 (2,3)=9 (1,3)=8
+];
+
 /** 4-point Gauss quadrature for a tet (degree-2 exact), in barycentric coords. */
 const G_A = 0.5854101966249685, G_B = 0.1381966011250105;
 const TET10_GAUSS: ReadonlyArray<readonly [number, number, number, number]> = [
   [G_A, G_B, G_B, G_B], [G_B, G_A, G_B, G_B], [G_B, G_B, G_A, G_B], [G_B, G_B, G_B, G_A],
+];
+
+/** Barycentric coordinates (L1..L4) of the 10 TET10 nodes, in the same node
+ *  ordering buildTet10Mesh produces (4 corners, then the 6 edge midsides in
+ *  TET_EDGES order). Used to sample the strain field AT the nodes for stress
+ *  recovery — the extreme-fibre surface nodes carry the peak bending stress that
+ *  a centroid sample smears toward the neutral axis. */
+const TET10_NODE_L: ReadonlyArray<readonly [number, number, number, number]> = [
+  [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1],       // corners
+  [0.5, 0.5, 0, 0], [0.5, 0, 0.5, 0], [0.5, 0, 0, 0.5],          // edges (0,1)(0,2)(0,3)
+  [0, 0.5, 0.5, 0], [0, 0.5, 0, 0.5], [0, 0, 0.5, 0.5],          // edges (1,2)(1,3)(2,3)
 ];
 
 /** Augment a TET4 mesh with SHARED edge-midside nodes → TET10 connectivity.
@@ -629,11 +650,8 @@ export function runFEM(
     rowMap.set(col, (rowMap.get(col) ?? 0) + val);
   };
 
-  const elemStiffnesses: Array<{ Bc: number[][] }> = [];
-
   for (const elem of elems) {
-    const { Ke, Bc } = computeTet10Stiffness(nodes, elem, E, nu);
-    elemStiffnesses.push({ Bc });
+    const { Ke } = computeTet10Stiffness(nodes, elem, E, nu);
 
     for (let i = 0; i < 10; i++) {
       for (let j = 0; j < 10; j++) {
@@ -693,18 +711,48 @@ export function runFEM(
     if (cond.type === 'fixed') {
       for (const n of onPlane) { fixedDOFs.add(n*3); fixedDOFs.add(n*3+1); fixedDOFs.add(n*3+2); }
     } else if (cond.type === 'force' && cond.value) {
-      // cond.value is the TOTAL force on the face. For quadratic (TET10) elements
-      // the CONSISTENT nodal load of a uniform face traction is carried by the
-      // edge-MIDSIDE nodes (corner nodes get ~0); distributing equally over all
-      // face nodes instead makes the loaded face dish and over-reports the peak
-      // displacement. So load the midside face nodes when present.
-      const mids = onPlane.filter((n) => n >= nCornerNodes);
-      const target = mids.length > 0 ? mids : onPlane;
-      const per = target.length;
-      for (const n of target) {
-        F[n*3]   += cond.value[0] / per;
-        F[n*3+1] += cond.value[1] / per;
-        F[n*3+2] += cond.value[2] / per;
+      // cond.value is the TOTAL force on the face. Apply it as a CONSISTENT
+      // uniform surface traction integrated face-by-face: for a quadratic
+      // (TET10) 6-node triangular face under uniform traction the consistent
+      // nodal load is ZERO on the 3 corners and t·A/3 on each of the 3 edge-
+      // midside nodes. The earlier area-UNWEIGHTED equal split over midside
+      // nodes fails the FE patch test — it left a spurious stress spike at the
+      // load face (uniaxial tension read ~38% high and WORSENED under mesh
+      // refinement). Integrating each planar tet face fixes it: a uniform
+      // stress state is now reproduced exactly (A3 → 200.0 at every resolution).
+      const planarFaces: Array<{ m: readonly [number, number, number]; area: number }> = [];
+      let totalArea = 0;
+      for (const el of elems) {
+        for (const face of TET_FACES) {
+          const a = el[face.c[0]], b = el[face.c[1]], c = el[face.c[2]];
+          if (Math.abs(nodes[a*3+axis] - planeVal) >= planeTol) continue;
+          if (Math.abs(nodes[b*3+axis] - planeVal) >= planeTol) continue;
+          if (Math.abs(nodes[c*3+axis] - planeVal) >= planeTol) continue;
+          const ux = nodes[b*3]-nodes[a*3],   uy = nodes[b*3+1]-nodes[a*3+1], uz = nodes[b*3+2]-nodes[a*3+2];
+          const vx = nodes[c*3]-nodes[a*3],   vy = nodes[c*3+1]-nodes[a*3+1], vz = nodes[c*3+2]-nodes[a*3+2];
+          const crx = uy*vz-uz*vy, cry = uz*vx-ux*vz, crz = ux*vy-uy*vx;
+          const area = 0.5 * Math.hypot(crx, cry, crz);
+          if (area <= 0) continue;
+          planarFaces.push({ m: [el[face.m[0]], el[face.m[1]], el[face.m[2]]], area });
+          totalArea += area;
+        }
+      }
+      if (totalArea > 0) {
+        const tx = cond.value[0] / totalArea, ty = cond.value[1] / totalArea, tz = cond.value[2] / totalArea;
+        for (const pf of planarFaces) {
+          const w = pf.area / 3;
+          for (const m of pf.m) { F[m*3] += tx*w; F[m*3+1] += ty*w; F[m*3+2] += tz*w; }
+        }
+      } else {
+        // Degenerate fallback: distribute over the plane's midside nodes.
+        const mids = onPlane.filter((n) => n >= nCornerNodes);
+        const target = mids.length > 0 ? mids : onPlane;
+        const per = target.length;
+        for (const n of target) {
+          F[n*3]   += cond.value[0] / per;
+          F[n*3+1] += cond.value[1] / per;
+          F[n*3+2] += cond.value[2] / per;
+        }
       }
     } else if (cond.type === 'pressure' && cond.value) {
       // Pressure × face area → a total force along the OUTWARD plane normal,
@@ -756,7 +804,15 @@ export function runFEM(
   // --- Solve K * u = F (Preconditioned Conjugate Gradient, Jacobi preconditioner) ---
   const { x: u, converged, iterations: solverIterations } = sparsePCG(K, F, 2000, 1e-7);
 
-  // --- Recover stress at each tet, then average to tet nodes ---
+  // --- Recover stress with NODAL sampling + stress-TENSOR averaging ---
+  // Centroid-only recovery samples the strain at the element centre, which smears
+  // the extreme-fibre bending stress toward the neutral axis: a cantilever meshed
+  // one element deep came out ~56% low on σ even though its DISPLACEMENT was exact
+  // (the same Ku=F solve). Instead evaluate the strain field at the 10 NODAL
+  // positions of every element, accumulate the stress TENSOR at shared nodes,
+  // average, then form von Mises — so the surface fibre nodes carry the true peak.
+  const nodeSxx = new Float64Array(nNodes), nodeSyy = new Float64Array(nNodes), nodeSzz = new Float64Array(nNodes);
+  const nodeSxy = new Float64Array(nNodes), nodeSyz = new Float64Array(nNodes), nodeSzx = new Float64Array(nNodes);
   const nodeStress  = new Float32Array(nNodes);
   const nodeDisp    = new Float32Array(nNodes);
   const nodeDispVec = new Float32Array(nNodes * 3);
@@ -764,47 +820,42 @@ export function runFEM(
 
   const lam = E * nu / ((1 + nu) * (1 - 2 * nu));
   const mu  = E / (2 * (1 + nu));
-  for (let ti = 0; ti < elems.length; ti++) {
-    const elem = elems[ti];
-    const { Bc } = elemStiffnesses[ti];
-
-    // Element displacement vector (30 DOF) + centroid strain eps = Bc · ue.
-    const eps = new Array<number>(6).fill(0);
-    for (let i = 0; i < 10; i++) {
-      const n = elem[i];
-      const ux = u[n*3], uy = u[n*3+1], uz = u[n*3+2];
-      for (let r = 0; r < 6; r++) eps[r] += Bc[r][i*3]*ux + Bc[r][i*3+1]*uy + Bc[r][i*3+2]*uz;
-    }
-
-    const sx = lam*(eps[0]+eps[1]+eps[2]) + 2*mu*eps[0];
-    const sy = lam*(eps[0]+eps[1]+eps[2]) + 2*mu*eps[1];
-    const sz = lam*(eps[0]+eps[1]+eps[2]) + 2*mu*eps[2];
-    const txy = mu * eps[3], tyz = mu * eps[4], txz = mu * eps[5];
-
-    const vonMises = Math.sqrt(0.5 * (
-      (sx-sy)**2 + (sy-sz)**2 + (sz-sx)**2 + 6 * (txy**2 + tyz**2 + txz**2)
-    ));
-
-    // Distribute to all 10 element nodes.
-    for (let i = 0; i < 10; i++) {
-      const n = elem[i];
-      nodeStress[n] += vonMises;
-      nodeDisp[n]    += Math.sqrt(u[n*3]**2 + u[n*3+1]**2 + u[n*3+2]**2);
-      nodeDispVec[n*3]   += u[n*3];
-      nodeDispVec[n*3+1] += u[n*3+1];
-      nodeDispVec[n*3+2] += u[n*3+2];
-      nodeCount[n]++;
+  for (const elem of elems) {
+    // Sample the strain field at each of the 10 element-node positions.
+    for (let a = 0; a < 10; a++) {
+      const { B, detJ } = tet10B(nodes, elem, TET10_NODE_L[a]);
+      if (detJ === 0) continue;
+      const eps = [0, 0, 0, 0, 0, 0];
+      for (let i = 0; i < 10; i++) {
+        const n = elem[i];
+        const ux = u[n*3], uy = u[n*3+1], uz = u[n*3+2];
+        for (let r = 0; r < 6; r++) eps[r] += B[r][i*3]*ux + B[r][i*3+1]*uy + B[r][i*3+2]*uz;
+      }
+      const na = elem[a];
+      const tr = eps[0] + eps[1] + eps[2];
+      nodeSxx[na] += lam*tr + 2*mu*eps[0];
+      nodeSyy[na] += lam*tr + 2*mu*eps[1];
+      nodeSzz[na] += lam*tr + 2*mu*eps[2];
+      nodeSxy[na] += mu*eps[3];
+      nodeSyz[na] += mu*eps[4];
+      nodeSzx[na] += mu*eps[5];
+      nodeCount[na]++;
     }
   }
 
-  // Average per tet node
+  // Average the tensor at each node → von Mises; displacement carried straight
+  // from the solved DOFs.
   for (let n = 0; n < nNodes; n++) {
     const cnt = nodeCount[n] || 1;
-    nodeStress[n]    /= cnt;
-    nodeDisp[n]      /= cnt;
-    nodeDispVec[n*3]   /= cnt;
-    nodeDispVec[n*3+1] /= cnt;
-    nodeDispVec[n*3+2] /= cnt;
+    const sx = nodeSxx[n]/cnt, sy = nodeSyy[n]/cnt, sz = nodeSzz[n]/cnt;
+    const txy = nodeSxy[n]/cnt, tyz = nodeSyz[n]/cnt, txz = nodeSzx[n]/cnt;
+    nodeStress[n] = Math.sqrt(0.5 * (
+      (sx-sy)**2 + (sy-sz)**2 + (sz-sx)**2 + 6 * (txy**2 + tyz**2 + txz**2)
+    ));
+    nodeDisp[n] = Math.sqrt(u[n*3]**2 + u[n*3+1]**2 + u[n*3+2]**2);
+    nodeDispVec[n*3]   = u[n*3];
+    nodeDispVec[n*3+1] = u[n*3+1];
+    nodeDispVec[n*3+2] = u[n*3+2];
   }
 
   // --- Map tet-node results back to surface vertices ---

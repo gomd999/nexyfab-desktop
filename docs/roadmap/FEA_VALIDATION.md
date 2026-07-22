@@ -8,6 +8,21 @@ The point of this document is credibility: it measures our FEA against known-goo
 references and states, per benchmark, the error and a PASS/FAIL. Where our solver is
 wrong, this report says so and quantifies it — that is what drives the fix.
 
+### Changelog — 2026-07-22 meshing/recovery upgrade
+- **A4 FIXED (56.2% FAIL → 4.9% PASS).** Root cause was *stress recovery*, not physics:
+  the same mesh's tip DISPLACEMENT was already exact (A2 = 0.2%), yet centroid-only
+  stress sampling on a one-element-deep grid read the bending fibre near the neutral
+  axis. Fix = **nodal-sampled stress recovery** (evaluate strain at the 10 element-node
+  positions, average the tensor at shared nodes) + the default mesh budget raised
+  1,200 → 4,800 grid nodes so the bending-gradient axis carries enough element layers.
+- **A3 improved 4.3% → 0.0% (now exact).** The force BC now applies a **consistent
+  surface traction** integrated face-by-face (corner nodes 0, midside nodes t·A/3),
+  which passes the FE patch test. The previous area-unweighted split left a spurious
+  load-face spike that *worsened* under refinement (would have broken A3 as A4 was
+  refined). A1 likewise sharpened to 0.0%.
+- **A5 unchanged (still FAIL).** The voxel path cannot reach Kt=3 at any feasible cost —
+  see §4 and the scoped plan in §6. No fudge was applied.
+
 ---
 
 ## 1. What our FEA actually is (capability audit)
@@ -19,7 +34,7 @@ in how they mesh geometry — which is what governs where they are trustworthy.
 
 | Solver | File | Method | Mesh | Callable headless (Node)? |
 |---|---|---|---|---|
-| **A — 3D volumetric** | `femSolver.ts` (`runFEM`, via `simpleFEA.ts::runSimpleFEA`) | Linear-elastic **TET10** (10-node quadratic tetrahedra), 4-pt Gauss element stiffness, CSR sparse global `K`, Dirichlet elimination BCs, **Jacobi-PCG** solve of `Ku=F`, centroid-strain → von Mises stress recovery | **Structured voxel grid** (Freudenthal 6-tet split of inside cells) | Yes — pure math + `three` BufferGeometry; runs under vitest with no WebGL |
+| **A — 3D volumetric** | `femSolver.ts` (`runFEM`, via `simpleFEA.ts::runSimpleFEA`) | Linear-elastic **TET10** (10-node quadratic tetrahedra), 4-pt Gauss element stiffness, CSR sparse global `K`, Dirichlet elimination BCs, **Jacobi-PCG** solve of `Ku=F`, **nodal-sampled** strain → tensor-averaged von Mises stress recovery | **Structured voxel grid** (Freudenthal 6-tet split of inside cells) | Yes — pure math + `three` BufferGeometry; runs under vitest with no WebGL |
 | **B — 2D plane-stress** | `feaPlateHoleKt.ts` (`plateWithHoleKt`) | **Q4** plane-stress, 2×2 Gauss, reuses A's CSR + PCG | **Boundary-conforming** polar (ring × sector) mesh — elements follow the hole circle exactly | Yes |
 | **C — 2D beam/frame** | `scripts/engineering-core/analysis/frame2d.mjs` (`analyzeFrame2D`) | **Euler–Bernoulli** 2D frame, direct stiffness (3 DOF/node), consistent fixed-end loads | Analytical elements (no meshing) | Yes — plain Node ESM |
 
@@ -29,8 +44,9 @@ in how they mesh geometry — which is what governs where they are trustworthy.
 ### The two structural limits of Solver A (the production 3D path)
 1. **Voxel mesher.** Geometry is sampled onto a structured bounding-box grid; only
    cells whose centre is inside the surface are kept. A box is represented exactly;
-   any **curved boundary is staircased** and, at the default ~1,200-node resolution,
-   coarsely.
+   any **curved boundary is staircased** and, at the default ~4,800-node resolution,
+   still coarse relative to a small hole. (Bending *resolution* is now adequate; the
+   remaining A5 gap is boundary *conformance* + local refinement — see §6.)
 2. **Axis-aligned-plane BCs.** A `fixed`/`force`/`pressure` condition is applied by
    inferring the axis-aligned plane of the selected face and constraining/loading all
    nodes on it. So loads and supports must live on **flat, axis-aligned faces**.
@@ -75,11 +91,11 @@ error, NAFEMS style). Error% = |ours − ref| / |ref|.
 
 | ID | Benchmark | Solver | Qty | Reference | Ours | Error % | Tol % | Result |
 |---|---|---|---|---:|---:|---:|---:|:--|
-| A1 | Axial bar tip deflection `δ=FL/AE` | 3D TET10 (voxel) | disp (mm) | 0.1000 | 0.1028 | **2.8** | 5 | **PASS** |
-| A2 | Cantilever tip deflection `δ=PL³/3EI` | 3D TET10 (voxel) | disp (mm) | 2.500 | 2.496 | **0.2** | 15 | **PASS** |
-| A3 | Uniaxial tension stress `σ=F/A` | 3D TET10 (voxel) | σ (MPa) | 200.0 | 208.6 | **4.3** | 10 | **PASS** |
-| A4 | Cantilever root bending stress `σ=Mc/I` | 3D TET10 (voxel) | σ (MPa) | 1500 | 656.3 | **56.2** | 10 | **FAIL** |
-| A5 | Plate-with-hole `Kt` (voxel mesh) | 3D TET10 (voxel) | Kt | 3.000 | 1.027 | **65.8** | 17 | **FAIL** |
+| A1 | Axial bar tip deflection `δ=FL/AE` | 3D TET10 (voxel) | disp (mm) | 0.1000 | 0.1000 | **0.0** | 5 | **PASS** |
+| A2 | Cantilever tip deflection `δ=PL³/3EI` | 3D TET10 (voxel) | disp (mm) | 2.500 | 2.549 | **2.0** | 15 | **PASS** |
+| A3 | Uniaxial tension stress `σ=F/A` | 3D TET10 (voxel) | σ (MPa) | 200.0 | 200.0 | **0.0** | 10 | **PASS** |
+| A4 | Cantilever root bending stress `σ=Mc/I` | 3D TET10 (voxel) | σ (MPa) | 1500 | 1427 | **4.9** | 10 | **PASS** |
+| A5 | Plate-with-hole `Kt` (voxel mesh) | 3D TET10 (voxel) | Kt | 3.000 | 1.067 | **64.4** | 17 | **FAIL** |
 | B1 | Kirsch `Kt` (**conforming** mesh) | 2D Q4 (conforming) | Kt | 3.000 | 2.872 | **4.3** | 15 | **PASS** |
 | B2 | Kirsch hoop `σθθ` at θ=0 | 2D Q4 (conforming) | σθθ/σ | −1.000 | −0.895 | **10.5** | 20 | **PASS** |
 | C1 | Cantilever tip `δ=PL³/3EI` | 2D frame (beam) | disp (mm) | 125.0 | 125.0 | **0.0** | 5 | **PASS** |
@@ -87,9 +103,10 @@ error, NAFEMS style). Error% = |ours − ref| / |ref|.
 | C2r | Simply-supported reaction `R=P/2` | 2D frame (beam) | R (N) | 500.0 | 500.0 | **0.0** | 5 | **PASS** |
 | C3 | Simply-supported, UDL `δ=5wL⁴/384EI` | 2D frame (beam) | disp (mm) | 9.766 | 9.766 | **0.0** | 5 | **PASS** |
 
-**Score: 9 / 11 PASS, 2 FAIL.** Both failures are *volumetric stress at a curved or
-clamped raiser* on the voxel path — the one place the codebase already flags as
-untrustworthy, now quantified.
+**Score: 10 / 11 PASS, 1 FAIL.** The single remaining failure (A5) is *volumetric
+stress concentration at a curved raiser* on the voxel path — the one place the codebase
+already flags as untrustworthy, now quantified. A4 (previously 56% low) is fixed; see
+the 2026-07-22 changelog above and the scoped A5 plan in §6.
 
 ---
 
@@ -100,23 +117,29 @@ untrustworthy, now quantified.
   bar (2.8%) and a bending cantilever (0.2%); the frame solver is exact to machine
   precision on cantilever, simply-supported point-load and UDL deflections *and*
   reactions (0.0%). Stiffness/deflection results are engineering-grade.
-- **Stress on a smooth, uniform field.** Uniaxial tension `σ=F/A` recovers to 4.3%.
-  This is important: it proves the stress-recovery code itself is **correct** — the
-  failures below are *not* a broken formula, they are discretization.
+- **Stress on a smooth, uniform field.** Uniaxial tension `σ=F/A` recovers to **0.0%**
+  (exact — the consistent-traction load now passes the FE patch test). This proves the
+  stress-recovery code itself is **correct** — the remaining failure is discretization.
+- **Bending stress at a clamped root (NEW).** With nodal stress recovery and adequate
+  through-depth resolution, root fibre stress `σ=Mc/I` recovers to **4.9%** — down from
+  56% low under the old centroid recovery on a one-element-deep mesh (see changelog).
 - **Stress concentration, on the conforming path.** The boundary-conforming Q4 mesh
   reproduces the Kirsch `Kt=3.0` to 4.3% and the −1·σ hoop at the load axis to 10.5%.
   The physics and recovery are right when the mesh follows the geometry.
 
 **Where the FEA is wrong (do NOT trust it, and we say so):**
-- **A4 — bending stress at a clamped root: 56% LOW (656 vs 1500 MPa).** The coarse
-  voxel mesh evaluates stress at element centroids, not at the extreme surface fibre,
-  so the through-thickness gradient of a bending field is under-read by more than half.
-- **A5 — stress concentration on the production voxel path: `Kt`=1.03 vs 3.0, 66% LOW.**
-  The structured grid staircases the hole and centroid recovery smears the peak, so the
-  voxel solver **barely detects the concentration at all**. B1 shows the *same physics*
-  gives `Kt`=2.87 once the mesh conforms to the hole — so this is a **mesher limitation,
-  not a solver-physics bug**, and the fix (BRepMesh→TetGen boundary-conforming meshing)
-  is a known, scoped piece of work.
+- **A5 — stress concentration on the production voxel path: `Kt`=1.07 vs 3.0, 64% LOW.**
+  Two compounding causes, both measured: (1) the structured grid **staircases the hole**
+  — no node lands on the true boundary where the Kirsch peak lives; (2) at any node
+  budget the in-browser Jacobi-PCG can *converge* on, the **uniform grid grossly
+  under-resolves** an r=10 mm hole (≈1 in-plane cell across the radius). Raising the
+  budget lifts `Kt` only 1.07 → ~1.75 and then the solver **stops converging**
+  (unreliable). A boundary-snap conformance pass was implemented and measured: at the
+  converging budget it moves **zero** nodes (the grid is too coarse for any node to fall
+  within snap range of the hole), so it was **not shipped** — it would add cost with no
+  measured benefit until local refinement exists. B1 shows the *same physics* gives
+  `Kt`=2.87 once the mesh conforms — so this is a **mesher limitation, not a
+  solver-physics bug**. Scoped fix in §6.
 
 **Bottom line for the production web path (`fea-quick` = Solver A):** use it for
 **deflection / stiffness screening and safety-factor triage on smooth prismatic
@@ -147,3 +170,33 @@ The credible sales statement is therefore *"FEA-based deflection screening and
 frame checks, validated against closed-form to within a few percent; peak-stress at
 stress raisers is in active development and not yet certification-grade"* — which this
 report backs with numbers rather than adjectives.
+
+---
+
+## 6. Scoped plan for A5 (3D stress concentration)
+
+A5 is the one benchmark the production voxel path still fails, and the measurements
+above pin down exactly why. The remaining work, in dependency order:
+
+1. **Local refinement at raisers (biggest lever).** The uniform grid spends its node
+   budget on the bulk plate; the hole gets ≈1 cell across its radius. Bias grid density
+   toward high-surface-curvature regions (octree-style refinement, or a graded cell size
+   driven by distance-to-nearest-curved-face) so the raiser gets O(10) cells across —
+   the same fidelity B1's 32-ring polar mesh already proves reaches `Kt`≈2.9.
+2. **Boundary conformance.** The `closestPtTri` snap pass is written and inversion-guarded
+   (kept out of the hot path today because it is inert at current resolution). Once (1)
+   puts nodes near the hole, enable snapping so boundary elements follow the true circle;
+   or generate a boundary-conforming tet fill directly from the OCCT/replicad surface
+   mesh (`scripts/drawing-to-3d/to-step.mjs::stepTextToMesh`), which already emits a
+   conforming surface at curved features.
+3. **Stronger linear solve.** Refinement (1) makes the system larger and more
+   ill-conditioned; today Jacobi-PCG stops converging past ~9k DOF. Add an
+   incomplete-Cholesky (or a light algebraic-multigrid) preconditioner so the refined
+   mesh actually converges to a trustworthy peak.
+4. **Interim product guardrail (ship now):** route stress-concentration queries at curved
+   raisers to the **conforming path (Solver B)** where a 2D idealization applies, and keep
+   labelling voxel peak-stress at holes/fillets as screening-only (§5).
+
+Effort estimate: (1)+(3) are the substantive pieces (a graded mesher + a better
+preconditioner); (2) is mostly wiring already-written code. None of it is a physics
+change — the recovery and element formulation are already validated by A1–A4 and B1.
