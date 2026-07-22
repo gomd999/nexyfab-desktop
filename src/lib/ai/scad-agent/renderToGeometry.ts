@@ -90,3 +90,134 @@ async function parseStlBinary(bytes: Uint8Array): Promise<THREE.BufferGeometry> 
   geo.computeVertexNormals();
   return geo;
 }
+
+/**
+ * The measured bounds of an STL, extracted with ZERO external dependencies
+ * (no `three`, no `three/examples` STLLoader, no app-route analysis modules).
+ * Populated straight from the raw bytes so the reconstruction gate always has
+ * a real bbox to verify against — even when the richer verification chain's
+ * deep dynamic imports fail to resolve inside the production server bundle.
+ */
+export interface StlBounds {
+  triangleCount: number;
+  /** null only when the mesh has no finite vertices (empty render). */
+  bbox: { min: [number, number, number]; max: [number, number, number] } | null;
+  /** Absolute mesh volume via signed-tetrahedra sum (mm³). */
+  volume_mm3: number;
+}
+
+/**
+ * Detect binary vs ASCII STL. Mirrors THREE's STLLoader heuristic: a size
+ * match (`84 + 50·faces === length`) is decisive; otherwise a leading
+ * "solid" token (within the first 5 bytes, to tolerate a BOM) marks ASCII;
+ * failing both, treat as binary.
+ */
+function looksBinaryStl(bytes: Uint8Array): boolean {
+  if (bytes.length < 84) return false;
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const nFaces = dv.getUint32(80, true);
+  if (84 + nFaces * 50 === bytes.length) return true;
+  const solid = [115, 111, 108, 105, 100]; // 's','o','l','i','d'
+  for (let off = 0; off < 5; off++) {
+    let match = true;
+    for (let i = 0; i < 5; i++) {
+      if (bytes[off + i] !== solid[i]) { match = false; break; }
+    }
+    if (match) return false;
+  }
+  return true;
+}
+
+/** Fold one triangle into the running bbox + signed-volume accumulators. */
+function accumTriangle(
+  ax: number, ay: number, az: number,
+  bx: number, by: number, bz: number,
+  cx: number, cy: number, cz: number,
+  acc: { min: number[]; max: number[]; vol: number },
+): void {
+  const xs = [ax, bx, cx], ys = [ay, by, cy], zs = [az, bz, cz];
+  for (let k = 0; k < 3; k++) {
+    if (xs[k] < acc.min[0]) acc.min[0] = xs[k]; if (xs[k] > acc.max[0]) acc.max[0] = xs[k];
+    if (ys[k] < acc.min[1]) acc.min[1] = ys[k]; if (ys[k] > acc.max[1]) acc.max[1] = ys[k];
+    if (zs[k] < acc.min[2]) acc.min[2] = zs[k]; if (zs[k] > acc.max[2]) acc.max[2] = zs[k];
+  }
+  // Signed volume of tetra (origin, a, b, c) = a · (b × c) / 6.
+  const crossX = by * cz - bz * cy;
+  const crossY = bz * cx - bx * cz;
+  const crossZ = bx * cy - by * cx;
+  acc.vol += (ax * crossX + ay * crossY + az * crossZ) / 6;
+}
+
+/**
+ * Extract triangle count, bounding box, and volume directly from STL bytes,
+ * handling BOTH binary (`--export-format=binstl`) and ASCII STL. Pure Buffer /
+ * string arithmetic — safe to call in any environment and independent of the
+ * fragile deep imports `verifyStlBuffer` relies on. Never throws on a
+ * well-formed STL; returns `bbox: null` for an empty (zero-triangle) mesh.
+ */
+export function parseStlBufferToBounds(bytes: Uint8Array): StlBounds {
+  const acc = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity], vol: 0 };
+  let triangleCount = 0;
+
+  if (looksBinaryStl(bytes)) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const faces = dv.getUint32(80, true);
+    // Guard against a corrupt header claiming more faces than the buffer holds.
+    const maxFaces = Math.floor((bytes.length - 84) / 50);
+    triangleCount = Math.min(faces, Math.max(0, maxFaces));
+    let o = 84;
+    for (let t = 0; t < triangleCount; t++) {
+      o += 12; // skip the (unreliable) face normal
+      const ax = dv.getFloat32(o, true), ay = dv.getFloat32(o + 4, true), az = dv.getFloat32(o + 8, true);
+      const bx = dv.getFloat32(o + 12, true), by = dv.getFloat32(o + 16, true), bz = dv.getFloat32(o + 20, true);
+      const cx = dv.getFloat32(o + 24, true), cy = dv.getFloat32(o + 28, true), cz = dv.getFloat32(o + 32, true);
+      accumTriangle(ax, ay, az, bx, by, bz, cx, cy, cz, acc);
+      o += 36 + 2; // 3 verts + attribute byte count
+    }
+  } else {
+    // ASCII STL — pull every "vertex x y z", group into triangles of 3.
+    const text = new TextDecoder().decode(bytes);
+    const re = /vertex\s+([-+eE0-9.]+)\s+([-+eE0-9.]+)\s+([-+eE0-9.]+)/g;
+    const verts: number[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      verts.push(parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]));
+    }
+    triangleCount = Math.floor(verts.length / 9);
+    for (let t = 0; t < triangleCount; t++) {
+      const i = t * 9;
+      accumTriangle(
+        verts[i], verts[i + 1], verts[i + 2],
+        verts[i + 3], verts[i + 4], verts[i + 5],
+        verts[i + 6], verts[i + 7], verts[i + 8],
+        acc,
+      );
+    }
+  }
+
+  const bbox = Number.isFinite(acc.min[0])
+    ? {
+        min: [acc.min[0], acc.min[1], acc.min[2]] as [number, number, number],
+        max: [acc.max[0], acc.max[1], acc.max[2]] as [number, number, number],
+      }
+    : null;
+  return { triangleCount, bbox, volume_mm3: Math.abs(acc.vol) };
+}
+
+/**
+ * Cheap triangle count for BOTH binary and ASCII STL. The binary-STL header
+ * (uint32 at offset 80) is only valid for binstl; `runOpenScadCli` doesn't
+ * force `--export-format`, so the installed OpenSCAD may emit ASCII — in which
+ * case reading offset 80 as a count yields garbage. This handles both.
+ */
+export function countStlTriangles(bytes: Uint8Array): number {
+  if (looksBinaryStl(bytes)) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const faces = dv.getUint32(80, true);
+    const maxFaces = Math.floor((bytes.length - 84) / 50);
+    return Math.min(faces, Math.max(0, maxFaces));
+  }
+  const text = new TextDecoder().decode(bytes);
+  const m = text.match(/\bfacet\b/g);
+  return m ? m.length : 0;
+}

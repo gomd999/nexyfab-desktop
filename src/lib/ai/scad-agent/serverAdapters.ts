@@ -85,12 +85,16 @@ export const serverRenderAdapter: RenderAdapter = async (scad) => {
       ts: Date.now(),
     };
   }
-  // STL triangle count: trust the binary STL header (4-byte little-endian
-  // tri count after the 80-byte text header). Falls back to size-based
-  // estimate if header is malformed.
+  // STL triangle count. The binary-STL header (uint32 at offset 80) is only
+  // valid for binstl; runOpenScadCli does NOT force --export-format, so the
+  // installed OpenSCAD may emit ASCII STL — in which case reading offset 80
+  // gives garbage. countStlTriangles handles both formats.
   let triangles = 0;
-  if (out.buffer.length >= 84) {
-    triangles = out.buffer.readUInt32LE(80);
+  try {
+    const { countStlTriangles } = await import('./renderToGeometry');
+    triangles = countStlTriangles(new Uint8Array(out.buffer.buffer, out.buffer.byteOffset, out.buffer.byteLength));
+  } catch {
+    if (out.buffer.length >= 84) triangles = out.buffer.readUInt32LE(80);
   }
   const state: RenderState = {
     ok: true,
@@ -113,16 +117,46 @@ export const serverRenderAdapter: RenderAdapter = async (scad) => {
  */
 export const serverGeometryAdapter: GeometryAdapter = async (render) => {
   const buf = render.ok === true ? lastStlBuffer.get(render) : undefined;
-  if (buf) {
-    try {
-      return await verifyStlBuffer(buf);
-    } catch {
-      // Parsing/verification failed — degrade to the estimate below rather
-      // than block the agent. (Don't claim manifold we couldn't confirm.)
-      return { triangleCount: render.triangles };
-    }
+  if (!buf) return { triangleCount: render.triangles };
+  const bytes = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+
+  // GUARANTEED baseline — bbox / volume / triangle count parsed straight from
+  // the STL bytes with zero external dependencies. The reconstruction gate
+  // needs the bbox; this path must survive even when the richer verification
+  // chain's deep dynamic imports (app-route analysis, three/examples STLLoader)
+  // fail to resolve in the production server bundle. Previously a throw here
+  // degraded to a bbox-less { triangleCount }, so the gate saw no geometry and
+  // returned null ("unverified-null") on an otherwise successful render.
+  let baseline: GeometryStats = { triangleCount: render.triangles };
+  try {
+    const { parseStlBufferToBounds } = await import('./renderToGeometry');
+    const b = parseStlBufferToBounds(bytes);
+    baseline = {
+      triangleCount: b.triangleCount || render.triangles,
+      ...(b.bbox ? { bbox: b.bbox } : {}),
+      ...(b.volume_mm3 > 0 ? { volume_mm3: b.volume_mm3 } : {}),
+    };
+  } catch {
+    /* keep the render-reported triangle count as the last-resort baseline */
   }
-  return { triangleCount: render.triangles };
+
+  // ENRICHMENT — real manifold / watertight / genus / holes / wall thickness,
+  // layered on top of the guaranteed baseline. Best-effort: any failure keeps
+  // the baseline (with its bbox) rather than dropping the geometry the gate
+  // depends on.
+  try {
+    const rich = await verifyStlBuffer(buf);
+    const bbox = rich.bbox ?? baseline.bbox;
+    const volume_mm3 = rich.volume_mm3 ?? baseline.volume_mm3;
+    return {
+      ...baseline,
+      ...rich,
+      ...(bbox ? { bbox } : {}),
+      ...(volume_mm3 !== undefined ? { volume_mm3 } : {}),
+    };
+  } catch {
+    return baseline;
+  }
 };
 
 /**
