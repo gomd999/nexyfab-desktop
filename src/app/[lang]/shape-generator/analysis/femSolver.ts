@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { FEAMaterial, FEABoundaryCondition } from './simpleFEA';
 import { blockJacobi3x3, incompleteCholesky0 } from './ichol';
+import { hasCurvedStressRaiser, generateRefinedTetMesh, type RefineDiagnostics } from './femRefine';
 
 /** Preconditioner selection for {@link sparsePCG}. Default 'jacobi' keeps the
  *  small validation cases (A1-A4) byte-for-byte identical. */
@@ -39,6 +40,12 @@ export interface FEMResult {
   converged: boolean;
   /** Number of PCG iterations taken */
   iterations: number;
+  /** Which meshing path produced this result. */
+  meshMode?: 'uniform' | 'refined';
+  /** Diagnostics from the graded refine+snap pass (refined path only). */
+  refineDiag?: RefineDiagnostics;
+  /** Preconditioner the PCG actually used. */
+  preconditioner?: string;
 }
 
 export interface Tet {
@@ -655,11 +662,38 @@ function _denseConjugateGradient(
  * conditions — FEABoundaryCondition[] using face indices (same as simpleFEA)
  * maxNodes  — mesh resolution cap (default 1200)
  */
+/** Dimensionless tetrahedron shape quality from its 4 corner nodes:
+ *  |V| / (mean edge^2)^{3/2}. A regular tet gives a fixed positive value; a flat
+ *  sliver -> 0. It is SCALE-INVARIANT and depends only on SHAPE, so every element
+ *  of a uniform structured grid (all congruent Kuhn tets) gets the identical value
+ *  — which is why using it as a stress-recovery weight leaves the smooth-mesh
+ *  benchmarks unchanged while suppressing distorted transition tets on a graded
+ *  refined mesh. */
+export function tetShapeQuality(
+  coords: Float32Array, a: number, b: number, c: number, d: number,
+): number {
+  const ax = coords[a*3], ay = coords[a*3+1], az = coords[a*3+2];
+  const bx = coords[b*3], by = coords[b*3+1], bz = coords[b*3+2];
+  const cx = coords[c*3], cy = coords[c*3+1], cz = coords[c*3+2];
+  const dx = coords[d*3], dy = coords[d*3+1], dz = coords[d*3+2];
+  const v6 = (bx-ax)*((cy-ay)*(dz-az)-(cz-az)*(dy-ay))
+           - (by-ay)*((cx-ax)*(dz-az)-(cz-az)*(dx-ax))
+           + (bz-az)*((cx-ax)*(dy-ay)-(cy-ay)*(dx-ax));
+  const vol = Math.abs(v6) / 6;
+  const e = (p: number, q: number, r: number) => p*p + q*q + r*r;
+  const sumSq = e(bx-ax,by-ay,bz-az) + e(cx-ax,cy-ay,cz-az) + e(dx-ax,dy-ay,dz-az)
+              + e(cx-bx,cy-by,cz-bz) + e(dx-bx,dy-by,dz-bz) + e(dx-cx,dy-cy,dz-cz);
+  const meanSq = sumSq / 6;
+  if (meanSq <= 0) return 0;
+  return vol / Math.pow(meanSq, 1.5);
+}
+
 export function runFEM(
   geometry: THREE.BufferGeometry,
   material: FEAMaterial,
   conditions: FEABoundaryCondition[],
   maxNodes = 1200,
+  opts: { refine?: 'auto' | 'on' | 'off'; targetSize?: number; band?: number; maxCornerNodes?: number } = {},
 ): FEMResult {
   // Work with non-indexed triangles so face indices are contiguous triples
   const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry.clone();
@@ -677,9 +711,30 @@ export function runFEM(
   // nodes) — linear tets lock in bending; TET10 represents a linear strain field
   // so cantilevers come out within a few %. Grid is sized smaller so the TET10
   // DOF count stays near maxNodes.
-  const tet4 = generateTetMesh(pos, Math.max(64, Math.floor(maxNodes / 3)));
-  const nCornerNodes = tet4.nodes.length / 3; // nodes [0,nCornerNodes) are corners; the rest are edge midsides
-  const { nodes, elems } = buildTet10Mesh(tet4.nodes, tet4.tets);
+  // Choose the meshing path. A prismatic part (no curved stress-raiser) keeps the
+  // byte-identical uniform-grid + Jacobi path so A1-A4 are unchanged. A curved
+  // raiser (bore/fillet) switches to GRADED refinement + boundary snap (femRefine)
+  // and the IC(0) preconditioner — a fine conforming mesh Jacobi cannot converge.
+  const refineMode = opts.refine ?? 'auto';
+  const useRefine = refineMode === 'on' || (refineMode !== 'off' && hasCurvedStressRaiser(pos));
+  let meshNodes: Float32Array;
+  let meshTets: Tet[];
+  let meshMode: 'uniform' | 'refined';
+  let refineDiag: RefineDiagnostics | undefined;
+  if (useRefine) {
+    const coarse = generateTetMesh(pos, Math.max(300, Math.min(2200, Math.floor(maxNodes / 6))));
+    const refined = generateRefinedTetMesh(pos, coarse, {
+      targetSize: opts.targetSize,
+      band: opts.band,
+      maxCornerNodes: opts.maxCornerNodes ?? Math.max(4000, Math.min(8000, maxNodes)),
+    });
+    meshNodes = refined.nodes; meshTets = refined.tets; meshMode = 'refined'; refineDiag = refined.diag;
+  } else {
+    const tet4 = generateTetMesh(pos, Math.max(64, Math.floor(maxNodes / 3)));
+    meshNodes = tet4.nodes; meshTets = tet4.tets; meshMode = 'uniform';
+  }
+  const nCornerNodes = meshNodes.length / 3; // nodes [0,nCornerNodes) are corners; the rest are edge midsides
+  const { nodes, elems } = buildTet10Mesh(meshNodes, meshTets);
   const nNodes = nodes.length / 3;
   const nDOF   = nNodes * 3;
 
@@ -844,7 +899,8 @@ export function runFEM(
   const K = new CSRMatrix(nDOF, nDOF, entries);
 
   // --- Solve K * u = F (Preconditioned Conjugate Gradient, Jacobi preconditioner) ---
-  const { x: u, converged, iterations: solverIterations } = sparsePCG(K, F, 2000, 1e-7);
+  const { x: u, converged, iterations: solverIterations, preconditioner } =
+    sparsePCG(K, F, 2000, 1e-7, useRefine ? 'ic0' : 'jacobi');
 
   // --- Recover stress with NODAL sampling + stress-TENSOR averaging ---
   // Centroid-only recovery samples the strain at the element centre, which smears
@@ -858,11 +914,21 @@ export function runFEM(
   const nodeStress  = new Float32Array(nNodes);
   const nodeDisp    = new Float32Array(nNodes);
   const nodeDispVec = new Float32Array(nNodes * 3);
-  const nodeCount   = new Float32Array(nNodes);
+  const nodeW       = new Float64Array(nNodes);
 
   const lam = E * nu / ((1 + nu) * (1 - 2 * nu));
   const mu  = E / (2 * (1 + nu));
+  // Nodal stress is accumulated with a per-element SHAPE-QUALITY weight (not a
+  // plain count). On the uniform grid every element is a congruent Kuhn tet, so
+  // the weight is IDENTICAL for all elements and cancels — the smooth-mesh cases
+  // (A1-A4) are byte-for-byte unchanged. On the graded refined mesh, a distorted
+  // transition/sliver tet has quality -> 0, so its (numerically unreliable, and
+  // otherwise spike-inducing) stress is suppressed instead of hijacking the
+  // reported peak. This is what makes the refined Kt mesh-stable rather than a
+  // lucky number driven by the single worst element.
   for (const elem of elems) {
+    const qw = tetShapeQuality(nodes, elem[0], elem[1], elem[2], elem[3]);
+    if (!(qw > 0)) continue;
     // Sample the strain field at each of the 10 element-node positions.
     for (let a = 0; a < 10; a++) {
       const { B, detJ } = tet10B(nodes, elem, TET10_NODE_L[a]);
@@ -875,20 +941,20 @@ export function runFEM(
       }
       const na = elem[a];
       const tr = eps[0] + eps[1] + eps[2];
-      nodeSxx[na] += lam*tr + 2*mu*eps[0];
-      nodeSyy[na] += lam*tr + 2*mu*eps[1];
-      nodeSzz[na] += lam*tr + 2*mu*eps[2];
-      nodeSxy[na] += mu*eps[3];
-      nodeSyz[na] += mu*eps[4];
-      nodeSzx[na] += mu*eps[5];
-      nodeCount[na]++;
+      nodeSxx[na] += qw * (lam*tr + 2*mu*eps[0]);
+      nodeSyy[na] += qw * (lam*tr + 2*mu*eps[1]);
+      nodeSzz[na] += qw * (lam*tr + 2*mu*eps[2]);
+      nodeSxy[na] += qw * (mu*eps[3]);
+      nodeSyz[na] += qw * (mu*eps[4]);
+      nodeSzx[na] += qw * (mu*eps[5]);
+      nodeW[na] += qw;
     }
   }
 
   // Average the tensor at each node → von Mises; displacement carried straight
   // from the solved DOFs.
   for (let n = 0; n < nNodes; n++) {
-    const cnt = nodeCount[n] || 1;
+    const cnt = nodeW[n] || 1;
     const sx = nodeSxx[n]/cnt, sy = nodeSyy[n]/cnt, sz = nodeSzz[n]/cnt;
     const txy = nodeSxy[n]/cnt, tyz = nodeSyz[n]/cnt, txz = nodeSzx[n]/cnt;
     nodeStress[n] = Math.sqrt(0.5 * (
@@ -948,5 +1014,8 @@ export function runFEM(
     elementCount: elems.length,
     converged,
     iterations: solverIterations,
+    meshMode,
+    refineDiag,
+    preconditioner,
   };
 }

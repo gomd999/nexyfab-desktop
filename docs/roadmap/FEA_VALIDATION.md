@@ -8,6 +8,29 @@ The point of this document is credibility: it measures our FEA against known-goo
 references and states, per benchmark, the error and a PASS/FAIL. Where our solver is
 wrong, this report says so and quantifies it — that is what drives the fix.
 
+### Changelog — 2026-07-22 Stage-2: graded refinement + boundary conformance (A5 FIXED)
+- **A5 FIXED (64.4% FAIL → 5.6% PASS).** The plate-hole Kt moved **1.07 → 2.833** (ref
+  Kirsch 3.0), now inside the 17% tol — **engineering-grade**, not certification-grade
+  (see §4). Root cause was the *voxel mesher*, not the physics: it staircased the bore
+  and under-resolved it. Fix (femRefine.ts), triggered only when a **curved stress-raiser
+  is detected** so prismatic parts are untouched:
+  1. **Graded refinement** — from the uniform coarse grid, longest-edge bisect the tets
+     near the bore with a **distance-graded** target (finest ON the bore, coarsening
+     outward), reaching ~O(10) cells across the radius (~68k DOF, ~14k tets),
+     solved with the **IC(0)** preconditioner (Jacobi cannot converge at this size).
+  2. **Boundary conformance** — bore nodes are **snapped onto the true circle**
+     (three-mesh-bvh closest-point) with a line-searched, Jacobian-guarded move, then
+     Laplacian-smoothed, so nodes land where the Kirsch peak lives with no inverted or
+     sliver elements.
+  - **Conforming across levels:** refinement is pure edge bisection with full incident-tet
+    closure — a bisected edge's midpoint is shared by every incident tet, so it is **never
+    a hanging node** (no octree constraints / transition templates needed). A unit test
+    (feaConformance.test.ts) proves zero interior T-junctions + positive Jacobians.
+  - **Honesty:** peak stress at the bore is mesh-sensitive at the ~10-15% level (it also
+    picks up the 3D hole/face free-edge effect), so this is **engineering-grade**. The
+    stress-recovery peak is now **shape-quality weighted** so a lone distorted transition
+    tet can no longer hijack the reported maximum.
+
 ### Changelog — 2026-07-22 meshing/recovery upgrade
 - **A4 FIXED (56.2% FAIL → 4.9% PASS).** Root cause was *stress recovery*, not physics:
   the same mesh's tip DISPLACEMENT was already exact (A2 = 0.2%), yet centroid-only
@@ -95,7 +118,7 @@ error, NAFEMS style). Error% = |ours − ref| / |ref|.
 | A2 | Cantilever tip deflection `δ=PL³/3EI` | 3D TET10 (voxel) | disp (mm) | 2.500 | 2.549 | **2.0** | 15 | **PASS** |
 | A3 | Uniaxial tension stress `σ=F/A` | 3D TET10 (voxel) | σ (MPa) | 200.0 | 200.0 | **0.0** | 10 | **PASS** |
 | A4 | Cantilever root bending stress `σ=Mc/I` | 3D TET10 (voxel) | σ (MPa) | 1500 | 1427 | **4.9** | 10 | **PASS** |
-| A5 | Plate-with-hole `Kt` (voxel mesh) | 3D TET10 (voxel) | Kt | 3.000 | 1.067 | **64.4** | 17 | **FAIL** |
+| A5 | Plate-with-hole `Kt` (**graded refine+snap**) | 3D TET10 (conforming) | Kt | 3.000 | 2.833 | **5.6** | 17 | **PASS** |
 | B1 | Kirsch `Kt` (**conforming** mesh) | 2D Q4 (conforming) | Kt | 3.000 | 2.872 | **4.3** | 15 | **PASS** |
 | B2 | Kirsch hoop `σθθ` at θ=0 | 2D Q4 (conforming) | σθθ/σ | −1.000 | −0.895 | **10.5** | 20 | **PASS** |
 | C1 | Cantilever tip `δ=PL³/3EI` | 2D frame (beam) | disp (mm) | 125.0 | 125.0 | **0.0** | 5 | **PASS** |
@@ -103,10 +126,10 @@ error, NAFEMS style). Error% = |ours − ref| / |ref|.
 | C2r | Simply-supported reaction `R=P/2` | 2D frame (beam) | R (N) | 500.0 | 500.0 | **0.0** | 5 | **PASS** |
 | C3 | Simply-supported, UDL `δ=5wL⁴/384EI` | 2D frame (beam) | disp (mm) | 9.766 | 9.766 | **0.0** | 5 | **PASS** |
 
-**Score: 10 / 11 PASS, 1 FAIL.** The single remaining failure (A5) is *volumetric
-stress concentration at a curved raiser* on the voxel path — the one place the codebase
-already flags as untrustworthy, now quantified. A4 (previously 56% low) is fixed; see
-the 2026-07-22 changelog above and the scoped A5 plan in §6.
+**Score: 11 / 11 PASS.** A5 (volumetric stress concentration at a curved raiser) is now
+FIXED by the Stage-2 graded, boundary-conforming refinement — engineering-grade (see §4),
+not certification-grade. A4 (previously 56% low) was fixed earlier the same day; see the
+changelogs above.
 
 ---
 
@@ -127,25 +150,23 @@ the 2026-07-22 changelog above and the scoped A5 plan in §6.
   reproduces the Kirsch `Kt=3.0` to 4.3% and the −1·σ hoop at the load axis to 10.5%.
   The physics and recovery are right when the mesh follows the geometry.
 
-**Where the FEA is wrong (do NOT trust it, and we say so):**
-- **A5 — stress concentration on the production voxel path: `Kt`=1.07 vs 3.0, 64% LOW.**
-  Two compounding causes, both measured: (1) the structured grid **staircases the hole**
-  — no node lands on the true boundary where the Kirsch peak lives; (2) at any node
-  budget the in-browser Jacobi-PCG can *converge* on, the **uniform grid grossly
-  under-resolves** an r=10 mm hole (≈1 in-plane cell across the radius). Raising the
-  budget lifts `Kt` only 1.07 → ~1.75 and then the solver **stops converging**
-  (unreliable). A boundary-snap conformance pass was implemented and measured: at the
-  converging budget it moves **zero** nodes (the grid is too coarse for any node to fall
-  within snap range of the hole), so it was **not shipped** — it would add cost with no
-  measured benefit until local refinement exists. B1 shows the *same physics* gives
-  `Kt`=2.87 once the mesh conforms — so this is a **mesher limitation, not a
-  solver-physics bug**. Scoped fix in §6.
+**Stress concentration at a curved raiser — FIXED to engineering-grade (Stage-2):**
+- **A5 — plate-hole `Kt` = 2.833 vs 3.0 (5.6% err), on the GRADED CONFORMING path**
+  (was 1.07 / 64% low on the raw voxel path). When a curved stress-raiser is detected,
+  runFEM abandons the staircased uniform grid for a graded, boundary-conforming tet mesh
+  (longest-edge bisection with incident-tet closure — no hanging nodes) whose bore nodes
+  are snapped ONTO the true circle, solved with IC(0). This is **engineering-grade, not
+  certification-grade**: the reported peak is mesh-sensitive at the ~10-15% level (Kt
+  drifts ~2.6-3.0 as the near-bore cell size goes 2.2→1.4 mm) because it also samples the
+  genuine **3D free-edge effect** where the bore meets the flat faces — a real feature the
+  2D Kirsch/Howland references (3.0 infinite / 2.57 finite-width) do not carry. So trust
+  it to **rank and screen** notch severity to ~15%, not to certify a fatigue hot-spot to
+  the percent.
 
-**Bottom line for the production web path (`fea-quick` = Solver A):** use it for
-**deflection / stiffness screening and safety-factor triage on smooth prismatic
-parts**. Do **not** quote its **peak stress at fillets, holes, or clamped edges** as a
-qualification number — it under-predicts there, materially. This matches the existing
-in-repo warnings (`feaStressConcentration.test.ts`, `feaPlateHoleKt.ts`).
+**Bottom line for the production web path (`fea-quick` = Solver A):** trust it for
+**deflection / stiffness screening and safety-factor triage on smooth prismatic parts**,
+and for **peak stress at a curved raiser to engineering-grade (~10-15%)** via the graded
+refine+snap path. Do **not** quote raiser peak stress as a **certification** number.
 
 ---
 
@@ -156,12 +177,12 @@ Given the measured errors, the honest positioning:
 - **Ready now:** linear-static **displacement/stiffness** and **smooth-field stress**
   as a *screening* tool, and 2D **beam/frame** checks (exact). Good enough to rank
   designs, size deflection, and flag "obviously overstressed."
-- **Not ready to certify:** any workflow whose answer is a **peak stress at a geometric
-  raiser** (fatigue hot-spots, notch stress, hole/fillet `Kt`). On the production voxel
-  path that number is 50–66% low. Certification-grade stress needs the
-  **boundary-conforming mesher** (Solver B already proves the path works in 2D; the 3D
-  version is the gating investment) and ideally surface/nodal stress recovery instead
-  of centroid.
+- **Engineering-grade now (not certification):** **peak stress at a curved raiser**
+  (hole/fillet `Kt`) via the Stage-2 graded, boundary-conforming refine+snap path —
+  measured A5 `Kt`=2.833 vs 3.0 (5.6%), mesh-sensitive at ~10-15% and inclusive of the
+  3D free-edge effect. Good enough to **rank and screen** notch severity; **not** yet a
+  certification number for a fatigue hot-spot. Certification-grade would need a true
+  unstructured boundary-layer mesher and a mesh-convergence study at the raiser.
 - **Out of scope until built:** curved-surface pressure loads, interior point loads,
   and thermal loading in the 3D path — which is why NAFEMS LE1/LE10/LE11 are N/A rather
   than failed.
@@ -173,10 +194,9 @@ report backs with numbers rather than adjectives.
 
 ---
 
-## 6. Scoped plan for A5 (3D stress concentration)
+## 6. A5 (3D stress concentration) — DONE (Stage-1 + Stage-2, 2026-07-22)
 
-A5 is the one benchmark the production voxel path still fails, and the measurements
-above pin down exactly why. The remaining work, in dependency order:
+A5 is now PASSING to engineering-grade. What shipped, matching the plan that was here:
 
 1. **Local refinement at raisers (biggest lever).** The uniform grid spends its node
    budget on the bulk plate; the hole gets ≈1 cell across its radius. Bias grid density
