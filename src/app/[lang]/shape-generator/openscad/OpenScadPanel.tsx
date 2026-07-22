@@ -164,6 +164,13 @@ const dict = {
     analyzing: '분석 중…',
     applyCandidate: '↓ 검증 섹션에 적용',
     reRouteFailed: '메시 역설계 실패',
+    reFleetToggle: 'AI 정밀 복원 (Pro)',
+    reFleetHint: 'LLM 반복 복원 · 일일 예산·월 슬롯 차감. 복잡 부품은 미검증(정직)이 정상.',
+    reFleetPass: 'AI 복원 검증 통과',
+    reFleetFail: '미검증 (정직 non-pass)',
+    reFleetAttempts: '시도',
+    reFleetSeriesSwitch: '계열 전환',
+    reFleetFamilies: '모델 계열',
     quoteToggle: '💰 견적 요청',
     quoteProcessLabel: '공정',
     quoteMaterialLabel: '재질',
@@ -312,6 +319,13 @@ const dict = {
     analyzing: 'Analyzing…',
     applyCandidate: '↓ Apply to verify section',
     reRouteFailed: 'Mesh reverse engineering failed',
+    reFleetToggle: 'AI precision reconstruction (Pro)',
+    reFleetHint: 'Iterative LLM reconstruction · uses daily budget + monthly slot. A non-pass on complex parts is expected (honest).',
+    reFleetPass: 'AI reconstruction verified',
+    reFleetFail: 'Unverified (honest non-pass)',
+    reFleetAttempts: 'attempts',
+    reFleetSeriesSwitch: 'series switch',
+    reFleetFamilies: 'model families',
     quoteToggle: '💰 Request quote',
     quoteProcessLabel: 'Process',
     quoteMaterialLabel: 'Material',
@@ -460,6 +474,13 @@ const dict = {
     analyzing: '解析中…',
     applyCandidate: '↓ 検証セクションに適用',
     reRouteFailed: 'メッシュのリバースエンジニアに失敗しました',
+    reFleetToggle: 'AI精密復元 (Pro)',
+    reFleetHint: 'LLM反復復元 · 日次予算・月次スロット消費。複雑部品の非合格(正直)は想定内。',
+    reFleetPass: 'AI復元 検証合格',
+    reFleetFail: '未検証 (正直な非合格)',
+    reFleetAttempts: '試行',
+    reFleetSeriesSwitch: '系列切替',
+    reFleetFamilies: 'モデル系列',
     quoteToggle: '💰 見積依頼',
     quoteProcessLabel: '工程',
     quoteMaterialLabel: '材質',
@@ -607,6 +628,13 @@ const dict = {
     analyzing: '分析中…',
     applyCandidate: '↓ 应用到验证区',
     reRouteFailed: '网格逆向工程失败',
+    reFleetToggle: 'AI 精密重建 (Pro)',
+    reFleetHint: 'LLM 迭代重建 · 消耗每日预算与每月配额。复杂零件未通过(诚实)属正常。',
+    reFleetPass: 'AI 重建已验证',
+    reFleetFail: '未验证 (诚实未通过)',
+    reFleetAttempts: '尝试',
+    reFleetSeriesSwitch: '系列切换',
+    reFleetFamilies: '模型系列',
     quoteToggle: '💰 申请报价',
     quoteProcessLabel: '工艺',
     quoteMaterialLabel: '材料',
@@ -755,6 +783,13 @@ const dict = {
     analyzing: 'Analizando…',
     applyCandidate: '↓ Aplicar a la sección de verificación',
     reRouteFailed: 'Fallo al hacer ingeniería inversa de la malla',
+    reFleetToggle: 'Reconstrucción de precisión IA (Pro)',
+    reFleetHint: 'Reconstrucción iterativa con LLM · consume presupuesto diario y cupo mensual. Un no-aprobado en piezas complejas es esperable (honesto).',
+    reFleetPass: 'Reconstrucción IA verificada',
+    reFleetFail: 'No verificado (no-aprobado honesto)',
+    reFleetAttempts: 'intentos',
+    reFleetSeriesSwitch: 'cambio de serie',
+    reFleetFamilies: 'familias de modelo',
     quoteToggle: '💰 Solicitar cotización',
     quoteProcessLabel: 'Proceso',
     quoteMaterialLabel: 'Material',
@@ -903,6 +938,13 @@ const dict = {
     analyzing: 'جارٍ التحليل…',
     applyCandidate: '↓ تطبيق على قسم التحقق',
     reRouteFailed: 'فشل الهندسة العكسية للشبكة',
+    reFleetToggle: 'إعادة بناء دقيقة بالذكاء الاصطناعي (Pro)',
+    reFleetHint: 'إعادة بناء تكرارية عبر LLM · تستهلك الميزانية اليومية والحصة الشهرية. عدم الاجتياز للقطع المعقدة أمر متوقع (بصدق).',
+    reFleetPass: 'تم التحقق من إعادة البناء بالذكاء الاصطناعي',
+    reFleetFail: 'غير مُتحقق (عدم اجتياز صادق)',
+    reFleetAttempts: 'محاولات',
+    reFleetSeriesSwitch: 'تبديل السلسلة',
+    reFleetFamilies: 'عائلات النماذج',
     quoteToggle: '💰 طلب عرض سعر',
     quoteProcessLabel: 'العملية',
     quoteMaterialLabel: 'المادة',
@@ -1239,6 +1281,26 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const [reGate, setReGate] = useState<
     | { status: 'pass' | 'fail'; score: number; stage: string; checks: unknown; feedback: string }
     | { status: 'unavailable'; reason: string }
+    | null
+  >(null);
+  // AI-fleet (lever F) — opt-in Pro-gated frontier reconstruction. When ON, the
+  // analyze request sends { mode: 'ai-fleet' } and the route returns an aiFleet
+  // verdict (gate-verified pass, or an HONEST non-pass on exhaustion — never a
+  // fabricated pass). A non-pass on a complex part is expected, not a product
+  // failure; the UI presents it that way.
+  const [reFleetMode, setReFleetMode] = useState(false);
+  const [reFleet, setReFleet] = useState<
+    | {
+        passed: boolean;
+        attemptsUsed: number;
+        seriesSwitched: boolean;
+        familiesUsed: string[];
+        singleFamily?: boolean;
+        feedback: string | null;
+        note: string;
+        referenceCount?: number;
+      }
+    | { error: string }
     | null
   >(null);
 
@@ -2000,12 +2062,15 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     setReErr('');
     setReCandidates([]);
     setReGate(null);
+    setReFleet(null);
     setReBusy(true);
     try {
       const res = await fetch('/api/nexyfab/reverse-engineer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stlBase64: reStlBase64 }),
+        // AI-fleet mode (Pro) sends { mode: 'ai-fleet' } so the route runs the
+        // reconstruction fleet and returns an aiFleet verdict; default stays cheap.
+        body: JSON.stringify(reFleetMode ? { stlBase64: reStlBase64, mode: 'ai-fleet' } : { stlBase64: reStlBase64 }),
       });
       const data = await res.json().catch(() => ({} as { ok?: boolean; error?: string; candidates?: unknown[] }));
       if (!res.ok || data.ok === false) {
@@ -2024,12 +2089,14 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
       }
       const g = (data as { reconstructionGate?: unknown }).reconstructionGate;
       if (g && typeof g === 'object') setReGate(g as typeof reGate);
+      const fleet = (data as { aiFleet?: unknown }).aiFleet;
+      if (fleet && typeof fleet === 'object') setReFleet(fleet as typeof reFleet);
     } catch (e: unknown) {
       setReErr(e instanceof Error ? e.message : t.reRouteFailed);
     } finally {
       setReBusy(false);
     }
-  }, [reStlBase64, reBusy, t]);
+  }, [reStlBase64, reBusy, reFleetMode, t]);
 
   /** POST to /api/nexyfab/request-quote with the selected provider +
    *  process + material + quantity. We prefill measuredVolumeMm3 / bboxMm
@@ -2872,6 +2939,25 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
                     {reStlName}
                   </p>
                 )}
+                <label
+                  data-testid="reverse-engineer-fleet-toggle"
+                  className="flex items-start gap-2 text-[11px] text-emerald-100/90 cursor-pointer select-none"
+                >
+                  <input
+                    type="checkbox"
+                    checked={reFleetMode}
+                    onChange={e => setReFleetMode(e.target.checked)}
+                    disabled={reBusy}
+                    className="mt-0.5 accent-violet-500"
+                  />
+                  <span className="flex flex-col gap-0.5">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      {t.reFleetToggle}
+                      <span className="text-[9px] px-1 py-px rounded bg-violet-700/70 text-violet-100 border border-violet-500/40 uppercase tracking-wide">Pro</span>
+                    </span>
+                    <span className="text-[10px] text-emerald-200/60">{t.reFleetHint}</span>
+                  </span>
+                </label>
                 <button
                   type="button"
                   data-testid="reverse-engineer-analyze"
@@ -2918,6 +3004,40 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
                         ? `Could not render/compare the reconstruction (${reGate.reason}). Not reported as a pass.`
                         : reGate.feedback}
                     </span>
+                  </div>
+                )}
+                {reFleet && 'error' in reFleet && (
+                  <div
+                    data-testid="reverse-engineer-fleet-error"
+                    className="text-[11px] text-amber-200 bg-amber-950/20 border border-amber-700/40 rounded p-2"
+                  >
+                    {t.reFleetFail}: {reFleet.error}
+                  </div>
+                )}
+                {reFleet && 'passed' in reFleet && (
+                  <div
+                    data-testid="reverse-engineer-fleet"
+                    data-fleet-passed={reFleet.passed ? '1' : '0'}
+                    className={`flex flex-col gap-1 border rounded p-2 text-[11px] ${
+                      reFleet.passed
+                        ? 'border-emerald-600/50 bg-emerald-950/30 text-emerald-200'
+                        : 'border-amber-600/40 bg-amber-950/20 text-amber-200'
+                    }`}
+                  >
+                    <div className="font-mono font-semibold">
+                      {reFleet.passed ? `✓ ${t.reFleetPass}` : `⚠ ${t.reFleetFail}`}
+                    </div>
+                    <div className="text-[10px] opacity-80 font-mono">
+                      {t.reFleetAttempts}: {reFleet.attemptsUsed}
+                      {' · '}{t.reFleetSeriesSwitch}: {reFleet.seriesSwitched ? '✓' : '—'}
+                      {' · '}{t.reFleetFamilies}: {reFleet.familiesUsed.length > 0 ? reFleet.familiesUsed.join(', ') : '—'}
+                    </div>
+                    {reFleet.feedback && (
+                      <div className="text-[10px] opacity-80">{reFleet.feedback}</div>
+                    )}
+                    {reFleet.note && (
+                      <div className="text-[10px] italic opacity-70">{reFleet.note}</div>
+                    )}
                   </div>
                 )}
                 {reCandidates.length > 0 && (

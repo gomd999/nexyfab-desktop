@@ -3144,6 +3144,15 @@ export default function AssemblyPresetPanel({
                     : `Could not render/compare the reconstruction (${stepGate.reason ?? 'unknown'}). Not reported as a pass.`)
               : (stepGate.feedback ?? '')}
           </div>
+          {/* passthrough PASS 는 OCCT 가 자기 임포트를 메시화한 라운드트립 항등성 —
+              근사(박스 후보 vs 충실 IR)의 적대적 대조보다 약한 검증임을 정직하게 표기. */}
+          {stepGate.status === 'pass' && stepGate.mode === 'passthrough' && (
+            <div data-testid="step-gate-passthrough-note" style={{ marginTop: 3, fontSize: 10, fontStyle: 'italic', opacity: 0.75 }}>
+              {ko
+                ? '실솔리드 왕복 대조(항등성 확인) — 근사 복원 대비 약한 검증'
+                : 'Real-solid round-trip (identity check) — weaker verification than approximation-mode reconstruction'}
+            </div>
+          )}
         </div>
       )}
       {warnings.length > 0 && (

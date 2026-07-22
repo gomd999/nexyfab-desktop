@@ -21,6 +21,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { readDwgToDxf, type DwgConvertStats } from '@/lib/brep-bridge/dwgImport';
 import { dxfToIr2d, roundTripVerify2d } from '@/lib/cad-ir/ingestDxf2d';
+import { recordUsageEvent } from '@/lib/plan-guard';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -83,6 +84,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // 게이트 실패는 변환 자체를 막지 않는다 — dxfText/seed 는 반환. 게이트는 null(가짜 통과 금지).
     reconstruction2dGate = null;
   }
+
+  // 측정(best-effort, 요청 차단 금지): 2D 판독 게이트 판정을 기록해 실물 업로드
+  // 전반의 통과율을 사후 질의 가능하게 남긴다.
+  try {
+    recordUsageEvent('anon', 'cad_reconstruction_gate', {
+      route: 'dwg-convert',
+      status: reconstruction2dGate?.status ?? 'unavailable',
+    });
+  } catch { /* never block on measurement */ }
 
   return NextResponse.json({ ok: true, dxfText: r.dxfText, seed, ir2d, reconstruction2dGate, stats: r.stats });
 }

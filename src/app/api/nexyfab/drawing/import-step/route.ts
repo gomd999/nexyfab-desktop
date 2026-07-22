@@ -23,6 +23,7 @@ import { dwgToNexyfabAssembly } from '@/lib/brep-bridge/dwgImport';
 import { satToNexyfabAssembly } from '@/lib/brep-bridge/satImport';
 import { xtToNexyfabAssembly } from '@/lib/brep-bridge/xtImport';
 import { stepToIr, meshSoupToStepIr, gateIntentTriangles, acisReconstructionGate } from '@/lib/cad-ir';
+import { recordUsageEvent } from '@/lib/plan-guard';
 
 /** 독점 포맷 안내(임포트 불가 시 정직 응답) — 각 툴의 개방 포맷 내보내기 경로. */
 const CONVERT_GUIDE: Record<string, string> = {
@@ -201,6 +202,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         name,
       });
     }
+
+    // 측정(best-effort, 요청 차단 금지): 게이트 판정을 기록해 실물 업로드 전반의
+    // 재구성 통과율을 사후 질의 가능하게 남긴다("만들었다 -> 증명했다" 레버).
+    try {
+      recordUsageEvent('anon', 'cad_reconstruction_gate', {
+        route: 'import-step',
+        format: fmt,
+        status: reconstructionGate?.status ?? 'none',
+        ...(reconstructionGate && 'mode' in reconstructionGate ? { mode: reconstructionGate.mode } : {}),
+      });
+    } catch { /* never block on measurement */ }
 
     // preset 응답 계약과 동일(composeIntent·openscad 포함) — 패널·뷰어·패키지 플로우 재사용
     return NextResponse.json({

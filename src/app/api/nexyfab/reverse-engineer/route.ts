@@ -328,8 +328,17 @@ export async function POST(req: NextRequest) {
         genus: result.observedStats.genus,
         componentCount: result.observedStats.componentCount,
         mode: fleetMode ? 'ai-fleet' : 'heuristic',
+        // Gate outcome — the "built -> proven" measurement lever. Lets us later
+        // query real reconstruction pass-rates per mode across live uploads.
+        ...(reconstructionGate ? { reconstructionGateStatus: reconstructionGate.status } : {}),
         ...(aiFleet && 'passed' in aiFleet
-          ? { fleetPassed: aiFleet.passed, fleetAttempts: aiFleet.attemptsUsed }
+          ? {
+              fleetPassed: aiFleet.passed,
+              fleetAttempts: aiFleet.attemptsUsed,
+              fleetSeriesSwitched: aiFleet.seriesSwitched,
+              fleetFamiliesUsed: aiFleet.familiesUsed.join(','),
+              fleetFamilyCount: aiFleet.familiesUsed.length,
+            }
           : {}),
       },
       ip,
