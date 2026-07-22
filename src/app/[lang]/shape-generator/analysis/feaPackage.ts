@@ -186,6 +186,28 @@ export function feaFromStl({ stl, materialKey = 'STS316', loadN = 0, loadNote = 
  * A5 Kt ~5.6% floor) — never crashing, never fabricating. Sync feaFromStl is
  * left byte-identical for its existing callers.
  */
+/**
+ * SERVER precise-path HARD wall-time budget. A fine gmsh curvature-conforming mesh
+ * can SOLVE slowly enough to blow the request's gateway timeout (measured: what=fea
+ * returned 502 after the curvature-remesh change). We therefore (a) cap the gmsh
+ * subprocess wall time AND its node count so its TET10 solve stays octree-class, and
+ * (b) pass an ABSOLUTE solve deadline into runFEM/sparsePCG so NO precise solve --
+ * gmsh OR octree -- can ever hang. Target: the whole precise call returns within
+ * ~PRECISE_WALL_BUDGET_MS, the same window as the octree engineering path we accept
+ * as the shipped FEA level. gmsh stays a BEST-EFFORT upgrade, taken only when it fits
+ * the budget; otherwise the proven octree path runs.
+ */
+const PRECISE_WALL_BUDGET_MS = 26_000;
+/** gmsh subprocess wall cap -- meshing alone must not consume the budget. */
+const GMSH_MESH_TIMEOUT_MS = 10_000;
+/** gmsh corner-node cap. buildTet10Mesh roughly triples this into TET10 nodes, so
+ *  ~12k corners lands near the octree envelope (~68k DOF / ~24s). A finer gmsh mesh
+ *  is REJECTED (oversize => null) and the proven octree path runs instead. */
+const GMSH_MAX_CORNER_NODES = 12_000;
+/** gmsh solve must finish this far into the precise path; if it overruns or the mesh
+ *  is unusable we still have budget left to run the octree fallback. */
+const GMSH_SOLVE_DEADLINE_MS = 16_000;
+
 export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, loadNote = '', precise = false }: FeaPackageInput): Promise<FeaPackageOutput> {
   const mat = FEA_MATERIALS[materialKey] ?? FEA_MATERIALS.STS316;
   const geometry = stlToGeometry(stl);
@@ -203,6 +225,11 @@ export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, 
     : null;
 
   if (precise && raiserDetected && result.method === 'linear-fem-tet') {
+    // HARD wall-time budget starts here -- every step below (gmsh mesh, gmsh solve,
+    // octree solve) is bounded against preciseStart so the precise call reliably
+    // returns within ~PRECISE_WALL_BUDGET_MS instead of timing out (was: 502).
+    const preciseStart = Date.now();
+
     // (1) PREFER a gmsh boundary-conforming mesh (certification-candidate) when the
     //     binary is available. gmsh runs as a SEPARATE PROCESS (GPL-as-subprocess =
     //     mere aggregation, same arm's-length posture as our OpenSCAD CLI).
@@ -214,15 +241,26 @@ export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, 
       const minDim = Math.max(1e-6, Math.min(size.x, size.y, size.z));
       const { gmshTetMeshFromStl } = await import('./gmshMesh');
       const diag: { reason?: string } = {};
-      const g = await gmshTetMeshFromStl(stl, { targetSizeMm: Math.max(0.5, minDim / 4), maxNodes: 120_000, diag });
+      const g = await gmshTetMeshFromStl(stl, {
+        targetSizeMm: Math.max(0.5, minDim / 4),
+        maxNodes: GMSH_MAX_CORNER_NODES, // keep the resulting TET10 solve within the wall budget
+        timeoutMs: GMSH_MESH_TIMEOUT_MS, // meshing alone must not consume the budget
+        diag,
+      });
       if (g) gmshMesh = { nodes: g.nodes, tets: g.tets };
       else gmshError = diag.reason ?? 'gmsh returned null without a recorded reason';
     } catch (e) { gmshMesh = null; gmshError = `gmsh adapter threw: ${(e as Error)?.message ?? String(e)}`; }
 
-    if (gmshMesh) {
+    // Only SOLVE the gmsh mesh if enough of the gmsh sub-budget remains -- otherwise
+    // skip straight to octree so the whole budget is never spent on the gmsh solve.
+    const gmshSolveMsLeft = preciseStart + GMSH_SOLVE_DEADLINE_MS - Date.now();
+    if (gmshMesh && gmshSolveMsLeft >= 3_000) {
       const t0 = Date.now();
       try {
-        const fine = runFEM(geometry, mat, conditions, 12000, { prebuiltMesh: gmshMesh });
+        const fine = runFEM(geometry, mat, conditions, 12000, {
+          prebuiltMesh: gmshMesh,
+          solveDeadlineMs: preciseStart + GMSH_SOLVE_DEADLINE_MS, // never overrun the budget
+        });
         const wallMs = Date.now() - t0;
         const usable = fine.converged && Number.isFinite(fine.maxStress) && fine.maxDisplacement < 1e6;
         if (usable) {
@@ -236,14 +274,20 @@ export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, 
           gmshError = `gmsh 메시는 생성됐으나 FEM 해가 부적합(미수렴/비유한) — DOF ${fine.dofCount.toLocaleString()}`;
         }
       } catch (e) { gmshError = `gmsh 메시 FEM 조립/해석 예외: ${(e as Error)?.message ?? String(e)}`; }
+    } else if (gmshMesh) {
+      gmshError = `gmsh mesh built but too little budget left (${gmshSolveMsLeft}ms) - octree fallback`;
     }
 
-    // (2) FALLBACK: octree-snap ENGINEERING path (A5 Kt ~5.6% proven). Runs when gmsh
-    //     is absent or produced an unusable mesh.
+    // (2) FALLBACK: octree-snap ENGINEERING path (A5 Kt ~5.6% proven), guarded by the
+    //     SAME absolute deadline so it too always returns within the budget. Runs when
+    //     gmsh is absent, produced an unusable/oversize mesh, or overran the sub-budget.
     if (!raiser || !raiser.applied) {
       const t0 = Date.now();
       try {
-        const fine = runFEM(geometry, mat, conditions, 12000, { refine: 'on', maxCornerNodes: 8000 });
+        const fine = runFEM(geometry, mat, conditions, 12000, {
+          refine: 'on', maxCornerNodes: 8000,
+          solveDeadlineMs: preciseStart + PRECISE_WALL_BUDGET_MS, // hard return-by
+        });
         const wallMs = Date.now() - t0;
         const usable = fine.converged && Number.isFinite(fine.maxStress) && fine.maxDisplacement < 1e6;
         if (usable) {

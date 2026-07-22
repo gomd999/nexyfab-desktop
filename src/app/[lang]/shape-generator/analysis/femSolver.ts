@@ -542,6 +542,13 @@ export function sparsePCG(
   maxIter = 2000,
   tol = 1e-8,
   strategy: PrecondStrategy = 'jacobi',
+  /** Optional ABSOLUTE wall-clock deadline (epoch ms). When set, the iteration
+   *  loop stops as soon as Date.now() reaches it and returns the best-so-far x
+   *  as NON-converged. A fine conforming mesh can make each PCG sweep expensive
+   *  enough that maxIter iterations overrun a request's gateway budget; this hard
+   *  guard guarantees the solve always returns instead of hanging (the caller then
+   *  honestly reports non-convergence / falls back). Omitted => behaviour unchanged. */
+  deadlineMs?: number,
 ): { x: Float64Array; converged: boolean; iterations: number; preconditioner: string } {
   const n = b.length;
   const x = new Float64Array(n);
@@ -606,6 +613,12 @@ export function sparsePCG(
 
   for (let iter = 0; iter < maxIter; iter++) {
     iterations = iter + 1;
+
+    // Hard wall-clock guard: bail out (best-so-far x, NON-converged) once the
+    // caller's absolute deadline passes, so a huge/slow mesh can never hang the
+    // request. Checked every 8 iterations (Date.now() is cheap next to a sparse
+    // mat-vec, but not free). Inert when no deadline is supplied.
+    if (deadlineMs !== undefined && (iter & 7) === 0 && Date.now() >= deadlineMs) break;
 
     // Ap = A * p
     const Ap = A.multiply(p);
@@ -736,7 +749,7 @@ export function runFEM(
   material: FEAMaterial,
   conditions: FEABoundaryCondition[],
   maxNodes = 1200,
-  opts: { refine?: 'auto' | 'on' | 'off'; targetSize?: number; band?: number; maxCornerNodes?: number; prebuiltMesh?: { nodes: Float32Array; tets: Tet[] }; thermal?: ThermalLoad } = {},
+  opts: { refine?: 'auto' | 'on' | 'off'; targetSize?: number; band?: number; maxCornerNodes?: number; prebuiltMesh?: { nodes: Float32Array; tets: Tet[] }; thermal?: ThermalLoad; solveDeadlineMs?: number } = {},
 ): FEMResult {
   // Work with non-indexed triangles so face indices are contiguous triples
   const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry.clone();
@@ -986,7 +999,7 @@ export function runFEM(
 
   // --- Solve K * u = F (Preconditioned Conjugate Gradient, Jacobi preconditioner) ---
   const { x: u, converged, iterations: solverIterations, preconditioner } =
-    sparsePCG(K, F, 2000, 1e-7, (useRefine || opts.prebuiltMesh) ? 'ic0' : 'jacobi');
+    sparsePCG(K, F, 2000, 1e-7, (useRefine || opts.prebuiltMesh) ? 'ic0' : 'jacobi', opts.solveDeadlineMs);
 
   // --- Recover stress with NODAL sampling + stress-TENSOR averaging ---
   // Centroid-only recovery samples the strain at the element centre, which smears
