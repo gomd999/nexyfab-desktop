@@ -112,6 +112,34 @@ const AXIS_EPS = 1e-4;
 
 // ─── public API ───────────────────────────────────────────────────────────
 
+/** Axis-aligned bounding box in world coordinates. */
+export interface WorldBBox {
+  min: [number, number, number];
+  max: [number, number, number];
+}
+
+/**
+ * Per-solid world placement, aligned 1:1 with `StepImportResult.tree.nodes`.
+ *
+ * The feature IRs the importer emits are, by convention, expressed in a LOCAL
+ * frame (an extrude starts at z=0; a cylinder revolve is canonicalised to
+ * axis=+Y at the origin). That convention discards the solid's world position,
+ * which is harmless for a single body but STACKS multi-body parts on top of one
+ * another when they are meshed and combined. `worldBBox` preserves the true
+ * world-space axis-aligned extent (measured from the raw CARTESIAN_POINTs before
+ * canonicalisation) so a downstream mesher can translate each body back to its
+ * real position before measuring the combined bbox / centroid.
+ *
+ * `worldBBox` is `null` when the world extent could not be recovered (e.g. a
+ * direct REVOLVED_AREA_SOLID whose swept extent we do not reconstruct) — the
+ * caller must then treat that body's placement as unknown (approximate), never
+ * as faithful.
+ */
+export interface SolidPlacement {
+  /** True world-space AABB of this solid, or null when not recoverable. */
+  worldBBox: WorldBBox | null;
+}
+
 export interface StepImportResult {
   /** Reconstructed feature tree; one FeatureNode per MANIFOLD_SOLID_BREP we
    *  could classify (box / convex polygon prism). Empty when no solids
@@ -124,6 +152,14 @@ export interface StepImportResult {
    *  Phase 1 importer cannot represent (curved surfaces, revolves, holes,
    *  etc). Format: `"#<solid_id>: <reason>"`. */
   unsupported: string[];
+  /** Per-node world placement, aligned 1:1 (same order) with `tree.nodes`. Lets
+   *  a mesher move each body to its true world position before combining. */
+  placements: SolidPlacement[];
+  /** True when the source uses MAPPED_ITEM instancing (a shared representation
+   *  placed via a transform). The pure-TS reader measures the base geometry
+   *  ONCE at its authored coordinates and does NOT expand instance transforms,
+   *  so any combined extent is approximate — never presented as faithful. */
+  hasUnexpandedInstances: boolean;
 }
 
 export interface ImportStepOptions {
@@ -170,7 +206,23 @@ export function importStep(
   const entities = parseEntities(dataBlock);
   if (entities.size === 0) {
     warnings.push('parse:no_entities');
-    return { tree: { nodes: [] }, warnings, unsupported };
+    return { tree: { nodes: [] }, warnings, unsupported, placements: [], hasUnexpandedInstances: false };
+  }
+
+  // MAPPED_ITEM instancing: a shared representation placed via a transform. The
+  // pure-TS reader measures the referenced geometry ONCE at its authored coords
+  // and does not expand the instance transform chain, so any resulting extent is
+  // approximate. Record it so the caller never presents it as faithful.
+  let mappedItemCount = 0;
+  for (const ent of entities.values()) {
+    if (ent.name === 'MAPPED_ITEM') mappedItemCount++;
+  }
+  const hasUnexpandedInstances = mappedItemCount > 0;
+  if (hasUnexpandedInstances) {
+    warnings.push(
+      `mapped_item_instancing_not_expanded: ${mappedItemCount} MAPPED_ITEM(s) — ` +
+        `pure-TS reader measures base geometry only; instanced placement/extent is approximate`,
+    );
   }
 
   // Find every MANIFOLD_SOLID_BREP — each becomes a candidate FeatureNode.
@@ -209,6 +261,8 @@ export function importStep(
 
   const prefix = opts.namePrefix ?? 'imported';
   const nodes: FeatureNode[] = [];
+  // Per-node world placement, kept in lock-step with `nodes` (one push each).
+  const placements: SolidPlacement[] = [];
 
   // ─── pass 1: BREP solids (boxes / polygon prisms / cylinders / sweeps) ──
   let extrudeIdx = 0;
@@ -216,11 +270,13 @@ export function importStep(
   let sweepIdx = 0;
   for (const solidId of solidIds) {
     let feature: ExtrudeFeature | RevolveFeature | SweepFeature | null = null;
+    let placement: WorldBBox | null = null;
     let reason: string | null = null;
     try {
       const result = solidToFeature(solidId, entities);
       if (result.kind === 'ok') {
         feature = result.feature;
+        placement = result.worldBBox ?? null;
       } else {
         reason = result.reason;
       }
@@ -231,6 +287,7 @@ export function importStep(
       unsupported.push(`#${solidId}: ${reason ?? 'unknown'}`);
       continue;
     }
+    placements.push({ worldBBox: placement });
     if (feature.kind === 'extrude') {
       nodes.push({
         id: `${prefix}_${extrudeIdx}`,
@@ -263,11 +320,13 @@ export function importStep(
   // ─── pass 2: direct REVOLVED_AREA_SOLID entities ────────────────────────
   for (const revolveId of revolveSolidIds) {
     let feature: RevolveFeature | null = null;
+    let placement: WorldBBox | null = null;
     let reason: string | null = null;
     try {
       const result = revolvedAreaSolidToRevolve(revolveId, entities);
       if (result.kind === 'ok') {
         feature = result.feature;
+        placement = result.worldBBox ?? null;
       } else {
         reason = result.reason;
       }
@@ -278,6 +337,7 @@ export function importStep(
       unsupported.push(`#${revolveId}: ${reason ?? 'unknown'}`);
       continue;
     }
+    placements.push({ worldBBox: placement });
     nodes.push({
       id: `${prefix}_revolve_${cylinderRevolveIdx}`,
       name: `Imported Revolved Solid ${cylinderRevolveIdx + 1}`,
@@ -290,11 +350,13 @@ export function importStep(
   // ─── pass 3: direct SWEPT_AREA_SOLID / EXTRUDED_AREA_SOLID entities ────
   for (const sweptId of sweptAreaSolidIds) {
     let feature: SweepFeature | null = null;
+    let placement: WorldBBox | null = null;
     let reason: string | null = null;
     try {
       const result = sweptAreaSolidToSweep(sweptId, entities);
       if (result.kind === 'ok') {
         feature = result.feature;
+        placement = result.worldBBox ?? null;
       } else {
         reason = result.reason;
       }
@@ -305,6 +367,7 @@ export function importStep(
       unsupported.push(`#${sweptId}: ${reason ?? 'unknown'}`);
       continue;
     }
+    placements.push({ worldBBox: placement });
     nodes.push({
       id: `${prefix}_sweep_${sweepIdx}`,
       name: `Imported Swept Solid ${sweepIdx + 1}`,
@@ -342,7 +405,7 @@ export function importStep(
     }
   }
 
-  return { tree: { nodes }, warnings, unsupported };
+  return { tree: { nodes }, warnings, unsupported, placements, hasUnexpandedInstances };
 }
 
 // ─── errors ───────────────────────────────────────────────────────────────
@@ -677,7 +740,7 @@ function parseSingleArg(s: string): StepArg {
 // ─── solid → feature classification ───────────────────────────────────────
 
 type SolidParseResult =
-  | { kind: 'ok'; feature: ExtrudeFeature | RevolveFeature | SweepFeature }
+  | { kind: 'ok'; feature: ExtrudeFeature | RevolveFeature | SweepFeature; worldBBox?: WorldBBox | null }
   | { kind: 'unsupported'; reason: string };
 
 /**
@@ -755,6 +818,10 @@ function solidToFeature(
     };
   }
 
+  // World-space extent of this solid from its raw plane-face vertices (before any
+  // local-frame canonicalisation). Lets the mesher restore multi-body placement.
+  const solidWorldBBox = bboxOfPlaneFaces(planeFaces);
+
   // ─── try box detection first (6 planar axis-aligned faces) ──────────────
   if (
     cylinderFaces.length === 0 &&
@@ -778,6 +845,7 @@ function solidToFeature(
           direction: 'one_sided',
           mode: 'add',
         },
+        worldBBox: solidWorldBBox,
       };
     }
   }
@@ -791,7 +859,7 @@ function solidToFeature(
     const cyl = cylinderFaces[0]!;
     const result = cylinderToRevolve(cyl, planeFaces);
     if (result.kind === 'ok') {
-      return { kind: 'ok', feature: result.feature };
+      return { kind: 'ok', feature: result.feature, worldBBox: solidWorldBBox };
     }
     return { kind: 'unsupported', reason: `cylinder: ${result.reason}` };
   }
@@ -818,7 +886,7 @@ function solidToFeature(
     const ext = extrusionFaces[0]!;
     const result = linearExtrusionToSweep(ext, planeFaces);
     if (result.kind === 'ok') {
-      return { kind: 'ok', feature: result.feature };
+      return { kind: 'ok', feature: result.feature, worldBBox: solidWorldBBox };
     }
     return { kind: 'unsupported', reason: `linear extrusion: ${result.reason}` };
   }
@@ -860,6 +928,7 @@ function solidToFeature(
           direction: 'one_sided',
           mode: 'add',
         },
+        worldBBox: solidWorldBBox,
       };
     }
     return { kind: 'unsupported', reason: `prism: ${prism.reason}` };
@@ -1494,7 +1563,7 @@ function vertexSetsMatchInPerpPlane(
 // ─── SWEPT_AREA_SOLID / EXTRUDED_AREA_SOLID → SweepFeature ────────────────
 
 type SweptAreaSolidResult =
-  | { kind: 'ok'; feature: SweepFeature }
+  | { kind: 'ok'; feature: SweepFeature; worldBBox?: WorldBBox | null }
   | { kind: 'unsupported'; reason: string };
 
 /**
@@ -1624,8 +1693,11 @@ function sweptAreaSolidToSweep(
   // CAD viewer can render the swept solid without an extra transform.
   const origin = centroid(profile.points);
   const axisU = unitVec(extrusionDir);
+  // World extent = union of the swept_area profile and its translate along the axis.
+  const sweptWorldBBox = bboxOfSweptProfile(profile.points, axisU, depth);
   return {
     kind: 'ok',
+    worldBBox: sweptWorldBBox,
     feature: {
       kind: 'sweep',
       profile: { points: profile2D },
@@ -1645,7 +1717,7 @@ function sweptAreaSolidToSweep(
 // ─── REVOLVED_AREA_SOLID → RevolveFeature ─────────────────────────────────
 
 type RevolvedAreaResult =
-  | { kind: 'ok'; feature: RevolveFeature }
+  | { kind: 'ok'; feature: RevolveFeature; worldBBox?: WorldBBox | null }
   | { kind: 'unsupported'; reason: string };
 
 /**
@@ -1896,6 +1968,53 @@ function readSweptAreaProfile(
 }
 
 // ─── geometric helpers ────────────────────────────────────────────────────
+
+/**
+ * World-space AABB over every vertex of a plane-face set. Returns null when the
+ * set is empty (no decoded planar geometry — e.g. a pure curved solid). For a
+ * box / prism / linear-extrusion the plane faces cover the full solid extent; for
+ * a canonicalised cylinder the two cap planes bound the radial + axial extent.
+ */
+function bboxOfPlaneFaces(faces: PlaneFace[]): WorldBBox | null {
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  for (const f of faces) {
+    for (const v of f.loop) {
+      if (v[0] < minX) minX = v[0];
+      if (v[0] > maxX) maxX = v[0];
+      if (v[1] < minY) minY = v[1];
+      if (v[1] > maxY) maxY = v[1];
+      if (v[2] < minZ) minZ = v[2];
+      if (v[2] > maxZ) maxZ = v[2];
+    }
+  }
+  if (!Number.isFinite(minX)) return null;
+  return { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] };
+}
+
+/** World AABB of a swept-area solid: union of the profile ring and its translate. */
+function bboxOfSweptProfile(
+  points: Array<[number, number, number]>,
+  axisU: [number, number, number],
+  depth: number,
+): WorldBBox | null {
+  if (points.length === 0) return null;
+  const min: [number, number, number] = [Infinity, Infinity, Infinity];
+  const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+  for (const p of points) {
+    const ends: Array<[number, number, number]> = [
+      p,
+      [p[0] + depth * axisU[0], p[1] + depth * axisU[1], p[2] + depth * axisU[2]],
+    ];
+    for (const q of ends) {
+      for (let k = 0; k < 3; k++) {
+        if (q[k] < min[k]) min[k] = q[k];
+        if (q[k] > max[k]) max[k] = q[k];
+      }
+    }
+  }
+  return { min, max };
+}
 
 function pointEq(a: [number, number, number], b: [number, number, number]): boolean {
   return (

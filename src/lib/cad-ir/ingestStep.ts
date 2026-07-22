@@ -90,6 +90,68 @@ function polyhedronToTriangles(poly: Polyhedron, out: TriangleSoup): void {
   }
 }
 
+/** Axis-aligned bbox of a polyhedron's vertices. */
+function polyhedronAABB(poly: Polyhedron): { min: Vec3; max: Vec3 } {
+  let mnx = Infinity, mny = Infinity, mnz = Infinity;
+  let mxx = -Infinity, mxy = -Infinity, mxz = -Infinity;
+  for (const v of poly.vertices) {
+    if (v.x < mnx) mnx = v.x;
+    if (v.x > mxx) mxx = v.x;
+    if (v.y < mny) mny = v.y;
+    if (v.y > mxy) mxy = v.y;
+    if (v.z < mnz) mnz = v.z;
+    if (v.z > mxz) mxz = v.z;
+  }
+  return { min: [mnx, mny, mnz], max: [mxx, mxy, mxz] };
+}
+
+/** Return a copy of `poly` translated by `t` (faces + normals are unchanged). */
+function translatePolyhedron(poly: Polyhedron, t: Vec3): Polyhedron {
+  return {
+    vertices: poly.vertices.map((v) => ({ x: v.x + t[0], y: v.y + t[1], z: v.z + t[2] })),
+    faces: poly.faces,
+  };
+}
+
+/**
+ * Place a meshed body at its true world position using the world AABB importStep
+ * captured. When the local mesh size matches the world size (within tolerance) the
+ * body is a pure translation of its authored geometry, so we min-corner align it
+ * EXACTLY. When the sizes differ (orientation lost during canonicalisation, e.g. a
+ * cylinder re-framed to axis=+Y) or the world extent is unknown, translation alone
+ * cannot restore the body faithfully: we best-effort center-align it (so bodies do
+ * not pile on the origin) and report `exact:false` so the caller flags the combined
+ * extent APPROXIMATE rather than presenting a wrong bbox as faithful.
+ */
+function placeBody(
+  poly: Polyhedron,
+  worldBBox: { min: Vec3; max: Vec3 } | null,
+): { poly: Polyhedron; exact: boolean } {
+  if (!worldBBox) return { poly, exact: false };
+  const local = polyhedronAABB(poly);
+  let exact = true;
+  for (let k = 0; k < 3; k++) {
+    const ws = worldBBox.max[k] - worldBBox.min[k];
+    const ls = local.max[k] - local.min[k];
+    const tol = Math.max(1e-4, 1e-3 * Math.max(Math.abs(ws), Math.abs(ls)));
+    if (Math.abs(ws - ls) > tol) { exact = false; break; }
+  }
+  if (exact) {
+    const t: Vec3 = [
+      worldBBox.min[0] - local.min[0],
+      worldBBox.min[1] - local.min[1],
+      worldBBox.min[2] - local.min[2],
+    ];
+    return { poly: translatePolyhedron(poly, t), exact: true };
+  }
+  const t: Vec3 = [
+    (worldBBox.min[0] + worldBBox.max[0]) / 2 - (local.min[0] + local.max[0]) / 2,
+    (worldBBox.min[1] + worldBBox.max[1]) / 2 - (local.min[1] + local.max[1]) / 2,
+    (worldBBox.min[2] + worldBBox.max[2]) / 2 - (local.min[2] + local.max[2]) / 2,
+  ];
+  return { poly: translatePolyhedron(poly, t), exact: false };
+}
+
 /** Map the STEP reader's unit token onto the IR's declared-unit vocabulary. */
 function toIrUnit(u: StepUnit): IrExtent['units'] {
   switch (u) {
@@ -303,13 +365,23 @@ export function stepToIr(
     return { ok: false, ir: null, reason: `no_faithful_geometry: ${why}`, meta };
   }
 
-  // 3) Tessellate every recovered solid into one triangle soup. NOTE: importStep lands
-  //    each solid at world origin (it does not yet apply the assembly transform chain),
-  //    so multi-solid parts stack at the origin — recorded as a warning; the gate's own
-  //    watertight/evidence checks keep such a measurement from silently passing.
+  // 3) Tessellate every recovered solid into one triangle soup, PLACING each body at
+  //    its true world position. importStep emits feature IRs in a LOCAL frame (extrude
+  //    from z=0; cylinder canonicalised to the origin), which is harmless for a single
+  //    body but would STACK multi-body parts at the origin and corrupt the combined
+  //    bbox / centroid. For multi-body parts we translate each meshed body so its AABB
+  //    matches the world extent importStep captured (`placements[i].worldBBox`). A body
+  //    whose world extent is unknown, or whose local mesh size does not match it (an
+  //    orientation-losing primitive, or an unexpanded MAPPED_ITEM instance), cannot be
+  //    faithfully placed by translation — it is counted so the extent is flagged
+  //    APPROXIMATE, never presented as faithful. Single-body parts are meshed exactly
+  //    as before (byte-for-byte identical — no placement transform applied).
+  const multiBody = parsed.tree.nodes.length > 1;
   const soup: TriangleSoup = [];
   let meshed = 0;
-  for (const node of parsed.tree.nodes) {
+  let approxPlaced = 0;
+  for (let i = 0; i < parsed.tree.nodes.length; i++) {
+    const node = parsed.tree.nodes[i]!;
     const payload = node.payload as { kind: string };
     let poly: Polyhedron | null = null;
     try {
@@ -318,16 +390,31 @@ export function stepToIr(
       meta.warnings.push(`mesh_failed:${node.id}:${(e as Error)?.message?.slice(0, 60) ?? 'err'}`);
       poly = null;
     }
-    if (poly) {
+    if (!poly) continue;
+    meshed += 1;
+    if (multiBody) {
+      const placed = placeBody(poly, parsed.placements[i]?.worldBBox ?? null);
+      if (!placed.exact) approxPlaced += 1;
+      polyhedronToTriangles(placed.poly, soup);
+    } else {
+      // Single body: identical to the pre-placement path.
       polyhedronToTriangles(poly, soup);
-      meshed += 1;
     }
   }
   meta.meshed = meshed;
-  if (meshed > 1) {
-    meta.warnings.push(
-      `multi_body_at_origin: ${meshed} solids meshed; importStep does not apply placement transforms — measurement is approximate for multi-body parts`,
-    );
+  const placementApproximate = approxPlaced > 0 || parsed.hasUnexpandedInstances;
+  if (multiBody) {
+    if (placementApproximate) {
+      meta.warnings.push(
+        `multi_body_placement_approximate: ${approxPlaced} of ${meshed} solid(s) could not be ` +
+          `faithfully placed (orientation-losing primitive or unexpanded instance transform) — ` +
+          `combined extent is APPROXIMATE`,
+      );
+    } else {
+      meta.warnings.push(
+        `multi_body_placed: ${meshed} solid(s) translated to their real world positions before measurement`,
+      );
+    }
   }
 
   if (soup.length === 0) {
@@ -347,7 +434,7 @@ export function stepToIr(
     opts,
     warnings: meta.warnings,
     parser: 'step_brep_pure_ts_v1',
-    parseStatus: meta.unsupported.length > 0 ? 'partial' : 'ok',
+    parseStatus: meta.unsupported.length > 0 || placementApproximate ? 'partial' : 'ok',
     topologySolids: meshed,
     reconstruct: gradeStep(meshed, meta.unsupported.length, m),
     t0,
