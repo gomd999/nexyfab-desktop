@@ -228,7 +228,7 @@ export interface GmshDiag {
 export interface GmshMeshOptions {
   /** Subprocess timeout (ms). Default 120 s (a fine conforming mesh is slow). */
   timeoutMs?: number;
-  /** Target element edge length (mm). Default = maxBboxDim / 24. */
+  /** Target element edge length (mm) = interior MeshSizeMax. Default = maxBboxDim / 28. */
   targetSizeMm?: number;
   /** Reject (return null → fall back) above this node count, so a runaway mesh
    *  never hangs a live request. Default 200_000. */
@@ -281,9 +281,17 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
 
   const bb = stlBBox(stl);
   const maxDim = Math.max(bb.dx, bb.dy, bb.dz, 1e-6);
-  const size = opts.targetSizeMm && opts.targetSizeMm > 0 ? opts.targetSizeMm : maxDim / 24;
-  const near = (size / 4).toFixed(6);
-  const far = size.toFixed(6);
+  // MeshSizeMax is the INTERIOR ceiling; MeshSizeMin is the floor that lets the
+  // curvature-driven refinement (below) shrink elements right at a stress-raiser
+  // (a bore / fillet) without a hard clamp. The Kt stress peak lives ON the
+  // curved boundary, so we pour the DOF budget into the curved boundary via
+  // Mesh.MeshSizeFromCurvature rather than into a globally fine interior (which
+  // would multiply the node count for no accuracy gain). The interior stays only
+  // slightly finer than before (maxDim/28 vs the old maxDim/24); the boundary
+  // refinement does the work, and MeshSizeExtendFromBoundary grades it back up.
+  const size = opts.targetSizeMm && opts.targetSizeMm > 0 ? opts.targetSizeMm : maxDim / 28;
+  const near = (maxDim / 500).toFixed(6);   // MeshSizeMin — floor at the bore
+  const far = size.toFixed(6);              // MeshSizeMax — interior ceiling
 
   // STL-conditioning options MUST precede `Merge` (they are consulted while the
   // STL is read): weld duplicate facets, and tolerate small facet overlaps so a
@@ -297,7 +305,16 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
     `Mesh.Algorithm3D = 1;`,          // Delaunay — robust for arbitrary closed surfaces
     `Mesh.MeshSizeMin = ${near};`,
     `Mesh.MeshSizeMax = ${far};`,
-    `Mesh.MeshSizeFromCurvature = 12;`,
+    // Curvature-adaptive sizing is the PRIMARY stress-raiser refinement lever:
+    // 36 = target number of elements per 2*pi of boundary curvature, so a bore /
+    // fillet is auto-wrapped in ~36 quadratic (TET10) elements around its arc —
+    // enough to resolve the Kirsch Kt peak, versus the old 12 which left the hole
+    // edge grossly under-resolved (Kt ~1.4 vs 3.0). This drives most of the DOF.
+    `Mesh.MeshSizeFromCurvature = 36;`,
+    // Grade the fine boundary size smoothly back up to MeshSizeMax over distance,
+    // so the refinement stays LOCAL to the curved edge and the total node count
+    // stays bounded (interior does not inherit the tiny boundary size).
+    `Mesh.MeshSizeExtendFromBoundary = 1;`,
     `Mesh.Optimize = 1;`,
     // Mesh.OptimizeNetgen omitted: Debian's gmsh package is built WITHOUT the Netgen
     // optimizer ("Netgen optimizer is not compiled in this version of Gmsh" -> exit 1).
