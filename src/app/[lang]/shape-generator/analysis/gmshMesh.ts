@@ -299,7 +299,9 @@ export async function gmshTetMeshFromStl(stl: Uint8Array, opts: GmshMeshOptions 
     `Mesh.MeshSizeMax = ${far};`,
     `Mesh.MeshSizeFromCurvature = 12;`,
     `Mesh.Optimize = 1;`,
-    `Mesh.OptimizeNetgen = 1;`,
+    // Mesh.OptimizeNetgen omitted: Debian's gmsh package is built WITHOUT the Netgen
+    // optimizer ("Netgen optimizer is not compiled in this version of Gmsh" -> exit 1).
+    // The built-in Mesh.Optimize is present and sufficient for our tet quality.
   ];
 
   // (A) KEEP-SURFACE: weld the raw STL vertices (`Coherence Mesh`), wrap the
