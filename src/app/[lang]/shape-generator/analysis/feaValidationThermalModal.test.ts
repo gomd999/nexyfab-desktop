@@ -1,0 +1,205 @@
+/**
+ * feaValidationThermalModal — the HONEST accuracy scorecard for the NexyFab FEA
+ * stack ACROSS LOAD TYPES beyond linear static stress. It broadens the static
+ * campaign (feaValidationSuite.test.ts) to NAFEMS-class + closed-form references
+ * for STATIC-membrane, THERMAL (conduction), and MODAL (natural-frequency), and
+ * records, per benchmark: reference, our value, error %, a stated tolerance, and
+ * PASS / FAIL / N-A. No solver is tuned to pass. Failures are reported as failures;
+ * benchmarks a solver structurally cannot model are marked N-A with the honest
+ * reason (never softened into a pass).
+ *
+ * Solvers exercised (separate code paths):
+ *   D) ellipticMembraneLE1 (feaPlateHoleKt.ts) — 2D Q4 plane-stress, boundary-
+ *      conforming elliptic-annulus mesh. Runs NAFEMS LE1 directly.
+ *   T) runThermalFEA (thermalFEA.ts) — steady-state heat CONDUCTION (finite-volume,
+ *      Gauss-Seidel+SOR). Outputs a TEMPERATURE field only — NO thermo-elastic
+ *      coupling, so thermal STRESS benchmarks (LE11, constrained-bar) are N-A.
+ *   M) computeNaturalFrequencies (modalSolver.ts) — TET10 stiffness + consistent
+ *      mass, generalised eigenproblem by inverse iteration. Outputs frequencies (Hz).
+ *
+ * The console table it prints is the source of truth transcribed into
+ * docs/roadmap/FEA_VALIDATION.md (thermal + modal section).
+ */
+import { describe, it, expect } from 'vitest';
+import * as THREE from 'three';
+import { ellipticMembraneLE1 } from './feaPlateHoleKt';
+import { runThermalFEA, THERMAL_MATERIALS } from './thermalFEA';
+import { computeNaturalFrequencies, type ModalMaterialSI } from './modalSolver';
+
+type Status = 'PASS' | 'FAIL' | 'N-A';
+type Row = {
+  id: string; name: string; solver: string; loadType: string; quantity: string;
+  ref: number | string; ours: number | string; errPct: number | string;
+  tolPct: number | string; status: Status; note?: string;
+};
+const rows: Row[] = [];
+function record(r: {
+  id: string; name: string; solver: string; loadType: string; quantity: string;
+  ref: number; ours: number; tolPct: number; note?: string;
+}): Row {
+  const errPct = r.ref === 0 ? Math.abs(r.ours) * 100 : Math.abs((r.ours - r.ref) / r.ref) * 100;
+  const row: Row = { ...r, errPct, status: errPct <= r.tolPct ? 'PASS' : 'FAIL' };
+  rows.push(row);
+  return row;
+}
+function recordNA(r: { id: string; name: string; solver: string; loadType: string; quantity: string; ref: number; note: string }): void {
+  rows.push({ ...r, ours: 'N/A', errPct: 'N/A', tolPct: 'N/A', status: 'N-A' });
+}
+
+/* ── geometry helpers ── */
+function box(L: number, h: number, b: number, nx = 12, ny = 3, nz = 3): THREE.BufferGeometry {
+  return new THREE.BoxGeometry(L, h, b, nx, ny, nz).toNonIndexed();
+}
+function facesByX(g: THREE.BufferGeometry, wantMin: boolean): number[] {
+  const pos = g.attributes.position; const tris = pos.count / 3; const out: number[] = [];
+  let mn = Infinity, mx = -Infinity;
+  for (let i = 0; i < pos.count; i++) { mn = Math.min(mn, pos.getX(i)); mx = Math.max(mx, pos.getX(i)); }
+  for (let f = 0; f < tris; f++) {
+    const cx = (pos.getX(f * 3) + pos.getX(f * 3 + 1) + pos.getX(f * 3 + 2)) / 3;
+    if (wantMin && Math.abs(cx - mn) < 1e-3) out.push(f);
+    if (!wantMin && Math.abs(cx - mx) < 1e-3) out.push(f);
+  }
+  return out;
+}
+
+const steelSI: ModalMaterialSI = { youngsModulus: 200e9, poissonRatio: 0.3, density: 7850 };
+
+describe('FEA validation — thermal + modal + NAFEMS LE1 (honest scorecard across load types)', () => {
+
+  /* ═══ Solver D — 2D Q4 plane-stress, boundary-conforming (STATIC membrane) ═══ */
+
+  it('D1 NAFEMS LE1 elliptic membrane — tangential stress sig_yy at D  (ref 92.7 MPa)', () => {
+    const res = ellipticMembraneLE1({ radialElems: 32, tangentialElems: 64 });
+    const row = record({
+      id: 'D1', name: 'NAFEMS LE1 elliptic membrane', solver: '2D Q4 (conforming)',
+      loadType: 'static (edge pressure)', quantity: 'sig_yy MPa',
+      ref: 92.7, ours: res.sigmaYYatD, tolPct: 5, note: res.converged ? 'converged' : 'NOT converged',
+    });
+    expect(res.converged).toBe(true);
+    expect(Number.isFinite(res.sigmaYYatD)).toBe(true);
+    // record-only; the scorecard (not an assertion) is the judge of accuracy
+    void row;
+  });
+
+  it('D2 NAFEMS LE10 thick plate (elliptic hole, sig_yy at D = -5.38 MPa) — N/A on the production 3D path', () => {
+    // The 3D solver (femSolver.runFEM) meshes on a structured VOXEL/octree grid that
+    // STAIRCASES the elliptic hole (documented A5 raiser limitation), AND its result
+    // exposes only MAX VON MISES stress (a positive scalar), not a signed sig_yy
+    // component at a named point — so LE10's target (-5.38 MPa at D) cannot be read
+    // from the production output at all. A boundary-conforming gmsh mesh exists but is
+    // out-of-process (GPL binary, GMSH_BIN) and deploy-verified only, not runnable here.
+    recordNA({
+      id: 'D2', name: 'NAFEMS LE10 thick plate', solver: '3D TET10 (voxel)',
+      loadType: 'static (face pressure)', quantity: 'sig_yy MPa', ref: -5.38,
+      note: 'voxel staircases hole + output is max-vonMises only, not signed sig_yy@D; gmsh conforming path is deploy-only',
+    });
+    expect(true).toBe(true);
+  });
+
+  /* ═══ Solver T — steady-state thermal CONDUCTION (thermalFEA) ═══ */
+
+  it('TH1 1-D conduction mid-plane temperature between two fixed faces  (ref 50 C)', () => {
+    const L = 100, h = 20;
+    const g = box(L, h, h);
+    const r = runThermalFEA(g, [
+      { type: 'fixed_temp', faceIndex: 2, value: 100 }, // -X hot
+      { type: 'fixed_temp', faceIndex: 3, value: 0 },   // +X cold
+    ], THERMAL_MATERIALS.aluminum);
+    // exact linear field T(x)=100+(0-100)(x-xmin)/L; mid-plane (x=xmid) -> 50 C
+    const pos = g.attributes.position;
+    let xmin = Infinity, xmax = -Infinity;
+    for (let i = 0; i < pos.count; i++) { xmin = Math.min(xmin, pos.getX(i)); xmax = Math.max(xmax, pos.getX(i)); }
+    const xmid = (xmin + xmax) / 2;
+    let sum = 0, n = 0;
+    for (let i = 0; i < pos.count; i++) { if (Math.abs(pos.getX(i) - xmid) < 0.5 * (xmax - xmin) / 12) { sum += r.temperatures[i]; n++; } }
+    const midT = n > 0 ? sum / n : NaN;
+    record({ id: 'TH1', name: '1-D conduction mid-plane temp', solver: 'thermalFEA (FV)', loadType: 'thermal (Dirichlet)', quantity: 'T degC', ref: 50, ours: midT, tolPct: 5 });
+    expect(Number.isFinite(midT)).toBe(true);
+  });
+
+  it('TH2 face heat-source end temperature  T = Q*L/(k*A)  (analytical)', () => {
+    const L = 100, a = 20, Q = 50;   // mm, mm, W
+    const k = 205;                    // aluminium W/(m*K)
+    const g = box(L, a, a);
+    const r = runThermalFEA(g, [
+      { type: 'fixed_temp', faceIndex: 3, value: 0 },
+      { type: 'heat_source', faceIndex: 2, value: Q },
+    ], THERMAL_MATERIALS.aluminum);
+    const A = (a * 1e-3) ** 2, Lm = L * 1e-3;
+    const Thot = (Q * Lm) / (k * A); // ~60.98 C
+    record({ id: 'TH2', name: 'Heat-source end temp Q*L/(k*A)', solver: 'thermalFEA (FV)', loadType: 'thermal (flux)', quantity: 'T degC', ref: Thot, ours: r.maxTemp, tolPct: 5 });
+    expect(r.maxTemp).toBeGreaterThan(0);
+  });
+
+  it('TH3 NAFEMS LE11 / constrained-bar thermal STRESS  sig = -E*alpha*dT  — N/A (no thermo-elastic coupling)', () => {
+    // thermalFEA outputs a TEMPERATURE field only. There is NO thermal-expansion body
+    // load / thermo-elastic coupling anywhere in the stack (femSolver has no alpha),
+    // so neither NAFEMS LE11 (sig_z@A = -105 MPa) nor the exact constrained-bar case
+    // (sig = -E*alpha*dT) can be produced. This is a MISSING FEATURE, not a wrong answer.
+    recordNA({
+      id: 'TH3', name: 'LE11 / constrained-bar thermal stress', solver: 'thermalFEA + (missing coupling)',
+      loadType: 'thermal stress', quantity: 'sig_z MPa', ref: -105,
+      note: 'no thermo-elastic coupling: solver yields temperature only, no thermal-stress path',
+    });
+    expect(true).toBe(true);
+  });
+
+  /* ═══ Solver M — modal / natural frequency (modalSolver) ═══ */
+
+  const L = 200, b = 20, h = 20; // slender clamped bar (mm)
+  const analyticBending = (betaL: number): number => {
+    const Lm = L * 1e-3, bm = b * 1e-3, hm = h * 1e-3;
+    const I = (bm * hm ** 3) / 12, A = bm * hm;
+    return (betaL * betaL) / (2 * Math.PI) * Math.sqrt((steelSI.youngsModulus * I) / (steelSI.density * A * Lm ** 4));
+  };
+
+  it('MO1 cantilever fundamental  f1 = (1.875104^2/2pi)*sqrt(EI/(rho A L^4))', () => {
+    const g = new THREE.BoxGeometry(L, h, b, 16, 3, 3).toNonIndexed();
+    const res = computeNaturalFrequencies(g, steelSI, facesByX(g, true), 3, 5000);
+    const f1 = analyticBending(1.875104);
+    record({ id: 'MO1', name: 'Cantilever 1st natural freq', solver: '3D TET10 modal', loadType: 'modal (eigen)', quantity: 'f1 Hz', ref: f1, ours: res.modes[0].frequencyHz, tolPct: 10 });
+    expect(res.modes[0].frequencyHz).toBeGreaterThan(0);
+  });
+
+  it('MO2 cantilever 2nd bending mode  f2 (betaL = 4.694091)', () => {
+    const g = new THREE.BoxGeometry(L, h, b, 20, 4, 4).toNonIndexed();
+    const res = computeNaturalFrequencies(g, steelSI, facesByX(g, true), 4, 9000);
+    const f2 = analyticBending(4.694091);
+    // modes[0],[1] are the 1st transverse-bending degenerate pair; modes[2] is the 2nd
+    record({ id: 'MO2', name: 'Cantilever 2nd bending freq', solver: '3D TET10 modal', loadType: 'modal (eigen)', quantity: 'f2 Hz', ref: f2, ours: res.modes[2].frequencyHz, tolPct: 10 });
+    expect(res.modes[2].frequencyHz).toBeGreaterThan(res.modes[0].frequencyHz);
+  });
+
+  it('MO3 fixed-free axial resonance  f = c/(4L),  c = sqrt(E/rho)', () => {
+    const La = 40, ba = 30;
+    const c = Math.sqrt(steelSI.youngsModulus / steelSI.density);
+    const fAxial = c / (4 * (La * 1e-3)); // ~31.5 kHz
+    const g = new THREE.BoxGeometry(La, ba, ba, 6, 4, 4).toNonIndexed();
+    const res = computeNaturalFrequencies(g, steelSI, facesByX(g, true), 6, 1200);
+    // the axial mode is the mode closest to c/(4L)
+    let best = res.modes[0].frequencyHz, bestErr = Infinity;
+    for (const m of res.modes) { const e = Math.abs(m.frequencyHz / fAxial - 1); if (e < bestErr) { bestErr = e; best = m.frequencyHz; } }
+    record({ id: 'MO3', name: 'Fixed-free axial resonance c/(4L)', solver: '3D TET10 modal', loadType: 'modal (eigen)', quantity: 'f Hz', ref: fAxial, ours: best, tolPct: 10 });
+    expect(best).toBeGreaterThan(0);
+  });
+
+  /* ═══ Print the honest scorecard ═══ */
+  it('zz prints the thermal+modal validation scorecard', () => {
+    rows.sort((a, b) => a.id.localeCompare(b.id));
+    const pad = (s: string | number, n: number) => String(s).padEnd(n);
+    const padL = (s: string | number, n: number) => String(s).padStart(n);
+    const fmt = (v: number | string) => typeof v === 'number' ? v.toPrecision(4) : v;
+    const fmtE = (v: number | string) => typeof v === 'number' ? v.toFixed(1) : v;
+    let out = '\n=== NexyFab FEA VALIDATION SCORECARD — THERMAL + MODAL + LE1 ===\n';
+    out += pad('ID', 5) + pad('Benchmark', 34) + pad('Solver', 24) + pad('Load', 22) + pad('Qty', 11) + padL('Ref', 12) + padL('Ours', 12) + padL('Err%', 8) + padL('Tol%', 6) + '  Result\n';
+    for (const r of rows) {
+      out += pad(r.id, 5) + pad(r.name.slice(0, 33), 34) + pad(r.solver, 24) + pad(r.loadType, 22) + pad(r.quantity, 11)
+        + padL(fmt(r.ref), 12) + padL(fmt(r.ours), 12) + padL(fmtE(r.errPct), 8) + padL(String(r.tolPct), 6)
+        + '  ' + r.status + (r.note ? '  (' + r.note + ')' : '') + '\n';
+    }
+    out += '\nJSON ' + JSON.stringify(rows.map((r) => ({ id: r.id, ref: r.ref, ours: typeof r.ours === 'number' ? +r.ours.toPrecision(5) : r.ours, errPct: typeof r.errPct === 'number' ? +r.errPct.toFixed(2) : r.errPct, tolPct: r.tolPct, status: r.status }))) + '\n';
+    // eslint-disable-next-line no-console
+    console.log(out);
+    expect(rows.length).toBeGreaterThanOrEqual(8);
+  });
+});

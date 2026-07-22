@@ -229,3 +229,168 @@ export function plateWithHoleKt(opts: PlateHoleKtOptions = {}): PlateHoleKtResul
     converged,
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NAFEMS LE1 — Elliptic membrane (plane stress). Standard NAFEMS linear-elastic
+// benchmark. Same Q4 plane-stress machinery as plateWithHoleKt (q4Element +
+// planeStressD + femSolver CSR/PCG), on a boundary-conforming elliptic-annulus
+// mesh. This is a REAL run of a NAFEMS reference, not a substitute.
+//
+// Geometry (quarter model, first quadrant), lengths in metres:
+//   inner ellipse AD:  x^2/2.0^2  + y^2/1.0^2  = 1
+//   outer ellipse BC:  x^2/3.25^2 + y^2/2.75^2 = 1
+//   D = (2.0, 0.0)  — inner ellipse cap x-axis (the target point)
+// Loading: uniform OUTWARD pressure of 10 MPa on the outer edge BC (tension).
+// Symmetry BCs: u_y = 0 on the x-axis edge DC, u_x = 0 on the y-axis edge AB.
+// Material: E = 210 GPa, nu = 0.3, thickness 0.1 m (thickness cancels in the
+//   reported stress: q4Element uses unit thickness and the edge load is a line
+//   load in the same per-unit-thickness convention).
+// Target: tangential stress sigma_yy at D = 92.7 MPa (Abaqus/Altair/DIANA/ESRD
+//   consensus, NAFEMS "The Standard NAFEMS Benchmarks").
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface EllipticMembraneLE1Options {
+  /** Radial elements between the inner and outer ellipse. */
+  radialElems?: number;
+  /** Tangential elements over the quarter (phi: 0 -> pi/2). */
+  tangentialElems?: number;
+  /** Young's modulus (MPa). Scale-invariant for the stress; default 210 GPa. */
+  E?: number;
+  nu?: number;
+  /** Outward edge pressure on BC (MPa). */
+  pressure?: number;
+}
+
+export interface EllipticMembraneLE1Result {
+  /** Tangential stress sigma_yy recovered at point D=(2,0) (MPa). NAFEMS ref = 92.7. */
+  sigmaYYatD: number;
+  nodeCount: number;
+  elementCount: number;
+  converged: boolean;
+}
+
+export function ellipticMembraneLE1(opts: EllipticMembraneLE1Options = {}): EllipticMembraneLE1Result {
+  const NR = opts.radialElems ?? 32;
+  const NT = opts.tangentialElems ?? 64;
+  const E = opts.E ?? 210_000; // MPa
+  const nu = opts.nu ?? 0.3;
+  const P = opts.pressure ?? 10; // MPa outward
+
+  const aIn = 2.0, bIn = 1.0, aOut = 3.25, bOut = 2.75; // metres
+
+  // ── nodes: radial i (0..NR, 0 = inner AD) × tangential j (0..NT, 0 = x-axis) ──
+  const nCols = NT + 1;
+  const nNodes = (NR + 1) * nCols;
+  const nid = (i: number, j: number): number => i * nCols + j;
+  const coords: Array<[number, number]> = new Array(nNodes);
+  for (let i = 0; i <= NR; i++) {
+    const s = i / NR;
+    for (let j = 0; j <= NT; j++) {
+      const phi = (Math.PI / 2) * (j / NT);
+      const cx = Math.cos(phi), cy = Math.sin(phi);
+      const ix = aIn * cx, iy = bIn * cy;     // inner ellipse point
+      const ox = aOut * cx, oy = bOut * cy;    // outer ellipse point
+      coords[nid(i, j)] = [(1 - s) * ix + s * ox, (1 - s) * iy + s * oy];
+    }
+  }
+
+  // ── symmetry BCs: u_y=0 on x-axis (j=0), u_x=0 on y-axis (j=NT) ──
+  const ndof = 2 * nNodes;
+  const fixed = new Uint8Array(ndof);
+  for (let i = 0; i <= NR; i++) {
+    fixed[2 * nid(i, 0) + 1] = 1;   // x-axis edge DC -> u_y=0
+    fixed[2 * nid(i, NT)] = 1;      // y-axis edge AB -> u_x=0
+  }
+  const dofMap = new Int32Array(ndof).fill(-1);
+  let nf = 0;
+  for (let d = 0; d < ndof; d++) if (!fixed[d]) dofMap[d] = nf++;
+
+  // ── assemble K over Q4 elements (CCW node order -> positive Jacobian) ──
+  const D = planeStressD(E, nu);
+  const entries = new Map<number, Map<number, number>>();
+  const add = (r: number, c: number, v: number): void => {
+    let row = entries.get(r); if (!row) { row = new Map(); entries.set(r, row); }
+    row.set(c, (row.get(c) ?? 0) + v);
+  };
+  type ElemCache = { nodes: number[]; gauss: Array<{ B: number[][]; x: number; y: number }> };
+  const elemCache: ElemCache[] = [];
+  for (let i = 0; i < NR; i++) {
+    for (let j = 0; j < NT; j++) {
+      const en = [nid(i, j), nid(i + 1, j), nid(i + 1, j + 1), nid(i, j + 1)];
+      const xy = en.map((n) => coords[n]!);
+      const { Ke, gauss } = q4Element(xy, D);
+      const edof = en.flatMap((n) => [2 * n, 2 * n + 1]);
+      for (let a = 0; a < 8; a++) {
+        const fa = dofMap[edof[a]!]!; if (fa < 0) continue;
+        for (let b = 0; b < 8; b++) {
+          const fb = dofMap[edof[b]!]!; if (fb < 0) continue;
+          add(fa, fb, Ke[a]![b]!);
+        }
+      }
+      elemCache.push({ nodes: en, gauss });
+    }
+  }
+  const K = new CSRMatrix(nf, nf, entries);
+
+  // ── outward pressure P on the outer edge BC (i=NR) -> consistent nodal loads ──
+  // Each outer element edge (nodes j, j+1) carries a uniform outward traction
+  // t = P*n_out; the linear-edge consistent load puts t*L/2 at each node.
+  const F = new Float64Array(nf);
+  for (let j = 0; j < NT; j++) {
+    const n0 = nid(NR, j), n1 = nid(NR, j + 1);
+    const [x0, y0] = coords[n0]!, [x1, y1] = coords[n1]!;
+    const dx = x1 - x0, dy = y1 - y0;
+    const len = Math.hypot(dx, dy);
+    // outward normal = the perpendicular of the edge that points away from origin
+    let nx = dy, ny = -dx;
+    const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    if (nx * mx + ny * my < 0) { nx = -nx; ny = -ny; }
+    const inv = 1 / Math.hypot(nx, ny); nx *= inv; ny *= inv;
+    const half = (P * len) / 2;
+    for (const n of [n0, n1]) {
+      const dxDof = dofMap[2 * n]!, dyDof = dofMap[2 * n + 1]!;
+      if (dxDof >= 0) F[dxDof] += nx * half;
+      if (dyDof >= 0) F[dyDof] += ny * half;
+    }
+  }
+
+  const { x: uf, converged } = sparsePCG(K, F, 8000, 1e-11);
+  const u = new Float64Array(ndof);
+  for (let d = 0; d < ndof; d++) if (dofMap[d] >= 0) u[d] = uf[dofMap[d]!]!;
+
+  // ── recover sigma_yy by Gauss->node extrapolation, read the node at D=(2,0) ──
+  // Gauss points sit inside the element; the boundary peak at D needs the standard
+  // bilinear extrapolation from the 2x2 Gauss points to the corner nodes (Gauss
+  // coords +-1/sqrt3 map to +-1 in the "Gauss frame"; a node at local +-1 maps to +-sqrt3).
+  const R3 = Math.sqrt(3);
+  // q4Element gauss order: (xi-,eta-),(xi-,eta+),(xi+,eta-),(xi+,eta+); node local coords for
+  // en order [(-1,-1),(+1,-1),(+1,+1),(-1,+1)] (matches the CCW en above).
+  const gaussSign: Array<[number, number]> = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+  const nodeLocal: Array<[number, number]> = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  const sigSum = new Float64Array(nNodes);
+  const sigCnt = new Float64Array(nNodes);
+  for (const el of elemCache) {
+    const edof = el.nodes.flatMap((n) => [2 * n, 2 * n + 1]);
+    const ue = edof.map((d) => u[d]!);
+    const gSyy: number[] = el.gauss.map((g) => {
+      const eps = [0, 0, 0];
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 8; c++) eps[r]! += g.B[r]![c]! * ue[c]!;
+      return D[1]![0]! * eps[0]! + D[1]![1]! * eps[1]!; // sigma_yy
+    });
+    for (let k = 0; k < 4; k++) {
+      const [a, b] = nodeLocal[k]!;
+      const za = R3 * a, zb = R3 * b;
+      let val = 0;
+      for (let g = 0; g < 4; g++) {
+        const [gs, gt] = gaussSign[g]!;
+        val += ((1 + gs * za) / 2) * ((1 + gt * zb) / 2) * gSyy[g]!;
+      }
+      const nn = el.nodes[k]!;
+      sigSum[nn] += val; sigCnt[nn] += 1;
+    }
+  }
+  const dNode = nid(0, 0); // D = inner ellipse cap x-axis = (2, 0)
+  const sigmaYYatD = sigCnt[dNode]! > 0 ? sigSum[dNode]! / sigCnt[dNode]! : 0;
+
+  return { sigmaYYatD, nodeCount: nNodes, elementCount: NR * NT, converged };
+}
