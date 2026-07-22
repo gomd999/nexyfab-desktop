@@ -151,6 +151,176 @@ describe('codecheck rules — railing / corridor / door / toilet / curb', () => 
   });
 });
 
+describe('codecheck rules — parking stall & entry ramp (주차장법 제3조·제6조)', () => {
+  it('general stall 2.5×5.0 pass; 2.4 width / 4.9 length FAIL citing 제3조', () => {
+    expect(byId({ parkingStallType: 'general', parkingStallWidth_m: 2.5 }, 'parking-stall-width').status).toBe('pass');
+    const w = byId({ parkingStallType: 'general', parkingStallWidth_m: 2.4 }, 'parking-stall-width');
+    expect(w.status).toBe('fail');
+    expect(w.actual).toBe(2.4);
+    expect(w.required).toContain('2.5');
+    expect(w.clause).toContain('제3조');
+    expect(w.source).toContain('law.go.kr');
+    expect(byId({ parkingStallType: 'general', parkingStallLength_m: 4.9 }, 'parking-stall-length').status).toBe('fail');
+  });
+
+  it('expanded 2.6×5.2 & compact 2.0×3.6 boundaries', () => {
+    expect(byId({ parkingStallType: 'expanded', parkingStallWidth_m: 2.6 }, 'parking-stall-width').status).toBe('pass');
+    expect(byId({ parkingStallType: 'expanded', parkingStallLength_m: 5.1 }, 'parking-stall-length').status).toBe('fail');
+    expect(byId({ parkingStallType: 'compact', parkingStallWidth_m: 2.0 }, 'parking-stall-width').status).toBe('pass');
+    expect(byId({ parkingStallType: 'compact', parkingStallLength_m: 3.5 }, 'parking-stall-length').status).toBe('fail');
+  });
+
+  it('entry ramp lane: straight 1-way 3.3 pass / 3.2 fail; curved 2-way 6.5 pass / 6.4 fail', () => {
+    expect(byId({ parkingRampLaneWidth_m: 3.3 }, 'parking-ramp-lane-width').status).toBe('pass');
+    expect(byId({ parkingRampLaneWidth_m: 3.2 }, 'parking-ramp-lane-width').status).toBe('fail');
+    expect(byId({ parkingRampLaneWidth_m: 6.0, parkingRampTwoWay: true }, 'parking-ramp-lane-width').status).toBe('pass');
+    expect(byId({ parkingRampLaneWidth_m: 3.6, parkingRampLaneCurved: true }, 'parking-ramp-lane-width').status).toBe('pass');
+    const r = byId({ parkingRampLaneWidth_m: 6.4, parkingRampLaneCurved: true, parkingRampTwoWay: true }, 'parking-ramp-lane-width');
+    expect(r.status).toBe('fail');
+    expect(r.required).toContain('6.5');
+  });
+
+  it('missing stall feature → NA', () => {
+    expect(byId({ parkingStallType: 'general' }, 'parking-stall-width').status).toBe('na');
+  });
+});
+
+describe('codecheck rules — egress/fire (피난·방화)', () => {
+  it('stair landing interval ≤3.0 (3.0 pass, 3.2 fail) & width ≥1.2 (1.2 pass, 1.1 fail)', () => {
+    expect(byId({ stairLandingRiseInterval_m: 3.0 }, 'stair-landing-rise-interval').status).toBe('pass');
+    const i = byId({ stairLandingRiseInterval_m: 3.2 }, 'stair-landing-rise-interval');
+    expect(i.status).toBe('fail');
+    expect(i.clause).toContain('제15조');
+    expect(byId({ stairLandingWidth_m: 1.2 }, 'stair-landing-width').status).toBe('pass');
+    expect(byId({ stairLandingWidth_m: 1.1 }, 'stair-landing-width').status).toBe('fail');
+  });
+
+  it('outdoor escape stair width 0.9 pass / 0.8 fail (제9조)', () => {
+    expect(byId({ outdoorEscapeStairWidth_m: 0.9 }, 'outdoor-escape-stair-width').status).toBe('pass');
+    const r = byId({ outdoorEscapeStairWidth_m: 0.8 }, 'outdoor-escape-stair-width');
+    expect(r.status).toBe('fail');
+    expect(r.clause).toContain('제9조');
+  });
+
+  it('travel distance: general ≤30 (30 pass, 35 fail); fire-resistant ≤50 (45 pass) citing 제34조', () => {
+    expect(byId({ travelDistanceToStair_m: 30 }, 'travel-distance-to-stair').status).toBe('pass');
+    const bad = byId({ travelDistanceToStair_m: 35 }, 'travel-distance-to-stair');
+    expect(bad.status).toBe('fail');
+    expect(bad.actual).toBe(35);
+    expect(bad.required).toContain('30');
+    expect(bad.clause).toContain('제34조');
+    expect(byId({ travelDistanceToStair_m: 45, mainStructureFireResistant: true }, 'travel-distance-to-stair').status).toBe('pass');
+    expect(byId({ travelDistanceToStair_m: 55, mainStructureFireResistant: true }, 'travel-distance-to-stair').status).toBe('fail');
+  });
+
+  it('fire compartment: 10층↓ ≤1000 (900 pass, 1200 fail); sprinkler ≤3000; 11층↑ ≤200', () => {
+    expect(byId({ fireCompartmentArea_m2: 900 }, 'fire-compartment-area').status).toBe('pass');
+    const bad = byId({ fireCompartmentArea_m2: 1200 }, 'fire-compartment-area');
+    expect(bad.status).toBe('fail');
+    expect(bad.required).toContain('1000');
+    expect(byId({ fireCompartmentArea_m2: 2500, fireCompartmentSprinklered: true }, 'fire-compartment-area').status).toBe('pass');
+    expect(byId({ fireCompartmentArea_m2: 250, fireCompartmentFloorAbove11: true }, 'fire-compartment-area').status).toBe('fail');
+    expect(byId({ fireCompartmentArea_m2: 550, fireCompartmentFloorAbove11: true, fireCompartmentSprinklered: true }, 'fire-compartment-area').status).toBe('pass');
+  });
+
+  it('indoor hydrant horizontal distance 25 pass / 30 fail (NFTC 102)', () => {
+    expect(byId({ hydrantHorizontalDistance_m: 25 }, 'indoor-hydrant-distance').status).toBe('pass');
+    const r = byId({ hydrantHorizontalDistance_m: 30 }, 'indoor-hydrant-distance');
+    expect(r.status).toBe('fail');
+    expect(r.source).toContain('NFTC 102');
+  });
+});
+
+describe('codecheck rules — building (반자·채광·환기·건폐율·용적률)', () => {
+  it('ceiling height 2.1 pass / 2.0 fail (제16조)', () => {
+    expect(byId({ ceilingHeight_m: 2.1 }, 'ceiling-height').status).toBe('pass');
+    const r = byId({ ceilingHeight_m: 2.0 }, 'ceiling-height');
+    expect(r.status).toBe('fail');
+    expect(r.clause).toContain('제16조');
+  });
+
+  it('daylight window ratio ≥1/10 (0.1 pass, 0.08 fail) & ventilation ≥1/20 (0.05 pass, 0.04 fail)', () => {
+    expect(byId({ roomFloorArea_m2: 100, daylightWindowArea_m2: 10 }, 'daylight-window-ratio').status).toBe('pass');
+    const d = byId({ roomFloorArea_m2: 100, daylightWindowArea_m2: 8 }, 'daylight-window-ratio');
+    expect(d.status).toBe('fail');
+    expect(d.message).toContain('10.0%'); // required ratio surfaced
+    expect(byId({ roomFloorArea_m2: 100, ventilationWindowArea_m2: 5 }, 'ventilation-window-ratio').status).toBe('pass');
+    expect(byId({ roomFloorArea_m2: 100, ventilationWindowArea_m2: 4 }, 'ventilation-window-ratio').status).toBe('fail');
+  });
+
+  it('daylight ratio missing either area → NA (never assumes compliance)', () => {
+    expect(byId({ daylightWindowArea_m2: 10 }, 'daylight-window-ratio').status).toBe('na');
+    expect(byId({ roomFloorArea_m2: 100 }, 'daylight-window-ratio').status).toBe('na');
+  });
+
+  it('coverage ratio ≤ limit (50% under 60 pass, 70% over 60 fail) citing 제55조', () => {
+    const ok = byId({ buildingArea_m2: 300, siteArea_m2: 600, coverageRatioLimit_pct: 60 }, 'building-coverage-ratio');
+    expect(ok.status).toBe('pass');
+    expect(ok.actual).toBe(50);
+    const bad = byId({ buildingArea_m2: 420, siteArea_m2: 600, coverageRatioLimit_pct: 60 }, 'building-coverage-ratio');
+    expect(bad.status).toBe('fail');
+    expect(bad.actual).toBe(70);
+    expect(bad.clause).toContain('제55조');
+  });
+
+  it('floor area ratio ≤ limit (200% under 250 pass, 300% over 250 fail) citing 제56조', () => {
+    expect(byId({ totalFloorArea_m2: 1200, siteArea_m2: 600, floorAreaRatioLimit_pct: 250 }, 'floor-area-ratio').status).toBe('pass');
+    const bad = byId({ totalFloorArea_m2: 1800, siteArea_m2: 600, floorAreaRatioLimit_pct: 250 }, 'floor-area-ratio');
+    expect(bad.status).toBe('fail');
+    expect(bad.actual).toBe(300);
+    expect(bad.clause).toContain('제56조');
+  });
+
+  it('coverage/FAR missing limit or area → NA', () => {
+    expect(byId({ buildingArea_m2: 300, siteArea_m2: 600 }, 'building-coverage-ratio').status).toBe('na');
+    expect(byId({ totalFloorArea_m2: 1200, floorAreaRatioLimit_pct: 250 }, 'floor-area-ratio').status).toBe('na');
+  });
+});
+
+describe('codecheck rules — accessibility 별표1 extras (접근로·경사로·승강기)', () => {
+  it('approach path width 1.2 pass / 1.1 fail; slope 1/18 pass / 1/12 fail', () => {
+    expect(byId({ approachPathWidth_m: 1.2 }, 'approach-path-width').status).toBe('pass');
+    expect(byId({ approachPathWidth_m: 1.1 }, 'approach-path-width').status).toBe('fail');
+    expect(byId({ approachPathSlope: 1 / 18 }, 'approach-path-slope').status).toBe('pass');
+    const s = byId({ approachPathSlope: 1 / 12 }, 'approach-path-slope');
+    expect(s.status).toBe('fail');
+    expect(s.required).toContain('1:18');
+  });
+
+  it('ramp landing interval ≤0.75 (0.75 pass, 0.9 fail); handrail 0.8~0.9 (0.85 pass, 0.95 fail)', () => {
+    expect(byId({ rampLandingRiseInterval_m: 0.75 }, 'ramp-landing-rise-interval').status).toBe('pass');
+    expect(byId({ rampLandingRiseInterval_m: 0.9 }, 'ramp-landing-rise-interval').status).toBe('fail');
+    expect(byId({ handrailHeight_m: 0.85 }, 'handrail-height').status).toBe('pass');
+    expect(byId({ handrailHeight_m: 0.8 }, 'handrail-height').status).toBe('pass');
+    expect(byId({ handrailHeight_m: 0.95 }, 'handrail-height').status).toBe('fail');
+    expect(byId({ handrailHeight_m: 0.7 }, 'handrail-height').status).toBe('fail');
+  });
+
+  it('elevator internal width 1.1 / depth 1.35 / door 0.8 boundaries, cite 별표1', () => {
+    expect(byId({ elevatorInternalWidth_m: 1.1 }, 'elevator-internal-width').status).toBe('pass');
+    expect(byId({ elevatorInternalWidth_m: 1.0 }, 'elevator-internal-width').status).toBe('fail');
+    expect(byId({ elevatorInternalDepth_m: 1.35 }, 'elevator-internal-depth').status).toBe('pass');
+    expect(byId({ elevatorInternalDepth_m: 1.3 }, 'elevator-internal-depth').status).toBe('fail');
+    const d = byId({ elevatorDoorWidth_m: 0.7 }, 'elevator-door-width');
+    expect(d.status).toBe('fail');
+    expect(d.clause).toContain('[별표1]');
+  });
+});
+
+describe('codecheck rules — interior 다중이용업소 비상구 (별표2)', () => {
+  it('exit width 0.75 pass / 0.7 fail; height 1.5 pass / 1.4 fail; count ≥1', () => {
+    expect(byId({ emergencyExitWidth_m: 0.75 }, 'emergency-exit-width').status).toBe('pass');
+    const w = byId({ emergencyExitWidth_m: 0.7 }, 'emergency-exit-width');
+    expect(w.status).toBe('fail');
+    expect(w.clause).toContain('다중이용업소');
+    expect(w.required).toContain('0.75');
+    expect(byId({ emergencyExitHeight_m: 1.5 }, 'emergency-exit-height').status).toBe('pass');
+    expect(byId({ emergencyExitHeight_m: 1.4 }, 'emergency-exit-height').status).toBe('fail');
+    expect(byId({ emergencyExitCount: 1 }, 'emergency-exit-count').status).toBe('pass');
+    expect(byId({ emergencyExitCount: 0 }, 'emergency-exit-count').status).toBe('fail');
+  });
+});
+
 describe('codecheck — honesty & traceability contract', () => {
   it('missing feature → NA for every rule (empty features)', () => {
     for (const rule of CODECHECK_RULES) {
@@ -179,6 +349,41 @@ describe('codecheck — honesty & traceability contract', () => {
     expect(clauses).toContain('건축물의 피난·방화구조 등의 기준에 관한 규칙 제15조');
     expect(clauses).toContain('제15조의2');
     expect(clauses).toContain('건축법 시행령 제40조');
+    // newly added rule sets — every threshold traces to a cited public clause
+    expect(clauses).toContain('주차장법 시행규칙 제3조');
+    expect(clauses).toContain('주차장법 시행규칙 제6조 제1항 제5호');
+    expect(clauses).toContain('건축법 시행령 제34조');
+    expect(clauses).toContain('건축법 시행령 제46조');
+    expect(clauses).toContain('제16조');
+    expect(clauses).toContain('제17조');
+    expect(clauses).toContain('건축법 제55조');
+    expect(clauses).toContain('건축법 제56조');
+    expect(clauses).toContain('NFTC 102');
+    expect(clauses).toContain('다중이용업소의 안전관리에 관한 특별법 시행규칙 [별표2]');
+  });
+
+  it('newly added rules also carry a law.go.kr / 공표기관 source (provenance)', () => {
+    const NEW_IDS = [
+      'parking-stall-width', 'parking-stall-length', 'parking-ramp-lane-width',
+      'stair-landing-rise-interval', 'stair-landing-width', 'outdoor-escape-stair-width',
+      'travel-distance-to-stair', 'fire-compartment-area', 'indoor-hydrant-distance',
+      'ceiling-height', 'daylight-window-ratio', 'ventilation-window-ratio',
+      'building-coverage-ratio', 'floor-area-ratio', 'approach-path-width', 'approach-path-slope',
+      'ramp-landing-rise-interval', 'handrail-height', 'elevator-internal-width',
+      'elevator-internal-depth', 'elevator-door-width', 'emergency-exit-width',
+      'emergency-exit-height', 'emergency-exit-count',
+    ];
+    for (const id of NEW_IDS) {
+      const rule = CODECHECK_RULES_BY_ID[id];
+      expect(rule, `rule ${id} must exist`).toBeTruthy();
+      expect(rule.clause.length).toBeGreaterThan(0);
+      expect(rule.source.length).toBeGreaterThan(0);
+      // missing feature → NA (never assumed compliant)
+      const res = rule.check({});
+      expect(res.status).toBe('na');
+      expect(res.clause).toBe(rule.clause);
+      expect(res.source).toBe(rule.source);
+    }
   });
 });
 

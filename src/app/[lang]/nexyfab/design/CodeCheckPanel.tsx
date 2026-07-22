@@ -110,6 +110,74 @@ const GROUPS: Group[] = [
       { key: 'curbBoundaryHeight_m', labelKo: '접근로 경계 높이', unit: 'm', kind: 'number' },
     ],
   },
+  {
+    titleKo: '주차단위구획 / 진입로 (주차장법)',
+    fields: [
+      {
+        key: 'parkingStallType',
+        labelKo: '직각주차 구획 유형',
+        kind: 'select',
+        options: [
+          { value: 'general', labelKo: '일반형(2.5×5.0)' },
+          { value: 'expanded', labelKo: '확장형(2.6×5.2)' },
+          { value: 'compact', labelKo: '경형(2.0×3.6)' },
+        ],
+      },
+      { key: 'parkingStallWidth_m', labelKo: '주차구획 폭', unit: 'm', kind: 'number' },
+      { key: 'parkingStallLength_m', labelKo: '주차구획 길이', unit: 'm', kind: 'number' },
+      { key: 'parkingRampLaneWidth_m', labelKo: '진입로 차로 너비', unit: 'm', kind: 'number' },
+      { key: 'parkingRampLaneCurved', labelKo: '진입로 곡선형', kind: 'bool' },
+      { key: 'parkingRampTwoWay', labelKo: '진입로 2차로', kind: 'bool' },
+    ],
+  },
+  {
+    titleKo: '피난·방화 (피난방화규칙 / 건축법 시행령)',
+    fields: [
+      { key: 'stairLandingRiseInterval_m', labelKo: '계단참 사이 수직높이', unit: 'm', kind: 'number' },
+      { key: 'stairLandingWidth_m', labelKo: '계단참 유효너비', unit: 'm', kind: 'number' },
+      { key: 'outdoorEscapeStairWidth_m', labelKo: '옥외피난계단 유효너비', unit: 'm', kind: 'number' },
+      { key: 'travelDistanceToStair_m', labelKo: '직통계단 보행거리', unit: 'm', kind: 'number' },
+      { key: 'mainStructureFireResistant', labelKo: '주요구조부 내화/불연', kind: 'bool' },
+      { key: 'fireCompartmentArea_m2', labelKo: '방화구획 면적', unit: '㎡', kind: 'number' },
+      { key: 'fireCompartmentFloorAbove11', labelKo: '11층 이상 층', kind: 'bool' },
+      { key: 'fireCompartmentSprinklered', labelKo: '스프링클러 설치', kind: 'bool' },
+      { key: 'hydrantHorizontalDistance_m', labelKo: '옥내소화전 수평거리', unit: 'm', kind: 'number' },
+    ],
+  },
+  {
+    titleKo: '건축 (반자·채광·환기·건폐율·용적률)',
+    fields: [
+      { key: 'ceilingHeight_m', labelKo: '거실 반자높이', unit: 'm', kind: 'number' },
+      { key: 'roomFloorArea_m2', labelKo: '거실 바닥면적', unit: '㎡', kind: 'number' },
+      { key: 'daylightWindowArea_m2', labelKo: '채광 창면적', unit: '㎡', kind: 'number' },
+      { key: 'ventilationWindowArea_m2', labelKo: '환기 창면적', unit: '㎡', kind: 'number' },
+      { key: 'buildingArea_m2', labelKo: '건축면적', unit: '㎡', kind: 'number' },
+      { key: 'siteArea_m2', labelKo: '대지면적', unit: '㎡', kind: 'number' },
+      { key: 'coverageRatioLimit_pct', labelKo: '건폐율 한도', unit: '%', kind: 'number' },
+      { key: 'totalFloorArea_m2', labelKo: '연면적', unit: '㎡', kind: 'number' },
+      { key: 'floorAreaRatioLimit_pct', labelKo: '용적률 한도', unit: '%', kind: 'number' },
+    ],
+  },
+  {
+    titleKo: '접근로 / 경사로 / 승강기 (장애인편의 별표1)',
+    fields: [
+      { key: 'approachPathWidth_m', labelKo: '접근로 유효폭', unit: 'm', kind: 'number' },
+      { key: 'approachPathSlope', labelKo: '접근로 종단기울기', unit: 'rise/run', kind: 'number' },
+      { key: 'rampLandingRiseInterval_m', labelKo: '경사로 참 사이 수직높이', unit: 'm', kind: 'number' },
+      { key: 'handrailHeight_m', labelKo: '손잡이 높이', unit: 'm', kind: 'number' },
+      { key: 'elevatorInternalWidth_m', labelKo: '승강기 내부 유효폭', unit: 'm', kind: 'number' },
+      { key: 'elevatorInternalDepth_m', labelKo: '승강기 내부 유효깊이', unit: 'm', kind: 'number' },
+      { key: 'elevatorDoorWidth_m', labelKo: '승강기 출입문 통과폭', unit: 'm', kind: 'number' },
+    ],
+  },
+  {
+    titleKo: '실내건축: 다중이용업소 비상구 (별표2)',
+    fields: [
+      { key: 'emergencyExitWidth_m', labelKo: '비상구 가로(폭)', unit: 'm', kind: 'number' },
+      { key: 'emergencyExitHeight_m', labelKo: '비상구 세로(높이)', unit: 'm', kind: 'number' },
+      { key: 'emergencyExitCount', labelKo: '비상구 개수', unit: '개', kind: 'number' },
+    ],
+  },
 ];
 
 const STATUS_COLOR: Record<Status, string> = { pass: '#12b76a', fail: '#f04438', na: '#9aa4b0' };
@@ -147,7 +215,7 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
       if (typeof v === 'boolean') { features[k] = v; continue; }
       if (typeof v === 'string' && v.trim() !== '') {
         // enum keys stay string; numeric keys parse
-        if (k === 'stairCategory' || k === 'corridorCategory') features[k] = v;
+        if (k === 'stairCategory' || k === 'corridorCategory' || k === 'parkingStallType') features[k] = v;
         else {
           const n = Number(v);
           if (Number.isFinite(n)) features[k] = n;
