@@ -41,6 +41,11 @@ export interface FEAMaterial {
   poissonRatio: number;
   yieldStrength: number;   // MPa
   density: number;         // g/cm³
+  /** Coefficient of linear thermal expansion α (1/K). Optional — only used by the
+   *  thermo-elastic path (runThermalStress / runFEM with a thermal load). When
+   *  absent the thermal path falls back to a sane default and the ordinary static
+   *  solve is entirely unaffected (no α ⇒ no thermal term ⇒ byte-identical). */
+  alpha?: number;          // 1/K
 }
 
 export interface FEAOptions {

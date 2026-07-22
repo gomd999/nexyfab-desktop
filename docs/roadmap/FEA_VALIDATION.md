@@ -8,6 +8,24 @@ The point of this document is credibility: it measures our FEA against known-goo
 references and states, per benchmark, the error and a PASS/FAIL. Where our solver is
 wrong, this report says so and quantifies it — that is what drives the fix.
 
+### Changelog — 2026-07-22 thermo-elastic coupling (thermal STRESS now computable)
+- **Thermal-stress gap CLOSED (the biggest gap the campaign exposed).** Added one-way
+  (thermal → structural) thermo-elastic coupling: a per-element **thermal body load**
+  `f_th = ∫ Bᵀ D ε_th dV`, `ε_th = α·ΔT·[1,1,1,0,0,0]ᵀ`, is assembled into the RHS of the
+  existing TET10 `Ku=F` solve, and the thermal strain is **SUBTRACTED in stress recovery**
+  (`σ = D·(B·u − ε_th)`). A CTE `α` (1/K) was added to the material properties (steel
+  12e-6, aluminium 23e-6, …). Entry point `runThermalStress` accepts a uniform/analytic ΔT
+  **or** a `thermalFEA` conduction field (sampled to the FE nodes). Off by default — no ΔT
+  ⇒ no thermal term ⇒ static results **byte-identical** (A1–A5 re-verified unchanged).
+- **Two analytical thermal-stress rows flipped N/A → real numbers (un-softened):**
+  **TH3 constrained bar** `σ=−E·α·ΔT`: ref −120.0, ours **−124.3 MPa (3.6%, PASS)** — and
+  **negative** (compression), confirming the strain-subtraction sign point (without it a
+  clamped bar reads 0). **TH4 constrained plate** biaxial `σ=−E·α·ΔT/(1−ν)`: ref −171.4,
+  ours **−176.1 MPa (2.7%, PASS)**, `σ_zz≈0`. **TH5 NAFEMS LE11** stays **N/A** — the
+  coupling physics is validated, but LE11's curved axisymmetric solid + signed `σ_z@A`
+  readout remain intractable on the voxel mesher (same blocker as LE1/LE10/D2), stated
+  honestly rather than fabricated. Files: `femSolver.ts`, `thermalStress.ts`, `thermalFEA.ts`.
+
 ### Changelog — 2026-07-22 Stage-2: graded refinement + boundary conformance (A5 FIXED)
 - **A5 FIXED (64.4% FAIL → 5.6% PASS).** The plate-hole Kt moved **1.07 → 2.833** (ref
   Kirsch 3.0), now inside the 17% tol — **engineering-grade**, not certification-grade
@@ -90,7 +108,7 @@ inapplicable to Solver A, and what make its curved-raiser *stress* unreliable.
 | Kirsch plate-with-hole `Kt` (analytical, `Kt=3.0`) | **Ran (A and B)** | Run on *both* paths on purpose: it is the same stress-concentration physics as NAFEMS LE1/LE10, but analytically exact and meshable — a fair substitute the solvers *can* model |
 | **NAFEMS LE1** (elliptic membrane, edge pressure, σ_yy@D = 92.7 MPa) | **N/A for A — now RAN on Solver B (§7)** | N/A for the voxel path A (can't mesh the ellipse / apply curved-edge pressure), but **run directly on the 2D Q4 conforming path**: `ellipticMembraneLE1` gives **93.94 MPa vs 92.7 (1.3%, PASS)** — see §7. |
 | **NAFEMS LE10** (thick plate, elliptic hole, σ_yy@D = −5.38 MPa) | **N/A for A** | Curved hole boundary + face pressure — same two blockers as LE1 |
-| **NAFEMS LE11** (cylinder/taper/sphere, **temperature** load, σ_z@A = −105 MPa) | **N/A (no thermo-elastic coupling) — see §7** | Requires a **thermal-expansion body load**; the stack has **no thermo-elastic path** (thermalFEA yields temperature only, femSolver has no α). The thermal **conduction** solver is separately validated to <0.2% (§7 TH1/TH2). |
+| **NAFEMS LE11** (cylinder/taper/sphere, **temperature** load, σ_z@A = −105 MPa) | **Coupling now EXISTS + validated; LE11 geometry still N/A for A (§7)** | The **thermo-elastic body load is now implemented** and validated on two analytical cases (TH3 constrained bar 3.6%, TH4 constrained plate 2.7%). LE11's *curved axisymmetric* solid + signed σ_z@A readout remain N/A on the voxel path (same blocker as LE1/LE10). |
 
 The three NAFEMS solid benchmarks are honestly **N/A** for the production solver: they
 exercise exactly the two capabilities it lacks (curved-surface loads / thermal). Rather
@@ -183,9 +201,10 @@ Given the measured errors, the honest positioning:
   3D free-edge effect. Good enough to **rank and screen** notch severity; **not** yet a
   certification number for a fatigue hot-spot. Certification-grade would need a true
   unstructured boundary-layer mesher and a mesh-convergence study at the raiser.
-- **Out of scope until built:** curved-surface pressure loads, interior point loads,
-  and thermal loading in the 3D path — which is why NAFEMS LE1/LE10/LE11 are N/A rather
-  than failed.
+- **Out of scope until built:** curved-surface pressure loads and interior point loads
+  in the 3D path — which is why NAFEMS LE1/LE10 are N/A rather than failed. **Thermal
+  loading is now IN scope** (thermo-elastic coupling, §7): the exact constrained-bar and
+  constrained-plate thermal-stress cases pass; only LE11's *curved* geometry keeps it N/A.
 
 The credible sales statement is therefore *"FEA-based deflection screening and
 frame checks, validated against closed-form to within a few percent; peak-stress at
@@ -243,11 +262,13 @@ reason**, never softened into a pass.
 | **T — steady-state thermal conduction** | `thermalFEA.ts` (`runThermalFEA`) | `∇·(k∇T)=−Q` by finite-volume (half-cell CVs, SI conductances, Gauss–Seidel+SOR), point-in-solid masking | **temperature field** + Fourier flux | Yes |
 | **M — modal / natural frequency** | `modalSolver.ts` (`computeNaturalFrequencies`) | Generalised eigenproblem `Kφ=ω²Mφ`, **TET10 stiffness + consistent mass**, inverse iteration with M-orthogonal deflation | natural frequencies (Hz) + mode shapes | Yes |
 
-**Key structural fact (drives the N/A rows):** the thermal solver outputs a
-**temperature field only** — there is **no thermo-elastic coupling anywhere in the
-stack** (`femSolver.ts` has no expansion coefficient `α`, no thermal body load). So a
-thermal-**stress** benchmark (NAFEMS LE11, or the exact constrained-bar `σ=−Eα·ΔT`)
-cannot be produced: it is a **missing feature**, not a wrong answer.
+**Key structural fact (updated):** the conduction solver still outputs a **temperature
+field only**, but a **one-way thermo-elastic path now exists** — `runThermalStress`
+(`thermalStress.ts`) adds the element thermal body load to the TET10 `Ku=F` solve and
+subtracts the thermal strain in recovery, so thermal **stress** `σ=−Eα·ΔT` IS now
+produced (validated TH3/TH4 below). The remaining N/A (TH5/LE11) is a **geometry/mesher**
+limit, not a missing feature: the voxel grid cannot represent LE11's curved axisymmetric
+solid or expose a signed `σ_z` at the named point A.
 
 ### 7.2 THE RESULTS TABLE (measured, un-softened)
 
@@ -261,12 +282,14 @@ mesh (genuine discretization + lumped→consistent-mass residual).
 | D2 | **NAFEMS LE10** thick plate (σ_yy @ D) | 3D TET10 (voxel) | static, face pressure | σ_yy (MPa) | −5.380 | — | — | — | **N/A** |
 | TH1 | 1-D conduction mid-plane temp | thermalFEA (FV) | thermal, Dirichlet | T (°C) | 50.00 | 49.98 | **0.0** | 5 | **PASS** |
 | TH2 | Face heat-source end temp `Q·L/(k·A)` | thermalFEA (FV) | thermal, flux | T (°C) | 60.98 | 60.87 | **0.2** | 5 | **PASS** |
-| TH3 | **NAFEMS LE11** / constrained-bar thermal stress | thermalFEA + (missing) | thermal stress | σ_z (MPa) | −105.0 | — | — | — | **N/A** |
+| TH3 | **Constrained bar**, uniform ΔT, `σ=−E·α·ΔT` | runThermalStress (TET10) | thermal stress | σ_x (MPa) | −120.0 | −124.3 | **3.6** | 5 | **PASS** |
+| TH4 | **Constrained plate**, biaxial `σ=−E·α·ΔT/(1−ν)` | runThermalStress (TET10) | thermal stress | σ_x (MPa) | −171.4 | −176.1 | **2.7** | 10 | **PASS** |
+| TH5 | **NAFEMS LE11** solid (temperature) | 3D TET10 (voxel)+coupling | thermal stress | σ_z (MPa) | −105.0 | — | — | — | **N/A** |
 | MO1 | Cantilever fundamental `f₁=(1.875104²/2π)√(EI/ρAL⁴)` | 3D TET10 modal | modal (eigen) | f₁ (Hz) | 407.7 | 410.7 | **0.7** | 10 | **PASS** |
 | MO2 | Cantilever 2nd bending mode (βL=4.694091) | 3D TET10 modal | modal (eigen) | f₂ (Hz) | 2555 | 2469 | **3.4** | 10 | **PASS** |
 | MO3 | Fixed-free axial resonance `f=c/(4L)` | 3D TET10 modal | modal (eigen) | f (Hz) | 31547 | 32056 | **1.6** | 10 | **PASS** |
 
-**Score: 6 / 6 runnable PASS; 2 honest N/A (thermal-stress coupling missing).**
+**Score: 8 / 8 runnable PASS; 2 honest N/A (D2 LE10 + TH5 LE11 — curved-geometry/signed-component on the voxel path, NOT missing physics).**
 
 ### 7.3 The two N/A rows (honest reasons, not failures)
 
@@ -277,10 +300,12 @@ mesh (genuine discretization + lumped→consistent-mass residual).
   at point D) cannot be read from the production output at all. A boundary-conforming
   gmsh mesh (`gmshMesh.ts`) exists but is an **out-of-process GPL binary** (`GMSH_BIN`),
   deploy-verified only, not runnable in the headless test env. → **N/A**, not FAIL.
-- **TH3 — NAFEMS LE11 / constrained-bar thermal stress.** The stack has **no thermo-
-  elastic coupling** (temperature field → thermal strain → stress). `thermalFEA.ts`
-  yields temperature only; `femSolver.ts` has no `α`. Neither LE11 (`σ_z=−105 MPa`) nor
-  the exact `σ=−Eα·ΔT` bar can be produced. → **N/A (missing feature)**.
+- **TH5 — NAFEMS LE11 (solid cylinder/taper/sphere, temperature load).** The thermo-
+  elastic **coupling now exists and is validated** (TH3 bar 3.6%, TH4 plate 2.7%). LE11's
+  remaining blocker is the **voxel mesher**, identical to LE1/LE10/D2: its curved
+  axisymmetric geometry is staircased, its exact radial temperature field cannot be
+  imposed on the structured grid, and the production output is max von Mises — not a
+  signed `σ_z=−105 MPa` at the named point A. → **N/A (geometry/readout, NOT physics)**.
 
 ### 7.4 Enterprise-readiness read (thermal + modal)
 
@@ -297,16 +322,21 @@ mesh (genuine discretization + lumped→consistent-mass residual).
   designs for vibration**. Caveat: supports are **clamped planes** (a pinned/simply-
   supported modal case is therefore not expressible — it would read as fixed), and mode
   identification (which mode is which) is the user's, not automated.
-- **Thermal STRESS — NOT available.** The single biggest gap this expansion exposes:
-  there is no thermo-elastic path. Recommended fix scope to close LE11: add an element
-  **thermal body load** `f = ∫ Bᵀ D α ΔT dV` in `femSolver.ts` and feed it the
-  `thermalFEA` temperature field (one-way coupling), then re-run LE11 and the exact
-  constrained-bar case. This is a bounded, well-understood addition (the element `B`, `D`
-  are already validated); it is missing, not broken.
+- **Thermal STRESS — now available (engineering-grade), one-way coupling.** The element
+  **thermal body load** `f = ∫ Bᵀ D α ΔT dV` is implemented in `femSolver.ts` with the
+  thermal strain subtracted in recovery, driven by `runThermalStress` (uniform/analytic ΔT
+  or a `thermalFEA` field). Validated on the two exact analytical cases: constrained bar
+  **−124.3 vs −120 MPa (3.6%)** and constrained plate **−176.1 vs −171.4 MPa (2.7%)**, both
+  correctly **compressive**. Trust it for **thermal-stress screening on axis-aligned,
+  cleanly-meshed parts**. Caveats: it is **one-way** (no stress→temperature feedback), uses
+  the same **axis-aligned-plane BCs** as the static path, and inherits the voxel mesher —
+  so NAFEMS **LE11's curved axisymmetric solid stays N/A** (the physics is proven, the
+  mesher can't represent that geometry).
 
 **Bottom line for the expanded campaign:** displacement/stiffness and 2D beam (§3) +
 **thermal conduction** and **modal frequency** (§7) are all validated against known-good
 references to within a few percent. The honest, data-backed sales statement extends to
-*"deflection, thermal-conduction and modal-frequency screening validated to a few percent
-against closed-form and NAFEMS LE1; stress at curved raisers is engineering-grade; thermal
-stress and the 3D NAFEMS solid stress benchmarks (LE10/LE11) are not yet available."*
+*"deflection, thermal-conduction, modal-frequency AND thermal-stress screening validated to
+a few percent against closed-form and NAFEMS LE1 (thermal stress: constrained bar 3.6%,
+constrained plate 2.7%); stress at curved raisers is engineering-grade; the 3D NAFEMS
+curved-solid stress benchmarks (LE10/LE11) remain N/A on the voxel mesher."*

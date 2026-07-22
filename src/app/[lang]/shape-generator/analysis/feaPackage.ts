@@ -18,13 +18,13 @@ import { hasCurvedStressRaiser } from './femRefine';
 
 /** 재료 물성 (대표값 — E GPa·ν·기준강도 MPa·밀도 g/cm³). 비금속은 선형등방 근사임을 리포트에 명시. */
 export const FEA_MATERIALS: Record<string, FEAMaterial & { label: string; strengthNote: string }> = {
-  STS316: { youngsModulus: 193, poissonRatio: 0.3, yieldStrength: 205, density: 7.98, label: 'STS316', strengthNote: '항복강도 205 MPa' },
-  STS304: { youngsModulus: 193, poissonRatio: 0.3, yieldStrength: 205, density: 7.93, label: 'STS304', strengthNote: '항복강도 205 MPa' },
-  steel: { youngsModulus: 200, poissonRatio: 0.3, yieldStrength: 235, density: 7.85, label: '일반구조강(SS275급)', strengthNote: '항복강도 235 MPa' },
-  aluminum: { youngsModulus: 69, poissonRatio: 0.33, yieldStrength: 240, density: 2.7, label: 'AL6061-T6', strengthNote: '항복강도 240 MPa' },
-  concrete: { youngsModulus: 30, poissonRatio: 0.2, yieldStrength: 24, density: 2.4, label: '콘크리트(fck24 상당)', strengthNote: '압축강도 24 MPa 기준 개산 — 인장·균열 별도(선형등방 근사)' },
-  timber: { youngsModulus: 11, poissonRatio: 0.35, yieldStrength: 8, density: 0.5, label: '구조용 목재(침엽수)', strengthNote: '허용휨응력 ~8 MPa 근사 — 이방성 미반영' },
-  PVC: { youngsModulus: 3, poissonRatio: 0.38, yieldStrength: 50, density: 1.4, label: 'PVC', strengthNote: '항복강도 ~50 MPa' },
+  STS316: { youngsModulus: 193, poissonRatio: 0.3, yieldStrength: 205, density: 7.98, alpha: 16e-6, label: 'STS316', strengthNote: '항복강도 205 MPa' },
+  STS304: { youngsModulus: 193, poissonRatio: 0.3, yieldStrength: 205, density: 7.93, alpha: 17e-6, label: 'STS304', strengthNote: '항복강도 205 MPa' },
+  steel: { youngsModulus: 200, poissonRatio: 0.3, yieldStrength: 235, density: 7.85, alpha: 12e-6, label: '일반구조강(SS275급)', strengthNote: '항복강도 235 MPa' },
+  aluminum: { youngsModulus: 69, poissonRatio: 0.33, yieldStrength: 240, density: 2.7, alpha: 23e-6, label: 'AL6061-T6', strengthNote: '항복강도 240 MPa' },
+  concrete: { youngsModulus: 30, poissonRatio: 0.2, yieldStrength: 24, density: 2.4, alpha: 10e-6, label: '콘크리트(fck24 상당)', strengthNote: '압축강도 24 MPa 기준 개산 — 인장·균열 별도(선형등방 근사)' },
+  timber: { youngsModulus: 11, poissonRatio: 0.35, yieldStrength: 8, density: 0.5, alpha: 5e-6, label: '구조용 목재(침엽수)', strengthNote: '허용휨응력 ~8 MPa 근사 — 이방성 미반영' },
+  PVC: { youngsModulus: 3, poissonRatio: 0.38, yieldStrength: 50, density: 1.4, alpha: 80e-6, label: 'PVC', strengthNote: '항복강도 ~50 MPa' },
 };
 
 /** 바이너리 STL(triangle soup) → 비인덱스 BufferGeometry. */

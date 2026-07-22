@@ -53,6 +53,29 @@ export interface FEMResult {
   refineDiag?: RefineDiagnostics;
   /** Preconditioner the PCG actually used. */
   preconditioner?: string;
+  /** Per-tet-node stress-TENSOR components (MPa), populated ONLY when a thermal
+   *  load is active - the thermal path needs the SIGNED axial/normal stress that a
+   *  positive-scalar von Mises cannot express (a constrained bar must read a
+   *  negative sigma). Length = number of tet nodes. Undefined for pure-static solves. */
+  nodalSxx?: Float32Array;
+  nodalSyy?: Float32Array;
+  nodalSzz?: Float32Array;
+  /** Tet-node coordinates in mm (length nNodes*3), matching the nodalS* arrays, so
+   *  a caller can read the signed stress at a named location (mid-plane, centre). */
+  nodeCoordsMM?: Float32Array;
+}
+
+/** One-way (thermal -> structural) coupling input for {@link runFEM}. A thermal
+ *  body load  f_th = integral( B^T D eps_th ) dV  with eps_th = alpha*dT*[1,1,1,0,0,0]^T
+ *  is added to the RHS, and alpha*dT is SUBTRACTED from the total strain in stress
+ *  recovery so a fully constrained bar returns sigma = -E*alpha*dT (not zero). Absent
+ *  => no thermal term at all (static results byte-identical). */
+export interface ThermalLoad {
+  /** Coefficient of linear thermal expansion alpha (1/K). */
+  alpha: number;
+  /** dT = T - T_ref (K) as a field sampled at any point in mm. Uniform dT is just a
+   *  constant function; a conduction field is sampled from thermalFEA. */
+  deltaTAt: (x: number, y: number, z: number) => number;
 }
 
 export interface Tet {
@@ -295,6 +318,19 @@ function tet10ShapeDeriv(L: readonly [number, number, number, number]): { dr: nu
     dt[m] = 4 * (dL[a][2] * L[b] + L[a] * dL[b][2]);
   }
   return { dr, ds, dt };
+}
+
+/** TET10 shape-function VALUES N (length 10) at a barycentric point (L1..L4), in the
+ *  same node ordering as tet10ShapeDeriv. Used to map a Gauss point to physical space
+ *  when sampling a temperature field for the thermal body load. */
+function tet10ShapeN(L: readonly [number, number, number, number]): number[] {
+  const N = new Array<number>(10);
+  for (let i = 0; i < 4; i++) N[i] = L[i] * (2 * L[i] - 1);      // corners
+  for (let k = 0; k < 6; k++) {                                   // midsides 4 L_a L_b
+    const a = TET_EDGES[k][0], b = TET_EDGES[k][1];
+    N[4 + k] = 4 * L[a] * L[b];
+  }
+  return N;
 }
 
 /** Build the 6×30 strain–displacement matrix B at one quadrature point, given
@@ -700,7 +736,7 @@ export function runFEM(
   material: FEAMaterial,
   conditions: FEABoundaryCondition[],
   maxNodes = 1200,
-  opts: { refine?: 'auto' | 'on' | 'off'; targetSize?: number; band?: number; maxCornerNodes?: number; prebuiltMesh?: { nodes: Float32Array; tets: Tet[] } } = {},
+  opts: { refine?: 'auto' | 'on' | 'off'; targetSize?: number; band?: number; maxCornerNodes?: number; prebuiltMesh?: { nodes: Float32Array; tets: Tet[] }; thermal?: ThermalLoad } = {},
 ): FEMResult {
   // Work with non-indexed triangles so face indices are contiguous triples
   const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry.clone();
@@ -884,6 +920,44 @@ export function runFEM(
     }
   }
 
+  // --- Thermal body load (one-way thermo-elastic coupling) --------------------
+  // For each element add  f_th = integral( B^T D eps_th ) dV  with
+  // eps_th = alpha*dT*[1,1,1,0,0,0]^T. D*eps_th is hydrostatic: (3lam+2mu)*alpha*dT on
+  // the three normal rows, 0 on shear, so
+  //   f_th[j] += w * (3lam+2mu)*alpha*dT * (B0j + B1j + B2j).
+  // dT is sampled at each Gauss point's PHYSICAL position so a graded conduction field
+  // integrates correctly; a uniform dT reduces to the exact constrained-bar load. No
+  // thermal => this block is skipped and F is byte-identical to the pure-static assembly.
+  if (opts.thermal) {
+    const lamT = E * nu / ((1 + nu) * (1 - 2 * nu));
+    const muT  = E / (2 * (1 + nu));
+    const kBulk3 = 3 * lamT + 2 * muT;      // = 3K
+    const { alpha, deltaTAt } = opts.thermal;
+    for (const elem of elems) {
+      for (const L of TET10_GAUSS) {
+        const { B, detJ } = tet10B(nodes, elem, L);
+        if (detJ === 0) continue;
+        const w = detJ / 24;
+        const N = tet10ShapeN(L);
+        let gx = 0, gy = 0, gz = 0;
+        for (let k = 0; k < 10; k++) {
+          const n = elem[k];
+          gx += N[k] * nodes[n*3]; gy += N[k] * nodes[n*3+1]; gz += N[k] * nodes[n*3+2];
+        }
+        const dT = deltaTAt(gx, gy, gz);
+        if (dT === 0) continue;
+        const sig = kBulk3 * alpha * dT;    // scalar thermal stress magnitude
+        for (let k = 0; k < 10; k++) {
+          const n = elem[k];
+          for (let d = 0; d < 3; d++) {
+            const j = k*3 + d;
+            F[n*3 + d] += w * sig * (B[0][j] + B[1][j] + B[2][j]);
+          }
+        }
+      }
+    }
+  }
+
   // --- Apply fixed DOF constraints by Dirichlet ELIMINATION (u = 0) ---
   // The old 1e30 penalty wrecked the conditioning (1e30 on the diagonal vs ~1e5
   // real stiffness → condition number ~1e25), so the Jacobi-PCG converged only
@@ -927,6 +1001,13 @@ export function runFEM(
   const nodeDisp    = new Float32Array(nNodes);
   const nodeDispVec = new Float32Array(nNodes * 3);
   const nodeW       = new Float64Array(nNodes);
+  // Signed nodal stress tensor + node coords - populated only for the thermal path,
+  // which needs the sign a von Mises scalar hides.
+  const emitTensor = !!opts.thermal;
+  const outSxx = emitTensor ? new Float32Array(nNodes) : undefined;
+  const outSyy = emitTensor ? new Float32Array(nNodes) : undefined;
+  const outSzz = emitTensor ? new Float32Array(nNodes) : undefined;
+  const outCoords = emitTensor ? new Float32Array(nNodes * 3) : undefined;
 
   const lam = E * nu / ((1 + nu) * (1 - 2 * nu));
   const mu  = E / (2 * (1 + nu));
@@ -952,10 +1033,20 @@ export function runFEM(
         for (let r = 0; r < 6; r++) eps[r] += B[r][i*3]*ux + B[r][i*3+1]*uy + B[r][i*3+2]*uz;
       }
       const na = elem[a];
-      const tr = eps[0] + eps[1] + eps[2];
-      nodeSxx[na] += qw * (lam*tr + 2*mu*eps[0]);
-      nodeSyy[na] += qw * (lam*tr + 2*mu*eps[1]);
-      nodeSzz[na] += qw * (lam*tr + 2*mu*eps[2]);
+      // Subtract the thermal strain: sigma = D*(eps_total - eps_th). eps_th = alpha*dT on
+      // the three normal components (dT sampled at THIS node's position, consistent with
+      // the body load). This is the load-bearing correctness point - WITHOUT it a fully
+      // constrained bar (eps_total = 0) would read sigma = 0 instead of -E*alpha*dT. No
+      // thermal load => e0..e2 == eps and the static stress is unchanged.
+      let e0 = eps[0], e1 = eps[1], e2 = eps[2];
+      if (opts.thermal) {
+        const epsTh = opts.thermal.alpha * opts.thermal.deltaTAt(nodes[na*3], nodes[na*3+1], nodes[na*3+2]);
+        e0 -= epsTh; e1 -= epsTh; e2 -= epsTh;
+      }
+      const tr = e0 + e1 + e2;
+      nodeSxx[na] += qw * (lam*tr + 2*mu*e0);
+      nodeSyy[na] += qw * (lam*tr + 2*mu*e1);
+      nodeSzz[na] += qw * (lam*tr + 2*mu*e2);
       nodeSxy[na] += qw * (mu*eps[3]);
       nodeSyz[na] += qw * (mu*eps[4]);
       nodeSzx[na] += qw * (mu*eps[5]);
@@ -972,6 +1063,10 @@ export function runFEM(
     nodeStress[n] = Math.sqrt(0.5 * (
       (sx-sy)**2 + (sy-sz)**2 + (sz-sx)**2 + 6 * (txy**2 + tyz**2 + txz**2)
     ));
+    if (emitTensor) {
+      outSxx![n] = sx; outSyy![n] = sy; outSzz![n] = sz;
+      outCoords![n*3] = nodes[n*3]; outCoords![n*3+1] = nodes[n*3+1]; outCoords![n*3+2] = nodes[n*3+2];
+    }
     nodeDisp[n] = Math.sqrt(u[n*3]**2 + u[n*3+1]**2 + u[n*3+2]**2);
     nodeDispVec[n*3]   = u[n*3];
     nodeDispVec[n*3+1] = u[n*3+1];
@@ -1030,5 +1125,9 @@ export function runFEM(
     grade: meshMode === 'gmsh-conforming' ? 'certification-candidate' : meshMode === 'refined' ? 'engineering' : 'screening',
     refineDiag,
     preconditioner,
+    nodalSxx: outSxx,
+    nodalSyy: outSyy,
+    nodalSzz: outSzz,
+    nodeCoordsMM: outCoords,
   };
 }

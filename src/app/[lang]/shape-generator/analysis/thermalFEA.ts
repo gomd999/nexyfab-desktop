@@ -18,6 +18,11 @@ export interface ThermalResult {
   minTemp: number;
   heatFlux: THREE.Vector3[]; // heat flux vectors per face
   hotspots: Array<{ position: THREE.Vector3; temperature: number }>;
+  /** Sample the solved steady-state temperature (degC) at any point in the part's
+   *  coordinate space (mm), trilinearly over the internal FV grid (active/in-solid
+   *  cells only). This is the one-way thermo-elastic coupling hook: feed
+   *  (sampleTemperature(x,y,z) - T_ref) as the FE thermal load in runThermalStress. */
+  sampleTemperature: (x: number, y: number, z: number) => number;
 }
 
 export interface ThermalMaterial {
@@ -407,12 +412,41 @@ export function runThermalFEA(
     if (hotspots.length >= MAX_HOTSPOTS) break;
   }
 
+  // Interior temperature sampler for thermo-elastic coupling: trilinear over ACTIVE
+  // grid corners (same blend the vertex mapping uses), so an FE node anywhere inside
+  // the solid gets a physically-interpolated temperature rather than a surface value.
+  const sampleTemperature = (x: number, y: number, z: number): number => {
+    const fx = Math.max(0, Math.min(gridSize - 1, (x - bb.min.x) / sx));
+    const fy = Math.max(0, Math.min(gridSize - 1, (y - bb.min.y) / sy));
+    const fz = Math.max(0, Math.min(gridSize - 1, (z - bb.min.z) / sz));
+    const ix = Math.min(gridSize - 2, Math.floor(fx)), tx = fx - ix;
+    const iy = Math.min(gridSize - 2, Math.floor(fy)), ty = fy - iy;
+    const iz = Math.min(gridSize - 2, Math.floor(fz)), tz = fz - iz;
+    const corners: Array<[number, number]> = [
+      [idx(ix, iy, iz),       (1 - tx) * (1 - ty) * (1 - tz)],
+      [idx(ix + 1, iy, iz),   tx * (1 - ty) * (1 - tz)],
+      [idx(ix, iy + 1, iz),   (1 - tx) * ty * (1 - tz)],
+      [idx(ix + 1, iy + 1, iz), tx * ty * (1 - tz)],
+      [idx(ix, iy, iz + 1),   (1 - tx) * (1 - ty) * tz],
+      [idx(ix + 1, iy, iz + 1), tx * (1 - ty) * tz],
+      [idx(ix, iy + 1, iz + 1), (1 - tx) * ty * tz],
+      [idx(ix + 1, iy + 1, iz + 1), tx * ty * tz],
+    ];
+    let wSum = 0, tSum = 0;
+    for (const [ci, w] of corners) { if (active[ci]) { wSum += w; tSum += w * temps[ci]; } }
+    if (wSum > 1e-9) return tSum / wSum;
+    let best = idx(ix, iy, iz), bestW = -1;
+    for (const [ci, w] of corners) { if (w > bestW) { bestW = w; best = ci; } }
+    return temps[best];
+  };
+
   return {
     temperatures: vertexTemps,
     maxTemp,
     minTemp,
     heatFlux,
     hotspots,
+    sampleTemperature,
   };
 }
 
