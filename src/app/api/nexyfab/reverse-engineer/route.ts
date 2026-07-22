@@ -21,6 +21,8 @@ import { CadAuditAction, logCadPipelineAudit } from '@/lib/enterprise-cad-audit'
 import { reverseEngineerWithWallThickness } from '@/lib/ai/scad-agent/reverseEngineer';
 import { parseStlBufferToGeometry } from '@/lib/ai/scad-agent/renderToGeometry';
 import { intentToScad } from '@/lib/openscad-render/intentToScad';
+import { renderScadToStl } from '@/lib/openscad-render/renderStl';
+import { stlToIr, gateScadStl } from '@/lib/cad-ir';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -168,6 +170,43 @@ export async function POST(req: NextRequest) {
     if (conv.ok) topScad = conv.scad;
   } catch { /* non-fatal */ }
 
+  // (7b) VERIFY the reconstruction against the SOURCE mesh — the wedge that a
+  // drafting tool can't do: don't just propose a shape, PROVE it matches the
+  // original. Render topScad back to STL and gate it (bbox / genus / watertight;
+  // units-unknown → aspect-ratio mode) against the uploaded STL's own IR.
+  // Honest failure: if OpenSCAD is unavailable or the render/gate fails, report
+  // status 'unavailable' with a reason — NEVER fabricate a pass.
+  let reconstructionGate:
+    | { status: 'pass' | 'fail'; score: number; stage: string; checks: unknown; feedback: string }
+    | { status: 'unavailable'; reason: string }
+    | undefined;
+  if (topScad) {
+    try {
+      const sourceIr = stlToIr(
+        new Uint8Array(decoded.buffer, decoded.byteOffset, decoded.byteLength),
+        { path: 'upload.stl', name: 'upload.stl' },
+      );
+      const rendered = await renderScadToStl({ scadSource: topScad, timeoutMs: 20_000 });
+      if (!rendered.ok) {
+        reconstructionGate = { status: 'unavailable', reason: `render_${rendered.code}` };
+      } else {
+        const g = gateScadStl(
+          new Uint8Array(rendered.bytes.buffer, rendered.bytes.byteOffset, rendered.bytes.byteLength),
+          sourceIr,
+        );
+        reconstructionGate = {
+          status: g.passed ? 'pass' : 'fail',
+          score: g.score,
+          stage: g.stage,
+          checks: g.checks,
+          feedback: g.feedback,
+        };
+      }
+    } catch (e) {
+      reconstructionGate = { status: 'unavailable', reason: `gate_threw_${(e as Error).message.slice(0, 80)}` };
+    }
+  }
+
   // (8) Audit — non-blocking. Pro+ only.
   try {
     logCadPipelineAudit({
@@ -191,6 +230,7 @@ export async function POST(req: NextRequest) {
     candidates: result.candidates,
     observedStats: result.observedStats,
     ...(topScad ? { topScad } : {}),
+    ...(reconstructionGate ? { reconstructionGate } : {}),
     ...(usage ? { usage } : {}),
   });
 }

@@ -1505,6 +1505,15 @@ interface BuildResp {
   pipes?: { routes: unknown[]; errors: string[]; obstacleViolations: unknown[]; sleeves?: unknown[]; crossViolations: unknown[] } | null;
   designOk?: boolean | null;
   gateErrors?: string[];
+  // STEP 업로드 역설계 검증: 복원물을 원본 STEP 실측 IR과 대조(bbox/genus/watertight).
+  // pass/fail=진짜 원본대조 판정, unavailable=렌더/대조 불가(통과 위장 아님).
+  reconstructionGate?: {
+    status: 'pass' | 'fail' | 'unavailable';
+    score?: number;
+    stage?: string;
+    feedback?: string;
+    reason?: string;
+  };
   error?: string;
 }
 
@@ -1556,6 +1565,8 @@ export default function AssemblyPresetPanel({
   }, [advJson]);
   const [pkgBusy, setPkgBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // STEP 업로드 시 원본대조 검증 판정(있을 때만 표시)
+  const [stepGate, setStepGate] = useState<BuildResp['reconstructionGate'] | null>(null);
   const [built, setBuilt] = useState<BuildResp | null>(null);
   // 하중경로 체인 (building 전용, Wave A·B1)
   const [usages, setUsages] = useState<Usage[]>([]);
@@ -2101,8 +2112,10 @@ export default function AssemblyPresetPanel({
       });
       const data = (await res.json()) as BuildResp & { stats?: { partsIn?: number; imported?: number } };
       const ok = await consumeBuild(data);
+      setStepGate(data.reconstructionGate ?? null);
       if (ok && data.stats) setMsg((m) => `${m ?? ''} · ${fmt.toUpperCase()} ${data.stats!.imported ?? '-'}/${data.stats!.partsIn ?? '-'} 부품(근사·명시)`);
     } catch (e) {
+      setStepGate(null);
       setMsg(t.failed + (e instanceof Error ? e.message : String(e)));
     } finally {
       setBusy(false);
@@ -3098,6 +3111,35 @@ export default function AssemblyPresetPanel({
       )}
 
       {msg && <div style={{ marginTop: 6, fontSize: 11, color: 'var(--nx-text-2, #46505e)' }}>{msg}</div>}
+      {stepGate && (
+        <div
+          data-testid="step-reconstruction-gate"
+          data-gate-status={stepGate.status}
+          style={{
+            marginTop: 6, padding: '6px 9px', borderRadius: 7, fontSize: 11, lineHeight: 1.5,
+            border: '1px solid',
+            borderColor: stepGate.status === 'pass' ? '#16a34a55' : stepGate.status === 'fail' ? '#e11d4855' : '#d9770655',
+            background: stepGate.status === 'pass' ? '#16a34a14' : stepGate.status === 'fail' ? '#e11d4814' : '#d977061a',
+            color: stepGate.status === 'pass' ? '#15803d' : stepGate.status === 'fail' ? '#be123c' : '#b45309',
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>
+            {stepGate.status === 'pass'
+              ? (ko ? '✓ 원본 STEP 대조 검증 통과 (bbox·genus·수밀)' : '✓ Verified against source STEP')
+              : stepGate.status === 'fail'
+                ? (ko ? '✕ 복원물이 원본 STEP과 불일치' : '✕ Reconstruction does not match source STEP')
+                : (ko ? '검증 불가' : 'Gate unavailable')}
+            {stepGate.status !== 'unavailable' && typeof stepGate.score === 'number'
+              ? ` · ${(stepGate.score * 100).toFixed(0)}%` : ''}
+          </div>
+          <div style={{ marginTop: 2, opacity: 0.85 }}>
+            {stepGate.status === 'unavailable'
+              ? (ko ? `복원물을 렌더/대조할 수 없었습니다 (${stepGate.reason ?? '이유 미상'}). 통과로 위장하지 않습니다.`
+                    : `Could not render/compare the reconstruction (${stepGate.reason ?? 'unknown'}). Not reported as a pass.`)
+              : (stepGate.feedback ?? '')}
+          </div>
+        </div>
+      )}
       {warnings.length > 0 && (
         <div style={{ marginTop: 6, fontSize: 11, color: '#991b1b' }}>
           {warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}

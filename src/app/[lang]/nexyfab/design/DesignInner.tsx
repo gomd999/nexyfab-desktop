@@ -20,6 +20,7 @@ import * as THREE from 'three';
 import { parseSTL } from '@/app/[lang]/shape-generator/io/importers';
 import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
 import { isKorean } from '@/lib/i18n/normalize';
+import BriefClarifier from './BriefClarifier';
 import DomainVerifyPanel from './DomainVerifyPanel';
 import CalcStudioPanel from './CalcStudioPanel';
 import StudioChatDock from './StudioChatDock';
@@ -1332,6 +1333,8 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                 color: 'inherit', fontSize: 13, lineHeight: 1.5, boxSizing: 'border-box',
               }}
             />
+            {/* 명료화 pre-pass: 대충 쓴 한 줄 → 질문/구조화 브리프(확정·가정·확인필요). 형상은 안 만들고 프롬프트만 다듬음 */}
+            <BriefClarifier lang={lang} rawText={prompt} onUseRefined={(t) => setPrompt(t)} />
             <button
               type="button"
               disabled={loading || prompt.trim().length < 4}

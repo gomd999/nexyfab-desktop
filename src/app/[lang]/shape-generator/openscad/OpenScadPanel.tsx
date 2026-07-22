@@ -1232,6 +1232,15 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     evidence: string[];
     counterEvidence: string[];
   }>>([]);
+  // Verified-reconstruction gate: the top candidate is rendered back to STL and
+  // compared (bbox/genus/watertight) to the uploaded mesh. 'pass'/'fail' are a
+  // real source-fidelity verdict; 'unavailable' means the render/gate couldn't
+  // run (never a fabricated pass).
+  const [reGate, setReGate] = useState<
+    | { status: 'pass' | 'fail'; score: number; stage: string; checks: unknown; feedback: string }
+    | { status: 'unavailable'; reason: string }
+    | null
+  >(null);
 
   /** Live-preview sliders — one row per numeric param in the last-parsed
    *  intent. Only built AFTER a successful verify (verifiable === true). */
@@ -1990,6 +1999,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     if (!reStlBase64 || reBusy) return;
     setReErr('');
     setReCandidates([]);
+    setReGate(null);
     setReBusy(true);
     try {
       const res = await fetch('/api/nexyfab/reverse-engineer', {
@@ -2012,6 +2022,8 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
           counterEvidence: string[];
         }>);
       }
+      const g = (data as { reconstructionGate?: unknown }).reconstructionGate;
+      if (g && typeof g === 'object') setReGate(g as typeof reGate);
     } catch (e: unknown) {
       setReErr(e instanceof Error ? e.message : t.reRouteFailed);
     } finally {
@@ -2875,6 +2887,37 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
                     className="text-xs text-red-300 bg-red-950/40 border border-red-800/50 rounded p-2 whitespace-pre-wrap"
                   >
                     {reErr}
+                  </div>
+                )}
+                {reGate && (
+                  <div
+                    data-testid="reverse-engineer-gate"
+                    data-gate-status={reGate.status}
+                    className={`flex flex-col gap-1 border rounded p-2 text-[11px] ${
+                      reGate.status === 'pass'
+                        ? 'border-emerald-600/50 bg-emerald-950/30 text-emerald-200'
+                        : reGate.status === 'fail'
+                          ? 'border-rose-600/50 bg-rose-950/30 text-rose-200'
+                          : 'border-amber-600/40 bg-amber-950/20 text-amber-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 font-mono font-semibold">
+                      <span>
+                        {reGate.status === 'pass'
+                          ? '✓ Verified against source (bbox / genus / watertight)'
+                          : reGate.status === 'fail'
+                            ? '✕ Reconstruction does not match source'
+                            : 'Gate unavailable'}
+                      </span>
+                      {reGate.status !== 'unavailable' && (
+                        <span>{(reGate.score * 100).toFixed(0)}%</span>
+                      )}
+                    </div>
+                    <span className="text-[10px] opacity-80">
+                      {reGate.status === 'unavailable'
+                        ? `Could not render/compare the reconstruction (${reGate.reason}). Not reported as a pass.`
+                        : reGate.feedback}
+                    </span>
                   </div>
                 )}
                 {reCandidates.length > 0 && (
