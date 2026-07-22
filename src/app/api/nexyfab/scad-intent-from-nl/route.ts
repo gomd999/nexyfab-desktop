@@ -36,6 +36,7 @@ import {
   type AssemblyPartInput,
 } from '@/lib/openscad-render/intentToScad';
 import { detectShapeFromText } from '@/lib/openscad-render/shapeAliases';
+import { extractDimensions, reconcileIntent } from '@/lib/ai/dimensionExtractor';
 import { getCachedIntent, setCachedIntent } from '@/lib/ai/intentCache';
 import { captureServerError } from '@/lib/error-capture';
 
@@ -435,6 +436,8 @@ ${prompt ? 'User note: ' + prompt : ''}`;
 
   let intent: IntentInput | { kind: 'assembly'; parts: AssemblyPartInput[] };
   let conv: ReturnType<typeof intentToScad>;
+  // Deterministic-reconcile audit notes (surfaced on warnings for transparency).
+  let reconcileNotes: string[] = [];
 
   if (Array.isArray(parsed.parts)) {
     // ── Assembly: heterogeneous parts → union() of placed parts ───────────
@@ -468,6 +471,21 @@ ${prompt ? 'User note: ' + prompt : ''}`;
       features: parseFeatures(parsed.features),
       facets: typeof parsed.facets === 'number' ? parsed.facets : undefined,
     };
+    // Deterministic dimension reconcile: the LLM is noisy on secondary NUMBERS
+    // (hole Ø / count / position, bolt-circle). A regex extracts the explicitly
+    // stated numbers reliably; on an explicit number the deterministic value
+    // wins, otherwise the LLM's choice stands. Skipped on refine (the prompt is
+    // a delta, not a full spec) so we never re-impose the original numbers on a
+    // change request. `intent` here is a single catalog shape (IntentInput).
+    if (!refining) {
+      const rec = reconcileIntent(intent as IntentInput, extractDimensions(prompt));
+      intent = rec.intent;
+      if (rec.overrides.length > 0) {
+        reconcileNotes = rec.overrides.map(
+          o => `[reconcile] ${o.field}: ${o.from ?? 'n/a'} → ${o.to} (${o.reason})`,
+        );
+      }
+    }
     conv = intentToScad(intent);
   }
 
@@ -476,6 +494,7 @@ ${prompt ? 'User note: ' + prompt : ''}`;
   }
 
   const summary = typeof parsed.summary === 'string' ? parsed.summary.slice(0, 200) : undefined;
+  const warnings = reconcileNotes.length > 0 ? [...conv.warnings, ...reconcileNotes] : conv.warnings;
 
   // Persist to cache so subsequent identical prompts skip the AI call. Refine
   // results are contextual (depend on previousIntent) → not cached by prompt.
@@ -484,7 +503,7 @@ ${prompt ? 'User note: ' + prompt : ''}`;
     setCachedIntent(prompt, {
       intent,
       scad: conv.scad,
-      warnings: conv.warnings,
+      warnings,
       summary,
     }).catch(e => console.warn('[scad-intent-from-nl] cache write failed:', e));
   }
@@ -502,7 +521,7 @@ ${prompt ? 'User note: ' + prompt : ''}`;
   return NextResponse.json({
     intent,
     scad: conv.scad,
-    warnings: conv.warnings,
+    warnings,
     summary,
     cached: false,
     ...(usage ? { usage } : {}),

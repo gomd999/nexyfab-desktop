@@ -713,7 +713,13 @@ function applyHole(body: string, params: Record<string, number>): string {
   const z = num(params.z ?? params.posZ, 0);
   // Through-hole by default — make the cutter generously taller than any plausible body.
   const depth = num(params.depth, 1000);
-  return `difference() {\n${indent(body)}\n  translate([${x}, ${y}, ${z}]) cylinder(h=${depth}, r=${dia / 2}, center=true);\n}`;
+  // Bore axis: 0=X, 1=Y, 2=Z. Default Z (index 2) preserves the historical
+  // behaviour (a plain vertical bore). The deterministic dimension reconciler
+  // sets axis=1 for corner holes through a thin plate so they pierce the flat
+  // face rather than tunnelling through the long edge.
+  const axis = num(params.axis, 2);
+  const rot = axis === 0 ? 'rotate([0, 90, 0]) ' : axis === 1 ? 'rotate([90, 0, 0]) ' : '';
+  return `difference() {\n${indent(body)}\n  translate([${x}, ${y}, ${z}]) ${rot}cylinder(h=${depth}, r=${dia / 2}, center=true);\n}`;
 }
 
 function applyFillet(body: string, params: Record<string, number>): string {
