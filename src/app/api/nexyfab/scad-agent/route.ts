@@ -22,9 +22,14 @@ import { getTrustedClientIp } from '@/lib/client-ip';
 import { recordPromptCall } from '@/lib/ai/telemetry';
 import { CadAuditAction, logCadPipelineAudit } from '@/lib/enterprise-cad-audit';
 import { captureServerError } from '@/lib/error-capture';
-import { runScadAgent, makeServerAiClient } from '@/lib/ai/scad-agent/runScadAgent';
 import { makeTools } from '@/lib/ai/scad-agent/tools';
 import { SERVER_HOST_ADAPTERS } from '@/lib/ai/scad-agent/serverAdapters';
+import {
+  runRepairLoop,
+  makeServerAiFamilies,
+  makeSpecGateEvaluator,
+  makeVisionCritic,
+} from '@/lib/ai/scad-agent/repairLoop';
 import type { AgentEvent, AgentSession } from '@/lib/ai/scad-agent/types';
 
 export const dynamic = 'force-dynamic';
@@ -128,24 +133,45 @@ export async function POST(req: NextRequest) {
       let finalStatus: string = 'unknown';
       let totalTokens = 0;
       const provider = 'unknown';
+      // Repair-loop honesty summary (lever A/E): how the self-correcting loop
+      // resolved — attempts used, whether a series-switch fired, final verdict.
+      let repairSummary:
+        | { passed: boolean; attempts: number; seriesSwitched: boolean; families: string[]; visionFlagged: boolean }
+        | undefined;
 
       try {
-        const { session: finalSession } = await runScadAgent({
+        // Lever A+E: wrap the model-driven agent in a self-correcting repair
+        // loop. The deterministic spec gate is authoritative; on a gate fail it
+        // feeds the critique back verbatim and, after a failure, series-switches
+        // to a different model family (13-35% rescue in the pilot). Happy path
+        // (gate passes on attempt 1) runs exactly one agent pass, same as before.
+        // Vision critic is a Pro feature (free tier gets 0 vision calls).
+        const aiFamilies = await makeServerAiFamilies({ task: 'scad-agent' });
+        const result = await runRepairLoop({
           userPrompt,
           session,
-          ai: makeServerAiClient({ task: 'scad-agent' }),
+          aiFamilies,
           tools: makeTools(SERVER_HOST_ADAPTERS),
+          gate: makeSpecGateEvaluator(),
+          visionCritic: tightBudget ? undefined : makeVisionCritic(SERVER_HOST_ADAPTERS.vision),
+          maxAttempts: tightBudget ? 2 : 3,
           tokensCap: tightBudget ? 30_000 : undefined,
           turnsCap: tightBudget ? 6 : undefined,
           toolCallsCap: tightBudget ? 12 : undefined,
-          // Stage 2 — Free plan gets 0 vision calls (Pro feature),
-          // Pro defaults to BUDGET_DEFAULTS.visionCallsCap (3).
           visionCallsCap: tightBudget ? 0 : undefined,
           onEvent: sendEvent,
           signal: abortController.signal,
         });
+        const finalSession = result.session;
         finalStatus = finalSession.status;
         totalTokens = finalSession.budget.tokensUsed;
+        repairSummary = {
+          passed: result.passed,
+          attempts: result.attemptsUsed,
+          seriesSwitched: result.seriesSwitched,
+          families: result.familiesUsed,
+          visionFlagged: result.visionFlagged,
+        };
       } catch (e) {
         const err = e as Error;
         finalStatus = 'error';
@@ -177,6 +203,15 @@ export async function POST(req: NextRequest) {
               tokensUsed: totalTokens,
               elapsedMs: Date.now() - t0,
               continuedSession: !!session,
+              ...(repairSummary
+                ? {
+                    repairPassed: repairSummary.passed,
+                    repairAttempts: repairSummary.attempts,
+                    seriesSwitched: repairSummary.seriesSwitched,
+                    families: repairSummary.families.join(','),
+                    visionFlagged: repairSummary.visionFlagged,
+                  }
+                : {}),
             },
             ip,
           });
