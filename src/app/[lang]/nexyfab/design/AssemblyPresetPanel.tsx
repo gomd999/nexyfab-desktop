@@ -1513,6 +1513,9 @@ interface BuildResp {
     stage?: string;
     feedback?: string;
     reason?: string;
+    // passthrough=진짜 OCCT 솔리드 라운드트립(곡면 실측), approximation=박스 근사 복원.
+    // 통과가 어느 경로에서 나왔는지 정직하게 노출.
+    mode?: 'passthrough' | 'approximation';
   };
   error?: string;
 }
@@ -3131,6 +3134,9 @@ export default function AssemblyPresetPanel({
                 : (ko ? '검증 불가' : 'Gate unavailable')}
             {stepGate.status !== 'unavailable' && typeof stepGate.score === 'number'
               ? ` · ${(stepGate.score * 100).toFixed(0)}%` : ''}
+            {stepGate.mode
+              ? ` · ${stepGate.mode === 'passthrough' ? (ko ? '실솔리드 대조' : 'real-solid') : (ko ? '근사 복원' : 'approx')}`
+              : ''}
           </div>
           <div style={{ marginTop: 2, opacity: 0.85 }}>
             {stepGate.status === 'unavailable'
