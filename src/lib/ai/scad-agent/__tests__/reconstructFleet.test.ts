@@ -109,6 +109,35 @@ describe('buildReconstructionPrompt', () => {
     expect(prompt).toContain('NOT authoritative');
     expect(prompt).toContain('never copy these numbers');
   });
+
+  it('threads the heuristic seed hint (shapeId + params + confidence) into the prompt', () => {
+    const prompt = buildReconstructionPrompt(sampleIr(), [], {
+      shapeId: 'cylinder',
+      params: { r: 10, h: 30 },
+      confidence: 82,
+      summary: 'best fit: vertical cylinder',
+    });
+    // The classifier's identified primitive is surfaced as a strong seed ...
+    expect(prompt).toContain('CLASSIFIER SEED');
+    expect(prompt).toContain('identified this part as: cylinder');
+    expect(prompt).toContain('r=10');
+    expect(prompt).toContain('h=30');
+    expect(prompt).toContain('classifier confidence 82%');
+    expect(prompt).toContain('best fit: vertical cylinder');
+    // ... but framed as a hint the gate still judges, never an auto-pass.
+    expect(prompt).toContain('do not blindly trust');
+    expect(prompt).toContain('so a wrong seed will FAIL');
+    // The seed precedes the source measurements it must be checked against.
+    expect(prompt.indexOf('CLASSIFIER SEED')).toBeLessThan(prompt.indexOf('SOURCE MEASUREMENTS'));
+  });
+
+  it('no-hint path is unchanged (no classifier-seed block)', () => {
+    const prompt = buildReconstructionPrompt(sampleIr(), []);
+    expect(prompt).not.toContain('CLASSIFIER SEED');
+    // The rest of the prompt is still fully assembled.
+    expect(prompt).toContain('SOURCE MEASUREMENTS');
+    expect(prompt).toContain('units: UNKNOWN');
+  });
 });
 
 describe('reconstructWithFleet (orchestration)', () => {
@@ -250,6 +279,38 @@ describe('reconstructWithFleet (orchestration)', () => {
     });
     expect(res.attemptsUsed).toBe(1);
     expect(res.gateStatus).toBe('unverified-null');
+  });
+
+  it('injects the heuristicHint into the proposer prompt (route -> fleet -> prompt)', async () => {
+    const prompts: string[] = [];
+    const families: AiFamily[] = [{ family: 'alpha', client: recordingAi('alpha', prompts) }];
+    const res = await reconstructWithFleet({
+      sourceIr: sampleIr(),
+      tools: noTools,
+      aiFamilies: families,
+      references: false,
+      heuristicHint: { shapeId: 'cylinder', params: { r: 10, h: 30 }, confidence: 82 },
+      gate: scriptedGate([{ passed: true, feedback: 'PASS' }]),
+    });
+    // The proposer's user prompt carried the classifier seed for the right shape.
+    expect(prompts[0]).toContain('CLASSIFIER SEED');
+    expect(prompts[0]).toContain('identified this part as: cylinder');
+    expect(prompts[0]).toContain('r=10');
+    // The gate is still authoritative: pass here comes from the (scripted) gate.
+    expect(res.passed).toBe(true);
+  });
+
+  it('omitting the hint leaves the proposer prompt free of a seed block', async () => {
+    const prompts: string[] = [];
+    const families: AiFamily[] = [{ family: 'alpha', client: recordingAi('alpha', prompts) }];
+    await reconstructWithFleet({
+      sourceIr: sampleIr(),
+      tools: noTools,
+      aiFamilies: families,
+      references: false,
+      gate: scriptedGate([{ passed: false, feedback: 'fail' }]),
+    });
+    expect(prompts[0]).not.toContain('CLASSIFIER SEED');
   });
 
   it('throws when no families are supplied', async () => {

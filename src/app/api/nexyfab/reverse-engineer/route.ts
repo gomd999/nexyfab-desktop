@@ -282,8 +282,22 @@ export async function POST(req: NextRequest) {
       if (aiFamilies.length === 0) {
         aiFleet = { error: 'no model family configured — set an AI provider key' };
       } else {
+        // Seed the fleet with the heuristic classifier's TOP candidate. The
+        // classifier already identifies the primitive (shapeId + params +
+        // confidence) — e.g. cylinder r=10 h=30 — so handing it to the proposer
+        // stops it from blindly defaulting to a box on a shape-less bare-STL IR.
+        // This is a HINT, not an auto-pass: the deterministic reconstruction
+        // gate still verifies every proposal, so a wrong seed FAILs and gets
+        // corrected rather than rubber-stamped.
+        const topCandidate = result.candidates[0]!;
         const fleet = await reconstructWithFleet({
           sourceIr,
+          heuristicHint: {
+            shapeId: topCandidate.intent.shapeId,
+            params: topCandidate.intent.params,
+            confidence: topCandidate.confidence,
+            summary: topCandidate.summary,
+          },
           tools: makeTools(SERVER_HOST_ADAPTERS),
           aiFamilies,
           visionCritic: makeVisionCritic(SERVER_HOST_ADAPTERS.vision),

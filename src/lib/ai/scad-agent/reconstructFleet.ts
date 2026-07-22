@@ -93,6 +93,61 @@ export function irToReferenceQuery(ir: Ir): ReferenceQuery {
   return q;
 }
 
+// ──── Heuristic seed hint (deterministic classifier -> proposer) ────
+
+/**
+ * A STRONG-but-not-authoritative starting point handed to the proposer: the
+ * deterministic heuristic classifier's TOP candidate (shapeId + params +
+ * confidence). The classifier already identifies primitive class (box /
+ * cylinder / ...), so seeding the LLM with it stops the proposer from blindly
+ * defaulting to a box on a shape-less bare-STL IR. It is a HINT only — the
+ * deterministic gate still judges truth, so a wrong hint gets caught, not
+ * rubber-stamped. Kept as a minimal local shape so this module does not depend
+ * on reverseEngineer's `ProposedIntent`.
+ */
+export interface HeuristicSeedHint {
+  /** Primitive/shape id the classifier matched (e.g. 'cylinder', 'box'). */
+  shapeId: string;
+  /** Measured parameters for that shape (e.g. { r: 10, h: 30 }). */
+  params?: Record<string, number>;
+  /** 0..100 confidence the heuristic placed on this match. */
+  confidence?: number;
+  /** One-line human summary from the classifier, if any. */
+  summary?: string;
+}
+
+/**
+ * Render the heuristic seed hint as a short, honest prompt block. Framed as a
+ * starting point to VERIFY and CORRECT against the measured IR — never as an
+ * answer to accept. Returns '' when there is no usable hint.
+ */
+function formatHeuristicHintBlock(hint: HeuristicSeedHint | undefined): string {
+  if (!hint || !hint.shapeId) return '';
+  const paramStr = hint.params && Object.keys(hint.params).length
+    ? Object.entries(hint.params)
+        .map(([k, v]) => `${k}=${typeof v === 'number' ? Number(v.toFixed(4)) : v}`)
+        .join(', ')
+    : '(no params)';
+  const conf = typeof hint.confidence === 'number'
+    ? ` (classifier confidence ${Math.round(hint.confidence)}%)`
+    : '';
+  const lines: string[] = [];
+  lines.push('CLASSIFIER SEED (strong starting point — verify, do not blindly trust):');
+  lines.push(
+    `- A deterministic shape classifier identified this part as: ${hint.shapeId} `
+    + `with params ${paramStr}${conf}.`,
+  );
+  if (hint.summary) lines.push(`- classifier note: ${hint.summary}`);
+  lines.push(
+    '- START FROM THIS primitive rather than defaulting to a box. Then CHECK it '
+    + 'against the SOURCE MEASUREMENTS below and CORRECT it if the geometry '
+    + 'disagrees (wrong primitive, wrong dims, missing feature). This seed is a '
+    + 'hint, not ground truth — the deterministic gate still verifies your result, '
+    + 'so a wrong seed will FAIL and must be fixed, not carried forward.',
+  );
+  return lines.join('\n');
+}
+
 // ─── IR -> reconstruction prompt ─────────────────────────────────────────────
 
 function fmtVec(v: [number, number, number] | null | undefined, digits = 2): string {
@@ -109,7 +164,11 @@ function fmtVec(v: [number, number, number] | null | undefined, digits = 2): str
  *
  * Exported for testability — the grounding-in-prompt test asserts against this.
  */
-export function buildReconstructionPrompt(ir: Ir, refs: CitedRefPart[]): string {
+export function buildReconstructionPrompt(
+  ir: Ir,
+  refs: CitedRefPart[],
+  hint?: HeuristicSeedHint,
+): string {
   const lines: string[] = [];
   lines.push(
     'Reconstruct this uploaded part as CLEAN, editable parametric geometry '
@@ -118,6 +177,14 @@ export function buildReconstructionPrompt(ir: Ir, refs: CitedRefPart[]): string 
     + 'deterministic gate (bounding box, genus/holes, watertightness). Match the '
     + 'source geometry; do not add features the IR does not evidence.',
   );
+
+  // Deterministic classifier seed (if any) FIRST — a strong starting point the
+  // model should verify against the SOURCE MEASUREMENTS that follow, not accept.
+  const hintBlock = formatHeuristicHintBlock(hint);
+  if (hintBlock) {
+    lines.push('');
+    lines.push(hintBlock);
+  }
 
   const e = ir.extent;
   const unitsKnown = !!e?.units && e.units_source !== 'unknown';
@@ -211,6 +278,15 @@ export function buildReconstructionPrompt(ir: Ir, refs: CitedRefPart[]): string 
 export interface ReconstructFleetOptions {
   /** Measured IR of the SOURCE part — the gate's reference and the prompt's basis. */
   sourceIr: Ir;
+  /**
+   * Optional deterministic-classifier seed (top heuristic candidate: shapeId +
+   * params + confidence). Injected into the reconstruction prompt as a STRONG
+   * starting point so the proposer begins from the identified primitive (e.g.
+   * cylinder) instead of blindly defaulting to a box. It biases the proposer
+   * ONLY — the gate still verifies the result, so a wrong seed FAILs. Omit for
+   * the unchanged no-hint behavior.
+   */
+  heuristicHint?: HeuristicSeedHint;
   /** Tool executors (server adapters) the proposer uses to build/render SCAD. */
   tools: ToolExecutorMap;
   /** Ordered model families for series-switch. Must contain >= 1 entry. */
@@ -318,7 +394,7 @@ export async function reconstructWithFleet(
     : [];
 
   // (2) PROMPT — compose from the source IR + cited references.
-  const userPrompt = buildReconstructionPrompt(opts.sourceIr, references);
+  const userPrompt = buildReconstructionPrompt(opts.sourceIr, references, opts.heuristicHint);
 
   // (3) PROPOSE + VERIFY — hand the whole loop to runRepairLoop, wiring the
   // cad-ir reconstruction gate as the source of truth. NO new geometry code:
