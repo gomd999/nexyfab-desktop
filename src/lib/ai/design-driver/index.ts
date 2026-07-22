@@ -45,3 +45,9 @@ export { buildCurvedArtifact, curvedGate, type CurvedArtifact } from './curvedGa
 export { buildGdtArtifact, gdtGate, type GdtArtifact } from './gdtGate';
 export { buildDrawingArtifact, drawingGate, type DrawingArtifact, type PlannedMeasurement } from './drawingGate';
 export { buildDesignPackage, buildVerificationReport, planBomRows, REPORT_LIMITATIONS } from './packager';
+export {
+  planWithConfidence,
+  projectPlanFields,
+  type PlanWithConfidenceOptions,
+  type PlanWithConfidenceResult,
+} from './planWithConfidence';

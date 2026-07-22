@@ -5,9 +5,14 @@
 export * from './types';
 export {
   expandBrief,
+  expandBriefSelfConsistent,
   groundBrief,
+  deriveParamQuestionsAssumptions,
+  projectBriefFields,
   toPlannerBrief,
   textHasValue,
   BriefExpanderError,
   type ExpandBriefOptions,
+  type ExpandBriefSelfConsistentOptions,
+  type SelfConsistentBriefResult,
 } from './expandBrief';

@@ -174,3 +174,13 @@ export async function chatCompletion(req: ChatCompletionRequest): Promise<ChatCo
 
 export { AiProviderError, AiNotConfiguredError };
 export type { ChatCompletionRequest, ChatCompletionResponse, ProviderName, ChatMessage } from './types';
+
+// Lever B — self-consistency: run one model N times, use cross-run agreement as
+// free confidence. Default runs=1 is a no-op passthrough (zero extra cost).
+export {
+  runSelfConsistent,
+  type SelfConsistencyOptions,
+  type SelfConsistencyResult,
+  type ProjectedFields,
+  type ScalarField,
+} from './selfConsistency';

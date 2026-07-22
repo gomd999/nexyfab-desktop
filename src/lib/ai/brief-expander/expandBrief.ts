@@ -23,6 +23,7 @@
  */
 
 import { chatCompletion, type ChatMessage } from '@/lib/ai';
+import { runSelfConsistent } from '@/lib/ai/selfConsistency';
 import briefExpanderPrompt from '@/lib/ai/prompts/brief-expander';
 import {
   retrieveReferenceParts,
@@ -171,6 +172,32 @@ function uniq(list: string[]): string[] {
   return out;
 }
 
+/**
+ * Param-derived questions + assumption lines, in the exact order groundBrief has
+ * always produced them: every `needs_input` param becomes a question (its note,
+ * or a synthesised fallback), every `assumption` param becomes a labeled 가정
+ * line. Extracted so the self-consistency pass can re-derive them after a
+ * disagreement downgrade without re-classifying anything.
+ */
+export function deriveParamQuestionsAssumptions(components: BriefComponent[]): {
+  questions: string[];
+  assumptions: string[];
+} {
+  const questions: string[] = [];
+  const assumptions: string[] = [];
+  for (const c of components) {
+    for (const p of c.params) {
+      if (p.source === 'needs_input') {
+        questions.push(p.note ?? `${c.name} — '${p.key}' 값이 필요합니다.`);
+      } else if (p.source === 'assumption') {
+        const val = `${p.value}${p.unit ?? ''}`;
+        assumptions.push(`${c.name}.${p.key} = ${val} (가정: ${p.note ?? '기본값'})`);
+      }
+    }
+  }
+  return { questions, assumptions };
+}
+
 // ground the whole model output into a StructuredBrief
 
 export function groundBrief(
@@ -199,24 +226,12 @@ export function groundBrief(
   const modelQuestions = Array.isArray(parsed.questions)
     ? parsed.questions.filter((q): q is string => typeof q === 'string')
     : [];
-  const paramQuestions: string[] = [];
-  const assumptionLines: string[] = [];
-  for (const c of components) {
-    for (const p of c.params) {
-      if (p.source === 'needs_input') {
-        paramQuestions.push(p.note ?? `${c.name} — '${p.key}' 값이 필요합니다.`);
-      } else if (p.source === 'assumption') {
-        const val = `${p.value}${p.unit ?? ''}`;
-        assumptionLines.push(`${c.name}.${p.key} = ${val} (가정: ${p.note ?? '기본값'})`);
-      }
-    }
-  }
-  const questions = uniq([...modelQuestions, ...paramQuestions]);
-
   const modelAssumptions = Array.isArray(parsed.assumptions)
     ? parsed.assumptions.filter((a): a is string => typeof a === 'string')
     : [];
-  const assumptions = uniq([...assumptionLines, ...modelAssumptions]);
+  const derived = deriveParamQuestionsAssumptions(components);
+  const questions = uniq([...modelQuestions, ...derived.questions]);
+  const assumptions = uniq([...derived.assumptions, ...modelAssumptions]);
 
   return { title, domain, components, questions, assumptions, raw: rawText };
 }
@@ -310,4 +325,119 @@ export async function expandBrief(rawText: string, opts: ExpandBriefOptions = {}
   const raw = await complete(buildMessages(text, systemPrompt, opts.domain));
   const parsed = extractJson(raw);
   return groundBrief(parsed, text, opts.domain);
+}
+
+// self-consistency (lever B) — cross-run agreement as free confidence
+
+/**
+ * Project a StructuredBrief into the scalar fields self-consistency compares:
+ * one field per (component, param) → the param's value (null for needs_input).
+ * The separator is a NUL so a component name / key can never collide.
+ */
+const SC_SEP = '\u0000';
+function scField(componentName: string, key: string): string {
+  return `${componentName}${SC_SEP}${key}`;
+}
+
+export function projectBriefFields(brief: StructuredBrief): Record<string, number | string | null> {
+  const out: Record<string, number | string | null> = {};
+  for (const c of brief.components) {
+    for (const p of c.params) out[scField(c.name, p.key)] = p.value;
+  }
+  return out;
+}
+
+export interface ExpandBriefSelfConsistentOptions extends ExpandBriefOptions {
+  /** Model runs. Default 1 = no-op passthrough (one call, zero extra cost).
+   *  ≥ 2 opts into self-consistency at N× cost (gate behind Pro / high-stakes). */
+  runs?: number;
+  /** Agreement threshold; a param below it is downgraded. Default 0.8. */
+  agreement?: number;
+  /** Relative numeric tolerance for treating two values as equal. Default 0.01. */
+  numericTolerance?: number;
+}
+
+export interface SelfConsistentBriefResult {
+  /** The medoid run's brief, with disagreeing params downgraded to needs_input. */
+  brief: StructuredBrief;
+  /** `component0000key` → cross-run agreement ratio in [0,1]. */
+  confidence: Record<string, number>;
+  /** `component.key` of params the runs disagreed on (now needs_input). */
+  lowConfidenceParams: string[];
+  /** How many model runs actually executed. */
+  runsUsed: number;
+}
+
+/**
+ * Expand a brief with self-consistency: run `expandBrief` N times and use the
+ * cross-run agreement per param as confidence. A param whose value DISAGREES
+ * across runs above threshold is downgraded to `needs_input` (its already-honest
+ * state) with a "runs disagreed" note — the model is not sure, so we ASK rather
+ * than fabricate a consensus. Agreeing params keep their given/assumption label.
+ *
+ * At `runs = 1` (default) this is a strict no-op: exactly one call, confidence 1
+ * everywhere, no downgrades — identical to `expandBrief` plus a confidence map.
+ * The deterministic grounding pass inside `expandBrief` still decides every
+ * source label first; self-consistency only downgrades further, never upgrades.
+ */
+export async function expandBriefSelfConsistent(
+  rawText: string,
+  opts: ExpandBriefSelfConsistentOptions = {},
+): Promise<SelfConsistentBriefResult> {
+  const { runs, agreement, numericTolerance, ...expandOpts } = opts;
+  const sc = await runSelfConsistent<StructuredBrief>(
+    () => expandBrief(rawText, expandOpts),
+    {
+      runs: runs ?? 1,
+      agreement: agreement ?? 0.8,
+      numericTolerance: numericTolerance ?? 0.01,
+      project: projectBriefFields,
+    },
+  );
+
+  const medoid = sc.value;
+  const lowSet = new Set(sc.lowConfidenceFields);
+
+  // No disagreement (or runs=1) → the medoid is returned untouched.
+  if (lowSet.size === 0) {
+    return { brief: medoid, confidence: sc.confidence, lowConfidenceParams: [], runsUsed: sc.runsUsed };
+  }
+
+  // Recompute the param-derived questions/assumptions after downgrading, keeping
+  // the model's OWN questions/assumptions (the non-param-derived remainder).
+  const medoidDerived = deriveParamQuestionsAssumptions(medoid.components);
+  const modelQuestions = medoid.questions.filter((q) => !medoidDerived.questions.includes(q));
+  const modelAssumptions = medoid.assumptions.filter((a) => !medoidDerived.assumptions.includes(a));
+
+  const lowConfidenceParams: string[] = [];
+  const components: BriefComponent[] = medoid.components.map((c) => ({
+    name: c.name,
+    params: c.params.map((p) => {
+      const field = scField(c.name, p.key);
+      // Already needs_input means every run agreed it's unknown — keep it.
+      if (!lowSet.has(field) || p.source === 'needs_input') return p;
+      const pct = Math.round((sc.confidence[field] ?? 0) * 100);
+      lowConfidenceParams.push(`${c.name}.${p.key}`);
+      const note = `runs disagreed (agreement ${pct}%) — 사용자 확인이 필요합니다.`;
+      return { key: p.key, value: null, unit: p.unit, source: 'needs_input' as const, note };
+    }),
+  }));
+
+  const derived = deriveParamQuestionsAssumptions(components);
+  const questions = uniq([...modelQuestions, ...derived.questions]);
+  const assumptions = uniq([...derived.assumptions, ...modelAssumptions]);
+
+  return {
+    brief: {
+      title: medoid.title,
+      domain: medoid.domain,
+      components,
+      questions,
+      assumptions,
+      raw: medoid.raw,
+    },
+    confidence: sc.confidence,
+    lowConfidenceParams,
+    runsUsed: sc.runsUsed,
+  };
 }
