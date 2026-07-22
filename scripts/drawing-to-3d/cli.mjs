@@ -30,7 +30,12 @@
  *   node cli.mjs fea --scad part.scad --load 500                            # scad 직접 입력
  *   node cli.mjs reconstruct part.stl [--format stl]  # 검증된 역설계(STL→reverse-engineer / STEP·DWG·SAT→import-step; 원격)
  *   node cli.mjs fleet part.stl [--attempts 3]                              # AI 재구성 함대(원격+Pro·비용)
- *   node cli.mjs codecheck features.json              # 코드체크/감리(로컬·오프라인·키 불필요) | --list 룰 카탈로그
+ *   node cli.mjs codecheck features.json              # 코드체크/감리 41룰(로컬·오프라인·키 불필요) | --list 카탈로그
+ * 분야 검증 체인(전부 로컬·오프라인·키 불필요 — 어셈블리 기반):
+ *   node cli.mjs interior asm.json [--params '{..}']   # 인테리어 피난·마감(보행거리 BFS+수용인원+물량)
+ *   node cli.mjs landscape asm.json [--params '{..}']  # 조경 목재부재+풍하중 전도
+ *   node cli.mjs bridge asm.json [--params '{..}']     # 교량(meta 자동 디스패치: 거더/아치/트러스/사장/현수/계단)
+ *   node cli.mjs loadpath asm.json [--params '{..}']   # 건축 하중경로(슬래브→보→기둥→기초) | --list 활하중 용도표
  * 출력: 결과 JSON 을 stdout(기계 파싱), 파일은 --out 경로. 비법정(제작용 실시도서+검토 계산서).
  */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -213,6 +218,16 @@ async function main() {
     else if (argv[1] && !argv[1].startsWith('--')) args = { features: JSON.parse(readFileSync(resolve(argv[1]), 'utf8')) };
     else if (flag('json')) args = { features: JSON.parse(flag('json')) };
     else { out({ ok: false, error: "usage: node cli.mjs codecheck <features.json> | --json '{...}' | --list" }); process.exitCode = 1; return; }
+  } else if (cmd === 'interior' || cmd === 'landscape' || cmd === 'bridge') {
+    // 분야 검증 체인(로컬·순수 mjs — 키 불필요). 어셈블리 파일 + 선택 params.
+    name = cmd === 'interior' ? 'interior_check' : cmd === 'landscape' ? 'landscape_check' : 'bridge_check';
+    if (!argv[1] || argv[1].startsWith('--')) { out({ ok: false, error: `usage: node cli.mjs ${cmd} <asm.json> [--params '{...}']` }); process.exitCode = 1; return; }
+    args = { assembly: loadAsm(argv[1]), ...(flag('params') ? { params: JSON.parse(flag('params')) } : {}) };
+  } else if (cmd === 'loadpath') {
+    name = 'load_path';
+    if (has('list')) args = { list: true };
+    else if (argv[1] && !argv[1].startsWith('--')) args = { assembly: loadAsm(argv[1]), ...(flag('params') ? { params: JSON.parse(flag('params')) } : {}) };
+    else { out({ ok: false, error: "usage: node cli.mjs loadpath <asm.json> [--params '{...}'] | --list" }); process.exitCode = 1; return; }
   } else if (cmd === 'domain') {
     name = 'domain_design';
     const domain = argv[1];

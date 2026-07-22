@@ -17,6 +17,10 @@ import { createInterface } from 'node:readline';
 const BASE = (process.env.NEXYFAB_API_URL ?? 'https://nexyfab.com').replace(/\/$/, '');
 const KEY = process.env.NEXYFAB_API_KEY ?? '';
 
+// 공개 라우트(순수 결정론 — 인증 불필요, 키 없이도 동작): 코드체크·분야 검증 계산기·분야 검증 체인.
+// 그 외(생성·AI 수정·FEA·역설계 등 호스팅 엔진)는 Pro 키 필요.
+const PUBLIC_TOOLS = new Set(['code_check', 'verify_domain', 'interior_check', 'landscape_check', 'bridge_check', 'load_path']);
+
 const ASM_DESC = '{name, parts:[{id,type,params,at:{tx,ty,tz,rx,ry,rz}}...]} — design_assembly 응답의 assembly 를 그대로 전달';
 
 const tools = [
@@ -89,8 +93,33 @@ const tools = [
   },
   {
     name: 'code_check',
-    description: '코드체크/감리 보조(결정론) — 측정 피처(주차·경사로·복도·계단·난간·출입구·위생) → 공개 법령 조항 인용 PASS/FAIL/NA + 실측 vs 요구. 피처 미제공=NA(준수 가정 안 함). {list:true}=룰 카탈로그. 순수 룰셋 — 키 없이도 동작(공개 라우트). 비법정(disclaimer 동봉).',
+    description: '코드체크/감리 보조(결정론) — 측정 피처 → 공개 법령 조항 인용 PASS/FAIL/NA + 실측 vs 요구. 41룰 12카테고리: 주차·피난방화·계단·경사로·복도·난간·출입구·승강기·접근로·위생·건축(구조/일조/건폐율)·실내건축(접근성). 피처 미제공=NA(준수 가정 안 함). {list:true}=41룰 카탈로그(키 목록). 순수 룰셋 — 키 없이도 동작(공개 라우트). 비법정(disclaimer 동봉).',
     inputSchema: { type: 'object', properties: { features: { type: 'object' }, list: { type: 'boolean' } } },
+  },
+  {
+    name: 'verify_domain',
+    description: '분야별 공학 계산기 검증(공개 라우트·키 불필요) — compose intent + domain + calculatorId → 형상 파생 단면/경간 + 사용자 하중/재료로 실제 계산. 5분야: temporary-rack(column_buckling|simple_beam)·building-member(rc_beam|rc_column_pm|isolated_footing)·civil(retaining_wall_stability|box_culvert_frame)·interior(occupancy_egress)·landscape(timber_beam|timber_nail|landscape_drainage). 반환 verdict/checks/derived/citations/refs/status/disclaimer. 하중 누락=needInputs(지어내지 않음). {list:true}=분야·입력 명세. 계산기=draft(비법정).',
+    inputSchema: { type: 'object', properties: { intent: { type: 'object' }, domain: { type: 'string' }, calculatorId: { type: 'string' }, memberRef: {}, params: { type: 'object' }, standardId: { type: 'string' }, list: { type: 'boolean' } } },
+  },
+  {
+    name: 'interior_check',
+    description: '인테리어 피난·마감 체인(공개 라우트·키 불필요) — assembly → 보행거리 BFS(최원점→출입구 우회)+수용인원/피난폭(문폭 형상 파생)+마감 물량(개구 공제). verify_domain(단일 계산기)과 달리 피난 전 과정 체인. 반환 {travel,occupancy,finishes,checks}. 미입력값 날조 없음. 비법정(건축사 최종 책임).',
+    inputSchema: { type: 'object', required: ['assembly'], properties: { assembly: { type: 'object', description: ASM_DESC }, params: { type: 'object' } } },
+  },
+  {
+    name: 'landscape_check',
+    description: '조경 구조 체인(공개 라우트·키 불필요) — assembly → 목재 부재(timber_beam, 단면·스팬 형상 파생, KDS 41 50 10)+풍하중 전도(입력 풍압→FS·앵커 인발). 풍압 미입력 시 전도 정직 생략. 반환 {timber,overturning,checks}. 비법정.',
+    inputSchema: { type: 'object', required: ['assembly'], properties: { assembly: { type: 'object', description: ASM_DESC }, params: { type: 'object' } } },
+  },
+  {
+    name: 'bridge_check',
+    description: '교량 검토 체인(공개 라우트·키 불필요) — assembly meta 자동 디스패치: bridgeMeta=거더교(고정+KL-510 활하중 영향선+극한 I 조합 KDS 24 12 11) / archMeta·trussMeta·cableStayedMeta·suspensionMeta·stairMeta=아치·트러스·사장·현수·산업계단 간이 폐형 체인. meta 없으면 거더 폴백. 반환 {loads,checks,verdict}. 비법정(기술사 날인 별도).',
+    inputSchema: { type: 'object', required: ['assembly'], properties: { assembly: { type: 'object', description: ASM_DESC + ' + bridgeMeta|archMeta|trussMeta|cableStayedMeta|suspensionMeta|stairMeta' }, params: { type: 'object' } } },
+  },
+  {
+    name: 'load_path',
+    description: '건축 하중경로 자동 체인(공개 라우트·키 불필요) — assembly → 슬래브 자중(형상)+활하중(KDS 41 12 00 용도표)→하중조합→보(rc_beam)→기둥(rc_column_pm)→기초(isolated_footing). 웹 라우트는 슬래브 SLS 처짐(Mindlin)도 동봉. 하중 날조 없음(자중=형상·활하중=표·철근/기초/지반=입력). 반환 {loads,beams,columns,footings,checks,slabSLS}. 비법정.',
+    inputSchema: { type: 'object', required: ['assembly'], properties: { assembly: { type: 'object', description: ASM_DESC }, params: { type: 'object' } } },
   },
 ];
 
@@ -103,6 +132,11 @@ const ROUTE = {
   domain_design: '/api/nexyfab/domain-design/',
   analyze_fea: '/api/nexyfab/drawing/fea-quick/',
   code_check: '/api/nexyfab/codecheck/',
+  verify_domain: '/api/nexyfab/drawing/verify-domain/',
+  interior_check: '/api/nexyfab/drawing/interior-check/',
+  landscape_check: '/api/nexyfab/drawing/landscape-check/',
+  bridge_check: '/api/nexyfab/drawing/bridge-check/',
+  load_path: '/api/nexyfab/drawing/load-path/',
 };
 
 function resolveCall(name, args) {
@@ -122,8 +156,8 @@ function resolveCall(name, args) {
 async function callTool(name, args = {}) {
   const { path, body } = resolveCall(name, args);
   if (!path) throw new Error(`unknown tool: ${name}`);
-  // code_check 는 공개 라우트(순수 결정론 룰셋) — 키 없이도 동작. 그 외 원격 도구는 Pro 키 필요.
-  if (!KEY && name !== 'code_check') throw new Error('NEXYFAB_API_KEY 미설정 — Pro 이상 계정에서 발급(nexyfab.com → 계정 → API Keys)');
+  // 공개 라우트(PUBLIC_TOOLS)는 키 없이도 동작. 그 외 원격(생성·AI 수정·FEA·역설계)은 Pro 키 필요.
+  if (!KEY && !PUBLIC_TOOLS.has(name)) throw new Error('NEXYFAB_API_KEY 미설정 — Pro 이상 계정에서 발급(nexyfab.com → 계정 → API Keys)');
   const res = await fetch(BASE + path, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...(KEY ? { authorization: `Bearer ${KEY}` } : {}) },

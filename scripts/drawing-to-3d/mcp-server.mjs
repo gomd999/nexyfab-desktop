@@ -38,6 +38,20 @@ import { stepRoundTrip } from './roundtrip.mjs';
 import { refineInterferencesMesh } from './interference-refine.mjs';
 import { runDesignBriefTool } from './design-brief.mjs';
 import { runCodeCheckTool } from './codecheck.mjs';
+import { interiorCheck } from './interior-check.mjs';
+import { landscapeCheck } from './landscape-check.mjs';
+import * as bridgeMod from './bridge-check.mjs';
+import { loadPathCheck, listUsages as loadPathUsages } from './load-path.mjs';
+
+// bridge_check 자동 디스패치(라우트 CHECK_DISPATCH 와 동일): 어셈블리 meta 필드로
+// 아치·트러스·사장·현수·계단 간이 체인을 고르고, 없으면 거더교(bridgeCheck) 폴백.
+const BRIDGE_DISPATCH = [
+  { meta: 'archMeta', fn: 'archBridgeCheck' },
+  { meta: 'trussMeta', fn: 'trussBridgeCheck' },
+  { meta: 'cableStayedMeta', fn: 'cableStayedCheck' },
+  { meta: 'suspensionMeta', fn: 'suspensionCheck' },
+  { meta: 'stairMeta', fn: 'stairCheck' },
+];
 
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
 
@@ -554,14 +568,15 @@ export const tools = [
     description:
       `설계 형상 + 분야 → 진짜 공학 계산기(engineering-core) 검증. 형상에서 단면특성(A·Ix·Sx·r)·경간 L을 ` +
       `**결정론 파생**하고, 하중·재료(Fy·Pu·w·P·Mu 등)만 params로 받아 합쳐 계산한다. 반환: {verdict, checks, ` +
-      `derived(형상파생), provenance(geometry/user 분리), refs, status, disclaimer}. 하중 누락 시 값을 지어내지 않고 ` +
-      `{needInputs}로 필요한 입력을 알려준다. 계산기는 draft(비법정 참고).`,
+      `derived(형상파생), provenance(geometry/user 분리), refs, citations(인용 조항), status, disclaimer}. 하중 누락 ` +
+      `시 값을 지어내지 않고 {needInputs}로 필요한 입력을 알려준다. 5개 분야(가설·랙 / 건축RC / 토목 / 인테리어 / ` +
+      `조경) 계산기는 전부 draft(비법정 참고). 분야 전체 목록·입력 명세는 list_domains.`,
     inputSchema: {
       type: 'object', required: ['intent', 'domain', 'calculatorId'],
       properties: {
         intent: { type: 'object', description: 'compose_3d 범용조합 intent(features[])' },
-        domain: { type: 'string', description: 'list_domains의 slug (temporary-rack | building-member | landscape)' },
-        calculatorId: { type: 'string', description: '분야 내 계산기 id (column_buckling | simple_beam | rc_beam | landscape_drainage)' },
+        domain: { type: 'string', description: 'list_domains의 slug: temporary-rack | building-member | civil | interior | landscape' },
+        calculatorId: { type: 'string', description: '분야 내 계산기 id — temporary-rack:column_buckling|simple_beam · building-member:rc_beam|rc_column_pm|isolated_footing · civil:retaining_wall_stability|box_culvert_frame · interior:occupancy_egress · landscape:timber_beam|timber_nail|landscape_drainage' },
         memberRef: { description: '부재 피처 선택(id 또는 index). 생략 시 첫 프리즘형 부재.' },
         params: { type: 'object', description: '사용자 입력 하중·재료 {Fy, Pu, w, P, Mu, As, fck, fy…}' },
         standardId: { type: 'string', description: '기준(기본 KDS)' },
@@ -626,16 +641,78 @@ export const tools = [
   {
     name: 'code_check',
     description:
-      `★ 코드체크 / 감리 보조(결정론·LOCAL) — 측정된 설계 피처(주차·경사로·복도·계단·난간·출입구·위생 등)를 ` +
-      `실제 공개 법령/공표기준 조항과 대조해 룰별 PASS/FAIL/NA + 인용 조항 + 실측 vs 요구값을 낸다. ` +
-      `숫자 날조 없음(피처 미제공=NA, 준수 가정 안 함). ✔로컬 실행(순수 룰셋 — NEXYFAB_API_KEY 불필요, 오프라인 ` +
-      `가능). {list:true} 로 룰 카탈로그. 비법정 감리 보조(면허 감리자·기술사의 법정 감리를 대체하지 않음, ` +
-      `disclaimer 항상 동봉).`,
+      `★ 코드체크 / 감리 보조(결정론·LOCAL) — 측정된 설계 피처를 실제 공개 법령/공표기준 조항과 대조해 룰별 ` +
+      `PASS/FAIL/NA + 인용 조항 + 실측 vs 요구값을 낸다. 룰셋 41종(웹과 동일 계약) 12개 카테고리: 주차(parking)· ` +
+      `피난·방화(egress-fire)·계단·경사로·복도·난간·출입구·승강기·접근로·위생·건축(구조/일조/건폐율·용적률)· ` +
+      `실내건축(accessibility/interior). 숫자 날조 없음(피처 미제공=NA, 준수 가정 안 함). ✔로컬 실행(순수 룰셋 — ` +
+      `NEXYFAB_API_KEY 불필요, 오프라인 가능). {list:true} 로 41룰 카탈로그. 비법정 감리 보조(면허 감리자·기술사의 ` +
+      `법정 감리를 대체하지 않음, disclaimer 항상 동봉).`,
     inputSchema: {
       type: 'object',
       properties: {
-        features: { type: 'object', description: '측정 피처(단위 m·경사=rise/run). 예: {rampSlope:0.09, doorEffectiveWidth_m:0.9, corridorCategory:"school", corridorBothSidesRooms:true, corridorWidth_m:2.1}' },
-        list: { type: 'boolean', description: '룰 카탈로그만 반환(id·category·clause·source·requirement)' },
+        features: { type: 'object', description: '측정 피처(단위 m·경사=rise/run). 예: {rampSlope:0.09, doorEffectiveWidth_m:0.9, parkingStallWidth_m:2.5, emergencyExitWidth_m:1.5, travelDistanceToStair_m:28, corridorCategory:"school", corridorBothSidesRooms:true, corridorWidth_m:2.1} — 키 목록은 {list:true}' },
+        list: { type: 'boolean', description: '41룰 카탈로그만 반환(id·category·clause·source·requirement)' },
+      },
+    },
+  },
+  {
+    name: 'interior_check',
+    description:
+      `인테리어 피난·마감 체인(결정론·LOCAL) — 어셈블리에서 보행거리 BFS(최원점→출입구, 장애물 우회)· ` +
+      `수용인원/피난폭(occupancy_egress, 문폭 형상 파생)·마감 물량(개구 공제)을 한 번에 검토한다. verify_domain(단일 ` +
+      `계산기)과 달리 피난 전 과정 체인. 반환 {travel, occupancy, finishes, checks…}. 미입력 값은 지어내지 않음. ` +
+      `비법정(건축사 최종 책임). 순수 mjs — 키 불필요·오프라인.`,
+    inputSchema: {
+      type: 'object', required: ['assembly'],
+      properties: {
+        assembly: { type: 'object', description: '{name, parts:[{id,type,params,role,at}...]} (문·벽·가구 role 포함)' },
+        params: { type: 'object', description: '용도·점유밀도·출구 등 입력(occupantDensityM2·exitCount 등)' },
+      },
+    },
+  },
+  {
+    name: 'landscape_check',
+    description:
+      `조경 구조 체인(결정론·LOCAL) — 목재 부재 검토(timber_beam, 단면·스팬·간격 형상 파생, KDS 41 50 10) + ` +
+      `풍하중 전도(입력 풍압 → FS·앵커 인발). 풍압 미입력 시 전도는 정직 생략(지어내지 않음). ` +
+      `반환 {timber, overturning, checks…}. 비법정 검토 초안. 순수 mjs — 키 불필요·오프라인.`,
+    inputSchema: {
+      type: 'object', required: ['assembly'],
+      properties: {
+        assembly: { type: 'object', description: '{name, parts:[...]} (장선·보 등 목재 부재)' },
+        params: { type: 'object', description: '수종·등급·하중·풍압 등 입력' },
+      },
+    },
+  },
+  {
+    name: 'bridge_check',
+    description:
+      `교량 간이/실시급 검토 체인(결정론·LOCAL) — 어셈블리 meta 로 자동 디스패치: bridgeMeta=거더교(고정하중 ` +
+      `형상×밀도 + KL-510 활하중 영향선 + 극한 I 조합 KDS 24 12 11, 선택 rc_beam 단면검토) / archMeta·trussMeta· ` +
+      `cableStayedMeta·suspensionMeta·stairMeta=아치·트러스·사장·현수·산업계단 간이 폐형 체인. meta 없으면 거더 폴백. ` +
+      `반환 {loads, checks, verdict…}. 비법정(기술사 날인 별도). 순수 mjs — 키 불필요·오프라인.`,
+    inputSchema: {
+      type: 'object', required: ['assembly'],
+      properties: {
+        assembly: { type: 'object', description: '{name, parts, bridgeMeta|archMeta|trussMeta|cableStayedMeta|suspensionMeta|stairMeta}' },
+        params: { type: 'object', description: '경간·거더수·분배계수·재료 등 입력' },
+      },
+    },
+  },
+  {
+    name: 'load_path',
+    description:
+      `건축 하중경로 자동 체인(결정론·LOCAL) — 슬래브 자중(형상)+활하중(KDS 41 12 00 용도표) → 하중조합 → ` +
+      `보(rc_beam) → 기둥(rc_column_pm) → 기초(isolated_footing). {list:true} 로 활하중 용도표만 반환. 하중은 ` +
+      `지어내지 않음(자중=형상, 활하중=표 선택, 철근·기초·지반=입력). 반환 {loads, beams, columns, footings, ` +
+      `checks…}. ⚠슬래브 SLS 처짐(Mindlin)은 웹 전용 부가검토 — 로컬 체인 미포함(웹 라우트에서만). 비법정. ` +
+      `순수 mjs — 키 불필요·오프라인.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        assembly: { type: 'object', description: '{name, parts:[{role:slab|beam|column...}]}' },
+        params: { type: 'object', description: '용도(usage)·fck·철근·기초·지반 등 입력' },
+        list: { type: 'boolean', description: '활하중 용도표(KDS 41 12 00 표 3.2-1)만 반환' },
       },
     },
   },
@@ -921,6 +998,23 @@ export async function callTool(name, args = {}) {
   }
   if (name === 'code_check') {
     return runCodeCheckTool({ features: args.features, list: args.list === true });
+  }
+  if (name === 'interior_check') {
+    return interiorCheck(args.assembly, args.params ?? {});
+  }
+  if (name === 'landscape_check') {
+    return landscapeCheck(args.assembly, args.params ?? {});
+  }
+  if (name === 'bridge_check') {
+    // 라우트와 동일 자동 디스패치: 어셈블리 meta → 아치·트러스·사장·현수·계단, 없으면 거더 폴백.
+    const asm = args.assembly ?? {};
+    const disp = BRIDGE_DISPATCH.find((d) => asm[d.meta] && typeof bridgeMod[d.fn] === 'function');
+    const fn = disp ? bridgeMod[disp.fn] : bridgeMod.bridgeCheck;
+    return fn(args.assembly, args.params ?? {});
+  }
+  if (name === 'load_path') {
+    if (args.list === true) return { ok: true, usages: loadPathUsages(), ref: 'KDS 41 12 00:2022 표 3.2-1' };
+    return loadPathCheck(args.assembly, args.params ?? {});
   }
   throw new Error(`unknown tool: ${name}`);
 }

@@ -108,8 +108,8 @@ curl -s "$BASE/package/" \\
       <H>2. MCP (Claude Code · Claude Desktop {ko ? '등' : 'etc.'})</H>
       <P>
         {ko
-          ? '단일 파일 MCP 서버를 내려받아 등록하면 Claude가 도구 호출로 설계·수정합니다(Node 18+, 의존성 없음). 핵심 도구 6종: text_to_assembly · compose_3d · edit_part · face_drag · part_op · generate_domain_package(토목·인테리어·건설·조경 검증 초안). 이 외에 build_assembly · export_step · generate_package · verify_3d · analyze_dfm 등 총 30여 종이 노출됩니다(정확한 이름·인자는 서버 tools/list 또는 저장소 scripts/drawing-to-3d/mcp-server.mjs 참조).'
-          : 'Download the single-file MCP server and register it; Claude then designs/edits via tool calls (Node 18+, zero deps). Core tools: text_to_assembly · compose_3d · edit_part · face_drag · part_op · generate_domain_package (civil/interior/construction/landscape verified draft). ~30 tools total (build_assembly, export_step, generate_package, verify_3d, analyze_dfm, …) — see the server tools/list or scripts/drawing-to-3d/mcp-server.mjs for exact names/args.'}
+          ? '단일 파일 MCP 서버를 내려받아 등록하면 Claude가 도구 호출로 설계·수정합니다(Node 18+, 의존성 없음). 핵심 도구 6종: text_to_assembly · compose_3d · edit_part · face_drag · part_op · generate_domain_package(토목·인테리어·건설·조경 검증 초안). 이 외에 build_assembly · export_step · generate_package · verify_3d · analyze_dfm 등이 노출됩니다. 저장소 CLI/로컬 MCP(scripts/drawing-to-3d/mcp-server.mjs)는 총 40여 종을 오프라인 실행합니다(정확한 이름·인자는 서버 tools/list 참조).'
+          : 'Download the single-file MCP server and register it; Claude then designs/edits via tool calls (Node 18+, zero deps). Core tools: text_to_assembly · compose_3d · edit_part · face_drag · part_op · generate_domain_package (civil/interior/construction/landscape verified draft), plus build_assembly, export_step, generate_package, verify_3d, analyze_dfm, … The repo CLI / local MCP (scripts/drawing-to-3d/mcp-server.mjs) runs ~40 tools offline — see the server tools/list for exact names/args.'}
       </P>
       <P><a href="/downloads/nexyfab-mcp.mjs" download style={{ color: 'var(--nx-accent, #2563eb)', fontWeight: 700 }}>⬇ nexyfab-mcp.mjs {ko ? '다운로드' : 'download'}</a></P>
       <Code>{`# 1) MCP 서버 내려받기
@@ -132,6 +132,11 @@ claude mcp list
         {ko
           ? '신규 하드 능력 4종(웹과 동일): analyze_fea(간이 FEA — 구조·열·모달, scad+재료+하중) · reconstruct_verify(검증된 역설계 — STL/STEP/DWG/SAT를 재구성 게이트로 bbox·genus·watertight 대조) · reconstruct_fleet(AI 재구성 함대 — 다모델 파라메트릭 SCAD, Pro·비용) · code_check(코드체크/감리 — 공개 법령 조항 인용 PASS/FAIL/NA). 앞 3종은 원격 전용(NEXYFAB_API_KEY 필요 — 서버 OpenSCAD/gmsh/OCCT·LLM 사용, 키 없으면 명시적 거부), code_check 는 로컬·오프라인(순수 결정론 룰셋). 모두 비법정(엔지니어링급 스크리닝·결정론 감리 보조 — 상세 해석·법정 감리는 유자격 전문가 몫).'
           : 'Four new hard capabilities (parity with the web): analyze_fea (quick FEA — structural/thermal/modal from scad+material+load) · reconstruct_verify (verified reverse-engineering — STL/STEP/DWG/SAT vs a reconstruction gate on bbox/genus/watertight) · reconstruct_fleet (AI reconstruction fleet — multi-model parametric SCAD, Pro + budget) · code_check (code-check/audit citing PASS/FAIL/NA against public statutes). The first three are REMOTE-only (need NEXYFAB_API_KEY — hosted OpenSCAD/gmsh/OCCT/LLM; explicit refusal without a key); code_check runs LOCALLY offline (pure deterministic ruleset). All non-statutory (engineering-grade screening / deterministic review aid — detailed analysis and statutory review remain a licensed professional duty).'}
+      </P>
+      <P style={{ fontSize: 12.5 }}>
+        {ko
+          ? '분야 검증 체인 5종(웹과 동일·공개 라우트 — API 키 없이도 동작): verify_domain(5분야 공학 계산기 — 형상 파생 단면·경간 + 하중/재료로 실제 계산, 인용 조항 동봉) · interior_check(피난 보행거리 BFS+수용인원+마감 물량) · landscape_check(목재 부재+풍하중 전도) · bridge_check(거더/아치/트러스/사장/현수/계단 자동 디스패치) · load_path(슬래브→보→기둥→기초 하중경로). 전부 결정론 — 하중·값을 지어내지 않고 누락 시 needInputs. 비법정(유자격 기술사·건축사 최종 책임).'
+          : 'Five discipline-verification chains (parity with the web · public routes — work without an API key): verify_domain (engineering calculators across 5 disciplines — section/span derived from geometry + user loads/materials, with cited clauses) · interior_check (egress travel BFS + occupancy + finishes) · landscape_check (timber members + wind overturning) · bridge_check (girder/arch/truss/cable-stayed/suspension/stair auto-dispatch) · load_path (slab->beam->column->footing). All deterministic — never fabricate loads (needInputs when missing). Non-statutory (a licensed engineer/architect remains responsible).'}
       </P>
 
       <H>3. CLI</H>
@@ -156,7 +161,11 @@ node cli.mjs templates bridge                                  # 분야 템플�
 node cli.mjs fea asm.json --load 500 --material steel          # 간이 FEA(원격 — 서버 OpenSCAD/gmsh)
 node cli.mjs reconstruct part.stl                             # 검증된 역설계(원격 — 재구성 게이트)
 node cli.mjs fleet part.stl                                   # AI 재구성 함대(원격+Pro·비용)
-node cli.mjs codecheck features.json                          # 코드체크/감리(로컬·오프라인·키 불필요)
+node cli.mjs codecheck features.json                          # 코드체크/감리 41룰(로컬·오프라인·키 불필요)
+node cli.mjs interior asm.json                                 # 인테리어 피난·마감 체인(로컬)
+node cli.mjs landscape asm.json                               # 조경 목재부재+풍하중(로컬)
+node cli.mjs bridge asm.json                                  # 교량 검토(meta 자동 디스패치·로컬)
+node cli.mjs loadpath asm.json                                # 건축 하중경로 체인(로컬) | --list 용도표
 node cli.mjs list                                              # 전체 도구·명령 목록`}</Code>
       <P style={{ fontSize: 12.5 }}>
         {ko
