@@ -50,7 +50,8 @@ import type {
   BrepToDrawingArgs,
 } from './types';
 import { applyUnifiedDiff, DiffApplyError } from './diff';
-import { intentToScad } from '../../openscad-render/intentToScad';
+import { intentToScad, type IntentInput } from '../../openscad-render/intentToScad';
+import { extractDimensions, reconcileIntent } from '../dimensionExtractor';
 import { compositeIntentToScad, compositeExpectedBbox, verifyCompositeAgainstSpec, type CompositePart } from './compositeIntent';
 import { verifyAgainstSpec, formatSpecCritique, type ProcessForDfm } from './specVerification';
 import { suggestGdtForIntent, formatSuggestions, type SuggestGdtOptions, type SuggestedGdtFrame } from './gdtSuggestion';
@@ -410,7 +411,26 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     if (!a.intent || typeof a.intent !== 'object') {
       return { ok: false, error: 'add_feature_intent requires { intent: { shapeId, params, features? } }', code: 'BAD_ARGS' };
     }
-    const result = intentToScad(a.intent);
+    // Deterministic dimension reconcile — the SAME correction the
+    // scad-intent-from-nl route applies, now on the AGENT path so the medium
+    // tier (hole Ø/count/position, flange OD/bore/PCD, bolt M/length) is fixed
+    // wherever the intent is FINALIZED. This is the agent's single
+    // reconciliation point: it runs BEFORE intentToScad so BOTH the generated
+    // SCAD and the stored lastIntent (which the spec gate reads) carry the
+    // corrected numbers. The LLM's shape + structure are preserved; only
+    // EXPLICITLY-stated numbers are overridden. No-op when the prompt states no
+    // such number (easy tier) or when no source prompt is on the session.
+    let intent = a.intent as IntentInput;
+    const reconcileNotes: string[] = [];
+    const src = session.reconcilePrompt;
+    if (typeof src === 'string' && src.trim()) {
+      const rec = reconcileIntent(intent, extractDimensions(src));
+      intent = rec.intent;
+      for (const o of rec.overrides) {
+        reconcileNotes.push(`[reconcile] ${o.field}: ${o.from ?? 'n/a'} -> ${o.to} (${o.reason})`);
+      }
+    }
+    const result = intentToScad(intent);
     if (!result.ok) {
       // W4 — an unsupported shapeId is no longer a dead end. Route the agent to
       // the composite fallback (add_composite_intent) instead of leaving
@@ -421,7 +441,7 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       if (unsupportedShape) {
         return {
           ok: false,
-          error: `'${(a.intent as { shapeId?: unknown }).shapeId}' is not a single whitelisted primitive. `
+          error: `'${(intent as { shapeId?: unknown }).shapeId}' is not a single whitelisted primitive. `
             + `Build it as a boolean composition of primitives with add_composite_intent `
             + `(e.g. an L-bracket = two boxes; a holed plate = box minus a cylinder). `
             + `Fall back to write_scad only if it can't be composed.`,
@@ -438,14 +458,14 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     session.scadSource = result.scad;
     session.render = { ok: null, errors: [] };
     session.geometry = {};
-    // X1 — remember the intent so verify_spec can compare measured bbox
-    // against the closed-form expected bbox derived from these params.
-    session.lastIntent = a.intent;
+    // X1 — remember the (reconciled) intent so verify_spec can compare measured
+    // bbox against the closed-form expected bbox derived from these params.
+    session.lastIntent = intent;
     session.lastCompositeParts = undefined; // mutually exclusive with a composite
     return {
       ok: true,
-      output: `OK. SCAD generated from intent (${result.scad.length} bytes${result.warnings.length > 0 ? `, ${result.warnings.length} warnings` : ''}). Call render to verify.`,
-      meta: { warnings: result.warnings },
+      output: `OK. SCAD generated from intent (${result.scad.length} bytes${result.warnings.length > 0 ? `, ${result.warnings.length} warnings` : ''}${reconcileNotes.length > 0 ? `, ${reconcileNotes.length} dimension(s) reconciled from the prompt` : ''}). Call render to verify.`,
+      meta: { warnings: result.warnings, reconcile: reconcileNotes },
     };
   };
 

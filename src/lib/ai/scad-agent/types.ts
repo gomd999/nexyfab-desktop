@@ -974,6 +974,15 @@ export interface AgentSession {
    * lastIntent. Mutually exclusive with lastIntent (each tool clears the other).
    */
   lastCompositeParts?: import('./compositeIntent').CompositePart[];
+  /**
+   * Source natural-language prompt used for DETERMINISTIC dimension
+   * reconciliation inside add_feature_intent (hole Ø/count/position, flange
+   * OD/bore/PCD, bolt M/length). Set by runScadAgent on every run to
+   * `opts.originalPrompt ?? opts.userPrompt` so the reconciler reads the user's
+   * ORIGINAL request — the repair loop passes the true original here even while
+   * the turn prompt carries verbatim gate feedback. Absent => no reconcile.
+   */
+  reconcilePrompt?: string;
   /** Conversation messages, including tool_call / tool_result envelopes. */
   history: AgentMessage[];
   render: RenderState;
@@ -996,6 +1005,13 @@ export type AgentMessage =
 export interface AgentRunOptions {
   /** Initial user message. */
   userPrompt: string;
+  /**
+   * Original user request for deterministic dimension reconciliation. When
+   * omitted, `userPrompt` is used. The repair loop passes the TRUE original
+   * here so repair-feedback turns still reconcile against the user's stated
+   * numbers rather than the gate critique text.
+   */
+  originalPrompt?: string;
   /** Existing session (continuation) or null to start fresh. */
   session?: AgentSession | null;
   /** Optional: token budget override (defaults from BudgetDefaults). */

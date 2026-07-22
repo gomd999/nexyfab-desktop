@@ -191,6 +191,11 @@ export async function runScadAgent(opts: AgentRunOptions): Promise<{
     if (c.compressed) session.history = c.history;
   }
   session.history = truncateHistoryIfNeeded(session.history);
+  // Source prompt for the deterministic dimension reconcile in
+  // add_feature_intent. Prefer an explicit originalPrompt (the repair loop
+  // passes the user's true first request) so a repair turn still corrects
+  // against the stated numbers, not the gate critique carried in userPrompt.
+  session.reconcilePrompt = opts.originalPrompt ?? opts.userPrompt;
   session.history.push({ role: 'user', content: opts.userPrompt });
   session.status = 'running';
   let warnedBudget = false;

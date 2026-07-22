@@ -242,6 +242,10 @@ export async function runRepairLoop(opts: RepairLoopOptions): Promise<RepairLoop
 
     const run = await runScadAgent({
       userPrompt: nextPrompt,
+      // Deterministic dimension reconcile (add_feature_intent) always reads the
+      // user's ORIGINAL request — never the repair feedback that nextPrompt
+      // carries on attempt >= 2 — so restated gate numbers can't skew it.
+      originalPrompt: opts.userPrompt,
       session,
       ai: family.client,
       tools: opts.tools,
