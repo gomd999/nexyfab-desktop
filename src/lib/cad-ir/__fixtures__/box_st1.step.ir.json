@@ -1,0 +1,152 @@
+{
+ "ir_version": "1",
+ "identity": {
+  "path": "참고파일들2/semi-circular-shaft-elevator-1.snapshot.2/New folder/st1.stp",
+  "name": "st1",
+  "format": "STEP",
+  "bytes": 23300,
+  "sha256": "fbf7778d42730bec1bd076db110e644cf5707b82c5b699b2f8b9d24ef95b6f88",
+  "source_hint": "참고파일들2"
+ },
+ "parse": {
+  "status": "ok",
+  "parser": "extract_step",
+  "elapsed_ms": 209,
+  "truncated": false,
+  "sampled_ratio": 1.0,
+  "warnings": [],
+  "error": null
+ },
+ "extent": {
+  "units": "mm",
+  "units_source": "declared",
+  "bbox_min": [
+   -1.903049,
+   -1.0,
+   0.0
+  ],
+  "bbox_max": [
+   9.346951,
+   10.0,
+   11.98718
+  ],
+  "size": [
+   11.25,
+   11.0,
+   11.98718
+  ],
+  "centroid": [
+   3.721951,
+   4.5,
+   5.99359
+  ],
+  "aspect": "block",
+  "is_2d": false
+ },
+ "topology": {
+  "solids": 1,
+  "shells": 1,
+  "open_shells": 0,
+  "faces": 8,
+  "edges": 18,
+  "vertices": 12,
+  "surface_types": {
+   "plane": 8,
+   "cylinder": 0,
+   "cone": 0,
+   "sphere": 0,
+   "torus": 0,
+   "bspline": 0,
+   "revolution": 0,
+   "extrusion": 0,
+   "other": 0
+  },
+  "curve_types": {
+   "line": 18,
+   "circle": 0,
+   "ellipse": 0,
+   "bspline": 0
+  },
+  "analytic_ratio": 1.0,
+  "closed": true,
+  "entity_histogram": {
+   "CARTESIAN_POINT": 42,
+   "DIRECTION": 42,
+   "ORIENTED_EDGE": 36,
+   "COLOUR_RGB": 27,
+   "PRESENTATION_STYLE_ASSIGNMENT": 27,
+   "STYLED_ITEM": 27,
+   "EDGE_CURVE": 18,
+   "LINE": 18,
+   "DRAUGHTING_PRE_DEFINED_CURVE_FONT": 18,
+   "CURVE_STYLE": 18,
+   "VECTOR": 18,
+   "AXIS2_PLACEMENT_3D": 12
+  }
+ },
+ "features": {
+  "holes": [],
+  "hole_diameters": [],
+  "fillet_radii": [],
+  "chamfers": [],
+  "patterns": [],
+  "revolution_profile": null,
+  "extrusion_profile": null,
+  "primitive_fit": {
+   "kind": "box",
+   "params": {
+    "x": 11.25,
+    "y": 11.0,
+    "z": 11.9872
+   },
+   "residual_pct": 25.0
+  }
+ },
+ "symmetry": {
+  "mirror_planes": [],
+  "rotational_order": 1,
+  "axis_aligned": false,
+  "principal_axis": [
+   0.0,
+   0.0,
+   1.0
+  ],
+  "axis_aligned_ratio": 0.619
+ },
+ "assembly": {
+  "is_assembly": true,
+  "instance_count": 1,
+  "unique_parts": 2,
+  "tree": [
+   {
+    "name": "TEMP_X_T-prt0",
+    "count": 1
+   }
+  ],
+  "depth": 2
+ },
+ "mesh": null,
+ "semantics": {
+  "part_names": [
+   "NewModel",
+   "TEMP_X_T-prt0"
+  ],
+  "materials": [],
+  "layers": null,
+  "ifc_types": null,
+  "author": null,
+  "cad_system": "spGate 19.8.4 (****-****-****-****)",
+  "description": "), ",
+  "text_labels": null,
+  "source_filename": "st1.stp",
+  "schema": "AUTOMOTIVE_DESIGN"
+ },
+ "reconstruct": {
+  "grade": "A",
+  "score": 0.83,
+  "strategy": "primitive_csg",
+  "rationale": "analytic_ratio 1.00 (해석적 곡면만); 단일 솔리드",
+  "est_tokens": 2064,
+  "blockers": []
+ }
+}
