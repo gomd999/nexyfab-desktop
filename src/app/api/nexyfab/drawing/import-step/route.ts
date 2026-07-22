@@ -1,10 +1,15 @@
 /**
- * POST /api/nexyfab/drawing/import-step — 실물 CAD → NexyFab 어셈블리(브리지, 260717~18).
+ * POST /api/nexyfab/drawing/import-step — 실물 CAD → NexyFab 어셈블리(브리지, 260717).
  *
  * body: { step: string(≤15MB), name?, material?, format?: 'step'|'iges'|'stl'(기본 step),
  *         stlBase64?: string(binary STL) } →
- *   { ok, assembly(box/cyl 근사·note 명시), stats, ...buildAssembly 결과 }
+ *   { ok, assembly(box/cyl 근사·note 명시), stats, ...buildAssembly 결과, reconstructionGate? }
  * 미지원 독점 포맷(SKP/DWG/F3D/SLDPRT/IPT)은 오류에 변환 안내 동봉(정직 — 파서 날조 금지).
+ *
+ * reconstructionGate (STEP 경로 한정, Pipeline B): 박스/실린더 "재구성"을 실물 STEP 형상과
+ * 대조한다. 여기서 정직이 핵심 — 소스 IR 은 box 근사(stepToNexyfabAssembly)가 아니라
+ * 순수-TS B-rep 판독(stepToIr)의 **실제 형상**에서 측정한다. 박스류는 통과, 곡면/복합은
+ * 정직하게 실패, 충실히 측정 불가한 형상은 'unavailable'(가짜 통과 금지).
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { join } from 'node:path';
@@ -17,6 +22,7 @@ import { ifcToNexyfabAssembly } from '@/lib/brep-bridge/ifcImport';
 import { dwgToNexyfabAssembly } from '@/lib/brep-bridge/dwgImport';
 import { satToNexyfabAssembly } from '@/lib/brep-bridge/satImport';
 import { xtToNexyfabAssembly } from '@/lib/brep-bridge/xtImport';
+import { stepToIr, gateIntentTriangles } from '@/lib/cad-ir';
 
 /** 독점 포맷 안내(임포트 불가 시 정직 응답) — 각 툴의 개방 포맷 내보내기 경로. */
 const CONVERT_GUIDE: Record<string, string> = {
@@ -34,6 +40,11 @@ export const runtime = 'nodejs';
 type AsmMod = { buildAssembly: (a: unknown) => { ok: boolean; gateErrors?: string[]; interferences?: unknown[]; contacts?: unknown[]; structural?: unknown; support?: unknown; pipes?: unknown; designOk?: boolean; parts?: unknown; openscad?: string; composeIntent?: unknown; welds?: unknown[]; weldTotalMm?: number } };
 let _asm: AsmMod | null = null;
 
+/** reconstructionGate 응답 형태 — STL 경로(reverse-engineer)와 동일 계약. */
+type ReconstructionGate =
+  | { status: 'pass' | 'fail'; score: number; stage: string; checks: unknown; feedback: string }
+  | { status: 'unavailable'; reason: string };
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const ip = getTrustedClientIp(req.headers);
   const rl = rateLimit(`drawing-import-step:${ip}`, 4, 60_000);
@@ -48,6 +59,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const name = typeof body.name === 'string' && body.name ? body.name.slice(0, 60) : `${fmt.toUpperCase()} import`;
   const matOpt = typeof body.material === 'string' && body.material ? { material: body.material } : {};
   let bridged;
+  // STEP 텍스트를 재구성 게이트(Pipeline B)용으로 보관 — STEP 경로에서만 채워진다.
+  let stepSourceForGate: string | null = null;
   if (fmt === 'x_t' || fmt === 'xt' || fmt === 'xmt_txt') {
     // Parasolid XT 텍스트 — 공개 스펙 파서(임베디드 V14+ · 점군 AABB · 어긋남=정직 거부)
     const src = typeof body.stlBase64 === 'string' && body.stlBase64
@@ -95,6 +108,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const step = body.step ?? '';
     if (!step || typeof step !== 'string') return NextResponse.json({ ok: false, error: 'step 텍스트가 필요합니다.' }, { status: 400 });
     if (step.length > 15_000_000) return NextResponse.json({ ok: false, error: 'STEP 15MB 초과 — 부분 파일로 나눠주세요.' }, { status: 400 });
+    stepSourceForGate = step;
     bridged = stepToNexyfabAssembly(step, { name, ...matOpt });
     // R2-①(260719): AP242 시맨틱 PMI(GD&T) 동시 판독 — 있으면 어셈블리에 동봉(부품도 표기용)
     try {
@@ -110,6 +124,32 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     if (!_asm) _asm = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'assembly.mjs')).href)) as AsmMod;
     const built = _asm.buildAssembly(bridged.assembly);
+
+    // ── 재구성 검증 게이트(Pipeline B) — STEP 경로 한정 ─────────────────────────
+    // CANDIDATE = 재구성(box/cyl 근사)을 render-preview::assemblyTriangles 로 테셀레이션.
+    // SOURCE    = stepToIr 로 실물 STEP B-rep 을 충실히 측정한 IR(box 근사 아님).
+    // 대조 실패(곡면/복합) = 정직한 저충실도 신호로 그대로 노출. 측정 불가 = 'unavailable'.
+    let reconstructionGate: ReconstructionGate | undefined;
+    if (stepSourceForGate) {
+      try {
+        const src = stepToIr(stepSourceForGate, { path: `${name}.step`, name: `${name}.step` });
+        if (!src.ok || !src.ir) {
+          reconstructionGate = { status: 'unavailable', reason: src.reason ?? 'no_faithful_geometry' };
+        } else {
+          const rp = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'render-preview.mjs')).href)) as { assemblyTriangles: (a: unknown) => [number, number, number][][] };
+          const candTris = rp.assemblyTriangles({ parts: built.parts ?? bridged.assembly.parts });
+          if (!Array.isArray(candTris) || candTris.length === 0) {
+            reconstructionGate = { status: 'unavailable', reason: 'candidate_tessellation_empty' };
+          } else {
+            const g = gateIntentTriangles(candTris, src.ir);
+            reconstructionGate = { status: g.passed ? 'pass' : 'fail', score: g.score, stage: g.stage, checks: g.checks, feedback: g.feedback };
+          }
+        }
+      } catch (e) {
+        reconstructionGate = { status: 'unavailable', reason: `gate_threw_${String(e instanceof Error ? e.message : e).slice(0, 80)}` };
+      }
+    }
+
     // preset 응답 계약과 동일(composeIntent·openscad 포함) — 패널·뷰어·패키지 플로우 재사용
     return NextResponse.json({
       ok: true,
@@ -126,6 +166,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       pipes: built.pipes ?? null,
       designOk: built.designOk ?? null,
       gateErrors: built.ok ? [] : (built.gateErrors ?? []),
+      ...(reconstructionGate ? { reconstructionGate } : {}),
     });
   } catch (e) {
     // 빌드 실패해도 브리지 결과는 반환(정직 — 클라가 어셈블리 확인 가능)
