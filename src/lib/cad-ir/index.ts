@@ -69,3 +69,25 @@ export function gateScadStl(stlBytes: Uint8Array, ir: Ir): GateResult {
 export function gateIntentTriangles(triangles: [number, number, number][][], ir: Ir): GateResult {
   return verifyReconstruction({ kind: 'triangles', triangles }, ir);
 }
+
+// ── DWG-2D: 2D drawing IR + verification gate (2D evidence, not 3D bbox/genus) ──
+export {
+  type Ir2d,
+  type Ir2dDimension,
+  type Ir2dCircle,
+  type Ir2dExtents,
+  type EntityCounts,
+  ir2dHasEvidence,
+  normalizeIr2d,
+} from './schema2d';
+export {
+  verify2dReconstruction,
+  type Gate2dResult,
+  type Gate2dCheck,
+} from './gate2d';
+export {
+  dxfToIr2d,
+  emitDxf2d,
+  roundTripVerify2d,
+  type DxfToIr2dResult,
+} from './ingestDxf2d';
