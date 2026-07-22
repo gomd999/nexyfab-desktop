@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import { runSimpleFEA, type FEAResult, type FEAMaterial, type FEABoundaryCondition } from './simpleFEA';
 import { runFEM } from './femSolver';
+import { hasCurvedStressRaiser } from './femRefine';
 
 /** 재료 물성 (대표값 — E GPa·ν·기준강도 MPa·밀도 g/cm³). 비금속은 선형등방 근사임을 리포트에 명시. */
 export const FEA_MATERIALS: Record<string, FEAMaterial & { label: string; strengthNote: string }> = {
@@ -64,6 +65,9 @@ export interface FeaPackageInput {
   materialKey?: string;   // FEA_MATERIALS 키 (기본 STS316)
   loadN?: number;         // 상면 총 하중 N (기본: 호출측이 총질량×g 전달)
   loadNote?: string;      // 하중 가정 설명(리포트에 그대로)
+  /** 옵트인: 곡률 응력집중부(보어/필렛)가 감지되면 A5-급 정밀 해석(graded refine +
+   *  boundary-snap + IC(0), 실측 ~24s·~68k DOF)을 추가 수행. 기본 false(스크리닝만). */
+  precise?: boolean;
 }
 
 export interface FeaPackageOutput {
@@ -75,18 +79,84 @@ export interface FeaPackageOutput {
   mesh: { triangles: number; fixedTris: number; loadTris: number };
   /** 2-step 정밀 재해석 정보 (스크리닝 SF<2 시 자동 수행 — 외부감사 제언) */
   refined?: { maxNodes: number; screeningSF: number; screeningMaxStress: number } | null;
+  /** 곡률 응력집중부(보어/필렛) 정직 블록: 감지 여부·정밀 재해석 적용 여부·등급·실측 벽시계.
+   *  applied=false면 보어 피크는 스크리닝 수준(과소평가)임을 호출측/리포트가 명시해야 한다. */
+  raiser?: {
+    detected: boolean;
+    applied: boolean;
+    grade: 'engineering' | 'screening';
+    dofCount: number;
+    converged: boolean;
+    wallMs: number;
+    note: string;
+  } | null;
 }
 
-/** STL → 자동 경계조건 → runSimpleFEA (스크리닝) → SF<2면 고밀도 재해석(2-step). */
-export function feaFromStl({ stl, materialKey = 'STS316', loadN = 0, loadNote = '' }: FeaPackageInput): FeaPackageOutput {
+/**
+ * STL → 자동 경계조건 → runSimpleFEA (빠른 스크리닝, refine OFF) → 결과.
+ *
+ * 곡률 응력집중부(보어/필렛)가 감지되고 precise=true면 A5 하네스가 입증한
+ * graded refine + boundary-snap + IC(0) 정밀 해석(실측 seed 12000·cap 8000 →
+ * ~68k DOF·~1120 PCG iters·~24s·Kt 2.833[Kirsch 3.0 대비 5.6%])을 추가 수행한다.
+ * 정밀 해석은 느리므로 기본값은 스크리닝이며 precise는 명시적 옵트인이다 —
+ * 24s 동기 요청을 무음으로 흘려보내 타임아웃 나는 일을 피한다(실측 근거).
+ *
+ * 비-라이저(각기둥) 부재는 스크리닝 SF<2 시 고밀도(6,000) 재해석하는 기존 2-step을
+ * 유지한다(불필요한 비용·회귀 없음). 라이저 부재의 정밀화는 precise 경로가 전담한다.
+ */
+export function feaFromStl({ stl, materialKey = 'STS316', loadN = 0, loadNote = '', precise = false }: FeaPackageInput): FeaPackageOutput {
   const mat = FEA_MATERIALS[materialKey] ?? FEA_MATERIALS.STS316;
   const geometry = stlToGeometry(stl);
+  const pos = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const raiserDetected = hasCurvedStressRaiser(pos);
   const { conditions, fixedTris, loadTris } = autoConditions(geometry, loadN);
+  // 스크리닝: runSimpleFEA는 refine OFF(균일 메시)라 라이저 부재에서도 항상 빠르다(~수백 ms).
+  // 보어/필렛 피크는 여기서 과소평가되며, 그 사실을 raiser 블록·리포트에 정직히 명시한다.
   let result = runSimpleFEA(geometry, { material: mat, conditions });
-  // 2-step: 스크리닝(≈1,200노드)에서 여유가 작으면(SF<2) 고밀도(6,000노드) 재해석.
-  // 성긴 메시는 응력집중을 과소평가할 수 있어, 위험 영역에서만 비용을 지불한다.
+
+  // 라이저 정밀(옵트인): A5-급 graded refine + IC(0). 실측 ~24s.
+  let raiser: FeaPackageOutput['raiser'] = raiserDetected
+    ? {
+        detected: true, applied: false, grade: 'screening',
+        dofCount: result.dofCount, converged: result.converged, wallMs: 0,
+        note: '곡률 응력집중부 감지 — 정밀 재해석 미적용(스크리닝): 보어/필렛 피크 응력 과소평가. precise 옵션으로 정밀 해석(서버, 실측 ~24s) 요청 가능.',
+      }
+    : null;
+  if (precise && raiserDetected && result.method === 'linear-fem-tet') {
+    const t0 = Date.now();
+    try {
+      // 실측 근거(feaRaiserPerf.test.ts): seed 12000(coarse ~2000)·cap 8000·기본 targetSize →
+      // ~68k DOF·~1120 iters·~24s·Kt 2.833(Kirsch 3.0 대비 5.6%·Howland 2.573 대비 10.1%).
+      const fine = runFEM(geometry, mat, conditions, 12000, { refine: 'on', maxCornerNodes: 8000 });
+      const wallMs = Date.now() - t0;
+      const usable = fine.converged && Number.isFinite(fine.maxStress) && fine.maxDisplacement < 1e6;
+      if (usable) {
+        result = { ...fine, method: 'linear-fem-tet' as const };
+        raiser = {
+          detected: true, applied: true, grade: 'engineering',
+          dofCount: fine.dofCount, converged: fine.converged, wallMs,
+          note: `곡률 응력집중부 정밀 재해석 적용 — graded refine + boundary-snap + IC(0), DOF ${fine.dofCount.toLocaleString()}·${fine.converged ? '수렴' : '미수렴'}·벽시계 ${(wallMs / 1000).toFixed(1)}s. 엔지니어링급(Kirsch 기준 ±~6%, 인증급 아님).`,
+        };
+      } else {
+        raiser = {
+          detected: true, applied: false, grade: 'screening',
+          dofCount: result.dofCount, converged: result.converged, wallMs,
+          note: '정밀 재해석 결과 부적합(미수렴/비유한) — 스크리닝 결과 유지(정직).',
+        };
+      }
+    } catch {
+      raiser = {
+        detected: true, applied: false, grade: 'screening',
+        dofCount: result.dofCount, converged: result.converged, wallMs: Date.now() - t0,
+        note: '정밀 재해석 실패(예외) — 스크리닝 결과 유지(정직).',
+      };
+    }
+  }
+
+  // 2-step(비-라이저 전용): 각기둥 부재가 스크리닝 SF<2면 고밀도(6,000노드) 재해석.
+  //   라이저 부재는 위 precise 경로가 전담하므로 여기서 우발적 refine을 배제한다.
   let refined: FeaPackageOutput['refined'] = null;
-  if (result.method === 'linear-fem-tet' && Number.isFinite(result.safetyFactor) && result.safetyFactor < 2) {
+  if (!raiserDetected && result.method === 'linear-fem-tet' && Number.isFinite(result.safetyFactor) && result.safetyFactor < 2) {
     try {
       const fine = runFEM(geometry, mat, conditions, 6000);
       const usable = fine.converged && Number.isFinite(fine.maxStress) && fine.maxDisplacement < 1e6;
@@ -99,7 +169,7 @@ export function feaFromStl({ stl, materialKey = 'STS316', loadN = 0, loadNote = 
   return {
     result, material: mat, materialKey: FEA_MATERIALS[materialKey] ? materialKey : 'STS316', loadN, loadNote,
     mesh: { triangles: (geometry.getAttribute('position').count / 3) | 0, fixedTris, loadTris },
-    refined,
+    refined, raiser,
   };
 }
 
@@ -129,7 +199,7 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 <div><b style="color:${sfClass}">${verdict}</b><span>판정(개산)</span></div></div>
 <h2>① 해석 조건</h2><table>
 <tr><th>항목</th><th>값</th></tr>
-<tr><td>해석 방법</td><td>${isTet ? `TET10 선형정적 FEM (요소 ${r.elementCount.toLocaleString()} · DOF ${r.dofCount.toLocaleString()} · ${r.converged ? '수렴' : '미수렴'})${out.refined ? ` — <b>2-step 정밀 재해석</b>(스크리닝 SF ${out.refined.screeningSF.toFixed(2)}·σ ${out.refined.screeningMaxStress.toFixed(1)}MPa → ${out.refined.maxNodes.toLocaleString()}노드 재해석)` : ''}` : '보 이론 복셀 근사 (FEM 메시 부적합 → 폴백)'}</td></tr>
+<tr><td>해석 방법</td><td>${isTet ? `TET10 선형정적 FEM (요소 ${r.elementCount.toLocaleString()} · DOF ${r.dofCount.toLocaleString()} · ${r.converged ? '수렴' : '미수렴'})${out.refined ? ` — <b>2-step 정밀 재해석</b>(스크리닝 SF ${out.refined.screeningSF.toFixed(2)}·σ ${out.refined.screeningMaxStress.toFixed(1)}MPa → ${out.refined.maxNodes.toLocaleString()}노드 재해석)` : ''}${out.raiser && out.raiser.applied ? ` — <b>곡률 라이저 정밀</b>(graded refine + IC(0) · 벽시계 ${(out.raiser.wallMs / 1000).toFixed(1)}s)` : out.raiser ? ' — 곡률 라이저 감지(정밀 미적용·스크리닝)' : ''}` : '보 이론 복셀 근사 (FEM 메시 부적합 → 폴백)'}</td></tr>
 <tr><td>재료</td><td>${esc(out.material.label)} — E ${out.material.youngsModulus} GPa · ν ${out.material.poissonRatio} · ρ ${out.material.density} g/cm³</td></tr>
 <tr><td>구속</td><td>최하단 z-평면 전체 고정 (표면 삼각형 ${out.mesh.fixedTris}개)</td></tr>
 <tr><td>하중</td><td>상면 총 ${f(out.loadN / 1000, 2)} kN (-Z) — ${esc(out.loadNote || '사용자 지정')}</td></tr>
@@ -140,7 +210,7 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 <tr><td>최소 von Mises</td><td>${f(r.minStress, 2)} MPa</td><td>-</td></tr>
 <tr><td>최대 변위</td><td>${f(r.maxDisplacement, 3)} mm</td><td>-</td></tr>
 <tr><td>안전율</td><td style="color:${sfClass};font-weight:700">${f(r.safetyFactor, 2)}</td><td>기준강도 / 최대응력</td></tr></table>
-<div class="honest">⚠ <b>개념 해석(비법정)</b> — 자동 경계조건(바닥 고정·상면 하중)은 실제 지지·하중 조건과 다를 수 있습니다. ${isTet ? (out.refined ? '2-step 재해석(6,000노드) 결과 — 그래도 국부 응력집중(용접 토우·노치)은 과소평가 가능.' : '스크리닝 메시(≈1,200노드) — SF≥2 여유 구간. 국부 응력집중은 과소평가될 수 있음.') : '보 이론 폴백 — 형상이 가늘거나 복잡해 FEM 메시가 성립하지 않은 경우로, 결과는 차원 수준의 개산.'} 최종 설계는 상용 해석(ANSYS 등) 교차검증 필수. ${out.materialKey === 'concrete' || out.materialKey === 'timber' ? '비금속(콘크리트/목재)은 선형등방 근사 — 균열·이방성·크리프 미반영, 참고용.' : ''} 법정 구조검토·상세설계는 전문 해석·기술사 검토가 필요합니다.</div>
+<div class="honest">⚠ <b>개념 해석(비법정)</b> — 자동 경계조건(바닥 고정·상면 하중)은 실제 지지·하중 조건과 다를 수 있습니다. ${out.raiser ? (out.raiser.applied ? `<b>곡률 응력집중부: 정밀 재해석 적용</b>(graded refine + boundary-snap + IC(0), DOF ${out.raiser.dofCount.toLocaleString()}·벽시계 ${(out.raiser.wallMs / 1000).toFixed(1)}s) — 보어/필렛 피크는 엔지니어링급(Kirsch 기준 ±~6%). ` : '<b>곡률 응력집중부 감지 — 정밀 재해석 미적용(스크리닝)</b>: 보어/필렛 피크 응력은 과소평가됩니다. 정밀 해석은 precise 옵션(서버, 실측 ~24s)으로 요청하세요. ') : ''}${isTet ? (out.refined ? '2-step 재해석(6,000노드) 결과 — 그래도 국부 응력집중(용접 토우·노치)은 과소평가 가능.' : '스크리닝 메시(≈1,200노드) — SF≥2 여유 구간. 국부 응력집중은 과소평가될 수 있음.') : '보 이론 폴백 — 형상이 가늘거나 복잡해 FEM 메시가 성립하지 않은 경우로, 결과는 차원 수준의 개산.'} 최종 설계는 상용 해석(ANSYS 등) 교차검증 필수. ${out.materialKey === 'concrete' || out.materialKey === 'timber' ? '비금속(콘크리트/목재)은 선형등방 근사 — 균열·이방성·크리프 미반영, 참고용.' : ''} 법정 구조검토·상세설계는 전문 해석·기술사 검토가 필요합니다.</div>
 <div class="note">방법: STL(형상 실렌더) → 복셀 사면체화 → TET10 강성 조립 → Jacobi-PCG → von Mises. 폴백: 보 이론. 하중을 지어내지 않음 — 가정은 ① 표에 전부 명시.</div>
 <div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div>
 </div></body></html>`;

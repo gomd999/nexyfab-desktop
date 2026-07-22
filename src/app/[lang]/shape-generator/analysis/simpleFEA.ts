@@ -25,6 +25,10 @@ export interface FEAResult {
   dofCount: number;
   /** Whether the iterative solver converged (always true for beam-theory) */
   converged: boolean;
+  /** Which TET10 meshing path produced this result: 'uniform' (fast screening
+   *  grid) vs 'refined' (graded curved-raiser mesh). Undefined for beam-theory.
+   *  Lets callers report honestly whether a curved-raiser peak was resolved. */
+  meshMode?: 'uniform' | 'refined';
 }
 
 export interface FEAMaterial {
@@ -362,7 +366,15 @@ export function runSimpleFEA(
     // gradient axis carries enough element layers for the TET10 stress recovery to
     // reach the extreme fibre. At 1200 a one-layer-deep cantilever root stress read
     // ~16% low; at 4800 it is <5% while the solve stays ~150 ms (DOF ~1.6k, PCG).
-    const fem = runFEM(geometry, options.material, options.conditions, 4800);
+    //
+    // refine:'off' — this is the FAST SCREENING entry (browser worker + server
+    // screening). MEASURED: on a curved-raiser part the graded refine+IC(0) solve is
+    // ~68-80k DOF and ~24-35 s (see feaRaiserPerf.test.ts) — at the default 4800
+    // budget it is actually ~35 s, which BLOWS the 30 s browser worker cap and is no
+    // usable "screening". So screening always uses the uniform grid (~150 ms) and is
+    // honestly labelled as such; the accurate raiser peak is the OPT-IN precise
+    // server path (feaPackage.feaFromStl({ precise:true }) → runFEM(...,12000)).
+    const fem = runFEM(geometry, options.material, options.conditions, 4800, { refine: 'off' });
     // A non-converged CG solve (or a non-finite / wildly implausible result) is
     // NOT a usable answer — the penalty-method system can leave under-constrained
     // or sliver-tet nodes with astronomically large spurious displacement. Surfacing

@@ -31,12 +31,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const rl = rateLimit(`drawing-fea-quick:${ip}`, 6, 60_000);
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
 
-  let scad: string, materialKey: string, loadKg: number;
+  let scad: string, materialKey: string, loadKg: number, precise: boolean;
   try {
-    const body = (await req.json()) as { scad?: string; materialKey?: string; loadKg?: number };
+    const body = (await req.json()) as { scad?: string; materialKey?: string; loadKg?: number; precise?: boolean };
     scad = String(body.scad ?? '');
     materialKey = typeof body.materialKey === 'string' && body.materialKey in FEA_MATERIALS ? body.materialKey : 'steel';
     loadKg = Number(body.loadKg);
+    // 옵트인 정밀 해석: 곡률 응력집중부면 A5-급 refine+IC(0)(실측 ~24s). 동기 요청이 길어지므로
+    // 명시 요청일 때만 수행 — 무음 타임아웃 금지.
+    precise = body.precise === true;
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
@@ -51,7 +54,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const vfy = await loadVfy();
     const stl = await vfy.renderStl(scad);
     const out = feaFromStl({
-      stl, materialKey, loadN: loadKg * 9.81,
+      stl, materialKey, loadN: loadKg * 9.81, precise,
       loadNote: `사용자 지정 ${loadKg} kg × g — 상면 등가(선형등방·스크리닝 한계는 리포트에 명시)`,
     });
     const r = out.result;
@@ -64,6 +67,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       material: out.material.label,
       yieldMPa: out.material.yieldStrength,
       refined: out.refined ?? null,
+      raiser: out.raiser ?? null,
       mesh: out.mesh,
       reportHtml: feaReportHtml(out, { title: '간이 FEA — 스튜디오 검증 그물 ⑥' }),
       note: '선형정적·단일물성·자동 경계조건(스크리닝) — 비법정, 상세 해석은 유자격 기술자 검토',
