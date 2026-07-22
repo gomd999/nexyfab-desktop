@@ -207,10 +207,10 @@ export function EngDomains({ langCode }: { langCode: string }) {
   const t = engDict[toEngLang(langCode)];
   const cards: Array<{ title: string; desc: string; tags: string[]; iconName: DomainIconName; href: string; color: string }> = [
     { title: t.dom1Title, desc: t.dom1Desc, tags: t.dom1Tags, iconName: 'mechanical', href: '#nf-chat', color: '#3b82f6' },
-    { title: t.dom2Title, desc: t.dom2Desc, tags: t.dom2Tags, iconName: 'civil', href: '#eng-demo', color: '#8b5cf6' },
-    { title: t.dom3Title, desc: t.dom3Desc, tags: t.dom3Tags, iconName: 'concrete', href: '#eng-demo', color: '#10b981' },
-    { title: t.dom4Title, desc: t.dom4Desc, tags: t.dom4Tags, iconName: 'architecture', href: '#eng-demo', color: '#f59e0b' },
-    { title: t.dom5Title, desc: t.dom5Desc, tags: t.dom5Tags, iconName: 'landscape', href: '#eng-demo', color: '#22c55e' },
+    { title: t.dom2Title, desc: t.dom2Desc, tags: t.dom2Tags, iconName: 'civil', href: '#nf-chat', color: '#8b5cf6' },
+    { title: t.dom3Title, desc: t.dom3Desc, tags: t.dom3Tags, iconName: 'concrete', href: '#nf-chat', color: '#10b981' },
+    { title: t.dom4Title, desc: t.dom4Desc, tags: t.dom4Tags, iconName: 'architecture', href: '#nf-chat', color: '#f59e0b' },
+    { title: t.dom5Title, desc: t.dom5Desc, tags: t.dom5Tags, iconName: 'landscape', href: '#nf-chat', color: '#22c55e' },
   ];
   return (
     <section style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)', padding: '90px 24px' }}>
@@ -256,14 +256,18 @@ export function EngDev({ langCode }: { langCode: string }) {
     { num: t.ver1Num, label: t.ver1Label }, { num: t.ver2Num, label: t.ver2Label },
     { num: t.ver3Num, label: t.ver3Label }, { num: t.ver4Num, label: t.ver4Label },
   ];
-  const curl = `curl -X POST ${ENG_API}/v1/calc/retaining_wall_stability \\
-  -H "Authorization: Bearer nxk_..." \\
-  -d '{"input":{"H":4,"gammaBackfill":18,"phiBackfill":30,...}}'
-# → verdict, checks, KDS clause refs`;
-  const mcp = `{ "mcpServers": { "nexyfab-eng": {
-    "command": "node",
-    "args": ["mcp-server.mjs"]
-} } }  // 8 tools: calc ×5 + rag_search + optimize + frame2d`;
+  const curl = `curl -s https://nexyfab.com/api/nexyfab/drawing/assemble/ \\
+  -H "Authorization: Bearer nf_live_..." \\
+  -d '{"prompt":"2 columns on a base plate"}'
+# -> assembly JSON + gate summary (vocab / clash / support)`;
+  const mcp = `claude mcp add nexyfab \\
+  -e NEXYFAB_API_KEY=nf_live_... \\
+  -- node nexyfab-mcp.mjs
+# 6 tools: design_assembly, compose_part, edit_part,
+#          face_drag, part_op, domain_design`;
+  const cli = `node cli.mjs assemble "2 columns on a base plate" --out asm.json
+node cli.mjs package asm.json --out ./out --step
+# GA drawing, part drawings, BOQ, spec, DXF, STEP`;
   return (
     <section style={{ background: '#f8fafc', padding: '90px 24px' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
@@ -283,8 +287,8 @@ export function EngDev({ langCode }: { langCode: string }) {
           ))}
         </div>
 
-        {/* REST + MCP */}
-        <div className="reveal" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+        {/* REST + MCP + CLI */}
+        <div className="reveal" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '28px' }}>
           <div style={{ background: '#0d1117', borderRadius: '16px', padding: '22px', border: '1px solid #1e293b' }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '14px', fontWeight: 800, color: '#e2e8f0', marginBottom: '12px' }}><span style={{ color: '#7dd3fc', display: 'inline-flex' }}><LineIcon name="keyboard" size={17} /></span>{t.devCurlTitle}</h3>
             <pre style={{ margin: 0, fontSize: '11px', lineHeight: 1.6, color: '#7dd3fc', overflowX: 'auto', fontFamily: 'ui-monospace, monospace' }}>{curl}</pre>
@@ -293,6 +297,10 @@ export function EngDev({ langCode }: { langCode: string }) {
             <h3 style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '14px', fontWeight: 800, color: '#e2e8f0', marginBottom: '12px' }}><span style={{ color: '#86efac', display: 'inline-flex' }}><LineIcon name="robot" size={17} /></span>{t.devMcpTitle}</h3>
             <pre style={{ margin: '0 0 10px', fontSize: '11px', lineHeight: 1.6, color: '#86efac', overflowX: 'auto', fontFamily: 'ui-monospace, monospace' }}>{mcp}</pre>
             <p style={{ margin: 0, fontSize: '12px', color: '#8b949e', lineHeight: 1.6, wordBreak: 'keep-all' }}>{t.devMcpDesc}</p>
+          </div>
+          <div style={{ background: '#0d1117', borderRadius: '16px', padding: '22px', border: '1px solid #1e293b' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '14px', fontWeight: 800, color: '#e2e8f0', marginBottom: '12px' }}><span style={{ color: '#fcd34d', display: 'inline-flex' }}><LineIcon name="keyboard" size={17} /></span>{t.devCliTitle}</h3>
+            <pre style={{ margin: 0, fontSize: '11px', lineHeight: 1.6, color: '#fcd34d', overflowX: 'auto', fontFamily: 'ui-monospace, monospace' }}>{cli}</pre>
           </div>
         </div>
 

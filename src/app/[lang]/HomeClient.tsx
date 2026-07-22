@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { richText } from '@/lib/richText';
 import type { homeDict } from './homeDict';
 import { useSwipe } from '@/hooks/useSwipe';
-import { EngDemo, EngDomains, EngDev, EngFaq } from './EngVertical';
+import { EngDomains, EngDev, EngFaq } from './EngVertical';
 import ChatHero from './ChatHero';
 import { LineIcon } from './_lineIcons';
 
@@ -332,9 +332,9 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════════ */}
-      {/* ENG VERTICAL — 라이브 데모 + 검증 숫자(실측) + REST/MCP 개발자 섹션 */}
+      {/* ENG VERTICAL — 검증 숫자(실측) + 개발자 섹션(API · MCP · CLI) */}
+      {/* (라이브 데모 EngDemo 제거 — 좁은 계산기 데모는 "말로 설계" 메시지와 어긋남) */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
-      <EngDemo langCode={langCode} />
       <EngDev langCode={langCode} />
 
       {/* ═══════════════════════════════════════════════════════════════════════ */}
@@ -396,7 +396,6 @@ const [featTab, setFeatTab] = useState<'design' | 'analysis' | 'mfg'>('design');
           <div className="hat-actions">
             <Link className="hat-btn-primary" href="#nf-chat">{t.platformCta1}</Link>
             <Link prefetch className="hat-btn-primary" href={`/${langCode}/project-inquiry/`}>{t.ctaBtn1}</Link>
-            <Link prefetch className="hat-btn-secondary" href={`/${langCode}/factories/`}>{t.ctaBtn2}</Link>
           </div>
         </div>
       </section>
