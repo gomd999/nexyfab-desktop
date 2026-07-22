@@ -106,13 +106,22 @@ async function handleFleet(n: number, attempts: number, budgetMs: number): Promi
 
   // Lazy-load the heavy fleet wiring so the fea path (and the 404 path) never pay
   // for it. All server adapters/keys resolve inside the container.
-  const [{ reconstructWithFleet }, { makeTools }, { SERVER_HOST_ADAPTERS }, { makeServerAiFamilies, makeVisionCritic }, { stlToIr }] =
-    await Promise.all([
+  const [
+    { reconstructWithFleet },
+    { makeTools },
+    { SERVER_HOST_ADAPTERS },
+    { makeServerAiFamilies, makeVisionCritic },
+    { stlToIr },
+    { parseStlBufferToGeometry },
+    { reverseEngineerFromGeometry },
+  ] = await Promise.all([
       import('@/lib/ai/scad-agent/reconstructFleet'),
       import('@/lib/ai/scad-agent/tools'),
       import('@/lib/ai/scad-agent/serverAdapters'),
       import('@/lib/ai/scad-agent/repairLoop'),
       import('@/lib/cad-ir'),
+      import('@/lib/ai/scad-agent/renderToGeometry'),
+      import('@/lib/ai/scad-agent/reverseEngineer'),
     ]);
 
   const aiFamilies = await makeServerAiFamilies({ task: 'reconstruct-fleet' });
@@ -142,6 +151,12 @@ async function handleFleet(n: number, attempts: number, budgetMs: number): Promi
     gateStatus?: 'pass' | 'fail' | 'unverified-null';
     gateFeedback?: string | null;
     scadPreview?: string;
+    // DIAGNOSTIC — the shape that actually drove the emitted geometry (the
+    // proposer's own add_feature_intent shapeId), whether the LLM was truly
+    // invoked, and the deterministic seed we handed the proposer.
+    intentShapeId?: string | null;
+    modelCalled?: boolean;
+    seedShape?: string | null;
     wallMs: number;
     error?: boolean;
   };
@@ -156,6 +171,27 @@ async function handleFleet(n: number, attempts: number, budgetMs: number): Promi
     try {
       const stl = await renderFixtureStl(name);
       const sourceIr = stlToIr(stl, { path: `${name}.stl`, name: `${name}.stl` });
+      // SEED the fleet with the deterministic classifier's top candidate — the
+      // SAME hint the production /reverse-engineer route passes. Previously the
+      // selftest omitted this, so a seed added to production never reached the
+      // measured path (the prompt got no CLASSIFIER SEED block and the proposer
+      // kept defaulting to a box on the shape-less STL IR). Best-effort: a
+      // classifier miss just yields no seed (unchanged no-hint behavior).
+      let heuristicHint;
+      let seedShape = null;
+      try {
+        const geom = await parseStlBufferToGeometry(stl);
+        const top = reverseEngineerFromGeometry({ geometry: geom }).candidates[0];
+        if (top) {
+          seedShape = top.intent.shapeId;
+          heuristicHint = {
+            shapeId: top.intent.shapeId,
+            params: top.intent.params,
+            confidence: top.confidence,
+            summary: top.summary,
+          };
+        }
+      } catch { /* no seed — falls back to the unchanged no-hint prompt */ }
       // Per-part hard stop = min(remaining overall budget, per-part cap).
       const ac = new AbortController();
       const perPartMs = Math.min(remaining, FLEET_PER_PART_MAX_MS);
@@ -164,6 +200,7 @@ async function handleFleet(n: number, attempts: number, budgetMs: number): Promi
       try {
         fleet = await reconstructWithFleet({
           sourceIr,
+          heuristicHint,
           tools,
           aiFamilies,
           visionCritic,
@@ -190,6 +227,9 @@ async function handleFleet(n: number, attempts: number, budgetMs: number): Promi
         gateStatus: fleet.gateStatus,
         gateFeedback: fleet.gateFeedback,
         scadPreview: fleet.scadPreview,
+        intentShapeId: fleet.intentShapeId,
+        modelCalled: fleet.modelCalled,
+        seedShape,
         wallMs: Date.now() - p0,
       });
     } catch (e) {

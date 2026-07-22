@@ -359,6 +359,22 @@ export interface ReconstructFleetResult {
   /** DIAGNOSTIC — first ~200 chars of the proposed SCAD (empty when none built). */
   scadPreview: string;
   /**
+   * DIAGNOSTIC — the shapeId of the FINAL intent the proposer landed on the
+   * session (`session.lastIntent.shapeId`). This is EXACTLY what drove the
+   * emitted geometry: if it reads 'box' for a cylinder source, the PROPOSER
+   * chose a box — it is NOT a fixed/default box (there is no default-to-box in
+   * this path; an unknown shape makes intentToScad reject, not fall back).
+   * null when the returned attempt built a composite / raw SCAD / nothing.
+   */
+  intentShapeId: string | null;
+  /**
+   * DIAGNOSTIC — did the LLM ACTUALLY run on the returned attempt (>=1 model
+   * turn), vs the run short-circuiting (deterministic fast-path / nothing).
+   * The reconstruction prompt is long + free-text so the fast-path never fires;
+   * a `false` here on a live run would mean the model was never reached at all.
+   */
+  modelCalled: boolean;
+  /**
    * Honest human-readable summary. On a non-pass this carries the gate's
    * feedback + "did not verify" so the caller never mistakes it for a pass.
    */
@@ -437,6 +453,16 @@ export async function reconstructWithFleet(
       : (loop.finalVerdict.passed ? 'pass' : 'fail');
   const gateFeedback = loop.finalVerdict?.feedback ?? null;
   const scadPreview = scad.slice(0, 200);
+  // What shape actually drove the emitted geometry, and whether the model ran.
+  // intentShapeId is the model's own proposal (add_feature_intent writes
+  // session.lastIntent verbatim from the model's tool args) — proof that the
+  // proposer, not a default, chose the shape. modelCalled reads the returned
+  // attempt's turn counter: >0 means the LLM was genuinely invoked.
+  const intentShapeId =
+    intent && typeof (intent as { shapeId?: unknown }).shapeId === 'string'
+      ? (intent as { shapeId: string }).shapeId
+      : null;
+  const modelCalled = (session.budget?.turnsUsed ?? 0) > 0;
 
   const note = loop.passed
     ? 'Reconstruction VERIFIED against the source by the deterministic gate '
@@ -462,6 +488,8 @@ export async function reconstructWithFleet(
     gateStatus,
     gateFeedback,
     scadPreview,
+    intentShapeId,
+    modelCalled,
     note,
   };
 }
