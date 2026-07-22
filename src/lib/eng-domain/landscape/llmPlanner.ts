@@ -17,6 +17,10 @@
  */
 
 import { chatCompletion, type ChatMessage } from '@/lib/ai';
+import {
+  retrieveKdsClauses,
+  formatKdsClausesBlock,
+} from '@/lib/ai/reference/retrieveKdsClauses';
 import type { LandscapeBrief, LandscapePlan } from './module';
 import type { DrainageSurface, LandUseZone, SoilCategory, SpacingCategory } from './checks';
 
@@ -164,6 +168,8 @@ export const LANDSCAPE_SYSTEM_PROMPT = `You are the planning stage of a LANDSCAP
 
 Return ONLY the JSON object (no prose, no markdown). If the request cannot be expressed within the schema, return {"error":"unsupported","reason":"<why>"} instead of guessing.
 
+Any "Relevant KDS/KCS design-code clauses" listed under the brief are CITED, NON-AUTHORITATIVE references to the governing code — cite them where they apply, but NEVER copy their numbers into your plan as facts; the code-verified engine computes and checks every value.
+
 LandscapePlan schema (unknown fields dropped; wrong types rejected; enum values must match exactly):
 {
   "planId": string, "name": string,
@@ -190,6 +196,10 @@ function buildMessages(brief: LandscapeBrief, systemPrompt: string): ChatMessage
   if (brief.params && Object.keys(brief.params).length > 0) {
     user += `\n\nStructured parameters (JSON): ${JSON.stringify(brief.params)}`;
   }
+  // Lever C — deterministic in-repo KDS/KCS grounding (cited, NON-AUTHORITATIVE);
+  // the code-verified engine + coerce gate still decide truth.
+  const clauseBlock = formatKdsClausesBlock(retrieveKdsClauses(brief.text ?? ''));
+  if (clauseBlock) user += `\n\n${clauseBlock}`;
   return [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: user.length > 0 ? user : '(empty brief)' },

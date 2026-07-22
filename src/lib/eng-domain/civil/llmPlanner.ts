@@ -9,6 +9,10 @@
  */
 
 import { chatCompletion, type ChatMessage } from '@/lib/ai';
+import {
+  retrieveKdsClauses,
+  formatKdsClausesBlock,
+} from '@/lib/ai/reference/retrieveKdsClauses';
 import type {
   CivilBeamMember,
   CivilBrief,
@@ -152,6 +156,8 @@ export const CIVIL_SYSTEM_PROMPT = `You are the planning stage of a CIVIL/STRUCT
 
 Return ONLY the JSON object (no prose, no markdown). If a required quantity (a LOAD, a section property, a soil parameter) is not given or clearly implied by the brief, do NOT invent it — return {"error":"unsupported","reason":"<what is missing>"} instead.
 
+Any "Relevant KDS/KCS design-code clauses" listed under the brief are CITED, NON-AUTHORITATIVE references to the governing code — cite them where they apply, but NEVER copy their numbers into your plan as facts; the KDS-verified engine computes and checks every value.
+
 CivilPlan schema (unknown fields dropped; wrong types rejected). Each member's fields are the ENGINE's inputs:
 {
   "planId": string, "name": string,
@@ -184,6 +190,12 @@ function buildMessages(brief: CivilBrief, systemPrompt: string): ChatMessage[] {
   if (brief.params && Object.keys(brief.params).length > 0) {
     user += `\n\nStructured parameters (JSON): ${JSON.stringify(brief.params)}`;
   }
+  // Lever C — deterministic in-repo KDS/KCS grounding: cite the governing
+  // design-code clauses (from the calc catalog) so the model references rather
+  // than invents them. Cited, NON-AUTHORITATIVE; the KDS-verified engine + the
+  // coerce gate still decide truth, so no clause number becomes a plan value.
+  const clauseBlock = formatKdsClausesBlock(retrieveKdsClauses(brief.text ?? ''));
+  if (clauseBlock) user += `\n\n${clauseBlock}`;
   return [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: user.length > 0 ? user : '(empty brief)' },

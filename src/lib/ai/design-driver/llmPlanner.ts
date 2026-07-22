@@ -60,6 +60,10 @@ import type {
   PatternSpec,
   CurvedSpec,
 } from './types';
+import {
+  retrieveReferenceParts,
+  formatReferencePartsBlock,
+} from '@/lib/ai/reference/retrieveReferenceParts';
 
 // ─── revision context (proposed optional brief extension — hook only) ───────
 
@@ -569,6 +573,14 @@ function buildMessages(brief: DesignBrief, systemPrompt: string): ChatMessage[] 
       user += `\nGates that failed before and MUST pass now: ${rev.failedGates.join(', ')}`;
     }
   }
+  // Lever C — deterministic in-repo grounding: retrieve real reference parts of
+  // similar structure/scale and inject them as CITED, NON-AUTHORITATIVE examples.
+  // The coerce/preflight gate is unchanged and still decides truth, so no
+  // retrieved number can become a fact.
+  const refBlock = formatReferencePartsBlock(
+    retrieveReferenceParts({ text: brief.text ?? '' }),
+  );
+  if (refBlock) user += `\n\n${refBlock}`;
   return [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: user.length > 0 ? user : '(empty brief)' },
@@ -580,6 +592,8 @@ function buildMessages(brief: DesignBrief, systemPrompt: string): ChatMessage[] 
 export const DEFAULT_SYSTEM_PROMPT = `You are the planning stage of a CAD design driver. Your ONLY output is a DesignPlan as a single JSON object. You never write CAD code, geometry math, or measurements — a deterministic engine executes your plan and REAL-measures every result. Fabricated code or numbers are worthless: only a structurally valid plan that the engine can build and verify is useful.
 
 Return ONLY the JSON object (no prose, no markdown fences). If the request cannot be expressed within the schema below, return {"error":"unsupported","reason":"<why>"} instead of guessing.
+
+Any "Reference parts" listed under the brief are REAL but CITED, NON-AUTHORITATIVE examples of realistic structure and scale — use them only to sanity-check that your plan's proportions are plausible; NEVER copy their dimensions or feature counts into your plan as facts. The engine builds and REAL-measures every result regardless.
 
 DesignPlan schema (unknown fields are dropped; wrong types are rejected):
 {

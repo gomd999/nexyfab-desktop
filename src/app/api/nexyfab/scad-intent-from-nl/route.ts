@@ -17,6 +17,10 @@ import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { chatCompletion, AiNotConfiguredError, AiProviderError, type ChatMessage } from '@/lib/ai';
 import { pickExemplar } from '@/lib/ai/scadExemplars';
+import {
+  retrieveReferenceParts,
+  formatReferencePartsBlock,
+} from '@/lib/ai/reference/retrieveReferenceParts';
 import { resolveCodegenModel } from '@/lib/ai/codegenModels';
 import { visionCompletion, VisionNotConfiguredError, VisionProviderError } from '@/lib/ai/vision';
 import { getPromptVariant } from '@/lib/ai/prompts';
@@ -230,9 +234,16 @@ export async function POST(req: NextRequest) {
   // pattern for a matching part type so the model copies a working structure
   // (sharply improves dimensional/geometric accuracy). Skipped on refine/repair.
   const exemplar = (freeform && !previousScad) ? pickExemplar(prompt) : null;
-  const freeformFresh = exemplar
+  // Lever C — deterministic in-repo grounding: append real reference parts of
+  // similar structure/scale as CITED, NON-AUTHORITATIVE examples (the block
+  // labels itself). Extends the existing exemplar injection; the deterministic
+  // intentToScad path is unchanged, so no retrieved number becomes a fact.
+  const refBlock = (freeform && !previousScad)
+    ? formatReferencePartsBlock(retrieveReferenceParts({ text: prompt }))
+    : '';
+  const freeformFresh = (exemplar
     ? `Reference pattern for a SIMILAR part — match this STRUCTURE, style and Customizer-annotation format, but adapt the dimensions and features to the request (do not copy it verbatim):\n\`\`\`\n${exemplar.scad}\n\`\`\`\n\nNow create: ${prompt}`
-    : prompt;
+    : prompt) + (refBlock ? `\n\n${refBlock}` : '');
   const userContent = freeform
     ? (previousScad
       ? `Here is the current OpenSCAD program:\n\`\`\`\n${previousScad}\n\`\`\`\n\nApply this change and return the COMPLETE updated program, following ALL the rules above (keep the Customizer parameter annotations and groups; keep parts not mentioned unchanged): ${prompt}`

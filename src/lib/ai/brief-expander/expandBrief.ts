@@ -25,6 +25,10 @@
 import { chatCompletion, type ChatMessage } from '@/lib/ai';
 import briefExpanderPrompt from '@/lib/ai/prompts/brief-expander';
 import {
+  retrieveReferenceParts,
+  formatReferencePartsBlock,
+} from '@/lib/ai/reference/retrieveReferenceParts';
+import {
   BRIEF_DOMAINS,
   type BriefComponent,
   type BriefDomain,
@@ -256,9 +260,16 @@ export function toPlannerBrief(brief: StructuredBrief, id = 'brief'): PlannerBri
 
 function buildMessages(rawText: string, systemPrompt: string, domain?: BriefDomain): ChatMessage[] {
   const hint = domain && domain !== 'generic' ? `\n\n[The user is working in the "${domain}" domain.]` : '';
+  // Lever C — deterministic in-repo grounding: real reference parts of similar
+  // structure/scale, injected as CITED, NON-AUTHORITATIVE examples (the block
+  // labels itself as such). This grounds the quality of the proposed
+  // questions/assumptions; the deterministic grounding pass downstream still
+  // decides every final `source` label, so no retrieved number becomes a fact.
+  const refBlock = formatReferencePartsBlock(retrieveReferenceParts({ text: rawText }));
+  const user = rawText.trim() + hint + (refBlock ? `\n\n${refBlock}` : '');
   return [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: rawText.trim() + hint },
+    { role: 'user', content: user },
   ];
 }
 
