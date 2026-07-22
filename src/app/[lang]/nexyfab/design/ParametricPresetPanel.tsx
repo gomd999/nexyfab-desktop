@@ -64,6 +64,10 @@ export default function ParametricPresetPanel({
   const [drawBusy, setDrawBusy] = useState(false);
   const [drawRes, setDrawRes] = useState<DrawRes | null>(null);
   const [drawErr, setDrawErr] = useState<string | null>(null);
+  // DWG 2D 읽기-검증 판정: 우리가 도면을 치수/원/extents 보존하며 정확히 읽었는지(라운드트립).
+  const [draw2dGate, setDraw2dGate] = useState<
+    { status: 'pass' | 'fail' | 'unavailable'; score?: number; feedback?: string; reason?: string } | null
+  >(null);
 
   useEffect(() => {
     let alive = true;
@@ -165,7 +169,7 @@ export default function ParametricPresetPanel({
     if (/\.dwg$/i.test(f.name)) {
       if (f.size > 60_000_000) { setDrawErr(ko ? 'DWG 60MB 초과' : 'DWG over 60MB'); return; }
       void (async () => {
-        setDrawBusy(true); setDrawErr(null); setDrawRes(null);
+        setDrawBusy(true); setDrawErr(null); setDrawRes(null); setDraw2dGate(null);
         try {
           const buf = new Uint8Array(await f.arrayBuffer());
           let bin = '';
@@ -174,7 +178,7 @@ export default function ParametricPresetPanel({
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ dwgBase64: btoa(bin) }),
           });
-          const j = (await r.json()) as { ok?: boolean; seed?: { measurements: number[]; circles: Array<{ r: number }>; extents: { w: number; h: number } | null }; error?: string; mesh3dLikely?: boolean };
+          const j = (await r.json()) as { ok?: boolean; seed?: { measurements: number[]; circles: Array<{ r: number }>; extents: { w: number; h: number } | null }; reconstruction2dGate?: { status: 'pass' | 'fail' | 'unavailable'; score?: number; feedback?: string; reason?: string }; error?: string; mesh3dLikely?: boolean };
           if (!j.ok || !j.seed) {
             setDrawErr(j.mesh3dLikely
               ? (ko ? '3D 메시 DWG 입니다 — 어셈블리 프리셋의 "실물 가져오기"로 업로드하세요(부품 AABB 임포트).' : '3D mesh DWG — upload via assembly panel "import real model".')
@@ -188,6 +192,7 @@ export default function ParametricPresetPanel({
           if (sd.circles.length) parts.push((ko ? '원 Ø' : 'holes Ø') + [...new Set(sd.circles.map((c) => +(c.r * 2).toFixed(2)))].slice(0, 8).join(', Ø') + ` ×${sd.circles.length}`);
           const seedText = (ko ? 'DWG 씨앗(LibreDWG 변환·사람 검증 필요): ' : 'DWG seed (verify): ') + parts.join(' · ') + (ko ? ' — 이 치수로 [부품 설명]을 설계' : ' — design [part] with these dims');
           window.dispatchEvent(new CustomEvent('nf-dxf-seed', { detail: seedText }));
+          setDraw2dGate(j.reconstruction2dGate ?? null);
           setMsg(ko ? 'DWG를 변환해 씨앗을 프롬프트에 넣었어요 — 부품 설명을 붙여 생성하세요(자동 생성 아님).' : 'DWG converted — seed prefilled, add a part description.');
         } catch (err) {
           setDrawErr(err instanceof Error ? err.message : String(err));
@@ -346,6 +351,34 @@ export default function ParametricPresetPanel({
 
       {drawBusy && <div style={{ marginTop: 6, fontSize: 11, color: 'var(--nx-accent, #2563eb)' }}>{ko ? '이미지 판독 중…' : 'Reading image…'}</div>}
       {drawErr && <div style={{ marginTop: 6, fontSize: 11, color: '#991b1b' }}>{drawErr}</div>}
+      {draw2dGate && (
+        <div
+          data-testid="dwg-2d-gate"
+          data-gate-status={draw2dGate.status}
+          style={{
+            marginTop: 6, padding: '6px 9px', borderRadius: 7, fontSize: 11, lineHeight: 1.5, border: '1px solid',
+            borderColor: draw2dGate.status === 'pass' ? '#16a34a55' : draw2dGate.status === 'fail' ? '#e11d4855' : '#d9770655',
+            background: draw2dGate.status === 'pass' ? '#16a34a14' : draw2dGate.status === 'fail' ? '#e11d4814' : '#d977061a',
+            color: draw2dGate.status === 'pass' ? '#15803d' : draw2dGate.status === 'fail' ? '#be123c' : '#b45309',
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>
+            {draw2dGate.status === 'pass'
+              ? (ko ? '✓ 도면 읽기 검증 통과 (치수·원·범위 보존)' : '✓ Drawing read verified')
+              : draw2dGate.status === 'fail'
+                ? (ko ? '✕ 도면 해석이 원본 증거와 불일치' : '✕ Interpretation mismatch vs drawing')
+                : (ko ? '검증 불가 (측정 가능한 증거 없음)' : 'Gate unavailable')}
+            {draw2dGate.status !== 'unavailable' && typeof draw2dGate.score === 'number'
+              ? ` · ${(draw2dGate.score * 100).toFixed(0)}%` : ''}
+          </div>
+          <div style={{ marginTop: 2, opacity: 0.85 }}>
+            {draw2dGate.status === 'unavailable'
+              ? (ko ? `측정 가능한 치수·원·범위가 없습니다 (${draw2dGate.reason ?? '이유 미상'}). 통과로 위장하지 않습니다.`
+                    : `No measurable evidence (${draw2dGate.reason ?? 'unknown'}). Not reported as a pass.`)
+              : (draw2dGate.feedback ?? '')}
+          </div>
+        </div>
+      )}
 
       {/* 판독 확인 카드 — 승인해야 생성(정직: 기본값 대체·클램프 내역 표기) */}
       {drawRes && (
