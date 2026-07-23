@@ -43,11 +43,25 @@ const badge = (verdict) => {
   return `<span style="color:#64748b;font-weight:700">${esc(verdict ?? '—')}</span>`;
 };
 
-/** check 객체의 숫자 필드를 "키=값" 압축(FS·값 위주). */
+/**
+ * check 객체의 숫자 필드를 "키=값" 압축(FS·값 위주). null(=지압 성립 불가 등 계산기가
+ * 명시적으로 산출 불가라 표시한 값)은 숨기지 않고 "—"로 표기 — 예) 전도 벽의
+ * qmax_kPa:null이 그냥 사라지면 "qmin=0.0 ≤ allow=200.0 FAIL"만 남아 자기모순으로
+ * 읽힌다. calculator의 `note`(엣지케이스 설명, 예: "합력이 저판 외부…")도 예전엔
+ * 항상 스킵돼 무엇이 왜 FAIL인지 설명이 도세에서 통째로 증발했다 — 존재하면 덧붙인다.
+ */
 function checkNums(chk) {
   const skip = new Set(['pass', 'label', 'name', 'note', 'unit']);
-  const nums = Object.entries(chk).filter(([k, v]) => !skip.has(k) && typeof v === 'number' && Number.isFinite(v));
-  return nums.slice(0, 5).map(([k, v]) => `${k}=${f(v, k.toLowerCase().includes('fs') || k === 'e' ? 2 : 1)}`).join(', ') || '—';
+  const entries = Object.entries(chk).filter(([k, v]) => {
+    if (skip.has(k)) return false;
+    if (typeof v === 'number') return Number.isFinite(v);
+    return v === null;
+  });
+  const nums = entries
+    .slice(0, 5)
+    .map(([k, v]) => (v === null ? `${k}=—` : `${k}=${f(v, k.toLowerCase().includes('fs') || k === 'e' ? 2 : 1)}`));
+  const base = nums.join(', ') || '—';
+  return typeof chk.note === 'string' && chk.note ? `${base} — ${chk.note}` : base;
 }
 
 function citationText(c) {

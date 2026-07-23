@@ -3651,9 +3651,21 @@ export const ASSEMBLY_TEMPLATES = {
   ],
 };
 
+/**
+ * 도메인 명 별칭 — 'construction'은 브리프/CLI DOMAINS 목록·design-brief 라우트가 쓰는
+ * 분야명이지만, 실제 로컬 템플릿 카탈로그는 'building' 키 아래(rc_frame·물탱크 등)
+ * 실려있다. 별칭 없이는 `templates construction`/`dossier construction ...`가 실존
+ * 콘텐츠가 있는데도 조용히 빈 배열을 반환해 막다른 길이 된다(도그푸딩 발견).
+ */
+const DOMAIN_ALIASES = { construction: 'building' };
+function resolveDomainAlias(domain) {
+  return (domain && DOMAIN_ALIASES[domain]) || domain;
+}
+
 /** 카탈로그(빌더 제외) — UI/라우트용. */
 export function listAssemblyTemplates(domain) {
-  const doms = domain ? [domain] : Object.keys(ASSEMBLY_TEMPLATES);
+  const resolved = resolveDomainAlias(domain);
+  const doms = resolved ? [resolved] : Object.keys(ASSEMBLY_TEMPLATES);
   return doms.flatMap((d) => (ASSEMBLY_TEMPLATES[d] ?? []).map((t) => ({ domain: d, id: t.id, labelKo: t.labelKo, labelEn: t.labelEn, params: t.params })));
 }
 
@@ -3668,7 +3680,7 @@ export function listAssemblyTemplates(domain) {
  * 하류(게이트·쉬운요약·라우트)가 "parts[] 비어있음" 대신 **진짜 사유**를 보여준다.
  */
 export function buildAssemblyTemplate(domain, templateId, params = {}) {
-  const t = (ASSEMBLY_TEMPLATES[domain] ?? []).find((x) => x.id === templateId);
+  const t = (ASSEMBLY_TEMPLATES[resolveDomainAlias(domain)] ?? []).find((x) => x.id === templateId);
   if (!t) return null;
   const { values, errors, notes } = normalizeTemplateParams(t.params, params);
   if (errors.length) {

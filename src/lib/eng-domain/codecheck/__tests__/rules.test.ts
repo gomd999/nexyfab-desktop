@@ -470,3 +470,45 @@ describe('sanitizeCodeCheckFeatures — garbage input never fabricates a FAIL', 
     expect(clean.corridorBothSidesRooms).toBe(true);
   });
 });
+
+describe('sanitizeCodeCheckFeatures — implausible _m values never fabricate a PASS', () => {
+  it('an mm value typed into an _m field (1200 = a 1200-metre-wide ramp) is dropped -> NA', () => {
+    const clean = sanitizeCodeCheckFeatures({ rampEffectiveWidth_m: 1200 });
+    expect('rampEffectiveWidth_m' in clean).toBe(false);
+    const rep = runCodeCheck(clean);
+    const r = rep.results.find((x) => x.id === 'ramp-effective-width');
+    expect(r?.status).toBe('na');
+    expect(rep.violations.some((v) => v.id === 'ramp-effective-width')).toBe(false);
+  });
+
+  it('the same mm/m typo via a numeric STRING is also dropped', () => {
+    const clean = sanitizeCodeCheckFeatures({ corridorWidth_m: '1500' });
+    expect('corridorWidth_m' in clean).toBe(false);
+  });
+
+  it('an implausible height (15m railing) is dropped, a normal one (1.2m) is not', () => {
+    expect('railingHeight_m' in sanitizeCodeCheckFeatures({ railingHeight_m: 15 })).toBe(false);
+    expect(sanitizeCodeCheckFeatures({ railingHeight_m: 1.2 }).railingHeight_m).toBe(1.2);
+  });
+
+  it('legitimately long code-permitted distances (75m travel distance) still pass', () => {
+    expect(sanitizeCodeCheckFeatures({ travelDistanceToStair_m: 75 }).travelDistanceToStair_m).toBe(75);
+  });
+
+  it('area fields (_m2) have no length ceiling — a large legitimate floor area passes', () => {
+    expect(sanitizeCodeCheckFeatures({ totalFloorArea_m2: 50000 }).totalFloorArea_m2).toBe(50000);
+  });
+
+  it('ordinary in-range widths/lengths across categories all pass unaffected', () => {
+    const clean = sanitizeCodeCheckFeatures({
+      parkingDisabledStallWidth_m: 3.5,
+      doorEffectiveWidth_m: 0.9,
+      stairEffectiveWidth_m: 1.5,
+      elevatorInternalWidth_m: 1.1,
+    }) as Record<string, unknown>;
+    expect(clean.parkingDisabledStallWidth_m).toBe(3.5);
+    expect(clean.doorEffectiveWidth_m).toBe(0.9);
+    expect(clean.stairEffectiveWidth_m).toBe(1.5);
+    expect(clean.elevatorInternalWidth_m).toBe(1.1);
+  });
+});

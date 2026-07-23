@@ -35,17 +35,49 @@ export const ENUM_STRING_FEATURE_KEYS: ReadonlySet<string> = new Set([
   'parkingStallType',
 ]);
 
+/** `_m`-suffixed fields that are HEIGHTS (railing/curb/ceiling/handrail/emergency-exit) —
+ *  a real building value here is well under 10m; anything above is implausible. */
+const HEIGHT_LIKE_M_KEYS: ReadonlySet<string> = new Set([
+  'railingHeight_m', 'curbBoundaryHeight_m', 'ceilingHeight_m', 'handrailHeight_m', 'emergencyExitHeight_m',
+]);
+/** `_m`-suffixed fields that are legitimately long (직통계단 보행거리·소화전 수평거리
+ *  can run tens of metres by code) — a higher ceiling than ordinary widths/depths. */
+const LONG_DISTANCE_M_KEYS: ReadonlySet<string> = new Set([
+  'travelDistanceToStair_m', 'hydrantHorizontalDistance_m',
+]);
+
+/**
+ * Soft plausibility ceiling (metres) for a `_m`-suffixed length feature. NOT a code
+ * limit — just a sanity bound. Every other module in this product is authored in
+ * mm, so an mm-value typed into an `_m` field (e.g. a "1200"-wide ramp meant as
+ * 1200mm) is a highly plausible real mistake; without a ceiling `atLeast()` sees
+ * 1200 ≥ 1.2 and returns a confident PASS on a physically absurd value. Area
+ * fields (`_m2`) are exempt — legitimate floor/site areas can be large.
+ */
+function plausibilityCeilingM(key: string): number {
+  if (HEIGHT_LIKE_M_KEYS.has(key)) return 10;
+  if (LONG_DISTANCE_M_KEYS.has(key)) return 200;
+  return 50;
+}
+
+/** True when a `_m` (not `_m2`) length value exceeds its plausibility ceiling. */
+function isImplausibleLengthM(key: string, value: number): boolean {
+  return /_m$/.test(key) && value > plausibilityCeilingM(key);
+}
+
 /**
  * Honest input sanitizer. Numbers must be finite. Booleans pass. Strings pass ONLY
  * when the key is a known enum field (above) — otherwise a numeric-looking string is
  * coerced to a number, and a non-numeric string is DROPPED (→ the rule reads it as
  * absent → NA). We never fabricate a value and never let garbage produce a FAIL.
+ * A `_m` length value beyond its plausibility ceiling (see above) is dropped the
+ * same way a non-numeric string is — NA, not a fabricated PASS on nonsense input.
  */
 export function sanitizeCodeCheckFeatures(raw: Record<string, unknown>): CodeCheckFeatures {
   const clean: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(raw)) {
     if (typeof v === 'number') {
-      if (Number.isFinite(v)) clean[k] = v;
+      if (Number.isFinite(v) && !isImplausibleLengthM(k, v)) clean[k] = v;
     } else if (typeof v === 'boolean') {
       clean[k] = v;
     } else if (typeof v === 'string') {
@@ -53,8 +85,8 @@ export function sanitizeCodeCheckFeatures(raw: Record<string, unknown>): CodeChe
         clean[k] = v; // valid enum slot — the rule validates the specific string
       } else {
         const n = Number(v.trim());
-        if (v.trim() !== '' && Number.isFinite(n)) clean[k] = n; // "2.4" → 2.4
-        // non-numeric string on a numeric field → dropped → NA (honest)
+        if (v.trim() !== '' && Number.isFinite(n) && !isImplausibleLengthM(k, n)) clean[k] = n; // "2.4" → 2.4
+        // non-numeric string OR implausible length on a numeric field → dropped → NA (honest)
       }
     }
     // undefined / null / NaN → dropped → NA
