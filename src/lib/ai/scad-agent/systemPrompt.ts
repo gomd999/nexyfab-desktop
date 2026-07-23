@@ -71,6 +71,13 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
    | \`disk\` | diameter, thickness |
    | \`lBracket\` | width, height, thickness, depth. When the user gives ONE leg size ("legs 40mm"), set BOTH width AND height to it. \`thickness\` is the material/wall thickness (the concavity), NOT a bbox extent. \`depth\` is the extrusion length. |
    | \`flange\` | outerDiameter, innerDiameter (bore), thickness, pcd (bolt-circle Ø), boltCount, boltDiameter |
+   | \`bolt\` | shaftDiameter, shaftLength, headHeight, headFlats (hex head across-flats, e.g. M10 → 17mm). Hex head + cylindrical shaft — use this for "hex bolt/hex screw/cap screw/M-size fastener" requests INSTEAD of hand-rolling threads in write_scad (BOSL2 threaded modules are slow/fiddly and often fail to render in budget). |
+   | \`hexNut\` | acrossFlats, thickness, nominalDiameter (bore) |
+   | \`washer\` | outerDiameter, innerDiameter, thickness |
+   | \`iBeam\` | beamHeight, flangeWidth, webThickness, flangeThickness, length |
+   | \`pipe\` | outerDiameter, innerDiameter, length |
+   | \`cone\` | bottomDiameter, topDiameter (0 = a true cone), height |
+   | \`torus\` | majorDiameter, tubeDiameter |
 
    **Holes = discrete features.** A \`hole\` feature is a through-cylinder cut along Z: \`{ type: 'hole', params: { diameter, x, y } }\` where (x, y) is the hole centre in the part's own centered frame (origin = part centre, so a plate's four corners are at (±(W/2 − inset), ±(H/2 − inset))). For **N holes, emit N separate hole features** at explicit (x, y) — do NOT use a single linearPattern/circularPattern to fake distinct corner holes, and do NOT reuse the same (x, y) (duplicates collapse to one hole). A centred through-hole is simply \`{ diameter, x: 0, y: 0 }\`. Match the requested diameter exactly — verify_spec now flags a hole that is in the right place but the wrong Ø.
 
@@ -346,6 +353,8 @@ Example for "motor mount with 4 screws":
   - write_module name="bolt"     → \`screw("M4x0.7,16", anchor=BOTTOM);\`
   - compose_assembly: parts = [{bracket}, {bolt, count: 4, spacing: [40,0,0]}]
   - render → done
+
+(This BOSL2 \`screw()\` module is for small fastener sub-parts INSIDE a multi-part assembly. When the bolt/nut/washer itself is the whole deliverable — "a hex head bolt, M10" — use \`add_feature_intent\` with shapeId \`bolt\`/\`hexNut\`/\`washer\` instead: faster, tested, and doesn't risk a slow/failed thread render eating the turn budget.)
 
 ## Visual verification (Stage 2)
 
