@@ -1222,19 +1222,36 @@ ${(s.massBreakdown ?? []).length ? `<h2>질량 내역 (부품별 — 합계=총�
 <div class="note">표시값(0.1kg) 합계 = 총계 ${s.massSumCheck ? '정합 ✓ (최대잔여법 라운딩)' : '⚠불일치 — 산출 버그, 신뢰 금지'}</div>` : '';
   const mem = s.member ? `<h2>③ 부재 검토</h2><table><tr><th>단면</th><th>스팬</th><th>σ</th><th>허용</th><th>이용률</th><th>δ</th><th>판정</th></tr>
   <tr><td>${esc(s.member.section)}</td><td>${s.member.spanMm}mm</td><td>${f(s.member.sigmaMPa)} MPa</td><td>${f(s.member.allowMPa)} MPa</td><td>${f(s.member.utilization, 2)}</td><td>${f(s.member.deflMm, 2)}/${f(s.member.deflLimitMm)}mm</td><td>${v(s.member.pass)}</td></tr></table>` : '';
+  // 전도(Tip-over) 4점 강체 모델 — 캐스터/받침 위 자유배치 장비(탱크·크레인 등)에 맞는
+  // 근사다. 'building'(다층 건축물, 부재별 하중경로가 별도 산출)에는 부적합해 "구조/응력
+  // 검토를 통과"로 오독될 수 있음(도그푸딩 발견) — 선형 구조물(§위 alignment 분기)과
+  // 같은 방식으로, 무의미한 배지 대신 정식 경로(하중경로 체인 · 안전검토.html)를 안내.
+  const isBuilding = assembly?.domain === 'building';
+  const tipoverSection = isBuilding
+    ? `<h2>④ 전도(Tip-over) — 해당 없음</h2><div class="honest" style="margin:8px 24px;padding:9px 14px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;font-size:12px;color:#92400e">
+⚠ 4점 강체 전도 모델은 캐스터/받침 위 자유배치 장비(탱크·크레인 등) 근사이며, 기초에 정착된 다층 건축물에는 적용하지 않습니다(부적합 산출값을 지어내지 않음).
+부재별 하중경로 검토(슬래브→보→기둥→기초, KDS 하중조합)는 <b>안전검토.html</b>(도세 동봉)이 별도 수행합니다.</div>`
+    : `<h2>④ 전도 (Tip-over)</h2><table><tr><th>검토</th><th>결과</th><th>기준</th><th>판정</th></tr>
+<tr><td>정적 전도각</td><td>${f(s.tipover.staticAngleDeg, 1)}°</td><td>≥15°</td><td>${v(s.tipover.staticAngleDeg >= 15)}</td></tr>
+<tr><td>${s.tipover.seismicG}g 전도 FS</td><td>${f(s.tipover.seismicFS, 2)}</td><td>≥1.5</td><td>${v(s.tipover.seismicFS >= 1.5)}</td></tr></table>`;
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>@page{size:A4 portrait;margin:12mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937;font-size:13px}
 .sheet{max-width:900px;margin:16px auto;background:#fff;border:1px solid #cbd5e1;box-shadow:0 4px 24px rgba(0,0,0,.1);padding:0 0 22px}.hd{padding:15px 24px;border-bottom:2px solid #1f2937}.hd h1{margin:0;font-size:18px}.hd .s{color:#64748b;font-size:12px}
 h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}table{border-collapse:collapse;margin:6px 24px;font-size:12px;width:calc(100% - 48px)}td,th{border:1px solid #cbd5e1;padding:4px 9px;text-align:center}th{background:#f1f5f9}
 .card{margin:8px 24px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;line-height:1.8}.warn{background:#fef2f2;border-color:#fecaca;color:#991b1b}.note{font-size:11px;color:#64748b;padding:6px 24px}
 @media print{.nf-print-bar{display:none}body{background:#fff}.sheet{box-shadow:none;border:none;margin:0}}</style></head>
-<body>${PRINT_BAR('구조/응력 검토 (A4)')}<div class="sheet"><div class="hd"><h1>${esc(title)} — 구조/응력 자동검토</h1><div class="s">nexyfab structural · 형상기반 자동산출 · ${esc(s.method)}</div></div>
+<body>${PRINT_BAR('구조/응력 검토 (A4)')}<div class="sheet"><div class="hd"><h1>${esc(title)} — ${isBuilding ? '구조 개산(질량·반력) — 부재 응력은 안전검토.html 참조' : '구조/응력 자동검토'}</h1><div class="s">nexyfab structural · 형상기반 자동산출 · ${esc(s.method)}</div></div>
 <div class="card">총 질량 <b>${f(s.totalMassKg)} kg</b> · 무게중심 높이 <b>${f(s.cgHeightM, 2)} m</b> · 최대 지지반력 <b>${f(s.maxSupportKg)} kg</b></div>
 <h2>① 지지 반력</h2><table><tr><th>지지점</th><th>위치(x,y)</th><th>반력</th></tr>${supRows}</table>
-${massTable}${mem}<h2>④ 전도 (Tip-over)</h2><table><tr><th>검토</th><th>결과</th><th>기준</th><th>판정</th></tr>
-<tr><td>정적 전도각</td><td>${f(s.tipover.staticAngleDeg, 1)}°</td><td>≥15°</td><td>${v(s.tipover.staticAngleDeg >= 15)}</td></tr>
-<tr><td>${s.tipover.seismicG}g 전도 FS</td><td>${f(s.tipover.seismicFS, 2)}</td><td>≥1.5</td><td>${v(s.tipover.seismicFS >= 1.5)}</td></tr></table>
-${s.warnings.length ? `<div class="card warn"><b>⚠ 경고:</b><ul style="margin:4px 0">${s.warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>` : '<div class="card">경고 없음 — 자동검토 기준 이내.</div>'}
+${massTable}${mem}${tipoverSection}
+${(() => {
+    // building에서는 전도(Tip-over) 경고 문구를 필터(위 tipoverSection이 이미 "해당 없음"
+    // 이라 알리는데 같은 값이 경고로도 뜨면 자기모순). 부재 초과 등 다른 경고는 유지.
+    const relevantWarnings = isBuilding ? s.warnings.filter(w => !w.includes('전도')) : s.warnings;
+    return relevantWarnings.length
+      ? `<div class="card warn"><b>⚠ 경고:</b><ul style="margin:4px 0">${relevantWarnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>`
+      : '<div class="card">경고 없음 — 자동검토 기준 이내.</div>';
+  })()}
 <div class="note">⚠ 개념 해석(비법정) · 강체/단순보 근사 · 상세 FEA·좌굴·용접·현지 지진은 후속.</div><div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div></body></html>`;
 }
 
