@@ -90,6 +90,27 @@ module flange() {
 flange();`,
   },
   {
+    id: 'hex-bolt',
+    keywords: ['bolt', 'hex bolt', 'hex head', 'hexagon head', 'screw', 'cap screw', 'machine screw', 'fastener', 'set screw', 'M10', 'M8', 'M6', 'metric bolt', '볼트', '육각', '육각볼트', '나사', '체결', '스크류'],
+    scad: `include <BOSL2/std.scad>
+$fn = 48;
+/* [Bolt] */
+nominal_d = 10;    // [3:0.5:24]    shaft diameter (M-size)
+shank_len = 30;    // [8:1:120]
+/* [Head] */
+head_af = 17;      // [5.5:0.5:36]  hex head across-flats (M10 = 17)
+head_h = 6.4;      // [2:0.1:20]
+module hex_bolt() {
+  head_r = head_af / 2 / cos(30);   // across-flats -> circumradius
+  union() {
+    // shaft up +Z, hex head below z=0
+    cylinder(d = nominal_d, h = shank_len);
+    translate([0, 0, -head_h]) cylinder(r = head_r, h = head_h, $fn = 6);
+  }
+}
+hex_bolt();`,
+  },
+  {
     id: 'standoff',
     keywords: ['standoff', 'spacer', 'pillar', 'boss', 'pcb', 'riser', '스탠드오프', '스페이서', '기둥', '받침'],
     scad: `include <BOSL2/std.scad>
