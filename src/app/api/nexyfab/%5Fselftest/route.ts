@@ -381,6 +381,13 @@ async function handleGenerate(n: number, attempts: number, budgetMs: number): Pr
           toolCallsCap: GEN_TOOL_CALLS_CAP,
           visionCallsCap: 0,
           signal: ac.signal,
+          // A null gate verdict (nothing built — no solid rendered) is an
+          // unambiguous failure worth another attempt in a generation probe,
+          // not "nothing to repair". Without this, an attempt that fails to
+          // render at all stops the loop immediately regardless of `attempts`
+          // (observed: hexbolt attemptsUsed=1 with attempts=3 requested) — the
+          // hard fastener/freeform fixtures never got their configured retries.
+          retryOnUnverified: true,
         });
       } finally {
         clearTimeout(timer);
