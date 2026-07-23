@@ -277,3 +277,48 @@ describe('generate_bom — tool executor wire', () => {
     expect(res.output).toMatch(/\$28\.00/);
   });
 });
+
+describe('generateBom — count:0/negative and costLookup mismatch (dogfooding round 3)', () => {
+  const emptySession = { modules: {}, composition: null } as unknown as AgentSession;
+
+  it('count:0 or negative omits the line entirely — NOT floored to quantity 1 (no phantom part)', () => {
+    const r = generateBom({
+      session: emptySession,
+      partsList: [
+        { moduleName: 'weird_part', count: 0 },
+        { moduleName: 'neg_part', count: -5 },
+        { moduleName: 'real_part', count: 3 },
+      ],
+    });
+    expect(r.lines.find((l) => l.partName === 'weird_part')).toBeUndefined();
+    expect(r.lines.find((l) => l.partName === 'neg_part')).toBeUndefined();
+    expect(r.lines.find((l) => l.partName === 'real_part')?.quantity).toBe(3);
+    expect(r.notes.some((n) => n.includes('omitted'))).toBe(true);
+  });
+
+  it('a genuinely-missing count (undefined) still defaults to 1 (unchanged behavior)', () => {
+    const r = generateBom({ session: emptySession, partsList: [{ moduleName: 'p' }] });
+    expect(r.lines.find((l) => l.partName === 'p')?.quantity).toBe(1);
+  });
+
+  it('a costLookup key that never matches a part name surfaces a diagnostic note, not silent hasCosts:false', () => {
+    const r = generateBom({
+      session: emptySession,
+      partsList: [{ moduleName: 'Bracket_L', count: 3 }],
+      costLookup: { bracket_l: { unitCostUsd: 10 } }, // case mismatch
+    });
+    expect(r.hasCosts).toBe(false);
+    expect(r.notes.some((n) => n.includes('bracket_l'))).toBe(true);
+  });
+
+  it('a matching costLookup key still applies costs normally (no false positive from the new check)', () => {
+    const r = generateBom({
+      session: emptySession,
+      partsList: [{ moduleName: 'bracket', count: 2 }],
+      costLookup: { bracket: { unitCostUsd: 5 } },
+    });
+    expect(r.hasCosts).toBe(true);
+    expect(r.totalCostUsd).toBe(10);
+    expect(r.notes.some((n) => n.includes('never matched'))).toBe(false);
+  });
+});

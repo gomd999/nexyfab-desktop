@@ -135,12 +135,29 @@ export function generateBom(opts: GenerateBomOptions): BomReport {
   const counts: Record<string, number> = {};
 
   if (opts.partsList && Array.isArray(opts.partsList) && opts.partsList.length > 0) {
+    const omitted: string[] = [];
     for (const entry of opts.partsList) {
       if (!entry || typeof entry.moduleName !== 'string') continue;
-      const q = Math.max(1, Math.round(entry.count ?? 1));
+      const raw = entry.count;
+      if (raw === undefined || raw === null) {
+        // count omitted entirely -> default to a single instance.
+        counts[entry.moduleName] = (counts[entry.moduleName] ?? 0) + 1;
+        continue;
+      }
+      // count <= 0 (or non-finite) means "this variant isn't included this
+      // run" — flooring it to quantity 1 (the old `Math.max(1, ...)`) added a
+      // PHANTOM part (and, if costLookup had an entry, a phantom cost line)
+      // that the caller explicitly said to exclude. Omit the line instead;
+      // only a genuinely-missing count gets the default-1 above.
+      if (!Number.isFinite(raw) || raw <= 0) {
+        omitted.push(`${entry.moduleName} (count=${raw})`);
+        continue;
+      }
+      const q = Math.round(raw);
       counts[entry.moduleName] = (counts[entry.moduleName] ?? 0) + q;
     }
     notes.push(`built from explicit partsList (${opts.partsList.length} entries)`);
+    if (omitted.length) notes.push(`omitted (count <= 0, not floored to 1): ${omitted.join(', ')}`);
   } else if (moduleNames.length === 0) {
     // Empty session — return a clean empty report with a note.
     return {
@@ -188,6 +205,17 @@ export function generateBom(opts: GenerateBomOptions): BomReport {
 
   // Sort descending by quantity so dominant parts surface first.
   lines.sort((a, b) => b.quantity - a.quantity);
+
+  // A costLookup key that never matched any part name (case mismatch, typo)
+  // fails SILENTLY today: hasCosts stays false with no hint that cost data
+  // was actually provided but discarded, indistinguishable from "no cost data
+  // was given at all". Surface the mismatch the same way the existing
+  // empty-session/omitted-count notes already do.
+  if (Object.keys(costLookup).length > 0) {
+    const partNames = new Set(Object.keys(counts));
+    const unmatched = Object.keys(costLookup).filter((k) => !partNames.has(k));
+    if (unmatched.length) notes.push(`costLookup key(s) never matched a part name: ${unmatched.join(', ')}`);
+  }
 
   return {
     lines,
