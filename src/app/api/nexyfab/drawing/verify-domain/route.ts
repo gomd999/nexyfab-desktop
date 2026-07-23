@@ -99,8 +99,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ result, html: rpt.retainingWallReport(result, { title: body.title ?? '옹벽 안정 검토', svg, net, rev }) });
     }
     // 옹벽: 입력 기하 5키가 모두 있으면 편집형 단면도 동봉(m→mm 변환 — 기본값 날조 방지 위해 부분입력 시 미동봉)
+    // 단, 게이트 실패(ok:false — 범위위반 등) 결과엔 미동봉: 퇴화 기하로 "999000" 같은 깨진 SVG가 나오므로.
     let drawingSvg: string | null = null;
-    if (body.calculatorId === 'retaining_wall_stability' && body.params) {
+    const resultOk = (result as { ok?: boolean } | null)?.ok !== false;
+    if (resultOk && body.calculatorId === 'retaining_wall_stability' && body.params) {
       const pr = body.params as Record<string, number>;
       const keys = ['H', 'baseWidth', 'baseThickness', 'stemThickness', 'toeLength'];
       if (keys.every((k) => Number(pr[k]) > 0)) {

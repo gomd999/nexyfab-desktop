@@ -55,6 +55,28 @@ const REMOTE_ROUTE = {
 };
 /** Remote-only tools: no local engine in scripts/ (domain checks live server-side). */
 const REMOTE_ONLY = new Set(['domain_design']);
+/**
+ * 편의명령(verb) → { tool, usage } 카탈로그. `list` 가 이걸 그대로 보여주고,
+ * 알 수 없는 명령이 들어왔을 때 "혹시 이 편의명령?"을 안내하는 데 쓴다. 도구명(code_check
+ * 등)을 그대로 치면 --json 이 필요하므로, 편의 verb 를 첫째로 노출한다.
+ */
+const CONVENIENCE = {
+  assemble: { tool: 'text_to_assembly', usage: 'node cli.mjs assemble "6m 강재 보"' },
+  build: { tool: 'build_assembly', usage: 'node cli.mjs build asm.json' },
+  codecheck: { tool: 'code_check', usage: 'node cli.mjs codecheck features.json | --list' },
+  interior: { tool: 'interior_check', usage: 'node cli.mjs interior asm.json' },
+  landscape: { tool: 'landscape_check', usage: 'node cli.mjs landscape asm.json' },
+  bridge: { tool: 'bridge_check', usage: 'node cli.mjs bridge asm.json' },
+  loadpath: { tool: 'load_path', usage: "node cli.mjs loadpath asm.json [--params '{..}'] | --list" },
+  domain: { tool: 'domain_design', usage: 'node cli.mjs domain civil "6m 옹벽"' },
+  templates: { tool: 'list_templates', usage: 'node cli.mjs templates [domain]' },
+  dossier: { tool: 'generate_domain_package', usage: 'node cli.mjs dossier …' },
+  step: { tool: 'export_step', usage: 'node cli.mjs step asm.json [--out model.step]' },
+  html: { tool: 'html_render', usage: 'node cli.mjs html asm.json [--out model.html]' },
+  package: { tool: 'generate_package', usage: 'node cli.mjs package asm.json [--out dir] [--step]' },
+};
+/** 도구명 → 편의 verb 역맵(알 수 없는 명령 안내용). */
+const TOOL_TO_VERB = Object.fromEntries(Object.entries(CONVENIENCE).map(([v, m]) => [m.tool, v]));
 const DOMAINS = ['civil', 'interior', 'construction', 'landscape'];
 const API_KEY = process.env.NEXYFAB_API_KEY;
 const API_URL = (process.env.NEXYFAB_API_URL ?? 'https://nexyfab.com').replace(/\/$/, '');
@@ -121,7 +143,14 @@ async function main() {
     return;
   }
   if (cmd === 'list') {
-    out({ tools: tools.map((t) => ({ name: t.name, desc: t.description.slice(0, 90) + '…' })) });
+    // 두 갈래를 분명히 구분: (1) 바로 치는 편의명령, (2) 임의 MCP 도구를 --json 으로.
+    // 예전엔 도구명(code_check 등)만 나열해 사용자가 `cli.mjs code_check <file>` 로 쳤다가
+    // "알 수 없는 명령"을 만났다 — 편의명령의 실제 verb 와 사용법을 함께 보인다.
+    out({
+      commands: Object.entries(CONVENIENCE).map(([verb, m]) => ({ verb, tool: m.tool, usage: m.usage })),
+      genericForm: "node cli.mjs <tool> --json '<args JSON>'   # 아래 tools 의 이름을 그대로",
+      tools: tools.map((t) => ({ name: t.name, desc: t.description.slice(0, 90) + '…' })),
+    });
     return;
   }
   // 편의 명령 → 도구 호출 매핑
@@ -249,7 +278,19 @@ async function main() {
   } else {
     // 임의 도구 직접 호출(MCP 동일)
     const j = flag('json') ?? (flag('json-file') ? readFileSync(resolve(flag('json-file')), 'utf8') : null);
-    if (!j) { out({ ok: false, error: `알 수 없는 명령 '${cmd}' — node cli.mjs help` }); process.exitCode = 1; return; }
+    if (!j) {
+      // cmd 가 실제 도구명이면(예: code_check) --json 이 필요하거나 편의 verb 가 있다고 안내.
+      const isTool = tools.some((t) => t.name === cmd);
+      const verb = TOOL_TO_VERB[cmd];
+      const hint = verb
+        ? `'${cmd}' 는 도구명 — 편의명령 '${verb}' 를 쓰거나(${CONVENIENCE[verb].usage}), 도구 직접 호출은 --json 필요: node cli.mjs ${cmd} --json '{...}'`
+        : isTool
+          ? `'${cmd}' 는 도구명 — 인자 JSON 필요: node cli.mjs ${cmd} --json '{...}'`
+          : `알 수 없는 명령 '${cmd}' — node cli.mjs list 로 편의명령/도구 확인, node cli.mjs help`;
+      out({ ok: false, error: hint });
+      process.exitCode = 1;
+      return;
+    }
     args = JSON.parse(j);
   }
   let r;

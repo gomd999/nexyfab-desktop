@@ -222,6 +222,9 @@ export function loadPathCheck(assembly, params = {}) {
       verdict: negVerdict && negVerdict === 'FAIL' ? 'FAIL' : posVerdict,
       negVerdict,
       checks: check?.checks ?? null, checksNeg: checkNeg?.checks ?? null, error: check?.error ?? checkNeg?.error ?? null,
+      // rc_beam의 설명 note(예: Vu>½φVc → 최소 전단철근 필요)를 체인 결과까지 전달 —
+      // 이게 없으면 전단비 0.66인데 pass:false인 이유를 사용자가 볼 수 없다.
+      notes: check?.notes ?? null, notesNeg: checkNeg?.notes ?? null,
     });
   }
 

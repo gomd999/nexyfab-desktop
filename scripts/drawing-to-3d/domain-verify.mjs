@@ -344,10 +344,27 @@ export function verifyDomain({ intent, domain, calculatorId, memberRef, params =
       notes: result.notes,
     };
   } catch (e) {
-    // INPUT_GATE = 필수 입력 누락 → 폼 유도(하중 지어내지 않음)
+    // INPUT_GATE = 필수 입력 누락 OR 범위 위반 → 폼 유도(하중 지어내지 않음)
     if (e.code === 'INPUT_GATE') {
-      const missing = calc.userInputs.filter((s) => !s.optional && !s.extraOnly && (params[s.name] === undefined || params[s.name] === null) && s.default === undefined);
-      return { ok: false, needInputs: missing, gateError: e.message, derived, member: member ? { id: member.id, kind: member.kind, L: round(member.L, 1) } : null, candidates: needsMember ? memberCandidates(intent) : [] };
+      // 게이트 메시지에 이름난 필드(예: "H: <= 12 required")를 파싱한다. 범위 위반은
+      // 값이 존재하므로 undefined 필터엔 안 걸려 needInputs가 비어버렸다 — 메시지 필드를
+      // 포함시켜 폼이 렌더할 대상을 항상 갖게 한다. "input gate failed:" 프리픽스를 먼저
+      // 걷어내고 "; " 로 나눈 뒤, 형식별로 필드명을 뽑는다(missing/unknown 은 콜론 뒤, 나머지는 앞).
+      const named = new Set(
+        String(e.message).replace(/^input gate failed:\s*/i, '').split(/;\s*/)
+          .map((s) => {
+            const mMiss = s.match(/^(?:missing required|unknown field):\s*([A-Za-z_][\w.]*)/);
+            if (mMiss) return mMiss[1];
+            const mField = s.match(/^([A-Za-z_][\w.]*)\s*:/);
+            return mField ? mField[1] : null;
+          })
+          .filter(Boolean),
+      );
+      const needInputs = calc.userInputs.filter(
+        (s) => named.has(s.name)
+          || (!s.optional && !s.extraOnly && (params[s.name] === undefined || params[s.name] === null) && s.default === undefined),
+      );
+      return { ok: false, needInputs, gateError: e.message, derived, member: member ? { id: member.id, kind: member.kind, L: round(member.L, 1) } : null, candidates: needsMember ? memberCandidates(intent) : [] };
     }
     return { ok: false, error: e.message };
   }
