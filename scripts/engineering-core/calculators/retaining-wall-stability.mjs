@@ -74,14 +74,32 @@ export default {
     const e = B / 2 - xbar;
     const eLimit = crit.eccentricity_limit_fraction * B;
     const withinKern = Math.abs(e) <= eLimit;
-    const qmax = withinKern ? (V / B) * (1 + (6 * e) / B) : (2 * V) / (3 * (B / 2 - Math.abs(e))); // 삼각분포 폴백
-    const qmin = withinKern ? (V / B) * (1 - (6 * e) / B) : 0;
+    // 지압 분포: ① 커널 내(e ≤ B/6) 사다리꼴, ② B/6 < e < B/2 삼각분포 폴백,
+    // ③ e ≥ B/2 합력이 저판 밖 → 지압 분포 성립 불가(전도 파괴) → qmax 미정·FAIL.
+    // (③를 삼각식에 그대로 넣으면 분모 (B/2−|e|)<0 → 음수 qmax가 허위 PASS 됨 — 방지.)
+    const triBase = B / 2 - Math.abs(e);
+    let qmax, qmin, bearingPass, bearingNote;
+    if (withinKern) {
+      qmax = (V / B) * (1 + (6 * e) / B);
+      qmin = (V / B) * (1 - (6 * e) / B);
+      bearingPass = qmax <= qa;
+    } else if (triBase > 0) {
+      qmax = (2 * V) / (3 * triBase); // 삼각분포 폴백
+      qmin = 0;
+      bearingPass = qmax <= qa;
+    } else {
+      qmax = null; // 합력이 저판 외부 — 지압 성립 불가
+      qmin = 0;
+      bearingPass = false;
+      bearingNote = '합력이 저판 외부(e ≥ B/2) — 지압 분포 성립 불가(전도 파괴). 지압 FAIL.';
+    }
+    const r2 = (x) => (x == null ? null : +x.toFixed(2));
 
     const checks = {
-      overturning: { FS: FSot, min: crit.FS_overturning_min, pass: FSot >= crit.FS_overturning_min },
-      sliding: { FS: FSsl, min: crit.FS_sliding_min, pass: FSsl >= crit.FS_sliding_min },
-      eccentricity: { e_m: e, limit_m: eLimit, pass: withinKern },
-      bearing: { qmax_kPa: qmax, qmin_kPa: qmin, allow_kPa: qa, pass: qmax <= qa },
+      overturning: { FS: +FSot.toFixed(3), min: crit.FS_overturning_min, pass: FSot >= crit.FS_overturning_min },
+      sliding: { FS: +FSsl.toFixed(3), min: crit.FS_sliding_min, pass: FSsl >= crit.FS_sliding_min },
+      eccentricity: { e_m: +e.toFixed(4), limit_m: +eLimit.toFixed(4), pass: withinKern },
+      bearing: { qmax_kPa: r2(qmax), qmin_kPa: r2(qmin), allow_kPa: qa, pass: bearingPass, ...(bearingNote ? { note: bearingNote } : {}) },
     };
 
     // ── 지진시 검토 (옵션 kh>0, Mononobe-Okabe) — KDS 11 80 05 표 4.4-1 지진시 기준

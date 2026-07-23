@@ -10,6 +10,7 @@ import {
   CODECHECK_RULES,
   CODECHECK_RULES_BY_ID,
   CODECHECK_DISCLAIMER,
+  sanitizeCodeCheckFeatures,
   type CodeCheckFeatures,
 } from '../rules';
 import { runCodeCheck, collectMeasurementsFromIr2d } from '../runCodeCheck';
@@ -433,5 +434,39 @@ describe('collectMeasurementsFromIr2d — reuse of DWG-2D IR measurements', () =
     const pool = collectMeasurementsFromIr2d({ units: null, extents: { w: 3300, h: 5000 } });
     expect(pool.every((p) => p.meters === null)).toBe(true);
     expect(pool[0].rawUnit).toBe('unknown');
+  });
+});
+
+describe('sanitizeCodeCheckFeatures — garbage input never fabricates a FAIL', () => {
+  it('a non-numeric string on a numeric field is DROPPED → rule reads NA, not NaN-FAIL', () => {
+    const clean = sanitizeCodeCheckFeatures({ ceilingHeight_m: 'abc' });
+    expect('ceilingHeight_m' in clean).toBe(false);
+    const rep = runCodeCheck(clean);
+    const ceil = rep.results.find((r) => r.id === 'ceiling-height');
+    expect(ceil?.status).toBe('na');
+    // and it must NOT appear as a violation
+    expect(rep.violations.some((v) => v.id === 'ceiling-height')).toBe(false);
+  });
+
+  it('a numeric-looking string is coerced to a number', () => {
+    const clean = sanitizeCodeCheckFeatures({ ceilingHeight_m: '2.4' });
+    expect(clean.ceilingHeight_m).toBe(2.4);
+  });
+
+  it('a valid enum string passes through; a bogus enum string still passes (rule validates it)', () => {
+    const clean = sanitizeCodeCheckFeatures({ stairCategory: 'elementary', corridorCategory: 'school' });
+    expect(clean.stairCategory).toBe('elementary');
+    expect(clean.corridorCategory).toBe('school');
+  });
+
+  it('drops non-finite numbers (NaN/Infinity) and keeps finite ones + booleans', () => {
+    const clean = sanitizeCodeCheckFeatures({
+      railingHeight_m: Number.NaN,
+      corridorWidth_m: 1.5,
+      corridorBothSidesRooms: true,
+    }) as Record<string, unknown>;
+    expect('railingHeight_m' in clean).toBe(false);
+    expect(clean.corridorWidth_m).toBe(1.5);
+    expect(clean.corridorBothSidesRooms).toBe(true);
   });
 });

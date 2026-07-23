@@ -22,6 +22,46 @@
 // ── output shapes ────────────────────────────────────────────────────────────
 export type RuleStatus = 'pass' | 'fail' | 'na';
 
+/**
+ * The ONLY feature keys whose value is a string enum (everything else is a number
+ * or boolean). A sanitizer uses this to decide: a non-numeric string on a NUMERIC
+ * field is garbage (typo) → drop it → the rule returns NA. Keeping it would let
+ * `"abc" >= 2.1` evaluate to `false` and manufacture a bogus FAIL. Keep in sync
+ * with CodeCheckFeatures' string-union fields.
+ */
+export const ENUM_STRING_FEATURE_KEYS: ReadonlySet<string> = new Set([
+  'stairCategory',
+  'corridorCategory',
+  'parkingStallType',
+]);
+
+/**
+ * Honest input sanitizer. Numbers must be finite. Booleans pass. Strings pass ONLY
+ * when the key is a known enum field (above) — otherwise a numeric-looking string is
+ * coerced to a number, and a non-numeric string is DROPPED (→ the rule reads it as
+ * absent → NA). We never fabricate a value and never let garbage produce a FAIL.
+ */
+export function sanitizeCodeCheckFeatures(raw: Record<string, unknown>): CodeCheckFeatures {
+  const clean: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === 'number') {
+      if (Number.isFinite(v)) clean[k] = v;
+    } else if (typeof v === 'boolean') {
+      clean[k] = v;
+    } else if (typeof v === 'string') {
+      if (ENUM_STRING_FEATURE_KEYS.has(k)) {
+        clean[k] = v; // valid enum slot — the rule validates the specific string
+      } else {
+        const n = Number(v.trim());
+        if (v.trim() !== '' && Number.isFinite(n)) clean[k] = n; // "2.4" → 2.4
+        // non-numeric string on a numeric field → dropped → NA (honest)
+      }
+    }
+    // undefined / null / NaN → dropped → NA
+  }
+  return clean as CodeCheckFeatures;
+}
+
 export interface RuleResult {
   /** stable rule id, e.g. 'parking-disabled-stall-width' */
   id: string;

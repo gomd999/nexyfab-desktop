@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
-import { CODECHECK_RULES, runCodeCheck, type CodeCheckFeatures } from '@/lib/eng-domain/codecheck';
+import { CODECHECK_RULES, runCodeCheck, sanitizeCodeCheckFeatures, type CodeCheckFeatures } from '@/lib/eng-domain/codecheck';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -50,13 +50,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: 'features 객체가 필요합니다.' }, { status: 400 });
   }
 
-  // sanitize: only accept finite numbers / known enums / booleans (never fabricate values).
-  const clean: CodeCheckFeatures = {};
-  for (const [k, v] of Object.entries(features)) {
-    if (typeof v === 'number' && Number.isFinite(v)) (clean as Record<string, unknown>)[k] = v;
-    else if (typeof v === 'boolean' || typeof v === 'string') (clean as Record<string, unknown>)[k] = v;
-    // undefined / null / NaN → dropped → rule returns NA (honest)
-  }
+  // sanitize: finite numbers / known enums / booleans only. A non-numeric string on a
+  // numeric field (a typo) is DROPPED → NA, never a fabricated NaN-driven FAIL.
+  const clean = sanitizeCodeCheckFeatures(features as Record<string, unknown>);
 
   const report = runCodeCheck(clean);
   return NextResponse.json({ ok: true, ...report });
