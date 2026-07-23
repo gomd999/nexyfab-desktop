@@ -14,6 +14,17 @@
  *   - A run whose verification report contains ANY failed gate can NOT be
  *     approved — not even by a human. Failed work never reaches `main`;
  *     the only path forward is `requestChanges` → a new run.
+ *   - ⚠ SCOPE OF THIS GUARANTEE (260723 architecture-debt scoping): the above
+ *     is a CLIENT-SESSION invariant only, enforced by THIS in-memory
+ *     VersionRepo (sessionRepoStore.ts — explicitly "in-memory, per-session").
+ *     The actual server persistence route (`POST /api/documents/[id]/versions`)
+ *     has NO knowledge of gates/approval — it accepts a `gateReport` as
+ *     purely ADVISORY, client-asserted metadata (like `label`/`branchName`),
+ *     never as a condition for whether the write succeeds. Any authenticated
+ *     editor holding the document lock can persist ANY state — gate-failed,
+ *     gate-passed, or gate-unreported — as the new "current" server version.
+ *     "Failed work never reaches main" describes THIS module's branch graph,
+ *     not the server's `nf_documents`/`nf_document_versions` tables.
  *   - Merge conflicts are NEVER auto-resolved. `approveRun` returns the
  *     conflict IR verbatim and leaves the run pending — resolution is a
  *     human's job (via the existing merge UI / a follow-up run).

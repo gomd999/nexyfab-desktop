@@ -207,6 +207,81 @@ describe('POST /api/documents/[id]/versions', () => {
     expect(execute).toHaveBeenCalledTimes(2);
   });
 
+  // 260723 architecture-debt scoping: PDM gate/approval status is now
+  // ADVISORY (client-asserted, like label/branchName) — this proves it is
+  // (a) recorded when a valid gateReport is sent, (b) computed correctly as
+  // 'failed' when any gate fails / 'passed' when all pass, and (c) NEVER
+  // rejects the save regardless of gate outcome (the whole point — CAD
+  // workflows must be able to persist a failing/WIP state).
+  describe('PDM gate status (advisory, 260723)', () => {
+    function setupEditableDoc() {
+      vi.mocked(getAuthUser).mockResolvedValue(authedUser as never);
+      vi.mocked(resolveDocAccess).mockResolvedValue({
+        row: makeDocRow({ version: 3 }),
+        role: 'editor',
+        canEdit: true,
+        canManage: false,
+      } as never);
+      const execute = vi.fn().mockResolvedValue({ changes: 1 });
+      vi.mocked(getDbAdapter).mockReturnValue({
+        queryOne: vi.fn().mockResolvedValue(undefined),
+        queryAll: vi.fn().mockResolvedValue([]),
+        execute,
+      } as never);
+      return execute;
+    }
+
+    it('all gates passing -> gate_status "passed", persisted and returned', async () => {
+      const execute = setupEditableDoc();
+      const res = await POST(
+        makeReq('POST', { label: 'v', gateReport: [{ id: 'geometry', pass: true }, { id: 'drawing', pass: true }] }) as Parameters<typeof POST>[0],
+        idParams,
+      );
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.version.gateStatus).toBe('passed');
+      expect(body.version.gateReport).toEqual([{ id: 'geometry', pass: true }, { id: 'drawing', pass: true }]);
+      // INSERT call included the derived gate_status/gate_report params.
+      const insertArgs = execute.mock.calls[0]!;
+      expect(insertArgs).toContain('passed');
+    });
+
+    it('one gate failing -> gate_status "failed", but the save STILL SUCCEEDS (advisory, not blocking)', async () => {
+      const execute = setupEditableDoc();
+      const res = await POST(
+        makeReq('POST', { label: 'wip-save', gateReport: [{ id: 'geometry', pass: true }, { id: 'drawing', pass: false, reason: 'missing dimension' }] }) as Parameters<typeof POST>[0],
+        idParams,
+      );
+      // The whole point: a gate-failed report does NOT reject the POST.
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.ok).toBe(true);
+      expect(body.version.gateStatus).toBe('failed');
+      expect(body.version.gateReport).toEqual([{ id: 'geometry', pass: true }, { id: 'drawing', pass: false, reason: 'missing dimension' }]);
+      expect(execute).toHaveBeenCalledTimes(2);
+    });
+
+    it('no gateReport sent -> gate_status stays null (never fabricated as passed)', async () => {
+      setupEditableDoc();
+      const res = await POST(makeReq('POST', { label: 'no-gate-info' }) as Parameters<typeof POST>[0], idParams);
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.version.gateStatus).toBeNull();
+      expect(body.version.gateReport).toBeNull();
+    });
+
+    it('a malformed gateReport (not an array of {id,pass}) is silently ignored, not a 400', async () => {
+      setupEditableDoc();
+      const res = await POST(
+        makeReq('POST', { label: 'garbage-gate', gateReport: 'not-an-array' }) as Parameters<typeof POST>[0],
+        idParams,
+      );
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.version.gateStatus).toBeNull();
+    });
+  });
+
   it('400 when branchName provided without parentVersionId', async () => {
     vi.mocked(getAuthUser).mockResolvedValue(authedUser as never);
     vi.mocked(resolveDocAccess).mockResolvedValue({

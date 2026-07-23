@@ -150,6 +150,22 @@ export async function ensureCloudDocTables(): Promise<void> {
   // SQLite has no ADD COLUMN IF NOT EXISTS — idempotent-by-catch (duplicate
   // column errors are swallowed on both backends).
   await db.execute('ALTER TABLE nf_document_versions ADD COLUMN restored_from TEXT').catch(() => {});
+  // PDM gate/approval status — ADVISORY ONLY (260723 architecture-debt
+  // scoping). The client-side design-driver review queue already refuses to
+  // merge a gate-failed run in its own in-memory model, but the SERVER had
+  // zero gate awareness: any authenticated editor with the lock could POST a
+  // new version regardless of gate status, becoming the queryable "current"
+  // state with nothing to distinguish it from a properly-reviewed one. These
+  // columns let a caller ATTACH what it already computed (client-asserted,
+  // like `label`/`branchName` already are) so the version-history UI can
+  // show a "gate-failed" badge — the route does NOT reject writes based on
+  // this field; CAD workflows legitimately need to persist in-progress /
+  // failing states (see versionBranch.ts's per-branch `protected` flag,
+  // which already accepts direct commits on unprotected branches).
+  // gate_status: 'passed' | 'failed' | null (null/absent = caller didn't assert one — NOT the same as 'passed').
+  // gate_report: JSON-serialized GateResultLike[] (id/pass/value?/expected?/unit?/reason?), for the UI to render detail.
+  await db.execute('ALTER TABLE nf_document_versions ADD COLUMN gate_status TEXT').catch(() => {});
+  await db.execute('ALTER TABLE nf_document_versions ADD COLUMN gate_report TEXT').catch(() => {});
   // W6-B: exclusive check-out locks. document_id PRIMARY KEY = at most one
   // lock row per document; expires_at (BIGINT ms) discriminates active/stale.
   await db.execute(`

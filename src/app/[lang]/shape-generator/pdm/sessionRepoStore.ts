@@ -16,6 +16,15 @@
  * Persistence is intentionally out of scope for W6-D: this is an in-memory,
  * per-session history (the engine docs state persistence is the caller's
  * responsibility; the nf_projects parent_id backend does not exist yet).
+ *
+ * ⚠ Gate/approval status specifically (260723 architecture-debt scoping):
+ * this store's gate-refusal checks (via reviewQueue.approveRun) are ALSO
+ * in-memory/per-session. The G4 server bridge below (bindDocument/
+ * persistCommit/commitAndPersist) persists commit graph metadata but not
+ * gate status as an ENFORCED condition — the server accepts an optional
+ * advisory `gateReport` (see documentPersistence.ts), never as a write
+ * gate. Nothing here stops a caller from invoking `commitAndPersist` with
+ * features that never went through (or failed) review.
  */
 
 import { create } from 'zustand';

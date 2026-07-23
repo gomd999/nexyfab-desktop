@@ -11,9 +11,18 @@
  *   as a version snapshot and rebuilds the commit graph from the version list
  *   on load.
  *
- * SERVER IS NOT MODIFIED. This module only consumes the existing routes:
+ * SERVER GRAPH ROUND-TRIP IS UNCHANGED (the label-envelope trick below still
+ * applies as originally designed) — this module only consumes the existing
+ * routes for commit/branch/merge structure:
  *   POST /api/documents/[id]/versions   — record an explicit snapshot
  *   GET  /api/documents/[id]/versions   — list snapshots (newest-first)
+ * ⚠ 260723 update: the POST route ALSO now accepts an optional advisory
+ * `gateReport` field (GateResultLike[]) that this module does not yet send —
+ * a caller with an AiRunRecord's report available could pass it through to
+ * get a "gate-failed" badge in the version-history UI, but wiring that is a
+ * follow-up (this module's job — commit-graph persistence — is otherwise
+ * unaffected). See src/lib/cloudDoc/versions.ts / reviewQueue.ts for the
+ * full advisory-gate design and its non-enforcing scope.
  *
  * How the graph round-trips WITHOUT a server change
  * -------------------------------------------------

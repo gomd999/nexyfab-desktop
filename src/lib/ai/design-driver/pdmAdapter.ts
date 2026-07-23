@@ -34,6 +34,13 @@
  * approximation in the mapping and it is deliberate: the review loop diffs
  * verification results across runs, and the full geometry lives in the driver
  * package (carried verbatim under the report's `driverGates`).
+ *
+ * ⚠ Scope note (260723 architecture-debt scoping): "verification failures
+ * never reach a human reviewer" / gate-approval guarantees in this file and
+ * reviewQueue.ts describe THIS in-memory review-queue model only — they are
+ * NOT enforced by the server persistence route (`POST /api/documents/[id]/
+ * versions`), which treats gate status as purely advisory metadata. See
+ * reviewQueue.ts's invariants block for the full explanation.
  */
 
 import type {

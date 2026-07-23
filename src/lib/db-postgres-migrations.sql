@@ -1831,6 +1831,17 @@ CREATE INDEX IF NOT EXISTS idx_nf_document_locks_expires ON nf_document_locks (e
 -- W6-C: restore provenance — id of the source version a restore snapshot
 -- copied its payload from (NULL for ordinary snapshots). Idempotent.
 ALTER TABLE nf_document_versions ADD COLUMN IF NOT EXISTS restored_from TEXT;
+-- PDM gate/approval status — ADVISORY ONLY (260723 architecture-debt scoping).
+-- The server had zero gate awareness prior to this: any authenticated editor
+-- with the lock could POST a new version regardless of gate status. These
+-- columns let a caller ATTACH what it already computed (client-asserted, like
+-- label/branchName already are) so the version-history UI can show a
+-- "gate-failed" badge. The route does NOT reject writes based on this field —
+-- CAD workflows legitimately need to persist in-progress/failing states.
+-- gate_status: 'passed' | 'failed' | NULL (NULL/absent = caller didn't assert one — NOT the same as 'passed').
+-- gate_report: JSON-serialized GateResultLike[] (id/pass/value?/expected?/unit?/reason?), for the UI to render detail.
+ALTER TABLE nf_document_versions ADD COLUMN IF NOT EXISTS gate_status TEXT;
+ALTER TABLE nf_document_versions ADD COLUMN IF NOT EXISTS gate_report TEXT;
 
 -- Trial subscription window for direct (nf_users) login — login blocked 3 days past this (ms epoch)
 ALTER TABLE nf_users ADD COLUMN IF NOT EXISTS subscription_ends_at BIGINT;

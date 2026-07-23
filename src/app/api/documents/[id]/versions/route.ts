@@ -31,7 +31,7 @@ import {
   ensureCloudDocTables,
   resolveDocAccess,
 } from '@/lib/cloudDoc/access';
-import { publicVersionShape, type VersionRow } from '@/lib/cloudDoc/versions';
+import { publicVersionShape, type VersionRow, type GateResultLike } from '@/lib/cloudDoc/versions';
 import { getLockHeldByOther, lockConflictPayload } from '@/lib/cloudDoc/locks';
 
 const MAX_LABEL_LEN = 100;
@@ -103,7 +103,7 @@ export async function POST(
     return NextResponse.json(lockConflictPayload(heldByOther), { status: 423 });
   }
 
-  let body: { label?: unknown; branchName?: unknown; parentVersionId?: unknown };
+  let body: { label?: unknown; branchName?: unknown; parentVersionId?: unknown; gateReport?: unknown };
   try { body = await req.json().catch(() => ({})); }
   catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
 
@@ -158,6 +158,24 @@ export async function POST(
     );
   }
 
+  // PDM gate status — ADVISORY ONLY (260723 architecture-debt scoping). This
+  // is client-asserted metadata, exactly like label/branchName above: a
+  // malformed or absent gateReport never rejects the save (CAD workflows
+  // legitimately need to persist in-progress/failing states) — it just means
+  // no gate badge is attached to this version. See versions.ts / access.ts
+  // for the full rationale.
+  let gateStatus: 'passed' | 'failed' | null = null;
+  let gateReportJson: string | null = null;
+  if (Array.isArray(body.gateReport)) {
+    const gates = body.gateReport.filter(
+      (g): g is GateResultLike => !!g && typeof g === 'object' && typeof (g as GateResultLike).id === 'string' && typeof (g as GateResultLike).pass === 'boolean',
+    );
+    if (gates.length > 0) {
+      gateStatus = gates.every((g) => g.pass) ? 'passed' : 'failed';
+      gateReportJson = JSON.stringify(gates);
+    }
+  }
+
   const newVersion = access.row.version + 1;
   const versionId = crypto.randomUUID();
   const now = Date.now();
@@ -181,10 +199,12 @@ export async function POST(
   await db.execute(
     `INSERT INTO nf_document_versions (
        id, document_id, parent_version_id, blob_r2_key, oplog_r2_key,
-       label, branch_name, is_explicit, size_bytes, created_by, created_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       label, branch_name, is_explicit, size_bytes, created_by, created_at,
+       gate_status, gate_report
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     versionId, id, parentVersionId, versionBlobKey, null,
     label, branchName, 1, copiedSize, authUser.userId, now,
+    gateStatus, gateReportJson,
   );
 
   await db.execute(
@@ -213,6 +233,8 @@ export async function POST(
       is_explicit: 1,
       size_bytes: copiedSize,
       restored_from: null,
+      gate_status: gateStatus,
+      gate_report: gateReportJson,
       created_by: authUser.userId,
       created_at: now,
     }),
