@@ -158,7 +158,8 @@ export function interiorCheck(assembly, params = {}) {
 
   // ── 수용인원·피난폭 (occupancy_egress — 문 폭 합=형상 파생) ─────────────────
   const doorWidthSum = exits.reduce((s, e) => s + (e.widthMm ?? 0), 0);
-  const seatCount = Array.isArray(assembly.furniture) ? assembly.furniture.reduce((s, f) => s + (f.seats > 0 ? f.count : 0), 0) : 0;
+  // 좌석 수 = 각 가구 행의 좌석수 × 유닛 수(seats 필드=유닛 1개당 좌석수). seats 미기재 행은 좌석 아님(0).
+  const seatCount = Array.isArray(assembly.furniture) ? assembly.furniture.reduce((s, f) => s + (f.seats > 0 ? f.seats * (Number(f.count) || 0) : 0), 0) : 0;
   let egress = null;
   try {
     egress = runCalculator('occupancy_egress', {

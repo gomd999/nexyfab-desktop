@@ -87,19 +87,32 @@ export function bridgeCheck(assembly, params = {}) {
   // ── ④ RC 거더 단면 검토 (선택 — As 입력 시. 복부 직사각 보수측 검토 명시) ──
   let section = null;
   if (Number(params.As_mm2) > 0) {
-    const sec = bm.section;
-    const d = bm.girderH - 150; // 유효깊이 근사(피복+철근 150 관례 명시)
-    try {
-      const r = runCalculator('rc_beam', {
-        b: sec.webT, d, fck: params.fck ?? 27, fy: params.fy ?? 400,
-        As: Number(params.As_mm2), Mu: round(Mu), Vu: round(Vu),
-      }, 'KDS');
-      section = {
-        verdict: r.verdict, checks: r.checks,
-        note: `복부 ${sec.webT}×d${d} 직사각 검토(보수측 — T형 유효폭 미적용 명시). RC 가정 — PSC는 미지원.`,
-      };
-    } catch (e) {
-      section = { verdict: e.code === 'INPUT_GATE' ? 'INPUT' : 'ERROR', error: e.message };
+    const sec = bm.section ?? {};
+    // 복부폭·거더 높이 — 정식 필드 우선, 없으면 흔한 별칭(section.b / section.h) 수용
+    const webT = Number(sec.webT) > 0 ? Number(sec.webT) : (Number(sec.b) > 0 ? Number(sec.b) : null);
+    const girderH = Number(bm.girderH) > 0 ? Number(bm.girderH) : (Number(sec.h) > 0 ? Number(sec.h) : null);
+    const needInputs = [];
+    if (webT === null) needInputs.push({ field: 'bridgeMeta.section.webT', reason: '거더 복부 폭(mm) — 직사각 보수 단면 검토용. section.b로도 대체 가능.' });
+    if (girderH === null) needInputs.push({ field: 'bridgeMeta.girderH', reason: '거더 전체 높이(mm) — 유효깊이 d=H−150 산정용. section.h로도 대체 가능.' });
+    if (needInputs.length) {
+      section = { verdict: 'INPUT', needInputs };
+    } else {
+      const d = girderH - 150; // 유효깊이 근사(피복+철근 150 관례 명시)
+      try {
+        const r = runCalculator('rc_beam', {
+          b: webT, d, fck: params.fck ?? 27, fy: params.fy ?? 400,
+          As: Number(params.As_mm2), Mu: round(Mu), Vu: round(Vu),
+        }, 'KDS');
+        section = {
+          verdict: r.verdict, checks: r.checks,
+          note: `복부 ${webT}×d${d} 직사각 검토(보수측 — T형 유효폭 미적용 명시). RC 가정 — PSC는 미지원.`,
+        };
+      } catch (e) {
+        // 게이트 실패 원문("input gate failed: …")을 사용자 응답에 노출 금지 → 구조화
+        section = e.code === 'INPUT_GATE'
+          ? { verdict: 'INPUT', needInputs: [{ field: 'bridgeMeta.section', reason: e.message.replace(/^input gate failed:\s*/, '') }] }
+          : { verdict: 'ERROR', error: e.message };
+      }
     }
   }
 

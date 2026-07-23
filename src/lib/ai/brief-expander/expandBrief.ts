@@ -173,6 +173,33 @@ function uniq(list: string[]): string[] {
 }
 
 /**
+ * Dedupe clarifying questions across the model's OWN top-level questions and the
+ * per-param derived questions. A derived note is often the same ask a top-level
+ * question already covers — only differently punctuated/spaced, or a bare version
+ * of a more specific model question. So we compare on a normalized key (lowercase,
+ * whitespace + trailing punctuation stripped) AND treat one question as redundant
+ * when its normalized form contains — or is contained by — one already kept. Model
+ * questions are added first so the more specific phrasing wins.
+ */
+function dedupeQuestions(model: string[], derived: string[]): string[] {
+  const norm = (s: string) => s.trim().toLowerCase().replace(/[\s?!.。…]+/g, '');
+  const keys: string[] = [];
+  const out: string[] = [];
+  const add = (s: string) => {
+    const t = s.trim();
+    if (!t) return;
+    const k = norm(t);
+    if (!k) return;
+    if (keys.some((kk) => kk === k || kk.includes(k) || k.includes(kk))) return;
+    keys.push(k);
+    out.push(t);
+  };
+  for (const s of model) add(s);
+  for (const s of derived) add(s);
+  return out;
+}
+
+/**
  * Param-derived questions + assumption lines, in the exact order groundBrief has
  * always produced them: every `needs_input` param becomes a question (its note,
  * or a synthesised fallback), every `assumption` param becomes a labeled 가정
@@ -191,7 +218,9 @@ export function deriveParamQuestionsAssumptions(components: BriefComponent[]): {
         questions.push(p.note ?? `${c.name} — '${p.key}' 값이 필요합니다.`);
       } else if (p.source === 'assumption') {
         const val = `${p.value}${p.unit ?? ''}`;
-        assumptions.push(`${c.name}.${p.key} = ${val} (가정: ${p.note ?? '기본값'})`);
+        // note가 이미 "가정:"으로 시작하면(프롬프트 예시가 그렇게 유도) 접두어 중복 방지 — 한 번만 붙인다.
+        const basis = (p.note ?? '기본값').replace(/^\s*가정\s*[:：]\s*/, '');
+        assumptions.push(`${c.name}.${p.key} = ${val} (가정: ${basis})`);
       }
     }
   }
@@ -230,7 +259,7 @@ export function groundBrief(
     ? parsed.assumptions.filter((a): a is string => typeof a === 'string')
     : [];
   const derived = deriveParamQuestionsAssumptions(components);
-  const questions = uniq([...modelQuestions, ...derived.questions]);
+  const questions = dedupeQuestions(modelQuestions, derived.questions);
   const assumptions = uniq([...derived.assumptions, ...modelAssumptions]);
 
   return { title, domain, components, questions, assumptions, raw: rawText };
@@ -424,7 +453,7 @@ export async function expandBriefSelfConsistent(
   }));
 
   const derived = deriveParamQuestionsAssumptions(components);
-  const questions = uniq([...modelQuestions, ...derived.questions]);
+  const questions = dedupeQuestions(modelQuestions, derived.questions);
   const assumptions = uniq([...derived.assumptions, ...modelAssumptions]);
 
   return {

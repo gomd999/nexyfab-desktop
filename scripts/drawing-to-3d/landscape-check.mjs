@@ -137,27 +137,40 @@ export function landscapeCheck(assembly, params = {}) {
   if (decks.length && member) {
     const db = box(decks[0]);
     const alongX = db.dx >= db.dy;
-    const bw2 = alongX ? db.dy : db.dx;   // 보드 폭
+    const panelW = alongX ? db.dy : db.dx;   // 모델상 보드/패널 폭(스팬 직각 방향)
+    // 폭이 실제 데크보드 폭(≤600)이면 그대로 사용, 단일 패널(폭 수 m)로 모델링돼 과대하면
+    // 대표 보드 1장(폭=params.boardWidthMm, 기본 140mm 관례)으로 협폭화 — 패널 전체폭을 b로
+    // 넘기면 timber_beam 게이트(b≤600)에 걸려 검토 자체가 무의미해지므로.
+    const boardW = panelW > 0 && panelW <= 600
+      ? panelW
+      : Math.min(600, Number(params.boardWidthMm) > 0 ? Number(params.boardWidthMm) : 140);
     const bt = db.dz;                     // 보드 두께
     const spanB = member.spacingMm;       // 장선 간격이 보드 스팬
     const live = standards?.KDS?.loads?.liveLoad_kNm2?.[params.usage ?? 'residence_living'];
-    const selfB = massKg(decks[0]) * G / 1000 / ((alongX ? db.dx : db.dy) / 1000); // kN/m (보드 길이당)
-    const wB = round((live ? live.v * (bw2 / 1000) : 0) + selfB, 3);
+    const panelArea = (db.dx / 1000) * (decks.length * (db.dy / 1000)); // m² (전체 데크 면적)
+    const selfPerM2 = panelArea > 0 ? decks.reduce((s, d) => s + massKg(d), 0) * G / 1000 / panelArea : 0; // kN/m²
+    const selfB = selfPerM2 * (boardW / 1000); // kN/m (보드 1장 길이당 자중)
+    const wB = round((live ? live.v * (boardW / 1000) : 0) + selfB, 3);
     let chk = null;
     try {
       chk = runCalculator('timber_beam', {
-        species, grade, b: round(bw2, 0), h: round(bt, 0), L: round(spanB, 0), w: wB,
+        species, grade, b: round(boardW, 0), h: round(bt, 0), L: round(spanB, 0), w: wB,
         duration: params.duration ?? 'tenYears', deflLimit: params.deflLimit ?? 240,
         wetService: params.wetService !== false,
       }, 'KDS');
     } catch (e) {
-      chk = e.code === 'INPUT_GATE' ? { verdict: 'INPUT', error: e.message } : { verdict: 'ERROR', error: e.message };
+      // 게이트 실패 원문("input gate failed: …")을 사용자 응답에 노출 금지 → 구조화
+      chk = e.code === 'INPUT_GATE'
+        ? { verdict: 'INPUT', needInputs: [{ field: 'params.boardWidthMm', reason: '데크보드 1장 폭(mm, ≤600) — 패널 전체폭이 아닌 개별 보드 폭 필요' }] }
+        : { verdict: 'ERROR', error: e.message };
     }
     board = {
-      id: decks[0].id ?? 'board', count: decks.length, section: `${round(bw2, 0)}×${round(bt, 0)}`,
+      id: decks[0].id ?? 'board', count: decks.length, section: `${round(boardW, 0)}×${round(bt, 0)}`,
       spanMm: round(spanB, 0), w_kNm: wB,
-      verdict: chk?.verdict, checks: chk?.checks ?? null, error: chk?.error ?? null,
-      note: '보드 스팬=장선 간격(단순지지 근사) · 하중=활하중×보드폭+자중',
+      verdict: chk?.verdict, checks: chk?.checks ?? null,
+      ...(chk?.needInputs ? { needInputs: chk.needInputs } : {}),
+      ...(chk?.error ? { error: chk.error } : {}),
+      note: `보드 1장(폭 ${round(boardW, 0)}mm${panelW > 600 ? ' — 단일 패널 모델이라 대표 보드폭으로 협폭화(params.boardWidthMm)' : ''})·스팬=장선 간격(단순지지 근사)·하중=활하중×보드폭+자중`,
     };
   }
 
