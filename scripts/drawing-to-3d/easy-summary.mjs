@@ -70,6 +70,25 @@ function structuralCautions(st) {
   });
 }
 
+/**
+ * FEA(응력해석) 안전율 경고 — structural(강체 전도/CG)과 FEA(TET10 응력)는 서로
+ * 독립된 계산이라, structural.ok가 true여도 FEA 안전율이 위험할 수 있다(도그푸딩
+ * 발견: 65t 등가하중을 준 50×50×20 철판이 FEA 안전율 0.49·응력초과인데도 이
+ * 문서가 읽지 않는 structural만 보고 "이상 없음"으로 표시했다). structural과
+ * 별개로 이 문서 전용 안전 판정 소스로 추가한다 — FEA를 새로 계산하지 않고,
+ * 호출측이 실제로 산출한 safetyFactor/method만 옮긴다(계산 재구현 금지).
+ */
+function feaCautions(fea) {
+  if (!fea || !Number.isFinite(fea.safetyFactor)) return [];
+  if (fea.safetyFactor >= 1.2) return [];
+  const sf = fea.safetyFactor.toFixed(2);
+  return [
+    fea.safetyFactor < 1
+      ? `<b>응력 해석(FEA) 안전율 ${sf} — 1 미만, 지금 하중에서 재료 강도를 초과합니다.</b> 재질을 올리거나 단면을 키우기 전에는 제작하면 안 됩니다.`
+      : `응력 해석(FEA) 안전율 ${sf}로 여유가 매우 작습니다 — 재질·단면 상향을 검토하세요.`,
+  ];
+}
+
 // 표준 동봉 파일 → 용도 1줄. opts.fileNames 가 오면 그 목록에 있는 것만 설명(없는 파일 안내=거짓말).
 const FILE_USE = {
   'GA_2D_drawing.html': '전체 배치 도면 — 업체에 제일 먼저 보내는 도면입니다.',
@@ -140,6 +159,9 @@ function specText(g, stdById) {
  * @param {string} [opts.domain]        분야(없으면 assembly.domain → 'mech')
  * @param {object} [opts.executionGate] checkExecutionReadiness() 결과 — **호출자가 넘길 때만** 표시
  * @param {string[]} [opts.fileNames]   실제 동봉 파일명 목록 — 주면 그 파일만 용도 안내
+ * @param {object} [opts.fea]           FEA(응력해석) 결과 요약 — **호출자가 넘길 때만** 안전 판정에
+ *   반영. `{ safetyFactor: number, method?: string }`. structural(강체 전도/CG)과는 독립적인 계산이므로,
+ *   FEA.html을 생성했다면 반드시 이걸 넘겨야 이 문서의 종합 판정에 위험이 드러난다(F2와 동일 원칙).
  * @returns {string} 자립형 HTML
  */
 export function easySummary(assembly, opts = {}) {
@@ -244,17 +266,28 @@ ${stdWarn}</section>`;
       cautions.push(GATE_KO[id] ?? `도면 점검 항목 미충족: ${f}`);
     }
   }
-  // 구조 안전 판정 — structural.html 을 읽지 않을 사람 전용 문서이므로, 여기서 빠지면
-  // 안전 경고가 어디에도 도달하지 않는다(F2). structural 이 낸 것만 옮기고 새로 만들지 않는다.
+  // 구조 안전 판정 — structural.html/FEA.html 을 읽지 않을 사람 전용 문서이므로,
+  // 여기서 빠지면 안전 경고가 어디에도 도달하지 않는다(F2). structural·FEA 각각이
+  // 낸 것만 옮기고 새로 계산하지 않는다. structural(강체 전도/CG)과 FEA(응력)는
+  // 서로 독립된 계산이라 한쪽만 보면 안 된다 — structural.ok=true인데 FEA 안전율이
+  // 위험한 경우가 실제로 있었다(도그푸딩: 과하중 철판이 FEA는 초과인데 이 문서는
+  // structural만 보고 "이상 없음"으로 표시).
   const structCautions = structuralCautions(structural);
-  const safetyBlock = structural == null
+  const feaCautionList = feaCautions(opts.fea);
+  const allSafetyCautions = [...structCautions, ...feaCautionList];
+  const feaFailed = !!opts.fea && Number.isFinite(opts.fea.safetyFactor) && opts.fea.safetyFactor < 1.2;
+  const safetyBlock = structural == null && !opts.fea
     ? '<p class="sub">구조 검토(무게·전도)가 산출되지 않았습니다 — 안전 판정은 이 요약에 없습니다. 동봉된 구조 검토 문서를 확인하세요.</p>'
-    : structCautions.length
-      ? `<p class="warn"><b>⚠ 안전 경고 — 지금 형상 그대로 만들면 위험합니다.</b> 구조 검토(개산)에서 아래 ${structCautions.length}건이 걸렸습니다. 만들기 전에 반드시 해결하거나 기술사 검토를 받으세요.</p>
-<ul>${structCautions.map((c) => `<li>${c}</li>`).join('')}</ul>`
+    : allSafetyCautions.length
+      ? `<p class="warn"><b>⚠ 안전 경고 — 지금 형상 그대로 만들면 위험합니다.</b> 구조 검토(개산)에서 아래 ${allSafetyCautions.length}건이 걸렸습니다. 만들기 전에 반드시 해결하거나 기술사 검토를 받으세요.</p>
+<ul>${allSafetyCautions.map((c) => `<li>${c}</li>`).join('')}</ul>`
       : '<p class="sub">구조 검토(개산)에서 걸린 안전 경고는 없습니다 — 다만 이는 형상·무게 기준 개산이며, 실제 지반·바람·지진·사용 하중은 반영되어 있지 않습니다(안전 보증 아님).</p>';
-  // 종합 판정(구조 + 형상 타당성)을 한 줄로 — 어느 쪽이든 FAIL 이면 요약에서도 FAIL 로 보여야 한다.
-  const verdict = `<p class="${structural?.ok === false || built.designOk === false ? 'warn' : 'sub'}">자동 점검 종합: 구조 안전(개산) <b>${structural == null ? '미산출' : structural.ok ? '이상 없음' : '보완 필요'}</b> · 형상 타당성(부유·간섭·배관) <b>${built.designOk == null ? '미산출' : built.designOk ? '이상 없음' : '보완 필요'}</b>${structural?.ok === false || built.designOk === false ? ' — 보완 없이 제작에 들어가면 안 됩니다.' : ''}</p>`;
+  // 종합 판정(구조 + FEA + 형상 타당성)을 한 줄로 — 어느 쪽이든 FAIL 이면 요약에서도 FAIL 로 보여야 한다.
+  const structVerdictFailed = structural?.ok === false || built.designOk === false || feaFailed;
+  const feaVerdictText = opts.fea && Number.isFinite(opts.fea.safetyFactor)
+    ? ` · 응력 해석(개산) <b>${feaFailed ? '보완 필요' : '이상 없음'}</b>`
+    : '';
+  const verdict = `<p class="${structVerdictFailed ? 'warn' : 'sub'}">자동 점검 종합: 구조 안전(개산) <b>${structural == null ? '미산출' : structural.ok ? '이상 없음' : '보완 필요'}</b>${feaVerdictText} · 형상 타당성(부유·간섭·배관) <b>${built.designOk == null ? '미산출' : built.designOk ? '이상 없음' : '보완 필요'}</b>${structVerdictFailed ? ' — 보완 없이 제작에 들어가면 안 됩니다.' : ''}</p>`;
 
   const s3 = `<section><h2>③ 만들 때 주의할 점</h2>
 ${safetyBlock}

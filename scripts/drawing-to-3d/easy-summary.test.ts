@@ -231,6 +231,26 @@ describe('일반인용 결과 요약(easySummary)', () => {
     expect(html).not.toContain('② 무엇을 사면 되나요');
   });
 
+  it('FEA 안전율 위험(0.49) 전달 시 종합 판정이 위험으로 뒤집힌다(도그푸딩 260723 5차)', () => {
+    // structural(강체 전도/CG)은 정상이어도 FEA(응력)가 별개로 위험할 수 있다 —
+    // 이 문서가 opts.fea 없이는 FEA를 아예 모른 채 "이상 없음"만 보여주던 결함.
+    const html = easySummary(OK_ASM, { domain: 'mech', fea: { safetyFactor: 0.49, method: 'linear-fem-tet' } });
+    expect(html).toContain('0.49');
+    expect(html).toMatch(/응력 해석.*안전율.*1 미만/);
+    expect(html).toContain('보완 없이 제작에 들어가면 안 됩니다');
+  });
+
+  it('FEA 안전율 여유(3.2) 전달 시 안전율 경고 없이 "이상 없음"으로 표시된다', () => {
+    const html = easySummary(OK_ASM, { domain: 'mech', fea: { safetyFactor: 3.2 } });
+    expect(html).toContain('응력 해석(개산) <b>이상 없음</b>');
+    expect(html).not.toContain('보완 없이 제작에 들어가면 안 됩니다');
+  });
+
+  it('opts.fea를 넘기지 않으면 기존과 동일하게 응력 해석 판정 자체가 없다(하위 호환)', () => {
+    const html = easySummary(OK_ASM, { domain: 'mech' });
+    expect(html).not.toContain('응력 해석(개산)');
+  });
+
   it('XSS: 제목·부품 ID의 태그가 이스케이프된다', () => {
     const evil = {
       name: '<script>alert(1)</script>',

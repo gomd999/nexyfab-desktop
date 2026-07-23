@@ -244,6 +244,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // FEA 응력해석 (#7) — 형상 STL 실렌더 → TET10 선형정적(runSimpleFEA, beam-theory 폴백).
   // 하중 기본값 = 총질량×g(자중 상당, 상면 등가 — 가정을 리포트에 명시). options.fea===false 로 생략.
+  // feaSummary 는 아래 쉬운요약.html 호출에 그대로 전달된다 — structural(강체 전도/CG)과
+  // FEA(응력)는 독립 계산이라, 여기서 안 넘기면 FEA가 위험해도 쉬운요약이 "이상 없음"으로
+  // 표시할 수 있었다(도그푸딩 발견: 65t 등가하중 철판이 FEA 안전율 0.49인데 쉬운요약은
+  // structural만 보고 통과 표시).
+  let feaSummary: { safetyFactor: number; method?: string } | null = null;
   if (options.fea !== false && built.openscad) {
     try {
       const { feaFromStl, feaReportHtml, FEA_MATERIALS } = await import('@/app/[lang]/shape-generator/analysis/feaPackage');
@@ -268,6 +273,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         : `총질량 ${totalMassKg} kg × g — 자중 상당을 상면 등가 하중으로(보수적 개산)`) + mixedNote;
       const out = feaFromStl({ stl, materialKey, loadN: loadKg * 9.81, loadNote });
       files.push({ name: 'FEA.html', mime: 'text/html', content: feaReportHtml(out, { title }) });
+      if (Number.isFinite(out.result?.safetyFactor)) {
+        feaSummary = { safetyFactor: out.result.safetyFactor, method: out.result.method };
+      }
     } catch (e) { void e; /* FEA 실패는 패키지를 막지 않음 — 파일만 빠짐 */ }
   }
 
@@ -313,6 +321,7 @@ ${(eg.items as Array<{ id: string; name: string; pass: boolean | null; detail: s
           title, domain,
           fileNames: files.map((f) => f.name),
           ...(executionGate ? { executionGate } : {}),
+          ...(feaSummary ? { fea: feaSummary } : {}),
         }),
       });
     }
