@@ -23,7 +23,9 @@ export interface FEAResult {
   elementCount: number;
   /** Number of degrees of freedom solved (0 for beam-theory) */
   dofCount: number;
-  /** Whether the iterative solver converged (always true for beam-theory) */
+  /** Whether the iterative solver converged. Always true for beam-theory,
+   *  EXCEPT when `implausibleGeometry` is set (cross-section too thin for the
+   *  approximation to mean anything — see that field). */
   converged: boolean;
   /** Which TET10 meshing path produced this result: 'uniform' (fast screening
    *  grid), 'refined' (graded octree-snap curved-raiser mesh), or
@@ -34,6 +36,13 @@ export interface FEAResult {
   /** Honest self-assessed accuracy tier mirrored from femSolver (NOT a legal
    *  certification): 'certification-candidate' | 'engineering' | 'screening'. */
   grade?: 'certification-candidate' | 'engineering' | 'screening';
+  /** Set (beam-theory only) when the part's minimum cross-section is too thin
+   *  for even this crude approximation to mean anything — I ~ crossDim⁴ blows
+   *  up as crossDim → 0, producing a physically absurd stress (observed:
+   *  189.6 TRILLION MPa on a 0.05mm sliver) displayed with confident 2-decimal
+   *  precision. When set, maxStress/safetyFactor are NOT a real estimate —
+   *  they're zeroed/flagged rather than shown as a fabricated number. */
+  implausibleGeometry?: string;
 }
 
 export interface FEAMaterial {
@@ -192,6 +201,22 @@ function runBeamTheoryFallback(
   const charLength = Math.max(bbSize.x, bbSize.y, bbSize.z);
   // Approximate second moment of area (I) for the overall cross-section
   const crossDim = Math.min(bbSize.x, bbSize.y, bbSize.z);
+  // I ~ crossDim⁴/12 → sigma = M·y/I blows up as crossDim → 0. Below this
+  // threshold the beam-bending approximation itself is meaningless (no real
+  // screening use case needs sub-0.5mm minimum-dimension stress from THIS
+  // crude estimator — that's a job for a real mesh, which already failed or
+  // this fallback wouldn't be running). Return an honest "can't estimate"
+  // result instead of a physically absurd number (observed: 189.6 TRILLION
+  // MPa on a 0.05mm sliver, displayed with confident 2-decimal precision).
+  const MIN_PLAUSIBLE_CROSS_DIM_MM = 0.5;
+  if (crossDim < MIN_PLAUSIBLE_CROSS_DIM_MM) {
+    return {
+      vonMisesStress: new Float32Array(0), displacement: new Float32Array(0), displacementVectors: new Float32Array(0),
+      maxStress: 0, maxDisplacement: 0, minStress: 0, safetyFactor: 0,
+      method: 'beam-theory' as const, elementCount: 0, dofCount: 0, converged: false,
+      implausibleGeometry: `단면 최소 치수 ${crossDim.toFixed(3)}mm — 개산(beam-theory) 신뢰 불가(너무 얇음, 최소 ${MIN_PLAUSIBLE_CROSS_DIM_MM}mm 필요). 형상 또는 메시를 확인하세요.`,
+    };
+  }
   const I_approx = (crossDim * crossDim * crossDim * crossDim) / 12;
 
   // Gather fixed positions and force positions

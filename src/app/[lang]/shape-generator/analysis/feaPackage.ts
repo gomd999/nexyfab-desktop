@@ -352,6 +352,7 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 @media print{.nf-print-bar{display:none}body{background:#fff}.sheet{box-shadow:none;border:none;margin:0}}</style></head>
 <body><div class="nf-print-bar"><b>FEA 응력해석 (A4)</b><button onclick="print()">🖨 인쇄 / PDF</button></div>
 <div class="sheet"><div class="hd"><h1>${esc(title)} — 유한요소 응력해석</h1><div class="s">nexyfab FEA · ${isTet ? 'TET10 2차 사면체 선형정적' : '보 이론 근사(FEM 폴백)'} · ${esc(out.material.label)}</div></div>
+${r.implausibleGeometry ? `<div class="honest" style="background:#fef2f2;border-color:#fecaca;color:#991b1b"><b>⚠ 응력 개산 불가</b> — ${esc(r.implausibleGeometry)} 아래 응력·안전율은 실측이 아니라 0으로 처리된 값입니다(지어내지 않음) — 형상을 두껍게 하거나 메시가 성립하는 치수로 바꿔 다시 시도하세요.</div>` : ''}
 <div class="kpi">
 <div><b style="color:${sfClass}">${f(r.safetyFactor, 2)}</b><span>안전율 (${esc(out.material.strengthNote)})</span></div>
 <div><b>${f(r.maxStress, 1)} MPa</b><span>최대 von Mises 응력</span></div>

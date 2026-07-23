@@ -69,4 +69,25 @@ describe('feaPackage', () => {
     expect(html).toContain('비법정');
     expect(html).toContain('von Mises');
   });
+
+  // 5차 dogfooding(260723): beam-theory 폴백이 근-제로 단면(I~crossDim⁴)에서
+  // 조 단위 MPa를 지어내던 결함 — 실측 189.6 TRILLION MPa on a 0.05mm sliver.
+  it('극박 슬리버(200×200×0.05) → 조단위 응력 대신 정직한 implausibleGeometry 플래그', () => {
+    const out = feaFromStl({ stl: boxStl(200, 200, 0.05), materialKey: 'steel', loadN: 100_000, loadNote: 'sliver' });
+    if (out.result.method === 'beam-theory') {
+      expect(out.result.implausibleGeometry).toBeTruthy();
+      expect(out.result.maxStress).toBeLessThan(1e6); // was ~1.9e14 before the fix
+      expect(out.result.safetyFactor).toBe(0);
+    }
+  });
+
+  it('극박 슬리버 리포트 HTML → 응력 개산 불가 배너, 정상 박스는 배너 없음', () => {
+    const thin = feaFromStl({ stl: boxStl(200, 200, 0.05), materialKey: 'steel', loadN: 100_000, loadNote: 'sliver' });
+    const thinHtml = feaReportHtml(thin, { title: 't' });
+    if (thin.result.method === 'beam-theory') {
+      expect(thinHtml).toContain('응력 개산 불가');
+    }
+    const normal = feaFromStl({ stl: boxStl(100, 100, 100), materialKey: 'steel', loadN: 50_000 });
+    expect(feaReportHtml(normal, { title: 't' })).not.toContain('응력 개산 불가');
+  });
 });
