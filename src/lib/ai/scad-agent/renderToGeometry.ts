@@ -205,6 +205,42 @@ export function parseStlBufferToBounds(bytes: Uint8Array): StlBounds {
 }
 
 /**
+ * Extract the raw NON-INDEXED triangle vertex stream (9 floats/triangle) from
+ * BOTH binary and ASCII STL — pure DataView / regex arithmetic, no THREE, no
+ * fragile deep imports. The result can be wrapped as a `{ attributes:{ position:
+ * { array, count } }, index:null }` duck-type and fed to faceInspection's
+ * topology/hole detectors, so genus + hole counts survive even when the rich
+ * `verifyStlBuffer` enrichment (which pulls the `[lang]` analysis bundle) fails
+ * to resolve in a production server bundle. Returns an empty array on a
+ * zero-triangle mesh; never throws on a well-formed STL.
+ */
+export function parseStlBufferToPositions(bytes: Uint8Array): Float32Array {
+  if (looksBinaryStl(bytes)) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const faces = dv.getUint32(80, true);
+    const maxFaces = Math.floor((bytes.length - 84) / 50);
+    const triangleCount = Math.min(faces, Math.max(0, maxFaces));
+    const out = new Float32Array(triangleCount * 9);
+    let o = 84;
+    for (let t = 0; t < triangleCount; t++) {
+      o += 12; // skip the face normal
+      for (let k = 0; k < 9; k++) out[t * 9 + k] = dv.getFloat32(o + k * 4, true);
+      o += 36 + 2; // 3 verts + attribute byte count
+    }
+    return out;
+  }
+  const text = new TextDecoder().decode(bytes);
+  const re = /vertex\s+([-+eE0-9.]+)\s+([-+eE0-9.]+)\s+([-+eE0-9.]+)/g;
+  const verts: number[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    verts.push(parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]));
+  }
+  const triangleCount = Math.floor(verts.length / 9);
+  return Float32Array.from(verts.slice(0, triangleCount * 9));
+}
+
+/**
  * Cheap triangle count for BOTH binary and ASCII STL. The binary-STL header
  * (uint32 at offset 80) is only valid for binstl; `runOpenScadCli` doesn't
  * force `--export-format`, so the installed OpenSCAD may emit ASCII — in which

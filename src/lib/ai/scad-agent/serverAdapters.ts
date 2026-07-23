@@ -129,13 +129,43 @@ export const serverGeometryAdapter: GeometryAdapter = async (render) => {
   // returned null ("unverified-null") on an otherwise successful render.
   let baseline: GeometryStats = { triangleCount: render.triangles };
   try {
-    const { parseStlBufferToBounds } = await import('./renderToGeometry');
+    const { parseStlBufferToBounds, parseStlBufferToPositions } = await import('./renderToGeometry');
     const b = parseStlBufferToBounds(bytes);
     baseline = {
       triangleCount: b.triangleCount || render.triangles,
       ...(b.bbox ? { bbox: b.bbox } : {}),
       ...(b.volume_mm3 > 0 ? { volume_mm3: b.volume_mm3 } : {}),
     };
+    // GENUS + HOLES in the guaranteed baseline — dependency-free. The rich
+    // enrichment below computes these too, but it pulls the `[lang]` analysis
+    // bundle via deep dynamic import; when that fails to resolve in the
+    // production server bundle the enrichment throws and only bbox/volume
+    // survived, so `holeCount` collapsed to 0 on parts that DO have holes
+    // (a through-hole cube reporting holesBuilt:0 with a correct bbox — the
+    // exact signature we saw). Recovering genus/holes here from the same
+    // raw triangle stream, using only same-dir `./faceInspection` (whose
+    // three import is TYPE-only), makes the hole count robust to that failure.
+    try {
+      const positions = parseStlBufferToPositions(bytes);
+      if (positions.length >= 9) {
+        const { computeMeshTopology } = await import('./faceInspection');
+        const duckGeo = {
+          attributes: { position: { array: positions, count: positions.length / 3 } },
+          index: null,
+        } as unknown as import('three').BufferGeometry;
+        // Topological through-hole count (Euler χ) — the accurate, honest hole
+        // number for through-holes (1 for a bored cube, 4 for a 4-corner plate).
+        // We deliberately do NOT run the axis-scan hole detector here: it reads
+        // the same void from multiple cardinal axes and over-counts (a 4-hole
+        // plate reports 12). genus is exact; the richer per-hole detector (with
+        // positions, blind-hole capture) stays in the enrichment path. When
+        // enrichment fails, this genus keeps `holeCount` correct instead of 0.
+        const topo = computeMeshTopology(duckGeo);
+        if (typeof topo.totalGenus === 'number') baseline.genus = topo.totalGenus;
+      }
+    } catch {
+      /* baseline keeps bbox/volume; genus stays absent (honest null) */
+    }
   } catch {
     /* keep the render-reported triangle count as the last-resort baseline */
   }
@@ -148,11 +178,19 @@ export const serverGeometryAdapter: GeometryAdapter = async (render) => {
     const rich = await verifyStlBuffer(buf);
     const bbox = rich.bbox ?? baseline.bbox;
     const volume_mm3 = rich.volume_mm3 ?? baseline.volume_mm3;
+    // Prefer the rich genus/holes when it actually computed them, else keep the
+    // baseline's dependency-free recovery — never let a null/empty rich result
+    // overwrite a real baseline hole count.
+    const genus = typeof rich.genus === 'number' ? rich.genus : baseline.genus;
+    const detectedHoles =
+      rich.detectedHoles && rich.detectedHoles.length > 0 ? rich.detectedHoles : baseline.detectedHoles;
     return {
       ...baseline,
       ...rich,
       ...(bbox ? { bbox } : {}),
       ...(volume_mm3 !== undefined ? { volume_mm3 } : {}),
+      ...(genus !== undefined ? { genus } : {}),
+      ...(detectedHoles !== undefined ? { detectedHoles } : {}),
     };
   } catch {
     return baseline;
