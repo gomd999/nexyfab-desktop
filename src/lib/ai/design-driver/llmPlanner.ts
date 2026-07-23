@@ -767,12 +767,42 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
       // filleted solid volume; a radius too large for an edge FAILS the gate.
     }
   ],
-  "assembly": {                   // optional
-    "parts": [ SolvePartSpec ],   // solveMates input form (partId, fixed?, position?, refs{})
-    "mates": [ SolveMateSpec ],   // {id, kind, a:{partId,refId}, b:{partId,refId}}
+  "assembly": {                   // optional — only for MULTI-PART designs that need positioned/mated parts
+    "parts": [
+      { "partId": string,          // matches a parts[].partId above
+        "fixed": boolean?,         // >= 1 part MUST be fixed — the solver never moves it
+        "position": {"x":number,"y":number,"z":number}?,  // default (0,0,0)
+        "refs": {                  // OPTIONAL named local-frame geometry the mates below target;
+                                    // every part ALSO has built-ins for free: origin, x_axis, y_axis,
+                                    // z_axis, xy_plane, yz_plane, xz_plane — declare a ref only for a
+                                    // feature the built-ins don't cover (an off-center hole axis, etc.)
+          "<refName>": { "kind":"point", "origin":{"x":number,"y":number,"z":number} }
+                     | { "kind":"axis",  "origin":{...}, "direction":{"x":number,"y":number,"z":number} }
+                     | { "kind":"plane", "origin":{...}, "normal":{"x":number,"y":number,"z":number} }
+        }?
+      }
+    ],
+    "mates": [
+      { "id": string, "kind": "coincident"|"concentric"|"distance"|"angle"|"parallel"|"perpendicular"|"tangent"|"hinge"|"slot"|"gear"|"rack_pinion",
+        "a": {"partId":string,"refId":string}, "b": {"partId":string,"refId":string},
+        "value": number?    // REQUIRED for distance (mm) / angle (deg); ignored by other kinds
+      }
+    ],
     "tolerance": number?,
     "engine": "gauss-seidel"|"newton"?
   },
+  // Example — a pin fixed in a block's bore (concentric axis-to-axis + coincident face-to-face):
+  //   "parts": [
+  //     { "partId":"block", "fixed":true },
+  //     { "partId":"pin",   "position":{"x":0,"y":0,"z":10},
+  //       "refs": { "bore_axis": { "kind":"axis", "origin":{"x":0,"y":0,"z":0}, "direction":{"x":0,"y":0,"z":1} } } }
+  //   ],
+  //   "mates": [
+  //     { "id":"m1", "kind":"concentric", "a":{"partId":"block","refId":"bore_axis"}, "b":{"partId":"pin","refId":"z_axis"} },
+  //     { "id":"m2", "kind":"coincident",  "a":{"partId":"block","refId":"xy_plane"}, "b":{"partId":"pin","refId":"xy_plane"} }
+  //   ]
+  // A mate whose refs are geometrically inconsistent (e.g. mismatched axis directions) is NOT silently
+  // "solved" — the engine reports a non-zero residual, and the assembly gate refuses the plan on it.
   "drawing": {
     "paperSize": string?,         // default A3
     "scale": number?,             // default 1
