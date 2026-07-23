@@ -111,6 +111,21 @@ const TAG_NORMAL: Record<string, Triple> = {
   top: [0, 0, 1], bottom: [0, 0, -1],
 };
 
+/**
+ * The natural symmetry axis of a cylindrical part (pin/shaft/bushing) — its
+ * LONGEST bbox dimension. Z is the tie-break winner (an isotropic/cube-ish
+ * bbox has no real dominant axis, so this preserves the historical Z default
+ * for that case) — only a STRICTLY longer X or Y wins over Z.
+ */
+function bboxLongAxis(bbox: { min: Triple; max: Triple }): Triple {
+  const dx = bbox.max[0] - bbox.min[0];
+  const dy = bbox.max[1] - bbox.min[1];
+  const dz = bbox.max[2] - bbox.min[2];
+  if (dx > dz && dx >= dy) return [1, 0, 0];
+  if (dy > dz && dy >= dx) return [0, 1, 0];
+  return [0, 0, 1];
+}
+
 function makeResolver(anchors: Record<string, MateAnchor>): GeometryResolver {
   return (ref: MateRef, part: PartInstance): ResolvedGeometry | null => {
     const anchor = anchors[ref.partId];
@@ -120,7 +135,13 @@ function makeResolver(anchors: Record<string, MateAnchor>): GeometryResolver {
     const off = faceCenterOffset(tag, bbox);
     const origin: Vec3 = { x: part.position.x + off[0], y: part.position.y + off[1], z: part.position.z + off[2] };
     if (ref.refKind === 'axis') {
-      return { kind: 'axis', world: { origin, direction: { x: 0, y: 0, z: 1 } } };
+      // A cylindrical anchor's axis is its bbox's long dimension (a shaft
+      // explicitly modeled long along X has its axis along X, not a hardcoded
+      // Z regardless of shape — `cylindrical` was previously declared on the
+      // interface but never read here, a documented-but-dead flag). Non-
+      // cylindrical anchors keep the historical Z default.
+      const dir = anchor?.cylindrical ? bboxLongAxis(bbox) : ([0, 0, 1] as Triple);
+      return { kind: 'axis', world: { origin, direction: { x: dir[0], y: dir[1], z: dir[2] } } };
     }
     if (ref.refKind === 'plane') {
       const n = TAG_NORMAL[tag] ?? [0, 0, 1];

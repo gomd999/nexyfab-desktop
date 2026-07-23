@@ -83,4 +83,51 @@ describe('assemblyMateSolve', () => {
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.transforms.base).toBeUndefined();
   });
+
+  // Round-4 dogfooding: `cylindrical` was declared on MateAnchor but never
+  // read — the axis resolver hardcoded +Z regardless of shape or the flag,
+  // so a shaft explicitly modeled long along X got its X/Y aligned (the
+  // WRONG plane) while reporting residual 0 / full convergence. A CUBE bbox
+  // (used above) can't catch this: Z is both the old hardcode AND this fix's
+  // tie-break winner for an isotropic shape. These use an elongated bbox to
+  // actually distinguish the two.
+  const SHAFT_X = { min: [-10, -1, -1] as [number, number, number], max: [10, 1, 1] as [number, number, number] };
+
+  it('cylindrical anchor long along X: concentric aligns Y/Z (the radial plane), X stays free', () => {
+    const anchors: Record<string, MateAnchor> = {
+      shaftA: { position: [0, 0, 0], bbox: SHAFT_X, cylindrical: true },
+      shaftB: { position: [0, -5, -5], bbox: SHAFT_X, cylindrical: true },
+    };
+    const r = assemblyMateSolve(
+      [{ id: 'm1', kind: 'concentric', handleA: 'shaftA', handleB: 'shaftB', faceTagA: 'side', faceTagB: 'side' }],
+      anchors,
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const [dx, dy, dz] = r.transforms.shaftB ?? [0, 0, 0];
+    expect(-5 + dy).toBeCloseTo(0); // Y aligned to shaftA
+    expect(-5 + dz).toBeCloseTo(0); // Z aligned to shaftA
+    expect(0 + dx).toBeCloseTo(0); // X (the axis direction) left untouched
+  });
+
+  it('cylindrical:false on the same elongated bbox keeps the historical Z default (no behavior change for non-cylindrical anchors)', () => {
+    const anchors: Record<string, MateAnchor> = {
+      a: { position: [0, 0, 0], bbox: SHAFT_X, cylindrical: false },
+      b: { position: [4, -5, 9], bbox: SHAFT_X, cylindrical: false },
+    };
+    const r = assemblyMateSolve(
+      [{ id: 'm1', kind: 'concentric', handleA: 'a', handleB: 'b', faceTagA: 'side', faceTagB: 'side' }],
+      anchors,
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const [dx, dy, dz] = r.transforms.b ?? [0, 0, 0];
+    // Z-default (axis = +Z) behavior: the X/Y plane gets aligned to A's,
+    // Z (the axis direction) is left untouched — same convention as the
+    // existing CUBE-based concentric test above, just with distinct X/Y/Z
+    // offsets so this assertion can't pass by X-Y coincidence.
+    expect(4 + dx).toBeCloseTo(0); // X aligned
+    expect(-5 + dy).toBeCloseTo(0); // Y aligned
+    expect(dz ?? 0).toBeCloseTo(0); // Z (axis direction) untouched
+  });
 });
