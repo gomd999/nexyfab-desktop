@@ -4861,41 +4861,41 @@ export function ShapeGeneratorInner() {
         rotation: eulerToQuat(p.rotation[0], p.rotation[1], p.rotation[2]),
       };
     }
-    // Translate mates → v3 Mate format. Without face data we synthesise a
-    // canonical axis (Z) at the part origin — accurate for symmetric parts,
-    // approximate otherwise. The solver still converges to a useful pose.
-    type V3Mate =
-      | { kind: 'concentric'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] } }
-      | { kind: 'coincident'; a: { partId: string; position: [number, number, number] }; b: { partId: string; position: [number, number, number] } }
-      | { kind: 'distance'; a: { partId: string; position: [number, number, number] }; b: { partId: string; position: [number, number, number] }; distMm: number }
-      | { kind: 'parallel'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] } }
-      | { kind: 'angle'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; deg: number }
-      | { kind: 'limitDistance'; a: { partId: string; position: [number, number, number] }; b: { partId: string; position: [number, number, number] }; minMm: number; maxMm: number }
-      | { kind: 'limitAngle'; a: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; b: { partId: string; origin: [number, number, number]; direction: [number, number, number] }; minDeg: number; maxDeg: number };
-    const mates: V3Mate[] = [];
+    // Translate mates → src/lib/assembly/api.ts's named-ref Mate spec, using
+    // the built-in `origin`/`z_axis` refs every part gets for free — this is
+    // the same "synthesise a canonical axis (Z) at the part origin" fallback
+    // as before (accurate for symmetric parts, approximate otherwise), just
+    // expressed as ref names instead of raw local positions.
+    //
+    // Migrated OFF `@/lib/nexyfab/assemblyMateSolver` (260723 dogfooding):
+    // that module's position-correction step had an inverted sign
+    // (`vsub(f.position, correction.dPos)` where the correction should be
+    // ADDED, not subtracted) — every mate kind carrying a position term
+    // (coincident/distance/concentric/limitDistance) DIVERGED instead of
+    // converging (measured: B at x=40 exploded to x=303.75 after 5 iterations
+    // toward a fixed A). Confirmed via a fresh cross-solver alignment test
+    // (src/test/m3/mateSolversAlignment.test.ts) with zero prior test
+    // coverage on that module. `src/lib/assembly/api.ts`'s `solveMates` is
+    // the most heavily tested engine in the codebase (~7,400 test lines) and
+    // was already the recommended consolidation target.
+    const specMates: Array<{ id: string; kind: 'coincident' | 'concentric' | 'distance' | 'parallel' | 'angle'; a: { partId: string; refId: string }; b: { partId: string; refId: string }; value?: number }> = [];
     for (const m of assemblyMates) {
       if (!partIds.includes(m.partA) || !partIds.includes(m.partB)) continue;
       switch (m.type) {
         case 'coincident':
-          mates.push({ kind: 'coincident', a: { partId: m.partA, position: [0, 0, 0] }, b: { partId: m.partB, position: [0, 0, 0] } });
+          specMates.push({ id: m.id, kind: 'coincident', a: { partId: m.partA, refId: 'origin' }, b: { partId: m.partB, refId: 'origin' } });
           break;
         case 'concentric':
-          mates.push({ kind: 'concentric', a: { partId: m.partA, origin: [0, 0, 0], direction: [0, 0, 1] }, b: { partId: m.partB, origin: [0, 0, 0], direction: [0, 0, 1] } });
+          specMates.push({ id: m.id, kind: 'concentric', a: { partId: m.partA, refId: 'z_axis' }, b: { partId: m.partB, refId: 'z_axis' } });
           break;
         case 'distance':
-          mates.push({ kind: 'distance', a: { partId: m.partA, position: [0, 0, 0] }, b: { partId: m.partB, position: [0, 0, 0] }, distMm: m.value ?? 0 });
+          specMates.push({ id: m.id, kind: 'distance', a: { partId: m.partA, refId: 'origin' }, b: { partId: m.partB, refId: 'origin' }, value: m.value ?? 0 });
           break;
         case 'parallel':
-          mates.push({ kind: 'parallel', a: { partId: m.partA, origin: [0, 0, 0], direction: [0, 0, 1] }, b: { partId: m.partB, origin: [0, 0, 0], direction: [0, 0, 1] } });
+          specMates.push({ id: m.id, kind: 'parallel', a: { partId: m.partA, refId: 'z_axis' }, b: { partId: m.partB, refId: 'z_axis' } });
           break;
         case 'angle':
-          mates.push({ kind: 'angle', a: { partId: m.partA, origin: [0, 0, 0], direction: [0, 0, 1] }, b: { partId: m.partB, origin: [0, 0, 0], direction: [0, 0, 1] }, deg: m.value ?? 0 });
-          break;
-        case 'limitDistance':
-          mates.push({ kind: 'limitDistance', a: { partId: m.partA, position: [0, 0, 0] }, b: { partId: m.partB, position: [0, 0, 0] }, minMm: m.min ?? 0, maxMm: m.max ?? m.min ?? 0 });
-          break;
-        case 'limitAngle':
-          mates.push({ kind: 'limitAngle', a: { partId: m.partA, origin: [0, 0, 0], direction: [0, 0, 1] }, b: { partId: m.partB, origin: [0, 0, 0], direction: [0, 0, 1] }, minDeg: m.min ?? 0, maxDeg: m.max ?? m.min ?? 0 });
+          specMates.push({ id: m.id, kind: 'angle', a: { partId: m.partA, refId: 'z_axis' }, b: { partId: m.partB, refId: 'z_axis' }, value: m.value ?? 0 });
           break;
         // `gear` is a motion coupling (ratio between two revolute axes) —
         // it has no static-placement meaning, so the reactive re-solve skips
@@ -4903,23 +4903,45 @@ export function ShapeGeneratorInner() {
         // `width` needs the two reference-face planes which this synthetic
         // origin-axis path doesn't carry; it solves through the geometry
         // path (`applyGeometryMatesToPlaced` / Solver tab) instead.
+        // `limitDistance`/`limitAngle` (inequality mates) aren't in #1's
+        // MateKind union yet — same honest skip as gear/width above, not a
+        // regression (the retired module's limitDistance path had the same
+        // divergence bug as coincident/distance, so this reactive re-solve
+        // was never reliably honoring it either).
         default:
           break;
       }
     }
-    if (mates.length === 0) return;
+    if (specMates.length === 0) return;
     let cancelled = false;
-    void import('@/lib/nexyfab/assemblyMateSolver').then(({ solveMates }) => {
+    void import('@/lib/assembly/api').then(({ solveMates }) => {
       if (cancelled) return;
-      const result = solveMates(seed, mates, { fixedPartIds: [placedParts[0].id] });
+      const parts = placedParts.map((p, i) => ({
+        partId: p.id,
+        position: { x: seed[p.id]!.position[0], y: seed[p.id]!.position[1], z: seed[p.id]!.position[2] },
+        orientation: { x: seed[p.id]!.rotation[1], y: seed[p.id]!.rotation[2], z: seed[p.id]!.rotation[3], w: seed[p.id]!.rotation[0] },
+        fixed: i === 0,
+      }));
+      let result: ReturnType<typeof solveMates>;
+      try {
+        result = solveMates(parts, specMates);
+      } catch {
+        // A mate ref failed to resolve, or the assembly was otherwise
+        // invalid (e.g. a duplicate id) — the same honest-refuse contract
+        // as the retired module's non-convergence path, just surfaced as a
+        // thrown error instead of a residual number.
+        addToast('warning', 'Mate solver could not resolve this assembly.');
+        return;
+      }
       // Write converged frames back to placedParts as euler degrees.
       const updated = placedParts.map(p => {
-        const f = result.frames[p.id];
+        const f = result.partById.get(p.id);
         if (!f) return p;
+        const q: [number, number, number, number] = [f.orientation.w, f.orientation.x, f.orientation.y, f.orientation.z];
         return {
           ...p,
-          position: f.position,
-          rotation: quatToEuler(f.rotation),
+          position: [f.position.x, f.position.y, f.position.z] as [number, number, number],
+          rotation: quatToEuler(q),
         };
       });
       // Only commit if anything actually changed to avoid feedback loops.
@@ -4930,8 +4952,8 @@ export function ShapeGeneratorInner() {
           || Math.abs(p.position[2] - o.position[2]) > 1e-3;
       });
       if (changed) setPlacedParts(updated);
-      if (!result.converged && result.residual > 0.1) {
-        addToast('warning', `Mate solver did not converge (residual ${result.residual.toFixed(2)} mm)`);
+      if (!result.converged && result.finalMaxResidual > 0.1) {
+        addToast('warning', `Mate solver did not converge (residual ${result.finalMaxResidual.toFixed(2)} mm)`);
       }
     });
     return () => { cancelled = true; };
