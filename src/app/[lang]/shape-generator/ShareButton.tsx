@@ -123,6 +123,16 @@ export default function ShareButton({
   const timerViewRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const timerCollabRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevAutoOpenKeyRef = useRef(autoOpenKey);
+  // Honesty gate (round-4 dogfooding): the "Live Collab Link" copy claims
+  // real-time Yjs sync unconditionally, in every locale. useAssemblyState's
+  // WebsocketProvider only actually connects when this env var is set — and
+  // in every current deployment it is NOT (no producer anywhere in the repo:
+  // no .env.example entry, no deploy config). Without this gate, a second
+  // person opening the link gets a silently-isolated local document with zero
+  // indication collab never connected. Hide the section entirely rather than
+  // show a link that looks like it works but doesn't.
+  const collabAvailable =
+    typeof process !== 'undefined' && !!process.env.NEXT_PUBLIC_ASSEMBLY_COLLAB_WS_URL;
 
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? lang ?? 'en';
@@ -360,25 +370,30 @@ export default function ShareButton({
             </div>
           </div>
 
-          {/* Divider */}
-          <div style={{ borderTop: `1px solid ${C.border}` }} />
-
           {/* ── Collab Link — Item 4 of usability cleanup. Yjs picks up the
-                 `?room=` URL param and joins the same CRDT room automatically. */}
-          <div>
-            <div style={sectionLabelStyle}>
-              👥 {t.collabLink}
-            </div>
-            <div style={urlRowStyle}>
-              <span style={{ ...urlTextStyle, color: '#7fa9ff' }}>{collabUrl}</span>
-              <button style={copyBtnStyle(copiedCollab)} onClick={handleCopyCollab}>
-                {copiedCollab ? t.copyDone : t.copy}
-              </button>
-            </div>
-            <div style={{ fontSize: 10, color: C.textDim, marginTop: 4 }}>
-              {t.collabHint}
-            </div>
-          </div>
+                 `?room=` URL param and joins the same CRDT room automatically.
+                 Only rendered when a real WS endpoint is actually configured
+                 (see collabAvailable above) — never advertise a link that
+                 silently isolates a second visitor instead of syncing. */}
+          {collabAvailable && (
+            <>
+              <div style={{ borderTop: `1px solid ${C.border}` }} />
+              <div>
+                <div style={sectionLabelStyle}>
+                  👥 {t.collabLink}
+                </div>
+                <div style={urlRowStyle}>
+                  <span style={{ ...urlTextStyle, color: '#7fa9ff' }}>{collabUrl}</span>
+                  <button style={copyBtnStyle(copiedCollab)} onClick={handleCopyCollab}>
+                    {copiedCollab ? t.copyDone : t.copy}
+                  </button>
+                </div>
+                <div style={{ fontSize: 10, color: C.textDim, marginTop: 4 }}>
+                  {t.collabHint}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
