@@ -273,4 +273,34 @@ describe('suggest_gdt_for_intent — tool executor wire', () => {
     const hole = suggestions.find(s => s.source === 'hole')!;
     expect(hole.toleranceMm).toBeCloseTo(0.3);
   });
+
+  it('processForDfm case/hyphen variants normalize the same as the canonical form (no silent cnc_mill substitution)', async () => {
+    const tools = makeTools(noopHost());
+    const intent = {
+      shapeId: 'box',
+      params: { width: 50, height: 50, depth: 50 },
+      features: [{ type: 'hole', params: { x: 0, y: 0, diameter: 5 } }],
+    };
+    for (const variant of ['FDM', 'Fdm', ' fdm ', 'fff', '3d_printing']) {
+      const res = asOk(await tool(tools, 'suggest_gdt_for_intent')({ intent, processForDfm: variant }, blankSession()));
+      const hole = (res.meta!.suggestions as Array<{ source: string; toleranceMm: number }>).find(s => s.source === 'hole')!;
+      expect(hole.toleranceMm, `variant '${variant}'`).toBeCloseTo(0.3); // fdm tolerance, NOT cnc_mill's 0.1
+    }
+    const cncVariant = await tool(tools, 'suggest_gdt_for_intent')({ intent, processForDfm: 'cnc-mill' }, blankSession());
+    expect(cncVariant.ok).toBe(true);
+    if (cncVariant.ok) {
+      const hole = (cncVariant.meta!.suggestions as Array<{ source: string; toleranceMm: number }>).find(s => s.source === 'hole')!;
+      expect(hole.toleranceMm).toBeCloseTo(0.1);
+    }
+  });
+
+  it('a truly unrecognized processForDfm is refused loudly (BAD_ARGS), not silently substituted', async () => {
+    const tools = makeTools(noopHost());
+    const res = await tool(tools, 'suggest_gdt_for_intent')(
+      { intent: { shapeId: 'box', params: {} }, processForDfm: 'made_up_process' },
+      blankSession(),
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.code).toBe('BAD_ARGS');
+  });
 });

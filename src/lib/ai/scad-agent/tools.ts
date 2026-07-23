@@ -743,10 +743,21 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     }
     const opts: SuggestGdtOptions = {};
     if (typeof a.processForDfm === 'string') {
-      const allowed: SuggestGdtOptions['processForDfm'][] = ['fdm', 'sla', 'cnc_mill', 'sheet', 'injection_molding', 'die_cast'];
-      if ((allowed as string[]).includes(a.processForDfm)) {
-        opts.processForDfm = a.processForDfm as SuggestGdtOptions['processForDfm'];
+      // mapUserPrefToProcess normalizes case/hyphen/whitespace variants ("FDM",
+      // "cnc-mill", " fdm ") — an exact-match-only check silently dropped any
+      // of those, and suggestGdtForIntent's own default (cnc_mill, the
+      // TIGHTEST tolerance class) then applied with zero indication anything
+      // was wrong: a user typing "FDM" got CNC-mill-grade position tolerances
+      // (0.1mm vs the intended 0.3mm) baked into their GD&T frames silently.
+      const normalized = mapUserPrefToProcess(a.processForDfm);
+      if (!normalized) {
+        return {
+          ok: false,
+          error: `processForDfm='${a.processForDfm}' is not recognized (expected fdm|sla|cnc_mill|sheet|injection_molding|die_cast, or a common synonym)`,
+          code: 'BAD_ARGS',
+        };
       }
+      opts.processForDfm = normalized;
     }
     if (typeof a.grade === 'string') {
       const allowedGrade: SuggestGdtOptions['grade'][] = ['rough', 'standard', 'precision'];

@@ -125,8 +125,15 @@ export function suggestGdtForIntent(
   if (!intent || typeof intent !== 'object' || typeof intent.shapeId !== 'string') {
     return [];
   }
-  const process = opts.processForDfm ?? 'cnc_mill';
-  const grade = opts.grade ?? 'standard';
+  // Defensive fallback to the documented default when the value doesn't index
+  // PROCESS_TOLERANCE/GRADE_SCALE — not just when it's undefined. The ONE
+  // caller in this codebase (scad-agent/tools.ts) already validates before
+  // calling, but this function is exported and a future caller (a new tool, a
+  // batch script) crashed with an unhandled TypeError on any bad string
+  // (`PROCESS_TOLERANCE[process]` indexed with no guard) rather than degrading
+  // to the same safe default an undefined value gets.
+  const process = opts.processForDfm && opts.processForDfm in PROCESS_TOLERANCE ? opts.processForDfm : 'cnc_mill';
+  const grade = opts.grade && opts.grade in GRADE_SCALE ? opts.grade : 'standard';
   const baseTol = PROCESS_TOLERANCE[process];
   const scale = GRADE_SCALE[grade];
 
