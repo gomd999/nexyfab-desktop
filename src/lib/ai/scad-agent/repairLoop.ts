@@ -240,23 +240,56 @@ export async function runRepairLoop(opts: RepairLoopOptions): Promise<RepairLoop
     // repair prompt below tells the model precisely what to fix.
     if (session) session.budget = makeInitialBudget(budgetCaps);
 
-    const run = await runScadAgent({
-      userPrompt: nextPrompt,
-      // Deterministic dimension reconcile (add_feature_intent) always reads the
-      // user's ORIGINAL request — never the repair feedback that nextPrompt
-      // carries on attempt >= 2 — so restated gate numbers can't skew it.
-      originalPrompt: opts.userPrompt,
-      session,
-      ai: family.client,
-      tools: opts.tools,
-      // Disable the deterministic fast-path on repair attempts — the repair
-      // prompt is free text that would never match a catalog pattern anyway,
-      // and we always want the model to actually re-reason on a fix.
-      fastPath: attempt === 1 ? undefined : false,
-      onEvent: emit,
-      signal: opts.signal,
-      ...budgetCaps,
-    });
+    let run: Awaited<ReturnType<typeof runScadAgent>>;
+    try {
+      run = await runScadAgent({
+        userPrompt: nextPrompt,
+        // Deterministic dimension reconcile (add_feature_intent) always reads the
+        // user's ORIGINAL request — never the repair feedback that nextPrompt
+        // carries on attempt >= 2 — so restated gate numbers can't skew it.
+        originalPrompt: opts.userPrompt,
+        session,
+        ai: family.client,
+        tools: opts.tools,
+        // Disable the deterministic fast-path on repair attempts — the repair
+        // prompt is free text that would never match a catalog pattern anyway,
+        // and we always want the model to actually re-reason on a fix.
+        fastPath: attempt === 1 ? undefined : false,
+        onEvent: emit,
+        signal: opts.signal,
+        ...budgetCaps,
+      });
+    } catch (e) {
+      // A THROWN error here (provider outage/cooldown, network failure) is
+      // distinct from a normal failed-gate attempt: `chatCompletion` locks to
+      // a single provider once a family requests one explicitly (no in-call
+      // fallback — see src/lib/ai/index.ts resolveChain), so a family that's
+      // mid-cooldown throws outright instead of returning a bad session. Left
+      // unhandled, that exception propagated out of this whole function,
+      // discarding `best` — an EARLIER attempt's genuinely passing result —
+      // just because a LATER attempt hit a transient provider hiccup. Treat it
+      // as a recorded, retryable failure instead: series-switch still applies,
+      // and only exhausting every attempt with nothing to show for it is a
+      // real (thrown) failure.
+      const message = e instanceof Error ? e.message : String(e);
+      emit({ type: 'error', message: `attempt ${attempt} (${family.family}): ${message}` });
+      const rec: AttemptRecord = {
+        attempt, family: family.family, verdict: null, geomPassed: false, vision: null, visionFlagged: false,
+      };
+      attempts.push(rec);
+      if (!best && attempt === maxAttempts) throw e; // truly nothing to return, ever
+      if (attempt < maxAttempts) {
+        consecutiveFails += 1;
+        if (consecutiveFails >= switchAfter && !singleFamily) {
+          const from = family.family;
+          familyIdx = (familyIdx + 1) % families.length;
+          seriesSwitched = true;
+          consecutiveFails = 0;
+          log(`series-switch: ${from} -> ${families[familyIdx].family} after a provider error`);
+        }
+      }
+      continue;
+    }
     session = run.session;
 
     // ── Deterministic gate (source of truth) ──

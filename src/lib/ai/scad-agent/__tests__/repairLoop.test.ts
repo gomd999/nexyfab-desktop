@@ -299,4 +299,84 @@ describe('runRepairLoop (orchestration)', () => {
       }),
     ).rejects.toThrow(/at least one AI family/);
   });
+
+  // A client that throws on its Nth call (1-indexed) — models a transient
+  // provider outage (e.g. chatCompletion's cooldown circuit-breaker, which
+  // throws outright with no in-call fallback once a family is explicitly
+  // requested — see src/lib/ai/index.ts resolveChain).
+  function throwingAi(label: string, throwFromCall: number, sink: string[]): AiClient {
+    let calls = 0;
+    return {
+      async complete(messages) {
+        calls += 1;
+        if (calls >= throwFromCall) throw new Error(`${label}: degraded (cooldown)`);
+        const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+        sink.push(`[${label}] ${lastUser?.content ?? ''}`);
+        return { text: `done by ${label}.`, promptTokens: 10, completionTokens: 5 };
+      },
+    };
+  }
+
+  it('a later attempt throwing (provider outage) does NOT discard an earlier passing attempt', async () => {
+    const prompts: string[] = [];
+    // attempt 1 (alpha) passes the gate; a repair loop that keeps running would
+    // switch to beta for attempt 2 — model beta being mid-outage there.
+    const families: AiFamily[] = [
+      { family: 'alpha', client: recordingAi('alpha', prompts) },
+      { family: 'beta', client: throwingAi('beta', 1, prompts) },
+    ];
+    const res = await runRepairLoop({
+      userPrompt: 'make a 50mm cube',
+      aiFamilies: families,
+      tools: noTools,
+      maxAttempts: 3,
+      switchAfter: 1,
+      // vision flags attempt 1's geometric pass so the loop keeps going and
+      // reaches the throwing family — exercising the "later attempt throws,
+      // earlier attempt already passed" path.
+      visionCritic: async () => ({ match: false, note: 'looks off-center' }),
+      gate: scriptedGate([{ passed: true, feedback: 'PASS' }]),
+    });
+
+    // The exception on attempt 2 must not have propagated — a real result
+    // came back, and it's attempt 1's genuine geometric pass, not discarded.
+    expect(res.passed).toBe(true);
+    expect(res.attemptsUsed).toBeGreaterThanOrEqual(1);
+  });
+
+  it('every attempt throwing surfaces the error honestly (nothing to fall back to)', async () => {
+    const families: AiFamily[] = [
+      { family: 'alpha', client: throwingAi('alpha', 1, []) },
+    ];
+    await expect(
+      runRepairLoop({
+        userPrompt: 'make a 50mm cube',
+        aiFamilies: families,
+        tools: noTools,
+        maxAttempts: 2,
+        gate: scriptedGate([{ passed: true, feedback: 'PASS' }]),
+      }),
+    ).rejects.toThrow(/degraded \(cooldown\)/);
+  });
+
+  it('an outage on attempt 2 of 2 (never recovers) still returns attempt 1 rather than throwing', async () => {
+    const prompts: string[] = [];
+    const families: AiFamily[] = [
+      { family: 'alpha', client: recordingAi('alpha', prompts) },
+      { family: 'beta', client: throwingAi('beta', 1, prompts) },
+    ];
+    const res = await runRepairLoop({
+      userPrompt: 'make a bracket',
+      aiFamilies: families,
+      tools: noTools,
+      maxAttempts: 2,
+      switchAfter: 1,
+      gate: scriptedGate([{ passed: false, feedback: 'needs a fix' }]),
+    });
+    // attempt 1 failed the gate (not thrown) so `best` holds a real, if
+    // failing, session; attempt 2 throws and must not crash the whole call.
+    expect(res.attemptsUsed).toBe(2);
+    expect(res.passed).toBe(false);
+    expect(res.session).toBeTruthy();
+  });
 });
