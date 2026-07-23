@@ -58,8 +58,16 @@ describe('WB-1 driver integration — revolve dimensions flow end-to-end', () =>
 
   it('loft/sweep dimensions are STILL refused (WB backlog unchanged)', async () => {
     const plan = revolveBushingPlan();
-    // Swap the body to a sweep kind (measurement builder still absent).
-    (plan.parts[0]!.bodies[0]!.feature as { kind: string }).kind = 'sweep';
+    // Swap the body to a STRUCTURALLY VALID sweep feature (measurement builder
+    // still absent for this kind) — a kind-only swap no longer reaches the
+    // preflight backlog-refusal, since coerceFeature now validates the full
+    // per-kind shape (profile/path/mode) before preflight ever runs.
+    plan.parts[0]!.bodies[0]!.feature = {
+      kind: 'sweep',
+      profile: { points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }] },
+      path: [{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 20 }],
+      mode: 'add',
+    } as unknown as typeof plan.parts[0]['bodies'][0]['feature'];
     const mockLlm = makeLlmPlanner({ complete: async () => JSON.stringify(plan) });
     const res = await runDesignDriver({ id: 'llm-sweep', text: 'x' }, { planner: mockLlm });
     expect(res.ok).toBe(false);

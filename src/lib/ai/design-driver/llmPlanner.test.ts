@@ -150,14 +150,14 @@ describe('makeLlmPlanner — plan preflight', () => {
               bodyId: 'main',
               feature: {
                 kind: 'revolve',
-                profile: [
+                loop: [
                   { x: 0, y: 0 },
                   { x: 10, y: 0 },
                   { x: 10, y: 20 },
                   { x: 0, y: 20 },
                 ],
-                angle: 360,
-                axis: 'y',
+                angleDegrees: 360,
+                mode: 'add',
               } as unknown as DesignPlan['parts'][number]['bodies'][number]['feature'],
             },
           ],

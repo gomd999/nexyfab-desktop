@@ -35,10 +35,10 @@
  *     is a property of the fixture/mock planner, not this one. The schema +
  *     preflight guarantee only that whatever DOES pass is a structurally valid,
  *     gate-eligible plan — correctness is still decided by the real gates.
- *   - `feature` payloads are whitelisted by `kind` only (the meshable set) and
- *     otherwise passed through to `featureToPolyhedron`, which validates the
- *     kind-specific fields. We do not re-enumerate every feature's geometry
- *     schema here; a malformed feature surfaces as a geometry-gate failure.
+ *   - `feature` payloads are validated per-kind (exact field shapes for
+ *     extrude/revolve/sweep/sweep_path/loft, matching src/lib/cad/*.ts
+ *     verbatim) so a malformed feature is a clean `stage:'plan'` PlannerError,
+ *     not a raw crash inside `featureToPolyhedron` at the mesh stage.
  */
 
 import { chatCompletion, type ChatMessage } from '@/lib/ai';
@@ -159,6 +159,54 @@ function reqArray(v: unknown, path: string): unknown[] {
 
 // ─── coercion: DesignPlan (drops unknown fields; type-checks required) ──────
 
+const EXTRUDE_DIRECTIONS = new Set(['one_sided', 'two_sided', 'midplane']);
+const FEATURE_MODES = new Set(['add', 'cut']);
+
+function coercePoint2D(v: unknown, path: string): { x: number; y: number } {
+  const o = reqObj(v, path);
+  return { x: reqNum(o.x, `${path}.x`), y: reqNum(o.y, `${path}.y`) };
+}
+
+function coercePoint3D(v: unknown, path: string): { x: number; y: number; z: number } {
+  const o = reqObj(v, path);
+  return { x: reqNum(o.x, `${path}.x`), y: reqNum(o.y, `${path}.y`), z: reqNum(o.z, `${path}.z`) };
+}
+
+function coerceLoop2D(v: unknown, path: string): Array<{ x: number; y: number }> {
+  const arr = reqArray(v, path);
+  if (arr.length < 3) throw new PlannerError(`${path}: expected a closed loop with >= 3 points, got ${arr.length}`);
+  return arr.map((p, i) => coercePoint2D(p, `${path}[${i}]`));
+}
+
+function coercePath3D(v: unknown, path: string): Array<{ x: number; y: number; z: number }> {
+  const arr = reqArray(v, path);
+  if (arr.length < 2) throw new PlannerError(`${path}: expected >= 2 points, got ${arr.length}`);
+  return arr.map((p, i) => coercePoint3D(p, `${path}[${i}]`));
+}
+
+function coerceProfile2D(v: unknown, path: string): { points: Array<{ x: number; y: number }> } {
+  const o = reqObj(v, path);
+  return { points: coerceLoop2D(o.points, `${path}.points`) };
+}
+
+function coerceFeatureMode(v: unknown, path: string): 'add' | 'cut' {
+  const mode = v === undefined ? 'add' : reqStr(v, path);
+  if (!FEATURE_MODES.has(mode)) throw new PlannerError(`${path}: must be 'add' or 'cut', got '${mode}'`);
+  return mode as 'add' | 'cut';
+}
+
+/**
+ * Kind-specific structural validation for the 5 meshable feature shapes. This
+ * closes a real gap (WA-D dogfooding, 260723): the model would emit a
+ * plausible-looking-but-wrong shape (e.g. a rectangle/box shorthand instead of
+ * an explicit point loop) that passed the old kind-only check and then crashed
+ * deep inside `featureToPolyhedron` with a raw, unhelpful error ("loop is not
+ * iterable") at the geometry-mesh stage — not the clean, actionable
+ * `stage:'plan'` refusal the honesty contract promises. Validating the exact
+ * field shapes here (matching src/lib/cad/{extrudeProfile,revolveProfile,
+ * sweepLoft,sweepPath}.ts verbatim) turns a malformed feature into a
+ * PlannerError with a precise reason, at the earliest possible point.
+ */
 function coerceFeature(v: unknown, path: string): PlanBody['feature'] {
   const o = reqObj(v, path);
   const kind = reqStr(o.kind, `${path}.kind`);
@@ -167,10 +215,46 @@ function coerceFeature(v: unknown, path: string): PlanBody['feature'] {
       `${path}.kind='${kind}' is not a meshable feature (supported: ${[...MESHABLE_KINDS].join(', ')})`,
     );
   }
-  // Payload passed through to featureToPolyhedron (kind-specific validation
-  // lives there). We keep the whole object rather than re-enumerate every
-  // feature schema — documented as a limitation.
-  return o as unknown as PlanBody['feature'];
+  if (kind === 'extrude') {
+    const loop = coerceLoop2D(o.loop, `${path}.loop`);
+    const depth = reqNum(o.depth, `${path}.depth`);
+    if (depth <= 0) throw new PlannerError(`${path}.depth: must be positive, got ${depth}`);
+    const direction = o.direction === undefined ? 'one_sided' : reqStr(o.direction, `${path}.direction`);
+    if (!EXTRUDE_DIRECTIONS.has(direction)) {
+      throw new PlannerError(`${path}.direction: must be one of ${[...EXTRUDE_DIRECTIONS].join('|')}, got '${direction}'`);
+    }
+    const mode = coerceFeatureMode(o.mode, `${path}.mode`);
+    return { kind: 'extrude', loop, depth, direction, mode } as unknown as PlanBody['feature'];
+  }
+  if (kind === 'revolve') {
+    const loop = coerceLoop2D(o.loop, `${path}.loop`);
+    const angleDegrees = reqNum(o.angleDegrees, `${path}.angleDegrees`);
+    const mode = coerceFeatureMode(o.mode, `${path}.mode`);
+    return { kind: 'revolve', loop, angleDegrees, mode } as unknown as PlanBody['feature'];
+  }
+  if (kind === 'sweep') {
+    const profile = coerceProfile2D(o.profile, `${path}.profile`);
+    const sweepPath = coercePath3D(o.path, `${path}.path`);
+    const mode = coerceFeatureMode(o.mode, `${path}.mode`);
+    return { kind: 'sweep', profile, path: sweepPath, mode } as unknown as PlanBody['feature'];
+  }
+  if (kind === 'sweep_path') {
+    const profile = coerceLoop2D(o.profile, `${path}.profile`);
+    const sweepPath = coercePath3D(o.path, `${path}.path`);
+    return { kind: 'sweep_path', profile, path: sweepPath } as unknown as PlanBody['feature'];
+  }
+  // kind === 'loft' (the only remaining MESHABLE_KINDS member)
+  const sectionsArr = reqArray(o.sections, `${path}.sections`);
+  if (sectionsArr.length < 2) throw new PlannerError(`${path}.sections: loft needs >= 2 sections, got ${sectionsArr.length}`);
+  const sections = sectionsArr.map((s, i) => {
+    const so = reqObj(s, `${path}.sections[${i}]`);
+    return {
+      profile: coerceProfile2D(so.profile, `${path}.sections[${i}].profile`),
+      z: reqNum(so.z, `${path}.sections[${i}].z`),
+    };
+  });
+  const mode = coerceFeatureMode(o.mode, `${path}.mode`);
+  return { kind: 'loft', sections, mode } as unknown as PlanBody['feature'];
 }
 
 function coerceTranslate(v: unknown, path: string): PlanBody['translate'] {
@@ -609,7 +693,7 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
       "bodies": [                 // >= 1; bodies[0] is the primary drawing source
         {
           "bodyId": string,       // unique within the part
-          "feature": <MeshableFeature>,   // kind in: extrude|revolve|sweep|sweep_path|loft
+          "feature": <MeshableFeature>,   // kind in: extrude|revolve|sweep|sweep_path|loft — EXACT field names below, no other shape is accepted
           "translate": {"x":number,"y":number,"z":number}?  // placement in PART frame
         }
       ],
@@ -705,6 +789,25 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
     ]
   }
 }
+
+MESHABLE FEATURE SHAPES — a body's "feature" MUST be exactly one of these five shapes (field names
+verbatim; extra fields are dropped, missing/mistyped required fields are REFUSED before any gate runs):
+  extrude:    { "kind":"extrude", "loop":[{"x":number,"y":number}, ...>=3 pts, CCW],
+                "depth":number>0, "direction":"one_sided"|"two_sided"|"midplane", "mode":"add"|"cut" }
+  revolve:    { "kind":"revolve", "loop":[{"x":number,"y":number}, ...>=3 pts, x>=0 half-profile],
+                "angleDegrees":number, "mode":"add"|"cut" }
+  sweep:      { "kind":"sweep", "profile":{"points":[{"x":number,"y":number}, ...>=3 pts]},
+                "path":[{"x":number,"y":number,"z":number}, ...>=2 pts], "mode":"add"|"cut" }
+  sweep_path: { "kind":"sweep_path", "profile":[{"x":number,"y":number}, ...>=3 pts],
+                "path":[{"x":number,"y":number,"z":number}, ...>=2 pts] }
+  loft:       { "kind":"loft",
+                "sections":[{"profile":{"points":[{"x":number,"y":number}, ...]}, "z":number}, ...>=2],
+                "mode":"add"|"cut" }
+There is NO "profile":{"kind":"rectangle",...} shorthand and no implicit box/cylinder primitive — a
+rectangle is a 4-point "loop" (or "profile.points"), a circle is a tessellated polygon loop (see below).
+Example — "a rectangular aluminum plate 80×50×6mm" is an EXTRUDE of a 4-point loop, NOT a box primitive:
+  { "kind":"extrude", "loop":[{"x":0,"y":0},{"x":80,"y":0},{"x":80,"y":50},{"x":0,"y":50}],
+    "depth":6, "direction":"one_sided", "mode":"add" }
 
 STABLE TOPOLOGY NAMING (dimension refs) — these are the ONLY measurable names, and ONLY on extrude bodies:
   faces:  f.cap.top, f.cap.bottom, f.side.{i}      (i = profile-edge index, 0-based)
