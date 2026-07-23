@@ -149,13 +149,23 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  silent: true,
-  widenClientFileUpload: true,
-  webpack: {
-    treeshake: { removeDebugLogging: true },
-    automaticVercelMonitors: false,
-  },
-});
+// Sentry's build-time webpack plugin (release creation + sourcemap upload)
+// needs SENTRY_AUTH_TOKEN to do anything — without it there is nothing for it
+// to upload, and this session found it throws an uncaught TypeError deep in
+// its own plugin (not our code) instead of a clean skip when org/project/token
+// are all unset, crashing `next build` entirely on any machine without the
+// token configured (every local/dev machine — Railway sets it as a secret).
+// Skip the wrapper entirely in that case; production builds (which always
+// have the token) are unaffected.
+export default process.env.SENTRY_AUTH_TOKEN
+  ? withSentryConfig(nextConfig, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      silent: true,
+      widenClientFileUpload: true,
+      webpack: {
+        treeshake: { removeDebugLogging: true },
+        automaticVercelMonitors: false,
+      },
+    })
+  : nextConfig;
