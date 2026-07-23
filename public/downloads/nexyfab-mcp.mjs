@@ -78,7 +78,7 @@ const tools = [
   },
   {
     name: 'analyze_fea',
-    description: '간이 FEA(구조·열·모달·열탄성) — scad + 재료(materialKey) + 상면 등가 하중(loadKg, 날조 금지·명시 필수) → 안전율/최대응력/변위/리포트. precise=true 면 gmsh 정밀 메시(느림). 원격(서버 OpenSCAD/gmsh)·선형등방 스크리닝·비법정.',
+    description: '간이 FEA(구조 — 선형정적만) — scad + 재료(materialKey) + 상면 등가 하중(loadKg, 날조 금지·명시 필수) → 안전율/최대응력/변위/리포트. precise=true 면 gmsh 정밀 메시(느림). 열/모달/열탄성은 이 도구로 불가(온도·주파수 입력 없음). 원격(서버 OpenSCAD/gmsh)·선형등방 스크리닝·비법정.',
     inputSchema: { type: 'object', required: ['scad', 'loadKg'], properties: { scad: { type: 'string', description: 'OpenSCAD 텍스트' }, materialKey: { type: 'string', description: '기본 steel' }, loadKg: { type: 'number', description: '상면 등가 하중 kg(0 초과)' }, precise: { type: 'boolean' } } },
   },
   {

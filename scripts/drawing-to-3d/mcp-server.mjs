@@ -586,10 +586,12 @@ export const tools = [
   {
     name: 'analyze_fea',
     description:
-      `★ 간이 FEA(구조·열·모달·열탄성) — 형상을 실제 메시로 이산화해 선형정적 응력/안전율을 낸다. ` +
+      `★ 간이 FEA(구조 — 선형정적만) — 형상을 실제 메시로 이산화해 선형정적 응력/안전율을 낸다. ` +
       `AI 없음(결정론+수치해석). 입력=scad(또는 compose_3d intent) + 재료(materialKey) + 상면 등가 하중(loadKg, ` +
       `날조 금지·명시 필수). precise=true 면 gmsh 경계정합 메시(인증후보급, ~수십초). 반환: {method, ` +
       `safetyFactor, maxStressMPa, maxDispMm, material, yieldMPa, mesh, raiser, reportHtml}. ` +
+      `⚠ 열/모달/열탄성 해석은 이 도구로 불가(입력에 온도·주파수 파라미터 없음) — 검증된 열/모달 솔버` +
+      `(thermalStress.ts/modalSolver.ts)는 브라우저 전용 스튜디오 패널(ModalAnalysisPanel)에서만 접근 가능. ` +
       `⚠원격 전용 — 호스팅 서버의 OpenSCAD/gmsh 바이너리가 필요(NEXYFAB_API_KEY 미설정 시 정직 거부). ` +
       `선형등방·자동 경계조건(스크리닝)·비법정 — 상세 해석은 유자격 기술자.`,
     inputSchema: {
