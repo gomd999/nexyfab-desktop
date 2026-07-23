@@ -941,7 +941,15 @@ export async function callTool(name, args = {}) {
     try { const dv = await import('./domain-dossier-verify.mjs'); const vh = dv.verificationReportHtml(args.assembly, { title, params: args.verifyParams ?? {} }); if (vh) save('검증.html', vh); } catch { /* skip */ }
     // ③b 도메인 안전검토(인테리어 피난·조경 목재·교량 활하중·건축 하중경로) — 도그푸딩 발견:
     // 이 체크들이 예전엔 도세에서 전혀 호출되지 않아 해당 안전검토가 통째로 없는 문서가 나갔다.
-    try { const dv2 = await import('./domain-dossier-verify.mjs'); const sh = dv2.domainSafetyReportHtml(args.assembly, { title, params: args.verifyParams ?? {} }); if (sh) save('안전검토.html', sh); } catch { /* skip */ }
+    let domainSafety = null;
+    try {
+      const dv2 = await import('./domain-dossier-verify.mjs');
+      const sh = dv2.domainSafetyReportHtml(args.assembly, { title, params: args.verifyParams ?? {} });
+      if (sh) save('안전검토.html', sh);
+      // 260723 도그푸딩 2차 발견: 안전검토.html엔 FAIL이 정확히 뜨는데, 소비자용 쉬운요약엔
+      // 이 판정이 전혀 안 넘어가 "이상 없음"으로 잘못 표시됐다 — FEA와 같은 이유로 별도 전달 필요.
+      domainSafety = dv2.domainSafetyVerdict(args.assembly, args.verifyParams ?? {});
+    } catch { /* skip */ }
     try { save('BOQ.html', boqm.boqReport(args.assembly, { title, domain: args.assembly.domain ?? 'mech' })); } catch { /* skip */ }
     try { save('Dossier.html', pd.dossierReport(args.assembly, { title })); } catch { /* skip */ }
     try { sheetsHtml = ps.partSheets(args.assembly, { title: title + ' — 부품 제작도' }); save('부품제작도.html', sheetsHtml); } catch { /* skip */ }
@@ -967,7 +975,7 @@ export async function callTool(name, args = {}) {
       executionGate = eg.checkExecutionReadiness(args.assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [] });
     } catch (e) { executionGate = { error: String(e).slice(0, 120) }; }
     // 일반인용 쉬운 요약(260719) — 전문가 산출물을 쉬운 말 5섹션 1페이지로(검도 결과 반영)
-    try { const es = await import('./easy-summary.mjs'); save('쉬운요약.html', es.easySummary(args.assembly, { title, domain: args.assembly.domain ?? 'mech', fileNames: files.map((f) => f.name), ...(executionGate && !executionGate.error ? { executionGate } : {}) })); } catch { /* skip */ }
+    try { const es = await import('./easy-summary.mjs'); save('쉬운요약.html', es.easySummary(args.assembly, { title, domain: args.assembly.domain ?? 'mech', fileNames: files.map((f) => f.name), ...(executionGate && !executionGate.error ? { executionGate } : {}), ...(domainSafety ? { domainSafety } : {}) })); } catch { /* skip */ }
     // 체결 자동(260719b): 플랜지 짝 볼트 세트 — BOM 보조(강도등급·개스킷=입력 명시)
     let fasteners = null;
     try { const fa = await import('./fastener-auto.mjs'); fasteners = fa.autoFasteners(args.assembly); } catch (e) { fasteners = { error: String(e).slice(0, 120) }; }

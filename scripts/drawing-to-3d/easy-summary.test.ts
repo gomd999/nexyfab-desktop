@@ -251,6 +251,32 @@ describe('일반인용 결과 요약(easySummary)', () => {
     expect(html).not.toContain('응력 해석(개산)');
   });
 
+  it('opts.domainSafety FAIL 전달 시 종합 판정이 위험으로 뒤집힌다(도그푸딩 260723 계속 — 인테리어 등)', () => {
+    // domainSafetyReportHtml(안전검토.html)엔 FAIL이 정확히 떴는데, 이 문서가 opts.domainSafety
+    // 없이는 그 판정을 아예 모른 채 "이상 없음"만 보여주던 결함(FEA와 같은 구조의 갭).
+    const html = easySummary(OK_ASM, {
+      domain: 'interior',
+      domainSafety: { label: '실내건축 검토 (피난·수용인원 등)', ok: false, failed: ['egress_width', 'exit_count'] },
+    });
+    expect(html).toContain('기준 미달 항목이 있습니다: egress_width, exit_count');
+    expect(html).toContain('보완 없이 제작에 들어가면 안 됩니다');
+    expect(html).toMatch(/실내건축 검토.*보완 필요/);
+  });
+
+  it('opts.domainSafety ok:true 전달 시 안전 경고 없이 "이상 없음"으로 표시된다', () => {
+    const html = easySummary(OK_ASM, {
+      domain: 'interior',
+      domainSafety: { label: '실내건축 검토 (피난·수용인원 등)', ok: true, failed: [] },
+    });
+    expect(html).toMatch(/실내건축 검토.*이상 없음/);
+    expect(html).not.toContain('보완 없이 제작에 들어가면 안 됩니다');
+  });
+
+  it('opts.domainSafety를 넘기지 않으면 기존과 동일하게 해당 판정 자체가 없다(하위 호환)', () => {
+    const html = easySummary(OK_ASM, { domain: 'mech' });
+    expect(html).not.toContain('실내건축 검토');
+  });
+
   it('XSS: 제목·부품 ID의 태그가 이스케이프된다', () => {
     const evil = {
       name: '<script>alert(1)</script>',

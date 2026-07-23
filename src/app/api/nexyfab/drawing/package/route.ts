@@ -211,11 +211,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch (e) { void e; }
   // 구조/응력 검토
   try { files.push({ name: 'structural.html', mime: 'text/html', content: mods.pkg.structuralReport(assembly, { title, member }) }); } catch (e) { void e; }
+  // domainSafety 는 아래 쉬운요약.html 호출에 그대로 전달된다 — feaSummary와 동일 이유:
+  // structural(강체 전도)만으로는 코드 위반(정원 초과·출구 부족 등)을 못 잡는다(260723 도그푸딩
+  // 3차 발견: 안전검토.html엔 FAIL이 정확히 뜨는데 쉬운요약엔 이 판정이 안 넘어가 "이상 없음"이었다).
+  let domainSafety: { label: string; ok: boolean; failed: string[] } | null = null;
   // ③ 형상+검증: 어셈블리 검증 메타(옹벽 등) → 분야 KDS 계산기 실행값(전도·활동·지지력…). 메타 없으면 미생성(정직).
   try {
     const dv = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'domain-dossier-verify.mjs')).href)) as {
       verificationReportHtml: (a: Assembly, o?: { title?: string; params?: Record<string, unknown> }) => string | null;
       domainSafetyReportHtml: (a: Assembly, o?: { title?: string; params?: Record<string, unknown> }) => string | null;
+      domainSafetyVerdict: (a: Assembly, params?: Record<string, unknown>) => { label: string; ok: boolean; failed: string[] } | null;
     };
     const vh = dv.verificationReportHtml(assembly, { title });
     if (vh) files.push({ name: '검증.html', mime: 'text/html', content: vh });
@@ -225,6 +230,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // 발생지 — 이쪽이 실제 웹사이트 "패키지 다운로드"가 쓰는 경로).
     const sh = dv.domainSafetyReportHtml(assembly, { title });
     if (sh) files.push({ name: '안전검토.html', mime: 'text/html', content: sh });
+    domainSafety = dv.domainSafetyVerdict(assembly, {});
   } catch (e) { void e; }
   // 물량·작업량 산출서 (BOQ, 금액 제외 — 비기계 분야는 재적 중심·공수 미산출)
   try { files.push({ name: 'BOQ.html', mime: 'text/html', content: mods.boq.boqReport(assembly, { title, domain }) }); } catch (e) { void e; }
@@ -322,6 +328,7 @@ ${(eg.items as Array<{ id: string; name: string; pass: boolean | null; detail: s
           fileNames: files.map((f) => f.name),
           ...(executionGate ? { executionGate } : {}),
           ...(feaSummary ? { fea: feaSummary } : {}),
+          ...(domainSafety ? { domainSafety } : {}),
         }),
       });
     }

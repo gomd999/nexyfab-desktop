@@ -89,6 +89,20 @@ function feaCautions(fea) {
   ];
 }
 
+/**
+ * 도메인 안전검토(피난·목재부재·활하중·하중경로 등, domain-dossier-verify.mjs의
+ * domainSafetyVerdict) 경고 — FEA와 같은 이유로 별도 소스: 인테리어 등 비기계
+ * 분야는 structural(강체 전도)만으로는 코드 위반(예: 정원 초과·출구 부족)을 전혀
+ * 못 잡는다(도그푸딩 발견: 240명 정원에 출구 1개인 패키지가 이 문서에서만
+ * "이상 없음"으로 표시됨 — 안전검토.html엔 FAIL이 정확히 떠 있었다). 새 판정을
+ * 만들지 않는다 — domainSafetyVerdict가 이미 낸 pass/fail만 옮긴다.
+ */
+function domainSafetyCautions(domainSafety) {
+  if (!domainSafety || domainSafety.ok) return [];
+  const items = (domainSafety.failed ?? []).join(', ') || '사유 미상';
+  return [`<b>${esc(domainSafety.label)}에서 기준 미달 항목이 있습니다: ${esc(items)}.</b> 지금 상태로는 제작·시공에 들어가면 안 됩니다 — 동봉된 '안전검토.html'에서 자세한 수치를 확인하세요.`];
+}
+
 // 표준 동봉 파일 → 용도 1줄. opts.fileNames 가 오면 그 목록에 있는 것만 설명(없는 파일 안내=거짓말).
 const FILE_USE = {
   'GA_2D_drawing.html': '전체 배치 도면 — 업체에 제일 먼저 보내는 도면입니다.',
@@ -162,6 +176,11 @@ function specText(g, stdById) {
  * @param {object} [opts.fea]           FEA(응력해석) 결과 요약 — **호출자가 넘길 때만** 안전 판정에
  *   반영. `{ safetyFactor: number, method?: string }`. structural(강체 전도/CG)과는 독립적인 계산이므로,
  *   FEA.html을 생성했다면 반드시 이걸 넘겨야 이 문서의 종합 판정에 위험이 드러난다(F2와 동일 원칙).
+ * @param {object} [opts.domainSafety]  도메인 안전검토(피난·목재부재·활하중·하중경로) 압축 판정 —
+ *   `domain-dossier-verify.mjs`의 `domainSafetyVerdict(assembly, params)` 반환값을 **호출자가 그대로
+ *   넘길 때만** 반영. `{ label: string, ok: boolean, failed: string[] }`. '안전검토.html'을 생성했다면
+ *   반드시 이걸 넘겨야 이 문서의 종합 판정에 코드 위반(정원 초과·출구 부족 등)이 드러난다(FEA와 동일 원칙 —
+ *   260723 도그푸딩 발견: 이걸 안 넘겨서 출구 부족 패키지가 이 문서에서만 "이상 없음"으로 표시됐었다).
  * @returns {string} 자립형 HTML
  */
 export function easySummary(assembly, opts = {}) {
@@ -274,20 +293,25 @@ ${stdWarn}</section>`;
   // structural만 보고 "이상 없음"으로 표시).
   const structCautions = structuralCautions(structural);
   const feaCautionList = feaCautions(opts.fea);
-  const allSafetyCautions = [...structCautions, ...feaCautionList];
+  const domainSafetyCautionList = domainSafetyCautions(opts.domainSafety);
+  const allSafetyCautions = [...structCautions, ...feaCautionList, ...domainSafetyCautionList];
   const feaFailed = !!opts.fea && Number.isFinite(opts.fea.safetyFactor) && opts.fea.safetyFactor < 1.2;
-  const safetyBlock = structural == null && !opts.fea
+  const domainSafetyFailed = !!opts.domainSafety && opts.domainSafety.ok === false;
+  const safetyBlock = structural == null && !opts.fea && !opts.domainSafety
     ? '<p class="sub">구조 검토(무게·전도)가 산출되지 않았습니다 — 안전 판정은 이 요약에 없습니다. 동봉된 구조 검토 문서를 확인하세요.</p>'
     : allSafetyCautions.length
       ? `<p class="warn"><b>⚠ 안전 경고 — 지금 형상 그대로 만들면 위험합니다.</b> 구조 검토(개산)에서 아래 ${allSafetyCautions.length}건이 걸렸습니다. 만들기 전에 반드시 해결하거나 기술사 검토를 받으세요.</p>
 <ul>${allSafetyCautions.map((c) => `<li>${c}</li>`).join('')}</ul>`
       : '<p class="sub">구조 검토(개산)에서 걸린 안전 경고는 없습니다 — 다만 이는 형상·무게 기준 개산이며, 실제 지반·바람·지진·사용 하중은 반영되어 있지 않습니다(안전 보증 아님).</p>';
-  // 종합 판정(구조 + FEA + 형상 타당성)을 한 줄로 — 어느 쪽이든 FAIL 이면 요약에서도 FAIL 로 보여야 한다.
-  const structVerdictFailed = structural?.ok === false || built.designOk === false || feaFailed;
+  // 종합 판정(구조 + FEA + 도메인 안전검토 + 형상 타당성)을 한 줄로 — 어느 쪽이든 FAIL 이면 요약에서도 FAIL 로 보여야 한다.
+  const structVerdictFailed = structural?.ok === false || built.designOk === false || feaFailed || domainSafetyFailed;
   const feaVerdictText = opts.fea && Number.isFinite(opts.fea.safetyFactor)
     ? ` · 응력 해석(개산) <b>${feaFailed ? '보완 필요' : '이상 없음'}</b>`
     : '';
-  const verdict = `<p class="${structVerdictFailed ? 'warn' : 'sub'}">자동 점검 종합: 구조 안전(개산) <b>${structural == null ? '미산출' : structural.ok ? '이상 없음' : '보완 필요'}</b>${feaVerdictText} · 형상 타당성(부유·간섭·배관) <b>${built.designOk == null ? '미산출' : built.designOk ? '이상 없음' : '보완 필요'}</b>${structVerdictFailed ? ' — 보완 없이 제작에 들어가면 안 됩니다.' : ''}</p>`;
+  const domainSafetyVerdictText = opts.domainSafety
+    ? ` · ${esc(opts.domainSafety.label)} <b>${domainSafetyFailed ? '보완 필요' : '이상 없음'}</b>`
+    : '';
+  const verdict = `<p class="${structVerdictFailed ? 'warn' : 'sub'}">자동 점검 종합: 구조 안전(개산) <b>${structural == null ? '미산출' : structural.ok ? '이상 없음' : '보완 필요'}</b>${feaVerdictText}${domainSafetyVerdictText} · 형상 타당성(부유·간섭·배관) <b>${built.designOk == null ? '미산출' : built.designOk ? '이상 없음' : '보완 필요'}</b>${structVerdictFailed ? ' — 보완 없이 제작에 들어가면 안 됩니다.' : ''}</p>`;
 
   const s3 = `<section><h2>③ 만들 때 주의할 점</h2>
 ${safetyBlock}

@@ -188,6 +188,43 @@ function renderGenericCheckTree(node, depth = 0) {
 }
 
 /**
+ * 스키마 불문 실패 수집기(renderGenericCheckTree와 동일 철학) — 트리를 걸어
+ * pass:false 또는 verdict:'FAIL' 인 노드의 키를 모은다. 자식 중 실패가 있으면
+ * 그 자식들(더 구체적)만 보고하고, 자식이 전혀 실패를 안 냈을 때만 자기 자신의
+ * verdict/pass를 본다(egress처럼 verdict가 checks의 롤업인 도메인과, verdict만
+ * 있고 하위 pass 매트릭스가 없는 도메인 둘 다 정확히 처리).
+ */
+function collectFailingChecks(node, key) {
+  if (node == null || typeof node !== 'object') return [];
+  if (Array.isArray(node)) return node.flatMap((item) => collectFailingChecks(item, key));
+  const childFailures = Object.entries(node)
+    .filter(([k, v]) => k !== 'refs' && k !== 'error' && k !== 'note' && v && typeof v === 'object')
+    .flatMap(([k, v]) => collectFailingChecks(v, k));
+  if (childFailures.length) return childFailures;
+  if (node.pass === false) return [key ?? '검토'];
+  if (node.verdict === 'FAIL') return [key ?? '검토'];
+  return [];
+}
+
+/**
+ * easySummary() 용 압축 판정 — domainSafetyReportHtml과 같은 소스(runDomainSafetyCheck)를
+ * 재사용해 PASS/FAIL 여부만 뽑는다. **새 판정을 만들지 않는다**(feaCautions와 동일 원칙) —
+ * 여기서 나온 pass/verdict 필드만 읽는다. 이 분야에 적용 가능한 안전검토가 없으면 null
+ * (mech 등 — "검토 없음"과 "검토했는데 통과"를 혼동하면 안 된다).
+ * @returns {{label:string, ok:boolean, failed:string[]}|null}
+ */
+export function domainSafetyVerdict(assembly, params = {}) {
+  const run = runDomainSafetyCheck(assembly, params);
+  if (!run) return null;
+  const r = run.result;
+  if (!r || r.ok === false) {
+    return { label: run.label, ok: false, failed: [`검토 실행 불가: ${r?.error ?? r?.gateError ?? '사유 미상'}`] };
+  }
+  const failed = collectFailingChecks(r);
+  return { label: run.label, ok: failed.length === 0, failed };
+}
+
+/**
  * 안전검토 문서 HTML(인테리어 피난·조경 목재·교량 활하중·건축 하중경로). 해당
  * 도메인에 적용 가능한 체크가 없거나 체크 자체가 미적용(ok:false — 형상 메타
  * 부족 등)이면 그 사유를 보여준다("파일이 그냥 안 나옴"으로 숨기지 않는다).
