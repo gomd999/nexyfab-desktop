@@ -841,7 +841,23 @@ Example — "a rectangular aluminum plate 80×50×6mm" is an EXTRUDE of a 4-poin
 
 STABLE TOPOLOGY NAMING (dimension refs) — these are the ONLY measurable names, and ONLY on extrude bodies:
   faces:  f.cap.top, f.cap.bottom, f.side.{i}      (i = profile-edge index, 0-based)
-  edges:  e.vert.{i}, e.top.{i}-{j}, e.bottom.{i}-{j}
+  edges:  e.vert.{i}                               (ONE index — see note below)
+          e.top.{i}-{j}, e.bottom.{i}-{j}           (TWO indices — see note below)
+IMPORTANT — do not guess the index count, it is NOT interchangeable between these two edge kinds:
+  - "e.vert.{i}" takes exactly ONE index. It is the VERTICAL edge that the extrusion sweeps out of a
+    single profile vertex i — the segment from bottom-copy-of-vertex-i to top-copy-of-vertex-i. There is
+    only one vertex, so only one index. Writing "e.vert.{i}-{j}" (pairing two vertex indices, as if it
+    were a horizontal edge) is INVALID and will be refused.
+  - "e.top.{i}-{j}" / "e.bottom.{i}-{j}" take exactly TWO indices — the two profile-edge endpoints (i,j)
+    of that horizontal cap edge, because a horizontal edge on the top or bottom cap DOES connect two
+    distinct profile vertices.
+  Example — a 4-point rectangular loop [0,1,2,3] (CCW) extruded to depth d has:
+    faces: f.cap.top, f.cap.bottom, f.side.0, f.side.1, f.side.2, f.side.3
+    vertical edges: e.vert.0, e.vert.1, e.vert.2, e.vert.3  (one per profile vertex — NOT e.vert.0-1)
+    top cap edges: e.top.0-1, e.top.1-2, e.top.2-3, e.top.3-0
+  A dimension measuring the plate's overall WIDTH (distance between the two long vertical edges) would be:
+    { "id":"d_width", "partId":"plate", "bodyId":"b0", "view":"top", "kind":"linear",
+      "refs":["e.vert.0","e.vert.1"], "expected":80 }
 A dimension whose refs are outside this grammar, or that targets a revolve/sweep/loft body, WILL be refused before any gate — those kinds have no topology namer yet (backlog). For circular sections that must be dimensioned, use a polygon-tessellated EXTRUDE whose cap vertices lie exactly on the true circle, and state the tessellation deviation in expectedVolume.basis.
 
 HONESTY RULES:
