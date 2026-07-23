@@ -213,9 +213,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try { files.push({ name: 'structural.html', mime: 'text/html', content: mods.pkg.structuralReport(assembly, { title, member }) }); } catch (e) { void e; }
   // ③ 형상+검증: 어셈블리 검증 메타(옹벽 등) → 분야 KDS 계산기 실행값(전도·활동·지지력…). 메타 없으면 미생성(정직).
   try {
-    const dv = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'domain-dossier-verify.mjs')).href)) as { verificationReportHtml: (a: Assembly, o?: { title?: string; params?: Record<string, unknown> }) => string | null };
+    const dv = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'domain-dossier-verify.mjs')).href)) as {
+      verificationReportHtml: (a: Assembly, o?: { title?: string; params?: Record<string, unknown> }) => string | null;
+      domainSafetyReportHtml: (a: Assembly, o?: { title?: string; params?: Record<string, unknown> }) => string | null;
+    };
     const vh = dv.verificationReportHtml(assembly, { title });
     if (vh) files.push({ name: '검증.html', mime: 'text/html', content: vh });
+    // ③b 도메인 안전검토(인테리어 피난·조경 목재·교량 활하중·건축 하중경로) — 이 웹
+    // 패키지 라우트도 MCP generate_package와 별개 구현이라 같은 배선이 빠져있었다
+    // (도그푸딩 발견: 인테리어/조경/교량 도세가 안전검토 없이 나가던 문제의 두 번째
+    // 발생지 — 이쪽이 실제 웹사이트 "패키지 다운로드"가 쓰는 경로).
+    const sh = dv.domainSafetyReportHtml(assembly, { title });
+    if (sh) files.push({ name: '안전검토.html', mime: 'text/html', content: sh });
   } catch (e) { void e; }
   // 물량·작업량 산출서 (BOQ, 금액 제외 — 비기계 분야는 재적 중심·공수 미산출)
   try { files.push({ name: 'BOQ.html', mime: 'text/html', content: mods.boq.boqReport(assembly, { title, domain }) }); } catch (e) { void e; }
