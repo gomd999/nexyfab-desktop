@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/en/shape-generator',
@@ -34,7 +34,11 @@ const f = (id: string, params: Record<string, number> = {}): FeatureInstance => 
 });
 
 beforeEach(() => {
-  usePdmSessionStore.setState({ repo: null, rev: 0, isDemo: false, pendingMerge: null });
+  usePdmSessionStore.setState({
+    repo: null, rev: 0, isDemo: false, pendingMerge: null, aiRuns: [],
+    documentId: null, persistFetch: null, lastPersistError: null,
+    versionIdByCommit: {}, restoredGraph: null,
+  });
   useShellBridge.setState({ featureItems: [], selectedFeatureId: null });
 });
 
@@ -203,5 +207,72 @@ describe('VersionTreePanel — merge UI consumer', () => {
 
     expect(screen.queryByTestId('pdm-merge-view')).toBeNull();
     expect(usePdmSessionStore.getState().repo!.listCommits()).toHaveLength(before);
+  });
+});
+
+describe('VersionTreePanel — server history (G4 bridge, advisory gate badges, 260723)', () => {
+  it('without a documentId prop, the server-history section says it is not bound', async () => {
+    render(<VersionTreePanel isKo={false} />);
+    fireEvent.click(screen.getByTestId('pdm-init-btn'));
+    fireEvent.click(screen.getByTestId('pdm-server-history-toggle'));
+
+    expect(screen.queryByTestId('pdm-load-history-btn')).toBeNull();
+    expect(screen.getByText(/not bound to a server document/)).toBeTruthy();
+    expect(usePdmSessionStore.getState().documentId).toBeNull();
+  });
+
+  it('auto-binds from the documentId prop, persists a commit, and loads it back with a passed gate badge', async () => {
+    let stored: { label: string | null; branchName: string | null; gateStatus: string | null; gateReport: unknown } | null = null;
+    const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      if (method === 'POST') {
+        const body = JSON.parse(String(init!.body));
+        const gates = Array.isArray(body.gateReport) ? body.gateReport : null;
+        stored = {
+          label: body.label ?? null,
+          branchName: body.branchName ?? null,
+          gateStatus: gates && gates.length > 0 ? (gates.every((g: { pass: boolean }) => g.pass) ? 'passed' : 'failed') : null,
+          gateReport: gates,
+        };
+        return {
+          ok: true, status: 201,
+          json: async () => ({
+            ok: true,
+            version: {
+              id: 'v1', documentId: 'doc-1', parentVersionId: null,
+              blobKey: 'k', oplogKey: null, ...stored,
+              isExplicit: true, sizeBytes: 0, restoredFrom: null,
+              createdBy: 'tester', createdAt: 1_700_000_000_000,
+            },
+          }),
+        } as unknown as Response;
+      }
+      return {
+        ok: true, status: 200,
+        json: async () => ({ ok: true, versions: stored ? [{
+          id: 'v1', documentId: 'doc-1', parentVersionId: null,
+          blobKey: 'k', oplogKey: null, ...stored,
+          isExplicit: true, sizeBytes: 0, restoredFrom: null,
+          createdBy: 'tester', createdAt: 1_700_000_000_000,
+        }] : [] }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    render(<VersionTreePanel isKo={false} documentId="doc-1" />);
+    // The bind effect flushes synchronously within RTL's render(); set the fake
+    // fetch before triggering any network call.
+    usePdmSessionStore.setState({ persistFetch: fetchImpl });
+    expect(usePdmSessionStore.getState().documentId).toBe('doc-1');
+
+    fireEvent.click(screen.getByTestId('pdm-init-btn'));
+    await waitFor(() => expect(fetchImpl).toHaveBeenCalled());
+    await waitFor(() => expect(usePdmSessionStore.getState().versionIdByCommit).not.toEqual({}));
+
+    fireEvent.click(screen.getByTestId('pdm-server-history-toggle'));
+    fireEvent.click(screen.getByTestId('pdm-load-history-btn'));
+
+    const rows = await screen.findAllByTestId('pdm-server-commit-row');
+    expect(rows).toHaveLength(1);
+    expect(usePdmSessionStore.getState().lastPersistError).toBeNull();
   });
 });

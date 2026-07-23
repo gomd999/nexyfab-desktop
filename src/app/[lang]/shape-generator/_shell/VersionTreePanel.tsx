@@ -18,7 +18,7 @@
 //   - Checkout moves the PDM HEAD only — restoring the live model from a
 //     commit snapshot is not wired (Inner's feature pipeline owns that).
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '../hooks/useLang';
 import { loc } from '../lib/loc';
 import { useShellBridge } from './shellBridgeStore';
@@ -32,6 +32,13 @@ import type { FeatureInstance } from '../features/types';
 
 export interface VersionTreePanelProps {
   isKo: boolean;
+  /** Server-side `nf_documents` id to persist/load this session's PDM history
+   *  against (G4 bridge — see pdm/documentPersistence.ts). Optional: when
+   *  omitted (today's default — no live caller supplies one yet, see 260723
+   *  architecture-debt notes), the panel behaves exactly as before, pure
+   *  in-memory, no network. When provided, the panel auto-binds on mount and
+   *  every commit is also pushed as a server version snapshot. */
+  documentId?: string | null;
 }
 
 const BRANCH_COLORS = ['#4f8bff', '#a855f7', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
@@ -43,7 +50,7 @@ function paramsSummary(f: FeatureInstance | undefined, deletedLabel: string): st
   return `${f.type}${head ? ` (${head}${entries.length > 3 ? ', …' : ''})` : ''}${f.enabled ? '' : ' [off]'}`;
 }
 
-export function VersionTreePanel({ isKo }: VersionTreePanelProps) {
+export function VersionTreePanel({ isKo, documentId }: VersionTreePanelProps) {
   void isKo;
   const lang = useLang();
   const user = useAuthStore(s => s.user);
@@ -66,6 +73,24 @@ export function VersionTreePanel({ isKo }: VersionTreePanelProps) {
   const resolvePending = usePdmSessionStore(s => s.resolvePending);
   const applyMerge = usePdmSessionStore(s => s.applyMerge);
   const abortMerge = usePdmSessionStore(s => s.abortMerge);
+
+  // ── G4 bridge: server-side history (advisory gate badges) ──────────────────
+  const boundDocumentId = usePdmSessionStore(s => s.documentId);
+  const bindDocument = usePdmSessionStore(s => s.bindDocument);
+  const commitAndPersist = usePdmSessionStore(s => s.commitAndPersist);
+  const persistCommit = usePdmSessionStore(s => s.persistCommit);
+  const loadHistory = usePdmSessionStore(s => s.loadHistory);
+  const restoredGraph = usePdmSessionStore(s => s.restoredGraph);
+  const lastPersistError = usePdmSessionStore(s => s.lastPersistError);
+  const [showServerHistory, setShowServerHistory] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Auto-bind when a caller supplies a real document id (no-op today — no
+  // live caller passes one yet; see documentPersistence.ts's 260723 note).
+  useEffect(() => {
+    if (documentId && documentId !== boundDocumentId) bindDocument(documentId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentId]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [commitMsg, setCommitMsg] = useState('');
@@ -127,7 +152,13 @@ export function VersionTreePanel({ isKo }: VersionTreePanelProps) {
         </div>
         <button
           data-testid="pdm-init-btn"
-          onClick={() => init(shellItemsToFeatureInstances(featureItems), author)}
+          onClick={() => {
+            init(shellItemsToFeatureInstances(featureItems), author);
+            if (boundDocumentId) {
+              const root = usePdmSessionStore.getState().repo?.current().commit;
+              if (root) void persistCommit(root);
+            }
+          }}
           style={primaryBtn}
         >
           {loc(lang, { ko: '현재 모델로 첫 커밋 기록', en: 'Record first commit from current model', ja: '現在のモデルで最初のコミットを記録', zh: '以当前模型记录首次提交', es: 'Registrar primer commit del modelo actual', ar: 'تسجيل أول التزام من النموذج الحالي' })}
@@ -315,7 +346,13 @@ export function VersionTreePanel({ isKo }: VersionTreePanelProps) {
                   data-testid="pdm-commit-btn"
                   onClick={() => {
                     if (!commitMsg.trim()) return;
-                    commit(shellItemsToFeatureInstances(featureItems), commitMsg.trim(), author);
+                    const msg = commitMsg.trim();
+                    const feats = shellItemsToFeatureInstances(featureItems);
+                    if (boundDocumentId) {
+                      void commitAndPersist(feats, msg, author);
+                    } else {
+                      commit(feats, msg, author);
+                    }
                     setCommitMsg('');
                   }}
                   style={miniBtn}
@@ -323,6 +360,12 @@ export function VersionTreePanel({ isKo }: VersionTreePanelProps) {
                   {loc(lang, { ko: '커밋', en: 'Commit', ja: 'コミット', zh: '提交', es: 'Commit', ar: 'التزام' })}
                 </button>
               </div>
+              {lastPersistError && (
+                <div data-testid="pdm-persist-error" style={{ fontSize: 9, color: 'var(--nx-danger, #ef4444)' }}>
+                  {loc(lang, { ko: '서버 저장 실패', en: 'Server save failed', ja: 'サーバ保存失敗', zh: '服务器保存失败', es: 'Fallo al guardar', ar: 'فشل الحفظ' })}
+                  {`: ${lastPersistError.reason}`}
+                </div>
+              )}
 
               {/* New branch */}
               <div style={{ display: 'flex', gap: 4 }}>
@@ -393,6 +436,72 @@ export function VersionTreePanel({ isKo }: VersionTreePanelProps) {
                   {loc(lang, { ko: '커밋을 선택하세요', en: 'Select a commit', ja: 'コミットを選択してください', zh: '请选择一个提交', es: 'Seleccione un commit', ar: 'اختر التزامًا' })}
                 </div>
               )}
+
+              {/* Server history (G4 bridge) — honest limits shown either way */}
+              <div style={{ borderTop: '1px solid var(--nx-border)', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <button
+                  data-testid="pdm-server-history-toggle"
+                  onClick={() => setShowServerHistory(v => !v)}
+                  style={{ ...ghostBtn, alignSelf: 'flex-start', padding: '4px 8px', height: 'auto', fontSize: 10 }}
+                >
+                  {loc(lang, { ko: '서버 이력', en: 'Server history', ja: 'サーバ履歴', zh: '服务器历史', es: 'Historial del servidor', ar: 'سجل الخادم' })}
+                  {showServerHistory ? ' ▲' : ' ▼'}
+                </button>
+                {showServerHistory && (
+                  !boundDocumentId ? (
+                    <div style={{ fontSize: 9, color: 'var(--nx-text-3)' }}>
+                      {loc(lang, {
+                        ko: '이 세션은 서버 문서에 연결되어 있지 않습니다 — 커밋은 이 브라우저에만 저장됩니다.',
+                        en: 'This session is not bound to a server document — commits are saved only in this browser.',
+                        ja: 'このセッションはサーバ文書に接続されていません — コミットはこのブラウザにのみ保存されます。',
+                        zh: '此会话未绑定到服务器文档 — 提交仅保存在此浏览器中。',
+                        es: 'Esta sesión no está vinculada a un documento del servidor — los commits solo se guardan en este navegador.',
+                        ar: 'هذه الجلسة غير مرتبطة بمستند خادم — يتم حفظ الالتزامات في هذا المتصفح فقط.',
+                      })}
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        data-testid="pdm-load-history-btn"
+                        onClick={() => {
+                          setHistoryLoading(true);
+                          void loadHistory().finally(() => setHistoryLoading(false));
+                        }}
+                        disabled={historyLoading}
+                        style={{ ...miniBtn, alignSelf: 'flex-start', opacity: historyLoading ? 0.6 : 1 }}
+                      >
+                        {loc(lang, { ko: '불러오기', en: 'Load', ja: '読み込み', zh: '加载', es: 'Cargar', ar: 'تحميل' })}
+                      </button>
+                      {restoredGraph && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          {restoredGraph.skipped > 0 && (
+                            <div style={{ fontSize: 9, color: 'var(--nx-text-3)' }}>
+                              {loc(lang, { ko: '건너뜀', en: 'skipped', ja: 'スキップ', zh: '已跳过', es: 'omitidos', ar: 'تم التخطي' })}
+                              {`: ${restoredGraph.skipped}`}
+                            </div>
+                          )}
+                          {restoredGraph.commits.slice().reverse().map(c => (
+                            <div key={c.versionId} data-testid="pdm-server-commit-row" style={{ fontSize: 9, color: 'var(--nx-text-3)', display: 'flex', gap: 4, alignItems: 'baseline' }}>
+                              <span
+                                data-testid="pdm-gate-badge"
+                                title={c.gateReport?.map(g => `${g.id}: ${g.pass ? 'pass' : g.reason ?? 'fail'}`).join('\n') ?? ''}
+                                style={{
+                                  color: c.gateStatus === 'passed' ? 'var(--nx-ok, #22c55e)' : c.gateStatus === 'failed' ? 'var(--nx-danger, #ef4444)' : 'var(--nx-text-3)',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {c.gateStatus === 'passed' ? '✓' : c.gateStatus === 'failed' ? '✗' : '–'}
+                              </span>
+                              <span style={{ color: 'var(--nx-text)' }}>{c.message}</span>
+                              <span>({c.branch})</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )
+                )}
+              </div>
             </>
           )}
         </div>
