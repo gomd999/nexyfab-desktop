@@ -142,6 +142,26 @@ const HOLE_COUNT = new RegExp(
   'i',
 );
 
+/** Spelled-out small counts. Deliberately excludes the article "a"/"an" — a
+ *  singular "a hole" is a count of one only implicitly and must not be read as
+ *  an explicit tally (the existing "a plate with a hole → nothing" contract). */
+const NUMBER_WORDS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
+  seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+};
+
+/** A spelled-out count sitting a few tokens before "holes", tolerating an
+ *  intervening diameter phrase: "four holes", "four 8 mm holes near the
+ *  corners", "six mounting holes". The digit form is handled by HOLE_COUNT;
+ *  this catches the WORD form the digit regex can't (and the digit-with-a-
+ *  diameter-between case, where "8 mm holes" reads 8 as the Ø, not the count).
+ *  Non-greedy, bounded token skip so it never leaps across a clause. */
+const HOLE_COUNT_WORD = new RegExp(
+  `\\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\\b` +
+    `(?:\\s+[\\w.Ø⌀φ]+){0,4}?\\s+holes?\\b`,
+  'i',
+);
+
 function detectPattern(text: string, countKeyword?: string): ExtractedHole['pattern'] {
   const t = text.toLowerCase();
   if (countKeyword === 'corner' || /\bcorner|corners\b/.test(t)) return 'corner';
@@ -186,6 +206,18 @@ function extractHoles(text: string): ExtractedHole[] | undefined {
     const plural = /holes\b/.test(raw);
     if (/^\s*\d+(?:\.\d+)?\s*mm/.test(raw)) count = undefined;
     else if (!plural && !countKeyword) count = undefined;
+  }
+
+  // Word-count fallback: catches the spelled-out tally the digit regex misses,
+  // e.g. "four 8 mm holes near the corners" — where the only digit ("8") is the
+  // diameter, so HOLE_COUNT reads no count. Only fills in when the digit path
+  // left count unset, so an explicit digit tally always wins.
+  if (count === undefined) {
+    const wm = HOLE_COUNT_WORD.exec(text);
+    if (wm) {
+      const w = wm[1].toLowerCase();
+      if (w in NUMBER_WORDS) count = NUMBER_WORDS[w];
+    }
   }
 
   const pattern = detectPattern(text, countKeyword);
@@ -383,16 +415,21 @@ export function reconcileIntent(intent: IntentInput, ex: ExtractedDimensions): R
   const holeFeatures = (next.features ?? []).filter(f => f.type === 'hole' && f.enabled !== false);
 
   // Corner-hole rebuild — highest-value fix: the LLM routinely mis-places these.
-  if (shape === 'box' && hole.pattern === 'corner' && hole.count !== undefined && hole.count >= 2) {
+  // A "corner" pattern with no explicit count defaults to 4 (a rectangular plate
+  // has four corners) so phrasings like "holes near the corners" still build the
+  // full set rather than collapsing to a single centred bore. An explicit count
+  // (digit or spelled-out) always wins over the default.
+  const cornerCount = hole.count ?? (hole.pattern === 'corner' ? 4 : undefined);
+  if (shape === 'box' && hole.pattern === 'corner' && cornerCount !== undefined && cornerCount >= 2) {
     const w = num(p.width) ?? ex.dims?.[0] ?? 50;
     const hgt = num(p.height) ?? ex.dims?.[1] ?? 50;
     const d = num(p.depth) ?? ex.dims?.[2] ?? 50;
     const dia = hole.dia ?? num(holeFeatures[0]?.params?.diameter) ?? 5;
-    const built = buildCornerHoles(w, hgt, d, hole.count, dia);
+    const built = buildCornerHoles(w, hgt, d, cornerCount, dia);
     // Replace any existing hole features with the deterministic corner set.
     const others = (next.features ?? []).filter(f => !(f.type === 'hole' && f.enabled !== false));
     next.features = [...others, ...built];
-    overrides.push({ field: 'holes.corner', from: holeFeatures.length, to: built.length, reason: `prompt ${hole.count} corner holes` });
+    overrides.push({ field: 'holes.corner', from: holeFeatures.length, to: built.length, reason: `prompt ${cornerCount} corner holes` });
     if (hole.dia !== undefined) {
       overrides.push({ field: 'hole.diameter', from: undefined, to: hole.dia, reason: 'prompt hole Ø' });
     }

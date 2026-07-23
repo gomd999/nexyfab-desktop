@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { extractDimensions, reconcileIntent } from '../dimensionExtractor';
-import type { IntentInput } from '../../openscad-render/intentToScad';
+import { intentToScad, type IntentInput } from '../../openscad-render/intentToScad';
+
+/** Count the cylinder primitives emitted in the SCAD. For a `box` base shape
+ *  (which emits no cylinder of its own) this equals the number of holes bored
+ *  through the solid, since every hole subtracts exactly one cylinder. */
+function cylinderCount(scad: string): number {
+  return (scad.match(/\bcylinder\s*\(/g) ?? []).length;
+}
 
 describe('extractDimensions — bounding box', () => {
   it('reads a cube edge → three equal dims', () => {
@@ -28,6 +35,20 @@ describe('extractDimensions — holes', () => {
     const r = extractDimensions('100x100x8 plate with 4 corner holes 8mm');
     expect(r.holes).toBeDefined();
     expect(r.holes![0]).toEqual({ dia: 8, count: 4, pattern: 'corner' });
+  });
+
+  it('reads a spelled-out count with an intervening diameter phrase', () => {
+    // The self-test fixture phrasing: "four" is a word (not a digit) and the
+    // only digit ("8") is the diameter — the digit-only count regex reads no
+    // tally here, so the word-count fallback must supply count=4.
+    const r = extractDimensions('a 100 by 100 by 8 mm steel plate with four 8 mm holes near the corners');
+    expect(r.holes).toBeDefined();
+    expect(r.holes![0]).toEqual({ dia: 8, count: 4, pattern: 'corner' });
+  });
+
+  it('an explicit digit tally still wins over the word fallback', () => {
+    const r = extractDimensions('a plate with 6 mounting holes');
+    expect(r.holes![0].count).toBe(6);
   });
 
   it('count-only holes on a bolt circle (no diameter stated)', () => {
@@ -176,5 +197,68 @@ describe('reconcileIntent — deterministic wins on explicit numbers', () => {
     };
     reconcileIntent(intent, extractDimensions('a 50mm cube with a 10mm hole through the center'));
     expect(intent.features![0].params!.diameter).toBe(8); // original unchanged
+  });
+});
+
+// ── FULL DETERMINISTIC CHAIN: prompt → extract → reconcile → intentToScad ──────
+//
+// This is the honest, LLM-free proof for the self-test's medium tier: a bare
+// `box` intent (bbox right, hole omitted — exactly what the LLM emits) must come
+// out of the deterministic chain as SCAD that actually SUBTRACTS the requested
+// Ø cylinder(s). Asserting on the emitted SCAD (not the intent) proves the hole
+// reaches the BUILT geometry, which is what `holesBuilt` measures downstream.
+describe('deterministic chain builds the requested holes on a box', () => {
+  /** The bare shape the LLM produces: correct envelope, no hole feature. */
+  function bareBox(w: number, h: number, d: number): IntentInput {
+    return { shapeId: 'box', params: { width: w, height: h, depth: d }, features: [] };
+  }
+
+  it('cube + centred hole → a single Ø10 through-bore is subtracted', () => {
+    const prompt = 'a 50 mm cube with a 10 mm hole through the center';
+    const rec = reconcileIntent(bareBox(50, 50, 50), extractDimensions(prompt));
+    const built = intentToScad(rec.intent);
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    // Cube envelope preserved; exactly one bore, radius 5 (Ø10).
+    expect(built.scad).toContain('cube([50, 50, 50]');
+    expect(cylinderCount(built.scad)).toBe(1);
+    expect(built.scad).toContain('r=5');
+    expect(built.scad).toContain('difference()');
+  });
+
+  it('plate + four corner holes (fixture phrasing) → four Ø8 bores are subtracted', () => {
+    // The exact self-test fixture text: spelled-out "four" + diameter "8 mm".
+    const prompt = 'a 100 by 100 by 8 mm steel plate with four 8 mm holes near the corners';
+    const ex = extractDimensions(prompt);
+    const [w, h, d] = ex.dims as [number, number, number];
+    const rec = reconcileIntent(bareBox(w, h, d), ex);
+    const built = intentToScad(rec.intent);
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    // Four discrete bores, each radius 4 (Ø8), through the 8 mm (thin) face.
+    expect(cylinderCount(built.scad)).toBe(4);
+    expect(built.scad).toContain('r=4');
+    // Envelope unchanged by the bores.
+    expect(built.scad).toMatch(/cube\(\[100, 100, 8\]|cube\(\[100, 8, 100\]|cube\(\[8, 100, 100\]/);
+  });
+
+  it('plate + corner holes with NO explicit count → defaults to four bores', () => {
+    const prompt = 'an 80 by 80 by 6 mm plate with 5 mm holes near the corners';
+    const ex = extractDimensions(prompt);
+    const [w, h, d] = ex.dims as [number, number, number];
+    const rec = reconcileIntent(bareBox(w, h, d), ex);
+    const built = intentToScad(rec.intent);
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(cylinderCount(built.scad)).toBe(4);
+    expect(built.scad).toContain('r=2.5'); // Ø5
+  });
+
+  it('a plate with a hole but NO stated size builds nothing (no phantom bore)', () => {
+    const rec = reconcileIntent(bareBox(40, 40, 5), extractDimensions('a plate with a hole'));
+    const built = intentToScad(rec.intent);
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(cylinderCount(built.scad)).toBe(0);
   });
 });
