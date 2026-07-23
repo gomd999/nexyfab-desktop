@@ -937,6 +937,9 @@ export async function callTool(name, args = {}) {
     try { save('structural.html', pkg.structuralReport(args.assembly, { title })); } catch { /* skip */ }
     // ③ 형상+검증: 어셈블리 검증 메타(옹벽 등) → 분야 KDS 계산기 실행값(전도·활동·지지력…). 메타 없으면 미생성(정직).
     try { const dv = await import('./domain-dossier-verify.mjs'); const vh = dv.verificationReportHtml(args.assembly, { title, params: args.verifyParams ?? {} }); if (vh) save('검증.html', vh); } catch { /* skip */ }
+    // ③b 도메인 안전검토(인테리어 피난·조경 목재·교량 활하중·건축 하중경로) — 도그푸딩 발견:
+    // 이 체크들이 예전엔 도세에서 전혀 호출되지 않아 해당 안전검토가 통째로 없는 문서가 나갔다.
+    try { const dv2 = await import('./domain-dossier-verify.mjs'); const sh = dv2.domainSafetyReportHtml(args.assembly, { title, params: args.verifyParams ?? {} }); if (sh) save('안전검토.html', sh); } catch { /* skip */ }
     try { save('BOQ.html', boqm.boqReport(args.assembly, { title, domain: args.assembly.domain ?? 'mech' })); } catch { /* skip */ }
     try { save('Dossier.html', pd.dossierReport(args.assembly, { title })); } catch { /* skip */ }
     try { sheetsHtml = ps.partSheets(args.assembly, { title: title + ' — 부품 제작도' }); save('부품제작도.html', sheetsHtml); } catch { /* skip */ }

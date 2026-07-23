@@ -110,6 +110,115 @@ function renderRun(run) {
   return L.join('\n');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 도메인별 안전/코드 체크(egress·목재부재·교량 활하중·하중경로) — 도세 패키지
+// 안전검토.html. `verifyDomain`(civil의 retainingWall/boxCulvert)과 달리 이
+// 체크들은 함수마다 결과 모양이 다르고(다중 섹션·중첩) 앞으로도 바뀔 수 있어,
+// renderRun처럼 손으로 스키마를 맞추는 대신 실제 반환값을 있는 그대로 그리는
+// **스키마 불문 제네릭 렌더러**를 쓴다 — 판정을 지어내지 않고, 서브결과를
+// 숨기지도 않는다(도그푸딩이 잡은 원 결함: 이 체크들이 도세에서 아예 호출조차
+// 안 돼 인테리어/조경/교량 문서가 피난·목재·활하중 검토 없이 나가고 있었다).
+// ─────────────────────────────────────────────────────────────────────────────
+import { interiorCheck } from './interior-check.mjs';
+import { landscapeCheck } from './landscape-check.mjs';
+import * as bridgeMod from './bridge-check.mjs';
+import { loadPathCheck } from './load-path.mjs';
+
+const BRIDGE_DISPATCH = [
+  { meta: 'archMeta', fn: 'archBridgeCheck' },
+  { meta: 'trussMeta', fn: 'trussBridgeCheck' },
+  { meta: 'cableStayedMeta', fn: 'cableStayedCheck' },
+  { meta: 'suspensionMeta', fn: 'suspensionCheck' },
+  { meta: 'stairMeta', fn: 'stairCheck' },
+];
+
+/** Which domains have a wired safety/code check, and how to run it. Returns
+ *  null when the domain has no applicable check (e.g. 'mech' — a mechanical
+ *  part has no egress/timber/bridge-load concept) so no file is forced. */
+function runDomainSafetyCheck(assembly, params) {
+  const domain = assembly?.domain;
+  if (domain === 'interior') return { label: '실내건축 검토 (피난·수용인원 등)', result: interiorCheck(assembly, params) };
+  if (domain === 'landscape') return { label: '조경 검토 (목재부재·배수 등)', result: landscapeCheck(assembly, params) };
+  if (domain === 'bridge') {
+    const disp = BRIDGE_DISPATCH.find((d) => assembly[d.meta] && typeof bridgeMod[d.fn] === 'function');
+    const fn = disp ? bridgeMod[disp.fn] : bridgeMod.bridgeCheck;
+    return { label: '교량 검토 (활하중·단면력 등)', result: fn(assembly, params) };
+  }
+  if (domain === 'building') return { label: '하중경로 검토 (슬래브→보→기둥→기초)', result: loadPathCheck(assembly, params) };
+  return null; // 해당 없음(civil은 verificationReportHtml, mech은 적용 검토 없음)
+}
+
+/**
+ * 스키마 불문 제네릭 렌더러. 노드에 verdict/pass가 있으면 배지를, 스칼라 필드는
+ * key=value로, 중첩 객체/배열은 소제목 아래 재귀 렌더. 판정을 지어내지 않고
+ * (원본 값만 표시) 서브 결과를 숨기지도 않는다(빈 배열/객체만 스킵).
+ */
+function renderGenericCheckTree(node, depth = 0) {
+  if (node == null || typeof node !== 'object') return '';
+  if (Array.isArray(node)) {
+    if (!node.length) return '';
+    return node.map((item, i) => `<div class="gnode"><b>#${i + 1}</b>${renderGenericCheckTree(item, depth + 1)}</div>`).join('\n');
+  }
+  const skip = new Set(['verdict', 'pass', 'refs', 'error', 'note']);
+  const parts = [];
+  if (typeof node.verdict === 'string') parts.push(`<div>판정: ${badge(node.verdict)}</div>`);
+  else if (typeof node.pass === 'boolean') parts.push(`<div>판정: ${node.pass ? '적합 ✓' : '검토 ✕'}</div>`);
+  const scalarEntries = Object.entries(node).filter(
+    ([k, v]) => !skip.has(k) && (typeof v === 'number' ? Number.isFinite(v) : typeof v === 'string' || typeof v === 'boolean' || v === null),
+  );
+  if (scalarEntries.length) {
+    parts.push(
+      `<div class="gvals">${scalarEntries
+        .map(([k, v]) => `${esc(k)}=${v === null ? '—' : esc(typeof v === 'number' ? f(v, 2) : String(v))}`)
+        .join(' · ')}</div>`,
+    );
+  }
+  if (typeof node.note === 'string' && node.note) parts.push(`<div class="note">${esc(node.note)}</div>`);
+  if (typeof node.error === 'string' && node.error) parts.push(`<div class="card warn">⚠ ${esc(node.error)}</div>`);
+  for (const [k, v] of Object.entries(node)) {
+    if (skip.has(k) || typeof v !== 'object' || v === null) continue;
+    if (Array.isArray(v) ? v.length === 0 : Object.keys(v).length === 0) continue;
+    const inner = renderGenericCheckTree(v, depth + 1);
+    if (inner) parts.push(`<div class="gsection"><div class="ghead">${esc(k)}</div>${inner}</div>`);
+  }
+  if (Array.isArray(node.refs) && node.refs.length) {
+    parts.push(`<div class="cite">근거: ${node.refs.map((r) => citationText(r) || esc(String(r))).join(' · ')}</div>`);
+  }
+  return parts.join('\n');
+}
+
+/**
+ * 안전검토 문서 HTML(인테리어 피난·조경 목재·교량 활하중·건축 하중경로). 해당
+ * 도메인에 적용 가능한 체크가 없거나 체크 자체가 미적용(ok:false — 형상 메타
+ * 부족 등)이면 그 사유를 보여준다("파일이 그냥 안 나옴"으로 숨기지 않는다).
+ */
+export function domainSafetyReportHtml(assembly, { title = '안전검토', params = {} } = {}) {
+  const run = runDomainSafetyCheck(assembly, params);
+  if (!run) return null; // 이 도메인엔 적용 가능한 안전검토가 없음(정직 — mech 등)
+  const r = run.result;
+  const body =
+    r && r.ok === false
+      ? `<div class="card warn">검토 불가: ${esc(r.error ?? r.gateError ?? '알 수 없는 사유')}</div>`
+      : renderGenericCheckTree(r) || '<div class="note">산출된 세부 검토값이 없습니다.</div>';
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)} — 안전검토</title>
+<style>@page{size:A4 portrait;margin:12mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937;font-size:13px}
+.sheet{max-width:900px;margin:16px auto;background:#fff;border:1px solid #cbd5e1;box-shadow:0 4px 24px rgba(0,0,0,.1);padding:0 0 22px}
+.hd{padding:15px 24px;border-bottom:2px solid #1f2937}.hd h1{margin:0;font-size:18px}.hd .s{color:#64748b;font-size:12px}
+.gsection{margin:6px 24px 6px 12px;padding:6px 0 6px 12px;border-left:2px solid #e2e8f0}
+.ghead{font-weight:700;font-size:12.5px;color:#334155;margin-bottom:3px}
+.gvals{font-size:12px;color:#1f2937;margin:2px 0}
+.gnode{margin:4px 0 4px 12px;padding-left:8px;border-left:2px dashed #cbd5e1}
+.card{margin:8px 24px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;line-height:1.7}.card.warn{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+.cite{margin:6px 24px 6px 12px;font-size:11.5px;color:#334155}.note{margin:6px 24px 6px 12px;font-size:11px;color:#64748b}
+.foot{margin:14px 24px 0;padding-top:8px;border-top:1px solid #e2e8f0;font-size:11px;color:#64748b}
+@media print{body{background:#fff}.sheet{box-shadow:none;border:none;margin:0}}</style></head>
+<body><div class="sheet"><div class="hd"><h1>${esc(title)} — ${esc(run.label)}</h1>
+<div class="s">nexyfab domain safety check · 형상 파생 입력 · 실행값(스키마 불문 렌더)</div></div>
+${body}
+<div class="foot">⚠ 비법정 참고자료 — 법정 계산서·인허가 도서는 등록 기술사(해당 분야)의 직접 검토·날인 영역.</div>
+</div></body></html>`;
+}
+
 /**
  * 검증 문서 HTML. 적용 가능한 검증이 없으면 null(파일 미생성).
  * @param assembly parts[] + 검증 메타(retainingWall 등)
