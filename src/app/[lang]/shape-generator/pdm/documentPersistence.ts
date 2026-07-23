@@ -52,6 +52,18 @@ import type { Commit } from './versionBranch';
 
 // ── Server response shapes (mirror publicVersionShape / publicDocShape) ──────
 
+/** One gate's advisory result (mirrors src/lib/cloudDoc/versions.ts's GateResultLike —
+ *  duplicated here rather than imported since this module is client-bundled and that
+ *  one lives under a server-only path; keep the two shapes in sync by hand). */
+export interface GateResultLike {
+  id: string;
+  pass: boolean;
+  value?: number;
+  expected?: number;
+  unit?: string;
+  reason?: string;
+}
+
 /** One row from `publicVersionShape` (GET/POST `.../versions`). */
 export interface PublicVersion {
   id: string;
@@ -64,6 +76,10 @@ export interface PublicVersion {
   isExplicit: boolean;
   sizeBytes: number;
   restoredFrom: string | null;
+  /** ADVISORY ONLY (260723) — client-asserted at push time, never server-verified.
+   *  'passed' | 'failed' | null (null = no gate report was ever attached). */
+  gateStatus: 'passed' | 'failed' | null;
+  gateReport: GateResultLike[] | null;
   createdBy: string;
   createdAt: number;
 }
@@ -176,6 +192,12 @@ export interface PersistOptions {
   /** Server version id of the first-parent commit's snapshot, if already
    *  pushed. Required by the server whenever `branchName` is sent. */
   parentVersionId?: string | null;
+  /** ADVISORY ONLY (260723) — when the commit being pushed is a reviewed AI
+   *  run's merge (or any commit with a known verification result), pass its
+   *  gate report through so the server records a gate_status badge on this
+   *  version. Omitting it is always safe — it just means no badge shows;
+   *  the write NEVER fails or is blocked based on this field. */
+  gateReport?: GateResultLike[];
 }
 
 /** Server branch-name charset (versions/route.ts). Labels always carry the
@@ -207,13 +229,16 @@ export async function pushCommitVersion(
   const f = resolveFetch(opts);
   const label = encodeCommitEnvelope(commit, branchName);
 
-  const body: { label: string; branchName?: string; parentVersionId?: string } = { label };
+  const body: { label: string; branchName?: string; parentVersionId?: string; gateReport?: GateResultLike[] } = { label };
   // Server rule: `branchName` REQUIRES a valid `parentVersionId`. Only send the
   // pair when we have a mapped parent version AND the name is server-legal.
   // Otherwise the branch still round-trips through the envelope label.
   if (opts.parentVersionId && isServerBranchName(branchName)) {
     body.branchName = branchName;
     body.parentVersionId = opts.parentVersionId;
+  }
+  if (opts.gateReport && opts.gateReport.length > 0) {
+    body.gateReport = opts.gateReport;
   }
 
   let res: Response;
@@ -279,6 +304,10 @@ export interface ReconstructedCommit {
   timestamp: number;
   /** Server version id this commit was restored from (for lineage / restore). */
   versionId: string;
+  /** ADVISORY gate badge carried straight from the server row (260723) — see
+   *  PublicVersion.gateStatus. Never recomputed here, just passed through. */
+  gateStatus: 'passed' | 'failed' | null;
+  gateReport: GateResultLike[] | null;
 }
 
 export interface ReconstructedGraph {
@@ -313,6 +342,8 @@ export function reconstructGraph(versions: PublicVersion[]): ReconstructedGraph 
       author: env.a || v.createdBy,
       timestamp: v.createdAt,
       versionId: v.id,
+      gateStatus: v.gateStatus,
+      gateReport: v.gateReport,
     });
   }
 

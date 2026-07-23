@@ -51,6 +51,7 @@ import {
   PersistenceError,
   type PersistFailureReason,
   type ReconstructedGraph,
+  type GateResultLike,
 } from './documentPersistence';
 import type { FeatureInstance } from '../features/types';
 
@@ -132,14 +133,17 @@ export interface PdmSessionState {
   /** Leave persistence (repo + history untouched; only the binding is dropped). */
   unbindDocument: () => void;
   /** Push a commit to the server as an explicit version snapshot. Unbound →
-   *  { ok:false, reason:'not_bound' } (a no-op, not an error). */
-  persistCommit: (commit: Commit) => Promise<PersistResult>;
+   *  { ok:false, reason:'not_bound' } (a no-op, not an error).
+   *  `gateReport` is ADVISORY ONLY (260723) — see documentPersistence.ts's
+   *  PersistOptions.gateReport; omitting it is always safe. */
+  persistCommit: (commit: Commit, gateReport?: GateResultLike[]) => Promise<PersistResult>;
   /** commit() + persistCommit() — the "commit → POST snapshot" wiring. When
    *  unbound, this is exactly the old in-memory commit (persist is a no-op). */
   commitAndPersist: (
     features: FeatureInstance[],
     message: string,
     author: string,
+    gateReport?: GateResultLike[],
   ) => Promise<{ commit: Commit | null; persist: PersistResult }>;
   /** Load the server version history and rebuild the commit graph read-model. */
   loadHistory: () => Promise<PersistResult>;
@@ -393,7 +397,7 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
       restoredGraph: null,
     }),
 
-  persistCommit: async (commit) => {
+  persistCommit: async (commit, gateReport) => {
     const { documentId, persistFetch, versionIdByCommit, repo } = get();
     // Unbound session → pure in-memory, no network. Opt-in, so this is a
     // no-op result rather than an error (nothing was lost — nothing to save to).
@@ -410,6 +414,7 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
       const version = await pushCommitVersion(documentId, commit, branch, {
         fetchImpl: persistFetch ?? undefined,
         parentVersionId,
+        gateReport,
       });
       set(s => ({
         versionIdByCommit: { ...s.versionIdByCommit, [commit.id]: version.id },
@@ -425,10 +430,10 @@ export const usePdmSessionStore = create<PdmSessionState>((set, get) => ({
     }
   },
 
-  commitAndPersist: async (features, message, author) => {
+  commitAndPersist: async (features, message, author, gateReport) => {
     const commit = get().commit(features, message, author);
     if (!commit) return { commit: null, persist: { ok: false, reason: 'not_bound' } };
-    const persist = await get().persistCommit(commit);
+    const persist = await get().persistCommit(commit, gateReport);
     return { commit, persist };
   },
 

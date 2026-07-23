@@ -38,6 +38,7 @@ function makeFakeServer(pusher = 'alice') {
   interface Row {
     id: string; documentId: string; parentVersionId: string | null;
     label: string | null; branchName: string | null;
+    gateStatus: 'passed' | 'failed' | null; gateReport: unknown[] | null;
     createdBy: string; createdAt: number;
   }
   const rows: Row[] = [];
@@ -52,11 +53,15 @@ function makeFakeServer(pusher = 'alice') {
     if (method === 'POST') {
       const body = JSON.parse(String(init!.body));
       const id = `v${++seq}`;
+      // Mirror the real route's gate-report derivation (advisory only).
+      const gates = Array.isArray(body.gateReport) ? body.gateReport : null;
       const row: Row = {
         id, documentId,
         parentVersionId: body.parentVersionId ?? null,
         label: body.label ?? null,
         branchName: body.branchName ?? null,
+        gateStatus: gates && gates.length > 0 ? (gates.every((g: { pass: boolean }) => g.pass) ? 'passed' : 'failed') : null,
+        gateReport: gates && gates.length > 0 ? gates : null,
         createdBy: pusher,
         createdAt: ++clock,
       };
@@ -73,6 +78,7 @@ function makeFakeServer(pusher = 'alice') {
     id: r.id, documentId: r.documentId, parentVersionId: r.parentVersionId,
     blobKey: `k/${r.id}`, oplogKey: null, label: r.label, branchName: r.branchName,
     isExplicit: true, sizeBytes: 0, restoredFrom: null,
+    gateStatus: r.gateStatus, gateReport: r.gateReport,
     createdBy: r.createdBy, createdAt: r.createdAt,
   });
   const json = (status: number, b: unknown): Response =>
@@ -164,6 +170,46 @@ describe('commit graph round-trips through the server history', () => {
     expect(graph.skipped).toBe(0);
     // Lineage map rebuilt so a further branch-commit push still has parents.
     expect(store().versionIdByCommit[mergeC.id]).toBe(mp.versionId);
+  });
+});
+
+describe('gate report passthrough (advisory, 260723)', () => {
+  it('commitAndPersist forwards gateReport and it round-trips as a badge on reload', async () => {
+    const srv = makeFakeServer();
+    store().init([f('a')], 'alice');
+    store().bindDocument('doc-1', { fetchImpl: srv.fetchImpl });
+
+    const { commit, persist } = await store().commitAndPersist(
+      [f('a'), f('b')], 'add b', 'alice',
+      [{ id: 'geometry.watertight', pass: true }],
+    );
+    expect(persist.ok).toBe(true);
+    expect(srv.rows[0].gateStatus).toBe('passed');
+
+    const res = await store().loadHistory();
+    const badge = res.graph!.commits.find(c => c.id === commit!.id);
+    expect(badge?.gateStatus).toBe('passed');
+  });
+
+  it('a failed gate is recorded as gateStatus=failed but the push still succeeds', async () => {
+    const srv = makeFakeServer();
+    store().init([f('a')], 'alice');
+    store().bindDocument('doc-1', { fetchImpl: srv.fetchImpl });
+
+    const root = store().repo!.current().commit;
+    const r0 = await store().persistCommit(root, [{ id: 'dimension.measured', pass: false, reason: 'oversize' }]);
+    expect(r0.ok).toBe(true);              // advisory only — never blocks the write
+    expect(srv.rows[0].gateStatus).toBe('failed');
+  });
+
+  it('omitting gateReport leaves gateStatus null (always-safe default)', async () => {
+    const srv = makeFakeServer();
+    store().init([f('a')], 'alice');
+    store().bindDocument('doc-1', { fetchImpl: srv.fetchImpl });
+
+    const root = store().repo!.current().commit;
+    await store().persistCommit(root);
+    expect(srv.rows[0].gateStatus).toBeNull();
   });
 });
 

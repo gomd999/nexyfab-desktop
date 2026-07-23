@@ -44,6 +44,8 @@ const version = (over: Partial<PublicVersion> = {}): PublicVersion => ({
   isExplicit: true,
   sizeBytes: 0,
   restoredFrom: null,
+  gateStatus: null,
+  gateReport: null,
   createdBy: 'alice',
   createdAt: 1_700_000_000_000,
   ...over,
