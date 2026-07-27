@@ -111,6 +111,16 @@ export interface OcctBridge {
     opts: { angleDeg: number; pullDir?: [number, number, number]; neutralZ?: number },
   ): Promise<OcctOperationResult>;
   /**
+   * Build a closed PRISM solid from a 2D loop placed at an ARBITRARY `z0`,
+   * extruded `heightMm` along +Z. `buildFromExtrude` can only place a prism at
+   * the three `ExtrudeDirection` positions (0..d, ±d, ±d/2), so a tool that must
+   * start part-way up a solid — a BLIND hole cut down from the top face — has no
+   * way to be positioned through that API. The kernel path already builds prisms
+   * at an explicit z0 internally; this exposes it. Real-kernel only → OPTIONAL,
+   * callers feature-detect and refuse honestly when it is absent.
+   */
+  buildPrismAt?(loop: ReadonlyArray<{ x: number; y: number }>, z0: number, heightMm: number): Promise<OcctOperationResult>;
+  /**
    * Build a planar FACE (open surface / sheet body) from a 2D loop at height
    * `z` (default 0). The input to {@link thicken} / {@link surfaceTrim}. The
    * mesh/stub bridges have no surface-body concept → OPTIONAL, real-kernel only.

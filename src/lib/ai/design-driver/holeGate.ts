@@ -40,6 +40,12 @@ export interface HoleCutResult {
   id: string;
   /** Human-readable tool size — '⌀6.5' or '60×40 rect'. */
   label: string;
+  shape: 'round' | 'rect';
+  /** Declared centre in the body's sketch frame, mm (구멍 일람표용). */
+  atX: number;
+  atY: number;
+  /** Blind depth from the top face, mm. null ⇒ through. */
+  depthMm: number | null;
   /** Cross-section area of the TOOL as actually built (regular n-gon), mm². */
   toolAreaMm2: number;
   /** Material this cut actually removed, per the kernel, mm³. */
@@ -123,11 +129,6 @@ export async function buildHoleArtifact(part: PlanPart): Promise<HoleArtifact | 
   const holes = part.holes;
   if (!holes || holes.length === 0) return null;
 
-  const blind = holes.find((h) => h.kind === 'blind');
-  if (blind) {
-    // 축방향 배치 변환이 브리지에 없다 — 관통으로 둔갑시키면 부피도 도면도 틀린다.
-    return fail(holes.length, `blind hole '${blind.id}' not wired: the OCCT bridge has no axial placement transform, so a blind depth cannot be built — declare a through hole or split the part`);
-  }
   for (const h of holes) {
     if (isRect(h)) {
       if (!((h.widthMm ?? 0) > 0) || !((h.heightMm ?? 0) > 0)) {
@@ -138,6 +139,9 @@ export async function buildHoleArtifact(part: PlanPart): Promise<HoleArtifact | 
     }
     if (!Number.isFinite(h.at?.x) || !Number.isFinite(h.at?.y)) {
       return fail(holes.length, `hole '${h.id}': centre must be finite {x,y}`);
+    }
+    if (h.kind === 'blind' && !((h.depthMm ?? 0) > 0)) {
+      return fail(holes.length, `hole '${h.id}': a blind hole needs a positive depthMm, got ${h.depthMm}`);
     }
   }
 
@@ -181,16 +185,34 @@ export async function buildHoleArtifact(part: PlanPart): Promise<HoleArtifact | 
     const cuts: HoleCutResult[] = [];
     let expectedRemoved = 0;
 
+    const thicknessMm = z1 - z0;
     for (const h of holes) {
       const t = toolFor(h, segments);
-      const tool: ExtrudeFeature = {
-        kind: 'extrude',
-        loop: t.loop,
-        depth: toolDepth,
-        direction: 'two_sided',
-        mode: 'add',
-      };
-      const toolRes = await bridge.buildFromExtrude(tool);
+      const blind = h.kind === 'blind';
+      // 블라인드 깊이가 소재 두께 이상이면 그건 관통이다 — 조용히 관통으로 만들지 않고
+      // 선언을 고치게 한다(도면엔 블라인드, 실물엔 관통인 부품 방지).
+      if (blind && (h.depthMm as number) >= thicknessMm) {
+        return fail(holes.length, `hole '${h.id}': blind depth ${h.depthMm} mm >= material thickness ${thicknessMm} mm — that is a through hole, declare kind:'through'`);
+      }
+      let toolRes;
+      if (blind) {
+        // 공구를 윗면에서 depth 만큼만 내린다. 브리지의 z0 지정 프리즘이 필요하다
+        // (buildFromExtrude는 0..d / ±d / ±d/2 세 위치밖에 못 놓는다).
+        if (!bridge.buildPrismAt) {
+          return fail(holes.length, `hole '${h.id}': this OCCT bridge cannot place a prism at an explicit z0 (buildPrismAt absent) — a blind depth cannot be built here`, true);
+        }
+        const d = h.depthMm as number;
+        toolRes = await bridge.buildPrismAt(t.loop, z1 - d, d + Math.max(1, thicknessMm * 0.1));
+      } else {
+        const tool: ExtrudeFeature = {
+          kind: 'extrude',
+          loop: t.loop,
+          depth: toolDepth,
+          direction: 'two_sided',
+          mode: 'add',
+        };
+        toolRes = await bridge.buildFromExtrude(tool);
+      }
       if (!toolRes.ok || !toolRes.shape) return fail(holes.length, `hole '${h.id}': tool build failed: ${toolRes.error ?? 'no shape'}`);
       toRelease.push(toolRes.shape);
 
@@ -206,8 +228,13 @@ export async function buildHoleArtifact(part: PlanPart): Promise<HoleArtifact | 
       if (!(removed > 0)) {
         return fail(holes.length, `hole '${h.id}' removed no material (Δ=${removed.toFixed(6)} mm³) — the hole is outside the profile or duplicates another hole`);
       }
-      cuts.push({ id: h.id, label: t.label, toolAreaMm2: t.areaMm2, removedMm3: removed });
-      expectedRemoved += t.areaMm2 * (z1 - z0);
+      cuts.push({
+        id: h.id, label: t.label, shape: isRect(h) ? 'rect' : 'round',
+        atX: h.at.x, atY: h.at.y, depthMm: blind ? (h.depthMm as number) : null,
+        toolAreaMm2: t.areaMm2, removedMm3: removed,
+      });
+      // 관통은 두께 전부, 블라인드는 선언 깊이만큼 재료가 사라져야 한다.
+      expectedRemoved += t.areaMm2 * (blind ? (h.depthMm as number) : thicknessMm);
       current = cutRes.shape;
       currentVolume = nextVolume;
     }
@@ -250,7 +277,8 @@ export function holeGate(part: PlanPart, artifact: HoleArtifact | null): GateRes
   const notes: string[] = [
     'occt/nodeOcctBridge 소비: buildFromExtrude(소재+공구)→BRepAlgoAPI_Cut 실커널→BRepGProp 순부피 실측·STEP 산출',
     '원형 공구=정n각형 프리즘(원기둥의 테셀레이션) — 기대 부피도 같은 정n각형 기준으로 계산(πr² 아님). 사각 컷아웃은 테셀레이션 없음(정확)',
-    '관통만 지원 — 블라인드는 축방향 배치 변환 부재로 정직 거부. OCCT 미가용 시에도 거부(무음 통과 없음)',
+    '관통=두께 전부·블라인드=선언 깊이만큼 재료 제거를 커널 부피로 검증(블라인드는 브리지의 buildPrismAt로 윗면 기준 배치). OCCT 미가용 시 거부(무음 통과 없음)',
+    '구멍 일람표(schedule)의 지름/형상/깊이는 커널 부피로 검증된 값 — 중심 좌표는 선언값이다(부피 검사는 구멍이 소재 안에 완전히 들어있고 서로 겹치지 않음까지만 보증)',
     'geometry 게이트의 메시 부피는 구멍 반영 전 총량 — 이 파트의 순부피는 여기 netVolumeMm3가 정본',
   ];
 

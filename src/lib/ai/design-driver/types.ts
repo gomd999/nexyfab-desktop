@@ -279,8 +279,8 @@ export interface CurvedSpec {
  * `BRepGProp`이 결과 부피를 실측한다 — 메시 근사가 아니다(WB-6 curvedGate와 동일 경로).
  *
  * 한계(명시):
- *   · THROUGH only. 블라인드 홀은 공구를 축방향으로 **옮겨야** 하는데 이 브리지엔
- *     변환(transform) API가 없다 → 선언되면 정직 거부(가짜로 통과시키지 않음).
+ *   · 관통과 블라인드 둘 다 지원(블라인드는 브리지의 buildPrismAt로 윗면 기준 배치).
+ *     깊이가 두께 이상이면 관통으로 둔갑시키지 않고 거부한다.
  *   · 공구는 정n각형 프리즘(기본 64각형)이라 원기둥의 **테셀레이션 근사**다. 게이트는
  *     그 사실을 노트로 밝히고, 기대 부피도 테셀레이션 면적 기준으로 계산한다
  *     (πr² 로 검사하면 스스로 못 맞추는 기준을 세우는 셈 — sb-stepped-shaft 선례와 동일 사상).
@@ -288,7 +288,12 @@ export interface CurvedSpec {
 export interface HoleSpec {
   /** Stable id within the part (naming/보고용). */
   id: string;
-  /** 'through' only for now — 'blind' is parsed and then REFUSED with a reason. */
+  /**
+   * 'through'(default) cuts the full thickness; 'blind' cuts `depthMm` down from
+   * the TOP face (needs the bridge's explicit-z0 prism — refused when absent).
+   * A blind depth ≥ the material thickness is REFUSED, not silently promoted to
+   * a through hole.
+   */
   kind?: 'through' | 'blind';
   /**
    * Tool cross-section. 'round'(default) uses `diameterMm`; 'rect' uses
@@ -305,7 +310,7 @@ export interface HoleSpec {
   heightMm?: number;
   /** Centre in the body's sketch frame (same XY frame as the extrude loop), mm. */
   at: { x: number; y: number };
-  /** blind only (currently refused): depth from the top face, mm. */
+  /** blind only: depth from the TOP face, mm. Must be > 0 and < the thickness. */
   depthMm?: number;
   /**
    * Tool tessellation segments. Default 64, clamped to [12, 256]. Must be the
@@ -378,6 +383,14 @@ export interface PlanDimensionSpec {
   kind: DimensionKind;
   /** Stable topo names (Dimension.refs namespace, e.g. 'f.cap.top'). */
   refs: string[];
+  /**
+   * linear only — force the measurement onto one projection axis ('x' =
+   * horizontal, 'y' = vertical in that view). Default 'auto', which requires the
+   * span to BE axis-aligned and refuses a diagonal ('not-axis-aligned'). Use
+   * this when you want one component of a slanted span (e.g. a gusset's leg
+   * along X); use `kind:'aligned'` when you want the slant's true length.
+   */
+  axis?: 'x' | 'y';
   /**
    * Expected nominal from the brief. When present the drawing gate checks
    * |measured − expected| ≤ 1e-6 (absolute, mm/deg).
@@ -599,8 +612,16 @@ export interface HoleResult {
   baseVolumeMm3: number;
   /** REAL kernel volume after every cut, mm³ — this part's NET volume. */
   netVolumeMm3: number;
-  /** Per-hole material actually removed by the kernel, mm³. */
-  removedMm3: Array<{ id: string; label: string; removedMm3: number }>;
+  /**
+   * 구멍 일람표 — 도면에 구멍을 그리지 못하는 동안 shop이 실제로 필요로 하는 표.
+   * 지름/형상/깊이는 커널 부피로 검증된 값이고, **중심 좌표(atX/atY)는 선언값**이다:
+   * 부피 검사는 "각 구멍이 소재 안에 완전히 들어있고 서로 겹치지 않는다"까지만 보증한다
+   * (같은 크기 구멍이 재료 안에서 다른 자리에 있어도 제거 부피는 같다).
+   */
+  schedule: Array<{
+    id: string; label: string; shape: 'round' | 'rect';
+    atX: number; atY: number; depthMm: number | null; removedMm3: number;
+  }>;
   /** n-gon area ÷ circle area − 1 for ROUND tools (근사 명시: the tool under-cuts a
    *  true cylinder). 0 when every declared hole is rectangular (exact tool). */
   tessellationAreaRelDev: number;

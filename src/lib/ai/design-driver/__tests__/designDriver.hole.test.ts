@@ -60,8 +60,14 @@ describe('WB-9 driver integration — 구멍이 커널 cut으로 뚫리고 실�
 
     const holes = res.package.parts[0]!.holes!;
     expect(holes.count).toBe(4);
-    expect(holes.removedMm3).toHaveLength(4);
-    for (const c of holes.removedMm3) expect(c.removedMm3).toBeGreaterThan(0);
+    expect(holes.schedule).toHaveLength(4);
+    for (const c of holes.schedule) {
+      expect(c.removedMm3).toBeGreaterThan(0);
+      expect(c.shape).toBe('round');
+      expect(c.depthMm).toBeNull();          // 관통
+      expect(Number.isFinite(c.atX)).toBe(true);
+      expect(Number.isFinite(c.atY)).toBe(true);
+    }
     expect(holes.netVolumeMm3).toBeCloseTo(hg!.metrics.netVolumeMm3, 6);
     if (holes.step) expect(holes.step.startsWith('ISO-10303-21')).toBe(true);
 
@@ -124,17 +130,41 @@ describe('WB-9 driver integration — 구멍이 커널 cut으로 뚫리고 실�
     expect(res.refusal.reason).toMatch(/removed no material/);
   }, 120_000);
 
-  it('블라인드 홀은 축방향 배치 변환 부재 — 관통으로 둔갑시키지 않고 정직 거부', async () => {
+  it('블라인드 홀 — 윗면에서 선언 깊이만큼만 커널이 파낸다(관통 아님)', async () => {
+    if (!occtOk) return;
+    // 120×80×10 판재에 ⌀10 블라인드 4 mm → 제거량 = 정64각형 면적 × 4(두께 10이 아니라).
     const part: PlanPart = {
       ...holedPlatePlan().parts[0]!,
-      holes: [{ id: 'h1', kind: 'blind', diameterMm: 6, at: { x: 20, y: 20 }, depthMm: 4 }],
+      holes: [{ id: 'h1', kind: 'blind', diameterMm: 10, at: { x: 30, y: 30 }, depthMm: 4 }],
     };
     const art = await buildHoleArtifact(part);
-    expect(art).not.toBeNull();
+    expect(art!.ok, art!.reason).toBe(true);
+    const ngonArea = (64 / 2) * 5 * 5 * Math.sin((2 * Math.PI) / 64);
+    expect(art!.cuts[0]!.removedMm3).toBeCloseTo(ngonArea * 4, 3);   // 깊이 4만큼만
+    expect(art!.cuts[0]!.depthMm).toBe(4);
+    expect(art!.netVolumeMm3).toBeCloseTo(96000 - ngonArea * 4, 3);
+    expect(art!.netVolumeMm3).toBeGreaterThan(96000 - ngonArea * 10); // 관통이었다면 이보다 작다
+    expect(holeGate(part, art).pass).toBe(true);
+  }, 120_000);
+
+  it('블라인드 깊이가 두께 이상이면 관통으로 둔갑시키지 않고 거부', async () => {
+    const part: PlanPart = {
+      ...holedPlatePlan().parts[0]!,
+      holes: [{ id: 'h1', kind: 'blind', diameterMm: 6, at: { x: 20, y: 20 }, depthMm: 10 }],
+    };
+    const art = await buildHoleArtifact(part);
     expect(art!.ok).toBe(false);
-    expect(art!.reason).toMatch(/blind hole/);
-    const g = holeGate(part, art);
-    expect(g.pass).toBe(false);
+    expect(art!.reason).toMatch(/that is a through hole/);
+  });
+
+  it('블라인드에 깊이가 없으면 커널 전에 거부', async () => {
+    const part: PlanPart = {
+      ...holedPlatePlan().parts[0]!,
+      holes: [{ id: 'h1', kind: 'blind', diameterMm: 6, at: { x: 20, y: 20 } }],
+    };
+    const art = await buildHoleArtifact(part);
+    expect(art!.ok).toBe(false);
+    expect(art!.reason).toMatch(/positive depthMm/);
   });
 
   it('extrude가 아닌 bodies[0]에 구멍을 선언하면 거부 (커널 경로가 없는 형상)', async () => {

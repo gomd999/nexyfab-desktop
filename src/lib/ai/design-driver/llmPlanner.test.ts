@@ -350,6 +350,105 @@ describe('makeLlmPlanner — 뷰에서 잴 수 없는 선형 치수는 빌드 �
     await expect(planner.plan(BRIEF)).resolves.toBeTruthy();
   });
 
+  // ─── 대각 치수 — 260727 최종 실측에서 남은 3건 중 1건(a4-08 거셋 빗변) ─────
+  it("대각 span은 kind:'aligned'로 진짜 길이를, axis로 성분을 잴 수 있다", async () => {
+    // 직각삼각형 거셋: 다리 80×80, 빗변은 e.vert.1↔e.vert.2(대각).
+    const gusset = (dims: DesignPlan['drawing']['dimensions']): DesignPlan => ({
+      planId: 'p_gusset',
+      name: 'Gusset 80×80×6',
+      parts: [{
+        partId: 'gusset',
+        name: 'Gusset',
+        bodies: [{
+          bodyId: 'b0',
+          feature: {
+            kind: 'extrude',
+            loop: [{ x: 0, y: 0 }, { x: 80, y: 0 }, { x: 0, y: 80 }],
+            depth: 6,
+            direction: 'one_sided',
+            mode: 'add',
+          } as unknown as DesignPlan['parts'][number]['bodies'][number]['feature'],
+        }],
+      }],
+      drawing: { dimensions: dims },
+    });
+
+    // ① aligned = 빗변의 실제 길이(80√2)
+    const alignedPlan = gusset([
+      { id: 'd_hyp', partId: 'gusset', bodyId: 'b0', view: 'top', kind: 'aligned', refs: ['e.vert.1', 'e.vert.2'], expected: Math.hypot(80, 80) },
+    ]);
+    const { planner: p1 } = plannerReturning(JSON.stringify(alignedPlan));
+    await expect(p1.plan(BRIEF)).resolves.toBeTruthy();
+
+    // ② linear + axis = 그 대각의 X 성분(다리 80)
+    const axisPlan = gusset([
+      { id: 'd_leg_x', partId: 'gusset', bodyId: 'b0', view: 'top', kind: 'linear', axis: 'x', refs: ['e.vert.1', 'e.vert.2'], expected: 80 },
+    ]);
+    const { planner: p2 } = plannerReturning(JSON.stringify(axisPlan));
+    const coerced = await p2.plan(BRIEF);
+    expect(coerced.drawing.dimensions[0]!.axis).toBe('x'); // 계획 단계에서 살아남아 게이트로 전달된다
+  });
+
+  it('axis:x가 게이트까지 전달돼 대각의 X 성분을 실측한다(배선 전 구간)', async () => {
+    const plan: DesignPlan = {
+      planId: 'p_gusset_axis',
+      name: 'Gusset 80x80x6',
+      parts: [{
+        partId: 'gusset',
+        name: 'Gusset',
+        bodies: [{
+          bodyId: 'b0',
+          feature: {
+            kind: 'extrude',
+            loop: [{ x: 0, y: 0 }, { x: 80, y: 0 }, { x: 0, y: 80 }],
+            depth: 6,
+            direction: 'one_sided',
+            mode: 'add',
+          } as unknown as DesignPlan['parts'][number]['bodies'][number]['feature'],
+        }],
+      }],
+      drawing: {
+        dimensions: [
+          // 대각 쌍이지만 axis:'x'로 X 성분(80)을 재라고 지시 — auto였다면 not-axis-aligned.
+          { id: 'd_leg_x', partId: 'gusset', bodyId: 'b0', view: 'top', kind: 'linear', axis: 'x', refs: ['e.vert.1', 'e.vert.2'], expected: 80 },
+        ],
+      },
+    };
+    const { planner } = plannerReturning(JSON.stringify(plan));
+    const res = await runDesignDriver({ id: 'g-axis', text: 'gusset' }, { planner });
+    const dg = res.gates.find((g) => g.kind === 'drawing');
+    expect(dg, 'drawing 게이트가 있어야 한다').toBeTruthy();
+    expect(dg!.pass, dg!.reason ?? '').toBe(true);
+
+    // 같은 쌍을 axis 없이 linear로 재면 종전대로 정직 실패(과탐 아님을 대조로 고정)
+    const autoPlan: DesignPlan = {
+      ...plan,
+      drawing: { dimensions: [{ ...plan.drawing.dimensions[0]!, id: 'd_auto', axis: undefined }] },
+    };
+    const { planner: p2 } = plannerReturning(JSON.stringify(autoPlan));
+    const res2 = await runDesignDriver({ id: 'g-auto', text: 'gusset' }, { planner: p2 });
+    const dg2 = res2.gates.find((g) => g.kind === 'drawing');
+    expect(dg2!.pass).toBe(false);
+    expect(dg2!.reason).toMatch(/not-axis-aligned/);
+  });
+
+  it('axis는 linear 전용 — 다른 kind에 주면 계획 단계에서 거부', async () => {
+    const plan = JSON.parse(validPlanJson()) as DesignPlan;
+    plan.drawing.dimensions[0]!.kind = 'aligned';
+    (plan.drawing.dimensions[0] as { axis?: string }).axis = 'x';
+    const { planner } = plannerReturning(JSON.stringify(plan));
+    await expect(planner.plan(BRIEF)).rejects.toThrow(/axis is linear-only/);
+  });
+
+  it("시스템 프롬프트가 대각 span의 세 가지 정답을 알려준다", async () => {
+    const { planner, seen } = plannerReturning(validPlanJson());
+    await planner.plan(BRIEF);
+    const sys = seen.messages.find((m) => m.role === 'system')!;
+    expect(sys.content).toContain('not-axis-aligned');
+    expect(sys.content).toMatch(/kind:\"aligned\"\s+→ the slant's TRUE length/);
+    expect(sys.content).toContain('gusset');
+  });
+
   it('시스템 프롬프트가 구멍을 도면 치수로 넣지 말라고 명시한다(구멍엔 토폴로지 이름이 없음)', async () => {
     // 260727 재측정: 구멍을 열자 모델이 곧바로 구멍 지름을 diametric으로 넣으려 했고
     // 4/12가 그것으로 죽었다 — 구멍은 커널 절삭으로 검증되지만 시트 콜아웃은 미지원.

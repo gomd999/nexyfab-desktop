@@ -183,7 +183,8 @@ export function buildDrawingArtifact(plan: DesignPlan): DrawingArtifact {
     measurements.push({
       spec,
       viewportId,
-      result: measureSheetDimension(dim, sheet.viewports, topologies),
+      // spec.axis(선택)만 측정기로 넘긴다 — 기본은 종전 'auto'(대각이면 정직 실패).
+      result: measureSheetDimension(dim, sheet.viewports, topologies, spec.axis ? { axis: spec.axis } : undefined),
     });
   }
 

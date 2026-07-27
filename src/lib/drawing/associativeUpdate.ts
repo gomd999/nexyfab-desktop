@@ -33,7 +33,7 @@ import type { Polyhedron } from '@/lib/cad/featureMesh';
 import type { NamedTopology } from '@/lib/cad/topoNaming';
 import type { Sheet, Viewport } from './sheet';
 import type { Dimension } from './dimension';
-import { measureDimension, type MeasureResult } from './measure';
+import { measureDimension, type MeasureOptions, type MeasureResult } from './measure';
 
 // ─── plane re-anchoring ──────────────────────────────────────────────────
 
@@ -172,12 +172,15 @@ export function measureSheetDimension(
   dimension: Dimension,
   viewports: ReadonlyArray<Viewport>,
   topologies: ReadonlyMap<string, NamedTopology> | undefined,
+  /** Forwarded to `measureDimension` — e.g. `{ axis: 'x' }` to force a linear
+   *  dimension onto one projection axis. Omitted ⇒ previous behaviour exactly. */
+  opts?: MeasureOptions,
 ): MeasureResult | null {
   const vp = viewports.find((v) => v.id === dimension.viewportId);
   if (!vp || vp.projection.kind !== 'standard') return null;
   const topo = topologies?.get(vp.sourceId);
   if (!topo) return null;
-  return measureDimension(dimension, { topo, view: vp.projection.view });
+  return measureDimension(dimension, { topo, view: vp.projection.view }, opts);
 }
 
 /**

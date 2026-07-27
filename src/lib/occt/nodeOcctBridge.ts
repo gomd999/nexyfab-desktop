@@ -877,6 +877,17 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
       }
     },
 
+    async buildPrismAt(loop: ReadonlyArray<{ x: number; y: number }>, z0: number, heightMm: number) {
+      try {
+        if (!(heightMm > 0)) throw new Error(`height must be positive, got ${heightMm}`);
+        if (loop.length < 3) throw new Error(`loop needs >= 3 points, got ${loop.length}`);
+        const shape = buildPrism(oc, loop, z0, heightMm);
+        return result(shape, [], undefined, 'solid');
+      } catch (e) {
+        return { ok: false, error: `buildPrismAt: ${e instanceof Error ? e.message : String(e)}`, warnings: [] };
+      }
+    },
+
     async buildFromRevolve(feature: RevolveFeature) {
       try {
         // Profile (X≥0, axis = Y) revolved about the Y axis.

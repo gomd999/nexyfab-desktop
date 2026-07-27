@@ -545,6 +545,12 @@ function coerceDimension(v: unknown, path: string): PlanDimensionSpec {
     kind: kind as PlanDimensionSpec['kind'],
     refs: refsRaw.map((r, i) => reqStr(r, `${path}.refs[${i}]`)),
   };
+  if (o.axis !== undefined) {
+    const axis = reqStr(o.axis, `${path}.axis`);
+    if (axis !== 'x' && axis !== 'y') throw new PlannerError(`${path}.axis='${axis}' invalid (x|y)`);
+    if (kind !== 'linear') throw new PlannerError(`${path}.axis is linear-only (kind='${kind}')`);
+    dim.axis = axis;
+  }
   const expected = optNum(o.expected, `${path}.expected`);
   if (expected !== undefined) dim.expected = expected;
   // tolerance is an opaque passthrough (drawing.dimension owns its schema).
@@ -900,7 +906,8 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
           "diameterMm": number,          // round only (required when shape is round)
           "widthMm": number, "heightMm": number,  // rect only — axis-aligned cutout size (X, Y)
           "at": {"x":number,"y":number},  // centre in the SAME sketch frame as the extrude loop
-          "kind": "through"?,  // 'blind' is parsed and then REFUSED (no axial placement transform yet)
+          "kind": "through"|"blind"?,   // default through; blind needs depthMm
+          "depthMm": number?,            // blind only — depth DOWN FROM THE TOP FACE (< thickness)
           "segments": number?  // round tool tessellation, default 64 (range 12..256)
         }
       ]
@@ -933,7 +940,11 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
       //              { "id":"h3", "diameterMm":6.5, "at":{"x":110,"y":70} },
       //              { "id":"h4", "diameterMm":6.5, "at":{"x":10,"y":70} } ]
       // The hole gate runs BRepAlgoAPI_Cut and REAL-measures the net volume; a hole
-      // that removes no material (placed off the part) FAILS the gate.
+      // that removes no material (placed off the part) FAILS the gate. A BLIND hole must
+      // remove exactly area×depthMm (a depth >= the thickness is REFUSED — declare through).
+      // The package carries a HOLE SCHEDULE (id, size, shape, centre, depth, removed volume)
+      // built from these declarations + the kernel's measurements, so the shop gets the hole
+      // data as a table even though the sheet does not draw the holes yet.
       // DO NOT dimension the holes. A hole has NO topology name yet (the extrude namespace
       // covers only the outer profile), so there is nothing for a dimension to reference:
       //   · Never add a 'diametric'/'radial' dimension for a hole diameter.
@@ -991,6 +1002,7 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
         "partId": string, "bodyId": string,   // MUST reference an existing part/body
         "view": "front"|"top"|"right",
         "kind": "linear"|"aligned"|"radial"|"diametric"|"angular",
+        "axis": "x"|"y"?,        // linear only — force the horizontal(x)/vertical(y) COMPONENT
         "refs": [string],         // stable topology names (see rules)
         "expected": number?,      // nominal from the brief; gate checks |measured-expected| <= 1e-6
         "tolerance": object?
@@ -1049,8 +1061,19 @@ Therefore, for a body whose loop is W (along X) × H (along Y) extruded to thick
          front projects Y out, so those two edges land on top of each other and measure 0.
   · T  → view "front" or "right", refs = ["f.cap.bottom", "f.cap.top"].  **NEVER two e.vert.{i}** —
          every vertical edge spans the SAME Z range, so their separation along Z is 0.
-  · The two refs of a "linear" dimension must also be axis-aligned in that view; a diagonal pair
-    (e.g. opposite corners) is refused — use "aligned" or pick an axis-parallel pair.
+  · The two refs of a "linear" dimension must also be axis-aligned in that view. A DIAGONAL pair
+    (a slanted span — gusset hypotenuse, chamfer, opposite corners) is refused as
+    "not-axis-aligned". You have three correct options, pick by what you actually mean:
+       1. kind:"aligned"        → the slant's TRUE length (the hypotenuse itself).
+       2. kind:"linear" + axis:"x" (or "y") → one COMPONENT of the slant (the leg).
+       3. pick an axis-parallel ref pair instead.
+    Worked example — a right-triangle gusset whose loop is [(0,0),(80,0),(0,80)] (legs along X and
+    Y, hypotenuse between vertices 1 and 2), extruded 6 mm thick:
+       { "id":"d_leg_x", "view":"top", "kind":"linear", "refs":["e.vert.0","e.vert.1"], "expected":80 }
+       { "id":"d_leg_y", "view":"top", "kind":"linear", "refs":["e.vert.0","e.vert.2"], "expected":80 }
+       { "id":"d_hyp",  "view":"top", "kind":"aligned", "refs":["e.vert.1","e.vert.2"], "expected":113.137 }
+    NOTE e.vert.1→e.vert.2 is the DIAGONAL: as "linear" it is refused; as "aligned" it measures
+    80·√2. If you wanted the leg instead, use axis:"x"/"y" on that same pair.
 A dimension that cannot be measured in its chosen view is refused BEFORE the gates, with the view
 you should have used. Worked example for a 50 × 30 × 25 block (loop 50 along X, 30 along Y, depth 25):
   { "id":"d_width",  "view":"top",   "kind":"linear", "refs":["e.vert.0","e.vert.1"], "expected":50 }
