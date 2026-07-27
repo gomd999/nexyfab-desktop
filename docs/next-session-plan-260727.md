@@ -1,0 +1,210 @@
+# 다음 세션 인수인계 — 2026-07-27 (A-7 전수감사 · A-5/A-3 견고성 · A-4 실측 → WB-9 구멍 편입)
+
+**전임 문서**: `next-session-plan-260723h.md`
+**이 세션의 궤도**: 사용자가 네 축(①dogfooding 전수감사 ②엔진 견고성+CI ③아키텍처
+④Wave B)을 모두 선택 → ④는 **이미 완료돼 있었고**(아래 §5), ①②를 소화하는 과정에서
+A-4 실측이 **진짜 최상위 병목(구멍)** 을 찾아내 그것까지 구현했다.
+
+**커밋(전부 실측 근거)**
+| 커밋 | 등급 | 내용 |
+|---|---|---|
+| `835eec40` | P0 | 옹벽 KDS 검증 FAIL이 소비자 문서에 도달할 경로 자체가 없던 결함 |
+| `87a9e3f2` | P0 | vitest에서 실 LLM 경로가 프로바이더에 닿기도 전에 죽던 결함(CI 사각지대) |
+| `d10b84b6` | P1 | 정밀 FEA 강등 사유 오귀속 — 예산으로 자른 걸 "미수렴"이라 보고 |
+| (WB-9) | P0 | 구멍 편입 — 계획 스키마에 구멍이 없어 실무 부품 5/12가 막히던 결함 |
+
+---
+
+## 1. A-7 — "소비자 표면이 안전판정을 숨기는" 패턴 전수감사
+
+지난 두 세션에서 같은 갭이 연속 두 번 나왔기 때문에(FEA 안전율·도메인 안전검토),
+개별 발견을 기다리지 않고 **패키지가 산출하는 모든 판정 소스를 표로 놓고** 소비자
+문서 도달 여부를 전수 확인했다.
+
+| 판정 소스 | 파일로 나가나 | 쉬운요약 반영 | 상태 |
+|---|---|---|---|
+| structural(전도·부재) | structural.html | ✅ | 정상 |
+| designOk / 부유 / 간섭 | — | ✅ | 정상 |
+| FEA safetyFactor | FEA.html | ✅(웹) | 정상(MCP는 FEA 자체 미산출) |
+| domainSafety(피난·목재·활하중·하중경로) | 안전검토.html | ✅ | 지난 세션 수정분 생존 |
+| executionGate M1~M6 | 실시검도리포트.html | ✅ | 정상 |
+| **codeVerification(옹벽·암거 KDS)** | 검증.html | ❌→✅ | **P0 이번 수정** |
+| completeness C1~C9 | 파일 없음 | ❌ | 잔여(P2) — API JSON에만. 소비자엔 M1~M6가 있음 |
+| consistency(문서 간 수치 정합) | 파일 없음 | ❌ | 잔여(P2) — **실패 사례를 못 만듦**(4개 도메인 전부 pass) |
+| roundtrip A1 / interferenceRefine B1 | 파일 없음 | ❌ | 잔여(P2) — 검증 결과이지 안전 판정 아님 |
+
+### 발견한 P0 (`835eec40`)
+`domainSafetyVerdict`는 interior/landscape/bridge/building 담당이고, civil(옹벽·암거)의
+코드 대조는 `verificationReportHtml` 쪽이다 — **civil은 어느 쪽으로도 쉬운요약에 도달할
+경로가 없었다.**
+
+- 실측 재현: `retaining_wall_run` H3000·B2000·toe1200 → KDS **활동(sliding) FS 미달**로
+  검증.html `verdict=FAIL`. 같은 패키지의 쉬운요약.html은
+  `구조 안전(개산) 이상 없음 · 걸린 안전 경고는 없습니다`.
+- 왜 structural이 대신 못 잡나: structural은 **자중 강체 전도**만 본다. 토압을
+  모델링하지 않으므로 활동·지지력 파괴는 원리상 보이지 않는다. 두 판정이 갈리는 건
+  정상이고, **갈릴 때 소비자 문서가 낙관적인 쪽만 싣는 것**이 결함이었다.
+- 수정: `codeVerificationVerdict()`(검증.html과 동일 소스의 압축 판정) 신설 →
+  easySummary `opts.codeVerification` → **웹 route.ts + MCP generate_package 두 발생지 배선**.
+  INFO형(박스 암거 단면력)은 `decisive:false`로 "산출값만(합·불 판정 아님)" 표기 —
+  판정한 적 없는 걸 "이상 없음"으로 읽히게 하지 않는다.
+- 검증: 활동FAIL 뒤집힘 · 건전 옹벽 과탐 0 · mech 문구 미출력 · 회귀 30/30.
+
+### 잔여(의도적으로 손대지 않음)
+`consistency`(문서 간 수치 정합)는 4개 도메인 템플릿에서 **한 번도 실패하지 않아**
+실패 경로를 실측할 수 없었다. 미검증 코드를 소비자 문서에 넣는 대신 잔여로 남긴다.
+MCP `generate_package`는 이 정합 검사를 **아예 실행하지 않는다**(웹만 실행) — 비대칭.
+
+---
+
+## 2. A-5 — CI가 실 LLM 경로를 한 번도 못 보던 상태 (`87a9e3f2`)
+
+- 재현 확정: `chatCompletion()` → `getActiveBreaker()` → `getSetting()` → `getDbAdapter()`
+  → `createSqliteAdapter()` → `require('./db')` → **MODULE_NOT_FOUND**(vite-node).
+- 왜 선택적으로만 터졌나: vite-node는 node_modules의 require는 CJS 인터롭으로 통과시키지만
+  (`require('pg')`는 정상) **상대 TS 경로**는 해석하지 못한다.
+- 영향은 "DB 테스트 하나 실패"가 아니었다 — 설정을 읽는 모든 경로가 실작업 전에 죽으므로,
+  design-driver 평가에서 "플래너가 거부했다"가 진짜 거부인지 하네스 붕괴인지 vitest
+  안에서 구분되지 않았다. 덤으로 `api-meter`의 `recordApiUsage`는 void 호출이라 이 throw가
+  unhandled rejection이 된다.
+- 수정: require 우선 → 실패 시 dynamic import 폴백(메모이즈). 어댑터 메서드가 전부 async라
+  await 추가만으로 외부 계약 불변. 프로덕션 Next 번들은 종전 require 경로 그대로.
+- 신규 회귀 `src/lib/ai/__tests__/chatCompletionPath.test.ts`: local 프로바이더 + fetch 스텁으로
+  브레이커→체인→미터 전 배선을 실 네트워크·과금 없이 통과시킨다. 수정 전 2/2 실패 → 후 2/2 통과.
+
+---
+
+## 3. A-3 — 정밀 FEA 강등 사유 오귀속 (`d10b84b6`)
+
+- `sparsePCG`는 (a) 예산에 걸려 반복을 끊은 경우와 (b) 시간을 다 쓰고도 발산·비유한인
+  경우를 **둘 다 converged:false**로 돌려준다. 리포트는 항상 "부적합(미수렴/비유한)"이라
+  적었다 — 사용자는 형상이 잘못됐다고 읽지만 실제로는 우리가 시간을 끊은 것.
+- `screeningDowngradeNote()`로 분리: 절단이면 "예산 Ns 초과로 중단 — 발산이 아니라 시간
+  절단"+실측 벽시계+늘리는 방법. 진짜 미수렴은 종전 문구.
+- **예산 26s 기본값은 올리지 않았다.** 이 상수는 머신 속도가 아니라 게이트웨이 타임아웃에
+  묶여 있고(그 502가 상수의 계기), "느린 머신에서 강등이 잦다"는 이유로 코드에서 올리면
+  프로덕션이 502로 돌아간다. 대신 `NEXYFAB_FEA_PRECISE_BUDGET_MS`(5s~120s 클램프)로
+  운영자만 조정 가능하게 하고, gmsh 하위예산(16s)도 비례 스케일했다.
+- 부수 확인: `feaValidationSuite`의 A5(plate-with-hole Kt)는 **격리 실행 시 52s로 통과**하나
+  전체 병렬 실행에서는 실패한다. 기본값 경로는 이 커밋과 수치적으로 동일(26000×16000/26000
+  = 16000)하므로 무관하며, 정확히 이 커밋이 설명하려는 현상(부하에서 예산이 잘림)의 사례다.
+  **머신 부하 의존 잠재 플레이크로 남아 있음.**
+
+---
+
+## 4. A-4 — 실측 A/B (n=12, 실 DeepSeek) → WB-9 구멍 편입
+
+### 4-1. ref-naming 수정의 개선폭 확정
+같은 12개 브리프를 (a)수정 전 프롬프트 (b)현재 프롬프트로 각각 실행. "수정 전"은 옛 파일
+전체가 아니라 **`49670241`의 -/+ 만 역적용**했다(다른 개선까지 되돌리면 ref-naming 단독
+효과가 아니게 된다).
+
+| | 계획 단계 통과 | `e.vert.{i}-{j}` 오류 | 전 게이트 완주 |
+|---|---|---|---|
+| 수정 전 | **1/12 (8.3%)** | 11/12 | 0/12 |
+| 현재 | **10/12 (83.3%)** | **0/12** | 0/12 |
+
+표본 3개 정성확인이던 것이 **10배 개선으로 확정**됐고, 그 오류만 정확히 소멸했다.
+
+### 4-2. 그래서 완주가 왜 0/12인가 — 진짜 병목
+| 막힌 원인 | 건수 |
+|---|---|
+| **구멍을 별도 body로 만들어 "AABB 겹침" 거부** | **5** |
+| drawing 치수가 0mm로 측정(뷰/ref 선택) | 4 |
+| JSON 파싱 실패 · 점 2개 루프 | 2 |
+
+**5건은 모델 실수가 아니라 표현 수단의 부재였다** — `ExtrudeFeature`는 외곽 루프 하나뿐
+(`extrudeProfile.ts:36`)이라 구멍을 표현할 방법이 아예 없었고, LLM은 별도 body를 만들 수밖에
+없었으며 geometry 게이트는 그걸 정확히 거부했다. 구멍 없는 실무 기계부품은 드물다.
+
+### 4-3. WB-9 구현 — 재발명하지 않고 커널 소비
+삼각분할기(내부 루프 ear-clipping)를 새로 쓰려다가, `composedTopo`/OCCT 브리지에 **이미 실
+boolean cut(`boolean.subtract`)이 있다**는 걸 확인하고 WB-6 `curvedGate`와 **같은 경로**로 갔다.
+
+- `holeGate.ts`: `buildFromExtrude`(소재+공구) → `BRepAlgoAPI_Cut` → `BRepGProp` 순부피 실측.
+- 게이트 판정(자체 구현): 모든 구멍이 **실제로 재료를 제거**해야 하고(부품 밖 구멍 = 거부 —
+  도면엔 있고 실물엔 없는 부품 방지), 커널 순부피가 **선언한 절삭이 함의하는 부피**와
+  1e-6 이내여야 한다.
+- 정직 한계(전부 거부로 고정): 관통만 지원(블라인드는 브리지에 축방향 배치 변환이 없음) ·
+  사각 컷아웃 미지원 · 공구는 정64각형 프리즘이라 기대 부피도 πr²가 아닌 **같은 정n각형
+  기준**으로 계산(스스로 못 맞추는 기준을 세우지 않기 위해) · 파트 내 테셀레이션 혼용 거부.
+- 배선: types(HoleSpec/HoleResult)·llmPlanner(coerceHole + 프롬프트 "구멍은 body가 아니다"
+  절과 4구멍 플레이트 작업예제)·designDriver·packager·fixturePlanner(`holed-plate`).
+
+### 4-4. 재측정(같은 12브리프)
+- LLM이 `holes` 스펙을 **실제로 사용: 4/12**(구멍 필요 5건 중 4건 — 나머지 1건은 무관한
+  이유로 계획 단계 탈락)
+- **hole 게이트 4/4 PASS**(커널이 실제로 뚫고 순부피 일치)
+- **AABB 겹침 거부 5 → 0**
+- 완주는 여전히 **0/12** — 병목이 전부 **도면 치수**로 이동
+
+⚠️ 측정 함정 하나: `runDesignBrief`가 돌려주는 `BriefPayload`에는 **`plan`이 없다**. 첫 재측정에서
+`holes=0/12`로 나온 건 측정 아티팩트였고, `runDesignDriver`를 직접 불러 `res.plan`을 봐야 한다.
+
+---
+
+## 5. ④ Wave B는 이미 완료 — 인수인계 §3-B가 스테일
+
+`next-session-plan-260723h.md` §3-B가 "WB-2 판금·WB-3 웰드먼트·WB-5 GD&T·WB-6 곡면쉘·
+WB-7 패턴 = 아직 미착수"로 적고 있으나 **전부 완료돼 있다**:
+`dfa02fc6`(WB-6, matrix ③→A 87.5%) · `82faefc5`(WB-3, ⑤→A) · `b4238120`(WB-5) 등.
+정본 `docs/roadmap/AI_COVERAGE_MATRIX.md:50` = **검증 A 7/8 = 87.5%, '불가' 카테고리 소멸**.
+남은 건 ⑥ 인벌류트 치형(별도 대공사, 이전 세션에 "효과 낮음·보류" 판정)뿐이다.
+→ **Wave B 백로그는 사실상 비어 있다.** 이 문서가 정정본이다.
+
+부수 발견: `sampleBriefs.ts`가 파트너 온보딩에서 "drawing 게이트가 구멍 위치를 검사한다"고
+약속했는데 **구멍은 계획조차 불가**였다 — GA3 온보딩 문서의 과장. 정정 완료(절삭은 검증,
+위치 콜아웃은 미지원임을 명시).
+
+---
+
+## 6. 다음 작업 (우선순위 순)
+
+1. **★도면 치수 병목** — 이제 단일 최대 병목. `d_thickness`(front 뷰)가 `measured 0 mm`로
+   나오는 패턴이 지배적이고, `d_flange_height`처럼 **다른 값**이 나오는 경우도 있다. 두 가지를
+   구분해야 한다: (a) LLM이 그 뷰에서 거리가 0이 되는 ref 쌍을 고름 → **프리플라이트에서
+   "선택한 뷰에서 겹치는 ref는 거부"로 빌드 전에 잡을 수 있다** (b) 실제로 형상이 브리프와
+   다름 → 정상 거부. 먼저 실패한 계획의 `refs`를 덤프해 (a)/(b) 비율부터 실측할 것.
+2. **holes 채택률 올리기** — 4/12는 스키마가 열린 첫 회 수치다. 프롬프트 위치/예제를 바꿔가며
+   재측정하면 개선폭이 나온다(측정 하네스는 §4-4 방식 그대로 재현 가능).
+3. **구멍 위치 치수(콜아웃)** — 현재 절삭은 검증하지만 도면에 구멍 위치가 치수로 안 실린다.
+   실무 도면에선 필수. `drawingGate`+topo 명명 확장 필요(구멍 엣지 이름이 없다).
+4. **블라인드 홀 / 사각 컷아웃** — 브리지에 축방향 배치 변환(transform)이 생기면 블라인드가
+   열린다. 사각 컷아웃은 공구 루프만 바꾸면 되므로 상대적으로 싸다(현재는 원형만).
+5. A-7 잔여(P2): completeness·consistency·roundtrip을 소비자 문서에 실을지 — **실패 사례를
+   만들 수 있을 때** 착수할 것.
+6. A5 FEA 테스트의 부하 의존 플레이크(§3) — 예산과 얽혀 있어 "테스트 통과시키려 값 올리기"는
+   위험한 방향.
+
+### 보류(사용자 결정, 2026-07-27)
+- **A-1 documentId 브리지** — 조사 결과 `nf_projects`(scene_data 인라인 JSON)와
+  `nf_documents`(blob_r2_key 필수)는 **저장 모델이 달라** "같은 id 공유"로는 안 되고 실 R2 blob
+  배선이 따라온다. 사용자 결정 = **보류, 정직 캡션 유지**.
+- **A-2 mate #3 마이그레이션** — 사용자 결정 = 보류(#4 폐기가 아직 라이브 검증 전).
+
+---
+
+## 7. 검증 명령 (재현)
+
+```bash
+node scripts/typecheck.cjs                                            # 전역 tsc
+npx vitest run scripts/drawing-to-3d/easy-summary.test.ts             # 쉬운요약 30(codeVerification 포함)
+npx vitest run src/lib/ai/__tests__/chatCompletionPath.test.ts        # A-5 CI 사각지대 2
+npx vitest run "src/app/[lang]/shape-generator/analysis/feaPackage.test.ts"  # A-3 예산 10
+npx vitest run src/lib/ai/design-driver/                              # 드라이버 전체(hole 포함)
+npx vitest run src/lib                                                # 5,623(A-5 회귀 범위)
+```
+
+실 LLM 측정 재현: 레포 루트에 임시 `.ts`를 두고
+`node -r ./scripts/load-parent-env.cjs ./node_modules/tsx/dist/cli.mjs <file>.ts`
+(⚠️ 실행 후 삭제 — 루트 임시 파일은 동시 실행되는 빌드/tsc의 파일목록을 오염시킨다).
+
+## 8. 절차적 교훈
+
+- **커밋 훅이 실제로 잡는다**: WB-9 1차 커밋이 전역 tsc에서 타입 오류 2건(`ExtrudeMode`에
+  없는 `'new_body'`, revolve `mode` 누락)으로 정확히 막혔다. 훅 우회 금지가 옳다.
+- **"스키마에 없어서 못 한 것"과 "모델이 못 한 것"은 다르다.** A-4가 없었으면 구멍 5건을
+  계속 프롬프트 튜닝 문제로 오해했을 것이다 — 거부 사유를 집계해야 보인다.
+- **재발명 전에 한 층 아래를 본다.** 구멍은 삼각분할기 신규 구현처럼 보였지만 커널에 이미
+  boolean cut이 있었다([[project_nexyfab_geometry_authoring]]의 "두 세계" 교훈과 동형).
+- 측정 스크립트가 읽는 필드가 실제로 존재하는지 먼저 확인할 것(§4-4의 `plan` 부재 함정).
