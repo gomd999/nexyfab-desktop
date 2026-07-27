@@ -69,9 +69,46 @@ export interface PlanBody {
   translate?: { x: number; y: number; z: number };
 }
 
+/**
+ * One additive/subtractive term of the cross-section, declared with the
+ * dimensions the BRIEF asked for — never read off the drawn loop.
+ * The engine does the arithmetic; the planner only states the shape.
+ */
+export type VolumeTerm =
+  | { shape: 'rect'; widthMm: number; heightMm: number; sign?: 1 | -1 }
+  | { shape: 'circle'; diameterMm: number; sign?: 1 | -1 }
+  | { shape: 'triangle'; baseMm: number; heightMm: number; sign?: 1 | -1 };
+
+/**
+ * Parametric derivation of the expected volume: cross-section terms × depth.
+ *
+ * WHY this exists (260728, §6-1): the top remaining failure mode was the model
+ * mis-computing its own theoretical volume (a4-02 wrote a different number on
+ * every run — it was guessing). The obvious fix — have the engine compute the
+ * volume FROM THE LOOP and let the model cite it — is unsafe: expected and
+ * measured would then share one source and the gate becomes an identity, so a
+ * part whose loop is wrong (a4-11: flange drawn 45 where the brief said 50)
+ * PASSES. That is measured, not argued — see
+ * `__tests__/expectedVolumeIndependence.test.ts`.
+ *
+ * A decomposition keeps the two sources independent — it is a SECOND statement
+ * of the intended shape, in brief dimensions — while taking the arithmetic away
+ * from the model, which is the part it actually gets wrong.
+ */
+export interface VolumeDecomposition {
+  terms: VolumeTerm[];
+  /** Extrude depth, mm — declared, not read from the feature. */
+  depthMm: number;
+}
+
 export interface ExpectedVolumeSpec {
-  /** Theoretical volume of the AS-MESHED geometry, mm³. */
-  valueMm3: number;
+  /**
+   * Theoretical volume of the AS-MESHED geometry, mm³. Optional ONLY when
+   * `decomposition` is present (then the engine computes it). When both are
+   * given the geometry gate cross-checks them and reports an arithmetic
+   * disagreement separately from a geometry one.
+   */
+  valueMm3?: number;
   /** Relative tolerance for the gate. Default 1e-9. */
   tolRel?: number;
   /**
@@ -80,6 +117,8 @@ export interface ExpectedVolumeSpec {
    * analytic cylinder πr²h = X, tessellation deviation −1.14%").
    */
   basis: string;
+  /** Parametric derivation — the engine computes the number from this. */
+  decomposition?: VolumeDecomposition;
 }
 
 // ─── plan: sheet metal (WB-2 판금 전개 편입) ───────────────────────────────

@@ -40,6 +40,7 @@ import {
 } from '@/lib/cad/featureMesh';
 import type { Vec3 } from '@/lib/sketch/sketchPlane';
 import type { GateResult, PlanPart } from './types';
+import { decompositionBasisLine, decompositionVolumeMm3 } from './volumeDecomposition';
 
 // ─── build artifacts ─────────────────────────────────────────────────────
 
@@ -321,17 +322,55 @@ export function geometryGate(part: PlanPart, geo: PartGeometry): GateResult {
   const expected = part.expectedVolume;
   if (expected) {
     const tolRel = expected.tolRel ?? 1e-9;
-    const relErr =
-      Math.abs(geo.totalVolumeMm3 - expected.valueMm3) / Math.max(Math.abs(expected.valueMm3), VOLUME_EPS);
-    metrics.expectedVolumeMm3 = expected.valueMm3;
-    metrics.volumeRelError = relErr;
-    metrics.volumeTolRel = tolRel;
     notes.push(`expectedVolume basis: ${expected.basis}`);
-    if (reasons.length === 0 && relErr > tolRel) {
-      reasons.push(
-        `volume ${geo.totalVolumeMm3} mm³ deviates from theoretical ${expected.valueMm3} mm³ ` +
-          `by relError ${relErr} > ${tolRel}`,
-      );
+
+    // 파라메트릭 근거가 있으면 산술은 엔진이 한다 — 모델이 틀리는 부분이 정확히 이것이다.
+    // 분해는 루프가 아니라 브리프 치수에서 나오므로 measured 와 여전히 독립이다(§6-1).
+    let authority = expected.valueMm3;
+    if (expected.decomposition) {
+      let computed: number;
+      try {
+        computed = decompositionVolumeMm3(expected.decomposition);
+      } catch (e) {
+        reasons.push(`expectedVolume.decomposition invalid — ${e instanceof Error ? e.message : String(e)}`);
+        computed = NaN;
+      }
+      if (Number.isFinite(computed)) {
+        authority = computed;
+        metrics.decompositionVolumeMm3 = computed;
+        notes.push(decompositionBasisLine(expected.decomposition));
+        // 모델이 숫자도 함께 적었다면 자기 분해와 맞는지 본다. 이건 기하 오류가 아니라
+        // **산술 오류**이고, 둘을 같은 문장으로 보고하면 어디를 고쳐야 하는지 알 수 없다.
+        if (expected.valueMm3 !== undefined) {
+          const arithErr =
+            Math.abs(expected.valueMm3 - computed) / Math.max(Math.abs(computed), VOLUME_EPS);
+          metrics.volumeArithmeticRelError = arithErr;
+          if (arithErr > tolRel) {
+            reasons.push(
+              `expectedVolume.valueMm3 ${expected.valueMm3} mm³ disagrees with your own ` +
+                `decomposition (${computed} mm³) by relError ${arithErr} > ${tolRel} — ` +
+                `arithmetic error in the stated theory, not a geometry error ` +
+                `(the loop was not consulted for either number)`,
+            );
+          }
+        }
+      }
+    }
+
+    if (authority === undefined) {
+      reasons.push('expectedVolume needs valueMm3 or decomposition — 근거 없는 이론 부피는 받지 않는다');
+    } else if (Number.isFinite(authority)) {
+      const relErr =
+        Math.abs(geo.totalVolumeMm3 - authority) / Math.max(Math.abs(authority), VOLUME_EPS);
+      metrics.expectedVolumeMm3 = authority;
+      metrics.volumeRelError = relErr;
+      metrics.volumeTolRel = tolRel;
+      if (reasons.length === 0 && relErr > tolRel) {
+        reasons.push(
+          `volume ${geo.totalVolumeMm3} mm³ deviates from theoretical ${authority} mm³ ` +
+            `by relError ${relErr} > ${tolRel}`,
+        );
+      }
     }
   }
 

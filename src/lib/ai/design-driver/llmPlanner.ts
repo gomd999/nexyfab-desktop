@@ -60,6 +60,8 @@ import type {
   PatternSpec,
   CurvedSpec,
   HoleSpec,
+  VolumeTerm,
+  VolumeDecomposition,
 } from './types';
 import {
   retrieveReferenceParts,
@@ -281,14 +283,55 @@ function coerceBody(v: unknown, path: string): PlanBody {
   return body;
 }
 
+const VOLUME_TERM_SHAPES = new Set(['rect', 'circle', 'triangle']);
+
+function coerceVolumeTerm(v: unknown, path: string): VolumeTerm {
+  const o = reqObj(v, path);
+  const shape = reqStr(o.shape, `${path}.shape`);
+  if (!VOLUME_TERM_SHAPES.has(shape)) {
+    throw new PlannerError(`${path}.shape='${shape}' invalid (rect|circle|triangle)`);
+  }
+  const sign = optNum(o.sign, `${path}.sign`);
+  if (sign !== undefined && sign !== 1 && sign !== -1) {
+    throw new PlannerError(`${path}.sign=${sign} invalid (1|-1)`);
+  }
+  const signPart = sign === -1 ? ({ sign: -1 } as const) : ({} as const);
+  if (shape === 'rect') {
+    return { shape: 'rect', widthMm: reqNum(o.widthMm, `${path}.widthMm`), heightMm: reqNum(o.heightMm, `${path}.heightMm`), ...signPart };
+  }
+  if (shape === 'circle') {
+    return { shape: 'circle', diameterMm: reqNum(o.diameterMm, `${path}.diameterMm`), ...signPart };
+  }
+  return { shape: 'triangle', baseMm: reqNum(o.baseMm, `${path}.baseMm`), heightMm: reqNum(o.heightMm, `${path}.heightMm`), ...signPart };
+}
+
+function coerceVolumeDecomposition(v: unknown, path: string): VolumeDecomposition {
+  const o = reqObj(v, path);
+  const terms = reqArray(o.terms, `${path}.terms`);
+  if (terms.length === 0) throw new PlannerError(`${path}.terms is empty`);
+  return {
+    terms: terms.map((t, i) => coerceVolumeTerm(t, `${path}.terms[${i}]`)),
+    depthMm: reqNum(o.depthMm, `${path}.depthMm`),
+  };
+}
+
 function coerceExpectedVolume(v: unknown, path: string): ExpectedVolumeSpec {
   const o = reqObj(v, path);
   const spec: ExpectedVolumeSpec = {
-    valueMm3: reqNum(o.valueMm3, `${path}.valueMm3`),
     // basis is REQUIRED by the honesty invariant (types.ts): a theoretical
     // volume with no stated derivation is not accepted.
     basis: reqStr(o.basis, `${path}.basis`),
   };
+  if (o.decomposition !== undefined && o.decomposition !== null) {
+    spec.decomposition = coerceVolumeDecomposition(o.decomposition, `${path}.decomposition`);
+  }
+  // valueMm3 는 decomposition 이 있을 때만 생략 가능하다 — 근거가 둘 다 없는 이론 부피는
+  // 받지 않는다(생성≠검증). 있으면 게이트가 분해와 교차검사해 산술 오류를 따로 보고한다.
+  if (o.valueMm3 !== undefined && o.valueMm3 !== null) {
+    spec.valueMm3 = reqNum(o.valueMm3, `${path}.valueMm3`);
+  } else if (!spec.decomposition) {
+    throw new PlannerError(`${path} needs valueMm3 or decomposition`);
+  }
   const tolRel = optNum(o.tolRel, `${path}.tolRel`);
   if (tolRel !== undefined) spec.tolRel = tolRel;
   return spec;
@@ -600,6 +643,22 @@ export function coerceDesignPlan(v: unknown): DesignPlan {
   const o = reqObj(v, 'plan');
   const partsRaw = reqArray(o.parts, 'plan.parts');
   if (partsRaw.length === 0) throw new PlannerError('plan.parts: at least one part required');
+  // 실측(260728): 실 LLM 이 `drawing` 을 plan 형제가 아니라 **parts[i] 안에** 넣는 실수를
+  // 반복한다(온도 0 에서도 실행마다 갈림 — 프롬프트 변경 전후 모두 발생하므로 특정 문구
+  // 탓이 아니다). 종전 오류 문구는 "plan.drawing: expected an object" 뿐이라 무엇을 잘못
+  // 놓았는지 알려주지 않았다. 어디에 있는지 아는데 침묵할 이유가 없다 — 정확히 지목한다.
+  if (o.drawing === undefined || o.drawing === null) {
+    const misplaced = partsRaw.findIndex(
+      (p) => typeof p === 'object' && p !== null && 'drawing' in (p as Record<string, unknown>),
+    );
+    if (misplaced >= 0) {
+      throw new PlannerError(
+        `plan.drawing is missing, but plan.parts[${misplaced}].drawing exists — ` +
+          `'drawing' is a SIBLING of 'parts' at the plan root, not a member of a part. ` +
+          `Move it out: { "planId":…, "parts":[…], "drawing":{ "paperSize":…, "dimensions":[…] } }`,
+      );
+    }
+  }
   const plan: DesignPlan = {
     planId: reqStr(o.planId, 'plan.planId'),
     name: reqStr(o.name, 'plan.name'),
@@ -833,8 +892,17 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
         }
       ],
       "expectedVolume": {         // optional; when present the geometry gate checks it
-        "valueMm3": number,
         "basis": string,          // REQUIRED: how the theory was derived, incl. any tessellation approximation
+        // PREFER "decomposition": state the cross-section in the BRIEF's dimensions and
+        // let the engine do the arithmetic. Then omit valueMm3 entirely — you cannot get
+        // a multiplication wrong if you never do one. Terms sum with sign (default +1).
+        "decomposition": {
+          "terms": [ { "shape": "rect", "widthMm": number, "heightMm": number, "sign": 1|-1? }
+                   | { "shape": "circle", "diameterMm": number, "sign": 1|-1? }
+                   | { "shape": "triangle", "baseMm": number, "heightMm": number, "sign": 1|-1? } ],
+          "depthMm": number       // extrude depth — state it, don't copy it from the feature
+        }?,
+        "valueMm3": number?,      // required ONLY if you give no decomposition
         "tolRel": number?
       },
       "sheetMetal": {             // optional; a SHEET-METAL part (process must be "sheetMetal")
@@ -933,8 +1001,9 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
       // Example — a 120×80×10 plate with four ⌀6.5 corner holes on a 100×60 pattern:
       //   "bodies": [ { "bodyId":"b0", "feature": { "kind":"extrude",
       //       "loop":[{"x":0,"y":0},{"x":120,"y":0},{"x":120,"y":80},{"x":0,"y":80}],
-      //       "depth":10, "direction":"one_sided", "mode":"new_body" } } ],
-      //   "expectedVolume": { "valueMm3": 96000, "basis": "exact prism 120×80×10; holes cut+measured by the hole gate" },
+      //       "depth":10, "direction":"one_sided", "mode":"add" } } ],
+      //   "expectedVolume": { "basis": "brief dims: plate 120×80 × 10 thick; holes cut+measured by the hole gate",
+      //                       "decomposition": { "depthMm":10, "terms":[{"shape":"rect","widthMm":120,"heightMm":80}] } },
       //   "holes": [ { "id":"h1", "diameterMm":6.5, "at":{"x":10,"y":10} },
       //              { "id":"h2", "diameterMm":6.5, "at":{"x":110,"y":10} },
       //              { "id":"h3", "diameterMm":6.5, "at":{"x":110,"y":70} },
@@ -1088,6 +1157,22 @@ A dimension whose refs are outside this grammar, or that targets a revolve/sweep
 HONESTY RULES:
 - Never fabricate geometry, code, or measured values — you plan, the engine measures.
 - expectedVolume.basis is mandatory whenever expectedVolume is present; state any approximation explicitly.
+- expectedVolume: PREFER "decomposition" over "valueMm3". Write the cross-section as terms in the
+  dimensions the BRIEF gave you, and let the engine multiply. Worked example — a U-channel, web
+  100 wide, flange 50 tall, wall 10, depth 200:
+    "expectedVolume": { "basis": "brief dims: web 100×10 + two flanges 10×40, × depth 200",
+      "decomposition": { "depthMm": 200, "terms": [
+        {"shape":"rect","widthMm":100,"heightMm":10},
+        {"shape":"rect","widthMm":10,"heightMm":40},
+        {"shape":"rect","widthMm":10,"heightMm":40} ] } }
+  Do NOT read these numbers off the loop you drew — state what the brief ASKED FOR. The gate
+  compares your decomposition against the loop precisely to catch the case where the two differ
+  (e.g. the brief says flange 50 but the loop you wrote makes it 45). If you give both a
+  decomposition and valueMm3 and they disagree, the gate reports that as an ARITHMETIC error in
+  your stated theory — separate from a geometry error — so the fix is unambiguous.
+- Do NOT omit expectedVolume to avoid a mismatch. A mismatch means the loop you drew is not the
+  shape you intended; hiding it ships a wrong part. Give a decomposition instead — then there is
+  no arithmetic for you to get wrong, and the check still does its job.
 - If a shape cannot be expressed with the meshable feature kinds and measurable topology above, REFUSE with {"error":"unsupported","reason":...} rather than emitting an unmeasurable plan.`;
 
 // ─── the planner ─────────────────────────────────────────────────────────
