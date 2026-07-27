@@ -8,6 +8,8 @@
 #      a per-file lint can't see (e.g. a renamed export breaking a far file)
 #   3. vitest related --run on staged files — runs only the tests that import
 #      one of the staged paths, transitively. Skips if no tests are related.
+#      Covers .ts/.tsx AND .mjs/.cjs — the drawing-to-3d engine is all .mjs and
+#      was silently exempt from this gate until 260728.
 #
 # To bypass for a known-safe WIP commit: `git commit --no-verify` (avoid; the
 # hook exists because every "I'll fix it after I push" has a track record).
@@ -44,14 +46,20 @@ npm run typecheck --silent
 
 # Vitest related only runs against the files git just staged. Use the diff
 # against HEAD because lint-staged may have restaged after auto-fix.
-STAGED_TS=$(git diff --cached --name-only --diff-filter=ACMR \
-  | grep -E '\.(ts|tsx)$' \
-  | grep -v -E '\.(test|spec)\.(ts|tsx)$' \
+# .mjs/.cjs 포함(260728): 종전엔 .ts/.tsx 만 봤다. 그런데 소비자 문서를 실제로 만드는
+# 엔진(scripts/drawing-to-3d/*.mjs — assembly·package·execution-gate·easy-summary·
+# domain-dossier-verify·dxf-export…)은 전부 .mjs 라, 그 파일들을 고쳐도 이 게이트가
+# **테스트를 한 줄도 돌리지 않았다**("no source files staged" 로 조용히 통과). 같은 날
+# 발견한 shebang 파싱 문제와 겹쳐, MCP 산출물 결함들이 오래 살아남은 이유의 절반이다.
+# 실측 비용: 가장 넓은 허브 assembly.mjs 스테이징 시 16파일 211테스트 ~35s (tsc 와 동급).
+STAGED_SRC=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '\.(ts|tsx|mjs|cjs)$' \
+  | grep -v -E '\.(test|spec)\.(ts|tsx|mjs|cjs)$' \
   || true)
 
-if [ -n "$STAGED_TS" ]; then
+if [ -n "$STAGED_SRC" ]; then
   echo "→ vitest related to staged sources..."
-  echo "$STAGED_TS" | xargs npx vitest related --run --reporter=default
+  echo "$STAGED_SRC" | xargs npx vitest related --run --reporter=default
 else
   echo "→ no source files staged; skipping vitest related."
 fi
