@@ -154,7 +154,27 @@ export function buildDrawingArtifact(plan: DesignPlan): DrawingArtifact {
         diameter: h.diameterMm as number,
         ...(h.kind === 'blind' && h.depthMm !== undefined ? { depth: h.depthMm } : {}),
       }));
-      sheets.set(part.partId, { ...base, viewports, ...(holeRows.length ? { holes: holeRows } : {}) });
+      // 260728: 표에 더해 **뷰 안에도** 구멍 원을 그린다. 260727 §5-5 는 이것을 featureMesh
+      // 내부 루프 공사로 보고 사용자 결정으로 남겼는데, 실제로는 메시가 필요 없다 —
+      // 지름·존재·(블라인드) 깊이는 hole 게이트가 커널 부피로 **이미 검증**했고, 검증된 값을
+      // 도면에 표기하는 데에는 투영 기하가 필요하지 않다. 주석 레이어로 내면 ADR-017 면
+      // 이름·매니폴드 전제·expectedVolume gross 계약을 전부 건드리지 않는다.
+      //
+      // 'top' 뷰에만 붙인다: extrude 프로파일 루프는 XY 평면에 있고 top = X×Y 이므로
+      // 구멍 중심 (x,y)가 그대로 보이는 유일한 표준 뷰다(front 는 Y, right 는 X 가 소멸).
+      // 사각 컷아웃은 원이 아니므로 제외(표와 같은 기준).
+      const holeMarks = roundHoles.map((h) => ({
+        viewportId: 'top',
+        xMm: h.at.x,
+        yMm: h.at.y,
+        diameterMm: h.diameterMm as number,
+        tag: h.id,
+      }));
+      sheets.set(part.partId, {
+        ...base, viewports,
+        ...(holeRows.length ? { holes: holeRows } : {}),
+        ...(holeMarks.length ? { holeMarks } : {}),
+      });
     } catch (err) {
       buildErrors.push(`part '${part.partId}': sheet construction failed — ${(err as Error).message}`);
     }

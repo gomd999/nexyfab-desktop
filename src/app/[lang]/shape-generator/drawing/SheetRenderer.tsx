@@ -34,7 +34,7 @@
  */
 
 import * as React from 'react';
-import type { Sheet, Viewport } from '@/lib/drawing/sheet';
+import type { HoleMark, Sheet, Viewport } from '@/lib/drawing/sheet';
 import { paperDimensions, effectiveSectionType } from '@/lib/drawing/sheet';
 import { viewportSheetBox } from '@/lib/drawing/dxfExport';
 import type { Dimension, GdtCallout } from '@/lib/drawing/dimension';
@@ -245,6 +245,7 @@ export function SheetRenderer({
             showTangentEdges={showTangentEdges}
             detailMarkers={markers.length > 0 ? markers : null}
             detailSourceView={detailSourceView}
+            holeMarks={(sheet.holeMarks ?? []).filter((h) => h.viewportId === vp.id)}
           />
         );
       })}
@@ -367,6 +368,8 @@ interface ViewportLayerProps {
   detailMarkers?: ReadonlyArray<DetailMarker> | null;
   /** W4-C — for a detail viewport: its source viewport's standard view. */
   detailSourceView?: ProjView | null;
+  /** 260728 — 이 뷰포트에 그릴 구멍 원. */
+  holeMarks?: ReadonlyArray<HoleMark> | null;
 }
 
 function ViewportLayer({
@@ -380,6 +383,7 @@ function ViewportLayer({
   showTangentEdges = false,
   detailMarkers,
   detailSourceView,
+  holeMarks,
 }: ViewportLayerProps): React.ReactElement {
   const box = resolveViewportBox(viewport, paperHeightMm);
   // Real projected geometry for standard views when a polyhedron is supplied.
@@ -394,6 +398,7 @@ function ViewportLayer({
           showHiddenLines={showHiddenLines}
           showTangentEdges={showTangentEdges}
           detailMarkers={detailMarkers}
+          holeMarks={holeMarks}
         />
       : null;
   // W4-C — real broken-view line work (standard projection + band collapse).
@@ -500,6 +505,8 @@ interface ProjectedGeometryProps {
   showTangentEdges?: boolean;
   /** W4-C — detail circles to draw over this view (view-plane mm). */
   detailMarkers?: ReadonlyArray<DetailMarker> | null;
+  /** 260728 — 이 뷰에 그릴 구멍 원(모델 mm). 변환은 아래 tx/ty 를 그대로 쓴다. */
+  holeMarks?: ReadonlyArray<HoleMark> | null;
 }
 
 const GEOM_VISIBLE_STROKE = '#0f172a';
@@ -523,6 +530,7 @@ function ProjectedGeometry({
   showHiddenLines = true,
   showTangentEdges = false,
   detailMarkers,
+  holeMarks,
 }: ProjectedGeometryProps): React.ReactElement | null {
   const { visible, hidden, tangent, bbox } = projectPolyhedron(poly, view);
   const geomW = bbox.maxX - bbox.minX;
@@ -551,13 +559,34 @@ function ProjectedGeometry({
       ? renderAutoDimensions({ viewportId, bbox, geomW, geomH, s, tx, ty, strokeW })
       : null;
 
+  // 260728 — 뷰 안의 구멍 원. **이 함수가 이미 계산한 tx/ty/s 를 그대로 쓴다** —
+  // 뷰포트 맞춤 변환을 두 번 구현하면 그게 드리프트 원흉이다(도면 계층의 반복된 교훈).
+  // 좌표는 프로파일 평면(모델 mm)이고, 프로파일 평면을 보여주는 뷰에서만 의미가 있다 —
+  // 어느 뷰에 붙일지는 호출자(drawingGate)가 정하고 여기서는 받은 대로 그린다.
+  const holeCircles = (holeMarks ?? []).length > 0
+    ? (holeMarks ?? []).map((h, i) => {
+        const cx = tx(h.xMm), cy = ty(h.yMm), r = (h.diameterMm / 2) * s;
+        if (!(r > 0)) return null;
+        const cross = r * 1.35; // 중심선(센터마크) 길이
+        return (
+          <g key={`hm${i}`} data-testid={`sheet-renderer-hole-${viewportId}-${h.tag ?? i}`} data-hole-d={h.diameterMm}>
+            <circle cx={cx} cy={cy} r={r} fill="none" stroke={GEOM_VISIBLE_STROKE} strokeWidth={strokeW} />
+            <line x1={cx - cross} y1={cy} x2={cx + cross} y2={cy} stroke={GEOM_VISIBLE_STROKE} strokeWidth={strokeW * 0.5} strokeDasharray={`${r * 0.6} ${r * 0.25} ${r * 0.15} ${r * 0.25}`} />
+            <line x1={cx} y1={cy - cross} x2={cx} y2={cy + cross} stroke={GEOM_VISIBLE_STROKE} strokeWidth={strokeW * 0.5} strokeDasharray={`${r * 0.6} ${r * 0.25} ${r * 0.15} ${r * 0.25}`} />
+          </g>
+        );
+      })
+    : null;
+
   return (
     <g
       data-testid={`sheet-renderer-vp-geometry-${viewportId}`}
       data-visible={visible.length}
       data-hidden={showHiddenLines ? hidden.length : 0}
       data-tangent={showTangentEdges ? tangent.length : 0}
+      data-holes={(holeMarks ?? []).length}
     >
+      {holeCircles}
       {showTangentEdges
         ? tangent.map((e, i) => (
             <line

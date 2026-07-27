@@ -197,6 +197,24 @@ import type { WeldSymbol } from './weldSymbol';
 import type { HoleSpec } from './holeTable';
 import type { BomItemRow, BomBalloon } from './bomBalloon';
 
+/**
+ * 뷰 안에 그리는 구멍 하나. 좌표·지름은 **모델 mm**(프로파일 평면), 변환은 렌더러 몫.
+ */
+export interface HoleMark {
+  /** 어느 뷰포트에 그릴지 — 프로파일 평면을 보여주는 뷰여야 한다. */
+  viewportId: string;
+  /** 프로파일 평면 좌표(mm). */
+  xMm: number;
+  yMm: number;
+  diameterMm: number;
+  /**
+   * 식별자(계획의 hole id). ⚠ `buildHoleTable` 이 표에 찍는 A1/A2… 태그와는 **다르다** —
+   * 그쪽은 동일 치수를 묶으며 렌더 시점에 새로 매기기 때문이다. 여기 값은 그림 요소를
+   * 지목하기 위한 것이지 표와 짝지으라고 있는 것이 아니다(짝짓기는 후속 과제).
+   */
+  tag?: string;
+}
+
 export interface Sheet {
   id: string;
   name: string;
@@ -224,6 +242,24 @@ export interface Sheet {
   weldSymbols?: ReadonlyArray<WeldSymbol>;
   /** Phase 4.3 hole schedule — rendered as a hole table in a sheet corner. */
   holes?: ReadonlyArray<HoleSpec>;
+  /**
+   * 260728 — 뷰 **안에** 그리는 구멍 원(+ 중심선). `holes` 는 코너의 표이고 이건 도면 위의
+   * 그림이다.
+   *
+   * 왜 이 형태인가: 구멍을 메시(featureMesh)에 넣어 투영으로 나오게 하려면 내부 루프가
+   * 필요하고, 그러면 `buildExtrudeTopo` 의 링 2개 전제와 `expectedVolume` 계약(gross→net)이
+   * 함께 뒤집힌다(260727 §5-5 가 정리한 비용). 반면 구멍의 지름·존재·깊이는 hole 게이트가
+   * **커널 부피로 이미 검증**했으므로, 검증된 값을 도면에 표기하는 데에 메시가 필요하지 않다.
+   * 그래서 주석 레이어로 낸다 — featureMesh·topoNaming 무접촉.
+   *
+   * 좌표는 **모델 좌표**(부품 프레임의 프로파일 평면 mm)다. 시트 mm 로 미리 변환하지 않는
+   * 이유: 뷰포트의 맞춤 변환은 렌더러가 투영 bbox 로 계산하므로, 여기서 재현하면 그게 곧
+   * 드리프트 원흉이 된다. 렌더러가 자기 변환을 그대로 적용한다.
+   *
+   * ⚠ 정직한 한계: 중심 좌표는 **선언값**이다(hole 게이트의 부피 검사는 "소재 안에 완전히
+   * 들어있고 서로 겹치지 않음"까지만 보증한다 — `HoleResult.schedule` 과 같은 한계).
+   */
+  holeMarks?: ReadonlyArray<HoleMark>;
   /**
    * SolidWorks-parity Phase 3 — assembly BOM table block (item no. / part
    * name / qty / material), rendered as a grid in the top-left corner.
