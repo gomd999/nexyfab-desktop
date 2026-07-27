@@ -175,37 +175,64 @@ function sqliteToPostgres(sql: string): string {
 // ---------------------------------------------------------------------------
 
 function createSqliteAdapter(): DbAdapter {
-  // Lazy import — only loaded when SQLite is actually used
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { getDb } = require('./db') as { getDb: () => import('better-sqlite3').Database };
+  type SqliteDb = import('better-sqlite3').Database;
+
+  // Lazy load — only pulled in when SQLite is actually used.
+  //
+  // Two module loaders have to work here. Next's server bundle resolves
+  // `require('./db')` fine; **vite-node (vitest) does not** — a *relative TS*
+  // path is not on its CJS resolver, so it throws MODULE_NOT_FOUND even though
+  // `require('pg')` a few lines below resolves (node_modules go through CJS
+  // interop, vite-transformed sources don't). The blast radius was much wider
+  // than "a DB test fails": every code path that reads a setting died before
+  // doing its real work under vitest — chatCompletion() → getActiveBreaker()
+  // → getSetting() → here — so CI could never exercise the real LLM path and
+  // "the planner refused" was indistinguishable from "the harness broke"
+  // (260723 종합평가 §3-A-05). `resolveChain()` in src/lib/ai/index.ts already
+  // guards its own relative require with try/catch for the same reason; this
+  // is that pattern, plus an ESM fallback so the DB actually loads instead of
+  // being silently skipped.
+  let getDbSync: (() => SqliteDb) | null = null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    getDbSync = (require('./db') as { getDb: () => SqliteDb }).getDb;
+  } catch {
+    getDbSync = null; // ESM loader — fall through to dynamic import below
+  }
+  let dbModule: Promise<{ getDb: () => SqliteDb }> | null = null;
+  const getDb = async (): Promise<SqliteDb> => {
+    if (getDbSync) return getDbSync();
+    dbModule ??= import('./db') as Promise<{ getDb: () => SqliteDb }>;
+    return (await dbModule).getDb();
+  };
 
   const adapter: DbAdapter = {
     backend: 'sqlite' as const,
 
     async queryOne<T = Record<string, unknown>>(sql: string, ...params: SqlParam[]): Promise<T | undefined> {
-      const db = getDb();
+      const db = await getDb();
       return db.prepare(sql).get(...params) as T | undefined;
     },
 
     async queryAll<T = Record<string, unknown>>(sql: string, ...params: SqlParam[]): Promise<T[]> {
-      const db = getDb();
+      const db = await getDb();
       return db.prepare(sql).all(...params) as T[];
     },
 
     async execute(sql: string, ...params: SqlParam[]): Promise<{ changes: number }> {
-      const db = getDb();
+      const db = await getDb();
       const info = db.prepare(sql).run(...params);
       return { changes: info.changes };
     },
 
     async executeRaw(sql: string): Promise<void> {
-      const db = getDb();
+      const db = await getDb();
       db.exec(sql);
     },
 
     async transaction<T>(fn: (db: DbAdapter) => Promise<T>): Promise<T> {
       // SQLite: BEGIN/COMMIT via raw exec (better-sqlite3 is synchronous so this is safe)
-      const db = getDb();
+      const db = await getDb();
       db.exec('BEGIN');
       try {
         const result = await fn(adapter);
@@ -219,7 +246,7 @@ function createSqliteAdapter(): DbAdapter {
 
     async close(): Promise<void> {
       try {
-        const db = getDb();
+        const db = await getDb();
         db.close();
       } catch {
         // Already closed or not initialized
