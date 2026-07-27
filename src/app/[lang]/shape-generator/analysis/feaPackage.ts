@@ -197,7 +197,35 @@ export function feaFromStl({ stl, materialKey = 'STS316', loadN = 0, loadNote = 
  * as the shipped FEA level. gmsh stays a BEST-EFFORT upgrade, taken only when it fits
  * the budget; otherwise the proven octree path runs.
  */
-const PRECISE_WALL_BUDGET_MS = 26_000;
+const PRECISE_WALL_BUDGET_MS_DEFAULT = 26_000;
+/**
+ * 배포별로 조정 가능(기본은 위 실측 튜닝값 그대로). 이 예산은 **머신 속도가 아니라
+ * 게이트웨이 타임아웃**에 묶여 있어서, 느린 머신에서 강등이 잦다는 이유로 코드에서
+ * 올리면 프로덕션이 502로 돌아간다(그 502가 이 상수가 생긴 계기다). 그래서 기본값은
+ * 건드리지 않고, 게이트웨이 여유를 아는 운영자만 env로 올릴 수 있게 한다.
+ * 하한 5s·상한 120s로 클램프(오타 한 방에 요청이 무한정 걸리지 않도록).
+ */
+export function preciseWallBudgetMs(): number {
+  const raw = Number(process.env.NEXYFAB_FEA_PRECISE_BUDGET_MS);
+  if (!Number.isFinite(raw) || raw <= 0) return PRECISE_WALL_BUDGET_MS_DEFAULT;
+  return Math.min(120_000, Math.max(5_000, Math.round(raw)));
+}
+
+/**
+ * 정밀 재해석이 등급을 못 올리고 스크리닝으로 남을 때의 사유 문구.
+ * 예산에 걸려 반복을 **잘라낸 것**과, 시간을 다 쓰고도 해가 **못 쓸 것**인 경우는
+ * 원인이 완전히 다르다 — sparsePCG는 둘 다 converged:false로 돌려주므로 여기서
+ * 구분하지 않으면 리포트가 "미수렴"이라며 원인을 모델 탓으로 잘못 지목한다
+ * (사용자는 형상이 잘못됐다고 읽지만 실제로는 우리가 시간을 끊었다 — 260723 A-3).
+ */
+export function screeningDowngradeNote(
+  deadlineHit: boolean, budgetMs: number, wallMs: number, gmshError?: string,
+): string {
+  const tail = gmshError ? ` gmsh 미사용: ${gmshError}` : '';
+  return deadlineHit
+    ? `정밀 재해석을 벽시계 예산 ${(budgetMs / 1000).toFixed(0)}s 초과로 중단했습니다 — 해가 발산한 게 아니라 반복을 시간에서 끊은 것입니다(실측 ${(wallMs / 1000).toFixed(1)}s). 스크리닝 결과 유지(정직). 이 형상엔 예산이 부족하다는 뜻이며, 게이트웨이 여유를 아는 환경이라면 NEXYFAB_FEA_PRECISE_BUDGET_MS 로 예산을 올려 재시도할 수 있습니다.${tail}`
+    : `정밀 재해석 결과 부적합(미수렴/비유한 — 예산 안에서 끝났으나 해가 쓸 수 없음) — 스크리닝 결과 유지(정직).${tail}`;
+}
 /** gmsh subprocess wall cap -- meshing alone must not consume the budget. */
 const GMSH_MESH_TIMEOUT_MS = 10_000;
 /** gmsh corner-node cap. buildTet10Mesh roughly triples this into TET10 nodes, so
@@ -229,6 +257,7 @@ export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, 
     // octree solve) is bounded against preciseStart so the precise call reliably
     // returns within ~PRECISE_WALL_BUDGET_MS instead of timing out (was: 502).
     const preciseStart = Date.now();
+    const budgetMs = preciseWallBudgetMs();
 
     // (1) PREFER a gmsh boundary-conforming mesh (certification-candidate) when the
     //     binary is available. gmsh runs as a SEPARATE PROCESS (GPL-as-subprocess =
@@ -253,13 +282,16 @@ export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, 
 
     // Only SOLVE the gmsh mesh if enough of the gmsh sub-budget remains -- otherwise
     // skip straight to octree so the whole budget is never spent on the gmsh solve.
-    const gmshSolveMsLeft = preciseStart + GMSH_SOLVE_DEADLINE_MS - Date.now();
+    // gmsh 하위예산은 전체 예산에 비례 — env로 예산을 올렸는데 gmsh만 16s에 묶여 있으면
+    // 올린 시간이 octree 폴백에만 쓰여 "정밀 경로를 늘렸는데 등급이 그대로"가 된다.
+    const gmshSolveDeadline = preciseStart + Math.round(budgetMs * (GMSH_SOLVE_DEADLINE_MS / PRECISE_WALL_BUDGET_MS_DEFAULT));
+    const gmshSolveMsLeft = gmshSolveDeadline - Date.now();
     if (gmshMesh && gmshSolveMsLeft >= 3_000) {
       const t0 = Date.now();
       try {
         const fine = runFEM(geometry, mat, conditions, 12000, {
           prebuiltMesh: gmshMesh,
-          solveDeadlineMs: preciseStart + GMSH_SOLVE_DEADLINE_MS, // never overrun the budget
+          solveDeadlineMs: gmshSolveDeadline, // never overrun the budget
         });
         const wallMs = Date.now() - t0;
         const usable = fine.converged && Number.isFinite(fine.maxStress) && fine.maxDisplacement < 1e6;
@@ -286,10 +318,15 @@ export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, 
       try {
         const fine = runFEM(geometry, mat, conditions, 12000, {
           refine: 'on', maxCornerNodes: 8000,
-          solveDeadlineMs: preciseStart + PRECISE_WALL_BUDGET_MS, // hard return-by
+          solveDeadlineMs: preciseStart + budgetMs, // hard return-by
         });
         const wallMs = Date.now() - t0;
         const usable = fine.converged && Number.isFinite(fine.maxStress) && fine.maxDisplacement < 1e6;
+        // 예산에 걸려 반복을 잘라낸 것과, 시간을 다 주고도 발산·비유한인 것은 원인이
+        // 완전히 다르다. sparsePCG는 두 경우 모두 converged:false로 돌려주므로, 여기서
+        // 구분하지 않으면 리포트가 "미수렴"이라고 원인을 잘못 지목한다 — 사용자는
+        // 모델이 잘못됐다고 읽지만 실제로는 우리가 시간을 끊은 것이다(260723 A-3).
+        const deadlineHit = Date.now() >= preciseStart + budgetMs - 250;
         if (usable) {
           result = { ...fine, method: 'linear-fem-tet' as const };
           raiser = {
@@ -301,7 +338,7 @@ export async function feaFromStlAsync({ stl, materialKey = 'STS316', loadN = 0, 
           raiser = {
             detected: true, applied: false, grade: 'screening', gmshError,
             dofCount: result.dofCount, converged: result.converged, wallMs,
-            note: `정밀 재해석 결과 부적합(미수렴/비유한) — 스크리닝 결과 유지(정직).${gmshError ? ` gmsh 미사용: ${gmshError}` : ''}`,
+            note: screeningDowngradeNote(deadlineHit, budgetMs, wallMs, gmshError),
           };
         }
       } catch {

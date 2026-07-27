@@ -3,8 +3,8 @@
  * STL 파싱 → 자동 경계조건(바닥고정·상면하중) → runSimpleFEA → 리포트 HTML.
  * STL은 합성(직육면체 12삼각형) — openscad 렌더 없이 결정론 검증.
  */
-import { describe, it, expect } from 'vitest';
-import { stlToGeometry, autoConditions, feaFromStl, feaReportHtml, FEA_MATERIALS } from './feaPackage';
+import { describe, it, expect, afterEach } from 'vitest';
+import { stlToGeometry, autoConditions, feaFromStl, feaReportHtml, FEA_MATERIALS, preciseWallBudgetMs, screeningDowngradeNote } from './feaPackage';
 
 /** w×d×h 직육면체 바이너리 STL(12 tri) 합성 — z=0 바닥, z=h 상면. */
 function boxStl(w: number, d: number, h: number): Uint8Array {
@@ -89,5 +89,44 @@ describe('feaPackage', () => {
     }
     const normal = feaFromStl({ stl: boxStl(100, 100, 100), materialKey: 'steel', loadN: 50_000 });
     expect(feaReportHtml(normal, { title: 't' })).not.toContain('응력 개산 불가');
+  });
+
+  // ── A-3: 정밀 경로 예산 ────────────────────────────────────────────────────
+  describe('정밀 경로 벽시계 예산(A-3)', () => {
+    const KEY = 'NEXYFAB_FEA_PRECISE_BUDGET_MS';
+    const saved = process.env[KEY];
+    afterEach(() => { if (saved === undefined) delete process.env[KEY]; else process.env[KEY] = saved; });
+
+    it('기본 26s — env 미설정·비수치·음수는 전부 기본값', () => {
+      delete process.env[KEY];
+      expect(preciseWallBudgetMs()).toBe(26_000);
+      process.env[KEY] = 'abc';
+      expect(preciseWallBudgetMs()).toBe(26_000);
+      process.env[KEY] = '-5000';
+      expect(preciseWallBudgetMs()).toBe(26_000);
+    });
+
+    it('env 지정 시 5s~120s로 클램프 — 오타 하나로 요청이 무한정 걸리지 않게', () => {
+      process.env[KEY] = '45000';
+      expect(preciseWallBudgetMs()).toBe(45_000);
+      process.env[KEY] = '1';
+      expect(preciseWallBudgetMs()).toBe(5_000);
+      process.env[KEY] = '999999';
+      expect(preciseWallBudgetMs()).toBe(120_000);
+    });
+
+    it('예산 절단과 진짜 미수렴을 다른 사유로 보고한다 — 원인 오귀속 금지', () => {
+      const cut = screeningDowngradeNote(true, 26_000, 34_500);
+      expect(cut).toContain('예산 26s 초과로 중단');
+      expect(cut).toContain('발산한 게 아니라');
+      expect(cut).toContain('34.5s');
+      expect(cut).toContain(KEY); // 어떻게 늘리는지까지 알려준다
+
+      const diverged = screeningDowngradeNote(false, 26_000, 4_200);
+      expect(diverged).toContain('미수렴/비유한');
+      expect(diverged).not.toContain('초과로 중단'); // 자르지 않았는데 잘랐다고 하면 안 됨
+      // gmsh 사유는 두 경우 모두 그대로 이어붙는다(숨기지 않음)
+      expect(screeningDowngradeNote(false, 26_000, 1, 'gmsh binary absent')).toContain('gmsh binary absent');
+    });
   });
 });
