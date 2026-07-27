@@ -1074,6 +1074,10 @@ Therefore, for a body whose loop is W (along X) × H (along Y) extruded to thick
        { "id":"d_hyp",  "view":"top", "kind":"aligned", "refs":["e.vert.1","e.vert.2"], "expected":113.137 }
     NOTE e.vert.1→e.vert.2 is the DIAGONAL: as "linear" it is refused; as "aligned" it measures
     80·√2. If you wanted the leg instead, use axis:"x"/"y" on that same pair.
+  · WATCH THE NUMBER YOU PROMISE. "aligned" returns the SLANT's true length, so a 45° chamfer
+    described as "20 mm" measures 20·√2 = 28.284 as an aligned dimension — set "expected" to
+    28.284, or dimension the 20 mm LEG with kind:"linear" + axis. The gate compares your
+    "expected" against the real measurement; a right measurement with a wrong promise still fails.
 A dimension that cannot be measured in its chosen view is refused BEFORE the gates, with the view
 you should have used. Worked example for a 50 × 30 × 25 block (loop 50 along X, 30 along Y, depth 25):
   { "id":"d_width",  "view":"top",   "kind":"linear", "refs":["e.vert.0","e.vert.1"], "expected":50 }
