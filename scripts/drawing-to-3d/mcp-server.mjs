@@ -14,6 +14,7 @@
  *   기준. 스캔·복잡 조립도는 미대응. extract/edit는 GEMINI_API_KEY(.env) 필요.
  */
 import { createInterface } from 'node:readline';
+import { createHash } from 'node:crypto';
 import { extractDrawing } from './extract.mjs';
 import { editDrawing } from './edit.mjs';
 import { textToIntent, textToAssembly } from './from-text.mjs';
@@ -929,7 +930,10 @@ export async function callTool(name, args = {}) {
     const dc = await import('./drawing-completeness.mjs');
     const rnd = await import('./html-render.mjs');
     const files = [];
-    const save = (nm, content) => { const p = path.join(args.outDir, nm); fs.writeFileSync(p, content); files.push({ name: nm, bytes: content.length }); };
+    // 본문을 들고 있어야 발행 직전 REV 스탬프·정합 게이트를 돌릴 수 있다(웹 라우트와 동일 규약).
+    // 디스크 기록은 종전대로 즉시 — 중간에 예외가 나도 지금까지 만든 산출물은 남는다.
+    const blobs = [];
+    const save = (nm, content) => { const p = path.join(args.outDir, nm); fs.writeFileSync(p, content); files.push({ name: nm, bytes: content.length }); blobs.push({ name: nm, content }); };
     const revHistory = Array.isArray(args.assembly.revisions)
       ? args.assembly.revisions.map((r, i) => ({ rev: String(i + 1), date: r.at ? new Date(r.at).toISOString().slice(0, 10) : '', note: `${r.kind ?? 'edit'} ${r.target ?? ''} ${r.note ?? ''}`.trim().slice(0, 90) }))
       : undefined;
@@ -984,7 +988,29 @@ export async function callTool(name, args = {}) {
     // 체결 자동(260719b): 플랜지 짝 볼트 세트 — BOM 보조(강도등급·개스킷=입력 명시)
     let fasteners = null;
     try { const fa = await import('./fastener-auto.mjs'); fasteners = fa.autoFasteners(args.assembly); } catch (e) { fasteners = { error: String(e).slice(0, 120) }; }
-    return { ok: true, outDir: args.outDir, files, completeness, c9, step, roundtrip, interferenceRefine, executionGate, fasteners, note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.' };
+    // REV 스탬프 + 산출물 크로스 정합 게이트 — 260727 A-7 잔여의 비대칭 해소.
+    // 이걸 웹 라우트만 돌리고 있어서 MCP 산출물은 (실측) DXF 표제란이 리터럴
+    // 'NF-REV-PENDING', GA 도면 REV 스팬이 '—' 인 채로 나갔고 문서 간 수치 대조가
+    // 한 번도 실행되지 않았다. rev 해시식은 웹과 동일 — 같은 어셈블리면 같은 REV.
+    const rev = createHash('sha1').update(JSON.stringify({ a: args.assembly, d: args.assembly.domain ?? 'mech' })).digest('hex').slice(0, 8);
+    const aabbs = built.parts ?? [];
+    const env = [0, 1, 2].map((k) =>
+      aabbs.length ? Math.max(...aabbs.map((p) => p.aabb.max[k])) - Math.min(...aabbs.map((p) => p.aabb.min[k])) : 0);
+    const basis = { rev, massKg: built.structural?.totalMassKg ?? 0, env, parts: args.assembly.parts.length };
+    let consistency = null;
+    try {
+      for (const b of blobs) {
+        if (b.name.endsWith('.html')) b.content = pkg.packageStamp(b.content, basis);
+        else if (b.name.endsWith('.dxf')) b.content = b.content.replaceAll('NF-REV-PENDING', rev);
+        else continue;
+        fs.writeFileSync(path.join(args.outDir, b.name), b.content);
+        const fe = files.find((f) => f.name === b.name);
+        if (fe) fe.bytes = b.content.length;
+      }
+      const hasFluid = (args.assembly.parts ?? []).some((p) => !!p.fluid);
+      consistency = pkg.packageConsistencyCheck(blobs, basis, { hasFluid, alignment: args.assembly.alignment ?? null });
+    } catch (e) { consistency = { error: String(e).slice(0, 120) }; /* 정합 게이트 실패가 패키지를 막지는 않되 null 로 숨기지 않는다 */ }
+    return { ok: true, outDir: args.outDir, rev, files, completeness, c9, consistency, step, roundtrip, interferenceRefine, executionGate, fasteners, note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.' };
   }
   if (name === 'verify_domain') {
     return verifyDomain({

@@ -2,8 +2,25 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+/**
+ * shebang 스트립 — node 는 `#!` 첫 줄을 벗겨서 실행하지만 vite 변환기는 벗기지 않아
+ * `SyntaxError: Invalid or unexpected token` 으로 죽는다. 그래서 shebang 이 붙은 스크립트
+ * (MCP 서버 엔트리 `scripts/drawing-to-3d/mcp-server.mjs` 등 레포 내 다수)는 지금까지
+ * **vitest 에서 임포트조차 불가능**했고, 따라서 단 한 줄도 테스트된 적이 없다 — 실행은
+ * 되는데 CI 는 못 보는 사각지대(260727 A-5 `87a9e3f2` 와 같은 종류).
+ * `#!` 두 글자만 `//` 로 바꿔 **줄 수·문자 오프셋을 그대로 보존**한다(스택트레이스 무손상).
+ */
+const stripShebang = {
+  name: 'nf-strip-shebang',
+  enforce: 'pre' as const,
+  transform(code: string, id: string) {
+    if (!code.startsWith('#!') || !/\.(mjs|cjs|js)(\?|$)/.test(id)) return null;
+    return { code: '//' + code.slice(2), map: null };
+  },
+};
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [stripShebang, react()],
   test: {
     environment: 'node',
     globals: true,
