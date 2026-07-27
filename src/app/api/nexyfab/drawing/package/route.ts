@@ -149,6 +149,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     ?? (typeof options.domain === 'string' ? options.domain : undefined) ?? 'mech';
   const nonMech = ['building', 'landscape', 'interior', 'civil', 'bridge'].includes(domain);
   const files: Array<{ name: string; mime: string; content: string; b64?: boolean }> = [];
+  /**
+   * **생성에 실패한** 산출물. 목록에서 그냥 빠지면 받는 쪽은 "원래 없는 것"으로 읽는다 —
+   * 물량 산출서가 없으면 견적을 못 받는데도 그렇다(260728 §7-5).
+   */
+  const outputsFailed: string[] = [];
 
   // 2D GA 도면 (건축=축선 구조평면·조경=배치도 모드 포함 · 배관=라우터 결과 그대로 투영)
   // revHistory=개정 이력(입력 원칙) · lang='en'=시트명·표두 EN(본문 KO 유지 명시)
@@ -222,7 +227,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   } catch (e) { void e; }
   // 구조/응력 검토
-  try { files.push({ name: 'structural.html', mime: 'text/html', content: mods.pkg.structuralReport(assembly, { title, member }) }); } catch (e) { void e; }
+  try { files.push({ name: 'structural.html', mime: 'text/html', content: mods.pkg.structuralReport(assembly, { title, member }) }); } catch (e) { void e; outputsFailed.push('structural.html'); }
   // domainSafety 는 아래 쉬운요약.html 호출에 그대로 전달된다 — feaSummary와 동일 이유:
   // structural(강체 전도)만으로는 코드 위반(정원 초과·출구 부족 등)을 못 잡는다(260723 도그푸딩
   // 3차 발견: 안전검토.html엔 FAIL이 정확히 뜨는데 쉬운요약엔 이 판정이 안 넘어가 "이상 없음"이었다).
@@ -260,9 +265,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
   // 물량·작업량 산출서 (BOQ, 금액 제외 — 비기계 분야는 재적 중심·공수 미산출)
-  try { files.push({ name: 'BOQ.html', mime: 'text/html', content: mods.boq.boqReport(assembly, { title, domain }) }); } catch (e) { void e; }
+  try { files.push({ name: 'BOQ.html', mime: 'text/html', content: mods.boq.boqReport(assembly, { title, domain }) }); } catch (e) { void e; outputsFailed.push('BOQ.html'); }
   // 설계 설명서 (Dossier) + P&ID 스켈레톤 (계통 기반 — 공정 없는 비기계 분야는 P&ID 제외)
-  try { files.push({ name: 'Dossier.html', mime: 'text/html', content: mods.pd.dossierReport(assembly, { title }) }); } catch (e) { void e; }
+  try { files.push({ name: 'Dossier.html', mime: 'text/html', content: mods.pd.dossierReport(assembly, { title }) }); } catch (e) { void e; outputsFailed.push('Dossier.html'); }
   if (!nonMech) {
     try { files.push({ name: 'PID_skeleton.html', mime: 'text/html', content: mods.pd.pidSkeleton(assembly, { title }) }); } catch (e) { void e; }
   }
@@ -373,6 +378,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           ...(consistency ? { consistency } : {}),
           ...(verificationUnavailable.length ? { verificationUnavailable } : {}),
           ...(completeness ? { completeness } : {}),
+          ...(outputsFailed.length ? { outputsFailed } : {}),
         }), basis), // 늦게 만든 만큼 개별 스탬프 — 위 루프는 이미 지나갔다
       });
     }
@@ -436,6 +442,7 @@ if (data.pipes?.errors?.length) console.warn('⚠ 배관 라우팅 실패:', dat
     designOk: built.designOk ?? null,
     consistency,
     verificationUnavailable,
+    outputsFailed,
     // P0(260719b): 검증 3종+완성도 — MCP generate_package 와 동일 필드(웹 동급화)
     completeness,
     roundtrip,

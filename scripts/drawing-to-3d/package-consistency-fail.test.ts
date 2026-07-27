@@ -228,3 +228,27 @@ describe('쉬운요약 — 도면 구비요건 미충족이 도달한다 (§7-4)
     expect(html).toContain('CZ 알 수 없는 항목');
   });
 });
+
+/**
+ * §7-5 3차 — **생성에 실패한 산출물**. 목록에서 그냥 빠지면 받는 쪽은 "원래 없는 것"으로
+ * 읽는다. 물량 산출서가 없으면 견적을 못 받는데도 그렇다.
+ */
+describe('쉬운요약 — 만들어지지 않은 파일을 "원래 없는 것"으로 두지 않는다 (§7-5)', () => {
+  const withList = { title: 't', domain: 'mech', fileNames: ['GA_2D_drawing.html', 'structural.html'] };
+
+  it('실패한 산출물이 파일 목록 옆에 사유와 함께 실린다', () => {
+    const html = easySummary(OK_ASM, { ...withList, outputsFailed: ['BOQ.html', 'Dossier.html'] });
+    expect(html).toContain('만들어지지 않은 파일이 2건');
+    expect(html).toContain('생성에 실패');
+    expect(html).toContain('BOQ.html');
+  });
+
+  it('빈 목록이면 침묵한다 (과탐 0)', () => {
+    const html = easySummary(OK_ASM, { ...withList, outputsFailed: [] });
+    expect(html).not.toContain('만들어지지 않은 파일');
+  });
+
+  it('안 넘기면 출력이 종전과 완전히 동일하다 (하위호환)', () => {
+    expect(easySummary(OK_ASM, withList)).toBe(easySummary(OK_ASM, { ...withList, outputsFailed: [] }));
+  });
+});

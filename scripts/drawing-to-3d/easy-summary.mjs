@@ -439,6 +439,18 @@ ${eg ? `<p class="sub">도면 점검 결과: ${esc(eg.score ?? '미산출')} ${e
     ? names.map((n) => `<li><code>${esc(n)}</code> — ${esc(FILE_USE[n])}</li>`).join('')
       + unknownFiles.map((n) => `<li><code>${esc(n)}</code> — 용도 설명 미등록(파일은 동봉됨)</li>`).join('')
     : '<li>동봉 파일 목록이 전달되지 않았습니다 — 실제 받은 폴더의 파일을 그대로 보내세요.</li>';
+  /**
+   * **생성에 실패한** 산출물 (260728 §7-5).
+   *
+   * 종전엔 BOQ·Dossier·부품제작도·DXF 생성 실패를 두 발생지 모두 `catch { }` 로 삼켰고,
+   * 그러면 그 파일이 목록에서 그냥 빠진다. 파일 목록은 "있는 것만 설명한다"는 원칙이라
+   * 거짓말은 아니지만, **받는 쪽은 애초에 그것이 있었어야 하는지 모른다** — 물량 산출서가
+   * 없으면 견적을 못 받는데 "원래 없는 것"으로 읽힌다. 빠진 이유를 아는데 침묵할 이유가 없다.
+   */
+  const outputsFailed = Array.isArray(opts.outputsFailed) ? opts.outputsFailed : [];
+  const missingOutputsRow = outputsFailed.length
+    ? `<li class="warn"><b>이번 묶음에서 만들어지지 않은 파일이 ${outputsFailed.length}건 있습니다</b> — 빠뜨린 것이 아니라 <b>생성에 실패</b>한 것입니다: ${outputsFailed.slice(0, 6).map((f) => `<code>${esc(f)}</code>`).join(', ')}. 필요하면 다시 생성하거나 문의하세요.</li>`
+    : '';
   const expertNeeds = [];
   // 인허가 안내 기준(F11) — 종전 조건은 `domain !== 'mech'` 뿐이라 가구 한 점(카운터 바)에도
   // 건축신고를 요구했다. 판정을 **대지에 정착하는 구조물인가**로 바꾼다:
@@ -463,7 +475,7 @@ ${eg ? `<p class="sub">도면 점검 결과: ${esc(eg.score ?? '미산출')} ${e
 <ol class="steps">
   <li><b>도면을 출력하거나 그대로 전달하세요.</b> HTML 파일은 브라우저로 열고 "인쇄 / PDF" 버튼을 누르면 A4로 나옵니다.</li>
   <li><b>업체에 견적을 문의하세요.</b> 아래 파일을 함께 보내면 됩니다.
-    <ul class="small">${fileRows}</ul>
+    <ul class="small">${fileRows}${missingOutputsRow}</ul>
   </li>
   <li><b>전문가 확인이 필요한 항목이 남아 있습니다.</b>
     <ul class="small">${expertNeeds.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>

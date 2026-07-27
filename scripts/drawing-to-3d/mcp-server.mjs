@@ -937,6 +937,10 @@ export async function callTool(name, args = {}) {
     // 본문을 들고 있어야 발행 직전 REV 스탬프·정합 게이트를 돌릴 수 있다(웹 라우트와 동일 규약).
     // 디스크 기록은 종전대로 즉시 — 중간에 예외가 나도 지금까지 만든 산출물은 남는다.
     const blobs = [];
+    // 산출물 생성 실패를 조용히 흘리지 않는다 — 목록에서 빠지면 받는 쪽은 "원래 없는 것"으로
+    // 읽는다(260728 §7-5). 실패한 파일 이름을 모아 쉬운요약까지 전달한다.
+    const outputsFailed = [];
+    const trySave = (nm, make) => { try { save(nm, make()); } catch { outputsFailed.push(nm); } };
     const save = (nm, content) => { const p = path.join(args.outDir, nm); fs.writeFileSync(p, content); files.push({ name: nm, bytes: content.length }); blobs.push({ name: nm, content }); };
     const revHistory = Array.isArray(args.assembly.revisions)
       ? args.assembly.revisions.map((r, i) => ({ rev: String(i + 1), date: r.at ? new Date(r.at).toISOString().slice(0, 10) : '', note: `${r.kind ?? 'edit'} ${r.target ?? ''} ${r.note ?? ''}`.trim().slice(0, 90) }))
@@ -944,7 +948,7 @@ export async function callTool(name, args = {}) {
     let completeness = null, c9 = null;
     let gaHtml = '', sheetsHtml = '';
     try { const ga = pkg.ga2dDrawing(args.assembly, { title, domain: args.assembly.domain ?? 'mech', welds: built.welds, ...(revHistory ? { revHistory } : {}) }); gaHtml = ga; save('GA_2D_drawing.html', ga); completeness = dc.checkDrawingCompleteness(ga, { applicability: dc.completenessApplicability(args.assembly, built) }); } catch (e) { files.push({ name: 'GA_2D_drawing.html', error: String(e).slice(0, 120) }); }
-    try { save('structural.html', pkg.structuralReport(args.assembly, { title })); } catch { /* skip */ }
+    trySave('structural.html', () => pkg.structuralReport(args.assembly, { title }));
     // ③ 형상+검증: 어셈블리 검증 메타(옹벽 등) → 분야 KDS 계산기 실행값(전도·활동·지지력…). 메타 없으면 미생성(정직).
     // codeVerification: 같은 소스의 압축 판정을 쉬운요약에도 넘긴다 — domainSafety는 담당
     // 도메인이 interior/landscape/bridge/building이라 civil(옹벽·암거)은 어느 쪽으로도
@@ -968,8 +972,8 @@ export async function callTool(name, args = {}) {
       // 이 판정이 전혀 안 넘어가 "이상 없음"으로 잘못 표시됐다 — FEA와 같은 이유로 별도 전달 필요.
       domainSafety = dv2.domainSafetyVerdict(args.assembly, args.verifyParams ?? {});
     } catch (e) { verificationUnavailable.push(`도메인 안전검토(피난·목재·활하중·하중경로): ${String(e?.message ?? e).slice(0, 120)}`); }
-    try { save('BOQ.html', boqm.boqReport(args.assembly, { title, domain: args.assembly.domain ?? 'mech' })); } catch { /* skip */ }
-    try { save('Dossier.html', pd.dossierReport(args.assembly, { title })); } catch { /* skip */ }
+    trySave('BOQ.html', () => boqm.boqReport(args.assembly, { title, domain: args.assembly.domain ?? 'mech' }));
+    trySave('Dossier.html', () => pd.dossierReport(args.assembly, { title }));
     try { sheetsHtml = ps.partSheets(args.assembly, { title: title + ' — 부품 제작도' }); save('부품제작도.html', sheetsHtml); } catch { /* skip */ }
     try { save('제작사양서.html', await fsp.fabricationSpec(args.assembly, { title: title + ' — 제작 사양서' })); } catch { /* skip */ }
     try { const d = dxfm.dxfPlan(args.assembly, args.assembly.domain ?? 'mech', undefined, { title, dwgNo: 'NX-GA-001' }); if (d) { save('GA_plan.dxf', d); c9 = dc.checkDxfLayers(d); } } catch { /* skip */ }
@@ -1035,6 +1039,7 @@ export async function callTool(name, args = {}) {
         ...(consistency ? { consistency } : {}),
         ...(verificationUnavailable.length ? { verificationUnavailable } : {}),
         ...(completeness ? { completeness } : {}),
+        ...(outputsFailed.length ? { outputsFailed } : {}),
       });
       save('쉬운요약.html', pkg.packageStamp(html, basis)); // 늦게 만든 만큼 개별 스탬프
     } catch { /* skip */ }
@@ -1047,7 +1052,7 @@ export async function callTool(name, args = {}) {
       interferences: built.interferences ?? [],
       welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
       support: built.support ?? null, pipes: built.pipes ?? null, designOk: built.designOk ?? null,
-      verificationUnavailable,
+      verificationUnavailable, outputsFailed,
       step, roundtrip, interferenceRefine, executionGate, fasteners,
       note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.',
     };
