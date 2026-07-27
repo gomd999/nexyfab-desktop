@@ -577,6 +577,60 @@ export function filletedBlockPlan(): DesignPlan {
   };
 }
 
+/**
+ * WB-9 구멍 — 실무에서 가장 흔한 형상: 네 모서리에 구멍 뚫린 마운팅 플레이트.
+ * bodies[0]은 구멍 전 판재(geometry/drawing 게이트는 이걸 그대로 실측)이고,
+ * `holes`가 OCCT boolean cut 게이트를 몰아 **커널이 실제로 깎은 순부피**를 검증한다.
+ * A-4 실측에서 계획 통과 브리프의 5/12를 막던 바로 그 형상이다.
+ */
+export function holedPlatePlan(): DesignPlan {
+  const W = 120, H = 80, T = 10, D = 6.5, INSET = 10;
+  return {
+    planId: 'fixture-holed-plate',
+    name: `Mounting Plate ${W}×${H}×${T} — 4×⌀${D}`,
+    parts: [
+      {
+        partId: 'plate',
+        name: 'Mounting Plate',
+        material: 'AL6061',
+        process: 'cnc',
+        bodies: [
+          {
+            bodyId: 'b0',
+            feature: extrude(
+              [
+                { x: 0, y: 0 },
+                { x: W, y: 0 },
+                { x: W, y: H },
+                { x: 0, y: H },
+              ],
+              T,
+            ),
+          },
+        ],
+        expectedVolume: {
+          valueMm3: W * H * T, // 96000 — 구멍 전 판재. 순부피는 hole 게이트가 커널 실측으로 판정.
+          basis: `exact prism: ${W}×${H} mm² × thickness ${T} mm — holes are NOT in this number (they are cut and measured by the OCCT hole gate)`,
+        },
+        holes: [
+          { id: 'h_bl', diameterMm: D, at: { x: INSET, y: INSET } },
+          { id: 'h_br', diameterMm: D, at: { x: W - INSET, y: INSET } },
+          { id: 'h_tr', diameterMm: D, at: { x: W - INSET, y: H - INSET } },
+          { id: 'h_tl', diameterMm: D, at: { x: INSET, y: H - INSET } },
+        ],
+      },
+    ],
+    drawing: {
+      paperSize: 'A3',
+      scale: 1,
+      dimensions: [
+        { id: 'd_width', partId: 'plate', bodyId: 'b0', view: 'top', kind: 'linear', refs: ['e.vert.0', 'e.vert.1'], expected: W },
+        { id: 'd_thickness', partId: 'plate', bodyId: 'b0', view: 'front', kind: 'linear', refs: ['f.cap.bottom', 'f.cap.top'], expected: T },
+      ],
+    },
+  };
+}
+
 // ─── the planner ─────────────────────────────────────────────────────────
 
 export type FixtureKey =
@@ -588,7 +642,8 @@ export type FixtureKey =
   | 'weldment-frame'
   | 'tapped-plate'
   | 'spur-gear'
-  | 'filleted-block';
+  | 'filleted-block'
+  | 'holed-plate';
 
 const FIXTURES: Record<FixtureKey, () => DesignPlan> = {
   'l-bracket': lBracketPlan,
@@ -600,6 +655,7 @@ const FIXTURES: Record<FixtureKey, () => DesignPlan> = {
   'tapped-plate': tappedPlatePlan,
   'spur-gear': spurGearPlan,
   'filleted-block': filletedBlockPlan,
+  'holed-plate': holedPlatePlan,
 };
 
 /** Deterministic planner: dispatches on `brief.params.fixture` (fallback:

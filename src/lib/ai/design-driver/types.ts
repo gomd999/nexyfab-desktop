@@ -228,6 +228,8 @@ export interface PlanPart {
   patterns?: PatternSpec[];
   /** When present, the curved gate applies a real OCCT fillet/shell (WB-6). */
   curved?: CurvedSpec;
+  /** When present, the hole gate cuts these holes with the real OCCT kernel (WB-9). */
+  holes?: HoleSpec[];
 }
 
 // ─── plan: curved features / OCCT (WB-6 곡면 쉘·필렛 편입) ────────────────────
@@ -259,6 +261,46 @@ export interface CurvedSpec {
   expectedVolumeMm3?: number;
   /** Relative tolerance for the volume cross-check. Default 1e-6. */
   tolRel?: number;
+}
+
+// ─── plan: holes (WB-9 — 구멍 편입) ─────────────────────────────────────────
+
+/**
+ * A round THROUGH hole cut into `bodies[0]` (which MUST be an extrude solid),
+ * axis parallel to the extrusion (Z), centred at `at` in the body's sketch frame.
+ *
+ * 왜 별도 스펙인가: 이 스키마엔 구멍을 표현할 방법이 **없었다**. `ExtrudeFeature`는
+ * 외곽 루프 하나뿐이라(내부 루프 없음) LLM은 구멍을 별도 body로 만들 수밖에 없었고,
+ * geometry 게이트는 그걸 "AABB 겹침 — 부피 합 정의 불가"로 정확히 거부했다. 260723
+ * A-4 실측(n=12 실 LLM): 계획이 통과한 브리프의 **5/12가 이 하나로 막혔다** —
+ * 구멍 없는 실무 부품이 드물기 때문. 여기서 해결한다.
+ *
+ * 구현은 커널 소비다(재발명 금지): OCCT `boolean.subtract`가 실제로 깎고
+ * `BRepGProp`이 결과 부피를 실측한다 — 메시 근사가 아니다(WB-6 curvedGate와 동일 경로).
+ *
+ * 한계(명시):
+ *   · THROUGH only. 블라인드 홀은 공구를 축방향으로 **옮겨야** 하는데 이 브리지엔
+ *     변환(transform) API가 없다 → 선언되면 정직 거부(가짜로 통과시키지 않음).
+ *   · 공구는 정n각형 프리즘(기본 64각형)이라 원기둥의 **테셀레이션 근사**다. 게이트는
+ *     그 사실을 노트로 밝히고, 기대 부피도 테셀레이션 면적 기준으로 계산한다
+ *     (πr² 로 검사하면 스스로 못 맞추는 기준을 세우는 셈 — sb-stepped-shaft 선례와 동일 사상).
+ */
+export interface HoleSpec {
+  /** Stable id within the part (naming/보고용). */
+  id: string;
+  /** 'through' only for now — 'blind' is parsed and then REFUSED with a reason. */
+  kind?: 'through' | 'blind';
+  diameterMm: number;
+  /** Centre in the body's sketch frame (same XY frame as the extrude loop), mm. */
+  at: { x: number; y: number };
+  /** blind only (currently refused): depth from the top face, mm. */
+  depthMm?: number;
+  /**
+   * Tool tessellation segments. Default 64, clamped to [12, 256]. Must be the
+   * SAME for every hole in the part — one part, one stated deviation (mixed
+   * values are refused, not silently unified).
+   */
+  segments?: number;
 }
 
 // ─── plan: feature patterns / gear sizing (WB-7 패턴 편입) ───────────────────
@@ -411,7 +453,7 @@ export interface DesignPlan {
 
 // ─── gate IR ─────────────────────────────────────────────────────────────
 
-export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern' | 'gdt' | 'weldment' | 'fastener' | 'pattern' | 'curved';
+export type GateKind = 'geometry' | 'assembly' | 'interference' | 'dfm' | 'drawing' | 'flat-pattern' | 'gdt' | 'weldment' | 'fastener' | 'pattern' | 'curved' | 'hole';
 
 export interface GateResult {
   /** `${kind}:${scope}` — e.g. 'geometry:bracket', 'assembly', 'drawing:pin'. */
@@ -531,6 +573,26 @@ export interface PartPackage {
   patterns?: PatternRecord[];
   /** Present iff the part declared a curved op (WB-6 OCCT fillet/shell). */
   curved?: CurvedResult;
+  /** Present iff the part declared holes (WB-9 OCCT boolean cut). */
+  holes?: HoleResult;
+}
+
+// ─── WB-9: hole (OCCT boolean cut) result ───────────────────────────────────
+
+export interface HoleResult {
+  count: number;
+  /** Tool tessellation segments actually used (regular n-gon prism). */
+  segments: number;
+  /** REAL kernel volume of the base extrude solid, mm³. */
+  baseVolumeMm3: number;
+  /** REAL kernel volume after every cut, mm³ — this part's NET volume. */
+  netVolumeMm3: number;
+  /** Per-hole material actually removed by the kernel, mm³. */
+  removedMm3: Array<{ id: string; diameterMm: number; removedMm3: number }>;
+  /** n-gon area ÷ circle area − 1 (근사 명시: the tool under-cuts a true cylinder). */
+  tessellationAreaRelDev: number;
+  /** STEP of the cut solid (best-effort). */
+  step?: string;
 }
 
 // ─── WB-6: curved (OCCT) result ─────────────────────────────────────────────

@@ -96,11 +96,19 @@ export const SAMPLE_BRIEFS: readonly SampleBrief[] = [
   ),
 
   // ── tier: free-text (extrude family; needs the LLM planner — WA-D) ───────
+  fixtureBrief(
+    'sb-holed-plate',
+    'holed-plate',
+    'Mounting plate with 4 holes (OCCT cut)',
+    'Mounting plate 120 × 80 × 10 mm with four ⌀6.5 holes 10 mm in from each corner. AL6061, CNC.',
+    'geometry: exact 120×80×10 prism (holes not in that number); hole: 4× real BRepAlgoAPI_Cut, kernel-measured net volume vs what the declared cuts imply (1e-6), tool = 64-gon tessellation with its deviation stated; drawing: plate width + thickness. A hole that removes no material fails the gate.',
+  ),
+
   freeTextBrief(
     'sb-mounting-plate',
     'Mounting plate',
     'Flat mounting plate 120 × 80 × 10 mm with four ⌀6.5 corner holes on a 100 × 60 pattern. AL6061.',
-    'if a plan is produced: geometry gate checks the plate prism volume with a stated basis; drawing gate checks plate W/H/thickness and hole positions; DFM gate checks CNC. No fixture — deterministic planner refuses until the LLM plans it.',
+    'if a plan is produced: geometry gate checks the plate prism volume (holes NOT in that number); the HOLE gate cuts every declared hole with the real OCCT kernel and REAL-measures the net volume; drawing gate checks plate W/H/thickness. Hole POSITIONS are not yet dimensioned on the sheet (한계 — the cut is verified, the position callout is not). No fixture — deterministic planner refuses until the LLM plans it.',
   ),
   freeTextBrief(
     'sb-spacer-bushing',
@@ -112,7 +120,7 @@ export const SAMPLE_BRIEFS: readonly SampleBrief[] = [
     'sb-rib-bracket',
     'Ribbed angle bracket',
     'Right-angle bracket 50 × 50 mm, 6 mm wall, with a triangular gusset rib; two ⌀5 fixing holes per leg. Steel, laser-cut + bent.',
-    'if a plan is produced: geometry gate on the extruded L + rib volume; drawing gate on leg lengths / wall / hole spacing; DFM gate on the sheet-metal process. Bend/forming limits are NOT modelled by the current gates (한계 고지). No fixture.',
+    'if a plan is produced: geometry gate on the extruded L + rib volume; hole gate on the ⌀5 fixing holes (real kernel cut); drawing gate on leg lengths / wall; DFM gate on the sheet-metal process. Hole SPACING callouts and bend/forming limits are NOT modelled by the current gates (한계 고지). No fixture.',
   ),
 ] as const;
 

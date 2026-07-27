@@ -59,6 +59,7 @@ import type {
   FastenerSpec,
   PatternSpec,
   CurvedSpec,
+  HoleSpec,
 } from './types';
 import {
   retrieveReferenceParts,
@@ -440,6 +441,28 @@ function coerceCurved(v: unknown, path: string): CurvedSpec {
   return spec;
 }
 
+function coerceHole(v: unknown, path: string): HoleSpec {
+  const o = reqObj(v, path);
+  const at = reqObj(o.at, `${path}.at`);
+  const spec: HoleSpec = {
+    id: reqStr(o.id, `${path}.id`),
+    diameterMm: reqNum(o.diameterMm, `${path}.diameterMm`),
+    at: { x: reqNum(at.x, `${path}.at.x`), y: reqNum(at.y, `${path}.at.y`) },
+  };
+  if (o.kind !== undefined) {
+    const kind = reqStr(o.kind, `${path}.kind`);
+    if (kind !== 'through' && kind !== 'blind') {
+      throw new PlannerError(`${path}.kind='${kind}' invalid (through|blind)`);
+    }
+    spec.kind = kind;
+  }
+  const depth = optNum(o.depthMm, `${path}.depthMm`);
+  if (depth !== undefined) spec.depthMm = depth;
+  const seg = optNum(o.segments, `${path}.segments`);
+  if (seg !== undefined) spec.segments = seg;
+  return spec;
+}
+
 function coercePart(v: unknown, path: string): PlanPart {
   const o = reqObj(v, path);
   const bodiesRaw = reqArray(o.bodies, `${path}.bodies`);
@@ -478,6 +501,10 @@ function coercePart(v: unknown, path: string): PlanPart {
   }
   if (o.curved !== undefined && o.curved !== null) {
     part.curved = coerceCurved(o.curved, `${path}.curved`);
+  }
+  if (o.holes !== undefined && o.holes !== null) {
+    const hRaw = reqArray(o.holes, `${path}.holes`);
+    part.holes = hRaw.map((h, i) => coerceHole(h, `${path}.holes[${i}]`));
   }
   return part;
 }
@@ -765,6 +792,37 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
       }
       // The curved gate runs the OCCT kernel (BRepFilletAPI) and REAL-measures the
       // filleted solid volume; a radius too large for an edge FAILS the gate.
+      "holes": [               // optional; ROUND THROUGH holes cut into bodies[0] (must be an extrude solid)
+        { "id": string,        // unique within the part
+          "diameterMm": number,
+          "at": {"x":number,"y":number},  // centre in the SAME sketch frame as the extrude loop
+          "kind": "through"?,  // 'blind' is parsed and then REFUSED (no axial placement transform yet)
+          "segments": number?  // tool tessellation, default 64 (range 12..256)
+        }
+      ]
+      // HOW TO MODEL A HOLE — this is the ONLY way, and getting it wrong is the single
+      // most common plan failure:
+      //   · A hole is NOT a body. Do NOT add a second body ("hole", "bore", "cutout")
+      //     and expect it to be subtracted — bodies are SUMMED, so two overlapping
+      //     bodies make the volume undefined and the geometry gate REFUSES the plan
+      //     ("positive-volume AABB overlap"). Declare 'holes' on the PART instead.
+      //   · bodies[0] stays the SOLID plate/block WITHOUT the holes, and
+      //     'expectedVolume' (if you give one) is that solid's volume, holes NOT
+      //     subtracted. The hole gate cuts them with the real kernel afterwards and
+      //     measures the net volume itself — you do not have to compute it.
+      //   · Non-round cutouts (rectangular windows, slots) are NOT expressible yet.
+      //     Say so in 'name'/omit them rather than faking one with an extra body.
+      // Example — a 120×80×10 plate with four ⌀6.5 corner holes on a 100×60 pattern:
+      //   "bodies": [ { "bodyId":"b0", "feature": { "kind":"extrude",
+      //       "loop":[{"x":0,"y":0},{"x":120,"y":0},{"x":120,"y":80},{"x":0,"y":80}],
+      //       "depth":10, "direction":"one_sided", "mode":"new_body" } } ],
+      //   "expectedVolume": { "valueMm3": 96000, "basis": "exact prism 120×80×10; holes cut+measured by the hole gate" },
+      //   "holes": [ { "id":"h1", "diameterMm":6.5, "at":{"x":10,"y":10} },
+      //              { "id":"h2", "diameterMm":6.5, "at":{"x":110,"y":10} },
+      //              { "id":"h3", "diameterMm":6.5, "at":{"x":110,"y":70} },
+      //              { "id":"h4", "diameterMm":6.5, "at":{"x":10,"y":70} } ]
+      // The hole gate runs BRepAlgoAPI_Cut and REAL-measures the net volume; a hole
+      // that removes no material (placed off the part) FAILS the gate.
     }
   ],
   "assembly": {                   // optional — only for MULTI-PART designs that need positioned/mated parts

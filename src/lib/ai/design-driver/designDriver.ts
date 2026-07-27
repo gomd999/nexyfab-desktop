@@ -51,6 +51,11 @@ import {
   curvedGate,
   type CurvedArtifact,
 } from './curvedGate';
+import {
+  buildHoleArtifact,
+  holeGate,
+  type HoleArtifact,
+} from './holeGate';
 import { buildDrawingArtifact, drawingGate } from './drawingGate';
 import { buildGdtArtifact, gdtGate } from './gdtGate';
 import { buildDesignPackage } from './packager';
@@ -178,6 +183,18 @@ export async function runDesignDriver(
       curveds.set(part.partId, null);
     }
   }
+  // Holes (OCCT boolean cut) — async kernel op (WB-9). Same policy as curved:
+  // only parts that declare `holes` load the kernel; failures are CAPTURED so a
+  // kernel problem becomes a gate refusal, never a silent pass.
+  const holeArtifacts = new Map<string, HoleArtifact | null>();
+  for (const part of plan.parts) {
+    if (!part.holes || part.holes.length === 0) continue;
+    try {
+      holeArtifacts.set(part.partId, await buildHoleArtifact(part));
+    } catch {
+      holeArtifacts.set(part.partId, null);
+    }
+  }
   const drawingArtifact = buildDrawingArtifact(plan);
   // WB-5: GD&T auto-propose + verify over the named topology; declared specs are
   // enforced (build never throws — refusals become gate reasons).
@@ -227,6 +244,11 @@ export async function runDesignDriver(
       gates.push(curvedGate(part, curveds.get(part.partId) ?? null));
     }
   }
+  for (const part of plan.parts) {
+    if (part.holes && part.holes.length > 0) {
+      gates.push(holeGate(part, holeArtifacts.get(part.partId) ?? null));
+    }
+  }
   gates.push(drawingGate(plan, drawingArtifact));
   gates.push(gdtGate(plan, gdtArtifact));
 
@@ -257,6 +279,7 @@ export async function runDesignDriver(
     fasteners,
     patterns,
     curveds,
+    holeArtifacts,
     gdt: gdtArtifact,
   });
   return { ok: true, plan, gates, package: pkg };
