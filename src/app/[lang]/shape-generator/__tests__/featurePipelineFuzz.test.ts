@@ -20,6 +20,7 @@ import { SHAPE_MAP } from '../shapes';
 import { FEATURE_MAP } from '../features/index';
 import type { FeatureType } from '../features/types';
 import type { ShapeConfig } from '../shapes/index';
+import { heavyTestBudgetMs } from '@/test/heavyTestBudget';
 
 // ─── seeded PRNG (mulberry32) ───────────────────────────────────────────────
 function makeRng(seed: number): () => number {
@@ -103,7 +104,9 @@ describe('feature pipeline fuzz (F2 robustness)', () => {
 
     // Sanity: the harness actually exercised features (not all graceful-skipped).
     expect(applied).toBeGreaterThan(ITER); // >1 feature applied per iter on average
-  }, 120_000);
+    // 260728 §6-4: 퍼즈 반복수를 줄이면 커버리지가 줄어드니 예산 쪽을 실측에 맞춘다.
+    // 근거·방법은 src/test/heavyTestBudget.ts.
+  }, heavyTestBudgetMs(85_000)); // 격리 실측 85.0s
 
   it('is deterministic — the same seed reproduces identical geometry', () => {
     function run(): { count: number; checksum: number } {

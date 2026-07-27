@@ -32,6 +32,7 @@ import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { runSimpleFEA, type FEAMaterial } from './simpleFEA';
 import { runFEM } from './femSolver';
+import { heavyTestBudgetMs } from '@/test/heavyTestBudget';
 import { plateWithHoleKt } from './feaPlateHoleKt';
 
 type Row = {
@@ -137,6 +138,10 @@ describe('FEA validation suite — honest accuracy scorecard', () => {
     expect(Number.isFinite(res.maxStress)).toBe(true);
   });
 
+  // 부하 의존 플레이크 해소(260728 §6-4) — 근거·방법은 src/test/heavyTestBudget.ts 참조.
+  // ⚠ 실패 모습은 `converged:false` 가 **아니라** "Test timed out in 60000ms" 였다. 이 경로는
+  //   runFEM 에 solveDeadlineMs 를 넘기지 않아 sparsePCG 의 벽시계 가드가 비활성이고 수렴은
+  //   maxIter/tol 로만 결정된다 — FEA 예산 상수를 올려도 이 실패는 그대로다.
   it('A5 plate-with-hole Kt via VOXEL 3D  (ref Kirsch = 3.0)  [STRESS raiser]', () => {
     const W = 120, Ln = 200, T = 8, r = 10, F = 100000;
     const plate = new THREE.BoxGeometry(Ln, W, T);
@@ -159,7 +164,7 @@ describe('FEA validation suite — honest accuracy scorecard', () => {
     record({ id: 'A5', name: `Plate-hole Kt voxel${holed ? '' : ' BOXfallback'}`, solver: '3D TET10 (voxel)', quantity: 'Kt', ref: 3.0, ours: kt, tolPct: 17, note: res.converged ? 'converged' : 'NOT converged' });
     expect(Number.isFinite(kt)).toBe(true);
     expect(res.converged).toBe(true);
-  });
+  }, heavyTestBudgetMs(38_900)); // 격리 실측 38.9s
 
   /* ═══ Solver B — 2D Q4 plane-stress, boundary-conforming (plateWithHoleKt) ═══ */
 
@@ -247,7 +252,7 @@ describe('FEA validation suite — honest accuracy scorecard', () => {
         + (r.note ? '  (' + r.note + ')' : '') + '\n';
     }
     out += '\nJSON ' + JSON.stringify(rows.map((r) => ({ id: r.id, ref: +r.ref.toPrecision(5), ours: +r.ours.toPrecision(5), errPct: +r.errPct.toFixed(2), tolPct: r.tolPct, pass: r.pass }))) + '\n';
-    // eslint-disable-next-line no-console
+     
     console.log(out);
     expect(rows.length).toBeGreaterThan(8);
   });

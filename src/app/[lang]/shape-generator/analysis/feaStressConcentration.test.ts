@@ -23,6 +23,7 @@ import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import { runFEM } from './femSolver';
 import type { FEAMaterial } from './simpleFEA';
+import { heavyTestBudgetMs } from '@/test/heavyTestBudget';
 
 const steel: FEAMaterial = { youngsModulus: 200, poissonRatio: 0.3, yieldStrength: 250, density: 7.85 };
 
@@ -107,5 +108,7 @@ describe('FEA stress concentration — plate with hole (Track M)', () => {
       `finite-width Howland=${ktFinite.toFixed(3)}`;
     expect(Kt, msg).toBeGreaterThan(2.5);
     expect(Kt, msg).toBeLessThan(3.5);
-  });
+    // 260728 §6-4: 전체 스위트 병렬 실행에서 "Test timed out" 으로 죽던 것.
+    // 근거·방법은 src/test/heavyTestBudget.ts.
+  }, heavyTestBudgetMs(38_900)); // 격리 실측 38.9s
 });

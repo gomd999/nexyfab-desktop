@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { runPartBuckling, computeBucklingForPanel, BUCKLING_MATERIALS } from './partBucklingFEM';
+import { heavyTestBudgetMs } from '@/test/heavyTestBudget';
 
 const STEEL = { E: 210_000, nu: 0.3 };
 
@@ -67,7 +68,9 @@ describe('computeBucklingForPanel — panel adapter', () => {
     const lamRatio = steel.criticalLoadFactor / abs.criticalLoadFactor;
     expect(lamRatio).toBeGreaterThan(eRatio * 0.8);
     expect(lamRatio).toBeLessThan(eRatio * 1.2);
-  });
+    // 260728 §6-4: 두 번의 고정 해석(steel·abs)이라 이 파일에서 가장 무겁다. 같은 파일의
+    // 18s 짜리들은 전체 병렬에서 살아남고 이것만 죽었다. 근거=src/test/heavyTestBudget.ts.
+  }, heavyTestBudgetMs(37_800)); // 격리 실측 37.8s
 
   it('falls back to steel/left for unknown material + face keys', () => {
     const r = computeBucklingForPanel(new THREE.BoxGeometry(200, 10, 10), 'nope', 'bogus', 1);
