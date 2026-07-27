@@ -24,6 +24,7 @@
  * honestly; (B) owns the Kirsch accuracy number on the controlled BC.
  */
 import { describe, it, expect } from 'vitest';
+import { heavyTestBudgetMs } from '@/test/heavyTestBudget';
 import * as THREE from 'three';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import { feaFromStl } from './feaPackage';
@@ -91,7 +92,7 @@ describe('FEA raiser — precise solve accuracy + production-path wiring', () =>
     const kt = res.maxStress / nominal;
     const dW = (2 * r) / W;
     const ktH = 3.0 - 3.13 * dW + 3.66 * dW ** 2 - 1.53 * dW ** 3;
-    // eslint-disable-next-line no-console
+     
     console.log(`\n=== PRECISE RAISER SOLVE (perf) ===\n` +
       `DOF=${res.dofCount} elems=${res.elementCount} iters=${res.iterations} wall=${ms}ms (${(ms / 1000).toFixed(1)}s) ` +
       `mesh=${res.meshMode} pre=${res.preconditioner}\n` +
@@ -102,7 +103,7 @@ describe('FEA raiser — precise solve accuracy + production-path wiring', () =>
     expect(ms).toBeGreaterThan(0);               // wall-time recorded (the perf number, ~24s)
     expect(kt).toBeGreaterThan(2.5);             // matches the A5 harness band
     expect(kt).toBeLessThan(3.5);
-  }, 90_000);
+  }, heavyTestBudgetMs(26_200)); // 격리 실측 26.1s — 260728 §6-4(근거=src/test/heavyTestBudget.ts)
 
   // ── (C) WIRING through the production server entry feaFromStl ──
   it('C1: prismatic box STL — no raiser, fast uniform screening (unchanged, no refine cost)', () => {
@@ -133,7 +134,7 @@ describe('FEA raiser — precise solve accuracy + production-path wiring', () =>
     const tp0 = Date.now();
     const out = feaFromStl({ stl, materialKey: 'steel', loadN: 100000, precise: true });
     const preMs = Date.now() - tp0;
-    // eslint-disable-next-line no-console
+     
     console.log(`\n=== SERVER WIRING (feaFromStl) ===\n` +
       `screening ${scrMs}ms mesh=${scr.result.meshMode} | precise ${preMs}ms raiser.wallMs=${out.raiser?.wallMs} ` +
       `DOF=${out.raiser?.dofCount} grade=${out.raiser?.grade} applied=${out.raiser?.applied} conv=${out.raiser?.converged} mesh=${out.result.meshMode}\n`);
@@ -147,5 +148,5 @@ describe('FEA raiser — precise solve accuracy + production-path wiring', () =>
     expect(out.raiser!.wallMs).toBeGreaterThan(0);         // measured wall-time surfaced
     expect(out.result.maxStress).toBeGreaterThan(0);       // a raiser peak is seen (Kt>1)
     expect(Number.isFinite(out.result.maxStress)).toBe(true);
-  }, 90_000);
+  }, heavyTestBudgetMs(45_700)); // 격리 실측 45.7s — 260728 §6-4(근거=src/test/heavyTestBudget.ts)
 });
