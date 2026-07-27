@@ -275,3 +275,97 @@ describe('makeLlmPlanner — revision context', () => {
     expect(sys.content).toMatch(/unsupported/);
   });
 });
+
+// ─── (c) 뷰에서 잴 수 없는 선형 치수 — 260727 A-4 후속 ───────────────────────
+// 실측 근거: 계획이 통과한 브리프의 완주를 막던 최대 병목이 도면 치수였고, 실패한
+// 계획의 refs를 덤프하니 좌표계 오해가 체계적이었다(loop의 Y를 front에서 재려 하고,
+// 두께를 두 수직 엣지 사이로 재려 함 — 둘 다 그 뷰에서 분리량이 구조적으로 0).
+describe('makeLlmPlanner — 뷰에서 잴 수 없는 선형 치수는 빌드 전에 거부한다', () => {
+  const block50x30x25 = (dims: DesignPlan['drawing']['dimensions']): DesignPlan => ({
+    planId: 'p_block',
+    name: 'Spacer block 50×30×25',
+    parts: [
+      {
+        partId: 'spacer',
+        name: 'Spacer',
+        bodies: [
+          {
+            bodyId: 'b0',
+            feature: {
+              kind: 'extrude',
+              loop: [
+                { x: 0, y: 0 },
+                { x: 50, y: 0 },
+                { x: 50, y: 30 },
+                { x: 0, y: 30 },
+              ],
+              depth: 25,
+              direction: 'one_sided',
+              mode: 'add',
+            } as unknown as DesignPlan['parts'][number]['bodies'][number]['feature'],
+          },
+        ],
+      },
+    ],
+    drawing: { dimensions: dims },
+  });
+
+  it("front 뷰는 Y를 투영으로 날린다 — Y로만 떨어진 두 엣지는 거부되고 'top'을 알려준다", async () => {
+    const plan = block50x30x25([
+      { id: 'd_height', partId: 'spacer', bodyId: 'b0', view: 'front', kind: 'linear', refs: ['e.vert.0', 'e.vert.3'], expected: 30 },
+    ]);
+    const { planner } = plannerReturning(JSON.stringify(plan));
+    await expect(planner.plan(BRIEF)).rejects.toThrow(/cannot be measured there/);
+    await expect(planner.plan(BRIEF)).rejects.toThrow(/only along world Y/);
+    await expect(planner.plan(BRIEF)).rejects.toThrow(/'top'/);
+  });
+
+  it('두께를 두 수직 엣지 사이로 재려 하면 거부되고 f.cap 쌍을 알려준다', async () => {
+    // 모든 수직 엣지는 같은 Z 범위를 가지므로 Z 분리량이 0이다. front 뷰에서 X로도
+    // 겹치는 쌍(같은 x)을 고르면 어느 축으로도 못 잰다.
+    const plan = block50x30x25([
+      { id: 'd_thickness', partId: 'spacer', bodyId: 'b0', view: 'front', kind: 'linear', refs: ['e.vert.0', 'e.vert.3'], expected: 25 },
+    ]);
+    const { planner } = plannerReturning(JSON.stringify(plan));
+    await expect(planner.plan(BRIEF)).rejects.toThrow(/cannot be measured there/);
+  });
+
+  it('올바른 조합(top=W/H · front=f.cap 두께)은 통과한다 — 과탐 없음', async () => {
+    const plan = block50x30x25([
+      { id: 'd_width', partId: 'spacer', bodyId: 'b0', view: 'top', kind: 'linear', refs: ['e.vert.0', 'e.vert.1'], expected: 50 },
+      { id: 'd_height', partId: 'spacer', bodyId: 'b0', view: 'top', kind: 'linear', refs: ['e.vert.1', 'e.vert.2'], expected: 30 },
+      { id: 'd_thick', partId: 'spacer', bodyId: 'b0', view: 'front', kind: 'linear', refs: ['f.cap.bottom', 'f.cap.top'], expected: 25 },
+    ]);
+    const { planner } = plannerReturning(JSON.stringify(plan));
+    await expect(planner.plan(BRIEF)).resolves.toBeTruthy();
+  });
+
+  it('값이 틀린 것(잴 수는 있음)은 프리플라이트가 통과시킨다 — 측정은 게이트 몫', async () => {
+    // e.vert.0↔e.vert.1은 front에서 X로 50 떨어져 있다: 기대값 25가 틀렸을 뿐
+    // "잴 수 없는" 것이 아니다. 여기서 막으면 게이트의 실측 판정을 가로채게 된다.
+    const plan = block50x30x25([
+      { id: 'd_depth', partId: 'spacer', bodyId: 'b0', view: 'front', kind: 'linear', refs: ['e.vert.0', 'e.vert.1'], expected: 25 },
+    ]);
+    const { planner } = plannerReturning(JSON.stringify(plan));
+    await expect(planner.plan(BRIEF)).resolves.toBeTruthy();
+  });
+
+  it('시스템 프롬프트가 구멍을 도면 치수로 넣지 말라고 명시한다(구멍엔 토폴로지 이름이 없음)', async () => {
+    // 260727 재측정: 구멍을 열자 모델이 곧바로 구멍 지름을 diametric으로 넣으려 했고
+    // 4/12가 그것으로 죽었다 — 구멍은 커널 절삭으로 검증되지만 시트 콜아웃은 미지원.
+    const { planner, seen } = plannerReturning(validPlanJson());
+    await planner.plan(BRIEF);
+    const sys = seen.messages.find((m) => m.role === 'system')!;
+    expect(sys.content).toContain('DO NOT dimension the holes');
+    expect(sys.content).toMatch(/EXACTLY ONE ref/);
+  });
+
+  it('시스템 프롬프트가 뷰별 가시 축을 명시한다(모델이 애초에 안 틀리도록)', async () => {
+    const { planner, seen } = plannerReturning(validPlanJson());
+    await planner.plan(BRIEF);
+    const sys = seen.messages.find((m) => m.role === 'system')!;
+    expect(sys.content).toContain('VIEW FRAMES');
+    expect(sys.content).toMatch(/front.*Y is projected out/);
+    expect(sys.content).toContain('NEVER two e.vert');
+  });
+});

@@ -65,6 +65,12 @@ import {
   retrieveReferenceParts,
   formatReferencePartsBlock,
 } from '@/lib/ai/reference/retrieveReferenceParts';
+import { buildExtrudeTopo, type NamedTopology } from '@/lib/cad/topoNaming';
+import { viewBasis } from '@/lib/drawing/projectView';
+import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
+
+/** Minimal 3D point shape (topoNaming/projectView 공용) — 좌표만 읽는다. */
+type Vec3Like = { x: number; y: number; z: number };
 
 // ─── revision context (proposed optional brief extension — hook only) ───────
 
@@ -592,6 +598,89 @@ export function coerceDesignPlan(v: unknown): DesignPlan {
 
 // ─── plan preflight (게이트 전 명시 거부) ────────────────────────────────────
 
+
+// ─── (c) 뷰에서 잴 수 없는 치수 — 빌드 전 거부 ──────────────────────────────
+//
+// 260727 A-4 후속 실측: 계획이 통과한 브리프의 완주를 막는 최대 병목이 도면 치수였고,
+// 실패한 계획의 refs를 덤프해 보니 **좌표계 오해가 체계적**이었다 — 모델이 loop의 Y를
+// front 뷰에서 재려 하고(front는 Y를 투영으로 날린다), 두께를 두 수직 엣지 사이로 재려
+// 한다(두 수직 엣지는 Z 범위가 같아 분리량이 0). 둘 다 "값이 틀린" 게 아니라 **그 뷰에서
+// 구조적으로 잴 수 없는** 치수라, 게이트까지 가서 measured 0 mm로 떨어졌다.
+//
+// 여기서 잡으면 (1) 비싼 빌드/커널 호출 전에 끝나고 (2) 모델이 재시도할 때 "어느 뷰로
+// 옮기라"는 실행 가능한 사유를 받는다. 판정은 만들지 않는다 — 측정은 여전히 게이트가
+// 하고, 여기서는 "그 뷰에서 두 참조가 겹쳐 분리량이 0"이라는 기하 사실만 본다.
+// 앵커는 buildExtrudeTopo(게이트가 쓰는 바로 그 토폴로지)와 viewBasis(도면이 쓰는 바로
+// 그 기저)를 재사용한다 — 중복 구현 금지.
+const UNMEASURABLE_EPS = 1e-9;
+
+function refPoints(topo: NamedTopology, ref: string): Vec3Like[] | null {
+  const loc = topo.byName.get(ref);
+  if (!loc) return null;
+  if (loc.kind === 'face') {
+    const f = topo.poly.faces[loc.index];
+    return f ? f.vertices.map((i) => topo.poly.vertices[i]) : null;
+  }
+  const e = topo.edges[loc.index];
+  return e ? [topo.poly.vertices[e.a], topo.poly.vertices[e.b]] : null;
+}
+
+/** Gap between two point sets along a unit direction (0 when they overlap). */
+function gapAlong(a: Vec3Like[], b: Vec3Like[], dir: Vec3Like): number {
+  const proj = (ps: Vec3Like[]) => ps.map((p) => p.x * dir.x + p.y * dir.y + p.z * dir.z);
+  const pa = proj(a), pb = proj(b);
+  const loA = Math.min(...pa), hiA = Math.max(...pa);
+  const loB = Math.min(...pb), hiB = Math.max(...pb);
+  return Math.max(0, Math.max(loA, loB) - Math.min(hiA, hiB));
+}
+
+const WORLD_AXES: Array<{ name: 'X' | 'Y' | 'Z'; dir: Vec3Like }> = [
+  { name: 'X', dir: { x: 1, y: 0, z: 0 } },
+  { name: 'Y', dir: { x: 0, y: 1, z: 0 } },
+  { name: 'Z', dir: { x: 0, y: 0, z: 1 } },
+];
+const DIM_VIEWS: Array<'front' | 'top' | 'right'> = ['front', 'top', 'right'];
+
+/** Which standard views actually SHOW a given world axis (non-zero component in the view plane). */
+function viewsShowing(axis: Vec3Like): string[] {
+  return DIM_VIEWS.filter((v) => {
+    const b = viewBasis(v);
+    const r = Math.abs(axis.x * b.right.x + axis.y * b.right.y + axis.z * b.right.z);
+    const u = Math.abs(axis.x * b.up.x + axis.y * b.up.y + axis.z * b.up.z);
+    return r > 1e-9 || u > 1e-9;
+  });
+}
+
+/**
+ * Returns a refusal reason when a 2-ref linear dimension has ZERO separation in
+ * both visible axes of its view (so no distance exists to measure), else null.
+ * Only extrude bodies (the topology builder we can evaluate here).
+ */
+function unmeasurableLinearReason(dim: PlanDimensionSpec, feature: ExtrudeFeature): string | null {
+  if (dim.kind !== 'linear' || dim.refs.length !== 2) return null;
+  let topo: NamedTopology;
+  try { topo = buildExtrudeTopo(feature); } catch { return null; } // 빌드 불가는 게이트가 판정
+  const a = refPoints(topo, dim.refs[0]);
+  const b = refPoints(topo, dim.refs[1]);
+  if (!a || !b || a.length === 0 || b.length === 0) return null; // 이름 유효성은 (a)에서 이미 봄
+
+  const basis = viewBasis(dim.view as 'front' | 'top' | 'right');
+  const scale = Math.max(1, ...topo.poly.vertices.map((p) => Math.abs(p.x) + Math.abs(p.y) + Math.abs(p.z)));
+  const eps = UNMEASURABLE_EPS * scale;
+  if (gapAlong(a, b, basis.right) > eps || gapAlong(a, b, basis.up) > eps) return null; // 잴 수 있음
+
+  // 잴 수 없다 — 그럼 이 둘은 어느 축으로 떨어져 있나, 그 축을 보여주는 뷰는 무엇인가.
+  const separated = WORLD_AXES.filter((ax) => gapAlong(a, b, ax.dir) > eps);
+  const suggestion = separated.length === 0
+    ? `they overlap along every world axis — pick refs that actually bound the distance (thickness/depth along Z is measured between 'f.cap.bottom' and 'f.cap.top', never between two 'e.vert.{i}' which share the same Z range)`
+    : `they are separated only along world ${separated.map((s) => s.name).join('+')}; measure this in view ${[...new Set(separated.flatMap((s) => viewsShowing(s.dir)))].map((v) => `'${v}'`).join(' or ')}`;
+  return (
+    `dimension '${dim.id}' (linear, view '${dim.view}') cannot be measured there: its two refs ` +
+    `'${dim.refs[0]}' and '${dim.refs[1]}' coincide in that view — ${suggestion}. ` +
+    `View frames: front = world X(horizontal) × Z(vertical, Y projected out) · top = X × Y (Z out) · right = Y × Z (X out).`
+  );
+}
+
 /** Preflight the plan for gate eligibility. Returns a refusal reason, or null. */
 export function preflightPlan(plan: DesignPlan): string | null {
   if (plan.parts.length === 0) return 'empty plan: no parts';
@@ -617,6 +706,9 @@ export function preflightPlan(plan: DesignPlan): string | null {
           );
         }
       }
+      // (c) 그 뷰에서 구조적으로 잴 수 없는 선형 치수는 빌드 전에 거부한다.
+      const unmeasurable = unmeasurableLinearReason(dim, body.feature as ExtrudeFeature);
+      if (unmeasurable) return unmeasurable;
     } else if (body.feature.kind === 'revolve') {
       // Revolve dims reference circular rim faces f.lat.{i}. ⌀/R must be on the
       // axis-normal view; the drawing gate's measure refuses oblique views, so
@@ -823,6 +915,16 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
       //              { "id":"h4", "diameterMm":6.5, "at":{"x":10,"y":70} } ]
       // The hole gate runs BRepAlgoAPI_Cut and REAL-measures the net volume; a hole
       // that removes no material (placed off the part) FAILS the gate.
+      // DO NOT dimension the holes. A hole has NO topology name yet (the extrude namespace
+      // covers only the outer profile), so there is nothing for a dimension to reference:
+      //   · Never add a 'diametric'/'radial' dimension for a hole diameter.
+      //   · Never add a 'linear' dimension for hole spacing or hole-to-edge distance.
+      // The hole gate already verifies every hole with the real kernel (it cuts them and
+      // measures the removed volume), so the hole IS verified — it is just not called out on
+      // the sheet yet. Dimension the OUTER envelope only (W/H via e.vert pairs, thickness via
+      // the cap pair). Note: 'diametric'/'radial' take EXACTLY ONE ref and are valid only on a
+      // round SECTION of the body itself — e.g. a tessellated-circle extrude's 'f.cap.top' —
+      // never on two e.vert picked to straddle a hole.
     }
   ],
   "assembly": {                   // optional — only for MULTI-PART designs that need positioned/mated parts
@@ -916,6 +1018,25 @@ IMPORTANT — do not guess the index count, it is NOT interchangeable between th
   A dimension measuring the plate's overall WIDTH (distance between the two long vertical edges) would be:
     { "id":"d_width", "partId":"plate", "bodyId":"b0", "view":"top", "kind":"linear",
       "refs":["e.vert.0","e.vert.1"], "expected":80 }
+VIEW FRAMES — which world axes each view SHOWS. Getting this wrong is the single most common
+reason a plan reaches the gates and then fails with "measured 0 mm":
+  · An extrude's profile loop lies in the XY plane; 'depth' extrudes it along +Z.
+  · view "top"   shows X (horizontal) × Y (vertical)  — Z is projected out.
+  · view "front" shows X (horizontal) × Z (vertical)  — **Y is projected out**.
+  · view "right" shows Y (horizontal) × Z (vertical)  — X is projected out.
+Therefore, for a body whose loop is W (along X) × H (along Y) extruded to thickness T (along Z):
+  · W  → view "top" or "front",  refs = two e.vert.{i} that differ in X.
+  · H  → view "top" or "right",  refs = two e.vert.{i} that differ in Y.  **NOT "front"** —
+         front projects Y out, so those two edges land on top of each other and measure 0.
+  · T  → view "front" or "right", refs = ["f.cap.bottom", "f.cap.top"].  **NEVER two e.vert.{i}** —
+         every vertical edge spans the SAME Z range, so their separation along Z is 0.
+  · The two refs of a "linear" dimension must also be axis-aligned in that view; a diagonal pair
+    (e.g. opposite corners) is refused — use "aligned" or pick an axis-parallel pair.
+A dimension that cannot be measured in its chosen view is refused BEFORE the gates, with the view
+you should have used. Worked example for a 50 × 30 × 25 block (loop 50 along X, 30 along Y, depth 25):
+  { "id":"d_width",  "view":"top",   "kind":"linear", "refs":["e.vert.0","e.vert.1"], "expected":50 }
+  { "id":"d_height", "view":"top",   "kind":"linear", "refs":["e.vert.1","e.vert.2"], "expected":30 }
+  { "id":"d_thick",  "view":"front", "kind":"linear", "refs":["f.cap.bottom","f.cap.top"], "expected":25 }
 A dimension whose refs are outside this grammar, or that targets a revolve/sweep/loft body, WILL be refused before any gate — those kinds have no topology namer yet (backlog). For circular sections that must be dimensioned, use a polygon-tessellated EXTRUDE whose cap vertices lie exactly on the true circle, and state the tessellation deviation in expectedVolume.basis.
 
 HONESTY RULES:
