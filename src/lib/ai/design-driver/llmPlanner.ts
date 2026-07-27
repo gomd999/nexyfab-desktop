@@ -904,6 +904,11 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
         }?,
         "valueMm3": number?,      // required ONLY if you give no decomposition
         "tolRel": number?
+        // ⚠ GROSS, not net: if this part declares "holes", the decomposition describes the
+        //   SOLID BEFORE the holes are cut. The hole gate cuts them with the real kernel and
+        //   measures the net volume separately. A 60×60 square tube with a 50×50 rect bore is
+        //   decomposition {rect 60×60} — NOT {rect 60×60, rect 50×50 sign:-1}.
+        //   Use a sign:-1 term only for a cut you did NOT declare in "holes".
       },
       "sheetMetal": {             // optional; a SHEET-METAL part (process must be "sheetMetal")
         "thicknessMm": number,

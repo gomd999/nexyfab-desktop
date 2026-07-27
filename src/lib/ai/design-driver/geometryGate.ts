@@ -40,7 +40,7 @@ import {
 } from '@/lib/cad/featureMesh';
 import type { Vec3 } from '@/lib/sketch/sketchPlane';
 import type { GateResult, PlanPart } from './types';
-import { decompositionBasisLine, decompositionVolumeMm3 } from './volumeDecomposition';
+import { decompositionBasisLine, decompositionVolumeMm3, discrepancyLine, splitVolumeDiscrepancy } from './volumeDecomposition';
 
 // ─── build artifacts ─────────────────────────────────────────────────────
 
@@ -366,9 +366,23 @@ export function geometryGate(part: PlanPart, geo: PartGeometry): GateResult {
       metrics.volumeRelError = relErr;
       metrics.volumeTolRel = tolRel;
       if (reasons.length === 0 && relErr > tolRel) {
+        // 비율만 말하지 않는다 — 어느 축이 어긋났는지 쪼개서 말한다(260728 §7-1).
+        // 실측(bench v1)에서 이 실패 6건 중 4건이 부피 비율만으로는 구별 불가였고,
+        // 실제로는 전부 **단면**이었다(깊이는 맞았다). 게이트가 아는 것을 침묵할 이유가 없다.
+        let where = '';
+        const single = part.bodies.length === 1 ? part.bodies[0] : undefined;
+        const feat = single?.feature as { kind?: string; loop?: Array<{ x: number; y: number }>; depth?: number } | undefined;
+        if (expected.decomposition && feat?.kind === 'extrude' && Array.isArray(feat.loop) && typeof feat.depth === 'number') {
+          const split = splitVolumeDiscrepancy(feat.loop, feat.depth, expected.decomposition, tolRel);
+          if (split) {
+            metrics.drawnAreaMm2 = split.drawnAreaMm2;
+            metrics.declaredAreaMm2 = split.declaredAreaMm2;
+            where = ` — ${discrepancyLine(split)}`;
+          }
+        }
         reasons.push(
           `volume ${geo.totalVolumeMm3} mm³ deviates from theoretical ${authority} mm³ ` +
-            `by relError ${relErr} > ${tolRel}`,
+            `by relError ${relErr} > ${tolRel}${where}`,
         );
       }
     }

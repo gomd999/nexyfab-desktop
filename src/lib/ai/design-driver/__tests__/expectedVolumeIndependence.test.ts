@@ -137,3 +137,57 @@ describe('분해(decomposition) — 산술은 엔진이, 의도는 모델이', (
     expect(res.reason).toContain('decomposition');
   });
 });
+
+/**
+ * §7-1 — 불일치를 **어느 축인지** 말한다.
+ * bench v1 실측에서 U-채널 2건이 정확히 같은 배수(7/3)로 틀렸다: 모델이 안쪽 포켓 높이를
+ * '플랜지높이−벽두께'가 아니라 '벽두께'로 그린다. 부피 비율 하나로는 그게 안 보인다.
+ */
+describe('불일치 국소화 — 깊이 축 / 단면 축을 갈라 말한다 (§7-1)', () => {
+  // 실측 재현: 외곽 100×50 에서 포켓을 80×10 으로 파버린 루프(= b-04 가 낸 바로 그 실수)
+  const WRONG_POCKET_LOOP = [
+    { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }, { x: 90, y: 50 },
+    { x: 90, y: 40 }, { x: 10, y: 40 }, { x: 10, y: 50 }, { x: 0, y: 50 },
+  ]; // 면적 = 5000 − 80×10 = 4200 → ×200 = 840000 (실측치와 동일)
+
+  const channelPart = (loop: Array<{ x: number; y: number }>, depth: number): PlanPart => ({
+    partId: 'channel', name: 'U-Channel', material: 'SS400', process: 'cnc',
+    bodies: [{ bodyId: 'main', feature: { kind: 'extrude', loop, depth, direction: 'one_sided', mode: 'add' } satisfies ExtrudeFeature }],
+    expectedVolume: {
+      basis: '브리프 치수: 웹 100×10 + 플랜지 2×10×40, × 깊이 200',
+      decomposition: decomp(INTENDED_H), // 1800 mm² × 200 = 360000
+    },
+  });
+
+  it('단면이 틀린 경우: 실측 부피뿐 아니라 그린 면적·외곽까지 사유에 나온다', () => {
+    const p = channelPart(WRONG_POCKET_LOOP, D);
+    const res = geometryGate(p, buildPartGeometry(p));
+    expect(res.pass).toBe(false);
+    expect(res.metrics.totalVolumeMm3).toBeCloseTo(840000, 6); // bench v1 실측치 재현
+    expect(res.metrics.drawnAreaMm2).toBeCloseTo(4200, 6);
+    expect(res.metrics.declaredAreaMm2).toBeCloseTo(1800, 6);
+    expect(res.reason).toContain('cross-section area');
+    expect(res.reason).toContain('outer extent 100×50');
+    expect(res.reason).not.toContain('extrude depth:'); // 깊이는 맞다 — 틀렸다고 말하지 않는다
+  });
+
+  it('깊이가 틀린 경우: 단면이 아니라 깊이를 지목한다', () => {
+    // 루프는 의도대로(플랜지 50), 깊이만 200 대신 100 으로 그렸다
+    const correctLoop = channelLoop(INTENDED_H);
+    const p = channelPart(correctLoop, 100);
+    const res = geometryGate(p, buildPartGeometry(p));
+    expect(res.pass).toBe(false);
+    expect(res.reason).toContain('extrude depth: you drew 100 mm but declared 200 mm');
+    expect(res.reason).not.toContain('cross-section area');
+  });
+
+  it('깊이·단면 둘 다 맞는데 부피가 다르면 그 사실을 말한다 (루프 자체를 의심하라)', () => {
+    // 자기교차 "나비" 루프: shoelace 면적은 상쇄돼 선언과 같아 보이지만 메시 부피는 다르다.
+    const p = channelPart(channelLoop(INTENDED_H), D);
+    const geo = buildPartGeometry(p);
+    // 부피만 인위적으로 어긋나게 해 세 번째 분기를 태운다(빌드는 정상 경로 그대로).
+    const res = geometryGate(p, { ...geo, totalVolumeMm3: geo.totalVolumeMm3 * 1.5 });
+    expect(res.pass).toBe(false);
+    expect(res.reason).toContain('both match your decomposition');
+  });
+});

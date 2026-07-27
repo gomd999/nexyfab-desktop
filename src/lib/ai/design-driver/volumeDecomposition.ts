@@ -74,3 +74,87 @@ export function decompositionBasisLine(d: VolumeDecomposition): string {
   });
   return `decomposition: (${parts.join(' ')}) mm² × ${d.depthMm} mm = ${decompositionVolumeMm3(d)} mm³`;
 }
+
+// ─── 불일치 국소화 (260728 §7-1) ────────────────────────────────────────────
+
+/** 2D 루프의 부호 있는 면적(shoelace) — 절대값이 단면적. */
+function loopAreaMm2(loop: ReadonlyArray<{ x: number; y: number }>): number {
+  let a = 0;
+  for (let i = 0, n = loop.length; i < n; i++) {
+    const p = loop[i]!, q = loop[(i + 1) % n]!;
+    a += p.x * q.y - q.x * p.y;
+  }
+  return Math.abs(a) / 2;
+}
+
+export interface DiscrepancySplit {
+  /** 그린 루프의 실제 단면적(mm²). */
+  drawnAreaMm2: number;
+  /** 그린 루프의 축정렬 외곽 크기(mm) — 외곽은 맞는데 안쪽만 틀린 경우를 가려낸다. */
+  drawnExtentMm: { x: number; y: number };
+  /** 그린 압출 깊이(mm). */
+  drawnDepthMm: number;
+  /** 선언한 분해의 단면적·깊이. */
+  declaredAreaMm2: number;
+  declaredDepthMm: number;
+  /** 깊이가 어긋났나 / 단면이 어긋났나 — 둘은 서로 다른 실수다. */
+  depthMismatch: boolean;
+  areaMismatch: boolean;
+}
+
+/**
+ * 부피 불일치를 **깊이 축과 단면 축으로 쪼갠다** (260728 §7-1).
+ *
+ * 왜: 종전 게이트 메시지는 "부피 840000 이 이론 360000 과 다르다"뿐이었다. 비율만으로는
+ * 깊이를 잘못 썼는지 단면을 잘못 그렸는지 알 수 없고, 실측(bench v1)에서는 **전부 단면**
+ * 이었다 — 그것도 U-채널 2건이 정확히 같은 배수(7/3)로 틀리는 체계적 실수였다(안쪽 포켓
+ * 높이를 '플랜지높이−벽두께' 대신 '벽두께'로 그린다). 비율 하나로는 그게 안 보인다.
+ *
+ * ⚠ 여기서 계산한 값은 **보고용이지 판정용이 아니다.** 합·불은 여전히 커널이 실측한 부피와
+ * 모델이 독립 선언한 분해의 대조로만 정한다 — 그리지 않은 것을 그린 것처럼 고쳐주지 않는다.
+ */
+export function splitVolumeDiscrepancy(
+  loop: ReadonlyArray<{ x: number; y: number }>,
+  drawnDepthMm: number,
+  d: VolumeDecomposition,
+  tolRel: number,
+): DiscrepancySplit | null {
+  if (!Array.isArray(loop) || loop.length < 3 || !Number.isFinite(drawnDepthMm)) return null;
+  let declaredAreaMm2: number;
+  try { declaredAreaMm2 = decompositionAreaMm2(d); } catch { return null; }
+  const drawnAreaMm2 = loopAreaMm2(loop);
+  const xs = loop.map((p) => p.x), ys = loop.map((p) => p.y);
+  const rel = (a: number, b: number) => Math.abs(a - b) / Math.max(Math.abs(b), 1e-9);
+  return {
+    drawnAreaMm2,
+    drawnExtentMm: { x: Math.max(...xs) - Math.min(...xs), y: Math.max(...ys) - Math.min(...ys) },
+    drawnDepthMm,
+    declaredAreaMm2,
+    declaredDepthMm: d.depthMm,
+    depthMismatch: rel(drawnDepthMm, d.depthMm) > tolRel,
+    areaMismatch: rel(drawnAreaMm2, declaredAreaMm2) > tolRel,
+  };
+}
+
+/** 사람이 읽는 한 줄 — 게이트 사유에 덧붙인다. */
+export function discrepancyLine(s: DiscrepancySplit): string {
+  const parts: string[] = [];
+  if (s.depthMismatch) {
+    parts.push(`extrude depth: you drew ${s.drawnDepthMm} mm but declared ${s.declaredDepthMm} mm`);
+  }
+  if (s.areaMismatch) {
+    parts.push(
+      `cross-section area: the loop you drew encloses ${s.drawnAreaMm2} mm² but your decomposition ` +
+      `implies ${s.declaredAreaMm2} mm² (drawn outer extent ${s.drawnExtentMm.x}×${s.drawnExtentMm.y} mm) — ` +
+      `the loop is not the shape you described`,
+    );
+  }
+  if (!parts.length) {
+    // 깊이도 단면도 맞는데 부피가 틀리다 = 루프가 자기교차/역방향이거나 다른 body 가 섞였다.
+    parts.push(
+      `depth and cross-section area both match your decomposition, so the volume gap is NOT in ` +
+      `either — check for a self-intersecting or reversed loop, or extra bodies in this part`,
+    );
+  }
+  return parts.join('; ');
+}
