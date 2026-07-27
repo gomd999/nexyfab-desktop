@@ -29,7 +29,9 @@ beforeAll(async () => {
   const r = await loadOcctNode();
   occtOk = r.ok;
   if (!r.ok) console.warn(`[WB-9 hole] OCCT unavailable — kernel cases skipped: ${r.reason}`);
-}, 60_000);
+  // 부하가 걸린 머신에서 wasm 로드가 60s를 넘겨 beforeAll이 죽는 일이 있었다 —
+  // 벽시계 예산에 머신 속도 가정을 넣지 않는다(gmsh 테스트에서 배운 것과 같은 부류).
+}, 180_000);
 
 describe('WB-9 driver integration — 구멍이 커널 cut으로 뚫리고 실측된다', () => {
   it('holed-plate 픽스처 → 전 게이트 통과 → 커널이 실측한 순부피가 패키지에 실린다', async () => {
@@ -75,6 +77,52 @@ describe('WB-9 driver integration — 구멍이 커널 cut으로 뚫리고 실�
     // 재고 있다는 사실이 노트로 드러나야 한다(둘 중 하나를 조용히 덮어쓰면 안 됨).
     expect(hg!.notes.join(' ')).toContain('구멍 반영 전 총량');
   }, 120_000);
+
+  it('구멍 일람표가 도면 시트에 실린다 — 태그·좌표·⌀·THRU/깊이(도면 계층 holeTable 소비)', async () => {
+    if (!occtOk) return;
+    const res = await runDesignDriver(
+      { id: 'holed-plate', text: '4구멍 플레이트', params: { fixture: 'holed-plate' } },
+      { planner: fixturePlanner },
+    );
+    expectOk(res);
+    const sheet = res.package.parts[0]!.sheet as { holes?: ReadonlyArray<{ id: string; x: number; y: number; diameter: number; depth?: number }> };
+    expect(sheet.holes, '시트에 구멍 행이 실려야 한다').toBeTruthy();
+    expect(sheet.holes!).toHaveLength(4);
+    for (const h of sheet.holes!) {
+      expect(h.diameter).toBeCloseTo(6.5, 6);
+      expect(h.depth).toBeUndefined();       // 관통 → THRU
+      expect(Number.isFinite(h.x)).toBe(true);
+    }
+    // 실제 표 렌더러가 이 IR을 먹는지까지 확인(도면 계층 재사용 증명)
+    const { buildHoleTable } = await import('@/lib/drawing/holeTable');
+    const rows = buildHoleTable(sheet.holes!);
+    expect(rows).toHaveLength(4);            // 기본은 구멍당 한 행(A1..A4)
+    expect(rows.map((r) => r.tag)).toEqual(['A1', 'A2', 'A3', 'A4']);
+    for (const r of rows) expect(r.depthLabel).toBe('THRU');
+    // 동일 ⌀·깊이는 옵션으로 한 행에 묶인다(도면 관례)
+    const grouped = buildHoleTable(sheet.holes!, { groupIdentical: true });
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0]!.count).toBe(4);
+    expect(grouped[0]!.diameter).toBeCloseTo(6.5, 6);
+  }, 120_000);
+
+  it('블라인드는 표에 깊이 라벨로, 사각 컷아웃은 표에서 제외된다(⌀ 개념 없음)', async () => {
+    const base = holedPlatePlan().parts[0]!;
+    const { buildDrawingArtifact } = await import('../drawingGate');
+    const plan = holedPlatePlan();
+    plan.parts[0] = {
+      ...base,
+      holes: [
+        { id: 'b1', kind: 'blind', diameterMm: 8, at: { x: 20, y: 20 }, depthMm: 4 },
+        { id: 'r1', shape: 'rect', widthMm: 20, heightMm: 10, at: { x: 60, y: 40 } },
+      ],
+    };
+    const art = buildDrawingArtifact(plan);
+    const sheet = art.sheets.get('plate') as { holes?: ReadonlyArray<{ id: string; depth?: number }> };
+    expect(sheet.holes).toHaveLength(1);     // rect 제외
+    expect(sheet.holes![0]!.id).toBe('b1');
+    expect(sheet.holes![0]!.depth).toBe(4);
+  });
 
   it('사각 컷아웃 — 각파이프 보어를 커널이 정확히 깎는다(테셀레이션 없음)', async () => {
     if (!occtOk) return;

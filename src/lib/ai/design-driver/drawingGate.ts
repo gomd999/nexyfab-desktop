@@ -32,6 +32,7 @@ import {
   type Viewport,
 } from '@/lib/drawing/sheet';
 import { validateDimension, type Dimension } from '@/lib/drawing/dimension';
+import type { HoleSpec as SheetHoleSpec } from '@/lib/drawing/holeTable';
 import { measureSheetDimension } from '@/lib/drawing/associativeUpdate';
 import type { MeasureResult } from '@/lib/drawing/measure';
 import {
@@ -137,7 +138,23 @@ export function buildDrawingArtifact(plan: DesignPlan): DrawingArtifact {
       part.bodies.slice(1).forEach((body, i) => {
         viewports.push(...auxViewports(part.partId, body.bodyId, i, paper, scale));
       });
-      sheets.set(part.partId, { ...base, viewports });
+      // WB-9: 구멍 일람표를 시트에 싣는다. 도면 계층엔 이미 holeTable(태그 A1·데이텀
+      // 상대좌표·⌀·THRU/↧깊이·동일치수 그룹핑) 렌더러가 있으므로 **선언을 그 IR로 옮기기만**
+      // 하면 된다 — featureMesh에 내부 루프를 넣는 공사(ADR-017 면 이름·매니폴드 전제를
+      // 건드림)를 하지 않고도 shop이 쓰는 표가 도면에 실린다.
+      // 검증 관계: 이 표는 선언에서 만들지만, 패키지는 hole 게이트가 통과해야만 산출된다
+      // (커널이 그 지름/깊이만큼 실제로 깎았음을 부피로 확인). 즉 "그려졌는데 검증 안 된"
+      // 구멍은 패키지에 존재할 수 없다. 다만 **중심 좌표는 선언값**이라는 한계는 그대로다.
+      // 사각 컷아웃은 ⌀ 개념이 없어 이 표에 넣지 않는다(패키지의 schedule에는 실려 있다).
+      const roundHoles = (part.holes ?? []).filter((h) => h.shape !== 'rect');
+      const holeRows: SheetHoleSpec[] = roundHoles.map((h) => ({
+        id: h.id,
+        x: h.at.x,
+        y: h.at.y,
+        diameter: h.diameterMm as number,
+        ...(h.kind === 'blind' && h.depthMm !== undefined ? { depth: h.depthMm } : {}),
+      }));
+      sheets.set(part.partId, { ...base, viewports, ...(holeRows.length ? { holes: holeRows } : {}) });
     } catch (err) {
       buildErrors.push(`part '${part.partId}': sheet construction failed — ${(err as Error).message}`);
     }
