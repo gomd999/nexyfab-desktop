@@ -172,13 +172,16 @@ describe('인테리어 템플릿 4종', () => {
 });
 
 describe('템플릿 카탈로그 등록', () => {
-  it('조경 7종·인테리어 9종이 스튜디오 카탈로그에 params 와 함께 노출된다', () => {
+  // 개수는 **이름으로 뒷받침**한다 — 종전엔 subset(5종)만 확인하고 length 만 7 로 박아둬,
+  // 443b02db 가 apartment_complex 를 넣었을 때 "8 아닌 7"이라는 숫자 불일치로만 깨졌다.
+  // 그러면 "새 템플릿이 추가됨"과 "엉뚱한 템플릿이 샜음"이 같은 실패로 보인다.
+  it('조경 8종·인테리어 9종이 스튜디오 카탈로그에 params 와 함께 노출된다', () => {
     const ls = (listAssemblyTemplates as unknown as (d: string) => { id: string; params: { name: string; labelKo: string }[] }[])('landscape');
     const it2 = (listAssemblyTemplates as unknown as (d: string) => { id: string; params: { name: string; labelKo: string }[] }[])('interior');
-    expect(ls.map((t) => t.id)).toEqual(expect.arrayContaining(['fence_run', 'planter_wall', 'parking_pavement', 'pavilion', 'tree_planting']));
-    expect(it2.map((t) => t.id)).toEqual(expect.arrayContaining(['built_in_closet', 'counter_bar', 'partition_wall', 'ceiling_grid']));
-    expect(ls).toHaveLength(7);
-    expect(it2).toHaveLength(9);
+    expect([...ls.map((t) => t.id)].sort()).toEqual(
+      ['apartment_complex', 'fence_run', 'parking_pavement', 'pavilion', 'pergola', 'planter_wall', 'timber_deck', 'tree_planting']);
+    expect([...it2.map((t) => t.id)].sort()).toEqual(
+      ['apartment_unit', 'built_in_closet', 'cafe_room', 'ceiling_grid', 'counter_bar', 'partition_wall', 'studio_unit', 'three_room_unit', 'two_room']);
     // params 는 UI 가 그대로 렌더 — 전 파라미터에 한국어 라벨과 기본값이 있어야 한다
     for (const t of [...ls, ...it2]) {
       for (const q of t.params) {
