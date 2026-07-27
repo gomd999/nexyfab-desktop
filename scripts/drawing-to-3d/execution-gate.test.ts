@@ -56,3 +56,52 @@ describe('T2 실시 검도 게이트', () => {
     expect(r.ok).toBe(true);
   });
 });
+
+/**
+ * GA 미생성 시 판정 불가 처리 (260728 §7-5).
+ *
+ * §7-5 로 MCP 툴을 훑다가 `execution_gate` 가 `ga2dDrawing` 실패를 조용히 삼키고
+ * `gaHtml=''` 로 계속 진행하는 것을 발견했다. 그러면 GA 를 읽는 M3/M5/M6 이 전부
+ * **"미충족"** 으로 보고된다 — 도면이 부실한 게 아니라 **없는 것**인데, 소비자는
+ * "용접 기호가 빠졌어요"를 읽는다. 판정 못 한 것이 **틀린 판정**으로 둔갑한다.
+ */
+describe('checkExecutionReadiness — GA 미생성은 "미충족"이 아니라 "판정 불가"', () => {
+  const asm = {
+    name: '용접 있는 어셈블리',
+    parts: [
+      { id: 'base', type: 'box', material: 'SS400', params: { width: 300, depth: 300, height: 20 }, at: { tx: 0, ty: 0, tz: 0 } },
+      { id: 'post', type: 'box', material: 'SS400', params: { width: 60, depth: 60, height: 400 }, at: { tx: 120, ty: 120, tz: 20 } },
+    ],
+  };
+  const welds = [{ a: 'base', b: 'post', lengthMm: 240 }];
+
+  it('★GA 가 없으면 M3·M5·M6 이 FAIL 이 아니라 N/A 로 나온다', () => {
+    const r = checkExecutionReadiness(asm, { gaHtml: '', sheetsHtml: '<div>재질 SS400</div>', welds });
+    const by = (id: string) => r.items.find((i) => i.id === id)!;
+    for (const id of ['M3', 'M5', 'M6']) {
+      expect(by(id).pass, id).toBeNull();
+      expect(by(id).detail.join(' '), id).toContain('판정 불가');
+    }
+    // failed 목록에 끌려 들어가지 않는다 — 이게 소비자 문서로 새던 경로다
+    expect(r.failed.some((f) => /^M[356] /.test(f))).toBe(false);
+  });
+
+  it('GA 미생성 사실이 note 와 플래그로 드러난다 — 조용히 넘어가지 않는다', () => {
+    const r = checkExecutionReadiness(asm, { gaHtml: '', sheetsHtml: '', welds });
+    expect((r as { gaMissing?: boolean }).gaMissing).toBe(true);
+    expect(r.note).toContain('GA 도면 미생성');
+  });
+
+  it('부품도만으로 판정 가능한 항목은 그대로 판정한다 (M1)', () => {
+    const r = checkExecutionReadiness(asm, { gaHtml: '', sheetsHtml: '', welds });
+    expect(r.items.find((i) => i.id === 'M1')!.pass).not.toBeNull();
+  });
+
+  it('GA 가 있으면 종전과 동일하게 판정한다 (하위호환)', () => {
+    const ga = '<div class="nf-gentol">일반공차</div><div>재질 SS400</div>';
+    const r = checkExecutionReadiness(asm, { gaHtml: ga, sheetsHtml: '', welds });
+    expect((r as { gaMissing?: boolean }).gaMissing).toBeUndefined();
+    expect(r.items.find((i) => i.id === 'M5')!.pass).toBe(true);
+    expect(r.items.find((i) => i.id === 'M3')!.pass).toBe(false); // nf-weldarrow 없음 = 진짜 미충족
+  });
+});

@@ -13,8 +13,28 @@
  */
 import { PARAMS, holeFeature } from './reconstruct.mjs';
 
-export function checkExecutionReadiness(assembly, { gaHtml = '', sheetsHtml = '', welds = [] } = {}) {
+/**
+ * @param {object} assembly
+ * @param {{ gaHtml?: string, sheetsHtml?: string, welds?: unknown[] }} [sources]
+ *   gaHtml 이 비어 있으면 GA 미생성으로 보고 GA 의존 항목을 N/A 로 돌린다(아래 참조).
+ */
+export function checkExecutionReadiness(assembly, sources = {}) {
+  const { gaHtml = '', sheetsHtml = '', welds = [] } = sources;
   const combined = gaHtml + '\n' + sheetsHtml;
+  /**
+   * GA 도면이 아예 생성되지 않았나 (260728 §7-5).
+   *
+   * 종전엔 호출자들이 `ga2dDrawing` 실패를 조용히 삼키고 `gaHtml=''` 로 이 함수를 계속
+   * 불렀다. 그러면 GA 를 읽는 항목(M3 용접기호·M5 재질열+일반공차·M6 실윤곽)이 전부
+   * **"미충족"으로 보고**된다 — 도면이 부실한 게 아니라 **도면이 없는 것**인데, 소비자는
+   * "용접 기호가 빠졌어요"를 읽는다. 판정 못 한 것이 **틀린 판정**으로 둔갑하는 경우다
+   * (같은 원칙: §7-5 — '이상 없음'과 '확인 못 함'은 다른 말이다).
+   *
+   * 그래서 GA 가 없으면 GA 의존 항목을 FAIL 이 아니라 **N/A(판정 불가)** 로 돌린다.
+   * 부품도만으로 판정 가능한 M1·M2·M4 는 그대로 판정한다.
+   */
+  const gaMissing = gaHtml.trim().length === 0;
+  const naGa = (id, name) => ({ id, name, pass: null, detail: ['GA 도면이 생성되지 않아 판정 불가(도면 부실이 아님)'] });
   // 도면 기입 숫자 집합(태그 제거 후) — fmtLen 'm' 단위 환산 포함
   const nums = new Set();
   for (const m of combined.replace(/<[^>]+>/g, ' ').matchAll(/(\d+(?:\.\d+)?)(m\b)?/g)) {
@@ -59,21 +79,27 @@ export function checkExecutionReadiness(assembly, { gaHtml = '', sheetsHtml = ''
   const M2 = { id: 'M2', name: '구멍표(N×⌀d·⌴⌵·나사)', pass: holed.length ? m2pass : null, detail: m2detail.slice(0, 12) };
 
   // M3 — 용접기호 실배치
-  const M3 = { id: 'M3', name: '용접기호 실배치(KS B 0052 지시선)', pass: welds.length ? gaHtml.includes('nf-weldarrow') : null, detail: [] };
+  const M3 = gaMissing
+    ? naGa('M3', '용접기호 실배치(KS B 0052 지시선)')
+    : { id: 'M3', name: '용접기호 실배치(KS B 0052 지시선)', pass: welds.length ? gaHtml.includes('nf-weldarrow') : null, detail: [] };
 
   // M4 — 나사 표기
   const taps = holed.flatMap((p) => (p.params.holes ?? []).filter((h) => h.kind === 'tap'));
   const M4 = { id: 'M4', name: '나사 표기(M호칭×깊이)', pass: taps.length ? /M\d+(?:×\d+)?/.test(combined) : null, detail: [] };
 
   // M5 — 재질열 + 일반공차 주기
-  const M5 = { id: 'M5', name: '재질열+일반공차 주기(표제란)', pass: combined.includes('재질') && gaHtml.includes('nf-gentol'), detail: [] };
+  const M5 = gaMissing
+    ? naGa('M5', '재질열+일반공차 주기(표제란)')
+    : { id: 'M5', name: '재질열+일반공차 주기(표제란)', pass: combined.includes('재질') && gaHtml.includes('nf-gentol'), detail: [] };
 
   // M6 — 실윤곽 투영(E1)
   const rotated = (assembly.parts ?? []).some((p) => {
     const a = p.at ?? {};
     return [a.rx ?? 0, a.ry ?? 0, a.rz ?? 0].some((v) => Math.abs(v % 90) > 1e-9);
   });
-  const M6 = { id: 'M6', name: '실윤곽 투영(비90° 회전=헐 폴리곤)', pass: rotated ? gaHtml.includes('<polygon points=') : null, detail: [] };
+  const M6 = gaMissing
+    ? naGa('M6', '실윤곽 투영(비90° 회전=헐 폴리곤)')
+    : { id: 'M6', name: '실윤곽 투영(비90° 회전=헐 폴리곤)', pass: rotated ? gaHtml.includes('<polygon points=') : null, detail: [] };
 
   const items = [M1, M2, M3, M4, M5, M6];
   const applicable = items.filter((i) => i.pass !== null);
@@ -83,7 +109,9 @@ export function checkExecutionReadiness(assembly, { gaHtml = '', sheetsHtml = ''
     ok: applicable.every((i) => i.pass),
     failed: applicable.filter((i) => !i.pass).map((i) => `${i.id} ${i.name}${i.detail.length ? ' — ' + i.detail.join('; ') : ''}`),
     na: items.filter((i) => i.pass === null).map((i) => i.id),
-    note: '실시 검도 M1~M6 — 미충족=보완 대상(면책 아님) · 배열 특례 어휘=부품도+STEP 참조 기준(명시)',
+    note: '실시 검도 M1~M6 — 미충족=보완 대상(면책 아님) · 배열 특례 어휘=부품도+STEP 참조 기준(명시)'
+      + (gaMissing ? ' · ⚠ GA 도면 미생성 — M3/M5/M6 은 판정하지 못했다(미충족이 아님)' : ''),
+    ...(gaMissing ? { gaMissing: true } : {}),
   };
 }
 
