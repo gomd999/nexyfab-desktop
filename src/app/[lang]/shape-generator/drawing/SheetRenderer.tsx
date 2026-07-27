@@ -51,7 +51,7 @@ import { generateSection, planeBasis, project2D, type CuttingPlane, type Section
 import { formatSurfaceFinish } from '@/lib/drawing/surfaceFinishSymbol';
 import { formatWeldSymbol } from '@/lib/drawing/weldSymbol';
 import { buildLinearDimension, type Pt } from '@/lib/drawing/dimensionAnchor';
-import { buildHoleTable } from '@/lib/drawing/holeTable';
+import { buildHoleTable, holeTagsById } from '@/lib/drawing/holeTable';
 import type { BomItemRow, BomBalloon } from '@/lib/drawing/bomBalloon';
 import type { MeasureResult } from '@/lib/drawing/measure';
 import { measureSheetDimension, formatMeasuredValue } from '@/lib/drawing/associativeUpdate';
@@ -169,6 +169,13 @@ export function SheetRenderer({
   topologies,
 }: SheetRendererProps): React.ReactElement {
   const dim = paperDimensions(sheet.paperSize, sheet.customPaper);
+  // 260728 — 구멍 id → 표 태그. **표를 만드는 것과 같은 호출**(같은 옵션)에서 뽑으므로
+  // 뷰 안의 원과 코너의 표가 반드시 같은 태그를 쓴다(태그 규칙 중복 구현 없음).
+  const holeTags = (() => {
+    const hs = sheet.holes;
+    if (!hs || hs.length === 0) return null;
+    try { return holeTagsById(hs, { groupIdentical: true }); } catch { return null; }
+  })();
   const widthPx = dim.width * scale;
   const heightPx = dim.height * scale;
   // viewBox uses mm-space so children can write coordinates in mm directly.
@@ -246,6 +253,7 @@ export function SheetRenderer({
             detailMarkers={markers.length > 0 ? markers : null}
             detailSourceView={detailSourceView}
             holeMarks={(sheet.holeMarks ?? []).filter((h) => h.viewportId === vp.id)}
+            holeTags={holeTags}
           />
         );
       })}
@@ -370,6 +378,8 @@ interface ViewportLayerProps {
   detailSourceView?: ProjView | null;
   /** 260728 — 이 뷰포트에 그릴 구멍 원. */
   holeMarks?: ReadonlyArray<HoleMark> | null;
+  /** 구멍 id → 표 태그. 표를 만드는 `buildHoleTable` 이 매긴 값 그대로다. */
+  holeTags?: ReadonlyMap<string, string> | null;
 }
 
 function ViewportLayer({
@@ -384,6 +394,7 @@ function ViewportLayer({
   detailMarkers,
   detailSourceView,
   holeMarks,
+  holeTags,
 }: ViewportLayerProps): React.ReactElement {
   const box = resolveViewportBox(viewport, paperHeightMm);
   // Real projected geometry for standard views when a polyhedron is supplied.
@@ -399,6 +410,7 @@ function ViewportLayer({
           showTangentEdges={showTangentEdges}
           detailMarkers={detailMarkers}
           holeMarks={holeMarks}
+          holeTags={holeTags}
         />
       : null;
   // W4-C — real broken-view line work (standard projection + band collapse).
@@ -507,6 +519,7 @@ interface ProjectedGeometryProps {
   detailMarkers?: ReadonlyArray<DetailMarker> | null;
   /** 260728 — 이 뷰에 그릴 구멍 원(모델 mm). 변환은 아래 tx/ty 를 그대로 쓴다. */
   holeMarks?: ReadonlyArray<HoleMark> | null;
+  holeTags?: ReadonlyMap<string, string> | null;
 }
 
 const GEOM_VISIBLE_STROKE = '#0f172a';
@@ -531,6 +544,7 @@ function ProjectedGeometry({
   showTangentEdges = false,
   detailMarkers,
   holeMarks,
+  holeTags,
 }: ProjectedGeometryProps): React.ReactElement | null {
   const { visible, hidden, tangent, bbox } = projectPolyhedron(poly, view);
   const geomW = bbox.maxX - bbox.minX;
@@ -568,11 +582,17 @@ function ProjectedGeometry({
         const cx = tx(h.xMm), cy = ty(h.yMm), r = (h.diameterMm / 2) * s;
         if (!(r > 0)) return null;
         const cross = r * 1.35; // 중심선(센터마크) 길이
+        // 코너의 구멍표와 **같은 태그**(buildHoleTable 이 매긴 값). 못 찾으면 라벨 없이 원만
+        // 그린다 — 없는 태그를 지어내지 않는다.
+        const label = h.tag ? (holeTags?.get(h.tag) ?? null) : null;
         return (
-          <g key={`hm${i}`} data-testid={`sheet-renderer-hole-${viewportId}-${h.tag ?? i}`} data-hole-d={h.diameterMm}>
+          <g key={`hm${i}`} data-testid={`sheet-renderer-hole-${viewportId}-${h.tag ?? i}`} data-hole-d={h.diameterMm} data-hole-tag={label ?? ''}>
             <circle cx={cx} cy={cy} r={r} fill="none" stroke={GEOM_VISIBLE_STROKE} strokeWidth={strokeW} />
             <line x1={cx - cross} y1={cy} x2={cx + cross} y2={cy} stroke={GEOM_VISIBLE_STROKE} strokeWidth={strokeW * 0.5} strokeDasharray={`${r * 0.6} ${r * 0.25} ${r * 0.15} ${r * 0.25}`} />
             <line x1={cx} y1={cy - cross} x2={cx} y2={cy + cross} stroke={GEOM_VISIBLE_STROKE} strokeWidth={strokeW * 0.5} strokeDasharray={`${r * 0.6} ${r * 0.25} ${r * 0.15} ${r * 0.25}`} />
+            {label ? (
+              <text x={cx + cross + strokeW} y={cy - cross} fontSize={Math.max(2, r * 0.9)} fill={GEOM_VISIBLE_STROKE}>{label}</text>
+            ) : null}
           </g>
         );
       })

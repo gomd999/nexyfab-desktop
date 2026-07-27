@@ -7,13 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  buildHoleTable,
-  holeTableToCsv,
-  HoleTableError,
-  THRU_LABEL,
-  type HoleSpec,
-} from './holeTable';
+import { buildHoleTable, holeTableToCsv, HoleTableError, THRU_LABEL, type HoleSpec, holeTagsById } from './holeTable';
 
 describe('buildHoleTable', () => {
   it('builds a sorted table with THRU and blind depth labels', () => {
@@ -153,9 +147,41 @@ describe('holeTableToCsv', () => {
 
   it('quotes fields containing commas or quotes', () => {
     const csv = holeTableToCsv([
-      { tag: 'A1', x: 0, y: 0, diameter: 5, depthLabel: 'a,b"c', count: 1 },
+      { tag: 'A1', x: 0, y: 0, diameter: 5, depthLabel: 'a,b"c', count: 1, holeIds: ['h1'] },
     ]);
     const lines = csv.split('\r\n');
     expect(lines[1]).toBe('A1,0,0,5,"a,b""c",1');
+  });
+});
+
+/**
+ * 그림↔표 짝짓기의 역참조 (260728). 태그 규칙은 `buildHoleTable` 에만 있고, 뷰 안의
+ * 구멍 원은 이 맵으로 **같은 태그**를 읽는다 — 규칙을 두 번 구현하지 않는다.
+ */
+describe('holeTagsById — 구멍 id → 표 태그', () => {
+  const holes = [
+    { id: 'h1', x: 10, y: 10, diameter: 6 },
+    { id: 'h2', x: 90, y: 10, diameter: 6 },
+    { id: 'h3', x: 50, y: 50, diameter: 12 },
+  ];
+
+  it('그룹핑을 켜면 동일 치수 구멍이 같은 태그를 공유한다', () => {
+    const m = holeTagsById(holes, { groupIdentical: true });
+    expect(m.get('h1')).toBe(m.get('h2'));      // ⌀6 두 개는 한 행
+    expect(m.get('h3')).not.toBe(m.get('h1'));  // ⌀12 는 다른 행
+    expect(new Set([...m.values()]).size).toBe(2);
+  });
+
+  it('그룹핑을 끄면 구멍마다 다른 태그가 붙는다', () => {
+    const m = holeTagsById(holes, {});
+    expect(new Set([...m.values()]).size).toBe(3);
+  });
+
+  it('태그 값이 buildHoleTable 이 실제로 매긴 것과 일치한다 (규칙 중복 없음)', () => {
+    const rows = buildHoleTable(holes, { groupIdentical: true });
+    const m = holeTagsById(holes, { groupIdentical: true });
+    for (const row of rows) {
+      for (const id of row.holeIds) expect(m.get(id)).toBe(row.tag);
+    }
   });
 });

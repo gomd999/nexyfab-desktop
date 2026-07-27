@@ -99,3 +99,35 @@ describe('SheetRenderer — 뷰 안의 구멍 원', () => {
     expect(render(sheetWith())).toBe(render(sheetWith([])));
   });
 });
+
+/**
+ * 그림 ↔ 표 태그 짝짓기 (260728). 도면을 보는 사람이 뷰 안의 원과 코너의 구멍표를
+ * 눈으로 이을 수 있어야 한다 — 태그 규칙은 `buildHoleTable` 에만 두고 여기선 읽기만 한다.
+ */
+describe('SheetRenderer — 구멍 원의 태그가 구멍표와 일치한다', () => {
+  const holes = [
+    { id: 'h1', x: 20, y: 20, diameter: 10 },
+    { id: 'h2', x: 80, y: 20, diameter: 10 },
+    { id: 'h3', x: 50, y: 60, diameter: 20 },
+  ];
+  const marks = holes.map((h) => ({ viewportId: 'top', xMm: h.x, yMm: h.y, diameterMm: h.diameter, tag: h.id }));
+
+  it('동일 치수 구멍은 표와 같은 태그를 공유하고, 다른 치수는 다른 태그를 받는다', () => {
+    const svg = render({ ...sheetWith(marks), holes });
+    const tagOf = (id: string): string => {
+      const g = svg.split(`sheet-renderer-hole-top-${id}`)[1] ?? '';
+      return (g.match(/data-hole-tag="([^"]*)"/) ?? ['', ''])[1];
+    };
+    expect(tagOf('h1')).toMatch(/^A\d+$/);
+    expect(tagOf('h1')).toBe(tagOf('h2'));       // ⌀10 두 개 = 한 행
+    expect(tagOf('h3')).not.toBe(tagOf('h1'));   // ⌀20 = 다른 행
+    // 라벨이 실제로 그려진다(속성만 있고 화면엔 없는 것 방지)
+    expect(svg).toContain(`>${tagOf('h1')}</text>`);
+  });
+
+  it('시트에 구멍표가 없으면 태그 없이 원만 그린다 — 없는 태그를 지어내지 않는다', () => {
+    const svg = render(sheetWith(marks)); // sheet.holes 없음
+    expect(svg).toContain('data-testid="sheet-renderer-hole-top-h1"');
+    expect(svg).toContain('data-hole-tag=""');
+  });
+});

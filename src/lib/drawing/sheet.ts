@@ -208,9 +208,9 @@ export interface HoleMark {
   yMm: number;
   diameterMm: number;
   /**
-   * 식별자(계획의 hole id). ⚠ `buildHoleTable` 이 표에 찍는 A1/A2… 태그와는 **다르다** —
-   * 그쪽은 동일 치수를 묶으며 렌더 시점에 새로 매기기 때문이다. 여기 값은 그림 요소를
-   * 지목하기 위한 것이지 표와 짝지으라고 있는 것이 아니다(짝짓기는 후속 과제).
+   * 계획의 hole id. 표의 A1/A2… 태그와는 다른 값이지만, 렌더러가 `holeTagsById` 로
+   * **표가 매긴 태그를 역참조해** 원 옆에 그 태그를 적는다 — 그림과 표가 같은 이름을 쓴다.
+   * `Sheet.holes` 가 없으면 태그 없이 원만 그린다(없는 태그를 지어내지 않는다).
    */
   tag?: string;
 }

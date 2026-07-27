@@ -51,6 +51,15 @@ export interface HoleTableRow {
   depthLabel: string;
   /** Number of identical holes this row represents (1 when not grouped). */
   count: number;
+  /**
+   * 이 행이 대표하는 구멍들의 원본 id (260728).
+   *
+   * 왜 필요한가: 뷰 안에 그린 구멍 원(`Sheet.holeMarks`)에 표와 **같은 태그**를 붙이려면
+   * "이 구멍이 몇 번 행인가"를 알아야 한다. 태그는 여기서(그룹핑·정렬이 끝난 뒤) 매겨지므로
+   * 호출자가 태그 규칙을 다시 구현하면 그게 곧 드리프트다 — 대신 **역참조를 열어준다**.
+   * 그룹핑을 켜면 한 행이 여러 구멍을 대표하므로 배열이다.
+   */
+  holeIds: string[];
 }
 
 export interface BuildHoleTableOptions {
@@ -188,9 +197,11 @@ export function buildHoleTable(
           diameter: p.diameter,
           depthLabel: p.depthLabel,
           count: 1,
+          holeIds: [p.id],
         });
       } else {
         rows[existing].count += 1;
+        rows[existing].holeIds.push(p.id);
       }
     }
   } else {
@@ -202,6 +213,7 @@ export function buildHoleTable(
         diameter: p.diameter,
         depthLabel: p.depthLabel,
         count: 1,
+        holeIds: [p.id],
       });
     }
   }
@@ -247,4 +259,20 @@ function csvField(value: string): string {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
+}
+
+/**
+ * 구멍 id → 표 태그(A1/A2…) 역참조 (260728).
+ * **`buildHoleTable` 이 매긴 태그를 그대로 읽는다** — 태그 규칙을 두 번 구현하지 않는 것이
+ * 이 함수의 존재 이유다(도면 계층에서 반복해 배운 드리프트 방지).
+ */
+export function holeTagsById(
+  holes: ReadonlyArray<HoleSpec>,
+  options: BuildHoleTableOptions = {},
+): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const row of buildHoleTable(holes, options)) {
+    for (const id of row.holeIds) out.set(id, row.tag);
+  }
+  return out;
 }
