@@ -938,7 +938,12 @@ export async function callTool(name, args = {}) {
     try { const ga = pkg.ga2dDrawing(args.assembly, { title, domain: args.assembly.domain ?? 'mech', welds: built.welds, ...(revHistory ? { revHistory } : {}) }); gaHtml = ga; save('GA_2D_drawing.html', ga); completeness = dc.checkDrawingCompleteness(ga); } catch (e) { files.push({ name: 'GA_2D_drawing.html', error: String(e).slice(0, 120) }); }
     try { save('structural.html', pkg.structuralReport(args.assembly, { title })); } catch { /* skip */ }
     // ③ 형상+검증: 어셈블리 검증 메타(옹벽 등) → 분야 KDS 계산기 실행값(전도·활동·지지력…). 메타 없으면 미생성(정직).
-    try { const dv = await import('./domain-dossier-verify.mjs'); const vh = dv.verificationReportHtml(args.assembly, { title, params: args.verifyParams ?? {} }); if (vh) save('검증.html', vh); } catch { /* skip */ }
+    // codeVerification: 같은 소스의 압축 판정을 쉬운요약에도 넘긴다 — domainSafety는 담당
+    // 도메인이 interior/landscape/bridge/building이라 civil(옹벽·암거)은 어느 쪽으로도
+    // 소비자 문서에 도달하지 못했다(260723 A-7 전수감사: 활동 FS 미달 옹벽이 검증.html은
+    // FAIL인데 쉬운요약.html은 "구조 안전 이상 없음"으로 나갔다).
+    let codeVerification = null;
+    try { const dv = await import('./domain-dossier-verify.mjs'); const vh = dv.verificationReportHtml(args.assembly, { title, params: args.verifyParams ?? {} }); if (vh) save('검증.html', vh); codeVerification = dv.codeVerificationVerdict(args.assembly, args.verifyParams ?? {}); } catch { /* skip */ }
     // ③b 도메인 안전검토(인테리어 피난·조경 목재·교량 활하중·건축 하중경로) — 도그푸딩 발견:
     // 이 체크들이 예전엔 도세에서 전혀 호출되지 않아 해당 안전검토가 통째로 없는 문서가 나갔다.
     let domainSafety = null;
@@ -975,7 +980,7 @@ export async function callTool(name, args = {}) {
       executionGate = eg.checkExecutionReadiness(args.assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [] });
     } catch (e) { executionGate = { error: String(e).slice(0, 120) }; }
     // 일반인용 쉬운 요약(260719) — 전문가 산출물을 쉬운 말 5섹션 1페이지로(검도 결과 반영)
-    try { const es = await import('./easy-summary.mjs'); save('쉬운요약.html', es.easySummary(args.assembly, { title, domain: args.assembly.domain ?? 'mech', fileNames: files.map((f) => f.name), ...(executionGate && !executionGate.error ? { executionGate } : {}), ...(domainSafety ? { domainSafety } : {}) })); } catch { /* skip */ }
+    try { const es = await import('./easy-summary.mjs'); save('쉬운요약.html', es.easySummary(args.assembly, { title, domain: args.assembly.domain ?? 'mech', fileNames: files.map((f) => f.name), ...(executionGate && !executionGate.error ? { executionGate } : {}), ...(domainSafety ? { domainSafety } : {}), ...(codeVerification ? { codeVerification } : {}) })); } catch { /* skip */ }
     // 체결 자동(260719b): 플랜지 짝 볼트 세트 — BOM 보조(강도등급·개스킷=입력 명시)
     let fasteners = null;
     try { const fa = await import('./fastener-auto.mjs'); fasteners = fa.autoFasteners(args.assembly); } catch (e) { fasteners = { error: String(e).slice(0, 120) }; }

@@ -224,6 +224,56 @@ export function domainSafetyVerdict(assembly, params = {}) {
   return { label: run.label, ok: failed.length === 0, failed };
 }
 
+// 옹벽·암거 계산기의 check 키 → 일반인 표기. 미등록 키는 원문 그대로(정직 — 지어내지 않음).
+const CHECK_KO = {
+  overturning: '전도', sliding: '활동(미끄러짐)', bearing: '지지력', eccentricity: '편심',
+};
+
+/**
+ * easySummary() 용 압축 판정 — **코드 대조 검증**(verificationReportHtml과 같은 소스인
+ * runDossierVerifications: 옹벽 안정·박스 암거) 결과를 PASS/FAIL만 뽑는다.
+ * `domainSafetyVerdict`와 형제 함수이며 담당 도메인이 서로 다르다 —
+ * domainSafetyVerdict는 interior/landscape/bridge/building, 이쪽은 civil(retainingWall·
+ * boxCulvert). 그래서 **civil은 지금까지 어느 쪽으로도 쉬운요약에 도달하지 못했다**
+ * (260723 A-7 전수감사 발견: 활동 FS 0.9로 KDS FAIL인 3 m 옹벽이 검증.html엔 FAIL,
+ * 쉬운요약.html엔 "구조 안전 이상 없음"으로 나갔다 — structural은 자중 강체 전도만 보고
+ * 토압을 모델링하지 않으므로 두 판정이 갈리는 건 정상이고, 갈릴 때 소비자 문서가
+ * 낙관적인 쪽만 싣는 것이 결함이었다).
+ *
+ * **새 판정을 만들지 않는다** — 계산기가 낸 verdict/checks[].pass만 옮긴다.
+ * 적용 가능한 검증이 없으면 null("검증 없음"과 "검증했는데 통과"는 다르다).
+ *
+ * @returns {{label:string, ok:boolean, failed:string[], decisive:boolean}|null}
+ *   decisive=false → 합·불 판정이 아닌 산출(박스 암거 단면력 INFO 등). ok=true 라도
+ *   "이상 없음"으로 읽으면 안 된다.
+ */
+export function codeVerificationVerdict(assembly, params = {}) {
+  const runs = runDossierVerifications(assembly, params);
+  if (!runs.length) return null;
+  const failed = [];
+  let decisive = false;
+  for (const run of runs) {
+    const r = run.result;
+    if (!r || r.ok === false) {
+      // INPUT_GATE(값을 지어내지 않고 입력을 요구) 또는 실행 실패 — 통과로 둔갑시키지 않는다.
+      const need = Array.isArray(r?.needInputs) && r.needInputs.length
+        ? `입력 필요: ${r.needInputs.map((s) => s.labelKo ?? s.name).join(', ')}`
+        : (r?.error ?? r?.gateError ?? '사유 미상');
+      failed.push(`${run.label} 검증 불가 — ${need}`);
+      continue;
+    }
+    if (r.verdict === 'INFO') continue; // 단면력 산출 = 합·불 판정 아님(실패도 통과도 아님)
+    decisive = true;
+    const before = failed.length;
+    for (const [k, c] of Object.entries(r.checks ?? {})) {
+      if (c && typeof c === 'object' && c.pass === false) failed.push(c.labelKo ?? c.label ?? CHECK_KO[k] ?? k);
+    }
+    // 항목별 pass 매트릭스 없이 종합 verdict만 FAIL인 계산기도 놓치지 않는다.
+    if (r.verdict === 'FAIL' && failed.length === before) failed.push(`${run.label} 종합 FAIL`);
+  }
+  return { label: runs.map((r) => r.label).join(' · '), ok: failed.length === 0, failed, decisive };
+}
+
 /**
  * 안전검토 문서 HTML(인테리어 피난·조경 목재·교량 활하중·건축 하중경로). 해당
  * 도메인에 적용 가능한 체크가 없거나 체크 자체가 미적용(ok:false — 형상 메타

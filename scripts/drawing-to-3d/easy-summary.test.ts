@@ -277,6 +277,75 @@ describe('일반인용 결과 요약(easySummary)', () => {
     expect(html).not.toContain('실내건축 검토');
   });
 
+  // ── 코드 대조 검증(옹벽·암거) 반영 — 260723 A-7 전수감사 ────────────────────
+  // civil은 domainSafetyVerdict 담당 도메인이 아니라(interior/landscape/bridge/building),
+  // codeVerification을 안 넘기면 KDS 활동·지지력 FAIL이 이 문서에 도달할 경로가 아예 없었다.
+  // structural(자중 강체 전도)은 토압을 모델링하지 않으므로 원리상 대신 잡아주지 못한다.
+  it('opts.codeVerification FAIL 전달 시 종합 판정이 위험으로 뒤집힌다(A-7 — 옹벽 활동)', () => {
+    const html = easySummary(OK_ASM, {
+      domain: 'civil',
+      codeVerification: { label: '옹벽 안정 (전도·활동·지지력·편심)', ok: false, failed: ['활동(미끄러짐)'], decisive: true },
+    });
+    expect(html).toContain('기준 미달 항목이 있습니다: 활동(미끄러짐)');
+    expect(html).toContain('보완 없이 제작에 들어가면 안 됩니다');
+    expect(html).toMatch(/옹벽 안정.*보완 필요/);
+    expect(html).toContain('검증.html'); // 어디서 수치를 보라고 안내하는지
+  });
+
+  it('opts.codeVerification ok:true(decisive) 전달 시 "이상 없음"으로 표시된다', () => {
+    const html = easySummary(OK_ASM, {
+      domain: 'civil',
+      codeVerification: { label: '옹벽 안정 (전도·활동·지지력·편심)', ok: true, failed: [], decisive: true },
+    });
+    expect(html).toMatch(/옹벽 안정.*이상 없음/);
+    expect(html).not.toContain('보완 없이 제작에 들어가면 안 됩니다');
+  });
+
+  it('decisive:false(박스 암거 단면력 INFO)는 "이상 없음"이 아니라 판정 아님으로 표기된다', () => {
+    // 합·불 판정을 한 적이 없는 산출을 "이상 없음"으로 읽히게 하면 안 된다.
+    const html = easySummary(OK_ASM, {
+      domain: 'civil',
+      codeVerification: { label: '박스 암거 라멘 단면력', ok: true, failed: [], decisive: false },
+    });
+    expect(html).toContain('산출값만(합·불 판정 아님)');
+    expect(html).not.toMatch(/박스 암거 라멘 단면력 <b>이상 없음<\/b>/);
+  });
+
+  it('opts.codeVerification을 넘기지 않으면 기존과 동일하게 해당 판정 자체가 없다(하위 호환)', () => {
+    const html = easySummary(OK_ASM, { domain: 'mech' });
+    expect(html).not.toContain('옹벽 안정');
+  });
+
+  it('실 계산기 통합: KDS 활동 FAIL 옹벽이 소비자 문서에서도 FAIL로 나온다(A-7 원 결함 재현)', async () => {
+    // 위 3건은 opts 배선만 검증한다. 이건 실제 계산기(verifyDomain)→압축판정→요약까지
+    // 전 경로 — 원 결함의 정확한 재현 조건: structural(자중 강체 전도)은 PASS인데
+    // KDS 활동은 FAIL이라, 배선이 없으면 소비자 문서가 "이상 없음"만 보여준다.
+    const dv = (await import('./domain-dossier-verify.mjs')) as unknown as {
+      codeVerificationVerdict: (a: unknown, p?: Record<string, unknown>) => { ok: boolean; failed: string[]; decisive: boolean } | null;
+    };
+    const wall = buildAssemblyTemplate('civil', 'retaining_wall_run',
+      { H: 3000, baseWidth: 2000, baseThickness: 400, stemThickness: 350, toeLength: 1200, length: 10000 });
+    const cv = dv.codeVerificationVerdict(wall, {});
+    expect(cv, 'civil 옹벽엔 적용 가능한 코드 검증이 있어야 한다').not.toBeNull();
+    expect(cv!.ok, '이 형상은 KDS 활동 FS 미달이라 FAIL이어야 한다').toBe(false);
+    expect(cv!.failed.join(',')).toContain('활동');
+
+    const html = easySummary(wall, { domain: 'civil', codeVerification: cv });
+    expect(html).toContain('보완 없이 제작에 들어가면 안 됩니다');
+    expect(html).not.toContain('걸린 안전 경고는 없습니다');
+
+    // 배선이 없던 시절의 출력(= 회귀 감시선): 같은 형상이 "이상 없음"으로 나갔었다.
+    const before = easySummary(wall, { domain: 'civil' });
+    expect(before).toContain('걸린 안전 경고는 없습니다');
+  });
+
+  it('mech처럼 적용 검증이 없는 도메인은 null 반환 — "검증 없음"과 "통과"를 구분한다', async () => {
+    const dv = (await import('./domain-dossier-verify.mjs')) as unknown as {
+      codeVerificationVerdict: (a: unknown, p?: Record<string, unknown>) => unknown | null;
+    };
+    expect(dv.codeVerificationVerdict(OK_ASM, {})).toBeNull();
+  });
+
   it('XSS: 제목·부품 ID의 태그가 이스케이프된다', () => {
     const evil = {
       name: '<script>alert(1)</script>',

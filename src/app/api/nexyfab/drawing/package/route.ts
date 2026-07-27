@@ -215,15 +215,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // structural(강체 전도)만으로는 코드 위반(정원 초과·출구 부족 등)을 못 잡는다(260723 도그푸딩
   // 3차 발견: 안전검토.html엔 FAIL이 정확히 뜨는데 쉬운요약엔 이 판정이 안 넘어가 "이상 없음"이었다).
   let domainSafety: { label: string; ok: boolean; failed: string[] } | null = null;
+  // codeVerification(옹벽·암거 KDS 대조)도 같은 이유로 쉬운요약에 전달한다 — domainSafety는
+  // interior/landscape/bridge/building 담당이라 civil은 어느 쪽으로도 소비자 문서에 도달하지
+  // 못했다(260723 A-7 전수감사: 활동 FS 미달 옹벽이 검증.html=FAIL, 쉬운요약="이상 없음").
+  let codeVerification: { label: string; ok: boolean; failed: string[]; decisive: boolean } | null = null;
   // ③ 형상+검증: 어셈블리 검증 메타(옹벽 등) → 분야 KDS 계산기 실행값(전도·활동·지지력…). 메타 없으면 미생성(정직).
   try {
     const dv = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'domain-dossier-verify.mjs')).href)) as {
       verificationReportHtml: (a: Assembly, o?: { title?: string; params?: Record<string, unknown> }) => string | null;
       domainSafetyReportHtml: (a: Assembly, o?: { title?: string; params?: Record<string, unknown> }) => string | null;
       domainSafetyVerdict: (a: Assembly, params?: Record<string, unknown>) => { label: string; ok: boolean; failed: string[] } | null;
+      codeVerificationVerdict: (a: Assembly, params?: Record<string, unknown>) => { label: string; ok: boolean; failed: string[]; decisive: boolean } | null;
     };
     const vh = dv.verificationReportHtml(assembly, { title });
     if (vh) files.push({ name: '검증.html', mime: 'text/html', content: vh });
+    codeVerification = dv.codeVerificationVerdict(assembly, {});
     // ③b 도메인 안전검토(인테리어 피난·조경 목재·교량 활하중·건축 하중경로) — 이 웹
     // 패키지 라우트도 MCP generate_package와 별개 구현이라 같은 배선이 빠져있었다
     // (도그푸딩 발견: 인테리어/조경/교량 도세가 안전검토 없이 나가던 문제의 두 번째
@@ -329,6 +335,7 @@ ${(eg.items as Array<{ id: string; name: string; pass: boolean | null; detail: s
           ...(executionGate ? { executionGate } : {}),
           ...(feaSummary ? { fea: feaSummary } : {}),
           ...(domainSafety ? { domainSafety } : {}),
+          ...(codeVerification ? { codeVerification } : {}),
         }),
       });
     }
