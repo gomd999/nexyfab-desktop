@@ -643,19 +643,45 @@ export function coerceDesignPlan(v: unknown): DesignPlan {
   const o = reqObj(v, 'plan');
   const partsRaw = reqArray(o.parts, 'plan.parts');
   if (partsRaw.length === 0) throw new PlannerError('plan.parts: at least one part required');
-  // 실측(260728): 실 LLM 이 `drawing` 을 plan 형제가 아니라 **parts[i] 안에** 넣는 실수를
-  // 반복한다(온도 0 에서도 실행마다 갈림 — 프롬프트 변경 전후 모두 발생하므로 특정 문구
-  // 탓이 아니다). 종전 오류 문구는 "plan.drawing: expected an object" 뿐이라 무엇을 잘못
-  // 놓았는지 알려주지 않았다. 어디에 있는지 아는데 침묵할 이유가 없다 — 정확히 지목한다.
-  if (o.drawing === undefined || o.drawing === null) {
-    const misplaced = partsRaw.findIndex(
-      (p) => typeof p === 'object' && p !== null && 'drawing' in (p as Record<string, unknown>),
-    );
-    if (misplaced >= 0) {
+  /**
+   * `drawing` 오배치 수리 (260728).
+   *
+   * 실측: 실 LLM 이 `drawing` 을 plan 형제가 아니라 **parts[i] 안에** 넣는 실수를 반복한다.
+   * 벤치 v1(12브리프 × 3회 = 36샘플)에서 **8/36 (22%)** 이 이것 하나로 죽었고, 이제 단일
+   * 최대 실패 원인이다(b-10 은 3회 전부). 프롬프트로 고치려 시도했으나 18샘플 A/B 에서
+   * **효과가 없었다**(1/18 → 3/18) — 그래서 문구는 되돌렸다.
+   *
+   * 그래서 구조만 수리한다. 이것이 정당한 이유는 하나다: **어떤 검사도 약해지지 않는다.**
+   * 옮겨진 dimensions 는 원래 자리에 있었을 때와 똑같이 drawing 게이트에서 실측되고,
+   * 값은 하나도 만들어지거나 바뀌지 않는다. §6-1 에서 배격한 자기참조와 결정적으로 다르다 —
+   * 그쪽은 검사 자체를 항등식으로 만들었고, 이쪽은 이미 있는 검사에 도달하게만 한다.
+   *
+   * 안전장치:
+   *  · `plan.drawing` 이 이미 있으면 손대지 않는다(모델의 의도를 덮어쓰지 않는다).
+   *  · drawing 을 든 part 가 **둘 이상이면 수리하지 않고 거부한다** — 어느 것이 도면인지
+   *    추측하는 순간 이건 날조가 된다.
+   *  · 어디에도 없으면 종전대로 거부한다(없는 도면을 만들어주지 않는다).
+   *  · 수리 사실은 `plan.repairs` 에 남는다 — 조용히 고치지 않는다.
+   */
+  const repairs: string[] = [];
+  let drawingRaw = o.drawing;
+  if (drawingRaw === undefined || drawingRaw === null) {
+    const carriers = partsRaw
+      .map((p, i) => ({ p, i }))
+      .filter(({ p }) => typeof p === 'object' && p !== null && (p as Record<string, unknown>).drawing != null);
+    if (carriers.length > 1) {
       throw new PlannerError(
-        `plan.drawing is missing, but plan.parts[${misplaced}].drawing exists — ` +
-          `'drawing' is a SIBLING of 'parts' at the plan root, not a member of a part. ` +
-          `Move it out: { "planId":…, "parts":[…], "drawing":{ "paperSize":…, "dimensions":[…] } }`,
+        `plan.drawing is missing and ${carriers.length} parts carry a 'drawing' ` +
+          `(indices ${carriers.map((c) => c.i).join(', ')}) — cannot tell which one is the sheet. ` +
+          `'drawing' is a SIBLING of 'parts' at the plan root; put exactly one there.`,
+      );
+    }
+    if (carriers.length === 1) {
+      const { p, i } = carriers[0]!;
+      drawingRaw = (p as Record<string, unknown>).drawing;
+      repairs.push(
+        `plan.parts[${i}].drawing was moved to plan.drawing — 'drawing' is a sibling of 'parts', ` +
+          `not a member of a part. Content unchanged; every dimension is still measured by the drawing gate.`,
       );
     }
   }
@@ -663,7 +689,8 @@ export function coerceDesignPlan(v: unknown): DesignPlan {
     planId: reqStr(o.planId, 'plan.planId'),
     name: reqStr(o.name, 'plan.name'),
     parts: partsRaw.map((p, i) => coercePart(p, `plan.parts[${i}]`)),
-    drawing: coerceDrawing(o.drawing, 'plan.drawing'),
+    drawing: coerceDrawing(drawingRaw, 'plan.drawing'),
+    ...(repairs.length ? { repairs } : {}),
   };
   if (o.assembly !== undefined && o.assembly !== null) {
     plan.assembly = coerceAssembly(o.assembly, 'plan.assembly');
