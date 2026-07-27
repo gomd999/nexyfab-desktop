@@ -117,6 +117,26 @@ function codeVerificationCautions(cv) {
   return [`<b>${esc(cv.label)}에서 기준 미달 항목이 있습니다: ${esc(items)}.</b> 설계 기준(KDS) 대조에서 걸린 것이므로 지금 형상 그대로 시공하면 안 됩니다 — 동봉된 '검증.html'에서 자세한 수치를 확인하세요.`];
 }
 
+/**
+ * 산출물 크로스 정합(packageConsistencyCheck) 경고 — 260728 §6-3.
+ *
+ * ⚠ 이것은 **안전 판정이 아니다**. "형상이 위험하다"가 아니라 "이 봉투 안의 문서들이 서로
+ * 다른 숫자를 인쇄하고 있다"는 문서 무결성 문제다. 그래서 안전 경고 목록에 섞지 않고 별도
+ * 블록으로 낸다 — 섞으면 형상은 멀쩡한데 "제작하면 위험"으로 읽히고, 반대로 진짜 안전
+ * 경고가 서류 문제에 묻힌다.
+ *
+ * 실패한 항목만 싣는다. 통과했을 때 "문서가 서로 맞습니다"라고 적지 않는 이유: 이 검사는
+ * 회수 가능한 숫자만 대조하고 못 찾은 문서는 조용히 스킵하므로(오탐 금지 설계), pass 가
+ * "전부 대조했고 전부 맞았다"를 뜻하지 않는다. 보증하지 않은 것을 보증처럼 적지 않는다.
+ */
+function consistencyCautions(consistency) {
+  if (!consistency || consistency.error || consistency.pass !== false) return [];
+  return (consistency.checks ?? [])
+    .filter((c) => c && c.pass === false)
+    .slice(0, 8)
+    .map((c) => `${esc(c.file)} — ${esc(c.metric)}: 이 문서는 <b>${esc(c.value)}</b> 로 적혀 있는데 기준은 <b>${esc(c.expect)}</b> 입니다.`);
+}
+
 // 표준 동봉 파일 → 용도 1줄. opts.fileNames 가 오면 그 목록에 있는 것만 설명(없는 파일 안내=거짓말).
 const FILE_USE = {
   'GA_2D_drawing.html': '전체 배치 도면 — 업체에 제일 먼저 보내는 도면입니다.',
@@ -339,8 +359,16 @@ ${stdWarn}</section>`;
     : '';
   const verdict = `<p class="${structVerdictFailed ? 'warn' : 'sub'}">자동 점검 종합: 구조 안전(개산) <b>${structural == null ? '미산출' : structural.ok ? '이상 없음' : '보완 필요'}</b>${feaVerdictText}${domainSafetyVerdictText}${codeVerificationVerdictText} · 형상 타당성(부유·간섭·배관) <b>${built.designOk == null ? '미산출' : built.designOk ? '이상 없음' : '보완 필요'}</b>${structVerdictFailed ? ' — 보완 없이 제작에 들어가면 안 됩니다.' : ''}</p>`;
 
+  // 문서 무결성(안전과 별개) — 실패했을 때만, 안전 블록과 섞지 않고 따로.
+  const consistencyCautionList = consistencyCautions(opts.consistency);
+  const consistencyBlock = consistencyCautionList.length
+    ? `<p class="warn"><b>⚠ 동봉 문서끼리 숫자가 어긋납니다 (${consistencyCautionList.length}건).</b> 형상이 위험하다는 뜻은 아니지만, 어느 문서를 믿어야 할지 정해지기 전에는 이 묶음으로 발주·제작에 들어가지 마세요 — 같은 설계에서 다시 생성하면 대개 해소됩니다.</p>
+<ul class="small">${consistencyCautionList.map((c) => `<li>${c}</li>`).join('')}</ul>`
+    : '';
+
   const s3 = `<section><h2>③ 만들 때 주의할 점</h2>
 ${safetyBlock}
+${consistencyBlock}
 ${cautions.length
     ? `<ul>${cautions.map((c) => `<li>${c}</li>`).join('')}</ul>`
     : '<p class="sub">형상 점검(부유·간섭·접합·도면 표기)에서 걸린 항목은 없습니다. 이 점검은 형상·표기만 봅니다 — 안전 판정은 위의 구조 검토 결과를 따르세요.</p>'}

@@ -320,24 +320,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     } catch (e) { void e; }
   }
 
-  // 일반인용 쉬운 요약(260719) — 위 산출물 전부가 정해진 뒤 마지막에 동봉해야 파일 용도 안내가
-  // 실제 동봉 목록과 일치한다(없는 파일 안내=거짓말). 검도 결과는 있을 때만 전달(옵션).
-  try {
-    if (mods.es) {
-      files.push({
-        name: '쉬운요약.html', mime: 'text/html',
-        content: mods.es.easySummary(assembly, {
-          title, domain,
-          fileNames: files.map((f) => f.name),
-          ...(executionGate ? { executionGate } : {}),
-          ...(feaSummary ? { fea: feaSummary } : {}),
-          ...(domainSafety ? { domainSafety } : {}),
-          ...(codeVerification ? { codeVerification } : {}),
-        }),
-      });
-    }
-  } catch (e) { void e; /* 요약 실패는 패키지를 막지 않음 — 파일만 빠짐 */ }
-
   // REV 스탬프 + 산출물 크로스 정합 게이트 (#7 — 위시빌더 "카드=REV B vs 도면=REV C" 재발 방지)
   const rev = createHash('sha1').update(JSON.stringify({ a: assembly, d: domain })).digest('hex').slice(0, 8);
   const st = built.structural as { totalMassKg?: number } | null;
@@ -354,6 +336,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const alignment = (assembly as { alignment?: unknown }).alignment ?? null;
     consistency = mods.pkg.packageConsistencyCheck(files, basis, { hasFluid, alignment });
   } catch (e) { void e; /* 정합 게이트 실패는 패키지를 막지 않되 consistency=null 로 정직 표기 */ }
+
+  // 일반인용 쉬운 요약(260719) — 위 산출물 전부가 정해진 뒤 마지막에 동봉해야 파일 용도 안내가
+  // 실제 동봉 목록과 일치한다(없는 파일 안내=거짓말). 검도 결과는 있을 때만 전달(옵션).
+  // 260728 §6-3: 스탬프·정합 게이트 **뒤로** 옮겼다 — 문서 간 수치 불일치를 요약에 실으려면
+  // 그 판정이 먼저 확정돼야 한다. 정합 검사는 쉬운요약 자신을 읽지 않으므로 순서 이동은 안전하고,
+  // 파일 용도 안내가 실제 목록과 일치한다는 성질도 그대로다(자기 자신은 종전에도 목록에 없다).
+  try {
+    if (mods.es) {
+      files.push({
+        name: '쉬운요약.html', mime: 'text/html',
+        content: mods.pkg.packageStamp(mods.es.easySummary(assembly, {
+          title, domain,
+          fileNames: files.map((f) => f.name),
+          ...(executionGate ? { executionGate } : {}),
+          ...(feaSummary ? { fea: feaSummary } : {}),
+          ...(domainSafety ? { domainSafety } : {}),
+          ...(codeVerification ? { codeVerification } : {}),
+          ...(consistency ? { consistency } : {}),
+        }), basis), // 늦게 만든 만큼 개별 스탬프 — 위 루프는 이미 지나갔다
+      });
+    }
+  } catch (e) { void e; /* 요약 실패는 패키지를 막지 않음 — 파일만 빠짐 */ }
 
   // 커스텀 생성기 스캐폴드 (#9 — 위시빌더 "단일 소스 → 전 도면 재생성" 워크플로우의 제품화)
   try {

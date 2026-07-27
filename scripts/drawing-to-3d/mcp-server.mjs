@@ -991,8 +991,6 @@ export async function callTool(name, args = {}) {
       // 렌더러는 execution-gate.mjs 의 것을 그대로 쓴다(복제 금지 — 두 발생지 동일 소스).
       save('실시검도리포트.html', eg.executionReportHtml(executionGate, { title }));
     } catch (e) { executionGate = { error: String(e).slice(0, 120) }; }
-    // 일반인용 쉬운 요약(260719) — 전문가 산출물을 쉬운 말 5섹션 1페이지로(검도 결과 반영)
-    try { const es = await import('./easy-summary.mjs'); save('쉬운요약.html', es.easySummary(args.assembly, { title, domain: args.assembly.domain ?? 'mech', fileNames: files.map((f) => f.name), ...(executionGate && !executionGate.error ? { executionGate } : {}), ...(domainSafety ? { domainSafety } : {}), ...(codeVerification ? { codeVerification } : {}) })); } catch { /* skip */ }
     // 체결 자동(260719b): 플랜지 짝 볼트 세트 — BOM 보조(강도등급·개스킷=입력 명시)
     let fasteners = null;
     try { const fa = await import('./fastener-auto.mjs'); fasteners = fa.autoFasteners(args.assembly); } catch (e) { fasteners = { error: String(e).slice(0, 120) }; }
@@ -1018,6 +1016,21 @@ export async function callTool(name, args = {}) {
       const hasFluid = (args.assembly.parts ?? []).some((p) => !!p.fluid);
       consistency = pkg.packageConsistencyCheck(blobs, basis, { hasFluid, alignment: args.assembly.alignment ?? null });
     } catch (e) { consistency = { error: String(e).slice(0, 120) }; /* 정합 게이트 실패가 패키지를 막지는 않되 null 로 숨기지 않는다 */ }
+    // 일반인용 쉬운 요약(260719) — 전문가 산출물을 쉬운 말 5섹션 1페이지로(검도 결과 반영).
+    // **스탬프·정합 게이트 뒤에** 만든다(260728 §6-3): 정합 결과를 요약에 실으려면 그것이
+    // 먼저 확정돼야 하고, 정합 검사는 쉬운요약 자신을 읽지 않으므로 순서를 미뤄도 안전하다.
+    // 자기 자신은 파일 목록에 넣지 않는다(종전과 동일 — 목록은 save 전에 찍는다).
+    try {
+      const es = await import('./easy-summary.mjs');
+      const html = es.easySummary(args.assembly, {
+        title, domain: args.assembly.domain ?? 'mech', fileNames: files.map((f) => f.name),
+        ...(executionGate && !executionGate.error ? { executionGate } : {}),
+        ...(domainSafety ? { domainSafety } : {}),
+        ...(codeVerification ? { codeVerification } : {}),
+        ...(consistency ? { consistency } : {}),
+      });
+      save('쉬운요약.html', pkg.packageStamp(html, basis)); // 늦게 만든 만큼 개별 스탬프
+    } catch { /* skip */ }
     // 설계 타당성 판정은 buildAssembly 가 이미 산출해 두고 있다 — 종전엔 응답에 싣지 않아
     // 호출자(대개 AI 에이전트)는 부유 부품·간섭·배관 실패가 있어도 `ok:true` 만 받았다.
     // 사람은 쉬운요약.html 에서 볼 수 있지만 에이전트가 읽는 건 이 JSON 이다(웹은 반환함).
