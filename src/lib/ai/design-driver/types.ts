@@ -290,7 +290,19 @@ export interface HoleSpec {
   id: string;
   /** 'through' only for now — 'blind' is parsed and then REFUSED with a reason. */
   kind?: 'through' | 'blind';
-  diameterMm: number;
+  /**
+   * Tool cross-section. 'round'(default) uses `diameterMm`; 'rect' uses
+   * `widthMm`×`heightMm` (axis-aligned, centred on `at`) — square/rect tube
+   * bores and window cutouts. A rect tool is EXACT (no tessellation at all),
+   * so its expected volume carries no approximation.
+   */
+  shape?: 'round' | 'rect';
+  /** round only — required when shape is 'round' (the default). */
+  diameterMm?: number;
+  /** rect only — cutout size along X, mm. */
+  widthMm?: number;
+  /** rect only — cutout size along Y, mm. */
+  heightMm?: number;
   /** Centre in the body's sketch frame (same XY frame as the extrude loop), mm. */
   at: { x: number; y: number };
   /** blind only (currently refused): depth from the top face, mm. */
@@ -588,8 +600,9 @@ export interface HoleResult {
   /** REAL kernel volume after every cut, mm³ — this part's NET volume. */
   netVolumeMm3: number;
   /** Per-hole material actually removed by the kernel, mm³. */
-  removedMm3: Array<{ id: string; diameterMm: number; removedMm3: number }>;
-  /** n-gon area ÷ circle area − 1 (근사 명시: the tool under-cuts a true cylinder). */
+  removedMm3: Array<{ id: string; label: string; removedMm3: number }>;
+  /** n-gon area ÷ circle area − 1 for ROUND tools (근사 명시: the tool under-cuts a
+   *  true cylinder). 0 when every declared hole is rectangular (exact tool). */
   tessellationAreaRelDev: number;
   /** STEP of the cut solid (best-effort). */
   step?: string;

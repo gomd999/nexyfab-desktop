@@ -70,6 +70,47 @@ describe('WB-9 driver integration — 구멍이 커널 cut으로 뚫리고 실�
     expect(hg!.notes.join(' ')).toContain('구멍 반영 전 총량');
   }, 120_000);
 
+  it('사각 컷아웃 — 각파이프 보어를 커널이 정확히 깎는다(테셀레이션 없음)', async () => {
+    if (!occtOk) return;
+    // 50×50 각파이프, 벽 4 mm, 길이 120 → 보어 42×42.
+    // 사각 공구는 정확하므로 순부피 = 50²×120 − 42²×120 = 300000 − 211680 = 88320.
+    const base = holedPlatePlan().parts[0]!;
+    const part: PlanPart = {
+      ...base,
+      partId: 'tube',
+      bodies: [{
+        bodyId: 'b0',
+        feature: {
+          kind: 'extrude',
+          loop: [{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 50 }, { x: 0, y: 50 }],
+          depth: 120,
+          direction: 'one_sided',
+          mode: 'add',
+        } as unknown as PlanPart['bodies'][number]['feature'],
+      }],
+      holes: [{ id: 'bore', shape: 'rect', widthMm: 42, heightMm: 42, at: { x: 25, y: 25 } }],
+    };
+    const art = await buildHoleArtifact(part);
+    expect(art!.ok, art!.reason).toBe(true);
+    expect(art!.baseVolumeMm3).toBeCloseTo(300000, 3);
+    expect(art!.netVolumeMm3).toBeCloseTo(88320, 3);       // 커널 실측
+    expect(art!.expectedNetVolumeMm3).toBeCloseTo(88320, 6); // 선언 절삭이 함의하는 값
+    // 사각 공구는 테셀레이션이 없다 — 근사 편차 0으로 정직 보고
+    expect(art!.tessellationAreaRelDev).toBe(0);
+    expect(art!.cuts[0]!.label).toBe('42×42 rect');
+    expect(holeGate(part, art).pass).toBe(true);
+  }, 120_000);
+
+  it('사각 컷아웃에 width/height가 없으면 커널 전에 거부', async () => {
+    const part: PlanPart = {
+      ...holedPlatePlan().parts[0]!,
+      holes: [{ id: 'bad', shape: 'rect', at: { x: 10, y: 10 } }],
+    };
+    const art = await buildHoleArtifact(part);
+    expect(art!.ok).toBe(false);
+    expect(art!.reason).toMatch(/positive widthMm and heightMm/);
+  });
+
   it('부품 밖에 찍힌 구멍은 재료를 안 깎으므로 거부된다 (도면엔 있고 실물엔 없는 부품 방지)', async () => {
     if (!occtOk) return;
     const plan = holedPlatePlan();

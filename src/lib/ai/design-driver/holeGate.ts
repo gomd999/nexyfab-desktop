@@ -38,7 +38,8 @@ const DEFAULT_TOL_REL = 1e-6;
 
 export interface HoleCutResult {
   id: string;
-  diameterMm: number;
+  /** Human-readable tool size — '⌀6.5' or '60×40 rect'. */
+  label: string;
   /** Cross-section area of the TOOL as actually built (regular n-gon), mm². */
   toolAreaMm2: number;
   /** Material this cut actually removed, per the kernel, mm³. */
@@ -83,6 +84,29 @@ function ngonArea(r: number, segments: number): number {
   return (segments / 2) * r * r * Math.sin((2 * Math.PI) / segments);
 }
 
+/** Axis-aligned rectangle centred on (cx,cy) — the EXACT tool (no tessellation). */
+function rectLoop(cx: number, cy: number, w: number, h: number): Array<{ x: number; y: number }> {
+  const hw = w / 2, hh = h / 2;
+  return [
+    { x: cx - hw, y: cy - hh },
+    { x: cx + hw, y: cy - hh },
+    { x: cx + hw, y: cy + hh },
+    { x: cx - hw, y: cy + hh },
+  ];
+}
+
+const isRect = (h: HoleSpec): boolean => h.shape === 'rect';
+
+/** The tool loop + its EXACT cross-section area, per declared shape. */
+function toolFor(h: HoleSpec, segments: number): { loop: Array<{ x: number; y: number }>; areaMm2: number; label: string } {
+  if (isRect(h)) {
+    const w = h.widthMm as number, ht = h.heightMm as number;
+    return { loop: rectLoop(h.at.x, h.at.y, w, ht), areaMm2: w * ht, label: `${w}×${ht} rect` };
+  }
+  const r = (h.diameterMm as number) / 2;
+  return { loop: ngonLoop(h.at.x, h.at.y, r, segments), areaMm2: ngonArea(r, segments), label: `⌀${h.diameterMm}` };
+}
+
 /** Z extent of the base extrude — the tool must span it completely. */
 function zRange(feature: ExtrudeFeature): { z0: number; z1: number } {
   const d = feature.depth;
@@ -105,7 +129,13 @@ export async function buildHoleArtifact(part: PlanPart): Promise<HoleArtifact | 
     return fail(holes.length, `blind hole '${blind.id}' not wired: the OCCT bridge has no axial placement transform, so a blind depth cannot be built — declare a through hole or split the part`);
   }
   for (const h of holes) {
-    if (!(h.diameterMm > 0)) return fail(holes.length, `hole '${h.id}': diameter must be positive, got ${h.diameterMm}`);
+    if (isRect(h)) {
+      if (!((h.widthMm ?? 0) > 0) || !((h.heightMm ?? 0) > 0)) {
+        return fail(holes.length, `hole '${h.id}': a rect cutout needs positive widthMm and heightMm, got ${h.widthMm}×${h.heightMm}`);
+      }
+    } else if (!((h.diameterMm ?? 0) > 0)) {
+      return fail(holes.length, `hole '${h.id}': diameter must be positive, got ${h.diameterMm}`);
+    }
     if (!Number.isFinite(h.at?.x) || !Number.isFinite(h.at?.y)) {
       return fail(holes.length, `hole '${h.id}': centre must be finite {x,y}`);
     }
@@ -152,10 +182,10 @@ export async function buildHoleArtifact(part: PlanPart): Promise<HoleArtifact | 
     let expectedRemoved = 0;
 
     for (const h of holes) {
-      const r = h.diameterMm / 2;
+      const t = toolFor(h, segments);
       const tool: ExtrudeFeature = {
         kind: 'extrude',
-        loop: ngonLoop(h.at.x, h.at.y, r, segments),
+        loop: t.loop,
         depth: toolDepth,
         direction: 'two_sided',
         mode: 'add',
@@ -176,8 +206,8 @@ export async function buildHoleArtifact(part: PlanPart): Promise<HoleArtifact | 
       if (!(removed > 0)) {
         return fail(holes.length, `hole '${h.id}' removed no material (Δ=${removed.toFixed(6)} mm³) — the hole is outside the profile or duplicates another hole`);
       }
-      cuts.push({ id: h.id, diameterMm: h.diameterMm, toolAreaMm2: ngonArea(r, segments), removedMm3: removed });
-      expectedRemoved += ngonArea(r, segments) * (z1 - z0);
+      cuts.push({ id: h.id, label: t.label, toolAreaMm2: t.areaMm2, removedMm3: removed });
+      expectedRemoved += t.areaMm2 * (z1 - z0);
       current = cutRes.shape;
       currentVolume = nextVolume;
     }
@@ -185,6 +215,7 @@ export async function buildHoleArtifact(part: PlanPart): Promise<HoleArtifact | 
     let step: string | undefined;
     try { step = await bridge.exportSTEP(current); } catch { step = undefined; }
 
+    const anyRound = holes.some((h) => !isRect(h));
     const circleArea = Math.PI;
     const ngonUnit = ngonArea(1, segments);
     return {
@@ -195,7 +226,8 @@ export async function buildHoleArtifact(part: PlanPart): Promise<HoleArtifact | 
       netVolumeMm3: currentVolume,
       expectedNetVolumeMm3: baseVolumeMm3 - expectedRemoved,
       cuts,
-      tessellationAreaRelDev: ngonUnit / circleArea - 1,
+      // 사각 공구는 테셀레이션이 없다(정확) — 전부 사각이면 0을 보고한다.
+      tessellationAreaRelDev: anyRound ? ngonUnit / circleArea - 1 : 0,
       ...(step ? { step } : {}),
     };
   } catch (e) {
@@ -217,7 +249,7 @@ export function holeGate(part: PlanPart, artifact: HoleArtifact | null): GateRes
   const holes = part.holes as HoleSpec[] | undefined;
   const notes: string[] = [
     'occt/nodeOcctBridge 소비: buildFromExtrude(소재+공구)→BRepAlgoAPI_Cut 실커널→BRepGProp 순부피 실측·STEP 산출',
-    '공구=정n각형 프리즘(원기둥의 테셀레이션) — 기대 부피도 같은 정n각형 기준으로 계산(πr² 아님)',
+    '원형 공구=정n각형 프리즘(원기둥의 테셀레이션) — 기대 부피도 같은 정n각형 기준으로 계산(πr² 아님). 사각 컷아웃은 테셀레이션 없음(정확)',
     '관통만 지원 — 블라인드는 축방향 배치 변환 부재로 정직 거부. OCCT 미가용 시에도 거부(무음 통과 없음)',
     'geometry 게이트의 메시 부피는 구멍 반영 전 총량 — 이 파트의 순부피는 여기 netVolumeMm3가 정본',
   ];

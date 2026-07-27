@@ -452,9 +452,19 @@ function coerceHole(v: unknown, path: string): HoleSpec {
   const at = reqObj(o.at, `${path}.at`);
   const spec: HoleSpec = {
     id: reqStr(o.id, `${path}.id`),
-    diameterMm: reqNum(o.diameterMm, `${path}.diameterMm`),
     at: { x: reqNum(at.x, `${path}.at.x`), y: reqNum(at.y, `${path}.at.y`) },
   };
+  const shape = o.shape === undefined ? 'round' : reqStr(o.shape, `${path}.shape`);
+  if (shape !== 'round' && shape !== 'rect') {
+    throw new PlannerError(`${path}.shape='${shape}' invalid (round|rect)`);
+  }
+  if (shape === 'rect') {
+    spec.shape = 'rect';
+    spec.widthMm = reqNum(o.widthMm, `${path}.widthMm`);
+    spec.heightMm = reqNum(o.heightMm, `${path}.heightMm`);
+  } else {
+    spec.diameterMm = reqNum(o.diameterMm, `${path}.diameterMm`);
+  }
   if (o.kind !== undefined) {
     const kind = reqStr(o.kind, `${path}.kind`);
     if (kind !== 'through' && kind !== 'blind') {
@@ -886,10 +896,12 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
       // filleted solid volume; a radius too large for an edge FAILS the gate.
       "holes": [               // optional; ROUND THROUGH holes cut into bodies[0] (must be an extrude solid)
         { "id": string,        // unique within the part
-          "diameterMm": number,
+          "shape": "round"|"rect"?,      // default "round"
+          "diameterMm": number,          // round only (required when shape is round)
+          "widthMm": number, "heightMm": number,  // rect only — axis-aligned cutout size (X, Y)
           "at": {"x":number,"y":number},  // centre in the SAME sketch frame as the extrude loop
           "kind": "through"?,  // 'blind' is parsed and then REFUSED (no axial placement transform yet)
-          "segments": number?  // tool tessellation, default 64 (range 12..256)
+          "segments": number?  // round tool tessellation, default 64 (range 12..256)
         }
       ]
       // HOW TO MODEL A HOLE — this is the ONLY way, and getting it wrong is the single
@@ -902,8 +914,15 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
       //     'expectedVolume' (if you give one) is that solid's volume, holes NOT
       //     subtracted. The hole gate cuts them with the real kernel afterwards and
       //     measures the net volume itself — you do not have to compute it.
-      //   · Non-round cutouts (rectangular windows, slots) are NOT expressible yet.
-      //     Say so in 'name'/omit them rather than faking one with an extra body.
+      //   · RECTANGULAR cutouts use shape:"rect" with widthMm/heightMm — that is how you model a
+      //     SQUARE/RECT TUBE (outer profile as the extrude, the bore as one rect hole) or a window
+      //     in a cover plate. The rect tool is EXACT (no tessellation), so the removed volume is
+      //     exactly widthMm×heightMm×thickness.
+      //     Example — 50×50 square tube, 4 mm wall, 120 long: outer loop 50×50, depth 120, plus
+      //       "holes":[{"id":"bore","shape":"rect","widthMm":42,"heightMm":42,"at":{"x":25,"y":25}}]
+      //     and expectedVolume = the OUTER prism 50×50×120 (the bore is cut+measured by the gate).
+      //   · Slots/keyways with round ends, and any non-axis-aligned cutout, are still NOT
+      //     expressible — say so in 'name'/omit rather than faking one with an extra body.
       // Example — a 120×80×10 plate with four ⌀6.5 corner holes on a 100×60 pattern:
       //   "bodies": [ { "bodyId":"b0", "feature": { "kind":"extrude",
       //       "loop":[{"x":0,"y":0},{"x":120,"y":0},{"x":120,"y":80},{"x":0,"y":80}],
