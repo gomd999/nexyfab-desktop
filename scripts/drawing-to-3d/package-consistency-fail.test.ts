@@ -187,3 +187,44 @@ describe('쉬운요약 — "확인 못 함"을 "이상 없음"으로 읽히게 �
     expect(html).toContain('확인하지 못함');
   });
 });
+
+/**
+ * §7-4 — 도면 **구비요건**(C1~C9)이 소비자 문서까지. §7-3 에서 N/A 를 넣어 과탐을 없앤
+ * 뒤에야 실을 수 있게 된 것이고, 이는 §6-3(정합 게이트)과 같은 착수 순서다.
+ */
+describe('쉬운요약 — 도면 구비요건 미충족이 도달한다 (§7-4)', () => {
+  it('미충족 항목이 쉬운 말로 실리고, 안전 문제가 아님을 못 박는다', () => {
+    const html = easySummary(OK_ASM, {
+      title: 't', domain: 'mech',
+      completeness: { score: '6/8', ok: false, failed: ['C5 선 종류(중심선·파선)', 'C7 BOM 규격열(발주 규격)'], na: [], passed: [] },
+    });
+    expect(html).toContain('갖춰지지 않은 항목이 2건');
+    expect(html).toContain('중심선·숨은선');
+    expect(html).toContain('발주 규격');
+    expect(html).toContain('도면 서류로서 빠진 것'); // 안전 문제로 읽히지 않게
+    expect(html).toContain('걸린 안전 경고는 없습니다'); // 안전 판정은 그대로
+  });
+
+  it('★N/A 는 실패로 세지 않는다 — §7-3 이 없앤 과탐이 여기로 새지 않는다', () => {
+    const html = easySummary(OK_ASM, {
+      title: 't', domain: 'mech',
+      completeness: { score: '5/5', ok: true, failed: [], na: ['C5 (구멍·원형 부재가 없어 중심선이 필요 없음)'], passed: [] },
+    });
+    expect(html).not.toContain('갖춰지지 않은 항목');
+    expect(html).not.toContain('중심선·숨은선');
+  });
+
+  it('안 넘기면 출력이 종전과 완전히 동일하다 (하위호환)', () => {
+    const a = easySummary(OK_ASM, { title: 't', domain: 'mech' });
+    const b = easySummary(OK_ASM, { title: 't', domain: 'mech', completeness: null });
+    expect(a).toBe(b);
+  });
+
+  it('미등록 id 는 원문 그대로 남긴다 (누락 금지)', () => {
+    const html = easySummary(OK_ASM, {
+      title: 't', domain: 'mech',
+      completeness: { ok: false, failed: ['CZ 알 수 없는 항목'], na: [], passed: [] },
+    });
+    expect(html).toContain('CZ 알 수 없는 항목');
+  });
+});

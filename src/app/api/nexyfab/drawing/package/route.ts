@@ -372,6 +372,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           ...(codeVerification ? { codeVerification } : {}),
           ...(consistency ? { consistency } : {}),
           ...(verificationUnavailable.length ? { verificationUnavailable } : {}),
+          ...(completeness ? { completeness } : {}),
         }), basis), // 늦게 만든 만큼 개별 스탬프 — 위 루프는 이미 지나갔다
       });
     }

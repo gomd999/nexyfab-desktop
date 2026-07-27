@@ -1034,6 +1034,7 @@ export async function callTool(name, args = {}) {
         ...(codeVerification ? { codeVerification } : {}),
         ...(consistency ? { consistency } : {}),
         ...(verificationUnavailable.length ? { verificationUnavailable } : {}),
+        ...(completeness ? { completeness } : {}),
       });
       save('쉬운요약.html', pkg.packageStamp(html, basis)); // 늦게 만든 만큼 개별 스탬프
     } catch { /* skip */ }

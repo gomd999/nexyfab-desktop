@@ -137,6 +137,38 @@ function consistencyCautions(consistency) {
     .map((c) => `${esc(c.file)} — ${esc(c.metric)}: 이 문서는 <b>${esc(c.value)}</b> 로 적혀 있는데 기준은 <b>${esc(c.expect)}</b> 입니다.`);
 }
 
+/**
+ * 도면 **구비요건** 완성도(C1~C9) → 쉬운 말 — 260728 §7-4.
+ *
+ * M1~M6(실시 검도)과 다른 축이다: M 은 "도면의 수치가 모델과 맞는가", C 는 "도면이 갖출
+ * 것을 갖췄는가"(표제란·선 종류·BOM 규격열·용접 일람…). 그래서 둘 다 실린다.
+ *
+ * 착수 조건이 있었다: 종전 C 검사는 "이 부품엔 필요 없다"를 표현할 수단이 없어 중심선이
+ * 필요 없는 부품에 C5 FAIL 을 냈다(과탐). §7-3 에서 N/A 를 넣고 나서야 소비자 문서에
+ * 실을 수 있게 됐다 — §6-3(정합 게이트)과 같은 순서다.
+ *
+ * **N/A 는 실패로 세지 않는다.** 미충족 항목만 나열하고, 통과했으면 침묵한다.
+ */
+const COMPLETENESS_KO = {
+  C1: '도면 테두리·표제란(도번·축척·REV)이 빠졌어요 — 업체가 어느 도면인지 식별할 수 없습니다.',
+  C2: '단면도가 없어요 — 속이 보이지 않는 형상은 잘라서 보여줘야 합니다.',
+  C3: '부분 상세도가 없어요 — 작은 부위는 확대해서 보여줘야 가공됩니다.',
+  C4: '치수 표기 체계(⌀ 등)가 안 잡혔어요.',
+  C5: '중심선·숨은선이 안 그려졌어요 — 구멍 위치와 가려진 형상을 알 수 없습니다.',
+  C6: '기호 표기가 빠졌어요.',
+  C7: 'BOM 에 발주 규격 열이 없어요 — 무엇을 주문해야 할지 적혀 있지 않습니다.',
+  C8: '용접 일람이 없어요 — 어디를 어떻게 용접할지 표로 정리돼야 합니다.',
+  C9: 'DXF 레이어가 분리되지 않았어요 — 캐드에서 치수·중심선을 따로 켜고 끌 수 없습니다.',
+};
+function completenessCautions(completeness) {
+  const failed = completeness?.failed;
+  if (!Array.isArray(failed) || failed.length === 0) return [];
+  return failed.slice(0, 8).map((f) => {
+    const id = String(f).slice(0, 2);
+    return COMPLETENESS_KO[id] ?? `도면 구비요건 미충족: ${esc(String(f))}`;
+  });
+}
+
 // 표준 동봉 파일 → 용도 1줄. opts.fileNames 가 오면 그 목록에 있는 것만 설명(없는 파일 안내=거짓말).
 const FILE_USE = {
   'GA_2D_drawing.html': '전체 배치 도면 — 업체에 제일 먼저 보내는 도면입니다.',
@@ -379,10 +411,18 @@ ${stdWarn}</section>`;
 <ul class="small">${consistencyCautionList.map((c) => `<li>${c}</li>`).join('')}</ul>`
     : '';
 
+  // 도면 구비요건(C1~C9) — 안전이 아니라 서류 완성도. 미충족만, 통과하면 침묵.
+  const completenessCautionList = completenessCautions(opts.completeness);
+  const completenessBlock = completenessCautionList.length
+    ? `<p class="warn"><b>⚠ 도면에 아직 갖춰지지 않은 항목이 ${completenessCautionList.length}건 있습니다.</b> 형상 문제가 아니라 <b>도면 서류로서 빠진 것</b>입니다 — 이대로 업체에 보내면 되물어옵니다.</p>
+<ul class="small">${completenessCautionList.map((c) => `<li>${c}</li>`).join('')}</ul>`
+    : '';
+
   const s3 = `<section><h2>③ 만들 때 주의할 점</h2>
 ${safetyBlock}
 ${unavailableBlock}
 ${consistencyBlock}
+${completenessBlock}
 ${cautions.length
     ? `<ul>${cautions.map((c) => `<li>${c}</li>`).join('')}</ul>`
     : '<p class="sub">형상 점검(부유·간섭·접합·도면 표기)에서 걸린 항목은 없습니다. 이 점검은 형상·표기만 봅니다 — 안전 판정은 위의 구조 검토 결과를 따르세요.</p>'}
