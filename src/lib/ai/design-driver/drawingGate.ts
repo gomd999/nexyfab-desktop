@@ -34,6 +34,7 @@ import {
 import { validateDimension, type Dimension } from '@/lib/drawing/dimension';
 import type { HoleSpec as SheetHoleSpec } from '@/lib/drawing/holeTable';
 import { measureSheetDimension } from '@/lib/drawing/associativeUpdate';
+import { describeRefSpan, refSpanLine } from './refGeometry';
 import type { MeasureResult } from '@/lib/drawing/measure';
 import {
   bodyKey,
@@ -274,8 +275,20 @@ export function drawingGate(plan: DesignPlan, artifact: DrawingArtifact): GateRe
       const dev = Math.abs(m.result.value - m.spec.expected);
       if (dev > maxDeviation) maxDeviation = dev;
       if (dev > DIMENSION_MATCH_TOL) {
+        // 숫자만 말하지 않는다 — 고른 두 ref 가 **실제로** 어떻게 떨어져 있는지 함께 말한다
+        // (260728 §7-1). 실측(bench v1)에서 L-브래킷이 3회 전부 이 실패를 냈고 원인은 값이
+        // 아니라 ref 선택이었다: 40 을 재려다 벽두께 8 을 가르는 쌍을 골랐다. 게이트가
+        // 아는 것을 침묵할 이유가 없다.
+        // ⚠ 어떤 ref 를 골랐어야 하는지는 **제안하지 않는다** — 숫자를 맞추려고 의미가 다른
+        //   엣지를 고르게 만들면 게이트는 통과하고 도면은 틀린다(§6-1 과 같은 종류의 자기충족).
+        let span = '';
+        if (m.spec.refs.length === 2) {
+          const topo = artifact.topologies.get(bodyKey(m.spec.partId, m.spec.bodyId));
+          const rep = topo ? describeRefSpan(topo, m.spec.view, m.spec.refs[0]!, m.spec.refs[1]!) : null;
+          if (rep) span = ` — ${refSpanLine(m.spec.refs[0]!, m.spec.refs[1]!, m.spec.view, rep)}`;
+        }
         reasons.push(
-          `${label}: measured ${m.result.value} ${m.result.unit} deviates from expected ${m.spec.expected} by ${dev} > ${DIMENSION_MATCH_TOL}`,
+          `${label}: measured ${m.result.value} ${m.result.unit} deviates from expected ${m.spec.expected} by ${dev} > ${DIMENSION_MATCH_TOL}${span}`,
         );
       }
     }

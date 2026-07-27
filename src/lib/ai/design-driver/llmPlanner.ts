@@ -69,10 +69,10 @@ import {
 } from '@/lib/ai/reference/retrieveReferenceParts';
 import { buildExtrudeTopo, type NamedTopology } from '@/lib/cad/topoNaming';
 import { viewBasis } from '@/lib/drawing/projectView';
+import {
+  UNMEASURABLE_EPS, WORLD_AXES, gapAlong, refPoints, viewsShowing,
+} from './refGeometry';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
-
-/** Minimal 3D point shape (topoNaming/projectView 공용) — 좌표만 읽는다. */
-type Vec3Like = { x: number; y: number; z: number };
 
 // ─── revision context (proposed optional brief extension — hook only) ───────
 
@@ -714,44 +714,7 @@ export function coerceDesignPlan(v: unknown): DesignPlan {
 // 하고, 여기서는 "그 뷰에서 두 참조가 겹쳐 분리량이 0"이라는 기하 사실만 본다.
 // 앵커는 buildExtrudeTopo(게이트가 쓰는 바로 그 토폴로지)와 viewBasis(도면이 쓰는 바로
 // 그 기저)를 재사용한다 — 중복 구현 금지.
-const UNMEASURABLE_EPS = 1e-9;
-
-function refPoints(topo: NamedTopology, ref: string): Vec3Like[] | null {
-  const loc = topo.byName.get(ref);
-  if (!loc) return null;
-  if (loc.kind === 'face') {
-    const f = topo.poly.faces[loc.index];
-    return f ? f.vertices.map((i) => topo.poly.vertices[i]) : null;
-  }
-  const e = topo.edges[loc.index];
-  return e ? [topo.poly.vertices[e.a], topo.poly.vertices[e.b]] : null;
-}
-
-/** Gap between two point sets along a unit direction (0 when they overlap). */
-function gapAlong(a: Vec3Like[], b: Vec3Like[], dir: Vec3Like): number {
-  const proj = (ps: Vec3Like[]) => ps.map((p) => p.x * dir.x + p.y * dir.y + p.z * dir.z);
-  const pa = proj(a), pb = proj(b);
-  const loA = Math.min(...pa), hiA = Math.max(...pa);
-  const loB = Math.min(...pb), hiB = Math.max(...pb);
-  return Math.max(0, Math.max(loA, loB) - Math.min(hiA, hiB));
-}
-
-const WORLD_AXES: Array<{ name: 'X' | 'Y' | 'Z'; dir: Vec3Like }> = [
-  { name: 'X', dir: { x: 1, y: 0, z: 0 } },
-  { name: 'Y', dir: { x: 0, y: 1, z: 0 } },
-  { name: 'Z', dir: { x: 0, y: 0, z: 1 } },
-];
-const DIM_VIEWS: Array<'front' | 'top' | 'right'> = ['front', 'top', 'right'];
-
-/** Which standard views actually SHOW a given world axis (non-zero component in the view plane). */
-function viewsShowing(axis: Vec3Like): string[] {
-  return DIM_VIEWS.filter((v) => {
-    const b = viewBasis(v);
-    const r = Math.abs(axis.x * b.right.x + axis.y * b.right.y + axis.z * b.right.z);
-    const u = Math.abs(axis.x * b.up.x + axis.y * b.up.y + axis.z * b.up.z);
-    return r > 1e-9 || u > 1e-9;
-  });
-}
+// 헬퍼는 refGeometry.ts 로 올렸다 — drawing 게이트가 같은 것을 쓴다(260728 §7-1).
 
 /**
  * Returns a refusal reason when a 2-ref linear dimension has ZERO separation in
