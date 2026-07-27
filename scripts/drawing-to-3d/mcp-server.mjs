@@ -950,8 +950,13 @@ export async function callTool(name, args = {}) {
     // 도메인이 interior/landscape/bridge/building이라 civil(옹벽·암거)은 어느 쪽으로도
     // 소비자 문서에 도달하지 못했다(260723 A-7 전수감사: 활동 FS 미달 옹벽이 검증.html은
     // FAIL인데 쉬운요약.html은 "구조 안전 이상 없음"으로 나갔다).
+    // ⚠ 여기서 예외를 조용히 삼키면 판정이 사라지고 쉬운요약은 "걸린 안전 경고는 없습니다"로
+    // 나간다 — 835eec40 이 고친 것과 **같은 결말에 도달하는 다른 경로**다(배선 부재가 아니라
+    // 예외). 그래서 삼키지 않고 '확인 못 함'으로 기록해 소비자 문서까지 전달한다(260728).
+    const verificationUnavailable = [];
     let codeVerification = null;
-    try { const dv = await import('./domain-dossier-verify.mjs'); const vh = dv.verificationReportHtml(args.assembly, { title, params: args.verifyParams ?? {} }); if (vh) save('검증.html', vh); codeVerification = dv.codeVerificationVerdict(args.assembly, args.verifyParams ?? {}); } catch { /* skip */ }
+    try { const dv = await import('./domain-dossier-verify.mjs'); const vh = dv.verificationReportHtml(args.assembly, { title, params: args.verifyParams ?? {} }); if (vh) save('검증.html', vh); codeVerification = dv.codeVerificationVerdict(args.assembly, args.verifyParams ?? {}); }
+    catch (e) { verificationUnavailable.push(`코드 대조 검증(옹벽·암거 KDS): ${String(e?.message ?? e).slice(0, 120)}`); }
     // ③b 도메인 안전검토(인테리어 피난·조경 목재·교량 활하중·건축 하중경로) — 도그푸딩 발견:
     // 이 체크들이 예전엔 도세에서 전혀 호출되지 않아 해당 안전검토가 통째로 없는 문서가 나갔다.
     let domainSafety = null;
@@ -962,7 +967,7 @@ export async function callTool(name, args = {}) {
       // 260723 도그푸딩 2차 발견: 안전검토.html엔 FAIL이 정확히 뜨는데, 소비자용 쉬운요약엔
       // 이 판정이 전혀 안 넘어가 "이상 없음"으로 잘못 표시됐다 — FEA와 같은 이유로 별도 전달 필요.
       domainSafety = dv2.domainSafetyVerdict(args.assembly, args.verifyParams ?? {});
-    } catch { /* skip */ }
+    } catch (e) { verificationUnavailable.push(`도메인 안전검토(피난·목재·활하중·하중경로): ${String(e?.message ?? e).slice(0, 120)}`); }
     try { save('BOQ.html', boqm.boqReport(args.assembly, { title, domain: args.assembly.domain ?? 'mech' })); } catch { /* skip */ }
     try { save('Dossier.html', pd.dossierReport(args.assembly, { title })); } catch { /* skip */ }
     try { sheetsHtml = ps.partSheets(args.assembly, { title: title + ' — 부품 제작도' }); save('부품제작도.html', sheetsHtml); } catch { /* skip */ }
@@ -1028,6 +1033,7 @@ export async function callTool(name, args = {}) {
         ...(domainSafety ? { domainSafety } : {}),
         ...(codeVerification ? { codeVerification } : {}),
         ...(consistency ? { consistency } : {}),
+        ...(verificationUnavailable.length ? { verificationUnavailable } : {}),
       });
       save('쉬운요약.html', pkg.packageStamp(html, basis)); // 늦게 만든 만큼 개별 스탬프
     } catch { /* skip */ }
@@ -1040,6 +1046,7 @@ export async function callTool(name, args = {}) {
       interferences: built.interferences ?? [],
       welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
       support: built.support ?? null, pipes: built.pipes ?? null, designOk: built.designOk ?? null,
+      verificationUnavailable,
       step, roundtrip, interferenceRefine, executionGate, fasteners,
       note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.',
     };

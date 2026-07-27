@@ -223,6 +223,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // interior/landscape/bridge/building 담당이라 civil은 어느 쪽으로도 소비자 문서에 도달하지
   // 못했다(260723 A-7 전수감사: 활동 FS 미달 옹벽이 검증.html=FAIL, 쉬운요약="이상 없음").
   let codeVerification: { label: string; ok: boolean; failed: string[]; decisive: boolean } | null = null;
+  /** 검증을 **못 돌린** 항목 — null 로 숨기지 않고 소비자 문서까지 전달한다(260728 §7-5). */
+  const verificationUnavailable: string[] = [];
   // ③ 형상+검증: 어셈블리 검증 메타(옹벽 등) → 분야 KDS 계산기 실행값(전도·활동·지지력…). 메타 없으면 미생성(정직).
   try {
     const dv = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'domain-dossier-verify.mjs')).href)) as {
@@ -241,7 +243,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const sh = dv.domainSafetyReportHtml(assembly, { title });
     if (sh) files.push({ name: '안전검토.html', mime: 'text/html', content: sh });
     domainSafety = dv.domainSafetyVerdict(assembly, {});
-  } catch (e) { void e; }
+  } catch (e) {
+    // ⚠ 여기서 조용히 삼키면 안전 판정이 사라지고 쉬운요약은 "걸린 안전 경고는 없습니다"로
+    // 나간다 — 835eec40 이 고친 것과 같은 결말에 도달하는 다른 경로(배선 부재가 아니라 예외).
+    // '이상 없음'과 '확인 못 함'은 다른 말이므로 그 구별을 소비자까지 전달한다(260728 §7-5).
+    verificationUnavailable.push(
+      `코드 대조 검증·도메인 안전검토: ${(e instanceof Error ? e.message : String(e)).slice(0, 120)}`,
+    );
+  }
   // 물량·작업량 산출서 (BOQ, 금액 제외 — 비기계 분야는 재적 중심·공수 미산출)
   try { files.push({ name: 'BOQ.html', mime: 'text/html', content: mods.boq.boqReport(assembly, { title, domain }) }); } catch (e) { void e; }
   // 설계 설명서 (Dossier) + P&ID 스켈레톤 (계통 기반 — 공정 없는 비기계 분야는 P&ID 제외)
@@ -354,6 +363,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           ...(domainSafety ? { domainSafety } : {}),
           ...(codeVerification ? { codeVerification } : {}),
           ...(consistency ? { consistency } : {}),
+          ...(verificationUnavailable.length ? { verificationUnavailable } : {}),
         }), basis), // 늦게 만든 만큼 개별 스탬프 — 위 루프는 이미 지나갔다
       });
     }
@@ -416,6 +426,7 @@ if (data.pipes?.errors?.length) console.warn('⚠ 배관 라우팅 실패:', dat
     pipes: built.pipes ?? null,
     designOk: built.designOk ?? null,
     consistency,
+    verificationUnavailable,
     // P0(260719b): 검증 3종+완성도 — MCP generate_package 와 동일 필드(웹 동급화)
     completeness,
     roundtrip,

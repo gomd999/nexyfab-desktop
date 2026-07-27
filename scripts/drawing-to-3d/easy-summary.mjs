@@ -359,6 +359,19 @@ ${stdWarn}</section>`;
     : '';
   const verdict = `<p class="${structVerdictFailed ? 'warn' : 'sub'}">자동 점검 종합: 구조 안전(개산) <b>${structural == null ? '미산출' : structural.ok ? '이상 없음' : '보완 필요'}</b>${feaVerdictText}${domainSafetyVerdictText}${codeVerificationVerdictText} · 형상 타당성(부유·간섭·배관) <b>${built.designOk == null ? '미산출' : built.designOk ? '이상 없음' : '보완 필요'}</b>${structVerdictFailed ? ' — 보완 없이 제작에 들어가면 안 됩니다.' : ''}</p>`;
 
+  /**
+   * 검증을 **못 돌린** 항목 — 260728 §7-5.
+   * 안전 판정 소스(옹벽 KDS 대조·도메인 안전검토)는 예외로 죽어도 종전엔 조용히 null 이 되어,
+   * 이 요약이 "걸린 안전 경고는 없습니다"로 나갔다. 배선이 없어서 못 가던 835eec40 과 원인은
+   * 다르지만 **소비자가 받는 결말은 똑같다.** '이상 없음'과 '확인 못 함'은 다른 말이고,
+   * 그 구별을 소비자에게 넘기는 것이 이 블록의 존재 이유다.
+   */
+  const unavailable = Array.isArray(opts.verificationUnavailable) ? opts.verificationUnavailable : [];
+  const unavailableBlock = unavailable.length
+    ? `<p class="warn"><b>⚠ 아래 검증은 이번에 산출되지 않았습니다 (${unavailable.length}건).</b> 이것은 "이상 없음"이 아니라 <b>"확인하지 못함"</b>입니다 — 위의 안전 결과에 이 항목들은 빠져 있습니다.</p>
+<ul class="small">${unavailable.map((u) => `<li>${esc(u)}</li>`).join('')}</ul>`
+    : '';
+
   // 문서 무결성(안전과 별개) — 실패했을 때만, 안전 블록과 섞지 않고 따로.
   const consistencyCautionList = consistencyCautions(opts.consistency);
   const consistencyBlock = consistencyCautionList.length
@@ -368,6 +381,7 @@ ${stdWarn}</section>`;
 
   const s3 = `<section><h2>③ 만들 때 주의할 점</h2>
 ${safetyBlock}
+${unavailableBlock}
 ${consistencyBlock}
 ${cautions.length
     ? `<ul>${cautions.map((c) => `<li>${c}</li>`).join('')}</ul>`

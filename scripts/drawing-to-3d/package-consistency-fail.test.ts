@@ -152,3 +152,38 @@ describe('쉬운요약 — 문서 정합 불일치가 소비자에게 도달하�
     expect(a).not.toContain('동봉 문서끼리');
   });
 });
+
+/**
+ * §7-5 — 검증을 **못 돌린** 것과 **이상 없는** 것의 구별.
+ * 안전 판정 소스(옹벽 KDS·도메인 안전검토)는 예외로 죽어도 종전엔 조용히 null 이 되어
+ * 쉬운요약이 "걸린 안전 경고는 없습니다"로 나갔다 — 835eec40 과 같은 결말, 다른 원인.
+ */
+describe('쉬운요약 — "확인 못 함"을 "이상 없음"으로 읽히게 하지 않는다 (§7-5)', () => {
+  it('검증 미산출 목록이 오면 별도 블록으로 실리고 "이상 없음이 아니다"라고 못 박는다', () => {
+    const html = easySummary(OK_ASM, {
+      title: 't', domain: 'mech',
+      verificationUnavailable: ['코드 대조 검증(옹벽·암거 KDS): boom'],
+    });
+    expect(html).toContain('산출되지 않았습니다');
+    expect(html).toContain('확인하지 못함');
+    expect(html).toContain('옹벽');
+  });
+
+  it('빈 목록이면 침묵한다 (과탐 0)', () => {
+    const html = easySummary(OK_ASM, { title: 't', domain: 'mech', verificationUnavailable: [] });
+    expect(html).not.toContain('산출되지 않았습니다');
+  });
+
+  it('안 넘기면 출력이 종전과 완전히 동일하다 (하위호환)', () => {
+    const a = easySummary(OK_ASM, { title: 't', domain: 'mech' });
+    const b = easySummary(OK_ASM, { title: 't', domain: 'mech', verificationUnavailable: [] });
+    expect(a).toBe(b);
+  });
+
+  it('안전 경고와 섞이지 않는다 — 미산출이 있어도 안전 블록 문구는 그대로다', () => {
+    const html = easySummary(OK_ASM, { title: 't', domain: 'mech', verificationUnavailable: ['x: boom'] });
+    // 안전 판정을 날조해 "위험"으로 바꾸지 않는다. 다만 그 옆에 "확인 못 함"이 붙는다.
+    expect(html).toContain('걸린 안전 경고는 없습니다');
+    expect(html).toContain('확인하지 못함');
+  });
+});
