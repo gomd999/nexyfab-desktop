@@ -48,7 +48,12 @@ type XlsxMod = { boqXlsxBase64: (a: Assembly, o?: Record<string, unknown>) => st
 // 완성도·A1 라운드트립·B1 메시 부울·T2 실시 검도(웹 우선 탑재)
 type PsMod = { partSheets: (a: Assembly, o?: Record<string, unknown>) => string };
 type FspMod = { fabricationSpec: (a: Assembly, o?: Record<string, unknown>) => Promise<string> };
-type DcMod = { checkDrawingCompleteness: (html: string, o?: Record<string, unknown>) => unknown; checkDxfLayers: (dxf: string) => unknown };
+type DcMod = {
+  checkDrawingCompleteness: (html: string, o?: Record<string, unknown>) => unknown;
+  checkDxfLayers: (dxf: string) => unknown;
+  /** 260728 §7-3 — 적용 가능성 규칙은 이 모듈에만 있다(두 발생지 공유). */
+  completenessApplicability?: (a: Assembly, built?: unknown) => Record<string, boolean>;
+};
 type ExecutionGate = { score: string; ok: boolean; items: unknown[]; failed: string[]; na: string[]; note: string };
 type EgMod = {
   checkExecutionReadiness: (a: Assembly, o?: { gaHtml?: string; sheetsHtml?: string; welds?: unknown[] }) => ExecutionGate;
@@ -165,7 +170,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }),
     });
     gaHtml = files[files.length - 1].content;
-    try { completeness = mods.dc?.checkDrawingCompleteness(gaHtml) ?? null; } catch (e) { void e; }
+    try {
+      const applicability = mods.dc?.completenessApplicability?.(assembly, built);
+      completeness = mods.dc?.checkDrawingCompleteness(gaHtml, applicability ? { applicability } : {}) ?? null;
+    } catch (e) { void e; }
   } catch (e) { /* skip */ void e; }
   // P0(260719b): 부품 제작도(구멍표·제작치수 행 — M1/M2 단일 소스) + 제작 사양서(MCP 동급)
   let sheetsHtml = '';

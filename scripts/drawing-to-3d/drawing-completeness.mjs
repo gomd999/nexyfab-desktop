@@ -2,17 +2,47 @@
  * drawing-completeness.mjs — 도면 완성도 게이트 D1 (260718, 코퍼스급 체크리스트 C1~C9).
  * 생성 HTML 을 마커 기반으로 자동 판정 — 미충족=정직 보고(면책 문구 아님, 보완 대상 목록).
  */
-export function checkDrawingCompleteness(html, { kind = 'ga' } = {}) {
+/**
+ * 적용 가능성(applicability) — 260728 §7-3.
+ *
+ * 종전엔 `pass:null`(해당 없음)을 쓰는 항목이 C9 하나뿐이라, **필요 없는 항목이 없는 것**과
+ * **필요한데 빠진 것**이 같은 FAIL 로 보였다. 실측(단순 브래킷 GA): `7/8`, 유일한 실패가
+ * **C5 선 종류** — 구멍도 은닉 엣지도 없는 부품이라 중심선이 없는 게 맞다. 즉 과탐이었고,
+ * 이 상태로는 소비자 문서에 실을 수 없었다(§6-3 이 정합 게이트에 세운 것과 같은 착수 조건).
+ *
+ * 호출자가 어셈블리에서 아는 사실만 넘긴다 — 여기서 HTML 을 보고 추측하지 않는다.
+ * 넘기지 않으면 종전 동작 그대로(전부 적용)라 하위호환이 유지된다.
+ *
+ * ⚠ 규칙을 세울 수 있는 것에만 붙였다. C2(단면도)·C3(상세 콜아웃)은 "이 부품에 단면이
+ * 필요한가"를 기하에서 판정할 방법이 지금 없어 손대지 않았다 — 다만 현재 GA 생성기가
+ * 이 마커를 사실상 항상 찍으므로 두 항목은 "도면이 완전한가"보다 "생성기가 돌았는가"에
+ * 가깝다는 한계를 여기 남긴다(다음 세션 과제).
+ *
+ * @typedef {{ hasWelds?: boolean, hasCircular?: boolean }} CompletenessApplicability
+ *   hasWelds    용접이 하나라도 있나 → C8
+ *   hasCircular 구멍·원형 단면 부재가 있나 → C5(중심선)·C6(원형 심볼)
+ *
+ * @param {string} html
+ * @param {{ kind?: string, applicability?: CompletenessApplicability | null }} [opts]
+ */
+export function checkDrawingCompleteness(html, opts = {}) {
+  const { kind = 'ga', applicability = null } = opts;
   const has = (re) => (typeof re === 'string' ? html.includes(re) : re.test(html));
+  // applicability 미전달 = 전부 적용(종전 동작). 전달 시 해당 항목만 N/A 가 될 수 있다.
+  const naIf = (cond, note) => (applicability && cond ? { pass: null, note } : null);
+  const item = (id, name, pass, na) => (na ? { id, name, ...na } : { id, name, pass });
   const items = [
     { id: 'C1', name: '도곽·표제란(도번·축척·REV·시트)', pass: has('nf-titleblock') && has('data-dwg') && has('시트') },
     { id: 'C2', name: '단면도+해칭', pass: has('nfhatch') && has('SECTION A-A') },
     { id: 'C3', name: '부분 상세 콜아웃', pass: has('DETAIL ') },
     { id: 'C4', name: '치수 체계(⌀·치수문자)', pass: has('⌀') || has(/\d+×\d+/) },
-    { id: 'C5', name: '선 종류(중심선·파선)', pass: has('8 2 2 2') && has('stroke-dasharray="5 3"') },
-    { id: 'C6', name: '심볼 표기(원형 장비·P&ID)', pass: has('<circle') },
+    item('C5', '선 종류(중심선·파선)', has('8 2 2 2') && has('stroke-dasharray="5 3"'),
+      naIf(applicability?.hasCircular === false, '구멍·원형 부재가 없어 중심선이 필요 없음')),
+    item('C6', '심볼 표기(원형 장비·P&ID)', has('<circle'),
+      naIf(applicability?.hasCircular === false, '원형 장비·부재가 없음')),
     { id: 'C7', name: 'BOM 규격열(발주 규격)', pass: has('발주 규격') && (has('SCH40') || has('SQ TUBE') || has('가공품(도면 제작)')) },
-    { id: 'C8', name: '용접 일람(조인트별)', pass: has('필릿 △') },
+    item('C8', '용접 일람(조인트별)', has('필릿 △'),
+      naIf(applicability?.hasWelds === false, '용접 조인트가 없음')),
     { id: 'C9', name: 'DXF 레이어 분리', pass: null, note: 'DXF 파일 별도 검사(HTML 범위 외)' },
   ];
   const applicable = items.filter((i) => i.pass !== null);
@@ -58,4 +88,36 @@ export function checkDxfLayers(dxfText) {
       ? 'DIM 레이어+CENTER/DASHED 라인타입이 ENTITIES에 실사용 확인'
       : `누락(엔티티 실사용 기준): ${[!dimLayerUsed && 'DIM', !centerUsed && 'CENTER', !dashed && 'DASHED'].filter(Boolean).join(',')}`,
   };
+}
+
+/**
+ * 어셈블리에서 완성도 검사의 적용 가능성을 뽑는다 (260728 §7-3).
+ *
+ * 규칙을 여기 한 곳에 둔다 — 웹 라우트와 MCP 두 발생지가 각자 판정하면 그게 곧 드리프트다
+ * (이번 세션에 검도 리포트·REV 규약에서 반복해 확인한 것).
+ *
+ * **모르면 "적용됨"으로 둔다.** N/A 를 과하게 주면 검사가 조용히 사라지고, 그건 과탐보다
+ * 나쁘다 — 미검출은 소비자가 알 방법이 없다.
+ *
+ * @param {object} assembly
+ * @param {object} [built] buildAssembly 결과(welds 만 읽는다)
+ */
+export function completenessApplicability(assembly, built = null) {
+  const parts = assembly?.parts ?? [];
+  // 원형 요소가 하나라도 있으면 중심선·원형 심볼이 필요하다. 판단이 서지 않는 type 은
+  // 원형으로 간주하지 않되(아래 목록에 없으면 false), 구멍 선언은 type 과 무관하게 원형이다.
+  const CIRCULAR_TYPES = new Set([
+    'cylinder', 'tube', 'rect_tube', 'pipe_reducer', 'pipe_elbow', 'pipe_tee', 'flange',
+    'coil_spring', 'revolve', 'spur_gear', 'hex_bolt', 'hex_nut', 'washer', 'pillow_block',
+    'rebar', 'plate_with_holes', 'base_plate', 'cavity_block',
+  ]);
+  const hasCircular = parts.some((p) => {
+    if (CIRCULAR_TYPES.has(String(p?.type))) return true;
+    const q = p?.params ?? {};
+    if (Array.isArray(q.holes) && q.holes.length > 0) return true;
+    // 지름류 파라미터가 있으면 원형으로 본다(보수적으로 '적용됨' 쪽).
+    return ['d', 'diameter', 'od', 'id', 'boreD', 'radius'].some((k) => Number.isFinite(Number(q[k])));
+  });
+  const hasWelds = Array.isArray(built?.welds) ? built.welds.length > 0 : true; // 모르면 적용
+  return { hasCircular, hasWelds };
 }

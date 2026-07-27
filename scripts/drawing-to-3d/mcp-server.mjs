@@ -943,7 +943,7 @@ export async function callTool(name, args = {}) {
       : undefined;
     let completeness = null, c9 = null;
     let gaHtml = '', sheetsHtml = '';
-    try { const ga = pkg.ga2dDrawing(args.assembly, { title, domain: args.assembly.domain ?? 'mech', welds: built.welds, ...(revHistory ? { revHistory } : {}) }); gaHtml = ga; save('GA_2D_drawing.html', ga); completeness = dc.checkDrawingCompleteness(ga); } catch (e) { files.push({ name: 'GA_2D_drawing.html', error: String(e).slice(0, 120) }); }
+    try { const ga = pkg.ga2dDrawing(args.assembly, { title, domain: args.assembly.domain ?? 'mech', welds: built.welds, ...(revHistory ? { revHistory } : {}) }); gaHtml = ga; save('GA_2D_drawing.html', ga); completeness = dc.checkDrawingCompleteness(ga, { applicability: dc.completenessApplicability(args.assembly, built) }); } catch (e) { files.push({ name: 'GA_2D_drawing.html', error: String(e).slice(0, 120) }); }
     try { save('structural.html', pkg.structuralReport(args.assembly, { title })); } catch { /* skip */ }
     // ③ 형상+검증: 어셈블리 검증 메타(옹벽 등) → 분야 KDS 계산기 실행값(전도·활동·지지력…). 메타 없으면 미생성(정직).
     // codeVerification: 같은 소스의 압축 판정을 쉬운요약에도 넘긴다 — domainSafety는 담당
