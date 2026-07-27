@@ -86,3 +86,25 @@ export function checkExecutionReadiness(assembly, { gaHtml = '', sheetsHtml = ''
     note: '실시 검도 M1~M6 — 미충족=보완 대상(면책 아님) · 배열 특례 어휘=부품도+STEP 참조 기준(명시)',
   };
 }
+
+/**
+ * 실시 검도 리포트 HTML — 웹 라우트와 MCP 두 발생지가 **같은 소스**를 쓴다.
+ * 260728: 이 렌더러는 원래 route.ts 안에 인라인되어 있었고, MCP generate_package 는
+ * checkExecutionReadiness 를 **계산해놓고 리포트 파일은 쓰지 않았다** — 판정을 만들어두고
+ * 소비자 문서로 내보내지 않는 A-7 패턴 그대로다. 옮기면서 복제하지 않고 여기로 올린다
+ * (같은 결함이 두 발생지에서 갈리는 것을 막는 유일한 방법은 소스를 하나로 두는 것이다).
+ * @param {object} gate checkExecutionReadiness() 반환값
+ * @returns {string} HTML
+ */
+export function executionReportHtml(gate, { title = 'NexyFab 설계' } = {}) {
+  const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const rows = (gate.items ?? []).map((i) =>
+    `<tr><td>${esc(i.id)} ${esc(i.name)}</td><td class="${i.pass === null ? 'na' : i.pass ? 'ok' : 'no'}">${i.pass === null ? 'N/A' : i.pass ? 'PASS' : 'FAIL'}</td><td style="text-align:left">${esc((i.detail ?? []).join('; ') || '—')}</td></tr>`).join('');
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)} — 실시 검도 M1~M6</title>
+<style>body{font-family:'Segoe UI','Malgun Gothic',sans-serif;max-width:860px;margin:20px auto;color:#1f2937}table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid #cbd5e1;padding:6px 10px}th{background:#f1f5f9}.ok{color:#15803d;font-weight:700}.no{color:#b91c1c;font-weight:700}.na{color:#94a3b8}</style></head><body>
+<h2>실시 검도 게이트 (M1~M6) — ${esc(gate.score)} ${gate.ok ? '<span class="ok">PASS</span>' : '<span class="no">보완 필요</span>'}</h2>
+<table><thead><tr><th>항목</th><th>판정</th><th>상세</th></tr></thead><tbody>
+${rows}
+</tbody></table>
+<p style="font-size:12px;color:#64748b">${esc(gate.note)}</p></body></html>`;
+}

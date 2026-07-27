@@ -90,6 +90,20 @@ describe('MCP generate_package — 발행 규약(REV·정합)이 웹 라우트�
     fs.rmSync(outDir, { recursive: true, force: true });
   }, 180_000);
 
+  it('실시 검도 M1~M6 리포트가 파일로 나간다 — 게이트를 계산만 하고 버리지 않는다', async () => {
+    const outDir = mkOut('exec');
+    const res = await callTool('generate_domain_package', {
+      domain: 'civil', templateId: 'retaining_wall_run', params: OK_PARAMS, outDir,
+    });
+    expect(res.ok).toBe(true);
+    // 종전: executionGate 를 계산해 쉬운요약에 한 줄만 넘기고 항목별 판정은 어디에도 없었다.
+    const rep = read(outDir, '실시검도리포트.html');
+    for (const id of ['M1', 'M2', 'M3', 'M4', 'M5', 'M6']) expect(rep).toContain(id);
+    expect(rep).toMatch(/PASS|FAIL|N\/A/);
+    expect(rep).toContain('nf-basis'); // 이 파일도 같은 REV 로 발행된다
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }, 180_000);
+
   it('옹벽 활동 FAIL 이 MCP 경로에서도 쉬운요약까지 도달한다(835eec40 · 과탐 0)', async () => {
     const bad = mkOut('fail');
     const resBad = await callTool('generate_domain_package', {

@@ -49,7 +49,11 @@ type XlsxMod = { boqXlsxBase64: (a: Assembly, o?: Record<string, unknown>) => st
 type PsMod = { partSheets: (a: Assembly, o?: Record<string, unknown>) => string };
 type FspMod = { fabricationSpec: (a: Assembly, o?: Record<string, unknown>) => Promise<string> };
 type DcMod = { checkDrawingCompleteness: (html: string, o?: Record<string, unknown>) => unknown; checkDxfLayers: (dxf: string) => unknown };
-type EgMod = { checkExecutionReadiness: (a: Assembly, o?: { gaHtml?: string; sheetsHtml?: string; welds?: unknown[] }) => { score: string; ok: boolean; items: unknown[]; failed: string[]; na: string[]; note: string } };
+type ExecutionGate = { score: string; ok: boolean; items: unknown[]; failed: string[]; na: string[]; note: string };
+type EgMod = {
+  checkExecutionReadiness: (a: Assembly, o?: { gaHtml?: string; sheetsHtml?: string; welds?: unknown[] }) => ExecutionGate;
+  executionReportHtml?: (g: ExecutionGate, o?: { title?: string }) => string;
+};
 type RtMod = { stepRoundTrip: (a: Assembly) => Promise<unknown> };
 type IrMod = { refineInterferencesMesh: (a: Assembly, i: unknown[], o?: Record<string, unknown>) => Promise<unknown> };
 type FaMod = { autoFasteners: (a: Assembly) => unknown };
@@ -306,18 +310,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
     try {
       executionGate = mods.eg ? mods.eg.checkExecutionReadiness(assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [] }) : null;
-      if (executionGate) {
-        const eg = executionGate;
-        const esc = (s: unknown) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+      // 리포트 렌더러는 execution-gate.mjs 로 올렸다 — MCP 발생지와 같은 소스(260728).
+      if (executionGate && mods.eg?.executionReportHtml) {
         files.push({
           name: '실시검도리포트.html', mime: 'text/html',
-          content: `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)} — 실시 검도 M1~M6</title>
-<style>body{font-family:'Segoe UI','Malgun Gothic',sans-serif;max-width:860px;margin:20px auto;color:#1f2937}table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid #cbd5e1;padding:6px 10px}th{background:#f1f5f9}.ok{color:#15803d;font-weight:700}.no{color:#b91c1c;font-weight:700}.na{color:#94a3b8}</style></head><body>
-<h2>실시 검도 게이트 (M1~M6) — ${esc(eg.score)} ${eg.ok ? '<span class="ok">PASS</span>' : '<span class="no">보완 필요</span>'}</h2>
-<table><thead><tr><th>항목</th><th>판정</th><th>상세</th></tr></thead><tbody>
-${(eg.items as Array<{ id: string; name: string; pass: boolean | null; detail: string[] }>).map((i) => `<tr><td>${esc(i.id)} ${esc(i.name)}</td><td class="${i.pass === null ? 'na' : i.pass ? 'ok' : 'no'}">${i.pass === null ? 'N/A' : i.pass ? 'PASS' : 'FAIL'}</td><td style="text-align:left">${esc((i.detail ?? []).join('; ') || '—')}</td></tr>`).join('')}
-</tbody></table>
-<p style="font-size:12px;color:#64748b">${esc(eg.note)}</p></body></html>`,
+          content: mods.eg.executionReportHtml(executionGate, { title }),
         });
       }
     } catch (e) { void e; }

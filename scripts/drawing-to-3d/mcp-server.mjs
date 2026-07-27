@@ -982,6 +982,10 @@ export async function callTool(name, args = {}) {
     try {
       const eg = await import('./execution-gate.mjs');
       executionGate = eg.checkExecutionReadiness(args.assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [] });
+      // 260728: 종전엔 게이트를 계산만 하고 리포트 파일을 쓰지 않았다 — 웹은 실시검도리포트.html
+      // 을 동봉하는데 MCP 산출물에는 M1~M6 항목별 판정이 어디에도 없었다(쉬운요약의 한 줄뿐).
+      // 렌더러는 execution-gate.mjs 의 것을 그대로 쓴다(복제 금지 — 두 발생지 동일 소스).
+      save('실시검도리포트.html', eg.executionReportHtml(executionGate, { title }));
     } catch (e) { executionGate = { error: String(e).slice(0, 120) }; }
     // 일반인용 쉬운 요약(260719) — 전문가 산출물을 쉬운 말 5섹션 1페이지로(검도 결과 반영)
     try { const es = await import('./easy-summary.mjs'); save('쉬운요약.html', es.easySummary(args.assembly, { title, domain: args.assembly.domain ?? 'mech', fileNames: files.map((f) => f.name), ...(executionGate && !executionGate.error ? { executionGate } : {}), ...(domainSafety ? { domainSafety } : {}), ...(codeVerification ? { codeVerification } : {}) })); } catch { /* skip */ }
