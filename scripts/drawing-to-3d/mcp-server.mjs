@@ -411,8 +411,12 @@ export const tools = [
     description:
       `실시 도서 세트 일괄 생성(outDir 에 파일 저장) — GA 2D(완성도 체크리스트 게이트)·GA 3D(오프라인 ` +
       `뷰어)·부품 제작도·BOQ·제작사양서·Dossier·DXF(C9 게이트)·선택 STEP(부품별 B-rep 컴파운드·` +
-      `filletMm 반영). 비법정(제작용 실시도서+검토 계산서 — 인허가 도서=기술사 날인 영역). ` +
-      `반환: 파일 목록 + 완성도/C9 결과.`,
+      `filletMm 반영), 그리고 판정 문서 — 검증.html(KDS 대조)·안전검토.html·실시검도리포트.html` +
+      `(M1~M6)·쉬운요약.html. 전 산출물은 단일 REV 로 스탬프되고 문서 간 수치 정합 게이트를 탄다. ` +
+      `비법정(제작용 실시도서+검토 계산서 — 인허가 도서=기술사 날인 영역). ` +
+      `반환: 파일 목록 + rev + consistency(문서 간 대조) + 완성도/C9 + designOk·support(부유 부품)` +
+      `·interferences — **ok:true 는 "생성됐다"이지 "설계가 타당하다"가 아니다. designOk 를 볼 것.** ` +
+      `미산출(정직): FEA·xlsx 내역서·P&ID·IFC·SCAD 는 웹 패키지 API 에만 있다.`,
     inputSchema: {
       type: 'object', required: ['assembly', 'outDir'],
       properties: {
@@ -1014,7 +1018,18 @@ export async function callTool(name, args = {}) {
       const hasFluid = (args.assembly.parts ?? []).some((p) => !!p.fluid);
       consistency = pkg.packageConsistencyCheck(blobs, basis, { hasFluid, alignment: args.assembly.alignment ?? null });
     } catch (e) { consistency = { error: String(e).slice(0, 120) }; /* 정합 게이트 실패가 패키지를 막지는 않되 null 로 숨기지 않는다 */ }
-    return { ok: true, outDir: args.outDir, rev, files, completeness, c9, consistency, step, roundtrip, interferenceRefine, executionGate, fasteners, note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.' };
+    // 설계 타당성 판정은 buildAssembly 가 이미 산출해 두고 있다 — 종전엔 응답에 싣지 않아
+    // 호출자(대개 AI 에이전트)는 부유 부품·간섭·배관 실패가 있어도 `ok:true` 만 받았다.
+    // 사람은 쉬운요약.html 에서 볼 수 있지만 에이전트가 읽는 건 이 JSON 이다(웹은 반환함).
+    return {
+      ok: true, outDir: args.outDir, rev, files, completeness, c9, consistency,
+      structural: built.structural ?? null,
+      interferences: built.interferences ?? [],
+      welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
+      support: built.support ?? null, pipes: built.pipes ?? null, designOk: built.designOk ?? null,
+      step, roundtrip, interferenceRefine, executionGate, fasteners,
+      note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.',
+    };
   }
   if (name === 'verify_domain') {
     return verifyDomain({

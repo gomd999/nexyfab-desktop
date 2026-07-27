@@ -104,6 +104,27 @@ describe('MCP generate_package — 발행 규약(REV·정합)이 웹 라우트�
     fs.rmSync(outDir, { recursive: true, force: true });
   }, 180_000);
 
+  it('부유 부품(설치 불가 신호)이 응답 JSON 에 실린다 — ok:true 가 designOk 를 덮지 않는다', async () => {
+    // MCP 호출자는 대개 AI 에이전트이고, 에이전트가 읽는 건 파일이 아니라 이 JSON 이다.
+    // 종전엔 buildAssembly 가 support.floating 을 산출해 두고도 응답에 싣지 않아,
+    // 공중에 뜬 부품이 있어도 에이전트에게는 `ok:true` 만 보였다.
+    const outDir = mkOut('float');
+    const res = (await callTool('generate_package', {
+      outDir,
+      assembly: {
+        name: '부유 테스트',
+        parts: [
+          { id: 'base', type: 'box', material: 'SS400', params: { width: 300, depth: 300, height: 20 }, at: { tx: 0, ty: 0, tz: 0 } },
+          { id: 'floater', type: 'box', material: 'SS400', params: { width: 60, depth: 60, height: 60 }, at: { tx: 100, ty: 100, tz: 900 } },
+        ],
+      },
+    })) as PkgResult & { designOk?: boolean | null; support?: { floating?: string[] } | null };
+    expect(res.ok).toBe(true); // 생성은 된다 — 그게 곧 타당하다는 뜻이 아니다
+    expect(res.support?.floating).toContain('floater');
+    expect(res.designOk).toBe(false);
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }, 180_000);
+
   it('옹벽 활동 FAIL 이 MCP 경로에서도 쉬운요약까지 도달한다(835eec40 · 과탐 0)', async () => {
     const bad = mkOut('fail');
     const resBad = await callTool('generate_domain_package', {
