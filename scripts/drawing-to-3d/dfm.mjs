@@ -63,7 +63,7 @@ function extract(intent) {
   // → 추측하지 않는다. 회전체 존재 여부만 표시(두께는 미인식으로 생략).
   const hasRevolve = solids.some((f) => f.kind === 'revolve' && Array.isArray(f.profile));
 
-  return { plate, holes, tubeWall, hasRevolve };
+  return { plate, holes, tubeWall, hasRevolve, featureCount: feats.length };
 }
 
 /**
@@ -73,17 +73,29 @@ function extract(intent) {
  */
 export function analyzeDfm(intent, opts = {}) {
   const process = opts.process === 'punch' ? 'punch' : 'laser';
-  const { plate, holes, tubeWall, hasRevolve } = extract(intent);
+  const { plate, holes, tubeWall, hasRevolve, featureCount } = extract(intent);
   const checks = [];
   const add = (rule, severity, title, message) => checks.push({ rule, severity, title, message, ref: REF });
 
   const t = opts.thicknessMm ?? plate?.t ?? tubeWall ?? null;
 
   if (t == null) {
-    const why = hasRevolve
-      ? '회전체(용기) 벽두께는 형상만으론 산출 불가 — 두께 명시 시 검사'
-      : '두께를 인식하지 못해 생략(자유형상)';
-    return { checks: [], summary: 'DFM: ' + why, recognized: false };
+    // 260728: 종전엔 세 경우를 한 문구("자유형상")로 뭉갰다 — **하지 않은 진단을 주장한
+    // 것이다.** intent.features[] 를 아예 못 읽은 것과 "읽었는데 자유형상"은 다른 말이고,
+    // 앞의 경우는 형상이 아니라 입력을 의심해야 한다.
+    const why = featureCount === 0
+      ? 'intent.features[] 가 비어 있어 형상을 하나도 읽지 못했다 — 자유형상이라는 뜻이 아니라 ' +
+        '두께를 판정할 입력이 없다는 뜻이다(compose/preset intent 인지 확인)'
+      : hasRevolve
+        ? '회전체(용기) 벽두께는 형상만으론 산출 불가 — 두께 명시(thicknessMm) 시 검사'
+        : `형상 ${featureCount}개를 읽었으나 판(얇은 축)·중공각관 어느 것으로도 인식되지 않아 ` +
+          '두께를 정할 수 없다 — thicknessMm 로 명시하면 검사한다';
+    return {
+      checks: [], summary: 'DFM: ' + why, recognized: false,
+      // 소비자가 "입력 문제"와 "형상 특성"을 갈라 볼 수 있게 사유를 코드로도 싣는다.
+      reason: featureCount === 0 ? 'no_features' : hasRevolve ? 'revolve_wall_unknown' : 'thickness_unrecognized',
+      featureCount,
+    };
   }
 
   // 최소 두께

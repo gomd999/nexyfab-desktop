@@ -129,3 +129,40 @@ describe('쓰레기 입력이 조용히 통과하지 않는다', () => {
     expect((r.templates as unknown[]).length).toBeGreaterThan(0);
   });
 });
+
+describe('DFM 생략 사유는 실제로 내린 진단만 말한다', () => {
+  // 종전엔 세 경우를 "두께를 인식하지 못해 생략(자유형상)" 한 문구로 뭉갰다.
+  // features 를 하나도 못 읽은 것을 "자유형상"이라 부르는 것은 **하지 않은 진단**이다.
+  const dfm = async (intent: unknown) =>
+    (await call('analyze_dfm', { intent })) as Res;
+
+  it('features[] 가 비면 "자유형상"이 아니라 "입력을 읽지 못했다"', async () => {
+    const r = await dfm({ kind: 'box', width: 10, depth: 10, height: 10 }); // compose intent 아님
+    expect(r.recognized).toBe(false);
+    expect(r.reason).toBe('no_features');
+    expect(String(r.summary)).toContain('자유형상이라는 뜻이 아니라');
+  });
+
+  it('형상은 읽었으나 판·각관이 아니면 그렇게 말한다 — 사유가 갈린다', async () => {
+    const r = await dfm({ features: [{ kind: 'box', size: [10, 10, 10] }] });
+    expect(r.reason).toBe('thickness_unrecognized');
+    expect(r.featureCount).toBe(1);
+  });
+
+  it('회전체는 벽두께 산출 불가로 별도 사유', async () => {
+    const r = await dfm({ features: [{ kind: 'revolve', profile: [[0, 0], [10, 0], [10, 5]] }] });
+    expect(r.reason).toBe('revolve_wall_unknown');
+  });
+
+  it('판재는 종전대로 판정한다 — 회귀 없음', async () => {
+    const r = await dfm({
+      features: [
+        { kind: 'box', size: [200, 100, 3] },
+        { kind: 'cylinder', op: 'subtract', diameter: 8, at: { translate: [20, 20, 0] } },
+      ],
+    });
+    expect(r.recognized).not.toBe(false);
+    expect(r.reason).toBeUndefined();
+    expect(String(r.summary)).toContain('t=3.0mm');
+  });
+});
