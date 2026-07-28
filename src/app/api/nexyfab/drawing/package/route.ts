@@ -30,6 +30,7 @@ type Built = {
   support?: Support; pipes?: Pipes; designOk?: boolean;
   // 메시 부울 2차가 원본 AABB 과탐을 해제했을 때의 추적값(감추지 않는다 — 260728)
   interferencesRaw?: number; interferencesDemoted?: number; interferenceBasis?: string;
+  interferencesUnrefined?: number;
 };
 type Basis = { rev: string; massKg: number; env: number[]; parts: number };
 type AsmMod = { buildAssembly: (a: Assembly) => Built };
@@ -336,6 +337,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       try { interferenceRefine = await mods.ir.refineInterferencesMesh(assembly, built.interferences ?? []); } catch (e) { interferenceRefine = { error: String(e instanceof Error ? e.message : e).slice(0, 120) }; }
       // 260728: MCP 와 동일 — 정제 결과를 되돌려 응답·쉬운요약이 원본 AABB 과탐을 쓰지 않게.
       if (mods.ir.applyInterferenceRefinement) built = mods.ir.applyInterferenceRefinement(built, interferenceRefine);
+      if (built.interferencesUnrefined) {
+        verificationUnavailable.push(`부품 겹침 2차 정밀검증: ${built.interferencesUnrefined}쌍이 성능 예산 초과로 미검증 — 보수(겹침) 판정을 유지했습니다. 확정된 겹침과 구별해서 보세요.`);
+      }
     }
     try {
       executionGate = mods.eg ? mods.eg.checkExecutionReadiness(assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [] }) : null;
@@ -453,6 +457,7 @@ if (data.pipes?.errors?.length) console.warn('⚠ 배관 라우팅 실패:', dat
     // MCP 와 동일 — 좁혀진 숫자의 근거를 함께 준다(원본을 감추지 않는다).
     ...(built.interferenceBasis ? {
       interferencesRaw: built.interferencesRaw, interferencesDemoted: built.interferencesDemoted,
+      ...(built.interferencesUnrefined ? { interferencesUnrefined: built.interferencesUnrefined } : {}),
       interferenceBasis: built.interferenceBasis,
     } : {}),
     welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,

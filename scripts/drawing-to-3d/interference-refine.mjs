@@ -40,7 +40,7 @@ const LATTICE_ROLES = new Set(['column', 'beam', 'brace', 'chord', 'diagonal', '
  *   분류(laps 로 분리 보고 — 간섭 목록에서 제외. 볼트·거셋 상세=입력 명시. 기본 0=비활성)
  * @returns { interferences(확정만·intersectMm3 동봉), demoted(해제 내역), laps, checked }
  */
-export async function refineInterferencesMesh(asm, interferences, { epsMm3 = 1, latticeLapMm3 = 0 } = {}) {
+export async function refineInterferencesMesh(asm, interferences, { epsMm3 = 1, latticeLapMm3 = 0, maxPairs = 400, budgetMs = 20000 } = {}) {
   const intent = assemblyToComposeIntent(asm);
   const pidOf = new Map((asm.parts ?? []).map((p, i) => [p.id ?? p.type, i]));
   const roleOf = new Map((asm.parts ?? []).map((p) => [p.id ?? p.type, String(p.role ?? '')]));
@@ -48,7 +48,17 @@ export async function refineInterferencesMesh(asm, interferences, { epsMm3 = 1, 
   const demoted = [];
   const laps = [];
   let checked = 0;
+  let unrefined = 0;
+  // 성능 예산(260728) — 실측 쌍당 27~35ms, 쌍 수는 부품에 초선형(200부품→1468쌍→39s).
+  // 예산을 넘긴 쌍은 **원본 판정을 그대로 유지**한다(해제하지 않는다) — 확인 못 한 것을
+  // 이상 없음으로 바꾸지 않는다. 몇 쌍을 못 봤는지는 반드시 보고한다(조용한 절단 금지).
+  const started = Date.now();
   for (const rec of interferences ?? []) {
+    if (checked >= maxPairs || Date.now() - started > budgetMs) {
+      unrefined++;
+      confirmed.push({ ...rec, note: `${rec.note ?? ''} · 2차 정제 예산 초과 — 미검증(보수 유지)`.trim() });
+      continue;
+    }
     const ia = pidOf.get(rec.a), ib = pidOf.get(rec.b);
     if (ia == null || ib == null) { confirmed.push(rec); continue; }
     const fa = intent.features.filter((f) => f._pid === ia);
@@ -76,7 +86,12 @@ export async function refineInterferencesMesh(asm, interferences, { epsMm3 = 1, 
       confirmed.push({ ...rec, intersectMm3: +vol.toFixed(1), note: `${rec.note ?? ''} · 메시 부울 확정(교집합 ${vol.toFixed(1)}mm³)`.trim() });
     }
   }
-  return { interferences: confirmed, demoted, laps, checked, note: '의심쌍 한정 2차(전수 아님) — ε=' + epsMm3 + 'mm³' + (latticeLapMm3 > 0 ? ' · 격자 랩 한계=' + latticeLapMm3 + 'mm³' : '') };
+  return {
+    interferences: confirmed, demoted, laps, checked, unrefined,
+    note: '의심쌍 한정 2차(전수 아님) — ε=' + epsMm3 + 'mm³'
+      + (latticeLapMm3 > 0 ? ' · 격자 랩 한계=' + latticeLapMm3 + 'mm³' : '')
+      + (unrefined ? ` · ⚠ ${unrefined}쌍은 성능 예산(${maxPairs}쌍/${budgetMs}ms) 초과로 미검증 — 보수 판정 유지(해제 아님)` : ''),
+  };
 }
 
 /**
@@ -108,7 +123,9 @@ export function applyInterferenceRefinement(built, refine) {
   if (!built || !refine || refine.error || !Array.isArray(refine.interferences)) return built;
   const raw = built.interferences ?? [];
   const confirmed = refine.interferences;
-  if (confirmed.length === raw.length) return built; // 해제 없음 — 바꿀 것이 없다
+  // 해제가 없으면 바꿀 것이 없다 — 단 **예산 초과로 못 본 쌍이 있으면 그 사실은 남긴다.**
+  // (전량 미검증이면 confirmed.length === raw.length 라 여기서 조용히 빠져나가 고지가 사라진다)
+  if (confirmed.length === raw.length && !refine.unrefined) return built;
   // designOk 는 간섭 외 조건(부유·배관)도 본다. 그 조건들을 다시 판정하지 않고,
   // **원래 판정에서 간섭 항목만 교체**한다 — 여기서 다른 게이트를 재해석하지 않는다.
   const nonInterferenceOk = (built.support?.floating?.length ?? 0) === 0
@@ -121,8 +138,11 @@ export function applyInterferenceRefinement(built, refine) {
     designOk: nonInterferenceOk && confirmed.length === 0,
     interferencesRaw: raw.length,
     interferencesDemoted: (refine.demoted ?? []).length,
+    ...(refine.unrefined ? { interferencesUnrefined: refine.unrefined } : {}),
     interferenceBasis: `AABB 의심 ${raw.length}쌍 → 메시 부울 실기하 2차: 확정 ${confirmed.length}`
       + `${(refine.demoted ?? []).length ? ` · 실분리 해제 ${refine.demoted.length}` : ''}`
-      + `${(refine.laps ?? []).length ? ` · 격자 절점 랩 ${refine.laps.length}` : ''}`,
+      + `${(refine.laps ?? []).length ? ` · 격자 절점 랩 ${refine.laps.length}` : ''}`
+      // 미검증분을 숨기면 "확정 N"이 전수 검증 결과처럼 읽힌다.
+      + `${refine.unrefined ? ` · ⚠ ${refine.unrefined}쌍 예산초과 미검증(보수 유지)` : ''}`,
   };
 }

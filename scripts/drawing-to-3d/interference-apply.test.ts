@@ -15,6 +15,7 @@ type Built = {
   ok: boolean; interferences: unknown[]; designOk: boolean;
   support?: { floating: string[] }; pipes?: null;
   interferencesRaw?: number; interferencesDemoted?: number; interferenceBasis?: string;
+  interferencesUnrefined?: number;
 };
 const apply = applyInterferenceRefinement as unknown as (b: unknown, r: unknown) => Built;
 
@@ -77,6 +78,29 @@ describe('정제 결과가 built 에 되돌아간다', () => {
     const out = apply(b, { interferences: [], demoted: [{}, {}], laps: [], checked: 2 });
     expect(out.interferences).toHaveLength(0);
     expect(out.designOk).toBe(false);
+  });
+
+  it('예산 초과 미검증분은 보수 유지되고 건수가 반드시 고지된다', () => {
+    // 실측: 200부품 밀집 어셈블리 = 의심 1468쌍 × 27ms = 39초(정제만). 예산이 필요하다.
+    // 못 본 쌍을 해제하면 "확인 못 함"이 "이상 없음"이 된다 — 보수 유지가 유일한 정답이다.
+    const out = apply(builtWith(1468), {
+      interferences: Array.from({ length: 1468 }, (_, i) => ({ a: `p${i}`, b: `q${i}` })),
+      demoted: [], laps: [], checked: 400, unrefined: 1068,
+    });
+    expect(out.interferences).toHaveLength(1468); // 미검증분이 빠지지 않았다
+    expect(out.designOk).toBe(false);
+    expect(out.interferencesUnrefined).toBe(1068);
+    expect(String(out.interferenceBasis)).toContain('1068쌍 예산초과 미검증');
+  });
+
+  it('전량 미검증이어도 고지가 사라지지 않는다 — 조기 반환 구멍', () => {
+    // confirmed.length === raw.length 라 "바꿀 것 없음"으로 빠져나가면 고지도 함께 사라진다.
+    const out = apply(builtWith(500), {
+      interferences: Array.from({ length: 500 }, (_, i) => ({ a: `p${i}`, b: `q${i}` })),
+      demoted: [], laps: [], checked: 0, unrefined: 500,
+    });
+    expect(out.interferencesUnrefined).toBe(500);
+    expect(String(out.interferenceBasis)).toContain('미검증');
   });
 
   it('격자 절점 랩 접합은 근거 문구에 별도로 남는다', () => {

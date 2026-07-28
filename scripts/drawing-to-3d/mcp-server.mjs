@@ -1082,6 +1082,10 @@ async function callToolInner(name, args = {}) {
       try { interferenceRefine = await refineInterferencesMesh(args.assembly, built.interferences); } catch (e) { interferenceRefine = { error: String(e).slice(0, 120) }; }
       // 260728: 정제를 돌려놓고 응답·쉬운요약은 원본 AABB 과탐을 썼다 — 결과를 되돌린다.
       built = applyInterferenceRefinement(built, interferenceRefine);
+      // 예산 초과로 못 본 쌍은 "판정 불가"다 — 보수 유지된 채 확정처럼 세어지면 안 된다.
+      if (built.interferencesUnrefined) {
+        verificationUnavailable.push(`부품 겹침 2차 정밀검증: ${built.interferencesUnrefined}쌍이 성능 예산 초과로 미검증 — 보수(겹침) 판정을 유지했습니다. 확정된 겹침과 구별해서 보세요.`);
+      }
     }
     // T2(260719b): 실시 검도 M1~M6 — GA+부품도 기입 치수 결정론 대조(웹 라우트와 동급)
     let executionGate = null;
@@ -1158,6 +1162,7 @@ async function callToolInner(name, args = {}) {
       // 좁혀진 숫자만 주면 에이전트는 무엇이 왜 줄었는지 알 수 없다 — 근거를 함께 준다.
       ...(built.interferenceBasis ? {
         interferencesRaw: built.interferencesRaw, interferencesDemoted: built.interferencesDemoted,
+        ...(built.interferencesUnrefined ? { interferencesUnrefined: built.interferencesUnrefined } : {}),
         interferenceBasis: built.interferenceBasis,
       } : {}),
       welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
