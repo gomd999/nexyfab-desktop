@@ -76,7 +76,7 @@ describe('checkExecutionReadiness — GA 미생성은 "미충족"이 아니라 "
   const welds = [{ a: 'base', b: 'post', lengthMm: 240 }];
 
   it('★GA 가 없으면 M3·M5·M6 이 FAIL 이 아니라 N/A 로 나온다', () => {
-    const r = checkExecutionReadiness(asm, { gaHtml: '', sheetsHtml: '<div>재질 SS400</div>', welds });
+    const r = checkExecutionReadiness(asm, { gaHtml: '', sheetsHtml: '<div>재질 SS400</div>', welds, gaFailed: true });
     const by = (id: string) => r.items.find((i) => i.id === id)!;
     for (const id of ['M3', 'M5', 'M6']) {
       expect(by(id).pass, id).toBeNull();
@@ -87,14 +87,21 @@ describe('checkExecutionReadiness — GA 미생성은 "미충족"이 아니라 "
   });
 
   it('GA 미생성 사실이 note 와 플래그로 드러난다 — 조용히 넘어가지 않는다', () => {
-    const r = checkExecutionReadiness(asm, { gaHtml: '', sheetsHtml: '', welds });
+    const r = checkExecutionReadiness(asm, { gaHtml: '', sheetsHtml: '', welds, gaFailed: true });
     expect((r as { gaMissing?: boolean }).gaMissing).toBe(true);
     expect(r.note).toContain('GA 도면 미생성');
   });
 
-  it('부품도만으로 판정 가능한 항목은 그대로 판정한다 (M1)', () => {
-    const r = checkExecutionReadiness(asm, { gaHtml: '', sheetsHtml: '', welds });
-    expect(r.items.find((i) => i.id === 'M1')!.pass).not.toBeNull();
+  it('GA 가 실패해도 부품도에서 확인된 PASS 는 그대로 남는다 — 확인된 것을 버리지 않는다', () => {
+    // 부품도에 치수가 전부 있으면 GA 가 없어도 M1 은 옳게 PASS 다(합집합에서 찾았으므로).
+    const sheets = '<p>300 300 20 60 60 400</p>';
+    const r = checkExecutionReadiness(asm, { gaHtml: '', sheetsHtml: sheets, welds, gaFailed: true });
+    expect(r.items.find((i) => i.id === 'M1')!.pass).toBe(true);
+  });
+
+  it('반대로 GA 실패 + 못 찾음이면 M1 FAIL 도 신뢰할 수 없어 N/A 가 된다', () => {
+    const r = checkExecutionReadiness(asm, { gaHtml: '', sheetsHtml: '', welds, gaFailed: true });
+    expect(r.items.find((i) => i.id === 'M1')!.pass).toBeNull();
   });
 
   it('GA 가 있으면 종전과 동일하게 판정한다 (하위호환)', () => {
@@ -103,5 +110,52 @@ describe('checkExecutionReadiness — GA 미생성은 "미충족"이 아니라 "
     expect((r as { gaMissing?: boolean }).gaMissing).toBeUndefined();
     expect(r.items.find((i) => i.id === 'M5')!.pass).toBe(true);
     expect(r.items.find((i) => i.id === 'M3')!.pass).toBe(false); // nf-weldarrow 없음 = 진짜 미충족
+  });
+});
+
+/**
+ * 부품 제작도 미생성 — GA 케이스의 **대칭 사례**이자 더 섬세한 규칙 (260728).
+ *
+ * M1·M2·M4 는 GA+부품도의 **합집합**에서 찾는다. 그래서 소스가 하나 빠져도
+ *  · 찾았으면(PASS) 그 판정은 여전히 옳고,
+ *  · 못 찾았으면(FAIL) "도면에 없음"과 "그 도면이 없음"을 구별할 수 없다.
+ * → **FAIL 만 N/A 로 낮추고 PASS 는 그대로 둔다.** 통째로 N/A 로 만들면 멀쩡히 확인된
+ *   것까지 버려 과소 보고가 된다.
+ */
+describe('checkExecutionReadiness — 부품도 미생성 시 FAIL 만 판정 불가로', () => {
+  // 치수가 어디에도 없으면 M1 은 원래 FAIL — 소스 결손이면 그 FAIL 을 신뢰할 수 없다.
+  const asm = {
+    name: '판재',
+    parts: [{ id: 'p1', type: 'plate_with_holes', material: 'SS400', params: { width: 137, depth: 91, thickness: 13, holes: [{ x: 20, y: 20, d: 9 }] }, at: { tx: 0, ty: 0, tz: 0 } }],
+  };
+
+  it('★부품도가 없으면 M1 FAIL 이 N/A 로 낮춰지고 사유가 붙는다', () => {
+    const r = checkExecutionReadiness(asm, { gaHtml: '<div class="nf-gentol">재질</div>', sheetsHtml: '', sheetsFailed: true });
+    const m1 = r.items.find((i) => i.id === 'M1')!;
+    expect(m1.pass).toBeNull();
+    expect(m1.detail.join(' ')).toContain('부품 제작도');
+    expect(m1.detail.join(' ')).toContain('판정 불가');
+    expect(r.failed.some((f) => f.startsWith('M1'))).toBe(false);
+    expect((r as { sheetsMissing?: boolean }).sheetsMissing).toBe(true);
+  });
+
+  it('★소스가 빠져도 PASS 는 그대로 둔다 — 확인된 것을 버리지 않는다', () => {
+    // 치수가 GA 에 전부 있으면 부품도가 없어도 M1 은 옳게 PASS 다.
+    const ga = '<div class="nf-gentol">재질</div><p>137 91 13</p>';
+    const r = checkExecutionReadiness(asm, { gaHtml: ga, sheetsHtml: '', sheetsFailed: true });
+    expect(r.items.find((i) => i.id === 'M1')!.pass).toBe(true);
+  });
+
+  it('★생성 실패가 아니라 애초에 안 만든 것이면 종전대로 FAIL — 도면에 정말 없다', () => {
+    // 이 구별을 뭉갰다가 기존 회귀("부품도 없는 은닉 치수 = M1 정직 거부")에 정확히 잡혔다.
+    const r = checkExecutionReadiness(asm, { gaHtml: '<div class="nf-gentol">재질</div>', sheetsHtml: '' });
+    expect(r.items.find((i) => i.id === 'M1')!.pass).toBe(false);
+    expect((r as { sheetsMissing?: boolean }).sheetsMissing).toBeUndefined();
+  });
+
+  it('두 소스가 다 있으면 종전과 동일 (하위호환)', () => {
+    const r = checkExecutionReadiness(asm, { gaHtml: '<div class="nf-gentol">재질</div>', sheetsHtml: '<p>일부</p>' });
+    expect((r as { sheetsMissing?: boolean }).sheetsMissing).toBeUndefined();
+    expect(r.items.find((i) => i.id === 'M1')!.pass).toBe(false); // 진짜 미충족은 그대로 FAIL
   });
 });

@@ -15,15 +15,18 @@ import { PARAMS, holeFeature } from './reconstruct.mjs';
 
 /**
  * @param {object} assembly
- * @param {{ gaHtml?: string, sheetsHtml?: string, welds?: unknown[] }} [sources]
- *   gaHtml 이 비어 있으면 GA 미생성으로 보고 GA 의존 항목을 N/A 로 돌린다(아래 참조).
+ * @param {{ gaHtml?: string, sheetsHtml?: string, welds?: unknown[],
+ *           gaFailed?: boolean, sheetsFailed?: boolean }} [sources]
+ *   gaFailed/sheetsFailed = 그 소스의 **생성이 실패**했나(호출자의 catch 가 알려준다).
+ *   ⚠ "비어 있음"과 다르다 — 애초에 만들지 않은 것은 도면에 정말 없는 것이므로 FAIL 이 맞다.
  */
 export function checkExecutionReadiness(assembly, sources = {}) {
-  const { gaHtml = '', sheetsHtml = '', welds = [] } = sources;
+  const { gaHtml = '', sheetsHtml = '', welds = [], gaFailed = false, sheetsFailed = false } = sources;
   const combined = gaHtml + '\n' + sheetsHtml;
   /**
    * GA 도면이 아예 생성되지 않았나 (260728 §7-5).
    *
+   * (호출자가 `gaFailed: true` 로 알려줄 때만 적용된다 — 아래 주석 참조.)
    * 종전엔 호출자들이 `ga2dDrawing` 실패를 조용히 삼키고 `gaHtml=''` 로 이 함수를 계속
    * 불렀다. 그러면 GA 를 읽는 항목(M3 용접기호·M5 재질열+일반공차·M6 실윤곽)이 전부
    * **"미충족"으로 보고**된다 — 도면이 부실한 게 아니라 **도면이 없는 것**인데, 소비자는
@@ -33,8 +36,28 @@ export function checkExecutionReadiness(assembly, sources = {}) {
    * 그래서 GA 가 없으면 GA 의존 항목을 FAIL 이 아니라 **N/A(판정 불가)** 로 돌린다.
    * 부품도만으로 판정 가능한 M1·M2·M4 는 그대로 판정한다.
    */
-  const gaMissing = gaHtml.trim().length === 0;
+  // ⚠ **생성 실패**만 본다. 호출자가 애초에 GA/부품도를 만들지 않은 경우(빈 문자열)는
+  // 그 도면이 정말 없는 것이므로 종전대로 FAIL 이 맞다 — 기존 회귀("부품도 없는 은닉 치수
+  // = M1 정직 거부")가 지키는 계약이고, 그것을 깨지 않는다. 260728 에 이 둘을 한 번 뭉쳤다가
+  // 그 테스트에 정확히 잡혔다.
+  const gaMissing = gaFailed && gaHtml.trim().length === 0;
+  const sheetsMissing = sheetsFailed && sheetsHtml.trim().length === 0;
   const naGa = (id, name) => ({ id, name, pass: null, detail: ['GA 도면이 생성되지 않아 판정 불가(도면 부실이 아님)'] });
+  /**
+   * 소스가 빠졌을 때의 **정확한** 규칙 (260728) — GA 경우보다 한 단계 섬세하다.
+   *
+   * M1·M2·M4 는 GA+부품도의 **합집합**(`combined`)에서 숫자·문자열을 찾는다. 그래서:
+   *  · 찾았으면(PASS) 소스가 하나 빠져 있어도 **그 판정은 옳다** — 실제로 기입돼 있었다는 뜻.
+   *  · 못 찾았으면(FAIL) "도면에 없다"와 "그 도면이 생성되지 않았다"를 **구별할 수 없다.**
+   * 따라서 소스 결손 시 **FAIL 만 N/A 로 낮추고 PASS 는 그대로 둔다.** 통째로 N/A 로 만들면
+   * 멀쩡히 확인된 것까지 미판정으로 버려 과소 보고가 된다.
+   */
+  const anySourceMissing = gaMissing || sheetsMissing;
+  const naIfSourceMissing = (item) => {
+    if (!anySourceMissing || item.pass !== false) return item;
+    const which = [gaMissing ? 'GA 도면' : null, sheetsMissing ? '부품 제작도' : null].filter(Boolean).join('·');
+    return { ...item, pass: null, detail: [`${which}가 생성되지 않아 "도면에 없음"과 구별 불가 — 판정 불가`, ...item.detail] };
+  };
   // 도면 기입 숫자 집합(태그 제거 후) — fmtLen 'm' 단위 환산 포함
   const nums = new Set();
   for (const m of combined.replace(/<[^>]+>/g, ' ').matchAll(/(\d+(?:\.\d+)?)(m\b)?/g)) {
@@ -59,7 +82,7 @@ export function checkExecutionReadiness(assembly, sources = {}) {
     const miss = req.filter((k) => typeof p.params?.[k] === 'number' && !hasNum(p.params[k]));
     if (miss.length) missing.push(`${p.id ?? p.type}: ${miss.join('·')} 치수 누락`);
   }
-  const M1 = { id: 'M1', name: '치수 충분성(파라미터↔기입 치수)', pass: missing.length === 0, detail: missing.slice(0, 12) };
+  const M1 = naIfSourceMissing({ id: 'M1', name: '치수 충분성(파라미터↔기입 치수)', pass: missing.length === 0, detail: missing.slice(0, 12) });
 
   // M2 — 구멍표
   const holed = (assembly.parts ?? []).filter((p) => p.type === 'plate_with_holes' && (p.params?.holes ?? []).length);
@@ -76,7 +99,7 @@ export function checkExecutionReadiness(assembly, sources = {}) {
       }
     }
   }
-  const M2 = { id: 'M2', name: '구멍표(N×⌀d·⌴⌵·나사)', pass: holed.length ? m2pass : null, detail: m2detail.slice(0, 12) };
+  const M2 = naIfSourceMissing({ id: 'M2', name: '구멍표(N×⌀d·⌴⌵·나사)', pass: holed.length ? m2pass : null, detail: m2detail.slice(0, 12) });
 
   // M3 — 용접기호 실배치
   const M3 = gaMissing
@@ -85,7 +108,7 @@ export function checkExecutionReadiness(assembly, sources = {}) {
 
   // M4 — 나사 표기
   const taps = holed.flatMap((p) => (p.params.holes ?? []).filter((h) => h.kind === 'tap'));
-  const M4 = { id: 'M4', name: '나사 표기(M호칭×깊이)', pass: taps.length ? /M\d+(?:×\d+)?/.test(combined) : null, detail: [] };
+  const M4 = naIfSourceMissing({ id: 'M4', name: '나사 표기(M호칭×깊이)', pass: taps.length ? /M\d+(?:×\d+)?/.test(combined) : null, detail: [] });
 
   // M5 — 재질열 + 일반공차 주기
   const M5 = gaMissing
@@ -110,8 +133,10 @@ export function checkExecutionReadiness(assembly, sources = {}) {
     failed: applicable.filter((i) => !i.pass).map((i) => `${i.id} ${i.name}${i.detail.length ? ' — ' + i.detail.join('; ') : ''}`),
     na: items.filter((i) => i.pass === null).map((i) => i.id),
     note: '실시 검도 M1~M6 — 미충족=보완 대상(면책 아님) · 배열 특례 어휘=부품도+STEP 참조 기준(명시)'
-      + (gaMissing ? ' · ⚠ GA 도면 미생성 — M3/M5/M6 은 판정하지 못했다(미충족이 아님)' : ''),
+      + (gaMissing ? ' · ⚠ GA 도면 미생성 — M3/M5/M6 은 판정하지 못했다(미충족이 아님)' : '')
+      + (sheetsMissing ? ' · ⚠ 부품 제작도 미생성 — 합집합 소스가 빠져 미충족 판정은 판정 불가로 낮췄다' : ''),
     ...(gaMissing ? { gaMissing: true } : {}),
+    ...(sheetsMissing ? { sheetsMissing: true } : {}),
   };
 }
 

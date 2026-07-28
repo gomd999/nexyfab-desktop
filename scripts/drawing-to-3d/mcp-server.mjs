@@ -809,10 +809,11 @@ export async function callTool(name, args = {}) {
     const pkg = await import('./package.mjs');
     const ps = await import('./part-sheets.mjs');
     const eg = await import('./execution-gate.mjs');
-    let gaHtml = '', sheetsHtml = '';
-    try { gaHtml = pkg.ga2dDrawing(args.assembly, { title: args.assembly.name ?? 'gate', domain: args.assembly.domain ?? 'mech', welds: built.welds }); } catch { /* GA 실패=치수 소스 부품도만 */ }
-    try { sheetsHtml = ps.partSheets(args.assembly, { title: 'gate' }); } catch { /* skip */ }
-    return eg.checkExecutionReadiness(args.assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [] });
+    let gaHtml = '', sheetsHtml = '', gaFailed = false, sheetsFailed = false;
+    // 실패를 삼키지 않고 게이트에 알린다 — 그래야 "도면에 없음"과 "도면이 없음"을 가른다(260728).
+    try { gaHtml = pkg.ga2dDrawing(args.assembly, { title: args.assembly.name ?? 'gate', domain: args.assembly.domain ?? 'mech', welds: built.welds }); } catch { gaFailed = true; }
+    try { sheetsHtml = ps.partSheets(args.assembly, { title: 'gate' }); } catch { sheetsFailed = true; }
+    return eg.checkExecutionReadiness(args.assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [], gaFailed, sheetsFailed });
   }
   if (name === 'std_audit') {
     const std = await import('./std-snap.mjs');
@@ -974,7 +975,8 @@ export async function callTool(name, args = {}) {
     } catch (e) { verificationUnavailable.push(`도메인 안전검토(피난·목재·활하중·하중경로): ${String(e?.message ?? e).slice(0, 120)}`); }
     trySave('BOQ.html', () => boqm.boqReport(args.assembly, { title, domain: args.assembly.domain ?? 'mech' }));
     trySave('Dossier.html', () => pd.dossierReport(args.assembly, { title }));
-    try { sheetsHtml = ps.partSheets(args.assembly, { title: title + ' — 부품 제작도' }); save('부품제작도.html', sheetsHtml); } catch { /* skip */ }
+    let sheetsFailed = false;
+    try { sheetsHtml = ps.partSheets(args.assembly, { title: title + ' — 부품 제작도' }); save('부품제작도.html', sheetsHtml); } catch { sheetsFailed = true; outputsFailed.push('부품제작도.html'); }
     try { save('제작사양서.html', await fsp.fabricationSpec(args.assembly, { title: title + ' — 제작 사양서' })); } catch { /* skip */ }
     try { const d = dxfm.dxfPlan(args.assembly, args.assembly.domain ?? 'mech', undefined, { title, dwgNo: 'NX-GA-001' }); if (d) { save('GA_plan.dxf', d); c9 = dc.checkDxfLayers(d); } } catch { /* skip */ }
     try { save('GA_3D.html', await rnd.renderColoredHtml({ assembly: args.assembly }, { title, subtitle: 'nexyfab 자동생성 GA(비법정)' })); } catch (e) { files.push({ name: 'GA_3D.html', error: String(e).slice(0, 120) }); }
@@ -994,7 +996,7 @@ export async function callTool(name, args = {}) {
     let executionGate = null;
     try {
       const eg = await import('./execution-gate.mjs');
-      executionGate = eg.checkExecutionReadiness(args.assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [] });
+      executionGate = eg.checkExecutionReadiness(args.assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [], gaFailed: gaHtml.length === 0, sheetsFailed });
       // 260728: 종전엔 게이트를 계산만 하고 리포트 파일을 쓰지 않았다 — 웹은 실시검도리포트.html
       // 을 동봉하는데 MCP 산출물에는 M1~M6 항목별 판정이 어디에도 없었다(쉬운요약의 한 줄뿐).
       // 렌더러는 execution-gate.mjs 의 것을 그대로 쓴다(복제 금지 — 두 발생지 동일 소스).
