@@ -160,18 +160,45 @@ export function interiorCheck(assembly, params = {}) {
   const doorWidthSum = exits.reduce((s, e) => s + (e.widthMm ?? 0), 0);
   // 좌석 수 = 각 가구 행의 좌석수 × 유닛 수(seats 필드=유닛 1개당 좌석수). seats 미기재 행은 좌석 아님(0).
   const seatCount = Array.isArray(assembly.furniture) ? assembly.furniture.reduce((s, f) => s + (f.seats > 0 ? f.seats * (Number(f.count) || 0) : 0), 0) : 0;
+  const floorAreaM2 = assembly.floorAreaM2 ?? round((rb.W * rb.D) / 1e6);
+  // ⚠ 260729: 종전엔 밀도 미지정 시 **1.4 ㎡/인 을 조용히 썼다.** 그건 중립값이 아니라
+  // **집회좌석 밀도**다. 그 결과 72㎡ 주거 2실이 재실자 52명으로 계산돼 "출구 2개소 필요"
+  // FAIL 이 났고(실제 주거 밀도면 4명 남짓), 반대로 통과한 것들도 근거 없는 통과였다.
+  // 용도는 어느 인테리어 템플릿에도 선언돼 있지 않다(kind:'assembly' 는 어셈블리 종류
+  // 표시일 뿐 용도가 아니다 — 붙박이장·천장그리드에도 붙어 있다).
+  //
+  // 재실밀도는 **용도가 정하는 값**이라 형상에서 알 수 없다. 지어내지 않는다.
+  //  · 밀도가 선언되면 종전대로 재실자 기반 판정(피난폭·출구 수)을 한다.
+  //  · 선언이 없으면 그 판정을 **하지 않고** 무엇이 필요한지 지목한다. 형상에서 나오는
+  //    사실(면적·좌석·문 폭 합·출구 수)은 그대로 보고한다 — 좌석 수는 재실자의
+  //    **하한**이지 재실자 수가 아니다.
+  const density = Number(params.occupantDensityM2);
   let egress = null;
-  try {
-    egress = runCalculator('occupancy_egress', {
-      floorAreaM2: assembly.floorAreaM2 ?? round((rb.W * rb.D) / 1e6),
-      seatCount,
-      occupantDensityM2: Number(params.occupantDensityM2) || 1.4,
-      egressWidthProvidedMm: doorWidthSum,
-      exitCount: exits.length,
-      doorClearWidthMm: Math.min(...exits.map((e) => e.widthMm ?? 900)),
-    }, 'KDS');
-  } catch (e) {
-    egress = { verdict: e.code === 'INPUT_GATE' ? 'INPUT' : 'ERROR', error: e.message };
+  let egressUnavailable = null;
+  if (density > 0) {
+    try {
+      egress = runCalculator('occupancy_egress', {
+        floorAreaM2, seatCount, occupantDensityM2: density,
+        egressWidthProvidedMm: doorWidthSum,
+        exitCount: exits.length,
+        doorClearWidthMm: Math.min(...exits.map((e) => e.widthMm ?? 900)),
+      }, 'KDS');
+    } catch (e) {
+      egress = { verdict: e.code === 'INPUT_GATE' ? 'INPUT' : 'ERROR', error: e.message };
+    }
+  } else {
+    egressUnavailable = {
+      ran: false,
+      needInputs: [
+        { name: 'occupantDensityM2', labelKo: '인당 점유면적 ㎡/인 — 용도가 정한다(집회밀집 0.5·집회좌석 1.4·판매 3.0·업무 10·주거는 훨씬 큼)' },
+      ],
+      derived: { floorAreaM2, seatCountLowerBound: seatCount, doorWidthSumMm: doorWidthSum, exitCount: exits.length },
+      messageKo: `수용인원·피난폭 미검토 — 바닥면적 ${floorAreaM2}㎡·좌석 ${seatCount}석(재실자 하한)·`
+        + `출구 ${exits.length}개소·문 폭 합 ${doorWidthSum}mm 는 형상에서 산출했습니다. `
+        + '재실밀도는 **용도가 정하는 값**이라 형상에서 알 수 없어 산정하지 않았습니다 — '
+        + 'occupantDensityM2 를 주면 재실자·요구 피난폭·출구 수를 검토합니다. '
+        + '**"피난이 충분하다"는 뜻이 아닙니다.**',
+    };
   }
 
   // ── 마감 물량 (결정론 — 개구 공제) ─────────────────────────────────────────
@@ -317,6 +344,7 @@ export function interiorCheck(assembly, params = {}) {
     ok: true,
     travel,
     egress: egress ? { verdict: egress.verdict, checks: egress.checks ?? null, derived: { doorWidthSumMm: doorWidthSum, seatCount }, refs: egress.refs ?? null, error: egress.error ?? null } : null,
+    ...(egressUnavailable ? { egressUnavailable } : {}),
     finishes,
     lighting, ventilation, electrical, water, fire,
     mep: mepDrainageCheck(assembly),

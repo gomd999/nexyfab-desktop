@@ -66,7 +66,7 @@ describe('판정하지 않는 것은 판정하지 않는다', () => {
 
 describe('디스패치 — 부분요소가 더 이상 "메타 필요"로 거부되지 않는다', () => {
   const verdict = (id: string) =>
-    (domainSafetyVerdict as unknown as (a: unknown, p: unknown) => { label: string; ok: boolean; unavailable?: string[] } | null)(tpl(id), {});
+    (domainSafetyVerdict as unknown as (a: unknown, p: unknown) => { label: string; ok: boolean; failed?: string[]; unavailable?: string[] } | null)(tpl(id), {});
 
   it.each(['built_in_closet', 'counter_bar', 'partition_wall', 'ceiling_grid'])(
     '%s 는 자기 검토를 받는다', (id) => {
@@ -76,12 +76,20 @@ describe('디스패치 — 부분요소가 더 이상 "메타 필요"로 거부�
       expect(v?.ok).toBe(true);
     });
 
-  it('방 어셈블리는 종전대로 피난 검토 — 회귀 없음', () => {
+  it('방 어셈블리는 종전대로 피난 검토 경로로 간다 — 회귀 없음', () => {
     expect(verdict('cafe_room')?.label).toContain('피난');
-    // 진짜 피난 실패는 그대로 잡힌다(출구 수 미달).
+    expect(verdict('two_room')?.label).toContain('피난');
+  });
+
+  it('두 방의 exit_count FAIL 은 사라졌다 — 그건 지어낸 밀도의 인공물이었다', () => {
+    // ⚠ 260729 정정: 이 테스트는 원래 two_room 의 FAIL 을 "진짜 피난 실패"로 고정했다.
+    // 파고드니 `재실자 = 면적 ÷ 밀도` 이고 밀도 기본값이 **1.4㎡/인(집회좌석)** 이라
+    // 72㎡ 주거가 재실자 52명으로 계산돼 "출구 2개소 필요"가 됐던 것이다. 용도는
+    // 어디에도 선언돼 있지 않다. 이제 밀도 미선언이면 재실자 기반 판정을 하지 않는다.
     const v = verdict('two_room');
-    expect(v?.label).toContain('피난');
-    expect(v?.ok).toBe(false);
+    expect(v?.ok).toBe(true);
+    expect(v?.failed ?? []).toHaveLength(0);
+    expect(v?.unavailable?.join(' ')).toContain('수용인원·피난폭');
   });
 
   it('interior 9종 전부 판정 경로에 있다 — 미적용 0', () => {

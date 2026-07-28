@@ -326,6 +326,7 @@ export function domainSafetyVerdict(assembly, params = {}) {
   if (space) lateral.push(space);
   // 덕트 사이징처럼 **검토 안의 미실시 항목**도 같은 자리로 올린다(260729).
   if (r?.sizingUnavailable?.messageKo) lateral.push({ labelKo: '덕트 사이징', messageKo: r.sizingUnavailable.messageKo });
+  if (r?.egressUnavailable?.messageKo) lateral.push({ labelKo: '수용인원·피난폭', messageKo: r.egressUnavailable.messageKo });
   return {
     label: run.label, ok: failed.length === 0, failed,
     ...(lateral.length ? { unavailable: lateral.map((u) => `${u.labelKo}: ${u.messageKo}`) } : {}),
