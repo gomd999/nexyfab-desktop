@@ -427,8 +427,13 @@ ${stdWarn}</section>`;
   const feaVerdictText = opts.fea && Number.isFinite(opts.fea.safetyFactor)
     ? ` · 응력 해석(개산) <b>${feaFailed ? '보완 필요' : '이상 없음'}</b>`
     : '';
+  // 260729: 검토가 통과했어도 그 안에서 **안 돌린 항목**이 있으면 판정문에 붙인다.
+  // 하중경로가 "이상 없음"인데 지진·풍을 한 번도 안 본 채 나가면 구조 검증으로 읽힌다.
+  const dsUnavailable = Array.isArray(opts.domainSafety?.unavailable) ? opts.domainSafety.unavailable : [];
   const domainSafetyVerdictText = opts.domainSafety
     ? ` · ${esc(opts.domainSafety.label)} <b>${domainSafetyFailed ? '보완 필요' : '이상 없음'}</b>`
+      + (!domainSafetyFailed && dsUnavailable.length
+        ? ` <span class="sub">(단, ${dsUnavailable.length}개 항목 미실시 — 아래 판정 불가 참조)</span>` : '')
     : '';
   // decisive=false(박스 암거 단면력 등 INFO 산출)는 "이상 없음"으로 읽히면 안 된다 —
   // 합·불 판정을 한 적이 없기 때문. 판정하지 않았다는 사실을 그대로 적는다.

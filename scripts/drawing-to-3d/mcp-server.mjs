@@ -422,6 +422,7 @@ export const tools = [
       properties: {
         assembly: { type: 'object' }, outDir: { type: 'string', description: '저장 디렉터리(절대경로)' },
         title: { type: 'string' }, withStep: { type: 'boolean', description: 'STEP 포함(수십 초 소요 가능)' },
+        verifyParams: { type: 'object', description: '검토 파라미터 — 없으면 해당 검토를 실행하지 않고 미실시로 고지한다. seismic:{R(1~8, 필수·구조시스템이 정함), zone, siteClass, importance} · wind:{V0(m/s, 필수·대지 위치), exposure} · usage(활하중 용도) · footing 등. 층높이·층중량·건물외곽은 형상에서 자동 파생된다.' },
       },
     },
   },
@@ -449,6 +450,7 @@ export const tools = [
         params: { type: 'object', description: '템플릿 파라미터(치수 등) — 생략 시 기본값' },
         outDir: { type: 'string', description: '저장 디렉터리(절대경로)' },
         title: { type: 'string' }, withStep: { type: 'boolean' },
+        verifyParams: { type: 'object', description: '검토 파라미터 — 없으면 해당 검토를 실행하지 않고 미실시로 고지한다. seismic:{R(1~8, 필수·구조시스템이 정함), zone, siteClass, importance} · wind:{V0(m/s, 필수·대지 위치), exposure} · usage(활하중 용도) · footing 등. 층높이·층중량·건물외곽은 형상에서 자동 파생된다.' },
       },
     },
   },
@@ -1005,7 +1007,13 @@ async function callToolInner(name, args = {}) {
       // 정직 거부: 입력값 불가를 기본값으로 덮지 않는다.
       return { ok: false, error: asm.error ?? 'invalid_params', paramErrors: asm.paramErrors ?? asm.alignmentErrors ?? [], message: asm.message };
     }
-    return callTool('generate_package', { assembly: asm, outDir: args.outDir, title: args.title ?? asm.name, withStep: args.withStep });
+    // 260729: verifyParams 를 **전달하지 않아** 분야 템플릿 경로에서는 지진(R)·풍(V0)·
+    // 옹벽 검토 파라미터를 아무리 넣어도 반영되지 않았다 — 검토가 구현돼 있는데 앞문에서
+    // 인자가 끊겨 영영 실행되지 않는 구조였다.
+    return callTool('generate_package', {
+      assembly: asm, outDir: args.outDir, title: args.title ?? asm.name, withStep: args.withStep,
+      ...(args.verifyParams ? { verifyParams: args.verifyParams } : {}),
+    });
   }
 
   if (name === 'generate_package') {

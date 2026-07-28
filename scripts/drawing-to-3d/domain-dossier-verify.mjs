@@ -252,7 +252,14 @@ export function domainSafetyVerdict(assembly, params = {}) {
     return { label: run.label, ok: true, failed: [], unavailable: [`${run.label}: ${need}`] };
   }
   const failed = collectFailingChecks(r);
-  return { label: run.label, ok: failed.length === 0, failed };
+  // 검토가 **성공했더라도** 그 안에서 안 돌린 항목이 있으면 함께 올린다(260729).
+  // 하중경로가 ok=true 인데 지진·풍을 한 번도 안 본 채로 나가면, 소비자는 그것을
+  // 구조 검증으로 읽는다 — 통과와 미실시는 같은 자리에 놓일 수 없다.
+  const lateral = Array.isArray(r?.lateralUnavailable) ? r.lateralUnavailable : [];
+  return {
+    label: run.label, ok: failed.length === 0, failed,
+    ...(lateral.length ? { unavailable: lateral.map((u) => `${u.labelKo}: ${u.messageKo}`) } : {}),
+  };
 }
 
 // 옹벽·암거 계산기의 check 키 → 일반인 표기. 미등록 키는 원문 그대로(정직 — 지어내지 않음).

@@ -635,12 +635,50 @@ export function loadPathCheck(assembly, params = {}) {
     }
   }
 
+  // ── 안 돌린 검토를 침묵으로 두지 않는다 (260729) ─────────────────────────────
+  // 지진(KDS 41 17 00 등가정적)과 풍(KDS 41 12 00)은 **이미 구현돼 있으나** 각각
+  // params.seismic.R · params.wind.V0 가 있을 때만 돈다. 그런데 패키지 경로는
+  // verifyParams 를 비운 채 호출하므로 **생성되는 모든 건물 도면집에서 한 번도 돌지
+  // 않았고**, 결과는 `seismic:null · wind:null · ok:true` 였다 — 소비자는 "하중경로
+  // 검토 이상 없음"을 구조 검증으로 읽는다. 부재 휨/처짐 미검토와 같은 자리다.
+  //
+  // 층높이·층중량은 형상에서 이미 파생된다. 사용자가 줘야 하는 것은 **형상에서 추론
+  // 불가능한 값** 뿐이고, 그것을 이름으로 지목한다(추측해 넣으면 그게 날조다).
+  const unavailable = [];
+  if (!seismicRes) {
+    unavailable.push({
+      what: 'seismic', labelKo: '지진 검토(KDS 41 17 00 등가정적)',
+      needInputs: [
+        { name: 'seismic.R', labelKo: '반응수정계수 R (1~8) — 구조시스템이 정하는 값이라 형상에서 알 수 없다' },
+        { name: 'seismic.zone', labelKo: '지진구역 I/II (선택 — 기본 I)' },
+        { name: 'seismic.siteClass', labelKo: '지반종류 S1~S5 (선택 — 기본 S4)' },
+        { name: 'seismic.importance', labelKo: '내진등급 special/grade1/grade2 (선택 — 기본 grade2)' },
+      ],
+      messageKo: '지진 검토 미실시 — 층높이·층중량은 형상에서 이미 산출됐고 반응수정계수 R 만 주면 등가정적 해석이 돕니다. '
+        + '**"지진에 안전하다"는 뜻이 아닙니다.**',
+    });
+  }
+  if (!windRes) {
+    unavailable.push({
+      what: 'wind', labelKo: '풍하중 검토(KDS 41 12 00)',
+      needInputs: [
+        { name: 'wind.V0', labelKo: '기본풍속 V0 (m/s) — 대지 위치가 정하는 값이라 형상에서 알 수 없다' },
+        { name: 'wind.exposure', labelKo: '노출계수 A~D (선택 — 기본 C)' },
+      ],
+      messageKo: '풍하중 검토 미실시 — 건물 높이·평면 외곽은 형상에서 이미 산출됐고 기본풍속 V0 만 주면 검토가 돕니다. '
+        + '**"풍하중에 안전하다"는 뜻이 아닙니다.**',
+    });
+  }
+
   return {
     ok: true,
-    scope: `직교 격자 라멘 ${xs.length - 1}×${ys.length - 1}베이 ${nf}층 · 중력${seismicRes && !seismicRes.error ? '+등가정적 지진' : '하중만'} (B3)`,
+    scope: `직교 격자 라멘 ${xs.length - 1}×${ys.length - 1}베이 ${nf}층 · 중력${seismicRes && !seismicRes.error ? '+등가정적 지진' : '하중만'}`
+      + `${windRes && !windRes.error ? '+풍' : ''} (B3)`
+      + (unavailable.length ? ` · ⚠ 미실시: ${unavailable.map((u) => u.labelKo.split('(')[0].trim()).join('·')}` : ''),
     rebar,
     seismic: seismicRes,
     wind: windRes,
+    ...(unavailable.length ? { lateralUnavailable: unavailable } : {}),
     loads: {
       usage: { key: usage, label: live.label, live_kNm2: live.v, ref: kds.loads.liveLoad_kNm2._ref },
       slab: { areaM2: round(slabAreaM2), D_kN: round(slabD_kN), L_kN: round(slabL_kN), finish_kNm2: finish, finishNote: finish > 0 ? '입력값' : '마감하중 미포함(미입력)', perFloor: true, floors: nf },
