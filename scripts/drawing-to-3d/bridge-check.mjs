@@ -192,7 +192,17 @@ export function archBridgeCheck(assembly, params = {}) {
   const sigA = 0.6 * Fy;
   const A_tie = Number(params.A_tie_mm2) > 0 ? Number(params.A_tie_mm2) : am.tieW * am.tieH;
   const A_rib = Number(params.A_rib_mm2) > 0 ? Number(params.A_rib_mm2) : am.ribW * am.ribH;
+  // ⚠ 260729: `hangerDia` 는 **이름이 지름인데 형상은 각봉**이다(실측: hanger 부품이
+  // type:'box' width=depth=90). 그래서 면적은 d² 가 맞고 계산은 형상과 일치한다.
+  // 그러나 이름만 보고 Ø90 원형봉으로 읽으면 면적이 πd²/4 = 6,362mm² 로 **27% 작아**
+  // 발주가 어긋난다. 어느 쪽을 썼는지 검사 결과에 명시한다(감추면 오독이 남는다).
+  const hangerSquare = !(Number(params.A_hanger_mm2) > 0);
   const A_h = Number(params.A_hanger_mm2) > 0 ? Number(params.A_hanger_mm2) : am.hangerDia * am.hangerDia;
+  const sectionNote = hangerSquare
+    ? `단면 근거: 각봉 ${am.hangerDia}×${am.hangerDia} = ${am.hangerDia * am.hangerDia}mm²(모델 형상 기준). `
+      + `⚠ 메타명은 hangerDia 지만 형상은 각봉이다 — Ø${am.hangerDia} 원형봉이면 `
+      + `${Math.round((Math.PI * am.hangerDia * am.hangerDia) / 4)}mm²(27% 작음)이니 발주 전 확인.`
+    : `단면 근거: A_hanger_mm2 입력값 ${Number(params.A_hanger_mm2)}mm².`;
   const mk = (name, force_kN, A_mm2, kind) => {
     const sig = (force_kN * 1000) / A_mm2;
     return { name, kind, force_kN: round(force_kN, 1), A_mm2: Math.round(A_mm2), sigma_MPa: round(sig, 1), allow_MPa: round(sigA, 1), ratio: round(sig / sigA, 3), ok: sig <= sigA };
@@ -200,7 +210,7 @@ export function archBridgeCheck(assembly, params = {}) {
   const checks = [
     mk('타이 인장(본당)', T_tie, A_tie, 'tension'),
     mk('아치 리브 축압축(스프링잉·본당)', N_rib, A_rib, 'compression(좌굴 미검토 명시)'),
-    mk(nielsen ? `닐센 행어 장력(φ̄=${round((phiBar * 180) / Math.PI, 1)}°)` : '행어 장력(본당)', T_h, A_h, 'tension'),
+    { ...mk(nielsen ? `닐센 행어 장력(φ̄=${round((phiBar * 180) / Math.PI, 1)}°)` : '행어 장력(본당)', T_h, A_h, 'tension'), note: sectionNote },
   ];
   return {
     ok: true,
