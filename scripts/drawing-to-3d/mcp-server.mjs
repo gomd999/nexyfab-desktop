@@ -977,8 +977,8 @@ export async function callTool(name, args = {}) {
     trySave('Dossier.html', () => pd.dossierReport(args.assembly, { title }));
     let sheetsFailed = false;
     try { sheetsHtml = ps.partSheets(args.assembly, { title: title + ' — 부품 제작도' }); save('부품제작도.html', sheetsHtml); } catch { sheetsFailed = true; outputsFailed.push('부품제작도.html'); }
-    try { save('제작사양서.html', await fsp.fabricationSpec(args.assembly, { title: title + ' — 제작 사양서' })); } catch { /* skip */ }
-    try { const d = dxfm.dxfPlan(args.assembly, args.assembly.domain ?? 'mech', undefined, { title, dwgNo: 'NX-GA-001' }); if (d) { save('GA_plan.dxf', d); c9 = dc.checkDxfLayers(d); } } catch { /* skip */ }
+    try { save('제작사양서.html', await fsp.fabricationSpec(args.assembly, { title: title + ' — 제작 사양서' })); } catch { outputsFailed.push('제작사양서.html'); }
+    try { const d = dxfm.dxfPlan(args.assembly, args.assembly.domain ?? 'mech', undefined, { title, dwgNo: 'NX-GA-001' }); if (d) { save('GA_plan.dxf', d); c9 = dc.checkDxfLayers(d); } } catch { outputsFailed.push('GA_plan.dxf'); }
     try { save('GA_3D.html', await rnd.renderColoredHtml({ assembly: args.assembly }, { title, subtitle: 'nexyfab 자동생성 GA(비법정)' })); } catch (e) { files.push({ name: 'GA_3D.html', error: String(e).slice(0, 120) }); }
     let step = null;
     let roundtrip = null;
@@ -1044,7 +1044,12 @@ export async function callTool(name, args = {}) {
         ...(outputsFailed.length ? { outputsFailed } : {}),
       });
       save('쉬운요약.html', pkg.packageStamp(html, basis)); // 늦게 만든 만큼 개별 스탬프
-    } catch { /* skip */ }
+    } catch {
+      // ⚠ 이 문서가 **모든 안전 판정을 소비자에게 나르는** 유일한 표면이다. 실패하면
+      // 옹벽 KDS·도메인 안전검토·정합·구비요건이 통째로 소비자에게 도달하지 못한다.
+      // 그런데 실패 사실을 적을 자리가 바로 그 문서 안이므로, 응답 JSON 이 유일한 통로다.
+      outputsFailed.push('쉬운요약.html (안전 판정 전달 문서 — 이 실패는 판정이 소비자에게 도달하지 못했다는 뜻)');
+    }
     // 설계 타당성 판정은 buildAssembly 가 이미 산출해 두고 있다 — 종전엔 응답에 싣지 않아
     // 호출자(대개 AI 에이전트)는 부유 부품·간섭·배관 실패가 있어도 `ok:true` 만 받았다.
     // 사람은 쉬운요약.html 에서 볼 수 있지만 에이전트가 읽는 건 이 JSON 이다(웹은 반환함).

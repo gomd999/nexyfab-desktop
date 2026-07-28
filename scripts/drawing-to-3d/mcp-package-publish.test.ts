@@ -146,3 +146,32 @@ describe('MCP generate_package — 발행 규약(REV·정합)이 웹 라우트�
     fs.rmSync(ok, { recursive: true, force: true });
   }, 240_000);
 });
+
+/**
+ * §7-5 마무리 — 산출물 생성 실패가 응답에 남는가 (260728).
+ * 특히 `쉬운요약.html` 은 **모든 안전 판정을 소비자에게 나르는 유일한 표면**이라,
+ * 그 실패가 조용하면 판정 전체가 사라진다. 실패를 적을 자리가 그 문서 안이므로
+ * 응답 JSON 이 유일한 통로다.
+ */
+describe('MCP generate_package — 산출물 실패는 응답에 남는다', () => {
+  it('정상 경로에서는 outputsFailed 가 비어 있다 (과탐 0)', async () => {
+    const outDir = mkOut('nofail');
+    const res = (await callTool('generate_domain_package', {
+      domain: 'civil', templateId: 'retaining_wall_run', params: OK_PARAMS, outDir,
+    })) as PkgResult & { outputsFailed?: string[] };
+    expect(res.ok).toBe(true);
+    expect(res.outputsFailed).toEqual([]);
+    // 안전 판정 전달 문서가 실제로 나왔다는 것과 같은 말이다
+    expect(fs.readdirSync(outDir)).toContain('쉬운요약.html');
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }, 180_000);
+
+  it('응답에 outputsFailed 필드가 항상 존재한다 — "검사 안 함"과 구별되게', async () => {
+    const outDir = mkOut('field');
+    const res = (await callTool('generate_domain_package', {
+      domain: 'civil', templateId: 'retaining_wall_run', params: OK_PARAMS, outDir,
+    })) as PkgResult & { outputsFailed?: string[] };
+    expect(Array.isArray(res.outputsFailed)).toBe(true);
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }, 180_000);
+});
