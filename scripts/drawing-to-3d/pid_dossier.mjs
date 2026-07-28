@@ -38,10 +38,20 @@ ${P.errors.length ? `<div class="risk">⚠ 라우팅 실패 ${P.errors.length}�
 }
 
 /** 설계 설명서(Dossier) — 사실 자동요약 + 계통 서술. */
-export function dossierReport(assembly, { title = '설계' } = {}) {
+export function dossierReport(assembly, { title = '설계', member } = {}) {
   const parts = assembly.parts ?? [];
   const boq = computeBOQ(assembly);
-  const st = structuralCheck(assembly, { member: { section: 'SHS50x50x3', spanMm: 1000 } });
+  // ⚠ 260728: 종전에는 여기서 `{ member: { section:'SHS50x50x3', spanMm:1000 } }` 를
+  // **어떤 어셈블리에든 지어내 넘겼다.** 그 결과가 "부재 이용률"로 인쇄됐다.
+  //
+  // 실측(301부재 아치 — 실제 부재는 120×120 각재, 간격 400mm): 지어낸 50×50×3 각관이
+  // 지간 1000mm 로 188,714kg 를 받는 것으로 계산돼 **이용률 452** 가 문서에 찍혔고,
+  // "부재 SHS50x50x3 초과 — 단면 상향 필요" 경고까지 떴다 — **설계에 존재하지 않는
+  // 부재를 키우라는 지시**다. 이 레포의 제1원칙("입력을 지어내지 않는다") 정면 위반.
+  //
+  // 이제 지어내지 않는다. 호출자가 선언하면 그것으로 검토하고, 아니면 검토하지 않고
+  // 미검토 사실을 적는다(structuralCheck.memberUnavailable).
+  const st = structuralCheck(assembly, member ? { member } : {});
   const g = groupBySvc(parts);
   const svcList = Object.keys(g).filter(s => s !== 'frame').map(s => SERVICE_KO[s] || s);
   const f = (n, d = 1) => Number(n).toFixed(d);
@@ -64,7 +74,7 @@ table{border-collapse:collapse;width:100%;font-size:12.5px;margin:8px 0}th,td{bo
 <div class="easy">이 설계는 <b>${parts.length}개 부품</b>(계통: ${svcList.length ? esc(svcList.join(' · ')) : '구조 중심'})으로 구성된 어셈블리입니다. 총 질량 <b>${f(boq.totalMassKg)} kg</b>, 무게중심 <b>${f(st.cgHeightM, 2)} m</b>. ${g.motor ? '구동부(펌프·모터)와 ' : ''}${g.feed || g.permeate ? '유체 계통을 포함한 프로세스 구성입니다.' : '구조·기구 중심 구성입니다.'}</div>
 <h2>2. 계통별 구성</h2><table><tr><th>계통</th><th>부품수</th><th>부품</th></tr>${compRows}</table>
 <h2>3. 구조 안전성</h2>
-<div class="risk"><b>${warn ? '⚠ 검토 필요' : '🟢 자동검토 기준 이내'}:</b> 무게중심 ${f(st.cgHeightM, 2)}m · ${st.tipover.seismicG}g 전도 FS <b>${f(st.tipover.seismicFS, 2)}</b>(기준 ≥1.5)${st.member ? ` · 부재 이용률 ${f(st.member.utilization, 2)}` : ''}. ${warn ? esc(st.warnings.join(' / ')) : '경고 없음.'}</div>
+<div class="risk"><b>${warn ? '⚠ 검토 필요' : '🟢 자동검토 기준 이내'}:</b> 무게중심 ${f(st.cgHeightM, 2)}m · ${st.tipover.seismicG}g 전도 FS <b>${f(st.tipover.seismicFS, 2)}</b>(기준 ≥1.5)${st.member ? ` · 부재 이용률 ${f(st.member.utilization, 2)}(${esc(st.member.section)} 지간 ${st.member.spanMm}mm — 선언값)` : ''}. ${warn ? esc(st.warnings.join(' / ')) : '경고 없음.'}${st.memberUnavailable ? `<div style="margin-top:6px;font-size:12px;color:#92400e">⚠ ${esc(st.memberUnavailable.messageKo.replace(/\*\*/g, ''))}</div>` : ''}</div>
 <h2>4. 물량 요약 (금액 제외)</h2><table><tr><th>총 질량</th><th>표면적</th><th>용접선</th><th>홀</th><th>공수(개산)</th></tr>
 <tr><td>${f(boq.totalMassKg)} kg</td><td>${boq.surfaceM2} ㎡</td><td>${boq.weld.totalM} m (${boq.weld.joints}조인트)</td><td>${boq.holes}</td><td>${boq.laborHr.합계} hr</td></tr></table>
 ${mepSection(assembly)}

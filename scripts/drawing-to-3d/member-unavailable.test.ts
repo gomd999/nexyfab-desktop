@@ -80,3 +80,34 @@ describe('부재 검토를 안 했으면 안 했다고 말한다', () => {
     expect(txt).toContain('구조 안전(개산) 이상 없음 (부재 강도 미검토');
   });
 });
+
+describe('Dossier 가 부재 단면·지간을 지어내지 않는다', () => {
+  // 종전: dossierReport 가 **어떤 어셈블리에든** {section:'SHS50x50x3', spanMm:1000} 을
+  // 지어내 넘겼다. 실측(301부재 아치, 실제 부재 120×120·간격 400mm): 지어낸 50×50×3 이
+  // 188,714kg 를 받는 것으로 계산돼 "부재 이용률 452" 가 문서에 찍히고
+  // "부재 SHS50x50x3 초과 — 단면 상향 필요" 경고까지 떴다 — 존재하지 않는 부재를
+  // 키우라는 지시다.
+  const dossier = async (a: unknown, o?: Record<string, unknown>) => {
+    const { dossierReport } = await import('./pid_dossier.mjs') as unknown as
+      { dossierReport: (a: unknown, o?: Record<string, unknown>) => string };
+    return dossierReport(a, { title: 't', ...o }).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  };
+
+  it('선언이 없으면 이용률을 만들어내지 않고 미검토를 적는다', async () => {
+    const txt = await dossier(beamRig(8));
+    expect(txt).not.toContain('SHS50x50x3');
+    expect(txt).not.toMatch(/부재 이용률/);
+    expect(txt).toContain('부재 강도(휨응력·처짐) 미검토');
+  });
+
+  it('없는 부재를 키우라는 경고가 뜨지 않는다', async () => {
+    const txt = await dossier(beamRig(8));
+    expect(txt).not.toMatch(/부재 SHS\S* 초과/);
+  });
+
+  it('호출자가 선언하면 검토하고 근거를 "선언값"으로 밝힌다 — 기능 상실 없음', async () => {
+    const txt = await dossier(beamRig(8), { member: { section: 'SHS50x50x3', spanMm: 1000 } });
+    expect(txt).toMatch(/부재 이용률 [\d.]+\(SHS50x50x3 지간 1000mm — 선언값\)/);
+    expect(txt).not.toContain('부재 강도(휨응력·처짐) 미검토');
+  });
+});
