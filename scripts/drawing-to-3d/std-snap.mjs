@@ -94,6 +94,18 @@ export function snapBolt(d) {
  * @returns { items:[{id,kind,input,snap}], warnings:[] }
  */
 export function auditAssemblyStd(asm) {
+  // 260728 정직 신호: 종전에는 `parts` 가 배열이 아니어도(예: 문자열) for-of 가 조용히
+  // 글자를 훑고 `{items:[], warnings:[]}` 를 돌려줬다 — **쓰레기 감사가 깨끗한 감사와
+  // 똑같이 읽혔다.** 감사할 수 없으면 그 사실을 warnings 에 실어 소비자까지 도달시킨다.
+  if (!asm || typeof asm !== 'object') {
+    return { ok: false, error: 'assembly 객체가 아니다', items: [], warnings: ['규격 감사 불가: assembly 가 객체가 아니다 — "규격 위반 없음"이 아니라 감사하지 못했다는 뜻이다'] };
+  }
+  const badParts = asm.parts != null && !Array.isArray(asm.parts);
+  const badPipes = asm.pipes != null && !Array.isArray(asm.pipes);
+  if (badParts || badPipes) {
+    const which = [badParts && 'parts', badPipes && 'pipes'].filter(Boolean).join('·');
+    return { ok: false, error: `${which} 가 배열이 아니다`, items: [], warnings: [`규격 감사 불가: ${which} 가 배열이 아니다 — 감사하지 못했다(위반 없음과 구별)`] };
+  }
   const items = [];
   const warnings = [];
   for (const pp of asm.pipes ?? []) {
@@ -129,5 +141,5 @@ export function auditAssemblyStd(asm) {
       else if (s.devPct > 0.5) warnings.push(`${p.id}: Ø${p.params.diameter} → ${s.label} 스냅 권고(편차 ${s.devPct}%)`);
     }
   }
-  return { items, warnings };
+  return { ok: true, items, warnings };
 }

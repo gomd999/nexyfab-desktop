@@ -27,11 +27,12 @@ export function extractDxfSeed(text) {
   const P = pairs(text);
   // ENTITIES 섹션만 스캔(HEADER/TABLES의 좌표 오염 방지)
   let inEntities = false;
+  let sawEntitiesSection = false; // 260728: 파싱 실패와 "빈 도면"을 구별하기 위한 구조 신호
   let cur = null; // 현재 엔티티 {type, data:{code:[values]}}
   const entities = [];
   for (let i = 0; i < P.length; i++) {
     const [code, val] = P[i];
-    if (code === 2 && val === 'ENTITIES') { inEntities = true; continue; }
+    if (code === 2 && val === 'ENTITIES') { inEntities = true; sawEntitiesSection = true; continue; }
     if (code === 0 && val === 'ENDSEC') { if (inEntities) inEntities = false; continue; }
     if (!inEntities) continue;
     if (code === 0) {
@@ -102,7 +103,37 @@ export function extractDxfSeed(text) {
     : null;
   // 치수 중복 제거·정렬(씨앗 가독성)
   const uniq = [...new Set(measurements)].sort((a, b) => a - b);
-  return { measurements: uniq.slice(0, 40), dims: dims.slice(0, 80), dimTexts: dimTexts.slice(0, 20), circles: circles.slice(0, 40), extents, entityCounts };
+  // 260728 정직 신호: 씨앗이 비었을 때 그 이유를 **호출자가 구별할 수 있어야** 한다.
+  // 지금까지는 "DXF 가 아니라 한 글자도 못 읽었다"와 "정상 DXF인데 치수가 없다"가
+  // 똑같이 `{measurements:[], entityCounts:{}}` 로 나갔다 — 없음이 정상으로 읽히던 자리다.
+  const parse = {
+    groupPairs: P.length,           // 그룹코드 페어가 0 이면 애초에 DXF 형식이 아니다
+    entitiesSection: sawEntitiesSection, // ENTITIES 섹션 자체가 없으면 스캔한 것이 없다
+    entityCount: entities.length,
+    dimensionCount: entityCounts.DIMENSION ?? 0,
+  };
+  return { measurements: uniq.slice(0, 40), dims: dims.slice(0, 80), dimTexts: dimTexts.slice(0, 20), circles: circles.slice(0, 40), extents, entityCounts, parse };
+}
+
+/**
+ * 씨앗이 비어 있다면 **왜** 비었는지 한 줄로. 비지 않았으면 null.
+ * 파싱 실패(=대조 불가)와 빈 도면(=대조했으나 근거 없음)을 호출자가 갈라 볼 수 있게 한다.
+ * @param {{parse?:{groupPairs:number,entitiesSection:boolean,entityCount:number,dimensionCount:number}}} seed
+ * @returns {{reason:string, messageKo:string}|null}
+ */
+export function dxfSeedUnusable(seed) {
+  const p = seed?.parse;
+  if (!p) return null; // 구 형식 씨앗 — 판정하지 않는다(없는 근거로 단정하지 않음)
+  if (p.groupPairs === 0) {
+    return { reason: 'not_dxf', messageKo: 'DXF 그룹코드 쌍을 하나도 읽지 못했다 — ASCII DXF 가 아니다(빈 도면과 구별됨).' };
+  }
+  if (!p.entitiesSection) {
+    return { reason: 'no_entities_section', messageKo: 'ENTITIES 섹션이 없다 — 도형을 스캔한 적이 없다("도형이 없는 도면"과 구별됨).' };
+  }
+  if (p.entityCount === 0) {
+    return { reason: 'empty_entities', messageKo: 'ENTITIES 섹션은 있으나 엔티티가 0개다 — 빈 도면이다.' };
+  }
+  return null;
 }
 
 // ─── T3 결정론 판독 격상(260719): DIMENSION 실측값 직사용 ──────────────────────
@@ -153,9 +184,24 @@ export function reconcileIntentWithDxf(intent, seed, { tolPct = 2 } = {}) {
     });
   }
   const total = measured.length + unverified.length;
+  // 260728: 대조 근거가 아예 없었으면 그렇게 말한다. 종전 note 는 실측값을 하나도
+  // 쓰지 않은 경우에도 "DIMENSION 실측값 직사용"이라고 안내해, 대조하지 못한 결과가
+  // 대조를 마친 결과처럼 읽혔다.
+  const poolSize = linear.length + diaPool.length;
+  const unusable = dxfSeedUnusable(seed);
+  const note = poolSize === 0
+    ? '⚠ 대조 못 함 — DXF 에서 치수 엔티티(DIMENSION)·원을 하나도 읽지 못해 교체할 실측 근거가 없다'
+      + (unusable ? ` (${unusable.messageKo})` : ' (엔티티는 읽혔으나 치수·원이 없는 도면)')
+      + '. intent 를 그대로 돌려준다 — **치수가 맞다는 뜻이 아니라 확인하지 못했다는 뜻이다.**'
+    : 'DIMENSION 실측값 직사용(±' + tolPct + '%) — unverified=추론값 잔존(강등·되묻기 대상), 교체 이력 전부 보고(날조 없음)';
   return {
     intent: out, measured, unverified,
     coverage: total ? +(measured.length / total).toFixed(3) : 0,
-    note: 'DIMENSION 실측값 직사용(±' + tolPct + '%) — unverified=추론값 잔존(강등·되묻기 대상), 교체 이력 전부 보고(날조 없음)',
+    // 대조 자체가 가능했는가 — coverage 0 은 "대조했으나 다 빗나감"과 "대조 근거 없음" 둘 다라
+    // 구별 신호를 따로 싣는다.
+    comparable: poolSize > 0,
+    basis: { dimensionValues: linear.length, diameterValues: diaPool.length },
+    ...(unusable ? { seedUnusable: unusable } : {}),
+    note,
   };
 }

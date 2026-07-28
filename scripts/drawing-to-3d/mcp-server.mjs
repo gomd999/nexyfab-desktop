@@ -725,7 +725,75 @@ export const tools = [
   },
 ];
 
+/**
+ * 응답 규약(260728): **모든 툴 응답에 `ok` 가 있어야 한다.**
+ *
+ * MCP 호출자는 대개 AI 에이전트이고, 에이전트가 읽는 것은 이 JSON 뿐이다. 종전에는 8개 툴이
+ * `ok` 없는 알몸 객체를 돌려줘(`{items:[],warnings:[]}` 등) **성공과 실패가 구별되지 않았다.**
+ *
+ * ⚠ 여기서 `ok` 는 **호출이 성립했는가**이지 "설계가 괜찮은가"가 아니다. 판정은 본문
+ * (`pass`·`recognized`·`applicable`·`score`·`warnings`)에 있다. 스탬프를 찍은 응답에는
+ * 그 구별을 `okMeaning` 으로 함께 실어, 에이전트가 ok=true 를 합격으로 오독하지 않게 한다.
+ * 툴이 스스로 `ok` 를 선언했으면 그 값을 존중한다(덮어쓰지 않는다).
+ */
+function stampOk(result) {
+  if (result === null || typeof result !== 'object' || Array.isArray(result)) return result;
+  if ('ok' in result) return result;
+  if (result.error) return { ok: false, ...result };
+  return { ok: true, okMeaning: '호출 성공 — 합격 여부가 아니다. 판정은 본문 필드를 볼 것', ...result };
+}
+
+/**
+ * 선언한 inputSchema 를 **실제로 강제한다**(260728).
+ *
+ * 종전에는 스키마가 장식이었다. `assembly.parts` 에 문자열을 넣으면 툴 안쪽까지 들어가
+ * `allParts.filter is not a function` 같은 내부 TypeError 로 터졌고, 호출자(에이전트)는
+ * **자기가 무엇을 잘못했는지 알 수 없었다.** 42개 툴 중 7개가 그랬다.
+ *
+ * ⚠ 여기서 막는 것은 **형식**뿐이다. 값이 설계로서 타당한지는 각 툴의 게이트가 판정한다 —
+ * 형식 통과를 내용 통과로 번역하지 않는다.
+ * @returns {string[]} 위반 목록(비어 있으면 통과)
+ */
+function schemaViolations(name, args) {
+  const schema = tools.find((t) => t.name === name)?.inputSchema;
+  if (!schema) return [];
+  const props = schema.properties ?? {};
+  const bad = [];
+  const typeOk = (v, t) => t === 'object' ? (v !== null && typeof v === 'object' && !Array.isArray(v))
+    : t === 'array' ? Array.isArray(v)
+      : t === 'string' ? typeof v === 'string'
+        : t === 'integer' ? Number.isInteger(v)
+          : t === 'number' ? typeof v === 'number' && Number.isFinite(v)
+            : t === 'boolean' ? typeof v === 'boolean' : true;
+  for (const key of schema.required ?? []) {
+    if (args[key] === undefined || args[key] === null) { bad.push(`'${key}' 필수 — 없거나 null`); continue; }
+    const t = props[key]?.type;
+    if (t && !typeOk(args[key], t)) bad.push(`'${key}' 는 ${t} 여야 한다(받은 것: ${Array.isArray(args[key]) ? 'array' : typeof args[key]})`);
+  }
+  for (const [key, spec] of Object.entries(props)) {
+    if (args[key] === undefined || args[key] === null) continue;
+    if ((schema.required ?? []).includes(key)) continue; // 위에서 이미 봤다
+    if (spec.type && !typeOk(args[key], spec.type)) bad.push(`'${key}' 는 ${spec.type} 여야 한다(받은 것: ${Array.isArray(args[key]) ? 'array' : typeof args[key]})`);
+  }
+  // 스키마에 못 적는 어셈블리 불변식 — parts/pipes 는 배열이다.
+  const asm = args.assembly;
+  if (asm && typeof asm === 'object') {
+    for (const k of ['parts', 'pipes']) {
+      if (asm[k] != null && !Array.isArray(asm[k])) bad.push(`assembly.${k} 는 배열이어야 한다(받은 것: ${typeof asm[k]})`);
+    }
+  }
+  return bad;
+}
+
 export async function callTool(name, args = {}) {
+  const bad = schemaViolations(name, args ?? {});
+  if (bad.length) {
+    return { ok: false, error: `입력 형식 불가: ${bad.join('; ')}`, tool: name, inputSchema: tools.find((t) => t.name === name)?.inputSchema };
+  }
+  return stampOk(await callToolInner(name, args));
+}
+
+async function callToolInner(name, args = {}) {
   if (name === 'design_brief') {
     // 동일 계약: API 라우트와 같은 shared runner(결정론 플래너)를 tsx 서브프로세스로 실행.
     return runDesignBriefTool({ text: args.text, id: args.id, fixture: args.fixture, params: args.params });
@@ -821,9 +889,17 @@ export async function callTool(name, args = {}) {
   }
   if (name === 'dxf_reconcile') {
     const dx = await import('./dxf-seed.mjs');
+    if (typeof args.dxfText !== 'string' || args.dxfText.trim() === '') {
+      return { ok: false, error: 'dxfText 가 비어 있다 — 판독할 도면이 없다(빈 도면 판독과 구별)' };
+    }
     const seed = dx.extractDxfSeed(args.dxfText);
+    // 정직 거부: 파싱이 성립하지 않았는데 ok 를 돌려주면 "치수 없는 도면"과 구별되지 않는다.
+    const unusable = dx.dxfSeedUnusable(seed);
+    if (unusable && unusable.reason !== 'empty_entities') {
+      return { ok: false, error: unusable.messageKo, reason: unusable.reason, seed };
+    }
     const reconciled = dx.reconcileIntentWithDxf(args.intent, seed, args.tolPct > 0 ? { tolPct: args.tolPct } : undefined);
-    return { ok: true, seed, reconciled };
+    return { ok: true, seed, reconciled, ...(reconciled.comparable ? {} : { warning: reconciled.note }) };
   }
   if (name === 'import_landxml') {
     if (args.xmlPath) return parseLandXmlFile(args.xmlPath);
@@ -870,6 +946,13 @@ export async function callTool(name, args = {}) {
     };
   }
   if (name === 'blade_ring') {
+    // 정직 거부: 종전엔 nB=0 에도 mesh 를 만들어 부피·삼각형 수를 돌려줬다 —
+    // 날이 없는 블레이드 링은 사양이 아니라 입력 오류다.
+    const bad = [];
+    if (!Number.isInteger(args.nB) || args.nB < 2 || args.nB > 60) bad.push(`nB=${args.nB} (블레이드 수는 2~60 정수)`);
+    for (const k of ['rRoot', 'rTip', 'chord']) if (!(Number(args[k]) > 0)) bad.push(`${k}=${args[k]} (> 0 이어야 함)`);
+    if (Number(args.rTip) <= Number(args.rRoot)) bad.push(`rTip(${args.rTip}) ≤ rRoot(${args.rRoot}) — 날 길이가 0 이하`);
+    if (bad.length) return { ok: false, error: `blade_ring 입력 불가: ${bad.join(', ')}` };
     const genParams = { nB: args.nB, rRoot: args.rRoot, rTip: args.rTip, chord: args.chord, cx: args.cx, cy: args.cy ?? 0, cz: args.cz ?? 0, pitch: args.pitch, naca: args.naca ?? '4412' };
     return { params: bladeRingMesh(genParams), gen: { kind: 'blade_ring', params: genParams }, usage: "assembly 부품으로: {id, type:'mesh', params, gen, at:{tx:0,ty:0,tz:0}}" };
   }
@@ -905,7 +988,13 @@ export async function callTool(name, args = {}) {
   }
 
   if (name === 'list_templates') {
-    return { ok: true, ...(args.domain ? { domain: args.domain } : {}), templates: listAssemblyTemplates(args.domain) };
+    const templates = listAssemblyTemplates(args.domain);
+    // 정직 거부: 없는 분야를 "템플릿이 0개인 분야"로 돌려주면 오타가 조용히 통과한다.
+    if (args.domain && templates.length === 0) {
+      const domains = [...new Set(listAssemblyTemplates().map((t) => t.domain))];
+      return { ok: false, error: `unknown domain '${args.domain}' — 이 분야는 없다(템플릿이 0개인 것이 아니다)`, availableDomains: domains };
+    }
+    return { ok: true, ...(args.domain ? { domain: args.domain } : {}), templates };
   }
 
   if (name === 'generate_domain_package') {
