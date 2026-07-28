@@ -36,7 +36,7 @@ import { bladeRingMesh } from './gen-macros.mjs';
 import { extractGdt, extractGdtFile } from './gdt-import.mjs';
 import { parseLandXml, parseLandXmlFile } from './landxml-import.mjs';
 import { stepRoundTrip } from './roundtrip.mjs';
-import { refineInterferencesMesh } from './interference-refine.mjs';
+import { refineInterferencesMesh, applyInterferenceRefinement } from './interference-refine.mjs';
 import { runDesignBriefTool } from './design-brief.mjs';
 import { runCodeCheckTool } from './codecheck.mjs';
 import { interiorCheck } from './interior-check.mjs';
@@ -1012,7 +1012,7 @@ async function callToolInner(name, args = {}) {
     const fs = await import('node:fs');
     const path = await import('node:path');
     fs.mkdirSync(args.outDir, { recursive: true });
-    const built = buildAssembly(args.assembly);
+    let built = buildAssembly(args.assembly);
     if (!built.ok) return { ok: false, gateErrors: built.gateErrors };
     const title = args.title ?? args.assembly.name ?? 'NexyFab 설계';
     const pkg = await import('./package.mjs');
@@ -1080,6 +1080,8 @@ async function callToolInner(name, args = {}) {
     let interferenceRefine = null;
     if ((built.interferences ?? []).length) {
       try { interferenceRefine = await refineInterferencesMesh(args.assembly, built.interferences); } catch (e) { interferenceRefine = { error: String(e).slice(0, 120) }; }
+      // 260728: 정제를 돌려놓고 응답·쉬운요약은 원본 AABB 과탐을 썼다 — 결과를 되돌린다.
+      built = applyInterferenceRefinement(built, interferenceRefine);
     }
     // T2(260719b): 실시 검도 M1~M6 — GA+부품도 기입 치수 결정론 대조(웹 라우트와 동급)
     let executionGate = null;
@@ -1124,6 +1126,9 @@ async function callToolInner(name, args = {}) {
       const es = await import('./easy-summary.mjs');
       const html = es.easySummary(args.assembly, {
         title, domain: args.assembly.domain ?? 'mech',
+        // 이미 만든 built 를 넘긴다 — 안 넘기면 요약이 스스로 buildAssembly 를 다시 불러
+        // 메시 부울로 해제한 과탐 간섭이 되살아나고, 응답과 문서가 다른 숫자를 말한다.
+        built,
         // ⚠ 실패 엔트리(`{name, error}`)는 파일이 실제로 없다. 이름만 넘기면 쉬운요약이
         // "GA_2D_drawing.html — 업체에 제일 먼저 보내는 도면입니다" 라고 **없는 파일을
         // 안내**한다(요약 자신의 원칙 "없는 파일 안내=거짓말"에 정면으로 위배). 걸러낸다.
@@ -1150,6 +1155,11 @@ async function callToolInner(name, args = {}) {
       ok: true, outDir: args.outDir, rev, files, completeness, c9, consistency,
       structural: built.structural ?? null,
       interferences: built.interferences ?? [],
+      // 좁혀진 숫자만 주면 에이전트는 무엇이 왜 줄었는지 알 수 없다 — 근거를 함께 준다.
+      ...(built.interferenceBasis ? {
+        interferencesRaw: built.interferencesRaw, interferencesDemoted: built.interferencesDemoted,
+        interferenceBasis: built.interferenceBasis,
+      } : {}),
       welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
       support: built.support ?? null, pipes: built.pipes ?? null, designOk: built.designOk ?? null,
       verificationUnavailable, outputsFailed,

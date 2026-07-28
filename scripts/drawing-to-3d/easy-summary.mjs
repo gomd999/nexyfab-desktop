@@ -259,7 +259,10 @@ export function easySummary(assembly, opts = {}) {
   const domain = opts.domain ?? assembly?.domain ?? 'mech';
   const domainKo = DOMAIN_KO[domain] ?? domain;
 
-  const built = buildAssembly(assembly ?? {});
+  // 260728: 호출자가 이미 만든 `built` 를 받으면 그것을 쓴다. 여기서 다시 buildAssembly 를
+  // 부르면 **메시 부울 2차로 해제된 과탐 간섭이 되살아난다** — 패키지 응답은 확정 75건인데
+  // 소비자 문서만 원본 186건을 말하는 어긋남이 생긴다(같은 패키지, 다른 숫자).
+  const built = opts.built?.ok ? opts.built : buildAssembly(assembly ?? {});
   // 게이트 실패=요약할 형상이 없음 — 지어내지 않고 사유만 안내(정직).
   if (!built.ok) {
     return page(title, domainKo, `<section><h2>① 이게 뭔가요</h2>
@@ -347,7 +350,13 @@ ${stdWarn}</section>`;
   if (unknownSup.length) cautions.push(`지지 여부를 판정할 수 없는 부재 ${unknownSup.length}개 — 치수 입력 필요: ${unknownSup.slice(0, 6).join(', ')}`);
   const itf = built.interferences ?? [];
   if (itf.length) {
-    cautions.push(`<b>부품끼리 겹치는 곳 ${itf.length}군데</b> — 실제로는 들어가지 않는 자리가 있습니다. 제작 전에 도면을 고쳐야 합니다: ${itf.slice(0, 4).map((i) => `${i.a}↔${i.b}`).join(', ')}`);
+    // 2차 정제를 거쳤으면 어떤 근거로 좁혀진 숫자인지 함께 말한다 — 원본을 감추지 않는다.
+    const narrowed = built.interferenceBasis ? ` <span class="sub">(${esc(built.interferenceBasis)})</span>` : '';
+    cautions.push(`<b>부품끼리 겹치는 곳 ${itf.length}군데</b>${narrowed} — 실제로는 들어가지 않는 자리가 있습니다. 제작 전에 도면을 고쳐야 합니다: ${itf.slice(0, 4).map((i) => `${i.a}↔${i.b}`).join(', ')}`);
+  } else if (built.interferencesDemoted) {
+    // 전량 해제된 경우: "간섭 없음"이 그냥 나온 것이 아니라 **실기하로 확인해 해제**된
+    // 것임을 밝힌다. 판정 근거를 지우면 통과가 근거 없이 얻어진 것처럼 보인다.
+    cautions.push(`부품 겹침 의심 ${built.interferencesRaw}군데를 실기하로 재확인해 전부 실제로는 떨어져 있음을 확인했습니다 <span class="sub">(${esc(built.interferenceBasis ?? '')})</span>.`);
   }
   const eg = opts.executionGate ?? null;
   if (eg && Array.isArray(eg.failed)) {

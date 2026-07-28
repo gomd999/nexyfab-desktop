@@ -1,0 +1,89 @@
+/**
+ * 메시 부울 2차 간섭 정제가 소비자에 도달하는가 (260728).
+ *
+ * 결함: `generate_package`(MCP)·`/drawing/package`(웹) 둘 다 정제를 돌려놓고
+ * `interferences`·`designOk` 는 **원본 AABB 과탐**을 반환했다. 쉬운요약도 자기가
+ * buildAssembly 를 다시 불러 해제된 과탐을 되살렸다.
+ *
+ * 실측(mech/transmission_tower, 99부품): AABB 186쌍 → 확정 75 · 해제 111(과탐 59.7%).
+ * 한 쌍은 AABB 추정 9,144,088mm³ vs 실측 328.1mm³ — 27,000배 과대였다.
+ */
+import { describe, it, expect } from 'vitest';
+import { applyInterferenceRefinement } from './interference-refine.mjs';
+
+type Built = {
+  ok: boolean; interferences: unknown[]; designOk: boolean;
+  support?: { floating: string[] }; pipes?: null;
+  interferencesRaw?: number; interferencesDemoted?: number; interferenceBasis?: string;
+};
+const apply = applyInterferenceRefinement as unknown as (b: unknown, r: unknown) => Built;
+
+const builtWith = (n: number): Built => ({
+  ok: true,
+  interferences: Array.from({ length: n }, (_, i) => ({ a: `p${i}`, b: `q${i}` })),
+  designOk: n === 0,
+  support: { floating: [] },
+  pipes: null,
+});
+
+describe('정제 결과가 built 에 되돌아간다', () => {
+  it('전량 해제되면 designOk 가 true 로 뒤집힌다 — 깨끗한데 불합격으로 나가던 자리', () => {
+    // 이것이 이 수정의 핵심 케이스다. 종전에는 실기하로 전부 떨어져 있음을 확인하고도
+    // 원본 AABB 건수로 designOk:false 를 내보냈다.
+    const out = apply(builtWith(4), {
+      interferences: [], demoted: [{ a: 'p0', b: 'q0' }, { a: 'p1', b: 'q1' }, { a: 'p2', b: 'q2' }, { a: 'p3', b: 'q3' }], laps: [], checked: 4,
+    });
+    expect(out.interferences).toHaveLength(0);
+    expect(out.designOk).toBe(true);
+    expect(out.interferencesRaw).toBe(4);
+    expect(out.interferencesDemoted).toBe(4);
+  });
+
+  it('일부만 해제되면 확정분이 남고 designOk 는 false 를 유지한다', () => {
+    const out = apply(builtWith(186), {
+      interferences: Array.from({ length: 75 }, (_, i) => ({ a: `p${i}`, b: `q${i}` })),
+      demoted: Array.from({ length: 111 }, (_, i) => ({ a: `x${i}`, b: `y${i}` })), laps: [], checked: 186,
+    });
+    expect(out.interferences).toHaveLength(75);
+    expect(out.designOk).toBe(false);
+    expect(out.interferenceBasis).toContain('AABB 의심 186쌍');
+    expect(out.interferenceBasis).toContain('확정 75');
+    expect(out.interferenceBasis).toContain('해제 111');
+  });
+
+  it('원본 건수를 감추지 않는다 — 좁힌 근거가 응답에 남는다', () => {
+    const out = apply(builtWith(10), {
+      interferences: [{ a: 'p0', b: 'q0' }], demoted: Array.from({ length: 9 }, () => ({})), laps: [], checked: 10,
+    });
+    expect(out.interferencesRaw).toBe(10);
+    expect(String(out.interferenceBasis)).toMatch(/186|10/);
+  });
+
+  it('정제가 실패하면 원본을 그대로 둔다 — 실패를 통과로 바꾸지 않는다', () => {
+    const before = builtWith(5);
+    expect(apply(before, { error: 'openscad 실패' })).toBe(before);
+    expect(apply(before, null)).toBe(before);
+  });
+
+  it('해제가 하나도 없으면 원본 객체를 그대로 — 불필요한 재작성 없음', () => {
+    const before = builtWith(3);
+    const out = apply(before, { interferences: before.interferences, demoted: [], laps: [], checked: 3 });
+    expect(out).toBe(before);
+  });
+
+  it('간섭 외 조건(부유 부재)이 걸려 있으면 간섭이 0 이어도 designOk 는 false', () => {
+    // 여기서 다른 게이트를 재해석하지 않는다 — 간섭 항목만 교체한다.
+    const b = { ...builtWith(2), support: { floating: ['p9'] } };
+    const out = apply(b, { interferences: [], demoted: [{}, {}], laps: [], checked: 2 });
+    expect(out.interferences).toHaveLength(0);
+    expect(out.designOk).toBe(false);
+  });
+
+  it('격자 절점 랩 접합은 근거 문구에 별도로 남는다', () => {
+    const out = apply(builtWith(20), {
+      interferences: [{ a: 'p0', b: 'q0' }], demoted: Array.from({ length: 12 }, () => ({})),
+      laps: Array.from({ length: 7 }, () => ({})), checked: 20,
+    });
+    expect(String(out.interferenceBasis)).toContain('격자 절점 랩 7');
+  });
+});

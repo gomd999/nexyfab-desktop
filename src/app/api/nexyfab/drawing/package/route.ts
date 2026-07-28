@@ -28,6 +28,8 @@ type Built = {
   ok: boolean; openscad?: string; structural?: unknown; interferences?: unknown[]; welds?: unknown[]; weldTotalMm?: number; gateErrors?: string[];
   parts?: Array<{ id: string; aabb: { min: number[]; max: number[] } }>;
   support?: Support; pipes?: Pipes; designOk?: boolean;
+  // 메시 부울 2차가 원본 AABB 과탐을 해제했을 때의 추적값(감추지 않는다 — 260728)
+  interferencesRaw?: number; interferencesDemoted?: number; interferenceBasis?: string;
 };
 type Basis = { rev: string; massKg: number; env: number[]; parts: number };
 type AsmMod = { buildAssembly: (a: Assembly) => Built };
@@ -60,7 +62,10 @@ type EgMod = {
   executionReportHtml?: (g: ExecutionGate, o?: { title?: string }) => string;
 };
 type RtMod = { stepRoundTrip: (a: Assembly) => Promise<unknown> };
-type IrMod = { refineInterferencesMesh: (a: Assembly, i: unknown[], o?: Record<string, unknown>) => Promise<unknown> };
+type IrMod = {
+  refineInterferencesMesh: (a: Assembly, i: unknown[], o?: Record<string, unknown>) => Promise<unknown>;
+  applyInterferenceRefinement: (built: Built, refine: unknown) => Built;
+};
 type FaMod = { autoFasteners: (a: Assembly) => unknown };
 // 일반인용 결과 요약(260719) — 전문가 산출물을 쉬운 말 5섹션 1페이지로. 새 계산 없음(기존 모듈 재사용).
 type EsMod = { easySummary: (a: Assembly, o?: Record<string, unknown>) => string };
@@ -137,7 +142,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: 'pipeline load failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 });
   }
 
-  const built = mods.asm.buildAssembly(assembly);
+  let built = mods.asm.buildAssembly(assembly);
   if (!built.ok) {
     return NextResponse.json({ ok: false, stage: 'gate', gateErrors: built.gateErrors ?? [] }, { status: 200 });
   }
@@ -329,6 +334,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     try { roundtrip = mods.rt ? await mods.rt.stepRoundTrip(assembly) : null; } catch (e) { roundtrip = { error: String(e instanceof Error ? e.message : e).slice(0, 120) }; }
     if ((built.interferences ?? []).length && mods.ir) {
       try { interferenceRefine = await mods.ir.refineInterferencesMesh(assembly, built.interferences ?? []); } catch (e) { interferenceRefine = { error: String(e instanceof Error ? e.message : e).slice(0, 120) }; }
+      // 260728: MCP 와 동일 — 정제 결과를 되돌려 응답·쉬운요약이 원본 AABB 과탐을 쓰지 않게.
+      if (mods.ir.applyInterferenceRefinement) built = mods.ir.applyInterferenceRefinement(built, interferenceRefine);
     }
     try {
       executionGate = mods.eg ? mods.eg.checkExecutionReadiness(assembly, { gaHtml, sheetsHtml, welds: built.welds ?? [] }) : null;
@@ -370,6 +377,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         name: '쉬운요약.html', mime: 'text/html',
         content: mods.pkg.packageStamp(mods.es.easySummary(assembly, {
           title, domain,
+          // MCP 와 동일 — 요약이 buildAssembly 를 다시 부르면 해제된 과탐이 되살아난다.
+          built,
           fileNames: files.map((f) => f.name),
           ...(executionGate ? { executionGate } : {}),
           ...(feaSummary ? { fea: feaSummary } : {}),
@@ -441,6 +450,11 @@ if (data.pipes?.errors?.length) console.warn('⚠ 배관 라우팅 실패:', dat
     files: zipBase64 ? undefined : files, // zip 성공 시 개별 content 생략(페이로드↓)
     structural: built.structural ?? null,
     interferences: built.interferences ?? [],
+    // MCP 와 동일 — 좁혀진 숫자의 근거를 함께 준다(원본을 감추지 않는다).
+    ...(built.interferenceBasis ? {
+      interferencesRaw: built.interferencesRaw, interferencesDemoted: built.interferencesDemoted,
+      interferenceBasis: built.interferenceBasis,
+    } : {}),
     welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
     // 설계 타당성 그물(#2) — 부유·면접촉(매립 제안)·배관 관통/교차 + 종합 판정
     support: built.support ?? null,

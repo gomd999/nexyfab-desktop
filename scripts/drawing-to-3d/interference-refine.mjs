@@ -78,3 +78,51 @@ export async function refineInterferencesMesh(asm, interferences, { epsMm3 = 1, 
   }
   return { interferences: confirmed, demoted, laps, checked, note: '의심쌍 한정 2차(전수 아님) — ε=' + epsMm3 + 'mm³' + (latticeLapMm3 > 0 ? ' · 격자 랩 한계=' + latticeLapMm3 + 'mm³' : '') };
 }
+
+/**
+ * 정제 결과를 `built` 에 되돌린다 — **계산해 놓고 버리던 것**(260728).
+ *
+ * ## 무엇이 문제였나
+ * `generate_package`(MCP)와 `/drawing/package`(웹) 둘 다 잔여 간섭이 있으면 이 모듈로
+ * 메시 부울 2차를 돌렸다. 그런데 응답의 `interferences`·`designOk` 는 **원본 AABB 값**을
+ * 그대로 썼고, 정제 결과는 `interferenceRefine` 이라는 별도 필드에만 실렸다. 쉬운요약도
+ * `built.interferences`·`built.designOk` 를 읽으므로 소비자에게 도달한 것은 보수 과탐 쪽이다.
+ * §6-G "판정이 소비자에 도달하지 않음"인데, 방향이 과소가 아니라 **과대**다.
+ *
+ * 실측(mech/transmission_tower, 99부품): 원본 186건 → 확정 75 · 해제 111.
+ * 회전 각도재의 AABB 가 실솔리드보다 크게 잡혀 **59.7% 가 과탐**이었다. 이 어셈블리는
+ * 확정이 75건이라 designOk 가 어느 쪽이든 false 지만, **전량 해제되는 어셈블리는
+ * 기하학적으로 깨끗한데도 designOk:false 로 나간다.**
+ *
+ * ## 왜 정제값을 쓰는 것이 정직한가
+ * 해제는 추정이 아니라 **실기하 부울 교집합 부피 측정**이다(≤ε=실분리). 추측으로 지우는
+ * 것이 아니라 더 정확한 측정으로 대체하는 것이라, "없는 근거로 통과시키지 않는다"에
+ * 어긋나지 않는다. 다만 **원본 수치를 감추지 않는다** — raw/해제 건수를 함께 싣는다.
+ * 정제가 실패했으면 원본을 그대로 두고 그 사실을 적는다(실패를 통과로 바꾸지 않는다).
+ *
+ * @param {object} built buildAssembly 산출
+ * @param {object|null} refine refineInterferencesMesh 산출(또는 {error} / null)
+ * @returns {object} built 사본 — interferences·designOk 가 정제 반영된 것
+ */
+export function applyInterferenceRefinement(built, refine) {
+  if (!built || !refine || refine.error || !Array.isArray(refine.interferences)) return built;
+  const raw = built.interferences ?? [];
+  const confirmed = refine.interferences;
+  if (confirmed.length === raw.length) return built; // 해제 없음 — 바꿀 것이 없다
+  // designOk 는 간섭 외 조건(부유·배관)도 본다. 그 조건들을 다시 판정하지 않고,
+  // **원래 판정에서 간섭 항목만 교체**한다 — 여기서 다른 게이트를 재해석하지 않는다.
+  const nonInterferenceOk = (built.support?.floating?.length ?? 0) === 0
+    && (!built.pipes || (built.pipes.errors.length === 0
+      && built.pipes.obstacleViolations.length === 0
+      && built.pipes.crossViolations.length === 0));
+  return {
+    ...built,
+    interferences: confirmed,
+    designOk: nonInterferenceOk && confirmed.length === 0,
+    interferencesRaw: raw.length,
+    interferencesDemoted: (refine.demoted ?? []).length,
+    interferenceBasis: `AABB 의심 ${raw.length}쌍 → 메시 부울 실기하 2차: 확정 ${confirmed.length}`
+      + `${(refine.demoted ?? []).length ? ` · 실분리 해제 ${refine.demoted.length}` : ''}`
+      + `${(refine.laps ?? []).length ? ` · 격자 절점 랩 ${refine.laps.length}` : ''}`,
+  };
+}
