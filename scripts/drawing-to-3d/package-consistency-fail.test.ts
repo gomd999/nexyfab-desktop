@@ -276,3 +276,47 @@ describe('쉬운요약 — 파일 목록은 실제로 있는 것만 설명한다
     expect(html).not.toContain('GA_2D_drawing.html');
   });
 });
+
+/**
+ * 검증 커버리지 (260728) — 참고 코퍼스(실 CAD 390건)가 먼저 푼 문제.
+ *
+ * 이 세션에 N/A 경로를 대거 늘렸다(적용 가능성·GA 미생성·선택 뷰·검증 미산출). 정확도는
+ * 올랐지만, **전부 판정하고 통과한 문서**와 **대부분 미판정인 문서**가 소비자에게 똑같이
+ * "이상 없음"으로 보이는 부작용이 생겼다. 미판정 자체는 나쁘지 않지만 **모르는 채로
+ * 안심시키는 것**은 나쁘다.
+ */
+describe('쉬운요약 — 얼마나 판정했는지 함께 말한다', () => {
+  const gate = (judged: number, skipped: number) => ({
+    score: `${judged}/${judged}`, ok: true, failed: [], na: [],
+    items: [
+      ...Array.from({ length: judged }, (_, i) => ({ id: `M${i}`, name: 'x', pass: true, detail: [] })),
+      ...Array.from({ length: skipped }, (_, i) => ({ id: `N${i}`, name: 'y', pass: null, detail: [] })),
+    ],
+    note: '',
+  });
+
+  it('판정한 항목 수를 적고, "이상 없음"의 범위를 못 박는다', () => {
+    const html = easySummary(OK_ASM, { title: 't', domain: 'mech', executionGate: gate(4, 2) });
+    expect(html).toContain('실제로 판정한 항목은');
+    expect(html).toContain('4개');
+    expect(html).toContain('2개');
+    expect(html).toContain('판정한 항목에 한해서');
+  });
+
+  it('미판정이 0이면 그 문구를 붙이지 않는다 (잡음 0)', () => {
+    const html = easySummary(OK_ASM, { title: 't', domain: 'mech', executionGate: gate(4, 0) });
+    expect(html).toContain('실제로 판정한 항목은');
+    expect(html).not.toContain('판정 불가로 세지 않은');
+  });
+
+  it('★N/A 는 통과로 세지 않는다 — 미판정을 성적에 넣지 않는다', () => {
+    const many = easySummary(OK_ASM, { title: 't', domain: 'mech', executionGate: gate(1, 5) });
+    expect(many).toContain('<b>1개</b>');   // 판정한 것은 1개뿐
+    expect(many).toContain('<b>5개</b>');   // 나머지는 미판정으로 드러난다
+  });
+
+  it('판정 소스가 아무것도 없으면 침묵한다', () => {
+    const html = easySummary(OK_ASM, { title: 't', domain: 'mech' });
+    expect(html).not.toContain('실제로 판정한 항목은');
+  });
+});

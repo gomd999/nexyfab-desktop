@@ -410,6 +410,38 @@ ${stdWarn}</section>`;
 <ul class="small">${unavailable.map((u) => `<li>${esc(u)}</li>`).join('')}</ul>`
     : '';
 
+  /**
+   * **검증 커버리지** — 실제로 판정한 항목이 몇 개인가 (260728).
+   *
+   * 이 세션에 N/A 경로를 대거 늘렸다(적용 가능성·GA 미생성·선택 뷰·검증 미산출). 정확도는
+   * 올랐지만 **부작용**이 하나 생겼다: 전부 판정하고 통과한 문서와 대부분 미판정인 문서가
+   * 소비자에게 **똑같이 "이상 없음"** 으로 보인다. 미판정은 나쁜 게 아니지만 **모르는 채로
+   * 안심시키는 것**은 나쁘다.
+   *
+   * 참고 코퍼스(실 CAD 390건 재구성 게이트)가 같은 문제를 먼저 풀어 뒀다 — 근거가 없는
+   * 항목은 통과로 세지 않고 **점수에서 제외**하되, 제외했다는 사실을 함께 보고한다.
+   * 여기서도 새 판정을 만들지 않는다 — 이미 나온 게이트 결과의 pass/null 개수만 센다.
+   */
+  const coverage = (() => {
+    let judged = 0, skipped = 0;
+    const eg0 = opts.executionGate;
+    for (const it of (eg0 && Array.isArray(eg0.items) ? eg0.items : [])) (it.pass === null ? skipped++ : judged++);
+    const cp = opts.completeness;
+    if (cp) { judged += (cp.passed?.length ?? 0) + (cp.failed?.length ?? 0); skipped += cp.na?.length ?? 0; }
+    for (const v of [opts.domainSafety, opts.codeVerification]) {
+      if (!v) continue;
+      if (Array.isArray(v.unavailable) && v.unavailable.length) skipped += v.unavailable.length; else judged++;
+    }
+    if (opts.consistency && !opts.consistency.error) {
+      judged += (opts.consistency.checks ?? []).length;
+    }
+    skipped += unavailable.length;
+    return { judged, skipped };
+  })();
+  const coverageBlock = (coverage.judged + coverage.skipped) === 0
+    ? ''
+    : `<p class="sub">이 문서가 실제로 판정한 항목은 <b>${coverage.judged}개</b>${coverage.skipped ? `, 해당 없음·판정 불가로 세지 않은 항목이 <b>${coverage.skipped}개</b>` : ''}입니다 — "이상 없음"은 <b>판정한 항목에 한해서</b>입니다.</p>`;
+
   // 문서 무결성(안전과 별개) — 실패했을 때만, 안전 블록과 섞지 않고 따로.
   const consistencyCautionList = consistencyCautions(opts.consistency);
   const consistencyBlock = consistencyCautionList.length
@@ -433,6 +465,7 @@ ${cautions.length
     ? `<ul>${cautions.map((c) => `<li>${c}</li>`).join('')}</ul>`
     : '<p class="sub">형상 점검(부유·간섭·접합·도면 표기)에서 걸린 항목은 없습니다. 이 점검은 형상·표기만 봅니다 — 안전 판정은 위의 구조 검토 결과를 따르세요.</p>'}
 ${verdict}
+${coverageBlock}
 ${eg ? `<p class="sub">도면 점검 결과: ${esc(eg.score ?? '미산출')} ${eg.ok ? '(제작 착수 가능 수준)' : '(위 항목 보완 필요)'}</p>` : '<p class="sub">도면 점검(실시 검도) 결과는 이 요약에 포함되지 않았습니다 — 동봉된 검도 리포트를 확인하세요.</p>'}</section>`;
 
   // ④ 다음에 뭘 하나요
