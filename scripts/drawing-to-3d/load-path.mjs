@@ -65,6 +65,21 @@ export function loadPathCheck(assembly, params = {}) {
   const beams = parts.filter((p) => p.role === 'beam');
   const slabs = parts.filter((p) => p.role === 'slab');
   if (!columns.length || !beams.length || !slabs.length) {
+    // 260729: 종전엔 전부 "role 태깅 필요"(=판정 불가)로 나갔다. 그러나 building 8종 실측에서
+    // 7종이 여기 걸렸고, 열어보니 **대부분은 태깅이 빠진 게 아니라 애초에 라멘 골조가
+    // 아니었다** — 물탱크·승강로·박공집은 기둥 0 · 벽 다수인 **벽식 구조**다.
+    //
+    // "확인 못 함"과 "해당 없음"은 다르다. 벽식 구조에 라멘 하중경로가 없다고 보고하는 것은
+    // 판정 불가가 아니라 적용 대상이 아니라는 뜻이고, 둘을 섞으면 소비자는 "입력을 더 주면
+    // 판정된다"고 오해한다. 기둥이 하나도 없고 벽이 있으면 벽식으로 분류한다(관측 기반 —
+    // 임의 임계가 아니라 구조 형식의 정의).
+    const walls = parts.filter((p) => p.role === 'wall');
+    if (!columns.length && walls.length) {
+      return {
+        ok: false, notApplicable: true,
+        error: `벽식 구조(기둥 0 · 벽 ${walls.length}) — 이 검토는 라멘 골조(슬래브→보→기둥→기초) 전용이라 해당 사항이 없다`,
+      };
+    }
     return { ok: false, error: `role 태깅 필요 — 기둥${columns.length}·보${beams.length}·슬래브${slabs.length}` };
   }
 

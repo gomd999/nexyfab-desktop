@@ -145,7 +145,16 @@ function runDomainSafetyCheck(assembly, params) {
     const fn = disp ? bridgeMod[disp.fn] : bridgeMod.bridgeCheck;
     return { label: '교량 검토 (활하중·단면력 등)', result: fn(assembly, params) };
   }
-  if (domain === 'building') return { label: '하중경로 검토 (슬래브→보→기둥→기초)', result: loadPathCheck(assembly, params) };
+  if (domain === 'building') {
+    // 260729: building 은 **무조건 loadPathCheck** 였다 — bridge·mech 가 선언 메타로
+    // 디스패치하는 것과 달리 유일하게 도메인 단위 고정 배선이었다. 그 결과 계단이
+    // 라멘 골조 검토로 넘어가 "role 태깅 필요"로 거부됐는데, 정작 `stairCheck`
+    // (bridge-check.mjs, 트레드 휨·스트링거 휨)는 **존재하면서 놀고 있었다.**
+    if (assembly.stairMeta && typeof bridgeMod.stairCheck === 'function') {
+      return { label: '계단 검토 (트레드·스트링거 휨)', result: bridgeMod.stairCheck(assembly, params) };
+    }
+    return { label: '하중경로 검토 (슬래브→보→기둥→기초)', result: loadPathCheck(assembly, params) };
+  }
   if (domain === 'mech' || domain === undefined) {
     // 260728: mech 은 여기(도메인 안전)에도 verificationReportHtml(civil KDS)에도 걸리지
     // 않아 **도메인 판정이 하나도 없었다** — 템플릿 16종으로 가장 많은 분야인데.
@@ -225,6 +234,9 @@ export function domainSafetyVerdict(assembly, params = {}) {
   const run = runDomainSafetyCheck(assembly, params);
   if (!run) return null;
   const r = run.result;
+  // **해당 없음 ≠ 판정 불가** (260729). 적용 대상이 아닌 것을 "확인하지 못함"으로 실으면
+  // 소비자는 "입력을 더 주면 판정된다"고 읽는다. mech 가 null 로 침묵하는 것과 같은 처리.
+  if (r?.notApplicable) return null;
   if (!r || r.ok === false) {
     /**
      * ⚠ **"확인 못 함"은 "기준 미달"이 아니다** (260728).
