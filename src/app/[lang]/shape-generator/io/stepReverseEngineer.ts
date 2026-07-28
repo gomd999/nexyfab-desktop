@@ -75,6 +75,17 @@ export interface ReconstructedFeatureTree {
   meshStats: { vertices: number; triangles: number };
   /** Confidence that this reconstruction is useful (0–1) */
   overallConfidence: number;
+  /**
+   * 이 복원에서 **돌리지 못한 검출**과 그 사유 (260728).
+   *
+   * 종전엔 위상맵이 없으면 `detectHoles` 가 조용히 `[]` 를 돌려줬고, 호출자에게는
+   * "구멍이 없는 부품"과 **구별되지 않았다.** 실측(참고파일들 STEP 임포트)에서 실물
+   * SolidWorks B-rep 의 FeatureTree 가 전부 `nodes:[]` 로 나온 것이 이 경로다 —
+   * 커버리지 0% 인데 정직 신호가 없었다.
+   *
+   * 비어 있으면 "전부 돌렸다"는 뜻이다. 비어 있지 않으면 그 항목은 **판정된 적이 없다**.
+   */
+  limitations: string[];
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -188,8 +199,11 @@ function detectHoles(
   geo: THREE.BufferGeometry,
   bp: BoundingParams,
   map?: TopologicalMap,
-): DetectedFeature[] {
-  if (!map) return [];
+): { features: DetectedFeature[]; ran: boolean } {
+  // ⚠ 위상맵이 없으면 **검출을 돌린 적이 없다.** 종전처럼 빈 배열만 돌려주면 호출자는
+  //   "구멍이 없는 부품"으로 읽는다 — 부재가 정상으로 읽히는 전형이다. `ran:false` 로
+  //   그 구별을 넘긴다(값을 지어내지 않으면서 침묵하지도 않는 유일한 방법).
+  if (!map) return { features: [], ran: false };
 
   const features: DetectedFeature[] = [];
   const allFaces = Object.values(map.faces);
@@ -255,7 +269,7 @@ function detectHoles(
     });
   }
 
-  return features;
+  return { features, ran: true };
 }
 
 // ─── Main API ─────────────────────────────────────────────────────────────────
@@ -277,7 +291,15 @@ export async function reverseEngineerStep(
 
   const bp = extractBoundingParams(geo);
   const baseShape = classifyPrimitive(geo, bp, map);
-  const holes = detectHoles(geo, bp, map);
+  const holeRun = detectHoles(geo, bp, map);
+  const holes = holeRun.features;
+  const limitations: string[] = [];
+  if (!holeRun.ran) {
+    limitations.push(
+      '구멍·포켓 검출을 돌리지 못했다(위상맵 없음) — 이 결과의 "가공 피처 0개"는 ' +
+      '"구멍이 없다"가 아니라 "확인하지 못했다"이다.',
+    );
+  }
 
   // Mesh stats
   const posAttr = geo.getAttribute('position');
@@ -285,8 +307,17 @@ export async function reverseEngineerStep(
   const vertices = posAttr ? posAttr.count : 0;
   const triangles = indexAttr ? Math.floor(indexAttr.count / 3) : Math.floor(vertices / 3);
 
-  // Overall confidence
-  const overallConfidence = baseShape.confidence * (holes.length > 0 ? 0.9 : 1.0);
+  /**
+   * 종합 신뢰도.
+   *
+   * ⚠ 종전 식은 `baseShape.confidence * (holes.length > 0 ? 0.9 : 1.0)` 이었다 —
+   * **구멍을 하나도 못 찾으면 신뢰도가 올라갔다.** 방향이 거꾸로다: 0개는 "정말 없다"와
+   * "검출이 실패했다"를 겸하고, 후자일 때 확신이 커지면 안 된다. 그리고 검출을 아예
+   * 돌리지 못한 경우(위상맵 없음)는 **가장 낮게** 잡아야 한다.
+   */
+  const overallConfidence = !holeRun.ran
+    ? baseShape.confidence * 0.5   // 피처 검출을 못 돌렸다 — 형상만 본 결과다
+    : baseShape.confidence * (holes.length > 0 ? 0.95 : 0.9);
 
   return {
     baseShape,
@@ -294,6 +325,7 @@ export async function reverseEngineerStep(
     bbox: bp,
     meshStats: { vertices, triangles },
     overallConfidence,
+    limitations,
   };
 }
 
@@ -310,7 +342,12 @@ export function summariseReconstructedTree(tree: ReconstructedFeatureTree): stri
     for (const f of tree.features) {
       lines.push(`  ${f.type}: ${f.label} (conf ${Math.round(f.confidence * 100)}%)`);
     }
+  } else if (tree.limitations.length === 0) {
+    // 검출을 돌렸는데 0개 — 이건 정보다("없다"). 아래 limitations 와 구별해서 적는다.
+    lines.push('Features: none detected (detection ran)');
   }
+  // 못 돌린 것은 숨기지 않는다 — 빈 결과가 "없음"으로 읽히는 것을 막는 유일한 줄이다.
+  for (const l of tree.limitations) lines.push(`⚠ ${l}`);
   return lines.join('\n');
 }
 
