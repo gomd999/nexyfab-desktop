@@ -925,8 +925,23 @@ export function buildAssembly(asm) {
   let structural = null;
   try { structural = structuralCheck(asm, {}); } catch { /* 구조검토 실패는 빌드를 막지 않음 */ }
 
-  // 종합 설계 타당성 — 부유 0 · 배관 오류/관통/교차 0 이어야 PASS (lumps 규칙과 동일 사상)
+  /**
+   * 종합 설계 타당성 — 부유 0 · **간섭 0** · 배관 오류/관통/교차 0 이어야 PASS.
+   *
+   * ⚠ 간섭은 260728 에 추가됐다. 종전엔 빠져 있어서, 쉬운요약이 같은 문서 안에서
+   *   경고: "부품끼리 겹치는 곳 186군데 — 실제로는 들어가지 않는 자리가 있습니다"
+   *   종합: "형상 타당성(부유·**간섭**·배관) 이상 없음"
+   * 을 **동시에** 인쇄했다(실측: mech/transmission_tower, 99부재 격자탑). 종합 판정의
+   * 라벨이 간섭을 포함한다고 적어놓고 실제로는 세지 않은 것이라, 라벨이 거짓이었다.
+   *
+   * 이 간섭들은 오탐이 아니다 — 같은 패키지의 B1 메시 부울 재판정이 교집합 부피를
+   * 실측해 확정한다(11661.3 mm³ 등). 즉 두 부재가 실제로 같은 공간을 점유한다.
+   *
+   * 접촉(zero-thickness 맞닿음)은 `contacts` 로 따로 세므로 여기 걸리지 않는다 —
+   * 맞닿는 설계를 겹침으로 오판하지 않는다.
+   */
   const designOk = support.floating.length === 0
+    && interferences.length === 0
     && (!pipes || (pipes.errors.length === 0 && pipes.obstacleViolations.length === 0 && pipes.crossViolations.length === 0));
 
   // 픽킹 OBB(260719 #3): 회전 부품은 로컬 치수+배치를 동봉 — 클라 프록시가 회전 적용

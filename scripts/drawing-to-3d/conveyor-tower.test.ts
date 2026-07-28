@@ -38,7 +38,14 @@ describe('R2-⑩ 송전탑', () => {
     const asm = buildAssemblyTemplate('mech', 'transmission_tower', { panels: 3, height: 15000 });
     const b = buildAssembly(asm) as Built;
     expect(b.ok).toBe(true);
-    expect(b.designOk).toBe(true);
+    // ⚠ 260728: `designOk` 가 간섭을 세도록 바뀌었다(종전엔 부유·배관만 봤다). 종전 이 단언은
+    //   designOk 가 간섭을 보지 않았기 때문에 통과하던 **공허한 단언**이었다 — 격자 절점의
+    //   실교차가 186건 있는데 "형상 타당성 이상 없음"이 같은 문서에 함께 인쇄됐다.
+    //   랩 규칙은 **opt-in 이 정직한 기본값**이고(아래 두 번째 테스트가 고정) 패키지 생성은
+    //   그것을 넘기지 않으므로, 시스템의 입장은 "미해소 간섭"이다 → designOk=false 가 일관된다.
+    //   격자 완결의 근거는 아래 **랩 규칙을 적용한 재판정**이 지고, designOk 가 지지 않는다.
+    expect(b.designOk).toBe(false);
+    expect(b.interferences.length).toBeGreaterThan(0);
     const r = (await refineInterferencesMesh(asm, b.interferences, { latticeLapMm3: 50000 })) as Refined;
     expect(r.interferences, JSON.stringify(r.interferences).slice(0, 300)).toHaveLength(0);
     expect(r.laps.length).toBeGreaterThan(0); // 교차부=랩 접합으로 분류(관례 명시)

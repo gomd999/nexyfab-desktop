@@ -926,3 +926,33 @@ describe('배관 포트 해석(Phase3)', () => {
     expect(b.pipes.errors.join(' ')).toContain('포트 미해석');
   });
 });
+
+/**
+ * designOk 가 간섭을 센다 (260728, 복합 다물체 점검).
+ *
+ * 실측: mech/transmission_tower(99부재 격자탑)가 **간섭 186건**인데 `designOk:true` 였고,
+ * 쉬운요약이 같은 문서 안에서
+ *   경고 "부품끼리 겹치는 곳 186군데 — 제작 전에 도면을 고쳐야 합니다"
+ *   종합 "형상 타당성(부유·**간섭**·배관) 이상 없음"
+ * 을 **동시에** 인쇄했다. 종합 판정의 라벨이 간섭을 포함한다고 적어놓고 세지 않았던 것이다.
+ * (그 간섭들은 오탐이 아니다 — B1 메시 부울이 교집합 부피를 실측해 확정한다.)
+ */
+describe('designOk — 간섭을 센다', () => {
+  const box = (id: string, w: number, d: number, h: number, tx: number, ty: number, tz: number) =>
+    ({ id, type: 'box', material: 'SS400', params: { width: w, depth: d, height: h }, at: { tx, ty, tz } });
+
+  it('겹치는 부재가 있으면 designOk=false', () => {
+    const asm = { name: '겹침', parts: [box('a', 200, 200, 200, 0, 0, 0), box('b', 200, 200, 200, 100, 100, 0)] };
+    const b = buildAssembly(asm) as { designOk: boolean; interferences: unknown[] };
+    expect(b.interferences.length).toBeGreaterThan(0);
+    expect(b.designOk).toBe(false);
+  });
+
+  it('★맞닿기만 하는 설계는 겹침이 아니다 — 접촉을 간섭으로 오판하지 않는다', () => {
+    // 바닥판 위에 정확히 얹힌 기둥: 접촉면 공유(zero-thickness)이고 겹침 부피는 0.
+    const asm = { name: '접촉', parts: [box('base', 300, 300, 20, 0, 0, 0), box('post', 60, 60, 400, 120, 120, 20)] };
+    const b = buildAssembly(asm) as { designOk: boolean; interferences: unknown[] };
+    expect(b.interferences).toHaveLength(0);
+    expect(b.designOk).toBe(true);
+  });
+});
