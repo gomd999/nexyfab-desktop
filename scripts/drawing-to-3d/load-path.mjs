@@ -73,6 +73,22 @@ export function loadPathCheck(assembly, params = {}) {
     // 판정 불가가 아니라 적용 대상이 아니라는 뜻이고, 둘을 섞으면 소비자는 "입력을 더 주면
     // 판정된다"고 오해한다. 기둥이 하나도 없고 벽이 있으면 벽식으로 분류한다(관측 기반 —
     // 임의 임계가 아니라 구조 형식의 정의).
+    // 지붕 골조형(캐노피·박공 트러스): 슬래브 대신 **purlin→rafter→beam→column** 으로
+    // 하중이 흐른다. 완결된 경로이지만 이 검사(슬래브→보→기둥)의 모델이 아니다.
+    // 260729: 종전엔 "role 태깅 필요 — 슬래브0"으로 나갔는데, 캐노피에 슬래브가 없는 것은
+    // **정상**이라 태깅을 요구하면 없는 부재를 만들어 붙이라는 뜻이 된다.
+    const roofFrame = parts.filter((p) => p.role === 'rafter' || p.role === 'purlin');
+    if (!slabs.length && roofFrame.length && columns.length && beams.length) {
+      // ⚠ notApplicable 로 두지 **않는다**. 벽식은 shearWallCheck 가 받아 주지만 지붕
+      // 골조형은 받아 줄 검사가 없어, 침묵시키면 "풍 상향력이 지배한다"는 실행 가능한
+      // 안내까지 함께 사라진다. 판정 불가로 남기되 **사유가 정확해야** 한다.
+      return {
+        ok: false,
+        error: `지붕 골조형(서까래·중도리 ${roofFrame.length} · 슬래브 0) — 하중이 지붕 골조로 흐르므로 `
+          + '이 검토(슬래브→보→기둥→기초)의 대상이 아니다. ⚠ 캐노피·경사지붕은 **풍 상향력이 지배**하는 경우가 '
+          + '많으니 wind.V0 를 주고 풍하중 검토를 받는 편이 낫다.',
+      };
+    }
     const walls = parts.filter((p) => p.role === 'wall');
     if (!columns.length && walls.length) {
       return {

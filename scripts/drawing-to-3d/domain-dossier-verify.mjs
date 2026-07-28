@@ -125,6 +125,7 @@ import { landscapeCheck } from './landscape-check.mjs';
 import * as bridgeMod from './bridge-check.mjs';
 import { loadPathCheck } from './load-path.mjs';
 import { shearWallCheck } from './shear-wall-check.mjs';
+import { ductRunCheck } from './duct-run-check.mjs';
 import { mechCheck } from './mech-check.mjs';
 
 const BRIDGE_DISPATCH = [
@@ -162,6 +163,10 @@ function runDomainSafetyCheck(assembly, params) {
     if (assembly.stairMeta && typeof bridgeMod.stairCheck === 'function') {
       return { label: '계단 검토 (트레드·스트링거 휨)', result: bridgeMod.stairCheck(assembly, params) };
     }
+    // 본체가 구조가 아닌 어셈블리(덕트 계통 등)는 자기 검토로 — duct_sizing 계산기가
+    // 존재하면서 한 번도 불리지 않았다(260729).
+    const duct = ductRunCheck(assembly);
+    if (duct) return { label: duct.label ?? '덕트 계통 검토', result: duct };
     const lp = loadPathCheck(assembly, params);
     // 라멘이 아니면(벽식) 침묵하지 말고 **그 구조에 맞는 검토**로 넘긴다 (260729).
     // 종전엔 벽식 3종이 "해당 없음"으로 조용히 빠졌는데, 정작 shear_wall 계산기는
@@ -273,6 +278,8 @@ export function domainSafetyVerdict(assembly, params = {}) {
   // 하중경로가 ok=true 인데 지진·풍을 한 번도 안 본 채로 나가면, 소비자는 그것을
   // 구조 검증으로 읽는다 — 통과와 미실시는 같은 자리에 놓일 수 없다.
   const lateral = Array.isArray(r?.lateralUnavailable) ? r.lateralUnavailable : [];
+  // 덕트 사이징처럼 **검토 안의 미실시 항목**도 같은 자리로 올린다(260729).
+  if (r?.sizingUnavailable?.messageKo) lateral.push({ labelKo: '덕트 사이징', messageKo: r.sizingUnavailable.messageKo });
   return {
     label: run.label, ok: failed.length === 0, failed,
     ...(lateral.length ? { unavailable: lateral.map((u) => `${u.labelKo}: ${u.messageKo}`) } : {}),
