@@ -126,13 +126,32 @@ export function checkExecutionReadiness(assembly, sources = {}) {
 
   const items = [M1, M2, M3, M4, M5, M6];
   const applicable = items.filter((i) => i.pass !== null);
+  // ── 근거 충분성(evidence_sufficient) ─────────────────────────────────────
+  // 실 CAD 코퍼스가 독립적으로 같은 함정을 잡았다(REAL_CAD_CORPUS_PRIORS §"빈 검증"):
+  // "모든 대조가 skip 되고 watertight 만 남아 score 1.0 으로 통과할 뻔 —
+  //  게이트가 아무것도 검증 않고 도장 찍는 최악 케이스."
+  //
+  // 우리도 똑같았다(260728 실측): GA·부품 제작도가 **둘 다 생성 실패**하면 M1~M6 이
+  // 전부 N/A 가 되고, `applicable.every(...)` 는 **빈 배열에서 true** 라
+  //   score "0/0" · ok true · 소비자 문구 "0/0 (제작 착수 가능 수준)"
+  // 이 나갔다. 도면이 안 만들어진 패키지가 제작 착수 가능으로 선언된 것이다.
+  //
+  // 판정한 것이 하나도 없으면 통과가 아니다. ⚠ 이건 설계 결함이 아니라 산출물 부재이므로
+  // 사유를 함께 실어, 소비자가 "도면을 고쳐야 한다"로 오해하지 않게 한다.
+  const evidenceSufficient = applicable.length > 0;
+  const naCount = items.length - applicable.length;
   return {
-    score: `${applicable.filter((i) => i.pass).length}/${applicable.length}`,
+    // 분모 붕괴를 감추지 않는다 — "2/2" 와 "6/6" 은 똑같이 100% 로 읽힌다.
+    score: `${applicable.filter((i) => i.pass).length}/${applicable.length}`
+      + (naCount ? ` (전 ${items.length}항목 중 ${naCount}개 해당없음·판정불가)` : ''),
     items,
-    ok: applicable.every((i) => i.pass),
+    evidenceSufficient,
+    ok: evidenceSufficient && applicable.every((i) => i.pass),
     failed: applicable.filter((i) => !i.pass).map((i) => `${i.id} ${i.name}${i.detail.length ? ' — ' + i.detail.join('; ') : ''}`),
     na: items.filter((i) => i.pass === null).map((i) => i.id),
     note: '실시 검도 M1~M6 — 미충족=보완 대상(면책 아님) · 배열 특례 어휘=부품도+STEP 참조 기준(명시)'
+      + (evidenceSufficient ? '' : ' · ⚠ 판정한 항목이 0개 — 검도를 수행하지 못했다(통과가 아니다). '
+        + '설계 결함이 아니라 대조할 도면 산출물이 없어서다. 도면 생성 실패 원인을 먼저 확인하라.')
       + (gaMissing ? ' · ⚠ GA 도면 미생성 — M3/M5/M6 은 판정하지 못했다(미충족이 아님)' : '')
       + (sheetsMissing ? ' · ⚠ 부품 제작도 미생성 — 합집합 소스가 빠져 미충족 판정은 판정 불가로 낮췄다' : ''),
     ...(gaMissing ? { gaMissing: true } : {}),
@@ -155,7 +174,10 @@ export function executionReportHtml(gate, { title = 'NexyFab 설계' } = {}) {
     `<tr><td>${esc(i.id)} ${esc(i.name)}</td><td class="${i.pass === null ? 'na' : i.pass ? 'ok' : 'no'}">${i.pass === null ? 'N/A' : i.pass ? 'PASS' : 'FAIL'}</td><td style="text-align:left">${esc((i.detail ?? []).join('; ') || '—')}</td></tr>`).join('');
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)} — 실시 검도 M1~M6</title>
 <style>body{font-family:'Segoe UI','Malgun Gothic',sans-serif;max-width:860px;margin:20px auto;color:#1f2937}table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid #cbd5e1;padding:6px 10px}th{background:#f1f5f9}.ok{color:#15803d;font-weight:700}.no{color:#b91c1c;font-weight:700}.na{color:#94a3b8}</style></head><body>
-<h2>실시 검도 게이트 (M1~M6) — ${esc(gate.score)} ${gate.ok ? '<span class="ok">PASS</span>' : '<span class="no">보완 필요</span>'}</h2>
+<h2>실시 검도 게이트 (M1~M6) — ${esc(gate.score)} ${gate.evidenceSufficient === false
+    // 판정 0개를 "보완 필요"로 적으면 설계를 고치라는 뜻으로 읽힌다 — 원인은 산출물 부재다.
+    ? '<span class="no">판정 불가</span>'
+    : gate.ok ? '<span class="ok">PASS</span>' : '<span class="no">보완 필요</span>'}</h2>
 <table><thead><tr><th>항목</th><th>판정</th><th>상세</th></tr></thead><tbody>
 ${rows}
 </tbody></table>

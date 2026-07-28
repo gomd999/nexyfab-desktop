@@ -159,3 +159,38 @@ describe('checkExecutionReadiness — 부품도 미생성 시 FAIL 만 판정 �
     expect(r.items.find((i) => i.id === 'M1')!.pass).toBe(false); // 진짜 미충족은 그대로 FAIL
   });
 });
+
+describe('근거 충분성(evidence_sufficient) — 빈 검사가 합격이 되던 자리 (260728)', () => {
+  // 실 CAD 코퍼스가 독립적으로 같은 함정을 잡았다(result/report/layer2-pilot.md):
+  // "모든 대조가 skip 되고 watertight 만 남아 score 1.0 으로 통과할 뻔 — 게이트가
+  //  아무것도 검증 않고 도장 찍는 최악 케이스."
+  const asm = { name: 'x', domain: 'mech', parts: [
+    { id: 'p', type: 'box', role: 'slab', params: { width: 100, depth: 100, height: 5 }, at: { tx: 0, ty: 0, tz: 0 } },
+  ] };
+  const run = (o: Record<string, unknown>) =>
+    (checkExecutionReadiness as unknown as (a: unknown, o: unknown) => {
+      score: string; ok: boolean; evidenceSufficient: boolean; note: string;
+    })(asm, o);
+
+  it('GA·부품도가 둘 다 없으면 M1~M6 전부 N/A → 통과가 아니다', () => {
+    // 종전: applicable=[] 에서 `[].every(...)` 가 true → score "0/0" · ok true ·
+    // 소비자 문구 "0/0 (제작 착수 가능 수준)". 도면이 안 만들어진 패키지가
+    // 제작 착수 가능으로 선언됐다.
+    const g = run({ gaHtml: '', sheetsHtml: '', welds: [], gaFailed: true, sheetsFailed: true });
+    expect(g.evidenceSufficient).toBe(false);
+    expect(g.ok).toBe(false);
+    expect(g.score).toContain('0/0');
+  });
+
+  it('원인을 설계 결함이 아니라 산출물 부재로 지목한다', () => {
+    // "보완 필요"로만 적으면 도면을 고치라는 뜻으로 읽힌다 — 고칠 도면 자체가 없다.
+    const g = run({ gaHtml: '', sheetsHtml: '', welds: [], gaFailed: true, sheetsFailed: true });
+    expect(g.note).toContain('설계 결함이 아니라');
+    expect(g.note).toContain('도면 생성 실패 원인');
+  });
+
+  it('점수가 분모 붕괴를 감추지 않는다 — "2/2" 와 "6/6" 은 똑같이 100% 로 읽힌다', () => {
+    const g = run({ gaHtml: '<div class="nf-gentol">재질</div>', sheetsHtml: '', welds: [] });
+    expect(g.score).toMatch(/전 6항목 중 \d개 해당없음/);
+  });
+});

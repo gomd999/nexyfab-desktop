@@ -64,13 +64,27 @@ export function checkDrawingCompleteness(html, opts = {}) {
   ];
   const applicable = items.filter((i) => i.pass !== null);
   const passed = applicable.filter((i) => i.pass);
+  // 근거 충분성 — execution-gate 와 같은 규칙(260728). 판정한 항목이 0개면
+  // `passed.length === applicable.length` 가 0===0 으로 **참**이 되어 빈 검사가 합격이 된다.
+  // 실 CAD 코퍼스가 독립적으로 같은 함정을 잡았다(evidence_sufficient).
+  //
+  // ⚠ 정직하게: 여기서는 **아직 도달 불가**하다 — C1·C6·C7 은 applicability 를 보지 않고
+  // 항상 평가되므로 applicable 은 최소 3이다. 실제로 0/0 PASS 가 관측된 곳은
+  // execution-gate 쪽이다(GA·부품도 동시 미생성 → M1~M6 전부 N/A). 그럼에도 같은 식을
+  // 남겨두는 이유는 이번 세션에 N/A 경로를 계속 늘려 왔기 때문이다 — 다음에 C1 이
+  // 선택 항목이 되는 순간 조용히 빈 합격이 생긴다.
+  const evidenceSufficient = applicable.length > 0;
+  const naCount = items.length - applicable.length;
   return {
     kind,
-    score: `${passed.length}/${applicable.length}`,
+    // 분모 붕괴를 감추지 않는다 — "2/2" 와 "9/9" 는 똑같이 100% 로 읽힌다.
+    score: `${passed.length}/${applicable.length}`
+      + (naCount ? ` (전 ${items.length}항목 중 ${naCount}개 해당없음·판정불가)` : ''),
     passed: passed.map((i) => i.id),
     failed: applicable.filter((i) => !i.pass).map((i) => `${i.id} ${i.name}`),
     na: items.filter((i) => i.pass === null).map((i) => `${i.id} (${i.note})`),
-    ok: passed.length === applicable.length,
+    evidenceSufficient,
+    ok: evidenceSufficient && passed.length === applicable.length,
   };
 }
 

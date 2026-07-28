@@ -7,7 +7,24 @@ describe('checkDrawingCompleteness', () => {
     const html = 'nf-titleblock data-dwg 시트 nfhatch SECTION A-A DETAIL B ⌀ 8 2 2 2 stroke-dasharray="5 3" <circle 발주 규격 SCH40 필릿 △';
     const r = checkDrawingCompleteness(html);
     expect(r.ok).toBe(true);
-    expect(r.score).toBe('8/8');
+    // ⚠ 260728 계약 변경: score 에 분모 붕괴 고지를 덧붙였다. "8/8" 과 "9/9" 가 똑같이
+    // 100% 로 읽히던 것이 문제였고(실 CAD 코퍼스 evidence_sufficient 와 같은 결론),
+    // 몇 개가 판정에서 빠졌는지를 점수 옆에 적는다. 통과 개수 자체는 그대로 8/8 이다.
+    expect(r.score).toMatch(/^8\/8\b/);
+    expect(r.score).toContain('전 9항목 중 1개 해당없음');
+    expect(r.evidenceSufficient).toBe(true);
+  });
+
+  it('N/A 를 최대로 켜도 판정 항목이 남는다 — 현재 빈 합격은 도달 불가', () => {
+    // 근거 충분성 가드를 넣었지만 **여기서는 아직 발동하지 않는다**: C1·C6·C7 은
+    // applicability 를 보지 않고 항상 평가된다. 실제로 0/0 PASS 가 관측된 곳은
+    // execution-gate 다(GA·부품도 동시 미생성). 이 테스트는 그 사실을 고정해,
+    // 나중에 C1 이 선택 항목이 되면 여기서 먼저 깨지도록 한다.
+    // applicability 로 끌 수 있는 것은 C5·C6(hasCircular)·C8(hasWelds) 뿐이고,
+    // C2·C3 는 선택 뷰라 자동 N/A, C9 는 상시 N/A — 그래도 C1·C4·C7 이 남는다.
+    const r = checkDrawingCompleteness('', { applicability: { hasCircular: false, hasWelds: false } });
+    expect(r.evidenceSufficient).toBe(true);
+    expect(r.score).toMatch(/^\d+\/[1-9]/); // 분모가 0 이 아니다
   });
   it('누락 항목을 정직 보고한다', () => {
     const r = checkDrawingCompleteness('nf-titleblock data-dwg 시트');
