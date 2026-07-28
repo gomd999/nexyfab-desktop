@@ -58,8 +58,46 @@ describe('해당 없음과 판정 불가를 구별한다', () => {
     expect(v?.unavailable?.join(' ')).toContain('role 태깅 필요');
   });
 
-  it('자기모순 신호는 침묵시키지 않는다 — 슬래브 수 ≠ 층수', () => {
+  it('벽이 많아도 기둥이 있으면 침묵시키지 않는다 — 판정 불가로 남긴다', () => {
+    // ⚠ 260729 갱신: 종전 이 테스트는 "슬래브 수 ≠ 층수"를 기대했는데 **그 신호 자체가
+    // 오탐이었다**(기초 슬래브가 있는 건물은 항상 걸렸다 — 아래 describe 참조). 고친 뒤
+    // commercial_massing 은 다음 관문에서 걸린다: 기둥 24본이 전부 1열(6×1) + 벽 43장이라
+    // 직교 격자 라멘이 아니다. 테스트의 원래 의도(침묵시키지 않는다)는 그대로 유지한다.
     const v = verdict('commercial_massing');
-    expect(v?.unavailable?.join(' ')).toContain('슬래브 수');
+    expect(v).not.toBeNull();
+    expect(v?.unavailable?.join(' ')).toContain('직교 격자 라멘');
+  });
+});
+
+describe('기둥 단 ↔ 슬래브 대응 (260729) — 개수 일치 가정이 틀렸던 것', () => {
+  // 종전: `slabs.length !== nf` → "슬래브 수 ≠ 층수, 층당 1장 필요".
+  // 실측(commercial_massing, floors=4): 기둥 단 z=[250,4450,8050,11650],
+  // 슬래브 z=[0,4200,7800,11400,15000]. 기초 슬래브가 있는 4층 건물의 정상 구성인데
+  // 5≠4 로 거부됐다 — 지붕/기초 슬래브를 가진 건물은 **항상** 걸리는 규칙이었다.
+  const lp = loadPathCheck as unknown as (a: unknown, p: unknown) => { ok: boolean; error?: string };
+  const tpl = (id: string) => buildAssemblyTemplate('building', id, {}) as unknown as { parts: { role?: string; at?: { tz?: number } }[] };
+
+  it('기초 슬래브가 여분이어도 통과한다 — 슬래브 5 · 기둥 단 4', () => {
+    const r = lp(tpl('commercial_massing'), {});
+    expect(r.error ?? '').not.toContain('슬래브 수');
+  });
+
+  it('슬래브가 모자라면 그대로 걸린다 — 규칙을 느슨하게 만든 것이 아니다', () => {
+    const a = tpl('commercial_massing');
+    const cut = { ...a, parts: a.parts.filter((p) => p.role !== 'slab' || (p.at?.tz ?? 0) < 8000) };
+    const r = lp(cut, {});
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('위쪽 슬래브를 못 받는다');
+  });
+
+  it('단층 라멘은 종전대로 통과 — 회귀 없음', () => {
+    expect(lp(tpl('rc_frame'), {}).ok).not.toBe(false);
+  });
+
+  it('1열 기둥 거부는 적용범위 한계임을 밝힌다 — 설계 결함으로 읽히면 안 된다', () => {
+    // commercial_massing 은 기둥 24본이 전부 1열(6×1×4층) + 벽 43장.
+    const r = lp(tpl('commercial_massing'), {});
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('설계 결함이라는 뜻이 아니며');
   });
 });

@@ -96,8 +96,42 @@ export function loadPathCheck(assembly, params = {}) {
   if (columns.length !== xs.length * ys.length * nf) {
     return { ok: false, scope: 'grid', error: `기둥이 완전 격자가 아님 — ${xs.length}×${ys.length}×${nf}층=${xs.length * ys.length * nf} 기대, 실제 ${columns.length}본. (B3 v2는 직교 격자 라멘만)` };
   }
-  if (slabs.length !== nf) return { ok: false, error: `슬래브 수(${slabs.length}) ≠ 층수(${nf}) — 층당 1장 필요` };
-  if (xs.length < 2 || ys.length < 2) return { ok: false, error: '기둥 격자 최소 2×2 필요' };
+  // ── 기둥 단 ↔ 슬래브 대응 (260729) ──────────────────────────────────────────
+  // 종전: `slabs.length !== nf` → "슬래브 수 ≠ 층수, 층당 1장 필요". **가정이 틀렸다.**
+  //
+  // 실측(commercial_massing, floors=4): 기둥 단 z=[250,4450,8050,11650],
+  // 슬래브 z=[0,4200,7800,11400,15000]. 각 기둥 단은 슬래브 위(+두께 250)에 서고 그 위로
+  // 다음 슬래브를 받는다 — 기초 슬래브가 있는 4층 건물의 **정상 구성**인데 5≠4 로 거부됐다.
+  // 즉 지붕/기초 슬래브를 가진 모든 건물이 항상 걸리는 규칙이었다.
+  //
+  // 하중경로가 실제로 요구하는 것은 개수 일치가 아니라 **각 기둥 단이 자기 위의 슬래브를
+  // 받는가**이다. 단을 아래에서부터 훑어 위쪽 미사용 슬래브를 하나씩 짝지어 확인한다
+  // — 기초 슬래브 유무와 무관하게 성립하고, 슬래브가 모자라면 그대로 걸린다.
+  const slabZs = slabs.map((s) => s.at?.tz ?? 0).sort((a, b) => a - b);
+  const usedSlab = new Set();
+  const unmatchedTiers = [];
+  for (const z of zs) {
+    const i = slabZs.findIndex((sz, k) => !usedSlab.has(k) && sz > z);
+    if (i < 0) unmatchedTiers.push(z); else usedSlab.add(i);
+  }
+  if (unmatchedTiers.length) {
+    return {
+      ok: false,
+      error: `기둥 단 ${unmatchedTiers.length}개가 위쪽 슬래브를 못 받는다 — 기둥 단 z=[${zs.join(', ')}] vs 슬래브 z=[${slabZs.join(', ')}]. `
+        + '각 기둥 단은 자기 위의 슬래브를 받아야 한다(기초 슬래브는 여분으로 허용).',
+    };
+  }
+  if (xs.length < 2 || ys.length < 2) {
+    // 260729: 종전 문구는 "기둥 격자 최소 2×2 필요" 뿐이라 **설계를 고치라는 뜻으로 읽혔다.**
+    // 실제로는 이 검사기의 적용범위 한계다(위 96행과 같은 B3 v2 제약: 직교 격자 라멘 전용).
+    // 실측 예: commercial_massing 은 기둥 24본이 전부 1열(6×1×4층)이고 벽 43장이 나머지를
+    // 받는 벽+일방향 골조 혼합이다 — 건물이 틀린 게 아니라 이 검사의 대상이 아니다.
+    return {
+      ok: false,
+      error: `기둥이 ${xs.length}×${ys.length} 배열(1열) — 이 검토는 직교 격자 라멘(2×2 이상) 전용이라 `
+        + '대상이 아니다. 설계 결함이라는 뜻이 아니며, 벽·일방향 골조는 별도 검토가 필요하다.',
+    };
+  }
 
   // ── 하중 산정 (전부 근거 있는 값) ─────────────────────────────────────────
   const usage = params.usage ?? 'office';
