@@ -1175,6 +1175,11 @@ async function callToolInner(name, args = {}) {
       welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
       support: built.support ?? null, pipes: built.pipes ?? null, designOk: built.designOk ?? null,
       verificationUnavailable, outputsFailed,
+      // 260729: 도메인 안전 판정(기계·교량·건축 하중경로·인테리어·조경)과 코드 대조 검증이
+      // **쉬운요약 opts 로만 넘어가고 응답에는 없었다.** 사람은 HTML 에서 보지만 MCP 호출자는
+      // 대개 AI 에이전트이고 에이전트가 읽는 건 이 JSON 이다 — 안전 판정을 못 보고 있었다.
+      ...(domainSafety ? { domainSafety } : {}),
+      ...(codeVerification ? { codeVerification } : {}),
       step, roundtrip, interferenceRefine, executionGate, fasteners,
       note: '비법정 — 제작용 실시도서+검토 계산서. 인허가 도서=유자격 기술사 날인 영역.',
     };
