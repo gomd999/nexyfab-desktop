@@ -18,11 +18,31 @@ export function partSheets(assembly, { title = '부품 제작도', dwgPrefix = '
   // GA 와 동일한 그룹핑(type|role|로컬치수|재질)
   const gIdx = new Map();
   const groups = [];
+  /**
+   * ⚠ 260728 실측 결함 수정 — 호출 규약이 틀려 **모든 부품에서 던지고 있었다.**
+   * `partAabb(i)` 는 **단일 객체** `{type, ...params}` 를 받는다(다른 호출처 10곳 전부 그렇게
+   * 부른다). 여기만 `partAabb(p.type, p.params)` 2인자로 불러 `i.type === undefined` 로 매번
+   * throw 했고, 아래 catch 가 그것을 삼켜 **dims 가 항상 [0,0,0]** 이 됐다.
+   *
+   * 결과가 조용해서 더 나빴다: 크기가 다른 부재가 `type|role|0x0x0|material` 로 **한 군에
+   * 뭉쳐** 제작도가 대표 1장만 나갔다. 송전탑 99부재(길이 5종 브레이스)가 5군으로 묶였고,
+   * 그 길이들이 도면 어디에도 인쇄되지 않아 실시검도 M1 이 "치수 누락"으로 잡고 있었다 —
+   * M1 은 제 일을 하고 있었고 원인이 여기였다.
+   * (같은 오호출이 `html-render.mjs` 에서 한 번 잡힌 적이 있다 — 재발한 것이다.)
+   *
+   * 이제 실패를 삼키지 않는다: AABB 를 못 구하면 **부품 id 를 키에 넣어** 서로 다른 부품이
+   * 같은 군으로 뭉치지 않게 하고, 그 사실을 `unsized` 로 세어 시트에 표기한다.
+   */
+  let unsized = 0;
   for (const p of parts) {
-    let dims = [0, 0, 0];
-    try { const a = partAabb(p.type, p.params); dims = [a.max[0] - a.min[0], a.max[1] - a.min[1], a.max[2] - a.min[2]]; } catch { /* skip */ }
-    const key = `${p.type}|${p.role ?? ''}|${dims.map((v) => Math.round(v)).join('x')}|${p.material ?? ''}`;
-    if (!gIdx.has(key)) { gIdx.set(key, groups.length); groups.push({ rep: p, dims, count: 0 }); }
+    let dims = null;
+    try {
+      const a = partAabb({ type: p.type, ...p.params });
+      dims = [a.max[0] - a.min[0], a.max[1] - a.min[1], a.max[2] - a.min[2]];
+    } catch { unsized++; }
+    const sizeKey = dims ? dims.map((v) => Math.round(v)).join('x') : `unsized:${p.id ?? p.type}`;
+    const key = `${p.type}|${p.role ?? ''}|${sizeKey}|${p.material ?? ''}`;
+    if (!gIdx.has(key)) { gIdx.set(key, groups.length); groups.push({ rep: p, dims: dims ?? [0, 0, 0], count: 0, unsized: !dims }); }
     groups[gIdx.get(key)].count++;
   }
   const sheets = groups.slice(0, maxSheets);
@@ -96,6 +116,37 @@ ${gdt.dims.map((d) => `<tr><td style="text-align:left">${esc(d.name || d.kind)}<
 </tbody></table>` : ''}
 <div class="note">판독값(결정론 파스) — 그래픽 주석·서피스 텍스처는 범위 외. 발주 전 원 도면 대조.</div></div>`
     : '';
+  /**
+   * **부재 일람표** — 시트 상한(maxSheets)에 걸려 개별 제작도가 나가지 못한 군 (260728).
+   *
+   * 종전엔 `groups.slice(0, maxSheets)` 가 나머지를 **조용히 버렸다.** 실측: 현수교 183부재는
+   * 57군인데 24군만 발행돼 **33군이 아무 표시 없이 사라졌다**(그 전에는 partAabb 오호출로
+   * 전부 한 군에 뭉쳐 있어 이 절단이 드러나지도 않았다). 받는 쪽은 그 부재들이 애초에
+   * 없는 줄 안다 — 조용한 절단 금지.
+   *
+   * 시트를 57장 내는 대신 실제 도면이 쓰는 방식을 쓴다: 나머지를 **표**로 싣는다.
+   * 치수가 문서에 실제로 인쇄되므로 실시검도 M1(치수 충분성)도 정직하게 만족된다 —
+   * 숫자를 숨긴 채 게이트만 통과시키는 것이 아니다.
+   */
+  const omitted = groups.slice(maxSheets);
+  const scheduleHtml = omitted.length
+    ? `<div class="psheet"><div class="ph"><b>부재 일람표</b> — 개별 제작도 미발행 ${omitted.length}종 <span class="sub">시트 상한 ${maxSheets}종 초과분 · 치수는 아래 표가 정본</span></div>
+<div class="note" style="color:#b91c1c">이 ${omitted.length}종은 <b>빠뜨린 것이 아니라</b> 시트 상한을 넘어 개별 도면 대신 표로 싣습니다. 제작 치수는 아래 값이 기준입니다.</div>
+<table class="pt" style="margin-top:8px"><thead><tr><th>No.</th><th>부재</th><th>Type</th><th>수량</th><th>엔벨로프</th><th>제작 치수</th><th>재질</th></tr></thead><tbody>
+${omitted.map((g, k) => {
+  const q = g.rep;
+  const [ox, oy, oz] = g.dims.map((v) => Math.max(v, 0));
+  const dimTxt = PARAMS[q.type]
+    ? PARAMS[q.type].map((key) => `${key}=${q.params?.[key] ?? '—'}`).join(' · ')
+    : '—';
+  return `<tr><td>${maxSheets + k + 1}</td><td style="text-align:left">${esc(q.id ?? q.type)}</td><td>${esc(q.type)}</td><td>${g.count}</td><td>${fmt(ox)}×${fmt(oy)}×${fmt(oz)}</td><td style="text-align:left" class="nf-paramdims">${esc(dimTxt)}</td><td>${esc(q.material ?? '-')}</td></tr>`;
+}).join('')}
+</tbody></table></div>`
+    : '';
+  const unsizedNote = unsized > 0
+    ? `<div class="psheet"><div class="note" style="color:#b91c1c">⚠ 엔벨로프를 산출하지 못한 부재 ${unsized}개 — 그룹핑에서 서로 뭉치지 않도록 부재별로 분리했습니다(치수는 제작 치수 열을 따르세요).</div></div>`
+    : '';
+
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>@page{size:A4 landscape;margin:10mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937}
 .psheet{max-width:1050px;margin:14px auto;background:#fff;border:1px solid #cbd5e1;padding:12px 18px;box-shadow:0 3px 16px rgba(0,0,0,.08)}
@@ -104,5 +155,5 @@ ${gdt.dims.map((d) => `<tr><td style="text-align:left">${esc(d.name || d.kind)}<
 .pt{border-collapse:collapse;font-size:11px}.pt td{border:1px solid #cbd5e1;padding:3px 10px}.pt td:nth-child(odd){background:#f1f5f9}
 .note{font-size:10.5px;color:#94a3b8;margin-top:6px}
 @media print{body{background:#fff}.psheet{box-shadow:none;border:none;page-break-after:always;margin:0}}</style></head>
-<body><div style="max-width:1050px;margin:14px auto;font-size:15px;font-weight:700">${esc(title)} — 그룹 대표 ${N}종(총 부품 ${parts.length})</div>${gdtHtml}${sheetHtml}</body></html>`;
+<body><div style="max-width:1050px;margin:14px auto;font-size:15px;font-weight:700">${esc(title)} — 그룹 대표 ${N}종${omitted.length ? ` + 일람표 ${omitted.length}종` : ''}(총 부품 ${parts.length} · ${groups.length}종)</div>${gdtHtml}${sheetHtml}${scheduleHtml}${unsizedNote}</body></html>`;
 }
