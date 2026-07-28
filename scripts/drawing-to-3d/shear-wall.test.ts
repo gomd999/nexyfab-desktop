@@ -86,7 +86,11 @@ describe('디스패치', () => {
   it('R 을 주면 실제 판정이 나온다', () => {
     const v = verdict('water_tank', { seismic: { R: 4 } });
     expect(v?.ok).toBe(true);
-    expect(v?.unavailable ?? []).toHaveLength(0);
+    // ⚠ 260729: 종전엔 unavailable 0 을 기대했다. 이후 **공간 구획·피난 미검토** 고지가
+    // 추가돼(벽이 있는 건축 어셈블리 공통) 1건이 남는다 — 벽식 횡력이 판정됐다는 사실과
+    // 별개의 항목이라 남는 것이 맞다. 이 테스트의 의도는 "횡력 거부가 사라진다"이다.
+    expect((v?.unavailable ?? []).some((u) => /반응수정계수 R/.test(u))).toBe(false);
+    expect((v?.unavailable ?? []).every((u) => /공간 구획/.test(u))).toBe(true);
   });
 
   it('라멘은 종전대로 하중경로 검토 — 회귀 없음', () => {

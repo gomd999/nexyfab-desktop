@@ -136,6 +136,41 @@ const BRIDGE_DISPATCH = [
   { meta: 'stairMeta', fn: 'stairCheck' },
 ];
 
+/**
+ * 공간 구획·피난 미검토 고지 (260729).
+ *
+ * `interiorCheck`(보행거리 BFS·수용인원·피난폭)는 이미 있고 인테리어에서 잘 돈다.
+ * 그런데 **건축 어셈블리는 그 입력을 하나도 선언하지 않는다** — 실측: gable_house
+ * 벽15·commercial_massing 벽43 모두 개구부·roomBounds·exits 가 전부 없다. 그 결과
+ * 4층 상업건물 도서가 **공간 구획·피난을 한 번도 보지 않고** 나갔고 아무도 그 사실을
+ * 말하지 않았다 — 내진·부재 검토와 같은 자리다.
+ *
+ * ⚠ 벽 외곽에서 실을 도출하지 않는다. 43장 벽이 감싼 영역을 방 하나로 치면 그건 추측이고,
+ * 그 추측 위에 보행거리·수용인원을 얹으면 근거 없는 수치가 된다. 무엇을 선언하면 되는지만
+ * 말한다.
+ */
+function spaceUnavailable(assembly) {
+  if (assembly?.domain !== 'building') return null;
+  const walls = (assembly.parts ?? []).filter((p) => p.role === 'wall' && p.unverified !== true);
+  if (!walls.length) return null;                       // 공간을 감싸는 벽이 없다 = 해당 없음
+  if (assembly.roomBounds?.W && assembly.roomBounds?.D) return null; // 이미 선언돼 있으면 검토 경로가 있다
+  return {
+    labelKo: '공간 구획·피난 검토',
+    needInputs: [
+      { name: 'roomBounds{W,D}', labelKo: '실 경계 — 벽 외곽에서 도출하면 추측이 된다' },
+      { name: 'exits[{x,y,widthMm}]', labelKo: '출입구 위치·폭 — 없으면 피난 검토가 원리상 불가능하다' },
+      { name: 'usage', labelKo: '용도 — 재실밀도·피난 기준이 용도로 정해진다' },
+    ],
+    // ⚠ 이 어셈블리가 **사람이 쓰는 공간인지**는 선언돼 있지 않다(물탱크·승강로처럼
+    // 벽이 있어도 재실 공간이 아닐 수 있다). 단정하지 않고 조건부로 적는다.
+    messageKo: `공간 구획·피난 미검토 — 벽 ${walls.length}장이 공간을 감싸고 있으나 실 경계·출입구·용도가 `
+      + '선언돼 있지 않습니다. 벽 외곽만으로 실을 나누면 추측이 되므로 나누지 않았습니다. '
+      + '**사람이 사용하는 공간이라면** 실 경계·출입구·용도를 선언하십시오 — 보행거리·수용인원·'
+      + '피난폭을 검토합니다(인테리어와 같은 엔진). 설비 공간이면 해당 없습니다. '
+      + '어느 쪽이든 이 문서는 **피난을 확인하지 않았습니다.**',
+  };
+}
+
 /** Which domains have a wired safety/code check, and how to run it. Returns
  *  null when the domain has no applicable check (e.g. 'mech' — a mechanical
  *  part has no egress/timber/bridge-load concept) so no file is forced. */
@@ -271,13 +306,24 @@ export function domainSafetyVerdict(assembly, params = {}) {
     const need = Array.isArray(r?.needInputs) && r.needInputs.length
       ? `입력 필요: ${r.needInputs.map((x) => x.labelKo ?? x.name).join(', ')}`
       : (r?.error ?? r?.gateError ?? '사유 미상');
-    return { label: run.label, ok: true, failed: [], unavailable: [`${run.label}: ${need}`] };
+    // ⚠ 이 조기 반환이 **공간 고지를 통째로 삼키고 있었다**(260729). 벽이 있는 건축
+    // 어셈블리는 거의 전부 여기(거부)로 빠지므로, 성공 경로에만 붙이면 정작 필요한
+    // 곳에 한 건도 도달하지 않는다 — 실측으로 확인하고 양쪽에 붙였다.
+    const sp0 = spaceUnavailable(assembly);
+    return {
+      label: run.label, ok: true, failed: [],
+      unavailable: [`${run.label}: ${need}`, ...(sp0 ? [`${sp0.labelKo}: ${sp0.messageKo}`] : [])],
+    };
   }
   const failed = collectFailingChecks(r);
   // 검토가 **성공했더라도** 그 안에서 안 돌린 항목이 있으면 함께 올린다(260729).
   // 하중경로가 ok=true 인데 지진·풍을 한 번도 안 본 채로 나가면, 소비자는 그것을
   // 구조 검증으로 읽는다 — 통과와 미실시는 같은 자리에 놓일 수 없다.
   const lateral = Array.isArray(r?.lateralUnavailable) ? r.lateralUnavailable : [];
+  // 공간 구획·피난은 building 의 어느 하위 경로(라멘·벽식·덕트)로 가든 똑같이 빠진다 —
+  // 그래서 개별 검사가 아니라 **디스패치 뒤**에서 한 번 본다(260729).
+  const space = spaceUnavailable(assembly);
+  if (space) lateral.push(space);
   // 덕트 사이징처럼 **검토 안의 미실시 항목**도 같은 자리로 올린다(260729).
   if (r?.sizingUnavailable?.messageKo) lateral.push({ labelKo: '덕트 사이징', messageKo: r.sizingUnavailable.messageKo });
   return {
