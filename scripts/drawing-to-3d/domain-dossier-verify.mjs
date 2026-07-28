@@ -120,6 +120,7 @@ function renderRun(run) {
 // 안 돼 인테리어/조경/교량 문서가 피난·목재·활하중 검토 없이 나가고 있었다).
 // ─────────────────────────────────────────────────────────────────────────────
 import { interiorCheck } from './interior-check.mjs';
+import { interiorComponentCheck } from './interior-component-check.mjs';
 import { landscapeCheck } from './landscape-check.mjs';
 import * as bridgeMod from './bridge-check.mjs';
 import { loadPathCheck } from './load-path.mjs';
@@ -139,7 +140,14 @@ const BRIDGE_DISPATCH = [
  *  part has no egress/timber/bridge-load concept) so no file is forced. */
 function runDomainSafetyCheck(assembly, params) {
   const domain = assembly?.domain;
-  if (domain === 'interior') return { label: '실내건축 검토 (피난·수용인원 등)', result: interiorCheck(assembly, params) };
+  if (domain === 'interior') {
+    // 260729: interior 도 무조건 interiorCheck(피난·수용인원)로 갔다 — building 이 무조건
+    // loadPathCheck 로 가던 것과 같은 고정 배선. 붙박이장·카운터바·칸막이벽·천장그리드는
+    // **방이 아니라 부분 요소**라 roomBounds 가 없는 게 맞는데 "메타 필요"로 거부됐다.
+    const comp = interiorComponentCheck(assembly);
+    if (comp) return { label: comp.label ?? '실내 부분요소 검토', result: comp };
+    return { label: '실내건축 검토 (피난·수용인원 등)', result: interiorCheck(assembly, params) };
+  }
   if (domain === 'landscape') return { label: '조경 검토 (목재부재·배수 등)', result: landscapeCheck(assembly, params) };
   if (domain === 'bridge') {
     const disp = BRIDGE_DISPATCH.find((d) => assembly[d.meta] && typeof bridgeMod[d.fn] === 'function');
