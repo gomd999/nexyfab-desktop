@@ -158,3 +158,46 @@ export function discrepancyLine(s: DiscrepancySplit): string {
   }
   return parts.join('; ');
 }
+
+// ─── 치수 약속의 산술 (260728, §7-1 치수 축) ────────────────────────────────
+
+import type { DimensionDerivation } from './types';
+
+/**
+ * 치수 `expected` 를 브리프 치수에서 **엔진이** 계산한다.
+ *
+ * 부피(§6-1)와 같은 원칙이고 같은 이유다: 모델이 못하는 것은 **산술**이지 의도가 아니다.
+ * 실측(bench v1) — b-11 경사 심이 3/3 으로 `aligned` 슬랜트 길이에서 죽었고, 실측
+ * 122.576(=√(120²+25²))은 **옳았는데** 모델의 약속이 매 실행마다 달랐다(125·120.208·122.066).
+ *
+ * ⚠ 독립성은 그대로다 — 항은 **브리프 치수**에서 오고 측정 기하에서 오지 않는다.
+ * 측정값에서 expected 를 유도하면 그 순간 검사가 항등식이 된다(§6-1 에서 배격한 것).
+ */
+export function derivedDimensionMm(d: DimensionDerivation): number {
+  const pos = (v: number, what: string) => {
+    if (!Number.isFinite(v) || v <= 0) throw new RangeError(`expectedFrom.${what}=${v} — 유한한 양수여야 한다`);
+    return v;
+  };
+  switch (d.kind) {
+    case 'hypotenuse':
+      return Math.hypot(pos(d.legAMm, 'legAMm'), pos(d.legBMm, 'legBMm'));
+    case 'sum': {
+      if (!Array.isArray(d.termsMm) || d.termsMm.length === 0) throw new RangeError('expectedFrom.termsMm 가 비어 있다');
+      return d.termsMm.reduce((a, v, i) => a + pos(v, `termsMm[${i}]`), 0);
+    }
+    case 'difference': {
+      if (!Array.isArray(d.minusMm) || d.minusMm.length === 0) throw new RangeError('expectedFrom.minusMm 가 비어 있다');
+      const out = d.minusMm.reduce((a, v, i) => a - pos(v, `minusMm[${i}]`), pos(d.fromMm, 'fromMm'));
+      if (!(out > 0)) throw new RangeError(`expectedFrom: ${d.fromMm} − ${d.minusMm.join('−')} = ${out} — 양수가 아니다`);
+      return out;
+    }
+  }
+}
+
+/** 사람이 읽는 한 줄 — 게이트 notes 에 실려 "왜 이 숫자인가"가 남는다. */
+export function derivationLine(d: DimensionDerivation): string {
+  const v = derivedDimensionMm(d);
+  if (d.kind === 'hypotenuse') return `expectedFrom: √(${d.legAMm}² + ${d.legBMm}²) = ${v}`;
+  if (d.kind === 'sum') return `expectedFrom: ${d.termsMm.join(' + ')} = ${v}`;
+  return `expectedFrom: ${d.fromMm} − ${d.minusMm.join(' − ')} = ${v}`;
+}

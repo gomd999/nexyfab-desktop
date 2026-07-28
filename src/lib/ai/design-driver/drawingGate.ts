@@ -35,6 +35,7 @@ import { validateDimension, type Dimension } from '@/lib/drawing/dimension';
 import type { HoleSpec as SheetHoleSpec } from '@/lib/drawing/holeTable';
 import { measureSheetDimension } from '@/lib/drawing/associativeUpdate';
 import { describeRefSpan, refSpanLine } from './refGeometry';
+import { derivationLine, derivedDimensionMm } from './volumeDecomposition';
 import type { MeasureResult } from '@/lib/drawing/measure';
 import {
   bodyKey,
@@ -271,8 +272,32 @@ export function drawingGate(plan: DesignPlan, artifact: DrawingArtifact): GateRe
       continue;
     }
     okCount += 1;
-    if (m.spec.expected !== undefined) {
-      const dev = Math.abs(m.result.value - m.spec.expected);
+    // 약속의 산술은 엔진이 한다 — 모델이 틀리는 부분이 정확히 이것이다(260728, §6-1 의 치수 판).
+    // 항은 브리프 치수에서 오므로 measured 와 여전히 독립이다.
+    let authority = m.spec.expected;
+    if (m.spec.expectedFrom) {
+      let computed: number;
+      try {
+        computed = derivedDimensionMm(m.spec.expectedFrom);
+      } catch (e) {
+        reasons.push(`${label}: expectedFrom invalid — ${e instanceof Error ? e.message : String(e)}`);
+        continue;
+      }
+      notes.push(`${m.spec.id}: ${derivationLine(m.spec.expectedFrom)}`);
+      // 모델이 숫자도 함께 적었다면 자기 유도식과 맞는지 본다. 산술 오류는 측정 불일치와
+      // **다른 문장**으로 보고한다 — 섞으면 어디를 고쳐야 하는지 알 수 없다(§6-1 과 동일).
+      if (m.spec.expected !== undefined && Math.abs(m.spec.expected - computed) > DIMENSION_MATCH_TOL) {
+        reasons.push(
+          `${label}: expected ${m.spec.expected} disagrees with your own expectedFrom (${computed}) — ` +
+            `arithmetic error in the stated promise, not a measurement disagreement ` +
+            `(the geometry was not consulted for either number)`,
+        );
+        continue;
+      }
+      authority = computed;
+    }
+    if (authority !== undefined) {
+      const dev = Math.abs(m.result.value - authority);
       if (dev > maxDeviation) maxDeviation = dev;
       if (dev > DIMENSION_MATCH_TOL) {
         // 숫자만 말하지 않는다 — 고른 두 ref 가 **실제로** 어떻게 떨어져 있는지 함께 말한다
@@ -288,7 +313,7 @@ export function drawingGate(plan: DesignPlan, artifact: DrawingArtifact): GateRe
           if (rep) span = ` — ${refSpanLine(m.spec.refs[0]!, m.spec.refs[1]!, m.spec.view, rep)}`;
         }
         reasons.push(
-          `${label}: measured ${m.result.value} ${m.result.unit} deviates from expected ${m.spec.expected} by ${dev} > ${DIMENSION_MATCH_TOL}${span}`,
+          `${label}: measured ${m.result.value} ${m.result.unit} deviates from expected ${authority} by ${dev} > ${DIMENSION_MATCH_TOL}${span}`,
         );
       }
     }

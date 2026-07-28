@@ -62,6 +62,7 @@ import type {
   HoleSpec,
   VolumeTerm,
   VolumeDecomposition,
+  DimensionDerivation,
 } from './types';
 import {
   retrieveReferenceParts,
@@ -568,6 +569,28 @@ function coercePart(v: unknown, path: string): PlanPart {
   return part;
 }
 
+const DERIVATION_KINDS = new Set(['hypotenuse', 'sum', 'difference']);
+
+/** `expected` 의 파라메트릭 유도 — 산술은 엔진이 한다(260728, §6-1 의 치수 판). */
+function coerceDimensionDerivation(v: unknown, path: string): DimensionDerivation {
+  const o = reqObj(v, path);
+  const kind = reqStr(o.kind, `${path}.kind`);
+  if (!DERIVATION_KINDS.has(kind)) {
+    throw new PlannerError(`${path}.kind='${kind}' invalid (hypotenuse|sum|difference)`);
+  }
+  if (kind === 'hypotenuse') {
+    return { kind: 'hypotenuse', legAMm: reqNum(o.legAMm, `${path}.legAMm`), legBMm: reqNum(o.legBMm, `${path}.legBMm`) };
+  }
+  if (kind === 'sum') {
+    const terms = reqArray(o.termsMm, `${path}.termsMm`);
+    if (terms.length === 0) throw new PlannerError(`${path}.termsMm is empty`);
+    return { kind: 'sum', termsMm: terms.map((t, i) => reqNum(t, `${path}.termsMm[${i}]`)) };
+  }
+  const minus = reqArray(o.minusMm, `${path}.minusMm`);
+  if (minus.length === 0) throw new PlannerError(`${path}.minusMm is empty`);
+  return { kind: 'difference', fromMm: reqNum(o.fromMm, `${path}.fromMm`), minusMm: minus.map((t, i) => reqNum(t, `${path}.minusMm[${i}]`)) };
+}
+
 function coerceDimension(v: unknown, path: string): PlanDimensionSpec {
   const o = reqObj(v, path);
   const view = reqStr(o.view, `${path}.view`);
@@ -593,6 +616,9 @@ function coerceDimension(v: unknown, path: string): PlanDimensionSpec {
     if (axis !== 'x' && axis !== 'y') throw new PlannerError(`${path}.axis='${axis}' invalid (x|y)`);
     if (kind !== 'linear') throw new PlannerError(`${path}.axis is linear-only (kind='${kind}')`);
     dim.axis = axis;
+  }
+  if (o.expectedFrom !== undefined && o.expectedFrom !== null) {
+    dim.expectedFrom = coerceDimensionDerivation(o.expectedFrom, `${path}.expectedFrom`);
   }
   const expected = optNum(o.expected, `${path}.expected`);
   if (expected !== undefined) dim.expected = expected;
@@ -1068,6 +1094,16 @@ DesignPlan schema (unknown fields are dropped; wrong types are rejected):
         "kind": "linear"|"aligned"|"radial"|"diametric"|"angular",
         "axis": "x"|"y"?,        // linear only — force the horizontal(x)/vertical(y) COMPONENT
         "refs": [string],         // stable topology names (see rules)
+        // PREFER "expectedFrom" when the nominal needs ARITHMETIC — the engine computes it,
+        // so you cannot get it wrong. Terms come from the BRIEF, never from the geometry.
+        //   { "kind":"hypotenuse", "legAMm":number, "legBMm":number }   √(a²+b²) — a slant's TRUE length
+        //   { "kind":"sum",        "termsMm":[number,...] }             a chain of segments
+        //   { "kind":"difference", "fromMm":number, "minusMm":[number,...] }  outer minus walls
+        // Then omit "expected" entirely. Worked example — a shim 120 long, 40 tall at one end and
+        // 15 at the other: the sloping edge's aligned length is NOT 120 and NOT 125; declare
+        //   "kind":"aligned", "expectedFrom":{"kind":"hypotenuse","legAMm":120,"legBMm":25}
+        // and the engine computes 122.576. (25 = 40 − 15, the rise.)
+        "expectedFrom": object?,
         "expected": number?,      // nominal from the brief; gate checks |measured-expected| <= 1e-6
         "tolerance": object?
       }
@@ -1165,6 +1201,11 @@ HONESTY RULES:
   (e.g. the brief says flange 50 but the loop you wrote makes it 45). If you give both a
   decomposition and valueMm3 and they disagree, the gate reports that as an ARITHMETIC error in
   your stated theory — separate from a geometry error — so the fix is unambiguous.
+- Same rule for dimension nominals: if the number needs arithmetic (a slant length, a chain, an
+  inner width), give "expectedFrom" and omit "expected". A promise you computed by hand is the
+  thing that has been wrong — the measurement is usually right. If you give both and they
+  disagree, the gate reports that as an ARITHMETIC error in your promise, separately from a
+  measurement disagreement.
 - Do NOT omit expectedVolume to avoid a mismatch. A mismatch means the loop you drew is not the
   shape you intended; hiding it ships a wrong part. Give a decomposition instead — then there is
   no arithmetic for you to get wrong, and the check still does its job.

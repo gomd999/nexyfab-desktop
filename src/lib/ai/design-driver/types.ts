@@ -435,8 +435,37 @@ export interface PlanDimensionSpec {
    * |measured − expected| ≤ 1e-6 (absolute, mm/deg).
    */
   expected?: number;
+  /**
+   * Parametric derivation of `expected` — the engine does the arithmetic
+   * (260728). Same principle as `ExpectedVolumeSpec.decomposition`: the model
+   * states the shape in BRIEF dimensions, the engine multiplies.
+   *
+   * WHY: bench v1 measured b-11 (tapered shim) failing **3/3** on
+   * `aligned` slant length — the real length is √(120²+25²) = 122.576 and the
+   * model promised 125 / 120.208 / 122.066 (a different wrong number each run —
+   * it was guessing). The measurement was right and the promise was wrong, which
+   * 260727 §5-4 already named as its own failure axis.
+   *
+   * ⚠ Independence is preserved exactly as in §6-1: the terms come from the
+   * BRIEF, never from the measured geometry. The gate still compares an
+   * engine-computed intent against a real measurement — two separate sources.
+   * Deriving `expected` FROM the measurement would make the check an identity.
+   */
+  expectedFrom?: DimensionDerivation;
   tolerance?: Tolerance;
 }
+
+/**
+ * How `PlanDimensionSpec.expected` is derived from brief dimensions.
+ * Deliberately small — only forms the measurements showed a need for.
+ */
+export type DimensionDerivation =
+  /** √(legA² + legB²) — a slant's true length (kind:'aligned'). */
+  | { kind: 'hypotenuse'; legAMm: number; legBMm: number }
+  /** Σ terms — a chain of segments. */
+  | { kind: 'sum'; termsMm: number[] }
+  /** fromMm − minusMm — e.g. an inner width from outer minus two walls. */
+  | { kind: 'difference'; fromMm: number; minusMm: number[] };
 
 // ─── WB-5: GD&T IR (additive OPTIONAL — feature/process kinds untouched) ────
 
