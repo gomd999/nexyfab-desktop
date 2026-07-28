@@ -348,6 +348,33 @@ ${stdWarn}</section>`;
   }
   const unknownSup = built.support?.unknown ?? [];
   if (unknownSup.length) cautions.push(`지지 여부를 판정할 수 없는 부재 ${unknownSup.length}개 — 치수 입력 필요: ${unknownSup.slice(0, 6).join(', ')}`);
+
+  // ── 얹혀만 있고 접합이 없는 부재 (260729) ───────────────────────────────────
+  // support-check 는 `faceContacts{part,on,gapMm,suggestTzMm}` 를 이미 산출한다. 그런데
+  // 소비자 문서 어디에도 나오지 않았다 — 또 하나의 "판정해 놓고 버린" 자리다.
+  //
+  // 실측으로 드러난 사각지대: 지지 판정 공차는 8mm(support-check tol), 용접 인접 판정은
+  // 약 2mm 다. **그 사이(약 3~8mm)에서는 용접 0 · 부유 0 · designOk true** 가 되어,
+  // 아무것에도 붙어 있지 않은 부재가 "형상 타당성 이상 없음"으로 나갔다.
+  //
+  // 임계를 새로 지어내지 않는다. 두 기존 판정의 자기정합만 본다 — "지지로 분류됐는데
+  // 그 쌍에 접합이 하나도 없다". 실패로 만들지도 않는다(볼트·단순 거치도 정당하므로).
+  const faceContacts = built.support?.faceContacts ?? [];
+  let gappedUnjoined = 0; // 판정문 한정에 쓴다 — "부유 이상 없음"을 그대로 두면 안 되는 경우
+  if (faceContacts.length) {
+    const weldPair = new Set((built.welds ?? []).flatMap((w) => [`${w.a}|${w.b}`, `${w.b}|${w.a}`]));
+    const unjoined = faceContacts.filter((c) => !weldPair.has(`${c.part}|${c.on}`));
+    if (unjoined.length) {
+      const gapped = unjoined.filter((c) => Number(c.gapMm) > 0);
+      gappedUnjoined = gapped.length;
+      const show = unjoined.slice(0, 4).map((c) => `${c.part}→${c.on}(틈 ${Number(c.gapMm ?? 0)}mm)`).join(', ');
+      cautions.push(`<b>얹혀만 있고 접합이 없는 자리 ${unjoined.length}군데</b> — ${esc(show)}${unjoined.length > 4 ? ' 외' : ''}. `
+        + (gapped.length
+          ? `이 중 ${gapped.length}군데는 실제로 <b>떠 있습니다</b>(틈 &gt; 0). 지지 판정 공차 안이라 "부유"로는 잡히지 않았지만 맞닿아 있지 않습니다 — 위치를 내리거나 받침을 넣어야 합니다.`
+          : '맞닿아는 있으나 용접·체결이 지정되지 않았습니다 — 접합 방법을 정해야 합니다.')
+        + ` 3D 파일에서도 별개 덩어리로 떨어집니다(권장 매립: ${unjoined.slice(0, 3).map((c) => `${c.part} ${c.suggestTzMm}mm`).join(', ')}).`);
+    }
+  }
   const itf = built.interferences ?? [];
   if (itf.length) {
     // 2차 정제를 거쳤으면 어떤 근거로 좁혀진 숫자인지 함께 말한다 — 원본을 감추지 않는다.
@@ -412,7 +439,12 @@ ${stdWarn}</section>`;
   // 불가 목록을 읽기 전에 안심한다. 판정문 자체에 무엇을 안 봤는지 붙인다.
   const structPartial = structural?.ok === true && structural?.memberUnavailable
     ? ' <span class="sub">(부재 강도 미검토 — 아래 판정 불가 참조)</span>' : '';
-  const verdict = `<p class="${structVerdictFailed ? 'warn' : 'sub'}">자동 점검 종합: 구조 안전(개산) <b>${structural == null ? '미산출' : structural.ok ? '이상 없음' : '보완 필요'}</b>${structPartial}${feaVerdictText}${domainSafetyVerdictText}${codeVerificationVerdictText} · 형상 타당성(부유·간섭·배관) <b>${built.designOk == null ? '미산출' : built.designOk ? '이상 없음' : '보완 필요'}</b>${structVerdictFailed ? ' — 보완 없이 제작에 들어가면 안 됩니다.' : ''}</p>`;
+  const verdict = `<p class="${structVerdictFailed ? 'warn' : 'sub'}">자동 점검 종합: 구조 안전(개산) <b>${structural == null ? '미산출' : structural.ok ? '이상 없음' : '보완 필요'}</b>${structPartial}${feaVerdictText}${domainSafetyVerdictText}${codeVerificationVerdictText} · 형상 타당성(부유·간섭·배관) <b>${built.designOk == null ? '미산출' : built.designOk ? '이상 없음' : '보완 필요'}</b>${
+    // "부유 이상 없음"인데 실제로 떠 있는 부재가 있으면 그 주장이 무너진다 — 지지 판정
+    // 공차(8mm) 안이라 floating 으로 안 잡혔을 뿐이다(260729 사각지대).
+    built.designOk === true && gappedUnjoined
+      ? ` <span class="sub">(단, 떠 있는 채 접합 없는 자리 ${gappedUnjoined}군데 — 아래 확인)</span>` : ''
+  }${structVerdictFailed ? ' — 보완 없이 제작에 들어가면 안 됩니다.' : ''}</p>`;
 
   /**
    * 검증을 **못 돌린** 항목 — 260728 §7-5.
