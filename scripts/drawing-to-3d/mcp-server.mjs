@@ -1048,6 +1048,11 @@ async function callToolInner(name, args = {}) {
     // 나간다 — 835eec40 이 고친 것과 **같은 결말에 도달하는 다른 경로**다(배선 부재가 아니라
     // 예외). 그래서 삼키지 않고 '확인 못 함'으로 기록해 소비자 문서까지 전달한다(260728).
     const verificationUnavailable = [];
+    // 260728: 주 경로는 structuralCheck(asm, {}) 로 부르므로 부재 휨/처짐 검토가 **항상**
+    // 안 돌았는데 아무도 말하지 않았다 — 보 8개 가대가 "구조 안전 이상 없음"으로 나갔다.
+    if (built.structural?.memberUnavailable) {
+      verificationUnavailable.push(built.structural.memberUnavailable.messageKo);
+    }
     let codeVerification = null;
     try { const dv = await import('./domain-dossier-verify.mjs'); const vh = dv.verificationReportHtml(args.assembly, { title, params: args.verifyParams ?? {} }); if (vh) save('검증.html', vh); codeVerification = dv.codeVerificationVerdict(args.assembly, args.verifyParams ?? {}); }
     catch (e) { verificationUnavailable.push(`코드 대조 검증(옹벽·암거 KDS): ${String(e?.message ?? e).slice(0, 120)}`); }

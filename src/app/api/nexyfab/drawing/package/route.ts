@@ -244,6 +244,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let codeVerification: { label: string; ok: boolean; failed: string[]; decisive: boolean } | null = null;
   /** 검증을 **못 돌린** 항목 — null 로 숨기지 않고 소비자 문서까지 전달한다(260728 §7-5). */
   const verificationUnavailable: string[] = [];
+  // MCP 와 동일 — 부재 휨/처짐 미검토는 "이상 없음"이 아니라 "판정 불가"다(260728).
+  {
+    const mu = (built.structural as { memberUnavailable?: { messageKo?: string } } | undefined)?.memberUnavailable;
+    if (mu?.messageKo) verificationUnavailable.push(mu.messageKo);
+  }
   // ③ 형상+검증: 어셈블리 검증 메타(옹벽 등) → 분야 KDS 계산기 실행값(전도·활동·지지력…). 메타 없으면 미생성(정직).
   try {
     const dv = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'domain-dossier-verify.mjs')).href)) as {

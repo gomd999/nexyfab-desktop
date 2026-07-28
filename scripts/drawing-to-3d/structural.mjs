@@ -478,6 +478,16 @@ export function structuralCheck(assembly, opts = {}) {
   const maxSupport = Math.max(...supportLoads.map(l => l.loadKg));
 
   // 프레임 부재 검토 (최악)
+  //
+  // ⚠ 260728: 이 검토는 **호출자가 지간·단면을 선언했을 때만** 돈다(opts.member). 그런데
+  // 주 경로(assembly.mjs)는 `structuralCheck(asm, {})` 로 부르므로 **모든 패키지에서
+  // member=null 이었다.** 그러면서 warnings 는 비고, ok=true 가 되고, method 문자열은
+  // "단순보 부재"를 수행한 것처럼 나열했다. 실측: 보 8개 가대에서
+  // structural.ok=true · warnings=[] · 쉬운요약 "구조 안전(개산) 이상 없음" —
+  // **부재 응력·처짐을 하나도 보지 않고서** 그렇게 나갔다.
+  //
+  // 지간을 형상에서 추측해 계산하지는 않는다(그게 곧 날조다). 대신 **안 했다는 사실을
+  // 말한다** — "확인 못 함 ≠ 이상 없음".
   let member = null;
   if (opts.member) {
     const sec = SECTIONS[opts.member.section] ?? SECTIONS['SHS50x50x3'];
@@ -498,6 +508,25 @@ export function structuralCheck(assembly, opts = {}) {
   const edgeDist = Math.max(0, Math.min(cg[0] - sx0, sx1 - cg[0], cg[1] - sy0, sy1 - cg[1]));
   const tipAngleDeg = +(Math.atan(edgeDist / cgZ) * 180 / Math.PI).toFixed(1);
   const seismicFS = +(edgeDist / (seismic * cgZ)).toFixed(2);
+
+  // 부재 검토를 **할 만한 대상이 있는데도** 못 했으면 그 사실을 판정 불가로 남긴다.
+  // 보·기둥이 하나도 없으면 애초에 해당 사항이 아니라 침묵이 맞다(과잉 경고 방지).
+  const MEMBER_ROLES = new Set(['beam', 'column', 'brace', 'chord', 'diagonal', 'girder', 'rafter', 'joist', 'purlin']);
+  const memberCandidates = (assembly?.parts ?? []).filter((p) => MEMBER_ROLES.has(String(p?.role ?? '')));
+  const memberUnavailable = (!member && memberCandidates.length)
+    ? {
+      ran: false,
+      candidates: memberCandidates.length,
+      needInputs: [
+        { name: 'member.section', labelKo: '부재 단면 규격(예: SHS50x50x3)' },
+        { name: 'member.spanMm', labelKo: '지간(mm)' },
+        { name: 'member.loadKg', labelKo: '재하 하중(kg) — 생략 시 상부질량/2' },
+      ],
+      messageKo: `부재 강도(휨응력·처짐) 미검토 — 보·기둥류 ${memberCandidates.length}개가 있으나 단면 규격·지간이 선언되지 않았습니다. `
+        + '형상에서 지간을 추측해 응력을 계산하면 근거 없는 수치가 되므로 계산하지 않았습니다. '
+        + '**"부재가 안전하다"는 뜻이 아닙니다.**',
+    }
+    : null;
 
   const warnings = [];
   if (tipAngleDeg < 15) warnings.push(`정적 전도각 ${tipAngleDeg}° < 15° — 전도 위험(CG 저감·폭 확대 필요)`);
@@ -529,10 +558,18 @@ export function structuralCheck(assembly, opts = {}) {
     supports: supportLoads.map(l => ({ pos: l.pos, loadKg: +l.loadKg.toFixed(1) })),
     maxSupportKg: +maxSupport.toFixed(1),
     member,
+    ...(memberUnavailable ? { memberUnavailable } : {}),
     tipover: { staticAngleDeg: tipAngleDeg, seismicG: seismic, seismicFS, edgeDistMm: +edgeDist.toFixed(1), supportBasis },
     warnings,
+    // ok = "찾은 문제가 없다"이지 "전부 검토했다"가 아니다. 미검토는 실패가 아니므로
+    // ok 를 false 로 만들지 않는다 — 대신 memberUnavailable 로 따로 전달하고,
+    // 패키지가 그것을 "판정 불가" 채널로 소비자까지 올린다.
     ok: warnings.length === 0,
-    method: '실단면 보정 체적×밀도 질량(규격 중공/판재 셸/중실 — massBasis 참조) · 강체 반력 · 단순보 부재 · 강체 전도(접지 footprint 경계축·CG 최근접 팔길이 — 앵커·마찰·동적하중 미고려 근사, 비법정)',
+    // 안 돌린 검토를 방법론에 적으면 수행한 것으로 읽힌다 — 부재 항목은 실제로 돌렸을 때만.
+    method: '실단면 보정 체적×밀도 질량(규격 중공/판재 셸/중실 — massBasis 참조) · 강체 반력'
+      + (member ? ' · 단순보 부재' : '')
+      + ' · 강체 전도(접지 footprint 경계축·CG 최근접 팔길이 — 앵커·마찰·동적하중 미고려 근사, 비법정)'
+      + (memberUnavailable ? ' · ⚠ 부재 휨/처짐 미검토(지간·단면 미선언)' : ''),
   };
 }
 

@@ -398,7 +398,11 @@ ${stdWarn}</section>`;
   const codeVerificationVerdictText = opts.codeVerification
     ? ` · ${esc(opts.codeVerification.label)} <b>${codeVerificationFailed ? '보완 필요' : opts.codeVerification.decisive === false ? '산출값만(합·불 판정 아님)' : '이상 없음'}</b>`
     : '';
-  const verdict = `<p class="${structVerdictFailed ? 'warn' : 'sub'}">자동 점검 종합: 구조 안전(개산) <b>${structural == null ? '미산출' : structural.ok ? '이상 없음' : '보완 필요'}</b>${feaVerdictText}${domainSafetyVerdictText}${codeVerificationVerdictText} · 형상 타당성(부유·간섭·배관) <b>${built.designOk == null ? '미산출' : built.designOk ? '이상 없음' : '보완 필요'}</b>${structVerdictFailed ? ' — 보완 없이 제작에 들어가면 안 됩니다.' : ''}</p>`;
+  // 260728: 부재 휨/처짐을 못 본 구조물에 "구조 안전 이상 없음"만 굵게 나가면, 아래 판정
+  // 불가 목록을 읽기 전에 안심한다. 판정문 자체에 무엇을 안 봤는지 붙인다.
+  const structPartial = structural?.ok === true && structural?.memberUnavailable
+    ? ' <span class="sub">(부재 강도 미검토 — 아래 판정 불가 참조)</span>' : '';
+  const verdict = `<p class="${structVerdictFailed ? 'warn' : 'sub'}">자동 점검 종합: 구조 안전(개산) <b>${structural == null ? '미산출' : structural.ok ? '이상 없음' : '보완 필요'}</b>${structPartial}${feaVerdictText}${domainSafetyVerdictText}${codeVerificationVerdictText} · 형상 타당성(부유·간섭·배관) <b>${built.designOk == null ? '미산출' : built.designOk ? '이상 없음' : '보완 필요'}</b>${structVerdictFailed ? ' — 보완 없이 제작에 들어가면 안 됩니다.' : ''}</p>`;
 
   /**
    * 검증을 **못 돌린** 항목 — 260728 §7-5.
