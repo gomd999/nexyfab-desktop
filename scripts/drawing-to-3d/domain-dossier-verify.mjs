@@ -123,6 +123,7 @@ import { interiorCheck } from './interior-check.mjs';
 import { landscapeCheck } from './landscape-check.mjs';
 import * as bridgeMod from './bridge-check.mjs';
 import { loadPathCheck } from './load-path.mjs';
+import { mechCheck } from './mech-check.mjs';
 
 const BRIDGE_DISPATCH = [
   { meta: 'archMeta', fn: 'archBridgeCheck' },
@@ -145,7 +146,14 @@ function runDomainSafetyCheck(assembly, params) {
     return { label: '교량 검토 (활하중·단면력 등)', result: fn(assembly, params) };
   }
   if (domain === 'building') return { label: '하중경로 검토 (슬래브→보→기둥→기초)', result: loadPathCheck(assembly, params) };
-  return null; // 해당 없음(civil은 verificationReportHtml, mech은 적용 검토 없음)
+  if (domain === 'mech' || domain === undefined) {
+    // 260728: mech 은 여기(도메인 안전)에도 verificationReportHtml(civil KDS)에도 걸리지
+    // 않아 **도메인 판정이 하나도 없었다** — 템플릿 16종으로 가장 많은 분야인데.
+    // mechCheck 는 적용 가능한 검사가 없으면 null 을 돌려주므로, 그때는 종전대로 미적용이다.
+    const r = mechCheck(assembly);
+    return r ? { label: r.label ?? '기계 검토', result: r } : null;
+  }
+  return null; // 해당 없음(civil은 verificationReportHtml)
 }
 
 /**
@@ -218,7 +226,18 @@ export function domainSafetyVerdict(assembly, params = {}) {
   if (!run) return null;
   const r = run.result;
   if (!r || r.ok === false) {
-    return { label: run.label, ok: false, failed: [`검토 실행 불가: ${r?.error ?? r?.gateError ?? '사유 미상'}`] };
+    /**
+     * ⚠ **"확인 못 함"은 "기준 미달"이 아니다** (260728).
+     * 종전엔 실행 불가를 `failed` 에 넣어 쉬운요약이 "기준 미달 항목이 있습니다: 검토 실행
+     * 불가…  지금 상태로는 제작·시공에 들어가면 안 됩니다" 로 인쇄했다 — 입력이 없어서
+     * 판정을 못 한 것을 **기준 위반으로 표기**한 것이다(§6-G 의 "판정이 뒤바뀜" 변형).
+     * `unavailable` 로 분리해 §7-5 의 "확인하지 못함" 블록으로 보낸다. 안전 판정을 날조해
+     * '위험'으로 바꾸지 않고, 판정 못 했다는 사실도 숨기지 않는다 — 같은 원칙의 양면.
+     */
+    const need = Array.isArray(r?.needInputs) && r.needInputs.length
+      ? `입력 필요: ${r.needInputs.map((x) => x.labelKo ?? x.name).join(', ')}`
+      : (r?.error ?? r?.gateError ?? '사유 미상');
+    return { label: run.label, ok: true, failed: [], unavailable: [`${run.label}: ${need}`] };
   }
   const failed = collectFailingChecks(r);
   return { label: run.label, ok: failed.length === 0, failed };
@@ -251,6 +270,7 @@ export function codeVerificationVerdict(assembly, params = {}) {
   const runs = runDossierVerifications(assembly, params);
   if (!runs.length) return null;
   const failed = [];
+  const unavailable = [];
   let decisive = false;
   for (const run of runs) {
     const r = run.result;
@@ -259,7 +279,8 @@ export function codeVerificationVerdict(assembly, params = {}) {
       const need = Array.isArray(r?.needInputs) && r.needInputs.length
         ? `입력 필요: ${r.needInputs.map((s) => s.labelKo ?? s.name).join(', ')}`
         : (r?.error ?? r?.gateError ?? '사유 미상');
-      failed.push(`${run.label} 검증 불가 — ${need}`);
+      // "확인 못 함"은 "기준 미달"이 아니다 — domainSafetyVerdict 와 같은 분리(260728).
+      unavailable.push(`${run.label} 검증 불가 — ${need}`);
       continue;
     }
     if (r.verdict === 'INFO') continue; // 단면력 산출 = 합·불 판정 아님(실패도 통과도 아님)
@@ -271,7 +292,11 @@ export function codeVerificationVerdict(assembly, params = {}) {
     // 항목별 pass 매트릭스 없이 종합 verdict만 FAIL인 계산기도 놓치지 않는다.
     if (r.verdict === 'FAIL' && failed.length === before) failed.push(`${run.label} 종합 FAIL`);
   }
-  return { label: runs.map((r) => r.label).join(' · '), ok: failed.length === 0, failed, decisive };
+  return {
+    label: runs.map((r) => r.label).join(' · '),
+    ok: failed.length === 0, failed, decisive,
+    ...(unavailable.length ? { unavailable } : {}),
+  };
 }
 
 /**

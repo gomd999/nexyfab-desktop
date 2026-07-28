@@ -398,7 +398,13 @@ ${stdWarn}</section>`;
    * 다르지만 **소비자가 받는 결말은 똑같다.** '이상 없음'과 '확인 못 함'은 다른 말이고,
    * 그 구별을 소비자에게 넘기는 것이 이 블록의 존재 이유다.
    */
-  const unavailable = Array.isArray(opts.verificationUnavailable) ? opts.verificationUnavailable : [];
+  const unavailable = [
+    ...(Array.isArray(opts.verificationUnavailable) ? opts.verificationUnavailable : []),
+    // 판정 소스가 "입력이 없어 판정 못 했다"고 말한 것도 같은 블록으로 (260728) —
+    // 안전 경고 목록에 넣으면 "기준 미달"로 읽히고, 그건 판정을 뒤바꾸는 것이다.
+    ...(Array.isArray(opts.domainSafety?.unavailable) ? opts.domainSafety.unavailable : []),
+    ...(Array.isArray(opts.codeVerification?.unavailable) ? opts.codeVerification.unavailable : []),
+  ];
   const unavailableBlock = unavailable.length
     ? `<p class="warn"><b>⚠ 아래 검증은 이번에 산출되지 않았습니다 (${unavailable.length}건).</b> 이것은 "이상 없음"이 아니라 <b>"확인하지 못함"</b>입니다 — 위의 안전 결과에 이 항목들은 빠져 있습니다.</p>
 <ul class="small">${unavailable.map((u) => `<li>${esc(u)}</li>`).join('')}</ul>`
