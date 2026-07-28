@@ -123,6 +123,7 @@ import { interiorCheck } from './interior-check.mjs';
 import { landscapeCheck } from './landscape-check.mjs';
 import * as bridgeMod from './bridge-check.mjs';
 import { loadPathCheck } from './load-path.mjs';
+import { shearWallCheck } from './shear-wall-check.mjs';
 import { mechCheck } from './mech-check.mjs';
 
 const BRIDGE_DISPATCH = [
@@ -153,7 +154,15 @@ function runDomainSafetyCheck(assembly, params) {
     if (assembly.stairMeta && typeof bridgeMod.stairCheck === 'function') {
       return { label: '계단 검토 (트레드·스트링거 휨)', result: bridgeMod.stairCheck(assembly, params) };
     }
-    return { label: '하중경로 검토 (슬래브→보→기둥→기초)', result: loadPathCheck(assembly, params) };
+    const lp = loadPathCheck(assembly, params);
+    // 라멘이 아니면(벽식) 침묵하지 말고 **그 구조에 맞는 검토**로 넘긴다 (260729).
+    // 종전엔 벽식 3종이 "해당 없음"으로 조용히 빠졌는데, 정작 shear_wall 계산기는
+    // 어디서도 불리지 않고 있었다 — stairCheck 와 똑같은 자리였다.
+    if (lp?.notApplicable) {
+      const sw = shearWallCheck(assembly, params);
+      if (sw) return { label: sw.label ?? '벽식 횡력 검토', result: sw };
+    }
+    return { label: '하중경로 검토 (슬래브→보→기둥→기초)', result: lp };
   }
   if (domain === 'mech' || domain === undefined) {
     // 260728: mech 은 여기(도메인 안전)에도 verificationReportHtml(civil KDS)에도 걸리지

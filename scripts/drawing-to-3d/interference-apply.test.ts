@@ -111,3 +111,18 @@ describe('정제 결과가 built 에 되돌아간다', () => {
     expect(String(out.interferenceBasis)).toContain('격자 절점 랩 7');
   });
 });
+
+describe('정제 예산은 결정론이어야 한다 (260729 정정)', () => {
+  // 처음엔 budgetMs=20000 을 기본으로 뒀는데 그게 잘못이었다. 이 결과는 designOk 를
+  // 좌우하는데 벽시계 예산을 걸면 **같은 입력이 머신 부하에 따라 다른 판정**을 낸다.
+  // 실제로 송전탑 회귀(92쌍)가 단독 실행에선 통과하고 전체 스위트 동시 실행에선
+  // 21쌍 미검증으로 실패했다 — 형상이 아니라 그때의 CPU 여유가 판정을 바꿨다.
+  it('기본값에 시간 상한이 없다 — 입력만으로 결과가 정해진다', async () => {
+    const src = await import('node:fs').then((fs) =>
+      fs.readFileSync(new URL('./interference-refine.mjs', import.meta.url), 'utf8'));
+    // 기본 인자에서 budgetMs 는 0(무제한)이어야 한다.
+    expect(src).toMatch(/maxPairs = 400,\s*budgetMs = 0/);
+    // 시간 비교는 budgetMs 가 명시됐을 때만 활성화된다.
+    expect(src).toContain('budgetMs > 0 && Date.now() - started > budgetMs');
+  });
+});

@@ -40,7 +40,7 @@ const LATTICE_ROLES = new Set(['column', 'beam', 'brace', 'chord', 'diagonal', '
  *   분류(laps 로 분리 보고 — 간섭 목록에서 제외. 볼트·거셋 상세=입력 명시. 기본 0=비활성)
  * @returns { interferences(확정만·intersectMm3 동봉), demoted(해제 내역), laps, checked }
  */
-export async function refineInterferencesMesh(asm, interferences, { epsMm3 = 1, latticeLapMm3 = 0, maxPairs = 400, budgetMs = 20000 } = {}) {
+export async function refineInterferencesMesh(asm, interferences, { epsMm3 = 1, latticeLapMm3 = 0, maxPairs = 400, budgetMs = 0 } = {}) {
   const intent = assemblyToComposeIntent(asm);
   const pidOf = new Map((asm.parts ?? []).map((p, i) => [p.id ?? p.type, i]));
   const roleOf = new Map((asm.parts ?? []).map((p) => [p.id ?? p.type, String(p.role ?? '')]));
@@ -52,9 +52,17 @@ export async function refineInterferencesMesh(asm, interferences, { epsMm3 = 1, 
   // 성능 예산(260728) — 실측 쌍당 27~35ms, 쌍 수는 부품에 초선형(200부품→1468쌍→39s).
   // 예산을 넘긴 쌍은 **원본 판정을 그대로 유지**한다(해제하지 않는다) — 확인 못 한 것을
   // 이상 없음으로 바꾸지 않는다. 몇 쌍을 못 봤는지는 반드시 보고한다(조용한 절단 금지).
+  //
+  // ⚠ 260729 정정: 처음엔 `budgetMs = 20000` 을 기본으로 뒀는데 **그게 잘못이었다.**
+  // 이 결과는 designOk 를 좌우하는데, 벽시계 예산을 걸면 **같은 입력이 머신 부하에 따라
+  // 다른 판정을 낸다.** 실제로 송전탑(92쌍) 회귀가 단독 실행에선 통과하고 전체 스위트
+  // 동시 실행에선 21쌍 미검증으로 실패했다 — 형상이 아니라 그때의 CPU 여유가 판정을
+  // 바꾼 것이다. 이 레포의 결정론 원칙에 정면으로 어긋난다.
+  // → 기본값은 쌍 수 상한(maxPairs)만. 그건 입력만으로 정해져 재현 가능하다.
+  //   budgetMs 는 0=무제한이고, 시간 상한이 꼭 필요한 호출자만 명시적으로 넣는다.
   const started = Date.now();
   for (const rec of interferences ?? []) {
-    if (checked >= maxPairs || Date.now() - started > budgetMs) {
+    if (checked >= maxPairs || (budgetMs > 0 && Date.now() - started > budgetMs)) {
       unrefined++;
       confirmed.push({ ...rec, note: `${rec.note ?? ''} · 2차 정제 예산 초과 — 미검증(보수 유지)`.trim() });
       continue;
@@ -90,7 +98,7 @@ export async function refineInterferencesMesh(asm, interferences, { epsMm3 = 1, 
     interferences: confirmed, demoted, laps, checked, unrefined,
     note: '의심쌍 한정 2차(전수 아님) — ε=' + epsMm3 + 'mm³'
       + (latticeLapMm3 > 0 ? ' · 격자 랩 한계=' + latticeLapMm3 + 'mm³' : '')
-      + (unrefined ? ` · ⚠ ${unrefined}쌍은 성능 예산(${maxPairs}쌍/${budgetMs}ms) 초과로 미검증 — 보수 판정 유지(해제 아님)` : ''),
+      + (unrefined ? ` · ⚠ ${unrefined}쌍은 성능 예산(${maxPairs}쌍${budgetMs > 0 ? `/${budgetMs}ms` : ''}) 초과로 미검증 — 보수 판정 유지(해제 아님)` : ''),
   };
 }
 
