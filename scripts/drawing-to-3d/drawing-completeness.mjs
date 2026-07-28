@@ -31,10 +31,27 @@ export function checkDrawingCompleteness(html, opts = {}) {
   // applicability 미전달 = 전부 적용(종전 동작). 전달 시 해당 항목만 N/A 가 될 수 있다.
   const naIf = (cond, note) => (applicability && cond ? { pass: null, note } : null);
   const item = (id, name, pass, na) => (na ? { id, name, ...na } : { id, name, pass });
+  /**
+   * 선택 뷰(C2 단면도·C3 부분 상세) — **PASS 는 보존, FAIL 만 판정 불가로** (260728 자율 점검).
+   *
+   * 실측: 6개 도메인 중 **5개**가 C3 로 실패했다(mech 만 통과). 원인을 열어보니 GA 생성기는
+   * 작은/얇은 부품이 있을 때만 DETAIL 을 그린다 — RC 프레임처럼 큰 부재만 있으면 **상세도가
+   * 필요 없는 게 맞다.** 즉 그 FAIL 은 과탐이었고, §7-4 로 완성도를 소비자 문서에 실으면서
+   * 거의 모든 패키지에 "도면에 갖춰지지 않은 항목이 있습니다"가 뜨고 있었다.
+   *
+   * 있으면(PASS) 실제로 그려졌다는 뜻이라 그대로 정보다. 없으면 "필요한데 빠졌다"와
+   * "필요 없어서 안 그렸다"를 **이 층에서는 구별할 수 없다** — 그 판단은 생성기가 부품
+   * 치수를 보고 내린다. 규칙을 여기 복제하면 드리프트이므로, 구별 불가를 그대로 적는다.
+   * (제대로 된 해법: 생성기가 "어떤 선택 뷰를 그렸고 왜 안 그렸는지"를 보고하는 것 — 후속.)
+   */
+  const optionalView = (id, name, pass, why) =>
+    pass ? { id, name, pass: true } : { id, name, pass: null, note: why };
   const items = [
     { id: 'C1', name: '도곽·표제란(도번·축척·REV·시트)', pass: has('nf-titleblock') && has('data-dwg') && has('시트') },
-    { id: 'C2', name: '단면도+해칭', pass: has('nfhatch') && has('SECTION A-A') },
-    { id: 'C3', name: '부분 상세 콜아웃', pass: has('DETAIL ') },
+    optionalView('C2', '단면도+해칭', has('nfhatch') && has('SECTION A-A'),
+      '단면이 필요한 형상인지 이 층에서 판정 불가 — 생성기는 필요할 때만 그린다'),
+    optionalView('C3', '부분 상세 콜아웃', has('DETAIL '),
+      '확대가 필요한 소형·박판 부위가 있는지 이 층에서 판정 불가 — 생성기는 필요할 때만 그린다'),
     { id: 'C4', name: '치수 체계(⌀·치수문자)', pass: has('⌀') || has(/\d+×\d+/) },
     item('C5', '선 종류(중심선·파선)', has('8 2 2 2') && has('stroke-dasharray="5 3"'),
       naIf(applicability?.hasCircular === false, '구멍·원형 부재가 없어 중심선이 필요 없음')),
