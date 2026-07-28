@@ -358,6 +358,16 @@ ${stdWarn}</section>`;
     // 것임을 밝힌다. 판정 근거를 지우면 통과가 근거 없이 얻어진 것처럼 보인다.
     cautions.push(`부품 겹침 의심 ${built.interferencesRaw}군데를 실기하로 재확인해 전부 실제로는 떨어져 있음을 확인했습니다 <span class="sub">(${esc(built.interferenceBasis ?? '')})</span>.`);
   }
+  // STEP 내보내기 누락(260729): 방법론 문서가 "dropped>0 이면 호출측이 반드시 고지"로
+  // 정해 뒀는데 쉬운요약에는 렌더가 없었다 — 문서로만 있던 계약이다. 제작 업체가 받는
+  // 파일에 부품이 빠져 있다는 건 형상 오류보다 먼저 알아야 할 사실이다.
+  const stepDropped = Array.isArray(opts.stepDropped) ? opts.stepDropped : [];
+  if (stepDropped.length) {
+    const names = stepDropped.map((d) => (typeof d === 'string' ? d : d?.pid ?? d?.kind ?? '?')).slice(0, 6);
+    cautions.push(`<b>3D 파일(STEP)에 ${stepDropped.length}개 부품이 빠졌습니다</b> — ${esc(names.join(', '))}`
+      + `${stepDropped.length > names.length ? ' 외' : ''}. 업체에 이 파일을 그대로 보내면 그 부품은 전달되지 않습니다. `
+      + '도면(GA·제작도)에는 남아 있으니 두 문서가 어긋납니다.');
+  }
   const eg = opts.executionGate ?? null;
   if (eg && Array.isArray(eg.failed)) {
     for (const f of eg.failed) {

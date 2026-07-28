@@ -1138,6 +1138,8 @@ async function callToolInner(name, args = {}) {
         // 이미 만든 built 를 넘긴다 — 안 넘기면 요약이 스스로 buildAssembly 를 다시 불러
         // 메시 부울로 해제한 과탐 간섭이 되살아나고, 응답과 문서가 다른 숫자를 말한다.
         built,
+        // STEP 누락분 — 방법론 §"dropped>0 이면 호출측이 반드시 고지"의 실제 구현.
+        ...(step?.dropped?.length ? { stepDropped: step.dropped } : {}),
         // ⚠ 실패 엔트리(`{name, error}`)는 파일이 실제로 없다. 이름만 넘기면 쉬운요약이
         // "GA_2D_drawing.html — 업체에 제일 먼저 보내는 도면입니다" 라고 **없는 파일을
         // 안내**한다(요약 자신의 원칙 "없는 파일 안내=거짓말"에 정면으로 위배). 걸러낸다.

@@ -76,13 +76,34 @@ export async function stepRoundTrip(asm) {
       aabbDetail.push({ axis: 'xyz'[k], predicted: +pd.toFixed(2), measured: +md.toFixed(2), band: +band.toFixed(2), ok });
     }
   }
+  // ── 드롭된 부품은 비교 모집단에서 빠진다 → 통과가 쉬워진다 (260729) ──────────
+  // 위 루프는 `droppedPids` 를 predVol·predicted AABB 에서 **제외**한다. 즉 STEP 으로
+  // 내보내지 못한 부품이 많을수록 남은 것끼리만 대조하게 되고, verdict 는 그대로 PASS 가
+  // 됐다. 제작 업체가 받는 STEP 에는 그 부품이 **없는데** 모든 문서가 합격이라고 말한다.
+  //
+  // 방법론 문서(docs/drawing-to-3d-methodology.md)는 이미 "dropped>0 이면 호출측이
+  // **반드시 고지**"라고 정해 뒀는데, 실제로는 쉬운요약 어디에도 dropped 렌더가 없었고
+  // verdict 도 이를 보지 않았다 — 문서로만 있는 계약이었다.
+  //
+  // ⚠ 정직하게: 드롭을 **재현하지는 못했다**(과대 필렛·mesh 부품·영치수 세 경로 모두
+  // 드롭 없이 통과). 이 수정은 코드 경로 검토와 위 문서 계약에 근거한 것이고, 실측
+  // 재현 사례는 아직 없다. 그래도 통과 조건을 좁히는 방향이라 과탐 위험이 없다.
+  const droppedIds = [...droppedPids].map((i) => asm.parts[i]?.id ?? `#${i}`);
+  const nothingDropped = droppedIds.length === 0;
   return {
     ok: true,
-    verdict: volOk && aabbOk !== false ? 'PASS' : 'FAIL',
+    // 드롭이 있으면 기하 불일치(FAIL)와 구별되는 상태로 — 원인이 다르고 조치도 다르다.
+    verdict: !nothingDropped ? 'INCOMPLETE'
+      : volOk && aabbOk !== false ? 'PASS' : 'FAIL',
+    ...(nothingDropped ? {} : {
+      droppedCount: droppedIds.length,
+      incompleteNote: `STEP 으로 내보내지 못한 부품 ${droppedIds.length}개 — 대조는 나머지로만 했다. `
+        + '내보낸 STEP 파일에는 이 부품이 **없다**(형상 불일치가 아니라 누락이다).',
+    }),
     volume: { predictedMm3: +predVol.toFixed(1), measuredMm3: +measuredVol.toFixed(1), errMm3: +volErr.toFixed(1), bandMm3: +volBand.toFixed(1), ok: volOk },
     aabb: aabbDetail,
     stepEntities: st.entities,
-    dropped: [...droppedPids].map((i) => asm.parts[i]?.id ?? `#${i}`),
+    dropped: droppedIds,
     ...(skipped.length ? { predictionSkipped: skipped } : {}),
     ...(filletParts ? { note: `필렛 부품 ${filletParts} — 부피 밴드 +1%(제거량 여유, 명시)` } : {}),
   };
