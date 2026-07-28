@@ -1178,6 +1178,7 @@ async function callToolInner(name, args = {}) {
       ...(built.interferenceBasis ? {
         interferencesRaw: built.interferencesRaw, interferencesDemoted: built.interferencesDemoted,
         ...(built.interferencesUnrefined ? { interferencesUnrefined: built.interferencesUnrefined } : {}),
+        ...(built.interferenceProfile ? { interferenceProfile: built.interferenceProfile } : {}),
         interferenceBasis: built.interferenceBasis,
       } : {}),
       welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,

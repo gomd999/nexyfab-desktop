@@ -31,6 +31,7 @@ type Built = {
   // 메시 부울 2차가 원본 AABB 과탐을 해제했을 때의 추적값(감추지 않는다 — 260728)
   interferencesRaw?: number; interferencesDemoted?: number; interferenceBasis?: string;
   interferencesUnrefined?: number;
+  interferenceProfile?: { allLatticePairs: boolean; maxIntersectMm3: number | null; measured: number };
 };
 type Basis = { rev: string; massKg: number; env: number[]; parts: number };
 type AsmMod = { buildAssembly: (a: Assembly) => Built };
@@ -463,6 +464,7 @@ if (data.pipes?.errors?.length) console.warn('⚠ 배관 라우팅 실패:', dat
     ...(built.interferenceBasis ? {
       interferencesRaw: built.interferencesRaw, interferencesDemoted: built.interferencesDemoted,
       ...(built.interferencesUnrefined ? { interferencesUnrefined: built.interferencesUnrefined } : {}),
+      ...(built.interferenceProfile ? { interferenceProfile: built.interferenceProfile } : {}),
       interferenceBasis: built.interferenceBasis,
     } : {}),
     welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,

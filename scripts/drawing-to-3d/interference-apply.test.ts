@@ -16,6 +16,7 @@ type Built = {
   support?: { floating: string[] }; pipes?: null;
   interferencesRaw?: number; interferencesDemoted?: number; interferenceBasis?: string;
   interferencesUnrefined?: number;
+  interferenceProfile?: { allLatticePairs: boolean; maxIntersectMm3: number | null; measured: number };
 };
 const apply = applyInterferenceRefinement as unknown as (b: unknown, r: unknown) => Built;
 
@@ -124,5 +125,32 @@ describe('정제 예산은 결정론이어야 한다 (260729 정정)', () => {
     expect(src).toMatch(/maxPairs = 400,\s*budgetMs = 0/);
     // 시간 비교는 budgetMs 가 명시됐을 때만 활성화된다.
     expect(src).toContain('budgetMs > 0 && Date.now() - started > budgetMs');
+  });
+});
+
+describe('확정 간섭의 성격을 함께 낸다 (260729)', () => {
+  // 실측(송전탑): 확정 75건이 **전부** 격자 부재쌍이고 최대 교집합 36,234mm³ =
+  // 부재 체적(≈11.6M mm³)의 0.31%. 절점 볼트 랩이지 충돌이 아닌데, 소비자 문구는
+  // "실제로는 들어가지 않는 자리가 있습니다"로 관통과 똑같이 읽혔다.
+  it('profile 이 built 로 전달된다 — 판정은 바꾸지 않는다', () => {
+    const out = apply(builtWith(186), {
+      interferences: Array.from({ length: 75 }, (_, i) => ({ a: `p${i}`, b: `q${i}` })),
+      demoted: Array.from({ length: 111 }, () => ({})), laps: [], checked: 186,
+      confirmedProfile: { allLatticePairs: true, maxIntersectMm3: 36234, measured: 75 },
+    });
+    expect(out.interferenceProfile).toEqual({ allLatticePairs: true, maxIntersectMm3: 36234, measured: 75 });
+    expect(out.designOk).toBe(false); // 성격을 알려도 미해소 겹침이라는 판정은 유지
+    expect(out.interferences).toHaveLength(75);
+  });
+});
+
+describe('조기 반환이 성격까지 떨어뜨리지 않는다', () => {
+  it('해제가 0 이어도 profile 은 전달된다 — AABB 와 실기하가 일치한 경우', () => {
+    const out = apply(builtWith(20), {
+      interferences: Array.from({ length: 20 }, (_, i) => ({ a: `p${i}`, b: `q${i}` })),
+      demoted: [], laps: [], checked: 20,
+      confirmedProfile: { allLatticePairs: true, maxIntersectMm3: 12000, measured: 20 },
+    });
+    expect(out.interferenceProfile?.allLatticePairs).toBe(true);
   });
 });

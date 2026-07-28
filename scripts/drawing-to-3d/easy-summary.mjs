@@ -379,7 +379,16 @@ ${stdWarn}</section>`;
   if (itf.length) {
     // 2차 정제를 거쳤으면 어떤 근거로 좁혀진 숫자인지 함께 말한다 — 원본을 감추지 않는다.
     const narrowed = built.interferenceBasis ? ` <span class="sub">(${esc(built.interferenceBasis)})</span>` : '';
-    cautions.push(`<b>부품끼리 겹치는 곳 ${itf.length}군데</b>${narrowed} — 실제로는 들어가지 않는 자리가 있습니다. 제작 전에 도면을 고쳐야 합니다: ${itf.slice(0, 4).map((i) => `${i.a}↔${i.b}`).join(', ')}`);
+    // 260729: 겹침의 **성격**을 함께 말한다. 격자 구조의 절점 랩(부재 체적의 0.1~0.3%)과
+    // 실제 관통을 같은 문구로 알리면 전자를 도면 오류로 오해한다. 판정은 바꾸지 않는다 —
+    // 시스템은 접합 상세를 선언받지 못했으므로 여전히 "미해소 겹침"이 맞다.
+    const prof = built.interferenceProfile;
+    const latticeNote = prof?.allLatticePairs
+      ? ` <span class="sub">모두 격자 부재(기둥·보·브레이스)끼리 만나는 절점이고 실측 겹침은 최대 ${Math.round(prof.maxIntersectMm3 ?? 0).toLocaleString()}mm³ 입니다 — `
+        + '볼트 랩 접합이면 정상이며, 그 경우 접합 상세(latticeLapMm3)를 선언하면 겹침이 아니라 접합으로 분류됩니다. '
+        + '선언이 없으면 시스템은 미해소 겹침으로 봅니다.</span>'
+      : '';
+    cautions.push(`<b>부품끼리 겹치는 곳 ${itf.length}군데</b>${narrowed} — 실제로는 들어가지 않는 자리가 있습니다. 제작 전에 도면을 고쳐야 합니다: ${itf.slice(0, 4).map((i) => `${i.a}↔${i.b}`).join(', ')}${latticeNote}`);
   } else if (built.interferencesDemoted) {
     // 전량 해제된 경우: "간섭 없음"이 그냥 나온 것이 아니라 **실기하로 확인해 해제**된
     // 것임을 밝힌다. 판정 근거를 지우면 통과가 근거 없이 얻어진 것처럼 보인다.

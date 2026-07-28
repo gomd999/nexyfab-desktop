@@ -94,8 +94,22 @@ export async function refineInterferencesMesh(asm, interferences, { epsMm3 = 1, 
       confirmed.push({ ...rec, intersectMm3: +vol.toFixed(1), note: `${rec.note ?? ''} · 메시 부울 확정(교집합 ${vol.toFixed(1)}mm³)`.trim() });
     }
   }
+  // 확정분의 **성격**을 함께 낸다(260729). 판정을 바꾸지는 않는다 — 소비자가 규모를
+  // 알아야 "제작 전에 도면을 고쳐야 한다"를 올바로 해석할 수 있기 때문이다.
+  // 실측(송전탑): 확정 75건이 **전부** 격자 부재쌍이고 최대 교집합 36,234mm³ =
+  // 부재 체적의 0.31%. 절점 볼트 랩이지 충돌이 아닌데 문구는 충돌처럼 읽혔다.
+  const vols = confirmed.map((c) => Number(c.intersectMm3)).filter(Number.isFinite);
+  const latticePairs = confirmed.length > 0 && confirmed.every(
+    (c) => LATTICE_ROLES.has(roleOf.get(c.a)) && LATTICE_ROLES.has(roleOf.get(c.b)));
   return {
     interferences: confirmed, demoted, laps, checked, unrefined,
+    ...(confirmed.length ? {
+      confirmedProfile: {
+        allLatticePairs: latticePairs,
+        maxIntersectMm3: vols.length ? Math.max(...vols) : null,
+        measured: vols.length, // 부울로 실측된 건수(예산 초과분은 값이 없다)
+      },
+    } : {}),
     note: '의심쌍 한정 2차(전수 아님) — ε=' + epsMm3 + 'mm³'
       + (latticeLapMm3 > 0 ? ' · 격자 랩 한계=' + latticeLapMm3 + 'mm³' : '')
       + (unrefined ? ` · ⚠ ${unrefined}쌍은 성능 예산(${maxPairs}쌍${budgetMs > 0 ? `/${budgetMs}ms` : ''}) 초과로 미검증 — 보수 판정 유지(해제 아님)` : ''),
@@ -133,7 +147,8 @@ export function applyInterferenceRefinement(built, refine) {
   const confirmed = refine.interferences;
   // 해제가 없으면 바꿀 것이 없다 — 단 **예산 초과로 못 본 쌍이 있으면 그 사실은 남긴다.**
   // (전량 미검증이면 confirmed.length === raw.length 라 여기서 조용히 빠져나가 고지가 사라진다)
-  if (confirmed.length === raw.length && !refine.unrefined) return built;
+  // (해제가 없어도 **미검증 건수·확정분 성격**은 전달돼야 한다 — 둘 다 없을 때만 그대로.)
+  if (confirmed.length === raw.length && !refine.unrefined && !refine.confirmedProfile) return built;
   // designOk 는 간섭 외 조건(부유·배관)도 본다. 그 조건들을 다시 판정하지 않고,
   // **원래 판정에서 간섭 항목만 교체**한다 — 여기서 다른 게이트를 재해석하지 않는다.
   const nonInterferenceOk = (built.support?.floating?.length ?? 0) === 0
@@ -147,6 +162,7 @@ export function applyInterferenceRefinement(built, refine) {
     interferencesRaw: raw.length,
     interferencesDemoted: (refine.demoted ?? []).length,
     ...(refine.unrefined ? { interferencesUnrefined: refine.unrefined } : {}),
+    ...(refine.confirmedProfile ? { interferenceProfile: refine.confirmedProfile } : {}),
     interferenceBasis: `AABB 의심 ${raw.length}쌍 → 메시 부울 실기하 2차: 확정 ${confirmed.length}`
       + `${(refine.demoted ?? []).length ? ` · 실분리 해제 ${refine.demoted.length}` : ''}`
       + `${(refine.laps ?? []).length ? ` · 격자 절점 랩 ${refine.laps.length}` : ''}`
