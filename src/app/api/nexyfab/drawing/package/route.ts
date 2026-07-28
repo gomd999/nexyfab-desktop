@@ -187,15 +187,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       sheetsHtml = mods.ps.partSheets(assembly, { title: title + ' — 부품 제작도' });
       files.push({ name: '부품제작도.html', mime: 'text/html', content: sheetsHtml });
     }
-  } catch (e) { void e; }
+  } catch (e) { void e; outputsFailed.push('부품제작도.html'); }
   try {
     if (mods.fsp) files.push({ name: '제작사양서.html', mime: 'text/html', content: await mods.fsp.fabricationSpec(assembly, { title: title + ' — 제작 사양서' }) });
-  } catch (e) { void e; }
+  } catch (e) { void e; outputsFailed.push('제작사양서.html'); }
   // DXF 평면 (P1 — AutoCAD 편집용, 레이어 분리 R12. 건축·조경·인테리어 + PIPE 레이어)
   try {
     const dxf = mods.dxf.dxfPlan(assembly, domain, built.pipes?.routes, { title, dwgNo: 'NX-GA-001' });
     if (dxf) files.push({ name: 'GA_plan.dxf', mime: 'application/dxf', content: dxf });
-  } catch (e) { void e; }
+  } catch (e) { void e; outputsFailed.push('GA_plan.dxf'); }
   // LandXML(Wave 1 실무 호환) — 토목 선형: 도로·선형 SW 교환 표준(요소열 단일 소스, 재계산 없음)
   try {
     if (domain === 'civil' && (assembly as { alignment?: unknown }).alignment && mods.lx) {
@@ -207,25 +207,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         if (a43) files.push({ name: 'alignment43.ifc', mime: 'application/x-step', content: a43 });
       }
     }
-  } catch (e) { void e; }
+  } catch (e) { void e; outputsFailed.push('alignment43.ifc'); }
   // IFC4(BIM 발주 대응 — LOD200 형상+분류, 비기계 도메인) — 결정론 GlobalId(재생성 동일)
   try {
     if (nonMech && mods.ifc) {
       const ifcStr = mods.ifc.ifcExport(assembly, { name: title.slice(0, 40), rev: createHash('sha1').update(JSON.stringify({ a: assembly, d: domain })).digest('hex').slice(0, 8) });
       if (ifcStr) files.push({ name: 'assembly.ifc', mime: 'application/x-step', content: ifcStr });
     }
-  } catch (e) { void e; }
+  } catch (e) { void e; outputsFailed.push('assembly.ifc'); }
   // 내역서 XLSX(Wave 1) — 현장 견적·기성 표준 포맷(단가·금액=공란, 입력 원칙)
   try {
     if (mods.xl) files.push({ name: 'BOQ_내역서.xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', content: mods.xl.boqXlsxBase64(assembly, { domain, title }), b64: true });
-  } catch (e) { void e; }
+  } catch (e) { void e; outputsFailed.push('BOQ_내역서.xlsx'); }
   // 종단면도 DXF(토목 선형 — 종 10× 왜곡 좌표, 주기 명시)
   try {
     if (domain === 'civil' && (assembly as { alignment?: unknown }).alignment) {
       const dxfp = mods.dxf.dxfProfile(assembly);
       if (dxfp) files.push({ name: 'GA_profile.dxf', mime: 'application/dxf', content: dxfp });
     }
-  } catch (e) { void e; }
+  } catch (e) { void e; outputsFailed.push('GA_profile.dxf'); }
   // 구조/응력 검토
   try { files.push({ name: 'structural.html', mime: 'text/html', content: mods.pkg.structuralReport(assembly, { title, member }) }); } catch (e) { void e; outputsFailed.push('structural.html'); }
   // domainSafety 는 아래 쉬운요약.html 호출에 그대로 전달된다 — feaSummary와 동일 이유:
@@ -269,13 +269,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // 설계 설명서 (Dossier) + P&ID 스켈레톤 (계통 기반 — 공정 없는 비기계 분야는 P&ID 제외)
   try { files.push({ name: 'Dossier.html', mime: 'text/html', content: mods.pd.dossierReport(assembly, { title }) }); } catch (e) { void e; outputsFailed.push('Dossier.html'); }
   if (!nonMech) {
-    try { files.push({ name: 'PID_skeleton.html', mime: 'text/html', content: mods.pd.pidSkeleton(assembly, { title }) }); } catch (e) { void e; }
+    try { files.push({ name: 'PID_skeleton.html', mime: 'text/html', content: mods.pd.pidSkeleton(assembly, { title }) }); } catch (e) { void e; outputsFailed.push('PID_skeleton.html'); }
   }
   // GA 3D 계통색 (부품 service/type → 색분류 멀티메시). 실패 시 모노크롬 폴백.
   try {
     files.push({ name: 'GA_3D.html', mime: 'text/html', content: await mods.rnd.renderColoredHtml({ assembly }, { title, subtitle: 'nexyfab 자동생성 계통색 GA' }) });
   } catch {
-    try { files.push({ name: 'GA_3D.html', mime: 'text/html', content: await mods.rnd.renderHtml({ assembly }, { title, subtitle: 'nexyfab 자동생성 GA' }) }); } catch (e) { void e; }
+    try { files.push({ name: 'GA_3D.html', mime: 'text/html', content: await mods.rnd.renderHtml({ assembly }, { title, subtitle: 'nexyfab 자동생성 GA' }) }); } catch (e) { void e; outputsFailed.push('GA_3D.html'); }
   }
   // SCAD
   if (built.openscad) files.push({ name: 'model.scad', mime: 'text/plain', content: built.openscad });
@@ -314,7 +314,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (Number.isFinite(out.result?.safetyFactor)) {
         feaSummary = { safetyFactor: out.result.safetyFactor, method: out.result.method };
       }
-    } catch (e) { void e; /* FEA 실패는 패키지를 막지 않음 — 파일만 빠짐 */ }
+    } catch (e) { void e; outputsFailed.push('FEA.html'); /* FEA 실패는 패키지를 막지 않음 — 파일만 빠짐 */ }
   }
 
   // P0(260719b) 검증 3종(MCP 동급+T2 웹 우선) — options.verify===false 로 생략 가능
@@ -339,7 +339,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           content: mods.eg.executionReportHtml(executionGate, { title }),
         });
       }
-    } catch (e) { void e; }
+    } catch (e) { void e; outputsFailed.push('실시검도리포트.html'); }
   }
 
   // REV 스탬프 + 산출물 크로스 정합 게이트 (#7 — 위시빌더 "카드=REV B vs 도면=REV C" 재발 방지)

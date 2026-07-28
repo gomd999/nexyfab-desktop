@@ -252,3 +252,27 @@ describe('쉬운요약 — 만들어지지 않은 파일을 "원래 없는 것"�
     expect(easySummary(OK_ASM, withList)).toBe(easySummary(OK_ASM, { ...withList, outputsFailed: [] }));
   });
 });
+
+/**
+ * 없는 파일을 "동봉됨"으로 안내하지 않는다 (260728 자율 점검).
+ *
+ * MCP 는 GA 생성 실패 시 `files` 에 **이름만 있는 엔트리**(`{name, error}`)를 넣는다.
+ * 그 이름이 그대로 쉬운요약의 파일 목록으로 넘어가면 "GA_2D_drawing.html — 업체에 제일
+ * 먼저 보내는 도면입니다" 라고 **없는 파일을 안내**하게 된다 — 이 문서 자신이 코드 주석에
+ * 못 박은 원칙("없는 파일 안내=거짓말")에 정면으로 위배된다.
+ */
+describe('쉬운요약 — 파일 목록은 실제로 있는 것만 설명한다', () => {
+  it('전달된 이름만 설명하고, 목록에 없는 표준 파일은 언급하지 않는다', () => {
+    const html = easySummary(OK_ASM, { title: 't', domain: 'mech', fileNames: ['structural.html'] });
+    expect(html).toContain('structural.html');
+    // 카탈로그에 있지만 이번 묶음에 없는 파일을 끌어오지 않는다
+    expect(html).not.toContain('GA_2D_drawing.html');
+    expect(html).not.toContain('BOQ.html');
+  });
+
+  it('목록이 아예 없으면 "무엇이 들어있는지 모른다"고 말한다 — 전체 카탈로그를 나열하지 않는다', () => {
+    const html = easySummary(OK_ASM, { title: 't', domain: 'mech' });
+    expect(html).toContain('동봉 파일 목록이 전달되지 않았습니다');
+    expect(html).not.toContain('GA_2D_drawing.html');
+  });
+});

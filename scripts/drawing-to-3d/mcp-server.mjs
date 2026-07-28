@@ -948,7 +948,7 @@ export async function callTool(name, args = {}) {
       : undefined;
     let completeness = null, c9 = null;
     let gaHtml = '', sheetsHtml = '';
-    try { const ga = pkg.ga2dDrawing(args.assembly, { title, domain: args.assembly.domain ?? 'mech', welds: built.welds, ...(revHistory ? { revHistory } : {}) }); gaHtml = ga; save('GA_2D_drawing.html', ga); completeness = dc.checkDrawingCompleteness(ga, { applicability: dc.completenessApplicability(args.assembly, built) }); } catch (e) { files.push({ name: 'GA_2D_drawing.html', error: String(e).slice(0, 120) }); }
+    try { const ga = pkg.ga2dDrawing(args.assembly, { title, domain: args.assembly.domain ?? 'mech', welds: built.welds, ...(revHistory ? { revHistory } : {}) }); gaHtml = ga; save('GA_2D_drawing.html', ga); completeness = dc.checkDrawingCompleteness(ga, { applicability: dc.completenessApplicability(args.assembly, built) }); } catch (e) { files.push({ name: 'GA_2D_drawing.html', error: String(e).slice(0, 120) }); outputsFailed.push('GA_2D_drawing.html'); }
     trySave('structural.html', () => pkg.structuralReport(args.assembly, { title }));
     // ③ 형상+검증: 어셈블리 검증 메타(옹벽 등) → 분야 KDS 계산기 실행값(전도·활동·지지력…). 메타 없으면 미생성(정직).
     // codeVerification: 같은 소스의 압축 판정을 쉬운요약에도 넘긴다 — domainSafety는 담당
@@ -979,7 +979,7 @@ export async function callTool(name, args = {}) {
     try { sheetsHtml = ps.partSheets(args.assembly, { title: title + ' — 부품 제작도' }); save('부품제작도.html', sheetsHtml); } catch { sheetsFailed = true; outputsFailed.push('부품제작도.html'); }
     try { save('제작사양서.html', await fsp.fabricationSpec(args.assembly, { title: title + ' — 제작 사양서' })); } catch { outputsFailed.push('제작사양서.html'); }
     try { const d = dxfm.dxfPlan(args.assembly, args.assembly.domain ?? 'mech', undefined, { title, dwgNo: 'NX-GA-001' }); if (d) { save('GA_plan.dxf', d); c9 = dc.checkDxfLayers(d); } } catch { outputsFailed.push('GA_plan.dxf'); }
-    try { save('GA_3D.html', await rnd.renderColoredHtml({ assembly: args.assembly }, { title, subtitle: 'nexyfab 자동생성 GA(비법정)' })); } catch (e) { files.push({ name: 'GA_3D.html', error: String(e).slice(0, 120) }); }
+    try { save('GA_3D.html', await rnd.renderColoredHtml({ assembly: args.assembly }, { title, subtitle: 'nexyfab 자동생성 GA(비법정)' })); } catch (e) { files.push({ name: 'GA_3D.html', error: String(e).slice(0, 120) }); outputsFailed.push('GA_3D.html'); }
     let step = null;
     let roundtrip = null;
     if (args.withStep) {
@@ -1034,7 +1034,11 @@ export async function callTool(name, args = {}) {
     try {
       const es = await import('./easy-summary.mjs');
       const html = es.easySummary(args.assembly, {
-        title, domain: args.assembly.domain ?? 'mech', fileNames: files.map((f) => f.name),
+        title, domain: args.assembly.domain ?? 'mech',
+        // ⚠ 실패 엔트리(`{name, error}`)는 파일이 실제로 없다. 이름만 넘기면 쉬운요약이
+        // "GA_2D_drawing.html — 업체에 제일 먼저 보내는 도면입니다" 라고 **없는 파일을
+        // 안내**한다(요약 자신의 원칙 "없는 파일 안내=거짓말"에 정면으로 위배). 걸러낸다.
+        fileNames: files.filter((f) => !f.error).map((f) => f.name),
         ...(executionGate && !executionGate.error ? { executionGate } : {}),
         ...(domainSafety ? { domainSafety } : {}),
         ...(codeVerification ? { codeVerification } : {}),
