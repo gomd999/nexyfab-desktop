@@ -208,7 +208,47 @@ function runDomainSafetyCheck(assembly, params) {
     // 어디서도 불리지 않고 있었다 — stairCheck 와 똑같은 자리였다.
     if (lp?.notApplicable) {
       const sw = shearWallCheck(assembly, params);
-      if (sw) return { label: sw.label ?? '벽식 횡력 검토', result: sw };
+      if (sw) {
+        const nCols = (assembly.parts ?? []).filter((p) => p.role === 'column' && p.unverified !== true).length;
+        // 라멘 검토가 왜 대상이 아닌지를 **횡력 검토 안에 남긴다.** 그러지 않으면
+        // 소비자는 연직하중 경로가 검토된 줄 알거나, 아무 이유 없이 검토가 바뀐 줄 안다.
+        return {
+          label: sw.label ?? '벽식 횡력 검토',
+          result: {
+            ...sw,
+            // ⚠ checks 에만 넣으면 **소비자에 도달하지 않는다.** domainSafetyVerdict 는
+            //   {label, ok, failed, unavailable} 만 돌려주고 checks 를 넘기지 않아,
+            //   pass:null 인 고지는 쉬운요약에서 통째로 사라진다(형태 ②).
+            //   `lateralUnavailable` 은 "성공했어도 안 돌린 항목"을 올리는 채널이라 여기 태운다.
+            // 항목 형태는 {labelKo, messageKo} 다 — 문자열을 넣으면 소비부가
+            // `${u.labelKo}: ${u.messageKo}` 로 찍어 **"undefined: undefined"** 가 나간다(실측).
+            // ⚠ **기둥이 있을 때만** 붙인다. 기둥이 0본인 순수 벽식(물탱크 등)은 벽이
+            //   연직도 받으므로 "골조의 연직 경로를 안 봤다"는 고지가 성립하지 않는다 —
+            //   붙이면 해당 없는 항목을 미검토로 세는 과고지가 된다(실측: water_tank).
+            lateralUnavailable: [
+              ...(Array.isArray(sw.lateralUnavailable) ? sw.lateralUnavailable : []),
+              // ⚠ 기둥 수는 **어셈블리에서 직접** 센다. `sw.basis` 는 횡력 검토가 성공했을
+              //   때만 있어서(입력 부족으로 거부되면 없다) 그걸 조건으로 쓰면 정작 거부된
+              //   문서에서 이 고지가 사라진다 — 실측으로 확인한 세 번째 같은 함정.
+              ...(nCols > 0 ? [{
+                labelKo: '연직 하중경로 (슬래브→보→기둥→기초)',
+                messageKo: `검토하지 않았습니다 — 기둥 ${nCols}본이 있으나 직교 격자 라멘이 아니라 `
+                  + '하중경로 검토의 적용범위 밖입니다. **횡력이 검토됐다고 연직이 확인된 것이 아닙니다.**',
+              }] : []),
+            ],
+            checks: {
+              ...(sw.checks ?? {}),
+              loadPathScope: {
+                labelKo: '연직 하중경로 — 이 검토의 적용범위 밖', pass: null,
+                detail: [
+                  String(lp.error ?? '직교 격자 라멘이 아니라 하중경로 검토 대상이 아니다'),
+                  '슬래브→보→기둥→기초 연직 경로는 **검토하지 않았다** — 횡력이 검토됐다고 연직이 확인된 것이 아니다.',
+                ],
+              },
+            },
+          },
+        };
+      }
     }
     return { label: '하중경로 검토 (슬래브→보→기둥→기초)', result: lp };
   }
@@ -363,9 +403,17 @@ export function domainSafetyVerdict(assembly, params = {}) {
     // 어셈블리는 거의 전부 여기(거부)로 빠지므로, 성공 경로에만 붙이면 정작 필요한
     // 곳에 한 건도 도달하지 않는다 — 실측으로 확인하고 양쪽에 붙였다.
     const sp0 = spaceUnavailable(assembly);
+    // ⚠ 이 조기 반환은 `lateralUnavailable` 도 삼키고 있었다(260729 — 공간 고지에 이어
+    //   **같은 함정 두 번째**). 입력이 없어 거부된 검토라도, 그와 별개로 "안 돌린 항목"은
+    //   여전히 안 돌린 것이다. 성공 경로에만 붙이면 정작 거부된 문서에서 사라진다.
+    const lat0 = Array.isArray(r?.lateralUnavailable) ? r.lateralUnavailable : [];
     return {
       label: run.label, ok: true, failed: [],
-      unavailable: [`${run.label}: ${need}`, ...(sp0 ? [`${sp0.labelKo}: ${sp0.messageKo}`] : [])],
+      unavailable: [
+        `${run.label}: ${need}`,
+        ...lat0.map((u) => (typeof u === 'string' ? u : `${u.labelKo}: ${u.messageKo}`)),
+        ...(sp0 ? [`${sp0.labelKo}: ${sp0.messageKo}`] : []),
+      ],
     };
   }
   const failed = collectFailingChecks(r);
