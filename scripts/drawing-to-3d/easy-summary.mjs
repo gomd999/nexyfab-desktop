@@ -439,10 +439,15 @@ ${stdWarn}</section>`;
   // 260729: 검토가 통과했어도 그 안에서 **안 돌린 항목**이 있으면 판정문에 붙인다.
   // 하중경로가 "이상 없음"인데 지진·풍을 한 번도 안 본 채 나가면 구조 검증으로 읽힌다.
   const dsUnavailable = Array.isArray(opts.domainSafety?.unavailable) ? opts.domainSafety.unavailable : [];
+  // 260729: 판정한 항목이 0개면 "이상 없음"이 아니다 — 실측으로 조경 6종·girder_bridge 가
+  // 판정 0개인 채 "이상 없음"으로 인쇄되고 있었다(실시검도 게이트엔 넣었던 근거 충분성을
+  // 도메인 안전 판정에는 넣지 않았던 자리).
+  const dsNoEvidence = opts.domainSafety?.evidenceSufficient === false;
   const domainSafetyVerdictText = opts.domainSafety
-    ? ` · ${esc(opts.domainSafety.label)} <b>${domainSafetyFailed ? '보완 필요' : '이상 없음'}</b>`
-      + (!domainSafetyFailed && dsUnavailable.length
+    ? ` · ${esc(opts.domainSafety.label)} <b>${domainSafetyFailed ? '보완 필요' : dsNoEvidence ? '판정한 항목 0개' : '이상 없음'}</b>`
+      + (!domainSafetyFailed && !dsNoEvidence && dsUnavailable.length
         ? ` <span class="sub">(단, ${dsUnavailable.length}개 항목 미실시 — 아래 판정 불가 참조)</span>` : '')
+      + (dsNoEvidence ? ' <span class="sub">(합·불을 낸 항목이 없습니다 — 아래 참조)</span>' : '')
     : '';
   // decisive=false(박스 암거 단면력 등 INFO 산출)는 "이상 없음"으로 읽히면 안 된다 —
   // 합·불 판정을 한 적이 없기 때문. 판정하지 않았다는 사실을 그대로 적는다.

@@ -281,6 +281,52 @@ function collectFailingChecks(node, key) {
 }
 
 /**
+ * 실제로 **합·불을 낸** 항목 수 (260729 — 근거 충분성).
+ *
+ * collectFailingChecks 의 형제. 실패만 세면 "판정 0개"와 "전부 통과"가 구별되지 않는다 —
+ * 실측: 조경 6종·girder_bridge 가 판정 0개인데 `ok: failed.length === 0` 이라
+ * **"이상 없음"으로 나갔다.** 실시검도·완성도 게이트에는 evidence_sufficient 를 넣었으면서
+ * 정작 도메인 안전 판정에는 넣지 않았던 자리다(실 CAD 코퍼스가 잡은 그 함정).
+ *
+ * pass:null(판정 보류)은 세지 않는다 — 그것도 "판정한 것"이 아니다.
+ */
+function countJudged(node) {
+  if (node == null || typeof node !== 'object') return 0;
+  if (Array.isArray(node)) return node.reduce((s, x) => s + countJudged(x), 0);
+  let n = 0;
+  if (node.pass === true || node.pass === false) n += 1;
+  else if (node.verdict === 'PASS' || node.verdict === 'FAIL') n += 1;
+  for (const [k, v] of Object.entries(node)) {
+    if (k === 'refs' || k === 'error' || k === 'note' || k === 'inputsEcho') continue;
+    if (v && typeof v === 'object') n += countJudged(v);
+  }
+  return n;
+}
+
+/**
+ * **입력 대기** 항목 수 (260729). 판정 0개의 이유를 가른다.
+ *
+ * ⚠ "해당 없음"과 "판정 불가"를 여기서도 뭉개면 안 된다 — 이 세션 내내 강제한 구별이다.
+ * 실측으로 둘 다 나왔다:
+ *  · fence_run: 목재 부재가 없어 목재 검토가 빈다 → **해당 없음**
+ *  · rc_frame: 보·기둥·기초가 전부 verdict "INPUT(beamAs/colAst/footing)" 이다.
+ *    부재는 있고 단면력(Mu·Vu)도 산출됐는데 **철근이 선언되지 않아** 강도 판정을 못 한
+ *    것이다 → **판정 불가(입력 필요)**. 이걸 "대상 없음"이라 하면 입력하면 된다는
+ *    사실이 사라진다.
+ */
+function countInputGated(node) {
+  if (node == null || typeof node !== 'object') return 0;
+  if (Array.isArray(node)) return node.reduce((s, x) => s + countInputGated(x), 0);
+  let n = 0;
+  if (typeof node.verdict === 'string' && /^INPUT/.test(node.verdict)) n += 1;
+  for (const [k, v] of Object.entries(node)) {
+    if (k === 'refs' || k === 'error' || k === 'note' || k === 'inputsEcho') continue;
+    if (v && typeof v === 'object') n += countInputGated(v);
+  }
+  return n;
+}
+
+/**
  * easySummary() 용 압축 판정 — domainSafetyReportHtml과 같은 소스(runDomainSafetyCheck)를
  * 재사용해 PASS/FAIL 여부만 뽑는다. **새 판정을 만들지 않는다**(feaCautions와 동일 원칙) —
  * 여기서 나온 pass/verdict 필드만 읽는다. 이 분야에 적용 가능한 안전검토가 없으면 null
@@ -316,6 +362,11 @@ export function domainSafetyVerdict(assembly, params = {}) {
     };
   }
   const failed = collectFailingChecks(r);
+  // ── 근거 충분성 (260729) ─────────────────────────────────────────────────
+  // 판정한 항목이 0개면 "이상 없음"이 아니다. 실측: 조경 6종(단지·울타리·화단벽·
+  // 주차포장·정자·식재)과 girder_bridge 가 여기 걸렸다 — 목재 부재가 없는 조경이라
+  // 목재 검토가 비는 것이 **정상**인데, 그것이 "조경 검토 이상 없음"으로 인쇄됐다.
+  const judged = countJudged(r);
   // 검토가 **성공했더라도** 그 안에서 안 돌린 항목이 있으면 함께 올린다(260729).
   // 하중경로가 ok=true 인데 지진·풍을 한 번도 안 본 채로 나가면, 소비자는 그것을
   // 구조 검증으로 읽는다 — 통과와 미실시는 같은 자리에 놓일 수 없다.
@@ -327,9 +378,25 @@ export function domainSafetyVerdict(assembly, params = {}) {
   // 덕트 사이징처럼 **검토 안의 미실시 항목**도 같은 자리로 올린다(260729).
   if (r?.sizingUnavailable?.messageKo) lateral.push({ labelKo: '덕트 사이징', messageKo: r.sizingUnavailable.messageKo });
   if (r?.egressUnavailable?.messageKo) lateral.push({ labelKo: '수용인원·피난폭', messageKo: r.egressUnavailable.messageKo });
+  const evidenceSufficient = judged > 0;
+  const inputGated = countInputGated(r);
+  const noEvidence = !evidenceSufficient
+    ? [inputGated > 0
+      // 부재는 있는데 지배 입력이 없어 판정을 못 한 경우 — 입력하면 된다는 사실을 지운면 안 된다.
+      ? `${run.label}: **판정한 항목이 0개입니다** — 검토 대상 ${inputGated}개가 입력 대기 상태입니다(단면력은 산출됐으나 철근 등 지배 입력이 선언되지 않음). "이상 없음"이 아니라 **판정 불가**입니다.`
+      // ⚠ 이유를 단정하지 않는다. INPUT 표식이 없으면 우리가 아는 것은 "합·불을 낸 항목이
+      // 0개"라는 사실뿐이다 — 적용 대상이 없어서일 수도(목재 없는 조경), 검사 항목이
+      // 아예 산출되지 않아서일 수도 있다(girder_bridge 는 철근 미입력 시 단면 검토를
+      // 만들지도 않는다). 모르는 것을 아는 것처럼 적으면 그게 또 다른 날조다.
+      : `${run.label}: **판정한 항목이 0개입니다** — 이 검사에서 합·불을 낸 항목이 하나도 없습니다. `
+        + '적용 대상이 없거나(예: 목재 부재가 없는 조경) 검토 항목이 산출되지 않은 것이며, '
+        + '어느 쪽이든 **"이상 없음"이 아닙니다.**']
+    : [];
   return {
-    label: run.label, ok: failed.length === 0, failed,
-    ...(lateral.length ? { unavailable: lateral.map((u) => `${u.labelKo}: ${u.messageKo}`) } : {}),
+    label: run.label, ok: failed.length === 0, failed, judged, evidenceSufficient,
+    ...(lateral.length || noEvidence.length
+      ? { unavailable: [...lateral.map((u) => `${u.labelKo}: ${u.messageKo}`), ...noEvidence] }
+      : {}),
   };
 }
 
