@@ -128,6 +128,7 @@ import * as bridgeMod from './bridge-check.mjs';
 import { loadPathCheck } from './load-path.mjs';
 import { shearWallCheck } from './shear-wall-check.mjs';
 import { ductRunCheck } from './duct-run-check.mjs';
+import { penetrationCheck } from './penetration-check.mjs';
 import { mechCheck } from './mech-check.mjs';
 
 const BRIDGE_DISPATCH = [
@@ -202,8 +203,14 @@ function runDomainSafetyCheck(assembly, params) {
     }
     // 본체가 구조가 아닌 어셈블리(덕트 계통 등)는 자기 검토로 — duct_sizing 계산기가
     // 존재하면서 한 번도 불리지 않았다(260729).
+    // 설비 관통 ↔ 구조 개구 (260729b P1-7) — 어느 하위 경로로 가든 붙인다.
+    // 덕트 계통이든 라멘이든 벽식이든 **관통은 똑같이 일어난다**.
+    const pen = penetrationCheck(assembly);
+    const withPen = (r) => (pen && r && typeof r === 'object'
+      ? { ...r, checks: { ...(r.checks ?? {}), penetration: pen } } : r);
+
     const duct = ductRunCheck(assembly);
-    if (duct) return { label: duct.label ?? '덕트 계통 검토', result: duct };
+    if (duct) return { label: duct.label ?? '덕트 계통 검토', result: withPen(duct) };
     const lp = loadPathCheck(assembly, params);
     // 라멘이 아니면(벽식) 침묵하지 말고 **그 구조에 맞는 검토**로 넘긴다 (260729).
     // 종전엔 벽식 3종이 "해당 없음"으로 조용히 빠졌는데, 정작 shear_wall 계산기는
@@ -216,7 +223,7 @@ function runDomainSafetyCheck(assembly, params) {
         // 소비자는 연직하중 경로가 검토된 줄 알거나, 아무 이유 없이 검토가 바뀐 줄 안다.
         return {
           label: sw.label ?? '벽식 횡력 검토',
-          result: {
+          result: withPen({
             ...sw,
             // ⚠ checks 에만 넣으면 **소비자에 도달하지 않는다.** domainSafetyVerdict 는
             //   {label, ok, failed, unavailable} 만 돌려주고 checks 를 넘기지 않아,
@@ -248,11 +255,11 @@ function runDomainSafetyCheck(assembly, params) {
                 ],
               },
             },
-          },
+          }),
         };
       }
     }
-    return { label: '하중경로 검토 (슬래브→보→기둥→기초)', result: lp };
+    return { label: '하중경로 검토 (슬래브→보→기둥→기초)', result: withPen(lp) };
   }
   if (domain === 'mech' || domain === undefined) {
     // 260728: mech 은 여기(도메인 안전)에도 verificationReportHtml(civil KDS)에도 걸리지
