@@ -260,7 +260,16 @@ export function interiorCheck(assembly, params = {}) {
         note: `광속법 N=E·A/(F·UF·MF). 목표조도는 KS A 3011(용도별 조도기준)·램프광속은 제품사양 참조 — 입력값. UF ${UF}·MF ${MF}=개산 관례(제조사 이용률표 확인 필요).`,
       };
     } else {
-      lighting = { verdict: 'INPUT', roomIndex: round(RI), mountingH_m: round(Hm), note: `targetLux(KS A 3011 용도별)·lampLumen(제품사양) 입력 시 광속법 등수·배치 산출. 실지수 ${round(RI)}=형상 파생.` };
+      lighting = {
+        verdict: 'INPUT', roomIndex: round(RI), mountingH_m: round(Hm),
+        // ⚠ 260729d: needInputs 를 구조화했다. 종전엔 필드명이 `note` 문자열에만 있어
+        //   렌더러가 「입력 대기」만 찍고 **무엇을 달라는지 이름으로 보여주지 못했다.**
+        needInputs: [
+          { name: 'targetLux', labelKo: '설계 조도(lx) — 용도가 정한다(KS A 3011). 형상에서 알 수 없다' },
+          { name: 'lampLumen', labelKo: '기구 광속(lm) — 제품 사양' },
+        ],
+        note: `targetLux(KS A 3011 용도별)·lampLumen(제품사양) 입력 시 광속법 등수·배치 산출. 실지수 ${round(RI)}=형상 파생.`,
+      };
     }
   }
 
@@ -278,7 +287,11 @@ export function interiorCheck(assembly, params = {}) {
         note: '필요환기량=재실인원×인당환기량. 인당환기량은 실내공기질관리법·건축법 용도별 기준 확인 입력(예시값 미제공 — 날조 방지). ACH=참고.',
       };
     } else {
-      ventilation = { verdict: 'INPUT', occupants: occ, roomVolM3: round(vol), note: 'ventPerPersonCMH(용도별 법정 기준) 입력 시 필요환기량·ACH 산출. 재실인원은 피난 산정 재사용.' };
+      ventilation = {
+        verdict: 'INPUT', occupants: occ, roomVolM3: round(vol),
+        needInputs: [{ name: 'ventPerPersonCMH', labelKo: '인당 환기량(㎥/h) — 용도별 법정 기준이 정한다' }],
+        note: 'ventPerPersonCMH(용도별 법정 기준) 입력 시 필요환기량·ACH 산출. 재실인원은 피난 산정 재사용.',
+      };
     }
   }
 
@@ -297,7 +310,11 @@ export function interiorCheck(assembly, params = {}) {
         note: '조명·콘센트 부하 개산(동력·주방기기 별도). 부하밀도는 KDS 31/내선규정 용도별 설계값 입력.',
       };
     } else {
-      electrical = { verdict: 'INPUT', note: 'loadDensityVAm2(용도별 설계 부하밀도) 입력 시 총부하·분기회로수 개산.' };
+      electrical = {
+        verdict: 'INPUT',
+        needInputs: [{ name: 'loadDensityVAm2', labelKo: '설계 부하밀도(VA/㎡) — 용도가 정한다' }],
+        note: 'loadDensityVAm2(용도별 설계 부하밀도) 입력 시 총부하·분기회로수 개산.',
+      };
     }
   }
 
@@ -317,7 +334,11 @@ export function interiorCheck(assembly, params = {}) {
         note: `급수 ${occ2}인×${unit}L/일 (원단위=건축기계설비 설계기준 용도별 값 참조 입력) · 시간최대=평균×${peak}(관례 명시) · 오수=급수×${params.sewageRatio ?? 0.9}. 기구별 배관 구경은 기구단위법 별도.`,
       };
     } else {
-      water = { verdict: 'INPUT', occupants: occ2, note: 'waterPerPersonLpd(용도별 급수원단위 L/인·일 — 건축기계설비 기준 참조) 입력 시 일급수량·시간최대·오수량 개산.' };
+      water = {
+        verdict: 'INPUT', occupants: occ2,
+        needInputs: [{ name: 'waterPerPersonLpd', labelKo: '급수원단위(L/인·일) — 용도가 정한다(건축기계설비 기준)' }],
+        note: 'waterPerPersonLpd(용도별 급수원단위 L/인·일 — 건축기계설비 기준 참조) 입력 시 일급수량·시간최대·오수량 개산.',
+      };
     }
   }
 
@@ -337,7 +358,14 @@ export function interiorCheck(assembly, params = {}) {
     fire = (ext || spk) ? {
       verdict: 'INFO', extinguisher: ext, sprinkler: spk,
       note: '소화기=바닥면적/능력단위 기준면적(소방시설법 시행령 별표4 — 용도·내화별 값 확인 입력). 스프링클러=정방형 S=√2r(NFTC 103 수평거리 — 용도별 확인 입력), 헤드수·배치는 형상 파생 개산. 법정 소방설계는 소방시설설계업 영역.',
-    } : { verdict: 'INPUT', note: 'extinguisherAreaM2(별표4)·sprinklerRadiusM(NFTC 103) 입력 시 소화기 수·헤드 배치 개산.' };
+    } : {
+      verdict: 'INPUT',
+      needInputs: [
+        { name: 'extinguisherAreaM2', labelKo: '소화기 능력단위 기준면적(㎡) — 용도·내화구조가 정한다(소방시설법 시행령 별표4)' },
+        { name: 'sprinklerRadiusM', labelKo: '스프링클러 수평거리(m) — 용도가 정한다(NFTC 103)' },
+      ],
+      note: 'extinguisherAreaM2(별표4)·sprinklerRadiusM(NFTC 103) 입력 시 소화기 수·헤드 배치 개산.',
+    };
   }
 
   return {

@@ -76,8 +76,11 @@ describe('캐노피 — 지붕 골조형은 라멘 검토 대상이 아니다', 
     const r = loadPathCheck(tpl('steel_canopy'), {}) as unknown as { notApplicable?: boolean; error: string };
     expect(r.notApplicable).toBeUndefined();
     expect(r.error).toContain('풍 상향력');
-    const v = (domainSafetyVerdict as unknown as (a: unknown, p: unknown) => { unavailable?: string[] } | null)(tpl('steel_canopy'), {});
-    expect(v?.unavailable?.join(' ')).toContain('지붕 골조형');
+    // ⚠ 260730: 안내가 실행 가능한 정보인지에서 나아가 **실제 검토가 생겼다.**
+    //   "V0 를 주고 풍하중 검토를 받는 편이 낫다"고 적어 놓고 정작 받을 검토가 없었다 —
+    //   `canopy-check` 신설로 해소. 이제 디스패치가 캐노피 검토로 보낸다.
+    const v = (domainSafetyVerdict as unknown as (a: unknown, p: unknown) => { label?: string } | null)(tpl('steel_canopy'), {});
+    expect(v?.label).toContain('캐노피 검토');
   });
 
   it('라멘은 종전대로 판정 — 회귀 없음', () => {

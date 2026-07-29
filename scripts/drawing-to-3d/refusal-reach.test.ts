@@ -73,7 +73,9 @@ describe('조경 — 목재가 없어도 제원으로 판정한다 (260729c)', (
   });
 
   it('목재도 제원도 없는 것은 종전대로 판정 0 — 지어내지 않는다', () => {
-    const v = verdict('landscape', 'fence_run');
+    // 260730: fence_run·pavilion 은 제원 자기정합이 붙어 판정한다.
+    // 메타가 아예 없는 apartment_complex 만 남았다.
+    const v = verdict('landscape', 'apartment_complex');
     expect((v?.unavailable ?? []).join(' ')).toContain('판정한 항목이 0개');
   });
 });

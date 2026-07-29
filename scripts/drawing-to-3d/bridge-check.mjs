@@ -475,11 +475,37 @@ export function trussBridgeCheck(assembly, params = {}) {
       K: Number(params.K_chord) > 0 ? Number(params.K_chord) : 1.0, Fy,
       basis: Number(params.Lb_chord_mm) > 0 ? 'Lb=입력' : 'Lb=격점 간격(형상)',
     }),
-    bucklingCheck('상현재 좌굴(면외·횡브레이싱 간격)', -chordForce, A_ch, {
-      r_mm: Number(params.r_chord_out_mm) > 0 ? Number(params.r_chord_out_mm) : rSquare(tm.chordS),
-      Lb_mm: Number(params.Lb_chord_out_mm), K: Number(params.K_chord) > 0 ? Number(params.K_chord) : 1.0, Fy,
-      fields: { r: 'r_chord_out_mm', Lb: 'Lb_chord_out_mm' },
-    }),
+    /**
+     * 면외 좌굴장을 **형상에서 파생**한다 (260729d, 계획 P2-④).
+     *
+     * 종전엔 `Lb_chord_out_mm` 를 무조건 요구했다. 그런데 상부 횡브레이싱이 **부품으로
+     * 존재하면**(role='bracing') 그 간격이 곧 상현재의 면외 비지지길이다 — 지어내는 것이
+     * 아니라 형상에 있는 값을 읽는 것이다. 실측: truss_bridge 는 tbrace 3개가
+     * x=14800·29800·44800 에 있고 상현재는 x=7500~52500 이라 최대 구간이 나온다.
+     *
+     * ⚠ 브레이싱이 없으면 종전대로 **요구**한다 — 없는 것을 「간격 = 전장」으로 대신하면
+     *   좌굴장을 과대(불리)로 잡는 것이 아니라 **브레이싱이 있다고 착각**하게 만든다.
+     */
+    ...(() => {
+      const braces = parts.filter((p) => String(p.role ?? '') === 'bracing')
+        .map((p) => Number(p.at?.tx ?? 0)).sort((x, y) => x - y);
+      const tc = parts.find((p) => /^tchord/i.test(String(p.id ?? '')));
+      let LbOut = Number(params.Lb_chord_out_mm) > 0 ? Number(params.Lb_chord_out_mm) : 0;
+      let basisOut = LbOut ? 'Lb=입력' : null;
+      if (!LbOut && braces.length && tc) {
+        // 상현재 구간 [x0, x1] 안의 브레이싱으로 나눈 **최대 구간**이 지배한다.
+        const x0 = Number(tc.at?.tx ?? 0), x1 = x0 + Number(tc.params?.width ?? 0);
+        const pts = [x0, ...braces.filter((b) => b > x0 && b < x1), x1];
+        LbOut = Math.max(...pts.slice(1).map((v, i) => v - pts[i]));
+        basisOut = `Lb=횡브레이싱 최대 구간(브레이싱 ${braces.length}개소 — 형상 파생)`;
+      }
+      return [bucklingCheck('상현재 좌굴(면외·횡브레이싱 간격)', -chordForce, A_ch, {
+        r_mm: Number(params.r_chord_out_mm) > 0 ? Number(params.r_chord_out_mm) : rSquare(tm.chordS),
+        Lb_mm: LbOut, K: Number(params.K_chord) > 0 ? Number(params.K_chord) : 1.0, Fy,
+        ...(basisOut ? { basis: basisOut } : {}),
+        fields: { r: 'r_chord_out_mm', Lb: 'Lb_chord_out_mm' },
+      })];
+    })(),
     memberCheck('단부 대각재(면당)', diagForce, A_dg, 'axial', Fy),
     // 260729 자기정합: 지간 = 패널 수 × 패널 길이(정의식). 어긋나면 형상과 제원표 중
     // 하나가 틀렸다 — 부재력 계산이 이 값들 위에 서 있으므로 먼저 걸러야 한다.

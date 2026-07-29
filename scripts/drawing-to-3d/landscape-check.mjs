@@ -303,6 +303,61 @@ export function landscapeCheck(assembly, params = {}) {
       };
     }
   }
+  const fm = assembly?.fenceMeta;
+  if (fm && Number(fm.length) > 0 && Number(fm.postPitch) > 0) {
+    // 기둥 수 = 구간 수 + 1 (양 끝 포함) — 정의식이라 가정이 없다.
+    const want = Math.round(Number(fm.length) / Number(fm.postPitch)) + 1;
+    selfChecks.fencePosts = {
+      labelKo: '기둥 수 = 연장 ÷ 기둥 간격 + 1',
+      pass: Number(fm.posts) === want,
+      detail: [`${fm.length} ÷ ${fm.postPitch} + 1 = ${want} vs 선언 ${fm.posts}`],
+      note: '어긋나면 배치도와 수량표 중 하나가 틀렸다 — 순수 산술',
+    };
+    if (Number(fm.picketPitch) > 0 && Number(fm.pickets) > 0) {
+      const wantP = Math.floor(Number(fm.length) / Number(fm.picketPitch));
+      selfChecks.fencePickets = {
+        labelKo: '살대 수 ≈ 연장 ÷ 살대 간격',
+        pass: Math.abs(Number(fm.pickets) - wantP) <= 1,   // 단부 처리로 ±1 허용(명시)
+        detail: [`${fm.length} ÷ ${fm.picketPitch} = ${wantP} vs 선언 ${fm.pickets} (단부 처리 ±1 허용)`],
+      };
+    }
+    if (Array.isArray(fm.railZ) && Number(fm.height) > 0) {
+      selfChecks.fenceRails = {
+        labelKo: '가로대 높이 < 울타리 높이',
+        pass: fm.railZ.every((z) => Number(z) < Number(fm.height)),
+        detail: [`가로대 z=[${fm.railZ.join(', ')}] vs 높이 ${fm.height}`],
+        note: '가로대가 울타리보다 높으면 형상이 성립하지 않는다',
+      };
+    }
+  }
+  const pv = assembly?.pavilionMeta;
+  if (pv && Number(pv.eaveTopMm) > 0 && Number(pv.ridgeTopMm) > 0) {
+    selfChecks.pavilionRidge = {
+      labelKo: '용마루 높이 > 처마 높이 (지붕 경사가 성립)',
+      pass: Number(pv.ridgeTopMm) > Number(pv.eaveTopMm),
+      detail: [`용마루 ${pv.ridgeTopMm} vs 처마 ${pv.eaveTopMm} → 높이차 ${Number(pv.ridgeTopMm) - Number(pv.eaveTopMm)}mm`],
+      note: '경사 지붕은 용마루가 처마보다 높아야 한다 — 순수 기하',
+    };
+    // 경사각 자기정합: tan(pitch) = 높이차 / (스팬/2). 모임지붕이라 반스팬 기준.
+    if (Number(pv.pitchDeg) > 0 && Number(pv.width) > 0) {
+      const rise = Number(pv.ridgeTopMm) - Number(pv.eaveTopMm);
+      const calc = (Math.atan2(rise, Number(pv.width) / 2) * 180) / Math.PI;
+      selfChecks.pavilionPitch = {
+        labelKo: '지붕 경사각 = atan(높이차 ÷ 반스팬)',
+        pass: Math.abs(calc - Number(pv.pitchDeg)) < 1.0,   // 1° 이내(반올림 표기 여유·명시)
+        detail: [`atan(${rise} / ${Number(pv.width) / 2}) = ${calc.toFixed(1)}° vs 선언 ${pv.pitchDeg}°`],
+      };
+    }
+    if (Number(pv.postSize) > 0 && Number(pv.postHeight) > 0) {
+      // 세장비 — 목재 기둥은 과도하게 세장하면 좌굴한다. 판정 기준은 수종·등급이
+      // 정하므로 **합·불을 내지 않고** 값만 적는다(지어내지 않는다).
+      selfChecks.pavilionSlender = {
+        labelKo: '기둥 세장비(참고)', pass: null,
+        detail: [`높이 ${pv.postHeight} / 단면 ${pv.postSize} = ${(Number(pv.postHeight) / Number(pv.postSize)).toFixed(1)}. `
+          + '허용 세장비는 수종·등급·지지조건이 정하므로 합·불을 판정하지 않는다(산출값만).'],
+      };
+    }
+  }
   const wm = assembly?.planterWallMeta;
   if (wm && Number(wm.baseWidth) > 0 && Number(wm.stemThk) > 0) {
     selfChecks.planterBase = {

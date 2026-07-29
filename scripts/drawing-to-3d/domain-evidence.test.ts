@@ -21,7 +21,11 @@ const verdict = (d: string, id: string) =>
 
 describe('판정한 항목이 0개면 "이상 없음"이 아니다', () => {
   it.each([
-    ['landscape', 'fence_run'], ['landscape', 'pavilion'], ['landscape', 'apartment_complex'],
+    ['landscape', 'apartment_complex'],
+    // ⚠ 260730 정정: fence_run·pavilion 도 여기서 뺐다. 제원(기둥 간격·살대·가로대 높이 /
+    //   용마루·처마·경사각)으로 판정 가능한 것이 있는데 아무것도 보지 않고 있었다.
+    //   자기정합을 붙여 이제 실제로 판정한다 — 「판정 0개」가 아니다.
+    //   `apartment_complex` 만 남았다(단지 배치라 검토 대상 정의부터 필요).
     // ⚠ 260729c 정정: planter_wall·parking_pavement·tree_planting 을 여기서 뺐다.
     //   목재가 없어 목재 검토는 여전히 비지만, **그 템플릿들이 들고 있는 제원**
     //   (포장 층 두께·수관경/간격·저판 폭)으로 판정 가능한 것이 있는데 아무것도 보지
@@ -37,7 +41,7 @@ describe('판정한 항목이 0개면 "이상 없음"이 아니다', () => {
   });
 
   it('"판정 대상 없음"과 "이상 없음"을 구별해 말한다', () => {
-    const u = verdict('landscape', 'fence_run')!.unavailable!.join(' ');
+    const u = verdict('landscape', 'apartment_complex')!.unavailable!.join(' ');
     expect(u).toContain('"이상 없음"이 아닙니다');
     // 왜 비었는지도 말한다 — 검사가 실패한 것이 아니다.
     expect(u).toContain('합·불을 낸 항목이 하나도 없습니다');
@@ -45,8 +49,8 @@ describe('판정한 항목이 0개면 "이상 없음"이 아니다', () => {
 
   it('소비자 판정문이 "이상 없음"이라 하지 않는다', () => {
     const html = (easySummary as unknown as (a: unknown, o: Record<string, unknown>) => string)(
-      buildAssemblyTemplate('landscape', 'fence_run', {}),
-      { title: 't', domain: 'landscape', domainSafety: verdict('landscape', 'fence_run') });
+      buildAssemblyTemplate('landscape', 'apartment_complex', {}),
+      { title: 't', domain: 'landscape', domainSafety: verdict('landscape', 'apartment_complex') });
     const t = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
     expect(t).toContain('판정한 항목 0개');
     expect(t).not.toMatch(/조경 검토[^·]*이상 없음/);
@@ -94,7 +98,7 @@ describe('판정 0개의 이유를 뭉개지 않는다', () => {
 
   it('이유를 모르면 단정하지 않는다 — INPUT 표식이 없으면 사실만 적는다', () => {
     // 조경은 목재 부재가 없으면 검사 항목이 비고 INPUT 표식도 없다.
-    const u = verdict('landscape', 'fence_run')!.unavailable!.join(' ');
+    const u = verdict('landscape', 'apartment_complex')!.unavailable!.join(' ');
     expect(u).toContain('합·불을 낸 항목이 하나도 없습니다');
     expect(u).toContain('적용 대상이 없거나');   // 가능성으로만 제시
     expect(u).not.toContain('입력 대기 상태');

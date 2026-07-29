@@ -129,6 +129,7 @@ import { loadPathCheck } from './load-path.mjs';
 import { shearWallCheck } from './shear-wall-check.mjs';
 import { ductRunCheck } from './duct-run-check.mjs';
 import { penetrationCheck } from './penetration-check.mjs';
+import { canopyCheck } from './canopy-check.mjs';
 import { mechCheck } from './mech-check.mjs';
 
 const BRIDGE_DISPATCH = [
@@ -177,6 +178,17 @@ function spaceUnavailable(assembly) {
 /** Which domains have a wired safety/code check, and how to run it. Returns
  *  null when the domain has no applicable check (e.g. 'mech' — a mechanical
  *  part has no egress/timber/bridge-load concept) so no file is forced. */
+/**
+ * 감사용 진입점 (260729d) — **표시 계층을 거치지 않고** 검사 결과 원본을 얻는다.
+ *
+ * 이 세션에 5분야 깊이를 세 번 쟀고 세 번 다 표시(HTML)를 통해 세다가 틀릴 뻔했다:
+ * ①표시 누락을 능력 부족으로(과소) ②입력 대기를 판정으로(과대) ③분모 확대를 저하로(반전).
+ * 원본 트리를 직접 순회하면 표시가 바뀌어도 측정이 흔들리지 않는다.
+ */
+export function auditDomainSafety(assembly, params = {}) {
+  return runDomainSafetyCheck(assembly, params);
+}
+
 function runDomainSafetyCheck(assembly, params) {
   const domain = assembly?.domain;
   if (domain === 'interior') {
@@ -208,6 +220,11 @@ function runDomainSafetyCheck(assembly, params) {
     const pen = penetrationCheck(assembly);
     const withPen = (r) => (pen && r && typeof r === 'object'
       ? { ...r, checks: { ...(r.checks ?? {}), penetration: pen } } : r);
+
+    // 캐노피는 중력이 아니라 **풍 상향력**이 지배한다 — 하중경로 검토의 대상이 아니라
+    // 처음부터 다른 검토가 필요하다(260729d P1-①). 메타 디스패치는 bridge 와 같은 규약.
+    const canopy = canopyCheck(assembly, params);
+    if (canopy) return { label: canopy.label ?? '캐노피 검토', result: withPen(canopy) };
 
     const duct = ductRunCheck(assembly);
     if (duct) return { label: duct.label ?? '덕트 계통 검토', result: withPen(duct) };
@@ -265,7 +282,10 @@ function runDomainSafetyCheck(assembly, params) {
     // 260728: mech 은 여기(도메인 안전)에도 verificationReportHtml(civil KDS)에도 걸리지
     // 않아 **도메인 판정이 하나도 없었다** — 템플릿 16종으로 가장 많은 분야인데.
     // mechCheck 는 적용 가능한 검사가 없으면 null 을 돌려주므로, 그때는 종전대로 미적용이다.
-    const r = mechCheck(assembly);
+    // ⚠ 260729d: `mechCheck(assembly)` 로 **params 를 넘기지 않아** `seismicG` 를 줘도
+    //   지진 전도가 돌지 않았다. 사용자가 지반가속도를 줄 수 있는 경로(verifyParams)를
+    //   웹·MCP 양쪽에 배선해 놓고 **마지막 한 칸에서 끊겨 있던** 것이다 — 형태 ①.
+    const r = mechCheck(assembly, params);
     return r ? { label: r.label ?? '기계 검토', result: r } : null;
   }
   return null; // 해당 없음(civil은 verificationReportHtml)

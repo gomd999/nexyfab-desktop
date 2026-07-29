@@ -104,12 +104,24 @@ describe('압축재 좌굴 (260729b) — 명시가 검토를 대신하지 못한
     expect(String(b?.note)).toContain('KDS 14 31 25');
   });
 
-  it('면외 좌굴은 횡브레이싱 간격을 요구한다 — 지어내지 않는다', async () => {
+  it('★면외 좌굴장을 횡브레이싱 간격에서 **파생**한다 (260730)', async () => {
+    // ⚠ 종전엔 `Lb_chord_out_mm` 를 무조건 요구했다. 그런데 상부 횡브레이싱이 **부품으로
+    //   존재하면**(role='bracing') 그 간격이 곧 면외 비지지길이다 — 지어내는 것이 아니라
+    //   형상에 있는 값을 읽는 것이다(tbrace 3개소 → 최대 구간 15,000mm).
     const b = (await chk('truss_bridge', 'trussBridgeCheck')).find((c) => /면외/.test(String(c.name)));
-    expect(b?.ok).toBeNull();                       // 판정 불가 ≠ 통과
-    // 필드명은 **부재별**이다 — 전부 `Lb_mm` 이면 어느 부재의 값인지 알 수 없다.
+    expect(typeof b?.ok).toBe('boolean');            // 이제 실제로 판정한다
+    expect(b?.Lb_mm).toBe(15000);
+    expect(String(b?.note)).toContain('횡브레이싱 최대 구간');
+  });
+
+  it('브레이싱이 없으면 종전대로 요구한다 — 없는 것을 전장으로 대신하지 않는다', async () => {
+    const bc = await import('./bridge-check.mjs');
+    const a = buildAssemblyTemplate('bridge', 'truss_bridge', {}) as { parts: { role?: string }[] };
+    a.parts = a.parts.filter((p) => p.role !== 'bracing');
+    const f = (bc as unknown as Record<string, (x: unknown, p: unknown) => { checks?: Array<Record<string, unknown>> }>).trussBridgeCheck;
+    const b = (f(a, {}).checks ?? []).find((c) => /면외/.test(String(c.name)));
+    expect(b?.ok).toBeNull();
     expect(JSON.stringify(b?.needInputs)).toContain('Lb_chord_out_mm');
-    expect(String(b?.note)).toContain('미검토이지 안전이 아니다');
   });
 
   it('마스트 단면을 **형상에서** 읽는다 — 가정 단면은 3.1배 과대였다', async () => {
