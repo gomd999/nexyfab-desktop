@@ -128,9 +128,30 @@ export function bridgeCheck(assembly, params = {}) {
     ultimate: { Mu_kNm: round(Mu, 1), Vu_kN: round(Vu, 1), combo: '극한 I: 1.25DC + 1.50DW + 1.80(LL+IM) — KDS 24 12 11 표 4.1-1·2 원문' },
     service: { Ms_kNm: round(Ms, 1) },
     section,
+    // 260729: 이 검사는 철근 미입력 시 section=null 이라 **판정 항목이 0개**였다 —
+    // 전수 감사에서 "이상 없음"으로 인쇄되던 8건 중 하나다. 제원끼리의 자기정합은
+    // 철근과 무관하게 언제나 판정 가능하다.
+    checks: [
+      ...(Number(bm.nGirders) > 1 && Number(bm.girderSpacing) > 0 && Number(bm.overhang) >= 0 && Number(bm.deckW) > 0
+        ? [selfEq('바닥판 폭 자기정합', bm.deckW,
+          (Number(bm.nGirders) - 1) * Number(bm.girderSpacing) + 2 * Number(bm.overhang),
+          '바닥판 폭 = (거더수−1)×간격 + 2×내밈')]
+        : []),
+    ],
     provenance: { geometry: ['거더·바닥판·가로보 자중', '지간·간격', '레버룰 DF'], user: ['포장 두께(DW)', 'DF/차로수(선택)', '철근(단면 검토)'] },
     disclaimer: '실시설계급 계산(원문 하중·계수·영향선 검증) — 단, 법정 설계도서는 교량 기술사 검토·날인 필요. 연속경간·PSC·바닥판·받침·하부공·피로·처짐 미포함(명시).' + (unverifiedParts.length ? ` ⚠ 비검증 직접편집 파츠 ${unverifiedParts.length}개는 구조 검토에서 제외됨(P4 라벨) — 해당 형상의 안전은 별도 확인 필요.` : ''),
   };
+}
+
+
+/**
+ * 선언 제원끼리의 자기정합 한 줄 (260729).
+ * 어긋나면 형상과 제원표 중 하나가 반드시 틀렸다 — 정의식이라 가정이 없다.
+ */
+function selfEq(name, declared, computed, formulaKo) {
+  const ok = Number.isFinite(Number(declared)) && Number.isFinite(Number(computed))
+    && Math.abs(Number(declared) - Number(computed)) <= 1e-6;
+  return { name, kind: 'self-consistency', declared: Number(declared), computed: +Number(computed).toFixed(3), ok, note: formulaKo };
 }
 
 /**
@@ -243,6 +264,13 @@ export function archBridgeCheck(assembly, params = {}) {
     mk('타이 인장(본당)', T_tie, A_tie, 'tension'),
     mk('아치 리브 축압축(스프링잉·본당)', N_rib, A_rib, 'compression(좌굴 미검토 명시)'),
     { ...mk(nielsen ? `닐센 행어 장력(φ̄=${round((phiBar * 180) / Math.PI, 1)}°)` : '행어 장력(본당)', T_h, A_h, 'tension'), note: sectionNote },
+    // 260729 자기정합: 선언 행어 수 ↔ 실제 행어 부품 수. 행어 장력은 "본당"이므로
+    // 개수가 어긋나면 총 전달 하중이 달라진다 — 부재력의 전제를 먼저 확인한다.
+    ...(Number(am.hangers) > 0
+      ? [selfEq('행어 수 자기정합', am.hangers,
+        parts.filter((p) => /^hanger/i.test(String(p.id ?? '')) || String(p.role ?? '') === 'hanger').length,
+        '선언 행어 수 = 실제 행어 부품 수')]
+      : []),
   ];
   return {
     ok: true,
@@ -321,6 +349,11 @@ export function trussBridgeCheck(assembly, params = {}) {
     memberCheck('하현재 인장(면당)', chordForce, A_ch, 'tension', Fy),
     memberCheck('상현재 압축(면당·좌굴 미검토 명시)', -chordForce, A_ch, 'compression', Fy),
     memberCheck('단부 대각재(면당)', diagForce, A_dg, 'axial', Fy),
+    // 260729 자기정합: 지간 = 패널 수 × 패널 길이(정의식). 어긋나면 형상과 제원표 중
+    // 하나가 틀렸다 — 부재력 계산이 이 값들 위에 서 있으므로 먼저 걸러야 한다.
+    ...(Number(tm.panelL) > 0 && Number(tm.panels) > 0 && Number(tm.span) > 0
+      ? [selfEq('지간 자기정합', tm.span, Number(tm.panels) * Number(tm.panelL), '지간 = 패널 수 × 패널 길이')]
+      : []),
   ];
   return {
     ok: true, type: assembly.trussMeta.trussType ?? 'warren',
@@ -404,6 +437,16 @@ export function suspensionCheck(assembly, params = {}) {
     memberCheck('주케이블 최대장력(가닥·타워부)', T_cable, A_cable, 'tension', Fy),
     memberCheck('행어 장력(가닥)', T_hanger, A_hanger, 'tension', 355),
     memberCheck('주탑 축압축(기당·좌굴 미검토 명시)', -N_tower, A_tower, 'compression', 30),
+    // 260729 하드 기하: 주탑이 상판 위로 솟은 높이는 케이블 새그 이상이어야 한다.
+    // 미달이면 케이블이 상판 아래로 처지는 형상이 된다 — 가정 없는 불가능성 검사.
+    ...(Number(sm.towerAbove) > 0 && Number(sm.sag) > 0
+      ? [{
+        name: '주탑 상부 높이 ≥ 케이블 새그', kind: 'geometry',
+        towerAbove_mm: Number(sm.towerAbove), sag_mm: Number(sm.sag),
+        ok: Number(sm.towerAbove) >= Number(sm.sag),
+        note: '미달이면 케이블이 상판 아래로 처진다 — 형상이 성립하지 않는다',
+      }]
+      : []),
   ];
   return {
     ok: true,
