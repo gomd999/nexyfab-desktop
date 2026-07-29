@@ -369,7 +369,25 @@ function apartmentComplexAssembly(p = {}) {
     const ty = y0 + j * (towerD + gapY);
     P(`green_${i}_${j}`, 'box', { width: gapX * 0.6, depth: towerD, height: 120 }, { tx: gx, ty, tz: 0 }, '조경', 'green');
   }
-  return { name: `아파트 단지 (${nX * nY}개동 ${floors}층)`, domain: 'landscape', parts };
+  /**
+   * 단지 배치 검토용 메타 (260730, 계획 P2-④) — **형상이 답을 가진 것만** 담는다.
+   * 면적은 여기서 파츠 치수로 계산해 넘긴다(검사가 다시 재면 두 값이 갈릴 수 있다).
+   * 연면적은 지상 매싱 기준이며 지하·필로티·용적률 산입 제외분은 없다 — 검사가 그 사실을 적는다.
+   */
+  const buildingAreaM2 = (nX * nY * towerW * towerD) / 1e6;
+  const greenAreaM2 = parts.filter((q) => q.role === 'green')
+    .reduce((sum, q) => sum + (q.params.width * q.params.depth) / 1e6, 0);
+  return {
+    name: `아파트 단지 (${nX * nY}개동 ${floors}층)`, domain: 'landscape', parts,
+    siteLayout: {
+      nX, nY, towers: nX * nY, floors, storyHmm: storyH, towerHmm: towerH,
+      gapXmm: gapX, gapYmm: gapY,
+      siteAreaM2: (siteW * siteD) / 1e6,
+      buildingAreaM2,
+      grossFloorAreaM2: buildingAreaM2 * floors,
+      greenAreaM2,
+    },
+  };
 }
 
 function retainingWallRunAssembly(p) {

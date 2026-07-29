@@ -16,6 +16,7 @@ import { runCalculator, loadStandards } from '../engineering-core/registry.mjs';
 import { partVolume, DENSITY } from './structural.mjs';
 import { partAabb } from './reconstruct.mjs';
 import { buildAssembly } from './assembly.mjs';
+import { siteLayoutCheck } from './site-layout-check.mjs';
 
 const standards = loadStandards();
 const G = 9.81;
@@ -376,9 +377,12 @@ export function landscapeCheck(assembly, params = {}) {
       note: '⚠ 배수공 유무만 본다. 옹벽 안정(전도·활동·지지력)은 토질 입력이 있어야 하며 여기서 판정하지 않는다',
     };
   }
+  // 단지 배치(인동간격·건폐율·용적률·조경률) — `siteLayout` 메타가 없으면 null(해당 없음).
+  const siteLayout = siteLayoutCheck(assembly, params);
   return {
     ok: true,
     member, connection, board, wind, irrigation,
+    ...(siteLayout ? { siteLayout } : {}),
     ...(Object.keys(selfChecks).length ? { selfChecks } : {}),
     refs: ['KDS 41 50 10:2022 (허용응력·CD·CM)', 'KDS 41 12 00:2022 표 3.2-1 (활하중)', 'KDS 41 50 30:2022 (접합부 — 못·볼트)'],
     disclaimer: '개념 검토(비법정) — 단순지지·대표부재·강체전도 근사. CM(습윤)·CF·CL 미적용(v1). 실시설계는 구조기술사 검토 필요.' + (unverifiedParts.length ? ` ⚠ 비검증 직접편집 파츠 ${unverifiedParts.length}개는 구조 검토에서 제외됨(P4 라벨) — 해당 형상의 안전은 별도 확인 필요.` : ''),

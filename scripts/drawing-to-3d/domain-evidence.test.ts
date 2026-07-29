@@ -19,29 +19,54 @@ type V = { label: string; ok: boolean; judged: number; evidenceSufficient: boole
 const verdict = (d: string, id: string) =>
   (domainSafetyVerdict as unknown as (a: unknown, p: unknown) => V)(buildAssemblyTemplate(d, id, {}), {});
 
+/**
+ * ⚠ 260731: 「판정 0개」의 검체가 없어졌다.
+ *
+ * `apartment_complex` 는 51종 중 **유일하게 실판정 0** 이라 이 파일 전체의 검체였는데,
+ * 계획 P2-④ 로 단지 배치 검토(인동간격 등)를 붙이면서 실판정이 생겼다. 검체가 사라졌다고
+ * **불변식을 지울 수는 없다** — 「판정 0개는 통과가 아니다」는 이 세션 내내 지킨 규약이다.
+ * `rc_frame` 에서 `rcMeta` 를 지워 검체를 만든 것과 같은 방식으로, 제원 메타를 지운
+ * 어셈블리를 검체로 쓴다. 실제로 사용자가 매싱만 만들고 제원을 안 넣으면 이 상태가 된다.
+ */
+function landscapeNoJudgment() {
+  const a = buildAssemblyTemplate('landscape', 'apartment_complex', {}) as Record<string, unknown>;
+  delete a.siteLayout;
+  return a;
+}
+const noJudgmentVerdict = () =>
+  (domainSafetyVerdict as unknown as (a: unknown, p: unknown) => V)(landscapeNoJudgment(), {});
+
 describe('판정한 항목이 0개면 "이상 없음"이 아니다', () => {
-  it.each([
-    ['landscape', 'apartment_complex'],
-    // ⚠ 260730 정정: fence_run·pavilion 도 여기서 뺐다. 제원(기둥 간격·살대·가로대 높이 /
-    //   용마루·처마·경사각)으로 판정 가능한 것이 있는데 아무것도 보지 않고 있었다.
-    //   자기정합을 붙여 이제 실제로 판정한다 — 「판정 0개」가 아니다.
-    //   `apartment_complex` 만 남았다(단지 배치라 검토 대상 정의부터 필요).
-    // ⚠ 260729c 정정: planter_wall·parking_pavement·tree_planting 을 여기서 뺐다.
-    //   목재가 없어 목재 검토는 여전히 비지만, **그 템플릿들이 들고 있는 제원**
-    //   (포장 층 두께·수관경/간격·저판 폭)으로 판정 가능한 것이 있는데 아무것도 보지
-    //   않고 있었다 — 자기정합 검사를 붙여 이제 실제로 판정한다. 「판정 0개」가 아니다.
-    // ⚠ 260729 정정: girder_bridge 를 여기서 뺐다. 당시엔 실제로 판정 0개였으나
-    // (a) 바닥판 폭 자기정합을 추가했고 (b) countJudged 가 `ok` 필드를 세지 않아
-    // **판정하는 템플릿을 0개로 잘못 고지**하던 버그를 고쳤다 — 아래 별도 케이스로 옮김.
-  ])('%s/%s — 판정 0개가 드러난다', (d, id) => {
-    const v = verdict(d, id);
+  it('제원 메타가 없는 조경 매싱 — 판정 0개가 드러난다', () => {
+    const v = noJudgmentVerdict();
     expect(v?.judged).toBe(0);
     expect(v?.evidenceSufficient).toBe(false);
     expect(v?.unavailable?.join(' ')).toContain('판정한 항목이 0개입니다');
   });
 
+  it('★단지 제원을 선언하면 판정 0개가 해소된다 — P2-④ 의 결과', () => {
+    // 검체를 바꾼 이유가 회귀로 남아야 한다. 「검사를 안 붙여서 0」이 아니라
+    // 「제원이 없어서 0」이라는 것이 이 두 케이스의 대조로 확정된다.
+    const v = verdict('landscape', 'apartment_complex');
+    expect(v?.judged).toBeGreaterThan(0);
+    expect(v?.unavailable?.join(' ') ?? '').not.toContain('판정한 항목이 0개');
+  });
+
+  /**
+   * ⚠ 이 목록은 **비어 가는 것이 정상**이다 — 세션마다 「판정 0개」 템플릿이 하나씩
+   * 실판정을 얻어 빠져 나갔고, 260731 에 마지막(`apartment_complex`)이 빠졌다.
+   * 그 기록을 남긴다. 목록이 비었다고 불변식이 없어진 것이 아니라, 검체를 위의
+   * 「제원 메타 없는 어셈블리」로 옮긴 것이다.
+   *
+   *  · 260729  girder_bridge — 바닥판 폭 자기정합 추가 + `countJudged` 가 `ok` 를
+   *            안 세던 버그(판정하는 템플릿을 0개로 오고지) 수정
+   *  · 260729c planter_wall·parking_pavement·tree_planting — 포장 층 두께·수관경·저판 폭
+   *  · 260730  fence_run·pavilion — 기둥 간격·살대·가로대 / 용마루·처마·경사각
+   *  · 260731  apartment_complex — 인동간격(건축법 시행령 §86③)
+   */
+
   it('"판정 대상 없음"과 "이상 없음"을 구별해 말한다', () => {
-    const u = verdict('landscape', 'apartment_complex')!.unavailable!.join(' ');
+    const u = noJudgmentVerdict()!.unavailable!.join(' ');
     expect(u).toContain('"이상 없음"이 아닙니다');
     // 왜 비었는지도 말한다 — 검사가 실패한 것이 아니다.
     expect(u).toContain('합·불을 낸 항목이 하나도 없습니다');
@@ -49,8 +74,8 @@ describe('판정한 항목이 0개면 "이상 없음"이 아니다', () => {
 
   it('소비자 판정문이 "이상 없음"이라 하지 않는다', () => {
     const html = (easySummary as unknown as (a: unknown, o: Record<string, unknown>) => string)(
-      buildAssemblyTemplate('landscape', 'apartment_complex', {}),
-      { title: 't', domain: 'landscape', domainSafety: verdict('landscape', 'apartment_complex') });
+      landscapeNoJudgment(),
+      { title: 't', domain: 'landscape', domainSafety: noJudgmentVerdict() });
     const t = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
     expect(t).toContain('판정한 항목 0개');
     expect(t).not.toMatch(/조경 검토[^·]*이상 없음/);
@@ -97,8 +122,8 @@ describe('판정 0개의 이유를 뭉개지 않는다', () => {
   });
 
   it('이유를 모르면 단정하지 않는다 — INPUT 표식이 없으면 사실만 적는다', () => {
-    // 조경은 목재 부재가 없으면 검사 항목이 비고 INPUT 표식도 없다.
-    const u = verdict('landscape', 'apartment_complex')!.unavailable!.join(' ');
+    // 조경은 목재 부재도 제원도 없으면 검사 항목이 비고 INPUT 표식도 없다.
+    const u = noJudgmentVerdict()!.unavailable!.join(' ');
     expect(u).toContain('합·불을 낸 항목이 하나도 없습니다');
     expect(u).toContain('적용 대상이 없거나');   // 가능성으로만 제시
     expect(u).not.toContain('입력 대기 상태');
