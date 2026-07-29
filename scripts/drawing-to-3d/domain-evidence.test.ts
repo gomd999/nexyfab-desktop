@@ -23,7 +23,9 @@ describe('판정한 항목이 0개면 "이상 없음"이 아니다', () => {
   it.each([
     ['landscape', 'fence_run'], ['landscape', 'planter_wall'], ['landscape', 'parking_pavement'],
     ['landscape', 'tree_planting'], ['landscape', 'pavilion'], ['landscape', 'apartment_complex'],
-    ['bridge', 'girder_bridge'],
+    // ⚠ 260729 정정: girder_bridge 를 여기서 뺐다. 당시엔 실제로 판정 0개였으나
+    // (a) 바닥판 폭 자기정합을 추가했고 (b) countJudged 가 `ok` 필드를 세지 않아
+    // **판정하는 템플릿을 0개로 잘못 고지**하던 버그를 고쳤다 — 아래 별도 케이스로 옮김.
   ])('%s/%s — 판정 0개가 드러난다', (d, id) => {
     const v = verdict(d, id);
     expect(v?.judged).toBe(0);
@@ -78,10 +80,19 @@ describe('판정 0개의 이유를 뭉개지 않는다', () => {
   });
 
   it('이유를 모르면 단정하지 않는다 — INPUT 표식이 없으면 사실만 적는다', () => {
-    // girder_bridge 는 철근 미입력 시 단면 검토를 **만들지도 않아** INPUT 표식조차 없다.
-    const u = verdict('bridge', 'girder_bridge')!.unavailable!.join(' ');
+    // 조경은 목재 부재가 없으면 검사 항목이 비고 INPUT 표식도 없다.
+    const u = verdict('landscape', 'fence_run')!.unavailable!.join(' ');
     expect(u).toContain('합·불을 낸 항목이 하나도 없습니다');
     expect(u).toContain('적용 대상이 없거나');   // 가능성으로만 제시
     expect(u).not.toContain('입력 대기 상태');
+  });
+
+  it('★countJudged 는 `ok` 필드 검사도 센다 — 안 세면 판정하는 템플릿이 0개로 고지된다', () => {
+    // 교량·조경 검사 항목은 `pass` 가 아니라 `ok` 를 쓴다({name, ok:true}).
+    // 첫 구현이 `pass` 만 세는 바람에 girder_bridge 가 바닥판 폭을 판정하고도
+    // "판정 0개"로 나갔다 — 내가 고치려던 결함의 거울상이라 회귀로 박는다.
+    const v = verdict('bridge', 'girder_bridge');
+    expect(v?.judged).toBeGreaterThan(0);
+    expect(v?.evidenceSufficient).toBe(true);
   });
 });

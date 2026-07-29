@@ -296,6 +296,13 @@ function countJudged(node) {
   let n = 0;
   if (node.pass === true || node.pass === false) n += 1;
   else if (node.verdict === 'PASS' || node.verdict === 'FAIL') n += 1;
+  // ⚠ 260729 정정: 교량·조경 검사 항목은 `pass` 가 아니라 **`ok`** 를 쓴다
+  // (예: {name:'바닥판 폭 자기정합', ok:true}). `pass` 만 세던 첫 구현은 이들을
+  // 통째로 놓쳐 **판정하고 있는 템플릿을 "판정 0개"로 고지**했다 — 내가 고치려던
+  // 결함의 거울상이다. 루트 결과도 `ok` 를 갖지만 `name`/`labelKo` 가 없으므로
+  // 그것으로 검사 항목과 구별한다.
+  else if ((node.ok === true || node.ok === false)
+    && (typeof node.name === 'string' || typeof node.labelKo === 'string')) n += 1;
   for (const [k, v] of Object.entries(node)) {
     if (k === 'refs' || k === 'error' || k === 'note' || k === 'inputsEcho') continue;
     if (v && typeof v === 'object') n += countJudged(v);
