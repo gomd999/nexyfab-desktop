@@ -29,6 +29,32 @@
  * 다른 말이고, 그 구별을 호출자에게 넘긴다(domainSafetyVerdict 가 null 을 그대로 존중한다).
  */
 
+
+/** 선언값의 **자릿수 그대로** 대조한다 — 반올림 표기를 불일치로 잡지 않기 위해. */
+function eqAtDeclaredPrecision(declared, computed) {
+  const d = String(declared);
+  const dec = d.includes('.') ? d.split('.')[1].length : 0;
+  return Number(computed.toFixed(dec)) === Number(declared);
+}
+
+/**
+ * 선언 수량 ↔ 실제 부품 수 (형상과 수량표 중 하나가 틀렸다면 여기서 걸린다).
+ *
+ * ⚠ **선언 수량의 단위가 부품과 같을 때만** 쓸 수 있다. 실측으로 걸렀다:
+ * conveyor `legs:5` 는 다리 **벤트 조 수**이고 부품은 leg_N_1·leg_N_2·legtie_N 15개다 —
+ * 부품을 세어 비교했더니 5 vs 15 오탐이 났다. 단위가 다른 선언에는 붙이지 않는다.
+ */
+function declaredCount(assembly, labelKo, declared, matcher) {
+  const n = Number(declared);
+  if (!Number.isFinite(n) || n <= 0 || !assembly?.parts) return null;
+  const actual = assembly.parts.filter(matcher).length;
+  return {
+    labelKo, pass: actual === n,
+    detail: [`선언 ${n} vs 실제 부품 ${actual}`],
+    note: '어긋나면 수량표와 형상 중 하나가 틀렸다 — 순수 계수',
+  };
+}
+
 /** 정직 거부: 지배 입력이 없어 판정 자체가 불가능한 경우. */
 function needInputs(label, inputs) {
   return { ok: false, label, needInputs: inputs };
@@ -60,6 +86,35 @@ function checkGear(m) {
       note: '어긋나면 기어가 맞물리지 않는다 — 순수 기하, 가정 없음',
     };
   }
+  // 피치원 지름 자기정합: d = m·z (정의식). 선언 pitchDias 가 있으면 대조한다.
+  if (Array.isArray(m.pitchDias) && m.pitchDias.length === teeth.length) {
+    const bad = [];
+    for (let i = 0; i < teeth.length; i++) {
+      const want = mod * teeth[i];
+      if (Math.abs(Number(m.pitchDias[i]) - want) > 1e-9) bad.push(`#${i + 1}: 선언 ${m.pitchDias[i]} vs m·z ${want}`);
+    }
+    checks.pitchDia = {
+      labelKo: '피치원 지름 = 모듈 × 잇수 (d = m·z)',
+      pass: bad.length === 0, detail: bad,
+      note: '정의식이라 가정이 없다 — 어긋나면 도면과 제원표 중 하나가 틀렸다',
+    };
+  }
+  // 총 감속비 자기정합: 인접 쌍 비의 연쇄곱.
+  if (Number.isFinite(Number(m.totalRatio)) && teeth.length >= 2) {
+    const computed = teeth.slice(1).reduce((r, z, i) => r * (z / teeth[i]), 1);
+    checks.totalRatio = {
+      labelKo: '총 감속비 = 잇수비 연쇄곱',
+      pass: eqAtDeclaredPrecision(m.totalRatio, computed),
+      detail: [`선언 ${m.totalRatio} vs 계산 ${+computed.toFixed(6)}`],
+    };
+    if (Number.isFinite(Number(m.outputPer1000rpm))) {
+      checks.outputRpm = {
+        labelKo: '출력 회전수(입력 1000rpm) = 1000 ÷ 감속비',
+        pass: eqAtDeclaredPrecision(m.outputPer1000rpm, 1000 / computed),
+        detail: [`선언 ${m.outputPer1000rpm} vs 계산 ${+(1000 / computed).toFixed(3)}`],
+      };
+    }
+  }
   // 언더컷: 표준 인벌류트에서 압력각에 따라 최소 잇수가 정해진다. **압력각이 선언돼 있지
   // 않으므로 판정하지 않고 산출값만 적는다** — 20° 를 가정해 합·불을 내면 그게 날조다.
   const minZ = Math.min(...teeth);
@@ -80,10 +135,27 @@ function checkHeatExchanger(m) {
     return needInputs('열교환기 검토', [{ name: 'tubePitch/tubeOD', labelKo: '튜브 피치·외경' }]);
   }
   const ratio = pitch / od;
+  const extra = {};
+  if (Number(m.shellOD) > 0 && Number(m.shellID) > 0) {
+    extra.shell = {
+      labelKo: '동체 외경 > 내경 (판 두께가 양수)',
+      pass: Number(m.shellOD) > Number(m.shellID),
+      detail: [`외경 ${m.shellOD} vs 내경 ${m.shellID} → 두께 ${(Number(m.shellOD) - Number(m.shellID)) / 2}`],
+      note: '어기면 형상이 성립하지 않는다',
+    };
+  }
+  if (Number(m.baffles) > 0 && Number(m.tubeLen) > 0) {
+    extra.baffleInfo = {
+      labelKo: '배플 간격(참고)', pass: null,
+      detail: [`튜브길이 ${m.tubeLen} ÷ (배플 ${m.baffles}+1) = ${Math.round(Number(m.tubeLen) / (Number(m.baffles) + 1))}mm. `
+        + 'TEMA 권장 간격은 동체경·유량에 따라 달라 합·불을 판정하지 않는다(산출값만).'],
+    };
+  }
   return {
     ok: true,
-    label: '열교환기 검토 (튜브 배열)',
+    label: '열교환기 검토 (튜브 배열·동체)',
     checks: {
+      ...extra,
       tubePitch: {
         labelKo: '튜브 피치 ≥ 1.25 × 외경 (TEMA 리가먼트)',
         pass: ratio >= 1.25 - 1e-9,
@@ -210,16 +282,38 @@ export function mechCheck(assembly) {
   if (assembly.fourBarMeta) return checkFourBar(assembly.fourBarMeta);
   if (assembly.propellerMeta) {
     const m = assembly.propellerMeta;
-    return dimensionOrderCheck('프로펠러 검토 (허브·외경)', [
+    const r = dimensionOrderCheck('프로펠러 검토 (허브·외경)', [
       { labelKo: '외경 > 허브경', big: m.diameter, small: m.hubDia },
     ]);
+    // 선언 날 수 ↔ 실제 날 부품 수.
+    const c = declaredCount(assembly, '날 수 = 실제 블레이드 부품 수', m.blades,
+      (p) => /blade/i.test(String(p.id ?? '')) || String(p.role ?? '') === 'blade');
+    if (c) r.checks.bladeCount = c;
+    if (Number(m.pitch) > 0 && Number(m.diameter) > 0) {
+      r.checks.pdInfo = {
+        labelKo: '피치비 P/D(참고)', pass: null,
+        detail: [`피치 ${m.pitch} / 외경 ${m.diameter} = ${(Number(m.pitch) / Number(m.diameter)).toFixed(3)}. `
+          + '적정 P/D 는 용도(추진·환기·교반)와 회전수에 따라 달라 합·불을 판정하지 않는다(산출값만).'],
+      };
+    }
+    return r;
   }
   if (assembly.pumpMeta) {
     const m = assembly.pumpMeta;
-    return dimensionOrderCheck('펌프 검토 (볼류트·노즐 기하)', [
+    const r = dimensionOrderCheck('펌프 검토 (볼류트·노즐 기하)', [
       { labelKo: '볼류트경 > 흡입경', big: m.voluteDia, small: m.suctionDia },
       { labelKo: '볼류트경 > 토출경', big: m.voluteDia, small: m.dischargeDia },
     ]);
+    // 축 높이는 볼류트 반경 이상이어야 볼류트가 바닥에 닿지 않는다 — 순수 기하.
+    if (Number(m.axisH) > 0 && Number(m.voluteDia) > 0) {
+      r.checks.axisClearance = {
+        labelKo: '축 높이 ≥ 볼류트 반경 (볼류트가 바닥에 닿지 않음)',
+        pass: Number(m.axisH) >= Number(m.voluteDia) / 2,
+        detail: [`축 높이 ${m.axisH} vs 볼류트 반경 ${Number(m.voluteDia) / 2}`],
+        note: '미달이면 볼류트가 베이스면을 파고든다 — 형상이 성립하지 않는다',
+      };
+    }
+    return r;
   }
   if (assembly.valveMeta) {
     const m = assembly.valveMeta;
@@ -229,17 +323,33 @@ export function mechCheck(assembly) {
   }
   if (assembly.conveyorMeta) {
     const m = assembly.conveyorMeta;
-    return spanCheck('컨베이어 검토 (롤러 배치)', {
+    const r = spanCheck('컨베이어 검토 (롤러 배치)', {
       count: m.rollers, pitch: m.rollerPitch, span: m.length,
       countKo: '롤러 수', pitchKo: '롤러 피치', spanKo: '전장',
     });
+    if (r) {
+      const c = declaredCount(assembly, '롤러 수 = 실제 롤러 부품 수', m.rollers,
+        (p) => /roller/i.test(String(p.id ?? '')) || String(p.role ?? '') === 'roller');
+      if (c) r.checks.rollerCount = c;
+      // ⚠ `legs` 는 **다리 벤트 조 수**이지 부품 수가 아니다(실측: legs=5 인데 부품은
+      // leg_N_1·leg_N_2·legtie_N 15개). 선언 수량의 **단위가 부품과 다를 수 있다** —
+      // 부품을 세어 비교하면 오탐이 된다. 명명 규칙(leg_N_*)을 읽어 조 수를 역산할 수도
+      // 있지만 그건 규칙을 가정하는 것이라 하지 않는다. 다리 수는 검사하지 않는다.
+    }
+    return r;
   }
   if (assembly.machineLineMeta) {
     const m = assembly.machineLineMeta;
-    return spanCheck('생산라인 검토 (스테이션 배치)', {
+    const r = spanCheck('생산라인 검토 (스테이션 배치)', {
       count: m.stations, pitch: m.stationPitch, span: m.length,
       countKo: '스테이션 수', pitchKo: '스테이션 피치', spanKo: '전장',
     });
+    if (r) {
+      const c = declaredCount(assembly, '스테이션 수 = 실제 스테이션 부품 수', m.stations,
+        (p) => /station|stn/i.test(String(p.id ?? '')) || String(p.role ?? '') === 'station');
+      if (c) r.checks.stationCount = c;
+    }
+    return r;
   }
   // 지배 입력이 없어 원리상 판정 불가한 것들 — 통과로 둔갑시키지 않고 무엇이 필요한지 말한다.
   // 지배 입력이 없어 원리상 판정 불가한 것들 — 통과로 둔갑시키지 않고 무엇이 필요한지 말한다.

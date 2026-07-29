@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest';
 import { mechCheck as _mc } from './mech-check.mjs';
 import { domainSafetyVerdict as _dsv } from './domain-dossier-verify.mjs';
-import { buildAssemblyTemplate as _bt } from './domain-assemblies.mjs';
+import { buildAssemblyTemplate as _bt, listAssemblyTemplates as listTemplates } from './domain-assemblies.mjs';
 
 type Check = { pass: boolean | null; detail?: string[] };
 type Result = { ok: boolean; label?: string; checks?: Record<string, Check>; needInputs?: Array<{ name: string }> } | null;
@@ -159,5 +159,82 @@ describe('mech 판정 확장 (260729) — 선언값만으로 결정되는 것만
       const r = check({ towerMeta: { legs: 4 } });
       expect(r?.needInputs?.map((x) => x.name)).toContain('conductorTensionKN');
     });
+  });
+});
+
+describe('mech 판정 깊이 확장 (260729) — 미사용 선언값의 자기정합', () => {
+  // 전수 실측: mech 판정 평균이 템플릿당 1.1개였다. 메타에는 쓰이지 않는 선언값이
+  // 많았고 대부분 **정의식으로 대조 가능**했다. 평균 1.1 → 2.4 (오탐 0).
+  const check = mechCheck as unknown as (a: unknown) => {
+    ok: boolean; checks?: Record<string, { pass: boolean | null; detail: string[] }>;
+  } | null;
+
+  describe('기어열 — 정의식 대조', () => {
+    it('피치원 지름 = 모듈 × 잇수 (d = m·z)', () => {
+      const bad = check({ gearMeta: { module: 3, teeth: [20, 40], pitchDias: [60, 999] } });
+      expect(bad?.checks?.pitchDia.pass).toBe(false);
+      const ok = check({ gearMeta: { module: 3, teeth: [20, 40], pitchDias: [60, 120] } });
+      expect(ok?.checks?.pitchDia.pass).toBe(true);
+    });
+
+    it('총 감속비 = 잇수비 연쇄곱', () => {
+      expect(check({ gearMeta: { module: 3, teeth: [20, 40, 20, 60], totalRatio: 5 } })
+        ?.checks?.totalRatio.pass).toBe(false);
+      expect(check({ gearMeta: { module: 3, teeth: [20, 40, 20, 60], totalRatio: 3 } })
+        ?.checks?.totalRatio.pass).toBe(true);
+    });
+
+    it('반올림 표기를 불일치로 잡지 않는다 — 선언 자릿수로 대조', () => {
+      // 1000/3 = 333.333… 인데 제원표는 333.3 으로 적는다. 이걸 FAIL 로 내면 오탐이다.
+      expect(check({ gearMeta: { module: 3, teeth: [20, 40, 20, 60], totalRatio: 3, outputPer1000rpm: 333.3 } })
+        ?.checks?.outputRpm.pass).toBe(true);
+      expect(check({ gearMeta: { module: 3, teeth: [20, 40, 20, 60], totalRatio: 3, outputPer1000rpm: 400 } })
+        ?.checks?.outputRpm.pass).toBe(false);
+    });
+  });
+
+  describe('하드 기하 추가', () => {
+    it('열교환기 동체 외경 > 내경', () => {
+      expect(check({ hxMeta: { tubePitch: 25, tubeOD: 19, shellOD: 600, shellID: 620 } })
+        ?.checks?.shell.pass).toBe(false);
+    });
+    it('펌프 축 높이 ≥ 볼류트 반경 — 미달이면 볼류트가 바닥을 파고든다', () => {
+      expect(check({ pumpMeta: { voluteDia: 480, suctionDia: 150, dischargeDia: 100, axisH: 100 } })
+        ?.checks?.axisClearance.pass).toBe(false);
+      expect(check({ pumpMeta: { voluteDia: 480, suctionDia: 150, dischargeDia: 100, axisH: 360 } })
+        ?.checks?.axisClearance.pass).toBe(true);
+    });
+  });
+
+  describe('선언 수량 ↔ 실제 부품 수', () => {
+    it('프로펠러 날 수가 실제 블레이드 부품 수와 다르면 걸린다', () => {
+      const asm = {
+        propellerMeta: { diameter: 800, hubDia: 144, blades: 5 },
+        parts: [{ id: 'blade_1' }, { id: 'blade_2' }, { id: 'blade_3' }],
+      };
+      expect(check(asm)?.checks?.bladeCount.pass).toBe(false);
+      expect(check(asm)?.checks?.bladeCount.detail.join(' ')).toContain('선언 5 vs 실제 부품 3');
+    });
+
+    it('단위가 다른 선언에는 붙이지 않는다 — conveyor legs 는 벤트 조 수다', () => {
+      // 실측으로 걸렀다: legs=5 인데 부품은 leg_N_1·leg_N_2·legtie_N 15개.
+      // 부품을 세어 비교하면 오탐이 된다.
+      const r = check(tpl('mech', 'conveyor', {}));
+      expect(Object.keys(r?.checks ?? {})).not.toContain('legCount');
+      expect(Object.keys(r?.checks ?? {})).toContain('rollerCount'); // 단위가 맞는 것은 검사한다
+    });
+  });
+
+  it('출하 mech 템플릿 전종 오탐 0 — 판정 평균 2.4', () => {
+    let total = 0, judged = 0, failed = 0;
+    for (const t of (listTemplates as unknown as (d: string) => { id: string }[])('mech')) {
+      const r = check(tpl('mech', t.id, {}));
+      if (!r || r.ok === false) continue;
+      const ks = Object.entries(r.checks ?? {});
+      judged += 1; total += ks.length;
+      failed += ks.filter(([, c]) => c.pass === false).length;
+    }
+    expect(failed).toBe(0);
+    expect(total / judged).toBeGreaterThan(2);
   });
 });
