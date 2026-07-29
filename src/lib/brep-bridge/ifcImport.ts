@@ -197,6 +197,35 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
       bCache.set(id, res);
       return res;
     }
+    /**
+     * IFC4 테셀레이션 좌표 리스트 (260729b).
+     *
+     * ⚠ 실측: buildingSMART **공식 import-certification 세트(PCERT 18파일)를 하나도
+     * 임포트하지 못했다** — 요소는 감지되는데(Building-Structural 15건 등) 형상 0건.
+     * 원인은 IFC4 의 표준 형상 표현인 `IfcTriangulatedFaceSet` 이 좌표를 개별
+     * `IfcCartesianPoint` 가 아니라 **`IfcCartesianPointList3D`** 한 덩어리에 담기 때문이다.
+     * 점 스캔이 그 형태를 몰라 폐포가 비었고, 결과는 "지원 클래스/형상 없음" 이었다.
+     *
+     * 기존 IFC2X3 코퍼스(17,269부품 임포트)는 개별 점을 써서 이 한계가 드러나지 않았다 —
+     * **다른 표현을 쓰는 파일군에서만 나타나는 구멍**이었다.
+     *
+     * 좌표 리스트는 `((x,y,z),(x,y,z),…)` 형태라 숫자를 3개씩 끊어 읽으면 폐포가 나온다.
+     * 면 인덱스는 보지 않는다 — AABB 근사에는 좌표 폐포만 있으면 되고, 그 근사임은
+     * 기존 `importedApprox` 규약이 이미 밝힌다.
+     */
+    if (e.name === 'IFCCARTESIANPOINTLIST3D' || e.name === 'IFCCARTESIANPOINTLIST2D') {
+      const dim = e.name.endsWith('3D') ? 3 : 2;
+      const nums = e.raw.match(/-?\d+(?:\.\d*)?(?:[eE][-+]?\d+)?/g)?.map(Number) ?? [];
+      let res: B3 | null = null;
+      for (let i = 0; i + dim - 1 < nums.length; i += dim) {
+        const p = [nums[i] * unitScale, nums[i + 1] * unitScale, (dim === 3 ? nums[i + 2] : 0) * unitScale];
+        res = res
+          ? { min: res.min.map((v, k) => Math.min(v, p[k])), max: res.max.map((v, k) => Math.max(v, p[k])) }
+          : { min: [...p], max: [...p] };
+      }
+      bCache.set(id, res);
+      return res;
+    }
     inStack.add(id);
     let acc: B3 | null = null;
     if (e.name === 'IFCRECTANGLEPROFILEDEF' || e.name === 'IFCCIRCLEPROFILEDEF' || e.name === 'IFCCIRCLEHOLLOWPROFILEDEF' || e.name === 'IFCISHAPEPROFILEDEF' || e.name === 'IFCLSHAPEPROFILEDEF' || e.name === 'IFCUSHAPEPROFILEDEF' || e.name === 'IFCTSHAPEPROFILEDEF') {

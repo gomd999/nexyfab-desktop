@@ -84,3 +84,40 @@ d('buildingSMART PCERT — 씬 9종이 IFC4·IFC4.3 양쪽에 있다', () => {
     expect([...sc.values()].filter((v) => v.ifc4 && v.ifc4x3)).toHaveLength(9);
   });
 });
+
+d('buildingSMART PCERT — IFC4 테셀레이션 임포트 (260729b)', () => {
+  const imp = async (file: string) => {
+    const { readFileSync } = await import('node:fs');
+    const { ifcToNexyfabAssembly } = await import('@/lib/brep-bridge/ifcImport');
+    return ifcToNexyfabAssembly(readFileSync(file, 'latin1'), { name: 'pcert' });
+  };
+  const scenes = () => (pcertScenes as unknown as () => Map<string, { ifc4: string; ifc4x3: string }>)();
+
+  it('★공식 인증 세트가 임포트된다 — 종전엔 18파일 전부 0건이었다', async () => {
+    // 형상이 전부 `IfcTriangulatedFaceSet` 이고 좌표가 `IfcCartesianPointList3D` 에 있는데
+    // 점 스캔이 그 형태를 몰라 폐포가 비었다. IFC2X3 코퍼스(17,269부품)는 개별 점을 써서
+    // 이 구멍이 드러나지 않았다 — **다른 표현을 쓰는 파일군에서만 나타나는 한계**였다.
+    let total = 0;
+    for (const v of scenes().values()) total += (await imp(v.ifc4)).stats?.imported ?? 0;
+    expect(total).toBeGreaterThan(180);
+  }, 600_000);
+
+  it('건물 씬은 IFC4 ↔ IFC4.3 임포트 수가 같다 — 같은 엔티티를 쓴다', async () => {
+    for (const name of ['Building-Structural', 'Building-Hvac', 'Building-Landscaping', 'Infra-Plumbing']) {
+      const v = scenes().get(name)!;
+      const a = (await imp(v.ifc4)).stats?.imported ?? 0;
+      const b = (await imp(v.ifc4x3)).stats?.imported ?? 0;
+      expect(b, name).toBe(a);
+    }
+  }, 600_000);
+
+  it('인프라 씬은 4.3 에서 크게 줄어든다 — **신설 엔티티 미지원**(사실로 고정)', async () => {
+    // IfcRoad·IfcRailway 등 IFC4.3 신설 클래스를 ELEMENT_CLASSES 가 모른다.
+    // 이건 정당한 차이가 아니라 **우리 한계**다 — 지원을 넓히면 이 단언이 먼저 깨진다.
+    const rail = scenes().get('Infra-Rail')!;
+    const a = (await imp(rail.ifc4)).stats?.imported ?? 0;
+    const b = (await imp(rail.ifc4x3)).stats?.imported ?? 0;
+    expect(a).toBeGreaterThan(50);
+    expect(b).toBeLessThan(5);          // 73 → 1
+  }, 600_000);
+});
