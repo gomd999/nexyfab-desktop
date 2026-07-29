@@ -35,6 +35,20 @@ describe('P0-① 판정 항목명을 읽을 수 있다', () => {
     expect(left.length).toBeLessThan(5);     // 260731 실측 271 → 2 (하중조합 이름 U1·U2)
   });
 
+  it('★남은 영문 키는 **전부 고지된다** — 사전만으로는 새 키를 못 막는다', () => {
+    // ⚠ 배포 직후 이 기구가 스스로를 잡았다: 같은 세션에 만든 단지 배치 검토의
+    //   `notChecked` 가 라이브 문서에 영문 그대로 나갔고 고지가 그것을 이름으로 짚었다.
+    //   그러므로 「사전에 다 넣었다」가 아니라 「남은 것이 전부 고지된다」가 불변식이다.
+    for (const [d, list] of Object.entries(ASSEMBLY_TEMPLATES as Record<string, { id: string }[]>)) {
+      for (const t of list) {
+        const h = report(d, t.id);
+        for (const k of heads(h).filter(isCodeKey)) {
+          expect(h, `${d}/${t.id}:${k}`).toContain(`<code>${k}</code>`);
+        }
+      }
+    }
+  });
+
   it('노드가 이미 가진 이름(labelKo)을 소제목으로 쓴다 — 값처럼 찍지 않는다', () => {
     // 기계는 전 검사에 labelKo 가 있는데도 소제목이 전부 영문이었다.
     // labelKo 를 스칼라로 취급해 `labelKo=…` 로 찍고 소제목엔 키를 쓴 탓이다.

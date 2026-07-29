@@ -64,7 +64,8 @@ const CHECK_LABEL_KO = {
   truck: '표준트럭하중', ultimate: '극한하중', service: '사용하중', combo: '하중조합',
   forces: '단면력', rebar: '철근', spans: '스팬', unitWeight: '단위중량',
   finishes: '마감', mep: '설비', withLoss: '손실 반영', attempted: '시도한 검토',
-  unjudged: '미판정', egressUnavailable: '피난 검토 불가',
+  unjudged: '미판정', notChecked: '검토하지 않은 항목 (이유와 함께)',
+  egressUnavailable: '피난 검토 불가',
   x: 'X방향', y: 'Y방향', xs_mm: 'X 격자선(mm)', ys_mm: 'Y 격자선(mm)',
   farthestPointMm: '최원점 거리(mm)', deadShare_kN: '고정하중 분담(kN)',
   lateralUnavailable: '횡력 검토 불가', sizingUnavailable: '덕트 사이징 불가',
@@ -749,6 +750,10 @@ export function domainSafetyReportHtml(assembly, { title = '안전검토', param
     * ⚠ 사전에 없는 키는 **원문 그대로 나간다** — 그리고 그 사실을 고지한다.
     * 조용히 넘어가면 계산기에 새 키가 생겨도 아무도 모른다(이 세션에서 반복해 잡은 형태:
     * 있는데 안 닿음 · 없는데 없다고 안 함). 고지가 곧 다음 세션의 작업 목록이다.
+    *
+    * ⚠ 배포 직후 **이 기구가 스스로를 잡았다.** 같은 세션에 새로 만든 단지 배치 검토의
+    * `notChecked` 가 라이브 문서에 영문 그대로 나갔고, 고지가 그것을 이름으로 짚었다 —
+    * 사전을 붙이는 것만으로는 새 키를 못 막는다는 것이 실증된 것이다(그래서 고지가 있다).
     */
   const unlabeled = new Set();
   const tree = renderGenericCheckTree(r, 0, unlabeled);
