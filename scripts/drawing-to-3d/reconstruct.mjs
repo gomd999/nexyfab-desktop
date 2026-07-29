@@ -318,6 +318,37 @@ const GATES = {
     const ops = (i.openings ?? []).slice().sort((a, b) => a.x - b.x);
     for (let k = 1; k < ops.length; k++) if (ops[k].x < ops[k - 1].x + ops[k - 1].w) { e.push('openings X구간 겹침'); break; }
   },
+  /**
+   * 슬래브 관통 개구부 (260729) — 계단·승강로·덕트 관통.
+   *
+   * 벽체(`wall_with_openings`)와 별도 어휘가 필요한 이유: 벽은 **수직면**이라 개구가
+   * (x, sill) 로 나지만 슬래브는 **수평면**이라 개구가 평면 (x, y) 로 난다. 관통이므로
+   * 두께 전체가 빠진다(블라인드 개념 없음).
+   *
+   * buildingSMART IFC 4.3 공식 커버리지 샘플의 `slab-openings` 가 짚은 자리다.
+   * ⚠ 코퍼스 키워드 빈도로 고른 것이 아니다 — 그쪽은 상위 3개 기증자가 57% 라 편향된다.
+   */
+  slab_with_openings(i, e) {
+    if (!pos(i.length) || i.length > 60000) e.push('length invalid');
+    if (!pos(i.depth) || i.depth > 60000) e.push('depth invalid');
+    if (!pos(i.thickness) || i.thickness > 2000) e.push('thickness invalid');
+    for (const [n, o] of (i.openings ?? []).entries()) {
+      if (!pos(o.w) || !pos(o.d)) { e.push(`opening[${n}] w/d invalid`); continue; }
+      if (!(o.x >= 0 && o.x + o.w <= i.length)) e.push(`opening[${n}] x 범위 밖`);
+      if (!(o.y >= 0 && o.y + o.d <= i.depth)) e.push(`opening[${n}] y 범위 밖`);
+      if (o.w >= i.length && o.d >= i.depth) e.push(`opening[${n}] 개구가 슬래브 전체`);
+    }
+    // 평면 겹침 — 벽체는 X구간만 보면 되지만 슬래브는 **2D 사각 겹침**을 봐야 한다.
+    const ops = i.openings ?? [];
+    for (let a = 0; a < ops.length; a++) {
+      for (let b = a + 1; b < ops.length; b++) {
+        const A = ops[a], B = ops[b];
+        const ox = Math.min(A.x + A.w, B.x + B.w) - Math.max(A.x, B.x);
+        const oy = Math.min(A.y + A.d, B.y + B.d) - Math.max(A.y, B.y);
+        if (ox > 0 && oy > 0) e.push(`openings[${a}]·[${b}] 평면 겹침`);
+      }
+    }
+  },
   sheet_profile(i, e) {
     if (!pos(i.thickness) || i.thickness > 30) e.push('thickness invalid (판금 ≤30)');
     if (!pos(i.width) || i.width > 6000) e.push('width invalid');
@@ -334,6 +365,18 @@ const GATES = {
     for (const k of ['topW', 'topT', 'webT', 'webH', 'botW', 'botT']) if (!pos(i[k]) || i[k] > 4000) e.push(k + ' invalid');
     if (!e.length && i.webT > Math.min(i.topW, i.botW)) e.push('webT > 플랜지 폭');
     if (!e.length && (i.botT + i.webH + i.topT) < 300) e.push('거더 춤 < 300mm');
+  },
+  tapered_girder(i, e) {
+    if (!pos(i.length) || i.length > 60000) e.push('length invalid (≤60m)');
+    for (const k of ['topW', 'topT', 'webT', 'webH1', 'webH2', 'botW', 'botT']) if (!pos(i[k]) || i[k] > 4000) e.push(k + ' invalid');
+    if (e.length) return;
+    if (i.webT > Math.min(i.topW, i.botW)) e.push('webT > 플랜지 폭');
+    if ((i.botT + Math.min(i.webH1, i.webH2) + i.topT) < 300) e.push('최소 거더 춤 < 300mm');
+    // 물매 제한 = 모델의 한계를 그대로 옮긴 것이다. 상부 플랜지 두께가 **연직 측정**이라
+    // 경사 θ 에서 실제 직교 두께는 topT·cosθ. 1/3(θ=18.4°)에서 5.1% 얇다 — 그 이상은
+    // 「선언한 두께대로 만들어진다」가 거짓이 되므로 통과시키지 않는다.
+    const slope = Math.abs(i.webH2 - i.webH1) / i.length;
+    if (slope > 1 / 3) e.push(`웨브 물매 1:${(1 / slope).toFixed(1)} — 1:3 초과(플랜지 두께가 연직 측정이라 직교 두께가 ${(100 - 100 / Math.hypot(1, slope)).toFixed(1)}% 얇아진다)`);
   },
   // 표준 부품 확장(260718b)
   hex_nut(i, e) {
@@ -533,6 +576,23 @@ const SCAD = {
   translate([0, ${(W - i.topW) / 2}, ${i.botT + i.webH}]) cube([${i.length}, ${i.topW}, ${i.topT}]);
 }`;
   },
+  tapered_girder(i) {
+    const W = Math.max(i.topW, i.botW);
+    const a1 = i.botT + i.webH1, a2 = i.botT + i.webH2;
+    const poly = (pts) => `polygon(points=[${pts.map(([x, y]) => `[${x},${y}]`).join(',')}])`;
+    return `union() {
+  translate([0, 0, ${(W - i.botW) / 2}]) cube([${i.length}, ${i.botT}, ${i.botW}]);
+  translate([0, 0, ${(W - i.webT) / 2}]) linear_extrude(height=${i.webT}) ${poly([[0, i.botT], [i.length, i.botT], [i.length, a2], [0, a1]])};
+  translate([0, 0, ${(W - i.topW) / 2}]) linear_extrude(height=${i.topW}) ${poly([[0, a1], [i.length, a2], [i.length, a2 + i.topT], [0, a1 + i.topT]])};
+}`;
+  },
+  slab_with_openings(i) {
+    // 관통 — z 를 위아래 1mm 씩 넘겨 잘라 낸다(동일평면 부울 회피). 두께 전체가 빠지므로
+    // 폐형(length·depth·thickness − Σ w·d·thickness)과 정확히 일치한다.
+    const ops = (i.openings ?? []).map((o) => `    translate([${o.x}, ${o.y}, -1]) cube([${o.w}, ${o.d}, ${i.thickness + 2}]);`).join('\n');
+    if (!ops) return `cube([${i.length}, ${i.depth}, ${i.thickness}]);`;
+    return `difference() {\n  cube([${i.length}, ${i.depth}, ${i.thickness}]);\n${ops}\n}`;
+  },
   wall_with_openings(i) {
     const ops = (i.openings ?? []).map((o) => `    translate([${o.x}, -1, ${o.sill ?? 0}]) cube([${o.w}, ${i.thickness + 2}, ${o.h}]);`).join('\n');
     if (!ops) return `cube([${i.length}, ${i.thickness}, ${i.height}]);`;
@@ -664,6 +724,8 @@ export function partAabb(i) {
       return { min: [0, 0, 0], max: [i.width, i.depth, i.thickness] };
     case 'i_girder':
       return { min: [0, 0, 0], max: [i.length, Math.max(i.topW, i.botW), i.botT + i.webH + i.topT] };
+    case 'tapered_girder': // ⚠ 축 순서가 i_girder 와 다르다: x=스팬 · y=춤 · z=폭
+      return { min: [0, 0, 0], max: [i.length, i.botT + Math.max(i.webH1, i.webH2) + i.topT, Math.max(i.topW, i.botW)] };
     case 'l_bracket':
       return { min: [0, 0, 0], max: [i.legA, i.width, i.legB] };
     case 'flange':
@@ -700,6 +762,8 @@ export function partAabb(i) {
     }
     case 'wall_with_openings':
       return { min: [0, 0, 0], max: [i.length, i.thickness, i.height] };
+    case 'slab_with_openings':
+      return { min: [0, 0, 0], max: [i.length, i.depth, i.thickness] };
     // 표준 부품 확장(260718b)
     case 'hex_nut': {
       const R = i.af / Math.sqrt(3); // 대각반경
@@ -783,7 +847,9 @@ export const PARAMS = {
   hex_bolt: ['threadDia', 'length'],
   sheet_profile: ['thickness', 'width'], // segments[]·angles[]는 배열 — 스키마 특례
   wall_with_openings: ['length', 'thickness', 'height'], // openings[]는 배열 — 스키마 특례
+  slab_with_openings: ['length', 'depth', 'thickness'],  // openings[]는 배열 — 스키마 특례
   i_girder: ['length', 'topW', 'topT', 'webT', 'webH', 'botW', 'botT'],
+  tapered_girder: ['length', 'topW', 'topT', 'webT', 'webH1', 'webH2', 'botW', 'botT'],
   hex_nut: ['af', 'thickness', 'boreDia'],
   washer: ['outerDia', 'boreDia', 'thickness'],
   angle: ['legA', 'legB', 'thickness', 'length'],

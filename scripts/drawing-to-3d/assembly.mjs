@@ -33,7 +33,7 @@ export const SERVICE_COL = {
   column: '#475569', beam: '#0e7490', slab: '#94a3b8', joist: '#854d0e', deck: '#a16207', floor: '#d1d5db', table: '#0f766e', counter: '#7c3aed', wall: '#78716c', base: '#57534e',
   stack: '#7c2d12',
 };
-export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5', mesh: '#7c6f9f', revolve: '#9aa7b5', cavity_block: '#7c6f9f', coil_spring: '#6b7280', pillow_block: '#78838f', rebar: '#a16207', pipe_elbow: '#9aa7b5', pipe_tee: '#9aa7b5' };
+export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', slab_with_openings: '#8a8175', tapered_girder: '#0e7490', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5', mesh: '#7c6f9f', revolve: '#9aa7b5', cavity_block: '#7c6f9f', coil_spring: '#6b7280', pillow_block: '#78838f', rebar: '#a16207', pipe_elbow: '#9aa7b5', pipe_tee: '#9aa7b5' };
 // 부품 id/name 키워드 → 계통 자동추론 (명시 service 태그 없어도 계통색이 나오게).
 const ID_SERVICE = [
   [/pump|motor|모터|펌프|impeller|임펠라|blower|fan|송풍/i, 'motor'],
@@ -332,11 +332,26 @@ export function assemblyToComposeIntent(asm) {
         feats.push(F('box', { size: [p.length, p.thickness, p.height] }));
         for (const o of p.openings ?? []) feats.push(F('box', { size: [o.w, p.thickness + 2, o.h] }, o.x, -1, o.sill ?? 0, 'subtract'));
         break;
+      case 'slab_with_openings':
+        feats.push(F('box', { size: [p.length, p.depth, p.thickness] }));
+        // 관통 — z 를 위아래 1mm 씩 넘겨 잘라 낸다(경계면 동일평면 회피).
+        for (const o of p.openings ?? []) feats.push(F('box', { size: [o.w, o.d, p.thickness + 2] }, o.x, o.y, -1, 'subtract'));
+        break;
       case 'i_girder': { // 감사 2026-07-16: 매핑 누락으로 교량 거더가 GA·STEP에서 통째로 빠져 있었음
         const W = Math.max(p.topW, p.botW);
         feats.push(F('box', { size: [p.length, p.botW, p.botT] }, 0, (W - p.botW) / 2, 0));
         feats.push(F('box', { size: [p.length, p.webT, p.webH] }, 0, (W - p.webT) / 2, p.botT));
         feats.push(F('box', { size: [p.length, p.topW, p.topT] }, 0, (W - p.topW) / 2, p.botT + p.webH));
+        break;
+      }
+      case 'tapered_girder': { // 변단면 거더 — 국소축 x=스팬 · y=춤 · z=폭(structural 주석 참조)
+        const W = Math.max(p.topW, p.botW);
+        const a1 = p.botT + p.webH1, a2 = p.botT + p.webH2; // 웨브 상단 y(양 끝)
+        feats.push(F('box', { size: [p.length, p.botT, p.botW] }, 0, 0, (W - p.botW) / 2));
+        // 웨브=사다리꼴 · 상부 플랜지=평행사변형. 둘 다 XY 프로파일을 Z(폭)로 압출 —
+        // 경사면을 가진 프리즘은 축이 폭 방향이라 이 방향이라야 SCAD·STEP 이 같은 solid 를 낸다.
+        feats.push(F('extrude', { profile: [[0, p.botT], [p.length, p.botT], [p.length, a2], [0, a1]], height: p.webT }, 0, 0, (W - p.webT) / 2));
+        feats.push(F('extrude', { profile: [[0, a1], [p.length, a2], [p.length, a2 + p.topT], [0, a1 + p.topT]], height: p.topW }, 0, 0, (W - p.topW) / 2));
         break;
       }
       // 표준 부품 확장(260718b)

@@ -80,7 +80,30 @@ export function partVolume(type, p) {
       const cut = (p.openings ?? []).reduce((s, o) => s + o.w * o.h * p.thickness, 0);
       return solid - cut;
     }
+    // 슬래브 관통 개구부(260729) — 계단·승강로·덕트 관통. 벽체와 달리 **수평면**이고
+    // 개구가 평면(x,y)에 나므로 별도 어휘가 필요하다. 관통이라 두께 전체가 빠진다(폐형).
+    case 'slab_with_openings': {
+      const solid = p.length * p.depth * p.thickness;
+      const cut = (p.openings ?? []).reduce((s, o) => s + o.w * o.d * p.thickness, 0);
+      return solid - cut;
+    }
     case 'i_girder': return p.length * (p.botW * p.botT + p.webT * p.webH + p.topW * p.topT);
+    /**
+     * 변단면 거더(헌치보) — 웨브 춤이 webH1→webH2 로 **선형** 변한다.
+     *
+     * 근거: buildingSMART IFC 4.3 공식 커버리지 샘플 `beam-varying-profiles`.
+     * IFC 의 `IfcExtrudedAreaSolidTapered` 의미(양 끝 단면의 선형 모프)를 그대로 따른다.
+     *
+     * 폐형인 이유: 단면적 A(t)=2·(플랜지)+webT·webH(t) 가 t 의 **1차식**이므로 평균단면
+     * ×길이가 정확하다(심프슨도 같은 값). 웨브=사다리꼴, 상부 플랜지=평행사변형.
+     *
+     * ⚠ 상부 플랜지 두께 topT 는 **연직 측정**이다(선형 모프의 필연). 경사 θ 에서 실제
+     *   직교 두께는 topT·cosθ — 그래서 게이트가 물매를 1/3 로 제한한다(≤0.5% 차이).
+     * ⚠ 국소축이 i_girder 와 **다르다**: x=스팬 · y=춤 · z=폭(sheet_profile 관례).
+     *   경사면 프리즘은 축이 폭 방향이라 XY 프로파일→Z 압출로만 SCAD·STEP 이 일치한다.
+     */
+    case 'tapered_girder':
+      return p.length * (p.botW * p.botT + p.topW * p.topT + p.webT * (p.webH1 + p.webH2) / 2);
     // 표준 부품 확장(260718b — 자주 쓰는 부품)
     case 'hex_nut': return (Math.sqrt(3) / 2) * p.af ** 2 * p.thickness - A * (p.boreDia ?? 0) ** 2 * p.thickness;
     case 'washer': return A * (p.outerDia ** 2 - p.boreDia ** 2) * p.thickness;
@@ -323,6 +346,21 @@ function localCG(type, p) {
       const Ab = p.botW * p.botT, Aw = p.webT * p.webH, At = p.topW * p.topT;
       const z = (Ab * p.botT / 2 + Aw * (p.botT + p.webH / 2) + At * (p.botT + p.webH + p.topT / 2)) / (Ab + Aw + At);
       return [p.length / 2, Math.max(p.topW, p.botW) / 2, z];
+    }
+    case 'tapered_girder': { // 변단면 — 스팬(x)·춤(y) 둘 다 비대칭이라 성분별 1차모멘트
+      const L = p.length, h1 = p.webH1, h2 = p.webH2;
+      const Vb = L * p.botT * p.botW;                 // 하부 플랜지(직육면체)
+      const Vw = (L * (h1 + h2) / 2) * p.webT;        // 웨브(사다리꼴 프리즘)
+      const Vt = L * p.topT * p.topW;                 // 상부 플랜지(평행사변형 프리즘)
+      const V = Vb + Vw + Vt;
+      // 사다리꼴 도심(x̄=L(h1+2h2)/3(h1+h2) · ȳ=(h1²+h1h2+h2²)/3(h1+h2)) — 적분 결과.
+      const wx = L * (h1 + 2 * h2) / (3 * (h1 + h2));
+      const wy = p.botT + (h1 * h1 + h1 * h2 + h2 * h2) / (3 * (h1 + h2));
+      // 평행사변형 도심 = 네 꼭짓점 평균 → x=L/2 · y=botT+(h1+h2)/2+topT/2
+      const ty = p.botT + (h1 + h2) / 2 + p.topT / 2;
+      const cx = (Vb * (L / 2) + Vw * wx + Vt * (L / 2)) / V;
+      const cy = (Vb * (p.botT / 2) + Vw * wy + Vt * ty) / V;
+      return [cx, cy, Math.max(p.topW, p.botW) / 2]; // z(폭)는 전 성분 중심정렬 — 대칭
     }
     case 'hex_bolt': {
       const { af, hh } = boltDims(p);

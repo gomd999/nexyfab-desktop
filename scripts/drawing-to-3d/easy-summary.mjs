@@ -28,8 +28,8 @@ const TYPE_KO = {
   box: '각재/블록', plate_with_holes: '구멍 뚫린 판재', stepped_plate: '단차 판재', base_plate: '베이스 플레이트',
   l_bracket: 'ㄱ자 브래킷', bent_sheet: '절곡 판금', flange: '플랜지', tube: '파이프(중공)', rect_tube: '각파이프',
   cylinder: '봉/원통', gusset: '보강판(거셋)', spur_gear: '평기어', hex_bolt: '육각 볼트', sheet_profile: '판금 형상재',
-  wall_with_openings: '개구부 있는 벽체', hex_nut: '육각 너트', washer: '와셔', angle: 'ㄱ형강(앵글)',
-  tee_section: 'T형강', pipe_reducer: '이경관(리듀서)', mesh: '자유 형상(메시)', revolve: '회전체',
+  wall_with_openings: '개구부 있는 벽체', slab_with_openings: '개구부 있는 슬래브(관통)', hex_nut: '육각 너트', washer: '와셔', angle: 'ㄱ형강(앵글)',
+  tapered_girder: '변단면 거더(헌치보)', tee_section: 'T형강', pipe_reducer: '이경관(리듀서)', mesh: '자유 형상(메시)', revolve: '회전체',
   cavity_block: '금형 캐비티', coil_spring: '코일 스프링', pillow_block: '베어링 유닛', rebar: '철근',
   pipe_elbow: '엘보', pipe_tee: '티',
 };

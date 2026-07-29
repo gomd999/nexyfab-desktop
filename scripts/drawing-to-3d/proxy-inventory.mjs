@@ -19,6 +19,7 @@ import { intentToStep, ensureReplicad } from './to-step.mjs';
 export const CANONICAL = {
   box: { width: 100, depth: 80, height: 60 },
   plate_with_holes: { width: 120, depth: 80, thickness: 10, holes: [{ x: 30, y: 40, d: 12 }, { x: 90, y: 40, d: 12 }] },
+  slab_with_openings: { length: 6000, depth: 4000, thickness: 200, openings: [{ x: 1000, y: 1000, w: 1200, d: 2400 }] },
   stepped_plate: { width: 120, depth: 80, thickness: 20, stepWidth: 60, stepThickness: 10 },
   base_plate: { width: 200, depth: 200, thickness: 16, boltDia: 18 },
   l_bracket: { legA: 80, legB: 60, width: 50, thickness: 8 },
@@ -29,6 +30,7 @@ export const CANONICAL = {
   h_section: { H: 200, B: 100, tw: 5.5, tf: 8, length: 1000 },
   c_channel: { H: 150, B: 75, tw: 5, tf: 7.5, length: 1000 },
   i_girder: { length: 10000, topW: 300, topT: 20, webT: 12, webH: 800, botW: 400, botT: 25 },
+  tapered_girder: { length: 10000, topW: 300, topT: 20, webT: 12, webH1: 600, webH2: 1200, botW: 400, botT: 25 },
   cylinder: { diameter: 60, length: 200 },
   gusset: { legA: 100, legB: 80, thickness: 10 },
   spur_gear: { module: 2, teeth: 24, thickness: 20, boreDia: 20 },

@@ -28,12 +28,17 @@ const M = {
   hex_bolt: { '+x': 'threadDia', '-x': 'threadDia', '+y': 'threadDia', '-y': 'threadDia', '+z': 'length', '-z': 'length' },
   sheet_profile: { '+x': null, '-x': null, '+y': null, '-y': null, '+z': 'width', '-z': 'width' }, // 단면은 segments/angles 배열 — 스케치 편집 경로(P3)
   wall_with_openings: { '+x': 'length', '-x': 'length', '+y': 'thickness', '-y': 'thickness', '+z': 'height', '-z': 'height' },
+  slab_with_openings: { '+x': 'length', '-x': 'length', '+y': 'depth', '-y': 'depth', '+z': 'thickness', '-z': 'thickness' },
   i_girder: { '+x': 'length', '-x': 'length', '+y': null, '-y': null, '+z': 'topT', '-z': 'botT' }, // 폭은 topW/botW 복합 — 단면 패널(P3)로
+  // ⚠ tapered_girder 는 축이 다르다(x=스팬·y=춤·z=폭). 또 춤이 양 끝에서 다르므로
+  // ±y 면을 단일 파라미터로 잡을 수 없다 — null(면 드래그 편집 불가, 단면 패널로).
+  tapered_girder: { '+x': 'length', '-x': 'length', '+y': null, '-y': null, '+z': null, '-z': null },
 };
 
 /** 단면(2차) 파라미터 — 면 매핑이 null인 어휘의 '단면 편집' 패널용 목록 (P3 간이). */
 export const SECTION_PARAMS = {
   i_girder: ['topW', 'topT', 'webT', 'webH', 'botW', 'botT'],
+  tapered_girder: ['topW', 'topT', 'webT', 'webH1', 'webH2', 'botW', 'botT'],
   sheet_profile: ['segments', 'angles', 'thickness'],
   spur_gear: ['module', 'teeth', 'boreDia'],
 };

@@ -147,6 +147,8 @@ const TYPE_FIELDS = {
   spur_gear: ['module', 'teeth', 'thickness', 'boreDia'],
   hex_bolt: ['threadDia', 'length'],
   wall_with_openings: ['length', 'thickness', 'height'],
+  slab_with_openings: ['length', 'depth', 'thickness'],
+  tapered_girder: ['length', 'webH1', 'webH2', 'webT', 'topW', 'topT', 'botW', 'botT'],
 };
 const FIELD_HELP = {
   plate_with_holes: 'width(TOP 가로), depth(TOP 세로), thickness(두께). 원형 구멍은 holes[{x,y,d}] — TOP VIEW 좌하단 원점(0,0), "(nEA)"=동일 지름 개수',
@@ -163,6 +165,8 @@ const FIELD_HELP = {
   spur_gear: 'module(모듈 m — 요목표), teeth(잇수 z — 요목표, 정수), thickness(치폭), boreDia(축 구멍 지름, 없으면 0). 외경 표기만 있으면 m=OD/(z+2)',
   hex_bolt: 'threadDia(나사 호칭 M 뒤 숫자, 예 M12→12), length(자루 길이 — 머리 제외)',
   wall_with_openings: 'length(벽 길이), thickness(벽 두께), height(벽 높이). 개구부는 openings[{x,w,h,sill}] — 문 sill=0, 창 sill>0',
+  slab_with_openings: 'length(X), depth(Y), thickness(슬래브 두께). 관통 개구는 openings[{x,y,w,d}] — 계단·승강로·덕트 관통(두께 전체 관통)',
+  tapered_girder: 'length(스팬), webH1·webH2(양 끝 웹 춤 — 다르면 변단면), webT(웹 두께), topW/topT·botW/botT(상·하 플랜지 폭·두께). 입면도에서 끝과 중앙의 춤이 다르면 이 어휘',
 };
 const CLASSIFY_LIST = `plate_with_holes(타공 평판) / stepped_plate(단차 평판) / l_bracket(L 브래킷) / flange(원형 플랜지+볼트서클) / bent_sheet(U채널 절곡판) / tube(원형 파이프·중공) / rect_tube(각관·사각중공) / box(속찬 직육면체 블록) / cylinder(속찬 원기둥 봉) / gusset(직각삼각 거셋 보강판) / base_plate(모서리 볼트홀 베이스판) / spur_gear(스퍼기어 — 치형 원·요목표 m·z) / hex_bolt(육각볼트 — M호칭·육각머리) / wall_with_openings(벽체 입면 — 문·창 개구)`;
 const CLASSIFY_SCHEMA = {
