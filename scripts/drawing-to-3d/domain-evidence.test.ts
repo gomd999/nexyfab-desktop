@@ -69,14 +69,24 @@ describe('실제로 판정한 것은 그대로 통과시킨다 — 과잉 반응
 });
 
 describe('판정 0개의 이유를 뭉개지 않는다', () => {
-  it('rc_frame — 부재는 있고 입력 대기다(대상 없음이 아니다)', () => {
-    // 보·기둥·기초가 전부 verdict "INPUT(beamAs/colAst/footing)" 이고 checks:null 이다.
-    // 단면력(Mu·Vu)은 산출됐는데 철근이 선언되지 않아 강도 판정을 못 했다.
-    const v = verdict('building', 'rc_frame');
+  it('배근 미선언이면 "입력 대기"로 갈린다(대상 없음이 아니다)', () => {
+    // ⚠ 260729 갱신: rc_frame 은 이후 rcMeta 로 배근을 선언해 판정 7개가 됐다.
+    // 그 선언을 빼면 종전 상태가 그대로 재현된다 — 보·기둥·기초가 전부
+    // verdict "INPUT(beamAs/colAst/footing)" 이고 checks:null. 단면력은 산출됐는데
+    // 배근이 없어 강도 판정을 못 하는 것이므로 "대상 없음"이 아니라 "판정 불가"다.
+    const a = buildAssemblyTemplate('building', 'rc_frame', {}) as unknown as Record<string, unknown>;
+    delete a.rcMeta;
+    const v = (domainSafetyVerdict as unknown as (x: unknown, p: unknown) => V)(a, {});
     expect(v?.judged).toBe(0);
     const u = v!.unavailable!.join(' ');
     expect(u).toContain('입력 대기 상태');
     expect(u).toContain('판정 불가');
+  });
+
+  it('배근을 선언하면 판정 0개가 해소된다 — 이 수정의 결과', () => {
+    const v = verdict('building', 'rc_frame');
+    expect(v?.judged).toBeGreaterThan(0);
+    expect(v?.unavailable?.join(' ') ?? '').not.toContain('판정한 항목이 0개');
   });
 
   it('이유를 모르면 단정하지 않는다 — INPUT 표식이 없으면 사실만 적는다', () => {

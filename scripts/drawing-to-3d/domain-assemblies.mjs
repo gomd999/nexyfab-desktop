@@ -143,6 +143,20 @@ function rcFrameAssembly(p) {
     name: `RC 라멘 골조 (${nbx}×${nby}베이 ${nf}층)`, domain: 'building', parts, pipes,
     floorAreaM2: +((W * D) / 1e6).toFixed(2),
     frameGrid: { baysX: nbx, baysY: nby, floors: nf, bayX: bx, bayY: by, storyH: H, slabThk: st },
+    /**
+     * 배근 선언 (260729). 단면(보 ${bw}×${bh} · 기둥 ${c}×${c})만 선언하고 배근을
+     * 선언하지 않으면 RC 설계로서 미완이고, 실제로 **강도 판정이 0개**로 나갔다
+     * (보·기둥·기초가 전부 verdict "INPUT(...)"). 전수 감사에서 유일하게 남았던
+     * 진짜 "판정 0개"다.
+     *
+     * 값은 표준 규격 조합이고 **검사가 그대로 검증한다** — 지간·단면을 바꾸면
+     * loadPathCheck 가 부족을 잡는다(그게 이 선언의 값어치다).
+     *   보 인장철근 5-D22 = 5×387 = 1935 ≈ 2000mm²
+     *   보 스터럽    D10 2가닥 @150 = 2×71 = 142mm²
+     *   기둥 주철근  8-D22 = 8×387 = 3096 ≈ 3000mm² (ρ=3000/500² = 1.2% — 최소 1% 이상)
+     * ⚠ 호출자 verifyParams 가 있으면 그쪽이 우선한다(현장 조건이 템플릿을 이긴다).
+     */
+    rcMeta: { beamAs: 2000, beamAv: 142, beamS: 150, colAst: 3000 },
   };
 }
 

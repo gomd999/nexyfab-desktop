@@ -58,6 +58,31 @@ export function loadPathCheck(assembly, params = {}) {
   const kds = standards?.KDS;
   if (!kds?.loads) return { ok: false, error: 'KDS loads 데이터 미탑재(kds.json)' };
 
+  /**
+   * 배근을 **어셈블리가 선언**할 수 있게 한다 (260729).
+   *
+   * 종전에는 철근이 오직 `params`(호출자)로만 들어왔다. 그런데 패키지 경로는
+   * verifyParams 를 비운 채 부르므로 **모든 생성 도면집에서 배근이 없었고**, 보·기둥·
+   * 기초가 전부 verdict "INPUT(beamAs/colAst/footing)" 이 되어 **강도 판정이 0개**였다
+   * (전수 감사에서 유일하게 남은 진짜 "판정 0개" — 주력 RC 골조 템플릿).
+   *
+   * 단면(300×600)을 선언하면서 배근을 선언하지 않는 것은 RC 설계로서 미완이다.
+   * buildingSMART IFC 4.3 공식 커버리지 샘플에도 reinforcing-stirrup·reinforcing-assembly
+   * 가 들어 있다 — 배근은 건물 모델의 일부다.
+   *
+   * ⚠ 값을 지어내지 않는다. 어셈블리가 `rcMeta` 로 **선언한 것만** 쓰고, 호출자
+   * params 가 있으면 그쪽이 우선한다(현장 조건이 템플릿을 이긴다). 선언이 없으면
+   * 종전대로 INPUT 게이트가 걸린다.
+   */
+  const rc = (assembly?.rcMeta && typeof assembly.rcMeta === 'object') ? assembly.rcMeta : {};
+  const P = new Proxy(params, {
+    get(t, k) {
+      const v = t[k];
+      return (v === undefined || v === null || v === '') ? rc[k] : v;
+    },
+  });
+  params = P;
+
   const allParts = assembly?.parts ?? [];
   const unverifiedParts = allParts.filter((p) => p.unverified === true);
   const parts = allParts.filter((p) => p.unverified !== true);
