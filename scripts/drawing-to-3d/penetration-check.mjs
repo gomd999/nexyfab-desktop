@@ -21,7 +21,7 @@
  *    한쪽 규약을 다른 쪽에 들이대면 **sill 을 y 로 읽어** 엉뚱한 자리를 검사하게 된다.
  */
 
-import { partAabb } from './reconstruct.mjs';
+import { placedAabb } from './assembly.mjs';
 
 const SERVICE_RE = /duct|pipe|배관|덕트|sleeve|vent|hvac/i;
 
@@ -34,26 +34,27 @@ function isService(p) {
 }
 
 /**
- * 축정렬 월드 AABB. 회전이 축정렬이 아니면 null — 판정하지 않는다.
+ * 부품의 **월드 AABB**. 배치·회전을 그대로 반영한다.
  *
  * ⚠ 치수를 `params.width/depth/height` 로 직접 읽으면 **어휘마다 필드명이 달라 조용히
  * 꺼진다.** 실측: `slab_with_openings` 는 `length/depth/thickness` 라 AABB 가 null 이 됐고,
  * 그 결과 **개구를 선언할수록 관통 검사가 사라졌다** — 고치라고 안내한 바로 그 행동이
- * 검사를 끄는 최악의 형태다. `partAabb` 는 전 어휘의 로컬 경계를 알고 있으므로 그걸 쓴다.
+ * 검사를 끄는 최악의 형태였다.
+ *
+ * ⚠ 260729c: 직접 짠 축정렬 계산이 **rx/ry 회전을 통째로 제외**하고 있었다. 그런데
+ * `cylinder` 는 길이가 Z축이라 **수평 배관은 반드시 ry(또는 rx) 회전**이 붙는다 —
+ * 실무에서 가장 흔한 벽 관통이 검사에서 빠져 있던 것이다(plant_room 실측: 관통 3개소 중
+ * 2개소만 잡힘). `placedAabb` 는 8코너를 회전시켜 월드 AABB 를 내므로 전 회전을 다룬다.
+ * 비축정렬 회전에서는 AABB 가 부풀지만 **보수측**(과탐)이고, 관통은 겹침으로 판단하므로
+ * 놓치는 쪽보다 낫다.
  */
 function aabb(p) {
-  const rz = ((Number(p.at?.rz ?? 0) % 360) + 360) % 360;
-  const axis = [0, 90, 180, 270].some((a) => Math.abs(rz - a) < 1);
-  if (!axis || Number(p.at?.rx) || Number(p.at?.ry)) return null;
-  let lb = null;
-  try { lb = partAabb({ type: p.type, ...(p.params ?? {}) }); } catch { return null; }
-  if (!lb || !Array.isArray(lb.min) || !Array.isArray(lb.max)) return null;
-  const w = lb.max[0] - lb.min[0], d = lb.max[1] - lb.min[1], h = lb.max[2] - lb.min[2];
-  if (!(w > 0) || !(d > 0) || !(h > 0)) return null;
-  const swap = Math.abs(rz - 90) < 1 || Math.abs(rz - 270) < 1;
-  const dx = swap ? d : w, dy = swap ? w : d;
-  const x = Number(p.at?.tx ?? 0), y = Number(p.at?.ty ?? 0), z = Number(p.at?.tz ?? 0);
-  return { min: [x, y, z], max: [x + dx, y + dy, z + h] };
+  try {
+    const b = placedAabb(p);
+    if (!b || !Array.isArray(b.min) || !Array.isArray(b.max)) return null;
+    if (![0, 1, 2].every((k) => Number.isFinite(b.min[k]) && b.max[k] > b.min[k])) return null;
+    return { min: [...b.min], max: [...b.max] };
+  } catch { return null; }
 }
 
 const overlap1 = (a1, a2, b1, b2) => Math.min(a2, b2) - Math.max(a1, b1);

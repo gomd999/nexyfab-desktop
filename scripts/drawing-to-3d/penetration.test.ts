@@ -136,3 +136,40 @@ describe('벽 관통 — 슬래브와 좌표 규약이 다르다 (260729c)', () 
       .toContain('관통 단면을 덮지 못한다');
   });
 });
+
+describe('plant_room — 벽 관통이 설계의 본질인 출하 템플릿 (260729c)', () => {
+  const asm = () => buildAssemblyTemplate('building', 'plant_room', {});
+
+  it('급기·배기 덕트와 냉수 배관이 벽 3개소를 관통하고 전부 개구가 있다', () => {
+    const r = chk(asm());
+    expect(r?.labelKo).toContain('관통 3개소');
+    expect(r?.pass).toBe(true);
+    expect(r?.detail.join(' ')).toContain('개구가 확인된 관통 3개소');
+  });
+
+  it('★수평 배관(ry 회전)이 검사에 들어간다 — 종전엔 통째로 빠졌다', () => {
+    // `cylinder` 는 길이가 Z축이라 **수평 배관은 반드시 ry 회전**이 붙는다. 직접 짠
+    // 축정렬 계산이 rx/ry 를 제외해 실무에서 가장 흔한 벽 관통이 검사 밖에 있었다
+    // (실측: 3개소 중 2개소만 잡힘). placedAabb 로 바꿔 전 회전을 다룬다.
+    const pipe = (asm() as { parts: { id: string; at: { ry?: number } }[] })
+      .parts.find((p) => p.id === 'pipe_chilled');
+    expect(pipe?.at.ry).toBe(90);
+    const r = chk(asm());
+    expect(r?.detail.join(' ')).not.toContain('판정 불가');
+  });
+
+  it('개구를 지우면 걸린다 — 검사가 실제로 작동함을 확인', () => {
+    const a = asm() as { parts: { id: string; params: Record<string, unknown> }[] };
+    const w = a.parts.find((p) => p.id === 'wall_left')!;
+    w.params.openings = [];
+    const r = chk(a);
+    expect(r?.pass).toBe(false);
+    expect(r?.detail.join(' ')).toContain('wall_left');
+  });
+
+  it('게이트를 통과한다 — 형상이 성립하는 실무 구성', async () => {
+    const { buildAssembly } = await import('./assembly.mjs');
+    const b = (buildAssembly as unknown as (a: unknown) => { ok: boolean })(asm());
+    expect(b.ok).toBe(true);
+  });
+});

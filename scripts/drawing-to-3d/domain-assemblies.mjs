@@ -1062,6 +1062,87 @@ function elevatorShaftAssembly(p = {}) {
 
 /** HVAC 덕트런(트렁크+분기+디퓨저 드롭 — 260718, 참고파일들2 덕트워크 대응).
  *  천장 슬래브(기둥 4) 아래 행어 로드(인장 선언)로 매닮 — supportCheck 인장 체인 실증. */
+/**
+ * 설비 기계실 (260729c, 계획 P2-7) — **벽 관통이 설계의 본질인 공간**.
+ *
+ * 앞서 벽 관통 대조를 구현했지만 출하 템플릿에 실사용이 없어 합성 테스트로만 재현했다.
+ * 억지로 만들지 않으려고 미루다가, **벽 관통이 자연스러운 형상**을 찾았다 — 기계실이다.
+ * 공조기(AHU)의 급기·배기 덕트와 펌프 배관은 **반드시 벽을 뚫고** 나간다. 벽에 개구
+ * (슬리브)를 두는 것이 정상 설계이고, 빠뜨리면 현장에서 벽을 깨야 한다.
+ *
+ * 개구 좌표는 벽 로컬 `(x, sill)` — 슬래브의 `(x, y)` 와 규약이 다르다(penetration-check
+ * 주석 참조). 여기서는 덕트·배관의 실제 통과 위치에서 **결정론으로 계산**해 선언한다.
+ */
+function plantRoomAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const W = num(p.width, 8000), D = num(p.depth, 6000), H = num(p.ceilingH, 3600);
+  const wallT = num(p.wallThk, 200), slabT = 250;
+  const ductW = num(p.ductW, 800), ductH = num(p.ductH, 500);
+  const pipeD = num(p.pipeDia, 150);
+  const parts = [];
+  const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+
+  P('slab_floor', 'box', { width: W, depth: D, height: slabT }, { tx: 0, ty: 0, tz: -slabT }, 'concrete', 'slab');
+  P('slab_roof', 'box', { width: W, depth: D, height: slabT }, { tx: 0, ty: 0, tz: H }, 'concrete', 'slab');
+
+  // 장비 — AHU(공조기)는 방진 기초 위, 펌프 2대는 별도 패드.
+  const ahuW = 2400, ahuD = 1600, ahuH = 1800, ahuX = 900, ahuY = 900;
+  P('pad_ahu', 'box', { width: ahuW + 400, depth: ahuD + 400, height: 200 }, { tx: ahuX - 200, ty: ahuY - 200, tz: 0 }, 'concrete', 'pad');
+  P('ahu', 'box', { width: ahuW, depth: ahuD, height: ahuH }, { tx: ahuX, ty: ahuY, tz: 200 }, 'steel', 'equipment');
+  for (let i = 0; i < 2; i++) {
+    P(`pad_pump_${i + 1}`, 'box', { width: 1000, depth: 700, height: 200 }, { tx: W - 2200, ty: 800 + i * 1400, tz: 0 }, 'concrete', 'pad');
+    P(`pump_${i + 1}`, 'box', { width: 800, depth: 500, height: 700 }, { tx: W - 2100, ty: 900 + i * 1400, tz: 200 }, 'castiron', 'equipment');
+  }
+
+  // 관통 위치를 **먼저 정하고** 그 자리에 개구를 뚫는다 — 순서가 반대면 개구가 추측이 된다.
+  const supZ = 2400, exhZ = 2400;                 // 덕트 중심 높이
+  const supX = ahuX + ahuW / 2 - ductW / 2;       // 급기: AHU 정면(-y 벽) 관통
+  const exhY = D - 2200;                          // 배기: 우측(+x) 벽 관통
+  const pipeZ = 700, pipeY = 900;                 // 배관: 좌측(-x) 벽 관통
+
+  // 벽 4면 — 관통 개구 + 출입문(후면). 개구는 (x, sill) 규약.
+  P('wall_front', 'wall_with_openings', {
+    length: W, thickness: wallT, height: H,
+    openings: [{ x: supX - 100, w: ductW + 200, h: ductH + 200, sill: supZ - 100 }],   // 급기 슬리브(여유 100)
+  }, { tx: 0, ty: -wallT, tz: 0 }, 'concrete', 'wall');
+  P('wall_back', 'wall_with_openings', {
+    length: W, thickness: wallT, height: H,
+    openings: [{ x: W / 2 - 500, w: 1000, h: 2100, sill: 0 }],                          // 출입문
+  }, { tx: 0, ty: D, tz: 0 }, 'concrete', 'wall');
+  P('wall_left', 'wall_with_openings', {
+    length: D, thickness: wallT, height: H,
+    openings: [{ x: pipeY - pipeD / 2 - 50, w: pipeD + 100, h: pipeD + 100, sill: pipeZ - pipeD / 2 - 50 }],
+    // ⚠ rz=90 회전은 원점 기준이라 **tx 가 벽의 +x 면**이 된다(실측: tx=-200 → x∈[-400,-200]).
+    //   실 안쪽 면을 x=0 에 맞추려면 tx=0 이다 — 직관과 반대라 실측으로 잡았다.
+  }, { tx: 0, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall');
+  P('wall_right', 'wall_with_openings', {
+    length: D, thickness: wallT, height: H,
+    openings: [{ x: exhY - 100, w: ductW + 200, h: ductH + 200, sill: exhZ - 100 }],
+  }, { tx: W, ty: 0, tz: 0, rz: 90 }, 'concrete', 'wall');
+
+  // 설비 — 벽을 실제로 관통하도록 벽 두께 바깥까지 뻗는다.
+  P('duct_supply', 'box', { width: ductW, depth: 1400, height: ductH },
+    { tx: supX, ty: -wallT - 400, tz: supZ }, 'steel', 'duct');
+  P('duct_exhaust', 'box', { width: 1400, depth: ductW, height: ductH },
+    { tx: W - 600, ty: exhY, tz: exhZ }, 'steel', 'duct');
+  // ⚠ `cylinder` 는 길이가 **Z축**이다 — 수평 배관은 `ry:90` 이 필수다. 회전 없이 두면
+  //   수직으로 서서 벽을 지나가지 않는다(실측: 관통 3개소 중 2개소만 잡혔다).
+  //   ry=90 이면 중심이 tx 이고 길이의 절반씩 ±x 로 뻗는다 — 벽(-wallT~0)을 가로지른다.
+  P('pipe_chilled', 'cylinder', { diameter: pipeD, length: 1200 },
+    { tx: -wallT / 2, ty: pipeY, tz: pipeZ, ry: 90 }, 'steel', 'pipe');
+
+  return {
+    name: '설비 기계실', domain: 'building', parts,
+    roomBounds: { W, D },
+    exits: [{ x: W / 2, y: D, widthMm: 1000 }],
+    plantMeta: {
+      ahu: { w: ahuW, d: ahuD, h: ahuH }, pumps: 2,
+      penetrations: 3, ductW, ductH, pipeDia: pipeD,
+      note: '급기·배기 덕트와 냉수 배관이 벽을 관통한다 — 슬리브 여유 100mm(관경+100 관례, 계통별 기준은 별도)',
+    },
+  };
+}
+
 function ductRunAssembly(p = {}) {
   const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
   const L = num(p.length, 18000);
@@ -3325,6 +3406,18 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'carW', labelKo: '카 폭', unit: 'mm', default: 1600, min: 1000, max: 2800 },
         { name: 'carD', labelKo: '카 깊이', unit: 'mm', default: 1500, min: 1000, max: 3000 },
         { name: 'doorW', labelKo: '도어 폭', unit: 'mm', default: 900, min: 700, max: 1400 },
+      ],
+    },
+    {
+      id: 'plant_room', labelKo: '설비 기계실 (벽 관통)', labelEn: 'Plant room (wall penetrations)', build: plantRoomAssembly,
+      params: [
+        { name: 'width', labelKo: '실 폭', unit: 'mm', default: 8000, min: 4000, max: 20000 },
+        { name: 'depth', labelKo: '실 깊이', unit: 'mm', default: 6000, min: 3000, max: 20000 },
+        { name: 'ceilingH', labelKo: '천장고', unit: 'mm', default: 3600, min: 2800, max: 8000 },
+        { name: 'wallThk', labelKo: '벽 두께', unit: 'mm', default: 200, min: 100, max: 400 },
+        { name: 'ductW', labelKo: '덕트 폭', unit: 'mm', default: 800, min: 300, max: 2000 },
+        { name: 'ductH', labelKo: '덕트 높이', unit: 'mm', default: 500, min: 200, max: 1200 },
+        { name: 'pipeDia', labelKo: '배관 지름', unit: 'mm', default: 150, min: 50, max: 500 },
       ],
     },
     {
