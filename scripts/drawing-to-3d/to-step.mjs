@@ -308,15 +308,50 @@ export async function buildSolid(intent) {
 }
 
 
-/** 실물 STEP 파일 → OCCT 정확 경계(mm). Phase5 혼합 어셈블리 게이트용. */
+/**
+ * 실물 STEP 파일 → 경계(mm). Phase5 혼합 어셈블리 게이트·import 프록시 박스용.
+ *
+ * ⚠️ 260729 실측(NIST-PMI 표준 시험 파일 32개): **`shape.boundingBox` 는 실 경계가 아니다.**
+ * OCCT `Bnd_Box` 는 BSpline 면을 제어점 껍질로 감싸므로 **보증된 상위집합**이다 —
+ * 32개 중 18개가 2% 이상, 최대 **+73%**(nist_ftc_09 축 3.038→5.252mm) ·
+ * nist_ctc_01 은 800×450 → 1170×650(+46%/+44%)로 부풀었다.
+ *
+ * 이 함수의 값은 `importMerge` 에서 임포트 부품의 **프록시 박스 치수와 배치 오프셋**이
+ * 된다. 46% 큰 박스는 간섭검사를 거짓 충돌시키고 질량을 부풀린다. 종전 주석은
+ * 「OCCT 정확 경계」라고 적혀 있었는데, 근사를 정확이라 부른 것이라 고쳤다.
+ *
+ * 그래서 **테셀레이션 실측**(면 삼각화 정점의 min/max)을 값으로 쓴다. 실측에서
+ * 깨끗한 공칭치(800·450·150·63.0…)로 떨어져 참값과 일치함을 확인했다. 대가는 메시 1회
+ * 비용이고, 남는 오차는 테셀레이션 새그(tolerance 0.01mm)뿐이라 **안쪽으로** 치우친다.
+ * 팽창률은 함께 돌려주어 호출측이 필요하면 보수측(Bnd_Box)을 쓸 수 있게 한다.
+ */
 export async function stepFileBounds(file) {
   const { importSTEP } = await ensureReplicad();
   const buf = readFileSync(file);
   const shp = await importSTEP(new Blob([buf]));
   const bb = shp.boundingBox;
-  const [xmin, ymin, zmin] = bb.bounds[0] ?? bb.bounds.slice(0, 3);
-  const [xmax, ymax, zmax] = bb.bounds[1] ?? bb.bounds.slice(3, 6);
-  return { min: [xmin, ymin, zmin], max: [xmax, ymax, zmax] };
+  const [bxmin, bymin, bzmin] = bb.bounds[0] ?? bb.bounds.slice(0, 3);
+  const [bxmax, bymax, bzmax] = bb.bounds[1] ?? bb.bounds.slice(3, 6);
+  const occt = { min: [bxmin, bymin, bzmin], max: [bxmax, bymax, bzmax] };
+
+  const m = shp.mesh({ tolerance: 0.01, angularTolerance: 10 });
+  const v = m.vertices;
+  if (!v || v.length < 3) return { ...occt, basis: 'occt_bndbox', note: '삼각화 실패 — Bnd_Box 상위집합(보수)' };
+  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < v.length; i += 3) {
+    for (let k = 0; k < 3; k++) { if (v[i + k] < min[k]) min[k] = v[i + k]; if (v[i + k] > max[k]) max[k] = v[i + k]; }
+  }
+  const inflate = [0, 1, 2].map((k) => {
+    const d = max[k] - min[k];
+    return d > 1e-9 ? +(((occt.max[k] - occt.min[k]) / d - 1) * 100).toFixed(1) : 0;
+  });
+  return {
+    min, max, basis: 'mesh_measured', occt,
+    ...(Math.max(...inflate) > 2 ? {
+      occtInflatePct: inflate,
+      note: `Bnd_Box 가 축별 ${inflate.join('/')}% 크다(BSpline 제어점 껍질) — 실측 경계를 쓴다`,
+    } : {}),
+  };
 }
 /**
  * 실물 STEP 텍스트 → 진짜 OCCT B-rep 삼각 메시(수프). importSTEP(Blob).mesh 로 실 커널

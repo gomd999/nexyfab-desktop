@@ -30,7 +30,8 @@ export interface ResolvedImports {
   errors: string[];
 }
 
-type ToStepMod = { stepFileBounds: (file: string) => Promise<{ min: number[]; max: number[] }> };
+type StepBounds = { min: number[]; max: number[]; basis?: string; occtInflatePct?: number[]; note?: string };
+type ToStepMod = { stepFileBounds: (file: string) => Promise<StepBounds> };
 let _ts: ToStepMod | null = null;
 async function loadToStep(): Promise<ToStepMod> {
   if (_ts) return _ts;
@@ -55,7 +56,7 @@ export async function resolveImportParts(asm: { parts?: unknown[] } & Record<str
     let text: string;
     try { text = readFileSync(sp.file, 'latin1'); } catch { errors.push(`${sp.id}: 파일 읽기 실패(${sp.file})`); continue; }
     if (!text.includes('ISO-10303')) { errors.push(`${sp.id}: STEP 형식 아님`); continue; }
-    let b: { min: number[]; max: number[] } | null = null;
+    let b: StepBounds | null = null;
     try { b = await ts.stepFileBounds(sp.file); } catch (e) { errors.push(`${sp.id}: OCCT 경계 실패(${String(e instanceof Error ? e.message : e).slice(0, 60)})`); continue; }
     if (!b) { errors.push(`${sp.id}: 경계 없음`); continue; }
     const at = { tx: sp.at?.tx ?? 0, ty: sp.at?.ty ?? 0, tz: sp.at?.tz ?? 0 };
@@ -69,7 +70,12 @@ export async function resolveImportParts(asm: { parts?: unknown[] } & Record<str
       },
       at,
       role: sp.role ?? 'imported', material: sp.material ?? 'steel',
+      // ⚠ `importedApprox` 는 「형상이 박스 근사」를 뜻하지 「경계가 부정확」을 뜻하지 않는다.
+      // 260729: 경계 자체가 최대 46% 부풀어 있었다(OCCT Bnd_Box) — stepFileBounds 가
+      // 테셀레이션 실측으로 바뀌면서 해소. 근거를 부품에 그대로 옮겨 추적 가능하게 둔다.
       importedApprox: true, _importFile: sp.file,
+      ...(b.basis ? { _boundsBasis: b.basis } : {}),
+      ...(b.note ? { _boundsNote: b.note } : {}),
     });
   }
   return { asm: { ...asm, parts }, imports, errors };
