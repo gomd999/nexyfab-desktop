@@ -272,10 +272,13 @@ function cafeRoomAssembly(p) {
    */
   const psX = 200, psY = D - 1200;                     // 후면 좌측 코너 PS
   parts.push(P('ps_stack', 'cylinder', { diameter: 100, length: 2700 }, { tx: psX, ty: psY, tz: 0 }, 'PVC', 'stack'));
-  parts.push(P('wc_toilet', 'box', { width: 400, depth: 650, height: 420 }, { tx: psX + 350, ty: psY - 100, tz: 0 }, 'glass', 'fixture'));
-  parts.push(P('wc_basin', 'box', { width: 500, depth: 420, height: 820 }, { tx: psX + 350, ty: psY + 700, tz: 0 }, 'glass', 'fixture'));
+  // ⚠ role 은 `toilet`·`basin`·`sink` 여야 한다 — `interior-check` 의 `ROLE_FX` 가 그 이름으로
+  //   KDS 표 4.1-2 기구를 찾는다. `fixture` 로 뭉쳤더니 **DFU 판정이 통째로 생략**됐다
+  //   ("기구 role 매핑 없음 — DFU 판정 생략(정직)"). 검사가 정직하게 밝혀 드러났다.
+  parts.push(P('wc_toilet', 'box', { width: 400, depth: 650, height: 420 }, { tx: psX + 350, ty: psY - 100, tz: 0 }, 'glass', 'toilet'));
+  parts.push(P('wc_basin', 'box', { width: 500, depth: 420, height: 820 }, { tx: psX + 350, ty: psY + 700, tz: 0 }, 'glass', 'basin'));
   const sinkX = 700, sinkY = 400;                      // 바 카운터 위 싱크
-  parts.push(P('bar_sink', 'box', { width: 700, depth: 450, height: 180 }, { tx: sinkX, ty: sinkY, tz: 900 }, 'steel', 'fixture'));
+  parts.push(P('bar_sink', 'box', { width: 700, depth: 450, height: 180 }, { tx: sinkX, ty: sinkY, tz: 900 }, 'steel', 'sink'));
   return {
     name: '카페 레이아웃', domain: 'interior', parts,
     // 배수·통기 검토 입력 — 기구 → PS 입상관. 관경은 기구부하단위 관례값(대변기 75·세면 50·싱크 50).
@@ -283,7 +286,9 @@ function cafeRoomAssembly(p) {
       { id: 'drain_toilet', from: 'wc_toilet.x+', to: { part: 'ps_stack', face: 'x-', offset: [0, 0, -1140] }, d: 75, service: 'drain' },
       { id: 'drain_basin', from: 'wc_basin.x+', to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -940] }, d: 50, service: 'drain' },
       { id: 'drain_sink', from: 'bar_sink.y+', to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -600] }, d: 50, service: 'drain' },
-      { id: 'vent_stack', from: 'ps_stack.z+', to: [psX + 60, psY + 60, 2600], d: 50, service: 'vent' },
+      // ⚠ DN50 으로 뒀다가 **기준 미달로 걸렸다** — KDS 31 30 25 §4.3(1): 통기관은 담당
+      //   배수관(DN100)의 1/2 초과여야 하므로 DN65 이상이다. 검사가 잡아 DN75(관례)로 고쳤다.
+      { id: 'vent_stack', from: 'ps_stack.z+', to: [psX + 60, psY + 60, 2600], d: 75, service: 'vent' },
     ],
     floorAreaM2: +((W * D) / 1e6).toFixed(2),
     // 피난 검증용 메타 — 출입구(문) 위치·폭 (형상과 동일 소스에서 결정론 생성)

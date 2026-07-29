@@ -89,6 +89,19 @@ describe('관통 검사가 출하 템플릿에서 실제로 돈다 (260729c)', (
   it('cafe_room 배수·통기가 실제로 검토된다 — 종전엔 「대상 없음」이었다', () => {
     const a = buildAssemblyTemplate('interior', 'cafe_room', {}) as { pipes?: unknown[]; parts: { role?: string }[] };
     expect((a.pipes ?? []).length).toBeGreaterThan(0);
-    expect(a.parts.filter((p) => p.role === 'fixture').length).toBeGreaterThan(0);
+    // ⚠ role 은 `toilet`·`basin`·`sink` 여야 한다 — `interior-check.ROLE_FX` 가 그 이름으로
+    //   KDS 표 4.1-2 기구를 찾는다. `fixture` 로 뭉쳤더니 **DFU 판정이 통째로 생략**됐고,
+    //   검사가 "기구 role 매핑 없음 — DFU 판정 생략(정직)" 으로 밝혀서 드러났다.
+    expect(a.parts.filter((p) => ['toilet', 'basin', 'sink'].includes(p.role ?? '')).length).toBe(3);
+  });
+
+  it('★DFU 판정이 실제로 돌고 통기관이 기준을 만족한다', () => {
+    // 통기관을 DN50 으로 뒀다가 **기준 미달로 걸렸다**(§4.3(1): 배수관 DN100 의 1/2 초과
+    // → DN65). 검사가 잡아 DN75 로 고쳤다 — 검사가 자기 템플릿의 오류를 잡은 사례다.
+    const h = html('interior', 'cafe_room', { usage: 'office' });
+    expect(h).toContain('sumDFU');
+    expect(h).not.toContain('role 매핑 없음');
+    const v = verdict('interior', 'cafe_room', { usage: 'office' });
+    expect(v?.failed).toEqual([]);
   });
 });
