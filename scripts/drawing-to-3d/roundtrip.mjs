@@ -85,16 +85,40 @@ export async function stepRoundTrip(asm) {
   // **반드시 고지**"라고 정해 뒀는데, 실제로는 쉬운요약 어디에도 dropped 렌더가 없었고
   // verdict 도 이를 보지 않았다 — 문서로만 있는 계약이었다.
   //
-  // ⚠ 정직하게: 드롭을 **재현하지는 못했다**(과대 필렛·mesh 부품·영치수 세 경로 모두
-  // 드롭 없이 통과). 이 수정은 코드 경로 검토와 위 문서 계약에 근거한 것이고, 실측
-  // 재현 사례는 아직 없다. 그래도 통과 조건을 좁히는 방향이라 과탐 위험이 없다.
+  // ✅ 260729 재현 확보: 처음 이 수정을 넣을 때는 드롭을 재현하지 못해(과대 필렛·mesh
+  // 단독·영치수 세 경로 실패) 코드 경로와 문서 계약에만 근거했다. 이후 바디 개수 대조를
+  // 만들다 **실제 사례를 찾았다** — `mech/propeller` 의 mesh 블레이드 3개가
+  // "to-step: add 피처 없음(또는 전부 융합 실패)" 로 드롭된다.
+  //
+  // ⚠ 이건 실제 결함이기도 하다: **mesh 부품은 STEP 으로 나가지 않는다.** 프로펠러
+  // STEP 을 업체에 보내면 허브만 있고 날개가 없다. verdict='INCOMPLETE' 와 쉬운요약
+  // 고지가 정확히 이 상황을 위해 있다(실측 확인).
   const droppedIds = [...droppedPids].map((i) => asm.parts[i]?.id ?? `#${i}`);
   const nothingDropped = droppedIds.length === 0;
+
+  // ── 바디 개수 대조 (260729) ────────────────────────────────────────────────
+  // 종전 검사는 **총부피와 전체 AABB** 뿐이었다. 둘 다 집계값이라 바디가 융합되면
+  // 값이 그대로여서 못 잡는다 — 실 CAD 코퍼스에서 body_count 가 재구성 실패 3위(37건)다.
+  //
+  // 실측으로 불변식을 세웠다(출하 41종): STEP 의 MANIFOLD_SOLID_BREP 수 =
+  //   (부품 수 − 드롭) + 배관 수
+  // 배관이 별도 솔리드로 나가는데 `parts` 에 없어서 그렇다(rc_frame 9+1=10 ·
+  // apartment_unit 19+6=25 · studio_unit 14+5=19 · three_room_unit 23+6=29 — 전부 일치).
+  const pipeCount = Array.isArray(asm.pipes) ? asm.pipes.length : 0;
+  const bodiesInStep = (String(st.step ?? '').match(/MANIFOLD_SOLID_BREP/g) ?? []).length;
+  const bodiesExpected = (asm.parts ?? []).length - droppedIds.length + pipeCount;
+  const bodies = {
+    inStep: bodiesInStep, expected: bodiesExpected,
+    parts: (asm.parts ?? []).length, dropped: droppedIds.length, pipes: pipeCount,
+    ok: bodiesInStep === bodiesExpected,
+    note: '부피·AABB 는 집계값이라 바디가 융합돼도 그대로다 — 개수는 따로 세야 잡힌다',
+  };
   return {
     ok: true,
     // 드롭이 있으면 기하 불일치(FAIL)와 구별되는 상태로 — 원인이 다르고 조치도 다르다.
     verdict: !nothingDropped ? 'INCOMPLETE'
-      : volOk && aabbOk !== false ? 'PASS' : 'FAIL',
+      : (volOk && aabbOk !== false && bodies.ok) ? 'PASS' : 'FAIL',
+    bodies,
     ...(nothingDropped ? {} : {
       droppedCount: droppedIds.length,
       incompleteNote: `STEP 으로 내보내지 못한 부품 ${droppedIds.length}개 — 대조는 나머지로만 했다. `
