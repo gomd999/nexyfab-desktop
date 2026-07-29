@@ -410,9 +410,28 @@ export function mepDrainageCheck(assembly) {
     const sm = SLOPE_MIN(dn);
     const requiredDropMm = Math.round(horiz * sm.s);
     const availableDropMm = Math.round(rt.pts[0][2] - rt.pts[rt.pts.length - 1][2]);
+    /**
+     * ⚠ 260730 (계획 P1-③): `CHECK` 가 「기준 미달」로 읽히던 문제.
+     *
+     * 실측 결과 이 `CHECK` 는 **판정 불가**다 — 도식 배관 경로는 수평이라
+     * `availableDropMm=0` 이고, 모델에 낙차가 **선언된 적이 없다.** 「구배가 부족하다」가
+     * 아니라 「구배를 아직 정하지 않았다」인데, 배지만 보면 구별되지 않는다.
+     * 이 세션 내내 지킨 구별(해당 없음 ≠ 판정 불가 ≠ 이상 없음)이 여기서 무너져 있었다.
+     * 사유를 이름으로 적는다 — 승격은 배관 경로에 z 낙차를 선언해야 가능하다.
+     */
+    const verdict = rises ? 'CHECK' : availableDropMm >= requiredDropMm ? 'PASS' : 'CHECK';
+    const reason = verdict === 'PASS' ? null
+      : rises
+        ? '경로에 상승 구간이 있어 중력 배수로 판정할 수 없다 — 펌프 배수이거나 경로 재검토 대상이다.'
+        : availableDropMm === 0
+          ? `**판정 불가(기준 미달이 아니다)** — 도식 경로가 수평이라 모델에 낙차가 선언되지 않았다. `
+            + `수평 연장 ${+(horiz / 1000).toFixed(2)}m 에는 최소 ${sm.label} 구배로 낙차 ${requiredDropMm}mm 가 필요하다. `
+            + '실시공은 바닥 구배로 확보하며, 판정하려면 배관 경로에 z 낙차를 선언해야 한다.'
+          : `선언된 낙차 ${availableDropMm}mm 가 소요 ${requiredDropMm}mm 에 미치지 못한다 — **기준 미달**이다.`;
     return {
+      labelKo: `배수 구배 (수평 ${+(horiz / 1000).toFixed(2)}m · 최소 ${sm.label})`,
       horizontalM: +(horiz / 1000).toFixed(2), minSlope: sm.label, requiredDropMm, availableDropMm, rises,
-      verdict: rises ? 'CHECK' : availableDropMm >= requiredDropMm ? 'PASS' : 'CHECK',
+      verdict, ...(reason ? { note: reason } : {}),
     };
   };
   const lines = [];

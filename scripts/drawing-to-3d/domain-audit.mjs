@@ -15,13 +15,13 @@
  *     그건 안전검토.html 만 봐서는 보이지 않는다.
  */
 import { ASSEMBLY_TEMPLATES, buildAssemblyTemplate } from './domain-assemblies.mjs';
-import { auditDomainSafety, domainSafetyVerdict } from './domain-dossier-verify.mjs';
+import { auditDomainSafety, domainSafetyVerdict, codeVerificationVerdict } from './domain-dossier-verify.mjs';
 
 const isSelf = (n) => /self[-_ ]?consistency/i.test(String(n?.kind ?? ''))
   || /자기정합/.test(String(n?.name ?? n?.labelKo ?? ''));
 
 /** 검사 트리를 순회해 판정 항목을 **이름과 함께** 수집한다. */
-export function collectJudgments(node, acc = { real: [], self: [], input: [], unjudged: [] }, path = '', depth = 0) {
+export function collectJudgments(node, acc = { real: [], self: [], input: [], unjudged: [], overall: [] }, path = '', depth = 0) {
   if (node == null || typeof node !== 'object' || depth > 7) return acc;
   if (Array.isArray(node)) {
     node.forEach((x, i) => collectJudgments(x, acc, `${path}[${i}]`, depth + 1));
@@ -42,8 +42,14 @@ export function collectJudgments(node, acc = { real: [], self: [], input: [], un
   if (v && /^INPUT/.test(v)) {
     acc.input.push({ label, fields: (node.needInputs ?? []).map((x) => x.field ?? x.name ?? '?') });
   } else if (v === 'PASS' || v === 'FAIL' || v === 'INFO') {
-    // INFO 는 산출값 보고(합·불 아님)라 통과로 센다 — 렌더러 badge 와 같은 취급.
-    (isSelf(node) ? acc.self : acc.real).push({ label, pass: v !== 'FAIL' });
+    /**
+     * ⚠ 260730: **루트 결과 노드**(path='')는 개별 검토의 **합**이지 별개의 판정이 아니다.
+     * 이름도 없어 문서에 "판정: 적합 ✓" 만 덩그러니 나가고(무엇이 적합한지 알 수 없다),
+     * 여기서는 자식들과 **이중으로 세어졌다**. 분리해서 담는다 — 지우지는 않는다
+     * (「종합 판정이 있다」는 것 자체가 정보다). 렌더러는 「종합 판정」으로 이름을 준다.
+     */
+    if (depth === 0 && !name) acc.overall.push({ label: '종합 판정', pass: v !== 'FAIL' });
+    else (isSelf(node) ? acc.self : acc.real).push({ label, pass: v !== 'FAIL' });
   } else if (v) {
     // ⚠ `CHECK`·`ERROR` 등 **PASS/FAIL 이 아닌 verdict 는 판정이 아니다.**
     //   처음 `v !== 'PASS'` 를 FAIL 로 셌더니 배수관 기울기(CHECK)가 인테리어 FAIL 4건으로
@@ -67,12 +73,30 @@ export function collectJudgments(node, acc = { real: [], self: [], input: [], un
 export function auditTemplate(domain, id, params = {}) {
   const asm = buildAssemblyTemplate(domain, id, {});
   const run = auditDomainSafety(asm, params);
-  const j = run?.result ? collectJudgments(run.result) : { real: [], self: [], input: [], unjudged: [] };
+  const j = run?.result ? collectJudgments(run.result) : { real: [], self: [], input: [], unjudged: [], overall: [] };
   const v = domainSafetyVerdict(asm, params);
+  /**
+   * ⚠ 260730 (계획 P2-⑤): civil 3종이 **0/3 미도달**로 보였다. 실제로는 정당한 별도
+   * 경로(검증.html — `codeVerificationVerdict`)인데 **감사 도구가 그 경로를 안 셌다.**
+   * 도구가 못 본 것을 「없다」로 읽는 것은 이 세션 내내 잡아 온 오독의 감사판이다.
+   */
+  let code = null;
+  try { code = codeVerificationVerdict(asm, params); } catch { code = null; }
   return {
     domain, id, parts: (asm.parts ?? []).length,
     label: run?.label ?? null,
     real: j.real.length, self: j.self.length, input: j.input.length, unjudged: j.unjudged.length,
+    overall: j.overall.length,
+    /**
+     * 판정 항목명이 **영문 코드 키 그대로**인 것 — 값이 맞아도 읽을 수 없으면 도달이 아니다.
+     *
+     * ⚠ 260730 이후 이 수치는 **표시가 아니라 근본**을 잰다. 렌더러에 키→한국어 사전을
+     * 붙여 문서의 영문 소제목은 271→2 로 줄었지만(2건은 하중조합 이름 `U1`·`U2` 로,
+     * 고지된다), **계산기가 `labelKo` 를 안 다는 상태는 그대로**다. 감사가 표시 계층을
+     * 거치지 않으므로 여기 남은 수가 곧 「아직 근본 수정이 안 된 계산기」다 —
+     * 사전으로 덮은 것을 「해결됨 0」으로 읽으면 근본이 영영 안 고쳐진다.
+     */
+    englishLabels: j.real.filter((x) => /^[A-Za-z][A-Za-z0-9_[\]]*$/.test(String(x.label))).map((x) => x.label),
     failed: j.real.filter((x) => x.pass === false).map((x) => x.label),
     names: { real: j.real.map((x) => x.label), input: j.input.map((x) => x.label), unjudged: j.unjudged.map((x) => x.label) },
     // ── 소비자 도달분 ──────────────────────────────────────────────────────
@@ -81,6 +105,12 @@ export function auditTemplate(domain, id, params = {}) {
       ok: v.ok, failed: (v.failed ?? []).length, unavailable: (v.unavailable ?? []).length,
       judgedDespiteRefusal: v.judgedDespiteRefusal ?? 0,
     },
+    // civil(옹벽·암거)은 도메인 안전이 아니라 **코드 대조 검증** 경로로 소비자에 닿는다.
+    reachedVerification: code == null ? null : {
+      ok: code.ok, decisive: code.decisive, failed: (code.failed ?? []).length,
+      unavailable: (code.unavailable ?? []).length,
+    },
+    reached: v != null || code != null,
   };
 }
 

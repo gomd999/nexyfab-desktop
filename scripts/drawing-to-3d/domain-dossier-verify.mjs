@@ -22,6 +22,71 @@ const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<'
 const escMd = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
 const f = (n, d = 2) => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(d) : '-');
 
+/**
+ * 검사 키 → 한국어 라벨 (260730).
+ *
+ * ⚠ 실측: 판정 168건 중 **64건(38%)이 영문 코드 키**로 나가고 있었다 —
+ *   "checks ductility 판정: 적합 ✓ · flexure 판정: 적합 ✓ · shear 판정: 적합 ✓".
+ *   한국어 문서인데 **무엇을 판정했는지 읽을 수 없다.** 값은 정확한데 항목명이
+ *   `rc_beam` 같은 계산기의 내부 키 그대로다(계산기가 `checks:{flexure:{…}}` 로 반환하고
+ *   labelKo 가 없어 렌더러가 객체 키를 라벨로 쓴다).
+ *   분야별: 인테리어 70% · 조경 52% · 건축 43% · 교량 35% · **기계 0%**.
+ *   기계가 0% 인 것이 중요하다 — `mech-check` 는 모든 검사에 labelKo 를 붙였다.
+ *   **가능한 일이고 하지 않은 것**이었다.
+ *
+ * ⚠ 여기는 **표시 계층의 보완**이다. 근본은 계산기가 labelKo 를 다는 것이고, 그래서
+ *   사전에 없는 키는 **원문 그대로 두고 고지한다**(unlabeledKeys) — 조용히 넘어가면
+ *   새 키가 생겨도 아무도 모른다(이 세션에서 반복해 본 형태).
+ */
+const CHECK_LABEL_KO = {
+  // 구조 부재 (rc_beam · rc_column_pm · timber_beam …)
+  flexure: '휨', shear: '전단', ductility: '연성(인장지배 확인)', deflection: '처짐',
+  rho: '철근비', pm: 'P-M 상관(축력·휨 조합)', axial: '축력', torsion: '비틀림',
+  section: '단면 검토', member: '부재 검토', board: '판재(데크보드) 검토',
+  column: '기둥', beam: '보', slab: '슬래브', footing: '기초',
+  columns: '기둥', beams: '보', slabs: '슬래브', footings: '기초', walls: '벽',
+  sizing: '관경 산정', capacity: '내력', stability: '안정',
+  // 설비 (drainage_vent)
+  slope: '배수 구배', stack: '입상관(수직관)', vent: '통기관', lines: '배수 지관',
+  fixtures: '위생기구', drainage: '배수', water: '급수·오수', ventilation: '환기',
+  lighting: '조명', electrical: '전기', fire: '소방',
+  // 피난·공간
+  travel: '보행거리', egress: '피난', occupancy: '수용인원', exits: '출입구',
+  // 공통
+  checks: '검토 항목', uplift: '풍 상향력', wind: '풍하중', seismic: '지진',
+  irrigation: '관수', connection: '접합부', selfChecks: '형상 자기정합',
+  // 구조 컨테이너 — 판정은 아니지만 문서에서 **소제목으로 실제 읽히는** 것들이다.
+  // 실측(560여 소제목): `detail`×94 · `needInputs`×48 이 압도적이라 이것부터가 가독성이다.
+  detail: '설명', needInputs: '필요 입력', basis: '산출 근거', geometry: '형상',
+  provenance: '출처', user: '사용자 입력', kds: 'KDS 기준값', derived: '형상에서 도출',
+  notes: '비고', assumptions: '가정', items: '항목', fields: '입력 항목',
+  loads: '하중', load: '하중', dead: '고정하중', live: '활하중', lane: '차선하중',
+  truck: '표준트럭하중', ultimate: '극한하중', service: '사용하중', combo: '하중조합',
+  forces: '단면력', rebar: '철근', spans: '스팬', unitWeight: '단위중량',
+  finishes: '마감', mep: '설비', withLoss: '손실 반영', attempted: '시도한 검토',
+  unjudged: '미판정', egressUnavailable: '피난 검토 불가',
+  x: 'X방향', y: 'Y방향', xs_mm: 'X 격자선(mm)', ys_mm: 'Y 격자선(mm)',
+  farthestPointMm: '최원점 거리(mm)', deadShare_kN: '고정하중 분담(kN)',
+  lateralUnavailable: '횡력 검토 불가', sizingUnavailable: '덕트 사이징 불가',
+};
+
+/**
+ * 키를 한국어로. 배열 인덱스(`lines[0]`)와 숫자 접미(`beams0`)는 번호로 되살린다.
+ * 사전에 없으면 **원문 유지** — 그리고 호출측이 `unlabeled` 로 수집해 고지한다.
+ */
+function labelForKey(k, unlabeled) {
+  const key = String(k);
+  if (CHECK_LABEL_KO[key]) return esc(CHECK_LABEL_KO[key]);
+  const m = key.match(/^([A-Za-z_]+)(?:\[(\d+)\]|(\d+))$/);
+  const ko = m ? CHECK_LABEL_KO[m[1]] : null;
+  if (ko) return esc(`${ko} #${Number(m[2] ?? m[3]) + 1}`);
+  // ⚠ 고지에는 **문서에 실제로 찍힌 키 그대로**를 넣는다. 접미 숫자를 떼고 넣었더니
+  //   `U1`·`U2`(하중조합 이름)가 고지에는 `U` 로 나가 **문서에서 찾을 수 없는 키**가 됐다
+  //   — 고지가 조치로 이어지지 않으면 고지가 아니다(첫 구현에서 실측으로 잡음).
+  if (unlabeled && /^[A-Za-z]/.test(key)) unlabeled.add(key);
+  return esc(key);
+}
+
 /** 어셈블리 메타 → 적용 가능한 검증 목록(형상이 검증 입력을 줄 수 있는 것만). */
 function planVerifications(assembly) {
   const out = [];
@@ -296,7 +361,7 @@ function runDomainSafetyCheck(assembly, params) {
  * key=value로, 중첩 객체/배열은 소제목 아래 재귀 렌더. 판정을 지어내지 않고
  * (원본 값만 표시) 서브 결과를 숨기지도 않는다(빈 배열/객체만 스킵).
  */
-function renderGenericCheckTree(node, depth = 0) {
+function renderGenericCheckTree(node, depth = 0, unlabeled = null, labelHoisted = false) {
   // ⚠ 260729: 스칼라를 빈 문자열로 버리고 있었다. 그 결과 `detail: [...문장...]` 같은
   //   **문자열 배열이 "#1 #2 #3" 으로만 찍히고 내용이 통째로 사라졌다**(라이브 실측).
   //   "전단벽 시스템으로 분류해야 한다" 같은 핵심 경고가 안전검토.html 에 한 글자도
@@ -312,14 +377,25 @@ function renderGenericCheckTree(node, depth = 0) {
   if (Array.isArray(node)) {
     if (!node.length) return '';
     return node.map((item, i) => {
-      const inner = renderGenericCheckTree(item, depth + 1);
+      const inner = renderGenericCheckTree(item, depth + 1, unlabeled);
       if (!inner) return '';
       // 문자열 목록은 번호만 앞에 붙이고 **본문을 그대로** — 개수만 남기지 않는다.
       return `<div class="gnode"><b>#${i + 1}</b> ${inner}</div>`;
     }).filter(Boolean).join('\n');
   }
-  const skip = new Set(['verdict', 'pass', 'refs', 'error', 'note']);
+  // ⚠ `labelKo`/`label` 은 **값이 아니라 그 노드의 이름**이다. 스칼라로 두면
+  //   소제목엔 영문 키(`flexure`)가 뜨고 본문엔 `labelKo=휨` 이 값처럼 찍힌다 —
+  //   이름이 있는데 이름 자리에 안 들어간 것이다(260730 실측: 기계는 전 검사에
+  //   labelKo 가 있는데도 소제목이 전부 영문이었다). 부모가 소제목으로 올린다.
+  //
+  // ⚠ 다만 **부모가 올려 준 경우에만** 스칼라에서 뺀다. 무조건 빼면 배열 원소
+  //   (`needInputs[]` 처럼 부모 소제목이 하나뿐인 목록)의 한국어 설명이 통째로
+  //   사라진다 — 라벨을 살리려다 라벨을 지우는 형태다. 안 올려졌으면 여기서 그린다.
+  const skip = new Set(['verdict', 'pass', 'refs', 'error', 'note', 'labelKo', 'label']);
+  const ownLabel = typeof node.labelKo === 'string' && node.labelKo.trim() ? node.labelKo
+    : (typeof node.label === 'string' && node.label.trim() ? node.label : '');
   const parts = [];
+  if (ownLabel && !labelHoisted && depth > 0) parts.push(`<div class="ghead">${escMd(ownLabel)}</div>`);
   // ⚠ `INPUT`(입력 대기)은 **판정이 아니다.** "판정: INPUT" 으로 찍으면 판정 개수에도
   //   세어지고 소비자에게도 판정처럼 보인다 — 이 세션 내내 강제한 구별이 표시에서 무너진다.
   // ⚠ 표식은 `'INPUT'` 뿐 아니라 **`'INPUT(footing)'` 같은 괄호형**도 쓴다(rc_frame 실측).
@@ -333,7 +409,17 @@ function renderGenericCheckTree(node, depth = 0) {
       + (Array.isArray(node.needInputs) && node.needInputs.length
         ? `: ${node.needInputs.map((x) => escMd(x.reason ?? x.labelKo ?? x.field ?? x.name ?? '')).join(' · ')}`
         : '') + '</div>');
-  } else if (typeof node.verdict === 'string') parts.push(`<div>판정: ${badge(node.verdict)}</div>`);
+  } else if (typeof node.verdict === 'string') {
+    /**
+     * ⚠ 260730: 라벨이 **빈 문자열**인 판정이 5건 있었다(`industrial_stair` · 아치·사장·
+     * 현수·트러스교). 전부 **루트 결과 노드**라 문서에 "판정: 적합 ✓" 만 덩그러니 나갔다 —
+     * **무엇이 적합한지 모르는 채 안심하게 된다.** 이름 없는 판정은 판정이 없는 것보다
+     * 나쁠 수 있다. 루트는 개별 검토의 **합**이므로 그렇게 이름을 준다.
+     */
+    parts.push(depth === 0
+      ? `<div><b>종합 판정</b>(아래 개별 검토의 합): ${badge(node.verdict)}</div>`
+      : `<div>판정: ${badge(node.verdict)}</div>`);
+  }
   else if (typeof node.pass === 'boolean') parts.push(`<div>판정: ${node.pass ? '적합 ✓' : '검토 ✕'}</div>`);
   // ⚠ 260729b: **교량 검사는 전부 `ok` 를 쓴다.** `pass` 만 그리던 탓에 타이 인장·행어
   //   장력·주케이블 장력 같은 **실판정 2~4건이 문서에서 합·불 없이** 나갔다(값만 나감).
@@ -357,8 +443,12 @@ function renderGenericCheckTree(node, depth = 0) {
   for (const [k, v] of Object.entries(node)) {
     if (skip.has(k) || typeof v !== 'object' || v === null) continue;
     if (Array.isArray(v) ? v.length === 0 : Object.keys(v).length === 0) continue;
-    const inner = renderGenericCheckTree(v, depth + 1);
-    if (inner) parts.push(`<div class="gsection"><div class="ghead">${esc(k)}</div>${inner}</div>`);
+    // 소제목: ① 노드가 스스로 밝힌 이름(labelKo/label) → ② 키 사전 → ③ 원문 + 미등록 고지.
+    const own = !Array.isArray(v) && (typeof v.labelKo === 'string' && v.labelKo.trim() ? v.labelKo
+      : (typeof v.label === 'string' && v.label.trim() ? v.label : ''));
+    const inner = renderGenericCheckTree(v, depth + 1, unlabeled, Boolean(own));
+    const head = own ? escMd(own) : labelForKey(k, unlabeled);
+    if (inner) parts.push(`<div class="gsection"><div class="ghead">${head}</div>${inner}</div>`);
   }
   if (Array.isArray(node.refs) && node.refs.length) {
     parts.push(`<div class="cite">근거: ${node.refs.map((r) => citationText(r) || esc(String(r))).join(' · ')}</div>`);
@@ -655,10 +745,21 @@ export function domainSafetyReportHtml(assembly, { title = '안전검토', param
         + (needs.length ? `<div style="margin-top:6px">필요 입력: ${needs.map((x) => escMd(x.labelKo ?? x.name ?? '')).join(' · ')}</div>` : '')
         + '</div>')
     : '';
-  const tree = renderGenericCheckTree(r);
-  const body = reason
+  /**
+    * ⚠ 사전에 없는 키는 **원문 그대로 나간다** — 그리고 그 사실을 고지한다.
+    * 조용히 넘어가면 계산기에 새 키가 생겨도 아무도 모른다(이 세션에서 반복해 잡은 형태:
+    * 있는데 안 닿음 · 없는데 없다고 안 함). 고지가 곧 다음 세션의 작업 목록이다.
+    */
+  const unlabeled = new Set();
+  const tree = renderGenericCheckTree(r, 0, unlabeled);
+  const unlabeledNote = unlabeled.size
+    ? `<div class="note">⚠ 이 문서의 다음 항목명은 계산기 내부 키가 그대로 표시됐습니다(한국어 라벨 미등록): `
+      + `${[...unlabeled].map((k) => `<code>${esc(k)}</code>`).join(' · ')}. `
+      + `값과 판정은 정상이며, 표기만 보완 대상입니다.</div>`
+    : '';
+  const body = (reason
     ? reason + (tree ? `<div class="note">아래는 그와 <b>별개로 실제 산출된 검토</b>다 — 「검토 불가」가 전부가 아니다.</div>${tree}` : '')
-    : (tree || '<div class="note">산출된 세부 검토값이 없습니다.</div>');
+    : (tree || '<div class="note">산출된 세부 검토값이 없습니다.</div>')) + unlabeledNote;
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)} — 안전검토</title>
 <style>@page{size:A4 portrait;margin:12mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937;font-size:13px}
 .sheet{max-width:900px;margin:16px auto;background:#fff;border:1px solid #cbd5e1;box-shadow:0 4px 24px rgba(0,0,0,.1);padding:0 0 22px}

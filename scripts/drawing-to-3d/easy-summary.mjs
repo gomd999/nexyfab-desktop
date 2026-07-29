@@ -502,9 +502,30 @@ ${stdWarn}</section>`;
     for (const it of (eg0 && Array.isArray(eg0.items) ? eg0.items : [])) (it.pass === null ? skipped++ : judged++);
     const cp = opts.completeness;
     if (cp) { judged += (cp.passed?.length ?? 0) + (cp.failed?.length ?? 0); skipped += cp.na?.length ?? 0; }
+    /**
+     * ⚠ 260731: 안전 판정 소스를 **1개**로 세고 있었다. 그래서 조경 단지가 인동간격
+     * 2건을 실제로 판정했는데 소비자 요약은 "판정한 항목은 1개" 라고 했다 —
+     * `domainSafetyVerdict.judged` 는 2 다. **같은 것을 두 곳에서 다르게 세면 어느 쪽이
+     * 맞는지 알 수 없다**(이 세션에서 감사 도구를 만들며 정확히 같은 이유로 규칙을 맞췄다).
+     * 소스가 개수를 말해 주면 그 개수를 쓴다 — 새 판정을 만드는 것이 아니라 옮기는 것이다.
+     * `codeVerificationVerdict` 는 개수를 내지 않으므로 종전대로 1로 센다.
+     */
     for (const v of [opts.domainSafety, opts.codeVerification]) {
       if (!v) continue;
-      if (Array.isArray(v.unavailable) && v.unavailable.length) skipped += v.unavailable.length; else judged++;
+      /**
+       * ⚠ 거부 경로는 개수를 **다른 이름**으로 낸다 — `domainSafetyVerdict` 가 `ok:false`
+       * 로 빠질 때는 `judged` 대신 `judgedDespiteRefusal` 이다. 한쪽만 읽으면
+       * `tower_crane` 처럼 「지배 입력이 없어 본 검토는 못 했지만 정적 전도는 실제로
+       * 판정한」 문서가 커버리지 0 으로 나간다 — 고쳐 놓은 결함의 **형제 분기**다.
+       */
+      const n = Number.isFinite(v.judged) ? v.judged
+        : (Number.isFinite(v.judgedDespiteRefusal) ? v.judgedDespiteRefusal : null);
+      if (Array.isArray(v.unavailable) && v.unavailable.length) {
+        skipped += v.unavailable.length;
+        // 「검토 불가」와 「그 안에서 실제로 판정한 것」은 함께 있어야 한다 — 종전엔
+        // 미산출이 하나라도 있으면 그 소스의 판정을 통째로 0으로 셌다.
+        if (n) judged += n;
+      } else judged += n ?? 1;
     }
     if (opts.consistency && !opts.consistency.error) {
       judged += (opts.consistency.checks ?? []).length;
