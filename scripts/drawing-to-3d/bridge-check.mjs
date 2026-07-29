@@ -157,11 +157,43 @@ export function archBridgeCheck(assembly, params = {}) {
 
   // ── ① 주경간 사하중(형상×밀도 — 결정론. 접속교·교각 제외) ──
   const mains = parts.filter((p) => !/^ap[LR]_/.test(p.id ?? '') && !/^main_pier/.test(p.id ?? ''));
+  // 260729: 단면적 입력(A_tie/A_rib/A_hanger)은 종전에 **응력에만** 쓰였다. 그런데 같은
+  // 부재의 **사하중**은 여전히 중실 박스 형상에서 나왔다 — 실측(120m 타이드 아치):
+  //   타이 2본 222 · 아치 리브 215 · 데크 127 kN/m → wDC 577.1
+  // 타이 800×1800·리브 900×1400 을 **중실 강재**로 본 값이다. 실 타이드 아치는 제작
+  // 박스(중공)라 자중이 훨씬 작다. 사하중은 모든 부재력을 지배하므로 이 근사가
+  // 행어 장력까지 부풀리고, 그것이 곧 "행어 초과" 판정이 된다.
+  //
+  // 사용자가 실단면을 선언했다면 **자중도 그 단면에서 나온다** — 같은 선언을 한쪽에만
+  // 쓰는 것이 일관성 없다. 선언이 없으면 종전대로 중실 형상을 쓰되 그 사실을 보고한다
+  // (여기서 중공률을 가정하지는 않는다 — 그러면 그게 날조다).
+  const areaOverride = (id) => {
+    if (/^tie_/.test(id) && Number(params.A_tie_mm2) > 0) return Number(params.A_tie_mm2);
+    if (/^arch/.test(id) && Number(params.A_rib_mm2) > 0) return Number(params.A_rib_mm2);
+    if (/^hanger/.test(id) && Number(params.A_hanger_mm2) > 0) return Number(params.A_hanger_mm2);
+    return null;
+  };
   let W_kN = 0;
+  const solidModeled = new Set();
+  const deadShare = {};
   for (const p of mains) {
     const rho = (DENSITY[p.material ?? 'steel'] ?? DENSITY.steel);
     const qty = Math.max(1, Math.round(Number(p.qty) || 1));
-    W_kN += (partVolume(p.type, p.params) / 1e9) * rho * qty * 9.80665 / 1000;
+    const id = String(p.id ?? p.type);
+    const A = areaOverride(id);
+    let vol;
+    if (A != null && p.params) {
+      // 부재 길이 = 박스 최대 변(형상에서 파생). 자중 = A × 길이 × ρ.
+      const len = Math.max(Number(p.params.width) || 0, Number(p.params.depth) || 0, Number(p.params.height) || 0);
+      vol = A * len;
+    } else {
+      vol = partVolume(p.type, p.params);
+      if (/^(tie_|arch|hanger)/.test(id)) solidModeled.add(id.replace(/[_-]?\d+.*$/, ''));
+    }
+    const w = (vol / 1e9) * rho * qty * 9.80665 / 1000;
+    W_kN += w;
+    const key = id.replace(/[_-]?\d+.*$/, '');
+    deadShare[key] = +((deadShare[key] ?? 0) + w).toFixed(1);
   }
   const wDC = W_kN / L; // kN/m (등분포 근사 명시)
   const pvThk = Number(params.pavementThk_mm) || 0;
@@ -215,7 +247,18 @@ export function archBridgeCheck(assembly, params = {}) {
   return {
     ok: true,
     geometry: { span_m: round(L, 1), rise_m: round(f, 1), riseRatio: round(f / L, 3), hangerStyle: am.hangerStyle, nLanes },
-    loads: { wDC_kNm: round(wDC, 1), wDW_kNm: round(wDW, 2), wLL_kNm: round(wLL, 1), wu_kNm: round(wu, 1), combo: '극한 I 근사: 1.25DC+1.50DW+1.80LL(등가 UDL — 간이 명시)' },
+    loads: {
+      wDC_kNm: round(wDC, 1), wDW_kNm: round(wDW, 2), wLL_kNm: round(wLL, 1), wu_kNm: round(wu, 1),
+      combo: '극한 I 근사: 1.25DC+1.50DW+1.80LL(등가 UDL — 간이 명시)',
+      // 사하중이 모든 부재력을 지배한다 — 어디서 왔는지 감추지 않는다.
+      deadShare_kN: deadShare,
+      basis: solidModeled.size
+        ? `⚠ ${[...solidModeled].join('·')} 은(는) **중실 단면**으로 자중을 계산했다(형상 그대로). `
+          + '실 타이드 아치의 타이·리브는 제작 박스(중공)라 자중이 훨씬 작고, 사하중은 모든 부재력을 '
+          + '지배하므로 이 값은 **보수측으로 크게 치우칠 수 있다**. A_tie_mm2·A_rib_mm2·A_hanger_mm2 를 '
+          + '주면 자중과 응력을 **같은 단면**으로 계산한다(여기서 중공률을 가정하지는 않는다).'
+        : '자중 단면 = 선언 A 입력 기준(중실 근사 아님).',
+    },
     forces: { H_kN: round(H, 0), theta0_deg: round((th0 * 180) / Math.PI, 1) },
     checks,
     verdict: checks.every((c) => c.ok) ? 'PASS' : 'FAIL',

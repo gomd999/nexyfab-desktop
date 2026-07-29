@@ -54,3 +54,54 @@ describe('출하 템플릿의 FAIL 은 실제 판정이다 — 덮지 않는다'
     expect(hanger({ A_hanger_mm2: 12000 }).ok).toBe(true);
   });
 });
+
+describe('사하중이 중실 모델에서 나온다는 사실을 밝힌다 (260729)', () => {
+  // 실측: 120m 타이드 아치의 wDC 577.1 kN/m 중 타이 2본 222 · 아치 리브 215 kN/m 이
+  // **중실 강재**(타이 800×1800 · 리브 900×1400) 자중이다. 실 타이드 아치는 제작
+  // 박스(중공)라 자중이 훨씬 작다. 사하중은 모든 부재력을 지배하므로 이 근사가
+  // 행어 장력까지 부풀리고, 그것이 곧 "행어 초과" 판정이 됐다.
+  const loads = (p?: unknown) =>
+    (archBridgeCheck as unknown as (a: unknown, p: unknown) => {
+      loads: { wDC_kNm: number; deadShare_kN: Record<string, number>; basis: string };
+      checks: Chk[]; verdict: string;
+    })(buildAssemblyTemplate('bridge', 'arch_bridge', {}), p ?? {});
+
+  it('자중 분담을 부재별로 보고한다 — 어디서 왔는지 감추지 않는다', () => {
+    const l = loads().loads;
+    expect(l.deadShare_kN.tie_L).toBeGreaterThan(0);
+    expect(l.deadShare_kN.arch).toBeGreaterThan(0);
+    expect(l.deadShare_kN.main_deck).toBeGreaterThan(0);
+  });
+
+  it('중실 모델임을 명시하고 보수측 치우침을 경고한다', () => {
+    const b = loads().loads.basis;
+    expect(b).toContain('중실 단면');
+    expect(b).toContain('보수측으로 크게 치우칠 수 있다');
+    expect(b).toContain('A_tie_mm2');
+  });
+
+  it('단면을 선언하면 자중과 응력을 같은 단면으로 계산한다 — 한쪽에만 쓰지 않는다', () => {
+    // 종전엔 A 입력이 **응력에만** 반영되고 자중은 중실 형상 그대로였다.
+    const base = loads().loads.wDC_kNm;
+    const declared = loads({ A_tie_mm2: 150000, A_rib_mm2: 110000 }).loads;
+    expect(declared.wDC_kNm).toBeLessThan(base * 0.5); // 577 → 183
+    // 일부만 선언하면 **선언한 것만** 반영되고 나머지는 여전히 중실이라고 말한다.
+    expect(declared.basis).toContain('hanger');
+    expect(declared.basis).not.toContain('tie_L');
+
+    const all = loads({ A_tie_mm2: 150000, A_rib_mm2: 110000, A_hanger_mm2: 8100 }).loads;
+    expect(all.basis).toContain('선언 A 입력 기준');
+    expect(all.basis).not.toContain('중실 단면');
+  });
+
+  it('행어 초과는 중실 모델의 인공물이었다 — 실단면 선언 시 통과', () => {
+    expect(loads().verdict).toBe('FAIL');
+    const r = loads({ A_tie_mm2: 150000, A_rib_mm2: 110000, A_hanger_mm2: 8100 });
+    expect(r.verdict).toBe('PASS');
+    expect(r.checks.find((c) => /행어/.test(c.name))!.ratio).toBeLessThan(1);
+  });
+
+  it('중공률을 가정하지 않는다 — 선언이 없으면 중실 유지(보수측)', () => {
+    expect(loads().loads.wDC_kNm).toBeCloseTo(577.1, 0);
+  });
+});
