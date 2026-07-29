@@ -18,6 +18,8 @@
 import { verifyDomain } from './domain-verify.mjs';
 
 const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+/** 이스케이프 + `**강조**` 를 <b> 로. 판정 문구가 마크업을 그대로 노출하지 않게 한다. */
+const escMd = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
 const f = (n, d = 2) => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(d) : '-');
 
 /** 어셈블리 메타 → 적용 가능한 검증 목록(형상이 검증 입력을 줄 수 있는 것만). */
@@ -268,10 +270,26 @@ function runDomainSafetyCheck(assembly, params) {
  * (원본 값만 표시) 서브 결과를 숨기지도 않는다(빈 배열/객체만 스킵).
  */
 function renderGenericCheckTree(node, depth = 0) {
-  if (node == null || typeof node !== 'object') return '';
+  // ⚠ 260729: 스칼라를 빈 문자열로 버리고 있었다. 그 결과 `detail: [...문장...]` 같은
+  //   **문자열 배열이 "#1 #2 #3" 으로만 찍히고 내용이 통째로 사라졌다**(라이브 실측).
+  //   "전단벽 시스템으로 분류해야 한다" 같은 핵심 경고가 안전검토.html 에 한 글자도
+  //   안 나갔다 — 판정했는데 소비자에 도달 안 함(§6-G ⑤). 교량·조경·인테리어의
+  //   detail 도 전부 같은 경로라 **모든 도메인이 영향**을 받았다.
+  if (node == null) return '';
+  if (typeof node !== 'object') {
+    const t = String(node);
+    if (!t.trim()) return '';
+    // 판정 문구의 **강조**를 살린다 — 아니면 마크업이 원문 그대로 새어 보인다.
+    return `<div class="gvals">${escMd(t)}</div>`;
+  }
   if (Array.isArray(node)) {
     if (!node.length) return '';
-    return node.map((item, i) => `<div class="gnode"><b>#${i + 1}</b>${renderGenericCheckTree(item, depth + 1)}</div>`).join('\n');
+    return node.map((item, i) => {
+      const inner = renderGenericCheckTree(item, depth + 1);
+      if (!inner) return '';
+      // 문자열 목록은 번호만 앞에 붙이고 **본문을 그대로** — 개수만 남기지 않는다.
+      return `<div class="gnode"><b>#${i + 1}</b> ${inner}</div>`;
+    }).filter(Boolean).join('\n');
   }
   const skip = new Set(['verdict', 'pass', 'refs', 'error', 'note']);
   const parts = [];
@@ -283,12 +301,12 @@ function renderGenericCheckTree(node, depth = 0) {
   if (scalarEntries.length) {
     parts.push(
       `<div class="gvals">${scalarEntries
-        .map(([k, v]) => `${esc(k)}=${v === null ? '—' : esc(typeof v === 'number' ? f(v, 2) : String(v))}`)
+        .map(([k, v]) => `${esc(k)}=${v === null ? '—' : (typeof v === 'number' ? f(v, 2) : escMd(String(v)))}`)
         .join(' · ')}</div>`,
     );
   }
-  if (typeof node.note === 'string' && node.note) parts.push(`<div class="note">${esc(node.note)}</div>`);
-  if (typeof node.error === 'string' && node.error) parts.push(`<div class="card warn">⚠ ${esc(node.error)}</div>`);
+  if (typeof node.note === 'string' && node.note) parts.push(`<div class="note">${escMd(node.note)}</div>`);
+  if (typeof node.error === 'string' && node.error) parts.push(`<div class="card warn">⚠ ${escMd(node.error)}</div>`);
   for (const [k, v] of Object.entries(node)) {
     if (skip.has(k) || typeof v !== 'object' || v === null) continue;
     if (Array.isArray(v) ? v.length === 0 : Object.keys(v).length === 0) continue;

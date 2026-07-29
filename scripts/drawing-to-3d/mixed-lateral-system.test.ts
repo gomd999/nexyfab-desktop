@@ -198,3 +198,38 @@ describe('검증 입력이 두 생성 사이트 모두에 도달한다 (260729)'
     expect(src).not.toContain('dv.domainSafetyVerdict(assembly, {})');
   });
 });
+
+describe('제네릭 렌더러가 문자열 배열을 버리지 않는다 (260729)', () => {
+  const html = async (id: string, domain = 'building') => {
+    const dv = await import('./domain-dossier-verify.mjs');
+    const fn = dv.domainSafetyReportHtml as unknown as
+      (a: unknown, o: { title?: string; params?: unknown }) => string | null;
+    return fn(buildAssemblyTemplate(domain, id, {}), { title: 't', params: { seismic: { R: 4 } } }) ?? '';
+  };
+
+  it('detail 문장이 "#1 #2 #3" 로 뭉개지지 않는다 — 라이브에서 실제로 그랬다', async () => {
+    // 렌더러가 스칼라를 빈 문자열로 버려서, 판정은 도달했는데 **본문이 통째로 사라졌다**.
+    // "전단벽 시스템으로 분류해야 한다" 같은 핵심 경고가 안전검토.html 에 한 글자도 없었다.
+    const h = await html('commercial_massing');
+    const t = h.replace(/<[^>]+>/g, ' ');
+    expect(t).toContain('전단벽 시스템으로 분류');
+    expect(t).toContain('설계지진력이 과소평가');
+    expect(t).toContain('역추형');
+    expect(t).toContain('wall_back_1');
+  });
+
+  it('마크업이 원문 그대로 새지 않는다 — `**강조**` 는 <b> 로', async () => {
+    for (const [dom, id] of [['building', 'commercial_massing'], ['building', 'gable_house'],
+      ['interior', 'studio_unit'], ['landscape', 'timber_deck'], ['bridge', 'girder_bridge']] as const) {
+      const t = (await html(id, dom)).replace(/<[^>]+>/g, ' ');
+      expect(t, `${dom}/${id}`).not.toContain('**');
+    }
+  });
+
+  it('다른 도메인도 같은 렌더 경로 — 문서가 계속 나온다', async () => {
+    for (const [dom, id] of [['interior', 'studio_unit'], ['landscape', 'timber_deck'],
+      ['bridge', 'girder_bridge']] as const) {
+      expect((await html(id, dom)).length, `${dom}/${id}`).toBeGreaterThan(1000);
+    }
+  });
+});
