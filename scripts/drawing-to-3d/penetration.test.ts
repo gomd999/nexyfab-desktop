@@ -78,3 +78,49 @@ describe('출하 템플릿', () => {
     }
   });
 });
+
+describe('벽 관통 — 슬래브와 좌표 규약이 다르다 (260729c)', () => {
+  const DUCT = { id: 'd', role: 'duct', type: 'box', material: 'steel',
+    params: { width: 400, depth: 600, height: 400 }, at: { tx: 1000, ty: -200, tz: 2000 } };
+  const wA = (parts: unknown[]) => ({ domain: 'building', parts });
+  const PLAIN = { id: 'w', role: 'wall', type: 'box', material: 'concrete',
+    params: { width: 6000, depth: 200, height: 3000 }, at: { tx: 0, ty: 0, tz: 0 } };
+  const wallOpen = (o: Record<string, number>, at: Record<string, number> = { tx: 0, ty: 0, tz: 0 }) => ({
+    id: 'w', role: 'wall', type: 'wall_with_openings', material: 'concrete',
+    params: { length: 6000, thickness: 200, height: 3000, openings: [o] }, at });
+
+  it('개구 없는 벽을 뚫으면 걸린다', () => {
+    const r = chk(wA([PLAIN, DUCT]));
+    expect(r?.pass).toBe(false);
+    expect(r?.detail.join(' ')).toContain('wall_with_openings');   // 벽 어휘를 안내한다
+  });
+
+  it('(x, sill) 로 대조한다 — 슬래브의 (x, y) 를 들이대면 엉뚱한 자리를 본다', () => {
+    // 덕트는 x=1000~1400, z=2000~2400 을 지난다. 개구 x=900 w=600 · sill=1900 h=600 이 덮는다.
+    expect(chk(wA([wallOpen({ x: 900, w: 600, h: 600, sill: 1900 }), DUCT]))?.pass).toBe(true);
+  });
+
+  it('sill 이 어긋나면 걸린다 — 높이를 안 보면 통과해 버린다', () => {
+    // x 범위는 같고 sill 만 100 → 개구가 바닥 쪽이라 덕트를 못 덮는다.
+    const r = chk(wA([wallOpen({ x: 900, w: 600, h: 600, sill: 100 }), DUCT]));
+    expect(r?.pass).toBe(false);
+    expect(r?.detail.join(' ')).toContain('덮지 못한다');
+  });
+
+  it('개구가 작으면 걸린다', () => {
+    expect(chk(wA([wallOpen({ x: 900, w: 200, h: 200, sill: 1900 }), DUCT]))?.pass).toBe(false);
+  });
+
+  it('회전 벽(rz=90)도 대조한다 — 개구 x 는 **벽 로컬** 좌표다', () => {
+    // rz=90 이면 벽 길이방향이 월드 Y. 개구 x=900 은 월드 y 900 자리를 뜻한다.
+    const wall = wallOpen({ x: 900, w: 600, h: 600, sill: 1900 }, { tx: 0, ty: 0, tz: 0, rz: 90 });
+    const duct = { ...DUCT, params: { width: 600, depth: 400, height: 400 }, at: { tx: -200, ty: 1000, tz: 2000 } };
+    expect(chk(wA([wall, duct]))?.pass).toBe(true);
+  });
+
+  it('미선언과 부족을 구별해 적는다 — 조치가 다르다', () => {
+    expect(chk(wA([PLAIN, DUCT]))?.detail.join(' ')).toContain('개구가 선언되지 않았다');
+    expect(chk(wA([wallOpen({ x: 900, w: 200, h: 200, sill: 1900 }), DUCT]))?.detail.join(' '))
+      .toContain('관통 단면을 덮지 못한다');
+  });
+});

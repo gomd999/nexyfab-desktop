@@ -99,25 +99,68 @@ d('buildingSMART PCERT — IFC4 테셀레이션 임포트 (260729b)', () => {
     // 이 구멍이 드러나지 않았다 — **다른 표현을 쓰는 파일군에서만 나타나는 한계**였다.
     let total = 0;
     for (const v of scenes().values()) total += (await imp(v.ifc4)).stats?.imported ?? 0;
-    expect(total).toBeGreaterThan(180);
+    expect(total).toBeGreaterThan(280);
   }, 600_000);
 
-  it('건물 씬은 IFC4 ↔ IFC4.3 임포트 수가 같다 — 같은 엔티티를 쓴다', async () => {
-    for (const name of ['Building-Structural', 'Building-Hvac', 'Building-Landscaping', 'Infra-Plumbing']) {
-      const v = scenes().get(name)!;
+  it('★전 씬에서 IFC4 ↔ IFC4.3 임포트 수가 일치한다', async () => {
+    // 260729c: IFC4.3 인프라 클래스(IfcTrackElement·IfcRail·IfcCourse·IfcEarthworksFill·
+    // IfcGeographicElement 등)를 넣기 전에는 Rail 73→1 · Road 33→1 로 무너졌다.
+    // 지원을 넓히자 **9개 씬 전부** 같아졌다 — 이제 이것이 지킬 수 있는 불변식이다.
+    for (const [name, v] of scenes()) {
       const a = (await imp(v.ifc4)).stats?.imported ?? 0;
       const b = (await imp(v.ifc4x3)).stats?.imported ?? 0;
       expect(b, name).toBe(a);
+      expect(a, name).toBeGreaterThan(0);
     }
-  }, 600_000);
+  }, 900_000);
 
-  it('인프라 씬은 4.3 에서 크게 줄어든다 — **신설 엔티티 미지원**(사실로 고정)', async () => {
-    // IfcRoad·IfcRailway 등 IFC4.3 신설 클래스를 ELEMENT_CLASSES 가 모른다.
-    // 이건 정당한 차이가 아니라 **우리 한계**다 — 지원을 넓히면 이 단언이 먼저 깨진다.
-    const rail = scenes().get('Infra-Rail')!;
-    const a = (await imp(rail.ifc4)).stats?.imported ?? 0;
-    const b = (await imp(rail.ifc4x3)).stats?.imported ?? 0;
-    expect(a).toBeGreaterThan(50);
-    expect(b).toBeLessThan(5);          // 73 → 1
-  }, 600_000);
+  it('공간 구조는 부품으로 세지 않는다 — 세면 부피·질량이 허구가 된다', async () => {
+    // IfcRoad·IfcRoadPart 는 IfcFacility/IfcFacilityPart(건물의 IfcBuilding 자리)다.
+    // 형상 표현이 있어도 그것은 **영역 경계**이지 부재가 아니고, 자식과 이중 계상된다.
+    const r = await imp(scenes().get('Infra-Road')!.ifc4x3);
+    const skips = Object.keys(r.stats?.skipByClass ?? {});
+    expect(skips.join(' ')).toContain('IFCROADPART:spatial');
+    expect(Object.keys(r.stats?.byClass ?? {})).not.toContain('IFCROAD');
+  }, 300_000);
+
 });
+
+d('PCERT — 실형상 부피 복원 (260729c)', () => {
+  const imp = async (file: string) => {
+    const { readFileSync } = await import('node:fs');
+    const { ifcToNexyfabAssembly } = await import('@/lib/brep-bridge/ifcImport');
+    return ifcToNexyfabAssembly(readFileSync(file, 'latin1'), { name: 'pcert' });
+  };
+  const scenes = () => (pcertScenes as unknown as () => Map<string, { ifc4: string; ifc4x3: string }>)();
+
+  it('삼각 메시 요소는 `mesh` 로 나가고 **부피가 실측**이다', async () => {
+    const r = await imp(scenes().get('Building-Structural')!.ifc4);
+    const parts = r.assembly?.parts ?? [];
+    expect(parts.length).toBeGreaterThan(0);
+    expect(parts.every((p) => p.type === 'mesh')).toBe(true);
+    for (const p of parts) {
+      const v = (p.params as { volumeMm3: number }).volumeMm3;
+      expect(v).toBeGreaterThan(0);
+      expect(v).toBeLessThanOrEqual((p.boxVolumeMm3 ?? Infinity) * 1.001);  // 실부피 ≤ AABB
+      expect(p.meshVolumeExact).toBe(true);
+    }
+  }, 300_000);
+
+  it('★AABB 부피는 크게 과대였다 — 최대 58배(실측)', async () => {
+    // 좌표와 면 인덱스가 다 있는데 박스로 뭉개면 **있는 정보를 버리는 것**이다.
+    // 부피가 틀리면 질량·물량·원가가 전부 틀린다.
+    const r = await imp(scenes().get('Infra-Plumbing')!.ifc4);
+    const p = (r.assembly?.parts ?? [])[0];
+    const ratio = (p.params as { volumeMm3: number }).volumeMm3 / (p.boxVolumeMm3 ?? 1);
+    expect(ratio).toBeLessThan(0.05);          // 실측 0.017 = 58배 과대
+  }, 300_000);
+
+  it('형상은 여전히 AABB 다 — 부피 실측과 형상 근사를 구별해 적는다', async () => {
+    const r = await imp(scenes().get('Infra-Rail')!.ifc4x3);
+    const p = (r.assembly?.parts ?? [])[0];
+    const aabb = (p.params as { aabb: { min: number[]; max: number[] } }).aabb;
+    expect(aabb.max.every((v, i) => v > aabb.min[i])).toBe(true);
+    expect(r.assembly?.importedApprox).toBe(true);   // 근사임을 계속 밝힌다
+  }, 300_000);
+});
+

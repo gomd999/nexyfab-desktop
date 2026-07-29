@@ -16,8 +16,9 @@
  *    그 사실을 적는다. 겹치지 않으면 관통이 아니다 — 이건 확실하다.
  *  · 슬리브 여유(관경+50mm 등)는 **기준이 용도·계통마다 달라** 판정하지 않는다.
  *    개구가 관통 단면을 덮는지만 본다.
- *  · 벽 관통은 `wall_with_openings` 의 개구가 (x, sill) 이라 슬래브와 규약이 다르다 —
- *    현재는 슬래브만 대조하고 벽은 **관통 사실만** 보고한다(대조 미실시를 명시).
+ *  · 벽·슬래브는 **개구 좌표 규약이 다르다** — 벽은 수직면이라 `(x, sill)`, 슬래브는
+ *    수평면이라 `(x, y)` 다. 260729c 에 각각의 좌표계로 대조하도록 나눴다(회전 반영).
+ *    한쪽 규약을 다른 쪽에 들이대면 **sill 을 y 로 읽어** 엉뚱한 자리를 검사하게 된다.
  */
 
 import { partAabb } from './reconstruct.mjs';
@@ -80,9 +81,9 @@ export function penetrationCheck(assembly) {
       const oz = overlap1(sb.min[2], sb.max[2], tb.min[2], tb.max[2]);
       if (!(ox > 0 && oy > 0 && oz > 0)) continue;
       const isSlab = st.role === 'slab';
-      // 슬래브 관통이면 선언된 개구가 그 자리를 덮는지 본다(개구는 슬래브 로컬 좌표).
       let covered = null;
       if (isSlab && st.type === 'slab_with_openings') {
+        // 슬래브는 수평판이라 개구가 **평면 (x, y)** 이고 두께 전체를 관통한다.
         const ops = st.params?.openings ?? [];
         covered = ops.some((o) => {
           const ax0 = tb.min[0] + Number(o.x), ax1 = ax0 + Number(o.w);
@@ -90,6 +91,28 @@ export function penetrationCheck(assembly) {
           // 관통 단면이 개구 안에 **들어가야** 한다(부분 겹침은 덮은 것이 아니다).
           return sb.min[0] >= ax0 - 1e-6 && sb.max[0] <= ax1 + 1e-6
             && sb.min[1] >= ay0 - 1e-6 && sb.max[1] <= ay1 + 1e-6;
+        });
+      } else if (!isSlab && st.type === 'wall_with_openings') {
+        /**
+         * 벽 개구 대조 (260729c) — 슬래브와 **좌표 규약이 다르다**.
+         *
+         * 벽은 수직면이라 개구가 `(x, sill)` 이다: x=벽 길이방향, sill=바닥에서의 높이,
+         * 두께방향(로컬 Y)은 언제나 관통한다. 슬래브의 `(x, y)` 를 그대로 들이대면
+         * **sill 을 y 로 읽어** 엉뚱한 자리를 검사하게 된다 — 그래서 앞서는 대조를
+         * 보류하고 관통 사실만 보고했다.
+         *
+         * ⚠ 회전을 반영해야 한다. rz=90/270 이면 벽 길이방향이 월드 Y 다.
+         *   개구의 x 는 **벽 로컬 좌표**이므로 월드로 옮길 때 그 축을 골라야 한다.
+         */
+        const ops = st.params?.openings ?? [];
+        const rz = ((Number(st.at?.rz ?? 0) % 360) + 360) % 360;
+        const swapped = Math.abs(rz - 90) < 1 || Math.abs(rz - 270) < 1;
+        const lenAxis = swapped ? 1 : 0;          // 벽 길이방향의 월드 축
+        covered = ops.some((o) => {
+          const l0 = tb.min[lenAxis] + Number(o.x), l1 = l0 + Number(o.w);
+          const z0 = tb.min[2] + Number(o.sill ?? 0), z1 = z0 + Number(o.h);
+          return sb.min[lenAxis] >= l0 - 1e-6 && sb.max[lenAxis] <= l1 + 1e-6
+            && sb.min[2] >= z0 - 1e-6 && sb.max[2] <= z1 + 1e-6;
         });
       }
       hits.push({
@@ -112,20 +135,24 @@ export function penetrationCheck(assembly) {
   }
 
   const missing = hits.filter((h) => h.covered !== true);
-  const wallHits = missing.filter((h) => h.kind === 'wall');
-  const slabMissing = missing.filter((h) => h.kind === 'slab');
+  // 대조 규약이 없는 어휘(개구를 못 담는 `box` 슬래브·벽)는 「개구 미선언」이고,
+  // 개구 어휘인데 안 덮으면 「개구 부족」이다 — 둘 다 FAIL 이지만 조치가 다르다.
+  const undeclared = missing.filter((h) => h.covered === null);
+  const notCovered = missing.filter((h) => h.covered === false);
   return {
     labelKo: `설비 관통 ↔ 구조 개구 (관통 ${hits.length}개소)`,
-    // 벽 관통은 대조 규약이 달라 **판정하지 않는다** — 슬래브 누락이 없으면 판정 보류.
-    pass: slabMissing.length ? false : (wallHits.length ? null : true),
+    pass: missing.length ? false : true,
     detail: [
-      ...slabMissing.slice(0, 6).map((h) =>
-        `${h.service} 가 ${h.target} 를 관통하는데 **개구가 선언되지 않았다**`
+      ...missing.slice(0, 6).map((h) =>
+        `${h.service} 가 ${h.target}(${h.kind === 'slab' ? '슬래브' : '벽'})를 관통하는데 `
+        + (h.covered === false ? '**개구가 관통 단면을 덮지 못한다**' : '**개구가 선언되지 않았다**')
         + `(겹침 ${h.overlapMm.x}×${h.overlapMm.y}×${h.overlapMm.z}mm)`
-        + (h.covered === false ? ' — 개구는 있으나 관통 단면을 덮지 못한다.' : ' — `slab_with_openings` 로 개구를 선언해야 한다.')),
-      ...(slabMissing.length > 6 ? [`… 외 ${slabMissing.length - 6}개소`] : []),
-      ...(wallHits.length ? [`벽 관통 ${wallHits.length}개소 — 벽 개구는 (x, sill) 규약이라 여기서 **대조하지 않았다**(관통 사실만 보고).`] : []),
+        + (h.covered === null
+          ? ` — \`${h.kind === 'slab' ? 'slab_with_openings' : 'wall_with_openings'}\` 로 개구를 선언해야 한다.`
+          : '')),
+      ...(missing.length > 6 ? [`… 외 ${missing.length - 6}개소(미선언 ${undeclared.length} · 부족 ${notCovered.length})`] : []),
       ...(hits.length - missing.length ? [`개구가 확인된 관통 ${hits.length - missing.length}개소.`] : []),
+      '벽 개구는 (x, sill) · 슬래브 개구는 (x, y) 규약이라 **각각의 좌표계로** 대조했다(회전 반영).',
       '⚠ 관통 판정은 **AABB 겹침**이다(실형상 부울 아님 — 보수측). 슬리브 여유는 계통·용도가 정하므로 판정하지 않는다.',
       ...(unresolved.length ? [`⚠ ${[...new Set(unresolved)].length}개 부품은 회전이 축정렬이 아니라 제외했다 — 판정 불가.`] : []),
     ],

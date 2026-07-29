@@ -89,10 +89,14 @@ describe('writeIfcText → 기존 ifcImport 라운드트립', () => {
     expect(r.stats!.imported).toBe(1);
     expect(r.stats!.byClass.IFCBUILDINGELEMENTPROXY).toBe(1);
     const p = r.assembly!.parts[0];
+    // IfcFacetedBrep 는 삼각 메시(IfcTriangulatedFaceSet)가 아니므로 box 로 나온다.
+    // 260729c 에 mesh 경로가 생겨 params 가 유니온이 됐다 — 어느 쪽인지 먼저 고정한다.
+    expect(p.type).toBe('box');
+    const box = p.params as { width: number; depth: number; height: number };
     // 임포터 방출은 0.1mm 반올림(toFixed(1)) — 그 정밀도 기준으로 일치
-    expect(p.params.width).toBeCloseTo(20, 6);
-    expect(p.params.depth).toBeCloseTo(30, 6);
-    expect(p.params.height).toBeCloseTo(40, 6);
+    expect(box.width).toBeCloseTo(20, 6);
+    expect(box.depth).toBeCloseTo(30, 6);
+    expect(box.height).toBeCloseTo(40, 6);
     expect(p.at.tx).toBeCloseTo(0, 6);
     expect(p.at.ty).toBeCloseTo(0, 6);
     expect(p.at.tz).toBeCloseTo(0, 6);
@@ -107,9 +111,11 @@ describe('writeIfcText → 기존 ifcImport 라운드트립', () => {
     const r = ifcToNexyfabAssembly(w.text, { name: 'rt' });
     expect(r.ok, r.error).toBe(true);
     const p = r.assembly!.parts[0];
-    expect(p.params.width).toBeCloseTo(60, 6);
-    expect(p.params.depth).toBeCloseTo(40, 6);
-    expect(p.params.height).toBeCloseTo(20, 6);
+    expect(p.type).toBe('box');
+    const box = p.params as { width: number; depth: number; height: number };
+    expect(box.width).toBeCloseTo(60, 6);
+    expect(box.depth).toBeCloseTo(40, 6);
+    expect(box.height).toBeCloseTo(20, 6);
   });
 
   it('분리 2성분(박스 2개) — IfcFacetedBrep 2개·합성 AABB', () => {
@@ -124,7 +130,9 @@ describe('writeIfcText → 기존 ifcImport 라운드트립', () => {
     const r = ifcToNexyfabAssembly(w.text, { name: 'rt2' });
     expect(r.ok, r.error).toBe(true);
     const p = r.assembly!.parts[0];
-    expect(p.params.width).toBeCloseTo(120, 6);
+    expect(p.type).toBe('box');
+    const box = p.params as { width: number; depth: number; height: number };
+    expect(box.width).toBeCloseTo(120, 6);
   });
 });
 

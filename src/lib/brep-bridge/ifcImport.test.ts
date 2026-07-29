@@ -56,7 +56,9 @@ ${WALL('#22')}`);
     const r = ifcToNexyfabAssembly(src, { name: 't' });
     expect(r.ok).toBe(true);
     expect(r.stats?.unitScale).toBe(1000);
-    expect(r.assembly!.parts[0].params.width).toBeCloseTo(6000, 0);
+    // 260729c: 삼각 메시 경로가 생겨 params 가 유니온이다 — box 임을 먼저 고정한다.
+    expect(r.assembly!.parts[0].type).toBe('box');
+    expect((r.assembly!.parts[0].params as { width: number }).width).toBeCloseTo(6000, 0);
   });
   it('z-회전 배치 = rz 보존 box', () => {
     const src = wrap(`#20=IFCCARTESIANPOINT((0.,0.,0.));

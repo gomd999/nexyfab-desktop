@@ -19,7 +19,17 @@ export interface IfcImportResult {
     name: string;
     domain: string;
     importedApprox?: boolean;
-    parts: Array<{ id: string; type: 'box'; params: { width: number; depth: number; height: number }; at: { tx: number; ty: number; tz: number; rz?: number }; role: string; material: string; qty?: number }>;
+    // ⚠ 260729c: 삼각 메시 요소는 `mesh` 로 나간다 — 형상은 AABB 로 표시되지만
+    //   **부피·질량은 실측**이다(박스로 뭉개면 최대 58배 과대, 실측). 둘은 다른 정보다.
+    parts: Array<{
+      id: string;
+      type: 'box' | 'mesh';
+      params: { width: number; depth: number; height: number }
+        | { volumeMm3: number; aabb: { min: number[]; max: number[] } };
+      at: { tx: number; ty: number; tz: number; rz?: number };
+      role: string; material: string; qty?: number;
+      meshVolumeExact?: boolean; boxVolumeMm3?: number;
+    }>;
     note: string;
   };
   stats?: { elements: number; imported: number; exact: number; approx: number; skipped: number; unitScale: number; byClass: Record<string, number>; skipByClass?: Record<string, number>; representative?: boolean };
@@ -46,7 +56,47 @@ const ELEMENT_CLASSES: Record<string, { role: string; material: string }> = {
   IFCBUILDINGELEMENTPROXY: { role: 'element', material: 'concrete' },
   IFCFURNISHINGELEMENT: { role: 'furniture', material: 'timber' },
   IFCFLOWTERMINAL: { role: 'fixture', material: 'steel' },
+
+  // ── IFC4.3 인프라 (260729c) ────────────────────────────────────────────────
+  // 실측: PCERT 4.3 인프라 씬이 Rail 73→1 · Road 33→1 로 무너졌다. 원인은 4.3 이
+  // 신설한 토목 클래스를 몰라서다(IFC4.3 은 도로·철도·교량·항만을 정식 지원한다).
+  //
+  // ⚠ **물리 요소만 넣는다.** `IfcRoad`·`IfcRailway`·`IfcBridge` 와 `*Part` 는
+  //   `IfcFacility`/`IfcFacilityPart` — **공간 구조**(건물의 IfcBuilding·IfcBuildingStorey
+  //   자리)이지 물체가 아니다. 이들을 부품으로 임포트하면 **공간을 물체로 바꾸는 것**이라
+  //   부피·질량·간섭이 전부 허구가 된다. 아래 SPATIAL_CLASSES 에서 명시적으로 건너뛴다.
+  IFCTRACKELEMENT: { role: 'track', material: 'concrete' },   // 궤도 요소(침목·분기 등)
+  IFCRAIL: { role: 'rail', material: 'steel' },               // 레일
+  IFCCOURSE: { role: 'course', material: 'concrete' },        // 노반층·도상(층상 요소)
+  IFCPAVEMENT: { role: 'pavement', material: 'concrete' },    // 포장
+  IFCEARTHWORKSFILL: { role: 'earthworks', material: 'concrete' },  // 성토(재질=흙이나 밀도 미선언 → 보수측 표기)
+  IFCEARTHWORKSCUT: { role: 'earthworks', material: 'concrete' },   // 절토
+  IFCSIGN: { role: 'sign', material: 'steel' },               // 표지
+  IFCSIGNAL: { role: 'signal', material: 'steel' },           // 신호기
+  IFCGEOGRAPHICELEMENT: { role: 'geographic', material: 'timber' }, // 수목·지형지물
+  IFCKERB: { role: 'kerb', material: 'concrete' },            // 연석
+  IFCMOORINGDEVICE: { role: 'mooring', material: 'steel' },
+  IFCBEARING: { role: 'bearing', material: 'steel' },         // 교량 받침
+  IFCDEEPFOUNDATION: { role: 'footing', material: 'concrete' },
+  IFCPILE: { role: 'pile', material: 'concrete' },
 };
+
+/**
+ * **공간 구조** — 물리 요소가 아니므로 부품으로 임포트하지 않는다.
+ *
+ * IFC4.3 의 `IfcFacility`(IfcRoad·IfcRailway·IfcBridge·IfcMarineFacility)와
+ * `IfcFacilityPart`(IfcRoadPart·IfcRailwayPart·IfcBridgePart)는 건물의 IfcBuilding·
+ * IfcBuildingStorey 와 같은 자리다. 형상 표현을 갖는 경우도 있지만 그것은 **영역 경계**이지
+ * 부재가 아니다 — 부품으로 세면 부피·질량·간섭이 전부 허구가 되고, 자식 요소와 **이중
+ * 계상**된다. 건너뛴 사실은 `skipByClass` 에 남는다(조용히 버리지 않는다).
+ */
+const SPATIAL_CLASSES = new Set([
+  'IFCROAD', 'IFCRAILWAY', 'IFCBRIDGE', 'IFCMARINEFACILITY', 'IFCFACILITY',
+  'IFCROADPART', 'IFCRAILWAYPART', 'IFCBRIDGEPART', 'IFCMARINEPART', 'IFCFACILITYPART',
+  'IFCSITE', 'IFCBUILDING', 'IFCBUILDINGSTOREY', 'IFCSPACE', 'IFCSPATIALZONE',
+  // 조립체는 자식 요소를 묶는 컨테이너다 — 자식과 함께 세면 이중 계상이다.
+  'IFCELEMENTASSEMBLY',
+]);
 
 interface Ent { name: string; raw: string }
 type M4 = number[]; // 12-real: [r00,r01,r02,tx, r10,r11,r12,ty, r20,r21,r22,tz]
@@ -183,6 +233,49 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
     }
     return { min: mn, max: mx };
   };
+  /**
+   * 삼각 메시의 **실부피**(로컬 좌표, mm³). 없으면 0.
+   *
+   * ⚠ 260729c 실측: PCERT 요소의 실부피/AABB 부피가 **최소 0.017**(58배 과대) ·
+   * 중앙 0.967 · 평균 1.40배 과대였다. 대부분은 박스형(벽·기초)이라 AABB 가 거의 맞지만
+   * 경사·얇은 요소에서 크게 벌어진다 — 부피가 58배 틀리면 질량·물량·원가가 전부 틀린다.
+   * 좌표와 면 인덱스가 다 있는데 박스로 뭉개는 것은 **있는 정보를 버리는 것**이다.
+   *
+   * 발산정리(Σ P·(Q×R)/6). IFC 인덱스는 1-base 다.
+   */
+  const meshVolOf = (id: number, depth = 0): number => {
+    const e = ents.get(id);
+    if (!e || depth > 12) return 0;
+    if (e.name === 'IFCTRIANGULATEDFACESET' || e.name === 'IFCPOLYGONALFACESET') {
+      const a = splitArgs(e.raw);
+      const listId = refOf(a[0]);
+      const pts: number[][] = [];
+      if (listId != null) {
+        const pe = ents.get(listId);
+        if (pe && /CARTESIANPOINTLIST3D/.test(pe.name)) {
+          for (const m of pe.raw.matchAll(/\(([^()]*)\)/g)) {
+            const v = m[1].split(',').map(Number);
+            if (v.length >= 3 && v.every(Number.isFinite)) pts.push([v[0] * unitScale, v[1] * unitScale, v[2] * unitScale]);
+          }
+        }
+      }
+      if (pts.length < 3) return 0;
+      let v6 = 0, tri = 0;
+      // 삼각 인덱스는 마지막 인수들에 ((i,j,k),…) 형태로 온다.
+      for (const m of e.raw.matchAll(/\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/g)) {
+        const P = pts[+m[1] - 1], Q = pts[+m[2] - 1], R = pts[+m[3] - 1];
+        if (!P || !Q || !R) continue;
+        v6 += P[0] * (Q[1] * R[2] - Q[2] * R[1]) + P[1] * (Q[2] * R[0] - Q[0] * R[2]) + P[2] * (Q[0] * R[1] - Q[1] * R[0]);
+        tri++;
+      }
+      return tri >= 4 ? Math.abs(v6 / 6) : 0;   // 사면체 미만은 닫힌 solid 가 아니다
+    }
+    // 표현 트리를 따라 내려간다(ShapeRepresentation → Items → …).
+    let sum = 0;
+    for (const m of e.raw.matchAll(/#(\d+)/g)) sum += meshVolOf(+m[1], depth + 1);
+    return sum;
+  };
+
   const boundsOf = (id: number, depth = 0): B3 | null => {
     const hit = bCache.get(id);
     if (hit !== undefined) return hit;
@@ -331,7 +424,7 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
   const skipByClass: Record<string, number> = {};
   const skipC = (cls: string, why = '?') => { skipped++; const k = cls + ':' + why; skipByClass[k] = (skipByClass[k] ?? 0) + 1; };
   const used = new Set<string>();
-  const emit = (cls: string, nameStr: string, place: M4, lb: { min: number[]; max: number[] }, extM: M4 | null) => {
+  const emit = (cls: string, nameStr: string, place: M4, lb: { min: number[]; max: number[] }, extM: M4 | null, repId: number | null = null) => {
     const meta = ELEMENT_CLASSES[cls];
     const M = extM ? mul(place, extM) : place;
     // 순수 z-회전 판정 → rz 보존 box(정밀 간섭 판정 가능), 아니면 월드 AABB
@@ -357,12 +450,38 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
       }
       const wd = [mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]];
       if (!wd.every((d) => Number.isFinite(d) && d > 0.5)) { skipC(cls, 'wdims'); return; }
-      parts.push({ id, type: 'box', params: { width: +wd[0].toFixed(1), depth: +wd[1].toFixed(1), height: +wd[2].toFixed(1) }, at: { tx: +mn[0].toFixed(1), ty: +mn[1].toFixed(1), tz: +mn[2].toFixed(1) }, role: meta.role, material: meta.material });
+      // 삼각 메시가 있으면 **실부피**를 살린다 — 박스로 뭉개면 최대 58배 과대(실측).
+      // 배치 변환의 행렬식으로 스케일을 보정한다(회전·평행이동은 부피 불변이라 1).
+      const det = Math.abs(
+        M[0] * (M[5] * M[10] - M[6] * M[9])
+        - M[1] * (M[4] * M[10] - M[6] * M[8])
+        + M[2] * (M[4] * M[9] - M[5] * M[8]),
+      );
+      const mv = repId != null ? meshVolOf(repId) * (Number.isFinite(det) && det > 0 ? det : 1) : 0;
+      const boxVol = wd[0] * wd[1] * wd[2];
+      if (mv > 0 && mv <= boxVol * 1.001) {
+        parts.push({
+          id, type: 'mesh',
+          params: {
+            volumeMm3: +mv.toFixed(1),
+            aabb: { min: [0, 0, 0], max: [+wd[0].toFixed(1), +wd[1].toFixed(1), +wd[2].toFixed(1)] },
+          },
+          at: { tx: +mn[0].toFixed(1), ty: +mn[1].toFixed(1), tz: +mn[2].toFixed(1) },
+          role: meta.role, material: meta.material,
+          // 형상은 여전히 AABB 로 표시되지만 **부피·질량은 실측**이다 — 둘을 구별해 적는다.
+          meshVolumeExact: true, boxVolumeMm3: +boxVol.toFixed(1),
+        });
+      } else {
+        parts.push({ id, type: 'box', params: { width: +wd[0].toFixed(1), depth: +wd[1].toFixed(1), height: +wd[2].toFixed(1) }, at: { tx: +mn[0].toFixed(1), ty: +mn[1].toFixed(1), tz: +mn[2].toFixed(1) }, role: meta.role, material: meta.material });
+      }
       approx++;
     }
   };
 
   for (const [, e] of ents) {
+    // 공간 구조는 **부품이 아니다** — 세지도 임포트하지도 않고 그 사실만 남긴다.
+    // (IfcRoad·IfcRoadPart 등을 물체로 넣으면 부피·질량·간섭이 허구가 되고 자식과 이중 계상)
+    if (SPATIAL_CLASSES.has(e.name)) { skipC(e.name, 'spatial'); continue; }
     const meta = ELEMENT_CLASSES[e.name];
     if (!meta) continue;
     elements++;
@@ -383,14 +502,14 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
       if (!rep || rep.name !== 'IFCSHAPEREPRESENTATION') continue;
       for (const ir of (rep.raw.match(/#\d+/g) ?? []).map((r) => +r.slice(1))) {
         const ext = tryExtrusion(ir);
-        if (ext) { emit(e.name, splitArgs(e.raw)[2]?.replace(/'/g, '') || e.name, place, { min: ext.min, max: ext.max }, ext.M); done = true; break; }
+        if (ext) { emit(e.name, splitArgs(e.raw)[2]?.replace(/'/g, '') || e.name, place, { min: ext.min, max: ext.max }, ext.M, repId); done = true; break; }
       }
       if (done) break;
     }
     if (done) continue;
     // ②폐포 점 스캔 AABB(FacetedBrep·매핑·불리언 등 일괄 — 개구 미공제 과대측 명시)
     const lb = localBounds([repId]);
-    if (lb) emit(e.name, splitArgs(e.raw)[2]?.replace(/'/g, '') || e.name, place, lb, null);
+    if (lb) emit(e.name, splitArgs(e.raw)[2]?.replace(/'/g, '') || e.name, place, lb, null, repId);
     else skipC(e.name, 'nobounds');
   }
 

@@ -297,3 +297,55 @@ geometry** 표현) — `This shape has not type, it is null`. 회귀는 건수�
   4.3 로 가는 중이라 우선순위가 낮지 않다.
 - PCERT 임포트는 전부 `exact:0 · approx:N` 다. 테셀레이션이라 **AABB 근사**이고,
   기존 `importedApprox` 규약이 그 사실을 밝힌다. 실형상 복원은 별개 과제다.
+
+---
+
+## 5차 채굴 (260729c) — 4차의 「남은 것」 3건을 전부 닫았다
+
+### ① IFC4.3 인프라 엔티티 지원 — 전 씬 교차버전 일치
+
+4.3 신설 토목 클래스를 추가했다: `IfcTrackElement`·`IfcRail`·`IfcCourse`·`IfcPavement`·
+`IfcEarthworksFill/Cut`·`IfcSign`·`IfcSignal`·`IfcGeographicElement`·`IfcKerb`·`IfcBearing`·
+`IfcPile`·`IfcDeepFoundation`.
+
+| 씬 | 4차(4→4.3) | **5차(4→4.3)** |
+|---|---|---|
+| Infra-Rail | 73 → 1 | **73 → 73** |
+| Infra-Road | 33 → 1 | **33 → 33** |
+| Infra-Bridge | 48 → 40 | **48 → 48** |
+| Infra-Landscaping | 25 → 15 | **101 → 101** |
+
+**9개 씬 전부 IFC4 = IFC4.3** 이 됐다 — 이제 이것이 회귀로 고정할 수 있는 불변식이다.
+Landscaping 이 25→101 로 뛴 것은 `IfcGeographicElement`(수목·지형지물) 76건이 들어와서다.
+
+⚠ **공간 구조는 부품으로 세지 않는다.** `IfcRoad`·`IfcRailway`·`IfcBridge` 와 `*Part` 는
+`IfcFacility`/`IfcFacilityPart` — 건물의 `IfcBuilding`·`IfcBuildingStorey` 자리다. 형상
+표현이 있어도 그것은 **영역 경계**이지 부재가 아니고, 자식 요소와 **이중 계상**된다.
+`IfcElementAssembly` 도 같은 이유로 제외(자식이 실제 부재). 건너뛴 사실은 `skipByClass` 에
+`IFCROADPART:spatial` 처럼 남는다 — 조용히 버리지 않는다.
+
+### ② 실형상 부피 복원 — AABB 는 최대 58배 과대였다
+
+임포트는 됐지만 전부 `exact:0 · approx:N`(AABB 박스)이었다. 좌표와 **면 인덱스가 다 있는데**
+박스로 뭉개는 것은 있는 정보를 버리는 것이다. 발산정리로 실부피를 복원했다.
+
+| 씬 | 실부피 / AABB 부피 | AABB 과대율 |
+|---|---:|---:|
+| Infra-Plumbing | **0.017** | **58배** |
+| Infra-Rail | 0.169 | 5.9배 |
+| Infra-Bridge | 0.190 | 5.3배 |
+| Infra-Landscaping | 0.282 | 3.5배 |
+| Infra-Road | 0.299 | 3.3배 |
+| Building-Structural | 0.580 | 1.7배 |
+| Building-Architecture | 0.648 | 1.5배 |
+
+부피가 58배 틀리면 **질량·물량·원가가 전부 틀린다.** 이제 `type:'mesh'` 로 나가고
+`volumeMm3` 는 실측이다. ⚠ **형상은 여전히 AABB 다** — 부피 실측과 형상 근사는 다른
+정보라 `meshVolumeExact`·`boxVolumeMm3` 로 구별해 적는다.
+
+### ③ 벽 관통 대조 — 좌표 규약을 나눴다
+
+`penetration-check` 가 슬래브만 대조하고 벽은 관통 사실만 보고했다. 벽 개구는 `(x, sill)`,
+슬래브 개구는 `(x, y)` 라 한쪽 규약을 다른 쪽에 들이대면 **sill 을 y 로 읽어** 엉뚱한
+자리를 검사한다. 각각의 좌표계로 나누고 **회전(rz 90/270 → 길이방향이 월드 Y)** 도 반영했다.
+「개구 미선언」과 「개구 부족」을 구별해 적는다 — 둘 다 FAIL 이지만 조치가 다르다.

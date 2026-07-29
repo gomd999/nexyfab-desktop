@@ -72,9 +72,13 @@ describe('io 등록부 → IGES (폴리라인 와이어프레임)', () => {
     const r = igesToNexyfabAssembly(text, { name: 'rt' });
     expect(r.ok, r.error).toBe(true);
     const p = r.assembly!.parts[0];
-    expect(p.params.width).toBeCloseTo(20, 6);
-    expect(p.params.depth).toBeCloseTo(30, 6);
-    expect(p.params.height).toBeCloseTo(40, 6);
+    // IfcFacetedBrep 는 삼각 메시(IfcTriangulatedFaceSet)가 아니므로 box 로 나온다.
+    // 260729c 에 mesh 경로가 생겨 params 가 유니온이 됐다 — 어느 쪽인지 먼저 고정한다.
+    expect(p.type).toBe('box');
+    const box = p.params as { width: number; depth: number; height: number };
+    expect(box.width).toBeCloseTo(20, 6);
+    expect(box.depth).toBeCloseTo(30, 6);
+    expect(box.height).toBeCloseTo(40, 6);
     expect(p.at.tx).toBeCloseTo(-10, 6);
     expect(p.at.ty).toBeCloseTo(-15, 6);
     expect(p.at.tz).toBeCloseTo(-20, 6);
@@ -90,9 +94,13 @@ describe('io 등록부 → IFC (IfcFacetedBrep)', () => {
     const r = ifcToNexyfabAssembly(text, { name: 'rt' });
     expect(r.ok, r.error).toBe(true);
     const p = r.assembly!.parts[0];
-    expect(p.params.width).toBeCloseTo(20, 6);
-    expect(p.params.depth).toBeCloseTo(30, 6);
-    expect(p.params.height).toBeCloseTo(40, 6);
+    // IfcFacetedBrep 는 삼각 메시(IfcTriangulatedFaceSet)가 아니므로 box 로 나온다.
+    // 260729c 에 mesh 경로가 생겨 params 가 유니온이 됐다 — 어느 쪽인지 먼저 고정한다.
+    expect(p.type).toBe('box');
+    const box = p.params as { width: number; depth: number; height: number };
+    expect(box.width).toBeCloseTo(20, 6);
+    expect(box.depth).toBeCloseTo(30, 6);
+    expect(box.height).toBeCloseTo(40, 6);
   });
 
   it('개방 지오메트리는 폐셸 요건 사유로 거부(throw)', async () => {
