@@ -84,9 +84,24 @@ export function bridgeCheck(assembly, params = {}) {
   // 사용 I (처짐·균열 참고): 1.0DC+1.0DW+1.0LL
   const Ms = M_DC + M_DW + M_LL;
 
-  // ── ④ RC 거더 단면 검토 (선택 — As 입력 시. 복부 직사각 보수측 검토 명시) ──
+  // ── ④ RC 거더 단면 검토 (As 입력 시. 복부 직사각 보수측 검토 명시) ──
+  //
+  // ⚠ 260729b: As 가 없으면 `section = null` 로 **조용히 사라졌다.** 그 결과 Mu·Vu 를
+  //   다 산출해 놓고 부재 강도 판정을 하나도 안 한 채, 남는 것은 "바닥판 폭 자기정합"
+  //   하나뿐이었다 — 그게 evidenceSufficient 를 충족시켜 **「이상 없음」으로 나갔다.**
+  //   설계압력·배근처럼 지어낼 수 없는 값은 **이름으로 요구**해야 한다(도메인 공통 원칙).
   let section = null;
-  if (Number(params.As_mm2) > 0) {
+  if (!(Number(params.As_mm2) > 0)) {
+    section = {
+      verdict: 'INPUT',
+      needInputs: [{
+        field: 'As_mm2',
+        reason: '거더 인장철근 단면적(mm²) — 배근은 형상에서 알 수 없다. 없으면 Mu·Vu 를 '
+          + '산출해도 **부재가 견디는지 판정할 수 없다**(단면력 산출 ≠ 안전 판정).',
+      }],
+      note: `단면력은 산출됐다(Mu ${round(Mu, 1)}kN·m · Vu ${round(Vu, 1)}kN). 배근을 주면 rc_beam 으로 검토한다.`,
+    };
+  } else {
     const sec = bm.section ?? {};
     // 복부폭·거더 높이 — 정식 필드 우선, 없으면 흔한 별칭(section.b / section.h) 수용
     const webT = Number(sec.webT) > 0 ? Number(sec.webT) : (Number(sec.b) > 0 ? Number(sec.b) : null);
@@ -262,7 +277,15 @@ export function archBridgeCheck(assembly, params = {}) {
   };
   const checks = [
     mk('타이 인장(본당)', T_tie, A_tie, 'tension'),
-    mk('아치 리브 축압축(스프링잉·본당)', N_rib, A_rib, 'compression(좌굴 미검토 명시)'),
+    mk('아치 리브 축압축(스프링잉·본당)', N_rib, A_rib, 'compression(재료 항복)'),
+    // ⚠ 아치 리브의 좌굴장은 형상만으로 정할 수 없다 — 면내는 아치 곡선 형상과 행어
+    //   구속에, 면외는 횡브레이싱에 달렸다. 곡선장을 그냥 Lb 로 쓰면 **지어내는 것**이라
+    //   이름으로 요구한다.
+    bucklingCheck('아치 리브 좌굴', N_rib, A_rib, {
+      r_mm: Number(params.r_rib_mm), Lb_mm: Number(params.Lb_rib_mm),
+      K: Number(params.K_rib) > 0 ? Number(params.K_rib) : 1.0, Fy: Number(params.Fy) || 355,
+      fields: { r: 'r_rib_mm', Lb: 'Lb_rib_mm' },
+    }),
     { ...mk(nielsen ? `닐센 행어 장력(φ̄=${round((phiBar * 180) / Math.PI, 1)}°)` : '행어 장력(본당)', T_h, A_h, 'tension'), note: sectionNote },
     // 260729 자기정합: 선언 행어 수 ↔ 실제 행어 부품 수. 행어 장력은 "본당"이므로
     // 개수가 어긋나면 총 전달 하중이 달라진다 — 부재력의 전제를 먼저 확인한다.
@@ -289,7 +312,8 @@ export function archBridgeCheck(assembly, params = {}) {
     },
     forces: { H_kN: round(H, 0), theta0_deg: round((th0 * 180) / Math.PI, 1) },
     checks,
-    verdict: checks.every((c) => c.ok) ? 'PASS' : 'FAIL',
+    verdict: bridgeVerdict(checks),
+    ...(unjudgedNote(checks) ? { unjudged: unjudgedNote(checks) } : {}),
     assumptions: [
       '사하중=주경간 부품 자중 합/L 등분포 근사(접속교·교각 제외 — 타이드 아치 자기평형계만)',
       '활하중=차로하중 12.7kN/m×차로 + 트럭 510kN/L 등가 UDL(영향선 미적용 — 전역 H 보수측)',
@@ -315,6 +339,101 @@ function selfWeightKN(parts, excludeRe = null) {
   return w;
 }
 /** 응력비 부재 검토행(축력/단면적 ÷ 0.6Fy). */
+/**
+ * 압축재 좌굴 검토 (KDS 14 31 25 §4.3 — 260729b).
+ *
+ * ## 왜 필요한가
+ * 종전 압축재 검사는 `σ ≤ 0.6Fy`(재료 항복)만 봤고 이름에 "좌굴 미검토 명시"를
+ * 달았다. 명시는 정직하지만 **압축재는 항복보다 좌굴로 먼저 파괴된다** — 교량 파괴모드의
+ * 핵심을 검토 밖에 두고 있었던 것이다. 명시가 검토를 대신하지 못한다.
+ *
+ * ## 지어내지 않는 것
+ *  · 회전반경 r — 단면 형상이 정한다. 모델이 정사각 중실 근사면 r = s/√12 로 파생하고
+ *    **그 사실을 적는다**(실 형강이면 `r_mm` 입력 우선). 근사 단면의 r 은 실제보다 작아
+ *    좌굴에 **불리(보수)** 하다.
+ *  · 비지지길이 Lb — 형상에서 나오면 쓰고(트러스 격점 간격 등), 아니면 요구한다.
+ *  · 유효좌굴길이계수 K — 지점조건이 정한다. **K=1.0(양단 핀)을 기본으로 쓰되 명시**한다.
+ *    실제 구속이 있으면 K<1 이라 이 값은 보수측이다.
+ *
+ * 반환 ok=null 은 「판정 불가」다 — 통과가 아니다.
+ */
+function bucklingCheck(name, N_kN, A_mm2, { r_mm, Lb_mm, K = 1.0, Fy = 355, E = 205000, basis, fields = {} }) {
+  if (!(r_mm > 0) || !(Lb_mm > 0)) {
+    // ⚠ 필드명은 **부재별**이어야 한다. 전부 `Lb_mm` 이라고 하면 여러 압축재가 같은
+    //   이름을 요구해 사용자는 **어느 부재의 값인지 알 수 없다**(실측에서 걸렸다).
+    return {
+      name, kind: 'buckling', ok: null,
+      needInputs: [
+        ...(!(r_mm > 0) ? [{ field: fields.r ?? 'r_mm', reason: `${name} 의 단면 회전반경(mm) — 단면 형상이 정한다. I·A 를 주면 √(I/A) 로도 된다.` }] : []),
+        ...(!(Lb_mm > 0) ? [{ field: fields.Lb ?? 'Lb_mm', reason: `${name} 의 비지지 길이(mm) — 브레이싱·격점 간격이 정한다. 형상만으로는 알 수 없다.` }] : []),
+      ],
+      note: '좌굴 판정 불가 — **미검토이지 안전이 아니다.**',
+    };
+  }
+  const slender = (K * Lb_mm) / r_mm;
+  const Fe = (Math.PI ** 2 * E) / slender ** 2;            // 오일러 탄성좌굴응력
+  const lim = 4.71 * Math.sqrt(E / Fy);                     // 비탄성/탄성 경계
+  const Fcr = slender <= lim ? Math.pow(0.658, Fy / Fe) * Fy : 0.877 * Fe;
+  const phiPn_kN = (0.90 * Fcr * A_mm2) / 1000;             // φc=0.90
+  const Pu = Math.abs(N_kN);
+  return {
+    name, kind: 'buckling', K, Lb_mm: Math.round(Lb_mm), r_mm: round(r_mm, 1),
+    slenderness: round(slender, 1), Fe_MPa: round(Fe, 1), Fcr_MPa: round(Fcr, 1),
+    Pu_kN: round(Pu, 1), phiPn_kN: round(phiPn_kN, 1), ratio: round(Pu / phiPn_kN, 3),
+    ok: Pu <= phiPn_kN,
+    note: `KDS 14 31 25 §4.3 · K=${K}(${K === 1.0 ? '양단 핀 가정 — 실 구속이 있으면 보수측' : '입력'})`
+      + (basis ? ` · ${basis}` : '') + ' · φc=0.90 · 국부좌굴(판폭두께비)·횡비틀림 미검토',
+  };
+}
+
+/** 정사각 중실 근사 단면의 회전반경 — r = s/√12. 실 형강이면 입력 r 이 우선한다. */
+const rSquare = (s_mm) => (s_mm > 0 ? s_mm / Math.sqrt(12) : 0);
+
+/**
+ * 부재 부품에서 **실제 평면 단면**(b×d, mm)을 읽는다. 없으면 null.
+ *
+ * ⚠ 260729b: 마스트·주탑 단면을 `mastW²`·`3000*1800` 같은 **가정·하드코딩**으로 쓰고
+ * 있었다. 실측: cable_stayed 마스트 부품은 2500×800 인데 코드는 2500²(=3.1배 과대)을
+ * 썼다 — 축응력이 1/3 로 나오고 좌굴 회전반경도 강축으로 잡혀 **양방향으로 위험측**이다.
+ * 형상에 있는 값을 가정으로 덮는 것은 지어내는 것과 같다.
+ */
+function memberSection(parts, re) {
+  const p = (parts ?? []).find((x) => re.test(String(x.id ?? '')) || re.test(String(x.role ?? '')));
+  const w = Number(p?.params?.width), d = Number(p?.params?.depth);
+  if (!(w > 0) || !(d > 0)) return null;
+  return { b: w, d, A: w * d, rMin: Math.min(w, d) / Math.sqrt(12), src: p.id ?? p.type };
+}
+
+/**
+ * 검사 목록 → 종합 판정. **ok:null(판정 불가)을 FAIL 로 세지 않는다.**
+ *
+ * ⚠ 260729b: 좌굴 검토를 추가하자 종전의 every(c => c.ok) 가 판정 불가(null)를 falsy 로
+ * 읽어 **입력이 없다는 이유로 교량이 FAIL** 이 됐다(실측: arch_bridge 는 실단면을
+ * 선언해도 FAIL). 「확인 못 함 ≠ 기준 미달」은 이 세션 내내 강제한 구별인데 verdict
+ * 계산에서 무너진 것이다 — 판정을 뒤집는 §6-G ② 형태다.
+ *
+ * 미판정은 verdict 에 영향을 주지 않는다. 대신 호출측이 unjudgedNote() 로 **건수를
+ * 고지**한다 — 영향을 안 주는 것과 없는 셈 치는 것은 다르다.
+ */
+function bridgeVerdict(checks) {
+  const judged = (checks ?? []).filter((c) => c && typeof c.ok === 'boolean');
+  if (!judged.length) return 'INPUT';   // 판정한 항목이 하나도 없다 = 통과가 아니다
+  return judged.every((c) => c.ok) ? 'PASS' : 'FAIL';
+}
+
+/** 판정 불가 항목을 이름과 함께 고지한다(없으면 null — 과고지 금지). */
+function unjudgedNote(checks) {
+  const un = (checks ?? []).filter((c) => c && c.ok === null);
+  if (!un.length) return null;
+  return {
+    count: un.length,
+    items: un.map((c) => c.name),
+    fields: [...new Set(un.flatMap((c) => (c.needInputs ?? []).map((n) => n.field)))],
+    messageKo: `판정하지 못한 항목 ${un.length}건(${un.map((c) => c.name).join(' · ')}) — `
+      + '입력이 없어 검토하지 못한 것이며 **"이상 없음"이 아니다.** 종합 판정에는 반영되지 않았다.',
+  };
+}
+
 function memberCheck(name, force_kN, A_mm2, kind, Fy = 355) {
   const sig = (Math.abs(force_kN) * 1000) / A_mm2;
   const allow = 0.6 * Fy;
@@ -347,7 +466,20 @@ export function trussBridgeCheck(assembly, params = {}) {
   const A_dg = Number(params.A_diag_mm2) > 0 ? Number(params.A_diag_mm2) : tm.diagS * tm.diagS;
   const checks = [
     memberCheck('하현재 인장(면당)', chordForce, A_ch, 'tension', Fy),
-    memberCheck('상현재 압축(면당·좌굴 미검토 명시)', -chordForce, A_ch, 'compression', Fy),
+    memberCheck('상현재 압축(면당·재료 항복)', -chordForce, A_ch, 'compression', Fy),
+    // 좌굴은 항복보다 먼저 온다 — 트러스 상현재의 면내 비지지길이는 **격점 간격**이라
+    // 형상에서 그대로 나온다(면외는 횡브레이싱 선언이 없어 요구한다).
+    bucklingCheck('상현재 좌굴(면내·격점 간격)', -chordForce, A_ch, {
+      r_mm: Number(params.r_chord_mm) > 0 ? Number(params.r_chord_mm) : rSquare(tm.chordS),
+      Lb_mm: Number(params.Lb_chord_mm) > 0 ? Number(params.Lb_chord_mm) : panelL * 1000,
+      K: Number(params.K_chord) > 0 ? Number(params.K_chord) : 1.0, Fy,
+      basis: Number(params.Lb_chord_mm) > 0 ? 'Lb=입력' : 'Lb=격점 간격(형상)',
+    }),
+    bucklingCheck('상현재 좌굴(면외·횡브레이싱 간격)', -chordForce, A_ch, {
+      r_mm: Number(params.r_chord_out_mm) > 0 ? Number(params.r_chord_out_mm) : rSquare(tm.chordS),
+      Lb_mm: Number(params.Lb_chord_out_mm), K: Number(params.K_chord) > 0 ? Number(params.K_chord) : 1.0, Fy,
+      fields: { r: 'r_chord_out_mm', Lb: 'Lb_chord_out_mm' },
+    }),
     memberCheck('단부 대각재(면당)', diagForce, A_dg, 'axial', Fy),
     // 260729 자기정합: 지간 = 패널 수 × 패널 길이(정의식). 어긋나면 형상과 제원표 중
     // 하나가 틀렸다 — 부재력 계산이 이 값들 위에 서 있으므로 먼저 걸러야 한다.
@@ -360,7 +492,8 @@ export function trussBridgeCheck(assembly, params = {}) {
     geometry: { span_m: round(L, 1), trussH_m: round(h, 2), panels: nP, panelL_m: round(panelL, 2), nLanes },
     loads: { wDC_kNm: round(wDC, 1), wDW_kNm: round(wDW, 2), wLL_kNm: round(wLL, 1), wu_kNm: round(wu, 1), combo: '극한 I 근사: 1.25DC+1.50DW+1.80LL(등가 UDL — 간이)' },
     forces: { M_kNm: round(M, 0), V_kN: round(V, 0), theta_deg: round((thD * 180) / Math.PI, 1) },
-    checks, verdict: checks.every((c) => c.ok) ? 'PASS' : 'FAIL',
+    checks, verdict: bridgeVerdict(checks),
+    ...(unjudgedNote(checks) ? { unjudged: unjudgedNote(checks) } : {}),
     assumptions: [
       '단순보 근사 M=wL²/8·V=wL/2 → 현재력=M/h·대각재=V/sinθ(단면법, 2면 분담)',
       '활하중=차로하중 12.7kN/m×차로 + 트럭 510kN/L 등가 UDL(영향선 미적용 — 보수측)',
@@ -391,17 +524,31 @@ export function cableStayedCheck(assembly, params = {}) {
   const N_mast = (wu * L) / 2;                          // 마스트 2기 각 절반 데크하중(수직 성분 합 근사)
   const Fy = params.Fy ?? 355;
   const A_stay = Number(params.A_stay_mm2) > 0 ? Number(params.A_stay_mm2) : cm.stayS ? cm.stayS * cm.stayS : 250 * 250;
-  const A_mast = Number(params.A_mast_mm2) > 0 ? Number(params.A_mast_mm2) : (cm.mastW ? cm.mastW * cm.mastW : 2500 * 2500);
+  // 형상 우선 — 가정 단면(mastW²)은 실측에서 3.1배 과대였다(memberSection 주석).
+  const mastSec = memberSection(parts, /mast|pylon/i);
+  const A_mast = Number(params.A_mast_mm2) > 0 ? Number(params.A_mast_mm2)
+    : (mastSec ? mastSec.A : (cm.mastW ? cm.mastW * cm.mastW : 2500 * 2500));
   const checks = [
     memberCheck(`스테이 장력(ᾱ=${round((alphaBar * 180) / Math.PI, 1)}°·가닥)`, T_stay, A_stay, 'tension', Fy),
-    memberCheck('마스트 축압축(기당·좌굴 미검토 명시)', -N_mast, A_mast, 'compression', Fy),
+    memberCheck('마스트 축압축(기당·재료 항복)', -N_mast, A_mast, 'compression', Fy),
+    // 마스트는 스테이가 중간을 잡아 주지만 **그 구속을 세지 않는다** — 전 높이를
+    // 비지지로 보므로 보수측이다(실 구속을 반영하려면 Lb_mast_mm 입력).
+    bucklingCheck('마스트 좌굴(전 높이 비지지 — 보수측)', -N_mast, A_mast, {
+      // 좌굴은 **약축**이 지배한다 — 실단면의 min(b,d) 로 낸다.
+      r_mm: Number(params.r_mast_mm) > 0 ? Number(params.r_mast_mm) : (mastSec ? mastSec.rMin : rSquare(cm.mastW)),
+      Lb_mm: Number(params.Lb_mast_mm) > 0 ? Number(params.Lb_mast_mm) : pylonH * 1000,
+      K: Number(params.K_mast) > 0 ? Number(params.K_mast) : 1.0, Fy,
+      basis: Number(params.Lb_mast_mm) > 0 ? 'Lb=입력' : 'Lb=파일런 전 높이(스테이 구속 미반영)',
+      fields: { r: 'r_mast_mm', Lb: 'Lb_mast_mm' },
+    }),
   ];
   return {
     ok: true, arrangement: cm.arrangement ?? 'fan',
     geometry: { mainSpan_m: round(L, 1), pylonH_m: round(pylonH, 1), nStays, nLanes },
     loads: { wDeck_kNm: round(wDeck, 1), wDW_kNm: round(wDW, 2), wLL_kNm: round(wLL, 1), wu_kNm: round(wu, 1) },
     forces: { V_stay_kN: round(V_stay, 1), N_mast_kN: round(N_mast, 0) },
-    checks, verdict: checks.every((c) => c.ok) ? 'PASS' : 'FAIL',
+    checks, verdict: bridgeVerdict(checks),
+    ...(unjudgedNote(checks) ? { unjudged: unjudgedNote(checks) } : {}),
     assumptions: [
       '스테이 1가닥=주경간 절반÷스테이 수 분담(편측·2면)·장력=수직분담/sinᾱ',
       'ᾱ=평균 스테이각 근사·마스트 축력=데크 총하중/2(수직성분 합 근사)',
@@ -432,11 +579,29 @@ export function suspensionCheck(assembly, params = {}) {
   const Fy = params.Fy ?? 500;               // 케이블 고강도(간이 — 실제는 1500+급 별도)
   const A_cable = Number(params.A_cable_mm2) > 0 ? Number(params.A_cable_mm2) : (sm.cableS ? sm.cableS * sm.cableS : 600 * 600);
   const A_hanger = Number(params.A_hanger_mm2) > 0 ? Number(params.A_hanger_mm2) : (sm.hangerS ? sm.hangerS * sm.hangerS : 150 * 150);
-  const A_tower = Number(params.A_tower_mm2) > 0 ? Number(params.A_tower_mm2) : 3000 * 1800;
+  // 형상 우선 — 종전 3000×1800 은 어디에도 근거가 없는 하드코딩이었다.
+  const towerSec = memberSection(parts, /tower|pylon|주탑/i);
+  const A_tower = Number(params.A_tower_mm2) > 0 ? Number(params.A_tower_mm2)
+    : (towerSec ? towerSec.A : 3000 * 1800);
   const checks = [
     memberCheck('주케이블 최대장력(가닥·타워부)', T_cable, A_cable, 'tension', Fy),
     memberCheck('행어 장력(가닥)', T_hanger, A_hanger, 'tension', 355),
-    memberCheck('주탑 축압축(기당·좌굴 미검토 명시)', -N_tower, A_tower, 'compression', 30),
+    memberCheck('주탑 축압축(기당·재료 항복)', -N_tower, A_tower, 'compression', 30),
+    // ⚠ 주탑은 **콘크리트**(허용 30MPa 자리)라 강재 압축식(KDS 14 31 25)을 그대로 쓸 수
+    //   없다. 세장 콘크리트 기둥은 모멘트 확대(P-δ) 문제라 다른 조항이다 — 지어내지 않고
+    //   요구한다. 강재 주탑이면 towerSteel:true 로 선언하면 강재식으로 검토한다.
+    ...(params.towerSteel === true
+      ? [bucklingCheck('주탑 좌굴(강재·전 높이 비지지 — 보수측)', -N_tower, A_tower, {
+        r_mm: Number(params.r_tower_mm) > 0 ? Number(params.r_tower_mm) : (towerSec ? towerSec.rMin : 0),
+        Lb_mm: Number(params.Lb_tower_mm) > 0 ? Number(params.Lb_tower_mm) : H * 1000,
+        K: Number(params.K_tower) > 0 ? Number(params.K_tower) : 1.0, Fy: Number(params.Fy_tower) || 355,
+        basis: 'Lb=주탑 전 높이(케이블 구속 미반영)', fields: { r: 'r_tower_mm', Lb: 'Lb_tower_mm' },
+      })]
+      : [{
+        name: '주탑 좌굴(세장효과)', kind: 'buckling', ok: null,
+        needInputs: [{ field: 'towerSteel 또는 콘크리트 기둥 제원', reason: 'RC 주탑의 세장효과는 강재 압축식이 아니라 모멘트 확대(P-δ) 조항이다 — 배근·비지지길이·단부 모멘트가 필요하다.' }],
+        note: '좌굴 판정 불가 — **미검토이지 안전이 아니다.**',
+      }]),
     // 260729 하드 기하: 주탑이 상판 위로 솟은 높이는 케이블 새그 이상이어야 한다.
     // 미달이면 케이블이 상판 아래로 처지는 형상이 된다 — 가정 없는 불가능성 검사.
     ...(Number(sm.towerAbove) > 0 && Number(sm.sag) > 0
@@ -453,7 +618,8 @@ export function suspensionCheck(assembly, params = {}) {
     geometry: { mainSpan_m: round(L, 1), sag_m: round(f, 1), sagRatio: round(f / L, 3), nLanes },
     loads: { wDeck_kNm: round(wDeck, 1), wDW_kNm: round(wDW, 2), wLL_kNm: round(wLL, 1), wu_kNm: round(wu, 1) },
     forces: { H_kN: round(H, 0), theta_deg: round((thMax * 180) / Math.PI, 1) },
-    checks, verdict: checks.every((c) => c.ok) ? 'PASS' : 'FAIL',
+    checks, verdict: bridgeVerdict(checks),
+    ...(unjudgedNote(checks) ? { unjudged: unjudgedNote(checks) } : {}),
     assumptions: [
       'H=wL²/8f 포물선 등분포 폐형·최대장력 T=H/cosθ(타워부)·행어=w·간격(1면)',
       '주탑 축력=케이블 수직성분+반력 근사·타워 σ 허용=콘크리트 0.6·30MPa 간이(강주탑은 Fy 입력)',
@@ -494,7 +660,8 @@ export function stairCheck(assembly, params = {}) {
     ok: true,
     geometry: { totalRise_m: round(rise, 2), steps: nStep, width_m: round(w, 2), tread_m: round(tread, 3), flights: sm.flights ?? 1 },
     loads: { liveKPa, note: '산업 계단 활하중 5kPa 관례(집회·대피 이상)' },
-    checks, verdict: checks.every((c) => c.ok) ? 'PASS' : 'FAIL',
+    checks, verdict: bridgeVerdict(checks),
+    ...(unjudgedNote(checks) ? { unjudged: unjudgedNote(checks) } : {}),
     assumptions: [
       '트레드=양단 스트링거 지지 단순보·등분포 활하중(자중 무시)·단면=평판 소성 Z=bt²/4(절곡/립 보강 미반영 — 보수측 과대응력)',
       '스트링거=경사 단순보·하중=계단 전체 활하중÷2본·직사각 소성 Z(간이)',

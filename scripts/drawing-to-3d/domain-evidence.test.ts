@@ -99,10 +99,23 @@ describe('판정 0개의 이유를 뭉개지 않는다', () => {
 
   it('★countJudged 는 `ok` 필드 검사도 센다 — 안 세면 판정하는 템플릿이 0개로 고지된다', () => {
     // 교량·조경 검사 항목은 `pass` 가 아니라 `ok` 를 쓴다({name, ok:true}).
-    // 첫 구현이 `pass` 만 세는 바람에 girder_bridge 가 바닥판 폭을 판정하고도
-    // "판정 0개"로 나갔다 — 내가 고치려던 결함의 거울상이라 회귀로 박는다.
-    const v = verdict('bridge', 'girder_bridge');
+    // 첫 구현이 `pass` 만 세는 바람에 실판정하는 템플릿이 "판정 0개"로 나갔다 —
+    // 고치려던 결함의 거울상이라 회귀로 박는다.
+    const v = verdict('bridge', 'truss_bridge');   // 하현재 인장·상현재 압축·단부 대각재
     expect(v?.judged).toBeGreaterThan(0);
     expect(v?.evidenceSufficient).toBe(true);
+  });
+
+  it('★그러나 자기정합은 안전 판정이 아니다 — 260729b 정정', () => {
+    // ⚠ 이 테스트는 원래 `girder_bridge` 로 "판정 0개가 아니다"를 고정하고 있었다.
+    //   **그 전제가 틀렸다.** girder_bridge 의 유일한 검사는 "바닥판 폭 자기정합"
+    //   (`kind:'self-consistency'`)이고, 그것은 형상이 자기모순이 아니라는 뜻이지
+    //   구조가 안전하다는 뜻이 아니다. 그 하나로 evidenceSufficient 가 충족돼
+    //   **실판정 0개인 교량이 「이상 없음」으로 나가고 있었다** — 안전망이 범주 오류로
+    //   뚫린 자리다. 이제 안전 판정 분모에서 빼므로 「판정 불가」로 드러난다.
+    const v = verdict('bridge', 'girder_bridge');
+    expect(v?.judged).toBe(0);
+    expect(v?.evidenceSufficient).toBe(false);
+    expect(v?.unavailable?.join(' ')).toContain('입력 대기');   // 대상 없음이 아니다
   });
 });

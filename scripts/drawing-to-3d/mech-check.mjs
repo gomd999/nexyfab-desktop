@@ -274,8 +274,111 @@ function spanCheck(label, { count, pitch, span, countKo, pitchKo, spanKo }) {
  * @param {object} assembly
  * @returns {{ok:boolean,label:string,checks?:object,needInputs?:object[]}|null}
  */
-export function mechCheck(assembly) {
+
+import { structuralCheck } from './structural.mjs';
+
+/**
+ * 정적 전도 검토 (260729b, P1-5) — **중력만** 쓴다.
+ *
+ * `structuralCheck` 는 `tipover`(무게중심 ↔ 지지 다각형)를 이미 계산하는데 **기계 판정에
+ * 한 번도 들어가지 않았다.** 실측: conveyor 지진 FS 0.81 · tower_crane 0.05 인데
+ * 안전 판정에는 아무것도 안 나왔다 — 있는 계산이 소비자 판정에 안 닿는 자리(§6-G ⑤).
+ *
+ * ⚠ **지진 전도는 판정하지 않는다.** `structuralCheck` 의 `seismicG` 기본값 0.5 는
+ * 지역·지반이 정하는 값을 코드가 채운 **가정**이다. 그 위에 합·불을 얹으면 지어낸 값에
+ * 선 판정이 된다(이 세션에서 반복해 잡아낸 형태 ③). 선언되면 판정하고, 아니면 요구한다.
+ *
+ * 정적 전도는 다르다 — 중력과 형상만으로 결정되므로 가정이 없다.
+ */
+function tipoverCheck(assembly, params = {}) {
+  let st = null;
+  // ⚠ 이 catch 가 **import 누락(ReferenceError)을 조용히 삼켜** 전도 검토가 통째로
+  //   사라진 채 「해당 없음」으로 보였다(260729b 실측 — 이 세션 주제 그대로다).
+  //   실패는 삼키지 말고 이유를 남긴다.
+  try { st = structuralCheck(assembly, params.seismicG > 0 ? { seismicG: Number(params.seismicG) } : {}); }
+  catch (e) {
+    return {
+      staticTipover: {
+        labelKo: '정적 전도', pass: null,
+        detail: [`질량·지지 산출 실패로 전도를 판정하지 못했다: ${String(e?.message ?? e).slice(0, 90)}`],
+      },
+    };
+  }
+  const t = st?.tipover;
+  if (!t || typeof t !== 'object') return null;
+  const out = {};
+  const ang = Number(t.staticAngleDeg), edge = Number(t.edgeDistMm);
+  // `edgeDistMm` 은 밖으로 나가도 0 으로 잘린다 — 「정확히 경계」와 「크게 벗어남」이
+  // 같은 값이 된다. 지지점과 CG 로 **얼마나** 벗어났는지 직접 낸다(형상·질량만 쓴다).
+  let outside = null;
+  const sup = Array.isArray(st?.supports) ? st.supports.map((x) => x.pos).filter(Array.isArray) : [];
+  const cg = Array.isArray(st?.cgWorldMm) ? st.cgWorldMm : null;
+  if (sup.length >= 2 && cg) {
+    const xs = sup.map((q) => q[0]), ys = sup.map((q) => q[1]);
+    const dx = Math.max(Math.min(...xs) - cg[0], cg[0] - Math.max(...xs), 0);
+    const dy = Math.max(Math.min(...ys) - cg[1], cg[1] - Math.max(...ys), 0);
+    if (dx > 0 || dy > 0) outside = { dx: +dx.toFixed(1), dy: +dy.toFixed(1) };
+  }
+  if (Number.isFinite(ang) && Number.isFinite(edge)) {
+    // 무게중심이 지지 다각형 안에 있어야 스스로 서 있다. edgeDist>0 = 안쪽.
+    out.staticTipover = {
+      labelKo: '정적 전도 — 무게중심이 지지 범위 안에 있는가',
+      pass: edge > 0,
+      detail: [
+        `무게중심에서 지지 가장자리까지 ${edge.toFixed(1)}mm · 전도 개시 경사 ${ang.toFixed(1)}°`,
+        `지지 기준: ${String(t.supportBasis ?? '접지 부품 footprint')}`,
+        ...(edge > 0 ? [] : [
+          outside
+            ? `**무게중심이 지지 범위를 ${[outside.dx ? `X ${outside.dx}mm` : '', outside.dy ? `Y ${outside.dy}mm` : ''].filter(Boolean).join(' · ')} 벗어났다 — 고정하지 않으면 넘어진다.**`
+            : '**무게중심이 지지 범위 경계에 있거나 벗어났다 — 고정하지 않으면 넘어진다.**',
+          '⚠ 로봇 암·링크 기구처럼 **바닥에 앵커로 고정하는 장비**라면 이 검토는 해당하지 않는다 '
+          + '— 고정 여부는 형상에 없으므로 여기서는 자립을 기준으로 본다.',
+        ]),
+      ],
+      note: '중력·형상만으로 결정 — 가정 없음. 앵커·볼트 고정은 반영하지 않았다(고정하면 이 검토는 무의미).',
+    };
+  } else {
+    out.staticTipover = {
+      labelKo: '정적 전도', pass: null,
+      detail: ['지지점을 잡지 못해 전도를 판정하지 못했다 — 접지 부품이 없거나 지지 다각형이 퇴화했다.'],
+    };
+  }
+  // 지진 전도: 선언이 있을 때만 판정한다.
+  if (Number(params.seismicG) > 0) {
+    const fs = Number(t.seismicFS);
+    out.seismicTipover = {
+      labelKo: `지진 전도 (선언 ${params.seismicG}g)`,
+      pass: Number.isFinite(fs) ? fs >= 1.0 : null,
+      detail: [Number.isFinite(fs) ? `전도 안전율 FS = ${fs.toFixed(2)} (1.0 이상 필요)` : '산출 불가'],
+    };
+  } else {
+    out.seismicTipover = {
+      labelKo: '지진 전도', pass: null,
+      needInputs: [{ name: 'seismicG', labelKo: '설계 지반가속도(g) — 지역·지반이 정하는 값이라 형상에서 알 수 없다' }],
+      detail: ['지진 전도는 **판정하지 않았다.** 지반가속도를 지어내면 그 위에 선 판정이 전부 근거를 잃는다.'],
+    };
+  }
+  return out;
+}
+
+/** 기존 결과에 전도 검토를 덧붙인다(결과가 없으면 전도만으로 결과를 만든다). */
+function withTipover(result, assembly, params) {
+  const tip = tipoverCheck(assembly, params);
+  if (!tip) return result;
+  // ⚠ 적용 가능한 검사가 하나도 없으면(=null) **전도만으로 결과를 만들지 않는다.**
+  //   배관 부속(flanged_fitting)처럼 배관에 매달리는 것에 「자립 전도」는 무의미하고,
+  //   「검증 없음」과 「검증했는데 통과」의 구별도 무너진다 — 기존 계약이 이걸 잡았다.
+  if (!result) return null;
+  return { ...result, checks: { ...(result.checks ?? {}), ...tip } };
+}
+
+export function mechCheck(assembly, params = {}) {
   if (!assembly || typeof assembly !== 'object') return null;
+  // 전도는 **모든 기계 어셈블리**에 해당한다 — 메타 유무와 무관하게 붙인다.
+  return withTipover(mechCheckInner(assembly, params), assembly, params);
+}
+
+function mechCheckInner(assembly, params = {}) {
   if (assembly.gearMeta) return checkGear(assembly.gearMeta);
   if (assembly.hxMeta) return checkHeatExchanger(assembly.hxMeta);
   if (assembly.robotMeta) return checkRobot(assembly.robotMeta);

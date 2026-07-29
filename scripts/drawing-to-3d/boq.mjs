@@ -109,6 +109,32 @@ function surfaceMm2(type, p) {
       const arc = 2 * Math.PI * p.bendR * ((p.angleDeg ?? 90) / 360);
       return arc * Math.PI * (p.od + id) + 2 * A * (p.od ** 2 - id ** 2);
     }
+    /**
+     * 회전체 표면적 — **파푸스 제1정리**(폐형). 260729b.
+     *
+     * 부피는 파푸스 제2정리(2π·r̄·A)로 이미 폐형이 서 있었는데 표면적만 미산출로 남아
+     * 있었다. 같은 정리의 짝이라 함께 설 수 있다:
+     *   측면적 = 2π · r̄_line · L_line  (프로파일 **윤곽선**의 도심·길이 — 면이 아니다)
+     * 회전축(r=0)에 붙은 세그먼트는 회전해도 면적이 0 이므로 자연히 빠진다.
+     * 부분 회전(angleDeg<360)이면 **절단 단면 2장**을 더한다.
+     */
+    case 'revolve': {
+      const prof = p.profile ?? [];
+      if (prof.length < 3) return null;
+      let lineMoment = 0, lineLen = 0, area2 = 0;
+      for (let i = 0; i < prof.length; i++) {
+        const [r1, z1] = prof[i], [r2, z2] = prof[(i + 1) % prof.length];
+        const seg = Math.hypot(r2 - r1, z2 - z1);
+        lineLen += seg;
+        lineMoment += ((r1 + r2) / 2) * seg;   // 세그먼트 도심 r × 길이
+        area2 += r1 * z2 - r2 * z1;
+      }
+      if (!(lineLen > 0)) return null;
+      const frac = Math.min(360, Math.max(1, Number(p.angleDeg) || 360)) / 360;
+      const lateral = 2 * Math.PI * lineMoment * frac;   // = 2π·r̄·L (r̄=lineMoment/lineLen)
+      const capArea = Math.abs(area2) / 2;
+      return lateral + (frac < 1 ? 2 * capArea : 0);
+    }
     // ⚠ 아래는 폐형이 서지 않는다 — **0 이 아니라 미산출**(computeBOQ 가 이름으로 고지).
     //   pipe_tee(접합부 교선) · pillow_block(렌즈 보어) · cavity_block(재귀 음형) ·
     //   revolve/mesh(임의 형상). 메시 실면적은 삼각형 합으로 낼 수 있으나 부피와 달리

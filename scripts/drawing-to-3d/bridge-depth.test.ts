@@ -89,3 +89,53 @@ describe('출하 교량 전종 — 신규 오탐 0', () => {
     expect(total / n).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe('압축재 좌굴 (260729b) — 명시가 검토를 대신하지 못한다', () => {
+  const chk = async (id: string, fn: string, p: Record<string, unknown> = {}) => {
+    const bc = await import('./bridge-check.mjs');
+    const f = (bc as unknown as Record<string, (a: unknown, p: unknown) => { checks?: Array<Record<string, unknown>> }>)[fn];
+    return (f(buildAssemblyTemplate('bridge', id, {}), p).checks ?? []);
+  };
+
+  it('트러스 상현재는 격점 간격으로 면내 좌굴을 실제 판정한다', async () => {
+    const b = (await chk('truss_bridge', 'trussBridgeCheck')).find((c) => /면내/.test(String(c.name)));
+    expect(b?.ok).toBe(true);
+    expect(Number(b?.slenderness)).toBeGreaterThan(0);
+    expect(String(b?.note)).toContain('KDS 14 31 25');
+  });
+
+  it('면외 좌굴은 횡브레이싱 간격을 요구한다 — 지어내지 않는다', async () => {
+    const b = (await chk('truss_bridge', 'trussBridgeCheck')).find((c) => /면외/.test(String(c.name)));
+    expect(b?.ok).toBeNull();                       // 판정 불가 ≠ 통과
+    // 필드명은 **부재별**이다 — 전부 `Lb_mm` 이면 어느 부재의 값인지 알 수 없다.
+    expect(JSON.stringify(b?.needInputs)).toContain('Lb_chord_out_mm');
+    expect(String(b?.note)).toContain('미검토이지 안전이 아니다');
+  });
+
+  it('마스트 단면을 **형상에서** 읽는다 — 가정 단면은 3.1배 과대였다', async () => {
+    const c = (await chk('cable_stayed_bridge', 'cableStayedCheck')).find((x) => /마스트 축압축/.test(String(x.name)));
+    expect(c?.A_mm2).toBe(2500 * 800);              // 부품 실단면. 종전엔 2500² 를 썼다.
+  });
+
+  it('좌굴이 항복보다 지배적이다 — 좌굴을 빼면 여유를 6배 과대평가한다', async () => {
+    const cs = await chk('cable_stayed_bridge', 'cableStayedCheck');
+    const yield_ = cs.find((x) => /마스트 축압축/.test(String(x.name)));
+    const buck = cs.find((x) => /마스트 좌굴/.test(String(x.name)));
+    expect(Number(buck?.ratio)).toBeGreaterThan(Number(yield_?.ratio) * 3);
+  });
+
+  it('RC 주탑에 강재 압축식을 들이대지 않는다 — 다른 조항이다', async () => {
+    const b = (await chk('suspension_bridge', 'suspensionCheck')).find((c) => /주탑 좌굴/.test(String(c.name)));
+    expect(b?.ok).toBeNull();
+    expect(JSON.stringify(b?.needInputs)).toContain('towerSteel');
+    const steel = (await chk('suspension_bridge', 'suspensionCheck', { towerSteel: true }))
+      .find((c) => /주탑 좌굴/.test(String(c.name)));
+    expect(typeof steel?.ok).toBe('boolean');       // 강재로 선언하면 판정한다
+  });
+
+  it('아치 리브 좌굴장은 형상에서 정할 수 없다 — 요구한다', async () => {
+    const b = (await chk('arch_bridge', 'archBridgeCheck')).find((c) => /리브 좌굴/.test(String(c.name)));
+    expect(b?.ok).toBeNull();
+    expect(JSON.stringify(b?.needInputs)).toContain('Lb_rib_mm');
+  });
+});

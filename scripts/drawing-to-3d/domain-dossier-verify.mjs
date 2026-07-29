@@ -293,8 +293,28 @@ function renderGenericCheckTree(node, depth = 0) {
   }
   const skip = new Set(['verdict', 'pass', 'refs', 'error', 'note']);
   const parts = [];
-  if (typeof node.verdict === 'string') parts.push(`<div>판정: ${badge(node.verdict)}</div>`);
+  // ⚠ `INPUT`(입력 대기)은 **판정이 아니다.** "판정: INPUT" 으로 찍으면 판정 개수에도
+  //   세어지고 소비자에게도 판정처럼 보인다 — 이 세션 내내 강제한 구별이 표시에서 무너진다.
+  // ⚠ 표식은 `'INPUT'` 뿐 아니라 **`'INPUT(footing)'` 같은 괄호형**도 쓴다(rc_frame 실측).
+  //   엄밀 비교만 하면 그런 것들이 "판정: INPUT(footing)" 으로 판정처럼 찍힌다.
+  // ⚠ 정규식 대신 startsWith — 여기 단어경계를 쓰려다 셸·파이썬 이스케이프를 거치며
+  //   **백스페이스 제어문자(0x08)** 가 파일에 박혀 정규식이 조용히 안 맞았다(실측:
+  //   girder_bridge 가 계속 "판정: INPUT" 으로 찍혔다). 문자열 API 가 이런 사고를 안 만든다.
+  if (typeof node.verdict === 'string' && node.verdict.startsWith('INPUT')) {
+    parts.push('<div class="card warn"><b>입력 대기 — 판정하지 않음</b>'
+      + (node.verdict !== 'INPUT' ? ` <span class="note">(${esc(node.verdict)})</span>` : '')
+      + (Array.isArray(node.needInputs) && node.needInputs.length
+        ? `: ${node.needInputs.map((x) => escMd(x.reason ?? x.labelKo ?? x.field ?? x.name ?? '')).join(' · ')}`
+        : '') + '</div>');
+  } else if (typeof node.verdict === 'string') parts.push(`<div>판정: ${badge(node.verdict)}</div>`);
   else if (typeof node.pass === 'boolean') parts.push(`<div>판정: ${node.pass ? '적합 ✓' : '검토 ✕'}</div>`);
+  // ⚠ 260729b: **교량 검사는 전부 `ok` 를 쓴다.** `pass` 만 그리던 탓에 타이 인장·행어
+  //   장력·주케이블 장력 같은 **실판정 2~4건이 문서에서 합·불 없이** 나갔다(값만 나감).
+  //   실측: suspension 4건 중 1건, arch·truss 3건 중 1건만 배지가 찍혔다(§6-G ⑤).
+  //   ⚠ 이름 없는 `ok` 는 그리지 않는다 — 루트 결과·어셈블리 게이트가 판정으로 오인된다.
+  else if (typeof node.ok === 'boolean' && (typeof node.name === 'string' || typeof node.labelKo === 'string')) {
+    parts.push(`<div>판정: ${node.ok ? '적합 ✓' : '검토 ✕'}${isSelfConsistency(node) ? ' <span class="note">(형상 자기정합 — 안전 판정 아님)</span>' : ''}</div>`);
+  }
   const scalarEntries = Object.entries(node).filter(
     ([k, v]) => !skip.has(k) && (typeof v === 'number' ? Number.isFinite(v) : typeof v === 'string' || typeof v === 'boolean' || v === null),
   );
@@ -348,11 +368,29 @@ function collectFailingChecks(node, key) {
  *
  * pass:null(판정 보류)은 세지 않는다 — 그것도 "판정한 것"이 아니다.
  */
+/**
+ * 검사 노드가 **형상 자기정합**인가. 안전 판정이 아니다.
+ *
+ * ⚠ 260729b: `girder_bridge` 는 실판정이 0인데 "바닥판 폭 자기정합"
+ * (`kind:'self-consistency'`) 하나로 `evidenceSufficient` 가 충족돼 **「이상 없음」으로
+ * 나갔다.** 바닥판 폭이 선언값과 맞는다는 것은 형상이 자기모순이 아니라는 뜻이지
+ * 구조가 안전하다는 뜻이 아니다 — 앞 세션에 넣은 「판정 0개는 통과가 아니다」 안전망이
+ * **범주 오류로 뚫린 자리**다. 세지 않는 게 아니라 **다른 칸에 센다.**
+ */
+function isSelfConsistency(node) {
+  const k = typeof node?.kind === 'string' ? node.kind : '';
+  if (/self[-_ ]?consistency/i.test(k)) return true;
+  const nm = typeof node?.name === 'string' ? node.name : (typeof node?.labelKo === 'string' ? node.labelKo : '');
+  return /자기정합/.test(nm);
+}
+
 function countJudged(node) {
   if (node == null || typeof node !== 'object') return 0;
   if (Array.isArray(node)) return node.reduce((s, x) => s + countJudged(x), 0);
   let n = 0;
-  if (node.pass === true || node.pass === false) n += 1;
+  if (isSelfConsistency(node)) {
+    // 자기정합은 안전 판정 분모에서 뺀다. 하위 노드는 계속 훑는다(중첩 가능).
+  } else if (node.pass === true || node.pass === false) n += 1;
   else if (node.verdict === 'PASS' || node.verdict === 'FAIL') n += 1;
   // ⚠ 260729 정정: 교량·조경 검사 항목은 `pass` 가 아니라 **`ok`** 를 쓴다
   // (예: {name:'바닥판 폭 자기정합', ok:true}). `pass` 만 세던 첫 구현은 이들을
@@ -364,6 +402,18 @@ function countJudged(node) {
   for (const [k, v] of Object.entries(node)) {
     if (k === 'refs' || k === 'error' || k === 'note' || k === 'inputsEcho') continue;
     if (v && typeof v === 'object') n += countJudged(v);
+  }
+  return n;
+}
+
+/** 자기정합 검사 건수 — 「안전 판정 M건 · 자기정합 N건」으로 나눠 보고하기 위한 것. */
+function countSelfConsistency(node) {
+  if (node == null || typeof node !== 'object') return 0;
+  if (Array.isArray(node)) return node.reduce((s, x) => s + countSelfConsistency(x), 0);
+  let n = isSelfConsistency(node) && (node.ok === true || node.ok === false || node.pass === true || node.pass === false) ? 1 : 0;
+  for (const [k, v] of Object.entries(node)) {
+    if (k === 'refs' || k === 'error' || k === 'note' || k === 'inputsEcho') continue;
+    if (v && typeof v === 'object') n += countSelfConsistency(v);
   }
   return n;
 }
@@ -540,7 +590,9 @@ export function domainSafetyReportHtml(assembly, { title = '안전검토', param
   const r = run.result;
   const body =
     r && r.ok === false
-      ? `<div class="card warn">검토 불가: ${esc(r.error ?? r.gateError ?? '알 수 없는 사유')}</div>`
+      // escMd — 260729b 실측: 이 분기만 esc 라 steel_canopy 의 `**풍 상향력이 지배**` 가
+      // 원문 그대로 샜다. 강조 처리는 **모든 문자열 출구**를 통과해야 한다.
+      ? `<div class="card warn">검토 불가: ${escMd(r.error ?? r.gateError ?? '알 수 없는 사유')}</div>`
       : renderGenericCheckTree(r) || '<div class="note">산출된 세부 검토값이 없습니다.</div>';
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)} — 안전검토</title>
 <style>@page{size:A4 portrait;margin:12mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937;font-size:13px}

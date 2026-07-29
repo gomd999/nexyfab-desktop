@@ -225,16 +225,64 @@ describe('mech 판정 깊이 확장 (260729) — 미사용 선언값의 자기�
     });
   });
 
-  it('출하 mech 템플릿 전종 오탐 0 — 판정 평균 2.4', () => {
-    let total = 0, judged = 0, failed = 0;
+  it('출하 mech 템플릿 — 오탐 0(전도 2건은 실측 확인된 진짜 신호)', () => {
+    let total = 0, judged = 0;
+    const failedKeys: string[] = [];
     for (const t of (listTemplates as unknown as (d: string) => { id: string }[])('mech')) {
       const r = check(tpl('mech', t.id, {}));
       if (!r || r.ok === false) continue;
       const ks = Object.entries(r.checks ?? {});
       judged += 1; total += ks.length;
-      failed += ks.filter(([, c]) => c.pass === false).length;
+      for (const [k, c] of ks) if (c.pass === false) failedKeys.push(`${t.id}.${k}`);
     }
-    expect(failed).toBe(0);
+    // ⚠ 260729b: 전도 검토를 배선하자 four_bar·robot_arm 이 걸렸다. **오탐이 아니다** —
+    //   좌표로 확인했다: four_bar CG y=88.4 vs 지지 y∈[-20,20] · robot_arm CG x=332.5 vs
+    //   지지 x∈[-170,170]. 팔·링크가 뻗은 자세라 무게중심이 베이스 밖으로 나간다.
+    //   실제 장비는 앵커로 고정하므로 검토 문구가 그 사실을 함께 밝힌다.
+    expect(failedKeys.sort()).toEqual(['four_bar.staticTipover', 'robot_arm.staticTipover']);
     expect(total / judged).toBeGreaterThan(2);
+  });
+});
+
+describe('정적 전도 — 있는 계산이 판정에 닿는다 (260729b, P1-5)', () => {
+  const chk = (id: string, p: unknown = {}) =>
+    (_mc as unknown as (a: unknown, p: unknown) => { checks?: Record<string, {
+      pass: boolean | null; labelKo?: string; detail?: string[]; needInputs?: { name: string }[] }> } | null)(
+      (_bt as unknown as (d: string, i: string, p: unknown) => unknown)('mech', id, {}), p);
+
+  it('전 기계 템플릿에 전도 검토가 붙는다 — 메타 유무와 무관하다', () => {
+    for (const id of ['tower_crane', 'conveyor', 'gear_train', 'mold_cavity']) {
+      expect(chk(id)?.checks?.staticTipover, id).toBeDefined();
+    }
+    // ⚠ 적용 검사가 없는 것(배관 부속)에는 붙이지 않는다 — 「검증 없음」과 「통과」의 구별.
+    expect(chk('flanged_fitting')).toBeNull();
+  });
+
+  it('무게중심이 지지 밖이면 **얼마나** 벗어났는지 적는다', () => {
+    // edgeDistMm 은 밖으로 나가도 0 으로 잘려 「경계」와 「크게 벗어남」이 같은 값이 된다.
+    const d = chk('robot_arm')?.checks?.staticTipover;
+    expect(d?.pass).toBe(false);
+    expect(d?.detail?.join(' ')).toMatch(/X 16[0-9.]+mm 벗어났다/);
+    // 앵커 고정 장비면 해당 없음이라는 사실도 함께 적는다 — 과탐으로 읽히지 않게.
+    expect(d?.detail?.join(' ')).toContain('앵커로 고정하는 장비');
+  });
+
+  it('지진 전도는 판정하지 않는다 — seismicG 0.5 는 코드가 채운 가정이다', () => {
+    const s = chk('conveyor')?.checks?.seismicTipover;
+    expect(s?.pass).toBeNull();
+    expect(s?.needInputs?.[0].name).toBe('seismicG');
+    expect(s?.detail?.join(' ')).toContain('지어내면');
+  });
+
+  it('지반가속도를 선언하면 그때 판정한다', () => {
+    const s = chk('conveyor', { seismicG: 0.22 })?.checks?.seismicTipover;
+    expect(typeof s?.pass).toBe('boolean');
+    expect(s?.labelKo).toContain('0.22g');
+  });
+
+  it('지지점을 못 잡으면 「판정 불가」 — 통과가 아니다', () => {
+    const d = chk('machine_line')?.checks?.staticTipover;
+    expect(d?.pass).toBeNull();
+    expect(d?.detail?.join(' ')).toContain('판정하지 못했다');
   });
 });

@@ -536,6 +536,70 @@ function retainingWallAlignmentAssembly(p) {
   };
 }
 
+/**
+ * 변단면(헌치) 연속 거더교 — 지점부에서 춤이 커지는 실무 형식.
+ *
+ * `tapered_girder` 어휘(260729 신설)의 **첫 실사용 경로**다. 어휘를 등록·검증만 해 두고
+ * 어느 템플릿도 방출하지 않으면 실사용에서 무엇이 깨지는지 알 수 없다.
+ *
+ * 연속교의 헌치는 **지점부 부모멘트**가 크기 때문에 생긴다 — 경간 중앙은 얕고 지점은 깊다.
+ * 각 경간을 반씩 나눠 중앙→지점으로 춤이 커지는 두 조각으로 낸다(선형 헌치, 실무 관례).
+ * ⚠ 국소축이 i_girder 와 다르다(x=스팬·y=춤·z=폭) — rx=90 으로 세워 배치한다.
+ */
+function taperedGirderBridgeAssembly(p = {}) {
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const span = num(p.span, 40000);
+  const nSpans = Math.max(2, Math.min(6, Math.round(num(p.nSpans, 3))));
+  const n = Math.max(2, Math.min(8, Math.round(num(p.nGirders, 3))));
+  const s = num(p.girderSpacing, 3000);
+  const hMid = num(p.girderHmid, 1600), hSup = num(p.girderHsup, 2800);
+  const dt = num(p.deckThk, 250), oh = num(p.overhang, 1200);
+  const deckW = s * (n - 1) + 2 * oh;
+  const topW = Math.round(0.35 * hSup), botW = Math.round(0.30 * hSup);
+  const ft = Math.round(0.10 * hSup), webT = Math.max(200, Math.round(0.08 * hSup));
+  const webMid = Math.max(100, hMid - 2 * ft), webSup = Math.max(100, hSup - 2 * ft);
+  const half = span / 2;
+  const parts = [];
+  for (let g = 0; g < n; g++) {
+    const y = oh + g * s;
+    for (let k = 0; k < nSpans; k++) {
+      const x0 = k * span;
+      // 경간 전반: 지점(깊음) → 중앙(얕음) · 후반: 중앙(얕음) → 지점(깊음)
+      for (const [i, [tx, h1, h2]] of [[x0, webSup, webMid], [x0 + half, webMid, webSup]].entries()) {
+        parts.push({
+          id: `tg_${k + 1}_${g + 1}_${i + 1}`, role: 'girder', type: 'tapered_girder', material: 'SM355',
+          params: { length: half, topW, topT: ft, webT, webH1: h1, webH2: h2, botW, botT: ft },
+          // x=스팬 · y=춤 · z=폭 → rx=90 으로 세워 z(폭)를 교축직각(y)으로 보낸다.
+          at: { tx, ty: y + topW / 2, tz: 0, rx: 90 },
+        });
+      }
+    }
+  }
+  // 바닥판(경간별) + 교각 상부 가로보
+  for (let k = 0; k < nSpans; k++) {
+    parts.push({
+      id: `deck_${k + 1}`, role: 'deck', type: 'box', material: 'concrete',
+      params: { width: span, depth: deckW, height: dt },
+      at: { tx: k * span, ty: 0, tz: hSup },
+    });
+  }
+  for (let k = 0; k <= nSpans; k++) {
+    parts.push({
+      id: `crossbeam_${k + 1}`, role: 'crossbeam', type: 'box', material: 'SM355',
+      params: { width: 400, depth: s * (n - 1), height: 900 },
+      at: { tx: Math.max(0, k * span - 200), ty: oh + topW / 2, tz: hSup - 900 },
+    });
+  }
+  return {
+    name: '변단면 연속 거더교', domain: 'bridge', parts,
+    bridgeMeta: {
+      span: span, nGirders: n, girderSpacing: s, girderH: hSup, deckThk: dt, overhang: oh, deckW,
+      section: { webT, b: webT, h: hSup },
+      haunch: { hMid, hSup, nSpans, note: '변단면 — 지점부 춤이 경간 중앙보다 크다(부모멘트 대응)' },
+    },
+  };
+}
+
 /** 거더교 (단순경간): 바닥판 + I형 거더 N본 + 가로보 3열. role: deck/girder/crossbeam */
 function girderBridgeAssembly(p = {}) {
   const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
@@ -3347,6 +3411,19 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'girderH', labelKo: '거더 춤(플랜지 포함)', unit: 'mm', default: 1800, min: 800, max: 3500 },
         { name: 'deckThk', labelKo: '바닥판 두께', unit: 'mm', default: 240, min: 180, max: 400 },
         { name: 'overhang', labelKo: '캔틸레버 내민길이', unit: 'mm', default: 1100, min: 500, max: 2500 },
+      ],
+    },
+    {
+      id: 'tapered_girder_bridge', labelKo: '변단면 연속 거더교 (헌치)', labelEn: 'Haunched continuous girder bridge', build: taperedGirderBridgeAssembly,
+      params: [
+        { name: 'span', labelKo: '경간장', unit: 'mm', default: 40000, min: 20000, max: 60000 },
+        { name: 'nSpans', labelKo: '경간 수', unit: '', default: 3, min: 2, max: 6 },
+        { name: 'nGirders', labelKo: '거더 수', unit: '', default: 3, min: 2, max: 8 },
+        { name: 'girderSpacing', labelKo: '거더 간격', unit: 'mm', default: 3000, min: 1500, max: 4500 },
+        { name: 'girderHmid', labelKo: '경간 중앙 웨브 춤', unit: 'mm', default: 1600, min: 800, max: 3000 },
+        { name: 'girderHsup', labelKo: '지점부 웨브 춤', unit: 'mm', default: 2800, min: 1000, max: 4000 },
+        { name: 'deckThk', labelKo: '바닥판 두께', unit: 'mm', default: 250, min: 180, max: 400 },
+        { name: 'overhang', labelKo: '캔틸레버 내민길이', unit: 'mm', default: 1200, min: 500, max: 2500 },
       ],
     },
     {

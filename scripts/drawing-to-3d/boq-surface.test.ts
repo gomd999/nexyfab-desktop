@@ -99,3 +99,45 @@ describe('리포트 — 미산출이 숫자처럼 보이지 않는다', () => {
     expect(html).toContain('pipe_tee');
   });
 });
+
+describe('회전체 표면적 — 파푸스 제1정리 (260729b)', () => {
+  const rev = (profile: number[][], angleDeg = 360) =>
+    boq([P('r', 'revolve', { profile, angleDeg })]).items[0].surfaceM2!;
+
+  it('원기둥이 해석해와 일치 — 2πRH + 2πR²', () => {
+    const R = 50, H = 200;
+    expect(rev([[0, 0], [R, 0], [R, H], [0, H]]))
+      .toBeCloseTo((2 * Math.PI * R * H + 2 * Math.PI * R * R) / 1e6, 3);
+  });
+
+  it('원뿔대가 해석해와 일치 — π(r1+r2)·모선 + 양 단면', () => {
+    const r1 = 40, r2 = 20, h = 100, sl = Math.hypot(h, r1 - r2);
+    expect(rev([[0, 0], [r1, 0], [r2, h], [0, h]]))
+      .toBeCloseTo((Math.PI * (r1 + r2) * sl + Math.PI * r1 * r1 + Math.PI * r2 * r2) / 1e6, 3);
+  });
+
+  it('부분 회전은 절단 단면 2장을 더한다', () => {
+    const full = rev([[0, 0], [50, 0], [50, 200], [0, 200]]);
+    const half = rev([[0, 0], [50, 0], [50, 200], [0, 200]], 180);
+    // 측면은 절반이지만 절단면 2장이 붙으므로 정확히 절반보다 크다.
+    expect(half).toBeGreaterThan(full / 2);
+    expect(half).toBeLessThan(full);
+  });
+
+  it('회전축에 붙은 세그먼트는 면적에 기여하지 않는다 — r̄ 가 자동으로 처리한다', () => {
+    // [0,0]→[0,H] 구간은 r=0 이라 회전해도 면적 0.
+    const withAxis = rev([[0, 0], [50, 0], [50, 200], [0, 200]]);
+    expect(Number.isFinite(withAxis)).toBe(true);
+    expect(withAxis).toBeGreaterThan(0);
+  });
+
+  it('미산출 어휘가 7종 → 2종으로 줄었다', async () => {
+    const m = await import('./domain-assemblies.mjs');
+    const build = m.buildAssemblyTemplate as unknown as (d: string, i: string, p: unknown) => unknown;
+    const missing = new Set<string>();
+    for (const id of ['pump_unit', 'gate_valve', 'tank_silo', 'pressure_vessel', 'mold_cavity', 'propeller']) {
+      for (const t of boq((build('mech', id, {}) as { parts: unknown[] }).parts).surfaceMissing ?? []) missing.add(t);
+    }
+    expect([...missing].sort()).toEqual(['cavity_block', 'mesh']);   // revolve 5종이 빠졌다
+  });
+});
