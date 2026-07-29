@@ -106,12 +106,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!rl.allowed) return NextResponse.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429 });
 
   let assembly: Assembly, options: Record<string, unknown>;
+  let verifyParams: Record<string, unknown> = {};
   let tpl: { templateId?: string; domain?: string; params?: Record<string, unknown> } = {};
   try {
-    const body = (await req.json()) as { assembly?: Assembly; options?: Record<string, unknown>; templateId?: string; domain?: string; params?: Record<string, unknown> };
+    const body = (await req.json()) as { assembly?: Assembly; options?: Record<string, unknown>; templateId?: string; domain?: string; params?: Record<string, unknown>; verifyParams?: Record<string, unknown> };
     assembly = body.assembly ?? {};
     options = body.options ?? {};
     if (typeof body.templateId === 'string') tpl = { templateId: body.templateId, domain: body.domain, params: body.params };
+    // ⚠ 260729: 안전검토·코드대조에 **params 를 한 번도 넘기지 않았다**(`{}` 고정).
+    //   R·V0·usage 같은 지배 입력이 있어도 도달하지 않아 모든 패키지의 안전검토가
+    //   "입력 필요"로 나갔다 — MCP 쪽에서 고친 `verifyParams` 결함의 웹 쪽 쌍둥이다
+    //   (두 생성 사이트는 대칭이어야 한다). 검증용 입력은 템플릿 빌드용 `params` 와
+    //   구분해서 받는다 — 섞으면 템플릿 게이트가 모르는 키를 거부한다.
+    verifyParams = (body.verifyParams && typeof body.verifyParams === 'object') ? body.verifyParams : {};
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
@@ -258,16 +265,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       domainSafetyVerdict: (a: Assembly, params?: Record<string, unknown>) => { label: string; ok: boolean; failed: string[] } | null;
       codeVerificationVerdict: (a: Assembly, params?: Record<string, unknown>) => { label: string; ok: boolean; failed: string[]; decisive: boolean } | null;
     };
-    const vh = dv.verificationReportHtml(assembly, { title });
+    const vh = dv.verificationReportHtml(assembly, { title, params: verifyParams });
     if (vh) files.push({ name: '검증.html', mime: 'text/html', content: vh });
-    codeVerification = dv.codeVerificationVerdict(assembly, {});
+    codeVerification = dv.codeVerificationVerdict(assembly, verifyParams);
     // ③b 도메인 안전검토(인테리어 피난·조경 목재·교량 활하중·건축 하중경로) — 이 웹
     // 패키지 라우트도 MCP generate_package와 별개 구현이라 같은 배선이 빠져있었다
     // (도그푸딩 발견: 인테리어/조경/교량 도세가 안전검토 없이 나가던 문제의 두 번째
     // 발생지 — 이쪽이 실제 웹사이트 "패키지 다운로드"가 쓰는 경로).
-    const sh = dv.domainSafetyReportHtml(assembly, { title });
+    const sh = dv.domainSafetyReportHtml(assembly, { title, params: verifyParams });
     if (sh) files.push({ name: '안전검토.html', mime: 'text/html', content: sh });
-    domainSafety = dv.domainSafetyVerdict(assembly, {});
+    domainSafety = dv.domainSafetyVerdict(assembly, verifyParams);
   } catch (e) {
     // ⚠ 여기서 조용히 삼키면 안전 판정이 사라지고 쉬운요약은 "걸린 안전 경고는 없습니다"로
     // 나간다 — 835eec40 이 고친 것과 같은 결말에 도달하는 다른 경로(배선 부재가 아니라 예외).

@@ -172,3 +172,29 @@ describe('⑤ 디스패치 — 「별도 검토가 필요하다」고 적었으�
     expect(v?.label).toContain('하중경로');
   });
 });
+
+describe('검증 입력이 두 생성 사이트 모두에 도달한다 (260729)', () => {
+  it('params 를 주면 안전검토 HTML 내용이 달라진다 — 「입력 필요」로 굳지 않는다', async () => {
+    const dv = await import('./domain-dossier-verify.mjs');
+    const html = dv.domainSafetyReportHtml as unknown as
+      (a: unknown, o: { title?: string; params?: unknown }) => string | null;
+    const a = buildAssemblyTemplate('building', 'commercial_massing', {});
+    const bare = html(a, { title: 't', params: {} }) ?? '';
+    const given = html(a, { title: 't', params: { seismic: { R: 4 } } }) ?? '';
+    expect(bare).not.toContain('이중골조');
+    expect(given).toContain('이중골조');
+    expect(given).toContain('강성중심');
+  });
+
+  it('웹 패키지 라우트가 검증 params 를 배선한다 — `{}` 고정이면 영원히 「입력 필요」다', async () => {
+    // ⚠ 이건 소스 계약 검사다. 260729 실측: 이 라우트는 domainSafetyVerdict/ReportHtml 에
+    //   빈 객체를 넘기고 있어 **R·V0·usage 가 있어도 도달하지 않았다** — MCP 쪽에서 고친
+    //   verifyParams 결함의 웹 쪽 쌍둥이. 두 생성 사이트는 대칭이어야 한다.
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/app/api/nexyfab/drawing/package/route.ts', 'utf8');
+    expect(src).toContain('body.verifyParams');
+    expect(src).toContain('dv.domainSafetyVerdict(assembly, verifyParams)');
+    expect(src).toContain('dv.codeVerificationVerdict(assembly, verifyParams)');
+    expect(src).not.toContain('dv.domainSafetyVerdict(assembly, {})');
+  });
+});
