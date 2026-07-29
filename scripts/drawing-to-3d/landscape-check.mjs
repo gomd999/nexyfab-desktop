@@ -237,11 +237,18 @@ export function landscapeCheck(assembly, params = {}) {
         const derived = { staticHead_m: +((zmax - zmin) / 1000).toFixed(2), pipeLen_m: +(len / 1000).toFixed(2), pipeDia_mm: routes[0].d, diaNote: '선언 관경(외경 개산 — 내경 입력 시 정밀)' };
         const Q = Number(params.irrigationQ_Lmin);
         const heads = Array.isArray(params.irrigationHeads) ? params.irrigationHeads : null;
-        if (!(Q > 0) && !heads) {
-          irrigation = { needInputs: ['irrigationQ_Lmin (또는 irrigationHeads[{q_Lmin,minP_kPa}])'], derived, note: '유량·헤드=제품 사양 입력 — 지어내지 않음. 입력 시 pump_head 전양정·수동력 산출.' };
+        // 헤드 배열이 와도 q_Lmin 이 없으면 ΣQ=0 이라 유량이 없다 — 「입력받았다」가 아니다.
+        const headsQ = (heads ?? []).reduce((a, h) => a + (Number(h?.q_Lmin) || 0), 0);
+        if (!(Q > 0) && !(headsQ > 0)) {
+          irrigation = {
+            needInputs: ['irrigationQ_Lmin (또는 irrigationHeads[{q_Lmin,minP_kPa}])'], derived,
+            note: '유량·헤드=제품 사양 입력 — 지어내지 않음. 입력 시 pump_head 전양정·수동력 산출.'
+              + (heads && !(headsQ > 0) ? ' ⚠ irrigationHeads 는 왔지만 q_Lmin(헤드 유량)이 없어 ΣQ=0 — 유량 미상이다.' : ''),
+          };
         } else {
           const r = runCalculator('pump_head', {
-            Q_Lmin: Q > 0 ? Q : 1, staticHead_m: derived.staticHead_m, pipeDia_mm: derived.pipeDia_mm, pipeLen_m: derived.pipeLen_m,
+            // Q_Lmin 은 heads 가 있으면 계산기가 ΣQ 로 덮어쓴다(위 게이트가 ΣQ>0 을 보장).
+            Q_Lmin: Q > 0 ? Q : headsQ, staticHead_m: derived.staticHead_m, pipeDia_mm: derived.pipeDia_mm, pipeLen_m: derived.pipeLen_m,
             ...(heads ? { heads } : {}),
             ...(Number(params.hwC) > 0 ? { hwC: +params.hwC } : {}),
             ...(Number(params.sumK) > 0 ? { sumK: +params.sumK } : {}),

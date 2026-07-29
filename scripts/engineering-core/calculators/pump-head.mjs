@@ -32,6 +32,14 @@ export default {
     let headsNote = null, reqHeadP = 0;
     if (Array.isArray(input.heads) && input.heads.length) {
       const sumQ = input.heads.reduce((a, h) => a + (Number(h.q_Lmin) || 0), 0);
+      // ⚠ 260729: 헤드 배열이 오면 Q_Lmin 을 **덮어쓴다** → 스키마의 exclusiveMinimum:0 은
+      // 원본만 본다. q_Lmin 없는 헤드만 들어오면 ΣQ=0 인 채 통과했고, 마찰 0·유속 0 인
+      // 전양정이 정상 숫자처럼 나갔다(실측: 23.39m). 유량 0 은 "물을 안 보낸다"는 뜻이라
+      // 전양정 판정 자체가 성립하지 않는다 — 지어내지 말고 거부한다.
+      if (!(sumQ > 0)) {
+        throw new Error('pump_head: heads[] 에 q_Lmin(헤드 유량 — 제품 사양)이 없다. '
+          + 'ΣQ=0 이면 마찰·유속이 0 이라 전양정이 「정상」처럼 보이지만 판정이 아니다.');
+      }
       reqHeadP = Math.max(...input.heads.map((h) => Number(h.minP_kPa) || 0));
       input = { ...input, Q_Lmin: sumQ, residualHead_m: Math.max(Number(input.residualHead_m) || 0, reqHeadP / 9.81) };
       headsNote = '관수 체인: 헤드 ' + input.heads.length + '개 ΣQ=' + sumQ + 'L/min·최저압 ' + reqHeadP + 'kPa→잔류수두 ' + (reqHeadP / 9.81).toFixed(1) + 'm 반영(제품 사양 입력)';

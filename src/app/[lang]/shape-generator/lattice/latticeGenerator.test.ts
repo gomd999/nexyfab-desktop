@@ -92,17 +92,21 @@ describe('estimateVolumeFraction', () => {
   });
 
   it('density 0.0 → fraction below 0.3', () => {
-    // ⚠ 260729: 이 단언이 **플레이크**였다(3회 중 1회 실패). estimateVolumeFraction 은
-    // Math.random() 몬테카를로이고, 실측 참값은 0.2794 다. n=2000 이면
-    // σ = √(p(1−p)/n) ≈ 0.0100 이라 경계 0.3 이 겨우 **2.0σ** 거리다 —
-    // 20회 중 1~2회는 넘는다(실측 범위 0.2660~0.3010).
+    // ⚠ 260729: 이 단언은 **플레이크**였다(3회 중 1회 실패). 참값은 0.2794 인데
+    // Math.random() 몬테카를로라 n=2000 에서 σ ≈ 0.0100 — 경계 0.3 이 결우 **2.0σ** 거리라
+    // 20회 중 1~2회는 넘었다(실측 범위 0.2660~0.3010).
     //
-    // 단언을 느슨하게 하지 않고 **추정 정밀도를 올린다**. n=20000 이면 σ ≈ 0.0032 로
-    // 경계가 6.3σ 거리가 된다(실측 범위 0.2742~0.2883). 검사 기준은 그대로 두고
-    // 측정만 정확하게 만드는 쪽이 맞다.
+    // 단언을 느슨하게 하는 대신 추정기 자체를 할톤 수열로 바꿔 **결정론**으로 만들었다.
+    // 이제 이 값은 실행마다 같다 — 플레이크가 사라진 것이 아니라 생길 수 없다.
     const params: LatticeParams = { type: 'gyroid', cellMm: 5, density: 0.05, bbox: baseBbox };
-    const f = estimateVolumeFraction(params, 20000);
+    const f = estimateVolumeFraction(params, 2000);
     expect(f).toBeLessThan(0.3);
+  });
+
+  it('같은 입력은 같은 값 — 판정에 비결정성 금지', () => {
+    const params: LatticeParams = { type: 'gyroid', cellMm: 5, density: 0.5, bbox: baseBbox };
+    const runs = [0, 1, 2].map(() => estimateVolumeFraction(params, 3000));
+    expect(new Set(runs).size).toBe(1);
   });
 
   it('density 1.0 → fraction above 0.7', () => {

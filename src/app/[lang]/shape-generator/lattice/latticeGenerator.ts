@@ -254,7 +254,34 @@ export function latticeToMesh(params: LatticeParams, resolution: number = 32): L
   return { positions, indices, triangleCount: indices.length / 3 };
 }
 
-/** Estimate lattice volume fraction by sampling N points. */
+/** Radical inverse in `base` — the building block of the Halton sequence. */
+function radicalInverse(i: number, base: number): number {
+  let f = 1 / base;
+  let r = 0;
+  let n = i;
+  while (n > 0) {
+    r += (n % base) * f;
+    n = Math.floor(n / base);
+    f /= base;
+  }
+  return r;
+}
+
+/**
+ * Estimate lattice volume fraction (relative density) by quasi-Monte-Carlo sampling.
+ *
+ * ⚠ 260729: 이 함수는 `Math.random()` 몬테카를로였고, 그 비결정성이 자기 테스트를
+ * **플레이크**로 만들었다(3회 중 1회 실패 — 참값 0.2794 인데 경계 0.3 이 2.0σ 거리).
+ * 상대밀도는 라티스 설계의 지배 파라미터라 소비자에 붙는 순간 판정이 되는데,
+ * 「판정에 비결정성을 넣지 말 것」이 이 세션에서 세운 불변식이다.
+ *
+ * 그래서 시드를 붙이는 대신 **할톤 저불일치 수열**(base 2·3·5)로 바꿨다 — 시드 상태가
+ * 없어 결정론이고, 오차도 O(1/√N) 대신 대략 O(logᵈN / N) 라 같은 N 에서 훨씬 정확하다.
+ * 격자 정렬 샘플링은 라티스 주기와 **에일리어싱**을 일으키므로 쓰지 않는다.
+ *
+ * 반환값은 여전히 추정치다(경계 셀의 부분 점유는 세지 않는다). 정확한 체적이 필요하면
+ * 메시를 발산정리로 적분할 것.
+ */
 export function estimateVolumeFraction(
   params: LatticeParams,
   sampleCount: number = 10000,
@@ -264,10 +291,10 @@ export function estimateVolumeFraction(
   const dx = max[0] - min[0];
   const dy = max[1] - min[1];
   const dz = max[2] - min[2];
-  for (let i = 0; i < sampleCount; i++) {
-    const x = min[0] + Math.random() * dx;
-    const y = min[1] + Math.random() * dy;
-    const z = min[2] + Math.random() * dz;
+  for (let i = 1; i <= sampleCount; i++) {
+    const x = min[0] + radicalInverse(i, 2) * dx;
+    const y = min[1] + radicalInverse(i, 3) * dy;
+    const z = min[2] + radicalInverse(i, 5) * dz;
     if (latticeDistance(params, x, y, z) < 0) solidCount++;
   }
   return solidCount / sampleCount;
