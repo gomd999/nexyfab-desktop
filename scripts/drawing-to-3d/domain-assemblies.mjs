@@ -260,8 +260,31 @@ function cafeRoomAssembly(p) {
     }
     nT = rows * cols;
   }
+  /**
+   * 위생기구·급배수 (260729c) — 실측에서 드러난 **템플릿 데이터 갭**.
+   *
+   * 부품 39개짜리 카페인데 `fixtures 0 · pipes 0` 이라 배수·통기 검사(`drainage_vent`)가
+   * 「대상 없음」으로 빠졌다. 검사도 어휘도 이미 있는데 **쓸 데이터가 없었던 것**이다.
+   * 실제 카페는 바 싱크·손님 화장실이 실무 구성이고, 그것이 인테리어 검사의 지배 입력이다.
+   *
+   * 배치는 형상에서 결정론으로 낸다(추측 없음): 화장실은 후면 좌측 코너, 바 싱크는
+   * 카운터 위. PS(입상관)는 화장실 옆 벽에 붙인다 — 실무 관례이자 배관장을 최소화한다.
+   */
+  const psX = 200, psY = D - 1200;                     // 후면 좌측 코너 PS
+  parts.push(P('ps_stack', 'cylinder', { diameter: 100, length: 2700 }, { tx: psX, ty: psY, tz: 0 }, 'PVC', 'stack'));
+  parts.push(P('wc_toilet', 'box', { width: 400, depth: 650, height: 420 }, { tx: psX + 350, ty: psY - 100, tz: 0 }, 'glass', 'fixture'));
+  parts.push(P('wc_basin', 'box', { width: 500, depth: 420, height: 820 }, { tx: psX + 350, ty: psY + 700, tz: 0 }, 'glass', 'fixture'));
+  const sinkX = 700, sinkY = 400;                      // 바 카운터 위 싱크
+  parts.push(P('bar_sink', 'box', { width: 700, depth: 450, height: 180 }, { tx: sinkX, ty: sinkY, tz: 900 }, 'steel', 'fixture'));
   return {
     name: '카페 레이아웃', domain: 'interior', parts,
+    // 배수·통기 검토 입력 — 기구 → PS 입상관. 관경은 기구부하단위 관례값(대변기 75·세면 50·싱크 50).
+    pipes: [
+      { id: 'drain_toilet', from: 'wc_toilet.x+', to: { part: 'ps_stack', face: 'x-', offset: [0, 0, -1140] }, d: 75, service: 'drain' },
+      { id: 'drain_basin', from: 'wc_basin.x+', to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -940] }, d: 50, service: 'drain' },
+      { id: 'drain_sink', from: 'bar_sink.y+', to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -600] }, d: 50, service: 'drain' },
+      { id: 'vent_stack', from: 'ps_stack.z+', to: [psX + 60, psY + 60, 2600], d: 50, service: 'vent' },
+    ],
     floorAreaM2: +((W * D) / 1e6).toFixed(2),
     // 피난 검증용 메타 — 출입구(문) 위치·폭 (형상과 동일 소스에서 결정론 생성)
     exits: [
@@ -1174,9 +1197,40 @@ function commercialMassingAssembly(p = {}) {
   const bulge = curved ? Math.max(300, num(p.facadeBulge, Math.round(W * 0.06))) : 0;
   const yFront = (x) => (curved ? -bulge * Math.sin((Math.PI * x) / W) : 0);
   const slabY0 = curved ? -bulge - 100 : 0, slabD = D - slabY0;
+  /**
+   * 계단실·PS 관통 개구 (260729c) — `slab_with_openings` 어휘의 **첫 건축 실사용**.
+   *
+   * 어휘를 만들고 3열 EXACT 로 검증까지 해도 **출하 템플릿이 쓰지 않으면** 실사용에서
+   * 무엇이 깨지는지 알 수 없다(260729b 에 `tapered_girder` 로 같은 처방을 했다).
+   * 다층 상가에 계단실이 없는 것 자체가 비현실적이기도 하다 — 2층 이상은 피난계단이 법정이다.
+   *
+   * 기초 슬래브(f=0)와 지붕(f=floors)은 뚫지 않는다 — 계단은 층간을 잇는다.
+   */
+  const stairX = W - 3200, stairY = D - 3600;      // 배면 우측 코너(기둥열 안쪽)
+  const stairW = 2600, stairD = 2800;
+  const psX = stairX - 900, psY = stairY + 200;    // 계단실 옆 설비 입상관
+  const psW = 700, psD = 700;
   for (let f = 0; f <= floors; f++) {
-    P(`slab_${f}`, 'box', { width: W, depth: slabD, height: slabT }, { tx: 0, ty: slabY0, tz: zOf(f) }, 'concrete', 'slab');
+    const through = f > 0 && f < floors;           // 중간층만 관통
+    if (!through) {
+      P(`slab_${f}`, 'box', { width: W, depth: slabD, height: slabT }, { tx: 0, ty: slabY0, tz: zOf(f) }, 'concrete', 'slab');
+    } else {
+      // 개구 좌표는 **슬래브 로컬**(원점이 tx,ty)이라 slabY0 만큼 빼서 옮긴다.
+      P(`slab_${f}`, 'slab_with_openings', {
+        length: W, depth: slabD, thickness: slabT,
+        openings: [
+          { x: stairX, y: stairY - slabY0, w: stairW, d: stairD },   // 계단실
+          { x: psX, y: psY - slabY0, w: psW, d: psD },               // PS(설비 입상관)
+        ],
+      }, { tx: 0, ty: slabY0, tz: zOf(f) }, 'concrete', 'slab');
+    }
   }
+  // PS 를 지나는 입상 배관 — 슬래브 개구를 실제로 관통한다(관통 검사의 실사용 경로).
+  // ⚠ 시작 z 는 **기초 슬래브 상단**(slabT)이다. 200 으로 두면 기초(0~250)를 50mm
+  //   파고들어 「기초에 개구가 없다」는 오탐이 난다 — 관통 검사가 바로 잡아냈다.
+  //   최상층 슬래브 밑에서 끝낸다(지붕은 뚫지 않는다).
+  P('ps_riser', 'cylinder', { diameter: 200, length: zOf(floors) - slabT },
+    { tx: psX + psW / 2 - 100, ty: psY + psD / 2 - 100, tz: slabT }, 'PVC', 'pipe');
   const nBay = Math.max(2, Math.round(W / bayW));
   for (let f = 0; f < floors; f++) {
     const z0 = zOf(f) + slabT, h = zOf(f + 1) - z0;

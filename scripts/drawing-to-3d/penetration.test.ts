@@ -73,9 +73,21 @@ describe('출하 템플릿', () => {
   });
 
   it('설비가 없는 건축 템플릿은 null', () => {
-    for (const id of ['rc_frame', 'commercial_massing', 'gable_house']) {
+    // ⚠ 260729c: commercial_massing 을 뺐다 — 계단실·PS 개구와 함께 **입상관(ps_riser)** 을
+    //   넣어 관통 검사가 출하 템플릿에서 실제로 돌게 했다(어휘를 만들고 출하 경로가 없으면
+    //   실사용에서 뭐가 깨지는지 알 수 없다).
+    for (const id of ['rc_frame', 'gable_house']) {
       expect(chk(buildAssemblyTemplate('building', id, {})), id).toBeNull();
     }
+  });
+
+  it('★commercial_massing 은 관통이 개구로 덮인다 — 출하 템플릿 실사용', () => {
+    const r = chk(buildAssemblyTemplate('building', 'commercial_massing', {}));
+    expect(r?.pass).toBe(true);
+    expect(r?.labelKo).toContain('관통 3개소');
+    // 입상관 시작 z 를 200 으로 뒀다가 기초 슬래브(0~250)를 50mm 파고들어 오탐이 났다 —
+    // 검사가 바로 잡았고, 시작 z 를 슬래브 상단으로 고쳤다.
+    expect(r?.detail.join(' ')).not.toContain('slab_0');
   });
 });
 

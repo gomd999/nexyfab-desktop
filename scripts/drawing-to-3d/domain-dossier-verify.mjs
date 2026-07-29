@@ -482,13 +482,26 @@ export function domainSafetyVerdict(assembly, params = {}) {
     //   **같은 함정 두 번째**). 입력이 없어 거부된 검토라도, 그와 별개로 "안 돌린 항목"은
     //   여전히 안 돌린 것이다. 성공 경로에만 붙이면 정작 거부된 문서에서 사라진다.
     const lat0 = Array.isArray(r?.lateralUnavailable) ? r.lateralUnavailable : [];
+    // ⚠ 260729c: 이 경로는 **실제로 판정한 항목까지 통째로 버리고** 있었다.
+    //   실측: tower_crane 은 정적 전도를 산출했는데(적합) 지배 입력이 없다는 이유로
+    //   쉬운요약에는 "입력 필요" 만 나갔다 — 본 것이 있는데 안 본 것처럼 읽힌다.
+    //   거부 사유와 **그와 별개로 판정한 것**은 함께 있어야 한다.
+    const judgedHere = collectFailingChecks(r);
+    const judgedCount = countJudged(r);
     return {
-      label: run.label, ok: true, failed: [],
+      label: run.label,
+      // 실제 판정에서 걸린 것이 있으면 그것은 그대로 실패로 올린다(거부와 무관).
+      ok: judgedHere.length === 0, failed: judgedHere,
       unavailable: [
         `${run.label}: ${need}`,
         ...lat0.map((u) => (typeof u === 'string' ? u : `${u.labelKo}: ${u.messageKo}`)),
         ...(sp0 ? [`${sp0.labelKo}: ${sp0.messageKo}`] : []),
       ],
+      ...(judgedCount > 0 ? {
+        judgedDespiteRefusal: judgedCount,
+        judgedNote: `지배 입력이 없어 본 검토는 하지 못했지만, 그와 **별개로 ${judgedCount}개 항목은 `
+          + `실제로 판정했다**(형상·질량만으로 결정되는 것). 문서의 해당 항목을 확인할 것.`,
+      } : {}),
     };
   }
   const failed = collectFailingChecks(r);
@@ -595,12 +608,37 @@ export function domainSafetyReportHtml(assembly, { title = '안전검토', param
   const run = runDomainSafetyCheck(assembly, params);
   if (!run) return null; // 이 도메인엔 적용 가능한 안전검토가 없음(정직 — mech 등)
   const r = run.result;
-  const body =
-    r && r.ok === false
-      // escMd — 260729b 실측: 이 분기만 esc 라 steel_canopy 의 `**풍 상향력이 지배**` 가
-      // 원문 그대로 샜다. 강조 처리는 **모든 문자열 출구**를 통과해야 한다.
-      ? `<div class="card warn">검토 불가: ${escMd(r.error ?? r.gateError ?? '알 수 없는 사유')}</div>`
-      : renderGenericCheckTree(r) || '<div class="note">산출된 세부 검토값이 없습니다.</div>';
+  /**
+   * ⚠ 260729c: `ok === false` 일 때 **계산된 checks 를 통째로 버리고** 있었다.
+   *
+   * 실측: `tower_crane` 은 `mechCheck` 가 `staticTipover`(적합)·`seismicTipover`(입력 대기)를
+   * 실제로 산출하는데, 지배 입력(카운터웨이트)이 없어 `ok:false` 라는 이유로 안전검토.html
+   * 에 **"검토 불가" 한 줄만** 나갔다. 기계 6종이 전부 그랬고, 그들에게는 전도가 유일한
+   * 판정이었다 — 배선해 놓고 정작 필요한 곳에서 사라진 것이다.
+   *
+   * 「검토 불가」와 「그 안에서 실제로 본 것」은 **함께 있어야 한다.** 사유는 사유대로 적고,
+   * 산출된 검토는 그대로 그린다. 이 세션에서 「조기 반환이 고지를 삼킨다」를 네 번 잡았는데,
+   * **여기가 그 마지막 진입점**이라 개별 자리가 아니라 렌더 입구에서 한 번에 처리한다.
+   */
+  // ⚠ 「검토 불가」와 「입력 대기」는 다른 말이다. needInputs 가 있는 것은 **정직 거부**
+  //   (지배 입력이 없어 판정하지 않음)이지 검사가 실패한 것이 아니다. 종전에는 error 가
+  //   없으면 "검토 불가: 알 수 없는 사유" 로 나가 원인을 모르는 실패처럼 읽혔다.
+  const needs = Array.isArray(r?.needInputs) ? r.needInputs : [];
+  const reason = r && r.ok === false
+    // escMd — 260729b 실측: 이 분기만 esc 라 steel_canopy 의 `**풍 상향력이 지배**` 가
+    // 원문 그대로 샜다. 강조 처리는 **모든 문자열 출구**를 통과해야 한다.
+    ? (needs.length && !r.error && !r.gateError
+      ? `<div class="card warn"><b>입력 대기 — 판정하지 않음</b>: 지배 입력이 없어 이 검토를 `
+        + `수행하지 않았습니다(값을 지어내지 않습니다). <b>"이상 없음"이 아닙니다.</b>`
+        + `<div style="margin-top:6px">필요 입력: ${needs.map((x) => escMd(x.labelKo ?? x.name ?? '')).join(' · ')}</div></div>`
+      : `<div class="card warn">검토 불가: ${escMd(r.error ?? r.gateError ?? '사유 미상')}`
+        + (needs.length ? `<div style="margin-top:6px">필요 입력: ${needs.map((x) => escMd(x.labelKo ?? x.name ?? '')).join(' · ')}</div>` : '')
+        + '</div>')
+    : '';
+  const tree = renderGenericCheckTree(r);
+  const body = reason
+    ? reason + (tree ? `<div class="note">아래는 그와 <b>별개로 실제 산출된 검토</b>다 — 「검토 불가」가 전부가 아니다.</div>${tree}` : '')
+    : (tree || '<div class="note">산출된 세부 검토값이 없습니다.</div>');
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)} — 안전검토</title>
 <style>@page{size:A4 portrait;margin:12mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937;font-size:13px}
 .sheet{max-width:900px;margin:16px auto;background:#fff;border:1px solid #cbd5e1;box-shadow:0 4px 24px rgba(0,0,0,.1);padding:0 0 22px}

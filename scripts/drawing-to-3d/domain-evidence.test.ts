@@ -21,8 +21,11 @@ const verdict = (d: string, id: string) =>
 
 describe('판정한 항목이 0개면 "이상 없음"이 아니다', () => {
   it.each([
-    ['landscape', 'fence_run'], ['landscape', 'planter_wall'], ['landscape', 'parking_pavement'],
-    ['landscape', 'tree_planting'], ['landscape', 'pavilion'], ['landscape', 'apartment_complex'],
+    ['landscape', 'fence_run'], ['landscape', 'pavilion'], ['landscape', 'apartment_complex'],
+    // ⚠ 260729c 정정: planter_wall·parking_pavement·tree_planting 을 여기서 뺐다.
+    //   목재가 없어 목재 검토는 여전히 비지만, **그 템플릿들이 들고 있는 제원**
+    //   (포장 층 두께·수관경/간격·저판 폭)으로 판정 가능한 것이 있는데 아무것도 보지
+    //   않고 있었다 — 자기정합 검사를 붙여 이제 실제로 판정한다. 「판정 0개」가 아니다.
     // ⚠ 260729 정정: girder_bridge 를 여기서 뺐다. 당시엔 실제로 판정 0개였으나
     // (a) 바닥판 폭 자기정합을 추가했고 (b) countJudged 가 `ok` 필드를 세지 않아
     // **판정하는 템플릿을 0개로 잘못 고지**하던 버그를 고쳤다 — 아래 별도 케이스로 옮김.

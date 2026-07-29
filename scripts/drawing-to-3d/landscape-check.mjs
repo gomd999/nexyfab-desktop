@@ -261,9 +261,70 @@ export function landscapeCheck(assembly, params = {}) {
     } catch (e) { irrigation = { error: '관수 체인 실패: ' + (e?.message ?? e) }; }
   }
 
+  /**
+   * 형상 자기정합 (260729c) — 조경 8종 중 6종이 「목재 부재 없음」으로 실판정 0 이었다.
+   * 목재가 없는 것은 정당하지만, **그 템플릿들이 들고 있는 제원으로 판정 가능한 것**이
+   * 있는데 아무것도 보지 않았다. 아래는 전부 순수 기하·산술이라 **가정이 0** 이다.
+   */
+  const selfChecks = {};
+  const pm = assembly?.parkingMeta;
+  if (pm && Number(pm.pavementThk) > 0 && pm.layers) {
+    const sum = Object.values(pm.layers).reduce((s, v) => s + (Number(v) || 0), 0);
+    selfChecks.pavementLayers = {
+      labelKo: '포장 층 두께 합 = 선언 포장 두께',
+      pass: Math.abs(sum - Number(pm.pavementThk)) < 1e-6,
+      detail: [`${Object.entries(pm.layers).map(([k, v]) => `${k} ${v}`).join(' + ')} = ${sum} vs 선언 ${pm.pavementThk}`],
+      note: '어긋나면 단면도와 제원표 중 하나가 틀렸다 — 순수 산술, 가정 없음',
+    };
+    if (Number(pm.curbHeight) > 0) {
+      selfChecks.curbVsPavement = {
+        labelKo: '연석 높이 > 포장 두께 (연석이 포장 위로 돌출)',
+        pass: Number(pm.curbHeight) > Number(pm.pavementThk),
+        detail: [`연석 ${pm.curbHeight} vs 포장 ${pm.pavementThk}`],
+        note: '연석이 포장보다 낮으면 경계 기능을 못 한다 — 형상이 성립하지 않는다',
+      };
+    }
+  }
+  const tm = assembly?.treePlantingMeta;
+  if (tm && Number(tm.canopyDia) > 0 && Number(tm.spacingX) > 0) {
+    // 수관이 서로 닿으면 생육 불량 — 간격 ≥ 수관경이어야 한다(순수 기하).
+    const minSp = Math.min(Number(tm.spacingX), Number(tm.spacingY) || Number(tm.spacingX));
+    selfChecks.canopyClearance = {
+      labelKo: '식재 간격 ≥ 수관 지름 (수관 간섭)',
+      pass: minSp >= Number(tm.canopyDia),
+      detail: [`최소 간격 ${minSp} vs 수관경 ${tm.canopyDia} → 여유 ${minSp - Number(tm.canopyDia)}mm`],
+      note: '수관이 겹치면 생육 불량·수형 훼손. 성목 수관경 기준이며 식재 시점 기준이 아니다',
+    };
+    if (Number(tm.rows) > 0 && Number(tm.cols) > 0 && Number(tm.trees) > 0) {
+      selfChecks.treeCount = {
+        labelKo: '수목 수 = 행 × 열',
+        pass: Number(tm.rows) * Number(tm.cols) === Number(tm.trees),
+        detail: [`${tm.rows} × ${tm.cols} = ${Number(tm.rows) * Number(tm.cols)} vs 선언 ${tm.trees}`],
+      };
+    }
+  }
+  const wm = assembly?.planterWallMeta;
+  if (wm && Number(wm.baseWidth) > 0 && Number(wm.stemThk) > 0) {
+    selfChecks.planterBase = {
+      labelKo: '저판 폭 > 벽체 두께 (저판이 벽을 받친다)',
+      pass: Number(wm.baseWidth) > Number(wm.stemThk),
+      detail: [`저판 ${wm.baseWidth} vs 벽체 ${wm.stemThk} · 앞굽 ${wm.toeLength ?? '-'}`],
+      note: '저판이 벽체보다 좁으면 옹벽 형식이 성립하지 않는다',
+    };
+    // 배수공은 화단벽의 지배 요소다 — 없으면 배면 수압이 그대로 걸린다.
+    selfChecks.planterDrain = {
+      labelKo: '배면 배수공 선언',
+      pass: Number(wm.drainDia) > 0,
+      detail: [Number(wm.drainDia) > 0
+        ? `배수공 ⌀${wm.drainDia} 선언됨 — 간격·개소는 선언돼 있지 않아 판정하지 않는다`
+        : '배수공이 선언되지 않았다 — 배면 수압이 그대로 걸리면 전도·활동이 크게 불리해진다'],
+      note: '⚠ 배수공 유무만 본다. 옹벽 안정(전도·활동·지지력)은 토질 입력이 있어야 하며 여기서 판정하지 않는다',
+    };
+  }
   return {
     ok: true,
     member, connection, board, wind, irrigation,
+    ...(Object.keys(selfChecks).length ? { selfChecks } : {}),
     refs: ['KDS 41 50 10:2022 (허용응력·CD·CM)', 'KDS 41 12 00:2022 표 3.2-1 (활하중)', 'KDS 41 50 30:2022 (접합부 — 못·볼트)'],
     disclaimer: '개념 검토(비법정) — 단순지지·대표부재·강체전도 근사. CM(습윤)·CF·CL 미적용(v1). 실시설계는 구조기술사 검토 필요.' + (unverifiedParts.length ? ` ⚠ 비검증 직접편집 파츠 ${unverifiedParts.length}개는 구조 검토에서 제외됨(P4 라벨) — 해당 형상의 안전은 별도 확인 필요.` : ''),
   };
