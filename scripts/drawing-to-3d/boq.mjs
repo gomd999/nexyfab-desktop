@@ -11,7 +11,17 @@ import { gearPoly, sheetPoly, hexPts, polyArea, polyPerimeter, boltDims } from '
 import { takeoff } from '../engineering-core/quantity/takeoff.mjs';
 
 const A = Math.PI / 4;
-// 부품 표면적 mm² (도장·산세·도금 물량)
+/**
+ * 부품 표면적 mm² (도장·산세·도금 물량). **미등록 어휘는 `null`** — 0 이 아니다.
+ *
+ * ⚠️ 260729 실측: 32개 어휘 중 11개가 미등록이었고 `default: return 0` 이라 도장 물량이
+ * **조용히 0** 으로 나갔다. 하필 강구조 단면(h_section·c_channel·i_girder)이 전부 거기
+ * 있었다 — 강교 도장은 물량의 핵심인데 산출서에는 "0 ㎡"가 찍혔다.
+ * 「없음」이 「필요 없음」으로 읽히는 형태(§6-G ④: 부재가 정상으로 읽힘)다.
+ *
+ * 이번에 폐형이 서는 것은 전부 채웠고(형강·거더·철근·스프링·엘보), 서지 않는 것은
+ * `null` 로 되돌려 computeBOQ 가 **미산출 어휘를 이름으로 고지**한다.
+ */
 function surfaceMm2(type, p) {
   switch (type) {
     case 'box': return 2 * (p.width * p.depth + p.depth * p.height + p.width * p.height);
@@ -40,6 +50,12 @@ function surfaceMm2(type, p) {
       const face = p.length * p.height - (p.openings ?? []).reduce((s, o) => s + o.w * o.h, 0);
       return 2 * face + 2 * (p.length + p.height) * p.thickness; // 양면(개구 공제) + 둘레 엣지
     }
+    case 'slab_with_openings': {
+      const face = p.length * p.depth - (p.openings ?? []).reduce((s, o) => s + o.w * o.d, 0);
+      // 상·하면(개구 공제) + 외주 엣지 + **개구 내주 엣지**(거푸집·마감이 실제로 붙는 면)
+      const innerEdge = (p.openings ?? []).reduce((s, o) => s + 2 * (o.w + o.d) * p.thickness, 0);
+      return 2 * face + 2 * (p.length + p.depth) * p.thickness + innerEdge;
+    }
     // 표준 부품 확장(260718b)
     case 'hex_nut': {
       const hexA = (Math.sqrt(3) / 2) * p.af ** 2;
@@ -52,7 +68,52 @@ function surfaceMm2(type, p) {
       const t = p.wallThk ?? Math.max(2, p.dia1 * 0.03), sl = Math.hypot(p.length, (p.dia1 - p.dia2) / 2);
       return Math.PI * ((p.dia1 + p.dia2) / 2) * sl + Math.PI * ((p.dia1 - 2 * t + p.dia2 - 2 * t) / 2) * sl + A * (p.dia1 ** 2 - (p.dia1 - 2 * t) ** 2 + p.dia2 ** 2 - (p.dia2 - 2 * t) ** 2);
     }
-    default: return 0;
+    // ── 260729 보충: 폐형이 서는 어휘 전부 ────────────────────────────────────
+    // 형강(I·C) 전개둘레 = 4B + 2H − 2tw (윤곽 추적 결과 I·C 동일 — 펼친 길이가 같다).
+    case 'h_section': case 'c_channel':
+      return (4 * p.B + 2 * p.H - 2 * p.tw) * p.length + 2 * (2 * p.B * p.tf + p.tw * (p.H - 2 * p.tf));
+    case 'i_girder': { // 조립 거더(상·하 플랜지 폭 상이) — 같은 윤곽 추적
+      // ─ 웹 공제는 **1회**이다 — 플랜지 노출 가단이 양쪽 합해서 (W−webT) 이므로.
+      //   처음 −2·webT 로 썼다가 tapered_girder(등단면) 대조에서 걸렸다.
+      //   검증: 평열 플랜지면 4B+2H−2tw 로 환원 → h_section 식·KS 형강표와 일치.
+      const perim = 2 * (p.botW + p.topW - p.webT + p.botT + p.topT + p.webH);
+      const sec = p.botW * p.botT + p.webT * p.webH + p.topW * p.topT;
+      return perim * p.length + 2 * sec;
+    }
+    case 'tapered_girder': {
+      // 변단면은 둘레가 스팬을 따라 변한다 → 성분별 실면적(접촉면 공제).
+      const h1 = p.webH1, h2 = p.webH2, L = p.length;
+      const s = Math.hypot(L, h2 - h1); // 상부 플랜지 경사면의 실장
+      const web2 = 2 * (L * (h1 + h2) / 2);                       // 웨브 양면(사다리꼴)
+      const botBox = L * p.botW + L * (p.botW - p.webT)           // 하면 + 상면(웨브 접촉 공제)
+        + 2 * L * p.botT + 2 * p.botW * p.botT;                   // 측면 2 + 단부 2
+      const webEnds = (h1 + h2) * p.webT;                          // 웨브 단부 2
+      const top = 2 * (L * p.topT) + s * p.topW                    // 측면 2 + 상면(경사)
+        + s * (p.topW - p.webT) + 2 * p.topT * p.topW;             // 하면(웨브 접촉 공제) + 단부 2
+      return botBox + web2 + webEnds + top;
+    }
+    case 'rebar': { // 원형 봉 — 경로장 × 원주 + 단부 2
+      let L = 0;
+      const pts = p.points ?? [];
+      for (let k = 0; k < pts.length - 1; k++) L += Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1], pts[k + 1][2] - pts[k][2]);
+      return Math.PI * p.dia * L + 2 * A * p.dia ** 2;
+    }
+    case 'coil_spring': { // 소선 전개장 × 원주 + 단부 2
+      const Dm = p.coilDia - p.wireDia;
+      const Lw = p.turns * Math.hypot(Math.PI * Dm, p.pitch);
+      return Math.PI * p.wireDia * Lw + 2 * A * p.wireDia ** 2;
+    }
+    case 'pipe_elbow': { // 파푸스 — 곡률중심 이동거리 × 내·외 원주 + 절단 단면 2
+      const t = p.wallThk ?? Math.max(2, p.od * 0.05);
+      const id = p.od - 2 * t;
+      const arc = 2 * Math.PI * p.bendR * ((p.angleDeg ?? 90) / 360);
+      return arc * Math.PI * (p.od + id) + 2 * A * (p.od ** 2 - id ** 2);
+    }
+    // ⚠ 아래는 폐형이 서지 않는다 — **0 이 아니라 미산출**(computeBOQ 가 이름으로 고지).
+    //   pipe_tee(접합부 교선) · pillow_block(렌즈 보어) · cavity_block(재귀 음형) ·
+    //   revolve/mesh(임의 형상). 메시 실면적은 삼각형 합으로 낼 수 있으나 부피와 달리
+    //   `volumeMm3` 같은 선언 채널이 없어 지어내지 않는다.
+    default: return null;
   }
 }
 const holeCount = (type, p) => type === 'plate_with_holes' ? (p.holes?.length ?? 0) : type === 'flange' ? (p.boltCount ?? 0) : type === 'base_plate' ? 4 : type === 'spur_gear' && p.boreDia > 0 ? 1 : type === 'hex_nut' || type === 'washer' ? 1 : 0;
@@ -76,7 +137,8 @@ export function computeBOQ(assembly, { material = 'STS316', rates = STD_RATES } 
     // qty(260718): 동일 부품 반복 수(대표 1개 배치 — STEP 대표화 임포트). 물량=1개분×qty.
     const qty = Math.max(1, Math.round(Number(p.qty) || 1));
     const massKg = volMm3 * rho * qty;
-    return { id: p.id ?? p.type, type: p.type, material: p.material ?? material, qty, massKg: +massKg.toFixed(2), basis: eff.basis, basisNote: eff.note, volM3: +(volMm3 * qty / 1e9).toFixed(4), surfaceM2: +(surfaceMm2(p.type, p.params) * qty / 1e6).toFixed(3), holes: holeCount(p.type, p.params) * qty, bends: bendCount(p.type, p.params) * qty, linearLenM: +(linearLenMm(p.type, p.params) * qty / 1000).toFixed(2) };
+    const sMm2 = surfaceMm2(p.type, p.params);
+    return { id: p.id ?? p.type, type: p.type, material: p.material ?? material, qty, massKg: +massKg.toFixed(2), basis: eff.basis, basisNote: eff.note, volM3: +(volMm3 * qty / 1e9).toFixed(4), surfaceM2: sMm2 == null ? null : +(sMm2 * qty / 1e6).toFixed(3), holes: holeCount(p.type, p.params) * qty, bends: bendCount(p.type, p.params) * qty, linearLenM: +(linearLenMm(p.type, p.params) * qty / 1000).toFixed(2) };
   });
   // 재질별 집계 (콘크리트 m³·목재 재적 m³ 등 비기계 물량 단위)
   const byMaterial = {};
@@ -85,12 +147,14 @@ export function computeBOQ(assembly, { material = 'STS316', rates = STD_RATES } 
     byMaterial[k] = byMaterial[k] ?? { massKg: 0, volM3: 0, surfaceM2: 0, count: 0 };
     byMaterial[k].massKg = +(byMaterial[k].massKg + it.massKg).toFixed(1);
     byMaterial[k].volM3 = +(byMaterial[k].volM3 + it.volM3).toFixed(4);
-    byMaterial[k].surfaceM2 = +(byMaterial[k].surfaceM2 + it.surfaceM2).toFixed(2);
+    byMaterial[k].surfaceM2 = +(byMaterial[k].surfaceM2 + (it.surfaceM2 ?? 0)).toFixed(2);
     byMaterial[k].count++;
   }
   const sum = (k) => items.reduce((s, x) => s + (x[k] || 0), 0);
   const totalMassKg = +sum('massKg').toFixed(1);
   const surfaceM2 = +sum('surfaceM2').toFixed(2);
+  // 표면적 미산출 어휘는 합계에서 **빠져 있다** — 합계만 보면 전부 산출된 것으로 읽힌다.
+  const surfaceMissing = [...new Set(items.filter((x) => x.surfaceM2 == null).map((x) => x.type))];
   const tubeLenM = +items.filter(x => x.linearLenM).reduce((s, x) => s + x.linearLenM, 0).toFixed(2);
   const holes = sum('holes'), bends = sum('bends');
   const cutCount = parts.filter(p => isLinear(p.type)).length * 2 + parts.filter(p => ['plate_with_holes', 'stepped_plate', 'base_plate', 'l_bracket', 'gusset', 'bent_sheet', 'sheet_profile', 'spur_gear'].includes(p.type)).length;
@@ -154,6 +218,7 @@ export function computeBOQ(assembly, { material = 'STS316', rates = STD_RATES } 
 
   return {
     parts: parts.length, items, byMaterial, totalMassKg, totalVolM3: +sum('volM3').toFixed(3), surfaceM2, tubeLenM, holes, bends, cutCount,
+    ...(surfaceMissing.length ? { surfaceMissing } : {}),
     weld: { totalMm: weldTotalMm, totalM: +(weldTotalMm / 1000).toFixed(2), joints: weldJoints, throatAreaMm2: Math.round(weldAreaMm2) },
     piping,
     laborHr: labor,
@@ -181,7 +246,11 @@ export function boqReport(assembly, { title = '물량·작업량 산출서', rat
   const b = computeBOQ(assembly, rates ? { rates } : {});
   const dom = domain ?? assembly.domain ?? 'mech';
   const nonMech = ['building', 'landscape', 'interior', 'civil', 'bridge'].includes(dom);
-  const f = (n, d = 2) => Number(n).toFixed(d);
+  const f = (n, d = 2) => (n == null ? '—' : Number(n).toFixed(d)); // null=미산출 — NaN도 0도 아니다
+  // 표면적 미산출 고지 — 합계에서 빠졌다는 사실을 숫자 옆에 붙인다(·0 으로 읽힐 여지 제거).
+  const missNote = b.surfaceMissing?.length
+    ? ` · <b>⚠ 표면적 미산출</b>: ${b.surfaceMissing.map(esc).join('·')} — 폐형이 서지 않는 어휘라 해당 부품은 도장 물량 합계에 **빠져 있다**(0이 아니라 모름).`
+    : '';
   const rows = b.items.map((x) => `<tr><td style="text-align:left">${esc(x.id)}</td><td>${esc(x.type)}</td><td>${esc(x.material)}</td><td>${f(x.massKg)}</td><td>${f(x.surfaceM2, 3)}</td><td>${x.linearLenM || '-'}</td><td>${x.holes || '-'}</td><td>${x.bends || '-'}</td></tr>`).join('');
   const laborRows = Object.entries(b.laborHr).filter(([k]) => k !== '합계').map(([k, v]) => `<tr><td style="text-align:left">${k}</td><td>${v} hr</td></tr>`).join('');
   if (nonMech) {
@@ -216,7 +285,7 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 <h2>② 부재별 물량</h2><table><tr><th>부재</th><th>Type</th><th>재질</th><th>부피(m³)</th><th>질량(kg)</th><th>표면적(㎡)</th></tr>${nmRows}</table>
 ${pipingSection(b, '②b')}
 ${ruleSection}
-<div class="note">⚠ 물량=형상 결정론(신뢰) · 규칙 물량=설계수량(표준품셈 할증·품 미적용) · 표면적=거푸집/도장/마감 개산(공제 미반영) · 철근·배근·마감재는 형상 외 — 미산출 · 비법정 참고자료.${assembly.alignment ? ' · <b>선형 주의</b>: 부재별 물량=현(chord) 분할 부품 기준(접합 트림 포함), 규칙 물량=중심선 호장 기준 — 두 기준 차이(트림·현 근사)는 정상이며 정밀 콘크리트량은 규칙 물량이 기준.' : ''}</div>
+<div class="note">⚠ 물량=형상 결정론(신뢰) · 규칙 물량=설계수량(표준품셈 할증·품 미적용) · 표면적=거푸집/도장/마감 개산(공제 미반영) · 철근·배근·마감재는 형상 외 — 미산출 · 비법정 참고자료.${assembly.alignment ? ' · <b>선형 주의</b>: 부재별 물량=현(chord) 분할 부품 기준(접합 트림 포함), 규칙 물량=중심선 호장 기준 — 두 기준 차이(트림·현 근사)는 정상이며 정밀 콘크리트량은 규칙 물량이 기준.' : ''}${missNote}</div>
 <div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div><script>
 // H5 현장 인터랙션(260718): th 클릭 정렬 · 행 체크오프(localStorage) · CSV 내보내기
 document.querySelectorAll('table').forEach(function(tb,ti){
@@ -264,7 +333,7 @@ h2{font-size:14px;margin:18px 24px 6px;padding-bottom:4px;border-bottom:1px soli
 <tr><td>절단</td><td>${b.cutCount} 회</td></tr><tr><td>드릴 홀</td><td>${b.holes} 개</td></tr><tr><td>절곡</td><td>${b.bends} 회</td></tr></table>
 ${pipingSection(b, '②b')}
 <h2>③ 공수 (표준 원단위 개산, hr)</h2><table><tr><th>작업</th><th>공수</th></tr>${laborRows}<tr style="font-weight:700;background:#f8fafc"><td>합계</td><td>${b.laborHr.합계} hr</td></tr></table>
-<div class="note">⚠ 물량=형상 결정론(신뢰) · 공수=표준 원단위(용접 ${STD_RATES.weldPerM}h/m·드릴 ${STD_RATES.drillPerHole}h/홀 등) 개산 → 현장/작업방식 따라 조정 · 금액 미산출 · 용접량은 AABB 접촉 개산(정밀은 조인트 선언 후속).</div>
+<div class="note">⚠ 물량=형상 결정론(신뢰) · 공수=표준 원단위(용접 ${STD_RATES.weldPerM}h/m·드릴 ${STD_RATES.drillPerHole}h/홀 등) 개산 → 현장/작업방식 따라 조정 · 금액 미산출 · 용접량은 AABB 접촉 개산(정밀은 조인트 선언 후속).${missNote}</div>
 <div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div><script>
 // H5 현장 인터랙션(260718): th 클릭 정렬 · 행 체크오프(localStorage) · CSV 내보내기
 document.querySelectorAll('table').forEach(function(tb,ti){
