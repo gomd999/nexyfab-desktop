@@ -92,8 +92,16 @@ describe('estimateVolumeFraction', () => {
   });
 
   it('density 0.0 → fraction below 0.3', () => {
+    // ⚠ 260729: 이 단언이 **플레이크**였다(3회 중 1회 실패). estimateVolumeFraction 은
+    // Math.random() 몬테카를로이고, 실측 참값은 0.2794 다. n=2000 이면
+    // σ = √(p(1−p)/n) ≈ 0.0100 이라 경계 0.3 이 겨우 **2.0σ** 거리다 —
+    // 20회 중 1~2회는 넘는다(실측 범위 0.2660~0.3010).
+    //
+    // 단언을 느슨하게 하지 않고 **추정 정밀도를 올린다**. n=20000 이면 σ ≈ 0.0032 로
+    // 경계가 6.3σ 거리가 된다(실측 범위 0.2742~0.2883). 검사 기준은 그대로 두고
+    // 측정만 정확하게 만드는 쪽이 맞다.
     const params: LatticeParams = { type: 'gyroid', cellMm: 5, density: 0.05, bbox: baseBbox };
-    const f = estimateVolumeFraction(params, 2000);
+    const f = estimateVolumeFraction(params, 20000);
     expect(f).toBeLessThan(0.3);
   });
 
