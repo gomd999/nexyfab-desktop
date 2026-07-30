@@ -24,6 +24,7 @@ import { PARAMS, gate, partAabb } from './reconstruct.mjs';
 import { partVolume } from './structural.mjs';
 import { TYPE_HINTS } from './schemas.mjs';
 import { ASSEMBLY_TEMPLATES, buildAssemblyTemplate } from './domain-assemblies.mjs';
+import { auditAll } from './domain-audit.mjs';
 
 const params = Object.keys(PARAMS as Record<string, unknown>);
 const canon = CANONICAL as Record<string, Record<string, unknown>>;
@@ -87,5 +88,89 @@ describe('템플릿 어휘 사용 — 결함이 아니라 **기록**이다', () 
     // 여기서 지키는 것은 **템플릿이 실제로 어휘를 쓴다**는 하한뿐이다.
     expect(used.size).toBeGreaterThanOrEqual(16);
     for (const t of used) expect(params, `템플릿이 미등록 타입 사용: ${t}`).toContain(t);
+  });
+});
+
+describe('★ 빌더 폴백 = 템플릿 파라미터 default (260801b)', () => {
+  /**
+   * ## 왜 이 검사가 필요한가
+   * `buildAssemblyTemplate(domain, id, {})` 는 파라미터 목록의 `default` 를 **채우지 않고**
+   * 빌더 안의 폴백(`num(p.x, 기본값)`)을 쓴다. 두 값이 갈리면 **경로에 따라 형상이 달라진다**:
+   * UI 는 default 를 보여주고, API·직접 호출은 폴백을 쓴다.
+   *
+   * 이 세션에 같은 부류를 **두 번** 겪었다:
+   *  · 난간 `handrailH` — 템플릿 1,200 vs 폴백 1,000 → 파라미터를 안 주면 법정 미달로 나갔다
+   *  · 거셋 `edgeDist` — 템플릿 55 vs 폴백 40 → 볼트 연단거리가 계속 미달로 잡혔다
+   * 두 번 겪고서야 전수로 막는다.
+   *
+   * ⚠ **파생·조건부 기본값은 정당하다.** 허용목록으로 이유와 함께 남긴다 —
+   *   목록에 없는 불일치만 실패로 본다(과고지도 결함이다).
+   */
+  const DERIVED_DEFAULT_OK: Record<string, string> = {
+    'mech/flanged_fitting': 'bendR 은 관경에서 파생한다(od×1.5) — default 170 은 기본 관경에 대한 표시값',
+    'mech/conveyor': 'rollerPitch 는 형식에 따라 다르다(belt 900 / roller 300) — default 는 roller 값',
+  };
+
+  it('전 템플릿에서 빈 호출과 default 명시 호출이 **같은 형상**을 낸다', () => {
+    const mismatched: string[] = [];
+    for (const [d, list] of Object.entries(ASSEMBLY_TEMPLATES as Record<string, Array<{ id: string; params: Array<{ name: string; default: unknown }> }>>)) {
+      for (const t of list) {
+        const defs = Object.fromEntries(t.params.map((q) => [q.name, q.default]));
+        let a: unknown, b: unknown;
+        try {
+          a = (buildAssemblyTemplate(d, t.id, {}) as { parts?: unknown })?.parts ?? [];
+          b = (buildAssemblyTemplate(d, t.id, defs) as { parts?: unknown })?.parts ?? [];
+        } catch { continue; }
+        if (JSON.stringify(a) !== JSON.stringify(b)) mismatched.push(`${d}/${t.id}`);
+      }
+    }
+    const unexpected = mismatched.filter((k) => !(k in DERIVED_DEFAULT_OK));
+    expect(unexpected, `폴백≠default: ${unexpected.join(', ')}`).toEqual([]);
+  });
+
+  it('허용목록은 **실제로 불일치인 것만** 담는다 — 죽은 예외를 남기지 않는다', () => {
+    for (const key of Object.keys(DERIVED_DEFAULT_OK)) {
+      const [d, id] = key.split('/');
+      const t = (ASSEMBLY_TEMPLATES as Record<string, Array<{ id: string; params: Array<{ name: string; default: unknown }> }>>)[d]
+        ?.find((x) => x.id === id);
+      expect(t, key).toBeTruthy();
+      const defs = Object.fromEntries(t!.params.map((q) => [q.name, q.default]));
+      const a = JSON.stringify((buildAssemblyTemplate(d, id, {}) as { parts?: unknown })?.parts ?? []);
+      const b = JSON.stringify((buildAssemblyTemplate(d, id, defs) as { parts?: unknown })?.parts ?? []);
+      expect(a, `${key} 는 이제 일치한다 — 허용목록에서 빼야 한다`).not.toBe(b);
+    }
+  });
+});
+
+describe('★ 템플릿이 판정을 갖는가 (260801b)', () => {
+  /**
+   * 어휘 층은 위에서 막았는데 **템플릿 층이 비어 있었다.** 이 세션에 템플릿을 4종 추가하고
+   * `gusset_bracket`·`motor_mount`·`masonry_wall` 이 **실판정 0** 이었으며,
+   * `gusset_bracket` 은 안전검토.html 조차 나오지 않았다 — 어느 검사도 잡지 못했다.
+   *
+   * ⚠ 실판정 0 이 **결함이 아닌 경우**가 있다. 그건 허용목록에 **이유와 함께** 선언해야
+   *   통과한다 — 선언 없이 0 이면 실패다(「없다」와 「해당 없다」의 구별을 강제한다).
+   */
+  const NO_JUDGMENT_OK: Record<string, string> = {
+    'civil/retaining_wall_run': '검증.html(codeVerificationVerdict) 경로로 소비자에 닿는다',
+    'civil/box_culvert': '같음 — 검증.html 경로',
+    'civil/retaining_wall_alignment': '같음 — 검증.html 경로',
+    'mech/flanged_fitting': '배관 부속류 — 형상 검토 대상이 아니다(하중·계통이 없다)',
+  };
+
+  it('실판정 0 인 템플릿은 **허용목록에 선언**돼 있어야 한다', () => {
+    const rows = auditAll({ wind: { V0: 30, Cn: -1.1 }, seismicG: 0.22, seismic: { R: 5 }, As_mm2: 8000 }) as Array<{ domain: string; id: string; real: number; error?: string }>;
+    const zero = rows.filter((r) => !r.error && r.real === 0).map((r) => `${r.domain}/${r.id}`);
+    const undeclared = zero.filter((k) => !(k in NO_JUDGMENT_OK));
+    expect(undeclared, `판정 0인데 이유 미선언: ${undeclared.join(', ')}`).toEqual([]);
+  });
+
+  it('허용목록에 **판정이 생긴 것**을 남겨 두지 않는다', () => {
+    const rows = auditAll({ wind: { V0: 30, Cn: -1.1 }, seismicG: 0.22, seismic: { R: 5 }, As_mm2: 8000 }) as Array<{ domain: string; id: string; real: number }>;
+    for (const key of Object.keys(NO_JUDGMENT_OK)) {
+      const r = rows.find((x) => `${x.domain}/${x.id}` === key);
+      expect(r, key).toBeTruthy();
+      expect(r!.real, `${key} 에 판정이 생겼다 — 허용목록에서 빼야 한다`).toBe(0);
+    }
   });
 });

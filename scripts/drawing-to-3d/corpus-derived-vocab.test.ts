@@ -16,7 +16,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildAssembly } from './assembly.mjs';
 import { computeBOQ } from './boq.mjs';
-import { partAabb, extrudePoly, polyArea, PARAMS } from './reconstruct.mjs';
+import { partAabb, extrudePoly, polyArea, PARAMS, expandHoles, filletPolygon } from './reconstruct.mjs';
 import { partVolume } from './structural.mjs';
 import { TYPE_SCHEMAS, TYPE_HINTS } from './schemas.mjs';
 import { railingCheck } from './railing-check.mjs';
@@ -25,6 +25,8 @@ import { SNAP_LISTS } from './snap-lists.mjs';
 import { domainSafetyReportHtml } from './domain-dossier-verify.mjs';
 import { auditTemplate } from './domain-audit.mjs';
 import { importStep } from '@/lib/brep-bridge/stepImport';
+import { masonryCheck } from './masonry-check.mjs';
+import { boltedPlateCheck } from './bolted-plate-check.mjs';
 
 type Asm = { name: string; domain: string; parts: unknown[] };
 const build = (type: string, params: Record<string, unknown>): Record<string, unknown> =>
@@ -303,5 +305,176 @@ describe('원호 엣지 근사 — 임포트의 실제 병목이었다 (260801, 
     const r = (importStep as unknown as (s: string) => { unsupported?: string[]; warnings?: string[] })(bs);
     // 스플라인을 원호처럼 근사하지 않는다(사유가 남거나 애초에 솔리드가 없다).
     expect((r.warnings ?? []).join(' ')).not.toContain('근사');
+  });
+});
+
+describe('상세 어휘 — 홀 가공·패턴·필렛·복합 (260801b)', () => {
+  /**
+   * 코퍼스 실측이 지목한 상세 갭 4개:
+   *   홀 683파일 · 필렛 157파일(반경 표본 2,095 · 중앙값 1.43mm) ·
+   *   패턴 248파일(원형 455 · 선형 175 · 패턴 소속 홀 1,796) · aspect complex 42%
+   */
+  const RECT = [[0, 0], [200, 0], [200, 120], [0, 120]];
+  const vol = (t: string, p: unknown) => (partVolume as unknown as (ty: string, q: unknown) => number)(t, p);
+
+  it('★홀 가공 상세가 **어휘 간에 같은 값**을 낸다 — 종전엔 갈렸다', () => {
+    // 실측: 같은 카운터보어를 줘도 plate 475,024 vs extrude 477,738(=관통과 동일)로 갈렸다.
+    const plate = { width: 200, depth: 120, thickness: 20 };
+    for (const h of [
+      { x: 50, y: 60, d: 12 },
+      { x: 50, y: 60, d: 12, kind: 'cbore', cbDia: 24, cbDepth: 8 },
+      { x: 50, y: 60, d: 12, kind: 'csink', csDia: 24 },
+      { x: 50, y: 60, d: 10, kind: 'tap', thread: 'M12' },
+    ]) {
+      const a = vol('plate_with_holes', { ...plate, holes: [h] });
+      const b = vol('extrude_profile', { profile: RECT, depth: 20, holes: [h] });
+      expect(b, JSON.stringify(h)).toBeCloseTo(a, 6);
+    }
+  });
+
+  it('카운터보어가 관통보다 **더 많이** 빠진다 — 상세가 실제로 반영된다', () => {
+    const thru = vol('extrude_profile', { profile: RECT, depth: 20, holes: [{ x: 50, y: 60, d: 12 }] });
+    const cb = vol('extrude_profile', { profile: RECT, depth: 20, holes: [{ x: 50, y: 60, d: 12, kind: 'cbore', cbDia: 24, cbDepth: 8 }] });
+    expect(cb).toBeLessThan(thru);
+  });
+
+  it('★패턴이 전개된다 — 선언 1건이 실제 홀 N개다', () => {
+    const one = vol('extrude_profile', { profile: RECT, depth: 20, holes: [{ x: 40, y: 60, d: 12 }] });
+    const four = vol('extrude_profile', { profile: RECT, depth: 20, holes: [{ x: 40, y: 60, d: 12, pattern: { kind: 'linear', count: 4, pitch: 30 } }] });
+    const full = 200 * 120 * 20;
+    expect(full - four).toBeCloseTo(4 * (full - one), 6);   // 홀 4개분이 빠진다
+    const circ = (expandHoles as unknown as (h: unknown) => unknown[])([{ x: 100, y: 60, d: 8, pattern: { kind: 'circular', count: 6, bcd: 80 } }]);
+    expect(circ).toHaveLength(6);
+  });
+
+  it('패턴 정보를 **잃지 않는다** — 도면 표기·BOQ 회차가 이걸 쓴다', () => {
+    const ex = (expandHoles as unknown as (h: unknown) => Array<{ _pat?: { kind: string; count: number; seq: number } }>)(
+      [{ x: 40, y: 60, d: 12, pattern: { kind: 'linear', count: 3, pitch: 30 } }]);
+    expect(ex[0]._pat).toMatchObject({ kind: 'linear', count: 3, seq: 1 });
+    expect(ex[2]._pat).toMatchObject({ seq: 3 });
+  });
+
+  it('모르는 패턴 kind 는 **펼치지 않고 거부한다** — 선형으로 가정하지 않는다', () => {
+    const r = (buildAssembly as unknown as (a: unknown) => { gateErrors?: string[] })({
+      name: 't', domain: 'mech',
+      parts: [{ id: 'p', type: 'extrude_profile', params: { profile: RECT, depth: 20, holes: [{ x: 40, y: 60, d: 12, pattern: { kind: 'spiral', count: 3 } }] }, at: {}, material: 'steel' }],
+    });
+    expect((r.gateErrors ?? []).join(' ')).toContain('pattern.kind 미지원');
+  });
+
+  it('★필렛이 **형상에 반영된다** — 부피·표면적·SCAD 가 같은 형상을 본다', () => {
+    // 100×100 정사각 r10 → 면적 10,000 − 4·r²(1−π/4) = 9,914.2 (현 분할이라 약간 작다)
+    const sq = [[0, 0], [100, 0], [100, 100], [0, 100]];
+    const f = (filletPolygon as unknown as (p: number[][], r: (i: number) => number) => { pts: number[][]; applied: number; maxSagittaMm: number })(sq, () => 10);
+    expect(f.applied).toBe(4);
+    // 정확값 9,914.16 · 현 분할이라 2.02mm²(0.02%) 작다 — 그 차이가 새그의 대가다.
+    const area = Math.abs((polyArea as unknown as (p: number[][]) => number)(f.pts));
+    expect(area).toBeGreaterThan(9910);
+    expect(area).toBeLessThan(9914.17);          // 내접이므로 정확값을 넘지 않는다
+    expect(9914.16 - area).toBeLessThan(3);      // 근사 오차가 3mm² 미만
+    expect(f.maxSagittaMm).toBeLessThan(0.06);   // 근사 오차를 수치로 갖는다
+    // 부피가 필렛만큼 줄어든다(형상과 일치)
+    const plain = vol('extrude_profile', { profile: sq, depth: 10 });
+    const round = vol('extrude_profile', { profile: sq, depth: 10, filletR: 10 });
+    expect(round).toBeLessThan(plain);
+  });
+
+  it('필렛은 **볼록 꼭짓점만** 라운드한다 — 오목은 재료가 늘어나는 쪽이라 별건이다', () => {
+    // L 자: 꼭짓점 3번이 오목(내각 270°)
+    const L = [[0, 0], [100, 0], [100, 20], [20, 20], [20, 100], [0, 100]];
+    const f = (filletPolygon as unknown as (p: number[][], r: (i: number) => number) => { applied: number })(L, () => 5);
+    expect(f.applied).toBe(5);   // 6점 중 오목 1개 제외
+  });
+
+  it('반경이 인접 변 절반을 넘으면 **줄이지 않고 거부한다**', () => {
+    const r = (buildAssembly as unknown as (a: unknown) => { gateErrors?: string[] })({
+      name: 't', domain: 'mech',
+      parts: [{ id: 'p', type: 'extrude_profile', params: { profile: RECT, depth: 20, filletR: 200 }, at: {}, material: 'steel' }],
+    });
+    expect((r.gateErrors ?? []).join(' ')).toContain('절반을 넘는다');
+  });
+
+  it('★복합 부품 — 합·차가 폐형으로 정확하다', () => {
+    const params = {
+      subs: [
+        { type: 'box', params: { width: 200, depth: 100, height: 50 }, op: 'add' },
+        { type: 'box', params: { width: 200, depth: 12, height: 80 }, at: { ty: 44, tz: 50 }, op: 'add' },
+        { type: 'cylinder', params: { diameter: 30, length: 60 }, at: { tx: 100, ty: 50, tz: -5 }, op: 'subtract' },
+      ],
+    };
+    const want = 200 * 100 * 50 + 200 * 12 * 80 - (Math.PI / 4) * 30 * 30 * 60;
+    expect(vol('composite', params)).toBeCloseTo(want, 4);
+    // 외곽은 add 하위의 합집합 — subtract 는 경계를 넓히지 않는다
+    const bb = (partAabb as unknown as (i: unknown) => { min: number[]; max: number[] })({ type: 'composite', ...params });
+    expect(bb.max).toEqual([200, 100, 130]);
+  });
+
+  it('복합 표면적은 **미산출**이고 BOQ 가 이름으로 고지한다 — 0 이 아니라 모름', () => {
+    const asm = { name: 't', domain: 'mech', parts: [{ id: 'c1', type: 'composite', params: { subs: [{ type: 'box', params: { width: 100, depth: 100, height: 10 }, op: 'add' }] }, at: {}, material: 'steel' }] };
+    const boq = (computeBOQ as unknown as (a: unknown) => { surfaceMissing?: string[]; items: Array<{ surfaceM2: number | null }> })(asm);
+    expect(boq.surfaceMissing).toContain('composite');
+    expect(boq.items[0].surfaceM2).toBeNull();
+  });
+
+  it('복합의 하위는 **자기 게이트**로 검사된다 · 중첩의 중첩은 거부', () => {
+    const mk = (params: unknown) => (buildAssembly as unknown as (a: unknown) => { gateErrors?: string[] })({
+      name: 't', domain: 'mech', parts: [{ id: 'p', type: 'composite', params, at: {}, material: 'steel' }],
+    });
+    expect((mk({ subs: [{ type: 'box', params: { width: 0, depth: 10, height: 10 }, op: 'add' }] }).gateErrors ?? []).join(' ')).toContain('subs[0](box)');
+    expect((mk({ subs: [{ type: 'composite', params: { subs: [] }, op: 'add' }] }).gateErrors ?? []).join(' ')).toContain('중첩의 중첩');
+    expect((mk({ subs: [{ type: 'box', params: { width: 10, depth: 10, height: 10 }, op: 'subtract' }] }).gateErrors ?? []).join(' ')).toContain('add 하위가 하나도 없다');
+  });
+});
+
+describe('새 템플릿의 판정 — 형상이 답을 가진 것만 (260801b, 계획 ⑤)', () => {
+  const audit = (d: string, id: string) => auditTemplate(d, id, {}) as {
+    real: number; failed: string[]; names: { real: string[] }; reached: boolean;
+  };
+
+  it('★`gusset_bracket` — 볼트 연단거리·간격이 실판정된다', () => {
+    const a = audit('mech', 'gusset_bracket');
+    expect(a.real).toBeGreaterThan(0);
+    expect(a.reached).toBe(true);
+    expect(a.names.real.join(' ')).toContain('연단거리');
+    expect(a.failed).toEqual([]);   // 기본값이 기준을 만족한다
+  });
+
+  it('★`motor_mount` — 복합 부품 **안쪽 판재**의 볼트까지 본다', () => {
+    // 최상위만 보게 짜면 composite 안의 판재가 통째로 빠진다.
+    const a = audit('mech', 'motor_mount');
+    expect(a.names.real.join(' ')).toContain('subs[0]');
+    expect(a.failed).toEqual([]);
+  });
+
+  it('★`masonry_wall` — 세장비·줄눈이 실판정된다 (조적은 전단벽이 아니다)', () => {
+    const a = audit('building', 'masonry_wall');
+    expect(a.real).toBeGreaterThan(0);
+    expect(a.names.real.join(' ')).toContain('세장비');
+  });
+
+  it('세장비 한계는 **보강 여부가 정한다** — 우리가 정하지 않는다', () => {
+    const call = (p: unknown, ov: Record<string, number> = {}) =>
+      (masonryCheck as unknown as (a: unknown, q: unknown) => { checks: Record<string, { pass: boolean | null; verdict?: string }> })(
+        buildAssemblyTemplate('building', 'masonry_wall', ov), p);
+    // h/t = 4000/150 = 26.7 → 무보강(20) 미달 · 보강(30) 적합 → 용도가 결론을 가른다
+    const slim = { height: 4000, thickness: 150 };
+    expect(call({ masonry: { reinforced: true } }, slim).checks.slenderness.pass).toBe(true);
+    expect(call({ masonry: { reinforced: false } }, slim).checks.slenderness.pass).toBe(false);
+    expect(call({}, slim).checks.slenderness.verdict).toBe('CHECK');
+  });
+
+  it('개구를 선언했는데 인방이 없으면 **판정하지 않고 그 사실을 적는다**', () => {
+    const asm = buildAssemblyTemplate('building', 'masonry_wall', { openingW: 1200 }) as { parts?: Array<{ id?: string }> };
+    const stripped = { ...asm, parts: (asm.parts ?? []).filter((p) => p.id !== 'lintel') };
+    const r = (masonryCheck as unknown as (a: unknown, p: unknown) => { checks: Record<string, { pass: boolean | null; detail?: string[] }> })(stripped, {});
+    expect(r.checks.lintelBearing.pass).toBeNull();
+    expect(r.checks.lintelBearing.detail!.join(' ')).toContain('자립하지 못한다');
+  });
+
+  it('볼트 검사가 **연단거리 미달을 실제로 잡는다** — 살아 있는 검사다', () => {
+    // 연단거리를 극단적으로 줄이면 FAIL 이 나와야 한다(안 나오면 검사가 죽은 것이다).
+    const r = (boltedPlateCheck as unknown as (a: unknown, p: unknown) => { checks: Record<string, { pass: boolean | null; verdict?: string }> })(
+      buildAssemblyTemplate('mech', 'gusset_bracket', { edgeDist: 15 }), {});
+    expect(r.checks.edgeDistance.verdict).toBe('FAIL');
   });
 });
