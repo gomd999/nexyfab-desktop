@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { VERIFY_FIELDS, buildVerifyParams } from '@/lib/nexyfab/verify-params';
 import dynamic from 'next/dynamic';
 import { isKorean, toIsoLang } from '@/lib/i18n/normalize';
 import type { PickEvent, PickMode } from './AssemblyViewer3D';
@@ -34,6 +35,7 @@ const dict = {
     pkgBtn: '📦 설계 패키지 다운로드',
     pkgFailed: '패키지 생성 실패',
     pkgFailPrefix: '패키지 실패: ',
+    vpTitle: '검토 입력(선택) — 주면 판정이 늘어납니다', vpHint: '형상에서 알 수 없는 값입니다. 주지 않으면 해당 검토는 「입력 대기」로 고지되며 「이상 없음」이 아닙니다.', vpR: '반응수정계수 R (지진 · 1~8)', vpV0: '기본풍속 V0 (m/s)', vpAs: '인장철근 As (mm², 거더·보)', vpBcr: '건폐율 상한 (%)', vpFar: '용적률 상한 (%)', vpGreen: '조경면적 최소율 (%)',
     papersBtn: '관련 논문 부록 (OpenAlex·Crossref 실인용)',
     reportFailed: '리포트 HTML 생성 실패',
     reportHtml: '리포트 HTML',
@@ -262,6 +264,7 @@ const dict = {
     pkgBtn: '📦 Download design package',
     pkgFailed: 'package failed',
     pkgFailPrefix: 'Package failed: ',
+    vpTitle: 'Review inputs (optional) — more inputs, more verdicts', vpHint: 'These cannot be derived from geometry. Omitted ones are disclosed as “awaiting input”, which is NOT “no issues found”.', vpR: 'Response modification factor R (seismic, 1–8)', vpV0: 'Basic wind speed V0 (m/s)', vpAs: 'Tension rebar As (mm², girder/beam)', vpBcr: 'Building coverage limit (%)', vpFar: 'Floor area ratio limit (%)', vpGreen: 'Min. landscape area (%)',
     papersBtn: 'Related papers (real OpenAlex·Crossref citations)',
     reportFailed: 'report HTML failed',
     reportHtml: 'Report HTML',
@@ -485,6 +488,7 @@ const dict = {
     pkgBtn: '📦 設計パッケージをダウンロード',
     pkgFailed: 'パッケージ生成に失敗',
     pkgFailPrefix: 'パッケージ失敗: ',
+    vpTitle: '検討入力(任意) — 入れると判定が増えます', vpHint: '形状から導けない値です。未入力の項目は「入力待ち」として明示され、「異常なし」ではありません。', vpR: '応答修正係数 R (地震 · 1〜8)', vpV0: '基本風速 V0 (m/s)', vpAs: '引張鉄筋 As (mm²・桁/梁)', vpBcr: '建蔽率上限 (%)', vpFar: '容積率上限 (%)', vpGreen: '緑地面積 最小率 (%)',
     papersBtn: '関連論文付録（OpenAlex·Crossref 実引用）',
     reportFailed: 'レポートHTML生成に失敗',
     reportHtml: 'レポートHTML',
@@ -708,6 +712,7 @@ const dict = {
     pkgBtn: '📦 下载设计包',
     pkgFailed: '设计包生成失败',
     pkgFailPrefix: '设计包失败: ',
+    vpTitle: '审核输入(可选) — 输入越多，判定越多', vpHint: '这些值无法从几何推导。未提供的项将标注为“等待输入”，这不等于“无异常”。', vpR: '反应修正系数 R (地震 · 1~8)', vpV0: '基本风速 V0 (m/s)', vpAs: '受拉钢筋 As (mm²，梁/主梁)', vpBcr: '建筑密度上限 (%)', vpFar: '容积率上限 (%)', vpGreen: '绿地面积最低比例 (%)',
     papersBtn: '相关论文附录（OpenAlex·Crossref 真实引用）',
     reportFailed: '报告HTML生成失败',
     reportHtml: '报告HTML',
@@ -931,6 +936,7 @@ const dict = {
     pkgBtn: '📦 Descargar paquete de diseño',
     pkgFailed: 'fallo al generar el paquete',
     pkgFailPrefix: 'Fallo del paquete: ',
+    vpTitle: 'Datos de revisión (opcional) — más datos, más veredictos', vpHint: 'No se pueden derivar de la geometría. Lo omitido se declara «pendiente de dato», que NO es «sin problemas».', vpR: 'Factor de modificación de respuesta R (sísmico, 1–8)', vpV0: 'Velocidad básica del viento V0 (m/s)', vpAs: 'Armadura de tracción As (mm², viga)', vpBcr: 'Límite de ocupación (%)', vpFar: 'Límite de edificabilidad (%)', vpGreen: 'Área verde mínima (%)',
     papersBtn: 'Anexo de artículos relacionados (citas reales OpenAlex·Crossref)',
     reportFailed: 'fallo al generar el informe HTML',
     reportHtml: 'Informe HTML',
@@ -1154,6 +1160,7 @@ const dict = {
     pkgBtn: '📦 تنزيل حزمة التصميم',
     pkgFailed: 'فشل إنشاء الحزمة',
     pkgFailPrefix: 'فشل الحزمة: ',
+    vpTitle: 'مدخلات المراجعة (اختياري) — مدخلات أكثر، أحكام أكثر', vpHint: 'لا يمكن استنتاجها من الشكل. ما يُترك يُعلن «بانتظار المدخل»، وهذا ليس «لا مشاكل».', vpR: 'معامل تعديل الاستجابة R (زلزالي، 1–8)', vpV0: 'سرعة الريح الأساسية V0 (م/ث)', vpAs: 'حديد الشد As (مم²، جسر/عتب)', vpBcr: 'حد نسبة البناء (%)', vpFar: 'حد نسبة الأرضيات (%)', vpGreen: 'أدنى مساحة خضراء (%)',
     papersBtn: 'ملحق الأوراق البحثية ذات الصلة (استشهادات حقيقية OpenAlex·Crossref)',
     reportFailed: 'فشل إنشاء تقرير HTML',
     reportHtml: 'تقرير HTML',
@@ -1390,6 +1397,7 @@ const SNAP_MIRROR: Record<string, { values: number[]; source: string }> = {
 // ①② param-sweep 지원 도메인 (scripts/drawing-to-3d/param-sweep.mjs CHAINS 미러)
 const SWEEP_DOMAINS = ['building', 'landscape', 'interior', 'bridge'];
 
+
 // Round5 — 공유 링크/브라우저 저장 스냅샷 (표시·복원용 전체 상태)
 interface SavedState {
   v?: number; name?: string; at?: number;
@@ -1569,6 +1577,15 @@ export default function AssemblyPresetPanel({
     setAdvJson(JSON.stringify(base));
     setAdvErr(null);
   }, [advJson]);
+  /**
+   * ⚠ 260731b — **API 로만 닿는 입력은 사실상 없는 입력이다.**
+   *
+   * `verifyParams`(지진 R·풍 V0·배근 As·용도지역 상한)는 웹·MCP 라우트에 배선돼 있고
+   * 라이브에서 끝까지 닿는 것도 실측으로 확인했다. 그런데 **웹 UI 는 `{assembly}` 만
+   * 보내고 있었다** — 넣을 자리가 없으니 사용자는 영원히 「입력 대기」만 받는다.
+   * 실측: R 을 주면 실판정 146 → 154, 전부 주면 168 이 된다(같은 형상, 같은 코드).
+   */
+  const [vp, setVp] = useState<Record<string, string>>({});
   const [pkgBusy, setPkgBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   // STEP 업로드 시 원본대조 검증 판정(있을 때만 표시)
@@ -2215,7 +2232,7 @@ export default function AssemblyPresetPanel({
     try {
       const r = await fetch('/api/nexyfab/drawing/package/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assembly: built.assembly }),
+        body: JSON.stringify({ assembly: built.assembly, verifyParams: buildVerifyParams(vp) }),
       });
       const j = (await r.json().catch(() => ({}))) as { ok?: boolean; zipBase64?: string; files?: Array<{ name: string; content: string; mime?: string }>; error?: string };
       if (!r.ok || !j.ok) throw new Error(j.error ?? t.pkgFailed);
@@ -2238,7 +2255,7 @@ export default function AssemblyPresetPanel({
     } finally {
       setPkgBusy(false);
     }
-  }, [built, t]);
+  }, [built, t, vp]);
 
   if (!templates) return null;
 
@@ -3061,6 +3078,24 @@ export default function AssemblyPresetPanel({
       </div>
       </details>
 
+      {built && (
+        <details style={{ marginTop: 6, border: '1px solid var(--nx-border, #e2e8f0)', borderRadius: 8, padding: '6px 9px' }}>
+          <summary style={{ fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{t.vpTitle}</summary>
+          <div style={{ fontSize: 10, color: 'var(--nx-dim, #64748b)', margin: '4px 0 6px' }}>{t.vpHint}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 6 }}>
+            {VERIFY_FIELDS.map((f) => (
+              <label key={f.key} style={{ fontSize: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span>{t[f.labelKey as keyof typeof t] as string}</span>
+                <input
+                  type="number" inputMode="decimal" value={vp[f.key] ?? ''} min={f.min} max={f.max} step={f.step}
+                  onChange={(e) => setVp((o) => ({ ...o, [f.key]: e.target.value }))}
+                  style={{ width: '100%', fontSize: 11, padding: '3px 5px', border: '1px solid var(--nx-border, #cbd5e1)', borderRadius: 4, background: 'var(--nx-panel, #fff)', color: 'inherit' }}
+                />
+              </label>
+            ))}
+          </div>
+        </details>
+      )}
       {built && (
         <button type="button" onClick={downloadPackage} disabled={pkgBusy} style={{ ...genStyle, marginTop: 6, background: 'var(--nx-panel, #fff)', color: 'var(--nx-accent, #2563eb)', border: '1px solid var(--nx-accent, #2563eb)' }}>
           {pkgBusy ? t.packaging : t.pkgBtn}

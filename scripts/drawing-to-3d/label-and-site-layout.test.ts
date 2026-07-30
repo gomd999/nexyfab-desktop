@@ -12,8 +12,25 @@ import { domainSafetyReportHtml, domainSafetyVerdict } from './domain-dossier-ve
 import { siteLayoutCheck } from './site-layout-check.mjs';
 import { auditTemplate } from './domain-audit.mjs';
 import { easySummary } from './easy-summary.mjs';
+import { shearWallCheck } from './shear-wall-check.mjs';
 
 const P = { wind: { V0: 30, Cn: -1.1 }, seismicG: 0.22 };
+/**
+ * ⚠ 260731b — **params 를 1조합만 돌리면 「입력을 준 사용자가 보는 문서」를 못 본다.**
+ *
+ * 앞 네 번의 평가가 전부 1조합이었고, 그래서 벽식 횡력 검토의 풍 경로가 **한 번도 작동한
+ * 적이 없다**는 사실이 안 보였다(`x.p.at` — 스택에 `.p` 가 없어 항상 throw). 실측:
+ * `seismic.R` 을 주면 소제목이 590 → 626 으로 늘고 영문 키가 2종 → 11종이 됐다.
+ * 회귀는 **입력을 준 경로까지** 봐야 한다 — 그게 돈 내는 사용자가 받는 문서다.
+ */
+const PARAM_MATRIX: Array<[string, Record<string, unknown>]> = [
+  ['기본', P],
+  ['+seismic.R', { ...P, seismic: { R: 5 } }],
+  ['+zoning+As', {
+    ...P, seismic: { R: 5 }, As_mm2: 8000,
+    zoning: { coverageLimitPct: 60, farLimitPct: 250, greenRatioMinPct: 30 },
+  }],
+];
 const report = (d: string, id: string, params: unknown = P) =>
   (domainSafetyReportHtml as unknown as (a: unknown, o: unknown) => string | null)(
     buildAssemblyTemplate(d, id, {}), { title: id, params }) ?? '';
@@ -33,6 +50,45 @@ describe('P0-① 판정 항목명을 읽을 수 있다', () => {
     }
     expect(total).toBeGreaterThan(400);      // 측정 자체가 비면 통과처럼 보인다 — 막는다
     expect(left.length).toBeLessThan(5);     // 260731 실측 271 → 2 (하중조합 이름 U1·U2)
+  });
+
+  it.each(PARAM_MATRIX)('[%s] 영문 소제목이 5건 미만이다 — params 를 바꿔도', (_nm, params) => {
+    let total = 0; const left: string[] = [];
+    for (const [d, list] of Object.entries(ASSEMBLY_TEMPLATES as Record<string, { id: string }[]>)) {
+      for (const t of list) {
+        const hs = heads(report(d, t.id, params));
+        total += hs.length;
+        for (const x of hs) if (isCodeKey(x)) left.push(`${d}/${t.id}:${x}`);
+      }
+    }
+    expect(total).toBeGreaterThan(400);
+    expect(left.length, left.join(' · ')).toBeLessThan(5);
+  });
+
+  it.each(PARAM_MATRIX)('[%s] 남은 영문 키는 전부 고지된다', (_nm, params) => {
+    for (const [d, list] of Object.entries(ASSEMBLY_TEMPLATES as Record<string, { id: string }[]>)) {
+      for (const t of list) {
+        const h = report(d, t.id, params);
+        for (const k of heads(h).filter(isCodeKey)) expect(h, `${d}/${t.id}:${k}`).toContain(`<code>${k}</code>`);
+      }
+    }
+  });
+
+  it.each(PARAM_MATRIX)('[%s] ★계산기 labelKo — **근본**에서 영문 라벨이 0건이다', (_nm, params) => {
+    /**
+     * ⚠ 렌더러 사전은 **표시 계층 보완**이고, 이것이 근본이다. 감사는 표시 계층을 거치지
+     * 않으므로 여기서 0 이 나오는 것은 「계산기가 스스로 이름을 밝힌다」는 뜻이다.
+     * 260731b 실측: 52건 → 0건(rc_beam·rc_column·timber_beam·drainage_vent +
+     * interior/landscape/bridge/load-path 자체 검사).
+     */
+    const left: string[] = [];
+    for (const [d, list] of Object.entries(ASSEMBLY_TEMPLATES as Record<string, { id: string }[]>)) {
+      for (const t of list) {
+        const a = auditTemplate(d, t.id, params) as { englishLabels?: string[] };
+        for (const k of a.englishLabels ?? []) left.push(`${d}/${t.id}:${k}`);
+      }
+    }
+    expect(left, left.join(' · ')).toEqual([]);
   });
 
   it('★남은 영문 키는 **전부 고지된다** — 사전만으로는 새 키를 못 막는다', () => {
@@ -155,6 +211,77 @@ describe('P2-④ 단지 배치 — 방향을 지어내지 않고 판정한다', 
     const names = r.notChecked.map((x) => x.labelKo).join(' ');
     expect(names).toContain('주차대수');
     expect(names).toContain('일조권');
+  });
+});
+
+describe('★ 문구가 사실인가 — 「V0 를 주면 돕니다」를 실제로 V0 만 줘서 검사한다', () => {
+  const shaft = () => buildAssemblyTemplate('building', 'elevator_shaft', {});
+  const run = (params: unknown) => (shearWallCheck as unknown as (a: unknown, p: unknown) => {
+    ok: boolean; checks?: Record<string, unknown>; needInputs?: { name: string }[]; messageKo?: string;
+    attempted?: string[]; basis?: Record<string, unknown>;
+  } | null)(shaft(), params);
+
+  it('★`wind.V0` 만 줘도 검토가 돈다 — 종전엔 **한 번도 돈 적이 없었다**', () => {
+    // 종전: `lateral.map(x => x.p.at?.tx)` — `lateral` 원소는 연직 병합된 스택이라 `.p` 가
+    // 없어 **항상 throw**. 그런데 거부 문구는 「R 또는 V0 중 하나만 주면 돕니다」라고 했다.
+    const r = run({ wind: { V0: 30 } });
+    expect(r?.ok).toBe(true);
+    expect(Object.keys(r!.checks ?? {}).length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ['seismic.R 만', { seismic: { R: 5 } }],
+    ['wind.V0 만', { wind: { V0: 30 } }],
+    ['둘 다', { seismic: { R: 5 }, wind: { V0: 30 } }],
+  ])('%s — 문구가 약속한 대로 검토가 돈다', (_nm, params) => {
+    expect(run(params)?.ok).toBe(true);
+  });
+
+  it('풍 B·D 는 **건물 외곽**이다 — 벽 중심 범위가 아니다(과소평가 방지)', () => {
+    const r = run({ wind: { V0: 30 } });
+    const note = JSON.stringify(r);
+    expect(note).toContain('평면 외곽');
+    expect(note).toContain('풍압은 투영면에 걸린다');
+  });
+
+  it('★`seismic.importance` 를 풍 어휘(`1`)로 줘도 받는다 — 어휘가 다른 것은 우리 사정이다', () => {
+    // 지진 계산기는 special|grade1|grade2, 풍은 1|2|3. MCP 스키마는 같은 이름을 노출한다.
+    expect(run({ seismic: { R: 5, importance: '1' }, wind: { V0: 30 } })?.ok).toBe(true);
+    expect(run({ seismic: { R: 5, importance: 'grade2' } })?.ok).toBe(true);
+    expect(run({ seismic: { R: 5, importance: 'I' } })?.ok).toBe(true);
+  });
+
+  it('★모르는 값은 **지어내지 않고** 게이트가 이름으로 거부한다', () => {
+    const r = run({ seismic: { R: 5, importance: 'ZZZ' } });
+    expect(r?.ok).toBe(false);
+    // 「입력 없음」이 아니라 「값이 허용범위 밖」이라고 말해야 한다.
+    expect(r?.messageKo).toContain('값이 허용범위를 벗어났거나');
+    expect(r?.messageKo).toContain('must be one of');
+  });
+
+  it('★이미 준 값을 다시 요구하지 않는다', () => {
+    const r = run({ seismic: { R: 5, importance: 'ZZZ' } });
+    // R 은 줬으므로 needInputs 에 없어야 한다. V0 는 안 줬으므로 있어야 한다.
+    const names = (r?.needInputs ?? []).map((x) => x.name);
+    expect(names).not.toContain('seismic.R');
+    expect(names).toContain('wind.V0');
+  });
+
+  it('아무것도 안 주면 종전대로 둘 다 요구한다 — 과소 고지도 막는다', () => {
+    const names = (run({})?.needInputs ?? []).map((x) => x.name);
+    expect(names).toEqual(['seismic.R', 'wind.V0']);
+  });
+
+  it('★풍 경로 복구로 실판정 0 이던 건축 3종이 **V0 만으로도** 판정한다', () => {
+    // ⚠ 이 단정은 「R 을 주면 늘어난다」가 아니다. `P` 에는 이미 `wind.V0` 가 있으므로,
+    //   풍 경로가 살아난 것만으로 세 템플릿이 판정한다 — 그게 이 수정의 크기다.
+    //   (수정 전에는 세 종 모두 어떤 params 로도 실판정 0 이었다.)
+    for (const id of ['water_tank', 'elevator_shaft', 'gable_house']) {
+      expect((auditTemplate('building', id, P) as { real: number }).real, id).toBeGreaterThan(0);
+      // V0 를 빼면 다시 0 이 된다 — 판정이 풍에서 나온 것임을 대조로 확정한다.
+      const noWind = auditTemplate('building', id, { seismicG: 0.22 }) as { real: number };
+      expect(noWind.real, `${id} (V0 없음)`).toBe(0);
+    }
   });
 });
 
