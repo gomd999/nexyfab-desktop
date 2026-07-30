@@ -56,6 +56,9 @@ const CHECK_LABEL_KO = {
   checks: '검토 항목', uplift: '풍 상향력', wind: '풍하중', seismic: '지진',
   irrigation: '관수', connection: '접합부', selfChecks: '형상 자기정합',
   railing: '난간 검토', height: '높이', picketGap: '살 사이 간격', postPitch: '기둥 간격',
+  boltedPlate: '볼트 접합 판재 검토', edgeDistance: '볼트 연단거리', boltPitch: '볼트 간격',
+  holeClearance: '볼트 여유', slenderness: '벽 세장비', jointThickness: '줄눈 두께',
+  lintelBearing: '인방 지지길이', blockSpec: '블록 규격 정합',
   penetration: '설비 관통 ↔ 구조 개구', notChecked: '검토하지 않은 항목 (이유와 함께)',
   // 구조 컨테이너 — 판정은 아니지만 문서에서 **소제목으로 실제 읽히는** 것들이다.
   // 실측(560여 소제목): `detail`×94 · `needInputs`×48 이 압도적이라 이것부터가 가독성이다.
@@ -203,6 +206,7 @@ import { interiorCheck } from './interior-check.mjs';
 import { interiorComponentCheck } from './interior-component-check.mjs';
 import { landscapeCheck } from './landscape-check.mjs';
 import { railingCheck } from './railing-check.mjs';
+import { masonryCheck } from './masonry-check.mjs';
 import * as bridgeMod from './bridge-check.mjs';
 import { loadPathCheck } from './load-path.mjs';
 import { shearWallCheck } from './shear-wall-check.mjs';
@@ -295,10 +299,17 @@ function runDomainSafetyCheck(assembly, params) {
      * 계단 분기 안에만 넣으면 발코니·파라펫 난간이 통째로 빠진다 — 이 세션에서
      * 「특정 분기에만 붙여 정작 필요한 곳에서 사라짐」을 네 번 잡았다.
      */
+    /**
+     * ⚠ 조적은 **전단벽이 아니다.** 메타 디스패치를 안 두면 `masonry_wall` 이 벽식 횡력
+     *   검토로 가서 「전단벽이 아니다」로 거부되고, 블록 99장을 쌓은 벽에 **판정이 0** 이 된다
+     *   (실측으로 확인). bridge·mech 와 같은 「선언 메타로 디스패치」 규약을 따른다.
+     */
+    const mas = masonryCheck(assembly, params);
     const rail = railingCheck(assembly, params);
     const withRail = (r) => (rail && r && typeof r === 'object'
       ? { ...r, checks: { ...(r.checks ?? {}), railing: rail } } : r);
 
+    if (mas) return { label: mas.label ?? '조적 벽체 검토', result: withRail(mas) };
     if (assembly.stairMeta && typeof bridgeMod.stairCheck === 'function') {
       return { label: '계단 검토 (트레드·스트링거 휨)', result: withRail(bridgeMod.stairCheck(assembly, params)) };
     }

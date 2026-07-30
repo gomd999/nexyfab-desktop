@@ -446,18 +446,38 @@ function gussetBracketAssembly(p = {}) {
   const legA = numv(p.legA, 300), legB = numv(p.legB, 240);
   const thk = numv(p.thickness, 12);
   const ch = Math.min(numv(p.chamfer, 40), Math.min(legA, legB) / 3);
-  const boltD = numv(p.boltDia, 18), edge = numv(p.edgeDist, 40);
+  // ⚠ 폴백은 템프릿의 default 와 **같아야 한다.** `buildAssemblyTemplate(d,id,{})` 는
+  //   default 를 채우지 않고 **및더 폴백**을 쓴다 — 갈리면 경로에 따라 형상이 달라진다
+  //   (이 세션에서 난간 `handrailH` 로 겪고, 여기서 또 겪었다. 회귀로 전 템프릿을 막았다).
+  const boltD = numv(p.boltDia, 18), edge = numv(p.edgeDist, 55);
   const rows = Math.max(1, Math.min(4, Math.round(numv(p.boltRows, 2))));
   const profile = [
     [ch, 0], [legA, 0], [legA, ch],
     [ch, legB], [0, legB], [0, ch],
   ];
-  // 볼트홀 — 두 변 각각 rows 개, 연단거리 edge 확보(연단거리 적정성 판정은 별도 영역).
-  const holes = [];
-  for (let i = 0; i < rows; i++) {
-    const t = rows === 1 ? 0.5 : i / (rows - 1);
-    holes.push({ x: edge + t * (legA - 2 * edge), y: edge, d: boltD });
-    holes.push({ x: edge, y: edge + t * (legB - 2 * edge), d: boltD });
+  /**
+   * 볼트홀 — 두 변 각각 rows 개.
+   *
+   * ⚠ 260801b: 처음엔 두 변을 각각 `edge` 에서 시작했다. 그러면 `t=0` 에서 **같은 자리
+   *   (edge, edge) 에 홀이 두 개** 생긴다 — 볼트 접합 검사가 「볼트 간격 최소 0mm」로
+   *   즉시 잡았다. 모서리 홀은 **한 번만** 놓고 세로 변은 그 다음 자리에서 시작한다.
+   * ⚠ 연단거리는 사선·chamfer 변까지의 최단거리가 지배한다 — 두 변에서 `edge` 만
+   *   띄워도 사선이 가까우면 미달이다. 검사가 실측으로 잡으므로 기본값을 넉넉히 둔다.
+   */
+  /**
+   * ⚠ 260801b(2차): 연단거리를 `edge` 로만 잡아서는 안 된다 — **사선 변이 지배**한다.
+   *   변을 따라 끝까지(`leg − edge`) 볼트를 놓으면 그 홀이 사선에 가까워져, `edge` 를
+   *   40→55 로 늘려도 검사가 계속 「0.9배 미달」을 냈다(실측). 축 방향으로 밀어도
+   *   사선 쪽 거리는 줄어드는 형상이다.
+   *   → 볼트 열의 **뻗는 범위**를 `boltSpan`(변 유효길이의 비율)으로 제한한다.
+   *   접합 상대재는 변 뿌리 쪽에 붙으므로 실무적으로도 그쪽에 볼트를 둔다.
+   */
+  const span = Math.max(0.15, Math.min(0.9, numv(p.boltSpan, 0.5)));
+  const holes = [{ x: edge, y: edge, d: boltD }];   // 모서리 공용 1개
+  for (let i = 1; i < rows; i++) {
+    const t = i / (rows - 1);
+    holes.push({ x: edge + t * span * (legA - 2 * edge), y: edge, d: boltD });
+    holes.push({ x: edge, y: edge + t * span * (legB - 2 * edge), d: boltD });
   }
   const parts = [{
     id: 'gusset_plate', type: 'extrude_profile',
@@ -532,6 +552,83 @@ function masonryWallAssembly(p = {}) {
     domain: 'building', parts,
     masonryWall: { L, H, T, blockL: bl, blockH: bh, joint, rows, cols, blocks: made, skipped, halvesNeeded: halves, openingW: opW },
     ...(buildNotes.length ? { buildNotes } : {}),
+  };
+}
+
+/**
+ * 모터 마운트 브래킷 — `composite`·필렛·홀 상세·패턴을 **한 부품에서 동시에** 쓴다
+ * (260801b, 상세 어휘의 소비자).
+ *
+ * ## 왜 이 형상인가
+ * 어휘를 늘리고 소비자를 안 만드는 실수를 이 세션에 두 번 했다(어휘 층·템플릿 층).
+ * 그래서 상세 어휘 4종을 **한꺼번에 쓰는** 실물 부품을 고른다. 모터 마운트는:
+ *  · 베이스판 + 수직 웨브 + 보강 리브 = **복합**(프리미티브 하나로 안 된다)
+ *  · 모터 볼트 **원형 패턴**(BCD 위 4개) — 좌표 4개로 적으면 「4-M8 EQ.S.」 정보가 사라진다
+ *  · 베이스 앵커홀 **카운터보어**(볼트 머리를 묻는다 — 관통과 부피가 다르다)
+ *  · 판 모서리 **필렛**(응력집중·취급 안전)
+ *
+ * ⚠ 치수는 실물 코퍼스에서 온 것이 아니다(부품 단위 치수가 없다) — 형상 관계만 정의하고
+ *   전부 파라미터로 뺐다. 기본값은 일반적인 소형 모터 마운트 비례이며 근거를 주장하지 않는다.
+ */
+function motorMountAssembly(p = {}) {
+  const numv = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const baseW = numv(p.baseW, 200), baseD = numv(p.baseD, 140), baseT = numv(p.baseT, 14);
+  const webH = numv(p.webH, 160), webT = numv(p.webT, 12);
+  const ribT = numv(p.ribT, 10);
+  const fillet = numv(p.filletR, 12);
+  const anchorD = numv(p.anchorDia, 14), cbDia = numv(p.anchorCbDia, 26), cbDepth = numv(p.anchorCbDepth, 8);
+  const motorBcd = numv(p.motorBcd, 90), motorHoleD = numv(p.motorHoleD, 9);
+  const motorBolts = Math.max(3, Math.min(12, Math.round(numv(p.motorBolts, 4))));
+  const edge = numv(p.edgeDist, 40);
+  /**
+   * 베이스판 — 모서리 필렛 + 앵커홀 4개(카운터보어). 앵커는 **선형 패턴 2줄**로 선언해
+   * 도면에 「2-M14 C'BORE EQ.S.」 로 나갈 수 있게 한다(좌표 열거는 패턴 정보를 잃는다).
+   */
+  const basePlate = {
+    type: 'extrude_profile',
+    params: {
+      profile: [[0, 0], [baseW, 0], [baseW, baseD], [0, baseD]],
+      depth: baseT, filletR: fillet,
+      holes: [
+        { x: edge, y: edge, d: anchorD, kind: 'cbore', cbDia, cbDepth, pattern: { kind: 'linear', count: 2, pitch: baseW - 2 * edge } },
+        { x: edge, y: baseD - edge, d: anchorD, kind: 'cbore', cbDia, cbDepth, pattern: { kind: 'linear', count: 2, pitch: baseW - 2 * edge } },
+      ],
+    },
+    at: {}, op: 'add',
+  };
+  /** 수직 웨브 — 모터 볼트 **원형 패턴**. 웨브면(XZ)에 뚫으므로 rx=90 으로 세운다. */
+  const web = {
+    type: 'extrude_profile',
+    params: {
+      profile: [[0, 0], [baseW, 0], [baseW, webH], [0, webH]],
+      depth: webT, filletR: fillet,
+      holes: [{ x: baseW / 2, y: webH / 2, d: motorHoleD, pattern: { kind: 'circular', count: motorBolts, bcd: motorBcd } }],
+    },
+    at: { tx: 0, ty: webT, tz: baseT, rx: 90 }, op: 'add',
+  };
+  /**
+   * 삼각 보강 리브 2개 — 웨브 좌우. `gusset`(직각삼각)이 정확히 맞는 형상이다.
+   *
+   * ⚠ 260801b: 처음 `rx:90` 만 줬더니 리브의 legA(96mm)가 **X 방향으로 뻗어** 부품 폭이
+   *   200 → 261mm 이 됐다(AABB 실측이 잡았다). `gusset` 의 로컬 축은 x=legA·y=legB·z=두께라,
+   *   두께를 X 로 세우려면 순환 치환 (x,y,z)→(z,x,y) 가 필요하고 그것이 `rx:90, rz:90` 이다.
+   *   회전은 형상이 아니라 **좌표 규약** 문제이고, 틀리면 간섭·GA·지지 판정이 전부 어긋난다.
+   */
+  const ribLeg = Math.min(webH * 0.6, baseD - webT - 10);
+  const ribs = [edge, baseW - edge - ribT].map((rx) => ({
+    type: 'gusset',
+    params: { legA: ribLeg, legB: ribLeg, thickness: ribT },
+    at: { tx: rx, ty: webT, tz: baseT, rx: 90, rz: 90 }, op: 'add',
+  }));
+  const parts = [{
+    id: 'mount', type: 'composite',
+    params: { subs: [basePlate, web, ...ribs] },
+    at: { tx: 0, ty: 0, tz: 0 }, material: 'steel', role: 'plate',
+  }];
+  return {
+    name: '모터 마운트 브래킷 (복합·필렛·카운터보어·볼트패턴)',
+    domain: 'mech', parts,
+    boltedJoint: { plateT: baseT, boltDia: anchorD, edgeDist: edge, bolts: 4, pitch: baseW - 2 * edge },
   };
 }
 
@@ -4007,6 +4104,28 @@ export const ASSEMBLY_TEMPLATES = {
       ],
     },
     {
+      id: 'motor_mount', labelKo: '모터 마운트 브래킷 (복합+필렛+카운터보어+볼트패턴)', labelEn: 'Motor mount bracket', build: motorMountAssembly,
+      params: [
+        { name: 'baseW', labelKo: '베이스 폭', unit: 'mm', default: 200, min: 80, max: 600 },
+        { name: 'baseD', labelKo: '베이스 깊이', unit: 'mm', default: 140, min: 60, max: 500 },
+        { name: 'baseT', labelKo: '베이스 두께', unit: 'mm', default: 14, min: 6, max: 40 },
+        { name: 'webH', labelKo: '웨브 높이', unit: 'mm', default: 160, min: 60, max: 600 },
+        { name: 'webT', labelKo: '웨브 두께', unit: 'mm', default: 12, min: 5, max: 40 },
+        { name: 'ribT', labelKo: '리브 두께', unit: 'mm', default: 10, min: 4, max: 30 },
+        { name: 'filletR', labelKo: '모서리 필렛 반경', unit: 'mm', default: 12, min: 1, max: 60 },
+        { name: 'anchorDia', labelKo: '앵커홀 지름', unit: 'mm', default: 14, min: 6, max: 40 },
+        { name: 'anchorCbDia', labelKo: '앵커 카운터보어 지름', unit: 'mm', default: 26, min: 10, max: 70 },
+        { name: 'anchorCbDepth', labelKo: '카운터보어 깊이', unit: 'mm', default: 8, min: 2, max: 30 },
+        { name: 'motorBcd', labelKo: '모터 볼트 BCD', unit: 'mm', default: 90, min: 30, max: 400 },
+        { name: 'motorHoleD', labelKo: '모터 볼트홀 지름', unit: 'mm', default: 9, min: 4, max: 30 },
+        { name: 'motorBolts', labelKo: '모터 볼트 수', unit: '', default: 4, min: 3, max: 12 },
+        // ⚠ 260801b: 25mm 로 뒀더니 볼트 접합 검사가 「연단거리 0.9배(기준 1.25 미달)」로 잡았다.
+        //   카운터보어 머리(⌀26)가 자리를 먹으므로 연단거리는 **머리 외경 기준**으로 봐야 한다:
+        //   e = edge − cbDia/2 ≥ 1.5·d → edge ≥ 1.5×14 + 13 = 34mm. 여유를 둬 40 으로.
+        { name: 'edgeDist', labelKo: '연단거리 (카운터보어 머리 기준)', unit: 'mm', default: 40, min: 20, max: 120 },
+      ],
+    },
+    {
       id: 'gusset_bracket', labelKo: '거셋 브래킷 판 (chamfer 다각형 + 볼트홀)', labelEn: 'Gusset bracket plate', build: gussetBracketAssembly,
       params: [
         { name: 'legA', labelKo: '가로 변', unit: 'mm', default: 300, min: 80, max: 1200 },
@@ -4014,8 +4133,9 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'thickness', labelKo: '판 두께', unit: 'mm', default: 12, min: 4, max: 40 },
         { name: 'chamfer', labelKo: '모서리 컷(chamfer)', unit: 'mm', default: 40, min: 5, max: 200 },
         { name: 'boltDia', labelKo: '볼트홀 지름', unit: 'mm', default: 18, min: 8, max: 40 },
-        { name: 'edgeDist', labelKo: '연단거리', unit: 'mm', default: 40, min: 15, max: 200 },
+        { name: 'edgeDist', labelKo: '연단거리', unit: 'mm', default: 55, min: 15, max: 200 },
         { name: 'boltRows', labelKo: '변별 볼트 수', unit: '', default: 2, min: 1, max: 4 },
+        { name: 'boltSpan', labelKo: '볼트 열 뻗는 범위 (변 유효길이 비율)', unit: '', default: 0.5, min: 0.15, max: 0.9 },
       ],
     },
     {

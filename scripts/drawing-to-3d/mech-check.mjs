@@ -276,6 +276,7 @@ function spanCheck(label, { count, pitch, span, countKo, pitchKo, spanKo }) {
  */
 
 import { structuralCheck } from './structural.mjs';
+import { boltedPlateCheck } from './bolted-plate-check.mjs';
 
 /**
  * 정적 전도 검토 (260729b, P1-5) — **중력만** 쓴다.
@@ -375,7 +376,29 @@ function withTipover(result, assembly, params) {
 export function mechCheck(assembly, params = {}) {
   if (!assembly || typeof assembly !== 'object') return null;
   // 전도는 **모든 기계 어셈블리**에 해당한다 — 메타 유무와 무관하게 붙인다.
-  return withTipover(mechCheckInner(assembly, params), assembly, params);
+  return withBolted(withTipover(mechCheckInner(assembly, params), assembly, params), assembly, params);
+}
+
+/**
+ * 볼트 접합 판재 검토를 붙인다 (260801b).
+ *
+ * ⚠ 전도와 **같은 규약**이다 — 메타 유무와 무관하게 붙인다. 특정 메타 분기 안에만 넣으면
+ *   `gusset_bracket`·`motor_mount` 처럼 메타가 없는 판재 부품이 통째로 빠진다
+ *   (실측: 두 템플릿이 **실판정 0** 이었고 `gusset_bracket` 은 안전검토.html 도 안 나왔다).
+ * ⚠ `mechCheckInner` 가 null 이어도 **볼트 검토만으로 결과를 세운다** — 「적용 가능한 검토가
+ *   없다」와 「검토가 있는데 문서가 안 나온다」는 다른 말이다.
+ */
+function withBolted(r, assembly, params) {
+  let b = null;
+  try { b = boltedPlateCheck(assembly, params); } catch { b = null; }
+  if (!b) return r;
+  if (!r) return b;
+  return {
+    ...r,
+    checks: { ...(r.checks ?? {}), boltedPlate: b },
+    ...(Array.isArray(r.notChecked) || Array.isArray(b.notChecked)
+      ? { notChecked: [...(r.notChecked ?? []), ...(b.notChecked ?? [])] } : {}),
+  };
 }
 
 function mechCheckInner(assembly, params = {}) {
