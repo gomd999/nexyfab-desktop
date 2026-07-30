@@ -256,6 +256,54 @@ function eccentricity(byDir, frame, mass, assembly) {
 }
 
 /**
+ * 건물 평면 외곽(B×D) — 구조 부재(벽·슬래브·지붕·기둥·보)의 **평면 범위**.
+ *
+ * 풍하중은 건물 외곽 투영면에 걸리므로 이것이 맞는 기준이다. 종전 풍 분기는 벽 **중심**
+ * 좌표 범위를 썼는데(그리고 그 코드는 아예 throw 했다), 중심 범위는 벽 두께와 캔틸레버가
+ * 아닌 외벽을 빼먹어 과소평가된다. 없으면 **null** — 지어내지 않는다.
+ */
+function planEnvelope(assembly) {
+  const STRUCT = new Set(['wall', 'slab', 'roof', 'column', 'beam', 'deck']);
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, n = 0;
+  for (const p of assembly?.parts ?? []) {
+    if (p.unverified === true || !STRUCT.has(String(p.role))) continue;
+    let b = null;
+    try { b = placedAabb(p); } catch { b = null; }
+    if (!b || !Array.isArray(b.min) || !Array.isArray(b.max)) continue;
+    if (![0, 1].every((k) => Number.isFinite(b.min[k]) && Number.isFinite(b.max[k]))) continue;
+    x0 = Math.min(x0, b.min[0]); x1 = Math.max(x1, b.max[0]);
+    y0 = Math.min(y0, b.min[1]); y1 = Math.max(y1, b.max[1]);
+    n += 1;
+  }
+  if (!n || !(x1 > x0) || !(y1 > y0)) return null;
+  return { B_mm: x1 - x0, D_mm: y1 - y0, parts: n };
+}
+
+/**
+ * 지진·풍 계산기의 **중요도 어휘가 다르다** — 지진은 `special|grade1|grade2`,
+ * 풍은 `1|2|3` 계열이다. MCP 스키마는 양쪽에 같은 `importance` 이름을 노출해 놓았으므로,
+ * 사용자가 어느 쪽 어휘를 줘도 받는다. **모르는 값은 지어내지 않고 그대로 넘겨** 계산기
+ * 게이트가 이름으로 거부하게 한다(조용히 기본값으로 갈아치우면 사용자가 준 값이 사라진다).
+ *
+ * ⚠ 실측(260731b): `seismic:{R:5, importance:'1'}` 이면 지진 산출이 통째로 실패했고,
+ *   그 사유는 `attempted` 안에만 묻힌 채 헤드라인은 **이미 준 R·V0 를 또 요구**했다.
+ */
+const SEISMIC_IMPORTANCE = {
+  special: 'special', '특': 'special', '특급': 'special',
+  grade1: 'grade1', '1': 'grade1', 'I': 'grade1', 'i': 'grade1', 'grade-1': 'grade1', '1급': 'grade1',
+  grade2: 'grade2', '2': 'grade2', 'II': 'grade2', 'ii': 'grade2', 'grade-2': 'grade2', '2급': 'grade2',
+};
+function seismicImportance(v) {
+  if (v == null || v === '') return 'grade2';          // 계산기 기본값과 같다
+  return SEISMIC_IMPORTANCE[String(v).trim()] ?? v;    // 모르면 그대로 → 게이트가 거부
+}
+const WIND_IMPORTANCE = { special: '특', '특': '특', grade1: '1', '1': '1', 'I': '1', grade2: '2', '2': '2', 'II': '2', '3': '3' };
+function windImportance(v) {
+  if (v == null || v === '') return '1';
+  return WIND_IMPORTANCE[String(v).trim()] ?? v;
+}
+
+/**
  * 벽식 횡력 검토. 벽이 없으면 **null**(해당 없음 — 에러가 아니다).
  * @param {object} assembly
  * @param {{seismic?:{R:number,zone?:string,siteClass?:string,importance?:string},wind?:{V0:number,exposure?:string},fck?:number}} params
@@ -317,7 +365,7 @@ export function shearWallCheck(assembly, params = {}) {
   if (W_kN && sp && Number(sp.R) > 0) {
     try {
       const seis = runCalculator('seismic_static', {
-        zone: sp.zone ?? 'I', siteClass: sp.siteClass ?? 'S4', importance: sp.importance ?? 'grade2',
+        zone: sp.zone ?? 'I', siteClass: sp.siteClass ?? 'S4', importance: seismicImportance(sp.importance),
         R: Number(sp.R), structType: sp.structType ?? 'rc_moment',
         ...(Number(sp.S) > 0 ? { S: Number(sp.S) } : {}),
         heightsM: [+hnM.toFixed(2)], weightsKN: [+W_kN.toFixed(1)],
@@ -328,31 +376,77 @@ export function shearWallCheck(assembly, params = {}) {
   const wp = params.wind;
   if (wp && Number(wp.V0) > 0) {
     try {
-      const xs = lateral.map((x) => Number(x.p.at?.tx ?? 0));
-      const ys = lateral.map((x) => Number(x.p.at?.ty ?? 0));
-      const B = (Math.max(...xs) - Math.min(...xs)) / 1000 || hnM;
-      const D = (Math.max(...ys) - Math.min(...ys)) / 1000 || hnM;
+      /**
+       * ⚠ 260731b — **이 경로는 한 번도 작동한 적이 없었다.**
+       *
+       * 종전 코드: `lateral.map((x) => Number(x.p.at?.tx ?? 0))`.
+       * `lateral` 의 원소는 `stackVertical` 이 연직 병합한 **스택**이라 `.p`(부품)가 없다.
+       * 그래서 `x.p.at` 이 **항상 throw** 했고, 풍은 언제나 `attempted` 에만 남았다.
+       * 결과: `seismic.R` 이 없으면 검토가 절대 돌지 않는데, 거부 문구는
+       * 「R **또는** V0 중 하나만 주면 검토가 돕니다」라고 말했다 — **사실이 아니었다.**
+       * V0 만 준 사용자는 문구를 믿고 값을 줬는데 영원히 판정을 못 받았다.
+       * 캐노피에서 잡은 것과 같은 형태의 재발이고(문구는 받는다는데 받을 경로가 없음),
+       * 이번은 더 나쁘다 — 그때는 검토가 **없었고** 이번은 **있다고 말했다.**
+       *
+       * ⚠ B·D 를 무엇으로 볼 것인가를 **먼저 정한다**(정하지 않고 아무 값이나 넣으면
+       * 그것이 지어내기다). 풍하중은 **건물 외곽 투영면**에 걸리므로 벽 중심 범위가
+       * 아니라 **구조 외곽(벽·슬래브·지붕의 평면 범위)** 이 맞다. 벽 중심 범위는
+       * 벽 두께와 캔틸레버 아닌 외벽을 빼먹어 **과소평가**된다.
+       */
+      const env = planEnvelope(assembly);
+      if (!env) throw new Error('건물 평면 외곽을 산출하지 못했다(구조 부재의 평면 범위 없음)');
+      const B = env.B_mm / 1000, D = env.D_mm / 1000;
       const r = runCalculator('wind_static', {
         V0: Number(wp.V0), H: +hnM.toFixed(1), B: +Math.max(B, 1).toFixed(1), D: +Math.max(D, 1).toFixed(1),
-        exposure: wp.exposure ?? 'C', importance: wp.importance ?? '1', structType: 'rc_moment', demandNone: 0,
+        exposure: wp.exposure ?? 'C', importance: windImportance(wp.importance), structType: 'rc_moment', demandNone: 0,
       }, 'KDS');
-      sources.push({ kind: '풍(KDS 41 12 00)', V_kN: r.baseShear_kN, detail: r });
-    } catch (e) { sources.push({ kind: '풍', error: String(e?.message ?? e).slice(0, 120) }); }
+      sources.push({
+        kind: '풍(KDS 41 12 00)', V_kN: r.baseShear_kN, detail: r,
+        basisNote: `평면 외곽 B=${B.toFixed(1)}m × D=${D.toFixed(1)}m (구조 부재 ${env.parts}개의 평면 범위 — `
+          + '벽 중심 범위가 아니라 외곽. 풍압은 투영면에 걸린다)',
+      });
+    } catch (e) { sources.push({ kind: '풍', error: String(e?.message ?? e).slice(0, 160) }); }
   }
 
   const usable = sources.filter((s) => Number(s.V_kN) > 0);
   if (!usable.length) {
+    /**
+     * ⚠ 260731b — **「입력이 없다」와 「입력이 있는데 값이 허용범위 밖이다」는 다른 말이다.**
+     *
+     * 종전에는 둘을 뭉개서, 사용자가 R·V0 를 **주고도** 「필요 입력: R, V0」를 받았다.
+     * 실패 사유(`input gate failed: importance: must be one of …`)는 `attempted` 안에만
+     * 묻혀 있어서, 사용자는 **무엇을 고쳐야 하는지 알 방법이 없었다.**
+     * 이 세션 내내 지킨 구별(해당 없음 ≠ 판정 불가 ≠ 이상 없음)의 네 번째 갈래다.
+     *
+     * 규칙: **주지 않은 것만 요구**하고, **준 것이 실패했으면 그 사유를 헤드라인으로** 올린다.
+     */
+    const gaveR = Boolean(sp) && Number(sp.R) > 0;
+    const gaveV0 = Boolean(wp) && Number(wp.V0) > 0;
+    const missing = [
+      ...(gaveR ? [] : [{ name: 'seismic.R', labelKo: '반응수정계수 R (1~8) — 구조시스템이 정하는 값이라 형상에서 알 수 없다' }]),
+      ...(gaveV0 ? [] : [{ name: 'wind.V0', labelKo: '기본풍속 V0 (m/s) — 대지 위치가 정하는 값이라 형상에서 알 수 없다' }]),
+    ];
+    const failed = sources.filter((x) => x.error);
+    const shapeNote = `전단벽 ${lateral.length}장(X ${byDir.X.length}·Y ${byDir.Y.length})을 형상에서 찾았고 총중량 `
+      + `${W_kN ? W_kN.toFixed(0) + 'kN' : '미산출'}·전체높이 ${hnM.toFixed(1)}m 도 산출했습니다.`;
     return {
       ok: false, label: '벽식 횡력 검토 (전단벽 강성·분담)',
-      needInputs: [
-        { name: 'seismic.R', labelKo: '반응수정계수 R (1~8) — 구조시스템이 정하는 값이라 형상에서 알 수 없다' },
-        { name: 'wind.V0', labelKo: '기본풍속 V0 (m/s) — 대지 위치가 정하는 값이라 형상에서 알 수 없다' },
-      ],
-      messageKo: `전단벽 ${lateral.length}장(X ${byDir.X.length}·Y ${byDir.Y.length})을 형상에서 찾았고 총중량 `
-        + `${W_kN ? W_kN.toFixed(0) + 'kN' : '미산출'}·전체높이 ${hnM.toFixed(1)}m 도 산출했습니다. `
-        + '다만 층전단력이 없으면 분담을 계산할 수 없습니다 — R 또는 V0 중 하나만 주면 검토가 돕니다. '
+      ...(missing.length ? { needInputs: missing } : {}),
+      // 두 사실은 **둘 다** 말한다: (a) 준 값이 실패했다면 그 사유, (b) 아직 안 준 것.
+      // 한쪽만 말하면 「R 을 줬는데 importance 가 틀렸고 V0 는 안 준」 경우가 뭉개진다.
+      messageKo: shapeNote + ' '
+        + (failed.length
+          ? `주신 값(${[gaveR ? `seismic.R=${sp.R}` : null, gaveV0 ? `wind.V0=${wp.V0}` : null].filter(Boolean).join(' · ') || '없음'})`
+            + `으로 층전단력을 산출하려 했으나 **${failed.length}개 경로가 실패**했습니다 — `
+            + '입력이 없는 것이 아니라 **값이 허용범위를 벗어났거나 산출이 실패한 것**입니다. '
+            + `사유: ${failed.map((x) => `${x.kind} — ${x.error}`).join(' / ')}. `
+          : '')
+        + (missing.length
+          ? '층전단력이 없으면 분담을 계산할 수 없습니다 — '
+            + `${missing.length === 2 ? 'R 또는 V0 중 하나만' : `${missing.map((m) => m.name).join('·')} 를`} 주면 검토가 돕니다. `
+          : '')
         + '**"횡력에 안전하다"는 뜻이 아닙니다.**',
-      ...(sources.length ? { attempted: sources.map((s) => `${s.kind}: ${s.error ?? '산출 실패'}`) } : {}),
+      ...(sources.length ? { attempted: sources.map((x) => `${x.kind}: ${x.error ?? '산출 실패'}`) } : {}),
     };
   }
   // 지진·풍 둘 다 있으면 **큰 쪽이 지배**한다(둘 다 보고한다 — 감추지 않는다).
@@ -470,6 +564,9 @@ export function shearWallCheck(assembly, params = {}) {
       totalWeight_kN: W_kN ? +W_kN.toFixed(1) : null, hn_m: +hnM.toFixed(2), storyH1_mm: h1,
       storyShear_kN: +governing.V_kN.toFixed(1), governing: governing.kind,
       all: usable.map((s) => `${s.kind} ${s.V_kN.toFixed(1)}kN`),
+      // ⚠ 풍 B·D 의 근거는 **문서에 보여야 한다** — 무엇을 투영면으로 봤는지 모르면
+      //   풍하중 값을 검증할 방법이 없다(260731b: 종전엔 풍 자체가 안 돌았다).
+      ...(usable.some((x) => x.basisNote) ? { windBasis: usable.find((x) => x.basisNote).basisNote } : {}),
       note: '밑면전단 V=Cs·W 는 총중량·전체높이로 정해지므로 질량 집중 근사가 V 에 영향을 주지 않는다(층별 Fx 분포는 산출하지 않음).'
         + (multiStory ? ` · 층별 벽 조각 ${withH.length}개를 연직 스택 ${stacks.length}개로 병합해 전체높이 ${hnM.toFixed(1)}m 를 얻었다.` : '')
         + ' · 벽·골조 상대강성은 최하층 높이 ' + h1 + 'mm 기준(벽 과대→골조 분담 과소=보수측). 절대 변위·층간변위는 산출하지 않는다.',
