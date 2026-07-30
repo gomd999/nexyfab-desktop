@@ -181,3 +181,66 @@ export function stepToNexyfabAssembly(source: string, { name = 'STEP import', ma
     stats: { partsIn, imported: out.length, skippedNoBounds: skipped, warnings: r.warnings.length, unsupported: r.unsupported.length, ...(cylCount ? { cylinders: cylCount } : {}), ...(splitParts ? { splitParts } : {}), ...(representative ? { representative } : {}) },
   };
 }
+
+/**
+ * ★260802 — STEP → 어셈블리, **커널 우선 · AABB 폴백**.
+ *
+ * ## 왜 바꾸나 — 실측
+ * 종전 경로는 전 부품을 **월드 AABB 상자**로 받았다. 코퍼스 실측:
+ * ```
+ * 파일 성공률       35/35 (실패하지 않는다)
+ * AABB/커널 부피 비  0.02 ~ 26.63  ← **양방향**
+ * 한 파일 대조      주력 box 28.56×31.5×1.93  vs  커널 경계 63×63×3.0
+ * ```
+ * 상자가 형상을 **감싸지도 못한다.** 치우친 오차는 보수적으로 쓸 수 있지만 **양방향 오차는
+ * 신뢰 구간을 줄 수 없고**, 질량이 작게 나오면 구조 검토가 안전측이 아니다.
+ *
+ * 커널 경로는 솔리드 단위로 쪼개고 **부피·표면적·무게중심을 정확값**으로 낸다
+ * (실측: 트롤리 7.35MB → **205부품 · 전부 정확값** · 표면적 33.17m² · 20.6초).
+ *
+ * ## ⚠ 섞지 않는다
+ * · 커널 성공 → 부품 = 커널 솔리드(`fidelity: 'kernel-solid'`)
+ * · 커널 실패 → **종전 AABB 경로로 폴백** + 「경계 근사이며 오차가 **양방향**」 고지
+ * · **총질량 한 줄에 두 충실도를 합산해 적지 않는다** — 부품마다 `fidelity` 가 붙는다.
+ */
+export async function stepToNexyfabAssemblyPreferKernel(
+  source: string,
+  opts: { name?: string; material?: string } = {},
+): Promise<StepBridgeResult & { fidelity?: 'kernel-solid' | 'aabb-approx'; kernelReason?: string | null; warnings?: string[] }> {
+  const fallback = (): StepBridgeResult & { fidelity: 'aabb-approx'; kernelReason: string | null; warnings: string[] } => {
+    const r = stepToNexyfabAssembly(source, opts);
+    return {
+      ...r, fidelity: 'aabb-approx', kernelReason: reason,
+      warnings: [
+        '형상은 **월드 AABB 상자 근사**다(원기하 아님). 질량·물량은 그 상자 기준이며 '
+        + '**오차가 양방향**이다 — 실측 대비 0.02~26.6배 범위가 관측됐다. 과대만이 아니라 **과소**도 난다.',
+        ...(reason ? [`커널 경로를 쓰지 못했다: ${reason}`] : []),
+      ],
+    };
+  };
+  let reason: string | null = null;
+  try {
+    const { importStepWithKernel } = await import('./stepKernelImport');
+    const k = await importStepWithKernel(source, { idPrefix: 'part' });
+    if (!k.ok || !k.parts.length) { reason = k.reason ?? '커널이 부품을 내지 못했다'; return fallback(); }
+    return {
+      ok: true,
+      assembly: {
+        name: opts.name ?? 'STEP import',
+        domain: 'mech',
+        // ⚠ `importedApprox` 를 붙이지 않는다 — 이 경로는 근사가 아니다.
+        parts: k.parts as unknown as StepBridgeResult['assembly'] extends undefined ? never
+          : NonNullable<StepBridgeResult['assembly']>['parts'],
+        note: `커널(OCCT) 실측 — 솔리드 ${k.parts.length}개. 부피·표면적·무게중심은 정확값이고 `
+          + '표시 메시는 근사다. **파라메트릭이 아니다**(치수를 고쳐 재생성할 수 없다).',
+      } as NonNullable<StepBridgeResult['assembly']>,
+      stats: { partsIn: k.parts.length, imported: k.parts.length, skippedNoBounds: 0, warnings: k.warnings.length, unsupported: 0 },
+      fidelity: 'kernel-solid',
+      kernelReason: null,
+      warnings: k.warnings,
+    };
+  } catch (e) {
+    reason = String((e as Error)?.message ?? e).slice(0, 160);
+    return fallback();
+  }
+}

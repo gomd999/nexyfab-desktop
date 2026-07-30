@@ -51,7 +51,12 @@ function walk(d: string, depth: number, out: string[]): string[] {
       expect(p.params.volumeMm3).toBeGreaterThan(0);
       expect(p.params.volumeMm3).toBeLessThanOrEqual(box * 1.001);
     }
-    // 파라메트릭이 아니라는 사실이 **반드시** 경고에 있어야 한다(과고지 방지).
-    expect(k.warnings.join(' ')).toMatch(/파라메트릭 아님/);
+    /**
+     * 파라메트릭이 아니라는 사실이 **반드시** 경고에 있어야 한다(과고지 방지).
+     * ⚠ 260802 — 문구 표현(`파라메트릭 아님`)에 묶어 뒀다가, 고지를 정확값 경로용으로
+     *   고치면서 표현이 바뀌자 깨졌다. **표현이 아니라 의미**로 검사한다.
+     */
+    expect(k.warnings.join(' ')).toMatch(/파라메트릭/);
+    expect(k.warnings.join(' ')).toMatch(/재생성할 수 없다|다시 만들 수 없다/);
   }, 600_000);
 });

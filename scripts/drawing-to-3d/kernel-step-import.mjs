@@ -26,6 +26,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 
 const [, , inPath, outPath, maxVertsArg] = process.argv;
 const MAX_VERTS = Number(maxVertsArg) > 0 ? Number(maxVertsArg) : 400_000;
+/** 솔리드 상한 — 코퍼스 실측 최대 17,269 부품. 초과는 **거부가 아니라 고지**한다(일부라도 쓸모 있다). */
+const MAX_SOLIDS = 2000;
 /** 메시 허용오차 — `stepKernelImport.ts` 의 상수와 **같은 값**이어야 한다(회귀가 묶는다). */
 const TOL_MM = 0.2;
 const ANG_DEG = 20;
@@ -68,9 +70,59 @@ try {
   fail(`커널이 STEP 을 읽지 못했다: ${String(e?.message ?? e).slice(0, 160)}`);
 }
 
-const arr = Array.isArray(shapes) ? shapes : [shapes];
+/**
+ * ★260802 — **솔리드 단위로 쪼갠다.** 종전에는 파일 하나를 컴파운드 1개로 받아
+ * 「1부품 64.1kg」이 나왔고, 그러면 부품별 물량서·도면이 성립하지 않는다.
+ * 실측: 트롤리 조립체 7.3MB → **SOLID 205 · SHELL 209 · FACE 8,556**.
+ *
+ * ⚠ 쪼갤 수 없으면 **원래 형상 그대로** 쓴다(빈손으로 돌아가지 않는다).
+ */
+function explodeSolids(rc, shape) {
+  try {
+    const oc = shape.oc, w = shape.wrapped;
+    if (!oc || !w) return [shape];
+    const ex = new oc.TopExp_Explorer_2(w, oc.TopAbs_ShapeEnum.TopAbs_SOLID, oc.TopAbs_ShapeEnum.TopAbs_SHAPE);
+    const out = [];
+    while (ex.More() && out.length < MAX_SOLIDS) {
+      try { out.push(rc.cast ? rc.cast(ex.Current()) : ex.Current()); } catch { /* 이 솔리드는 건너뛴다 */ }
+      ex.Next();
+    }
+    // 남아 있으면 상한 초과다 — 호출측이 알아야 한다.
+    const overflow = ex.More();
+    return out.length ? Object.assign(out, { overflow }) : [shape];
+  } catch { return [shape]; }
+}
+
+/**
+ * 솔리드의 **정확 물성** — 메시가 아니라 커널이 직접 낸다.
+ *
+ * 실측(⌀100×200 원기둥): 부피 오차 **0.000000%** · 표면적 **-0.000000%** · 무게중심 일치.
+ * ⚠ 그래서 「곡면 부피가 0.7% 과소」는 **메시로 잴 때만** 참이다. 이 경로에는 그 편차가 없고,
+ *   그 문구를 그대로 두면 **있지도 않은 오차를 있다고** 적게 된다(반대 방향 과고지).
+ */
+function exactProps(rc, solid) {
+  try {
+    const vp = rc.measureShapeVolumeProperties(solid);
+    const vw = vp._wrapped ?? vp.wrapped;
+    const volumeMm3 = vw.Mass();
+    const c = vw.CentreOfMass();
+    let areaMm2 = null;
+    try {
+      const sp = rc.measureShapeSurfaceProperties(solid);
+      areaMm2 = (sp._wrapped ?? sp.wrapped).Mass();
+    } catch { areaMm2 = null; }
+    if (!(volumeMm3 > 0)) return null;
+    return { volumeMm3, areaMm2, cg: [c.X(), c.Y(), c.Z()] };
+  } catch { return null; }
+}
+
+const top = Array.isArray(shapes) ? shapes : [shapes];
+// 최상위가 여러 개면 그대로, 하나(컴파운드)면 솔리드로 쪼갠다.
+const solids = top.length > 1 ? top : explodeSolids(rc, top[0]);
+const solidOverflow = solids.overflow === true;
+const arr = solids;
 const parts = [];
-let skippedNoMesh = 0, skippedTooBig = 0, skippedOpen = 0;
+let skippedNoMesh = 0, skippedTooBig = 0, skippedOpen = 0, exactCount = 0;
 
 for (const [n, shape] of arr.entries()) {
   let m = null;
@@ -86,18 +138,35 @@ for (const [n, shape] of arr.entries()) {
   for (let i = 0; i + 2 < T.length; i += 3) faces.push([T[i], T[i + 1], T[i + 2]]);
   const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
   for (const v of verts) for (const k of [0, 1, 2]) { if (v[k] < min[k]) min[k] = v[k]; if (v[k] > max[k]) max[k] = v[k]; }
-  const vol = meshVolume(V, T);
+  /**
+   * ★ 부피·표면적·무게중심은 **커널이 직접** 낸다(메시가 아니다).
+   *   실측: ⌀100×200 원기둥에서 부피 오차 **0.000000%**. 메시로 재면 −0.26~−0.62% 편향이 있다.
+   *   메시는 **표시 전용**으로 내려간다 — 그 사실을 `basis` 로 남긴다.
+   * ⚠ 커널 물성이 안 나오면 **메시 부피로 폴백**하고, 그때만 편향 고지가 붙는다.
+   */
+  const exact = exactProps(rc, shape);
+  const vol = exact ? exact.volumeMm3 : meshVolume(V, T);
   const boxVol = (max[0] - min[0]) * (max[1] - min[1]) * (max[2] - min[2]);
   /**
    * ⚠ 닫힌 메시가 아니면 부호합은 부피가 아니다 — 열린 셸에서는 상쇄로 아무 값이나 나온다.
    *   경계 부피를 **상한**으로 교차 확인한다. 넘으면 부피를 내지 않는다(질량이 통째로 거짓이 된다).
+   *   ⚠ 커널 정확값에도 같은 검사를 건다 — 정확하다고 해서 형상이 성립한다는 뜻은 아니다.
    */
   if (!(vol > 0) || !(boxVol > 0) || vol > boxVol * 1.001) { skippedOpen++; release(); continue; }
+  if (exact) exactCount++;
 
   parts.push({
     id: `kernel_${n}`, type: 'mesh',
-    params: { volumeMm3: +vol.toFixed(4), triCount: faces.length, aabb: { min, max }, verts, faces },
-    at: { tx: 0, ty: 0, tz: 0 }, role: 'imported', fidelity: 'kernel-mesh',
+    params: {
+      volumeMm3: +vol.toFixed(4),
+      ...(exact?.areaMm2 > 0 ? { areaMm2: +exact.areaMm2.toFixed(4) } : {}),
+      ...(exact?.cg ? { cg: exact.cg.map((v) => +v.toFixed(4)) } : {}),
+      triCount: faces.length, aabb: { min, max }, verts, faces,
+    },
+    at: { tx: 0, ty: 0, tz: 0 }, role: 'imported',
+    fidelity: exact ? 'kernel-solid' : 'kernel-mesh',
+    // 부피의 출처를 부품마다 남긴다 — 한 어셈블리에 두 근거가 섞일 수 있다.
+    basis: exact ? 'kernel-exact' : 'mesh-approx',
   });
   release();
 }
@@ -110,12 +179,28 @@ if (!parts.length) {
       : '커널은 읽었으나 부피를 가진 메시가 나오지 않았다(면·곡선만 있는 파일일 수 있다)');
 }
 
+/**
+ * ★ 고지는 **경로에 맞춰** 쓴다 (260802).
+ *
+ * ⚠ 「곡면 부피 최대 0.7% 과소」는 **메시로 부피를 잴 때만** 참이다. 커널 정확 물성
+ *   경로에는 그 편차가 없다(실측 0.000000%). 문구를 그대로 두면 **있지도 않은 오차를
+ *   있다고** 적는 것이 되고, 그건 반대 방향의 과고지다. 부품마다 근거가 다를 수 있으므로
+ *   **몇 개가 정확값이고 몇 개가 메시 근사인지**를 수치로 적는다.
+ */
+const approx = parts.length - exactCount;
 const warnings = [
-  '형상은 **커널 실측 메시**다(파라메트릭 아님) — 부피·경계·무게중심은 실측이지만 '
-  + `**치수를 고쳐 다시 만들 수 없다.** 면을 허용오차 ${TOL_MM}mm·각 ${ANG_DEG}° 로 삼각형 근사했으므로 `
-  + '**곡면이 있으면 부피가 최대 0.7% 과소**로 나온다(기준 형상 실측: 원기둥 −0.26% · 구 −0.57% · 원환 −0.62%). '
-  + '평면만으로 된 형상은 정확하다.',
+  exactCount === parts.length
+    ? `부피·표면적·무게중심은 **커널이 직접 낸 정확값**이다(삼각 근사 아님 — 기준 형상 실측 오차 0.000000%). `
+      + `메시(${TOL_MM}mm·${ANG_DEG}°)는 **표시 전용**이다.`
+    : `부품 ${parts.length}개 중 **${exactCount}개는 커널 정확값**, **${approx}개는 메시 근사**다. `
+      + `메시 근사분은 곡면이 있으면 부피가 최대 0.7% **과소**로 나온다`
+      + `(기준 형상 실측: 원기둥 −0.26% · 구 −0.57% · 원환 −0.62%). 어느 부품이 어느 쪽인지는 `
+      + `부품별 \`basis\`(kernel-exact / mesh-approx)에 있다.`,
+  '⚠ 형상은 **파라메트릭이 아니다** — 치수를 고쳐 다시 만들 수 없다(실측 형상이다).',
 ];
+if (solidOverflow) {
+  warnings.push(`솔리드가 상한(${MAX_SOLIDS})을 넘어 **일부만 받았다** — 물량이 그만큼 과소다. 파일을 나눠 주세요.`);
+}
 if (skippedNoMesh) warnings.push(`부피가 없는 형상 ${skippedNoMesh}개는 받지 않았다(면·곡선만 있는 요소).`);
 if (skippedTooBig) warnings.push(`정점 상한 초과 형상 ${skippedTooBig}개는 받지 않았다 — 잘라서 받으면 형상이 거짓이 된다.`);
 if (skippedOpen) warnings.push(`닫히지 않은 형상 ${skippedOpen}개는 받지 않았다 — 열린 셸은 부피가 성립하지 않는다.`);

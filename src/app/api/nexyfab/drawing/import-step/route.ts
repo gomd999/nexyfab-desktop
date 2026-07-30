@@ -16,7 +16,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
-import { stepToNexyfabAssembly } from '@/lib/brep-bridge/stepToNexyfabAssembly';
+import { stepToNexyfabAssembly, stepToNexyfabAssemblyPreferKernel } from '@/lib/brep-bridge/stepToNexyfabAssembly';
 import { igesToNexyfabAssembly, stlToNexyfabAssembly } from '@/lib/brep-bridge/meshIgesImport';
 import { ifcToNexyfabAssembly } from '@/lib/brep-bridge/ifcImport';
 import { dwgToNexyfabAssembly } from '@/lib/brep-bridge/dwgImport';
@@ -62,6 +62,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const name = typeof body.name === 'string' && body.name ? body.name.slice(0, 60) : `${fmt.toUpperCase()} import`;
   const matOpt = typeof body.material === 'string' && body.material ? { material: body.material } : {};
   let bridged;
+  let kernelFidelity: 'kernel-solid' | 'aabb-approx' | null = null;
+  let kernelWarnings: string[] = [];
   // STEP 텍스트를 재구성 게이트(Pipeline B)용으로 보관 — STEP 경로에서만 채워진다.
   let stepSourceForGate: string | null = null;
   if (fmt === 'x_t' || fmt === 'xt' || fmt === 'xmt_txt') {
@@ -112,7 +114,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (!step || typeof step !== 'string') return NextResponse.json({ ok: false, error: 'step 텍스트가 필요합니다.' }, { status: 400 });
     if (step.length > 15_000_000) return NextResponse.json({ ok: false, error: 'STEP 15MB 초과 — 부분 파일로 나눠주세요.' }, { status: 400 });
     stepSourceForGate = step;
-    bridged = stepToNexyfabAssembly(step, { name, ...matOpt });
+    /**
+     * ★260802 — **커널 우선 · AABB 폴백**. 종전에는 전 부품을 AABB 상자로 받았고
+     *   실측 오차가 **양방향**(0.02~26.6배)이라 신뢰 구간을 줄 수 없었다.
+     *   커널 경로는 솔리드 단위 + 정확 물성이다(실측: 7.35MB → 205부품 전부 정확값).
+     * ⚠ 폴백은 남긴다 — 커널이 못 읽는 파일이 있고(코퍼스 35 중 1), 그때 빈손으로
+     *   돌아가는 것보다 근사라도 주고 **오차가 양방향임을 고지**하는 편이 낫다.
+     */
+    const kr = await stepToNexyfabAssemblyPreferKernel(step, { name, ...matOpt });
+    bridged = kr;
+    kernelFidelity = kr.fidelity ?? null;
+    kernelWarnings = kr.warnings ?? [];
     // R2-①(260719): AP242 시맨틱 PMI(GD&T) 동시 판독 — 있으면 어셈블리에 동봉(부품도 표기용)
     try {
       const gmod = await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'gdt-import.mjs')).href) as { extractGdt: (t: string) => { counts: { datums: number; dims: number; geoTols: number } } };
@@ -219,6 +231,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // preset 응답 계약과 동일(composeIntent·openscad 포함) — 패널·뷰어·패키지 플로우 재사용
     return NextResponse.json({
       ok: true,
+      /**
+       * ★ 충실도와 고지를 **응답에 싣는다** (260802). 형상을 어떤 근거로 받았는지
+       *   모르면 사용자는 질량을 그대로 믿는다 — AABB 폴백은 오차가 **양방향**이다.
+       */
+      ...(kernelFidelity ? { fidelity: kernelFidelity } : {}),
+      ...(kernelWarnings.length ? { fidelityWarnings: kernelWarnings } : {}),
       assembly: bridged.assembly,
       stats: bridged.stats,
       openscad: built.openscad ?? null,
@@ -236,6 +254,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
   } catch (e) {
     // 빌드 실패해도 브리지 결과는 반환(정직 — 클라가 어셈블리 확인 가능)
-    return NextResponse.json({ ok: true, assembly: bridged.assembly, stats: bridged.stats, buildError: String(e instanceof Error ? e.message : e).slice(0, 160) });
+    return NextResponse.json({ ok: true, ...(kernelFidelity ? { fidelity: kernelFidelity } : {}), ...(kernelWarnings.length ? { fidelityWarnings: kernelWarnings } : {}), assembly: bridged.assembly, stats: bridged.stats, buildError: String(e instanceof Error ? e.message : e).slice(0, 160) });
   }
 }
