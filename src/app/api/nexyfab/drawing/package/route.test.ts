@@ -98,6 +98,53 @@ describe('POST /api/nexyfab/drawing/package — 발행 규약과 판정 도달',
     expect((data.consistency?.checks ?? []).length).toBeGreaterThan(0);
   }, heavyTestBudgetMs(30_000));
 
+  /**
+   * ★260801m — 받는 사람이 **실제로 쓸 수 있는 형태**인가.
+   *
+   * 종전 패키지에는 **CAD 로 열리는 파일이 하나도 없었다.** 3D 모델이 `model.scad`
+   * (OpenSCAD 소스)뿐이라 SolidWorks·CATIA·NX·Fusion 어디서도 못 열었다.
+   * B-rep STEP 은 이미 만들 수 있었고(검증용으로 쓰고 있었다) **넣지 않았을 뿐**이다.
+   */
+  it('★model.step 이 동봉된다 — CAD 로 열 수 있는 파일이 있어야 한다', async () => {
+    const data = await call({ assembly: BASE_PLATE });
+    expect(data.fileNames ?? []).toContain('model.step');
+    const step = await readFile(data, 'model.step');
+    // 껍데기가 아니라 실제 STEP 인지 본다 — 이름만 맞고 내용이 비면 더 나쁘다.
+    expect(step, 'model.step 을 읽지 못했다').toBeTruthy();
+    expect(step!).toMatch(/^ISO-10303-21;/);
+    expect(step!).toMatch(/END-ISO-10303-21;/);
+    expect(step!.length).toBeGreaterThan(2000);
+  }, heavyTestBudgetMs(60_000));
+
+  it('★안내문이 동봉되고 **근사 고지**를 담는다 — 파일 15개를 줘도 근거를 모르면 못 쓴다', async () => {
+    const data = await call({ assembly: BASE_PLATE });
+    expect(data.fileNames ?? []).toContain('00_안내.html');
+    const guide = await readFile(data, '00_안내.html');
+    expect(guide, '안내문을 읽지 못했다').toBeTruthy();
+    expect(guide!).toMatch(/model\.step/);          // 어디서부터 보는지 안내
+    expect(guide!).toMatch(/근사/);                  // 한계를 적는다
+    expect(guide!).toMatch(/개념 검토|비법정/);       // 법적 지위를 적는다
+  }, heavyTestBudgetMs(60_000));
+
+  it('★summary.json 이 **실패한 산출물까지** 담는다 — 비어 있다고 성공이 아니다', async () => {
+    const data = await call({ assembly: BASE_PLATE });
+    const raw = await readFile(data, 'summary.json');
+    expect(raw, 'summary.json 을 읽지 못했다').toBeTruthy();
+    const sum = JSON.parse(raw!) as {
+      schema: string; totals: { massKg: number }; files: string[];
+      outputsFailed: string[]; verificationUnavailable: string[];
+      accuracy: { knownApproximations: string[]; notLegal: string };
+    };
+    expect(sum.schema).toBe('nexyfab.design-package/1');
+    expect(sum.totals.massKg).toBeGreaterThan(0);
+    expect(sum.files).toContain('BOQ.html');
+    // 실패·미검증 목록은 **키가 존재**해야 한다. 없으면 「없다」와 「안 봤다」가 구별되지 않는다.
+    expect(Array.isArray(sum.outputsFailed)).toBe(true);
+    expect(Array.isArray(sum.verificationUnavailable)).toBe(true);
+    expect(sum.accuracy.knownApproximations.length).toBeGreaterThan(0);
+    expect(sum.accuracy.notLegal).toMatch(/기술사/);
+  }, heavyTestBudgetMs(60_000));
+
   it('실시검도리포트가 동봉된다 — 게이트를 계산만 하고 버리지 않는다(efc2261d 회귀)', async () => {
     const data = await call({ assembly: BASE_PLATE });
     expect(data.fileNames ?? []).toContain('실시검도리포트.html');

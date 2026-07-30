@@ -243,7 +243,12 @@ function holeOuterDia(h) {
  * 배치된 하위 부품의 월드 AABB — `composite` 하위 검증용 (260801d).
  * `placedAabb`(assembly.mjs)와 같은 규약이지만 순환 import 를 피해 여기서 구한다.
  */
-function subAabb(sb) {
+/**
+ * ⚠ 260801k — `export` 한다. 부피 산출(`structural.mjs`)이 빼기 하위를 add 영역으로
+ *   자를 때 **게이트와 같은 AABB 규약**을 써야 한다. 여기서 다시 구현하면
+ *   「게이트는 통과인데 부피는 다른 형상을 본다」가 된다.
+ */
+export function subAabb(sb) {
   const b = partAabb({ type: sb.type, ...sb.params });
   const t = [Number(sb.at?.tx) || 0, Number(sb.at?.ty) || 0, Number(sb.at?.tz) || 0];
   const r = [Number(sb.at?.rx) || 0, Number(sb.at?.ry) || 0, Number(sb.at?.rz) || 0];
@@ -260,7 +265,7 @@ function subAabb(sb) {
 }
 
 /** 두 AABB 의 축별 겹침(음수=떨어짐) — 최소값이 관통깊이다. */
-function aabbOverlap(a, b) {
+export function aabbOverlap(a, b) {
   return [0, 1, 2].map((k) => Math.min(a.max[k], b.max[k]) - Math.max(a.min[k], b.min[k]));
 }
 

@@ -423,6 +423,17 @@ export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) 
           try { s = s.fillet(fr); }
           catch (e) { report.dropped.push({ pid, op: 'fillet', err: String(e?.message ?? e).slice(0, 50) }); }
         }
+        /**
+         * 부품 단위 **모따기**(260801l, `_chamfer`=part.chamferMm) — 필렛과 같은 규약이다.
+         * ⚠ 실패하면 **무모따기로 드롭하고 보고한다.** 조용히 넘어가면 형상이 선언과 달라진다.
+         * ⚠ 필렛 뒤에 적용한다 — 이미 둥근 모서리에 모따기를 걸면 커널이 거부하고, 그 거부가
+         *   드롭 보고로 남아야 「둘 다 걸었다」는 잘못된 선언이 드러난다.
+         */
+        const cr = fl.find((f) => f._chamfer > 0)?._chamfer;
+        if (cr) {
+          try { s = s.chamfer(cr); }
+          catch (e) { report.dropped.push({ pid, op: 'chamfer', err: String(e?.message ?? e).slice(0, 50) }); }
+        }
         shapes.push(s);
         report.jittered += r.report.jittered;
         report.dropped.push(...r.report.dropped);

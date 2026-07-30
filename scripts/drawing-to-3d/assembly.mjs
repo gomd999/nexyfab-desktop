@@ -232,7 +232,7 @@ export function assemblyToComposeIntent(asm) {
     };
     const F = (kind, extra, lx = 0, ly = 0, lz = 0, op = 'add') => {
       const [wx, wy, wz] = rotLocal(lx, ly, lz);
-      return { kind, ...extra, op, _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), ...(part.filletMm > 0 ? { _fillet: part.filletMm } : {}), at: { translate: [wx + tx, wy + ty, wz + tz], ...(rot ? { rotate: rot } : {}) } };
+      return { kind, ...extra, op, _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), ...(part.filletMm > 0 ? { _fillet: part.filletMm } : {}), ...(part.chamferMm > 0 ? { _chamfer: part.chamferMm } : {}), at: { translate: [wx + tx, wy + ty, wz + tz], ...(rot ? { rotate: rot } : {}) } };
     };
     switch (part.type) {
       case 'box': feats.push(F('box', { size: [p.width, p.depth, p.height] })); break;
@@ -516,7 +516,7 @@ export function assemblyToComposeIntent(asm) {
           if (L < 1e-9) continue;
           const ay = (Math.acos(dz2 / L) * 180) / Math.PI;
           const az = (Math.atan2(dy2, dx2) * 180) / Math.PI;
-          feats.push({ kind: 'cylinder', diameter: p.dia, height: L, op: 'add', _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), ...(part.filletMm > 0 ? { _fillet: part.filletMm } : {}), at: { translate: [x1 + tx, y1 + ty, z1 + tz], rotate: [0, +ay.toFixed(6), +az.toFixed(6)] } });
+          feats.push({ kind: 'cylinder', diameter: p.dia, height: L, op: 'add', _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), ...(part.filletMm > 0 ? { _fillet: part.filletMm } : {}), ...(part.chamferMm > 0 ? { _chamfer: part.chamferMm } : {}), at: { translate: [x1 + tx, y1 + ty, z1 + tz], rotate: [0, +ay.toFixed(6), +az.toFixed(6)] } });
         }
         for (let k = 1; k < pts.length - 1; k++) {
           feats.push({ kind: 'sphere', diameter: p.dia, op: 'add', _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), at: { translate: [pts[k][0] + tx, pts[k][1] + ty, pts[k][2] + tz] } });

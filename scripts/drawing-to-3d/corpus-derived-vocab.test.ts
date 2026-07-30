@@ -402,8 +402,25 @@ describe('상세 어휘 — 홀 가공·패턴·필렛·복합 (260801b)', () =>
         { type: 'cylinder', params: { diameter: 30, length: 60 }, at: { tx: 100, ty: 50, tz: -5 }, op: 'subtract' },
       ],
     };
-    const want = 200 * 100 * 50 + 200 * 12 * 80 - (Math.PI / 4) * 30 * 30 * 60;
-    expect(vol('composite', params)).toBeCloseTo(want, 4);
+    /**
+     * ⚠ 260801k — **이 기대값이 틀려 있었다.** 커터(⌀30×60)를 통째로 뺐는데,
+     *   그 커터는 z −5~55 라 아래로 5mm 는 **허공**을 지나고 위 5mm 는 리브(폭 12mm)만 스친다.
+     *   전량 절삭은 진값 대비 **−0.536%**(질량이 그만큼 작게 나갔다).
+     *
+     * 진값은 두 조각의 합이다:
+     *   · 밑판 안: 원 단면 × 50mm
+     *   · 리브 안: y 44~56 띠 ∩ 원(활꼴 면적) × 5mm
+     * 리브 쪽은 원의 **활꼴**이라 AABB 비(12×30 직사각)로는 정확히 못 맞춘다 —
+     * 남는 오차 **−0.047%** 를 수치로 적어 둔다(0 이라고 하면 과고지다).
+     */
+    const band = 2 * ((6 / 2) * Math.sqrt(15 * 15 - 36) + ((15 * 15) / 2) * Math.asin(6 / 15));
+    const truth = 200 * 100 * 50 + 200 * 12 * 80
+      - Math.PI * 15 * 15 * 50      // 밑판을 지나는 50mm
+      - band * 5;                    // 리브를 지나는 5mm(활꼴 단면)
+    const got = vol('composite', params);
+    expect(Math.abs(got / truth - 1)).toBeLessThan(0.001);   // 0.1% 이내
+    // 종전(전량 절삭)으로 되돌아가면 잡힌다 — 그때는 0.5% 넘게 벌어졌다.
+    expect(Math.abs(got / truth - 1)).toBeLessThan(0.005);
     // 외곽은 add 하위의 합집합 — subtract 는 경계를 넓히지 않는다
     const bb = (partAabb as unknown as (i: unknown) => { min: number[]; max: number[] })({ type: 'composite', ...params });
     expect(bb.max).toEqual([200, 100, 130]);

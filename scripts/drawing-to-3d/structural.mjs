@@ -9,7 +9,7 @@
  *
  * usage: structuralCheck(assembly, { material, fluidParts, supports, member, seismicG })
  */
-import { partAabb, gearPoly, sheetPoly, polyArea, boltDims, holeFeature, extrudePoly, expandHoles, holeVolume, compositeSubs } from './reconstruct.mjs';
+import { partAabb, gearPoly, sheetPoly, polyArea, boltDims, holeFeature, extrudePoly, expandHoles, holeVolume, compositeSubs, subAabb } from './reconstruct.mjs';
 import { snapSquareTube } from './std-snap.mjs';
 
 const g = 9.81;
@@ -30,6 +30,34 @@ function sqTube(b, t) {
 }
 
 // ── 부품 체적(mm³): 고체 / 중공 ──────────────────────────────────────────
+/**
+ * 빼기 하위가 **실제로 재료를 만나는 비율** (0~1). AABB 교집합 / 커터 AABB.
+ *
+ * · 어느 add 와도 안 만나면 **0** — 뺄 것이 없다(게이트도 따로 잡지만 부피에서도 안 빠져야 한다).
+ * · 여러 add 에 걸치면 **각 add 와의 교집합을 더한다.** 게이트가 add 끼리의 관통을 이미
+ *   막으므로(접촉 여유 초과 = 오류) add 들은 서로 겹치지 않고, 따라서 합이 이중계수가 아니다.
+ *   ⚠ 처음 **최댓값**을 썼다가 실측에서 정정했다: 리브를 지나는 커터가 리브 쪽 절삭을 통째로
+ *   놓쳐 부피가 0.15% 과대였다(합으로 바꾼 뒤 0.03%).
+ */
+function subtractClipFactor(sb, adds) {
+  let box;
+  try { box = subAabb(sb); } catch { return 1; }
+  const vol = (b) => Math.max(0, b.max[0] - b.min[0]) * Math.max(0, b.max[1] - b.min[1]) * Math.max(0, b.max[2] - b.min[2]);
+  const own = vol(box);
+  if (!(own > 0)) return 1;
+  let hit = 0;
+  for (const ad of adds) {
+    let ab;
+    try { ab = subAabb(ad); } catch { continue; }
+    hit += vol({
+      min: [0, 1, 2].map((k) => Math.max(box.min[k], ab.min[k])),
+      max: [0, 1, 2].map((k) => Math.min(box.max[k], ab.max[k])),
+    }) / own;
+  }
+  // 1 을 넘을 수 없다 — 넘으면 게이트를 지나지 않은(add 가 겹친) 형상이다.
+  return Math.min(1, hit);
+}
+
 export function partVolume(type, p) {
   const A = Math.PI / 4;
   switch (type) {
@@ -81,11 +109,25 @@ export function partVolume(type, p) {
      * ⚠ **겹침은 공제하지 않는다.** add 끼리 겹치면 부피가 과대해진다 — 어휘 힌트와
      *   BOQ 고지에 적었다. 조용히 근사하면 물량이 틀린 채로 나간다.
      */
+    /**
+     * 복합 부품 — `Σ add − Σ subtract`. 단, **빼기는 add 영역으로 잘라서** 뺀다 (260801k).
+     *
+     * ⚠ 종전에는 커터 부피를 통째로 뺐다. 관통홀 커터를 판보다 길게 잡는 것은 **통상 관례**
+     *   (동일 평면 회피)인데, 그 튀어나온 부분이 **없는 자리에서 빠졌다.**
+     *   실측: 100×100×20 판 + ⌀20×40 관통 커터 → 부피 **−3.24%**(질량이 그만큼 작게 나갔다).
+     *   게이트는 통과였다 — 「고아 빼기」는 잡아도 「일부만 걸친 빼기」는 못 잡는다.
+     *
+     * ⚠ 자르는 비율은 **AABB 교집합 비**다. 커터 단면이 자르는 축을 따라 일정하면
+     *   (원통·각기둥 = 실무의 대부분) **정확하다.** 두 축 이상에서 잘리거나 단면이 변하는
+     *   커터(구·원뿔)는 **근사**다.
+     */
     case 'composite': {
+      const subs = compositeSubs(p);
+      const adds = subs.filter((sb) => sb.op !== 'subtract');
       let v = 0;
-      for (const sb of compositeSubs(p)) {
-        const sv = partVolume(sb.type, sb.params);
-        v += sb.op === 'subtract' ? -sv : sv;
+      for (const sb of adds) v += partVolume(sb.type, sb.params);
+      for (const sb of subs.filter((q) => q.op === 'subtract')) {
+        v -= partVolume(sb.type, sb.params) * subtractClipFactor(sb, adds);
       }
       return Math.max(0, v);
     }
@@ -319,8 +361,62 @@ export function partVolumeEffective(part) {
     }
   }
   const shell = panelShellVolume(part);
-  if (shell) return { volumeMm3: shell.volumeMm3, basis: shell.basis, note: shell.note };
-  return { volumeMm3: solid, basis: 'solid', note: '중실(선언 형상 그대로) — 규격 중공/판재 셸 판별 대상 아님' };
+  if (shell) return withEdgeBreak(part, { volumeMm3: shell.volumeMm3, basis: shell.basis, note: shell.note });
+  return withEdgeBreak(part, { volumeMm3: solid, basis: 'solid', note: '중실(선언 형상 그대로) — 규격 중공/판재 셸 판별 대상 아님' });
+}
+
+/**
+ * 모서리 가공(필렛·모따기)을 **질량에 반영** (260801l).
+ *
+ * ## 무엇이 갈려 있었나
+ * `part.filletMm` 은 **STEP B-rep 에만** 반영되고 부피·질량은 무필렛 그대로였다.
+ * 같은 부품이 도면에서는 둥글고 물량서에서는 각진 것이다 — 「선언과 산출이 갈린다」로
+ * 이 세션 내내 잡아 온 형태이며, 질량이 **깎인 만큼 과대**로 나간다.
+ *
+ * ## 얼마나 깎이나 — 볼록 모서리 길이로 낸다(폐형)
+ * 길이 L 인 **볼록 직각 모서리**에서
+ *   · 필렛 반경 r → 제거 `(1 − π/4)·r²·L`
+ *   · 모따기 c    → 제거 `(c²/2)·L`
+ * 모서리가 만나는 꼭짓점은 2차 항이라 이 식에 없다 — **근사이며 그 사실을 적는다.**
+ *
+ * ## ⚠ 모서리 길이를 아는 어휘만 계산한다
+ * `box`·`cylinder` 는 모서리가 명확하다. 그 밖은 **계산하지 않고 「미반영」이라고 적는다** —
+ * 모서리 길이를 추정해서 곱하면 그럴듯한 거짓 수치가 된다.
+ */
+function convexEdgeLengthMm(type, p) {
+  if (type === 'box') return 4 * (Number(p.width) + Number(p.depth) + Number(p.height));
+  // 원기둥은 위·아래 원둘레 2개가 볼록 모서리다.
+  if (type === 'cylinder') return 2 * Math.PI * Number(p.diameter);
+  return null;
+}
+
+function withEdgeBreak(part, base) {
+  const r = Number(part?.filletMm) || 0;
+  const c = Number(part?.chamferMm) || 0;
+  if (!(r > 0) && !(c > 0)) return base;
+  const L = convexEdgeLengthMm(part.type, part.params ?? {});
+  const kind = r > 0 && c > 0 ? `필렛 R${r} + 모따기 C${c}` : r > 0 ? `필렛 R${r}` : `모따기 C${c}`;
+  if (!(L > 0)) {
+    /**
+     * ⚠ 모르면 **모른다고 적고 부피는 건드리지 않는다.** 여기서 임의 계수를 곱하면
+     *   질량이 조용히 틀어지고, 그게 어디서 왔는지 아무도 모른다.
+     */
+    return {
+      ...base,
+      basis: `${base.basis}+edge-break-unquantified`,
+      note: `${base.note} · ⚠ ${kind} 이 선언됐으나 이 어휘는 **모서리 길이를 알 수 없어 질량에 반영하지 않았다** — `
+        + 'STEP 형상은 가공돼 있고 질량은 무가공 기준이라 **질량이 그만큼 과대**다.',
+    };
+  }
+  const cut = (r > 0 ? (1 - Math.PI / 4) * r * r * L : 0) + (c > 0 ? (c * c / 2) * L : 0);
+  const v = Math.max(0, base.volumeMm3 - cut);
+  const pct = base.volumeMm3 > 0 ? (cut / base.volumeMm3) * 100 : 0;
+  return {
+    volumeMm3: v,
+    basis: `${base.basis}+edge-break`,
+    note: `${base.note} · ${kind} 반영 — 볼록 모서리 ${Math.round(L)}mm 에서 ${Math.round(cut)}mm³(${pct.toFixed(2)}%) 제거. `
+      + '**꼭짓점 교차분은 2차 항이라 미반영**(그만큼 아주 조금 과대).',
+  };
 }
 
 // 부품 내부 유체 체적(mm³) — 중공/용기 만수

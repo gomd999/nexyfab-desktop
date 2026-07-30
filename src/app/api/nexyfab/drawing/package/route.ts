@@ -32,6 +32,8 @@ type Built = {
   interferencesRaw?: number; interferencesDemoted?: number; interferenceBasis?: string;
   interferencesUnrefined?: number;
   interferenceProfile?: { allLatticePairs: boolean; maxIntersectMm3: number | null; measured: number };
+  /** 범용 프리미티브 인텐트 — B-rep STEP 방출 입력(260801m). */
+  composeIntent?: unknown;
 };
 type Basis = { rev: string; massKg: number; env: number[]; parts: number };
 type AsmMod = { buildAssembly: (a: Assembly) => Built };
@@ -64,6 +66,8 @@ type EgMod = {
   executionReportHtml?: (g: ExecutionGate, o?: { title?: string }) => string;
 };
 type RtMod = { stepRoundTrip: (a: Assembly) => Promise<unknown> };
+/** B-rep STEP 방출 — 패키지에 **CAD 로 열리는 파일**을 넣기 위해 쓴다(260801m). */
+type StMod = { intentToStep: (i: unknown) => Promise<{ step: string; entities: number; fuseReport?: { dropped?: unknown[] } }> };
 type IrMod = {
   refineInterferencesMesh: (a: Assembly, i: unknown[], o?: Record<string, unknown>) => Promise<unknown>;
   applyInterferenceRefinement: (built: Built, refine: unknown) => Built;
@@ -76,6 +80,7 @@ type TemplateAsm = Assembly & { domain?: string; ok?: boolean; error?: string; m
 type TplMod = { buildAssemblyTemplate: (domain: string, id: string, params?: Record<string, unknown>) => TemplateAsm | null; listAssemblyTemplates: (domain?: string) => unknown[] };
 
 let _asm: AsmMod | null = null, _pkg: PkgMod | null = null, _rnd: RenderMod | null = null, _boq: BoqMod | null = null, _pd: PdMod | null = null, _vfy: VerifyMod | null = null, _dxf: DxfMod | null = null, _lx: LxMod | null = null, _xl: XlsxMod | null = null, _ifc: IfcMod | null = null;
+let _st: StMod | null = null;
 let _ps: PsMod | null = null, _fsp: FspMod | null = null, _dc: DcMod | null = null, _eg: EgMod | null = null, _rt: RtMod | null = null, _ir: IrMod | null = null, _fa: FaMod | null = null, _es: EsMod | null = null;
 async function load() {
   const base = join(process.cwd(), 'scripts', 'drawing-to-3d');
@@ -94,10 +99,11 @@ async function load() {
   if (!_dc) _dc = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'drawing-completeness.mjs')).href)) as DcMod;
   if (!_eg) _eg = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'execution-gate.mjs')).href)) as EgMod;
   if (!_rt) _rt = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'roundtrip.mjs')).href)) as RtMod;
+  if (!_st) _st = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'to-step.mjs')).href)) as StMod;
   if (!_ir) _ir = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'interference-refine.mjs')).href)) as IrMod;
   if (!_fa) _fa = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'fastener-auto.mjs')).href)) as FaMod;
   if (!_es) _es = (await import(/* webpackIgnore: true */ pathToFileURL(join(base, 'easy-summary.mjs')).href)) as EsMod;
-  return { asm: _asm, pkg: _pkg, rnd: _rnd, boq: _boq, pd: _pd, vfy: _vfy, dxf: _dxf, lx: _lx, xl: _xl, ifc: _ifc, ps: _ps, fsp: _fsp, dc: _dc, eg: _eg, rt: _rt, ir: _ir, fa: _fa, es: _es };
+  return { asm: _asm, pkg: _pkg, rnd: _rnd, boq: _boq, pd: _pd, vfy: _vfy, dxf: _dxf, lx: _lx, xl: _xl, ifc: _ifc, ps: _ps, fsp: _fsp, dc: _dc, eg: _eg, rt: _rt, ir: _ir, fa: _fa, es: _es, st: _st };
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -146,7 +152,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: 'assembly.parts 또는 templateId+domain 이 필요합니다.' }, { status: 400 });
   }
 
-  let mods: { asm: AsmMod; pkg: PkgMod; rnd: RenderMod; boq: BoqMod; pd: PdMod; vfy: VerifyMod; dxf: DxfMod; lx: LxMod | null; xl: XlsxMod | null; ifc: IfcMod | null; ps: PsMod | null; fsp: FspMod | null; dc: DcMod | null; eg: EgMod | null; rt: RtMod | null; ir: IrMod | null; fa: FaMod | null; es: EsMod | null };
+  let mods: { asm: AsmMod; pkg: PkgMod; rnd: RenderMod; boq: BoqMod; pd: PdMod; vfy: VerifyMod; dxf: DxfMod; lx: LxMod | null; xl: XlsxMod | null; ifc: IfcMod | null; ps: PsMod | null; fsp: FspMod | null; dc: DcMod | null; eg: EgMod | null; rt: RtMod | null; ir: IrMod | null; fa: FaMod | null; es: EsMod | null; st: StMod | null };
   try { mods = await load(); } catch (e) {
     return NextResponse.json({ ok: false, error: 'pipeline load failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 });
   }
@@ -299,6 +305,30 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // SCAD
   if (built.openscad) files.push({ name: 'model.scad', mime: 'text/plain', content: built.openscad });
 
+  /**
+   * ★260801m — **CAD 로 열리는 파일이 하나도 없었다.**
+   *
+   * 받는 사람 입장에서 이게 가장 큰 결함이었다: HTML·xlsx·dxf 13개가 들어 있는데
+   * 3D 모델은 `model.scad`(OpenSCAD 소스)뿐이라 **OpenSCAD 가 설치돼 있어야** 열린다.
+   * SolidWorks·CATIA·NX·Fusion 어디서도 못 연다. B-rep STEP 은 이미 만들 수 있었고
+   * (검증용 라운드트립에서 쓰고 있었다) **산출물로 넣지 않았을 뿐**이다.
+   *
+   * ⚠ 실패하면 **실패했다고 적는다**(`outputsFailed`). 조용히 빠지면 받는 사람은
+   *   「원래 없는 것」으로 읽는다 — 이 세션 내내 잡아 온 형태 ④(부재가 정상으로 읽힘)다.
+   * ⚠ 커널이 일부 피처를 못 만들면 `fuseReport.dropped` 로 나온다. 그 사실을 안내문에
+   *   싣는다 — 「STEP 이 있다」와 「STEP 이 형상 전부를 담았다」는 다르다.
+   */
+  let stepDropped = 0;
+  if (built.composeIntent && mods.st) {
+    try {
+      const r = await mods.st.intentToStep(built.composeIntent);
+      if (r?.step) {
+        files.push({ name: 'model.step', mime: 'application/x-step', content: r.step });
+        stepDropped = (r.fuseReport?.dropped ?? []).length;
+      } else outputsFailed.push('model.step');
+    } catch (e) { void e; outputsFailed.push('model.step'); }
+  }
+
   // FEA 응력해석 (#7) — 형상 STL 실렌더 → TET10 선형정적(runSimpleFEA, beam-theory 폴백).
   // 하중 기본값 = 총질량×g(자중 상당, 상면 등가 — 가정을 리포트에 명시). options.fea===false 로 생략.
   // feaSummary 는 아래 쉬운요약.html 호출에 그대로 전달된다 — structural(강체 전도/CG)과
@@ -445,6 +475,92 @@ if (data.pipes?.errors?.length) console.warn('⚠ 배관 라우팅 실패:', dat
 `,
     });
   } catch (e) { void e; }
+
+  /**
+   * ★260801m — **안내문 + 기계판독 요약.**
+   *
+   * 파일을 15개 받아도 「무엇이 실측이고 무엇이 근사인가」를 모르면 쓸 수 없다.
+   * 근거·한계는 각 문서 안에 흩어져 있었고, **받는 사람이 그걸 모아 읽을 의무는 없다.**
+   *
+   * ⚠ 여기서 새 판정을 만들지 않는다. 이미 산출된 값을 **모아서 한 곳에 적을 뿐**이다 —
+   *   요약이 원본과 갈리면 그게 더 나쁘다(이 세션에서 반복해 잡은 형태 ②).
+   */
+  const partRows = (assembly.parts ?? []).map((q) => ({
+    id: (q as { id?: string }).id ?? null,
+    type: (q as { type?: string }).type ?? null,
+    material: (q as { material?: string }).material ?? null,
+  }));
+  const summary = {
+    schema: 'nexyfab.design-package/1',
+    rev: basis.rev,
+    generatedFor: title,
+    totals: { massKg: basis.massKg, parts: basis.parts, envelopeMm: basis.env },
+    parts: partRows,
+    files: files.map((f) => f.name),
+    /** 만들려다 실패한 산출물 — **비어 있다고 성공이 아니다**(목록으로 명시한다). */
+    outputsFailed,
+    /** 검증을 못 돌린 항목 — 「검증 안 함」과 「이상 없음」은 다르다. */
+    verificationUnavailable,
+    accuracy: {
+      massBasis: '형상 결정론(폐형) — 부피는 선언 형상에서 직접 계산한다. AABB 근사가 아니다.',
+      knownApproximations: [
+        ...(stepDropped ? [`model.step: 커널이 ${stepDropped}개 피처를 만들지 못해 빠졌다 — STEP 이 형상 전부를 담지 못했다`] : []),
+        '곡면을 삼각형으로 근사하는 산출물(FEA·표시용 메시)은 곡면 부피가 최대 0.7% 과소다(원기둥 −0.26% · 구 −0.57% · 원환 −0.62% 실측).',
+        '복합 부품의 빼기는 AABB 교집합으로 잘라 계산한다 — 축 정렬 커터는 정확하고, 기운 축·단면이 변하는 커터는 근사다.',
+        '모서리 가공(필렛·모따기)은 볼록 모서리 폐형으로 반영하며 꼭짓점 교차분은 미반영이다(그만큼 아주 조금 과대).',
+      ],
+      notLegal: '전 산출물은 **개념 검토(비법정)** 다. 실시설계·시공에는 해당 분야 기술사의 직접 검토가 필요하다.',
+    },
+  };
+  files.push({ name: 'summary.json', mime: 'application/json', content: JSON.stringify(summary, null, 2) });
+
+  const li = (n: string, d: string): string => `<tr><td><code>${n}</code></td><td>${d}</td></tr>`;
+  const known: Record<string, string> = {
+    'model.step': '★<b>3D 모델 (B-rep STEP)</b> — SolidWorks·CATIA·NX·Fusion 등에서 그대로 열린다.',
+    'model.scad': '3D 모델 (OpenSCAD 소스) — 파라메트릭 수정용. 열려면 OpenSCAD 가 필요하다.',
+    'GA_2D_drawing.html': '조립도(GA) — 치수 기입 2D 도면.',
+    'GA_plan.dxf': '조립 평면 DXF — CAD 로 열어 편집한다.',
+    'GA_3D.html': '3D 뷰어(계통색) — 브라우저에서 바로 돈다.',
+    '부품제작도.html': '부품별 제작도 — 정면·평면·측면 3면과 치수.',
+    '제작사양서.html': '제작 사양 — 재질·공정·표면처리.',
+    'BOQ.html': '물량·공수 산출서 — 질량·표면적·용접선·홀·절곡.',
+    'BOQ_내역서.xlsx': '물량 내역(엑셀) — 발주·견적에 그대로 쓴다.',
+    'structural.html': '구조 검토 — 전도·지지·무게중심.',
+    '안전검토.html': '안전 검토 — KDS 대조 판정과 <b>판정하지 않은 항목</b>.',
+    'FEA.html': '응력 해석 — 가정(하중·구속)을 함께 적었다.',
+    'Dossier.html': '설계 설명서 — 개요·계통·물량 요약.',
+    '쉬운요약.html': '비전공자용 요약.',
+    '실시검도리포트.html': '도면 기입 치수와 형상의 대조 결과.',
+    'PID_skeleton.html': '계통도 골격.',
+    'summary.json': '기계 판독용 요약 — 질량·부품·실패 산출물·<b>근사 고지</b>가 한 곳에 있다.',
+    'generator.mjs': '이 패키지를 다시 만드는 스크립트(Node 18+).',
+  };
+  const rows = files.map((f) => li(f.name, known[f.name] ?? '산출물')).join('');
+  files.push({
+    name: '00_안내.html', mime: 'text/html',
+    content: `<!doctype html><meta charset="utf-8"><title>${title} — 패키지 안내</title>`
+      + `<style>body{font:14px/1.7 system-ui,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;color:#0f172a}`
+      + `table{border-collapse:collapse;width:100%;margin:1rem 0}td,th{border:1px solid #cbd5e1;padding:.5rem;text-align:left;vertical-align:top}`
+      + `code{background:#f1f5f9;padding:1px 5px;border-radius:4px}.warn{background:#fef3c7;border-left:4px solid #f59e0b;padding:.8rem 1rem;margin:1rem 0}`
+      + `.ok{background:#ecfdf5;border-left:4px solid #10b981;padding:.8rem 1rem;margin:1rem 0}</style>`
+      + `<h1>${title}</h1><p>REV <code>${basis.rev}</code> · 총 질량 <b>${basis.massKg} kg</b> · 부품 ${basis.parts}개 · `
+      + `외형 ${basis.env.map((v) => Math.round(v)).join('×')} mm</p>`
+      + `<div class="ok"><b>어디서부터 보면 되나</b><br>처음이면 <code>쉬운요약.html</code> → 형상은 <code>GA_3D.html</code> → `
+      + `CAD 로 열려면 <code>model.step</code> → 발주는 <code>BOQ_내역서.xlsx</code>.</div>`
+      + `<h2>파일 목록</h2><table><tr><th>파일</th><th>내용</th></tr>${rows}</table>`
+      + `<h2>이 수치를 어디까지 믿을 수 있나</h2>`
+      + `<div class="warn"><b>질량·물량은 형상에서 결정론으로 계산</b>한다(경계상자 근사가 아니다). `
+      + `다만 아래는 <b>근사</b>이며 그 크기를 적어 둔다.<ul>`
+      + summary.accuracy.knownApproximations.map((t) => `<li>${t}</li>`).join('')
+      + `</ul></div>`
+      + (outputsFailed.length
+        ? `<div class="warn"><b>만들지 못한 산출물</b>: <code>${outputsFailed.join('</code>, <code>')}</code><br>`
+          + `없는 것을 「필요 없어서 없다」로 읽지 마세요.</div>` : '')
+      + (verificationUnavailable.length
+        ? `<div class="warn"><b>검증하지 못한 항목</b><ul>${verificationUnavailable.map((t) => `<li>${t}</li>`).join('')}</ul>`
+          + `<b>검증 안 함 ≠ 이상 없음</b>입니다.</div>` : '')
+      + `<div class="warn"><b>${summary.accuracy.notLegal}</b></div>`,
+  });
 
   // zip 묶음 (한 파일 다운로드). 실패 시 files 로 폴백.
   let zipBase64: string | null = null;
