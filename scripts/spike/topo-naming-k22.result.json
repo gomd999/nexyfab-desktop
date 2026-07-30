@@ -1,7 +1,7 @@
 {
   "meta": {
     "adr": "ADR-017 §D2",
-    "generatedAt": "2026-07-30T18:24:53.170Z",
+    "generatedAt": "2026-07-30T18:53:15.717Z",
     "note": "Measurement only. Rates exclude nogt (edge genuinely gone). mismatch = SILENT wrong entity.",
     "systemA": "topoNaming + composedTopo (feature-id prefixes W1-B, kernel-history seam keys W3-A), resolved via nearestByMidpoint(1e-3) — replica of nodeOcctBridge.resolvePickedEdges",
     "systemB": "edgeCorrespondence.bestEdgeMatch + remapPointThroughBbox — shape-generator path"

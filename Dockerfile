@@ -17,7 +17,7 @@ RUN npm install --legacy-peer-deps --no-audit --no-fund
 # Cache-bust: buildkit occasionally reuses a stale `COPY . .` layer on Railway
 # (2026-07-12: shipped old scripts/drawing-to-3d despite changed files). Bump this
 # value to force the copy + build to re-run from fresh source.
-ARG CACHEBUST=20260802-191
+ARG CACHEBUST=20260802-192
 RUN echo "cachebust ${CACHEBUST}"
 COPY . .
 
@@ -54,6 +54,11 @@ RUN npm run build
 
 # ---- Runner stage ----
 FROM node:22-slim AS runner
+# ★260802 — 빌드 태그를 **런타임까지** 전달한다. `railway up` 이 exit 0 · 빌드 성공인데도
+# 반영되지 않는 일이 하루에 네 번 있었고, 그때마다 기능별 관측점을 찾아 확인해야 했다.
+# 헬스 응답에 이 값이 실리면 **1회 호출로** 어느 빌드가 도는지 확정된다.
+ARG CACHEBUST=unknown
+ENV NEXYFAB_BUILD_TAG=${CACHEBUST}
 WORKDIR /app
 
 ENV NODE_ENV=production

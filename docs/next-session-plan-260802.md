@@ -833,3 +833,59 @@ building·bridge·mech 는 전용 모듈이 붙어 있다).
 | 5 | `interior` 필요입력 25건 노출 | 사용자가 알 방법이 없다 | UX |
 
 ⚠ 1·2·4 는 **측정·수리**라 싸고, 3 만 신규 개발이다. **측정부터** 한다(규칙 2).
+
+---
+
+## 32. 면·선 필렛 — **마지막 미확인 고리가 풀렸다** (260802 실측)
+
+§18 에서 「`face-drag` 픽킹 → 안정 이름 → 커널 엣지 선택」까지 설계했으나
+**커널이 특정 엣지를 고를 수 있는지**를 재보지 않았다. 확인했다:
+
+```
+replicad EdgeFinder 선택자(상속 포함):
+  inDirection · ofLength · ofCurveType · parallelTo · inPlane · atAngleWith
+  inList · atDistance · containsPoint · withinDistance · inBox · inShape · and/not/either
+
+100×60×20 상자(12엣지) 부피 대조:
+  무필렛          120,000.0
+  전체 R3         118,421.7   (12엣지)
+  수직 4엣지만    119,820.0   (inDirection)
+  ★중점 1개 지목  119,955.0   (containsPoint — 정확히 한 엣지)
+```
+
+### 배선이 성립한다
+
+```
+face-drag 픽킹(노멀) → topoNaming 안정 이름 → edgeMidpoint(중점)
+                     → EdgeFinder.containsPoint(중점) → fillet(r)
+```
+`src/lib/cad/topoNaming.ts` 가 `buildExtrudeTopo`·`resolveEdge`·`edgeMidpoint`·`namesOf`
+를 이미 내보낸다 — **새로 만들 것은 커널 쪽 적용부뿐**이다.
+
+### ⚠ 내가 두 번 틀렸다 (기록)
+
+1. 첫 시험에서 `containsPoint` 가 「OK」로 보였다 → **부피를 안 재고 예외가 안 난 것만
+   확인**했다. `mesh` 가 나온다고 필렛이 걸린 게 아니다.
+2. 두 번째엔 임의 좌표를 줘서 `no edge was selected` → 「그 선택자는 없다」고 결론 냈다.
+   **선택자는 있었고 좌표가 틀렸다.**
+
+→ **예외가 안 났다고 된 게 아니다.** 효과는 반드시 **수치로** 확인한다.
+
+### 범위는 그대로 (§18)
+
+- **압출 기반 부품만** — `revolve`·패턴은 명명 커버리지 **0%**(ADR-017)
+- **필렛 위 필렛 금지** — 필렛 결과는 topo 를 등록하지 않는다
+- 참조를 잃으면 **필렛을 걸지 않고 「참조를 잃었다」고 적는다**
+
+---
+
+## 33. 배포 확인 — **빌드 태그** (260802 적용)
+
+`railway up` 이 **exit 0 · 빌드 성공 · 헬스체크 성공**인데도 반영되지 않는 일이 하루에
+**네 번** 있었다. 원인은 셋으로 갈렸다(토큰 만료 · 링크 끊김 · **미확정 2회**).
+
+매번 기능별 관측점으로 확인해야 했고, **관측점이 없는 변경**(동시성 상한 등)은 확인 방법이
+아예 없었다. → `Dockerfile` 의 `CACHEBUST` 를 `NEXYFAB_BUILD_TAG` 로 런타임까지 넘기고
+`/api/health/live` 에 싣는다. **1회 호출로 확정된다.**
+
+⚠ 미설정은 `unknown` 이다 — 빈 값을 「최신」으로 오독하지 않게. 회귀 3건으로 고정.
