@@ -3596,7 +3596,7 @@ export const FEATURE_REGISTRY: FeatureRegistryEntry[] = [
     tags: ['ISO-286', 'fit', 'hole', 'shaft', 'H7/g6', 'H7/k6', 'H7/p6', 'clearance', 'interference', 'transition'],
     license: 'pro',
     entryHint: 'assembly/fitClassLookup',
-    description: 'Look up ISO 286 hole/shaft fit deviations for 10 named fits (H7/g6 sliding, H7/f7 running, H7/k6 locating, H7/p6 press, H7/s6 shrink, H7/u6 forced, H8/c11 large). Computes min/max clearance, classifies clearance/transition/interference, recommends fit by application.',
+    description: 'Look up ISO 286 hole/shaft fit deviations for 10 named fits (H7/g6 sliding, H7/f7 running, H7/k6 locating, H7/p6 press, H7/s6 shrink, H7/u6 forced, H8/c11 large). Computes min/max clearance, classifies clearance/transition/interference, recommends fit by application. ⚠ Tabulated for nominal ⌀18~30mm ONLY — outside that range it refuses (ISO 286 deviations vary by size range; reporting them anyway would be wrong values under a standard name).',
   },
   {
     id: 'mold.ejector-pin', name: 'Mold Ejector Pin Placement', category: 'mold',

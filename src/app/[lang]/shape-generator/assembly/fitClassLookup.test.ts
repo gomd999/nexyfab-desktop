@@ -44,8 +44,13 @@ describe('evaluateFit', () => {
   });
 
   it('larger nominal → both dia increase', () => {
-    const a = evaluateFit(10, 'H7/g6');
-    const b = evaluateFit(100, 'H7/g6');
+    /**
+     * ⚠ 260801d: ⌀10 과 ⌀100 을 쓰고 있었다 — 둘 다 표(⌀18~30) **밖**이다.
+     * 그때는 표를 어떤 지름에도 그대로 적용해서 통과했지만, 그게 바로 결함이었다
+     * (ISO 286 편차는 치수 구간마다 다르다). 불변식 자체는 구간 안에서 그대로 성립한다.
+     */
+    const a = evaluateFit(20, 'H7/g6');
+    const b = evaluateFit(30, 'H7/g6');
     expect(b.holeDiameter.min).toBeGreaterThan(a.holeDiameter.min);
   });
 
