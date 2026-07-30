@@ -459,7 +459,26 @@ export function coilPoints(i) {
  *   `kind:'cbore'` 를 줘도 아무 검증 없이 통과하고 **부피에도 반영되지 않았다**
  *   (실측: `extrude_profile` 이 카운터보어를 관통과 같게 셌다). 한 곳에 둔다.
  */
+/**
+ * 홀 **공차 등급** 표기 검증 (260801e).
+ *
+ * ⚠ 종전에는 사용자가 공차를 **줄 자리조차 없었다**(`holes[{x,y,d,kind,…}]` 에 필드 없음).
+ *   판정 이전에 **받을 자리**가 먼저다 — 없으면 사용자는 의도를 표현할 방법이 없다.
+ *
+ * ⚠ 여기서는 **표기 형식만** 본다(H7·h6·JS9 형태). **틈새/조임 판정은 하지 않는다** —
+ *   그건 짝이 되는 축이 선언돼야 가능하고(`fitClassLookup.evaluateFit`), 형상에 축이
+ *   없는 판재에서는 판정할 대상이 없다. 형식만 보고 판정한 척하지 않는다.
+ */
+const TOL_CLASS_RE = /^(?:[A-Za-z]{1,2})(?:[5-9]|1[0-8])$/;
+function holeToleranceGate(h, tag, e) {
+  if (h.fit == null) return;
+  if (typeof h.fit !== 'string' || !TOL_CLASS_RE.test(h.fit.trim())) {
+    e.push(`${tag} fit 표기가 아니다(예: H7·h6·JS9) — 받은 값: ${JSON.stringify(h.fit)}`);
+  }
+}
+
 function holeDetailGate(h, thk, tag, e) {
+  holeToleranceGate(h, tag, e);
   if (h.kind === 'cbore') {
     if (!pos(h.cbDia) || h.cbDia <= h.d) e.push(`${tag} cbDia ≤ d`);
     if (!pos(h.cbDepth) || h.cbDepth >= thk) e.push(`${tag} cbDepth ≥ 두께`);

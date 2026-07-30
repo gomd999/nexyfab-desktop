@@ -20,7 +20,7 @@ export const TYPE_SCHEMAS = Object.fromEntries(ALL_TYPES.map((t) => {
   const props = { confidence: NUM };
   for (const k of PARAMS[t]) props[k] = NUM;
   if (t === 'plate_with_holes') {
-    props.holes = { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, y: NUM, d: NUM }, required: ['x', 'y', 'd'] } };
+    props.holes = { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, y: NUM, d: NUM, fit: { type: 'STRING' } }, required: ['x', 'y', 'd'] } };
   }
   const required = [...PARAMS[t]];
   if (t === 'sheet_profile') {
@@ -35,7 +35,7 @@ export const TYPE_SCHEMAS = Object.fromEntries(ALL_TYPES.map((t) => {
   if (t === 'extrude_profile') {
     // profile=[[x,y],…] · holes=[{x,y,d}] — 배열이라 PARAMS 로는 표현되지 않는다(특례).
     props.profile = { type: 'ARRAY', items: { type: 'ARRAY', items: NUM } };
-    props.holes = { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, y: NUM, d: NUM }, required: ['x', 'y', 'd'] } };
+    props.holes = { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, y: NUM, d: NUM, fit: { type: 'STRING' } }, required: ['x', 'y', 'd'] } };
     props.fillets = { type: 'ARRAY', items: { type: 'OBJECT', properties: { i: NUM, r: NUM }, required: ['i', 'r'] } };
     props.filletR = NUM;
     required.push('profile');
@@ -75,5 +75,7 @@ export const TYPE_HINTS = {
     + '⚠ 홀은 **원형만** — 비원형 내부 루프는 지원하지 않는다. ⚠ 자기교차는 검사하지 않는다. '
     + '홀 가공 상세(cbore·csink·tap·blind)와 패턴(linear{count,pitch}·circular{count,bcd})을 받는다 — '
     + '`plate_with_holes` 와 **같은 단일 소스**라 부피·표면적·SCAD 가 갈리지 않는다. '
-    + '필렛은 **볼록 꼭짓점만** 원호(현 분할)로 반영한다 — 형상·부피·표면적이 모두 같은 형상을 본다',
+    + '필렛은 **볼록 꼭짓점만** 원호(현 분할)로 반영한다 — 형상·부피·표면적이 모두 같은 형상을 본다. '
+    + '홀에 `fit`(H7·h6 등 공차 등급)을 **표기로 받는다** — ⚠ 형식만 검증하고 '
+    + '틈새/조임은 판정하지 않는다(짝이 되는 축이 선언돼야 한다)',
 };

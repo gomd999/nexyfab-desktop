@@ -553,3 +553,35 @@ describe('★ 「고지만 하고 검사가 없는」 다섯 구멍 (260801d)', 
     }
   });
 });
+
+describe('홀 공차 등급 — **받을 자리**를 먼저 만든다 (260801e)', () => {
+  /**
+   * ⚠ 종전에는 사용자가 공차를 **줄 자리조차 없었다.** 판정 이전에 받을 자리가 먼저다 —
+   *   없으면 사용자는 의도를 표현할 방법이 없다.
+   * ⚠ 여기서 하는 것은 **표기 형식 검증뿐**이다. 틈새/조임은 짝이 되는 축이 선언돼야
+   *   판정할 수 있고(`fitClassLookup.evaluateFit`), 판재에는 축이 없다.
+   *   형식만 보고 판정한 척하지 않는다.
+   */
+  const prof = [[0, 0], [200, 0], [200, 120], [0, 120]];
+  const errs = (holes: unknown) => ((buildAssembly as unknown as (a: unknown) => { gateErrors?: string[] })({
+    name: 't', domain: 'mech',
+    parts: [{ id: 'p', type: 'extrude_profile', params: { profile: prof, depth: 20, holes }, at: {}, material: 'steel' }],
+  }).gateErrors ?? []).join(' ');
+
+  it.each(['H7', 'h6', 'JS9', 'G7', 'js13'])('%s — 정상 표기는 통과한다', (fit) => {
+    expect(errs([{ x: 50, y: 60, d: 12, fit }])).toBe('');
+  });
+
+  it.each([['Q99'], [7], [{ grade: 7 }], ['H'], ['H99']])('%s — 표기가 아니면 이름으로 거부한다', (fit) => {
+    expect(errs([{ x: 50, y: 60, d: 12, fit }])).toContain('fit 표기가 아니다');
+  });
+
+  it('미선언은 통과한다 — 공차는 선택이다(강제하면 과고지)', () => {
+    expect(errs([{ x: 50, y: 60, d: 12 }])).toBe('');
+  });
+
+  it('어휘 힌트가 **판정하지 않는다는 것**을 밝힌다', () => {
+    expect(TYPE_HINTS.extrude_profile).toContain('fit');
+    expect(TYPE_HINTS.extrude_profile).toContain('판정하지 않는다');
+  });
+});

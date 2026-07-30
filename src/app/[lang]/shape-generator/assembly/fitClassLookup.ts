@@ -36,6 +36,8 @@
  *   - Recommends fit based on application (sliding/locating/press).
  */
 
+import { itTolerance, shaftFundamentalDeviation, ISO286_MAX_MM, type ShaftDevSymbol } from './iso286';
+
 export type FitName = 'H7/g6' | 'H7/f7' | 'H7/e8' | 'H7/h6' | 'H7/k6' | 'H7/n6' | 'H7/p6' | 'H7/s6' | 'H7/u6' | 'H8/c11';
 export type FitCategory = 'clearance' | 'transition' | 'interference';
 
@@ -66,6 +68,28 @@ export const FIT_TABLE: Record<FitName, { hole: DeviationTable; shaft: Deviation
   'H8/c11': { hole: { upper: 33, lower: 0 }, shaft: { upper: -110, lower: -240 }, category: 'clearance', application: 'Large clearance (gas/coarse).' },
 };
 
+/**
+ * **산식으로 전 구간(⌀0~500mm) 계산되는 끼워맞춤** (260801e).
+ *
+ * ISO 286 이 산식으로 정의한 IT 등급과 축 기본편차만 쓴다. 기존 ⌀18~30 표와 대조해
+ * 전부 반올림 오차 안에서 일치하는 것을 확인했다(회귀로 박았다).
+ *
+ * ⚠ `H7/p6·H7/s6·H7/u6·H8/c11` 은 **여기 없다** — 기본편차 산식이 표를 재현하지 못했다
+ *   (c: 산식 −97.6 vs 표 −110). 한 점에 맞춰 역추정하면 검증이 아니라 과적합이다.
+ *   그 넷은 종전대로 **표 구간(⌀18~30)** 안에서만 답한다.
+ */
+const FORMULA_FITS: Readonly<Record<string, { holeGrade: number; shaft: ShaftDevSymbol; shaftGrade: number }>> = {
+  'H7/g6': { holeGrade: 7, shaft: 'g', shaftGrade: 6 },
+  'H7/f7': { holeGrade: 7, shaft: 'f', shaftGrade: 7 },
+  'H7/e8': { holeGrade: 7, shaft: 'e', shaftGrade: 8 },
+  'H7/h6': { holeGrade: 7, shaft: 'h', shaftGrade: 6 },
+  'H7/k6': { holeGrade: 7, shaft: 'k', shaftGrade: 6 },
+  'H7/n6': { holeGrade: 7, shaft: 'n', shaftGrade: 6 },
+};
+
+/** 이 끼워맞춤이 산식으로 전 구간 계산되는가 — 호출측이 범위를 물어볼 수 있게 export. */
+export function isFormulaFit(fit: FitName): boolean { return fit in FORMULA_FITS; }
+
 export interface FitResult {
   fitName: FitName;
   category: FitCategory;
@@ -93,12 +117,44 @@ export function evaluateFit(nominalMm: number, fit: FitName): FitResult {
   if (!Number.isFinite(nominalMm) || nominalMm <= 0) {
     throw new Error(`fit: nominal diameter must be > 0, got ${nominalMm}`);
   }
+  const spec = FORMULA_FITS[fit];
+  if (spec) {
+    /**
+     * 산식 경로 — ⌀0~500mm 전 구간. IT 등급과 축 기본편차를 ISO 286 산식으로 낸다.
+     * ⚠ 산식이 못 내면(구간 밖) **추정하지 않고 거부**한다.
+     */
+    if (nominalMm > ISO286_MAX_MM) {
+      throw new Error(
+        `fit: nominal ⌀${nominalMm}mm exceeds ⌀${ISO286_MAX_MM}mm — the IT formula changes above `
+        + 'that size, so extrapolating would report wrong tolerances under a standard name.',
+      );
+    }
+    const holeIT = itTolerance(nominalMm, spec.holeGrade);
+    const shaftIT = itTolerance(nominalMm, spec.shaftGrade);
+    const dev = shaftFundamentalDeviation(nominalMm, spec.shaft);
+    if (holeIT === null || shaftIT === null || dev === null) {
+      throw new Error(`fit: ISO 286 formula did not produce values for ⌀${nominalMm}mm ${fit}`);
+    }
+    // 구멍은 기준구멍 H → EI=0, ES=+IT. 축은 기본편차 쪽에서 IT 만큼 벌린다.
+    const holeLo = 0, holeHi = holeIT;
+    const shaftHi = dev.kind === 'es' ? dev.value : dev.value + shaftIT;
+    const shaftLo = dev.kind === 'es' ? dev.value - shaftIT : dev.value;
+    const hMin = nominalMm + holeLo / 1000, hMax = nominalMm + holeHi / 1000;
+    const sMin = nominalMm + shaftLo / 1000, sMax = nominalMm + shaftHi / 1000;
+    return {
+      fitName: fit, category: FIT_TABLE[fit].category,
+      holeDiameter: { min: hMin, max: hMax },
+      shaftDiameter: { min: sMin, max: sMax },
+      minClearance: hMin - sMax, maxClearance: hMax - sMin,
+      application: FIT_TABLE[fit].application,
+    };
+  }
   if (nominalMm < FIT_TABLE_RANGE_MM.min || nominalMm > FIT_TABLE_RANGE_MM.max) {
     throw new Error(
-      `fit: nominal ⌀${nominalMm}mm is outside the tabulated range `
-      + `⌀${FIT_TABLE_RANGE_MM.min}~${FIT_TABLE_RANGE_MM.max}mm. ISO 286 deviations vary by `
-      + 'size range, so evaluating outside it would report wrong clearances as if they were '
-      + 'standard. Extend FIT_TABLE with the missing size ranges first — do not widen the range alone.',
+      `fit: ${fit} is table-only (⌀${FIT_TABLE_RANGE_MM.min}~${FIT_TABLE_RANGE_MM.max}mm) and `
+      + `⌀${nominalMm}mm is outside it. Its fundamental deviation has no verified formula `
+      + '(c: formula −97.6 vs table −110), so extrapolating would report wrong clearances under '
+      + 'a standard name. Extend FIT_TABLE with the missing size ranges — do not widen the range alone.',
     );
   }
   const entry = FIT_TABLE[fit];

@@ -39,21 +39,32 @@ describe('표 구간 안에서는 종전대로 계산한다', () => {
   });
 });
 
-describe('★ 구간 밖은 거부한다 — 틀린 값을 표준 이름으로 내보내지 않는다', () => {
-  it.each([1, 6, 17.9, 30.1, 100, 400])('⌀%dmm 는 거부한다', (d) => {
-    expect(() => evaluateFit(d, 'H7/g6')).toThrow(/outside the tabulated range/);
+describe('★ 산식이 없는 끼워맞춤은 구간 밖을 거부한다 — 틀린 값을 표준 이름으로 내보내지 않는다', () => {
+  /**
+   * ⚠ 260801e 정정: 검체를 `H7/g6` → `H7/p6` 로 옮겼다.
+   *   `H7/g6` 는 ISO 286 **산식**으로 전 구간(⌀0~500)이 열렸다(산식이 표를 오차 0 으로
+   *   재현하는 것을 확인했다). 불변식(「검증 없는 구간은 거부」)은 그대로이고,
+   *   그 불변식이 살아 있는 곳은 이제 **산식이 없는** `p·s·u·c` 다.
+   */
+  it.each([1, 6, 17.9, 30.1, 100, 400])('⌀%dmm 는 거부한다(표 전용 H7/p6)', (d) => {
+    expect(() => evaluateFit(d, 'H7/p6')).toThrow(/table-only/);
   });
 
   it('거부 사유가 **왜**인지 말한다 — 범위만 넓히지 말라고 적는다', () => {
     let msg = '';
     try { evaluateFit(100, 'H7/p6'); } catch (e) { msg = (e as Error).message; }
-    expect(msg).toContain('vary by');
+    expect(msg).toContain('no verified formula');
     expect(msg).toContain('Extend FIT_TABLE');
+  });
+
+  it('산식 끼워맞춤은 **거부하지 않는다** — 과고지도 결함이다', () => {
+    for (const d of [6, 100, 400]) expect(() => evaluateFit(d, 'H7/g6')).not.toThrow();
   });
 
   it('0·음수·비유한 지름도 거부한다', () => {
     for (const d of [0, -5, Number.NaN, Number.POSITIVE_INFINITY]) {
-      expect(() => evaluateFit(d, 'H7/g6')).toThrow();
+      expect(() => evaluateFit(d, 'H7/g6'), String(d)).toThrow();
+      expect(() => evaluateFit(d, 'H7/p6'), String(d)).toThrow();
     }
   });
 });

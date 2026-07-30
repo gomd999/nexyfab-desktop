@@ -276,6 +276,7 @@ function spanCheck(label, { count, pitch, span, countKo, pitchKo, spanKo }) {
  */
 
 import { structuralCheck } from './structural.mjs';
+import { fitCheck, findPinBorePairs } from './fit-check.mjs';
 import { boltedPlateCheck } from './bolted-plate-check.mjs';
 
 /**
@@ -376,7 +377,7 @@ function withTipover(result, assembly, params) {
 export function mechCheck(assembly, params = {}) {
   if (!assembly || typeof assembly !== 'object') return null;
   // 전도는 **모든 기계 어셈블리**에 해당한다 — 메타 유무와 무관하게 붙인다.
-  return withBolted(withTipover(mechCheckInner(assembly, params), assembly, params), assembly, params);
+  return withFit(withBolted(withTipover(mechCheckInner(assembly, params), assembly, params), assembly, params), assembly, params);
 }
 
 /**
@@ -388,6 +389,31 @@ export function mechCheck(assembly, params = {}) {
  * ⚠ `mechCheckInner` 가 null 이어도 **볼트 검토만으로 결과를 세운다** — 「적용 가능한 검토가
  *   없다」와 「검토가 있는데 문서가 안 나온다」는 다른 말이다.
  */
+/**
+ * 끼워맞춤 검토를 붙인다 (260801f) — 전도·볼트와 **같은 규약**(메타 무관, 형상에서 찾는다).
+ *
+ * ⚠ 처음엔 `evaluateFit` 을 **주입**받게 짰다. 그러면 소비부가 배선을 잊는 순간 판정이
+ *   조용히 사라진다 — 이 세션에서 반복해 잡은 형태 ① 를 내가 다시 만드는 것이었다.
+ *   `fit-check` 가 `iso286.mjs` 산식으로 **직접** 낸다(주입은 선택).
+ */
+function withFit(r, assembly, params) {
+  void params;
+  let pairs = [];
+  try { pairs = findPinBorePairs(assembly); } catch { pairs = []; }
+  if (!pairs.length) return r;
+  let f = null;
+  try { f = fitCheck(pairs); } catch { f = null; }
+  if (!f) return r;
+  if (!r) return f;
+  return {
+    ...r,
+    checks: { ...(r.checks ?? {}), fit: f },
+    ...(Array.isArray(r.notChecked) || Array.isArray(f.notChecked)
+      ? { notChecked: [...(r.notChecked ?? []), ...(f.notChecked ?? [])] } : {}),
+  };
+}
+
+
 function withBolted(r, assembly, params) {
   let b = null;
   try { b = boltedPlateCheck(assembly, params); } catch { b = null; }
