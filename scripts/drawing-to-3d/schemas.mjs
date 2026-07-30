@@ -57,6 +57,8 @@ export const TYPE_HINTS = {
   rect_tube: 'width,height,wallThk,length (각관/사각 중공재)',
   box: 'width,depth,height (속찬 직육면체 블록)',
   cylinder: 'diameter,length (속찬 원기둥 봉·포스트)',
+  cone: 'dia1,dia2,height (속찬 원뿔대 — dia2=0 이면 뾰족한 원뿔. 셸은 pipe_reducer)',
+  torus: 'majorDia,minorDia (속찬 원환/도넛 — majorDia=중심원 지름, minorDia=관 지름. 셸은 pipe_elbow)',
   gusset: 'legA,legB,thickness (직각삼각 거셋 보강판)',
   base_plate: 'width,depth,thickness,boltDia (4모서리 볼트홀 베이스판)',
   spur_gear: 'module,teeth,thickness,boreDia (인벌류트 스퍼기어 — 외경=m(z+2), boreDia 0=무보어)',

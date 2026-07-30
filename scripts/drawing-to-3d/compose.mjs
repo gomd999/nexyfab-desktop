@@ -107,6 +107,10 @@ export function gateComposite(intent) {
       case 'cone': // 원뿔대(260719 — pipe_reducer 실형상: 계단 근사 폐기)
         if (!pos(f.height) || !(f.dia1 >= 0) || !(f.dia2 >= 0) || (f.dia1 <= 0 && f.dia2 <= 0)) errs.push(`${tag}: cone dia1/dia2/height invalid`);
         break;
+      case 'torus': // 원환(260801h) — STEP=진짜 원환면(원 프로파일 회전), SCAD=rotate_extrude
+        if (!pos(f.majorDia) || !pos(f.minorDia)) errs.push(`${tag}: torus majorDia/minorDia invalid`);
+        else if (f.minorDia >= f.majorDia) errs.push(`${tag}: minorDia ≥ majorDia — 자기교차`);
+        break;
       case 'polyhedron': // 자유곡면(블레이드 로프트 등) — 정점/면 직접(260719, AI 생성 어휘 아님)
         if (!Array.isArray(f.verts) || f.verts.length < 4 || !Array.isArray(f.faces) || f.faces.length < 4) errs.push(`${tag}: polyhedron verts/faces invalid`);
         else if (f.verts.length > 20000) errs.push(`${tag}: polyhedron 정점 > 20k — 표시 예산 초과`);
@@ -133,6 +137,8 @@ function featBody(f) {
     case 'box': return `cube([${f.size.map(fmt).join(', ')}], center=${f.centered ? 'true' : 'false'});`;
     case 'sphere': return `sphere(d=${fmt(f.diameter)}, $fn=64);`;
     case 'cone': return `cylinder(h=${fmt(f.height)}, d1=${fmt(f.dia1)}, d2=${fmt(f.dia2)}, $fn=96);`;
+    // ⚠ SCAD 는 `$fn` 다면체 근사라 STEP(원환면)보다 부피가 조금 작다 — 3열 대조가 그 차를 잰다.
+    case 'torus': return `rotate_extrude($fn=128) translate([${fmt(f.majorDia / 2)}, 0, 0]) circle(d=${fmt(f.minorDia)}, $fn=64);`;
     case 'polyhedron': return `polyhedron(points=[${f.verts.map((v) => `[${v.map(fmt).join(',')}]`).join(',')}], faces=[${f.faces.map((q) => `[${q.join(',')}]`).join(',')}], convexity=10);`;
     case 'coil': { // C2(260719b): SCAD 는 세그먼트 스윕 근사(네이티브 스윕 없음 — STEP=B-rep 정확)
       const R = (f.coilDia - f.wireDia) / 2;

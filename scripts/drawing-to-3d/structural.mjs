@@ -51,6 +51,9 @@ export function partVolume(type, p) {
     // §8-② 형강 실단면(2026-07-16): 플랜지2 + 웨브 — AABB가 아닌 실단면적으로 질량·BOQ 정확
     case 'h_section': return (2 * p.B * p.tf + p.tw * (p.H - 2 * p.tf)) * p.length;
     case 'c_channel': return (2 * p.B * p.tf + p.tw * (p.H - 2 * p.tf)) * p.length;
+    // 260801h — 원뿔대 V = πh/12·(d1² + d1·d2 + d2²) · 원환 V = 2π²Rr² (둘 다 **정확식**)
+    case 'cone': return (Math.PI * p.height / 12) * (p.dia1 ** 2 + p.dia1 * p.dia2 + p.dia2 ** 2);
+    case 'torus': return 2 * Math.PI ** 2 * (p.majorDia / 2) * (p.minorDia / 2) ** 2;
     case 'cylinder': { // T1(260719): 키홈=원호 절단 정확식, 오링 홈=원환 폐형
       let v = A * p.diameter ** 2 * p.length;
       const r = p.diameter / 2;

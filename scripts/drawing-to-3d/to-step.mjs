@@ -186,6 +186,15 @@ function featSolid(rc, f) {
       for (let i = 1; i < pts.length; i++) pen = pen.lineTo([pts[i][0], pts[i][1]]);
       return pen.close().sketchOnPlane('XZ').revolve([0, 0, 1]);
     }
+    /**
+     * 원환(260801h) — **원 프로파일**을 회전시킨다(다각형 근사가 아니다).
+     * ⚠ `revolve` 의 폴리라인으로 흉내 내면 STEP 부피가 우리가 선언한 정확식(2π²Rr²)과
+     *   갈린다 — 「선언과 산출이 다르다」는 이 세션에서 반복해 잡은 형태다.
+     */
+    case 'torus': {
+      const R = f.majorDia / 2, r = f.minorDia / 2;
+      return rc.drawCircle(r).translate([R, 0]).sketchOnPlane('XZ').revolve([0, 0, 1]);
+    }
     case 'box': {
       const [w, d, h] = f.size;
       const s = rc.drawRectangle(w, d).sketchOnPlane('XY').extrude(h);

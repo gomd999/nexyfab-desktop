@@ -33,6 +33,17 @@ function surfaceMm2(type, p) {
     case 'tube': return Math.PI * p.outerDia * p.length + Math.PI * p.innerDia * p.length + 2 * A * (p.outerDia ** 2 - p.innerDia ** 2);
     case 'rect_tube': return 2 * (p.width + p.height) * p.length + 2 * ((p.width - 2 * p.wallThk) + (p.height - 2 * p.wallThk)) * p.length;
     case 'cylinder': return Math.PI * p.diameter * p.length + 2 * A * p.diameter ** 2;
+    /**
+     * 원뿔대 겉넓이 = 측면 π(r1+r2)·s + 두 밑면. s = √(h² + (r1−r2)²) — **모선 길이**다.
+     * ⚠ 높이를 모선으로 쓰면 도장·도금 물량이 과소가 된다(경사가 클수록 크게 벌어진다).
+     */
+    case 'cone': {
+      const r1 = p.dia1 / 2, r2 = p.dia2 / 2;
+      const slant = Math.hypot(p.height, r1 - r2);
+      return Math.PI * (r1 + r2) * slant + Math.PI * (r1 ** 2 + r2 ** 2);
+    }
+    // 원환 겉넓이 = 4π²Rr (정확식). 안쪽 구멍 면도 도장 대상이라 전면적이 맞다.
+    case 'torus': return 4 * Math.PI ** 2 * (p.majorDia / 2) * (p.minorDia / 2);
     case 'gusset': return p.legA * p.legB + p.thickness * (p.legA + p.legB + Math.hypot(p.legA, p.legB));
     case 'spur_gear': {
       const poly = gearPoly(p);

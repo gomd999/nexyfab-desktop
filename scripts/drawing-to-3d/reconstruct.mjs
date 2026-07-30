@@ -587,6 +587,30 @@ const GATES = {
       if (!(g.z >= 0 && g.z + g.w <= i.length)) e.push(`oringGrooves[${n}] z 범위 밖`);
     }
   },
+  /**
+   * 원뿔대 — `dia2 = 0` 이면 뾰족한 원뿔이다(허용). 두 지름이 같으면 원기둥이라
+   * `cylinder` 를 쓰라고 되돌린다(같은 형상을 두 어휘로 표현하면 BOQ·도면이 갈린다).
+   */
+  cone(i, e) {
+    if (!pos(i.dia1) || i.dia1 > 5000) e.push('dia1 invalid');
+    if (!(typeof i.dia2 === 'number' && Number.isFinite(i.dia2) && i.dia2 >= 0) || i.dia2 > 5000) e.push('dia2 invalid(≥0)');
+    if (!pos(i.height) || i.height > 60000) e.push('height invalid (≤60m)');
+    if (pos(i.dia1) && typeof i.dia2 === 'number' && Math.abs(i.dia1 - i.dia2) < 1e-9) {
+      e.push('dia1 = dia2 — 원기둥이다. `cylinder` 를 쓸 것(같은 형상을 두 어휘로 쓰면 BOQ·도면이 갈린다)');
+    }
+  },
+  /**
+   * 원환(도넛) — `majorDia` 는 **중심원 지름**, `minorDia` 는 **관 지름**이다.
+   * ⚠ `minorDia ≥ majorDia` 면 안쪽 구멍이 사라져 자기교차한다(형상이 성립하지 않는다).
+   *   실측 없이 통과시키면 부피 공식 `2π²Rr²` 이 **실제보다 큰 값**을 낸다.
+   */
+  torus(i, e) {
+    if (!pos(i.majorDia) || i.majorDia > 20000) e.push('majorDia invalid');
+    if (!pos(i.minorDia) || i.minorDia > 5000) e.push('minorDia invalid');
+    if (pos(i.majorDia) && pos(i.minorDia) && i.minorDia >= i.majorDia) {
+      e.push('minorDia ≥ majorDia — 안쪽 구멍이 없어 자기교차한다(부피식 2π²Rr² 이 과대해진다)');
+    }
+  },
   gusset(i, e) {
     for (const k of ['legA', 'legB', 'thickness']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);
   },
@@ -980,6 +1004,15 @@ const SCAD = {
   box(i) {
     return `cube([${i.width}, ${i.depth}, ${i.height}]);`;
   },
+  cone(i) {
+    // OpenSCAD 는 원뿔대를 직접 지원한다(d1/d2). 다면체 근사라 부피는 $fn 에 달렸다 —
+    // 우리가 내보내는 **부피·표면적은 정확식**이고, SCAD 는 표시용이다(고지 규약).
+    return `cylinder(h=${i.height}, d1=${i.dia1}, d2=${i.dia2}, $fn=96);`;
+  },
+  torus(i) {
+    const R = i.majorDia / 2, r = i.minorDia / 2;
+    return `translate([0,0,${r}]) rotate_extrude($fn=128) translate([${R}, 0, 0]) circle(d=${i.minorDia}, $fn=64);`;
+  },
   cylinder(i) {
     const body = `cylinder(h=${i.length}, d=${i.diameter}, $fn=96);`;
     // T1(260719): 키홈(+x측 z=0 시작 관례)·오링 홈 — composeIntent(STEP)와 동일 수학
@@ -1228,6 +1261,16 @@ export function partAabb(i) {
       return { min: [0, 0, 0], max: [i.width, i.depth, i.height] };
     case 'cylinder':
       return { min: [-i.diameter / 2, -i.diameter / 2, 0], max: [i.diameter / 2, i.diameter / 2, i.length] };
+    case 'cone': {
+      // 원뿔대는 **큰 쪽 지름**이 경계를 정한다(위가 넓은 형상도 있다).
+      const rc = Math.max(i.dia1, i.dia2) / 2;
+      return { min: [-rc, -rc, 0], max: [rc, rc, i.height] };
+    }
+    case 'torus': {
+      // 도넛을 XY 평면에 눕힌다 — 바깥 반경 R+r, 두께 2r.
+      const Rt = i.majorDia / 2, rt = i.minorDia / 2;
+      return { min: [-(Rt + rt), -(Rt + rt), 0], max: [Rt + rt, Rt + rt, 2 * rt] };
+    }
     case 'gusset':
       return { min: [0, 0, 0], max: [i.legA, i.legB, i.thickness] };
     case 'base_plate':
@@ -1355,6 +1398,11 @@ export const PARAMS = {
   c_channel: ['H', 'B', 'tw', 'tf', 'length'],
   box: ['width', 'depth', 'height'],
   cylinder: ['diameter', 'length'],
+  // 260801h — 솔리드 원뿔대·원환. `pipe_reducer`(원뿔 **셸**)·`pipe_elbow`(원환 셸)와
+  // 구별된다: 이쪽은 **속이 찬** 형상이다. `revolve` 로도 흉내 낼 수 있지만 그건 다각형
+  // 근사라 부피가 실제와 다르다 — 여기서는 부피·표면적이 **정확식**이다.
+  cone: ['dia1', 'dia2', 'height'],
+  torus: ['majorDia', 'minorDia'],
   gusset: ['legA', 'legB', 'thickness'],
   base_plate: ['width', 'depth', 'thickness', 'boltDia'],
   spur_gear: ['module', 'teeth', 'thickness', 'boreDia'],

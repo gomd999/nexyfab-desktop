@@ -32,6 +32,8 @@ export const CANONICAL = {
   i_girder: { length: 10000, topW: 300, topT: 20, webT: 12, webH: 800, botW: 400, botT: 25 },
   tapered_girder: { length: 10000, topW: 300, topT: 20, webT: 12, webH1: 600, webH2: 1200, botW: 400, botT: 25 },
   cylinder: { diameter: 60, length: 200 },
+  cone: { dia1: 80, dia2: 40, height: 120 },
+  torus: { majorDia: 200, minorDia: 40 },
   gusset: { legA: 100, legB: 80, thickness: 10 },
   spur_gear: { module: 2, teeth: 24, thickness: 20, boreDia: 20 },
   hex_bolt: { threadDia: 12, length: 60 },

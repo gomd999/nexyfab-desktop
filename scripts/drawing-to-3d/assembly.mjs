@@ -272,6 +272,17 @@ export function assemblyToComposeIntent(asm) {
           feats.push(F('cylinder', { diameter: p.boltDia, height: p.thickness + 2 }, hx, hy, -1, 'subtract'));
         break;
       }
+      /**
+       * 260801h — 솔리드 원뿔대·원환. 배선하지 않으면 3D·STEP 에서 **통째로 사라진다**
+       * (부피·BOQ 는 나오는데 형상이 없는 상태 — 형태 ① 있는 것이 안 닿음).
+       */
+      case 'cone':
+        feats.push(F('cone', { dia1: p.dia1, dia2: p.dia2, height: p.height }));
+        break;
+      case 'torus':
+        // 도넛을 XY 평면에 눕힌다 — 중심 높이가 r 이라 밑면이 z=0 에 닿는다(AABB 와 정합).
+        feats.push(F('torus', { majorDia: p.majorDia, minorDia: p.minorDia }, 0, 0, p.minorDia / 2));
+        break;
       case 'tube':
         feats.push(F('cylinder', { diameter: p.outerDia, height: p.length }));
         feats.push(F('cylinder', { diameter: p.innerDia, height: p.length + 2 }, 0, 0, -1, 'subtract'));
