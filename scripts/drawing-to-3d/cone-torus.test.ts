@@ -167,3 +167,44 @@ describe('프리미티브 kind — 세 소비자가 어긋나지 않는다', () 
     for (const s of [gate, emit, kernel]) expect(s.has('cone')).toBe(true);
   });
 });
+
+/**
+ * ★표면적 미산출 어휘가 늘지 않는다 (260802).
+ *
+ * BOQ 는 겉넓이를 못 내는 어휘를 `surfaceMissing` 으로 **이름과 함께 고지**한다.
+ * 그런데 **고지가 필요 없는 것까지 고지하면 정말 못 내는 것이 묻힌다** —
+ * 실측에서 5종이 미산출이었고, 그중 셋(`pipe_tee`·`cavity_block`·`pillow_block`)은
+ * **형상이 답을 갖고 있었다.** 채우고 나머지 둘만 남겼다.
+ *
+ * ⚠ 남은 둘은 **이유가 있어서** 남는다:
+ *   · `composite` — add 하위가 맞닿으면 접촉면이 겉면에서 빠져야 하는데 그걸 알 수 없다.
+ *   · `mesh` — 삼각 메시라 겉넓이 정의가 다르다(임포트 실측 형상).
+ *   임의로 채우면 **근거 없는 수치**가 도장·도금 물량으로 나간다.
+ */
+describe('BOQ 표면적 커버리지', () => {
+  it('★미산출 어휘가 2종을 넘지 않는다 — 260802 실측(5 → 2)', async () => {
+    const { computeBOQ } = await import('./boq.mjs');
+    const { PARAMS } = await import('./reconstruct.mjs');
+    const { CANONICAL } = await import('./proxy-inventory.mjs');
+    const boq = computeBOQ as unknown as (a: unknown) => { items: Array<{ surfaceM2: number | null }> };
+    const canon = CANONICAL as unknown as Record<string, unknown>;
+    const missing: string[] = [];
+    for (const t of Object.keys(PARAMS as Record<string, unknown>)) {
+      try {
+        if (boq({ parts: [{ id: t, type: t, params: canon[t] }] }).items[0]!.surfaceM2 == null) missing.push(t);
+      } catch { missing.push(`${t}(err)`); }
+    }
+    expect(missing.sort(), `미산출: ${missing.join(', ')}`).toEqual(['composite', 'mesh']);
+  });
+
+  it('새로 채운 셋이 **양수**를 낸다 — null 만 면하고 0 이면 의미가 없다', async () => {
+    const { computeBOQ } = await import('./boq.mjs');
+    const { CANONICAL } = await import('./proxy-inventory.mjs');
+    const boq = computeBOQ as unknown as (a: unknown) => { items: Array<{ surfaceM2: number | null }> };
+    const canon = CANONICAL as unknown as Record<string, unknown>;
+    for (const t of ['pipe_tee', 'cavity_block', 'pillow_block']) {
+      const v = boq({ parts: [{ id: t, type: t, params: canon[t] }] }).items[0]!.surfaceM2;
+      expect(v, t).toBeGreaterThan(0);
+    }
+  });
+});

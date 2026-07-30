@@ -59,8 +59,15 @@ describe('강구조 단면 — 이제 0 이 아니다', () => {
 });
 
 describe('폐형이 안 서는 어휘는 null — 0 이 아니다', () => {
+  /**
+   * ⚠ 260802 — 예시를 `pipe_tee` 에서 **`composite`** 로 옮겼다. T 분기는 형상이 답을
+   *   갖고 있어 **겉넓이를 채웠다**(런·분기 원통 + 링 3). 픽스처가 낡은 것이지
+   *   계약이 바뀐 것이 아니므로 **불변식은 그대로 두고 예시만** 옮긴다.
+   * ⚠ `composite` 는 **이유가 있어서** 남는다 — add 하위가 맞닿으면 접촉면이 겉면에서
+   *   빠져야 하는데 그걸 알 수 없다. 임의로 채우면 근거 없는 수치가 도장 물량으로 나간다.
+   */
   const b = boq([
-    P('t', 'pipe_tee', { runOD: 60.5, runLen: 200, branchOD: 34, branchLen: 100 }),
+    P('t', 'composite', { subs: [{ type: 'box', params: { width: 100, depth: 100, height: 20 }, op: 'add' }] }),
     P('g', 'i_girder', { length: 10000, topW: 300, topT: 20, webT: 12, webH: 800, botW: 400, botT: 25 }),
   ]);
 
@@ -69,7 +76,7 @@ describe('폐형이 안 서는 어휘는 null — 0 이 아니다', () => {
   });
 
   it('미산출 어휘를 이름으로 고지한다 — 합계에서 빠졌다는 사실이 드러나야 한다', () => {
-    expect(b.surfaceMissing).toContain('pipe_tee');
+    expect(b.surfaceMissing).toContain('composite');
     expect(b.surfaceMissing).not.toContain('i_girder');
   });
 
@@ -86,7 +93,7 @@ describe('폐형이 안 서는 어휘는 null — 0 이 아니다', () => {
 
 describe('리포트 — 미산출이 숫자처럼 보이지 않는다', () => {
   const html = (boqReport as unknown as (a: unknown, o?: unknown) => string)({
-    parts: [P('t', 'pipe_tee', { runOD: 60.5, runLen: 200, branchOD: 34, branchLen: 100 })],
+    parts: [P('t', 'composite', { subs: [{ type: 'box', params: { width: 100, depth: 100, height: 20 }, op: 'add' }] })],
   }, {});
 
   it('표에 0.000 이 아니라 — 이 찍힌다', () => {
@@ -96,7 +103,7 @@ describe('리포트 — 미산출이 숫자처럼 보이지 않는다', () => {
 
   it('주석에 미산출 어휘를 이름으로 밝힌다', () => {
     expect(html).toContain('표면적 미산출');
-    expect(html).toContain('pipe_tee');
+    expect(html).toContain('composite');
   });
 });
 
@@ -131,13 +138,20 @@ describe('회전체 표면적 — 파푸스 제1정리 (260729b)', () => {
     expect(withAxis).toBeGreaterThan(0);
   });
 
-  it('미산출 어휘가 7종 → 2종으로 줄었다', async () => {
+  /**
+   * ⚠ 260802 — 기대 목록을 `['cavity_block','mesh']` → `['mesh']` 로 줄였다.
+   *   `cavity_block` 은 **겉면 6 + 공동 내벽**으로 산출 가능했다(공동은 어휘 하나를 품으므로
+   *   **그 어휘의 겉넓이 규칙을 재사용**한다 — 중복 구현하지 않는다).
+   * ⚠ 이 검사가 지키는 것은 「목록이 이 값이다」가 아니라 **「늘지 않는다」**이다.
+   *   줄어드는 것은 개선이고, 늘어나면 산출하던 것이 사라진 것이다.
+   */
+  it('미산출 어휘가 7종 → 1종으로 줄었다', async () => {
     const m = await import('./domain-assemblies.mjs');
     const build = m.buildAssemblyTemplate as unknown as (d: string, i: string, p: unknown) => unknown;
     const missing = new Set<string>();
     for (const id of ['pump_unit', 'gate_valve', 'tank_silo', 'pressure_vessel', 'mold_cavity', 'propeller']) {
       for (const t of boq((build('mech', id, {}) as { parts: unknown[] }).parts).surfaceMissing ?? []) missing.add(t);
     }
-    expect([...missing].sort()).toEqual(['cavity_block', 'mesh']);   // revolve 5종이 빠졌다
+    expect([...missing].sort()).toEqual(['mesh']);   // revolve 5종 + cavity_block 이 빠졌다
   });
 });

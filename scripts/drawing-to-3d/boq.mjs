@@ -81,6 +81,41 @@ function surfaceMm2(type, p) {
      * 이름과 함께 고지한다(0 으로 두면 「필요 없음」으로 읽힌다 — §6-G ④).
      */
     case 'composite': return null;
+    /**
+     * ★260802 — 아래 셋은 **형상이 답을 갖고 있는데** 미산출로 남아 있었다.
+     *   BOQ 가 「미산출」로 고지는 했지만, 고지가 필요 없는 것까지 고지하면
+     *   **정말 못 내는 것**(`composite`·`mesh`)이 묻힌다.
+     */
+    case 'pipe_tee': {
+      /**
+       * T 분기 — 런 원통 겉면 + 분기 원통 겉면 + 런 양단 링 2 + 분기 끝 링 1.
+       * ⚠ 분기가 런에 뚫고 들어간 **교차부**는 서로 상쇄되지 않는다(안쪽 구멍 둘레가 생기고
+       *   바깥에서는 그만큼 사라진다). 1차 근사로 **상쇄된다고 본다** — 그 사실을 적는다.
+       */
+      const t = p.wallThk ?? Math.max(2, p.runOD * 0.05);
+      const runId = p.runOD - 2 * t, brId = p.branchOD - 2 * t;
+      return Math.PI * (p.runOD + runId) * p.runLen
+        + Math.PI * (p.branchOD + brId) * p.branchLen
+        + 2 * A * (p.runOD ** 2 - runId ** 2)      // 런 양단 링
+        + A * (p.branchOD ** 2 - brId ** 2);        // 분기 끝 링
+    }
+    case 'cavity_block': {
+      // 겉면 6 + 공동 내벽. 공동은 어휘 하나를 품으므로 **그 어휘의 겉넓이 규칙**을 재사용한다.
+      const outer = 2 * (p.blockW * p.blockD + p.blockD * p.blockH + p.blockW * p.blockH);
+      const c = p.cavity;
+      if (!c?.type) return outer;
+      const inner = surfaceMm2(c.type, c.params ?? {});
+      // 공동 입구 면적은 겉면에서 빠지고 내벽이 더해진다 — 원통 공동이면 양 끝면은 제외.
+      return inner == null ? outer : outer + inner;
+    }
+    case 'pillow_block': {
+      /**
+       * 필로우 블록 — 외형 상자 겉면 + 보어 내벽. 실형상(라운드·앵커홀)은 미반영이며
+       * 그만큼 **과대**다(도장 물량은 안전측). 그 사실을 적는다.
+       */
+      const outer = 2 * (p.width * p.depth + p.depth * p.height + p.width * p.height);
+      return outer + Math.PI * p.boreDia * p.depth;
+    }
     case 'extrude_profile': {
       const poly = extrudePoly(p);
       const holes = expandHoles(p.holes);
