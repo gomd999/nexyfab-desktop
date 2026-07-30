@@ -120,13 +120,26 @@ export function siteLayoutCheck(assembly, params = {}) {
   // ── ③ 조경면적률 ──────────────────────────────────────────────────────────
   if (Number(sl.greenAreaM2) >= 0 && Number.isFinite(Number(sl.greenAreaM2))) {
     const g = r2((sl.greenAreaM2 / siteA) * 100, 1);
+    /**
+     * ⚠ 260801 — **미선언 공지를 녹지로 세지 않는다.**
+     * 대지에서 건축면적과 선언 조경을 뺀 나머지는 도로·주차·광장일 수 있다. 그걸 녹지에
+     * 넣으면 조경률이 통과하지만 그건 판정을 무르게 고치는 것이다. 대신 **얼마가 미선언인지**
+     * 를 적어 「올리려면 무엇을 선언해야 하는지」가 보이게 한다.
+     */
+    const openM2 = Math.max(0, siteA - Number(sl.buildingAreaM2 ?? 0) - Number(sl.greenAreaM2));
+    const openNote = `미선언 공지 ${r2(openM2, 0)}㎡(대지의 ${r2((openM2 / siteA) * 100, 1)}%) — `
+      + `도로·주차·광장일 수 있어 **녹지로 세지 않는다**. 조경 부재 ${Number(sl.greenPartCount ?? 0)}개만 셌다. `
+      + '올리려면 조경 부재를 선언해야 한다(면적을 추정해 채우지 않는다).';
     const gMin = Number(params.zoning?.greenRatioMinPct);
     checks.green = gMin > 0
-      ? { labelKo: `조경면적률 ${g}% (최소 ${gMin}%)`, pass: g >= gMin, detail: [`조경면적 ${r2(sl.greenAreaM2, 0)}㎡ ÷ 대지면적 ${r2(siteA, 0)}㎡ = ${g}%`] }
+      ? {
+        labelKo: `조경면적률 ${g}% (최소 ${gMin}%)`, pass: g >= gMin,
+        detail: [`조경면적 ${r2(sl.greenAreaM2, 0)}㎡ ÷ 대지면적 ${r2(siteA, 0)}㎡ = ${g}%`, openNote],
+      }
       : {
         labelKo: `조경면적률 ${g}% — 최소율 미선언`, pass: null,
         needInputs: [{ name: 'zoning.greenRatioMinPct', labelKo: '조경면적 최소율(%) — 건축법 §42 는 「조례로 정한다」라 지자체가 정한다' }],
-        detail: [`조경면적 ${r2(sl.greenAreaM2, 0)}㎡ ÷ 대지면적 ${r2(siteA, 0)}㎡ = **${g}%** 를 산출했다. 최소율은 조례 소관이라 판정하지 않았다.`],
+        detail: [`조경면적 ${r2(sl.greenAreaM2, 0)}㎡ ÷ 대지면적 ${r2(siteA, 0)}㎡ = **${g}%** 를 산출했다. 최소율은 조례 소관이라 판정하지 않았다.`, openNote],
       };
   }
 

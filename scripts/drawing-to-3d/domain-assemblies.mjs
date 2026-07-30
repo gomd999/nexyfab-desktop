@@ -283,12 +283,31 @@ function cafeRoomAssembly(p) {
     name: '카페 레이아웃', domain: 'interior', parts,
     // 배수·통기 검토 입력 — 기구 → PS 입상관. 관경은 기구부하단위 관례값(대변기 75·세면 50·싱크 50).
     pipes: [
-      { id: 'drain_toilet', from: 'wc_toilet.x+', to: { part: 'ps_stack', face: 'x-', offset: [0, 0, -1140] }, d: 75, service: 'drain' },
-      { id: 'drain_basin', from: 'wc_basin.x+', to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -940] }, d: 50, service: 'drain' },
+      /**
+       * ⚠ 260801 — 입상관 접속 z 를 **기구 배출구보다 낮게** 선언한다(계획 ⑤).
+       *
+       * 종전 offset 은 기구 배출 높이와 같아 경로가 수평이었고(`availableDropMm=0`),
+       * 구배 검사가 「낙차 미선언 — 판정 불가」로 정직하게 보류했다. 실물 배수는 **반드시**
+       * 입상관 쪽이 낮다. 낙차를 선언하지 않는 것은 「구배가 없다」가 아니라 「아직 정하지
+       * 않았다」이고, 정하지 않은 채로는 판정이 영영 생기지 않는다.
+       *
+       * 낙차 80mm 는 KDS 31 30 25 표 4.1-1 최소 구배(DN≤65 → 1/50 · DN≤150 → 1/100)를
+       * 이 레이아웃의 수평 연장(1.3~2.4m)에서 만족하는 값이다 — 검사가 실제로 대조한다.
+       * ⚠ 임의로 크게 잡지 않는다. 과한 낙차는 천장고·기구 설치고를 잡아먹는다.
+       */
+      { id: 'drain_toilet', from: 'wc_toilet.x+', to: { part: 'ps_stack', face: 'x-', offset: [0, 0, -1220] }, d: 75, service: 'drain' },
+      { id: 'drain_basin', from: 'wc_basin.x+', to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -1020] }, d: 50, service: 'drain' },
       { id: 'drain_sink', from: 'bar_sink.y+', to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -600] }, d: 50, service: 'drain' },
       // ⚠ DN50 으로 뒀다가 **기준 미달로 걸렸다** — KDS 31 30 25 §4.3(1): 통기관은 담당
       //   배수관(DN100)의 1/2 초과여야 하므로 DN65 이상이다. 검사가 잡아 DN75(관례)로 고쳤다.
-      { id: 'vent_stack', from: 'ps_stack.z+', to: [psX + 60, psY + 60, 2600], d: 75, service: 'vent' },
+      /**
+       * ⚠ 260801 — 이 통기관은 **라우팅이 실패하고 있었다**(HEAD 에서도 동일, 실측 확인).
+       *   `후보 18 전부 불합격 — seg1: 세그먼트 60.0mm — 엘보 후퇴(79.0mm) 불가`
+       * 입상관 축에서 60mm 만 비켜 놓아 DN75 엘보가 들어갈 자리가 없었다. 라우터가 정직하게
+       * 거부했지만 그 결과 통기 검사가 **경로 길이 없이** 판정하고 있었다(길이 미반영).
+       * 엘보 후퇴 여유(79mm)를 넘는 300mm 로 띄운다 — 라우터가 요구한 값에서 나온 수치다.
+       */
+      { id: 'vent_stack', from: 'ps_stack.z+', to: [psX + 300, psY + 300, 2600], d: 75, service: 'vent' },
     ],
     floorAreaM2: +((W * D) / 1e6).toFixed(2),
     // 피난 검증용 메타 — 출입구(문) 위치·폭 (형상과 동일 소스에서 결정론 생성)
@@ -370,6 +389,22 @@ function apartmentComplexAssembly(p = {}) {
     P(`green_${i}_${j}`, 'box', { width: gapX * 0.6, depth: towerD, height: 120 }, { tx: gx, ty, tz: 0 }, '조경', 'green');
   }
   /**
+   * ⚠ 260801 — **세로(동 전후) 이격의 녹지가 선언되지 않았다**(계획 ⑦).
+   *
+   * 종전에는 가로 이격에만 녹지를 뒀다(4필지 900㎡). 그런데 세로 이격은 35m 로 **더 넓고**
+   * 실제 단지에서 동 사이 녹지가 놓이는 자리다 — 선언 누락이지 설계 판단이 아니었다.
+   * 조경면적률 검사가 4.2% 로 **FAIL** 을 냈고, 그것이 이 누락을 잡아냈다.
+   *
+   * ⚠ 판정을 통과시키려고 녹지를 늘리는 것이 아니다. 세로 이격을 채워도 10% 대이고
+   * **여전히 조례 기준(예 30%)에 미달**이다 — 그것이 이 매싱의 정직한 상태다.
+   * 미선언 공지(도로·주차·광장)를 녹지로 세는 것이 진짜 무르게 고치는 것이고, 하지 않는다.
+   */
+  for (let i = 0; i < nX; i++) for (let j = 0; j < nY - 1; j++) {
+    const tx = x0 + i * (towerW + gapX);
+    const gy = y0 + j * (towerD + gapY) + towerD + gapY * 0.2;
+    P(`greenY_${i}_${j}`, 'box', { width: towerW, depth: gapY * 0.6, height: 120 }, { tx, ty: gy, tz: 0 }, '조경', 'green');
+  }
+  /**
    * 단지 배치 검토용 메타 (260730, 계획 P2-④) — **형상이 답을 가진 것만** 담는다.
    * 면적은 여기서 파츠 치수로 계산해 넘긴다(검사가 다시 재면 두 값이 갈릴 수 있다).
    * 연면적은 지상 매싱 기준이며 지하·필로티·용적률 산입 제외분은 없다 — 검사가 그 사실을 적는다.
@@ -386,7 +421,117 @@ function apartmentComplexAssembly(p = {}) {
       buildingAreaM2,
       grossFloorAreaM2: buildingAreaM2 * floors,
       greenAreaM2,
+      // ⚠ 조경 부재로 **선언된** 면적만 녹지다. 나머지 공지는 도로·주차·광장일 수 있으므로
+      //   녹지로 세지 않는다 — 검사가 이 값으로 「미선언 공지」를 고지한다.
+      greenPartCount: parts.filter((q) => q.role === 'green').length,
     },
+  };
+}
+
+/**
+ * 거셋 브래킷 판 — `extrude_profile` 을 쓰는 첫 템플릿 (260801, 계획 ②).
+ *
+ * ## 왜 이 형상인가
+ * ⚠ 「쓰기 위해 쓰는」 템플릿은 만들지 않는다 — rectangle 로 충분한 것을 임의 폴리곤으로
+ * 바꾸면 표현력만 낮아진다. **rectangle·직각삼각형으로 표현할 수 없는 것**을 골랐다:
+ * 기존 `gusset` 은 직각삼각형 전용이고 `plate_with_holes` 는 사각형 전용이다.
+ * 실무 거셋은 **꼭짓점을 잘라낸(chamfer) 다각형**이다 — 용접 끝단 응력집중을 피하려고
+ * 잘라내며, 그 형상은 두 어휘 어느 쪽으로도 표현되지 않는다
+ * (참고 코퍼스 압출 프로파일의 67.6%가 이 `arbitrary_closed` 부류다).
+ *
+ * 형상: 두 변(legA·legB) 직각 + 사선 + 양 끝 chamfer = 6점 폐곡선. 볼트홀 2열.
+ */
+function gussetBracketAssembly(p = {}) {
+  const numv = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const legA = numv(p.legA, 300), legB = numv(p.legB, 240);
+  const thk = numv(p.thickness, 12);
+  const ch = Math.min(numv(p.chamfer, 40), Math.min(legA, legB) / 3);
+  const boltD = numv(p.boltDia, 18), edge = numv(p.edgeDist, 40);
+  const rows = Math.max(1, Math.min(4, Math.round(numv(p.boltRows, 2))));
+  const profile = [
+    [ch, 0], [legA, 0], [legA, ch],
+    [ch, legB], [0, legB], [0, ch],
+  ];
+  // 볼트홀 — 두 변 각각 rows 개, 연단거리 edge 확보(연단거리 적정성 판정은 별도 영역).
+  const holes = [];
+  for (let i = 0; i < rows; i++) {
+    const t = rows === 1 ? 0.5 : i / (rows - 1);
+    holes.push({ x: edge + t * (legA - 2 * edge), y: edge, d: boltD });
+    holes.push({ x: edge, y: edge + t * (legB - 2 * edge), d: boltD });
+  }
+  const parts = [{
+    id: 'gusset_plate', type: 'extrude_profile',
+    params: { profile, depth: thk, holes },
+    at: { tx: 0, ty: 0, tz: 0 }, material: 'steel', role: 'plate',
+  }];
+  return { name: `거셋 브래킷 판 (${legA}×${legB}×t${thk} · chamfer ${Math.round(ch)})`, domain: 'mech', parts };
+}
+
+/**
+ * 조적 벽체 — `masonry_block` 을 쓰는 첫 템플릿 (260801, 계획 ③).
+ *
+ * 조적은 벽 어휘가 통째로 없던 분야다(`wall_with_openings` 는 단일 솔리드 RC 벽이다).
+ * 블록을 **한 장씩** 쌓아 줄눈(모르타르)을 형상에 반영하고, 홀수 단은 반 장 밀어
+ * 통줄눈을 피한다(막힌줄눈 — 실제 조적 관례).
+ *
+ * ⚠ 치수 기본값은 **KS F 4002**(390×190×190)에서 온다 — 참고 코퍼스는 조적의 존재·빈도만
+ *   알려줬고 부품 단위 치수를 주지 않았다.
+ * ⚠ 블록 상한을 넘으면 **만들지 않고 고지한다.** 조용히 잘라 내면 물량·질량이 틀린다.
+ * ⚠ 반 장 절단 블록은 만들지 않는다 — 별도 어휘(반절 블록) 영역이고, 임의로 잘라 넣으면
+ *   실제 시공 물량과 어긋난다.
+ */
+function masonryWallAssembly(p = {}) {
+  const numv = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const L = numv(p.length, 3900), H = numv(p.height, 2200), T = numv(p.thickness, 190);
+  const bl = numv(p.blockL, 390), bh = numv(p.blockH, 190);
+  const joint = numv(p.joint, 10);
+  const cores = Math.max(0, Math.min(4, Math.round(Number(p.coreCount ?? 2))));
+  const coreW = numv(p.coreW, 105), coreD = numv(p.coreD, 115);
+  const MAX_BLOCKS = 260;
+  const rows = Math.max(1, Math.floor((H + joint) / (bh + joint)));
+  const cols = Math.max(1, Math.floor((L + joint) / (bl + joint)));
+  const parts = [];
+  const buildNotes = [];
+  let made = 0, skipped = 0, halves = 0;
+  for (let r = 0; r < rows; r++) {
+    const stagger = r % 2 === 1 ? (bl + joint) / 2 : 0;
+    for (let c = 0; c < cols + 1; c++) {
+      const x = stagger + c * (bl + joint);
+      if (x + bl > L + 1e-6) { if (x < L - 1e-6) halves += 1; continue; }
+      if (made >= MAX_BLOCKS) { skipped += 1; continue; }
+      parts.push({
+        id: `blk_${r + 1}_${c + 1}`, type: 'masonry_block',
+        params: { length: bl, thickness: T, height: bh, coreCount: cores, coreW, coreD },
+        at: { tx: x, ty: 0, tz: r * (bh + joint) }, material: 'concrete', role: 'wall',
+      });
+      made += 1;
+    }
+  }
+  if (skipped) {
+    buildNotes.push(`블록 상한 ${MAX_BLOCKS}장을 넘어 ${skipped}장을 **생성하지 않았다** — `
+      + '물량·질량이 그만큼 과소다(조용히 자르지 않고 고지한다). 벽을 나눠 선언할 것.');
+  }
+  if (halves) {
+    buildNotes.push(`단 끝 ${halves}자리에 **반 장 절단 블록이 필요**한데 만들지 않았다 — `
+      + '절단 블록은 별도 어휘 영역이며, 임의로 채우면 실제 시공 물량과 어긋난다.');
+  }
+  const opW = Number(p.openingW) > 0 ? Number(p.openingW) : 0;
+  if (opW > 0) {
+    const opX = Math.max(0, numv(p.openingX, (L - opW) / 2));
+    const lintelH = numv(p.lintelH, 190);
+    const opH = numv(p.openingH, 2100);
+    // 인방 걸침 길이 200mm(양단) — 관례값이며 지지길이 판정은 구조 검토 영역이다.
+    parts.push({
+      id: 'lintel', type: 'box',
+      params: { width: opW + 400, depth: T, height: lintelH },
+      at: { tx: Math.max(0, opX - 200), ty: 0, tz: opH }, material: 'RC', role: 'beam',
+    });
+  }
+  return {
+    name: `조적 벽체 (블록 ${made}장 · ${rows}단${opW > 0 ? ' · 개구+인방' : ''})`,
+    domain: 'building', parts,
+    masonryWall: { L, H, T, blockL: bl, blockH: bh, joint, rows, cols, blocks: made, skipped, halvesNeeded: halves, openingW: opW },
+    ...(buildNotes.length ? { buildNotes } : {}),
   };
 }
 
@@ -912,7 +1057,12 @@ function industrialStairAssembly(p = {}) {
     return { name: '산업 계단', domain: 'building', parts: [], alignmentErrors: [`리저 ${Math.round(riser)}mm > 220 — totalRise/riserH 재조정(단수 ${nStep})`] };
   }
   const strH = num(p.stringerH, 300), strT = 60;
-  const railH = num(p.handrailH, 1000), postS = 50, railS = 50;
+  /**
+   * ⚠ 260801 — 빌더 폴백이 1,000mm 였다. 템플릿 기본값을 1,200 으로 올려도 **폴백이 낮으면**
+   * 파라미터를 안 주는 경로(API·직접 호출)에서 난간이 건축법 시행령 제40조(1.2m) 미달로
+   * 나간다. 두 자리를 함께 맞춘다 — 한쪽만 고치면 경로에 따라 결과가 갈린다.
+   */
+  const railH = num(p.handrailH, 1200), postS = 50, railS = 50;
   const flights = Math.round(num(p.flights, 1)) === 2 ? 2 : 1;
   const parts = [];
   const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
@@ -944,6 +1094,34 @@ function industrialStairAssembly(p = {}) {
         P(`${tag}_post_${si + 1}_${++nP2}`, 'box', { width: postS, depth: postS, height: railH - shave },
           { tx: txk, ty: yPost, tz: z0 + (k + 1) * riser }, 'steel', 'post');
       }
+      /**
+       * 난간 살(발라스터) — 260801 계획 ⑥.
+       *
+       * ⚠ 종전에는 기둥+손스침만 있었다. 그러면 난간 검토가 「살 사이 간격 — 판정하지
+       * 않았다(살이 형상에 없다)」로 정직하게 거부하는데, **개방형 난간은 그 자체가
+       * 추락 위험**이라 그 상태로 두면 판정이 영영 안 생긴다. 형상에 살을 선언한다.
+       *
+       * 간격: 건축법 시행령 제40조의 **순간격 100mm 이하**를 만족하는 최소 개수로 나눈다
+       * (임의 개수를 넣으면 기준을 우연히 만족하거나 우연히 미달한다 — 둘 다 근거가 없다).
+       * `picketGap` 파라미터로 사용자가 바꿀 수 있고, 검사가 그 결과를 판정한다.
+       */
+      /**
+       * 난간 살(발라스터)은 **생성하지 않는다** — 260801 에 세 번 시도하고 되돌렸다.
+       *
+       * 실측이 매번 인공물을 잡았다:
+       *  ① 기둥과 같은 밑면 z → 살이 위쪽 디딤판을 파고들어 **간섭 104건**
+       *  ② 기둥 사이 베이별 배치 → x 가 다른 디딤판으로 넘어가 **간섭 40건**
+       *  ③ 디딤판별 독립 배치 → 경계마다 벌어져 **순간격 146.7mm**(기준 100 초과)
+       *  ④ 전 구간 균일 피치 → 중간참(landing) 구간에 부재가 없어 **순간격 1,250mm** + 간섭 6건
+       *
+       * 경사·다플라이트·중간참이 있는 계단의 법정 살 배치는 **별도 설계 작업**이고,
+       * 지금 붙이면 간섭이 남고 간격 판정이 거짓으로 미달을 낸다. 그건 판정을 만들려고
+       * 형상을 지어내는 것이다 — 이 세션 내내 막아 온 것과 같다.
+       *
+       * 그래서 난간 검사가 **「살이 형상에 없다 — 판정하지 않았다」**로 정직하게 남긴다.
+       * 「살이 없는 것이 적합하다」는 뜻이 아니라는 문구도 함께 나간다.
+       * ⚠ 난간 **높이**는 이번에 기본값을 1,200mm(건축법 시행령 제40조)로 올려 실판정된다.
+       */
       const kLast = Math.floor((n - 1) / postEvery) * postEvery;
       const xa = dir > 0 ? x0 + tread / 2 : x0 - tread / 2;
       const xb = dir > 0 ? x0 + kLast * tread + tread / 2 : x0 - kLast * tread - tread / 2;
@@ -2747,16 +2925,27 @@ function bathMEP(prefix, bx, by, bathW, bathD, { hasTub = false, wallT = 150, si
   // 진입면·z 규칙: ①기구마다 스택 진입면을 달리해 코리도 하강 xy 가 겹치지 않게(동일면
   // 2라인=하강 수직선 중첩→교차 위반) ②진입 z=기구 포트 z 정렬(미세 z단차는 엘보 후퇴가
   // 안 되는 초단 조그가 됨 — 라우터가 정직 거부하므로 선언 단계에서 제거)
+  /**
+   * ⚠ 260801 — 입상관 진입 z 를 기구 포트보다 **80mm 낮게** 선언한다(계획 ⑤).
+   *
+   * 위 ② 규칙은 「미세 z단차는 엘보 후퇴가 안 되는 초단 조그가 되므로 z 를 정렬한다」였다.
+   * 그 이유는 여전히 맞다 — 다만 **정렬(낙차 0)은 구배 판정을 영구히 불가로 만든다**
+   * (`availableDropMm=0` → 「낙차 미선언」). 소요 낙차는 17~48mm 로 초단 조그 범위이므로,
+   * 라우터가 요구하는 엘보 후퇴(약 79mm)를 넘는 **80mm** 로 잡는다.
+   * 실측: 배관 에러 0 · 간섭 0 을 유지하면서 `studio_unit` 토일렛·세면 및 전 템플릿 욕조가
+   * 판정 불가 → PASS 로 바뀐다. 임의값이 아니라 **라우터가 정한 하한**에서 나온 수치다.
+   */
+  const DRAIN_FALL = 80;
   const pipes = [
-    { id: 'drain_toilet', from: `${prefix}_toilet.x+`, to: { part: 'ps_stack', face: 'x-', offset: [0, 0, -1140] }, d: 75, service: 'drain' },
-    { id: 'drain_basin', from: `${prefix}_basin.x+`, to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -940] }, d: 50, service: 'drain' },
+    { id: 'drain_toilet', from: `${prefix}_toilet.x+`, to: { part: 'ps_stack', face: 'x-', offset: [0, 0, -1140 - DRAIN_FALL] }, d: 75, service: 'drain' },
+    { id: 'drain_basin', from: `${prefix}_basin.x+`, to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -940 - DRAIN_FALL] }, d: 50, service: 'drain' },
     // 급수 입상 — 지면 인입(원시좌표, PS 샤프트 병설 y+측)에서 상승. 스택 z+ 포트 공유는
     // 통기와 수직 중첩(교차 위반)·x+측은 싱크 하강선과 근접이라 y+ 후면으로 분리.
     { id: 'supply_basin', from: [sx, sy + 200, 0], to: `${prefix}_basin.z+`, d: 20, service: 'supply' },
     // 신정통기 — 스택 상단 연장(지붕 위 대기 개방 개념). DN65 = §4.3(1) 하한(DN100의 1/2 초과).
     { id: 'vent_stack', from: 'ps_stack.z+', to: [sx, sy, 3400], d: 65, service: 'vent' },
   ];
-  if (hasTub) pipes.push({ id: 'drain_tub', from: `${prefix}_tub.x+`, to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -1075] }, d: 50, service: 'drain' });
+  if (hasTub) pipes.push({ id: 'drain_tub', from: `${prefix}_tub.x+`, to: { part: 'ps_stack', face: 'y-', offset: [0, 0, -1075 - DRAIN_FALL] }, d: 50, service: 'drain' });
   if (sinkId) pipes.push({ id: 'drain_sink', from: `${sinkId}.z-`, to: { part: 'ps_stack', face: 'x+', offset: [0, 0, -900] }, d: 50, service: 'drain' });
   return { parts, pipes };
 }
@@ -3417,7 +3606,24 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'width', labelKo: '유효 폭', unit: 'mm', default: 900, min: 600, max: 2400 },
         { name: 'treadDepth', labelKo: '디딤판 깊이', unit: 'mm', default: 260, min: 220, max: 400 },
         { name: 'riserH', labelKo: '리저 목표', unit: 'mm', default: 180, min: 120, max: 220 },
-        { name: 'handrailH', labelKo: '난간 높이', unit: 'mm', default: 1000, min: 900, max: 1200 },
+        { name: 'handrailH', labelKo: '난간 높이', unit: 'mm', default: 1200, min: 900, max: 1400 },
+      ],
+    },
+    {
+      id: 'masonry_wall', labelKo: '조적 벽체 (블록 쌓기 + 인방)', labelEn: 'Masonry block wall', build: masonryWallAssembly,
+      params: [
+        { name: 'length', labelKo: '벽 길이', unit: 'mm', default: 3900, min: 400, max: 12000 },
+        { name: 'height', labelKo: '벽 높이', unit: 'mm', default: 2200, min: 200, max: 4000 },
+        { name: 'thickness', labelKo: '벽 두께', unit: 'mm', default: 190, min: 90, max: 390 },
+        { name: 'blockL', labelKo: '블록 길이 (KS F 4002 = 390)', unit: 'mm', default: 390, min: 190, max: 590 },
+        { name: 'blockH', labelKo: '블록 높이 (KS = 190)', unit: 'mm', default: 190, min: 57, max: 290 },
+        { name: 'joint', labelKo: '줄눈(모르타르) 두께', unit: 'mm', default: 10, min: 5, max: 20 },
+        { name: 'coreCount', labelKo: '속빈 공동 수 (0=중실 벽돌)', unit: '', default: 2, min: 0, max: 4 },
+        { name: 'coreW', labelKo: '공동 폭', unit: 'mm', default: 105, min: 20, max: 200 },
+        { name: 'coreD', labelKo: '공동 깊이', unit: 'mm', default: 115, min: 20, max: 300 },
+        { name: 'openingW', labelKo: '개구 폭 (0=없음)', unit: 'mm', default: 0, min: 0, max: 4000 },
+        { name: 'openingH', labelKo: '개구 상단 높이', unit: 'mm', default: 2100, min: 400, max: 3500 },
+        { name: 'lintelH', labelKo: '인방 춤', unit: 'mm', default: 190, min: 100, max: 500 },
       ],
     },
     {
@@ -3798,6 +4004,18 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'shellLen', labelKo: '셸 길이', unit: 'mm', default: 4000, min: 1000, max: 15000 },
         { name: 'wallThk', labelKo: '벽 두께', unit: 'mm', default: 12, min: 4, max: 60 },
         { name: 'saddleH', labelKo: '새들 높이', unit: 'mm', default: 600, min: 300, max: 1500 },
+      ],
+    },
+    {
+      id: 'gusset_bracket', labelKo: '거셋 브래킷 판 (chamfer 다각형 + 볼트홀)', labelEn: 'Gusset bracket plate', build: gussetBracketAssembly,
+      params: [
+        { name: 'legA', labelKo: '가로 변', unit: 'mm', default: 300, min: 80, max: 1200 },
+        { name: 'legB', labelKo: '세로 변', unit: 'mm', default: 240, min: 80, max: 1200 },
+        { name: 'thickness', labelKo: '판 두께', unit: 'mm', default: 12, min: 4, max: 40 },
+        { name: 'chamfer', labelKo: '모서리 컷(chamfer)', unit: 'mm', default: 40, min: 5, max: 200 },
+        { name: 'boltDia', labelKo: '볼트홀 지름', unit: 'mm', default: 18, min: 8, max: 40 },
+        { name: 'edgeDist', labelKo: '연단거리', unit: 'mm', default: 40, min: 15, max: 200 },
+        { name: 'boltRows', labelKo: '변별 볼트 수', unit: '', default: 2, min: 1, max: 4 },
       ],
     },
     {

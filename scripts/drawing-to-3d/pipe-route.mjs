@@ -390,16 +390,45 @@ export function autoRoutePipes(pipes, items, { clearance = 80, stubLen = 40 } = 
     }
     let chosen = null, chosenNoStub = false;
     const reasons = [];
-    for (const cand of cands) {
-      const n = normalizeRoute(cand.pts, { startAxis: from.axis, endAxis: to.axis });
-      const ge = routeGate(n.pts, { d });
-      if (ge.length) { reasons.push(ge[0]); continue; }
-      const rt = { label: id, pts: n.pts, d, allow: pipe.allow };
-      if (pipeObstacleCheck([rt], items).some((v) => !passable.has(v.obstacle))) { reasons.push('장비 관통'); continue; }
-      if (pipeCrossCheck([...routes, rt]).some((v) => v.a === id || v.b === id)) { reasons.push('기라우팅 배관 교차'); continue; }
-      chosen = n.pts;
-      chosenNoStub = cand.noStub;
-      break;
+    /**
+     * ⚠ 260801 — **중력 배수관은 올라갈 수 없다.**
+     *
+     * 종전에는 게이트를 통과한 **첫 후보**를 그대로 골랐다. 그래서 `drain` 배관이
+     * 천장 코리도(z=2,780mm)로 올라갔다 내려오는 경로를 받았다 — 실측:
+     * `cafe_room/drain_toilet` 이 210 → 2,780 → 210 으로 라우팅됐다.
+     * 구배 검사는 그것을 「상승 구간이 있어 중력 배수로 판정할 수 없다」로 정직하게
+     * 거부했지만, **거부의 원인이 라우터였다.** 검사를 고칠 일이 아니라 경로를 고칠 일이다.
+     *
+     * `service:'drain'` 이면 **하강 단조 후보를 먼저** 고른다. 그런 후보가 없으면
+     * 종전 동작으로 돌아가되 **그 사실을 note 로 남긴다** — 조용히 상승 경로를 주면
+     * 왜 판정이 안 되는지 사용자가 알 수 없다.
+     */
+    const RISE_EPS = 1e-6;
+    const risesUp = (pts) => {
+      for (let i = 1; i < pts.length; i++) if (pts[i][2] - pts[i - 1][2] > RISE_EPS) return true;
+      return false;
+    };
+    const isDrain = String(pipe.service ?? '') === 'drain';
+    const tryPick = (requireDescend) => {
+      for (const cand of cands) {
+        const n = normalizeRoute(cand.pts, { startAxis: from.axis, endAxis: to.axis });
+        if (requireDescend && risesUp(n.pts)) { reasons.push('중력 배수 상승 구간'); continue; }
+        const ge = routeGate(n.pts, { d });
+        if (ge.length) { reasons.push(ge[0]); continue; }
+        const rt = { label: id, pts: n.pts, d, allow: pipe.allow };
+        if (pipeObstacleCheck([rt], items).some((v) => !passable.has(v.obstacle))) { reasons.push('장비 관통'); continue; }
+        if (pipeCrossCheck([...routes, rt]).some((v) => v.a === id || v.b === id)) { reasons.push('기라우팅 배관 교차'); continue; }
+        return { pts: n.pts, noStub: cand.noStub };
+      }
+      return null;
+    };
+    let pick = isDrain ? tryPick(true) : null;
+    if (pick) { chosen = pick.pts; chosenNoStub = pick.noStub; }
+    else {
+      if (isDrain) notes.push(`${id}: 하강 단조 경로가 없어 상승 구간을 포함한 경로를 택했다 — `
+        + '**중력 배수로는 성립하지 않는다**(펌프 배수이거나 기구·입상관 위치 재검토 대상). 구배 검사가 판정을 보류한다.');
+      pick = tryPick(false);
+      if (pick) { chosen = pick.pts; chosenNoStub = pick.noStub; }
     }
     if (!chosen) { errors.push(`${id}: 자동 라우팅 실패(후보 ${cands.length} 전부 불합격 — ${[...new Set(reasons)].slice(0, 3).join(' · ')})`); continue; }
     routes.push({ label: id, pts: chosen, d, service: pipe.service, col });

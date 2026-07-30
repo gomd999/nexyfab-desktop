@@ -55,6 +55,8 @@ const CHECK_LABEL_KO = {
   // 공통
   checks: '검토 항목', uplift: '풍 상향력', wind: '풍하중', seismic: '지진',
   irrigation: '관수', connection: '접합부', selfChecks: '형상 자기정합',
+  railing: '난간 검토', height: '높이', picketGap: '살 사이 간격', postPitch: '기둥 간격',
+  penetration: '설비 관통 ↔ 구조 개구', notChecked: '검토하지 않은 항목 (이유와 함께)',
   // 구조 컨테이너 — 판정은 아니지만 문서에서 **소제목으로 실제 읽히는** 것들이다.
   // 실측(560여 소제목): `detail`×94 · `needInputs`×48 이 압도적이라 이것부터가 가독성이다.
   detail: '설명', needInputs: '필요 입력', basis: '산출 근거', geometry: '형상',
@@ -64,7 +66,7 @@ const CHECK_LABEL_KO = {
   truck: '표준트럭하중', ultimate: '극한하중', service: '사용하중', combo: '하중조합',
   forces: '단면력', rebar: '철근', spans: '스팬', unitWeight: '단위중량',
   finishes: '마감', mep: '설비', withLoss: '손실 반영', attempted: '시도한 검토',
-  unjudged: '미판정', notChecked: '검토하지 않은 항목 (이유와 함께)',
+  unjudged: '미판정',
   egressUnavailable: '피난 검토 불가',
   x: 'X방향', y: 'Y방향', xs_mm: 'X 격자선(mm)', ys_mm: 'Y 격자선(mm)',
   farthestPointMm: '최원점 거리(mm)', deadShare_kN: '고정하중 분담(kN)',
@@ -200,6 +202,7 @@ function renderRun(run) {
 import { interiorCheck } from './interior-check.mjs';
 import { interiorComponentCheck } from './interior-component-check.mjs';
 import { landscapeCheck } from './landscape-check.mjs';
+import { railingCheck } from './railing-check.mjs';
 import * as bridgeMod from './bridge-check.mjs';
 import { loadPathCheck } from './load-path.mjs';
 import { shearWallCheck } from './shear-wall-check.mjs';
@@ -286,16 +289,29 @@ function runDomainSafetyCheck(assembly, params) {
     // 디스패치하는 것과 달리 유일하게 도메인 단위 고정 배선이었다. 그 결과 계단이
     // 라멘 골조 검토로 넘어가 "role 태깅 필요"로 거부됐는데, 정작 `stairCheck`
     // (bridge-check.mjs, 트레드 휨·스트링거 휨)는 **존재하면서 놀고 있었다.**
+    /**
+     * ⚠ 260801: 난간은 **어느 하위 경로로 가든 붙인다**(관통 검사와 같은 규약).
+     * 계단이든 라멘이든 벽식이든 난간이 있으면 추락 방지 기준은 똑같이 적용된다.
+     * 계단 분기 안에만 넣으면 발코니·파라펫 난간이 통째로 빠진다 — 이 세션에서
+     * 「특정 분기에만 붙여 정작 필요한 곳에서 사라짐」을 네 번 잡았다.
+     */
+    const rail = railingCheck(assembly, params);
+    const withRail = (r) => (rail && r && typeof r === 'object'
+      ? { ...r, checks: { ...(r.checks ?? {}), railing: rail } } : r);
+
     if (assembly.stairMeta && typeof bridgeMod.stairCheck === 'function') {
-      return { label: '계단 검토 (트레드·스트링거 휨)', result: bridgeMod.stairCheck(assembly, params) };
+      return { label: '계단 검토 (트레드·스트링거 휨)', result: withRail(bridgeMod.stairCheck(assembly, params)) };
     }
     // 본체가 구조가 아닌 어셈블리(덕트 계통 등)는 자기 검토로 — duct_sizing 계산기가
     // 존재하면서 한 번도 불리지 않았다(260729).
     // 설비 관통 ↔ 구조 개구 (260729b P1-7) — 어느 하위 경로로 가든 붙인다.
     // 덕트 계통이든 라멘이든 벽식이든 **관통은 똑같이 일어난다**.
     const pen = penetrationCheck(assembly);
-    const withPen = (r) => (pen && r && typeof r === 'object'
-      ? { ...r, checks: { ...(r.checks ?? {}), penetration: pen } } : r);
+    const withPen = (r) => {
+      const base = (pen && r && typeof r === 'object'
+        ? { ...r, checks: { ...(r.checks ?? {}), penetration: pen } } : r);
+      return withRail(base);
+    };
 
     // 캐노피는 중력이 아니라 **풍 상향력**이 지배한다 — 하중경로 검토의 대상이 아니라
     // 처음부터 다른 검토가 필요하다(260729d P1-①). 메타 디스패치는 bridge 와 같은 규약.
