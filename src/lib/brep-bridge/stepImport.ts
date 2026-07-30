@@ -277,6 +277,13 @@ export function importStep(
       if (result.kind === 'ok') {
         feature = result.feature;
         placement = result.worldBBox ?? null;
+        if (result.arcApprox) {
+          // 「정확 복원」이라 말하지 않는다 — 근사 엣지 수와 오차를 수치로 고지한다.
+          warnings.push(
+            `#${solidId}: 원호 엣지 ${result.arcApprox.edges}개를 현으로 근사했습니다 — `
+            + `최대 오차(새그) ${result.arcApprox.maxSagittaMm}mm. 정확 복원이 아닙니다.`,
+          );
+        }
       } else {
         reason = result.reason;
       }
@@ -740,7 +747,11 @@ function parseSingleArg(s: string): StepArg {
 // ─── solid → feature classification ───────────────────────────────────────
 
 type SolidParseResult =
-  | { kind: 'ok'; feature: ExtrudeFeature | RevolveFeature | SweepFeature; worldBBox?: WorldBBox | null }
+  | {
+    kind: 'ok'; feature: ExtrudeFeature | RevolveFeature | SweepFeature; worldBBox?: WorldBBox | null;
+    /** 원호를 현으로 근사한 엣지 수·최대 새그(mm) — **있으면 이 솔리드는 근사다** (260801). */
+    arcApprox?: { edges: number; maxSagittaMm: number };
+  }
   | { kind: 'unsupported'; reason: string };
 
 /**
@@ -821,6 +832,15 @@ function solidToFeature(
   // World-space extent of this solid from its raw plane-face vertices (before any
   // local-frame canonicalisation). Lets the mesher restore multi-body placement.
   const solidWorldBBox = bboxOfPlaneFaces(planeFaces);
+  /**
+   * ⚠ 원호 근사를 **솔리드까지 올린다** (260801). 면에만 두면 소비자가 모른다 —
+   * 근사한 형상을 정확한 것으로 읽는 것이 이 세션에서 가장 여러 번 막은 오류다.
+   */
+  const arcEdgeTotal = planeFaces.reduce((n, f) => n + (f.arcEdges ?? 0), 0);
+  const arcSagMax = planeFaces.reduce((m, f) => Math.max(m, f.arcSagittaMm ?? 0), 0);
+  const arcApprox = arcEdgeTotal > 0
+    ? { arcApprox: { edges: arcEdgeTotal, maxSagittaMm: +arcSagMax.toFixed(4) } }
+    : {};
 
   // ─── try box detection first (6 planar axis-aligned faces) ──────────────
   if (
@@ -846,6 +866,7 @@ function solidToFeature(
           mode: 'add',
         },
         worldBBox: solidWorldBBox,
+        ...arcApprox,
       };
     }
   }
@@ -859,7 +880,7 @@ function solidToFeature(
     const cyl = cylinderFaces[0]!;
     const result = cylinderToRevolve(cyl, planeFaces);
     if (result.kind === 'ok') {
-      return { kind: 'ok', feature: result.feature, worldBBox: solidWorldBBox };
+      return { kind: 'ok', feature: result.feature, worldBBox: solidWorldBBox, ...arcApprox };
     }
     return { kind: 'unsupported', reason: `cylinder: ${result.reason}` };
   }
@@ -886,7 +907,7 @@ function solidToFeature(
     const ext = extrusionFaces[0]!;
     const result = linearExtrusionToSweep(ext, planeFaces);
     if (result.kind === 'ok') {
-      return { kind: 'ok', feature: result.feature, worldBBox: solidWorldBBox };
+      return { kind: 'ok', feature: result.feature, worldBBox: solidWorldBBox, ...arcApprox };
     }
     return { kind: 'unsupported', reason: `linear extrusion: ${result.reason}` };
   }
@@ -903,21 +924,65 @@ function solidToFeature(
     };
   }
 
-  // ─── polygon prism: 2 ±Z caps + N vertical sides ─────────────────────────
-  const caps: PlaneFace[] = [];
-  const sides: PlaneFace[] = [];
-  for (const f of planeFaces) {
-    if (isZAxisNormal(f.normal)) caps.push(f);
-    else if (isHorizontalNormal(f.normal)) sides.push(f);
-    else {
-      return {
-        kind: 'unsupported',
-        reason: `${planeFaces.length} faces, non-axis-aligned normals — likely curved surface`,
-      };
+  // ─── polygon prism: 2 caps normal to a principal axis + N sides ──────────
+  /**
+   * ⚠ 260801 — 종전에는 **캡이 ±Z 일 때만** 프리즘으로 인정했다(`isZAxisNormal`).
+   *
+   * 실물 CAD 는 부품을 임의 방향으로 배치한다 — 같은 형상이 X 나 Y 로 압출돼 있으면
+   * 종전 분류기는 「does not match Phase 1 box or polygon prism」으로 **버렸다.**
+   * 형상이 표현 가능한데 축 하나 때문에 못 읽은 것이다.
+   *
+   * 세 주축을 모두 시도한다: 캡 법선이 놓인 축을 찾아 그 축을 Z 로 **좌표 재매핑**한 뒤
+   * 기존 `capsToPrism` 을 그대로 돌리고, 결과에 `at.rotateDeg` 를 붙여 **원래 방향으로
+   * 되돌린다**. 회전을 붙이지 않고 내보내면 형상은 맞고 자리는 틀리는, 더 나쁜 결과가 된다.
+   */
+  const AXIS_REMAP: Array<{
+    axis: 'x' | 'y' | 'z';
+    /** 이 축이 캡 법선인가 */
+    isCap: (n: [number, number, number]) => boolean;
+    /**
+     * ⚠ 측면은 **캡축 성분이 0**이면 된다 — 주축 정렬을 요구하면 안 된다.
+     * 처음 `isAxisAligned` 로 걸렀더니 삼각·오각·육각 프리즘의 **비스듬한 측면**이
+     * 전부 탈락해 기존 Z 프리즘 회귀 7건이 깨졌다(실측). 프리즘의 정의는
+     * 「캡에 수직인 측면」이고 측면이 주축을 향할 이유가 없다.
+     */
+    isSide: (n: [number, number, number]) => boolean;
+    /** 월드 → 로컬(캡축이 Z) */
+    toLocal: (v: [number, number, number]) => [number, number, number];
+    /** 로컬에서 그린 형상을 월드로 되돌리는 회전(OpenSCAD X→Y→Z 순) */
+    rotateDeg: [number, number, number] | null;
+  }> = [
+    { axis: 'z', isCap: (n) => isZAxisNormal(n), isSide: (n) => Math.abs(n[2]) <= AXIS_EPS, toLocal: (v) => v, rotateDeg: null },
+    // 캡이 ±X → 로컬 Z = 월드 X. (y,z,x) 순환이 곧 rotate([90,0,90]) 의 역이다.
+    { axis: 'x', isCap: (n) => Math.abs(Math.abs(n[0]) - 1) <= AXIS_EPS && Math.abs(n[1]) <= AXIS_EPS && Math.abs(n[2]) <= AXIS_EPS,
+      isSide: (n) => Math.abs(n[0]) <= AXIS_EPS,
+      toLocal: (v) => [v[1], v[2], v[0]], rotateDeg: [90, 0, 90] },
+    // 캡이 ±Y → 로컬 Z = 월드 Y.
+    { axis: 'y', isCap: (n) => Math.abs(Math.abs(n[1]) - 1) <= AXIS_EPS && Math.abs(n[0]) <= AXIS_EPS && Math.abs(n[2]) <= AXIS_EPS,
+      isSide: (n) => Math.abs(n[1]) <= AXIS_EPS,
+      toLocal: (v) => [v[2], v[0], v[1]], rotateDeg: [90, 0, 0] },
+  ];
+
+  let lastPrismReason: string | null = null;
+  for (const cand of AXIS_REMAP) {
+    const caps: PlaneFace[] = [];
+    const sides: PlaneFace[] = [];
+    let bad = false;
+    for (const f of planeFaces) {
+      if (cand.isCap(f.normal)) caps.push(f);
+      else if (cand.isSide(f.normal)) sides.push(f);
+      else { bad = true; break; }
     }
-  }
-  if (caps.length === 2 && sides.length === planeFaces.length - 2 && sides.length >= 3) {
-    const prism = capsToPrism(caps, sides);
+    // ⚠ 이 후보 축에서 분류가 안 된다고 **바로 실패로 단정하지 않는다** — 다른 축에서는
+    //   맞을 수 있다. 처음 여기서 즉시 return 하는 바람에 X·Y 후보가 시도조차 되지 않았다.
+    if (bad) continue;
+    if (!(caps.length === 2 && sides.length === planeFaces.length - 2 && sides.length >= 3)) continue;
+    // 재매핑된 좌표로 기존 검출기를 그대로 쓴다 — 로직을 복제하지 않는다(복제하면 갈린다).
+    const remap = (f: PlaneFace): PlaneFace => ({
+      normal: cand.toLocal(f.normal),
+      loop: f.loop.map((v) => cand.toLocal(v)),
+    });
+    const prism = capsToPrism(caps.map(remap), sides.map(remap));
     if (prism.kind === 'ok') {
       return {
         kind: 'ok',
@@ -927,18 +992,21 @@ function solidToFeature(
           depth: prism.depth,
           direction: 'one_sided',
           mode: 'add',
+          ...(cand.rotateDeg ? { at: { rotateDeg: cand.rotateDeg } } : {}),
         },
         worldBBox: solidWorldBBox,
+        ...arcApprox,
       };
     }
-    return { kind: 'unsupported', reason: `prism: ${prism.reason}` };
+    lastPrismReason = `${cand.axis}축 프리즘: ${prism.reason}`;
   }
+  if (lastPrismReason) return { kind: 'unsupported', reason: `prism: ${lastPrismReason}` };
 
   return {
     kind: 'unsupported',
     reason:
-      `${planeFaces.length} faces (${caps.length} Z-cap, ${sides.length} horizontal-side` +
-      `, ${planeFaces.length - caps.length - sides.length} other) — does not match Phase 1 box or polygon prism`,
+      `${planeFaces.length} planar faces — 세 주축(X·Y·Z) 어느 쪽으로도 「캡 2 + 측면 N(N≥3)」 `
+      + '패턴이 아니다(박스·다각프리즘 모두 불일치)',
   };
 }
 
@@ -949,6 +1017,10 @@ interface PlaneFace {
   normal: [number, number, number];
   /** Ordered ring of XYZ vertex coordinates around the outer loop. */
   loop: Array<[number, number, number]>;
+  /** 원호를 현으로 근사한 엣지 수 (260801) — 있으면 이 면은 **근사**다. */
+  arcEdges?: number;
+  /** 근사 최대 새그(mm) = R(1−cos(Δθ/2)). 「정확」이라 말하지 않기 위한 수치. */
+  arcSagittaMm?: number;
 }
 
 interface CylinderFace {
@@ -1125,6 +1197,9 @@ function decodeFace(
   // ignore the curve type beyond verifying it's a LINE (non-line edges
   // mean we can't represent the face as a planar polygon).
   const ring: Array<[number, number, number]> = [];
+  // 원호 근사 누적 — 이 면에서 근사한 엣지 수와 최대 새그(mm).
+  let arcSagittaMm = 0;
+  let arcEdges = 0;
   for (const item of oeArg.items) {
     if (item.kind !== 'ref') {
       return { kind: 'unsupported', reason: `ORIENTED_EDGE non-ref in loop list` };
@@ -1150,13 +1225,33 @@ function decodeFace(
     if (!vStartRef || vStartRef.kind !== 'ref' || !vEndRef || vEndRef.kind !== 'ref') {
       return { kind: 'unsupported', reason: `EDGE_CURVE missing vertex refs` };
     }
+    let arcCurve: StepEntity | null = null;
     if (curveRef && curveRef.kind === 'ref') {
       const curve = entities.get(curveRef.id);
       if (curve && curve.name && curve.name !== 'LINE' && curve.name !== 'POLYLINE') {
-        return {
-          kind: 'unsupported',
-          reason: `non-linear edge (${curve.name}) — likely curved surface`,
-        };
+        /**
+         * ⚠ 260801 — **원호 엣지가 임포트의 실제 병목이었다.**
+         *
+         * 코퍼스 STEP 전수 측정: 미지원 사유 1위가 `non-linear edge (CIRCLE)` **61건**
+         * (2위 `no FACE_OUTER_BOUND` 9 · 3위 B_SPLINE 6 · 축 제약은 1건).
+         * 필렛·모서리 라운드가 하나라도 있으면 **면 전체를 버렸다.**
+         *
+         * CIRCLE 은 **현(chord) 분할로 근사**해서 받는다. 그 대신:
+         *  · 근사임을 노드까지 전파한다(`arcApprox`) — 「정확 복원」이라 말하지 않는다.
+         *  · 오차를 **수치로** 낸다(새그 = R(1−cos(Δθ/2))). 못 내면 근사하지 않는다.
+         * 앞서 `stepFileBounds` 를 「OCCT 정확 경계」로 적어 놓고 실제로 최대 +73% 부풀던
+         * 전례가 있다 — 근사를 정확이라 적는 것이 그때의 결함이었다.
+         *
+         * B_SPLINE·기타 곡선은 **그대로 거부한다** — 제어점 없이 현 분할을 하면
+         * 그건 근사가 아니라 지어내기다.
+         */
+        if (curve.name === 'CIRCLE') arcCurve = curve;
+        else {
+          return {
+            kind: 'unsupported',
+            reason: `non-linear edge (${curve.name}) — likely curved surface`,
+          };
+        }
       }
     }
     const start = readVertexPoint(vStartRef.id, entities);
@@ -1168,6 +1263,15 @@ function decodeFace(
     if (ring.length === 0 || !pointEq(ring[ring.length - 1]!, first)) {
       ring.push(first);
     }
+    if (arcCurve) {
+      const arc = arcChordPoints(arcCurve, forwardOe ? start : end, forwardOe ? end : start, entities);
+      if (!arc) {
+        return { kind: 'unsupported', reason: 'CIRCLE 엣지의 중심·반경을 읽지 못해 근사하지 않았다' };
+      }
+      for (const q of arc.points) if (!pointEq(ring[ring.length - 1]!, q)) ring.push(q);
+      arcSagittaMm = Math.max(arcSagittaMm, arc.sagittaMm);
+      arcEdges += 1;
+    }
   }
   if (ring.length < 3) {
     return { kind: 'unsupported', reason: `loop has ${ring.length} distinct vertices, need ≥ 3` };
@@ -1176,7 +1280,80 @@ function decodeFace(
   if (ring.length > 3 && pointEq(ring[0]!, ring[ring.length - 1]!)) {
     ring.pop();
   }
-  return { kind: 'plane', face: { normal, loop: ring } };
+  return {
+    kind: 'plane',
+    face: { normal, loop: ring, ...(arcEdges ? { arcEdges, arcSagittaMm } : {}) },
+  };
+}
+
+/**
+ * CIRCLE 엣지를 **현(chord) 분할**로 근사한다 (260801).
+ *
+ * CIRCLE('', #axis2_placement_3d, R) — 중심·법선·반경을 읽고, 시작·끝 정점의 각도를 구해
+ * 그 사이를 등분한다. 분할 수는 **허용 새그**에서 정한다(임의 개수가 아니다):
+ *   새그 = R(1 − cos(Δθ/2)) ≤ TOL  →  Δθ ≤ 2·acos(1 − TOL/R)
+ *
+ * ⚠ 중심·반경·법선 중 하나라도 못 읽으면 **null** 을 돌려 근사하지 않는다.
+ *   추정한 중심으로 현을 만들면 그건 근사가 아니라 지어내기다.
+ * ⚠ 정점이 일치(완전한 원)하면 시작=끝이라 각도 구간이 정해지지 않는다 — 전원(360°)으로
+ *   보고 등분한다(원형 개구·보스의 실제 형태다).
+ */
+const ARC_CHORD_TOL_MM = 0.2;
+function arcChordPoints(
+  circle: StepEntity,
+  start: [number, number, number],
+  end: [number, number, number],
+  entities: Map<number, StepEntity>,
+): { points: Array<[number, number, number]>; sagittaMm: number } | null {
+  const placeRef = circle.args[1];
+  const radArg = circle.args[2];
+  if (!placeRef || placeRef.kind !== 'ref') return null;
+  const R = radArg?.kind === 'number' ? radArg.value : NaN;
+  if (!Number.isFinite(R) || !(R > 0)) return null;
+  const ent = entities.get(placeRef.id);
+  if (!ent || ent.name !== 'AXIS2_PLACEMENT_3D') return null;
+  const originRef = ent.args[1];
+  const zRef = ent.args[2];
+  const xRef = ent.args[3];
+  if (!originRef || originRef.kind !== 'ref') return null;
+  const C = readCartesianPoint(originRef.id, entities);
+  if (!C) return null;
+  const zDir = zRef && zRef.kind === 'ref' ? readDirection(zRef.id, entities) : null;
+  const xDir = xRef && xRef.kind === 'ref' ? readDirection(xRef.id, entities) : null;
+  if (!zDir || !xDir) return null;
+  const z = unitVec(zDir);
+  // X 축을 법선에 직교화(STEP 의 refdir 은 직교 보장이 없다)
+  const dotXZ = xDir[0] * z[0] + xDir[1] * z[1] + xDir[2] * z[2];
+  const xRaw: [number, number, number] = [xDir[0] - dotXZ * z[0], xDir[1] - dotXZ * z[1], xDir[2] - dotXZ * z[2]];
+  const x = unitVec(xRaw);
+  if (!(Math.hypot(x[0], x[1], x[2]) > 0.5)) return null;
+  const y: [number, number, number] = [
+    z[1] * x[2] - z[2] * x[1], z[2] * x[0] - z[0] * x[2], z[0] * x[1] - z[1] * x[0],
+  ];
+  const ang = (p: [number, number, number]) => {
+    const d: [number, number, number] = [p[0] - C[0], p[1] - C[1], p[2] - C[2]];
+    return Math.atan2(d[0] * y[0] + d[1] * y[1] + d[2] * y[2], d[0] * x[0] + d[1] * x[1] + d[2] * x[2]);
+  };
+  const a0 = ang(start);
+  let sweep = ang(end) - a0;
+  while (sweep <= 1e-9) sweep += 2 * Math.PI;      // 반시계 기준 정규화
+  if (pointEq(start, end)) sweep = 2 * Math.PI;    // 완전한 원
+  const ratio = Math.max(-1, Math.min(1, 1 - ARC_CHORD_TOL_MM / R));
+  const dMax = 2 * Math.acos(ratio);
+  const n = Math.max(1, Math.min(64, Math.ceil(sweep / Math.max(1e-6, dMax))));
+  const dth = sweep / n;
+  const points: Array<[number, number, number]> = [];
+  // 끝점은 다음 엣지가 넣으므로 **중간점만** 넣는다(중복 정점 방지).
+  for (let i = 1; i < n; i++) {
+    const t = a0 + dth * i;
+    const c = Math.cos(t), sn = Math.sin(t);
+    points.push([
+      C[0] + R * (c * x[0] + sn * y[0]),
+      C[1] + R * (c * x[1] + sn * y[1]),
+      C[2] + R * (c * x[2] + sn * y[2]),
+    ]);
+  }
+  return { points, sagittaMm: R * (1 - Math.cos(dth / 2)) };
 }
 
 /**

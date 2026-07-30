@@ -100,3 +100,78 @@ export async function measureStepFile(file, ensureReplicad, readFileSync) {
     triangles: m.triangles.length / 3,
   };
 }
+
+/**
+ * STEP 분류기 커버리지 측정 (260801) — **측정도 코드다.**
+ *
+ * ## 왜 리포에 두는가
+ * 「부품 어휘를 늘리면 임포트가 나아지는가」를 물었고, 답은 **아니오**였다. 임시 스크립트로
+ * 한 번 재고 버리면 다음 세션이 같은 착각을 반복한다(`domain-audit.mjs` 를 만든 이유와 같다).
+ *
+ * ## 260801 실측 결과 — 축 제약은 병목이 아니었다
+ * 코퍼스 STEP 35건(8MB 미만) 전수:
+ *   · 바디 있음 **0** · 없음 35
+ *   · 미지원 사유 1위 **`non-linear edge (CIRCLE)` 61건** — 면의 엣지가 원호다
+ *     (필렛·모서리 라운드·원형 개구). 2위 `no FACE_OUTER_BOUND` 9 · 3위 `B_SPLINE` 6.
+ *   · 축 제약(±Z 캡만 허용)에 걸린 것은 **1건**뿐이었다.
+ *
+ * → 프리즘 검출기를 3축으로 넓힌 것은 **옳은 수정이지만 코퍼스 커버리지를 바꾸지 않는다.**
+ *   다음 이득은 **원호 엣지**에 있다(선형 근사 + 근사 사실 고지, 또는 OCCT 경로).
+ *   이 사실을 적어 두지 않으면 「어휘를 더 늘리자」로 돌아가게 된다.
+ *
+ * @param {(s:string)=>{nodes?:unknown[],unsupported?:string[]}} importStep 임포터
+ * @param {(p:string,e?:string)=>string} readFileSync
+ * @param {{root?:string,limit?:number,maxBytes?:number}} [opt]
+ * @returns {{files:number,measured:number,withBodies:number,noBodies:number,bodies:number,reasons:Array<[string,number]>}|null}
+ *   코퍼스가 없으면 **null** — 「측정하지 않았다」이고 「통과」가 아니다.
+ */
+export function measureClassifierCoverage(importStep, readFileSync, opt = {}) {
+  const root = opt.root ?? corpusRoot();
+  if (!root) return null;
+  const { readdirSync, statSync } = require$fs();
+  const maxBytes = opt.maxBytes ?? 8_000_000;
+  const files = [];
+  const walk = (dir, depth) => {
+    if (depth > 5) return;
+    let ents = [];
+    try { ents = readdirSync(dir); } catch { return; }
+    for (const e of ents) {
+      const p = `${dir}/${e}`;
+      let st; try { st = statSync(p); } catch { continue; }
+      if (st.isDirectory()) walk(p, depth + 1);
+      else if (/\.(stp|step)$/i.test(e) && st.size < maxBytes) files.push(p);
+    }
+  };
+  walk(root, 0);
+  const measured = files.slice(0, opt.limit ?? 400);
+  let withBodies = 0, noBodies = 0, bodies = 0;
+  const reasons = {};
+  for (const f of measured) {
+    let txt = ''; try { txt = readFileSync(f, 'latin1'); } catch { continue; }
+    let r = null;
+    try { r = importStep(txt); } catch { noBodies++; continue; }
+    const n = r?.nodes?.length ?? 0;
+    if (n > 0) { withBodies++; bodies += n; } else noBodies++;
+    for (const u of r?.unsupported ?? []) {
+      // 숫자(엔티티 id·면 수)를 N 으로 정규화 — 사유의 **종류**를 센다.
+      const key = String(u).replace(/^#\d+:\s*/, '').replace(/\d+/g, 'N').slice(0, 70);
+      reasons[key] = (reasons[key] ?? 0) + 1;
+    }
+  }
+  return {
+    files: files.length, measured: measured.length, withBodies, noBodies, bodies,
+    reasons: Object.entries(reasons).sort((a, b) => b[1] - a[1]),
+  };
+}
+
+/** node:fs 를 지연 로드 — 이 모듈은 브라우저 번들에 들어가지 않지만 규약을 지킨다. */
+function require$fs() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, global-require
+  return { readdirSync: fsMod().readdirSync, statSync: fsMod().statSync };
+}
+let _fs = null;
+function fsMod() {
+  if (!_fs) _fs = globalThis.process?.getBuiltinModule?.('node:fs') ?? null;
+  if (!_fs) throw new Error('node:fs 를 사용할 수 없다 — 이 측정은 Node 환경 전용이다');
+  return _fs;
+}

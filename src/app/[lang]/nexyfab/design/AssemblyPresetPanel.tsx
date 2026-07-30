@@ -1392,6 +1392,9 @@ const SNAP_MIRROR: Record<string, { values: number[]; source: string }> = {
   sideThk: { values: [12, 19, 25, 38], source: 'KDS 41 50 30 표 4.4-4 측면부재 절점' },
   mainThk: { values: [38, 89, 140], source: 'KDS 41 50 30 표 4.5-2 주부재 두께 절점' },
   postSize: { values: [38, 89, 140, 184, 235, 286], source: '구조용 제재 관례 규격 계열(38 배수 — 참고용)' },
+  // 260801 — 경량철골 스터드. ⚠ KS 표 절점이 아니라 시공 관례 계열임을 출처에 적는다.
+  studWeb: { values: [65, 75, 100, 125, 150], source: '경량철골 스터드 관례 규격 계열(표 절점 아님)' },
+  studSpacing: { values: [300, 450, 600], source: '스터드 간격 관례 @300·@450·@600(표 절점 아님)' },
 };
 
 // ①② param-sweep 지원 도메인 (scripts/drawing-to-3d/param-sweep.mjs CHAINS 미러)
