@@ -42,6 +42,18 @@ export const RESPONSE_SCHEMA = {
   required: ['type', 'confidence'],
 };
 
+/**
+ * 추출 재시도 상한 (260802).
+ *
+ * ⚠ 결측 재시도를 넣으면서 케이스당 호출이 **최대 3배**가 됐고, 그것이 측정 자체를
+ *   망가뜨렸다: 50장 전량 실행에서 `apiErrors 22/50` — 앞쪽 버킷은 정상인데 뒤쪽
+ *   버킷이 통째로 0 이었다(케이스 종류가 아니라 **실행 순서**를 따라 실패 = 호출 한도).
+ *   **측정에도 예산이 있고, 넘으면 측정이 대상을 망가뜨린다.**
+ * ⚠ 재시도의 효과는 **아직 입증되지 않았다**(3회 중앙값이 수정 전과 겹친다).
+ *   입증 안 된 기능에 호출을 3배 쓰지 않는다 — 2회(최초 1 + 재시도 1)로 둔다.
+ */
+const EXTRACT_MAX_ATTEMPTS = 2;
+
 const PROMPT = `기계 제작 도면(3각법 정투상, mm)을 판독해 파라메트릭 JSON으로 추출하라.
 
 부품 유형을 먼저 분류하고 해당 필드만 채워라:
@@ -58,12 +70,20 @@ const PROMPT = `기계 제작 도면(3각법 정투상, mm)을 판독해 파라�
 - 스캔 품질이 낮아도(기울어짐·흐림·저대비) 최선을 다해 판독하라.
 - 판별 불가 시 type='unknown'.`;
 
-async function callGemini(img, model, mimeType = 'image/png') {
+/**
+ * @param extra 재시도 시 덧붙일 지시 — **무엇이 빠졌는지** 알려 준다.
+ *
+ * ⚠ 260802 — `temperature: 0` 이라 **같은 요청을 다시 보내면 같은 답이 온다.**
+ *   결측 재시도를 넣고도 효과가 없던 이유가 이것이었다(실측: 재측정 3회 중앙값이
+ *   수정 전과 동일한 86.5%). 재시도가 의미를 가지려면 **요청이 달라져야** 한다 —
+ *   온도를 올리는 대신 **빠진 필드를 지목**한다(지어내라는 게 아니라 어디를 보라는 것).
+ */
+async function callGemini(img, model, mimeType = 'image/png', extra = '') {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey()}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: img } }, { text: PROMPT }] }],
+      contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: img } }, { text: PROMPT + extra }] }],
       // NOTE: leave thinking ENABLED — gemini-2.5-flash needs it to emit valid
       // number literals under responseSchema; disabling it (thinkingBudget:0)
       // made bent_sheet extractions produce degenerate floats (80e-1500000).
@@ -108,22 +128,65 @@ export async function extractDrawing(pngPath, { model = 'gemini-2.5-flash' } = {
   // Degraded scans occasionally make the model emit a degenerate number literal
   // (e.g. width=80e-1500000) that breaks JSON.parse. Three-layer recovery:
   //   (a) repair the known garbage-exponent pattern in-place, then re-parse;
-  //   (b) retry the API call (up to 3 attempts);
+  //   (b) retry the API call (EXTRACT_MAX_ATTEMPTS 회 — 260802 에 3→2 로 줄였다);
   //   (c) if all fail, the caller (run-e2e) records ERR truthfully — never mask.
+  /**
+   * ★260802 — **결측 응답을 성공으로 반환하고 있었다.**
+   *
+   * 재시도는 **JSON 파싱 실패**만 다뤘다. 파싱은 되는데 `flange` 의 `boreDia`·`bcd`·
+   * `boltHoleD`·`boltCount` 가 **동시에 비어 오는 회차**가 있고, 그게 그대로 반환됐다.
+   * 실측(`flange-04-scan` 4회): 1회 결측 · 3회 완전 — **25% 가 결측인데 성공 취급**이었다.
+   *
+   * ⚠ 비운 값을 **우리가 채우지 않는다.** 추정으로 메우면 틀린 치수로 3D 가 만들어진다 —
+   *   대신 **같은 요청을 다시** 한다(비용은 실패 회차에만).
+   * ⚠ 끝까지 결측이면 **결측인 채로** 내보내고 이름으로 고지한다. 게이트가 잡고 사용자가
+   *   되묻는 편이, 지어낸 값으로 통과하는 것보다 낫다.
+   * ⚠ 두 추출 경로(`extractDrawing` CLI·e2e / `extractDrawingFromImage` 웹)가 **따로 있다.**
+   *   한쪽만 고치면 다른 쪽이 조용히 옛 동작을 유지한다 — 실제로 그럴 뻔했다.
+   */
   let lastErr;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const { text, usage } = await callGemini(img, model);
+  let best = null, bestMissing = null;
+  for (let attempt = 0; attempt < EXTRACT_MAX_ATTEMPTS; attempt++) {
+    let intent = null, usage2 = null, repaired = false;
+    /**
+     * 재시도에는 **빠진 필드를 지목**해 덧붙인다. 같은 요청을 반복하면 `temperature: 0`
+     * 이라 같은 답이 온다 — 요청이 달라져야 재시도가 의미를 갖는다.
+     * ⚠ 「값을 만들어라」가 아니라 **「어느 치수를 다시 보라」**다. 지어내라고 하지 않는다.
+     */
+    /**
+     * ⚠⚠ 260802 — 힌트를 그냥 붙였다가 **타입 분류가 흔들렸다**(실측: scan:bent_sheet
+     *   5/5 → 4/5 → 3/5, 채점 분모가 52 → 48 → 32 로 줄어 「100%」가 살아남은 케이스만
+     *   센 값이 됐다). 이 프롬프트는 **분류와 추출을 함께** 하므로, 빠진 치수를 지목하면
+     *   분류까지 끌려간다. **분모가 줄어든 100% 는 개선이 아니라 선택 편향이다.**
+     *   → 재시도에서는 **직전 타입을 고정**해 분류가 바뀔 여지를 없앤다.
+     */
+    const hint = bestMissing?.length
+      ? `\n\n⚠ 이 도면의 부품 유형은 '${best?.intent?.type}' 로 이미 확정됐다 — 유형을 바꾸지 마라.`
+        + ` 직전 판독에서 ${bestMissing.join('·')} 가 비어 있었다. 그 치수가 표기된 뷰·치수선·주석을`
+        + ' 다시 찾아 읽어라. 도면에 정말 없으면 축척과 대칭으로 계산하되, 근거 없이 지어내지는 마라.'
+      : '';
     try {
-      return { intent: JSON.parse(text), usage, model, repaired: false };
-    } catch {
-      try {
+      const { text, usage } = await callGemini(img, model, 'image/png', hint);
+      usage2 = usage;
+      try { intent = JSON.parse(text); }
+      catch {
         const fixed = repairJsonNumbers(text);
-        if (fixed !== text) return { intent: JSON.parse(fixed), usage, model, repaired: true };
-      } catch { /* repair didn't help — fall through to retry */ }
-      lastErr = new Error('bad extraction JSON (unrepairable)');
-    }
+        if (fixed !== text) { intent = JSON.parse(fixed); repaired = true; }
+      }
+    } catch (e) { lastErr = e instanceof Error ? e : new Error(String(e)); }
+    if (!intent) { lastErr = lastErr ?? new Error('bad extraction JSON (unrepairable)'); continue; }
+    const need = TYPE_FIELDS[String(intent.type ?? '')] ?? [];
+    const missing = need.filter((k) => intent[k] == null || Number.isNaN(Number(intent[k])));
+    // 결측이 더 적은 응답을 남긴다 — 마지막 응답이 항상 나은 것은 아니다.
+    if (!best || missing.length < bestMissing.length) { best = { intent, usage: usage2, model, repaired }; bestMissing = missing; }
+    if (!missing.length) return best;
   }
-  throw lastErr;
+  if (!best) throw lastErr ?? new Error('extract failed');
+  best.intent.missingFields = bestMissing;
+  best.intent.confidence = Math.min(Number(best.intent.confidence) || 0, 0.4);
+  best.intent.missingNote = `도면에서 ${bestMissing.join('·')} 를 읽지 못했다(재시도 후에도). `
+    + '값을 추정해 채우지 않았다 — 그 치수를 알려 주거나 해당 부분이 보이는 도면을 주세요.';
+  return best;
 }
 
 /* ── 웹 업로드용 two-stage 추출 (어휘 11종) ─────────────────────────────────
@@ -210,7 +273,7 @@ export async function extractDrawingFromImage(base64, mimeType = 'image/png', { 
   // ① 타입 분류
   const clsPrompt = `기계 제작 도면(정투상, mm)의 부품 유형을 분류하라. 후보:\n${CLASSIFY_LIST}\n판별 불가 시 unknown. 형식: {"type":"...","confidence":0~1} JSON 하나만.`;
   let cls = null, lastErr;
-  for (let a = 0; a < 3; a++) {
+  for (let a = 0; a < EXTRACT_MAX_ATTEMPTS; a++) {
     try { const { text } = await callGeminiImage(base64, mimeType, model, clsPrompt, CLASSIFY_SCHEMA); const o = parseWithRepair(text); if (o && o.type) { cls = o; break; } }
     catch (e) { lastErr = e; }
   }
@@ -221,14 +284,52 @@ export async function extractDrawingFromImage(base64, mimeType = 'image/png', { 
 
   // ② 타입 전용 스키마로 치수 추출(해당 필드만·전부 required)
   const exPrompt = `이 도면은 '${type}' 부품이다. 아래 치수 필드를 도면의 치수선·주석에서 읽어 모두 채워라(하나도 비우지 말 것; 인쇄된 치수 우선, 없으면 축척·대칭으로 추정). 무관한 필드는 만들지 마라.\n필드: ${FIELD_HELP[type]}\n형식: JSON 하나만.`;
+  /**
+   * ★260802 — **결측 응답을 성공으로 보고 있었다.**
+   *
+   * 재시도 루프가 **던진 예외만** 잡고, 스키마상 `required` 인 필드가 **빈 채로 온 응답**은
+   * 그대로 `break` 했다. 실측(`flange-04-scan` 4회 반복):
+   * ```
+   * run0: 결측 boreDia,bcd,boltHoleD,boltCount   ← 4개가 **동시에** 빈다
+   * run1~3: 결측 없음
+   * ```
+   * 하나씩 못 읽는 게 아니라 **2단계가 통째로 부실하게 끝나는 회차**가 25% 있었고,
+   * 그 회차가 그대로 채점돼 파라미터 정확도를 끌어내렸다.
+   *
+   * ⚠ **비운 값을 우리가 채우지 않는다.** 추정으로 메우면 틀린 치수로 3D 가 만들어진다 —
+   *   대신 **같은 요청을 다시** 한다. 4회 중 3회가 성공이므로 재시도 1회로 결측률이
+   *   25% → 약 6% 로 떨어진다(비용은 실패 회차에만 붙는다).
+   * ⚠ 끝까지 결측이면 **결측인 채로** 내보낸다. 게이트가 잡고 사용자가 되묻는 것이,
+   *   지어낸 값으로 통과하는 것보다 낫다.
+   */
+  const need = TYPE_FIELDS[type] ?? [];
+  const missingOf = (p) => (p ? need.filter((k) => p[k] == null || Number.isNaN(Number(p[k]))) : need);
   let params = null;
-  for (let a = 0; a < 3; a++) {
-    try { const { text } = await callGeminiImage(base64, mimeType, model, exPrompt, paramSchemaFor(type)); params = parseWithRepair(text); break; }
-    catch (e) { lastErr = e; }
+  let lastMissing = need;
+  for (let a = 0; a < EXTRACT_MAX_ATTEMPTS; a++) {
+    try {
+      const { text } = await callGeminiImage(base64, mimeType, model, exPrompt, paramSchemaFor(type));
+      const got = parseWithRepair(text);
+      const miss = missingOf(got);
+      // 결측이 더 적은 응답을 남긴다 — 마지막 응답이 항상 나은 것은 아니다.
+      if (!params || miss.length < lastMissing.length) { params = got; lastMissing = miss; }
+      if (!miss.length) break;
+    } catch (e) { lastErr = e; }
   }
   if (!params) throw lastErr ?? new Error('extract failed');
   if (type === 'flange' && typeof params.boltCount === 'number') params.boltCount = Math.round(params.boltCount);
   const intent = { type, confidence, ...params };
+  /**
+   * ⚠ 재시도 후에도 남은 결측은 **이름으로 남긴다.** 없으면 사용자는 게이트 오류만 보고
+   *   「왜 실패했는지」를 모른다 — 판독을 못 한 것과 형상이 틀린 것은 다른 문제다.
+   *   그리고 신뢰도를 강등한다: 못 읽은 값이 있는 판독을 confidence 1 로 두면 과고지다.
+   */
+  if (lastMissing.length) {
+    intent.missingFields = lastMissing;
+    intent.confidence = Math.min(confidence, 0.4);
+    intent.missingNote = `도면에서 ${lastMissing.join('·')} 를 읽지 못했다(재시도 후에도). `
+      + '값을 추정해 채우지 않았다 — 그 치수를 알려 주거나 해당 부분이 보이는 도면을 주세요.';
+  }
 
   // D1 역투영 diff(260719, 도면 경로만): 추출 실루엣을 원본 잉크에 되그려 지지율·스케일
   // 잔차 검사 — 낮으면 신뢰도 강등 + 되묻기. 로더 불가 환경이면 생략(정직 — 강등 없음).

@@ -1,22 +1,22 @@
 {
- "date": "2026-07-11T18:15:57.511Z",
+ "date": "2026-07-30T16:08:16.466Z",
  "summary": {
   "cases": 50,
-  "typeClassification": "43/50 (86.0%)",
-  "paramAccuracy": "174/190 (91.6%)",
-  "holePosAccuracy": "30/30 (100.0%)",
-  "geometryGatePass": "37/50",
-  "apiErrors": 7,
+  "typeClassification": "28/50 (56.0%)",
+  "paramAccuracy": "132/139 (95.0%)",
+  "holePosAccuracy": "-",
+  "geometryGatePass": "26/50",
+  "apiErrors": 22,
   "byBucket": {
    "clean:bent_sheet": "type 5/5, params 20/20",
-   "scan:bent_sheet": "type 5/5, params 14/20",
-   "scan:flange": "type 5/5, params 24/30",
+   "scan:bent_sheet": "type 5/5, params 17/20",
+   "scan:flange": "type 5/5, params 28/30",
    "clean:flange": "type 5/5, params 30/30",
-   "clean:l_bracket": "type 4/5, params 14/16",
-   "scan:l_bracket": "type 1/5, params 4/4",
-   "clean:plate_with_holes": "type 5/5, params 15/15",
-   "scan:plate_with_holes": "type 5/5, params 15/15",
-   "scan:stepped_plate": "type 4/5, params 18/20",
+   "clean:l_bracket": "type 1/5, params 4/4",
+   "scan:l_bracket": "type 0/5, params 0/0",
+   "clean:plate_with_holes": "type 0/5, params 0/0",
+   "scan:plate_with_holes": "type 0/5, params 0/0",
+   "scan:stepped_plate": "type 3/5, params 13/15",
    "clean:stepped_plate": "type 4/5, params 20/20"
   }
  },
@@ -52,10 +52,10 @@
    "name": "bent-sheet-20-scan",
    "bucket": "scan",
    "type": "OK",
-   "params": "1/4",
+   "params": "4/4",
    "holes": "-",
-   "gate": "FAIL",
-   "err": "flangeHeight: gt 30 vs undefined | length: gt 100 vs undefined | thickness: gt 1.5 vs undefined"
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "bent-sheet-25",
@@ -115,10 +115,10 @@
    "name": "flange-04-scan",
    "bucket": "scan",
    "type": "OK",
-   "params": "2/6",
+   "params": "6/6",
    "holes": "-",
-   "gate": "FAIL",
-   "err": "boreDia: gt 70 vs undefined | bcd: gt 90 vs undefined | boltHoleD: gt 12 vs undefined"
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "flange-09",
@@ -214,157 +214,115 @@
    "name": "l-bracket-08-scan",
    "bucket": "scan",
    "type": "ERR",
-   "err": "bad extraction JSON (unrepairable)"
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "l-bracket-13",
    "bucket": "clean",
-   "type": "OK",
-   "params": "4/4",
-   "holes": "-",
-   "gate": "PASS",
-   "err": "-"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "l-bracket-18-scan",
    "bucket": "scan",
    "type": "ERR",
-   "err": "bad extraction JSON (unrepairable)"
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "l-bracket-23",
    "bucket": "clean",
-   "type": "OK",
-   "params": "3/4",
-   "holes": "-",
-   "gate": "FAIL",
-   "err": "thickness: gt 4 vs undefined"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "l-bracket-28-scan",
    "bucket": "scan",
-   "type": "OK",
-   "params": "4/4",
-   "holes": "-",
-   "gate": "PASS",
-   "err": "-"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "l-bracket-33",
    "bucket": "clean",
    "type": "ERR",
-   "err": "bad extraction JSON (unrepairable)"
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "l-bracket-38-scan",
    "bucket": "scan",
    "type": "ERR",
-   "err": "bad extraction JSON (unrepairable)"
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "l-bracket-43",
    "bucket": "clean",
-   "type": "OK",
-   "params": "3/4",
-   "holes": "-",
-   "gate": "FAIL",
-   "err": "thickness: gt 4 vs undefined"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "l-bracket-48-scan",
    "bucket": "scan",
    "type": "ERR",
-   "err": "bad extraction JSON (unrepairable)"
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "plate-with-holes-01",
    "bucket": "clean",
-   "type": "OK",
-   "params": "3/3",
-   "holes": "2/2",
-   "gate": "PASS",
-   "err": "-"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "plate-with-holes-06-scan",
    "bucket": "scan",
-   "type": "OK",
-   "params": "3/3",
-   "holes": "2/2",
-   "gate": "PASS",
-   "err": "-"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "plate-with-holes-11",
    "bucket": "clean",
-   "type": "OK",
-   "params": "3/3",
-   "holes": "3/3",
-   "gate": "PASS",
-   "err": "-"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "plate-with-holes-16-scan",
    "bucket": "scan",
-   "type": "OK",
-   "params": "3/3",
-   "holes": "2/2",
-   "gate": "PASS",
-   "err": "-"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "plate-with-holes-21",
    "bucket": "clean",
-   "type": "OK",
-   "params": "3/3",
-   "holes": "4/4",
-   "gate": "PASS",
-   "err": "-"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "plate-with-holes-26-scan",
    "bucket": "scan",
-   "type": "OK",
-   "params": "3/3",
-   "holes": "4/4",
-   "gate": "PASS",
-   "err": "-"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "plate-with-holes-31",
    "bucket": "clean",
-   "type": "OK",
-   "params": "3/3",
-   "holes": "3/3",
-   "gate": "PASS",
-   "err": "-"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "plate-with-holes-36-scan",
    "bucket": "scan",
-   "type": "OK",
-   "params": "3/3",
-   "holes": "2/2",
-   "gate": "PASS",
-   "err": "-"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "plate-with-holes-41",
    "bucket": "clean",
-   "type": "OK",
-   "params": "3/3",
-   "holes": "4/4",
-   "gate": "PASS",
-   "err": "-"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "plate-with-holes-46-scan",
    "bucket": "scan",
-   "type": "OK",
-   "params": "3/3",
-   "holes": "4/4",
-   "gate": "PASS",
-   "err": "-"
+   "type": "ERR",
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "stepped-plate-02-scan",
@@ -388,7 +346,7 @@
    "name": "stepped-plate-12-scan",
    "bucket": "scan",
    "type": "ERR",
-   "err": "bad extraction JSON (unrepairable)"
+   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
   },
   {
    "name": "stepped-plate-17",
@@ -402,11 +360,8 @@
   {
    "name": "stepped-plate-22-scan",
    "bucket": "scan",
-   "type": "OK",
-   "params": "5/5",
-   "holes": "-",
-   "gate": "PASS",
-   "err": "-"
+   "type": "ERR",
+   "err": "Expected ',' or '}' after property value in JSON at position 73 (line 1 column 74)"
   },
   {
    "name": "stepped-plate-27",
@@ -430,7 +385,7 @@
    "name": "stepped-plate-37",
    "bucket": "clean",
    "type": "ERR",
-   "err": "bad extraction JSON (unrepairable)"
+   "err": "Expected ',' or '}' after property value in JSON at position 73 (line 1 column 74)"
   },
   {
    "name": "stepped-plate-42-scan",

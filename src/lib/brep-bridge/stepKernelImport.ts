@@ -80,6 +80,60 @@ export const KERNEL_MAX_VERTS = 400_000;
 export const KERNEL_TIMEOUT_MS = 90_000;
 
 /**
+ * ★동시 실행 상한 (260802) — **이게 없던 것이 가장 큰 운영 구멍이었다.**
+ *
+ * 프로세스를 나눠 힙 누적은 막았지만(§ 파일 상단), **동시 요청을 막는 장치가 없었다.**
+ * 동시 요청 N개 = 프로세스 N개 = 메모리 N배다.
+ *
+ * ## 실측으로 값을 정한다 — 임의 숫자가 아니다
+ * 코퍼스 최대 파일(7.54MB)로 자식 프로세스의 **최대 작업집합 = 445MB** 를 쟀다
+ * (Windows `WorkingSet64` 200ms 폴링). 기본값 2 → 최대 ~890MB + 서버 자체.
+ *
+ * ⚠ 컨테이너 메모리 할당량을 **모른 채** 고른 보수적 값이다. 할당량을 알면 조정한다.
+ *   `NEXYFAB_KERNEL_CONCURRENCY` 로 덮어쓸 수 있다.
+ */
+export const KERNEL_MAX_CONCURRENT = (() => {
+  const v = Number(process.env.NEXYFAB_KERNEL_CONCURRENCY);
+  return Number.isFinite(v) && v >= 1 ? Math.floor(v) : 2;
+})();
+
+/**
+ * 슬롯을 기다리는 상한. 넘으면 **기다리지 않고 사유와 함께 돌려준다** —
+ * 무한 대기는 부하를 지연으로 바꿔 놓고 결국 시간초과로 둔갑시킨다.
+ * 실측 지연 p50 1.3초·대형 20.6초 기준, 앞선 요청 2건이 끝나기를 기다릴 만한 값.
+ */
+export const KERNEL_QUEUE_WAIT_MS = 45_000;
+
+let kernelActive = 0;
+const kernelWaiters: Array<{ resolve: (ok: boolean) => void; timer: ReturnType<typeof setTimeout> }> = [];
+
+/** 관측용 — 폴백이 「커널 실패」인지 「혼잡」인지 구별하려면 이 값이 필요하다. */
+export function kernelConcurrencyState(): { active: number; waiting: number; limit: number } {
+  return { active: kernelActive, waiting: kernelWaiters.length, limit: KERNEL_MAX_CONCURRENT };
+}
+
+function acquireKernelSlot(waitMs: number): Promise<boolean> {
+  if (kernelActive < KERNEL_MAX_CONCURRENT) { kernelActive += 1; return Promise.resolve(true); }
+  return new Promise<boolean>((resolve) => {
+    const entry = {
+      resolve,
+      timer: setTimeout(() => {
+        const i = kernelWaiters.indexOf(entry);
+        if (i >= 0) kernelWaiters.splice(i, 1);
+        resolve(false);   // 슬롯을 못 받았다 — 호출측이 정직하게 폴백한다
+      }, waitMs),
+    };
+    kernelWaiters.push(entry);
+  });
+}
+
+function releaseKernelSlot(): void {
+  const next = kernelWaiters.shift();
+  if (next) { clearTimeout(next.timer); next.resolve(true); return; }   // 슬롯을 넘긴다(카운트 유지)
+  kernelActive = Math.max(0, kernelActive - 1);
+}
+
+/**
  * STEP 원문 → 커널 실측 메시 부품.
  *
  * @param source STEP 파일 텍스트(또는 바이트)
@@ -99,6 +153,21 @@ export async function importStepWithKernel(
   const { promisify } = await import('node:util');
   const run = promisify(execFile);
 
+  /**
+   * ★ 슬롯을 먼저 잡는다. 못 잡으면 **기다리지 않고 사유와 함께 돌려준다** —
+   *   호출측(주력 임포트)이 AABB 로 폴백하고 「혼잡해서 근사로 받았다」고 고지한다.
+   * ⚠ 조용히 느려지는 것보다 **근사임을 알리고 빨리 주는 것**이 낫다.
+   *   다만 그 사실이 사유에 남아야 한다 — 안 남으면 품질 저하가 보이지 않는다.
+   */
+  const got = await acquireKernelSlot(KERNEL_QUEUE_WAIT_MS);
+  if (!got) {
+    const st = kernelConcurrencyState();
+    return done({
+      ok: false, parts: [], warnings: [],
+      reason: `커널 동시 처리 한도(${st.limit})가 차서 ${Math.round(KERNEL_QUEUE_WAIT_MS / 1000)}초 안에 슬롯을 받지 못했다`
+        + ` — 대기 ${st.waiting}건. 서버 메모리 보호를 위한 상한이다(프로세스당 실측 최대 445MB).`,
+    });
+  }
   let dir: string | null = null;
   try {
     dir = await mkdtemp(join(tmpdir(), 'nf-kernel-'));
@@ -143,6 +212,9 @@ export async function importStepWithKernel(
   } catch (e) {
     return done({ ok: false, parts: [], warnings: [], reason: `커널 실행 준비에 실패했다: ${String((e as Error)?.message ?? e).slice(0, 160)}` });
   } finally {
+    // ⚠ 슬롯 반납은 **어떤 경로로 빠져나가도** 일어나야 한다. 한 번이라도 새면 상한이
+    //   영구히 줄어들고, 결국 모든 요청이 폴백으로 떨어진다(조용한 품질 저하).
+    releaseKernelSlot();
     if (dir) { try { await rm(dir, { recursive: true, force: true }); } catch { /* 임시파일 정리 실패는 결과에 영향이 없다 */ } }
   }
 }
