@@ -896,6 +896,28 @@ function civilPlanSvg(parts) {
  *  domain='building' → 축선 구조평면 / 'landscape' → 배치 평면도 / 'civil' → 선형 평면(측점)
  *  pipes = buildAssembly().pipes.routes — 라우터의 단일 결과를 그대로 투영(재계산 금지 — 정합)
  *  축척: 표준 축척(1:N) 자동 선정 — A3 100% 인쇄 기준 실축척(표제란 명기), km급 대응. */
+/**
+ * SVG **수치 속성**의 부동소수 잔재를 정리한다 (260802).
+ *
+ * ⚠ 라이브 도면에 `viewBox="0 0 771.9047619047618 291.42857142857144"` 같은 값이 나갔다.
+ *   도면 내용이 아니라 **좌표·캔버스 크기**라 형상에는 영향이 없지만, 파일을 키우고
+ *   「이만큼 정밀하다」로 오독될 여지를 준다.
+ * ⚠ **자리마다 `.toFixed(1)` 을 붙이는 방식은 포기했다** — 방출 지점이 여러 함수에 흩어져
+ *   있어 한 번에 못 잡고, 이미 붙은 자리에 덧붙이면 `"...".toFixed is not a function` 이
+ *   된다(실제로 겪었다). **방출 직후 한 곳**에서 정리한다.
+ * ⚠ **텍스트 내용은 건드리지 않는다.** 속성값(`x=`·`y=`·`viewBox=` 등)만 대상이다 —
+ *   치수 문자는 별도 포맷터가 이미 반올림한다.
+ */
+function tidySvgNumbers(html) {
+  return String(html).replace(
+    /\b(x|y|x1|y1|x2|y2|cx|cy|r|rx|ry|width|height|viewBox|points|d|offset|stroke-width|font-size)="([^"]*)"/g,
+    (m, attr, val) => {
+      if (!/\d\.\d{7,}/.test(val)) return m;
+      return `${attr}="${val.replace(/-?\d+\.\d{7,}/g, (n) => Number(n).toFixed(2))}"`;
+    },
+  );
+}
+
 export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA-001', domain, pipes, revHistory, lang, welds: weldsIn } = {}) {
   const parts = (assembly.parts ?? []).map((p, i) => ({ p, i, box: placed(p), st: styleOf(p) }));
   if (!parts.length) return '<!DOCTYPE html><body>빈 어셈블리</body>';
@@ -1180,7 +1202,7 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
 <tr><td style="background:#f1f5f9">투상/단위</td><td>3각법 / mm</td><td style="background:#f1f5f9">작성</td><td>nexyfab 자동생성(비법정)</td></tr>
 <tr><td style="background:#f1f5f9">일반공차</td><td colspan="3" class="nf-gentol" style="text-align:left">${esc(assembly.generalTolerance ?? 'KS B ISO 2768-mK (관례 기본 — 발주 전 확정·입력 시 교체)')}</td></tr>
 </tbody></table>`;
-  return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>
+  return tidySvgNumbers(`<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>@page{size:A3 landscape;margin:8mm}body{margin:0;font-family:'Segoe UI','Malgun Gothic',sans-serif;background:#eef1f4;color:#1f2937}
 .sheet{max-width:1180px;margin:16px auto;background:#fff;border:1px solid #cbd5e1;box-shadow:0 4px 24px rgba(0,0,0,.1)}.hd{display:flex;justify-content:space-between;align-items:flex-end;padding:12px 20px;border-bottom:2px solid #1f2937}.hd h1{font-size:16px;margin:0}.sub{font-size:11px;color:#64748b}.wrap{padding:8px 16px}
 table{border-collapse:collapse;width:calc(100% - 40px);margin:0 20px 14px;font-size:11px}td,th{border:1px solid #cbd5e1;padding:3px 8px;text-align:center}th{background:#f1f5f9}
@@ -1189,7 +1211,7 @@ table{border-collapse:collapse;width:calc(100% - 40px);margin:0 20px 14px;font-s
 @media print{.nf-print-bar{display:none}body{background:#fff}.sheet{box-shadow:none;border:none;margin:0}.sheet-page{box-shadow:none;border:none;margin:0;page-break-after:always}}</style></head>
 <body>${PRINT_BAR('설계 GA 도면 (A3)')}<div class="sheet"><div class="hd"><div><h1>${esc(title)} — 일반배치도 (GA)</h1><div class="sub">nexyfab drawing-to-3d 자동생성 · 부품 ${parts.length}(그룹 ${groups.length})</div></div><div class="sub">DWG ${esc(dwgNo)} · <b>SCALE 1:${N}</b> (A3 100% 인쇄 기준 · 화면=가변) · 표기 mm(대형 자동 m/km) · 3rd angle · REV <span class="nf-rev">—</span></div></div>
 <div class="wrap">${svg.replace('</svg>', detailMarker + '</svg>')}</div>${sectionSvg}${detailSvg}${domainSvg ? `<div class="wrap" style="border-top:1px solid #e2e8f0">${domainSvg}</div>` : ''}<table><thead><tr><th>No.</th><th>품명(대표)</th><th>Type</th><th>규격(엔벨로프)</th><th>발주 규격(G1 스냅 · 발주 전 규격서 대조)</th><th>재질</th><th>수량</th></tr></thead><tbody>${bom}</tbody></table>${weldTable}${Array.isArray(revHistory) && revHistory.length ? `<div class="wrap" style="border-top:1px solid #e2e8f0;padding:8px 20px"><table style="border-collapse:collapse;width:70%;font-size:11px"><caption style="text-align:left;font-size:12px;font-weight:700;padding:3px 0">개정 이력(편집 자동 기록 — 실시 추적성)</caption><tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">REV</th><th style="border:1px solid #cbd5e1;padding:3px 8px">일자</th><th style="border:1px solid #cbd5e1;padding:3px 8px">내용</th></tr>${revHistory.map((r) => `<tr><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.rev ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.date ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${esc(String(r.note ?? ''))}</td></tr>`).join('')}</table></div>` : ''}${titleBlock}
-<div class="sub" style="padding:4px 20px 12px;color:#94a3b8">⚠ 자동생성 GA(비법정) · 부품 엔벨로프 기준 · 상세치수·공차는 후속.</div><div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div>${sheetsHtml}</body></html>`;
+<div class="sub" style="padding:4px 20px 12px;color:#94a3b8">⚠ 자동생성 GA(비법정) · 부품 엔벨로프 기준 · 상세치수·공차는 후속.</div><div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div>${sheetsHtml}</body></html>`);
 }
 
 /** 구조검토 결과 → HTML 리포트 (structuralCheck 출력 기반, 인쇄양식) */

@@ -30,14 +30,25 @@
 
 const r2 = (v) => +Number(v).toFixed(2);
 
-/** 비례 한 건 — 범위 안이면 적합, 밖이면 검토. 합·불이 아니라 **예비 비례**임을 명시한다. */
-function ratioCheck(labelKo, value, lo, hi, why) {
+/**
+ * 비례 한 건 — 범위 안이면 적합, 밖이면 검토. 합·불이 아니라 **예비 비례**임을 명시한다.
+ *
+ * @param show 한계값 **표시 문자열**(선택). 없으면 소수 2자리로 줄인다.
+ *
+ * ⚠ 260802 — 라이브 문서에 `통상 0.08333333333333333 이상` 이 나갔다. 실제로는 **`H/12`**
+ *   라는 관례값인데, 16자리 소수로 찍히면 **정밀해 보이지만 그 정밀도는 없다**(과고지).
+ *   그렇다고 `0.08` 로 반올림하면 **관례값이라는 사실이 사라진다** — 그래서 값을 줄이는 게
+ *   아니라 **원래 표기**(`H/12`)를 그대로 보여 준다. 비교는 원값으로, 표시만 바꾼다.
+ */
+function ratioCheck(labelKo, value, lo, hi, why, show = {}) {
   const ok = value >= lo && (hi == null || value <= hi);
+  const loS = show.lo ?? r2(lo);
+  const hiS = hi == null ? null : (show.hi ?? r2(hi));
   return {
     labelKo: `${labelKo} = ${r2(value)}`,
     pass: ok,
     detail: [
-      hi == null ? `통상 ${lo} 이상` : `통상 ${lo} ~ ${hi}`,
+      hiS == null ? `통상 ${loS} 이상` : `통상 ${loS} ~ ${hiS}`,
       ok ? '예비 비례 범위 안이다.' : `**범위 밖이다** — ${why}`,
     ],
     note: '예비 설계 관례 비례이며 **법정 기준이 아니다.** 최종 판정은 계산기(안정·단면력) 결과가 한다.',
@@ -65,11 +76,11 @@ export function civilCheck(assembly) {
     }
     if (H > 0 && bt > 0) {
       checks.baseThicknessRatio = ratioCheck('저판 두께 / 벽고 t/H', bt / H, 1 / 12, null,
-        '저판이 얇으면 저판 자체가 휨으로 파괴될 수 있다.');
+        '저판이 얇으면 저판 자체가 휨으로 파괴될 수 있다.', { lo: 'H/12(≈0.083)' });
     }
     if (bw > 0 && toe >= 0) {
       checks.toeRatio = ratioCheck('앞굽 / 저판 폭', toe / bw, 0, 1 / 3,
-        '앞굽이 길면 뒷굽이 짧아져 **배면토의 저항 모멘트가 줄어든다.**');
+        '앞굽이 길면 뒷굽이 짧아져 **배면토의 저항 모멘트가 줄어든다.**', { hi: 'B/3(≈0.33)' });
     }
     notChecked.push(
       {
@@ -89,7 +100,7 @@ export function civilCheck(assembly) {
     const span = Math.max(iw, ih);
     if (span > 0 && t > 0) {
       checks.wallThicknessRatio = ratioCheck('벽두께 / 내공(큰 쪽) t/L', t / span, 1 / 12, null,
-        '벽·슬래브가 얇으면 라멘 단면력에 못 견딘다(단면력은 계산기가 산출한다).');
+        '벽·슬래브가 얇으면 라멘 단면력에 못 견딘다(단면력은 계산기가 산출한다).', { lo: 'L/12(≈0.083)' });
     }
     if (iw > 0 && ih > 0) {
       // 내공 종횡비 — 극단이면 라멘 거동이 아니라 벽체 거동에 가까워진다.

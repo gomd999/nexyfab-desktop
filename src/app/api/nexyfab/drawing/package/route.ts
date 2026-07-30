@@ -296,11 +296,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!nonMech) {
     try { files.push({ name: 'PID_skeleton.html', mime: 'text/html', content: mods.pd.pidSkeleton(assembly, { title }) }); } catch (e) { void e; outputsFailed.push('PID_skeleton.html'); }
   }
-  // GA 3D 계통색 (부품 service/type → 색분류 멀티메시). 실패 시 모노크롬 폴백.
+  /**
+   * GA 3D 계통색 (부품 service/type → 색분류 멀티메시). 실패 시 모노크롬 폴백.
+   *
+   * ⚠ 260802 — 라이브에서 이 산출물이 실패했는데(`outputsFailed: ['GA_3D.html']`)
+   *   **이유가 남지 않았다.** `catch` 두 겹이 예외를 통째로 삼켰다. 로컬에서는 둘 다
+   *   성공하므로(1.1MB) 서버 환경 차이인데, 사유가 없으면 **원인을 영영 모른다.**
+   *   「무엇이 실패했나」만 알고 「왜」를 버리면 고칠 수가 없다 — 사유를 함께 남긴다.
+   */
   try {
     files.push({ name: 'GA_3D.html', mime: 'text/html', content: await mods.rnd.renderColoredHtml({ assembly }, { title, subtitle: 'nexyfab 자동생성 계통색 GA' }) });
-  } catch {
-    try { files.push({ name: 'GA_3D.html', mime: 'text/html', content: await mods.rnd.renderHtml({ assembly }, { title, subtitle: 'nexyfab 자동생성 GA' }) }); } catch (e) { void e; outputsFailed.push('GA_3D.html'); }
+  } catch (e1) {
+    const why1 = String(e1 instanceof Error ? e1.message : e1).slice(0, 160);
+    try {
+      files.push({ name: 'GA_3D.html', mime: 'text/html', content: await mods.rnd.renderHtml({ assembly }, { title, subtitle: 'nexyfab 자동생성 GA' }) });
+      // 계통색은 실패했지만 모노크롬으로 살렸다 — **조용히 다른 것을 주지 않는다.**
+      verificationUnavailable.push(`GA_3D: 계통색 렌더가 실패해 모노크롬으로 대체했습니다 — ${why1}`);
+    } catch (e2) {
+      const why2 = String(e2 instanceof Error ? e2.message : e2).slice(0, 160);
+      outputsFailed.push('GA_3D.html');
+      verificationUnavailable.push(`GA_3D.html 생성 실패 — 계통색: ${why1} / 모노크롬: ${why2}`);
+    }
   }
   // SCAD
   if (built.openscad) files.push({ name: 'model.scad', mime: 'text/plain', content: built.openscad });

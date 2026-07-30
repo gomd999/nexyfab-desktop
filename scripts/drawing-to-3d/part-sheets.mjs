@@ -10,6 +10,29 @@ import { colorOf } from './assembly.mjs';
 import { snapPipe, snapSquareTube, snapTslot, snapBearingUnit } from './std-snap.mjs';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+/**
+ * 제작 치수 표시 — **값을 바꾸지 않는 선에서** 부동소수 잔재만 없앤다 (260802).
+ *
+ * ⚠ 라이브 도면에 `width=3520.0000000000005` 가 나갔다. 좌표가 아니라 **제작 치수**라
+ *   더 나쁘다 — 읽는 사람은 「0.0000000000005mm 까지 관리하라는 건가」로 읽을 수 있다.
+ *   실제 값은 3520 이고, 잔재는 형상 생성 중 누적된 부동소수 오차다.
+ * ⚠ **반올림으로 값을 바꾸지 않는다.** 소수 4자리로 정리하되, 그래도 달라지는 값은
+ *   원값을 그대로 둔다(정말 그 자릿수가 의미 있는 치수일 수 있다).
+ */
+const dimVal = (v) => {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return v ?? '—';
+  const clean = Math.round(v * 1e4) / 1e4;
+  // ① 부동소수 잔재(1e-9 이내) — 값이 사실상 같으므로 그냥 정리한다.
+  if (Math.abs(clean - v) < 1e-9) return clean;
+  /**
+   * ② **진짜 무리수**(대각재 길이 등 √ 계산 결과). 실측: 타워크레인 대각재
+   *    `width=1881.923804014225`. 값을 죽이면 안 되지만 **제작 도면에 소수 12자리는
+   *    의미가 없다** — 그 정밀도로 자를 수 있는 공정이 없다.
+   *    소수 2자리로 표시하되 **≈ 를 붙여 근사임을 밝힌다.** 값을 숨기지 않는다.
+   */
+  return `≈${v.toFixed(2)}`;
+};
+
 const fmt = (v) => (Math.abs(v) >= 1000 ? (v / 1000).toFixed(v % 1000 ? 2 : 0) + 'm' : Math.round(v) + '');
 
 /** 어셈블리 → 그룹 대표 부품 제작도 HTML(전 시트 단일 파일 — @media print 시트 분할). */
@@ -66,7 +89,14 @@ export function partSheets(assembly, { title = '부품 제작도', dwgPrefix = '
     const sc = box / Math.max(dx, dy, dz) * 0.8;
     const vw = (w, h) => `width="${Math.max(60, w * sc + 60).toFixed(0)}" height="${Math.max(60, h * sc + 60).toFixed(0)}"`;
     const rect = (w, h, cx = 30, cy = 30) => `<rect x="${cx}" y="${cy}" width="${(w * sc).toFixed(1)}" height="${(h * sc).toFixed(1)}" fill="#f1f5f9" stroke="${colorOf(p)}" stroke-width="1.4"/>`;
-    const dimH = (w, y, label) => `<line x1="30" y1="${y}" x2="${(30 + w * sc).toFixed(1)}" y2="${y}" stroke="#b91c1c" stroke-width=".7"/><text x="${(30 + w * sc / 2).toFixed(1)}" y="${y - 3}" font-size="10" fill="#b91c1c" text-anchor="middle">${label}</text>`;
+    /**
+     * ⚠ 260802 — `y` 가 원값 그대로 나가 `y1="58.400000000000006"` 이 도면에 찍혔다.
+     *   **기입 치수가 아니라 SVG 좌표**라 형상에는 영향이 없지만, 16자리 부동소수 잔재는
+     *   파일을 키우고 「이만큼 정밀하다」로 오독될 여지를 준다. 좌표는 소수 1자리로 고정한다
+     *   (치수 텍스트는 `fmt` 가 따로 반올림한다 — 둘을 섞지 않는다).
+     */
+    const c1 = (v) => Number(v).toFixed(1);
+    const dimH = (w, y, label) => `<line x1="30" y1="${c1(y)}" x2="${(30 + w * sc).toFixed(1)}" y2="${c1(y)}" stroke="#b91c1c" stroke-width=".7"/><text x="${(30 + w * sc / 2).toFixed(1)}" y="${c1(y - 3)}" font-size="10" fill="#b91c1c" text-anchor="middle">${label}</text>`;
     const dimV = (h, x, label) => `<line x1="${x}" y1="30" x2="${x}" y2="${(30 + h * sc).toFixed(1)}" stroke="#b91c1c" stroke-width=".7"/><text x="${x - 4}" y="${(30 + h * sc / 2).toFixed(1)}" font-size="10" fill="#b91c1c" text-anchor="end" transform="rotate(-90 ${x - 4} ${(30 + h * sc / 2).toFixed(1)})">${label}</text>`;
     // FRONT(x-z) · PLAN(x-y | 회전체=원) · SIDE(y-z)
     const front = `<svg ${vw(dx, dz)}>${rect(dx, dz)}${dimH(dx, (30 + dz * sc + 14), fmt(dx))}${dimV(dz, 18, fmt(dz))}${isRot ? `<line x1="${(30 + dx * sc / 2).toFixed(1)}" y1="24" x2="${(30 + dx * sc / 2).toFixed(1)}" y2="${(36 + dz * sc).toFixed(1)}" stroke="#94a3b8" stroke-width=".6" stroke-dasharray="8 2 2 2"/>` : ''}</svg>`;
@@ -99,7 +129,7 @@ export function partSheets(assembly, { title = '부품 제작도', dwgPrefix = '
 <tr><td>Type</td><td>${esc(p.type)}</td><td>재질</td><td>${esc(p.material ?? '-')}</td></tr>
 <tr><td>엔벨로프</td><td>${fmt(dx)}×${fmt(dy)}×${fmt(dz)}</td><td>발주 규격</td><td>${esc(std || '- (가공품)')}</td></tr>
 <tr><td>도번</td><td data-dwg="${dwgNo}">${dwgNo}</td><td>시트</td><td>${i + 1} / ${N}</td></tr>
-${PARAMS[p.type] ? `<tr><td>제작 치수</td><td colspan="3" style="text-align:left" class="nf-paramdims">${PARAMS[p.type].map((k) => `${k}=${p.params?.[k] ?? '—'}`).join(' · ')}</td></tr>` : ''}
+${PARAMS[p.type] ? `<tr><td>제작 치수</td><td colspan="3" style="text-align:left" class="nf-paramdims">${PARAMS[p.type].map((k) => `${k}=${dimVal(p.params?.[k])}`).join(' · ')}</td></tr>` : ''}
 </tbody></table>${holeTable}
 <div class="note">공차·표면 거칠기·용접 상세=입력 원칙(GD&T 연동 후속) · 회전체 실형상은 STEP 참조(본 도면=엔벨로프+주요 치수)</div></div>`;
   }).join('');
@@ -137,7 +167,7 @@ ${omitted.map((g, k) => {
   const q = g.rep;
   const [ox, oy, oz] = g.dims.map((v) => Math.max(v, 0));
   const dimTxt = PARAMS[q.type]
-    ? PARAMS[q.type].map((key) => `${key}=${q.params?.[key] ?? '—'}`).join(' · ')
+    ? PARAMS[q.type].map((key) => `${key}=${dimVal(q.params?.[key])}`).join(' · ')
     : '—';
   return `<tr><td>${maxSheets + k + 1}</td><td style="text-align:left">${esc(q.id ?? q.type)}</td><td>${esc(q.type)}</td><td>${g.count}</td><td>${fmt(ox)}×${fmt(oy)}×${fmt(oz)}</td><td style="text-align:left" class="nf-paramdims">${esc(dimTxt)}</td><td>${esc(q.material ?? '-')}</td></tr>`;
 }).join('')}
