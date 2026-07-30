@@ -6,6 +6,11 @@
  * 머리치수 표) · sheet_profile(다단 절곡 판금 — 세그먼트+각도 열로 Z/햇/채널 임의 단면).
  * 프로파일 생성기(gearPoly/hexPts/sheetPoly)는 export — assembly(STEP)·BOQ·프리셋 공용.
  */
+// 공차 단일 소스 — 접촉 vs 관통 분류는 부품 간 간섭과 **같은 값**을 쓴다(260801d).
+// ⚠ 이 모듈은 의존 그래프의 밑단이라 import 가 없었다. `geometry-tolerance.mjs` 도
+//   import 가 없어 순환이 생기지 않는다 — 공차를 여기서 다시 적으면 단일 소스가 깨진다.
+import { TOL_CONTACT } from './geometry-tolerance.mjs';
+
 const pos = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0;
 const RAD = Math.PI / 180;
 
@@ -198,6 +203,65 @@ function rotateXYZ([x, y, z], rx, ry, rz) {
   if (ry) { const c = Math.cos(ry * RAD), s2 = Math.sin(ry * RAD); q = [q[0] * c + q[2] * s2, q[1], -q[0] * s2 + q[2] * c]; }
   if (rz) { const c = Math.cos(rz * RAD), s2 = Math.sin(rz * RAD); q = [q[0] * c - q[1] * s2, q[0] * s2 + q[1] * c, q[2]]; }
   return q;
+}
+
+/**
+ * 점이 폴리곤 내부인가 — ray casting (260801d).
+ * 경계 위는 내부로 보지 않는다.
+ */
+function pointInPoly(px, py, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i], b = poly[j];
+    if ((a[1] > py) !== (b[1] > py) && px < ((b[0] - a[0]) * (py - a[1])) / (b[1] - a[1]) + a[0]) inside = !inside;
+  }
+  return inside;
+}
+
+/** 점에서 폴리곤 경계까지의 최단거리. */
+function distToPoly(px, py, poly) {
+  let best = Infinity;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const L2 = dx * dx + dy * dy;
+    const t = L2 > 0 ? Math.max(0, Math.min(1, ((px - a[0]) * dx + (py - a[1]) * dy) / L2)) : 0;
+    best = Math.min(best, Math.hypot(px - (a[0] + t * dx), py - (a[1] + t * dy)));
+  }
+  return best;
+}
+
+/** 홀의 **외경**(카운터보어·싱크 머리 포함) — 판 밖으로 나가면 안 되는 지름. */
+function holeOuterDia(h) {
+  const d = Number(h.d);
+  if (h.kind === 'cbore' && Number(h.cbDia) > d) return Number(h.cbDia);
+  if (h.kind === 'csink' && Number(h.csDia) > d) return Number(h.csDia);
+  return d;
+}
+
+/**
+ * 배치된 하위 부품의 월드 AABB — `composite` 하위 검증용 (260801d).
+ * `placedAabb`(assembly.mjs)와 같은 규약이지만 순환 import 를 피해 여기서 구한다.
+ */
+function subAabb(sb) {
+  const b = partAabb({ type: sb.type, ...sb.params });
+  const t = [Number(sb.at?.tx) || 0, Number(sb.at?.ty) || 0, Number(sb.at?.tz) || 0];
+  const r = [Number(sb.at?.rx) || 0, Number(sb.at?.ry) || 0, Number(sb.at?.rz) || 0];
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (const cx of [b.min[0], b.max[0]]) {
+    for (const cy of [b.min[1], b.max[1]]) {
+      for (const cz of [b.min[2], b.max[2]]) {
+        const q = rotateXYZ([cx, cy, cz], r[0], r[1], r[2]);
+        for (const k of [0, 1, 2]) { lo[k] = Math.min(lo[k], q[k] + t[k]); hi[k] = Math.max(hi[k], q[k] + t[k]); }
+      }
+    }
+  }
+  return { min: lo, max: hi };
+}
+
+/** 두 AABB 의 축별 겹침(음수=떨어짐) — 최소값이 관통깊이다. */
+function aabbOverlap(a, b) {
+  return [0, 1, 2].map((k) => Math.min(a.max[k], b.max[k]) - Math.max(a.min[k], b.min[k]));
 }
 
 export function compositeSubs(i) {
@@ -710,6 +774,40 @@ const GATES = {
       if (h.pattern) e.push(`holes[${n}] pattern.kind 미지원(linear|circular) 또는 count/pitch/bcd 누락 — 펼치지 못했다`);
       holeDetailGate(h, i.depth, `holes[${n}]`, e);
     }
+    /**
+     * ⚠ 260801d — **홀이 판 안에 있는지 검사하지 않았다.**
+     *
+     * `plate_with_holes` 는 `hole[n] x outside` 로 거부하는데 여기는 통과시켰다.
+     * 실측: 폭 200 판에 x=500 홀이 게이트를 통과했다 — **없는 홀의 부피가 빠져 질량이
+     * 과소**해진다. 패턴은 더 위험하다(선언 1건이 판 밖으로 뻗는다: `count:6, pitch:60`
+     * 이 x=320 까지 갔다). 카운터보어·싱크는 **머리 외경**으로 잰다(머리가 판 밖이면 가공 불가).
+     *
+     * 홀끼리 겹침도 검사한다 — 겹치면 부피가 **이중으로 빠진다**(실측: x=50·52 에 ⌀20 두 개
+     * 가 통과했다). 접촉 여유는 공차 사다리(`TOL_CONTACT`)를 쓴다.
+     */
+    let poly = null;
+    try { poly = extrudePoly(i); } catch { poly = null; }
+    if (poly) {
+      const hs = expandHoles(i.holes).filter((h) => pos(h?.d) && Number.isFinite(h?.x) && Number.isFinite(h?.y));
+      for (const [n, h] of hs.entries()) {
+        const R = holeOuterDia(h) / 2;
+        if (!pointInPoly(h.x, h.y, poly)) {
+          e.push(`holes[${n}] 중심(${Math.round(h.x)},${Math.round(h.y)})이 판 외곽 밖이다`);
+          continue;
+        }
+        const dEdge = distToPoly(h.x, h.y, poly);
+        if (dEdge < R) e.push(`holes[${n}] 이 판 외곽을 넘는다(경계까지 ${dEdge.toFixed(1)}mm < 반경 ${R.toFixed(1)}mm)`);
+      }
+      for (let x = 0; x < hs.length; x++) {
+        for (let y = x + 1; y < hs.length; y++) {
+          const need = (holeOuterDia(hs[x]) + holeOuterDia(hs[y])) / 2;
+          const dist = Math.hypot(hs[x].x - hs[y].x, hs[x].y - hs[y].y);
+          if (dist < need - TOL_CONTACT) {
+            e.push(`holes[${x}]·holes[${y}] 가 겹친다(중심거리 ${dist.toFixed(1)}mm < 필요 ${need.toFixed(1)}mm) — 부피가 이중으로 빠진다`);
+          }
+        }
+      }
+    }
     for (const [n, f] of (i.fillets ?? []).entries()) {
       if (!Number.isInteger(Number(f?.i)) || !pos(f?.r)) e.push(`fillets[${n}] invalid({i:정수, r>0})`);
     }
@@ -722,6 +820,46 @@ const GATES = {
     // 하위 각각을 **자기 게이트**로 검사한다 — 여기서 다시 구현하면 규칙이 갈린다.
     for (const [n, sb] of subs.entries()) {
       for (const msg of gate({ type: sb.type, ...sb.params })) e.push(`subs[${n}](${sb.type}) ${msg}`);
+    }
+    if (e.length) return;   // 하위가 성립하지 않으면 배치 검증은 의미가 없다
+    /**
+     * ⚠ 260801d — **하위 간 중첩을 검사하지 않았다.**
+     *
+     * 부피가 `Σ add − Σ subtract` 라 add 끼리 겹치면 **그만큼 과대**해진다.
+     * 실측: 같은 자리 100³ 블록 2개 → 질량 15.7kg(실제 7.85kg, **2배**).
+     * 어휘 힌트에 「겹침 미공제」라고 적어 뒀지만 **적어 두는 것과 검사하는 것은 다르다** —
+     * 사용자는 질량이 2배로 나가는 것을 알 방법이 없었다. 이 세션 내내 막아 온
+     * 「고지만 하고 검사가 없는」 형태를 내가 만든 것이었다.
+     *
+     * 부품 간 중첩과 **같은 규약**을 쓴다: 접촉(≤ `TOL_CONTACT`)은 정상, 그 이상은 관통.
+     * 리브가 베이스판에 얹히는 것은 접촉이라 통과해야 한다.
+     */
+    let boxes = null;
+    try { boxes = subs.map((sb) => ({ sb, bb: subAabb(sb) })); } catch { boxes = null; }
+    if (!boxes) return;
+    const adds = boxes.filter((x) => x.sb.op === 'add');
+    for (let a = 0; a < adds.length; a++) {
+      for (let b = a + 1; b < adds.length; b++) {
+        const ov = aabbOverlap(adds[a].bb, adds[b].bb);
+        const depth = Math.min(...ov);
+        if (depth > TOL_CONTACT) {
+          const vol = Math.round(ov[0] * ov[1] * ov[2]);
+          e.push(`add 하위 ${subs.indexOf(adds[a].sb)}·${subs.indexOf(adds[b].sb)} 가 관통한다`
+            + `(겹침 ${vol}mm³ · 깊이 ${depth.toFixed(1)}mm > 접촉 여유 ${TOL_CONTACT}mm)`
+            + ' — 부피가 그만큼 과대해진다(겹침은 공제하지 않는다)');
+        }
+      }
+    }
+    /**
+     * ⚠ **빼기 하위가 어느 add 와도 겹치지 않으면** 뺄 것이 없는데 부피에서는 빠진다.
+     *   실측: 멀리 떨어진 ⌀20 원통이 0.157kg 을 **없는 자리에서** 뺐다(7.85 → 7.7kg).
+     */
+    for (const cut of boxes.filter((x) => x.sb.op === 'subtract')) {
+      const hits = adds.some((ad) => aabbOverlap(ad.bb, cut.bb).every((v) => v > 0));
+      if (!hits) {
+        e.push(`subtract 하위 ${subs.indexOf(cut.sb)}(${cut.sb.type}) 가 어느 add 와도 겹치지 않는다`
+          + ' — 뺄 것이 없는데 부피에서는 빠진다(배치를 확인할 것)');
+      }
     }
   },
   masonry_block(i, e) {

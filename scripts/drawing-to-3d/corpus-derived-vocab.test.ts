@@ -478,3 +478,78 @@ describe('새 템플릿의 판정 — 형상이 답을 가진 것만 (260801b, �
     expect(r.checks.edgeDistance.verdict).toBe('FAIL');
   });
 });
+
+describe('★ 「고지만 하고 검사가 없는」 다섯 구멍 (260801d)', () => {
+  /**
+   * 「공차·에러·중첩이 잘 판단되는가」를 물어 재 보니 **부피가 조용히 틀리는 경로 5개**가
+   * 나왔다. 전부 같은 부류다 — 어휘 힌트에 「겹침 미공제」처럼 **적어 두기만 하고**
+   * 검사가 없었다. 적어 두는 것과 검사하는 것은 다르다: 사용자는 질량이 2배로 나가는 것을
+   * 알 방법이 없었다. 이 세션 내내 막아 온 형태를 내가 만든 것이었다.
+   *
+   * 접촉 vs 관통 분류는 **부품 간 간섭과 같은 값**(`TOL_CONTACT`)을 쓴다 — 공차 단일 소스.
+   */
+  const prof = [[0, 0], [200, 0], [200, 120], [0, 120]];
+  const mk = (type: string, params: unknown) => (buildAssembly as unknown as (a: unknown) => { gateErrors?: string[] })({
+    name: 't', domain: 'mech', parts: [{ id: 'p', type, params, at: {}, material: 'steel' }],
+  });
+  const errs = (type: string, params: unknown) => (mk(type, params).gateErrors ?? []).join(' ');
+
+  it('① 홀 중심이 판 밖이면 거부한다 — 없는 홀이 부피를 빼면 질량이 과소해진다', () => {
+    expect(errs('extrude_profile', { profile: prof, depth: 20, holes: [{ x: 500, y: 60, d: 12 }] }))
+      .toContain('판 외곽 밖이다');
+  });
+
+  it('② 홀이 외곽을 넘으면 거부한다 — 카운터보어는 **머리 외경**으로 잰다', () => {
+    expect(errs('extrude_profile', { profile: prof, depth: 20, holes: [{ x: 5, y: 60, d: 20 }] }))
+      .toContain('판 외곽을 넘는다');
+    // 중심은 안쪽이지만 ⌀30 머리가 넘는 경우 — 관통홀 기준으로는 통과할 수 있다
+    expect(errs('extrude_profile', { profile: prof, depth: 20, holes: [{ x: 12, y: 60, d: 12, kind: 'cbore', cbDia: 30, cbDepth: 8 }] }))
+      .toContain('반경 15.0mm');
+  });
+
+  it('③ 홀끼리 겹치면 거부한다 — 부피가 이중으로 빠진다', () => {
+    expect(errs('extrude_profile', { profile: prof, depth: 20, holes: [{ x: 50, y: 60, d: 20 }, { x: 52, y: 60, d: 20 }] }))
+      .toContain('이중으로 빠진다');
+  });
+
+  it('④ **패턴 전개분 전부**를 검사한다 — 선언 1건이 판 밖으로 뻗는다', () => {
+    const e = errs('extrude_profile', { profile: prof, depth: 20, holes: [{ x: 20, y: 60, d: 12, pattern: { kind: 'linear', count: 6, pitch: 60 } }] });
+    expect(e).toContain('holes[3]');
+    expect(e).toContain('holes[5]');   // 전개된 것 전부를 짚는다(첫 건만 잡으면 나머지를 모른다)
+  });
+
+  it('⑤ 복합 add 하위가 관통하면 거부한다 — 부피가 그만큼 과대하다', () => {
+    const e = errs('composite', {
+      subs: [
+        { type: 'box', params: { width: 100, depth: 100, height: 100 }, op: 'add' },
+        { type: 'box', params: { width: 100, depth: 100, height: 100 }, op: 'add' },
+      ],
+    });
+    expect(e).toContain('관통한다');
+    expect(e).toContain('1000000mm³');   // 겹침 부피를 수치로 말한다
+  });
+
+  it('⑥ 빼기 하위가 어느 add 와도 안 겹치면 거부한다 — 뺄 것이 없는데 부피가 빠진다', () => {
+    expect(errs('composite', {
+      subs: [
+        { type: 'box', params: { width: 100, depth: 100, height: 100 }, op: 'add' },
+        { type: 'cylinder', params: { diameter: 20, length: 50 }, at: { tx: 900, ty: 900 }, op: 'subtract' },
+      ],
+    })).toContain('뺄 것이 없는데');
+  });
+
+  it('★정상 형상은 통과한다 — 과고지도 결함이다', () => {
+    // 접촉(리브가 판에 얹힘)은 관통이 아니다. 실제 템플릿 3종이 통과해야 한다.
+    expect(errs('extrude_profile', { profile: prof, depth: 20, holes: [{ x: 50, y: 60, d: 12 }, { x: 150, y: 60, d: 12 }] })).toBe('');
+    expect(errs('composite', {
+      subs: [
+        { type: 'box', params: { width: 200, depth: 100, height: 50 }, op: 'add' },
+        { type: 'cylinder', params: { diameter: 30, length: 60 }, at: { tx: 100, ty: 50, tz: -5 }, op: 'subtract' },
+      ],
+    })).toBe('');
+    for (const [d, id] of [['mech', 'motor_mount'], ['mech', 'gusset_bracket'], ['building', 'masonry_wall']]) {
+      const r = (buildAssembly as unknown as (a: unknown) => { gateErrors?: string[] })(buildAssemblyTemplate(d, id, {}));
+      expect(r.gateErrors ?? [], `${d}/${id}`).toEqual([]);
+    }
+  });
+});
