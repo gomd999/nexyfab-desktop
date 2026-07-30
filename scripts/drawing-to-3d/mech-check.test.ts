@@ -58,10 +58,28 @@ describe('mechCheck — 선언값만으로 판정 가능한 것만 판정한다'
   });
 
   it('적용 가능한 검사가 없으면 null — "검증 없음"과 "통과"는 다르다', () => {
-    // ⚠ 260729 계약 변경: 예시를 pump_unit → flanged_fitting 으로 바꿨다. 펌프는
-    // 볼류트·노즐 기하가 선언돼 있어 이제 **판정 대상**이다(하드 기하 순서). 메타가
-    // 아예 없는 flanged_fitting 이 "적용 검사 없음"의 올바른 예다.
-    expect(mechCheck(tpl('mech', 'flanged_fitting', {}))).toBeNull();
+    /**
+     * ⚠ 예시를 **두 번** 옮겼다. 260729: pump_unit → flanged_fitting(펌프에 볼류트·노즐
+     *   기하가 생겨 판정 대상이 됐다). 260802: flanged_fitting → 합성 어셈블리
+     *   (**플랜지 짝 정합** 검토가 생겨 판정 대상이 됐다 — 5도메인 감사에서 이 템플릿만
+     *   미도달이었고, 형상이 답을 갖고 있어 채웠다).
+     *
+     * ⚠ **불변식은 그대로다**: 적용 가능한 검사가 없으면 `null` — 「검증 없음」과 「통과」는
+     *   다르다. 픽스처가 낡은 것이지 계약이 바뀐 것이 아니므로 **예시만 옮긴다.**
+     * ⚠ 지금 mech 템플릿 18종은 **전부 판정 대상**이다(260802 실측). 그래서 예시를
+     *   템플릿이 아니라 합성 어셈블리로 둔다 — 다음에 또 옮기지 않아도 된다.
+     */
+    const bare = {
+      name: 't', domain: 'mech',
+      parts: [{ id: 'b', type: 'box', params: { width: 100, depth: 100, height: 100 }, at: {}, material: 'steel' }],
+    };
+    expect(mechCheck(bare as never)).toBeNull();
+    // 플랜지가 **한 장**이면 짝이 없다 — 짝 정합은 성립하지 않는다.
+    const oneFlange = {
+      name: 't', domain: 'mech',
+      parts: [{ id: 'f', type: 'flange', params: { outerDia: 200, boreDia: 100, thickness: 16, bcd: 160, boltHoleD: 18, boltCount: 8 }, at: {}, material: 'steel' }],
+    };
+    expect(mechCheck(oneFlange as never)).toBeNull();
     expect(mechCheck({})).toBeNull();
   });
 });
@@ -81,8 +99,13 @@ describe('domainSafetyVerdict — mech 배선 + "확인 못 함"과 "기준 미�
   });
 
   it('적용 검토가 없는 mech 어셈블리는 종전대로 null', () => {
-    // 260729: pump_unit 은 이제 판정 대상 — 메타 없는 flanged_fitting 으로 교체.
-    expect(domainSafetyVerdict(tpl('mech', 'flanged_fitting', {}), {})).toBeNull();
+    // ⚠ 260802: flanged_fitting 도 판정 대상이 됐다(플랜지 짝 정합). 위 검사와 같은 이유로
+    //   **템플릿이 아니라 합성 어셈블리**를 쓴다 — mech 템플릿 18종은 전부 판정 대상이다.
+    const bare = {
+      name: 't', domain: 'mech',
+      parts: [{ id: 'b', type: 'box', params: { width: 100, depth: 100, height: 100 }, at: {}, material: 'steel' }],
+    };
+    expect(domainSafetyVerdict(bare as never, {})).toBeNull();
   });
 });
 
@@ -254,8 +277,16 @@ describe('정적 전도 — 있는 계산이 판정에 닿는다 (260729b, P1-5)
     for (const id of ['tower_crane', 'conveyor', 'gear_train', 'mold_cavity']) {
       expect(chk(id)?.checks?.staticTipover, id).toBeDefined();
     }
-    // ⚠ 적용 검사가 없는 것(배관 부속)에는 붙이지 않는다 — 「검증 없음」과 「통과」의 구별.
-    expect(chk('flanged_fitting')).toBeNull();
+    /**
+     * ⚠ 적용 검사가 없는 것에는 붙이지 않는다 — 「검증 없음」과 「통과」의 구별.
+     *   260802: 예시를 `flanged_fitting` 에서 옮겼다(플랜지 짝 정합이 생겨 판정 대상이 됐다).
+     *   mech 템플릿 18종은 이제 **전부 판정 대상**이라, 예시는 합성 어셈블리로 둔다.
+     */
+    const bare = {
+      name: 't', domain: 'mech',
+      parts: [{ id: 'b', type: 'box', params: { width: 100, depth: 100, height: 100 }, at: {}, material: 'steel' }],
+    };
+    expect(mechCheck(bare as never)).toBeNull();
   });
 
   it('무게중심이 지지 밖이면 **얼마나** 벗어났는지 적는다', () => {

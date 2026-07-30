@@ -220,6 +220,7 @@ function renderRun(run) {
 import { interiorCheck } from './interior-check.mjs';
 import { interiorComponentCheck } from './interior-component-check.mjs';
 import { landscapeCheck } from './landscape-check.mjs';
+import { civilCheck } from './civil-check.mjs';
 import { railingCheck } from './railing-check.mjs';
 import { masonryCheck } from './masonry-check.mjs';
 import * as bridgeMod from './bridge-check.mjs';
@@ -298,6 +299,16 @@ function runDomainSafetyCheck(assembly, params) {
     return { label: '실내건축 검토 (피난·수용인원 등)', result: interiorCheck(assembly, params) };
   }
   if (domain === 'landscape') return { label: '조경 검토 (목재부재·배수 등)', result: landscapeCheck(assembly, params) };
+  /**
+   * ★260802 — **`civil` 분기가 아예 없었다.** 5도메인 중 유일하게 안전검토 계층이 없어
+   *   판정 0개(템플릿 3종 전부)로 나왔다. 계산기 검증은 도달하고 있었으므로 「검토가 없다」가
+   *   아니라 **「안전검토가 없다」**였다 — 실측으로 구별한 뒤에야 옳게 고칠 수 있었다.
+   * ⚠ 전도·활동·지지력·라멘 단면력은 **계산기가 한다.** 여기서는 형상 비례만 본다(중복 금지).
+   */
+  if (domain === 'civil') {
+    const cv = civilCheck(assembly);
+    if (cv) return { label: cv.label, result: cv };
+  }
   if (domain === 'bridge') {
     const disp = BRIDGE_DISPATCH.find((d) => assembly[d.meta] && typeof bridgeMod[d.fn] === 'function');
     const fn = disp ? bridgeMod[disp.fn] : bridgeMod.bridgeCheck;

@@ -565,5 +565,78 @@ function mechCheckInner(assembly, params = {}) {
       { name: 'conductorTensionKN', labelKo: '전선 장력(kN)' },
     ]);
   }
+  /**
+   * ★260802 — **플랜지 짝 정합.** 메타가 없는 어셈블리는 여기까지 흘러와 `null` 이 됐고,
+   * 5도메인 54템플릿 중 `flanged_fitting` 하나만 **소비자 문서에 아무것도 안 닿았다**
+   * (형태 ① — 계산은커녕 검토 자체가 없었다).
+   *
+   * 그런데 **형상이 답을 갖고 있다**: 플랜지 두 장이 볼트로 맞물리려면 `bcd`·`boltCount`
+   * ·`boltHoleD` 가 같아야 하고, 보어는 관 외경보다 커야 한다. 안 맞으면 **실제로 조립이
+   * 안 된다** — 하중이 없어도 판정할 수 있는 항목이다.
+   *
+   * ⚠ 압력·개스킷·볼트 등급은 **보지 않는다**(선언되지 않았다). 치수 정합만이다.
+   */
+  const flanges = (assembly.parts ?? []).filter((p) => p.type === 'flange' && p.unverified !== true);
+  if (flanges.length >= 2) return checkFlangePair(assembly, flanges);
   return null; // 적용 가능한 검토 없음 — mech 이라도 모든 어셈블리가 대상은 아니다
+}
+
+/** 두 플랜지가 서로 맞물리는가 + 보어가 관을 받는가. 전부 형상 파생. */
+function checkFlangePair(assembly, flanges) {
+  const [a, b] = flanges;
+  const pa = a.params ?? {}, pb = b.params ?? {};
+  const checks = {};
+  const eq = (x, y) => Number.isFinite(Number(x)) && Number.isFinite(Number(y)) && Math.abs(Number(x) - Number(y)) < 1e-6;
+
+  checks.boltPattern = {
+    labelKo: `플랜지 볼트 배치 정합 — ${a.id} ↔ ${b.id}`,
+    pass: eq(pa.bcd, pb.bcd) && eq(pa.boltCount, pb.boltCount) && eq(pa.boltHoleD, pb.boltHoleD),
+    detail: [
+      `B.C.D. ${pa.bcd} ↔ ${pb.bcd} · 볼트수 ${pa.boltCount} ↔ ${pb.boltCount} · 볼트홀 ⌀${pa.boltHoleD} ↔ ⌀${pb.boltHoleD}`,
+      eq(pa.bcd, pb.bcd) && eq(pa.boltCount, pb.boltCount) && eq(pa.boltHoleD, pb.boltHoleD)
+        ? '세 값이 모두 일치한다 — 볼트가 들어간다.'
+        : '**하나라도 다르면 볼트가 들어가지 않는다.** 같은 규격의 짝을 쓰거나 어댑터가 필요하다.',
+    ],
+    note: '치수 정합만 본다 — 압력 등급(PN·Class)·개스킷·볼트 강도는 선언되지 않아 미검토.',
+  };
+
+  /**
+   * 보어 ↔ 관 외경. 관이 보어보다 크면 **끼워지지 않는다.**
+   * ⚠ 관이 없으면 이 검토는 **해당 없음**이다 — 「이상 없음」으로 적지 않는다.
+   */
+  const pipe = (assembly.parts ?? []).find((p) => p.type === 'pipe_elbow' || p.type === 'tube' || p.type === 'pipe_tee');
+  const od = Number(pipe?.params?.od ?? pipe?.params?.outerDia);
+  if (pipe && od > 0) {
+    const bore = Math.min(Number(pa.boreDia), Number(pb.boreDia));
+    checks.borePipe = {
+      labelKo: `플랜지 보어 ⌀${bore} ↔ 관 외경 ⌀${od}`,
+      pass: bore >= od,
+      detail: [
+        bore >= od
+          ? `여유 ${(bore - od).toFixed(1)}mm — 관이 보어를 통과한다.`
+          : `**관이 보어보다 ${(od - bore).toFixed(1)}mm 크다** — 끼워지지 않는다.`,
+      ],
+      note: '용접·삽입식 구분과 삽입 깊이는 선언되지 않아 미검토.',
+    };
+  }
+
+  return {
+    ok: true,
+    label: '플랜지 접합 검토 (배치 정합·보어)',
+    checks,
+    basis: { flanges: flanges.length, pipe: pipe?.id ?? null },
+    notChecked: [
+      {
+        labelKo: '압력 등급·개스킷·볼트 강도',
+        messageKo: '**압력·유체·온도가 선언되지 않아** 등급(PN·Class)과 개스킷·볼트 강도를 판정할 수 없다. '
+          + '치수가 맞아도 **압력을 못 견디면 무의미하다.**',
+      },
+      {
+        labelKo: '관 두께·용접부',
+        messageKo: '내압에 대한 관 두께와 용접부 건전성은 미검토(설계압 미선언).',
+      },
+    ],
+    refs: ['치수 정합(형상 파생) — 압력 등급 기준은 미적용'],
+    disclaimer: '개념 검토(비법정) — 치수 정합만. 압력 배관은 관련 코드(KS B 1503 등) 검토가 별도로 필요하다.',
+  };
 }
