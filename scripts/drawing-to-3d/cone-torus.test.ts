@@ -194,6 +194,8 @@ describe('BOQ 표면적 커버리지', () => {
         if (boq({ parts: [{ id: t, type: t, params: canon[t] }] }).items[0]!.surfaceM2 == null) missing.push(t);
       } catch { missing.push(`${t}(err)`); }
     }
+    // ⚠ `mesh` 는 **커널이 areaMm2 를 실었을 때만** 산출된다. 전수 인벤토리의 대표값에는
+    //   그 필드가 없으므로 여기서는 여전히 미산출이다 — 그게 맞는 동작이다.
     expect(missing.sort(), `미산출: ${missing.join(', ')}`).toEqual(['composite', 'mesh']);
   });
 
@@ -206,5 +208,30 @@ describe('BOQ 표면적 커버리지', () => {
       const v = boq({ parts: [{ id: t, type: t, params: canon[t] }] }).items[0]!.surfaceM2;
       expect(v, t).toBeGreaterThan(0);
     }
+  });
+});
+
+/**
+ * ★커널이 실은 표면적을 BOQ 가 **쓰는가** (260802).
+ *
+ * 종전 주석: 「메시 실면적은 삼각형 합으로 낼 수 있으나 `volumeMm3` 같은 **선언 채널이
+ * 없어** 지어내지 않는다」. 그런데 커널 임포트가 이제 `areaMm2` 를 **정확값**으로 싣는다
+ * (기준 형상 실측 오차 0.000000%). **있는 것을 안 쓰고 「미산출」이라 적는 것**은
+ * 이 세션 내내 잡아 온 형태 ①이다.
+ */
+describe('메시 표면적 — 선언된 값만 쓴다', () => {
+  it('★커널이 areaMm2 를 실으면 BOQ 가 그 값을 쓴다', async () => {
+    const { computeBOQ } = await import('./boq.mjs');
+    const boq = computeBOQ as unknown as (a: unknown) => { items: Array<{ surfaceM2: number | null }>; surfaceMissing?: string[] };
+    const r = boq({ parts: [{ id: 'k', type: 'mesh', params: { volumeMm3: 284230, areaMm2: 123456 } }] });
+    expect(r.items[0]!.surfaceM2).toBeCloseTo(0.123, 3);
+    expect(r.surfaceMissing ?? []).not.toContain('mesh');
+  });
+
+  it('★선언이 없으면 **여전히 미산출**이다 — 삼각형 합을 여기서 지어내지 않는다', () => {
+    const r = (computeBOQ as unknown as (a: unknown) => { items: Array<{ surfaceM2: number | null }>; surfaceMissing?: string[] })(
+      { parts: [{ id: 'k', type: 'mesh', params: { volumeMm3: 284230 } }] });
+    expect(r.items[0]!.surfaceM2).toBeNull();
+    expect(r.surfaceMissing ?? []).toContain('mesh');
   });
 });

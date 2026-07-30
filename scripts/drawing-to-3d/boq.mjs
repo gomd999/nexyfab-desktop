@@ -213,10 +213,19 @@ function surfaceMm2(type, p) {
       const capArea = Math.abs(area2) / 2;
       return lateral + (frac < 1 ? 2 * capArea : 0);
     }
+    /**
+     * ★260802 — **메시에 선언 채널이 생겼다.** 종전 주석은 「메시 실면적은 삼각형 합으로
+     *   낼 수 있으나 `volumeMm3` 같은 선언 채널이 없어 지어내지 않는다」였다.
+     *   그런데 커널 임포트(`stepKernelImport`)가 이제 **`areaMm2` 를 정확값으로 싣는다**
+     *   (기준 형상 실측 오차 0.000000%). **있는 것을 안 쓰고 「미산출」이라 적는 것**은
+     *   이 세션 내내 잡아 온 형태 ①(있는 것이 안 닿음)이다.
+     * ⚠ **선언돼 있을 때만** 쓴다. 없으면 종전대로 미산출이다 — 삼각형 합을 여기서
+     *   다시 계산하지 않는다(정점이 없는 메시 부품도 있고, 커널 값이 더 정확하다).
+     */
+    case 'mesh':
+      return Number(p?.areaMm2) > 0 ? Number(p.areaMm2) : null;
     // ⚠ 아래는 폐형이 서지 않는다 — **0 이 아니라 미산출**(computeBOQ 가 이름으로 고지).
-    //   pipe_tee(접합부 교선) · pillow_block(렌즈 보어) · cavity_block(재귀 음형) ·
-    //   revolve/mesh(임의 형상). 메시 실면적은 삼각형 합으로 낼 수 있으나 부피와 달리
-    //   `volumeMm3` 같은 선언 채널이 없어 지어내지 않는다.
+    //   composite(접촉면 미상) · revolve 일부(임의 형상).
     default: return null;
   }
 }
