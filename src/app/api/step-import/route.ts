@@ -69,6 +69,9 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { importStep, StepImportError } from '@/lib/brep-bridge/stepImport';
+import { importStepWithKernel } from '@/lib/brep-bridge/stepKernelImport';
+/** 커널 폴백 크기 상한 — 실측(코퍼스 최대 7.3MB)을 덮되 서버 메모리를 지키는 값. */
+const KERNEL_FALLBACK_MAX_BYTES = 8_000_000;
 import { validateStep } from '@/lib/brep-bridge/stepValidator';
 
 export const runtime = 'nodejs';
@@ -199,6 +202,30 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const result = importStep(source);
+    /**
+     * 커널 폴백 (260801i) — **분류기가 바디를 하나도 못 냈을 때만** 커널(OCCT)로 넘긴다.
+     *
+     * 실측 근거: 실물 CAD 코퍼스 35파일 중 분류기는 **1파일**, 커널은 **34파일**을 받는다.
+     * 분류기가 성공한 것을 커널로 덮지 않는다 — 분류기 결과는 **파라메트릭**이고
+     * 커널 결과는 실측 메시라, 덮으면 편집성을 잃는다(상위 호환이 아니다).
+     *
+     * ⚠ 크기 상한을 둔다. OCCT 는 WASM 힙을 쓰고 장수 서버에서 누적된다 —
+     *   실측: 코퍼스 35파일을 한 프로세스에서 연속 처리하면 힙 3.7GB 에서 죽었다.
+     *   상한을 넘으면 **거부하고 이유를 적는다**(잘라서 받으면 형상이 거짓이 된다).
+     */
+    let kernel: Awaited<ReturnType<typeof importStepWithKernel>> | null = null;
+    if (result.tree.nodes.length === 0) {
+      if (source.length > KERNEL_FALLBACK_MAX_BYTES) {
+        kernel = {
+          ok: false, parts: [], warnings: [], elapsedMs: 0,
+          reason: `분류기가 받지 못했고, 커널 폴백은 ${(KERNEL_FALLBACK_MAX_BYTES / 1e6).toFixed(0)}MB 상한을 넘어 돌리지 않았다`
+            + ' — 서버 메모리 보호(실측: 대형 파일 연속 처리 시 힙 고갈).',
+        };
+      } else {
+        try { kernel = await importStepWithKernel(source, { idPrefix: 'kernel' }); }
+        catch (e) { kernel = { ok: false, parts: [], warnings: [], elapsedMs: 0, reason: `커널 폴백 실패: ${String((e as Error)?.message ?? e).slice(0, 160)}` }; }
+      }
+    }
     // Merge importer-time advisories with validator warnings. The importer
     // warnings come first (they reflect heal/parse decisions the user might
     // want to act on); validator warnings follow with a `validate:` prefix
@@ -210,9 +237,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       ok: true,
       tree: result.tree,
-      warnings: mergedWarnings,
+      warnings: [...mergedWarnings, ...(kernel?.warnings ?? [])],
       unsupported: result.unsupported,
       validation: validationEnvelope,
+      /**
+       * 커널 폴백 결과는 **별도 필드**로 나간다 — `tree`(파라메트릭)와 섞으면 소비자가
+       * 편집 가능한 것과 아닌 것을 구별할 수 없다. 시도했는데 실패한 경우도 실어서
+       * 「필드 없음 = 시도 안 함」과 「시도했으나 실패」를 구별한다.
+       */
+      ...(kernel ? { kernelFallback: {
+        ok: kernel.ok,
+        parts: kernel.parts,
+        reason: kernel.reason,
+        elapsedMs: kernel.elapsedMs,
+        fidelity: 'kernel-mesh',
+      } } : {}),
     });
   } catch (err) {
     // Only StepImportError (or other thrown errors from importStep) reach
