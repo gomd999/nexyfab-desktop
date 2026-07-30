@@ -68,6 +68,16 @@ const CHECK_LABEL_KO = {
   egressUnavailable: '피난 검토 불가',
   x: 'X방향', y: 'Y방향', xs_mm: 'X 격자선(mm)', ys_mm: 'Y 격자선(mm)',
   farthestPointMm: '최원점 거리(mm)', deadShare_kN: '고정하중 분담(kN)',
+  /**
+   * ⚠ 260731b — **입력을 주면 열리는 분기**에만 나오는 키들이다. 앞 세션의 전수 측정은
+   * params 1조합만 돌려서 이것들을 한 번도 보지 못했다(소제목 590 → 626, 영문 2종 → 11종).
+   * 고지는 정상 작동했지만 **「고지됨」은 「읽힘」이 아니다** — `all` 이라는 소제목은
+   * 독자에게 아무 뜻이 없었다. 실제 내용을 확인하고 이름을 붙였다.
+   */
+  frameK_kNmm: '골조 강성 (kN/mm)', all: '검토한 횡력원 전부 (지배값 선정 근거)',
+  storyShear_kN: '층전단력 (kN)', Fx_kN: '층별 횡력 Fx (kN)',
+  matrix: '층별 상세 (변위·P-Δ)', sway: '층 안정 (Q값·유의 여부)', windBasis: '풍 투영면 산정 근거',
+  pdelta: 'P-Δ 효과 (θ)', rows: '층별 값', drifts: '층간변위',
   lateralUnavailable: '횡력 검토 불가', sizingUnavailable: '덕트 사이징 불가',
 };
 

@@ -93,6 +93,8 @@ export function bridgeCheck(assembly, params = {}) {
   let section = null;
   if (!(Number(params.As_mm2) > 0)) {
     section = {
+      // ⚠ 260731b: 소비부가 컨테이너 키 `section` 을 라벨로 쓰고 있었다 — 근본에서 이름을 준다.
+      labelKo: '거더 단면 강도 검토 (RC 복부 직사각 보수측)',
       verdict: 'INPUT',
       needInputs: [{
         field: 'As_mm2',
@@ -119,6 +121,7 @@ export function bridgeCheck(assembly, params = {}) {
           As: Number(params.As_mm2), Mu: round(Mu), Vu: round(Vu),
         }, 'KDS');
         section = {
+          labelKo: '거더 단면 강도 검토 (RC 복부 직사각 보수측)',
           verdict: r.verdict, checks: r.checks,
           note: `복부 ${webT}×d${d} 직사각 검토(보수측 — T형 유효폭 미적용 명시). RC 가정 — PSC는 미지원.`,
         };

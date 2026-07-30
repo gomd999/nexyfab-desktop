@@ -84,6 +84,7 @@ export function landscapeCheck(assembly, params = {}) {
       check = e.code === 'INPUT_GATE' ? { verdict: 'INPUT', error: e.message } : { verdict: 'ERROR', error: e.message };
     }
     member = {
+      labelKo: `목재 부재 — 장선·서까래 ${joists.length}본 (대표 1본)`,
       id: joists[0].id ?? 'joist', count: joists.length,
       section: `${round(b, 0)}×${round(h, 0)}`, spanMm: round(L, 0), spacingMm: round(spacing, 0),
       load: { self_kNm: round(selfW, 3), deckSelf_kNm: round(deckSelfW, 3), live_kNm: round(liveW, 3), extra_kNm: Number(params.extraW_kNm) || 0, total_kNm: w, liveRef: decks.length && live ? `${live.label} ${live.v}kN/m² (KDS 41 12 00 표 3.2-1)` : '활하중 없음(비바닥)' },
@@ -166,6 +167,7 @@ export function landscapeCheck(assembly, params = {}) {
         : { verdict: 'ERROR', error: e.message };
     }
     board = {
+      labelKo: `데크보드 ${decks.length}장 (대표 1장)`,
       id: decks[0].id ?? 'board', count: decks.length, section: `${round(boardW, 0)}×${round(bt, 0)}`,
       spanMm: round(spanB, 0), w_kNm: wB,
       verdict: chk?.verdict, checks: chk?.checks ?? null,

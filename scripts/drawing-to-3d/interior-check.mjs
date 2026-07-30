@@ -148,6 +148,8 @@ export function interiorCheck(assembly, params = {}) {
     blocked: Array.from(blocked),
   } : undefined;
   const travel = {
+    // ⚠ 260731b: 라벨을 **여기서** 붙인다. 없으면 소비부가 키 `travel` 을 그대로 쓴다.
+    labelKo: '피난 보행거리 (최원점 → 출구)',
     maxTravelM: round(maxDist / 1000), farthestPointMm: maxAt, limitM: limit / 1000,
     pass: maxDist <= limit,
     ...(grid ? { grid } : {}),
@@ -444,7 +446,7 @@ export function mepDrainageCheck(assembly) {
     allFixtures.push({ type: fx, count: 1 });
     try {
       const r = runCalculator('drainage_vent', { fixtures: [{ type: fx, count: 1 }], segment: 'branch', plannedDN: pipe.d ?? 26 });
-      lines.push({ line: pipe.id, fixture: fx, sumDFU: r.checks.sizing.sumDFU, requiredDN: r.checks.sizing.requiredDN, plannedDN: pipe.d ?? 26, verdict: r.verdict, slope: slopeOf(pipe.id, pipe.d ?? 26) });
+      lines.push({ labelKo: `배수 지관 ${pipe.id} (${fx})`, line: pipe.id, fixture: fx, sumDFU: r.checks.sizing.sumDFU, requiredDN: r.checks.sizing.requiredDN, plannedDN: pipe.d ?? 26, verdict: r.verdict, slope: slopeOf(pipe.id, pipe.d ?? 26) });
     } catch (e) { lines.push({ line: pipe.id, fixture: fx, note: '판정 불가: ' + (e?.message ?? e) }); }
   }
   if (!lines.length) return null;
@@ -454,7 +456,7 @@ export function mepDrainageCheck(assembly) {
     try {
       const dn = stackPart.params?.diameter ?? 100;
       const r = runCalculator('drainage_vent', { fixtures: allFixtures, segment: 'stack', floors: 1, plannedDN: dn });
-      stack = { part: stackPart.id, sumDFU: r.checks.sizing.sumDFU, requiredDN: r.checks.sizing.requiredDN, plannedDN: dn, verdict: r.verdict };
+      stack = { labelKo: `배수 입상관(수직관) ${stackPart.id}`, part: stackPart.id, sumDFU: r.checks.sizing.sumDFU, requiredDN: r.checks.sizing.requiredDN, plannedDN: dn, verdict: r.verdict };
     } catch (e) { stack = { part: stackPart.id, note: '판정 불가: ' + (e?.message ?? e) }; }
   }
   // 통기 판정(§4.3 하한) — vent 라인: 담당 배수관=PS 스택 지름, 길이=라우팅 실측
@@ -465,7 +467,7 @@ export function mepDrainageCheck(assembly) {
       const rt = routeOf(ventPipe.id);
       const lenM = rt ? +(rt.pts.reduce((s, p, i) => i ? s + Math.hypot(p[0] - rt.pts[i - 1][0], p[1] - rt.pts[i - 1][1], p[2] - rt.pts[i - 1][2]) : 0, 0) / 1000).toFixed(2) : undefined;
       const r = runCalculator('drainage_vent', { segment: 'vent', ventKind: 'stack_vent', drainDN: stackPart.params?.diameter ?? 100, ...(lenM !== undefined ? { ventLen_m: lenM } : {}), plannedDN: ventPipe.d ?? 32 });
-      vent = { line: ventPipe.id, drainDN: stackPart.params?.diameter ?? 100, requiredDN: r.checks.sizing.requiredDN, plannedDN: ventPipe.d ?? 32, verdict: r.verdict, notes: r.notes };
+      vent = { labelKo: `통기관 ${ventPipe.id}`, line: ventPipe.id, drainDN: stackPart.params?.diameter ?? 100, requiredDN: r.checks.sizing.requiredDN, plannedDN: ventPipe.d ?? 32, verdict: r.verdict, notes: r.notes };
     } catch (e) { vent = { line: ventPipe.id, note: '판정 불가: ' + (e?.message ?? e) }; }
   }
   return {

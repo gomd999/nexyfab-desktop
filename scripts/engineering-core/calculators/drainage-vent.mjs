@@ -60,7 +60,7 @@ export default {
       const dnPass = Number(input.plannedDN) > 0 ? input.plannedDN >= dn : null;
       return {
         verdict: dnPass === null ? 'INFO' : dnPass ? 'PASS' : 'FAIL',
-        checks: { sizing: { requiredDN: dn, basis: `KDS 31 30 25 §4.3 하한(${kind})`, ...(dnPass !== null ? { plannedDN: input.plannedDN, pass: dnPass } : {}) } },
+        checks: { sizing: { labelKo: '관경 산정 (소요 DN)', requiredDN: dn, basis: `KDS 31 30 25 §4.3 하한(${kind})`, ...(dnPass !== null ? { plannedDN: input.plannedDN, pass: dnPass } : {}) } },
         notes,
       };
     }
@@ -93,7 +93,7 @@ export default {
     return {
       verdict: dnPass === null ? 'INFO' : dnPass ? 'PASS' : 'FAIL',
       checks: {
-        sizing: { sumDFU: +sum.toFixed(1), requiredDN: dn, table: tableName, ...(dnPass !== null ? { plannedDN: input.plannedDN, pass: dnPass } : {}),
+        sizing: { labelKo: '관경 산정 (DFU 합 → 소요 DN)', sumDFU: +sum.toFixed(1), requiredDN: dn, table: tableName, ...(dnPass !== null ? { plannedDN: input.plannedDN, pass: dnPass } : {}),
           ...(input.segment === 'main' ? { minSlope: SLOPE_MIN(dn) + ' (표 4.1-1)' } : {}),
           ...(hasWC && input.segment === 'main' ? { wcNote: '대변기 연결 수평주관 최소 DN80 (표 4.1-4 주1)' } : {}) },
       },

@@ -307,6 +307,8 @@ export function loadPathCheck(assembly, params = {}) {
     const negVerdict = checkNeg ? (checkNeg.verdict ?? (checkNeg.error ? 'ERROR' : null)) : null;
     const posVerdict = check?.verdict ?? (check?.error ? 'ERROR' : 'INPUT(beamAs)');
     beamResults.push({
+      // ⚠ 260731b: 소비부가 배열 인덱스(`beams[0]`)를 라벨로 쓰던 것을 여기서 없앤다.
+      labelKo: `보 — 최악 부재 (층당 ${floor0Beams.length}본 중 최대분담)`,
       id: `${worstBeam.id ?? 'beam'} (최악 — 층당 보 ${floor0Beams.length}본 중 최대분담)`,
       spanMm: round(span, 0), section: `${round(bwv, 0)}×${round(bh, 0)}`,
       tribM2: round(worstTrib), D_kN: round(D), L_kN: round(L), combo,
@@ -351,6 +353,7 @@ export function loadPathCheck(assembly, params = {}) {
     } catch (e) { colCheck = { error: e.message }; }
   }
   const colResults = [{
+    labelKo: `기둥 — 지배 부재 (격자 ${worstIdx[0] + 1},${worstIdx[1] + 1} · 분담 ${round(worstColTrib)}㎡ × ${nf}층 누적)`,
     id: `지배 기둥 (격자 ${worstIdx[0] + 1},${worstIdx[1] + 1} — 분담 ${round(worstColTrib)}m² × ${nf}층 누적)`,
     section: `${round(cb0.dx, 0)}×${round(cb0.dy, 0)}`,
     Pu_kN: round(Pu_col), Pservice_kN: round(Pservice_col), perFloorPu_kN: round(perFloorPu),
@@ -555,6 +558,7 @@ export function loadPathCheck(assembly, params = {}) {
         perFloorWeight_kN: +wFloor.toFixed(1),
         matrix: matrixRes,
         column: {
+          labelKo: '기둥 — 지진 조합 (P-M)',
           MuE_kNm: round((typeof McolUse !== 'undefined' ? McolUse : McolE)), PuE_kN: round(PuE),
           verdict: colE?.verdict ?? (colE?.error ? 'ERROR' : 'INPUT(colAst)'),
           checks: colE?.checks ?? null,
@@ -615,6 +619,7 @@ export function loadPathCheck(assembly, params = {}) {
         x: { method: wx.method, baseShear_kN: wx.baseShear_kN, p_Nm2: wx.p_Nm2 },
         y: { method: wy.method, baseShear_kN: wy.baseShear_kN, p_Nm2: wy.p_Nm2 },
         column: {
+          labelKo: '기둥 — 풍 조합 (P-M)',
           MuW_kNm: round(McolW), PuW_kN: round(PuW),
           verdict: colW?.verdict ?? (colW?.error ? 'ERROR' : 'INPUT(colAst)'),
           checks: colW?.checks ?? null,

@@ -76,9 +76,10 @@ export default {
     const deltaLimit = L / limitN;
 
     const checks = {
-      flexure: { fb_MPa: +fb.toFixed(2), allow_MPa: +FbP.toFixed(2), ratio: +(fb / FbP).toFixed(3), pass: fb <= FbP },
-      shear: { fv_MPa: +fv.toFixed(3), allow_MPa: +FvP.toFixed(3), ratio: +(fv / FvP).toFixed(3), pass: fv <= FvP },
-      deflection: { delta_mm: +delta.toFixed(2), limit_mm: +deltaLimit.toFixed(1), limitSpec: `L/${limitN}`, ratio: +(delta / deltaLimit).toFixed(3), pass: delta <= deltaLimit },
+      // ⚠ 260731b: `labelKo` 근본 부착 — 없으면 소비부가 객체 키(`flexure`)를 라벨로 쓴다.
+      flexure: { labelKo: '휨 응력 (fb ≤ 허용)', fb_MPa: +fb.toFixed(2), allow_MPa: +FbP.toFixed(2), ratio: +(fb / FbP).toFixed(3), pass: fb <= FbP },
+      shear: { labelKo: '전단 응력 (fv ≤ 허용)', fv_MPa: +fv.toFixed(3), allow_MPa: +FvP.toFixed(3), ratio: +(fv / FvP).toFixed(3), pass: fv <= FvP },
+      deflection: { labelKo: '처짐 (δ ≤ 한계)', delta_mm: +delta.toFixed(2), limit_mm: +deltaLimit.toFixed(1), limitSpec: `L/${limitN}`, ratio: +(delta / deltaLimit).toFixed(3), pass: delta <= deltaLimit },
     };
     const verdict = Object.values(checks).every((c) => c.pass) ? 'PASS' : 'FAIL';
     return {

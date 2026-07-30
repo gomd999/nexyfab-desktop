@@ -91,11 +91,16 @@ export default {
     const epsMin = fy <= 400 ? rc.min_flex_strain_fy_le400 : rc.min_flex_eps_y_mult_fy_gt400 * epsY;
 
     const checks = {
+      // ⚠ 260731b: `labelKo` 를 **근본에서** 붙인다. 없으면 소비부(안전검토.html)가
+      //   객체 키를 라벨로 써서 한국어 문서에 `flexure`·`shear` 가 그대로 나간다.
+      //   렌더러에 사전을 둔 것은 표시 계층 보완이고, 이쪽이 근본이다.
       ductility: {
+        labelKo: '연성 — 인장지배 확인 (최소허용변형률)',
         eps_t: epsT, min_allowed: epsMin, section,
         pass: epsT >= epsMin,
       },
       flexure: {
+        labelKo: '휨 강도 (φMn ≥ Mu)',
         Mn_kNm: Mn, phi, phiMn_kNm: phiMn, ratio: Mu / phiMn, pass: Mu <= phiMn && epsT >= epsMin,
       },
     };
@@ -112,7 +117,7 @@ export default {
       const Vc = (lam * sqrtFck * b * d) / rc.Vc_coef_inv / 1e3; // kN
       let Vs = 0;
       const hasStirrup = (input.Av ?? 0) > 0 && (input.s ?? 0) > 0;
-      const shear = { Vc_kN: Vc };
+      const shear = { labelKo: '전단 강도 (φVn ≥ Vu)', Vc_kN: Vc };
       if (hasStirrup) {
         const { Av, s } = input;
         Vs = (Av * fyt * d) / s / 1e3;

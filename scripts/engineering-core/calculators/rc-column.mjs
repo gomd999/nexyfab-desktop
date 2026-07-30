@@ -152,8 +152,10 @@ export default {
     const phiMn = phiPn * (eU / 1e3); // 같은 편심 경로 — kN·m
 
     const checks = {
-      rho: { rho, min: 0.01, max: 0.08, pass: rho >= 0.01 && rho <= 0.08 },
+      // ⚠ 260731b: `labelKo` 근본 부착 — 없으면 한국어 문서에 `rho`·`pm` 이 그대로 나간다.
+      rho: { labelKo: '주철근비 ρ (1~8%)', rho, min: 0.01, max: 0.08, pass: rho >= 0.01 && rho <= 0.08 },
       pm: {
+        labelKo: 'P-M 상관 — 축력·휨 조합 (φPn ≥ Pu)',
         phiPn_kN: phiPn, phiMn_kNm: phiMn, cappedByPnMax: capped, phiPnMax_kN: phiPnMax,
         ratio: Pu / phiPn, pass: Pu <= phiPn,
       },
