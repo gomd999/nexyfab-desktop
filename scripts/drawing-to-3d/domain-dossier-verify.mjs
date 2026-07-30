@@ -122,7 +122,13 @@ export function runDossierVerifications(assembly, params = {}) {
 const badge = (verdict) => {
   if (verdict === 'PASS') return '<span style="color:#16a34a;font-weight:700">적합 ✓ (PASS)</span>';
   if (verdict === 'FAIL') return '<span style="color:#dc2626;font-weight:700">검토 ✕ (FAIL)</span>';
-  if (verdict === 'INFO') return '<span style="color:#2563eb;font-weight:700">단면력 산출 ℹ (INFO)</span>';
+  /**
+   * ⚠ 260801g — 종전엔 **어떤 검토든** 「단면력 산출」이라고 찍었다. `INFO` 는 교량 단면력만
+   *   쓰던 값이 아니다 — 끼워맞춤(µm 틈새)·조도(lx)·환기량(CMH)에도 붙는다. 라이브 문서에
+   *   `끼워맞춤 H7/g6 … 판정: 단면력 산출` 이 나갔다(실측). **하지 않은 계산을 했다고 적는 것**이라
+   *   배지는 중립으로 두고, 무엇을 산출했는지는 각 검토가 자기 말로 적는다.
+   */
+  if (verdict === 'INFO') return '<span style="color:#2563eb;font-weight:700">산출값 ℹ (INFO — 합·불 판정 아님)</span>';
   return `<span style="color:#64748b;font-weight:700">${esc(verdict ?? '—')}</span>`;
 };
 
@@ -159,7 +165,16 @@ function renderRun(run) {
   L.push(`<h2>${esc(run.label)}</h2>`);
   if (r.ok) {
     const isInfo = r.verdict === 'INFO';
-    L.push(`<div class="card">${isInfo ? '결과' : '종합 판정'}: ${badge(r.verdict)}${isInfo ? ' — 단면력 산출(합·불 판정 아님, 배근·단면 검토는 별도)' : ''}</div>`);
+    /**
+     * 루트가 INFO 인 검토는 무엇을 산출했는지 자기 말로 적는다(`infoKo`).
+     * 없으면 **결과에 실제로 있는 것**으로 판단한다 — 단면력(모멘트)이 실려 있을 때만
+     * 「단면력 산출」이라고 쓴다. 그 밖은 중립 문구로 둔다(하지 않은 계산을 적지 않는다).
+     */
+    const hasMoments = r.moments && typeof r.moments === 'object' && Object.keys(r.moments).length > 0;
+    const infoKo = typeof r.infoKo === 'string' && r.infoKo ? r.infoKo
+      : hasMoments ? '단면력 산출(합·불 판정 아님, 배근·단면 검토는 별도)'
+        : '산출값이다 — 합·불 판정이 아니다.';
+    L.push(`<div class="card">${isInfo ? '결과' : '종합 판정'}: ${badge(r.verdict)}${isInfo ? ` — ${esc(infoKo)}` : ''}</div>`);
     const checks = r.checks && typeof r.checks === 'object' ? Object.entries(r.checks) : [];
     if (checks.length) {
       L.push('<table><tr><th>검토 항목</th><th>실측값</th><th>판정</th></tr>');

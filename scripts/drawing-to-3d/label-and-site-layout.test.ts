@@ -338,3 +338,32 @@ describe('P2-⑤ 감사가 civil 의 검증 경로도 센다', () => {
     }
   });
 });
+
+/**
+ * `INFO` 배지가 **하지 않은 계산**을 적지 않는가 (260801g).
+ *
+ * ⚠ 라이브 실측에서 잡았다: 끼워맞춤 검토(µm 틈새)에 `판정: 단면력 산출 ℹ (INFO)` 가
+ *   나갔다. `INFO` 는 교량·암거 단면력만 쓰던 값이 아니다 — 끼워맞춤·조도(lx)·환기량(CMH)
+ *   에도 붙는다. **판정하지 않은 것을 했다고 적는 것**이라 배지는 중립으로 두고,
+ *   「단면력」이라는 말은 결과에 **실제로 모멘트가 실려 있을 때만** 쓴다.
+ */
+describe('INFO 배지 — 하지 않은 계산을 적지 않는다', () => {
+  it('★끼워맞춤 판정에 「단면력」이 붙지 않는다', () => {
+    const assembly = {
+      parts: [
+        { id: 'plate', type: 'extrude_profile',
+          params: { profile: [[0, 0], [200, 0], [200, 120], [0, 120]], depth: 12,
+            holes: [{ x: 40, y: 60, d: 25, fit: 'H7' }] } },
+        { id: 'pin', type: 'cylinder', params: { diameter: 25, length: 60, fit: 'g6' },
+          at: { tx: 40, ty: 60, tz: -10 } },
+      ],
+    };
+    // 보고서가 없으면(null) 검사할 것도 없다 — 「없음」을 통과로 세지 않기 위해 먼저 막는다.
+    const html = domainSafetyReportHtml(assembly, { params: {} }) as string | null;
+    expect(html, '안전검토 보고서가 생성되지 않았다').toBeTruthy();
+    expect(html!).toMatch(/끼워맞춤/);
+    // 끼워맞춤 판정 주변에 「단면력」이 나오면 안 된다.
+    const idx = html!.indexOf('끼워맞춤');
+    expect(html!.slice(Math.max(0, idx - 400), idx + 400)).not.toMatch(/단면력/);
+  });
+});
