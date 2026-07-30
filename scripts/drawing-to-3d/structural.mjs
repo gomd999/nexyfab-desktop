@@ -9,7 +9,7 @@
  *
  * usage: structuralCheck(assembly, { material, fluidParts, supports, member, seismicG })
  */
-import { partAabb, gearPoly, sheetPoly, polyArea, boltDims, holeFeature, extrudePoly } from './reconstruct.mjs';
+import { partAabb, gearPoly, sheetPoly, polyArea, boltDims, holeFeature, extrudePoly, expandHoles, holeVolume, compositeSubs } from './reconstruct.mjs';
 import { snapSquareTube } from './std-snap.mjs';
 
 const g = 9.81;
@@ -35,17 +35,11 @@ export function partVolume(type, p) {
   switch (type) {
     case 'box': return p.width * p.depth * p.height;
     // C1 인벤토리(260719) 폐형 정정 4건: 구멍·겹침 공제 — SCAD/STEP 실측과 일치
-    case 'plate_with_holes': // T1(260719): through/blind·cbore·csink·tap — holeFeature 파생 폐형
-      return p.width * p.depth * p.thickness - (p.holes ?? []).reduce((s, h) => {
-        const f = holeFeature(h, p.thickness);
-        let v = A * f.drillD ** 2 * f.depthEff;                       // 주 구멍(하경·블라인드 반영)
-        if (f.cb) v += A * (f.cb.dia ** 2 - f.drillD ** 2) * f.cb.depth; // 카운터보어 링
-        if (f.cs) { // 싱크 원뿔대 − 주 구멍 중복
-          const D = f.cs.dia, d0 = h.d, hh = f.cs.depth;
-          v += (Math.PI * hh / 12) * (D * D + D * d0 + d0 * d0) - A * d0 * d0 * hh;
-        }
-        return s + v;
-      }, 0);
+    case 'plate_with_holes': // T1(260719): through/blind·cbore·csink·tap
+      // 260801: 식을 `holeVolume` 로 뽑아 다른 어휘와 공유한다(두 벌이면 언젠가 갈린다).
+      //   패턴도 펼쳐 센다 — 선언 1건이 실제 홀 6개일 수 있다.
+      return p.width * p.depth * p.thickness
+        - expandHoles(p.holes).reduce((sum, h) => sum + holeVolume(h, p.thickness), 0);
     case 'stepped_plate': return p.stepWidth * p.depth * p.stepThickness + (p.width - p.stepWidth) * p.depth * p.thickness;
     case 'base_plate': return p.width * p.depth * p.thickness - 4 * A * p.boltDia ** 2 * p.thickness; // 코너 볼트홀 4(scadBody 동일)
     case 'l_bracket': return (p.legA * p.width * p.thickness) + (p.thickness * p.width * (p.legB - p.thickness)); // 코너 겹침 1회만
@@ -79,6 +73,19 @@ export function partVolume(type, p) {
      * 임의 폐곡선 압출 — 부피는 **폐형**이다(shoelace 면적 × 깊이 − 원형홀).
      * 근사가 아니므로 AABB 과대 문제(코퍼스 primitive_fit 잔차 99%대)를 겪지 않는다.
      */
+    /**
+     * 복합 부품 — add 합 − subtract 합.
+     * ⚠ **겹침은 공제하지 않는다.** add 끼리 겹치면 부피가 과대해진다 — 어휘 힌트와
+     *   BOQ 고지에 적었다. 조용히 근사하면 물량이 틀린 채로 나간다.
+     */
+    case 'composite': {
+      let v = 0;
+      for (const sb of compositeSubs(p)) {
+        const sv = partVolume(sb.type, sb.params);
+        v += sb.op === 'subtract' ? -sv : sv;
+      }
+      return Math.max(0, v);
+    }
     /** 조적 블록 — 공동을 뺀 폐형(중실로 두면 질량이 실물의 1.5~2배가 된다). */
     case 'masonry_block': {
       const n = Number(p.coreCount ?? 0);
@@ -86,9 +93,14 @@ export function partVolume(type, p) {
       return Math.max(0, p.length * p.thickness * p.height - cores);
     }
     case 'extrude_profile': {
+      /**
+       * ⚠ 260801: 홀을 **단순 원통 관통**으로만 셌다. 그래서 같은 카운터보어를 줘도
+       * `plate_with_holes` 는 475,024mm³, 여기는 477,738mm³(=관통과 동일)로 갈렸다.
+       * 이제 `holeVolume` 단일 소스를 쓰고 패턴도 펼친다. 필렛은 프로파일에 반영된다.
+       */
       const A2 = Math.abs(polyArea(extrudePoly(p)));
-      const holes = (p.holes ?? []).reduce((sum, h) => sum + A * Number(h.d) ** 2, 0);
-      return Math.max(0, (A2 - holes) * Number(p.depth));
+      const holes = expandHoles(p.holes).reduce((sum, h) => sum + holeVolume(h, Number(p.depth)), 0);
+      return Math.max(0, A2 * Number(p.depth) - holes);
     }
     case 'wall_with_openings': {
       const solid = p.length * p.thickness * p.height;

@@ -59,6 +59,12 @@ export const CANONICAL = {
    */
   extrude_profile: { profile: [[0, 0], [100, 0], [100, 20], [20, 20], [20, 100], [0, 100]], depth: 50, holes: [{ x: 50, y: 10, d: 10 }] },
   masonry_block: { length: 390, thickness: 190, height: 190, coreCount: 2, coreW: 105, coreD: 115 },
+  composite: {
+    subs: [
+      { type: 'box', params: { width: 200, depth: 100, height: 50 }, op: 'add' },
+      { type: 'cylinder', params: { diameter: 30, length: 60 }, at: { tx: 100, ty: 50, tz: -5 }, op: 'subtract' },
+    ],
+  },
   mesh: { volumeMm3: 123456, aabb: { min: [0, 0, 0], max: [100, 100, 100] } },
 };
 

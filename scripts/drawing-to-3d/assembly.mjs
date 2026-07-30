@@ -16,7 +16,7 @@
  * usage: node assembly.mjs '<assembly.json>'
  */
 import { readFileSync } from 'node:fs';
-import { gate, scadBody, partAabb, gearPoly, sheetPoly, hexPts, boltDims, holeFeature, extrudePoly } from './reconstruct.mjs';
+import { gate, scadBody, partAabb, gearPoly, sheetPoly, hexPts, boltDims, holeFeature, extrudePoly, compositeSubs } from './reconstruct.mjs';
 import { structuralCheck } from './structural.mjs';
 import { supportCheck } from './support-check.mjs';
 import { autoRoutePipes, pipeObstacleCheck, pipeCrossCheck } from './pipe-route.mjs';
@@ -33,7 +33,7 @@ export const SERVICE_COL = {
   column: '#475569', beam: '#0e7490', slab: '#94a3b8', joist: '#854d0e', deck: '#a16207', floor: '#d1d5db', table: '#0f766e', counter: '#7c3aed', wall: '#78716c', base: '#57534e',
   stack: '#7c2d12',
 };
-export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', slab_with_openings: '#8a8175', tapered_girder: '#0e7490', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5', mesh: '#7c6f9f', revolve: '#9aa7b5', cavity_block: '#7c6f9f', coil_spring: '#6b7280', pillow_block: '#78838f', rebar: '#a16207', pipe_elbow: '#9aa7b5', pipe_tee: '#9aa7b5', extrude_profile: '#8b98a6', masonry_block: '#a8a29e' };
+export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', slab_with_openings: '#8a8175', tapered_girder: '#0e7490', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5', mesh: '#7c6f9f', revolve: '#9aa7b5', cavity_block: '#7c6f9f', coil_spring: '#6b7280', pillow_block: '#78838f', rebar: '#a16207', pipe_elbow: '#9aa7b5', pipe_tee: '#9aa7b5', extrude_profile: '#8b98a6', masonry_block: '#a8a29e', composite: '#6d7c8a' };
 // 부품 id/name 키워드 → 계통 자동추론 (명시 service 태그 없어도 계통색이 나오게).
 const ID_SERVICE = [
   [/pump|motor|모터|펌프|impeller|임펠라|blower|fan|송풍/i, 'motor'],
@@ -328,6 +328,34 @@ export function assemblyToComposeIntent(asm) {
       case 'sheet_profile':
         feats.push(F('extrude', { profile: sheetPoly(p), height: p.width }));
         break;
+      case 'composite': { // 복합 부품(260801) — 하위를 그대로 피처로 펼친다
+        /**
+         * ⚠ 하위를 **재귀 호출로 펼치지 않는다.** `assemblyToComposeIntent` 를 재귀시키면
+         *   좌표계가 두 번 곱해질 위험이 있고, 어디까지 정확한지 말하기 어려워진다.
+         *   1단만 받으므로 하위 프리미티브를 **여기서 직접** 배치한다.
+         */
+        for (const sb of compositeSubs(p)) {
+          const inner = assemblyToComposeIntent({
+            name: 'sub', parts: [{ id: 'sub', type: sb.type, params: sb.params, at: {}, material: part.material }],
+          });
+          for (const f of inner.features ?? []) {
+            const tr = f.at?.translate ?? [0, 0, 0];
+            feats.push({
+              ...f, _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}),
+              op: sb.op === 'subtract' ? 'subtract' : (f.op ?? 'add'),
+              at: {
+                ...(f.at ?? {}),
+                translate: [
+                  tr[0] + (Number(sb.at.tx) || 0) + tx,
+                  tr[1] + (Number(sb.at.ty) || 0) + ty,
+                  tr[2] + (Number(sb.at.tz) || 0) + tz,
+                ],
+              },
+            });
+          }
+        }
+        break;
+      }
       case 'masonry_block': { // 조적 블록(260801) — 속빈 공동을 실제로 뺀다
         const n = Number(p.coreCount ?? 0);
         feats.push(F('box', { size: [p.length, p.thickness, p.height] }));

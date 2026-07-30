@@ -136,6 +136,29 @@ export function sheetPoly({ thickness: t, segments, angles = [] }) {
  * 자기교차는 검사하지 않는다 — 그 사실을 어휘 힌트에 적는다(모른다고 말하는 편이 낫다).
  */
 export function extrudePoly(i) {
+  return extrudeProfileGeom(i).pts;
+}
+
+/**
+ * `extrude_profile` 의 외곽 폴리곤 + **필렛 적용 결과**를 함께 돌려준다 (260801).
+ *
+ * `filletR`(전 볼록 꼭짓점 균일) 또는 `fillets:[{i, r}]`(꼭짓점별)로 받는다.
+ * 형상에 실제로 반영하므로 부피·표면적·SCAD·STEP·GA 가 **같은 형상**을 본다 —
+ * 부피만 보정하고 형상은 그대로 두면 둘이 어긋난다.
+ */
+export function extrudeProfileGeom(i) {
+  const base = extrudeProfileRaw(i);
+  const uniform = Number(i?.filletR) || 0;
+  const perVertex = Array.isArray(i?.fillets) ? new Map(i.fillets.map((f) => [Number(f.i), Number(f.r)])) : null;
+  if (!(uniform > 0) && !(perVertex && perVertex.size)) return { pts: base, fillet: null };
+  const r = filletPolygon(base, (k) => (perVertex?.has(k) ? perVertex.get(k) : uniform));
+  return {
+    pts: r.pts,
+    fillet: r.applied ? { applied: r.applied, maxSagittaMm: r.maxSagittaMm, radiusMm: uniform || null } : null,
+  };
+}
+
+function extrudeProfileRaw(i) {
   const raw = Array.isArray(i?.profile) ? i.profile : null;
   if (!raw || raw.length < 3) throw new Error('extrude_profile: profile 은 점 3개 이상의 닫힌 폴리라인이어야 한다(마지막 점≠첫 점 — 자동으로 닫는다)');
   const pts = raw.map((q) => [Number(q[0]), Number(q[1])]);
@@ -147,6 +170,173 @@ export function extrudePoly(i) {
   if (!(Math.abs(polyArea(closed)) > 1e-9)) throw new Error('extrude_profile: profile 면적이 0 이다(일직선 또는 중복점)');
   if (!(Number(i.depth) > 0)) throw new Error('extrude_profile: depth(압출 깊이) > 0 필요');
   return closed;
+}
+
+/**
+ * 홀 **패턴 전개** (260801) — `pattern` 선언을 구체 홀 목록으로 펼친다.
+ *
+ * ## 왜 필요한가
+ * 참고 코퍼스 실측: 패턴 보유 **248파일**(원형 455 · 선형 175), 패턴에 속한 홀 **1,796개**.
+ * 종전에는 홀을 하나씩 열거해야 했고, 그러면 **「패턴」이라는 정보 자체가 사라진다** —
+ * 도면에 `4-M12 EQ.S.` 로 나가야 할 것이 좌표 4개로 나가고, BOQ 는 가공 회차를 알 수 없다.
+ *
+ * 그래서 전개된 홀에 `_pat`(패턴 출처)를 남긴다 — 형상은 구체 홀로, 표기는 패턴으로.
+ *
+ * 지원: `{kind:'linear', count, pitch, angleDeg?}` · `{kind:'circular', count, bcd, startDeg?}`
+ * ⚠ 모르는 `kind` 는 **펼치지 않고 그대로 둔다**(게이트가 이름으로 거부한다). 임의로
+ *   선형으로 가정하면 사용자가 준 뜻과 다른 형상이 나간다.
+ */
+/** 복합 부품의 하위 목록 — 검증하고 정규화한다(1단만). */
+/**
+ * OpenSCAD `rotate([rx,ry,rz])` 순서(X→Y→Z)로 점 회전 — `assembly.mjs` 의 규약과 **같다**.
+ * ⚠ 두 곳에 있지만 `assembly.mjs` 를 import 하면 순환이 된다(assembly → reconstruct).
+ *   순서가 갈리면 형상이 어긋나므로 주석으로 짝을 묶어 둔다.
+ */
+function rotateXYZ([x, y, z], rx, ry, rz) {
+  let q = [x, y, z];
+  if (rx) { const c = Math.cos(rx * RAD), s2 = Math.sin(rx * RAD); q = [q[0], q[1] * c - q[2] * s2, q[1] * s2 + q[2] * c]; }
+  if (ry) { const c = Math.cos(ry * RAD), s2 = Math.sin(ry * RAD); q = [q[0] * c + q[2] * s2, q[1], -q[0] * s2 + q[2] * c]; }
+  if (rz) { const c = Math.cos(rz * RAD), s2 = Math.sin(rz * RAD); q = [q[0] * c - q[1] * s2, q[0] * s2 + q[1] * c, q[2]]; }
+  return q;
+}
+
+export function compositeSubs(i) {
+  const subs = Array.isArray(i?.subs) ? i.subs : null;
+  if (!subs || !subs.length) throw new Error('composite: subs 배열 필요([{type, params, at?, op?}])');
+  if (subs.length > 24) throw new Error('composite: 하위 부품 24개 이하(그 이상은 어셈블리로 선언할 것)');
+  return subs.map((sb, n) => {
+    if (!sb || typeof sb.type !== 'string' || !PARAMS[sb.type]) throw new Error(`composite: subs[${n}].type 미등록`);
+    if (sb.type === 'composite') throw new Error(`composite: subs[${n}] 중첩의 중첩 금지(1단만)`);
+    if (!sb.params || typeof sb.params !== 'object') throw new Error(`composite: subs[${n}].params 필요`);
+    const op = sb.op === 'subtract' ? 'subtract' : 'add';
+    return { type: sb.type, params: sb.params, at: sb.at ?? {}, op };
+  });
+}
+
+export function expandHoles(holes) {
+  const out = [];
+  for (const [n, h] of (holes ?? []).entries()) {
+    const pat = h?.pattern;
+    if (!pat || !(Number(pat.count) > 1)) { out.push(h); continue; }
+    const cnt = Math.min(200, Math.round(Number(pat.count)));
+    const tag = { index: n, kind: String(pat.kind), count: cnt };
+    if (pat.kind === 'linear') {
+      const pitch = Number(pat.pitch);
+      if (!(pitch > 0)) { out.push(h); continue; }
+      const a = ((Number(pat.angleDeg) || 0) * Math.PI) / 180;
+      for (let k = 0; k < cnt; k++) {
+        out.push({ ...h, pattern: undefined, x: h.x + pitch * k * Math.cos(a), y: h.y + pitch * k * Math.sin(a), _pat: { ...tag, seq: k + 1, pitch } });
+      }
+    } else if (pat.kind === 'circular') {
+      const bcd = Number(pat.bcd);
+      if (!(bcd > 0)) { out.push(h); continue; }
+      const st = ((Number(pat.startDeg) || 0) * Math.PI) / 180;
+      for (let k = 0; k < cnt; k++) {
+        const t = st + (2 * Math.PI * k) / cnt;
+        out.push({ ...h, pattern: undefined, x: h.x + (bcd / 2) * Math.cos(t), y: h.y + (bcd / 2) * Math.sin(t), _pat: { ...tag, seq: k + 1, bcd } });
+      }
+    } else out.push(h);   // 모르는 kind — 펼치지 않는다(게이트가 거부)
+  }
+  return out;
+}
+
+/**
+ * 홀 1개가 **빼는 부피** — `holeFeature` 단일 소스 (260801).
+ *
+ * ⚠ 종전에는 이 식이 `plate_with_holes` 안에만 있었다. 그래서 `extrude_profile` 은
+ *   같은 카운터보어를 줘도 **관통과 같은 부피**를 냈다(실측: 477,738 vs 475,024mm³ —
+ *   cbore 를 통째로 무시). 어휘마다 다시 구현하면 언젠가 갈리므로 **한 곳**에 둔다.
+ */
+export function holeVolume(h, thickness) {
+  const f = holeFeature(h, thickness);
+  const A4 = Math.PI / 4;
+  let v = A4 * f.drillD ** 2 * f.depthEff;                          // 주 구멍(하경·블라인드 반영)
+  if (f.cb) v += A4 * (f.cb.dia ** 2 - f.drillD ** 2) * f.cb.depth;  // 카운터보어 링
+  if (f.cs) {                                                        // 싱크 원뿔대 − 주 구멍 중복
+    const D = f.cs.dia, d0 = h.d, hh = f.cs.depth;
+    v += (Math.PI * hh / 12) * (D * D + D * d0 + d0 * d0) - A4 * d0 * d0 * hh;
+  }
+  return v;
+}
+
+/** 홀 1개의 **내벽 면적**(가공·도장 대상). 카운터보어/싱크의 추가 면도 센다. */
+export function holeWallArea(h, thickness) {
+  const f = holeFeature(h, thickness);
+  const A4 = Math.PI / 4;
+  let a = Math.PI * f.drillD * f.depthEff;                           // 주 구멍 원통면
+  if (f.cb) {
+    a += Math.PI * f.cb.dia * f.cb.depth;                            // 카운터보어 벽
+    a += A4 * (f.cb.dia ** 2 - f.drillD ** 2) * 0 + Math.PI / 4 * 0; // 바닥 링은 아래에서
+    a += (Math.PI / 4) * (f.cb.dia ** 2 - f.drillD ** 2);            // 카운터보어 바닥 링
+  }
+  if (f.cs) {
+    const D = f.cs.dia, d0 = h.d, hh = f.cs.depth;
+    a += Math.PI * ((D + d0) / 2) * Math.hypot((D - d0) / 2, hh);    // 원뿔대 측면
+  }
+  return a;
+}
+
+/**
+ * 폐곡선 **필렛(모서리 라운드)** — 볼록 꼭짓점을 원호(현 분할)로 대체 (260801).
+ *
+ * ## 왜 형상에 반영하는가
+ * 참고 코퍼스 실측: 필렛 보유 **157파일**, 반경 표본 **2,095개**(중앙값 1.43mm).
+ * 기존 스키마의 `FilletFeature` 는 「record-only(OpenSCAD 에 진짜 필렛 엔진이 없다)」였다.
+ * 그런데 **압출 프로파일의 필렛은 2D 문제**다 — 폴리곤 꼭짓점을 원호로 바꾸면 되고,
+ * 그러면 부피·표면적·SCAD·STEP·GA 가 **전부 같은 형상**을 본다.
+ * 부피만 보정하고 형상은 그대로 두면 둘이 어긋나므로, 그 길은 택하지 않았다.
+ *
+ * ⚠ 원호는 **현으로 근사**한다(임포터와 같은 규약). 최대 새그를 함께 돌려주고
+ *   호출측이 「정확 복원 아님」으로 고지한다.
+ * ⚠ **볼록 꼭짓점만** 라운드한다. 오목 모서리 필렛은 재료가 늘어나는 쪽이라 별개 문제고,
+ *   여기서 같이 처리하면 어느 쪽인지 모른 채 부피가 바뀐다.
+ * ⚠ 반경이 인접 변 절반을 넘으면 **줄이지 않고 거부**한다 — 조용히 줄이면 사용자가 준
+ *   반경과 다른 형상이 나간다.
+ */
+const FILLET_CHORD_TOL = 0.05;
+export function filletPolygon(pts, radiusOf) {
+  const n = pts.length;
+  const out = [];
+  let maxSag = 0, applied = 0;
+  // 폴리곤 방향(CCW=+) — 볼록 판정의 부호 기준.
+  const ccw = polyArea(pts) > 0;
+  for (let i = 0; i < n; i++) {
+    const P0 = pts[(i - 1 + n) % n], P1 = pts[i], P2 = pts[(i + 1) % n];
+    const r = Number(radiusOf(i)) || 0;
+    const v1 = [P0[0] - P1[0], P0[1] - P1[1]];
+    const v2 = [P2[0] - P1[0], P2[1] - P1[1]];
+    const L1 = Math.hypot(v1[0], v1[1]), L2 = Math.hypot(v2[0], v2[1]);
+    const cross = v1[0] * v2[1] - v1[1] * v2[0];
+    const convex = ccw ? cross < 0 : cross > 0;
+    if (!(r > 0) || !convex || !(L1 > 1e-9) || !(L2 > 1e-9)) { out.push(P1); continue; }
+    const u1 = [v1[0] / L1, v1[1] / L1], u2 = [v2[0] / L2, v2[1] / L2];
+    const cosT = Math.max(-1, Math.min(1, u1[0] * u2[0] + u1[1] * u2[1]));
+    const theta = Math.acos(cosT);                      // 내각
+    if (!(theta > 1e-6 && theta < Math.PI - 1e-6)) { out.push(P1); continue; }
+    const t = r / Math.tan(theta / 2);                  // 꼭짓점→접점 거리
+    if (t > Math.min(L1, L2) / 2) throw new Error(`fillet r=${r} 가 꼭짓점 ${i} 의 인접 변(${Math.round(Math.min(L1, L2))}mm) 절반을 넘는다 — 반경을 줄이거나 형상을 바꿔야 한다`);
+    const T1 = [P1[0] + u1[0] * t, P1[1] + u1[1] * t];
+    const T2 = [P1[0] + u2[0] * t, P1[1] + u2[1] * t];
+    // 원 중심 = 꼭짓점에서 이등분선 방향으로 r/sin(θ/2)
+    const bis = [u1[0] + u2[0], u1[1] + u2[1]];
+    const bl = Math.hypot(bis[0], bis[1]) || 1;
+    const dC = r / Math.sin(theta / 2);
+    const C = [P1[0] + (bis[0] / bl) * dC, P1[1] + (bis[1] / bl) * dC];
+    const a1 = Math.atan2(T1[1] - C[1], T1[0] - C[0]);
+    const a2 = Math.atan2(T2[1] - C[1], T2[0] - C[0]);
+    let sweep = a2 - a1;
+    while (sweep > Math.PI) sweep -= 2 * Math.PI;
+    while (sweep < -Math.PI) sweep += 2 * Math.PI;
+    const ratio = Math.max(-1, Math.min(1, 1 - FILLET_CHORD_TOL / r));
+    const segs = Math.max(2, Math.min(48, Math.ceil(Math.abs(sweep) / (2 * Math.acos(ratio)))));
+    for (let k = 0; k <= segs; k++) {
+      const a = a1 + (sweep * k) / segs;
+      out.push([C[0] + r * Math.cos(a), C[1] + r * Math.sin(a)]);
+    }
+    maxSag = Math.max(maxSag, r * (1 - Math.cos(Math.abs(sweep) / segs / 2)));
+    applied += 1;
+  }
+  return { pts: out, applied, maxSagittaMm: +maxSag.toFixed(4) };
 }
 
 export function polyArea(pts) {
@@ -196,6 +386,30 @@ export function coilPoints(i) {
     pts.push([R * Math.cos(th), R * Math.sin(th), i.wireDia / 2 + i.pitch * t]);
   }
   return pts;
+}
+
+/**
+ * 홀 **가공 상세 게이트** 단일 소스 (260801).
+ *
+ * ⚠ 종전에는 이 검증이 `plate_with_holes` 안에만 있었다. 그래서 다른 어휘는
+ *   `kind:'cbore'` 를 줘도 아무 검증 없이 통과하고 **부피에도 반영되지 않았다**
+ *   (실측: `extrude_profile` 이 카운터보어를 관통과 같게 셌다). 한 곳에 둔다.
+ */
+function holeDetailGate(h, thk, tag, e) {
+  if (h.kind === 'cbore') {
+    if (!pos(h.cbDia) || h.cbDia <= h.d) e.push(`${tag} cbDia ≤ d`);
+    if (!pos(h.cbDepth) || h.cbDepth >= thk) e.push(`${tag} cbDepth ≥ 두께`);
+  } else if (h.kind === 'csink') {
+    if (!pos(h.csDia) || h.csDia <= h.d) e.push(`${tag} csDia ≤ d`);
+    else {
+      const ang = pos(h.csAngleDeg) ? h.csAngleDeg : 90;
+      const dep = (h.csDia - h.d) / 2 / Math.tan((ang / 2) * RAD);
+      if (dep >= thk) e.push(`${tag} 싱크 깊이 ${Math.round(dep)} ≥ 두께 ${thk}`);
+    }
+  } else if (h.kind === 'tap') {
+    if (!parseThread(h.thread)) e.push(`${tag} thread 미인식(M3~M36 표기 필요)`);
+  }
+  if (h.depth != null && !(pos(h.depth) && h.depth <= thk)) e.push(`${tag} depth 0<d≤두께`);
 }
 
 const GATES = {
@@ -490,8 +704,24 @@ const GATES = {
       if (!Array.isArray(q) || q.length < 2 || !Number.isFinite(q[0]) || !Number.isFinite(q[1])) e.push(`profile[${n}] invalid([x,y] 수치)`);
     }
     try { extrudePoly(i); } catch (err) { e.push(String(err.message).replace(/^extrude_profile: /, '')); }
-    for (const [n, h] of (i.holes ?? []).entries()) {
-      if (!pos(h?.d) || !Number.isFinite(h?.x) || !Number.isFinite(h?.y)) e.push(`holes[${n}] invalid({x,y,d>0})`);
+    // 패턴을 먼저 펼쳐서 **전개된 홀 전부**를 검사한다 — 선언만 보면 패턴 안쪽이 안 걸린다.
+    for (const [n, h] of expandHoles(i.holes).entries()) {
+      if (!pos(h?.d) || !Number.isFinite(h?.x) || !Number.isFinite(h?.y)) { e.push(`holes[${n}] invalid({x,y,d>0})`); continue; }
+      if (h.pattern) e.push(`holes[${n}] pattern.kind 미지원(linear|circular) 또는 count/pitch/bcd 누락 — 펼치지 못했다`);
+      holeDetailGate(h, i.depth, `holes[${n}]`, e);
+    }
+    for (const [n, f] of (i.fillets ?? []).entries()) {
+      if (!Number.isInteger(Number(f?.i)) || !pos(f?.r)) e.push(`fillets[${n}] invalid({i:정수, r>0})`);
+    }
+    if (i.filletR != null && !pos(i.filletR)) e.push('filletR invalid(>0)');
+  },
+  composite(i, e) {
+    let subs = null;
+    try { subs = compositeSubs(i); } catch (err) { e.push(String(err.message).replace(/^composite: /, '')); return; }
+    if (!subs.some((x) => x.op === 'add')) e.push('add 하위가 하나도 없다 — 빼기만으로는 형상이 없다');
+    // 하위 각각을 **자기 게이트**로 검사한다 — 여기서 다시 구현하면 규칙이 갈린다.
+    for (const [n, sb] of subs.entries()) {
+      for (const msg of gate({ type: sb.type, ...sb.params })) e.push(`subs[${n}](${sb.type}) ${msg}`);
     }
   },
   masonry_block(i, e) {
@@ -531,23 +761,34 @@ export function gate(intent) {
   return errs;
 }
 
+/**
+ * 홀 1개의 **SCAD 절삭 형상** — 관통·블라인드·카운터보어·싱크·탭 (260801, 단일 소스).
+ * 가공 기준은 **상면(z=두께)** 이다(종전 `plate_with_holes` 규약을 그대로 승계).
+ *
+ * ⚠ 종전에는 이 렌더가 `plate_with_holes` 안에만 있었고 다른 어휘는 단순 원통만 뚫었다.
+ *   두 벌로 두면 언젠가 갈린다 — 한 곳에서 만들어 공유한다.
+ */
+function holeScad(h, thk) {
+  const f = holeFeature(h, thk);
+  const z0 = f.depth ? thk - f.depth : -1;
+  const hh = f.depth ? f.depth + 1 : thk + 2;
+  const out = ['translate([' + h.x + ', ' + h.y + ', ' + z0 + ']) cylinder(h=' + hh + ', d=' + f.drillD + ', $fn=64);'];
+  if (f.cb) out.push('translate([' + h.x + ', ' + h.y + ', ' + (thk - f.cb.depth) + ']) cylinder(h=' + (f.cb.depth + 1) + ', d=' + f.cb.dia + ', $fn=64);');
+  if (f.cs) {
+    const ext = 0.5; // 상면 공면 회피 연장(원뿔 기울기 유지)
+    const d2 = f.cs.dia + 2 * ext * Math.tan((f.cs.angleDeg / 2) * RAD);
+    out.push('translate([' + h.x + ', ' + h.y + ', ' + (thk - f.cs.depth) + ']) cylinder(h=' + (f.cs.depth + ext) + ', d1=' + h.d + ', d2=' + d2 + ', $fn=64);');
+  }
+  return out.join(' ');
+}
+
 const SCAD = {
   plate_with_holes(i) {
-    // T1(260719): through/blind + cbore/csink/tap — 상면(z=t) 기준 가공(holeFeature 단일 소스)
-    const cuts = [];
-    for (const h of (i.holes ?? [])) {
-      const f = holeFeature(h, i.thickness);
-      const z0 = f.depth ? i.thickness - f.depth : -1;
-      const hh = f.depth ? f.depth + 1 : i.thickness + 2;
-      cuts.push(`    translate([${h.x}, ${h.y}, ${z0}]) cylinder(h=${hh}, d=${f.drillD}, $fn=64);`);
-      if (f.cb) cuts.push(`    translate([${h.x}, ${h.y}, ${i.thickness - f.cb.depth}]) cylinder(h=${f.cb.depth + 1}, d=${f.cb.dia}, $fn=64);`);
-      if (f.cs) {
-        const ext = 0.5; // 상면 공면 회피 연장(원뿔 기울기 유지)
-        const d2 = f.cs.dia + 2 * ext * Math.tan((f.cs.angleDeg / 2) * RAD);
-        cuts.push(`    translate([${h.x}, ${h.y}, ${i.thickness - f.cs.depth}]) cylinder(h=${f.cs.depth + ext}, d1=${h.d}, d2=${d2}, $fn=64);`);
-      }
-    }
-    return `difference() {\n  cube([${i.width}, ${i.depth}, ${i.thickness}]);\n${cuts.join('\n')}\n}`;
+    // T1(260719): through/blind + cbore/csink/tap — 상면(z=t) 기준(holeFeature 단일 소스)
+    // 260801: 홀 렌더를 `holeScad` 로 뽑아 다른 어휘와 공유한다. 패턴도 여기서 펼친다.
+    const cuts = expandHoles(i.holes).map((h) => '    ' + holeScad(h, i.thickness));
+    return 'difference() {' + '\n  cube([' + i.width + ', ' + i.depth + ', ' + i.thickness + ']);\n'
+      + cuts.join('\n') + '\n}';
   },
   stepped_plate(i) {
     return `union() {\n  cube([${i.stepWidth}, ${i.depth}, ${i.stepThickness}]);\n  translate([${i.stepWidth}, 0, 0]) cube([${i.width - i.stepWidth}, ${i.depth}, ${i.thickness}]);\n}`;
@@ -620,6 +861,20 @@ const SCAD = {
     return `linear_extrude(height=${i.width}) ${polyScad(sheetPoly(i))}`;
   },
   /** 임의 폐곡선 압출(260801) — 원형 관통홀은 difference 로 뺀다. */
+  composite(i) {
+    const subs = compositeSubs(i);
+    const body = (sb) => {
+      const at = sb.at || {};
+      const tr = [Number(at.tx) || 0, Number(at.ty) || 0, Number(at.tz) || 0];
+      const ro = [Number(at.rx) || 0, Number(at.ry) || 0, Number(at.rz) || 0];
+      const inner = scadBody({ type: sb.type, ...sb.params });
+      const rot = ro.some(Boolean) ? 'rotate([' + ro.join(',') + ']) ' : '';
+      return 'translate([' + tr.join(',') + ']) ' + rot + inner;
+    };
+    const adds = subs.filter((x) => x.op === 'add').map(body).join(' ');
+    const cuts = subs.filter((x) => x.op === 'subtract').map(body).join(' ');
+    return cuts ? 'difference() { union() { ' + adds + ' } ' + cuts + ' }' : 'union() { ' + adds + ' }';
+  },
   masonry_block(i) {
     const n = Number(i.coreCount ?? 0);
     const solid = `cube([${i.length},${i.thickness},${i.height}]);`;
@@ -635,9 +890,10 @@ const SCAD = {
   },
   extrude_profile(i) {
     const solid = `linear_extrude(height=${i.depth}) ${polyScad(extrudePoly(i))}`;
-    const holes = i.holes ?? [];
+    const holes = expandHoles(i.holes);
     if (!holes.length) return solid;
-    const cuts = holes.map((h) => `translate([${h.x},${h.y},-1]) cylinder(h=${Number(i.depth) + 2}, d=${h.d}, $fn=48);`).join(' ');
+    // 홀 가공 상세(관통·블라인드·카운터보어·싱크·탭)는 `holeScad` 단일 소스를 쓴다.
+    const cuts = holes.map((h) => holeScad(h, Number(i.depth))).join(' ');
     return `difference() { ${solid} ${cuts} }`;
   },
   i_girder(i) {
@@ -855,6 +1111,29 @@ export function partAabb(i) {
       if (!bb) throw new Error('mesh: aabb 필요(빌드 시 산출)');
       return { min: [...bb.min], max: [...bb.max] };
     }
+    case 'composite': {
+      /**
+       * 외곽은 **add 하위의 합집합**이다 — subtract 는 경계를 넓히지 않는다.
+       *
+       * ⚠ 260801b: 처음엔 평행이동만 더했다. 그러자 `motor_mount` 의 웨브(rx=90)가
+       *   **회전 전 경계**로 계산돼 261×172×26 이 나왔다(실제 200×140×174).
+       *   AABB 는 간섭·GA·지지 판정이 모두 쓰는 값이라, 회전을 빼먹으면 그 전부가 틀린다.
+       *   8코너를 회전시켜 월드 경계를 낸다(`placedAabb` 와 같은 규약).
+       */
+      const subs = compositeSubs(i).filter((x) => x.op === 'add');
+      const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+      for (const sb of subs) {
+        const b = partAabb({ type: sb.type, ...sb.params });
+        const t = [Number(sb.at.tx) || 0, Number(sb.at.ty) || 0, Number(sb.at.tz) || 0];
+        const rr = [Number(sb.at.rx) || 0, Number(sb.at.ry) || 0, Number(sb.at.rz) || 0];
+        for (const cx of [b.min[0], b.max[0]]) for (const cy of [b.min[1], b.max[1]]) for (const cz of [b.min[2], b.max[2]]) {
+          const q = rotateXYZ([cx, cy, cz], rr[0], rr[1], rr[2]);
+          for (const k of [0, 1, 2]) { lo[k] = Math.min(lo[k], q[k] + t[k]); hi[k] = Math.max(hi[k], q[k] + t[k]); }
+        }
+      }
+      if (!lo.every(Number.isFinite)) throw new Error('composite: add 하위에서 경계를 못 얻었다');
+      return { min: lo.map((v) => +v.toFixed(4)), max: hi.map((v) => +v.toFixed(4)) };
+    }
     case 'masonry_block':
       return { min: [0, 0, 0], max: [i.length, i.thickness, i.height] };
     case 'extrude_profile': {
@@ -968,4 +1247,18 @@ export const PARAMS = {
    * 속빈 공동(core)은 개수·치수를 받아 실제로 뺀다 — 중실로 두면 부피·질량이 과대해진다.
    */
   masonry_block: ['length', 'thickness', 'height', 'coreCount', 'coreW', 'coreD'],
+  /**
+   * 복합 부품(중첩) — 하위 부품의 합·차로 한 부품을 만든다 (260801).
+   *
+   * ⚠ 코퍼스 실측: 형상 aspect 가 `complex` 인 것이 **447/1071(42%)** 다. 프리미티브
+   *   하나로 표현되지 않는 부품이 절반에 가까운데, 중첩을 지원하는 어휘는 `cavity_block`
+   *   하나뿐이었다(금형 전용). 일반화한다.
+   *
+   * `subs: [{type, params, at?, op?}]` — `op:'subtract'` 는 빼고 나머지는 더한다.
+   * ⚠ **겹침은 공제하지 않는다.** add 끼리 겹치면 부피가 과대해진다 — 그 사실을 어휘
+   *   힌트와 BOQ 고지에 적는다(조용히 근사하면 물량이 틀린 채로 나간다).
+   * ⚠ 중첩은 **1단**만 받는다(하위의 하위 금지) — 재귀 깊이를 열어 두면 부피·AABB·
+   *   간섭·STEP 이 어디까지 정확한지 아무도 말할 수 없게 된다.
+   */
+  composite: [],   // subs 는 배열 — 스키마 특례
 };

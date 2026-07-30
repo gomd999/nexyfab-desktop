@@ -7,7 +7,7 @@
  */
 import { partVolumeEffective, DENSITY } from './structural.mjs';
 import { buildAssembly } from './assembly.mjs';
-import { gearPoly, sheetPoly, hexPts, polyArea, polyPerimeter, boltDims, extrudePoly } from './reconstruct.mjs';
+import { gearPoly, sheetPoly, hexPts, polyArea, polyPerimeter, boltDims, extrudePoly, expandHoles, holeWallArea } from './reconstruct.mjs';
 import { takeoff } from '../engineering-core/quantity/takeoff.mjs';
 
 const A = Math.PI / 4;
@@ -63,11 +63,19 @@ function surfaceMm2(type, p) {
       const coreWall = n > 0 ? n * 2 * (Number(p.coreW) + Number(p.coreD)) * H : 0;
       return 2 * (L * T - coreTop) + 2 * (L * H) + 2 * (T * H) + coreWall;
     }
+    /**
+     * 복합 부품 표면적 — **산출하지 않는다(null)**.
+     * add 하위가 서로 맞닿으면 접촉면이 겉면에서 빠져야 하는데 그걸 알 수 없다.
+     * 합만 하면 실제보다 크고, 임의로 깎으면 근거가 없다 — `computeBOQ` 가 **미산출**로
+     * 이름과 함께 고지한다(0 으로 두면 「필요 없음」으로 읽힌다 — §6-G ④).
+     */
+    case 'composite': return null;
     case 'extrude_profile': {
       const poly = extrudePoly(p);
-      const holes = p.holes ?? [];
+      const holes = expandHoles(p.holes);
       const holeArea = holes.reduce((sum, h) => sum + (Math.PI / 4) * Number(h.d) ** 2, 0);
-      const holeWall = holes.reduce((sum, h) => sum + Math.PI * Number(h.d) * Number(p.depth), 0);
+      // 260801: 홀 내벽도 **단일 소스**(`holeWallArea`) — 카운터보어 벽·바닥링·싱크 원뿔면 포함.
+      const holeWall = holes.reduce((sum, h) => sum + holeWallArea(h, Number(p.depth)), 0);
       return 2 * Math.max(0, Math.abs(polyArea(poly)) - holeArea) + polyPerimeter(poly) * Number(p.depth) + holeWall;
     }
     case 'wall_with_openings': {
@@ -166,7 +174,11 @@ function surfaceMm2(type, p) {
     default: return null;
   }
 }
-const holeCount = (type, p) => type === 'plate_with_holes' || type === 'extrude_profile' ? (p.holes?.length ?? 0) : type === 'flange' ? (p.boltCount ?? 0) : type === 'base_plate' ? 4 : type === 'spur_gear' && p.boreDia > 0 ? 1 : type === 'hex_nut' || type === 'washer' ? 1 : 0;
+// 260801: 패턴을 펼친 **실제 가공 회차**를 센다 — 선언 1건이 홀 6개일 수 있다.
+// 260801b: 복합 부품은 **하위의 홀을 합산**한다 — 안 세면 드릴 공수가 0 으로 나간다.
+const holeCount = (type, p) => type === 'composite'
+  ? (p.subs ?? []).reduce((n, sb) => n + holeCount(sb.type, sb.params ?? {}), 0)
+  : type === 'plate_with_holes' || type === 'extrude_profile' ? expandHoles(p.holes).length : type === 'flange' ? (p.boltCount ?? 0) : type === 'base_plate' ? 4 : type === 'spur_gear' && p.boreDia > 0 ? 1 : type === 'hex_nut' || type === 'washer' ? 1 : 0;
 const bendCount = (type, p) => type === 'bent_sheet' ? 2 : type === 'l_bracket' ? 1 : type === 'angle' ? 1 : type === 'sheet_profile' ? (p?.angles ?? []).filter((a) => a !== 0).length : 0;
 const isLinear = (type) => type === 'rect_tube' || type === 'tube' || type === 'cylinder' || type === 'angle' || type === 'tee_section';
 const linearLenMm = (type, p) => type === 'rect_tube' || type === 'tube' ? p.length : type === 'cylinder' ? p.length : type === 'angle' || type === 'tee_section' ? p.length : 0;
