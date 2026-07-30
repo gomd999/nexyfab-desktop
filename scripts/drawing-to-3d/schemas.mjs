@@ -65,7 +65,13 @@ export const TYPE_HINTS = {
   hex_bolt: 'threadDia,length (육각볼트 M3~M36 — 머리치수 ISO 표준표 자동, 나사산 미형상 관례)',
   sheet_profile: 'thickness,width,segments[],angles[] (다단 절곡 판금 — 세그먼트 길이열+절곡각열(|a|≤120°), Z/햇/채널 단면. width=압출 길이)',
   wall_with_openings: 'length,thickness,height,openings[{x,w,h,sill}] (벽체 — X길이·Y두께·Z높이, 문=sill 0·창=sill>0)',
-  composite: 'subs[{type,params,at?,op?}] (복합 부품 — 하위의 합·차로 한 부품. `op:subtract` 는 뺀다. '
+  /**
+   * ⚠ 260802 — `revolve` 는 파라미터가 배열이라 `PARAMS` 가 비어 있고, 힌트도 없어
+   *   프롬프트에 **빈 스펙**(`revolve: `)이 나가고 있었다. 회귀(`ai-prompt-contract`)가 잡았다.
+   *   게이트(`reconstruct.mjs revolve`)가 실제로 요구하는 형태를 그대로 옮긴다 — 지어내지 않는다.
+   */
+  revolve: 'profile[[r,z],...] (회전체 — r≥0, 3점 이상 닫힌 단면) · angleDeg(0<θ≤360, 선택: 부분 회전)',
+  composite: 'subs[{type,params,at?,op?}] (복합 부품 — 하위의 합·차로 한 부품. `op:subtract` 는 뺀다.'
     + '코퍼스 실측 형상 aspect `complex` 447/1071=42%. ⚠ 중첩은 **1단만**(하위의 하위 금지). '
     + '⚠ add 끼리 **겹침은 공제하지 않는다** — 겹치면 부피가 과대하다. ⚠ 표면적은 접촉면을 '
     + '알 수 없어 **미산출**이며 BOQ 가 이름으로 고지한다',

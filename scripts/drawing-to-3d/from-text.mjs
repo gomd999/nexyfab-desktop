@@ -14,6 +14,7 @@
  */
 import { apiKey, repairJsonNumbers } from './extract.mjs';
 import { CLASSIFY_SCHEMA, TYPE_SCHEMAS, TYPE_HINTS, ALL_TYPES } from './schemas.mjs';
+import { PARAMS } from './reconstruct.mjs';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -30,15 +31,27 @@ export async function callGeminiJson(promptText, schema, { models = ['gemini-2.5
   // schema=null → response_schema 생략(free-form JSON). 플랫/유니온 스키마가 구조화
   // 출력에서 토큰을 폭주시켜 MAX_TOKENS 절단되는 경우 우회용(강한 프롬프트로 형식 지시).
   // thinkingBudget=0 → gemini-2.5 "thinking" 비활성(출력토큰을 사고에 소진하는 MAX_TOKENS 방지).
-  const generationConfig = { temperature: 0, response_mime_type: 'application/json', maxOutputTokens };
-  if (schema) generationConfig.response_schema = schema;
-  if (thinkingBudget !== undefined) generationConfig.thinkingConfig = { thinkingBudget };
-  const body = JSON.stringify({
+  const baseConfig = { temperature: 0, response_mime_type: 'application/json', maxOutputTokens };
+  if (schema) baseConfig.response_schema = schema;
+  /**
+   * ⚠ 260802 — 본문을 **모델 루프 밖에서 한 번** 만들고 있었다. 그런데 `thinkingConfig` 는
+   *   모델마다 받는 값이 다르다: `gemini-2.5-pro` 는 **thinking 이 필수**라
+   *   `Budget 0 is invalid. This model only works in thinking mode.` 로 **400** 이 난다
+   *   (flash 는 0 을 받는다). 한 벌 본문을 전 모델에 쓰면 폴백이 통째로 죽는다 —
+   *   실측: MAX_TOKENS 를 고치려고 `thinkingBudget: 0` 을 넣었더니 400 이 4건 났다.
+   * ⚠ 모델 이름으로 분기하지 않는다(모델은 계속 바뀐다). **그 400 을 만나면 해당 모델만
+   *   thinking 없이 한 번 더** 시도한다 — 능력 판별을 응답에서 배운다.
+   */
+  const bodyFor = (withThinking) => JSON.stringify({
     contents: [{ parts: [{ text: promptText }] }],
-    generationConfig,
+    generationConfig: withThinking && thinkingBudget !== undefined
+      ? { ...baseConfig, thinkingConfig: { thinkingBudget } }
+      : baseConfig,
   });
   let lastErr;
   for (const model of models) {
+    let useThinking = true;
+    let body = bodyFor(useThinking);
     for (let attempt = 0; attempt < 3; attempt++) {
       let res;
       try {
@@ -48,7 +61,18 @@ export async function callGeminiJson(promptText, schema, { models = ['gemini-2.5
       } catch (e) { lastErr = e; await sleep(1000); continue; }
       if (!res.ok) {
         if (res.status === 503 || res.status === 429) { lastErr = new Error(`${model} ${res.status}`); await sleep(1500 * (attempt + 1)); continue; }
-        lastErr = new Error(`${model} ${res.status}: ${(await res.text()).slice(0, 120)}`);
+        const text = await res.text();
+        /**
+         * thinking 이 **필수인 모델**은 `thinkingBudget: 0` 을 거부한다(400).
+         * 모델 이름으로 분기하지 않고 **응답에서 배워** 그 모델만 thinking 없이 재시도한다.
+         * ⚠ 한 번만 재시도한다 — 무한히 되돌리면 진짜 실패가 시간초과로 둔갑한다.
+         */
+        if (res.status === 400 && useThinking && /thinking mode|Budget \d+ is invalid/i.test(text)) {
+          useThinking = false;
+          body = bodyFor(false);
+          continue;
+        }
+        lastErr = new Error(`${model} ${res.status}: ${text.slice(0, 120)}`);
         break; // 비-일시적 에러 → 다음 모델로
       }
       const j = await res.json();
@@ -68,7 +92,16 @@ export async function callGeminiJson(promptText, schema, { models = ['gemini-2.5
   throw lastErr;
 }
 
-const TYPE_LIST = ALL_TYPES.map((t) => `${t}: ${TYPE_HINTS[t]}`).join('\n');
+/**
+ * 어휘 스펙 한 줄 — 힌트가 있으면 힌트, 없으면 **파라미터 이름**을 쓴다.
+ *
+ * ⚠ 260802 — 종전 `TYPE_LIST` 는 힌트를 그대로 박아, 힌트가 없는 **18종에
+ *   `h_section: undefined` 를 LLM 에게 보내고 있었다.** 「설명이 없다」가 아니라
+ *   **틀린 설명**을 준 것이고, 그 어휘는 사실상 고를 수 없었다.
+ * ⚠ 설명을 지어내지 않는다 — 없으면 파라미터 이름만 준다. 그게 정직하고 더 쓸모 있다.
+ */
+const typeSpecLine = (t) => `${t}: ${TYPE_HINTS[t] ?? (PARAMS[t] ?? []).join(',')}`;
+const TYPE_LIST = ALL_TYPES.map(typeSpecLine).join('\n');
 
 /**
  * 텍스트 → 도면 intent (2단계, 신뢰성 픽스):
@@ -94,12 +127,37 @@ export async function textToIntent(description, { models } = {}) {
 // ─── Piece 2: 텍스트 → 복합 어셈블리 계획 ────────────────────────────────────
 
 const NUM = { type: 'NUMBER' };
+/**
+ * 부품 파라미터 스키마 — **`PARAMS`(실제 어휘)에서 만든다.**
+ *
+ * ⚠ 260802 — 종전에는 키 19개가 손으로 박혀 있었다. 구조화 출력은 **스키마에 없는 키를
+ *   조용히 떨군다.** 그래서 `h_section`(H,B,tw,tf)·`cone`(dia1,dia2)·`torus`(majorDia) 같은
+ *   어휘를 LLM 이 올바르게 채워도 **값이 사라졌고**, 게이트에는
+ *   `width invalid, depth invalid` 로 나타났다 — LLM 이 안 준 게 아니라 **우리가 버린** 것이다.
+ *   실측 8건 중 7건이 이 형태였다.
+ * ⚠ 어휘를 추가할 때마다 여기를 같이 고치는 구조였다. 그래서 갈렸다 —
+ *   이 세션 내내 잡아 온 단일 소스 문제의 세 번째 판이다.
+ */
+/**
+ * ⚠⚠ 260802 — **평면 유니온 스키마를 쓰지 않는다.** 한 번 시도했다가 되돌린 기록이다.
+ *
+ * 어휘 38종의 파라미터를 모두 합쳐 62키 평면 `OBJECT` 로 넓혔더니, 모델에게 **어느 키가
+ * 이 타입의 것인지 신호가 사라졌다.** 실측(`box`, 카운터 2400×600×900):
+ *
+ *     받은 params : {"width":2400, "wireDia":600.0000000000001}
+ *     필요 PARAMS : ["width","depth","height"]
+ *
+ * `wireDia` 는 **코일 스프링** 파라미터다. 키가 많을수록 좋아지는 게 아니라 **나빠졌다.**
+ * 넓히기 전(19키)에는 흔한 타입의 키가 대부분이라 오히려 맞을 확률이 높았다.
+ *
+ * 그래서 파라미터는 **타입별 스키마(`TYPE_SCHEMAS`)로 따로 받는다** — 이 파일에 이미 있는
+ * 2단계 경로(`textToIntent`: 분류 → 타입별 추출)와 같은 방식이다. 여기서는 골격만 받는다.
+ */
 const PART_PARAMS = {
   type: 'OBJECT',
   properties: {
-    width: NUM, depth: NUM, thickness: NUM, stepWidth: NUM, stepThickness: NUM,
-    legA: NUM, legB: NUM, outerDia: NUM, innerDia: NUM, boreDia: NUM, bcd: NUM, boltHoleD: NUM, boltCount: NUM,
-    webWidth: NUM, flangeHeight: NUM, length: NUM, height: NUM, wallThk: NUM, diameter: NUM,
+    width: NUM, depth: NUM, thickness: NUM, height: NUM, length: NUM, diameter: NUM,
+    outerDia: NUM, innerDia: NUM, wallThk: NUM, legA: NUM, legB: NUM,
     holes: { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, y: NUM, d: NUM }, required: ['x', 'y', 'd'] } },
   },
 };
@@ -113,7 +171,9 @@ export const ASSEMBLY_SCHEMA = {
         type: 'OBJECT', required: ['id', 'type', 'params'],
         properties: {
           id: { type: 'STRING' },
-          type: { type: 'STRING', enum: ['plate_with_holes', 'stepped_plate', 'l_bracket', 'flange', 'bent_sheet', 'tube', 'rect_tube', 'box', 'cylinder'] },
+          // ⚠ 260802 — enum 이 **9종 하드코딩**이었다. 프롬프트로 38종을 알려 줘도
+          //   스키마가 9종만 허용하면 나머지는 애초에 고를 수 없다. `ALL_TYPES` 에서 만든다.
+          type: { type: 'STRING', enum: [...ALL_TYPES] },
           params: PART_PARAMS,
           at: { type: 'OBJECT', properties: { tx: NUM, ty: NUM, tz: NUM, rx: NUM, ry: NUM, rz: NUM } },
           service: { type: 'STRING', enum: ['feed', 'hp', 'permeate', 'concentrate', 'motor', 'panel', 'frame', 'sludge'] },
@@ -148,9 +208,83 @@ export const ASSEMBLY_SCHEMA = {
   },
 };
 
+/**
+ * 프롬프트에 실을 **어휘 스펙** — `PARAMS`(실제 어휘)와 `TYPE_HINTS`(설명)에서 만든다.
+ *
+ * ⚠ 260802 — 종전에는 프롬프트에 **어휘 9종이 하드코딩**돼 있었다. 실제 어휘는 38종이다.
+ *   실측: 8건 중 **4건이 게이트 거부**였고 사유가 `base_plate_1: depth invalid`,
+ *   `top_plate: depth invalid` 처럼 **목록에 없는 type 을 지어낸** 것이었다.
+ *   환각이 아니라 **우리가 알려 주지 않은 것**이다. 어휘를 늘릴 때마다 이 문장을 고치는
+ *   구조였고, 그래서 어휘 38종과 프롬프트 9종이 갈렸다 — 이 세션 내내 잡아 온 단일 소스 문제다.
+ *
+ * ⚠ 힌트가 없는 어휘는 **파라미터 이름만** 싣는다. 설명을 지어내면 그것도 프롬프트에 실린다.
+ */
+/**
+ * 게이트 오류를 **모델에게 되돌려** 한 번 고치게 한다 (260802).
+ *
+ * ## 왜 수리인가 — 동의어를 우리가 매핑하지 않는다
+ * 실측: LLM 이 `wall_with_openings` 에 `height` 대신 **`width`** 를 줬다. 그런 동의어를
+ * 우리가 표로 매핑하면 **사용자 의도를 추측**하는 것이 된다(`width` 가 정말 폭인 경우와
+ * 구별할 수 없다). 대신 **게이트가 실제로 낸 오류 문구**를 그대로 주고 모델이 고치게 한다 —
+ * 지어내는 쪽은 우리가 아니라 모델이고, 그 결과는 다시 게이트를 지난다.
+ *
+ * ## 규약
+ * · `compose.mjs` 의 `composeWithGate` 와 **같은 형태**다(리포의 확립된 패턴 재사용).
+ * · **최대 1회.** 무한 수리는 실패를 지연으로 바꾼다.
+ * · 고치지 못하면 **고치지 못한 채로** 오류를 함께 돌려준다 — 조용히 통과시키지 않는다.
+ */
+async function repairAgainstGate(assembly, description, { models } = {}) {
+  let errs = [];
+  try {
+    const { buildAssembly } = await import('./assembly.mjs');
+    errs = buildAssembly(assembly)?.gateErrors ?? [];
+    if (!errs.length) return { assembly, rounds: 0, errors: [] };
+    /**
+     * ★ 실패한 **부품만** 그 어휘의 `TYPE_SCHEMAS` 로 다시 받는다.
+     *   어셈블리 스키마 하나로 전 어휘의 파라미터를 받으려 하면 키가 섞인다(위 주석 참조).
+     *   타입별 스키마는 **그 타입의 키만** 있어 모델이 고를 여지가 없다.
+     */
+    const failedIds = new Set(errs.map((e) => String(e).split(':')[0]?.trim()).filter(Boolean));
+    const parts = [...(assembly?.parts ?? [])];
+    let changed = 0;
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      if (!failedIds.has(String(p?.id))) continue;
+      const schema = TYPE_SCHEMAS[p?.type];
+      if (!schema) continue;   // 스키마가 없는 어휘는 건드리지 않는다(지어내지 않는다)
+      const ask = `제품 설명에서 **${p.type}** 부품 "${p.id}" 의 치수를 뽑아라.
+필드: ${typeSpecLine(p.type)}
+⚠ 위 필드 이름만 쓴다. 동의어(width↔height 등)를 쓰면 거부된다. 미기입 치수는 통상값(mm).
+설명: "${description}"
+현재 값(불완전): ${JSON.stringify(p.params ?? {})}`;
+      try {
+        const { data: fixed } = await callGeminiJson(ask, schema, {
+          ...(models ? { models } : {}), thinkingBudget: 0, maxOutputTokens: 2048,
+        });
+        if (fixed && typeof fixed === 'object') { parts[i] = { ...p, params: { ...p.params, ...fixed } }; changed += 1; }
+      } catch { /* 이 부품은 못 고쳤다 — 나머지는 계속 시도한다 */ }
+    }
+    if (!changed) return { assembly, rounds: 1, errors: errs };
+    const candidate = { ...assembly, parts };
+    const after = buildAssembly(candidate)?.gateErrors ?? [];
+    // 나빠졌으면 되돌린다 — 수리가 악화시키는 것을 통과시키지 않는다.
+    if (after.length >= errs.length) return { assembly, rounds: 1, errors: errs };
+    return { assembly: candidate, rounds: 1, errors: after };
+  } catch {
+    // 수리 자체가 실패해도 **원본을 돌려준다**(수리는 부가 기능이지 필수 경로가 아니다).
+    return { assembly, rounds: 0, errors: errs };
+  }
+}
+
+function VOCAB_SPEC() {
+  // 분류 프롬프트(`TYPE_LIST`)와 **같은 한 줄 생성기**를 쓴다 — 두 벌이면 또 갈린다.
+  return ALL_TYPES.map((t) => `- ${typeSpecLine(t)}`).join('\n');
+}
+
 const ASM_PROMPT = (desc) => `자연어 제품 설명을 복합 어셈블리 계획(JSON)으로 변환하라.
 
-각 부품은 어휘 9종 중 하나: plate_with_holes / stepped_plate / l_bracket / flange / bent_sheet / tube(원형파이프:outerDia,innerDia,length) / rect_tube(각관:width,height,wallThk,length) / box(속찬 블록·함체:width,depth,height) / cylinder(원기둥 용기·베셀:diameter,length).
+각 부품은 아래 어휘 중 하나다. **목록에 없는 type 을 만들지 마라** — 게이트에서 거부된다.
+${VOCAB_SPEC()}
 부품별로 type + params(해당 유형 치수) + at(배치: tx,ty,tz 평행이동 mm, rx,ry,rz 회전 deg) + service(계통: feed/hp/permeate/concentrate/motor/panel/frame/sludge — 해당 시만).
 
 좌표계: 전역 원점(0,0,0). 각 부품의 로컬 원점이 at.translate 위치에 놓인다.
@@ -172,8 +306,20 @@ const ASM_PROMPT = (desc) => `자연어 제품 설명을 복합 어셈블리 계
 설명: "${desc}"`;
 
 export async function textToAssembly(description, { models } = {}) {
-  const { data, model } = await callGeminiJson(ASM_PROMPT(description), ASSEMBLY_SCHEMA, models ? { models } : {});
-  return { assembly: data, model };
+  /**
+   * ⚠ 260802 — 실측 8건 중 **3건이 `MAX_TOKENS`** 였다(bad JSON). 원인은 이 파일 위쪽
+   *   `callGeminiJson` 주석에 이미 적혀 있었다: gemini-2.5 의 **thinking 이 출력 토큰을
+   *   소진**한다. `edit-part.mjs` 는 `thinkingBudget: 0` 을 쓰고 있었는데 **여기만 안 썼다.**
+   *   해법이 리포 안에 있는데 한 경로만 안 쓰던 것이다.
+   * ⚠ 실패한 호출은 53~88초가 걸렸고 **성공한 1건은 2.4초**였다 — 오래 생각할수록 실패했다.
+   */
+  const { data, model } = await callGeminiJson(ASM_PROMPT(description), ASSEMBLY_SCHEMA, {
+    ...(models ? { models } : {}),
+    thinkingBudget: 0,
+    maxOutputTokens: 16384,
+  });
+  const repaired = await repairAgainstGate(data, description, { models });
+  return { assembly: repaired.assembly, model, repairRounds: repaired.rounds, gateErrors: repaired.errors };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('from-text.mjs');
