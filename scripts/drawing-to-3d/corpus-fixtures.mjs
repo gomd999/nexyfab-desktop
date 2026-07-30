@@ -150,7 +150,15 @@ export function measureClassifierCoverage(importStep, readFileSync, opt = {}) {
     let txt = ''; try { txt = readFileSync(f, 'latin1'); } catch { continue; }
     let r = null;
     try { r = importStep(txt); } catch { noBodies++; continue; }
-    const n = r?.nodes?.length ?? 0;
+    /**
+     * ⚠ 260801c — **이 측정이 틀려 있었다.** `importStep` 은 `{ tree: { nodes }, … }` 를
+     *   돌려주는데 `r.nodes` 를 읽어서 **항상 0** 이 나왔다. 그 결과 「코퍼스 바디 0」이라는
+     *   보고가 여러 번 나갔고, 원호 근사·프리즘 3축 확장의 효과를 「없다」로 읽었다.
+     *   측정 도구를 리포에 고정한 이유가 「기준이 흔들리지 않게」였는데, **고정된 기준이
+     *   틀려 있으면 더 나쁘다** — 틀린 값을 계속 같은 방식으로 재게 된다.
+     *   교훈: 측정 도구도 **한 번은 반대 방향으로 검증**해야 한다(0 이 나오면 0 이 맞는지).
+     */
+    const n = r?.tree?.nodes?.length ?? 0;
     if (n > 0) { withBodies++; bodies += n; } else noBodies++;
     for (const u of r?.unsupported ?? []) {
       // 숫자(엔티티 id·면 수)를 N 으로 정규화 — 사유의 **종류**를 센다.

@@ -277,6 +277,15 @@ export function importStep(
       if (result.kind === 'ok') {
         feature = result.feature;
         placement = result.worldBBox ?? null;
+        if (result.holesUnrepresented) {
+          const h = result.holesUnrepresented;
+          warnings.push(
+            `#${solidId}: 판재 외곽·두께는 받았으나 **원통 홀 ${h.count}개(반경 `
+            + `${h.radiiMm.slice(0, 4).map((r) => r.toFixed(1)).join('/')}mm)를 형상에 반영하지 `
+            + `못했습니다** — 부피가 약 ${h.volumeOverPct}% 과대합니다(IR 프로파일이 단일 루프라 `
+            + '내부 루프를 담을 수 없습니다). 정확 복원이 아닙니다.',
+          );
+        }
         if (result.arcApprox) {
           // 「정확 복원」이라 말하지 않는다 — 근사 엣지 수와 오차를 수치로 고지한다.
           warnings.push(
@@ -751,6 +760,13 @@ type SolidParseResult =
     kind: 'ok'; feature: ExtrudeFeature | RevolveFeature | SweepFeature; worldBBox?: WorldBBox | null;
     /** 원호를 현으로 근사한 엣지 수·최대 새그(mm) — **있으면 이 솔리드는 근사다** (260801). */
     arcApprox?: { edges: number; maxSagittaMm: number };
+    /**
+     * 원통 홀을 **형상에 반영하지 못한 채** 외곽만 받은 경우 (260801c).
+     * IR 의 프로파일이 단일 루프라 내부 루프(홀)를 담을 수 없고, 소비부는 노드마다
+     * 독립 바디로 배치해 노드 간 부울을 하지 않는다 — 홀을 별 노드로 내면 「구멍」이
+     * 아니라 **별개 원통 바디**가 된다. 그래서 외곽만 받고 **손실을 수치로 고지**한다.
+     */
+    holesUnrepresented?: { count: number; radiiMm: number[]; volumeOverPct: number };
   }
   | { kind: 'unsupported'; reason: string };
 
@@ -886,14 +902,34 @@ function solidToFeature(
   }
 
   if (cylinderFaces.length > 0) {
-    // Cylindrical face present but doesn't match the clean 1+2 pattern
-    // (multiple cylinders, mixed prism + cylinder, missing caps, etc.).
-    // Phase 4 will handle these via OCCT round-trip.
+    /**
+     * ★ 260801c — **구멍 뚫린 판**을 받는다.
+     *
+     * 원호 근사(260801) 후 코퍼스 미지원 사유 **1위가 이 조합 22건**이었다:
+     *   `(N CYLINDRICAL_SURFACE, N PLANE) — cylinder detector wants 1 cylinder + 2 caps`.
+     * 실물에서 이건 거의 항상 **판재 + 원형 홀**이다(볼트홀·보스·경량화 구멍).
+     * 종전에는 솔리드를 통째로 버렸다 — 외곽과 두께는 읽을 수 있는데도.
+     *
+     * ⚠ **홀을 형상으로 넣지는 못한다.** IR 프로파일이 단일 루프라 내부 루프를 담을 수
+     *   없고, 소비부(`ingestStep`)는 노드마다 **독립 바디**로 min-corner 정렬해 배치하며
+     *   노드 간 부울을 하지 않는다. 홀을 별 노드(`cut`)로 내면 「구멍」이 아니라
+     *   **별개 원통 바디**가 생겨 형상이 더 틀린다.
+     * → 외곽·두께는 **정확히** 받고, 홀은 **개수·반경·부피 과대율을 수치로 고지**한다.
+     *   「정확 복원」이라 말하지 않는다(`stepFileBounds` 전례).
+     */
+    const withHoles = prismWithCylindricalHoles(planeFaces, cylinderFaces, entities);
+    if (withHoles) {
+      return {
+        kind: 'ok', feature: withHoles.feature, worldBBox: solidWorldBBox,
+        ...arcApprox, holesUnrepresented: withHoles.holes,
+      };
+    }
+    // 판+홀 패턴이 아니면 종전대로 거부한다 — 추측해서 받지 않는다.
     return {
       kind: 'unsupported',
       reason:
         `${faceRefs.length} faces (${cylinderFaces.length} CYLINDRICAL_SURFACE, ` +
-        `${planeFaces.length} PLANE) — cylinder detector wants exactly 1 cylinder + 2 caps`,
+        `${planeFaces.length} PLANE) — 1 cylinder + 2 caps 도 아니고 「판재+원통 홀」 패턴도 아니다`,
     };
   }
 
@@ -1483,6 +1519,172 @@ function readVertexPoint(
   }
   if (xs.length !== 3) return null;
   return [xs[0]!, xs[1]!, xs[2]!];
+}
+
+/**
+ * **판재 + 원통 홀** 검출 (260801c).
+ *
+ * 조건 — 하나라도 어긋나면 **null**(추측해서 받지 않는다):
+ *  ① 세 주축 중 하나에 대해 캡 평면 2장(법선 ∥ 축) + 측면 N장(법선 ⊥ 축)
+ *  ② **모든** 원통면의 축이 그 축과 평행 — 비평행 원통은 홀이 아니라 다른 형상이다
+ *  ③ 원통 축이 캡 외곽 **안쪽**에 있다 — 밖/경계면 그건 모서리 라운드(외부 필렛)이지 홀이 아니다
+ *  ④ 기존 `capsToPrism` 이 통과 — 외곽 폴리곤·두께 산출 로직을 **재사용**한다(복제하면 갈린다)
+ *
+ * 반환: 외곽 프리즘 `ExtrudeFeature` + **미반영 홀 고지**(개수·반경·부피 과대율).
+ */
+function prismWithCylindricalHoles(
+  planeFaces: PlaneFace[],
+  cylinderFaces: CylinderFace[],
+  entities: Map<number, StepEntity>,
+): { feature: ExtrudeFeature; holes: { count: number; radiiMm: number[]; volumeOverPct: number } } | null {
+  void entities;
+  const AXES: Array<{
+    axis: 0 | 1 | 2;
+    isCap: (n: [number, number, number]) => boolean;
+    toLocal: (v: [number, number, number]) => [number, number, number];
+    rotateDeg: [number, number, number] | null;
+  }> = [
+    { axis: 2, isCap: (n) => isZAxisNormal(n), toLocal: (v) => v, rotateDeg: null },
+    { axis: 0,
+      isCap: (n) => Math.abs(Math.abs(n[0]) - 1) <= AXIS_EPS && Math.abs(n[1]) <= AXIS_EPS && Math.abs(n[2]) <= AXIS_EPS,
+      toLocal: (v) => [v[1], v[2], v[0]], rotateDeg: [90, 0, 90] },
+    { axis: 1,
+      isCap: (n) => Math.abs(Math.abs(n[1]) - 1) <= AXIS_EPS && Math.abs(n[0]) <= AXIS_EPS && Math.abs(n[2]) <= AXIS_EPS,
+      toLocal: (v) => [v[2], v[0], v[1]], rotateDeg: [90, 0, 0] },
+  ];
+  for (const cand of AXES) {
+    const caps: PlaneFace[] = [];
+    const sides: PlaneFace[] = [];
+    let bad = false;
+    for (const f of planeFaces) {
+      if (cand.isCap(f.normal)) caps.push(f);
+      else if (Math.abs(f.normal[cand.axis]) <= AXIS_EPS) sides.push(f);
+      else { bad = true; break; }
+    }
+    if (bad || caps.length !== 2 || sides.length < 3) continue;
+    // ② 모든 원통 축이 캡 축과 평행해야 홀이다.
+    const axisDir: [number, number, number] = [0, 0, 0];
+    axisDir[cand.axis] = 1;
+    if (!cylinderFaces.every((c) => directionsParallel(c.axisDir, axisDir))) continue;
+    const remap = (f: PlaneFace): PlaneFace => ({
+      normal: cand.toLocal(f.normal),
+      loop: f.loop.map((v) => cand.toLocal(v)),
+    });
+    /**
+     * ⚠ `capsToPrism` 을 쓰지 않는다 — 그 함수는 **「캡 정점 수 = 측면 수」**를 요구한다.
+     *   원호 근사(260801)로 캡 루프에 현 점이 들어간 뒤로 그 등식은 성립하지 않는다.
+     *   실측: 판재 18면(원통 8 + 평면 10)에서 캡 루프는 현 점을 포함해 훨씬 길고 측면은 8장이라
+     *   전부 탈락했다. 프리즘 판정에 필요한 것은 **캡 2장이 평행·평면**이라는 사실뿐이다.
+     */
+    const prism = capsToOutline(caps.map(remap));
+    if (!prism) continue;
+    /**
+     * ③ 원통을 **홀**과 **모서리 라운드**로 나눈다 — 둘 다 축이 판 축과 평행해서 구별이 필요하다.
+     *
+     * 실측한 구조: 판재 18면 = 캡 2 + 외곽 평면 측면 8 + 원통 8. 그 원통은 **모서리 라운드**와
+     * **홀**이 섞여 있었다. 둘을 뭉개면 라운드를 홀로 세어 「부피 과대율」이 거짓이 된다.
+     *
+     * 판정: 중심에서 외곽까지의 거리 d 와 반경 r 을 비교한다.
+     *   · d ≥ r − tol  → 원이 외곽 **안쪽에 온전히** 들어간다 → **홀**
+     *   · 그 밖        → 외곽에 접하거나 걸친다 → **모서리 라운드**(이미 캡 루프의 현으로 표현됨)
+     * 라운드는 세지 않는다 — 이미 형상에 있으므로 손실이 아니다.
+     */
+    const TOL = 1e-3;
+    const holesFound: Array<{ x: number; y: number; r: number }> = [];
+    let rounds = 0;
+    for (const c of cylinderFaces) {
+      const q = cand.toLocal(c.axisOrigin);
+      const inside = pointInPolygon(q[0], q[1], prism.loop);
+      const dEdge = distancePointToLoop(q[0], q[1], prism.loop);
+      if (inside && dEdge >= c.radius - TOL) {
+        // 같은 홀의 반쪽 원통면이 2장으로 쪼개져 오는 경우가 흔하다 — 중심·반경으로 병합.
+        if (!holesFound.some((u) => Math.hypot(u.x - q[0], u.y - q[1]) < TOL && Math.abs(u.r - c.radius) < 1e-6)) {
+          holesFound.push({ x: q[0], y: q[1], r: c.radius });
+        }
+      } else rounds += 1;
+    }
+    const uniq = holesFound;
+    const outerArea = Math.abs(polygonSignedArea(prism.loop));
+    const holeArea = uniq.reduce((sum, u) => sum + Math.PI * u.r * u.r, 0);
+    if (!(outerArea > 0) || holeArea >= outerArea) continue;   // 홀이 외곽을 다 먹으면 판이 아니다
+    return {
+      feature: {
+        kind: 'extrude',
+        loop: prism.loop,
+        depth: prism.depth,
+        direction: 'one_sided',
+        mode: 'add',
+        ...(cand.rotateDeg ? { at: { rotateDeg: cand.rotateDeg } } : {}),
+      } as ExtrudeFeature,
+      holes: {
+        count: uniq.length,
+        radiiMm: uniq.map((u) => +u.r.toFixed(4)),
+        volumeOverPct: +((holeArea / outerArea) * 100).toFixed(2),
+      },
+    };
+  }
+  return null;
+}
+
+/**
+ * 캡 2장 → **외곽 폴리곤 + 두께** (260801c).
+ *
+ * `capsToPrism` 과 달리 **측면 수를 요구하지 않는다** — 원호 근사 후 캡 루프에 현 점이
+ * 들어가면 「캡 정점 수 = 측면 수」가 성립하지 않는다(실측으로 확인). 프리즘 판정에
+ * 필요한 것은 캡 2장이 각각 평면이고 서로 다른 축 위치에 있다는 사실이다.
+ * 로컬 프레임(캡 축 = Z)으로 재매핑된 입력을 받는다.
+ */
+function capsToOutline(caps: PlaneFace[]): { loop: Array<{ x: number; y: number }>; depth: number } | null {
+  let bottom: PlaneFace | null = null;
+  let top: PlaneFace | null = null;
+  for (const c of caps) {
+    if (c.normal[2] < -0.5) bottom = c;
+    else if (c.normal[2] > 0.5) top = c;
+  }
+  if (!bottom || !top || bottom.loop.length < 3) return null;
+  const z0 = bottom.loop[0]![2];
+  const z1 = top.loop[0]![2];
+  for (const v of bottom.loop) if (Math.abs(v[2] - z0) > POINT_EPS) return null;
+  for (const v of top.loop) if (Math.abs(v[2] - z1) > POINT_EPS) return null;
+  const depth = Math.abs(z1 - z0);
+  if (!(depth > POINT_EPS)) return null;
+  // 아래 캡은 아래에서 보면 CCW 라 뒤집어야 IR 이 기대하는 CCW XY 루프가 된다.
+  const xy = bottom.loop.slice().reverse().map((v) => ({ x: v[0], y: v[1] }));
+  if (polygonSignedArea(xy) <= 0) xy.reverse();
+  return { loop: xy, depth };
+}
+
+/** 점에서 폴리곤 **경계**까지의 최단거리(세그먼트 기준). */
+function distancePointToLoop(px: number, py: number, loop: ReadonlyArray<{ x: number; y: number }>): number {
+  let best = Infinity;
+  for (let i = 0; i < loop.length; i++) {
+    const a = loop[i]!, b = loop[(i + 1) % loop.length]!;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const L2 = dx * dx + dy * dy;
+    const t = L2 > 0 ? Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / L2)) : 0;
+    best = Math.min(best, Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy)));
+  }
+  return best;
+}
+
+/** 폴리곤 부호면적(CCW=+). */
+function polygonSignedArea(loop: ReadonlyArray<{ x: number; y: number }>): number {
+  let a = 0;
+  for (let i = 0; i < loop.length; i++) {
+    const p = loop[i]!, q = loop[(i + 1) % loop.length]!;
+    a += p.x * q.y - q.x * p.y;
+  }
+  return a / 2;
+}
+
+/** 점이 폴리곤 내부인가 — ray casting. 경계 위는 **내부로 보지 않는다**(홀이 아니라 라운드다). */
+function pointInPolygon(px: number, py: number, loop: ReadonlyArray<{ x: number; y: number }>): boolean {
+  let inside = false;
+  for (let i = 0, j = loop.length - 1; i < loop.length; j = i++) {
+    const a = loop[i]!, b = loop[j]!;
+    if ((a.y > py) !== (b.y > py) && px < ((b.x - a.x) * (py - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
 }
 
 // ─── cylinder primitive → RevolveFeature ──────────────────────────────────

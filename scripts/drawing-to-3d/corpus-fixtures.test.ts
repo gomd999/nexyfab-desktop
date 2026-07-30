@@ -12,7 +12,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { corpusRoot, nistParts, pcertScenes, measureStepFile } from './corpus-fixtures.mjs';
+import { corpusRoot, nistParts, pcertScenes, measureStepFile, measureClassifierCoverage } from './corpus-fixtures.mjs';
+import { importStep } from '@/lib/brep-bridge/stepImport';
 
 const root = (corpusRoot as unknown as () => string | null)();
 const d = root ? describe : describe.skip;
@@ -164,3 +165,40 @@ d('PCERT — 실형상 부피 복원 (260729c)', () => {
   }, 300_000);
 });
 
+
+d('★ 구멍 뚫린 판 임포트 (260801c)', () => {
+  /**
+   * 원호 근사 후 미지원 사유 1위가 `(N CYLINDRICAL_SURFACE, N PLANE)` **22건**이었다.
+   * 실물에서 이건 거의 항상 **판재 + 원형 홀**(볼트홀·보스·경량화)이다.
+   *
+   * ⚠ **홀을 형상으로 넣지는 못한다** — IR 프로파일이 단일 루프고, 소비부는 노드마다
+   *   독립 바디로 배치해 노드 간 부울을 하지 않는다. 외곽·두께만 정확히 받고
+   *   홀은 개수·반경·부피 과대율을 **수치로 고지**한다.
+   *
+   * ⚠⚠ 이 회귀를 쓰다 **측정 도구의 버그**를 찾았다 — `measureClassifierCoverage` 가
+   *   `r.nodes`(없는 필드)를 읽어 **항상 0** 을 냈다. 「코퍼스 바디 0」이라는 보고가
+   *   여러 번 나갔고 원호 근사의 효과를 「없다」로 읽었다. 실제 대조: **바디 2 → 12**.
+   *   측정 도구를 고정하는 것만으로는 부족하고 **한 번은 반대로 검증**해야 한다.
+   */
+  it('판+홀 솔리드가 외곽·두께로 임포트되고 홀은 수치로 고지된다', () => {
+    const files = nistParts(root!);
+    void files;
+    const cov = (measureClassifierCoverage as unknown as (i: unknown, rf: unknown) => {
+      withBodies: number; bodies: number; reasons: Array<[string, number]>;
+    } | null)(importStep as unknown, readFileSync as unknown);
+    expect(cov).not.toBeNull();
+    // 260801c 실측: 바디 2 → 12. 개선분이 사라지면 잡는다(정확한 수는 코퍼스에 달렸다).
+    expect(cov!.bodies).toBeGreaterThanOrEqual(12);
+    // 판+홀 사유는 22 → 12 로 줄었다. 늘어나면 검출기가 퇴행한 것이다.
+    const plateHole = cov!.reasons.find(([r]) => /CYLINDRICAL_SURFACE/.test(r));
+    expect(plateHole?.[1] ?? 0).toBeLessThanOrEqual(12);
+  }, 900_000);
+
+  it('★측정 도구가 **바디를 실제로 센다** — `r.nodes` 를 읽던 버그의 회귀', () => {
+    // 도구가 0 을 내는데 실제로는 바디가 있는 상태를 다시는 만들지 않는다.
+    const cov = (measureClassifierCoverage as unknown as (i: unknown, rf: unknown) => { withBodies: number; bodies: number } | null)(
+      importStep as unknown, readFileSync as unknown);
+    expect(cov!.withBodies).toBeGreaterThan(0);
+    expect(cov!.bodies).toBeGreaterThan(cov!.withBodies - 1);
+  }, 900_000);
+});
