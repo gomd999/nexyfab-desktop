@@ -929,7 +929,8 @@ function solidToFeature(
       kind: 'unsupported',
       reason:
         `${faceRefs.length} faces (${cylinderFaces.length} CYLINDRICAL_SURFACE, ` +
-        `${planeFaces.length} PLANE) — 1 cylinder + 2 caps 도 아니고 「판재+원통 홀」 패턴도 아니다`,
+        `${planeFaces.length} PLANE) — 1 cylinder + 2 caps 도 아니고 「판재+원통 홀」 패턴도 아니다`
+        + (prismHoleWhy.length ? ` · ${prismHoleWhy.join(' / ')}` : ''),
     };
   }
 
@@ -1191,22 +1192,49 @@ function decodeFace(
   if (!normalRef || normalRef.kind !== 'ref') {
     return { kind: 'unsupported', reason: `AXIS2_PLACEMENT_3D missing normal direction` };
   }
-  const normal = readDirection(normalRef.id, entities);
-  if (!normal) return { kind: 'unsupported', reason: `bad DIRECTION entity` };
+  const rawNormal = readDirection(normalRef.id, entities);
+  if (!rawNormal) return { kind: 'unsupported', reason: `bad DIRECTION entity` };
+  /**
+   * ⚠ 260801g — `ADVANCED_FACE(..., .F.)` 의 **sense 플래그를 읽지 않고 있었다.**
+   *   플래그가 `.F.` 면 면 법선은 곡면 법선의 **반대**다. 무시하면 판재의 위·아래 캡이
+   *   **둘 다 +Z** 로 나와 「캡 2장이 평행한 평면 루프가 아니다」로 탈락한다
+   *   (실측: 코퍼스 판재 3건이 이 이유로 버려졌다).
+   *   지어내는 게 아니라 **파일에 적힌 것을 읽는** 것이다.
+   *   루프 순서도 면 법선 기준 CCW 이므로, 법선을 바로잡으면 감김도 함께 맞는다.
+   */
+  const senseArg = face.args[3];
+  const senseFalse = senseArg?.kind === 'enum' && senseArg.value === 'F';
+  const normal: [number, number, number] = senseFalse
+    ? [-rawNormal[0], -rawNormal[1], -rawNormal[2]]
+    : rawNormal;
 
   // Find FACE_OUTER_BOUND (skip inner FACE_BOUND rings for now).
   let outerBoundRef: number | null = null;
+  const plainBounds: number[] = [];
   for (const item of boundsArg.items) {
     if (item.kind !== 'ref') continue;
     const b = entities.get(item.id);
     if (!b) continue;
-    if (b.name === 'FACE_OUTER_BOUND') {
-      outerBoundRef = item.id;
-      break;
-    }
+    if (b.name === 'FACE_OUTER_BOUND') { outerBoundRef = item.id; break; }
+    if (b.name === 'FACE_BOUND') plainBounds.push(item.id);
+  }
+  if (outerBoundRef === null && plainBounds.length === 1) {
+    /**
+     * ⚠ 260801g — `FACE_OUTER_BOUND` 로 표시되지 않은 면이 있다(코퍼스 12건).
+     *   경계가 **하나뿐이면 그것이 외곽일 수밖에 없다** — 추측이 아니라 유일한 해석이다.
+     *   (내부 루프가 있으려면 바깥 루프가 함께 있어야 한다.)
+     * ⚠ 여럿이면 고르지 않는다 — 면적이 가장 큰 것을 외곽으로 보는 관례가 있지만
+     *   그건 **추정**이고, 틀리면 형상이 안팎으로 뒤집힌다.
+     */
+    outerBoundRef = plainBounds[0]!;
   }
   if (outerBoundRef === null) {
-    return { kind: 'unsupported', reason: `no FACE_OUTER_BOUND` };
+    return {
+      kind: 'unsupported',
+      reason: plainBounds.length > 1
+        ? `FACE_OUTER_BOUND 없음 · FACE_BOUND ${plainBounds.length}개 — 어느 것이 외곽인지 고를 수 없다(추정하지 않는다)`
+        : 'no FACE_OUTER_BOUND',
+    };
   }
   const bound = entities.get(outerBoundRef)!;
   // FACE_OUTER_BOUND('', #loop, .T.)
@@ -1262,6 +1290,7 @@ function decodeFace(
       return { kind: 'unsupported', reason: `EDGE_CURVE missing vertex refs` };
     }
     let arcCurve: StepEntity | null = null;
+    let splineCurve: StepEntity | null = null;
     if (curveRef && curveRef.kind === 'ref') {
       const curve = entities.get(curveRef.id);
       if (curve && curve.name && curve.name !== 'LINE' && curve.name !== 'POLYLINE') {
@@ -1281,7 +1310,8 @@ function decodeFace(
          * B_SPLINE·기타 곡선은 **그대로 거부한다** — 제어점 없이 현 분할을 하면
          * 그건 근사가 아니라 지어내기다.
          */
-        if (curve.name === 'CIRCLE') arcCurve = curve;
+        if (curve.name === 'CIRCLE' || curve.name === 'ELLIPSE') arcCurve = curve;
+        else if (curve.name === 'B_SPLINE_CURVE_WITH_KNOTS') splineCurve = curve;
         else {
           return {
             kind: 'unsupported',
@@ -1299,10 +1329,20 @@ function decodeFace(
     if (ring.length === 0 || !pointEq(ring[ring.length - 1]!, first)) {
       ring.push(first);
     }
+    if (splineCurve) {
+      const sp = bsplineChordPoints(splineCurve, entities);
+      if (!sp) {
+        return { kind: 'unsupported', reason: 'B_SPLINE 엣지의 제어점·노트를 읽지 못해 근사하지 않았다' };
+      }
+      const seq = forwardOe ? sp.points : sp.points.slice().reverse();
+      for (const q of seq) if (!pointEq(ring[ring.length - 1]!, q)) ring.push(q);
+      arcSagittaMm = Math.max(arcSagittaMm, sp.sagittaMm);
+      arcEdges += 1;
+    }
     if (arcCurve) {
       const arc = arcChordPoints(arcCurve, forwardOe ? start : end, forwardOe ? end : start, entities);
       if (!arc) {
-        return { kind: 'unsupported', reason: 'CIRCLE 엣지의 중심·반경을 읽지 못해 근사하지 않았다' };
+        return { kind: 'unsupported', reason: `${arcCurve.name} 엣지의 중심·반경(장단축)을 읽지 못해 근사하지 않았다` };
       }
       for (const q of arc.points) if (!pointEq(ring[ring.length - 1]!, q)) ring.push(q);
       arcSagittaMm = Math.max(arcSagittaMm, arc.sagittaMm);
@@ -1323,6 +1363,98 @@ function decodeFace(
 }
 
 /**
+ * B-스플라인 엣지를 **현 분할**로 근사한다 (260801g).
+ *
+ * ## ⚠ 앞선 판단을 정정한다
+ * 「제어점 없이 근사하면 지어내기」라고 적었었다. 그런데 실측해 보니
+ * `B_SPLINE_CURVE_WITH_KNOTS` 는 **차수·제어점·노트 다중도·노트를 전부 들고 있다**:
+ *   `B_SPLINE_CURVE_WITH_KNOTS('NONE', 3, (#…×10), .UNSPECIFIED., .F., .F., (4,2,2,2,4), (…))`
+ * 제어점으로 곡선을 평가하는 것은 **선언된 데이터의 계산**이지 지어내기가 아니다 —
+ * 원호 현 분할과 같은 부류다(근사이며, 오차를 수치로 고지한다).
+ *
+ * ## 무엇을 하는가
+ * 노트 다중도를 펼쳐 완전 노트벡터를 만들고 **Cox–de Boor** 로 점을 낸다.
+ * ⚠ **유리(rational) B-스플라인은 받지 않는다** — 가중치는 `RATIONAL_B_SPLINE_CURVE` 쪽에
+ *   있고 이 엔티티에는 없다. 가중치를 1 로 가정하면 그건 다른 곡선이다.
+ * ⚠ 오차는 **더 촘촘한 샘플과 비교해 실측**한다(곡률을 모른 채 공식으로 낼 수 없다).
+ */
+const BSPLINE_SEGMENTS_PER_SPAN = 8;
+function bsplineChordPoints(
+  curve: StepEntity,
+  entities: Map<number, StepEntity>,
+): { points: Array<[number, number, number]>; sagittaMm: number } | null {
+  const degArg = curve.args[1];
+  const cpArg = curve.args[2];
+  const multArg = curve.args[6];
+  const knotArg = curve.args[7];
+  if (degArg?.kind !== 'number' || cpArg?.kind !== 'list' || multArg?.kind !== 'list' || knotArg?.kind !== 'list') return null;
+  const degree = Math.round(degArg.value);
+  if (!(degree >= 1 && degree <= 7)) return null;
+  const cps: Array<[number, number, number]> = [];
+  for (const it of cpArg.items) {
+    if (it.kind !== 'ref') return null;
+    const q = readCartesianPoint(it.id, entities);
+    if (!q) return null;
+    cps.push(q);
+  }
+  const mults: number[] = [];
+  for (const it of multArg.items) { if (it.kind !== 'number') return null; mults.push(Math.round(it.value)); }
+  const uk: number[] = [];
+  for (const it of knotArg.items) { if (it.kind !== 'number') return null; uk.push(it.value); }
+  if (mults.length !== uk.length || !uk.length) return null;
+  // 다중도를 펼쳐 완전 노트벡터. 길이는 제어점수 + 차수 + 1 이어야 한다(아니면 우리가 못 읽은 것이다).
+  const knots: number[] = [];
+  for (let i = 0; i < uk.length; i++) for (let k = 0; k < mults[i]!; k++) knots.push(uk[i]!);
+  if (knots.length !== cps.length + degree + 1) return null;
+  const u0 = knots[degree]!, u1 = knots[cps.length]!;
+  if (!(u1 > u0)) return null;
+  const evalAt = (u: number): [number, number, number] | null => {
+    // 구간 찾기
+    let span = -1;
+    for (let i = degree; i < cps.length; i++) {
+      if (u >= knots[i]! && u < knots[i + 1]!) { span = i; break; }
+    }
+    if (span < 0) span = cps.length - 1;   // u = u1 끝점
+    const d: Array<[number, number, number]> = [];
+    for (let j = 0; j <= degree; j++) {
+      const cp = cps[span - degree + j];
+      if (!cp) return null;
+      d.push([cp[0], cp[1], cp[2]]);
+    }
+    for (let r = 1; r <= degree; r++) {
+      for (let j = degree; j >= r; j--) {
+        const i = span - degree + j;
+        const den = knots[i + degree - r + 1]! - knots[i]!;
+        const a = den > 0 ? (u - knots[i]!) / den : 0;
+        const p0 = d[j - 1]!, p1 = d[j]!;
+        d[j] = [p0[0] + a * (p1[0] - p0[0]), p0[1] + a * (p1[1] - p0[1]), p0[2] + a * (p1[2] - p0[2])];
+      }
+    }
+    return d[degree] ?? null;
+  };
+  const spans = Math.max(1, uk.length - 1);
+  const n = Math.min(96, spans * BSPLINE_SEGMENTS_PER_SPAN);
+  const points: Array<[number, number, number]> = [];
+  for (let i = 1; i < n; i++) {
+    const q = evalAt(u0 + ((u1 - u0) * i) / n);
+    if (!q) return null;
+    points.push(q);
+  }
+  // 오차 실측: 각 현의 중점 파라미터에서 실제 곡선까지의 거리(최댓값).
+  let sag = 0;
+  const all = [evalAt(u0), ...points, evalAt(u1)];
+  for (let i = 0; i < all.length - 1; i++) {
+    const a = all[i], b = all[i + 1];
+    if (!a || !b) continue;
+    const mid = evalAt(u0 + ((u1 - u0) * (i + 0.5)) / n);
+    if (!mid) continue;
+    const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, cz = (a[2] + b[2]) / 2;
+    sag = Math.max(sag, Math.hypot(mid[0] - cx, mid[1] - cy, mid[2] - cz));
+  }
+  return { points, sagittaMm: +sag.toFixed(4) };
+}
+
+/**
  * CIRCLE 엣지를 **현(chord) 분할**로 근사한다 (260801).
  *
  * CIRCLE('', #axis2_placement_3d, R) — 중심·법선·반경을 읽고, 시작·끝 정점의 각도를 구해
@@ -1334,8 +1466,11 @@ function decodeFace(
  * ⚠ 정점이 일치(완전한 원)하면 시작=끝이라 각도 구간이 정해지지 않는다 — 전원(360°)으로
  *   보고 등분한다(원형 개구·보스의 실제 형태다).
  */
-const ARC_CHORD_TOL_MM = 0.2;
-function arcChordPoints(
+export const ARC_CHORD_TOL_MM = 0.2;
+/** ⚠ `export` 는 **회귀 전용**이다 — 타원 새그를 한 번 작은 반축으로 잡아 과고지한 적이 있어
+ *  수치를 직접 검사한다(문서에 적어 두는 것과 검사하는 것은 다르다).
+ */
+export function arcChordPoints(
   circle: StepEntity,
   start: [number, number, number],
   end: [number, number, number],
@@ -1344,8 +1479,15 @@ function arcChordPoints(
   const placeRef = circle.args[1];
   const radArg = circle.args[2];
   if (!placeRef || placeRef.kind !== 'ref') return null;
+  /**
+   * ⚠ 260801g: **타원도 같은 경로**로 받는다. `ELLIPSE(name, placement, a, b)` 는 장·단축을
+   *   엔티티가 들고 있어 원과 같은 부류다(선언된 데이터의 계산). 원은 a=b 인 경우다.
+   */
+  const semiB = circle.name === 'ELLIPSE' && circle.args[3]?.kind === 'number' ? circle.args[3].value : null;
   const R = radArg?.kind === 'number' ? radArg.value : NaN;
   if (!Number.isFinite(R) || !(R > 0)) return null;
+  if (circle.name === 'ELLIPSE' && !(semiB !== null && semiB > 0)) return null;
+  const rb = semiB ?? R;
   const ent = entities.get(placeRef.id);
   if (!ent || ent.name !== 'AXIS2_PLACEMENT_3D') return null;
   const originRef = ent.args[1];
@@ -1368,13 +1510,21 @@ function arcChordPoints(
   ];
   const ang = (p: [number, number, number]) => {
     const d: [number, number, number] = [p[0] - C[0], p[1] - C[1], p[2] - C[2]];
-    return Math.atan2(d[0] * y[0] + d[1] * y[1] + d[2] * y[2], d[0] * x[0] + d[1] * x[1] + d[2] * x[2]);
+    // 타원은 매개변수각이므로 y 성분을 단축으로 정규화해야 각이 맞는다.
+    return Math.atan2((d[0] * y[0] + d[1] * y[1] + d[2] * y[2]) / rb, (d[0] * x[0] + d[1] * x[1] + d[2] * x[2]) / R);
   };
   const a0 = ang(start);
   let sweep = ang(end) - a0;
   while (sweep <= 1e-9) sweep += 2 * Math.PI;      // 반시계 기준 정규화
   if (pointEq(start, end)) sweep = 2 * Math.PI;    // 완전한 원
-  const ratio = Math.max(-1, Math.min(1, 1 - ARC_CHORD_TOL_MM / R));
+  /**
+   * ⚠ 260801g — 처음 **작은 쪽 반축**으로 잡았다가 고쳤다. 매개변수각 Δt 를 균등 분할하면
+   *   최대 새그는 `a·Δt²/8` 로 **큰 쪽 반축**이 지배한다(장축 끝은 곡률반경이 b²/a 로 작지만
+   *   그만큼 현도 짧아져 상쇄되고, 반대쪽이 지배한다). 작은 쪽으로 잡으면 분할이 성기고
+   *   고지 새그가 실제보다 작아진다 — **정확도 과고지**다.
+   */
+  const rGov = Math.max(R, rb);
+  const ratio = Math.max(-1, Math.min(1, 1 - ARC_CHORD_TOL_MM / rGov));
   const dMax = 2 * Math.acos(ratio);
   const n = Math.max(1, Math.min(64, Math.ceil(sweep / Math.max(1e-6, dMax))));
   const dth = sweep / n;
@@ -1384,12 +1534,12 @@ function arcChordPoints(
     const t = a0 + dth * i;
     const c = Math.cos(t), sn = Math.sin(t);
     points.push([
-      C[0] + R * (c * x[0] + sn * y[0]),
-      C[1] + R * (c * x[1] + sn * y[1]),
-      C[2] + R * (c * x[2] + sn * y[2]),
+      C[0] + R * c * x[0] + rb * sn * y[0],
+      C[1] + R * c * x[1] + rb * sn * y[1],
+      C[2] + R * c * x[2] + rb * sn * y[2],
     ]);
   }
-  return { points, sagittaMm: R * (1 - Math.cos(dth / 2)) };
+  return { points, sagittaMm: rGov * (1 - Math.cos(dth / 2)) };
 }
 
 /**
@@ -1532,12 +1682,21 @@ function readVertexPoint(
  *
  * 반환: 외곽 프리즘 `ExtrudeFeature` + **미반영 홀 고지**(개수·반경·부피 과대율).
  */
+/** 직전 `prismWithCylindricalHoles` 호출의 탈락 사유(진단 전용). */
+let prismHoleWhy: string[] = [];
+
 function prismWithCylindricalHoles(
   planeFaces: PlaneFace[],
   cylinderFaces: CylinderFace[],
   entities: Map<number, StepEntity>,
 ): { feature: ExtrudeFeature; holes: { count: number; radiiMm: number[]; volumeOverPct: number } } | null {
   void entities;
+  /**
+   * ⚠ 260801g — 거부 사유가 「패턴이 아니다」로 뭉개져 있었다. 무엇이 막았는지 모르면
+   *   다음에 무엇을 고칠지도 정할 수 없다 — 축별 탈락 사유를 모아 호출측이 내보내게 한다.
+   */
+  const why: string[] = [];
+  prismHoleWhy = why;
   const AXES: Array<{
     axis: 0 | 1 | 2;
     isCap: (n: [number, number, number]) => boolean;
@@ -1561,11 +1720,19 @@ function prismWithCylindricalHoles(
       else if (Math.abs(f.normal[cand.axis]) <= AXIS_EPS) sides.push(f);
       else { bad = true; break; }
     }
-    if (bad || caps.length !== 2 || sides.length < 3) continue;
+    if (bad || caps.length !== 2 || sides.length < 3) {
+      why.push(`축${cand.axis}: 캡 ${caps.length}장·측면 ${sides.length}장`
+        + (bad ? ' (캡축과 어긋난 평면이 있다 — 계단·챔퍼면일 수 있다)' : ' (캡 2장 + 측면 3장 이상이 필요하다)'));
+      continue;
+    }
     // ② 모든 원통 축이 캡 축과 평행해야 홀이다.
     const axisDir: [number, number, number] = [0, 0, 0];
     axisDir[cand.axis] = 1;
-    if (!cylinderFaces.every((c) => directionsParallel(c.axisDir, axisDir))) continue;
+    if (!cylinderFaces.every((c) => directionsParallel(c.axisDir, axisDir))) {
+      const off = cylinderFaces.filter((c) => !directionsParallel(c.axisDir, axisDir)).length;
+      why.push(`축${cand.axis}: 원통 ${off}/${cylinderFaces.length}개의 축이 판 두께축과 나란하지 않다 — 관통홀이 아니다(측면 홀·라운드)`);
+      continue;
+    }
     const remap = (f: PlaneFace): PlaneFace => ({
       normal: cand.toLocal(f.normal),
       loop: f.loop.map((v) => cand.toLocal(v)),
@@ -1577,7 +1744,10 @@ function prismWithCylindricalHoles(
      *   전부 탈락했다. 프리즘 판정에 필요한 것은 **캡 2장이 평행·평면**이라는 사실뿐이다.
      */
     const prism = capsToOutline(caps.map(remap));
-    if (!prism) continue;
+    if (!prism) {
+      why.push(`축${cand.axis}: 캡 2장이 서로 평행한 평면 루프가 아니다(두께를 정할 수 없다)`);
+      continue;
+    }
     /**
      * ③ 원통을 **홀**과 **모서리 라운드**로 나눈다 — 둘 다 축이 판 축과 평행해서 구별이 필요하다.
      *
@@ -1606,7 +1776,10 @@ function prismWithCylindricalHoles(
     const uniq = holesFound;
     const outerArea = Math.abs(polygonSignedArea(prism.loop));
     const holeArea = uniq.reduce((sum, u) => sum + Math.PI * u.r * u.r, 0);
-    if (!(outerArea > 0) || holeArea >= outerArea) continue;   // 홀이 외곽을 다 먹으면 판이 아니다
+    if (!(outerArea > 0) || holeArea >= outerArea) {
+      why.push(`축${cand.axis}: 홀 면적이 외곽 면적 이상이다(${uniq.length}개·라운드 ${rounds}개) — 판재가 아니다`);
+      continue;
+    }
     return {
       feature: {
         kind: 'extrude',

@@ -187,11 +187,30 @@ d('★ 구멍 뚫린 판 임포트 (260801c)', () => {
       withBodies: number; bodies: number; reasons: Array<[string, number]>;
     } | null)(importStep as unknown, readFileSync as unknown);
     expect(cov).not.toBeNull();
-    // 260801c 실측: 바디 2 → 12. 개선분이 사라지면 잡는다(정확한 수는 코퍼스에 달렸다).
-    expect(cov!.bodies).toBeGreaterThanOrEqual(12);
-    // 판+홀 사유는 22 → 12 로 줄었다. 늘어나면 검출기가 퇴행한 것이다.
+    // 실측 추이: 바디 **2 → 12(원호 근사) → 23(B-스플라인·타원·sense 플래그)**.
+    expect(cov!.bodies).toBeGreaterThanOrEqual(23);
+    // 판+홀 사유는 22 → 12 → **0**. 늘어나면 검출기가 퇴행한 것이다.
     const plateHole = cov!.reasons.find(([r]) => /CYLINDRICAL_SURFACE/.test(r));
-    expect(plateHole?.[1] ?? 0).toBeLessThanOrEqual(12);
+    expect(plateHole?.[1] ?? 0).toBeLessThanOrEqual(2);
+  }, 900_000);
+
+  /**
+   * ★260801g — **곡선 엣지가 더 이상 임포트를 막지 않는다.**
+   *
+   * 추이: `CIRCLE` 61건(원호 근사) → `B_SPLINE_CURVE_WITH_KNOTS` 16건 → `ELLIPSE` 4건.
+   * 하나를 풀 때마다 **그 뒤에 가려져 있던 다음 곡선**이 드러났다 — 그래서 한 종류만
+   * 처리하고 「곡선을 지원한다」고 적으면 과고지가 된다.
+   *
+   * ⚠ 지어낸 것이 아니다: 세 종류 모두 **중심·반경·제어점·노트를 파일이 들고 있다.**
+   *   선언된 데이터를 계산한 것이고, 근사분은 새그(mm)로 고지한다.
+   *   유리 B-스플라인(가중치 有)은 **여전히 거부한다** — 가중치를 무시하면 형상이 달라진다.
+   */
+  it('★곡선 엣지(CIRCLE·B_SPLINE·ELLIPSE)가 임포트 차단 사유에 남지 않는다', () => {
+    const cov = (measureClassifierCoverage as unknown as (i: unknown, rf: unknown) => {
+      reasons: Array<[string, number]>;
+    } | null)(importStep as unknown, readFileSync as unknown);
+    const curveBlocked = cov!.reasons.filter(([r]) => /B_SPLINE_CURVE|ELLIPSE|non-linear edge/.test(r));
+    expect(curveBlocked).toEqual([]);
   }, 900_000);
 
   it('★측정 도구가 **바디를 실제로 센다** — `r.nodes` 를 읽던 버그의 회귀', () => {
