@@ -9,7 +9,7 @@
  *
  * usage: structuralCheck(assembly, { material, fluidParts, supports, member, seismicG })
  */
-import { partAabb, gearPoly, sheetPoly, polyArea, boltDims, holeFeature } from './reconstruct.mjs';
+import { partAabb, gearPoly, sheetPoly, polyArea, boltDims, holeFeature, extrudePoly } from './reconstruct.mjs';
 import { snapSquareTube } from './std-snap.mjs';
 
 const g = 9.81;
@@ -75,6 +75,21 @@ export function partVolume(type, p) {
       return (Math.sqrt(3) / 2) * af ** 2 * hh + A * p.threadDia ** 2 * p.length; // 육각머리 + 자루
     }
     case 'sheet_profile': return polyArea(sheetPoly(p)) * p.width;
+    /**
+     * 임의 폐곡선 압출 — 부피는 **폐형**이다(shoelace 면적 × 깊이 − 원형홀).
+     * 근사가 아니므로 AABB 과대 문제(코퍼스 primitive_fit 잔차 99%대)를 겪지 않는다.
+     */
+    /** 조적 블록 — 공동을 뺀 폐형(중실로 두면 질량이 실물의 1.5~2배가 된다). */
+    case 'masonry_block': {
+      const n = Number(p.coreCount ?? 0);
+      const cores = n > 0 ? n * Number(p.coreW) * Number(p.coreD) * Number(p.height) : 0;
+      return Math.max(0, p.length * p.thickness * p.height - cores);
+    }
+    case 'extrude_profile': {
+      const A2 = Math.abs(polyArea(extrudePoly(p)));
+      const holes = (p.holes ?? []).reduce((sum, h) => sum + A * Number(h.d) ** 2, 0);
+      return Math.max(0, (A2 - holes) * Number(p.depth));
+    }
     case 'wall_with_openings': {
       const solid = p.length * p.thickness * p.height;
       const cut = (p.openings ?? []).reduce((s, o) => s + o.w * o.h * p.thickness, 0);

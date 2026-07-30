@@ -127,6 +127,28 @@ export function sheetPoly({ thickness: t, segments, angles = [] }) {
 }
 
 /** 폴리곤 면적(shoelace, 절대값) / 둘레. */
+/**
+ * `extrude_profile` 의 외곽 폴리곤 — **검증하고 돌려준다**.
+ *
+ * ⚠ 잘못된 입력을 조용히 넘기지 않는다. 점 3개 미만·비유한 좌표·면적 0 은 형상이 아니라
+ * 입력 오류이고, 통과시키면 부피 0 인 부품이 "정상"으로 도면집에 들어간다
+ * (이 세션에서 반복해 잡은 「없는 것을 있는 것처럼」의 형상판).
+ * 자기교차는 검사하지 않는다 — 그 사실을 어휘 힌트에 적는다(모른다고 말하는 편이 낫다).
+ */
+export function extrudePoly(i) {
+  const raw = Array.isArray(i?.profile) ? i.profile : null;
+  if (!raw || raw.length < 3) throw new Error('extrude_profile: profile 은 점 3개 이상의 닫힌 폴리라인이어야 한다(마지막 점≠첫 점 — 자동으로 닫는다)');
+  const pts = raw.map((q) => [Number(q[0]), Number(q[1])]);
+  if (!pts.every((q) => Number.isFinite(q[0]) && Number.isFinite(q[1]))) throw new Error('extrude_profile: profile 좌표에 비유한 값이 있다');
+  // 마지막 점이 첫 점과 같으면 중복이므로 제거(닫기는 소비부가 한다).
+  const closed = pts.length > 3 && Math.hypot(pts[0][0] - pts[pts.length - 1][0], pts[0][1] - pts[pts.length - 1][1]) < 1e-9
+    ? pts.slice(0, -1) : pts;
+  if (closed.length < 3) throw new Error('extrude_profile: 중복점 제거 후 점이 3개 미만이다');
+  if (!(Math.abs(polyArea(closed)) > 1e-9)) throw new Error('extrude_profile: profile 면적이 0 이다(일직선 또는 중복점)');
+  if (!(Number(i.depth) > 0)) throw new Error('extrude_profile: depth(압출 깊이) > 0 필요');
+  return closed;
+}
+
 export function polyArea(pts) {
   let s = 0;
   for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; s += a[0] * b[1] - b[0] * a[1]; }
@@ -455,6 +477,35 @@ const GATES = {
     }
     if (i.angleDeg != null && !(i.angleDeg > 0 && i.angleDeg <= 360)) e.push('angleDeg (0,360]');
   },
+  /**
+   * 임의 폐곡선 압출(260801). 게이트가 **입력 오류를 형상으로 통과시키지 않는다** —
+   * 게이트에 안 넣으면 `unsupported type` 으로 전 경로에서 부품이 조용히 사라진다
+   * (실측으로 확인: 어휘·부피·BOQ 를 다 붙여도 게이트가 없으면 어셈블리에서 빠진다).
+   */
+  extrude_profile(i, e) {
+    if (!pos(i.depth)) e.push('depth invalid(>0)');
+    const prof = i.profile;
+    if (!Array.isArray(prof) || prof.length < 3) { e.push('profile ≥3점 필요([[x,y]...])'); return; }
+    for (const [n, q] of prof.entries()) {
+      if (!Array.isArray(q) || q.length < 2 || !Number.isFinite(q[0]) || !Number.isFinite(q[1])) e.push(`profile[${n}] invalid([x,y] 수치)`);
+    }
+    try { extrudePoly(i); } catch (err) { e.push(String(err.message).replace(/^extrude_profile: /, '')); }
+    for (const [n, h] of (i.holes ?? []).entries()) {
+      if (!pos(h?.d) || !Number.isFinite(h?.x) || !Number.isFinite(h?.y)) e.push(`holes[${n}] invalid({x,y,d>0})`);
+    }
+  },
+  masonry_block(i, e) {
+    for (const k of ['length', 'thickness', 'height']) if (!pos(i[k])) e.push(`${k} invalid(>0)`);
+    const n = Number(i.coreCount ?? 0);
+    if (!(Number.isInteger(n) && n >= 0 && n <= 4)) { e.push('coreCount 0~4 정수'); return; }
+    if (n > 0) {
+      for (const k of ['coreW', 'coreD']) if (!pos(i[k])) e.push(`${k} invalid(>0 — coreCount>0 이면 필요)`);
+      // 공동이 블록을 뚫고 나가면 형상이 아니다. 벽두께(리브)를 실제로 확인한다.
+      const span = n * Number(i.coreW);
+      if (span >= Number(i.length)) e.push(`공동 폭 합 ${span} ≥ 블록 길이 ${i.length} — 리브가 남지 않는다`);
+      if (Number(i.coreD) >= Number(i.thickness)) e.push(`coreD ${i.coreD} ≥ thickness ${i.thickness} — 면판이 남지 않는다`);
+    }
+  },
   cavity_block(i, e) {
     for (const k of ['blockW', 'blockD', 'blockH']) if (!pos(i[k])) e.push(`${k} invalid`);
     if (!i.cavity?.type || !i.cavity?.params) { e.push('cavity{type,params,at?} 필요'); return; }
@@ -567,6 +618,27 @@ const SCAD = {
   },
   sheet_profile(i) {
     return `linear_extrude(height=${i.width}) ${polyScad(sheetPoly(i))}`;
+  },
+  /** 임의 폐곡선 압출(260801) — 원형 관통홀은 difference 로 뺀다. */
+  masonry_block(i) {
+    const n = Number(i.coreCount ?? 0);
+    const solid = `cube([${i.length},${i.thickness},${i.height}]);`;
+    if (!(n > 0)) return solid;
+    // 공동은 길이방향 등간격 — 리브 두께 = (길이 − 공동폭합) / (n+1)
+    const rib = (Number(i.length) - n * Number(i.coreW)) / (n + 1);
+    const yy = (Number(i.thickness) - Number(i.coreD)) / 2;
+    const cuts = Array.from({ length: n }, (_, k) => {
+      const x = rib * (k + 1) + Number(i.coreW) * k;
+      return `translate([${+x.toFixed(3)},${+yy.toFixed(3)},-1]) cube([${i.coreW},${i.coreD},${Number(i.height) + 2}]);`;
+    }).join(' ');
+    return `difference() { ${solid} ${cuts} }`;
+  },
+  extrude_profile(i) {
+    const solid = `linear_extrude(height=${i.depth}) ${polyScad(extrudePoly(i))}`;
+    const holes = i.holes ?? [];
+    if (!holes.length) return solid;
+    const cuts = holes.map((h) => `translate([${h.x},${h.y},-1]) cylinder(h=${Number(i.depth) + 2}, d=${h.d}, $fn=48);`).join(' ');
+    return `difference() { ${solid} ${cuts} }`;
   },
   i_girder(i) {
     const W = Math.max(i.topW, i.botW);
@@ -783,6 +855,12 @@ export function partAabb(i) {
       if (!bb) throw new Error('mesh: aabb 필요(빌드 시 산출)');
       return { min: [...bb.min], max: [...bb.max] };
     }
+    case 'masonry_block':
+      return { min: [0, 0, 0], max: [i.length, i.thickness, i.height] };
+    case 'extrude_profile': {
+      const b = polyBbox(extrudePoly(i));
+      return { min: [b.x0, b.y0, 0], max: [b.x1, b.y1, Number(i.depth)] };
+    }
     case 'revolve': {
       const rMax = Math.max(...(i.profile ?? [[1, 0]]).map((q) => q[0]));
       const zs = (i.profile ?? [[0, 0]]).map((q) => q[1]);
@@ -863,4 +941,31 @@ export const PARAMS = {
   cavity_block: ['blockW', 'blockD', 'blockH'], // cavity 는 객체 — 스키마 특례
   coil_spring: ['wireDia', 'coilDia', 'pitch', 'turns'],
   pillow_block: ['boreDia', 'width', 'height', 'depth', 'boltPitch'],
+  /**
+   * 임의 폐곡선 압출 (260801, 참고 코퍼스 실측 근거).
+   *
+   * ⚠ 왜 필요한가 — 코퍼스 IR 전수(1,071건)에서 압출 프로파일 10,508개를 집계했다:
+   *   arbitrary_closed **67.6%** · rectangle 23.3% · derived 7.9% · circle 1.0% ·
+   *   i_shape 0.2% · tshape 0.1%.
+   *   기존 어휘 30종은 rectangle·circle·i/t 계열(=24.5%)만 표현할 수 있었다.
+   *   **실물 압출의 3분의 2가 어휘에 없었다** — 어휘를 30→60종으로 늘려도 이 비율은
+   *   바뀌지 않는다(임의 곡선은 열거로 못 덮는다). 그래서 어휘 1종으로 받는다.
+   *
+   * `profile`·`holes` 는 배열이라 스키마 특례(revolve·mesh 와 같은 취급).
+   */
+  extrude_profile: ['depth'],
+  /**
+   * 조적 블록 (260801, 참고 코퍼스 근거 + KS F 4002).
+   *
+   * ⚠ 코퍼스가 준 것과 주지 않은 것을 구별해 적는다:
+   *   **준 것** — `cmu`·`brick` 이 부품명에 40회 등장한다(조적 벽체가 어휘에 통째로 없었다).
+   *   **주지 않은 것** — 부품 단위 치수. IR 의 `extent.size` 는 **어셈블리 전체 bbox** 라
+   *   조적 블록 한 장의 치수를 코퍼스에서 뽑을 수 없다(실측으로 확인: 3건 모두 건물 전체
+   *   bbox 였다 — 13,619×17,120×9,989mm 등). **그래서 치수 기본값은 코퍼스가 아니라
+   *   KS F 4002(콘크리트 기본블록 390×190×두께)에서 온다.** 코퍼스에서 나오지 않은 값을
+   *   코퍼스 근거라고 적으면 그게 지어내기다.
+   *
+   * 속빈 공동(core)은 개수·치수를 받아 실제로 뺀다 — 중실로 두면 부피·질량이 과대해진다.
+   */
+  masonry_block: ['length', 'thickness', 'height', 'coreCount', 'coreW', 'coreD'],
 };

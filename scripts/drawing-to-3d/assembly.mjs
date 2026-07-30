@@ -16,7 +16,7 @@
  * usage: node assembly.mjs '<assembly.json>'
  */
 import { readFileSync } from 'node:fs';
-import { gate, scadBody, partAabb, gearPoly, sheetPoly, hexPts, boltDims, holeFeature } from './reconstruct.mjs';
+import { gate, scadBody, partAabb, gearPoly, sheetPoly, hexPts, boltDims, holeFeature, extrudePoly } from './reconstruct.mjs';
 import { structuralCheck } from './structural.mjs';
 import { supportCheck } from './support-check.mjs';
 import { autoRoutePipes, pipeObstacleCheck, pipeCrossCheck } from './pipe-route.mjs';
@@ -33,7 +33,7 @@ export const SERVICE_COL = {
   column: '#475569', beam: '#0e7490', slab: '#94a3b8', joist: '#854d0e', deck: '#a16207', floor: '#d1d5db', table: '#0f766e', counter: '#7c3aed', wall: '#78716c', base: '#57534e',
   stack: '#7c2d12',
 };
-export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', slab_with_openings: '#8a8175', tapered_girder: '#0e7490', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5', mesh: '#7c6f9f', revolve: '#9aa7b5', cavity_block: '#7c6f9f', coil_spring: '#6b7280', pillow_block: '#78838f', rebar: '#a16207', pipe_elbow: '#9aa7b5', pipe_tee: '#9aa7b5' };
+export const TYPE_COL = { box: '#5b6472', plate_with_holes: '#9aa7b5', stepped_plate: '#9aa7b5', base_plate: '#5b6472', l_bracket: '#8b98a6', bent_sheet: '#8b98a6', flange: '#78838f', tube: '#9aa7b5', rect_tube: '#3f4756', cylinder: '#9aa7b5', gusset: '#8b98a6', spur_gear: '#a16207', hex_bolt: '#6b7280', sheet_profile: '#8b98a6', wall_with_openings: '#78716c', slab_with_openings: '#8a8175', tapered_girder: '#0e7490', hex_nut: '#6b7280', washer: '#78838f', angle: '#8b98a6', tee_section: '#8b98a6', pipe_reducer: '#9aa7b5', mesh: '#7c6f9f', revolve: '#9aa7b5', cavity_block: '#7c6f9f', coil_spring: '#6b7280', pillow_block: '#78838f', rebar: '#a16207', pipe_elbow: '#9aa7b5', pipe_tee: '#9aa7b5', extrude_profile: '#8b98a6', masonry_block: '#a8a29e' };
 // 부품 id/name 키워드 → 계통 자동추론 (명시 service 태그 없어도 계통색이 나오게).
 const ID_SERVICE = [
   [/pump|motor|모터|펌프|impeller|임펠라|blower|fan|송풍/i, 'motor'],
@@ -328,6 +328,27 @@ export function assemblyToComposeIntent(asm) {
       case 'sheet_profile':
         feats.push(F('extrude', { profile: sheetPoly(p), height: p.width }));
         break;
+      case 'masonry_block': { // 조적 블록(260801) — 속빈 공동을 실제로 뺀다
+        const n = Number(p.coreCount ?? 0);
+        feats.push(F('box', { size: [p.length, p.thickness, p.height] }));
+        if (n > 0) {
+          const rib = (Number(p.length) - n * Number(p.coreW)) / (n + 1);
+          const yy = (Number(p.thickness) - Number(p.coreD)) / 2;
+          for (let k = 0; k < n; k++) {
+            const x = rib * (k + 1) + Number(p.coreW) * k;
+            feats.push(F('box', { size: [p.coreW, p.coreD, Number(p.height) + 2] }, x, yy, -1, 'subtract'));
+          }
+        }
+        break;
+      }
+      case 'extrude_profile': { // 임의 폐곡선 압출(260801) — 코퍼스 압출의 67.6%가 이 형태다
+        feats.push(F('extrude', { profile: extrudePoly(p), height: p.depth }));
+        // 원형 관통홀만 지원 — 비원형 내부 루프는 **받지 않는다**(어휘 힌트에 명시).
+        for (const h of p.holes ?? []) {
+          feats.push(F('cylinder', { diameter: h.d, height: p.depth + 2 }, h.x, h.y, -1, 'subtract'));
+        }
+        break;
+      }
       case 'wall_with_openings':
         feats.push(F('box', { size: [p.length, p.thickness, p.height] }));
         for (const o of p.openings ?? []) feats.push(F('box', { size: [o.w, p.thickness + 2, o.h] }, o.x, -1, o.sill ?? 0, 'subtract'));

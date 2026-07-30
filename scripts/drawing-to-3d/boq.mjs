@@ -7,7 +7,7 @@
  */
 import { partVolumeEffective, DENSITY } from './structural.mjs';
 import { buildAssembly } from './assembly.mjs';
-import { gearPoly, sheetPoly, hexPts, polyArea, polyPerimeter, boltDims } from './reconstruct.mjs';
+import { gearPoly, sheetPoly, hexPts, polyArea, polyPerimeter, boltDims, extrudePoly } from './reconstruct.mjs';
 import { takeoff } from '../engineering-core/quantity/takeoff.mjs';
 
 const A = Math.PI / 4;
@@ -45,6 +45,30 @@ function surfaceMm2(type, p) {
     case 'sheet_profile': {
       const poly = sheetPoly(p);
       return 2 * polyArea(poly) + polyPerimeter(poly) * p.width;
+    }
+    /**
+     * 임의 폐곡선 압출 — 표면적도 **폐형**이다.
+     *   양단면(면적 − 홀단면 ×2) + 외곽 측면(둘레 × 깊이) + **홀 내벽**(π·d·깊이)
+     * 홀 내벽을 빼먹으면 도장·가공 면적이 과소 산출된다 — 260729 에 BOQ 표면적 11종이
+     * 조용히 0 이던 것을 고칠 때 세운 규약과 같다(내주 엣지는 실제로 마감이 붙는 면).
+     */
+    /**
+     * 조적 블록 — 겉면 6면 + **공동 내벽**(모르타르·미장이 붙지 않는 면이지만 가공/도장
+     * 대상 면적 산출의 일관성을 위해 포함하고, 상·하 개구분은 겉면에서 공제한다).
+     */
+    case 'masonry_block': {
+      const n = Number(p.coreCount ?? 0);
+      const L = Number(p.length), T = Number(p.thickness), H = Number(p.height);
+      const coreTop = n > 0 ? n * Number(p.coreW) * Number(p.coreD) : 0;
+      const coreWall = n > 0 ? n * 2 * (Number(p.coreW) + Number(p.coreD)) * H : 0;
+      return 2 * (L * T - coreTop) + 2 * (L * H) + 2 * (T * H) + coreWall;
+    }
+    case 'extrude_profile': {
+      const poly = extrudePoly(p);
+      const holes = p.holes ?? [];
+      const holeArea = holes.reduce((sum, h) => sum + (Math.PI / 4) * Number(h.d) ** 2, 0);
+      const holeWall = holes.reduce((sum, h) => sum + Math.PI * Number(h.d) * Number(p.depth), 0);
+      return 2 * Math.max(0, Math.abs(polyArea(poly)) - holeArea) + polyPerimeter(poly) * Number(p.depth) + holeWall;
     }
     case 'wall_with_openings': {
       const face = p.length * p.height - (p.openings ?? []).reduce((s, o) => s + o.w * o.h, 0);
@@ -142,7 +166,7 @@ function surfaceMm2(type, p) {
     default: return null;
   }
 }
-const holeCount = (type, p) => type === 'plate_with_holes' ? (p.holes?.length ?? 0) : type === 'flange' ? (p.boltCount ?? 0) : type === 'base_plate' ? 4 : type === 'spur_gear' && p.boreDia > 0 ? 1 : type === 'hex_nut' || type === 'washer' ? 1 : 0;
+const holeCount = (type, p) => type === 'plate_with_holes' || type === 'extrude_profile' ? (p.holes?.length ?? 0) : type === 'flange' ? (p.boltCount ?? 0) : type === 'base_plate' ? 4 : type === 'spur_gear' && p.boreDia > 0 ? 1 : type === 'hex_nut' || type === 'washer' ? 1 : 0;
 const bendCount = (type, p) => type === 'bent_sheet' ? 2 : type === 'l_bracket' ? 1 : type === 'angle' ? 1 : type === 'sheet_profile' ? (p?.angles ?? []).filter((a) => a !== 0).length : 0;
 const isLinear = (type) => type === 'rect_tube' || type === 'tube' || type === 'cylinder' || type === 'angle' || type === 'tee_section';
 const linearLenMm = (type, p) => type === 'rect_tube' || type === 'tube' ? p.length : type === 'cylinder' ? p.length : type === 'angle' || type === 'tee_section' ? p.length : 0;
@@ -183,7 +207,7 @@ export function computeBOQ(assembly, { material = 'STS316', rates = STD_RATES } 
   const surfaceMissing = [...new Set(items.filter((x) => x.surfaceM2 == null).map((x) => x.type))];
   const tubeLenM = +items.filter(x => x.linearLenM).reduce((s, x) => s + x.linearLenM, 0).toFixed(2);
   const holes = sum('holes'), bends = sum('bends');
-  const cutCount = parts.filter(p => isLinear(p.type)).length * 2 + parts.filter(p => ['plate_with_holes', 'stepped_plate', 'base_plate', 'l_bracket', 'gusset', 'bent_sheet', 'sheet_profile', 'spur_gear'].includes(p.type)).length;
+  const cutCount = parts.filter(p => isLinear(p.type)).length * 2 + parts.filter(p => ['plate_with_holes', 'stepped_plate', 'base_plate', 'l_bracket', 'gusset', 'bent_sheet', 'sheet_profile', 'spur_gear', 'extrude_profile'].includes(p.type)).length;
   const weldTotalMm = built.ok ? (built.weldTotalMm ?? 0) : 0;
   const weldJoints = built.ok ? (built.welds?.length ?? 0) : 0;
   const weldAreaMm2 = built.ok ? (built.welds ?? []).reduce((s, w) => s + (Number(w.throatAreaMm2) || 0), 0) : 0;

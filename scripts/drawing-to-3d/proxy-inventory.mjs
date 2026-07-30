@@ -49,6 +49,16 @@ export const CANONICAL = {
   pillow_block: { boreDia: 25, width: 140, height: 70, depth: 35 },
   cavity_block: { blockW: 120, blockD: 80, blockH: 60, cavity: { type: 'cylinder', params: { diameter: 40, length: 30 }, at: { tx: 60, ty: 40, tz: 30 } } },
   revolve: { profile: [[20, 0], [60, 0], [60, 40], [20, 40]], angleDeg: 360 },
+  /**
+   * 260801 — 새 어휘를 추가하면서 **여기에 넣는 것을 빠뜨렸다.**
+   *
+   * `CANONICAL` 은 「전 어휘를 세 경로(폐형식·SCAD·STEP)로 실측하는」 유일한 전수
+   * 소비자다. 여기 없으면 게이트·부피·BOQ·SCAD·STEP 을 다 붙여 놓고도 **어느 검사도
+   * 새 어휘를 밟지 않는다** — 이 세션 내내 잡아 온 형태 ①(있는 것이 안 닿음)의 어휘판이다.
+   * 아래 회귀(`PARAMS ⊆ CANONICAL`)로 다음에는 빠뜨릴 수 없게 했다.
+   */
+  extrude_profile: { profile: [[0, 0], [100, 0], [100, 20], [20, 20], [20, 100], [0, 100]], depth: 50, holes: [{ x: 50, y: 10, d: 10 }] },
+  masonry_block: { length: 390, thickness: 190, height: 190, coreCount: 2, coreW: 105, coreD: 115 },
   mesh: { volumeMm3: 123456, aabb: { min: [0, 0, 0], max: [100, 100, 100] } },
 };
 

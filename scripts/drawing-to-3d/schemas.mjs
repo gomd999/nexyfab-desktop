@@ -28,6 +28,12 @@ export const TYPE_SCHEMAS = Object.fromEntries(ALL_TYPES.map((t) => {
     props.angles = { type: 'ARRAY', items: NUM };
     required.push('segments', 'angles');
   }
+  if (t === 'extrude_profile') {
+    // profile=[[x,y],…] · holes=[{x,y,d}] — 배열이라 PARAMS 로는 표현되지 않는다(특례).
+    props.profile = { type: 'ARRAY', items: { type: 'ARRAY', items: NUM } };
+    props.holes = { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, y: NUM, d: NUM }, required: ['x', 'y', 'd'] } };
+    required.push('profile');
+  }
   if (t === 'wall_with_openings') {
     props.openings = { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, w: NUM, h: NUM, sill: NUM }, required: ['x', 'w', 'h'] } };
   }
@@ -51,4 +57,10 @@ export const TYPE_HINTS = {
   hex_bolt: 'threadDia,length (육각볼트 M3~M36 — 머리치수 ISO 표준표 자동, 나사산 미형상 관례)',
   sheet_profile: 'thickness,width,segments[],angles[] (다단 절곡 판금 — 세그먼트 길이열+절곡각열(|a|≤120°), Z/햇/채널 단면. width=압출 길이)',
   wall_with_openings: 'length,thickness,height,openings[{x,w,h,sill}] (벽체 — X길이·Y두께·Z높이, 문=sill 0·창=sill>0)',
+  masonry_block: 'length,thickness,height,coreCount,coreW,coreD (조적 블록 — 속빈 공동 0~4개를 실제로 공제. '
+    + 'KS F 4002 콘크리트 기본블록 390×190×(190·150·100). ⚠ 치수 기본값은 KS 표준이고 참고 코퍼스에서 나온 것이 아니다 '
+    + '— 코퍼스는 조적의 **존재/빈도**만 알려줬다(부품 단위 치수 없음)',
+  extrude_profile: 'profile[[x,y],…],depth,holes[{x,y,d}] (임의 폐곡선 압출 — XY 평면 폴리라인을 +Z 로 depth 만큼. '
+    + '실물 압출의 67.6%가 이 형태(참고 코퍼스 10,508 프로파일 실측). 마지막 점은 자동 닫음. '
+    + '⚠ 홀은 **원형만** — 비원형 내부 루프는 지원하지 않는다. ⚠ 자기교차는 검사하지 않는다',
 };
