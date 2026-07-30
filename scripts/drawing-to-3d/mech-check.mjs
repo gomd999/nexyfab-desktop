@@ -277,6 +277,7 @@ function spanCheck(label, { count, pitch, span, countKo, pitchKo, spanKo }) {
 
 import { structuralCheck } from './structural.mjs';
 import { fitCheck, findPinBorePairs } from './fit-check.mjs';
+import { toleranceStackCheck } from './tolerance-stack.mjs';
 import { boltedPlateCheck } from './bolted-plate-check.mjs';
 
 /**
@@ -377,7 +378,7 @@ function withTipover(result, assembly, params) {
 export function mechCheck(assembly, params = {}) {
   if (!assembly || typeof assembly !== 'object') return null;
   // 전도는 **모든 기계 어셈블리**에 해당한다 — 메타 유무와 무관하게 붙인다.
-  return withFit(withBolted(withTipover(mechCheckInner(assembly, params), assembly, params), assembly, params), assembly, params);
+  return withStack(withFit(withBolted(withTipover(mechCheckInner(assembly, params), assembly, params), assembly, params), assembly, params), assembly);
 }
 
 /**
@@ -396,6 +397,25 @@ export function mechCheck(assembly, params = {}) {
  *   조용히 사라진다 — 이 세션에서 반복해 잡은 형태 ① 를 내가 다시 만드는 것이었다.
  *   `fit-check` 가 `iso286.mjs` 산식으로 **직접** 낸다(주입은 선택).
  */
+/**
+ * 공차 누적 검토를 붙인다 (260801j) — 끼워맞춤·볼트와 **같은 규약**(없으면 그대로 통과).
+ *
+ * ⚠ `tolChains` 선언이 없으면 `toleranceStackCheck` 가 **null**(해당 없음)을 낸다.
+ *   그걸 「이상 없음」으로 바꿔 적지 않는다 — 체인은 설계 의도라 형상에서 추정할 수 없다.
+ */
+function withStack(r, assembly) {
+  let st = null;
+  try { st = toleranceStackCheck(assembly); } catch { st = null; }
+  if (!st) return r;
+  if (!r) return st;
+  return {
+    ...r,
+    checks: { ...(r.checks ?? {}), toleranceStack: st },
+    ...(Array.isArray(r.notChecked) || Array.isArray(st.notChecked)
+      ? { notChecked: [...(r.notChecked ?? []), ...(st.notChecked ?? [])] } : {}),
+  };
+}
+
 function withFit(r, assembly, params) {
   void params;
   let pairs = [];
