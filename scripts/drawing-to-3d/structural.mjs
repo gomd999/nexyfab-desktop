@@ -435,6 +435,21 @@ export function fluidVolume(type, p) {
  */
 function localCG(type, p) {
   const A = Math.PI / 4;
+  /**
+   * ★260802 — **선언된 무게중심이 있으면 그것을 쓴다.**
+   *
+   * 커널 임포트(`stepKernelImport`)가 솔리드마다 `cg` 를 **정확값**으로 싣는데
+   * (기준 형상 실측 일치), 여기서 무시하고 **AABB 중심**을 썼다.
+   * 실측: 커널이 `cg:[500,20,30]` 을 준 부품인데 구조 검토는 `[500,50,50]` 을 썼다.
+   *
+   * ⚠ 이건 표면적보다 무겁다 — **무게중심은 전도 판정을 직접 지배**한다.
+   *   실물 형상은 비대칭이 흔하고(용접 구조물·기계 가공품), AABB 중심은 그걸 못 담는다.
+   * ⚠ **선언된 것만** 쓴다. 없으면 종전 해석식·AABB 중심 그대로다 — 지어내지 않는다.
+   */
+  const declared = p?.cg;
+  if (Array.isArray(declared) && declared.length === 3 && declared.every((v) => Number.isFinite(Number(v)))) {
+    return declared.map(Number);
+  }
   switch (type) {
     case 'gusset': // 직각삼각 도심 = 직각꼭짓점에서 각 변의 1/3
       return [p.legA / 3, p.legB / 3, p.thickness / 2];

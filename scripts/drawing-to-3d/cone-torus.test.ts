@@ -235,3 +235,41 @@ describe('메시 표면적 — 선언된 값만 쓴다', () => {
     expect(r.surfaceMissing ?? []).toContain('mesh');
   });
 });
+
+/**
+ * ★선언된 무게중심을 구조 검토가 **쓰는가** (260802).
+ *
+ * 커널 임포트가 솔리드마다 `cg` 를 **정확값**으로 싣는데, `localCG` 가 무시하고
+ * **AABB 중심**을 썼다. 실측: 커널이 `[500,20,30]` 을 준 부품에 `[500,50,50]` 이 나왔다.
+ *
+ * ⚠ 이건 표면적보다 무겁다 — **무게중심은 전도 판정을 직접 지배한다.**
+ *   실물 형상은 비대칭이 흔하고(용접 구조물·가공품) AABB 중심은 그걸 못 담는다.
+ * ⚠ **선언된 것만** 쓴다. 없으면 종전 해석식 그대로 — 지어내지 않는다.
+ */
+describe('무게중심 — 선언된 값을 쓴다', () => {
+  const mk = (withCg: boolean): unknown => ({
+    name: 't', domain: 'mech',
+    parts: [{
+      id: 'k', type: 'mesh', at: {}, material: 'steel',
+      params: {
+        volumeMm3: 1e6, aabb: { min: [0, 0, 0], max: [1000, 100, 100] },
+        ...(withCg ? { cg: [500, 20, 30] } : {}),
+      },
+    }],
+  });
+
+  it('★커널이 cg 를 실으면 그 값이 무게중심에 반영된다', async () => {
+    const { structuralCheck } = await import('./structural.mjs');
+    const r = (structuralCheck as unknown as (a: unknown) => { cgWorldMm: number[] })(mk(true));
+    expect(r.cgWorldMm[0]).toBeCloseTo(500, 3);
+    expect(r.cgWorldMm[1], 'y 가 AABB 중심(50)이면 선언값이 무시된 것').toBeCloseTo(20, 3);
+    expect(r.cgWorldMm[2]).toBeCloseTo(30, 3);
+  });
+
+  it('선언이 없으면 종전 동작(대칭 가정) 그대로다 — 지어내지 않는다', async () => {
+    const { structuralCheck } = await import('./structural.mjs');
+    const r = (structuralCheck as unknown as (a: unknown) => { cgWorldMm: number[] })(mk(false));
+    expect(r.cgWorldMm[1]).toBeCloseTo(50, 3);
+    expect(r.cgWorldMm[2]).toBeCloseTo(50, 3);
+  });
+});

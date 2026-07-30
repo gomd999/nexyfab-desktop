@@ -17,7 +17,7 @@ RUN npm install --legacy-peer-deps --no-audit --no-fund
 # Cache-bust: buildkit occasionally reuses a stale `COPY . .` layer on Railway
 # (2026-07-12: shipped old scripts/drawing-to-3d despite changed files). Bump this
 # value to force the copy + build to re-run from fresh source.
-ARG CACHEBUST=20260802-193
+ARG CACHEBUST=20260802-194
 RUN echo "cachebust ${CACHEBUST}"
 COPY . .
 
@@ -62,7 +62,7 @@ FROM node:22-slim AS runner
 #   물려받지 않고, Railway 가 인자를 주입하지 않으면 기본값이 쓰인다.
 #   → 빌드 스테이지와 **같은 기본값**을 둔다. 인자가 오면 그것이 이긴다.
 #   ⚠ 두 곳을 함께 올려야 한다 — 갈리면 표시가 실제와 달라진다.
-ARG CACHEBUST=20260802-193
+ARG CACHEBUST=20260802-194
 ENV NEXYFAB_BUILD_TAG=${CACHEBUST}
 WORKDIR /app
 
@@ -113,6 +113,19 @@ COPY --from=builder /app/scripts/engineering-core ./scripts/engineering-core
 # (computed from package.json deps: replicad→flatbush/flatqueue/opentype.js/…).
 # The OCCT wasm itself is served from public/replicad_single.wasm (to-step wasmPath).
 COPY --from=builder /app/node_modules/replicad ./node_modules/replicad
+# ★260802 — `three` 누락으로 GA_3D.html 이 **라이브에서만** 실패하고 있었다.
+#   실측 사유: `Cannot find module 'three'` (/app/scripts/drawing-to-3d/html-render.mjs).
+#   `html-render.mjs` 가 three.js 를 **data: URL 로 인라인**해 뷰어를 오프라인 자립시키는데
+#   (현장 인터넷 없음), 그 참조가 `createRequire` 동적 해석이라 tracer 가 못 본다.
+#   ⚠ 로컬에서는 전체 node_modules 가 있어 **재현되지 않았다** — 사유를 남기게 하고서야 잡혔다.
+COPY --from=builder /app/node_modules/three ./node_modules/three
+# ⚠ 260802 전수 확인 — `scripts/drawing-to-3d` 가 동적으로 부르는 외부 패키지는 6종이고
+#   그중 런타임에 필요한 것만 복사한다:
+#     · `iconv-lite` — **DXF cp949 인코딩**(패키지 산출물이라 런타임 필요)
+#     · `playwright`(시각 회귀)·`sharp`(시험 도면 생성)는 **개발 도구** — 넣지 않는다.
+#   ⚠ 「빠진 걸 다 넣자」가 아니다. 안 쓰는 것을 넣으면 이미지만 커지고, 그 판단 근거가
+#     남지 않으면 다음 사람이 또 훑어야 한다.
+COPY --from=builder /app/node_modules/iconv-lite ./node_modules/iconv-lite
 # DWG 임포트(LibreDWG WASM) — webpackIgnore 동적 import 라 tracer 가 못 본다
 COPY --from=builder /app/node_modules/@mlightcad ./node_modules/@mlightcad
 COPY --from=builder /app/node_modules/replicad-opencascadejs ./node_modules/replicad-opencascadejs
