@@ -11,6 +11,7 @@
  */
 
 import React, { useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import type { TopologicalMap, StableFace } from './TopologicalNaming';
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
@@ -48,6 +49,70 @@ const dict = {
     all: 'All',
     top: 'Top', bottom: 'Bottom', front: 'Front', back: 'Back', left: 'Left', right: 'Right',
   },
+  ja: {
+    title: 'トポロジー ID マップ',
+    subtitle: 'フェイス ID はリビルド後も保持されます',
+    generation: '世代',
+    faces: 'フェイス',
+    faceId: 'フェイス ID',
+    tag: '意味',
+    area: '面積',
+    normal: '法線',
+    centroid: '重心',
+    index: 'インデックス',
+    noFaces: 'フェイスがありません — 形状を作成してください',
+    search: 'フェイス ID またはタグを検索…',
+    all: 'すべて',
+    top: '上面', bottom: '下面', front: '前面', back: '背面', left: '左面', right: '右面',
+  },
+  zh: {
+    title: '拓扑 ID 映射',
+    subtitle: '面 ID 在参数化重建后依然保持',
+    generation: '代次',
+    faces: '面',
+    faceId: '面 ID',
+    tag: '语义',
+    area: '面积',
+    normal: '法线',
+    centroid: '质心',
+    index: '索引',
+    noFaces: '没有面 — 请先创建形状',
+    search: '搜索面 ID 或标签…',
+    all: '全部',
+    top: '顶面', bottom: '底面', front: '前面', back: '后面', left: '左面', right: '右面',
+  },
+  es: {
+    title: 'Mapa de ID topológicos',
+    subtitle: 'Los ID de cara se mantienen tras las reconstrucciones paramétricas',
+    generation: 'Generación',
+    faces: 'caras',
+    faceId: 'ID de cara',
+    tag: 'Semántica',
+    area: 'Área',
+    normal: 'Normal',
+    centroid: 'Centroide',
+    index: 'Índice',
+    noFaces: 'No hay caras: cree una geometría',
+    search: 'Buscar ID de cara o etiqueta…',
+    all: 'Todas',
+    top: 'Superior', bottom: 'Inferior', front: 'Frontal', back: 'Posterior', left: 'Izquierda', right: 'Derecha',
+  },
+  ar: {
+    title: 'خريطة معرّفات الطوبولوجيا',
+    subtitle: 'تبقى معرّفات الأوجه ثابتة بعد إعادة البناء البارامتري',
+    generation: 'الجيل',
+    faces: 'أوجه',
+    faceId: 'معرّف الوجه',
+    tag: 'الدلالة',
+    area: 'المساحة',
+    normal: 'العمودي',
+    centroid: 'المركز',
+    index: 'الفهرس',
+    noFaces: 'لا توجد أوجه — أنشئ شكلاً أولاً',
+    search: 'ابحث بمعرّف الوجه أو الوسم…',
+    all: 'الكل',
+    top: 'الأعلى', bottom: 'الأسفل', front: 'الأمام', back: 'الخلف', left: 'اليسار', right: 'اليمين',
+  },
 } as const;
 type DictLang = keyof typeof dict;
 
@@ -83,7 +148,8 @@ export default function TopoPanel({
   lang = 'en',
   visible = true,
 }: TopoPanelProps) {
-  const langKey = (lang === 'ko' || lang === 'kr') ? 'ko' : 'en';
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const langKey = toIsoLang(lang);
   const t = dict[langKey as DictLang] ?? dict.en;
 
   const [search, setSearch] = useState('');

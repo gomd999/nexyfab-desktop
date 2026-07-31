@@ -17,8 +17,6 @@
   "app/[lang]/nexyfab/team/page.tsx",
   "app/[lang]/shape-generator/drawing/DimensionAnnotationModal.tsx",
   "app/[lang]/shape-generator/estimation/supplierData.ts",
-  "app/[lang]/shape-generator/io/StepReversePanel.tsx",
-  "app/[lang]/shape-generator/topology/TopoPanel.tsx",
   "app/[lang]/studio/StudioInner.tsx",
   "app/[lang]/unsubscribe/page.tsx",
   "components/nexyfab/AuthModal.tsx",
