@@ -20,6 +20,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 export type TutorialStep = 1 | 2 | 3;
 
@@ -76,6 +77,54 @@ const COPY = {
     skip: 'Skip',
     stepLabel: (n: number, total: number) => `Step ${n} of ${total}`,
   },
+  ja: {
+    step1Title: 'テンプレートを 1 つ選んでください',
+    step1Body: 'ブラケット・ボックス・ディスク — 5 秒で最初のモデルができます。',
+    step2Title: '寸法を変えてみましょう',
+    step2Body: 'フィーチャーツリーの数値をクリックして、長さや厚みを調整します。',
+    step3Title: 'STL をダウンロード',
+    step3Body: '右上の Export ボタンで 3D プリンタ / CNC 用の STL を取得します。',
+    next: '次へ',
+    finish: 'はじめる',
+    skip: 'スキップ',
+    stepLabel: (n: number, total: number) => `${n}/${total} ステップ`,
+  },
+  zh: {
+    step1Title: '先选一个模板',
+    step1Body: '支架、方盒、圆盘 — 5 秒内生成第一个模型。',
+    step2Title: '试着修改尺寸',
+    step2Body: '点击特征树中的数字，调整长度或厚度。',
+    step3Title: '下载 STL',
+    step3Body: '用右上角的 Export 按钮获取用于 3D 打印 / CNC 的 STL。',
+    next: '下一步',
+    finish: '开始使用',
+    skip: '跳过',
+    stepLabel: (n: number, total: number) => `第 ${n}/${total} 步`,
+  },
+  es: {
+    step1Title: 'Elija una plantilla para empezar',
+    step1Body: 'Soporte, caja, disco: su primer modelo aparece en segundos.',
+    step2Title: 'Cambie una cota',
+    step2Body: 'Haga clic en un número del árbol de operaciones para ajustar la longitud o el espesor.',
+    step3Title: 'Descargue el STL',
+    step3Body: 'Con el botón Export de arriba a la derecha obtiene el STL para impresión 3D o CNC.',
+    next: 'Siguiente',
+    finish: 'Empezar',
+    skip: 'Omitir',
+    stepLabel: (n: number, total: number) => `Paso ${n}/${total}`,
+  },
+  ar: {
+    step1Title: 'اختر قالباً للبدء',
+    step1Body: 'حامل، صندوق، قرص — يظهر نموذجك الأول خلال ثوانٍ.',
+    step2Title: 'جرّب تغيير بُعد',
+    step2Body: 'انقر رقماً في شجرة المعالم لضبط الطول أو السماكة.',
+    step3Title: 'نزّل ملف STL',
+    step3Body: 'استخدم زر Export أعلى اليمين للحصول على STL للطباعة ثلاثية الأبعاد أو CNC.',
+    next: 'التالي',
+    finish: 'ابدأ',
+    skip: 'تخطٍّ',
+    stepLabel: (n: number, total: number) => `الخطوة ${n}/${total}`,
+  },
 };
 
 export default function FirstTimeTutorial({
@@ -103,7 +152,8 @@ export default function FirstTimeTutorial({
 
   if (!open) return null;
 
-  const t = lang === 'ko' || lang === 'kr' ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const stepCopy = step === 1
     ? { title: t.step1Title, body: t.step1Body }
     : step === 2

@@ -13,6 +13,7 @@
 // Per memory rule: never collapse metrics into a single composite score.
 
 import React, { useEffect, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import PartnerMetricsBar, { type PartnerMetrics } from '@/app/[lang]/shape-generator/analysis/PartnerMetricsBar';
 
 interface PreviewResp {
@@ -76,15 +77,85 @@ const dict = {
     sample: 'n=',
     reviewMeta: (d: number, q: number, c: number) => `Deadline ${d}/5 · Quality ${q}/5 · Comm ${c}/5`,
   },
+  ja: {
+    loading: '読み込み中…',
+    notFound: 'パートナー情報が見つかりません。',
+    region: '地域',
+    industry: '分野',
+    age: '運営',
+    yearsSuffix: '年',
+    daysSuffix: '日',
+    processes: '製造工程',
+    certifications: '認証',
+    metrics: '運営指標 (90 日)',
+    recentReviews: '最近のレビュー',
+    noReviews: 'まだレビューがありません',
+    coldStart: '新規パートナー',
+    sample: 'n=',
+    reviewMeta: (d: number, q: number, c: number) => `納期 ${d}/5 · 品質 ${q}/5 · 対応 ${c}/5`,
+  },
+  zh: {
+    loading: '加载中…',
+    notFound: '未找到合作伙伴信息。',
+    region: '地区',
+    industry: '领域',
+    age: '经营',
+    yearsSuffix: '年',
+    daysSuffix: '天',
+    processes: '制造工艺',
+    certifications: '认证',
+    metrics: '运营指标（90 天）',
+    recentReviews: '最新评价',
+    noReviews: '暂无评价',
+    coldStart: '新合作伙伴',
+    sample: 'n=',
+    reviewMeta: (d: number, q: number, c: number) => `交期 ${d}/5 · 质量 ${q}/5 · 沟通 ${c}/5`,
+  },
+  es: {
+    loading: 'Cargando…',
+    notFound: 'No se ha encontrado el socio.',
+    region: 'Región',
+    industry: 'Sector',
+    age: 'Actividad',
+    yearsSuffix: ' años',
+    daysSuffix: ' días',
+    processes: 'Procesos de fabricación',
+    certifications: 'Certificaciones',
+    metrics: 'Indicadores (90 días)',
+    recentReviews: 'Reseñas recientes',
+    noReviews: 'Todavía no hay reseñas',
+    coldStart: 'Socio nuevo',
+    sample: 'n=',
+    reviewMeta: (d: number, q: number, c: number) => `Plazo ${d}/5 · Calidad ${q}/5 · Comunicación ${c}/5`,
+  },
+  ar: {
+    loading: 'جارٍ التحميل…',
+    notFound: 'تعذّر العثور على بيانات الشريك.',
+    region: 'المنطقة',
+    industry: 'المجال',
+    age: 'مدة النشاط',
+    yearsSuffix: ' سنة',
+    daysSuffix: ' يوم',
+    processes: 'عمليات التصنيع',
+    certifications: 'الشهادات',
+    metrics: 'مؤشرات التشغيل (90 يوماً)',
+    recentReviews: 'أحدث التقييمات',
+    noReviews: 'لا توجد تقييمات بعد',
+    coldStart: 'شريك جديد',
+    sample: 'n=',
+    reviewMeta: (d: number, q: number, c: number) => `التسليم ${d}/5 · الجودة ${q}/5 · التواصل ${c}/5`,
+  },
 };
 
 export interface PartnerPreviewCardProps {
-  lang: 'ko' | 'en';
+  /** ⚠ 260802: `'ko' | 'en'` 이라 부모가 다른 언어를 넘길 수조차 없었다. */
+  lang: string;
   partnerEmail: string;
 }
 
 export default function PartnerPreviewCard({ lang, partnerEmail }: PartnerPreviewCardProps) {
-  const t = dict[lang];
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = dict[toIsoLang(lang)] ?? dict.en;
   const [data, setData] = useState<PreviewResp['partner'] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
