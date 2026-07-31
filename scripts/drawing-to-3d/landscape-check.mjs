@@ -244,7 +244,11 @@ export function landscapeCheck(assembly, params = {}) {
         const headsQ = (heads ?? []).reduce((a, h) => a + (Number(h?.q_Lmin) || 0), 0);
         if (!(Q > 0) && !(headsQ > 0)) {
           irrigation = {
-            needInputs: ['irrigationQ_Lmin (또는 irrigationHeads[{q_Lmin,minP_kPa}])'], derived,
+            // ⚠ 260802: 문자열 배열은 수집기(`x.field ?? x.name`)를 통과하지 못해 `?` 로 나간다.
+            needInputs: [
+              { name: 'irrigationQ_Lmin', labelKo: '관수 유량(L/min) — 헤드 사양이 정한다' },
+              { name: 'irrigationHeads', labelKo: '헤드 목록 `[{ q_Lmin, minP_kPa }]` — 유량 대신 헤드로 줘도 된다' },
+            ], derived,
             note: '유량·헤드=제품 사양 입력 — 지어내지 않음. 입력 시 pump_head 전양정·수동력 산출.'
               + (heads && !(headsQ > 0) ? ' ⚠ irrigationHeads 는 왔지만 q_Lmin(헤드 유량)이 없어 ΣQ=0 — 유량 미상이다.' : ''),
           };

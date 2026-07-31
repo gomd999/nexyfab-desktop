@@ -291,7 +291,17 @@ export function interiorCheck(assembly, params = {}) {
     } else {
       ventilation = {
         verdict: 'INPUT', occupants: occ, roomVolM3: round(vol),
-        needInputs: [{ name: 'ventPerPersonCMH', labelKo: '인당 환기량(㎥/h) — 용도별 법정 기준이 정한다' }],
+        needInputs: [
+          { name: 'ventPerPersonCMH', labelKo: '인당 환기량(㎥/h) — 용도별 법정 기준이 정한다' },
+          /**
+           * ⚠ 260802 실측 — **상류 의존을 고지하지 않으면 시킨 대로 줘도 안 켜진다.**
+           *   여기는 `ventPerPersonCMH` 만 요구했는데 실제 조건은 `occ && q > 0` 이라,
+           *   재실인원이 없는 5개 템플릿에서 값을 주고도 판정이 안 났다(전수 census 10건).
+           *   **막고 있는 것을 전부 적는다** — 하나만 적으면 사용자는 값을 주고도
+           *   「기능이 없다」고 읽는다.
+           */
+          ...(occ ? [] : [{ name: 'occupantDensityM2', labelKo: '인당 점유면적 ㎡/인 — 이것이 없으면 재실인원이 안 나와 산출 자체가 불가하다' }]),
+        ],
         note: 'ventPerPersonCMH(용도별 법정 기준) 입력 시 필요환기량·ACH 산출. 재실인원은 피난 산정 재사용.',
       };
     }
@@ -338,7 +348,17 @@ export function interiorCheck(assembly, params = {}) {
     } else {
       water = {
         verdict: 'INPUT', occupants: occ2,
-        needInputs: [{ name: 'waterPerPersonLpd', labelKo: '급수원단위(L/인·일) — 용도가 정한다(건축기계설비 기준)' }],
+        needInputs: [
+          { name: 'waterPerPersonLpd', labelKo: '급수원단위(L/인·일) — 용도가 정한다(건축기계설비 기준)' },
+          /**
+           * ⚠ 260802 실측 — **상류 의존을 고지하지 않으면 시킨 대로 줘도 안 켜진다.**
+           *   여기는 `waterPerPersonLpd` 만 요구했는데 실제 조건은 `occ2 && unit > 0` 이라,
+           *   재실인원이 없는 5개 템플릿에서 값을 주고도 판정이 안 났다(전수 census 10건).
+           *   **막고 있는 것을 전부 적는다** — 하나만 적으면 사용자는 값을 주고도
+           *   「기능이 없다」고 읽는다.
+           */
+          ...(occ2 ? [] : [{ name: 'occupantDensityM2', labelKo: '인당 점유면적 ㎡/인 — 이것이 없으면 재실인원이 안 나와 산출 자체가 불가하다' }]),
+        ],
         note: 'waterPerPersonLpd(용도별 급수원단위 L/인·일 — 건축기계설비 기준 참조) 입력 시 일급수량·시간최대·오수량 개산.',
       };
     }

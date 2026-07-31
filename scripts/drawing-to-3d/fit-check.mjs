@@ -125,8 +125,15 @@ export function fitCheck(pairs, evaluateFit = defaultEvaluateFit) {
         labelKo: `끼워맞춤 ${tag} — 판정하지 않았다(공차 미선언)`,
         pass: null,
         needInputs: [
-          ...(p.holeFit ? [] : [{ name: `holes[].fit`, labelKo: `구멍 공차 등급(예 H7) — ${p.holeId}` }]),
-          ...(p.pinFit ? [] : [{ name: `parts[].fit`, labelKo: `축 공차 등급(예 g6) — ${p.pinId}` }]),
+          /**
+           * ⚠ 260802 실측: 여기 이름이 `holes[].fit`·`parts[].fit` 이었는데 **판정기가 읽는
+           *   경로가 아니었다**(`findPinBorePairs` 는 `params.holes[].fit`·`params.fit` 을 본다).
+           *   시킨 대로 선언해도 12건이 그대로 미판정이었다 — 안내와 실제가 갈리면
+           *   **없는 기능보다 나쁘다**(사용자는 값을 줬는데도 안 된다고 읽는다).
+           *   올바른 경로로 다시 재니 4→0 · 8→0, 판정 +12.
+           */
+          ...(p.holeFit ? [] : [{ name: `parts[].params.holes[].fit`, labelKo: `구멍 공차 등급(예 H7) — ${p.holeId}` }]),
+          ...(p.pinFit ? [] : [{ name: `parts[].params.fit`, labelKo: `축 공차 등급(예 g6) — ${p.pinId}` }]),
         ],
         detail: [
           `핀 ⌀${p.nominalMm}mm 가 구멍을 관통하는 것은 형상에서 확인했다.`,

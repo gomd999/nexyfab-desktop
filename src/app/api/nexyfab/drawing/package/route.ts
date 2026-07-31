@@ -252,6 +252,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // structural(강체 전도)만으로는 코드 위반(정원 초과·출구 부족 등)을 못 잡는다(260723 도그푸딩
   // 3차 발견: 안전검토.html엔 FAIL이 정확히 뜨는데 쉬운요약엔 이 판정이 안 넘어가 "이상 없음"이었다).
   let domainSafety: { label: string; ok: boolean; failed: string[] } | null = null;
+  let requiredInputs: { fields: Array<{ field: string; kind: string; unlocks: number; checks: string[] }>; totalWaiting: number; summaryKo: string | null } | null = null;
   // codeVerification(옹벽·암거 KDS 대조)도 같은 이유로 쉬운요약에 전달한다 — domainSafety는
   // interior/landscape/bridge/building 담당이라 civil은 어느 쪽으로도 소비자 문서에 도달하지
   // 못했다(260723 A-7 전수감사: 활동 FS 미달 옹벽이 검증.html=FAIL, 쉬운요약="이상 없음").
@@ -270,6 +271,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       domainSafetyReportHtml: (a: Assembly, o?: { title?: string; params?: Record<string, unknown> }) => string | null;
       domainSafetyVerdict: (a: Assembly, params?: Record<string, unknown>) => { label: string; ok: boolean; failed: string[] } | null;
       codeVerificationVerdict: (a: Assembly, params?: Record<string, unknown>) => { label: string; ok: boolean; failed: string[]; decisive: boolean } | null;
+      auditDomainSafety: (a: Assembly, params?: Record<string, unknown>) => unknown;
     };
     const vh = dv.verificationReportHtml(assembly, { title, params: verifyParams });
     if (vh) files.push({ name: '검증.html', mime: 'text/html', content: vh });
@@ -281,6 +283,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const sh = dv.domainSafetyReportHtml(assembly, { title, params: verifyParams });
     if (sh) files.push({ name: '안전검토.html', mime: 'text/html', content: sh });
     domainSafety = dv.domainSafetyVerdict(assembly, verifyParams);
+    /**
+     * ★260802 — **무엇을 주면 무엇이 판정되는지** 싣는다.
+     *
+     * 실측(54템플릿): 판정 152 · **입력 대기 30** · 판정불가 55. 대기 30건의 정체가
+     * 결정적이다 — `lighting`·`ventilation`·`electrical`·`water`·`fire` **5개 이름이
+     * 인테리어 25건**을 만들고, `mech` 판정불가 33건 중 15건은 `seismicG` **하나**다.
+     *
+     * 즉 막혀 있는 것은 **검토가 없어서가 아니라 값이 안 와서**인데, 사용자는
+     * **무엇을 주면 무엇이 켜지는지 알 방법이 없었다.**
+     *
+     * ⚠ **새 판정을 만들지 않는다.** 각 검토가 자기 `needInputs` 로 선언한 것을 모으기만 한다.
+     *   기본값을 제안하면 그 값으로 판정이 나가고 **근거가 우리 추측**이 된다.
+     */
+    try {
+      const ri = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'required-inputs.mjs')).href)) as {
+        collectRequiredInputs: (t: unknown) => { fields: Array<{ field: string; kind: string; unlocks: number; checks: string[] }>; totalWaiting: number } | null;
+        requiredInputsSummaryKo: (r: unknown) => string | null;
+      };
+      const tree = dv.auditDomainSafety(assembly, verifyParams);
+      const collected = ri.collectRequiredInputs(tree);
+      if (collected) requiredInputs = { ...collected, summaryKo: ri.requiredInputsSummaryKo(collected) };
+    } catch (e) { void e; /* 수집 실패는 판정에 영향이 없다 — 대기 목록만 빠진다 */ }
   } catch (e) {
     // ⚠ 여기서 조용히 삼키면 안전 판정이 사라지고 쉬운요약은 "걸린 안전 경고는 없습니다"로
     // 나간다 — 835eec40 이 고친 것과 같은 결말에 도달하는 다른 경로(배선 부재가 아니라 예외).
@@ -517,6 +541,11 @@ if (data.pipes?.errors?.length) console.warn('⚠ 배관 라우팅 실패:', dat
     outputsFailed,
     /** 검증을 못 돌린 항목 — 「검증 안 함」과 「이상 없음」은 다르다. */
     verificationUnavailable,
+    /**
+     * 입력만 주면 판정되는 항목 — **「검토가 없다」가 아니라 「값이 없다」**이다.
+     * 이 둘을 구별하지 못하면 사용자는 기능이 없는 줄 안다.
+     */
+    ...(requiredInputs ? { requiredInputs } : {}),
     accuracy: {
       massBasis: '형상 결정론(폐형) — 부피는 선언 형상에서 직접 계산한다. AABB 근사가 아니다.',
       knownApproximations: [
@@ -564,6 +593,13 @@ if (data.pipes?.errors?.length) console.warn('⚠ 배관 라우팅 실패:', dat
       + `<div class="ok"><b>어디서부터 보면 되나</b><br>처음이면 <code>쉬운요약.html</code> → 형상은 <code>GA_3D.html</code> → `
       + `CAD 로 열려면 <code>model.step</code> → 발주는 <code>BOQ_내역서.xlsx</code>.</div>`
       + `<h2>파일 목록</h2><table><tr><th>파일</th><th>내용</th></tr>${rows}</table>`
+      + (requiredInputs
+        ? `<div class="warn"><b>값을 주면 판정되는 항목 ${requiredInputs.totalWaiting}건</b><br>`
+          + `${requiredInputs.summaryKo ?? ''}<table><tr><th>입력</th><th>주는 곳</th><th>여는 검토</th></tr>`
+          + requiredInputs.fields.map((f) => `<tr><td><code>${f.field}</code></td>
+            <td>${f.kind === 'design' ? '모델에 선언' : '검토 입력값'}</td><td>${f.checks.join(' · ')}</td></tr>`).join('')
+          + `</table><b>「검토가 없다」가 아니라 「값이 없다」</b>입니다 — 값을 주면 그만큼 판정됩니다.</div>`
+        : '')
       + `<h2>이 수치를 어디까지 믿을 수 있나</h2>`
       + `<div class="warn"><b>질량·물량은 형상에서 결정론으로 계산</b>한다(경계상자 근사가 아니다). `
       + `다만 아래는 <b>근사</b>이며 그 크기를 적어 둔다.<ul>`

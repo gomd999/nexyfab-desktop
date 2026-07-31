@@ -628,7 +628,18 @@ export function suspensionCheck(assembly, params = {}) {
       })]
       : [{
         name: '주탑 좌굴(세장효과)', kind: 'buckling', ok: null,
-        needInputs: [{ field: 'towerSteel 또는 콘크리트 기둥 제원', reason: 'RC 주탑의 세장효과는 강재 압축식이 아니라 모멘트 확대(P-δ) 조항이다 — 배근·비지지길이·단부 모멘트가 필요하다.' }],
+        /**
+         * ⚠ 260802 실측: 여기 필드가 **문장**이었다 — 「towerSteel 또는 콘크리트 기둥 제원」.
+         *   읽을 수는 있어도 **줄 수가 없다**(어느 키에 무엇을 넣으라는 말이 아니다).
+         *   전수 census 에서 「값을 줘도 안 켜지는」 항목으로 잡혔다. 실제 키를 적는다.
+         */
+        needInputs: [
+          { field: 'towerSteel', name: 'towerSteel', reason: '강재 주탑이면 `true` — 그때만 강재 압축식으로 검토한다.' },
+          { field: 'r_tower_mm', name: 'r_tower_mm', reason: '단면 회전반경(mm). 미선언 시 단면에서 유도한다.' },
+          { field: 'Lb_tower_mm', name: 'Lb_tower_mm', reason: '비지지 길이(mm). 미선언 시 주탑 전 높이(보수측).' },
+        ],
+        // RC 주탑은 여전히 판정하지 않는다 — 모멘트 확대(P-δ)는 다른 조항이고 배근이 필요하다.
+        rcNote: 'RC 주탑의 세장효과는 강재 압축식이 아니라 모멘트 확대(P-δ) 조항이다 — 배근·비지지길이·단부 모멘트가 필요하다.',
         note: '좌굴 판정 불가 — **미검토이지 안전이 아니다.**',
       }]),
     // 260729 하드 기하: 주탑이 상판 위로 솟은 높이는 케이블 새그 이상이어야 한다.

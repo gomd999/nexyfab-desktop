@@ -646,7 +646,18 @@ export function loadPathCheck(assembly, params = {}) {
       footing = { verdict: r.verdict, checks: r.checks, refs: r.refs, input: { B: f.B, L: f.L, t: f.t, qAllow: f.qAllow } };
     } catch (e) { footing = { verdict: 'ERROR', error: e.message }; }
   } else {
-    footing = { verdict: 'INPUT(footing)', needInputs: ['footing.B', 'footing.L', 'footing.t', 'footing.d', 'footing.qAllow'], note: '기초 치수·허용지지력은 설계/지반 조건 — 입력 필요(체인이 Pu·Pservice는 자동 전달)' };
+    footing = { verdict: 'INPUT(footing)', needInputs: [
+      /**
+       * ⚠ 260802 실측: 여기가 **문자열 배열**이었다. 이름은 멀쩡히 적혀 있었는데
+       *   수집기는 `x.field ?? x.name` 을 보므로 소비자 문서엔 **`?` 다섯 개**로 나갔다.
+       *   「적어 두는 것과 닿는 것은 다르다」의 전형 — 형식을 맞춘다.
+       */
+      { name: 'footing.B', labelKo: '기초 폭 B(mm)' },
+      { name: 'footing.L', labelKo: '기초 길이 L(mm)' },
+      { name: 'footing.t', labelKo: '기초 두께 t(mm)' },
+      { name: 'footing.d', labelKo: '유효깊이 d(mm)' },
+      { name: 'footing.qAllow', labelKo: '허용지지력 qAllow(kPa) — 지반조사가 정한다' },
+    ], note: '기초 치수·허용지지력은 설계/지반 조건 — 입력 필요(체인이 Pu·Pservice는 자동 전달)' };
   }
 
   // ── 철근 개산 (P1 #2) — 입력 배근 × 형상 길이. 가정 제로 원칙:
