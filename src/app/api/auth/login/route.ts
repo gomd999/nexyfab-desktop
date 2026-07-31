@@ -127,11 +127,32 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    /** 복구 코드로 통과한 경우 남은 개수(응답에 실어 재발급을 유도한다). */
+    let recoveryRemaining: number | null = null;
+
     // Check if 2FA is enabled
     if (toBool(dbUser.totp_enabled)) {
       const totpCode = (body as { totpCode?: string }).totpCode;
+      const recoveryCode = (body as { recoveryCode?: string }).recoveryCode;
 
-      if (!totpCode) {
+      /**
+       * 복구 코드 경로 (260802 추가).
+       *
+       * ⚠ 종전엔 TOTP 만 받아 **휴대폰을 잃으면 계정에 영영 못 들어갔다.**
+       *   복구 코드는 **2FA 단계만** 대신한다 — 이메일+비밀번호는 이미 위에서 확인됐다.
+       *   그렇지 않으면 복구 코드 하나가 곧 계정이 된다.
+       */
+      if (recoveryCode) {
+        const { consumeRecoveryCode } = await import('@/lib/recovery-codes');
+        const r = await consumeRecoveryCode(dbUser.id, recoveryCode);
+        if (!r.ok) {
+          logAudit({ userId: dbUser.id, action: 'auth.recovery_code_failed', resourceId: dbUser.id, ip });
+          return NextResponse.json({ error: '복구 코드가 올바르지 않거나 이미 사용되었습니다.' }, { status: 401 });
+        }
+        logAudit({ userId: dbUser.id, action: 'auth.recovery_code_used', resourceId: dbUser.id, metadata: { remaining: r.remaining }, ip });
+        // ⚠ 남은 개수를 응답에 실어 **소진되기 전에** 재발급하도록 알린다.
+        recoveryRemaining = r.remaining;
+      } else if (!totpCode) {
         // Return a challenge — client must re-submit with totpCode
         return NextResponse.json(
           { requires2FA: true, message: 'Please provide your 2FA code.' },
@@ -140,7 +161,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Guard: totp_secret must exist if 2FA is enabled
-      if (!dbUser.totp_secret) {
+      if (!recoveryCode && !dbUser.totp_secret) {
         console.error('[login] User has totp_enabled but totp_secret is missing:', dbUser.id);
         return NextResponse.json(
           { error: '2FA 설정 오류입니다. 고객센터에 문의하세요.' },
@@ -148,19 +169,21 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Validate TOTP code
+      // Validate TOTP code (복구 코드로 통과했으면 건너뛴다)
+      if (!recoveryCode) {
       const totp = new OTPAuth.TOTP({
         issuer: 'NexyFab',
         label: dbUser.email,
         algorithm: 'SHA1',
         digits: 6,
         period: 30,
-        secret: OTPAuth.Secret.fromBase32(dbUser.totp_secret),
+        secret: OTPAuth.Secret.fromBase32(dbUser.totp_secret as string),
       });
 
-      const delta = totp.validate({ token: totpCode, window: 1 });
+      const delta = totp.validate({ token: totpCode as string, window: 1 });
       if (delta === null) {
         return NextResponse.json({ error: 'Invalid 2FA code' }, { status: 401 });
+      }
       }
     }
 
@@ -211,15 +234,57 @@ export async function POST(req: NextRequest) {
       "UPDATE nf_refresh_tokens SET revoked = TRUE WHERE user_id = ? AND revoked = FALSE",
       dbUser.id,
     );
+    /**
+     * ⚠ 260802: 세션 목록(`/api/auth/sessions`)이 보여 줄 정보를 **여기서** 남긴다.
+     *   기록하지 않으면 목록 화면이 비어 「어디서 로그인됐는지」를 알 수 없다.
+     *   user_agent 는 **자기신고**라 소비처에서 그렇게 표시해야 한다.
+     */
+    const uaRaw = (req.headers.get('user-agent') ?? '').slice(0, 300);
     await db.execute(
-      `INSERT INTO nf_refresh_tokens (id, user_id, token_hash, expires_at, revoked, created_at)
-       VALUES (?, ?, ?, ?, FALSE, ?)`,
+      `INSERT INTO nf_refresh_tokens (id, user_id, token_hash, expires_at, revoked, created_at, user_agent, ip, last_used_at)
+       VALUES (?, ?, ?, ?, FALSE, ?, ?, ?, ?)`,
       `rt-${crypto.randomUUID()}`,
       dbUser.id,
       refreshTokenHash,
       now + REFRESH_TOKEN_TTL,
       now,
+      uaRaw,
+      ip,
+      now,
     );
+
+    /**
+     * 새 기기 로그인 알림 (260802).
+     *
+     * ⚠ 지문은 **user_agent + IP 대역**으로 만든다. 정확한 기기 식별이 아니라
+     *   「전에 본 적 없는 조합인가」만 본다 — 위조 가능한 값이라 그 이상을 주장하지 않는다.
+     * ⚠ 알림 실패가 로그인을 막지 않는다. 로그인은 이미 성공했다.
+     */
+    try {
+      const { createHash: _h } = await import('crypto');
+      const fp = _h('sha256').update(`${uaRaw}|${String(ip).split('.').slice(0, 3).join('.')}`).digest('hex').slice(0, 32);
+      const prev = await db.queryOne<{ last_login_fingerprint: string | null }>(
+        'SELECT last_login_fingerprint FROM nf_users WHERE id = ?', dbUser.id,
+      );
+      const isNewDevice = !!prev?.last_login_fingerprint && prev.last_login_fingerprint !== fp;
+      await db.execute('UPDATE nf_users SET last_login_fingerprint = ? WHERE id = ?', fp, dbUser.id);
+      if (isNewDevice) {
+        const { sendEmail: _send } = await import('@/lib/email');
+        _send({
+          to: dbUser.email,
+          subject: '[NexyFab] 새로운 기기에서 로그인되었습니다',
+          html: `<div style="font-family:system-ui,sans-serif;max-width:520px">`
+            + `<h2 style="margin:0 0 8px">새로운 기기에서 로그인</h2>`
+            + `<p style="color:#475569">${new Date(now).toISOString()} · IP ${ip}</p>`
+            + `<p style="color:#475569;font-size:13px">기기(자기신고): ${uaRaw.slice(0, 120) || '알 수 없음'}</p>`
+            + `<p><b>본인이 아니라면 즉시 비밀번호를 바꾸고 다른 기기의 로그인을 해제하세요.</b></p>`
+            + `<p style="color:#64748b;font-size:13px">계정 → 보안 → 로그인 세션에서 해제할 수 있습니다.</p></div>`,
+          text: `새로운 기기에서 로그인되었습니다 (${new Date(now).toISOString()}, IP ${ip}). 본인이 아니라면 즉시 비밀번호를 바꾸세요.`,
+        }).catch((e) => console.error('[login] 새 기기 알림 실패:', e));
+      }
+    } catch (e) {
+      console.error('[login] 새 기기 판정 실패(로그인은 계속):', e);
+    }
 
     const user = {
       id: dbUser.id,

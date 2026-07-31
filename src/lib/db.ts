@@ -1689,6 +1689,25 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE INDEX IF NOT EXISTS idx_users_plan_expiry ON nf_users(plan_expires_at);
     `,
   },
+
+  {
+    version: 77,
+    name: 'account_security_recovery_and_sessions',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_recovery_codes (
+        id          TEXT PRIMARY KEY,
+        user_id     TEXT NOT NULL,
+        code_hash   TEXT NOT NULL,
+        used_at     INTEGER,
+        created_at  INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_recovery_user ON nf_recovery_codes(user_id, used_at);
+      ALTER TABLE nf_refresh_tokens ADD COLUMN user_agent TEXT;
+      ALTER TABLE nf_refresh_tokens ADD COLUMN ip TEXT;
+      ALTER TABLE nf_refresh_tokens ADD COLUMN last_used_at INTEGER;
+      ALTER TABLE nf_users ADD COLUMN last_login_fingerprint TEXT;
+    `,
+  },
 ];
 
 function runMigrations(db: Database.Database): void {

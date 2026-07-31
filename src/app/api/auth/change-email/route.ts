@@ -102,7 +102,39 @@ export async function POST(req: NextRequest) {
       `,
     });
 
-    return NextResponse.json({ ok: true, message: '인증 이메일을 발송했습니다.' });
+    /**
+     * ⚠ 260802: **이전 주소에도 알린다.**
+     *
+     * 계정 탈취의 전형적 수순이 **이메일부터 바꾸는 것**이다. 새 주소로만 인증 메일을
+     * 보내면 원래 주인은 **바뀌는 줄도 모른다** — 알림을 받아야 되돌릴 기회가 생긴다.
+     *
+     * ⚠ 알림 실패가 요청을 되돌리지 않는다(토큰은 이미 발급됐다). 실패는 로그로 남긴다.
+     * ⚠ 이 메일에는 **인증 링크를 넣지 않는다** — 이전 주소가 이미 탈취됐다면
+     *   링크를 그쪽에 보내는 것은 공격자에게 열쇠를 하나 더 주는 셈이다.
+     */
+    try {
+      const cur = await db.queryOne<{ email: string }>('SELECT email FROM nf_users WHERE id = ?', authUser.userId);
+      if (cur?.email && cur.email.toLowerCase() !== newEmail.toLowerCase()) {
+        sendEmail({
+          to: cur.email,
+          subject: '[NexyFab] 이메일 주소 변경이 요청되었습니다',
+          html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+          <h2>이메일 주소 변경 요청</h2>
+          <p>계정의 이메일을 <strong>${newEmail}</strong> 로 변경하는 요청이 접수되었습니다.</p>
+          <p style="color:#475569">${new Date().toISOString()}</p>
+          <p><b>본인이 요청하지 않았다면 지금 바로 비밀번호를 변경하고 다른 기기의 로그인을 해제하세요.</b></p>
+          <p style="color:#888;font-size:12px">이 메일에는 변경 링크가 없습니다 — 변경은 새 주소에서만 확인할 수 있습니다.</p>
+        </div>
+      `,
+          text: `계정 이메일을 ${newEmail} 로 변경하는 요청이 접수되었습니다. 본인이 아니라면 즉시 비밀번호를 변경하세요.`,
+        }).catch((e) => console.error('[change-email] 이전 주소 통지 실패:', e));
+      }
+    } catch (e) {
+      console.error('[change-email] 이전 주소 조회 실패(요청은 유효):', e);
+    }
+
+    return NextResponse.json({ ok: true, message: '인증 이메일을 발송했습니다. 기존 주소로도 알림을 보냈습니다.' });
   } catch {
     return NextResponse.json({ error: '요청 처리 중 오류가 발생했습니다.' }, { status: 500 });
   }
