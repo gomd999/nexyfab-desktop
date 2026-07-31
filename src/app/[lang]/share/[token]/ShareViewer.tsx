@@ -6,6 +6,7 @@
  * - RFQ 요청 버튼 제공
  */
 import React, { useEffect, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
@@ -64,11 +65,60 @@ const T = {
     shared: 'Shared 3D Model',
     sharedAt: 'Shared At',
   },
+  ja: {
+    loading: '読み込み中...',
+    notFound: 'この共有リンクは期限切れか存在しません。',
+    ipNotice: 'このモデルは IP 保護モードで共有されています。設計パラメータは公開されません。',
+    bbox: '外形寸法',
+    volume: '体積',
+    surface: '表面積',
+    requestRFQ: 'このモデルで見積を依頼',
+    backToApp: 'NexyFab へ移動',
+    shared: '共有された 3D モデル',
+    sharedAt: '共有日時',
+  },
+  zh: {
+    loading: '加载中...',
+    notFound: '该共享链接已过期或不存在。',
+    ipNotice: '本模型以 IP 保护模式共享，不公开设计参数。',
+    bbox: '外形尺寸',
+    volume: '体积',
+    surface: '表面积',
+    requestRFQ: '用此模型申请报价',
+    backToApp: '前往 NexyFab',
+    shared: '共享的 3D 模型',
+    sharedAt: '共享时间',
+  },
+  es: {
+    loading: 'Cargando...',
+    notFound: 'Este enlace compartido ha caducado o no existe.',
+    ipNotice: 'Este modelo se comparte en modo de protección de PI. Los parámetros de diseño no se divulgan.',
+    bbox: 'Dimensiones envolventes',
+    volume: 'Volumen',
+    surface: 'Superficie',
+    requestRFQ: 'Solicitar presupuesto con este modelo',
+    backToApp: 'Ir a NexyFab',
+    shared: 'Modelo 3D compartido',
+    sharedAt: 'Compartido el',
+  },
+  ar: {
+    loading: 'جارٍ التحميل...',
+    notFound: 'انتهت صلاحية رابط المشاركة أو أنه غير موجود.',
+    ipNotice: 'شورك هذا النموذج في وضع حماية الملكية الفكرية، ولا يجري الإفصاح عن معاملات التصميم.',
+    bbox: 'الأبعاد الخارجية',
+    volume: 'الحجم',
+    surface: 'المساحة السطحية',
+    requestRFQ: 'طلب عرض سعر بهذا النموذج',
+    backToApp: 'الانتقال إلى NexyFab',
+    shared: 'نموذج ثلاثي الأبعاد مُشارَك',
+    sharedAt: 'تاريخ المشاركة',
+  },
 };
 
 export default function ShareViewer({ token, lang }: { token: string; lang: string }) {
   const router = useRouter();
-  const t = lang === 'ko' ? T.ko : T.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = T[toIsoLang(lang)] ?? T.en;
   const [data, setData] = useState<ShareData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

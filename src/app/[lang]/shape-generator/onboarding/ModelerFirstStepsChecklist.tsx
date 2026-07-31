@@ -18,6 +18,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { loc } from '@/lib/i18n/loc';
 
 export type StepKey = 'template' | 'modify' | 'export' | 'render' | 'save';
 
@@ -36,14 +37,22 @@ const STEPS: ReadonlyArray<{
   key: StepKey;
   ko: string;
   en: string;
+  ja: string;
+  zh: string;
+  es: string;
+  ar: string;
   hintKo: string;
   hintEn: string;
+  hintJa: string;
+  hintZh: string;
+  hintEs: string;
+  hintAr: string;
 }> = [
-  { key: 'template', ko: '템플릿 열기',     en: 'Open a template',         hintKo: '왼쪽 + 버튼으로 시작',           hintEn: 'Click the + button on the left' },
-  { key: 'modify',   ko: '치수 1개 수정',   en: 'Change a dimension',      hintKo: 'Feature Tree의 숫자 클릭',       hintEn: 'Click a number in the Feature Tree' },
-  { key: 'export',   ko: 'STL 다운로드',    en: 'Download STL',            hintKo: '오른쪽 아래 큰 버튼 또는 Ctrl+E', hintEn: 'Bottom-right button or Ctrl+E' },
-  { key: 'render',   ko: '렌더 한 번 보기', en: 'Try a photorealistic render', hintKo: 'Ribbon의 Render 탭',           hintEn: 'Render tab on the ribbon' },
-  { key: 'save',     ko: '프로젝트 저장',   en: 'Save your project',       hintKo: 'Ctrl+S 또는 File → Save',         hintEn: 'Ctrl+S or File → Save' },
+  { key: 'template', ko: '템플릿 열기',     en: 'Open a template',         hintKo: '왼쪽 + 버튼으로 시작',           hintEn: 'Click the + button on the left', ja: 'テンプレートを開く', zh: '打开模板', es: 'Abrir una plantilla', ar: 'افتح قالباً', hintJa: '左の + ボタンから開始', hintZh: '点击左侧的 + 按钮', hintEs: 'Haga clic en el botón + de la izquierda', hintAr: 'انقر زر + على اليسار' },
+  { key: 'modify',   ko: '치수 1개 수정',   en: 'Change a dimension',      hintKo: 'Feature Tree의 숫자 클릭',       hintEn: 'Click a number in the Feature Tree', ja: '寸法を 1 つ変更', zh: '修改一个尺寸', es: 'Cambiar una cota', ar: 'غيّر بُعداً واحداً', hintJa: 'フィーチャーツリーの数値をクリック', hintZh: '点击特征树中的数字', hintEs: 'Haga clic en un número del árbol de operaciones', hintAr: 'انقر رقماً في شجرة المعالم' },
+  { key: 'export',   ko: 'STL 다운로드',    en: 'Download STL',            hintKo: '오른쪽 아래 큰 버튼 또는 Ctrl+E', hintEn: 'Bottom-right button or Ctrl+E', ja: 'STL をダウンロード', zh: '下载 STL', es: 'Descargar STL', ar: 'نزّل ملف STL', hintJa: '右下の大きなボタンまたは Ctrl+E', hintZh: '右下角的大按钮或 Ctrl+E', hintEs: 'Botón inferior derecho o Ctrl+E', hintAr: 'الزر الكبير أسفل اليمين أو Ctrl+E' },
+  { key: 'render',   ko: '렌더 한 번 보기', en: 'Try a photorealistic render', hintKo: 'Ribbon의 Render 탭',           hintEn: 'Render tab on the ribbon', ja: 'レンダリングを試す', zh: '试用真实感渲染', es: 'Probar un render fotorrealista', ar: 'جرّب عرضاً واقعياً', hintJa: 'リボンの Render タブ', hintZh: '功能区的 Render 选项卡', hintEs: 'Pestaña Render de la cinta', hintAr: 'تبويب Render في الشريط' },
+  { key: 'save',     ko: '프로젝트 저장',   en: 'Save your project',       hintKo: 'Ctrl+S 또는 File → Save',         hintEn: 'Ctrl+S or File → Save', ja: 'プロジェクトを保存', zh: '保存项目', es: 'Guardar el proyecto', ar: 'احفظ المشروع', hintJa: 'Ctrl+S または File → Save', hintZh: 'Ctrl+S 或 File → Save', hintEs: 'Ctrl+S o Archivo → Guardar', hintAr: 'Ctrl+S أو File → Save' },
 ];
 
 export default function ModelerFirstStepsChecklist({
@@ -65,9 +74,19 @@ export default function ModelerFirstStepsChecklist({
   }, []);
 
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko
-    ? { title: '5분 안내', dismiss: '닫기', completeMsg: '🎉 첫 부품 완성! 손에 받을 준비 됐어요.' }
-    : { title: '5-min walkthrough', dismiss: 'Dismiss', completeMsg: '🎉 First part shipped — ready to order!' };
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = {
+    title: loc(lang, { ko: '5분 안내', en: '5-min walkthrough', ja: '5 分ガイド', zh: '5 分钟导览', es: 'Guía de 5 minutos', ar: 'جولة في 5 دقائق' }),
+    dismiss: loc(lang, { ko: '닫기', en: 'Dismiss', ja: '閉じる', zh: '关闭', es: 'Descartar', ar: 'إغلاق' }),
+    completeMsg: loc(lang, {
+      ko: '🎉 첫 부품 완성! 손에 받을 준비 됐어요.',
+      en: '🎉 First part shipped — ready to order!',
+      ja: '🎉 最初の部品が完成 — 発注の準備ができました！',
+      zh: '🎉 第一个零件完成 — 可以下单了！',
+      es: '🎉 ¡Primera pieza lista para pedir!',
+      ar: '🎉 اكتملت أول قطعة — جاهزة للطلب!',
+    }),
+  };
 
   const doneCount = STEPS.filter(s => completed[s.key]).length;
   const allDone = doneCount === STEPS.length;
@@ -165,11 +184,11 @@ export default function ModelerFirstStepsChecklist({
                 </span>
                 <div style={{ flex: 1 }}>
                   <div style={{ textDecoration: done ? 'line-through' : 'none' }}>
-                    {ko ? step.ko : step.en}
+                    {loc(lang, step)}
                   </div>
                   {!done && (
                     <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 2 }}>
-                      {ko ? step.hintKo : step.hintEn}
+                      {loc(lang, { ko: step.hintKo, en: step.hintEn, ja: step.hintJa, zh: step.hintZh, es: step.hintEs, ar: step.hintAr })}
                     </div>
                   )}
                 </div>

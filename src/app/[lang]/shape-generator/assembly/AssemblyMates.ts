@@ -524,4 +524,24 @@ export const MATE_TYPE_LABELS: Record<string, Record<MateType, string>> = {
     limitAngle: 'Limit Angle',
     width: 'Width',
   },
+  ja: {
+    coincident: '一致', concentric: '同心', distance: '距離', angle: '角度',
+    parallel: '平行', perpendicular: '直角', tangent: '接線', hinge: 'ヒンジ',
+    slider: 'スライダー', gear: 'ギア', limitDistance: '距離制限', limitAngle: '角度制限', width: '幅',
+  },
+  zh: {
+    coincident: '重合', concentric: '同心', distance: '距离', angle: '角度',
+    parallel: '平行', perpendicular: '垂直', tangent: '相切', hinge: '铰链',
+    slider: '滑块', gear: '齿轮', limitDistance: '距离限制', limitAngle: '角度限制', width: '宽度',
+  },
+  es: {
+    coincident: 'Coincidente', concentric: 'Concéntrica', distance: 'Distancia', angle: 'Ángulo',
+    parallel: 'Paralela', perpendicular: 'Perpendicular', tangent: 'Tangente', hinge: 'Bisagra',
+    slider: 'Deslizadera', gear: 'Engranaje', limitDistance: 'Límite de distancia', limitAngle: 'Límite de ángulo', width: 'Anchura',
+  },
+  ar: {
+    coincident: 'تطابق', concentric: 'تمركز مشترك', distance: 'مسافة', angle: 'زاوية',
+    parallel: 'توازٍ', perpendicular: 'تعامد', tangent: 'تماس', hinge: 'مفصلة',
+    slider: 'منزلق', gear: 'ترس', limitDistance: 'حدّ المسافة', limitAngle: 'حدّ الزاوية', width: 'العرض',
+  },
 };

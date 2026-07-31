@@ -8,6 +8,8 @@
 // pill instead).
 
 import React, { useEffect, useState } from 'react';
+import { loc } from '@/lib/i18n/loc';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 interface QuotaResp {
   ok: boolean;
@@ -18,13 +20,13 @@ interface QuotaResp {
   byKind: Record<string, number>;
 }
 
-const KIND_LABEL: Record<string, { ko: string; en: string; emoji: string }> = {
-  cfd:       { ko: '유체', en: 'CFD',     emoji: '💨' },
-  mbd:       { ko: '동역학', en: 'MBD',   emoji: '⚙' },
-  cam:       { ko: 'CAM', en: 'CAM',      emoji: '🛠' },
-  mold_fill: { ko: '사출', en: 'Mold',    emoji: '🟦' },
-  optics:    { ko: '광학', en: 'Optics',  emoji: '🔭' },
-  thermal:   { ko: '열', en: 'Thermal',   emoji: '🔥' },
+const KIND_LABEL: Record<string, { ko: string; en: string; ja: string; zh: string; es: string; ar: string; emoji: string }> = {
+  cfd:       { ko: '유체',   en: 'CFD',     ja: '流体',   zh: '流体',   es: 'CFD',      ar: 'الموائع',   emoji: '💨' },
+  mbd:       { ko: '동역학', en: 'MBD',     ja: '動力学', zh: '动力学', es: 'MBD',      ar: 'الديناميكا', emoji: '⚙' },
+  cam:       { ko: 'CAM',    en: 'CAM',     ja: 'CAM',    zh: 'CAM',    es: 'CAM',      ar: 'CAM',       emoji: '🛠' },
+  mold_fill: { ko: '사출',   en: 'Mold',    ja: '射出',   zh: '注塑',   es: 'Molde',    ar: 'القوالب',   emoji: '🟦' },
+  optics:    { ko: '광학',   en: 'Optics',  ja: '光学',   zh: '光学',   es: 'Óptica',   ar: 'البصريات',  emoji: '🔭' },
+  thermal:   { ko: '열',     en: 'Thermal', ja: '熱',     zh: '热',     es: 'Térmico',  ar: 'الحرارة',   emoji: '🔥' },
 };
 
 const dict = {
@@ -50,14 +52,60 @@ const dict = {
     none: 'No runs yet',
     error: 'Failed to load usage.',
   },
+  ja: {
+    title: '🧪 シミュレーション使用量',
+    used: '今月の使用',
+    remaining: '残り',
+    unlimited: '無制限',
+    locked: 'Pro+ 専用',
+    upgrade: 'Pro にアップグレード',
+    breakdown: 'タイプ別',
+    none: 'まだ使用はありません',
+    error: '使用量を取得できませんでした。',
+  },
+  zh: {
+    title: '🧪 仿真用量',
+    used: '本月已用',
+    remaining: '剩余',
+    unlimited: '无限制',
+    locked: 'Pro+ 专属',
+    upgrade: '升级到 Pro',
+    breakdown: '按类型',
+    none: '暂无使用记录',
+    error: '无法加载用量。',
+  },
+  es: {
+    title: '🧪 Uso de simulación',
+    used: 'Usado este mes',
+    remaining: 'Restante',
+    unlimited: 'Ilimitado',
+    locked: 'Solo Pro+',
+    upgrade: 'Actualizar a Pro',
+    breakdown: 'Por tipo',
+    none: 'Aún sin uso',
+    error: 'No se ha podido cargar el uso.',
+  },
+  ar: {
+    title: '🧪 استهلاك المحاكاة',
+    used: 'المستخدَم هذا الشهر',
+    remaining: 'المتبقي',
+    unlimited: 'غير محدود',
+    locked: 'لمشتركي Pro+ فقط',
+    upgrade: 'الترقية إلى Pro',
+    breakdown: 'حسب النوع',
+    none: 'لا يوجد استهلاك بعد',
+    error: 'تعذّر تحميل بيانات الاستهلاك.',
+  },
 };
 
 export interface SimQuotaWidgetProps {
-  lang: 'ko' | 'en';
+  /** ⚠ 260802: `'ko' | 'en'` 이라 **부모가 다른 언어를 넘길 수조차 없었다.** */
+  lang: string;
 }
 
 export default function SimQuotaWidget({ lang }: SimQuotaWidgetProps) {
-  const t = dict[lang];
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = dict[toIsoLang(lang)] ?? dict.en;
   const [data, setData] = useState<QuotaResp | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,7 +194,7 @@ export default function SimQuotaWidget({ lang }: SimQuotaWidgetProps) {
                       background: 'var(--nx-bg)', border: '1px solid var(--nx-border)',
                       color: 'var(--nx-text)', fontFamily: 'monospace',
                     }}>
-                      {meta.emoji} {meta[lang]} ×{count}
+                      {meta.emoji} {loc(lang, meta)} ×{count}
                     </span>
                   );
                 })}
