@@ -418,6 +418,40 @@ export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) 
         const r = await buildSolidRobust({ name: intent.name, features: fl });
         let s = r.solid;
         // 부품 단위 필렛(#7, _fillet=part.filletMm) — 실패=무필렛 드롭 보고(정직)
+        /**
+         * ★260802 — **면·선 기준 필렛/모따기**(`_edgeOps`).
+         *
+         * 부품 전체가 아니라 **지목한 엣지에만** 건다. 실무는 「이 모서리만 R5」인데
+         * 종전에는 솔리드 전 에지를 둥글리는 것밖에 없었다.
+         *
+         * ## 배선 (260802 실측으로 확인)
+         * `face-drag` 픽킹 → `topoNaming` 안정 이름 → **엣지 중점** → `containsPoint`.
+         * 100×60×20 상자 부피 대조: 무필렛 120,000 · 전체 R3 118,421.7 ·
+         * **중점 1개 지목 119,955.0**(정확히 한 엣지).
+         *
+         * ## ⚠ 위상 이름은 **여기로 넘어오지 않는다**
+         * 이름 해석(`buildExtrudeTopo`)은 TS 계층에 있고, 커널로 오는 것은 **해석된 점**이다.
+         * 여기서 이름을 다시 풀면 `topoNaming` 이 두 벌이 되고 언젠가 갈린다.
+         *
+         * ## ⚠ 엣지 단위를 **부품 단위보다 먼저** 건다
+         * 전체 필렛을 먼저 걸면 지목한 엣지가 사라져 다음 연산이 못 찾는다.
+         * ⚠ 찾지 못하면 **걸지 않고 드롭 보고**한다 — 엉뚱한 엣지에 거는 것이 안 거는 것보다 나쁘다.
+         */
+        for (const op of (fl.find((f) => Array.isArray(f._edgeOps))?._edgeOps ?? [])) {
+          const at = op?.at;
+          if (!Array.isArray(at) || at.length !== 3 || !(op?.size > 0)) {
+            report.dropped.push({ pid, op: `edge-${op?.kind ?? '?'}`, err: 'at[3]·size 누락 — 참조를 잃었다' });
+            continue;
+          }
+          try {
+            s = op.kind === 'chamfer'
+              ? s.chamfer(op.size, (e) => e.containsPoint(at))
+              : s.fillet(op.size, (e) => e.containsPoint(at));
+          } catch (e) {
+            // 「no edge was selected」도 여기로 온다 — 참조를 잃은 것이므로 남긴다.
+            report.dropped.push({ pid, op: `edge-${op.kind}`, err: String(e?.message ?? e).slice(0, 60) });
+          }
+        }
         const fr = fl.find((f) => f._fillet > 0)?._fillet;
         if (fr) {
           try { s = s.fillet(fr); }

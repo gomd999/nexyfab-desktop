@@ -939,11 +939,58 @@ const GATES = {
   },
 };
 
+/**
+ * 면·선 기준 필렛/모따기 선언 검사 (260802).
+ *
+ * ## 범위는 **측정이 정했다** (위상 명명 스파이크 ADR-017, 260730)
+ * ```
+ * 명명 커버리지  extrude 100%  ·  revolve 0%  ·  linearPattern 0%
+ * fillet 결과    0% — 필렛 결과는 topo 를 등록하지 않는다
+ * ```
+ * · **압출 기반만** 연다. 회전체·패턴은 참조가 **재빌드에서 살아남지 못한다** —
+ *   열면 「어제 건 필렛이 오늘 딴 데 가 있는」 상태가 된다.
+ * · **필렛 위 필렛 금지.** 여러 개는 **한 번에 목록으로** 받는다.
+ *
+ * ## ⚠ 지어내지 않는 것
+ * · `at`(엣지 중점)은 **TS 계층이 위상 이름에서 해석**해 넣는다. 여기서 추정하지 않는다.
+ * · `len`(엣지 길이)이 없으면 **질량에 반영하지 않고** 그 사실을 적는다(과대로 남는다).
+ */
+const EDGE_OP_TYPES = new Set([
+  'plate_with_holes', 'stepped_plate', 'l_bracket', 'bent_sheet', 'box',
+  'rect_tube', 'gusset', 'base_plate', 'extrude_profile', 'sheet_profile',
+]);
+function edgeOpsGate(intent, e) {
+  const ops = intent.edgeOps;
+  if (ops == null) return;
+  if (!Array.isArray(ops)) { e.push('edgeOps 는 배열이어야 한다'); return; }
+  if (!EDGE_OP_TYPES.has(intent.type)) {
+    e.push(`edgeOps 미지원 어휘 '${intent.type}' — 압출 기반만 지원한다`
+      + '(회전체·패턴은 위상 이름 커버리지 0% 라 재빌드에서 참조를 잃는다)');
+    return;
+  }
+  const seen = new Set();
+  for (const [n, o] of ops.entries()) {
+    const tag = `edgeOps[${n}]`;
+    if (o?.kind !== 'fillet' && o?.kind !== 'chamfer') { e.push(`${tag} kind 는 fillet|chamfer`); continue; }
+    if (!pos(o.size) || o.size > 100) e.push(`${tag} size invalid (0<size≤100)`);
+    if (!Array.isArray(o.at) || o.at.length !== 3 || !o.at.every((v) => Number.isFinite(Number(v)))) {
+      e.push(`${tag} at[3] 누락 — 엣지 중점이 없으면 커널이 엣지를 고를 수 없다`);
+    } else {
+      // 같은 엣지에 두 번 걸면 뒤엣것이 참조를 잃는다(필렛 결과는 topo 를 등록하지 않는다).
+      const key = o.at.map((v) => Math.round(Number(v) * 1e3)).join(',');
+      if (seen.has(key)) e.push(`${tag} 같은 엣지에 연산이 둘이다 — 필렛 위 필렛은 참조를 잃는다`);
+      seen.add(key);
+    }
+    if (o.len != null && !pos(o.len)) e.push(`${tag} len 은 양수여야 한다(질량 반영용)`);
+  }
+}
+
 export function gate(intent) {
   const errs = [];
   const g = GATES[intent.type];
   if (!g) { errs.push(`unsupported type '${intent.type}'`); return errs; }
   g(intent, errs);
+  edgeOpsGate(intent, errs);
   return errs;
 }
 

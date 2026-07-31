@@ -391,6 +391,32 @@ function convexEdgeLengthMm(type, p) {
 }
 
 function withEdgeBreak(part, base) {
+  /**
+   * ★260802 — **면·선 기준 연산(`edgeOps`)을 먼저 반영**한다.
+   *   부품 전체 필렛과 **같은 폐형**을 엣지 길이에 적용한다(중복 구현 금지):
+   *     필렛 `(1−π/4)r²L` · 모따기 `(c²/2)L`
+   * ⚠ `len`(엣지 길이)이 선언된 것만 반영한다. 없으면 **부피를 건드리지 않고**
+   *   「질량이 그만큼 과대」라고 적는다 — 길이를 추정해 곱하면 출처를 아무도 모른다.
+   */
+  const ops = Array.isArray(part?.edgeOps) ? part.edgeOps : [];
+  if (ops.length) {
+    let cut = 0, unquant = 0;
+    for (const o of ops) {
+      const L = Number(o?.len);
+      const sz = Number(o?.size);
+      if (!(L > 0) || !(sz > 0)) { unquant += 1; continue; }
+      cut += o.kind === 'chamfer' ? (sz * sz / 2) * L : (1 - Math.PI / 4) * sz * sz * L;
+    }
+    const v = Math.max(0, base.volumeMm3 - cut);
+    const pct = base.volumeMm3 > 0 ? (cut / base.volumeMm3) * 100 : 0;
+    base = {
+      volumeMm3: v,
+      basis: `${base.basis}+edge-ops`,
+      note: `${base.note} · 면·선 연산 ${ops.length}건 중 ${ops.length - unquant}건 반영`
+        + (cut > 0 ? ` (${Math.round(cut)}mm³ · ${pct.toFixed(2)}%)` : '')
+        + (unquant ? ` · ⚠ ${unquant}건은 **엣지 길이 미선언**으로 질량에 반영하지 않았다(그만큼 과대)` : ''),
+    };
+  }
   const r = Number(part?.filletMm) || 0;
   const c = Number(part?.chamferMm) || 0;
   if (!(r > 0) && !(c > 0)) return base;
