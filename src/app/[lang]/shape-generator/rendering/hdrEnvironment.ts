@@ -29,7 +29,7 @@ export interface HdrEnvironmentPreset {
   /** Stable id used in URL params + serialised render settings. */
   id: string;
   /** Display name. */
-  name: { ko: string; en: string };
+  name: { ko: string; en: string; ja: string; zh: string; es: string; ar: string };
   /** Path to the HDR file (relative to /public). */
   hdrUrl: string;
   /** Path to a 256×128 LDR preview thumbnail. */
@@ -50,7 +50,7 @@ export interface HdrEnvironmentPreset {
 export const HDR_PRESETS: HdrEnvironmentPreset[] = [
   {
     id: 'studio-softbox',
-    name: { ko: '스튜디오 (소프트박스)', en: 'Studio (Softbox)' },
+    name: { ko: '스튜디오 (소프트박스)', en: 'Studio (Softbox)', ja: 'スタジオ (ソフトボックス)', zh: '影棚（柔光箱）', es: 'Estudio (softbox)', ar: 'استوديو (صندوق إضاءة)' },
     hdrUrl: '/hdr/studio_softbox_1k.hdr',
     thumbUrl: '/hdr/studio_softbox_thumb.png',
     mood: 'studio',
@@ -60,7 +60,7 @@ export const HDR_PRESETS: HdrEnvironmentPreset[] = [
   },
   {
     id: 'showroom',
-    name: { ko: '쇼룸', en: 'Showroom' },
+    name: { ko: '쇼룸', en: 'Showroom', ja: 'ショールーム', zh: '展厅', es: 'Sala de exposición', ar: 'صالة عرض' },
     hdrUrl: '/hdr/showroom_1k.hdr',
     thumbUrl: '/hdr/showroom_thumb.png',
     mood: 'indoor',
@@ -70,7 +70,7 @@ export const HDR_PRESETS: HdrEnvironmentPreset[] = [
   },
   {
     id: 'outdoor-noon',
-    name: { ko: '실외 정오', en: 'Outdoor (Noon)' },
+    name: { ko: '실외 정오', en: 'Outdoor (Noon)', ja: '屋外 (正午)', zh: '室外（正午）', es: 'Exterior (mediodía)', ar: 'خارجي (الظهيرة)' },
     hdrUrl: '/hdr/outdoor_noon_1k.hdr',
     thumbUrl: '/hdr/outdoor_noon_thumb.png',
     mood: 'outdoor',
@@ -80,7 +80,7 @@ export const HDR_PRESETS: HdrEnvironmentPreset[] = [
   },
   {
     id: 'sunset',
-    name: { ko: '석양', en: 'Sunset' },
+    name: { ko: '석양', en: 'Sunset', ja: '夕焼け', zh: '日落', es: 'Atardecer', ar: 'الغروب' },
     hdrUrl: '/hdr/sunset_1k.hdr',
     thumbUrl: '/hdr/sunset_thumb.png',
     mood: 'sunset',
@@ -90,7 +90,7 @@ export const HDR_PRESETS: HdrEnvironmentPreset[] = [
   },
   {
     id: 'industrial-warehouse',
-    name: { ko: '산업 창고', en: 'Industrial Warehouse' },
+    name: { ko: '산업 창고', en: 'Industrial Warehouse', ja: '工業倉庫', zh: '工业仓库', es: 'Nave industrial', ar: 'مستودع صناعي' },
     hdrUrl: '/hdr/warehouse_1k.hdr',
     thumbUrl: '/hdr/warehouse_thumb.png',
     mood: 'industrial',
@@ -100,7 +100,7 @@ export const HDR_PRESETS: HdrEnvironmentPreset[] = [
   },
   {
     id: 'neutral-grey',
-    name: { ko: '중성 회색', en: 'Neutral Grey' },
+    name: { ko: '중성 회색', en: 'Neutral Grey', ja: 'ニュートラルグレー', zh: '中性灰', es: 'Gris neutro', ar: 'رمادي محايد' },
     hdrUrl: '/hdr/neutral_grey_1k.hdr',
     thumbUrl: '/hdr/neutral_grey_thumb.png',
     mood: 'neutral',
@@ -110,7 +110,7 @@ export const HDR_PRESETS: HdrEnvironmentPreset[] = [
   },
   {
     id: 'cloudy-sky',
-    name: { ko: '흐린 하늘', en: 'Cloudy Sky' },
+    name: { ko: '흐린 하늘', en: 'Cloudy Sky', ja: '曇り空', zh: '阴天', es: 'Cielo nublado', ar: 'سماء غائمة' },
     hdrUrl: '/hdr/cloudy_sky_1k.hdr',
     thumbUrl: '/hdr/cloudy_sky_thumb.png',
     mood: 'outdoor',

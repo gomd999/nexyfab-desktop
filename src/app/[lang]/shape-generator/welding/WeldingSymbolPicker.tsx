@@ -11,6 +11,7 @@
  */
 
 import React, { useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import {
   formatWeldSymbol, WELD_GLYPH, type WeldSymbol, type WeldType,
 } from './weldingSymbols';
@@ -53,6 +54,66 @@ const COPY = {
     apply: 'Add',
     preview: 'Preview',
   },
+  ja: {
+    title: '溶接記号',
+    type: '種類',
+    sizeArrow: 'サイズ (矢印側)',
+    sizeOther: 'サイズ (反対側)',
+    length: '長さ',
+    pitch: 'ピッチ',
+    allAround: '全周 ⊙',
+    fieldWeld: '現場溶接 ⚑',
+    tail: '尾部注記',
+    process: '溶接法',
+    cancel: 'キャンセル',
+    apply: '追加',
+    preview: 'プレビュー',
+  },
+  zh: {
+    title: '焊接符号',
+    type: '类型',
+    sizeArrow: '尺寸（箭头侧）',
+    sizeOther: '尺寸（另一侧）',
+    length: '长度',
+    pitch: '间距',
+    allAround: '全周 ⊙',
+    fieldWeld: '现场焊 ⚑',
+    tail: '尾部标注',
+    process: '焊接方法',
+    cancel: '取消',
+    apply: '添加',
+    preview: '预览',
+  },
+  es: {
+    title: 'Símbolo de soldadura',
+    type: 'Tipo',
+    sizeArrow: 'Tamaño (lado flecha)',
+    sizeOther: 'Tamaño (lado opuesto)',
+    length: 'Longitud',
+    pitch: 'Paso',
+    allAround: 'Todo alrededor ⊙',
+    fieldWeld: 'Soldadura en obra ⚑',
+    tail: 'Cola (nota)',
+    process: 'Proceso',
+    cancel: 'Cancelar',
+    apply: 'Añadir',
+    preview: 'Vista previa',
+  },
+  ar: {
+    title: 'رمز اللحام',
+    type: 'النوع',
+    sizeArrow: 'المقاس (جهة السهم)',
+    sizeOther: 'المقاس (الجهة المقابلة)',
+    length: 'الطول',
+    pitch: 'الخطوة',
+    allAround: 'محيط كامل ⊙',
+    fieldWeld: 'لحام موقعي ⚑',
+    tail: 'ملاحظة الذيل',
+    process: 'طريقة اللحام',
+    cancel: 'إلغاء',
+    apply: 'إضافة',
+    preview: 'معاينة',
+  },
 } as const;
 
 const TYPES: WeldType[] = ['fillet', 'square-groove', 'v-groove', 'u-groove', 'j-groove', 'bevel-groove', 'plug', 'slot', 'spot', 'seam'];
@@ -61,7 +122,8 @@ export default function WeldingSymbolPicker({
   lang, open, onClose, onConfirm,
 }: WeldingSymbolPickerProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const [type, setType] = useState<WeldType>('fillet');
   const [sizeArrow, setSizeArrow] = useState(6);
   const [sizeOther, setSizeOther] = useState<number | ''>('');

@@ -22,7 +22,47 @@ const lt = {
     moldSizeLabel: 'Mold Margin (mm)',
     running: 'Processing...',
     done: 'Mold split complete',
-  }
+  },
+  ja: {
+    title: '金型キャビティ & 抜き勾配解析',
+    desc: '現在のパートからコア/キャビティブロックを生成し、抜き勾配を解析します。',
+    createCavity: 'キャビティブロックを生成',
+    draftAnalysis: '抜き勾配解析 (ヒートマップ)',
+    draftAngleLabel: '最小抜き勾配 (°)',
+    moldSizeLabel: '金型の余裕幅 (mm)',
+    running: '生成中...',
+    done: '金型分割が完了しました',
+  },
+  zh: {
+    title: '模具型腔与拔模分析',
+    desc: '基于当前零件生成型芯/型腔块并分析拔模斜度。',
+    createCavity: '生成型腔块',
+    draftAnalysis: '拔模分析（热力图）',
+    draftAngleLabel: '最小拔模斜度 (°)',
+    moldSizeLabel: '模具余量 (mm)',
+    running: '生成中...',
+    done: '模具分型完成',
+  },
+  es: {
+    title: 'Cavidad de molde y análisis de desmoldeo',
+    desc: 'Genera los bloques de macho/cavidad a partir de la pieza actual y analiza los ángulos de desmoldeo.',
+    createCavity: 'Generar bloque de cavidad',
+    draftAnalysis: 'Análisis de desmoldeo (mapa de calor)',
+    draftAngleLabel: 'Ángulo mínimo de desmoldeo (°)',
+    moldSizeLabel: 'Margen del molde (mm)',
+    running: 'Procesando...',
+    done: 'Partición del molde completada',
+  },
+  ar: {
+    title: 'تجويف القالب وتحليل زاوية السحب',
+    desc: 'يولّد كتلتي القلب والتجويف من القطعة الحالية ويحلّل زوايا السحب.',
+    createCavity: 'توليد كتلة التجويف',
+    draftAnalysis: 'تحليل زاوية السحب (خريطة حرارية)',
+    draftAngleLabel: 'أدنى زاوية سحب (°)',
+    moldSizeLabel: 'هامش القالب (مم)',
+    running: 'جارٍ التوليد...',
+    done: 'اكتمل تقسيم القالب',
+  },
 };
 
 interface MoldDesignPanelProps {
