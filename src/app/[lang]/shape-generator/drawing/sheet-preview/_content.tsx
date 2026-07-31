@@ -88,6 +88,16 @@ const HEADING_DICT: Record<string, { title: string; subtitle: string; addAnnotat
     subtitle: 'Sheet IR → SVG渲染。视口内容将在Phase 2接入OCCT HLR',
     addAnnotation: '添加注释',
   },
+  es: {
+    title: 'Vista previa de la hoja de plano (Fase 1)',
+    subtitle: 'Sheet IR → render SVG. El contenido de la ventana gráfica se conecta en la Fase 2 (OCCT HLR)',
+    addAnnotation: 'Añadir anotación',
+  },
+  ar: {
+    title: 'معاينة ورقة الرسم (المرحلة ١)',
+    subtitle: 'Sheet IR ← عرض SVG. يُربط محتوى منفذ العرض في المرحلة ٢ (OCCT HLR)',
+    addAnnotation: 'إضافة تعليق',
+  },
 };
 
 function pickHeading(lang: string): { title: string; subtitle: string; addAnnotation: string } {

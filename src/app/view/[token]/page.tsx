@@ -24,20 +24,26 @@ interface Annotation {
 }
 
 // Simple language detection from browser
-function detectLang(): 'ko' | 'en' | 'ja' | 'cn' {
+function detectLang(): 'ko' | 'en' | 'ja' | 'cn' | 'es' | 'ar' {
   if (typeof navigator === 'undefined') return 'en';
   const lang = navigator.language?.toLowerCase() || '';
   if (lang.startsWith('ko')) return 'ko';
   if (lang.startsWith('ja')) return 'ja';
   if (lang.startsWith('zh')) return 'cn';
+  // ⚠ 260802: es·ar 사전을 넣어도 여기가 4언어면 **선택될 수 없다** — 사전만 채우고
+  //   고르는 곳을 안 고치는 것이 이 세션에서 반복해 잡은 「있는 것이 안 닿음」이다.
+  if (lang.startsWith('es')) return 'es';
+  if (lang.startsWith('ar')) return 'ar';
   return 'en';
 }
 
 const i18n = {
   ko: { viewOnly: '읽기 전용', openEditor: 'Shape Generator에서 열기 →', submitRfq: '⚡ 이 모델로 RFQ 제출', expires: '만료', loading: '불러오는 중...', expired: '링크가 만료되었습니다', notFound: '링크를 찾을 수 없습니다', goHome: 'NexyFab으로 이동', specs: '스펙', size: '크기', material: '소재', tooLarge: '모델 데이터가 너무 큽니다.', download: 'STEP 다운로드', version: '버전', versionHistory: '버전 이력', annotate: '메모', addNote: '클릭하여 메모 추가', notePlaceholder: '메모 입력...', save: '저장', cancel: '취소', deleteNote: '삭제' },
-  en: { viewOnly: 'View-only', openEditor: 'Open in Shape Generator →', expires: 'Expires', loading: 'Loading...', expired: 'Link has expired', notFound: 'Link not found', goHome: 'Go to NexyFab', specs: 'Specs', size: 'Size', material: 'Material', tooLarge: 'Model data is too large.', download: 'Download STEP', version: 'Version', versionHistory: 'Version History', annotate: 'Annotate', addNote: 'Click to add a note', notePlaceholder: 'Enter note...', save: 'Save', cancel: 'Cancel', deleteNote: 'Delete' },
-  ja: { viewOnly: '閲覧専用', openEditor: 'Shape Generatorで開く →', expires: '期限', loading: '読み込み中...', expired: 'リンクが期限切れです', notFound: 'リンクが見つかりません', goHome: 'NexyFabへ移動', specs: 'スペック', size: 'サイズ', material: '素材', tooLarge: 'モデルデータが大きすぎます。', download: 'STEPダウンロード', version: 'バージョン', versionHistory: 'バージョン履歴', annotate: '注釈', addNote: 'クリックしてメモを追加', notePlaceholder: 'メモを入力...', save: '保存', cancel: 'キャンセル', deleteNote: '削除' },
-  cn: { viewOnly: '仅查看', openEditor: '在 Shape Generator 中打开 →', expires: '到期', loading: '加载中...', expired: '链接已过期', notFound: '找不到链接', goHome: '转到 NexyFab', specs: '规格', size: '尺寸', material: '材料', tooLarge: '模型数据太大。', download: '下载 STEP', version: '版本', versionHistory: '版本历史', annotate: '批注', addNote: '点击添加批注', notePlaceholder: '输入批注...', save: '保存', cancel: '取消', deleteNote: '删除' },
+  en: { viewOnly: 'View-only', openEditor: 'Open in Shape Generator →', submitRfq: '⚡ Submit RFQ', expires: 'Expires', loading: 'Loading...', expired: 'Link has expired', notFound: 'Link not found', goHome: 'Go to NexyFab', specs: 'Specs', size: 'Size', material: 'Material', tooLarge: 'Model data is too large.', download: 'Download STEP', version: 'Version', versionHistory: 'Version History', annotate: 'Annotate', addNote: 'Click to add a note', notePlaceholder: 'Enter note...', save: 'Save', cancel: 'Cancel', deleteNote: 'Delete' },
+  ja: { viewOnly: '閲覧専用', openEditor: 'Shape Generatorで開く →', submitRfq: '⚡ このモデルでRFQを提出', expires: '期限', loading: '読み込み中...', expired: 'リンクが期限切れです', notFound: 'リンクが見つかりません', goHome: 'NexyFabへ移動', specs: 'スペック', size: 'サイズ', material: '素材', tooLarge: 'モデルデータが大きすぎます。', download: 'STEPダウンロード', version: 'バージョン', versionHistory: 'バージョン履歴', annotate: '注釈', addNote: 'クリックしてメモを追加', notePlaceholder: 'メモを入力...', save: '保存', cancel: 'キャンセル', deleteNote: '削除' },
+  cn: { viewOnly: '仅查看', openEditor: '在 Shape Generator 中打开 →', submitRfq: '⚡ 用此模型提交 RFQ', expires: '到期', loading: '加载中...', expired: '链接已过期', notFound: '找不到链接', goHome: '转到 NexyFab', specs: '规格', size: '尺寸', material: '材料', tooLarge: '模型数据太大。', download: '下载 STEP', version: '版本', versionHistory: '版本历史', annotate: '批注', addNote: '点击添加批注', notePlaceholder: '输入批注...', save: '保存', cancel: '取消', deleteNote: '删除' },
+  es: { viewOnly: 'Solo lectura', openEditor: 'Abrir en Shape Generator →', submitRfq: '⚡ Enviar RFQ con este modelo', expires: 'Caduca', loading: 'Cargando...', expired: 'El enlace ha caducado', notFound: 'Enlace no encontrado', goHome: 'Ir a NexyFab', specs: 'Especificaciones', size: 'Tamaño', material: 'Material', tooLarge: 'Los datos del modelo son demasiado grandes.', download: 'Descargar STEP', version: 'Versión', versionHistory: 'Historial de versiones', annotate: 'Anotar', addNote: 'Haga clic para añadir una nota', notePlaceholder: 'Escriba una nota...', save: 'Guardar', cancel: 'Cancelar', deleteNote: 'Eliminar' },
+  ar: { viewOnly: 'للعرض فقط', openEditor: 'الفتح في Shape Generator ←', submitRfq: '⚡ إرسال طلب عرض سعر بهذا النموذج', expires: 'ينتهي', loading: 'جارٍ التحميل...', expired: 'انتهت صلاحية الرابط', notFound: 'الرابط غير موجود', goHome: 'الانتقال إلى NexyFab', specs: 'المواصفات', size: 'الحجم', material: 'المادة', tooLarge: 'بيانات النموذج كبيرة جداً.', download: 'تنزيل STEP', version: 'الإصدار', versionHistory: 'سجل الإصدارات', annotate: 'تعليق', addNote: 'انقر لإضافة ملاحظة', notePlaceholder: 'أدخل ملاحظة...', save: 'حفظ', cancel: 'إلغاء', deleteNote: 'حذف' },
 };
 
 export default function ViewPage({ params }: { params: Promise<{ token: string }> }) {
@@ -46,7 +52,9 @@ export default function ViewPage({ params }: { params: Promise<{ token: string }
   const [data, setData] = useState<{ meshDataBase64: string; metadata: ShareMetadata; expiresAt: number; version?: number; versions?: { token: string; version: number; createdAt: number }[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lang, setLang] = useState<'ko' | 'en' | 'ja' | 'cn'>('en');
+  // ⚠ 260802: 사전에 es·ar 을 넣어도 **상태 타입이 4언어면 도달하지 않는다** —
+  //   「사전만 넣고 화면이 안 바뀌는」 형태(이 세션에서 반복해 잡았다).
+  const [lang, setLang] = useState<'ko' | 'en' | 'ja' | 'cn' | 'es' | 'ar'>('en');
   const t = i18n[lang];
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [isAnnotating, setIsAnnotating] = useState(false);
@@ -161,7 +169,9 @@ export default function ViewPage({ params }: { params: Promise<{ token: string }
     try {
       sessionStorage.setItem('nexyfab_shared_mesh', data.meshDataBase64);
       sessionStorage.setItem('nexyfab_shared_meta', JSON.stringify(data.metadata));
-      window.open(`/${lang === 'cn' ? 'cn' : lang === 'ja' ? 'ja' : lang === 'ko' ? 'kr' : 'en'}/shape-generator/?from=shared`, '_blank');
+      // 뷰어 언어 → 사이트 라우트. ⚠ es·ar 이 빠져 있어 en 으로 떨어졌다.
+      const route = lang === 'ko' ? 'kr' : lang === 'cn' ? 'cn' : lang === 'ja' ? 'ja' : lang === 'es' ? 'es' : lang === 'ar' ? 'ar' : 'en';
+      window.open(`/${route}/shape-generator/?from=shared`, '_blank');
     } catch { toast('error', t.tooLarge); }
   };
 
@@ -215,7 +225,7 @@ export default function ViewPage({ params }: { params: Promise<{ token: string }
                 onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
                 onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
               >
-                {lang === 'ko' ? '⚡ 이 모델로 RFQ 제출' : '⚡ Submit RFQ'}
+                {t.submitRfq}
               </a>
             )}
             <button onClick={handleOpenEditor}

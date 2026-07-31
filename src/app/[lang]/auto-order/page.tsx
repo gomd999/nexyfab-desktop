@@ -121,13 +121,71 @@ const dict = {
     successMsg: '提交成功。',
     errorMsg: '发送过程中出现错误。',
     actionFailed: '操作失败'
+  },
+  es: {
+    heroKicker: 'Nexyfab · Pedido automático.',
+    heroTitle: '📦 Pedido automático rápido',
+    titleSub: '(Sistema de compras automatizado)',
+    heroDesc: 'Introduzca el artículo, la cantidad y los datos de entrega,<br/>y los productos se entregarán automáticamente.',
+    badge1: 'Producto terminado', badge2: 'Entrega de piezas', badge3: 'Pedido integral',
+    cardTitle: 'Pedido automático',
+    anchor: 'Introducir datos del pedido ↓',
+    item: 'Nombre del artículo',
+    itemPl: 'p. ej., nombre del producto en desarrollo',
+    qty: 'Cantidad',
+    qtyPl: 'p. ej., 100',
+    company: 'Empresa',
+    companyPl: 'Introduzca el nombre de su empresa',
+    phone: 'Teléfono',
+    phonePl: 'p. ej., +34 600 123 456',
+    email: 'Correo electrónico',
+    emailPl: 'Dirección de correo para la respuesta',
+    address: 'Dirección',
+    addressPl: 'Dirección de entrega (ciudad/distrito/detalle)',
+    password: 'Contraseña de verificación del cliente',
+    passwordPl: 'Contraseña para consultar la solicitud',
+    passwordHelp: '* Solo para fines de verificación interna.',
+    submit: '🚀 Enviar pedido automático',
+    note: 'Tras el envío, un especialista lo revisará y le informará de los plazos de entrega y del presupuesto.',
+    successMsg: 'Enviado correctamente.',
+    errorMsg: 'Se ha producido un error al enviar.',
+    actionFailed: 'La acción ha fallado'
+  },
+  ar: {
+    heroKicker: 'Nexyfab · الطلب التلقائي.',
+    heroTitle: '📦 طلب تلقائي سريع',
+    titleSub: '(نظام شراء آلي)',
+    heroDesc: 'أدخل الصنف والكمية وبيانات التسليم،<br/>وسيتم توريد المنتجات تلقائياً.',
+    badge1: 'منتجات جاهزة', badge2: 'توريد القطع', badge3: 'طلب متكامل',
+    cardTitle: 'الطلب التلقائي',
+    anchor: 'أدخل بيانات الطلب ↓',
+    item: 'اسم الصنف',
+    itemPl: 'مثال: اسم المنتج قيد التطوير',
+    qty: 'الكمية',
+    qtyPl: 'مثال: ١٠٠',
+    company: 'الشركة',
+    companyPl: 'يُرجى إدخال اسم شركتك',
+    phone: 'الهاتف',
+    phonePl: 'مثال: ‎+971 50 123 4567',
+    email: 'البريد الإلكتروني',
+    emailPl: 'عنوان البريد الإلكتروني للرد',
+    address: 'العنوان',
+    addressPl: 'عنوان التسليم (المدينة/المنطقة/التفاصيل)',
+    password: 'كلمة مرور التحقق من العميل',
+    passwordPl: 'كلمة المرور للاستعلام عن الطلب',
+    passwordHelp: '* لأغراض التحقق الداخلي فقط.',
+    submit: '🚀 إرسال الطلب التلقائي',
+    note: 'بعد الإرسال، سيراجعه أحد المختصين ويوافيك بمواعيد التسليم وعرض السعر.',
+    successMsg: 'تم الإرسال بنجاح.',
+    errorMsg: 'حدث خطأ أثناء الإرسال.',
+    actionFailed: 'فشل الإجراء'
   }
 };
 
 export default function AutoOrderPage() {
   const pathname = usePathname();
   const langCode = pathname.split('/')[1] || 'en';
-  const lang = ['en', 'kr', 'ja', 'cn'].includes(langCode) ? langCode : 'en';
+  const lang = ['en', 'kr', 'ja', 'cn', 'es', 'ar'].includes(langCode) ? langCode : 'en';
   const t = dict[lang === 'cn' ? 'zh' : lang === 'kr' ? 'ko' : lang as keyof typeof dict];
 
   const [isSubmitting, setIsSubmitting] = useState(false);

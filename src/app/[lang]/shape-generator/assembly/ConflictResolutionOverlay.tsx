@@ -66,6 +66,18 @@ const DICT: Record<string, Dict> = {
     relax: '放松', recommended: '推荐', autoResolve: '自动解决 (推荐)',
     freesDof: (n) => `释放 ${n} 个自由度`,
   },
+  es: {
+    title: 'Conflictos de emparejamiento', over: 'Sobrerrestringido',
+    removes: (a, b) => `elimina ${a} de ${b} GDL`,
+    relax: 'Relajar', recommended: 'Recomendado', autoResolve: 'Resolver automáticamente (recomendado)',
+    freesDof: (n) => `libera ${n} GDL`,
+  },
+  ar: {
+    title: 'تعارضات الترابط', over: 'تقييد زائد',
+    removes: (a, b) => `يزيل ${a} من ${b} درجة حرية`,
+    relax: 'تخفيف', recommended: 'موصى به', autoResolve: 'حل تلقائي (موصى به)',
+    freesDof: (n) => `يحرّر ${n} درجة حرية`,
+  },
 };
 
 function pickDict(lang?: string): Dict {
