@@ -5,6 +5,9 @@
   "engines": {
     "node": ">=22"
   },
+  "bin": {
+    "nexyfab": "scripts/cli/nexyfab.mjs"
+  },
   "scripts": {
     "prepare": "husky",
     "dev": "next dev --webpack",
