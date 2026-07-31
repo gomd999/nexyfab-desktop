@@ -15,6 +15,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 const HIDE_KEY = 'nexyfab_get_quote_dismissed_v1';
 
@@ -29,6 +30,10 @@ export interface GetQuoteButtonProps {
 const COPY = {
   ko: { label: '실물로 만들기', sub: '견적 받기', dismissAria: '견적 버튼 숨기기' },
   en: { label: 'Get it made', sub: 'Request a quote', dismissAria: 'Hide quote button' },
+  ja: { label: '実物をつくる', sub: '見積を依頼', dismissAria: '見積ボタンを隠す' },
+  zh: { label: '做成实物', sub: '申请报价', dismissAria: '隐藏报价按钮' },
+  es: { label: 'Fabricarlo', sub: 'Solicitar presupuesto', dismissAria: 'Ocultar el botón de presupuesto' },
+  ar: { label: 'اصنعه فعلياً', sub: 'طلب عرض سعر', dismissAria: 'إخفاء زر عرض السعر' },
 } as const;
 
 export default function GetQuoteButton({ lang, hasGeometry, onRequestQuote }: GetQuoteButtonProps) {
@@ -44,7 +49,8 @@ export default function GetQuoteButton({ lang, hasGeometry, onRequestQuote }: Ge
 
   if (!hasGeometry || dismissed) return null;
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: `ko ? COPY.ko : COPY.en` 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
 
   return (
     <div

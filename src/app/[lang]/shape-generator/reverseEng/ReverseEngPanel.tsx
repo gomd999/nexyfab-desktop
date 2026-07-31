@@ -5,6 +5,7 @@
  */
 
 import React, { useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import { parseXyz, fitPlane, fitSphere, type PointCloud } from './pointCloud';
 
 interface ReverseEngPanelProps {
@@ -39,11 +40,60 @@ const COPY = {
     radius: 'Radius',
     rms: 'RMS error',
   },
+  ja: {
+    title: 'リバースエンジニアリング (点群)',
+    paste: 'XYZ データを貼り付け',
+    parse: '解析',
+    fit: 'フィッティング',
+    plane: '平面',
+    sphere: '球',
+    bbox: 'バウンディングボックス',
+    points: '点数',
+    radius: '半径',
+    rms: 'RMS 誤差',
+  },
+  zh: {
+    title: '逆向工程（点云）',
+    paste: '粘贴 XYZ 数据',
+    parse: '解析',
+    fit: '拟合',
+    plane: '平面',
+    sphere: '球',
+    bbox: '包围盒',
+    points: '点数',
+    radius: '半径',
+    rms: 'RMS 误差',
+  },
+  es: {
+    title: 'Ingeniería inversa (nube de puntos)',
+    paste: 'Pegar datos XYZ',
+    parse: 'Analizar',
+    fit: 'Ajustar',
+    plane: 'Plano',
+    sphere: 'Esfera',
+    bbox: 'Caja envolvente',
+    points: 'Puntos',
+    radius: 'Radio',
+    rms: 'Error RMS',
+  },
+  ar: {
+    title: 'الهندسة العكسية (سحابة نقاط)',
+    paste: 'لصق بيانات XYZ',
+    parse: 'تحليل',
+    fit: 'ملاءمة',
+    plane: 'مستوٍ',
+    sphere: 'كرة',
+    bbox: 'الصندوق المحيط',
+    points: 'النقاط',
+    radius: 'نصف القطر',
+    rms: 'خطأ RMS',
+  },
 } as const;
 
 export default function ReverseEngPanel({ lang, onClose, onFitResult }: ReverseEngPanelProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: `ko ? COPY.ko : COPY.en` 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const [text, setText] = useState('');
   const [cloud, setCloud] = useState<PointCloud | null>(null);
   const [planeResult, setPlaneResult] = useState<ReturnType<typeof fitPlane>>(null);

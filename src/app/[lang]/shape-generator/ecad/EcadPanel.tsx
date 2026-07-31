@@ -5,6 +5,7 @@
  */
 
 import React, { useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import { parseIdf, pcbBoundingBox, maxComponentHeight, clearanceEnvelope, type PcbBoard } from './pcbImport';
 
 interface EcadPanelProps {
@@ -40,11 +41,60 @@ const COPY = {
     createEnvelope: 'Create enclosure envelope',
     invalid: 'Invalid IDF file',
   },
+  ja: {
+    title: 'PCB インポート',
+    paste: 'IDF テキストを貼り付け',
+    parse: '解析',
+    bbox: 'ボードサイズ',
+    components: 'コンポーネント',
+    topHeight: '上面コンポーネントの最大高さ',
+    bottomHeight: '下面コンポーネントの最大高さ',
+    clearance: 'クリアランス (mm)',
+    createEnvelope: 'エンクロージャ外形を生成',
+    invalid: '不正な IDF ファイル',
+  },
+  zh: {
+    title: 'PCB 导入',
+    paste: '粘贴 IDF 文本',
+    parse: '解析',
+    bbox: '板尺寸',
+    components: '元件',
+    topHeight: '顶面元件最大高度',
+    bottomHeight: '底面元件最大高度',
+    clearance: '间隙 (mm)',
+    createEnvelope: '生成外壳轮廓',
+    invalid: 'IDF 文件无效',
+  },
+  es: {
+    title: 'Importar PCB',
+    paste: 'Pegar texto IDF',
+    parse: 'Analizar',
+    bbox: 'Tamaño de la placa',
+    components: 'Componentes',
+    topHeight: 'Altura máx. de componentes superiores',
+    bottomHeight: 'Altura máx. de componentes inferiores',
+    clearance: 'Holgura (mm)',
+    createEnvelope: 'Crear envolvente de la carcasa',
+    invalid: 'Archivo IDF no válido',
+  },
+  ar: {
+    title: 'استيراد PCB',
+    paste: 'لصق نص IDF',
+    parse: 'تحليل',
+    bbox: 'مقاس اللوحة',
+    components: 'المكوّنات',
+    topHeight: 'أقصى ارتفاع للمكوّنات العلوية',
+    bottomHeight: 'أقصى ارتفاع للمكوّنات السفلية',
+    clearance: 'الخلوص (مم)',
+    createEnvelope: 'إنشاء غلاف الحاوية',
+    invalid: 'ملف IDF غير صالح',
+  },
 } as const;
 
 export default function EcadPanel({ lang, onClose, onCreateEnvelope }: EcadPanelProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: `ko ? COPY.ko : COPY.en` 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const [text, setText] = useState('');
   const [board, setBoard] = useState<PcbBoard | null>(null);
   const [clearance, setClearance] = useState(2);

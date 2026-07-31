@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import type { FeatureDefinition, FeatureInstance } from './features/types';
 import type { ExprVariable } from './ExpressionEngine';
 import {
@@ -39,6 +40,30 @@ const EXPR_COPY = {
     editExpr: 'Click to edit expression',
     editValue: 'Click to type a value or =expression',
   },
+  ja: {
+    exprHint: '値または =数式 (例: =W/2)',
+    exprBroken: '数式エラー — 直前の値を保持',
+    editExpr: 'クリックして数式を編集',
+    editValue: 'クリックして値または =数式を入力',
+  },
+  zh: {
+    exprHint: '数值或 =表达式（例：=W/2）',
+    exprBroken: '表达式错误 — 保留上一个值',
+    editExpr: '点击编辑表达式',
+    editValue: '点击输入数值或 =表达式',
+  },
+  es: {
+    exprHint: 'Valor o =expresión (p. ej., =W/2)',
+    exprBroken: 'Error en la expresión: se mantiene el último valor',
+    editExpr: 'Haga clic para editar la expresión',
+    editValue: 'Haga clic para escribir un valor o una =expresión',
+  },
+  ar: {
+    exprHint: 'قيمة أو =معادلة (مثال: ‎=W/2)',
+    exprBroken: 'خطأ في المعادلة — تم الإبقاء على آخر قيمة',
+    editExpr: 'انقر لتحرير المعادلة',
+    editValue: 'انقر لإدخال قيمة أو =معادلة',
+  },
 } as const;
 
 export default function FeatureParams({
@@ -46,7 +71,8 @@ export default function FeatureParams({
   expressions, variables, onExpressionCommit, lang,
 }: FeatureParamsProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const et = ko ? EXPR_COPY.ko : EXPR_COPY.en;
+  // ⚠ 260802: `ko ? COPY.ko : COPY.en` 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const et = EXPR_COPY[toIsoLang(lang)] ?? EXPR_COPY.en;
   // Which param key is currently being typed into (inline text editor).
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState('');

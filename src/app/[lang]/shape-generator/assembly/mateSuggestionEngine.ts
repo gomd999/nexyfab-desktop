@@ -20,6 +20,7 @@
  */
 
 import * as THREE from 'three';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import type { MateType } from './AssemblyMates';
 import { solveMates } from './AssemblyMates';
 
@@ -288,8 +289,44 @@ export function mateSuggestionLabel(s: MateSuggestion, lang = 'en'): string {
       slider: '슬라이더', gear: '기어',
       limitDistance: '거리 제한', limitAngle: '각도 제한', width: '폭',
     },
+    ja: {
+      coincident: '一致', concentric: '同心',
+      distance: '距離', angle: '角度',
+      parallel: '平行', perpendicular: '直角',
+      tangent: '接線', hinge: 'ヒンジ',
+      slider: 'スライダー', gear: 'ギア',
+      limitDistance: '距離制限', limitAngle: '角度制限', width: '幅',
+    },
+    zh: {
+      coincident: '重合', concentric: '同心',
+      distance: '距离', angle: '角度',
+      parallel: '平行', perpendicular: '垂直',
+      tangent: '相切', hinge: '铰链',
+      slider: '滑块', gear: '齿轮',
+      limitDistance: '距离限制', limitAngle: '角度限制', width: '宽度',
+    },
+    es: {
+      coincident: 'Coincidente', concentric: 'Concéntrica',
+      distance: 'Distancia', angle: 'Ángulo',
+      parallel: 'Paralela', perpendicular: 'Perpendicular',
+      tangent: 'Tangente', hinge: 'Bisagra',
+      slider: 'Deslizadera', gear: 'Engranaje',
+      limitDistance: 'Límite de distancia', limitAngle: 'Límite de ángulo', width: 'Anchura',
+    },
+    ar: {
+      coincident: 'تطابق', concentric: 'تمركز مشترك',
+      distance: 'مسافة', angle: 'زاوية',
+      parallel: 'توازٍ', perpendicular: 'تعامد',
+      tangent: 'تماس', hinge: 'مفصلة',
+      slider: 'منزلق', gear: 'ترس',
+      limitDistance: 'حدّ المسافة', limitAngle: 'حدّ الزاوية', width: 'العرض',
+    },
   };
-  const lk = lang === 'ko' || lang === 'kr' ? 'ko' : 'en';
+  /**
+   * ⚠ 260802: 여기가 `lang === 'ko' ? 'ko' : 'en'` 2분기였다 —
+   *   사전에 4언어를 넣어도 **선택될 수 없다.** 라우트 표기(kr·cn)도 함께 받는다.
+   */
+  const lk = toIsoLang(lang) in types ? toIsoLang(lang) : 'en';
   const typeLabel = types[lk][s.type] ?? s.type;
   const conf = Math.round(s.score * 100);
   const val = s.suggestedValue !== undefined ? ` (${s.suggestedValue} mm)` : '';
