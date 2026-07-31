@@ -413,9 +413,11 @@ export default function NexyfabUnifiedSidebar({ lang }: UnifiedSidebarProps) {
               <button
                 type="button"
                 role="menuitem"
-                onClick={() => {
+                onClick={async () => {
                   setMenuOpen(false);
-                  logout();
+                  // ⚠ 260802: `await` 없이 이동하면 **쿠키가 지워지기 전에** 페이지가 바뀌어
+                  //   요청이 취소될 수 있다 — 그러면 로그아웃한 줄 알고 로그인 상태로 남는다.
+                  await logout();
                   router.push(`/${lang}`);
                 }}
                 style={{

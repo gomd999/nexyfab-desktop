@@ -144,7 +144,7 @@ export default function UserMenu({ onOpenAuth, lang = 'ko' }: UserMenuProps) {
             </a>
           ))}
           <button
-            onClick={() => { logout(); setOpen(false); }}
+            onClick={() => { void logout(); setOpen(false); }}
             style={{
               width: '100%', padding: '9px 14px', textAlign: 'left',
               background: 'none', border: 'none', borderTop: '1px solid var(--nx-panel-2)',
