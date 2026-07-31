@@ -21,6 +21,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 export type DesktopPlatform = 'windows' | 'macos' | 'linux' | 'unknown';
 
@@ -62,6 +63,50 @@ const COPY = {
     bullet2: '📶 Offline (sketch / extrude / export)',
     bullet3: '🔄 Auto-update',
   },
+  ja: {
+    headline: 'NexyFab デスクトップ',
+    sub: 'オフラインでもスケッチ / モデリング / エクスポート。WASM 同梱。',
+    download: 'ダウンロード',
+    other: '他の OS',
+    sizeNote: '約 80MB',
+    versionLabel: 'バージョン',
+    bullet1: '⚡ ネイティブ性能 (大規模アセンブリも滑らか)',
+    bullet2: '📶 オフライン利用 (sketch / extrude / export)',
+    bullet3: '🔄 自動アップデート',
+  },
+  zh: {
+    headline: 'NexyFab 桌面版',
+    sub: '离线也能草图 / 建模 / 导出。内置 WASM。',
+    download: '下载',
+    other: '其他系统',
+    sizeNote: '约 80MB',
+    versionLabel: '版本',
+    bullet1: '⚡ 原生性能（大型装配依然流畅）',
+    bullet2: '📶 离线使用（sketch / extrude / export）',
+    bullet3: '🔄 自动更新',
+  },
+  es: {
+    headline: 'NexyFab Escritorio',
+    sub: 'Boceto, modelado y exportación incluso sin conexión. WASM incluido.',
+    download: 'Descargar',
+    other: 'Otro sistema',
+    sizeNote: '~80 MB',
+    versionLabel: 'Versión',
+    bullet1: '⚡ Rendimiento nativo con ensamblajes grandes',
+    bullet2: '📶 Uso sin conexión (boceto / extrusión / exportación)',
+    bullet3: '🔄 Actualización automática',
+  },
+  ar: {
+    headline: 'NexyFab لسطح المكتب',
+    sub: 'ارسم وصمّم وصدّر حتى دون اتصال. يتضمّن WASM.',
+    download: 'تنزيل',
+    other: 'أنظمة أخرى',
+    sizeNote: 'نحو 80 ميغابايت',
+    versionLabel: 'الإصدار',
+    bullet1: '⚡ أداء أصلي مع التجميعات الكبيرة',
+    bullet2: '📶 الاستخدام دون اتصال (رسم / بثق / تصدير)',
+    bullet3: '🔄 تحديث تلقائي',
+  },
 } as const;
 
 const PLATFORM_LABEL: Record<DesktopPlatform, { ko: string; en: string }> = {
@@ -98,7 +143,8 @@ export default function DesktopDownloadCard({
   }, [forcePlatform]);
 
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const platformLabel = PLATFORM_LABEL[platform === 'unknown' ? 'windows' : platform];
   const primaryPlatform = platform === 'unknown' ? 'windows' : platform;
   const primaryUrl = downloadUrlFor(primaryPlatform);

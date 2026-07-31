@@ -12,6 +12,7 @@
  * UI path to raise a complaint, forcing every dispute through email/CS.
  */
 import React, { useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 const dict = {
   ko: {
@@ -40,12 +41,65 @@ const dict = {
     success: 'Dispute filed. Ops will contact both parties within 1-2 business days.',
     afterStatus: 'Escrow settlement is paused.',
   },
+  ja: {
+    askProblem: '問題がありますか？ 異議を申し立てる',
+    formTitle: '🚨 異議申立',
+    reasonLabel: '問題の内容 *',
+    reasonPlaceholder: '例: 図面と異なる製品を受領、表面処理の欠落、数量不足など (最大 500 文字)',
+    evidenceLabel: '証拠 URL (任意・改行区切り・最大 10 件)',
+    evidencePlaceholder: 'https://... (写真/書類のリンク)',
+    submit: '異議を申し立てる',
+    submitting: '送信中…',
+    cancel: 'キャンセル',
+    success: '異議を受け付けました。運営チームが 1〜2 営業日以内に双方へご連絡します。',
+    afterStatus: 'エスクロー精算は一時保留されます。',
+  },
+  zh: {
+    askProblem: '遇到问题？发起争议',
+    formTitle: '🚨 发起争议',
+    reasonLabel: '问题说明 *',
+    reasonPlaceholder: '例如：收到与图纸不符的产品、缺少表面处理、数量不足等（最多 500 字）',
+    evidenceLabel: '证据链接（可选，换行分隔，最多 10 条）',
+    evidencePlaceholder: 'https://...（照片/文件链接）',
+    submit: '提交争议',
+    submitting: '提交中…',
+    cancel: '取消',
+    success: '争议已受理。运营团队将在 1~2 个工作日内联系双方。',
+    afterStatus: '托管结算将暂时冻结。',
+  },
+  es: {
+    askProblem: '¿Tiene algún problema? Abrir una disputa',
+    formTitle: '🚨 Abrir disputa',
+    reasonLabel: 'Descripción del problema *',
+    reasonPlaceholder: 'p. ej., producto distinto al plano, falta de acabado, cantidad incompleta (máx. 500 caracteres)',
+    evidenceLabel: 'URL de pruebas (opcional, una por línea, máx. 10)',
+    evidencePlaceholder: 'https://... (fotos o documentos)',
+    submit: 'Enviar disputa',
+    submitting: 'Enviando…',
+    cancel: 'Cancelar',
+    success: 'Se ha registrado la disputa. El equipo de operaciones contactará con ambas partes en 1-2 días hábiles.',
+    afterStatus: 'La liquidación del depósito queda suspendida temporalmente.',
+  },
+  ar: {
+    askProblem: 'هل تواجه مشكلة؟ افتح نزاعاً',
+    formTitle: '🚨 فتح نزاع',
+    reasonLabel: 'وصف المشكلة *',
+    reasonPlaceholder: 'مثال: استلام منتج مخالف للرسم، غياب المعالجة السطحية، نقص في الكمية (بحد أقصى 500 حرف)',
+    evidenceLabel: 'روابط الأدلة (اختياري، سطر لكل رابط، بحد أقصى 10)',
+    evidencePlaceholder: 'https://... (صور أو مستندات)',
+    submit: 'إرسال النزاع',
+    submitting: 'جارٍ الإرسال…',
+    cancel: 'إلغاء',
+    success: 'تم تسجيل النزاع. سيتواصل فريق التشغيل مع الطرفين خلال يوم إلى يومي عمل.',
+    afterStatus: 'ستُعلَّق تسوية الضمان مؤقتاً.',
+  },
 };
 
 export default function DisputeButton({
   lang, orderId, onDisputed,
-}: { lang: 'ko' | 'en'; orderId: string; onDisputed?: () => void }) {
-  const t = dict[lang];
+}: { /** ⚠ 260802: `'ko' | 'en'` 이라 부모가 다른 언어를 넘길 수조차 없었다. */ lang: string; orderId: string; onDisputed?: () => void }) {
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = dict[toIsoLang(lang)] ?? dict.en;
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [evidenceText, setEvidenceText] = useState('');
