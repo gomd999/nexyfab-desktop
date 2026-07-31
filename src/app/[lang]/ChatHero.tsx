@@ -285,14 +285,37 @@ type PartProxy = { id: string; aabb: { min: number[]; max: number[] }; obb?: { l
 
 // 입력 A(이미지): 도면·스케치 → drawing/extract(Vision 판독 + 결정론 게이트) → 체크포인트.
 // 성공 시 단일부품 compose intent 를 그대로 CadCard 로 렌더(승인→STEP 은 export-step 재사용).
-async function runExtractPipeline(att: Attached): Promise<{ cad: CadResult; recognized?: { label: string; confidence: number } }> {
+type Recognized = { label: string; confidence: number; estimatedFields?: string[]; missingFields?: string[] };
+
+/**
+ * 불확실한 치수를 **이름으로** 덧붙인다.
+ * ⚠ 치수 이름(width·thickness…)은 **번역하지 않는다** — 그 이름 그대로 3D 파라미터·
+ *   견적·도면에 쓰이므로, 화면에서만 다른 말로 부르면 사용자가 대조할 수 없다.
+ * ⚠ 없으면 아무것도 붙이지 않는다 — 「불확실 없음」을 매번 알릴 필요는 없다.
+ */
+function uncertaintyLine(r: Recognized, t: (typeof DICT)[Lang]): string {
+  const parts: string[] = [];
+  if (r.missingFields?.length) parts.push(`${t.imgUnread}: ${r.missingFields.join(', ')}`);
+  if (r.estimatedFields?.length) parts.push(`${t.imgEstimated}: ${r.estimatedFields.join(', ')}`);
+  return parts.length ? `
+
+⚠ ${parts.join(' · ')} — ${t.imgCheckDims}.` : '';
+}
+
+async function runExtractPipeline(att: Attached): Promise<{ cad: CadResult; recognized?: Recognized }> {
   const r = await fetch('/api/nexyfab/drawing/extract/', {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ imageBase64: att.base64, mimeType: att.mime }),
   });
   const j = await r.json().catch(() => ({}));
   const recognized = j?.recognized && typeof j.recognized === 'object'
-    ? { label: String(j.recognized.label ?? j.recognized.type ?? ''), confidence: Number(j.recognized.confidence) || 0 }
+    ? {
+        label: String(j.recognized.label ?? j.recognized.type ?? ''),
+        confidence: Number(j.recognized.confidence) || 0,
+        // ⚠ 여기서 버리면 **판독기가 정직해도 사용자는 모른다.** 어느 치수가 불확실한지 옮긴다.
+        ...(Array.isArray(j.recognized.estimatedFields) ? { estimatedFields: j.recognized.estimatedFields.map(String) } : {}),
+        ...(Array.isArray(j.recognized.missingFields) ? { missingFields: j.recognized.missingFields.map(String) } : {}),
+      }
     : undefined;
   if (!r.ok || !j?.ok || !j.intent) {
     const ge = Array.isArray(j?.gateErrors) ? j.gateErrors.join(', ') : '';
@@ -378,6 +401,13 @@ const DICT: Record<Lang, {
   cadAssemblyTitle: string; cadParts: string; cadInterfNone: string; cadInterf: string; cadOpenGA: string; cadStlDownload: string; cadDfm: string;
   cadWeld: string; cadWeldTotal: string; cadTol: string; cadGdt: string; cadWiringTitle: string; cadWiringNote: string; cadDrawing: string;
   attach: string; uploadHint: string; imgReading: string; imgRecognized: string; imgConfidence: string;
+  /**
+   * ★260731 — 추출기는 **못 읽은 치수**와 **추정한 치수**를 구별해 내보내는데,
+   *   화면은 신뢰도 숫자만 보여 줬다. 「60%」만으로는 **무엇을 확인해야 하는지** 알 수 없다.
+   *   실측: l_bracket 두께(정답 4mm, 치수선 9.6px)가 10 으로 나가면서 모델 스스로
+   *   「추정」이라고 표시하는데, 그 표시가 화면까지 오지 않았다.
+   */
+  imgEstimated: string; imgUnread: string; imgCheckDims: string;
   quoteThis: string; saveSignup: string; signup: string; cadStructural: string; cadPackage: string;
   chips: Record<Domain, string>;
   actDemo: string; actQuote: string; actContact: string;
@@ -414,7 +444,7 @@ const DICT: Record<Lang, {
     cadSpecTitle: '이 사양으로 정밀 3D를 생성할까요?', cadConfirm: '확인 · 정밀 3D 생성', cadBuilding: '정밀 형상(STEP) 생성 중…', cadStepDownload: 'STEP 다운로드', cadGate: '결정론 게이트',
     cadAssemblyTitle: '이 조립체로 생성할까요?', cadParts: '부품 (독립 body)', cadInterfNone: '간섭 없음', cadInterf: '간섭 {n}건', cadOpenGA: 'GA 프레젠테이션 열기', cadStlDownload: 'STL 다운로드', cadDfm: 'DFM·견적',
     cadWeld: '용접 개산', cadWeldTotal: '총 용접선', cadTol: '일반공차 ISO 2768-m', cadGdt: '개별 GD&T는 정밀검토(앱)', cadWiringTitle: '전기 결선표 (개산)', cadWiringNote: '개산 · 규격/길이 확인 필요 · 3D 하네스는 별도 ECAD', cadDrawing: '정투상 도면',
-    attach: '도면·스케치 첨부', uploadHint: '도면·스케치를 올리면 정투상을 읽어 3D로 변환해요 (지원: 평판·브래킷·플랜지·파이프·각관·봉·거셋·베이스판 등)', imgReading: '도면을 판독하는 중…', imgRecognized: '도면에서 인식', imgConfidence: '신뢰도',
+    attach: '도면·스케치 첨부', uploadHint: '도면·스케치를 올리면 정투상을 읽어 3D로 변환해요 (지원: 평판·브래킷·플랜지·파이프·각관·봉·거셋·베이스판 등)', imgReading: '도면을 판독하는 중…', imgRecognized: '도면에서 인식', imgConfidence: '신뢰도', imgEstimated: '추정한 치수', imgUnread: '못 읽은 치수', imgCheckDims: '제작 전에 확인해 주세요',
     quoteThis: '이 설계로 견적 받기', saveSignup: '결과를 프로젝트로 저장하고 이어서 편집하려면 무료 가입하세요.', signup: '무료 가입', cadStructural: '자동 구조검증', cadPackage: '설계 패키지',
   },
   en: {
@@ -440,7 +470,7 @@ const DICT: Record<Lang, {
     cadSpecTitle: 'Generate the precise 3D from this spec?', cadConfirm: 'Confirm · build 3D', cadBuilding: 'Building precise geometry (STEP)…', cadStepDownload: 'Download STEP', cadGate: 'Deterministic gate',
     cadAssemblyTitle: 'Generate this assembly?', cadParts: 'Parts (independent bodies)', cadInterfNone: 'No interference', cadInterf: '{n} interference(s)', cadOpenGA: 'Open GA presentation', cadStlDownload: 'Download STL', cadDfm: 'DFM · estimate',
     cadWeld: 'Weld estimate', cadWeldTotal: 'Total weld', cadTol: 'General tol. ISO 2768-m', cadGdt: 'per-feature GD&T in app', cadWiringTitle: 'Cable schedule (est.)', cadWiringNote: 'Estimate · verify spec/length · 3D harness = separate ECAD', cadDrawing: 'Orthographic drawing',
-    attach: 'Attach drawing/sketch', uploadHint: 'Upload a drawing/sketch and we read the orthographic views into 3D (supported: plate · bracket · flange · pipe · rect tube · bar · gusset · base plate, etc.)', imgReading: 'Reading the drawing…', imgRecognized: 'Recognized from drawing', imgConfidence: 'confidence',
+    attach: 'Attach drawing/sketch', uploadHint: 'Upload a drawing/sketch and we read the orthographic views into 3D (supported: plate · bracket · flange · pipe · rect tube · bar · gusset · base plate, etc.)', imgReading: 'Reading the drawing…', imgRecognized: 'Recognized from drawing', imgConfidence: 'confidence', imgEstimated: 'Estimated dimensions', imgUnread: 'Could not read', imgCheckDims: 'please confirm before manufacturing',
     quoteThis: 'Get a quote for this design', saveSignup: 'Sign up free to save this as a project and keep editing.', signup: 'Sign up free', cadStructural: 'Auto structural check', cadPackage: 'Design package',
   },
   ja: {
@@ -465,7 +495,7 @@ const DICT: Record<Lang, {
     cadSpecTitle: 'この仕様で精密3Dを生成しますか？', cadConfirm: '確認 · 精密3D生成', cadBuilding: '精密形状(STEP)を生成中…', cadStepDownload: 'STEPをダウンロード', cadGate: '決定論ゲート',
     cadAssemblyTitle: 'この組立体で生成しますか？', cadParts: '部品 (独立ボディ)', cadInterfNone: '干渉なし', cadInterf: '干渉 {n}件', cadOpenGA: 'GAプレゼンを開く', cadStlDownload: 'STLをダウンロード', cadDfm: 'DFM・見積',
     cadWeld: '溶接概算', cadWeldTotal: '総溶接長', cadTol: '普通公差 ISO 2768-m', cadGdt: '個別GD&Tはアプリ', cadWiringTitle: '結線表(概算)', cadWiringNote: '概算·仕様/長さ要確認·3DハーネスはECAD別途', cadDrawing: '正投影図',
-    attach: '図面・スケッチを添付', uploadHint: '図面・スケッチをアップロードすると正投影を読み取り3D化します（対応：平板・ブラケット・フランジ・パイプ・角管・棒・ガセット・ベースプレート等）', imgReading: '図面を判読中…', imgRecognized: '図面から認識', imgConfidence: '信頼度',
+    attach: '図面・スケッチを添付', uploadHint: '図面・スケッチをアップロードすると正投影を読み取り3D化します（対応：平板・ブラケット・フランジ・パイプ・角管・棒・ガセット・ベースプレート等）', imgReading: '図面を判読中…', imgRecognized: '図面から認識', imgConfidence: '信頼度', imgEstimated: '推定した寸法', imgUnread: '読めなかった寸法', imgCheckDims: '製作前にご確認ください',
     quoteThis: 'この設計で見積もり', saveSignup: '結果をプロジェクトとして保存し編集を続けるには無料登録を。', signup: '無料登録', cadStructural: '自動構造検証', cadPackage: '設計パッケージ',
   },
   cn: {
@@ -490,7 +520,7 @@ const DICT: Record<Lang, {
     cadSpecTitle: '按此规格生成精确3D？', cadConfirm: '确认 · 生成3D', cadBuilding: '正在生成精确几何(STEP)…', cadStepDownload: '下载STEP', cadGate: '确定性门控',
     cadAssemblyTitle: '按此组件生成？', cadParts: '零件 (独立实体)', cadInterfNone: '无干涉', cadInterf: '干涉 {n}处', cadOpenGA: '打开GA演示', cadStlDownload: '下载STL', cadDfm: 'DFM·估价',
     cadWeld: '焊接估算', cadWeldTotal: '总焊缝', cadTol: '一般公差 ISO 2768-m', cadGdt: '单项GD&T在应用', cadWiringTitle: '电缆清单(估算)', cadWiringNote: '估算·核对规格/长度·3D线束另属ECAD', cadDrawing: '正投影图',
-    attach: '附加图纸·草图', uploadHint: '上传图纸·草图，我们读取正投影并转为3D（支持：平板·支架·法兰·管·方管·棒·加劲板·底板 等）', imgReading: '正在判读图纸…', imgRecognized: '从图纸识别', imgConfidence: '置信度',
+    attach: '附加图纸·草图', uploadHint: '上传图纸·草图，我们读取正投影并转为3D（支持：平板·支架·法兰·管·方管·棒·加劲板·底板 等）', imgReading: '正在判读图纸…', imgRecognized: '从图纸识别', imgConfidence: '置信度', imgEstimated: '推测的尺寸', imgUnread: '未能读取的尺寸', imgCheckDims: '制作前请确认',
     quoteThis: '按此设计报价', saveSignup: '免费注册即可保存为项目并继续编辑。', signup: '免费注册', cadStructural: '自动结构校核', cadPackage: '设计包',
   },
   es: {
@@ -515,7 +545,7 @@ const DICT: Record<Lang, {
     cadSpecTitle: '¿Generar el 3D preciso con esta especificación?', cadConfirm: 'Confirmar · generar 3D', cadBuilding: 'Generando geometría precisa (STEP)…', cadStepDownload: 'Descargar STEP', cadGate: 'Compuerta determinista',
     cadAssemblyTitle: '¿Generar este ensamblaje?', cadParts: 'Piezas (cuerpos independientes)', cadInterfNone: 'Sin interferencia', cadInterf: '{n} interferencia(s)', cadOpenGA: 'Abrir presentación GA', cadStlDownload: 'Descargar STL', cadDfm: 'DFM · estimación',
     cadWeld: 'Estimación de soldadura', cadWeldTotal: 'Soldadura total', cadTol: 'Tol. general ISO 2768-m', cadGdt: 'GD&T por rasgo en la app', cadWiringTitle: 'Lista de cables (est.)', cadWiringNote: 'Estimación · verificar · arnés 3D = ECAD aparte', cadDrawing: 'Vista ortográfica',
-    attach: 'Adjuntar plano/boceto', uploadHint: 'Sube un plano/boceto y leemos las vistas ortográficas a 3D (soportado: placa · escuadra · brida · tubo · tubo rect. · barra · cartela · placa base, etc.)', imgReading: 'Leyendo el plano…', imgRecognized: 'Reconocido del plano', imgConfidence: 'confianza',
+    attach: 'Adjuntar plano/boceto', uploadHint: 'Sube un plano/boceto y leemos las vistas ortográficas a 3D (soportado: placa · escuadra · brida · tubo · tubo rect. · barra · cartela · placa base, etc.)', imgReading: 'Leyendo el plano…', imgRecognized: 'Reconocido del plano', imgConfidence: 'confianza', imgEstimated: 'Cotas estimadas', imgUnread: 'No se pudieron leer', imgCheckDims: 'confirme antes de fabricar',
     quoteThis: 'Cotizar este diseño', saveSignup: 'Regístrate gratis para guardar esto como proyecto y seguir editando.', signup: 'Registro gratis', cadStructural: 'Verif. estructural', cadPackage: 'Paquete de diseño',
   },
   ar: {
@@ -540,7 +570,7 @@ const DICT: Record<Lang, {
     cadSpecTitle: 'هل تُنشئ نموذجًا دقيقًا بهذه المواصفات؟', cadConfirm: 'تأكيد · بناء 3D', cadBuilding: 'جارٍ بناء الشكل الدقيق (STEP)…', cadStepDownload: 'تنزيل STEP', cadGate: 'بوابة حتمية',
     cadAssemblyTitle: 'هل تُنشئ هذا التجميع؟', cadParts: 'الأجزاء (أجسام مستقلة)', cadInterfNone: 'لا تداخل', cadInterf: '{n} تداخل', cadOpenGA: 'افتح عرض GA', cadStlDownload: 'تنزيل STL', cadDfm: 'DFM · تقدير',
     cadWeld: 'تقدير اللحام', cadWeldTotal: 'إجمالي اللحام', cadTol: 'تفاوت عام ISO 2768-m', cadGdt: 'GD&T لكل عنصر في التطبيق', cadWiringTitle: 'جدول الكابلات (تقديري)', cadWiringNote: 'تقديري · تحقّق · تسليك 3D = ECAD منفصل', cadDrawing: 'مسقط هندسي',
-    attach: 'إرفاق رسم/مخطط', uploadHint: 'ارفع رسمًا/مخططًا وسنقرأ المساقط الهندسية إلى نموذج ثلاثي الأبعاد (المدعوم: لوح · زاوية · شفة · أنبوب · أنبوب مربّع · قضيب · لوح تقوية · لوح قاعدة، إلخ)', imgReading: 'جارٍ قراءة الرسم…', imgRecognized: 'تم التعرف من الرسم', imgConfidence: 'الثقة',
+    attach: 'إرفاق رسم/مخطط', uploadHint: 'ارفع رسمًا/مخططًا وسنقرأ المساقط الهندسية إلى نموذج ثلاثي الأبعاد (المدعوم: لوح · زاوية · شفة · أنبوب · أنبوب مربّع · قضيب · لوح تقوية · لوح قاعدة، إلخ)', imgReading: 'جارٍ قراءة الرسم…', imgRecognized: 'تم التعرف من الرسم', imgConfidence: 'الثقة', imgEstimated: 'أبعاد مُقدَّرة', imgUnread: 'تعذّرت قراءتها', imgCheckDims: 'يرجى التأكد قبل التصنيع',
     quoteThis: 'اطلب عرض سعر لهذا التصميم', saveSignup: 'سجّل مجانًا لحفظ هذا كمشروع ومتابعة التحرير.', signup: 'تسجيل مجاني', cadStructural: 'فحص إنشائي تلقائي', cadPackage: 'حزمة التصميم',
   },
 };
@@ -1551,7 +1581,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       const { cad, recognized } = await runExtractPipeline(att);
       // 성공/실패 모두 인식 결과를 노출(무엇을 읽었는지) — 실패 시 이유는 카드로.
       const line = recognized
-        ? `${t.imgRecognized}: **${recognized.label}** · ${t.imgConfidence} ${Math.round(recognized.confidence * 100)}%`
+        ? `${t.imgRecognized}: **${recognized.label}** · ${t.imgConfidence} ${Math.round(recognized.confidence * 100)}%${uncertaintyLine(recognized, t)}`
         : (cad.error ? '' : t.cadSpecTitle);
       setLast({ content: line, cad });
     } catch (e) {
@@ -1618,7 +1648,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
         const base64 = m.genImage.replace(/^data:[^,]+,/, '');
         const { cad, recognized } = await runExtractPipeline({ dataUrl: m.genImage, base64, mime: 'image/png', name: 'concept.png' });
         const line = recognized
-          ? `${t.imgRecognized}: **${recognized.label}** · ${t.imgConfidence} ${Math.round(recognized.confidence * 100)}%`
+          ? `${t.imgRecognized}: **${recognized.label}** · ${t.imgConfidence} ${Math.round(recognized.confidence * 100)}%${uncertaintyLine(recognized, t)}`
           : (cad.error ? '' : t.cadSpecTitle);
         setLast({ content: line, cad });
       } else {

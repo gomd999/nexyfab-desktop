@@ -10,12 +10,14 @@
  *   reconstruct_3d    추출 intent → 게이트 검증 + OpenSCAD + ComponentIntent
  *
  * 원칙(방법론): AI는 이해/패치만, 형상 생성·검증은 결정론 코드(reconstruct/gate).
- * 범위(정직): 어휘 5종(plate/stepped_plate/l_bracket/flange/bent_sheet), 깨끗한 도면
- *   기준. 스캔·복잡 조립도는 미대응. extract/edit는 GEMINI_API_KEY(.env) 필요.
+ * 범위(정직, 260731 실측): 어휘 11종. 평가셋 50장(깨끗 25 · 스캔열화 25) 실측 —
+ *   타입 50/50 · 파라미터 212/220(96.4%) · 구멍 30/30 · 기하 게이트 49/50.
+ *   ⚠ 복잡 조립도·다부품 도면은 여전히 **미대응**이다(단일 부품 정투상 기준).
+ *   extract/edit는 GEMINI_API_KEY(.env) 필요.
  */
 import { createInterface } from 'node:readline';
 import { createHash } from 'node:crypto';
-import { extractDrawing } from './extract.mjs';
+import { extractDrawingFromImage } from './extract.mjs';
 import { editDrawing } from './edit.mjs';
 import { textToIntent, textToAssembly } from './from-text.mjs';
 import { buildAssembly } from './assembly.mjs';
@@ -54,7 +56,14 @@ const BRIDGE_DISPATCH = [
   { meta: 'stairMeta', fn: 'stairCheck' },
 ];
 
+/**
+ * ★260731 — 종전 5종은 **텍스트 경로의 어휘**였다. 도면 추출은 11종을 지원하는데
+ *   MCP 는 5종만 고지하고 있었다 — 나머지는 있어도 고를 수 없는 것과 같다.
+ * ⚠ 고지는 실제 지원과 같아야 한다. 적게 말하는 것도 갈림이다.
+ */
 const VOCAB = 'plate_with_holes | stepped_plate | l_bracket | flange | bent_sheet';
+const VOCAB_IMAGE = VOCAB + ' | tube | rect_tube | box | cylinder | gusset | base_plate'
+  + ' | spur_gear | hex_bolt | wall_with_openings | slab_with_openings | tapered_girder';
 
 // ── Remote proxy (analyze_fea·reconstruct_verify·reconstruct_fleet) ───────────
 // 이 3종은 호스팅 서버의 바이너리(OpenSCAD·gmsh·OCCT·메시 처리) 또는 AI 함대가 필요 —
@@ -245,12 +254,16 @@ export const tools = [
     name: 'extract_drawing',
     description:
       `기계 제작 도면 이미지(3각법 정투상 PNG)를 읽어 파라메트릭 intent(치수·구멍 등)로 추출한다. ` +
-      `Gemini Vision 사용. 지원 어휘: ${VOCAB}. 깨끗한 합성 도면 기준(스캔·복잡 조립도 미검증). ` +
-      `반환: {type, 치수필드…, holes[], confidence, repaired}. 이후 edit_drawing/reconstruct_3d로 이어진다.`,
+      `Gemini Vision 사용. 지원 어휘: ${VOCAB_IMAGE}. ` +
+      `실측(260731, 평가셋 50장 = 깨끗 25 + 스캔열화 25): 타입 50/50 · 파라미터 96.4% · 구멍 30/30 · 게이트 49/50. ` +
+      `⚠ 복잡 조립도·다부품 도면은 미대응(단일 부품 정투상 기준). ` +
+      `반환: {type, 치수필드…, holes[], confidence, missingFields?, missingNote?}. ` +
+      `못 읽은 치수는 지어내지 않고 missingFields 로 알린다 — 그때 confidence 는 0.4 이하로 강등된다. ` +
+      `이후 edit_drawing/reconstruct_3d로 이어진다.`,
     inputSchema: {
       type: 'object', required: ['imagePath'],
       properties: {
-        imagePath: { type: 'string', description: '로컬 도면 PNG 파일 절대경로' },
+        imagePath: { type: 'string', description: '로컬 도면 이미지 절대경로 (png · jpg · webp)' },
         model: { type: 'string', description: 'Gemini 모델 (기본 gemini-2.5-flash)' },
       },
     },
@@ -834,8 +847,26 @@ async function callToolInner(name, args = {}) {
     return { path: args.outPath, bytes: html.length, note: '브라우저로 열어 3D 확인·📷 스크린샷' };
   }
   if (name === 'extract_drawing') {
-    const { intent, usage, model, repaired } = await extractDrawing(args.imagePath, { model: args.model });
-    return { ...intent, repaired: !!repaired, _model: model, _tokens: usage?.totalTokenCount };
+    /**
+     * ★260731 — **두 추출 경로 중 나쁜 쪽을 쓰고 있었다.**
+     *   같은 평가셋 50장 실측:
+     *   ```
+     *     extractDrawing        (5어휘·단일콜)  파라미터 88.8% · 게이트 79.6% · 측정 49/50
+     *     extractDrawingFromImage(11어휘·2단계) 파라미터 96.4% · 게이트 98.0% · 측정 50/50
+     *   ```
+     *   웹(`/api/nexyfab/drawing/extract`)은 이미 2단계를 쓰는데 **MCP 만 단일콜**이었다 —
+     *   클로드에서 도면을 읽히는 사용자가 더 나쁜 경로를 타고 있었다.
+     * ⚠ 2단계는 역투영 diff(원본 잉크에 되그려 지지율 검사)까지 돌려 신뢰도를 강등한다 —
+     *   단일콜에는 그 검증이 아예 없었다.
+     */
+    const { readFileSync } = await import('node:fs');
+    const p = String(args.imagePath);
+    // 확장자로 mime 을 정한다. 모르면 png 로 두되 **추측했다고 적지 않는다** — Gemini 가 거부하면 그 오류가 그대로 올라온다.
+    const mime = /\.jpe?g$/i.test(p) ? 'image/jpeg' : /\.webp$/i.test(p) ? 'image/webp' : 'image/png';
+    const { intent, model, reproject } = await extractDrawingFromImage(
+      readFileSync(p).toString('base64'), mime, args.model ? { model: args.model } : {},
+    );
+    return { ...intent, _model: model, _reproject: reproject };
   }
   if (name === 'edit_drawing') {
     return editDrawing(args.extraction, args.instruction);

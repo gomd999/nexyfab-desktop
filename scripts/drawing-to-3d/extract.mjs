@@ -344,8 +344,31 @@ function parseWithRepair(text) {
 function paramSchemaFor(type) {
   const props = { unit: { type: 'STRING' } };
   for (const f of TYPE_FIELDS[type]) props[f] = NUM;
+  /**
+   * ★260731 — **「못 읽었다」고 말할 자리가 없었다.**
+   *
+   * 이 스키마는 모든 치수를 `required` 로 두고, 프롬프트는 「없으면 축척·대칭으로 추정」
+   * 하라고 **지시**한다. 그래서 읽을 수 없는 치수도 반드시 채워지고, 그 값이
+   * **confidence 1 로** 나간다. 실측(260731, 평가셋 50장):
+   * ```
+   *   단일콜 경로  오독 22건 = 결측 16(정직한 공백) + 오답 5
+   *   2단계 경로   오독  8건 = 결측  1            + 오답 7   ← 총점은 낫지만 오답이 늘었다
+   * ```
+   * `l_bracket` 두께(정답 4mm, 치수선 9.6px)는 5·5·6·8·5·0 으로 **전부 그럴듯하게 틀렸다.**
+   * 총점만 보면 개선인데, **틀린 치수로 3D 가 만들어지는 쪽**이 늘어난 것이다.
+   *
+   * ⚠ 추정 자체를 막지 않는다 — 축척 추정은 도면 판독의 정당한 일부다.
+   *   막는 것은 **추정을 판독인 척하는 것**이다. 어느 필드를 추정했는지 선언하게 하고,
+   *   그러면 신뢰도를 강등하고 사용자에게 되묻는다.
+   */
+  props.estimatedFields = {
+    type: 'ARRAY',
+    items: { type: 'STRING' },
+    description: '도면에 인쇄돼 있지 않아 축척·대칭으로 추정한 필드 이름들. 전부 인쇄값을 읽었으면 빈 배열.',
+  };
   if (type === 'plate_with_holes') props.holes = { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, y: NUM, d: NUM }, required: ['x', 'y', 'd'] } };
-  return { type: 'OBJECT', properties: props, required: TYPE_FIELDS[type] };
+  // `estimatedFields` 도 required — 선택이면 「추정 없음」과 「대답 안 함」이 같은 모양이 된다.
+  return { type: 'OBJECT', properties: props, required: [...TYPE_FIELDS[type], 'estimatedFields'] };
 }
 
 /**
@@ -356,6 +379,9 @@ export async function extractDrawingFromImage(base64, mimeType = 'image/png', { 
   // ① 타입 분류
   const clsPrompt = `기계 제작 도면(정투상, mm)의 부품 유형을 분류하라. 후보:\n${CLASSIFY_LIST}\n판별 불가 시 unknown. 형식: {"type":"...","confidence":0~1} JSON 하나만.`;
   let cls = null, lastErr;
+  // ⚠ **요청 목록이 아니라 답한 모델**을 기록한다 — 폴백이 걸리면 달라지고,
+  //   목록을 그대로 내보내면 「무엇으로 잰 결과인가」가 사라진다.
+  let usedModel = null;
   /**
    * ★260731 — **JSON 파손에는 모델을 바꿔야 한다.** `temperature: 0` 이라 같은 모델·같은
    *   요청은 같은 답을 준다 — 파손된 응답에 같은 모델로 재시도하면 비용만 쓴다.
@@ -365,16 +391,20 @@ export async function extractDrawingFromImage(base64, mimeType = 'image/png', { 
   const escalate = (q, e) => (/JSON|Unexpected|Expected|MAX_TOKENS|empty response/i.test(String(e?.message ?? e)) && q.length > 1 ? q.slice(1) : q);
   let clsQueue = Array.isArray(model) ? [...model] : [model];
   for (let a = 0; a < EXTRACT_MAX_ATTEMPTS; a++) {
-    try { const { text } = await callGeminiImage(base64, mimeType, clsQueue, clsPrompt, CLASSIFY_SCHEMA); const o = parseWithRepair(text); if (o && o.type) { cls = o; break; } }
+    try { const { text, model: m } = await callGeminiImage(base64, mimeType, clsQueue, clsPrompt, CLASSIFY_SCHEMA); usedModel = m; const o = parseWithRepair(text); if (o && o.type) { cls = o; break; } }
     catch (e) { lastErr = e; clsQueue = escalate(clsQueue, e); }
   }
   if (!cls) throw lastErr ?? new Error('classify failed');
   const type = String(cls.type || 'unknown');
   const confidence = typeof cls.confidence === 'number' ? cls.confidence : 0;
-  if (type === 'unknown' || !TYPE_FIELDS[type]) return { intent: { type: 'unknown', confidence }, model };
+  if (type === 'unknown' || !TYPE_FIELDS[type]) return { intent: { type: 'unknown', confidence }, model: usedModel ?? model };
 
   // ② 타입 전용 스키마로 치수 추출(해당 필드만·전부 required)
-  const exPrompt = `이 도면은 '${type}' 부품이다. 아래 치수 필드를 도면의 치수선·주석에서 읽어 모두 채워라(하나도 비우지 말 것; 인쇄된 치수 우선, 없으면 축척·대칭으로 추정). 무관한 필드는 만들지 마라.\n필드: ${FIELD_HELP[type]}\n형식: JSON 하나만.`;
+  const exPrompt = `이 도면은 '${type}' 부품이다. 아래 치수 필드를 도면의 치수선·주석에서 읽어 모두 채워라(하나도 비우지 말 것; 인쇄된 치수 우선, 없으면 축척·대칭으로 추정). 무관한 필드는 만들지 마라.\n필드: ${FIELD_HELP[type]}\n
+
+★ estimatedFields: 위 필드 중 **도면에 숫자가 인쇄돼 있지 않아** 축척·대칭으로 추정한 것의 이름을 모두 적어라. 치수선이 너무 짧거나 흐려 숫자를 확인하지 못한 것도 추정이다. 인쇄된 숫자를 실제로 읽은 필드는 넣지 마라. 전부 인쇄값을 읽었으면 빈 배열 []. **추정을 판독인 척하지 마라 — 추정이라고 적는 편이 훨씬 유용하다.**
+
+형식: JSON 하나만.`;
   /**
    * ★260802 — **결측 응답을 성공으로 보고 있었다.**
    *
@@ -400,7 +430,8 @@ export async function extractDrawingFromImage(base64, mimeType = 'image/png', { 
   let exQueue = Array.isArray(model) ? [...model] : [model];
   for (let a = 0; a < EXTRACT_MAX_ATTEMPTS; a++) {
     try {
-      const { text } = await callGeminiImage(base64, mimeType, exQueue, exPrompt, paramSchemaFor(type));
+      const { text, model: m } = await callGeminiImage(base64, mimeType, exQueue, exPrompt, paramSchemaFor(type));
+      usedModel = m;
       const got = parseWithRepair(text);
       const miss = missingOf(got);
       // 결측이 더 적은 응답을 남긴다 — 마지막 응답이 항상 나은 것은 아니다.
@@ -410,7 +441,22 @@ export async function extractDrawingFromImage(base64, mimeType = 'image/png', { 
   }
   if (!params) throw lastErr ?? new Error('extract failed');
   if (type === 'flange' && typeof params.boltCount === 'number') params.boltCount = Math.round(params.boltCount);
+  /**
+   * `estimatedFields` 는 **치수가 아니다** — intent 에 그대로 펼치면 하류(게이트·재구성)가
+   * 알 수 없는 파라미터로 본다. 분리해서 뽑아 둔다.
+   */
+  const declaredEstimates = Array.isArray(params.estimatedFields)
+    ? params.estimatedFields.map(String).filter((k) => TYPE_FIELDS[type].includes(k))
+    : [];
+  delete params.estimatedFields;
   const intent = { type, confidence, ...params };
+  if (declaredEstimates.length) {
+    // ⚠ 추정값을 지우지 않는다 — 있는 편이 없는 것보다 낫다. 다만 **확신을 낮춘다.**
+    intent.estimatedFields = declaredEstimates;
+    intent.confidence = Math.min(intent.confidence, 0.6);
+    intent.estimatedNote = `${declaredEstimates.join('·')} 는 도면에 인쇄된 숫자가 아니라 **축척·대칭으로 추정**한 값이다. `
+      + '그대로 제작에 쓰지 말고 확인하거나 알려 주세요.';
+  }
   /**
    * ⚠ 재시도 후에도 남은 결측은 **이름으로 남긴다.** 없으면 사용자는 게이트 오류만 보고
    *   「왜 실패했는지」를 모른다 — 판독을 못 한 것과 형상이 틀린 것은 다른 문제다.
@@ -434,7 +480,7 @@ export async function extractDrawingFromImage(base64, mimeType = 'image/png', { 
       intent.confidence = +(confidence * reproject.confidenceFactor).toFixed(3);
     }
   } catch (e) { reproject = { verdict: 'SKIPPED', reasons: [String(e?.message ?? e).slice(0, 80)] }; }
-  return { intent, model, reproject };
+  return { intent, model: usedModel ?? model, reproject };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('extract.mjs');

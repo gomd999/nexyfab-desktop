@@ -119,7 +119,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       reconcile = { measuredCount: r.measured.length, unverified: r.unverified, coverage: r.coverage };
     } catch { /* DXF 정합 실패=비전 값 유지(정직 — reconcile 필드 없음) */ }
   }
-  const recognized = { type, label: TYPE_LABEL[type] ?? type, confidence: +confidence.toFixed(2), unit: String(flat.unit ?? 'mm'), ...(reproject?.verdict && reproject.verdict !== 'SKIPPED' ? { reproject: { verdict: reproject.verdict, support: reproject.support, scaleResidualPct: reproject.scaleResidualPct } } : {}), ...(reconcile ? { reconcile } : {}) };
+  /**
+   * ★260731 — **불확실성이 응답에 실리지 않고 있었다.**
+   *
+   * 추출기는 못 읽은 치수(`missingFields`)와 추정한 치수(`estimatedFields`)를 이미
+   * 구별해 내보낸다. 그런데 여기서 `confidence` 숫자만 옮기고 **어느 치수인지는 버렸다.**
+   * 사용자는 「신뢰도 60%」만 보고 **무엇을 확인해야 하는지** 알 수 없었다.
+   *
+   * 실측(260731): `l_bracket` 두께(정답 4mm, 치수선 9.6px)가 10 으로 나가는데, 모델은
+   * 그것을 「추정」이라고 스스로 표시한다 — 그 표시가 여기서 사라지고 있었다.
+   * ⚠ 값을 막지 않는다(0.6 은 MIN_CONFIDENCE 0.4 를 넘는다). **어느 값이 추정인지 알린다.**
+   */
+  const uncertainty = {
+    ...(Array.isArray(flat.missingFields) && flat.missingFields.length
+      ? { missingFields: flat.missingFields as string[], missingNote: String(flat.missingNote ?? '') } : {}),
+    ...(Array.isArray(flat.estimatedFields) && flat.estimatedFields.length
+      ? { estimatedFields: flat.estimatedFields as string[], estimatedNote: String(flat.estimatedNote ?? '') } : {}),
+  };
+  const recognized = { type, label: TYPE_LABEL[type] ?? type, confidence: +confidence.toFixed(2), unit: String(flat.unit ?? 'mm'), ...uncertainty, ...(reproject?.verdict && reproject.verdict !== 'SKIPPED' ? { reproject: { verdict: reproject.verdict, support: reproject.support, scaleResidualPct: reproject.scaleResidualPct } } : {}), ...(reconcile ? { reconcile } : {}) };
 
   // 판별 불가 / 저신뢰 → 허위 형상 방출 대신 정직하게 텍스트 확인 요청.
   if (type === 'unknown' || !mods.rc.PARAMS[type]) {

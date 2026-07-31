@@ -47,11 +47,24 @@ function scoreParams(gt, ex) {
   const params = PARAMS[gt.type];
   let ok = 0;
   const errs = [];
+  /**
+   * ★260731 — **추정 선언이 쓸모 있는지**를 함께 잰다.
+   *
+   * 2단계 경로는 읽을 수 없는 치수도 스키마상 반드시 채운다 — 그래서 `l_bracket` 두께
+   * (치수선 9.6px)가 **confidence 1 짜리 오답**으로 나갔다. 이제 모델이 「추정했다」고
+   * 선언하게 했는데, **그 선언이 실제로 오답을 가리키는지** 확인해야 한다:
+   *   · 잡음(recall)   — 틀린 값 중 추정으로 표시된 비율. 낮으면 경고가 새어 나간다.
+   *   · 오경보(false)  — 맞은 값 중 추정으로 표시된 비율. 높으면 전부에 깃발이라 무의미하다.
+   * ⚠ 둘 중 하나만 보면 안 된다. 전부 「추정」이라고 하면 recall 100% 지만 쓸모는 0 이다.
+   */
+  const est = new Set(Array.isArray(ex.estimatedFields) ? ex.estimatedFields : []);
+  const flags = { wrongFlagged: 0, wrongTotal: 0, rightFlagged: 0, rightTotal: 0 };
   for (const k of params) {
-    if (Math.abs((ex[k] ?? NaN) - gt[k]) <= DIM_TOL) ok++;
-    else errs.push(`${k}: gt ${gt[k]} vs ${ex[k]}`);
+    const good = Math.abs((ex[k] ?? NaN) - gt[k]) <= DIM_TOL;
+    if (good) { ok++; flags.rightTotal++; if (est.has(k)) flags.rightFlagged++; }
+    else { errs.push(`${k}: gt ${gt[k]} vs ${ex[k]}${est.has(k) ? ' [추정선언]' : ''}`); flags.wrongTotal++; if (est.has(k)) flags.wrongFlagged++; }
   }
-  return { ok, total: params.length, errs };
+  return { ok, total: params.length, errs, flags };
 }
 function scoreHoles(gt, ex) {
   if (!gt.holes) return null;
@@ -82,7 +95,8 @@ function scoreHoles(gt, ex) {
  * ⚠ 미측정이 있으면 **그 실행은 완결이 아니다.** 정확도를 숫자로 내되 완결 여부를
  *   함께 표기하고, 표본이 0 인 버킷은 「0%」가 아니라 **「표본 없음」**으로 적는다.
  */
-const agg = { measured: 0, typeOk: 0, pOk: 0, pTot: 0, hPos: 0, hTot: 0, gateOk: 0, err: 0 };
+const agg = { measured: 0, typeOk: 0, pOk: 0, pTot: 0, hPos: 0, hTot: 0, gateOk: 0, err: 0,
+  wrongFlagged: 0, wrongTotal: 0, rightFlagged: 0, rightTotal: 0 };
 /** 미측정 사유 분류 — 재시도가 통하는 것(일시)과 아닌 것(항구)을 나눠야 대응이 갈린다. */
 const notMeasured = [];
 const classifyErr = (m) => {
@@ -108,6 +122,7 @@ for (const name of cases) {
     if (typeOk) { agg.typeOk++; byBucket[bkey].typeOk++; }
     const ps = typeOk ? scoreParams(gt, intent) : { ok: 0, total: PARAMS[gt.type].length, errs: [`type: gt ${gt.type} vs ${intent.type}`] };
     agg.pOk += ps.ok; agg.pTot += ps.total;
+    if (ps.flags) for (const k of ['wrongFlagged', 'wrongTotal', 'rightFlagged', 'rightTotal']) agg[k] += ps.flags[k];
     byBucket[bkey].pOk += ps.ok; byBucket[bkey].pTot += ps.total;
     const hs = typeOk ? scoreHoles(gt, intent) : null;
     if (hs) { agg.hPos += hs.pos; agg.hTot += hs.total; }
@@ -146,6 +161,9 @@ const summary = {
   paramAccuracy: agg.pTot ? `${agg.pOk}/${agg.pTot} (${pct(agg.pOk, agg.pTot)})` : '표본 없음',
   holePosAccuracy: agg.hTot ? `${agg.hPos}/${agg.hTot} (${pct(agg.hPos, agg.hTot)})` : '표본 없음',
   geometryGatePass: M ? `${agg.gateOk}/${M} (${pct(agg.gateOk, M)})` : '표본 없음',
+  // ★ 추정 선언이 오답을 가리키는가 — 두 숫자를 **함께** 봐야 의미가 있다.
+  estimateFlagRecall: agg.wrongTotal ? `${agg.wrongFlagged}/${agg.wrongTotal} (${pct(agg.wrongFlagged, agg.wrongTotal)}) — 틀린 값 중 추정으로 표시된 비율` : '오답 없음',
+  estimateFlagFalseAlarm: agg.rightTotal ? `${agg.rightFlagged}/${agg.rightTotal} (${pct(agg.rightFlagged, agg.rightTotal)}) — 맞은 값 중 추정으로 표시된 비율` : '표본 없음',
   byBucket: Object.fromEntries(Object.entries(byBucket).map(([k, v]) => [
     k,
     // ⚠ 표본이 0 인 버킷을 「type 0/5」로 적으면 **전부 틀린 것처럼 읽힌다.**

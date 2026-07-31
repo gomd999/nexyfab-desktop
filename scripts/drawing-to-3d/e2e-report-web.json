@@ -1,0 +1,481 @@
+{
+ "date": "2026-07-31T11:04:03.291Z",
+ "path": "web(extractDrawingFromImage, 11어휘 2단계)",
+ "summary": {
+  "cases": 50,
+  "measured": "50/50 (100.0%)",
+  "complete": true,
+  "notMeasured": 0,
+  "notMeasuredReasons": {},
+  "typeClassification": "50/50 (100.0%)",
+  "paramAccuracy": "210/220 (95.5%)",
+  "holePosAccuracy": "30/30 (100.0%)",
+  "geometryGatePass": "50/50 (100.0%)",
+  "estimateFlagRecall": "6/10 (60.0%) — 틀린 값 중 추정으로 표시된 비율",
+  "estimateFlagFalseAlarm": "0/210 (0.0%) — 맞은 값 중 추정으로 표시된 비율",
+  "byBucket": {
+   "clean:bent_sheet": "측정 5/5 — type 5/5, params 19/20",
+   "scan:bent_sheet": "측정 5/5 — type 5/5, params 20/20",
+   "scan:flange": "측정 5/5 — type 5/5, params 27/30",
+   "clean:flange": "측정 5/5 — type 5/5, params 30/30",
+   "clean:l_bracket": "측정 5/5 — type 5/5, params 17/20",
+   "scan:l_bracket": "측정 5/5 — type 5/5, params 17/20",
+   "clean:plate_with_holes": "측정 5/5 — type 5/5, params 15/15",
+   "scan:plate_with_holes": "측정 5/5 — type 5/5, params 15/15",
+   "scan:stepped_plate": "측정 5/5 — type 5/5, params 25/25",
+   "clean:stepped_plate": "측정 5/5 — type 5/5, params 25/25"
+  }
+ },
+ "report": [
+  {
+   "name": "bent-sheet-05",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "bent-sheet-10-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "bent-sheet-15",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "3/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "length: gt 140 vs 100"
+  },
+  {
+   "name": "bent-sheet-20-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "bent-sheet-25",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "bent-sheet-30-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "bent-sheet-35",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "bent-sheet-40-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "bent-sheet-45",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "bent-sheet-50-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "flange-04-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "6/6",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "flange-09",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "6/6",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "flange-14-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "4/6",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "boreDia: gt 40 vs 48 | boltHoleD: gt 12 vs 12.6"
+  },
+  {
+   "name": "flange-19",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "6/6",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "flange-24-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "6/6",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "flange-29",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "6/6",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "flange-34-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "5/6",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "bcd: gt 110 vs 118"
+  },
+  {
+   "name": "flange-39",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "6/6",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "flange-44-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "6/6",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "flange-49",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "6/6",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "l-bracket-03",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "3/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "thickness: gt 4 vs 10 [추정선언]"
+  },
+  {
+   "name": "l-bracket-08-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "3/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "thickness: gt 4 vs 6 [추정선언]"
+  },
+  {
+   "name": "l-bracket-13",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "l-bracket-18-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "3/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "thickness: gt 4 vs 10 [추정선언]"
+  },
+  {
+   "name": "l-bracket-23",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "3/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "thickness: gt 4 vs 5 [추정선언]"
+  },
+  {
+   "name": "l-bracket-28-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "l-bracket-33",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "l-bracket-38-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "l-bracket-43",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "3/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "thickness: gt 4 vs 10 [추정선언]"
+  },
+  {
+   "name": "l-bracket-48-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "3/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "thickness: gt 4 vs 2 [추정선언]"
+  },
+  {
+   "name": "plate-with-holes-01",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "3/3",
+   "holes": "2/2",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "plate-with-holes-06-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "3/3",
+   "holes": "2/2",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "plate-with-holes-11",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "3/3",
+   "holes": "3/3",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "plate-with-holes-16-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "3/3",
+   "holes": "2/2",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "plate-with-holes-21",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "3/3",
+   "holes": "4/4",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "plate-with-holes-26-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "3/3",
+   "holes": "4/4",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "plate-with-holes-31",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "3/3",
+   "holes": "3/3",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "plate-with-holes-36-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "3/3",
+   "holes": "2/2",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "plate-with-holes-41",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "3/3",
+   "holes": "4/4",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "plate-with-holes-46-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "3/3",
+   "holes": "4/4",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "stepped-plate-02-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "5/5",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "stepped-plate-07",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "5/5",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "stepped-plate-12-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "5/5",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "stepped-plate-17",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "5/5",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "stepped-plate-22-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "5/5",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "stepped-plate-27",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "5/5",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "stepped-plate-32-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "5/5",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "stepped-plate-37",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "5/5",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "stepped-plate-42-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "5/5",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  },
+  {
+   "name": "stepped-plate-47",
+   "bucket": "clean",
+   "type": "OK",
+   "params": "5/5",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
+  }
+ ]
+}
