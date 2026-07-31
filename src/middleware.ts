@@ -47,6 +47,31 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   if (ADMIN_API_RE.test(pathname)) {
     // 강제가 꺼져 있으면 통과 — 인프라에서 명시적으로 꺼야만 꺼진다.
     if (process.env.ADMIN_OTP_REQUIRED === 'false') return NextResponse.next();
+
+    /**
+     * ⚠ 260802 2차 — **step-up 을 요구할 수 없는 호출자가 둘 있다.** 실측으로 확인했다:
+     *
+     *  ① `x-admin-secret`(= `ADMIN_SECRET`) 서비스 호출
+     *     `admin/backup`·`cleanup-files`·`cohort`·`intent-log` 가 이 방식으로 불린다.
+     *     **사람이 없어 이메일 코드를 받을 수 없다.** 여기에 OTP 를 요구하면 자동화가 죽는다.
+     *     이 비밀은 배포 환경 변수라, 가진 사람은 이미 인프라 접근이 있다 — 면제한다.
+     *
+     *  ② `nf_admin_token` 레거시 콘솔(`/admin`)
+     *     **공유 비밀번호(`ADMIN_PASSWORD`) 하나로 들어가는 별도 콘솔**이다.
+     *     계정이 아니라 코드를 보낼 주소가 없다. 지금 막으면 그 콘솔이 통째로 죽는다.
+     *     ⚠ **이건 면제가 아니라 부채다.** 계정 기반으로 통합하고 폐지해야 한다 —
+     *        그때까지 지나가되, 헤더로 표시해 사용 여부를 측정할 수 있게 한다.
+     *
+     * 두 경우 모두 **자격 자체는 라우트가 다시 검증**한다(`verifyAdmin`/`requireAdmin`).
+     * 여기서 보는 것은 「상승이 필요한 호출인가」뿐이다.
+     */
+    if (req.headers.get('x-admin-secret')) return NextResponse.next();
+    if (req.cookies.get('nf_admin_token')?.value) {
+      const res = NextResponse.next();
+      res.headers.set('x-nf-admin-legacy-console', '1');
+      return res;
+    }
+
     const access = req.cookies.get('nf_access_token')?.value ?? null;
     const v = await verifyElevToken(req.cookies.get(ELEV_COOKIE)?.value, process.env.JWT_SECRET);
     const ok = v.ok && await elevMatchesSession(v.payload, access);
