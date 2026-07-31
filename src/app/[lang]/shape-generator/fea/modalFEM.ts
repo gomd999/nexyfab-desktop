@@ -195,3 +195,101 @@ export function hex8HarmonicResponse(grid: TopologyGrid, opts: HarmonicOptions):
   for (let i = 0; i < modes.length; i++) if (wi[i] > 0) staticAmp += (fi[i] * pi[i]) / (wi[i] * wi[i]);
   return { freqHz: opts.freqsHz, amplitude, staticAmplitude: Math.abs(staticAmp) };
 }
+
+/* ── 3D 랜덤 진동 (260801) ────────────────────────────────────────────────────
+ * `randomVibration.ts` 는 **SDOF 기저가진** PSD 응답이다 — 3D 형상이 아니다.
+ * 그런데 바로 위 `hex8HarmonicResponse` 가 이미 **3D 전달함수 H(ω)** 를 만든다.
+ * 랜덤 진동은 그 위에 PSD 를 씌우는 일이다:
+ * ```
+ *   S_out(f) = |H(f)|² · S_in(f)        (선형계·정상 확률과정)
+ *   σ        = √∫ S_out(f) df           (RMS 응답)
+ * ```
+ * ⚠ 이 파일에 **같이 둔다.** 처음엔 새 파일로 만들려다, 조화응답이 이미 여기 있는 것을
+ *   못 보고 **재발명할 뻔했다.** 확장은 확장하는 것 옆에 둔다 — 다음 사람이 찾을 수 있게. */
+
+export interface RandomVibrationOptions extends HarmonicOptions {
+  /**
+   * 입력 PSD. `freqsHz` 와 **같은 길이**여야 한다 — 길이가 다르면 어느 주파수의 값인지
+   * 알 수 없고, 맞춰 보간하면 **없는 데이터를 지어내는 것**이 된다.
+   * 단위는 하중 PSD [N²/Hz] (가진이 힘일 때).
+   */
+  psdInput: number[];
+}
+
+export interface RandomVibrationResult {
+  freqHz: number[];
+  /** 응답 PSD [mm²/Hz] */
+  psdOut: number[];
+  /** RMS 변위 [mm] — 사다리꼴 적분의 제곱근. */
+  rmsMm: number;
+  /**
+   * 응답의 0차·2차 모멘트에서 얻은 **기대 영교차율**(Hz). 피로 계산에 쓰인다.
+   * 스펙트럼이 비어 있으면 `null` — 0 이 아니다(0 Hz 는 「진동하지 않는다」는 주장이다).
+   */
+  zeroCrossingHz: number | null;
+  /** 사용자가 읽어야 할 한계. */
+  warnings: string[];
+}
+
+/**
+ * 정상 확률가진에 대한 **3D 랜덤 진동 응답**. 전달함수는 `hex8HarmonicResponse` 와
+ * 동일한 모달 중첩으로 얻는다(같은 검증된 고유해를 재사용).
+ *
+ * ⚠ **격자는 복셀(HEX8)** 이다 — gmsh 경계적합 사면체 경로와 다른 격자다.
+ *   SDOF 축소모델보다 분명히 3D 지만, 경계적합 정확도를 주장하면 안 된다.
+ * ⚠ **모드 절단**의 영향을 받는다. 모드 밖 기여는 빠지고, 그만큼 RMS 가 **과소평가**된다.
+ *   `hex8Participation` 으로 유효질량 누적비를 확인하라.
+ */
+export function hex8RandomVibration(grid: TopologyGrid, opts: RandomVibrationOptions): RandomVibrationResult {
+  const warnings: string[] = [];
+  const f = opts.freqsHz;
+  if (opts.psdInput.length !== f.length) {
+    // ⚠ 길이가 다르면 **계산하지 않는다.** 보간해 맞추면 없는 입력을 지어내는 것이다.
+    return {
+      freqHz: f, psdOut: [], rmsMm: 0, zeroCrossingHz: null,
+      warnings: [`입력 PSD 길이(${opts.psdInput.length})가 주파수 배열 길이(${f.length})와 다르다 — 계산하지 않는다.`],
+    };
+  }
+  if (f.length < 2) {
+    return { freqHz: f, psdOut: [], rmsMm: 0, zeroCrossingHz: null, warnings: ['주파수 표본이 2개 미만 — 적분할 구간이 없다.'] };
+  }
+
+  // 전달함수: 단위 하중(1 N)에 대한 응답 = |H(ω)| [mm/N]
+  const h = hex8HarmonicResponse(grid, { ...opts, loadMag: 1 });
+  if (h.amplitude.length !== f.length) {
+    return { freqHz: f, psdOut: [], rmsMm: 0, zeroCrossingHz: null, warnings: ['전달함수를 얻지 못했다(구속/모달 실패) — 응답을 계산하지 않는다.'] };
+  }
+
+  const psdOut = h.amplitude.map((a, i) => a * a * opts.psdInput[i]!);
+
+  // 사다리꼴 적분으로 0차·2차 스펙트럼 모멘트
+  let m0 = 0, m2 = 0;
+  for (let i = 1; i < f.length; i++) {
+    const df = f[i]! - f[i - 1]!;
+    if (df <= 0) { warnings.push('주파수 배열이 오름차순이 아니다 — 적분 결과를 신뢰할 수 없다.'); break; }
+    m0 += 0.5 * (psdOut[i]! + psdOut[i - 1]!) * df;
+    m2 += 0.5 * (psdOut[i]! * f[i]! * f[i]! + psdOut[i - 1]! * f[i - 1]! * f[i - 1]!) * df;
+  }
+
+  /**
+   * ⚠ 스윕이 공진을 담지 못하면 RMS 가 크게 과소평가된다. **조용히 넘기지 않는다.**
+   *   (1차 모드가 스윕 범위 밖이면 그 봉우리가 통째로 빠진다.)
+   */
+  const lo = f[0]!, hi = f[f.length - 1]!;
+  const modeFreqs = hex8Modes(grid, opts).frequenciesHz;
+  const inBand = modeFreqs.filter((x) => x >= lo && x <= hi).length;
+  if (modeFreqs.length > 0 && inBand === 0) {
+    warnings.push(
+      `스윕 범위 ${lo}~${hi} Hz 안에 고유진동수가 하나도 없다(1차 ${modeFreqs[0]!.toFixed(1)} Hz) — `
+      + '공진 봉우리가 빠져 RMS 가 크게 과소평가된다. 범위를 넓혀라.',
+    );
+  }
+
+  return {
+    freqHz: f,
+    psdOut,
+    rmsMm: Math.sqrt(Math.max(0, m0)),
+    zeroCrossingHz: m0 > 0 ? Math.sqrt(m2 / m0) : null,
+    warnings,
+  };
+}

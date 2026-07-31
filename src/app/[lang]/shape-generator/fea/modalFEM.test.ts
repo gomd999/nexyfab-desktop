@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { TopologyGrid } from '../analysis/topology3D';
-import { hex8Modes, hex8Participation, hex8HarmonicResponse, fixedFaceNodes } from './modalFEM';
+import { hex8Modes, hex8Participation, hex8HarmonicResponse, hex8RandomVibration, fixedFaceNodes } from './modalFEM';
 
 const E = 210000, nu = 0.3, rho = 7.85e-9; // steel, N-mm-tonne-MPa units
 
@@ -116,5 +116,90 @@ describe('modalFEM — harmonic (frequency) response by modal superposition', ()
     const amp = peak.a / resp.staticAmplitude;
     expect(amp).toBeGreaterThan(0.5 * Q);   // dominant-mode amplification
     expect(amp).toBeLessThan(1.3 * Q);
+  });
+});
+
+/**
+ * hex8RandomVibration — 3D 랜덤 진동 (260801).
+ *
+ * 채점 기준은 **닫힌해**다. 백색잡음 가진을 받는 단일모드 계의 RMS 응답은
+ *   σ² = ∫|H|²·S df,  단일모드 근사에서  σ² ≈ (π/2)·f_n·S·|H(f_n)|²
+ * 이고, 공진 피크 |H(f_n)| = φ²/(2ζω_n²) 이므로 **σ ∝ 1/√ζ** 가 성립해야 한다.
+ * 「값이 나온다」가 아니라 **물리가 맞는가**를 본다.
+ */
+describe('hex8RandomVibration — 3D 랜덤 진동', () => {
+  const grid = new TopologyGrid(12, 2, 2);
+  const base = {
+    E, nu, rho, cell: 10, fixed: fixedFaceNodes(grid, 'x'), nModes: 4,
+    loadNode: grid.node(12, 1, 1), loadAxis: 2 as const, loadMag: 1,
+    probeNode: grid.node(12, 1, 1), probeAxis: 2 as const,
+  };
+  /** 1차 모드를 확실히 담는 스윕. */
+  const f1 = hex8Modes(grid, base).frequenciesHz[0]!;
+  const freqs = Array.from({ length: 120 }, (_, i) => (f1 * 2 * (i + 1)) / 120);
+  const white = freqs.map(() => 1); // 백색 하중 PSD 1 N²/Hz
+
+  it('RMS 가 유한한 양수이고, 응답 PSD 가 공진에서 최대다', () => {
+    const r = hex8RandomVibration(grid, { ...base, freqsHz: freqs, psdInput: white, zeta: 0.02 });
+    expect(r.rmsMm).toBeGreaterThan(0);
+    expect(Number.isFinite(r.rmsMm)).toBe(true);
+    const iMax = r.psdOut.indexOf(Math.max(...r.psdOut));
+    // 공진 근처(±10%)에서 봉우리
+    expect(Math.abs(r.freqHz[iMax]! - f1) / f1).toBeLessThan(0.1);
+  });
+
+  it('★감쇠가 4배면 RMS 는 약 1/2 — σ ∝ 1/√ζ (물리)', () => {
+    const a = hex8RandomVibration(grid, { ...base, freqsHz: freqs, psdInput: white, zeta: 0.01 });
+    const b = hex8RandomVibration(grid, { ...base, freqsHz: freqs, psdInput: white, zeta: 0.04 });
+    const ratio = a.rmsMm / b.rmsMm;
+    expect(ratio).toBeGreaterThan(1.7);
+    expect(ratio).toBeLessThan(2.3);
+  });
+
+  it('입력 PSD 를 2배로 하면 RMS 는 √2 배 — σ ∝ √S (선형계)', () => {
+    const a = hex8RandomVibration(grid, { ...base, freqsHz: freqs, psdInput: white, zeta: 0.02 });
+    const b = hex8RandomVibration(grid, { ...base, freqsHz: freqs, psdInput: white.map((x) => x * 2), zeta: 0.02 });
+    expect(b.rmsMm / a.rmsMm).toBeGreaterThan(1.35);
+    expect(b.rmsMm / a.rmsMm).toBeLessThan(1.49);
+  });
+
+  it('영교차율이 1차 고유진동수 근처다 — 응답이 그 모드에 지배되므로', () => {
+    const r = hex8RandomVibration(grid, { ...base, freqsHz: freqs, psdInput: white, zeta: 0.02 });
+    expect(r.zeroCrossingHz).not.toBeNull();
+    expect(Math.abs(r.zeroCrossingHz! - f1) / f1).toBeLessThan(0.35);
+  });
+});
+
+describe('★hex8RandomVibration — 모르는 것을 지어내지 않는다', () => {
+  const grid = new TopologyGrid(8, 2, 2);
+  const base = {
+    E, nu, rho, cell: 10, fixed: fixedFaceNodes(grid, 'x'), nModes: 3,
+    loadNode: grid.node(8, 1, 1), loadAxis: 2 as const, loadMag: 1,
+    probeNode: grid.node(8, 1, 1), probeAxis: 2 as const,
+  };
+
+  it('★PSD 길이가 주파수와 다르면 **보간하지 않고 거부**한다', () => {
+    const r = hex8RandomVibration(grid, { ...base, freqsHz: [10, 20, 30], psdInput: [1, 1] });
+    expect(r.rmsMm).toBe(0);
+    expect(r.psdOut).toHaveLength(0);
+    expect(r.warnings[0]).toContain('길이');
+  });
+
+  it('★스윕이 공진을 안 담으면 경고한다 — 조용히 작은 RMS 를 내지 않는다', () => {
+    const f1 = hex8Modes(grid, base).frequenciesHz[0]!;
+    const far = [f1 * 5, f1 * 6, f1 * 7];
+    const r = hex8RandomVibration(grid, { ...base, freqsHz: far, psdInput: far.map(() => 1) });
+    expect(r.warnings.join(' ')).toContain('공진');
+  });
+
+  it('표본이 2개 미만이면 적분하지 않는다', () => {
+    const r = hex8RandomVibration(grid, { ...base, freqsHz: [50], psdInput: [1] });
+    expect(r.rmsMm).toBe(0);
+    expect(r.warnings.join(' ')).toContain('2개 미만');
+  });
+
+  it('★영교차율은 스펙트럼이 비면 0 이 아니라 null — 0 Hz 는 「진동 안 함」이라는 주장이다', () => {
+    const r = hex8RandomVibration(grid, { ...base, freqsHz: [10, 20], psdInput: [0, 0] });
+    expect(r.zeroCrossingHz).toBeNull();
   });
 });
