@@ -1,0 +1,16 @@
+{
+ "shapeId": "lBracket",
+ "params": {
+  "width": 80,
+  "height": 160,
+  "depth": 40,
+  "thickness": 8
+ },
+ "variant": "dim",
+ "labeledParams": [
+  "width",
+  "height"
+ ],
+ "unit": "mm",
+ "condition": "photo"
+}

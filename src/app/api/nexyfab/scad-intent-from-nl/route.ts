@@ -12,6 +12,7 @@
  * the textarea or directly into POST /api/nexyfab/openscad-render to get an STL.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { truncationNote } from '@/lib/ai/providers/truncation';
 import { checkPlan, consumeMonthlyMetricSlot } from '@/lib/plan-guard';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
@@ -274,6 +275,9 @@ export async function POST(req: NextRequest) {
   }
 
   let raw = '';
+  /** ★260731 — 절단 신호를 파싱 실패 시점까지 들고 간다(대응이 정반대이므로). */
+  let truncated: boolean | undefined;
+  let finishReason: string | undefined;
   const used: { provider?: string; model?: string } = {};
   try {
     let meta: { provider: string; model: string; latencyMs: number; promptTokens?: number; completionTokens?: number };
@@ -332,6 +336,8 @@ ${prompt ? 'User note: ' + prompt : ''}`;
         task: promptDef.id,
       });
       raw = result.text;
+      truncated = result.truncated;
+      finishReason = result.finishReason;
       meta = { provider: result.provider, model: result.model, latencyMs: result.latencyMs, promptTokens: result.promptTokens, completionTokens: result.completionTokens };
     }
     recordPromptCall({
@@ -418,7 +424,22 @@ ${prompt ? 'User note: ' + prompt : ''}`;
     if (first !== -1 && last > first) s = s.slice(first, last + 1);
     parsedRaw = JSON.parse(s.trim());
   } catch {
-    return NextResponse.json({ error: 'AI returned non-JSON response', raw: raw.slice(0, 400) }, { status: 502 });
+    /**
+     * ★260731 — **절단과 형식 위반을 구별해서 답한다.**
+     *   같은 「비-JSON」이라도 원인이 다르면 대응이 정반대다:
+     *     형식 위반 → 프롬프트를 손본다   ·   절단 → 출력 상한을 올린다.
+     *   자매 경로(`imageIntentFromSketch`, 상한 500)에서 24장 중 16장이 이 오류로
+     *   실패했는데 **원인은 전부 절단**이었고, 원문을 손으로 찍어 보고서야 알았다.
+     *   여기는 상한이 800 이라 같은 위험이 남아 있다 — 이제는 응답이 스스로 말한다.
+     */
+    const note = truncationNote({ truncated, finishReason }, promptDef.defaults.maxTokens);
+    return NextResponse.json({
+      error: note ? 'AI response was cut off by the output limit' : 'AI returned non-JSON response',
+      code: note ? 'TRUNCATED' : 'NON_JSON',
+      ...(note ? { detail: note } : {}),
+      ...(finishReason ? { finishReason } : {}),
+      raw: raw.slice(0, 400),
+    }, { status: 502 });
   }
 
   if (!parsedRaw || typeof parsedRaw !== 'object' || Array.isArray(parsedRaw)) {

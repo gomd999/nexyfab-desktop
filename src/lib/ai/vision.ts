@@ -21,6 +21,7 @@
  */
 
 import type { ProviderName } from './types';
+import { truncationOf } from './providers/truncation';
 
 export interface VisionImage {
   /** Raw image bytes (PNG only — JPEG converted by caller if needed). */
@@ -49,6 +50,16 @@ export interface VisionResponse {
   promptTokens?: number;
   completionTokens?: number;
   latencyMs: number;
+  /**
+   * ★260731 — **응답이 상한에 걸려 잘렸는가.** `undefined` 는 「안 잘림」이 아니라
+   * 「제공자가 말하지 않음」이다(`providers/truncation.ts` 참조).
+   *
+   * 이 필드가 없어서 실제로 물렸다: `imageIntentFromSketch` 24장 중 16장이 `NON_JSON`
+   * 이었는데, 원인은 형식 위반이 아니라 **`maxTokens 500` 을 thinking 이 써 버린 절단**
+   * 이었다. 원문을 손으로 찍어 보고서야 알았다.
+   */
+  truncated?: boolean;
+  finishReason?: string;
 }
 
 export class VisionNotConfiguredError extends Error {
@@ -177,6 +188,7 @@ async function anthropicVision(req: VisionRequest): Promise<Omit<VisionResponse,
   }
   const body = await resp.json() as {
     content: { type: string; text?: string }[];
+    stop_reason?: string;
     usage?: { input_tokens?: number; output_tokens?: number };
   };
   const text = (body.content ?? [])
@@ -186,6 +198,7 @@ async function anthropicVision(req: VisionRequest): Promise<Omit<VisionResponse,
     .trim();
   return {
     text,
+    ...truncationOf(body.stop_reason),
     provider: 'anthropic',
     model,
     promptTokens: body.usage?.input_tokens,
@@ -226,12 +239,13 @@ async function openaiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'l
     throw new VisionProviderError('openai', resp.status, err?.error?.message ?? `HTTP ${resp.status}`);
   }
   const body = await resp.json() as {
-    choices?: { message?: { content?: string } }[];
+    choices?: { message?: { content?: string }; finish_reason?: string }[];
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
   const text = body.choices?.[0]?.message?.content?.trim() ?? '';
   return {
     text,
+    ...truncationOf(body.choices?.[0]?.finish_reason),
     provider: 'openai',
     model,
     promptTokens: body.usage?.prompt_tokens,
@@ -279,7 +293,7 @@ async function geminiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'l
     throw new VisionProviderError('gemini', resp.status, err?.error?.message ?? `HTTP ${resp.status}`);
   }
   const body = await resp.json() as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
+    candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
     usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
   };
   const text = (body.candidates?.[0]?.content?.parts ?? [])
@@ -288,6 +302,7 @@ async function geminiVision(req: VisionRequest): Promise<Omit<VisionResponse, 'l
     .trim();
   return {
     text,
+    ...truncationOf(body.candidates?.[0]?.finishReason),
     provider: 'gemini',
     model,
     promptTokens: body.usageMetadata?.promptTokenCount,
@@ -343,12 +358,13 @@ async function localVision(req: VisionRequest): Promise<Omit<VisionResponse, 'la
     throw new VisionProviderError('local', resp.status, err?.error?.message ?? `HTTP ${resp.status}`);
   }
   const body = await resp.json() as {
-    choices?: { message?: { content?: string } }[];
+    choices?: { message?: { content?: string }; finish_reason?: string }[];
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
   const text = body.choices?.[0]?.message?.content?.trim() ?? '';
   return {
     text,
+    ...truncationOf(body.choices?.[0]?.finish_reason),
     provider: 'local',
     model,
     promptTokens: body.usage?.prompt_tokens,

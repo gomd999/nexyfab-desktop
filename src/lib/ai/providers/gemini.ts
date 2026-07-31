@@ -1,4 +1,5 @@
 import { AiProviderError, type ChatCompletionRequest, type ChatCompletionResponse, type ChatMessage, type ProviderAdapter } from '../types';
+import { truncationOf } from './truncation';
 
 /**
  * Google Gemini text provider (generateContent). Gemini is markedly stronger
@@ -86,6 +87,9 @@ export const geminiProvider: ProviderAdapter = {
 
     return {
       text: content,
+      // ★260731 — `MAX_TOKENS` 를 여기서 노출한다. 종전엔 **빈 응답일 때만** 사유를 봤고,
+      //   내용이 있으면서 잘린 경우(가장 흔한 형태)는 그대로 통과했다.
+      ...truncationOf(data.candidates?.[0]?.finishReason),
       provider: 'gemini',
       model,
       promptTokens: data.usageMetadata?.promptTokenCount,

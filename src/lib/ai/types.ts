@@ -56,6 +56,24 @@ export interface ChatCompletionResponse {
   completionTokens?: number;
   /** Wall-clock latency in ms */
   latencyMs: number;
+  /**
+   * ★260731 — **응답이 상한에 걸려 잘렸는가.**
+   *
+   * 제공자 7곳 중 어느 곳도 절단을 구별하지 않고 있었다. 그래서 잘린 응답이 호출부에
+   * 도착하면 **「형식이 이상하다」로만 보였다.** 실제로 두 번 물렸다:
+   * ```
+   *   imageIntentFromSketch  maxTokens 500 → 24장 중 16장 NON_JSON
+   *                          (산문이 아니라 "params": 에서 잘림 — 원문을 찍어서야 알았다)
+   *   from-text 어셈블리      maxTokens 16384 → bad JSON → 느린 모델 폴백(지연 12배)
+   * ```
+   * 두 번 다 **원인은 절단인데 증상은 파싱 실패**였고, 진단에 여러 단계가 걸렸다.
+   * ⚠ 이 값이 `true` 인데 파싱이 실패했다면 **모델이 형식을 못 지킨 게 아니라 자리가
+   *   부족한 것**이다 — 대응이 정반대다(프롬프트 손질 ❌ / 상한·thinking 조정 ⭕).
+   * ⚠ 제공자가 신호를 안 주면 `undefined` 로 둔다 — `false`(=안 잘림)로 단정하지 않는다.
+   */
+  truncated?: boolean;
+  /** 제공자가 준 원래 종료 사유 — 표준화하면 잃는 정보가 있어 원문도 남긴다. */
+  finishReason?: string;
 }
 
 export type ProviderName = 'deepseek' | 'openai' | 'anthropic' | 'local' | 'gemini' | 'qwen' | 'openrouter';

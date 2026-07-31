@@ -11,5 +11,6 @@
   "height",
   "depth"
  ],
- "unit": "mm"
+ "unit": "mm",
+ "condition": "clean"
 }

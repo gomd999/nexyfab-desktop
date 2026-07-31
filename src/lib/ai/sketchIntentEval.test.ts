@@ -36,6 +36,13 @@ type Gt = {
   params: Record<string, number>;
   variant: 'dim' | 'plain';
   labeledParams: string[];
+  /**
+   * ★260731 — `clean` 과 `photo` 는 **같은 GT·같은 그림**이고 조건만 다르다.
+   *   그래서 둘을 나란히 보면 「사진 조건이 얼마나 깎아먹는가」가 그대로 나온다.
+   * ⚠ `photo` 는 **실사진이 아니다**(재질·그림자·배경 물체는 재현 못 한다).
+   *   이 버킷이 답하는 질문은 「깨끗하지 않은 이미지에서 성능이 유지되는가」다.
+   */
+  condition: 'clean' | 'photo';
 };
 
 /** 절대 치수 허용오차 — 표기를 그대로 읽으라고 지시했으므로 빡빡하게. */
@@ -102,12 +109,17 @@ function scoreRatios(gt: Gt, pred: Record<string, unknown>) {
     // 진단용 부분 실행 — 전량은 비용이 든다.
     const only = process.env.SKETCH_ONLY;
     const cases = loadCases().filter((c) => !only || c.name.includes(only));
-    const agg = {
-      measured: 0, shapeOk: 0,
-      absOk: 0, absTot: 0,
-      ratioOk: 0, ratioTot: 0,
-      notedOk: 0, notedTot: 0,
-    };
+    const blank = () => ({ measured: 0, shapeOk: 0, absOk: 0, absTot: 0, ratioOk: 0, ratioTot: 0, notedOk: 0, notedTot: 0 });
+    /**
+     * ★ `dimensionSource` 채점 — **우리는 정답을 안다.** 어느 그림에 치수를 그렸는지
+     *   우리가 정했기 때문이다(`variant`). 그러니 이 신호는 추측이 아니라 실측 가능하다.
+     * ⚠ 가장 위험한 오류는 **추정을 「읽었다」고 말하는 것**이다(치수가 없는데 callouts).
+     *   그 반대(읽었는데 inferred)는 과하게 조심하는 것일 뿐이다 — 나눠서 센다.
+     */
+    const dsAgg = { total: 0, correct: 0, overclaim: 0, underclaim: 0, missing: 0 };
+    const agg = blank();
+    // 조건별로 따로 센다 — 합치면 「사진 조건이 얼마나 깎는가」가 사라진다.
+    const byCond: Record<string, ReturnType<typeof blank>> = { clean: blank(), photo: blank() };
     const notMeasured: string[] = [];
     const rows: string[] = [];
 
@@ -123,19 +135,30 @@ function scoreRatios(gt: Gt, pred: Record<string, unknown>) {
         continue;
       }
       agg.measured++;
+      const A = byCond[gt.condition ?? 'clean'] ?? (byCond[gt.condition ?? 'clean'] = blank());
+      A.measured++;
       const intent = r.intent as unknown as { shapeId?: string; params?: Record<string, unknown> };
       const shapeOk = String(intent.shapeId) === gt.shapeId;
-      if (shapeOk) agg.shapeOk++;
+      if (shapeOk) { agg.shapeOk++; A.shapeOk++; }
       const pred = (intent.params ?? {}) as Record<string, unknown>;
+
+      // 치수 표기가 실제로 그려진 케이스만 `callouts` 가 정답이다.
+      const expectSrc = gt.variant === 'dim' && gt.labeledParams.length ? 'callouts' : 'inferred';
+      const gotSrc = (r as { dimensionSource?: string }).dimensionSource;
+      dsAgg.total++;
+      if (!gotSrc) dsAgg.missing++;
+      else if (gotSrc === expectSrc || gotSrc === 'mixed') dsAgg.correct++;
+      else if (gotSrc === 'callouts' && expectSrc === 'inferred') dsAgg.overclaim++;
+      else dsAgg.underclaim++;
 
       let absNote = '-';
       if (gt.variant === 'dim' && gt.labeledParams.length) {
         // **표기된 치수만** 채점한다 — 안 그린 치수를 요구하면 그건 우리 잘못이다.
         const bad: string[] = [];
         for (const k of gt.labeledParams) {
-          agg.absTot++;
+          agg.absTot++; A.absTot++;
           const p = paramOf(pred, k);
-          if (p != null && Math.abs(p - gt.params[k]) <= (ABS_TOL_PCT / 100) * gt.params[k]) agg.absOk++;
+          if (p != null && Math.abs(p - gt.params[k]) <= (ABS_TOL_PCT / 100) * gt.params[k]) { agg.absOk++; A.absOk++; }
           else bad.push(`${k} ${gt.params[k]}→${p ?? '없음'}`);
         }
         absNote = bad.join(', ') || 'OK';
@@ -145,10 +168,11 @@ function scoreRatios(gt: Gt, pred: Record<string, unknown>) {
       if (gt.variant === 'plain') {
         const rs = scoreRatios(gt, pred);
         agg.ratioOk += rs.ok; agg.ratioTot += rs.total;
+        A.ratioOk += rs.ok; A.ratioTot += rs.total;
         ratioNote = rs.total ? `${rs.ok}/${rs.total}${rs.note ? ` (${rs.note})` : ''}` : rs.note;
         // 프롬프트가 요구한 **고지 계약** — 지켜지는지 본다(키워드 휴리스틱).
-        agg.notedTot++;
-        if (ASSUMPTION_WORDS.test(String(r.summary ?? ''))) agg.notedOk++;
+        agg.notedTot++; A.notedTot++;
+        if (ASSUMPTION_WORDS.test(String(r.summary ?? ''))) { agg.notedOk++; A.notedOk++; }
       }
 
       rows.push(`  ${name.padEnd(22)} shape ${shapeOk ? 'OK ' : `✗(${intent.shapeId})`.padEnd(3)}  abs ${absNote.slice(0, 34).padEnd(34)}  ratio ${ratioNote}`);
@@ -161,6 +185,16 @@ function scoreRatios(gt: Gt, pred: Record<string, unknown>) {
     console.log(` 절대 치수(표기有) ${agg.absOk}/${agg.absTot} (${pct(agg.absOk, agg.absTot)})   ← "표기를 그대로 읽어라"의 이행률`);
     console.log(` 비율(표기無)      ${agg.ratioOk}/${agg.ratioTot} (${pct(agg.ratioOk, agg.ratioTot)})   ← 절대치는 원리상 판정 불가`);
     console.log(` 추정 고지         ${agg.notedOk}/${agg.notedTot} (${pct(agg.notedOk, agg.notedTot)})   ← 프롬프트가 요구한 계약(키워드 판정)`);
+    console.log(['', ' --- 조건별(같은 GT·같은 그림, 조건만 다름) ---'].join(String.fromCharCode(10)));
+    for (const [cond, a] of Object.entries(byCond)) {
+      if (!a.measured) continue;
+      const label = cond === 'photo' ? 'photo(사진조건)' : 'clean(깨끗)';
+      console.log(` ${label.padEnd(16)} 측정 ${a.measured} · 형상 ${pct(a.shapeOk, a.measured)} · 절대치수 ${pct(a.absOk, a.absTot)} · 비율 ${pct(a.ratioOk, a.ratioTot)} · 고지 ${pct(a.notedOk, a.notedTot)}`);
+    }
+    console.log(' ⚠ photo 는 실사진이 아니다 — 재질·그림자·배경 물체는 재현하지 못한다.');
+    console.log(` 치수출처 신고     정확 ${dsAgg.correct}/${dsAgg.total} (${pct(dsAgg.correct, dsAgg.total)})`
+      + ` · ★과대신고(추정을 「읽었다」) ${dsAgg.overclaim}`
+      + ` · 과소신고 ${dsAgg.underclaim} · 무응답 ${dsAgg.missing}`);
     for (const r of rows) console.log(r);
 
     // 측정이 성립했는지 — 0건이면 위 숫자는 전부 무의미하다.
@@ -171,6 +205,12 @@ function scoreRatios(gt: Gt, pred: Record<string, unknown>) {
      */
     expect(agg.shapeOk / Math.max(1, agg.measured))
       .toBeGreaterThanOrEqual(Number(process.env.SKETCH_MIN_SHAPE_RATE ?? 0));
+    /**
+     * ⚠ **과대신고는 0 이어야 한다.** 치수가 안 적힌 그림을 「읽었다」고 하면, 55% 정확도의
+     *   추정치가 측정치로 승격돼 그대로 제작에 흘러간다 — 이 하네스가 막아야 할 최악이다.
+     */
+    expect(dsAgg.overclaim, `추정을 「읽었다」고 신고한 건수 ${dsAgg.overclaim}`)
+      .toBeLessThanOrEqual(Number(process.env.SKETCH_MAX_OVERCLAIM ?? 0));
   }, 1_800_000);
 });
 

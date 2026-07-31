@@ -1,15 +1,17 @@
 {
  "shapeId": "lBracket",
  "params": {
-  "width": 110,
+  "width": 140,
   "height": 110,
-  "depth": 40,
-  "thickness": 6
+  "depth": 60,
+  "thickness": 10
  },
  "variant": "dim",
  "labeledParams": [
   "width",
-  "height"
+  "height",
+  "thickness"
  ],
- "unit": "mm"
+ "unit": "mm",
+ "condition": "clean"
 }

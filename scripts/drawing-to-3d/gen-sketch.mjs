@@ -165,7 +165,7 @@ const SHAPES = {
       return { shapeId: 'washer', params: { outerDiameter: od, innerDiameter: Math.round(od * 0.45 / 5) * 5, thickness: step(r, 2, 8, 1) } };
     },
     draw(p, S) {
-      const R = (p.outerDiameter / 2) * S, H = Math.max(6, p.thickness * S);
+      const R = (p.outerDiameter / 2) * S, H = p.thickness * S;
       return { cyl: { R, H, bore: (p.innerDiameter / 2) * S }, anchors: { outerDiameter: 'dia', thickness: 'h' } };
     },
   },
@@ -173,7 +173,7 @@ const SHAPES = {
     gt: (r) => ({ shapeId: 'lBracket', params: { width: step(r, 60, 160, 10), height: step(r, 60, 160, 10), depth: step(r, 30, 90, 10), thickness: step(r, 5, 12, 1) } }),
     draw(p, S) {
       const { width: w, height: h, depth: d, thickness: t } = p;
-      const [W, H, D, T] = [w * S, h * S, d * S, Math.max(8, t * S)];
+      const [W, H, D, T] = [w * S, h * S, d * S, t * S];
       const v = (x, y, z) => P(x, y, z);
       // L 단면(수평 다리 + 수직 다리)을 y 방향으로 D 만큼 밀어낸 형상
       const prof = [[0, 0], [W, 0], [W, T], [T, T], [T, H], [0, H]];
@@ -187,7 +187,7 @@ const SHAPES = {
     gt: (r) => ({ shapeId: 'uChannel', params: { width: step(r, 50, 120, 10), height: step(r, 40, 100, 10), webThickness: step(r, 4, 10, 1), flangeThickness: step(r, 4, 10, 1), length: step(r, 100, 260, 20) } }),
     draw(p, S) {
       const { width: w, height: h, webThickness: wt, length: L } = p;
-      const [W, H, T, D] = [w * S, h * S, Math.max(8, wt * S), L * S];
+      const [W, H, T, D] = [w * S, h * S, wt * S, L * S];
       const v = (x, y, z) => P(x, y, z);
       const prof = [[0, 0], [W, 0], [W, H], [W - T, H], [W - T, T], [T, T], [T, H], [0, H]];
       return {
@@ -209,6 +209,43 @@ function drawCyl({ R, H, bore }, ox, oy) {
   s += isoEllipse(cxTop, cyTop, R, ox, oy, FACE.top);
   if (bore > 0) s += isoEllipse(cxTop, cyTop, bore, ox, oy, '#8f8f88');
   return s;
+}
+
+/**
+ * 사진 조건 열화 — **실사진이 아니다.** 실사진과 합성 렌더 사이의 차이 중
+ * 우리가 **재현할 수 있는 것만** 입힌다:
+ *   원근 기울임 · 방향성 조명(밝기 기울기) · 배경 얼룩 · 센서 잡음 · 흐림 · JPEG 압축
+ * 재현하지 **못하는** 것: 재질 반사·그림자·초점 흐림·잡다한 배경 물체.
+ *
+ * ⚠ 그러므로 이 버킷의 수치는 「사진에서의 성능」이 아니라
+ *   **「이미지가 깨끗하지 않을 때 성능이 유지되는가」**다. 두 질문은 다르고,
+ *   섞어 말하면 실사진 성능을 주장하는 셈이 된다.
+ * ⚠ GT 는 그대로다 — 열화는 기하를 바꾸지 않는다(기울임은 ±2° 로 제한).
+ */
+async function photoify(pngBuf, r) {
+  const shear = (r() - 0.5) * 0.06;          // 원근 대용 — 약한 전단
+  const angle = (r() - 0.5) * 4;             // ±2°
+  const bright = 0.88 + r() * 0.24;
+  const q = 62 + Math.floor(r() * 18);
+  const img = sharp(pngBuf);
+  const { width, height } = await img.metadata();
+  // 방향성 조명: 대각 그라디언트를 곱하기 합성
+  const grad = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`
+    + `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">`
+    + `<stop offset="0%" stop-color="#ffffff" stop-opacity="0.0"/>`
+    + `<stop offset="100%" stop-color="#000000" stop-opacity="0.28"/></linearGradient></defs>`
+    + `<rect width="${width}" height="${height}" fill="url(#g)"/></svg>`,
+  );
+  return sharp(pngBuf)
+    .composite([{ input: grad, blend: 'over' }])
+    .affine([[1, shear], [0, 1]], { background: '#efeeea' })
+    .rotate(angle, { background: '#efeeea' })
+    .modulate({ brightness: bright })
+    .blur(0.7)
+    .jpeg({ quality: q })
+    .toBuffer()
+    .then((b) => sharp(b).png().toBuffer());
 }
 
 const N = Number(process.argv[2] ?? 24);
@@ -247,6 +284,23 @@ for (let i = 0; i < N; i++) {
   // ① 단위 배율로 그려 실제 등각 크기를 잰다 → ② 캔버스에 맞는 배율을 정한다.
   const probe = bounds(SHAPES[key].draw(gt.params, 1));
   const S = Math.min((W - 2 * MARGIN) / (probe.x1 - probe.x0), (Hpx - 2 * MARGIN) / (probe.y1 - probe.y0));
+  /**
+   * ★260731 — **그림이 GT 를 배신하지 않게 한다.**
+   *
+   * 처음엔 얇은 치수를 `Math.max(8, t*S)` 로 **화면에서만** 두껍게 그렸다. 그러면
+   * 그림이 보여 주는 비율과 정답 비율이 **달라진다** — 그 상태로 「모델이 얇은 피처를
+   * 과소 판독한다」고 적을 뻔했다. 실제로는 우리가 다른 그림을 보여 주고 원래 숫자로
+   * 채점한 것이다. **측정 도구를 먼저 의심한다**는 규약이 또 맞았다.
+   *
+   * 해법은 그림을 왜곡하는 게 아니라 **GT 를 그림이 표현 가능한 값으로 올리는 것**이다.
+   * ⚠ 값을 올린 뒤 **그 값을 정답으로 쓴다** — 올리기 전 값으로 채점하면 같은 배신이다.
+   */
+  const MIN_FEATURE_PX = 10;
+  for (const k of ['thickness', 'webThickness', 'flangeThickness']) {
+    if (typeof gt.params[k] !== 'number') continue;
+    const need = MIN_FEATURE_PX / S;
+    if (gt.params[k] < need) gt.params[k] = Math.ceil(need);
+  }
   const shape = SHAPES[key].draw(gt.params, S);
   const b = bounds(shape);
   const ox = (W - (b.x1 - b.x0)) / 2 - b.x0;
@@ -287,19 +341,23 @@ for (let i = 0; i < N; i++) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${Hpx}" viewBox="0 0 ${W} ${Hpx}">`
     + `<rect width="${W}" height="${Hpx}" fill="#fbfbf9"/>${body}</svg>`;
   const png = await sharp(Buffer.from(svg)).png().toBuffer();
-  writeFileSync(join(OUT, `${name}.png`), png);
-  writeFileSync(join(OUT, `${name}.gt.json`), JSON.stringify({
+  const meta = {
     ...gt,
     variant,
     // ⚠ `dim` 인데 표기가 하나도 안 그려졌으면 그 케이스는 사실상 `plain` 이다 — 숨기지 않는다.
     labeledParams: labeled,
     unit: 'mm',
-  }, null, 1));
+  };
+  writeFileSync(join(OUT, `${name}.png`), png);
+  writeFileSync(join(OUT, `${name}.gt.json`), JSON.stringify({ ...meta, condition: 'clean' }, null, 1));
+  // 같은 GT · 같은 그림에 사진 조건만 입힌 짝 — 조건 변수를 분리해 잰다.
+  writeFileSync(join(OUT, `${name}-photo.png`), await photoify(png, r));
+  writeFileSync(join(OUT, `${name}-photo.gt.json`), JSON.stringify({ ...meta, condition: 'photo' }, null, 1));
   manifest.push({ name, shapeId: gt.shapeId, variant, labeled: labeled.length });
 }
 
 const dims = manifest.filter((m) => m.variant === 'dim');
-console.log(`생성 ${manifest.length}장 → ${OUT}`);
+console.log(`생성 ${manifest.length * 2}장(깨끗 ${manifest.length} + 사진조건 ${manifest.length}) → ${OUT}`);
 console.log(`  치수표기 있음(dim) ${dims.length}장 — 그중 표기가 실제로 그려진 것 ${dims.filter((m) => m.labeled > 0).length}장`);
 console.log(`  치수표기 없음(plain) ${manifest.length - dims.length}장`);
 for (const k of names) console.log(`   ${k.padEnd(10)} ${manifest.filter((m) => m.shapeId === k).length}장`);

@@ -1,10 +1,11 @@
 {
  "shapeId": "cylinder",
  "params": {
-  "diameter": 40,
-  "height": 130
+  "diameter": 70,
+  "height": 60
  },
  "variant": "plain",
  "labeledParams": [],
- "unit": "mm"
+ "unit": "mm",
+ "condition": "clean"
 }

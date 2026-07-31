@@ -248,6 +248,17 @@ export async function POST(req: NextRequest) {
     scad: probe.scad,
     warnings: probe.warnings,
     summary: probe.summary,
+    /**
+     * ★260731 — **치수가 읽힌 값인지 추정된 값인지 호출측에 알린다.**
+     *
+     * 실측(합성 픽토리얼 48장): 치수 표기가 **없는** 그림에서 비율 정확도 **63.6%**.
+     * 즉 표기 없는 이미지의 치수는 「대략」이다. 그런데 그 사실이 산문 `summary` 에만
+     * 있어서 **하류가 구별할 수 없었고**, 추정치가 그대로 3D·견적으로 흘러갔다.
+     * ⚠ 신고 정확도는 실측 48/48 이고 **과대신고(추정을 「읽었다」)는 0** 이다 —
+     *   비율은 못 고쳐도 「믿어도 되는 값인가」는 정확히 전달된다.
+     * ⚠ 값을 막지 않는다. 3D 는 그대로 만들되 **측정치인 척하지 않는다.**
+     */
+    ...(probe.dimensionSource ? { dimensionSource: probe.dimensionSource } : {}),
     cached: probe.cached,
     ...(usage ? { usage } : {}),
     ...(budgetWarning ? { budgetWarning } : {}),

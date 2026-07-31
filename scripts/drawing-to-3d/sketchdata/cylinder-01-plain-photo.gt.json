@@ -1,0 +1,11 @@
+{
+ "shapeId": "cylinder",
+ "params": {
+  "diameter": 30,
+  "height": 50
+ },
+ "variant": "plain",
+ "labeledParams": [],
+ "unit": "mm",
+ "condition": "photo"
+}

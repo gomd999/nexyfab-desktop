@@ -47,7 +47,9 @@ const GOLDEN: Record<string, Snapshot> = {
   'compose':                     { version: '1.0.0', templateHash: 'fb1aee0a582ddf6d0c5b196b003be76ae8744cda41eb653f08be407c18a0a628' },
   'intake-from-text':            { version: '1.0.0', templateHash: 'ba5e4374bb700373c2a23cf7887478d1c2105a0202eeb2f074ba4ec50322def7' },
   'shape-to-jscad':              { version: '1.0.0', templateHash: 'e7caa19c70d6d8305fcd7a4d11d8fb258d007ba9111813b259d17632a968b8ce' },
-  'imageIntentFromSketch.v1':    { version: '1.0.0', templateHash: 'efaf093c745ef9463fac77d509a89e54b96148a4373a28661222aa88442f9955' },
+  // 260731 v1.1.0 — ① 등각 단축 보정 지시(투영된 겉보기 길이를 실제 길이로 읽던 문제)
+  //                  ② `dimensionSource` 필드(치수가 읽힌 값인지 추정된 값인지 신고)
+  'imageIntentFromSketch.v1':    { version: '1.1.0', templateHash: '867c12ebbe1034cc593334956d35323081de74b0879a866ed9703b17aa2d25b0' },
   // Marketplace / RFQ / advisor prompts (added in earlier rounds without
   // snapshot updates — this block fixes the prior debt while landing
   // imageIntentFromSketch.v1).

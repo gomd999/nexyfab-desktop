@@ -1,4 +1,5 @@
 import { AiProviderError, type ChatCompletionRequest, type ChatCompletionResponse, type ChatMessage, type ProviderAdapter } from '../types';
+import { truncationOf } from './truncation';
 import { getSetting, getSettingSync } from '../../admin-settings';
 
 const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
@@ -57,6 +58,8 @@ export const anthropicProvider: ProviderAdapter = {
 
     const data = await res.json() as {
       content?: Array<{ type: string; text?: string }>;
+      // ★260731 — `max_tokens` 로 끝났는지. 버리면 절단이 파싱 실패로 둔갑한다.
+      stop_reason?: string;
       usage?: { input_tokens?: number; output_tokens?: number };
     };
     const text = (data.content ?? [])
@@ -66,6 +69,7 @@ export const anthropicProvider: ProviderAdapter = {
 
     return {
       text,
+      ...truncationOf(data.stop_reason),
       provider: 'anthropic',
       model,
       promptTokens: data.usage?.input_tokens,

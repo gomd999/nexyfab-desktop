@@ -21,6 +21,11 @@ export interface CachedIntent {
   scad: string;
   warnings: string[];
   summary?: string;
+  /**
+   * ★260731 — 치수의 출처(읽음/추정). **캐시에도 실어야 한다** — 안 실으면 캐시 적중
+   * 시점에 그 신호가 사라져, 같은 이미지가 어떤 때는 「추정」이고 어떤 때는 무표시가 된다.
+   */
+  dimensionSource?: 'callouts' | 'inferred' | 'mixed';
   createdAt: number;
 }
 

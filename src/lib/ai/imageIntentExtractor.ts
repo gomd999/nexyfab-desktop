@@ -15,6 +15,7 @@
  * keying; both paths share the same prompt/version/whitelist contract.
  */
 import { createHash } from 'node:crypto';
+import { truncationNote } from './providers/truncation';
 import { visionCompletion, isVisionAvailable, VisionNotConfiguredError, VisionProviderError } from './vision';
 import { getPrompt } from './prompts';
 import {
@@ -63,6 +64,17 @@ export type ImageIntentOutcome =
       scad: string;
       warnings: string[];
       summary?: string;
+      /**
+       * ★260731 — **치수가 읽힌 값인가 추정된 값인가.**
+       *
+       * 실측(합성 픽토리얼 48장): 치수 표기가 **없는** 그림에서 비율 정확도는 **55%** 다.
+       * 즉 표기 없는 이미지의 치수는 「대략」이지 「측정」이 아니다. 그런데 그 사실이
+       * `summary` 산문에만 있어서 **하류 코드는 구별할 수 없었다** — 추정치가 그대로
+       * 3D·견적으로 흘러간다.
+       * ⚠ 프롬프트 개선으로 비율을 고치려 했으나(등각 단축 힌트) **비율은 거의 그대로**였다.
+       *   못 고치는 것은 고친 척하지 말고 **표시**한다.
+       */
+      dimensionSource?: 'callouts' | 'inferred' | 'mixed';
       cached: boolean;
       cacheKey: string;
       /** Provider metadata for telemetry — undefined on cache hits. */
@@ -173,6 +185,7 @@ export async function extractIntentFromImage(input: ImageIntentInput): Promise<I
       scad: cached.scad,
       warnings: cached.warnings,
       summary: cached.summary,
+      dimensionSource: cached.dimensionSource,
       cached: true,
       cacheKey,
     };
@@ -190,6 +203,15 @@ export async function extractIntentFromImage(input: ImageIntentInput): Promise<I
   let latencyMs: number;
   let promptTokens: number | undefined;
   let completionTokens: number | undefined;
+  /**
+   * ★260731 — **절단을 형식 오류와 구별한다.**
+   *   실측: 합성 스케치 24장 중 16장이 `NON_JSON` 이었는데, 원인은 모델이 형식을 어긴 게
+   *   아니라 `maxTokens 500` 을 thinking 이 써 버린 **절단**이었다. 원문을 손으로 찍어
+   *   보고서야 알았다 — 그 한 단계를 없앤다. 대응이 정반대이기 때문이다:
+   *   형식 위반이면 프롬프트를, **절단이면 상한을** 손봐야 한다.
+   */
+  let truncated: boolean | undefined;
+  let finishReason: string | undefined;
   try {
     const resp = await visionCompletion({
       prompt: `${promptDef.template}\n\n---\n${userPrompt}`,
@@ -203,6 +225,8 @@ export async function extractIntentFromImage(input: ImageIntentInput): Promise<I
     latencyMs = resp.latencyMs;
     promptTokens = resp.promptTokens;
     completionTokens = resp.completionTokens;
+    truncated = resp.truncated;
+    finishReason = resp.finishReason;
   } catch (e) {
     if (e instanceof VisionNotConfiguredError) {
       return {
@@ -223,10 +247,15 @@ export async function extractIntentFromImage(input: ImageIntentInput): Promise<I
 
   const parsedOut = extractJsonObject(raw);
   if (!parsedOut.ok) {
+    const cap = promptDef.defaults.maxTokens ?? 500;
+    const note = truncationNote({ truncated, finishReason }, cap);
     return {
       ok: false,
+      // ⚠ 같은 `NON_JSON` 이라도 **원인이 다르면 다른 말을 해야 한다.**
       code: 'NON_JSON',
-      message: 'vision model returned non-JSON output',
+      message: note
+        ? `vision output truncated — ${note}`
+        : `vision model returned non-JSON output${finishReason ? ` (finishReason: ${finishReason})` : ''}`,
       raw: raw.slice(0, 400),
       provider,
     };
@@ -291,6 +320,12 @@ export async function extractIntentFromImage(input: ImageIntentInput): Promise<I
   }
 
   const summary = typeof parsed.summary === 'string' ? parsed.summary.slice(0, 240) : undefined;
+  /**
+   * ⚠ 모델이 말하지 않았으면 **`undefined` 로 둔다** — `'callouts'`(=읽었다) 로 채우면
+   *   추정치가 측정치로 승격된다. 모르는 것을 안전한 쪽으로도 위험한 쪽으로도 지어내지 않는다.
+   */
+  const ds = parsed.dimensionSource;
+  const dimensionSource = ds === 'callouts' || ds === 'inferred' || ds === 'mixed' ? ds : undefined;
 
   // Fire-and-forget cache write. A failure here must not break the response.
   setCachedIntent(cacheKey, {
@@ -298,6 +333,7 @@ export async function extractIntentFromImage(input: ImageIntentInput): Promise<I
     scad: conv.scad,
     warnings: conv.warnings,
     summary,
+    dimensionSource,
   }).catch(e => console.warn('[image-intent] cache write failed:', e));
 
   return {
@@ -306,6 +342,7 @@ export async function extractIntentFromImage(input: ImageIntentInput): Promise<I
     scad: conv.scad,
     warnings: conv.warnings,
     summary,
+    dimensionSource,
     cached: false,
     cacheKey,
     provider,

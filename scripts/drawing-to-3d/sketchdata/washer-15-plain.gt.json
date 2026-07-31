@@ -1,11 +1,12 @@
 {
  "shapeId": "washer",
  "params": {
-  "outerDiameter": 80,
-  "innerDiameter": 35,
+  "outerDiameter": 45,
+  "innerDiameter": 20,
   "thickness": 6
  },
  "variant": "plain",
  "labeledParams": [],
- "unit": "mm"
+ "unit": "mm",
+ "condition": "clean"
 }

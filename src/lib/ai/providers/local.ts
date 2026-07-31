@@ -1,4 +1,5 @@
 import { AiProviderError, type ChatCompletionRequest, type ChatCompletionResponse, type ProviderAdapter } from '../types';
+import { truncationOf } from './truncation';
 
 const DEFAULT_MODEL = 'llama3.1';
 
@@ -45,13 +46,15 @@ export const localProvider: ProviderAdapter = {
     }
 
     const data = await res.json() as {
-      choices?: Array<{ message?: { content?: string } }>;
+      // ★260731 — 절단 신호를 읽는다. 종전엔 버려서 잘린 응답이 「형식 오류」로만 보였다.
+      choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
     const content = data.choices?.[0]?.message?.content ?? '';
 
     return {
       text: content,
+      ...truncationOf(data.choices?.[0]?.finish_reason),
       provider: 'local',
       model,
       promptTokens: data.usage?.prompt_tokens,

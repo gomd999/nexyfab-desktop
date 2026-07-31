@@ -69,14 +69,28 @@ RESPONSE FORMAT (single JSON object):
   "params":  { <numeric values in mm> },
   "features": [ { "type": "<from list>", "params": { ... } }, ... ],
   "facets":  64,
+  "dimensionSource": "callouts" | "inferred" | "mixed",
   "summary": "<one-sentence description of what you saw, including how you inferred scale>"
 }
+
+"dimensionSource" tells the caller whether the numbers are READ or GUESSED:
+  "callouts" - every reported dimension came from a number printed on the image
+  "inferred" - no dimension numbers were visible; all sizes come from apparent scale
+  "mixed"    - some printed, some inferred
+This is not optional and it is not a formality. Downstream code manufactures
+parts from these numbers; "inferred" means "do not cut metal from this yet".
 
 Hard rules:
 - All dimensions in millimeters. If the image shows a ruler / dimension
   callouts, use them verbatim. Otherwise infer from apparent scale
   (a hand-sized bracket = 60-120mm long, a desk knob = 20-40mm, etc.)
   and NOTE the assumption inside "summary".
+- PICTORIAL VIEWS ARE FORESHORTENED. If the part is drawn in 3D (isometric /
+  axonometric / perspective / a photo taken at an angle), lengths along the two
+  receding horizontal axes appear SHORTER than they are — typically ~0.5-0.6x.
+  A circle in a horizontal plane appears as an ELLIPSE: its true diameter is the
+  MAJOR (longest) axis, NOT the minor axis (~0.58x). Correct for this before
+  reporting. Do not report the on-screen extent as the true length.
 - If the image shows MORE THAN ONE distinct primitive part, return ONLY the
   LARGEST / most-prominent one. Do not try to compose an assembly.
 - NEVER invent shapeId values or param keys not in the lists above.
@@ -87,7 +101,9 @@ If you cannot identify a supported shape with reasonable confidence, return:
 
 const def: PromptDefinition = {
   id: 'imageIntentFromSketch.v1',
-  version: '1.0.0',
+  // ⚠ 프롬프트 본문이 바뀌면 버전을 올린다 — 캐시 키에 들어가므로, 안 올리면
+  //   옛 응답이 새 프롬프트의 결과인 척 돌아온다.
+  version: '1.1.0',
   description: 'Extract a NexyFab CAD intent JSON from a photo / sketch / screenshot. Vision-only; whitelist-bounded.',
   template: TEMPLATE,
   defaults: {
