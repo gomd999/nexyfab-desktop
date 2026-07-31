@@ -69,11 +69,30 @@ export async function extendPartnerProGrace(
  * Used by auth-middleware enrichment so all downstream tier checks see
  * the same value.
  */
+/**
+ * 유효 플랜.
+ *
+ * ## 두 가지 기간이 있고 **의도적으로 분리**돼 있다
+ *  · `proGraceUntil` — 파트너 딜 유예. `free` 사용자를 한시적으로 `pro` 로 **올린다.**
+ *  · `planExpiresAt` — **운영자가 부여한 플랜의 만료.** 지나면 `planFallback`(기본 free)로 **내린다.**
+ *
+ * ⚠ 260802: 종전엔 만료 개념이 없어 **관리자가 Pro 를 주면 영구**였다.
+ *   컬럼만 추가하고 여기서 안 읽으면 아무 일도 일어나지 않는다 — 계산에 반영한다.
+ *
+ * ⚠ 만료를 **유예보다 먼저** 본다. 운영자가 「3개월 Pro」를 줬는데 파트너 유예가
+ *   남아 있다고 계속 Pro 로 두면, 그건 운영자 결정을 딜 로직이 덮는 것이다.
+ *   다만 만료 후에도 유예가 유효하면 유예 규칙대로 `pro` 가 된다(그건 별개 근거다).
+ */
 export function resolveEffectivePlan(
   storedPlan: string,
   proGraceUntil: number | null | undefined,
+  planExpiresAt?: number | null,
+  planFallback?: string | null,
+  now: number = Date.now(),
 ): string {
-  if (storedPlan && storedPlan !== 'free') return storedPlan;
-  if (proGraceUntil && proGraceUntil > Date.now()) return 'pro';
-  return storedPlan || 'free';
+  let plan = storedPlan || 'free';
+  if (planExpiresAt && planExpiresAt <= now) plan = planFallback || 'free';
+  if (plan && plan !== 'free') return plan;
+  if (proGraceUntil && proGraceUntil > now) return 'pro';
+  return plan || 'free';
 }

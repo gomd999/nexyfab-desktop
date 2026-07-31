@@ -25,15 +25,21 @@ async function enrichAuthUser(base: { userId: string; email: string; plan: strin
     db.queryAll<{ org_id: string }>(
       'SELECT org_id FROM nf_org_members WHERE user_id = ?', base.userId,
     ),
-    db.queryOne<{ role: string; email_verified: number; pro_grace_until: number | null }>(
-      'SELECT role, email_verified, pro_grace_until FROM nf_users WHERE id = ?', base.userId,
+    db.queryOne<{ role: string; email_verified: number; pro_grace_until: number | null; plan_expires_at: number | null; plan_fallback: string | null }>(
+      'SELECT role, email_verified, pro_grace_until, plan_expires_at, plan_fallback FROM nf_users WHERE id = ?', base.userId,
     ),
   ]);
   // Partner Pro grace: if the stored plan is free but a deal-driven grace
   // window is still active, surface 'pro' so downstream tier checks let
   // the partner use Pro tooling to evaluate the customer's 3D model.
   const { resolveEffectivePlan } = await import('./partner-pro-grace');
-  const effectivePlan = resolveEffectivePlan(base.plan, userRow?.pro_grace_until ?? null);
+  // ⚠ 260802: 만료(plan_expires_at)를 함께 넘긴다 — 안 넘기면 관리자가 부여한 Pro 가 영구가 된다.
+  const effectivePlan = resolveEffectivePlan(
+    base.plan,
+    userRow?.pro_grace_until ?? null,
+    userRow?.plan_expires_at ?? null,
+    userRow?.plan_fallback ?? null,
+  );
   return {
     ...base,
     plan: effectivePlan,

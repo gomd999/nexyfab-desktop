@@ -1678,6 +1678,17 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE INDEX IF NOT EXISTS idx_admin_elevation_expires ON nf_admin_elevation(expires_at);
     `,
   },
+
+  {
+    version: 76,
+    name: 'plan_expiry_and_api_key_issuer',
+    sql: `
+      ALTER TABLE nf_users ADD COLUMN plan_expires_at INTEGER;
+      ALTER TABLE nf_users ADD COLUMN plan_fallback TEXT;
+      ALTER TABLE nf_api_keys ADD COLUMN issued_by TEXT;
+      CREATE INDEX IF NOT EXISTS idx_users_plan_expiry ON nf_users(plan_expires_at);
+    `,
+  },
 ];
 
 function runMigrations(db: Database.Database): void {

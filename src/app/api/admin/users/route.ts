@@ -168,6 +168,13 @@ export async function PATCH(req: NextRequest) {
     job_title?: string;
     enterpriseContract?: boolean;
     erpIntegrationContract?: boolean;
+    /**
+     * 플랜 만료(epoch ms). `null` 을 주면 만료를 없앤다(영구).
+     * ⚠ 260802: 종전엔 `plan` 만 바꿀 수 있어 **관리자가 Pro 를 주면 영구**였다.
+     */
+    planExpiresAt?: number | null;
+    /** 만료 후 되돌아갈 플랜. 미지정 시 `'free'`. */
+    planFallback?: string | null;
   };
 
   if (!body.userId) {
@@ -186,6 +193,27 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
     }
     await db.execute('UPDATE nf_users SET plan = ? WHERE id = ?', body.plan, body.userId);
+  }
+
+  /**
+   * 플랜 기간.
+   * ⚠ `planExpiresAt` 을 **명시적으로 보냈을 때만** 건드린다 — `undefined`(미전송)와
+   *   `null`(만료 해제)은 다르다. 뭉치면 다른 필드만 고치려던 요청이 기간을 지운다.
+   */
+  if ('planExpiresAt' in body) {
+    const exp = body.planExpiresAt;
+    if (exp != null && (!Number.isFinite(exp) || exp <= Date.now())) {
+      // 과거 시각을 만료로 넣으면 그 즉시 강등된다 — 실수인지 의도인지 구별할 수 없으므로 막는다.
+      return NextResponse.json({ error: '만료 시각은 현재보다 미래여야 합니다(해제하려면 null).' }, { status: 400 });
+    }
+    const fb = body.planFallback ?? 'free';
+    if (!['free', 'pro', 'team', 'enterprise'].includes(fb)) {
+      return NextResponse.json({ error: 'Invalid planFallback' }, { status: 400 });
+    }
+    await db.execute(
+      'UPDATE nf_users SET plan_expires_at = ?, plan_fallback = ? WHERE id = ?',
+      exp ?? null, exp == null ? null : fb, body.userId,
+    );
   }
 
   if (body.role) {
