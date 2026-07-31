@@ -34,8 +34,20 @@ const NEEDED = [
   ['ar'],
 ];
 
-/** `{ ko: …` / `, en: …` 처럼 **객체 키로 쓰인 것**만 센다. */
-const hasKey = (src, key) => new RegExp(`(^|[\\s{,])${key}\\s*:`).test(src);
+/**
+ * `{ ko: …` / `, en: …` 처럼 **객체 키로 쓰인 것**을 센다.
+ *
+ * ⚠ 260802 실측 — 사각지대가 있었다. `partner/_lib/dicts/*` 17개는 언어를 객체 키가 아니라
+ *   **`const KO: LoginDict = {…}`** 형태로 둔다. 처음 스캐너는 이걸 못 봐서 파트너 구역
+ *   **17개 사전이 통째로 측정 밖**에 있었고, 나는 「커버리지를 모른다」고 보고했다.
+ *   직접 세어 보니 **17개 전부 6/6 완비**였다.
+ *   못 본 것을 「없다」로 읽지 않으려면 **측정 도구의 사각지대를 먼저 의심해야 한다.**
+ */
+const hasKey = (src, key) => (
+  new RegExp(`(^|[\\s{,])${key}\\s*:`).test(src)
+  // `const KO: XDict = {` · `const AR = {` — 파트너 포털이 쓰는 방식
+  || new RegExp(`\\bconst\\s+${key.toUpperCase()}\\s*[:=]`).test(src)
+);
 const hasAny = (src, keys) => keys.some((k) => hasKey(src, k));
 
 /** `src` 아래 모든 `.ts`/`.tsx`(테스트 제외). */

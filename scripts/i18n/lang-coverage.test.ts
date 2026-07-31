@@ -69,3 +69,42 @@ describe('6언어 커버리지 래칫', () => {
     expect(stale.length, `기준선에만 있는 경로 ${stale.length}건: ${stale.slice(0, 5).join(', ')}`).toBe(0);
   });
 });
+
+/**
+ * ★ **측정 도구의 사각지대** — 260802 실측으로 막는다.
+ *
+ * `partner/_lib/dicts/*` 17개는 언어를 객체 키(`ko: {…}`)가 아니라
+ * **`const KO: LoginDict = {…}`** 로 둔다. 처음 스캐너는 이걸 못 봐서 파트너 구역이
+ * **통째로 측정 밖**에 있었고, 나는 「커버리지를 모른다」고 보고했다.
+ * 직접 세어 보니 **17개 전부 6/6 완비**였다 — 못 본 것을 「없다」로 읽을 뻔했다.
+ *
+ * 사각지대가 되돌아오면 이 테스트가 깨진다. 그래야 **부채 목록이 실제를 대표한다.**
+ */
+describe('스캐너 사각지대', () => {
+  // ⚠ 앞 describe 의 지역 변수를 쓰지 않는다 — 스코프가 달라 조용히 undefined 가 된다.
+  const scanned = new Set((
+    findIncompleteLangFiles as unknown as (r: string) => Array<{ file: string }>
+  )(SRC).map((r) => r.file));
+  it('★`const KO:` 형태의 사전도 스캔한다 — 파트너 포털 17개가 여기 해당한다', () => {
+    const partnerDicts = [
+      'app/partner/_lib/partnerDict.ts',
+      'app/partner/_lib/dicts/login.ts',
+      'app/partner/_lib/dicts/quotes.ts',
+      'app/partner/_lib/dicts/settlements.ts',
+    ];
+    for (const rel of partnerDicts) {
+      const src = readFileSync(join(SRC, ...rel.split('/')), 'utf8');
+      // 스캐너가 「사전으로 인식하는 조건」과 같은 규칙으로 확인한다.
+      for (const key of ['KO', 'EN', 'JA', 'CN', 'ES', 'AR']) {
+        const re = new RegExp(String.raw`\bconst\s+` + key + String.raw`\s*[:=]`);
+        expect(re.test(src), `${rel} 에 ${key} 블록이 없다`).toBe(true);
+      }
+      // 6언어 완비이므로 부채 목록에 있으면 안 된다.
+      expect(scanned.has(rel), `${rel} 이 6언어 완비인데 부채로 잡혔다`).toBe(false);
+    }
+  });
+
+  it('파트너 구역은 부채 목록에 하나도 없다 — 17개 사전 전부 6/6', () => {
+    expect([...scanned].filter((f) => f.startsWith('app/partner/'))).toEqual([]);
+  });
+});
