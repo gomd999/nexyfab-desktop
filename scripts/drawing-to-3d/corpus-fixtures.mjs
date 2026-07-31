@@ -26,6 +26,24 @@ export function corpusRoot() {
   return existsSync(r) ? r : null;
 }
 
+/**
+ * 2D 벡터 도면(DXF) 실물 — **`참고파일들` 바깥 묶음**에 들어 있다.
+ *
+ * ⚠ `corpusRoot()` 는 `참고파일들/참고파일들`(NIST·buildingSMART)만 가리킨다. DXF 는
+ *   형제 폴더(`참고파일들2`·`참고파일들4`)에 있어 그 루트로는 **한 장도 안 잡힌다** —
+ *   「DXF 실측 0장」이 「없다」가 아니라 **「엉뚱한 데를 봤다」**였다.
+ * ⚠ 라이선스 제한은 그대로다: 경로만 읽고 **복사하지 않는다.** 없으면 null → skip.
+ * @param maxBytes 이보다 큰 파일은 제외하고 **제외 사실을 함께 돌려준다**(무시 아님).
+ */
+export function dxfCorpusFiles({ maxBytes = 50 * 1024 * 1024 } = {}) {
+  const wide = process.env.NEXYFAB_CAD_CORPUS_WIDE || 'C:/Users/gomd9/Downloads/참고파일들';
+  if (!existsSync(wide)) return null;
+  const all = walk(wide, (n) => /\.dxf$/i.test(n));
+  const files = [], tooLarge = [];
+  for (const p of all) (statSync(p).size <= maxBytes ? files : tooLarge).push(p);
+  return { files, tooLarge, total: all.length };
+}
+
 function walk(dir, pred, out = []) {
   if (!existsSync(dir)) return out;
   for (const name of readdirSync(dir)) {

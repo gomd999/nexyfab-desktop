@@ -204,5 +204,7 @@ export async function roundTripVerify2d(source: Ir2d): Promise<Gate2dResult> {
       feedback: `UNAVAILABLE. Could not re-ingest the round-trip DXF (${re.reason ?? 'unknown'}). Not reported as a pass.`,
     };
   }
-  return verify2dReconstruction(re.ir2d, source);
+  // ⚠ 왕복임을 알린다 — 우리 자신의 재출력과 원본의 엔티티 수를 하드 비교하면
+  //   실도면은 구조적으로 100% 실패한다(gate2d.ts 주석 참조).
+  return verify2dReconstruction(re.ir2d, source, { roundTrip: true });
 }

@@ -52,7 +52,29 @@ export interface Gate2dResult {
   feedback: string;
   /** set when status==='unavailable'. */
   reason?: string;
+  /**
+   * ★260731 — **PASS 가 「도면을 전부 재현했다」로 읽히지 않게 하는 값.**
+   * 왕복 검증에서 우리가 다시 써 내는 것은 bbox 4선 + 원 + 치수뿐이다. 원본의
+   * ARC·SPLINE·INSERT·POLYLINE 은 **애초에 재현 대상이 아니다.** 그 사실을 숫자로
+   * 함께 내보내지 않으면 PASS 가 과고지가 된다.
+   */
+  coverage?: {
+    /** 우리 2D 모델이 재현하는 타입의 엔티티 수 / 원본 전체 엔티티 수. */
+    modeledEntities: number;
+    totalEntities: number;
+    ratio: number;
+    /** 재현하지 않는 타입들 — 「빠뜨림」이 아니라 「범위 밖」. */
+    unmodeledTypes: string[];
+  };
 }
+
+/**
+ * 우리 2D IR 이 **실제로 다시 써 내는** 엔티티 타입 (`emitDxf2d` 참조).
+ * ⚠ 이 목록 밖의 타입이 원본에 있다는 것은 **오해석이 아니라 범위 밖**이다.
+ *   둘을 같은 실패로 세면, 실도면은 100% 실패하고 검사는 아무것도 구별하지 못한다
+ *   (실측 260731: 실도면 16장 중 14장이 전부 `entity_counts` 1건으로만 실패).
+ */
+const MODELED_ENTITY_TYPES = new Set(['LINE', 'CIRCLE', 'DIMENSION']);
 
 function within(a: number, b: number): boolean {
   return Math.abs(a - b) <= Math.max(ABS_EPS, (TOL_PCT / 100) * Math.abs(b));
@@ -90,7 +112,19 @@ function pct(exp: number, act: number): number {
  * @param candidate the interpretation to check (e.g. our re-emitted round-trip, or an LLM reading)
  * @param source    the ground-truth evidence extracted from the drawing
  */
-export function verify2dReconstruction(candidate: Ir2d, source: Ir2d): Gate2dResult {
+/**
+ * @param roundTrip 후보가 **우리 자신의 재출력**을 다시 읽은 것인가.
+ *
+ * ★260731 — 이 구분이 없어서 **실도면은 구조적으로 통과할 수 없었다.**
+ *   `emitDxf2d` 는 bbox 4선 + 원 + 치수만 쓴다. 그러니 왕복에서 `entity_counts` 는
+ *   원본이 정확히 그 모양(합성 픽스처)일 때만 맞는다 — 실도면 1,661 LINE 대 4 LINE.
+ *   **항상 울리는 경보는 아무것도 알려 주지 않는다.**
+ * ⚠ 그렇다고 조용히 넘기지도 않는다. 왕복 모드에서는 하드 판정에서 빼되 `coverage` 로
+ *   **얼마나 못 담았는지 숫자로** 내보낸다 — 「범위 밖」과 「이상 없음」은 다르다.
+ * ⚠ 독립 후보 모드(누군가 해석을 주장)에서는 그대로 하드 판정이다 — 거기서는
+ *   엔티티 수가 틀리면 진짜로 잘못 읽은 것이다.
+ */
+export function verify2dReconstruction(candidate: Ir2d, source: Ir2d, { roundTrip = false } = {}): Gate2dResult {
   // ── honesty rule #1: no evidence -> unavailable ──
   if (!ir2dHasEvidence(source)) {
     const reason = 'source drawing has no measurable 2D evidence (no dimensions, circles or extents) — nothing to verify';
@@ -169,8 +203,25 @@ export function verify2dReconstruction(candidate: Ir2d, source: Ir2d): Gate2dRes
     actual: candidate.entityCounts,
     passed: countDiffs.length === 0,
     delta_pct: null,
+    // 왕복 모드에서는 하드 판정에서 뺀다 — 위 주석 참조. 값은 그대로 남겨 surface 한다.
+    ...(roundTrip ? { advisory: true } : {}),
     note: countDiffs.length ? `type-count differences: ${countDiffs.join(', ')}` : `all ${types.length} entity type count(s) matched`,
   });
+
+  // ── 포착 범위 — PASS 가 「전부 재현」으로 읽히지 않도록 항상 계산한다 ──
+  let modeledEntities = 0, totalEntities = 0;
+  const unmodeledTypes: string[] = [];
+  for (const [t, n] of Object.entries(source.entityCounts)) {
+    totalEntities += n;
+    if (MODELED_ENTITY_TYPES.has(t)) modeledEntities += n;
+    else if (n > 0) unmodeledTypes.push(t);
+  }
+  const coverage = {
+    modeledEntities,
+    totalEntities,
+    ratio: totalEntities ? Math.round((modeledEntities / totalEntities) * 1000) / 1000 : 1,
+    unmodeledTypes: unmodeledTypes.sort(),
+  };
 
   // ── layers presence (advisory) ──
   const missingLayers = source.layers.filter((l) => !candidate.layers.includes(l));
@@ -189,18 +240,26 @@ export function verify2dReconstruction(candidate: Ir2d, source: Ir2d): Gate2dRes
   const status: Gate2dResult['status'] = mismatches === 0 ? 'pass' : 'fail';
   const score = Math.max(0, Math.round((1 - mismatches / checks.filter((c) => !c.advisory).length) * 1000) / 1000);
 
-  return { status, score, mismatches, checks, feedback: buildFeedback(status, score, checks, candidate) };
+  return { status, score, mismatches, checks, coverage, feedback: buildFeedback(status, score, checks, candidate, coverage) };
 }
 
 function get(checks: Gate2dCheck[], name: string): Gate2dCheck | undefined {
   return checks.find((c) => c.name === name);
 }
 
-function buildFeedback(status: Gate2dResult['status'], score: number, checks: Gate2dCheck[], candidate: Ir2d): string {
+function buildFeedback(status: Gate2dResult['status'], score: number, checks: Gate2dCheck[], candidate: Ir2d, coverage?: Gate2dResult['coverage']): string {
   const lines: string[] = [];
   const scorePct = `${Math.round(score * 100)}%`;
+  /**
+   * ⚠ PASS 뒤에 **반드시** 포착 범위를 붙인다. 「치수가 맞았다」와 「도면을 다 담았다」는
+   *   다르고, 둘을 구별하지 않으면 PASS 자체가 과고지가 된다.
+   */
+  const coverageLine = coverage && coverage.unmodeledTypes.length
+    ? `Coverage ${Math.round(coverage.ratio * 100)}% — ${coverage.modeledEntities}/${coverage.totalEntities} entities are of types our 2D model reproduces. NOT reproduced (out of scope, not a misread): ${coverage.unmodeledTypes.join(', ')}.`
+    : null;
   if (status === 'pass') {
     lines.push(`PASS. 2D evidence match ${scorePct} — no hard mismatch.`);
+    if (coverageLine) lines.push(`■ ${coverageLine} A PASS here means the measured VALUES agree, not that the whole drawing was captured.`);
     for (const c of checks) if (!c.advisory) lines.push(`- ${c.name}: ${c.note}`);
     const adv = checks.filter((c) => c.advisory && !c.passed);
     if (adv.length) lines.push('Advisory (surfaced, not a fail): ' + adv.map((c) => `${c.name} — ${c.note}`).join('; '));
@@ -208,6 +267,7 @@ function buildFeedback(status: Gate2dResult['status'], score: number, checks: Ga
     return lines.join('\n');
   }
   lines.push(`MISMATCH. 2D evidence match ${scorePct}. The interpretation disagrees with the drawing's own values below.`);
+  if (coverageLine) lines.push(`■ ${coverageLine}`);
   const d = get(checks, 'dimensions');
   if (d && !d.passed) lines.push(`■ Dimension values differ — ${d.note}. These are code-42 measured values; a wrong number here is a misread, not a rounding artifact.`);
   const r = get(checks, 'circle_radii');

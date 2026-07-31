@@ -54,6 +54,76 @@ export const RESPONSE_SCHEMA = {
  */
 const EXTRACT_MAX_ATTEMPTS = 2;
 
+/* ── 일시적 실패 흡수 (260731) ──────────────────────────────────────────────
+ * ★ 이미지 경로에는 **`from-text.mjs` 가 이미 갖고 있던 방어가 없었다.**
+ *   실측(7/30, 50장): 22 건이 `Gemini 503` 로 죽었고 — 그게 리포트에서
+ *   **오답으로 집계**돼 「타입 분류 56%」라는 수치를 만들었다. 실제로 측정된
+ *   28 건은 타입 28/28 이다. **못 잰 것을 틀린 것으로 세면 안 된다.**
+ *
+ * ⚠ 세 가지가 함께 필요하다 — 하나만으론 부족했다:
+ *   ① 페이싱   : 실패가 케이스 종류가 아니라 **실행 순서**를 따랐다 = 속도 문제.
+ *   ② 백오프   : 503 은 일시적이다. 간격 없이 즉시 2회 재시도하면 둘 다 같은 벽을 친다.
+ *   ③ 모델 폴백: flash 가 계속 막히면 pro 로 넘어간다.
+ * ⚠ 영구 실패(400 스키마·403 키)는 재시도하지 않는다 — 다시 보내도 같고, 시간만 쓴다.
+ * ⚠ 폴백이 동작하면 **답한 모델이 바뀐다.** 그 사실을 숨기지 않고 호출측에 돌려준다 —
+ *   모델을 섞어 잰 정확도를 한 숫자로 보고하면 그 숫자가 무엇의 성능인지 알 수 없다.
+ */
+const TRANSIENT_STATUS = new Set([429, 500, 502, 503, 504]);
+export const EXTRACT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-pro'];
+const napMs = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** 호출 간 최소 간격 — 연속 실행이 한도를 밟지 않도록 전역으로 페이싱한다. */
+const MIN_CALL_GAP_MS = Number(process.env.EXTRACT_MIN_GAP_MS ?? 1200);
+let lastCallAt = 0;
+async function pace() {
+  const wait = lastCallAt + MIN_CALL_GAP_MS - Date.now();
+  if (wait > 0) await napMs(wait);
+  lastCallAt = Date.now();
+}
+
+/**
+ * 모델 하나에 대해 백오프 재시도. 일시적 실패만 재시도하고, 영구 실패는 즉시 던진다.
+ * @returns Gemini 응답 JSON
+ */
+async function fetchGeminiOnce(model, body, attempts = 3) {
+  let lastErr;
+  for (let a = 0; a < attempts; a++) {
+    await pace();
+    let res;
+    try {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey()}`, {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body,
+      });
+    } catch (e) {
+      lastErr = e instanceof Error ? e : new Error(String(e));
+      await napMs(1000 * (a + 1));
+      continue;
+    }
+    if (res.ok) return res.json();
+    const detail = (await res.text()).slice(0, 200);
+    const err = new Error(`Gemini ${res.status}: ${detail}`);
+    err.status = res.status;
+    if (!TRANSIENT_STATUS.has(res.status)) throw err; // 영구 실패 — 재시도 무의미
+    lastErr = err;
+    await napMs(1500 * (a + 1)); // 1.5s → 3s → 4.5s
+  }
+  throw lastErr ?? new Error(`${model}: 재시도 소진`);
+}
+
+/**
+ * 모델 목록을 순서대로 시도. 앞 모델이 **일시적 실패로 소진**되면 다음 모델로 넘어간다.
+ * @returns {{ j: object, model: string }} 실제로 답한 모델을 함께 돌려준다.
+ */
+async function callGeminiResilient(models, body) {
+  const list = Array.isArray(models) ? models : [models];
+  let lastErr;
+  for (const model of list) {
+    try { return { j: await fetchGeminiOnce(model, body), model }; }
+    catch (e) { lastErr = e; }
+  }
+  throw lastErr ?? new Error('모든 모델 실패');
+}
+
 const PROMPT = `기계 제작 도면(3각법 정투상, mm)을 판독해 파라메트릭 JSON으로 추출하라.
 
 부품 유형을 먼저 분류하고 해당 필드만 채워라:
@@ -79,29 +149,27 @@ const PROMPT = `기계 제작 도면(3각법 정투상, mm)을 판독해 파라�
  *   온도를 올리는 대신 **빠진 필드를 지목**한다(지어내라는 게 아니라 어디를 보라는 것).
  */
 async function callGemini(img, model, mimeType = 'image/png', extra = '') {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey()}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: img } }, { text: PROMPT + extra }] }],
-      // NOTE: leave thinking ENABLED — gemini-2.5-flash needs it to emit valid
-      // number literals under responseSchema; disabling it (thinkingBudget:0)
-      // made bent_sheet extractions produce degenerate floats (80e-1500000).
-      // A generous output cap only guards against the rare 65KB runaway; the
-      // retry in extractDrawing handles transient malformed JSON.
-      generationConfig: {
-        temperature: 0,
-        response_mime_type: 'application/json',
-        response_schema: RESPONSE_SCHEMA,
-        maxOutputTokens: 8192,
-      },
-    }),
+  const body = JSON.stringify({
+    contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: img } }, { text: PROMPT + extra }] }],
+    // NOTE: leave thinking ENABLED — gemini-2.5-flash needs it to emit valid
+    // number literals under responseSchema; disabling it (thinkingBudget:0)
+    // made bent_sheet extractions produce degenerate floats (80e-1500000).
+    // A generous output cap only guards against the rare 65KB runaway; the
+    // retry in extractDrawing handles transient malformed JSON.
+    generationConfig: {
+      temperature: 0,
+      response_mime_type: 'application/json',
+      response_schema: RESPONSE_SCHEMA,
+      maxOutputTokens: 8192,
+    },
   });
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const j = await res.json();
+  const { j, model: used } = await callGeminiResilient(model, body);
   const text = j.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('empty response: ' + JSON.stringify(j).slice(0, 200));
-  return { text, usage: j.usageMetadata };
+  const finish = j.candidates?.[0]?.finishReason;
+  // ⚠ 빈 응답은 「없음」이 아니라 **잘렸다**는 신호일 때가 많다(MAX_TOKENS).
+  //   이유를 붙여 던져야 리포트에서 원인별로 셀 수 있다.
+  if (!text) throw new Error(`empty response (${used}, finish=${finish}): ` + JSON.stringify(j).slice(0, 160));
+  return { text, usage: j.usageMetadata, model: used, finish };
 }
 
 /**
@@ -123,7 +191,7 @@ export function repairJsonNumbers(text) {
     .replace(/(-?\d+\.\d{15})\d{16,}/g, '$1');
 }
 
-export async function extractDrawing(pngPath, { model = 'gemini-2.5-flash' } = {}) {
+export async function extractDrawing(pngPath, { model = EXTRACT_MODELS } = {}) {
   const img = readFileSync(pngPath).toString('base64');
   // Degraded scans occasionally make the model emit a degenerate number literal
   // (e.g. width=80e-1500000) that breaks JSON.parse. Three-layer recovery:
@@ -146,8 +214,10 @@ export async function extractDrawing(pngPath, { model = 'gemini-2.5-flash' } = {
    */
   let lastErr;
   let best = null, bestMissing = null;
+  /** 남은 모델 후보 — JSON 이 파손되면 앞을 버리고 다음 모델로 간다. */
+  let modelQueue = Array.isArray(model) ? [...model] : [model];
   for (let attempt = 0; attempt < EXTRACT_MAX_ATTEMPTS; attempt++) {
-    let intent = null, usage2 = null, repaired = false;
+    let intent = null, usage2 = null, repaired = false, used = null, jsonBroke = false;
     /**
      * 재시도에는 **빠진 필드를 지목**해 덧붙인다. 같은 요청을 반복하면 `temperature: 0`
      * 이라 같은 답이 온다 — 요청이 달라져야 재시도가 의미를 갖는다.
@@ -166,19 +236,34 @@ export async function extractDrawing(pngPath, { model = 'gemini-2.5-flash' } = {
         + ' 다시 찾아 읽어라. 도면에 정말 없으면 축척과 대칭으로 계산하되, 근거 없이 지어내지는 마라.'
       : '';
     try {
-      const { text, usage } = await callGemini(img, model, 'image/png', hint);
+      const { text, usage, model: usedModel } = await callGemini(img, modelQueue, 'image/png', hint);
       usage2 = usage;
+      // ⚠ **요청한 모델이 아니라 답한 모델**을 기록한다 — 폴백이 걸리면 달라진다.
+      used = usedModel;
       try { intent = JSON.parse(text); }
       catch {
         const fixed = repairJsonNumbers(text);
-        if (fixed !== text) { intent = JSON.parse(fixed); repaired = true; }
+        try { if (fixed !== text) { intent = JSON.parse(fixed); repaired = true; } } catch { /* 아래에서 처리 */ }
+        if (!intent) { jsonBroke = true; lastErr = new Error(`bad extraction JSON (${used}, unrepairable)`); }
       }
     } catch (e) { lastErr = e instanceof Error ? e : new Error(String(e)); }
-    if (!intent) { lastErr = lastErr ?? new Error('bad extraction JSON (unrepairable)'); continue; }
+    if (!intent) {
+      /**
+       * ★260731 — **JSON 파손에 같은 모델로 재시도하는 것은 무의미하다.**
+       *   `temperature: 0` 이라 같은 요청엔 같은 답이 온다 — 이 파일이 결측 재시도에서
+       *   이미 배운 사실인데, **파싱 실패 경로에는 적용되지 않았다.** 실측(plate_with_holes
+       *   10건): 남은 실패 2건이 전부 `unrepairable JSON` 이었고 재시도로 살아나지 않았다.
+       *   → 파손이면 **다음 모델**로 넘긴다. 요청이 달라져야 재시도가 의미를 갖는다.
+       * ⚠ 남은 모델이 없으면 그대로 실패한다 — 지어내지 않는다.
+       */
+      if (jsonBroke && modelQueue.length > 1) modelQueue = modelQueue.slice(1);
+      lastErr = lastErr ?? new Error('bad extraction JSON (unrepairable)');
+      continue;
+    }
     const need = TYPE_FIELDS[String(intent.type ?? '')] ?? [];
     const missing = need.filter((k) => intent[k] == null || Number.isNaN(Number(intent[k])));
     // 결측이 더 적은 응답을 남긴다 — 마지막 응답이 항상 나은 것은 아니다.
-    if (!best || missing.length < bestMissing.length) { best = { intent, usage: usage2, model, repaired }; bestMissing = missing; }
+    if (!best || missing.length < bestMissing.length) { best = { intent, usage: usage2, model: used ?? model, repaired }; bestMissing = missing; }
     if (!missing.length) return best;
   }
   if (!best) throw lastErr ?? new Error('extract failed');
@@ -239,20 +324,18 @@ const CLASSIFY_SCHEMA = {
 };
 
 async function callGeminiImage(base64, mimeType, model, prompt, schema) {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey()}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: base64 } }, { text: prompt }] }],
-      // thinking 유지(비활성 시 degenerate float 발생 — 원 callGemini 주석 참조).
-      generationConfig: { temperature: 0, response_mime_type: 'application/json', response_schema: schema, maxOutputTokens: 8192 },
-    }),
+  const body = JSON.stringify({
+    contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: base64 } }, { text: prompt }] }],
+    // thinking 유지(비활성 시 degenerate float 발생 — 원 callGemini 주석 참조).
+    generationConfig: { temperature: 0, response_mime_type: 'application/json', response_schema: schema, maxOutputTokens: 8192 },
   });
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const j = await res.json();
+  // ⚠ 웹 업로드 경로도 **같은 방어를 받아야 한다.** 한쪽만 고치면 다른 쪽이 조용히
+  //   옛 동작(503 즉시 실패)을 유지한다 — 이 파일에서 실제로 그럴 뻔한 이력이 있다.
+  const { j, model: used } = await callGeminiResilient(model, body);
   const text = j.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('empty response: ' + JSON.stringify(j).slice(0, 200));
-  return { text, usage: j.usageMetadata };
+  const finish = j.candidates?.[0]?.finishReason;
+  if (!text) throw new Error(`empty response (${used}, finish=${finish}): ` + JSON.stringify(j).slice(0, 160));
+  return { text, usage: j.usageMetadata, model: used, finish };
 }
 function parseWithRepair(text) {
   try { return JSON.parse(text); } catch { /* try repair */ }
@@ -269,13 +352,21 @@ function paramSchemaFor(type) {
  * 웹 업로드용 — base64 + mimeType 를 받아 two-stage(분류→치수) 로 11종 어휘를 추출.
  * 각 단계 3중 복구(repair→retry). 지원 mime: png/jpeg/webp. AI 는 이해만, 검증은 결정론.
  */
-export async function extractDrawingFromImage(base64, mimeType = 'image/png', { model = 'gemini-2.5-flash' } = {}) {
+export async function extractDrawingFromImage(base64, mimeType = 'image/png', { model = EXTRACT_MODELS } = {}) {
   // ① 타입 분류
   const clsPrompt = `기계 제작 도면(정투상, mm)의 부품 유형을 분류하라. 후보:\n${CLASSIFY_LIST}\n판별 불가 시 unknown. 형식: {"type":"...","confidence":0~1} JSON 하나만.`;
   let cls = null, lastErr;
+  /**
+   * ★260731 — **JSON 파손에는 모델을 바꿔야 한다.** `temperature: 0` 이라 같은 모델·같은
+   *   요청은 같은 답을 준다 — 파손된 응답에 같은 모델로 재시도하면 비용만 쓴다.
+   * ⚠ 이 승격을 CLI 경로(`extractDrawing`)에만 넣었다가 **웹 경로가 조용히 옛 동작으로
+   *   남을 뻔했다.** 이 파일이 이미 경고하던 함정이다 — 추출 경로는 둘이다.
+   */
+  const escalate = (q, e) => (/JSON|Unexpected|Expected|MAX_TOKENS|empty response/i.test(String(e?.message ?? e)) && q.length > 1 ? q.slice(1) : q);
+  let clsQueue = Array.isArray(model) ? [...model] : [model];
   for (let a = 0; a < EXTRACT_MAX_ATTEMPTS; a++) {
-    try { const { text } = await callGeminiImage(base64, mimeType, model, clsPrompt, CLASSIFY_SCHEMA); const o = parseWithRepair(text); if (o && o.type) { cls = o; break; } }
-    catch (e) { lastErr = e; }
+    try { const { text } = await callGeminiImage(base64, mimeType, clsQueue, clsPrompt, CLASSIFY_SCHEMA); const o = parseWithRepair(text); if (o && o.type) { cls = o; break; } }
+    catch (e) { lastErr = e; clsQueue = escalate(clsQueue, e); }
   }
   if (!cls) throw lastErr ?? new Error('classify failed');
   const type = String(cls.type || 'unknown');
@@ -306,15 +397,16 @@ export async function extractDrawingFromImage(base64, mimeType = 'image/png', { 
   const missingOf = (p) => (p ? need.filter((k) => p[k] == null || Number.isNaN(Number(p[k]))) : need);
   let params = null;
   let lastMissing = need;
+  let exQueue = Array.isArray(model) ? [...model] : [model];
   for (let a = 0; a < EXTRACT_MAX_ATTEMPTS; a++) {
     try {
-      const { text } = await callGeminiImage(base64, mimeType, model, exPrompt, paramSchemaFor(type));
+      const { text } = await callGeminiImage(base64, mimeType, exQueue, exPrompt, paramSchemaFor(type));
       const got = parseWithRepair(text);
       const miss = missingOf(got);
       // 결측이 더 적은 응답을 남긴다 — 마지막 응답이 항상 나은 것은 아니다.
       if (!params || miss.length < lastMissing.length) { params = got; lastMissing = miss; }
       if (!miss.length) break;
-    } catch (e) { lastErr = e; }
+    } catch (e) { lastErr = e; exQueue = escalate(exQueue, e); }
   }
   if (!params) throw lastErr ?? new Error('extract failed');
   if (type === 'flange' && typeof params.boltCount === 'number') params.boltCount = Math.round(params.boltCount);

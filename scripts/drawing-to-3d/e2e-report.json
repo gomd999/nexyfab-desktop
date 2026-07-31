@@ -1,23 +1,28 @@
 {
- "date": "2026-07-30T16:08:16.466Z",
+ "date": "2026-07-31T10:32:44.855Z",
  "summary": {
   "cases": 50,
-  "typeClassification": "28/50 (56.0%)",
-  "paramAccuracy": "132/139 (95.0%)",
-  "holePosAccuracy": "-",
-  "geometryGatePass": "26/50",
-  "apiErrors": 22,
+  "measured": "49/50 (98.0%)",
+  "complete": false,
+  "notMeasured": 1,
+  "notMeasuredReasons": {
+   "truncated_or_bad_json": 1
+  },
+  "typeClassification": "49/49 (100.0%)",
+  "paramAccuracy": "191/215 (88.8%)",
+  "holePosAccuracy": "26/30 (86.7%)",
+  "geometryGatePass": "39/49 (79.6%)",
   "byBucket": {
-   "clean:bent_sheet": "type 5/5, params 20/20",
-   "scan:bent_sheet": "type 5/5, params 17/20",
-   "scan:flange": "type 5/5, params 28/30",
-   "clean:flange": "type 5/5, params 30/30",
-   "clean:l_bracket": "type 1/5, params 4/4",
-   "scan:l_bracket": "type 0/5, params 0/0",
-   "clean:plate_with_holes": "type 0/5, params 0/0",
-   "scan:plate_with_holes": "type 0/5, params 0/0",
-   "scan:stepped_plate": "type 3/5, params 13/15",
-   "clean:stepped_plate": "type 4/5, params 20/20"
+   "clean:bent_sheet": "측정 5/5 — type 5/5, params 20/20",
+   "scan:bent_sheet": "측정 5/5 — type 5/5, params 20/20",
+   "scan:flange": "측정 5/5 — type 5/5, params 28/30",
+   "clean:flange": "측정 5/5 — type 5/5, params 30/30",
+   "clean:l_bracket": "측정 5/5 — type 5/5, params 17/20",
+   "scan:l_bracket": "측정 5/5 — type 5/5, params 15/20",
+   "clean:plate_with_holes": "측정 5/5 — type 5/5, params 15/15",
+   "scan:plate_with_holes": "측정 5/5 — type 5/5, params 12/15",
+   "scan:stepped_plate": "측정 4/5 — type 4/4, params 13/20",
+   "clean:stepped_plate": "측정 5/5 — type 5/5, params 21/25"
   }
  },
  "report": [
@@ -34,10 +39,10 @@
    "name": "bent-sheet-10-scan",
    "bucket": "scan",
    "type": "OK",
-   "params": "1/4",
+   "params": "4/4",
    "holes": "-",
-   "gate": "FAIL",
-   "err": "flangeHeight: gt 30 vs undefined | length: gt 60 vs undefined | thickness: gt 2 vs undefined"
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "bent-sheet-15",
@@ -169,10 +174,10 @@
    "name": "flange-34-scan",
    "bucket": "scan",
    "type": "OK",
-   "params": "6/6",
+   "params": "5/6",
    "holes": "-",
    "gate": "PASS",
-   "err": "-"
+   "err": "bcd: gt 110 vs 118"
   },
   {
    "name": "flange-39",
@@ -187,10 +192,10 @@
    "name": "flange-44-scan",
    "bucket": "scan",
    "type": "OK",
-   "params": "5/6",
+   "params": "6/6",
    "holes": "-",
    "gate": "PASS",
-   "err": "bcd: gt 90 vs 98"
+   "err": "-"
   },
   {
    "name": "flange-49",
@@ -205,124 +210,181 @@
    "name": "l-bracket-03",
    "bucket": "clean",
    "type": "OK",
+   "params": "3/4",
+   "holes": "-",
+   "gate": "FAIL",
+   "err": "thickness: gt 4 vs undefined"
+  },
+  {
+   "name": "l-bracket-08-scan",
+   "bucket": "scan",
+   "type": "OK",
+   "params": "3/4",
+   "holes": "-",
+   "gate": "FAIL",
+   "err": "thickness: gt 4 vs undefined"
+  },
+  {
+   "name": "l-bracket-13",
+   "bucket": "clean",
+   "type": "OK",
    "params": "4/4",
    "holes": "-",
    "gate": "PASS",
    "err": "-"
   },
   {
-   "name": "l-bracket-08-scan",
-   "bucket": "scan",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
-  },
-  {
-   "name": "l-bracket-13",
-   "bucket": "clean",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
-  },
-  {
    "name": "l-bracket-18-scan",
    "bucket": "scan",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "3/4",
+   "holes": "-",
+   "gate": "FAIL",
+   "err": "thickness: gt 4 vs undefined"
   },
   {
    "name": "l-bracket-23",
    "bucket": "clean",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "3/4",
+   "holes": "-",
+   "gate": "FAIL",
+   "err": "thickness: gt 4 vs undefined"
   },
   {
    "name": "l-bracket-28-scan",
    "bucket": "scan",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "3/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "width: gt 90 vs 86"
   },
   {
    "name": "l-bracket-33",
    "bucket": "clean",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "l-bracket-38-scan",
    "bucket": "scan",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "4/4",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "l-bracket-43",
    "bucket": "clean",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "3/4",
+   "holes": "-",
+   "gate": "FAIL",
+   "err": "thickness: gt 4 vs undefined"
   },
   {
    "name": "l-bracket-48-scan",
    "bucket": "scan",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "2/4",
+   "holes": "-",
+   "gate": "FAIL",
+   "err": "width: gt 50 vs 0 | thickness: gt 4 vs undefined"
   },
   {
    "name": "plate-with-holes-01",
    "bucket": "clean",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "3/3",
+   "holes": "2/2",
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "plate-with-holes-06-scan",
    "bucket": "scan",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "3/3",
+   "holes": "2/2",
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "plate-with-holes-11",
    "bucket": "clean",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "3/3",
+   "holes": "3/3",
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "plate-with-holes-16-scan",
    "bucket": "scan",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "3/3",
+   "holes": "2/2",
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "plate-with-holes-21",
    "bucket": "clean",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "3/3",
+   "holes": "4/4",
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "plate-with-holes-26-scan",
    "bucket": "scan",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "3/3",
+   "holes": "4/4",
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "plate-with-holes-31",
    "bucket": "clean",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "3/3",
+   "holes": "3/3",
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "plate-with-holes-36-scan",
    "bucket": "scan",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "3/3",
+   "holes": "2/2",
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "plate-with-holes-41",
    "bucket": "clean",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "3/3",
+   "holes": "4/4",
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "plate-with-holes-46-scan",
    "bucket": "scan",
-   "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "type": "OK",
+   "params": "0/3",
+   "holes": "0/4",
+   "gate": "FAIL",
+   "err": "width: gt 170 vs 0 | depth: gt 120 vs undefined | thickness: gt 12 vs undefined"
   },
   {
    "name": "stepped-plate-02-scan",
@@ -346,22 +408,27 @@
    "name": "stepped-plate-12-scan",
    "bucket": "scan",
    "type": "ERR",
-   "err": "Gemini 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experi"
+   "measured": false,
+   "reason": "truncated_or_bad_json",
+   "err": "bad extraction JSON (gemini-2.5-pro, unrepairable)"
   },
   {
    "name": "stepped-plate-17",
    "bucket": "clean",
    "type": "OK",
-   "params": "5/5",
+   "params": "1/5",
    "holes": "-",
-   "gate": "PASS",
-   "err": "-"
+   "gate": "FAIL",
+   "err": "depth: gt 100 vs undefined | thickness: gt 16 vs undefined | stepWidth: gt 20 vs undefined"
   },
   {
    "name": "stepped-plate-22-scan",
    "bucket": "scan",
-   "type": "ERR",
-   "err": "Expected ',' or '}' after property value in JSON at position 73 (line 1 column 74)"
+   "type": "OK",
+   "params": "0/5",
+   "holes": "-",
+   "gate": "FAIL",
+   "err": "width: gt 150 vs 0 | depth: gt 60 vs undefined | thickness: gt 16 vs undefined"
   },
   {
    "name": "stepped-plate-27",
@@ -384,8 +451,11 @@
   {
    "name": "stepped-plate-37",
    "bucket": "clean",
-   "type": "ERR",
-   "err": "Expected ',' or '}' after property value in JSON at position 73 (line 1 column 74)"
+   "type": "OK",
+   "params": "5/5",
+   "holes": "-",
+   "gate": "PASS",
+   "err": "-"
   },
   {
    "name": "stepped-plate-42-scan",

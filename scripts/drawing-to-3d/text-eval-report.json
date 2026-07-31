@@ -1,0 +1,95 @@
+{
+ "date": "2026-07-31T10:38:35.876Z",
+ "summary": {
+  "cases": 8,
+  "measured": "8/8 (100.0%)",
+  "complete": true,
+  "notMeasuredReasons": {},
+  "gatePass": "8/8 (100.0%)",
+  "statedDimRecall": "24/24 (100.0%)",
+  "holeCount": "1/1",
+  "caveat": "재현율은 축 배정(가로/세로 뒤바뀜)을 검증하지 않는다 — 원문이 축을 확정하지 않기 때문."
+ },
+ "rows": [
+  {
+   "dom": "기계",
+   "text": "두께 12mm 강판 300x200 에 M10 볼트홀",
+   "gate": "PASS",
+   "dims": "3/3",
+   "miss": "-",
+   "holes": "OK",
+   "parts": 1,
+   "ms": 80066
+  },
+  {
+   "dom": "기계",
+   "text": "지름 50mm 길이 400mm 스테인리스 축",
+   "gate": "PASS",
+   "dims": "2/2",
+   "miss": "-",
+   "holes": "-",
+   "parts": 1,
+   "ms": 2200
+  },
+  {
+   "dom": "기계",
+   "text": "앵글 50x50x5 로 만든 1000mm 프레임 4",
+   "gate": "PASS",
+   "dims": "4/4",
+   "miss": "-",
+   "holes": "-",
+   "parts": 4,
+   "ms": 6217
+  },
+  {
+   "dom": "토목",
+   "text": "높이 3m 길이 10m 옹벽 — 저판 두께 400m",
+   "gate": "PASS",
+   "dims": "2/2",
+   "miss": "-",
+   "holes": "-",
+   "parts": 0,
+   "ms": 3069
+  },
+  {
+   "dom": "건축",
+   "text": "가로 6m 세로 4m 높이 3m 방 한 칸, 벽 두",
+   "gate": "PASS",
+   "dims": "4/4",
+   "miss": "-",
+   "holes": "-",
+   "parts": 6,
+   "ms": 8869
+  },
+  {
+   "dom": "조경",
+   "text": "폭 1.5m 길이 5m 목재 데크 — 장선 간격 4",
+   "gate": "PASS",
+   "dims": "3/3",
+   "miss": "-",
+   "holes": "-",
+   "parts": 1,
+   "ms": 93660
+  },
+  {
+   "dom": "인테리어",
+   "text": "길이 2400 깊이 600 높이 900 카운터",
+   "gate": "PASS",
+   "dims": "3/3",
+   "miss": "-",
+   "holes": "-",
+   "parts": 1,
+   "ms": 118534
+  },
+  {
+   "dom": "기계",
+   "text": "외경 100 내경 80 길이 500 파이프",
+   "gate": "PASS",
+   "dims": "3/3",
+   "miss": "-",
+   "holes": "-",
+   "parts": 1,
+   "ms": 2369
+  }
+ ]
+}
