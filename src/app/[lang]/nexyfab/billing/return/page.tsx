@@ -11,7 +11,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-import { isKorean } from '@/lib/i18n/normalize';
+import { isKorean, toIsoLang } from '@/lib/i18n/normalize';
 import { useAuthStore } from '@/hooks/useAuth';
 
 const dict = {
@@ -39,13 +39,62 @@ const dict = {
     completeError: 'An error occurred while completing payment.',
     loadingFallback: 'Processing…',
   },
+  ja: {
+    processing: '決済処理中…',
+    processingDesc: 'しばらくお待ちください。',
+    success: '決済完了！',
+    successDesc: 'プランが有効になりました。\nまもなく移動します。',
+    fail: '決済失敗',
+    backToBilling: '決済ページに戻る',
+    cancelDefault: '決済がキャンセルされました。',
+    badParams: '決済情報が正しくありません。',
+    completeError: '決済の完了処理中にエラーが発生しました。',
+    loadingFallback: '処理中…',
+  },
+  zh: {
+    processing: '正在处理付款…',
+    processingDesc: '请稍候。',
+    success: '付款完成！',
+    successDesc: '套餐已激活。\n即将跳转。',
+    fail: '付款失败',
+    backToBilling: '返回结算页面',
+    cancelDefault: '付款已取消。',
+    badParams: '付款信息不正确。',
+    completeError: '完成付款时发生错误。',
+    loadingFallback: '处理中…',
+  },
+  es: {
+    processing: 'Procesando el pago…',
+    processingDesc: 'Espere un momento.',
+    success: '¡Pago completado!',
+    successDesc: 'Su plan se ha activado.\nLe redirigiremos en breve.',
+    fail: 'Pago fallido',
+    backToBilling: 'Volver a facturación',
+    cancelDefault: 'El pago se ha cancelado.',
+    badParams: 'La información de pago no es válida.',
+    completeError: 'Se ha producido un error al completar el pago.',
+    loadingFallback: 'Procesando…',
+  },
+  ar: {
+    processing: 'جارٍ معالجة الدفع…',
+    processingDesc: 'يُرجى الانتظار قليلاً.',
+    success: 'تم الدفع بنجاح!',
+    successDesc: 'تم تفعيل خطتك.\nسيتم تحويلك بعد قليل.',
+    fail: 'فشل الدفع',
+    backToBilling: 'العودة إلى الفوترة',
+    cancelDefault: 'تم إلغاء عملية الدفع.',
+    badParams: 'معلومات الدفع غير صحيحة.',
+    completeError: 'حدث خطأ أثناء إتمام الدفع.',
+    loadingFallback: 'جارٍ المعالجة…',
+  },
 };
 
 function BillingReturnInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const { lang }     = useParams<{ lang: string }>();
-  const t = dict[isKorean(lang) ? 'ko' : 'en'];
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = dict[toIsoLang(lang)] ?? dict.en;
   const refreshPlan = useAuthStore(s => s.refreshPlan);
 
   const [status, setStatus]   = useState<'processing' | 'success' | 'fail'>('processing');

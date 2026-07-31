@@ -8,6 +8,7 @@
  */
 
 import React, { useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import { worstCase, rss, monteCarlo, type StackupChain, type DimensionLink } from './toleranceStackup';
 
 interface TolerancePanelProps {
@@ -36,13 +37,50 @@ const COPY = {
     runAnalysis: 'Run',
     wcLabel: 'Worst Case', rssLabel: 'RSS', mcLabel: 'Monte Carlo',
   },
+  ja: {
+    title: '公差積み上げ解析',
+    nominal: '公称',
+    plus: '+ 公差', minus: '- 公差',
+    direction: '方向',
+    addLink: '+ リンク追加',
+    runAnalysis: '解析実行',
+    wcLabel: 'ワーストケース', rssLabel: '二乗和平方根', mcLabel: 'モンテカルロ',
+  },
+  zh: {
+    title: '公差累积分析',
+    nominal: '公称值',
+    plus: '+ 公差', minus: '- 公差',
+    direction: '方向',
+    addLink: '+ 添加环节',
+    runAnalysis: '运行分析',
+    wcLabel: '最坏情况', rssLabel: '方和根', mcLabel: '蒙特卡洛',
+  },
+  es: {
+    title: 'Análisis de acumulación de tolerancias',
+    nominal: 'Nominal',
+    plus: '+ Tol.', minus: '- Tol.',
+    direction: 'Dir.',
+    addLink: '+ Añadir eslabón',
+    runAnalysis: 'Ejecutar',
+    wcLabel: 'Caso más desfavorable', rssLabel: 'RSS', mcLabel: 'Montecarlo',
+  },
+  ar: {
+    title: 'تحليل تراكم التفاوتات',
+    nominal: 'القيمة الاسمية',
+    plus: '+ تفاوت', minus: '- تفاوت',
+    direction: 'الاتجاه',
+    addLink: '+ إضافة حلقة',
+    runAnalysis: 'تشغيل التحليل',
+    wcLabel: 'أسوأ الحالات', rssLabel: 'جذر مجموع المربعات', mcLabel: 'مونت كارلو',
+  },
 } as const;
 
 export default function TolerancePanel({
   lang, initialChain, onClose,
 }: TolerancePanelProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const [chain, setChain] = useState<StackupChain>(initialChain ?? { links: [] });
   const [results, setResults] = useState<null | {
     wc: ReturnType<typeof worstCase>;

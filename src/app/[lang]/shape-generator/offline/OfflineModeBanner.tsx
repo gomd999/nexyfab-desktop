@@ -14,6 +14,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 export interface OfflineModeBannerProps {
   lang: string;
@@ -38,6 +39,34 @@ const COPY = {
     recheck: 'Re-check',
     sinceLabel: 'Last online',
   },
+  ja: {
+    tauriOffline: 'オフライン — スケッチ / エクスポートは使用できます。AI 機能は無効です。',
+    webOffline:   'オフライン — 一部の機能が制限されます。作業が保存されない場合があります。',
+    reconnect: '再接続しました',
+    recheck: '再確認',
+    sinceLabel: '最終接続',
+  },
+  zh: {
+    tauriOffline: '离线 — 草图 / 导出仍可使用。AI 功能已停用。',
+    webOffline:   '离线 — 部分功能受限。您的工作可能不会被保存。',
+    reconnect: '已重新连接',
+    recheck: '重新检查',
+    sinceLabel: '最后在线',
+  },
+  es: {
+    tauriOffline: 'Sin conexión: el boceto y la exportación siguen funcionando. Funciones de IA desactivadas.',
+    webOffline:   'Sin conexión: algunas funciones no están disponibles. Puede que su trabajo no se guarde.',
+    reconnect: 'Conexión restablecida',
+    recheck: 'Volver a comprobar',
+    sinceLabel: 'Última conexión',
+  },
+  ar: {
+    tauriOffline: 'غير متصل — الرسم والتصدير ما زالا يعملان. مزايا الذكاء الاصطناعي معطّلة.',
+    webOffline:   'غير متصل — بعض المزايا غير متاحة. قد لا يُحفظ عملك.',
+    reconnect: 'تمت إعادة الاتصال',
+    recheck: 'إعادة الفحص',
+    sinceLabel: 'آخر اتصال',
+  },
 } as const;
 
 export default function OfflineModeBanner({
@@ -59,7 +88,8 @@ export default function OfflineModeBanner({
 
   if (!isOffline && !showReconnectedFlash) return null;
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
 
   const message = isOffline
     ? (isTauri ? t.tauriOffline : t.webOffline)

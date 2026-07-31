@@ -12,6 +12,7 @@
 // and the relationship is now legitimately established through us).
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 interface Entry {
   id: string;
@@ -54,15 +55,51 @@ const dict = {
     refresh: 'Refresh',
     contact: 'Contact directly',
   },
+  ja: {
+    title: '📞 推薦工場の進捗',
+    subtitle: 'ディレクトリから推薦した工場に NexyFab が直接コンタクトしています',
+    empty: '推薦された工場はまだありません。運営チームがまもなく開始します。',
+    blurNote: '💡 会社名は「見積到着」または「登録完了」時に公開されます',
+    refresh: '更新',
+    contact: '直接連絡',
+  },
+  zh: {
+    title: '📞 推荐工厂进展',
+    subtitle: 'NexyFab 正代您直接联系目录中的推荐工厂',
+    empty: '暂无推荐工厂。运营团队即将开始对接。',
+    blurNote: '💡 公司名称将在“报价到达”或“完成注册”时公开',
+    refresh: '刷新',
+    contact: '直接联系',
+  },
+  es: {
+    title: '📞 Fábricas recomendadas: progreso',
+    subtitle: 'NexyFab está contactando en su nombre con las fábricas del directorio',
+    empty: 'Aún no hay recomendaciones. El equipo de operaciones empezará en breve.',
+    blurNote: '💡 Los nombres de empresa se revelan al llegar un presupuesto o al registrarse',
+    refresh: 'Actualizar',
+    contact: 'Contactar directamente',
+  },
+  ar: {
+    title: '📞 المصانع المقترحة — التقدّم',
+    subtitle: 'تتواصل NexyFab نيابةً عنك مع مصانع الدليل',
+    empty: 'لا توجد اقتراحات بعد. سيبدأ فريق التشغيل بالتواصل قريباً.',
+    blurNote: '💡 تُكشف أسماء الشركات عند وصول عرض السعر أو عند إتمام التسجيل',
+    refresh: 'تحديث',
+    contact: 'تواصل مباشر',
+  },
 };
 
 export interface ConciergeProgressCardProps {
-  lang: 'ko' | 'en';
+  /**
+   * ⚠ 260802: 여기가 `'ko' | 'en'` 이었다 — **프롭 타입이 2언어를 못 박아** 부모가
+   *   다른 언어를 넘길 수조차 없었다. 사전을 채워도 도달할 수 없는 층위다.
+   */
+  lang: string;
   rfqId: string;
 }
 
 export default function ConciergeProgressCard({ lang, rfqId }: ConciergeProgressCardProps) {
-  const t = dict[lang];
+  const t = dict[toIsoLang(lang)] ?? dict.en;
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -148,18 +185,28 @@ export default function ConciergeProgressCard({ lang, rfqId }: ConciergeProgress
   );
 }
 
-function timeAgo(ts: number, lang: 'ko' | 'en'): string {
+/**
+ * 상대 시간.
+ *
+ * ⚠ 260802: 종전엔 ko/en 문자열을 손으로 조립했다(`${n}분 전` / `${n}m ago`).
+ *   그 방식은 언어를 늘릴 때마다 문자열을 늘려야 하고, **복수형·어순이 언어마다 달라**
+ *   직역하면 어색해진다(아랍어는 2개/3~10개/11개 이상 형태가 다르다).
+ *   `Intl.RelativeTimeFormat` 은 그걸 런타임이 안다 — 하드코딩을 통째로 없앤다.
+ */
+function timeAgo(ts: number, lang: string): string {
   const sec = Math.floor((Date.now() - ts) / 1000);
-  if (lang === 'ko') {
-    if (sec < 60) return `${sec}초 전`;
-    if (sec < 3600) return `${Math.floor(sec / 60)}분 전`;
-    if (sec < 86400) return `${Math.floor(sec / 3600)}시간 전`;
-    return `${Math.floor(sec / 86400)}일 전`;
+  const iso = toIsoLang(lang);
+  const [value, unit]: [number, Intl.RelativeTimeFormatUnit] =
+    sec < 60 ? [-sec, 'second']
+      : sec < 3600 ? [-Math.floor(sec / 60), 'minute']
+        : sec < 86400 ? [-Math.floor(sec / 3600), 'hour']
+          : [-Math.floor(sec / 86400), 'day'];
+  try {
+    return new Intl.RelativeTimeFormat(iso, { numeric: 'auto' }).format(value, unit);
+  } catch {
+    // 런타임이 해당 로케일을 모를 때 — 빈 문자열 대신 영어로라도 보여 준다.
+    return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(value, unit);
   }
-  if (sec < 60) return `${sec}s ago`;
-  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
-  if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
-  return `${Math.floor(sec / 86400)}d ago`;
 }
 
 const containerStyle: React.CSSProperties = {
