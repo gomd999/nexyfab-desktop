@@ -1658,6 +1658,26 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       CREATE INDEX IF NOT EXISTS idx_inquiries_factory ON nf_inquiries(factory_id);
     `,
   },
+  {
+    version: 75,
+    name: 'admin_step_up_otp',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_admin_otp (
+        user_id    TEXT PRIMARY KEY,
+        code_hash  TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        attempts   INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS nf_admin_elevation (
+        access_hash TEXT PRIMARY KEY,
+        user_id     TEXT NOT NULL,
+        expires_at  INTEGER NOT NULL,
+        created_at  INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_admin_elevation_expires ON nf_admin_elevation(expires_at);
+    `,
+  },
 ];
 
 function runMigrations(db: Database.Database): void {
@@ -1797,6 +1817,28 @@ function initSchema(db: Database.Database): void {
       user_id TEXT NOT NULL,
       email TEXT NOT NULL,
       expires_at INTEGER NOT NULL
+    );
+
+    -- 관리자 step-up 인증 (260802) — 비밀번호 하나로 관리자 콘솔이 열리지 않게 한다.
+    -- ⚠ 코드는 평문이 아니라 HMAC(JWT_SECRET, code) 로 저장한다 —
+    --    6자리는 10^6 이라 단순 해시면 오프라인 전수조사가 몇 초다.
+    -- ⚠ nf_verification_codes(이메일 인증)와 분리한다 — 같은 그릇에 담으면
+    --    가입 인증 코드로 관리자 상승이 가능해진다(권한 혼동).
+    CREATE TABLE IF NOT EXISTS nf_admin_otp (
+      user_id    TEXT PRIMARY KEY,
+      code_hash  TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      attempts   INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL
+    );
+
+    -- 상승 세션. 액세스 토큰 해시가 키다 — 로그아웃·재로그인·토큰 회전에서
+    -- 상승이 자동으로 죽는다(별도 폐기 절차를 만들면 그걸 잊는 날이 온다).
+    CREATE TABLE IF NOT EXISTS nf_admin_elevation (
+      access_hash TEXT PRIMARY KEY,
+      user_id     TEXT NOT NULL,
+      expires_at  INTEGER NOT NULL,
+      created_at  INTEGER NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS nf_sso_config (
