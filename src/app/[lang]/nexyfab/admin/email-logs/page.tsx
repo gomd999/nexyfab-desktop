@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
-import { isKorean } from '@/lib/i18n/normalize';
+import { isKorean, toIsoLang } from '@/lib/i18n/normalize';
 
 interface EmailLog {
   id: string;
@@ -68,6 +68,98 @@ const T = {
     clearFail: 'Clear failed',
     total: (n: number) => `${n} total`,
   },
+  ja: {
+    title: 'メール送信ログ',
+    to: '宛先',
+    subject: '件名',
+    status: 'ステータス',
+    error: 'エラー',
+    date: '日付',
+    sent: '送信完了',
+    failed: '失敗',
+    all: 'すべて',
+    filter: 'ステータス絞り込み',
+    clearOld: '古いログを削除',
+    clearing: '削除中...',
+    prev: '前へ',
+    next: '次へ',
+    loading: '読み込み中...',
+    empty: 'ログがありません。',
+    error_load: 'ログを読み込めませんでした。',
+    page_of: (p: number, t: number) => `${p} / ${t} ページ`,
+    cleared: (n: number) => `${n} 件を削除しました。`,
+    clearFail: '削除に失敗しました',
+    total: (n: number) => `全 ${n} 件`,
+  },
+  zh: {
+    title: '邮件发送日志',
+    to: '收件人',
+    subject: '主题',
+    status: '状态',
+    error: '错误',
+    date: '日期',
+    sent: '已发送',
+    failed: '失败',
+    all: '全部',
+    filter: '状态筛选',
+    clearOld: '清除旧日志',
+    clearing: '清除中...',
+    prev: '上一页',
+    next: '下一页',
+    loading: '加载中...',
+    empty: '暂无日志。',
+    error_load: '无法加载日志。',
+    page_of: (p: number, t: number) => `第 ${p} / ${t} 页`,
+    cleared: (n: number) => `已删除 ${n} 条。`,
+    clearFail: '删除失败',
+    total: (n: number) => `共 ${n} 条`,
+  },
+  es: {
+    title: 'Registro de envíos de correo',
+    to: 'Destinatario',
+    subject: 'Asunto',
+    status: 'Estado',
+    error: 'Error',
+    date: 'Fecha',
+    sent: 'Enviado',
+    failed: 'Fallido',
+    all: 'Todos',
+    filter: 'Filtrar por estado',
+    clearOld: 'Borrar registros antiguos',
+    clearing: 'Borrando...',
+    prev: 'Anterior',
+    next: 'Siguiente',
+    loading: 'Cargando...',
+    empty: 'No hay registros.',
+    error_load: 'No se han podido cargar los registros.',
+    page_of: (p: number, t: number) => `Página ${p} de ${t}`,
+    cleared: (n: number) => `Se han borrado ${n} registros.`,
+    clearFail: 'Error al borrar',
+    total: (n: number) => `${n} en total`,
+  },
+  ar: {
+    title: 'سجل إرسال البريد',
+    to: 'المستلم',
+    subject: 'الموضوع',
+    status: 'الحالة',
+    error: 'خطأ',
+    date: 'التاريخ',
+    sent: 'تم الإرسال',
+    failed: 'فشل',
+    all: 'الكل',
+    filter: 'تصفية حسب الحالة',
+    clearOld: 'حذف السجلات القديمة',
+    clearing: 'جارٍ الحذف...',
+    prev: 'السابق',
+    next: 'التالي',
+    loading: 'جارٍ التحميل...',
+    empty: 'لا توجد سجلات.',
+    error_load: 'تعذّر تحميل السجلات.',
+    page_of: (p: number, t: number) => `صفحة ${p} من ${t}`,
+    cleared: (n: number) => `تم حذف ${n} سجلاً.`,
+    clearFail: 'فشل الحذف',
+    total: (n: number) => `الإجمالي ${n}`,
+  },
 };
 
 export default function AdminEmailLogsPage({
@@ -76,7 +168,8 @@ export default function AdminEmailLogsPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = use(params);
-  const t = isKorean(lang) ? T.ko : T.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = T[toIsoLang(lang)] ?? T.en;
 
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuthStore();

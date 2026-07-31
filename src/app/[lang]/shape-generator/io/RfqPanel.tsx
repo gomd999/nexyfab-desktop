@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import type * as THREE from 'three';
 import type { RfqOptions, ToleranceClass, SurfaceFinish, DeliveryUrgency } from '../io/rfqPackage';
 
@@ -50,6 +51,78 @@ const dict = {
     submitApi: 'Direct Order via Factory Network (API)',
     submitting: 'Submitting…',
     submitSuccess: 'Order successfully submitted. Check dashboard for status.',
+  },
+  ja: {
+    title: '見積依頼 (RFQ) パッケージ',
+    subtitle: 'サプライヤーへそのまま送れるパッケージを生成',
+    qty: '数量', material: '材料仕様', tolerance: '公差等級',
+    finish: '表面処理', delivery: '納期', notes: '特記事項',
+    budget: '目標単価 (任意)', company: '会社名 (任意)', email: 'メール (任意)',
+    revision: '改訂番号', download: 'RFQ パッケージをダウンロード',
+    estimatedCost: '概算費用', perPiece: '/個', total: '合計',
+    generating: '生成中…', currency: '通貨',
+    rough: '粗 (ISO 2768-c)', medium: '中 (ISO 2768-m)',
+    fine: '精 (ISO 2768-f)', ultraFine: '超精 (ISO 2768-v)',
+    asMachined: '機械加工まま', polished: 'ポリッシュ', anodized: 'アルマイト',
+    powderCoated: '粉体塗装', electroplated: '電気めっき', none: 'なし',
+    standard: '標準 (4〜8 週)', expedited: '特急 (1〜2 週)', prototype: '試作 (1〜5 日)',
+    submitApi: 'ファクトリーネットワークへ直接発注 (API)',
+    submitting: '発注中…',
+    submitSuccess: '発注を受け付けました。ダッシュボードで状況をご確認ください。',
+  },
+  zh: {
+    title: '询价 (RFQ) 资料包',
+    subtitle: '一键生成可直接发给供应商的资料包',
+    qty: '数量', material: '材料规格', tolerance: '公差等级',
+    finish: '表面处理', delivery: '交期', notes: '特别说明',
+    budget: '目标单价（可选）', company: '公司名称（可选）', email: '邮箱（可选）',
+    revision: '版本号', download: '下载 RFQ 资料包',
+    estimatedCost: '预估费用', perPiece: '/件', total: '合计',
+    generating: '生成中…', currency: '币种',
+    rough: '粗级 (ISO 2768-c)', medium: '中级 (ISO 2768-m)',
+    fine: '精级 (ISO 2768-f)', ultraFine: '超精级 (ISO 2768-v)',
+    asMachined: '加工态', polished: '抛光', anodized: '阳极氧化',
+    powderCoated: '喷粉', electroplated: '电镀', none: '无',
+    standard: '标准（4~8 周）', expedited: '加急（1~2 周）', prototype: '样件（1~5 天）',
+    submitApi: '直接下单到工厂网络 (API)',
+    submitting: '下单中…',
+    submitSuccess: '订单已受理，请在仪表板查看状态。',
+  },
+  es: {
+    title: 'Paquete de solicitud de presupuesto (RFQ)',
+    subtitle: 'Genere un paquete listo para enviar al proveedor',
+    qty: 'Cantidad', material: 'Especificación de material', tolerance: 'Clase de tolerancia',
+    finish: 'Acabado superficial', delivery: 'Plazo de entrega', notes: 'Observaciones',
+    budget: 'Precio unitario objetivo (opc.)', company: 'Empresa (opc.)', email: 'Correo (opc.)',
+    revision: 'Revisión', download: 'Descargar paquete RFQ',
+    estimatedCost: 'Coste estimado', perPiece: '/ud.', total: 'Total',
+    generating: 'Generando…', currency: 'Moneda',
+    rough: 'Basta (ISO 2768-c)', medium: 'Media (ISO 2768-m)',
+    fine: 'Fina (ISO 2768-f)', ultraFine: 'Muy fina (ISO 2768-v)',
+    asMachined: 'Tal como se mecaniza', polished: 'Pulido', anodized: 'Anodizado',
+    powderCoated: 'Pintura en polvo', electroplated: 'Electrodepositado', none: 'Ninguno',
+    standard: 'Estándar (4-8 semanas)', expedited: 'Urgente (1-2 semanas)', prototype: 'Prototipo (1-5 días)',
+    submitApi: 'Pedir directamente a la red de fábricas (API)',
+    submitting: 'Enviando el pedido…',
+    submitSuccess: 'Pedido recibido correctamente. Consulte el estado en el panel.',
+  },
+  ar: {
+    title: 'حزمة طلب عرض سعر (RFQ)',
+    subtitle: 'أنشئ حزمة جاهزة للإرسال إلى المورّد',
+    qty: 'الكمية', material: 'مواصفات المادة', tolerance: 'درجة التفاوت',
+    finish: 'المعالجة السطحية', delivery: 'مدة التسليم', notes: 'ملاحظات خاصة',
+    budget: 'سعر الوحدة المستهدف (اختياري)', company: 'اسم الشركة (اختياري)', email: 'البريد الإلكتروني (اختياري)',
+    revision: 'رقم المراجعة', download: 'تنزيل حزمة RFQ',
+    estimatedCost: 'التكلفة التقديرية', perPiece: '/قطعة', total: 'الإجمالي',
+    generating: 'جارٍ الإنشاء…', currency: 'العملة',
+    rough: 'خشن (ISO 2768-c)', medium: 'متوسط (ISO 2768-m)',
+    fine: 'دقيق (ISO 2768-f)', ultraFine: 'فائق الدقة (ISO 2768-v)',
+    asMachined: 'كما بعد التشغيل', polished: 'مصقول', anodized: 'مؤكسد كهربائياً',
+    powderCoated: 'طلاء بالمسحوق', electroplated: 'مطلي كهربائياً', none: 'بدون',
+    standard: 'قياسي (4–8 أسابيع)', expedited: 'مستعجل (1–2 أسبوع)', prototype: 'نموذج أولي (1–5 أيام)',
+    submitApi: 'الطلب مباشرةً عبر شبكة المصانع (API)',
+    submitting: 'جارٍ إرسال الطلب…',
+    submitSuccess: 'تم استلام طلبك بنجاح. تابع الحالة من لوحة التحكم.',
   },
 } as const;
 
@@ -95,8 +168,9 @@ export default function RfqPanel({
   volume_cm3 = 0,
   onClose,
 }: RfqPanelProps) {
-  const lk: Lang = lang === 'ko' || lang === 'kr' ? 'ko' : 'en';
-  const t = dict[lk];
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const lk: Lang = toIsoLang(lang) as Lang;
+  const t = dict[lk] ?? dict.en;
 
   const [opts, setOpts] = useState<RfqOptions>({
     quantity: 10,
