@@ -175,6 +175,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
    */
   const outputsFailed: string[] = [];
 
+  /**
+   * 요청 출력 언어 — **여섯 언어를 다 받는다.**
+   * 종전엔 `options.lang === 'en'` 하나만 알아들어 `es` 로 요청하면 **조용히 무시**됐다.
+   * 「요청이 없었던 것」과 「요청을 못 들어준 것」은 다르다 — 후자는 문서에 적어야 한다.
+   */
+  let outLang: string | null = null;
+  let outLangCoverage: string = 'full';
+  let outLangNotice = '';
+  try {
+    const ol = (await import(/* webpackIgnore: true */ pathToFileURL(join(process.cwd(), 'scripts', 'drawing-to-3d', 'output-lang.mjs')).href)) as {
+      normalizeOutputLang: (v: unknown) => string | null;
+      translationCoverage: (l: string | null) => string;
+      outputLangNoticeHtml: (l: string | null) => string;
+    };
+    outLang = ol.normalizeOutputLang((options as { lang?: unknown }).lang);
+    outLangCoverage = ol.translationCoverage(outLang);
+    outLangNotice = ol.outputLangNoticeHtml(outLang);
+  } catch (e) { void e; /* 고지 실패는 산출을 막지 않는다 — 다만 고지도 안 나간다 */ }
+
+
   // 2D GA 도면 (건축=축선 구조평면·조경=배치도 모드 포함 · 배관=라우터 결과 그대로 투영)
   // revHistory=개정 이력(입력 원칙) · lang='en'=시트명·표두 EN(본문 KO 유지 명시)
   // P0(260719b): welds 전달 — 용접 지시선(nf-weldarrow)+일람이 웹 도면집에도 실배치(MCP 동급)
@@ -191,7 +211,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           : Array.isArray((assembly as { revisions?: Array<{ at?: number; kind?: string; target?: string; note?: string }> }).revisions)
             ? { revHistory: (assembly as { revisions: Array<{ at?: number; kind?: string; target?: string; note?: string }> }).revisions.map((r, i) => ({ rev: String(i + 1), date: r.at ? new Date(r.at).toISOString().slice(0, 10) : '', note: `${r.kind ?? 'edit'} ${r.target ?? ''} ${r.note ?? ''}`.trim().slice(0, 90) })) }
             : {}),
-        ...(options.lang === 'en' ? { lang: 'en' } : {}),
+        // ⚠ GA 는 **시트명·표두만** 영어다(본문 KO 유지). 그 사실은 00_안내.html 이 고지한다.
+        ...(outLang === 'en' ? { lang: 'en' } : {}),
       }),
     });
     gaHtml = files[files.length - 1].content;
@@ -542,6 +563,11 @@ if (data.pipes?.errors?.length) console.warn('⚠ 배관 라우팅 실패:', dat
     /** 검증을 못 돌린 항목 — 「검증 안 함」과 「이상 없음」은 다르다. */
     verificationUnavailable,
     /**
+     * 문서 언어 — **요청과 실제가 다르면 그 사실이 기계 판독 요약에도 남아야 한다.**
+     * 사람이 읽는 안내문에만 적어 두면, 자동으로 받아 쓰는 쪽은 한국어인 줄 모른다.
+     */
+    documentLang: { requested: outLang, content: 'ko', coverage: outLangCoverage },
+    /**
      * 입력만 주면 판정되는 항목 — **「검토가 없다」가 아니라 「값이 없다」**이다.
      * 이 둘을 구별하지 못하면 사용자는 기능이 없는 줄 안다.
      */
@@ -588,6 +614,7 @@ if (data.pipes?.errors?.length) console.warn('⚠ 배관 라우팅 실패:', dat
       + `table{border-collapse:collapse;width:100%;margin:1rem 0}td,th{border:1px solid #cbd5e1;padding:.5rem;text-align:left;vertical-align:top}`
       + `code{background:#f1f5f9;padding:1px 5px;border-radius:4px}.warn{background:#fef3c7;border-left:4px solid #f59e0b;padding:.8rem 1rem;margin:1rem 0}`
       + `.ok{background:#ecfdf5;border-left:4px solid #10b981;padding:.8rem 1rem;margin:1rem 0}</style>`
+      + outLangNotice
       + `<h1>${title}</h1><p>REV <code>${basis.rev}</code> · 총 질량 <b>${basis.massKg} kg</b> · 부품 ${basis.parts}개 · `
       + `외형 ${basis.env.map((v) => Math.round(v)).join('×')} mm</p>`
       + `<div class="ok"><b>어디서부터 보면 되나</b><br>처음이면 <code>쉬운요약.html</code> → 형상은 <code>GA_3D.html</code> → `

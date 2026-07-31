@@ -186,3 +186,45 @@ describe('POST /api/nexyfab/drawing/package — 발행 규약과 판정 도달',
     expect(easyOk!).not.toContain('활동(미끄러짐)');
   }, heavyTestBudgetMs(45_000));
 });
+
+/**
+ * ★ **요청 언어를 못 들어줬으면 문서에 적는다** (260802).
+ *
+ * 종전엔 `options.lang === 'en'` 하나만 알아들었다 — `es` 로 요청하면 **조용히 무시**되고
+ * 한국어 패키지가 그대로 나갔다. 「요청이 없었던 것」과 「요청을 못 들어준 것」은 다르다.
+ * 실측 배경: `labelKo 836 · labelEn 86` — 영어조차 약 10%이고 ja·zh·es·ar 은 0이다.
+ */
+describe('POST /api/nexyfab/drawing/package — 산출물 언어 고지', () => {
+  it('★es 로 요청하면 **스페인어로** 「본문은 한국어」라고 고지한다', async () => {
+    const data = await call({ assembly: BASE_PLATE, options: { title: '테스트', lang: 'es' } });
+    expect(data.ok).toBe(true);
+    const guide = await readFile(data, '00_안내.html');
+    expect(guide, '안내문이 없다').toBeTruthy();
+    // 읽을 수 있는 언어로 적혀야 고지다 — 한국어로만 적으면 스페인어 사용자는 못 읽는다.
+    expect(guide!, '스페인어 고지가 없다').toContain('coreano');
+    expect(guide!).toContain('Idioma del documento');
+    const summary = await readFile(data, 'summary.json');
+    const parsed = JSON.parse(summary!) as { documentLang?: { requested?: string; content?: string; coverage?: string } };
+    expect(parsed.documentLang, 'summary.json 에 언어 상태가 없다 — 기계로 받는 쪽은 한국어인 줄 모른다').toBeTruthy();
+    expect(parsed.documentLang!.requested).toBe('es');
+    expect(parsed.documentLang!.content).toBe('ko');
+    expect(parsed.documentLang!.coverage).toBe('none');
+  }, heavyTestBudgetMs(60_000));
+
+  it('★en 은 partial 이다 — 「번역됨」으로 부풀리지 않는다', async () => {
+    const data = await call({ assembly: BASE_PLATE, options: { title: '테스트', lang: 'en' } });
+    const summary = await readFile(data, 'summary.json');
+    const parsed = JSON.parse(summary!) as { documentLang?: { coverage?: string } };
+    expect(parsed.documentLang!.coverage).toBe('partial');
+    const guide = await readFile(data, '00_안내.html');
+    expect(guide!).toContain('not a translated document');
+  }, heavyTestBudgetMs(60_000));
+
+  it('언어를 안 주면 고지가 없다 — 할 말이 없을 때 만들어 내지 않는다', async () => {
+    const data = await call({ assembly: BASE_PLATE, options: { title: '테스트' } });
+    const guide = await readFile(data, '00_안내.html');
+    expect(guide!).not.toContain('Idioma del documento');
+    const parsed = JSON.parse((await readFile(data, 'summary.json'))!) as { documentLang?: { requested?: string | null } };
+    expect(parsed.documentLang!.requested).toBeNull();
+  }, heavyTestBudgetMs(60_000));
+});
