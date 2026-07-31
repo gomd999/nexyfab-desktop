@@ -19,7 +19,5 @@
   "app/[lang]/shape-generator/estimation/supplierData.ts",
   "app/[lang]/studio/StudioInner.tsx",
   "app/[lang]/unsubscribe/page.tsx",
-  "components/nexyfab/AuthModal.tsx",
-  "lib/ai/__evals__/scad-intent-evalset.ts",
-  "lib/ai/scadIntentFromTree.ts"
+  "components/nexyfab/AuthModal.tsx"
 ]

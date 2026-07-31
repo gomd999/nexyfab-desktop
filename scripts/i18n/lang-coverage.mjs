@@ -91,7 +91,21 @@ export function listSourceFiles(root) {
  *
  * @returns `[{ file, missing: ['es','ar'] }]` — `file` 은 `src/` 기준 상대경로(슬래시)
  */
+/**
+ * 부채가 **아닌** 것 — 이유와 함께 적어 둔다.
+ *
+ * ⚠ 오탐을 부채 목록에 남겨 두면 그 수가 계획의 근거가 못 된다. 그렇다고 스캐너에서
+ *   조용히 빼면 「왜 안 세는지」가 사라진다. 그래서 **파일에 이유를 적고** 제외한다.
+ */
+function loadExceptions() {
+  try {
+    const raw = readFileSync(new URL('./lang-coverage-exceptions.json', import.meta.url), 'utf8');
+    return new Set(JSON.parse(raw).map((x) => String(x.file)));
+  } catch { return new Set(); }
+}
+
 export function findIncompleteLangFiles(root) {
+  const skip = loadExceptions();
   const rows = [];
   for (const f of listSourceFiles(root)) {
     let src;
@@ -100,6 +114,8 @@ export function findIncompleteLangFiles(root) {
     if (!hasAny(src, NEEDED[0]) || !hasAny(src, NEEDED[1])) continue;
     const missing = NEEDED.filter((keys) => !hasAny(src, keys)).map((keys) => keys[0]);
     if (!missing.length) continue;
+    const rel = f.slice(root.length + 1).split(String.fromCharCode(92)).join('/');
+    if (skip.has(rel)) continue;
     rows.push({ file: f.slice(root.length + 1).split(String.fromCharCode(92)).join('/'), missing });
   }
   rows.sort((a, b) => a.file.localeCompare(b.file));

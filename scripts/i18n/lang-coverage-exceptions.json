@@ -1,0 +1,6 @@
+[
+  {
+    "file": "lib/ai/__evals__/scad-intent-evalset.ts",
+    "reason": "UI 사전이 아니라 **평가 데이터셋**이다. `const KO: EvalCase[]` 는 한국어 프롬프트 표본이고, ja·zh·es·ar 표본을 추가하는 것은 i18n 이 아니라 평가 범위 확대라는 별개 결정이다. 파트너 포털용으로 넣은 `const KO:` 규칙에 걸린 오탐."
+  }
+]
