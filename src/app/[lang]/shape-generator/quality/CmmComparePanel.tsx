@@ -9,6 +9,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import { rigidAlign, computeDeviations, flatnessDeviation, type MeasuredPoint, type CadPoint } from './cmmCompare';
 
 interface CmmComparePanelProps {
@@ -45,6 +46,58 @@ const COPY = {
     alignErr: 'Align error',
     flatness: 'Flatness',
   },
+  ja: {
+    title: 'CMM 比較',
+    pasteMeas: '測定点 (XYZ)',
+    pasteCad: 'CAD 点 (X Y Z Nx Ny Nz)',
+    tol: '公差 ±mm',
+    run: '比較実行',
+    rms: 'RMS',
+    max: '最大',
+    mean: '平均',
+    ootCount: '公差超過',
+    alignErr: '整列誤差',
+    flatness: '平面度',
+  },
+  zh: {
+    title: 'CMM 比较',
+    pasteMeas: '测量点 (XYZ)',
+    pasteCad: 'CAD 点 (X Y Z Nx Ny Nz)',
+    tol: '公差 ±mm',
+    run: '运行比较',
+    rms: 'RMS',
+    max: '最大',
+    mean: '平均',
+    ootCount: '超差数量',
+    alignErr: '对齐误差',
+    flatness: '平面度',
+  },
+  es: {
+    title: 'Comparación CMM',
+    pasteMeas: 'Puntos medidos (XYZ)',
+    pasteCad: 'Puntos CAD (X Y Z Nx Ny Nz)',
+    tol: 'Tolerancia ±mm',
+    run: 'Ejecutar comparación',
+    rms: 'RMS',
+    max: 'Máx.',
+    mean: 'Media',
+    ootCount: 'Fuera de tolerancia',
+    alignErr: 'Error de alineación',
+    flatness: 'Planitud',
+  },
+  ar: {
+    title: 'مقارنة CMM',
+    pasteMeas: 'نقاط القياس (XYZ)',
+    pasteCad: 'نقاط CAD (X Y Z Nx Ny Nz)',
+    tol: 'التفاوت ±مم',
+    run: 'تشغيل المقارنة',
+    rms: 'RMS',
+    max: 'الأقصى',
+    mean: 'المتوسط',
+    ootCount: 'خارج التفاوت',
+    alignErr: 'خطأ المحاذاة',
+    flatness: 'الاستواء',
+  },
 } as const;
 
 function parsePoints(text: string, withNormals: boolean): Array<MeasuredPoint | CadPoint> {
@@ -69,7 +122,8 @@ function parsePoints(text: string, withNormals: boolean): Array<MeasuredPoint | 
 
 export default function CmmComparePanel({ lang, onClose, onResult }: CmmComparePanelProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const [measText, setMeasText] = useState('');
   const [cadText, setCadText] = useState('');
   const [toleranceMm, setToleranceMm] = useState(0.1);

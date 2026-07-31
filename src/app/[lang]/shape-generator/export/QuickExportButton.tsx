@@ -18,6 +18,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 const HIDE_FLOATING_KEY = 'nexyfab_quick_export_dismissed_v1';
 
@@ -40,6 +41,10 @@ const COPY = {
     hint: 'Ctrl+E',
     dismissAria: 'Hide Quick Export button',
   },
+  ja: { label: 'STL をダウンロード', hint: 'Ctrl+E', dismissAria: 'クイックエクスポートボタンを隠す' },
+  zh: { label: '下载 STL', hint: 'Ctrl+E', dismissAria: '隐藏快速导出按钮' },
+  es: { label: 'Descargar STL', hint: 'Ctrl+E', dismissAria: 'Ocultar el botón de exportación rápida' },
+  ar: { label: 'تنزيل STL', hint: 'Ctrl+E', dismissAria: 'إخفاء زر التصدير السريع' },
 } as const;
 
 export default function QuickExportButton({
@@ -74,7 +79,8 @@ export default function QuickExportButton({
 
   if (!hasGeometry || dismissed) return null;
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
 
   const handleClick = () => {
     // First-use Education pattern: the FIRST click triggers export AND

@@ -9,6 +9,7 @@
  */
 
 import React, { useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import { runCoupled, thermalStructuralWorkflow, fluidStructuralWorkflow, type PhysicsBus, type CouplingResult } from './coupledSolver';
 
 interface MultiPhysicsPanelProps {
@@ -45,6 +46,54 @@ const COPY = {
     notConverged: 'Not converged',
     history: 'Residual history',
   },
+  ja: {
+    title: 'マルチフィジックス解析',
+    workflow: 'ワークフロー',
+    thermalStructural: '熱-構造連成',
+    fluidStructural: '流体-構造連成',
+    run: '実行',
+    iter: '反復',
+    residual: '残差',
+    converged: '収束',
+    notConverged: '未収束',
+    history: '残差履歴',
+  },
+  zh: {
+    title: '多物理场分析',
+    workflow: '工作流',
+    thermalStructural: '热-结构耦合',
+    fluidStructural: '流-固耦合',
+    run: '运行',
+    iter: '迭代',
+    residual: '残差',
+    converged: '已收敛',
+    notConverged: '未收敛',
+    history: '残差历史',
+  },
+  es: {
+    title: 'Análisis multifísico',
+    workflow: 'Flujo de trabajo',
+    thermalStructural: 'Acoplamiento termoestructural',
+    fluidStructural: 'Interacción fluido-estructura',
+    run: 'Ejecutar',
+    iter: 'Iteración',
+    residual: 'Residuo',
+    converged: 'Convergido',
+    notConverged: 'No convergido',
+    history: 'Histórico de residuos',
+  },
+  ar: {
+    title: 'تحليل متعدد الفيزياء',
+    workflow: 'سير العمل',
+    thermalStructural: 'اقتران حراري-إنشائي',
+    fluidStructural: 'اقتران مائع-إنشائي',
+    run: 'تشغيل',
+    iter: 'التكرار',
+    residual: 'المتبقي',
+    converged: 'تقارب',
+    notConverged: 'لم يتقارب',
+    history: 'سجل المتبقيات',
+  },
 } as const;
 
 type WorkflowKind = 'thermal-structural' | 'fluid-structural';
@@ -53,7 +102,8 @@ export default function MultiPhysicsPanel({
   lang, onClose, thermalSolver, structuralSolver, fluidSolver,
 }: MultiPhysicsPanelProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const [workflow, setWorkflow] = useState<WorkflowKind>('thermal-structural');
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<CouplingResult | null>(null);
