@@ -96,11 +96,20 @@ function checkCloset(m) {
     checks.plinth = lt('걸레받이 높이 < 전체 높이', m.plinthHeight, m.height);
   }
   if (Number(m.doors) > 0 && Number(m.bays) > 0) {
-    checks.doors = {
-      labelKo: '문 개수(참고)', pass: null,
-      detail: [`문 ${m.doors} · 베이 ${m.bays} — 베이당 ${(Number(m.doors) / Number(m.bays)).toFixed(1)}짝. `
-        + '여닫이/미닫이 방식이 선언돼 있지 않아 적정 여부는 판정하지 않는다(산출값만).'],
-    };
+    const perBay = Number(m.doors) / Number(m.bays);
+    const need = Number(m.doorsPerBayMin);
+    checks.doors = need > 0
+      ? {
+        labelKo: '베이당 문 짝수',
+        pass: perBay >= need,
+        detail: [`문 ${m.doors} · 베이 ${m.bays} → 베이당 ${perBay.toFixed(1)}짝`, `선언 하한 ${need}짝`],
+        note: '기준은 **선언받은 값**이다 — 관례·표를 우리가 고른 것이 아니다.',
+      }
+      : {
+        labelKo: '베이당 문 짝수 — 판정하지 않았다(기준 미선언)', pass: null,
+        needInputs: [{ name: 'closetMeta.doorsPerBayMin', labelKo: '베이당 최소 문 짝수 — 여닫이/미닫이 방식이 정한다(미닫이는 통상 2짝 이상)' }],
+        detail: [`문 ${m.doors} · 베이 ${m.bays} → 베이당 ${perBay.toFixed(1)}짝 (산출값).`, '허용 기준을 선언하면 그 기준으로 판정한다 — 우리가 정하면 근거가 우리 추측이 된다.'],
+      };
   }
   return Object.keys(checks).length ? { ok: true, label: '붙박이장 검토 (치수 자기정합)', checks } : null;
 }
@@ -115,11 +124,20 @@ function checkCounter(m) {
       '내밈이 깊이를 넘으면 지지 없이 떠 있는 상판이 된다');
   }
   if (Number(m.seatsApprox) > 0 && Number(m.length) > 0) {
-    checks.seatPitch = {
-      labelKo: '좌석 간격(참고)', pass: null,
-      detail: [`길이 ${m.length} ÷ 좌석 ${m.seatsApprox} = ${Math.round(Number(m.length) / Number(m.seatsApprox))}mm/석 — `
-        + '적정 간격은 용도·법정 기준에 따라 다르므로 판정하지 않는다(산출값만).'],
-    };
+    const pitch = Math.round(Number(m.length) / Number(m.seatsApprox));
+    const pitchMin = Number(m.seatPitchMinMm);
+    checks.seatPitch = pitchMin > 0
+      ? {
+        labelKo: '좌석 간격',
+        pass: pitch >= pitchMin,
+        detail: [`길이 ${m.length} ÷ 좌석 ${m.seatsApprox} = ${pitch}mm/석`, `선언 하한 ${pitchMin}mm`],
+        note: '기준은 **선언받은 값**이다 — 관례·표를 우리가 고른 것이 아니다.',
+      }
+      : {
+        labelKo: '좌석 간격 — 판정하지 않았다(하한 미선언)', pass: null,
+        needInputs: [{ name: 'counterMeta.seatPitchMinMm', labelKo: '좌석 간격 하한(mm) — 용도·법정 기준이 정한다' }],
+        detail: [`길이 ${m.length} ÷ 좌석 ${m.seatsApprox} = ${pitch}mm/석 (산출값).`, '허용 기준을 선언하면 그 기준으로 판정한다 — 우리가 정하면 근거가 우리 추측이 된다.'],
+      };
   }
   return Object.keys(checks).length ? { ok: true, label: '카운터바 검토 (치수 자기정합)', checks } : null;
 }

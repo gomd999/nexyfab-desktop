@@ -113,7 +113,9 @@ describe('mech 판정 확장 (260729) — 선언값만으로 결정되는 것만
   // 전수 실측에서 mech 16종 중 10종이 미적용이었다. 그중 값을 지어내지 않고
   // 판정 가능한 것을 채웠다: 판정 3→9 · 정직거부 3→6 · 미적용 10→1.
   const check = mechCheck as unknown as (a: unknown) => {
-    ok: boolean; label: string; checks?: Record<string, { pass: boolean | null; detail: string[] }>;
+    // ⚠ 260802: `needInputs`·`note` 는 검사 노드가 원래 갖는 필드인데 이 로컬 타입이
+    //   빠뜨리고 있었다 — 「무엇을 주면 되는지」를 테스트가 볼 수 없는 상태였다.
+    ok: boolean; label: string; checks?: Record<string, { pass: boolean | null; detail: string[]; needInputs?: unknown[]; note?: string }>;
     needInputs?: { name: string }[];
   } | null;
 
@@ -130,10 +132,24 @@ describe('mech 판정 확장 (260729) — 선언값만으로 결정되는 것만
       expect(r?.checks?.grashofConsistency.pass).toBe(false);
     });
 
-    it('전달각은 합·불을 내지 않는다 — 허용 하한이 용도마다 다르다', () => {
+    it('전달각은 하한이 **선언되지 않으면** 합·불을 내지 않는다 — 관례값을 우리가 고르지 않는다', () => {
       const r = check({ fourBarMeta: { ground: 400, crank: 120, coupler: 350, rocker: 250, transmissionDeg: 12 } });
       expect(r?.checks?.transmissionInfo.pass).toBeNull(); // 12° 라도 판정하지 않는다
-      expect(r?.checks?.transmissionInfo.detail.join(' ')).toContain('판정하지 않는다');
+      /**
+       * ⚠ 260802: 종전엔 detail 문구('판정하지 않는다')를 잡고 있었다. 참고값 9건에
+       *   `needInputs` 를 다는 개선에서 문구가 바뀌자 여기가 깨졌다 — **불변식은 그대로인데
+       *   테스트가 표현을 지키고 있었던 것**이다. 불변식으로 바꿔 잡는다:
+       *   ① 판정하지 않는다(pass=null) ② **무엇을 주면 되는지 말한다**(needInputs).
+       *   ②가 없으면 사용자는 영영 이 판정을 켤 수 없다(그게 이번 개선의 요지다).
+       */
+      expect(r?.checks?.transmissionInfo.needInputs?.length, '무엇을 달라는지 안 적혀 있다').toBeGreaterThan(0);
+    });
+
+    it('★전달각 하한을 선언하면 그 기준으로 판정한다 — 12° 는 하한 40° 에 미달', () => {
+      const r = check({ fourBarMeta: { ground: 400, crank: 120, coupler: 350, rocker: 250, transmissionDeg: 12, transmissionAngleMinDeg: 40 } });
+      expect(r?.checks?.transmissionInfo.pass).toBe(false);
+      // 기준의 출처가 **선언**임을 문서에 남긴다 — 관례값을 우리가 고른 것으로 읽히면 안 된다.
+      expect(r?.checks?.transmissionInfo.note).toContain('선언받은 값');
     });
 
     it('링크 길이가 없으면 정직 거부', () => {

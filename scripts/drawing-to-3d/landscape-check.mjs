@@ -358,11 +358,21 @@ export function landscapeCheck(assembly, params = {}) {
     if (Number(pv.postSize) > 0 && Number(pv.postHeight) > 0) {
       // 세장비 — 목재 기둥은 과도하게 세장하면 좌굴한다. 판정 기준은 수종·등급이
       // 정하므로 **합·불을 내지 않고** 값만 적는다(지어내지 않는다).
-      selfChecks.pavilionSlender = {
-        labelKo: '기둥 세장비(참고)', pass: null,
-        detail: [`높이 ${pv.postHeight} / 단면 ${pv.postSize} = ${(Number(pv.postHeight) / Number(pv.postSize)).toFixed(1)}. `
-          + '허용 세장비는 수종·등급·지지조건이 정하므로 합·불을 판정하지 않는다(산출값만).'],
-      };
+      const slender = Number(pv.postHeight) / Number(pv.postSize);
+      const slenderMax = Number(pv.allowableSlenderness);
+      selfChecks.pavilionSlender = slenderMax > 0
+        ? {
+          labelKo: '기둥 세장비',
+          pass: slender <= slenderMax,
+          detail: [`높이 ${pv.postHeight} / 단면 ${pv.postSize} = ${slender.toFixed(1)}`, `선언 상한 ${slenderMax}`],
+          note: '상한은 **선언받은 값**이다 — 수종·등급별 허용치를 우리가 고른 것이 아니다.',
+        }
+        : {
+          labelKo: '기둥 세장비 — 판정하지 않았다(상한 미선언)', pass: null,
+          needInputs: [{ name: 'pavilionMeta.allowableSlenderness', labelKo: '허용 세장비 — 수종·등급·지지조건이 정한다' }],
+          detail: [`높이 ${pv.postHeight} / 단면 ${pv.postSize} = ${slender.toFixed(1)} (산출값).`,
+            '허용 상한을 선언하면 그 기준으로 판정한다 — 우리가 정하면 근거가 우리 추측이 된다.'],
+        };
     }
   }
   const wm = assembly?.planterWallMeta;

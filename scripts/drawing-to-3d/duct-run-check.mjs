@@ -75,18 +75,51 @@ export function ductRunCheck(assembly) {
   const sec = dims.filter((v) => Math.abs(v - trunkLen) > 1e-6);
   const areaM2 = sec.length === 2 ? (sec[0] * sec[1]) / 1e6 : null;
   if (areaM2) {
-    checks.sectionInfo = {
-      labelKo: '주덕트 단면적(참고)', pass: null,
-      detail: [`${sec.join('×')}mm = ${areaM2.toFixed(3)}㎡. 흘릴 수 있는 풍량은 유속에 비례하는데 `
-        + '허용 유속은 용도(거실 3~5·주덕트 6~8 m/s 관례)에 따라 다르므로 여기서 정하지 않는다.'],
-    };
+    /**
+     * ⚠ 260802: 여기가 「참고」로만 있었고 **요구를 하지 않았다** — 요구 수집기에 안 잡혀
+     *   사용자는 무엇을 주면 판정되는지 알 방법이 없었다.
+     *   기준(허용 유속)은 우리가 고르지 않되, **무엇을 주면 되는지는 말한다.**
+     */
+    const dm = assembly?.ductMeta ?? {};
+    const vMax = Number(dm.allowableVelocityMps);
+    const flowCMH = Number(dm.designFlowCMH);
+    checks.sectionInfo = (vMax > 0 && flowCMH > 0)
+      ? (() => {
+        const v = flowCMH / 3600 / areaM2;      // m/s = (㎥/h ÷ 3600) ÷ ㎡
+        return {
+          labelKo: '주덕트 풍속',
+          pass: v <= vMax,
+          detail: [
+            `${sec.join('×')}mm = ${areaM2.toFixed(3)}㎡ · 설계 풍량 ${flowCMH}㎥/h → 풍속 ${v.toFixed(2)} m/s`,
+            `선언 허용 유속 ${vMax} m/s`,
+          ],
+          note: '기준은 **선언받은 값**이다 — 관례·표를 우리가 고른 것이 아니다.',
+        };
+      })()
+      : {
+        labelKo: '주덕트 풍속 — 판정하지 않았다(기준·풍량 미선언)', pass: null,
+        needInputs: [
+          ...(vMax > 0 ? [] : [{ name: 'ductMeta.allowableVelocityMps', labelKo: '허용 유속(m/s) — 용도가 정한다(거실 3~5·주덕트 6~8 관례)' }]),
+          ...(flowCMH > 0 ? [] : [{ name: 'ductMeta.designFlowCMH', labelKo: '설계 풍량(㎥/h) — 부하 계산이 정한다' }]),
+        ],
+        detail: [`${sec.join('×')}mm = ${areaM2.toFixed(3)}㎡ (산출값).`, '허용 기준을 선언하면 그 기준으로 판정한다 — 우리가 정하면 근거가 우리 추측이 된다.'],
+      };
   }
   if (hangers.length >= 2 && trunkLen > 0) {
-    checks.hangerInfo = {
-      labelKo: '행어 배치(참고)', pass: null,
-      detail: [`행어 ${hangers.length}개 · 직관 ${trunkLen}mm. 지지 간격 기준은 덕트 재질·규격·`
-        + '내진 등급에 따라 달라 판정하지 않는다(산출값만).'],
-    };
+    const spacing = Math.round(trunkLen / (hangers.length - 1));
+    const limit = Number((assembly?.ductMeta ?? {}).hangerSpacingMaxMm);
+    checks.hangerInfo = limit > 0
+      ? {
+        labelKo: '행어 지지 간격',
+        pass: spacing <= limit,
+        detail: [`행어 ${hangers.length}개 · 직관 ${trunkLen}mm → 간격 ${spacing}mm`, `선언 상한 ${limit}mm`],
+        note: '기준은 **선언받은 값**이다 — 관례·표를 우리가 고른 것이 아니다.',
+      }
+      : {
+        labelKo: '행어 지지 간격 — 판정하지 않았다(상한 미선언)', pass: null,
+        needInputs: [{ name: 'ductMeta.hangerSpacingMaxMm', labelKo: '행어 간격 상한(mm) — 덕트 재질·규격·내진 등급이 정한다' }],
+        detail: [`행어 ${hangers.length}개 · 직관 ${trunkLen}mm → 간격 ${spacing}mm (산출값).`, '허용 기준을 선언하면 그 기준으로 판정한다 — 우리가 정하면 근거가 우리 추측이 된다.'],
+      };
   }
 
   return {

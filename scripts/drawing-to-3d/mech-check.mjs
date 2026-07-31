@@ -118,12 +118,53 @@ function checkGear(m) {
   // 언더컷: 표준 인벌류트에서 압력각에 따라 최소 잇수가 정해진다. **압력각이 선언돼 있지
   // 않으므로 판정하지 않고 산출값만 적는다** — 20° 를 가정해 합·불을 내면 그게 날조다.
   const minZ = Math.min(...teeth);
-  checks.undercutInfo = {
-    labelKo: '최소 잇수(언더컷 참고)',
-    pass: null,
-    detail: [`최소 잇수 ${minZ} — 압력각 20° 표준이면 17 이상 권장, 14.5° 면 32 이상. ` +
-      `이 어셈블리엔 압력각이 선언돼 있지 않아 합·불을 판정하지 않는다(산출값만).`],
-  };
+  /**
+   * ⚠ 260802: 여기가 「참고」로만 남아 있었는데 **needInputs 를 안 달아** 사용자가
+   *   무엇을 주면 되는지 알 방법이 없었다(요구 수집기에도 안 잡힌다).
+   *
+   * 그리고 이것은 **표가 아니라 수식**이다 — 표준 전위 없는 인벌류트 랙 절삭에서
+   * 언더컷 한계는 `z_min = 2·ha* / sin²α` 이고, 표준 이높이 계수 `ha* = 1` 이면
+   * `z_min = 2 / sin²α` 다. α=20° → 17.10 → **17**, α=14.5° → 32.02 → **32**
+   * (흔히 인용되는 두 값이 여기서 나온다). 표 인용이 아니라 유도라 출처 확보 없이 계산한다.
+   * 전위(profile shift)가 있으면 한계가 낮아지므로 **선언되면 판정을 보류**한다.
+   */
+  const alphaDeg = Number(m.pressureAngleDeg ?? m.pressureAngle);
+  const hasShift = m.profileShift != null || m.profileShifts != null;
+  if (alphaDeg > 0 && alphaDeg < 90 && !hasShift) {
+    const sinA = Math.sin((alphaDeg * Math.PI) / 180);
+    const zMin = Math.ceil(2 / (sinA * sinA));
+    checks.undercutInfo = {
+      labelKo: `최소 잇수(언더컷) — 압력각 ${alphaDeg}°`,
+      pass: minZ >= zMin,
+      detail: [
+        `가장 작은 기어 ${minZ}잇 · 언더컷 한계 ${zMin}잇 (z_min = 2/sin²α = 2/sin²${alphaDeg}° = ${(2 / (sinA * sinA)).toFixed(2)})`,
+        '표준 이높이(ha*=1)·전위 없음 기준의 **유도식**이다 — 표를 인용한 값이 아니다.',
+        /**
+         * ⚠ 통상 인용되는 값은 **반올림**한 것이다 — 20° 는 17.10 → 17, 14.5° 는 31.90 → 32.
+         *   여기서는 **올림**을 쓴다: 한계가 17.10잇이면 17잇은 미달이라 미세 언더컷이 난다
+         *   (실무는 허용하기도 한다). 그래서 20° 에서만 교과서보다 한 잇 보수적이다(18).
+         *   14.5° 는 올림·반올림이 같아 32로 일치한다.
+         */
+        `⚠ 통상 인용값은 반올림이다(20°→17 · 14.5°→32). 여기서는 ${(2 / (sinA * sinA)).toFixed(2)} 를 **올림**해 ${zMin}잇을 쓴다 — 20°에서만 한 잇 보수적이다.`,
+        ...(minZ >= zMin ? [] : ['**언더컷이 발생한다** — 잇수를 늘리거나 전위를 주어야 한다.']),
+      ],
+      note: '전위(profile shift)를 주면 한계가 낮아진다 — 선언되면 이 판정은 적용되지 않는다.',
+    };
+  } else {
+    checks.undercutInfo = {
+      labelKo: '최소 잇수(언더컷) — 판정하지 않았다',
+      pass: null,
+      // ⚠ 경로를 정확히 적는다. `pressureAngleDeg` 라고만 쓰면 부품 params 에 넣어도 안 먹는다 —
+      //   읽는 곳은 `assembly.gearMeta` 다(오늘 fit 에서 겪은 것과 같은 형태).
+      needInputs: [{ name: 'gearMeta.pressureAngleDeg', labelKo: '압력각(도) — 예 20 또는 14.5. 이것만 주면 언더컷 한계를 **유도식으로** 계산한다' }],
+      detail: [
+        `가장 작은 기어 ${minZ}잇.`,
+        hasShift
+          ? '전위(profile shift)가 선언돼 있어 표준 언더컷 한계가 그대로 적용되지 않는다 — 판정하지 않는다.'
+          : '압력각이 선언돼 있지 않다. 20° 를 가정해 합·불을 내면 그게 날조다.',
+      ],
+    };
+  }
   return { ok: true, label: '기어열 검토 (중심거리·잇수)', checks };
 }
 
@@ -145,11 +186,30 @@ function checkHeatExchanger(m) {
     };
   }
   if (Number(m.baffles) > 0 && Number(m.tubeLen) > 0) {
-    extra.baffleInfo = {
-      labelKo: '배플 간격(참고)', pass: null,
-      detail: [`튜브길이 ${m.tubeLen} ÷ (배플 ${m.baffles}+1) = ${Math.round(Number(m.tubeLen) / (Number(m.baffles) + 1))}mm. `
-        + 'TEMA 권장 간격은 동체경·유량에 따라 달라 합·불을 판정하지 않는다(산출값만).'],
-    };
+    const spacing = Math.round(Number(m.tubeLen) / (Number(m.baffles) + 1));
+    const lo = Number(m.baffleSpacingMinMm), hi = Number(m.baffleSpacingMaxMm);
+    const hasCrit = lo > 0 || hi > 0;
+    extra.baffleInfo = hasCrit
+      ? {
+        labelKo: '배플 간격',
+        pass: (!(lo > 0) || spacing >= lo) && (!(hi > 0) || spacing <= hi),
+        detail: [
+          `튜브길이 ${m.tubeLen} ÷ (배플 ${m.baffles}+1) = ${spacing}mm`,
+          `선언 기준: ${lo > 0 ? `최소 ${lo}mm` : '최소 미선언'} · ${hi > 0 ? `최대 ${hi}mm` : '최대 미선언'}`,
+        ],
+        note: '기준은 **선언받은 값**이다 — TEMA 표를 인용한 것이 아니다.',
+      }
+      : {
+        labelKo: '배플 간격 — 판정하지 않았다(기준 미선언)', pass: null,
+        // ⚠ 260802: 여기가 「참고」로만 있었고 요구를 안 했다. 기준을 지어내지 않되,
+        //   **무엇을 주면 판정되는지는 말해야 한다.**
+        needInputs: [
+          { name: 'hxMeta.baffleSpacingMinMm', labelKo: '배플 간격 하한(mm) — TEMA 권장은 동체경·유량이 정한다' },
+          { name: 'hxMeta.baffleSpacingMaxMm', labelKo: '배플 간격 상한(mm)' },
+        ],
+        detail: [`튜브길이 ${m.tubeLen} ÷ (배플 ${m.baffles}+1) = ${spacing}mm (산출값).`,
+          '허용 범위를 선언하면 그 기준으로 판정한다 — 우리가 정하면 근거가 우리 추측이 된다.'],
+      };
   }
   return {
     ok: true,
@@ -225,12 +285,21 @@ function checkFourBar(m) {
   // ③ 전달각: 작을수록 구동이 나빠지지만 **허용 하한은 용도마다 다르다**(관례 40~50°).
   //    합·불을 정하면 그게 근거 없는 임계가 되므로 산출값만 적는다.
   if (Number.isFinite(Number(m.transmissionDeg))) {
-    checks.transmissionInfo = {
-      labelKo: '전달각(참고)',
-      pass: null,
-      detail: [`${m.transmissionDeg}° — 관례상 40~50° 이상을 권장하나 허용 하한은 용도·하중에 따라 다르다. `
-        + '이 어셈블리엔 용도가 선언돼 있지 않아 합·불을 판정하지 않는다(산출값만).'],
-    };
+    const minDeg = Number(m.transmissionAngleMinDeg);
+    checks.transmissionInfo = minDeg > 0
+      ? {
+        labelKo: `전달각 — 선언 하한 ${minDeg}°`,
+        pass: Number(m.transmissionDeg) >= minDeg,
+        detail: [`전달각 ${m.transmissionDeg}° · 선언 하한 ${minDeg}°`],
+        note: '하한은 **선언받은 값**이다 — 관례값(40~50°)을 우리가 고른 것이 아니다.',
+      }
+      : {
+        labelKo: '전달각 — 판정하지 않았다(하한 미선언)',
+        pass: null,
+        needInputs: [{ name: 'fourBarMeta.transmissionAngleMinDeg', labelKo: '전달각 하한(도) — 용도·하중이 정한다(관례 40~50°)' }],
+        detail: [`전달각 ${m.transmissionDeg}° (산출값).`,
+          '하한을 선언하면 그 기준으로 판정한다. 관례값을 우리가 고르면 근거 없는 임계가 된다.'],
+      };
   }
   return { ok: true, label: '4절 링크 검토 (조립성·Grashof)', checks };
 }
@@ -462,11 +531,27 @@ function mechCheckInner(assembly, params = {}) {
       (p) => /blade/i.test(String(p.id ?? '')) || String(p.role ?? '') === 'blade');
     if (c) r.checks.bladeCount = c;
     if (Number(m.pitch) > 0 && Number(m.diameter) > 0) {
-      r.checks.pdInfo = {
-        labelKo: '피치비 P/D(참고)', pass: null,
-        detail: [`피치 ${m.pitch} / 외경 ${m.diameter} = ${(Number(m.pitch) / Number(m.diameter)).toFixed(3)}. `
-          + '적정 P/D 는 용도(추진·환기·교반)와 회전수에 따라 달라 합·불을 판정하지 않는다(산출값만).'],
-      };
+      const pd = Number(m.pitch) / Number(m.diameter);
+      const pdLo = Number(m.pdRatioMin), pdHi = Number(m.pdRatioMax);
+      r.checks.pdInfo = (pdLo > 0 || pdHi > 0)
+        ? {
+          labelKo: '피치비 P/D',
+          pass: (!(pdLo > 0) || pd >= pdLo) && (!(pdHi > 0) || pd <= pdHi),
+          detail: [
+            `피치 ${m.pitch} / 외경 ${m.diameter} = ${pd.toFixed(3)}`,
+            `선언 범위: ${pdLo > 0 ? pdLo : '하한 미선언'} ~ ${pdHi > 0 ? pdHi : '상한 미선언'}`,
+          ],
+          note: '범위는 **선언받은 값**이다 — 용도별 관례를 우리가 고른 것이 아니다.',
+        }
+        : {
+          labelKo: '피치비 P/D — 판정하지 않았다(범위 미선언)', pass: null,
+          needInputs: [
+            { name: 'propellerMeta.pdRatioMin', labelKo: 'P/D 하한 — 용도(추진·환기·교반)와 회전수가 정한다' },
+            { name: 'propellerMeta.pdRatioMax', labelKo: 'P/D 상한' },
+          ],
+          detail: [`피치 ${m.pitch} / 외경 ${m.diameter} = ${pd.toFixed(3)} (산출값).`,
+            '허용 범위를 선언하면 그 기준으로 판정한다.'],
+        };
     }
     return r;
   }
