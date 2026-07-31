@@ -54,8 +54,41 @@ function profileErrors(pts, { axisMin } = {}) {
 
 // ─── 정규화 — union 스키마 탓에 AI가 필드를 흔히 오배치한다(cylinder에 size 등).
 //     결정론적으로 명백한 오배치만 교정(추측 최소화). 원본 의도를 안 바꾸는 매핑.
+/**
+ * 프로파일 표기 통일 (260801).
+ *
+ * ★ 같은 MCP 서버 안에서 **두 도구의 형식이 달랐다.**
+ * ```
+ *   reconstruct_3d 출력:  profile: { id, points: [{x,y}, …] }
+ *   compose/export_step:  profile: [[x,y], …]
+ * ```
+ *   그래서 문서화된 체인 `extract_drawing → reconstruct_3d → export_step` 이
+ *   **마지막 한 칸에서 끊겨 있었다** — OCCT B-rep 내보내기는 멀쩡한데 거기까지 못 갔다.
+ *   (실측: 「profile: <3 points」로 거부. 점은 4개였다.)
+ *
+ * ⚠ 「관대하게 다 받기」가 아니다. **아는 두 표기만** 받고, 나머지는 그대로 두어
+ *   기존 게이트가 정직하게 거부하게 한다 — 모르는 형태를 추측해 고치면 그때부터
+ *   무엇이 들어왔는지 알 수 없게 된다.
+ */
+export function normalizeProfile(p) {
+  if (Array.isArray(p)) {
+    // [[x,y], …] — 이미 정본
+    if (p.length === 0 || Array.isArray(p[0])) return p;
+    // [{x,y}, …]
+    if (p[0] && typeof p[0] === 'object' && Number.isFinite(p[0].x) && Number.isFinite(p[0].y)) {
+      return p.map((q) => [q.x, q.y]);
+    }
+    return p;
+  }
+  // { points: [{x,y}|[x,y], …] }
+  if (p && typeof p === 'object' && Array.isArray(p.points)) return normalizeProfile(p.points);
+  return p;
+}
+
 export function normalizeFeatures(intent) {
   for (const f of intent.features ?? []) {
+    // ★ 프로파일 표기를 먼저 통일한다 — 아래 검사·방출이 전부 [[x,y]] 를 전제한다.
+    if (f.profile !== undefined) f.profile = normalizeProfile(f.profile);
     // 빈 profile이 cylinder/box/sphere에 붙으면 제거(혼동 방지)
     if (f.kind !== 'revolve' && f.kind !== 'extrude' && Array.isArray(f.profile) && f.profile.length === 0) delete f.profile;
     if (f.kind === 'cylinder' && !(f.diameter > 0) && Array.isArray(f.size) && f.size.length >= 2) {

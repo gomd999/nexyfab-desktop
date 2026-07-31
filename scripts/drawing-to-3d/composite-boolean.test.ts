@@ -15,6 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { gateComposite, normalizeFeatures } from './compose.mjs';
 import { partVolume } from './structural.mjs';
 import { gate } from './reconstruct.mjs';
 
@@ -131,5 +132,51 @@ describe('⚠ 근사가 남는 경우 — 정확한 척하지 않는다', () => 
     // 기울인 쪽이 더 많이 깎이는 것은 맞다(실제로 더 긴 구간이 재료를 지난다).
     // 다만 **정확하다고 말하지 않는다** — 값이 다르다는 사실만 고정한다.
     expect(V(tilted)).not.toBeCloseTo(V(straight), 3);
+  });
+});
+
+/**
+ * 프로파일 표기 통일 — **같은 MCP 안 두 도구가 안 맞던 것** (260801).
+ *
+ * 실측으로 드러난 것:
+ * ```
+ *   reconstruct_3d 출력:  profile: { id, points: [{x,y}, …] }
+ *   export_step 게이트:   profile: [[x,y], …]      → "profile: <3 points" 로 거부
+ * ```
+ * 점은 4개였다. **문서화된 체인이 마지막 한 칸에서 끊겨 있었고**, 그 바람에 멀쩡한
+ * OCCT B-rep STEP 내보내기에 아무도 도달하지 못했다. 다시 끊기지 않게 잠근다.
+ */
+describe('★프로파일 표기 — 체인이 끊기지 않는다', () => {
+  const square = [[0, 0], [100, 0], [100, 60], [0, 60]];
+  const objForm = { id: 'p', points: square.map(([x, y]) => ({ x, y })) };
+
+  it('★{points:[{x,y}]} 형태가 게이트를 통과한다 (reconstruct_3d 출력 형태)', () => {
+    const intent = { id: 'p', features: [{ id: 'body', kind: 'extrude', profile: objForm, height: 10 }] };
+    normalizeFeatures(intent);
+    expect(gateComposite(intent)).toEqual([]);
+  });
+
+  it('[{x,y}] 배열 형태도 통과한다', () => {
+    const intent = { id: 'p', features: [{ id: 'body', kind: 'extrude', profile: objForm.points, height: 10 }] };
+    normalizeFeatures(intent);
+    expect(gateComposite(intent)).toEqual([]);
+  });
+
+  it('정본 [[x,y]] 는 그대로 통과한다 — 기존 동작 불변', () => {
+    const intent = { id: 'p', features: [{ id: 'body', kind: 'extrude', profile: square, height: 10 }] };
+    normalizeFeatures(intent);
+    expect(gateComposite(intent)).toEqual([]);
+  });
+
+  it('★모르는 형태는 **추측해 고치지 않는다** — 게이트가 정직하게 거부한다', () => {
+    const intent = { id: 'p', features: [{ id: 'body', kind: 'extrude', profile: { weird: 1 }, height: 10 }] };
+    normalizeFeatures(intent);
+    expect(gateComposite(intent).join(' ')).toContain('profile');
+  });
+
+  it('★점이 정말 부족하면 여전히 거부한다 — 과탐 방지가 아니라 정상 동작', () => {
+    const intent = { id: 'p', features: [{ id: 'body', kind: 'extrude', profile: { points: [{ x: 0, y: 0 }, { x: 1, y: 1 }] }, height: 10 }] };
+    normalizeFeatures(intent);
+    expect(gateComposite(intent).join(' ')).toContain('<3 points');
   });
 });
