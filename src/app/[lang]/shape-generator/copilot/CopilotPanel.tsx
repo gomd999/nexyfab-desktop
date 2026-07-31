@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import { parseCommand, dispatchCopilotCommand } from './cadCopilot';
 import type { CopilotCommand, FeatureDispatcher } from './cadCopilot';
 
@@ -49,6 +50,78 @@ const dict = {
     applied: 'Applied',
     failed: 'Failed',
     unknown: 'Unknown',
+  },
+  ja: {
+    title: 'CAD コパイロット',
+    placeholder: '自然言語でコマンドを入力… (例: 「100×60×40 のボックスを追加」「上面に 8mm の穴」)',
+    send: '実行',
+    history: 'コマンド履歴',
+    noHistory: 'まだ実行されたコマンドはありません',
+    confidence: '信頼度',
+    source: 'エンジン',
+    rule: 'ルール', llm: 'AI',
+    error: 'コマンド失敗',
+    unclear: 'コマンドを理解できませんでした。',
+    hint: '💡 ヒント',
+    examples: 'コマンド例',
+    useLlm: 'AI モード (低速)',
+    applied: '適用済み',
+    failed: '失敗',
+    unknown: '不明',
+  },
+  zh: {
+    title: 'CAD 副驾驶',
+    placeholder: '用自然语言输入指令…（例如：“添加 100×60×40 的方块”、“在顶面打 8mm 孔”）',
+    send: '执行',
+    history: '指令历史',
+    noHistory: '尚无已执行的指令',
+    confidence: '置信度',
+    source: '引擎',
+    rule: '规则', llm: 'AI',
+    error: '指令失败',
+    unclear: '无法理解该指令。',
+    hint: '💡 提示',
+    examples: '示例指令',
+    useLlm: 'AI 模式（较慢）',
+    applied: '已应用',
+    failed: '失败',
+    unknown: '未知',
+  },
+  es: {
+    title: 'Copiloto CAD',
+    placeholder: 'Escriba una orden en lenguaje natural… p. ej. «añade una caja de 100×60×40», «taladra un agujero de 8 mm arriba»',
+    send: 'Ejecutar',
+    history: 'Historial de órdenes',
+    noHistory: 'Todavía no hay órdenes',
+    confidence: 'Confianza',
+    source: 'Motor',
+    rule: 'Regla', llm: 'IA',
+    error: 'La orden ha fallado',
+    unclear: 'No se ha entendido esa orden.',
+    hint: '💡 Consejo',
+    examples: 'Órdenes de ejemplo',
+    useLlm: 'Modo IA (más lento)',
+    applied: 'Aplicada',
+    failed: 'Fallida',
+    unknown: 'Desconocido',
+  },
+  ar: {
+    title: 'مساعد CAD',
+    placeholder: 'اكتب أمراً بلغة طبيعية… مثال: «أضف صندوقاً 100×60×40»، «اثقب فتحة 8 مم في الأعلى»',
+    send: 'تنفيذ',
+    history: 'سجل الأوامر',
+    noHistory: 'لا توجد أوامر بعد',
+    confidence: 'الثقة',
+    source: 'المحرّك',
+    rule: 'قاعدة', llm: 'ذكاء اصطناعي',
+    error: 'فشل الأمر',
+    unclear: 'تعذّر فهم هذا الأمر.',
+    hint: '💡 تلميح',
+    examples: 'أوامر نموذجية',
+    useLlm: 'وضع الذكاء الاصطناعي (أبطأ)',
+    applied: 'طُبِّق',
+    failed: 'فشل',
+    unknown: 'غير معروف',
   },
 } as const;
 
@@ -136,8 +209,9 @@ export default function CopilotPanel({
   onClose,
   visible = true,
 }: CopilotPanelProps) {
-  const lk: Lang = lang === 'ko' || lang === 'kr' ? 'ko' : 'en';
-  const t = dict[lk];
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const lk: Lang = toIsoLang(lang) as Lang;
+  const t = dict[lk] ?? dict.en;
 
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);

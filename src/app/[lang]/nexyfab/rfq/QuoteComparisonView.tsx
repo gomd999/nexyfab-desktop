@@ -14,6 +14,7 @@
 // priority weighting.
 
 import React, { useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 interface QuoteForRFQ {
   id: string;
@@ -64,17 +65,95 @@ const dict = {
     bestLead: 'Fastest',
     none: '—',
   },
+  ja: {
+    title: '🏆 見積比較',
+    subtitle: '項目別に優れたものを強調表示します',
+    sortBy: '並べ替え',
+    sortPrice: '価格',
+    sortLead: '納期',
+    sortName: 'メーカー名',
+    rowFactory: 'メーカー',
+    rowPrice: '単価',
+    rowLead: '納期 (営業日)',
+    rowNote: '備考',
+    rowValid: '有効期限',
+    rowAction: '決定',
+    accept: '✓ 承諾',
+    reject: '✕ 辞退',
+    bestPrice: '最安',
+    bestLead: '最短納期',
+    none: '—',
+  },
+  zh: {
+    title: '🏆 报价对比',
+    subtitle: '按维度高亮最优项',
+    sortBy: '排序',
+    sortPrice: '价格',
+    sortLead: '交期',
+    sortName: '厂商名称',
+    rowFactory: '厂商',
+    rowPrice: '单价',
+    rowLead: '交期（工作日）',
+    rowNote: '备注',
+    rowValid: '有效期',
+    rowAction: '决定',
+    accept: '✓ 接受',
+    reject: '✕ 拒绝',
+    bestPrice: '最低价',
+    bestLead: '最短交期',
+    none: '—',
+  },
+  es: {
+    title: '🏆 Comparación de presupuestos',
+    subtitle: 'Se destaca lo mejor en cada dimensión',
+    sortBy: 'Ordenar',
+    sortPrice: 'Precio',
+    sortLead: 'Plazo',
+    sortName: 'Fabricante',
+    rowFactory: 'Fabricante',
+    rowPrice: 'Precio unitario',
+    rowLead: 'Plazo (días hábiles)',
+    rowNote: 'Observaciones',
+    rowValid: 'Validez',
+    rowAction: 'Decisión',
+    accept: '✓ Aceptar',
+    reject: '✕ Rechazar',
+    bestPrice: 'Precio más bajo',
+    bestLead: 'Plazo más corto',
+    none: '—',
+  },
+  ar: {
+    title: '🏆 مقارنة عروض الأسعار',
+    subtitle: 'يُبرز الأفضل في كل بُعد',
+    sortBy: 'الترتيب',
+    sortPrice: 'السعر',
+    sortLead: 'مدة التسليم',
+    sortName: 'اسم المصنّع',
+    rowFactory: 'المصنّع',
+    rowPrice: 'سعر الوحدة',
+    rowLead: 'مدة التسليم (أيام عمل)',
+    rowNote: 'ملاحظات',
+    rowValid: 'الصلاحية',
+    rowAction: 'القرار',
+    accept: '✓ قبول',
+    reject: '✕ رفض',
+    bestPrice: 'أدنى سعر',
+    bestLead: 'أقصر مدة',
+    none: '—',
+  },
 };
 
 export interface QuoteComparisonViewProps {
-  lang: 'ko' | 'en';
+  /** ⚠ 260802: `'ko' | 'en'` 이라 부모가 다른 언어를 넘길 수조차 없었다. */
+  lang: string;
   quotes: QuoteForRFQ[];
   acting: string | null;
   onAction: (quoteId: string, action: 'accept' | 'reject') => void;
 }
 
 export default function QuoteComparisonView({ lang, quotes, acting, onAction }: QuoteComparisonViewProps) {
-  const t = dict[lang];
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = dict[toIsoLang(lang)] ?? dict.en;
   const [sortBy, setSortBy] = useState<'price' | 'lead' | 'name'>('price');
 
   if (quotes.length < 2) return null;  // single quote: use the existing row layout
