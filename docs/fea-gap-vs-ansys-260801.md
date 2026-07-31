@@ -174,22 +174,36 @@ FEA 경로:  { scad } → OpenSCAD CLI → STL → gmsh → TET
                       └ OpenSCAD 는 메시 CSG 커널이다. B-rep 이 없고 STEP 을 만들 수 없다.
 ```
 
-즉 **「STEP 이 있는데 STL 로 넣고 있다」가 아니라, 이 경로에는 STEP 이 애초에 없다.**
-STEP 은 **다른 표현**에서만 나온다 — 피처 프로그램 → replicad(WASM OpenCASCADE) →
-`blobSTEP()` (`/api/nexyfab/cad-feature-step`).
+즉 **「STEP 이 있는데 STL 로 넣고 있다」가 아니다** — 이 **경로에는** STEP 이 없다.
 
-따라서 이 항목의 실제 내용은 「입력 형식 교체(S~M)」가 아니라
-**「FEA 를 SCAD 파이프라인에서 B-rep 파이프라인으로 재배선」**이고, 규모는 **L** 이다.
-게다가 **사용자가 실제로 해석하는 형상이 피처 프로그램으로 존재하는가**라는 선행 질문이
-붙는다(SCAD 로만 들어온 형상에는 적용할 수 없다).
+### ⚠ 위 문장을 다시 정정한다 (260801 재정정)
+
+「B-rep 이 **아예 없다**」고 적었는데 **그것도 과했다.** 실측:
+
+```
+occtEngine.ts   replicad + replicad-opencascadejs(WASM OCCT)
+                boolean · extrude · revolve · loft · filled-surface + shape registry
+                + exportOcctStep(handle)          ← 핸들에서 STEP 을 바로 뽑는다
+                **39개 모듈**이 사용
+MCP export_step  to-step.mjs(OCCT) → 진짜 B-rep STEP
+                 실측: 구멍 2개 판 → 23,879 bytes · 526 entities
+                 MANIFOLD_SOLID_BREP 1 · ADVANCED_FACE 8 · CYLINDRICAL_SURFACE 2
+```
+
+**B-rep 은 있다. FEA 진입점이 그것을 받지 않을 뿐이다**(`{ scad }` 만 받는다).
+따라서 규모는 **L(파이프라인 재배선)이 아니라 M(입력 경로 추가)** 에 가깝다.
+
+⚠ 다만 착수 전 **먼저 재야 할 값**이 있다: OCCT 는 **피처별 opt-in 또는 전역 토글이고
+  기본은 꺼져 있다**(`occtGlobalMode = false`). 실제로 그 경로로 만들어진 형상 비율이
+  낮으면 이 작업은 **대부분의 사용자에게 닿지 않는다.**
+  → 착수 조건: 「해석 대상 형상 중 OCCT 핸들/피처 프로그램으로 존재하는 비율」 실측.
 
 ⚠ **이 오류는 「gmsh 가 STL 을 받더라」는 관찰에서 「그러니 STEP 을 받게 하면 된다」로
    건너뛴 데서 나왔다.** gmsh 쪽만 보고 **상류에 무엇이 있는지 확인하지 않았다.**
    병목을 지목할 때는 **양쪽 끝을 다 확인해야 한다.**
 
-**대체 계획**: 4.3(개별 판단)으로 강등한다. 착수하려면 먼저
-「해석 대상 형상 중 피처 프로그램으로 존재하는 비율」을 실측해야 한다 — 그 값이 낮으면
-이 작업은 대부분의 사용자에게 닿지 않는다.
+**대체 계획**: 4.3(개별 판단)에 두되, 규모를 **M** 으로 낮춰 적는다. 착수 조건은 위의
+「OCCT 경로 형상 비율 실측」이다.
 
 ### 4.1 1단계 — **실제로 열려 있는 것부터** (260801 재작성)
 
@@ -269,6 +283,23 @@ S9(J-적분·SIF) · S12(DOE/응답면) · S1(3D 음향-구조) · S7(3D 로터�
 > **UI 표면이 있어야 의미가 있어** 계산 모듈만 만들면 닿지 않는다 — 착수하지 않았다.
 > P2(Sweep)는 §4.0 정정대로 **B-rep 부재로 여전히 막혀 있다.**
 
+### MCP OCCT 체인이 끊겨 있었다 (260801)
+
+「OCCT B-rep MCP 가 있느냐」를 확인하다가 찾았다. 같은 MCP 서버 안에서
+두 도구의 프로파일 표기가 달랐다:
+
+```
+reconstruct_3d 출력   profile: { id, points: [{x,y}, …] }
+export_step 게이트    profile: [[x,y], …]     → "profile: <3 points" 로 거부
+```
+
+점은 4개였다. 문서화된 체인 `extract_drawing → reconstruct_3d → export_step` 이
+**마지막 한 칸에서 끊겨 있었고**, 멀쩡한 OCCT B-rep 내보내기에 아무도 도달하지 못했다 —
+이 저장소의 반복 결함 ①「있는 것이 안 닿음」이다.
+
+`compose.mjs` 에 `normalizeProfile` 로 **아는 두 표기만** 통일. 모르는 형태는 그대로 두어
+게이트가 정직하게 거부하게 했다. 테스트 5건으로 잠금.
+
 ### S4 에서 방법을 두 번 바꿨다 — 기록
 
 ```
@@ -296,6 +327,11 @@ S9(J-적분·SIF) · S12(DOE/응답면) · S1(3D 음향-구조) · S7(3D 로터�
 | 260801 | **P1 Hexa dominant 를 「싼 것(S~M)」으로 분류** | 메셔만 봤다. **솔버가 사면체 전용**이라 요소 라이브러리가 선행된다 |
 | 260801 | **S5 조화가진을 「◐ 축소모델」로 판정** | **이름이 비슷한 모듈만 보고 판정했다.** `harmonicResponse.ts`(축소)를 보고 `modalFEM.hex8HarmonicResponse`(3D)를 못 봤다 — **있는 기능을 없다고 적었다** |
 | 260801 | **3D 모듈을 11개로 집계** | 위와 같은 이유로 `timeHistory`·`partBucklingFEM`·`thermalStress` 등을 누락. 실제 17개 |
+| 260801 | **§4.0 정정에서 「B-rep 이 아예 없다」고 적음** | **정정이 또 과했다.** `occtEngine`(39모듈)·`exportOcctStep`·MCP `export_step` 이 실재한다. 정확히는 「FEA 진입점이 B-rep 을 받지 않는다」 — 규모 L→M |
+
+⚠ **다섯 번째 항목은 「정정을 정정」한 것**이다. 틀렸다는 것을 알고 고칠 때도
+  **반대 방향으로 지나치기 쉽다** — 「없다」를 발견하면 「아예 없다」로 넘어간다.
+  정정에도 근거가 필요하다.
 
 **공통 원인**: **기능을 「이름」으로 찾았다.** 있어야 할 방법은 **커널 참조로 찾는 것**이다 —
 `TopologyGrid`(복셀 HEX8) 또는 `femSolver`(사면체)를 참조하는 모듈이 곧 3D 해석 모듈이다.
