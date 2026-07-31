@@ -6,6 +6,7 @@
 // fit / producibility / scores. Feeds the design→quote→order funnel.
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { loc } from '@/lib/i18n/loc';
 import dynamic from 'next/dynamic';
 import type * as THREE from 'three';
 import { MATERIAL_PRESETS } from '@/app/[lang]/shape-generator/materials';
@@ -124,11 +125,11 @@ function computeMetrics(
 }
 
 const PROCESSES = [
-  { id: 'cnc', ko: 'CNC 절삭', en: 'CNC machining' },
-  { id: '3d_print', ko: '3D 프린팅', en: '3D printing' },
-  { id: 'injection', ko: '사출 성형', en: 'Injection molding' },
-  { id: 'sheet_metal', ko: '판금', en: 'Sheet metal' },
-  { id: 'casting', ko: '주조', en: 'Casting' },
+  { id: 'cnc', ko: 'CNC 절삭', en: 'CNC machining', ja: 'CNC 切削', zh: 'CNC 切削', es: 'Mecanizado CNC', ar: 'التشغيل بـ CNC' },
+  { id: '3d_print', ko: '3D 프린팅', en: '3D printing', ja: '3D プリント', zh: '3D 打印', es: 'Impresión 3D', ar: 'الطباعة ثلاثية الأبعاد' },
+  { id: 'injection', ko: '사출 성형', en: 'Injection molding', ja: '射出成形', zh: '注塑成型', es: 'Moldeo por inyección', ar: 'الحقن بالقوالب' },
+  { id: 'sheet_metal', ko: '판금', en: 'Sheet metal', ja: '板金', zh: '钣金', es: 'Chapa metálica', ar: 'تشكيل الصفائح المعدنية' },
+  { id: 'casting', ko: '주조', en: 'Casting', ja: '鋳造', zh: '铸造', es: 'Fundición', ar: 'السباكة' },
 ];
 
 export default function EvaluatePage({ params }: { params: Promise<{ lang: string }> }) {
@@ -361,7 +362,8 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
             <span className="block text-xs opacity-70 mb-1.5">{T('공정', 'Process')}</span>
             <select value={process} onChange={e => setProcess(e.target.value)}
               className="bg-white/5 border border-white/15 rounded-md px-2 py-2 text-sm">
-              {PROCESSES.map(p => <option key={p.id} value={p.id}>{ko ? p.ko : p.en}</option>)}
+              {/* ⚠ 260802: `ko ? p.ko : p.en` 2분기라 ja·zh·es·ar 이 영어로 떨어졌다. */}
+              {PROCESSES.map(p => <option key={p.id} value={p.id}>{loc(lang, p)}</option>)}
             </select>
           </label>
           {process === 'injection' && (

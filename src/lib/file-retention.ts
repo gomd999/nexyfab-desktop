@@ -36,4 +36,44 @@ export const RETENTION_NOTICE = {
     ],
     footer: 'Please back up important files locally before the retention period expires.',
   },
+  ja: {
+    title: 'ファイル保管ポリシー',
+    items: [
+      `見積依頼なしでアップロードされたファイル: ${RETENTION_DAYS.quickQuote}日後に自動削除`,
+      `見積依頼(RFQ)のみで契約未締結: ${RETENTION_DAYS.rfqOnly}日後に自動削除`,
+      `契約完了後: ${RETENTION_DAYS.contractCompleted}日間保管後に削除`,
+      '進行中の契約に紐づくファイル: 契約期間中は保管',
+    ],
+    footer: '重要なファイルは削除前に必ずローカルにバックアップしてください。',
+  },
+  zh: {
+    title: '文件保留政策',
+    items: [
+      `未提交报价请求即上传的文件：${RETENTION_DAYS.quickQuote} 天后自动删除`,
+      `仅有报价请求(RFQ)且未签约：${RETENTION_DAYS.rfqOnly} 天后自动删除`,
+      `签约完成后：保留 ${RETENTION_DAYS.contractCompleted} 天后删除`,
+      '与进行中合同关联的文件：在合同期内保留',
+    ],
+    footer: '重要文件请务必在删除前备份到本地。',
+  },
+  es: {
+    title: 'Política de conservación de archivos',
+    items: [
+      `Archivos subidos sin solicitud de presupuesto: se eliminan automáticamente a los ${RETENTION_DAYS.quickQuote} días`,
+      `Archivos con RFQ pero sin contrato: se eliminan automáticamente a los ${RETENTION_DAYS.rfqOnly} días`,
+      `Archivos de contratos completados: se conservan ${RETENTION_DAYS.contractCompleted} días tras la finalización`,
+      'Archivos vinculados a contratos activos: se conservan mientras dure el contrato',
+    ],
+    footer: 'Haga una copia local de los archivos importantes antes de que expire el plazo de conservación.',
+  },
+  ar: {
+    title: 'سياسة الاحتفاظ بالملفات',
+    items: [
+      `الملفات المرفوعة دون طلب عرض سعر: تُحذف تلقائياً بعد ${RETENTION_DAYS.quickQuote} يوماً`,
+      `الملفات التي لها طلب عرض سعر (RFQ) دون تعاقد: تُحذف تلقائياً بعد ${RETENTION_DAYS.rfqOnly} يوماً`,
+      `ملفات العقود المكتملة: تُحفظ ${RETENTION_DAYS.contractCompleted} يوماً بعد الإتمام ثم تُحذف`,
+      'الملفات المرتبطة بعقود جارية: تُحفظ طوال مدة العقد.',
+    ],
+    footer: 'يُرجى الاحتفاظ بنسخة محلية من الملفات المهمة قبل انتهاء مدة الحفظ.',
+  },
 } as const;

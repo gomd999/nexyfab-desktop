@@ -1,19 +1,10 @@
-import { toIsoLang } from '@/lib/i18n/normalize';
-
 /**
- * Inline 6-language string picker for modeler components migrating away from
- * the 2-language `isKo ? '한글' : 'English'` pattern (which silently served
- * English to ja/zh/es/ar users). Maps route codes (kr/cn) → ISO via toIsoLang
- * and falls back to English for any missing/unknown locale.
+ * ⚠ 260802: 구현이 `@/lib/i18n/loc` 로 옮겨졌다.
  *
- * Usage: `loc(lang, { ko: '회전', en: 'Rotation', ja: '回転', zh: '旋转', es: 'Rotación', ar: 'تدوير' })`
+ * 이 헬퍼가 모델러 폴더 안에만 있어서, 그 밖의 화면들은 있는 줄 모르고
+ * `isKo ? '한글' : 'English'` 2분기를 계속 새로 썼다(실측 762곳).
+ * **도구가 한쪽에만 있으면 나머지는 각자 만든다.**
  *
- * ja/zh/es/ar are optional so a partial entry still type-checks (falls back to
- * en), but fill all six for complete coverage. (2026-06-13 modeler i18n)
+ * 기존 import 를 깨지 않으려고 재수출만 남긴다 — 새 코드는 `@/lib/i18n/loc` 를 쓴다.
  */
-export function loc(
-  lang: string | undefined | null,
-  m: { ko: string; en: string; ja?: string; zh?: string; es?: string; ar?: string },
-): string {
-  return m[toIsoLang(lang)] ?? m.en;
-}
+export { loc } from '@/lib/i18n/loc';

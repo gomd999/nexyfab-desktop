@@ -82,12 +82,14 @@ function calcAccuracy(draft: number, ref: number): number {
   return Math.max(0, 100 - absBias * 2);
 }
 
-function biasDescription(bias: number): { en: string; ko: string } {
-  if (bias > 20) return { en: 'Significantly overquoting — losing deals.', ko: '심하게 과대 견적 — 수주 기회 손실 가능.' };
-  if (bias > 8)  return { en: 'Slightly overquoting — consider lowering margin.', ko: '다소 과대 견적 — 마진 하향 조정 검토.' };
-  if (bias < -20) return { en: 'Significantly underquoting — margin at risk.', ko: '심하게 과소 견적 — 마진 손실 위험.' };
-  if (bias < -8)  return { en: 'Slightly underquoting — increase base rate.', ko: '다소 과소 견적 — 기준 단가 인상 검토.' };
-  return { en: 'Well-calibrated — maintain current pricing.', ko: '견적 정확도 양호 — 현행 단가 유지.' };
+type BiasCopy = { en: string; ko: string; ja: string; zh: string; es: string; ar: string };
+
+function biasDescription(bias: number): BiasCopy {
+  if (bias > 20) return { en: 'Significantly overquoting — losing deals.', ko: '심하게 과대 견적 — 수주 기회 손실 가능.', ja: '大幅な過大見積 — 受注機会を逃す可能性。', zh: '报价明显偏高 — 可能失去订单。', es: 'Sobrepresupuesto significativo: se pierden pedidos.', ar: 'مبالغة كبيرة في التسعير — احتمال خسارة الطلبات.' };
+  if (bias > 8)  return { en: 'Slightly overquoting — consider lowering margin.', ko: '다소 과대 견적 — 마진 하향 조정 검토.', ja: 'やや過大見積 — マージンの引き下げを検討。', zh: '报价略偏高 — 建议下调毛利。', es: 'Sobrepresupuesto leve: considere reducir el margen.', ar: 'مبالغة طفيفة في التسعير — يُنصح بخفض الهامش.' };
+  if (bias < -20) return { en: 'Significantly underquoting — margin at risk.', ko: '심하게 과소 견적 — 마진 손실 위험.', ja: '大幅な過少見積 — 利益が損なわれる恐れ。', zh: '报价明显偏低 — 毛利存在风险。', es: 'Subpresupuesto significativo: el margen está en riesgo.', ar: 'تسعير أقل من اللازم بدرجة كبيرة — الهامش في خطر.' };
+  if (bias < -8)  return { en: 'Slightly underquoting — increase base rate.', ko: '다소 과소 견적 — 기준 단가 인상 검토.', ja: 'やや過少見積 — 基準単価の引き上げを検討。', zh: '报价略偏低 — 建议上调基准单价。', es: 'Subpresupuesto leve: aumente la tarifa base.', ar: 'تسعير أقل قليلاً — يُنصح برفع السعر الأساسي.' };
+  return { en: 'Well-calibrated — maintain current pricing.', ko: '견적 정확도 양호 — 현행 단가 유지.', ja: '見積精度は良好 — 現行単価を維持。', zh: '报价校准良好 — 维持当前定价。', es: 'Bien calibrado: mantenga los precios actuales.', ar: 'التسعير مضبوط جيداً — يُنصح بالإبقاء على الأسعار الحالية.' };
 }
 
 function ruleBasedResult(body: RequestBody): QuoteAccuracyResult {

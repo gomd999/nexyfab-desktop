@@ -5,13 +5,29 @@ import { useEffect } from 'react';
 const i18n: Record<string, { title: string; desc: string; retry: string }> = {
   ko: { title: '3D 도구 오류', desc: '3D 도구를 불러오는 중 오류가 발생했습니다.', retry: '다시 시도' },
   en: { title: '3D Tool Error', desc: 'An error occurred while loading the 3D tool.', retry: 'Try again' },
+  ja: { title: '3D ツールエラー', desc: '3D ツールの読み込み中にエラーが発生しました。', retry: '再試行' },
+  zh: { title: '3D 工具错误', desc: '加载 3D 工具时发生错误。', retry: '重试' },
+  es: { title: 'Error de la herramienta 3D', desc: 'Se ha producido un error al cargar la herramienta 3D.', retry: 'Reintentar' },
+  ar: { title: 'خطأ في أداة 3D', desc: 'حدث خطأ أثناء تحميل أداة 3D.', retry: 'إعادة المحاولة' },
 };
 
 function detectLang(): string {
   if (typeof window === 'undefined') return 'en';
   const seg = window.location.pathname.split('/')[1] || '';
+  // ⚠ 260802: 경로·브라우저 모두 ko 만 봤다 — 사전에 4언어를 넣어도 **선택될 수 없었다.**
   if (seg === 'kr' || seg === 'ko') return 'ko';
-  if (typeof navigator !== 'undefined' && navigator.language?.startsWith('ko')) return 'ko';
+  if (seg === 'ja') return 'ja';
+  if (seg === 'cn' || seg === 'zh') return 'zh';
+  if (seg === 'es') return 'es';
+  if (seg === 'ar') return 'ar';
+  if (typeof navigator !== 'undefined') {
+    const l = navigator.language?.toLowerCase() ?? '';
+    if (l.startsWith('ko')) return 'ko';
+    if (l.startsWith('ja')) return 'ja';
+    if (l.startsWith('zh')) return 'zh';
+    if (l.startsWith('es')) return 'es';
+    if (l.startsWith('ar')) return 'ar';
+  }
   return 'en';
 }
 

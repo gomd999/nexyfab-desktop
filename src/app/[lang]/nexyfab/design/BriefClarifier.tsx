@@ -18,6 +18,7 @@
 
 import { useState } from 'react';
 import { isKorean } from '@/lib/i18n/normalize';
+import { loc } from '@/lib/i18n/loc';
 
 interface BriefParam {
   key: string;
@@ -42,10 +43,14 @@ interface ExpandResp {
   error?: string;
 }
 
-const SRC_STYLE: Record<BriefParam['source'], { ko: string; en: string; bg: string; fg: string }> = {
-  given:       { ko: '입력', en: 'given', bg: 'rgba(34,197,94,0.14)', fg: '#15803d' },
-  assumption:  { ko: '가정', en: 'assumed', bg: 'rgba(245,158,11,0.16)', fg: '#b45309' },
-  needs_input: { ko: '확인필요', en: 'needs input', bg: 'rgba(239,68,68,0.14)', fg: '#b91c1c' },
+/**
+ * ⚠ 이 배지는 **「이 값이 어디서 왔나」**를 말한다 — 「가정」과 「입력」을 구별 못 하면
+ *   사용자는 우리가 지어낸 값을 자기가 준 값으로 읽는다. 그래서 6언어로 나가야 한다.
+ */
+const SRC_STYLE: Record<BriefParam['source'], { ko: string; en: string; ja: string; zh: string; es: string; ar: string; bg: string; fg: string }> = {
+  given:       { ko: '입력', en: 'given', ja: '入力', zh: '已输入', es: 'dado', ar: 'مُدخل', bg: 'rgba(34,197,94,0.14)', fg: '#15803d' },
+  assumption:  { ko: '가정', en: 'assumed', ja: '仮定', zh: '假定', es: 'supuesto', ar: 'مُفترض', bg: 'rgba(245,158,11,0.16)', fg: '#b45309' },
+  needs_input: { ko: '확인필요', en: 'needs input', ja: '要確認', zh: '需确认', es: 'requiere dato', ar: 'يلزم إدخال', bg: 'rgba(239,68,68,0.14)', fg: '#b91c1c' },
 };
 
 export default function BriefClarifier({
@@ -129,7 +134,8 @@ export default function BriefClarifier({
                         style={{ display: 'inline-flex', gap: 5, alignItems: 'center', padding: '3px 8px', borderRadius: 999, fontSize: 11.5, background: s.bg, color: s.fg }}>
                         <b style={{ fontWeight: 700 }}>{p.key}</b>
                         <span>{val}</span>
-                        <span style={{ opacity: 0.8 }}>· {ko ? s.ko : s.en}</span>
+                        {/* ⚠ 260802: `ko ? s.ko : s.en` 2분기라 ja·zh·es·ar 이 영어로 떨어졌다. */}
+                        <span style={{ opacity: 0.8 }}>· {loc(lang, s)}</span>
                       </span>
                     );
                   })}
