@@ -22,6 +22,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 export interface FloatingAiPromptProps {
   lang: string;
@@ -58,6 +59,42 @@ const COPY = {
     close: 'Close',
     hint: '⌘K',
   },
+  ja: {
+    pill: '✨ AI で設計・修正',
+    placeholder: '例: 50mm の立方体を作って上面に 10mm の穴を開けて',
+    send: '送信',
+    streaming: '生成中...',
+    full: '全画面チャットを開く',
+    close: '閉じる',
+    hint: '⌘K',
+  },
+  zh: {
+    pill: '✨ 用 AI 设计/修改',
+    placeholder: '例如：做一个 50mm 立方体，并在顶面开一个 10mm 的孔',
+    send: '发送',
+    streaming: '生成中...',
+    full: '打开完整对话',
+    close: '关闭',
+    hint: '⌘K',
+  },
+  es: {
+    pill: '✨ Diseñar con IA',
+    placeholder: 'p. ej.: Haz un cubo de 50 mm con un agujero de 10 mm arriba',
+    send: 'Enviar',
+    streaming: 'Generando...',
+    full: 'Abrir el chat completo',
+    close: 'Cerrar',
+    hint: '⌘K',
+  },
+  ar: {
+    pill: '✨ صمّم بالذكاء الاصطناعي',
+    placeholder: 'مثال: اصنع مكعباً 50 مم مع ثقب 10 مم في الأعلى',
+    send: 'إرسال',
+    streaming: 'جارٍ التوليد...',
+    full: 'فتح المحادثة الكاملة',
+    close: 'إغلاق',
+    hint: '⌘K',
+  },
 } as const;
 
 /** One-click starting points — clicking fills the input with a ready, editable
@@ -83,7 +120,8 @@ export default function FloatingAiPrompt({
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
 
   // Restore last open state. On a FIRST visit (no stored preference) open it, so
   // new users meet the "just describe it" front door instead of the full ribbon.

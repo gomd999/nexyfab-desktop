@@ -22,6 +22,7 @@
  */
 
 import * as React from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import type {
   LostRef,
   RelinkRecord,
@@ -87,6 +88,50 @@ const REASON_KO: Record<LostRefReason, string> = {
   'unresolved-ref': '현재 토폴로지에서 해석되지 않는 참조',
 };
 
+const REASON_JA: Record<LostRefReason, string> = {
+  ambiguous: '現在の形状の複数エッジが同点で一致 — 判別不能',
+  low_confidence: '十分に類似する現在のエッジがない',
+  no_parallel_candidate: '同じ方向の現在のエッジがない',
+  no_candidates: 'リビルド結果にエッジがない',
+  unknown: '現在のトポロジーに存在しない名前',
+  'legacy-role': '旧式の位置ベース (pre-W1-B) 名 — 安全な再解釈が不可',
+  'legacy-seam': '旧式のシーム順序 (pre-W3-A) 名 — 安全な再解釈が不可',
+  'unresolved-ref': '現在のトポロジーで解決できない参照',
+};
+
+const REASON_ZH: Record<LostRefReason, string> = {
+  ambiguous: '当前形状的多条边同分匹配 — 无法判别',
+  low_confidence: '没有足够相似的当前边',
+  no_parallel_candidate: '没有同方向的当前边',
+  no_candidates: '重建结果中没有边',
+  unknown: '当前拓扑中不存在的名称',
+  'legacy-role': '旧式基于位置 (pre-W1-B) 的名称 — 无法安全重解析',
+  'legacy-seam': '旧式接缝序号 (pre-W3-A) 名称 — 无法安全重解析',
+  'unresolved-ref': '在当前拓扑中无法解析的引用',
+};
+
+const REASON_ES: Record<LostRefReason, string> = {
+  ambiguous: 'Varias aristas actuales empatan en la coincidencia: no se puede discriminar',
+  low_confidence: 'No hay ninguna arista actual suficientemente similar',
+  no_parallel_candidate: 'No hay ninguna arista actual con la misma dirección',
+  no_candidates: 'La reconstrucción no ha dejado aristas',
+  unknown: 'Nombre inexistente en la topología actual',
+  'legacy-role': 'Nombre antiguo basado en posición (pre-W1-B): no se puede reinterpretar con seguridad',
+  'legacy-seam': 'Nombre antiguo por orden de costura (pre-W3-A): no se puede reinterpretar con seguridad',
+  'unresolved-ref': 'Referencia no resoluble en la topología actual',
+};
+
+const REASON_AR: Record<LostRefReason, string> = {
+  ambiguous: 'تتساوى عدة حواف في الشكل الحالي في التطابق — يتعذّر التمييز',
+  low_confidence: 'لا توجد حافة حالية مشابهة بدرجة كافية',
+  no_parallel_candidate: 'لا توجد حافة حالية بالاتجاه نفسه',
+  no_candidates: 'لم تُنتج إعادة البناء أي حواف',
+  unknown: 'اسم غير موجود في الطوبولوجيا الحالية',
+  'legacy-role': 'اسم قديم قائم على الموضع (قبل W1-B) — يتعذّر إعادة تفسيره بأمان',
+  'legacy-seam': 'اسم قديم بترتيب الخياطة (قبل W3-A) — يتعذّر إعادة تفسيره بأمان',
+  'unresolved-ref': 'مرجع لا يمكن حلّه في الطوبولوجيا الحالية',
+};
+
 const DICT: Record<string, Dict> = {
   en: {
     title: 'Lost references',
@@ -118,11 +163,71 @@ const DICT: Record<string, Dict> = {
     dist: '거리',
     reason: (r) => REASON_KO[r],
   },
+  ja: {
+    title: '参照の喪失',
+    noConfident: '確信できる候補なし — 直接確認して適用するか再選択してください',
+    gateOk: 'ゲート通過',
+    reselect: 'ビューポートで再選択',
+    apply: '再指定',
+    history: '再指定履歴',
+    distanceOnly: '距離基準の並べ替え (近似)',
+    noCandidates: '現在のトポロジーに候補なし',
+    noPriorAnchor: '以前のアンカー情報なし — 一覧は順位なし',
+    score: 'スコア',
+    margin: 'マージン',
+    dist: '距離',
+    reason: (r) => REASON_JA[r],
+  },
+  zh: {
+    title: '参照丢失',
+    noConfident: '没有可信候选 — 请人工确认后应用，或重新选择',
+    gateOk: '通过校验',
+    reselect: '在视口中重新选择',
+    apply: '重新指定',
+    history: '重新指定历史',
+    distanceOnly: '按距离排序（近似）',
+    noCandidates: '当前拓扑中没有候选',
+    noPriorAnchor: '没有先前锚点信息 — 列表无排序',
+    score: '分数',
+    margin: '差值',
+    dist: '距离',
+    reason: (r) => REASON_ZH[r],
+  },
+  es: {
+    title: 'Referencia perdida',
+    noConfident: 'Ningún candidato fiable: verifíquelo y aplique, o vuelva a seleccionar',
+    gateOk: 'Verificación superada',
+    reselect: 'Volver a seleccionar en la vista',
+    apply: 'Reasignar',
+    history: 'Historial de reasignaciones',
+    distanceOnly: 'Ordenado por distancia (aproximado)',
+    noCandidates: 'No hay candidatos en la topología actual',
+    noPriorAnchor: 'Sin anclaje previo: la lista no está ordenada',
+    score: 'Puntuación',
+    margin: 'Margen',
+    dist: 'Distancia',
+    reason: (r) => REASON_ES[r],
+  },
+  ar: {
+    title: 'مرجع مفقود',
+    noConfident: 'لا يوجد مرشّح موثوق — تحقّق يدوياً ثم طبّق، أو أعد الاختيار',
+    gateOk: 'اجتاز التحقق',
+    reselect: 'إعادة الاختيار من العرض',
+    apply: 'إعادة التعيين',
+    history: 'سجل إعادة التعيين',
+    distanceOnly: 'ترتيب حسب المسافة (تقريبي)',
+    noCandidates: 'لا توجد مرشّحات في الطوبولوجيا الحالية',
+    noPriorAnchor: 'لا توجد معلومات مرساة سابقة — القائمة غير مرتّبة',
+    score: 'الدرجة',
+    margin: 'الفارق',
+    dist: 'المسافة',
+    reason: (r) => REASON_AR[r],
+  },
 };
 
 function pickDict(lang?: string): Dict {
-  const key = lang === 'kr' ? 'ko' : (lang ?? 'en');
-  return DICT[key] ?? DICT.en!;
+  // ⚠ 260802: `kr → ko` 만 정규화해 `cn` 이 zh 로 안 갔다. toIsoLang 로 통일한다.
+  return DICT[toIsoLang(lang)] ?? DICT.en!;
 }
 
 const C = {
