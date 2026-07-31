@@ -219,15 +219,124 @@ const dict = {
         ],
         s5Title: '5. 政策变更',
         s5Desc: '本政策可能根据法律法规或公司政策变更，变更时将通过服务页面公布。'
+    },
+    /** ⚠ 260802: es·ar 이 'en' 으로 고정돼 있었다 — 보안·NDA 정책이 영어로 나가고 있었다. */
+    es: {
+        kicker: 'Nexyfab · Política de seguridad (NDA)',
+        title: 'Política de seguridad (NDA)',
+        desc1: 'Nexyfab aplica los principios de divulgación mínima,',
+        desc2: 'restricción de acceso y confidencialidad para proteger la información de los proyectos.',
+        intro: 'Esta política se aplica a todos los clientes y socios que utilizan el servicio.',
+        s1Title: '1. Definición de información confidencial',
+        s1Desc1: 'La Empresa define como «información confidencial» lo siguiente:',
+        s1List1: [
+            'Diseño de producto, planos 2D/3D y datos estructurales',
+            'Datos de diseño de circuitos, eléctricos y de PCB',
+            'Finalidad del desarrollo, requisitos y especificaciones técnicas',
+            'Imágenes de prototipos y datos del proceso de desarrollo',
+            'Información corporativa, como el nombre de la empresa o la persona de contacto',
+            'Proceso de fabricación y distribución de la línea de automatización',
+            'Precios, presupuestos y contenido de las propuestas',
+            'Documentos y comunicaciones generados durante la colaboración',
+            'Información compartida mediante consultas, llamadas, chat o archivos subidos'
+        ],
+        s1Desc2: 'No obstante, la siguiente información no se considera confidencial:',
+        s1List2: [
+            'Información ya hecha pública',
+            'Información poseída lícitamente con anterioridad a su recepción',
+            'Información cuya divulgación exija la ley'
+        ],
+        s2Title: '2. Aplicación del NDA y principios de protección',
+        s2Sub1: '① Principios básicos',
+        s2List1: [
+            'Se accede a la información del proyecto únicamente dentro del alcance de la revisión interna.',
+            'Durante el emparejamiento solo se comparte la información mínima necesaria para la finalidad.',
+            'La información de clientes y socios puede divulgarse parcialmente durante el emparejamiento inicial.'
+        ],
+        s2Sub2: '② Protección de la información del cliente',
+        s2List2: [
+            'El acceso a la información del proyecto del cliente se restringe al personal interno necesario.',
+            'La información transmitida a los socios durante el emparejamiento se limita a lo necesario para la evaluación.',
+            'Salvo acuerdo en contrario, los nombres de empresa y los detalles pueden anonimizarse en las fases iniciales.'
+        ],
+        s2Sub3: '③ Protección de la información del socio',
+        s2List3: [
+            'La tecnología del socio, la información de sus instalaciones y los datos de capacidad interna se usan únicamente para el emparejamiento.',
+            'La información podrá facilitarse a los clientes del proyecto correspondiente una vez establecido el emparejamiento.'
+        ],
+        s3Title: '3. Apoyo a la firma del NDA',
+        s3Desc: 'La Empresa puede apoyar los trámites de firma del NDA entre clientes y socios. No obstante, el efecto concreto y la responsabilidad legal del NDA corresponden a las partes contratantes.',
+        s4Title: '4. Alcance de la protección de la información y limitación de responsabilidad',
+        s4List: [
+            'La Empresa protege la información confidencial mediante medidas de seguridad razonables.',
+            'La Empresa no responde por actos de terceros fuera de su control, por negligencia del usuario ni por información intercambiada directamente entre las partes.',
+            'Esta política no se aplica a la información compartida directamente fuera de la plataforma.'
+        ],
+        s5Title: '5. Modificaciones de la política',
+        s5Desc: 'Esta política de seguridad puede cambiar conforme a la ley o a las políticas de la empresa; se avisará en la pantalla del servicio cuando se modifique.'
+    },
+    ar: {
+        kicker: 'Nexyfab · سياسة الأمان (NDA)',
+        title: 'سياسة الأمان (اتفاقية عدم الإفصاح)',
+        desc1: 'تطبّق Nexyfab مبادئ الإفصاح الأدنى،',
+        desc2: 'وتقييد الوصول، والسرية، لحماية معلومات المشاريع.',
+        intro: 'تنطبق هذه السياسة على جميع العملاء والشركاء الذين يستخدمون الخدمة.',
+        s1Title: '١. تعريف المعلومات السرية',
+        s1Desc1: 'تُعرّف الشركة ما يلي بوصفه «معلومات سرية»:',
+        s1List1: [
+            'تصميم المنتج والرسومات ثنائية/ثلاثية الأبعاد والبيانات الإنشائية',
+            'بيانات تصميم الدوائر والكهرباء ولوحات PCB',
+            'غرض التطوير والمتطلبات والمواصفات التقنية',
+            'صور النماذج الأولية وبيانات عملية التطوير',
+            'المعلومات المؤسسية، مثل اسم الشركة وجهة الاتصال',
+            'عملية التصنيع وتخطيط خط الأتمتة',
+            'الأسعار وعروض الأسعار ومحتوى المقترحات',
+            'المستندات والمراسلات الناشئة أثناء التعاون',
+            'المعلومات المتبادلة عبر الاستشارة أو المكالمة أو المحادثة أو الملفات المرفوعة'
+        ],
+        s1Desc2: 'غير أن المعلومات التالية لا تُعدّ سرية:',
+        s1List2: [
+            'المعلومات التي أصبحت علنية بالفعل',
+            'المعلومات المملوكة بصورة مشروعة قبل تسلّمها',
+            'المعلومات التي يوجب القانون الإفصاح عنها'
+        ],
+        s2Title: '٢. تطبيق اتفاقية عدم الإفصاح ومبادئ الحماية',
+        s2Sub1: '① المبادئ الأساسية',
+        s2List1: [
+            'لا يجري الوصول إلى معلومات المشروع إلا في نطاق المراجعة الداخلية.',
+            'لا يُشارَك أثناء المطابقة سوى الحد الأدنى من المعلومات اللازمة للغرض.',
+            'قد يجري إفصاح جزئي عن معلومات العملاء والشركاء أثناء المطابقة الأولية.'
+        ],
+        s2Sub2: '② حماية معلومات العميل',
+        s2List2: [
+            'يقتصر الوصول إلى معلومات مشروع العميل على الموظفين الداخليين اللازمين.',
+            'تقتصر المعلومات المُرسلة إلى الشركاء أثناء المطابقة على ما يلزم للتقييم.',
+            'ما لم يُتفق على خلاف ذلك، يجوز إخفاء أسماء الشركات وتفاصيلها في المراحل المبكرة.'
+        ],
+        s2Sub3: '③ حماية معلومات الشريك',
+        s2List3: [
+            'تُستخدم تقنيات الشريك ومعلومات منشآته وبيانات طاقته الداخلية لأغراض المطابقة فقط.',
+            'ويجوز تقديم هذه المعلومات لعملاء المشروع المعني بعد إتمام المطابقة.'
+        ],
+        s3Title: '٣. دعم إبرام اتفاقية عدم الإفصاح',
+        s3Desc: 'يجوز للشركة دعم إجراءات إبرام اتفاقية عدم الإفصاح بين العملاء والشركاء. غير أن الأثر المحدد للاتفاقية والمسؤولية القانونية عنها يقعان على طرفي التعاقد.',
+        s4Title: '٤. نطاق حماية المعلومات وحدود المسؤولية',
+        s4List: [
+            'تحمي الشركة المعلومات السرية عبر تدابير أمنية معقولة.',
+            'لا تتحمّل الشركة المسؤولية عن أفعال الغير الخارجة عن سيطرتها، ولا عن إهمال المستخدم، ولا عن المعلومات المتبادلة مباشرةً بين الأطراف.',
+            'ولا تنطبق هذه السياسة على المعلومات المتبادلة مباشرةً خارج المنصة.'
+        ],
+        s5Title: '٥. تعديلات السياسة',
+        s5Desc: 'قد تتغيّر سياسة الأمان هذه وفقاً للقانون أو لسياسة الشركة؛ وسيُنشر إشعار على شاشة الخدمة عند التغيير.'
     }
 };
 
 export default function SecurityPolicyPage() {
     const pathname = usePathname();
     const langCode = pathname.split('/')[1] || 'en';
-    const lang = ['en', 'kr', 'ja', 'cn'].includes(langCode) ? langCode : 'en';
+    const lang = ['en', 'kr', 'ja', 'cn', 'es', 'ar'].includes(langCode) ? langCode : 'en';
 
-    const langMap: Record<string, string> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'zh', es: 'en', ar: 'en' };
+    const langMap: Record<string, string> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'zh', es: 'es', ar: 'ar' };
     const t = dict[langMap[lang] as keyof typeof dict];
 
     return (

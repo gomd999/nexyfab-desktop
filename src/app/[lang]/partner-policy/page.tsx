@@ -163,15 +163,96 @@ const dict = {
         s5Desc: '违反本政策时，可能会采取以下阶梯式措施：',
         s5Process: '警告 → 临时限制匹配 → 取消合作伙伴资格',
         s5Foot: '但在泄露机密信息、盗用技术等严重违规情况下，公司有权在不预先警告的情况下立即永久清退。'
+    },
+    /** ⚠ 260802: es·ar 이 'en' 으로 고정돼 있었다 — 라이브 실측 ar↔en 단어일치 83%. */
+    es: {
+        kicker: 'Nexyfab · Política de socios',
+        title: 'Política de socios (Partner Policy)',
+        desc1: 'Esta política se dirige a los socios registrados en la plataforma Nexyfab,',
+        desc2: 'y se ha elaborado para una colaboración basada en la confianza y un entorno de emparejamiento justo.',
+        s1Title: '1. Criterios de registro de socios',
+        s1List: [
+            'Debe contar con experiencia real de desarrollo o con instalaciones de fabricación.',
+            'La información técnica, la de equipamiento y el portafolio deben basarse en hechos.',
+            'La empresa podrá solicitar reuniones presenciales o virtuales y datos adicionales si fuera necesario.',
+            'Si se confirma información falsa, el registro podrá ser restringido o cancelado.'
+        ],
+        s2Title: '2. Conductas prohibidas',
+        s2Desc: 'Quedan estrictamente prohibidas las siguientes conductas:',
+        s2List: [
+            'Registrar tecnología, equipamiento o capacidades de desempeño falsos',
+            'Apropiación no autorizada de portafolios, logros o propiedad intelectual de terceros',
+            'Filtración no autorizada o divulgación externa de requisitos, planos o datos técnicos del cliente',
+            'Contacto tardío, falta de respuesta reiterada o incomparecencia tras el emparejamiento sin justificación',
+            'Intentos de desarrollo no autorizado, imitación o comercialización propia usando información técnica del cliente'
+        ],
+        s2Foot: 'Si se confirman estas conductas, la empresa podrá adoptar medidas como la restricción del emparejamiento o la baja como socio.',
+        s3Title: '3. Criterios de aceptación de proyectos',
+        s3List: [
+            'Puede producirse un emparejamiento prioritario según la idoneidad técnica, el sector, la dificultad y la experiencia en proyectos similares.',
+            'Evite aceptar proyectos de forma indiscriminada o presentar condiciones poco realistas.',
+            'El emparejamiento con una idoneidad marcadamente baja puede limitarse para evitar consultas innecesarias y el desperdicio de recursos.'
+        ],
+        s4Title: '4. Principios de colaboración',
+        s4List: [
+            'Los requisitos del cliente deben revisarse íntegramente antes de aceptar el proyecto.',
+            'Si se determina que la ejecución es imposible, debe notificarse de inmediato a la empresa y al cliente.',
+            'Las obligaciones de confidencialidad deben cumplirse fielmente durante todo el ciclo de vida del proyecto.',
+            'Los contratos con los clientes se celebran directamente entre las partes; la empresa no es parte contratante.'
+        ],
+        s5Title: '5. Sanciones',
+        s5Desc: 'En caso de incumplimiento de la política, podrán aplicarse las siguientes medidas sucesivas:',
+        s5Process: 'Advertencia → Restricción temporal del emparejamiento → Baja como socio',
+        s5Foot: 'No obstante, en casos de infracciones graves, como la filtración de información confidencial o el robo de tecnología, podrá aplicarse la exclusión permanente de inmediato y sin advertencia previa.'
+    },
+    ar: {
+        kicker: 'Nexyfab · سياسة الشركاء',
+        title: 'سياسة الشركاء (Partner Policy)',
+        desc1: 'تستهدف هذه السياسة الشركاء المسجّلين على منصة Nexyfab،',
+        desc2: 'وقد أُعدّت من أجل تعاون قائم على الثقة وبيئة مطابقة عادلة.',
+        s1Title: '١. معايير تسجيل الشركاء',
+        s1List: [
+            'يجب امتلاك خبرة تطوير فعلية أو منشآت تصنيع.',
+            'يجب أن تستند المعلومات التقنية ومعلومات المعدات وملف الأعمال إلى وقائع.',
+            'يجوز للشركة طلب اجتماعات حضورية أو افتراضية وبيانات إضافية عند الاقتضاء.',
+            'في حال ثبوت معلومات كاذبة، قد يُقيَّد التسجيل أو يُلغى.'
+        ],
+        s2Title: '٢. الأفعال المحظورة',
+        s2Desc: 'تُحظر الأفعال التالية حظراً تاماً:',
+        s2List: [
+            'تسجيل تقنيات أو معدات أو قدرات أداء غير صحيحة',
+            'الاستيلاء غير المصرّح به على ملفات أعمال الغير أو إنجازاتهم أو ملكيتهم الفكرية',
+            'التسريب غير المصرّح به أو المشاركة الخارجية لمتطلبات العميل أو رسوماته أو بياناته التقنية',
+            'تأخّر التواصل أو تكرار عدم الرد أو التخلّف عن الحضور بعد المطابقة دون مبرر',
+            'محاولات التطوير غير المصرّح به أو التقليد أو التسويق المستقل باستخدام المعلومات التقنية للعميل'
+        ],
+        s2Foot: 'في حال ثبوت هذه الأفعال، يجوز للشركة اتخاذ إجراءات مثل تقييد المطابقة أو إسقاط صفة الشريك.',
+        s3Title: '٣. معايير قبول المشاريع',
+        s3List: [
+            'قد تتم مطابقة ذات أولوية بناءً على الملاءمة التقنية ومجال الصناعة ودرجة الصعوبة والخبرة في مشاريع مشابهة.',
+            'تجنّب قبول المشاريع بشكل عشوائي أو عرض شروط غير واقعية.',
+            'قد تُقيَّد المطابقة عند انخفاض الملاءمة بدرجة كبيرة، تفادياً للاستشارات غير الضرورية وهدر الموارد.'
+        ],
+        s4Title: '٤. مبادئ التعاون',
+        s4List: [
+            'يجب مراجعة متطلبات العميل مراجعة كاملة قبل قبول المشروع.',
+            'إذا تبيّن تعذّر التنفيذ، وجب إخطار الشركة والعميل فوراً.',
+            'يجب الوفاء بالتزامات السرية بأمانة طوال دورة حياة المشروع.',
+            'تُبرم العقود مع العملاء مباشرةً بين الطرفين؛ والشركة ليست طرفاً متعاقداً.'
+        ],
+        s5Title: '٥. الجزاءات',
+        s5Desc: 'في حال مخالفة السياسة، قد تُطبَّق الإجراءات التالية بالتتابع:',
+        s5Process: 'إنذار ← تقييد مؤقت للمطابقة ← إسقاط صفة الشريك',
+        s5Foot: 'غير أنه في حالات المخالفات الجسيمة، مثل تسريب المعلومات السرية أو سرقة التقنية، يجوز تطبيق الاستبعاد الدائم فوراً ودون إنذار مسبق.'
     }
 };
 
 export default function PartnerPolicyPage() {
     const pathname = usePathname();
     const langCode = pathname.split('/')[1] || 'en';
-    const lang = ['en', 'kr', 'ja', 'cn'].includes(langCode) ? langCode : 'en';
+    const lang = ['en', 'kr', 'ja', 'cn', 'es', 'ar'].includes(langCode) ? langCode : 'en';
 
-    const langMap: Record<string, string> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'zh', es: 'en', ar: 'en' };
+    const langMap: Record<string, string> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'zh', es: 'es', ar: 'ar' };
     const t = dict[langMap[lang] as keyof typeof dict];
 
     return (

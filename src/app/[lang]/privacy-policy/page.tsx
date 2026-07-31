@@ -349,7 +349,186 @@ const dict = {
         ],
         s9Title: '9. 政策变更',
         s9Desc: '本政策可能根据法规或公司政策变更，变更时将通过服务页面公布。重要变更将提前通过邮件通知。',
-    }
+    },
+    /**
+     * ⚠ 260802: es·ar 이 langMap 에서 'en' 으로 고정돼 있었다 — 라이브 실측에서
+     *   스페인어 페이지의 영어 단어 일치 80% · 아랍어 90%(아랍 문자 비율 12%)였다.
+     *   **개인정보처리방침은 법적 문서**라 그 언어 사용자에게 영어로 나가면 성격이 다르다.
+     */
+    es: {
+        kicker: 'Nexyfab · Política de privacidad',
+        title: 'Política de privacidad',
+        desc1: 'Nexyfab protege los datos personales de los usuarios y',
+        desc2: 'los gestiona de forma segura conforme a la legislación aplicable.',
+        effective: 'Fecha de entrada en vigor: 7 de mayo de 2026',
+        toc: 'Contenido',
+        tocItems: [
+            'Datos personales recopilados',
+            'Finalidad de la recopilación y el uso',
+            'Plazo de conservación y uso',
+            'Cesión a terceros',
+            'Encargo del tratamiento',
+            'Derechos del usuario',
+            'Procedimiento de destrucción',
+            'Responsable de protección de datos',
+            'Modificaciones de la política',
+        ],
+        s1Title: '1. Datos personales recopilados',
+        s1Desc: 'La Empresa puede recopilar la siguiente información para prestar sus servicios.',
+        s1Sub1: '① Cliente (promotor del proyecto)',
+        s1List1: ['Nombre', 'Contacto (teléfono, correo electrónico)', 'Nombre de la empresa', 'Requisitos del proyecto, planos y archivos', 'Registros de consultas y comunicaciones'],
+        s1Sub2: '② Socio (desarrollador/fabricante)',
+        s1List2: ['Nombre', 'Contacto', 'Nombre de la empresa e información comercial', 'Tecnología, información de equipamiento y portafolio', 'Historial de proyectos y materiales relacionados'],
+        s1Sub3: '③ Suscriptores de SaaS',
+        s1List3: ['Dirección de correo electrónico', 'Nombre (opcional)', 'Datos de pago (los números de tarjeta los procesan directamente Stripe/Toss; nosotros no los almacenamos)', 'Plan de suscripción e historial de facturación', 'Registros de uso del servicio'],
+        s1Sub4: '④ Recopilados automáticamente',
+        s1List4: ['Registros de acceso', 'Dirección IP', 'Cookies', 'Registros de uso del servicio', 'Información de navegador y dispositivo'],
+        s2Title: '2. Finalidad de la recopilación y el uso',
+        s2List: [
+            'Prestación del servicio y recepción de proyectos',
+            'Emparejamiento y recomendación de socios',
+            'Registro de cuenta y verificación de identidad',
+            'Procesamiento de pagos y emisión de facturas',
+            'Consultas y soporte al cliente',
+            'Trámites de NDA y apoyo a la colaboración',
+            'Mejora del servicio y gestión interna',
+            'Cumplimiento normativo',
+        ],
+        s3Title: '3. Plazo de conservación y uso',
+        s3Desc: 'Los datos personales se destruyen sin demora una vez cumplida la finalidad. Tras la eliminación de la cuenta se conservan los siguientes conforme a la ley aplicable:',
+        s3List: [
+            'Registros de contratos y facturación: 5 años (Ley de comercio electrónico)',
+            'Reclamaciones y controversias de consumidores: 3 años (Ley de comercio electrónico)',
+            'Registros de acceso: 1 año (Ley de protección del secreto de las comunicaciones)',
+            'Registros de pago y suministro: 5 años (Ley de comercio electrónico)',
+        ],
+        s4Title: '4. Cesión a terceros',
+        s4Desc: 'En principio, la Empresa no cede datos personales a terceros. Excepciones:',
+        s4List: [
+            'Cliente → socio emparejado (para el proyecto, con el consentimiento del usuario)',
+            'Socio → cliente correspondiente (para la colaboración, con el consentimiento del usuario)',
+            'Procesamiento de pagos: Stripe Inc. / Toss Payments / Airwallex (solo con fines de pago; no conservamos datos de tarjeta)',
+            'Cuando el usuario lo consiente por separado',
+            'Cuando lo exige la ley (por ejemplo, requerimiento de las autoridades)',
+        ],
+        s4Note: 'La Empresa no cede datos personales más allá del alcance de la finalidad prevista.',
+        s5Title: '5. Encargo del tratamiento de datos personales',
+        s5Desc: 'La Empresa encarga el tratamiento de datos personales a los siguientes proveedores. Supervisamos que se garantice la seguridad de los datos conforme a la ley aplicable.',
+        s5Table: [
+            { company: 'Stripe, Inc.', purpose: 'Procesamiento de pagos y facturación (global)', location: 'Estados Unidos' },
+            { company: 'Toss Payments', purpose: 'Procesamiento de pagos en Corea', location: 'Corea del Sur' },
+            { company: 'Airwallex (HK) Ltd.', purpose: 'Pagos multidivisa y gestión de suscripciones', location: 'Hong Kong / Australia' },
+            { company: 'Cloudflare, Inc.', purpose: 'Almacenamiento de archivos (R2), CDN, DNS', location: 'Estados Unidos' },
+            { company: 'Railway Corp.', purpose: 'Alojamiento de la infraestructura del servicio', location: 'Estados Unidos' },
+        ],
+        s5TableHeaders: ['Proveedor', 'Tarea encargada', 'Ubicación'],
+        s6Title: '6. Derechos del usuario',
+        s6Desc: 'Los usuarios pueden ejercer en cualquier momento los siguientes derechos:',
+        s6List: [
+            'Solicitar el acceso a sus datos personales',
+            'Solicitar la rectificación o supresión de sus datos personales',
+            'Solicitar la limitación del tratamiento',
+            'Retirar el consentimiento (la falta de datos obligatorios puede limitar el acceso al servicio)',
+        ],
+        s6Foot: 'Para ejercer estos derechos, escriba a privacy@nexyfab.com. La Empresa actuará en un plazo de 10 días hábiles.',
+        s7Title: '7. Procedimiento y método de destrucción',
+        s7Desc: 'Cuando vencen los plazos de conservación o se cumplen las finalidades, los archivos electrónicos se eliminan de forma irrecuperable y los documentos en papel se trituran o incineran.',
+        s8Title: '8. Responsable de protección de datos',
+        s8Items: [
+            { label: 'Equipo', value: 'Equipo de Privacidad de NexyFab' },
+            { label: 'Correo electrónico', value: 'privacy@nexyfab.com' },
+            { label: 'Plazo de respuesta', value: 'En un plazo de 10 días hábiles' },
+        ],
+        s9Title: '9. Modificaciones de la política',
+        s9Desc: 'Esta política puede cambiar conforme a la ley o a las políticas de la empresa, y se avisará en la pantalla del servicio. En caso de cambios significativos, se notificará previamente por correo electrónico.',
+    },
+    ar: {
+        kicker: 'Nexyfab · سياسة الخصوصية',
+        title: 'سياسة الخصوصية',
+        desc1: 'تحمي Nexyfab البيانات الشخصية للمستخدمين',
+        desc2: 'وتديرها بأمان وفقاً للقوانين المعمول بها.',
+        effective: 'تاريخ السريان: ٧ مايو ٢٠٢٦',
+        toc: 'المحتويات',
+        tocItems: [
+            'البيانات الشخصية التي يجري جمعها',
+            'أغراض الجمع والاستخدام',
+            'مدة الاحتفاظ والاستخدام',
+            'الإفصاح للغير',
+            'إسناد المعالجة',
+            'حقوق المستخدم',
+            'إجراءات الإتلاف',
+            'مسؤول حماية البيانات',
+            'تعديلات السياسة',
+        ],
+        s1Title: '١. البيانات الشخصية التي يجري جمعها',
+        s1Desc: 'يجوز للشركة جمع المعلومات التالية لتقديم خدماتها.',
+        s1Sub1: '① العميل (صاحب المشروع)',
+        s1List1: ['الاسم', 'وسيلة الاتصال (الهاتف والبريد الإلكتروني)', 'اسم الشركة', 'متطلبات المشروع والرسومات والملفات', 'سجلات الاستشارات والمراسلات'],
+        s1Sub2: '② الشريك (المطوّر/المصنّع)',
+        s1List2: ['الاسم', 'وسيلة الاتصال', 'اسم الشركة والمعلومات التجارية', 'التقنيات ومعلومات المعدات وملف الأعمال', 'سجل المشاريع والمواد ذات الصلة'],
+        s1Sub3: '③ مشتركو SaaS',
+        s1List3: ['البريد الإلكتروني', 'الاسم (اختياري)', 'بيانات الدفع (تعالج Stripe/Toss أرقام البطاقات مباشرةً ولا نحتفظ بها)', 'خطة الاشتراك وسجل الفوترة', 'سجلات استخدام الخدمة'],
+        s1Sub4: '④ ما يُجمع تلقائياً',
+        s1List4: ['سجلات الدخول', 'عنوان IP', 'ملفات تعريف الارتباط', 'سجلات استخدام الخدمة', 'معلومات المتصفح والجهاز'],
+        s2Title: '٢. أغراض الجمع والاستخدام',
+        s2List: [
+            'تقديم الخدمة واستقبال المشاريع',
+            'مطابقة الشركاء والتوصية بهم',
+            'تسجيل الحساب والتحقق من الهوية',
+            'معالجة المدفوعات وإصدار الفواتير',
+            'استفسارات العملاء والدعم',
+            'إجراءات اتفاقية عدم الإفصاح ودعم التعاون',
+            'تحسين الخدمة والإدارة الداخلية',
+            'الامتثال للقوانين',
+        ],
+        s3Title: '٣. مدة الاحتفاظ والاستخدام',
+        s3Desc: 'تُتلَف البيانات الشخصية دون تأخير بمجرد تحقق الغرض. ويُحتفظ بما يلي بعد حذف الحساب وفقاً للقوانين المعمول بها:',
+        s3List: [
+            'سجلات العقود والفوترة: ٥ سنوات (قانون التجارة الإلكترونية)',
+            'شكاوى المستهلكين والنزاعات: ٣ سنوات (قانون التجارة الإلكترونية)',
+            'سجلات الدخول: سنة واحدة (قانون حماية سرية الاتصالات)',
+            'سجلات الدفع والتوريد: ٥ سنوات (قانون التجارة الإلكترونية)',
+        ],
+        s4Title: '٤. الإفصاح للغير',
+        s4Desc: 'لا تفصح الشركة من حيث المبدأ عن البيانات الشخصية للغير. والاستثناءات هي:',
+        s4List: [
+            'من العميل إلى الشريك المطابَق (لأغراض المشروع، بموافقة المستخدم)',
+            'من الشريك إلى العميل المعني (لأغراض التعاون، بموافقة المستخدم)',
+            'معالجة المدفوعات: Stripe Inc. / Toss Payments / Airwallex (لغرض الدفع فقط؛ ولا نحتفظ ببيانات البطاقات)',
+            'عند موافقة المستخدم بشكل منفصل',
+            'عندما يوجب القانون ذلك (مثل طلبات جهات إنفاذ القانون)',
+        ],
+        s4Note: 'لا تفصح الشركة عن البيانات الشخصية خارج نطاق الغرض المقصود.',
+        s5Title: '٥. إسناد معالجة البيانات الشخصية',
+        s5Desc: 'تُسنِد الشركة معالجة البيانات الشخصية إلى المزوّدين التاليين، وتشرف على ضمان أمن البيانات وفقاً للقوانين المعمول بها.',
+        s5Table: [
+            { company: 'Stripe, Inc.', purpose: 'معالجة المدفوعات والفوترة (عالمياً)', location: 'الولايات المتحدة' },
+            { company: 'Toss Payments', purpose: 'معالجة المدفوعات في كوريا', location: 'كوريا الجنوبية' },
+            { company: 'Airwallex (HK) Ltd.', purpose: 'مدفوعات متعددة العملات وإدارة الاشتراكات', location: 'هونغ كونغ / أستراليا' },
+            { company: 'Cloudflare, Inc.', purpose: 'تخزين الملفات (R2) وشبكة التوزيع وDNS', location: 'الولايات المتحدة' },
+            { company: 'Railway Corp.', purpose: 'استضافة البنية التحتية للخدمة', location: 'الولايات المتحدة' },
+        ],
+        s5TableHeaders: ['المزوّد', 'المهمة المُسندة', 'الموقع'],
+        s6Title: '٦. حقوق المستخدم',
+        s6Desc: 'يجوز للمستخدمين ممارسة الحقوق التالية في أي وقت:',
+        s6List: [
+            'طلب الاطلاع على بياناتهم الشخصية',
+            'طلب تصحيح بياناتهم الشخصية أو حذفها',
+            'طلب وقف المعالجة',
+            'سحب الموافقة (قد يؤدي نقص البيانات الإلزامية إلى تقييد الوصول إلى الخدمة)',
+        ],
+        s6Foot: 'لممارسة هذه الحقوق، راسلنا على privacy@nexyfab.com. وستتصرف الشركة خلال ١٠ أيام عمل.',
+        s7Title: '٧. إجراءات الإتلاف وطريقته',
+        s7Desc: 'عند انقضاء مدد الاحتفاظ أو تحقق الأغراض، تُحذف الملفات الإلكترونية بصورة لا يمكن استرجاعها، وتُمزَّق المستندات الورقية أو تُحرق.',
+        s8Title: '٨. مسؤول حماية البيانات',
+        s8Items: [
+            { label: 'الفريق', value: 'فريق الخصوصية في NexyFab' },
+            { label: 'البريد الإلكتروني', value: 'privacy@nexyfab.com' },
+            { label: 'مدة الرد', value: 'خلال ١٠ أيام عمل' },
+        ],
+        s9Title: '٩. تعديلات السياسة',
+        s9Desc: 'قد تتغيّر هذه السياسة وفقاً للقانون أو لسياسة الشركة، وسيُنشر إشعار على شاشة الخدمة. وفي حال التغييرات الجوهرية، سيُرسل إشعار مسبق عبر البريد الإلكتروني.',
+    },
 };
 
 type LangKey = keyof typeof dict;
@@ -357,7 +536,7 @@ type LangKey = keyof typeof dict;
 export default function PrivacyPolicyPage() {
     const pathname = usePathname();
     const langCode = pathname.split('/')[1] || 'en';
-    const langMap: Record<string, LangKey> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'zh', es: 'en', ar: 'en' };
+    const langMap: Record<string, LangKey> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'zh', es: 'es', ar: 'ar' };
     const activeLang: LangKey = langMap[langCode] ?? 'en';
     const [lang, setLang] = useState<LangKey>(activeLang);
     const t = dict[lang];
@@ -379,7 +558,7 @@ export default function PrivacyPolicyPage() {
                 <p style={{ color: '#888', fontSize: '14px', marginBottom: '20px' }}>{t.effective}</p>
                 {/* Language toggle */}
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    {(['ko', 'en', 'ja', 'zh'] as LangKey[]).map(l => (
+                    {(['ko', 'en', 'ja', 'zh', 'es', 'ar'] as LangKey[]).map(l => (
                         <button
                             key={l}
                             onClick={() => setLang(l)}

@@ -167,15 +167,101 @@ const dict = {
             '无正当理由反复中断项目时，可能会限制未来的匹配。',
             '因企业内部安全原因或法律原因导致的中断除外。'
         ]
+    },
+    /**
+     * ⚠ 260802: es·ar 이 langMap 에서 'en' 으로 고정돼 있었고, 애초에 허용 목록
+     *   `['en','kr','ja','cn']` 에도 없었다. 라이브 실측 — 스페인어 페이지의 영어 단어 일치 73%.
+     */
+    es: {
+        kicker: 'Nexyfab · Política de clientes',
+        title: 'Política de clientes (Customer Policy)',
+        desc1: 'Esta política se dirige a los clientes que utilizan la plataforma Nexyfab,',
+        desc2: 'y se ha elaborado para un desarrollo de proyectos justo y eficiente.',
+        s1Title: '1. Principios de registro de proyectos',
+        s1List: [
+            'Solo deben registrarse proyectos con una intención real de desarrollo o fabricación.',
+            'Los requisitos deben ser lo más concretos posible y basarse en hechos.',
+            'El presupuesto, la finalidad y el alcance técnico deben indicarse con claridad y en un nivel razonable.',
+            'No deben registrarse informaciones falsas ni materiales que vulneren derechos de terceros.'
+        ],
+        s2Title: '2. Conductas prohibidas',
+        s2Desc: 'Quedan prohibidas las siguientes conductas:',
+        s2List: [
+            'Consultas destinadas a explorar la tecnología de la competencia o a recopilar información',
+            'Cancelaciones o retrasos reiterados tras presentar información incompleta',
+            'Obstaculizar la revisión normal del socio presentando un presupuesto manifiestamente irreal',
+            'Uso no autorizado o divulgación externa de la tecnología, los materiales o las propuestas del socio emparejado',
+            'Eludir la plataforma para recopilar información de socios de forma indebida'
+        ],
+        s2Foot: 'Si se confirman estas conductas, la empresa podrá adoptar medidas como la restricción del emparejamiento o del uso del servicio.',
+        s3Title: '3. Política de emparejamiento de socios',
+        s3List: [
+            'La empresa puede recomendar de 1 a 3 socios según la idoneidad técnica, las referencias similares y el alcance de los procesos.',
+            'Las recomendaciones se realizan mediante análisis algorítmico interno y revisión operativa.',
+            'El cliente continúa con la consulta y la negociación directas tras revisar las propuestas de los socios.',
+            'El contrato final y la producción se celebran directamente entre el cliente y el socio.'
+        ],
+        s4Title: '4. NDA (acuerdo de confidencialidad)',
+        s4List: [
+            'Al registrar el proyecto se aplican principios básicos de protección de la información.',
+            'En la fase inicial de emparejamiento, el cliente puede elegir el alcance de la información que se enviará a los socios.',
+            'La firma de un NDA concreto puede realizarse por separado según la fase del proyecto, y sus efectos jurídicos corresponden a las partes contratantes.'
+        ],
+        s5Title: '5. Normas de suspensión de proyectos',
+        s5List: [
+            'La suspensión reiterada de proyectos sin causa razonable puede dar lugar a restricciones de emparejamiento en el futuro.',
+            'Se exceptúan las suspensiones por motivos de seguridad interna de la empresa o por motivos legales.'
+        ]
+    },
+    ar: {
+        kicker: 'Nexyfab · سياسة العملاء',
+        title: 'سياسة العملاء (Customer Policy)',
+        desc1: 'تستهدف هذه السياسة العملاء الذين يستخدمون منصة Nexyfab،',
+        desc2: 'وقد أُعدّت من أجل سير المشاريع بعدالة وكفاءة.',
+        s1Title: '١. مبادئ تسجيل المشاريع',
+        s1List: [
+            'يجب تسجيل المشاريع التي توجد نية فعلية لتطويرها أو تصنيعها فقط.',
+            'يجب صياغة المتطلبات بأكبر قدر ممكن من التحديد واستناداً إلى الوقائع.',
+            'يجب بيان الميزانية والغرض والنطاق التقني بوضوح وعند مستوى معقول.',
+            'لا يجوز تسجيل معلومات كاذبة أو مواد تنتهك حقوق الغير.'
+        ],
+        s2Title: '٢. الأفعال المحظورة',
+        s2Desc: 'تُحظر الأفعال التالية:',
+        s2List: [
+            'الاستفسارات التي تهدف إلى استكشاف تقنيات المنافسين أو جمع المعلومات',
+            'الإلغاء أو التأخير المتكرر بعد تقديم معلومات ناقصة',
+            'عرقلة المراجعة الطبيعية للشريك بتقديم ميزانية غير واقعية بشكل واضح',
+            'الاستخدام غير المصرّح به أو المشاركة الخارجية لتقنيات الشريك المطابَق أو مواده أو عروضه',
+            'الالتفاف على المنصة لجمع معلومات الشركاء بطريقة غير سليمة'
+        ],
+        s2Foot: 'في حال ثبوت هذه الأفعال، يجوز للشركة اتخاذ إجراءات مثل تقييد المطابقة أو تقييد استخدام الخدمة.',
+        s3Title: '٣. سياسة مطابقة الشركاء',
+        s3List: [
+            'يجوز للشركة أن توصي بشريك إلى ثلاثة شركاء بناءً على الملاءمة التقنية والمراجع المشابهة ونطاق العمليات.',
+            'تتم التوصيات عبر تحليل خوارزمي داخلي ومراجعة تشغيلية.',
+            'يواصل العميل التشاور والتفاوض مباشرةً بعد مراجعة عروض الشركاء.',
+            'يُبرم العقد النهائي ويجري الإنتاج مباشرةً بين العميل والشريك.'
+        ],
+        s4Title: '٤. اتفاقية عدم الإفصاح (NDA)',
+        s4List: [
+            'تُطبَّق مبادئ أساسية لحماية المعلومات عند تسجيل المشروع.',
+            'في مرحلة المطابقة الأولية، يمكن للعميل اختيار نطاق المعلومات التي تُرسل إلى الشركاء.',
+            'قد تُبرم اتفاقية عدم إفصاح محددة بشكل منفصل بحسب مرحلة المشروع، وتقع آثارها القانونية على طرفي التعاقد.'
+        ],
+        s5Title: '٥. قواعد إيقاف المشروع',
+        s5List: [
+            'قد يؤدي إيقاف المشاريع بشكل متكرر دون سبب معقول إلى تقييد المطابقة مستقبلاً.',
+            'ويُستثنى من ذلك الإيقاف لأسباب أمنية داخلية للشركة أو لأسباب قانونية.'
+        ]
     }
 };
 
 export default function CustomerPolicyPage() {
     const pathname = usePathname();
     const langCode = pathname.split('/')[1] || 'en';
-    const lang = ['en', 'kr', 'ja', 'cn'].includes(langCode) ? langCode : 'en';
+    const lang = ['en', 'kr', 'ja', 'cn', 'es', 'ar'].includes(langCode) ? langCode : 'en';
 
-    const langMap: Record<string, string> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'zh', es: 'en', ar: 'en' };
+    const langMap: Record<string, string> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'zh', es: 'es', ar: 'ar' };
     const t = dict[langMap[lang] as keyof typeof dict];
 
     return (

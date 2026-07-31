@@ -28,7 +28,7 @@ type RefundDict = {
   termsLink: string;
 };
 
-const dict: Record<'ko' | 'en' | 'ja' | 'zh', RefundDict> = {
+const dict: Record<'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar', RefundDict> = {
   ko: {
     kicker: 'NexyFab · 환불 및 취소 안내',
     title: '환불 및 취소 안내',
@@ -173,6 +173,85 @@ const dict: Record<'ko' | 'en' | 'ja' | 'zh', RefundDict> = {
     ],
     termsLink: '查看服务条款',
   },
+  /**
+   * ⚠ 260802: `es`·`ar` 이 `langMap` 에서 `'en'` 으로 매핑돼 있었다 — 임시 조치가 남은 것이다.
+   *   라이브 실측에서 스페인어 페이지의 영어 단어 일치가 72%, 아랍어는 84%였다(마케팅 페이지는 10~16%).
+   *   **환불 규정은 법적 문서**라 그 언어 사용자에게 영어로 나가면 성격이 다르다.
+   */
+  es: {
+    kicker: 'NexyFab · Reembolsos y cancelaciones',
+    title: 'Reembolsos y cancelaciones',
+    desc1: 'Cómo funcionan los reembolsos y las cancelaciones para suscripciones, pedidos y comisiones.',
+    desc2: 'Para las penalizaciones y las reglas por etapa, consulte también nuestros Términos de uso.',
+    s1Title: '1. Principios generales',
+    s1List: [
+      'Los pagos se procesan a través de proveedores como Toss Payments (KR), Stripe o Airwallex; pueden aplicarse los plazos del emisor de la tarjeta o del proveedor de pagos.',
+      'Si esta página entra en conflicto con los Términos de uso, prevalecen los Términos de uso.',
+    ],
+    s2Title: '2. Reembolsos de suscripciones SaaS',
+    s2List: [
+      'Puede cancelar su suscripción desde el área de facturación de su cuenta; el acceso continúa hasta el final del periodo pagado.',
+      `Si no ha utilizado el servicio en los 7 días siguientes al cargo de la suscripción, puede solicitar un reembolso íntegro por correo electrónico (${SUPPORT}). Después de ese plazo, es posible que no haya reembolso.`,
+      'Los planes anuales o promocionales pueden recalcularse si el reembolso anula un descuento.',
+    ],
+    s3Title: '3. Pagos de pedidos de fabricación',
+    s3List: [
+      'Para los pedidos pagados que reúnan los requisitos, puede enviar una solicitud de reembolso desde la página de detalle del pedido.',
+      'Normalmente revisamos en un plazo de 1 a 3 días hábiles; la elegibilidad y el importe dependen del estado y del avance del pedido.',
+      'En principio, puede haber reembolso íntegro antes de que la fabricación haya comenzado de forma sustancial; una vez que el socio inicia la producción, las cancelaciones por simple cambio de opinión pueden quedar restringidas por tratarse de trabajo a medida. Revise el presupuesto y los detalles del pedido antes de pagar.',
+      'Los importes o las controversias regidos por un contrato directo entre usted y un fabricante se resuelven principalmente entre las partes.',
+    ],
+    s4Title: '4. Comisiones de emparejamiento y de proyecto',
+    s4List: [
+      'Las comisiones de emparejamiento y de intermediación se rigen por el artículo 8 de los Términos de uso y por la etapa del proyecto.',
+      'Los reembolsos de emparejamiento «No-Risk», cuando proceda, siguen los Términos de uso y los avisos específicos.',
+    ],
+    s5Title: '5. Contacto',
+    s5Desc: 'Para preguntas sobre reembolsos o cancelaciones, escríbanos por correo electrónico y le responderemos en días hábiles.',
+    s6Title: '6. Validez del presupuesto (presupuestos RFQ)',
+    s6List: [
+      'Salvo que en un presupuesto concreto se indique otro plazo, los presupuestos son válidos, por lo general, durante 7 días desde la fecha de emisión.',
+      'Una vez vencidos, envíe una nueva RFQ; los importes pueden variar por materiales, tipo de cambio y otros factores.',
+    ],
+    termsLink: 'Ver los Términos de uso',
+  },
+  ar: {
+    kicker: 'NexyFab · المبالغ المستردة والإلغاء',
+    title: 'المبالغ المستردة والإلغاء',
+    desc1: 'كيفية عمل الاسترداد والإلغاء للاشتراكات والطلبات والرسوم.',
+    desc2: 'للاطلاع على الغرامات والقواعد الخاصة بكل مرحلة، يُرجى قراءة شروط الاستخدام أيضاً.',
+    s1Title: '١. المبادئ العامة',
+    s1List: [
+      'تتم معالجة المدفوعات عبر مزوّدين مثل Toss Payments (كوريا) أو Stripe أو Airwallex؛ وقد تنطبق المهل الزمنية لمُصدِر البطاقة أو مزوّد الدفع.',
+      'في حال تعارض هذه الصفحة مع شروط الاستخدام، تكون الأولوية لشروط الاستخدام.',
+    ],
+    s2Title: '٢. استرداد اشتراكات SaaS',
+    s2List: [
+      'يمكنك إلغاء اشتراكك من قسم الفوترة في حسابك؛ ويستمر الوصول حتى نهاية الفترة المدفوعة.',
+      `إذا لم تستخدم الخدمة خلال ٧ أيام من تاريخ خصم الاشتراك، يمكنك طلب استرداد كامل عبر البريد الإلكتروني (${SUPPORT}). وقد لا يتوفر الاسترداد بعد هذه المدة.`,
+      'قد يُعاد احتساب الخطط السنوية أو الترويجية إذا أدى الاسترداد إلى إلغاء الخصم.',
+    ],
+    s3Title: '٣. مدفوعات طلبات التصنيع',
+    s3List: [
+      'بالنسبة للطلبات المدفوعة المؤهلة، يمكنك تقديم طلب استرداد من صفحة تفاصيل الطلب.',
+      'نراجع الطلب عادةً خلال ١ إلى ٣ أيام عمل؛ وتعتمد الأهلية والمبلغ على حالة الطلب ومدى تقدّمه.',
+      'من حيث المبدأ، قد يتوفر استرداد كامل قبل أن يبدأ التصنيع فعلياً؛ وبعد أن يبدأ الشريك الإنتاج، قد تُقيَّد عمليات الإلغاء الناتجة عن مجرد تغيير الرأي نظراً لطبيعة العمل المُخصّص. يُرجى مراجعة عرض السعر وتفاصيل الطلب قبل الدفع.',
+      'أما المبالغ أو النزاعات الخاضعة لعقد مباشر بينك وبين جهة التصنيع فتُحل بين الطرفين في المقام الأول.',
+    ],
+    s4Title: '٤. رسوم المطابقة والمشروع',
+    s4List: [
+      'تخضع رسوم المطابقة والوساطة للمادة ٨ من شروط الاستخدام ولمرحلة المشروع.',
+      'أما استرداد المطابقة «بدون مخاطرة» فيتبع، عند انطباقه، شروط الاستخدام وأي إشعارات منفصلة.',
+    ],
+    s5Title: '٥. التواصل',
+    s5Desc: 'للاستفسار عن الاسترداد أو الإلغاء، راسلنا عبر البريد الإلكتروني وسنرد خلال أيام العمل.',
+    s6Title: '٦. صلاحية عرض السعر (عروض RFQ)',
+    s6List: [
+      'ما لم يُنص على مدة صلاحية مختلفة في عرض سعر محدد، تكون العروض صالحة عموماً لمدة ٧ أيام من تاريخ الإصدار.',
+      'بعد انتهاء الصلاحية، يُرجى تقديم طلب RFQ جديد؛ فقد تتغير المبالغ بسبب المواد وأسعار الصرف وعوامل أخرى.',
+    ],
+    termsLink: 'عرض شروط الاستخدام',
+  },
 };
 
 export default function RefundPolicyPage() {
@@ -180,7 +259,7 @@ export default function RefundPolicyPage() {
   const langCode = pathname.split('/')[1] || 'en';
   const lang = (['en', 'kr', 'ja', 'cn', 'es', 'ar'].includes(langCode) ? langCode : 'en') as string;
 
-  const langMap: Record<string, keyof typeof dict> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'zh', es: 'en', ar: 'en' };
+  const langMap: Record<string, keyof typeof dict> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'zh', es: 'es', ar: 'ar' };
   const t = dict[langMap[lang] ?? 'en'];
 
   const section = (title: string, items: string[]) => (
