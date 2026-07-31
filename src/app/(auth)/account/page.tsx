@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import AccountSecuritySection from './AccountSecuritySection';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -1007,6 +1008,10 @@ export default function AccountPage() {
           <h2 style={{ fontSize: '18px', fontWeight: 900, margin: '0 0 16px' }}>{t.subscriptionTitle}</h2>
           <SubscriptionSection />
         </div>
+
+        {/* ⚠ 260802: 보안 API 4종(복구코드·비번변경·세션)을 만들고 **화면이 0곳**이었다.
+            만든 것이 안 닿으면 없는 것과 같다 — 여기서 배선한다. */}
+        <AccountSecuritySection lang={getUserLang()} />
 
         {/* ─── 위험 구역 (계정 탈퇴) ───────────────────────────────────────── */}
         <div style={{
