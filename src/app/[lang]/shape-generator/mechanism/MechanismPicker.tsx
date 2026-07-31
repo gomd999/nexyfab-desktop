@@ -9,6 +9,7 @@
  */
 
 import React, { useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import { spurGearProfile, camProfile, type SpurGearParams, type CamParams } from './mechanismLibrary';
 
 interface MechanismPickerProps {
@@ -53,13 +54,78 @@ const COPY = {
     insert: 'Insert',
     cancel: 'Cancel',
   },
+  ja: {
+    title: 'メカニズム',
+    pick: '選択',
+    spurGear: '平歯車',
+    cam: 'カム',
+    fourBar: '4節リンク',
+    sliderCrank: 'スライダクランク',
+    module: 'モジュール',
+    teeth: '歯数',
+    angle: '圧力角 (°)',
+    baseR: '基礎円半径',
+    lift: 'リフト',
+    camType: 'カム形式',
+    insert: '挿入',
+    cancel: 'キャンセル',
+  },
+  zh: {
+    title: '机构',
+    pick: '选择',
+    spurGear: '直齿轮',
+    cam: '凸轮',
+    fourBar: '四杆机构',
+    sliderCrank: '曲柄滑块',
+    module: '模数',
+    teeth: '齿数',
+    angle: '压力角 (°)',
+    baseR: '基圆半径',
+    lift: '升程',
+    camType: '凸轮类型',
+    insert: '插入',
+    cancel: '取消',
+  },
+  es: {
+    title: 'Mecanismo',
+    pick: 'Seleccionar',
+    spurGear: 'Engranaje recto',
+    cam: 'Leva',
+    fourBar: 'Cuadrilátero articulado',
+    sliderCrank: 'Biela-manivela',
+    module: 'Módulo',
+    teeth: 'Número de dientes',
+    angle: 'Ángulo de presión (°)',
+    baseR: 'Radio base',
+    lift: 'Elevación',
+    camType: 'Tipo de leva',
+    insert: 'Insertar',
+    cancel: 'Cancelar',
+  },
+  ar: {
+    title: 'الآلية',
+    pick: 'اختيار',
+    spurGear: 'ترس مستقيم',
+    cam: 'كامة',
+    fourBar: 'رباعي الوصلات',
+    sliderCrank: 'مرفق ومنزلق',
+    module: 'المعامل',
+    teeth: 'عدد الأسنان',
+    angle: 'زاوية الضغط (°)',
+    baseR: 'نصف القطر الأساسي',
+    lift: 'الارتفاع',
+    camType: 'نوع الكامة',
+    insert: 'إدراج',
+    cancel: 'إلغاء',
+  },
 } as const;
 
 export default function MechanismPicker({
   lang, onClose, onInsertProfile,
 }: MechanismPickerProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const [kind, setKind] = useState<Kind | null>(null);
 
   // Spur gear params.

@@ -8,6 +8,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import {
   HYDRAULIC_CATALOG, findHydraulicFittings, recommendFittingForFlow,
   type HydraulicStandard, type FittingShape, type HydraulicFitting,
@@ -52,6 +53,70 @@ const COPY = {
     seal: 'Seal',
     none: '—',
   },
+  ja: {
+    title: '油圧カタログ',
+    filterStandard: '規格',
+    filterShape: '形状',
+    flowQuery: '流量ベースの推奨',
+    flow: '流量 (L/min)',
+    line: 'ライン',
+    pressure: '圧力', return: 'リターン', suction: 'サクション',
+    recommend: '推奨',
+    pickBtn: '選択',
+    boreMm: 'ボア (mm)',
+    thread: 'ねじ',
+    pressureBar: '圧力 bar',
+    seal: 'シール',
+    none: '—',
+  },
+  zh: {
+    title: '液压目录',
+    filterStandard: '标准',
+    filterShape: '形式',
+    flowQuery: '按流量推荐',
+    flow: '流量 (L/min)',
+    line: '管路',
+    pressure: '压力', return: '回油', suction: '吸油',
+    recommend: '推荐',
+    pickBtn: '选择',
+    boreMm: '内径 (mm)',
+    thread: '螺纹',
+    pressureBar: '压力 bar',
+    seal: '密封',
+    none: '—',
+  },
+  es: {
+    title: 'Catálogo hidráulico',
+    filterStandard: 'Norma',
+    filterShape: 'Forma',
+    flowQuery: 'Recomendación por caudal',
+    flow: 'Caudal (L/min)',
+    line: 'Línea',
+    pressure: 'Presión', return: 'Retorno', suction: 'Aspiración',
+    recommend: 'Recomendar',
+    pickBtn: 'Seleccionar',
+    boreMm: 'Diámetro interior (mm)',
+    thread: 'Rosca',
+    pressureBar: 'Presión bar',
+    seal: 'Junta',
+    none: '—',
+  },
+  ar: {
+    title: 'كتالوج الهيدروليك',
+    filterStandard: 'المعيار',
+    filterShape: 'الشكل',
+    flowQuery: 'التوصية حسب التدفّق',
+    flow: 'التدفّق (لتر/دقيقة)',
+    line: 'الخط',
+    pressure: 'الضغط', return: 'العودة', suction: 'السحب',
+    recommend: 'توصية',
+    pickBtn: 'اختيار',
+    boreMm: 'قطر التجويف (مم)',
+    thread: 'السن',
+    pressureBar: 'الضغط بار',
+    seal: 'الإحكام',
+    none: '—',
+  },
 } as const;
 
 const STANDARDS: HydraulicStandard[] = ['ISO 6149', 'SAE J1926', 'BSPP', 'JIS B 2351'];
@@ -59,7 +124,8 @@ const SHAPES: FittingShape[] = ['straight', 'elbow-90', 'elbow-45', 'tee', 'cros
 
 export default function HydraulicCatalogPanel({ lang, onClose, onPick }: HydraulicCatalogPanelProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const [standard, setStandard] = useState<HydraulicStandard | ''>('');
   const [shape, setShape] = useState<FittingShape | ''>('');
   const [flowLpm, setFlowLpm] = useState<number | ''>('');

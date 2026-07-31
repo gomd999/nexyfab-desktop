@@ -8,6 +8,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import {
   computeCarbonFootprint, compareMaterials,
   carEquivalentKm, treesYearEquivalent,
@@ -53,6 +54,70 @@ const COPY = {
     treesYear: 'Trees/year',
     compare: 'Compare materials',
   },
+  ja: {
+    title: 'カーボンフットプリント',
+    mass: '質量 (kg)',
+    material: '材料', process: '工程',
+    moldTemp: '金型温度',
+    grid: '電力系統 GWP', transport: '輸送 (km)', mode: '輸送手段',
+    run: '計算',
+    materialEmissions: '材料',
+    manufacturingEmissions: '製造',
+    transportEmissions: '輸送',
+    total: '合計',
+    equivalent: '換算',
+    carKm: '自動車 km',
+    treesYear: '樹木 1 年の吸収量',
+    compare: '材料比較',
+  },
+  zh: {
+    title: '碳足迹',
+    mass: '质量 (kg)',
+    material: '材料', process: '工艺',
+    moldTemp: '模温',
+    grid: '电网 GWP', transport: '运输 (km)', mode: '运输方式',
+    run: '计算',
+    materialEmissions: '材料',
+    manufacturingEmissions: '制造',
+    transportEmissions: '运输',
+    total: '合计',
+    equivalent: '折算',
+    carKm: '汽车 km',
+    treesYear: '树木一年吸收量',
+    compare: '材料对比',
+  },
+  es: {
+    title: 'Huella de carbono',
+    mass: 'Masa (kg)',
+    material: 'Material', process: 'Proceso',
+    moldTemp: 'Temperatura del molde',
+    grid: 'GWP de la red', transport: 'Transporte (km)', mode: 'Medio de transporte',
+    run: 'Calcular',
+    materialEmissions: 'Material',
+    manufacturingEmissions: 'Fabricación',
+    transportEmissions: 'Transporte',
+    total: 'Total',
+    equivalent: 'Equivalencia',
+    carKm: 'km en coche',
+    treesYear: 'Absorción anual de árboles',
+    compare: 'Comparar materiales',
+  },
+  ar: {
+    title: 'البصمة الكربونية',
+    mass: 'الكتلة (كغ)',
+    material: 'المادة', process: 'العملية',
+    moldTemp: 'حرارة القالب',
+    grid: 'إمكانية الاحترار للشبكة', transport: 'النقل (كم)', mode: 'وسيلة النقل',
+    run: 'حساب',
+    materialEmissions: 'المواد',
+    manufacturingEmissions: 'التصنيع',
+    transportEmissions: 'النقل',
+    total: 'الإجمالي',
+    equivalent: 'المكافئ',
+    carKm: 'كم بالسيارة',
+    treesYear: 'امتصاص الأشجار سنوياً',
+    compare: 'مقارنة المواد',
+  },
 } as const;
 
 const MATERIALS = [
@@ -70,7 +135,8 @@ export default function SustainabilityReport({
   lang, defaultMassKg = 0.5, onClose,
 }: SustainabilityReportProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const [input, setInput] = useState<CarbonInput>({
     massKg: defaultMassKg,
     material: 'aluminum-recycled',

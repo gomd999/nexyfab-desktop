@@ -17,6 +17,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import { simulateFill, DEFAULT_FLOW_VELOCITY, type FlowMesh } from './fillSimulation';
 import { detectWeldLines, detectAirTraps, type WeldLineEdge, type AirTrap } from './weldLineDetection';
 import { buildCoolingMap, sinkMarkRisk, POLYMERS } from './coolingTime';
@@ -73,6 +74,62 @@ const COPY = {
     welds: 'Weld lines', traps: 'Air traps',
     sinkRisk: 'Sink risk',
   },
+  ja: {
+    title: '射出解析',
+    gate: 'ゲート',
+    pickGate: 'ゲートを選択',
+    polymer: 'ポリマー',
+    moldTemp: '金型温度 (°C)',
+    thickness: '均一肉厚 (mm)',
+    run: '解析実行',
+    fillTime: '充填時間',
+    cooling: '冷却時間',
+    cycle: '総サイクル',
+    welds: 'ウェルドライン', traps: 'エアトラップ',
+    sinkRisk: 'ヒケのリスク',
+  },
+  zh: {
+    title: '注塑分析',
+    gate: '浇口',
+    pickGate: '选择浇口',
+    polymer: '聚合物',
+    moldTemp: '模温 (°C)',
+    thickness: '均匀壁厚 (mm)',
+    run: '运行分析',
+    fillTime: '充填时间',
+    cooling: '冷却时间',
+    cycle: '总周期',
+    welds: '熔接线', traps: '困气',
+    sinkRisk: '缩痕风险',
+  },
+  es: {
+    title: 'Análisis de inyección',
+    gate: 'Entrada',
+    pickGate: 'Seleccionar entrada',
+    polymer: 'Polímero',
+    moldTemp: 'Temperatura del molde (°C)',
+    thickness: 'Espesor uniforme (mm)',
+    run: 'Ejecutar análisis',
+    fillTime: 'Tiempo de llenado',
+    cooling: 'Tiempo de enfriamiento',
+    cycle: 'Ciclo total',
+    welds: 'Líneas de soldadura', traps: 'Bolsas de aire',
+    sinkRisk: 'Riesgo de rechupe',
+  },
+  ar: {
+    title: 'تحليل الحقن',
+    gate: 'البوابة',
+    pickGate: 'اختيار البوابة',
+    polymer: 'البوليمر',
+    moldTemp: 'حرارة القالب (°م)',
+    thickness: 'سماكة منتظمة (مم)',
+    run: 'تشغيل التحليل',
+    fillTime: 'زمن الملء',
+    cooling: 'زمن التبريد',
+    cycle: 'الدورة الكلية',
+    welds: 'خطوط اللحام', traps: 'محابس الهواء',
+    sinkRisk: 'خطر الانخساف',
+  },
 } as const;
 
 type PolymerKey = keyof typeof POLYMERS;
@@ -82,7 +139,8 @@ export default function PlasticFlowPanel({
   lang, mesh, thicknesses, onClose, onResult, onPickGate,
 }: PlasticFlowPanelProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const [gateVertex, setGateVertex] = useState<number | null>(null);
   const [polymer, setPolymer] = useState<PolymerKey>('ABS');
   const [moldTempC, setMoldTempC] = useState(50);

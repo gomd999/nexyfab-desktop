@@ -9,6 +9,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import type { RoutingPath, RoutePoint, RoutingKind } from './routingPath';
 import { validateBendRadius } from './routingValidate';
 
@@ -47,13 +48,62 @@ const COPY = {
     cable: 'Cable', pipe: 'Pipe', 'wire-bundle': 'Wire Bundle', hose: 'Hose',
     issues: 'Issues',
   },
+  ja: {
+    title: 'ルーティング',
+    addRoute: '+ 新規経路',
+    kind: '種類',
+    diameter: '直径 (mm)',
+    bendRadius: 'ベンド半径',
+    points: '経由点',
+    addPoint: '+ 経由点を追加',
+    delete: '削除',
+    cable: 'ケーブル', pipe: 'パイプ', 'wire-bundle': 'ワイヤーハーネス', hose: 'ホース',
+    issues: '問題',
+  },
+  zh: {
+    title: '布线/布管',
+    addRoute: '+ 新建路径',
+    kind: '类型',
+    diameter: '直径 (mm)',
+    bendRadius: '弯曲半径',
+    points: '途经点',
+    addPoint: '+ 添加途经点',
+    delete: '删除',
+    cable: '电缆', pipe: '管道', 'wire-bundle': '线束', hose: '软管',
+    issues: '问题',
+  },
+  es: {
+    title: 'Enrutado',
+    addRoute: '+ Nueva ruta',
+    kind: 'Tipo',
+    diameter: 'Diámetro (mm)',
+    bendRadius: 'Radio de curvatura',
+    points: 'Puntos de paso',
+    addPoint: '+ Añadir punto',
+    delete: 'Eliminar',
+    cable: 'Cable', pipe: 'Tubería', 'wire-bundle': 'Mazo de cables', hose: 'Manguera',
+    issues: 'Incidencias',
+  },
+  ar: {
+    title: 'التوجيه',
+    addRoute: '+ مسار جديد',
+    kind: 'النوع',
+    diameter: 'القطر (مم)',
+    bendRadius: 'نصف قطر الثني',
+    points: 'نقاط المرور',
+    addPoint: '+ إضافة نقطة',
+    delete: 'حذف',
+    cable: 'كابل', pipe: 'أنبوب', 'wire-bundle': 'ضفيرة أسلاك', hose: 'خرطوم',
+    issues: 'المشكلات',
+  },
 } as const;
 
 export default function RoutingPanel({
   lang, routes, onRoutesChange, onClose, onPickInViewport,
 }: RoutingPanelProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const [selectedId, setSelectedId] = useState<string | null>(routes[0]?.id ?? null);
   const selected = routes.find(r => r.id === selectedId) ?? null;
 

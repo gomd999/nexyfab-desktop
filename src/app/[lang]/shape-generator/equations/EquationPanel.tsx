@@ -9,6 +9,7 @@
  */
 
 import React, { useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import type { EquationManager, GlobalVariable } from './equationManager';
 
 interface EquationPanelProps {
@@ -36,13 +37,46 @@ const COPY = {
     cancel: 'Cancel',
     remove: 'Delete',
   },
+  ja: {
+    title: 'グローバル数式',
+    name: '名前', expr: '式', value: '値',
+    add: '+ 新規変数',
+    save: '保存',
+    cancel: 'キャンセル',
+    remove: '削除',
+  },
+  zh: {
+    title: '全局方程',
+    name: '名称', expr: '表达式', value: '值',
+    add: '+ 新建变量',
+    save: '保存',
+    cancel: '取消',
+    remove: '删除',
+  },
+  es: {
+    title: 'Ecuaciones globales',
+    name: 'Nombre', expr: 'Expresión', value: 'Valor',
+    add: '+ Nueva variable',
+    save: 'Guardar',
+    cancel: 'Cancelar',
+    remove: 'Eliminar',
+  },
+  ar: {
+    title: 'المعادلات العامة',
+    name: 'الاسم', expr: 'التعبير', value: 'القيمة',
+    add: '+ متغيّر جديد',
+    save: 'حفظ',
+    cancel: 'إلغاء',
+    remove: 'حذف',
+  },
 } as const;
 
 export default function EquationPanel({
   lang, manager, onChange, onClose,
 }: EquationPanelProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const [vars, setVars] = useState<GlobalVariable[]>(manager.list());
   const [editing, setEditing] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');

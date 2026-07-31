@@ -10,6 +10,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import { detectPartingLine, type MoldMesh } from './partingLine';
 import { analyzeDraft, isMoldableFromDirection, suggestPullDirection, draftColor } from './draftAnalysis';
 import { detectUndercuts, type UndercutRegion } from './undercutDetect';
@@ -58,6 +59,58 @@ const COPY = {
     notMoldable: 'Slides Required',
     regions: 'regions',
   },
+  ja: {
+    title: '金型解析',
+    pullDir: '抜き方向',
+    mode: 'モード',
+    parting: 'パーティングライン',
+    draft: '抜き勾配',
+    undercut: 'アンダーカット',
+    off: 'オフ',
+    suggestBest: '最適方向を提案',
+    moldable: '抜き取り可能',
+    notMoldable: 'スライドが必要',
+    regions: '領域',
+  },
+  zh: {
+    title: '模具分析',
+    pullDir: '脱模方向',
+    mode: '模式',
+    parting: '分型线',
+    draft: '拔模斜度',
+    undercut: '倒扣',
+    off: '关闭',
+    suggestBest: '推荐最佳方向',
+    moldable: '可脱模',
+    notMoldable: '需滑块',
+    regions: '区域',
+  },
+  es: {
+    title: 'Análisis de molde',
+    pullDir: 'Dirección de desmoldeo',
+    mode: 'Modo',
+    parting: 'Línea de partición',
+    draft: 'Ángulo de desmoldeo',
+    undercut: 'Contrasalida',
+    off: 'Desactivado',
+    suggestBest: 'Sugerir la mejor dirección',
+    moldable: 'Desmoldeable',
+    notMoldable: 'Requiere correderas',
+    regions: 'Regiones',
+  },
+  ar: {
+    title: 'تحليل القالب',
+    pullDir: 'اتجاه السحب',
+    mode: 'الوضع',
+    parting: 'خط الانفصال',
+    draft: 'زاوية السحب',
+    undercut: 'التعشيق العكسي',
+    off: 'إيقاف',
+    suggestBest: 'اقتراح أفضل اتجاه',
+    moldable: 'قابل للسحب',
+    notMoldable: 'يتطلب منزلقات',
+    regions: 'المناطق',
+  },
 } as const;
 
 const AXES: Array<{ label: string; vector: [number, number, number] }> = [
@@ -71,7 +124,8 @@ const AXES: Array<{ label: string; vector: [number, number, number] }> = [
 
 export default function MoldPanel({ lang, mesh, onClose, onModeChange }: MoldPanelProps) {
   const ko = lang === 'ko' || lang === 'kr';
-  const t = ko ? COPY.ko : COPY.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = COPY[toIsoLang(lang)] ?? COPY.en;
   const [pullIdx, setPullIdx] = useState(4); // +Z default
   const [mode, setMode] = useState<AnalysisMode | 'off'>('draft');
 
