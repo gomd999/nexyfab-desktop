@@ -1,0 +1,15 @@
+{
+ "shapeId": "box",
+ "params": {
+  "width": 180,
+  "depth": 80,
+  "height": 50
+ },
+ "variant": "dim",
+ "labeledParams": [
+  "width",
+  "height",
+  "depth"
+ ],
+ "unit": "mm"
+}

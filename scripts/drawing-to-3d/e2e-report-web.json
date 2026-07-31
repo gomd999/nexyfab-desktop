@@ -1,5 +1,5 @@
 {
- "date": "2026-07-31T11:04:03.291Z",
+ "date": "2026-07-31T12:36:28.416Z",
  "path": "web(extractDrawingFromImage, 11어휘 2단계)",
  "summary": {
   "cases": 50,
@@ -7,22 +7,24 @@
   "complete": true,
   "notMeasured": 0,
   "notMeasuredReasons": {},
-  "typeClassification": "50/50 (100.0%)",
-  "paramAccuracy": "210/220 (95.5%)",
-  "holePosAccuracy": "30/30 (100.0%)",
-  "geometryGatePass": "50/50 (100.0%)",
-  "estimateFlagRecall": "6/10 (60.0%) — 틀린 값 중 추정으로 표시된 비율",
-  "estimateFlagFalseAlarm": "0/210 (0.0%) — 맞은 값 중 추정으로 표시된 비율",
+  "typeClassification": "49/50 (98.0%)",
+  "paramAccuracy": "206/220 (93.6%)",
+  "holePosAccuracy": "26/26 (100.0%)",
+  "geometryGatePass": "49/50 (98.0%)",
+  "estimateFlagRecall": "7/11 (63.6%) — 틀린 값 중 추정으로 표시된 비율",
+  "estimateFlagFalseAlarm": "1/206 (0.5%) — 맞은 값 중 추정으로 표시된 비율",
+  "reprojectRecall": "2/11 (18.2%) — 오독 있는 케이스 중 DEMOTE",
+  "reprojectFalseAlarm": "2/39 (5.1%) — 전부 맞은 케이스 중 DEMOTE",
   "byBucket": {
-   "clean:bent_sheet": "측정 5/5 — type 5/5, params 19/20",
+   "clean:bent_sheet": "측정 5/5 — type 5/5, params 20/20",
    "scan:bent_sheet": "측정 5/5 — type 5/5, params 20/20",
-   "scan:flange": "측정 5/5 — type 5/5, params 27/30",
+   "scan:flange": "측정 5/5 — type 5/5, params 26/30",
    "clean:flange": "측정 5/5 — type 5/5, params 30/30",
    "clean:l_bracket": "측정 5/5 — type 5/5, params 17/20",
    "scan:l_bracket": "측정 5/5 — type 5/5, params 17/20",
    "clean:plate_with_holes": "측정 5/5 — type 5/5, params 15/15",
-   "scan:plate_with_holes": "측정 5/5 — type 5/5, params 15/15",
-   "scan:stepped_plate": "측정 5/5 — type 5/5, params 25/25",
+   "scan:plate_with_holes": "측정 5/5 — type 4/5, params 12/15",
+   "scan:stepped_plate": "측정 5/5 — type 5/5, params 24/25",
    "clean:stepped_plate": "측정 5/5 — type 5/5, params 25/25"
   }
  },
@@ -49,10 +51,10 @@
    "name": "bent-sheet-15",
    "bucket": "clean",
    "type": "OK",
-   "params": "3/4",
+   "params": "4/4",
    "holes": "-",
    "gate": "PASS",
-   "err": "length: gt 140 vs 100"
+   "err": "-"
   },
   {
    "name": "bent-sheet-20-scan",
@@ -193,10 +195,10 @@
    "name": "flange-44-scan",
    "bucket": "scan",
    "type": "OK",
-   "params": "6/6",
+   "params": "5/6",
    "holes": "-",
    "gate": "PASS",
-   "err": "-"
+   "err": "bcd: gt 90 vs 98"
   },
   {
    "name": "flange-49",
@@ -223,7 +225,7 @@
    "params": "3/4",
    "holes": "-",
    "gate": "PASS",
-   "err": "thickness: gt 4 vs 6 [추정선언]"
+   "err": "thickness: gt 4 vs 10 [추정선언]"
   },
   {
    "name": "l-bracket-13",
@@ -250,7 +252,7 @@
    "params": "3/4",
    "holes": "-",
    "gate": "PASS",
-   "err": "thickness: gt 4 vs 5 [추정선언]"
+   "err": "thickness: gt 4 vs 10 [추정선언]"
   },
   {
    "name": "l-bracket-28-scan",
@@ -295,7 +297,7 @@
    "params": "3/4",
    "holes": "-",
    "gate": "PASS",
-   "err": "thickness: gt 4 vs 2 [추정선언]"
+   "err": "thickness: gt 4 vs 3 [추정선언]"
   },
   {
    "name": "plate-with-holes-01",
@@ -381,11 +383,11 @@
   {
    "name": "plate-with-holes-46-scan",
    "bucket": "scan",
-   "type": "OK",
-   "params": "3/3",
-   "holes": "4/4",
-   "gate": "PASS",
-   "err": "-"
+   "type": "plate_with_holes→base_plate",
+   "params": "0/3",
+   "holes": "-",
+   "gate": "FAIL",
+   "err": "type: gt plate_with_holes vs base_plate"
   },
   {
    "name": "stepped-plate-02-scan",
@@ -463,10 +465,10 @@
    "name": "stepped-plate-42-scan",
    "bucket": "scan",
    "type": "OK",
-   "params": "5/5",
+   "params": "4/5",
    "holes": "-",
    "gate": "PASS",
-   "err": "-"
+   "err": "stepWidth: gt 80 vs 70 [추정선언]"
   },
   {
    "name": "stepped-plate-47",

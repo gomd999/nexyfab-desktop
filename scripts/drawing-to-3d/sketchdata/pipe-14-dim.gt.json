@@ -1,0 +1,14 @@
+{
+ "shapeId": "pipe",
+ "params": {
+  "outerDiameter": 110,
+  "innerDiameter": 80,
+  "length": 80
+ },
+ "variant": "dim",
+ "labeledParams": [
+  "outerDiameter",
+  "length"
+ ],
+ "unit": "mm"
+}

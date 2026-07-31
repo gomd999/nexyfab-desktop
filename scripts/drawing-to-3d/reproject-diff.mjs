@@ -15,6 +15,14 @@ const SUPPORT_MIN = 0.6;      // 아웃라인 표본 잉크 지지율 하한
 const RESIDUAL_MAX = 0.08;    // 축별 스케일 괴리 상한(8%)
 const INK_THRESHOLD = 160;    // 그레이 < 160 = 잉크
 const DILATE_R = 3;           // 지지 판정 반경(px) — 선폭·AA 여유
+/**
+ * 부위별 지지율 하한(260731). 전체 평균보다 **느슨하게** 잡는다 —
+ * ⚠ 스캔 열화본은 회전·번짐으로 내부 원의 지지가 원래 낮다. 전체와 같은 문턱을 쓰면
+ *   멀쩡한 판독을 무더기로 강등한다(오경보). 실측으로 오경보율을 확인하고 정한다.
+ */
+const GROUP_SUPPORT_MIN = 0.35;
+/** 표본이 이보다 적은 부위는 판정하지 않는다 — 잡음이 판정을 좌우한다. */
+const GROUP_MIN_PTS = 60;
 
 /** 잉크 마스크 + 반경 r 팽창 지지 마스크. gray={data,width,height} (0=검정). */
 function inkMasks(gray) {
@@ -75,13 +83,21 @@ function silhouettes(intent) {
       break;
     }
     case 'plate_with_holes':
-      views.push({ view: 'top', w: p.width, h: p.depth, ...rect(p.width, p.depth), holes: (p.holes ?? []).map((o) => ({ cx: o.x - p.width / 2, cy: o.y - p.depth / 2, r: o.d / 2 })) });
+      /**
+       * ★260731 — **구멍 y 가 뒤집혀 찍히고 있었다.**
+       *   도면 TOP VIEW 는 좌하단 원점·+y 위(추출 프롬프트 규약)인데, 이미지 좌표는
+       *   +y 아래다. 사각 외곽은 상하 대칭이라 뒤집혀도 티가 안 났고, **구멍만 어긋났다.**
+       *   전체 평균 지지율에 희석돼(0.80, 문턱 0.6) **한 번도 드러나지 않았다** —
+       *   부위별로 나누자 `holes 0%` 로 즉시 보였다. 총점이 부분 실패를 가린 또 한 사례.
+       */
+      views.push({ view: 'top', w: p.width, h: p.depth, ...rect(p.width, p.depth), holes: (p.holes ?? []).map((o) => ({ cx: o.x - p.width / 2, cy: -(o.y - p.depth / 2), r: o.d / 2 })) });
       views.push({ view: 'front', w: p.width, h: p.thickness, ...rect(p.width, p.thickness) });
       break;
     case 'base_plate': {
       const m = Math.max(12, p.boltDia * 1.5);
       const cs = [[m, m], [p.width - m, m], [m, p.depth - m], [p.width - m, p.depth - m]]
-        .map(([x, y]) => ({ cx: x - p.width / 2, cy: y - p.depth / 2, r: p.boltDia / 2 }));
+        // 같은 y 뒤집기 — base_plate 볼트홀도 도면 규약(+y 위)을 따른다.
+        .map(([x, y]) => ({ cx: x - p.width / 2, cy: -(y - p.depth / 2), r: p.boltDia / 2 }));
       views.push({ view: 'top', w: p.width, h: p.depth, ...rect(p.width, p.depth), holes: cs });
       break;
     }
@@ -100,23 +116,49 @@ function silhouettes(intent) {
   return views;
 }
 
-/** 실루엣 아웃라인 표본점(mm, 뷰 중심 원점). */
-function samplePoints(sil) {
-  const pts = [];
-  const push = (x, y) => pts.push([x, y]);
+/**
+ * 실루엣 표본점을 **부위별로 나눠** 모은다 (260731).
+ *
+ * ★ 종전엔 전부 한 덩어리로 섞어 지지율 **하나**를 냈다. 그래서 큰 부위가 맞으면
+ *   작은 부위가 통째로 틀려도 평균이 살아남았다 — 실측(평가셋 50장)에서 표시되지 않은
+ *   오독 4건 중 3건이 **내부 원**이었다:
+ *   ```
+ *     flange-14-scan  boreDia   40 → 48   (내부 원)
+ *     flange-14-scan  boltHoleD 12 → 12.6 (볼트홀)
+ *     flange-34-scan  bcd      110 → 118  (볼트서클)
+ *   ```
+ *   외곽 원 표본이 180점인데 보어가 180점이라도, 보어만 0% 여도 평균은 50% 위로 남는다.
+ *   **총점이 부분 실패를 가린다** — 이 저장소가 반복해서 만나 온 형태다.
+ * ⚠ 좌표 매핑은 **전체 점군** 기준으로 유지한다. 부위별 bbox 로 따로 매핑하면
+ *   각 부위가 제 위치가 아니라 제 bbox 에 맞춰져 **무조건 잘 맞는 것처럼** 보인다.
+ */
+function samplePointGroups(sil) {
+  const groups = [];
   if (sil.kind === 'rect') {
     const { w, h } = sil;
     const step = Math.max(w, h) / 160;
-    for (let x = -w / 2; x <= w / 2; x += step) { push(x, -h / 2); push(x, h / 2); }
-    for (let y = -h / 2; y <= h / 2; y += step) { push(-w / 2, y); push(w / 2, y); }
+    const pts = [];
+    for (let x = -w / 2; x <= w / 2; x += step) { pts.push([x, -h / 2], [x, h / 2]); }
+    for (let y = -h / 2; y <= h / 2; y += step) { pts.push([-w / 2, y], [w / 2, y]); }
+    groups.push({ name: 'outline', pts });
   }
-  for (const c of sil.circles ?? []) {
-    for (let a = 0; a < 360; a += 2) push(c.cx + c.r * Math.cos(a * Math.PI / 180), c.cy + c.r * Math.sin(a * Math.PI / 180));
+  const circles = sil.circles ?? [];
+  circles.forEach((c, i) => {
+    const pts = [];
+    for (let a = 0; a < 360; a += 2) pts.push([c.cx + c.r * Math.cos(a * Math.PI / 180), c.cy + c.r * Math.sin(a * Math.PI / 180)]);
+    // 첫 원 = 외곽, 나머지 = 내부(보어 등). 이름을 나눠야 리포트가 어디가 어긋났는지 말한다.
+    groups.push({ name: i === 0 ? 'outline' : `bore${i > 1 ? i : ''}`, pts });
+  });
+  if ((sil.holes ?? []).length) {
+    const pts = [];
+    for (const c of sil.holes) for (let a = 0; a < 360; a += 6) pts.push([c.cx + c.r * Math.cos(a * Math.PI / 180), c.cy + c.r * Math.sin(a * Math.PI / 180)]);
+    groups.push({ name: 'holes', pts });
   }
-  for (const c of sil.holes ?? []) {
-    for (let a = 0; a < 360; a += 6) push(c.cx + c.r * Math.cos(a * Math.PI / 180), c.cy + c.r * Math.sin(a * Math.PI / 180));
-  }
-  return pts;
+  return groups;
+}
+/** 하위호환 — 전체 점군(좌표 매핑 산출용). */
+function samplePoints(sil) {
+  return samplePointGroups(sil).flatMap((g) => g.pts);
 }
 /** 볼트 서클(시작각 미지 — 후보각 중 최대 지지 채택, 결정론). */
 function boltRingPoints(ring, startDeg) {
@@ -139,6 +181,30 @@ function supportRatio(pts, box, masks) {
     if (px >= 0 && py >= 0 && px < w && py < h && sup[py * w + px]) hit++;
   }
   return pts.length ? hit / pts.length : 0;
+}
+
+/**
+ * 부위별 지지율 — 매핑은 `all`(전체 점군)로 한 번만 정하고 **적중만 나눠 센다.**
+ * @param groups [{name, pts}]
+ * @param all 매핑 기준이 되는 전체 점군(볼트링 포함본을 넘긴다)
+ */
+function supportByGroup(groups, all, box, masks) {
+  const { sup, w, h } = masks;
+  const sx = (box.x1 - box.x0) / ptsW(all), sy = (box.y1 - box.y0) / ptsH(all);
+  const minX = ptsMinX(all), minY = ptsMinY(all);
+  const out = {};
+  for (const g of groups) {
+    let hit = 0;
+    for (const [mx, my] of g.pts) {
+      const px = Math.round(box.x0 + (mx - minX) * sx);
+      const py = Math.round(box.y0 + (my - minY) * sy);
+      if (px >= 0 && py >= 0 && px < w && py < h && sup[py * w + px]) hit++;
+    }
+    // 같은 이름이 여러 번 오면 합산한다(원이 여러 개인 경우).
+    const prev = out[g.name] ?? { hit: 0, n: 0 };
+    out[g.name] = { hit: prev.hit + hit, n: prev.n + g.pts.length };
+  }
+  return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, { ratio: v.n ? +(v.hit / v.n).toFixed(3) : 0, n: v.n }]));
 }
 // 표본군 외형(메모 없이 단순 — 표본 수백 개 규모)
 const ptsMinX = (pts) => Math.min(...pts.map((p) => p[0]));
@@ -182,21 +248,38 @@ export function reprojectDiff(gray, intent) {
   const scaleResidual = Math.abs(sx - sy) / Math.max(sx, sy);
 
   // 아웃라인 지지율(볼트 서클은 시작각 후보 중 최대 — 결정론)
-  let pts = samplePoints(sil);
+  let groups = samplePointGroups(sil);
+  let pts = groups.flatMap((g) => g.pts);
   let support = supportRatio(pts, c, masks);
   if (sil.boltRing?.n > 0) {
     const base = pts;
-    let bestRing = 0;
+    let bestRing = 0, bestPts = null, bestRingPts = null;
     for (const s0 of [0, 90, 180 / sil.boltRing.n]) {
       const rp = boltRingPoints(sil.boltRing, s0);
-      const r = supportRatio([...base, ...rp], c, masks);
-      if (r > bestRing) bestRing = r;
+      const all = [...base, ...rp];
+      const r = supportRatio(all, c, masks);
+      if (r > bestRing) { bestRing = r; bestPts = all; bestRingPts = rp; }
     }
     support = bestRing;
+    if (bestPts) { pts = bestPts; groups = [...groups, { name: 'boltRing', pts: bestRingPts }]; }
   }
+  /**
+   * ★260731 — **부위별 지지율.** 종전엔 하나로 뭉친 평균만 봤고, 큰 부위가 맞으면
+   *   작은 부위가 통째로 틀려도 문턱을 넘겼다. 실측(평가셋 50장): 표시되지 않은 오독
+   *   4건 중 3건이 내부 원(보어·볼트서클·볼트홀)이었다 — 외곽 원 표본에 희석된 것이다.
+   * ⚠ 표본이 적은 부위는 잡음이 크다 → 최소 표본 수를 넘는 부위만 판정한다.
+   *   **판정하지 않은 부위는 「이상 없음」이 아니라 「미판정」**이므로 리포트에 남긴다.
+   */
+  const byGroup = supportByGroup(groups, pts, c, masks);
 
   const reasons = [];
   if (support < SUPPORT_MIN) reasons.push(`아웃라인 지지율 ${(support * 100).toFixed(0)}% < ${SUPPORT_MIN * 100}% — 추출 형상이 도면 잉크와 어긋남`);
+  for (const [gname, g] of Object.entries(byGroup)) {
+    if (gname === 'outline' || g.n < GROUP_MIN_PTS) continue;
+    if (g.ratio < GROUP_SUPPORT_MIN) {
+      reasons.push(`${gname} 지지율 ${(g.ratio * 100).toFixed(0)}% < ${GROUP_SUPPORT_MIN * 100}% — 그 부위(내부 원·구멍)가 도면 잉크와 어긋남`);
+    }
+  }
   if (scaleResidual > RESIDUAL_MAX) reasons.push(`축별 스케일 괴리 ${(scaleResidual * 100).toFixed(1)}% > ${RESIDUAL_MAX * 100}% — 가로/세로 치수 비율 불일치`);
 
   // D2 멀티뷰 모순(260719b): 도면 뷰들은 동일 축척 관례 — 주 뷰 스케일로 보조 뷰의 기대
@@ -227,6 +310,8 @@ export function reprojectDiff(gray, intent) {
     verdict: demote ? 'DEMOTE' : 'OK',
     view: sil.view,
     support: +support.toFixed(3),
+    // 어느 부위가 어긋났는지 — 총점만으로는 「무엇을 확인해야 하는지」를 알 수 없다.
+    supportByGroup: byGroup,
     scaleResidualPct: +(scaleResidual * 100).toFixed(1),
     crossViews,
     region: { x0: c.x0, y0: c.y0, x1: c.x1, y1: c.y1 },

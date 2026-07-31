@@ -1,0 +1,13 @@
+{
+ "shapeId": "uChannel",
+ "params": {
+  "width": 90,
+  "height": 90,
+  "webThickness": 9,
+  "flangeThickness": 7,
+  "length": 180
+ },
+ "variant": "plain",
+ "labeledParams": [],
+ "unit": "mm"
+}

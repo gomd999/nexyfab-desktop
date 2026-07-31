@@ -91,9 +91,40 @@ const def: PromptDefinition = {
   description: 'Extract a NexyFab CAD intent JSON from a photo / sketch / screenshot. Vision-only; whitelist-bounded.',
   template: TEMPLATE,
   defaults: {
-    temperature: 0.2,
-    maxTokens: 500,
-    timeoutMs: 30_000,
+    /**
+     * ★260731 — **추출 과제에 온도를 주고 있었다.** 형제 경로(도면 추출 `extract.mjs`)는
+     *   전부 `temperature: 0` 이다. 도면·스케치에서 치수를 읽는 일은 창작이 아니라 판독이고,
+     *   온도는 같은 그림에 다른 답을 만든다 — 실측에서도 회차마다 값이 흔들렸다.
+     * ⚠ 재현되지 않는 출력은 **회귀를 잴 수 없게** 만든다. 좋아졌는지 나빠졌는지 모른다.
+     */
+    temperature: 0,
+    /**
+     * ★260731 — **500 은 출력이 아니라 「생각 + 출력」의 상한이었다.**
+     *
+     * 합성 픽토리얼 24장 첫 실측: **16장이 `NON_JSON`.** 원문 꼬리를 찍어 보니
+     * ```
+     *   ```json { "shapeId": "lBracket", "params":        ← 여기서 끊김
+     * ```
+     * 산문이 온 게 아니라 **중간에 잘렸다.** 실제 출력은 45자 남짓인데 상한 500 을
+     * 넘겼다는 것은, `gemini-2.5-flash` 의 thinking 이 그 예산을 먼저 썼다는 뜻이다
+     * (vision 계층은 `thinkingConfig` 를 보내지 않아 thinking 이 켜져 있다).
+     *
+     * ⚠ thinking 을 끄는 쪽은 이 저장소에 부작용 이력이 있다(`extract.mjs`: 끄니
+     *   degenerate float 발생). 그래서 **위험 없는 쪽인 상한부터** 올린다.
+     * ⚠ 정당한 응답 자체는 작다(성공 케이스는 500 안에 들어왔다) — 상한을 올려도
+     *   토큰이 그만큼 더 쓰이는 게 아니라, **생각할 자리를 준다.**
+     *
+     * 단계별 실측(lBracket 4장 — 원래 0/4 측정):
+     * ```
+     *    500 →  0/4   끊긴 자리: "params":      ← 파라미터도 못 냄
+     *   2048 →  2/4   끊긴 자리: "summary":     ← 본체는 완성, 마지막 필드만 손실
+     *   4096 →  4/4   완결
+     * ```
+     * 2048 에서 **끊긴 자리가 마지막 필드로 밀린 것**이 「생각이 예산을 쓴다」의 직접 증거다.
+     */
+    maxTokens: 4096,
+    // 생각 시간이 늘어난 만큼 여유를 준다 — 상한만 올리고 시간을 안 주면 timeout 으로 옮겨간다.
+    timeoutMs: 60_000,
   },
 };
 

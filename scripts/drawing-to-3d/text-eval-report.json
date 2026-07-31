@@ -1,13 +1,14 @@
 {
- "date": "2026-07-31T10:38:35.876Z",
+ "date": "2026-07-31T12:08:13.323Z",
  "summary": {
   "cases": 8,
   "measured": "8/8 (100.0%)",
   "complete": true,
   "notMeasuredReasons": {},
   "gatePass": "8/8 (100.0%)",
-  "statedDimRecall": "24/24 (100.0%)",
+  "statedDimRecall": "23/24 (95.8%)",
   "holeCount": "1/1",
+  "latency": "p50 9.3s · p90 18.3s · 최대 18.3s",
   "caveat": "재현율은 축 배정(가로/세로 뒤바뀜)을 검증하지 않는다 — 원문이 축을 확정하지 않기 때문."
  },
  "rows": [
@@ -19,7 +20,12 @@
    "miss": "-",
    "holes": "OK",
    "parts": 1,
-   "ms": 80066
+   "ms": 15803,
+   "model": "gemini-2.5-flash",
+   "rounds": 0,
+   "fellBack": "gemini-2.5-flash: bad_json_MAX_TOKENS | gemini-2.5-flash: retry_without_schema",
+   "outTok": 276,
+   "withSchema": false
   },
   {
    "dom": "기계",
@@ -29,7 +35,12 @@
    "miss": "-",
    "holes": "-",
    "parts": 1,
-   "ms": 2200
+   "ms": 1645,
+   "model": "gemini-2.5-flash",
+   "rounds": 0,
+   "fellBack": "-",
+   "outTok": 73,
+   "withSchema": true
   },
   {
    "dom": "기계",
@@ -39,7 +50,12 @@
    "miss": "-",
    "holes": "-",
    "parts": 4,
-   "ms": 6217
+   "ms": 6549,
+   "model": "gemini-2.5-flash",
+   "rounds": 1,
+   "fellBack": "-",
+   "outTok": 477,
+   "withSchema": true
   },
   {
    "dom": "토목",
@@ -49,7 +65,12 @@
    "miss": "-",
    "holes": "-",
    "parts": 0,
-   "ms": 3069
+   "ms": 2272,
+   "model": "gemini-2.5-flash",
+   "rounds": 1,
+   "fellBack": "-",
+   "outTok": 80,
+   "withSchema": true
   },
   {
    "dom": "건축",
@@ -59,17 +80,27 @@
    "miss": "-",
    "holes": "-",
    "parts": 6,
-   "ms": 8869
+   "ms": 9265,
+   "model": "gemini-2.5-flash",
+   "rounds": 1,
+   "fellBack": "-",
+   "outTok": 635,
+   "withSchema": true
   },
   {
    "dom": "조경",
    "text": "폭 1.5m 길이 5m 목재 데크 — 장선 간격 4",
    "gate": "PASS",
-   "dims": "3/3",
-   "miss": "-",
+   "dims": "2/3",
+   "miss": "400",
    "holes": "-",
-   "parts": 1,
-   "ms": 93660
+   "parts": 14,
+   "ms": 18339,
+   "model": "gemini-2.5-flash",
+   "rounds": 0,
+   "fellBack": "gemini-2.5-flash: bad_json_MAX_TOKENS | gemini-2.5-flash: retry_without_schema",
+   "outTok": 1540,
+   "withSchema": false
   },
   {
    "dom": "인테리어",
@@ -79,7 +110,12 @@
    "miss": "-",
    "holes": "-",
    "parts": 1,
-   "ms": 118534
+   "ms": 13978,
+   "model": "gemini-2.5-flash",
+   "rounds": 0,
+   "fellBack": "gemini-2.5-flash: bad_json_MAX_TOKENS | gemini-2.5-flash: retry_without_schema",
+   "outTok": 65,
+   "withSchema": false
   },
   {
    "dom": "기계",
@@ -89,7 +125,12 @@
    "miss": "-",
    "holes": "-",
    "parts": 1,
-   "ms": 2369
+   "ms": 2264,
+   "model": "gemini-2.5-flash",
+   "rounds": 1,
+   "fellBack": "-",
+   "outTok": 103,
+   "withSchema": true
   }
  ]
 }

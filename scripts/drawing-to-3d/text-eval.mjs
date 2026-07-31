@@ -100,7 +100,11 @@ for (let rep = 0; rep < REPEAT; rep++) {
   for (const c of cases) {
     const t0 = Date.now();
     try {
-      const { assembly, gateErrors } = await textToAssembly(c.text);
+      /**
+       * ★260731 — 지연이 2.2s~118.5s 로 흔들리는데 **원인 데이터가 없었다.**
+       *   답한 모델과 수리 라운드를 함께 기록한다 — 「느리다」로는 고칠 수 없다.
+       */
+      const { assembly, gateErrors, model, repairRounds, fallbackReasons, usage } = await textToAssembly(c.text);
       agg.measured++;
       const nums = collectNumbers(assembly);
       const ds = scoreDims(c.expect, nums);
@@ -123,6 +127,10 @@ for (let rep = 0; rep < REPEAT; rep++) {
         dom: c.dom, text: c.text.slice(0, 28), gate: gateOk ? 'PASS' : 'FAIL',
         dims: `${ds.hit}/${ds.total}`, miss: ds.miss.join(',') || '-', holes,
         parts: (assembly?.parts ?? []).length, ms: Date.now() - t0,
+        model: Array.isArray(model) ? model.join('+') : String(model ?? '?'), rounds: repairRounds ?? 0,
+        // ★ 폴백 사유 — 이게 있어야 「왜 12배 느린가」를 고칠 수 있다.
+        fellBack: (fallbackReasons ?? []).join(' | ') || '-',
+        outTok: usage?.out ?? null, withSchema: usage?.schema ?? null,
       });
     } catch (e) {
       const msg = String(e?.message ?? e);
@@ -148,6 +156,13 @@ const summary = {
   // ★ 새로 재는 것 — 「만들어졌는가」가 아니라 「말한 치수가 살아 있는가」
   statedDimRecall: `${agg.dimHit}/${agg.dimTot} (${pct(agg.dimHit, agg.dimTot)})`,
   holeCount: agg.holeTot ? `${agg.holeOk}/${agg.holeTot}` : '표본 없음',
+  // ★ 지연 — 평균은 쓸모없다. **꼬리**가 사용자를 기다리게 한다.
+  latency: (() => {
+    const ms = rows.filter((r) => typeof r.ms === 'number').map((r) => r.ms).sort((a, b) => a - b);
+    if (!ms.length) return '표본 없음';
+    const q = (p) => ms[Math.min(ms.length - 1, Math.floor(ms.length * p))];
+    return `p50 ${(q(0.5) / 1000).toFixed(1)}s · p90 ${(q(0.9) / 1000).toFixed(1)}s · 최대 ${(ms.at(-1) / 1000).toFixed(1)}s`;
+  })(),
   caveat: '재현율은 축 배정(가로/세로 뒤바뀜)을 검증하지 않는다 — 원문이 축을 확정하지 않기 때문.',
 };
 if (notMeasured.length) console.log(`\n⚠ 미측정 ${notMeasured.length}건 — 이 실행은 완결이 아니다.`);

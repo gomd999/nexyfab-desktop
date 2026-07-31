@@ -35,6 +35,14 @@ const extractFor = WEB
   ? async (png) => extractDrawingFromImage(readFileSync(png).toString('base64'), 'image/png')
   : (png) => extractDrawing(png);
 
+/**
+ * ★260731 — **D1 역투영 판정이 채점에 안 실려 있었다.**
+ *   웹 경로는 추출 후 역투영 diff 를 돌려 신뢰도를 강등하는데, 하네스는 그 결과를
+ *   버렸다 — 그래서 「역투영이 오독을 잡는가」를 한 번도 재지 못했다.
+ * ⚠ 깃발은 **포착률과 오경보율을 함께** 봐야 한다. 전부 DEMOTE 면 포착 100% 지만 쓸모 0 이다.
+ */
+const reproAgg = { demoteOnWrong: 0, wrongCases: 0, demoteOnRight: 0, rightCases: 0 };
+
 const onlyArg = process.argv.indexOf('--only');
 const ONLY = onlyArg > -1 ? process.argv[onlyArg + 1] : null;
 const cases = readdirSync(TD).filter((f) => f.endsWith('.gt.json')).map((f) => f.replace('.gt.json', ''))
@@ -115,7 +123,7 @@ for (const name of cases) {
   byBucket[bkey].n++;
   let row;
   try {
-    const { intent } = await extractFor(join(TD, `${name}.png`));
+    const { intent, reproject } = await extractFor(join(TD, `${name}.png`));
     // ★ 여기까지 왔다는 것은 **판독이 실제로 이뤄졌다**는 뜻이다 — 이제부터 채점 대상.
     agg.measured++; byBucket[bkey].measured++;
     const typeOk = intent.type === gt.type;
@@ -126,6 +134,13 @@ for (const name of cases) {
     byBucket[bkey].pOk += ps.ok; byBucket[bkey].pTot += ps.total;
     const hs = typeOk ? scoreHoles(gt, intent) : null;
     if (hs) { agg.hPos += hs.pos; agg.hTot += hs.total; }
+    // 이 케이스에 오독이 있었나(파라미터 하나라도 틀렸나) ↔ 역투영이 DEMOTE 했나
+    if (reproject && reproject.verdict !== 'SKIPPED' && reproject.verdict !== 'UNSUPPORTED') {
+      const wrong = ps.ok < ps.total;
+      const demoted = reproject.verdict === 'DEMOTE' || reproject.verdict === 'NO_VIEW';
+      if (wrong) { reproAgg.wrongCases++; if (demoted) reproAgg.demoteOnWrong++; }
+      else { reproAgg.rightCases++; if (demoted) reproAgg.demoteOnRight++; }
+    }
     const gerrs = typeOk ? gate(intent) : ['type mismatch'];
     if (gerrs.length === 0) { agg.gateOk++; writeFileSync(join(OUTSCAD, `${name}.scad`), toOpenScad(intent)); }
     row = {
@@ -164,6 +179,9 @@ const summary = {
   // ★ 추정 선언이 오답을 가리키는가 — 두 숫자를 **함께** 봐야 의미가 있다.
   estimateFlagRecall: agg.wrongTotal ? `${agg.wrongFlagged}/${agg.wrongTotal} (${pct(agg.wrongFlagged, agg.wrongTotal)}) — 틀린 값 중 추정으로 표시된 비율` : '오답 없음',
   estimateFlagFalseAlarm: agg.rightTotal ? `${agg.rightFlagged}/${agg.rightTotal} (${pct(agg.rightFlagged, agg.rightTotal)}) — 맞은 값 중 추정으로 표시된 비율` : '표본 없음',
+  // ★ D1 역투영(부위별 지지율) — 오독이 있는 케이스를 강등하는가, 멀쩡한 케이스를 강등하지는 않는가
+  reprojectRecall: reproAgg.wrongCases ? `${reproAgg.demoteOnWrong}/${reproAgg.wrongCases} (${pct(reproAgg.demoteOnWrong, reproAgg.wrongCases)}) — 오독 있는 케이스 중 DEMOTE` : '표본 없음',
+  reprojectFalseAlarm: reproAgg.rightCases ? `${reproAgg.demoteOnRight}/${reproAgg.rightCases} (${pct(reproAgg.demoteOnRight, reproAgg.rightCases)}) — 전부 맞은 케이스 중 DEMOTE` : '표본 없음',
   byBucket: Object.fromEntries(Object.entries(byBucket).map(([k, v]) => [
     k,
     // ⚠ 표본이 0 인 버킷을 「type 0/5」로 적으면 **전부 틀린 것처럼 읽힌다.**

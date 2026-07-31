@@ -18,6 +18,23 @@ import { PARAMS } from './reconstruct.mjs';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** ```json 울타리·앞뒤 산문 제거 — 스키마를 끈 회차에서만 필요하다. */
+export function stripFences(text) {
+  const t = String(text).trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/,'');
+  const i = t.indexOf('{'), j = t.lastIndexOf('}');
+  return i >= 0 && j > i ? t.slice(i, j + 1) : t;
+}
+
+/**
+ * 스키마를 끈 회차에 붙이는 지시 — 스키마가 하던 일을 **말로** 대신한다.
+ * ⚠ 스키마 없이 보내면서 형식을 안 알려 주면 산문이 돌아온다.
+ */
+const NO_SCHEMA_HINT = [
+  '',
+  '⚠ 출력은 **JSON 객체 하나만**. 마크다운 울타리·설명 문장을 붙이지 마라.'
+  + ' 필요한 키만 넣고 값이 없는 키는 아예 생략하라(빈 문자열·null 로 채우지 마라).',
+].join(String.fromCharCode(10, 10));
+
 /**
  * 텍스트 프롬프트 → 구조화 JSON, 신뢰성 3중 방어:
  *   1) 모델 폴백: gemini-2.5-flash(빠름) → 실패 시 gemini-2.5-pro(폭주 거의 없음).
@@ -42,25 +59,67 @@ export async function callGeminiJson(promptText, schema, { models = ['gemini-2.5
    * ⚠ 모델 이름으로 분기하지 않는다(모델은 계속 바뀐다). **그 400 을 만나면 해당 모델만
    *   thinking 없이 한 번 더** 시도한다 — 능력 판별을 응답에서 배운다.
    */
-  const bodyFor = (withThinking) => JSON.stringify({
-    contents: [{ parts: [{ text: promptText }] }],
-    generationConfig: withThinking && thinkingBudget !== undefined
-      ? { ...baseConfig, thinkingConfig: { thinkingBudget } }
-      : baseConfig,
-  });
+  /**
+   * ★260731 — `withSchema` 추가. **스키마를 끄는 것은 이미 이 파일이 적어 둔 우회로인데
+   *   실제로는 한 번도 쓰이지 않았다**(위 `schema=null` 주석 참조).
+   *
+   *   실측(8케이스): `flash: bad_json_MAX_TOKENS` → `pro` 로 폴백 → **1.1~8.5s 가 89~125s**.
+   *   그런데 잘린 요청은 「길이 2400 깊이 600 높이 900 카운터」 — **상자 하나**다.
+   *   16,384 토큰을 쓸 일이 아니다. 즉 상한이 낮은 게 아니라 **구조화 출력이 폭주**한 것이고,
+   *   상한을 올리면 낭비만 커진다.
+   * ⚠ 그래서 MAX_TOKENS 를 만나면 **모델을 바꾸기 전에 같은(빠른) 모델로 스키마 없이** 한 번 더.
+   *   느린 모델로 도망가는 것은 마지막 수단이다.
+   */
+  /**
+   * ★260731 — **스키마 회차의 출력 상한을 관측값 위에 다시 놓는다.**
+   *
+   * 실측(8케이스 출력 토큰):
+   * ```
+   *   스키마로 성공한 회차   73 · 80 · 103 · 477 · 633
+   *   스키마 없이 성공한 회차 65 · 276 · 1540      ← 관측 최대
+   *   폭주 회차               16,384 전부 소진 → 약 55초 낭비 후 MAX_TOKENS
+   * ```
+   * 정상 응답 최대가 1,540 인데 상한이 16,384 였다 — **10배 여유를 폭주가 전부 태웠다.**
+   * 상한을 관측 최대의 2배로 낮추면 폭주가 **5배 빨리** 드러나고, 그 뒤 스키마 없는
+   * 회차(여전히 16,384)가 정상 응답을 만든다.
+   * ⚠ 정상적으로 큰 어셈블리가 이 상한에 걸리면? **실패하지 않는다** — 스키마 없는
+   *   회차로 넘어가 성공한다(실측 1,540 토큰 케이스가 그 경로로 통과했다). 한 왕복을 더
+   *   쓸 뿐이고, 그건 매번 55초를 버리는 것보다 싸다.
+   */
+  const SCHEMA_MAX_OUT = 3072;
+  const bodyFor = (withThinking, withSchema = true) => {
+    const cfg = { ...baseConfig };
+    if (withSchema) cfg.maxOutputTokens = Math.min(baseConfig.maxOutputTokens ?? SCHEMA_MAX_OUT, SCHEMA_MAX_OUT);
+    if (!withSchema) delete cfg.response_schema;
+    return JSON.stringify({
+      contents: [{ parts: [{ text: withSchema ? promptText : promptText + NO_SCHEMA_HINT }] }],
+      generationConfig: withThinking && thinkingBudget !== undefined
+        ? { ...cfg, thinkingConfig: { thinkingBudget } }
+        : cfg,
+    });
+  };
   let lastErr;
+  /**
+   * ★260731 — **앞 모델이 왜 실패했는지가 버려지고 있었다.**
+   *   폴백이 성공하면 아무도 사유를 보지 않는다. 그런데 실측(8케이스)에서
+   *   `flash` 1.3~8.0s 대 `pro` 91~99s — **폴백 한 번이 지연을 12배로 만든다.**
+   *   무엇이 flash 를 떨어뜨리는지 모르면 그 12배를 줄일 수 없다.
+   * ⚠ 사유를 반환값에 실어 보낸다. 로그로만 남기면 하네스가 집계하지 못한다.
+   */
+  const fallbackReasons = [];
   for (const model of models) {
     let useThinking = true;
-    let body = bodyFor(useThinking);
+    let useSchema = Boolean(schema);
+    let body = bodyFor(useThinking, useSchema);
     for (let attempt = 0; attempt < 3; attempt++) {
       let res;
       try {
         res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey()}`, {
           method: 'POST', headers: { 'content-type': 'application/json' }, body,
         });
-      } catch (e) { lastErr = e; await sleep(1000); continue; }
+      } catch (e) { lastErr = e; fallbackReasons.push(`${model}: network`); await sleep(1000); continue; }
       if (!res.ok) {
-        if (res.status === 503 || res.status === 429) { lastErr = new Error(`${model} ${res.status}`); await sleep(1500 * (attempt + 1)); continue; }
+        if (res.status === 503 || res.status === 429) { lastErr = new Error(`${model} ${res.status}`); fallbackReasons.push(`${model}: http_${res.status}`); await sleep(1500 * (attempt + 1)); continue; }
         const text = await res.text();
         /**
          * thinking 이 **필수인 모델**은 `thinkingBudget: 0` 을 거부한다(400).
@@ -69,23 +128,37 @@ export async function callGeminiJson(promptText, schema, { models = ['gemini-2.5
          */
         if (res.status === 400 && useThinking && /thinking mode|Budget \d+ is invalid/i.test(text)) {
           useThinking = false;
-          body = bodyFor(false);
+          body = bodyFor(false, useSchema);
           continue;
         }
         lastErr = new Error(`${model} ${res.status}: ${text.slice(0, 120)}`);
+        fallbackReasons.push(`${model}: http_${res.status}`);
         break; // 비-일시적 에러 → 다음 모델로
       }
       const j = await res.json();
       const text = j.candidates?.[0]?.content?.parts?.[0]?.text;
       const finish = j.candidates?.[0]?.finishReason;
-      if (!text) { lastErr = new Error(`${model} empty (${finish})`); continue; }
-      try { return { data: JSON.parse(text), model, repaired: false }; }
+      if (!text) { lastErr = new Error(`${model} empty (${finish})`); fallbackReasons.push(`${model}: empty_${finish}`); continue; }
+      // ⚠ 스키마를 끄면 모델이 ```json 울타리를 붙일 수 있다 — 벗겨 내고 파싱한다.
+      const cleaned = useSchema ? text : stripFences(text);
+      // 출력 토큰 실측 — 상한을 「어림」이 아니라 **관측값** 위에 두기 위해.
+      const usage = { out: j.usageMetadata?.candidatesTokenCount, total: j.usageMetadata?.totalTokenCount, schema: useSchema };
+      try { return { data: JSON.parse(cleaned), model, repaired: false, fallbackReasons, usage }; }
       catch {
-        try { const fixed = repairJsonNumbers(text); if (fixed !== text) return { data: JSON.parse(fixed), model, repaired: true }; }
+        try { const fixed = repairJsonNumbers(cleaned); if (fixed !== cleaned) return { data: JSON.parse(fixed), model, repaired: true, fallbackReasons, usage }; }
         catch { /* fall through */ }
         lastErr = new Error(`${model} bad JSON (${finish})`);
-        // MAX_TOKENS 폭주면 재시도 무의미 → 다음 모델로
-        if (finish === 'MAX_TOKENS') break;
+        fallbackReasons.push(`${model}: bad_json_${finish}`);
+        if (finish === 'MAX_TOKENS') {
+          // 구조화 출력 폭주 → **같은 모델로** 스키마 없이 한 번 더. 느린 모델 폴백은 그 다음이다.
+          if (useSchema) {
+            useSchema = false;
+            body = bodyFor(useThinking, false);
+            fallbackReasons.push(`${model}: retry_without_schema`);
+            continue;
+          }
+          break; // 스키마 없이도 폭주하면 재시도 무의미 → 다음 모델로
+        }
       }
     }
   }
@@ -313,13 +386,13 @@ export async function textToAssembly(description, { models } = {}) {
    *   해법이 리포 안에 있는데 한 경로만 안 쓰던 것이다.
    * ⚠ 실패한 호출은 53~88초가 걸렸고 **성공한 1건은 2.4초**였다 — 오래 생각할수록 실패했다.
    */
-  const { data, model } = await callGeminiJson(ASM_PROMPT(description), ASSEMBLY_SCHEMA, {
+  const { data, model, fallbackReasons, usage } = await callGeminiJson(ASM_PROMPT(description), ASSEMBLY_SCHEMA, {
     ...(models ? { models } : {}),
     thinkingBudget: 0,
     maxOutputTokens: 16384,
   });
   const repaired = await repairAgainstGate(data, description, { models });
-  return { assembly: repaired.assembly, model, repairRounds: repaired.rounds, gateErrors: repaired.errors };
+  return { assembly: repaired.assembly, model, repairRounds: repaired.rounds, gateErrors: repaired.errors, fallbackReasons, usage };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('from-text.mjs');
