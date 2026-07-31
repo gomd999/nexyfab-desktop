@@ -6,6 +6,7 @@
 // works as the fallback.
 
 import React, { useEffect, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 interface ProcessCandidate {
   process: string;
@@ -63,6 +64,70 @@ const dict = {
     classification: 'Shape',
     loading: 'Analyzing…',
   },
+  ja: {
+    title: '⚡ 即時見積 (AI 推奨)',
+    subtitle: 'アップロードされたファイルを自動解析した一次見積です',
+    leadTime: '納期',
+    days: '日',
+    perUnit: '単価',
+    total: '合計',
+    confidence: '信頼度',
+    confidenceHigh: '高',
+    confidenceMed: '中',
+    confidenceLow: '低',
+    alternatives: '代替案',
+    refine: '下で材料・工程を選ぶと精密見積になります',
+    classification: '形状分類',
+    loading: '解析中…',
+  },
+  zh: {
+    title: '⚡ 即时报价（AI 推荐）',
+    subtitle: '基于您上传文件自动分析的初步估价',
+    leadTime: '交期',
+    days: '天',
+    perUnit: '单价',
+    total: '总价',
+    confidence: '置信度',
+    confidenceHigh: '高',
+    confidenceMed: '中',
+    confidenceLow: '低',
+    alternatives: '备选方案',
+    refine: '在下方选择材料与工艺可获得精确报价',
+    classification: '形状分类',
+    loading: '分析中…',
+  },
+  es: {
+    title: '⚡ Presupuesto instantáneo (elección de IA)',
+    subtitle: 'Estimación preliminar a partir del archivo que ha subido',
+    leadTime: 'Plazo',
+    days: 'd',
+    perUnit: 'Unitario',
+    total: 'Total',
+    confidence: 'Confianza',
+    confidenceHigh: 'Alta',
+    confidenceMed: 'Media',
+    confidenceLow: 'Baja',
+    alternatives: 'Alternativas',
+    refine: 'Elija material y proceso abajo para un presupuesto preciso',
+    classification: 'Clasificación de forma',
+    loading: 'Analizando…',
+  },
+  ar: {
+    title: '⚡ عرض سعر فوري (اختيار الذكاء الاصطناعي)',
+    subtitle: 'تقدير أولي بتحليل تلقائي للملف الذي رفعته',
+    leadTime: 'مدة التسليم',
+    days: 'يوم',
+    perUnit: 'سعر الوحدة',
+    total: 'الإجمالي',
+    confidence: 'درجة الثقة',
+    confidenceHigh: 'عالية',
+    confidenceMed: 'متوسطة',
+    confidenceLow: 'منخفضة',
+    alternatives: 'بدائل',
+    refine: 'اختر المادة والعملية أدناه للحصول على عرض سعر دقيق',
+    classification: 'تصنيف الشكل',
+    loading: 'جارٍ التحليل…',
+  },
 };
 
 export interface AutoQuoteCardProps {
@@ -81,7 +146,8 @@ export interface AutoQuoteCardProps {
 const fmt = (n: number) => n.toLocaleString('ko-KR');
 
 export default function AutoQuoteCard({ lang, geometry, quantity, onApply }: AutoQuoteCardProps) {
-  const t = dict[lang];
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = dict[toIsoLang(lang)] ?? dict.en;
   const [data, setData] = useState<AutoQuoteResp | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

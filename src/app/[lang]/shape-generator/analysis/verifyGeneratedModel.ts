@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { toIsoLang } from '@/lib/i18n/normalize';
 import { validateMesh } from '../features/meshValidation';
 import { meshVolume } from '../features/roundingGuard';
 
@@ -236,26 +237,86 @@ export function formatForVendor(result: ModelVerificationResult): string {
   return formatVerificationCritique(result);
 }
 
-const LAY_MESSAGES: Record<string, { en: string; ko: string }> = {
-  'non-empty': { en: 'The design came out empty — nothing was created. Try again.', ko: '디자인이 비어 있어요. 다시 시도해 주세요.' },
-  watertight: { en: 'The model has gaps or holes, so it won’t form a solid object.', ko: '모델에 틈이나 구멍이 있어 통짜 형태로 만들어지지 않아요.' },
-  manifold: { en: 'Parts of the surface overlap. The shapes need to be merged or kept apart.', ko: '표면이 겹쳐 있어요. 모양을 합치거나 떨어뜨려야 해요.' },
-  'max-size': { en: 'The model is too large for the allowed size — make it smaller.', ko: '모델이 허용 크기보다 너무 커요. 더 작게 만들어 주세요.' },
-  'min-size': { en: 'One side is very thin — it may be too fragile or hard to make.', ko: '한쪽이 너무 얇아요 — 약하거나 제작이 어려울 수 있어요.' },
-  volume: { en: 'This looks hollow (a shell), not a solid — it may not produce well.', ko: '속이 빈 모양(껍데기)이라 제대로 제작되지 않을 수 있어요.' },
-  orientation: { en: 'The surface is turned inside-out, which can confuse manufacturing.', ko: '면이 안팎으로 뒤집혀 있어요 — 제작 시 문제가 될 수 있어요.' },
-  'single-body': { en: 'The design is in separate pieces but should be one connected part.', ko: '여러 조각으로 떨어져 있어요 — 하나로 이어진 부품이어야 해요.' },
+const LAY_MESSAGES: Record<string, { en: string; ko: string; ja: string; zh: string; es: string; ar: string }> = {
+  'non-empty': {
+    en: 'The design came out empty — nothing was created. Try again.',
+    ko: '디자인이 비어 있어요. 다시 시도해 주세요.',
+    ja: 'デザインが空です — 何も作成されませんでした。もう一度お試しください。',
+    zh: '设计结果为空 — 没有生成任何内容。请重试。',
+    es: 'El diseño ha salido vacío: no se ha creado nada. Inténtelo de nuevo.',
+    ar: 'جاء التصميم فارغاً — لم يُنشأ أي شيء. حاول مرة أخرى.',
+  },
+  watertight: {
+    en: 'The model has gaps or holes, so it won\u2019t form a solid object.',
+    ko: '모델에 틈이나 구멍이 있어 통짜 형태로 만들어지지 않아요.',
+    ja: 'モデルに隙間や穴があるため、中身の詰まった形になりません。',
+    zh: '模型存在缝隙或孔洞，无法形成实体。',
+    es: 'El modelo tiene huecos o agujeros, por lo que no formará un sólido.',
+    ar: 'يحتوي النموذج على فجوات أو ثقوب، لذا لن يشكّل مجسماً صلباً.',
+  },
+  manifold: {
+    en: 'Parts of the surface overlap. The shapes need to be merged or kept apart.',
+    ko: '표면이 겹쳐 있어요. 모양을 합치거나 떨어뜨려야 해요.',
+    ja: '表面が重なっています。形状を結合するか、離す必要があります。',
+    zh: '表面存在重叠。需要合并或分开这些形状。',
+    es: 'Hay superficies solapadas. Las formas deben fusionarse o separarse.',
+    ar: 'تتداخل بعض الأسطح. يجب دمج الأشكال أو إبعادها عن بعضها.',
+  },
+  'max-size': {
+    en: 'The model is too large for the allowed size — make it smaller.',
+    ko: '모델이 허용 크기보다 너무 커요. 더 작게 만들어 주세요.',
+    ja: 'モデルが許容サイズを超えています — 小さくしてください。',
+    zh: '模型超出允许尺寸 — 请缩小。',
+    es: 'El modelo supera el tamaño permitido: hágalo más pequeño.',
+    ar: 'النموذج أكبر من المقاس المسموح — يُرجى تصغيره.',
+  },
+  'min-size': {
+    en: 'One side is very thin — it may be too fragile or hard to make.',
+    ko: '한쪽이 너무 얇아요 — 약하거나 제작이 어려울 수 있어요.',
+    ja: '一部が非常に薄くなっています — 壊れやすい、または製作が難しい可能性があります。',
+    zh: '某一侧非常薄 — 可能过于脆弱或难以制造。',
+    es: 'Un lado es muy fino: puede resultar frágil o difícil de fabricar.',
+    ar: 'أحد الجوانب رقيق جداً — قد يكون هشاً أو يصعب تصنيعه.',
+  },
+  volume: {
+    en: 'This looks hollow (a shell), not a solid — it may not produce well.',
+    ko: '속이 빈 모양(껍데기)이라 제대로 제작되지 않을 수 있어요.',
+    ja: '中空(シェル)の形状で、中身が詰まっていません — うまく製作できない場合があります。',
+    zh: '这是中空的壳体而非实体 — 可能无法正常制造。',
+    es: 'Parece hueco (una cáscara), no un sólido: puede que no se fabrique bien.',
+    ar: 'يبدو أنه مجوّف (قشرة) وليس صلباً — قد لا يُصنَّع بشكل سليم.',
+  },
+  orientation: {
+    en: 'The surface is turned inside-out, which can confuse manufacturing.',
+    ko: '면이 안팎으로 뒤집혀 있어요 — 제작 시 문제가 될 수 있어요.',
+    ja: '面が裏返っています — 製作時に問題になる可能性があります。',
+    zh: '表面法向翻转 — 可能导致制造出错。',
+    es: 'La superficie está invertida, lo que puede confundir a fabricación.',
+    ar: 'السطح مقلوب من الداخل إلى الخارج، وقد يربك عملية التصنيع.',
+  },
+  'single-body': {
+    en: 'The design is in separate pieces but should be one connected part.',
+    ko: '여러 조각으로 떨어져 있어요 — 하나로 이어진 부품이어야 해요.',
+    ja: '複数の断片に分かれています — ひとつながりの部品である必要があります。',
+    zh: '设计被分成了多块 — 应该是一个连通的零件。',
+    es: 'El diseño está en piezas separadas, pero debería ser una sola pieza conectada.',
+    ar: 'التصميم مقسّم إلى قطع منفصلة، بينما يجب أن يكون قطعة واحدة متصلة.',
+  },
 };
 
 /** Plain-language guidance for the customer/lay surface. Skips jargon-only
  *  warnings (slivers/degenerate facets) that a lay user can't act on. */
-export function formatForCustomer(result: ModelVerificationResult, lang: 'en' | 'ko' = 'en'): string {
+/**
+ * ⚠ 260802: `lang: 'en' | 'ko'` 이라 **호출측이 다른 언어를 넘길 수조차 없었다.**
+ *   사전을 6언어로 채워도 도달하지 못하는 층위다(오늘 네 번째 같은 형태).
+ */
+export function formatForCustomer(result: ModelVerificationResult, lang: string = 'en'): string {
   const lines: string[] = [];
   for (const c of result.checks) {
     if (c.pass) continue;
     const plain = LAY_MESSAGES[c.id];
     if (!plain) continue; // technical-only check → not surfaced to lay users
-    lines.push(plain[lang]);
+    lines.push(plain[toIsoLang(lang)] ?? plain.en);
   }
   return lines.join('\n');
 }
