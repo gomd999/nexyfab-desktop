@@ -141,21 +141,21 @@ export const GDT_SYMBOLS: Record<GDTSymbol, string> = {
 };
 
 // Human-readable names for each symbol (en / ko)
-export const GDT_SYMBOL_NAMES: Record<GDTSymbol, { en: string; ko: string }> = {
-  straightness:     { en: 'Straightness',      ko: '직진도' },
-  flatness:         { en: 'Flatness',          ko: '평면도' },
-  circularity:      { en: 'Circularity',       ko: '진원도' },
-  cylindricity:     { en: 'Cylindricity',      ko: '원통도' },
-  perpendicularity: { en: 'Perpendicularity',  ko: '직각도' },
-  parallelism:      { en: 'Parallelism',       ko: '평행도' },
-  angularity:       { en: 'Angularity',        ko: '경사도' },
-  position:         { en: 'Position',          ko: '위치도' },
-  concentricity:    { en: 'Concentricity',     ko: '동심도' },
-  symmetry:         { en: 'Symmetry',          ko: '대칭도' },
-  runout:           { en: 'Runout',            ko: '흔들림' },
-  totalRunout:      { en: 'Total Runout',      ko: '온흔들림' },
-  profileLine:      { en: 'Profile of a Line', ko: '선의 윤곽도' },
-  profileSurface:   { en: 'Profile of a Surface', ko: '면의 윤곽도' },
+export const GDT_SYMBOL_NAMES: Record<GDTSymbol, { en: string; ko: string; ja: string; zh: string; es: string; ar: string }> = {
+  straightness:     { en: 'Straightness',          ko: '직진도',      ja: '真直度',   zh: '直线度',   es: 'Rectitud',                     ar: 'الاستقامة' },
+  flatness:         { en: 'Flatness',              ko: '평면도',      ja: '平面度',   zh: '平面度',   es: 'Planitud',                     ar: 'الاستواء' },
+  circularity:      { en: 'Circularity',           ko: '진원도',      ja: '真円度',   zh: '圆度',     es: 'Redondez',                     ar: 'الاستدارة' },
+  cylindricity:     { en: 'Cylindricity',          ko: '원통도',      ja: '円筒度',   zh: '圆柱度',   es: 'Cilindricidad',                ar: 'الأسطوانية' },
+  perpendicularity: { en: 'Perpendicularity',      ko: '직각도',      ja: '直角度',   zh: '垂直度',   es: 'Perpendicularidad',            ar: 'التعامد' },
+  parallelism:      { en: 'Parallelism',           ko: '평행도',      ja: '平行度',   zh: '平行度',   es: 'Paralelismo',                  ar: 'التوازي' },
+  angularity:       { en: 'Angularity',            ko: '경사도',      ja: '傾斜度',   zh: '倾斜度',   es: 'Angularidad',                  ar: 'الميلان' },
+  position:         { en: 'Position',              ko: '위치도',      ja: '位置度',   zh: '位置度',   es: 'Posición',                     ar: 'الموضع' },
+  concentricity:    { en: 'Concentricity',         ko: '동심도',      ja: '同軸度',   zh: '同轴度',   es: 'Concentricidad',               ar: 'التمركز المشترك' },
+  symmetry:         { en: 'Symmetry',              ko: '대칭도',      ja: '対称度',   zh: '对称度',   es: 'Simetría',                     ar: 'التماثل' },
+  runout:           { en: 'Runout',                ko: '흔들림',      ja: '振れ',     zh: '圆跳动',   es: 'Alabeo',                       ar: 'الانحراف الدوراني' },
+  totalRunout:      { en: 'Total Runout',          ko: '온흔들림',    ja: '全振れ',   zh: '全跳动',   es: 'Alabeo total',                 ar: 'الانحراف الدوراني الكلي' },
+  profileLine:      { en: 'Profile of a Line',     ko: '선의 윤곽도', ja: '線の輪郭度', zh: '线轮廓度', es: 'Perfil de una línea',        ar: 'ملمح الخط' },
+  profileSurface:   { en: 'Profile of a Surface',  ko: '면의 윤곽도', ja: '面の輪郭度', zh: '面轮廓度', es: 'Perfil de una superficie',   ar: 'ملمح السطح' },
 };
 
 // GD&T symbol category groupings

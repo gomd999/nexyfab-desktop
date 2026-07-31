@@ -212,15 +212,22 @@ const langMap: Record<string, Lang> = {
   kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
 };
 
-// Localized GD&T symbol names: fallback to English for ja/zh/es/ar unless KO mapping exists
-const GDT_SYMBOL_NAMES_LOCALIZED: Record<Lang, Record<string, string>> = {
-  ko: Object.fromEntries(Object.entries(GDT_SYMBOL_NAMES).map(([k, v]) => [k, (v as { ko: string; en: string }).ko])),
-  en: Object.fromEntries(Object.entries(GDT_SYMBOL_NAMES).map(([k, v]) => [k, (v as { ko: string; en: string }).en])),
-  ja: Object.fromEntries(Object.entries(GDT_SYMBOL_NAMES).map(([k, v]) => [k, (v as { ko: string; en: string }).en])),
-  zh: Object.fromEntries(Object.entries(GDT_SYMBOL_NAMES).map(([k, v]) => [k, (v as { ko: string; en: string }).en])),
-  es: Object.fromEntries(Object.entries(GDT_SYMBOL_NAMES).map(([k, v]) => [k, (v as { ko: string; en: string }).en])),
-  ar: Object.fromEntries(Object.entries(GDT_SYMBOL_NAMES).map(([k, v]) => [k, (v as { ko: string; en: string }).en])),
-};
+/**
+ * 지역화된 GD&T 기호 이름.
+ *
+ * ⚠ 260802: 종전엔 ja·zh·es·ar 을 **명시적으로 영어에 고정**해 두고 있었다
+ *   (「fallback to English unless KO mapping exists」). 사전이 6언어가 됐으니
+ *   그 고정을 걷어낸다 — **안 채운 것과 채우지 않기로 한 것은 다르고**,
+ *   후자는 사전이 채워져도 영영 영어로 남는다.
+ */
+const GDT_SYMBOL_NAMES_LOCALIZED: Record<Lang, Record<string, string>> = Object.fromEntries(
+  (['ko', 'en', 'ja', 'zh', 'es', 'ar'] as Lang[]).map((l) => [
+    l,
+    Object.fromEntries(
+      Object.entries(GDT_SYMBOL_NAMES).map(([k, v]) => [k, (v as Record<Lang, string>)[l] ?? (v as { en: string }).en]),
+    ),
+  ]),
+) as Record<Lang, Record<string, string>>;
 
 /* ─── Styles ──────────────────────────────────────────────────────────────── */
 

@@ -17,7 +17,6 @@
   "app/[lang]/nexyfab/rfq/page.tsx",
   "app/[lang]/nexyfab/rfq/QuoteComparisonView.tsx",
   "app/[lang]/nexyfab/team/page.tsx",
-  "app/[lang]/shape-generator/annotations/GDTTypes.ts",
   "app/[lang]/shape-generator/copilot/CopilotPanel.tsx",
   "app/[lang]/shape-generator/drawing/DimensionAnnotationModal.tsx",
   "app/[lang]/shape-generator/estimation/supplierData.ts",
