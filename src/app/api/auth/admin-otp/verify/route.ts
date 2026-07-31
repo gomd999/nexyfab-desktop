@@ -15,6 +15,7 @@ import { getAuthUser } from '@/lib/auth-middleware';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { readAccessToken, verifyOtpAndElevate, isAdminOtpRequired } from '@/lib/admin-elevation';
+import { ELEV_COOKIE, mintElevToken, sha256Hex } from '@/lib/admin-elev-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,7 +61,30 @@ export async function POST(req: NextRequest) {
     if (!r.ok) {
       return NextResponse.json({ ok: false, error: REASON_KO[r.reason] ?? '확인에 실패했습니다.', reason: r.reason }, { status: 401 });
     }
-    return NextResponse.json({ ok: true, elevatedUntil: r.expiresAt });
+    /**
+     * DB 레코드(진실·폐기 가능)와 **함께** 서명 쿠키를 발급한다.
+     * 미들웨어는 Edge 라 DB 를 못 읽으므로, 관리자 경로 62개를 한 곳에서 막으려면
+     * 서명으로 확인할 수 있어야 한다. 둘 중 하나만으로는 부족하다 —
+     * 쿠키만: 폐기 불가 / DB만: 라우트마다 붙여야 하고 새 라우트가 빠진다.
+     */
+    const res = NextResponse.json({ ok: true, elevatedUntil: r.expiresAt });
+    try {
+      const tok = await mintElevToken(
+        { sub: user.userId, ath: await sha256Hex(token), exp: r.expiresAt },
+        process.env.JWT_SECRET,
+      );
+      res.cookies.set(ELEV_COOKIE, tok, {
+        httpOnly: true, sameSite: 'lax', path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        expires: new Date(r.expiresAt),
+      });
+    } catch (e) {
+      // ⚠ 쿠키를 못 만들었으면 **성공이라 하지 않는다.** DB 에는 상승이 있는데
+      //   미들웨어가 막으면 사용자는 「인증했는데 안 된다」를 겪는다.
+      console.error('[admin-otp] 상승 쿠키 발급 실패:', e);
+      return NextResponse.json({ ok: false, error: '상승 토큰을 발급하지 못했습니다.' }, { status: 500 });
+    }
+    return res;
   } catch (e) {
     console.error('[admin-otp] verify 실패:', e);
     return NextResponse.json({ ok: false, error: '확인 중 오류가 발생했습니다.' }, { status: 500 });
