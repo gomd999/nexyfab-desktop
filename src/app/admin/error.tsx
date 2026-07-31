@@ -5,11 +5,23 @@ import { useEffect } from 'react';
 const i18n: Record<string, { title: string; desc: string; retry: string }> = {
   ko: { title: '관리자 패널 오류', desc: '관리자 페이지를 불러오는 중 오류가 발생했습니다.', retry: '다시 시도' },
   en: { title: 'Admin Panel Error', desc: 'An error occurred while loading the admin panel.', retry: 'Try again' },
+  ja: { title: '管理パネルエラー', desc: '管理ページの読み込み中にエラーが発生しました。', retry: '再試行' },
+  zh: { title: '管理面板错误', desc: '加载管理页面时发生错误。', retry: '重试' },
+  es: { title: 'Error del panel de administración', desc: 'Se ha producido un error al cargar el panel de administración.', retry: 'Reintentar' },
+  ar: { title: 'خطأ في لوحة الإدارة', desc: 'حدث خطأ أثناء تحميل صفحة الإدارة.', retry: 'إعادة المحاولة' },
 };
 
 function detectLang(): string {
   if (typeof navigator === 'undefined') return 'en';
-  return navigator.language?.startsWith('ko') ? 'ko' : 'en';
+  const l = navigator.language?.toLowerCase() ?? '';
+  // ⚠ 260802: 여기가 ko/en 만 돌려줘, 사전에 4언어를 넣어도 **선택될 수 없었다.**
+  //   사전을 채우는 것과 고르는 곳을 고치는 것은 다르다.
+  if (l.startsWith('ko')) return 'ko';
+  if (l.startsWith('ja')) return 'ja';
+  if (l.startsWith('zh')) return 'zh';
+  if (l.startsWith('es')) return 'es';
+  if (l.startsWith('ar')) return 'ar';
+  return 'en';
 }
 
 export default function AdminError({

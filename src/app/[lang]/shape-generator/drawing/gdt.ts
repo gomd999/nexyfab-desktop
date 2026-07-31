@@ -202,10 +202,10 @@ export function gdtSymbolsByCategory(): Record<GdtCategory, GdtSymbol[]> {
   return out;
 }
 
-export const GDT_CATEGORY_LABELS: Record<GdtCategory, { ko: string; en: string }> = {
-  form:        { ko: '형상',   en: 'Form' },
-  profile:     { ko: '윤곽',   en: 'Profile' },
-  orientation: { ko: '방향',   en: 'Orientation' },
-  location:    { ko: '위치',   en: 'Location' },
-  runout:      { ko: '흔들림', en: 'Runout' },
+export const GDT_CATEGORY_LABELS: Record<GdtCategory, { ko: string; en: string; ja: string; zh: string; es: string; ar: string }> = {
+  form:        { ko: '형상',   en: 'Form',        ja: '形状',   zh: '形状',   es: 'Forma',       ar: 'الشكل' },
+  profile:     { ko: '윤곽',   en: 'Profile',     ja: '輪郭',   zh: '轮廓',   es: 'Perfil',      ar: 'الملمح' },
+  orientation: { ko: '방향',   en: 'Orientation', ja: '姿勢',   zh: '方向',   es: 'Orientación', ar: 'الاتجاه' },
+  location:    { ko: '위치',   en: 'Location',    ja: '位置',   zh: '位置',   es: 'Ubicación',   ar: 'الموضع' },
+  runout:      { ko: '흔들림', en: 'Runout',      ja: '振れ',   zh: '跳动',   es: 'Alabeo',      ar: 'الانحراف الدوراني' },
 };

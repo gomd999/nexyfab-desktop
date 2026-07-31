@@ -105,7 +105,8 @@ export default function GdtPicker({ open, isKo, onClose }: Props) {
                 textTransform: 'uppercase', letterSpacing: '0.06em',
                 marginBottom: 6,
               }}>
-                {isKo ? GDT_CATEGORY_LABELS[cat].ko : GDT_CATEGORY_LABELS[cat].en}
+                {/* ⚠ 260802: `isKo ? ko : en` 2분기라 ja·zh·es·ar 이 영어로 떨어졌다. */}
+                {loc(lang, GDT_CATEGORY_LABELS[cat])}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 6 }}>
                 {grouped[cat].map(s => {
