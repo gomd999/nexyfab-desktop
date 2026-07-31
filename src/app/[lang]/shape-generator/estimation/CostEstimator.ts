@@ -1,5 +1,6 @@
 // ─── Manufacturing Cost Estimation Engine ────────────────────────────────────
 import { getMaterialPreset, type MaterialPreset } from '../materials';
+import { loc } from '@/lib/i18n/loc';
 import type { FlatPatternResult } from '../features/sheetMetal';
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
@@ -80,18 +81,19 @@ const MATERIAL_PRICE_PER_KG: Record<string, number> = {
 
 /* ─── Process display names ─────────────────────────────────────────────────── */
 
-const PROCESS_NAMES: Record<ProcessType, { ko: string; en: string }> = {
-  cnc:              { ko: 'CNC 가공',        en: 'CNC Machining' },
-  fdm:              { ko: 'FDM 3D프린팅',    en: 'FDM 3D Printing' },
-  sla:              { ko: 'SLA 3D프린팅',     en: 'SLA 3D Printing' },
-  sls:              { ko: 'SLS 3D프린팅',     en: 'SLS 3D Printing' },
-  injection:        { ko: '사출 성형',        en: 'Injection Molding' },
-  sheetmetal_laser: { ko: '판금 레이저',      en: 'Sheet Metal Laser' },
+const PROCESS_NAMES: Record<ProcessType, { ko: string; en: string; ja: string; zh: string; es: string; ar: string }> = {
+  cnc:              { ko: 'CNC 가공', en: 'CNC Machining', ja: 'CNC 加工', zh: 'CNC 加工', es: 'Mecanizado CNC', ar: 'التشغيل بـ CNC' },
+  fdm:              { ko: 'FDM 3D프린팅', en: 'FDM 3D Printing', ja: 'FDM 3D プリント', zh: 'FDM 3D 打印', es: 'Impresión 3D FDM', ar: 'الطباعة ثلاثية الأبعاد FDM' },
+  sla:              { ko: 'SLA 3D프린팅', en: 'SLA 3D Printing', ja: 'SLA 3D プリント', zh: 'SLA 3D 打印', es: 'Impresión 3D SLA', ar: 'الطباعة ثلاثية الأبعاد SLA' },
+  sls:              { ko: 'SLS 3D프린팅', en: 'SLS 3D Printing', ja: 'SLS 3D プリント', zh: 'SLS 3D 打印', es: 'Impresión 3D SLS', ar: 'الطباعة ثلاثية الأبعاد SLS' },
+  injection:        { ko: '사출 성형', en: 'Injection Molding', ja: '射出成形', zh: '注塑成型', es: 'Moldeo por inyección', ar: 'الحقن بالقوالب' },
+  sheetmetal_laser: { ko: '판금 레이저', en: 'Sheet Metal Laser', ja: '板金レーザー', zh: '钣金激光', es: 'Láser de chapa', ar: 'ليزر الصفائح المعدنية' },
 };
 
 export function getProcessName(p: ProcessType, lang: string): string {
   const names = PROCESS_NAMES[p];
-  return lang === 'ko' ? names.ko : names.en;
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  return loc(lang, names);
 }
 
 /* ─── Process icons ─────────────────────────────────────────────────────────── */

@@ -12,6 +12,7 @@
 // ANALYZE rows open the BottomDrawer panels via `nexyfab:analyze-open`.
 
 import { useEffect, useState } from 'react';
+import { loc } from '@/lib/i18n/loc';
 import { SidePanel, PropSection, PropRow, PropNumber, PropSelect, PropItemRow } from './';
 import { I } from '../Icons';
 import { useShellBridge } from '../shellBridgeStore';
@@ -97,6 +98,7 @@ export function ModelerRightPane({ lang }: ModelerRightPaneProps) {
         <InspectorTab
           d={d}
           isKo={isKo}
+          lang={lang}
           selectedLabel={selectedLabel}
           selectionCount={selectionCount}
           volume={volume}
@@ -122,11 +124,13 @@ export function ModelerRightPane({ lang }: ModelerRightPaneProps) {
 const GEOMETRY_FEATURE_TYPES = new Set(['fillet', 'chamfer', 'variableFillet']);
 
 function InspectorTab({
-  d, isKo, selectedLabel, selectionCount, volume, triangleCount,
+  d, isKo, lang, selectedLabel, selectionCount, volume, triangleCount,
   featureId, featureType, featureParams, featureEdges,
 }: {
   d: ShellDict;
   isKo: boolean;
+  /** ⚠ `isKo` 만으로는 6언어를 못 고른다 — 재질명이 ja·zh·es·ar 에서 영어로 떨어졌다. */
+  lang: string;
   selectedLabel: string | null;
   selectionCount: number;
   volume: number | null;
@@ -186,7 +190,7 @@ function InspectorTab({
         </PropSection>
       )}
 
-      <AppearanceSection d={d} isKo={isKo} />
+      <AppearanceSection d={d} isKo={isKo} lang={lang} />
 
       {/* Live editable params — titled GEOMETRY for fillet/chamfer-type
           features (radius / distance on selected edges), PARAMETERS for the
@@ -254,7 +258,7 @@ function InspectorTab({
 // APPEARANCE — live material straight from sceneStore (same store the
 // viewport renderer reads). Editing the select swaps the actual rendered
 // material via setMaterialId, matching the toolbar material-drop behaviour.
-function AppearanceSection({ d, isKo }: { d: ShellDict; isKo: boolean }) {
+function AppearanceSection({ d, isKo, lang }: { d: ShellDict; isKo: boolean; lang: string }) {
   const materialId = useSceneStore(s => s.materialId);
   const setMaterialId = useSceneStore(s => s.setMaterialId);
   const preset = MATERIAL_PRESETS.find(m => m.id === materialId);
@@ -267,7 +271,7 @@ function AppearanceSection({ d, isKo }: { d: ShellDict; isKo: boolean }) {
             <PropSelect
               value={materialId}
               onChange={setMaterialId}
-              options={MATERIAL_PRESETS.map(m => ({ value: m.id, label: isKo ? m.name.ko : m.name.en }))}
+              options={MATERIAL_PRESETS.map(m => ({ value: m.id, label: loc(lang, m.name) }))}
             />
           </span>
         </div>

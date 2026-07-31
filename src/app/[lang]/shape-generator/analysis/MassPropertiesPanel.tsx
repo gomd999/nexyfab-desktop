@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { loc } from '@/lib/i18n/loc';
 import { usePathname } from 'next/navigation';
 import type { MassProperties } from './massProperties';
 import { MATERIAL_PRESETS, type MaterialPreset as _MaterialPreset } from '../materials';
@@ -227,6 +228,8 @@ interface MassPropertiesPanelProps {
   onMaterialChange: (id: string) => void;
   unitSystem: UnitSystem;
   isKo: boolean;
+  /** ⚠ 재질명은 6언어다 — `isKo` 만 받으면 ja·zh·es·ar 이 영어를 본다. */
+  lang: string;
   onClose: () => void;
   onShowCenterOfMass?: (pos: [number, number, number] | null) => void;
   showingCenterOfMass?: boolean;
@@ -238,6 +241,7 @@ export default function MassPropertiesPanel({
   onMaterialChange,
   unitSystem,
   isKo,
+  lang,
   onClose,
   onShowCenterOfMass,
   showingCenterOfMass,
@@ -262,7 +266,7 @@ export default function MassPropertiesPanel({
     const u = unitSystem === 'mm' ? 'mm' : 'in';
     const lines = [
       `=== ${t.title} ===`,
-      `${t.material}: ${isKo ? mat.name.ko : mat.name.en} (${mat.density ?? 0} g/cm3)`,
+      `${t.material}: ${loc(lang, mat.name)} (${mat.density ?? 0} g/cm3)`,
       `${t.volume}: ${fmtNum(p.volume_cm3)} cm3`,
       `${t.surfaceArea}: ${fmtNum(p.surfaceArea_cm2)} cm2`,
       `${t.mass}: ${fmtMass(p.mass_g)}`,
@@ -317,7 +321,7 @@ export default function MassPropertiesPanel({
           >
             {MATERIAL_PRESETS.map(m => (
               <option key={m.id} value={m.id}>
-                {isKo ? m.name.ko : m.name.en} ({m.density ?? '?'} g/cm&#179;)
+                {loc(lang, m.name)} ({m.density ?? '?'} g/cm&#179;)
               </option>
             ))}
           </select>

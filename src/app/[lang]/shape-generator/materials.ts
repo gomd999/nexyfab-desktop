@@ -8,7 +8,7 @@ export type MaterialUseCase =
 
 export interface MaterialPreset {
   id: string;
-  name: { ko: string; en: string };
+  name: { ko: string; en: string; ja: string; zh: string; es: string; ar: string };
   color: string;
   roughness: number;
   metalness: number;
@@ -27,18 +27,18 @@ export interface MaterialPreset {
 }
 
 export const MATERIAL_PRESETS: MaterialPreset[] = [
-  { id: 'aluminum', name: { ko: '알루미늄', en: 'Aluminum' }, color: '#b0b8c8', roughness: 0.3, metalness: 0.85, youngsModulus: 69, poissonRatio: 0.33, yieldStrength: 276, density: 2.7, useCases: ['outdoor', 'structural', 'lightweight'] },
-  { id: 'steel', name: { ko: '스틸', en: 'Steel' }, color: '#8a929e', roughness: 0.2, metalness: 0.9, youngsModulus: 200, poissonRatio: 0.3, yieldStrength: 250, density: 7.85, useCases: ['structural', 'food_contact'] },
-  { id: 'titanium', name: { ko: '티타늄', en: 'Titanium' }, color: '#a0a8b4', roughness: 0.25, metalness: 0.88, youngsModulus: 116, poissonRatio: 0.34, yieldStrength: 880, density: 4.43, useCases: ['outdoor', 'structural', 'food_contact'] },
-  { id: 'copper', name: { ko: '구리', en: 'Copper' }, color: '#b87333', roughness: 0.3, metalness: 0.9, youngsModulus: 117, poissonRatio: 0.34, yieldStrength: 210, density: 8.96 },
-  { id: 'gold', name: { ko: '금', en: 'Gold' }, color: '#ffd700', roughness: 0.15, metalness: 0.95, youngsModulus: 79, poissonRatio: 0.44, yieldStrength: 205, density: 19.3 },
-  { id: 'abs_white', name: { ko: 'ABS (흰색)', en: 'ABS (White)' }, color: '#f0ede8', roughness: 0.7, metalness: 0.0, youngsModulus: 2.3, poissonRatio: 0.35, yieldStrength: 40, density: 1.05, useCases: ['electrical_insulation', 'lightweight', 'prototype_3dp'] },
-  { id: 'abs_black', name: { ko: 'ABS (검정)', en: 'ABS (Black)' }, color: '#2a2a2a', roughness: 0.6, metalness: 0.0, youngsModulus: 2.3, poissonRatio: 0.35, yieldStrength: 40, density: 1.05, useCases: ['electrical_insulation', 'lightweight', 'prototype_3dp'] },
-  { id: 'nylon', name: { ko: '나일론', en: 'Nylon' }, color: '#d4d0c8', roughness: 0.8, metalness: 0.0, youngsModulus: 2.7, poissonRatio: 0.39, yieldStrength: 70, density: 1.14, useCases: ['electrical_insulation', 'lightweight', 'prototype_3dp'] },
-  { id: 'glass', name: { ko: '유리', en: 'Glass' }, color: '#88ccff', roughness: 0.05, metalness: 0.1, opacity: 0.3, transparent: true, youngsModulus: 70, poissonRatio: 0.22, yieldStrength: 33, density: 2.5, useCases: ['food_contact', 'electrical_insulation'] },
-  { id: 'rubber', name: { ko: '고무', en: 'Rubber' }, color: '#333333', roughness: 0.95, metalness: 0.0, youngsModulus: 0.05, poissonRatio: 0.49, yieldStrength: 15, density: 1.2, useCases: ['electrical_insulation'] },
-  { id: 'wood', name: { ko: '나무', en: 'Wood' }, color: '#8B6914', roughness: 0.85, metalness: 0.0, youngsModulus: 12, poissonRatio: 0.35, yieldStrength: 40, density: 0.6, useCases: ['lightweight', 'electrical_insulation'] },
-  { id: 'ceramic', name: { ko: '세라믹', en: 'Ceramic' }, color: '#f5f5f0', roughness: 0.4, metalness: 0.05, youngsModulus: 300, poissonRatio: 0.22, yieldStrength: 250, density: 3.9, useCases: ['food_contact', 'electrical_insulation'] },
+  { id: 'aluminum', name: { ko: '알루미늄', en: 'Aluminum', ja: 'アルミニウム', zh: '铝', es: 'Aluminio', ar: 'الألومنيوم' }, color: '#b0b8c8', roughness: 0.3, metalness: 0.85, youngsModulus: 69, poissonRatio: 0.33, yieldStrength: 276, density: 2.7, useCases: ['outdoor', 'structural', 'lightweight'] },
+  { id: 'steel', name: { ko: '스틸', en: 'Steel', ja: 'スチール', zh: '钢', es: 'Acero', ar: 'الفولاذ' }, color: '#8a929e', roughness: 0.2, metalness: 0.9, youngsModulus: 200, poissonRatio: 0.3, yieldStrength: 250, density: 7.85, useCases: ['structural', 'food_contact'] },
+  { id: 'titanium', name: { ko: '티타늄', en: 'Titanium', ja: 'チタン', zh: '钛', es: 'Titanio', ar: 'التيتانيوم' }, color: '#a0a8b4', roughness: 0.25, metalness: 0.88, youngsModulus: 116, poissonRatio: 0.34, yieldStrength: 880, density: 4.43, useCases: ['outdoor', 'structural', 'food_contact'] },
+  { id: 'copper', name: { ko: '구리', en: 'Copper', ja: '銅', zh: '铜', es: 'Cobre', ar: 'النحاس' }, color: '#b87333', roughness: 0.3, metalness: 0.9, youngsModulus: 117, poissonRatio: 0.34, yieldStrength: 210, density: 8.96 },
+  { id: 'gold', name: { ko: '금', en: 'Gold', ja: '金', zh: '金', es: 'Oro', ar: 'الذهب' }, color: '#ffd700', roughness: 0.15, metalness: 0.95, youngsModulus: 79, poissonRatio: 0.44, yieldStrength: 205, density: 19.3 },
+  { id: 'abs_white', name: { ko: 'ABS (흰색)', en: 'ABS (White)', ja: 'ABS(ホワイト)', zh: 'ABS（白色）', es: 'ABS (blanco)', ar: 'ABS (أبيض)' }, color: '#f0ede8', roughness: 0.7, metalness: 0.0, youngsModulus: 2.3, poissonRatio: 0.35, yieldStrength: 40, density: 1.05, useCases: ['electrical_insulation', 'lightweight', 'prototype_3dp'] },
+  { id: 'abs_black', name: { ko: 'ABS (검정)', en: 'ABS (Black)', ja: 'ABS(ブラック)', zh: 'ABS（黑色）', es: 'ABS (negro)', ar: 'ABS (أسود)' }, color: '#2a2a2a', roughness: 0.6, metalness: 0.0, youngsModulus: 2.3, poissonRatio: 0.35, yieldStrength: 40, density: 1.05, useCases: ['electrical_insulation', 'lightweight', 'prototype_3dp'] },
+  { id: 'nylon', name: { ko: '나일론', en: 'Nylon', ja: 'ナイロン', zh: '尼龙', es: 'Nailon', ar: 'النايلون' }, color: '#d4d0c8', roughness: 0.8, metalness: 0.0, youngsModulus: 2.7, poissonRatio: 0.39, yieldStrength: 70, density: 1.14, useCases: ['electrical_insulation', 'lightweight', 'prototype_3dp'] },
+  { id: 'glass', name: { ko: '유리', en: 'Glass', ja: 'ガラス', zh: '玻璃', es: 'Vidrio', ar: 'الزجاج' }, color: '#88ccff', roughness: 0.05, metalness: 0.1, opacity: 0.3, transparent: true, youngsModulus: 70, poissonRatio: 0.22, yieldStrength: 33, density: 2.5, useCases: ['food_contact', 'electrical_insulation'] },
+  { id: 'rubber', name: { ko: '고무', en: 'Rubber', ja: 'ゴム', zh: '橡胶', es: 'Caucho', ar: 'المطاط' }, color: '#333333', roughness: 0.95, metalness: 0.0, youngsModulus: 0.05, poissonRatio: 0.49, yieldStrength: 15, density: 1.2, useCases: ['electrical_insulation'] },
+  { id: 'wood', name: { ko: '나무', en: 'Wood', ja: '木材', zh: '木材', es: 'Madera', ar: 'الخشب' }, color: '#8B6914', roughness: 0.85, metalness: 0.0, youngsModulus: 12, poissonRatio: 0.35, yieldStrength: 40, density: 0.6, useCases: ['lightweight', 'electrical_insulation'] },
+  { id: 'ceramic', name: { ko: '세라믹', en: 'Ceramic', ja: 'セラミック', zh: '陶瓷', es: 'Cerámica', ar: 'السيراميك' }, color: '#f5f5f0', roughness: 0.4, metalness: 0.05, youngsModulus: 300, poissonRatio: 0.22, yieldStrength: 250, density: 3.9, useCases: ['food_contact', 'electrical_insulation'] },
 ];
 
 export interface UseCaseDef {

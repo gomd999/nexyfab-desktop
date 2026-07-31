@@ -304,7 +304,7 @@ export default function EvaluatePage({ params }: { params: Promise<{ lang: strin
     }
   }, [metrics, material, process, filename, lang, T, loadHistory, structural, quantity, unit, pullAxis, meshQuality]);
 
-  const matName = (m: typeof MATERIAL_PRESETS[number]) => (ko ? m.name.ko : m.name.en);
+  const matName = (m: typeof MATERIAL_PRESETS[number]) => loc(lang, m.name);
   const scoreColor = (n: number) => (n >= 75 ? '#22c55e' : n >= 50 ? '#eab308' : '#ef4444');
   // Quote URL prefilled with geometry; extra carries process/region context.
   const quoteUrl = (extra = '') => (metrics

@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { loc } from '@/lib/i18n/loc';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import ErrorBoundary from '@/components/nexyfab/ErrorBoundary';
 import { OrbitControls, TransformControls, Environment, Lightformer, Html, GizmoHelper, GizmoViewport, Instances, Instance } from '@react-three/drei';
@@ -2349,7 +2350,7 @@ export default function ShapePreview({
             onOverrideChange={setMaterialOverride}
             envPreset={envPreset}
             onEnvPresetChange={setEnvPreset}
-            presetName={activeMaterial ? (lang === 'ko' ? activeMaterial.name.ko : activeMaterial.name.en) : undefined}
+            presetName={activeMaterial ? loc(lang, activeMaterial.name) : undefined}
             onReset={() => {
               if (activeMaterial) {
                 setMaterialOverride({

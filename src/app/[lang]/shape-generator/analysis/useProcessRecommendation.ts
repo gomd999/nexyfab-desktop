@@ -11,13 +11,13 @@ export interface ProcessRecommendation {
   emoji: string;
 }
 
-export const PROCESS_LABELS: Record<ManufacturingProcess, { ko: string; en: string }> = {
-  cnc_milling:       { ko: 'CNC 밀링',    en: 'CNC Milling' },
-  cnc_turning:       { ko: 'CNC 선반',    en: 'CNC Turning' },
-  injection_molding: { ko: '사출 성형',   en: 'Injection Molding' },
-  sheet_metal:       { ko: '판금 가공',   en: 'Sheet Metal' },
-  casting:           { ko: '주조',        en: 'Casting' },
-  '3d_printing':     { ko: '3D 프린팅',  en: '3D Printing' },
+export const PROCESS_LABELS: Record<ManufacturingProcess, { ko: string; en: string; ja: string; zh: string; es: string; ar: string }> = {
+  cnc_milling:       { ko: 'CNC 밀링', en: 'CNC Milling', ja: 'CNC ミリング', zh: 'CNC 铣削', es: 'Fresado CNC', ar: 'التفريز بـ CNC' },
+  cnc_turning:       { ko: 'CNC 선반', en: 'CNC Turning', ja: 'CNC 旋盤', zh: 'CNC 车削', es: 'Torneado CNC', ar: 'الخراطة بـ CNC' },
+  injection_molding: { ko: '사출 성형', en: 'Injection Molding', ja: '射出成形', zh: '注塑成型', es: 'Moldeo por inyección', ar: 'الحقن بالقوالب' },
+  sheet_metal:       { ko: '판금 가공', en: 'Sheet Metal', ja: '板金加工', zh: '钣金加工', es: 'Chapa metálica', ar: 'تشكيل الصفائح المعدنية' },
+  casting:           { ko: '주조', en: 'Casting', ja: '鋳造', zh: '铸造', es: 'Fundición', ar: 'السباكة' },
+  '3d_printing':     { ko: '3D 프린팅', en: '3D Printing', ja: '3D プリント', zh: '3D 打印', es: 'Impresión 3D', ar: 'الطباعة ثلاثية الأبعاد' },
 };
 
 export const PROCESS_EMOJIS: Record<ManufacturingProcess, string> = {

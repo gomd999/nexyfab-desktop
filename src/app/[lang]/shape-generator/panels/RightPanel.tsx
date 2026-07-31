@@ -324,6 +324,7 @@ function RightPanel({
           onMaterialChange={setMaterialId}
           unitSystem={unitSystem}
           isKo={lang === 'ko'}
+          lang={lang}
           onClose={() => { setShowMassProps(false); setShowCenterOfMass(null); }}
           onShowCenterOfMass={setShowCenterOfMass}
           showingCenterOfMass={!!showCenterOfMass}
