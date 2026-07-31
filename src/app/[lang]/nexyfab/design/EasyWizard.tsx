@@ -19,6 +19,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { loc } from '@/lib/i18n/loc';
 import { isKorean } from '@/lib/i18n/normalize';
 
 // ─── API 응답 타입 (AssemblyPresetPanel.tsx 의 ParamSpec/Template 과 동일 형태) ──
@@ -44,16 +45,16 @@ interface Category {
   icon: string;
   /** 이 분야에서 불러올 preset API 도메인 slug(들). */
   slugs: string[];
-  ko: string; en: string;
-  koDesc: string; enDesc: string;
+  ko: string; en: string; ja: string; zh: string; es: string; ar: string;
+  koDesc: string; enDesc: string; jaDesc: string; zhDesc: string; esDesc: string; arDesc: string;
 }
 
 const CATEGORIES: Category[] = [
-  { key: 'landscape', icon: '🌳', slugs: ['landscape'], ko: '조경', en: 'Landscape', koDesc: '마당·정원·야외 시설', enDesc: 'Yards, gardens, outdoor structures' },
-  { key: 'interior', icon: '🪑', slugs: ['interior'], ko: '인테리어', en: 'Interior', koDesc: '집·가게 안의 공간 배치', enDesc: 'Room layouts for homes and shops' },
-  { key: 'building', icon: '🏢', slugs: ['building'], ko: '건축', en: 'Building', koDesc: '집·건물의 뼈대와 지붕', enDesc: 'House and building frames, roofs' },
-  { key: 'civil', icon: '🌉', slugs: ['civil', 'bridge'], ko: '토목', en: 'Civil', koDesc: '옹벽·다리 같은 바깥 구조물', enDesc: 'Retaining walls, bridges' },
-  { key: 'mech', icon: '🔧', slugs: ['mech'], ko: '기계', en: 'Machinery', koDesc: '장비·탱크·기계 부품', enDesc: 'Equipment, tanks, machine parts' },
+  { key: 'landscape', icon: '🌳', slugs: ['landscape'], ko: '조경', en: 'Landscape', ja: 'ランドスケープ', zh: '园林', es: 'Paisajismo', ar: 'تنسيق المواقع', koDesc: '마당·정원·야외 시설', enDesc: 'Yards, gardens, outdoor structures', jaDesc: '庭・ガーデン・屋外施設', zhDesc: '庭院、花园、户外设施', esDesc: 'Patios, jardines y estructuras exteriores', arDesc: 'الأفنية والحدائق والمنشآت الخارجية' },
+  { key: 'interior', icon: '🪑', slugs: ['interior'], ko: '인테리어', en: 'Interior', ja: 'インテリア', zh: '室内设计', es: 'Interiorismo', ar: 'التصميم الداخلي', koDesc: '집·가게 안의 공간 배치', enDesc: 'Room layouts for homes and shops', jaDesc: '住宅・店舗の空間レイアウト', zhDesc: '住宅与店铺的空间布局', esDesc: 'Distribución de espacios en viviendas y locales', arDesc: 'توزيع مساحات المنازل والمحال' },
+  { key: 'building', icon: '🏢', slugs: ['building'], ko: '건축', en: 'Building', ja: '建築', zh: '建筑', es: 'Edificación', ar: 'البناء', koDesc: '집·건물의 뼈대와 지붕', enDesc: 'House and building frames, roofs', jaDesc: '住宅・建物の躯体と屋根', zhDesc: '住宅与建筑的框架和屋顶', esDesc: 'Estructuras y cubiertas de viviendas y edificios', arDesc: 'هياكل المنازل والمباني وأسقفها' },
+  { key: 'civil', icon: '🌉', slugs: ['civil', 'bridge'], ko: '토목', en: 'Civil', ja: '土木', zh: '土木', es: 'Obra civil', ar: 'الهندسة المدنية', koDesc: '옹벽·다리 같은 바깥 구조물', enDesc: 'Retaining walls, bridges', jaDesc: '擁壁・橋などの屋外構造物', zhDesc: '挡土墙、桥梁等室外结构', esDesc: 'Muros de contención, puentes', arDesc: 'الجدران الاستنادية والجسور' },
+  { key: 'mech', icon: '🔧', slugs: ['mech'], ko: '기계', en: 'Machinery', ja: '機械', zh: '机械', es: 'Maquinaria', ar: 'الميكانيكا', koDesc: '장비·탱크·기계 부품', enDesc: 'Equipment, tanks, machine parts', jaDesc: '装置・タンク・機械部品', zhDesc: '设备、储罐、机械零件', esDesc: 'Equipos, depósitos y piezas de máquina', arDesc: 'المعدات والخزانات وقطع الآلات' },
 ];
 
 // ─── 템플릿 id → 쉬운 한 줄 설명(부제). 없으면 부제를 생략한다(허위 설명 금지) ──
@@ -364,8 +365,9 @@ export default function EasyWizard({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 20 }}>{c.icon}</span>
                   <span>
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{ko ? c.ko : c.en}</span>
-                    <span style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}> — {ko ? c.koDesc : c.enDesc}</span>
+                    {/* ⚠ 260802: `ko ? … : …` 2분기라 ja·zh·es·ar 이 영어로 떨어졌다. */}
+                    <span style={{ fontWeight: 700, fontSize: 14 }}>{loc(lang, c)}</span>
+                    <span style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)' }}> — {loc(lang, { ko: c.koDesc, en: c.enDesc, ja: c.jaDesc, zh: c.zhDesc, es: c.esDesc, ar: c.arDesc })}</span>
                   </span>
                 </div>
               </button>

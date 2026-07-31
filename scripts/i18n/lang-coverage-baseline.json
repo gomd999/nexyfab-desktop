@@ -7,7 +7,6 @@
   "app/[lang]/nexyfab/billing/return/page.tsx",
   "app/[lang]/nexyfab/cots/page.tsx",
   "app/[lang]/nexyfab/dashboard/page.tsx",
-  "app/[lang]/nexyfab/design/EasyWizard.tsx",
   "app/[lang]/nexyfab/files/page.tsx",
   "app/[lang]/nexyfab/manufacturer/dashboard/page.tsx",
   "app/[lang]/nexyfab/manufacturer/page.tsx",
@@ -37,7 +36,6 @@
   "app/[lang]/shape-generator/export/GetQuoteButton.tsx",
   "app/[lang]/shape-generator/export/QuickExportButton.tsx",
   "app/[lang]/shape-generator/FeatureParams.tsx",
-  "app/[lang]/shape-generator/hooks/useGenDesignIntegration.ts",
   "app/[lang]/shape-generator/io/RfqPanel.tsx",
   "app/[lang]/shape-generator/io/StepReversePanel.tsx",
   "app/[lang]/shape-generator/mechanism/MechanismPicker.tsx",
@@ -69,6 +67,5 @@
   "components/nexyfab/ReviewForm.tsx",
   "components/nexyfab/ThreadView.tsx",
   "lib/ai/__evals__/scad-intent-evalset.ts",
-  "lib/ai/scadIntentFromTree.ts",
-  "lib/stage-notifications.ts"
+  "lib/ai/scadIntentFromTree.ts"
 ]

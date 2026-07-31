@@ -47,7 +47,7 @@ export function renderTemplate(tpl: string, vars: Partial<TemplateVars>): string
 
 // ─── 템플릿 정의 ────────────────────────────────────────────────────────
 
-type Locale = 'ko' | 'en';
+type Locale = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 type TransitionKey = `${Stage}_${Stage}`;
 
 interface TransitionTemplate {
@@ -84,6 +84,48 @@ const TEMPLATES: Partial<Record<TransitionKey, Record<Locale, TransitionTemplate
       `,
       digest: '{userName} → Stage C (first order)',
     },
+    ja: {
+      subject: '[NexyFab] {userName} 様、初回のお取引ありがとうございます 🎉',
+      bodyHtml: `
+        <p>{userName} 様、初回のご注文の決済が完了しました。</p>
+        <p>これより <strong>バンドル見積</strong> と <strong>再注文ショートカット</strong> をご利用いただけます。
+        同じパートナーへの再注文では単価が自動で 5〜15% 下がります。</p>
+        <p><a href="{upsellLink}">バンドル見積を作成する →</a></p>
+      `,
+      digest: '{userName} → Stage C 到達（初回取引）',
+    },
+    zh: {
+      subject: '[NexyFab] {userName}，祝贺您完成首次交易 🎉',
+      bodyHtml: `
+        <p>{userName}，您的首笔订单已成功付款。</p>
+        <p>现在您可以使用<strong>打包报价</strong>和<strong>再次下单快捷方式</strong>。
+        与同一合作伙伴再次下单时，单价将自动下调 5~15%。</p>
+        <p><a href="{upsellLink}">去创建打包报价 →</a></p>
+      `,
+      digest: '{userName} → 进入 Stage C（首次交易）',
+    },
+    es: {
+      subject: '[NexyFab] Enhorabuena por su primer pedido, {userName} 🎉',
+      bodyHtml: `
+        <p>Hola {userName}: su primer pedido se ha pagado correctamente.</p>
+        <p>Ya puede usar los <strong>presupuestos agrupados</strong> y los
+        <strong>accesos directos de repetición</strong>: al repetir pedido con el mismo socio,
+        el precio unitario baja automáticamente entre un 5 % y un 15 %.</p>
+        <p><a href="{upsellLink}">Crear un presupuesto agrupado →</a></p>
+      `,
+      digest: '{userName} → Etapa C (primer pedido)',
+    },
+    ar: {
+      subject: '[NexyFab] تهانينا يا {userName} على إتمام أول عملية 🎉',
+      bodyHtml: `
+        <p>مرحباً {userName}، تم دفع طلبك الأول بنجاح.</p>
+        <p>أصبح بإمكانك الآن استخدام <strong>عروض الأسعار المجمّعة</strong> و
+        <strong>اختصارات إعادة الطلب</strong> — وعند إعادة الطلب مع الشريك نفسه
+        ينخفض سعر الوحدة تلقائياً بنسبة ٥٪ إلى ١٥٪.</p>
+        <p><a href="{upsellLink}">إنشاء عرض سعر مجمّع ←</a></p>
+      `,
+      digest: '{userName} ← المرحلة C (أول عملية)',
+    },
   },
   'C_D': {
     ko: {
@@ -105,6 +147,46 @@ const TEMPLATES: Partial<Record<TransitionKey, Record<Locale, TransitionTemplate
         <p><a href="{upsellLink}">Open dashboard →</a></p>
       `,
       digest: '{userName} → Stage D (repeat buyer, {cumulativeKrw} KRW)',
+    },
+    ja: {
+      subject: '[NexyFab] リピート特典が開放されました',
+      bodyHtml: `
+        <p>{userName} 様、累計取引額が {cumulativeKrw} ウォンを超えました。</p>
+        <p>本日より取引手数料が <strong>4% に引き下げ</strong> となり、優先見積キューと
+        マージン分析ダッシュボードをご利用いただけます。</p>
+        <p><a href="{upsellLink}">ダッシュボードを開く →</a></p>
+      `,
+      digest: '{userName} → Stage D（リピート、累計 {cumulativeKrw} ウォン）',
+    },
+    zh: {
+      subject: '[NexyFab] 常客权益已开通',
+      bodyHtml: `
+        <p>{userName}，您的累计交易额已超过 {cumulativeKrw} 韩元。</p>
+        <p>自即日起交易手续费<strong>下调至 4%</strong>，并可使用优先报价队列
+        与毛利分析看板。</p>
+        <p><a href="{upsellLink}">打开看板 →</a></p>
+      `,
+      digest: '{userName} → Stage D（重复交易，累计 {cumulativeKrw} 韩元）',
+    },
+    es: {
+      subject: '[NexyFab] Ventajas de cliente recurrente activadas',
+      bodyHtml: `
+        <p>Hola {userName}: sus pedidos acumulados han superado los {cumulativeKrw} KRW.</p>
+        <p>A partir de ahora la comisión por transacción <strong>baja al 4 %</strong> y dispone de
+        cola de presupuestos prioritaria y del panel de análisis de márgenes.</p>
+        <p><a href="{upsellLink}">Abrir el panel →</a></p>
+      `,
+      digest: '{userName} → Etapa D (cliente recurrente, {cumulativeKrw} KRW)',
+    },
+    ar: {
+      subject: '[NexyFab] تم تفعيل مزايا العميل المتكرر',
+      bodyHtml: `
+        <p>مرحباً {userName}، تجاوز إجمالي طلباتك {cumulativeKrw} وون.</p>
+        <p>من الآن تنخفض رسوم المعاملات إلى <strong>٤٪</strong>، ويتاح لك طابور عروض
+        الأسعار ذو الأولوية ولوحة تحليل الهوامش.</p>
+        <p><a href="{upsellLink}">فتح لوحة التحكم ←</a></p>
+      `,
+      digest: '{userName} ← المرحلة D (عميل متكرر، {cumulativeKrw} وون)',
     },
   },
   'D_E': {
@@ -130,6 +212,48 @@ const TEMPLATES: Partial<Record<TransitionKey, Record<Locale, TransitionTemplate
       `,
       digest: '{userName} → Stage E (enterprise prospect, {cumulativeKrw} KRW)',
     },
+    ja: {
+      subject: '[NexyFab] エンタープライズ見積ラインが開きました',
+      bodyHtml: `
+        <p>{userName} 様、組織単位の取引規模に到達しました。</p>
+        <p>専任マネージャーの配置と SLA に基づく優先生産を提供する
+        <strong>エンタープライズライン</strong>をご案内します。営業担当より
+        1 営業日以内にご連絡いたします。</p>
+        <p><a href="{upsellLink}">エンタープライズ相談を申し込む →</a></p>
+      `,
+      digest: '{userName} → Stage E（エンタープライズ候補、累計 {cumulativeKrw} ウォン）',
+    },
+    zh: {
+      subject: '[NexyFab] 企业级报价通道已开通',
+      bodyHtml: `
+        <p>{userName}，您已达到组织级交易规模。</p>
+        <p>我们为您提供<strong>企业通道</strong>：专属客户经理与基于 SLA 的优先生产。
+        销售团队将在一个工作日内与您联系。</p>
+        <p><a href="{upsellLink}">申请企业咨询 →</a></p>
+      `,
+      digest: '{userName} → Stage E（企业候选，累计 {cumulativeKrw} 韩元）',
+    },
+    es: {
+      subject: '[NexyFab] Canal de presupuestos para empresas abierto',
+      bodyHtml: `
+        <p>Hola {userName}: ha alcanzado un volumen de nivel corporativo.</p>
+        <p>Le presentamos la <strong>línea para empresas</strong>: gestor de cuenta dedicado
+        y prioridad de producción con SLA. Nuestro equipo comercial se pondrá en contacto
+        en un día hábil.</p>
+        <p><a href="{upsellLink}">Solicitar asesoramiento para empresas →</a></p>
+      `,
+      digest: '{userName} → Etapa E (candidato corporativo, {cumulativeKrw} KRW)',
+    },
+    ar: {
+      subject: '[NexyFab] تم فتح مسار عروض الأسعار للمؤسسات',
+      bodyHtml: `
+        <p>مرحباً {userName}، لقد بلغت حجم التعامل على مستوى المؤسسات.</p>
+        <p>نقدّم لك <strong>مسار المؤسسات</strong>: مدير حساب مخصّص وأولوية إنتاج
+        مدعومة باتفاقية مستوى خدمة. سيتواصل معك فريق المبيعات خلال يوم عمل واحد.</p>
+        <p><a href="{upsellLink}">طلب استشارة للمؤسسات ←</a></p>
+      `,
+      digest: '{userName} ← المرحلة E (مرشّح مؤسسي، {cumulativeKrw} وون)',
+    },
   },
 };
 
@@ -139,7 +263,13 @@ export interface NotificationTarget {
   userId:    string;
   email:     string;
   name:      string;
-  /** 기본 'ko'. 추후 nf_users.locale 컬럼이 추가되면 그걸 사용. */
+  /**
+   * 기본 'ko'.
+   *
+   * ⚠ 260802: 템플릿은 6언어를 갖췄지만 **`nf_users` 에 locale 컬럼이 없어**
+   *   호출측이 값을 못 넘긴다 — 실제로는 아직 전원 'ko' 로 나간다.
+   *   「번역했다」와 「그 언어로 나간다」는 다르다. 컬럼이 생기면 그때 닿는다.
+   */
   locale?:   Locale;
 }
 

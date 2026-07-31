@@ -66,6 +66,26 @@ const MSG = {
     error: 'Failed to add generative design feature',
     noGeo: 'No result mesh — run the optimizer first',
   },
+  ja: {
+    committed: 'ジェネレーティブデザインの結果をフィーチャーツリーに追加しました',
+    error: 'ジェネレーティブデザインのフィーチャー追加に失敗しました',
+    noGeo: '結果メッシュがありません — 先に最適化を実行してください',
+  },
+  zh: {
+    committed: '生成式设计结果已添加到特征树',
+    error: '添加生成式设计特征失败',
+    noGeo: '没有结果网格 — 请先运行优化',
+  },
+  es: {
+    committed: 'El resultado del diseño generativo se ha añadido al árbol de operaciones',
+    error: 'No se ha podido añadir la operación de diseño generativo',
+    noGeo: 'No hay malla de resultado: ejecute primero el optimizador',
+  },
+  ar: {
+    committed: 'تمت إضافة نتيجة التصميم التوليدي إلى شجرة المعالم',
+    error: 'تعذّرت إضافة معلم التصميم التوليدي',
+    noGeo: 'لا توجد شبكة نتائج — شغّل المُحسِّن أولاً',
+  },
 };
 
 // ─── Geometry helpers ─────────────────────────────────────────────────────────
