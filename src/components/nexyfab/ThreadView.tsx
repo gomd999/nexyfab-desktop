@@ -12,6 +12,7 @@
 // a follow-up).
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 interface ThreadMessage {
   id: string;
@@ -53,10 +54,59 @@ const dict = {
     error: 'Send failed',
     loadError: 'Failed to load messages.',
   },
+  ja: {
+    title: '💬 会話',
+    placeholder: 'メッセージを入力…',
+    send: '送信',
+    sending: '送信中',
+    empty: 'まだメッセージがありません。最初のメッセージを送ってみましょう。',
+    you: '自分',
+    them: '相手',
+    attachLabel: '添付 URL (カンマ区切り・任意)',
+    error: '送信に失敗しました',
+    loadError: 'メッセージを読み込めませんでした。',
+  },
+  zh: {
+    title: '💬 对话',
+    placeholder: '输入消息…',
+    send: '发送',
+    sending: '发送中',
+    empty: '还没有消息。发送第一条吧。',
+    you: '我',
+    them: '对方',
+    attachLabel: '附件链接（逗号分隔，可选）',
+    error: '发送失败',
+    loadError: '无法加载消息。',
+  },
+  es: {
+    title: '💬 Conversación',
+    placeholder: 'Escriba un mensaje…',
+    send: 'Enviar',
+    sending: 'Enviando',
+    empty: 'Todavía no hay mensajes. Inicie la conversación.',
+    you: 'Usted',
+    them: 'Interlocutor',
+    attachLabel: 'URL de adjuntos (separadas por comas, opcional)',
+    error: 'Error al enviar',
+    loadError: 'No se han podido cargar los mensajes.',
+  },
+  ar: {
+    title: '💬 المحادثة',
+    placeholder: 'اكتب رسالة…',
+    send: 'إرسال',
+    sending: 'جارٍ الإرسال',
+    empty: 'لا توجد رسائل بعد. ابدأ المحادثة.',
+    you: 'أنت',
+    them: 'الطرف الآخر',
+    attachLabel: 'روابط المرفقات (مفصولة بفواصل، اختياري)',
+    error: 'فشل الإرسال',
+    loadError: 'تعذّر تحميل الرسائل.',
+  },
 };
 
 export interface ThreadViewProps {
-  lang: 'ko' | 'en';
+  /** ⚠ 260802: `'ko' | 'en'` 이라 부모가 다른 언어를 넘길 수조차 없었다. */
+  lang: string;
   threadKind: 'rfq' | 'order';
   threadId: string;
   /** Whose perspective — 'buyer' or 'partner'. Used only for label hints;
@@ -65,7 +115,8 @@ export interface ThreadViewProps {
 }
 
 export default function ThreadView({ lang, threadKind, threadId, asRole }: ThreadViewProps) {
-  const t = dict[lang];
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = dict[toIsoLang(lang)] ?? dict.en;
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [attach, setAttach] = useState('');

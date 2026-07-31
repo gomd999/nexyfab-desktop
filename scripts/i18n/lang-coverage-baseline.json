@@ -29,9 +29,6 @@
   "app/[lang]/studio/StudioInner.tsx",
   "app/[lang]/unsubscribe/page.tsx",
   "components/nexyfab/AuthModal.tsx",
-  "components/nexyfab/OrderMilestoneFeed.tsx",
-  "components/nexyfab/ReviewForm.tsx",
-  "components/nexyfab/ThreadView.tsx",
   "lib/ai/__evals__/scad-intent-evalset.ts",
   "lib/ai/scadIntentFromTree.ts"
 ]

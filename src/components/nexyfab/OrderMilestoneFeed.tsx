@@ -7,6 +7,7 @@
 // pastes the URL (uploader integration is a follow-up).
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 interface Milestone {
   id: string;
@@ -62,17 +63,99 @@ const dict = {
       note: '📝 Note',
     },
   },
+  ja: {
+    title: '📸 進捗',
+    composer: '進捗を投稿 (パートナーのみ)',
+    step: '工程',
+    notePh: 'メモ (任意・2000 文字)',
+    attachPh: '写真/書類の URL (カンマ区切り)',
+    post: '投稿',
+    posting: '投稿中',
+    empty: 'まだ投稿された進捗はありません。',
+    refresh: '更新',
+    requireOne: 'メモまたは添付のいずれかが必要です',
+    error: 'エラー',
+    stepLabels: {
+      production_start: '🏭 生産開始',
+      qc: '🔍 品質検査',
+      packing: '📦 梱包',
+      shipped: '🚚 出荷',
+      note: '📝 メモ',
+    },
+  },
+  zh: {
+    title: '📸 进度',
+    composer: '发布进度（仅合作伙伴）',
+    step: '阶段',
+    notePh: '备注（可选，2000 字）',
+    attachPh: '照片/文件链接（逗号分隔）',
+    post: '发布',
+    posting: '发布中',
+    empty: '暂无进度更新。',
+    refresh: '刷新',
+    requireOne: '备注与附件至少填写一项',
+    error: '错误',
+    stepLabels: {
+      production_start: '🏭 开始生产',
+      qc: '🔍 质量检验',
+      packing: '📦 包装',
+      shipped: '🚚 发货',
+      note: '📝 备注',
+    },
+  },
+  es: {
+    title: '📸 Progreso',
+    composer: 'Publicar avance (solo socios)',
+    step: 'Etapa',
+    notePh: 'Nota (opcional, 2000 caracteres)',
+    attachPh: 'URL de fotos o documentos (separadas por comas)',
+    post: 'Publicar',
+    posting: 'Publicando',
+    empty: 'Todavía no hay avances publicados.',
+    refresh: 'Actualizar',
+    requireOne: 'Se requiere una nota o un adjunto',
+    error: 'Error',
+    stepLabels: {
+      production_start: '🏭 Inicio de producción',
+      qc: '🔍 Control de calidad',
+      packing: '📦 Embalaje',
+      shipped: '🚚 Enviado',
+      note: '📝 Nota',
+    },
+  },
+  ar: {
+    title: '📸 التقدّم',
+    composer: 'نشر تحديث (للشركاء فقط)',
+    step: 'المرحلة',
+    notePh: 'ملاحظة (اختياري، 2000 حرف)',
+    attachPh: 'روابط الصور أو المستندات (مفصولة بفواصل)',
+    post: 'نشر',
+    posting: 'جارٍ النشر',
+    empty: 'لا توجد تحديثات منشورة بعد.',
+    refresh: 'تحديث',
+    requireOne: 'يلزم إدخال ملاحظة أو مرفق على الأقل',
+    error: 'خطأ',
+    stepLabels: {
+      production_start: '🏭 بدء الإنتاج',
+      qc: '🔍 فحص الجودة',
+      packing: '📦 التغليف',
+      shipped: '🚚 تم الشحن',
+      note: '📝 ملاحظة',
+    },
+  },
 };
 
 export interface OrderMilestoneFeedProps {
-  lang: 'ko' | 'en';
+  /** ⚠ 260802: `'ko' | 'en'` 이라 부모가 다른 언어를 넘길 수조차 없었다. */
+  lang: string;
   orderId: string;
   /** True when the viewer is the assigned partner — shows the composer. */
   isPartner: boolean;
 }
 
 export default function OrderMilestoneFeed({ lang, orderId, isPartner }: OrderMilestoneFeedProps) {
-  const t = dict[lang];
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = dict[toIsoLang(lang)] ?? dict.en;
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [step, setStep] = useState<Step>('production_start');
   const [note, setNote] = useState('');

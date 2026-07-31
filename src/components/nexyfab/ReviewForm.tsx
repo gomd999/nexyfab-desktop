@@ -15,6 +15,7 @@
 //   - One-shot: after submit, form locks and shows "thanks"
 
 import React, { useState } from 'react';
+import { toIsoLang } from '@/lib/i18n/normalize';
 
 const dict = {
   ko: {
@@ -49,10 +50,75 @@ const dict = {
     requireRating: 'Please rate every axis',
     lowRatingHint: 'Your feedback will be shared with the manufacturer.',
   },
+  ja: {
+    title: 'レビューを書く',
+    subtitle: '各項目を個別に評価してください。総合点ではなく項目別スコアが他の購入者に表示されます。',
+    overall: '総合評価',
+    deadline: '納期遵守',
+    quality: '品質',
+    communication: '対応',
+    comment: 'コメント (任意)',
+    commentPlaceholder: '具体的な経験を書いていただくと、他の購入者の参考になります。',
+    submit: 'レビューを投稿',
+    submitting: '投稿中...',
+    success: 'レビューを登録しました。ありがとうございます！',
+    error: '登録に失敗しました。もう一度お試しください。',
+    requireRating: 'すべての項目を評価してください',
+    lowRatingHint: '残念だった点を書いていただくと、製造元に伝わります。',
+  },
+  zh: {
+    title: '撰写评价',
+    subtitle: '请分项评分。其他买家看到的是各维度分数，而不是综合分。',
+    overall: '综合评价',
+    deadline: '按期交付',
+    quality: '质量',
+    communication: '沟通',
+    comment: '评论（可选）',
+    commentPlaceholder: '写下具体经历，可以帮助其他买家。',
+    submit: '提交评价',
+    submitting: '提交中...',
+    success: '评价已提交，谢谢！',
+    error: '提交失败，请重试。',
+    requireRating: '请为所有项目评分',
+    lowRatingHint: '写下不满意之处，我们会转达给制造商。',
+  },
+  es: {
+    title: 'Escribir una reseña',
+    subtitle: 'Puntúe cada eje por separado: los compradores ven dimensiones distintas, no una nota global.',
+    overall: 'Valoración global',
+    deadline: 'Cumplimiento de plazos',
+    quality: 'Calidad',
+    communication: 'Comunicación',
+    comment: 'Comentario (opcional)',
+    commentPlaceholder: 'Contar su experiencia concreta ayuda a otros compradores.',
+    submit: 'Publicar reseña',
+    submitting: 'Enviando...',
+    success: 'Reseña publicada. ¡Gracias!',
+    error: 'No se ha podido publicar. Inténtelo de nuevo.',
+    requireRating: 'Puntúe todos los apartados',
+    lowRatingHint: 'Si indica qué no funcionó, se lo trasladaremos al fabricante.',
+  },
+  ar: {
+    title: 'كتابة تقييم',
+    subtitle: 'قيّم كل محور على حدة — يرى المشترون أبعاداً منفصلة وليس درجة مجمّعة.',
+    overall: 'التقييم العام',
+    deadline: 'الالتزام بموعد التسليم',
+    quality: 'الجودة',
+    communication: 'التواصل',
+    comment: 'تعليق (اختياري)',
+    commentPlaceholder: 'ذِكر تجربتك بالتفصيل يساعد المشترين الآخرين.',
+    submit: 'نشر التقييم',
+    submitting: 'جارٍ الإرسال...',
+    success: 'تم نشر التقييم. شكراً لك!',
+    error: 'تعذّر النشر. حاول مرة أخرى.',
+    requireRating: 'يُرجى تقييم جميع البنود',
+    lowRatingHint: 'إذا ذكرت ما لم يكن مُرضياً، سننقله إلى جهة التصنيع.',
+  },
 };
 
 export interface ReviewFormProps {
-  lang: 'ko' | 'en';
+  /** ⚠ 260802: `'ko' | 'en'` 이라 부모가 다른 언어를 넘길 수조차 없었다. */
+  lang: string;
   /** Order/contract id this review is for. */
   contractId: string;
   /** The partner being reviewed. */
@@ -62,7 +128,8 @@ export interface ReviewFormProps {
 }
 
 export default function ReviewForm({ lang, contractId, partnerEmail, onSubmitted }: ReviewFormProps) {
-  const t = dict[lang];
+  // ⚠ 260802: 2분기라 ja·zh·es·ar 이 영어로 떨어졌다.
+  const t = dict[toIsoLang(lang)] ?? dict.en;
   const [overall, setOverall] = useState(0);
   const [deadline, setDeadline] = useState(0);
   const [quality, setQuality] = useState(0);
