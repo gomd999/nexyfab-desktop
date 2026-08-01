@@ -32,6 +32,7 @@ const dict = {
     search: '면 ID 또는 태그 검색…',
     all: '전체',
     top: '상단', bottom: '하단', front: '앞면', back: '뒷면', left: '왼쪽', right: '오른쪽',
+    origin: '출처',
   },
   en: {
     title: 'Topological ID Map',
@@ -48,6 +49,7 @@ const dict = {
     search: 'Search face ID or tag…',
     all: 'All',
     top: 'Top', bottom: 'Bottom', front: 'Front', back: 'Back', left: 'Left', right: 'Right',
+    origin: 'Origin',
   },
   ja: {
     title: 'トポロジー ID マップ',
@@ -64,6 +66,7 @@ const dict = {
     search: 'フェイス ID またはタグを検索…',
     all: 'すべて',
     top: '上面', bottom: '下面', front: '前面', back: '背面', left: '左面', right: '右面',
+    origin: '由来',
   },
   zh: {
     title: '拓扑 ID 映射',
@@ -80,6 +83,7 @@ const dict = {
     search: '搜索面 ID 或标签…',
     all: '全部',
     top: '顶面', bottom: '底面', front: '前面', back: '后面', left: '左面', right: '右面',
+    origin: '来源',
   },
   es: {
     title: 'Mapa de ID topológicos',
@@ -96,6 +100,7 @@ const dict = {
     search: 'Buscar ID de cara o etiqueta…',
     all: 'Todas',
     top: 'Superior', bottom: 'Inferior', front: 'Frontal', back: 'Posterior', left: 'Izquierda', right: 'Derecha',
+    origin: 'Origen',
   },
   ar: {
     title: 'خريطة معرّفات الطوبولوجيا',
@@ -112,6 +117,7 @@ const dict = {
     search: 'ابحث بمعرّف الوجه أو الوسم…',
     all: 'الكل',
     top: 'الأعلى', bottom: 'الأسفل', front: 'الأمام', back: 'الخلف', left: 'اليسار', right: 'اليمين',
+    origin: 'المصدر',
   },
 } as const;
 type DictLang = keyof typeof dict;
@@ -367,7 +373,7 @@ export default function TopoPanel({
             </div>
             {face.originFeatureId && (
               <div style={{ fontSize: 9, color: 'var(--nx-text-3)', marginTop: 4, fontFamily: 'monospace' }}>
-                Origin: {face.originFeatureId.slice(0, 24)}
+                {t.origin}: {face.originFeatureId.slice(0, 24)}
               </div>
             )}
           </div>
