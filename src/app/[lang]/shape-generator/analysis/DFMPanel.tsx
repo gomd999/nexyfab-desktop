@@ -52,6 +52,8 @@ const dict = {
     legendSelected: '선택된 이슈',
     emptyPrompt: '공정을 선택하고 "분석 실행"을 클릭하세요',
     proRequired: 'Pro 플랜 필요',
+    autoFixDraftBtn: '📐 구배 자동 수정 (1.5°)',
+    autoFixDraftTitle: '표시된 모든 면에 1.5° 구배를 적용합니다',
   },
   en: {
     headerTitle: 'DFM Analysis',
@@ -91,6 +93,8 @@ const dict = {
     legendSelected: 'Selected issue',
     emptyPrompt: 'Select processes and click "Run DFM Analysis"',
     proRequired: 'Pro plan required',
+    autoFixDraftBtn: '📐 Auto-Fix Draft (1.5°)',
+    autoFixDraftTitle: 'Apply 1.5° draft to all flagged faces',
   },
   ja: {
     headerTitle: 'DFM分析',
@@ -130,6 +134,8 @@ const dict = {
     legendSelected: '選択した問題',
     emptyPrompt: '工程を選択して「DFM分析実行」をクリック',
     proRequired: 'Proプランが必要',
+    autoFixDraftBtn: '📐 抜き勾配自動修正 (1.5°)',
+    autoFixDraftTitle: 'フラグが付いたすべての面に1.5°の抜き勾配を適用します',
   },
   zh: {
     headerTitle: 'DFM可制造性分析',
@@ -169,6 +175,8 @@ const dict = {
     legendSelected: '选中的问题',
     emptyPrompt: '选择工艺并点击"运行DFM分析"',
     proRequired: '需要Pro计划',
+    autoFixDraftBtn: '📐 自动修复拔模角度 (1.5°)',
+    autoFixDraftTitle: '为所有标记的面应用1.5°拔模角度',
   },
   es: {
     headerTitle: 'Análisis DFM',
@@ -208,6 +216,8 @@ const dict = {
     legendSelected: 'Problema seleccionado',
     emptyPrompt: 'Selecciona procesos y haz clic en "Ejecutar análisis DFM"',
     proRequired: 'Plan Pro requerido',
+    autoFixDraftBtn: '📐 Auto-corregir ángulo de desmoldeo (1.5°)',
+    autoFixDraftTitle: 'Aplicar 1.5° de ángulo de desmoldeo a todas las caras marcadas',
   },
   ar: {
     headerTitle: 'تحليل قابلية التصنيع (DFM)',
@@ -247,6 +257,8 @@ const dict = {
     legendSelected: 'المشكلة المحددة',
     emptyPrompt: 'اختر العمليات وانقر على "تشغيل تحليل DFM"',
     proRequired: 'خطة Pro مطلوبة',
+    autoFixDraftBtn: '📐 إصلاح تلقائي لزاوية السحب (1.5°)',
+    autoFixDraftTitle: 'تطبيق زاوية سحب 1.5° على جميع الأوجه المحددة',
   },
 } as const;
 
@@ -753,9 +765,9 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
               }}
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(210, 153, 34, 0.28)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(210, 153, 34, 0.16)'; }}
-              title="Apply 1.5° draft to all flagged faces"
+              title={t.autoFixDraftTitle}
             >
-              📐 Auto-Fix Draft (1.5°)
+              {t.autoFixDraftBtn}
             </button>
           )}
         </div>
