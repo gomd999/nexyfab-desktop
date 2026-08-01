@@ -12,6 +12,7 @@
  * caller: { imageBase64, mimeType, note? } → { ok, recognized, intent, scad, spec } | { ok:false, ... }
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { TraceRecorder, traceSummary } from '@/lib/pipeline-trace';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
@@ -89,6 +90,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // ① Vision 추출 (AI = 이해) + D1 역투영 diff(추출 실루엣↔원본 잉크 — 강등·되묻기)
+  /**
+   * ★260801 — 성공 응답에는 **과정이 하나도 실리지 않았다**(stage 는 실패에만 있었다).
+   *   사용자는 「됐다」만 보고, 한 번에 됐는지 고쳐서 됐는지 알 수 없었다.
+   */
+  const trace = new TraceRecorder();
   let flat: FlatIntent;
   let reproject: ReprojectReport | undefined;
   try {
@@ -101,6 +107,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: '도면 판독 실패: ' + msg.slice(0, 160) }, { status });
   }
 
+  trace.mark('extract', 'ok');
   const type = String(flat.type ?? 'unknown');
   const confidence = typeof flat.confidence === 'number' ? flat.confidence : 0;
 
@@ -174,9 +181,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .map((k) => `${k}: ${flat[k]} ${recognized.unit}`);
   if (type === 'plate_with_holes' && Array.isArray(params.holes)) spec.push(`holes ×${(params.holes as unknown[]).length}`);
 
+  trace.mark('gate', 'ok');
+  const pipeline = trace.done();
   return NextResponse.json({
     ok: true,
     recognized,
+    // ★ 과정을 숨기지 않는다 — 몇 단계를 거쳤고 몇 번 만에 됐는지.
+    pipeline, pipelineSummary: traceSummary(pipeline),
     intent: built.composeIntent, // export-step 입력(features 기반)
     scad: built.openscad,
     spec,

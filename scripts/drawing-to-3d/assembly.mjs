@@ -49,6 +49,26 @@ const ID_SERVICE = [
 ];
 function inferService(p) { const id = String(p.id ?? '') + ' ' + String(p.name ?? ''); for (const [re, s] of ID_SERVICE) if (re.test(id)) return s; return null; }
 export const colorOf = (p) => (p.service && SERVICE_COL[p.service]) || (p.role && SERVICE_COL[p.role]) || SERVICE_COL[inferService(p)] || TYPE_COL[p.type] || '#9aa7b5';
+
+/**
+ * 부품의 **계통/역할 라벨** (260801, 격차 W2).
+ *
+ * ★ 이 값은 지금까지 **3D 색분류에만** 쓰였다 — 화면에서는 색으로 구별되는데
+ *   BOM 표에는 안 실려, 표만 받은 사람은 각 부품이 **무엇을 위한 것인지** 알 수 없었다.
+ * ⚠ 없는 것을 지어내지 않는다: 우리가 계산하는 것은 **공정 계통**(피드·고압·투과·모터·
+ *   프레임…)이지 구동계 역할(DRIVE/DRIVEN)이 아니다. 후자는 계산하지 않으므로 적지 않는다.
+ * ⚠ 추론으로 얻은 값과 명시된 값을 구별해 돌려준다 — 추론은 id/name 키워드 기반이라
+ *   틀릴 수 있고, 그 사실을 표에서 감추면 안 된다.
+ */
+export function serviceLabelOf(p) {
+  // ⚠ 널 가드 — `inferService` 는 부품 객체를 전제한다(테스트가 잡아냈다).
+  if (!p || typeof p !== 'object') return null;
+  const explicit = p.service ?? p.role ?? null;
+  const key = explicit ?? inferService(p);
+  if (!key) return null;
+  const label = COLOR_LABEL[SERVICE_COL[key]] ?? null;
+  return label ? { label, key, inferred: !explicit } : null;
+}
 export const COLOR_LABEL = {
   '#2563eb': '피드/입수', '#dc2626': '고압', '#0891b2': '투과/출수', '#ea580c': '농축', '#4d7c0f': '모터/펌프', '#3f4756': '프레임', '#59606b': '제어반', '#5b6472': '구조', '#9aa7b5': '용기/부품', '#8b98a6': '브래킷', '#78838f': '플랜지', '#8a5a2b': '슬러지',
   '#475569': '기둥', '#0e7490': '보', '#94a3b8': '슬래브', '#854d0e': '장선/서까래', '#a16207': '데크/기어', '#d1d5db': '바닥', '#0f766e': '테이블', '#7c3aed': '카운터', '#78716c': '벽체', '#6b7280': '볼트/체결', '#57534e': '기초/저판',

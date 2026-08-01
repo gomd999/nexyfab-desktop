@@ -4,7 +4,7 @@
  * (P&ID·Dossier 는 공정 의미·서술 필요 → AI 보조 후속. 여기선 형상기반 3종.)
  */
 import { structuralCheck } from './structural.mjs';
-import { colorOf, placedAabb, placedCorners } from './assembly.mjs';
+import { colorOf, placedAabb, placedCorners, serviceLabelOf } from './assembly.mjs';
 import { partAabb } from './reconstruct.mjs';
 import { runCalculator, calculators } from '../engineering-core/registry.mjs';
 import { retainingWallSectionSvg } from './section-drawings.mjs';
@@ -1126,9 +1126,20 @@ export function ga2dDrawing(assembly, { title = '설계 GA 도면', dwg = 'NX-GA
     // 시판 규격 외 = 도면 기준 제작 지정(260718t) — 모든 BOM 행이 발주 방법을 말한다
     return '가공품(도면 제작)';
   };
+  /**
+   * ★260801 — 계통/역할 열 추가(격차 W2). 3D 는 색으로 구별해 주는데 **표에는 없어서**,
+   *   BOM 만 받은 사람은 각 부품이 무엇을 위한 것인지 알 수 없었다.
+   * ⚠ 추론값에는 `~` 를 붙인다 — id/name 키워드로 짐작한 것이라 틀릴 수 있고,
+   *   명시된 값과 같아 보이게 하면 안 된다.
+   */
+  const svcCell = (p) => {
+    const s = serviceLabelOf(p);
+    if (!s) return '—';
+    return esc(s.inferred ? `~${s.label}` : s.label);
+  };
   const bom = groups.map((g, gi) => {
     const { p, box, st } = g.rep;
-    return `<tr id="bomrow-${gi + 1}"><td>${gi + 1}</td><td style="text-align:left">${esc(p.id ?? p.type)}${g.count > 1 ? ' 외' : ''}</td><td>${esc(p.type)}</td><td>${fmtLen(box.dx)}×${fmtLen(box.dy)}×${fmtLen(box.dz)}</td><td style="text-align:left">${esc(stdLabel(p))}</td><td>${esc(st.mat)}</td><td>${g.count}</td></tr>`;
+    return `<tr id="bomrow-${gi + 1}"><td>${gi + 1}</td><td style="text-align:left">${esc(p.id ?? p.type)}${g.count > 1 ? ' 외' : ''}</td><td>${esc(p.type)}</td><td>${svcCell(p)}</td><td>${fmtLen(box.dx)}×${fmtLen(box.dy)}×${fmtLen(box.dz)}</td><td style="text-align:left">${esc(stdLabel(p))}</td><td>${esc(st.mat)}</td><td>${g.count}</td></tr>`;
   }).join('');
   // ② 단면도 A-A(D3, C2): y=중앙 절단 — 절단 부품=해칭, 후방 부품=실루엣(전방 생략 관례)
   const yc = by0 + (parts.length ? Math.max(...parts.map((o) => o.box.y + o.box.dy)) - by0 : 0) / 2;
@@ -1210,7 +1221,7 @@ table{border-collapse:collapse;width:calc(100% - 40px);margin:0 20px 14px;font-s
 .tb{border-top:2px solid #1f2937;margin-top:8px;padding:6px 4px;font-size:11px;color:#334155;display:flex;gap:14px;flex-wrap:wrap}
 @media print{.nf-print-bar{display:none}body{background:#fff}.sheet{box-shadow:none;border:none;margin:0}.sheet-page{box-shadow:none;border:none;margin:0;page-break-after:always}}</style></head>
 <body>${PRINT_BAR('설계 GA 도면 (A3)')}<div class="sheet"><div class="hd"><div><h1>${esc(title)} — 일반배치도 (GA)</h1><div class="sub">nexyfab drawing-to-3d 자동생성 · 부품 ${parts.length}(그룹 ${groups.length})</div></div><div class="sub">DWG ${esc(dwgNo)} · <b>SCALE 1:${N}</b> (A3 100% 인쇄 기준 · 화면=가변) · 표기 mm(대형 자동 m/km) · 3rd angle · REV <span class="nf-rev">—</span></div></div>
-<div class="wrap">${svg.replace('</svg>', detailMarker + '</svg>')}</div>${sectionSvg}${detailSvg}${domainSvg ? `<div class="wrap" style="border-top:1px solid #e2e8f0">${domainSvg}</div>` : ''}<table><thead><tr><th>No.</th><th>품명(대표)</th><th>Type</th><th>규격(엔벨로프)</th><th>발주 규격(G1 스냅 · 발주 전 규격서 대조)</th><th>재질</th><th>수량</th></tr></thead><tbody>${bom}</tbody></table>${weldTable}${Array.isArray(revHistory) && revHistory.length ? `<div class="wrap" style="border-top:1px solid #e2e8f0;padding:8px 20px"><table style="border-collapse:collapse;width:70%;font-size:11px"><caption style="text-align:left;font-size:12px;font-weight:700;padding:3px 0">개정 이력(편집 자동 기록 — 실시 추적성)</caption><tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">REV</th><th style="border:1px solid #cbd5e1;padding:3px 8px">일자</th><th style="border:1px solid #cbd5e1;padding:3px 8px">내용</th></tr>${revHistory.map((r) => `<tr><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.rev ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.date ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${esc(String(r.note ?? ''))}</td></tr>`).join('')}</table></div>` : ''}${titleBlock}
+<div class="wrap">${svg.replace('</svg>', detailMarker + '</svg>')}</div>${sectionSvg}${detailSvg}${domainSvg ? `<div class="wrap" style="border-top:1px solid #e2e8f0">${domainSvg}</div>` : ''}<table><thead><tr><th>No.</th><th>품명(대표)</th><th>Type</th><th>계통/역할</th><th>규격(엔벨로프)</th><th>발주 규격(G1 스냅 · 발주 전 규격서 대조)</th><th>재질</th><th>수량</th></tr></thead><tbody>${bom}</tbody></table>${weldTable}${Array.isArray(revHistory) && revHistory.length ? `<div class="wrap" style="border-top:1px solid #e2e8f0;padding:8px 20px"><table style="border-collapse:collapse;width:70%;font-size:11px"><caption style="text-align:left;font-size:12px;font-weight:700;padding:3px 0">개정 이력(편집 자동 기록 — 실시 추적성)</caption><tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">REV</th><th style="border:1px solid #cbd5e1;padding:3px 8px">일자</th><th style="border:1px solid #cbd5e1;padding:3px 8px">내용</th></tr>${revHistory.map((r) => `<tr><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.rev ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.date ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${esc(String(r.note ?? ''))}</td></tr>`).join('')}</table></div>` : ''}${titleBlock}
 <div class="sub" style="padding:4px 20px 12px;color:#94a3b8">⚠ 자동생성 GA(비법정) · 부품 엔벨로프 기준 · 상세치수·공차는 후속.</div><div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div>${sheetsHtml}</body></html>`);
 }
 

@@ -11,6 +11,7 @@
  * caller: { description } → { ok, assembly, openscad?, parts?, interferences?, gateErrors? }
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { TraceRecorder, traceSummary } from '@/lib/pipeline-trace';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
@@ -219,6 +220,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // ── 게이트-교정 루프 (compose.composeWithGate 패턴을 어셈블리에 적용) ──
     // textToAssembly 의 스키마 준수 신뢰성이 낮아, buildAssembly 게이트 오류를
     // Gemini 에 되먹여 params 를 고쳐 최대 3라운드 재시도한다(§2.1 교정루프).
+    /**
+     * ★260801 — `rounds` 는 이미 응답에 실렸지만 **소요 시간과 단계 구성은 없었다.**
+     *   두 라우트가 **같은 모양**으로 내보내야 화면이 하나로 그릴 수 있다.
+     */
+    const trace = new TraceRecorder();
     const MAX_ROUNDS = 3;
     let assembly: Assembly | null = null;
   let placeCorrections: Array<Record<string, unknown>> = [];
@@ -398,15 +404,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           pipes: built.pipes ?? null, designOk: built.designOk ?? null,
           intentMatch, // 요청 정합(의도↔형상 실측 대조 — 불일치 노출 + 교정 라운드 내역)
           gateErrors: [], rounds: round + 1,
+          // ★ 과정을 같은 모양으로 — extract 라우트와 필드명을 맞춘다.
+          ...(() => {
+            trace.attempt(round + 1).mark('gate', 'ok');
+            const pipeline = trace.done();
+            return { pipeline, pipelineSummary: traceSummary(pipeline) };
+          })(),
         });
       }
       lastErrors = built.gateErrors ?? ['게이트 실패'];
     }
 
     // 3라운드로도 유효 형상 실패 — 잘못된 형상 방출 대신 정직하게 오류 반환.
+    // ⚠ 실패해도 과정을 싣는다 — 무엇을 몇 번 시도하다 못 했는지가 실패에선 더 중요하다.
+    trace.attempt(MAX_ROUNDS).mark('gate', 'failed', `게이트 오류 ${lastErrors.length}건`);
+    const failTrace = trace.done();
     return NextResponse.json({
       ok: false, stage: 'gate', assembly,
       gateErrors: lastErrors, interferences: built?.interferences ?? [], rounds: MAX_ROUNDS,
+      pipeline: failTrace, pipelineSummary: traceSummary(failTrace),
     }, { status: 200 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
