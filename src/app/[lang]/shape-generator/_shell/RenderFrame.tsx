@@ -43,12 +43,15 @@ const MATERIAL_LIBRARY: MaterialSwatch[] = [
   { id: 'glass-clear', lbl: 'Glass · clear', color: '#b6d8e5', group: 'glass' },
 ];
 
-const FILTER_GROUPS: { id: MaterialSwatch['group'] | 'all'; lbl: string; lblKo: string }[] = [
-  { id: 'all', lbl: 'All', lblKo: '전체' },
-  { id: 'metal', lbl: 'Metals', lblKo: '금속' },
-  { id: 'plastic', lbl: 'Plastics', lblKo: '플라스틱' },
-  { id: 'wood', lbl: 'Wood', lblKo: '목재' },
-  { id: 'glass', lbl: 'Glass', lblKo: '유리' },
+const FILTER_GROUPS: {
+  id: MaterialSwatch['group'] | 'all';
+  label: { ko: string; en: string; ja: string; zh: string; es: string; ar: string };
+}[] = [
+  { id: 'all', label: { ko: '전체', en: 'All', ja: 'すべて', zh: '全部', es: 'Todos', ar: 'الكل' } },
+  { id: 'metal', label: { ko: '금속', en: 'Metals', ja: '金属', zh: '金属', es: 'Metales', ar: 'المعادن' } },
+  { id: 'plastic', label: { ko: '플라스틱', en: 'Plastics', ja: 'プラスチック', zh: '塑料', es: 'Plásticos', ar: 'البلاستيك' } },
+  { id: 'wood', label: { ko: '목재', en: 'Wood', ja: '木材', zh: '木材', es: 'Madera', ar: 'الخشب' } },
+  { id: 'glass', label: { ko: '유리', en: 'Glass', ja: 'ガラス', zh: '玻璃', es: 'Vidrio', ar: 'الزجاج' } },
 ];
 
 const HDRI_PRESETS: { id: string; lbl: string; lblKo: string; ico: IconName }[] = [
@@ -336,7 +339,7 @@ function MaterialLibraryPane({
             }}
             onClick={() => onFilter(g.id)}
           >
-            {isKo ? g.lblKo : g.lbl}
+            {loc(lang, g.label)}
           </button>
         ))}
       </div>
