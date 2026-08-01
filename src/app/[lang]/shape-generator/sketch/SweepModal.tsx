@@ -55,6 +55,9 @@ interface Dict {
   pngHeading: string;
   stlHeading: string;
   errorPrefix: string;
+  errorMinPoints: string;
+  errorNonNumeric: (idx: number) => string;
+  errorZeroLength: (from: number, to: number) => string;
 }
 
 const dict: Record<SweepLang, Dict> = {
@@ -68,6 +71,9 @@ const dict: Record<SweepLang, Dict> = {
     submit: '스윕', cancel: '취소',
     rendering: '렌더링 중...', scadHeading: 'SCAD 소스', pngHeading: '미리보기', stlHeading: '3D 뷰',
     errorPrefix: '오류',
+    errorMinPoints: '경로는 최소 2개의 점이 필요합니다',
+    errorNonNumeric: (i) => `점 ${i}의 좌표는 숫자여야 합니다`,
+    errorZeroLength: (a, b) => `경로 구간 ${a}→${b}이(가) 길이가 0입니다`,
   },
   en: {
     modalTitle: 'Sweep options', pathHeading: 'Path',
@@ -79,6 +85,9 @@ const dict: Record<SweepLang, Dict> = {
     submit: 'Sweep', cancel: 'Cancel',
     rendering: 'Rendering...', scadHeading: 'SCAD source', pngHeading: 'Preview', stlHeading: '3D view',
     errorPrefix: 'Error',
+    errorMinPoints: 'path must have at least 2 points',
+    errorNonNumeric: (i) => `point ${i} coordinates must be numbers`,
+    errorZeroLength: (a, b) => `path segment ${a}→${b} is zero-length`,
   },
   ja: {
     modalTitle: 'スイープ設定', pathHeading: 'パス',
@@ -90,6 +99,9 @@ const dict: Record<SweepLang, Dict> = {
     submit: 'スイープ', cancel: 'キャンセル',
     rendering: 'レンダリング中...', scadHeading: 'SCADソース', pngHeading: 'プレビュー', stlHeading: '3Dビュー',
     errorPrefix: 'エラー',
+    errorMinPoints: 'パスには最低2つの点が必要です',
+    errorNonNumeric: (i) => `点 ${i} の座標は数値でなければなりません`,
+    errorZeroLength: (a, b) => `パス区間 ${a}→${b} の長さが0です`,
   },
   zh: {
     modalTitle: '扫掠选项', pathHeading: '路径',
@@ -101,6 +113,9 @@ const dict: Record<SweepLang, Dict> = {
     submit: '扫掠', cancel: '取消',
     rendering: '渲染中...', scadHeading: 'SCAD源', pngHeading: '预览', stlHeading: '3D视图',
     errorPrefix: '错误',
+    errorMinPoints: '路径至少需要2个点',
+    errorNonNumeric: (i) => `点 ${i} 的坐标必须是数字`,
+    errorZeroLength: (a, b) => `路径段 ${a}→${b} 长度为零`,
   },
   es: {
     modalTitle: 'Opciones de barrido', pathHeading: 'Trayecto',
@@ -112,6 +127,9 @@ const dict: Record<SweepLang, Dict> = {
     submit: 'Barrido', cancel: 'Cancelar',
     rendering: 'Renderizando...', scadHeading: 'Fuente SCAD', pngHeading: 'Vista previa', stlHeading: 'Vista 3D',
     errorPrefix: 'Error',
+    errorMinPoints: 'la trayectoria debe tener al menos 2 puntos',
+    errorNonNumeric: (i) => `las coordenadas del punto ${i} deben ser números`,
+    errorZeroLength: (a, b) => `el segmento de trayecto ${a}→${b} tiene longitud cero`,
   },
   ar: {
     modalTitle: 'خيارات الكنس', pathHeading: 'المسار',
@@ -123,6 +141,9 @@ const dict: Record<SweepLang, Dict> = {
     submit: 'كنس', cancel: 'إلغاء',
     rendering: 'جارٍ التصيير...', scadHeading: 'مصدر SCAD', pngHeading: 'معاينة', stlHeading: 'عرض ثلاثي الأبعاد',
     errorPrefix: 'خطأ',
+    errorMinPoints: 'يجب أن يحتوي المسار على نقطتين على الأقل',
+    errorNonNumeric: (i) => `يجب أن تكون إحداثيات النقطة ${i} أرقامًا`,
+    errorZeroLength: (a, b) => `طول القطعة ${a}→${b} من المسار صفر`,
   },
 };
 
@@ -224,7 +245,7 @@ export default function SweepModal({
 
   const onSubmit = useCallback(async () => {
     if (path.length < 2) {
-      setRender({ status: 'error', message: `${t.errorPrefix}: path must have at least 2 points` });
+      setRender({ status: 'error', message: `${t.errorPrefix}: ${t.errorMinPoints}` });
       return;
     }
     const parsed: SweepPathPoint[] = [];
@@ -234,7 +255,7 @@ export default function SweepModal({
       const y = Number(p.y);
       const z = Number(p.z);
       if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
-        setRender({ status: 'error', message: `${t.errorPrefix}: point ${i + 1} coordinates must be numbers` });
+        setRender({ status: 'error', message: `${t.errorPrefix}: ${t.errorNonNumeric(i + 1)}` });
         return;
       }
       parsed.push({ x, y, z });
@@ -243,7 +264,7 @@ export default function SweepModal({
       const a = parsed[i - 1]!;
       const b = parsed[i]!;
       if (Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) < 1e-9) {
-        setRender({ status: 'error', message: `${t.errorPrefix}: path segment ${i}→${i + 1} is zero-length` });
+        setRender({ status: 'error', message: `${t.errorPrefix}: ${t.errorZeroLength(i, i + 1)}` });
         return;
       }
     }

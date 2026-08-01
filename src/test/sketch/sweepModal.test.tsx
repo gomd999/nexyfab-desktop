@@ -238,4 +238,23 @@ describe('SweepModal', () => {
     expect(submit.textContent).toMatch(/스윕/);
     expect(screen.getByText(/경로/)).toBeInTheDocument();
   });
+
+  it('Korean lang: client-side zero-length validation error is localized (not raw English)', async () => {
+    const fetcher = vi.fn();
+    render(
+      <SweepModal lang="ko" sketch={rectSketch()} onClose={vi.fn()} sweepFetcher={fetcher} />,
+    );
+    // Collapse both path points to the origin → zero-length segment.
+    fireEvent.change(screen.getByTestId('solver-sweep-path-point-1-x-input'), { target: { value: '0' } });
+    fireEvent.change(screen.getByTestId('solver-sweep-path-point-1-y-input'), { target: { value: '0' } });
+    fireEvent.change(screen.getByTestId('solver-sweep-path-point-1-z-input'), { target: { value: '0' } });
+    fireEvent.click(screen.getByTestId('solver-sweep-submit'));
+    await waitFor(() => {
+      const err = screen.getByTestId('solver-sweep-error');
+      // Localized Korean message ("길이가 0") — must NOT fall back to raw English.
+      expect(err.textContent).toMatch(/길이가 0/);
+      expect(err.textContent).not.toMatch(/zero-length/i);
+    });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
 });
