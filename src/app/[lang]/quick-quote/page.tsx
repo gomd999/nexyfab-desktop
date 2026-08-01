@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { analytics } from '@/lib/analytics';
 import AutoQuoteCard from './AutoQuoteCard';
+import { MATERIALS, PROCESSES } from './quickQuoteDict';
 
 // ModelViewer는 client-side only (three.js)
 const ModelViewer = dynamic(() => import('@/app/components/ModelViewer'), { ssr: false });
@@ -430,28 +431,7 @@ const dict = {
 };
 
 // ─── 재질/공정 목록 ───────────────────────────────────────────────────────────
-
-const MATERIALS = [
-    { id: 'steel_s45c',    label: '일반강철 (S45C)' },
-    { id: 'aluminum_6061', label: '알루미늄합금 (6061)' },
-    { id: 'stainless_304', label: '스테인레스 (SUS304)' },
-    { id: 'brass',         label: '황동 (C3604)' },
-    { id: 'abs_plastic',   label: 'ABS 플라스틱' },
-    { id: 'pom',           label: 'POM (엔지니어링 플라스틱)' },
-    { id: 'pc',            label: 'PC (폴리카보네이트)' },
-    { id: 'titanium',      label: '티타늄 (Ti-6Al-4V)' },
-];
-
-const PROCESSES = [
-    { id: 'cnc',               label: 'CNC 가공' },
-    { id: 'injection_molding', label: '사출 성형' },
-    { id: 'die_casting',       label: '다이캐스팅' },
-    { id: 'sheet_metal',       label: '판금 가공' },
-    { id: '3d_printing_fdm',   label: '3D프린팅 (FDM)' },
-    { id: '3d_printing_sla',   label: '3D프린팅 (SLA)' },
-    { id: '3d_printing_sls',   label: '3D프린팅 (SLS)' },
-    { id: 'forging',           label: '단조' },
-];
+// MATERIALS/PROCESSES 는 quickQuoteDict.ts 로 이전(6개 언어 label, 회귀 테스트 있음).
 
 const FINISHES = [
     { id: 'none',        label: { ko: '무처리', en: 'None', ja: 'なし', cn: '无处理', es: 'Ninguno', ar: 'لا شيء' } },
@@ -487,6 +467,10 @@ function QuickQuotePageInner() {
     const lang = ['en', 'kr', 'ja', 'cn', 'es', 'ar'].includes(langCode) ? langCode : 'en';
     const langMapCode: Record<string, keyof typeof dict> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'cn', es: 'es', ar: 'ar' };
     const t = dict[langMapCode[lang] || 'en'];
+    // MATERIALS/PROCESSES 항목의 label은 6개 언어 객체 — 화면 표시용 lang-aware 접근자.
+    // NOTE: 260802 이전엔 label이 한국어 리터럴 문자열이라 en/ja/cn/es/ar 화면에도 한국어가 그대로 노출됐다.
+    const locLabel = (item: { label: Record<string, string> }) =>
+        item.label[langMapCode[lang] as keyof typeof item.label] || item.label.ko;
 
     // ── State ──
     const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -1017,8 +1001,8 @@ function QuickQuotePageInner() {
     const handlePrintQuote = () => {
         if (!estimates || !geometry) return;
 
-        const matLabel = MATERIALS.find(m => m.id === material)?.label || material;
-        const procLabel = PROCESSES.find(p => p.id === process)?.label || process;
+        const matLabel = MATERIALS.find(m => m.id === material)?.label.ko || material;
+        const procLabel = PROCESSES.find(p => p.id === process)?.label.ko || process;
         const finLabel = FINISHES.find(f => f.id === finishType)?.label?.ko || finishType;
         const tolLabel = TOLERANCES.find(t => t.id === tolerance)?.label?.ko || tolerance;
         const now = new Date().toLocaleString('ko-KR');
@@ -1558,7 +1542,7 @@ ${aiReport ? `
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <span style={{ fontSize: '13px', color: '#6b7280' }}>{t.aiProcess}:</span>
                                         <span style={{ fontWeight: 700, color: '#111827', fontSize: '13px' }}>
-                                            {PROCESSES.find(p => p.id === aiAnalysis.process)?.label || String(aiAnalysis.process || '')}
+                                            {(() => { const p = PROCESSES.find(p => p.id === aiAnalysis.process); return p ? locLabel(p) : String(aiAnalysis.process || ''); })()}
                                         </span>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1628,7 +1612,7 @@ ${aiReport ? `
                                     const material_cost = weight_kg * pricePerKg;
                                     const unitCost = calcUnitCost(m.id, process, quantity, tolerance, finishType, geometry.volume_cm3, geometry.surface_area_cm2, complexityVal, pricePerKg);
                                     const isAI = (aiAnalysis?.materials as string[] | undefined)?.includes(m.id);
-                                    return { id: m.id, label: m.label, density: matData.density, pricePerKg, weight_kg, material_cost, unitCost, isAI };
+                                    return { id: m.id, label: m.label.ko, density: matData.density, pricePerKg, weight_kg, material_cost, unitCost, isAI };
                                 }).filter((r): r is NonNullable<typeof r> => r !== null);
 
                                 // 가장 저렴한 재료 찾기
@@ -1684,7 +1668,7 @@ ${aiReport ? `
                                             </tbody>
                                         </table>
                                         <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '6px', textAlign: 'right' }}>
-                                            * 현재 선택된 공정({PROCESSES.find(p => p.id === process)?.label}), 수량({quantity}개), 공차({tolerance.toUpperCase()}) 기준 계산
+                                            * 현재 선택된 공정({PROCESSES.find(p => p.id === process)?.label.ko}), 수량({quantity}개), 공차({tolerance.toUpperCase()}) 기준 계산
                                         </div>
                                     </div>
                                 );
@@ -1707,7 +1691,7 @@ ${aiReport ? `
                                                 transition: 'all 0.15s', textAlign: 'left',
                                             }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                {m.label}
+                                                {locLabel(m)}
                                                 {isAI && <span style={badgeAI}>⭐ {t.aiRecommended}</span>}
                                             </div>
                                             {livePrice && (
@@ -1736,7 +1720,7 @@ ${aiReport ? `
                                                 display: 'flex', alignItems: 'center', gap: '6px',
                                                 transition: 'all 0.15s', textAlign: 'left',
                                             }}>
-                                            {p.label}
+                                            {locLabel(p)}
                                             {isAI && <span style={badgeAI}>⭐ {t.aiRecommended}</span>}
                                         </button>
                                     );
@@ -2002,7 +1986,7 @@ ${aiReport ? `
                                         </div>
                                         <div>
                                             <div style={{ fontWeight: 700, color: '#111827', fontSize: '13px' }}>
-                                                {MATERIALS.find(m => m.id === alt.material)?.label || alt.material} + {PROCESSES.find(p => p.id === alt.process)?.label || alt.process}
+                                                {(() => { const m = MATERIALS.find(m => m.id === alt.material); return m ? locLabel(m) : alt.material; })()} + {(() => { const p = PROCESSES.find(p => p.id === alt.process); return p ? locLabel(p) : alt.process; })()}
                                             </div>
                                             <div style={{ color: '#6b7280', fontSize: '13px', marginTop: '4px' }}>{alt.reason}</div>
                                         </div>
