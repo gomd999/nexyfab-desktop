@@ -77,7 +77,18 @@ const PLANS: PlanDef[] = [
   },
 ];
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
+// ─── Formatting ───────────────────────────────────────────────────────────────
+
+// Exported (not just a closure) so it has a direct regression test — see
+// page.i18n.test.tsx. Unit suffix must follow the page's ko/en branch: this
+// used to append the Korean word '원' unconditionally, so non-Korean users
+// saw prices like "49,000원" with no English rendering of the currency unit
+// at all.
+export function fmtKRW(n: number | null, isKo: boolean): string {
+  if (n === null || n === 0) return isKo ? '무료' : 'Free';
+  return isKo ? n.toLocaleString('ko-KR') + '원' : n.toLocaleString('en-US') + ' KRW';
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function BillingPage({ params }: { params: Promise<{ lang: string }> }) {
@@ -166,11 +177,6 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
       setLoadingPlan(null);
     }
   }, [cycle, currentPlan, isKo, toast]);
-
-  function fmtKRW(n: number | null) {
-    if (n === null || n === 0) return isKo ? '무료' : 'Free';
-    return n.toLocaleString('ko-KR') + '원';
-  }
 
   return (
     <div style={{
@@ -330,7 +336,7 @@ export default function BillingPage({ params }: { params: Promise<{ lang: string
                   {/* Price */}
                   <div style={{ marginBottom: 20 }}>
                     <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--nx-text)', fontFamily: 'monospace' }}>
-                      {fmtKRW(price)}
+                      {fmtKRW(price, isKo)}
                     </span>
                     {price !== null && price > 0 && (
                       <span style={{ fontSize: 12, color: 'var(--nx-text-2)', marginLeft: 4 }}>
