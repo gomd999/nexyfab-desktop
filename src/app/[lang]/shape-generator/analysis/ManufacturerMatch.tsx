@@ -53,6 +53,7 @@ const dict = {
     aiNotice: '🤖 AI 초안이 포함되어 있습니다. 발주 전 직접 검증이 필수입니다',
     dfmBlocker: (n: number) => `⚠ DFM 오류 ${n}건이 검출되었습니다. 발주 시 제조 불가 또는 추가 비용이 발생할 수 있습니다`,
     dfmOverrideLabel: 'DFM 오류를 인지했으며 그럼에도 발주합니다',
+    exampleLabel: '예시',
   },
   en: {
     panelTitle: 'Manufacturer Match',
@@ -95,6 +96,7 @@ const dict = {
     aiNotice: '🤖 Contains AI-drafted content. You must verify before ordering',
     dfmBlocker: (n: number) => `⚠ ${n} DFM error(s) detected. Ordering may result in non-manufacturable parts or extra cost`,
     dfmOverrideLabel: 'I acknowledge the DFM errors and proceed anyway',
+    exampleLabel: 'example',
   },
   ja: {
     panelTitle: 'メーカーマッチング',
@@ -137,6 +139,7 @@ const dict = {
     aiNotice: '🤖 AI下書きが含まれます。発注前にご自身で検証してください',
     dfmBlocker: (n: number) => `⚠ DFMエラー${n}件を検出しました。発注すると製造不可または追加費用が発生する可能性があります`,
     dfmOverrideLabel: 'DFMエラーを認識した上で発注します',
+    exampleLabel: '例',
   },
   zh: {
     panelTitle: '工厂匹配',
@@ -179,6 +182,7 @@ const dict = {
     aiNotice: '🤖 包含AI草稿内容。下单前必须自行验证',
     dfmBlocker: (n: number) => `⚠ 检测到${n}个DFM错误。下单可能导致无法制造或产生额外费用`,
     dfmOverrideLabel: '我已知晓DFM错误并仍要下单',
+    exampleLabel: '示例',
   },
   es: {
     panelTitle: 'Emparejamiento de fabricantes',
@@ -221,6 +225,7 @@ const dict = {
     aiNotice: '🤖 Contiene contenido borrador de IA. Debe verificarlo antes de pedir',
     dfmBlocker: (n: number) => `⚠ Se detectaron ${n} errores DFM. El pedido puede resultar en piezas no fabricables o costo adicional`,
     dfmOverrideLabel: 'Reconozco los errores DFM y procedo de todos modos',
+    exampleLabel: 'ejemplo',
   },
   ar: {
     panelTitle: 'مطابقة المصنع',
@@ -263,6 +268,7 @@ const dict = {
     aiNotice: '🤖 يحتوي على محتوى مسودة من الذكاء الاصطناعي. يجب التحقق منه قبل الطلب',
     dfmBlocker: (n: number) => `⚠ تم اكتشاف ${n} أخطاء DFM. قد يؤدي الطلب إلى أجزاء غير قابلة للتصنيع أو تكلفة إضافية`,
     dfmOverrideLabel: 'أُقر بأخطاء DFM وأمضي قدمًا على أي حال',
+    exampleLabel: 'مثال',
   },
 } as const;
 
@@ -1104,7 +1110,7 @@ function ManufacturerCard({ manufacturer: m, matchScore, scoreBreakdown, partner
               fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
               background: `${C.textMuted}22`, color: C.textMuted, border: `1px solid ${C.textMuted}55`,
             }}>
-              {L === 'ko' ? '예시' : 'example'}
+              {t.exampleLabel}
             </span>
           )}
         </div>
