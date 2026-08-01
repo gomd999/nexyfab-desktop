@@ -4,11 +4,30 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { Suspense, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import type { ShapeResult } from './shapes';
 import type { BomPartResult } from './ShapePreview';
 import SectionPlane from './SectionPlane';
 import { computeAssemblyWorldBounds } from './assembly/assemblyWorldBounds';
 import { GL_COLOR, resolveCssColor } from './lib/glColors';
+
+/* ─── i18n (empty-state hint only — viewport labels Front/Right/Top/3D and
+   material/axis text stay in English across all languages, matching the
+   ViewCube.tsx CAD-orientation convention) ────────────────────────────────── */
+type Lang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
+
+const dict = {
+  ko: { selectShape: '미리보기할 형상을 선택하세요' },
+  en: { selectShape: 'Select a shape to preview' },
+  ja: { selectShape: 'プレビューする形状を選択してください' },
+  zh: { selectShape: '选择要预览的形状' },
+  es: { selectShape: 'Seleccione una forma para previsualizar' },
+  ar: { selectShape: 'اختر شكلاً للمعاينة' },
+} as const;
+
+const langMap: Record<string, Lang> = {
+  kr: 'ko', ko: 'ko', en: 'en', ja: 'ja', cn: 'zh', zh: 'zh', es: 'es', ar: 'ar',
+};
 
 // Hex (not CSS var) for the first entry — these feed WebGL materials; var(--…)
 // would render the first part white. (2026-06-12)
@@ -237,6 +256,10 @@ export default function MultiViewport({
 }: MultiViewportProps) {
   const [activeIndex, setActiveIndex] = useState(3); // default to 3D view
 
+  const pathname = usePathname();
+  const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
+  const tt = dict[langMap[seg] ?? 'en'];
+
   const allResults = useMemo(() => {
     if (bomParts && bomParts.length > 0) return bomParts.map(p => p.result);
     return result ? [result] : [];
@@ -270,7 +293,7 @@ export default function MultiViewport({
         background: 'var(--nx-bg)', flexDirection: 'column', gap: '8px',
       }}>
         <span style={{ fontSize: '32px', opacity: 0.3 }}>&#x1f9ca;</span>
-        <p style={{ color: 'var(--nx-border-strong)', fontSize: '13px' }}>Select a shape to preview</p>
+        <p style={{ color: 'var(--nx-border-strong)', fontSize: '13px' }}>{tt.selectShape}</p>
       </div>
     );
   }
