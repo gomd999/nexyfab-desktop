@@ -59,49 +59,54 @@ const CATEGORIES: Category[] = [
 
 // ─── 템플릿 id → 쉬운 한 줄 설명(부제). 없으면 부제를 생략한다(허위 설명 금지) ──
 
-const EASY_DESC: Record<string, { ko: string; en: string }> = {
+interface EasyDesc { ko: string; en: string; ja: string; zh: string; es: string; ar: string }
+
+// ⚠ 260802: 예전에는 { ko, en } 만 있고 렌더 지점에서 `ko ? desc.ko : desc.en` 2분기라
+// ja·zh·es·ar 사용자에게 영어가 그대로 나갔다(CATEGORIES 와 동일한 결함 패턴, loc() 미사용).
+// 6언어 전부 채우고 loc() 으로 배선한다.
+export const EASY_DESC: Record<string, EasyDesc> = {
   // 조경
-  pergola: { ko: '기둥과 서까래로 만든 그늘막 — 마당·테라스에', en: 'Shade structure with posts and rafters for yards' },
-  timber_deck: { ko: '나무 바닥 데크 — 마당·베란다에 까는 평상', en: 'Timber deck floor for a yard or balcony' },
+  pergola: { ko: '기둥과 서까래로 만든 그늘막 — 마당·테라스에', en: 'Shade structure with posts and rafters for yards', ja: '柱と垂木で作った日除け — 庭・テラスに', zh: '立柱和椽条搭建的遮阳棚 — 适用于庭院、露台', es: 'Estructura de sombra con postes y vigas para patios y terrazas', ar: 'مظلة مصنوعة من أعمدة وعوارض — للأفنية والشرفات' },
+  timber_deck: { ko: '나무 바닥 데크 — 마당·베란다에 까는 평상', en: 'Timber deck floor for a yard or balcony', ja: '木製の床デッキ — 庭やベランダに敷く床', zh: '木质地板露台 — 铺设于庭院或阳台', es: 'Suelo de terraza de madera para patio o balcón', ar: 'أرضية خشبية مرتفعة — تُركب في الفناء أو الشرفة' },
   // 인테리어
-  apartment_unit: { ko: '아파트 한 세대 평면', en: 'A single apartment unit plan' },
-  studio_unit: { ko: '원룸 한 칸', en: 'A studio (one-room) unit' },
-  three_room_unit: { ko: '방 세 개짜리 집 평면', en: 'A three-bedroom home plan' },
-  two_room: { ko: '방 두 개짜리 집 평면', en: 'A two-bedroom home plan' },
-  cafe_room: { ko: '카페 홀 — 테이블·카운터 배치', en: 'Café floor with tables and a counter' },
+  apartment_unit: { ko: '아파트 한 세대 평면', en: 'A single apartment unit plan', ja: 'マンション一世帯分の平面図', zh: '一套公寓户型平面图', es: 'Plano de una unidad de apartamento', ar: 'مخطط وحدة سكنية واحدة في مبنى شقق' },
+  studio_unit: { ko: '원룸 한 칸', en: 'A studio (one-room) unit', ja: 'ワンルーム一室', zh: '一间单间公寓', es: 'Una unidad tipo estudio (una habitación)', ar: 'وحدة استوديو (غرفة واحدة)' },
+  three_room_unit: { ko: '방 세 개짜리 집 평면', en: 'A three-bedroom home plan', ja: '部屋が三つある家の平面図', zh: '三居室住宅平面图', es: 'Plano de una vivienda de tres dormitorios', ar: 'مخطط منزل من ثلاث غرف' },
+  two_room: { ko: '방 두 개짜리 집 평면', en: 'A two-bedroom home plan', ja: '部屋が二つある家の平面図', zh: '两居室住宅平面图', es: 'Plano de una vivienda de dos dormitorios', ar: 'مخطط منزل من غرفتين' },
+  cafe_room: { ko: '카페 홀 — 테이블·카운터 배치', en: 'Café floor with tables and a counter', ja: 'カフェのホール — テーブル・カウンター配置', zh: '咖啡厅大堂 — 桌椅与吧台布局', es: 'Sala de café con mesas y mostrador', ar: 'صالة مقهى — ترتيب الطاولات والكاونتر' },
   // 건축
-  rc_frame: { ko: '콘크리트 기둥·보 뼈대', en: 'Concrete column and beam frame' },
-  steel_canopy: { ko: '철골 캐노피 — 주차장·출입구 지붕', en: 'Steel canopy roof for parking or entrances' },
-  gable_house: { ko: '박공지붕 주택 — 흔한 삼각지붕 집', en: 'Gable-roof house' },
-  industrial_stair: { ko: '철제 계단', en: 'Industrial steel stair' },
-  elevator_shaft: { ko: '엘리베이터 통로', en: 'Elevator shaft' },
-  duct_run: { ko: '환기 덕트 배관', en: 'Ventilation duct run' },
-  commercial_massing: { ko: '상가 건물 덩어리(매스)', en: 'Commercial building massing' },
+  rc_frame: { ko: '콘크리트 기둥·보 뼈대', en: 'Concrete column and beam frame', ja: 'コンクリートの柱・梁の骨組み', zh: '混凝土柱梁框架', es: 'Estructura de columnas y vigas de hormigón', ar: 'هيكل من أعمدة وكمرات خرسانية' },
+  steel_canopy: { ko: '철골 캐노피 — 주차장·출입구 지붕', en: 'Steel canopy roof for parking or entrances', ja: '鉄骨キャノピー — 駐車場・出入口の屋根', zh: '钢结构雨棚 — 停车场、出入口屋顶', es: 'Marquesina de acero para aparcamientos o entradas', ar: 'مظلة فولاذية — لسقف مواقف السيارات أو المداخل' },
+  gable_house: { ko: '박공지붕 주택 — 흔한 삼각지붕 집', en: 'Gable-roof house', ja: '切妻屋根の住宅 — よくある三角屋根の家', zh: '人字形屋顶住宅 — 常见的三角屋顶房屋', es: 'Vivienda con tejado a dos aguas (el típico techo triangular)', ar: 'منزل بسقف جملوني — السقف المثلثي الشائع' },
+  industrial_stair: { ko: '철제 계단', en: 'Industrial steel stair', ja: '鉄製階段', zh: '钢制楼梯', es: 'Escalera industrial de acero', ar: 'درج فولاذي صناعي' },
+  elevator_shaft: { ko: '엘리베이터 통로', en: 'Elevator shaft', ja: 'エレベーターシャフト', zh: '电梯井', es: 'Hueco de ascensor', ar: 'بئر المصعد' },
+  duct_run: { ko: '환기 덕트 배관', en: 'Ventilation duct run', ja: '換気ダクト配管', zh: '通风管道', es: 'Tramo de conducto de ventilación', ar: 'مسار مجرى تهوية' },
+  commercial_massing: { ko: '상가 건물 덩어리(매스)', en: 'Commercial building massing', ja: '商業ビルのマッシング(全体形状)', zh: '商业建筑体量(整体造型)', es: 'Volumetría de un edificio comercial', ar: 'الكتلة الحجمية لمبنى تجاري' },
   // 토목
-  retaining_wall_run: { ko: '흙을 받쳐주는 옹벽 한 구간', en: 'A run of retaining wall holding back soil' },
-  retaining_wall_alignment: { ko: '길을 따라 꺾이는 옹벽', en: 'Retaining wall following an alignment' },
-  girder_bridge: { ko: '가장 흔한 형태의 거더 다리', en: 'The most common girder bridge' },
-  arch_bridge: { ko: '아치 모양 다리', en: 'Arch bridge' },
-  cable_stayed_bridge: { ko: '사장교 — 탑에서 케이블로 잡아주는 다리', en: 'Cable-stayed bridge' },
-  suspension_bridge: { ko: '현수교 — 케이블에 매달린 다리', en: 'Suspension bridge' },
-  truss_bridge: { ko: '삼각 뼈대(트러스) 다리', en: 'Truss bridge' },
+  retaining_wall_run: { ko: '흙을 받쳐주는 옹벽 한 구간', en: 'A run of retaining wall holding back soil', ja: '土を支える擁壁の一区間', zh: '支撑土体的挡土墙一段', es: 'Tramo de muro de contención que sostiene tierra', ar: 'امتداد من الجدار الاستنادي لدعم التربة' },
+  retaining_wall_alignment: { ko: '길을 따라 꺾이는 옹벽', en: 'Retaining wall following an alignment', ja: '道に沿って曲がる擁壁', zh: '沿道路走向弯折的挡土墙', es: 'Muro de contención que sigue una alineación', ar: 'جدار استنادي يتبع محاذاة الطريق' },
+  girder_bridge: { ko: '가장 흔한 형태의 거더 다리', en: 'The most common girder bridge', ja: '最も一般的な形の桁橋', zh: '最常见的梁桥', es: 'El tipo de puente de vigas más común', ar: 'أكثر أنواع الجسور الجائزية شيوعًا' },
+  arch_bridge: { ko: '아치 모양 다리', en: 'Arch bridge', ja: 'アーチ橋', zh: '拱桥', es: 'Puente de arco', ar: 'جسر مقوس' },
+  cable_stayed_bridge: { ko: '사장교 — 탑에서 케이블로 잡아주는 다리', en: 'Cable-stayed bridge', ja: '斜張橋 — 塔からケーブルで支える橋', zh: '斜拉桥 — 由桥塔通过缆索拉住的桥梁', es: 'Puente atirantado, sostenido por cables desde una torre', ar: 'جسر مشدود بالكابلات من أبراج' },
+  suspension_bridge: { ko: '현수교 — 케이블에 매달린 다리', en: 'Suspension bridge', ja: '吊り橋 — ケーブルに吊るされた橋', zh: '悬索桥 — 由缆索悬挂的桥梁', es: 'Puente colgante, suspendido de cables', ar: 'جسر معلق بالكابلات' },
+  truss_bridge: { ko: '삼각 뼈대(트러스) 다리', en: 'Truss bridge', ja: '三角骨組み(トラス)橋', zh: '三角桁架桥', es: 'Puente de celosía (estructura triangular)', ar: 'جسر جملوني (هيكل مثلثي)' },
   // 기계
-  tank_silo: { ko: '저장 탱크·사일로', en: 'Storage tank or silo' },
-  pressure_vessel: { ko: '압력용기', en: 'Pressure vessel' },
-  pump_unit: { ko: '펌프 유닛', en: 'Pump unit' },
-  gate_valve: { ko: '게이트 밸브', en: 'Gate valve' },
-  flanged_fitting: { ko: '플랜지 배관 이음', en: 'Flanged pipe fitting' },
-  heat_exchanger: { ko: '열교환기', en: 'Heat exchanger' },
-  conveyor: { ko: '컨베이어', en: 'Conveyor' },
-  machine_line: { ko: '기계 생산 라인', en: 'Machine production line' },
-  robot_arm: { ko: '로봇 팔', en: 'Robot arm' },
-  gear_train: { ko: '기어 열', en: 'Gear train' },
-  four_bar: { ko: '4절 링크 기구', en: 'Four-bar linkage' },
-  mold_cavity: { ko: '금형 캐비티', en: 'Mold cavity' },
-  propeller: { ko: '프로펠러', en: 'Propeller' },
-  tower_crane: { ko: '타워 크레인', en: 'Tower crane' },
-  transmission_tower: { ko: '송전탑', en: 'Transmission tower' },
-  excavator_bucket: { ko: '굴착기 버킷', en: 'Excavator bucket' },
+  tank_silo: { ko: '저장 탱크·사일로', en: 'Storage tank or silo', ja: '貯蔵タンク・サイロ', zh: '储罐、筒仓', es: 'Tanque de almacenamiento o silo', ar: 'خزان تخزين أو صومعة' },
+  pressure_vessel: { ko: '압력용기', en: 'Pressure vessel', ja: '圧力容器', zh: '压力容器', es: 'Recipiente a presión', ar: 'وعاء ضغط' },
+  pump_unit: { ko: '펌프 유닛', en: 'Pump unit', ja: 'ポンプユニット', zh: '泵组', es: 'Unidad de bombeo', ar: 'وحدة مضخة' },
+  gate_valve: { ko: '게이트 밸브', en: 'Gate valve', ja: 'ゲートバルブ', zh: '闸阀', es: 'Válvula de compuerta', ar: 'صمام بوابة' },
+  flanged_fitting: { ko: '플랜지 배관 이음', en: 'Flanged pipe fitting', ja: 'フランジ配管継手', zh: '法兰管道接头', es: 'Conexión de tubería embridada', ar: 'وصلة أنابيب مفلنجة' },
+  heat_exchanger: { ko: '열교환기', en: 'Heat exchanger', ja: '熱交換器', zh: '热交换器', es: 'Intercambiador de calor', ar: 'مبادل حراري' },
+  conveyor: { ko: '컨베이어', en: 'Conveyor', ja: 'コンベヤ', zh: '输送机', es: 'Cinta transportadora', ar: 'ناقل حزامي' },
+  machine_line: { ko: '기계 생산 라인', en: 'Machine production line', ja: '機械生産ライン', zh: '机械生产线', es: 'Línea de producción de maquinaria', ar: 'خط إنتاج آلي' },
+  robot_arm: { ko: '로봇 팔', en: 'Robot arm', ja: 'ロボットアーム', zh: '机械臂', es: 'Brazo robótico', ar: 'ذراع روبوتية' },
+  gear_train: { ko: '기어 열', en: 'Gear train', ja: '歯車列', zh: '齿轮系', es: 'Tren de engranajes', ar: 'مجموعة تروس' },
+  four_bar: { ko: '4절 링크 기구', en: 'Four-bar linkage', ja: '四節リンク機構', zh: '四连杆机构', es: 'Mecanismo de cuatro barras', ar: 'آلية رباعية القضبان' },
+  mold_cavity: { ko: '금형 캐비티', en: 'Mold cavity', ja: '金型キャビティ', zh: '模具型腔', es: 'Cavidad de molde', ar: 'تجويف القالب' },
+  propeller: { ko: '프로펠러', en: 'Propeller', ja: 'プロペラ', zh: '螺旋桨', es: 'Hélice', ar: 'مروحة دافعة' },
+  tower_crane: { ko: '타워 크레인', en: 'Tower crane', ja: 'タワークレーン', zh: '塔式起重机', es: 'Grúa torre', ar: 'رافعة برجية' },
+  transmission_tower: { ko: '송전탑', en: 'Transmission tower', ja: '送電塔', zh: '输电塔', es: 'Torre de transmisión eléctrica', ar: 'برج نقل الكهرباء' },
+  excavator_bucket: { ko: '굴착기 버킷', en: 'Excavator bucket', ja: '掘削機バケット', zh: '挖掘机铲斗', es: 'Cucharón de excavadora', ar: 'دلو حفارة' },
 };
 
 // ─── 단위 표기 헬퍼: 표시만 m/개로 바꾸고 **전송값은 원 단위(mm 등) 유지** ──────
@@ -389,7 +394,7 @@ export default function EasyWizard({
                   <button key={`${t.domain}/${t.id}`} type="button" style={cardStyle} onClick={() => chooseTemplate(t)}>
                     <div style={{ fontWeight: 700, fontSize: 14 }}>{ko ? t.labelKo : t.labelEn}</div>
                     {desc && (
-                      <div style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)', marginTop: 3 }}>{ko ? desc.ko : desc.en}</div>
+                      <div style={{ fontSize: 12, color: 'var(--nx-text-3, #6b7684)', marginTop: 3 }}>{loc(lang, desc)}</div>
                     )}
                   </button>
                 );
