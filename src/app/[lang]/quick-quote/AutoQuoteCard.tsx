@@ -31,7 +31,7 @@ interface AutoQuoteResp {
   };
 }
 
-const dict = {
+export const dict = {
   ko: {
     title: '⚡ 즉시 견적 (AI 추천)',
     subtitle: '업로드하신 파일을 자동 분석한 1차 추정입니다',
@@ -47,6 +47,8 @@ const dict = {
     refine: '아래에서 재질·공정 직접 선택해 정밀 견적',
     classification: '형상 분류',
     loading: '분석 중…',
+    applyPrimary: '이 추천으로 진행 →',
+    applyAlt: '이 옵션 선택',
   },
   en: {
     title: '⚡ Instant quote (AI pick)',
@@ -63,6 +65,8 @@ const dict = {
     refine: 'Pick material + process below for a refined quote',
     classification: 'Shape',
     loading: 'Analyzing…',
+    applyPrimary: 'Go with this pick →',
+    applyAlt: 'Select this option',
   },
   ja: {
     title: '⚡ 即時見積 (AI 推奨)',
@@ -79,6 +83,8 @@ const dict = {
     refine: '下で材料・工程を選ぶと精密見積になります',
     classification: '形状分類',
     loading: '解析中…',
+    applyPrimary: 'この推奨で進める →',
+    applyAlt: 'このオプションを選択',
   },
   zh: {
     title: '⚡ 即时报价（AI 推荐）',
@@ -95,6 +101,8 @@ const dict = {
     refine: '在下方选择材料与工艺可获得精确报价',
     classification: '形状分类',
     loading: '分析中…',
+    applyPrimary: '采用此推荐 →',
+    applyAlt: '选择此选项',
   },
   es: {
     title: '⚡ Presupuesto instantáneo (elección de IA)',
@@ -111,6 +119,8 @@ const dict = {
     refine: 'Elija material y proceso abajo para un presupuesto preciso',
     classification: 'Clasificación de forma',
     loading: 'Analizando…',
+    applyPrimary: 'Continuar con esta opción →',
+    applyAlt: 'Seleccionar esta opción',
   },
   ar: {
     title: '⚡ عرض سعر فوري (اختيار الذكاء الاصطناعي)',
@@ -127,6 +137,8 @@ const dict = {
     refine: 'اختر المادة والعملية أدناه للحصول على عرض سعر دقيق',
     classification: 'تصنيف الشكل',
     loading: 'جارٍ التحليل…',
+    applyPrimary: 'المتابعة بهذا الاختيار ←',
+    applyAlt: 'اختيار هذا الخيار',
   },
 };
 
@@ -273,7 +285,7 @@ function PrimaryCandidate({
           cursor: 'pointer',
         }}
       >
-        {highlighted ? '이 추천으로 진행 →' : '이 옵션 선택'}
+        {highlighted ? t.applyPrimary : t.applyAlt}
       </button>
     </div>
   );
