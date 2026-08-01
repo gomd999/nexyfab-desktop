@@ -1476,7 +1476,10 @@ const dict = {
         editDragHint: '핸들을 클릭하여 드래그하세요', transformDragHint: '기즈모를 드래그하여 변환하세요', defaultNavHint: '드래그 · 우클릭 · 스크롤',
         facesSelected: (n: number) => `면 ${n}개 선택`, clearSel: '선택 해제',
         radialExtrude: '돌출', radialLine: '선', radialFillet: '필렛', radialCircle: '원', radialFinish: '완료', radialCancel: '취소', radialSketch: '스케치', radialRect: '사각형',
-        glContextLost: 'GPU 컨텍스트 손실 — 뷰포트 복구 중…', glContextRestart: '뷰포트 다시 로드' },
+        glContextLost: 'GPU 컨텍스트 손실 — 뷰포트 복구 중…', glContextRestart: '뷰포트 다시 로드',
+        sketchPlaneLabel: '스케치 평면',
+        statsVol: 'Vol:', statsSA: 'SA:', statsEditing: '편집 중:', statsTransform: '변형:',
+        statsParts: (n: number) => `파트 ${n}개`, statsTris: (s: string) => `삼각형 ${s}개`, statsLod: ' (LOD)' },
   en: { drop: 'Drop CAD file here', material: 'Material Preview', turntable: 'Turntable Animation',
         front: 'Front', right: 'Right', top: 'Top', fitAll: 'Fit All', fit: 'Fit',
         snapOn: 'SNAP ON', pickShape: 'Pick Shape', startSketch: 'Start Sketch', aiChat: 'AI Chat',
@@ -1495,7 +1498,10 @@ const dict = {
         editDragHint: 'Click + drag handles to edit', transformDragHint: 'Drag gizmo to transform', defaultNavHint: 'Drag · Right-click · Scroll',
         facesSelected: (n: number) => `${n} face${n > 1 ? 's' : ''} selected`, clearSel: 'Clear',
         radialExtrude: 'Extrude', radialLine: 'Line', radialFillet: 'Fillet', radialCircle: 'Circle', radialFinish: 'Finish', radialCancel: 'Cancel', radialSketch: 'Sketch', radialRect: 'Rect',
-        glContextLost: 'GPU context lost — restoring viewport…', glContextRestart: 'Reload viewport' },
+        glContextLost: 'GPU context lost — restoring viewport…', glContextRestart: 'Reload viewport',
+        sketchPlaneLabel: 'Sketch Plane',
+        statsVol: 'Vol:', statsSA: 'SA:', statsEditing: 'Editing:', statsTransform: 'Transform:',
+        statsParts: (n: number) => `${n} part${n > 1 ? 's' : ''}`, statsTris: (s: string) => `${s} tris`, statsLod: ' (LOD)' },
   ja: { drop: 'CADファイルをここにドロップ', material: 'マテリアルプレビュー', turntable: 'ターンテーブルアニメ',
         front: '正面', right: '右', top: '上', fitAll: '全体表示', fit: '全体',
         snapOn: 'スナップON', pickShape: '形状選択', startSketch: 'スケッチ開始', aiChat: 'AIチャット',
@@ -1514,7 +1520,10 @@ const dict = {
         editDragHint: 'ハンドルをドラッグして編集', transformDragHint: 'ギズモをドラッグして変換', defaultNavHint: 'ドラッグ・右クリック・スクロール',
         facesSelected: (n: number) => `${n}面選択中`, clearSel: 'クリア',
         radialExtrude: '押し出し', radialLine: '線', radialFillet: 'フィレット', radialCircle: '円', radialFinish: '完了', radialCancel: 'キャンセル', radialSketch: 'スケッチ', radialRect: '矩形',
-        glContextLost: 'GPUコンテキスト消失 — ビューポート復旧中…', glContextRestart: 'ビューポート再読み込み' },
+        glContextLost: 'GPUコンテキスト消失 — ビューポート復旧中…', glContextRestart: 'ビューポート再読み込み',
+        sketchPlaneLabel: 'スケッチ平面',
+        statsVol: '体積:', statsSA: '表面積:', statsEditing: '編集中:', statsTransform: '変形:',
+        statsParts: (n: number) => `${n} パーツ`, statsTris: (s: string) => `${s} 三角形`, statsLod: ' (LOD)' },
   zh: { drop: '将 CAD 文件拖放到此处', material: '材质预览', turntable: '转盘动画',
         front: '正面', right: '右', top: '上', fitAll: '适应窗口', fit: '适应',
         snapOn: '捕捉 开', pickShape: '选择形状', startSketch: '开始草图', aiChat: 'AI 聊天',
@@ -1533,7 +1542,10 @@ const dict = {
         editDragHint: '点击拖动手柄进行编辑', transformDragHint: '拖动辅助工具进行变换', defaultNavHint: '拖动 · 右键 · 滚轮',
         facesSelected: (n: number) => `已选${n}个面`, clearSel: '清除',
         radialExtrude: '拉伸', radialLine: '线', radialFillet: '圆角', radialCircle: '圆', radialFinish: '完成', radialCancel: '取消', radialSketch: '草图', radialRect: '矩形',
-        glContextLost: 'GPU 上下文丢失 — 正在恢复视口…', glContextRestart: '重新加载视口' },
+        glContextLost: 'GPU 上下文丢失 — 正在恢复视口…', glContextRestart: '重新加载视口',
+        sketchPlaneLabel: '草图平面',
+        statsVol: '体积:', statsSA: '表面积:', statsEditing: '编辑中:', statsTransform: '变换:',
+        statsParts: (n: number) => `${n} 个零件`, statsTris: (s: string) => `${s} 个三角面`, statsLod: ' (LOD)' },
   es: { drop: 'Suelte archivo CAD aquí', material: 'Vista Previa Material', turntable: 'Animación Giratoria',
         front: 'Frente', right: 'Derecha', top: 'Superior', fitAll: 'Ajustar Todo', fit: 'Ajustar',
         snapOn: 'AJUSTE ON', pickShape: 'Elegir Forma', startSketch: 'Iniciar Boceto', aiChat: 'Chat IA',
@@ -1552,11 +1564,14 @@ const dict = {
         editDragHint: 'Clic + arrastrar manijas para editar', transformDragHint: 'Arrastrar gizmo para transformar', defaultNavHint: 'Arrastrar · Clic derecho · Desplazar',
         facesSelected: (n: number) => `${n} cara${n > 1 ? 's' : ''} seleccionada${n > 1 ? 's' : ''}`, clearSel: 'Borrar',
         radialExtrude: 'Extruir', radialLine: 'Línea', radialFillet: 'Redondeo', radialCircle: 'Círculo', radialFinish: 'Terminar', radialCancel: 'Cancelar', radialSketch: 'Boceto', radialRect: 'Rectángulo',
-        glContextLost: 'Contexto GPU perdido — restaurando viewport…', glContextRestart: 'Recargar viewport' },
+        glContextLost: 'Contexto GPU perdido — restaurando viewport…', glContextRestart: 'Recargar viewport',
+        sketchPlaneLabel: 'Plano de Boceto',
+        statsVol: 'Vol:', statsSA: 'SA:', statsEditing: 'Editando:', statsTransform: 'Transformar:',
+        statsParts: (n: number) => `${n} pieza${n > 1 ? 's' : ''}`, statsTris: (s: string) => `${s} tris`, statsLod: ' (LOD)' },
   ar: { drop: 'أسقط ملف CAD هنا', material: 'معاينة المواد', turntable: 'رسوم متحركة دوارة',
         front: 'أمام', right: 'يمين', top: 'أعلى', fitAll: 'ملاءمة الكل', fit: 'ملاءمة',
         snapOn: 'الالتقاط مفعّل', pickShape: 'اختر شكلاً', startSketch: 'بدء الرسم', aiChat: 'دردشة AI',
-        selectFace: 'Select Face', selectOn: 'Select ON',
+        selectFace: 'تحديد الوجه', selectOn: 'التحديد مفعّل',
         shapeLibraryTitle: 'مكتبة الأشكال', aiChatTitle: 'دردشة AI',
         emptyTagline: 'CAD ثلاثي الأبعاد في المتصفح — اختر قالباً أو ابدأ بالرسم',
         sketchEmptyPreviewHint: 'أغلق الملف الشخصي وابثق لعرض المعاينة ثلاثية الأبعاد هنا',
@@ -1571,7 +1586,10 @@ const dict = {
         editDragHint: 'انقر واسحب المقابض للتحرير', transformDragHint: 'اسحب أداة التحويل', defaultNavHint: 'سحب · نقر يمين · تمرير',
         facesSelected: (n: number) => `${n} وجه محدد`, clearSel: 'مسح',
         radialExtrude: 'بثق', radialLine: 'خط', radialFillet: 'تقريب', radialCircle: 'دائرة', radialFinish: 'إنهاء', radialCancel: 'إلغاء', radialSketch: 'رسم', radialRect: 'مستطيل',
-        glContextLost: 'فقدان سياق GPU — جاري استعادة العرض…', glContextRestart: 'إعادة تحميل العرض' },
+        glContextLost: 'فقدان سياق GPU — جاري استعادة العرض…', glContextRestart: 'إعادة تحميل العرض',
+        sketchPlaneLabel: 'مستوى الرسم',
+        statsVol: 'الحجم:', statsSA: 'المساحة:', statsEditing: 'التحرير:', statsTransform: 'التحويل:',
+        statsParts: (n: number) => `${n} جزء`, statsTris: (s: string) => `${s} مثلث`, statsLod: ' (LOD)' },
 };
 type ShapePreviewI18n = (typeof dict)[keyof typeof dict];
 const langMap: Record<string, keyof typeof dict> = {
@@ -2611,7 +2629,7 @@ export default function ShapePreview({
               backdropFilter: 'blur(8px)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', flexWrap: 'nowrap'
             }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-                {lang === 'ko' ? '스케치 평면' : 'Sketch Plane'}
+                {t.sketchPlaneLabel}
               </span>
               <div style={{ width: 1, height: 14, background: 'var(--nx-border)' }} />
               <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
@@ -3226,9 +3244,9 @@ export default function ShapePreview({
               border: '1px solid rgba(48,54,61,0.6)',
               transition: 'color 0.15s',
             }}>
-              {totalTriCount >= 1000
+              {t.statsTris(totalTriCount >= 1000
                 ? `${(totalTriCount / 1000).toFixed(1)}k`
-                : totalTriCount} tris{isOrbiting ? ' (LOD)' : ''}
+                : String(totalTriCount))}{isOrbiting ? t.statsLod : ''}
             </div>
           )}
         </div>
@@ -3241,25 +3259,25 @@ export default function ShapePreview({
                 {stats.w.toFixed(1)} × {stats.h.toFixed(1)} × {stats.d.toFixed(1)} mm
               </span>
               <span style={{ color: 'var(--nx-border)' }}>│</span>
-              <span style={{ color: 'var(--nx-text-3)' }}>Vol: {stats.vol.toFixed(2)} cm³</span>
+              <span style={{ color: 'var(--nx-text-3)' }}>{t.statsVol} {stats.vol.toFixed(2)} cm³</span>
               <span style={{ color: 'var(--nx-border)' }}>│</span>
-              <span style={{ color: 'var(--nx-text-3)' }}>SA: {stats.sa.toFixed(2)} cm²</span>
+              <span style={{ color: 'var(--nx-text-3)' }}>{t.statsSA} {stats.sa.toFixed(2)} cm²</span>
               {isAssembly && (
                 <>
                   <span style={{ color: 'var(--nx-border)' }}>│</span>
-                  <span style={{ color: 'var(--nx-accent-2)' }}>{bomParts!.length} parts</span>
+                  <span style={{ color: 'var(--nx-accent-2)' }}>{t.statsParts(bomParts!.length)}</span>
                 </>
               )}
               {isEditing && (
                 <>
                   <span style={{ color: 'var(--nx-border)' }}>│</span>
-                  <span style={{ color: 'var(--nx-ok)' }}>Editing: {editMode}</span>
+                  <span style={{ color: 'var(--nx-ok)' }}>{t.statsEditing} {editMode}</span>
                 </>
               )}
               {isTransforming && (
                 <>
                   <span style={{ color: 'var(--nx-border)' }}>│</span>
-                  <span style={{ color: 'var(--nx-warn)' }}>Transform: {transformMode}</span>
+                  <span style={{ color: 'var(--nx-warn)' }}>{t.statsTransform} {transformMode}</span>
                 </>
               )}
               <span style={{ marginLeft: 'auto', color: 'var(--nx-border-strong)' }}>
