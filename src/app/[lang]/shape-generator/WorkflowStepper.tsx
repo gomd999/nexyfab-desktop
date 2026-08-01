@@ -12,6 +12,19 @@ interface WorkflowStepperProps {
 
 const STEPS_KO = ['스케치', '돌출', '피쳐', '완료'];
 const STEPS_EN = ['Sketch', 'Extrude', 'Features', 'Done'];
+const STEPS_JA = ['スケッチ', '押し出し', 'フィーチャー', '完了'];
+const STEPS_CN = ['草图', '拉伸', '特征', '完成'];
+const STEPS_ES = ['Croquis', 'Extruir', 'Operaciones', 'Listo'];
+const STEPS_AR = ['الرسم', 'بثق', 'الميزات', 'تم'];
+
+const STEPS_BY_LANG: Record<string, string[]> = {
+  ko: STEPS_KO,
+  en: STEPS_EN,
+  ja: STEPS_JA,
+  cn: STEPS_CN,
+  es: STEPS_ES,
+  ar: STEPS_AR,
+};
 
 function getActiveStep(
   isSketchMode: boolean,
@@ -34,7 +47,7 @@ export default function WorkflowStepper({
   lang,
 }: WorkflowStepperProps) {
   const activeStep = getActiveStep(isSketchMode, sketchClosed, hasResult, featuresCount);
-  const labels = lang === 'ko' ? STEPS_KO : STEPS_EN;
+  const labels = STEPS_BY_LANG[lang] ?? STEPS_EN;
 
   return (
     <div className="sg-autohide" style={{
