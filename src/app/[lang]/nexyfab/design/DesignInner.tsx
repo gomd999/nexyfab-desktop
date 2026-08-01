@@ -20,6 +20,8 @@ import * as THREE from 'three';
 import { parseSTL } from '@/app/[lang]/shape-generator/io/importers';
 import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
 import { isKorean } from '@/lib/i18n/normalize';
+import { loc } from '@/lib/i18n/loc';
+import { EXAMPLES } from './DesignExamplesDict';
 import BriefClarifier from './BriefClarifier';
 import DomainVerifyPanel from './DomainVerifyPanel';
 import CodeCheckPanel from './CodeCheckPanel';
@@ -141,16 +143,8 @@ function ProfileChart({ d, r, label }: { d: AxisProfile; r: AxisProfile; label: 
   );
 }
 
-const EXAMPLES_KO = [
-  '내경 500mm 원통형 물탱크, 높이 800mm, 벽두께 5mm, 바닥에 원뿔형 배출구(45도), 중앙에 지름 25mm 교반축',
-  '가로 300 세로 200 두께 12 알루미늄 플레이트, 네 모서리에 지름 8 볼트홀, 중앙에 지름 40 관통',
-  'L자 브래킷, 다리 각 80mm, 두께 6, 각 면에 지름 6 홀 2개',
-];
-const EXAMPLES_EN = [
-  'Cylindrical water tank, 500mm inner dia, 800mm tall, 5mm wall, conical drain (45deg) at bottom, 25mm central agitator shaft',
-  'Aluminium plate 300 x 200 x 12, 8mm bolt holes at four corners, 40mm through-hole in the middle',
-  'L-bracket, 80mm legs, 6mm thick, two 6mm holes per face',
-];
+// EXAMPLES(6언어 채팅 프롬프트 예시) 정의는 DesignExamplesDict.ts 로 분리 — 이 파일이
+// three.js/wasm 렌더러를 끌고 들어와서, 문자열 회귀 테스트가 그 전체를 import하지 않도록.
 
 export default function DesignInner({ lang, initialDomain, initialTab }: { lang: string; initialDomain?: string | null; initialTab?: string | null }) {
   const ko = isKorean(lang);
@@ -1379,21 +1373,24 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
                       </button>
                     );
                   })
-                : (ko ? EXAMPLES_KO : EXAMPLES_EN).map((ex, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => { setPrompt(ex); run(ex); }}
-                      style={{
-                        display: 'block', width: '100%', textAlign: 'left', marginBottom: 4, padding: '6px 8px',
-                        borderRadius: 6, border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent',
-                        color: 'var(--nx-text-2, #46505e)', fontSize: 11.5, lineHeight: 1.4, cursor: loading ? 'default' : 'pointer',
-                      }}
-                    >
-                      {ex}
-                    </button>
-                  ))}
+                : EXAMPLES.map((exSpec, i) => {
+                    const ex = loc(lang, exSpec);
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => { setPrompt(ex); run(ex); }}
+                        style={{
+                          display: 'block', width: '100%', textAlign: 'left', marginBottom: 4, padding: '6px 8px',
+                          borderRadius: 6, border: '1px solid var(--nx-border, #dfe3e8)', background: 'transparent',
+                          color: 'var(--nx-text-2, #46505e)', fontSize: 11.5, lineHeight: 1.4, cursor: loading ? 'default' : 'pointer',
+                        }}
+                      >
+                        {ex}
+                      </button>
+                    );
+                  })}
             </div>
 
             {/* 템플릿 갤러리 — 채팅 아래(카드 클릭=즉시 생성은 유지) */}
