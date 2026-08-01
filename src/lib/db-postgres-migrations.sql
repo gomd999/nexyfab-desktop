@@ -1845,3 +1845,39 @@ ALTER TABLE nf_document_versions ADD COLUMN IF NOT EXISTS gate_report TEXT;
 
 -- Trial subscription window for direct (nf_users) login — login blocked 3 days past this (ms epoch)
 ALTER TABLE nf_users ADD COLUMN IF NOT EXISTS subscription_ends_at BIGINT;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 260801 스키마 드리프트 보정 — db.ts(SQLite) 에만 들어가고 여기 안 온 컬럼들
+--
+-- ⚠ Postgres 스키마는 **오직 이 파일**에서만 만들어진다(`db-adapter.initPostgresSchema`).
+--   db.ts 의 MIGRATIONS 배열은 SQLite 전용이다. 거기에만 ALTER 를 추가하면 운영(Postgres)에는
+--   컬럼이 생기지 않는다 — 「추가했다」와 「운영에 있다」가 다른 지점이다.
+--
+-- ★ 가장 무거운 것: `plan_expires_at` / `plan_fallback`.
+--   `auth-middleware.enrichAuthUser` 가 **인증된 모든 요청마다** 이 둘을 SELECT 한다.
+--   Postgres 에 없으면 로그인한 사용자의 모든 요청이 실패한다.
+--   (마이그레이션 76 에서 db.ts 에만 추가됐다)
+--
+-- 실측(260801): db.ts ALTER 122개 중 24개가 여기 없었다. 그중 5개는 `nf_factories` 인데
+-- 그 테이블은 Postgres 에 CREATE 자체가 없어 **일부러 제외**했다 — 없는 테이블에 ALTER 를
+-- 걸면 이 파일 전체가 중단되어 스키마 초기화가 죽는다. 별도 확인 사항으로 남긴다.
+ALTER TABLE nf_users          ADD COLUMN IF NOT EXISTS plan_expires_at BIGINT;
+ALTER TABLE nf_users          ADD COLUMN IF NOT EXISTS plan_fallback TEXT;
+CREATE INDEX IF NOT EXISTS idx_users_plan_expiry ON nf_users(plan_expires_at);
+ALTER TABLE nf_api_keys       ADD COLUMN IF NOT EXISTS issued_by TEXT;
+ALTER TABLE nf_users          ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE nf_users          ADD COLUMN IF NOT EXISTS sso_sub TEXT;
+ALTER TABLE nf_users          ADD COLUMN IF NOT EXISTS onboarding_done_at BIGINT;
+ALTER TABLE nf_users          ADD COLUMN IF NOT EXISTS last_login_fingerprint TEXT;
+ALTER TABLE nf_webhook_events ADD COLUMN IF NOT EXISTS user_id TEXT;
+ALTER TABLE nf_aw_subscriptions ADD COLUMN IF NOT EXISTS billing_period TEXT;
+ALTER TABLE nf_quotes         ADD COLUMN IF NOT EXISTS estimated_days BIGINT;
+ALTER TABLE nf_quotes         ADD COLUMN IF NOT EXISTS partner_note TEXT;
+ALTER TABLE nf_quotes         ADD COLUMN IF NOT EXISTS responded_at BIGINT;
+ALTER TABLE nf_quotes         ADD COLUMN IF NOT EXISTS responded_by TEXT;
+ALTER TABLE nf_contracts      ADD COLUMN IF NOT EXISTS attachments TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE nf_rfqs           ADD COLUMN IF NOT EXISTS deadline TEXT;
+ALTER TABLE nf_rfqs           ADD COLUMN IF NOT EXISTS preferred_factory_id TEXT;
+ALTER TABLE nf_refresh_tokens ADD COLUMN IF NOT EXISTS user_agent TEXT;
+ALTER TABLE nf_refresh_tokens ADD COLUMN IF NOT EXISTS ip TEXT;
+ALTER TABLE nf_refresh_tokens ADD COLUMN IF NOT EXISTS last_used_at BIGINT;
