@@ -52,6 +52,7 @@ const dict = {
     quantity: '수량',
     save: '저장',
     cancel: '취소',
+    rotated: '회전됨',
   },
   en: {
     title: 'Nesting (2D Packing)',
@@ -70,6 +71,7 @@ const dict = {
     quantity: 'Quantity',
     save: 'Save',
     cancel: 'Cancel',
+    rotated: 'rotated',
   },
   ja: {
     title: 'ネスティング (2D配置)',
@@ -88,6 +90,7 @@ const dict = {
     quantity: '数量',
     save: '保存',
     cancel: 'キャンセル',
+    rotated: '回転済み',
   },
   zh: {
     title: '排样 (2D 排布)',
@@ -106,6 +109,7 @@ const dict = {
     quantity: '数量',
     save: '保存',
     cancel: '取消',
+    rotated: '已旋转',
   },
   es: {
     title: 'Anidado (Empaquetado 2D)',
@@ -124,6 +128,7 @@ const dict = {
     quantity: 'Cantidad',
     save: 'Guardar',
     cancel: 'Cancelar',
+    rotated: 'rotado',
   },
   ar: {
     title: 'التعشيش (تعبئة ثنائية الأبعاد)',
@@ -142,6 +147,7 @@ const dict = {
     quantity: 'الكمية',
     save: 'حفظ',
     cancel: 'إلغاء',
+    rotated: 'مُدار',
   },
 };
 
@@ -359,7 +365,7 @@ export default function NestingTool({ parts: initialParts, lang }: NestingToolPr
               {placed.map((p, _idx) => (
                 <div
                   key={`${p.partId}-${p.instance}`}
-                  title={`${p.label} ${p.w}×${p.h}mm${p.rotated ? ' (rotated)' : ''}`}
+                  title={`${p.label} ${p.w}×${p.h}mm${p.rotated ? ` (${t.rotated})` : ''}`}
                   style={{
                     position: 'absolute',
                     left: p.x * displayScale,
