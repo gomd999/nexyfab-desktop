@@ -54,6 +54,7 @@ const dict: Record<Lang, Record<string, string>> = {
     total: '合計', leadTime: 'リードタイム', days: '日', manufacturer: 'メーカー',
     rating: '評価', certifications: '認証', getQuote: '見積依頼', risk: 'リスク',
     low: '低', medium: '中', high: '高', close: '閉じる',
+    dfmPreliminary: '予備チェック(精密幾何DFM検査ではありません)',
   },
   zh: {
     title: '制造管线', process: '工艺', quantity: '数量', urgency: '紧急程度',
@@ -65,6 +66,7 @@ const dict: Record<Lang, Record<string, string>> = {
     total: '总计', leadTime: '交货期', days: '天', manufacturer: '制造商',
     rating: '评分', certifications: '认证', getQuote: '获取报价', risk: '风险',
     low: '低', medium: '中', high: '高', close: '关闭',
+    dfmPreliminary: '初步检查(非精确几何DFM检查)',
   },
   es: {
     title: 'Pipeline de Fabricación', process: 'Proceso', quantity: 'Cantidad', urgency: 'Urgencia',
@@ -76,6 +78,7 @@ const dict: Record<Lang, Record<string, string>> = {
     total: 'Total', leadTime: 'Plazo', days: 'días', manufacturer: 'Fabricante',
     rating: 'Calificación', certifications: 'Certificaciones', getQuote: 'Obtener Cotización', risk: 'Riesgo',
     low: 'Bajo', medium: 'Medio', high: 'Alto', close: 'Cerrar',
+    dfmPreliminary: 'Verificación preliminar (no es el chequeo DFM geométrico completo)',
   },
   ar: {
     title: 'خط أنابيب التصنيع', process: 'عملية', quantity: 'كمية', urgency: 'الإلحاح',
@@ -87,6 +90,7 @@ const dict: Record<Lang, Record<string, string>> = {
     total: 'المجموع', leadTime: 'وقت التسليم', days: 'أيام', manufacturer: 'الشركة المصنعة',
     rating: 'التقييم', certifications: 'الشهادات', getQuote: 'طلب عرض سعر', risk: 'المخاطر',
     low: 'منخفض', medium: 'متوسط', high: 'مرتفع', close: 'إغلاق',
+    dfmPreliminary: 'فحص أولي (وليس فحص DFM الهندسي الدقيق)',
   },
 };
 
