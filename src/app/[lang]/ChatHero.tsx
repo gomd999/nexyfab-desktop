@@ -98,21 +98,39 @@ function saveThreadsLocal(list: Thread[]) {
 const ACTION_DOMAINS: Domain[] = ['civil', 'architecture', 'landscape', 'mechanical'];
 const ENG_API = 'https://nexyfab-eng-api.gomd999.workers.dev';
 
+/**
+ * feature kind(box/prism/hole/…) → 표시명, 6개 언어 전부.
+ * ★260801 — summarizeFeatures() 가 이 이름들을 한국어로 **고정 하드코딩**하고 있었다
+ *   (박스·프리즘·구멍·실린더·구·원뿔·회전체…). 이 결과(spec)는 cadSpecTitle 체크포인트 카드에
+ *   그대로 렌더되는데 언어 분기가 전혀 없어 en/ja/cn/es/ar 사용자에게도 한국어가 나갔다
+ *   (CHECK_LABELS_I18N 과 동일 유형, 같은 파일 안에서 재발).
+ */
+export const FEATURE_KIND_I18N: Record<string, Record<Lang, string>> = {
+  box: { kr: '박스', en: 'Box', ja: 'ボックス', cn: '箱体', es: 'Caja', ar: 'صندوق' },
+  prism: { kr: '프리즘', en: 'Prism', ja: 'プリズム', cn: '棱柱', es: 'Prisma', ar: 'منشور' },
+  hole: { kr: '구멍', en: 'Hole', ja: '穴', cn: '孔', es: 'Orificio', ar: 'ثقب' },
+  cylinder: { kr: '실린더', en: 'Cylinder', ja: '円柱', cn: '圆柱', es: 'Cilindro', ar: 'أسطوانة' },
+  sphere: { kr: '구', en: 'Sphere', ja: '球', cn: '球体', es: 'Esfera', ar: 'كرة' },
+  cone: { kr: '원뿔', en: 'Cone', ja: '円錐', cn: '圆锥', es: 'Cono', ar: 'مخروط' },
+  revolve: { kr: '회전체(단면 프로파일)', en: 'Revolved solid (cross-section profile)', ja: '回転体(断面プロファイル)', cn: '回转体(截面轮廓)', es: 'Sólido de revolución (perfil de sección)', ar: 'مجسم دوراني (مقطع عرضي)' },
+};
+
 // compose intent → 사람이 읽을 치수 사양 라인(체크포인트 검토용).
-function summarizeFeatures(intent: ComposeIntent | undefined): string[] {
+function summarizeFeatures(intent: ComposeIntent | undefined, lang: Lang): string[] {
   const feats = intent?.features;
   if (!Array.isArray(feats)) return [];
+  const L = (k: string) => FEATURE_KIND_I18N[k]?.[lang] ?? k;
   return feats.map((f) => {
     const kind = String(f.kind ?? '');
     const sub = f.op === 'subtract';
     const pre = sub ? '− ' : '';
     const sz = Array.isArray(f.size) ? (f.size as unknown[]).join('×') : null;
     const d = f.diameter ?? f.d; const h = f.height ?? f.h;
-    if ((kind === 'box' || kind === 'prism') && sz) return `${pre}${kind === 'box' ? '박스' : '프리즘'} ${sz} mm`;
-    if (kind === 'cylinder' || kind === 'pipe') return `${pre}${sub ? '구멍' : '실린더'} ⌀${d ?? '?'}${h ? `×${h}` : ''} mm`;
-    if (kind === 'sphere') return `${pre}구 ⌀${d ?? '?'} mm`;
-    if (kind === 'cone') return `${pre}원뿔 ⌀${d ?? '?'}×${h ?? '?'} mm`;
-    if (kind === 'revolve' || kind === 'polygon') return `${pre}회전체(단면 프로파일)`;
+    if ((kind === 'box' || kind === 'prism') && sz) return `${pre}${L(kind)} ${sz} mm`;
+    if (kind === 'cylinder' || kind === 'pipe') return `${pre}${sub ? L('hole') : L('cylinder')} ⌀${d ?? '?'}${h ? `×${h}` : ''} mm`;
+    if (kind === 'sphere') return `${pre}${L('sphere')} ⌀${d ?? '?'} mm`;
+    if (kind === 'cone') return `${pre}${L('cone')} ⌀${d ?? '?'}×${h ?? '?'} mm`;
+    if (kind === 'revolve' || kind === 'polygon') return `${pre}${L('revolve')}`;
     return `${pre}${kind || 'feature'}`;
   });
 }
@@ -302,7 +320,7 @@ function uncertaintyLine(r: Recognized, t: (typeof DICT)[Lang]): string {
 ⚠ ${parts.join(' · ')} — ${t.imgCheckDims}.` : '';
 }
 
-async function runExtractPipeline(att: Attached): Promise<{ cad: CadResult; recognized?: Recognized }> {
+async function runExtractPipeline(att: Attached, lang: Lang): Promise<{ cad: CadResult; recognized?: Recognized }> {
   const r = await fetch('/api/nexyfab/drawing/extract/', {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ imageBase64: att.base64, mimeType: att.mime }),
@@ -326,7 +344,7 @@ async function runExtractPipeline(att: Attached): Promise<{ cad: CadResult; reco
       composeIntent: j.intent as ComposeIntent,
       scad: typeof j.scad === 'string' ? j.scad : undefined,
       gateErrors: [],
-      spec: Array.isArray(j.spec) ? (j.spec as string[]) : summarizeFeatures(j.intent as ComposeIntent),
+      spec: Array.isArray(j.spec) ? (j.spec as string[]) : summarizeFeatures(j.intent as ComposeIntent, lang),
     },
     recognized,
   };
@@ -334,7 +352,7 @@ async function runExtractPipeline(att: Attached): Promise<{ cad: CadResult; reco
 
 // 기계 스테이지1: 자연어 → drawing/compose(AI 조합 + 결정론 게이트) → intent+SCAD.
 // 체크포인트로 반환(정밀 3D/STEP은 사용자 승인 후 export-step).
-async function runComposePipeline(prompt: string): Promise<CadResult> {
+async function runComposePipeline(prompt: string, lang: Lang): Promise<CadResult> {
   const r = await fetch('/api/nexyfab/drawing/compose/', {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt }),
   });
@@ -347,29 +365,46 @@ async function runComposePipeline(prompt: string): Promise<CadResult> {
     composeIntent: j.intent as ComposeIntent,
     scad: typeof j.scad === 'string' ? j.scad : undefined,
     gateErrors: Array.isArray(j.gateErrors) ? j.gateErrors : [],
-    spec: summarizeFeatures(j.intent as ComposeIntent),
+    spec: summarizeFeatures(j.intent as ComposeIntent, lang),
   };
 }
 
-// 검토 항목 키 → 표시명 (없으면 키 그대로)
-const CHECK_LABELS: Record<string, string> = {
-  flexure: '휨', shear: '전단', deflection: '처짐', axial: '축력', buckling: '좌굴',
-  overturning: '전도', sliding: '활동', bearing: '지지력', eccentricity: '편심',
-  moment: '휨모멘트', combined: '조합', drift: '횡변위', bolt_shear: '볼트전단', bolt_bearing: '지압',
+/**
+ * 검토 항목 키 → 표시명, 6개 언어 전부(없으면 키 그대로).
+ * ★260801 — 이전엔 CHECK_LABELS 가 한국어 문자열로 **고정 하드코딩**돼 있어 언어 분기가
+ *   전혀 없었다. ChatHero 자체는 DICT(6개 언어)로 완결된 다국어 페이지인데, 계산 카드의
+ *   검토항목 이름(휨·전단·처짐…)만 en/ja/cn/es/ar 사용자에게도 한국어로 그대로 나갔다
+ *   (simulator RISK_SCENARIOS, 7fa0516e 와 동일 유형).
+ */
+export const CHECK_LABELS_I18N: Record<string, Record<Lang, string>> = {
+  flexure: { kr: '휨', en: 'Flexure', ja: '曲げ', cn: '弯曲', es: 'Flexión', ar: 'الانحناء' },
+  shear: { kr: '전단', en: 'Shear', ja: 'せん断', cn: '剪切', es: 'Cortante', ar: 'القص' },
+  deflection: { kr: '처짐', en: 'Deflection', ja: 'たわみ', cn: '挠度', es: 'Deflexión', ar: 'الترخيم' },
+  axial: { kr: '축력', en: 'Axial', ja: '軸力', cn: '轴力', es: 'Axial', ar: 'القوة المحورية' },
+  buckling: { kr: '좌굴', en: 'Buckling', ja: '座屈', cn: '屈曲', es: 'Pandeo', ar: 'الانبعاج' },
+  overturning: { kr: '전도', en: 'Overturning', ja: '転倒', cn: '倾覆', es: 'Vuelco', ar: 'الانقلاب' },
+  sliding: { kr: '활동', en: 'Sliding', ja: '滑動', cn: '滑移', es: 'Deslizamiento', ar: 'الانزلاق' },
+  bearing: { kr: '지지력', en: 'Bearing', ja: '支持力', cn: '承载力', es: 'Capacidad portante', ar: 'قدرة التحمل' },
+  eccentricity: { kr: '편심', en: 'Eccentricity', ja: '偏心', cn: '偏心', es: 'Excentricidad', ar: 'اللامركزية' },
+  moment: { kr: '휨모멘트', en: 'Moment', ja: '曲げモーメント', cn: '弯矩', es: 'Momento flector', ar: 'عزم الانحناء' },
+  combined: { kr: '조합', en: 'Combined', ja: '組合せ', cn: '组合', es: 'Combinado', ar: 'مركب' },
+  drift: { kr: '횡변위', en: 'Drift', ja: '層間変位', cn: '层间位移', es: 'Desplazamiento lateral', ar: 'الإزاحة الجانبية' },
+  bolt_shear: { kr: '볼트전단', en: 'Bolt shear', ja: 'ボルトせん断', cn: '螺栓剪切', es: 'Cortante de perno', ar: 'قص البرغي' },
+  bolt_bearing: { kr: '지압', en: 'Bolt bearing', ja: '支圧', cn: '承压', es: 'Aplastamiento de perno', ar: 'سحق البرغي' },
 };
 
-function parseChecks(checks: Record<string, Record<string, unknown>> | undefined): CheckRow[] {
+function parseChecks(checks: Record<string, Record<string, unknown>> | undefined, lang: Lang): CheckRow[] {
   return Object.entries(checks ?? {}).map(([key, c]) => {
     let detail = '';
     if (typeof c.ratio === 'number') detail = `${(c.ratio * 100).toFixed(0)}%`;
     else if (typeof c.FS === 'number') detail = `FS ${(c.FS as number).toFixed(2)}${typeof c.min === 'number' ? ` / ≥${c.min}` : ''}`;
     else if (typeof c.qmax_kPa === 'number') detail = `q_max ${(c.qmax_kPa as number).toFixed(0)} kPa${typeof c.allow_kPa === 'number' ? ` / ≤${c.allow_kPa}` : ''}`;
     else if (typeof c.e_m === 'number') detail = `e ${(c.e_m as number).toFixed(2)} m${typeof c.limit_m === 'number' ? ` / ≤${(c.limit_m as number).toFixed(2)}` : ''}`;
-    return { name: CHECK_LABELS[key] ?? key, pass: c.pass === true, detail };
+    return { name: CHECK_LABELS_I18N[key]?.[lang] ?? key, pass: c.pass === true, detail };
   });
 }
 
-async function runDemoCalc(id: string, input: Record<string, unknown>): Promise<CalcResult> {
+async function runDemoCalc(id: string, input: Record<string, unknown>, lang: Lang): Promise<CalcResult> {
   const res = await fetch(`${ENG_API}/v1/demo/calc/${id}`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ input }),
   });
@@ -378,7 +413,7 @@ async function runDemoCalc(id: string, input: Record<string, unknown>): Promise<
   return {
     verdict: j.verdict ?? (j.checks && Object.values(j.checks as Record<string, { pass?: boolean }>).every(c => c.pass) ? 'PASS' : 'FAIL'),
     title: j.calculator ?? id,
-    checks: parseChecks(j.checks),
+    checks: parseChecks(j.checks, lang),
     refs: Array.isArray(j.refs) ? j.refs.slice(0, 3) : [],
     remaining: typeof j.remainingToday === 'number' ? j.remainingToday : undefined,
   };
@@ -1343,7 +1378,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
   const rerunCalc = async (calcId: string, calcInput: Record<string, unknown>) => {
     setMessages(m => [...m, { role: 'assistant', content: '↻ ' + calcId }]);
     try {
-      const calc = await runDemoCalc(calcId, calcInput);
+      const calc = await runDemoCalc(calcId, calcInput, lang);
       setMessages(m => {
         const copy = m.slice();
         for (let i = copy.length - 1; i >= 0; i--) { if (copy[i].role === 'assistant') { copy[i] = { ...copy[i], calc, calcId, calcInput }; break; } }
@@ -1430,7 +1465,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           try {
             setStage(t.stageCalc);
             const calcInput = (j.input ?? {}) as Record<string, unknown>;
-            const calc = await runDemoCalc(String(j.id), calcInput);
+            const calc = await runDemoCalc(String(j.id), calcInput, lang);
             setMessages(m => {
               const copy = m.slice();
               for (let i = copy.length - 1; i >= 0; i--) { if (copy[i].role === 'assistant') { copy[i] = { ...copy[i], calc, calcId: String(j.id), calcInput }; break; } }
@@ -1457,7 +1492,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           try {
             setCad(j.type === 'assembly'
               ? await runAssemblePipeline(String(j.prompt))
-              : await runComposePipeline(String(j.prompt)));
+              : await runComposePipeline(String(j.prompt), lang));
           } catch (e) {
             setCad({ error: e instanceof Error ? e.message : t.error });
           }
@@ -1520,7 +1555,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       abortRef.current = null;
       autoscroll();
     }
-  }, [input, loading, messages, domain, t, plan]);
+  }, [input, loading, messages, domain, t, plan, lang]);
 
   // 마지막 user 발화 이후를 걷어내고 재전송 — 히스토리에서 직전 답을 제외해 같은 답 재생산을 피한다
   const regen = () => {
@@ -1578,7 +1613,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
         if (jp.ok && scaleMm && parseFloat(scaleMm) > 0) { setInput(`기준 최장변 ${parseFloat(scaleMm)}mm 기준 — `); setScaleMm(''); }
         return;
       }
-      const { cad, recognized } = await runExtractPipeline(att);
+      const { cad, recognized } = await runExtractPipeline(att, lang);
       // 성공/실패 모두 인식 결과를 노출(무엇을 읽었는지) — 실패 시 이유는 카드로.
       const line = recognized
         ? `${t.imgRecognized}: **${recognized.label}** · ${t.imgConfidence} ${Math.round(recognized.confidence * 100)}%${uncertaintyLine(recognized, t)}`
@@ -1646,13 +1681,13 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     try {
       if (m.genFromImage) {
         const base64 = m.genImage.replace(/^data:[^,]+,/, '');
-        const { cad, recognized } = await runExtractPipeline({ dataUrl: m.genImage, base64, mime: 'image/png', name: 'concept.png' });
+        const { cad, recognized } = await runExtractPipeline({ dataUrl: m.genImage, base64, mime: 'image/png', name: 'concept.png' }, lang);
         const line = recognized
           ? `${t.imgRecognized}: **${recognized.label}** · ${t.imgConfidence} ${Math.round(recognized.confidence * 100)}%${uncertaintyLine(recognized, t)}`
           : (cad.error ? '' : t.cadSpecTitle);
         setLast({ content: line, cad });
       } else {
-        const cad = await runComposePipeline(m.genSrc || '');
+        const cad = await runComposePipeline(m.genSrc || '', lang);
         setLast({ content: cad.error ? '' : t.cadSpecTitle, cad });
       }
     } catch (e) {
@@ -1660,8 +1695,8 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     } finally {
       setLoading(false); autoscroll();
     }
-   
-  }, [loading, t]);
+
+  }, [loading, t, lang]);
 
   // 🎯 P1 픽킹 편집(260719): 우측 3D에서 부품 클릭=선택 → 다음 메시지는 그 부품만 수정
   // (edit-part — AI=패치 이해만, 적용·게이트=서버 결정론. 대상 외 부품 불변은 코드 보장)
