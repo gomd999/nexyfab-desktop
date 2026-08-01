@@ -53,158 +53,183 @@ type FieldKind = 'number' | 'select' | 'bool';
 interface Field {
   key: string;
   labelKo: string;
+  labelEn: string;
   unit?: string;
+  // override for `unit` when it's a Korean counter word (e.g. '개') rather than a
+  // language-agnostic token like 'm' or '%' — keeps non-ko renders free of stray Hangul.
+  unitEn?: string;
   kind: FieldKind;
-  options?: Array<{ value: string; labelKo: string }>;
+  options?: Array<{ value: string; labelKo: string; labelEn: string }>;
 }
 interface Group {
   titleKo: string;
+  titleEn: string;
   fields: Field[];
 }
 
 // Measured-feature form spec — mirrors CodeCheckFeatures (semantic slots the user assigns).
+// NOTE: this panel follows the directory's binary ko/en convention (isKorean gate), not the
+// full 6-locale dict pattern — labelKo/labelEn (and titleKo/titleEn) must both be filled for
+// every entry so non-ko users (en/ja/cn/es/ar, all routed through the `en` fallback here) never
+// see raw Korean.
 const GROUPS: Group[] = [
   {
     titleKo: '장애인전용 주차구역',
+    titleEn: 'Accessible parking space',
     fields: [
-      { key: 'parkingDisabledStallWidth_m', labelKo: '주차면 폭', unit: 'm', kind: 'number' },
-      { key: 'parkingDisabledStallLength_m', labelKo: '주차면 길이', unit: 'm', kind: 'number' },
-      { key: 'parkingDisabledStallSlope', labelKo: '바닥 기울기', unit: 'rise/run', kind: 'number' },
+      { key: 'parkingDisabledStallWidth_m', labelKo: '주차면 폭', labelEn: 'Stall width', unit: 'm', kind: 'number' },
+      { key: 'parkingDisabledStallLength_m', labelKo: '주차면 길이', labelEn: 'Stall length', unit: 'm', kind: 'number' },
+      { key: 'parkingDisabledStallSlope', labelKo: '바닥 기울기', labelEn: 'Floor slope', unit: 'rise/run', kind: 'number' },
     ],
   },
   {
     titleKo: '경사로 / 주차 램프',
+    titleEn: 'Ramp / parking ramp',
     fields: [
-      { key: 'rampEffectiveWidth_m', labelKo: '경사로 유효폭', unit: 'm', kind: 'number' },
-      { key: 'rampSlope', labelKo: '경사로 종단경사', unit: 'rise/run', kind: 'number' },
-      { key: 'rampSideSlope', labelKo: '경사로 측면경사', unit: 'rise/run', kind: 'number' },
-      { key: 'parkingRampSlopeStraight', labelKo: '주차램프(직선) 경사', unit: 'rise/run', kind: 'number' },
-      { key: 'parkingRampSlopeCurved', labelKo: '주차램프(곡선) 경사', unit: 'rise/run', kind: 'number' },
+      { key: 'rampEffectiveWidth_m', labelKo: '경사로 유효폭', labelEn: 'Ramp effective width', unit: 'm', kind: 'number' },
+      { key: 'rampSlope', labelKo: '경사로 종단경사', labelEn: 'Ramp longitudinal slope', unit: 'rise/run', kind: 'number' },
+      { key: 'rampSideSlope', labelKo: '경사로 측면경사', labelEn: 'Ramp side slope', unit: 'rise/run', kind: 'number' },
+      { key: 'parkingRampSlopeStraight', labelKo: '주차램프(직선) 경사', labelEn: 'Parking ramp (straight) slope', unit: 'rise/run', kind: 'number' },
+      { key: 'parkingRampSlopeCurved', labelKo: '주차램프(곡선) 경사', labelEn: 'Parking ramp (curved) slope', unit: 'rise/run', kind: 'number' },
     ],
   },
   {
     titleKo: '계단',
+    titleEn: 'Stairs',
     fields: [
       {
         key: 'stairCategory',
         labelKo: '계단 용도',
+        labelEn: 'Stair usage',
         kind: 'select',
         options: [
-          { value: 'other', labelKo: '그 밖의 계단' },
-          { value: 'elementary', labelKo: '초등학교' },
-          { value: 'secondary', labelKo: '중·고등학교' },
-          { value: 'assembly', labelKo: '문화·집회·판매 등' },
+          { value: 'other', labelKo: '그 밖의 계단', labelEn: 'Other stairs' },
+          { value: 'elementary', labelKo: '초등학교', labelEn: 'Elementary school' },
+          { value: 'secondary', labelKo: '중·고등학교', labelEn: 'Middle/high school' },
+          { value: 'assembly', labelKo: '문화·집회·판매 등', labelEn: 'Assembly/retail, etc.' },
         ],
       },
-      { key: 'stairEffectiveWidth_m', labelKo: '계단 유효너비', unit: 'm', kind: 'number' },
-      { key: 'stairRiser_m', labelKo: '단높이', unit: 'm', kind: 'number' },
-      { key: 'stairTread_m', labelKo: '단너비', unit: 'm', kind: 'number' },
+      { key: 'stairEffectiveWidth_m', labelKo: '계단 유효너비', labelEn: 'Stair effective width', unit: 'm', kind: 'number' },
+      { key: 'stairRiser_m', labelKo: '단높이', labelEn: 'Riser height', unit: 'm', kind: 'number' },
+      { key: 'stairTread_m', labelKo: '단너비', labelEn: 'Tread depth', unit: 'm', kind: 'number' },
     ],
   },
   {
     titleKo: '난간 / 복도 / 출입구 / 화장실',
+    titleEn: 'Handrail / corridor / entrance / restroom',
     fields: [
-      { key: 'railingHeight_m', labelKo: '난간 높이', unit: 'm', kind: 'number' },
+      { key: 'railingHeight_m', labelKo: '난간 높이', labelEn: 'Handrail height', unit: 'm', kind: 'number' },
       {
         key: 'corridorCategory',
         labelKo: '복도 용도',
+        labelEn: 'Corridor usage',
         kind: 'select',
         options: [
-          { value: 'general', labelKo: '일반(면적조건)' },
-          { value: 'school', labelKo: '학교' },
-          { value: 'residential', labelKo: '공동주택·오피스텔' },
+          { value: 'general', labelKo: '일반(면적조건)', labelEn: 'General (area condition)' },
+          { value: 'school', labelKo: '학교', labelEn: 'School' },
+          { value: 'residential', labelKo: '공동주택·오피스텔', labelEn: 'Apartment/officetel' },
         ],
       },
-      { key: 'corridorBothSidesRooms', labelKo: '양옆 거실 복도', kind: 'bool' },
-      { key: 'corridorWidth_m', labelKo: '복도 유효너비', unit: 'm', kind: 'number' },
-      { key: 'doorEffectiveWidth_m', labelKo: '출입구 통과유효폭', unit: 'm', kind: 'number' },
-      { key: 'disabledToiletActivityWidth_m', labelKo: '장애인화장실 활동폭', unit: 'm', kind: 'number' },
-      { key: 'disabledToiletActivityDepth_m', labelKo: '장애인화장실 활동깊이', unit: 'm', kind: 'number' },
-      { key: 'curbBoundaryHeight_m', labelKo: '접근로 경계 높이', unit: 'm', kind: 'number' },
+      { key: 'corridorBothSidesRooms', labelKo: '양옆 거실 복도', labelEn: 'Rooms on both sides of corridor', kind: 'bool' },
+      { key: 'corridorWidth_m', labelKo: '복도 유효너비', labelEn: 'Corridor effective width', unit: 'm', kind: 'number' },
+      { key: 'doorEffectiveWidth_m', labelKo: '출입구 통과유효폭', labelEn: 'Door clear passage width', unit: 'm', kind: 'number' },
+      { key: 'disabledToiletActivityWidth_m', labelKo: '장애인화장실 활동폭', labelEn: 'Accessible restroom activity width', unit: 'm', kind: 'number' },
+      { key: 'disabledToiletActivityDepth_m', labelKo: '장애인화장실 활동깊이', labelEn: 'Accessible restroom activity depth', unit: 'm', kind: 'number' },
+      { key: 'curbBoundaryHeight_m', labelKo: '접근로 경계 높이', labelEn: 'Approach path curb height', unit: 'm', kind: 'number' },
     ],
   },
   {
     titleKo: '주차단위구획 / 진입로 (주차장법)',
+    titleEn: 'Parking stall / driveway (Parking Lot Act)',
     fields: [
       {
         key: 'parkingStallType',
         labelKo: '직각주차 구획 유형',
+        labelEn: 'Perpendicular parking stall type',
         kind: 'select',
         options: [
-          { value: 'general', labelKo: '일반형(2.5×5.0)' },
-          { value: 'expanded', labelKo: '확장형(2.6×5.2)' },
-          { value: 'compact', labelKo: '경형(2.0×3.6)' },
+          { value: 'general', labelKo: '일반형(2.5×5.0)', labelEn: 'Standard (2.5×5.0)' },
+          { value: 'expanded', labelKo: '확장형(2.6×5.2)', labelEn: 'Expanded (2.6×5.2)' },
+          { value: 'compact', labelKo: '경형(2.0×3.6)', labelEn: 'Compact (2.0×3.6)' },
         ],
       },
-      { key: 'parkingStallWidth_m', labelKo: '주차구획 폭', unit: 'm', kind: 'number' },
-      { key: 'parkingStallLength_m', labelKo: '주차구획 길이', unit: 'm', kind: 'number' },
-      { key: 'parkingRampLaneWidth_m', labelKo: '진입로 차로 너비', unit: 'm', kind: 'number' },
-      { key: 'parkingRampLaneCurved', labelKo: '진입로 곡선형', kind: 'bool' },
-      { key: 'parkingRampTwoWay', labelKo: '진입로 2차로', kind: 'bool' },
+      { key: 'parkingStallWidth_m', labelKo: '주차구획 폭', labelEn: 'Stall width', unit: 'm', kind: 'number' },
+      { key: 'parkingStallLength_m', labelKo: '주차구획 길이', labelEn: 'Stall length', unit: 'm', kind: 'number' },
+      { key: 'parkingRampLaneWidth_m', labelKo: '진입로 차로 너비', labelEn: 'Driveway lane width', unit: 'm', kind: 'number' },
+      { key: 'parkingRampLaneCurved', labelKo: '진입로 곡선형', labelEn: 'Curved driveway', kind: 'bool' },
+      { key: 'parkingRampTwoWay', labelKo: '진입로 2차로', labelEn: 'Two-way driveway', kind: 'bool' },
     ],
   },
   {
     titleKo: '피난·방화 (피난방화규칙 / 건축법 시행령)',
+    titleEn: 'Evacuation & fire protection (Evacuation/Fire Protection Rules / Building Act Enforcement Decree)',
     fields: [
-      { key: 'stairLandingRiseInterval_m', labelKo: '계단참 사이 수직높이', unit: 'm', kind: 'number' },
-      { key: 'stairLandingWidth_m', labelKo: '계단참 유효너비', unit: 'm', kind: 'number' },
-      { key: 'outdoorEscapeStairWidth_m', labelKo: '옥외피난계단 유효너비', unit: 'm', kind: 'number' },
-      { key: 'travelDistanceToStair_m', labelKo: '직통계단 보행거리', unit: 'm', kind: 'number' },
-      { key: 'mainStructureFireResistant', labelKo: '주요구조부 내화/불연', kind: 'bool' },
-      { key: 'fireCompartmentArea_m2', labelKo: '방화구획 면적', unit: '㎡', kind: 'number' },
-      { key: 'fireCompartmentFloorAbove11', labelKo: '11층 이상 층', kind: 'bool' },
-      { key: 'fireCompartmentSprinklered', labelKo: '스프링클러 설치', kind: 'bool' },
-      { key: 'hydrantHorizontalDistance_m', labelKo: '옥내소화전 수평거리', unit: 'm', kind: 'number' },
+      { key: 'stairLandingRiseInterval_m', labelKo: '계단참 사이 수직높이', labelEn: 'Vertical rise between stair landings', unit: 'm', kind: 'number' },
+      { key: 'stairLandingWidth_m', labelKo: '계단참 유효너비', labelEn: 'Stair landing effective width', unit: 'm', kind: 'number' },
+      { key: 'outdoorEscapeStairWidth_m', labelKo: '옥외피난계단 유효너비', labelEn: 'Outdoor escape stair effective width', unit: 'm', kind: 'number' },
+      { key: 'travelDistanceToStair_m', labelKo: '직통계단 보행거리', labelEn: 'Travel distance to direct stair', unit: 'm', kind: 'number' },
+      { key: 'mainStructureFireResistant', labelKo: '주요구조부 내화/불연', labelEn: 'Main structure fire-resistant/noncombustible', kind: 'bool' },
+      { key: 'fireCompartmentArea_m2', labelKo: '방화구획 면적', labelEn: 'Fire compartment area', unit: '㎡', kind: 'number' },
+      { key: 'fireCompartmentFloorAbove11', labelKo: '11층 이상 층', labelEn: 'Floor 11 or above', kind: 'bool' },
+      { key: 'fireCompartmentSprinklered', labelKo: '스프링클러 설치', labelEn: 'Sprinkler installed', kind: 'bool' },
+      { key: 'hydrantHorizontalDistance_m', labelKo: '옥내소화전 수평거리', labelEn: 'Indoor fire hydrant horizontal distance', unit: 'm', kind: 'number' },
     ],
   },
   {
     titleKo: '건축 (반자·채광·환기·건폐율·용적률)',
+    titleEn: 'Building (ceiling / daylight / ventilation / coverage / FAR)',
     fields: [
-      { key: 'ceilingHeight_m', labelKo: '거실 반자높이', unit: 'm', kind: 'number' },
-      { key: 'roomFloorArea_m2', labelKo: '거실 바닥면적', unit: '㎡', kind: 'number' },
-      { key: 'daylightWindowArea_m2', labelKo: '채광 창면적', unit: '㎡', kind: 'number' },
-      { key: 'ventilationWindowArea_m2', labelKo: '환기 창면적', unit: '㎡', kind: 'number' },
-      { key: 'buildingArea_m2', labelKo: '건축면적', unit: '㎡', kind: 'number' },
-      { key: 'siteArea_m2', labelKo: '대지면적', unit: '㎡', kind: 'number' },
-      { key: 'coverageRatioLimit_pct', labelKo: '건폐율 한도', unit: '%', kind: 'number' },
-      { key: 'totalFloorArea_m2', labelKo: '연면적', unit: '㎡', kind: 'number' },
-      { key: 'floorAreaRatioLimit_pct', labelKo: '용적률 한도', unit: '%', kind: 'number' },
+      { key: 'ceilingHeight_m', labelKo: '거실 반자높이', labelEn: 'Room ceiling height', unit: 'm', kind: 'number' },
+      { key: 'roomFloorArea_m2', labelKo: '거실 바닥면적', labelEn: 'Room floor area', unit: '㎡', kind: 'number' },
+      { key: 'daylightWindowArea_m2', labelKo: '채광 창면적', labelEn: 'Daylight window area', unit: '㎡', kind: 'number' },
+      { key: 'ventilationWindowArea_m2', labelKo: '환기 창면적', labelEn: 'Ventilation window area', unit: '㎡', kind: 'number' },
+      { key: 'buildingArea_m2', labelKo: '건축면적', labelEn: 'Building area', unit: '㎡', kind: 'number' },
+      { key: 'siteArea_m2', labelKo: '대지면적', labelEn: 'Site area', unit: '㎡', kind: 'number' },
+      { key: 'coverageRatioLimit_pct', labelKo: '건폐율 한도', labelEn: 'Building coverage ratio limit', unit: '%', kind: 'number' },
+      { key: 'totalFloorArea_m2', labelKo: '연면적', labelEn: 'Total floor area', unit: '㎡', kind: 'number' },
+      { key: 'floorAreaRatioLimit_pct', labelKo: '용적률 한도', labelEn: 'Floor area ratio limit', unit: '%', kind: 'number' },
     ],
   },
   {
     titleKo: '접근로 / 경사로 / 승강기 (장애인편의 별표1)',
+    titleEn: 'Approach path / ramp / elevator (Accessibility Facility Standards, Annex 1)',
     fields: [
-      { key: 'approachPathWidth_m', labelKo: '접근로 유효폭', unit: 'm', kind: 'number' },
-      { key: 'approachPathSlope', labelKo: '접근로 종단기울기', unit: 'rise/run', kind: 'number' },
-      { key: 'rampLandingRiseInterval_m', labelKo: '경사로 참 사이 수직높이', unit: 'm', kind: 'number' },
-      { key: 'handrailHeight_m', labelKo: '손잡이 높이', unit: 'm', kind: 'number' },
-      { key: 'elevatorInternalWidth_m', labelKo: '승강기 내부 유효폭', unit: 'm', kind: 'number' },
-      { key: 'elevatorInternalDepth_m', labelKo: '승강기 내부 유효깊이', unit: 'm', kind: 'number' },
-      { key: 'elevatorDoorWidth_m', labelKo: '승강기 출입문 통과폭', unit: 'm', kind: 'number' },
+      { key: 'approachPathWidth_m', labelKo: '접근로 유효폭', labelEn: 'Approach path effective width', unit: 'm', kind: 'number' },
+      { key: 'approachPathSlope', labelKo: '접근로 종단기울기', labelEn: 'Approach path longitudinal slope', unit: 'rise/run', kind: 'number' },
+      { key: 'rampLandingRiseInterval_m', labelKo: '경사로 참 사이 수직높이', labelEn: 'Vertical rise between ramp landings', unit: 'm', kind: 'number' },
+      { key: 'handrailHeight_m', labelKo: '손잡이 높이', labelEn: 'Handrail height', unit: 'm', kind: 'number' },
+      { key: 'elevatorInternalWidth_m', labelKo: '승강기 내부 유효폭', labelEn: 'Elevator internal effective width', unit: 'm', kind: 'number' },
+      { key: 'elevatorInternalDepth_m', labelKo: '승강기 내부 유효깊이', labelEn: 'Elevator internal effective depth', unit: 'm', kind: 'number' },
+      { key: 'elevatorDoorWidth_m', labelKo: '승강기 출입문 통과폭', labelEn: 'Elevator door clear width', unit: 'm', kind: 'number' },
     ],
   },
   {
     titleKo: '실내건축: 다중이용업소 비상구 (별표2)',
+    titleEn: 'Interior: emergency exit for multi-use premises (Annex 2)',
     fields: [
-      { key: 'emergencyExitWidth_m', labelKo: '비상구 가로(폭)', unit: 'm', kind: 'number' },
-      { key: 'emergencyExitHeight_m', labelKo: '비상구 세로(높이)', unit: 'm', kind: 'number' },
-      { key: 'emergencyExitCount', labelKo: '비상구 개수', unit: '개', kind: 'number' },
+      { key: 'emergencyExitWidth_m', labelKo: '비상구 가로(폭)', labelEn: 'Emergency exit width', unit: 'm', kind: 'number' },
+      { key: 'emergencyExitHeight_m', labelKo: '비상구 세로(높이)', labelEn: 'Emergency exit height', unit: 'm', kind: 'number' },
+      { key: 'emergencyExitCount', labelKo: '비상구 개수', labelEn: 'Emergency exit count', unit: '개', unitEn: 'ea', kind: 'number' },
     ],
   },
 ];
 
 // Metre-length numeric slots a drawing measurement can be assigned to (reuse existing labels).
-const METRE_FIELDS: Array<{ key: string; labelKo: string }> = GROUPS.flatMap((g) => g.fields)
+const METRE_FIELDS: Array<{ key: string; labelKo: string; labelEn: string }> = GROUPS.flatMap((g) => g.fields)
   .filter((f) => f.kind === 'number' && f.unit === 'm')
-  .map((f) => ({ key: f.key, labelKo: f.labelKo }));
-const FIELD_LABEL: Record<string, string> = Object.fromEntries(
+  .map((f) => ({ key: f.key, labelKo: f.labelKo, labelEn: f.labelEn }));
+const FIELD_LABEL_KO: Record<string, string> = Object.fromEntries(
   GROUPS.flatMap((g) => g.fields).map((f) => [f.key, f.labelKo]),
+);
+const FIELD_LABEL_EN: Record<string, string> = Object.fromEntries(
+  GROUPS.flatMap((g) => g.fields).map((f) => [f.key, f.labelEn]),
 );
 
 const STATUS_COLOR: Record<Status, string> = { pass: '#12b76a', fail: '#f04438', na: '#9aa4b0' };
 const STATUS_LABEL_KO: Record<Status, string> = { pass: '적합', fail: '위반', na: '해당없음' };
 const STATUS_LABEL_EN: Record<Status, string> = { pass: 'PASS', fail: 'FAIL', na: 'NA' };
 const SOURCE_LABEL_KO: Record<DrawingFeatureCandidate['source'], string> = { extent: '범위', dimension: '치수', circle: '원' };
+const SOURCE_LABEL_EN: Record<DrawingFeatureCandidate['source'], string> = { extent: 'extent', dimension: 'dimension', circle: 'circle' };
 
 export default function CodeCheckPanel({ lang }: { lang: string }) {
   const ko = isKorean(lang);
@@ -374,7 +399,7 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
       <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4 }}>
         {ko ? '코드체크 / 감리 (결정론)' : 'Code-check / design-review (deterministic)'}
         <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, color: 'var(--nx-text-3, #6b7684)' }}>
-          {ko ? '실제 법령 조항 인용 — 학습모델 감리가 아님' : 'cites real 법령 clauses — not a learned model'}
+          {ko ? '실제 법령 조항 인용 — 학습모델 감리가 아님' : 'cites real statute clauses — not a learned model'}
         </span>
       </div>
       <div style={{ fontSize: 10.5, color: 'var(--nx-text-3, #6b7684)', marginBottom: 10, lineHeight: 1.5 }}>
@@ -426,8 +451,8 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
                 </div>
                 {autoFilledKeys.map((k) => (
                   <div key={String(k)} style={{ fontSize: 10.5, color: 'var(--nx-text-2, #46505e)' }}>
-                    <span style={{ display: 'inline-block', fontSize: 8.5, fontWeight: 700, padding: '0 3px', borderRadius: 3, marginRight: 4, background: '#dcfae6', color: '#067647' }}>자동</span>
-                    {FIELD_LABEL[String(k)] ?? String(k)} = {String(suggestion.autoFilled[k])} m
+                    <span style={{ display: 'inline-block', fontSize: 8.5, fontWeight: 700, padding: '0 3px', borderRadius: 3, marginRight: 4, background: '#dcfae6', color: '#067647' }}>{ko ? '자동' : 'auto'}</span>
+                    {(ko ? FIELD_LABEL_KO[String(k)] : FIELD_LABEL_EN[String(k)]) ?? String(k)} = {String(suggestion.autoFilled[k])} m
                   </div>
                 ))}
               </div>
@@ -442,7 +467,7 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
                 const m = candMeters(c);
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5 }}>
-                    <span style={{ minWidth: 30, fontSize: 9, fontWeight: 700, color: 'var(--nx-text-3, #6b7684)' }}>{SOURCE_LABEL_KO[c.source]}</span>
+                    <span style={{ minWidth: 30, fontSize: 9, fontWeight: 700, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? SOURCE_LABEL_KO[c.source] : SOURCE_LABEL_EN[c.source]}</span>
                     <span style={{ minWidth: 96 }}>
                       {c.value}{c.unit ? c.unit : ''}
                       {m !== null ? <span style={{ color: '#067647' }}> = {m}m</span> : <span style={{ color: '#a15c00' }}> ({ko ? 'm환산 불가' : 'no m'})</span>}
@@ -455,7 +480,7 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
                       style={{ ...miniSel, flex: 1 }}
                     >
                       <option value="">{c.autoFilled ? (ko ? '자동배정됨' : 'auto-filled') : (ko ? '— 무시 —' : '— ignore —')}</option>
-                      {METRE_FIELDS.map((mf) => <option key={mf.key} value={mf.key}>{mf.labelKo}</option>)}
+                      {METRE_FIELDS.map((mf) => <option key={mf.key} value={mf.key}>{ko ? mf.labelKo : mf.labelEn}</option>)}
                     </select>
                   </div>
                 );
@@ -471,11 +496,11 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
 
       {open && GROUPS.map((g) => (
         <div key={g.titleKo} style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text-2, #46505e)', marginBottom: 4 }}>{g.titleKo}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nx-text-2, #46505e)', marginBottom: 4 }}>{ko ? g.titleKo : g.titleEn}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             {g.fields.map((fld) => (
               <label key={fld.key} style={{ fontSize: 11, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{fld.labelKo}{fld.unit ? ` (${fld.unit})` : ''}</span>
+                <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{ko ? fld.labelKo : fld.labelEn}{fld.unit ? ` (${ko ? fld.unit : (fld.unitEn ?? fld.unit)})` : ''}</span>
                 {fld.kind === 'number' && (
                   <input
                     type="number" inputMode="decimal"
@@ -486,7 +511,7 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
                 )}
                 {fld.kind === 'select' && (
                   <select value={(values[fld.key] as string) ?? fld.options?.[0].value ?? ''} onChange={(e) => setField(fld.key, e.target.value)} style={inpStyle}>
-                    {fld.options?.map((o) => <option key={o.value} value={o.value}>{o.labelKo}</option>)}
+                    {fld.options?.map((o) => <option key={o.value} value={o.value}>{ko ? o.labelKo : o.labelEn}</option>)}
                   </select>
                 )}
                 {fld.kind === 'bool' && (
@@ -527,7 +552,7 @@ export default function CodeCheckPanel({ lang }: { lang: string }) {
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--nx-text-2, #46505e)', lineHeight: 1.5 }}>{r.message}</div>
                 <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginTop: 2 }}>
-                  <span style={{ display: 'inline-block', fontSize: 8.5, fontWeight: 700, padding: '0 3px', borderRadius: 3, marginRight: 4, background: '#dcfae6', color: '#067647' }}>법령</span>
+                  <span style={{ display: 'inline-block', fontSize: 8.5, fontWeight: 700, padding: '0 3px', borderRadius: 3, marginRight: 4, background: '#dcfae6', color: '#067647' }}>{ko ? '법령' : 'statute'}</span>
                   {r.clause} · {r.source}
                 </div>
               </div>
