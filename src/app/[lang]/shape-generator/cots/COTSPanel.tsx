@@ -14,6 +14,7 @@ const dict = {
     weight: '무게',
     price: '단가',
     insert: '추가',
+    close: '닫기',
     footerShowing: (shown: number, total: number) => `${shown}개 부품 표시 중 (전체 ${total}개)`,
     footerVat: '가격은 VAT 별도 기준입니다.',
     cat: { all: '전체', bolt: '볼트', nut: '너트', bearing: '베어링', collar: '칼라', clip: '클립', washer: '와셔' },
@@ -25,6 +26,7 @@ const dict = {
     weight: 'Wt',
     price: 'Price',
     insert: 'Insert',
+    close: 'Close',
     footerShowing: (shown: number, total: number) => `Showing ${shown} of ${total} parts`,
     footerVat: 'Prices excl. VAT.',
     cat: { all: 'All', bolt: 'Bolt', nut: 'Nut', bearing: 'Bearing', collar: 'Collar', clip: 'Clip', washer: 'Washer' },
@@ -36,6 +38,7 @@ const dict = {
     weight: '重量',
     price: '単価',
     insert: '追加',
+    close: '閉じる',
     footerShowing: (shown: number, total: number) => `${shown} / ${total} 件表示`,
     footerVat: '価格は税別です。',
     cat: { all: 'すべて', bolt: 'ボルト', nut: 'ナット', bearing: 'ベアリング', collar: 'カラー', clip: 'クリップ', washer: 'ワッシャー' },
@@ -47,6 +50,7 @@ const dict = {
     weight: '重量',
     price: '单价',
     insert: '插入',
+    close: '关闭',
     footerShowing: (shown: number, total: number) => `显示 ${shown} / ${total} 个零件`,
     footerVat: '价格不含增值税。',
     cat: { all: '全部', bolt: '螺栓', nut: '螺母', bearing: '轴承', collar: '卡环', clip: '夹子', washer: '垫圈' },
@@ -58,6 +62,7 @@ const dict = {
     weight: 'Peso',
     price: 'Precio',
     insert: 'Insertar',
+    close: 'Cerrar',
     footerShowing: (shown: number, total: number) => `Mostrando ${shown} de ${total} piezas`,
     footerVat: 'Precios sin IVA.',
     cat: { all: 'Todo', bolt: 'Perno', nut: 'Tuerca', bearing: 'Rodamiento', collar: 'Collar', clip: 'Clip', washer: 'Arandela' },
@@ -69,6 +74,7 @@ const dict = {
     weight: 'الوزن',
     price: 'السعر',
     insert: 'إدراج',
+    close: 'إغلاق',
     footerShowing: (shown: number, total: number) => `عرض ${shown} من ${total}`,
     footerVat: 'الأسعار بدون ضريبة القيمة المضافة.',
     cat: { all: 'الكل', bolt: 'برغي', nut: 'صمولة', bearing: 'محمل', collar: 'طوق', clip: 'مشبك', washer: 'حلقة' },
@@ -136,7 +142,7 @@ const CATEGORY_COLOR: Record<COTSPart['category'], string> = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatKRW(n: number): string {
-  return n.toLocaleString('ko-KR') + '원';
+  return `₩${n.toLocaleString('ko-KR')}`;
 }
 
 function formatWeight(g: number): string {
@@ -385,7 +391,7 @@ export default function COTSPanel({ open, onClose, onInsert, lang }: COTSPanelPr
               lineHeight: 1,
               padding: '0 2px',
             }}
-            aria-label="Close"
+            aria-label={tt.close}
           >
             ✕
           </button>
