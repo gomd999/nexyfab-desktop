@@ -43,31 +43,37 @@ interface Estimate {
 }
 interface FabResp { ok: boolean; spec?: Spec; estimate?: Estimate; dxf?: string | null; error?: string }
 
-type RateField = { key: string; ko: string; unit: string };
+// NOTE: this panel follows the directory's binary ko/en convention (isKorean gate) — every rate
+// field must carry both `ko` and `en` labels, or non-ko users (en/ja/cn/es/ar, all routed
+// through the `en` fallback here) see raw Korean regardless of the page's own localization.
+// `unit` is shown for both languages verbatim (it's already a currency/physical-unit token like
+// "₩/kg" or "%" with no Korean word inside) — except the two counter-word units below ("개" =
+// piece, "회" = time/occurrence), which get a `unitEn` override so they don't leak Korean either.
+type RateField = { key: string; ko: string; en: string; unit: string; unitEn?: string };
 const RATE_FIELDS_METAL: RateField[] = [
-  { key: 'materialPerKg', ko: '소재', unit: '₩/kg' },
-  { key: 'cutPerM', ko: '절단', unit: '₩/m' },
-  { key: 'piercePerHole', ko: '피어싱', unit: '₩/개' },
-  { key: 'bendPerOp', ko: '절곡', unit: '₩/회' },
-  { key: 'setup', ko: '셋업', unit: '₩' },
-  { key: 'marginPct', ko: '마진', unit: '%' },
+  { key: 'materialPerKg', ko: '소재', en: 'Material', unit: '₩/kg' },
+  { key: 'cutPerM', ko: '절단', en: 'Cut', unit: '₩/m' },
+  { key: 'piercePerHole', ko: '피어싱', en: 'Pierce', unit: '₩/개', unitEn: '₩/pierce' },
+  { key: 'bendPerOp', ko: '절곡', en: 'Bend', unit: '₩/회', unitEn: '₩/bend' },
+  { key: 'setup', ko: '셋업', en: 'Setup', unit: '₩' },
+  { key: 'marginPct', ko: '마진', en: 'Margin', unit: '%' },
 ];
 const RATE_FIELDS_CONCRETE: RateField[] = [
-  { key: 'concretePerM3', ko: '콘크리트', unit: '₩/m³' },
-  { key: 'rebarPerKg', ko: '철근', unit: '₩/kg' },
-  { key: 'formworkPerM2', ko: '거푸집', unit: '₩/m²' },
-  { key: 'rebarKgPerM3', ko: '철근량', unit: 'kg/m³' },
-  { key: 'setup', ko: '셋업', unit: '₩' },
-  { key: 'marginPct', ko: '마진', unit: '%' },
+  { key: 'concretePerM3', ko: '콘크리트', en: 'Concrete', unit: '₩/m³' },
+  { key: 'rebarPerKg', ko: '철근', en: 'Rebar', unit: '₩/kg' },
+  { key: 'formworkPerM2', ko: '거푸집', en: 'Formwork', unit: '₩/m²' },
+  { key: 'rebarKgPerM3', ko: '철근량', en: 'Rebar ratio', unit: 'kg/m³' },
+  { key: 'setup', ko: '셋업', en: 'Setup', unit: '₩' },
+  { key: 'marginPct', ko: '마진', en: 'Margin', unit: '%' },
 ];
 const RATE_FIELDS_TIMBER: RateField[] = [
-  { key: 'timberPerM3', ko: '목재', unit: '₩/m³' },
-  { key: 'setup', ko: '셋업', unit: '₩' },
-  { key: 'marginPct', ko: '마진', unit: '%' },
+  { key: 'timberPerM3', ko: '목재', en: 'Timber', unit: '₩/m³' },
+  { key: 'setup', ko: '셋업', en: 'Setup', unit: '₩' },
+  { key: 'marginPct', ko: '마진', en: 'Margin', unit: '%' },
 ];
 const RATE_FIELDS_FFE: RateField[] = [
-  { key: 'setup', ko: '설치/셋업', unit: '₩' },
-  { key: 'marginPct', ko: '마진', unit: '%' },
+  { key: 'setup', ko: '설치/셋업', en: 'Install/setup', unit: '₩' },
+  { key: 'marginPct', ko: '마진', en: 'Margin', unit: '%' },
 ];
 function rateFieldsFor(kind?: string): RateField[] {
   if (kind === 'concrete') return RATE_FIELDS_CONCRETE;
@@ -207,7 +213,7 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
                 <div style={{ fontSize: 10, color: 'var(--nx-text-3, #6b7684)', marginBottom: 2 }}>{ko ? '가구 스케줄 (FF&E)' : 'FF&E schedule'}</div>
                 {spec.items.map((it, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5 }}>
-                    <span>{it.name} × {it.count}{it.seats > 0 ? ` · ${it.seats}석` : ''}</span>
+                    <span>{it.name} × {it.count}{it.seats > 0 ? (ko ? ` · ${it.seats}석` : ` · ${it.seats} seats`) : ''}</span>
                     <span style={{ fontWeight: 600 }}>{won(it.subtotal)}</span>
                   </div>
                 ))}
@@ -221,7 +227,7 @@ export default function FabPanel({ intent, name, lang }: { intent: unknown; name
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
               {rateFieldsFor(spec.kind).map((f) => (
                 <label key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <span style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{f.ko} ({f.unit})</span>
+                  <span style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)' }}>{ko ? f.ko : f.en} ({ko ? f.unit : (f.unitEn ?? f.unit)})</span>
                   <input
                     type="number" value={rates[f.key] ?? ''}
                     onChange={(e) => setRates((r) => ({ ...(r ?? {}), [f.key]: Number(e.target.value) }))}
