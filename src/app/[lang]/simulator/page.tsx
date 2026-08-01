@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback as _useCallback, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { simDict } from './simulatorDict';
+import { simDict, RISK_SCENARIO_I18N } from './simulatorDict';
 import { useToast } from '@/components/ToastProvider';
 
 // ─── 공급망 리스크 시나리오 ──────────────────────────────────
@@ -1112,7 +1112,10 @@ function SimulatorPageInner() {
     const validLangs = ['kr', 'en', 'ja', 'cn', 'es', 'ar'];
     const lang = validLangs.includes(langCode) ? langCode : 'en';
     const langMap: Record<string, keyof typeof simDict> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'cn', es: 'es', ar: 'ar' };
-    const t: SimDictLocale = simDict[langMap[lang]];
+    const langKey = langMap[lang];
+    const t: SimDictLocale = simDict[langKey];
+    /** 리스크 시나리오 이름/설명 지역화 — 표에 없으면(있을 수 없지만) 원본 한국어로 되돌아간다. */
+    const riskLabel = (r: RiskScenario) => RISK_SCENARIO_I18N[r.id]?.[langKey] ?? { name: r.name, description: r.description };
     const { toast } = useToast();
     // Mobile 감지 및 PC 모드
     const [mobilePrompt, setMobilePrompt] = useState(false);
@@ -3451,20 +3454,21 @@ function SimulatorPageInner() {
                                         <div className="glass-card" style={{ background: activeRisks.length > 0 ? '#fffbeb' : 'white', border: activeRisks.length > 0 ? '1px solid #fde68a' : '1px solid #e2e8f0', padding: '1.25rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                                 <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#92400e', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <i className="fas fa-exclamation-triangle" style={{ color: '#f59e0b' }}></i> 공급망 리스크 시나리오
-                                                    {activeRisks.length > 0 && <span style={{ background: '#f59e0b', color: 'white', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '10px', fontWeight: 900 }}>{activeRisks.length}개 활성</span>}
+                                                    <i className="fas fa-exclamation-triangle" style={{ color: '#f59e0b' }}></i> {t.riskScenarioTitle}
+                                                    {activeRisks.length > 0 && <span style={{ background: '#f59e0b', color: 'white', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '10px', fontWeight: 900 }}>{t.riskActiveCount.replace('{n}', String(activeRisks.length))}</span>}
                                                 </h3>
-                                                {activeRisks.length > 0 && <button onClick={() => setActiveRisks([])} style={{ fontSize: '0.65rem', padding: '3px 8px', background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: '4px', cursor: 'pointer', fontWeight: 700 }}>모두 해제</button>}
+                                                {activeRisks.length > 0 && <button onClick={() => setActiveRisks([])} style={{ fontSize: '0.65rem', padding: '3px 8px', background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: '4px', cursor: 'pointer', fontWeight: 700 }}>{t.riskClearAll}</button>}
                                             </div>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: activeRisks.length > 0 ? '1rem' : '0' }}>
                                                 {RISK_SCENARIOS.map(r => {
                                                     const isActive = activeRisks.includes(r.id);
+                                                    const label = riskLabel(r);
                                                     return (
-                                                        <button key={r.id} onClick={() => toggleRisk(r.id)} title={r.description}
+                                                        <button key={r.id} onClick={() => toggleRisk(r.id)} title={label.description}
                                                             style={{ padding: '5px 10px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.15s', background: isActive ? '#f59e0b' : '#fef3c7', color: isActive ? 'white' : '#92400e', border: isActive ? '1.5px solid #d97706' : '1.5px solid #fde68a', display: 'flex', alignItems: 'center', gap: '3px' }}
                                                         >
                                                             {isActive && <i className="fas fa-check" style={{ fontSize: '0.55rem' }}></i>}
-                                                            {r.icon} {r.name}
+                                                            {r.icon} {label.name}
                                                         </button>
                                                     );
                                                 })}

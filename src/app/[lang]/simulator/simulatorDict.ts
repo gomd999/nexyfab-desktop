@@ -17,6 +17,9 @@ export const simDict = {
         leadTimeLabel: 'LEAD TIME / LOGISTICS',
         edit: '편집',
         save: '저장',
+        riskScenarioTitle: '공급망 리스크 시나리오',
+        riskActiveCount: '{n}개 활성',
+        riskClearAll: '모두 해제',
         productTitle: '프로젝트 및 제품명 (Project Title)',
         scenarioSetup: '시나리오 변수 설정',
         assemblyHub: '제조 허브 (Assembly)',
@@ -78,6 +81,9 @@ export const simDict = {
         leadTimeLabel: 'LEAD TIME / LOGISTICS',
         edit: 'Edit',
         save: 'Save',
+        riskScenarioTitle: 'Supply Chain Risk Scenarios',
+        riskActiveCount: '{n} active',
+        riskClearAll: 'Clear all',
         productTitle: 'Project & Product Title',
         scenarioSetup: 'Scenario Variables Setup',
         assemblyHub: 'Assembly Hub',
@@ -139,6 +145,9 @@ export const simDict = {
         leadTimeLabel: 'リードタイム / 物流',
         edit: '編集',
         save: '保存',
+        riskScenarioTitle: 'サプライチェーンリスクシナリオ',
+        riskActiveCount: '{n}件有効',
+        riskClearAll: 'すべて解除',
         productTitle: 'プロジェクトおよび製品名',
         scenarioSetup: 'シナリオ変数設定',
         assemblyHub: '製造ハブ (Assembly)',
@@ -200,6 +209,9 @@ export const simDict = {
         leadTimeLabel: '交期 / 物流',
         edit: '编辑',
         save: '保存',
+        riskScenarioTitle: '供应链风险情景',
+        riskActiveCount: '{n}项已启用',
+        riskClearAll: '全部取消',
         productTitle: '项目及产品名称',
         scenarioSetup: '方案变量设置',
         assemblyHub: '制造中心 (Assembly)',
@@ -261,6 +273,9 @@ export const simDict = {
         leadTimeLabel: 'TIEMPO DE ENTREGA / LOGÍSTICA',
         edit: 'Editar',
         save: 'Guardar',
+        riskScenarioTitle: 'Escenarios de riesgo de la cadena de suministro',
+        riskActiveCount: '{n} activos',
+        riskClearAll: 'Borrar todo',
         productTitle: 'Título del Proyecto y Producto',
         scenarioSetup: 'Configuración de Variables del Escenario',
         assemblyHub: 'Centro de Ensamblaje',
@@ -322,6 +337,9 @@ export const simDict = {
         leadTimeLabel: 'وقت التسليم / اللوجستيات',
         edit: 'تعديل',
         save: 'حفظ',
+        riskScenarioTitle: 'سيناريوهات مخاطر سلسلة التوريد',
+        riskActiveCount: '{n} نشطة',
+        riskClearAll: 'إلغاء الكل',
         productTitle: 'عنوان المشروع والمنتج',
         scenarioSetup: 'إعداد متغيرات السيناريو',
         assemblyHub: 'مركز التجميع',
@@ -365,4 +383,62 @@ export const simDict = {
         oldScenario: 'هذا السيناريو لا يحتوي على معلومات تفصيلية (بيانات إصدار قديم).',
         maxScenario: 'يمكنك حفظ ومقارنة ما يصل إلى 3 سيناريوهات. يرجى حذف سيناريو موجود قبل إضافة سيناريو جديد.'
     }
+};
+
+/**
+ * 공급망 리스크 시나리오(RISK_SCENARIOS) 지역화 (260801).
+ *
+ * ⚠ 이름/설명이 `page.tsx` 안에 한국어로 **고정 하드코딩**돼 있어, 언어 분기가 전혀 없다 —
+ *   simDict 는 site 언어 6종을 모두 갖는데(ko/en/ja/cn/es/ar) 이 6개 시나리오만 예외였다.
+ *   ko/en 사전(B·C 유형)과 달리 **en 사용자에게도 한국어가 그대로** 나가는 더 심한 결함이다.
+ */
+export const RISK_SCENARIO_I18N: Record<string, Record<keyof typeof simDict, { name: string; description: string }>> = {
+    us_china_tariff: {
+        ko: { name: '미중 관세전쟁', description: '미국이 중국산 제품에 추가 25% 관세 부과' },
+        en: { name: 'US-China Tariff War', description: 'US imposes an additional 25% tariff on Chinese-made goods' },
+        ja: { name: '米中関税戦争', description: '米国が中国製品に追加25%の関税を賦課' },
+        cn: { name: '中美关税战', description: '美国对中国产品加征25%额外关税' },
+        es: { name: 'Guerra arancelaria EE.UU.-China', description: 'EE. UU. impone un arancel adicional del 25% a productos chinos' },
+        ar: { name: 'حرب التعريفات الأمريكية الصينية', description: 'تفرض الولايات المتحدة تعريفة إضافية 25% على المنتجات الصينية' },
+    },
+    port_strike: {
+        ko: { name: '항만 파업', description: '부산/상하이 항만 2주 파업으로 물류 대란' },
+        en: { name: 'Port Strike', description: '2-week strike at Busan/Shanghai ports causes logistics disruption' },
+        ja: { name: '港湾ストライキ', description: '釜山・上海港の2週間ストによる物流混乱' },
+        cn: { name: '港口罢工', description: '釜山/上海港口两周罢工导致物流中断' },
+        es: { name: 'Huelga portuaria', description: 'Huelga de 2 semanas en puertos de Busan/Shanghái interrumpe la logística' },
+        ar: { name: 'إضراب الموانئ', description: 'إضراب لمدة أسبوعين في موانئ بوسان/شنغهاي يسبب اضطرابًا لوجستيًا' },
+    },
+    energy_crisis: {
+        ko: { name: '에너지 위기', description: '전기료 50% 급등 (우크라이나 사태급)' },
+        en: { name: 'Energy Crisis', description: 'Electricity prices surge 50% (Ukraine-crisis scale)' },
+        ja: { name: 'エネルギー危機', description: '電気料金50%急騰（ウクライナ危機級）' },
+        cn: { name: '能源危机', description: '电价飙升50%（乌克兰危机级别）' },
+        es: { name: 'Crisis energética', description: 'Los precios de electricidad suben un 50% (escala crisis de Ucrania)' },
+        ar: { name: 'أزمة الطاقة', description: 'ارتفاع أسعار الكهرباء 50% (بحجم أزمة أوكرانيا)' },
+    },
+    supply_shortage: {
+        ko: { name: '부품 공급 부족', description: '핵심 부품 공급 차질, 원자재 30% 상승' },
+        en: { name: 'Parts Shortage', description: 'Key component supply disruption, raw material costs up 30%' },
+        ja: { name: '部品供給不足', description: '主要部品の供給支障、原材料30%上昇' },
+        cn: { name: '零部件供应短缺', description: '关键零部件供应中断，原材料价格上涨30%' },
+        es: { name: 'Escasez de componentes', description: 'Interrupción del suministro de componentes clave, materia prima +30%' },
+        ar: { name: 'نقص في القطع', description: 'اضطراب في توريد المكونات الرئيسية، ارتفاع المواد الخام 30%' },
+    },
+    currency_shock: {
+        ko: { name: '환율 급변동', description: 'KRW/USD 20% 절하 (외환위기 시나리오)' },
+        en: { name: 'Currency Shock', description: 'KRW/USD devalues 20% (FX crisis scenario)' },
+        ja: { name: '為替急変動', description: 'KRW/USD 20%切下げ（通貨危機シナリオ）' },
+        cn: { name: '汇率剧烈波动', description: 'KRW/USD 贬值20%（外汇危机情景）' },
+        es: { name: 'Shock cambiario', description: 'KRW/USD se devalúa 20% (escenario de crisis cambiaria)' },
+        ar: { name: 'صدمة العملة', description: 'انخفاض الوون/الدولار 20% (سيناريو أزمة عملة)' },
+    },
+    climate_disaster: {
+        ko: { name: '자연재해', description: '주요 생산지 자연재해로 공장 2개월 가동 중단' },
+        en: { name: 'Natural Disaster', description: 'Natural disaster at key production site halts plant for 2 months' },
+        ja: { name: '自然災害', description: '主要生産地の自然災害で工場2ヶ月操業停止' },
+        cn: { name: '自然灾害', description: '主要生产地自然灾害导致工厂停产2个月' },
+        es: { name: 'Desastre natural', description: 'Desastre natural en sitio productivo clave detiene la planta 2 meses' },
+        ar: { name: 'كارثة طبيعية', description: 'كارثة طبيعية في موقع إنتاج رئيسي توقف المصنع لمدة شهرين' },
+    },
 };
