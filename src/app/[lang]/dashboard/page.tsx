@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { 
+import { isKorean } from '@/lib/i18n/normalize';
+import {
   FolderGit2, 
   Plus, 
   MoreVertical, 
@@ -55,7 +56,7 @@ export default function DashboardPage() {
     });
   }, []);
 
-  const t = lang === 'ko' ? {
+  const t = isKorean(lang) ? {
     title: '프로젝트 대시보드',
     newProject: '새 프로젝트',
     search: '프로젝트 검색...',
@@ -64,6 +65,11 @@ export default function DashboardPage() {
     ordered: '주문됨',
     parts: '개 부품',
     empty: '아직 생성된 프로젝트가 없습니다.',
+    colName: '이름',
+    colStatus: '상태',
+    colParts: '부품 수',
+    colUpdated: '최근 수정',
+    colActions: '작업',
     menu: {
       projects: '내 프로젝트',
       team: '팀 멤버',
@@ -79,6 +85,11 @@ export default function DashboardPage() {
     ordered: 'Ordered',
     parts: 'parts',
     empty: 'No projects created yet.',
+    colName: 'Name',
+    colStatus: 'Status',
+    colParts: 'Parts',
+    colUpdated: 'Last Updated',
+    colActions: 'Actions',
     menu: {
       projects: 'My Projects',
       team: 'Team Members',
@@ -215,11 +226,11 @@ export default function DashboardPage() {
                 <table className="w-full text-sm text-left">
                   <thead className="bg-[#0d1117] text-[#8b949e] uppercase border-b border-[#30363d]">
                     <tr>
-                      <th className="px-6 py-4 font-semibold">Name</th>
-                      <th className="px-6 py-4 font-semibold">Status</th>
-                      <th className="px-6 py-4 font-semibold">Parts</th>
-                      <th className="px-6 py-4 font-semibold">Last Updated</th>
-                      <th className="px-6 py-4 text-right font-semibold">Actions</th>
+                      <th className="px-6 py-4 font-semibold">{t.colName}</th>
+                      <th className="px-6 py-4 font-semibold">{t.colStatus}</th>
+                      <th className="px-6 py-4 font-semibold">{t.colParts}</th>
+                      <th className="px-6 py-4 font-semibold">{t.colUpdated}</th>
+                      <th className="px-6 py-4 text-right font-semibold">{t.colActions}</th>
                     </tr>
                   </thead>
                   <tbody>
