@@ -65,6 +65,10 @@ const dict = {
     saveAsDefault: '기본값으로 저장',
     saveAsDefaultTitle: '현재 도면 설정(뷰/축척/공차/표제란)을 기본값으로 저장합니다. 이후 어셈블리·구성 STEP export 시 자동 적용됩니다.',
     savedAsDefaultToast: '도면 기본값 저장됨',
+    modelChangedUpdating: '모델이 변경되어 도면을 업데이트하는 중…',
+    autoUpdateLabel: '자동 업데이트',
+    autoUpdateTooltip: '3D 모델이 바뀌면 도면을 자동으로 다시 생성합니다',
+    explodedViewTitle: (n: number) => `🎯 분해도 (부품 ${n}개)`,
   },
   en: {
     title: 'Auto Drawing', views: 'Views',
@@ -91,6 +95,10 @@ const dict = {
     saveAsDefault: 'Save as default',
     saveAsDefaultTitle: 'Persists the current drawing settings (views/scale/tolerance/title block) as the default. Assembly and configuration STEP exports will reuse them automatically.',
     savedAsDefaultToast: 'Drawing default saved',
+    modelChangedUpdating: 'Model changed — updating drawing…',
+    autoUpdateLabel: 'Auto-update',
+    autoUpdateTooltip: 'Regenerate the drawing automatically when the 3D model changes',
+    explodedViewTitle: (n: number) => `🎯 Exploded View (${n} parts)`,
   },
   ja: {
     title: '自動図面生成', views: 'ビュー',
@@ -117,6 +125,10 @@ const dict = {
     saveAsDefault: 'デフォルトとして保存',
     saveAsDefaultTitle: '現在の図面設定（ビュー/スケール/公差/表題欄）をデフォルトとして保存します。以降のアセンブリ・構成STEPエクスポートに自動適用されます。',
     savedAsDefaultToast: '図面デフォルトを保存しました',
+    modelChangedUpdating: 'モデルが変更されたため図面を更新しています…',
+    autoUpdateLabel: '自動更新',
+    autoUpdateTooltip: '3Dモデルが変更されると図面を自動的に再生成します',
+    explodedViewTitle: (n: number) => `🎯 分解図 (部品${n}点)`,
   },
   zh: {
     title: '自动工程图', views: '视图',
@@ -143,6 +155,10 @@ const dict = {
     saveAsDefault: '保存为默认',
     saveAsDefaultTitle: '将当前图纸设置（视图/比例/公差/标题栏）保存为默认值。后续装配体与配置 STEP 导出将自动应用。',
     savedAsDefaultToast: '已保存图纸默认值',
+    modelChangedUpdating: '模型已更改,正在更新图纸…',
+    autoUpdateLabel: '自动更新',
+    autoUpdateTooltip: '当三维模型更改时自动重新生成图纸',
+    explodedViewTitle: (n: number) => `🎯 爆炸图 (${n}个零件)`,
   },
   es: {
     title: 'Dibujo Auto', views: 'Vistas',
@@ -169,6 +185,10 @@ const dict = {
     saveAsDefault: 'Guardar como predeterminado',
     saveAsDefaultTitle: 'Guarda los ajustes actuales del dibujo (vistas/escala/tolerancia/cartucho) como predeterminado. Las exportaciones STEP de ensamblaje y configuración los reutilizarán automáticamente.',
     savedAsDefaultToast: 'Predeterminado de dibujo guardado',
+    modelChangedUpdating: 'El modelo cambió — actualizando el dibujo…',
+    autoUpdateLabel: 'Actualización automática',
+    autoUpdateTooltip: 'Regenera el dibujo automáticamente cuando cambia el modelo 3D',
+    explodedViewTitle: (n: number) => `🎯 Vista despiezada (${n} piezas)`,
   },
   ar: {
     title: 'رسم تلقائي', views: 'المناظر',
@@ -195,6 +215,10 @@ const dict = {
     saveAsDefault: 'حفظ كافتراضي',
     saveAsDefaultTitle: 'يحفظ إعدادات الرسم الحالية (المناظر/المقياس/التسامح/كتلة العنوان) كافتراضي. ستعيد عمليات تصدير STEP للتجميع والتكوينات استخدامها تلقائياً.',
     savedAsDefaultToast: 'تم حفظ الافتراضي للرسم',
+    modelChangedUpdating: 'تغيّر النموذج — جارٍ تحديث الرسم…',
+    autoUpdateLabel: 'تحديث تلقائي',
+    autoUpdateTooltip: 'يعيد إنشاء الرسم تلقائيًا عند تغيّر النموذج ثلاثي الأبعاد',
+    explodedViewTitle: (n: number) => `🎯 منظر منفجر (${n} أجزاء)`,
   },
 } as const;
 
@@ -878,7 +902,7 @@ export default function AutoDrawingPanel({
           role="status"
         >
           <span style={{ flex: '1 1 200px' }}>
-            {autoUpdate ? 'Model changed — updating drawing…' : tt.drawingStaleHint}
+            {autoUpdate ? tt.modelChangedUpdating : tt.drawingStaleHint}
           </span>
           <button
             type="button"
@@ -906,7 +930,7 @@ export default function AutoDrawingPanel({
         <button type="button" data-testid="auto-drawing-generate" style={primaryBtn} onClick={handleGenerate}>{tt.generate}</button>
         <label
           data-testid="auto-drawing-autoupdate"
-          title="Regenerate the drawing automatically when the 3D model changes"
+          title={tt.autoUpdateTooltip}
           style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.text, cursor: 'pointer', userSelect: 'none' }}
         >
           <input
@@ -915,7 +939,7 @@ export default function AutoDrawingPanel({
             onChange={(e) => setAutoUpdate(e.target.checked)}
             data-state={autoUpdate ? 'on' : 'off'}
           />
-          Auto-update
+          {tt.autoUpdateLabel}
         </label>
         <button
           type="button"
@@ -1443,7 +1467,7 @@ export default function AutoDrawingPanel({
           assembly-instruction sheet. Only shown when the host passes
           explodedParts. */}
       {explodedParts && explodedParts.length > 0 && (
-        <ExplodedViewSection parts={explodedParts} />
+        <ExplodedViewSection parts={explodedParts} tt={tt} />
       )}
     </div>
   );
@@ -1453,8 +1477,10 @@ export default function AutoDrawingPanel({
 
 function ExplodedViewSection({
   parts,
+  tt,
 }: {
   parts: NonNullable<AutoDrawingPanelProps['explodedParts']>;
+  tt: (typeof dict)[keyof typeof dict];
 }) {
   const layout = useMemo(
     () => autoExplodedDrawing(parts, { balloonRadius: 6, balloonSpacing: 18 }),
@@ -1464,7 +1490,7 @@ function ExplodedViewSection({
   return (
     <div style={{ marginTop: 16, padding: 12, background: 'var(--nx-bg)', borderRadius: 6 }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nx-text)', marginBottom: 8 }}>
-        🎯 Exploded View ({parts.length} parts)
+        {tt.explodedViewTitle(parts.length)}
       </div>
       <AutoExplodedSVG layout={layout} width={760} height={420} />
     </div>
