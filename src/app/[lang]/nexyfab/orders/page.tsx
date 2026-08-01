@@ -116,6 +116,29 @@ const DEMO_ORDERS: NexyfabOrder[] = [
   },
 ];
 
+// DEMO_ORDERS above is authored in Korean; English display names for the same
+// three demo rows (index-aligned) so non-Korean users don't see raw Korean
+// product/manufacturer names in the fallback demo view.
+const DEMO_ORDER_NAMES_EN: { partName: string; manufacturerName: string }[] = [
+  { partName: 'Aluminum Bracket A-100', manufacturerName: 'Daewoo Precision Co., Ltd.' },
+  { partName: 'Stainless Flange SUS304', manufacturerName: 'Korea Precision Machining Cooperative' },
+  { partName: 'CNC Turned Shaft φ25×300', manufacturerName: 'Samsung Precision Machinery' },
+];
+
+/** Exported for direct unit testing — see page.i18n.test.tsx. */
+export function fmtKRW(n: number, isKo: boolean): string {
+  return isKo ? n.toLocaleString('ko-KR') + '원' : n.toLocaleString('en-US') + ' KRW';
+}
+
+export function getDemoOrders(isKo: boolean): NexyfabOrder[] {
+  if (isKo) return DEMO_ORDERS;
+  return DEMO_ORDERS.map((o, i) => ({
+    ...o,
+    partName: DEMO_ORDER_NAMES_EN[i]?.partName ?? o.partName,
+    manufacturerName: DEMO_ORDER_NAMES_EN[i]?.manufacturerName ?? o.manufacturerName,
+  }));
+}
+
 // ─── Toss Payment helper ──────────────────────────────────────────────────────
 
 async function openTossPayment(opts: {
@@ -123,6 +146,8 @@ async function openTossPayment(opts: {
   onSuccess: () => void; onError: (msg: string) => void;
   onReserved?: () => void;
 }) {
+  const isKo = isKorean(opts.lang);
+  const t = (ko: string, en: string) => (isKo ? ko : en);
   try {
     const res = await fetch(`/api/nexyfab/orders/${opts.orderId}/payment`, {
       method: 'POST',
@@ -144,8 +169,8 @@ async function openTossPayment(opts: {
       opts.onReserved?.();
       return;
     }
-    if (!res.ok || !data.tossOrderId) { opts.onError(data.error ?? '결제 정보 생성 실패'); return; }
-    if (!data.clientKey) { opts.onError('NEXT_PUBLIC_TOSS_CLIENT_KEY 환경변수를 설정하세요.'); return; }
+    if (!res.ok || !data.tossOrderId) { opts.onError(data.error ?? t('결제 정보 생성 실패', 'Failed to create payment info')); return; }
+    if (!data.clientKey) { opts.onError(t('NEXT_PUBLIC_TOSS_CLIENT_KEY 환경변수를 설정하세요.', 'Please set the NEXT_PUBLIC_TOSS_CLIENT_KEY environment variable.')); return; }
 
     const baseUrl = window.location.origin;
     const successUrl = `${baseUrl}/${opts.lang}/nexyfab/orders?payment=success&orderId=${opts.orderId}&tossOrderId=${data.tossOrderId}&amount=${data.amount}`;
@@ -157,12 +182,12 @@ async function openTossPayment(opts: {
       const s = document.createElement('script');
       s.src = 'https://js.tosspayments.com/v1/payment';
       s.onload = () => resolve();
-      s.onerror = () => reject(new Error('Toss SDK 로드 실패'));
+      s.onerror = () => reject(new Error(t('Toss SDK 로드 실패', 'Failed to load Toss SDK')));
       document.head.appendChild(s);
     });
 
     const tossFn = getTossPaymentsV1();
-    if (!tossFn) { opts.onError('Toss Payments SDK를 불러오지 못했습니다.'); return; }
+    if (!tossFn) { opts.onError(t('Toss Payments SDK를 불러오지 못했습니다.', 'Could not load the Toss Payments SDK.')); return; }
     const toss = tossFn(data.clientKey);
     await toss.requestPayment('카드', {
       amount: data.amount,
@@ -173,7 +198,7 @@ async function openTossPayment(opts: {
     });
   } catch (e: unknown) {
     const err = e as { code?: string; message?: string };
-    if (err?.code !== 'USER_CANCEL') opts.onError(err?.message ?? '결제 오류');
+    if (err?.code !== 'USER_CANCEL') opts.onError(err?.message ?? t('결제 오류', 'Payment error'));
   }
 }
 
@@ -1207,8 +1232,9 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
 
   const loadOrders = useCallback(async (silent = false, opts?: { status?: string; page?: number }) => {
     if (!user || !token) {
-      setOrders(DEMO_ORDERS);
-      setTotalOrders(DEMO_ORDERS.length);
+      const demoOrders = getDemoOrders(isKo);
+      setOrders(demoOrders);
+      setTotalOrders(demoOrders.length);
       setLoading(false);
       setRefreshing(false);
       return;
@@ -1237,7 +1263,7 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, token, statusFilter, ordersPage]);
+  }, [user, token, statusFilter, ordersPage, isKo]);
 
   useEffect(() => {
     loadOrders();
@@ -1266,14 +1292,14 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
         },
         body: JSON.stringify({ paymentKey, tossOrderId, amount: Number(amount) }),
       }).then(r => r.json()).then((d: { ok?: boolean; error?: string }) => {
-        if (d.ok) { setPaymentMsg('결제가 완료되었습니다. 주문이 생산 단계로 이동했습니다.'); loadOrders(true); }
-        else setPaymentMsg(d.error ?? '결제 승인 처리 중 오류가 발생했습니다.');
-      }).catch(() => setPaymentMsg('결제 승인 처리 중 오류가 발생했습니다.'));
+        if (d.ok) { setPaymentMsg('PAYMENT_OK'); loadOrders(true); }
+        else setPaymentMsg(d.error ?? 'PAYMENT_APPROVE_FAILED');
+      }).catch(() => setPaymentMsg('PAYMENT_APPROVE_FAILED'));
       // Clean up URL
       const clean = window.location.pathname;
       window.history.replaceState({}, '', clean);
     } else if (payment === 'fail') {
-      setPaymentMsg('결제가 취소되었거나 실패했습니다.');
+      setPaymentMsg('PAYMENT_FAILED');
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [token, loadOrders]);
@@ -1451,14 +1477,19 @@ function OrdersPageInner({ params }: { params: Promise<{ lang: string }> }) {
           {/* Payment message */}
           {paymentMsg && (
             <div style={{
-              background: paymentMsg.startsWith('결제가 완료') ? '#388bfd22' : '#f8514918',
-              border: `1px solid ${paymentMsg.startsWith('결제가 완료') ? '#388bfd55' : '#f8514944'}`,
+              background: paymentMsg === 'PAYMENT_OK' ? '#388bfd22' : '#f8514918',
+              border: `1px solid ${paymentMsg === 'PAYMENT_OK' ? '#388bfd55' : '#f8514944'}`,
               borderRadius: 8, padding: '10px 16px',
-              color: paymentMsg.startsWith('결제가 완료') ? 'var(--nx-accent)' : 'var(--nx-error)',
+              color: paymentMsg === 'PAYMENT_OK' ? 'var(--nx-accent)' : 'var(--nx-error)',
               fontSize: 13, marginBottom: 20,
               display: 'flex', alignItems: 'center', gap: 8,
             }}>
-              <span style={{ flex: 1 }}>{paymentMsg}</span>
+              <span style={{ flex: 1 }}>
+                {paymentMsg === 'PAYMENT_OK' ? (isKo ? '결제가 완료되었습니다. 주문이 생산 단계로 이동했습니다.' : 'Payment complete. Your order has moved to production.')
+                  : paymentMsg === 'PAYMENT_APPROVE_FAILED' ? (isKo ? '결제 승인 처리 중 오류가 발생했습니다.' : 'An error occurred while confirming payment.')
+                  : paymentMsg === 'PAYMENT_FAILED' ? (isKo ? '결제가 취소되었거나 실패했습니다.' : 'Payment was canceled or failed.')
+                  : paymentMsg}
+              </span>
               <button onClick={() => setPaymentMsg('')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 16 }}>✕</button>
             </div>
           )}
@@ -1707,10 +1738,6 @@ function OrderCard({
   const statusColor = STATUS_COLORS[order.status];
   const statusLabel = STATUS_LABEL[order.status][isKo ? 'ko' : 'en'];
 
-  function fmtKRW(n: number) {
-    return n.toLocaleString('ko-KR') + '원';
-  }
-
   const dday = formatDday(new Date(order.estimatedDeliveryAt));
 
   return (
@@ -1837,7 +1864,7 @@ function OrderCard({
       }}>
         <MetaItem label={isKo ? '제조사' : 'Manufacturer'} value={order.manufacturerName} />
         <MetaItem label={isKo ? '수량' : 'Qty'} value={`${order.quantity.toLocaleString()}${isKo ? '개' : ' pcs'}`} />
-        <MetaItem label={isKo ? '계약금액' : 'Amount'} value={fmtKRW(order.totalPriceKRW)} />
+        <MetaItem label={isKo ? '계약금액' : 'Amount'} value={fmtKRW(order.totalPriceKRW, isKo)} />
         <MetaItem label={isKo ? '주문일' : 'Ordered'} value={formatDate(order.createdAt)} />
         <div>
           <p style={{ margin: 0, fontSize: 10, color: 'var(--nx-text-3)' }}>{isKo ? '납기 예정' : 'Est. Delivery'}</p>
