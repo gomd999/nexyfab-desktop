@@ -6,6 +6,8 @@ import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Face, OptProgress } from './optimizer/types';
 import { GL_COLOR } from '../lib/glColors';
+import { genDesignDict } from './genDesignDict';
+import type { Lang } from '../hooks/useLang';
 
 interface GenDesignViewerProps {
   dimX: number;
@@ -21,6 +23,7 @@ interface GenDesignViewerProps {
   resultMesh: THREE.BufferGeometry | null;
   isOptimizing: boolean;
   progress: OptProgress | null;
+  lang?: Lang;
 }
 
 type DisplayMode = 'solid' | 'wireframe';
@@ -266,9 +269,11 @@ export default function GenDesignViewer({
   fixedFaces, loads,
   selectionMode, onFaceClick,
   resultMesh, isOptimizing, progress,
+  lang,
 }: GenDesignViewerProps) {
   const [displayMode, setDisplayMode] = useState<DisplayMode>('solid');
   const [fitKey, setFitKey] = useState(0);
+  const gt = genDesignDict[lang ?? 'en'] ?? genDesignDict.en;
 
   const loadMap = useMemo(() => {
     const m = new Map<Face, [number, number, number]>();
@@ -313,7 +318,7 @@ export default function GenDesignViewer({
                   backdropFilter: 'blur(8px)',
                 }}
               >
-                {mode === 'solid' ? 'Solid' : 'Wire'}
+                {mode === 'solid' ? gt.viewSolid : gt.viewWireframe}
               </button>
             ))}
           </>
@@ -332,7 +337,7 @@ export default function GenDesignViewer({
             backdropFilter: 'blur(8px)',
           }}
         >
-          Reset Camera
+          {gt.resetCamera}
         </button>
       </div>
 
@@ -359,12 +364,12 @@ export default function GenDesignViewer({
           }} />
           <div style={{ fontSize: 14, fontWeight: 700, textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>
             {progress
-              ? `Iteration ${progress.iteration} / ${progress.maxIteration}`
-              : 'Computing...'}
+              ? `${gt.iterationLabel} ${progress.iteration} / ${progress.maxIteration}`
+              : gt.generating}
           </div>
           {progress && (
             <div style={{ fontSize: 11, color: 'var(--nx-text-2)', marginTop: 4, textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>
-              Compliance: {progress.compliance.toFixed(2)} | Change: {progress.change.toFixed(4)}
+              {gt.complianceLabel}: {progress.compliance.toFixed(2)} | {gt.changeLabel}: {progress.change.toFixed(4)}
             </div>
           )}
         </div>
@@ -389,7 +394,7 @@ export default function GenDesignViewer({
           backdropFilter: 'blur(8px)',
           pointerEvents: 'none',
         }}>
-          {selectionMode === 'fixed' ? 'Click a face to fix' : 'Click a face to apply load'}
+          {selectionMode === 'fixed' ? gt.clickFaceToFix : gt.clickFaceToLoad}
         </div>
       )}
 

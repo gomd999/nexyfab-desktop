@@ -63,6 +63,9 @@ export const genDesignDict = {
     faceMinusY: '아래 (-Y)',
     facePlusZ: '앞 (+Z)',
     faceMinusZ: '뒤 (-Z)',
+    viewSolid: '솔리드',
+    viewWireframe: '와이어프레임',
+    resetCamera: '카메라 리셋',
   },
   en: {
     badge: 'Generative Design',
@@ -126,6 +129,9 @@ export const genDesignDict = {
     faceMinusY: 'Bottom (-Y)',
     facePlusZ: 'Front (+Z)',
     faceMinusZ: 'Back (-Z)',
+    viewSolid: 'Solid',
+    viewWireframe: 'Wireframe',
+    resetCamera: 'Reset Camera',
   },
   ja: {
     badge: 'ジェネレーティブデザイン',
@@ -189,6 +195,9 @@ export const genDesignDict = {
     faceMinusY: '下 (-Y)',
     facePlusZ: '前 (+Z)',
     faceMinusZ: '後 (-Z)',
+    viewSolid: 'ソリッド',
+    viewWireframe: 'ワイヤーフレーム',
+    resetCamera: 'カメラをリセット',
   },
   cn: {
     badge: '生成式设计',
@@ -252,6 +261,9 @@ export const genDesignDict = {
     faceMinusY: '底 (-Y)',
     facePlusZ: '前 (+Z)',
     faceMinusZ: '后 (-Z)',
+    viewSolid: '实体',
+    viewWireframe: '线框',
+    resetCamera: '重置相机',
   },
   es: {
     badge: 'Diseno Generativo',
@@ -315,6 +327,9 @@ export const genDesignDict = {
     faceMinusY: 'Inferior (-Y)',
     facePlusZ: 'Frontal (+Z)',
     faceMinusZ: 'Posterior (-Z)',
+    viewSolid: 'Solido',
+    viewWireframe: 'Alambre',
+    resetCamera: 'Restablecer Camara',
   },
   ar: {
     badge: 'التصميم التوليدي',
@@ -378,6 +393,9 @@ export const genDesignDict = {
     faceMinusY: 'أسفل (-Y)',
     facePlusZ: 'أمام (+Z)',
     faceMinusZ: 'خلف (-Z)',
+    viewSolid: 'مصمت',
+    viewWireframe: 'إطار سلكي',
+    resetCamera: 'إعادة ضبط الكاميرا',
   },
 } as const;
 

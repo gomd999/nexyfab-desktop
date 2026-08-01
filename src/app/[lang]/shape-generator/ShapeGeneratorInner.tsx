@@ -10671,6 +10671,7 @@ export function ShapeGeneratorInner() {
                   fixedFaces={fixedFaces} loads={loads}
                   selectionMode={selectionMode} onFaceClick={handleFaceClick}
                   resultMesh={resultMesh} isOptimizing={isOptimizing} progress={progress}
+                  lang={lang}
                 />
               </div>
             )}
