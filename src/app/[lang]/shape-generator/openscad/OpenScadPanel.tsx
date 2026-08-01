@@ -177,6 +177,11 @@ const dict = {
     quoteQuantityLabel: '수량',
     getQuote: '견적 받기',
     quoteRouteFailed: '견적 요청 실패',
+    imageTooLarge: '이미지가 너무 큽니다 (최대 6MB)',
+    freeformLabel: '자유형',
+    imageLabel: '이미지',
+    sliderSectionHint: '📐 치수 조정 — AI 재생성 없이 즉시 반영',
+    customizerSectionHint: '🎛️ 파라미터 (자유형) — 코드 변경, AI 재호출 없음',
   },
   en: {
     tabShape: '⚙ AI Shape',
@@ -332,6 +337,11 @@ const dict = {
     quoteQuantityLabel: 'Quantity',
     getQuote: 'Get quote',
     quoteRouteFailed: 'Quote request failed',
+    imageTooLarge: 'Image is too large (max 6MB)',
+    freeformLabel: 'Free-form',
+    imageLabel: 'Image',
+    sliderSectionHint: '📐 Dimension adjust — applies instantly, no AI regeneration',
+    customizerSectionHint: '🎛️ Parameters (free-form) — edits code, no AI re-call',
   },
   ja: {
     tabShape: '⚙ AI 形状',
@@ -487,6 +497,11 @@ const dict = {
     quoteQuantityLabel: '数量',
     getQuote: '見積を取得',
     quoteRouteFailed: '見積依頼に失敗しました',
+    imageTooLarge: '画像が大きすぎます（最大6MB）',
+    freeformLabel: '自由形式',
+    imageLabel: '画像',
+    sliderSectionHint: '📐 寸法調整 — AI再生成なしで即時反映',
+    customizerSectionHint: '🎛️ パラメータ（自由形式）— コードを変更、AI再呼び出しなし',
   },
   zh: {
     tabShape: '⚙ AI 形状',
@@ -641,6 +656,11 @@ const dict = {
     quoteQuantityLabel: '数量',
     getQuote: '获取报价',
     quoteRouteFailed: '报价请求失败',
+    imageTooLarge: '图片过大（最大 6MB）',
+    freeformLabel: '自由形式',
+    imageLabel: '图片',
+    sliderSectionHint: '📐 尺寸调整 — 无需 AI 重新生成，立即生效',
+    customizerSectionHint: '🎛️ 参数（自由形式）— 修改代码，不调用 AI',
   },
   es: {
     tabShape: '⚙ Forma IA',
@@ -796,6 +816,11 @@ const dict = {
     quoteQuantityLabel: 'Cantidad',
     getQuote: 'Obtener cotización',
     quoteRouteFailed: 'Fallo en la solicitud de cotización',
+    imageTooLarge: 'La imagen es demasiado grande (máx. 6 MB)',
+    freeformLabel: 'Forma libre',
+    imageLabel: 'Imagen',
+    sliderSectionHint: '📐 Ajuste de dimensiones — se aplica al instante, sin regenerar con IA',
+    customizerSectionHint: '🎛️ Parámetros (forma libre) — modifica el código, sin volver a llamar a la IA',
   },
   ar: {
     tabShape: '⚙ شكل الذكاء الاصطناعي',
@@ -951,6 +976,11 @@ const dict = {
     quoteQuantityLabel: 'الكمية',
     getQuote: 'الحصول على عرض السعر',
     quoteRouteFailed: 'فشل طلب عرض السعر',
+    imageTooLarge: 'الصورة كبيرة جدًا (الحد الأقصى 6 ميغابايت)',
+    freeformLabel: 'شكل حر',
+    imageLabel: 'صورة',
+    sliderSectionHint: '📐 ضبط الأبعاد — يُطبَّق فورًا دون إعادة توليد بالذكاء الاصطناعي',
+    customizerSectionHint: '🎛️ المعاملات (شكل حر) — تعدّل الكود دون إعادة استدعاء الذكاء الاصطناعي',
   },
 } as const;
 
@@ -986,14 +1016,56 @@ interface PromptLibraryEntry {
 
 interface OrgInfo { id: string; name: string }
 
-const EXAMPLE_PROMPTS = [
-  '볼트 구멍 4개 있는 브라켓 50×30×5mm',
-  'M8 볼트용 플랜지 커플링',
-  '두께 3mm 사각 박스 하우징',
-  '기어 이빨 16개 소형 스퍼 기어',
-  '손잡이 있는 레버 암 120mm',
-  'L형 앵글 브라켓 40×40×4mm',
-];
+const EXAMPLE_PROMPTS: Record<string, string[]> = {
+  ko: [
+    '볼트 구멍 4개 있는 브라켓 50×30×5mm',
+    'M8 볼트용 플랜지 커플링',
+    '두께 3mm 사각 박스 하우징',
+    '기어 이빨 16개 소형 스퍼 기어',
+    '손잡이 있는 레버 암 120mm',
+    'L형 앵글 브라켓 40×40×4mm',
+  ],
+  en: [
+    'bracket 50×30×5mm with 4 bolt holes',
+    'M8 bolt flange coupling',
+    '3mm-thick square box housing',
+    'small spur gear with 16 teeth',
+    '120mm lever arm with a handle',
+    'L-angle bracket 40×40×4mm',
+  ],
+  ja: [
+    'ボルト穴4つの bracket 50×30×5mm',
+    'M8ボルト用フランジカップリング',
+    '厚さ3mmの角型ボックスハウジング',
+    '歯数16の小型スパーギア',
+    '取っ手付きレバーアーム 120mm',
+    'L型アングル bracket 40×40×4mm',
+  ],
+  zh: [
+    '带 4 个螺栓孔的 bracket 50×30×5mm',
+    'M8 螺栓法兰联轴器',
+    '壁厚 3mm 的方形箱体外壳',
+    '16 齿小型直齿轮',
+    '带手柄的 120mm 杠杆臂',
+    'L 形角撑 bracket 40×40×4mm',
+  ],
+  es: [
+    'bracket 50×30×5mm con 4 agujeros para tornillo',
+    'Acoplamiento de brida para tornillo M8',
+    'Caja rectangular con pared de 3mm',
+    'Piñón recto pequeño de 16 dientes',
+    'Brazo de palanca de 120mm con mango',
+    'Bracket en L 40×40×4mm',
+  ],
+  ar: [
+    'bracket بمقاس 50×30×5 مم مع 4 ثقوب براغي',
+    'وصلة شفة ببرغي M8',
+    'صندوق مربع بسماكة 3 مم',
+    'ترس مستقيم صغير بـ16 سناً',
+    'ذراع رافعة 120 مم بمقبض',
+    'bracket زاوية L بمقاس 40×40×4 مم',
+  ],
+};
 
 // STL export from BufferGeometry
 async function exportSTL(geo: THREE.BufferGeometry, filename = 'model.stl') {
@@ -1196,11 +1268,11 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const [scadNlImageName, setScadNlImageName] = useState<string | null>(null);
   const onPickScadImage = useCallback((file: File | null | undefined) => {
     if (!file) return;
-    if (file.size > 6 * 1024 * 1024) { setScadErr('이미지가 너무 큽니다 (최대 6MB)'); return; }
+    if (file.size > 6 * 1024 * 1024) { setScadErr(t.imageTooLarge); return; }
     const reader = new FileReader();
     reader.onload = () => { setScadNlImage(typeof reader.result === 'string' ? reader.result : null); setScadNlImageName(file.name); };
     reader.readAsDataURL(file);
-  }, []);
+  }, [t]);
   const customizerParams = useMemo(
     () => (scadIsFreeform ? parseCustomizerParams(scadSource) : []),
     [scadIsFreeform, scadSource],
@@ -2339,7 +2411,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
           {/* 예시 칩 (코드 없을 때만) */}
           {!hasCode && (
             <div className="flex flex-wrap gap-1.5">
-              {EXAMPLE_PROMPTS.map(ex => (
+              {(EXAMPLE_PROMPTS[langMap[seg] ?? 'en'] ?? EXAMPLE_PROMPTS.en).map(ex => (
                 <button key={ex} onClick={() => { setPrompt(ex); generate(ex); }} disabled={isWorkingOrScad}
                   className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-gray-300 rounded-full transition-colors">
                   {ex}
@@ -2612,11 +2684,11 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
                   onChange={e => setScadNlFreeform(e.target.checked)}
                   className="accent-emerald-500"
                 />
-                {(langMap[seg] ?? 'en') === 'ko' ? '자유형' : 'Free-form'}
+                {t.freeformLabel}
               </label>
               <label className="flex items-center gap-1 text-[11px] text-emerald-300 cursor-pointer select-none" title="Image → 3D: upload a reference photo/sketch; the vision model writes parametric OpenSCAD from it">
                 <input type="file" accept="image/*" className="hidden" onChange={e => onPickScadImage(e.target.files?.[0])} />
-                🖼️ {(langMap[seg] ?? 'en') === 'ko' ? '이미지' : 'Image'}
+                🖼️ {t.imageLabel}
               </label>
               {scadNlImage && (
                 <span className="flex items-center gap-1 text-[11px] text-emerald-200/80">
@@ -2642,7 +2714,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
           </div>
           {scadSliders.length > 0 && (
             <div className="border border-gray-700 rounded p-2 bg-gray-950/60 flex flex-col gap-1.5" data-testid="scad-param-sliders">
-              <div className="text-[11px] text-indigo-200/80 font-medium">📐 치수 조정 — AI 재생성 없이 즉시 반영</div>
+              <div className="text-[11px] text-indigo-200/80 font-medium">{t.sliderSectionHint}</div>
               {scadSliders.map(s => (
                 <label key={s.id} className="flex items-center gap-2 text-[11px] text-gray-300">
                   <span className="w-28 truncate" title={s.label}>{s.label}</span>
@@ -2662,7 +2734,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
           )}
           {scadIsFreeform && customizerParams.length > 0 && (
             <div className="border border-emerald-800/60 rounded p-2 bg-gray-950/60 flex flex-col gap-1.5" data-testid="scad-customizer-params">
-              <div className="text-[11px] text-emerald-300/90 font-medium">🎛️ 파라미터 (자유형) — 코드 변경, AI 재호출 없음</div>
+              <div className="text-[11px] text-emerald-300/90 font-medium">{t.customizerSectionHint}</div>
               {customizerParams.map(p => {
                 const label = p.description || p.name;
                 if (p.kind === 'bool') {
