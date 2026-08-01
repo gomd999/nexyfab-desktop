@@ -36,9 +36,21 @@ export function buildPreset(domain, templateId, params = {}) {
 }
 
 // ── 도메인 어셈블리 템플릿 (#6 비-기계 3D) — 단품 프리셋과 별개로 parts[] 어셈블리를 만든다 ──
-export async function listAssemblyPresets(domain) {
+/**
+ * @param {string} [domain]
+ * @param {string} [lang] 표시 언어(ko·en·zh·ja·es·ar). 주면 각 항목에 `label` 과
+ *   `labelVia`(실제로 나간 언어)를 붙인다. **`labelKo`/`labelEn` 은 그대로 남긴다** —
+ *   기존 호출자를 깨지 않기 위해서다.
+ *
+ * ⚠ 260801: 템플릿은 ko/en 둘뿐이고 파라미터는 ko 하나뿐이라, ja 화면에서 제목은 영어·
+ *   파라미터는 한국어가 그대로 나왔다. 표는 `assembly-i18n.mjs` 에 둔다.
+ */
+export async function listAssemblyPresets(domain, lang) {
   const { listAssemblyTemplates } = await import('./domain-assemblies.mjs');
-  return listAssemblyTemplates(domain);
+  const list = listAssemblyTemplates(domain);
+  if (!lang) return list;
+  const { localizeTemplates } = await import('./assembly-i18n.mjs');
+  return localizeTemplates(list, lang);
 }
 
 /** domain+id+params → { ok, assembly, built } — built=buildAssembly(게이트·간섭·구조·composeIntent). */

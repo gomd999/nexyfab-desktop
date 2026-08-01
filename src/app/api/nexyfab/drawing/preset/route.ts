@@ -18,7 +18,7 @@ export const runtime = 'nodejs';
 type PresetModule = {
   listTemplates: (domain?: string) => unknown;
   presetWithVerify: (domain: string, templateId: string, params: Record<string, number>) => Promise<unknown>;
-  listAssemblyPresets: (domain?: string) => Promise<unknown>;
+  listAssemblyPresets: (domain?: string, lang?: string) => Promise<unknown>;
   assemblyPresetWithBuild: (domain: string, templateId: string, params: Record<string, number>) => Promise<unknown>;
 };
 
@@ -37,7 +37,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const mod = await loadPreset();
     // kind=assembly → 도메인 어셈블리 템플릿 카탈로그 (#6: 건축 RC·조경 파고라/데크·인테리어)
     if (url.searchParams.get('kind') === 'assembly') {
-      return NextResponse.json({ ok: true, kind: 'assembly', templates: await mod.listAssemblyPresets(url.searchParams.get('domain') ?? undefined) });
+      // ?lang= 을 주면 제목·파라미터 라벨을 그 언어로 내보낸다(260801).
+      // 안 주면 예전 그대로 — 기존 호출자를 깨지 않는다.
+      return NextResponse.json({
+        ok: true, kind: 'assembly',
+        templates: await mod.listAssemblyPresets(
+          url.searchParams.get('domain') ?? undefined,
+          url.searchParams.get('lang') ?? undefined,
+        ),
+      });
     }
     return NextResponse.json({ ok: true, domain, templates: mod.listTemplates(domain) });
   } catch (e) {

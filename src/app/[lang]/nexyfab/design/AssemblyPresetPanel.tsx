@@ -1443,8 +1443,12 @@ function buildDiff(prev: DiffSummary | null, cur: DiffSummary): { from: string; 
   return { from: prev?.verdict ?? '—', to: cur.verdict, deltas: deltas.slice(0, 3) };
 }
 
-interface ParamSpec { name: string; labelKo: string; unit: string; default: number; min: number; max: number }
-interface Template { domain: string; id: string; labelKo: string; labelEn: string; params: ParamSpec[] }
+interface ParamSpec { name: string; labelKo: string; unit: string; default: number; min: number; max: number;
+  /** 서버가 ?lang= 로 지역화한 표시용 라벨(260801). 없으면 labelKo 로 되돌아간다. */
+  label?: string; labelVia?: string }
+interface Template { domain: string; id: string; labelKo: string; labelEn: string; params: ParamSpec[];
+  /** 서버 지역화 제목. 없으면 ko/en 이분으로 되돌아간다. */
+  label?: string; labelVia?: string }
 
 interface AssemblyPart {
   id?: string; type?: string; material?: string; role?: string;
@@ -2016,7 +2020,7 @@ export default function AssemblyPresetPanel({
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/nexyfab/drawing/preset/?kind=assembly&domain=${encodeURIComponent(domain)}`)
+    fetch(`/api/nexyfab/drawing/preset/?kind=assembly&domain=${encodeURIComponent(domain)}&lang=${encodeURIComponent(lang)}`)
       .then((r) => r.json())
       .then((d: { ok: boolean; templates?: Template[] }) => {
         if (!alive || !d.ok || !d.templates?.length) return;
@@ -2835,9 +2839,9 @@ export default function AssemblyPresetPanel({
             }}
           >
             <div style={{ fontSize: 16, lineHeight: 1 }}>{DOMAIN_EMOJI[tp.domain] ?? '📐'}</div>
-            <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3 }}>{ko ? tp.labelKo : tp.labelEn}</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3 }}>{tp.label ?? (ko ? tp.labelKo : tp.labelEn)}</div>
             <div style={{ fontSize: 9.5, color: 'var(--nx-text-3, #6b7684)', marginTop: 2, lineHeight: 1.45, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-              {tp.params.slice(0, 4).map((p) => `${p.labelKo} ${p.default}${p.unit}`).join(' · ')}
+              {tp.params.slice(0, 4).map((p) => `${p.label ?? p.labelKo} ${p.default}${p.unit}`).join(' · ')}
             </div>
           </button>
         ))}
@@ -2888,7 +2892,7 @@ export default function AssemblyPresetPanel({
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, margin: '8px 0' }}>
             {tpl.params.map((p) => (
               <label key={p.name} style={{ fontSize: 11, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{p.labelKo}{p.unit ? ` (${p.unit})` : ''}</span>
+                <span style={{ color: 'var(--nx-text-2, #46505e)' }}>{(p.label ?? p.labelKo)}{p.unit ? ` (${p.unit})` : ''}</span>
                 <input
                   type="number" inputMode="decimal"
                   value={params[p.name] ?? ''}
