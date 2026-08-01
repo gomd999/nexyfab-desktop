@@ -1,5 +1,4 @@
 [
-  "app/[lang]/help/HelpClient.tsx",
   "app/[lang]/nexyfab/admin/email-templates/page.tsx",
   "app/[lang]/nexyfab/admin/rfq-matching/page.tsx",
   "app/[lang]/nexyfab/billing/page.tsx",

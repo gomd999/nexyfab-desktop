@@ -86,7 +86,7 @@ const PLANS: PlanDef[] = [
 // at all.
 export function fmtKRW(n: number | null, isKo: boolean): string {
   if (n === null || n === 0) return isKo ? '무료' : 'Free';
-  return isKo ? n.toLocaleString('ko-KR') + '원' : n.toLocaleString('en-US') + ' KRW';
+  return isKo ? n.toLocaleString('ko-KR') + '원' : n.toLocaleString() + ' KRW';
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────

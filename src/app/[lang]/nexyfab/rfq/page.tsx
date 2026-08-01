@@ -1042,7 +1042,7 @@ interface QuoteForRFQ {
 
 /** Exported for direct unit testing — see page.i18n.test.tsx. */
 export function formatQuoteAmount(n: number, isKo: boolean): string {
-  return isKo ? `${n.toLocaleString('ko-KR')}원` : `${n.toLocaleString('en-US')} KRW`;
+  return isKo ? `${n.toLocaleString('ko-KR')}원` : `${n.toLocaleString()} KRW`;
 }
 
 /** Exported so it can be rendered in isolation for i18n regression tests —

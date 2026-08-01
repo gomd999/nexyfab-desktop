@@ -127,7 +127,7 @@ const DEMO_ORDER_NAMES_EN: { partName: string; manufacturerName: string }[] = [
 
 /** Exported for direct unit testing — see page.i18n.test.tsx. */
 export function fmtKRW(n: number, isKo: boolean): string {
-  return isKo ? n.toLocaleString('ko-KR') + '원' : n.toLocaleString('en-US') + ' KRW';
+  return isKo ? n.toLocaleString('ko-KR') + '원' : n.toLocaleString() + ' KRW';
 }
 
 export function getDemoOrders(isKo: boolean): NexyfabOrder[] {
