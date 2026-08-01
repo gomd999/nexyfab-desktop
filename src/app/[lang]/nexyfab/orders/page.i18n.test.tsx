@@ -21,7 +21,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { fmtKRW, getDemoOrders } from './page';
+import { fmtKRW, getDemoOrders } from './orderHelpers';
 
 describe('fmtKRW — currency unit suffix is language-branched', () => {
   it.each(['ja', 'cn', 'es', 'ar', 'en'] as const)('isKo=false (lang=%s): "KRW" suffix, no 원', () => {

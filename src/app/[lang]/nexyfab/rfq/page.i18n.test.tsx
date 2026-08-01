@@ -29,7 +29,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { formatQuoteAmount, QuoteAcceptSection } from './page';
+import { formatQuoteAmount, QuoteAcceptSection } from './QuoteAcceptSection';
 
 describe('formatQuoteAmount — currency unit suffix is language-branched', () => {
   it.each(['ja', 'cn', 'es', 'ar', 'en'] as const)('isKo=false (lang=%s): "KRW" suffix, no 원', () => {

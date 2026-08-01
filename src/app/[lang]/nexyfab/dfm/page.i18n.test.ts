@@ -18,7 +18,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { levelLabel } from './page';
+import { levelLabel } from './levelLabel';
 
 describe('levelLabel — DFM issue badge label is language-branched', () => {
   it('isKo=true: Korean labels', () => {

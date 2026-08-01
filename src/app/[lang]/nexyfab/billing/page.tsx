@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { use, useEffect, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/useToast';
 import { isKorean } from '@/lib/i18n/normalize';
+import { fmtKRW } from './fmtKRW';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,18 +77,6 @@ const PLANS: PlanDef[] = [
     ],
   },
 ];
-
-// ─── Formatting ───────────────────────────────────────────────────────────────
-
-// Exported (not just a closure) so it has a direct regression test — see
-// page.i18n.test.tsx. Unit suffix must follow the page's ko/en branch: this
-// used to append the Korean word '원' unconditionally, so non-Korean users
-// saw prices like "49,000원" with no English rendering of the currency unit
-// at all.
-export function fmtKRW(n: number | null, isKo: boolean): string {
-  if (n === null || n === 0) return isKo ? '무료' : 'Free';
-  return isKo ? n.toLocaleString('ko-KR') + '원' : n.toLocaleString() + ' KRW';
-}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 

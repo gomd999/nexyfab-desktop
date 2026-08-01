@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { isKorean } from '@/lib/i18n/normalize';
 import { useAuthStore } from '@/hooks/useAuth';
 import type { DfmCheckItem } from '@/lib/dfm-rules';
+import { LEVEL_COLORS, levelLabel } from './levelLabel';
 
 type DfmAction = 'proceed_to_match' | 'request_expert' | 'revise';
 
@@ -36,18 +37,6 @@ interface DfmResponse {
   issues:   number;
   warnings: number;
   items:    DfmCheckItem[];
-}
-
-const LEVEL_COLORS: Record<DfmCheckItem['level'], { bg: string; fg: string; labelKo: string; labelEn: string }> = {
-  error:   { bg: '#fee2e2', fg: '#991b1b', labelKo: '오류', labelEn: 'Error' },
-  warning: { bg: '#fef3c7', fg: '#92400e', labelKo: '경고', labelEn: 'Warning' },
-  info:    { bg: '#dbeafe', fg: '#1e40af', labelKo: '정보', labelEn: 'Info' },
-};
-
-// Exported as a pure function so the ko/en branch is unit-testable without
-// rendering the page (whose default export consumes `params` via `use()`).
-export function levelLabel(level: DfmCheckItem['level'], isKo: boolean): string {
-  return isKo ? LEVEL_COLORS[level].labelKo : LEVEL_COLORS[level].labelEn;
 }
 
 export default function DfmCheckPage({ params }: PageProps) {

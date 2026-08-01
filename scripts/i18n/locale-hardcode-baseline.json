@@ -28,7 +28,7 @@
     "hits": 1
   },
   {
-    "file": "app/[lang]/nexyfab/billing/page.tsx",
+    "file": "app/[lang]/nexyfab/billing/fmtKRW.ts",
     "hits": 1
   },
   {
@@ -56,8 +56,12 @@
     "hits": 1
   },
   {
+    "file": "app/[lang]/nexyfab/orders/orderHelpers.ts",
+    "hits": 1
+  },
+  {
     "file": "app/[lang]/nexyfab/orders/page.tsx",
-    "hits": 2
+    "hits": 1
   },
   {
     "file": "app/[lang]/nexyfab/projects/page.tsx",
@@ -65,7 +69,11 @@
   },
   {
     "file": "app/[lang]/nexyfab/rfq/page.tsx",
-    "hits": 3
+    "hits": 2
+  },
+  {
+    "file": "app/[lang]/nexyfab/rfq/QuoteAcceptSection.tsx",
+    "hits": 1
   },
   {
     "file": "app/[lang]/nexyfab/rfq/QuoteComparisonView.tsx",
