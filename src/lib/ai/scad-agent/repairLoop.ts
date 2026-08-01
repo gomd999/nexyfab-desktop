@@ -39,6 +39,7 @@ import { makeInitialBudget } from './budget';
 import { verifyAgainstSpec, formatSpecCritique, type ProcessForDfm } from './specVerification';
 import { effectiveScadSource } from './composeSource';
 import type { VisionAdapter } from './tools';
+import { dimensionSentences, dimensionSummary, type DimSentence } from '@/lib/cad-ir/dimensionReport';
 
 // ─── Gate abstraction ──────────────────────────────────────────────────────
 
@@ -49,6 +50,17 @@ export interface GateVerdict {
   feedback: string;
   /** Confidence / quality in 0..1 for ranking attempts. Optional. */
   score?: number;
+  /**
+   * Per-dimension comparison, rendered for the END USER (W4, 260801).
+   *
+   * ⚠ `feedback` above is a REPAIR INSTRUCTION aimed at the next model attempt
+   *   ("Correct by 12 units") — it is not something to show a customer. The gate
+   *   already computes expected/actual/delta per dimension and this field used to
+   *   be thrown away here, leaving the UI with nothing but pass/fail.
+   */
+  dimensions?: DimSentence[];
+  /** One-line summary of `dimensions` — counts ok / off / **not checked** separately. */
+  dimensionSummary?: string;
 }
 
 /**
@@ -295,6 +307,20 @@ export async function runRepairLoop(opts: RepairLoopOptions): Promise<RepairLoop
     // ── Deterministic gate (source of truth) ──
     const verdict = await opts.gate(session);
     const geomPassed = verdict?.passed === true;
+    /**
+     * W4 — 치수 대조를 **사용자에게** 흘린다. 지금까지 이 값은 여기서 계산되고
+     * 감사 로그에만 남아, 화면에는 통과/실패만 갔다.
+     * ⚠ 게이트가 아예 못 돈 경우(`verdict === null`)에는 아무것도 보내지 않는다 —
+     *   빈 목록을 보내면 「검사했는데 지적 없음」으로 읽힌다.
+     */
+    if (verdict?.dimensions?.length) {
+      opts.onEvent?.({
+        type: 'dimension_check',
+        passed: verdict.passed,
+        summary: verdict.dimensionSummary ?? dimensionSummary(verdict.dimensions, 'ko'),
+        dimensions: verdict.dimensions,
+      });
+    }
 
     // ── Vision critic (lever E) — semantic second opinion ──
     let vision: { match: boolean; note: string } | null = null;
@@ -496,7 +522,20 @@ export function makeReconstructionGateEvaluator(
       bodyCount: geo.componentCount ?? 1,
     };
     const gate = verifyReconstruction({ kind: 'measurement', measurement }, ir);
-    return { passed: gate.passed, feedback: gate.feedback, score: gate.score };
+    /**
+     * ⚠ 단위는 **IR 이 밝힌 것만** 쓴다. `ir.extent.units` 는 선언·추론된 경우에만 값이 있고
+     *   모르면 `null` 이다(`schema.ts` 의 honesty rule). 여기서 `'mm'` 를 기본값으로 두면
+     *   측정하지 않은 단위를 문장에 새기게 된다.
+     */
+    const unit = ir.extent?.units ?? null;
+    const dimensions = dimensionSentences(gate.checks, { lang: 'ko', unit });
+    return {
+      passed: gate.passed,
+      feedback: gate.feedback,
+      score: gate.score,
+      dimensions,
+      dimensionSummary: dimensionSummary(dimensions, 'ko'),
+    };
   };
 }
 

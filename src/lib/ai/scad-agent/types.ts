@@ -20,6 +20,7 @@
  */
 
 import type { IntentInput } from '../../openscad-render/intentToScad';
+import type { DimSentence } from '../../cad-ir/dimensionReport';
 
 // ─── Tool definitions ──────────────────────────────────────────────────────
 
@@ -1045,6 +1046,17 @@ export type AgentEvent =
   | { type: 'done'; session: AgentSession }
   /** Y1 — Agent paused waiting for user clarification. */
   | { type: 'awaiting_user'; question: string; options?: string[]; session: AgentSession }
+  /**
+   * W4 (260801) — per-dimension comparison written for the END USER
+   * ("요청 80mm → 실제 79.8mm (0.25% 차이) ✓").
+   *
+   * ⚠ Distinct from the gate's `feedback`, which is a repair instruction for the
+   *   next model attempt. The gate computed this all along; it was discarded in
+   *   `repairLoop` and never reached the client.
+   * ⚠ `summary` counts ok / off / **not-checked** separately — an unchecked
+   *   dimension is not a passing one.
+   */
+  | { type: 'dimension_check'; passed: boolean; summary: string; dimensions: DimSentence[] }
   | { type: 'error'; message: string };
 
 // ─── AI client + tool executor abstractions (mockable) ─────────────────────

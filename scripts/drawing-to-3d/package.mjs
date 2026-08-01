@@ -65,6 +65,76 @@ function dimStr(type, p) {
 const PRINT_BAR = (label) => `<div class="nf-print-bar" style="position:sticky;top:0;z-index:99;background:#1f2937;color:#fff;padding:7px 16px;font-size:12.5px;display:flex;gap:12px;align-items:center"><b>${label}</b><button onclick="print()" style="background:#2563eb;color:#fff;border:0;padding:5px 13px;border-radius:6px;cursor:pointer">🖨 인쇄 / PDF</button></div>`;
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
+/**
+ * 제원표(W3) — 조립체가 **이미 계산해 둔** `*Meta` 를 리포트에 싣는다.
+ *
+ * ## 왜
+ * 54종 중 38종이 메타를 만든다(감속비·Grashof·중심거리·TEMA 형식…). 그런데 지금까지
+ * 이 값들은 **게이트 검사(`mech-check.mjs`)만** 읽었고 사용자가 받는 문서에는 0회 나왔다.
+ * 이 저장소의 지배적 결함(「있는 것이 안 닿음」)의 또 한 사례라서, 신규 계산 없이 배선만 한다.
+ *
+ * ## ⚠ 라벨을 지어내지 않는다
+ * 메타 키는 약 200종이다. 전부에 한글 이름을 붙이려면 **뜻을 모르는 키까지 지어내야** 한다.
+ * 그래서 규칙은: **아는 키만 번역하고, 모르는 키는 원래 이름 그대로 낸다.**
+ * `shellID`·`naca`·`tubePitch` 는 번역 없이도 그 분야 사람에게 읽힌다. 잘못 번역된 이름보다 낫다.
+ *
+ * ⚠ 단위도 마찬가지다. 키 이름이나 값에 없는 단위를 붙이지 않는다 —
+ *   `M2`/`M3`/`Deg`/`Mm` 처럼 **이름이 스스로 밝히는** 경우만 그대로 읽힌다.
+ */
+const META_LABELS = {
+  totalRatio: '총 감속비', outputPer1000rpm: '입력 1000rpm 시 출력(rpm)',
+  centerDistances: '맞물림 중심거리(mm)', pitchDias: '피치원 지름(mm)',
+  module: '모듈 m', teeth: '잇수 z', thickness: '치폭(mm)',
+  grashof: 'Grashof 조건', grashofClass: '4절 링크 분류',
+  ground: '고정링크(mm)', crank: '크랭크(mm)', coupler: '커플러(mm)', rocker: '로커(mm)',
+  inputDeg: '입력각(°)', outputDeg: '출력각(°)', transmissionDeg: '전달각(°)',
+  temaType: 'TEMA 형식', tubeLen: '전열관 길이(mm)', tubePitch: '관 피치(mm)', baffles: '배플 수',
+  diameter: '지름(mm)', blades: '날개 수', hubDia: '허브 지름(mm)',
+  dof: '자유도(축 수)', reach: '도달거리(mm)', stations: '스테이션 수',
+  span: '지간(mm)', mainSpan: '주경간(mm)', sideSpan: '측경간(mm)',
+  floors: '층수', bays: '베이 수', note: '',
+};
+/** 값 하나를 표 칸으로. 배열은 나열, 불리언은 말로, 객체는 싣지 않는다(형태를 모른다). */
+function metaCell(key, v) {
+  if (v == null) return null;
+  if (typeof v === 'boolean') {
+    if (key === 'grashof') return v ? '충족 — 크랭크 완전회전 가능' : '불충족 — 완전회전 불가(요동)';
+    return v ? '예' : '아니오';
+  }
+  if (Array.isArray(v)) {
+    if (!v.length || v.some((x) => x != null && typeof x === 'object')) return null;
+    return v.join(' · ');
+  }
+  if (typeof v === 'object') return null;   // 중첩 객체는 지어내 펼치지 않는다
+  const s = String(v);
+  return s.trim() ? s : null;
+}
+/**
+ * 조립체의 모든 `*Meta` 를 하나의 제원표로. 메타가 없으면 빈 문자열 —
+ * ⚠ 「제원 없음」이라고 적지 않는다. 메타를 안 만드는 템플릿(54 중 16)이 결함은 아니다.
+ */
+export function specTable(assembly) {
+  if (!assembly || typeof assembly !== 'object') return '';
+  const metaKeys = Object.keys(assembly).filter((k) => /Meta$/.test(k) && assembly[k] && typeof assembly[k] === 'object');
+  const rows = []; const notes = [];
+  for (const mk of metaKeys) {
+    for (const [k, v] of Object.entries(assembly[mk])) {
+      if (k === 'note') { if (v) notes.push(String(v)); continue; }
+      const cell = metaCell(k, v);
+      if (cell == null) continue;
+      const label = META_LABELS[k] || k;      // 모르는 키는 원래 이름 그대로
+      // ⚠ 번역한 경우에도 원래 키를 **병기**한다 — 내 번역이 틀렸을 때 독자가 알아챌 수 있어야 한다.
+      rows.push([label, cell, label === k ? '' : k]);
+    }
+  }
+  if (!rows.length && !notes.length) return '';
+  // 감속비·Grashof 처럼 **결론에 해당하는** 항목을 앞으로 — 표 끝에 두면 안 읽힌다
+  const HEAD = ['총 감속비', '입력 1000rpm 시 출력(rpm)', 'Grashof 조건', '4절 링크 분류', 'TEMA 형식'];
+  rows.sort((a, b) => (HEAD.indexOf(b[0]) - HEAD.indexOf(a[0])));
+  const body = rows.map(([l, v, raw]) => `<tr><td style="text-align:left;background:#f8fafc;width:230px">${esc(l)}${raw ? `<span style="color:#94a3b8;font-weight:400"> (${esc(raw)})</span>` : ''}</td><td style="text-align:left">${esc(v)}</td></tr>`).join('');
+  return `<table style="width:calc(100% - 40px)"><caption style="text-align:left;font-size:12px;font-weight:700;padding:4px 20px 3px">설계 제원 — 조립 시 산출된 값</caption><tbody>${body}</tbody></table>${notes.length ? `<div class="sub" style="padding:0 20px 8px;color:#64748b">${notes.map((n) => esc(n)).join('<br>')}</div>` : ''}<div class="sub" style="padding:0 20px 10px;color:#94a3b8">⚠ 조립 파라미터에서 산출된 값 — 별도 검증 해석(강도·수명)은 해석 리포트를 따른다.</div>`;
+}
+
 // ── 대축척 도면 코어(260717) — km급 토목·조경·건축 도면 지원 ────────────────────
 // 기계 스케일(수 m) 가정 제거: ①표준 축척(1:N) 자동 선정 — A3 100% 인쇄 기준 실축척
 // ②치수 표기 자동 단위(mm→m→km) ③스케일바·방위 ④측점(STA) 라벨.
@@ -1221,7 +1291,7 @@ table{border-collapse:collapse;width:calc(100% - 40px);margin:0 20px 14px;font-s
 .tb{border-top:2px solid #1f2937;margin-top:8px;padding:6px 4px;font-size:11px;color:#334155;display:flex;gap:14px;flex-wrap:wrap}
 @media print{.nf-print-bar{display:none}body{background:#fff}.sheet{box-shadow:none;border:none;margin:0}.sheet-page{box-shadow:none;border:none;margin:0;page-break-after:always}}</style></head>
 <body>${PRINT_BAR('설계 GA 도면 (A3)')}<div class="sheet"><div class="hd"><div><h1>${esc(title)} — 일반배치도 (GA)</h1><div class="sub">nexyfab drawing-to-3d 자동생성 · 부품 ${parts.length}(그룹 ${groups.length})</div></div><div class="sub">DWG ${esc(dwgNo)} · <b>SCALE 1:${N}</b> (A3 100% 인쇄 기준 · 화면=가변) · 표기 mm(대형 자동 m/km) · 3rd angle · REV <span class="nf-rev">—</span></div></div>
-<div class="wrap">${svg.replace('</svg>', detailMarker + '</svg>')}</div>${sectionSvg}${detailSvg}${domainSvg ? `<div class="wrap" style="border-top:1px solid #e2e8f0">${domainSvg}</div>` : ''}<table><thead><tr><th>No.</th><th>품명(대표)</th><th>Type</th><th>계통/역할</th><th>규격(엔벨로프)</th><th>발주 규격(G1 스냅 · 발주 전 규격서 대조)</th><th>재질</th><th>수량</th></tr></thead><tbody>${bom}</tbody></table>${weldTable}${Array.isArray(revHistory) && revHistory.length ? `<div class="wrap" style="border-top:1px solid #e2e8f0;padding:8px 20px"><table style="border-collapse:collapse;width:70%;font-size:11px"><caption style="text-align:left;font-size:12px;font-weight:700;padding:3px 0">개정 이력(편집 자동 기록 — 실시 추적성)</caption><tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">REV</th><th style="border:1px solid #cbd5e1;padding:3px 8px">일자</th><th style="border:1px solid #cbd5e1;padding:3px 8px">내용</th></tr>${revHistory.map((r) => `<tr><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.rev ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.date ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${esc(String(r.note ?? ''))}</td></tr>`).join('')}</table></div>` : ''}${titleBlock}
+<div class="wrap">${svg.replace('</svg>', detailMarker + '</svg>')}</div>${sectionSvg}${detailSvg}${domainSvg ? `<div class="wrap" style="border-top:1px solid #e2e8f0">${domainSvg}</div>` : ''}<table><thead><tr><th>No.</th><th>품명(대표)</th><th>Type</th><th>계통/역할</th><th>규격(엔벨로프)</th><th>발주 규격(G1 스냅 · 발주 전 규격서 대조)</th><th>재질</th><th>수량</th></tr></thead><tbody>${bom}</tbody></table>${specTable(assembly)}${weldTable}${Array.isArray(revHistory) && revHistory.length ? `<div class="wrap" style="border-top:1px solid #e2e8f0;padding:8px 20px"><table style="border-collapse:collapse;width:70%;font-size:11px"><caption style="text-align:left;font-size:12px;font-weight:700;padding:3px 0">개정 이력(편집 자동 기록 — 실시 추적성)</caption><tr style="background:#f1f5f9"><th style="border:1px solid #cbd5e1;padding:3px 8px">REV</th><th style="border:1px solid #cbd5e1;padding:3px 8px">일자</th><th style="border:1px solid #cbd5e1;padding:3px 8px">내용</th></tr>${revHistory.map((r) => `<tr><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.rev ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:center">${esc(String(r.date ?? ''))}</td><td style="border:1px solid #cbd5e1;padding:3px 8px;text-align:left">${esc(String(r.note ?? ''))}</td></tr>`).join('')}</table></div>` : ''}${titleBlock}
 <div class="sub" style="padding:4px 20px 12px;color:#94a3b8">⚠ 자동생성 GA(비법정) · 부품 엔벨로프 기준 · 상세치수·공차는 후속.</div><div class="note" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:6px">본 보고서는 KDS 현행 기준에 따라 자동 산출된 결과이며, 최종 설계도서·시공에는 반드시 등록 구조기술자(해당 분야 기술사)의 직접 검토·확인이 필요합니다.</div></div>${sheetsHtml}</body></html>`);
 }
 

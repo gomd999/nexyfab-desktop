@@ -393,6 +393,18 @@ export default function ScadAgentPanel({ lang, onApplyScad, onShowBrepHandle, va
             }
             return next;
           });
+        } else if (ev.type === 'dimension_check') {
+          /**
+           * W4 — 「내가 말한 치수대로 나왔나」를 문장으로 보여 준다.
+           *
+           * ⚠ 요약을 **맨 위**에 두고 문장은 실패→미검사→통과 순으로 이미 정렬돼 온다
+           *   (`dimensionSentences`). 여기서 다시 정렬하지 않는다 — 정직성 규칙이
+           *   두 곳에 흩어지면 한쪽만 고쳐지는 사고가 난다.
+           */
+          pushEntry({
+            kind: 'system',
+            text: [ev.summary, ...ev.dimensions.map(d => `· ${d.text}`)].join('\n'),
+          });
         } else if (ev.type === 'wedge_detected') {
           setError({ kind: 'wedge', message: t.wedgeBody });
         } else if (ev.type === 'budget_warn') {
