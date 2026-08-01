@@ -38,6 +38,12 @@ const ACCOUNT_I18N: Record<AccountLang, {
   passwordChanged: string; profileUpdated: string;
   profileUpdateFailed: string; passwordChangeFailed: string;
   subscriptionTitle: string; logoutBtn: string;
+  /**
+   * ★260801 — 개발자 가이드(API·CLI·MCP)가 **어디서도 링크되지 않았다.**
+   *   페이지는 라이브인데 `sitemap.ts` 에만 있어, URL 을 모르면 도달할 수 없었다 —
+   *   「만든 것이 안 닿으면 없는 것과 같다」(바로 아래 보안 섹션과 같은 이유).
+   */
+  devTitle: string; devDesc: string; devLink: string;
 }> = {
   ko: {
     portalError: '포털을 열 수 없습니다.',
@@ -78,6 +84,7 @@ const ACCOUNT_I18N: Record<AccountLang, {
     passwordChangeFailed: '비밀번호 변경에 실패했습니다.',
     subscriptionTitle: '구독 & 결제 관리',
     logoutBtn: '로그아웃',
+    devTitle: '개발자 — API · CLI · MCP', devDesc: '터미널·스크립트·AI 도구(Claude 등)에서 NexyFab을 쓰려면 API 키가 필요합니다. Pro 플랜에서 직접 발급합니다.', devLink: '개발자 가이드 열기',
   },
   en: {
     portalError: 'Unable to open portal.',
@@ -118,6 +125,7 @@ const ACCOUNT_I18N: Record<AccountLang, {
     passwordChangeFailed: 'Failed to change password.',
     subscriptionTitle: 'Subscription & Billing',
     logoutBtn: 'Log out',
+    devTitle: 'Developers — API · CLI · MCP', devDesc: 'Use NexyFab from your terminal, scripts, or AI tools (Claude, etc.). Issue your own API key on the Pro plan.', devLink: 'Open developer guide',
   },
   zh: {
     portalError: '无法打开门户。',
@@ -158,6 +166,7 @@ const ACCOUNT_I18N: Record<AccountLang, {
     passwordChangeFailed: '密码更改失败。',
     subscriptionTitle: '订阅 & 账单管理',
     logoutBtn: '退出登录',
+    devTitle: '开发者 — API · CLI · MCP', devDesc: '在终端、脚本或 AI 工具（如 Claude）中使用 NexyFab，需要 API 密钥。Pro 方案可自行签发。', devLink: '打开开发者指南',
   },
   ja: {
     portalError: 'ポータルを開けません。',
@@ -198,6 +207,7 @@ const ACCOUNT_I18N: Record<AccountLang, {
     passwordChangeFailed: 'パスワードの変更に失敗しました。',
     subscriptionTitle: 'サブスクリプション & 請求管理',
     logoutBtn: 'ログアウト',
+    devTitle: '開発者 — API · CLI · MCP', devDesc: 'ターミナル・スクリプト・AIツール（Claude など）から NexyFab を使うには API キーが必要です。Pro プランで自分で発行できます。', devLink: '開発者ガイドを開く',
   },
   es: {
     portalError: 'No se puede abrir el portal.',
@@ -238,6 +248,7 @@ const ACCOUNT_I18N: Record<AccountLang, {
     passwordChangeFailed: 'Error al cambiar la contrasena.',
     subscriptionTitle: 'Suscripcion & Facturacion',
     logoutBtn: 'Cerrar sesion',
+    devTitle: 'Desarrolladores — API · CLI · MCP', devDesc: 'Usa NexyFab desde tu terminal, scripts o herramientas de IA (Claude, etc.). Emite tu clave API en el plan Pro.', devLink: 'Abrir guía para desarrolladores',
   },
   ar: {
     portalError: 'Unable to open portal.',
@@ -278,7 +289,16 @@ const ACCOUNT_I18N: Record<AccountLang, {
     passwordChangeFailed: 'Failed to change password.',
     subscriptionTitle: 'Subscription & Billing',
     logoutBtn: 'Log out',
+    devTitle: 'المطورون — API · CLI · MCP', devDesc: 'استخدم NexyFab من الطرفية أو السكربتات أو أدوات الذكاء الاصطناعي (مثل Claude). أصدر مفتاح API الخاص بك في خطة Pro.', devLink: 'فتح دليل المطورين',
   },
+};
+
+/**
+ * 계정 언어코드 → **라우트 언어코드**. 둘이 다르다(ko↔kr · zh↔cn) —
+ * ⚠ 그대로 쓰면 링크가 어긋난다. 매핑을 한 곳에 둔다.
+ */
+const ROUTE_LANG: Record<AccountLang, string> = {
+  ko: 'kr', en: 'en', zh: 'cn', ja: 'ja', es: 'es', ar: 'ar',
 };
 
 function getUserLang(): AccountLang {
@@ -1007,6 +1027,24 @@ export default function AccountPage() {
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #f0f0f0', padding: '24px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: 900, margin: '0 0 16px' }}>{t.subscriptionTitle}</h2>
           <SubscriptionSection />
+        </div>
+
+        {/* ★260801: 개발자 가이드(API·CLI·MCP)도 **링크가 0곳**이었다 — 같은 결함이다.
+            페이지는 라이브인데 sitemap 에만 있어 URL 을 아는 사람만 갈 수 있었다. */}
+        <div style={{
+          background: '#fff', borderRadius: '20px', padding: '28px 32px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.04)', marginBottom: '24px',
+        }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 900, margin: '0 0 8px' }}>{t.devTitle}</h2>
+          <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 16px', lineHeight: 1.6 }}>{t.devDesc}</p>
+          <a
+            href={`/${ROUTE_LANG[getUserLang()] ?? 'en'}/nexyfab/developers`}
+            style={{
+              display: 'inline-block', padding: '10px 22px', borderRadius: '10px',
+              background: '#0f2747', color: '#fff', fontSize: '14px', fontWeight: 700,
+              textDecoration: 'none',
+            }}
+          >{t.devLink}</a>
         </div>
 
         {/* ⚠ 260802: 보안 API 4종(복구코드·비번변경·세션)을 만들고 **화면이 0곳**이었다.

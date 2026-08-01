@@ -123,6 +123,16 @@ claude mcp list
 
 # 4) 이후 Claude 에게 자연어로:
 #   "nexyfab 으로 1000x800 베이스에 기둥 2개 조립체 만들고, column_1 높이를 600으로 수정해줘"`}</Code>
+      {/**
+        * ★260801 — **키가 셸 기록에 남는다는 경고가 없었다.**
+        *   `-e NEXYFAB_API_KEY=...` 는 명령줄에 키를 그대로 노출한다. CLI 절(3번)은
+        *   이 위험을 경고하는데 MCP 절만 빠져 있었다 — 같은 위험은 같이 알려야 한다.
+        */}
+      <P style={{ fontSize: 12.5, borderLeft: '3px solid #c9a227', paddingLeft: 10 }}>
+        {ko
+          ? '⚠ 위 -e 방식은 간단하지만 키가 셸 기록에 남습니다. 공용 장비에서는 등록 후 기록을 지우거나, 키를 새로 발급해 두세요(위 0번 패널에서 즉시 폐기·재발급됩니다). 등록이 안 되면 먼저 절대경로를 의심하세요 — ~ 가 확장되지 않는 환경이 있습니다.'
+          : '⚠ The -e form is convenient but leaves the key in your shell history. On shared machines, clear the history after registering or rotate the key (revoke and re-issue instantly in panel 0 above). If registration fails, suspect the path first — ~ is not expanded in some environments.'}
+      </P>
       <P style={{ fontSize: 12.5 }}>
         {ko
           ? 'Claude Desktop 은 claude_desktop_config.json 의 mcpServers 에 동일하게 {"command":"node","args":["/absolute/path/nexyfab-mcp.mjs"],"env":{"NEXYFAB_API_KEY":"nf_live_XXXX"}} 를 추가하면 됩니다.'
