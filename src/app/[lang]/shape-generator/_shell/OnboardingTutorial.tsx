@@ -10,10 +10,19 @@ import { loc } from '../lib/loc';
 
 const STORAGE_KEY = 'nexyfab.onboarded.v1';
 
+interface StepText {
+  ko: string;
+  en: string;
+  ja: string;
+  zh: string;
+  es: string;
+  ar: string;
+}
+
 interface Step {
   id: string;
-  ko: { title: string; body: string };
-  en: { title: string; body: string };
+  title: StepText;
+  body: StepText;
   /** CSS selector of the element to highlight. Empty string = center modal. */
   anchor?: string;
 }
@@ -21,60 +30,100 @@ interface Step {
 const STEPS: Step[] = [
   {
     id: 'welcome',
-    ko: {
-      title: 'NexyFab 에 오신 것을 환영합니다',
-      body: '6개 모드 (Solid · Sketch · Assembly · Sheet Metal · Drawing · Render) 가 상단 탭으로 전환됩니다. 60초 안에 둘러볼게요.',
+    title: {
+      ko: 'NexyFab 에 오신 것을 환영합니다',
+      en: 'Welcome to NexyFab',
+      ja: 'NexyFab へようこそ',
+      zh: '欢迎使用 NexyFab',
+      es: 'Bienvenido a NexyFab',
+      ar: 'مرحبًا بك في NexyFab',
     },
-    en: {
-      title: 'Welcome to NexyFab',
-      body: 'Six modes (Solid · Sketch · Assembly · Sheet Metal · Drawing · Render) switch via the top tabs. Quick 60-second tour.',
+    body: {
+      ko: '6개 모드 (Solid · Sketch · Assembly · Sheet Metal · Drawing · Render) 가 상단 탭으로 전환됩니다. 60초 안에 둘러볼게요.',
+      en: 'Six modes (Solid · Sketch · Assembly · Sheet Metal · Drawing · Render) switch via the top tabs. Quick 60-second tour.',
+      ja: '6つのモード（Solid · Sketch · Assembly · Sheet Metal · Drawing · Render）は上部タブで切り替えます。60秒でご案内します。',
+      zh: '六种模式（Solid · Sketch · Assembly · Sheet Metal · Drawing · Render）通过顶部标签切换。60秒快速导览。',
+      es: 'Seis modos (Solid · Sketch · Assembly · Sheet Metal · Drawing · Render) se cambian desde las pestañas superiores. Un recorrido rápido de 60 segundos.',
+      ar: 'يتم التبديل بين ستة أوضاع (Solid · Sketch · Assembly · Sheet Metal · Drawing · Render) عبر علامات التبويب العلوية. جولة سريعة مدتها 60 ثانية.',
     },
   },
   {
     id: 'left',
-    ko: {
-      title: '좌측 — Features / Bodies / Components',
-      body: '모델 트리, 바디 리스트, ISO 표준부품 카탈로그가 여기 있습니다. 트리 row 를 클릭하면 우측에 속성이 표시됩니다.',
+    title: {
+      ko: '좌측 — Features / Bodies / Components',
+      en: 'Left — Features / Bodies / Components',
+      ja: '左側 — Features / Bodies / Components',
+      zh: '左侧 — Features / Bodies / Components',
+      es: 'Izquierda — Features / Bodies / Components',
+      ar: 'اليسار — Features / Bodies / Components',
     },
-    en: {
-      title: 'Left — Features / Bodies / Components',
-      body: 'Model tree, body list, ISO standard parts catalog. Click any tree row to see its properties on the right.',
+    body: {
+      ko: '모델 트리, 바디 리스트, ISO 표준부품 카탈로그가 여기 있습니다. 트리 row 를 클릭하면 우측에 속성이 표시됩니다.',
+      en: 'Model tree, body list, ISO standard parts catalog. Click any tree row to see its properties on the right.',
+      ja: 'モデルツリー、ボディリスト、ISO標準部品カタログがここにあります。ツリーの行をクリックすると右側にプロパティが表示されます。',
+      zh: '模型树、实体列表、ISO 标准件目录都在这里。点击树中的任意行即可在右侧查看其属性。',
+      es: 'Árbol del modelo, lista de cuerpos y catálogo de piezas estándar ISO. Haz clic en cualquier fila del árbol para ver sus propiedades a la derecha.',
+      ar: 'شجرة النموذج، قائمة الأجسام، وكتالوج القطع القياسية ISO موجودة هنا. انقر على أي صف في الشجرة لعرض خصائصه على اليمين.',
     },
     anchor: '.nx-panel:not(.right)',
   },
   {
     id: 'right',
-    ko: {
-      title: '우측 — Inspector / Nexy AI / Comments',
-      body: 'Inspector 에서 파라미터를 직접 편집하고, ANALYZE 섹션으로 DFM/FEA/Cost 분석을, Nexy AI 탭에서는 자연어 요청을 보냅니다.',
+    title: {
+      ko: '우측 — Inspector / Nexy AI / Comments',
+      en: 'Right — Inspector / Nexy AI / Comments',
+      ja: '右側 — Inspector / Nexy AI / Comments',
+      zh: '右侧 — Inspector / Nexy AI / Comments',
+      es: 'Derecha — Inspector / Nexy AI / Comments',
+      ar: 'اليمين — Inspector / Nexy AI / Comments',
     },
-    en: {
-      title: 'Right — Inspector / Nexy AI / Comments',
-      body: 'Edit parameters directly, run DFM/FEA/Cost from ANALYZE, or chat in Nexy AI tab.',
+    body: {
+      ko: 'Inspector 에서 파라미터를 직접 편집하고, ANALYZE 섹션으로 DFM/FEA/Cost 분석을, Nexy AI 탭에서는 자연어 요청을 보냅니다.',
+      en: 'Edit parameters directly, run DFM/FEA/Cost from ANALYZE, or chat in Nexy AI tab.',
+      ja: 'Inspector でパラメータを直接編集し、ANALYZE から DFM/FEA/Cost を実行、または Nexy AI タブでチャットできます。',
+      zh: '在 Inspector 中直接编辑参数，通过 ANALYZE 运行 DFM/FEA/Cost 分析，或在 Nexy AI 标签页中对话。',
+      es: 'Edita los parámetros directamente, ejecuta DFM/FEA/Cost desde ANALYZE, o chatea en la pestaña Nexy AI.',
+      ar: 'عدّل المعاملات مباشرة، وشغّل DFM/FEA/Cost من ANALYZE، أو تحدّث في تبويب Nexy AI.',
     },
     anchor: '.nx-panel.right',
   },
   {
     id: 'ribbon',
-    ko: {
-      title: '상단 리본 — 모드별 도구',
-      body: '활성 모드의 도구가 그룹별로 정렬됩니다. 모드 탭을 클릭하면 리본 + 사이드바가 함께 전환됩니다.',
+    title: {
+      ko: '상단 리본 — 모드별 도구',
+      en: 'Top ribbon — mode-aware tools',
+      ja: '上部リボン — モード別ツール',
+      zh: '顶部功能区 — 按模式显示工具',
+      es: 'Cinta superior — herramientas según el modo',
+      ar: 'الشريط العلوي — أدوات حسب الوضع',
     },
-    en: {
-      title: 'Top ribbon — mode-aware tools',
-      body: 'Tools group per active mode. Click a mode tab to switch ribbon + sidebars together.',
+    body: {
+      ko: '활성 모드의 도구가 그룹별로 정렬됩니다. 모드 탭을 클릭하면 리본 + 사이드바가 함께 전환됩니다.',
+      en: 'Tools group per active mode. Click a mode tab to switch ribbon + sidebars together.',
+      ja: 'アクティブなモードのツールがグループ化されます。モードタブをクリックするとリボンとサイドバーが一緒に切り替わります。',
+      zh: '工具会按当前模式分组显示。点击模式标签即可同时切换功能区和侧边栏。',
+      es: 'Las herramientas se agrupan según el modo activo. Haz clic en una pestaña de modo para cambiar la cinta y las barras laterales juntas.',
+      ar: 'تتجمع الأدوات حسب الوضع النشط. انقر على علامة تبويب الوضع لتبديل الشريط والأشرطة الجانبية معًا.',
     },
     anchor: '.nx-ribbon',
   },
   {
     id: 'drawer',
-    ko: {
-      title: '하단 드로어 — DFM · FEA · 비용 · 변형 · 모션',
-      body: 'Inspector ANALYZE 행을 클릭하면 분석 드로어가 슬라이드업합니다. 모달 대신 모델 옆에서 즉시 결과 확인.',
+    title: {
+      ko: '하단 드로어 — DFM · FEA · 비용 · 변형 · 모션',
+      en: 'Bottom drawer — DFM · FEA · Cost · Variants · Motion',
+      ja: '下部ドロワー — DFM · FEA · コスト · バリエーション · モーション',
+      zh: '底部抽屉 — DFM · FEA · 成本 · 变体 · 运动',
+      es: 'Panel inferior — DFM · FEA · Costo · Variantes · Movimiento',
+      ar: 'الدرج السفلي — DFM · FEA · التكلفة · المتغيرات · الحركة',
     },
-    en: {
-      title: 'Bottom drawer — DFM · FEA · Cost · Variants · Motion',
-      body: 'Click an ANALYZE row to slide the analytics drawer up. Results live alongside your model, not in a modal.',
+    body: {
+      ko: 'Inspector ANALYZE 행을 클릭하면 분석 드로어가 슬라이드업합니다. 모달 대신 모델 옆에서 즉시 결과 확인.',
+      en: 'Click an ANALYZE row to slide the analytics drawer up. Results live alongside your model, not in a modal.',
+      ja: 'ANALYZE の行をクリックすると分析ドロワーがスライドアップします。モーダルではなく、モデルの隣で結果を確認できます。',
+      zh: '点击 ANALYZE 行即可展开分析抽屉。结果显示在模型旁边，而不是弹窗中。',
+      es: 'Haz clic en una fila de ANALYZE para desplegar el panel de análisis. Los resultados aparecen junto a tu modelo, no en una ventana modal.',
+      ar: 'انقر على صف ANALYZE لتحريك درج التحليلات لأعلى. تظهر النتائج بجانب نموذجك، وليس في نافذة منبثقة.',
     },
   },
   {
@@ -82,13 +131,21 @@ const STEPS: Step[] = [
     // Inserted as the final step so the user has already learned the shell
     // before being introduced to the sheet-metal-specific right pane.
     id: 'sheet-metal',
-    ko: {
-      title: '판금 모드',
-      body: '피처 트리에서 판금 피처를 클릭하면 우측 패널에 K-팩터 표가 나타납니다. 재료 / 두께 / 절곡 허용량을 즉시 확인하고, 자동 도면 생성으로 PDF 까지 한 번에.',
+    title: {
+      ko: '판금 모드',
+      en: 'Sheet metal mode',
+      ja: '板金モード',
+      zh: '钣金模式',
+      es: 'Modo de chapa metálica',
+      ar: 'وضع الصفائح المعدنية',
     },
-    en: {
-      title: 'Sheet metal mode',
-      body: 'Click any sheet metal feature in the tree to see the right pane with K-factor table. Inspect material / thickness / bend allowance instantly, and run auto-drawing to PDF in one click.',
+    body: {
+      ko: '피처 트리에서 판금 피처를 클릭하면 우측 패널에 K-팩터 표가 나타납니다. 재료 / 두께 / 절곡 허용량을 즉시 확인하고, 자동 도면 생성으로 PDF 까지 한 번에.',
+      en: 'Click any sheet metal feature in the tree to see the right pane with K-factor table. Inspect material / thickness / bend allowance instantly, and run auto-drawing to PDF in one click.',
+      ja: 'ツリーで板金フィーチャーをクリックすると、右側パネルに K-factor 表が表示されます。材料 / 板厚 / 曲げ代をすぐに確認し、ワンクリックで自動図面から PDF まで生成できます。',
+      zh: '在树中点击任意钣金特征，即可在右侧面板看到 K 系数表。即时查看材料 / 厚度 / 折弯余量，一键生成自动工程图并导出 PDF。',
+      es: 'Haz clic en cualquier característica de chapa en el árbol para ver la tabla del factor K en el panel derecho. Consulta material / espesor / tolerancia de doblado al instante, y genera el plano automático a PDF con un clic.',
+      ar: 'انقر على أي ميزة صفائح معدنية في الشجرة لعرض جدول عامل K في اللوحة اليمنى. تحقق من المادة / السماكة / سماح الثني فورًا، وشغّل الرسم التلقائي إلى PDF بنقرة واحدة.',
     },
   },
 ];
@@ -97,7 +154,9 @@ export interface OnboardingTutorialProps {
   isKo: boolean;
 }
 
-export function OnboardingTutorial({ isKo }: OnboardingTutorialProps) {
+// isKo kept for prop-compat with callers (ModelerShell); step content now
+// resolves off the full 6-lang `lang` via useLang()/loc() below instead.
+export function OnboardingTutorial({ isKo: _isKo }: OnboardingTutorialProps) {
   const lang = useLang();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
@@ -123,7 +182,7 @@ export function OnboardingTutorial({ isKo }: OnboardingTutorialProps) {
 
   if (!open) return null;
   const s = STEPS[step];
-  const text = isKo ? s.ko : s.en;
+  const text = { title: loc(lang, s.title), body: loc(lang, s.body) };
 
   const next = () => {
     if (step >= STEPS.length - 1) dismiss();
