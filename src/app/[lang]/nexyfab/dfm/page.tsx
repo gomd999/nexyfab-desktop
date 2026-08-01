@@ -38,11 +38,17 @@ interface DfmResponse {
   items:    DfmCheckItem[];
 }
 
-const LEVEL_COLORS: Record<DfmCheckItem['level'], { bg: string; fg: string; label: string }> = {
-  error:   { bg: '#fee2e2', fg: '#991b1b', label: '오류' },
-  warning: { bg: '#fef3c7', fg: '#92400e', label: '경고' },
-  info:    { bg: '#dbeafe', fg: '#1e40af', label: '정보' },
+const LEVEL_COLORS: Record<DfmCheckItem['level'], { bg: string; fg: string; labelKo: string; labelEn: string }> = {
+  error:   { bg: '#fee2e2', fg: '#991b1b', labelKo: '오류', labelEn: 'Error' },
+  warning: { bg: '#fef3c7', fg: '#92400e', labelKo: '경고', labelEn: 'Warning' },
+  info:    { bg: '#dbeafe', fg: '#1e40af', labelKo: '정보', labelEn: 'Info' },
 };
+
+// Exported as a pure function so the ko/en branch is unit-testable without
+// rendering the page (whose default export consumes `params` via `use()`).
+export function levelLabel(level: DfmCheckItem['level'], isKo: boolean): string {
+  return isKo ? LEVEL_COLORS[level].labelKo : LEVEL_COLORS[level].labelEn;
+}
 
 export default function DfmCheckPage({ params }: PageProps) {
   const { lang } = use(params);
@@ -214,7 +220,7 @@ export default function DfmCheckPage({ params }: PageProps) {
                     background: c.bg, color: c.fg, padding: '12px 14px',
                     borderRadius: 10, fontSize: 14, display: 'flex', gap: 12, alignItems: 'baseline',
                   }}>
-                    <strong style={{ minWidth: 48 }}>{c.label}</strong>
+                    <strong style={{ minWidth: 48 }}>{levelLabel(it.level, isKo)}</strong>
                     <span style={{ flex: 1 }}>{it.message}</span>
                     <code style={{ fontSize: 12, opacity: 0.7 }}>{it.param}</code>
                   </li>
