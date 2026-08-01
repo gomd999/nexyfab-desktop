@@ -895,6 +895,7 @@ function RFQContent({ params }: { params: Promise<{ lang: string }> }) {
                 key={rfq.rfqId}
                 rfq={rfq}
                 isKo={isKo}
+                lang={lang}
                 expanded={expandedId === rfq.rfqId}
                 onToggle={() => setExpandedId(prev => (prev === rfq.rfqId ? null : rfq.rfqId))}
                 onCompare={() => setCompareRfq({ id: rfq.rfqId, name: rfq.shapeName })}
@@ -1039,9 +1040,17 @@ interface QuoteForRFQ {
   validUntil: string | null;
 }
 
-function QuoteAcceptSection({
-  rfqId, isKo, onAccepted,
-}: { rfqId: string; isKo: boolean; onAccepted: (amount: number, factoryName: string) => void }) {
+/** Exported for direct unit testing — see page.i18n.test.tsx. */
+export function formatQuoteAmount(n: number, isKo: boolean): string {
+  return isKo ? `${n.toLocaleString('ko-KR')}원` : `${n.toLocaleString('en-US')} KRW`;
+}
+
+/** Exported so it can be rendered in isolation for i18n regression tests —
+ * unlike the page default export, this component doesn't consume `params`
+ * via `use()`, so it renders synchronously without a Suspense boundary. */
+export function QuoteAcceptSection({
+  rfqId, isKo, lang, onAccepted,
+}: { rfqId: string; isKo: boolean; lang: string; onAccepted: (amount: number, factoryName: string) => void }) {
   const [quotes, setQuotes] = useState<QuoteForRFQ[]>([]);
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
@@ -1103,7 +1112,7 @@ function QuoteAcceptSection({
               <code style={{ background: 'var(--nx-panel)', padding: '2px 6px', borderRadius: 4, color: C.text }}>{orderIdFromAccept}</code>
             </p>
             <a
-              href={`/${isKo ? 'kr' : 'en'}/nexyfab/orders/${orderIdFromAccept}`}
+              href={`/${lang}/nexyfab/orders/${orderIdFromAccept}`}
               style={{
                 display: 'inline-block',
                 padding: '8px 16px', fontSize: 12, fontWeight: 700,
@@ -1151,7 +1160,7 @@ function QuoteAcceptSection({
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: C.text }}>{q.factoryName}</p>
               <p style={{ margin: 0, fontSize: 12, color: C.textMuted }}>
-                {q.estimatedAmount.toLocaleString('ko-KR')}원
+                {formatQuoteAmount(q.estimatedAmount, isKo)}
                 {q.estimatedDays ? ` · ${q.estimatedDays}${isKo ? '일' : 'd'}` : ''}
                 {q.note ? ` · ${q.note}` : ''}
               </p>
@@ -1282,6 +1291,7 @@ function EmptyState({
 interface RFQCardProps {
   rfq: RFQEntry;
   isKo: boolean;
+  lang: string;
   expanded: boolean;
   onToggle: () => void;
   onCompare?: () => void;
@@ -1292,7 +1302,7 @@ interface RFQCardProps {
   showCadFiles?: boolean;
 }
 
-function RFQCard({ rfq, isKo, expanded, onToggle, onCompare, onCancel, isCancelling, onAccept, showCadFiles = true }: RFQCardProps) {
+function RFQCard({ rfq, isKo, lang, expanded, onToggle, onCompare, onCancel, isCancelling, onAccept, showCadFiles = true }: RFQCardProps) {
   const meta = STATUS_META[rfq.status];
   const date = new Date(rfq.createdAt).toLocaleDateString(isKo ? 'ko-KR' : 'en-US', {
     year: 'numeric', month: 'short', day: 'numeric',
@@ -1421,6 +1431,7 @@ function RFQCard({ rfq, isKo, expanded, onToggle, onCompare, onCancel, isCancell
             <QuoteAcceptSection
               rfqId={rfq.rfqId}
               isKo={isKo}
+              lang={lang}
               onAccepted={(amount, factoryName) => onAccept(rfq.rfqId, amount, factoryName)}
             />
           )}
