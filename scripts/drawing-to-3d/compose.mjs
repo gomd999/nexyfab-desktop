@@ -19,7 +19,7 @@
  *        node compose.mjs '<intent.json>' --emit          (직접 intent→SCAD)
  */
 import { readFileSync } from 'node:fs';
-import { apiKey, repairJsonNumbers } from './extract.mjs';
+import { callAiJson } from './ai-json.mjs';
 
 // ─── 폴리곤 게이트 (intent 모듈 verify.ts의 .mjs 포트) ──────────────────────
 function signedArea(pts) {
@@ -260,19 +260,9 @@ const COMPOSE_PROMPT = (desc) => `기계/장비 부품 설명을 "범용 프리�
   · 원형 볼트배열은 pattern{type:"circular",count} + 반경만큼 at.translate.
 설명: "${desc}"`;
 
-export async function composeFromText(description, { models = ['gemini-2.5-pro', 'gemini-2.5-flash'] } = {}) {
-  const body = JSON.stringify({ contents: [{ parts: [{ text: COMPOSE_PROMPT(description) }] }], generationConfig: { temperature: 0, response_mime_type: 'application/json', response_schema: COMPOSE_SCHEMA, maxOutputTokens: 8192 } });
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  let lastErr;
-  for (const model of models) for (let a = 0; a < 3; a++) {
-    let res; try { res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey()}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body }); } catch (e) { lastErr = e; await sleep(1000); continue; }
-    if (!res.ok) { if (res.status === 503 || res.status === 429) { lastErr = new Error(`${model} ${res.status}`); await sleep(1500 * (a + 1)); continue; } lastErr = new Error(`${model} ${res.status}`); break; }
-    const j = await res.json(); const text = j.candidates?.[0]?.content?.parts?.[0]?.text; const fin = j.candidates?.[0]?.finishReason;
-    if (!text) { lastErr = new Error(`${model} empty(${fin})`); continue; }
-    try { return { intent: JSON.parse(text), model }; }
-    catch { try { const fx = repairJsonNumbers(text); if (fx !== text) return { intent: JSON.parse(fx), model }; } catch { /**/ } lastErr = new Error(`${model} bad JSON(${fin})`); if (fin === 'MAX_TOKENS') break; }
-  }
-  throw lastErr;
+export async function composeFromText(description, { models = ['gpt-5.6-sol'] } = {}) {
+  const { data, model } = await callAiJson(COMPOSE_PROMPT(description), COMPOSE_SCHEMA, { models, maxOutputTokens: 8192 });
+  return { intent: data, model };
 }
 
 /**
@@ -286,11 +276,10 @@ export async function composeWithGate(description, { maxRounds = 2, models } = {
   let rounds = 1;
   while (errs.length && rounds <= maxRounds) {
     const fix = `아래 부품 조합 JSON이 기하 게이트에서 실패했다. 오류를 고쳐 같은 형식으로 다시 출력하라.\n오류: ${JSON.stringify(errs)}\n각 프리미티브 필수: revolve/extrude→profile(닫힌 단순 폴리곤, revolve는 x≥0), extrude→height, cylinder→diameter&height, box→size[3], sphere→diameter.\n현재 JSON: ${JSON.stringify(intent)}`;
-    const body = JSON.stringify({ contents: [{ parts: [{ text: fix }] }], generationConfig: { temperature: 0, response_mime_type: 'application/json', response_schema: COMPOSE_SCHEMA, maxOutputTokens: 8192 } });
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey()}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body });
-    if (!res.ok) break;
-    const j = await res.json(); const t = j.candidates?.[0]?.content?.parts?.[0]?.text;
-    try { intent = JSON.parse(t); } catch { try { intent = JSON.parse(repairJsonNumbers(t)); } catch { break; } }
+    try {
+      const { data } = await callAiJson(fix, COMPOSE_SCHEMA, { models: models ?? ['gpt-5.6-sol'], maxOutputTokens: 8192 });
+      intent = data;
+    } catch { break; }
     errs = gateComposite(intent);
     rounds++;
   }

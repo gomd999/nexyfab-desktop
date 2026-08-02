@@ -6,7 +6,8 @@
  * drawing-to-3d 방법론 §4(복합=부품 분해) / §12.1 #4(Assembly Topology Graph).
  *
  * 구현: from-text.mjs(textToAssembly)·assembly.mjs(buildAssembly)를 webpackIgnore
- * 런타임 import(compose 라우트와 동일 패턴). GEMINI_API_KEY env-first.
+ * 런타임 import(compose 라우트와 동일 패턴). OPENAI_API_KEY env-first(260802 —
+ * Gemini/DeepSeek에서 OpenAI gpt-5.6-sol로 이전. 실제 호출은 ai-json.mjs callAiJson).
  *
  * caller: { description } → { ok, assembly, openscad?, parts?, interferences?, gateErrors? }
  */
@@ -25,17 +26,13 @@ export const runtime = 'nodejs';
 type Assembly = { name?: string; parts?: Array<Record<string, unknown>> };
 type BuiltAssembly = { ok: boolean; openscad?: string; parts?: unknown; gateErrors?: string[]; interferences?: unknown[]; contacts?: unknown[]; welds?: unknown[]; weldTotalMm?: number; composeIntent?: unknown; structural?: unknown; support?: unknown; pipes?: unknown; designOk?: boolean };
 type FromTextModule = {
-  callGeminiJson: (prompt: string, schema: unknown, o?: { models?: string[]; maxOutputTokens?: number; thinkingBudget?: number }) => Promise<{ data: Assembly; model?: string; repaired?: boolean }>;
+  callAiJson: (prompt: string, schema: unknown, o?: { models?: string[]; maxOutputTokens?: number; thinkingBudget?: number }) => Promise<{ data: Assembly; model?: string; repaired?: boolean }>;
   ASSEMBLY_SCHEMA: unknown;
 };
-// MAX_TOKENS 원인은 2.5 "thinking"(출력토큰 소진) → thinkingBudget:0 으로 차단.
-// + response_schema 없이 free-form(플랫 스키마 토큰폭주 회피). flash 고정(속도).
-const GEMINI_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 12000, thinkingBudget: 0 };
-// claims 추출용: thinkingBudget:0 이면 flash 가 조용히 빈 claims 를 낸다(260717 라이브 프로브 확인)
-// — 출력이 작아 MAX_TOKENS 위험이 없으므로 thinking 기본값으로 호출.
-// thinking 은 **유계 512**: 0=빈 claims(무력화)·무제한=1/3 확률 폭주 MAX_TOKENS(둘 다 실측).
-// tb=512 는 2개 설명문 × 3회 반복 전부 성공 + 핵심 클레임(연장·R·수량·존재) 보존 확인.
-const CLAIMS_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 8192, thinkingBudget: 512 };
+// 260802 — OpenAI gpt-5.6-sol로 이전(Gemini/DeepSeek 아님). 스키마 우회·thinking
+// 예산 같은 Gemini 전용 재시도 로직은 ai-json.mjs(callAiJson)로 단일화했다.
+const AI_OPTS = { models: ['gpt-5.6-sol'], maxOutputTokens: 12000 };
+const CLAIMS_OPTS = { models: ['gpt-5.6-sol'], maxOutputTokens: 8192 };
 type AssemblyModule = { buildAssembly: (asm: Assembly) => BuiltAssembly; autoPlaceCorrect: (asm: Assembly) => { assembly: Assembly; corrections: Array<Record<string, unknown>> }; autoTagAssembly: (asm: Assembly) => Assembly; assemblyAtLevel: (asm: Assembly, level: number) => Assembly };
 
 // 1차 골격→2차 상세(260719): 자동 태깅 후 detail≤1 부분집합의 별도 빌드(초안 프리뷰).
@@ -198,7 +195,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     try {
       const p2 = join(process.cwd(), 'scripts', 'drawing-to-3d', 'intent-match.mjs');
       const im = (await import(/* webpackIgnore: true */ pathToFileURL(p2).href)) as IMMod;
-      const { data: cd } = await mods2.ft.callGeminiJson(im.CLAIMS_PROMPT(description2), im.CLAIMS_SCHEMA, CLAIMS_OPTS as never);
+      const { data: cd } = await mods2.ft.callAiJson(im.CLAIMS_PROMPT(description2), im.CLAIMS_SCHEMA, CLAIMS_OPTS as never);
       const claims = (cd as { claims?: unknown[] })?.claims ?? [];
       if (!claims.length) return null;
       const base = im.verifyClaims(claims, asm2);
@@ -220,7 +217,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     // ── 게이트-교정 루프 (compose.composeWithGate 패턴을 어셈블리에 적용) ──
     // textToAssembly 의 스키마 준수 신뢰성이 낮아, buildAssembly 게이트 오류를
-    // Gemini 에 되먹여 params 를 고쳐 최대 3라운드 재시도한다(§2.1 교정루프).
+    // AI 에 되먹여 params 를 고쳐 최대 3라운드 재시도한다(§2.1 교정루프).
     /**
      * ★260801 — `rounds` 는 이미 응답에 실렸지만 **소요 시간과 단계 구성은 없었다.**
      *   두 라우트가 **같은 모양**으로 내보내야 화면이 하나로 그릴 수 있다.
@@ -237,7 +234,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const prompt = (round === 0 || !assembly
         ? BASE_PROMPT(description)
         : FIX_PROMPT(description, lastErrors, assembly)).replace('{{CATALOG}}', catalog);
-      const { data } = await mods.ft.callGeminiJson(prompt, null, GEMINI_OPTS);
+      const { data } = await mods.ft.callAiJson(prompt, null, AI_OPTS);
       const hasCA = !!(data && typeof (data as { civilAlignment?: unknown }).civilAlignment === 'object');
       const tpl = (data as { template?: { domain?: string; id?: string; params?: Record<string, unknown> } })?.template;
       const hasTpl = !!(tpl && typeof tpl === 'object' && typeof tpl.domain === 'string' && typeof tpl.id === 'string');
@@ -263,9 +260,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             let adopted = false;
             try {
               const notes = intentMatch.results.filter((q) => q.verdict === 'MISMATCH').map((q) => `${q.text} → ${q.note}`).slice(0, 8);
-              const { data: fd } = await mods.ft.callGeminiJson(
+              const { data: fd } = await mods.ft.callAiJson(
                 `직전 template 선언(${tpl!.domain}/${tpl!.id})의 결과가 요청과 실측 대조에서 불일치했다. params 만 고친 {"template":{...}} JSON 하나만 다시 내라(키·범위는 카탈로그).\n[요청] "${description}"\n[불일치]\n${notes.map((m) => '- ' + m).join('\n')}\n직전: ${JSON.stringify(tpl)}\nJSON 하나만.`,
-                null, GEMINI_OPTS);
+                null, AI_OPTS);
               const t2 = (fd as { template?: { domain?: string; id?: string; params?: Record<string, unknown> } })?.template;
               if (t2?.domain && t2?.id) {
                 const a2 = dm.buildAssemblyTemplate(t2.domain, t2.id, t2.params ?? {});
@@ -320,7 +317,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             try {
               const notes = intentMatch.results
                 .filter((q) => q.verdict === 'MISMATCH').map((q) => `${q.text} → ${q.note}`).slice(0, 8);
-              const { data: fd } = await mods.ft.callGeminiJson(INTENT_FIX_CA_PROMPT(description, notes, ca), null, GEMINI_OPTS);
+              const { data: fd } = await mods.ft.callAiJson(INTENT_FIX_CA_PROMPT(description, notes, ca), null, AI_OPTS);
               const ca2 = (fd as { civilAlignment?: Record<string, unknown> })?.civilAlignment;
               if (ca2 && typeof ca2 === 'object' && Array.isArray((ca2 as { ips?: unknown[] }).ips)) {
                 const asm2 = dm.buildAssemblyTemplate('civil', 'retaining_wall_alignment', ca2);
@@ -373,7 +370,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           try {
             const notes = intentMatch.results
               .filter((q) => q.verdict === 'MISMATCH').map((q) => `${q.text} → ${q.note}`).slice(0, 8);
-            const { data: fd } = await mods.ft.callGeminiJson(INTENT_FIX_PROMPT(description, notes, assembly), null, GEMINI_OPTS);
+            const { data: fd } = await mods.ft.callAiJson(INTENT_FIX_PROMPT(description, notes, assembly), null, AI_OPTS);
             if (fd && Array.isArray(fd.parts) && fd.parts.length) {
               const c2 = mods.asm.autoPlaceCorrect(fd);
               const b2 = mods.asm.buildAssembly(c2.assembly);
@@ -427,7 +424,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }, { status: 200 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const status = /GEMINI_API_KEY/.test(msg) ? 503 : 502;
+    const status = /OPENAI_API_KEY/.test(msg) ? 503 : 502;
     return NextResponse.json({ ok: false, error: 'assemble failed: ' + msg.slice(0, 200) }, { status });
   }
 }

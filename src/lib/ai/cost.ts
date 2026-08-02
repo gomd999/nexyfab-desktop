@@ -25,10 +25,15 @@ const PRICES: Record<string, PricePerMillion> = {
   'deepseek:deepseek-chat':                 { inputUsd: 0.14, outputUsd: 0.28 },
   'deepseek:deepseek-reasoner':             { inputUsd: 0.55, outputUsd: 2.19 },
 
-  // OpenAI (https://openai.com/api/pricing/) — 2026-05 rates
+  // OpenAI (https://openai.com/api/pricing/) — 2026-05 rates unless noted
   'openai:gpt-4o-mini':                     { inputUsd: 0.15, outputUsd: 0.60 },
   'openai:gpt-4o':                          { inputUsd: 2.50, outputUsd: 10.00 },
   'openai:gpt-4-turbo':                     { inputUsd: 10.00, outputUsd: 30.00 },
+  // 260802 rates, short-context tier (cached-input/cache-write/long-context tiers
+  // exist but aren't tracked here — PricePerMillion has no field for them yet).
+  'openai:gpt-5.6-sol':                     { inputUsd: 5.00, outputUsd: 30.00 },
+  'openai:gpt-5.6-terra':                   { inputUsd: 2.00, outputUsd: 12.00 },
+  'openai:gpt-5.6-luna':                    { inputUsd: 0.20, outputUsd: 1.20 },
 
   // Anthropic (https://docs.anthropic.com/en/docs/about-claude/pricing) — 2026-05
   'anthropic:claude-haiku-4-5-20251001':    { inputUsd: 1.00, outputUsd: 5.00 },

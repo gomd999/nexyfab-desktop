@@ -31,7 +31,7 @@ export const qwenProvider: ProviderAdapter = {
 
     const baseUrl = process.env.QWEN_BASE_URL || DEFAULT_BASE;
     // Honour any DashScope-catalogue model name; otherwise the default.
-    const model = req.model && !req.model.startsWith('deepseek-reasoner') && !req.model.startsWith('gemini')
+    const model = req.model && !req.model.startsWith('deepseek-reasoner') && !req.model.startsWith('gemini') && !req.model.startsWith('gpt-')
       ? req.model
       : (process.env.QWEN_TEXT_MODEL || DEFAULT_MODEL);
     const startedAt = Date.now();

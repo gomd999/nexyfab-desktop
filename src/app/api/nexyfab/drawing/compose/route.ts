@@ -8,7 +8,8 @@
  *
  * 구현 노트: compose.mjs를 webpackIgnore 런타임 import로 로드 → webpack이 번들
  * (및 그 안의 openscad-wasm dynamic import)을 건드리지 않아 런타임 노드 해석이
- * 그대로 동작. GEMINI_API_KEY는 apiKey() env-first로 process.env에서 읽음.
+ * 그대로 동작. OPENAI_API_KEY는 openaiApiKey() env-first로 process.env에서 읽음
+ * (260802 — Gemini/DeepSeek에서 OpenAI gpt-5.6-sol로 이전).
  *
  * caller: { description } → { ok, intent, scad?, gateErrors? }. scad를
  *   openscadWorker(브라우저)에 넣어 STL 렌더/프리뷰.
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: true, intent: r.intent, scad: r.scad, rounds: r.rounds, verify: r.verify });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const status = /GEMINI_API_KEY/.test(msg) ? 503 : 502;
+    const status = /OPENAI_API_KEY/.test(msg) ? 503 : 502;
     return NextResponse.json({ ok: false, error: 'compose failed: ' + msg.slice(0, 200) }, { status });
   }
 }

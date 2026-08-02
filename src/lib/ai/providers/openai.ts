@@ -2,7 +2,8 @@ import { AiProviderError, type ChatCompletionRequest, type ChatCompletionRespons
 import { truncationOf } from './truncation';
 import { getSetting, getSettingSync } from '../../admin-settings';
 
-const DEFAULT_MODEL = 'gpt-4o-mini';
+// 260802 — switched off Gemini/DeepSeek per explicit product decision.
+const DEFAULT_MODEL = 'gpt-5.6-sol';
 
 export const openaiProvider: ProviderAdapter = {
   name: 'openai',

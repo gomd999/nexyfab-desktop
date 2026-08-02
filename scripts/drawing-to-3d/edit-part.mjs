@@ -10,7 +10,7 @@
  */
 import { buildAssembly, placedAabb } from './assembly.mjs';
 import { PARAMS } from './reconstruct.mjs';
-import { callGeminiJson } from './from-text.mjs';
+import { callAiJson } from './from-text.mjs';
 import { GEN_REGISTRY } from './gen-macros.mjs';
 
 /** 허용 패치 필드 — id 는 불변, 그 외는 화이트리스트만. gen=자유곡면 생성기 스펙. */
@@ -291,15 +291,15 @@ ${face ? `선택 면: ${face.label ?? face.face ?? face} — 지시는 이 면 �
 이웃 부품(참고 — 충돌 회피):\n${neighbors.join('\n')}
 지시: ${String(instruction).slice(0, 400)}
 출력(JSON 만): {"patch":{"params":{...바뀐 값만},"at":{...바뀐 값만}},"note":"한줄 설명"} — type 변경이 꼭 필요하면 "type" 포함(그때 params 는 새 타입 전체 파라미터).`;
-  let out = await callGeminiJson(prompt, null, { models, thinkingBudget: 0, maxOutputTokens: 2048 });
+  let out = await callAiJson(prompt, null, { models, thinkingBudget: 0, maxOutputTokens: 2048 });
   for (let attempt = 0; attempt < 2; attempt++) {
-    const body = out?.data ?? out; // callGeminiJson 은 {data, model, repaired} 래퍼
+    const body = out?.data ?? out; // callAiJson 은 {data, model, repaired} 래퍼
     const patch = body?.patch;
     if (!patch || typeof patch !== 'object') return { ok: false, error: 'AI 패치 형식 오류(정직 거부)', raw: out };
     const r = applyPartPatch(asm, partId, patch, { kind: 'ai-edit', note: `${String(instruction).slice(0, 80)} → ${JSON.stringify(patch).slice(0, 50)}` });
     if (r.ok) return { ...r, patch, note: body.note ?? null, attempts: attempt + 1 };
     if (attempt === 0) {
-      out = await callGeminiJson(
+      out = await callAiJson(
         `${prompt}\n\n이전 패치 ${JSON.stringify(patch)} 가 게이트에서 실패했다: ${JSON.stringify(r.gateErrors ?? r.error).slice(0, 300)}\n오류를 고친 패치를 같은 형식으로 다시 출력하라.`,
         null, { models, thinkingBudget: 0, maxOutputTokens: 2048 },
       );
