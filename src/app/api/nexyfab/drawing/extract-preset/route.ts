@@ -102,7 +102,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // 판별 불가 / 저신뢰 → 허위 매칭 대신 정직 반려(텍스트·직접 입력 안내는 클라 담당)
   if (templateId === 'none' || !tpl) {
-    return NextResponse.json({ ok: false, stage: 'recognize', recognized, error: '이 분야 템플릿과 맞는 형상을 찾지 못했어요. 템플릿 카드를 직접 고르거나 치수를 텍스트로 알려주세요.' }, { status: 200 });
+    return NextResponse.json({ ok: false, stage: 'recognize', recognized, error: '이 분야 템플릿과 맞는 형상을 찾지 못했어요. 이 사진 인식은 단순 단일형상 템플릿만 지원해요 — 힌지·조립체처럼 부품이 여러 개인 제품은 채팅에 글로 설명해 주세요(예: "노트북 거치대, 하부 베이스 260×220mm, 높이조절 힌지 2조..."). 단순 형상이면 템플릿 카드를 직접 고르거나 치수를 텍스트로 알려주세요.' }, { status: 200 });
   }
   if (confidence < MIN_CONFIDENCE) {
     return NextResponse.json({ ok: false, stage: 'confidence', recognized, error: `판독 신뢰도가 낮아요(${Math.round(confidence * 100)}%). 더 선명한 이미지를 올리거나 치수를 직접 입력해 주세요.` }, { status: 200 });

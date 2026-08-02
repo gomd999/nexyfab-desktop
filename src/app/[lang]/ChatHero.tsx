@@ -245,9 +245,10 @@ function summarizeParts(assembly: AssemblyPlan | undefined): string[] {
 }
 
 // 기계 멀티바디: 자연어 → drawing/assemble(AI 어셈블리 + 게이트-교정 + 간섭검사).
-async function runAssemblePipeline(prompt: string): Promise<CadResult> {
+async function runAssemblePipeline(prompt: string, signal?: AbortSignal): Promise<CadResult> {
   const r = await fetch('/api/nexyfab/drawing/assemble/', {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt }),
+    signal,
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j?.ok) {
@@ -352,9 +353,10 @@ async function runExtractPipeline(att: Attached, lang: Lang): Promise<{ cad: Cad
 
 // 기계 스테이지1: 자연어 → drawing/compose(AI 조합 + 결정론 게이트) → intent+SCAD.
 // 체크포인트로 반환(정밀 3D/STEP은 사용자 승인 후 export-step).
-async function runComposePipeline(prompt: string, lang: Lang): Promise<CadResult> {
+async function runComposePipeline(prompt: string, lang: Lang, signal?: AbortSignal): Promise<CadResult> {
   const r = await fetch('/api/nexyfab/drawing/compose/', {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ description: prompt }),
+    signal,
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j?.ok || !j.intent) {
@@ -1491,10 +1493,14 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           });
           try {
             setCad(j.type === 'assembly'
-              ? await runAssemblePipeline(String(j.prompt))
-              : await runComposePipeline(String(j.prompt), lang));
+              ? await runAssemblePipeline(String(j.prompt), ac.signal)
+              : await runComposePipeline(String(j.prompt), lang, ac.signal));
           } catch (e) {
-            setCad({ error: e instanceof Error ? e.message : t.error });
+            if ((e as Error)?.name === 'AbortError') {
+              // 사용자가 "중단"을 눌렀다 — 진행 카드를 에러로 덮지 않고 그대로 둔다.
+            } else {
+              setCad({ error: e instanceof Error ? e.message : t.error });
+            }
           }
         } else if (j.type === 'wiring' && Array.isArray(j.cables)) {
           // ── 전기 결선표(개산) — from-to 케이블 목록 ──
