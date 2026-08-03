@@ -298,34 +298,59 @@ export function autoPlaceCorrect(asm) {
     return n;
   };
   {
+    /**
+     * ⚠ **동형 부품은 무리로 돌린다.** 하나씩 돌리면 먼저 돈 형제와 부딪혀 뒤엣것이 거부된다 —
+     * 실측(벤치 판재 8장): 6장은 돌고 2장이 남아 결국 1장이 다리에 10mm 만 걸쳤다.
+     * 반복 배열은 **한 벌로 놓인 것**이므로 한 벌로 판단하는 것이 맞다.
+     */
+    const keyOf = (p) => `${p.type}|${JSON.stringify(p.params)}|${p.role ?? ''}`;
+    const groups = new Map();
+    parts.forEach((p, i) => {
+      const k = keyOf(p);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(i);
+    });
     const before = deepPairs(parts);
-    for (let i = 0; i < parts.length; i++) {
-      if (hasFooting(i, parts)) continue;
-      const p0 = parts[i];
-      const b0 = box(p0);
-      const c0 = [0, 1, 2].map((k) => (b0.min[k] + b0.max[k]) / 2);
+    for (const idxs of groups.values()) {
+      /**
+       * ⚠ **무리 전체가 떠 있을 때만** 돌린다. 일부만 떴다면 그건 배열 방향 문제가 아니라
+       * 그 부품 하나의 문제이고, 이미 앉은 형제까지 돌리면 **멀쩡한 것을 망가뜨린다**
+       * (실측: 데크·주방에서 간섭이 0 → 1 로 늘었다).
+       */
+      const loose = idxs.filter((i) => !hasFooting(i, parts));
+      if (loose.length !== idxs.length) continue;
       // 세 축 모두 시도한다 — 「세워야 할 것을 눕혔다」와 「눕혀야 할 것을 세웠다」가 둘 다 나온다.
       for (const axis of ['z', 'y', 'x']) {
-        const at0 = { ...p0.at };
         const key = { z: 'rz', y: 'ry', x: 'rx' }[axis];
-        const cand = { ...p0, at: { ...at0, [key]: (Number(at0[key] ?? 0) + 90) % 360 } };
-        const b1 = box(cand);
-        // 회전해도 AABB 크기가 같으면(정사각 단면 등) 시도할 이유가 없다
-        if ([0, 1, 2].every((k) => Math.abs((b1.max[k] - b1.min[k]) - (b0.max[k] - b0.min[k])) < 1e-6)) continue;
-        // 회전은 로컬 원점 기준이라 AABB 가 이동한다 → 중심을 원위치로 되돌린다
-        const c1 = [0, 1, 2].map((k) => (b1.min[k] + b1.max[k]) / 2);
-        cand.at.tx = Number(cand.at.tx ?? 0) + (c0[0] - c1[0]);
-        cand.at.ty = Number(cand.at.ty ?? 0) + (c0[1] - c1[1]);
-        cand.at.tz = Number(cand.at.tz ?? 0) + (c0[2] - c1[2]);
         const trial = parts.slice();
-        trial[i] = cand;
-        if (!hasFooting(i, trial)) continue;        // 받칠 것이 안 생기면 채택하지 않는다
-        if (deepPairs(trial) > before) continue;    // 관통이 늘면 채택하지 않는다
-        parts[i] = cand;
-        corrections.push({
-          id: p0.id ?? p0.type, fix: `rotate-${axis}90`,
-          note: '긴 축 방향이 지지 부재와 어긋나 어디에도 안 걸렸다 — 치수 변경 없이 90° 돌려 얹었다(가정)',
-        });
+        let shapeChanged = false;
+        for (const i of idxs) {
+          const p0 = parts[i];
+          const b0 = box(p0);
+          const cand = { ...p0, at: { ...p0.at, [key]: (Number(p0.at[key] ?? 0) + 90) % 360 } };
+          const b1 = box(cand);
+          if ([0, 1, 2].every((k) => Math.abs((b1.max[k] - b1.min[k]) - (b0.max[k] - b0.min[k])) < 1e-6)) continue;
+          shapeChanged = true;
+          // 회전은 로컬 원점 기준이라 AABB 가 이동한다 → 중심을 원위치로 되돌린다
+          const c0 = [0, 1, 2].map((k) => (b0.min[k] + b0.max[k]) / 2);
+          const c1 = [0, 1, 2].map((k) => (b1.min[k] + b1.max[k]) / 2);
+          cand.at.tx = Number(cand.at.tx ?? 0) + (c0[0] - c1[0]);
+          cand.at.ty = Number(cand.at.ty ?? 0) + (c0[1] - c1[1]);
+          cand.at.tz = Number(cand.at.tz ?? 0) + (c0[2] - c1[2]);
+          trial[i] = cand;
+        }
+        if (!shapeChanged) continue;
+        // 뜬 것들이 **전부** 받칠 것을 얻고, 관통이 늘지 않아야 채택한다
+        if (!loose.every((i) => hasFooting(i, trial))) continue;
+        if (deepPairs(trial) > before) continue;
+        for (const i of idxs) {
+          if (trial[i] === parts[i]) continue;
+          parts[i] = trial[i];
+          corrections.push({
+            id: trial[i].id ?? trial[i].type, fix: `rotate-${axis}90`,
+            note: '긴 축 방향이 지지 부재와 어긋나 어디에도 안 걸렸다 — 동형 부품을 한 벌로 90° 돌려 얹었다(가정)',
+          });
+        }
         break;
       }
     }
@@ -417,7 +442,24 @@ export function autoPlaceCorrect(asm) {
     }
     grounded.add(i); // 내렸든 이미 닿았든 이제 체인에 들어온다
   }
-  // ② 깊은 관통 분리 — 3패스 반복(연쇄 해소)
+  /**
+   * ② 깊은 관통 분리 — 3패스 반복(연쇄 해소).
+   *
+   * ## ⚠ 두 가지를 고쳤다 (260803)
+   * ① **면제된 쌍은 건드리지 않는다.** 간섭 판정이 「체결구 관통·철근 매입·보어 끼워맞춤」을
+   *    정상으로 보는데 여기서 밀어내면 **보정기가 판정기와 싸운다.** 실측: 기어박스에서
+   *    `coupling_flange:separate-x` 가 6회 찍혔고, 축에 제대로 앉힌 허브를 축에서 떼고 있었다.
+   * ② **총 관통량이 줄 때만 채택한다.** 종전에는 A 를 B 에서 떼어 C 에 박아 넣고, 다음 패스에
+   *    되돌리는 **진동**이 있었다(파티션 `leg:separate-y` 3회 반복). 「개선될 때만」 규율을
+   *    다른 교정과 똑같이 적용한다.
+   */
+  /**
+   * 진동은 **이동 횟수 상한**으로 막는다 — 「나아질 때만 민다」로 막으려 했더니 겹쳐 쌓인
+   * 동형 부품들이 서로를 밀어 흩어지는 **정상적인 연쇄 해소**까지 막혀 간섭이 5 → 8 로
+   * 늘었다(실측). 한 번 미는 것으로는 옆 형제에 닿을 뿐이고, 그 중간 단계가 필요하다.
+   */
+  const MOVE_CAP = 6;
+  const moveCount = new Map();
   for (let pass = 0; pass < 3; pass++) {
     let moved = false;
     for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) {
@@ -426,16 +468,20 @@ export function autoPlaceCorrect(asm) {
       if (ov[0] <= 0 || ov[1] <= 0 || ov[2] <= 0) continue;
       const depth = Math.min(...ov);
       if (depth <= 2) continue; // 접촉/체결 후보는 존중
+      if (pairExempt(parts[i], parts[j], A, B)) continue; // ★판정기가 정상으로 본 쌍
       const ax = ov.indexOf(depth);
       const volA = (A.max[0] - A.min[0]) * (A.max[1] - A.min[1]) * (A.max[2] - A.min[2]);
       const volB = (B.max[0] - B.min[0]) * (B.max[1] - B.min[1]) * (B.max[2] - B.min[2]);
-      const mv = volA <= volB ? parts[i] : parts[j];
+      const mi = volA <= volB ? i : j;
       const other = volA <= volB ? B : A;
       const mine = volA <= volB ? A : B;
       const dir = (mine.min[ax] + mine.max[ax]) / 2 >= (other.min[ax] + other.max[ax]) / 2 ? 1 : -1;
       const key = ['tx', 'ty', 'tz'][ax];
-      mv.at[key] = (mv.at[key] ?? 0) + dir * (depth - 0.5); // 0.5mm 랩 = 접촉 후보로 강등
-      corrections.push({ id: mv.id ?? mv.type, fix: 'separate-' + 'xyz'[ax], mm: Math.round(depth) });
+      if ((moveCount.get(mi) ?? 0) >= MOVE_CAP) continue; // ★진동 상한
+      moveCount.set(mi, (moveCount.get(mi) ?? 0) + 1);
+      const cand = { ...parts[mi], at: { ...parts[mi].at, [key]: (parts[mi].at[key] ?? 0) + dir * (depth - 0.5) } };
+      parts[mi] = cand;
+      corrections.push({ id: cand.id ?? cand.type, fix: 'separate-' + 'xyz'[ax], mm: Math.round(depth) });
       moved = true;
     }
     if (!moved) break;
@@ -828,6 +874,65 @@ const BORE_GEOM = {
   //   회전 배치에서는 이 어휘가 스스로 박스 프록시로 떨어진다. 그래서 무회전만 면제한다.
   pillow_block: (p) => ({ axis: 'y', c: [p.width / 2, p.height], originCentered: false }),
 };
+
+/**
+ * ★**겹쳐도 정상인 쌍인가** — 판정기와 보정기가 **같은 것**을 보게 하는 단일 소스 (260803).
+ *
+ * ## 왜 필요했나
+ * 간섭 판정은 「체결구 관통·철근 매입·보어 끼워맞춤」을 정상으로 면제하는데,
+ * `autoPlaceCorrect` 의 관통 분리(②)는 그걸 모르고 **면제된 쌍까지 밀어냈다.**
+ * 실측: 기어박스에서 `coupling_flange:separate-x` 가 **6회** 찍혔고(밀었다 되돌아옴),
+ * 축에 제대로 앉힌 허브를 보정기가 축에서 떼어내고 있었다.
+ * **보정기가 판정기와 싸우면 둘 다 진다.**
+ *
+ * @returns {string|null} 면제 사유(문자열) 또는 null(진짜 겹침)
+ */
+export function pairExempt(pa, pb, ba, bb) {
+  const within = (inner, outer, axes) =>
+    axes.every((k) => inner.min[k] >= outer.min[k] - 0.1 && inner.max[k] <= outer.max[k] + 0.1);
+
+  // ① 철근 매입 — 전 구간 내포면 배근 정상(피복 검토는 도메인 계산 영역)
+  const ri = pa.type === 'rebar' ? 0 : pb.type === 'rebar' ? 1 : -1;
+  if (ri >= 0 && pa.type !== pb.type) {
+    const [rb, hb] = ri === 0 ? [ba, bb] : [bb, ba];
+    if (within(rb, hb, [0, 1, 2])) return '철근 매입(전 구간 내포 — 배근 정상 · 피복두께 검토=도메인 계산 영역)';
+  }
+
+  // ② 체결구 관통 — 자기 장축 외 **두 축**이 상대 범위 안(옆구리를 스치는 겹침은 실간섭)
+  const fi = pa.role === 'fastener' ? 0 : pb.role === 'fastener' ? 1 : -1;
+  if (fi >= 0) {
+    const [fb, ob] = fi === 0 ? [ba, bb] : [bb, ba];
+    const n = [0, 1, 2].filter((k) => fb.min[k] >= ob.min[k] - 0.1 && fb.max[k] <= ob.max[k] + 0.1).length;
+    if (n >= 2) return '체결구 관통(두 축 내포 — 상대 부재의 홀은 어휘 미표현. 홀 위치·끼워맞춤은 도면 계층 영역)';
+  }
+
+  // ③ 보어 끼워맞춤 — 축이 보어를 지나고 지름이 들어가는가
+  const SHAFT_T = new Set(['cylinder', 'tube']);
+  const hi = BORE_GEOM[pa.type] && SHAFT_T.has(pb.type) ? 0 : BORE_GEOM[pb.type] && SHAFT_T.has(pa.type) ? 1 : -1;
+  if (hi >= 0) {
+    const [hub, shaft] = hi === 0 ? [pa, pb] : [pb, pa];
+    const sBox = hi === 0 ? bb : ba;
+    const bore = Number(hub.params?.boreDia);
+    const sd = Number(shaft.params?.diameter ?? shaft.params?.outerDia);
+    const at = hub.at ?? {};
+    const g0 = BORE_GEOM[hub.type](hub.params);
+    const g = !(at.rx || at.ry || at.rz) ? g0
+      : g0.originCentered ? { axis: axisFromRotation(hub), c: [0, 0] } : null;
+    if (g?.axis && bore > 0 && sd > 0 && g.axis === axisFromRotation(shaft)
+      && sd <= bore + Math.max(0.5, bore * 0.02)) {
+      const k0 = { x: 0, y: 1, z: 2 }[g.axis];
+      const slack = (bore - sd) / 2 + 0.5;
+      const perp = [0, 1, 2].filter((k) => k !== k0);
+      const ok = perp.every((k, n) => {
+        const sc = (sBox.min[k] + sBox.max[k]) / 2;
+        const bc = Number(at[['tx', 'ty', 'tz'][k]] ?? 0) + g.c[n];
+        return Math.abs(sc - bc) <= slack;
+      });
+      if (ok) return `보어 끼워맞춤(⌀${sd} 축 → ⌀${bore} 보어 — 조립 정상. 끼워맞춤 등급은 공차 계층)`;
+    }
+  }
+  return null;
+}
 
 // 배관이 슬리브로 관통 가능한 건축 부재 role — 벽·바닥·슬래브 관통은 "위반"이 아니라
 // "슬리브 명세"다(건축 현실). 장비·가구·구조기둥 관통은 여전히 위반.
