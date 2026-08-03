@@ -1,0 +1,1294 @@
+# NexyFab 다음 계획 (260803) — **외부 자산 평가 · 포지셔닝 · 배선 결손**
+
+> ▶ **START HERE.** 이전 기록은 `next-session-plan-260802.md`(§25 순서와 병렬).
+> 이 문서는 **외부에서 받은 자산 4건을 실측 평가**하고, **라이브에서 실제로 난 에러**를 역추적하고,
+> **리뷰어 피드백 15건**을 하나의 계획으로 합친 것이다.
+>
+> ⚠ 이 문서에는 **정정이 여러 건** 있다. §0.9(정정 대장)를 먼저 읽어라.
+> 정정이 잦았던 이유와 재발 방지 규율도 거기 있다.
+
+---
+
+## §. 진행도 — 한 장 (260803 마감 시점)
+
+### 이번 세션에 끝낸 것
+
+| # | 항목 | 실측 결과 |
+|---|---|---|
+| §0 | AI 프로바이더 되돌림(OpenAI→Gemini/DeepSeek) | 8파일 · 양쪽 배선 보존 · 라이브 실측 3종 통과 |
+| §0.1 | `.env.example` 드리프트 수정 | anthropic 체인이 코드 의도와 반대로 켜지던 것 |
+| §0.2 | **B0 어휘 배선 복구** | 게이트 에러 **14건 → 0건** · 힌트 17종 보충(38/38) |
+| §0.3 | **B0-7 결정론 자동 교정**(`auto-fix.mjs`) | 오분류 2유형 자동 수정 · 회귀 13건 |
+| §0.4 | **제품 원칙 「막다른 길 금지」** 확립 + L6 드롭 | `parts:0` → **`parts:3` · 질량 6.40kg** |
+| §0.5 | compose 부분 산출 | 피처 단위 드롭 + **질량 방향 보고** · 회귀 7건 |
+| §0.6 | 이미지 경로 폴백 | vision `description` → 조립 경로 · 회귀 7건 |
+| §0.7 | **provenance 라벨 체계**(`provenance.mjs`) | 5단 Evidence Graph 어휘 · 회귀 14건 |
+| §8 | **D0 포지셔닝 확정** | 배관 스키드 · 기계설계 실무자 · 이중 관객 |
+
+**코드**: 수정 14파일 · 신규 8파일(모듈 2 + 회귀 5 + 계획서) · **+701/−91줄**
+**회귀**: **3,687 passed / 0 failed** (281 파일) · `tsc --noEmit` 통과 · **전량 미커밋**
+
+### 아직 안 된 것 — 정직하게
+
+| 항목 | 상태 | 막는 것 |
+|---|---|---|
+| **트랙 A (사진→메시)** | ❌ **스캐폴드만, 키 없음** | `MESHY_API_KEY`(사용자) |
+| provenance **채우는 층**(L2~L4) | ❌ 틀만 섰음 | 없음 — 바로 가능 |
+| `repairAgainstGate` 값에 `assumed` 표시 | ❌ | 없음 — 바로 가능 |
+| `import-step` 라벨 연결 | ❌ | 없음 |
+| B0-6 필수키 재추출 | ❌ | 없음 |
+| B1 템플릿 계약 | ❌ | 없음 |
+| 리뷰어 덱 파일 경로 | ❓ | 사용자 |
+| 커밋·배포 | ❌ | 사용자 판단 |
+
+### 남은 근본 결손 — **부유 28/42** (간섭 아님)
+
+⚠ 앞서 「간섭 38건」이라 적었는데 **틀렸다.** 그 측정은 `autoPlaceCorrect` 를 안 거친 값이었다.
+전 경로를 거친 재측정(260803, 노트북 거치대 스펙 원문):
+
+```
+부품 42 · 게이트 0건 · 교정 0 · 드롭 0 · degraded false
+designOk: false | 간섭 7 | 배치보정 62건 | **부유 28**    ← 42개 중 28개가 공중에 떠 있다
+질량 5.10kg
+```
+
+**「겹친다」가 아니라 「안 닿는다」가 주원인이다.** 원인은 같다 —
+`ASSEMBLY_SCHEMA` 가 `at{tx,ty,tz,rx,ry,rz}` **절대좌표를 LLM 에게 계산시킨다.**
+어휘를 고쳐도 산수는 모델이 하므로 부품이 서로 접촉하지 못한다.
+→ **B3(템플릿 계약: 비율은 코드가, AI 는 파라미터만)이 푸는 문제.**
+
+### ⚠ 교정 0건이 뜻하는 것
+
+같은 실행에서 `auto-fix` 교정이 **0건**이었다. 힌트(B0-1)만으로 washer·slab 이 정확히 분류됐다.
+**B0-1(힌트)이 본체이고 `auto-fix`(§0.3)는 안전망**이다 — 앞서 둘을 같은 무게로 보고한 것은 부정확했다.
+
+---
+
+## 0. 이번 세션에서 끝낸 것 — AI 프로바이더 되돌림
+
+260802 커밋 `7fe89736`(Gemini/DeepSeek → OpenAI gpt-5.6-sol 전환)을 **역방향으로 되돌렸다.**
+**OpenAI 배선은 하나도 지우지 않았다** — 기본값만 바꿨다.
+
+| 경로 | 변경 |
+|---|---|
+| `scripts/drawing-to-3d/ai-json.mjs` | Gemini 구현 복원 → OpenAI 구현과 **나란히** 두고 `callAiJson`을 모델명 디스패처로. `gpt-*`/`o\d` → OpenAI, 그 외 → Gemini |
+| `assemble/route.ts` | `thinkingBudget: 0` / `512` **동반 복원** — Gemini 전용 실측값이라 백엔드와 함께 되돌려야 한다 |
+| `compose.mjs` | 기본 모델 `['gemini-2.5-pro','gemini-2.5-flash']` |
+| `src/lib/ai/index.ts` | primary `['deepseek']` · fallbacks `['gemini','openai','local']` |
+| `codegenModels.ts` | `DEFAULT_CODEGEN_MODEL = 'deepseek-reasoner'` (gpt-5.6-sol은 픽커에 잔류) |
+| `providers/openai.ts` | `DEFAULT_MODEL` → `gpt-4o-mini` |
+
+**되돌릴 통로(코드 수정 불요)**: `NEXYFAB_AI_JSON_MODELS=gpt-5.6-sol` · `AI_PROVIDER_PRIMARY=openai` · 모델 픽커
+
+### ⚠ 겸사겸사 발견한 결함 (수정됨)
+
+`providers/openai.ts` 본문은 `temperature`+`max_tokens`를 보내는데 **gpt-5.6-sol은 그걸 400으로 거부**한다
+(추론 계열 — `max_completion_tokens` 요구. 260802 커밋 메시지에 본인이 기록한 실측).
+그 400 대응은 `ai-json.mjs`에만 들어갔고 이 파일엔 없었다.
+→ **openai가 primary이던 260802~260803 동안 일반 `chatCompletion()` 경로는 죽어 있었을 가능성이 크다.**
+⚠ 여기서 gpt-5.6-sol을 다시 쓰려면 `OPENAI_MODEL`로 이름만 바꾸면 안 된다. **본문 분기부터 옮겨 와야 한다.**
+
+### 실측
+
+```
+Gemini JSON        gemini-2.5-flash  1.5s   ✅
+OpenAI JSON(보존)  gpt-5.6-sol       4.1s   ✅ (retry_without_temperature 동작 확인)
+텍스트→어셈블리    gemini-2.5-flash  13.1s  2부품 · 결정론 게이트 PASS ✅
+tsc --noEmit                               통과 ✅
+vitest src/lib/ai                          1679 passed / 3 skipped ✅
+```
+
+**미배포 · 미커밋.** `nf_provider_override` DB 테이블이 있으면 env보다 우선한다 —
+프로덕션에 260802 openai 행이 남아 있으면 이 변경만으로는 안 바뀐다. `/admin/provider-chain` 확인 필요.
+(로컬 DB엔 테이블 자체가 없어 env 기본값이 적용됨을 확인)
+
+### 0.1 부수 발견 — `.env.example` 드리프트 (수정됨)
+
+```
+.env.example :  AI_PROVIDER_FALLBACKS=anthropic,openai,local
+index.ts     :  ['gemini','openai','local']   // "avoid surprise Opus spend" 라고 주석에 명시
+```
+**이 파일을 그대로 `.env`로 복사하면 코드가 피하려던 anthropic 체인이 그대로 켜졌다.**
+코드 기본값과 일치시켰다.
+
+⚠ 그리고 `scad-agent/repairLoop.ts:640`에도 `process.env.AI_PROVIDER_PRIMARY ?? 'deepseek'`가 **따로** 있다.
+260802가 이걸 안 고쳐서 그 기간 동안 `index.ts`(openai)와 `repairLoop`(deepseek)의 기본값이 **서로 달랐다.**
+이번 되돌림으로 우연히 다시 일치했지만, **기본값이 두 곳에 있는 구조 자체는 남아 있다** → B4에서 단일소스화.
+
+---
+
+## 0.2 B0 완료 (260803) — **게이트 에러 14건 → 0건**
+
+D0 확정 직후 착수. §1의 라이브 에러 역추적이 그대로 처방이 됐다.
+
+### 한 것
+
+| # | 변경 |
+|---|---|
+| B0-1 | `schemas.mjs` TYPE_HINTS **17종 보충** → 38/38. 힌트는 `PARAMS`+게이트가 실제 요구하는 것에서만 뽑았다(지어내지 않음) |
+| B0-2 | `flange` 게이트에 **오분류 가드** — OD/bore/t 는 성립하는데 볼트원 3종이 통째로 없으면 **6건 대신 처방 1건**("washer 로 바꿔라") |
+| B0-3 | `plate_with_holes` 힌트·게이트에 **사각 개구 → `slab_with_openings`** 지목 |
+| B0-4 | 게이트 메시지 "원인"→"조치" — `bolt holes break bore rim` → `… bcd 를 키우거나 boreDia 를 줄여라` |
+| B0-5 | **노이즈 2건 제거** — ①`boltCount invalid` 중복(`pos()` 루프와 정수 검사가 둘 다 잡았다. 라이브 메시지에 두 번 나간 게 이것) ②`d` 없을 때 `x/y outside` 파생(NaN 비교라 항상 실패 → 1건이 3건으로 부풀었다) |
+
+### 실측 — 사용자가 라이브에서 넣은 그 스펙 그대로
+
+```
+모델 gemini-2.5-flash | 29.3s | 부품 42
+타입분포: washer 8 · slab_with_openings 2 · hex_bolt 11 · box 12 · l_bracket 4 · rect_tube 2 · cylinder 3
+게이트 에러: 0 건            ← 라이브 14건(부품 단위로는 60건)
+질량 5.00kg
+```
+**`washer: 8`** — 마찰 와셔 8개가 정확히 분류됐다(이게 flange 로 가서 60건을 쏟던 것).
+**`slab_with_openings: 2`** — 사각 통풍구가 정답 어휘로 갔다.
+
+### 회귀
+
+- `gate-prescription.test.ts` **신설 9건** — 처방이 나오는지 + **지목한 정답 경로가 실제로 통과하는지**까지 검사(처방이 맞는지를 본다)
+- `ai-prompt-contract.test.ts` — **래칫을 `≥21`에서 전수(38/38)로 조임.**
+  ⚠ 이 검사는 260802에 `≥21`로 들어와 **한 번도 올라가지 않았다.** 느슨한 래칫이 17종 결손을 숨긴 장본인이다
+- 전체 회귀 **3630 passed / 0 failed** (272 파일)
+
+### ⚠ B0으로 안 풀린 것 — B1의 몫
+
+```
+designOk: false | 간섭 38건
+```
+게이트(부품 단위 형상)는 0건인데 **조립 배치가 겹친다.** 원인은 §4에서 짚은 그대로 —
+`ASSEMBLY_SCHEMA`가 `at{tx,ty,tz,rx,ry,rz}` **절대좌표를 LLM 에게 계산시킨다.**
+어휘를 고쳐도 산수는 여전히 모델이 한다. **B1(템플릿 계약 = 비율은 코드가, AI 는 파라미터만)이 풀 문제다.**
+
+### 남은 B0 항목
+
+**B0-6 (미착수)** — §10.1 `schema=null` 때문에 필수키가 강제되지 않는 문제.
+이번 실측에선 안 터졌지만 구조는 그대로다. 응답 후 어휘별 필수키 검사 → 누락 부품만 타입별 스키마로 재추출.
+
+---
+
+## 0.3 B0-7 완료 — **에러를 내지 말고 고쳐서 결과를 내라** (`auto-fix.mjs` 신설)
+
+B0-4 로 문구를 「원인」에서 「조치」로 바꿨지만 **여전히 사용자가 손으로 고쳐야 했다.**
+그런데 이 판정은 판단이 아니라 **규칙**이다:
+```
+외경·내경·두께가 성립하고 볼트원이 통째로 없다  →  그건 플랜지가 아니라 와셔다
+```
+규칙이면 기계가 적용한다. **LLM 왕복이 필요 없다.**
+
+### 설계 — 게이트는 판정만, 수리는 별도 계층
+
+`GATES` 는 순수 판정으로 남긴다(여러 곳에서 호출되고 결정론 분리를 깨면 안 된다).
+`auto-fix.mjs` 가 규칙 표를 갖고 **적용 전후로 그 부품을 실제 게이트에 태워** 에러가 줄었을 때만 적용한다
+(`repairAgainstGate` 가 어셈블리 단위로 쓰는 규율과 같다).
+
+| 규칙 | 내용 |
+|---|---|
+| `flange_without_bolt_circle→washer` | 볼트원 3종이 **통째로** 없을 때만. 하나라도 있으면 입력 누락이므로 손대지 않는다 |
+| `plate_rect_holes→slab_with_openings` | 모든 홀이 사각일 때만. 원형과 섞이면 한 어휘로 못 담으므로 손대지 않는다. **좌표계 환산**(holes=중심 → openings=좌하단 모서리)은 `assumed` 로 고지 |
+
+### ★경계 — 무엇을 안 고치는가가 더 중요하다
+
+- ⭕ 다시 이름 붙이기(어휘 교체) · 이미 주어진 값의 재배치(키 매핑·좌표 환산)
+- ❌ **없는 치수를 지어내기** — 볼트원이 *일부만* 있으면 그대로 에러
+- ❌ **조용한 수정** — 모든 교정이 `corrections[]` 로 보고되고 응답에 실린다
+
+### 배선
+
+```
+textToAssembly : LLM 응답 → autoFixAssembly → repairAgainstGate
+                            ↑ 순서가 중요하다. 뒤에 두면 repairAgainstGate 가 **틀린 어휘의
+                              스키마로** 치수를 다시 물어본다(플랜지 스키마로 와셔의 볼트원을
+                              요구 → 모델이 없는 값을 지어낸다)
+assemble 라우트 : autoFixAssembly → autoPlaceCorrect → buildAssembly
+                  ↑ 배치 보정보다 앞. 타입이 바뀌면 AABB 가 바뀐다
+응답 필드      : typeCorrections[] (placeCorrections 와 별개로 공개)
+```
+
+### 실측
+
+```
+입력(라이브 재현) : washer→flange 오분류 + 사각 통풍구→원형 holes + 진짜 flange + 입력누락 + 혼합
+게이트 에러       : 5건 → 3건   (오분류 2건 자동 교정, 나머지 3건은 **의도적으로** 남김)
+교정 보고         : 2건, 좌표 환산 가정까지 고지
+원본 불변         : ✅
+```
+
+### 회귀
+
+`auto-fix.test.ts` **13건** — 그중 5건이 **「안 고친다」** 검사다(진짜 flange·입력 누락·혼합 홀·
+수리가 악화시키는 경우·정상 판). 회귀 `scripts/drawing-to-3d` **996 passed** · `tsc` 통과.
+
+### 다음 규칙 후보 (실측되면 추가)
+
+규칙 표에 추가만 하면 되는 구조다. **§11 자율 검증 루프의 `HINT_MISSING`·`SCHEMA_DROP` 버킷이
+곧 이 표의 입력**이 된다 — 라이브에서 반복되는 오분류가 자동으로 규칙 후보로 올라온다.
+
+---
+
+## 0.4 ★제품 원칙 — **막다른 길을 만들지 않는다** (260803, 사용자)
+
+> "어떤 것을 지시하더라도 알아서 수정하는 기능이 있어야 해. **고객은 error 만 나는 서비스를 쓰지 않아.**"
+
+### 실측 — 지금은 한 부품이 전부를 죽인다
+
+```
+입력 : 정상 3부품 + 고칠 수 없는 1부품(볼트원 일부 누락 flange)
+결과 : ok:false · parts:0 · openscad:false · structural:없음
+       → 멀쩡한 3부품까지 통째로 버려지고 사용자는 빈 화면 + 에러 문구
+```
+
+### ⚠ 이 원칙과 「날조 금지」는 충돌하지 않는다 — 분리하면 된다
+
+충돌처럼 보이지만 아니다. 문제가 되는 것은 **결과를 내는 것**이 아니라
+**추정을 검증된 것처럼 말하는 것**이다. 그래서 두 축을 분리한다:
+
+```
+축 1  형상을 낸다      — 언제나. 막다른 길 없음
+축 2  근거를 표시한다  — 사용자 입력 / 규칙 파생 / 표준값 / **가정** / **미확정**
+```
+축 2 가 있으면 축 1 을 끝까지 밀어도 정직하다. **축 2 가 없을 때만 위험하다.**
+
+### 사다리
+
+| | 계층 | 상태 |
+|---|---|---|
+| **L1** | 결정론 규칙 교정(치수 불변) | ✅ `auto-fix.mjs` RULES |
+| **L2** | 표준값 대입(KS/ISO 표 — `BOLT_TABLE` 등) | ⚠ 부분(hex_bolt 만) |
+| **L3** | 기하 파생(다른 부품에서 유도) | ❌ |
+| **L4** | 통상값 가정 → **가정 라벨 + 검증 제외** | ⚠ `repairAgainstGate` 가 하지만 라벨 없음 |
+| **L5** | 프록시 형상(AABB) → **형상 미확정 라벨** | ❌ **일부러 안 함**(아래) |
+| **L6** | **부품 드롭 + 명시 보고** | ✅ `resolveAssembly({drop:true})` |
+| — | **빈 결과** | **절대 도달 금지** |
+
+### ⚠ L5(프록시)를 일부러 넣지 않은 이유
+
+못 만든 부품을 AABB 상자로 대체하면 형상은 나오지만 **질량이 조용히 과대**해진다.
+이 리포에 그 전력이 있다 — 「주력 경로 전 부품 AABB 상자 → **질량 최대 58배 과대**」.
+`structural.mjs` 에 프록시 제외 플래그가 **없음을 grep 으로 확인**했다.
+드롭은 질량을 **과소**로 만들지만 `dropped[]` 가 **명시적**이라 사용자가 무엇이 빠졌는지 안다.
+**조용한 과대 < 명시적 과소.** → 프록시는 `structural` 질량 제외 배선 후에 켠다.
+
+### 실측 (L6 적용 후)
+
+```
+종전 : ok:false · parts:0 · openscad:false · 질량 없음
+지금 : ok:true  · parts:3 · openscad:true  · 질량 6.40kg
+       drop 1건 — "BROKEN(flange) 제외 — boltHoleD invalid"
+       되살릴 원본 params 동봉: {outerDia:150, boreDia:50, thickness:12, bcd:100}
+```
+
+### 배선 — 드롭은 **최후 수단**
+
+```
+assemble 라우트 : round 0..1 = LLM 수리 시도 → round 2(마지막)에만 drop:true
+textToAssembly  : autoFix → repairAgainstGate → 남으면 drop:true
+응답 필드       : typeCorrections[] · droppedParts[] · degraded:boolean
+```
+먼저 드롭하면 **고칠 수 있었던 부품을 버린다.** 순서가 규율이다.
+
+### 경로별 적용 현황
+
+| 경로 | 상태 |
+|---|---|
+| `assemble` · `textToAssembly` | ✅ §0.3 |
+| `compose` (`composeWithGate`) | ✅ **§0.5** |
+| 이미지→3D (`extract-preset`) | ✅ **§0.6** |
+| **provenance 라벨(축 2)** | ✅ **§0.7** |
+| `import-step` | ⚠ AABB 폴백은 있으나 라벨 미연결 |
+| L2~L4 **자동 채움** | ⚠ 라벨은 생겼고 채우는 층이 남음 |
+
+---
+
+## 0.5 compose 경로 부분 산출 (`resolveComposeIntent`)
+
+`composeWithGate` 는 교정 라운드를 다 쓰고도 오류가 남으면 `gatePassed:false` 로 끝나
+**멀쩡한 피처까지 버려졌다.** 피처 단위로 같은 사다리를 적용했다.
+
+### ★이 경로 고유의 위험 — 질량 방향이 반대다
+
+```
+add 를 드롭      → 재료가 덜 붙음  → 질량 **과소**
+subtract 를 드롭 → 구멍이 안 뚫림  → 질량 **과대**   ← 이쪽이 위험하다
+```
+그래서 드롭 항목마다 `massDirection` 을 실어 보낸다. 응답에 `dropped[]` · `degraded` 추가.
+
+### 안 빼는 경계
+- **add 가 하나도 안 남으면** 형상이 성립하지 않는다 → 드롭하지 않고 원본 유지(`allFailed`)
+- 태그로 못 짚는 오류(`features[] 비어있음`)는 드롭으로 해결되지 않는다
+- 드롭 후에도 게이트가 남으면 적용하지 않는다(악화 방지)
+
+실측: `body + hole + BAD(diameter 누락 subtract)` → 드롭 1건 · SCAD 방출 ✅ · "질량 과대" 보고.
+회귀 `compose-partial.test.ts` **7건**.
+
+---
+
+## 0.6 이미지 경로 막다른 길 제거
+
+라이브에서 사진을 올리면 **"이 분야 템플릿과 맞는 형상을 찾지 못했어요"**로 끝났다.
+원인은 §1.4 그대로 — mech 템플릿 18종이 전부 중공업이라 **소비재 아키타입이 0개**다.
+
+**해법은 템플릿을 늘리는 게 아니다**(그건 끝이 없다). **같은 vision 호출에서 부품 서술을 받아**
+조립 경로로 넘긴다. 조립 경로에는 이미 사다리가 있다(auto-fix → LLM 수리 → 드롭).
+
+### ⚠ 스키마 함정을 먼저 밟을 뻔했다
+
+`extract-preset.mjs` 의 `RESPONSE_SCHEMA` 에 `description` 을 **넣지 않으면
+프롬프트로 아무리 시켜도 조용히 떨어진다.** 260802 에 `h_section`·`cone` 파라미터가
+정확히 이 이유로 사라졌고, 증상은 「LLM 이 안 줬다」가 아니라 **「우리가 버렸다」**였다.
+스키마에 추가하고 회귀로 고정했다.
+
+### 실측 — 실 vision 호출 (MVP 제트엔진 사진, mech 도메인)
+
+```
+vision 8.2s  →  templateId:'none' · confidence 0.2      ← 정확히 종전의 막다른 길 조건
+                description 104자 수신
+조립 경로 9.2s → 7부품(tube·cone·hex_bolt×2·l_bracket×2·base_plate)
+                 openscad ✅ · 질량 31.10kg · 드롭 2건 보고
+```
+**종전: 빈 화면 → 지금: 7부품 3D + 드롭 보고.**
+
+### 정직성 유지
+- 허위 매칭은 여전히 안 한다 — 안 맞는 템플릿에 끼우는 게 아니라 **다른 경로**로 만든다.
+  결과에 `via:'description'` 을 달아 구분
+- **`provenanceWarning` 필수** — "사진에서 읽히지 않은 치수는 통상값으로 채워졌을 수 있습니다"
+- 서술이 10자 미만이면 억지로 만들지 않는다. 조립 경로도 실패하면 정직 안내로 되돌아간다
+
+회귀 `extract-preset-fallback.test.ts` **7건**(스키마 존재·프롬프트 지시·via 구분·경고 필수).
+
+---
+
+## 0.7 provenance 라벨 체계 (`provenance.mjs`) — 축 2
+
+§0.4 의 축 2 를 구현했다. **PBAS Evidence Graph 어휘를 그대로 쓴다** — 이름을 새로 짓지 않아야
+나중에 그 코어를 이식할 때(B2) 변환 계층이 필요 없다.
+
+```
+observed · geometry-derived · rule-derived · assumed · unresolved
+                                            └─ 여기부터 검증 결과는 **조건부**
+```
+
+### 이 모듈이 지키는 규율 3개
+
+1. **기본값이 `observed` 가 아니다.** 출처를 모르면 모른다고 해야 한다 → `unknownAs` 를
+   명시적으로 받고 기본은 `assumed`. 조용히 승격시키면 이 파일이 무의미해진다
+2. **등급은 내려가기만 한다.** 가정으로 채운 값을 나중에 규칙으로 덮어도 가정이 사라지지 않는다
+3. **부품 등급 = 파라미터 중 최저.** 하나라도 가정이면 부품이 가정이다
+
+`assemblyProvenance()` 가 `{counts, weakest, verifiable, assumed[], unresolved[]}` 를 내고,
+드롭된 부품은 `unresolved` 로 집계된다. `provenanceSummary()` 문구는 **부드럽게 만들지 않는다** —
+「조건부」와 「검증됨」을 흐리면 이 모듈이 무의미해진다.
+
+회귀 `provenance.test.ts` **14건**.
+
+### ~~남은 것 — 라벨은 생겼고 채우는 층이 남았다~~ → **§0.11 에서 완료(B1)**
+
+### (원문 보존) 라벨은 생겼고 **채우는 층**이 남았다
+
+지금은 사다리 L1·L6 만 라벨을 만든다. L2~L4(표준값·기하 파생·통상값 가정)를 실제로
+채우면서 라벨을 다는 것은 후속이다. 특히 `repairAgainstGate` 가 LLM 으로 채운 값은
+**전부 `assumed` 여야 하는데 지금은 표시가 없다.**
+
+---
+
+## 0.8 ⚠ 정정 — 이미지 경로 "성공" 보고는 과장이었다
+
+§0.6 에서 제트엔진 사진 → 7부품 조립체를 **성공으로 보고했다. 과했다.**
+사용자 지적("3D 인식 AI가 있는데 동일한 3D로 못 만드는 건 말이 안 된다")이 맞다.
+
+### 결과를 정직하게 뜯으면
+
+```
+vision 서술 : 원통형 케이싱 · 전면 팬 블레이드 어셈블리 · 원뿔형 노즈콘 · 플랜지 · 볼트 · 지지대 · 베이스판
+나온 것     : tube 1 + cone 1 + hex_bolt 2 + l_bracket 2 + base_plate 1
+드롭된 것   : fan_assembly   ← **제트엔진의 정의적 특징이 빠졌다**
+치수 출처   : 사진에서 읽힌 것 **0개**
+```
+**「결과가 나온다」는 맞지만 「동일한 3D」는 전혀 아니다.**
+팬 블레이드 없는 튜브+원뿔은 제트엔진이 아니다.
+
+### 원인 — 능력이 아니라 배선이다
+
+**① 어휘 부재** — `fan_assembly` 가 `composite: subs[0].type 미등록` 으로 드롭.
+블레이드·임펠러 어휘가 없다. (⚠ 다만 §6.3 규칙상 **항공엔진은 우리 게이트가 채점 못 하는 영역**이라
+어휘를 늘리는 것이 옳은 대응인지는 별개다 — 배관 스키드 어휘가 우선이다)
+
+**② ★이미지→메시 경로가 죽어 있다 — 만들어놓고 한 번도 꽂은 적이 없다**
+```
+src/lib/ai/meshGen.ts       존재 — Meshy / Replicate image-to-3d 어댑터
+/api/nexyfab/mesh-gen       존재 — 키 없으면 501 (SCAFFOLD)
+MESHY_API_KEY               없음   (parent .env 확인)
+REPLICATE_API_TOKEN         없음
+UI 배선                     **0곳** (grep 확인 — 라우트 자신 외 참조 없음)
+```
+
+### ★그래서 트랙을 나눈다
+
+```
+트랙 A  "보이는 대로"       사진 → 메시(GLB)     생성 AI · 시각 충실도 ↑ · **검증 불가**
+트랙 B  "검증 가능한 형상"  사진 → 파라메트릭    우리 엔진 · 충실도 ↓ · **검증 가능**
+```
+지금은 **트랙 B 만 있고** 사용자는 트랙 A 를 기대했다. 그 간극이 그대로 체감 격차다.
+
+**한쪽만 내면 각각 반쪽이다** — A 만 내면 GPT 와 같아지고(검증 없음),
+B 만 내면 지금처럼 「얘가 더 못한다」가 된다. **둘을 같이 내는 것이 우리만 할 수 있는 것.**
+
+### 이을 자리가 이미 있다
+
+`mesh` 어휘가 `ALL_TYPES` 에 있다(`volumeMm3` + verts/faces/aabb).
+즉 생성된 메시를 **어셈블리 부품으로 편입**할 수 있고, 그러면 질량·간섭·지지가 얹힌다.
+MVP `ARCHITECTURE.md` 도 같은 경로를 적어놨다:
+> GLB, OBJ, STL 메시 결과: 메시 보정 후 B-Rep 근사 또는 기준면 기반 파트 분할 단계로 전달
+
+### ⚠ 트랙 A 도 「동일한 3D」는 아니다 — 과장하지 말 것
+
+단일 사진 image-to-3D 는 **그럴듯한 메시**를 만들지 계측적으로 동일한 형상을 만들지 않는다.
+스케일이 없고 뒷면이 안 보인다. GPT 가 만든 SOLIDWORKS 모델도 마찬가지였다(§10.0 —
+높이조절 기구 통째 부재 · 걸림턱 반대편 배치). **「보기에 같다」와 「같다」는 다르다.**
+그래서 트랙 A 결과에는 **「시각 참고 · 치수 비검증」 라벨이 필수**다.
+
+---
+
+## 0.11 B1 완료 — provenance 채우는 층 (축 2 마감)
+
+§0.7 이 만든 라벨 **틀**에 실제로 값을 채웠다. **LLM 을 다시 부르지 않는다 — 두 신호 다 결정론이다.**
+
+### 신호 ① 원문 숫자 대조 (`groundParamsInText`)
+
+파라미터 값이 사용자 원문에 **독립 숫자 토큰**으로 나타나면 `observed`, 아니면 `assumed`.
+
+⚠ **한 자리 수는 단위·기호가 인접할 때만 인정한다** — 「패드 **4**개」의 4 가
+`thickness: 4` 를 `observed` 로 올리는 우연 일치를 막는다. `t4`·`4mm`·`⌀4`·`M4` 는 인정.
+
+⚠ **이 판정의 한계를 코드 주석과 회귀에 박아 뒀다**: `observed` 는 「그 숫자가 원문에 있다」는
+뜻이지 「그 파라미터로 명시됐다」는 뜻이 아니다. **`assumed` 쪽이 신뢰도가 높다**
+(원문에 없으면 확실히 지어낸 값이다). `observed` 는 「확인 대상 제외」가 아니라
+**「확인 우선순위 낮음」**으로 쓴다.
+
+### 신호 ② 수리 이력 (`repairAgainstGate` → `repairedIds`)
+
+수리된 부품은 **전량 `assumed`** 다. 「미기입은 통상값」 프롬프트로 재추출된 값이라
+어느 것이 원문에서 왔는지 보장할 수 없다. **원문 대조로 `observed` 가 붙었더라도 내려간다**
+(등급은 내려가기만 한다 — §0.7 규율 ②).
+
+### 신호 ③ 표준표 파생
+
+`hex_bolt` → `_prov.standard: 'ISO 4017 BOLT_TABLE — 머리치수·피치 자동'`.
+`params` 에 그 키가 없어(표가 채운다) 파라미터 단위로 못 달므로 부품 수준에 남긴다.
+
+### 실측 — 노트북 거치대 스펙 원문
+
+```
+부품 42 · 수리 0 · 드롭 0
+근거 분포 : observed 29 · assumed 13 · rule-derived 0 · unresolved 0
+weakest   : assumed  →  verifiable: **false**
+요약      : "가정값 포함 13개 부품(검증 결과는 **조건부**)"
+가정 목록 : base_plate→height · base_pad_1~4→height · …
+```
+
+### ★판정이 옳은지 역추적했다 (§0.9 규율 ①·④ 적용)
+
+`base_plate → height` 가 `assumed` 로 나온 것이 오탐인지 확인했다. **오탐이 아니었다:**
+```
+원문        : "두께 5~6mm" · "두께 2~3mm"        ← 범위로 줬다
+LLM 선택    : 5.5 · 2.5                          ← 중앙값
+대조 결과   : 5 observed · 6 observed · 5.5 **assumed** · 2.5 **assumed**
+```
+**범위를 준 것과 값을 준 것은 다르다.** 사용자가 5.5 라고 한 적이 없으므로 `assumed` 가 맞다.
+이 구분이 기계로 잡힌다는 것이 B1 의 핵심 성과다.
+
+### 배선
+
+```
+textToAssembly  : … → resolveAssembly → annotateAssembly(원문, repairedIds) → provenance
+assemble 라우트 : autoFix/resolve → annotateAssembly(description) → autoPlaceCorrect → build
+응답 필드       : provenance {counts, weakest, verifiable, assumed[], unresolved[]}
+```
+
+회귀 `provenance.test.ts` **14 → 22건**(+8: 원문 대조 4 · 수리 이력 4).
+전체 **3,695 passed / 0 failed** · `tsc` 통과.
+
+### 남은 것 (B1 범위 밖)
+
+- `import-step` `kernelFidelity` → provenance 연결 (B8 로 이동, 범위 축소됨 §0.9②)
+- `geometry-derived` 를 실제로 만드는 층 — 아직 0건이다(파생 계산이 라벨을 안 단다)
+- 화면 표시 — 응답에는 실렸고 UI 노출은 D2
+
+---
+
+## 0.12 B4-1 완료 — 실패 수집 (`failureLog.ts`)
+
+### 발견 — **실패가 어디에도 안 남고 있었다**
+
+`nf_intent_log`(intentTelemetry)는 **성공 경로에서만** 기록된다 — `intentCheck` 가
+`if (built.ok)` 안에 있다. 즉 **게이트 실패·부품 드롭·이미지 미매칭은 화면에 뿌리고 끝**이었다.
+
+그런데 이 세션에서 제품을 실제로 고친 것은 전부 **라이브 실패 한 건**에서 나왔다:
+「와셔를 flange 로 분류 → 60건」 하나가 어휘 힌트 17종 결손을 드러냈다.
+**그 건은 우연히 스크린샷으로 전달됐기 때문에 고쳐졌다.** 자동으로 쌓였어야 했다.
+
+### ⚠ 개인정보 — 사용자 입력은 **고객의 설계 IP** 다
+
+원문에는 미출시 제품의 치수가 들어 있다. 그래서 **1급 키를 지문으로** 두고 원문은 부가로 뺐다:
+
+| 필드 | 내용 |
+|---|---|
+| `signature` | 게이트 코드·부품 타입만으로 만든 **PII 없는 지문** — 집계·분류의 근거 |
+| `desc_hash` | 원문 해시 — **원문 없이** 중복 제거 |
+| `description` | **기본 `null`.** `retainInput: true` 를 준 호출부만 남긴다(데모 세션·내부 하네스) |
+
+⚠ `nf_intent_log` 는 이미 원문을 2000자까지 저장한다 — **그건 별개 문제**이고
+여기서 같은 선택을 반복하지 않았다. (기존 테이블 정리는 후속)
+
+### ★지문 정규화가 이 도구의 전부다
+
+지문이 흩어지면 집계가 무의미해지고, 그러면 「무엇을 다음에 고칠지」를 못 정한다.
+라이브에서 실제로 그랬다 — `hole[0..3] d invalid` 가 **4건**, `friction_washer_1..6` 이
+**6건**으로 흩어져 있었다. **원인은 각각 하나다.**
+
+```
+숫자 → '#'          hole[0] · hole[3]  →  같은 지문
+식별자 접두 제거     friction_washer_1: · hinge_friction_washer4:  →  같은 지문
+상위 3건 정렬        순서가 흔들려도 같은 지문
+```
+
+### ★`hits` 가 아니라 `distinctInputs` 로 정렬한다
+
+한 사람이 같은 입력을 20번 재시도한 것보다 **20명이 각각 겪은 것**이 훨씬 중요하다.
+재시도 폭주가 우선순위를 왜곡하는 것을 막는다.
+
+### 배선
+
+```
+assemble 라우트      3라운드 소진 실패        → stage:'gate'
+compose 라우트       피처 빼도 성립 안 함     → stage:'gate'
+extract-preset       템플릿·조립 둘 다 실패   → stage:'template-miss'
+조회                 GET /api/nexyfab/admin/failures  (관리자 전용)
+개발용 CLI           node scripts/autoverify/failures.mjs [--days N] [--json]
+```
+
+회귀 `failureLog.test.ts` **10건** — 같은 원인이 모이는가 4 · 다른 원인이 갈라지는가 3 ·
+PII 가 안 남는가 3. 전체 **9,537 passed / 0 failed** · `tsc` 통과.
+
+### ⚠ 아직 안 된 것 — B4 의 절반이다
+
+사용자가 요구한 것은 **둘**이었다: ①실패 수집 ②**자체 수정**. ①만 됐다.
+
+| | 상태 |
+|---|---|
+| 실패 수집 · 지문 · 집계 · 개발용 조회 | ✅ |
+| **케이스 재실행 하네스**(`run.mjs`) — 고친 뒤 실제로 풀렸는지 자동 확인 | ❌ |
+| **4축 채점**(G1 형상 / G2 조립 / G3 의도 / G4 공학) | ❌ |
+| **실패 유형 자동 분류**(`HINT_MISSING`·`VOCAB_MISSING`·…) | ❌ |
+| **야간 cron + 회귀 승격** | ❌ |
+| **상위 지문 → `auto-fix` 규칙 자동 제안** | ❌ (CLI 가 사람에게 안내만) |
+
+⚠ **재실행 하네스가 없으면 루프가 안 닫힌다.** 지금은 「무엇이 깨지는지」까지만 알고
+「고친 것이 실제로 풀렸는지」는 사람이 확인해야 한다. **§11.5 정직성 장치 두 개는
+그 하네스에 들어가야 한다** — `GATE_TRUE` 분모 제외 · 자동 수정은 제안까지만.
+
+---
+
+## 0.9 정정 대장 — **왜 자꾸 틀렸는가**
+
+이 세션에서 판단을 7번 뒤집었다. 우연이 아니라 **한 가지 실수 유형**이었다.
+
+### 공통 패턴 — 축을 하나만 보고 결론냈다
+
+| 본 것 | 결론낸 것 | 놓친 축 | 정정 |
+|---|---|---|---|
+| 백과사전이 "비법정"이라 자기 선언 | "전량 반영 안전" | **저작권**(출처=상용 매뉴얼 20권) | §5.2 |
+| `parts:7 · openscad:true` | "이미지 경로 성공" | **내용 일치**(팬 블레이드 누락) | §0.8 |
+| GPT 결과가 더 그럴듯함 | "우리도 메시 생성이 필요" | **타깃 워크플로**(D0 확정본) | §0.10 |
+| memory 의 `?expert=1` 표기 | "140피처가 URL 뒤에 잠겨 있다" | **실제 코드** | 아래 ① |
+| `import-step` 문서 기억 | "라벨 체계 없음" | **실제 코드**(`kernelFidelity` 존재) | 아래 ② |
+| 첫 측정 `간섭 38건` | "배치가 겹친다" | **`autoPlaceCorrect` 미경유** | 위 §진행도 |
+| `auto-fix` 를 B0-1 과 동급으로 보고 | "둘 다 효과" | **교정 실측 0건** | 위 §진행도 |
+
+**⚠ 이 문서 §11 에 4축 채점(G1 형상 / G2 조립 / G3 의도 / G4 공학)을 설계해 놓고
+G3(의도 일치)를 한 번도 돌리지 않았다.** 게이트 통과를 정답으로 읽는 것 —
+§10.0 에서 GPT 를 비판한 바로 그 실수를 저자가 했다.
+
+### 재발 방지 규율 (이 문서를 이어받는 사람도 지킬 것)
+
+1. **「돌아간다」를 「맞다」로 쓰지 않는다.** 형상이 나왔으면 **입력과 대조**한다(G3).
+   부품 수·`ok:true` 는 G1/G2 신호이지 정답 신호가 아니다.
+2. **memory·문서 기억으로 코드 상태를 단정하지 않는다.** 파일을 연다.
+   이 세션에서 그렇게 틀린 것이 2건(①②)이다.
+3. **확정된 결정(§8 D0)을 다시 열 때는 그 결정문을 먼저 읽는다.** 경쟁 불안으로 뒤집지 않는다.
+4. **측정값을 인용할 때 어느 경로를 거친 값인지 적는다.** 「간섭 38건」은 경로가 달랐다.
+
+### ① 정정 — `?expert=1` 은 잠겨 있지 않다
+
+```ts
+// ShapeGeneratorClientPage.tsx:47
+if (mode === 'studio') return <StudioInner onExpert={() => setMode('expert')} />;
+// 주석: "A user choosing Expert in-app (Studio's "Expert →") must stick"
+```
+**Studio ↔ Expert 전환이 이미 앱 안에 있다.** §8.2 에서 확정한 「이중 관객」이 **이미 구현돼 있다.**
+→ **D2 의 범위가 대폭 축소된다.** 새로 만들 게 아니라 **발견 가능성**(첫 화면 노출·안내) 문제다.
+
+### ② 정정 — `import-step` 에 라벨이 이미 있다
+
+`kernelFidelity` 필드가 커널/AABB 폴백 여부를 이미 보고한다.
+「라벨 체계 없음」이 아니라 **`provenance` 와 연결만 안 된 것**이다 → B8 범위 축소.
+
+---
+
+## 0.10 ⚠ 정정 — 트랙 A(사진→메시 생성) 제안 철회
+
+§0.8 에서 「트랙을 나눠야 한다(A=메시 생성 / B=파라메트릭)」고 제안했다. **철회한다.**
+사용자 지적이 맞다: **메시는 설계 입력이 아니라 출력이다.**
+
+### CAD → 메시는 이미 완비돼 있다
+
+```
+renderStl (verify.mjs)          CAD → STL             3D프린팅 · FEA 입력
+renderHtml/renderColoredHtml    CAD → three.js 메시   뷰어 · 계통색 GA
+feaPackage.ts                   STL → TET10 → FEA     어셈블리 실렌더에서
+export-step · dxf-seed          B-rep · 2D 도면
+visualize 라우트                 Gemini i2i 컨셉 이미지 "(비검증)" 라벨
+```
+「CAD 완료 후 메시 생성」은 **이미 된다.** 그 이상이 필요 없다.
+
+### 왜 틀린 제안이었나
+
+- **D0 에서 타깃을 「기계설계 실무자」로 확정해 놓고 그 워크플로가 아닌 것을 제안했다.**
+  설계자가 사진을 올릴 때 원하는 것은 「똑같이 생긴 덩어리」가 아니라 **치수와 부품 구성**이다.
+  메시로는 판 두께를 4→6mm 로 못 바꾼다 — 피처 트리도 치수도 구속도 없다.
+  **설계 의도는 파라미터에 있지 삼각형에 있지 않다.**
+- **자기 분석과 모순됐다.** 이 문서 §2~4 의 결론은 「생성은 이미 상품화됐다, 검증에서 이겨야 한다」였다.
+  제트엔진 결과가 초라해 보인다는 이유로 그 결론을 뒤집었다.
+- **역설계 수요도 못 채운다.** 실물 역설계는 **3D 스캔 데이터**지 사진 한 장이 아니고,
+  사진에서 만든 메시는 치수가 없어 역설계 소재도 못 된다. 그리고 STEP 임포트가 이미 있다(17,269부품).
+
+### 결론
+- **B2(트랙 A) 삭제.** `MESHY_API_KEY` 는 **막힌 항목이 아니라 필요 없는 항목**이다.
+- 사진 입력의 목표는 **형상 복제가 아니라 파라미터 추출**이다.
+  그리고 그것이 잘해야 하는 것은 **도면·스케치의 치수선 판독**(`extract.mjs`, 합성도면 5장 100% 기록).
+- §0.8 의 제트엔진 결과 해석도 바뀐다: 「팬 블레이드가 빠져서 실패」가 아니라
+  **애초에 제트엔진 사진이 우리 입력이 아니다**(§6.3 규칙: 게이트가 채점할 수 있는 제품만).
+
+---
+
+## 1. 라이브 에러 역추적 — **~~안 고쳐졌다~~ → §0.2에서 해결**
+
+사용자가 라이브 ChatHero에 노트북 거치대 스펙(부품 20종)을 넣었을 때 난 에러다.
+프로바이더 변경으로는 **안 고쳐진다.** 게이트·어휘 문제다.
+
+### 1.1 마찰 와셔 10건 폭포 — `washer` 어휘가 있는데 AI가 못 고른다
+
+```
+friction_washer_1..6, hinge_friction_washer1..4:
+  bcd invalid, boltHoleD invalid, boltCount invalid,
+  BCD not between bore and OD, bolt holes break bore rim, boltCount invalid
+```
+
+문구 출처 = `reconstruct.mjs:541-546` **flange 게이트**. 즉 **와셔를 플랜지로 분류**했다.
+
+```
+washer  PARAMS: outerDia, boreDia, thickness          ← 요청(외경18·내경8·두께1)과 정확히 일치
+        TYPE_HINTS: (없음)                            ← 프롬프트에 설명이 안 나감
+flange  PARAMS: outerDia, boreDia, thickness, bcd, boltHoleD, boltCount
+        TYPE_HINTS: 있음                              ← 그래서 이걸 골랐다
+```
+
+### 1.2 통풍구 — 사각 개구를 표현할 어휘가 프롬프트에 없다
+
+180×130 직사각형 통풍구의 정답 어휘는 `slab_with_openings`(`openings[{x,y,w,d}]`, `reconstruct.mjs:684`).
+**그것도 힌트가 없다.** → AI가 `plate_with_holes`의 **원형** `holes[]`에 밀어넣음 → `reconstruct.mjs:508`에서
+`hole[n] d invalid` 4건.
+
+### 1.3 ★근본 — TYPE_HINTS 없는 어휘 17종이 죽어 있다
+
+```
+어휘 38종 중 TYPE_HINTS 없음: 17종
+h_section, c_channel, slab_with_openings, i_girder, tapered_girder, hex_nut,
+washer, angle, tee_section, pipe_reducer, mesh, rebar, pipe_tee, pipe_elbow,
+cavity_block, coil_spring, pillow_block
+```
+
+`washer·hex_nut·angle·tee_section·pipe_elbow·pipe_tee·coil_spring·pillow_block` —
+**기계 부품 핵심이 전부 여기 있다.** 어휘는 만들어놨는데 AI가 존재를 모른다.
+
+⚠ 260802에 `type` enum이 9종 하드코딩이던 걸 `ALL_TYPES`로 고쳤는데 **힌트 쪽은 안 고쳐졌다.**
+**같은 단일소스 결손의 네 번째 판이다.**
+
+### 1.4 이미지 입력 실패 — mech 템플릿 18종에 소비재가 0개
+
+```
+tower_crane · pump_unit · gate_valve · tank_silo · pressure_vessel · motor_mount
+gusset_bracket · mold_cavity · gear_train · four_bar · flanged_fitting · heat_exchanger
+propeller · robot_arm · machine_line · conveyor · transmission_tower · excavator_bucket
+```
+전부 중공업. 노트북 거치대 같은 **소비재 기구류 아키타입이 하나도 없어서**
+"이 분야 템플릿과 맞는 형상을 찾지 못했어요"가 떴다.
+
+---
+
+## 2. 외부 자산 ① — PBAS 0.7.3 (`Downloads/7.3/`)
+
+### 2.1 실측
+
+```
+mechanics/ + engineering/  (≈4,400줄)   node --test 77/77 PASS · 424ms · 서드파티 의존성 0
+                                        ← 내 PC에서 직접 실행 확인
+cad/ + workers/ + geometry-occt/        npm ci · build · verify:cad 전부 BLOCKED
+                                        ← 한 번도 실행된 적 없음
+```
+
+⚠ 검증 JSON의 실패 로그에 `packages.applied-caas-gateway1.internal.api.openai.org` 가 박혀 있다 —
+**OpenAI 샌드박스에서 에이전트가 만든 패키지**이고 거기서 npm이 막혀 CAD 레이어는 미실행이다.
+Emberhold의 "빌드완료 → 실제 부팅 불가"와 같은 형태. `acceptanceBoundary`에 본인이 정직하게 적어놨다:
+
+```json
+"occtWasm": "not verified in this environment",
+"productionApproval": "not permitted without runtime, nonlinear solver and experimental evidence"
+```
+
+### 2.2 가져올 것 — NexyFab에 **없는** 것만 (grep 확인: `jacobian|mobility|wrench|frictionCone` 히트 0)
+
+| PBAS 자산 | NexyFab 현재 |
+|---|---|
+| **Evidence Graph** — observed / geometry-derived / rule-derived / **assumed** / **unresolved** | 없음(정직 표기가 산문 주석) |
+| **Native-SI 모델** — `{value:400,unit:"mm2"}` → 내부 전량 SI | mm/MPa/kN 혼재 |
+| **Constraint Jacobian · mobility · rank · 여유구속 · condition number** | 없음 |
+| **Unilateral 접촉 release 반복 + 마찰원뿔** `\|Ft\|≤μFn` | `supportCheck` 이진 판정만 |
+| **6-DOF 강성망 Kq=f** | `frame2d`(2D 평면)만 |
+| **G0~G15 + 4단 승인 사다리**(concept→prototype→test→production) | verdict PASS/FAIL 이진 |
+| **수치 정책** — 정규방정식 금지, 열스케일링 후 column-pivoted QR, cond>1e10=conditional | 미명시 |
+| **Persistent Reference** — semantic role→ancestry→geometry sig→adjacency sig | `face-param-map.mjs`(어휘 기반) |
+
+### 2.3 버릴 것
+`cad/`·`workers/`·`geometry-occt/` — 미실행이고, NexyFab이 이미 실증으로 이겼다
+(`to-step.mjs` `_pid` 부품 스코프 컴파운드 · 엣지 지목 필렛 실측 120,000→119,955mm³ · STEP 임포트 17,269부품).
+
+---
+
+## 3. 외부 자산 ② — Assembly Studio MVP v0.1.0 (`카카오톡 받은 파일/NexyFab_Assembly_Studio_MVP (3)/`)
+
+### 3.1 ★MVP가 정교했던 진짜 이유
+
+`src/cad/core.js`의 `parseStandSpecification()` 헤딩 목록:
+
+```js
+["전체 제품 크기","접었을 때 크기","노트북 받침판","받침판 통풍구","받침판 실리콘 패드",
+ "전면 걸림턱","받침판 연결 브래킷","중앙 지지암","상부 힌지","하부 힌지","힌지 마찰 와셔",
+ "하부 베이스","베이스 미끄럼 방지 패드","높이 조절 범위","받침판 각도","하부 지지암 각도"]
+```
+
+**§1의 라이브 실패에 쓰인 그 스펙 문서와 같은 문서다.** 8개 헤딩이 글자까지 일치.
+→ **MVP는 이 제품 하나를 위해 하드코딩된 것**이지 범용 아키텍처 우위가 아니다.
+제품이 바뀌면 다시 짜야 하고 재사용이 0이다.
+
+⚠ 그럼에도 사용자 눈엔 우리 것보다 나아 보였다 — **우리 게이트가 빨간 벽으로 나왔기 때문**이다.
+게이트가 옳게 작동했는데 체감은 "얘가 더 못한다"였다. **§7 D축의 존재 이유가 이것이다.**
+
+### 3.2 가져올 것 4개
+
+**① STEP 파트 이름·색상 (제일 싸고 제일 크다)**
+```js
+// MVP (cad.worker.js:754)
+exportSTEP(parts.map(p => ({ shape:p.shape, name:`${p.group}__${p.id}__${p.name}`,
+                             color:p.color, alpha:p.alpha })), { unit:'MM', modelUnit:'MM' })
+// NexyFab (to-step.mjs:480)
+compoundShapes(shapes).blobSTEP()      // ← 이름·색상 유실. 무명 컴파운드
+```
+✅ **NexyFab의 replicad도 0.23.0 동일 버전이고 `exportSTEP`이 존재함을 확인했다.**
+지금은 SolidWorks에서 열면 파트 트리가 무명이다.
+
+**② `explode` 벡터 + `interface` 서술을 파트 스키마에** — 생성 시점에 박히면 폭발도·조립순서가 공짜.
+**③ DFM을 형상식 안으로** — `wall = max(minFeature*1.8, radius*0.055)`. `fab.mjs`는 사후검사라 "만든 다음 탈락".
+**④ 자연어 사양서 결정론 파서** — heading 구간 분할 + 정규식. LLM 없이 긴 사양서→파라미터.
+
+### 3.3 가져오지 않을 것
+아키타입 템플릿(MVP 3종 vs NexyFab **54종**) · B-rep 커널 · 뷰어 · BOQ/GA3D · `safeCut/safeFuse`(→`buildSolidRobust`가 상위).
+
+---
+
+## 4. 외부 자산 ③ — 템플릿 플러그인 계약 (`카카오톡 받은 파일/ex222/`)
+
+`template_schema.json`(선언) + `stand_generator.js`(`export function generate(params, replicad)`).
+
+### 4.1 아이디어는 맞다. **계약 한 줄이 틀렸다**
+
+ex222는 `replicad`를 주입받아 **커널 객체**를 돌려준다. 그러면 다운스트림이 그게 뭔지 모른다.
+
+NexyFab 템플릿은 **순수 데이터**를 뱉는다 (`mech/four_bar` 실행 실측):
+```json
+{ "id":"base_bar", "type":"plate_with_holes",
+  "params":{"width":440,"depth":40,"thickness":12,"holes":[{"x":20,"y":20,"d":17},…]},
+  "at":{"tx":-20,"ty":-20,"tz":0}, "material":"steel", "role":"frame" }
+```
+→ `buildAssembly()`에 넣으면 **이게 공짜로 나온다**:
+```
+gateOk: true | 부품 8 | 간섭 0 | designOk: true
+structural: totalMassKg, massBreakdown, cgWorldMm, supports, maxSupportKg, member, tipover, warnings
+support:    supported[8] / floating[0] / unknown[0] / faceContacts
+```
+
+**ex222 방식으로 짜면 이게 전부 사라진다.** 형상은 나오는데 **근거가 0**이 된다 —
+GPT보다 나은 유일한 지점을 버리는 것이다.
+
+### 4.2 ex222 코드 결함 (계약 설계에 반영할 것)
+
+| 위치 | 문제 |
+|---|---|
+| L40-41 | `replicad.makeRotateY`는 **replicad에 없는 API**(실제는 `shape.rotate(deg,origin,axis)`). `if (replicad.makeRotateY)` 가드 때문에 **각도가 조용히 무시됨** — UI엔 0~45° 슬라이더가 뜨는데 형상 불변. 최악의 실패 유형 |
+| L11-14 ↔ schema L9-12 | min/max **두 곳 중복**. 갈리면 끝 |
+| L69 | `new Date().toISOString()` → **결정론 파괴**. REV sha1·캐시키·회귀가 전부 깨짐 |
+| L16·17·52 | `material`·`color`·`addSupportPlate`가 **스키마에 없는데 구현이 읽음**(선언/구현 드리프트) |
+| L72-73 | `return {parts,metadata}` 뒤에 `return parts` 죽은 코드 |
+| 파트 스키마 | `role`·`material`·`explode`·`interface` 없음 → BOM 재질·폭발도 불가 |
+| `script_file` | 동적 JS 로딩 = 사용자 업로드 시 **RCE**. 순수 데이터 반환이면 문제 자체가 소멸 |
+
+### 4.3 제안 계약 — "어휘 조립형"
+
+```js
+// template.json — 선언이 단일 소스(범위 검증도 여기만)
+{ "family":"desk_stand", "domain":"mech", "version":"1.0.0", "labelKo":"데스크 거치대",
+  "parameters":[{"name":"baseW","labelKo":"베이스 폭","unit":"mm","default":260,"min":150,"max":500}, …],
+  "script":"desk_stand.mjs",
+  "verification":{"cases":["stand-260x220-h200"]} }   // 회귀 앵커 = 등록 조건
+
+// desk_stand.mjs — ⚠ replicad를 받지 않는다. 어휘 38종의 type만 쓴다
+export function generate(p) {
+  return { name:"데스크 거치대",
+    parts:[ { id:"base", type:"plate_with_holes",
+              params:{width:p.baseW, depth:p.baseD, thickness:6, holes:[…]},
+              at:{tx:0,ty:0,tz:0}, material:"aluminum", role:"frame",
+              explode:[0,0,-1], interface:"하부 힌지 브래킷 체결면" },
+            { id:"washer_1", type:"washer", params:{outerDia:18,boreDia:8,thickness:1}, … } ],
+    joints:[ {a:"base", b:"hinge_lo", kind:"bolt", spec:"M5x12", count:4} ] };
+}
+```
+
+**핵심 규칙: 커널을 주지 않는다.** 얻는 것 —
+게이트 38종·간섭·지지·구조·BOQ·STEP·DXF·도면·계산서 **자동** / 결정론 보장(`Date` 자체가 불가) /
+**샌드박스 불필요**(반환값이 JSON) / 어휘 부족 시 탈출구(`composite`·`extrude_profile`·`revolve`·`loft`·`sweep`) +
+**미충족 로그가 다음 어휘 우선순위 지도**가 됨.
+
+### 4.4 ★그리고 이게 "GPT가 상품화한다"는 걱정을 뒤집는다
+
+```
+스펙 문서 ──→ GPT-5.6 Sol ──→ template.json + generator.mjs
+              (계약 + 어휘 38종 힌트를 프롬프트로 제공)
+                        ↓
+              NexyFab 게이트가 자동 채점
+                        ↓
+        PASS → 카탈로그 등록          FAIL → 사유와 함께 반려·재생성
+```
+
+GPT는 **경쟁자가 아니라 템플릿 공급 라인**이 된다. 게이트를 통과한 것만 들어오니 품질은 우리가 통제한다.
+**이 구조의 방어선은 생성기가 아니라 채점기다.** 채점기 = 게이트 42종 + 공표예제 재현 + 원문 판독.
+
+---
+
+## 5. 외부 자산 ④ — CAD 백과사전 + 상용 매뉴얼 20권
+
+### 5.1 실측
+
+```
+CAD_통합_백과사전_…_최종판.md   20,523줄 · 880섹션 · 공식카드 247장
+   MECH 40 · MATH 39 · CIVIL 25 · CAD 25 · ARCH 14 · STRUCT 12 · THERM/MFG/ELEC 8 · FLUID 7 …
+카드 형식: 공식 / 입력·출력 / 가정·적용범위 / 사용위치 / 검증방법 / 실패·주의
+Part CL §841~845 = Formula Registry 데이터모델 · 계산그래프 상태 · 단위안전 API · 캐시키 · 오류코드
+```
+
+`새 폴더 (6)/` = **백과사전 §0.3 "첨부 자료의 역할 지도"가 일대일로 매핑하는 원본 20권**
+(Rhino×3 · Grasshopper×2 · AutoCAD · 3ds Max · Vectorworks×2 · SketchUp · MicroStation · Civil 3D×2 ·
+Enscape · Fusion 360×2 · SOLIDWORKS KO · 기타. midas Civil만 폴더에 없음).
+
+### 5.2 ⚠⚠ **정정 — 앞선 세션의 "백과사전 전량 반영 안전"은 틀렸다**
+
+앞서 "문서가 스스로 비법정 선언을 하니 전량 반영 가능"이라고 판단했다. 그건 **법정 수치 관점**만 본 것이다.
+출처가 확인되니 **저작권 관점이 정반대**로 나온다.
+
+| 백과사전 구간 | 실제 출처 | 판정 |
+|---|---|---|
+| Part I~V (개념·워크플로·기능분류) | Autodesk·McNeel·Dassault·Bentley·Trimble·Nemetschek **상용 매뉴얼 요약** | **RAG 코퍼스 인제스트 금지** |
+| Part CG~CN 공식카드 247장 | 보편 공학 공식 | 공식·차원·적용범위 = 사실이라 사용 가능. **단 문장·표는 자체 재작성 필수** |
+| Part CL §841~845 | 설계 스펙 | 아이디어 차용 OK |
+
+NexyFab이 이미 지켜온 잣대와 정확히 같은 판단이다:
+```
+표준품셈           → 공공누리 확인 불가   → 미탑재 정직 보류
+LH BIM 지침        → 재배포 확인 필요     → 방법론만 차용
+KDS                → 공공누리 1유형 확인  → 탑재
+상용 CAD 매뉴얼 20권 → 명백한 상용 저작물  → 로컬 학습·갭분석만, 코퍼스 미탑재, 화면 미사용
+```
+
+### 5.3 그럼 20권은 무엇에 쓰나
+
+**① 기능 갭 매트릭스** — §0.3이 각 매뉴얼의 핵심을 이미 요약해뒀다. NexyFab과 대조:
+
+| 매뉴얼이 기대하는 기능 | NexyFab |
+|---|---|
+| Fusion/SW: **조인트(joint)** | ❌ **없음** ← PBAS constraint Jacobian·mobility가 정확히 이것 |
+| Fusion/SW: 충돌·간섭 | ✅ `interferences` |
+| Fusion/SW: 재질·질량특성 | ✅ `structural` |
+| Fusion/SW: B-rep 오류검사 | ✅ `buildSolidRobust` + 게이트 |
+| Fusion/SW: 응력해석 | ✅ FEA 스위트 |
+| Civil 3D: **코리더** | ⚠ 선형만, 코리더 약함 |
+| Civil 3D: **Field-to-Finish·측량점** | ❌ 없음 |
+| Vectorworks: 관개 | ✅ `irrigation` 체인 |
+| Grasshopper: **데이터 트리·그래프 편집** | ❌ 없음 |
+
+→ **진짜 빈 칸은 4개**고 그중 **조인트가 PBAS 이식으로 바로 메워진다.**
+
+**② 용어 표준** — 한국어판 3권(`Rhino 6 ko-kr` · `Grasshopper Primer Korean` · `SOLIDWORKS Introduction KO`)에서
+한↔영 공식 대응어 추출. "통짜"를 뭐라 부를지 추측 대신 매뉴얼 대조.
+⚠ **선행 필요**: 현 환경에 PDF 텍스트 추출 없음(poppler·pdf 라이브러리 부재 확인).
+
+**③ 포지셔닝 힌트** — 20권 중 Rhino×3+Grasshopper×2 = **5권으로 최다**이고 백과사전도 Part II를 통째로 할애했다.
+NexyFab의 구조(*AI가 파라미터를 이해하고 결정론이 형상을 만든다*)는 **Grasshopper 데이터플로우와 같은 계열**이다.
+→ D0 후보 문장: **"AI가 짜주는 Grasshopper"**. 5도메인 넓이가 **약점이 아니라 당연한 것**이 된다.
+
+---
+
+## 6. 리뷰어 피드백 15건 — 분류
+
+### 6.1 있는데 안 보이는 것 (surfacing 문제)
+
+| 피드백 | 실제 상태 |
+|---|---|
+| "기하공차도 고려한 모델링이 가능하다는 내용이 있었으면" | **6모듈 존재** — `GDTTypes.ts`·`GDTOverlay.tsx`·`gdtCalloutSuggester.ts`·`gdtAutoMeasure.ts`·`toleranceStackup.ts`·`gdt-import.mjs` |
+| "구조해석에 대한?" | 계산기 61종 · 게이트 42/42 · FEA · 공표예제 재현 |
+| "부품별로 수정한다고 하셨으니" | `_pid` 부품 스코프 · 템플릿 54종 · 면 픽킹 편집 |
+| "최적 설계인 것인지?" | `optimize.mjs` · `param-sweep` 목표탐색 |
+| **"UI 옵션이 너무 적음"** | `shape-generator` = **140피처 모델러인데 `?expert=1` 뒤에 잠겨 있음** |
+
+### 6.2 절반의 피드백이 한 가지 원인
+
+```
+"AI의 역할이 무엇인지?"  "초기 설계인지 완성품인지?"
+"기계설계인지 3D프린팅인지 명확히"  "전문 분야가 정해져 있는 게 좋을지도"
+```
+네 개가 같은 질문이다. 그리고 **답이 이미 있는데 덱에 없다**:
+> **AI = 이해·분석(자연어 → 부품·치수·공정)까지만. 형상·검증·생성 = 결정론.**
+
+### 6.3 아픈 것 2개
+
+**① "제트엔진 구조를 잘 모르는 사람이 만든 것 같음"**
+치명적이다. 주장이 "검증이 강점"인데 **예시가 도메인 무지를 드러내면 주장 전체가 무너진다.**
+그리고 사실이다 — mech 18종에 터보기계는 `propeller` 하나뿐, 게이트 42종은 KDS·FHWA·건축구조 기반이라
+**항공엔진을 채점할 수 없다.**
+
+→ **제트엔진 폐기.** 대신 규칙: **「우리 게이트가 실제로 채점할 수 있는 제품만 예시로 쓴다」**
+교체 후보 = 배관 스키드(`autoRoutePipes`·슬리브·DFU·구배) / 옹벽·암거(국토부 표준도 재현 ≤1.6%) /
+강구조 접합부(KDS 14 31 25).
+
+**② "전문 분야가 정해져 있는 게 좋을지도"**
+**덱에 대해서는 맞다.** 5도메인은 제품 전략으로 옳지만 덱에서는 초점 없음으로 읽힌다.
+절충: **덱은 한 버티컬로 깊게 증명 + 나머지 4개는 "같은 엔진이 도는 증거"로 부록 1장.**
+리뷰어가 나열한 분야(유관·토목·치공구·동력전달·자동차부품) 중 **우리가 실제로 강한 건 배관과 토목**이다.
+치공구·동력전달은 `gear_train`·`four_bar` 수준으로 약하다.
+
+### 6.4 워딩 처방
+
+| 현재 | 제안 |
+|---|---|
+| 통짜 3D 결과물 | **단일 솔리드(single solid)** / **원바디(one-body)** |
+| 외형이 하나의 메시 | **mesh 1개 — 피처 트리·파라미터 없음** (영어 병기) |
+| (없음) | **watertight mesh, no feature tree, non-parametric** |
+
+빌드업 구조도 리뷰어 제안 채택:
+**AI 모델링의 이점(인력·시간) → 기존 AI 모델링의 한계 → 우리가 개선한 것**
+(지금은 두 번째부터 시작해 "왜 AI 모델링인가"가 빠져 있음)
+
+### 6.5 ⚠ 라이선스 함정 — "시중 공개 CAD 분해" 피드백
+
+설득력은 좋고 재료도 있다(GrabCAD 실물 18종 · 임포트 실측 17,269부품).
+**그런데 그 코퍼스는 "로컬 전용" 라이선스다.** 공개 덱·랜딩에 쓰면 위반 위험.
+대안 셋: ①라이선스 명확한 공개 STEP(NIST 등) ②우리가 만든 모델 분해 ③**수치만 인용, 화면 미사용**.
+
+---
+
+## 7. 통합 계획
+
+### [D축 — 증명·전달]
+
+| | 내용 | 기간 |
+|---|---|---|
+| **D0** | **포지셔닝 확정** — 대상 / 설계단계 / AI 역할 / 첫 버티컬. 후보 문장 "AI가 짜주는 Grasshopper" | 반나절 · **최우선** |
+| **D1** | **예시 교체** — 제트엔진 폐기. 규칙=*게이트가 채점 가능한 제품만*. 라이선스 정리 포함 | 1일 |
+| **D2** | **기능 노출** — GD&T 6모듈 · 구조검증 · **140피처(`?expert=1` 해제)** UI 진입점 | 2일 |
+| **D3** | **Before/After 시각자료** — single solid vs 부품분해+게이트 리포트 | 1일 |
+| **D4** | **워딩 교정** — 한국어판 매뉴얼 3권 대응어 추출 후 일괄 (⚠ P1 선행) | 1일 |
+| **D5** | **기능 갭 매트릭스** — 20권 vs NexyFab 정량 대조. 로드맵 근거 + 덱 슬라이드 | 2일 |
+
+### [B축 — 빌드] · 260803 갱신
+
+| | 내용 | 상태 |
+|---|---|---|
+| ~~**B0**~~ | ~~어휘 배선 복구~~ TYPE_HINTS 17종 · 오분류 가드 · 메시지 처방화 | ✅ **§0.2** (B0-6 필수키 재추출만 잔여) |
+| ~~**B0-7**~~ | ~~결정론 자동 교정~~ `auto-fix.mjs` | ✅ **§0.3** |
+| ~~**B0-8**~~ | ~~막다른 길 제거~~ assemble·compose·이미지 3경로 | ✅ **§0.4~0.6** |
+| ~~**B0-9**~~ | ~~provenance 라벨 **틀**~~ `provenance.mjs` | ✅ **§0.7** |
+| **B1** | **provenance 채우는 층(L2~L4)** — `repairAgainstGate` 값 전량 `assumed` 표시(현재 표시 **0**, grep 확인) · `BOLT_TABLE` `boltDims()` → `rule-derived` · `import-step` `kernelFidelity` 연결 · 응답·리포트에 요약 노출 | ⬆ **승격** — 키 불요 · 축2 완성 |
+| ~~**B2**~~ | ~~트랙 A(사진→메시 생성)~~ | ❌ **삭제 — §0.10 철회** |
+| **B3** | **템플릿 계약 정식화**(§4.3) — 어휘 조립형 · 선언↔구현 드리프트 검사 · 결정론 린터 · 런타임 등록. **`부유 28/42`를 푸는 유일한 항목** | 키 불요 · **최대 효과** |
+| **B4** | **자율 검증 체계**(§11) — 실패 케이스 적재 → 야간 재실행 → 4축 채점 → 유형 분류. B5 채점기와 공용(§11.6) | 키 불요 |
+| **B5** | **GPT 템플릿 공급 파이프라인**(§4.4) | B3·B4 뒤 |
+| **B6** | **PBAS 역학코어 이식** — 4,400줄 · 의존성 0 · 77/77. **조인트/mobility = 갭 매트릭스 1순위 결손**(§5.3) | |
+| **B7** | **Formula Registry**(§841~845) + `AI_PROVIDER_PRIMARY` 단일소스화(§0.1) + `friction_clamp` 신설(§10.3) | |
+| **B8** | **외부 STEP/메시 수용** — 생성기 무관 진입점. `import-step` provenance 라벨 연결 | |
+| **B9** | **백과사전 247카드 커버리지 맵** — ⚠ **자체 서술 필수**(§5.2) | |
+| **B10** | MVP 갭 — `exportSTEP` 파트명·색상 + **ISO 10303-21 `\X2\` 한글 이스케이프**(§10.2) · `explode`/`interface` · DFM 형상식 내재화 | 싸므로 끼워넣기 |
+
+### 순서 — 260803 최종
+
+```
+1. B1  provenance 채우는 층      반나절   축2 완성 — 원칙을 정직하게 만드는 마감
+2. B3  템플릿 계약               2~3일    부유 28/42 를 푸는 유일한 항목 ★최대 효과
+3. B4  자율 검증 체계            2일      B5 채점기와 공용(§11.6) · 재발 방지 장치이기도 하다
+4. B5  GPT 템플릿 공급 파이프라인
+5. B6~B10                        PBAS → Formula Registry → STEP수용 → 백과사전 → MVP갭
+
+[D축 병렬 · 키 불요]
+   D1 예시 교체(배관 스키드)     1일
+   D2 **범위 축소** — Studio↔Expert 전환은 이미 있다(§0.9①).
+      남은 것은 **발견 가능성**: 첫 화면에서 두 문이 보이는가 · GD&T 6모듈 진입점
+   D5 갭 매트릭스(기준선=SOLIDWORKS·Fusion 3권)
+```
+
+**B1 을 맨 앞에 두는 이유**: 축 2(근거 표시)가 완성돼야 §0.4 원칙이 정직해진다.
+지금은 L1·L6 만 라벨을 만들고 **LLM 이 채운 값은 표시 없이 결과에 섞여 있다**(grep 확인: `from-text.mjs` 에
+`_prov`/`assumed` 참조 0건). 그 상태로 「어떤 입력이든 결과를 낸다」를 밀면
+**가정을 검증된 것처럼 내보내게 된다.**
+
+**B3 이 최대 효과**다. 게이트는 이미 0건인데 `designOk:false` 다 —
+**42부품 중 28개가 떠 있다.** 어휘로는 못 고친다. 비율 배치를 코드가 해야 한다.
+
+**B4 는 §0.9 의 재발 방지 장치이기도 하다.** 4축 채점 중 **G3(의도 일치)** 가
+이번 세션의 오류 유형을 기계로 잡는 축이다 — 사람이 「돌아간다」를 「맞다」로 읽는 것을 막는다.
+
+### 판정 기준 (변경 없음)
+
+§10.4 수용 시험 케이스 ①~⑤ 전부 통과 = B1·B3 완료.
+현재 ①(게이트 0건) 통과 · ②③④⑤ 미달 · **추가로 `designOk:true`(부유 0) 를 조건에 넣는다.**
+
+### [선행]
+
+| | 내용 |
+|---|---|
+| **P1** | PDF 텍스트 추출 환경(poppler 또는 pdf 라이브러리). D4·D5 전제 |
+| **P2** | **라이선스 결정 문서화** — 20권 = 로컬 학습·갭분석 전용, 코퍼스 미탑재, 화면 미사용. 기존 `표준품셈 정직 보류` 판단과 같은 자리에 기록 |
+| **P3** | 프로바이더 되돌림 커밋 + `/admin/provider-chain` 프로덕션 override 확인 (§0) |
+
+### 순서
+
+```
+D0 (반나절) → B0 (반나절) → B8 · D5 (병렬) → B1 · D1·D2·D3 → B2 → 나머지
+                              ↑
+                    자율 검증 체계를 B1 앞에 둔다: 템플릿 계약(B1)과
+                    GPT 공급 파이프라인(B3)이 이 채점기를 그대로 쓴다(§11.6).
+                    그리고 B0의 효과를 감이 아니라 수치로 확인할 수 있다.
+```
+
+**판정 기준**: §10.4 수용 시험 케이스가 ①~⑤ 전부 통과하면 B0~B2 완료.
+
+**D0을 먼저 해야 하는 이유**: D5(갭 매트릭스)를 만들려면 "어느 도구와 비교하는가"부터 정해야 하는데
+그건 포지셔닝이 정해져야 답이 나온다. 기계설계 타깃이면 SOLIDWORKS·Fusion 3권이 기준선이고
+Grasshopper 계열이면 Rhino·GH 5권이 기준선이다. **기준선이 다르면 로드맵이 통째로 달라진다.**
+
+---
+
+## 8. D0 결정 — **확정 (260803, 사용자)**
+
+### 8.1 확정 사항
+
+| 항목 | 결정 |
+|---|---|
+| **첫 버티컬** | **배관 스키드** — 검증 자산이 실제로 있다(`autoRoutePipes`·슬리브·DFU·구배·`pipe_sizing`·`pump_head`·계통색 GA·P&ID) + 위시빌더 2제품 실증. 리뷰어가 첫 번째로 언급한 "유관"이고 기계설계 범주 안 |
+| **주 타깃** | **기계설계 실무자** |
+| **설계 단계** | **초기설계 ~ 제작도** |
+| **AI 역할** | **이해·분석까지. 형상·검증·생성 = 결정론** |
+| **라이선스** | **우리 모델 분해로 화면 구성 + GrabCAD 코퍼스는 수치만 인용**(캡처 미사용) |
+
+### 8.2 ★단서 — **이중 관객이 즉시 인식되어야 한다**
+
+> "이게 주 타겟이지만 **발주자나 비전문가도 개념설계에 쓸 수 있다가 바로 인식되야 해**"
+
+즉 **하나를 고르는 게 아니라 두 문이 다 보여야 한다.** 그리고 **재료가 이미 있다**:
+
+```
+쉬운 문   EasyWizard.tsx          — 폼 몇 개로 개념설계
+전문 문   ?expert=1 (140피처)     — 지금 URL 파라미터 뒤에 잠겨 있음
+```
+
+**설계 원칙**: 첫 화면에서 **두 진입점이 동시에 보이고**, 어느 쪽으로 들어가도 **같은 검증 체인**을 통과한다.
+"쉬운 쪽은 검증이 얕다"가 아니라 "쉬운 쪽은 **입력**이 얕고 검증은 같다"여야 한다.
+→ **D2의 범위가 바뀐다**: `?expert=1` 해제만이 아니라 **모드 전환 UI**가 되어야 한다.
+
+### 8.3 이 결정이 바꾸는 것
+
+- **D1 예시**: 배관 스키드가 1번. 옹벽·강구조는 "같은 엔진" 부록으로
+- **D5 갭 매트릭스 기준선**: SOLIDWORKS·Fusion 3권 (기계설계 타깃 확정)
+- **B1 첫 템플릿**: `desk_stand`는 **수용 시험 케이스로 유지**하되(§10.4), 카탈로그 확장 우선순위는 배관 스키드 계열
+- **D3 Before/After**: 우리 모델로 구성
+
+### 8.4 남은 미결 — 사용자 입력 필요
+
+| # | 항목 | 막는 것 |
+|---|---|---|
+| ~~1~~ | ~~`MESHY_API_KEY`~~ | ❌ **삭제 — §0.10.** 막힌 항목이 아니라 **필요 없는 항목**이었다 |
+| 1 | **리뷰어가 본 덱 파일 경로** — `지원/pitch_deck/` 3종·`Hub 71/` 에 "통짜"·"하나의 메시" 문구 없음 | D4 워딩 교정만 |
+| 2 | **커밋·배포 판단** — 현재 22파일 미커밋 | 배포 |
+
+**⚠ 이제 사용자 입력이 B축 진행을 막지 않는다.** 남은 두 건은 D4·배포만 막는다.
+
+---
+
+## 9. 이번 세션 실측 인덱스 (재확인 불요)
+
+```
+어휘                     38종 · TYPE_HINTS 없음 17종
+어셈블리 템플릿          54종 (mech 18 · building 10 · interior 9 · landscape 8 · bridge 6 · civil 3)
+계산기                   61종 · 게이트 42/42 · 회귀 121/121
+replicad                 0.23.0 (MVP와 동일) · exportSTEP 존재 확인
+buildAssembly 자동산출   gateOk · 부품수 · 간섭 · designOk · structural(질량/CG/반력/부재/전도) · support(지지/부유/면접촉)
+PBAS mechanics           77/77 PASS 424ms 의존성 0 / cad·workers 미실행(BLOCKED)
+백과사전                 20,523줄 · 880섹션 · 공식카드 247장
+상용 매뉴얼              20권 (백과사전 §0.3 첨부 자료 원본)
+GD&T 모듈                6종 (경로는 §6.1)
+게이트 소스              flange=reconstruct.mjs:541-546 · plate holes=:508 · slab openings=:684
+```
+
+---
+
+## 10. 수용 시험 케이스 — 노트북 거치대
+
+### 10.0 왜 이 케이스인가 — GPT 산출물과의 정면 대조
+
+사용자가 같은 스펙을 GPT에 넣어 받은 결과(SOLIDWORKS 2016에서 29파트 트리로 열림)를
+**스펙 문서와 대조하니 요구사항 위반이 나왔다.** 렌더·트리 관찰 기준:
+
+| # | 관찰 | 스펙 요구 |
+|---|---|---|
+| 1 | **걸림턱 2개가 상판 뒤쪽(높은 쪽)에 배치** | "**전면** 걸림턱 — 노트북이 **앞으로** 미끄러지는 것 방지". 경사면에서 노트북은 앞(아래)으로 미끄러진다 → **기능이 반대로 배치됨** |
+| 2 | **높이 조절 기구 없음** — 통짜 경사 기둥 1개 | 고정 지지대 50×25×160 + 슬라이더 44×19×170 + 노브 ⌀30~35 M6 / "높이 140~320mm 조절" |
+| 3 | **통풍구가 슬롯 3개** | "중앙 통풍구 약 180×130 **1개**" |
+| 4 | **상부 힌지 미확인** — 상판이 기둥에 직결로 보임 | 상부 힌지 브래킷 55×40 t6 ×2 + 축 ⌀8×60 / "각도 0~45도" |
+| 5 | **STEP 파트명 전량 깨짐** — `睇쫮쐤__NX-001-_뮘퐗_넵끔` | 실무에서 파일 반려 사유 |
+
+**결론: "이정도 정확도"의 실체는 시각적 완성도이지 스펙 준수가 아니다.**
+그리고 1~4는 `intent-match`(요청↔실측 대조, 이미 assemble 라우트에 배선됨)가 잡을 수 있는 종류다.
+**이 대조가 그대로 비교 데모가 된다(D1·D3).**
+
+### 10.1 B0 추가 항목 — `schema=null` 때문에 필수키가 강제되지 않는다
+
+`assemble` 라우트는 `callAiJson(prompt, null, AI_OPTS)` — **free-form JSON**이라
+`PART_PARAMS`의 `holes[{x,y,d}] required`가 적용되지 않는다. 프롬프트 강화만으로는 부족.
+
+→ **응답 후 어휘별 필수키 검사 → 누락 부품만 타입별 스키마로 재추출**
+(`textToIntent`의 2단계 경로 = 분류 → `TYPE_SCHEMAS[type]` 구조화 추출을 재사용).
+이게 `laptop_plate: hole[n] d invalid`의 나머지 절반이다.
+
+### 10.2 B7 추가 항목 — STEP 한글 파트명
+
+STEP(ISO 10303-21)은 문자셋이 제한돼 비ASCII를 `\X2\…\X0\`로 이스케이프해야 한다.
+raw UTF-8로 쓰면 SOLIDWORKS가 CP949로 읽어 깨진다(§10.0 #5가 그 증거).
+`exportSTEP` 교체 시 **인코더를 같이 넣는다.** GPT가 틀린 걸 우리가 맞히는 지점이라 데모 가치가 크다.
+
+### 10.3 B4 추가 항목 — 계산기 `friction_clamp`
+
+이 제품에 실제로 걸 수 있는 검증을 세어보면:
+
+| 검증 | 상태 |
+|---|---|
+| 질량·CG·**전도 FS** | ✅ `structural.mjs` tipover |
+| 간섭·지지·부유 | ✅ `interferences`·`supportCheck` |
+| 볼트 M5/M6/M8 전단·인장 | ✅ `bolt_connection`·`bolt_group` |
+| 상판 알루미늄 t3~4 굽힘·처짐 | ✅ `simple_beam` / Mindlin 판 |
+| 슬라이더↔지지대 틈새 공차 | ✅ `tolerance_stack` |
+| **힌지 마찰 토크**(와셔 8장 축력 → 유지 모멘트) | ❌ **없음** |
+| **슬라이더 클램프 유지력**(M6 노브 → 마찰 → 하중 버팀) | ❌ **없음** |
+
+**계산기 61종 중 이 제품의 핵심 2개가 없다.** 둘 다 폐형(`T = μ·F·r_eff`, `F = T/(K·d)`)이라
+**계산기 1종 신설로 커버된다.** 이 둘이 없으면 "각도 0~45도 유지"·"높이 140~320mm 유지"가
+실제로 되는지 아무도 모른다 — 이 제품의 유일한 공학 문제인데도.
+
+### 10.4 합격 조건 (이걸로 B0~B2 완료를 판정한다)
+
+```
+케이스명 : desk_stand-260x220-h140~320-tilt0~45
+입력     : 사용자 제공 스펙 문서 원문(부품 20종)
+합격 조건:
+  ① 게이트 에러 0                                        ← 현재 14건
+  ② intent-match: 걸림턱=전면 · 힌지 2조 · 높이조절 3부품 존재
+  ③ 전도 FS ≥ 1.5 (노트북 2kg, 최대 경사각)
+  ④ 힌지 유지 토크 ≥ 소요 토크 (friction_clamp)
+  ⑤ STEP를 SOLIDWORKS에서 열어 파트명이 한글로 정상 표시
+```
+②③④⑤는 GPT 산출물이 지금 통과 못 하는 항목이다.
+
+---
+
+## 11. 자율 검증 체계 — 사람 없이 정확도가 오르는 루프
+
+### 11.1 전제 — 우리는 LLM 심판이 필요 없다
+
+대부분의 AI 제품은 채점을 LLM에 맡겨야 한다. **NexyFab은 결정론 게이트가 정답을 안다**
+(기하 게이트 38 어휘 · 검증 게이트 42종 · 회귀 121 · `intent-match` 의미 대조).
+**즉 라벨러가 이미 있다.** 이게 이 루프를 성립시키는 유일한 조건이고, 우리 고유 자산이다.
+
+### 11.2 구조
+
+```
+scripts/autoverify/
+├── cases/                  케이스 저장소(JSON, git 추적)
+│   ├── live-<ts>-<hash>.json      ← 라이브 실패 자동 적재(입력 해시로 중복 제거)
+│   └── desk_stand-260x220.json    ← 손으로 박은 수용 시험(§10.4)
+├── collect.mjs             라이브 텔레메트리 24h → 케이스화
+├── run.mjs                 전 케이스 실행 → 4축 채점
+├── classify.mjs            실패 유형 분류
+├── promote.mjs             통과 케이스 → 영구 회귀로 승격
+└── report/YYYYMMDD.json    일자별 정확도 추이
+```
+
+재사용할 기존 자산: `recordIntentMatch`·`intentTelemetry`·`nf_api_usage`·`sendOpsAlert`·
+`repairAgainstGate`·`composeWithGate`·`designSuggest`(FAIL→제안 폐루프 선례).
+
+### 11.3 채점 4축
+
+| 축 | 내용 | 소스 |
+|---|---|---|
+| **G1 형상** | 어휘 게이트 통과 | `reconstruct.mjs` GATES |
+| **G2 조립** | designOk — 간섭·부유·지지·배관 | `buildAssembly` |
+| **G3 의도** | 요청 문장의 클레임 ↔ 실측 일치 | `intent-match` |
+| **G4 공학** | 체인 검증 verdict | 계산기 61종 |
+
+케이스마다 4점수를 갖고, **일자별 추이가 곧 정확도 지표**다.
+
+### 11.4 야간 루프
+
+```
+1. 라이브 실패 24h 수집 → 케이스화(입력 해시 중복 제거)
+2. 전 케이스 실행(기존 + 신규)
+3. 4축 채점
+4. 실패 유형 분류:
+     HINT_MISSING     힌트 없어 오분류        ← §1.3에서 발견한 유형
+     VOCAB_MISSING    어휘 자체 부재(탈출구 사용 로그)
+     SCHEMA_DROP      필수키 누락            ← §10.1
+     TEMPLATE_MISS    아키타입 없음          ← §1.4
+     KERNEL_FAIL      부울/커널 실패
+     GATE_TRUE        진짜 설계 오류(게이트가 옳게 막음)
+5. 유형별 집계 → 우선순위 큐 갱신
+6. 전날 대비 회귀 발생 시 sendOpsAlert
+```
+
+### 11.5 ⚠ 정직성 장치 두 개 — 이게 없으면 루프가 스스로를 속인다
+
+**① `GATE_TRUE`는 분모에서 뺀다.**
+게이트가 진짜 설계 오류를 옳게 막은 것을 "실패"로 세면
+**게이트를 느슨하게 만드는 압력**이 생긴다. 정확도 지표는 `GATE_TRUE`를 제외하고 계산한다.
+그리고 `GATE_TRUE` 건수는 **별도로 보고**한다 — 그건 제품이 일하고 있다는 증거지 결함이 아니다.
+
+**② 자동 수정은 "제안"까지만. 코드 변경은 사람이.**
+루프가 코드를 직접 고치게 하면 게이트가 자기를 만족시키는 방향으로 침식된다.
+자율 루프의 출력은 **분류된 실패 큐 + 처방 후보**이지 커밋이 아니다.
+
+### 11.6 정의상 성립하는 것 하나
+
+§4.4의 GPT 템플릿 공급 파이프라인과 이 루프는 **같은 채점기를 쓴다.**
+즉 자율 검증 체계를 만들면 템플릿 공급 파이프라인의 채점 단계가 공짜로 따라온다.
+**B8을 B3보다 먼저 하는 이유가 이것이다.**
