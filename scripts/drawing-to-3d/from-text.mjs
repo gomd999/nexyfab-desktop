@@ -14,6 +14,7 @@
  */
 import { CLASSIFY_SCHEMA, TYPE_SCHEMAS, TYPE_HINTS, ALL_TYPES } from './schemas.mjs';
 import { PARAMS } from './reconstruct.mjs';
+import { DENSITY } from './structural.mjs';
 import { callAiJson as callAiJsonImpl, callGeminiJson as callGeminiJsonImpl } from './ai-json.mjs';
 
 /** ```json 울타리·앞뒤 산문 제거 — 남겨진 소비처가 있을 수 있어 유지. */
@@ -76,6 +77,13 @@ export async function textToIntent(description, { models } = {}) {
 // ─── Piece 2: 텍스트 → 복합 어셈블리 계획 ────────────────────────────────────
 
 const NUM = { type: 'NUMBER' };
+
+/**
+ * 부품 재질 후보 — **`structural.DENSITY` 에서 만든다.** 여기에 목록을 다시 적으면
+ * 언젠가 갈리고, 갈리면 스키마를 통과한 값이 밀도표에 없어 **조용히 강재로 떨어진다**.
+ * ⚠ `water` 는 유체(내용물)라 부품 재질이 아니다 — `fluidVolume` 쪽 개념이다.
+ */
+export const MATERIALS = Object.keys(DENSITY).filter((k) => k !== 'water');
 /**
  * 부품 파라미터 스키마 — **`PARAMS`(실제 어휘)에서 만든다.**
  *
@@ -120,6 +128,7 @@ export const ASSEMBLY_SCHEMA = {
         type: 'OBJECT', required: ['id', 'type', 'params'],
         properties: {
           id: { type: 'STRING' },
+          // (재질 enum 은 아래 material 참조 — `DENSITY` 에서 만든다)
           // ⚠ 260802 — enum 이 **9종 하드코딩**이었다. 프롬프트로 38종을 알려 줘도
           //   스키마가 9종만 허용하면 나머지는 애초에 고를 수 없다. `ALL_TYPES` 에서 만든다.
           type: { type: 'STRING', enum: [...ALL_TYPES] },
@@ -142,11 +151,31 @@ export const ASSEMBLY_SCHEMA = {
                 face: { type: 'STRING', enum: ['top', 'bottom', 'left', 'right', 'front', 'back'] },
                 axis: { type: 'STRING', enum: ['x', 'y', 'z'] },
                 plane: { type: 'STRING', enum: ['xy', 'yz', 'zx'] },
+                // offset 의 기준점 — 'center' 면 두 부품의 **중심**끼리 맞춘다(대칭 배치용).
+                // ⚠ 없으면 대상 **원점(최소 모서리)** 기준이다. 이 차이로 부품이 판 밖에 놓였다(260803).
+                anchor: { type: 'STRING', enum: ['origin', 'center'] },
                 dx: NUM, dy: NUM, dz: NUM, gap: NUM, offset: NUM,
               },
             },
           },
           service: { type: 'STRING', enum: ['feed', 'hp', 'permeate', 'concentrate', 'motor', 'panel', 'frame', 'sludge'] },
+          /**
+           * ★260803 — **재질.** 라우트 프롬프트(`PART_FIELDS`)는 「RC 는 concrete, 목구조는
+           * timber」라고 시키고 있었는데 **스키마에 없어서 전부 떨어지고 있었다.** 결과:
+           * AI 가 만든 조립은 전부 강재 밀도(7850)로 계산됐다 — 목재 파고라는 **15.7배**,
+           * RC 교대는 **3.3배** 과대. 5개 도메인 중 조경·인테리어·토목이 통째로 틀린다.
+           * ⚠ 구조화 출력의 「스키마에 없는 키는 조용히 사라진다」— 이 함정의 **네 번째**다
+           *   (h_section 260802 · description 260803 · constraints 260803 · 여기).
+           * ⚠ enum 은 `structural.DENSITY` 의 키와 **같아야 한다** — 갈리면 조용히 기본값으로 떨어진다.
+           */
+          material: { type: 'STRING', enum: [...MATERIALS] },
+          /**
+           * ★260803 — **역할.** `autoTagAssembly` 의 `SYS_ROLE` 이 이걸 읽어 계통을 정하고,
+           * 그 계통이 **STEP 조립 트리의 하위조립 노드 이름**이 된다. 없으면 AI 가 만든 조립은
+           * 트리가 '부품' 한 덩어리다(템플릿만 트리가 되고 자유형은 안 되는 상태였다).
+           * 또 `support-check` 의 체결구 면제·`assembly` 의 관통 면제도 role 로 판정한다.
+           */
+          role: { type: 'STRING' },
         },
       },
     },

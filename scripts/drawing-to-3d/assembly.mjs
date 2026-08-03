@@ -92,13 +92,63 @@ function rotatePoint([x, y, z], rx, ry, rz) {
  * GA 외형을 부풀리던 실버그를 정합 게이트가 검출(260717)한 뒤 일원화.
  */
 /**
+ * ★role → 계통 매핑 (260803 확장) — **STEP 조립 트리의 하위조립 이름이 여기서 나온다.**
+ *
+ * ⚠ 확장 근거는 추측이 아니라 **템플릿 55종 전수 실측**이다. 종전 표는 15개 role 만
+ * 알아서 48/55 템플릿이 '부품' 한 덩어리로 떨어졌다(ceiling_grid 95/95, parking_pavement
+ * 46/46). 트리는 계통이 갈려야 쓸모가 있다 — 전부 한 덩어리면 평면 나열과 다를 바 없다.
+ *
+ * ⚠ `shell`·`head` 를 '용기·장비' 가 아니라 **'외피·셸'** 로 둔 이유: 같은 role 이
+ *   압력용기(동체)와 굴착버킷(외판) 양쪽에 쓰인다. 한쪽에만 맞는 이름을 붙이면
+ *   다른 쪽 트리가 거짓말이 된다 — 두 곳에서 참인 이름을 고른다.
+ *
+ * ⚠ **export 인 이유**: 라우트 프롬프트가 이 목록을 AI 에게 알려 줘야 하는데, 거기에
+ *   목록을 따로 적으면 갈린다(어휘 16종 하드코딩과 같은 결손). 회귀가 두 곳을 대조한다.
+ */
+export const SYS_ROLE = {
+  // 구조·골격
+  frame: '구조', column: '구조', beam: '구조', support: '구조', wall: '구조', floor: '구조',
+  slab: '구조', deck: '구조', ceiling: '구조', base: '구조', link: '구조', sideplate: '구조', saddle_sup: '구조',
+  // 설비·구동
+  vessel: '용기·장비', tank: '용기·장비', pump: '구동', motor: '구동', joint: '구동', gripper: '구동',
+  shell: '외피·셸', head: '외피·셸',
+  cabinet: '전장', light: '전장', pipe: '배관', nozzle: '배관',
+  // 철물
+  mount: '거치·브래킷', bracket: '거치·브래킷', hinge: '거치·브래킷', boss: '거치·브래킷',
+  fastener: '체결', pin: '체결', bolt: '체결',
+  pad: '완충·패드', cushion: '완충·패드',
+  stop: '스토퍼·가이드', guide: '스토퍼·가이드', rail: '스토퍼·가이드', slider: '스토퍼·가이드',
+  edge: '마모부', tooth: '마모부',
+  // 인테리어
+  tee: '천장틀', hanger: '천장틀', tile: '마감재',
+  // 토목·조경
+  pavement: '포장', curb: '경계·연석', wheelstop: '경계·연석', coping: '경계·연석', parapet: '경계·연석',
+  ground: '지반', building: '건물', green: '조경', trunk: '수목', canopy: '수목',
+  // 부재(2차 실측 — 미분류 상위 role 을 role 빈도순으로 채웠다)
+  girder: '주부재', chord: '주부재', arch: '주부재', crossbeam: '주부재', joist: '주부재',
+  rafter: '주부재', purlin: '주부재', stringer: '주부재', header: '주부재', post: '구조',
+  stud: '구조', vertical: '구조', pier: '하부구조', abutment: '하부구조', pedestal: '하부구조',
+  plinth: '하부구조', pylon: '하부구조', tower: '하부구조', footing: '하부구조',
+  diagonal: '가새·브레이싱', brace: '가새·브레이싱', bracing: '가새·브레이싱',
+  cable: '케이블·정착', stay: '케이블·정착', anchorage: '케이블·정착', saddle: '케이블·정착',
+  bearing: '받침·지승',
+  board: '판재·마감', panel: '판재·마감', plate: '판재·마감', roof: '판재·마감', fence: '판재·마감',
+  tread: '계단', landing: '계단', handrail: '난간', guardrail: '난간', guiderail: '난간', guard: '난간',
+  duct: '덕트·설비', stack: '덕트·설비', inlet: '덕트·설비', outlet: '덕트·설비', valve: '덕트·설비',
+  equipment: '용기·장비', conveyor: '용기·장비', shaft: '구동', trolley: '구동', hook: '구동',
+  counterweight: '구동', cab: '운전실', car: '운전실', station: '운전실',
+  table: '가구', counter: '가구', countertop: '가구', furniture: '가구', sofa: '가구', bed: '가구',
+  toilet: '위생기구', basin: '위생기구', sink: '위생기구', bathtub: '위생기구',
+  track: '궤도', buffer: '완충·패드', mold: '금형',
+};
+const SYS_TYPE = { hex_bolt: '체결', hex_nut: '체결', washer: '체결', flange: '플랜지', spur_gear: '구동', mesh: '자유곡면', coil_spring: '체결' };
+const DETAIL2 = new Set(['hex_bolt', 'hex_nut', 'washer', 'mesh', 'coil_spring']);
+
+/**
  * 계통/상세 자동 태깅(260719 — 1차 골격→2차 상세 웹 배선): 미지정 부품만 role/type
  * 휴리스틱으로 채움(기지정 값 불변). detail 2=철물·자유곡면(2차 상세), 그 외 1(골격).
  */
 export function autoTagAssembly(asm) {
-  const SYS_ROLE = { frame: '구조', column: '구조', beam: '구조', support: '구조', wall: '구조', floor: '구조', slab: '구조', deck: '구조', ceiling: '구조', vessel: '용기·장비', tank: '용기·장비', pump: '구동', motor: '구동', cabinet: '전장', pipe: '배관' };
-  const SYS_TYPE = { hex_bolt: '체결', hex_nut: '체결', washer: '체결', flange: '플랜지', spur_gear: '구동', mesh: '자유곡면', coil_spring: '체결' };
-  const DETAIL2 = new Set(['hex_bolt', 'hex_nut', 'washer', 'mesh', 'coil_spring']);
   const parts = (asm.parts ?? []).map((p) => ({
     ...p,
     ...(p.system ? {} : { system: SYS_TYPE[p.type] ?? SYS_ROLE[p.role] ?? '부품' }),
@@ -167,21 +217,189 @@ function overlapInfo(a, b) {
  *   ① 부유 드롭: 아무 부품과도 z-접촉이 없으면 바로 아래 부품 상면(없으면 지면 0)까지 내림
  *   ② 깊은 관통 분리: 관통 깊이 >2mm 쌍은 작은 쪽을 최소 겹침 축으로 밀어 접촉(0.5mm 랩)으로
  * 반환: { assembly, corrections[] } — 보정 내역을 숨기지 않는다(정직).
+ *
+ * ## ⚠ 순서가 규율이다 — **배치를 정한 뒤에 보정한다** (260803 실측 버그)
+ * 종전에는 이 보정기가 **구속을 해석하기 전에** 돌았다(라우트: auto-fix → autoPlaceCorrect →
+ * buildAssembly, 그리고 구속 해석은 `buildAssembly` 안에 있다). 구속만 선언하고 `at` 이 빈
+ * 부품은 여기서 **전부 원점에 있는 것처럼** 보였고, 그 위에서 「부유 드롭·관통 분리」를
+ * 계산해 **의미 없는 절대 좌표**를 써 넣었다. 그 뒤 구속 해석은 자기가 소유한 축만 덮으므로
+ * **나머지 축에 엉터리 보정이 남았다.**
+ * ```
+ *   벤치 8부품: 좌판·등받이가 서로에 onFace+offset 으로 매달렸는데 부유 7 —
+ *   좌판 1장만 서고 나머지는 원점 기준으로 「드롭」당한 상태였다.
+ * ```
+ * 그래서 여기서 **먼저 구속을 푼다.** 해석은 결정론이라 `buildAssembly` 가 다시 풀어도 같다.
  */
 export function autoPlaceCorrect(asm) {
+  /**
+   * ⚠ 그리고 **푼 뒤에는 구속을 내려놓는다.** 안 그러면 `buildAssembly` 가 같은 구속을 다시
+   * 풀어 **여기서 한 보정을 그대로 덮어쓴다**(실측: 부유 드롭·90° 회전이 전부 무효였다).
+   * 원본은 `_constraints` 로 남겨 화면·프로버넌스가 볼 수 있게 하고, 해석 보고는
+   * 어셈블리에 실어 `buildAssembly` 가 그대로 내보내게 한다.
+   */
+  let carriedConflicts = null;
+  if ((asm?.parts ?? []).some((p) => Array.isArray(p.constraints) && p.constraints.length > 0)) {
+    // 관용 모드 — 망가진 구속 하나로 보정 전체를 잃지 않는다(buildAssembly 와 같은 규약).
+    try {
+      const r = resolveConstraints(asm, { lenient: true });
+      carriedConflicts = r.constraintConflicts ?? null;
+      asm = {
+        ...r,
+        parts: r.parts.map((p) => (p.constraints?.length
+          ? { ...p, _constraints: p.constraints, constraints: undefined }
+          : p)),
+      };
+    } catch { /* 순환 등은 buildAssembly 가 게이트로 보고한다 */ }
+  }
   const parts = (asm.parts ?? []).map((p) => ({ ...p, at: { ...(p.at ?? {}) } }));
   const corrections = [];
   const box = (p) => placedAabb(p);
   const xyOverlap = (a, b) =>
     Math.min(a.max[0], b.max[0]) > Math.max(a.min[0], b.min[0]) &&
     Math.min(a.max[1], b.max[1]) > Math.max(a.min[1], b.min[1]);
-  // ① 부유 드롭 — z 오름차순으로(아래부터 안정화)
+  /**
+   * ★① -b **부유 부품 90° 회전 시도**(260803) — 「긴 축을 잘못 놓았다」의 결정론 교정.
+   *
+   * 실측(벤치): 좌판 `60×1800` 을 **긴 축(1800)이 y** 로 놓았는데 다리는 **x 로 1400** 떨어져
+   * 있어 좌판 5장 전부가 어디에도 안 걸렸다(부유 8/10). 사람 눈에는 「90도 돌리면 되는」
+   * 상황이고, **치수는 그대로**다 — 지어내는 게 아니라 방향만 바꾼다.
+   *
+   * ## 규율
+   * - 회전은 부품 **로컬 원점** 기준이라 AABB 가 이동한다 → 회전 뒤 **중심을 원위치**로 되돌린다.
+   * - **엄격히 나아질 때만** 채택한다: 지지가 생기고(아래에 걸침) **새 관통이 늘지 않아야** 한다.
+   * - 정사각 단면처럼 회전해도 AABB 가 같으면 건드리지 않는다(무의미한 보정 기록 방지).
+   * - 채택하면 `corrections` 로 보고한다 — 우리가 방향을 바꿨다는 사실을 숨기지 않는다.
+   */
+  /**
+   * 「아래에 받칠 것이 있는가」 — 높이는 안 본다(그건 ① 드롭이 맞춘다).
+   * 회전 판단의 기준은 **xy 로 걸치는가**다: 긴 축이 어긋나면 어느 높이로 내려도 안 걸린다.
+   */
+  const hasFooting = (idx, arr) => {
+    const b = box(arr[idx]);
+    if (b.min[2] <= 1) return true; // 이미 지면
+    for (let j = 0; j < arr.length; j++) {
+      if (j === idx) continue;
+      const ob = box(arr[j]);
+      if (ob.max[2] > b.max[2] - 1) continue; // 위에 있는 것은 받침이 아니다
+      const ox = Math.min(b.max[0], ob.max[0]) - Math.max(b.min[0], ob.min[0]);
+      const oy = Math.min(b.max[1], ob.max[1]) - Math.max(b.min[1], ob.min[1]);
+      if (ox >= 15 && oy >= 15) return true; // supportCheck 의 minBear 과 같은 값
+    }
+    return false;
+  };
+  /** 서로 2mm 넘게 파고드는 쌍 수 — 회전이 상황을 나쁘게 만들지 않는지 본다. */
+  const deepPairs = (arr) => {
+    let n = 0;
+    for (let i = 0; i < arr.length; i++) for (let j = i + 1; j < arr.length; j++) {
+      const A = box(arr[i]), B = box(arr[j]);
+      const ov = [0, 1, 2].map((k) => Math.min(A.max[k], B.max[k]) - Math.max(A.min[k], B.min[k]));
+      if (ov.every((o) => o > 0) && Math.min(...ov) > 2) n++;
+    }
+    return n;
+  };
+  {
+    const before = deepPairs(parts);
+    for (let i = 0; i < parts.length; i++) {
+      if (hasFooting(i, parts)) continue;
+      const p0 = parts[i];
+      const b0 = box(p0);
+      const c0 = [0, 1, 2].map((k) => (b0.min[k] + b0.max[k]) / 2);
+      // 세 축 모두 시도한다 — 「세워야 할 것을 눕혔다」와 「눕혀야 할 것을 세웠다」가 둘 다 나온다.
+      for (const axis of ['z', 'y', 'x']) {
+        const at0 = { ...p0.at };
+        const key = { z: 'rz', y: 'ry', x: 'rx' }[axis];
+        const cand = { ...p0, at: { ...at0, [key]: (Number(at0[key] ?? 0) + 90) % 360 } };
+        const b1 = box(cand);
+        // 회전해도 AABB 크기가 같으면(정사각 단면 등) 시도할 이유가 없다
+        if ([0, 1, 2].every((k) => Math.abs((b1.max[k] - b1.min[k]) - (b0.max[k] - b0.min[k])) < 1e-6)) continue;
+        // 회전은 로컬 원점 기준이라 AABB 가 이동한다 → 중심을 원위치로 되돌린다
+        const c1 = [0, 1, 2].map((k) => (b1.min[k] + b1.max[k]) / 2);
+        cand.at.tx = Number(cand.at.tx ?? 0) + (c0[0] - c1[0]);
+        cand.at.ty = Number(cand.at.ty ?? 0) + (c0[1] - c1[1]);
+        cand.at.tz = Number(cand.at.tz ?? 0) + (c0[2] - c1[2]);
+        const trial = parts.slice();
+        trial[i] = cand;
+        if (!hasFooting(i, trial)) continue;        // 받칠 것이 안 생기면 채택하지 않는다
+        if (deepPairs(trial) > before) continue;    // 관통이 늘면 채택하지 않는다
+        parts[i] = cand;
+        corrections.push({
+          id: p0.id ?? p0.type, fix: `rotate-${axis}90`,
+          note: '긴 축 방향이 지지 부재와 어긋나 어디에도 안 걸렸다 — 치수 변경 없이 90° 돌려 얹었다(가정)',
+        });
+        break;
+      }
+    }
+  }
+  /**
+   * ★①-c **보어 정렬**(260803) — 축이 지나가야 할 허브가 축과 다른 방향이면 돌려서 축심에 얹는다.
+   *
+   * 실측(기어박스 입력축): 모델이 축을 `ry:90`(x 방향)으로 눕혀 놓고 기어·커플링플랜지는
+   * **무회전(z 보어)** 으로 뒀다. 5부품 중 4개가 `at={}` 였다. 결과는 간섭 3건인데,
+   * 이건 「설계가 틀렸다」가 아니라 **방향을 안 적은 것**이다 — 보어와 축이 만나는 답은
+   * 하나뿐이므로(동축) 지어내는 것이 아니다.
+   *
+   * ⚠ 축 방향의 위치는 **건드리지 않는다** — 축 위 어디에 앉힐지는 우리가 정할 수 없다.
+   *   수직인 두 축만 축심에 맞춘다.
+   * ⚠ 관통이 늘면 채택하지 않는다. 그리고 보정 사실을 반드시 보고한다.
+   */
+  {
+    const SHAFT_T = new Set(['cylinder', 'tube']);
+    const ROT_FOR = { z: { rx: 0, ry: 0 }, x: { rx: 0, ry: 90 }, y: { rx: -90, ry: 0 } };
+    const before = deepPairs(parts);
+    for (let i = 0; i < parts.length; i++) {
+      const hub = parts[i];
+      const g = BORE_GEOM[hub.type]?.(hub.params);
+      if (!g?.originCentered) continue;
+      const bore = Number(hub.params?.boreDia);
+      if (!(bore > 0)) continue;
+      for (let j = 0; j < parts.length; j++) {
+        const sh = parts[j];
+        if (i === j || !SHAFT_T.has(sh.type)) continue;
+        const sd = Number(sh.params?.diameter ?? sh.params?.outerDia);
+        const sAx = axisFromRotation(sh);
+        if (!sAx || !(sd > 0) || sd > bore + Math.max(0.5, bore * 0.02)) continue;
+        if (axisFromRotation(hub) === sAx) continue; // 이미 같은 축
+        const A = box(hub), B = box(sh);
+        if (![0, 1, 2].every((k) => Math.min(A.max[k], B.max[k]) > Math.max(A.min[k], B.min[k]))) continue;
+        const cand = { ...hub, at: { ...(hub.at ?? {}), ...ROT_FOR[sAx], rz: 0 } };
+        const k0 = { x: 0, y: 1, z: 2 }[sAx];
+        const cb = box(cand);
+        for (const k of [0, 1, 2]) {
+          if (k === k0) continue;
+          const hubC = (cb.min[k] + cb.max[k]) / 2;
+          const shC = (B.min[k] + B.max[k]) / 2;
+          cand.at[['tx', 'ty', 'tz'][k]] = Number(cand.at[['tx', 'ty', 'tz'][k]] ?? 0) + (shC - hubC);
+        }
+        const trial = parts.slice();
+        trial[i] = cand;
+        if (deepPairs(trial) > before) continue;
+        parts[i] = cand;
+        corrections.push({
+          id: hub.id ?? hub.type, fix: `bore-align-${sAx}`,
+          note: `보어 ⌀${bore} 가 축 ${sh.id ?? sh.type}(⌀${sd}, ${sAx}축)과 방향이 달라 동축으로 돌려 맞췄다(축 방향 위치는 그대로)`,
+        });
+        break;
+      }
+    }
+  }
+
+  /**
+   * ① 부유 드롭 — z 오름차순(아래부터 안정화).
+   *
+   * ## ⚠ **접지된 부품만 받침으로 인정한다** (260803)
+   * 종전에는 「xy 겹치고 z 가 닿으면 지지받았다」로 봤다. 그러면 **서로 얹힌 두 부품이
+   * 서로를 받침으로 인정**해 둘 다 공중에 남는다 — 실측(파티션 워크스테이션)에서
+   * 책상 상판 4장이 서로 닿아 「접촉」으로 통과했지만 `supportCheck` 는 지면까지의 체인이
+   * 없어 전부 부유로 잡았다. **보정기와 판정기가 다른 기준을 쓰면 보정이 일을 못 한다.**
+   * 그래서 여기서도 **지면에서 올라오는 체인**만 받침으로 센다(판정기와 같은 규약).
+   */
   const order = parts.map((p, i) => ({ i, z: box(p).min[2] })).sort((a, b) => a.z - b.z).map((o) => o.i);
+  const grounded = new Set(); // 지면까지 체인이 닿은 부품 인덱스
   for (const i of order) {
     const b = box(parts[i]);
+    if (b.min[2] <= 1) { grounded.add(i); continue; } // 지면 착지
     let touching = false, topBelow = 0; // 지면 기본
-    for (let j = 0; j < parts.length; j++) {
-      if (j === i) continue;
+    for (const j of grounded) {
       const ob = box(parts[j]);
       if (!xyOverlap(b, ob)) continue;
       if (ob.min[2] <= b.max[2] + 1 && ob.max[2] >= b.min[2] - 1) { touching = true; break; }
@@ -197,6 +415,7 @@ export function autoPlaceCorrect(asm) {
         corrections.push({ id: parts[i].id ?? parts[i].type, fix: embed ? 'drop+embed' : 'drop', mm: Math.round(drop) });
       }
     }
+    grounded.add(i); // 내렸든 이미 닿았든 이제 체인에 들어온다
   }
   // ② 깊은 관통 분리 — 3패스 반복(연쇄 해소)
   for (let pass = 0; pass < 3; pass++) {
@@ -221,7 +440,10 @@ export function autoPlaceCorrect(asm) {
     }
     if (!moved) break;
   }
-  return { assembly: { ...asm, parts }, corrections };
+  return {
+    assembly: { ...asm, parts, ...(carriedConflicts?.length ? { constraintConflicts: carriedConflicts } : {}) },
+    corrections,
+  };
 }
 
 /**
@@ -298,6 +520,13 @@ export function assemblyToComposeIntent(asm) {
        */
       case 'cone':
         feats.push(F('cone', { dia1: p.dia1, dia2: p.dia2, height: p.height }));
+        break;
+      // 260803 — 구·타원체. AABB 규약대로 밑점을 z=0 에 맞춰 중심을 반지름만큼 올린다.
+      case 'sphere':
+        feats.push(F('sphere', { diameter: p.diameter }, 0, 0, p.diameter / 2));
+        break;
+      case 'ellipsoid':
+        feats.push(F('ellipsoid', { dx: p.dx, dy: p.dy, dz: p.dz }, 0, 0, p.dz / 2));
         break;
       case 'torus':
         // 도넛을 XY 평면에 눕힌다 — 중심 높이가 r 이라 밑면이 z=0 에 닿는다(AABB 와 정합).
@@ -560,12 +789,45 @@ export function assemblyToComposeIntent(asm) {
  */
 export function roundAxisOf(part) {
   if (!['cylinder', 'tube', 'flange', 'hex_bolt'].includes(part.type)) return null;
-  const { rx = 0, ry = 0, rz = 0 } = part.at ?? {};
+  return axisFromRotation(part);
+}
+
+/**
+ * 부품 **로컬 z 축**이 회전 뒤 향하는 월드 축('x'|'y'|'z'), 사축이면 null.
+ * ⚠ 타입을 보지 않는다 — 보어를 가진 어휘는 `pillow_block`·`spur_gear` 처럼 단면이
+ *   둥글지 않은 것도 있어서 `roundAxisOf` 의 타입 제한을 그대로 쓸 수 없다(260803 실측).
+ */
+export function axisFromRotation(part) {
+  const { rx = 0, ry = 0, rz = 0 } = part?.at ?? {};
   if (!rx && !ry && !rz) return 'z';
   if (Math.abs(Math.abs(ry) - 90) < 1e-6 && !rx) return 'x';
   if (Math.abs(Math.abs(rx) - 90) < 1e-6 && !ry) return 'y';
   return null;
 }
+
+/**
+ * ★보어 기하 — **어휘마다 보어의 축과 위치가 다르다**(260803 실측).
+ *
+ * `axis` = 보어가 뚫린 로컬 축. `c` = 그 축에 **수직인 두 축**에서의 보어 중심(로컬, 축 오름차순).
+ * ```
+ *   flange·spur_gear·hex_nut·washer   로컬 원점 중심 · 보어 축 = z      → c=[0,0] (x,y)
+ *   pillow_block                      원점이 **모서리** · 보어 축 = y   → c=[width/2, height] (x,z)
+ * ```
+ * ⚠ `pillow_block` 을 z축·원점중심으로 가정했다가 면제가 안 걸렸다. 보어를 「보어가 있다」로만
+ *   알고 **어디에 있는지** 모르면 판정이 틀린다 — 그래서 어휘 지식을 표로 둔다.
+ * ⚠ 값은 `assemblyToComposeIntent` 의 실제 피처 배치와 **같아야 한다**(회귀가 대조한다).
+ */
+const BORE_GEOM = {
+  // originCentered = 보어 축이 **로컬 원점을 지난다** → 회전해도 보어 중심이 부품 원점 그대로다.
+  // 그래서 회전 배치(축을 눕힌 기어열 등)에서도 면제를 걸 수 있다.
+  flange: () => ({ axis: 'z', c: [0, 0], originCentered: true }),
+  spur_gear: () => ({ axis: 'z', c: [0, 0], originCentered: true }),
+  hex_nut: () => ({ axis: 'z', c: [0, 0], originCentered: true }),
+  washer: () => ({ axis: 'z', c: [0, 0], originCentered: true }),
+  // ⚠ 원점이 모서리라 보어 중심이 로컬 오프셋에 있다 → 회전하면 그 오프셋도 돌려야 하고,
+  //   회전 배치에서는 이 어휘가 스스로 박스 프록시로 떨어진다. 그래서 무회전만 면제한다.
+  pillow_block: (p) => ({ axis: 'y', c: [p.width / 2, p.height], originCentered: false }),
+};
 
 // 배관이 슬리브로 관통 가능한 건축 부재 role — 벽·바닥·슬래브 관통은 "위반"이 아니라
 // "슬리브 명세"다(건축 현실). 장비·가구·구조기둥 관통은 여전히 위반.
@@ -611,10 +873,28 @@ export function buildAssembly(asm) {
   }
   // ⓑ 관계 배치: 부품에 constraints 가 있으면 절대좌표(at)로 먼저 해석한다(좌표 없이 관계로 배치).
   // 해석 실패(순환·미지 참조 등)는 조용히 넘기지 않고 정직 게이트 에러로 되돌린다.
+  /**
+   * ⚠ 260803 — **관용 모드**로 푼다. 종전에는 형태가 망가진 구속 하나에도 throw 해서
+   * 조립 전체를 잃었다(실측: 29부품짜리 피난계단이 `face:undefined` 한 건으로 0 이 됐다).
+   * 지금은 그 구속만 버리고 `constraintConflicts` 로 보고한다 — 배치를 못 받은 부품은
+   * 부유 검사에 걸려 드러나므로 **조용히 틀리지 않는다**.
+   * 순환 구속·중복 id 처럼 「무엇을 버릴지 우리가 정할 수 없는」 것은 여전히 게이트 에러다.
+   */
+  // 이미 `autoPlaceCorrect` 가 풀었으면 그쪽 보고를 그대로 이어받는다(두 번 풀면 보정이 지워진다).
+  let constraintConflicts = asm.constraintConflicts ?? null;
   if (asm.parts.some((p) => Array.isArray(p.constraints) && p.constraints.length > 0)) {
-    try { asm = resolveConstraints(asm); }
-    catch (e) { return { ok: false, gateErrors: [`구속 해석 실패: ${e instanceof Error ? e.message : String(e)}`], interferences: [] }; }
+    try {
+      asm = resolveConstraints(asm, { lenient: true });
+      constraintConflicts = asm.constraintConflicts ?? null;
+    } catch (e) { return { ok: false, gateErrors: [`구속 해석 실패: ${e instanceof Error ? e.message : String(e)}`], interferences: [] }; }
   }
+  /**
+   * ⓒ 계통 태깅(260803) — **여기서 한다.** 종전에는 라우트(`assemble/route.ts:53`)와
+   * MCP 서버만 `autoTagAssembly` 를 불렀고, 템플릿 직접 빌드·테스트·CLI 경로는 못 받았다.
+   * 그 결과 STEP 조립 트리의 계통이 전부 '부품' 한 덩어리로 나왔다(실측: desk_stand 25/25).
+   * ⚠ 기지정 `system` 은 건드리지 않는다(멱등) — 부르는 쪽이 이미 태깅했어도 안전하다.
+   */
+  asm = autoTagAssembly(asm);
   // 성능 예산(§A) — km 곡선 현 분할 등으로 부품 폭증 시 정직 거부(구간 분할 설계 유도)
   if (asm.parts.length > PARTS_BUDGET) {
     return { ok: false, gateErrors: [`부품 ${asm.parts.length} > 예산 ${PARTS_BUDGET} — 구간 분할 설계 필요(성능 예산 §A)`], interferences: [] };
@@ -872,6 +1152,63 @@ export function buildAssembly(asm) {
             }
           }
         }
+        /**
+         * ★**보어 끼워맞춤**(260803) — 축에 끼운 부품은 간섭이 아니라 조립이다.
+         *
+         * 실측 계기: 「기어박스 입력축」 자유형 5부품에서 **간섭 10건**이 나왔다.
+         * 전부 축 ↔ 기어·필로우블록·커플링플랜지였다. 이건 설계 오류가 아니라
+         * **정상 조립**인데, 우리 어휘의 보어는 `boreDia` **숫자 하나**라 AABB 로는
+         * 속이 찬 원기둥과 구별되지 않는다. `rebar` 매입·`fastener` 관통과 같은 사유다.
+         *
+         * ## 판정 (선언이 아니라 **기하**로 — role 을 안 붙여도 걸린다)
+         * ```
+         *   보어측 P : boreDia 를 가진 어휘(flange·spur_gear·hex_nut·washer·pillow_block)
+         *   축측  Q : cylinder / tube — 지름 ≤ P.boreDia + 여유(0.5mm 또는 2%)
+         *   같은 회전축 · 축에 수직인 두 축에서 Q 가 P 안에 내포
+         * ```
+         * ⚠ **지름이 보어보다 크면 면제하지 않는다** — 그건 진짜 간섭(안 들어간다)이다.
+         * ⚠ 억지 끼움(shrink fit) 같은 음의 틈새는 여기서 판정하지 않는다 —
+         *   끼워맞춤 등급은 공차 계층(`tolerance_stack`)의 일이고, 여기는 배치 판정이다.
+         */
+        {
+          const SHAFT = new Set(['cylinder', 'tube']);
+          const pb = asm.parts[i], qb = asm.parts[j];
+          const bi = BORE_GEOM[pb.type] && SHAFT.has(qb.type) ? i : BORE_GEOM[qb.type] && SHAFT.has(pb.type) ? j : -1;
+          if (bi >= 0) {
+            const si = bi === i ? j : i;
+            const hub = asm.parts[bi], shaft = asm.parts[si];
+            const bore = Number(hub.params?.boreDia);
+            const shaftD = Number(shaft.params?.diameter ?? shaft.params?.outerDia);
+            const at = hub.at ?? {};
+            const g0 = BORE_GEOM[hub.type](hub.params);
+            const rotated2 = !!(at.rx || at.ry || at.rz);
+            /**
+             * 회전 허브: 보어 축이 원점을 지나는 어휘만 면제한다(위 `originCentered`).
+             * 그때 월드 보어 축 = 회전 뒤 로컬 z 축이고, 중심은 여전히 부품 원점이다.
+             * 실측 계기: 축을 눕힌 기어열에서 shaft∩gear·shaft∩flange 가 오탐이었다.
+             */
+            const g = !rotated2 ? g0
+              : g0.originCentered ? { axis: axisFromRotation(hub), c: [0, 0] } : null;
+            if (g && g.axis && bore > 0 && shaftD > 0 && g.axis === axisFromRotation(shaft)
+              && shaftD <= bore + Math.max(0.5, bore * 0.02)) {
+              const k0 = { x: 0, y: 1, z: 2 }[g.axis];
+              const perp = [0, 1, 2].filter((k) => k !== k0);
+              const sb2 = boxes[si].box;
+              // 축의 중심선(AABB 중심)이 **보어 중심**에서 틈새 반경 안에 있는가.
+              const slack = (bore - shaftD) / 2 + 0.5;
+              const aligned = perp.every((k, n) => {
+                const shaftC = (sb2.min[k] + sb2.max[k]) / 2;
+                const boreC = Number(at[['tx', 'ty', 'tz'][k]] ?? 0) + g.c[n];
+                return Math.abs(shaftC - boreC) <= slack;
+              });
+              if (aligned) {
+                contacts.push({ a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v), depthMm: +depth.toFixed(2),
+                  note: `보어 끼워맞춤(⌀${shaftD} 축 → ⌀${bore} 보어 — 조립 정상. 끼워맞춤 등급은 공차 계층)` });
+                continue;
+              }
+            }
+          }
+        }
         let useDepth = depth;
         let note = rotated ? '회전 AABB 겹침(보수적 — 실솔리드는 더 작을 수 있음)' : 'AABB 겹침';
         // 회전 쌍은 OBB-SAT 2차 정밀(§0.2) — AABB 과탐 제거(box 쌍만, 그 외 AABB 보수 유지)
@@ -1073,7 +1410,7 @@ export function buildAssembly(asm) {
       return { id: b.id, aabb: b.box, obb: { local: { min: la.min, max: la.max }, at: { tx: src.at?.tx ?? 0, ty: src.at?.ty ?? 0, tz: src.at?.tz ?? 0, rx, ry, rz } } };
     } catch { return { id: b.id, aabb: b.box }; }
   });
-  return { ok: true, openscad, parts: partsOut, gateErrors: [], interferences, contacts: contactsFinal, ...(approxOverlaps ? { approxOverlaps } : {}), welds, weldTotalMm, composeIntent, structural, support, pipes, designOk };
+  return { ok: true, openscad, parts: partsOut, gateErrors: [], interferences, contacts: contactsFinal, ...(approxOverlaps ? { approxOverlaps } : {}), welds, weldTotalMm, composeIntent, structural, support, pipes, designOk, ...(constraintConflicts?.length ? { constraintConflicts } : {}) };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('assembly.mjs');

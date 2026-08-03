@@ -83,9 +83,29 @@ async function load(): Promise<{ ft: FromTextModule; asm: AssemblyModule }> {
  *   목록을 들고 있었다** — 260802 에 enum·힌트에서 두 번 고친 것과 **같은 단일소스 결손의
  *   다섯 번째 판**이다. 이제 `VOCAB_SPEC()` 하나에서 만든다.
  */
-const PART_FIELDS = `부품 선택 필드(정확도·물량에 중요):
-- material: STS316 | STS304 | steel | aluminum | concrete | timber | PVC 중 하나. 콘크리트 구조물(RC 보·기둥·슬래브·옹벽)은 반드시 "concrete", 목구조(데크·파고라·가구)는 "timber".
-- role: column | beam | slab | joist | deck | floor | wall | table | counter | frame | motor | panel 등 — 계통색·도면 라벨에 쓰임. 힌지 핀·와셔 같은 관통 체결구는 "fastener".`;
+/**
+ * ⚠ 260803 — 이 두 필드는 **스키마에 없어서 전부 떨어지고 있었다**(프롬프트만 시켰다).
+ *   `material` 누락 = AI 조립이 전부 강재 밀도 → 목구조 15.7배·RC 3.3배 과대.
+ *   `role` 누락    = 계통 태깅이 안 걸려 STEP 조립 트리가 '부품' 한 덩어리.
+ *   지금은 `ASSEMBLY_SCHEMA.parts[].material/role` 로 실려 있다.
+ * ⚠ role 목록은 `assembly.mjs` 의 `SYS_ROLE` 키와 맞춰 적는다 — 모르는 role 은 계통이 안 붙는다.
+ */
+const PART_FIELDS = `부품 선택 필드(정확도·물량·조립트리에 중요 — 반드시 채워라):
+- material: STS316 | STS304 | steel | aluminum | castiron | concrete | timber | PVC | FRP | glass 중 하나.
+  RC 구조물(보·기둥·슬래브·옹벽·기초·암거)은 반드시 "concrete", 목구조(데크·파고라·가구·좌판)는 "timber",
+  유리(창·난간)는 "glass". **빠뜨리면 강재로 계산돼 질량이 3~16배 틀린다.**
+- role: 부품의 역할. **STEP 조립 트리의 하위조립 이름이 여기서 나온다.** 아는 값:
+  구조 frame column beam post stud vertical base link sideplate slab floor wall deck ceiling support
+  주부재 girder chord arch crossbeam joist rafter purlin stringer header
+  하부구조 pier abutment pedestal plinth pylon tower footing · 가새 diagonal brace bracing
+  케이블 cable stay anchorage saddle · 받침 bearing · 마감 board panel plate roof fence tile
+  계단 tread landing · 난간 handrail guardrail guiderail · 천장틀 tee hanger
+  설비 pipe nozzle duct stack inlet outlet valve pump motor joint gripper shaft equipment conveyor
+  용기 vessel tank shell head · 전장 cabinet light · 마모부 edge tooth
+  철물 mount bracket hinge boss fastener pin bolt pad cushion stop guide rail slider
+  토목·조경 pavement curb wheelstop coping parapet ground building green trunk canopy
+  가구·위생 table counter countertop furniture sofa bed toilet basin sink bathtub
+  ⚠ 힌지 핀·와셔처럼 다른 부품을 **관통하는 체결구는 반드시 "fastener"** — 간섭·부유 판정이 면제된다.`;
 
 // 템플릿 카탈로그(챗 개방, 260717 — 참고파일들급 복잡물 대화 생성): 결정론 템플릿
 // 레지스트리에서 동적 생성. AI 는 template{domain,id,params} 선언만 — 형상·게이트·도서=엔진.
@@ -144,10 +164,18 @@ ${PART_FIELDS}
 배치는 **관계로 선언하라(권장)** — 좌표를 직접 계산하지 마라:
 - {"type":"onFace","to":"base","face":"top","gap":0}   대상 부품의 그 면에 밀착(가장 자주 쓴다)
 - {"type":"concentric","to":"post","axis":"z"}          그 축에서 중심 정렬
-- {"type":"offset","to":"base","dx":0,"dy":0,"dz":10}   대상 원점 기준 상대 이동
-- {"type":"centerline","axis":"x"}                      월드 축에 중심 정렬(to 불필요)
+- {"type":"offset","to":"base","dx":0,"dy":0,"dz":10}   대상 **원점(최소 모서리)** 기준 상대 이동
+- {"type":"offset","to":"slab","anchor":"center","dx":-750,"dy":-750}  두 부품 **중심**끼리 맞춘 상대 이동
+- {"type":"centerline","axis":"x"}                      이 부품의 중심선을 월드 x축에 맞춤(to 불필요)
 - {"type":"mirror","to":"lip_1","plane":"yz"}           대상 배치를 평면 대칭
 면 이름: top(+z) bottom(-z) right(+x) left(-x) back(+y) front(-y).
+⚠ centerline 은 지정한 축이 **아닌 나머지 두 축**을 0 으로 정렬한다(x 를 주면 y·z 가 0).
+  "x 방향으로 가운데" 를 뜻하려면 centerline 이 아니라 {"type":"concentric","to":"base","axis":"x"} 다.
+⚠⚠ **부품 원점은 최소 모서리다**(판재는 좌하단, 원기둥은 축심). "슬래브 중앙에서 ±750" 처럼
+  **중심 기준으로 생각했다면 반드시 anchor:"center" 를 붙여라.** 안 붙이면 원점 기준이라
+  부품이 대상 밖으로 나가 떠 버린다 — 실측에서 가장 흔한 실패였다(부유 41건).
+⚠ 한 부품에 여러 구속을 줘도 된다. 축이 겹치면 **구체적인 쪽**(onFace·concentric)이 이기고
+  offset 은 남은 축에만 적용된다 — 그러니 "onFace 로 높이 + offset 으로 평면 위치" 조합이 안전하다.
 ⚠ **좌표를 직접 계산하면 부품이 서로 안 닿는 일이 잦다**(실측: 42부품 중 28개 부유).
   관계로 선언하면 결정론 리졸버가 좌표를 확정한다. 구속을 못 쓰는 부품만 at 을 직접 준다.
 ⚠ 구속의 "to" 는 **같은 어셈블리의 부품 id** 여야 한다. 순환 참조는 거부된다.
@@ -157,7 +185,7 @@ ${PART_FIELDS}
 치수 미기입은 통상값.
 
 **출력은 JSON 하나만**(다른 텍스트·코드펜스 금지):
-{"name":"...","parts":[{"id":"base","type":"plate_with_holes","params":{"width":400,"depth":300,"thickness":10},"at":{"tx":0,"ty":0,"tz":0}},{"id":"post1","type":"rect_tube","params":{"width":60,"height":60,"wallThk":3,"length":1000},"constraints":[{"type":"onFace","to":"base","face":"top"},{"type":"centerline","axis":"x"}]}],"templateMiss":"..."}
+{"name":"...","parts":[{"id":"base","type":"plate_with_holes","params":{"width":400,"depth":300,"thickness":10},"at":{"tx":0,"ty":0,"tz":0}},{"id":"post1","type":"rect_tube","params":{"width":60,"height":60,"wallThk":3,"length":1000},"constraints":[{"type":"onFace","to":"base","face":"top"},{"type":"concentric","to":"base","axis":"x"},{"type":"concentric","to":"base","axis":"y"}]}],"templateMiss":"..."}
 - parts 배열은 최소 2개 이상, 각 부품은 id·type·params·at 을 모두 포함.
 - params 는 그 type 의 정확한 키만(위 어휘 목록). at 의 6개 값은 항상 숫자로.
 - 설명에 없어서 네가 정한 값이 있으면 "assumptions":[...] 로 전부 나열(숨기지 마라).
