@@ -2,8 +2,18 @@ import { AiProviderError, type ChatCompletionRequest, type ChatCompletionRespons
 import { truncationOf } from './truncation';
 import { getSetting, getSettingSync } from '../../admin-settings';
 
-// 260802 — switched off Gemini/DeepSeek per explicit product decision.
-const DEFAULT_MODEL = 'gpt-5.6-sol';
+/**
+ * 260803 — 기본 모델을 `gpt-4o-mini` 로 되돌린다(260802 에 `gpt-5.6-sol` 이었다).
+ *
+ * ⚠ 되돌린 이유가 정책만은 아니다. **이 어댑터는 gpt-5.6-sol 을 호출할 수 없다** —
+ *   아래 본문이 `temperature` 와 `max_tokens` 를 보내는데, 추론 계열인 gpt-5.6-sol 은
+ *   temperature 오버라이드를 400 으로 거부하고 `max_completion_tokens` 를 요구한다
+ *   (260802 실측, 커밋 7fe89736 메시지에 기록됨). 그 400 대응은 `ai-json.mjs` 에만
+ *   들어갔고 이 파일에는 없다. 즉 openai 가 폴백으로 잡히는 순간 400 으로 죽는다.
+ * ⚠ gpt-5.6-sol 을 여기서 다시 쓰려면 **본문 분기부터 옮겨 와야 한다** —
+ *   `OPENAI_MODEL` 로 이름만 바꾸면 같은 400 을 다시 만난다.
+ */
+const DEFAULT_MODEL = 'gpt-4o-mini';
 
 export const openaiProvider: ProviderAdapter = {
   name: 'openai',

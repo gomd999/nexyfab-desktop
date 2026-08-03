@@ -13,7 +13,7 @@
  *
  * Provider selection:
  *   1. If req.provider is set → use that one (no fallback)
- *   2. Otherwise: AI_PROVIDER_PRIMARY (default 'openai', gpt-5.6-sol) is tried first.
+ *   2. Otherwise: AI_PROVIDER_PRIMARY (default 'deepseek') is tried first.
  *   3. On AiProviderError, walk AI_PROVIDER_FALLBACKS (comma-separated).
  *   4. If none configured/working → AiNotConfiguredError.
  */
@@ -68,14 +68,16 @@ function resolveChain(req: ChatCompletionRequest): ProviderName[] {
   } catch { /* DB not available — fall back to env */ }
   if (dbOverride && dbOverride.length > 0) return dbOverride;
 
-  // 260802 — switched off deepseek/gemini per explicit product decision; openai
-  // (gpt-5.6-sol) is now primary. deepseek/gemini stay as fallbacks so an
-  // OpenAI outage doesn't take the whole chain down.
-  const primary = parseProviderList(process.env.AI_PROVIDER_PRIMARY, ['openai']);
-  // Anthropic stays in REGISTRY for callers that request it explicitly via
-  // req.provider or env override, but is intentionally omitted from the
-  // default fallback to avoid surprise Opus spend on provider outages.
-  const fallbacks = parseProviderList(process.env.AI_PROVIDER_FALLBACKS, ['deepseek', 'gemini', 'local']);
+  // 260803 — back to deepseek primary (reverts the 260802 openai/gpt-5.6-sol
+  // switch per explicit product decision). Gemini sits right behind it: it's
+  // the provider that also serves vision, so a deepseek outage keeps text and
+  // image judgement on the same vendor. OpenAI stays wired as a later fallback.
+  const primary = parseProviderList(process.env.AI_PROVIDER_PRIMARY, ['deepseek']);
+  // Default chain orders cheap → mid → free. Anthropic stays in REGISTRY for
+  // callers that request it explicitly via req.provider or env override, but
+  // is intentionally omitted from the default fallback to avoid surprise Opus
+  // spend on provider outages.
+  const fallbacks = parseProviderList(process.env.AI_PROVIDER_FALLBACKS, ['gemini', 'openai', 'local']);
   // A task-specific preference (e.g. CAD codegen → gemini) jumps the queue but
   // keeps the normal chain behind it as fallback. Only honoured if the
   // preferred provider is actually configured, so it degrades silently.

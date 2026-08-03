@@ -8,10 +8,10 @@ import type { ProviderName } from './types';
  * keeping the normal fallback chain behind the preferred provider.
  *
  * Availability depends on which API keys are configured:
- *   openai  → OPENAI_API_KEY        (default model, gpt-5.6-sol)
+ *   deepseek→ DEEPSEEK_API_KEY       (default model, deepseek-reasoner)
  *   gemini  → GEMINI_API_KEY        (also powers vision)
+ *   openai  → OPENAI_API_KEY
  *   qwen    → DASHSCOPE_API_KEY      (qwen / glm / deepseek-v4 via Bailian)
- *   deepseek→ DEEPSEEK_API_KEY
  * An unconfigured provider is skipped at request time and the chain falls
  * back, so listing a model here is always safe.
  */
@@ -24,19 +24,20 @@ export interface CodegenModel {
   note?: string;
 }
 
-// Ordered best-first. 2026-08-02: switched the default off Gemini/DeepSeek to
-// OpenAI's gpt-5.6-sol per explicit product decision — kept the others in the
-// picker as user-selectable alternatives (their availability just depends on
-// whether the corresponding API key is configured).
+// Ordered best-first. A head-to-head car test (2026-06-25) put DeepSeek
+// Reasoner clearly ahead: fast (~17s), reliable, and the only model whose car
+// read as a real car. 2026-08-02 briefly made OpenAI's gpt-5.6-sol the default;
+// 2026-08-03 reverted to DeepSeek per explicit product decision — gpt-5.6-sol
+// stays in the picker as a user-selectable alternative (nothing was unwired).
 export const CODEGEN_MODELS: CodegenModel[] = [
-  { id: 'gpt-5.6-sol',       label: 'GPT-5.6 Sol',        provider: 'openai',     model: 'gpt-5.6-sol',     note: '기본 · 추천' },
-  { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner',  provider: 'deepseek',   model: 'deepseek-reasoner', note: '안정' },
-  { id: 'qwen-max',          label: 'Qwen3 Max',          provider: 'openrouter', model: 'qwen/qwen3-max',  note: 'OpenRouter · 빠름' },
+  { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner',  provider: 'deepseek',   model: 'deepseek-reasoner', note: '기본 · 추천' },
   { id: 'gemini-pro',        label: 'Gemini 2.5 Pro',     provider: 'gemini',     model: 'gemini-2.5-pro',  note: '사진 이해 강함' },
+  { id: 'gpt-5.6-sol',       label: 'GPT-5.6 Sol',        provider: 'openai',     model: 'gpt-5.6-sol',     note: 'OpenAI · 추론' },
+  { id: 'qwen-max',          label: 'Qwen3 Max',          provider: 'openrouter', model: 'qwen/qwen3-max',  note: 'OpenRouter · 빠름' },
   { id: 'glm-5.2',           label: 'GLM 5.2',            provider: 'openrouter', model: 'z-ai/glm-5.2',    note: 'OpenRouter · 추론' },
 ];
 
-export const DEFAULT_CODEGEN_MODEL = 'gpt-5.6-sol';
+export const DEFAULT_CODEGEN_MODEL = 'deepseek-reasoner';
 
 /** Map a (possibly client-supplied) model id to a provider + model, defaulting
  *  safely. Returns the preferred provider (chain keeps fallback behind it). */
