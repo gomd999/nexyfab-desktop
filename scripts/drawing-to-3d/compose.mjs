@@ -260,7 +260,64 @@ const COMPOSE_PROMPT = (desc) => `기계/장비 부품 설명을 "범용 프리�
   · 원형 볼트배열은 pattern{type:"circular",count} + 반경만큼 at.translate.
 설명: "${desc}"`;
 
-export async function composeFromText(description, { models = ['gpt-5.6-sol'] } = {}) {
+/**
+ * ★260803 — **게이트에 걸린 피처만 빼고 나머지로 형상을 낸다.**
+ *
+ * 제품 원칙(계획서 §0.4): 「어떤 입력이든 결과를 낸다」. `composeWithGate` 는 교정 라운드를
+ * 다 쓰고도 오류가 남으면 `gatePassed:false` 로 끝났다 — 멀쩡한 피처까지 버려졌다.
+ * `assemble` 의 `resolveAssembly` 와 같은 규율을 피처 단위로 적용한다.
+ *
+ * ⚠ **질량 방향이 op 에 따라 반대다** — 반드시 보고한다:
+ * ```
+ *   add 를 드롭      → 재료가 덜 붙음  → 질량 **과소**
+ *   subtract 를 드롭 → 구멍이 안 뚫림  → 질량 **과대**  ← 이쪽이 위험하다
+ * ```
+ * ⚠ add 가 하나도 안 남으면 형상이 성립하지 않는다(`gateComposite` 도 같은 검사를 한다) —
+ *   그때는 드롭하지 않고 원본을 돌려준다. 호출부가 사유를 보고할 수 있어야 한다.
+ * ⚠ 드롭은 **최후 수단**이다. `composeWithGate` 가 교정 라운드를 다 쓴 뒤에만 부른다.
+ *
+ * @returns {{intent:object, dropped:Array<{id:string,kind:string,op:string,error:string,massDirection:string}>,
+ *            allFailed:boolean}}
+ */
+export function resolveComposeIntent(intent) {
+  const errs = gateComposite(intent);
+  if (!errs.length) return { intent, dropped: [], allFailed: false };
+
+  const features = intent?.features ?? [];
+  // 게이트 문구는 `${tag}: ...` 이고 tag = f.id ?? `f${i}` 다. 태그로 실패 피처를 찾는다.
+  const firstErrorOf = new Map();
+  for (const m of errs) {
+    const tag = String(m).split(':')[0]?.trim();
+    if (tag && !firstErrorOf.has(tag)) firstErrorOf.set(tag, String(m).slice(tag.length + 1).trim());
+  }
+
+  const kept = [];
+  const dropped = [];
+  features.forEach((f, i) => {
+    const tag = String(f.id ?? `f${i}`);
+    if (!firstErrorOf.has(tag)) { kept.push(f); return; }
+    const op = f.op === 'subtract' ? 'subtract' : 'add';
+    dropped.push({
+      id: tag, kind: String(f.kind ?? '(no kind)'), op,
+      error: firstErrorOf.get(tag),
+      massDirection: op === 'subtract' ? '질량 과대(구멍이 안 뚫림)' : '질량 과소(재료가 덜 붙음)',
+    });
+  });
+
+  // 태그로 못 짚은 오류(features[] 비어있음 등)가 남으면 드롭으로 해결되지 않는다.
+  if (!dropped.length) return { intent, dropped: [], allFailed: true };
+  // add 가 하나도 안 남으면 형상이 성립하지 않는다 — 원본 유지.
+  if (!kept.some((f) => f.op !== 'subtract')) return { intent, dropped, allFailed: true };
+
+  const next = { ...intent, features: kept };
+  // 드롭 후에도 게이트가 남으면(피처 간 상호검사 등) 적용하지 않는다 — 악화 방지.
+  if (gateComposite(next).length) return { intent, dropped, allFailed: true };
+  return { intent: next, dropped, allFailed: false };
+}
+
+// 260803 — 기본 백엔드를 Gemini 로 되돌린다. pro 우선(폭주 거의 없음) → flash 폴백은
+// 260802 이전 이 함수의 기본값 그대로. `models: ['gpt-5.6-sol']` 을 주면 OpenAI 로 나간다.
+export async function composeFromText(description, { models = ['gemini-2.5-pro', 'gemini-2.5-flash'] } = {}) {
   const { data, model } = await callAiJson(COMPOSE_PROMPT(description), COMPOSE_SCHEMA, { models, maxOutputTokens: 8192 });
   return { intent: data, model };
 }
@@ -277,13 +334,24 @@ export async function composeWithGate(description, { maxRounds = 2, models } = {
   while (errs.length && rounds <= maxRounds) {
     const fix = `아래 부품 조합 JSON이 기하 게이트에서 실패했다. 오류를 고쳐 같은 형식으로 다시 출력하라.\n오류: ${JSON.stringify(errs)}\n각 프리미티브 필수: revolve/extrude→profile(닫힌 단순 폴리곤, revolve는 x≥0), extrude→height, cylinder→diameter&height, box→size[3], sphere→diameter.\n현재 JSON: ${JSON.stringify(intent)}`;
     try {
-      const { data } = await callAiJson(fix, COMPOSE_SCHEMA, { models: models ?? ['gpt-5.6-sol'], maxOutputTokens: 8192 });
+      const { data } = await callAiJson(fix, COMPOSE_SCHEMA, { models: models ?? ['gemini-2.5-pro'], maxOutputTokens: 8192 });
       intent = data;
     } catch { break; }
     errs = gateComposite(intent);
     rounds++;
   }
-  if (errs.length) return { intent, gatePassed: false, gateErrors: errs, rounds };
+  /**
+   * ★260803 — 교정 라운드를 다 썼는데도 남으면 **걸린 피처만 빼고 형상을 낸다.**
+   * 종전에는 여기서 `gatePassed:false` 로 끝나 멀쩡한 피처까지 버려졌다(제품 원칙 §0.4).
+   */
+  let dropped = [];
+  if (errs.length) {
+    const r = resolveComposeIntent(intent);
+    if (r.allFailed) return { intent, gatePassed: false, gateErrors: errs, rounds, dropped: r.dropped };
+    intent = r.intent;
+    dropped = r.dropped;
+    errs = [];
+  }
   const scad = emitComposite(intent);
   let verify = null;
   try {
@@ -295,7 +363,8 @@ export async function composeWithGate(description, { maxRounds = 2, models } = {
     let bad = 0; for (const c of edges.values()) if (c !== 2) bad++;
     verify = { triangles: n, manifold: bad === 0, nonManifoldEdges: bad };
   } catch (e) { verify = { error: e.message }; }
-  return { intent, scad, gatePassed: true, rounds, verify };
+  // dropped 가 있으면 **부분 산출**이다 — 호출부·화면이 한 번에 알 수 있게 degraded 를 같이 낸다.
+  return { intent, scad, gatePassed: true, rounds, verify, dropped, degraded: dropped.length > 0 };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('compose.mjs');

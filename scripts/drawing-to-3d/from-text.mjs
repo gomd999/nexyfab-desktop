@@ -14,7 +14,7 @@
  */
 import { CLASSIFY_SCHEMA, TYPE_SCHEMAS, TYPE_HINTS, ALL_TYPES } from './schemas.mjs';
 import { PARAMS } from './reconstruct.mjs';
-import { callAiJson as callAiJsonImpl } from './ai-json.mjs';
+import { callAiJson as callAiJsonImpl, callGeminiJson as callGeminiJsonImpl } from './ai-json.mjs';
 
 /** ```json 울타리·앞뒤 산문 제거 — 남겨진 소비처가 있을 수 있어 유지. */
 export function stripFences(text) {
@@ -24,13 +24,21 @@ export function stripFences(text) {
 }
 
 /**
- * 텍스트 프롬프트 → 구조화 JSON — OpenAI(gpt-5.6-sol) 배선(260802, Gemini에서 이전).
- * 실제 호출·재시도·JSON 리페어 로직은 ai-json.mjs(callAiJson)로 단일화했다 — assemble
- * 라우트·compose.mjs가 같은 신뢰성 전략(모델 폴백·429/5xx 백오프·JSON 리페어)을 쓴다.
+ * 텍스트 프롬프트 → 구조화 JSON. 실제 호출·재시도·JSON 리페어 로직은
+ * ai-json.mjs 로 단일화했다 — assemble 라우트·compose.mjs 가 같은 신뢰성
+ * 전략(모델 폴백·429/5xx 백오프·JSON 리페어)을 쓴다.
+ *
+ * 기본 백엔드는 **Gemini**(260803 복원). `models` 에 `gpt-*` 를 넣으면 같은 함수가
+ * OpenAI 로 나간다(260802 배선 유지) — 호출부는 모델 이름만 바꾸면 된다.
  * @returns { data, model, repaired }
  */
 export async function callAiJson(promptText, schema, opts = {}) {
   return callAiJsonImpl(promptText, schema, opts);
+}
+
+/** Gemini 로 못 박아 호출한다(모델 이름과 무관). 260802 이전 호출부 호환용. */
+export async function callGeminiJson(promptText, schema, opts = {}) {
+  return callGeminiJsonImpl(promptText, schema, opts);
 }
 
 /**
@@ -179,7 +187,7 @@ async function repairAgainstGate(assembly, description, { models } = {}) {
   try {
     const { buildAssembly } = await import('./assembly.mjs');
     errs = buildAssembly(assembly)?.gateErrors ?? [];
-    if (!errs.length) return { assembly, rounds: 0, errors: [] };
+    if (!errs.length) return { assembly, rounds: 0, errors: [], repairedIds: [] };
     /**
      * ★ 실패한 **부품만** 그 어휘의 `TYPE_SCHEMAS` 로 다시 받는다.
      *   어셈블리 스키마 하나로 전 어휘의 파라미터를 받으려 하면 키가 섞인다(위 주석 참조).
@@ -188,6 +196,7 @@ async function repairAgainstGate(assembly, description, { models } = {}) {
     const failedIds = new Set(errs.map((e) => String(e).split(':')[0]?.trim()).filter(Boolean));
     const parts = [...(assembly?.parts ?? [])];
     let changed = 0;
+    const repairedIds = [];
     for (let i = 0; i < parts.length; i++) {
       const p = parts[i];
       if (!failedIds.has(String(p?.id))) continue;
@@ -202,18 +211,20 @@ async function repairAgainstGate(assembly, description, { models } = {}) {
         const { data: fixed } = await callAiJson(ask, schema, {
           ...(models ? { models } : {}), thinkingBudget: 0, maxOutputTokens: 2048,
         });
-        if (fixed && typeof fixed === 'object') { parts[i] = { ...p, params: { ...p.params, ...fixed } }; changed += 1; }
+        // ★260803 — **누가 수리됐는지 기록한다.** 이 부품의 값은 「미기입은 통상값」 프롬프트로
+        //   재추출된 것이라 원문 근거를 보장할 수 없다 → provenance 가 전량 `assumed` 로 내린다.
+        if (fixed && typeof fixed === 'object') { parts[i] = { ...p, params: { ...p.params, ...fixed } }; changed += 1; repairedIds.push(String(p.id)); }
       } catch { /* 이 부품은 못 고쳤다 — 나머지는 계속 시도한다 */ }
     }
-    if (!changed) return { assembly, rounds: 1, errors: errs };
+    if (!changed) return { assembly, rounds: 1, errors: errs, repairedIds: [] };
     const candidate = { ...assembly, parts };
     const after = buildAssembly(candidate)?.gateErrors ?? [];
     // 나빠졌으면 되돌린다 — 수리가 악화시키는 것을 통과시키지 않는다.
-    if (after.length >= errs.length) return { assembly, rounds: 1, errors: errs };
-    return { assembly: candidate, rounds: 1, errors: after };
+    if (after.length >= errs.length) return { assembly, rounds: 1, errors: errs, repairedIds: [] };
+    return { assembly: candidate, rounds: 1, errors: after, repairedIds };
   } catch {
     // 수리 자체가 실패해도 **원본을 돌려준다**(수리는 부가 기능이지 필수 경로가 아니다).
-    return { assembly, rounds: 0, errors: errs };
+    return { assembly, rounds: 0, errors: errs, repairedIds: [] };
   }
 }
 
@@ -259,8 +270,51 @@ export async function textToAssembly(description, { models } = {}) {
     thinkingBudget: 0,
     maxOutputTokens: 16384,
   });
-  const repaired = await repairAgainstGate(data, description, { models });
-  return { assembly: repaired.assembly, model, repairRounds: repaired.rounds, gateErrors: repaired.errors, fallbackReasons, usage };
+  /**
+   * ★260803 — **결정론 교정을 LLM 수리 앞에 둔다.**
+   *
+   * 어휘 오분류(와셔를 flange 로, 사각 개구를 원형 holes 로)는 **판단이 아니라 규칙**이라
+   * 왕복 없이 고쳐진다. 라이브 실측에서 이 두 유형이 게이트 에러의 대부분이었다.
+   * ⚠ 순서가 중요하다 — 뒤에 두면 `repairAgainstGate` 가 **틀린 어휘의 스키마로** 치수를
+   *   다시 물어보게 된다(플랜지 스키마로 와셔의 볼트원을 요구 → 모델이 없는 값을 지어낸다).
+   * ⚠ 교정 내역은 반환값에 실어 보낸다. 조용히 고치면 사용자가 무엇이 바뀌었는지 모른다.
+   */
+  const { resolveAssembly } = await import('./auto-fix.mjs');
+  const fixed = resolveAssembly(data); // drop 없음 — 먼저 LLM 수리에 기회를 준다
+  const repaired = await repairAgainstGate(fixed.assembly, description, { models });
+  /**
+   * ★260803 — **수리를 다 쓰고도 남은 부품은 빼고 결과를 낸다.**
+   * 실측: 부품 4개 중 1개가 걸리면 `buildAssembly` 가 `parts:0 · openscad:false` 를 내
+   * **멀쩡한 3개까지 버려졌다.** 이제 3부품 조립체 + 드롭 1건 보고가 나간다.
+   * ⚠ 질량이 그만큼 **과소**다 — `dropped[]` 에 원본 파라미터를 실어 되살릴 수 있게 한다.
+   */
+  const final = repaired.errors?.length
+    ? resolveAssembly(repaired.assembly, { drop: true })
+    : { assembly: repaired.assembly, corrections: [], dropped: [], allFailed: false };
+
+  /**
+   * ★260803 (B1) — **축 2: 이 숫자가 어디서 왔는가.**
+   *
+   * 여기까지 오면 형상은 나온다(§0.4 원칙). 그런데 **어느 치수가 사용자가 준 값이고
+   * 어느 것이 LLM 이 채운 통상값인지 표시가 없었다.** 그 상태로 「어떤 입력이든 결과를 낸다」를
+   * 밀면 가정을 검증된 것처럼 내보내게 된다.
+   *
+   * 두 신호를 쓴다 — 둘 다 결정론이다(LLM 을 다시 부르지 않는다):
+   *   ① **원문 숫자 대조** — 값이 설명문에 없으면 `assumed`
+   *   ② **수리 이력** — `repairAgainstGate` 가 손댄 부품은 전량 `assumed`
+   *      (「미기입은 통상값」 프롬프트로 재추출된 값이라 근거를 보장할 수 없다)
+   */
+  const { annotateAssembly, assemblyProvenance } = await import('./provenance.mjs');
+  const annotated = annotateAssembly(final.assembly, description, { repairedIds: repaired.repairedIds ?? [] });
+  const provenance = assemblyProvenance(annotated, { dropped: final.dropped });
+
+  return {
+    assembly: annotated, model, repairRounds: repaired.rounds,
+    gateErrors: final.dropped.length ? [] : repaired.errors,
+    corrections: [...fixed.corrections, ...final.corrections],
+    dropped: final.dropped, degraded: final.dropped.length > 0, allFailed: final.allFailed,
+    provenance, fallbackReasons, usage,
+  };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('from-text.mjs');

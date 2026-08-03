@@ -6,8 +6,8 @@
  * drawing-to-3d 방법론 §4(복합=부품 분해) / §12.1 #4(Assembly Topology Graph).
  *
  * 구현: from-text.mjs(textToAssembly)·assembly.mjs(buildAssembly)를 webpackIgnore
- * 런타임 import(compose 라우트와 동일 패턴). OPENAI_API_KEY env-first(260802 —
- * Gemini/DeepSeek에서 OpenAI gpt-5.6-sol로 이전. 실제 호출은 ai-json.mjs callAiJson).
+ * 런타임 import(compose 라우트와 동일 패턴). GEMINI_API_KEY env-first — 실제 호출은
+ * ai-json.mjs callAiJson(모델 이름으로 Gemini/OpenAI 백엔드를 고른다).
  *
  * caller: { description } → { ok, assembly, openscad?, parts?, interferences?, gateErrors? }
  */
@@ -19,6 +19,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
 import { recordIntentMatch } from '@/lib/intentTelemetry';
+import { recordFailure } from '@/lib/failureLog';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -29,10 +30,18 @@ type FromTextModule = {
   callAiJson: (prompt: string, schema: unknown, o?: { models?: string[]; maxOutputTokens?: number; thinkingBudget?: number }) => Promise<{ data: Assembly; model?: string; repaired?: boolean }>;
   ASSEMBLY_SCHEMA: unknown;
 };
-// 260802 — OpenAI gpt-5.6-sol로 이전(Gemini/DeepSeek 아님). 스키마 우회·thinking
-// 예산 같은 Gemini 전용 재시도 로직은 ai-json.mjs(callAiJson)로 단일화했다.
-const AI_OPTS = { models: ['gpt-5.6-sol'], maxOutputTokens: 12000 };
-const CLAIMS_OPTS = { models: ['gpt-5.6-sol'], maxOutputTokens: 8192 };
+// 260803 — Gemini 로 되돌린다(260802 OpenAI 전환의 역방향). 아래 두 상수의
+// `thinkingBudget` 은 **Gemini 전용 실측값**이라 백엔드와 함께 되돌려야 한다 —
+// OpenAI 배선일 때는 ai-json.mjs 가 이 값을 무시한다.
+//
+// MAX_TOKENS 원인은 2.5 "thinking"(출력토큰 소진) → thinkingBudget:0 으로 차단.
+// + response_schema 없이 free-form(플랫 스키마 토큰폭주 회피). flash 고정(속도).
+const AI_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 12000, thinkingBudget: 0 };
+// claims 추출용: thinkingBudget:0 이면 flash 가 조용히 빈 claims 를 낸다(260717 라이브 프로브 확인)
+// — 출력이 작아 MAX_TOKENS 위험이 없으므로 thinking 기본값으로 호출.
+// thinking 은 **유계 512**: 0=빈 claims(무력화)·무제한=1/3 확률 폭주 MAX_TOKENS(둘 다 실측).
+// tb=512 는 2개 설명문 × 3회 반복 전부 성공 + 핵심 클레임(연장·R·수량·존재) 보존 확인.
+const CLAIMS_OPTS = { models: ['gemini-2.5-flash'], maxOutputTokens: 8192, thinkingBudget: 512 };
 type AssemblyModule = { buildAssembly: (asm: Assembly) => BuiltAssembly; autoPlaceCorrect: (asm: Assembly) => { assembly: Assembly; corrections: Array<Record<string, unknown>> }; autoTagAssembly: (asm: Assembly) => Assembly; assemblyAtLevel: (asm: Assembly, level: number) => Assembly };
 
 // 1차 골격→2차 상세(260719): 자동 태깅 후 detail≤1 부분집합의 별도 빌드(초안 프리뷰).
@@ -226,6 +235,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const MAX_ROUNDS = 3;
     let assembly: Assembly | null = null;
   let placeCorrections: Array<Record<string, unknown>> = [];
+  // 어휘 오분류 교정 내역(260803) — 배치 보정과 **별개로** 공개한다. 무엇이 바뀌었는지
+  // 사용자가 알아야 조용한 수정이 되지 않는다.
+  let typeCorrections: Array<Record<string, unknown>> = [];
+  // 최종 라운드에서 못 고쳐 제외한 부품(260803). ⚠ 질량이 그만큼 **과소**다 — 응답에
+  // 원본 파라미터까지 실어, 사용자가 값을 채워 되살릴 수 있게 한다.
+  let droppedParts: Array<Record<string, unknown>> = [];
+  // 근거 요약(260803 B1) — observed/assumed 분포. 화면이 "검증됨"과 "조건부"를 구분해 표시한다.
+  let provenance: Record<string, unknown> | null = null;
     let built: BuiltAssembly | null = null;
     let lastErrors: string[] = [];
 
@@ -351,8 +368,56 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         lastErrors = built.gateErrors ?? ['선형 게이트 실패'];
         continue; // 거부 문구를 다음 라운드 프롬프트로 피드백
       }
+      /**
+       * ★260803 — **어휘 오분류 결정론 교정.** 배치 보정보다 **먼저** 돈다.
+       *
+       * 라이브에서 마찰 와셔가 `flange` 로 분류돼 게이트 60건이 쏟아졌다. 그런데
+       * 「외경·내경·두께가 성립하고 볼트원이 통째로 없으면 와셔」는 판단이 아니라 **규칙**이라
+       * LLM 왕복 없이 고쳐진다 → 다음 라운드로 넘기지 않고 **이 라운드에서 결과를 낸다.**
+       * ⚠ 배치 보정 앞에 둔다 — 타입이 바뀌면 AABB 가 바뀌고, 그래야 배치가 옳은 형상 위에서 계산된다.
+       * ⚠ 없는 치수는 지어내지 않는다(볼트원이 *일부만* 있으면 그대로 에러). `auto-fix.mjs` 참조.
+       */
+      /**
+       * ★260803 — **마지막 라운드에서는 드롭한다.** 실측: 부품 4개 중 1개가 게이트에 걸리면
+       * `buildAssembly` 가 `parts:0 · openscad:false` 를 내 **멀쩡한 3개까지 버려졌다.**
+       * 3라운드를 다 쓰고도 못 고친 부품은 빼고 나머지로 조립한다 — 빈 화면 대신 결과를 낸다.
+       * ⚠ 드롭은 **최후 수단**이다. 첫 라운드에 드롭하면 고칠 수 있었던 부품을 버린다.
+       */
+      const lastRound = round === MAX_ROUNDS - 1;
+      const af = await (async () => {
+        try {
+          const ap = join(process.cwd(), 'scripts', 'drawing-to-3d', 'auto-fix.mjs');
+          const am = (await import(/* webpackIgnore: true */ pathToFileURL(ap).href)) as {
+            resolveAssembly: (a: unknown, o?: { drop?: boolean }) => {
+              assembly: Assembly; corrections: Record<string, unknown>[];
+              dropped: Record<string, unknown>[]; allFailed: boolean;
+            };
+          };
+          return am.resolveAssembly(data, { drop: lastRound });
+        } catch { return { assembly: data as Assembly, corrections: [], dropped: [], allFailed: false }; }
+      })();
+      typeCorrections = af.corrections;
+      droppedParts = af.dropped;
+      /**
+       * ★260803 (B1) — **축 2: 이 숫자가 어디서 왔는가.**
+       * 형상은 나온다(§0.4). 그런데 어느 치수가 사용자가 준 값이고 어느 것이 LLM 이 채운
+       * 통상값인지 표시가 없으면 **가정을 검증된 것처럼 내보내게 된다.**
+       * 원문 숫자 대조(결정론)로 `observed`/`assumed` 를 가른다 — LLM 을 다시 부르지 않는다.
+       */
+      const pv = await (async () => {
+        try {
+          const pp = join(process.cwd(), 'scripts', 'drawing-to-3d', 'provenance.mjs');
+          const pm = (await import(/* webpackIgnore: true */ pathToFileURL(pp).href)) as {
+            annotateAssembly: (a: unknown, t: string, o?: { repairedIds?: string[] }) => Assembly;
+            assemblyProvenance: (a: unknown, o?: { dropped?: unknown[] }) => Record<string, unknown>;
+          };
+          const annotated = pm.annotateAssembly(af.assembly, description);
+          return { assembly: annotated, provenance: pm.assemblyProvenance(annotated, { dropped: af.dropped }) };
+        } catch { return { assembly: af.assembly, provenance: null }; }
+      })();
+      provenance = pv.provenance;
       // AI 배치 결정론 보정(§12.1-4 v1): 부유 드롭·깊은 관통 분리 — 내역은 응답에 공개
-      const corrected = mods.asm.autoPlaceCorrect(data);
+      const corrected = mods.asm.autoPlaceCorrect(pv.assembly);
       assembly = corrected.assembly;
       placeCorrections = corrected.corrections;
       built = mods.asm.buildAssembly(assembly);
@@ -395,6 +460,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           interferences: built.interferences ?? [],
           contacts: built.contacts ?? [], // §12.7.3 접촉/체결 후보(과탐 분리)
           placeCorrections, // 자동 배치 보정 내역(정직 공개)
+          typeCorrections,  // 어휘 오분류 자동 교정 내역(260803 — 조용한 수정 방지)
+          droppedParts,     // 못 고쳐 제외한 부품 + 원본 파라미터(260803). ⚠ 질량이 그만큼 과소
+          provenance,       // 근거 요약(260803 B1) — verifiable=false 면 결과는 **조건부**다
+          degraded: droppedParts.length > 0, // 부분 산출임을 화면이 한 번에 알 수 있게
           welds: built.welds ?? [], weldTotalMm: built.weldTotalMm ?? 0,
           composeIntent: built.composeIntent ?? null,
           structural: built.structural ?? null,
@@ -415,6 +484,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // 3라운드로도 유효 형상 실패 — 잘못된 형상 방출 대신 정직하게 오류 반환.
     // ⚠ 실패해도 과정을 싣는다 — 무엇을 몇 번 시도하다 못 했는지가 실패에선 더 중요하다.
+    // ★260803 — **실패를 남긴다.** 종전에는 화면에 뿌리고 끝이라 무엇이 자주 깨지는지 알 수 없었다.
+    //   지문은 PII 없이 만들고 원문은 저장하지 않는다(`failureLog.ts` 참조).
+    void recordFailure({
+      stage: 'gate', input: description, errors: lastErrors,
+      partTypes: (assembly?.parts ?? []).map((p) => String((p as { type?: unknown }).type ?? '')).filter(Boolean),
+    });
     trace.attempt(MAX_ROUNDS).mark('gate', 'failed', `게이트 오류 ${lastErrors.length}건`);
     const failTrace = trace.done();
     return NextResponse.json({
@@ -424,7 +499,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }, { status: 200 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const status = /OPENAI_API_KEY/.test(msg) ? 503 : 502;
+    // 키 미설정은 503(설정 문제) — 백엔드를 Gemini↔OpenAI 로 바꿔도 맞게 남도록 둘 다 본다.
+    const status = /GEMINI_API_KEY|OPENAI_API_KEY/.test(msg) ? 503 : 502;
     return NextResponse.json({ ok: false, error: 'assemble failed: ' + msg.slice(0, 200) }, { status });
   }
 }

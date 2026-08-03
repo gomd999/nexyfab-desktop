@@ -8,8 +8,9 @@
  *
  * 구현 노트: compose.mjs를 webpackIgnore 런타임 import로 로드 → webpack이 번들
  * (및 그 안의 openscad-wasm dynamic import)을 건드리지 않아 런타임 노드 해석이
- * 그대로 동작. OPENAI_API_KEY는 openaiApiKey() env-first로 process.env에서 읽음
- * (260802 — Gemini/DeepSeek에서 OpenAI gpt-5.6-sol로 이전).
+ * 그대로 동작. GEMINI_API_KEY는 apiKey() env-first로 process.env에서 읽음
+ * (260803 — 260802의 OpenAI 전환을 되돌림. OpenAI 배선은 ai-json.mjs에 그대로 남아
+ *  있어 `models: ['gpt-5.6-sol']` 이나 NEXYFAB_AI_JSON_MODELS 로 되돌아갈 수 있다).
  *
  * caller: { description } → { ok, intent, scad?, gateErrors? }. scad를
  *   openscadWorker(브라우저)에 넣어 STL 렌더/프리뷰.
@@ -20,6 +21,7 @@ import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
+import { recordFailure } from '@/lib/failureLog';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -27,6 +29,9 @@ export const runtime = 'nodejs';
 type ComposeResult = {
   intent: unknown; scad?: string; gatePassed: boolean; rounds: number;
   gateErrors?: string[]; verify?: { manifold?: boolean; triangles?: number; error?: string } | null;
+  // 260803 부분 산출 — 게이트에 걸린 피처만 빼고 형상을 냈을 때의 내역.
+  dropped?: Array<{ id: string; kind: string; op: string; error: string; massDirection: string }>;
+  degraded?: boolean;
 };
 type ComposeModule = {
   composeWithGate: (d: string, o?: { maxRounds?: number }) => Promise<ComposeResult>;
@@ -73,13 +78,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // 교정 루프 포함: AI 조합 → 게이트 → 실패 시 오류 되먹여 수정 → 실렌더 검증.
     const r = await compose.composeWithGate(description, { maxRounds: 2 });
     if (!r.gatePassed) {
-      // 교정으로도 유효 형상 실패 — 형상 만들지 않고 오류 반환(잘못된 형상 방지).
-      return NextResponse.json({ ok: false, stage: 'gate', intent: r.intent, gateErrors: r.gateErrors, rounds: r.rounds });
+      /**
+       * 여기까지 왔다는 것은 **피처를 빼도 형상이 성립하지 않는다**는 뜻이다
+       * (`resolveComposeIntent` 가 add 를 전부 잃거나 태그로 못 짚는 오류일 때만 실패시킨다).
+       * 잘못된 형상을 내는 것보다 사유를 말하는 게 낫다 — 다만 무엇을 빼려 했는지도 같이 싣는다.
+       */
+      // ★260803 — 피처를 빼도 형상이 성립하지 않은 진짜 실패. 지문으로 남긴다.
+      void recordFailure({
+        stage: 'gate', input: description, errors: r.gateErrors ?? [],
+        partTypes: ((r.intent as { features?: Array<{ kind?: string }> })?.features ?? [])
+          .map((f) => String(f?.kind ?? '')).filter(Boolean),
+      });
+      return NextResponse.json({
+        ok: false, stage: 'gate', intent: r.intent, gateErrors: r.gateErrors, rounds: r.rounds,
+        dropped: r.dropped ?? [],
+      });
     }
-    return NextResponse.json({ ok: true, intent: r.intent, scad: r.scad, rounds: r.rounds, verify: r.verify });
+    return NextResponse.json({
+      ok: true, intent: r.intent, scad: r.scad, rounds: r.rounds, verify: r.verify,
+      // ⚠ 부분 산출이면 질량 방향까지 실어 보낸다 — subtract 를 뺀 경우 **질량이 과대**다.
+      dropped: r.dropped ?? [], degraded: r.degraded ?? false,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const status = /OPENAI_API_KEY/.test(msg) ? 503 : 502;
+    // 키 미설정은 503(설정 문제) — 백엔드를 Gemini↔OpenAI 로 바꿔도 맞게 남도록 둘 다 본다.
+    const status = /GEMINI_API_KEY|OPENAI_API_KEY/.test(msg) ? 503 : 502;
     return NextResponse.json({ ok: false, error: 'compose failed: ' + msg.slice(0, 200) }, { status });
   }
 }

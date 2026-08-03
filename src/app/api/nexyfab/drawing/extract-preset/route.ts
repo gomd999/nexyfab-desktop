@@ -16,6 +16,7 @@ import { pathToFileURL } from 'node:url';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { guardStudioAi } from '@/lib/studio-ai-guard';
+import { recordFailure } from '@/lib/failureLog';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -28,8 +29,64 @@ type PresetModule = {
 };
 type ExtractPresetModule = {
   extractPresetFromImage: (b64: string, mime: string, domainLabel: string, templates: Template[]) =>
-    Promise<{ templateId?: string; confidence?: number; unit?: string; notes?: string; params?: Array<{ name: string; value: number }> }>;
+    Promise<{
+      templateId?: string; confidence?: number; unit?: string; notes?: string;
+      // 260803 — 템플릿 미매칭 시 조립 경로로 넘길 부품 서술(같은 vision 호출에서 함께 받는다)
+      description?: string;
+      params?: Array<{ name: string; value: number }>;
+    }>;
 };
+type FromTextModule = {
+  textToAssembly: (d: string) => Promise<{
+    assembly: unknown; model?: string; gateErrors?: string[];
+    corrections?: unknown[]; dropped?: unknown[]; degraded?: boolean; allFailed?: boolean;
+  }>;
+};
+type AssemblyModule = {
+  buildAssembly: (a: unknown) => { ok: boolean; openscad?: string; parts?: unknown[]; gateErrors?: string[]; interferences?: unknown[]; structural?: unknown; designOk?: boolean };
+  autoPlaceCorrect: (a: unknown) => { assembly: unknown; corrections: unknown[] };
+};
+
+/**
+ * ★260803 — **템플릿이 안 맞아도 막다른 길을 만들지 않는다** (제품 원칙 §0.4).
+ *
+ * 라이브에서 노트북 거치대 사진을 올리면 "이 분야 템플릿과 맞는 형상을 찾지 못했어요"로 끝났다.
+ * 원인은 명확하다 — mech 템플릿 18종이 전부 중공업이라 **소비재 아키타입이 0개**다.
+ * 그런데 같은 vision 호출이 이미 **부품 서술**을 갖고 있다(`description`). 그걸 조립 경로에 넘기면
+ * 형상이 나온다. 조립 경로에는 이미 사다리가 있다(auto-fix → LLM 수리 → 드롭).
+ *
+ * ⚠ vision 을 **다시 부르지 않는다** — 서술은 첫 호출에서 이미 받아 뒀다.
+ * ⚠ 이 경로로 나온 결과는 **템플릿 매칭이 아니다.** `via:'description'` 으로 구분해 보고한다.
+ *   사진에서 못 읽은 치수는 LLM 이 통상값으로 채웠을 수 있다 → `provenance` 경고를 같이 싣는다.
+ */
+async function assemblyFromDescription(description: string): Promise<Record<string, unknown> | null> {
+  const desc = String(description ?? '').trim();
+  if (desc.length < 10) return null; // 서술이 부실하면 억지로 만들지 않는다
+  try {
+    const ftPath = join(process.cwd(), 'scripts', 'drawing-to-3d', 'from-text.mjs');
+    const asmPath = join(process.cwd(), 'scripts', 'drawing-to-3d', 'assembly.mjs');
+    const [ft, asm] = await Promise.all([
+      import(/* webpackIgnore: true */ pathToFileURL(ftPath).href) as Promise<FromTextModule>,
+      import(/* webpackIgnore: true */ pathToFileURL(asmPath).href) as Promise<AssemblyModule>,
+    ]);
+    const r = await ft.textToAssembly(desc);
+    if (r.allFailed) return null;
+    const placed = asm.autoPlaceCorrect(r.assembly);
+    const built = asm.buildAssembly(placed.assembly);
+    if (!built.ok) return null;
+    return {
+      assembly: placed.assembly,
+      openscad: built.openscad, parts: built.parts,
+      interferences: built.interferences ?? [], structural: built.structural ?? null,
+      designOk: built.designOk ?? null,
+      corrections: r.corrections ?? [], droppedParts: r.dropped ?? [],
+      degraded: !!r.degraded,
+      model: r.model,
+    };
+  } catch {
+    return null; // 이 경로가 실패해도 원래의 정직한 안내로 되돌아간다
+  }
+}
 
 const ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const MIN_CONFIDENCE = 0.4;
@@ -100,12 +157,39 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const tpl = templates.find((t) => t.id === templateId);
   const recognized = { templateId, confidence, unit: raw.unit, notes: raw.notes };
 
-  // 판별 불가 / 저신뢰 → 허위 매칭 대신 정직 반려(텍스트·직접 입력 안내는 클라 담당)
-  if (templateId === 'none' || !tpl) {
-    return NextResponse.json({ ok: false, stage: 'recognize', recognized, error: '이 분야 템플릿과 맞는 형상을 찾지 못했어요. 이 사진 인식은 단순 단일형상 템플릿만 지원해요 — 힌지·조립체처럼 부품이 여러 개인 제품은 채팅에 글로 설명해 주세요(예: "노트북 거치대, 하부 베이스 260×220mm, 높이조절 힌지 2조..."). 단순 형상이면 템플릿 카드를 직접 고르거나 치수를 텍스트로 알려주세요.' }, { status: 200 });
-  }
-  if (confidence < MIN_CONFIDENCE) {
-    return NextResponse.json({ ok: false, stage: 'confidence', recognized, error: `판독 신뢰도가 낮아요(${Math.round(confidence * 100)}%). 더 선명한 이미지를 올리거나 치수를 직접 입력해 주세요.` }, { status: 200 });
+  /**
+   * ★260803 — 종전에는 여기가 **막다른 길**이었다(`ok:false` + 안내 문구).
+   * 템플릿이 안 맞거나 신뢰도가 낮으면 **부품 서술로 조립 경로**를 태운다.
+   * ⚠ 허위 매칭은 여전히 하지 않는다 — 안 맞는 템플릿에 억지로 끼우는 게 아니라
+   *   **다른 경로**로 만드는 것이다. 결과에 `via:'description'` 을 달아 구분한다.
+   */
+  const needsFallback = templateId === 'none' || !tpl || confidence < MIN_CONFIDENCE;
+  if (needsFallback) {
+    const built = await assemblyFromDescription(String(raw.description ?? ''));
+    if (built) {
+      return NextResponse.json({
+        ok: true, via: 'description', stage: 'assembly', recognized,
+        description: raw.description,
+        ...built,
+        // ⚠ 사진에서 못 읽은 치수는 통상값일 수 있다. 이 경로는 **항상** 확인을 요구한다.
+        provenanceWarning: '사진에서 읽히지 않은 치수는 통상값으로 채워졌을 수 있습니다 — 치수를 확인해 주세요.',
+      }, { status: 200 });
+    }
+    /**
+     * ★260803 — **여기가 진짜 실패다.** 템플릿도 못 찾고 조립 경로도 못 만들었다.
+     * 종전에는 안내 문구만 내고 끝이라 「어떤 제품이 우리 어휘 밖인지」가 안 쌓였다.
+     * 지문에 부품 타입이 없으므로 `stage` 와 도메인만으로 집계된다 — 그래도
+     * 「mech 에서 template-miss 가 몇 건인가」는 알 수 있고, 그게 아키타입 우선순위다.
+     */
+    void recordFailure({
+      stage: 'template-miss', input: String(raw.description ?? ''),
+      errors: [`templateId=${templateId} confidence=${confidence}`], domain,
+    });
+    // 조립 경로도 실패 — 그때는 정직하게 안내한다(억지 형상보다 낫다).
+    if (templateId === 'none' || !tpl) {
+      return NextResponse.json({ ok: false, stage: 'recognize', recognized, description: raw.description ?? null, error: '이 사진으로는 형상을 만들지 못했어요. 부품과 치수를 채팅에 글로 알려주시면 조립체로 만들어 드릴게요(예: "노트북 거치대, 하부 베이스 260×220mm, 상판 280×240mm, 힌지 2조..."). 단순 형상이면 템플릿 카드를 직접 고르셔도 됩니다.' }, { status: 200 });
+    }
+    return NextResponse.json({ ok: false, stage: 'confidence', recognized, description: raw.description ?? null, error: `판독 신뢰도가 낮아요(${Math.round(confidence * 100)}%). 더 선명한 이미지를 올리거나 치수를 직접 입력해 주세요.` }, { status: 200 });
   }
 
   // ② 결정론 검증 — 허용 파라미터만 · min/max 클램프 · 생략값은 기본값 표기
