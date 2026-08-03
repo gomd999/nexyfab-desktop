@@ -228,7 +228,12 @@ async function repairAgainstGate(assembly, description, { models } = {}) {
   }
 }
 
-function VOCAB_SPEC() {
+/**
+ * ★260803 — **export 한다.** assemble 라우트가 **자기 목록 16종을 따로 하드코딩**하고
+ * 있었다(실측: ALL_TYPES 38종 중 22종 누락 — slab_with_openings·composite·revolve 포함).
+ * 같은 단일소스 결손의 다섯 번째 판이다. 한 곳에서만 만든다.
+ */
+export function VOCAB_SPEC() {
   // 분류 프롬프트(`TYPE_LIST`)와 **같은 한 줄 생성기**를 쓴다 — 두 벌이면 또 갈린다.
   return ALL_TYPES.map((t) => `- ${typeSpecLine(t)}`).join('\n');
 }
