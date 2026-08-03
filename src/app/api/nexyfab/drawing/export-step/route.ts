@@ -16,7 +16,13 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 type FuseReport = { total: number; jittered: number; dropped: { kind: string; at: number[] | null; op: string }[] };
-type StepModule = { intentToStep: (intent: unknown) => Promise<{ step: string; entities: number; fuseReport?: FuseReport }> };
+/** 조립 트리 실측치 — 트리 경로로 나갔을 때만 채워진다(NAUO 0 = 평면 나열). */
+type StepTree = { nauo: number; products: number; groups: string[] };
+type StepModule = {
+  intentToStep: (intent: unknown) => Promise<{
+    step: string; entities: number; fuseReport?: FuseReport; tree?: StepTree | null; importNotes?: string[];
+  }>;
+};
 
 let _mod: StepModule | null = null;
 async function loadStep(): Promise<StepModule> {
@@ -43,11 +49,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const step = await loadStep();
-    const { step: stepText, entities, fuseReport } = await step.intentToStep(intent);
+    const { step: stepText, entities, fuseReport, tree, importNotes } = await step.intentToStep(intent);
     // 정직 고지: OCCT 융합서 제외된 피처가 있으면 숨기지 않고 응답에 명시(§14 견고화)
     const dropped = fuseReport?.dropped?.length ?? 0;
     return NextResponse.json({
       ok: true, step: stepText, entities, bytes: stepText.length, format: 'STEP (B-rep, ISO-10303)',
+      /**
+       * 조립 트리 실측(260803). 있으면 CAD 가 하위조립 계층으로 연다.
+       * ⚠ 없으면 **평면 나열**이다 — 「STEP 이 나왔다」와 「조립으로 열린다」는 다르고,
+       *   그 차이를 응답에서 감추면 사용자는 CAD 를 열기 전까지 모른다.
+       */
+      assemblyTree: tree
+        ? { nauo: tree.nauo, products: tree.products, groups: tree.groups.length, hierarchical: true }
+        : { hierarchical: false, note: '평면 다중 PRODUCT(조립 계층 없음)' },
+      ...(importNotes?.length ? { notes: importNotes } : {}),
       ...(dropped > 0 ? { fuseDropped: dropped, fuseNote: dropped + '개 피처가 OCCT 융합 한계로 STEP에서 제외됨(프리뷰·검증 메시에는 포함)' } : {}),
     });
   } catch (e) {
