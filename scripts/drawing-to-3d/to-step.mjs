@@ -28,6 +28,8 @@ function wasmPath() {
 }
 
 let RC = null;
+/** 원시 OCCT 인스턴스. replicad 가 감싸지 않는 XCAF(조립 트리) API 를 쓰려면 필요하다. */
+let OC = null;
 export async function ensureReplicad() {
   if (RC) return RC;
   // Next 서버(ESM strict) 컨텍스트에서 emscripten glue가 CJS 자유변수(__dirname, require)에
@@ -42,7 +44,14 @@ export async function ensureReplicad() {
   const replicad = await import('replicad');
   replicad.setOC(oc);
   RC = replicad;
+  OC = oc;
   return replicad;
+}
+
+/** 원시 OCCT 인스턴스(XCAF 조립 트리용). `ensureReplicad` 와 같은 wasm 을 공유한다. */
+export async function ensureOC() {
+  if (!OC) await ensureReplicad();
+  return OC;
 }
 
 // ── T1 브리지: 로프트/스윕 스펙 → 진짜 OCCT B-rep(loft/genericSweep) ──────────
@@ -203,6 +212,10 @@ function featSolid(rc, f) {
     }
     case 'sphere':
       return rc.makeSphere(f.diameter / 2);
+    // 260803 — replicad 내장 타원체(진짜 B-rep). 회전체 폴리라인으로 흉내 내면 다각형
+    // 근사라 STEP 부피가 우리 정확식 (π/6)dx·dy·dz 와 갈린다(torus 와 같은 이유).
+    case 'ellipsoid':
+      return rc.makeEllipsoid(f.dx / 2, f.dy / 2, f.dz / 2);
     case 'coil': { // C2(260719b): 진짜 B-rep 헬릭스 스윕(sketchHelix+sweepSketch — 실측 오차 ~1.8%
       // = 곡률 단면 왜곡, 명시). SCAD 는 세그먼트 근사(compose 방출부) — 경로별 정직 표기.
       const R = (f.coilDia - f.wireDia) / 2;
@@ -421,7 +434,15 @@ export async function stepTextToMesh(stepText, { tolerance = 0.05, angularTolera
  * ⚠ ASCII 는 건드리지 않는다. 전부 이스케이프하면 사람이 읽을 수 없는 파일이 된다.
  */
 export function stepSafeName(name) {
-  const s = String(name ?? '');
+  return x2Escape(String(name ?? ''), true);
+}
+
+/**
+ * 비ASCII 구간만 `\X2\…\X0\` 로 감싼다. `escapeLiterals` 면 `'`·`\` 도 STEP 리터럴 규칙으로 이중화.
+ * @param {string} s
+ * @param {boolean} escapeLiterals 리터럴 이스케이프까지 할지 — **라이터가 이미 하는 층이면 꺼야 한다**
+ */
+function x2Escape(s, escapeLiterals) {
   let out = '';
   let buf = '';
   const flush = () => { if (buf) { out += '\\X2\\' + buf + '\\X0\\'; buf = ''; } };
@@ -429,13 +450,154 @@ export function stepSafeName(name) {
     const cp = ch.codePointAt(0);
     if (cp < 128) {
       flush();
-      out += ch === "'" ? "''" : ch === '\\' ? '\\\\' : ch;
+      out += escapeLiterals && (ch === "'" || ch === '\\') ? ch + ch : ch;
     } else {
       for (let k = 0; k < ch.length; k++) buf += ch.charCodeAt(k).toString(16).toUpperCase().padStart(4, '0');
     }
   }
   flush();
   return out;
+}
+
+/**
+ * ★**이미 쓰인 STEP 텍스트**의 비ASCII 를 ISO 10303-21 이스케이프로 바꾼다 (260803 정정).
+ *
+ * ## 왜 이렇게 됐나 — 어제 B10 수정은 틀렸다
+ * 이름을 `stepSafeName` 으로 **미리** 이스케이프해 OCCT 에 넘겼는데, OCCT 라이터는
+ * 문자열 리터럴 층을 자기가 소유한다. 그래서 우리가 넣은 `\` 를 규격대로 `\\` 로 이중화했다:
+ * ```
+ *   우리가 넣은 값 :  \X2\AD6CC870\X0\
+ *   파일에 쓰인 값 :  \\X2\\AD6CC870\\X0\\      ← 뷰어는 이걸 **리터럴 텍스트**로 읽는다
+ *   화면에 보이는 것:  \X2\AD6CC870\X0\          ← 한글이 아니다
+ * ```
+ * 「파일에 비ASCII 0」만 재고 **디코드해 보지 않아서** 통과한 것으로 봤다. 바이트 검사는
+ * 인코딩 검사가 아니다 — 이 실수가 §0.9 정정 대장에 들어간다.
+ *
+ * ## 그래서 순서를 뒤집었다
+ * 이름은 **원문 그대로** OCCT 에 준다(따옴표·역슬래시 이스케이프는 라이터가 옳게 한다).
+ * 다 쓰인 뒤 남은 비ASCII 만 여기서 `\X2\` 로 바꾼다. STEP 본문은 그 외 전부 ASCII 라
+ * 이름 이외의 것을 건드릴 여지가 없다.
+ */
+export function escapeStepNonAscii(step) {
+  return x2Escape(String(step ?? ''), false);
+}
+
+/**
+ * ★**진짜 조립 트리로 STEP 을 낸다** — NAUO(NEXT_ASSEMBLY_USAGE_OCCURRENCE) 방출 (260803).
+ *
+ * ## 왜 replicad 로는 안 되나 (실측)
+ * `replicad.exportSTEP` 은 내부적으로 `createAssembly` 를 부르는데, 그것은 모든 shape 를
+ * `ShapeTool.NewShape()` 로 **최상위 free shape** 로만 등록한다. `AddComponent` 를 한 번도
+ * 부르지 않으므로 부모-자식 관계가 없다. 그래서 우리 출력은 **PRODUCT 25 · NAUO 0** 이었다 —
+ * SOLIDWORKS 에서 파트는 다 보이지만 트리가 아니라 **평면 나열**이다. 실무에서 조립도·BOM·
+ * 하위조립 재사용이 전부 트리에 얹히므로, 평면 나열은 「열리기는 한다」 이상이 못 된다.
+ *
+ * ## 무엇을 하나 (OCCT XCAF)
+ * ```
+ *   root = NewShape()                      최상위 조립 노드(제품명)
+ *     └ grp = NewShape()                   계통(`part.system`) 별 하위조립
+ *         └ AddShape(solid) 의 라벨         부품 — AddComponent 로 grp 에 매단다
+ *   UpdateAssemblies()                     라벨 트리를 실제 조립 구조로 확정
+ * ```
+ * 그 다음은 replicad 와 같은 `STEPCAFControl_Writer` 경로다(이름·색 모드 켬).
+ *
+ * ## 계층 소스는 이미 있었다
+ * `assembly.mjs:104` 이 **모든 부품에 `system` 을 자동 부여**한다(`SYS_TYPE`/`SYS_ROLE`,
+ * 없으면 '부품'). 템플릿 15종은 명시도 한다. 그것이 피처에 `_sys` 로 실려 여기까지 온다 —
+ * 새 필드를 만들 필요가 없었다. 「없다」가 아니라 「안 쓰고 있었다」의 또 한 건.
+ *
+ * ## ⚠ 정직 고지 — 배치는 형상에 구워져 있다
+ * 우리 부품 솔리드는 이미 월드 좌표로 만들어진다. 그래서 컴포넌트 위치는 **항등변환**이고,
+ * NAUO 가 나르는 변환은 전부 단위행렬이다. 트리·이름·BOM 은 정상이지만, 「같은 부품을
+ * 여러 위치에 인스턴스로 재사용」(1 PRODUCT + N NAUO)은 아직 아니다 — 그건 부품을 로컬
+ * 원점에서 만들고 배치를 `TopLoc_Location` 으로 옮겨야 하고, 별도 작업이다.
+ *
+ * @param {Array<{shape:object,name:string,color?:string,group?:string}>} nodes 부품들(이름은 stepSafeName 적용 후)
+ * @param {{unit?:string, name?:string}} opts
+ * @returns {Promise<{step:string, products:number, nauo:number, groups:string[]}>}
+ */
+export async function exportAssemblySTEP(nodes, { unit = 'MM', name = 'ASSEMBLY' } = {}) {
+  if (!Array.isArray(nodes) || !nodes.length) throw new Error('exportAssemblySTEP: nodes 비었음');
+  const oc = await ensureOC();
+  const str = (s) => new oc.TCollection_ExtendedString_2(String(s), true);
+
+  const doc = new oc.TDocStd_Document(str('XmlOcaf'));
+  // ⚠ 끄지 않으면 OCCT 가 라벨에 제 이름을 붙여 우리 이름을 덮는다(replicad 도 같이 끈다).
+  oc.XCAFDoc_ShapeTool.SetAutoNaming(false);
+  const main = doc.Main();
+  const tool = oc.XCAFDoc_DocumentTool.ShapeTool(main).get();
+  const ctool = oc.XCAFDoc_DocumentTool.ColorTool(main).get();
+  const identity = new oc.TopLoc_Location_1();
+
+  // ⚠ 이름은 **원문 그대로** 넣는다. 미리 이스케이프하면 라이터가 역슬래시를 다시
+  //   이중화해 뷰어에 `\X2\…` 리터럴이 뜬다(§escapeStepNonAscii). 변환은 쓰인 뒤 한 번만.
+  const root = tool.NewShape();
+  oc.TDataStd_Name.Set_1(root, str(name));
+
+  // 계통별 하위조립. 선언 순서(첫 등장)를 유지한다 — 트리 순서가 매번 바뀌면 diff 가 안 된다.
+  const groupLabels = new Map();
+  const groupOf = (n) => (n.group ? String(n.group) : '부품');
+  for (const n of nodes) {
+    const g = groupOf(n);
+    if (groupLabels.has(g)) continue;
+    const lab = tool.NewShape();
+    oc.TDataStd_Name.Set_1(lab, str(g));
+    tool.AddComponent_1(root, lab, identity);
+    groupLabels.set(g, lab);
+  }
+
+  for (const n of nodes) {
+    const lab = tool.AddShape(n.shape.wrapped, false, false);
+    oc.TDataStd_Name.Set_1(lab, str(n.name));
+    if (n.color) {
+      const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(n.color));
+      if (m) {
+        // ⚠ replicad `wrapColor` 와 **같은 변환**을 쓴다(0~1 정규화만, 감마 보정 없음).
+        //   여기서만 선형화하면 두 방출 경로의 색이 갈린다 — 폴백과 본경로가 달라 보이면 안 된다.
+        const v = (h) => parseInt(h, 16) / 255;
+        ctool.SetColor_3(
+          lab,
+          new oc.Quantity_ColorRGBA_5(v(m[1]), v(m[2]), v(m[3]), 1),
+          oc.XCAFDoc_ColorType.XCAFDoc_ColorSurf,
+        );
+      }
+    }
+    tool.AddComponent_1(groupLabels.get(groupOf(n)), lab, identity);
+  }
+  tool.UpdateAssemblies();
+
+  oc.Interface_Static.SetCVal('xstep.cascade.unit', unit.toUpperCase());
+  oc.Interface_Static.SetCVal('write.step.unit', unit.toUpperCase());
+  oc.Interface_Static.SetIVal('write.surfacecurve.mode', true);
+  oc.Interface_Static.SetIVal('write.precision.mode', 0);
+  // 1 = 항상 조립 구조로 쓴다. replicad 의 2(=있으면) 로 두면 트리가 있어도 평탄화될 수 있다.
+  oc.Interface_Static.SetIVal('write.step.assembly', 1);
+  oc.Interface_Static.SetIVal('write.step.schema', 5); // AP242
+
+  const session = new oc.XSControl_WorkSession();
+  const writer = new oc.STEPCAFControl_Writer_2(new oc.Handle_XSControl_WorkSession_2(session), false);
+  writer.SetNameMode(true);
+  writer.SetColorMode(true);
+  writer.SetLayerMode(true);
+  writer.Transfer_1(
+    new oc.Handle_TDocStd_Document_2(doc),
+    oc.STEPControl_StepModelType.STEPControl_AsIs,
+    null,
+    new oc.Message_ProgressRange_1(),
+  );
+  const file = 'assembly.step';
+  if (writer.Write(file) !== oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
+    throw new Error('STEP 조립 쓰기 실패');
+  }
+  // 라이터가 쓴 raw UTF-8 이름을 여기서 한 번에 ISO 10303-21 이스케이프로 바꾼다.
+  const step = escapeStepNonAscii(new TextDecoder().decode(oc.FS.readFile('/' + file)));
+  oc.FS.unlink('/' + file);
+  return {
+    step,
+    products: (step.match(/\bPRODUCT\s*\(/g) ?? []).length,
+    nauo: (step.match(/NEXT_ASSEMBLY_USAGE_OCCURRENCE/g) ?? []).length,
+    groups: [...groupLabels.keys()],
+  };
 }
 
 export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) {
@@ -513,8 +675,11 @@ export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) 
         // 부품 이름·색을 같이 모은다 — STEP 어셈블리에 실어야 SolidWorks 트리에 뜬다.
         named.push({
           shape: s,
-          name: stepSafeName(fl.find((f) => f._pname)?._pname ?? ('PART-' + pid)),
+          // ⚠ 원문 그대로. 이스케이프는 파일이 쓰인 뒤 `escapeStepNonAscii` 가 한 번만 한다.
+          name: String(fl.find((f) => f._pname)?._pname ?? ('PART-' + pid)),
           color: fl.find((f) => f._col)?._col,
+          // 계통(`part.system`) → STEP 하위조립 노드. 없으면 exportAssemblySTEP 이 '부품' 으로 묶는다.
+          group: String(fl.find((f) => f._sys)?._sys ?? '부품'),
         });
         report.jittered += r.report.jittered;
         report.dropped.push(...r.report.dropped);
@@ -569,6 +734,8 @@ export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) 
   }
   let step = null;
   let named = null;
+  /** 조립 트리 실측치(NAUO·PRODUCT·계통). 트리 경로로 나갔을 때만 채워진다. */
+  let tree = null;
   if (namedShapes) {
     /**
      * ⚠ **폴백을 반드시 둔다.** replicad 의 shape 수명은 GCWithScope 로 관리되는데
@@ -577,20 +744,35 @@ export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) 
      *   **이름을 얻으려다 STEP 자체를 잃지 않는다** — 리포의 필렛 실패 폴백과 같은 규율이고,
      *   어느 경로로 나갔는지 `importNotes` 로 보고한다.
      */
+    /**
+     * ★260803 — **조립 트리**(NAUO)를 먼저 시도한다. 실패하면 종전의 평면 명명 방출로,
+     * 그것도 실패하면 무명 컴파운드로 내려간다. 3단이라 어느 층에서 멈췄는지 보고가 남는다.
+     */
     try {
-      const { exportSTEP } = await ensureReplicad();
-      step = await exportSTEP(namedShapes, { unit: 'MM', modelUnit: 'MM' }).text();
+      const r = await exportAssemblySTEP(namedShapes, { unit: 'MM', name: intent.name ?? 'ASSEMBLY' });
+      step = r.step;
       named = namedShapes.map((x) => x.name);
+      tree = { nauo: r.nauo, products: r.products, groups: r.groups };
     } catch (e) {
-      step = null;
-      importNotes.push('STEP 파트명 방출 실패(' + String(e?.message ?? e).slice(0, 60) + ') — 무명 컴파운드로 폴백');
+      importNotes.push('STEP 조립 트리 실패(' + String(e?.message ?? e).slice(0, 60) + ') — 평면 명명으로 폴백');
+    }
+    if (step === null) {
+      try {
+        const { exportSTEP } = await ensureReplicad();
+        // 폴백도 같은 후처리를 거친다 — 경로마다 인코딩이 다르면 그게 다음 버그다.
+        step = escapeStepNonAscii(await exportSTEP(namedShapes, { unit: 'MM', modelUnit: 'MM' }).text());
+        named = namedShapes.map((x) => x.name);
+      } catch (e) {
+        step = null;
+        importNotes.push('STEP 파트명 방출 실패(' + String(e?.message ?? e).slice(0, 60) + ') — 무명 컴파운드로 폴백');
+      }
     }
   }
   if (step === null) {
     if (!out) { const { compoundShapes } = await ensureReplicad(); out = compoundShapes(rawShapes); }
     step = await out.blobSTEP().text();
   }
-  return { step, entities: (step.match(/^#\d+/gm) ?? []).length, fuseReport: report, importNotes, named };
+  return { step, entities: (step.match(/^#\d+/gm) ?? []).length, fuseReport: report, importNotes, named, tree };
 }
 
 /**
