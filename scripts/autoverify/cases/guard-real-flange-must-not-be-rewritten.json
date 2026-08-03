@@ -1,0 +1,21 @@
+{
+  "id": "guard-real-flange-must-not-be-rewritten",
+  "title": "★게이트 가드 — 진짜 플랜지는 washer 로 바뀌면 안 된다",
+  "source": "auto-fix RULES 의 경계 시험",
+  "kind": "assembly",
+  "note": "볼트원 3종이 다 있는 진짜 플랜지다. auto-fix 가 이걸 건드리면 규칙이 너무 넓어진 것이다. expectFail 이 아니라 **통과해야 하되 type 이 유지**돼야 하므로 partTypes 로 잡는다.",
+  "input": {
+    "name": "진짜 플랜지",
+    "parts": [
+      { "id": "pipe", "type": "tube", "params": { "outerDia": 60, "innerDia": 50, "length": 200 }, "at": { "tx": 0, "ty": 0, "tz": 0 } },
+      { "id": "flange_a", "type": "flange", "params": { "outerDia": 150, "boreDia": 50, "thickness": 12, "bcd": 100, "boltHoleD": 14, "boltCount": 4 }, "at": { "tx": 0, "ty": 0, "tz": 200 } }
+    ]
+  },
+  "expect": {
+    "minParts": 2,
+    "partTypes": { "flange": 1 },
+    "mustKeep": ["pipe", "flange_a"],
+    "maxDropped": 0,
+    "designOk": false
+  }
+}

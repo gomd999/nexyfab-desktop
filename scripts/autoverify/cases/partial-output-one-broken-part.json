@@ -1,0 +1,22 @@
+{
+  "id": "partial-output-one-broken-part",
+  "title": "부품 4개 중 1개가 망가지면 나머지 3개까지 통째로 버려지던 실패",
+  "source": "실측 260803 — buildAssembly 가 ok:false · parts:0 · openscad:false 를 냈다",
+  "kind": "assembly",
+  "note": "제품 원칙 §0.4 「막다른 길 금지」. BROKEN 은 볼트원 일부 누락이라 auto-fix 대상이 아니고(지어내지 않는다) 드롭돼야 한다. 나머지 3개는 살아야 한다.",
+  "input": {
+    "name": "부분 산출 시험",
+    "parts": [
+      { "id": "base", "type": "box", "params": { "width": 260, "depth": 220, "height": 6 }, "at": { "tx": 0, "ty": 0, "tz": 0 } },
+      { "id": "post", "type": "box", "params": { "width": 50, "depth": 25, "height": 160 }, "at": { "tx": 105, "ty": 97, "tz": 6 } },
+      { "id": "plate", "type": "plate_with_holes", "params": { "width": 280, "depth": 240, "thickness": 4 }, "at": { "tx": -10, "ty": -10, "tz": 166 } },
+      { "id": "BROKEN", "type": "flange", "params": { "outerDia": 150, "boreDia": 50, "thickness": 12, "bcd": 100 }, "at": { "tx": 0, "ty": 0, "tz": 200 } }
+    ]
+  },
+  "expect": {
+    "minParts": 3,
+    "mustKeep": ["base", "post", "plate"],
+    "maxDropped": 1,
+    "designOk": false
+  }
+}

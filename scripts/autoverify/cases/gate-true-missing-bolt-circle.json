@@ -1,0 +1,15 @@
+{
+  "id": "gate-true-missing-bolt-circle",
+  "title": "★GATE_TRUE — 볼트원이 일부만 있으면 막는 것이 정답이다",
+  "source": "정직성 장치 ① 시험 (계획서 §11.5)",
+  "kind": "assembly",
+  "expectFail": true,
+  "note": "볼트원 3종 중 bcd 만 있다. 이건 오분류가 아니라 **입력 누락**이므로 auto-fix 가 지어내면 안 되고 게이트가 막아야 한다. 이 케이스가 '통과'하면 게이트가 느슨해졌다는 뜻이고, 그때 이 하네스가 ★★ 경고를 낸다. 점수 분모에서는 제외된다 — 게이트가 일하는 것을 실패로 세면 게이트를 느슨하게 만드는 압력이 생긴다.",
+  "input": {
+    "name": "입력 누락 플랜지",
+    "parts": [
+      { "id": "base", "type": "box", "params": { "width": 200, "depth": 200, "height": 10 }, "at": { "tx": 0, "ty": 0, "tz": 0 } },
+      { "id": "incomplete_flange", "type": "flange", "params": { "outerDia": 150, "boreDia": 50, "thickness": 12, "bcd": 100 }, "at": { "tx": 0, "ty": 0, "tz": 10 } }
+    ]
+  }
+}

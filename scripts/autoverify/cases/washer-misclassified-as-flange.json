@@ -1,0 +1,23 @@
+{
+  "id": "washer-misclassified-as-flange",
+  "title": "마찰 와셔가 flange 로 분류되던 라이브 실패 (부품당 6건 × 10부품 = 60건)",
+  "source": "live-260803 · 노트북 거치대 스펙",
+  "kind": "assembly",
+  "note": "auto-fix RULES 가 washer 로 되돌리고, 나머지 부품은 그대로 살아야 한다. 실패 원인=TYPE_HINTS 17종 결손(B0-1 에서 수정).",
+  "input": {
+    "name": "노트북 거치대(발췌)",
+    "parts": [
+      { "id": "base", "type": "plate_with_holes", "params": { "width": 260, "depth": 220, "thickness": 6 }, "at": { "tx": 0, "ty": 0, "tz": 0 }, "material": "aluminum" },
+      { "id": "friction_washer_1", "type": "flange", "params": { "outerDia": 18, "boreDia": 8, "thickness": 1 }, "at": { "tx": 40, "ty": 40, "tz": 6 } },
+      { "id": "friction_washer_2", "type": "flange", "params": { "outerDia": 18, "boreDia": 8, "thickness": 1 }, "at": { "tx": 80, "ty": 40, "tz": 6 } },
+      { "id": "hinge_pin", "type": "cylinder", "params": { "diameter": 8, "length": 55 }, "at": { "tx": 120, "ty": 40, "tz": 6 } }
+    ]
+  },
+  "expect": {
+    "minParts": 4,
+    "partTypes": { "washer": 2 },
+    "mustKeep": ["base", "hinge_pin"],
+    "maxDropped": 0,
+    "designOk": false
+  }
+}
