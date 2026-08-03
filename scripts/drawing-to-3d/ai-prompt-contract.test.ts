@@ -57,10 +57,32 @@ describe('프롬프트에 실리는 어휘 스펙에 `undefined` 가 없다', ()
     expect(bad, `스펙이 비었거나 undefined 인 어휘: ${bad.join(', ')}`).toEqual([]);
   });
 
-  it('힌트 보유율을 기록한다 — 줄지 않게만 막는다', () => {
-    const have = types.filter((t) => hints[t]).length;
-    // 260802 실측: 38종 중 21종(회귀가 revolve 누락을 잡아 +1). **줄어드는 것**을 막는다.
-    expect(have).toBeGreaterThanOrEqual(21);
+  /**
+   * ★260803 — **래칫을 전수로 올린다.**
+   *
+   * 이 검사는 260802 에 `≥21`(38종 중)로 들어왔고 **한 번도 올라가지 않았다.**
+   * 그 사이 17종이 힌트 없이 남았고, 라이브에서 대가를 치렀다:
+   * ```
+   *   요청  : 힌지 마찰 와셔 — 외경 18 · 내경 8 · 두께 1   (= washer 파라미터와 정확히 일치)
+   *   선택  : flange                                       ← 힌트가 있는 쪽
+   *   결과  : 부품당 6건 × 10부품 = 게이트 에러 60건, 사용자 화면은 빨간 벽
+   * ```
+   * `PARAMS` 이름 폴백(위 검사)만으로는 **안 골린다**는 것이 실측으로 확인됐다 —
+   * 모델은 **설명이 붙은 어휘**를 고른다. 그래서 「비어 있지 않다」가 아니라
+   * **「전부 있다」**를 요구한다. 어휘를 추가하면 힌트도 반드시 같이 온다.
+   *
+   * ⚠ 이 수를 다시 `>=` 로 되돌리지 마라. 느슨한 래칫이 17종을 숨긴 장본인이다.
+   */
+  it('★전 어휘가 힌트를 갖는다 — 이름만 나열된 어휘는 모델이 고르지 않는다', () => {
+    const missing = types.filter((t) => !hints[t]);
+    expect(missing, `힌트 없는 어휘: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  it('힌트가 그 어휘의 PARAMS 키를 전부 언급한다', () => {
+    const bad = types
+      .map((t) => [t, (params[t] ?? []).filter((k) => !(hints[t] ?? '').includes(k))] as const)
+      .filter(([, miss]) => miss.length);
+    expect(bad.map(([t, m]) => `${t}: ${m.join(',')}`)).toEqual([]);
   });
 });
 

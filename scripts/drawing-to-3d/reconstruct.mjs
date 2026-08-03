@@ -505,9 +505,27 @@ const GATES = {
     for (const k of ['width', 'depth', 'thickness']) if (!pos(i[k]) || i[k] > 5000) e.push(`${k} invalid`);
     if (i.thickness >= Math.min(i.width, i.depth)) e.push('thickness ≥ min(w,d) — 판재 아님');
     for (const [n, h] of (i.holes ?? []).entries()) {
-      if (!pos(h.d) || h.d >= Math.min(i.width, i.depth)) e.push(`hole[${n}] d invalid`);
-      if (!(h.x - h.d / 2 >= 0 && h.x + h.d / 2 <= i.width)) e.push(`hole[${n}] x outside`);
-      if (!(h.y - h.d / 2 >= 0 && h.y + h.d / 2 <= i.depth)) e.push(`hole[${n}] y outside`);
+      /**
+       * ★260803 — 처방을 붙인다. 라이브에서 `hole[0..3] d invalid` 4건이 나갔는데
+       * 원인이 **둘로 갈린다**: ①지름을 아예 안 준 경우 ②사각 개구(통풍구 180×130)를
+       * 원형 홀에 밀어넣은 경우. 종전 문구는 둘을 구분하지 못해 조치를 알 수 없었다.
+       * ⚠ `w`/`h` 같은 사각 크기 키가 섞여 있으면 ②로 단정하지 않고 **가능성만** 알린다
+       *   — 키 이름은 모델이 자유롭게 붙일 수 있어 단정은 위험하다.
+       */
+      const looksRect = h.w !== undefined || h.h !== undefined || h.width !== undefined;
+      if (!pos(h.d)) {
+        // ⚠ d 가 없으면 x/y 경계 검사는 NaN 비교라 **항상** 실패한다 — 파생 오류를 쏟지 않고 멈춘다.
+        //   라이브에서 이 한 건이 3건으로 부풀어 나갔다.
+        e.push(`hole[${n}] d 없음 — 원형 구멍은 지름 d 가 필수다`
+          + (looksRect ? '. 사각 개구로 보이면 부품 type 을 `slab_with_openings` 로 바꾸고 openings[{x,y,w,d}] 로 선언하라' : ''));
+        continue;
+      }
+      if (h.d >= Math.min(i.width, i.depth)) {
+        e.push(`hole[${n}] d ${h.d} ≥ 판 최소변 ${Math.min(i.width, i.depth)} — 구멍이 판보다 크다`
+          + '. 큰 사각 개구(통풍구·덕트홀)라면 `slab_with_openings` 를 써라');
+      }
+      if (!(h.x - h.d / 2 >= 0 && h.x + h.d / 2 <= i.width)) e.push(`hole[${n}] x outside — 좌하단 원점 기준 0..${i.width} 안에 들어와야 한다`);
+      if (!(h.y - h.d / 2 >= 0 && h.y + h.d / 2 <= i.depth)) e.push(`hole[${n}] y outside — 좌하단 원점 기준 0..${i.depth} 안에 들어와야 한다`);
       // T1 제조 피처 게이트(260719): cbore/csink/tap/blind — 상면 기준(관례 명시)
       if (h.kind === 'cbore') {
         if (!pos(h.cbDia) || h.cbDia <= h.d) e.push(`hole[${n}] cbDia ≤ d`);
@@ -537,13 +555,38 @@ const GATES = {
     for (const k of ['legA', 'legB', 'width', 'thickness']) if (!pos(i[k])) e.push(`${k} invalid`);
     if (i.thickness >= Math.min(i.legA, i.legB)) e.push('thickness ≥ min(legA,legB)');
   },
+  /**
+   * ★260803 — **오분류 가드.** 라이브에서 「힌지 마찰 와셔 외경18·내경8·두께1」이
+   * `flange` 로 분류돼 **부품 하나당 6건씩, 10부품 60건**이 쏟아졌다:
+   * ```
+   *   bcd invalid · boltHoleD invalid · boltCount invalid ·
+   *   BCD not between bore and OD · bolt holes break bore rim · boltCount invalid
+   * ```
+   * 사용자 화면에는 **빨간 벽**이 나갔고, 정작 필요한 조치("이건 washer 다")는 어디에도 없었다.
+   *
+   * ⚠ 게이트가 옳게 막았어도 **원인만 말하고 조치를 안 말하면 결함으로 읽힌다.**
+   *   OD/bore/thickness 는 성립하는데 볼트원 3종이 **통째로 없으면** 그건 플랜지가 아니다.
+   *   6건을 쏟는 대신 **처방 1건**을 낸다.
+   * ⚠ 볼트원이 **일부만** 있으면(예: bcd 만) 오분류가 아니라 입력 누락이므로 기존 검사를 그대로 돈다.
+   */
   flange(i, e) {
-    for (const k of ['outerDia', 'boreDia', 'thickness', 'bcd', 'boltHoleD', 'boltCount']) if (!pos(i[k])) e.push(`${k} invalid`);
+    const rimOk = pos(i.outerDia) && pos(i.boreDia) && pos(i.thickness) && i.boreDia < i.outerDia;
+    const boltKeys = ['bcd', 'boltHoleD', 'boltCount'];
+    const boltGiven = boltKeys.filter((k) => i[k] !== undefined && i[k] !== null);
+    if (rimOk && boltGiven.length === 0) {
+      e.push('볼트원(bcd·boltHoleD·boltCount)이 없다 — 평와셔라면 type 을 `washer` 로 바꿔라'
+        + `(washer: outerDia ${i.outerDia}, boreDia ${i.boreDia}, thickness ${i.thickness} 그대로 쓴다).`
+        + ' 플랜지가 맞다면 볼트원 3종을 채워라');
+      return; // 6건 쏟지 않는다 — 조치 1건으로 끝낸다
+    }
+    // ⚠ 260803 — `boltCount` 를 아래 `pos()` 루프와 정수 검사가 **둘 다** 잡아
+    //   라이브 메시지에 `boltCount invalid` 가 두 번 나갔다. 정수 검사 하나로 통합한다.
+    for (const k of ['outerDia', 'boreDia', 'thickness', 'bcd', 'boltHoleD']) if (!pos(i[k])) e.push(`${k} invalid`);
+    if (!Number.isInteger(i.boltCount) || i.boltCount < 2 || i.boltCount > 36) e.push('boltCount invalid — 2~36 사이 정수');
     if (i.boreDia >= i.outerDia) e.push('bore ≥ OD');
-    if (!(i.bcd > i.boreDia && i.bcd < i.outerDia)) e.push('BCD not between bore and OD');
-    if (i.bcd + i.boltHoleD >= i.outerDia) e.push('bolt holes break OD rim');
-    if (i.bcd - i.boltHoleD <= i.boreDia) e.push('bolt holes break bore rim');
-    if (!Number.isInteger(i.boltCount) || i.boltCount < 2 || i.boltCount > 36) e.push('boltCount invalid');
+    if (!(i.bcd > i.boreDia && i.bcd < i.outerDia)) e.push('BCD not between bore and OD — bcd 는 보어와 외경 사이여야 한다');
+    if (i.bcd + i.boltHoleD >= i.outerDia) e.push('bolt holes break OD rim — bcd 를 줄이거나 outerDia 를 키워라');
+    if (i.bcd - i.boltHoleD <= i.boreDia) e.push('bolt holes break bore rim — bcd 를 키우거나 boreDia 를 줄여라');
   },
   bent_sheet(i, e) {
     for (const k of ['webWidth', 'flangeHeight', 'length', 'thickness']) if (!pos(i[k])) e.push(`${k} invalid`);
