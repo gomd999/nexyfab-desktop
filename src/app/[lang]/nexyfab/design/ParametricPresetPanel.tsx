@@ -10,6 +10,7 @@
  * (템플릿 매칭 → 판독값 **확인 카드** → 사용자가 승인해야 생성 — 허위 형상 방지).
  */
 
+import { ACCEPT_RASTER } from '@/lib/drawingInput';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isKorean } from '@/lib/i18n/normalize';
 
@@ -311,7 +312,7 @@ export default function ParametricPresetPanel({
             {ko ? '카드 클릭=즉시 생성 · AI 없이 항상 유효' : 'click = generate · no AI, always valid'}
           </span>
         </div>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,.dxf,.dwg" onChange={onPickFile} style={{ display: 'none' }} />
+        <input ref={fileRef} type="file" accept={`${ACCEPT_RASTER},.dxf,.dwg`} onChange={onPickFile} style={{ display: 'none' }} />
         {/* §3 역할 분리 — 도면=치수의 진실 · 사진=형태 힌트(치수 미사용) */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
           <button type="button" onClick={() => { modeRef.current = 'drawing'; fileRef.current?.click(); }} disabled={drawBusy}

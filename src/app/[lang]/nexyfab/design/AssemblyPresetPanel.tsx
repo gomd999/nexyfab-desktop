@@ -9,6 +9,7 @@
  * 어셈블리 템플릿이 없는 분야(mech·rack·civil)에서는 렌더되지 않는다.
  */
 
+import { ACCEPT_RASTER } from '@/lib/drawingInput';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { VERIFY_FIELDS, buildVerifyParams } from '@/lib/nexyfab/verify-params';
 import dynamic from 'next/dynamic';
@@ -2809,7 +2810,7 @@ export default function AssemblyPresetPanel({
           </span>
         </div>
         {/* 어셈블리 도면→3D — §3 역할 분리: 도면=치수 판독 · 사진=형태 힌트만 */}
-        <input ref={aFileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onPickAsmFile} style={{ display: 'none' }} />
+        <input ref={aFileRef} type="file" accept={ACCEPT_RASTER} onChange={onPickAsmFile} style={{ display: 'none' }} />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
           <button type="button" onClick={() => { aModeRef.current = 'drawing'; aFileRef.current?.click(); }} disabled={aDrawBusy}
             title={ko ? '치수 도면 — 치수를 판독합니다' : 'Dimensioned drawing'}

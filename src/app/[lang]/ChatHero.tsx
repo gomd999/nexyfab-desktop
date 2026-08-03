@@ -14,6 +14,7 @@ import dynamic from 'next/dynamic';
 import type * as ThreeNS from 'three';
 import { DomainIcon } from './_domainIcons';
 import Md from '@/components/nexyfab/Md';
+import { ACCEPT_RASTER, imageFromTransfer, isAcceptedRaster } from '@/lib/drawingInput';
 
 // three/R3F 뷰어는 SSR 불가 → 클라이언트에서만 로드.
 const ChatCadViewer = dynamic(() => import('./ChatCadViewer'), {
@@ -1576,13 +1577,22 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
     void send(text, hist);
   };
 
-  // 입력 A(이미지) — 도면/스케치를 첨부해 Vision 판독 → 3D 체크포인트로 잇는다.
-  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    e.target.value = ''; // 같은 파일 재선택 허용
+  /**
+   * 입력 A(이미지) — 도면/스케치를 첨부해 Vision 판독 → 3D 체크포인트로 잇는다.
+   *
+   * ★260803 — **파일선택·붙여넣기·드래그가 같은 함수를 지난다.**
+   * 실무에서 도면은 대개 **캡처해서 붙여넣기**다. 파일로 저장했다가 버튼을 눌러 고르는
+   * 흐름은 한 단계가 더 많고, 그 한 단계에서 사람이 떨어진다.
+   * ⚠ 허용 타입·크기는 `@/lib/drawingInput` 단일 소스다 — 종전에는 같은 목록이
+   *   **여섯 곳**에 흩어져 있었다(라우트 3 · accept 속성 2 · 클라 정규식 1).
+   */
+  const acceptFile = useCallback((f: File | null | undefined) => {
     if (!f) return;
-    if (!/^image\/(png|jpe?g|webp)$/.test(f.type)) { setError('PNG·JPG·WebP 이미지만 지원합니다.'); return; }
-    if (f.size > 6_000_000) { setError('이미지가 너무 큽니다(6MB 이하).'); return; }
+    const v = isAcceptedRaster(f);
+    if (!v.ok) {
+      setError(v.reason === 'type' ? 'PNG·JPG·WebP 이미지만 지원합니다.' : '이미지가 너무 큽니다(6MB 이하).');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = String(reader.result || '');
@@ -1590,7 +1600,29 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
       setError('');
     };
     reader.readAsDataURL(f);
+  }, []);
+
+  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = ''; // 같은 파일 재선택 허용
+    acceptFile(f);
   };
+
+  /** 붙여넣기(Ctrl+V) — 스크린샷은 `clipboardData.items` 로 온다. */
+  const onPasteImage = useCallback((e: React.ClipboardEvent) => {
+    const f = imageFromTransfer(e.clipboardData);
+    if (!f) return; // 이미지가 아니면 평소대로 텍스트 붙여넣기
+    e.preventDefault();
+    acceptFile(f);
+  }, [acceptFile]);
+
+  /** 드래그&드롭 — 파일 탐색기에서 온 것은 `dataTransfer.files` 다. */
+  const [dragOver, setDragOver] = useState(false);
+  const onDropImage = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    acceptFile(imageFromTransfer(e.dataTransfer));
+  }, [acceptFile]);
 
   const sendImage = useCallback(async () => {
     if (!attached || loading) return;
@@ -2002,7 +2034,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           borderRadius: 18, padding: 12, boxShadow: `0 12px 48px rgba(0,0,0,0.4)`,
           backdropFilter: 'blur(8px)', transition: 'border-color .3s', flexShrink: 0,
         }}>
-          <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onPickFile} style={{ display: 'none' }} />
+          <input ref={fileRef} type="file" accept={ACCEPT_RASTER} onChange={onPickFile} style={{ display: 'none' }} />
 
           {/* 첨부 도면 미리보기 */}
           {attached && (
@@ -2021,12 +2053,18 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKeyDown}
+            onPaste={onPasteImage}
+            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDropImage}
             placeholder={attached ? (t.imgRecognized + '…') : t.placeholder}
             rows={started ? 2 : 3}
             style={{
               width: '100%', resize: 'none', border: 'none', outline: 'none', background: 'transparent',
               color: '#f0f4ff', fontSize: 15, lineHeight: 1.6, padding: '8px 8px 4px', boxSizing: 'border-box',
               fontFamily: 'inherit',
+              // 드래그 중임을 보여준다 — 아무 반응이 없으면 「안 되는 줄」 알고 손을 뗀다
+              ...(dragOver ? { background: 'rgba(56,189,248,0.08)', outline: '1px dashed #38bdf8' } : {}),
             }}
           />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '4px 4px 2px' }}>

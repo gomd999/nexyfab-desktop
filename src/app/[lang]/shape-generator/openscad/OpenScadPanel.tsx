@@ -1,4 +1,5 @@
 'use client';
+import { ACCEPT_RASTER } from '@/lib/drawingInput';
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/hooks/useAuth';
@@ -3175,7 +3176,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
               <div className="flex flex-col gap-2" data-testid="image-intent-section">
                 <input
                   type="file"
-                  accept="image/png,image/jpeg,image/webp"
+                  accept={ACCEPT_RASTER}
                   data-testid="image-intent-file"
                   onChange={e => handleImageFile(e.target.files?.[0] ?? null)}
                   disabled={extractBusy}

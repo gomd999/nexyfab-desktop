@@ -10,6 +10,7 @@
  *   { ok:true, templateId, labelKo, labelEn, confidence, unit?, values, filled, clamped, notes? }
  * | { ok:false, error, recognized? }
  */
+import { RASTER_MIME } from '@/lib/drawingInput';
 import { NextRequest, NextResponse } from 'next/server';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -88,7 +89,7 @@ async function assemblyFromDescription(description: string): Promise<Record<stri
   }
 }
 
-const ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const ALLOWED_MIME = new Set<string>(RASTER_MIME); // 단일 소스: @/lib/drawingInput
 const MIN_CONFIDENCE = 0.4;
 const DOMAIN_LABEL: Record<string, string> = {
   mech: '기계·장비·판금', rack: '가설·랙·경량철골', civil: '토목 소구조물',

@@ -14,6 +14,7 @@
  * /verify-spec textarea (the panel has a button for this) or pipe `scad`
  * directly into /api/nexyfab/openscad-render.
  */
+import { RASTER_MIME } from '@/lib/drawingInput';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPlan, consumeMonthlyMetricSlot } from '@/lib/plan-guard';
 import { rateLimit } from '@/lib/rate-limit';
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest) {
   }
   // mimeType: caller hint wins, then data-URL inference, then default png.
   const callerMime = typeof body.mimeType === 'string' ? body.mimeType : '';
-  const ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/webp']);
+  const ALLOWED_MIME = new Set<string>(RASTER_MIME); // 단일 소스: @/lib/drawingInput
   const mimeType = ALLOWED_MIME.has(callerMime)
     ? (callerMime as 'image/png' | 'image/jpeg' | 'image/webp')
     : (decoded.mimeType ?? 'image/png');

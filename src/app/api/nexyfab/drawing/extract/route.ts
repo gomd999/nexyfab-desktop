@@ -11,6 +11,7 @@
  *
  * caller: { imageBase64, mimeType, note? } → { ok, recognized, intent, scad, spec } | { ok:false, ... }
  */
+import { RASTER_MIME } from '@/lib/drawingInput';
 import { NextRequest, NextResponse } from 'next/server';
 import { TraceRecorder, traceSummary } from '@/lib/pipeline-trace';
 import { join } from 'node:path';
@@ -29,7 +30,7 @@ type ReconstructModule = { PARAMS: Record<string, string[]> };
 type BuiltAssembly = { ok: boolean; openscad?: string; gateErrors?: string[]; composeIntent?: { name?: string; features?: unknown[] } };
 type AssemblyModule = { buildAssembly: (asm: unknown) => BuiltAssembly };
 
-const ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const ALLOWED_MIME = new Set<string>(RASTER_MIME); // 단일 소스: @/lib/drawingInput
 const MIN_CONFIDENCE = 0.4;
 
 let _ex: ExtractModule | null = null;
