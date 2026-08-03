@@ -252,7 +252,7 @@ export function assemblyToComposeIntent(asm) {
     };
     const F = (kind, extra, lx = 0, ly = 0, lz = 0, op = 'add') => {
       const [wx, wy, wz] = rotLocal(lx, ly, lz);
-      return { kind, ...extra, op, _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), ...(part.filletMm > 0 ? { _fillet: part.filletMm } : {}), ...(part.chamferMm > 0 ? { _chamfer: part.chamferMm } : {}), ...(Array.isArray(part.edgeOps) && part.edgeOps.length ? { _edgeOps: part.edgeOps } : {}), at: { translate: [wx + tx, wy + ty, wz + tz], ...(rot ? { rotate: rot } : {}) } };
+      return { kind, ...extra, op, _col: col, _pid: pidx, _pname: part.id ?? part.type, ...(part.system ? { _sys: part.system } : {}), ...(part.filletMm > 0 ? { _fillet: part.filletMm } : {}), ...(part.chamferMm > 0 ? { _chamfer: part.chamferMm } : {}), ...(Array.isArray(part.edgeOps) && part.edgeOps.length ? { _edgeOps: part.edgeOps } : {}), at: { translate: [wx + tx, wy + ty, wz + tz], ...(rot ? { rotate: rot } : {}) } };
     };
     switch (part.type) {
       case 'box': feats.push(F('box', { size: [p.width, p.depth, p.height] })); break;
@@ -372,7 +372,7 @@ export function assemblyToComposeIntent(asm) {
           for (const f of inner.features ?? []) {
             const tr = f.at?.translate ?? [0, 0, 0];
             feats.push({
-              ...f, _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}),
+              ...f, _col: col, _pid: pidx, _pname: part.id ?? part.type, ...(part.system ? { _sys: part.system } : {}),
               op: sb.op === 'subtract' ? 'subtract' : (f.op ?? 'add'),
               at: {
                 ...(f.at ?? {}),
@@ -474,8 +474,8 @@ export function assemblyToComposeIntent(asm) {
         const domeD = Math.min(p.width * 0.9, p.height * 1.1);
         const db = Math.max(8, p.boreDia * 0.25);
         feats.push(F('box', { size: [p.width, d2, p.height * 0.55] }));
-        feats.push({ kind: 'cylinder', diameter: domeD, height: d2, centered: true, op: 'add', _col: col, _pid: pidx, at: { translate: [tx + p.width / 2, ty + d2 / 2, tz + p.height * 0.55], rotate: [-90, 0, 0] } });
-        feats.push({ kind: 'cylinder', diameter: p.boreDia, height: d2 + 2, op: 'subtract', _col: col, _pid: pidx, at: { translate: [tx + p.width / 2, ty - 1, tz + p.height], rotate: [-90, 0, 0] } });
+        feats.push({ kind: 'cylinder', diameter: domeD, height: d2, centered: true, op: 'add', _col: col, _pid: pidx, _pname: part.id ?? part.type, at: { translate: [tx + p.width / 2, ty + d2 / 2, tz + p.height * 0.55], rotate: [-90, 0, 0] } });
+        feats.push({ kind: 'cylinder', diameter: p.boreDia, height: d2 + 2, op: 'subtract', _col: col, _pid: pidx, _pname: part.id ?? part.type, at: { translate: [tx + p.width / 2, ty - 1, tz + p.height], rotate: [-90, 0, 0] } });
         feats.push(F('cylinder', { diameter: db, height: p.height }, (p.width - bp) / 2, d2 / 2, -1, 'subtract'));
         feats.push(F('cylinder', { diameter: db, height: p.height }, (p.width + bp) / 2, d2 / 2, -1, 'subtract'));
         break;
@@ -515,7 +515,7 @@ export function assemblyToComposeIntent(asm) {
           break;
         }
         const t2 = p.wallThk ?? Math.max(2, p.runOD * 0.05);
-        const mk = (kind, extra, ltx, lty, ltz, rotv, op = 'add') => ({ kind, ...extra, op, _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), at: { translate: [ltx + tx, lty + ty, ltz + tz], ...(rotv ? { rotate: rotv } : {}) } });
+        const mk = (kind, extra, ltx, lty, ltz, rotv, op = 'add') => ({ kind, ...extra, op, _col: col, _pid: pidx, _pname: part.id ?? part.type, ...(part.system ? { _sys: part.system } : {}), at: { translate: [ltx + tx, lty + ty, ltz + tz], ...(rotv ? { rotate: rotv } : {}) } });
         feats.push(mk('cylinder', { diameter: p.runOD, height: p.runLen }, 0, 0, 0, [0, 90, 0]));
         feats.push(mk('cylinder', { diameter: p.runOD - 2 * t2, height: p.runLen + 2 }, -1, 0, 0, [0, 90, 0], 'subtract'));
         feats.push(mk('cylinder', { diameter: p.branchOD, height: p.branchLen }, p.runLen / 2, 0, 0, null));
@@ -536,10 +536,10 @@ export function assemblyToComposeIntent(asm) {
           if (L < 1e-9) continue;
           const ay = (Math.acos(dz2 / L) * 180) / Math.PI;
           const az = (Math.atan2(dy2, dx2) * 180) / Math.PI;
-          feats.push({ kind: 'cylinder', diameter: p.dia, height: L, op: 'add', _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), ...(part.filletMm > 0 ? { _fillet: part.filletMm } : {}), ...(part.chamferMm > 0 ? { _chamfer: part.chamferMm } : {}), ...(Array.isArray(part.edgeOps) && part.edgeOps.length ? { _edgeOps: part.edgeOps } : {}), at: { translate: [x1 + tx, y1 + ty, z1 + tz], rotate: [0, +ay.toFixed(6), +az.toFixed(6)] } });
+          feats.push({ kind: 'cylinder', diameter: p.dia, height: L, op: 'add', _col: col, _pid: pidx, _pname: part.id ?? part.type, ...(part.system ? { _sys: part.system } : {}), ...(part.filletMm > 0 ? { _fillet: part.filletMm } : {}), ...(part.chamferMm > 0 ? { _chamfer: part.chamferMm } : {}), ...(Array.isArray(part.edgeOps) && part.edgeOps.length ? { _edgeOps: part.edgeOps } : {}), at: { translate: [x1 + tx, y1 + ty, z1 + tz], rotate: [0, +ay.toFixed(6), +az.toFixed(6)] } });
         }
         for (let k = 1; k < pts.length - 1; k++) {
-          feats.push({ kind: 'sphere', diameter: p.dia, op: 'add', _col: col, _pid: pidx, ...(part.system ? { _sys: part.system } : {}), at: { translate: [pts[k][0] + tx, pts[k][1] + ty, pts[k][2] + tz] } });
+          feats.push({ kind: 'sphere', diameter: p.dia, op: 'add', _col: col, _pid: pidx, _pname: part.id ?? part.type, ...(part.system ? { _sys: part.system } : {}), at: { translate: [pts[k][0] + tx, pts[k][1] + ty, pts[k][2] + tz] } });
         }
         break;
       }

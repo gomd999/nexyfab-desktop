@@ -403,14 +403,55 @@ export async function stepTextToMesh(stepText, { tolerance = 0.05, angularTolera
 /** intent → STEP 문자열 (B-rep). fuseReport.dropped>0이면 호출측이 정직 고지할 것.
  * opts.imports(Phase5): [{file, offset:[x,y,z]}] — 실물 STEP 을 원기하 그대로 이동해
  * 컴파운드 병합(사용자 소유 파일 전제 — 게이트는 import-merge.resolveImportParts). */
+/**
+ * ★**STEP 파트명을 ISO 10303-21 로 안전하게 만든다** (260803, B10).
+ *
+ * ## 왜
+ * 실측: `replicad.exportSTEP` 은 이름을 **raw UTF-8 그대로** 쓴다(`\X2\` 이스케이프 없음).
+ * STEP(ISO 10303-21) 문자열은 문자셋이 제한돼 있어 한글을 그대로 넣으면
+ * **SOLIDWORKS 가 CP949 로 읽어 깨진다.** GPT 가 만든 같은 제품 모델의 파트 트리가
+ * `睇쫮쐤__NX-001-_뮘퐗_넵끔` 이었던 것이 정확히 이 문제이고, 실무에서는 파일 반려 사유다.
+ *
+ * ## 규칙 (ISO 10303-21 §6.3.2)
+ * ```
+ *   비ASCII 연속 구간  →  \X2\ + UTF-16 코드유닛 4자리 hex 반복 + \X0\
+ *   '  →  ''   (문자열 리터럴 이스케이프)     \  →  \\
+ * ```
+ * ⚠ BMP 밖 문자는 UTF-16 **서러게이트 쌍 그대로** 넣는다 — 규격이 그렇게 정의한다.
+ * ⚠ ASCII 는 건드리지 않는다. 전부 이스케이프하면 사람이 읽을 수 없는 파일이 된다.
+ */
+export function stepSafeName(name) {
+  const s = String(name ?? '');
+  let out = '';
+  let buf = '';
+  const flush = () => { if (buf) { out += '\\X2\\' + buf + '\\X0\\'; buf = ''; } };
+  for (const ch of s) {
+    const cp = ch.codePointAt(0);
+    if (cp < 128) {
+      flush();
+      out += ch === "'" ? "''" : ch === '\\' ? '\\\\' : ch;
+    } else {
+      for (let k = 0; k < ch.length; k++) buf += ch.charCodeAt(k).toString(16).toUpperCase().padStart(4, '0');
+    }
+  }
+  flush();
+  return out;
+}
+
 export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) {
   let solid, report;
+  /** 부품 단위 명명 방출 후보(B10). 후처리가 없을 때만 쓴다. */
+  let namedShapes = null;
+  /** 명명 방출이 실패했을 때 컴파운드로 되돌아가기 위한 원본 보관. */
+  let rawShapes = null;
   // 부품 스코프(_pid, 260718t): 부품별 robust 빌드 → 컴파운드(실조립 STEP 관례).
   // 전역 subtract 가 타 부품을 깎던 번짐 수정 — 부품 실패는 드롭 보고(정직).
   const hasPid = (intent.features ?? []).some((f) => f._pid !== undefined);
   if (hasPid) {
     const pids = [...new Set(intent.features.map((f) => f._pid))];
     const shapes = [];
+    /** 부품별 {shape,name,color} — STEP 어셈블리 명명 방출용(B10). */
+    const named = [];
     report = { total: intent.features.length, jittered: 0, dropped: [] };
     for (const pid of pids) {
       const fl = intent.features.filter((f) => f._pid === pid);
@@ -469,6 +510,12 @@ export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) 
           catch (e) { report.dropped.push({ pid, op: 'chamfer', err: String(e?.message ?? e).slice(0, 50) }); }
         }
         shapes.push(s);
+        // 부품 이름·색을 같이 모은다 — STEP 어셈블리에 실어야 SolidWorks 트리에 뜬다.
+        named.push({
+          shape: s,
+          name: stepSafeName(fl.find((f) => f._pname)?._pname ?? ('PART-' + pid)),
+          color: fl.find((f) => f._col)?._col,
+        });
         report.jittered += r.report.jittered;
         report.dropped.push(...r.report.dropped);
       } catch (e) {
@@ -476,7 +523,18 @@ export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) 
       }
     }
     if (!shapes.length) throw new Error('to-step: 부품 솔리드 없음(전 부품 빌드 실패)');
-    if (shapes.length === 1) solid = shapes[0];
+    /**
+     * ★260803 (B10) — **명명 STEP 어셈블리**로 낸다. 종전에는 `compoundShapes().blobSTEP()`
+     * 이라 **무명 컴파운드**가 나갔다 — SolidWorks 에서 파트 트리가 이름 없이 뜬다.
+     * ⚠ `compoundShapes` 는 shape **소유권을 가져간다** — 만든 뒤 원본을 쓰면
+     *   "This object has been deleted" 로 죽는다(실측). 그래서 명명 경로에서는
+     *   컴파운드를 **아예 만들지 않는다.** 순서가 규율이다.
+     * ⚠ 후처리(전체 필렛·외부 STEP 병합)는 단일 솔리드가 필요하므로 그때는 기존 경로를
+     *   유지한다 — 이름을 얻으려고 후처리를 잃지 않는다.
+     */
+    if (named.length > 1 && filletMm <= 0 && imports.length === 0) {
+      namedShapes = named; rawShapes = shapes; solid = null;
+    } else if (shapes.length === 1) solid = shapes[0];
     else { const { compoundShapes } = await ensureReplicad(); solid = compoundShapes(shapes); }
   } else {
     ({ solid, report } = await buildSolidRobust(intent));
@@ -509,8 +567,30 @@ export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) 
     }
     if (shapes.length > 1) out = compoundShapes(shapes);
   }
-  const step = await out.blobSTEP().text();
-  return { step, entities: (step.match(/^#\d+/gm) ?? []).length, fuseReport: report, importNotes };
+  let step = null;
+  let named = null;
+  if (namedShapes) {
+    /**
+     * ⚠ **폴백을 반드시 둔다.** replicad 의 shape 수명은 GCWithScope 로 관리되는데
+     *   `buildSolidRobust` 가 돌려준 솔리드를 XCAF 어셈블리로 넘기면 커널 소멸자에서
+     *   죽는 경우가 있다(실측: 단순 박스 25개는 정상, 부울을 거친 실부품은 크래시).
+     *   **이름을 얻으려다 STEP 자체를 잃지 않는다** — 리포의 필렛 실패 폴백과 같은 규율이고,
+     *   어느 경로로 나갔는지 `importNotes` 로 보고한다.
+     */
+    try {
+      const { exportSTEP } = await ensureReplicad();
+      step = await exportSTEP(namedShapes, { unit: 'MM', modelUnit: 'MM' }).text();
+      named = namedShapes.map((x) => x.name);
+    } catch (e) {
+      step = null;
+      importNotes.push('STEP 파트명 방출 실패(' + String(e?.message ?? e).slice(0, 60) + ') — 무명 컴파운드로 폴백');
+    }
+  }
+  if (step === null) {
+    if (!out) { const { compoundShapes } = await ensureReplicad(); out = compoundShapes(rawShapes); }
+    step = await out.blobSTEP().text();
+  }
+  return { step, entities: (step.match(/^#\d+/gm) ?? []).length, fuseReport: report, importNotes, named };
 }
 
 /**
