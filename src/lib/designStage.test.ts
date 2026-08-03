@@ -81,21 +81,47 @@ describe('★② 확정 스냅샷은 원본과 끊어져 있다', () => {
   });
 });
 
-describe('★③ 화면이 실제로 붙였다 — 모듈만 있고 안 쓰면 무효다', () => {
-  it('ChatHero 가 단계 바를 그린다', () => {
-    expect(ui).toMatch(/<StageBar stage=\{stage\}/);
-    expect((ui.match(/<StageBar /g) ?? []).length, '단품·조립 두 카드 모두에 붙어야 한다').toBeGreaterThanOrEqual(2);
+const design = readFileSync(join(process.cwd(), 'src', 'app', '[lang]', 'nexyfab', 'design', 'DesignInner.tsx'), 'utf8');
+const bar = readFileSync(join(process.cwd(), 'src', 'components', 'nexyfab', 'DesignStageBar.tsx'), 'utf8');
+
+describe('★③ 두 화면이 **같은** 단계 체계를 쓴다', () => {
+  it('★단계 바가 공용 컴포넌트다 — 화면마다 따로 그리면 다른 말을 하게 된다', () => {
+    for (const [name, src] of [['ChatHero', ui], ['DesignInner', design]] as const) {
+      expect(src, `${name} 가 공용 바를 안 쓴다`).toContain('DesignStageBar');
+    }
+    // 로컬 정의가 되살아나면 여기서 걸린다
+    expect(ui).not.toMatch(/function StageBar\(/);
+    expect(design).not.toMatch(/function StageBar\(/);
   });
 
-  it('단계를 결과에서 판정한다 — 화면이 임의로 정하지 않는다', () => {
+  it('ChatHero 는 단품·조립 두 카드 모두에 붙인다', () => {
+    expect((ui.match(/<DesignStageBar /g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('★DesignInner 는 생성이 끝나도 계속 보여준다 — loading 안에 숨기지 않는다', () => {
+    // `{scad && (` 블록 안에 있어야 결과를 보는 내내 단계가 남는다
+    const i = design.indexOf('<DesignStageBar');
+    const before = design.slice(Math.max(0, i - 700), i);
+    expect(before, '진행 중에만 뜨면 「지금 어디까지 왔는지」를 못 알려 준다').toContain('{scad && (');
+  });
+
+  it('두 화면 다 결과에서 판정한다 — 화면이 임의로 정하지 않는다', () => {
     expect(ui).toMatch(/stageOf\(\{/);
+    expect(design).toMatch(/stageOf\(\{/);
   });
 
-  it('★확정이 시각을 남긴다 — 남기지 않으면 「확정」은 선언일 뿐이다', () => {
-    expect(ui).toMatch(/setConfirmedAt\(Date\.now\(\)\)/);
+  it('★확정이 흔적을 남긴다 — 남기지 않으면 「확정」은 선언일 뿐이다', () => {
+    expect(ui, 'ChatHero: 확정 시각').toMatch(/setConfirmedAt\(Date\.now\(\)\)/);
+    expect(design, 'DesignInner: 확정 스냅샷').toMatch(/setConfirmedSnap\(snapshot\(/);
   });
 
-  it('★언어 코드 매핑을 명시한다 — 이 화면은 kr·cn, 사전은 ko·zh 다', () => {
-    expect(ui, '매핑이 없으면 한국어·중국어가 조용히 영어로 떨어진다').toMatch(/ISO: Record<Lang, string>/);
+  it('★언어 코드 매핑이 공용 바 안에 있다 — 이 앱은 kr·cn, 사전은 ko·zh 다', () => {
+    expect(bar, '매핑이 없으면 한국어·중국어가 조용히 영어로 떨어진다').toMatch(/const ISO: Record<string, string>/);
+    expect(bar).toMatch(/kr: 'ko'/);
+    expect(bar).toMatch(/cn: 'zh'/);
+  });
+
+  it('공용 바는 그리기만 한다 — 판정을 안에서 하면 화면마다 규칙이 갈린다', () => {
+    expect(bar).not.toMatch(/stageOf\(/);
   });
 });

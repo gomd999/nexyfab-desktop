@@ -20,6 +20,8 @@ import * as THREE from 'three';
 import { parseSTL } from '@/app/[lang]/shape-generator/io/importers';
 import { renderScadWasm, wasmAvailable } from '@/app/[lang]/studio/wasmRender';
 import { isKorean } from '@/lib/i18n/normalize';
+import { type DesignSnapshot, type DesignStage, snapshot, stageOf } from '@/lib/designStage';
+import { DesignStageBar } from '@/components/nexyfab/DesignStageBar';
 import { loc } from '@/lib/i18n/loc';
 import { EXAMPLES } from './DesignExamplesDict';
 import BriefClarifier from './BriefClarifier';
@@ -202,6 +204,25 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
   // 요청 정합(intent-match, 260717) — "시킨 것과 다른 걸 만든다" 노출: 불일치 목록
   type IntentMatch = { matched: number; mismatched: number; unverifiable: number; results: Array<{ verdict: string; note: string; text: string }>; assumptions?: string[]; repair?: { attempted: boolean; adopted: boolean; before: number; after: number } };
   const [intentM, setIntentM] = useState<IntentMatch | null>(null);
+  /**
+   * ★설계 단계(260803) — **초안 → 상세 → 제작**. 채팅형이지만 **순서가 보여야** 한다.
+   *
+   * 종전에는 단계가 문구로만 있었다. 생성이 끝나면 바로 결과가 뜨고, 「확정」에 해당하는
+   * 동작(패키지 발행)은 버튼 하나였다. 사용자에게는 **「묻고선 이미 해버렸다」**로 보이고,
+   * 확정본이 따로 남지 않아 다음 수정이 그것을 덮어썼다.
+   *
+   * ⚠ 단계는 **결과에서 판정**한다(사용자가 고르지 않는다). 추정 치수(assumptions)가
+   *   남아 있으면 게이트를 통과해도 **초안**이다 — 그걸 상세라 부르면 추정을 확정으로 판다.
+   * ⚠ 확정하면 **그 시점 결과를 깊은 복사로** 잡아 둔다. 참조만 들면 다음 수정이 확정본을
+   *   조용히 바꾼다.
+   */
+  const [confirmedSnap, setConfirmedSnap] = useState<DesignSnapshot<Record<string, unknown>> | null>(null);
+  const designStage: DesignStage = stageOf({
+    designOk: interf === null ? null : interf === 0 && (floatN ?? 0) === 0,
+    gateErrors: gateErrors ?? [],
+    assumptions: intentM?.assumptions ?? [],
+    confirmed: confirmedSnap != null,
+  });
   const pendingIntentRef = useRef<IntentMatch | null>(null);
   const pendingAssemblyRef = useRef<Record<string, unknown> | null>(null); // 설계 패키지용(어셈블리 경로만)
   const [lastAssembly, setLastAssembly] = useState<Record<string, unknown> | null>(null);
@@ -1096,6 +1117,13 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     if (!lastAssembly) return;
     setPkgBusy(true);
     setExportMsg(null);
+    /**
+     * ★확정(260803) — 제작물을 내려받는 순간이 **확정 시점**이다.
+     * 그 시점의 어셈블리를 **깊은 복사로** 잡아 둔다. 참조만 들면 다음 수정이 확정본을
+     * 조용히 바꿔, 사용자는 「내가 확정한 것이 무엇인지」를 잃는다.
+     * ⚠ 실패해도 스냅샷은 남긴다 — 「무엇으로 시도했는지」가 실패 분석의 출발점이다.
+     */
+    setConfirmedSnap(snapshot(ko ? '제작 확정' : 'Confirmed for manufacturing', 'make', lastAssembly, Date.now()));
     try {
       const r = await fetch('/api/nexyfab/drawing/package/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1846,6 +1874,24 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
           {!scad && !loading && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nx-text-3, #6b7684)', fontSize: 13, pointerEvents: 'none' }}>
               {ko ? '① 생성 탭에서 자유 서술이나 템플릿으로 시작하세요 · ② 검증이 자동으로 따라옵니다 · ③ 계산기·출력(도면·STEP·계산서)은 상단 탭 (드래그=회전 · 휠=줌)' : 'Describe freely or pick a template in Create · verification follows automatically · calculators & outputs in tabs (drag = rotate, wheel = zoom)'}
+            </div>
+          )}
+          {/**
+            * ★단계 바(260803) — **생성이 끝나도 계속 보인다.**
+            * 진행 중에만 뜨는 표시는 「지금 어디까지 왔는지」를 못 알려 준다. 결과를 보는
+            * 내내 「이건 아직 초안이다 / 확정본이다」가 화면에 남아 있어야, 사용자가
+            * 「묻고선 알아서 진행했다」고 느끼지 않는다.
+            */}
+          {scad && (
+            <div style={{ position: 'absolute', top: 12, right: 12, maxWidth: 340, padding: '8px 12px', borderRadius: 10, background: 'rgba(3,7,18,0.82)', border: '1px solid rgba(148,163,184,0.25)', backdropFilter: 'blur(6px)' }}>
+              <DesignStageBar stage={designStage} lang={lang} />
+              {confirmedSnap && (
+                <div style={{ marginTop: 6, fontSize: 10.5, color: '#7dd3fc', lineHeight: 1.5 }}>
+                  {ko ? '확정본 기준으로 출력합니다' : 'Outputs use the confirmed version'}
+                  {' · '}
+                  {new Date(confirmedSnap.at).toLocaleTimeString()}
+                </div>
+              )}
             </div>
           )}
           {loading && (

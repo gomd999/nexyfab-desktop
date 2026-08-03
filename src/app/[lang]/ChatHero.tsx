@@ -16,7 +16,8 @@ import { DomainIcon } from './_domainIcons';
 import Md from '@/components/nexyfab/Md';
 import { ACCEPT_RASTER, imageFromTransfer, isAcceptedRaster } from '@/lib/drawingInput';
 
-import { DESIGN_STAGES, type DesignStage, stageIndex, stageOf } from '@/lib/designStage';
+import { type DesignStage, stageOf } from '@/lib/designStage';
+import { DesignStageBar } from '@/components/nexyfab/DesignStageBar';
 // three/R3F 뷰어는 SSR 불가 → 클라이언트에서만 로드.
 const ChatCadViewer = dynamic(() => import('./ChatCadViewer'), {
   ssr: false,
@@ -952,52 +953,6 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
   );
 }
 
-/**
- * ★단계 표시(260803) — **초안 → 상세 → 제작**.
- *
- * 종전에는 단계가 문구로만 있었다. 「이 사양으로 정밀 3D를 생성할까요?」라고 묻는 시점에
- * 형상은 이미 만들어져 있어서 사용자 눈에는 **「묻고선 이미 해버렸다」**로 보였고,
- * 「확정」 버튼이 실제로 한 일은 STEP 파일 생성이라 **확정본이 어디에도 안 남았다.**
- *
- * ⚠ 지금 단계에서 **무엇이 아직 확정 안 됐는지**를 같이 적는다. 「초안」이라고만 하면
- *   무엇을 더 말해야 하는지 모른다.
- * ⚠ 추정 치수가 남아 있으면 게이트를 통과해도 **초안**이다(`stageOf`) — 그걸 상세라고
- *   부르면 추정을 확정으로 파는 셈이다.
- */
-function StageBar({ stage, lang, accent }: { stage: DesignStage; lang: Lang; accent: string }) {
-  const cur = stageIndex(stage);
-  const s = DESIGN_STAGES[cur];
-  /**
-   * ⚠ 이 화면의 언어 코드는 `kr`·`cn` 인데 사전은 ISO 인 `ko`·`zh` 를 쓴다.
-   *   그냥 `[lang]` 으로 찾으면 한국어·중국어가 **조용히 영어로 떨어진다** — 매핑을 명시한다.
-   */
-  const ISO: Record<Lang, string> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'zh', es: 'es', ar: 'ar' };
-  const label = (x: (typeof DESIGN_STAGES)[number]) => (x as unknown as Record<string, string>)[ISO[lang]] ?? x.en;
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-        {DESIGN_STAGES.map((x, i) => (
-          <React.Fragment key={x.id}>
-            {i > 0 && <span style={{ flex: 1, height: 1, background: i <= cur ? accent : 'rgba(148,163,184,0.28)' }} />}
-            <span style={{
-              fontSize: 11, fontWeight: 800, padding: '3px 9px', borderRadius: 999,
-              color: i === cur ? '#0b1020' : i < cur ? accent : '#6e7681',
-              background: i === cur ? accent : 'transparent',
-              border: `1px solid ${i <= cur ? accent : 'rgba(148,163,184,0.28)'}`,
-            }}
-            >
-              {i < cur ? '✓ ' : ''}{label(x)}
-            </span>
-          </React.Fragment>
-        ))}
-      </div>
-      <div style={{ fontSize: 11, color: '#8b949e', lineHeight: 1.5 }}>
-        {lang === 'kr' ? s.pendingKo : s.pendingEn}
-      </div>
-    </div>
-  );
-}
-
 function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: (typeof DICT)[Lang]; accent: string; isRtl: boolean; preview?: boolean; lang: Lang }) {
   const [stepText, setStepText] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
@@ -1154,7 +1109,7 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
             ⚠ <b>{t.cadInterf.replace('{n}', String(nInterf))}</b> — {t.clashWarn}
           </div>
         )}
-        <StageBar stage={stage} lang={lang} accent={accent} />
+        <DesignStageBar stage={stage} lang={lang} accent={accent} />
         <div style={{ fontSize: 13, fontWeight: 800, color: "#e6edf3", marginBottom: 10 }}>{t.cadAssemblyTitle}</div>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#8b949e', marginBottom: 6 }}>{t.cadParts}</div>
         {specBlock}
@@ -1233,7 +1188,7 @@ function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: 
   // ── 단일부품: 체크포인트(치수 사양 검토 → 승인) ──
   return (
     <div style={card}>
-      <StageBar stage={stage} lang={lang} accent={accent} />
+      <DesignStageBar stage={stage} lang={lang} accent={accent} />
       <div style={{ fontSize: 13, fontWeight: 800, color: "#e6edf3", marginBottom: 10 }}>{t.cadSpecTitle}</div>
       {cad.scad && <MiniScadViewer scad={cad.scad} auto={preview} accent={accent} />}
       {specBlock}
