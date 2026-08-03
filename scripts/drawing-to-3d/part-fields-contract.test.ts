@@ -37,6 +37,55 @@ const partProps = (ASSEMBLY_SCHEMA as unknown as {
   properties: { parts: { items: { properties: Record<string, { enum?: string[] }> } } };
 }).properties.parts.items.properties;
 
+/**
+ * ★⓪ **골격 스키마를 넓히지 않는다** — 내가 오늘 이 자리에 정반대 요구를 적었다가 지웠다.
+ *
+ * ## 무슨 일이 있었나 (260803, 기록으로 남긴다)
+ * 확대 코퍼스에서 드롭 55건의 84%가 `depth`·`H`·`threadDia` 누락이었다. 그래서
+ * 「어휘가 쓰는 63키를 스키마가 전부 받아야 한다」는 테스트를 여기 적고 `PART_PARAMS` 를
+ * 넓혔다. 결과:
+ * ```
+ *   box:      {"width":500, "wireDia":400}   ← depth 자리에 코일스프링 파라미터
+ *   cylinder: {"diameter":180, "legA":300}   ← length 자리에 ㄱ형강 파라미터
+ *   드롭 55 → 377 · designOk 60% → 20%
+ * ```
+ * **`ai-prompt-contract.test.ts` 에 260802 자 가드가 이미 있었다** — 「골격 스키마가 전 어휘
+ * 파라미터의 유니온이 **아니다**」. 같은 현상(`box` 에 `wireDia`)까지 주석에 적혀 있었다.
+ * 기록이 있는데 안 읽고 재현한 것이다.
+ *
+ * 그리고 애초에 **드롭 84%라는 진단 자체가 측정 오류**였다 — 라이브 라우트는
+ * `callAiJson(prompt, null)` 로 **스키마를 안 넘기는데** 내 하네스만 넘겼다.
+ * 라이브 경로 실측은 드롭 4%(15/366)·게이트 0 이다.
+ *
+ * > **넓은 평면 스키마는 「어느 키가 이 타입 것인지」 신호를 지운다.** 순서를 고정해도 남는다.
+ * > 타입별 파라미터는 `TYPE_SCHEMAS`(수리 경로)가 받는다.
+ */
+describe('★⓪ 골격 스키마를 넓히지 않는다', () => {
+  const props = () => (partProps.params as unknown as { properties: Record<string, { type?: string }> }).properties;
+
+  it('★골격은 흔한 치수 키만 둔다 — 전 어휘 유니온이 아니다', async () => {
+    const { PARAMS } = await import('./reconstruct.mjs') as unknown as { PARAMS: Record<string, string[]> };
+    const union = new Set(Object.values(PARAMS).flat());
+    expect(Object.keys(props()).length).toBeLessThan(union.size * 0.6);
+  });
+
+  it('타입 고유 파라미터는 골격에 없다 — 있으면 다른 타입에 새어 들어간다', () => {
+    for (const k of ['wireDia', 'coilDia', 'module', 'teeth', 'bcd']) {
+      expect(props()[k], `${k} 가 골격에 있으면 box·cylinder 에도 채워진다`).toBeUndefined();
+    }
+  });
+
+  it('배열형 파라미터는 모양을 갖는다 — 숫자로 잡으면 openings/profile 이 통째로 버려진다', () => {
+    for (const k of ['holes', 'openings', 'profile', 'points']) expect(props()[k]?.type, k).toBe('ARRAY');
+  });
+
+  it('★textToAssembly 는 이 스키마를 넘기지 않는다 — 라이브 라우트와 같은 경로여야 한다', () => {
+    const src = readFileSync(join(process.cwd(), 'scripts', 'drawing-to-3d', 'from-text.mjs'), 'utf8');
+    expect(src, '라우트는 null 인데 여기만 스키마를 넘기면 두 경로의 답이 갈린다')
+      .toMatch(/callAiJson\(ASM_PROMPT\(description\), null,/);
+  });
+});
+
 describe('★① 스키마가 material 을 받는다', () => {
   it('parts[].material 이 있다 — 없으면 프롬프트가 시켜도 버려진다', () => {
     expect(partProps.material).toBeTruthy();

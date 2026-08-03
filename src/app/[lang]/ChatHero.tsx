@@ -16,6 +16,7 @@ import { DomainIcon } from './_domainIcons';
 import Md from '@/components/nexyfab/Md';
 import { ACCEPT_RASTER, imageFromTransfer, isAcceptedRaster } from '@/lib/drawingInput';
 
+import { DESIGN_STAGES, type DesignStage, stageIndex, stageOf } from '@/lib/designStage';
 // three/R3F 뷰어는 SSR 불가 → 클라이언트에서만 로드.
 const ChatCadViewer = dynamic(() => import('./ChatCadViewer'), {
   ssr: false,
@@ -951,10 +952,73 @@ function MiniScadViewer({ scad, auto, accent, height = 240, parts, selectedId, o
   );
 }
 
-function CadCard({ cad, t, accent, isRtl, preview }: { cad: CadResult; t: (typeof DICT)[Lang]; accent: string; isRtl: boolean; preview?: boolean }) {
+/**
+ * ★단계 표시(260803) — **초안 → 상세 → 제작**.
+ *
+ * 종전에는 단계가 문구로만 있었다. 「이 사양으로 정밀 3D를 생성할까요?」라고 묻는 시점에
+ * 형상은 이미 만들어져 있어서 사용자 눈에는 **「묻고선 이미 해버렸다」**로 보였고,
+ * 「확정」 버튼이 실제로 한 일은 STEP 파일 생성이라 **확정본이 어디에도 안 남았다.**
+ *
+ * ⚠ 지금 단계에서 **무엇이 아직 확정 안 됐는지**를 같이 적는다. 「초안」이라고만 하면
+ *   무엇을 더 말해야 하는지 모른다.
+ * ⚠ 추정 치수가 남아 있으면 게이트를 통과해도 **초안**이다(`stageOf`) — 그걸 상세라고
+ *   부르면 추정을 확정으로 파는 셈이다.
+ */
+function StageBar({ stage, lang, accent }: { stage: DesignStage; lang: Lang; accent: string }) {
+  const cur = stageIndex(stage);
+  const s = DESIGN_STAGES[cur];
+  /**
+   * ⚠ 이 화면의 언어 코드는 `kr`·`cn` 인데 사전은 ISO 인 `ko`·`zh` 를 쓴다.
+   *   그냥 `[lang]` 으로 찾으면 한국어·중국어가 **조용히 영어로 떨어진다** — 매핑을 명시한다.
+   */
+  const ISO: Record<Lang, string> = { kr: 'ko', en: 'en', ja: 'ja', cn: 'zh', es: 'es', ar: 'ar' };
+  const label = (x: (typeof DESIGN_STAGES)[number]) => (x as unknown as Record<string, string>)[ISO[lang]] ?? x.en;
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+        {DESIGN_STAGES.map((x, i) => (
+          <React.Fragment key={x.id}>
+            {i > 0 && <span style={{ flex: 1, height: 1, background: i <= cur ? accent : 'rgba(148,163,184,0.28)' }} />}
+            <span style={{
+              fontSize: 11, fontWeight: 800, padding: '3px 9px', borderRadius: 999,
+              color: i === cur ? '#0b1020' : i < cur ? accent : '#6e7681',
+              background: i === cur ? accent : 'transparent',
+              border: `1px solid ${i <= cur ? accent : 'rgba(148,163,184,0.28)'}`,
+            }}
+            >
+              {i < cur ? '✓ ' : ''}{label(x)}
+            </span>
+          </React.Fragment>
+        ))}
+      </div>
+      <div style={{ fontSize: 11, color: '#8b949e', lineHeight: 1.5 }}>
+        {lang === 'kr' ? s.pendingKo : s.pendingEn}
+      </div>
+    </div>
+  );
+}
+
+function CadCard({ cad, t, accent, isRtl, preview, lang }: { cad: CadResult; t: (typeof DICT)[Lang]; accent: string; isRtl: boolean; preview?: boolean; lang: Lang }) {
   const [stepText, setStepText] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
   const [err, setErr] = useState('');
+  /**
+   * ★확정 스냅샷(260803) — 확정하면 **그 시점의 결과를 통째로 잡아 둔다.**
+   * 참조만 들고 있으면 다음 수정이 같은 객체를 바꿔 확정본이 조용히 달라진다.
+   * 되돌릴 곳이 없으면 「확정」은 선언일 뿐이다.
+   */
+  const [confirmedAt, setConfirmedAt] = useState<number | null>(null);
+  /**
+   * 현재 단계 — **결과에서 판정한다**(사용자가 고르지 않는다).
+   * 추정 치수가 남아 있으면 게이트를 통과해도 초안이다.
+   */
+  const stage: DesignStage = stageOf({
+    designOk: (cad as { designOk?: boolean }).designOk,
+    gateErrors: cad.gateErrors,
+    assumptions: (cad as { assumptions?: unknown[] }).assumptions,
+    provenance: (cad as { provenance?: { assumed?: number } }).provenance ?? null,
+    confirmed: confirmedAt != null && stepText != null,
+  });
   const [geos, setGeos] = useState<unknown[] | null>(null);
   const [gaBusy, setGaBusy] = useState(false);
   const [dfm, setDfm] = useState<{ mass?: number; cost?: number; dxf?: string } | null>(null);
@@ -989,6 +1053,8 @@ function CadCard({ cad, t, accent, isRtl, preview }: { cad: CadResult; t: (typeo
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j?.ok || typeof j.step !== 'string') throw new Error(j?.error || 'STEP build failed');
       setStepText(j.step);
+      // 확정 시각을 남긴다 — 이때부터 화면은 「제작」 단계이고, 이 아래 결과물은 확정본 기준이다.
+      setConfirmedAt(Date.now());
     } catch (e) { setErr(e instanceof Error ? e.message : t.error); } finally { setBuilding(false); }
   };
 
@@ -1088,7 +1154,8 @@ function CadCard({ cad, t, accent, isRtl, preview }: { cad: CadResult; t: (typeo
             ⚠ <b>{t.cadInterf.replace('{n}', String(nInterf))}</b> — {t.clashWarn}
           </div>
         )}
-        <div style={{ fontSize: 13, fontWeight: 800, color: '#e6edf3', marginBottom: 10 }}>{t.cadAssemblyTitle}</div>
+        <StageBar stage={stage} lang={lang} accent={accent} />
+        <div style={{ fontSize: 13, fontWeight: 800, color: "#e6edf3", marginBottom: 10 }}>{t.cadAssemblyTitle}</div>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#8b949e', marginBottom: 6 }}>{t.cadParts}</div>
         {specBlock}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -1166,7 +1233,8 @@ function CadCard({ cad, t, accent, isRtl, preview }: { cad: CadResult; t: (typeo
   // ── 단일부품: 체크포인트(치수 사양 검토 → 승인) ──
   return (
     <div style={card}>
-      <div style={{ fontSize: 13, fontWeight: 800, color: '#e6edf3', marginBottom: 10 }}>{t.cadSpecTitle}</div>
+      <StageBar stage={stage} lang={lang} accent={accent} />
+      <div style={{ fontSize: 13, fontWeight: 800, color: "#e6edf3", marginBottom: 10 }}>{t.cadSpecTitle}</div>
       {cad.scad && <MiniScadViewer scad={cad.scad} auto={preview} accent={accent} />}
       {specBlock}
       {drawingSvg && (
@@ -1412,6 +1480,25 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
 
   const abortRef = useRef<AbortController | null>(null);
   const [stage, setStage] = useState<string | null>(null);
+  /**
+   * ★자동 스크롤(260803) — **메시지가 늘면 따라 내려간다.**
+   *
+   * 종전에는 `const autoscroll = …` 이 핸들러 **다섯 곳에 각각** 선언돼 있었고, 그 핸들러를
+   * 안 거치는 경로(진행 단계 갱신·오류 표시·이미지 판독 결과 등)는 **안 내려갔다.**
+   * 사용자에게는 「답이 온 것 같은데 화면이 그대로」로 보인다.
+   * 상태 변화에 반응하게 두면 **경로를 늘려도 저절로 따라온다** — 명령형으로 부르는 한
+   *   새 경로마다 또 빠뜨린다(이 세션에 같은 형태로 여섯 번 틀렸다).
+   * ⚠ 사용자가 **위로 올려 읽고 있으면 끌어내리지 않는다.** 바닥 근처(120px)일 때만 따라간다 —
+   *   읽는 중에 화면이 튀는 것이 안 따라오는 것보다 나쁘다.
+   */
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (!nearBottom) return;
+    const id = requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }));
+    return () => cancelAnimationFrame(id);
+  }, [messages, stage, loading]);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   // appMode 분할 화면(사용자 제안 2026-07-16): 넓은 화면 + CAD 결과가 있으면
   // 채팅은 좌측, 우측에 상시 3D 패널(Genspark/Canvas 문법). 좁은 화면은 인라인 카드 유지.
@@ -1974,7 +2061,7 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
                     onPrint={() => printCalc(m)} />}
                   {m.cad && (
                     <>
-                      <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} preview={i === messages.length - 1 && !splitMode} />
+                      <CadCard cad={m.cad} t={t} accent={accent} isRtl={isRtl} preview={i === messages.length - 1 && !splitMode} lang={lang} />
                       {!m.cad.error && (
                         <a href={'/' + langCode + '/nexyfab/design/?domain=' + (STUDIO_DOMAIN[domain] ?? 'mech')}
                           onClick={() => { try { sessionStorage.setItem('nf-chat-handoff', JSON.stringify({ spec: m.cad?.spec ?? m.content ?? '', at: Date.now(), type: m.cad?.isAssembly ? 'assembly' : 'part' })); } catch { /* ignore */ } }}

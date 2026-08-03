@@ -51,12 +51,32 @@ export function gradeOf(file: { name?: string; type?: string }): InputGrade {
   return 'text';
 }
 
-/** 등급별 안내 — 화면이 「이 입력으로 무엇이 보장되는가」를 말할 수 있게. */
-export const GRADE_NOTE: Record<InputGrade, { ko: string; en: string }> = {
-  model: { ko: '치수를 파일에서 그대로 읽습니다(추정 없음).', en: 'Dimensions come from the file itself (no estimation).' },
-  vector: { ko: '도면에서 치수를 읽습니다. 못 읽은 값은 표시하고 물어봅니다.', en: 'Dimensions are read from the drawing; anything unread is flagged.' },
-  raster: { ko: '이미지는 형상 힌트로 씁니다 — **치수는 글로 적어 주세요.**', en: 'The image gives shape hints — please state dimensions in text.' },
-  text: { ko: '설명한 치수로 만듭니다.', en: 'Built from the dimensions you describe.' },
+/**
+ * 등급별 안내 — 화면이 「이 입력으로 무엇이 보장되는가」를 말할 수 있게.
+ * ⚠ 사이트는 6개국어다. ko/en 만 채우면 ja 사용자는 「번역했는데 영어인가」와
+ *   「아직 번역이 없다」를 구별할 수 없다(i18n 커버리지 래칫이 실제로 잡았다).
+ */
+export const GRADE_NOTE: Record<InputGrade, { ko: string; en: string; zh: string; ja: string; es: string; ar: string }> = {
+  model: {
+    ko: '치수를 파일에서 그대로 읽습니다(추정 없음).', en: 'Dimensions come from the file itself (no estimation).',
+    zh: '直接从文件读取尺寸（无推定）。', ja: '寸法はファイルからそのまま読みます（推定なし）。',
+    es: 'Las cotas se leen del propio archivo (sin estimación).', ar: 'تُقرأ الأبعاد من الملف نفسه (بدون تقدير).',
+  },
+  vector: {
+    ko: '도면에서 치수를 읽습니다. 못 읽은 값은 표시하고 물어봅니다.', en: 'Dimensions are read from the drawing; anything unread is flagged.',
+    zh: '从图纸读取尺寸；未能读取的会标注并询问。', ja: '図面から寸法を読みます。読めなかった値は表示して確認します。',
+    es: 'Las cotas se leen del plano; lo no leído se señala.', ar: 'تُقرأ الأبعاد من الرسم، وما يتعذّر قراءته يُوضَّح.',
+  },
+  raster: {
+    ko: '이미지는 형상 힌트로 씁니다 — **치수는 글로 적어 주세요.**', en: 'The image gives shape hints — please state dimensions in text.',
+    zh: '图片仅作形状提示——**请用文字写出尺寸。**', ja: '画像は形状のヒントに使います — **寸法は文章で書いてください。**',
+    es: 'La imagen da pistas de forma — **indique las cotas por escrito.**', ar: 'الصورة تعطي تلميحات للشكل — **يرجى كتابة الأبعاد نصًا.**',
+  },
+  text: {
+    ko: '설명한 치수로 만듭니다.', en: 'Built from the dimensions you describe.',
+    zh: '按您描述的尺寸生成。', ja: '説明された寸法で作ります。',
+    es: 'Se construye con las cotas que describa.', ar: 'يُبنى بالأبعاد التي تصفها.',
+  },
 };
 
 /** 래스터로 받을 수 있는 파일인가(붙여넣기·드래그 공통 판정). */

@@ -110,12 +110,58 @@ export const MATERIALS = Object.keys(DENSITY).filter((k) => k !== 'water');
  * 그래서 파라미터는 **타입별 스키마(`TYPE_SCHEMAS`)로 따로 받는다** — 이 파일에 이미 있는
  * 2단계 경로(`textToIntent`: 분류 → 타입별 추출)와 같은 방식이다. 여기서는 골격만 받는다.
  */
+/**
+ * ★부품 파라미터 스키마 — **`PARAMS`(어휘 정의)에서 생성한다.**
+ *
+ * ## ⚠⚠ 여기가 손으로 박힌 12키였다 (260803 실측)
+ * 어휘 40종이 쓰는 파라미터는 **63개**인데 스키마에는 12개만 있었다. 구조화 출력은
+ * 스키마에 없는 키를 **조용히 버리므로**, 모델이 `H:150` 을 채워도 사라졌다.
+ * 확대 코퍼스 50건 실측에서 그 결과가 이렇게 나왔다:
+ * ```
+ *   드롭 55부품 중  depth invalid 18 · H invalid 16 · threadDia invalid 12  = 84%
+ *   드롭 어휘        slab_with_openings 13 · hex_bolt 12 · c_channel 11    = 65%
+ *   게이트 22건 중   depth 관련 16                                          = 73%
+ * ```
+ * `H`·`threadDia` 는 **스키마에 아예 없던 키**다. 모델 잘못이 아니라 우리가 못 받은 것이다.
+ *
+ * 같은 단일소스 결손의 **여섯 번째**다(enum 9종 · PART_PARAMS 19키 · TYPE_HINTS 17종 ·
+ * RESPONSE_SCHEMA description · 라우트 어휘 16종 · 여기). 이제 `PARAMS` 하나에서 만든다.
+ *
+ * ⚠ 배열·객체형 파라미터는 모양이 제각각이라 명시 정의를 유지한다(숫자만 자동 생성).
+ */
+const NON_NUMERIC_PARAMS = {
+  holes: { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, y: NUM, d: NUM, kind: { type: 'STRING' } }, required: ['x', 'y', 'd'] } },
+  openings: { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, y: NUM, w: NUM, d: NUM, h: NUM, sill: NUM }, required: ['x', 'w'] } },
+  profile: { type: 'ARRAY', items: { type: 'ARRAY', items: NUM } },
+  points: { type: 'ARRAY', items: { type: 'ARRAY', items: NUM } },
+  verts: { type: 'ARRAY', items: { type: 'ARRAY', items: NUM } },
+  faces: { type: 'ARRAY', items: { type: 'ARRAY', items: NUM } },
+  segments: { type: 'ARRAY', items: NUM },
+  angles: { type: 'ARRAY', items: NUM },
+  fillets: { type: 'ARRAY', items: { type: 'OBJECT', properties: { i: NUM, r: NUM } } },
+};
+/**
+ * ⚠⚠ **넓히지 않는다.** 260802 에 겪고 `ai-prompt-contract.test.ts` 에 가드까지 둔 것을
+ * 260803 에 내가 다시 어겼고, 실측으로 같은 결론에 도달했다 — **기록이 있었는데 안 읽었다.**
+ *
+ * 63키 평면 객체로 넓혔을 때 실측:
+ * ```
+ *   box params: {"width":500, "wireDia":400}      ← depth 자리에 코일스프링 파라미터
+ *   cylinder:   {"diameter":180, "legA":300}      ← length 자리에 ㄱ형강 파라미터
+ *   드롭 55 → 377 · designOk 60% → 20%
+ * ```
+ * 순서를 고정해도 남았다. **어느 키가 이 타입 것인지 신호가 사라지는** 것이 원인이라
+ * 순서로는 못 고친다. 타입별 파라미터는 `TYPE_SCHEMAS`(수리 경로)가 받는다.
+ *
+ * ⚠ 그리고 `textToAssembly` 는 이제 이 스키마를 **넘기지 않는다**(라우트와 동일 `null`).
+ *   여기 남는 것은 「무엇을 받을 수 있는가」의 계약 문서이자 수리 경로용 골격이다.
+ */
 const PART_PARAMS = {
   type: 'OBJECT',
   properties: {
     width: NUM, depth: NUM, thickness: NUM, height: NUM, length: NUM, diameter: NUM,
     outerDia: NUM, innerDia: NUM, wallThk: NUM, legA: NUM, legB: NUM,
-    holes: { type: 'ARRAY', items: { type: 'OBJECT', properties: { x: NUM, y: NUM, d: NUM }, required: ['x', 'y', 'd'] } },
+    ...NON_NUMERIC_PARAMS,
   },
 };
 export const ASSEMBLY_SCHEMA = {
@@ -320,7 +366,23 @@ export async function textToAssembly(description, { models } = {}) {
    *   해법이 리포 안에 있는데 한 경로만 안 쓰던 것이다.
    * ⚠ 실패한 호출은 53~88초가 걸렸고 **성공한 1건은 2.4초**였다 — 오래 생각할수록 실패했다.
    */
-  const { data, model, fallbackReasons, usage } = await callAiJson(ASM_PROMPT(description), ASSEMBLY_SCHEMA, {
+  /**
+   * ⚠⚠ 260803 — **구조화 스키마를 넘기지 않는다.** 라이브 라우트(`assemble/route.ts`)는
+   * 오래전부터 `callAiJson(prompt, null)` 이었는데 여기만 `ASSEMBLY_SCHEMA` 를 넘기고 있었다.
+   * 같은 프롬프트·같은 모델로 12건을 A/B 한 실측:
+   * ```
+   *              스키마 넘김        스키마 없음(라우트와 동일)
+   *   드롭        47 / 66 (71%)      3 / 66 (5%)
+   *   게이트       10                 0
+   * ```
+   * 원인: `params` 가 **평평한 63키 객체**라 모델이 이름이 아니라 **자리 순서로** 채운다
+   * (`box{width, wireDia}` · `cylinder{diameter, legA}` — depth·length 자리에 엉뚱한 키).
+   * 키를 다 받게 하고 순서를 고정해도 남았다. **이 모양의 스키마는 구조화 출력에 안 맞는다.**
+   * 어휘·필수 파라미터는 프롬프트(`VOCAB_SPEC`)가 이미 알려 주고, 게이트가 검증한다.
+   * ⚠ `ASSEMBLY_SCHEMA` 는 계약 회귀(part-fields-contract)와 문서용으로 남긴다 —
+   *   **넘기지 않을 뿐** 무엇을 받을 수 있는지의 단일 소스는 그대로다.
+   */
+  const { data, model, fallbackReasons, usage } = await callAiJson(ASM_PROMPT(description), null, {
     ...(models ? { models } : {}),
     thinkingBudget: 0,
     maxOutputTokens: 16384,
