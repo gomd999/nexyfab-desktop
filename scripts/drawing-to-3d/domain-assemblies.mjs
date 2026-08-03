@@ -4246,7 +4246,7 @@ export const ASSEMBLY_TEMPLATES = {
     {
       // ★260803 — 소비재 기구류 첫 아키타입. mech 18종이 전부 중공업이라 라이브에서
       //   노트북 거치대 사진이 「맞는 형상을 찾지 못했어요」로 끝났다(계획서 §1.4).
-      id: 'desk_stand', labelKo: '데스크 거치대 (노트북·모니터, 높이·각도 조절)', labelEn: 'Desk stand', build: deskStandAssembly,
+      id: 'desk_stand', labelKo: '데스크 거치대 (노트북·모니터, 높이·각도 조절)', labelEn: 'Desk stand (laptop/monitor, height & tilt)', build: deskStandAssembly,
       params: [
         { name: 'baseW', labelKo: '베이스 폭', unit: 'mm', default: 260, min: 150, max: 500 },
         { name: 'baseD', labelKo: '베이스 깊이', unit: 'mm', default: 220, min: 120, max: 450 },

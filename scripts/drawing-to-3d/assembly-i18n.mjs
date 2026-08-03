@@ -23,6 +23,7 @@ export const LANGS = ['ko', 'en', 'zh', 'ja', 'es', 'ar'];
  * ⚠ `en` 은 `domain-assemblies.mjs` 의 `labelEn` 과 **같아야 한다**. 커버리지 테스트가 대조한다.
  */
 export const TEMPLATE_LABELS = {
+  '데스크 거치대 (노트북·모니터, 높이·각도 조절)': { en: 'Desk stand (laptop/monitor, height & tilt)', zh: '桌面支架（笔记本/显示器，高度·角度可调）', ja: 'デスクスタンド（ノートPC・モニター、高さ/角度調節）', es: 'Soporte de escritorio (portátil/monitor, altura e inclinación)', ar: 'حامل مكتبي (حاسوب محمول/شاشة، ارتفاع وميل قابلان للضبط)' },
   '옹벽 연장 구간': { en: 'Retaining wall run', zh: '挡土墙延长段', ja: '擁壁の延長区間', es: 'Tramo de muro de contención', ar: 'امتداد جدار استنادي' },
   '박스 암거 (RC 1련)': { en: 'RC box culvert (single cell)', zh: '钢筋混凝土箱涵（单孔）', ja: 'RCボックスカルバート（1連）', es: 'Alcantarilla de cajón de HA (una celda)', ar: 'عبّارة صندوقية خرسانية (خلية واحدة)' },
   '옹벽 선형 구간 (IP 폴리라인)': { en: 'Retaining wall alignment', zh: '挡土墙线形（IP 折线）', ja: '擁壁の線形区間（IPポリライン）', es: 'Trazado de muro de contención', ar: 'مسار جدار استنادي' },
@@ -85,6 +86,14 @@ export const TEMPLATE_LABELS = {
  *   「다 했다」를 주장이 아니라 **측정**으로 만들기 위해서다.
  */
 export const PARAM_LABELS = {
+  '받침판 폭': { en: 'Plate width', zh: '承板宽度', ja: '受け板の幅', es: 'Ancho de la bandeja', ar: 'عرض اللوح' },
+  '받침판 깊이': { en: 'Plate depth', zh: '承板深度', ja: '受け板の奥行', es: 'Profundidad de la bandeja', ar: 'عمق اللوح' },
+  '받침판 두께': { en: 'Plate thickness', zh: '承板厚度', ja: '受け板の厚さ', es: 'Espesor de la bandeja', ar: 'سماكة اللوح' },
+  '지지대 높이': { en: 'Post height', zh: '支柱高度', ja: '支柱の高さ', es: 'Altura del poste', ar: 'ارتفاع العمود' },
+  '슬라이더 길이': { en: 'Slider length', zh: '滑块长度', ja: 'スライダー長さ', es: 'Longitud del deslizador', ar: 'طول المنزلق' },
+  '통풍구 폭': { en: 'Vent width', zh: '通风口宽度', ja: '通気口の幅', es: 'Ancho de la ventilación', ar: 'عرض فتحة التهوية' },
+  '통풍구 깊이': { en: 'Vent depth', zh: '通风口深度', ja: '通気口の奥行', es: 'Profundidad de la ventilación', ar: 'عمق فتحة التهوية' },
+  '전면 걸림턱 높이': { en: 'Front lip height', zh: '前挡边高度', ja: '前ストッパー高さ', es: 'Altura del tope frontal', ar: 'ارتفاع الحاجز الأمامي' },
   // ── 토목: 옹벽·암거 ──
   '벽고(저면~상단)': { en: 'Wall height (base to top)', zh: '墙高（底面~顶部）', ja: '壁高（底面～天端）', es: 'Altura del muro (base a coronación)', ar: 'ارتفاع الجدار (من القاعدة إلى القمة)' },
   '저판 폭': { en: 'Base slab width', zh: '底板宽度', ja: '底版幅', es: 'Ancho de la zapata', ar: 'عرض القاعدة' },
