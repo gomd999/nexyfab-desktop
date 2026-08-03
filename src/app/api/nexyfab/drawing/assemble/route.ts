@@ -141,11 +141,23 @@ ${vocab}
 
 ${PART_FIELDS}
 
-좌표: 전역 원점(0,0,0), 각 부품 로컬 원점이 at(tx,ty,tz mm; rx,ry,rz deg) 에 놓임. 판재는 z=0 바닥, 위에 얹으면 tz=판두께.
-부피 침투 없이 **접촉** 배치 — 떠 있으면 실패한다. 치수 미기입은 통상값.
+배치는 **관계로 선언하라(권장)** — 좌표를 직접 계산하지 마라:
+- {"type":"onFace","to":"base","face":"top","gap":0}   대상 부품의 그 면에 밀착(가장 자주 쓴다)
+- {"type":"concentric","to":"post","axis":"z"}          그 축에서 중심 정렬
+- {"type":"offset","to":"base","dx":0,"dy":0,"dz":10}   대상 원점 기준 상대 이동
+- {"type":"centerline","axis":"x"}                      월드 축에 중심 정렬(to 불필요)
+- {"type":"mirror","to":"lip_1","plane":"yz"}           대상 배치를 평면 대칭
+면 이름: top(+z) bottom(-z) right(+x) left(-x) back(+y) front(-y).
+⚠ **좌표를 직접 계산하면 부품이 서로 안 닿는 일이 잦다**(실측: 42부품 중 28개 부유).
+  관계로 선언하면 결정론 리졸버가 좌표를 확정한다. 구속을 못 쓰는 부품만 at 을 직접 준다.
+⚠ 구속의 "to" 는 **같은 어셈블리의 부품 id** 여야 한다. 순환 참조는 거부된다.
+
+좌표(구속을 안 쓸 때): 전역 원점(0,0,0), 부품 로컬 원점이 at(tx,ty,tz mm; rx,ry,rz deg) 에 놓임.
+판재는 z=0 바닥, 위에 얹으면 tz=판두께. 부피 침투 없이 **접촉** 배치 — 떠 있으면 실패한다.
+치수 미기입은 통상값.
 
 **출력은 JSON 하나만**(다른 텍스트·코드펜스 금지):
-{"name":"...","parts":[{"id":"post1","type":"rect_tube","params":{"width":60,"height":60,"wallThk":3,"length":1000},"at":{"tx":0,"ty":0,"tz":0,"rx":0,"ry":0,"rz":0}}],"templateMiss":"..."}
+{"name":"...","parts":[{"id":"base","type":"plate_with_holes","params":{"width":400,"depth":300,"thickness":10},"at":{"tx":0,"ty":0,"tz":0}},{"id":"post1","type":"rect_tube","params":{"width":60,"height":60,"wallThk":3,"length":1000},"constraints":[{"type":"onFace","to":"base","face":"top"},{"type":"centerline","axis":"x"}]}],"templateMiss":"..."}
 - parts 배열은 최소 2개 이상, 각 부품은 id·type·params·at 을 모두 포함.
 - params 는 그 type 의 정확한 키만(위 어휘 목록). at 의 6개 값은 항상 숫자로.
 - 설명에 없어서 네가 정한 값이 있으면 "assumptions":[...] 로 전부 나열(숨기지 마라).
@@ -284,10 +296,32 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       // §템플릿 선언(260717 챗 개방): AI=선언만, 결정론 템플릿이 형상·측점·도서 생성
       if (hasTpl && !hasCA) {
         const dp = join(process.cwd(), 'scripts', 'drawing-to-3d', 'domain-assemblies.mjs');
-        const dm = (await import(/* webpackIgnore: true */ pathToFileURL(dp).href)) as { buildAssemblyTemplate: (d: string, t: string, p: Record<string, unknown>) => (Assembly & { alignmentErrors?: string[] }) | null };
+        const dm = (await import(/* webpackIgnore: true */ pathToFileURL(dp).href)) as {
+          buildAssemblyTemplate: (d: string, t: string, p: Record<string, unknown>) => (Assembly & { alignmentErrors?: string[] }) | null;
+          listAssemblyTemplates: () => Array<{ domain: string; id: string; params: Array<{ name: string; default: number }> }>;
+          normalizeTemplateParams: (specs: unknown, params: unknown) => { values: Record<string, number> };
+        };
         const built2 = dm.buildAssemblyTemplate(tpl!.domain!, tpl!.id!, tpl!.params ?? {});
         if (!built2) { lastErrors = [`template ${tpl!.domain}/${tpl!.id}: 카탈로그에 없는 id — 카탈로그의 domain/id 만 사용`]; continue; }
         if (built2.alignmentErrors?.length) { assembly = { ...built2, template: tpl } as Assembly; lastErrors = built2.alignmentErrors; continue; }
+        /**
+         * ★260803 — **템플릿 산출물의 근거**(축 2). 부품 치수는 세 갈래다:
+         *   사용자가 준 값(observed) · 선언 기본값(assumed) · **코드가 계산한 값(geometry-derived)**.
+         * `normalizeTemplateParams` 가 사용자가 실제로 준 값만 돌려주므로 결정론으로 갈린다.
+         * ⚠ 이걸 안 붙이면 `geometry-derived` 가 영원히 0건이다 — 등급은 있는데 만드는 층이 없다.
+         */
+        try {
+          const pp = join(process.cwd(), 'scripts', 'drawing-to-3d', 'provenance.mjs');
+          const pm = (await import(/* webpackIgnore: true */ pathToFileURL(pp).href)) as {
+            annotateTemplateAssembly: (a: unknown, v: unknown, s: unknown) => Assembly;
+            assemblyProvenance: (a: unknown) => Record<string, unknown>;
+          };
+          const spec = dm.listAssemblyTemplates().find((t) => t.domain === tpl!.domain && t.id === tpl!.id)?.params ?? [];
+          const norm = dm.normalizeTemplateParams(spec, tpl!.params ?? {});
+          const annotated = pm.annotateTemplateAssembly(built2, norm.values, spec);
+          Object.assign(built2, { parts: (annotated as { parts?: unknown }).parts });
+          provenance = pm.assemblyProvenance(annotated);
+        } catch { /* 근거 표시 실패는 생성을 막지 않는다 */ }
         assembly = built2;
         placeCorrections = [];
         built = mods.asm.buildAssembly(assembly);

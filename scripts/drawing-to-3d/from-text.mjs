@@ -125,6 +125,27 @@ export const ASSEMBLY_SCHEMA = {
           type: { type: 'STRING', enum: [...ALL_TYPES] },
           params: PART_PARAMS,
           at: { type: 'OBJECT', properties: { tx: NUM, ty: NUM, tz: NUM, rx: NUM, ry: NUM, rz: NUM } },
+          /**
+           * ★260803 — **관계 배치.** `assembly-constraints.mjs` 의 리졸버는 이미 있고
+           * `buildAssembly` 가 **실제로 호출**하는데(line 615), **스키마에 없어서 LLM 이
+           * 선언할 방법이 없었다.** 그래서 모델은 `at` 절대좌표를 직접 계산할 수밖에 없었고,
+           * 그것이 부유 28/42 의 근본 원인이다 — 엔진이 없는 게 아니라 **닿지 않았다.**
+           * ⚠ 구조화 출력은 스키마에 없는 키를 조용히 떨군다 — 프롬프트로만 알려 주면 소용없다.
+           */
+          constraints: {
+            type: 'ARRAY',
+            items: {
+              type: 'OBJECT', required: ['type'],
+              properties: {
+                type: { type: 'STRING', enum: ['offset', 'concentric', 'onFace', 'mirror', 'centerline'] },
+                to: { type: 'STRING' },
+                face: { type: 'STRING', enum: ['top', 'bottom', 'left', 'right', 'front', 'back'] },
+                axis: { type: 'STRING', enum: ['x', 'y', 'z'] },
+                plane: { type: 'STRING', enum: ['xy', 'yz', 'zx'] },
+                dx: NUM, dy: NUM, dz: NUM, gap: NUM, offset: NUM,
+              },
+            },
+          },
           service: { type: 'STRING', enum: ['feed', 'hp', 'permeate', 'concentrate', 'motor', 'panel', 'frame', 'sludge'] },
         },
       },
