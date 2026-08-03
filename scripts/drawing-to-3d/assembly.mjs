@@ -849,6 +849,29 @@ export function buildAssembly(asm) {
             }
           }
         }
+        /**
+         * 관통 체결구(260803 — 힌지 핀·리벳·마찰 와셔): `role:'fastener'` 로 선언된 부품이
+         * 상대 부재를 **가로지르는 형태**(자기 장축 외 두 축이 상대 범위 안에 내포)면
+         * 매입/관통 정상이다. `rebar` 매입 면제와 같은 사유다 —
+         * **실제로는 상대에 구멍이 뚫려 있는데 어휘(`l_bracket` 등)에 홀 파라미터가 없어
+         * AABB 가 겹침으로 본다.**
+         * ⚠ **두 축 내포**가 조건이다 — 옆구리를 스치는 부분 겹침은 실간섭이므로 유지한다.
+         * ⚠ 선언 기반이다(`support-check.mjs` 의 fastener 예외와 같은 규율) — role 을
+         *   안 붙인 부품에는 적용되지 않는다.
+         */
+        {
+          const pf = asm.parts[i], qf = asm.parts[j];
+          const fi = pf.role === 'fastener' ? i : qf.role === 'fastener' ? j : -1;
+          if (fi >= 0) {
+            const fb = boxes[fi].box, ob = boxes[fi === i ? j : i].box;
+            const inAxes = [0, 1, 2].filter((k) => fb.min[k] >= ob.min[k] - 0.1 && fb.max[k] <= ob.max[k] + 0.1).length;
+            if (inAxes >= 2) {
+              contacts.push({ a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v), depthMm: +depth.toFixed(2),
+                note: '체결구 관통(두 축 내포 — 상대 부재의 홀은 어휘 미표현. 홀 위치·끼워맞춤은 도면 계층 영역)' });
+              continue;
+            }
+          }
+        }
         let useDepth = depth;
         let note = rotated ? '회전 AABB 겹침(보수적 — 실솔리드는 더 작을 수 있음)' : 'AABB 겹침';
         // 회전 쌍은 OBB-SAT 2차 정밀(§0.2) — AABB 과탐 제거(box 쌍만, 그 외 AABB 보수 유지)

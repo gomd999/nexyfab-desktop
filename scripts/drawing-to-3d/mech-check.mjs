@@ -578,6 +578,57 @@ function mechCheckInner(assembly, params = {}) {
       { labelKo: '몸통 외경 > 호칭경(보어)', big: m.bodyDia, small: m.dn },
     ]);
   }
+  /**
+   * 데스크 거치대 검토 (260803) — **형상이 답을 갖고 있는 것만** 판정한다.
+   *
+   * ⚠ 이 제품의 핵심 공학 문제는 **힌지 마찰 토크**와 **슬라이더 클램프 유지력**인데
+   *   계산기가 없다(`friction_clamp` 후속). **그걸 여기서 지어내지 않는다** —
+   *   대신 하중 없이도 형상만으로 판정되는 것을 낸다. 「없다」와 「해당 없다」를 구별한다.
+   * ⚠ 전도 안정은 `structural.mjs` 가 이미 tipover 로 계산한다 — 중복하지 않는다
+   *   (`civil` 분기가 전도·활동을 중복하지 않은 선례와 같다).
+   */
+  if (assembly.standMeta) {
+    const m = assembly.standMeta;
+    const [baseW, baseD] = m.baseMm ?? [];
+    const [plateW, plateD] = m.plateMm ?? [];
+    const [ventW, ventD] = m.ventMm ?? [];
+    const r = dimensionOrderCheck('거치대 검토 (지지면·개구)', [
+      // 받침판이 베이스보다 크면 편심이 커진다 — 전도 여유를 형상 단계에서 본다.
+      { labelKo: '받침판 폭 오버행 ≤ 베이스 폭의 30%', big: baseW * 1.3, small: plateW },
+      { labelKo: '받침판 깊이 오버행 ≤ 베이스 깊이의 30%', big: baseD * 1.3, small: plateD },
+      // 통풍구가 받침판을 먹어 들어가면 노트북 지지면이 남지 않는다.
+      { labelKo: '통풍구 폭 < 받침판 폭', big: plateW, small: ventW },
+      { labelKo: '통풍구 깊이 < 받침판 깊이', big: plateD, small: ventD },
+    ]);
+    if (r) {
+      // 요구사항 충족 — 형상에서 직접 센다(선언을 믿지 않는다).
+      const lips = (assembly.parts ?? []).filter((p) => String(p.role ?? '') === 'stop');
+      const front = lips.filter((p) => Number(p.at?.ty ?? 0) < 0);
+      r.checks.frontLip = {
+        labelKo: '전면 걸림턱 (경사면에서 노트북은 앞으로 미끄러진다)',
+        요구: '≥1개, 받침판 전면(−Y)', 실제: `${front.length}개 / 걸림턱 총 ${lips.length}개`,
+        ok: front.length >= 1 && front.length === lips.length,
+        note: '뒤쪽에만 있으면 기능이 반대다 — 미끄럼 방향과 맞아야 한다',
+      };
+      const hinges = (assembly.parts ?? []).filter((p) => /hinge_.*_pin$/.test(String(p.id ?? '')));
+      r.checks.hingeCount = {
+        labelKo: '힌지축 2조 (높이 조절 + 각도 조절)',
+        요구: 2, 실제: hinges.length, ok: hinges.length >= 2,
+      };
+      const adj = new Set((assembly.parts ?? []).map((p) => String(p.id ?? '')));
+      const need = m.heightAdjustParts ?? [];
+      r.checks.heightAdjust = {
+        labelKo: '높이 조절 기구 (지지대·슬라이더·노브)',
+        요구: need.join(', '), 실제: need.filter((k) => adj.has(k)).join(', ') || '없음',
+        ok: need.length > 0 && need.every((k) => adj.has(k)),
+      };
+      r.needInputs = [
+        { field: 'hingeFrictionTorque', labelKo: '힌지 마찰 토크', note: 'friction_clamp 계산기 미보유 — 각도 유지 판정 불가' },
+        { field: 'clampHoldForce', labelKo: '슬라이더 클램프 유지력', note: '동일 — 높이 유지 판정 불가' },
+      ];
+    }
+    return r;
+  }
   if (assembly.conveyorMeta) {
     const m = assembly.conveyorMeta;
     const r = spanCheck('컨베이어 검토 (롤러 배치)', {

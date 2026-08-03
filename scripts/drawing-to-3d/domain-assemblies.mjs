@@ -3622,6 +3622,189 @@ function ceilingGridAssembly(p = {}) {
   };
 }
 
+/**
+ * 데스크 거치대 (노트북·모니터) — **소비재 기구류 첫 아키타입** (260803, B3).
+ *
+ * ## 왜 이 템플릿인가
+ * 라이브에서 노트북 거치대 사진을 올리면 「이 분야 템플릿과 맞는 형상을 찾지 못했어요」로
+ * 끝났다. 원인은 **mech 18종이 전부 중공업**이라 소비재 아키타입이 0개인 것이다.
+ * 그리고 텍스트로 넣으면 형상은 나오지만 **42부품 중 28개가 공중에 떴다**(designOk:false) —
+ * `ASSEMBLY_SCHEMA` 가 `at{tx,ty,tz}` **절대좌표를 LLM 에게 계산시키기 때문**이다.
+ *
+ * 실측으로 확인한 것: 템플릿 54종 중 **47종이 designOk** 다. 즉 **부유는 자유형 경로의
+ * 문제이지 템플릿의 문제가 아니다.** 그래서 해법은 어휘가 아니라 **아키타입을 늘리는 것**이다.
+ *
+ * ## 배치 규율 — 부유를 만들지 않는 방법
+ * 모든 z 를 **바로 아래 부재의 상면에서 누적**한다. 상수를 손으로 넣지 않는다:
+ * ```
+ *   z = 0                      베이스 하면
+ *   z = baseT                  기둥 하면 (= 베이스 상면)
+ *   z = baseT + postH          상판 힌지 하면
+ * ```
+ * ⚠ 패드는 베이스 **아래**에 붙는데, `supportCheck` 는 지면 z≤2 를 base 로 본다.
+ *   그래서 패드 두께만큼 전체를 들어올리고 패드가 지면에 닿게 한다 — 그러지 않으면
+ *   패드가 「매달린 부품」이 되어 부유로 잡힌다.
+ *
+ * ## 스펙 근거
+ * 사용자가 준 스펙 문서(부품 20종)의 치수를 기본값으로 쓴다 — 지어낸 값이 아니다.
+ * 힌지·슬라이더는 **조절 기구**라 형상은 대표 자세(중립)로 낸다(가동 범위는 meta 로 고지).
+ */
+function deskStandAssembly(p = {}) {
+  const n = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  const baseW = n(p.baseW, 260), baseD = n(p.baseD, 220), baseT = n(p.baseT, 6);
+  const plateW = n(p.plateW, 280), plateD = n(p.plateD, 240), plateT = n(p.plateT, 4);
+  const postH = n(p.postH, 160), slH = n(p.sliderH, 170);
+  const ventW = n(p.ventW, 180), ventD = n(p.ventD, 130);
+  const padT = n(p.padT, 3), padW = n(p.padW, 30), padD = n(p.padD, 20);
+  const postW = n(p.postW, 50), postD = n(p.postD, 25);
+  const hingeDia = n(p.hingeDia, 8), brT = 6;
+  // ⚠ 스펙이 브래킷을 '55x40mm 두께 6mm' 로만 준다 — **압출 폭(Y)은 미기재**라 가정값이다.
+  //   6mm(=두께)로 두면 폭이 minBear(15) 미만이라 받침 판정이 안 된다. note 에 가정으로 고지한다.
+  const brWy = n(p.hingeBrWidth, 40);
+  const lipW = n(p.lipW, 40), lipD = 25, lipH = n(p.lipH, 16);
+
+  const parts = [];
+  const P = (id, type, params, at, material, role, extra) =>
+    parts.push({ id, type, params, at, material, role, ...(extra ?? {}) });
+
+  /**
+   * ★배치 규율 — z 를 **바로 아래 부재의 상면에서 누적**한다. 상수를 손으로 넣지 않는다.
+   * ⚠ 패드가 지면이다 — 베이스를 패드 두께만큼 들어올리지 않으면 패드가
+   *   「매달린 부품」이 되어 supportCheck 가 부유로 잡는다(z<=2 를 base 로 본다).
+   */
+  const zBase = padT;                 // 베이스 하면
+  const zPost = zBase + baseT;        // 기둥 하면 = 베이스 상면
+  const zSlide = zPost + postH;       // 슬라이더 하면 = 기둥 상면
+  const brH = 35, brH2 = 40;
+  const zUpBr = zSlide + slH * 0.5;   // 상부 브래킷 하면 = 슬라이더 상면(중립 자세)
+  const zPlate = zUpBr + brH2;        // 상판 하면
+
+  // -- 베이스 + 패드 ---------------------------------------------------------
+  P('base_plate', 'plate_with_holes', { width: baseW, depth: baseD, thickness: baseT },
+    { tx: -baseW / 2, ty: -baseD / 2, tz: zBase }, 'aluminum', 'frame',
+    { explode: [0, 0, -1], interface: '하부 힌지 브래킷 M5 체결면' });
+
+  const padIn = 15;
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy], i) => {
+    P('base_pad_' + (i + 1), 'box', { width: padW, depth: padD, height: padT },
+      { tx: sx * (baseW / 2 - padIn) - (sx > 0 ? padW : 0), ty: sy * (baseD / 2 - padIn) - (sy > 0 ? padD : 0), tz: 0 },
+      'rubber', 'pad', { explode: [sx, sy, -1], interface: '지면 접촉' });
+  });
+
+  /**
+   * -- 수직 지지대 ----------------------------------------------------------
+   * ⚠ `rect_tube` 는 무회전에서 **length→X · width→Y · height→Z** 다(실측).
+   *   세우려면 `ry:-90` 이고 그때 축이 **height→X · width→Y · length→Z** 로 바뀐다.
+   *   처음에 `rx:-90` 을 썼다가 기둥이 옆으로 누워 부유 19건이 났다.
+   */
+  P('post_fixed', 'rect_tube', { width: postW, height: postD, wallThk: 3, length: postH },
+    { tx: postD / 2, ty: -postW / 2, tz: zPost, ry: -90 }, 'aluminum', 'frame',
+    { explode: [0, 0, 1], interface: '슬라이더 활주면' });
+
+  /**
+   * ⚠ 슬라이더를 기둥 **안에** 넣으면 AABB 가 겹쳐 간섭으로 잡힌다. 실제 텔레스코픽은
+   *   겹치는 것이 맞지만 그 중첩은 이 모델의 표현 범위 밖이다 → **신장 자세로 맞대기**
+   *   배치하고 note 에 고지한다. 지어내는 대신 못 하는 것을 적는다.
+   */
+  const slW = postW - 6, slD = postD - 6;
+  P('height_slider', 'rect_tube', { width: slW, height: slD, wallThk: 2, length: slH * 0.5 },
+    { tx: slD / 2, ty: -slW / 2, tz: zSlide, ry: -90 }, 'aluminum', 'frame',
+    { explode: [0, 0, 1], interface: '노브 마찰 고정 · 가동 범위는 standMeta' });
+
+  P('height_knob', 'cylinder', { diameter: n(p.knobDia, 32), length: 14 },
+    { tx: 0, ty: slW / 2, tz: zSlide + slH * 0.25, rx: -90 }, 'steel', 'mount',
+    { explode: [0, 1, 0], interface: 'M6 볼트 — 슬라이더 마찰 고정' });
+
+  // -- 하부 힌지 (베이스 <-> 지지대) -----------------------------------------
+  const brW = n(p.hingeBrW, 50);
+  for (const [i, sy] of [[0, -1], [1, 1]]) {
+    P('hinge_lo_bracket_' + (i + 1), 'l_bracket', { legA: brW, legB: brH, width: brWy, thickness: brT },
+      { tx: -brW / 2, ty: sy > 0 ? postW / 2 : -postW / 2 - brWy, tz: zPost }, 'aluminum', 'mount',
+      { explode: [0, sy, 0], interface: '베이스 M5 체결 + 하부 힌지축' });
+  }
+  const pinLo = n(p.hingePinLo, 55);
+  P('hinge_lo_pin', 'cylinder', { diameter: hingeDia, length: pinLo },
+    { tx: 0, ty: -pinLo / 2, tz: zPost + brH / 2, rx: -90 }, 'steel', 'fastener',
+    { explode: [0, -1, 0], interface: '지지대 각도 조절축' });
+
+  // -- 상부 힌지 (슬라이더 <-> 받침판) ---------------------------------------
+  const brW2 = n(p.hingeBrW2, 55);
+  /**
+   * ⚠ 상부 브래킷은 **슬라이더 위에 얹힌다** — 하부처럼 베이스(넓은 판)가 아래에 없다.
+   *   처음에 하부와 같은 방식으로 슬라이더 **바깥**(ty=±slW/2)에 두었더니 Y 겹침이 0 이라
+   *   받침 판정이 안 됐다(부유 10건). 슬라이더 폭 안에 두 장을 나란히 두고 그 사이로
+   *   핀을 통과시킨다 — 실제 힌지 배치와도 같다.
+   */
+  const upGap = 8;                                        // 두 브래킷 사이(핀 회전 여유)
+  const brWyUp = Math.max(15, (slW - upGap) / 2);         // ⚠ 15 미만이면 받침 최소겹침에 못 미친다
+  const upFace = [[-slW / 2, -slW / 2 + brWyUp], [slW / 2 - brWyUp, slW / 2]];
+  for (const [i, sy] of [[0, -1], [1, 1]]) {
+    P('hinge_up_bracket_' + (i + 1), 'l_bracket', { legA: brW2, legB: brH2, width: brWyUp, thickness: brT },
+      { tx: -brW2 / 2, ty: upFace[i][0], tz: zUpBr }, 'aluminum', 'mount',
+      { explode: [0, sy, 0], interface: '받침판 M5 체결 + 상부 힌지축' });
+  }
+  const pinUp = n(p.hingePinUp, 60);
+  P('hinge_up_pin', 'cylinder', { diameter: hingeDia, length: pinUp },
+    { tx: 0, ty: -pinUp / 2, tz: zUpBr + brH2 / 2, rx: -90 }, 'steel', 'fastener',
+    { explode: [0, -1, 0], interface: '받침판 각도 조절축(0~45도)' });
+
+  /**
+   * 마찰 와셔 8 — 축당 4장, 브래킷 안쪽 면에 밀착.
+   * ⚠ `washer` 어휘다(flange 아님 — 볼트원이 없다). 라이브에서 이걸 flange 로 분류해
+   *   부품당 6건씩 60건이 났다(계획서 §1.1).
+   */
+  const washT = 1;
+  /**
+   * ⚠ 관통 인정(`role:'fastener'`)은 **세 축 실겹침**이 조건이다 — 와셔를 브래킷 면에
+   *   딱 붙이면 Y 겹침이 0 이라 인정되지 않는다. 핀 스팬 안쪽에 겹치게 둔다.
+   */
+  const loFace = [[-postW / 2 - brWy, -postW / 2], [postW / 2, postW / 2 + brWy]];
+  for (let k = 0; k < 8; k++) {
+    const up = k >= 4, j = k % 4;
+    const face = (up ? upFace : loFace)[j < 2 ? 0 : 1];
+    const zc = up ? zUpBr + brH2 / 2 : zPost + brH / 2;
+    // 브래킷 안쪽 면에서 washT 씩 안으로 — 서로 겹치지 않고 핀과는 겹친다
+    const ty = j < 2 ? face[1] - washT * ((j % 2) + 1) : face[0] + washT * (j % 2);
+    P('hinge_friction_washer_' + (k + 1), 'washer',
+      { outerDia: 18, boreDia: hingeDia, thickness: washT },
+      { tx: 0, ty, tz: zc, rx: -90 }, 'steel', 'fastener',
+      { explode: [0, j < 2 ? -1 : 1, 0], interface: '힌지 마찰 토크 조절' });
+  }
+
+  // -- 받침판 + 통풍구 + 전면 걸림턱 -----------------------------------------
+  // ⚠ 사각 통풍구는 원형 holes 로 못 낸다 — `slab_with_openings` 다(260803 어휘 배선).
+  P('laptop_plate', 'slab_with_openings',
+    { length: plateW, depth: plateD, thickness: plateT,
+      openings: ventW > 0 && ventD > 0 ? [{ x: (plateW - ventW) / 2, y: (plateD - ventD) / 2, w: ventW, d: ventD }] : [] },
+    { tx: -plateW / 2, ty: -plateD / 2, tz: zPlate }, 'aluminum', 'deck',
+    { explode: [0, 0, 1], interface: '노트북 접촉면 · 상부 힌지 M5 체결' });
+
+  /**
+   * ⚠ **전면** 걸림턱이다 — 경사면에서 노트북은 **앞(낮은 쪽, -Y)** 으로 미끄러진다.
+   *   GPT 가 만든 같은 제품 모델은 이걸 뒤쪽에 배치했다(계획서 §10.0 #1). 기능이 반대가 된다.
+   */
+  for (const [i, sx] of [[0, -1], [1, 1]]) {
+    P('front_lip_' + (i + 1), 'box', { width: lipW, depth: lipD, height: lipH },
+      { tx: sx * (plateW / 4) - lipW / 2, ty: -plateD / 2, tz: zPlate + plateT }, 'aluminum', 'stop',
+      { explode: [sx, -1, 1], interface: '노트북 전방 미끄럼 방지' });
+  }
+
+  return {
+    name: '데스크 거치대 ' + baseW + 'x' + baseD + ' (높이조절·각도조절)',
+    domain: 'mech', kind: 'assembly', parts,
+    standMeta: {
+      baseMm: [baseW, baseD, baseT], plateMm: [plateW, plateD, plateT], ventMm: [ventW, ventD],
+      heightRangeMm: [Math.round(zSlide + brH2), Math.round(zSlide + slH + brH2)],
+      tiltRangeDeg: [0, 45], hinges: 2, frictionWashers: 8,
+      frontLipCount: 2, heightAdjustParts: ['post_fixed', 'height_slider', 'height_knob'],
+    },
+    note: '⚠ 힌지 브래킷 **압출 폭 40mm 는 가정**이다 — 스펙이 55x40mm 두께 6mm 만 주고 폭을 안 준다. 조절 기구는 **중립 자세**로 형상화했다 — 높이·각도 가동 범위는 standMeta 이고 형상은 그 범위의 한 점이다. '
+      + '⚠ 텔레스코픽 **중첩 구간은 미모델**(슬라이더를 신장 자세로 맞대기 배치) — 실제로는 지지대 안으로 들어간다. '
+      + '⚠ 힌지 마찰 토크·슬라이더 클램프 유지력은 계산기 미보유(friction_clamp 후속)이므로 '
+      + '조절이 실제로 유지되는지는 이 형상만으로 판정하지 않는다.',
+  };
+}
+
 export const ASSEMBLY_TEMPLATES = {
   civil: [
     {
@@ -4060,6 +4243,24 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   mech: [
+    {
+      // ★260803 — 소비재 기구류 첫 아키타입. mech 18종이 전부 중공업이라 라이브에서
+      //   노트북 거치대 사진이 「맞는 형상을 찾지 못했어요」로 끝났다(계획서 §1.4).
+      id: 'desk_stand', labelKo: '데스크 거치대 (노트북·모니터, 높이·각도 조절)', labelEn: 'Desk stand', build: deskStandAssembly,
+      params: [
+        { name: 'baseW', labelKo: '베이스 폭', unit: 'mm', default: 260, min: 150, max: 500 },
+        { name: 'baseD', labelKo: '베이스 깊이', unit: 'mm', default: 220, min: 120, max: 450 },
+        { name: 'baseT', labelKo: '베이스 두께', unit: 'mm', default: 6, min: 3, max: 20 },
+        { name: 'plateW', labelKo: '받침판 폭', unit: 'mm', default: 280, min: 150, max: 600 },
+        { name: 'plateD', labelKo: '받침판 깊이', unit: 'mm', default: 240, min: 120, max: 500 },
+        { name: 'plateT', labelKo: '받침판 두께', unit: 'mm', default: 4, min: 2, max: 15 },
+        { name: 'postH', labelKo: '지지대 높이', unit: 'mm', default: 160, min: 60, max: 500 },
+        { name: 'sliderH', labelKo: '슬라이더 길이', unit: 'mm', default: 170, min: 60, max: 520 },
+        { name: 'ventW', labelKo: '통풍구 폭', unit: 'mm', default: 180, min: 0, max: 500 },
+        { name: 'ventD', labelKo: '통풍구 깊이', unit: 'mm', default: 130, min: 0, max: 400 },
+        { name: 'lipH', labelKo: '전면 걸림턱 높이', unit: 'mm', default: 16, min: 5, max: 60 },
+      ],
+    },
     {
       id: 'tower_crane', labelKo: '타워 크레인 (마스트 격자+지브)', labelEn: 'Tower crane', build: towerCraneAssembly,
       params: [
