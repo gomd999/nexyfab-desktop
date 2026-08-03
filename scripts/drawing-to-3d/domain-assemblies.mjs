@@ -2091,6 +2091,18 @@ function fourBarAssembly(p = {}) {
   const th4 = Math.atan2(C[1], C[0] - g);
   return {
     name: `4절 링크 g${g}/a${a}/b${b}/c${c} @${Math.round((th2 * 180) / Math.PI)}°`, domain: 'mech', kind: 'assembly', parts,
+    /**
+     * ★운동쌍 선언(260803) — 이게 있어야 `mobilityCheck` 이 자유도를 센다.
+     * 4절 링크는 **회전쌍 4개·링크 4개(접지 포함) → 평면 M = 3(4−1) − 2·4 = 1** 이다.
+     * ⚠ 배치가 우연히 동축이라고 회전쌍으로 치지 않는다 — **선언**이 있어야 센다.
+     *   그러지 않으면 「간섭이 없다」를 「움직인다」로 잘못 읽게 된다.
+     */
+    joints: [
+      { type: 'revolute', axis: 'z', between: ['base_bar', 'crank'], at: 'A' },
+      { type: 'revolute', axis: 'z', between: ['crank', 'coupler'], at: 'B' },
+      { type: 'revolute', axis: 'z', between: ['coupler', 'rocker'], at: 'C' },
+      { type: 'revolute', axis: 'z', between: ['rocker', 'base_bar'], at: 'D' },
+    ],
     fourBarMeta: {
       ground: g, crank: a, coupler: b, rocker: c,
       inputDeg: +((th2 * 180) / Math.PI).toFixed(1), outputDeg: +((th4 * 180) / Math.PI).toFixed(2),
