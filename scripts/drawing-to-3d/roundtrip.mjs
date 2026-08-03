@@ -105,7 +105,17 @@ export async function stepRoundTrip(asm) {
   // 배관이 별도 솔리드로 나가는데 `parts` 에 없어서 그렇다(rc_frame 9+1=10 ·
   // apartment_unit 19+6=25 · studio_unit 14+5=19 · three_room_unit 23+6=29 — 전부 일치).
   const pipeCount = Array.isArray(asm.pipes) ? asm.pipes.length : 0;
-  const bodiesInStep = (String(st.step ?? '').match(/MANIFOLD_SOLID_BREP/g) ?? []).length;
+  /**
+   * ⚠ 260803 — **인스턴스 재사용을 넣으면서 이 셈의 의미가 갈렸다.**
+   * 재사용 전에는 `MANIFOLD_SOLID_BREP` 수 = 부품 자리 수였다. 지금 MANIFOLD 는 **고유
+   * 형상** 수이고(와셔 8개 → 형상 1개), 자리 수는 `tree.instances` 가 갖고 있다.
+   * 이 불변식이 세려는 것은 **자리**다 — 「25부품을 넣었는데 STEP 에 25덩이가 있나」.
+   * MANIFOLD 를 그대로 쓰면 재사용을 **「바디가 사라졌다」로 오판**한다.
+   * ⚠ 트리 경로로 안 나간 폴백에는 `instances` 가 없다 — 그때는 종전대로 MANIFOLD 를 센다.
+   */
+  const bodiesInStep = Number.isFinite(st?.tree?.instances)
+    ? st.tree.instances
+    : (String(st.step ?? '').match(/MANIFOLD_SOLID_BREP/g) ?? []).length;
   const bodiesExpected = (asm.parts ?? []).length - droppedIds.length + pipeCount;
   const bodies = {
     inStep: bodiesInStep, expected: bodiesExpected,

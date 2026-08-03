@@ -22,6 +22,8 @@ import { editDrawing } from './edit.mjs';
 import { textToIntent, textToAssembly } from './from-text.mjs';
 import { buildAssembly } from './assembly.mjs';
 import { buildAssemblyTemplate, listAssemblyTemplates } from './domain-assemblies.mjs';
+import { sweepTemplate } from './sweep.mjs'; // 파라미터 스윕(데이터 트리 대체 — 채팅형)
+import { buildCorridor } from './corridor.mjs'; // 코리더 — 도구로 노출(카탈로그 계약 미충족이라 템플릿 아님)
 import { verify3d } from './verify.mjs';
 import { renderHtml } from './html-render.mjs';
 import { composeWithGate, emitComposite } from './compose.mjs';
@@ -440,6 +442,59 @@ export const tools = [
     },
   },
   {
+    /**
+     * ★파라미터 스윕(260803) — 데이터 트리(Grasshopper) 효용을 **채팅형으로** 채운다.
+     * 노드를 그리는 대신 「기둥 간격 3000~5000 을 500 단위로」를 말로 받는다.
+     * 템플릿 파라미터가 전부 min/max·enum 을 갖고 있어 **타입 검증까지 우리가 한다**.
+     */
+    /**
+     * ★코리더(260803) — 횡단면을 선형 따라 스윕. 갭 매트릭스 빈칸 ③.
+     * ⚠ **템플릿 카탈로그에 넣지 않는다.** 카탈로그는 「전 종이 소비자에게 판정을 전달한다」를
+     *   계약으로 갖는데(`domain-coverage` · `label-and-site-layout` 가드), 도로 기하구조 판정은
+     *   KDS 도로설계기준 영역이라 지금 그 계약을 못 지킨다. 기준 계산기가 붙으면 그때 넣는다.
+     *   그때까지는 **도구로 노출**한다 — 「닿지 않는 코드」로 두지 않으면서 계약도 안 어긴다.
+     */
+    name: 'build_corridor',
+    description:
+      '횡단면(offset,height 폴리곤)을 선형(IP·곡선)을 따라 스윕해 3D 본체와 물량을 낸다. '
+      + '반환: parts[] + corridorMeta{lengthMm, volumeM3, maxChordSagMm, stationTable}. '
+      + '⚠ 곡선은 현 근사이고 최대 이격을 maxChordSagMm 로 낸다(stepMm 를 줄이면 준다). '
+      + '⚠ 편경사는 선언한 구간만 반영한다 — 미선언을 표준값으로 채우지 않는다. '
+      + '⚠ 도로 기하구조 판정(종단경사·시거 등)은 포함하지 않는다(KDS 도로설계기준 영역).',
+    inputSchema: {
+      type: 'object',
+      required: ['ips', 'sections'],
+      properties: {
+        ips: { type: 'array', description: '평면선형 IP 점열 [[x,y], …] (2점 이상)' },
+        curves: { type: 'array', description: '[{ip, R}] 곡선 삽입(생략=절선)' },
+        sections: { type: 'array', description: '[{id, points:[[offset,height],…], material, role}]' },
+        stepMm: { type: 'number', description: '스테이션 간격(기본 5000)' },
+        startMm: { type: 'number' }, endMm: { type: 'number' },
+        superelevation: { type: 'array', description: '[{sta, pct}] 선언 구간만 선형 천이' },
+      },
+    },
+  },
+  {
+    name: 'sweep_template',
+    description:
+      '템플릿 파라미터를 훑어 변형 배열을 결정론적으로 생성·평가한다(데이터 트리 대체). '
+      + 'sweep 은 {파라미터명:{from,to,step}} 또는 {파라미터명:[값들]}. fixed 로 나머지 고정. '
+      + '반환: 조합별 designOk·부유·간섭·질량 + 가능/불가능 요약. '
+      + '⚠ 범위 밖 값은 클램프하고 clamped[] 로 알린다. 조합이 상한(120)을 넘으면 **자르지 않고 거부**한다. '
+      + '⚠ 「최적」을 정하지 않는다 — lightestByMass 는 한 가지 기준일 뿐이다.',
+    inputSchema: {
+      type: 'object',
+      required: ['domain', 'id', 'sweep'],
+      properties: {
+        domain: { type: 'string', description: 'mech|civil|building|interior|landscape|bridge' },
+        id: { type: 'string', description: 'list_templates 의 템플릿 id' },
+        sweep: { type: 'object', description: '{파라미터명:{from,to,step}} 또는 {파라미터명:[값들]}' },
+        fixed: { type: 'object', description: '스윕하지 않는 파라미터 고정값(생략=템플릿 기본값)' },
+        max: { type: 'number', description: '조합 상한(기본·최대 120)' },
+      },
+    },
+  },
+  {
     name: 'list_templates',
     description:
       '분야별 결정론 어셈블리 템플릿 목록(형상 합성기의 앞문). domain 생략 시 전 분야. ' +
@@ -824,7 +879,7 @@ async function callToolInner(name, args = {}) {
   }
   if (name === 'text_to_assembly') {
     const { assembly, model } = await textToAssembly(args.description, { model: args.model });
-    const built = buildAssembly(assembly);
+    const built = buildAssembly(assembly, { autoPlace: true });
     return { assembly, ...built, _model: model };
   }
   if (name === 'build_assembly') {
@@ -1020,6 +1075,15 @@ async function callToolInner(name, args = {}) {
     return res;
   }
 
+  if (name === 'sweep_template') {
+    return sweepTemplate(args ?? {});
+  }
+  if (name === 'build_corridor') {
+    const asm = buildCorridor(args ?? {});
+    if ((asm.alignmentErrors ?? []).length) return { ok: false, error: asm.alignmentErrors[0], alignmentErrors: asm.alignmentErrors };
+    const built = buildAssembly(asm);
+    return { ok: !!built.ok, assembly: asm, corridorMeta: asm.corridorMeta, ...built };
+  }
   if (name === 'list_templates') {
     const templates = listAssemblyTemplates(args.domain);
     // 정직 거부: 없는 분야를 "템플릿이 0개인 분야"로 돌려주면 오타가 조용히 통과한다.

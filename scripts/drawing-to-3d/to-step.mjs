@@ -546,8 +546,27 @@ export async function exportAssemblySTEP(nodes, { unit = 'MM', name = 'ASSEMBLY'
     groupLabels.set(g, lab);
   }
 
+  /**
+   * ★**인스턴스 재사용**(260803) — 같은 형상은 PRODUCT 하나로, 위치만 NAUO 로 낸다.
+   *
+   * 진짜 CAD 는 와셔 8개를 **1 PRODUCT + 8 NAUO** 로 낸다(우리는 8 PRODUCT + 8 NAUO 였다).
+   * BOM 수량이 자동으로 잡히고 파일이 작아진다.
+   * 판단은 `skey`(type·params·회전·후처리·색) — 형상이 같고 **위치만 다른** 경우만 묶는다.
+   * 변환은 `org` 차이(부품 배치 원점의 차)로, 회전은 이미 형상에 구워져 있으므로 평행이동뿐이다.
+   * ⚠ `skey` 가 없으면(옛 경로) 묶지 않는다 — 모르면 안 묶는 쪽이 안전하다.
+   */
+  const shapeLabels = new Map(); // skey -> { lab, org }
   for (const n of nodes) {
+    const reuse = n.skey ? shapeLabels.get(n.skey) : undefined;
+    if (reuse) {
+      const d = [0, 1, 2].map((k) => (n.org?.[k] ?? 0) - reuse.org[k]);
+      const trsf = new oc.gp_Trsf_1();
+      trsf.SetTranslation_1(new oc.gp_Vec_4(d[0], d[1], d[2]));
+      tool.AddComponent_1(groupLabels.get(groupOf(n)), reuse.lab, new oc.TopLoc_Location_2(trsf));
+      continue;
+    }
     const lab = tool.AddShape(n.shape.wrapped, false, false);
+    if (n.skey) shapeLabels.set(n.skey, { lab, org: [n.org?.[0] ?? 0, n.org?.[1] ?? 0, n.org?.[2] ?? 0] });
     oc.TDataStd_Name.Set_1(lab, str(n.name));
     if (n.color) {
       const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(n.color));
@@ -597,6 +616,16 @@ export async function exportAssemblySTEP(nodes, { unit = 'MM', name = 'ASSEMBLY'
     products: (step.match(/\bPRODUCT\s*\(/g) ?? []).length,
     nauo: (step.match(/NEXT_ASSEMBLY_USAGE_OCCURRENCE/g) ?? []).length,
     groups: [...groupLabels.keys()],
+    // 몇 개가 인스턴스로 재사용됐는지 — 「1 PRODUCT + N NAUO」가 실제로 일어났음을 잰다.
+    reusedInstances: nodes.length - shapeLabels.size,
+    /**
+     * **부품 자리(occurrence) 수** — 재사용을 넣기 전에는 `MANIFOLD_SOLID_BREP` 수가 곧
+     * 이 값이었다. 지금은 MANIFOLD 가 **고유 형상** 수라 둘이 갈린다.
+     * 「바디 수 = 부품 − 드롭 + 배관」 불변식(`roundtrip.mjs`)이 세는 것은 **자리**이므로
+     * 그쪽이 이 값을 봐야 한다. 안 그러면 재사용을 「바디가 사라졌다」로 오판한다.
+     */
+    instances: nodes.length,
+    uniqueShapes: shapeLabels.size,
   };
 }
 
@@ -680,6 +709,9 @@ export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) 
           color: fl.find((f) => f._col)?._col,
           // 계통(`part.system`) → STEP 하위조립 노드. 없으면 exportAssemblySTEP 이 '부품' 으로 묶는다.
           group: String(fl.find((f) => f._sys)?._sys ?? '부품'),
+          // 인스턴스 재사용 판단용(§exportAssemblySTEP) — 형상 동일성 키와 부품 원점.
+          skey: fl.find((f) => f._skey)?._skey ?? null,
+          org: fl.find((f) => f._org)?._org ?? [0, 0, 0],
         });
         report.jittered += r.report.jittered;
         report.dropped.push(...r.report.dropped);
@@ -752,7 +784,7 @@ export async function intentToStep(intent, { imports = [], filletMm = 0 } = {}) 
       const r = await exportAssemblySTEP(namedShapes, { unit: 'MM', name: intent.name ?? 'ASSEMBLY' });
       step = r.step;
       named = namedShapes.map((x) => x.name);
-      tree = { nauo: r.nauo, products: r.products, groups: r.groups };
+      tree = { nauo: r.nauo, products: r.products, groups: r.groups, reusedInstances: r.reusedInstances, instances: r.instances, uniqueShapes: r.uniqueShapes };
     } catch (e) {
       importNotes.push('STEP 조립 트리 실패(' + String(e?.message ?? e).slice(0, 60) + ') — 평면 명명으로 폴백');
     }

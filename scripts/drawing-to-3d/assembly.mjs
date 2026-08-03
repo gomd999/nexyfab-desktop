@@ -23,6 +23,7 @@ import { autoRoutePipes, pipeObstacleCheck, pipeCrossCheck } from './pipe-route.
 import { boxPartsInterference } from './obb2d.mjs';
 import { TOL_CONTACT, PARTS_BUDGET } from './geometry-tolerance.mjs';
 import { resolveConstraints } from './assembly-constraints.mjs'; // ⓑ 관계 배치(런타임 호출 — 순환 안전)
+import { mobilityCheck } from './mobility.mjs'; // 기구 자유도(선언된 joints 가 있을 때만)
 
 // 부품 → 계통색 (service/role 우선, 없으면 type). 계통색 GA 3D·도면 색분류 공용.
 export const SERVICE_COL = {
@@ -487,7 +488,12 @@ export function autoPlaceCorrect(asm) {
     if (!moved) break;
   }
   return {
-    assembly: { ...asm, parts, ...(carriedConflicts?.length ? { constraintConflicts: carriedConflicts } : {}) },
+    assembly: {
+      ...asm, parts,
+      // ★두 번 돌지 않기 위한 표식 — `buildAssembly` 가 이걸 보고 건너뛴다(아래 §진입점).
+      _placeCorrected: true,
+      ...(carriedConflicts?.length ? { constraintConflicts: carriedConflicts } : {}),
+    },
     corrections,
   };
 }
@@ -518,9 +524,23 @@ export function assemblyToComposeIntent(asm) {
       if (rz) { const c = Math.cos(rz * rad), s = Math.sin(rz * rad); const x2 = x * c - y * s, y2 = x * s + y * c; x = x2; y = y2; }
       return [x, y, z];
     };
+    /**
+     * ★형상 동일성 키(`_skey`)와 부품 원점(`_org`) — **STEP 인스턴스 재사용**용 (260803).
+     *
+     * 같은 type·params·회전·후처리를 가진 부품은 **형상이 같고 위치만 다르다.** 그러면
+     * 진짜 CAD 처럼 **1 PRODUCT + N NAUO** 로 낼 수 있다(우리는 지금 N PRODUCT + N NAUO).
+     * 실측(desk_stand): 25부품 중 고유 형상은 **12개** — 와셔 8개·패드 4개 등이 반복이다.
+     * ⚠ 키에 후처리(필렛·모따기·엣지연산)를 **반드시 포함**한다 — 치수가 같아도 R5 를 건
+     *   것과 안 건 것은 다른 부품이고, 묶으면 형상이 조용히 바뀐다.
+     * ⚠ `_org` 는 부품 배치 원점이다. 재사용 인스턴스의 변환 = (자기 _org) − (원본 _org).
+     */
+    const skey = JSON.stringify([
+      part.type, part.params ?? {}, rot ?? 0,
+      part.filletMm ?? 0, part.chamferMm ?? 0, part.edgeOps ?? 0, colorOf(part),
+    ]);
     const F = (kind, extra, lx = 0, ly = 0, lz = 0, op = 'add') => {
       const [wx, wy, wz] = rotLocal(lx, ly, lz);
-      return { kind, ...extra, op, _col: col, _pid: pidx, _pname: part.id ?? part.type, ...(part.system ? { _sys: part.system } : {}), ...(part.filletMm > 0 ? { _fillet: part.filletMm } : {}), ...(part.chamferMm > 0 ? { _chamfer: part.chamferMm } : {}), ...(Array.isArray(part.edgeOps) && part.edgeOps.length ? { _edgeOps: part.edgeOps } : {}), at: { translate: [wx + tx, wy + ty, wz + tz], ...(rot ? { rotate: rot } : {}) } };
+      return { kind, ...extra, op, _col: col, _pid: pidx, _pname: part.id ?? part.type, _skey: skey, _org: [tx, ty, tz], ...(part.system ? { _sys: part.system } : {}), ...(part.filletMm > 0 ? { _fillet: part.filletMm } : {}), ...(part.chamferMm > 0 ? { _chamfer: part.chamferMm } : {}), ...(Array.isArray(part.edgeOps) && part.edgeOps.length ? { _edgeOps: part.edgeOps } : {}), at: { translate: [wx + tx, wy + ty, wz + tz], ...(rot ? { rotate: rot } : {}) } };
     };
     switch (part.type) {
       case 'box': feats.push(F('box', { size: [p.width, p.depth, p.height] })); break;
@@ -891,6 +911,17 @@ export function pairExempt(pa, pb, ba, bb) {
   const within = (inner, outer, axes) =>
     axes.every((k) => inner.min[k] >= outer.min[k] - 0.1 && inner.max[k] <= outer.max[k] + 0.1);
 
+  /**
+   * ⓪ **연속 부재 분할** — 실물은 한 몸인데 모델링 편의로 나눈 것.
+   * 코리더 구간(스테이션마다 각기둥)·연속 벽체·배관 런이 그렇다. 곡선에서 인접 구간이
+   * 안쪽으로 조금 겹치는 것은 **현 근사의 필연**이지 설계 오류가 아니다.
+   * 실측: 도로 코리더 48부품에서 인접 구간 겹침 34건이 전부 이 형태였다.
+   * ⚠ **선언 기반**이다(`continuousWith` 가 같아야 한다) — 우연히 붙어 있는 남남을 묶지 않는다.
+   */
+  if (pa.continuousWith && pa.continuousWith === pb.continuousWith) {
+    return `연속 부재 분할('${pa.continuousWith}' — 실물은 한 몸. 구간 경계 겹침은 현 근사의 필연)`;
+  }
+
   // ① 철근 매입 — 전 구간 내포면 배근 정상(피복 검토는 도메인 계산 영역)
   const ri = pa.type === 'rebar' ? 0 : pb.type === 'rebar' ? 1 : -1;
   if (ri >= 0 && pa.type !== pb.type) {
@@ -972,9 +1003,33 @@ function pipeFeatureScad(features) {
  * @returns { ok, openscad, parts, gateErrors, interferences, welds, weldTotalMm, composeIntent,
  *            support, pipes, designOk }
  */
-export function buildAssembly(asm) {
+export function buildAssembly(asm, opts = {}) {
   if (!asm || !Array.isArray(asm.parts) || asm.parts.length === 0) {
     return { ok: false, gateErrors: asm?.alignmentErrors?.length ? asm.alignmentErrors : ['assembly: parts[] 비어있음'], interferences: [] };
+  }
+  /**
+   * ★ⓐ 배치 보정 — **`{ autoPlace: true }` 를 준 경로에서만** 건다 (260803).
+   *
+   * ## 왜 기본값이 아닌가 — 한 번 켜 봤다가 회귀 35건이 깨졌다
+   * 처음엔 「진입점마다 빠뜨리니 코어에서 항상 걸자」고 기본값으로 켰다. 결과:
+   * **17개 파일 35건 실패.** `face-contact-gap` 처럼 **일부러 간극·부유를 만들어 판정기를
+   * 시험하는** 테스트를 보정기가 고쳐 버렸다.
+   *
+   * > **판정 경로는 입력 그대로를 봐야 하고, 생성 경로만 보정해야 한다.**
+   * > 둘을 뭉치면 「검사기가 검사 대상을 고치는」 상태가 된다.
+   *
+   * 그래서 `buildAssembly` 는 기본적으로 **입력을 존중**하고, 「사용자에게 설계를 내주는」
+   * 경로만 켠다 — 웹 라우트(자체 호출)·MCP 서버·CLI 세 곳이다. 30여 분석 경로가 아니라
+   * 3곳이므로 빠뜨릴 위험도 관리 가능하다.
+   *
+   * ⚠ 이미 보정된 어셈블리(`_placeCorrected`)는 건너뛴다 — 라우트처럼 밖에서 먼저 부르고
+   *   보정 내역을 응답에 싣는 경로가 있고, 두 번 돌 이유가 없다.
+   */
+  let placeCorrections = null;
+  if (opts.autoPlace === true && !asm._placeCorrected) {
+    const pc = autoPlaceCorrect(asm);
+    asm = pc.assembly;
+    placeCorrections = pc.corrections;
   }
   // ⓑ 관계 배치: 부품에 constraints 가 있으면 절대좌표(at)로 먼저 해석한다(좌표 없이 관계로 배치).
   // 해석 실패(순환·미지 참조 등)는 조용히 넘기지 않고 정직 게이트 에러로 되돌린다.
@@ -1033,6 +1088,16 @@ export function buildAssembly(asm) {
       const { v, depth } = overlapInfo(boxes[i].box, boxes[j].box);
       const rotated = boxes[i].box.rotated || boxes[j].box.rotated;
       if (v > 1) { // 1mm³ 초과 겹침
+        /**
+         * ⓪ **연속 부재 분할** — 실물이 한 몸인데 모델링 편의로 나눈 구간(코리더 스테이션 등).
+         * `pairExempt` 단일 소스로 판정한다 — 보정기와 같은 규칙을 봐야 둘이 안 싸운다.
+         * ⚠ 아래 어휘별 정밀 규칙보다 **먼저** 본다. 선언이 있으면 기하를 더 볼 이유가 없다.
+         */
+        const contOnly = pairExempt(asm.parts[i], asm.parts[j], boxes[i].box, boxes[j].box);
+        if (contOnly && contOnly.startsWith('연속 부재')) {
+          contacts.push({ a: boxes[i].id, b: boxes[j].id, overlapMm3: Math.round(v), depthMm: +depth.toFixed(2), note: contOnly });
+          continue;
+        }
         // 축대칭 정밀(260718d — 프로펠러 허브×블레이드 AABB 과탐): revolve(회전체)는 반경
         // rMax 원통에 내포 — 메시 정점 최소 반경 ≥ rMax 면 실분리(회전 무관 폐형). 메시가
         // at 회전을 가지면 판정 불가(보수 유지).
@@ -1500,6 +1565,8 @@ export function buildAssembly(asm) {
    * 접촉(zero-thickness 맞닿음)은 `contacts` 로 따로 세므로 여기 걸리지 않는다 —
    * 맞닿는 설계를 겹침으로 오판하지 않는다.
    */
+  // 기구 자유도(joints 선언이 있을 때만 — 없으면 null 이고 결과에 키가 안 붙는다).
+  const mobility = mobilityCheck(asm);
   const designOk = support.floating.length === 0
     && interferences.length === 0
     && (!pipes || (pipes.errors.length === 0 && pipes.obstacleViolations.length === 0 && pipes.crossViolations.length === 0));
@@ -1515,7 +1582,14 @@ export function buildAssembly(asm) {
       return { id: b.id, aabb: b.box, obb: { local: { min: la.min, max: la.max }, at: { tx: src.at?.tx ?? 0, ty: src.at?.ty ?? 0, tz: src.at?.tz ?? 0, rx, ry, rz } } };
     } catch { return { id: b.id, aabb: b.box }; }
   });
-  return { ok: true, openscad, parts: partsOut, gateErrors: [], interferences, contacts: contactsFinal, ...(approxOverlaps ? { approxOverlaps } : {}), welds, weldTotalMm, composeIntent, structural, support, pipes, designOk, ...(constraintConflicts?.length ? { constraintConflicts } : {}) };
+  return { ok: true, openscad, parts: partsOut, gateErrors: [], interferences, contacts: contactsFinal, ...(approxOverlaps ? { approxOverlaps } : {}), welds, weldTotalMm, composeIntent, structural, support, pipes, designOk, ...(constraintConflicts?.length ? { constraintConflicts } : {}), ...(placeCorrections?.length ? { placeCorrections } : {}),
+    /**
+     * 기구 자유도 — `joints[]` 를 **선언한 어셈블리에만** 붙는다.
+     * ⚠ 선언이 없으면 키 자체가 없다. `mobility: 0` 으로 내보내면 「안 움직인다」로 읽히는데,
+     *   실제로는 **안 잰 것**이다. 안 잰 것과 0 은 다르다.
+     */
+    ...(mobility ? { mobility } : {}),
+    assembly: asm };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('assembly.mjs');

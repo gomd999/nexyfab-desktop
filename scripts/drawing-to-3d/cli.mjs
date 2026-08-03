@@ -233,6 +233,21 @@ async function main() {
       out({ ok: false, error: 'usage: node cli.mjs fea <asm.json> | --scad file.scad  --load <kg> [--material steel] [--precise]' });
       process.exitCode = 1; return;
     }
+  } else if (cmd === 'sweep') {
+    /**
+     * 파라미터 스윕 — 데이터 트리 대체(§sweep.mjs).
+     *   node cli.mjs sweep civil box_culvert --sweep '{"innerWidth":{"from":2000,"to":4000,"step":1000}}'
+     * ⚠ MCP `sweep_template` 과 **같은 함수**를 부른다 — 경로가 갈리면 답이 갈린다.
+     */
+    name = 'sweep_template';
+    if (!argv[1] || !argv[2] || !flag('sweep')) {
+      out({ ok: false, error: 'usage: node cli.mjs sweep <domain> <templateId> --sweep \'{"param":{"from":a,"to":b,"step":c}}\' [--fixed \'{"k":v}\'] [--max 120]' });
+      process.exitCode = 1; return;
+    }
+    let sweep, fixed;
+    try { sweep = JSON.parse(flag('sweep')); } catch { out({ ok: false, error: '--sweep 이 JSON 이 아니다' }); process.exitCode = 1; return; }
+    if (flag('fixed')) { try { fixed = JSON.parse(flag('fixed')); } catch { out({ ok: false, error: '--fixed 가 JSON 이 아니다' }); process.exitCode = 1; return; } }
+    args = { domain: argv[1], id: argv[2], sweep, ...(fixed ? { fixed } : {}), ...(flag('max') ? { max: parseInt(flag('max'), 10) } : {}) };
   } else if (cmd === 'reconstruct') {
     name = 'reconstruct_verify';
     if (!argv[1] || argv[1].startsWith('--')) { out({ ok: false, error: 'usage: node cli.mjs reconstruct <file .stl|.step|.iges|.ifc|.dwg|.sat|.x_t> [--format stl]' }); process.exitCode = 1; return; }
