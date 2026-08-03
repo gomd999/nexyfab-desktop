@@ -64,6 +64,28 @@ function lodExtras(asmMod: AssemblyModule, assembly: Assembly): { assembly: Asse
   }
 }
 
+/**
+ * ★진행 단계표(260803) — **지금 무슨 작업 중인지**를 화면에 낸다.
+ *
+ * 이 파이프라인은 AI 왕복 1~2회 + 결정론 검증 여러 단계로 20~60초가 걸린다. 그동안
+ * 회전하는 원 하나만 보여주면 **「멈춘 것」과 「도는 것」을 구별할 수 없다.**
+ * ⚠ 라벨·가중치는 `pipeline-stages.mjs` 단일 소스에서 온다 — 여기에 문자열로 박으면
+ *   화면·i18n·MCP 가 각자 다른 말을 하게 된다(이 세션에 어휘가 갈려 다섯 번 틀렸다).
+ * ⚠ 가중치는 **실측 상대 소요**다. AI 호출이 절반 가까이라는 사실을 그대로 반영한다 —
+ *   지어낸 백분율로 채우면 「92%에서 30초 멈춤」이 된다.
+ */
+let _prog: { pct: (id: string) => number; event: (id: string, extra?: Record<string, unknown>) => Record<string, unknown>; frame: (k: string, extra?: Record<string, unknown>) => Record<string, unknown>; ids: string[] } | null = null;
+async function loadProgress() {
+  if (_prog) return _prog;
+  const p = join(process.cwd(), 'scripts', 'drawing-to-3d', 'pipeline-stages.mjs');
+  const m = (await import(/* webpackIgnore: true */ pathToFileURL(p).href)) as {
+    ASSEMBLE_STAGES: unknown[];
+    progressTable: (s: unknown[]) => { pct: (id: string) => number; event: (id: string, extra?: Record<string, unknown>) => Record<string, unknown>; frame: (k: string, extra?: Record<string, unknown>) => Record<string, unknown>; ids: string[] };
+  };
+  _prog = m.progressTable(m.ASSEMBLE_STAGES);
+  return _prog;
+}
+
 let _ft: FromTextModule | null = null;
 let _asm: AssemblyModule | null = null;
 async function load(): Promise<{ ft: FromTextModule; asm: AssemblyModule }> {
@@ -230,9 +252,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (planGuard) return planGuard;
 
   let description: string;
+  /**
+   * ★진행 스트림(260803) — `stream:true` 면 SSE 로 **지금 무슨 작업 중인지**를 보낸다.
+   *
+   * 이 파이프라인은 AI 왕복 1~2회 + 결정론 검증 여러 단계로 20~60초가 걸린다. 그동안
+   * 사용자가 보는 것이 회전하는 원 하나면 **「멈춘 것」과 「도는 것」을 구별할 수 없다.**
+   * ⚠ 기존 JSON POST 는 그대로 둔다 — 스트림은 요청이 명시할 때만이다(하위 호환).
+   * ⚠ 단계 이름·가중치는 `pipeline-stages.mjs` 단일 소스다. 라우트에 문자열로 박으면
+   *   화면·i18n·MCP 가 각자 다른 말을 하게 된다(이 세션에 어휘가 갈려 다섯 번 틀렸다).
+   */
+  let wantStream = false;
   try {
-    const body = (await req.json()) as { description?: string };
+    const body = (await req.json()) as { description?: string; stream?: boolean };
     description = (body.description ?? '').trim();
+    wantStream = body.stream === true || (req.headers.get('accept') ?? '').includes('text/event-stream');
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
@@ -244,11 +277,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   let mods: { ft: FromTextModule; asm: AssemblyModule };
+  let PROG: Awaited<ReturnType<typeof loadProgress>>;
   try {
     mods = await load();
+    PROG = await loadProgress();
   } catch (e) {
     return NextResponse.json({ ok: false, error: 'pipeline load failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 });
   }
+
+  /**
+   * 파이프라인 본문 — `emit` 으로 **지금 무슨 단계인지** 흘려보낸다.
+   * ⚠ 함수로 뽑은 이유는 **같은 로직을 스트림/비스트림 두 벌로 두지 않기 위해서**다.
+   *   경로가 갈리면 답이 갈린다(이 세션에 다섯 번 겪었다).
+   */
+  const runPipeline = async (emit: (ev: Record<string, unknown>) => void): Promise<NextResponse> => {
+
 
   // 요청 정합 검사(intent-match, 260717 — "시킨 것과 다른 걸 만든다" 대응):
   // AI=검증 가능한 요구 추출만 · 판정=결정론 실측 · 검증 불가=UNVERIFIABLE 정직 표기.
@@ -306,6 +349,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     let built: BuiltAssembly | null = null;
     let lastErrors: string[] = [];
 
+    emit(PROG.event('catalog'));
     const catalog = await templateCatalog().catch(() => '');
     // ⚠ 어휘는 ALL_TYPES 에서 생성한다 — 라우트가 자기 목록을 들면 또 갈린다(§단일소스).
     const vocab = mods.ft.VOCAB_SPEC();
@@ -313,6 +357,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const prompt = (round === 0 || !assembly
         ? BASE_PROMPT(description, vocab)
         : FIX_PROMPT(description, lastErrors, assembly, vocab)).replace('{{CATALOG}}', catalog);
+      emit(PROG.event('ai', { round: round + 1 }));
       const { data } = await mods.ft.callAiJson(prompt, null, AI_OPTS);
       const hasCA = !!(data && typeof (data as { civilAlignment?: unknown }).civilAlignment === 'object');
       const tpl = (data as { template?: { domain?: string; id?: string; params?: Record<string, unknown> } })?.template;
@@ -352,8 +397,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         } catch { /* 근거 표시 실패는 생성을 막지 않는다 */ }
         assembly = built2;
         placeCorrections = [];
+        emit(PROG.event('build'));
         built = mods.asm.buildAssembly(assembly);
         if (built.ok) {
+          emit(PROG.event('intent'));
           let intentMatch = await intentCheck(mods, description, assembly, (assembly as { alignment?: unknown }).alignment);
           // 교정 라운드: 불일치 판정문 되먹임 → 템플릿 params 만 재선언(조건부 채택 — parts 경로와 동일 게이트)
           if (intentMatch && intentMatch.mismatched > 0) {
@@ -511,11 +558,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       })();
       provenance = pv.provenance;
       // AI 배치 결정론 보정(§12.1-4 v1): 부유 드롭·깊은 관통 분리 — 내역은 응답에 공개
+      emit(PROG.event('place'));
       const corrected = mods.asm.autoPlaceCorrect(pv.assembly);
       assembly = corrected.assembly;
       placeCorrections = corrected.corrections;
+      emit(PROG.event('build'));
       built = mods.asm.buildAssembly(assembly);
       if (built.ok) {
+        emit(PROG.event('intent'));
         let intentMatch = await intentCheck(mods, description, assembly);
         // AI 가 임의로 채운 값 자가보고(라벨 명시) — "조용한 기본값"이 불일치의 주원인
         const assumptions = Array.isArray((data as { assumptions?: unknown[] }).assumptions)
@@ -524,6 +574,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // 의도 교정 라운드(1회): 불일치 판정문 되먹임 → 재빌드 → 재검증.
         // 채택 조건: 게이트 통과 + designOk 악화 없음 + 불일치 감소 + 일치 비감소. 내역은 repair 로 공개.
         if (intentMatch && intentMatch.mismatched > 0) {
+          emit(PROG.event('repair', { mismatched: intentMatch.mismatched }));
           const before = intentMatch.mismatched;
           let adopted = false;
           try {
@@ -598,4 +649,39 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const status = /GEMINI_API_KEY|OPENAI_API_KEY/.test(msg) ? 503 : 502;
     return NextResponse.json({ ok: false, error: 'assemble failed: ' + msg.slice(0, 200) }, { status });
   }
+  };
+
+  // ── 비스트림(기존 계약 그대로) ──────────────────────────────────────────────
+  if (!wantStream) return runPipeline(() => { /* 진행 이벤트 버림 */ });
+
+  // ── 스트림: 같은 함수를 돌리고 진행 이벤트를 SSE 로 흘린다 ───────────────────
+  const enc = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (ev: Record<string, unknown>) => {
+        try { controller.enqueue(enc.encode(`data: ${JSON.stringify(ev)}\n\n`)); } catch { /* 닫힌 스트림 */ }
+      };
+      // ⚠ 라벨을 라우트에 적지 않는다 — 사이트는 6개국어이고, 여기 ko/en 만 박으면
+      //   ja·zh·es·ar 이 조용히 영어가 된다(i18n 커버리지 래칫이 실제로 잡았다).
+      send({ ...PROG.frame('start'), stages: PROG.ids });
+      try {
+        const res = await runPipeline(send);
+        const body = await res.json();
+        // ⚠ 최종 결과를 **스트림 안에서** 준다 — 별도 요청으로 다시 받게 하면 그 사이에
+        //   상태가 갈리고, 사용자는 두 번 기다린다.
+        send({ ...PROG.frame('done'), status: res.status, result: body });
+      } catch (e) {
+        send({ ...PROG.frame('error'), error: e instanceof Error ? e.message : String(e) });
+      }
+      controller.close();
+    },
+  });
+  return new NextResponse(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  });
 }

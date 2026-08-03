@@ -840,13 +840,50 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
       let timedOut = false;
       const killer = setTimeout(() => { timedOut = true; ac.abort(); }, 120_000); // §13-2 상한 타임아웃 v1
       try {
+        /**
+         * ★진행 스트림(260803) — **지금 무슨 작업 중인지**를 단계로 받는다.
+         *
+         * 종전에는 「AI가 부품을 분해·배치하고 간섭을 검사하는 중…」 한 문장이 20~60초 동안
+         * 그대로 떠 있었다. 사용자는 **멈춘 것과 도는 것을 구별할 수 없다.**
+         * 어셈블리 경로만 SSE 를 쓴다(compose 는 아직 단계 계측이 없다 — 없는 걸 있는 척하지 않는다).
+         * ⚠ 스트림이 안 되면 **조용히 기존 JSON 으로 되돌아간다** — 진행 표시를 얻으려고
+         *   생성 자체를 잃지 않는다(필렛 실패 폴백과 같은 규율).
+         */
         const res = await fetch(isAssembly ? '/api/nexyfab/drawing/assemble/' : '/api/nexyfab/drawing/compose/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ description: desc }),
+          body: JSON.stringify({ description: desc, ...(isAssembly ? { stream: true } : {}) }),
           signal: ac.signal,
         });
-        const raw = (await res.json()) as ComposeResp & { openscad?: string; composeIntent?: ComposeOk['intent']; interferences?: unknown[] };
+        type RawResp = ComposeResp & { openscad?: string; composeIntent?: ComposeOk['intent']; interferences?: unknown[] };
+        let streamed: RawResp | null = null;
+        if (isAssembly && (res.headers.get('content-type') ?? '').includes('text/event-stream') && res.body) {
+          const reader = res.body.getReader();
+          const dec = new TextDecoder();
+          let buf = '';
+          for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buf += dec.decode(value, { stream: true });
+            // SSE 프레임은 빈 줄로 끊긴다. 마지막 조각은 다음 청크와 이어 붙인다.
+            const frames = buf.split('\n\n');
+            buf = frames.pop() ?? '';
+            for (const f of frames) {
+              const line = f.split('\n').find((l) => l.startsWith('data: '));
+              if (!line) continue;
+              let ev: { stage?: string; pct?: number; ko?: string; en?: string; detail?: string; result?: unknown };
+              try { ev = JSON.parse(line.slice(6)); } catch { continue; }
+              if (ev.stage === 'done') { streamed = ev.result as RawResp; continue; }
+              if (ev.stage === 'error') continue; // 아래 폴백이 받는다
+              const label = (ko ? ev.ko : ev.en) ?? '';
+              setStatus(`${label}${ev.detail && ko ? ` — ${ev.detail}` : ''}${typeof ev.pct === 'number' ? ` (${ev.pct}%)` : ''}`);
+            }
+          }
+        }
+        // ⚠ 스트림이 결과를 못 줬으면 **기존 JSON 으로 되돌아간다** — 진행 표시를 얻으려고
+        //   생성 자체를 잃지 않는다(필렛 실패 폴백과 같은 규율).
+        const raw: RawResp = streamed
+          ?? ((await res.json().catch(() => ({ ok: false, error: '응답을 읽지 못했습니다.' }))) as RawResp);
         // assemble 응답(openscad/composeIntent)을 compose 형식으로 정규화
         const data: ComposeResp = raw.ok && isAssembly
           ? { ok: true, intent: (raw.composeIntent ?? { name: 'assembly' }) as ComposeOk['intent'], scad: String(raw.openscad ?? ''), rounds: (raw as { rounds?: number }).rounds ?? 1, verify: null }
