@@ -1,4 +1,4 @@
-// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(61종).
+// AUTO-GENERATED from scripts/engineering-core/core.mjs — eng-api 계산 카탈로그(62종).
 // 재생성: node scripts/engineering-core/gen-calc-catalog.mjs. AI 의도추출 프롬프트에 주입.
 export interface CalcParam { desc: string; type?: string; min?: number; max?: number; enum?: (string|number)[] }
 export interface CalcSpec { id: string; domain: string; title: string; description: string; required: string[]; params: Record<string, CalcParam> }
@@ -3598,12 +3598,11 @@ export const CALC_CATALOG: CalcSpec[] = [
     "title": "배수관 관지름 (DFU법 — KDS 31 30 25)",
     "description": "기구 DFU 합산 → 수평지관·수직관·수평주관 관지름 선정 + 기울기·대변기 게이트.",
     "required": [
-      "fixtures",
       "segment"
     ],
     "params": {
       "fixtures": {
-        "desc": "기구 [{type(표 4.1-2 키), count}] — 키: 욕조·세탁기·식기세척기·음수기·주방싱크·주방싱크_식세기포함·세면기·청소싱크·샤워부스·소변기_4L·소변기_4L초과·대변기_6L·대변기_13L·싱크_DN40·싱크_DN50"
+        "desc": "기구 [{type(표 4.1-2 키), count}] — 키: 욕조·세탁기·식기세척기·음수기·주방싱크·주방싱크_식세기포함·세면기·청소싱크·샤워부스·소변기_4L·소변기_4L초과·대변기_6L·대변기_13L·싱크_DN40·싱크_DN50 (segment branch/stack/main 필수)"
       },
       "building": {
         "desc": "건물 구분 (표 4.1-2 열 — 기본 general. 공동주택 미규정 기구는 일반값 폴백 명시)",
@@ -3613,11 +3612,12 @@ export const CALC_CATALOG: CalcSpec[] = [
         ]
       },
       "segment": {
-        "desc": "구간 (수평지관/수직관/수평주관)",
+        "desc": "구간 (수평지관/수직관/수평주관/통기관)",
         "enum": [
           "branch",
           "stack",
-          "main"
+          "main",
+          "vent"
         ]
       },
       "floors": {
@@ -3641,6 +3641,22 @@ export const CALC_CATALOG: CalcSpec[] = [
       "plannedDN": {
         "desc": "계획 관지름 (판정용)",
         "type": "number"
+      },
+      "drainDN": {
+        "desc": "통기(vent): 담당 배수관 지름 DN",
+        "type": "number"
+      },
+      "ventLen_m": {
+        "desc": "통기(vent): 배관길이 m (각개·지관·루프·도피 — ≥12 m 시 한 단계 업, §4.3(2))",
+        "type": "number",
+        "min": 0
+      },
+      "ventKind": {
+        "desc": "통기 종류: stack_vent=신정통기·통기수직관(1/2 초과) / individual=각개·지관·루프·도피(1/2 이상)",
+        "enum": [
+          "stack_vent",
+          "individual"
+        ]
       }
     }
   },
@@ -3961,6 +3977,80 @@ export const CALC_CATALOG: CalcSpec[] = [
         "type": "number",
         "min": 1,
         "max": 3
+      }
+    }
+  },
+  {
+    "id": "friction_clamp",
+    "domain": "mech/fastening",
+    "title": "마찰 고정 검토 (힌지 토크·클램프 유지력)",
+    "description": "체결 축력에서 마찰 토크와 미끄럼 저항을 산정해 조절 기구가 자세를 유지하는지 판정한다. μ·K 는 시험 입력(기본값 없음) — 미입력이면 판정하지 않고 정직하게 반려한다.",
+    "required": [
+      "mode",
+      "mu",
+      "nSurfaces"
+    ],
+    "params": {
+      "mode": {
+        "desc": "검토 대상: hinge=회전 유지 토크 · clamp=축직각 미끄럼 저항",
+        "type": "string",
+        "enum": [
+          "hinge",
+          "clamp"
+        ]
+      },
+      "mu": {
+        "desc": "마찰계수 (시험값 — 기본값 없음)",
+        "type": "number",
+        "min": 0,
+        "max": 1.2
+      },
+      "nSurfaces": {
+        "desc": "마찰면 수 (와셔 양면이면 2)",
+        "type": "integer",
+        "min": 1,
+        "max": 12
+      },
+      "axialForceN": {
+        "desc": "체결 축력 N (직접 입력)",
+        "type": "number",
+        "min": 0
+      },
+      "tightenTorqueNm": {
+        "desc": "조임 토크 N·m (K·boltDia 와 함께 주면 축력 환산)",
+        "type": "number",
+        "min": 0
+      },
+      "torqueCoefK": {
+        "desc": "토크계수 K (시험값 — 기본값 없음)",
+        "type": "number",
+        "min": 0,
+        "max": 0.6
+      },
+      "boltDia": {
+        "desc": "볼트 공칭지름 mm",
+        "type": "number",
+        "min": 0
+      },
+      "outerDia": {
+        "desc": "마찰면 외경 mm (와셔 외경)",
+        "type": "number",
+        "min": 0
+      },
+      "innerDia": {
+        "desc": "마찰면 내경 mm (보어)",
+        "type": "number",
+        "min": 0
+      },
+      "demandTorqueNm": {
+        "desc": "소요 유지 토크 N·m (hinge)",
+        "type": "number",
+        "min": 0
+      },
+      "demandForceN": {
+        "desc": "소요 미끄럼 저항 N (clamp)",
+        "type": "number",
+        "min": 0
       }
     }
   }

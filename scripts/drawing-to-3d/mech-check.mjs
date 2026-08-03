@@ -622,9 +622,19 @@ function mechCheckInner(assembly, params = {}) {
         요구: need.join(', '), 실제: need.filter((k) => adj.has(k)).join(', ') || '없음',
         ok: need.length > 0 && need.every((k) => adj.has(k)),
       };
+      /**
+       * ★260803 — `friction_clamp` 계산기가 생겼다. 그런데 **여기서 자동으로 돌리지 않는다.**
+       * μ(마찰계수)·K(토크계수)는 **시험값**이라 기본값을 끼워 넣으면 결과가 시험 근거를
+       * 잃는다(계산기 자신도 미입력이면 판정을 거부한다). 그래서 「계산기가 없다」가 아니라
+       * **「입력이 없다」**로 바뀐 것을 정확히 적고, 어느 계산기로 가면 되는지 지목한다.
+       */
       r.needInputs = [
-        { field: 'hingeFrictionTorque', labelKo: '힌지 마찰 토크', note: 'friction_clamp 계산기 미보유 — 각도 유지 판정 불가' },
-        { field: 'clampHoldForce', labelKo: '슬라이더 클램프 유지력', note: '동일 — 높이 유지 판정 불가' },
+        { field: 'mu', labelKo: '마찰계수 μ (시험값)', calculator: 'friction_clamp',
+          note: '힌지 각도 유지 판정에 필요 — friction_clamp(mode:hinge)로 계산' },
+        { field: 'torqueCoefK', labelKo: '토크계수 K (시험값)', calculator: 'friction_clamp',
+          note: '조임토크→축력 환산에 필요. 축력을 직접 알면 불요' },
+        { field: 'demandTorqueNm', labelKo: '소요 유지 토크', calculator: 'friction_clamp',
+          note: '노트북 무게×편심으로 정해지는 값 — 사용 조건 입력' },
       ];
     }
     return r;
