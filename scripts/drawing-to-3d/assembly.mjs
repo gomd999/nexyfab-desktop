@@ -24,6 +24,7 @@ import { boxPartsInterference } from './obb2d.mjs';
 import { TOL_CONTACT, PARTS_BUDGET } from './geometry-tolerance.mjs';
 import { resolveConstraints } from './assembly-constraints.mjs'; // ⓑ 관계 배치(런타임 호출 — 순환 안전)
 import { mobilityCheck } from './mobility.mjs'; // 기구 자유도(선언된 joints 가 있을 때만)
+import { solveMobility } from './kinematics.mjs'; // 같은 질문을 **푼다**(Kutzbach 는 세기만 한다)
 
 // 부품 → 계통색 (service/role 우선, 없으면 type). 계통색 GA 3D·도면 색분류 공용.
 export const SERVICE_COL = {
@@ -1566,7 +1567,33 @@ export function buildAssembly(asm, opts = {}) {
    * 맞닿는 설계를 겹침으로 오판하지 않는다.
    */
   // 기구 자유도(joints 선언이 있을 때만 — 없으면 null 이고 결과에 키가 안 붙는다).
-  const mobility = mobilityCheck(asm);
+  const mobilityBase = mobilityCheck(asm);
+  /**
+   * ★같은 질문을 **두 방법**으로 낸다 — Kutzbach 는 링크와 쌍을 **세고**, 야코비안은
+   * 배치를 넣어 **푼다**. 두 값이 갈리면 그 자체가 결과다:
+   * ```
+   *   Kutzbach 만 음수      → 과구속으로 보이지만 여분 구속이다(평행사변형 링크 등)
+   *   야코비안이 더 큰 M    → 지금 자세가 특이 자세에 가깝다(조건수를 함께 본다)
+   * ```
+   * ⚠ **어느 한쪽으로 덮어쓰지 않는다.** 야코비안은 「선형화된 지금 자세」라 자세가 바뀌면
+   *   달라지고, Kutzbach 는 자세와 무관하다. 하나로 합치면 두 한계가 섞여 어느 쪽 한계에
+   *   걸린 값인지 알 수 없게 된다 — 나란히 두고 **갈렸다는 사실**을 적는다.
+   */
+  const jac = mobilityBase ? solveMobility(asm) : null;
+  const mobility = mobilityBase && jac
+    ? {
+      ...mobilityBase, jacobian: jac,
+      ...(Number.isFinite(jac.mobility) && Number.isFinite(mobilityBase.mobility) && jac.mobility !== mobilityBase.mobility
+        ? {
+          methodsDisagree: true,
+          disagreeNote: `Kutzbach ${mobilityBase.mobility} · 야코비안 ${jac.mobility}`
+            + `${jac.redundant ? ` — 여분 구속 ${jac.redundant}개가 원인일 수 있다(Kutzbach 는 이걸 못 본다)` : ''}`
+            + `${jac.illConditioned ? ' — 특이 자세에 가깝다(야코비안 값이 이 자세에서만 성립할 수 있다)' : ''}`
+            + `${jac.borderline ? ' — 랭크가 공차에 민감하다(야코비안 M 이 ±1 흔들릴 수 있다)' : ''}`,
+        }
+        : {}),
+    }
+    : mobilityBase;
   const designOk = support.floating.length === 0
     && interferences.length === 0
     && (!pipes || (pipes.errors.length === 0 && pipes.obstacleViolations.length === 0 && pipes.crossViolations.length === 0));
