@@ -577,6 +577,100 @@ export function partCG(part) {
   return [c[0] + tx, c[1] + ty, c[2] + tz];
 }
 
+/**
+ * ★**관성 텐서**(260803) — 갭 매트릭스가 지목한 빈칸 ①.
+ *
+ * 동역학·모달·기울임 응답의 전제다. 종전 `structural` 은 질량·CG·반력·전도까지만 있었다.
+ *
+ * ## 방법과 그 한계 — **정직하게 적는다**
+ * 어휘마다 폐형 관성식을 쓰는 게 정확하지만 40종 전부에 대해 그것을 쓰는 것은 별개 작업이다.
+ * 여기서는 **질량은 정확값**(`partVolumeEffective` × 재질 밀도)을 쓰고, **분포는 AABB 균질
+ * 직육면체로 근사**한다. 그래서:
+ * ```
+ *   질량·CG            정확(기존 경로 그대로)
+ *   관성 분포          AABB 균질 근사 — 속찬 블록에 가까울수록 정확
+ *   중공·박판·회전체    과대(질량이 실제보다 바깥에 있다고 보므로) — 아래 basis 로 고지
+ * ```
+ * ⚠ 「근사」를 결과에 **붙여서** 낸다. 관성값만 주고 근거를 안 적으면 폐형인 줄 안다.
+ * ⚠ 원통·구는 폐형이 간단하므로 그것만 정확식을 쓴다(자주 쓰이고 오차가 크다).
+ *
+ * @returns {{ Ixx,Iyy,Izz,Ixy,Ixz,Iyz, aboutCgMm, basis, exactCount, approxCount }} kg·mm²
+ */
+export function inertiaTensor(assembly, opts = {}) {
+  const dMat = opts.defaultMaterial ?? 'STS316';
+  const parts = assembly?.parts ?? [];
+  // 전체 CG(질량 가중) — 텐서는 이 점 기준으로 낸다(평행축 정리).
+  let M = 0; const cg = [0, 0, 0];
+  const rows = [];
+  for (const part of parts) {
+    const rho = (DENSITY[part.material ?? dMat] ?? DENSITY.STS316) / 1e9; // kg/mm³
+    const m = partVolumeEffective(part).volumeMm3 * rho * Math.max(1, Math.round(Number(part.qty) || 1));
+    if (!(m > 0)) continue;
+    const c = partCG(part);
+    rows.push({ part, m, c });
+    M += m;
+    for (const k of [0, 1, 2]) cg[k] += m * c[k];
+  }
+  if (!(M > 0)) return null;
+  for (const k of [0, 1, 2]) cg[k] /= M;
+
+  let Ixx = 0, Iyy = 0, Izz = 0, Ixy = 0, Ixz = 0, Iyz = 0;
+  let exact = 0, approx = 0;
+  for (const { part, m, c } of rows) {
+    // ── 자기 CG 기준 주관성(대각) ────────────────────────────────────────────
+    let ix, iy, iz;
+    const p = part.params ?? {};
+    const ax = axisOfRotationalPart(part);
+    if (ax && part.type === 'cylinder' && p.diameter > 0 && p.length > 0) {
+      // 속찬 원기둥 폐형: 축방향 mr²/2 · 횡방향 m(3r²+h²)/12
+      const r = p.diameter / 2, h = p.length;
+      const along = m * r * r / 2, across = m * (3 * r * r + h * h) / 12;
+      [ix, iy, iz] = ax === 'x' ? [along, across, across] : ax === 'y' ? [across, along, across] : [across, across, along];
+      exact++;
+    } else if (part.type === 'sphere' && p.diameter > 0) {
+      const r = p.diameter / 2;
+      ix = iy = iz = 2 * m * r * r / 5; // 속찬 구 폐형
+      exact++;
+    } else {
+      // AABB 균질 직육면체 근사
+      const b = placedPartAabb(part);
+      const d = [0, 1, 2].map((k) => Math.max(1e-6, b.max[k] - b.min[k]));
+      ix = m * (d[1] * d[1] + d[2] * d[2]) / 12;
+      iy = m * (d[0] * d[0] + d[2] * d[2]) / 12;
+      iz = m * (d[0] * d[0] + d[1] * d[1]) / 12;
+      approx++;
+    }
+    // ── 평행축 정리로 전체 CG 기준으로 옮긴다 ──────────────────────────────
+    const dx = c[0] - cg[0], dy = c[1] - cg[1], dz = c[2] - cg[2];
+    Ixx += ix + m * (dy * dy + dz * dz);
+    Iyy += iy + m * (dx * dx + dz * dz);
+    Izz += iz + m * (dx * dx + dy * dy);
+    Ixy -= m * dx * dy;
+    Ixz -= m * dx * dz;
+    Iyz -= m * dy * dz;
+  }
+  const r3 = (v) => +v.toFixed(3);
+  return {
+    Ixx: r3(Ixx), Iyy: r3(Iyy), Izz: r3(Izz), Ixy: r3(Ixy), Ixz: r3(Ixz), Iyz: r3(Iyz),
+    aboutCgMm: cg.map((v) => +v.toFixed(2)),
+    unit: 'kg·mm²',
+    exactCount: exact, approxCount: approx,
+    basis: approx === 0
+      ? '전 부재 폐형(원기둥·구)'
+      : `질량은 정확값, 분포는 ${approx}부재를 AABB 균질 직육면체로 근사 — 중공·박판·회전체는 과대`,
+  };
+}
+
+/** 회전 대칭축(폐형 관성이 성립하는 축). 사축이면 null. */
+function axisOfRotationalPart(part) {
+  if (!['cylinder', 'tube'].includes(part.type)) return null;
+  const { rx = 0, ry = 0, rz = 0 } = part.at ?? {};
+  if (!rx && !ry && !rz) return 'z';
+  if (Math.abs(Math.abs(ry) - 90) < 1e-6 && !rx) return 'x';
+  if (Math.abs(Math.abs(rx) - 90) < 1e-6 && !ry) return 'y';
+  return null;
+}
+
 // 부품 배치 후 월드 AABB — assembly.mjs placedAabb 와 동일 수학(로컬 AABB 8코너 회전→이동).
 // assembly→structural 의존이라 여기 복제(rotCG 와 같은 사유 — 역방향 import 는 순환).
 function placedPartAabb(part) {
@@ -771,6 +865,11 @@ export function structuralCheck(assembly, opts = {}) {
     massBreakdown, massSumCheck,
     // 표에 없는 재질 이름 — 있으면 그 부재 질량은 STS316 로 계산된 값이다(위 §모르는 재질).
     ...(unknownMaterials.size ? { unknownMaterials: [...unknownMaterials] } : {}),
+    /**
+     * 관성 텐서(260803) — 전 CG 기준, kg·mm². `basis` 에 폐형/근사 비율을 적어 낸다.
+     * ⚠ 여기에 실어야 웹·MCP·CLI 가 **한 번에** 받는다. 소비자마다 따로 부르면 또 갈린다.
+     */
+    inertia: inertiaTensor(assembly, opts),
     // 산출 근거 집계(F1·F12) — 어떤 부재가 규격 중공/판재 셸/중실로 잡혔는지 한눈에.
     massBasis: massBreakdown.reduce((m, r) => { m[r.basis] = (m[r.basis] ?? 0) + 1; return m; }, {}),
     cgWorldMm: cg.map(v => +v.toFixed(1)),
