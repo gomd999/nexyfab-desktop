@@ -647,6 +647,17 @@ const GATES = {
       e.push('dia1 = dia2 — 원기둥이다. `cylinder` 를 쓸 것(같은 형상을 두 어휘로 쓰면 BOQ·도면이 갈린다)');
     }
   },
+  sphere(i, e) {
+    if (!pos(i.diameter) || i.diameter > 20000) e.push('diameter invalid (≤20m)');
+  },
+  /** 3축 지름이 모두 같으면 구다 — `cone`/`cylinder` 와 같은 이유로 한 형상은 한 어휘로. */
+  ellipsoid(i, e) {
+    for (const k of ['dx', 'dy', 'dz']) if (!pos(i[k]) || i[k] > 20000) e.push(`${k} invalid (≤20m)`);
+    if (pos(i.dx) && pos(i.dy) && pos(i.dz)
+      && Math.abs(i.dx - i.dy) < 1e-9 && Math.abs(i.dy - i.dz) < 1e-9) {
+      e.push('dx = dy = dz — 구다. `sphere` 를 쓸 것(같은 형상을 두 어휘로 쓰면 BOQ·도면이 갈린다)');
+    }
+  },
   /**
    * 원환(도넛) — `majorDia` 는 **중심원 지름**, `minorDia` 는 **관 지름**이다.
    * ⚠ `minorDia ≥ majorDia` 면 안쪽 구멍이 사라져 자기교차한다(형상이 성립하지 않는다).
@@ -902,7 +913,11 @@ const GATES = {
     for (const [n, f] of (i.fillets ?? []).entries()) {
       if (!Number.isInteger(Number(f?.i)) || !pos(f?.r)) e.push(`fillets[${n}] invalid({i:정수, r>0})`);
     }
-    if (i.filletR != null && !pos(i.filletR)) e.push('filletR invalid(>0)');
+    // 0 = 필렛 없음(빌더의 `Number(i.filletR) || 0` 와 같은 규약). 0 을 막으면 모서리를
+    // 안 굴리겠다는 정상 입력이 에러가 된다 — 실제로 MVP 패리티 실측에서 걸렸다(260803).
+    if (i.filletR != null && !(Number.isFinite(Number(i.filletR)) && Number(i.filletR) >= 0)) {
+      e.push('filletR invalid(>=0, 0=필렛 없음)');
+    }
   },
   composite(i, e) {
     let subs = null;
@@ -1103,6 +1118,14 @@ const SCAD = {
     // OpenSCAD 는 원뿔대를 직접 지원한다(d1/d2). 다면체 근사라 부피는 $fn 에 달렸다 —
     // 우리가 내보내는 **부피·표면적은 정확식**이고, SCAD 는 표시용이다(고지 규약).
     return `cylinder(h=${i.height}, d1=${i.dia1}, d2=${i.dia2}, $fn=96);`;
+  },
+  sphere(i) {
+    // 밑점을 z=0 에 맞춘다(AABB 규약과 정합).
+    return `translate([0, 0, ${i.diameter / 2}]) sphere(d=${i.diameter}, $fn=96);`;
+  },
+  ellipsoid(i) {
+    // SCAD 에는 타원체가 없다 — 단위구를 비균일 스케일. B-rep(STEP) 은 makeEllipsoid 로 정확.
+    return `translate([0, 0, ${i.dz / 2}]) scale([${i.dx / 2}, ${i.dy / 2}, ${i.dz / 2}]) sphere(d=2, $fn=96);`;
   },
   torus(i) {
     const R = i.majorDia / 2, r = i.minorDia / 2;
@@ -1366,6 +1389,14 @@ export function partAabb(i) {
       const Rt = i.majorDia / 2, rt = i.minorDia / 2;
       return { min: [-(Rt + rt), -(Rt + rt), 0], max: [Rt + rt, Rt + rt, 2 * rt] };
     }
+    case 'sphere': { // torus 와 같은 규약 — 밑점이 z=0 에 닿는다(중심 z=r).
+      const rs = i.diameter / 2;
+      return { min: [-rs, -rs, 0], max: [rs, rs, 2 * rs] };
+    }
+    case 'ellipsoid': {
+      const ax = i.dx / 2, ay = i.dy / 2, az = i.dz / 2;
+      return { min: [-ax, -ay, 0], max: [ax, ay, 2 * az] };
+    }
     case 'gusset':
       return { min: [0, 0, 0], max: [i.legA, i.legB, i.thickness] };
     case 'base_plate':
@@ -1498,6 +1529,10 @@ export const PARAMS = {
   // 근사라 부피가 실제와 다르다 — 여기서는 부피·표면적이 **정확식**이다.
   cone: ['dia1', 'dia2', 'height'],
   torus: ['majorDia', 'minorDia'],
+  // 260803 — MVP 패리티 실측에서 우리 어휘에 없던 둘. 노즈콘 끝단·구형 캡·타원 허브 등
+  // 회전체로 흉내 내면 다각형 근사가 되어 부피가 선언식과 갈린다(원환에서 겪은 것과 같은 함정).
+  sphere: ['diameter'],
+  ellipsoid: ['dx', 'dy', 'dz'],
   gusset: ['legA', 'legB', 'thickness'],
   base_plate: ['width', 'depth', 'thickness', 'boltDia'],
   spur_gear: ['module', 'teeth', 'thickness', 'boreDia'],

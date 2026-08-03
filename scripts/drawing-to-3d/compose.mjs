@@ -137,6 +137,9 @@ export function gateComposite(intent) {
       case 'cylinder': if (!pos(f.diameter) || !pos(f.height)) errs.push(`${tag}: cylinder dims invalid`); break;
       case 'box': if (!Array.isArray(f.size) || !f.size.every(pos)) errs.push(`${tag}: box size invalid`); break;
       case 'sphere': if (!pos(f.diameter)) errs.push(`${tag}: sphere dia invalid`); break;
+      case 'ellipsoid': // 260803 — 타원체(STEP=replicad makeEllipsoid, SCAD=단위구 비균일 스케일)
+        if (!pos(f.dx) || !pos(f.dy) || !pos(f.dz)) errs.push(`${tag}: ellipsoid dx/dy/dz invalid`);
+        break;
       case 'cone': // 원뿔대(260719 — pipe_reducer 실형상: 계단 근사 폐기)
         if (!pos(f.height) || !(f.dia1 >= 0) || !(f.dia2 >= 0) || (f.dia1 <= 0 && f.dia2 <= 0)) errs.push(`${tag}: cone dia1/dia2/height invalid`);
         break;
@@ -169,6 +172,8 @@ function featBody(f) {
     case 'cylinder': return `cylinder(h=${fmt(f.height)}, d=${fmt(f.diameter)}, center=${f.centered ? 'true' : 'false'}, $fn=96);`;
     case 'box': return `cube([${f.size.map(fmt).join(', ')}], center=${f.centered ? 'true' : 'false'});`;
     case 'sphere': return `sphere(d=${fmt(f.diameter)}, $fn=64);`;
+    // SCAD 에 타원체가 없어 단위구를 세 축으로 스케일한다 — STEP 은 진짜 타원체면이라 부피가 조금 다르다.
+    case 'ellipsoid': return `scale([${fmt(f.dx / 2)}, ${fmt(f.dy / 2)}, ${fmt(f.dz / 2)}]) sphere(d=2, $fn=64);`;
     case 'cone': return `cylinder(h=${fmt(f.height)}, d1=${fmt(f.dia1)}, d2=${fmt(f.dia2)}, $fn=96);`;
     // ⚠ SCAD 는 `$fn` 다면체 근사라 STEP(원환면)보다 부피가 조금 작다 — 3열 대조가 그 차를 잰다.
     case 'torus': return `rotate_extrude($fn=128) translate([${fmt(f.majorDia / 2)}, 0, 0]) circle(d=${fmt(f.minorDia)}, $fn=64);`;

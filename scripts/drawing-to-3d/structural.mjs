@@ -82,6 +82,9 @@ export function partVolume(type, p) {
     // 260801h — 원뿔대 V = πh/12·(d1² + d1·d2 + d2²) · 원환 V = 2π²Rr² (둘 다 **정확식**)
     case 'cone': return (Math.PI * p.height / 12) * (p.dia1 ** 2 + p.dia1 * p.dia2 + p.dia2 ** 2);
     case 'torus': return 2 * Math.PI ** 2 * (p.majorDia / 2) * (p.minorDia / 2) ** 2;
+    // 260803 — 구 V = (π/6)d³ · 타원체 V = (π/6)·dx·dy·dz (둘 다 **정확식**)
+    case 'sphere': return (Math.PI / 6) * p.diameter ** 3;
+    case 'ellipsoid': return (Math.PI / 6) * p.dx * p.dy * p.dz;
     case 'cylinder': { // T1(260719): 키홈=원호 절단 정확식, 오링 홈=원환 폐형
       let v = A * p.diameter ** 2 * p.length;
       const r = p.diameter / 2;
@@ -634,8 +637,18 @@ export function structuralCheck(assembly, opts = {}) {
   const Fy = opts.materialFy ?? 205, E = opts.E ?? 193000, seismic = opts.seismicG ?? 0.5;
 
   const bodies = [];
+  /**
+   * ★모르는 재질 이름(260803) — **조용히 스테인리스로 떨어지고 있었다.**
+   * 실측: `material:'rubber'` · `'wood'` · `'나무'` 가 전부 7980 kg/m³(STS316)로 계산됐다.
+   * 사용자가 「고무 패드」라고 적었는데 질량이 스테인리스로 나오면 그건 **틀린 답을
+   * 맞는 답처럼** 내는 것이다. 폴백 자체는 유지하되(계산은 나와야 한다) **이름을 모은다** —
+   * 호출측이 「이 재질은 표에 없어 강재로 계산했다」를 말할 수 있어야 한다.
+   */
+  const unknownMaterials = new Set();
   for (const part of assembly.parts ?? []) {
-    const rho = (DENSITY[part.material ?? dMat] ?? DENSITY.STS316) / 1e9; // kg/mm³
+    const mName = part.material ?? dMat;
+    if (DENSITY[mName] === undefined) unknownMaterials.add(String(mName));
+    const rho = (DENSITY[mName] ?? DENSITY.STS316) / 1e9; // kg/mm³
     // F1·F12(260719b): 선언 형상 체적이 아니라 **실단면 보정 체적**(규격 중공/판재 셸).
     const eff = partVolumeEffective(part);
     const vol = eff.volumeMm3;
@@ -756,6 +769,8 @@ export function structuralCheck(assembly, opts = {}) {
     totalMassKg: totalDisp,
     totalExactKg: +totalMass.toFixed(3),
     massBreakdown, massSumCheck,
+    // 표에 없는 재질 이름 — 있으면 그 부재 질량은 STS316 로 계산된 값이다(위 §모르는 재질).
+    ...(unknownMaterials.size ? { unknownMaterials: [...unknownMaterials] } : {}),
     // 산출 근거 집계(F1·F12) — 어떤 부재가 규격 중공/판재 셸/중실로 잡혔는지 한눈에.
     massBasis: massBreakdown.reduce((m, r) => { m[r.basis] = (m[r.basis] ?? 0) + 1; return m; }, {}),
     cgWorldMm: cg.map(v => +v.toFixed(1)),

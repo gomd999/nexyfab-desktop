@@ -44,6 +44,16 @@ function surfaceMm2(type, p) {
     }
     // 원환 겉넓이 = 4π²Rr (정확식). 안쪽 구멍 면도 도장 대상이라 전면적이 맞다.
     case 'torus': return 4 * Math.PI ** 2 * (p.majorDia / 2) * (p.minorDia / 2);
+    case 'sphere': return Math.PI * p.diameter ** 2; // 정확식 4πr²
+    /**
+     * 타원체 겉넓이는 **닫힌 초등식이 없다**(타원적분). Knud Thomsen 근사식을 쓴다 —
+     * 상대오차 ≤1.061%. 부피는 정확식인데 면적만 근사이므로 여기 명시해 둔다.
+     * S ≈ 4π·((aᵖbᵖ + aᵖcᵖ + bᵖcᵖ)/3)^(1/p),  p = 1.6075
+     */
+    case 'ellipsoid': {
+      const a = p.dx / 2, b = p.dy / 2, c = p.dz / 2, q = 1.6075;
+      return 4 * Math.PI * (((a ** q) * (b ** q) + (a ** q) * (c ** q) + (b ** q) * (c ** q)) / 3) ** (1 / q);
+    }
     case 'gusset': return p.legA * p.legB + p.thickness * (p.legA + p.legB + Math.hypot(p.legA, p.legB));
     case 'spur_gear': {
       const poly = gearPoly(p);

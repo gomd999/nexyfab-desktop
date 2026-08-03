@@ -62,6 +62,49 @@ const RULES = [
     note: '볼트원이 없어 평와셔로 판단 — 외경·내경·두께를 그대로 옮겼다(치수 변경 없음)',
   },
   {
+    id: 'thick_plate_no_holes→box',
+    /**
+     * `plate_with_holes` 게이트는 `thickness >= min(width,depth)` 를 「판재 아님」으로 막는다.
+     * 맞는 규칙이다 — 판재 물량·전개·도면이 얇은 판 전제로 돌아간다. 그런데 사용자가
+     * 「측판 250×4000 두께 9」처럼 **축 순서를 바꿔 적으면** 정상 형상인데도 거부된다.
+     *
+     * 구멍이 없으면 `plate_with_holes` 는 **`box` 와 정확히 같은 형상**이다
+     * (둘 다 x=width · y=depth · z=두께/height). 그래서 치수 변경 없이 옮길 수 있다.
+     * ⚠ 구멍이 있으면 걸지 않는다 — `box` 에는 홀이 없어 형상이 달라진다.
+     */
+    when: (p) => p.type === 'plate_with_holes'
+      && pos(p.params?.width) && pos(p.params?.depth) && pos(p.params?.thickness)
+      && p.params.thickness >= Math.min(p.params.width, p.params.depth)
+      && !(Array.isArray(p.params.holes) && p.params.holes.length),
+    fix: (p) => ({
+      ...p,
+      type: 'box',
+      params: { width: p.params.width, depth: p.params.depth, height: p.params.thickness },
+    }),
+    note: '두께가 폭·깊이보다 커 판재가 아니다 — 구멍이 없어 동일 형상인 블록(box)으로 옮겼다(치수 변경 없음)',
+  },
+  {
+    id: 'ellipsoid_equal_axes→sphere',
+    /**
+     * `ellipsoid` 게이트는 세 축 지름이 같으면 「구다」로 막는다(한 형상 = 한 어휘 원칙).
+     * 막기만 하면 사용자에겐 그냥 에러다 — 어느 어휘가 맞는지 우리가 알고 있으니 옮겨 준다.
+     * 치수는 그대로다(dx = dy = dz = diameter).
+     */
+    when: (p) => p.type === 'ellipsoid'
+      && ['dx', 'dy', 'dz'].every((k) => pos(p.params?.[k]))
+      && Math.abs(p.params.dx - p.params.dy) < 1e-9 && Math.abs(p.params.dy - p.params.dz) < 1e-9,
+    fix: (p) => ({ ...p, type: 'sphere', params: { diameter: p.params.dx } }),
+    note: '세 축 지름이 같아 구로 판단 — 지름을 그대로 옮겼다(치수 변경 없음)',
+  },
+  {
+    id: 'sphere_with_three_axes→ellipsoid',
+    /** 반대 방향 — `sphere` 에 dx/dy/dz 를 넣어 보내면 diameter 가 없어 게이트가 막는다. */
+    when: (p) => p.type === 'sphere' && !pos(p.params?.diameter)
+      && ['dx', 'dy', 'dz'].every((k) => pos(p.params?.[k])),
+    fix: (p) => ({ ...p, type: 'ellipsoid', params: { dx: p.params.dx, dy: p.params.dy, dz: p.params.dz } }),
+    note: '세 축 지름이 주어져 타원체로 판단 — 치수를 그대로 옮겼다',
+  },
+  {
     id: 'plate_rect_holes→slab_with_openings',
     /**
      * 라이브 실측: 받침판 280×240 의 「중앙 통풍구 180×130」을 원형 `holes` 에 밀어넣어

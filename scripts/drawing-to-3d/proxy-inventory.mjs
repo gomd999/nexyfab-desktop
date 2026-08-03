@@ -34,6 +34,9 @@ export const CANONICAL = {
   cylinder: { diameter: 60, length: 200 },
   cone: { dia1: 80, dia2: 40, height: 120 },
   torus: { majorDia: 200, minorDia: 40 },
+  // 260803 — MVP 패리티 대조에서 추가. 이 회귀가 **또** 누락을 잡았다(260801 과 같은 자리).
+  sphere: { diameter: 100 },
+  ellipsoid: { dx: 120, dy: 80, dz: 60 },
   gusset: { legA: 100, legB: 80, thickness: 10 },
   spur_gear: { module: 2, teeth: 24, thickness: 20, boreDia: 20 },
   hex_bolt: { threadDia: 12, length: 60 },

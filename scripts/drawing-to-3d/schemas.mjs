@@ -80,6 +80,10 @@ export const TYPE_HINTS = {
   cylinder: 'diameter,length (속찬 원기둥 봉·포스트)',
   cone: 'dia1,dia2,height (속찬 원뿔대 — dia2=0 이면 뾰족한 원뿔. 셸은 pipe_reducer)',
   torus: 'majorDia,minorDia (속찬 원환/도넛 — majorDia=중심원 지름, minorDia=관 지름. 셸은 pipe_elbow)',
+  sphere: 'diameter (속찬 구 — 구형 캡·볼. 밑점이 z=0)',
+  // ⚠ 보어 축을 명시한다 — 실측에서 모델이 **z축 축(shaft)에 y축 보어 베어링**을 물려
+  //   간섭 판정이 났다. 「보어가 있다」만 알려 주면 어느 방향인지 모른다(260803).
+  ellipsoid: 'dx,dy,dz (속찬 타원체 — 세 축 지름. 세 값이 같으면 sphere 를 쓸 것. 유선형 노즈·허브)',
   gusset: 'legA,legB,thickness (직각삼각 거셋 보강판)',
   base_plate: 'width,depth,thickness,boltDia (4모서리 볼트홀 베이스판)',
   spur_gear: 'module,teeth,thickness,boreDia (인벌류트 스퍼기어 — 외경=m(z+2), boreDia 0=무보어)',
@@ -118,7 +122,7 @@ export const TYPE_HINTS = {
   hex_nut: 'af,thickness,boreDia (육각너트 — af=대변거리(맞변), boreDia=나사 안지름. 나사산 미형상 관례)',
   coil_spring: 'wireDia,coilDia,pitch,turns (코일 스프링 — coilDia=코일 중심원 지름. '
     + '게이트: wireDia < coilDia/2 · pitch ≥ wireDia(밀착 초과 시 코일 겹침))',
-  pillow_block: 'boreDia,width,height,depth,boltPitch (베어링 하우징/필로우 블록 — boltPitch=베이스 볼트 중심간 거리)',
+  pillow_block: 'boreDia,width,height,depth,boltPitch (베어링 하우징/필로우 블록 — boltPitch=베이스 볼트 중심간 거리. ⚠보어 축은 **y(수평)**·원점은 모서리라 보어 중심은 로컬(width/2, height): 축은 y방향으로 눕히고 축 중심선에 보어를 맞춰라)',
 
   // 형강 — 압연 단면
   h_section: 'H,B,tw,tf,length (H형강 — H=춤, B=플랜지 폭, tw=웨브 두께, tf=플랜지 두께)',
