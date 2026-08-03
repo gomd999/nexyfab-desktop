@@ -10,9 +10,10 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  LEVELS, annotateAssembly, assemblyProvenance, groundParamsInText, isVerifiableLevel,
-  markParam, markParams, partLevel, provenanceSummary, weaker,
+  LEVELS, annotateAssembly, annotateTemplateAssembly, assemblyProvenance, groundParamsInText,
+  isVerifiableLevel, markParam, markParams, partLevel, provenanceSummary, weaker,
 } from './provenance.mjs';
+import { buildAssemblyTemplate, listAssemblyTemplates, normalizeTemplateParams } from './domain-assemblies.mjs';
 
 type Part = { id: string; type: string; params: Record<string, number>; _prov?: unknown };
 const mark = markParam as unknown as (p: Part, k: string, l: string, n?: string) => Part;
@@ -191,5 +192,51 @@ describe('★수리 이력 — 게이트 수리된 부품은 전량 assumed 로 
     const asm = { parts: [plateP()] };
     annotate(asm, TEXT, { repairedIds: ['plate'] });
     expect(asm.parts[0]._prov).toBeUndefined();
+  });
+});
+
+
+// ─── geometry-derived: 템플릿 파생 (260803) ─────────────────────────────────
+
+describe('★geometry-derived — 라벨만 있고 만드는 층이 없었다', () => {
+  /**
+   * B1 직후 실측하면 `geometry-derived` 가 **0건**이었다. 5단계를 만들어 놓고
+   * 그 등급을 실제로 붙이는 곳이 없었다 — 있으나 마나였다.
+   * 템플릿 부품의 치수는 세 갈래이고, 그 셋을 결정론으로 가르는 것이 이 함수다.
+   */
+  const specs = (listAssemblyTemplates as unknown as () => Array<{ id: string; params: Array<{ name: string; default: number }> }>)()
+    .find((t) => t.id === 'desk_stand')!.params;
+  const userIn = { baseW: 300, plateW: 320 };
+  const norm = (normalizeTemplateParams as unknown as (s: unknown, p: unknown) => { values: Record<string, number> })(specs, userIn);
+  const asm = (buildAssemblyTemplate as unknown as (d: string, i: string, p: unknown) => { parts: Part[] })('mech', 'desk_stand', userIn);
+  const ann = (annotateTemplateAssembly as unknown as (a: unknown, v: unknown, s: unknown) => { parts: Part[] })(asm, norm.values, specs);
+  const prov = asmProv(ann as { parts: Part[] });
+
+  it('★geometry-derived 가 실제로 생긴다 — 0건이 아니다', () => {
+    expect(prov.counts['geometry-derived']).toBeGreaterThan(0);
+  });
+
+  it('사용자가 준 값은 observed', () => {
+    const base = ann.parts.find((p) => p.id === 'base_plate')!;
+    expect((base._prov as { params: Record<string, string> }).params.width).toBe('observed');
+  });
+
+  it('선언 기본값은 assumed — 사용자가 준 것과 구별한다', () => {
+    const base = ann.parts.find((p) => p.id === 'base_plate')!;
+    expect((base._prov as { params: Record<string, string> }).params.thickness).toBe('assumed');
+  });
+
+  it('★코드가 계산한 값은 geometry-derived — 슬라이더는 전 파라미터가 파생이다', () => {
+    const sl = ann.parts.find((p) => p.id === 'height_slider')!;
+    const marks = (sl._prov as { params: Record<string, string> }).params;
+    expect(Object.values(marks).every((v) => v === 'geometry-derived'), JSON.stringify(marks)).toBe(true);
+  });
+
+  it('geometry-derived 는 **검증 가능** 등급이다 — 가정과 섞지 않는다', () => {
+    expect(isVerifiableLevel('geometry-derived')).toBe(true);
+  });
+
+  it('요약이 파생 개수를 말한다', () => {
+    expect(provenanceSummary(prov as never)).toMatch(/파생/);
   });
 });

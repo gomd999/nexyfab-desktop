@@ -186,6 +186,54 @@ export function markStandardDerived(part) {
 }
 
 /**
+ * ★**템플릿 산출물의 근거** — `geometry-derived` 를 실제로 만드는 유일한 곳 (260803).
+ *
+ * ## 문제
+ * B1 에서 5단계를 만들었는데 실측하면 `geometry-derived` 가 **0건**이었다.
+ * 라벨은 있는데 **그 등급을 만드는 층이 없었다** — 있으나 마나였다.
+ *
+ * ## 템플릿에는 답이 있다
+ * 템플릿 부품의 치수는 세 갈래다:
+ * ```
+ *   ① 사용자가 준 파라미터 그대로        baseW=260  → width: 260        observed
+ *   ② 선언 기본값 그대로                 baseT 미입력 → thickness: 6     assumed
+ *   ③ 그 둘에서 **코드가 계산한 값**     slW = postW-6 · z = zBase+baseT  geometry-derived
+ * ```
+ * ③이 템플릿의 본질이다 — 「비율 배치를 코드가 한다」가 곧 파생이다.
+ * 그리고 `normalizeTemplateParams` 가 **사용자가 실제로 준 값만** `values` 로 돌려주므로
+ * ①과 ②를 결정론으로 가를 수 있다.
+ *
+ * ## ⚠ 한계 — 값 일치는 근거의 하한이다
+ * `width: 260` 이 `baseW: 260` 과 같다고 해서 **그 파라미터에서 왔다는 보장은 없다**
+ * (우연히 같은 값일 수 있다). `groundParamsInText` 와 같은 성질이고, 같은 규율로 읽는다:
+ * **`geometry-derived` 쪽이 신뢰도가 높다**(선언값 어디에도 없으면 확실히 계산된 값이다).
+ * ⚠ `geometry-derived` 는 **검증 가능** 등급이다 — 코드가 계산한 값은 지어낸 값이 아니다.
+ *   가정(`assumed`)과 섞지 않는 것이 이 함수의 요점이다.
+ *
+ * @param {object} assembly `buildAssemblyTemplate` 산출물
+ * @param {Record<string, number>} userValues `normalizeTemplateParams(...).values` — 사용자가 실제로 준 것
+ * @param {Array<{name:string, default:number}>} specs 템플릿 파라미터 선언
+ */
+export function annotateTemplateAssembly(assembly, userValues = {}, specs = []) {
+  const given = new Set(Object.values(userValues ?? {}).filter((v) => Number.isFinite(v)));
+  const defaults = new Set((specs ?? []).map((s) => s.default).filter((v) => Number.isFinite(v)));
+
+  const parts = (assembly?.parts ?? []).map((p) => {
+    let out = p;
+    for (const [k, v] of Object.entries(p?.params ?? {})) {
+      if (typeof v !== 'number' || !Number.isFinite(v)) continue;
+      const level = given.has(v) ? 'observed'
+        : defaults.has(v) ? 'assumed'
+          : 'geometry-derived';
+      out = markParam(out, k, level,
+        level === 'geometry-derived' ? '템플릿이 선언값에서 계산' : level === 'assumed' ? '선언 기본값(미입력)' : undefined);
+    }
+    return markStandardDerived(out);
+  });
+  return { ...assembly, parts };
+}
+
+/**
  * 어셈블리 일괄 표시 — **B1 의 진입점.**
  * @param {object} assembly
  * @param {string} sourceText 사용자 원문(설명·스펙 문서)
