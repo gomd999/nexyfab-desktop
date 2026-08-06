@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const input = path.resolve(process.argv[2] ?? 'docs/evidence/complex-holdout-review-260806/review-worklist-v2.json');
+const output = path.resolve(process.argv[3] ?? 'docs/evidence/complex-holdout-review-260806/ground-truth-review-priority.json');
+const perFamily = Number(process.argv[4] ?? 5);
+if (!Number.isInteger(perFamily) || perFamily < 1 || perFamily > 20) throw new Error('review_priority_per_family_invalid');
+type Task = { caseId: string; family: string; tier: string; sourceHashPassed: boolean; automaticPasses: number; reviewerRequired: number; nativeExtractionStatus?: string; assertions: Array<{ automaticEvidence?: { status?: string } | null }> };
+const worklist = JSON.parse(fs.readFileSync(input, 'utf8')) as { tasks: Task[] };
+const score = (item: Task) => (item.sourceHashPassed ? 1000 : 0) + item.automaticPasses * 100 - item.reviewerRequired * 10 + item.assertions.filter(assertion => assertion.automaticEvidence?.status === 'pass').length;
+const families = [...new Set(worklist.tasks.map(item => item.family))].sort();
+const selected = families.flatMap(family => worklist.tasks.filter(item => item.family === family).sort((a, b) => score(b) - score(a) || a.caseId.localeCompare(b.caseId)).slice(0, perFamily).map((item, index) => ({ rankInFamily: index + 1, caseId: item.caseId, family: item.family, tier: item.tier, priorityScore: score(item), sourceHashPassed: item.sourceHashPassed, automaticPasses: item.automaticPasses, reviewerRequired: item.reviewerRequired, nativeExtractionStatus: item.nativeExtractionStatus ?? 'not_run' })));
+const familyCounts = Object.fromEntries(families.map(family => [family, worklist.tasks.filter(item => item.family === family).length]));
+const deficitsTo20 = Object.fromEntries(Object.entries(familyCounts).filter(([, count]) => count < 20).map(([family, count]) => [family, 20 - count]));
+const artifact = { schema: 'nexyfab.complex-ground-truth-review-priority.v1', generatedAt: new Date().toISOString(), policy: { grantsApproval: false, scoreEligible: false, ordering: 'source hash pass, automatic evidence descending, manual actions ascending, case id' }, summary: { candidates: worklist.tasks.length, selected: selected.length, perFamily, familyCounts, deficitsTo20 }, selected };
+fs.writeFileSync(output, `${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
+console.log(JSON.stringify({ output: path.relative(process.cwd(), output), ...artifact.summary }));

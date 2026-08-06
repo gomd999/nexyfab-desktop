@@ -1,0 +1,18 @@
+import { describe, expect, it } from 'vitest';
+import { validateExactCadWorkerResult, type ExactCadWorkerRequest, type ExactCadWorkerResult } from './exactCadWorkerContract';
+const hash = 'a'.repeat(64), memberHash = 'b'.repeat(64), identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+const request: ExactCadWorkerRequest = { schema: 'nexyfab.exact-cad-worker-request.v1', jobId: 'job-1', caseId: 'case-1', sourceHash: hash, sourceMember: { path: 'model.dwg', sha256: memberHash }, workerKind: 'dwg-exact', required: { exactGeometry: true, nativeSemantics: false } };
+const part = { id: 'p1', kind: 'part' as const, bodyCount: 1, geometry: { evidence: 'indexed-closed-mesh' as const, faceCount: 12, volumeMm3: 1000, watertight: true } };
+const result: ExactCadWorkerResult = { schema: 'nexyfab.exact-cad-worker-result.v1', jobId: 'job-1', caseId: 'case-1', sourceHash: hash, sourceMember: { path: 'model.dwg', sha256: memberHash }, worker: { name: 'fixture', version: '1', cadSystem: 'fixture CAD' }, units: { length: 'mm', angle: 'deg' }, definitions: [{ id: 'root', kind: 'assembly' }, part], occurrences: [{ id: 'root-o', definitionId: 'root', parentOccurrenceId: null, localToParent: identity }, { id: 'o1', definitionId: 'p1', parentOccurrenceId: 'root-o', localToParent: identity }], nativeSemantics: { complete: false, definitionOccurrenceSeparated: false, hierarchyRecovered: false, parametersRecovered: false, constraintsRecovered: false } };
+describe('exact CAD worker result contract', () => {
+  it('accepts source-bound exact DWG geometry without claiming native semantics', () => expect(validateExactCadWorkerResult(request, result)).toMatchObject({ status: 'pass', releaseReady: true, exactGeometryReady: true, nativeSemanticsReady: false }));
+  it('rejects a source member substitution', () => expect(validateExactCadWorkerResult(request, { ...result, sourceMember: { ...result.sourceMember, sha256: 'c'.repeat(64) } }).errors).toContain('source_member_mismatch'));
+  it('rejects an open mesh advertised as closed', () => expect(validateExactCadWorkerResult(request, { ...result, definitions: [result.definitions[0]!, { ...part, geometry: { ...part.geometry, watertight: false } }] }).errors).toContain('closed_mesh_not_watertight:p1'));
+  it('requires complete native semantics for a Revit-native job', () => expect(validateExactCadWorkerResult({ ...request, workerKind: 'revit-native', required: { exactGeometry: true, nativeSemantics: true } }, result).errors).toContain('native_semantics_incomplete'));
+  it('rejects AABB-like insufficient topology evidence', () => expect(validateExactCadWorkerResult(request, { ...result, definitions: [result.definitions[0]!, { ...part, geometry: { evidence: 'native-brep', faceCount: 0, volumeMm3: 1000 } }] }).status).toBe('fail'));
+  it('supports nested assemblies and rejects occurrence cycles', () => {
+    const nested: ExactCadWorkerResult = { ...result, definitions: [{ id: 'root', kind: 'assembly' }, { id: 'sub', kind: 'assembly' }, part], occurrences: [{ id: 'root-o', definitionId: 'root', parentOccurrenceId: null, localToParent: identity }, { id: 'sub-o', definitionId: 'sub', parentOccurrenceId: 'root-o', localToParent: identity }, { id: 'o1', definitionId: 'p1', parentOccurrenceId: 'sub-o', localToParent: identity }] };
+    expect(validateExactCadWorkerResult(request, nested).status).toBe('pass');
+    expect(validateExactCadWorkerResult(request, { ...nested, occurrences: nested.occurrences.map(item => item.id === 'sub-o' ? { ...item, parentOccurrenceId: 'o1' } : item) }).errors).toContain('occurrence_cycle:sub-o');
+  });
+});

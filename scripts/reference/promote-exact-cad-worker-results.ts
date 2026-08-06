@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import type { ExactCadWorkerRequest, ExactCadWorkerResult, ExactCadWorkerValidation } from '../../src/lib/reference/exactCadWorkerContract';
+import { promoteExactCadWorkerResult } from '../../src/lib/reference/promoteExactCadWorkerResult';
+const reviewRoot = path.resolve(process.argv[2] ?? 'docs/evidence/complex-holdout-review-260806');
+const output = path.resolve(process.argv[3] ?? path.join(reviewRoot, 'exact-worker-promoted-native-results.json'));
+const batch = JSON.parse(fs.readFileSync(path.join(reviewRoot, 'exact-cad-worker-results.json'), 'utf8')) as { accepted: Array<{ request: ExactCadWorkerRequest; result: ExactCadWorkerResult; validation: ExactCadWorkerValidation }> };
+const results = batch.accepted.map(item => promoteExactCadWorkerResult(item.request, item.result)).filter(item => item !== null);
+const artifact = { schema: 'nexyfab.complex-native-extraction-result-batch.v1', promotedFrom: 'exact-cad-worker-results.json', results, withheld: batch.accepted.length - results.length };
+fs.writeFileSync(output, `${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
+console.log(JSON.stringify({ output: path.relative(process.cwd(), output), accepted: batch.accepted.length, promoted: results.length, withheld: artifact.withheld }));

@@ -1,0 +1,56 @@
+import { readFile, readdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { roundtripStepWithOcct } from '../../src/lib/reference/occtStepRoundtrip';
+
+const args = process.argv.slice(2);
+const root = path.resolve(args.find(arg => !arg.startsWith('--')) || 'C:/Users/gomd9/Downloads/참고파일들');
+const output = args.find(arg => arg.startsWith('--output='))?.slice(9);
+
+async function walk(dir: string): Promise<string[]> {
+  const files: string[] = [];
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) files.push(...await walk(full));
+    else if (entry.isFile()) files.push(full);
+  }
+  return files;
+}
+
+async function main(): Promise<void> {
+  const files = (await walk(root)).filter(file => /nist_(ctc|ftc|stc)_\d+.*ap242.*\.(stp|step)$/i.test(path.basename(file)));
+  const records = [];
+  for (const family of ['ctc', 'ftc', 'stc'] as const) {
+    const selected = files.filter(file => new RegExp(`nist_${family}_`, 'i').test(path.basename(file))).sort()[0];
+    if (!selected) {
+      records.push({ family, status: 'not_run', reason: 'No AP242 representative found.' });
+      continue;
+    }
+    const result = await roundtripStepWithOcct(await readFile(selected));
+    const semanticPreserved = result.pmi.sourceSemantic === result.pmi.exportedSemantic;
+    const graphicalPreserved = result.pmi.sourceGraphical === result.pmi.exportedGraphical;
+    const status = result.geometry.pass && semanticPreserved && graphicalPreserved ? 'pass' : 'fail';
+    records.push({
+      family,
+      status,
+      sourceLabel: path.basename(selected),
+      geometry: result.geometry,
+      pmi: result.pmi,
+      reason: status === 'pass' ? null : result.reason ?? 'Geometry and PMI were not preserved together.',
+    });
+  }
+  const summary = {
+    pass: records.filter(record => record.status === 'pass').length,
+    fail: records.filter(record => record.status === 'fail').length,
+    not_run: records.filter(record => record.status === 'not_run').length,
+  };
+  const json = JSON.stringify({ schemaVersion: 1, generatedAt: new Date().toISOString(), summary, records }, null, 2);
+  if (output) await writeFile(path.resolve(output), json);
+  else process.stdout.write(`${json}\n`);
+  if (summary.fail) process.exitCode = 5;
+  else if (summary.not_run) process.exitCode = 4;
+}
+
+main().catch(error => {
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.exitCode = 5;
+});

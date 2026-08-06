@@ -1,0 +1,9 @@
+import { describe, expect, it } from 'vitest';
+import { planCadNativeJointMotion } from './cadNativeJointMotionPlan';
+import type { CadNativeAssemblyEvidence } from './cadNativeAssemblyEvidence';
+const evidence = (lowerLimit: number | null = -90, upperLimit: number | null = 90): CadNativeAssemblyEvidence => ({ schema: 'nexyfab.native-assembly-evidence.v1.1', lineageId: 'fixture/robot.snapshot.1', extractor: { name: 'fixture', version: '1', cadSystem: 'fixture', cadVersion: null }, coordinateSystem: { handedness: 'right', upAxis: 'z', forwardAxis: '+x', matrixLayout: 'row-major', vectorConvention: 'column-vector', transformScope: 'local-to-world' }, units: { length: 'mm', angle: 'deg' }, sources: [], definitions: [], occurrences: [], joints: [{ id: 'j1', type: 'revolute', parentOccurrenceId: 'a', childOccurrenceId: 'b', axis: [0, 0, 1], originMm: [0, 0, 0], lowerLimit, upperLimit, frame: 'world' }] });
+describe('native joint motion planner', () => {
+  it('covers the complete governed range within the angular step bound', () => { const result = planCadNativeJointMotion(evidence(), ['native:j1'], { maximumStepDegrees: 5 }); expect(result).toMatchObject({ status: 'pass', unresolved: [], errors: [], plans: [{ jointId: 'j1', mateId: 'native:j1', request: { fromValue: -90, toValue: 90, steps: 36 }, stepDegrees: 5 }] }); });
+  it('does not invent a range when native limits are absent', () => expect(planCadNativeJointMotion(evidence(null, null), ['native:j1'])).toMatchObject({ status: 'not_run', plans: [], unresolved: [{ jointId: 'j1', reason: 'joint_range_not_run' }] }));
+  it('fails closed when the requested coverage exceeds its frame budget', () => expect(planCadNativeJointMotion(evidence(-180, 180), ['native:j1'], { maximumStepDegrees: 0.5, maximumSteps: 360 })).toMatchObject({ status: 'not_run', plans: [], unresolved: [{ jointId: 'j1', reason: 'joint_step_budget_exceeded:720/360' }] }));
+});

@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const summaryPath = path.resolve(process.argv[2] ?? 'docs/evidence/complex-holdout-lineage-v2-260807/summary.json');
+const output = path.resolve(process.argv[3] ?? 'docs/evidence/complex-holdout-lineage-v2-260807/shortfall-acquisition-queue.json');
+const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8')) as { counts: Record<string, { selected: number; shortfall: number }> };
+const exactFormats = ['step', 'stp', 'x_t', 'x_b', 'sldasm', 'iam', 'catproduct', 'asm'];
+const conditionalFormats = ['iges', 'igs', 'sldprt', 'ipt', 'catpart', 'prt', 'zip'];
+const slots = Object.entries(summary.counts).flatMap(([family, value]) => Array.from({ length: value.shortfall }, (_, index) => ({ slotId: `${family}-acquire-${String(value.selected + index + 1).padStart(2, '0')}`, family, status: 'missing', scoreEligible: false, requirements: { independentProductLineage: true, sourceSha256Required: true, commercialProvenanceReviewRequired: true, holdoutIsolationRequired: true, nativeDefinitionOccurrenceReviewRequired: true, preferredExactFormats: exactFormats, conditionalFormats, rejectedAsSoleEvidence: ['png', 'jpg', 'jpeg', 'pdf', 'mp4', 'scad-derived-from-holdout', 'aabb-approximation'] } })));
+const artifact = { schema: 'nexyfab.holdout-shortfall-acquisition-queue.v1', generatedAt: new Date().toISOString(), policy: { placeholdersAreNotCases: true, grantsApproval: false, scoreEligible: false, crossFamilyReuseForbidden: true, snapshotArchiveAndMembersShareLineage: true }, summary: { required: slots.length, acquired: 0, remaining: slots.length, byFamily: Object.fromEntries(Object.entries(summary.counts).filter(([, value]) => value.shortfall > 0).map(([family, value]) => [family, value.shortfall])) }, slots };
+fs.writeFileSync(output, `${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
+console.log(JSON.stringify({ output: path.relative(process.cwd(), output), ...artifact.summary }));

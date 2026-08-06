@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { groundTruthArtifactSetHash } from '../../src/lib/ai/complexGroundTruthApproval';
+import type { ComplexBenchmarkCaseV2 } from '../../src/lib/ai/complexProductBenchmarkV2';
+const casesPath = path.resolve(process.argv[2] ?? 'docs/evidence/complex-corpus-v2-draft/cases.json');
+const output = path.resolve(process.argv[3] ?? 'docs/evidence/complex-holdout-review-260806/ground-truth-approval-queue.json');
+const cases = JSON.parse(fs.readFileSync(casesPath, 'utf8')) as ComplexBenchmarkCaseV2[];
+const tasks = cases.map(item => ({ caseId: item.caseId, family: item.family, tier: item.tier, sourceHash: item.sourceHash, artifactSetHash: groundTruthArtifactSetHash(item), requiredAssertionIds: item.assertions.filter(assertion => assertion.required).map(assertion => assertion.id), status: 'pending', scoreEligible: false, licenseReview: null, holdoutIsolationReview: null, assertionReviews: [], signoffs: { domainReviewer: null, independentReviewer: null } }));
+const byFamily = Object.fromEntries([...new Set(tasks.map(item => item.family))].map(family => [family, { cases: tasks.filter(item => item.family === family).length, approved: 0, pending: tasks.filter(item => item.family === family).length }]));
+const artifact = { schema: 'nexyfab.complex-ground-truth-approval-queue.v1', generatedAt: new Date().toISOString(), policy: { automaticEvidenceGrantsApproval: false, dualIndependentSignoffRequired: true, artifactMutationInvalidatesApproval: true, sourceBytesEmbedded: false }, summary: { cases: tasks.length, approved: 0, pending: tasks.length, scoreEligible: 0 }, byFamily, tasks };
+fs.writeFileSync(output, `${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
+console.log(JSON.stringify({ output: path.relative(process.cwd(), output), ...artifact.summary }));

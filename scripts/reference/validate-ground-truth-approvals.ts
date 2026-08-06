@@ -1,0 +1,25 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { applyAssertionReviews } from '../../src/lib/ai/complexAssertionReview';
+import { validateComplexGroundTruthApproval, type ComplexGroundTruthApprovalRecord } from '../../src/lib/ai/complexGroundTruthApproval';
+import type { ComplexBenchmarkCaseV2 } from '../../src/lib/ai/complexProductBenchmarkV2';
+const casesPath = path.resolve(process.argv[2] ?? 'docs/evidence/complex-corpus-v2-draft/cases.json');
+const recordsPath = path.resolve(process.argv[3] ?? 'docs/evidence/complex-holdout-review-260806/ground-truth-approval-records.json');
+const output = path.resolve(process.argv[4] ?? 'docs/evidence/complex-holdout-review-260806/ground-truth-approval-validation.json');
+const approvedOutput = path.resolve(process.argv[5] ?? 'docs/evidence/complex-corpus-v2-approved/cases.json');
+const cases = JSON.parse(fs.readFileSync(casesPath, 'utf8')) as ComplexBenchmarkCaseV2[];
+const batch = JSON.parse(fs.readFileSync(recordsPath, 'utf8')) as { schema: string; records: ComplexGroundTruthApprovalRecord[] };
+if (batch.schema !== 'nexyfab.complex-ground-truth-approval-batch.v1' || !Array.isArray(batch.records)) throw new Error('ground_truth_approval_batch_invalid');
+const duplicates = batch.records.filter((item, index) => batch.records.findIndex(other => other.caseId === item.caseId) !== index).map(item => item.caseId);
+const byCase = new Map(cases.map(item => [item.caseId, item]));
+const unknown = batch.records.filter(item => !byCase.has(item.caseId)).map(item => item.caseId);
+const records = new Map(batch.records.filter(item => byCase.has(item.caseId)).map(item => [item.caseId, item]));
+const results = cases.map(caseValue => ({ caseId: caseValue.caseId, family: caseValue.family, ...validateComplexGroundTruthApproval(caseValue, records.get(caseValue.caseId)) }));
+if (duplicates.length) for (const item of results.filter(item => duplicates.includes(item.caseId))) { item.status = 'invalid'; item.scoreEligible = false; item.issues.push('ground_truth_record_duplicate'); }
+const approvedCases = cases.filter(item => results.find(result => result.caseId === item.caseId)?.scoreEligible).map(item => applyAssertionReviews(item, records.get(item.caseId)!.assertionReviews).caseValue);
+const byFamily = Object.fromEntries([...new Set(cases.map(item => item.family))].map(family => [family, { cases: results.filter(item => item.family === family).length, approved: results.filter(item => item.family === family && item.scoreEligible).length }]));
+const report = { schema: 'nexyfab.complex-ground-truth-approval-validation.v1', generatedAt: new Date().toISOString(), sourceBytesEmbedded: false, summary: { cases: cases.length, records: batch.records.length, approved: approvedCases.length, pending: results.filter(item => item.status === 'pending').length, invalid: results.filter(item => item.status === 'invalid').length, rejected: results.filter(item => item.status === 'rejected').length, changesRequested: results.filter(item => item.status === 'changes_requested').length }, duplicates: [...new Set(duplicates)], unknown, byFamily, results };
+fs.mkdirSync(path.dirname(output), { recursive: true }); fs.writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+fs.mkdirSync(path.dirname(approvedOutput), { recursive: true }); fs.writeFileSync(approvedOutput, `${JSON.stringify(approvedCases, null, 2)}\n`, 'utf8');
+console.log(JSON.stringify({ output: path.relative(process.cwd(), output), approvedOutput: path.relative(process.cwd(), approvedOutput), ...report.summary }));
+if (report.summary.invalid || unknown.length || duplicates.length) process.exitCode = 4;
