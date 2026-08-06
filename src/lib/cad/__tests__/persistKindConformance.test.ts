@@ -124,6 +124,18 @@ const SAMPLES: Record<FeatureKind, FeaturePayload> = {
     distance: 2,
     edgeSelection: 'vertical',
   } as FeaturePayload,
+  shell: {
+    kind: 'shell',
+    childExtrude: {
+      kind: 'extrude',
+      loop: SQUARE,
+      depth: 10,
+      direction: 'one_sided',
+      mode: 'add',
+    },
+    thickness: 1,
+    openTopFace: true,
+  } as FeaturePayload,
   rib: {
     kind: 'rib',
     start: { x: 0, y: 0 },

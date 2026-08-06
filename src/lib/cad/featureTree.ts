@@ -48,6 +48,8 @@ import type { SweepPathFeature } from './sweepPath';
 import { sweepPathToScad } from './sweepPath';
 import type { BooleanFeature } from './booleanFeature';
 import { booleanToScad } from './booleanFeature';
+import type { ShellFeature } from './shellProfile';
+import { shellToScad } from './shellProfile';
 
 // ─── IR ───────────────────────────────────────────────────────────────────
 
@@ -61,6 +63,7 @@ export type FeatureKind =
   | 'hole'
   | 'fillet'
   | 'chamfer'
+  | 'shell'
   | 'rib'
   | 'sweep_path'
   | 'boolean';
@@ -85,6 +88,7 @@ export const ALL_FEATURE_KINDS: ReadonlyArray<FeatureKind> = Object.keys({
   hole: true,
   fillet: true,
   chamfer: true,
+  shell: true,
   rib: true,
   sweep_path: true,
   boolean: true,
@@ -100,6 +104,7 @@ export type FeaturePayload =
   | HoleFeature
   | FilletFeature
   | ChamferFeature
+  | ShellFeature
   | RibFeature
   | SweepPathFeature
   | BooleanFeature;
@@ -365,6 +370,8 @@ function renderNode(node: FeatureNode, ctx: EmitContext): string {
       return filletToScad(p, ctx, node.id);
     case 'chamfer':
       return chamferToScad(p, ctx, node.id);
+    case 'shell':
+      return shellToScad(p, ctx, node.id);
     case 'rib':
       // Leaf: a rib's geometry is fully determined by its own centerline /
       // thickness / height — it reads nothing from a host. Attaching it to

@@ -64,6 +64,36 @@ describe('featureTreeToOcctPlan', () => {
     expect(plan.finalResultId).toBe('f1');
   });
 
+  it('passes exact persistent edge refs to OCCT without widening to a category', () => {
+    const base = extrudeNode('base');
+    const tree: FeatureTree = { nodes: [base, { id:'f1', name:'picked edge', dependencies:['base'], payload:{ kind:'fillet', childId:'base', childExtrude:base.payload as ExtrudeFeature, radius:1, edgeSelection:'vertical', edgeRefs:['e.vert.0'] } }] };
+    const plan = featureTreeToOcctPlan(tree);
+    expect(plan.commands.at(-1)).toMatchObject({ op:'fillet', target:'base', edgeIds:['e.vert.0'], radius:1 });
+  });
+
+  it('plans an open shell against the live child and exact cap face', () => {
+    const base = extrudeNode('base');
+    const tree: FeatureTree = { nodes: [base, {
+      id: 'shell1', name: 'open top', dependencies: ['base'],
+      payload: { kind: 'shell', childId: 'base', childExtrude: base.payload as ExtrudeFeature, thickness: 1, openTopFace: true },
+    }] };
+    const plan = featureTreeToOcctPlan(tree);
+    expect(plan.commands.at(-1)).toEqual({ op: 'shell', resultId: 'shell1', target: 'base', faceIds: ['f.cap.top'], thickness: 1 });
+    expect(plan.finalResultId).toBe('shell1');
+    expect(plan.unsupported).toHaveLength(0);
+  });
+
+  it('keeps a closed hollow shell on the SCAD subtraction path', () => {
+    const base = extrudeNode('base');
+    const tree: FeatureTree = { nodes: [base, {
+      id: 'shell1', name: 'closed', dependencies: ['base'],
+      payload: { kind: 'shell', childId: 'base', childExtrude: base.payload as ExtrudeFeature, thickness: 1 },
+    }] };
+    const plan = featureTreeToOcctPlan(tree);
+    expect(plan.commands.some((command) => command.op === 'shell')).toBe(false);
+    expect(plan.unsupported[0]?.reason).toMatch(/SCAD/);
+  });
+
   it('flags unsupported kinds (sweep/pattern) for SCAD fallback, no OCCT result', () => {
     const tree: FeatureTree = {
       nodes: [

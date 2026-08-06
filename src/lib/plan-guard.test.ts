@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { meetsPlan } from './plan-guard';
+import { meetsPlan, PLAN_MONTHLY_LIMITS } from './plan-guard';
 
 describe('meetsPlan', () => {
   it('free plan meets free requirement', () => {
@@ -30,5 +30,11 @@ describe('meetsPlan', () => {
     // unknown plan falls back to rank 0 (=free), so meets 'free' but not 'pro'
     expect(meetsPlan('unknown', 'free')).toBe(true);
     expect(meetsPlan('unknown', 'pro')).toBe(false);
+  });
+});
+
+describe('AI trial limits', () => {
+  it('keeps the SCAD agent usable for free trial accounts', () => {
+    expect(PLAN_MONTHLY_LIMITS.free.scad_agent).toBe(10);
   });
 });

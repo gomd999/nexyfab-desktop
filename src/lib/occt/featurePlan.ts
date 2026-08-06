@@ -5,7 +5,8 @@
  * threading result handles by id.
  *
  * Supported ops mirror the `OcctBridge` surface: extrude, revolve, boolean,
- * fillet, chamfer. Other feature kinds (sweep/loft/pattern/hole/rib/sweep_path)
+ * fillet, chamfer, and drilled/counterbore/countersink hole cuts. Other feature kinds
+ * (sweep/loft/pattern/rib/sweep_path)
  * have no direct kernel primitive yet and are emitted as `unsupported` so the
  * caller can fall back to the SCAD path for those nodes.
  *
@@ -20,6 +21,8 @@ import type { RevolveFeature } from '@/lib/cad/revolveProfile';
 import type { BooleanFeature } from '@/lib/cad/booleanFeature';
 import type { FilletFeature } from '@/lib/cad/filletProfile';
 import type { ChamferFeature } from '@/lib/cad/chamferProfile';
+import type { HoleFeature } from '@/lib/cad/holeProfile';
+import type { ShellFeature } from '@/lib/cad/shellProfile';
 import { validateTree } from '@/lib/cad/featureTree';
 import { emitContextForTree, resolveChildExtrude } from '@/lib/cad/upstreamResolve';
 
@@ -30,7 +33,9 @@ export type OcctCommand =
   | { op: 'revolve'; resultId: string; feature: RevolveFeature }
   | { op: 'boolean'; resultId: string; kind: 'union' | 'subtract' | 'intersect'; base: string; tools: string[] }
   | { op: 'fillet'; resultId: string; target: string; edgeIds: string[]; radius: number }
-  | { op: 'chamfer'; resultId: string; target: string; edgeIds: string[]; distance: number };
+  | { op: 'chamfer'; resultId: string; target: string; edgeIds: string[]; distance: number }
+  | { op: 'hole'; resultId: string; target: string; feature: HoleFeature }
+  | { op: 'shell'; resultId: string; target: string; faceIds: string[]; thickness: number };
 
 export interface UnsupportedNode {
   resultId: string;
@@ -138,7 +143,7 @@ export function featureTreeToOcctPlan(tree: FeatureTree): OcctPlan {
           op: 'fillet',
           resultId: node.id,
           target: bodyId,
-          edgeIds: [`sel:${f.edgeSelection}`],
+          edgeIds: f.edgeRefs?.length ? [...f.edgeRefs] : [`sel:${f.edgeSelection}`],
           radius: f.radius,
         });
         break;
@@ -150,9 +155,38 @@ export function featureTreeToOcctPlan(tree: FeatureTree): OcctPlan {
           op: 'chamfer',
           resultId: node.id,
           target: bodyId,
-          edgeIds: [`sel:${c.edgeSelection}`],
+          edgeIds: c.edgeRefs?.length ? [...c.edgeRefs] : [`sel:${c.edgeSelection}`],
           distance: c.distance,
         });
+        break;
+      }
+      case 'hole': {
+        const h = p as HoleFeature;
+        const target = node.dependencies[0];
+        if (!target) {
+          unsupported.push({ resultId: node.id, kind: p.kind, reason: `hole ${node.id} requires its host body as the first dependency` });
+          break;
+        }
+        consumed.add(target);
+        commands.push({ op: 'hole', resultId: node.id, target, feature: h });
+        break;
+      }
+      case 'shell': {
+        const shell = p as ShellFeature;
+        const faceIds = [
+          ...(shell.openTopFace ? ['f.cap.top'] : []),
+          ...(shell.openBottomFace ? ['f.cap.bottom'] : []),
+        ];
+        if (faceIds.length === 0) {
+          unsupported.push({
+            resultId: node.id,
+            kind: p.kind,
+            reason: `closed hollow shell ${node.id} remains on the exact SCAD subtraction path`,
+          });
+          break;
+        }
+        const target = planChildBody(node);
+        commands.push({ op: 'shell', resultId: node.id, target, faceIds, thickness: shell.thickness });
         break;
       }
       default:

@@ -123,6 +123,32 @@ export function buildPartRefRegistry(
     void node;
   }
 
+  // Stable viewport-pick references for the first axis-aligned base extrude.
+  // These survive triangulation changes because their ids describe semantic
+  // bounds, not renderer triangle indices.
+  const base = tree.nodes.find(node => node.payload.kind === 'extrude')?.payload as ExtrudeFeature | undefined;
+  if (base?.loop?.length) {
+    const xs = base.loop.map(point => point.x);
+    const ys = base.loop.map(point => point.y);
+    const bounds = { x: [Math.min(...xs), Math.max(...xs)], y: [Math.min(...ys), Math.max(...ys)], z: [0, base.depth] } as const;
+    const axes = ['x', 'y', 'z'] as const;
+    for (const axis of axes) for (const side of ['min', 'max'] as const) {
+      const coordinate = bounds[axis][side === 'min' ? 0 : 1];
+      const origin = vec3(axis === 'x' ? coordinate : 0, axis === 'y' ? coordinate : 0, axis === 'z' ? coordinate : 0);
+      const normal = vec3(axis === 'x' ? 1 : 0, axis === 'y' ? 1 : 0, axis === 'z' ? 1 : 0);
+      registry.set(`bbox_plane_${axis}_${side}`, { kind: 'plane', origin, normal });
+    }
+    for (const x of ['min', 'max'] as const) for (const y of ['min', 'max'] as const) for (const z of ['min', 'max'] as const) {
+      registry.set(`bbox_point_x${x}_y${y}_z${z}`, { kind: 'point', origin: vec3(bounds.x[x === 'min' ? 0 : 1], bounds.y[y === 'min' ? 0 : 1], bounds.z[z === 'min' ? 0 : 1]) });
+    }
+    const baseZ=base.profileOffsetZ??0,topZ=baseZ+base.depth;
+    registry.set('f.cap.bottom', { kind:'plane', origin:vec3(0,0,baseZ), normal:vec3(0,0,1) });
+    registry.set('f.cap.top', { kind:'plane', origin:vec3(0,0,topZ), normal:vec3(0,0,1) });
+    const loop = base.loop.filter((point,index,all)=>index===0||Math.hypot(point.x-all[index-1]!.x,point.y-all[index-1]!.y)>1e-9);
+    if(loop.length>1&&Math.hypot(loop[0]!.x-loop.at(-1)!.x,loop[0]!.y-loop.at(-1)!.y)<1e-9)loop.pop();
+    loop.forEach((a,index)=>{const b=loop[(index+1)%loop.length]!,dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;registry.set(`f.side.${index}`,{kind:'plane',origin:vec3(a.x,a.y,baseZ),normal:vec3(dy/len,-dx/len,0)});registry.set(`v.bottom.${index}`,{kind:'point',origin:vec3(a.x,a.y,baseZ)});registry.set(`v.top.${index}`,{kind:'point',origin:vec3(a.x,a.y,topZ)});});
+  }
+
   return registry;
 }
 

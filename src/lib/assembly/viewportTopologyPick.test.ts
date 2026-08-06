@@ -1,0 +1,3 @@
+import{describe,expect,it}from'vitest';import{classifyViewportTopologyPick}from'./viewportTopologyPick';
+const bounds={min:{x:0,y:0,z:0},max:{x:10,y:20,z:30}};
+describe('viewport topology pick',()=>{it('names an axis-aligned face',()=>expect(classifyViewportTopologyPick('face',{x:10,y:5,z:5},{x:1,y:0,z:0},bounds)?.refId).toBe('bbox_plane_x_max'));it('names an edge from the nearest two limits',()=>expect(classifyViewportTopologyPick('edge',{x:0,y:20,z:10},{x:0,y:0,z:1},bounds)?.refId).toBe('bbox_edge_xmin_ymax'));it('rejects a non-planar face instead of guessing',()=>expect(classifyViewportTopologyPick('face',{x:1,y:1,z:1},{x:.7,y:.7,z:0},bounds)).toBeNull());});

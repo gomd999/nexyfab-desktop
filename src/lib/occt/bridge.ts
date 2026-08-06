@@ -86,6 +86,43 @@ export interface OcctBooleanOps {
   intersect(a: OcctShape, b: OcctShape, ids?: BooleanOperandIds): Promise<OcctOperationResult>;
 }
 
+export type OcctTypeHistogram = Readonly<{
+  status: 'available'; counts: Readonly<Record<string, number>>;
+}> | Readonly<{ status: 'not_run'; reason: string }>;
+
+export type OcctFaceAdjacencySummary = Readonly<{
+  status: 'available';
+  faceCount: number;
+  uniqueEdgeCount: number;
+  boundaryEdgeCount: number;
+  manifoldEdgeCount: number;
+  nonManifoldEdgeCount: number;
+  /** Number of faces having each distinct-neighbour degree; keys are sorted integer strings. */
+  faceDegreeHistogram: Readonly<Record<string, number>>;
+}> | Readonly<{ status: 'not_run'; reason: string }>;
+
+export type OcctDetailedShapeInspection = Readonly<{
+  valid: boolean; solidCount: number; faceCount: number; edgeCount: number;
+  /** Kernel topology only. These are not Product, Part, or occurrence counts. */
+  shapeTypeCounts?: Readonly<{ compound: number; compsolid: number; solid: number; shell: number }>;
+  /** XCAF product occurrence evidence is independent of topology counts. */
+  productOccurrences?: Readonly<{ status: 'available'; count: number }> | Readonly<{ status: 'not_run'; reason: string }>;
+  bbox: Readonly<{ min: Vec3; max: Vec3 }>;
+  absoluteVolume: number; surfaceArea: number; centroid: Vec3;
+  inertia: Readonly<{
+    status: 'available'; units: 'mm^5'; about: 'centroid';
+    matrix: readonly [readonly [number, number, number], readonly [number, number, number], readonly [number, number, number]];
+  }> | Readonly<{ status: 'not_run'; reason: string }>;
+  surfaceTypes: OcctTypeHistogram;
+  curveTypes: OcctTypeHistogram;
+  /** Radii of unique analytic cylindrical faces, measured by BRepAdaptor. */
+  cylindricalRadii?: readonly number[];
+  faceAdjacency: OcctFaceAdjacencySummary;
+  /** Exact kernel tolerance/edge measurements used by bounded healing policy. */
+  maxTolerance?: number;
+  minEdgeLength?: number;
+}>;
+
 export interface OcctBridge {
   buildFromExtrude(feature: ExtrudeFeature): Promise<OcctOperationResult>;
   buildFromRevolve(feature: RevolveFeature): Promise<OcctOperationResult>;
@@ -120,6 +157,8 @@ export interface OcctBridge {
    * callers feature-detect and refuse honestly when it is absent.
    */
   buildPrismAt?(loop: ReadonlyArray<{ x: number; y: number }>, z0: number, heightMm: number): Promise<OcctOperationResult>;
+  /** Build a conical frustum along +Z for countersink and tapered-tool cuts. */
+  buildConeAt?(center: { x: number; y: number }, z0: number, heightMm: number, radius0: number, radius1: number): Promise<OcctOperationResult>;
   /**
    * Build a planar FACE (open surface / sheet body) from a 2D loop at height
    * `z` (default 0). The input to {@link thicken} / {@link surfaceTrim}. The
@@ -144,6 +183,32 @@ export interface OcctBridge {
    * see `ceilingSpike.thicken.test.ts`). Real-kernel only → OPTIONAL.
    */
   thicken?(shape: OcctShape, thickness: number): Promise<OcctOperationResult>;
+  /**
+   * Hollow a closed solid and remove the named faces. Face ids are stable
+   * topology names (for an extrude: `f.cap.top` / `f.cap.bottom`). The method
+   * is deliberately separate from `thicken`: this is
+   * BRepOffsetAPI_MakeThickSolidByJoin over a SOLID, not a sheet-body offset.
+   */
+  solidShell?(
+    shape: OcctShape,
+    closingFaceIds: ReadonlyArray<string>,
+    thickness: number,
+  ): Promise<OcctOperationResult>;
+  /** Exact kernel topology/validity inspection; omitted by approximate bridges. */
+  inspectShape?(shape: OcctShape): Promise<{
+    valid: boolean;
+    solidCount: number;
+    faceCount: number;
+    edgeCount: number;
+  }>;
+  /** Exact, measurement-rich inspection; optional to preserve older bridges. */
+  inspectShapeDetailed?(shape: OcctShape): Promise<OcctDetailedShapeInspection>;
+  /** Execute bounded OCCT ShapeFix/Sewing. Callers must compare and approve the returned shape before replacing the original. */
+  healShape?(shape: OcctShape, options: { workingTolerance: number; sewingTolerance: number; maxTolerance: number }): Promise<OcctOperationResult>;
+  /** Deterministic face references currently available on a kernel shape. */
+  listFaceRefs?(shape: OcctShape): Promise<string[]>;
+  /** Push/pull one named planar face on a history-free imported B-rep. */
+  pushPullFace?(shape: OcctShape, faceId: string, distance: number): Promise<OcctOperationResult>;
   /**
    * Surface–surface TRIM: the section (intersection curve) of two shapes
    * (`BRepAlgoAPI_Section`), returned as a compound of the intersection edges.

@@ -49,6 +49,72 @@ async function runBoolean(
   return { ok: true, shape: acc, warnings };
 }
 
+function circleLoop(cx: number, cy: number, diameter: number, segments = 64): Array<{ x: number; y: number }> {
+  const radius = diameter / 2;
+  return Array.from({ length: segments }, (_, index) => {
+    const angle = (2 * Math.PI * index) / segments;
+    return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+  });
+}
+
+async function runHole(
+  bridge: OcctBridge,
+  cmd: Extract<OcctCommand, { op: 'hole' }>,
+  handles: Map<string, OcctShape>,
+): Promise<{ ok: true; shape: OcctShape; warnings: string[] } | { ok: false; error: string }> {
+  const target = handles.get(cmd.target);
+  if (!target) return { ok: false, error: `hole ${cmd.resultId}: target ${cmd.target} not built` };
+  if (!bridge.buildPrismAt) return { ok: false, error: `hole ${cmd.resultId}: bridge has no buildPrismAt` };
+  const top = target.bbox?.max.z;
+  if (!Number.isFinite(top)) return { ok: false, error: `hole ${cmd.resultId}: target top Z unavailable` };
+  const h = cmd.feature;
+  if (![h.center.x, h.center.y, h.diameter, h.depth].every(Number.isFinite) || h.diameter <= 0 || h.depth <= 0) {
+    return { ok: false, error: `hole ${cmd.resultId}: invalid center/diameter/depth` };
+  }
+  const cuts = [{ diameter: h.diameter, depth: h.depth }];
+  if (h.holeType === 'counterbore') {
+    if (!Number.isFinite(h.counterboreDiameter) || !Number.isFinite(h.counterboreDepth) || h.counterboreDiameter! <= h.diameter || h.counterboreDepth! <= 0) {
+      return { ok: false, error: `hole ${cmd.resultId}: invalid counterbore dimensions` };
+    }
+    cuts.push({ diameter: h.counterboreDiameter!, depth: h.counterboreDepth! });
+  }
+  const warnings: string[] = [];
+  let acc = target;
+  const epsilon = 0.01;
+  for (let index = 0; index < cuts.length; index++) {
+    const cut = cuts[index]!;
+    const toolResult = await bridge.buildPrismAt(circleLoop(h.center.x, h.center.y, cut.diameter), top! - cut.depth - epsilon, cut.depth + 2 * epsilon);
+    if (!toolResult.ok || !toolResult.shape) return { ok: false, error: `hole ${cmd.resultId}: tool build failed: ${toolResult.error ?? 'no shape'}` };
+    const tool = toolResult.shape;
+    const result = await bridge.boolean.subtract(acc, tool, { baseId: index === 0 ? cmd.target : `${cmd.resultId}:bore`, toolId: `${cmd.resultId}:tool:${index}`, opId: `${cmd.resultId}:cut:${index}` });
+    bridge.release(tool);
+    if (!result.ok || !result.shape) return { ok: false, error: `hole ${cmd.resultId}: cut failed: ${result.error ?? 'no shape'}` };
+    if (acc !== target) bridge.release(acc);
+    acc = result.shape;
+    warnings.push(...toolResult.warnings, ...result.warnings);
+  }
+  if (h.holeType === 'countersink') {
+    if (!bridge.buildConeAt) return { ok: false, error: `hole ${cmd.resultId}: bridge has no buildConeAt` };
+    const angle = h.countersinkAngleDegrees;
+    const depth = h.countersinkDepth;
+    if (!Number.isFinite(angle) || !Number.isFinite(depth) || depth! <= 0 || angle! < 82 || angle! > 135) {
+      return { ok: false, error: `hole ${cmd.resultId}: invalid countersink dimensions` };
+    }
+    const bottomRadius = h.diameter / 2;
+    const topRadius = bottomRadius + depth! * Math.tan((angle! * Math.PI) / 360);
+    const toolResult = await bridge.buildConeAt(h.center, top! - depth! - epsilon, depth! + 2 * epsilon, bottomRadius, topRadius);
+    if (!toolResult.ok || !toolResult.shape) return { ok: false, error: `hole ${cmd.resultId}: countersink tool failed: ${toolResult.error ?? 'no shape'}` };
+    const tool = toolResult.shape;
+    const result = await bridge.boolean.subtract(acc, tool, { baseId: `${cmd.resultId}:bore`, toolId: `${cmd.resultId}:countersink-tool`, opId: `${cmd.resultId}:countersink-cut` });
+    bridge.release(tool);
+    if (!result.ok || !result.shape) return { ok: false, error: `hole ${cmd.resultId}: countersink cut failed: ${result.error ?? 'no shape'}` };
+    if (acc !== target) bridge.release(acc);
+    acc = result.shape;
+    warnings.push(...toolResult.warnings, ...result.warnings);
+  }
+  return { ok: true, shape: acc, warnings };
+}
+
 /**
  * Execute the plan. `unsupported` nodes are skipped (the caller SCAD-falls-back
  * those); they don't fail the run. On the first op error the run aborts and the
@@ -91,6 +157,17 @@ export async function executeOcctPlan(plan: OcctPlan, bridge: OcctBridge): Promi
         if (!target) { res = { ok: false, error: `chamfer ${cmd.resultId}: target ${cmd.target} not built` }; break; }
         const r = await bridge.chamfer(target, cmd.edgeIds, cmd.distance);
         res = r.ok && r.shape ? { ok: true, shape: r.shape, warnings: r.warnings } : { ok: false, error: `chamfer ${cmd.resultId}: ${r.error ?? 'no shape'}` };
+        break;
+      }
+      case 'hole':
+        res = await runHole(bridge, cmd, handles);
+        break;
+      case 'shell': {
+        const target = handles.get(cmd.target);
+        if (!target) { res = { ok: false, error: `shell ${cmd.resultId}: target ${cmd.target} not built` }; break; }
+        if (!bridge.solidShell) { res = { ok: false, error: `shell ${cmd.resultId}: bridge has no solidShell` }; break; }
+        const r = await bridge.solidShell(target, cmd.faceIds, cmd.thickness);
+        res = r.ok && r.shape ? { ok: true, shape: r.shape, warnings: r.warnings } : { ok: false, error: `shell ${cmd.resultId}: ${r.error ?? 'no shape'}` };
         break;
       }
     }

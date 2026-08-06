@@ -40,11 +40,14 @@
 
 import type { ExtrudeFeature } from './extrudeProfile';
 import { extrudeToScad } from './extrudeProfile';
+import type { EmitContext } from './featureTree';
 
 // ─── IR ───────────────────────────────────────────────────────────────────
 
 export interface ShellFeature {
   kind: 'shell';
+  /** Live upstream extrude used during FeatureTree replay. */
+  childId?: string;
   /** The body to be shelled. Phase 1 supports ExtrudeFeature only. */
   childExtrude: ExtrudeFeature;
   /** Uniform wall thickness (mm). Must be > 0 and < min(profileBBox)/2. */
@@ -156,6 +159,17 @@ export function buildShellFromExtrude(
   };
 }
 
+/** Build a reference-aware shell while retaining a compatibility snapshot. */
+export function buildShellFeatureRef(
+  childId: string,
+  child: ExtrudeFeature,
+  thickness: number,
+  opts: { openTopFace?: boolean; openBottomFace?: boolean } = {},
+): ShellFeature {
+  if (!childId.trim()) throw new Error('shell childId must be a non-empty string');
+  return { ...buildShellFromExtrude(child, thickness, opts), childId };
+}
+
 // ─── SCAD serializer ──────────────────────────────────────────────────────
 
 function formatNum(n: number): string {
@@ -174,12 +188,18 @@ function formatNum(n: number): string {
  *       polygon([inset rect points]);
  *   }
  */
-export function shellToScad(feature: ShellFeature): string {
+export function shellToScad(feature: ShellFeature, ctx?: EmitContext, selfId = 'shell'): string {
+  const child = feature.childId === undefined
+    ? feature.childExtrude
+    : ctx?.requirePayload(feature.childId, selfId, 'extrude');
+  if (!child) {
+    throw new Error(`shell '${selfId}' references upstream body '${feature.childId}' but was emitted without a tree context`);
+  }
   const t = feature.thickness;
-  const outerScad = extrudeToScad(feature.childExtrude);
+  const outerScad = extrudeToScad(child);
 
   // Inset the bounding box inward by `thickness` on all 4 sides.
-  const bb = loopBoundingBox(feature.childExtrude.loop);
+  const bb = loopBoundingBox(child.loop);
   const innerMinX = bb.minX + t;
   const innerMaxX = bb.maxX - t;
   const innerMinY = bb.minY + t;
@@ -198,9 +218,10 @@ export function shellToScad(feature: ShellFeature): string {
   //     removes the floor)
   //   Closed-ceiling: innerDepth ends at depth - thickness
   //   Open-top: innerDepth ends at depth + thickness (pokes through z=depth)
-  const depth = feature.childExtrude.depth;
-  const zStart = feature.openBottomFace ? -t : t;
-  const zEnd = feature.openTopFace ? depth + t : depth - t;
+  const depth = child.depth;
+  const baseZ = child.profileOffsetZ ?? 0;
+  const zStart = baseZ + (feature.openBottomFace ? -t : t);
+  const zEnd = baseZ + (feature.openTopFace ? depth + t : depth - t);
   const innerHeight = zEnd - zStart;
 
   const innerExtrude =

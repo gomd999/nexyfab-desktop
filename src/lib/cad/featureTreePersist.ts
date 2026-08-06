@@ -320,6 +320,7 @@ const KNOWN_KIND_TABLE: Record<FeatureKind, true> = {
   hole: true,
   fillet: true,
   chamfer: true,
+  shell: true,
   rib: true,
   sweep_path: true,
   boolean: true,
@@ -369,6 +370,7 @@ function validatePayload(raw: unknown, nodeIndex: number): PayloadValidationResu
       if (typeof p.depth !== 'number') return missing('depth');
       if (typeof p.direction !== 'string') return missing('direction');
       if (typeof p.mode !== 'string') return missing('mode');
+      if (p.profileOffsetZ !== undefined && (typeof p.profileOffsetZ !== 'number' || !Number.isFinite(p.profileOffsetZ))) return missing('finite profileOffsetZ');
       break;
     case 'revolve':
       if (!Array.isArray(p.loop)) return missing('loop');
@@ -427,6 +429,7 @@ function validatePayload(raw: unknown, nodeIndex: number): PayloadValidationResu
       }
       if (typeof p.radius !== 'number') return missing('radius');
       if (typeof p.edgeSelection !== 'string') return missing('edgeSelection');
+      if (p.edgeRefs !== undefined && (!Array.isArray(p.edgeRefs) || p.edgeRefs.some(ref => typeof ref !== 'string'))) return missing('edgeRefs');
       break;
     case 'chamfer':
       if (!isPlainObject(p.childExtrude)) return missing('childExtrude');
@@ -439,6 +442,20 @@ function validatePayload(raw: unknown, nodeIndex: number): PayloadValidationResu
       }
       if (typeof p.distance !== 'number') return missing('distance');
       if (typeof p.edgeSelection !== 'string') return missing('edgeSelection');
+      if (p.edgeRefs !== undefined && (!Array.isArray(p.edgeRefs) || p.edgeRefs.some(ref => typeof ref !== 'string'))) return missing('edgeRefs');
+      break;
+    case 'shell':
+      if (!isPlainObject(p.childExtrude)) return missing('childExtrude');
+      if ((p.childExtrude as { kind?: unknown }).kind !== 'extrude') {
+        return missing('childExtrude.kind');
+      }
+      if (typeof p.thickness !== 'number') return missing('thickness');
+      if (p.openTopFace !== undefined && typeof p.openTopFace !== 'boolean') {
+        return missing('openTopFace');
+      }
+      if (p.openBottomFace !== undefined && typeof p.openBottomFace !== 'boolean') {
+        return missing('openBottomFace');
+      }
       break;
     case 'rib':
       // RibFeature (ribFeature.ts): start/end are {x,y} in sketch units,

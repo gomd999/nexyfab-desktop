@@ -9,14 +9,9 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OPENSCAD_DEFAULT_TIMEOUT_MS, OPENSCAD_MAX_SCAD_BYTES } from './constants';
+import { resolveOpenScadExecutable } from './resolveOpenScadExecutable';
 
 export type OpenScadMeshFormat = 'stl' | 'off' | '3mf';
-
-function openScadExecutable(): string {
-  const fromEnv = process.env.OPENSCAD_BIN?.trim();
-  if (fromEnv) return fromEnv;
-  return process.platform === 'win32' ? 'openscad.com' : 'openscad';
-}
 
 /**
  * Runs OpenSCAD CLI in an isolated temp directory.
@@ -45,7 +40,7 @@ export async function runOpenScadCli(opts: {
   const scadPath = join(workDir, 'model.scad');
   const ext = opts.format === 'stl' ? 'stl' : opts.format === '3mf' ? '3mf' : 'off';
   const outPath = join(workDir, `out.${ext}`);
-  const bin = openScadExecutable();
+  const bin = resolveOpenScadExecutable();
 
   await mkdir(workDir, { recursive: true });
   await writeFile(scadPath, opts.scadSource, 'utf8');
@@ -108,6 +103,7 @@ export async function runOpenScadCli(opts: {
   } catch (e: unknown) {
     const err = e as NodeJS.ErrnoException & {
       stderr?: string | Buffer;
+      stdout?: string | Buffer;
       code?: string;
       status?: number;
       killed?: boolean;
@@ -122,10 +118,10 @@ export async function runOpenScadCli(opts: {
       };
     }
     if (err.code === 'ETIMEDOUT' || err.killed === true) {
-      const se = err.stderr == null ? undefined : typeof err.stderr === 'string' ? err.stderr : err.stderr.toString();
+      const se = combineProcessOutput(err.stderr, err.stdout);
       return { ok: false, code: 'TIMEOUT', message: `OpenSCAD exceeded ${timeoutMs}ms`, stderr: se };
     }
-    const se = err.stderr == null ? undefined : typeof err.stderr === 'string' ? err.stderr : err.stderr.toString();
+    const se = combineProcessOutput(err.stderr, err.stdout);
     return {
       ok: false,
       code: 'EXIT',
@@ -135,4 +131,16 @@ export async function runOpenScadCli(opts: {
   } finally {
     await rm(workDir, { recursive: true, force: true }).catch(() => {});
   }
+}
+
+function combineProcessOutput(
+  stderr?: string | Buffer,
+  stdout?: string | Buffer,
+): string | undefined {
+  const values = [stderr, stdout]
+    .filter((value): value is string | Buffer => value !== undefined)
+    .map(value => typeof value === 'string' ? value : value.toString())
+    .map(value => value.trim())
+    .filter(Boolean);
+  return values.length > 0 ? values.join('\n') : undefined;
 }

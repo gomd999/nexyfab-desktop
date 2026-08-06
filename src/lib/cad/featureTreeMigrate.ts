@@ -64,6 +64,7 @@ import type { ExtrudeFeature } from './extrudeProfile';
 export const SNAPSHOT_KINDS: ReadonlySet<FeatureKind> = new Set<FeatureKind>([
   'fillet',
   'chamfer',
+  'shell',
 ]);
 
 /**
@@ -90,6 +91,7 @@ export const SNAPSHOT_KINDS: ReadonlySet<FeatureKind> = new Set<FeatureKind>([
 export const REF_AWARE_EMITTERS: ReadonlySet<FeatureKind> = new Set<FeatureKind>([
   'fillet',
   'chamfer',
+  'shell',
 ]);
 
 /**

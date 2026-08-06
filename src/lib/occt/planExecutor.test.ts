@@ -43,6 +43,7 @@ function makeMockBridge(opts: { failOn?: string } = {}): { bridge: OcctBridge; t
     },
     async fillet() { track.calls.push('fillet'); return failIf('fillet') ?? ok(); },
     async chamfer() { track.calls.push('chamfer'); return failIf('chamfer') ?? ok(); },
+    async solidShell() { track.calls.push('solidShell'); return failIf('solidShell') ?? ok(); },
     async exportSTEP() { return ''; },
     async importSTEP() { return ok(); },
     async tessellate() { track.calls.push('tessellate'); return { ok: true, mesh: { positions: [], normals: [], edges: [], triangleCount: 0, edgeCount: 0, bounds: { center: [0, 0, 0], size: [0, 0, 0], radius: 0 } }, warnings: [] }; },
@@ -91,6 +92,19 @@ describe('executeOcctPlan', () => {
     const r = await executeOcctPlan(featureTreeToOcctPlan(tree), bridge);
     expect(r.ok).toBe(true);
     expect(track.calls).toEqual(['extrude', 'fillet']);
+    expect(r.finalShape).toBeDefined();
+  });
+
+  it('open shell plan builds the body then invokes the exact solid-shell operation', async () => {
+    const base = extrudeNode('base');
+    const tree: FeatureTree = { nodes: [base, {
+      id: 'shell1', name: 'shell1', dependencies: ['base'],
+      payload: { kind: 'shell', childId: 'base', childExtrude: base.payload as ExtrudeFeature, thickness: 1, openBottomFace: true },
+    }] };
+    const { bridge, track } = makeMockBridge();
+    const r = await executeOcctPlan(featureTreeToOcctPlan(tree), bridge);
+    expect(r.ok).toBe(true);
+    expect(track.calls).toEqual(['extrude', 'solidShell']);
     expect(r.finalShape).toBeDefined();
   });
 

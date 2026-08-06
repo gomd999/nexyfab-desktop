@@ -2,7 +2,7 @@
  * extrudeProfile — IR builder + SCAD serializer tests.
  */
 import { describe, it, expect } from 'vitest';
-import { buildExtrudeFromLoop, extrudeToScad } from './extrudeProfile';
+import { buildExtrudeFromLoop, extrudeToScad, type ExtrudeFeature } from './extrudeProfile';
 import { extractClosedLoops, type ProfileInput, type ProfilePoint } from '@/lib/sketch/sketchProfile';
 
 function rectInput(): ProfileInput {
@@ -88,6 +88,10 @@ describe('buildExtrudeFromLoop', () => {
 });
 
 describe('extrudeToScad', () => {
+  it('positions the sketch plane when profileOffsetZ is present', () => {
+    const f: ExtrudeFeature = { kind:'extrude',loop:[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}],depth:3,direction:'one_sided',mode:'add',profileOffsetZ:2 };
+    expect(extrudeToScad(f)).toMatch(/^translate\(\[0,0,2\]\)/);
+  });
   it('rect 10x5x7 emits linear_extrude polygon', () => {
     const inp = rectInput();
     const { loops } = extractClosedLoops(inp);

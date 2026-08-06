@@ -335,6 +335,8 @@ function computeNodeStats(
       return filletStats(resolveStatsChild(node, ctx, embeddedOut));
     case 'chamfer':
       return chamferStats(resolveStatsChild(node, ctx, embeddedOut));
+    case 'shell':
+      return shellStats(p, resolveStatsChild(node, ctx, embeddedOut));
     case 'rib':
       return ribStats(p);
     case 'sweep_path':
@@ -450,6 +452,8 @@ function extrudeStats(p: Extract<FeaturePayload, { kind: 'extrude' }>): FeatureS
       zMax = p.depth / 2;
       break;
   }
+  zMin += p.profileOffsetZ ?? 0;
+  zMax += p.profileOffsetZ ?? 0;
   const bbox: Bbox = {
     min: { x: bb.minX, y: bb.minY, z: zMin },
     max: { x: bb.maxX, y: bb.maxY, z: zMax },
@@ -807,6 +811,24 @@ function chamferStats(child: ExtrudeFeature): FeatureStats {
   return {
     kind: 'chamfer',
     bbox: extrudeStats(child).bbox,
+  };
+}
+
+function shellStats(
+  p: Extract<FeaturePayload, { kind: 'shell' }>,
+  child: ExtrudeFeature,
+): FeatureStats {
+  const outer = extrudeStats(child);
+  const bb = loopBbox2D(child.loop);
+  const innerWidth = Math.max(0, bb.maxX - bb.minX - 2 * p.thickness);
+  const innerHeight = Math.max(0, bb.maxY - bb.minY - 2 * p.thickness);
+  const zStart = p.openBottomFace ? -p.thickness : p.thickness;
+  const zEnd = p.openTopFace ? child.depth + p.thickness : child.depth - p.thickness;
+  const removed = innerWidth * innerHeight * Math.max(0, zEnd - zStart);
+  return {
+    kind: 'shell',
+    volume: outer.volume === undefined ? undefined : outer.volume - removed,
+    bbox: outer.bbox,
   };
 }
 

@@ -62,14 +62,15 @@ export interface PolyEdge {
  */
 function extrudeZRange(feature: ExtrudeFeature): { z0: number; z1: number } {
   const d = feature.depth;
+  const z = feature.profileOffsetZ ?? 0;
   switch (feature.direction) {
     case 'two_sided':
-      return { z0: -d, z1: d };
+      return { z0: z - d, z1: z + d };
     case 'midplane':
-      return { z0: -d / 2, z1: d / 2 };
+      return { z0: z - d / 2, z1: z + d / 2 };
     case 'one_sided':
     default:
-      return { z0: 0, z1: d };
+      return { z0: z, z1: z + d };
   }
 }
 

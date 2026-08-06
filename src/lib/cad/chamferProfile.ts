@@ -81,6 +81,8 @@ export interface ChamferFeature {
    * from `childExtrude` exactly as before (docs/design/w2-downstream-regen.md §6).
    */
   childId?: string;
+  /** Exact persistent edge names for the OCCT path. SCAD must fail closed when present. */
+  edgeRefs?: ReadonlyArray<string>;
   /**
    * Build-time snapshot of the body to be chamfered. Phase 2 supports any
    * convex polygon ExtrudeFeature.
@@ -544,6 +546,9 @@ export function chamferToScad(
   ctx?: EmitContext,
   selfId = 'chamfer',
 ): string {
+  if (feature.edgeRefs?.length) {
+    throw new Error(`chamfer '${selfId}' requires OCCT for exact selected edges: ${feature.edgeRefs.join(', ')}`);
+  }
   const child = resolveChamferChild(feature, ctx, selfId);
   assertChamferBoundsAtEmit(feature, child, selfId);
   const d = feature.distance;

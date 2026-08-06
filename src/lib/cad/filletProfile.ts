@@ -104,6 +104,8 @@ export interface FilletFeature {
    * from `childExtrude` exactly as before (see docs/design/w2-downstream-regen.md).
    */
   childId?: string;
+  /** Exact persistent edge names for the OCCT path. SCAD must fail closed when present. */
+  edgeRefs?: ReadonlyArray<string>;
   /**
    * Build-time snapshot of the body to be filleted. Phase 2 supports any
    * convex polygon ExtrudeFeature.
@@ -732,6 +734,9 @@ export function filletToScad(
   ctx?: EmitContext,
   selfId = 'fillet',
 ): string {
+  if (feature.edgeRefs?.length) {
+    throw new Error(`fillet '${selfId}' requires OCCT for exact selected edges: ${feature.edgeRefs.join(', ')}`);
+  }
   const child = resolveFilletChild(feature, ctx, selfId);
   assertFilletBoundsAtEmit(feature, child, selfId);
   const r = feature.radius;

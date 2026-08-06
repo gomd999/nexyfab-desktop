@@ -16,6 +16,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OPENSCAD_MAX_SCAD_BYTES } from './constants';
+import { resolveOpenScadExecutable } from './resolveOpenScadExecutable';
 
 export interface StlRenderOk {
   ok: true;
@@ -28,12 +29,6 @@ export interface StlRenderErr {
   code: 'ENOENT' | 'TIMEOUT' | 'EXIT' | 'TOO_LARGE' | 'MISSING_OUTPUT';
   message: string;
   stderr?: string;
-}
-
-function openScadExecutable(): string {
-  const fromEnv = process.env.OPENSCAD_BIN?.trim();
-  if (fromEnv) return fromEnv;
-  return process.platform === 'win32' ? 'openscad.com' : 'openscad';
 }
 
 export async function renderScadToStl(opts: {
@@ -50,7 +45,7 @@ export async function renderScadToStl(opts: {
   const workDir = join(tmpdir(), `nf-openscad-stl-${id}`);
   const scadPath = join(workDir, 'model.scad');
   const stlPath = join(workDir, 'model.stl');
-  const bin = openScadExecutable();
+  const bin = resolveOpenScadExecutable();
 
   await mkdir(workDir, { recursive: true });
   await writeFile(scadPath, opts.scadSource, 'utf8');

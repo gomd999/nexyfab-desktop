@@ -43,6 +43,7 @@ import {
   type FilletFeature,
 } from '../filletProfile';
 import { buildChamferFeature, buildChamferFeatureRef } from '../chamferProfile';
+import { buildShellFeatureRef } from '../shellProfile';
 
 // ─── fixtures ─────────────────────────────────────────────────────────────
 
@@ -228,6 +229,7 @@ describe('W2-B promotion rule — refuses to guess, and says why', () => {
     const refNode = (kind: FeatureKind, childId: string, snap: ExtrudeFeature): FeaturePayload => {
       if (kind === 'fillet') return buildFilletFeatureRef(childId, snap, 2, 'all');
       if (kind === 'chamfer') return buildChamferFeatureRef(childId, snap, 1, 'all');
+      if (kind === 'shell') return buildShellFeatureRef(childId, snap, 1, { openTopFace: true });
       throw new Error(`no ref builder known for kind '${kind}' — extend this probe`);
     };
 

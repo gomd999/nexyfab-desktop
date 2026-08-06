@@ -21,6 +21,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OPENSCAD_MAX_SCAD_BYTES } from './constants';
+import { resolveOpenScadExecutable } from './resolveOpenScadExecutable';
 
 export interface CameraView {
   /** Short label shown to the vision model (e.g. "Isometric"). */
@@ -47,12 +48,6 @@ export interface PngRenderErr {
   stderr?: string;
 }
 
-function openScadExecutable(): string {
-  const fromEnv = process.env.OPENSCAD_BIN?.trim();
-  if (fromEnv) return fromEnv;
-  return process.platform === 'win32' ? 'openscad.com' : 'openscad';
-}
-
 export async function renderScadToPng(opts: {
   scadSource: string;
   views?: CameraView[];
@@ -74,7 +69,7 @@ export async function renderScadToPng(opts: {
   const id = randomBytes(8).toString('hex');
   const workDir = join(tmpdir(), `nf-openscad-png-${id}`);
   const scadPath = join(workDir, 'model.scad');
-  const bin = openScadExecutable();
+  const bin = resolveOpenScadExecutable();
 
   await mkdir(workDir, { recursive: true });
   await writeFile(scadPath, opts.scadSource, 'utf8');

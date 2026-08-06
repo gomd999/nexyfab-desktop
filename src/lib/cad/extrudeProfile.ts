@@ -41,6 +41,8 @@ export interface ExtrudeFeature {
   depth: number;
   /** Optional taper angle in degrees. 0 = straight extrude. Range [-30, +30]. */
   draftDegrees?: number;
+  /** Z position of the sketch/profile plane. Defaults to 0. */
+  profileOffsetZ?: number;
   direction: ExtrudeDirection;
   mode: ExtrudeMode;
 }
@@ -120,9 +122,10 @@ export function extrudeToScad(feature: ExtrudeFeature): string {
   if (feature.mode === 'cut') {
     // The host pipeline is expected to wrap the parent body around the
     // `// NEXYFAB:EXTRUDE_CUT` marker; we emit the negative body here.
-    return `// NEXYFAB:EXTRUDE_CUT\n${extrudeBlock}`;
+    const positioned = feature.profileOffsetZ ? `translate([0,0,${formatNum(feature.profileOffsetZ)}]) {\n  ${extrudeBlock.split('\n').join('\n  ')}\n}` : extrudeBlock;
+    return `// NEXYFAB:EXTRUDE_CUT\n${positioned}`;
   }
-  return extrudeBlock;
+  return feature.profileOffsetZ ? `translate([0,0,${formatNum(feature.profileOffsetZ)}]) {\n  ${extrudeBlock.split('\n').join('\n  ')}\n}` : extrudeBlock;
 }
 
 function draftToScale(feature: ExtrudeFeature): number {
