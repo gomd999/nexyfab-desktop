@@ -2,8 +2,8 @@
 
 - 기준일: 2026-08-07 (Asia/Seoul)
 - 문서 역할: 이후 작업의 단일 상태 추적 문서
-- 현재 감사: 305/305 pass
-- 감사 artifact set SHA-256: `dbce455e9af8896df549b314a730c349a4cc9d44fda418745a413ad9297b49c2`
+- 현재 감사: 363/363 pass (P1 zip triage·라우팅 결속 검증 +14 체크 포함)
+- 감사 artifact set SHA-256: `2e9d1a428dac6e6029fafce84c878dc2838157ef106753c9afabe5711bdb1c53`
 - 정확도 선언: 현재 자료로 일반적인 95% AI CAD 정확도를 주장할 수 없음
 
 ## 1. 목표와 판정 원칙
@@ -172,19 +172,19 @@
 
 목표: 새로운 case/source hash 기준으로 기존 외부 구조 증거를 다시 연결한다.
 
-- [ ] STEP/STP를 FreeCAD native extractor에 연결한다.
-- [ ] IGES/IGS entity 구조를 native geometry 결과와 교차검증한다.
-- [ ] IFC case를 indexed mesh/closure/collision evidence에 연결한다.
-- [ ] ZIP member 선택을 source member hash에 결속한다.
-- [ ] SLDASM/IAM/CATPRODUCT/ASM/X_T/X_B를 executor별 partition한다.
-- [ ] 결과를 lineage-v2 case ID로만 merge한다.
+- [x] STEP/STP를 FreeCAD native extractor에 연결한다. (31건 추출, remediation 1건 회복 포함)
+- [x] IGES/IGS entity 구조를 native geometry 결과와 교차검증한다. (2건 원칙적 `not_run` — 대형 IGES 타임아웃→`large_iges_worker`, 비강체 스케일 변환→`iges_non_rigid_transform_worker` 라우트 명시)
+- [x] IFC case를 indexed mesh/closure/collision evidence에 연결한다. (직접 IFC 4건 native 추출 완료)
+- [x] ZIP member 선택을 source member hash에 결속한다. (`zip-member-triage.json` — ZIP 28건 아카이브 sha256=요청 sourceHash 전량 일치·멤버 sha256 결속, 라우팅 매니페스트 141개 job 소스 해시 독립 재계산 141/141 일치)
+- [x] SLDASM/IAM/CATPRODUCT/ASM/X_T/X_B를 executor별 partition한다. (라우팅 매니페스트 141 jobs: solidworks 35·inventor 33·creo 16·dwg 16·revit 6·catia 1·parasolid 1·freecad 29·ifc 4)
+- [x] 결과를 lineage-v2 case ID로만 merge한다. (31 results, duplicate 0·unknown 0)
 
-완료 조건:
+완료 조건 판정 (2026-08-07):
 
-- source mismatch 0, unknown result 0, duplicate result 0
-- 실행 가능한 case의 structure fail 0
-- part definition/occurrence/hierarchy/transform coverage가 현재보다 증가
-- body membership과 joint는 증거가 없으면 `not_run` 유지
+- [x] source mismatch 0, unknown result 0, duplicate result 0
+- [x] 실행 가능한 case의 structure fail 0 (fail 0)
+- [x] body membership과 joint는 증거가 없으면 `not_run` 유지 (joint 88건 전부 `not_run`)
+- [ ] coverage 증가 — **로컬 실행기 한계 도달**: 31/88에서 정지. zip triage 결과 ZIP 28건 내부에 로컬 추출 가능 멤버(STEP/IGES/IFC) **0건**(감사 체크 `zip_triage.local_executor_available=0`로 고정), 잔여 57건은 전부 외부 native worker 필요(sldasm 20·zip-내 SW 9·iam 4+zip 2·creo 1+zip 1·catproduct 1·asm 1·x_t 1·iges 워커 2·dwg/revit 16). coverage 상승은 P2/P4 워커 연결에 종속.
 
 ### P2. native joint·motion·collision 증거
 

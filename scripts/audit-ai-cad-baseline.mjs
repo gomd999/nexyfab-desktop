@@ -79,6 +79,7 @@ const artifacts = [
   "docs/evidence/complex-holdout-lineage-v2-260807/joint-evidence-boundary-report.json",
   "docs/strategy/native-cad-worker-host-deployment-260807.md",
   "docs/strategy/current-status-and-next-execution-plan-260807-v2.md",
+  "docs/evidence/complex-holdout-lineage-v2-260807/zip-member-triage.json",
 ];
 const implementation = [
   "src/lib/ai/scadAssemblyBridge.ts",
@@ -110,6 +111,7 @@ const implementation = [
   "scripts/reference/freecad-extract-step.py",
   "scripts/reference/run-freecad-native-extractions.ts",
   "scripts/reference/triage-unsupported-native-archives.ts",
+  "scripts/reference/triage-lineage-v2-zip-members.ts",
   "scripts/reference/run-ifc-native-extractions.ts",
   "scripts/reference/run-dwg-native-extractions.ts",
   "src/lib/brep-bridge/dwgImport.ts",
@@ -602,6 +604,32 @@ check(
     (item) =>
       item.imported?.finiteWorldTransforms === item.imported?.occurrences,
   ),
+  true,
+);
+const zipTriage = load(
+  "docs/evidence/complex-holdout-lineage-v2-260807/zip-member-triage.json",
+);
+const nativeRoutingManifest = load(
+  "docs/evidence/complex-holdout-lineage-v2-260807/native-worker-routing-manifest.json",
+);
+check("zip_triage.cases", zipTriage.summary?.zipCases, 28);
+check("zip_triage.routed", zipTriage.summary?.routed, 28);
+check("zip_triage.fail", zipTriage.summary?.fail, 0);
+check("zip_triage.source_hash_mismatch", zipTriage.summary?.sourceHashMismatch, 0);
+// 정직 경계: ZIP 28건 안에 로컬 추출기(FreeCAD/IFC)가 소화할 멤버는 없다 —
+// 전부 외부 워커 라우트. 이 값이 올라가면 로컬 재추출 기회가 생겼다는 뜻.
+check("zip_triage.local_executor_available", zipTriage.summary?.localExecutorAvailable, 0);
+check("zip_triage.score_eligible", zipTriage.scoreEligible, false);
+check("zip_triage.no_source_bytes", zipTriage.sourceBytesEmbedded, false);
+check("native_routing.request_cases", nativeRoutingManifest.summary?.requestCases, 88);
+check("native_routing.routed_cases", nativeRoutingManifest.summary?.routedCases, 88);
+check("native_routing.unrouted_cases", nativeRoutingManifest.summary?.unroutedCases, 0);
+check("native_routing.jobs", nativeRoutingManifest.summary?.jobs, 141);
+check(
+  "native_routing.zip_member_hash_bound",
+  nativeRoutingManifest.jobs
+    ?.filter((item) => item.source?.kind === "zip-member")
+    .every((item) => typeof item.source?.sha256 === "string" && item.source.sha256.length === 64),
   true,
 );
 const canonicalSource = fs.readFileSync(
