@@ -77,9 +77,18 @@ export async function runValidation(opts: RunValidationOptions): Promise<Validat
         tokensCap: opts.tokensCap,
         turnsCap: opts.turnsCap,
         toolCallsCap: opts.toolCallsCap,
+        requireSuccessfulRenderBeforeDone: true,
+        stopAfterSuccessfulRender: true,
+        resetHistoryOnIncompleteArtifact: true,
         onEvent: (ev: AgentEvent) => {
           if (ev.type === 'error') errorEvents.push(ev.message);
           if (ev.type === 'wedge_detected') errorEvents.push('wedge_detected');
+          if (ev.type === 'tool_result' && !ev.result.ok) {
+            errorEvents.push(`tool ${ev.callId}: ${ev.result.code ?? 'ERROR'}: ${ev.result.error}`);
+          }
+          if (ev.type === 'tool_result' && ev.result.ok && ev.result.meta?.renderOk === false) {
+            errorEvents.push(`tool ${ev.callId}: RENDER_FAILED: ${ev.result.output}`);
+          }
         },
       });
       session = result.session;

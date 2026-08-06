@@ -27,16 +27,16 @@ function perfectAi(): AiClient {
         // Stage 1 — assembly scenarios get a module-style fallthrough so
         // the keyword scorer (which looks for "module", "translate",
         // shape-specific tokens) sees what it expects.
-        if (/마운트|어셈블리|결합|모터|nema|motor mount/i.test(last)) {
+        if (/마운트|모터|nema|motor mount/i.test(last)) {
           scad = 'include <BOSL2/std.scad>\nmodule bracket() { cube([60,60,5]); }\nmodule screw() { cylinder(h=10, r=1.5); }\nbracket();\ntranslate([10,10,5]) screw();\ntranslate([50,10,5]) screw();\ntranslate([10,50,5]) screw();\ntranslate([50,50,5]) screw();';
         } else if (/맞물리는|gear train|평기어 2/i.test(last)) {
           scad = 'include <BOSL2/std.scad>\nmodule g1() { spur_gear(teeth=20, mod=2, thickness=8); }\nmodule g2() { spur_gear(teeth=30, mod=2, thickness=8); }\ng1();\ntranslate([50,0,0]) g2();';
         } else if (/T자형|t-joint|tee|t자|파이프 조인트/i.test(last)) {
-          scad = 'module pipe_h() { difference() { cylinder(h=80, r=15); cylinder(h=80, r=10); } }\nmodule pipe_v() { rotate([90,0,0]) cylinder(h=40, r=15); }\npipe_h();\npipe_v();';
+          scad = 'module main_pipe_left() { difference() { cylinder(h=50, d=30); cylinder(h=50, d=20); } }\nmodule main_pipe_right() { difference() { cylinder(h=50, d=30); cylinder(h=50, d=20); } }\nmodule branch_pipe() { difference() { cylinder(h=60, d=30); cylinder(h=60, d=20); } }\nmain_pipe_left();\nmain_pipe_right();\nbranch_pipe();';
         } else if (/토이카|토이 카|toy car|작은 창문|차체.*휠/i.test(last)) {
-          scad = 'module body() { cube([100,50,25]); }\nmodule wheel() { rotate([90,0,0]) cylinder(h=8, r=10); }\nbody();\ntranslate([20,-25,-5]) wheel();\ntranslate([80,-25,-5]) wheel();\ntranslate([20,55,-5]) wheel();\ntranslate([80,55,-5]) wheel();';
+          scad = 'module body() { cube([60,30,20]); }\nmodule wheel() { rotate([90,0,0]) cylinder(h=6, d=14); }\nbody();\ntranslate([-20,-18,7]) wheel();\ntranslate([-20,18,7]) wheel();\ntranslate([20,-18,7]) wheel();\ntranslate([20,18,7]) wheel();';
         } else if (/그리드|grid|16개|4×4|4x4/i.test(last)) {
-          scad = 'module lBracket() { difference() { cube([20,20,3]); translate([3,3,0]) cube([14,14,3]); } }\nfor (i=[0:3]) for (j=[0:3]) translate([i*50, j*50, 0]) lBracket();';
+          scad = 'module bracket() { difference() { cube([20,20,3]); translate([3,3,0]) cube([14,14,3]); } }\n' + Array.from({ length: 4 }, (_, x) => Array.from({ length: 4 }, (_, y) => `translate([${x * 50},${y * 50},0]) bracket();`).join('\n')).join('\n');
         } else if (/볼트|bolt|M8|나사/i.test(last)) scad = 'include <BOSL2/std.scad>\nthreaded_rod(d=8, l=50, pitch=1.25);';
         else if (/케이스|case|enclosure|벽/i.test(last)) scad = 'difference() {\n  cube([120,80,40]);\n  translate([2,2,2]) cube([116,76,40]);\n}';
         else if (/브래킷|bracket|구멍|hole/i.test(last)) scad = 'difference() {\n  cube([50,30,5]);\n  translate([5,5,0]) cylinder(h=5, r=2, $fn=32);\n}';
@@ -91,7 +91,10 @@ describe('Validation harness (V4)', () => {
       host: mockHost({ renderOk: true }),
       aiProviderLabel: 'mock-perfect',
     });
-    expect(report.summary.passed).toBe(VALIDATION_SCENARIOS.length);
+    expect(
+      report.summary.passed,
+      JSON.stringify(report.results.filter(result => !result.passed).map(result => ({ id: result.scenarioId, reasons: result.reasons }))),
+    ).toBe(VALIDATION_SCENARIOS.length);
     expect(report.summary.failed).toBe(0);
     expect(report.summary.passRate).toBe(1);
   });

@@ -8,6 +8,8 @@
  * server route and the client builder can use it.
  */
 
+import type { SelectionContext } from './selectionContext';
+
 export interface AiContextFeature {
   /** Stable feature id (used by update/remove intents to target it). */
   id: string;
@@ -30,6 +32,8 @@ export interface AiModelContext {
   features: AiContextFeature[];
   /** Current face/edge selection, or null. */
   selection?: AiContextSelection | null;
+  /** Manufacturing-grade target identity used for safe, revision-bound edits. */
+  selectionContext?: SelectionContext | null;
 }
 
 /**
@@ -61,6 +65,18 @@ export function renderModelContext(ctx: AiModelContext | undefined | null): stri
     lines.push(`Current selection: a ${ctx.selection.kind}${lbl} is selected — "this face/edge" refers to it.`);
   } else {
     lines.push('Current selection: none.');
+  }
+
+  if (ctx.selectionContext) {
+    const s = ctx.selectionContext;
+    lines.push(`Selection revision: ${s.projectRevision}; units=${s.units}; frame=${s.coordinateFrame}.`);
+    if (s.partInstanceId) lines.push(`Selected part instance: ${s.partInstanceId}.`);
+    if (s.bodyId) lines.push(`Selected body: ${s.bodyId}.`);
+    if (s.featureId) lines.push(`Selected feature: ${s.featureId}.`);
+    for (const ref of s.topology) {
+      const role = ref.semanticRole ? `; role=${ref.semanticRole}` : '';
+      lines.push(`Topology target: ${ref.kind}; ref=${ref.persistentRef}; quality=${ref.referenceQuality}${role}.`);
+    }
   }
 
   return lines.join('\n');

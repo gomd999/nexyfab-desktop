@@ -173,6 +173,13 @@ function describeNode(
       return describeFillet(p, lang);
     case 'chamfer':
       return describeChamfer(p, lang);
+    case 'shell':
+      return {
+        text: lang === 'ko'
+          ? `쉘: 두께 ${fmt(p.thickness)}mm${p.openTopFace ? ' · 위 면 열림' : ''}${p.openBottomFace ? ' · 아래 면 열림' : ''}`
+          : `Shell: ${fmt(p.thickness)}mm thick${p.openTopFace ? ', top open' : ''}${p.openBottomFace ? ', bottom open' : ''}`,
+        params: { thickness: p.thickness, openTopFace: !!p.openTopFace, openBottomFace: !!p.openBottomFace },
+      };
     case 'rib':
       return describeRib(p, lang);
     case 'sweep_path':

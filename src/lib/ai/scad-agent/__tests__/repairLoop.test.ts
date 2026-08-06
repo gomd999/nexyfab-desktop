@@ -45,6 +45,20 @@ function scriptedGate(verdicts: (GateVerdict | null)[]): GateEvaluator {
 }
 
 describe('runRepairLoop (orchestration)', () => {
+  it('does not retry a deterministic failure marked non-retryable', async () => {
+    const prompts: string[] = [];
+    const res = await runRepairLoop({
+      userPrompt: 'make a bracket',
+      aiFamilies: [{ family: 'alpha', client: recordingAi('alpha', prompts) }],
+      tools: noTools,
+      maxAttempts: 3,
+      gate: scriptedGate([{ passed: false, retryable: false, feedback: 'User must confirm thickness.' }]),
+    });
+    expect(res.passed).toBe(false);
+    expect(res.attemptsUsed).toBe(1);
+    expect(prompts).toHaveLength(1);
+  });
+
   it('passing gate on attempt 1 stops the loop', async () => {
     const prompts: string[] = [];
     const families: AiFamily[] = [{ family: 'alpha', client: recordingAi('alpha', prompts) }];
@@ -52,6 +66,7 @@ describe('runRepairLoop (orchestration)', () => {
       userPrompt: 'make a 50mm cube',
       aiFamilies: families,
       tools: noTools,
+      fastPath: false,
       gate: scriptedGate([{ passed: true, feedback: 'PASS' }]),
     });
 
@@ -70,6 +85,7 @@ describe('runRepairLoop (orchestration)', () => {
       userPrompt: 'make a 50mm cube',
       aiFamilies: families,
       tools: noTools,
+      fastPath: false,
       maxAttempts: 2,
       gate: scriptedGate([
         { passed: false, feedback },
@@ -353,6 +369,7 @@ describe('runRepairLoop (orchestration)', () => {
         userPrompt: 'make a 50mm cube',
         aiFamilies: families,
         tools: noTools,
+        fastPath: false,
         maxAttempts: 2,
         gate: scriptedGate([{ passed: true, feedback: 'PASS' }]),
       }),

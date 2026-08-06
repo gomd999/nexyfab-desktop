@@ -1,0 +1,17 @@
+import type { SleevePlan } from './mepRouting3d';
+type V3 = [number, number, number];
+export interface MepElbowPlan { id: string; vertexIndex: number; centerMm: V3; tangentInMm: V3; tangentOutMm: V3; bendRadiusMm: number; diameterMm: number; angleDeg: number }
+export interface MepFittingPlanResult { status: 'passed' | 'failed'; elbows: MepElbowPlan[]; failures: Array<{ vertexIndex: number; code: 'NON_ORTHOGONAL_ROUTE' | 'INSUFFICIENT_TANGENT_LENGTH' | 'INVALID_SEGMENT' }> }
+const length = (a: V3, b: V3) => Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+export function planOrthogonalMepFittings(pathMm: V3[], diameterMm: number, bendRadiusMm: number): MepFittingPlanResult {
+  if (pathMm.length < 2 || !(diameterMm > 0) || !(bendRadiusMm > 0)) throw new Error('MEP fitting inputs are invalid.');
+  const elbows: MepElbowPlan[] = [], failures: MepFittingPlanResult['failures'] = [];
+  for (let index = 1; index < pathMm.length - 1; index++) { const before = pathMm[index - 1]!, center = pathMm[index]!, after = pathMm[index + 1]!, incomingLength = length(before, center), outgoingLength = length(center, after); if (!(incomingLength > 0) || !(outgoingLength > 0)) { failures.push({ vertexIndex: index, code: 'INVALID_SEGMENT' }); continue; } const incoming: V3 = [(center[0] - before[0]) / incomingLength, (center[1] - before[1]) / incomingLength, (center[2] - before[2]) / incomingLength], outgoing: V3 = [(after[0] - center[0]) / outgoingLength, (after[1] - center[1]) / outgoingLength, (after[2] - center[2]) / outgoingLength], dot = Math.max(-1, Math.min(1, incoming[0] * outgoing[0] + incoming[1] * outgoing[1] + incoming[2] * outgoing[2])); if (dot > 1 - 1e-9) continue; if (dot < -1 + 1e-9) { failures.push({ vertexIndex: index, code: 'NON_ORTHOGONAL_ROUTE' }); continue; } const angle = Math.acos(dot), tangentDistance = bendRadiusMm * Math.tan(angle / 2); if (incomingLength < tangentDistance || outgoingLength < tangentDistance) { failures.push({ vertexIndex: index, code: 'INSUFFICIENT_TANGENT_LENGTH' }); continue; } elbows.push({ id: `elbow:${index}`, vertexIndex: index, centerMm: [...center], tangentInMm: [center[0] - incoming[0] * tangentDistance, center[1] - incoming[1] * tangentDistance, center[2] - incoming[2] * tangentDistance], tangentOutMm: [center[0] + outgoing[0] * tangentDistance, center[1] + outgoing[1] * tangentDistance, center[2] + outgoing[2] * tangentDistance], bendRadiusMm, diameterMm, angleDeg: angle * 180 / Math.PI }); }
+  return { status: failures.length ? 'failed' : 'passed', elbows, failures };
+}
+
+export interface BuildingServiceOpening { id: string; hostId: string; sourceRouteId: string; sourceSleeveId: string; shape: 'round'; centerMm: V3; axis: V3; cutDiameterMm: number; depthMm: number; firestopAnnulusMm: number; structuralApprovalId?: string }
+export function serviceOpeningsFromSleeves(sleeves: SleevePlan[], sleeveWallThicknessMm: number, firestopAnnulusMm: number): BuildingServiceOpening[] {
+  if (!(sleeveWallThicknessMm > 0) || firestopAnnulusMm < 0) throw new Error('Service opening fabrication dimensions are invalid.');
+  return sleeves.map(sleeve => ({ id: `opening:${sleeve.id}`, hostId: sleeve.hostId, sourceRouteId: sleeve.routeId, sourceSleeveId: sleeve.id, shape: 'round', centerMm: [...sleeve.centerMm], axis: [...sleeve.axis], cutDiameterMm: sleeve.insideDiameterMm + sleeveWallThicknessMm * 2, depthMm: sleeve.lengthMm, firestopAnnulusMm, structuralApprovalId: sleeve.approvalId }));
+}

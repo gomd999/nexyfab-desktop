@@ -1,0 +1,14 @@
+import { describe, expect, it } from 'vitest';
+import type { ComplexBenchmarkCaseV2 } from './complexProductBenchmarkV2';
+import { groundTruthArtifactSetHash, validateComplexGroundTruthApproval, type ComplexGroundTruthApprovalRecord } from './complexGroundTruthApproval';
+const sourceHash = 'a'.repeat(64), artifactHash = 'b'.repeat(64), reviewedAt = '2026-08-07T00:00:00.000Z';
+const caseValue: ComplexBenchmarkCaseV2 = { schema: 'nexyfab.complex-benchmark-case.v2', caseId: 'robot-1', family: 'robot', tier: 'T2', holdoutGroup: 'g1', sourceHash, split: 'holdout', assertions: [{ id: 'parts', axis: 'part_definitions', required: true, kpiEligible: false, provenance: 'legacy-unreviewed', tolerancePolicy: 'exact', artifactHashes: [artifactHash] }] };
+const decision = (reviewerId: string) => ({ decision: 'approved' as const, reviewerId, note: 'Reviewed against licensed native source.', reviewedAt });
+const record = (): ComplexGroundTruthApprovalRecord => { const artifactSetHash = groundTruthArtifactSetHash(caseValue); return { schema: 'nexyfab.complex-ground-truth-approval.v1', caseId: 'robot-1', sourceHash, revision: 1, licenseReview: decision('license-reviewer'), holdoutIsolationReview: decision('holdout-reviewer'), assertionReviews: [{ schema: 'nexyfab.complex-assertion-review.v1', caseId: 'robot-1', assertionId: 'parts', ...decision('domain-reviewer'), reviewedArtifactHashes: [artifactHash], tolerancePolicy: 'exact' }], signoffs: [{ ...decision('domain-reviewer'), role: 'domain-reviewer', artifactSetHash, reviewedAssertionIds: ['parts'] }, { ...decision('independent-reviewer'), role: 'independent-reviewer', artifactSetHash, reviewedAssertionIds: ['parts'] }] }; };
+describe('complex ground-truth approval gate', () => {
+  it('keeps an absent manual record pending', () => expect(validateComplexGroundTruthApproval(caseValue)).toMatchObject({ status: 'pending', scoreEligible: false }));
+  it('accepts hash-bound dual independent approval', () => expect(validateComplexGroundTruthApproval(caseValue, record())).toMatchObject({ status: 'approved', scoreEligible: true, issues: [] }));
+  it('rejects a reused reviewer identity', () => { const value = record(); value.signoffs[1]!.reviewerId = 'domain-reviewer'; expect(validateComplexGroundTruthApproval(caseValue, value)).toMatchObject({ status: 'invalid', scoreEligible: false, issues: expect.arrayContaining(['ground_truth_reviewers_not_independent']) }); });
+  it('invalidates approval after artifact change', () => { const changed = { ...caseValue, assertions: [{ ...caseValue.assertions[0]!, artifactHashes: ['c'.repeat(64)] }] }; expect(validateComplexGroundTruthApproval(changed, record())).toMatchObject({ status: 'invalid', scoreEligible: false }); });
+  it('requires every required assertion', () => { const value = record(); value.assertionReviews = []; expect(validateComplexGroundTruthApproval(caseValue, value).issues).toContain('required_assertions_not_approved'); });
+});

@@ -30,12 +30,13 @@ RULES:
 - "PCD" / "ピッチ円" / "볼트원" → circularPattern with that pcd.
 - Order matters: base first, then holes/patterns, then ribs, then fillets/chamfers last.
 - Keep the program minimal and correct — only the features the user asked for.
+- NEVER invent a missing dimension or position. Do not use typical/default sizes. If a required value is absent, return {"part":"needs_clarification","features":[],"questions":["one concise question per missing dimension"]}.
 
 Output the JSON program now.`;
 
 const def: PromptDefinition = {
   id: 'cad-feature-program',
-  version: '1.0.0',
+  version: '1.1.0',
   description: 'Precise (expert) path: decompose a mechanical-part request into an ordered parametric B-rep feature program (sketchExtrude/hole/pattern/rib/fillet/chamfer) with exact dimensions, executed by the modeler for a real solid + editable feature tree + STEP. Autodesk prompt-to-feature equivalent.',
   template: TEMPLATE,
   defaults: {

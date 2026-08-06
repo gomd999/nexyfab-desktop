@@ -213,6 +213,12 @@ export interface AssemblyPlacement {
   count?: number;
   /** Per-array spacing if count>1. */
   spacing?: [number, number, number];
+  /** Optional 2D/3D rectangular occurrence grid, e.g. [4,4,1]. */
+  gridCount?: [number, number, number];
+  /** Per-axis spacing for gridCount; defaults to spacing then zero. */
+  gridSpacing?: [number, number, number];
+  /** Explicit opt-in for a 1D array whose spacing changes multiple axes. */
+  allowDiagonalArray?: boolean;
 }
 export interface ComposeAssemblyArgs {
   /** SCAD `include <...>` lines to prepend (e.g. BOSL2/std.scad). */
@@ -910,6 +916,12 @@ export interface AgentSession {
    */
   brepEntries: BrepEntry[];
   /**
+   * B-rep handles that passed verify_spec_brep in this session. Handles are
+   * immutable registry identities, so any geometry edit creates a new handle
+   * and cannot inherit an earlier manufacturing verdict accidentally.
+   */
+  verifiedBrepHandles?: Record<string, true>;
+  /**
    * H (Stage 4) — Named 2D sketches with constraint state. Used by the
    * sketch_* tools and consumed by sketch_to_brep_extrude when ready.
    */
@@ -1019,6 +1031,16 @@ export interface AgentRunOptions {
   tokensCap?: number;
   turnsCap?: number;
   toolCallsCap?: number;
+  /**
+   * Fail closed for generation/certification runs: a narration-only handoff
+   * is not completion until non-empty SCAD has rendered successfully.
+   * Interactive chat keeps the historical permissive behaviour by default.
+   */
+  requireSuccessfulRenderBeforeDone?: boolean;
+  /** Certification optimization: return immediately after a successful render. */
+  stopAfterSuccessfulRender?: boolean;
+  /** Certification recovery: compact a stalled no-artifact conversation. */
+  resetHistoryOnIncompleteArtifact?: boolean;
   /** Stage 2 — separate cap for view_render (vision) calls; defaults to 3. */
   visionCallsCap?: number;
   /** B1 — disable the deterministic fast-path classifier. Default false

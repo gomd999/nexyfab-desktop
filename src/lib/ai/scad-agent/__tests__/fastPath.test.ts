@@ -23,6 +23,24 @@ describe('classifyFastPath', () => {
     expect(r?.intent.params.width).toBe(25);
   });
 
+  it('normalizes conversational wrappers and trailing punctuation', () => {
+    expect(classifyFastPath('Please create a 30 mm cube.')?.intent).toEqual({
+      shapeId: 'box', params: { width: 30, height: 30, depth: 30 },
+    });
+  });
+
+  it('matches an English box described by axis words', () => {
+    expect(classifyFastPath('A rectangular box 80mm wide, 40mm tall, 20mm deep')?.intent).toEqual({
+      shapeId: 'box', params: { width: 80, height: 40, depth: 20 },
+    });
+  });
+
+  it('does not confuse sphere diameter with radius', () => {
+    expect(classifyFastPath('A 40mm diameter sphere')?.intent).toEqual({
+      shapeId: 'sphere', params: { diameter: 40 },
+    });
+  });
+
   it('matches Korean cylinder', () => {
     const r = classifyFastPath('지름 40mm 높이 60mm 원기둥');
     expect(r?.intent.shapeId).toBe('cylinder');

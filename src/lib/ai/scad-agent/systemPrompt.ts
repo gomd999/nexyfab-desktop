@@ -155,9 +155,11 @@ Common keys: \`units\`, \`default_process\`, \`preferred_tolerance\`, \`material
 11. \`compose_assembly\` — Place all the modules into the final design with translate / rotate / array.
     args: {
       includes?: string[],
-      parts: [{ moduleName, position?: [x,y,z], rotation?: [rx,ry,rz], count?: number, spacing?: [x,y,z] }]
+      parts: [{ moduleName, position?: [x,y,z], rotation?: [rx,ry,rz], count?: number, spacing?: [x,y,z], gridCount?: [nx,ny,nz], gridSpacing?: [dx,dy,dz] }]
     }
     Example: \`{ moduleName: "wheel", count: 4, position: [-50,-30,0], spacing: [100,0,0] }\` places 4 wheels.
+    For a rectangular repetition such as a 4×4 grid, use \`gridCount:[4,4,1]\` with \`gridSpacing:[dx,dy,0]\`; a single \`count\` plus diagonal spacing is NOT a grid.
+    Pass bare include paths such as \`BOSL2/std.scad\` in \`includes\`; do not nest an \`include <...>\` statement inside the path.
 
 12. \`view_render\` — Render the current SCAD into multi-angle PNGs and ask a vision model to critique it. Use AFTER \`render\` succeeds, when visual correctness matters (assemblies, organic shapes, anything you want a second pair of eyes on). EXPENSIVE — call at most 1–2 times per session. Don't use for simple primitives.
     args: { prompt?: string, views?: ('iso'|'front'|'right'|'left'|'top'|'back')[] }   // default views: iso + front + right
@@ -194,7 +196,7 @@ When SCAD is still better:
 18. \`brep_to_mesh\` — Tessellate a B-rep handle to triangle stats (so the user can preview).
     args: { hostHandle: string, tolerance?: number }
 
-19. \`brep_export_step\` — Export a B-rep handle as a real Parasolid-compatible STEP file.
+19. \`brep_export_step\` — Export a verified B-rep handle as a real Parasolid-compatible STEP file. The exact same handle must pass \`verify_spec_brep\` first.
     args: { hostHandle: string }
 
 20. \`list_breps\` — Show your current B-rep handles.
@@ -206,6 +208,7 @@ Typical B-rep workflow ("M8 bolt mounting plate"):
   - brep_boolean subtract h1 with each cylinder → final handle
   - brep_fillet radius=2 → softer edges
   - brep_to_mesh → preview triangle count
+  - verify_spec_brep on the final handle → required manufacturing gate
   - brep_export_step → clean STEP for the user
 
 ## Stage 4 — sweep / loft / draft / helix (B-rep curves)

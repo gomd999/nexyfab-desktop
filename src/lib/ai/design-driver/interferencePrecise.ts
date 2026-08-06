@@ -134,8 +134,15 @@ const EPS = 1e-10;
 export function trianglesIntersect(t1: Tri, t2: Tri): boolean {
   const e1 = [sub(t1.b, t1.a), sub(t1.c, t1.b), sub(t1.a, t1.c)];
   const e2 = [sub(t2.b, t2.a), sub(t2.c, t2.b), sub(t2.a, t2.c)];
-  const axes: Vec3[] = [cross(e1[0]!, e1[1]!), cross(e2[0]!, e2[1]!)];
+  const n1 = cross(e1[0]!, e1[1]!), n2 = cross(e2[0]!, e2[1]!);
+  const axes: Vec3[] = [n1, n2];
   for (const a of e1) for (const b of e2) axes.push(cross(a, b));
+  // The standard 3D triangle SAT axes collapse to the shared normal for
+  // coplanar triangles. Add in-plane edge normals or disjoint coplanar
+  // triangles with overlapping AABBs become false collisions.
+  if (dot(cross(n1, n2), cross(n1, n2)) <= EPS * Math.max(dot(n1, n1) * dot(n2, n2), 1) && Math.abs(dot(n1, sub(t2.a, t1.a))) <= EPS * Math.max(Math.sqrt(dot(n1, n1)), 1)) {
+    for (const edge of [...e1, ...e2]) axes.push(cross(n1, edge));
+  }
 
   const v1 = [t1.a, t1.b, t1.c];
   const v2 = [t2.a, t2.b, t2.c];
@@ -195,6 +202,63 @@ export interface PreciseResult {
   /** Why the exact test could not run (present iff !available). */
   unavailableReason?: string;
 }
+
+export interface PreciseSeparationResult {
+  available: boolean;
+  intersects: boolean;
+  minimumDistanceMm: number | null;
+  trianglesA: number;
+  trianglesB: number;
+  unavailableReason?: string;
+}
+
+/** Exact Euclidean surface separation for the tessellated solids. This is
+ * intentionally O(Ta*Tb): rotational CCD calls it only after its spatial AABB
+ * interval pruning has reduced the candidate set. */
+export function preciseSeparation(
+  partA: PlanPart, geoA: PartGeometry, poseA: PartInstance,
+  partB: PlanPart, geoB: PartGeometry, poseB: PartInstance,
+): PreciseSeparationResult {
+  const A=worldTriangles(partA,geoA,poseA),B=worldTriangles(partB,geoB,poseB);
+  if(!A||!B)return{available:false,intersects:false,minimumDistanceMm:null,trianglesA:A?.length??0,trianglesB:B?.length??0,unavailableReason:`${!A?partA.partId:partB.partId}: collision mesh unavailable`};
+  if(!A.length||!B.length)return{available:false,intersects:false,minimumDistanceMm:null,trianglesA:A.length,trianglesB:B.length,unavailableReason:'collision mesh contains no triangles'};
+  let minimum=Infinity;
+  for(const a of A)for(const b of B){if(boxesTouch(triBox(a),triBox(b))&&trianglesIntersect(a,b))return{available:true,intersects:true,minimumDistanceMm:0,trianglesA:A.length,trianglesB:B.length};minimum=Math.min(minimum,triangleDistance(a,b));}
+  // Containment is possible only when the complete soups' bounds overlap.
+  // This guard is mandatory here because, unlike preciseInterference(), the
+  // separation API is deliberately called for already-separated candidates.
+  const contained=boxesTouch(soupBox(A),soupBox(B))&&(pointInMesh(centroid(A[0]!),B)||pointInMesh(centroid(B[0]!),A));
+  return{available:true,intersects:contained,minimumDistanceMm:contained?0:minimum,trianglesA:A.length,trianglesB:B.length};
+}
+
+function triangleDistance(a:Tri,b:Tri):number{
+  let best=Infinity;
+  for(const p of [a.a,a.b,a.c])best=Math.min(best,pointTriangleDistance(p,b));
+  for(const p of [b.a,b.b,b.c])best=Math.min(best,pointTriangleDistance(p,a));
+  const ae:[[Vec3,Vec3],[Vec3,Vec3],[Vec3,Vec3]]=[[a.a,a.b],[a.b,a.c],[a.c,a.a]],be:[[Vec3,Vec3],[Vec3,Vec3],[Vec3,Vec3]]=[[b.a,b.b],[b.b,b.c],[b.c,b.a]];
+  for(const x of ae)for(const y of be)best=Math.min(best,segmentDistance(x[0],x[1],y[0],y[1]));
+  return best;
+}
+
+function pointTriangleDistance(p:Vec3,t:Tri):number{
+  const ab=sub(t.b,t.a),ac=sub(t.c,t.a),ap=sub(p,t.a),d1=dot(ab,ap),d2=dot(ac,ap);if(d1<=0&&d2<=0)return norm(ap);
+  const bp=sub(p,t.b),d3=dot(ab,bp),d4=dot(ac,bp);if(d3>=0&&d4<=d3)return norm(bp);
+  const vc=d1*d4-d3*d2;if(vc<=0&&d1>=0&&d3<=0){const v=d1/(d1-d3);return norm(sub(p,add(t.a,scale(ab,v))));}
+  const cp=sub(p,t.c),d5=dot(ab,cp),d6=dot(ac,cp);if(d6>=0&&d5<=d6)return norm(cp);
+  const vb=d5*d2-d1*d6;if(vb<=0&&d2>=0&&d6<=0){const w=d2/(d2-d6);return norm(sub(p,add(t.a,scale(ac,w))));}
+  const va=d3*d6-d5*d4;if(va<=0&&(d4-d3)>=0&&(d5-d6)>=0){const w=(d4-d3)/((d4-d3)+(d5-d6));return norm(sub(p,add(t.b,scale(sub(t.c,t.b),w))));}
+  const denom=1/(va+vb+vc),v=vb*denom,w=vc*denom;return norm(sub(p,add(t.a,add(scale(ab,v),scale(ac,w)))));
+}
+function segmentDistance(p1:Vec3,q1:Vec3,p2:Vec3,q2:Vec3):number{
+  const d1=sub(q1,p1),d2=sub(q2,p2),r=sub(p1,p2),a=dot(d1,d1),e=dot(d2,d2),f=dot(d2,r);let s=0,t=0;
+  if(a<=EPS&&e<=EPS)return norm(r);
+  if(a<=EPS)t=clamp(f/e);else{const c=dot(d1,r);if(e<=EPS)s=clamp(-c/a);else{const b=dot(d1,d2),den=a*e-b*b;s=den!==0?clamp((b*f-c*e)/den):0;t=(b*s+f)/e;if(t<0){t=0;s=clamp(-c/a);}else if(t>1){t=1;s=clamp((b-c)/a);}}}
+  return norm(sub(add(p1,scale(d1,s)),add(p2,scale(d2,t))));
+}
+const scale=(v:Vec3,s:number):Vec3=>({x:v.x*s,y:v.y*s,z:v.z*s});
+const norm=(v:Vec3)=>Math.hypot(v.x,v.y,v.z);
+const clamp=(v:number)=>Math.max(0,Math.min(1,v));
+function soupBox(tris:ReadonlyArray<Tri>):{min:Vec3;max:Vec3}{const points=tris.flatMap(t=>[t.a,t.b,t.c]);return{min:{x:Math.min(...points.map(p=>p.x)),y:Math.min(...points.map(p=>p.y)),z:Math.min(...points.map(p=>p.z))},max:{x:Math.max(...points.map(p=>p.x)),y:Math.max(...points.map(p=>p.y)),z:Math.max(...points.map(p=>p.z))}};}
 
 /**
  * Exact interference verdict for a candidate pair that already overlaps in

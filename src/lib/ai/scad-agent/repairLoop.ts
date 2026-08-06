@@ -50,6 +50,8 @@ export interface GateVerdict {
   feedback: string;
   /** Confidence / quality in 0..1 for ranking attempts. Optional. */
   score?: number;
+  /** False means the failure needs user/manual action and must not trigger an AI retry. */
+  retryable?: boolean;
   /**
    * Per-dimension comparison, rendered for the END USER (W4, 260801).
    *
@@ -134,6 +136,8 @@ export interface RepairLoopOptions {
    *  Injectable so tests can assert the single-family no-op path. */
   log?: (msg: string) => void;
   signal?: AbortSignal;
+  /** Set false for provider-orchestration runs that must exercise the model even when the prompt matches the deterministic catalog. */
+  fastPath?: boolean;
 }
 
 export interface AttemptRecord {
@@ -266,7 +270,7 @@ export async function runRepairLoop(opts: RepairLoopOptions): Promise<RepairLoop
         // Disable the deterministic fast-path on repair attempts — the repair
         // prompt is free text that would never match a catalog pattern anyway,
         // and we always want the model to actually re-reason on a fix.
-        fastPath: attempt === 1 ? undefined : false,
+        fastPath: attempt === 1 ? opts.fastPath : false,
         onEvent: emit,
         signal: opts.signal,
         ...budgetCaps,
@@ -352,7 +356,7 @@ export async function runRepairLoop(opts: RepairLoopOptions): Promise<RepairLoop
     //   - geometric gate returned a definite fail, OR
     //   - vision critic said clear NO (semantic mismatch the geometric gate
     //     is blind to, e.g. right bbox but wrong shape).
-    const geomFailed = verdict?.passed === false;
+    const geomFailed = verdict?.passed === false && verdict.retryable !== false;
     // A null verdict means the gate could not measure the geometry (nothing
     // built / render failed / not verifiable). Normally that is "nothing to
     // repair"; the reconstruction fleet opts INTO treating it as a retry so an

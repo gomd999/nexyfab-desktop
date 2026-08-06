@@ -29,8 +29,16 @@ export interface FastPathHit {
  * produce one wrong shape.
  */
 export function classifyFastPath(prompt: string): FastPathHit | null {
-  const text = prompt.trim().toLowerCase();
-  if (text.length < 3 || text.length > 200) return null;
+  const raw = prompt.trim().toLowerCase();
+  if (raw.length < 3 || raw.length > 200) return null;
+  // Remove harmless conversational wrappers, but keep the accepted grammar
+  // closed so complex requests still fall through to the full agent.
+  const text = raw
+    .replace(/[.!?]+$/g, '')
+    .replace(/^(?:please\s+)?(?:make|create|build|design)\s+(?:me\s+)?(?:an?\s+|the\s+)?/i, '')
+    .replace(/^(?:an?|the)\s+/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
   // Reject anything with conjunctions / additions / "with" — those need
   // the LLM because they describe combinations the catalog can't handle
@@ -57,6 +65,13 @@ export function classifyFastPath(prompt: string): FastPathHit | null {
       const [w, h, d] = [Number(r[1]), Number(r[2]), Number(r[3])];
       return { intent: { shapeId: 'box', params: { width: w, height: h, depth: d } }, reason: 'box_explicit' };
     }
+    const described = text.match(/^(?:rectangular\s+)?box\s+(\d+(?:\.\d+)?)\s*mm\s+wide,?\s+(\d+(?:\.\d+)?)\s*mm\s+(?:tall|high),?\s+(\d+(?:\.\d+)?)\s*mm\s+deep$/);
+    if (described) {
+      return {
+        intent: { shapeId: 'box', params: { width: Number(described[1]), height: Number(described[2]), depth: Number(described[3]) } },
+        reason: 'box_described_en',
+      };
+    }
   }
 
   // ─── Cylinder ───────────────────────────────────────────────────────────
@@ -74,6 +89,10 @@ export function classifyFastPath(prompt: string): FastPathHit | null {
 
   // ─── Sphere ─────────────────────────────────────────────────────────────
   {
+    const diameter = text.match(/^(\d+(?:\.\d+)?)\s*mm\s+diameter\s+(?:sphere|ball)$/);
+    if (diameter) {
+      return { intent: { shapeId: 'sphere', params: { diameter: Number(diameter[1]) } }, reason: 'sphere_diameter_en' };
+    }
     const m = text.match(/^(?:반지름|radius)\s*(\d+(?:\.\d+)?)\s*mm?\s*(?:구|sphere|ball)$/);
     if (m) {
       return { intent: { shapeId: 'sphere', params: { radius: Number(m[1]) } }, reason: 'sphere_radius' };

@@ -37,7 +37,7 @@ const GOLDEN: Record<string, Snapshot> = {
   'shape-chat':                  { version: '1.0.0', templateHash: '5ae3a7a77dd63ba53099733999b03f958b8bcbf6be072069132a48e9a72c81a6' },
   'scad-intent-from-nl':         { version: '1.6.0', templateHash: 'b0fe7332f8b7822d7f4e1991da13547403523d4e342ffde6e121d153d6ae2e09' },
   'scad-freeform':               { version: '1.14.0', templateHash: '3a5869763d066fd568540b7b94977fa229bc758e7f8fa7b4f05c681dbca30544' },
-  'cad-feature-program':         { version: '1.0.0', templateHash: '0c59290b2f7dacd3585ec97da3aa59ee4a2cb93ccb00b04d66442e97333d73c7' },
+  'cad-feature-program':         { version: '1.1.0', templateHash: '01ff4758f637ce4f26f2f1ee900c6209d4f1b86542cf1c9b1264835a2cd2c94a' },
   'scad-intent-from-nl:tighter': { version: '1.1.0', templateHash: 'b0fe7332f8b7822d7f4e1991da13547403523d4e342ffde6e121d153d6ae2e09' },
   'openscad-gen':                { version: '1.0.0', templateHash: '32b9897ff298e6ce7200c932b8b779eaf4f7bae6f2d6d08091ef2d945cdf56aa' },
   'openscad-gen-generate':       { version: '1.0.0', templateHash: '32b9897ff298e6ce7200c932b8b779eaf4f7bae6f2d6d08091ef2d945cdf56aa' },

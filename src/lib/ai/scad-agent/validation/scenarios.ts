@@ -26,6 +26,14 @@ export interface ValidationScenario {
   requireRenderOk: boolean;
   /** Final SCAD must contain at least one keyword (case-insensitive). */
   expectedKeywords: string[];
+  /** Number of distinct expected keywords required; defaults to one. */
+  minExpectedKeywordMatches?: number;
+  /** Auditable source constraints for dimensions, occurrences, and transforms. */
+  sourceAssertions?: Array<{
+    label: string;
+    pattern: string;
+    minMatches?: number;
+  }>;
   /** Estimated AI cost band, USD — informational, not a gate. */
   estimatedCostUsd: number;
 }
@@ -80,10 +88,11 @@ export const VALIDATION_SCENARIOS: ValidationScenario[] = [
   {
     id: 'sc6_motor_mount_assy',
     label: 'Assembly: motor mount + 4 screws',
-    prompt: 'NEMA17 모터 마운트 브래킷 + M3 볼트 4개 결합 어셈블리를 만들어줘.',
+    prompt: 'NEMA17 모터 마운트 브래킷 + M3 볼트 4개 결합 어셈블리를 만들어줘. 모터 전면은 42.3x42.3mm, 볼트 중심 간격은 31mm 정사각형, 중앙 샤프트 여유 구멍은 지름 23mm로 하고 브래킷 판 두께는 3mm로 해줘. M3 볼트는 지름 3mm, 길이 10mm의 단순화 형상으로 각각 별도 module로 만들고 4개 위치에 translate해서 조립해줘. 브래킷과 볼트를 구분 가능한 module/part 구조로 작성하고 전체 어셈블리를 렌더해. 누락 치수는 합리적인 기본값을 사용하고 질문 없이 진행해.',
     expectedTurnsMax: 8,
     requireRenderOk: true,
     expectedKeywords: ['module', 'translate', 'screw', 'bracket', 'mount'],
+    minExpectedKeywordMatches: 4,
     estimatedCostUsd: 0.05,
   },
   {
@@ -93,33 +102,54 @@ export const VALIDATION_SCENARIOS: ValidationScenario[] = [
     expectedTurnsMax: 8,
     requireRenderOk: true,
     expectedKeywords: ['module', 'spur_gear', 'translate'],
+    sourceAssertions: [
+      { label: '20-tooth gear definition', pattern: 'spur_gear\\s*\\([^)]*teeth\\s*=\\s*20' },
+      { label: '30-tooth gear definition', pattern: 'spur_gear\\s*\\([^)]*teeth\\s*=\\s*30' },
+      { label: '50mm center distance', pattern: 'translate\\s*\\(\\s*\\[\\s*50(?:\\.0+)?\\s*,\\s*0(?:\\.0+)?\\s*,\\s*0(?:\\.0+)?\\s*\\]' },
+    ],
     estimatedCostUsd: 0.05,
   },
   {
     id: 'sc8_pipe_joint',
     label: 'Assembly: T-joint pipe (3 sections)',
-    prompt: '외경 30 내경 20 T자형 파이프 조인트 — 가로 + 세로 + 분기 3 구간.',
+    prompt: '외경 30mm, 내경 20mm의 T자형 파이프 조인트를 만들어줘. 주관은 X축 방향 전체 길이 100mm, 분기관은 원점에서 +Z 방향 길이 60mm로 하고 세 구간이 연결된 하나의 유로가 되게 해. 각 구간 형상은 별도 module로 구성하고 누락 치수는 합리적 기본값을 사용해 질문 없이 전체 어셈블리를 렌더해.',
     expectedTurnsMax: 8,
     requireRenderOk: true,
     expectedKeywords: ['module', 'cylinder', 'difference', 'rotate'],
+    sourceAssertions: [
+      { label: 'three pipe section modules', pattern: 'module\\s+[A-Za-z_][A-Za-z0-9_]*\\s*\\(', minMatches: 3 },
+      { label: '30mm outside diameter', pattern: 'cylinder\\s*\\([^)]*(?:d\\s*=\\s*30|r\\s*=\\s*15)' },
+      { label: '20mm inside diameter', pattern: 'cylinder\\s*\\([^)]*(?:d\\s*=\\s*20|r\\s*=\\s*10)' },
+    ],
     estimatedCostUsd: 0.05,
   },
   {
     id: 'sc9_simple_car',
     label: 'Assembly: stylized toy car (body + 4 wheels)',
-    prompt: '간단한 토이카 — 박스 차체 + 휠 4개 + 작은 창문 정도.',
+    prompt: '간단한 토이카 어셈블리를 만들어줘. 차체는 60x30x20mm 박스, 바퀴는 지름 14mm 폭 6mm이며 회전축은 Y축이다. 바퀴 중심은 X=±20mm, Y=±18mm, Z=7mm의 네 위치에 각각 배치하고, 작은 창문 형상도 추가해. 차체·바퀴·창문을 구분 가능한 module로 작성하고 질문 없이 렌더해.',
     expectedTurnsMax: 10,
     requireRenderOk: true,
     expectedKeywords: ['module', 'cube', 'cylinder', 'translate'],
+    sourceAssertions: [
+      { label: 'four wheel occurrences', pattern: '\\bwheel\\s*\\(\\s*\\)\\s*;', minMatches: 4 },
+      { label: 'wheel at -20,-18,7', pattern: 'translate\\s*\\(\\s*\\[\\s*-20\\s*,\\s*-18\\s*,\\s*7\\s*\\]' },
+      { label: 'wheel at -20,18,7', pattern: 'translate\\s*\\(\\s*\\[\\s*-20\\s*,\\s*18\\s*,\\s*7\\s*\\]' },
+      { label: 'wheel at 20,-18,7', pattern: 'translate\\s*\\(\\s*\\[\\s*20\\s*,\\s*-18\\s*,\\s*7\\s*\\]' },
+      { label: 'wheel at 20,18,7', pattern: 'translate\\s*\\(\\s*\\[\\s*20\\s*,\\s*18\\s*,\\s*7\\s*\\]' },
+    ],
     estimatedCostUsd: 0.07,
   },
   {
     id: 'sc10_brackets_grid',
     label: 'Assembly: 4×4 bracket grid (16 instances)',
-    prompt: 'L자 브래킷 16개를 4×4 그리드로 50mm 간격 배치.',
+    prompt: '40x40mm 다리, 두께 5mm, 깊이 40mm인 L자 브래킷 16개를 XY 평면의 4×4 그리드로 배치해. X와 Y 양쪽 중심 간격은 각각 50mm이고 좌표는 (0,0)부터 (150,150)까지여야 한다. 브래킷 module 하나를 재사용하고 compose_assembly의 gridCount [4,4,1]과 gridSpacing [50,50,0]을 사용해 질문 없이 렌더해.',
     expectedTurnsMax: 8,
     requireRenderOk: true,
     expectedKeywords: ['module', 'translate', 'lBracket', 'difference'],
+    sourceAssertions: [
+      { label: '16 bracket occurrences', pattern: '\\b(?:lBracket|bracket)\\s*\\(\\s*\\)\\s*;', minMatches: 16 },
+      { label: 'grid reaches 150,150', pattern: 'translate\\s*\\(\\s*\\[\\s*150\\s*,\\s*150\\s*,\\s*0\\s*\\]' },
+    ],
     estimatedCostUsd: 0.05,
   },
   // ─── Stage 2 — visual self-verification scenario ────────────────────────
@@ -153,6 +183,8 @@ export interface ScenarioResult {
   renderOk: boolean;
   /** Last SCAD source the agent committed (truncated for report). */
   finalScadPreview: string;
+  /** Complete SCAD source for reproducible failure diagnosis. */
+  finalScadSource: string;
   /** SCAD source full byte count. */
   finalScadBytes: number;
   /** Conversation rounds actually used. */
@@ -192,11 +224,34 @@ export function scoreScenario(scenario: ValidationScenario, run: ScenarioRunInpu
   if (scenario.requireRenderOk && !renderOk) reasons.push('final render did not succeed');
 
   const sourceLower = run.scadSource.toLowerCase();
-  const matchedKeyword = scenario.expectedKeywords.find(k => sourceLower.includes(k.toLowerCase()));
-  if (!matchedKeyword) {
+  const matchedKeywords = scenario.expectedKeywords.filter(k => sourceLower.includes(k.toLowerCase()));
+  const requiredKeywordMatches = Math.min(
+    scenario.expectedKeywords.length,
+    Math.max(1, scenario.minExpectedKeywordMatches ?? 1),
+  );
+  const keywordsOk = matchedKeywords.length >= requiredKeywordMatches;
+  if (!keywordsOk) {
     reasons.push(
-      `none of the expected keywords were present: ${scenario.expectedKeywords.join(', ')}`,
+      `keywords: expected at least ${requiredKeywordMatches} matches but found ${matchedKeywords.length}: ${scenario.expectedKeywords.join(', ')}`,
     );
+  }
+
+  let sourceAssertionsOk = true;
+  for (const assertion of scenario.sourceAssertions ?? []) {
+    let regex: RegExp;
+    try {
+      regex = new RegExp(assertion.pattern, 'gi');
+    } catch {
+      sourceAssertionsOk = false;
+      reasons.push(`invalid source assertion pattern: ${assertion.label}`);
+      continue;
+    }
+    const matches = run.scadSource.match(regex)?.length ?? 0;
+    const required = Math.max(1, assertion.minMatches ?? 1);
+    if (matches < required) {
+      sourceAssertionsOk = false;
+      reasons.push(`source assertion "${assertion.label}" expected ${required}, found ${matches}`);
+    }
   }
 
   const turnsOk = run.turnsUsed <= scenario.expectedTurnsMax + 2;
@@ -204,7 +259,10 @@ export function scoreScenario(scenario: ValidationScenario, run: ScenarioRunInpu
     reasons.push(`turns ${run.turnsUsed} exceeded soft cap ${scenario.expectedTurnsMax}+2`);
   }
 
-  const passed = finishedClean && (renderOk || !scenario.requireRenderOk) && !!matchedKeyword;
+  const passed = finishedClean
+    && (renderOk || !scenario.requireRenderOk)
+    && keywordsOk
+    && sourceAssertionsOk;
 
   return {
     scenarioId: scenario.id,
@@ -214,6 +272,7 @@ export function scoreScenario(scenario: ValidationScenario, run: ScenarioRunInpu
     finishedClean,
     renderOk,
     finalScadPreview: run.scadSource.slice(0, 400),
+    finalScadSource: run.scadSource,
     finalScadBytes: run.scadSource.length,
     turnsUsed: run.turnsUsed,
     toolCallsUsed: run.toolCallsUsed,

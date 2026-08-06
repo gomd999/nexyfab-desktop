@@ -79,9 +79,12 @@ export const serverRenderAdapter: RenderAdapter = async (scad) => {
   const { runOpenScadCli } = await import('../../openscad-render/runOpenScadCli');
   const out = await runOpenScadCli({ scadSource: scad, format: 'stl' });
   if (!out.ok) {
+    const parsed = parseScadStderr(out.stderr || out.message || 'unknown error');
     return {
       ok: false,
-      errors: parseScadStderr(out.stderr ?? out.message ?? 'unknown error'),
+      errors: parsed.length > 0
+        ? parsed
+        : [{ message: `${out.code}: ${out.message}` }],
       ts: Date.now(),
     };
   }

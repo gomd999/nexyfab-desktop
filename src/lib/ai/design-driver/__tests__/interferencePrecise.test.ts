@@ -17,6 +17,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { preciseSeparation } from '../interferencePrecise';
+import { IDENTITY_QUAT } from '@/lib/assembly/assemblyState';
 import type { MeshableFeature } from '@/lib/cad/featureMesh';
 import {
   buildInterferenceArtifact,
@@ -180,4 +182,11 @@ describe('WB-4b (2) AABB false positive (bboxes overlap, solids disjoint)', () =
     expect(art.confirmedPairs[0]!.triPairs).toBeGreaterThan(0);
     expect(interferenceGate(hit, art).pass).toBe(false);
   });
+});
+
+describe('precise tessellated separation evidence',()=>{
+  const a=cubePart('a'),b=cubePart('b'),ga=buildPartGeometry(a),gb=buildPartGeometry(b);
+  const pose=(id:string,x:number)=>({id,name:id,partTemplateId:id,position:{x,y:0,z:0},orientation:IDENTITY_QUAT});
+  it('measures the real surface gap for disjoint closed meshes',()=>expect(preciseSeparation(a,ga,pose('a',0),b,gb,pose('b',25))).toMatchObject({available:true,intersects:false,minimumDistanceMm:5}));
+  it('returns zero for intersecting solids',()=>expect(preciseSeparation(a,ga,pose('a',0),b,gb,pose('b',10))).toMatchObject({available:true,intersects:true,minimumDistanceMm:0}));
 });

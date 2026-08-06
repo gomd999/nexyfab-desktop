@@ -67,6 +67,7 @@ describe('runScadAgent (A6)', () => {
       userPrompt: 'Make a 10mm cube',
       ai,
       tools,
+      fastPath: false,
     });
 
     expect(session.status).toBe('done');
@@ -212,6 +213,119 @@ describe('runScadAgent (A6)', () => {
     expect(session.status).toBe('done');
     expect(session.budget.turnsUsed).toBe(1);
     expect(events.some(e => e.type === 'tool_call')).toBe(false);
+  });
+
+  it('generation gate rejects a premature narration and requires rendered SCAD', async () => {
+    const ai = scriptedAi([
+      'The model is ready.',
+      `\`\`\`tool_call
+{"id":"c1","name":"write_scad","args":{"code":"cube([10,10,10]);"}}
+\`\`\`
+\`\`\`tool_call
+{"id":"c2","name":"render","args":{}}
+\`\`\``,
+      'Rendered successfully.',
+    ]);
+
+    const { session } = await runScadAgent({
+      userPrompt: 'Generate a cube',
+      ai,
+      tools: makeTools(makeMockHost()),
+      fastPath: false,
+      requireSuccessfulRenderBeforeDone: true,
+    });
+
+    expect(session.status).toBe('done');
+    expect(session.scadSource).toContain('cube');
+    expect(session.render.ok).toBe(true);
+    expect(session.budget.turnsUsed).toBe(3);
+    expect(session.history.some(message =>
+      message.role === 'user' && message.content.includes('[completion gate]'),
+    )).toBe(true);
+  });
+
+  it('certification mode stops immediately after the first successful render', async () => {
+    const ai = scriptedAi([
+      `\`\`\`tool_call
+{"id":"c1","name":"write_scad","args":{"code":"cube(10);"}}
+\`\`\`
+\`\`\`tool_call
+{"id":"c2","name":"render","args":{}}
+\`\`\``,
+      'This turn must not be requested.',
+    ]);
+    const { session } = await runScadAgent({
+      userPrompt: 'Generate and certify a cube',
+      ai,
+      tools: makeTools(makeMockHost()),
+      fastPath: false,
+      requireSuccessfulRenderBeforeDone: true,
+      stopAfterSuccessfulRender: true,
+    });
+    expect(session.status).toBe('done');
+    expect(session.render.ok).toBe(true);
+    expect(session.budget.turnsUsed).toBe(1);
+  });
+
+  it('completion gate deterministically renders prepared source after narration-only handoff', async () => {
+    const ai = scriptedAi(['The source is ready.']);
+    const tools = makeTools(makeMockHost());
+    const seed = await runScadAgent({
+      userPrompt: 'Prepare source',
+      ai: scriptedAi([`\`\`\`tool_call
+{"id":"c1","name":"write_scad","args":{"code":"cube(10);"}}
+\`\`\``, 'Source prepared.']),
+      tools,
+      fastPath: false,
+    });
+    const { session, events } = await runScadAgent({
+      userPrompt: 'Certify it',
+      session: seed.session,
+      ai,
+      tools,
+      fastPath: false,
+      requireSuccessfulRenderBeforeDone: true,
+      stopAfterSuccessfulRender: true,
+    });
+    expect(session.status).toBe('done');
+    expect(session.render.ok).toBe(true);
+    expect(events.some(event =>
+      event.type === 'tool_call' && event.call.id.startsWith('completion_gate_render_'),
+    )).toBe(true);
+  });
+
+  it('does not certify an auto-preview after multi-module composition fails', async () => {
+    const ai = scriptedAi([
+      `\`\`\`tool_call
+{"id":"m1","name":"write_module","args":{"name":"body","code":"cube([60,30,20]);"}}
+\`\`\`
+\`\`\`tool_call
+{"id":"m2","name":"write_module","args":{"name":"wheel","code":"cylinder(d=14,h=6);"}}
+\`\`\`
+\`\`\`tool_call
+{"id":"bad","name":"compose_assembly","args":{"parts":[{"moduleName":"body"},{"moduleName":"wheel","count":4,"spacing":[-40,-36,0]}]}}
+\`\`\`
+\`\`\`tool_call
+{"id":"r1","name":"render","args":{}}
+\`\`\``,
+      `\`\`\`tool_call
+{"id":"ok","name":"compose_assembly","args":{"parts":[{"moduleName":"body"},{"moduleName":"wheel","position":[-20,-18,7]},{"moduleName":"wheel","position":[-20,18,7]},{"moduleName":"wheel","position":[20,-18,7]},{"moduleName":"wheel","position":[20,18,7]}]}}
+\`\`\`
+\`\`\`tool_call
+{"id":"r2","name":"render","args":{}}
+\`\`\``,
+    ]);
+    const { session } = await runScadAgent({
+      userPrompt: 'Build a four-wheel car',
+      ai,
+      tools: makeTools(makeMockHost()),
+      fastPath: false,
+      requireSuccessfulRenderBeforeDone: true,
+      stopAfterSuccessfulRender: true,
+    });
+    expect(session.status).toBe('done');
+    expect(session.budget.turnsUsed).toBe(2);
+    expect((session.composition?.match(/wheel\(\);/g) ?? [])).toHaveLength(4);
   });
 
   it('unknown tool returns typed error so model can self-correct', async () => {

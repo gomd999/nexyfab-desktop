@@ -1,0 +1,21 @@
+import { createHash } from 'node:crypto';
+type V3 = [number, number, number];
+export interface RadianceSurface { id: string; materialId: string; verticesMm: V3[] }
+export interface RadianceMaterial { id: string; type: 'plastic' | 'glass'; rgb: [number, number, number]; specularity?: number; roughness?: number }
+export interface RadianceSensor { id: string; positionMm: V3; direction: V3 }
+export interface RadianceDaylightInput { projectId: string; materials: RadianceMaterial[]; surfaces: RadianceSurface[]; sensors: RadianceSensor[]; weatherFileName: string; weatherFileSha256: string; northRotationDeg: number }
+export interface RadianceDaylightPackage { sceneRad: string; sensorsPts: string; manifest: { schema: 'nexyfab.radiance-daylight.v1'; projectId: string; weatherFileName: string; weatherFileSha256: string; northRotationDeg: number; materialCount: number; surfaceCount: number; sensorCount: number; sceneSha256: string; sensorsSha256: string } }
+const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+const safe = (value: string) => { if (!/^[A-Za-z0-9_.-]+$/.test(value)) throw new Error(`Unsafe Radiance identifier ${value}.`); return value; };
+export function buildRadianceDaylightPackage(input: RadianceDaylightInput): RadianceDaylightPackage {
+  if (!input.projectId.trim() || !/^[a-f0-9]{64}$/.test(input.weatherFileSha256) || !input.weatherFileName.trim() || !Number.isFinite(input.northRotationDeg) || !input.sensors.length || !input.surfaces.length) throw new Error('Radiance project, weather provenance, surfaces, and sensors are required.');
+  const materialIds = new Set(input.materials.map(item => item.id));
+  const materials = [...input.materials].sort((a, b) => a.id.localeCompare(b.id)).map(item => { safe(item.id); if (item.rgb.some(value => !Number.isFinite(value) || value < 0 || value > 1)) throw new Error(`${item.id}: invalid reflectance/transmittance.`); return item.type === 'glass' ? `void glass ${item.id}\n0\n0\n3 ${item.rgb.join(' ')}` : `void plastic ${item.id}\n0\n0\n5 ${item.rgb.join(' ')} ${item.specularity ?? 0} ${item.roughness ?? 0}`; });
+  const surfaces = [...input.surfaces].sort((a, b) => a.id.localeCompare(b.id)).map(item => { safe(item.id); if (!materialIds.has(item.materialId) || item.verticesMm.length < 3 || item.verticesMm.some(point => point.length !== 3 || point.some(value => !Number.isFinite(value)))) throw new Error(`${item.id}: invalid surface or material.`); return `${item.materialId} polygon ${item.id}\n0\n0\n${item.verticesMm.length * 3} ${item.verticesMm.flat().map(value => value / 1000).join(' ')}`; });
+  const sceneRad = [...materials, ...surfaces].join('\n\n') + '\n';
+  const sensorsPts = [...input.sensors].sort((a, b) => a.id.localeCompare(b.id)).map(item => { safe(item.id); const norm = Math.hypot(...item.direction); if (item.positionMm.some(value => !Number.isFinite(value)) || Math.abs(norm - 1) > 1e-6) throw new Error(`${item.id}: invalid sensor.`); return `${item.positionMm.map(value => value / 1000).join(' ')} ${item.direction.join(' ')} # ${item.id}`; }).join('\n') + '\n';
+  return { sceneRad, sensorsPts, manifest: { schema: 'nexyfab.radiance-daylight.v1', projectId: input.projectId, weatherFileName: input.weatherFileName, weatherFileSha256: input.weatherFileSha256, northRotationDeg: input.northRotationDeg, materialCount: input.materials.length, surfaceCount: input.surfaces.length, sensorCount: input.sensors.length, sceneSha256: hash(sceneRad), sensorsSha256: hash(sensorsPts) } };
+}
+
+export type DaylightChangeKind = 'window_geometry' | 'window_glazing' | 'shade_geometry' | 'room_surface' | 'sensor_grid' | 'site_north' | 'weather_file' | 'furniture' | 'name_only';
+export function daylightInvalidations(changes: readonly DaylightChangeKind[]): string[] { const invalid = new Set<string>(); for (const change of changes) { if (change === 'name_only') continue; if (change === 'furniture') invalid.add('interior_daylight_obstruction'); else { invalid.add('direct_sun_access'); invalid.add('annual_daylight'); } if (change === 'sensor_grid') invalid.add('sensor_coverage'); if (change === 'weather_file' || change === 'site_north') invalid.add('solar_context'); } return [...invalid]; }

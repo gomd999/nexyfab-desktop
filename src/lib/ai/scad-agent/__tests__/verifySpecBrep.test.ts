@@ -218,6 +218,7 @@ describe('verify_spec_brep tool', () => {
     );
     expect(out.meta?.verifiable).toBe(true);
     expect(out.meta?.passed).toBe(true);
+    expect(session.verifiedBrepHandles?.['mock:1']).toBe(true);
     expect(out.meta?.mismatchCount).toBe(0);
     expect(out.output).toMatch(/spec ok/);
   });

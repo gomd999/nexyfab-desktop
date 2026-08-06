@@ -166,6 +166,45 @@ describe('Stage 1 tools', () => {
     expect(s.composition).not.toContain('translate');
   });
 
+  it('compose_assembly normalizes include wrappers and emits a 4x4 grid', async () => {
+    const s = blankSession();
+    await tools.write_module!({ name: 'bracket', code: 'cube([20,20,3]);' }, s);
+    const r = await tools.compose_assembly!({
+      includes: ['include <BOSL2/std.scad>', '<BOSL2/shapes3d.scad>'],
+      parts: [{
+        moduleName: 'bracket',
+        gridCount: [4, 4, 1],
+        gridSpacing: [50, 50, 0],
+      }],
+    }, s);
+    expect(r.ok).toBe(true);
+    expect(s.composition).toContain('include <BOSL2/std.scad>');
+    expect(s.composition).not.toContain('include <include');
+    expect((s.composition?.match(/bracket\(\);/g) ?? [])).toHaveLength(16);
+    expect(s.composition).toContain('translate([150, 150, 0]) bracket();');
+  });
+
+  it('compose_assembly rejects ambiguous diagonal linear arrays', async () => {
+    const s = blankSession();
+    await tools.write_module!({ name: 'wheel', code: 'cylinder(d=14,h=6);' }, s);
+    const r = await tools.compose_assembly!({
+      parts: [{ moduleName: 'wheel', count: 4, position: [20, 18, 7], spacing: [-40, -36, 0] }],
+    }, s);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/diagonal array/i);
+  });
+
+  it('compose_assembly adds the BOSL2 std prerequisite for gears', async () => {
+    const s = blankSession();
+    await tools.write_module!({ name: 'gear', code: 'spur_gear(teeth=20, mod=2, thickness=8);' }, s);
+    const r = await tools.compose_assembly!({
+      includes: ['BOSL2/gears.scad'],
+      parts: [{ moduleName: 'gear' }],
+    }, s);
+    expect(r.ok).toBe(true);
+    expect(s.composition).toContain('include <BOSL2/std.scad>\ninclude <BOSL2/gears.scad>');
+  });
+
   it('plan_design records the plan on session', async () => {
     const s = blankSession();
     const r = await tools.plan_design!({ goal: 'Build motor mount + 4 screws' }, s);

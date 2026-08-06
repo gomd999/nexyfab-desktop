@@ -128,9 +128,18 @@ describe('B-rep adapter wiring', () => {
     }
   });
 
-  it('brep_export_step reports byte count', async () => {
+  it('brep_export_step blocks an unverified handle', async () => {
     const tools = makeTools(host(mockBrep()));
     const r = await tools.brep_export_step!({ hostHandle: 'mock:1' }, blankSession());
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe('MANUFACTURING_VERIFICATION_REQUIRED');
+  });
+
+  it('brep_export_step reports byte count for a verified handle', async () => {
+    const tools = makeTools(host(mockBrep()));
+    const session = blankSession();
+    session.verifiedBrepHandles = { 'mock:1': true };
+    const r = await tools.brep_export_step!({ hostHandle: 'mock:1' }, session);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.output).toContain('8192 bytes');
   });

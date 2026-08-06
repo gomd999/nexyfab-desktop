@@ -109,6 +109,12 @@ function makeFreshSession(opts: AgentRunOptions): AgentSession {
   };
 }
 
+function completionArtifactReady(session: AgentSession): boolean {
+  const moduleCount = Object.keys(session.modules).length;
+  if (moduleCount > 1) return Boolean(session.composition?.trim());
+  return Boolean((session.composition ?? session.scadSource ?? session.modules[Object.keys(session.modules)[0] ?? ''])?.trim());
+}
+
 // effectiveScadSource lives in ./composeSource to avoid a cycle when
 // tools.ts imports it.
 export { effectiveScadSource } from './composeSource';
@@ -199,6 +205,7 @@ export async function runScadAgent(opts: AgentRunOptions): Promise<{
   session.history.push({ role: 'user', content: opts.userPrompt });
   session.status = 'running';
   let warnedBudget = false;
+  let incompleteHandoffs = 0;
 
   // B1 — Fast-path: if the prompt matches a deterministic catalog entry
   // exactly, skip the LLM entirely and synthesize a one-shot response
@@ -314,8 +321,74 @@ export async function runScadAgent(opts: AgentRunOptions): Promise<{
       tokens,
     });
 
-    // No tool calls → model is handing back to user.
+    // No tool calls → model is handing back to user. Generation and
+    // certification callers may require a real rendered artifact first.
     if (toolCalls.length === 0) {
+      const effectiveSource = session.composition
+        ?? session.scadSource
+        ?? Object.values(session.modules).join('\n');
+      const hasSource = effectiveSource.trim().length > 0;
+      const artifactReady = completionArtifactReady(session);
+      const hasSuccessfulRender = session.render.ok === true;
+      if (opts.requireSuccessfulRenderBeforeDone && artifactReady && !hasSuccessfulRender) {
+        const call: ToolCall = {
+          id: `completion_gate_render_${session.budget.turnsUsed}`,
+          name: 'render',
+          args: {},
+        };
+        emit({ type: 'tool_call', call });
+        const result = await executeToolCall(call, opts.tools, session);
+        session.budget = recordToolCall(session.budget);
+        session.budget = recordRenderResult(
+          session.budget,
+          result.ok && session.render.ok === true,
+        );
+        session.history.push({ role: 'tool_result', toolCallId: call.id, result });
+        emit({ type: 'tool_result', result, callId: call.id });
+        if (
+          result.ok
+          && session.render.ok === true
+          && opts.stopAfterSuccessfulRender
+          && completionArtifactReady(session)
+        ) {
+          session.status = 'done';
+          emit({ type: 'done', session });
+          return { session, events };
+        }
+        continue;
+      }
+      if (opts.requireSuccessfulRenderBeforeDone && (!hasSource || !hasSuccessfulRender)) {
+        incompleteHandoffs += 1;
+        const recoveryMessage: AgentMessage = {
+          role: 'user',
+          content: [
+            '[completion gate] The requested CAD artifact is not complete.',
+            `Non-empty SCAD source: ${hasSource ? 'yes' : 'no'}.`,
+            `Multi-module composition ready: ${artifactReady ? 'yes' : 'no'}.`,
+            `Successful final render: ${hasSuccessfulRender ? 'yes' : 'no'}.`,
+            'Continue now: create or repair the SCAD with the available tools and call render. Do not return a final narration until render succeeds.',
+          ].join('\n'),
+        };
+        if (opts.resetHistoryOnIncompleteArtifact && incompleteHandoffs === 1) {
+          const system = session.history.find(message => message.role === 'system');
+          session.history = [
+            ...(system ? [system] : []),
+            { role: 'user', content: opts.originalPrompt ?? opts.userPrompt },
+            recoveryMessage,
+          ];
+        } else {
+          session.history.push(recoveryMessage);
+        }
+        // A repeated narration-only response is allowed to reach the normal
+        // budget guard, while the counter makes this path observable in history.
+        if (incompleteHandoffs > 1) {
+          session.history.push({
+            role: 'user',
+            content: '[completion gate] Repeated premature handoff detected; use tool calls in this turn.',
+          });
+        }
+        continue;
+      }
       session.status = 'done';
       emit({ type: 'done', session });
       return { session, events };
@@ -346,6 +419,18 @@ export async function runScadAgent(opts: AgentRunOptions): Promise<{
         result,
       });
       emit({ type: 'tool_result', result, callId: call.id });
+
+      if (
+        opts.stopAfterSuccessfulRender
+        && call.name === 'render'
+        && result.ok
+        && session.render.ok === true
+        && completionArtifactReady(session)
+      ) {
+        session.status = 'done';
+        emit({ type: 'done', session });
+        return { session, events };
+      }
 
       // Y1 — ask_user pauses the loop. The tool sets status='awaiting_user';
       // we surface a dedicated event so the UI can render a quick-reply

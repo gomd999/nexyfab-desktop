@@ -54,6 +54,10 @@ import { intentToScad, type IntentInput } from '../../openscad-render/intentToSc
 import { extractDimensions, reconcileIntent } from '../dimensionExtractor';
 import { compositeIntentToScad, compositeExpectedBbox, verifyCompositeAgainstSpec, type CompositePart } from './compositeIntent';
 import { verifyAgainstSpec, formatSpecCritique, type ProcessForDfm } from './specVerification';
+import {
+  registerVerifiedManufacturingHandle,
+  revokeVerifiedManufacturingHandle,
+} from '@/lib/ai/manufacturingVerificationRegistry';
 import { suggestGdtForIntent, formatSuggestions, type SuggestGdtOptions, type SuggestedGdtFrame } from './gdtSuggestion';
 import { estimateCost, formatCostBreakdown, type Material, type CostBreakdown, type EstimateCostOptions } from './costEstimation';
 import { suggestProcessForPart, formatProcessScores, type SuggestProcessOptions, type ProcessScore } from './processSelection';
@@ -692,6 +696,14 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       detectedMinWallMm,
       processForDfm,
     });
+    if (result.verifiable && result.ok) {
+      session.verifiedBrepHandles ??= {};
+      session.verifiedBrepHandles[brepHandle] = true;
+      registerVerifiedManufacturingHandle(brepHandle);
+    } else if (session.verifiedBrepHandles) {
+      delete session.verifiedBrepHandles[brepHandle];
+      revokeVerifiedManufacturingHandle(brepHandle);
+    }
     const critique = formatSpecCritique(result);
     return {
       ok: true,
@@ -1285,6 +1297,16 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
       if (typeof p.moduleName !== 'string' || !moduleSet.has(p.moduleName)) {
         errors.push(`unknown module "${p.moduleName}" (call write_module first)`);
       }
+      if (
+        (p.count ?? 1) > 1
+        && !p.gridCount
+        && !p.allowDiagonalArray
+        && (p.spacing ?? [0, 0, 0]).filter(value => value !== 0).length > 1
+      ) {
+        errors.push(
+          `ambiguous diagonal array for "${p.moduleName}": use gridCount/gridSpacing for a grid, explicit part entries for selected coordinates, or allowDiagonalArray:true`,
+        );
+      }
     }
     if (errors.length > 0) {
       return { ok: false, error: errors.slice(0, 5).join('; '), code: 'UNKNOWN_MODULE' };
@@ -1292,13 +1314,28 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
 
     const lines: string[] = [];
     if (a.includes && Array.isArray(a.includes)) {
+      const normalizedIncludes: string[] = [];
       for (const inc of a.includes) {
         if (typeof inc === 'string' && inc.length < 256) {
-          // Sanitize path-traversal in the include literal.
-          const safe = inc.replace(/[^\w/.\-<>]/g, '');
-          lines.push(`include <${safe}>`);
+          // Accept a bare path, `<path>`, or a full `include <path>` value.
+          // Models commonly emit any of the three; normalize exactly once.
+          const unwrapped = inc.trim()
+            .replace(/^include\s*</i, '')
+            .replace(/^</, '')
+            .replace(/>\s*;?$/, '');
+          const safe = unwrapped.replace(/[^\w/.\-]/g, '');
+          if (safe && !safe.includes('..')) normalizedIncludes.push(safe);
         }
       }
+      // BOSL2 submodules depend on std.scad. Make this deterministic instead
+      // of spending AI repair turns on an omitted prerequisite include.
+      if (
+        normalizedIncludes.some(value => /^BOSL2\/gears\.scad$/i.test(value))
+        && !normalizedIncludes.some(value => /^BOSL2\/std\.scad$/i.test(value))
+      ) {
+        normalizedIncludes.unshift('BOSL2/std.scad');
+      }
+      for (const inc of [...new Set(normalizedIncludes)]) lines.push(`include <${inc}>`);
       if (lines.length > 0) lines.push('');
     }
     for (const p of a.parts) lines.push(emitPlacement(p));
@@ -2359,6 +2396,13 @@ export function makeTools(host: ToolHostAdapters): ToolExecutorMap {
     const guard = brepGuard(session); if (guard) return guard;
     const a = args as unknown as BrepExportStepArgs;
     if (!a.hostHandle) return { ok: false, error: 'brep_export_step requires { hostHandle }', code: 'BAD_ARGS' };
+    if (session.verifiedBrepHandles?.[a.hostHandle] !== true) {
+      return {
+        ok: false,
+        error: `B-rep ${a.hostHandle} has not passed verify_spec_brep. Verify the same handle before manufacturing STEP export.`,
+        code: 'MANUFACTURING_VERIFICATION_REQUIRED',
+      };
+    }
     await host.brep!.ensureReady();
     const r = await host.brep!.exportStep(a);
     if (!r.ok) return { ok: false, error: r.reason, code: 'BREP_FAILED' };
@@ -3235,6 +3279,22 @@ function mapUserPrefToProcess(pref: string | undefined): ProcessForDfm | undefin
 
 function emitPlacement(p: AssemblyPlacement): string {
   const lines: string[] = [];
+  if (p.gridCount) {
+    const counts = p.gridCount.map(v => Math.max(1, Math.min(50, Math.round(v)))) as [number, number, number];
+    const spacing = p.gridSpacing ?? p.spacing ?? [0, 0, 0];
+    for (let x = 0; x < counts[0]; x++) {
+      for (let y = 0; y < counts[1]; y++) {
+        for (let z = 0; z < counts[2]; z++) {
+          lines.push(emitSinglePlacement(p, [
+            (p.position?.[0] ?? 0) + spacing[0] * x,
+            (p.position?.[1] ?? 0) + spacing[1] * y,
+            (p.position?.[2] ?? 0) + spacing[2] * z,
+          ]));
+        }
+      }
+    }
+    return lines.join('\n');
+  }
   const count = Math.max(1, Math.min(50, Math.round(p.count ?? 1)));
   const spacing = p.spacing ?? [0, 0, 0];
   for (let i = 0; i < count; i++) {
@@ -3243,16 +3303,20 @@ function emitPlacement(p: AssemblyPlacement): string {
       (p.position?.[1] ?? 0) + spacing[1] * i,
       (p.position?.[2] ?? 0) + spacing[2] * i,
     ];
-    let stmt = `${p.moduleName}();`;
-    if (p.rotation && p.rotation.some(v => v !== 0)) {
-      stmt = `rotate([${p.rotation.join(', ')}]) ${stmt}`;
-    }
-    if (pos.some(v => v !== 0)) {
-      stmt = `translate([${pos.join(', ')}]) ${stmt}`;
-    }
-    lines.push(stmt);
+    lines.push(emitSinglePlacement(p, pos));
   }
   return lines.join('\n');
+}
+
+function emitSinglePlacement(p: AssemblyPlacement, pos: [number, number, number]): string {
+  let stmt = `${p.moduleName}();`;
+  if (p.rotation && p.rotation.some(v => v !== 0)) {
+    stmt = `rotate([${p.rotation.join(', ')}]) ${stmt}`;
+  }
+  if (pos.some(v => v !== 0)) {
+    stmt = `translate([${pos.join(', ')}]) ${stmt}`;
+  }
+  return stmt;
 }
 
 // ─── Server defaults (production wiring is in /api/nexyfab/scad-agent) ─────
