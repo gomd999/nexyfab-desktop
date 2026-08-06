@@ -75,11 +75,15 @@ import {
   StepImportError,
   type StepEntity,
   type StepArg,
-} from './stepImport';
-import { healStepSource } from './stepRead';
-import { importStep } from './stepImport';
-import type { FeatureTree } from '@/lib/cad/featureTree';
-import type { AssemblyState, PartInstance, Quat } from '@/lib/assembly/assemblyState';
+} from "./stepImport";
+import { healStepSource } from "./stepRead";
+import { importStep } from "./stepImport";
+import type { FeatureTree } from "@/lib/cad/featureTree";
+import type {
+  AssemblyState,
+  PartInstance,
+  Quat,
+} from "@/lib/assembly/assemblyState";
 
 // ─── public API ───────────────────────────────────────────────────────────
 
@@ -95,13 +99,61 @@ export interface StepAssemblyImportResult {
   /** Per-solid skips: forwarded from the inner single-solid classifier. */
   unsupported: string[];
   /** opts.collectBounds 시: PartInstance.id → 로컬 AABB(mm). 포인트 없으면 항목 없음. */
-  bounds?: Record<string, { min: [number, number, number]; max: [number, number, number] }>;
+  bounds?: Record<
+    string,
+    { min: [number, number, number]; max: [number, number, number] }
+  >;
   /** opts.collectBounds 시: PartInstance.id → CYLINDRICAL_SURFACE 반경 목록(mm, 원통 인식 힌트 — 260718). */
   cylRadii?: Record<string, number[]>;
+  /** Local analytic cylinder axes, transformed to world by the part occurrence pose downstream. */
+  cylinderAxes?: Record<
+    string,
+    Array<{
+      entityId: number;
+      origin: [number, number, number];
+      direction: [number, number, number];
+      radius: number;
+    }>
+  >;
   /** 멀티솔리드 PD(솔리드 ≥2, ≤400)의 솔리드별 로컬 AABB — 브리지 분해용(260718). */
-  solidBounds?: Record<string, Array<{ min: [number, number, number]; max: [number, number, number] } | null>>;
+  solidBounds?: Record<
+    string,
+    Array<{
+      min: [number, number, number];
+      max: [number, number, number];
+    } | null>
+  >;
   /** solidBounds 와 동순의 솔리드별 원통 반경 힌트. */
   solidCylRadii?: Record<string, number[][]>;
+  /** Exact planar profiles recovered only for selectively classified parts. */
+  flatPatterns?: Record<
+    string,
+    Array<NonNullable<import("./stepImport").SolidPlacement["flatPattern"]>>
+  >;
+  /** Native STEP product/body membership. Definitions are unique; repeated
+   * occurrences reference them and never duplicate their body inventory. */
+  productStructure?: {
+    definitions: Array<{
+      definitionId: string;
+      name: string;
+      bodyEntityIds: number[];
+      bodyCount: number;
+      container: boolean;
+    }>;
+    occurrences: Array<{
+      occurrenceId: string;
+      definitionId: string;
+      definitionPath: string[];
+      worldMatrix: number[];
+    }>;
+    relationships: Array<{
+      relationshipId: string;
+      parentDefinitionId: string;
+      childDefinitionId: string;
+      designator: string | null;
+      localToParent: number[];
+    }>;
+  };
 }
 
 export interface ImportStepAssemblyOptions {
@@ -111,6 +163,10 @@ export interface ImportStepAssemblyOptions {
    *  SRR 수정 후 전 부품 분류가 돌며 실행 시간이 폭증). 초과 부품은 배치만 임포트하고
    *  warnings 에 집계를 정직 기록. 기본 500. */
   maxClassifyParts?: number;
+  /** When present, only these emitted PartInstance ids consume the geometry
+   * classification budget. All other occurrences remain placement-only.
+   * Used by evidence passes to reclassify a small measured candidate set. */
+  classifyPartsFor?: Set<string>;
   /** 부품별 로컬 AABB 수집(STEP→어셈블리 브리지용 — 솔리드 서브셋의 CARTESIAN_POINT 스캔). */
   collectBounds?: boolean;
   /** collectBounds 화이트리스트(부품 id) — 대형 어셈블리 대표화 2-pass 용(지정 외는 스킵). */
@@ -127,8 +183,8 @@ export function importStepAssembly(
   source: string,
   opts: ImportStepAssemblyOptions = {},
 ): StepAssemblyImportResult {
-  if (typeof source !== 'string' || source.length === 0) {
-    throw new StepImportError('empty_source: STEP source is empty');
+  if (typeof source !== "string" || source.length === 0) {
+    throw new StepImportError("empty_source: STEP source is empty");
   }
   const warnings: string[] = [];
   const unsupported: string[] = [];
@@ -140,14 +196,14 @@ export function importStepAssembly(
 
   const dataIdx = healed.search(/\bDATA\s*;/i);
   if (dataIdx < 0) {
-    throw new StepImportError('no_data_section: missing DATA; section');
+    throw new StepImportError("no_data_section: missing DATA; section");
   }
-  const endIdx = healed.indexOf('END-ISO-10303-21');
+  const endIdx = healed.indexOf("END-ISO-10303-21");
   const dataBlock = healed.slice(dataIdx, endIdx >= 0 ? endIdx : undefined);
   const entities = parseEntities(dataBlock);
 
   if (entities.size === 0) {
-    warnings.push('parse:no_entities');
+    warnings.push("parse:no_entities");
     return {
       state: { parts: [], mates: [] },
       featureTrees: {},
@@ -160,10 +216,14 @@ export function importStepAssembly(
   const productDefs: Array<{ id: number; ent: StepEntity }> = [];
   for (const [id, ent] of entities) {
     // CATIA 계열은 PRODUCT_DEFINITION_WITH_ASSOCIATED_DOCUMENTS 사용(선두 4인자 동일 — 260718e 코퍼스4 검출)
-    if (ent.name === 'PRODUCT_DEFINITION' || ent.name === 'PRODUCT_DEFINITION_WITH_ASSOCIATED_DOCUMENTS') productDefs.push({ id, ent });
+    if (
+      ent.name === "PRODUCT_DEFINITION" ||
+      ent.name === "PRODUCT_DEFINITION_WITH_ASSOCIATED_DOCUMENTS"
+    )
+      productDefs.push({ id, ent });
   }
   if (productDefs.length === 0) {
-    warnings.push('parse:no_product_definition, treating as single part');
+    warnings.push("parse:no_product_definition, treating as single part");
     return fallbackSinglePartImport(source, opts, warnings, unsupported);
   }
   productDefs.sort((a, b) => a.id - b.id);
@@ -185,13 +245,15 @@ export function importStepAssembly(
   const children = new Map<number, Array<NauoEdge>>();
   const isChild = new Set<number>();
   for (const [id, ent] of entities) {
-    if (ent.name !== 'NEXT_ASSEMBLY_USAGE_OCCURRENCE') continue;
+    if (ent.name !== "NEXT_ASSEMBLY_USAGE_OCCURRENCE") continue;
     // NAUO(name, ref, desc, relating_pd, related_pd, ref_designator)
     const relatingArg = ent.args[3];
     const relatedArg = ent.args[4];
     if (
-      !relatingArg || relatingArg.kind !== 'ref' ||
-      !relatedArg  || relatedArg.kind  !== 'ref'
+      !relatingArg ||
+      relatingArg.kind !== "ref" ||
+      !relatedArg ||
+      relatedArg.kind !== "ref"
     ) {
       warnings.push(`parse:nauo_#${id}_missing_part_refs`);
       continue;
@@ -216,10 +278,10 @@ export function importStepAssembly(
 
   // ── 5. find roots, DFS, emit flat PartInstance list ────────────────────
   const hasAnyNauo = Array.from(entities.values()).some(
-    (e) => e.name === 'NEXT_ASSEMBLY_USAGE_OCCURRENCE',
+    (e) => e.name === "NEXT_ASSEMBLY_USAGE_OCCURRENCE",
   );
   if (!hasAnyNauo) {
-    warnings.push('parse:no_assembly_relationships, treating as flat parts');
+    warnings.push("parse:no_assembly_relationships, treating as flat parts");
   }
 
   const roots = productDefs
@@ -228,6 +290,9 @@ export function importStepAssembly(
     .sort((a, b) => a - b);
 
   const parts: PartInstance[] = [];
+  const occurrenceMembership: NonNullable<
+    StepAssemblyImportResult["productStructure"]
+  >["occurrences"] = [];
   const featureTrees: Record<string, FeatureTree> = {};
   // Instance index is global so two NAUO edges that reference the same
   // PD (legitimate "2 bolts from one part definition") get distinct ids.
@@ -235,34 +300,56 @@ export function importStepAssembly(
   const usedIds = new Set<string>();
   // 분류기 성능 예산(옵션): 상한 초과분은 배치만 — 종료 시 집계 warning
   const maxClassify = Math.max(0, opts.maxClassifyParts ?? 500);
-  const bounds: Record<string, { min: [number, number, number]; max: [number, number, number] }> = {};
+  const bounds: Record<
+    string,
+    { min: [number, number, number]; max: [number, number, number] }
+  > = {};
   const cylRadii: Record<string, number[]> = {};
-  const solidBounds: Record<string, Array<{ min: [number, number, number]; max: [number, number, number] } | null>> = {};
+  const cylinderAxes: NonNullable<StepAssemblyImportResult["cylinderAxes"]> =
+    {};
+  const solidBounds: Record<
+    string,
+    Array<{
+      min: [number, number, number];
+      max: [number, number, number];
+    } | null>
+  > = {};
   const solidCylRadii: Record<string, number[][]> = {};
+  const flatPatterns: NonNullable<StepAssemblyImportResult["flatPatterns"]> =
+    {};
   const collectBoundsFromSubset = (id: string, subset: string | null): void => {
     if (!opts.collectBounds || !subset) return;
     if (opts.collectBoundsFor && !opts.collectBoundsFor.has(id)) return;
+    const localAxes = scanCylinderAxes(subset);
+    if (localAxes.length) cylinderAxes[id] = localAxes;
     const g = scanGeomText(subset);
     if (!g) return;
     if (g.radii.length) cylRadii[id] = g.radii;
-    if (g.trimmed > 0) warnings.push(`part_${id}:bounds_outliers_trimmed(${g.trimmed} isolated points — datum/reference geometry)`);
+    if (g.trimmed > 0)
+      warnings.push(
+        `part_${id}:bounds_outliers_trimmed(${g.trimmed} isolated points — datum/reference geometry)`,
+      );
     bounds[id] = { min: g.min, max: g.max };
   };
   // 멀티솔리드 분해(260718 — 참고파일들2 검출: 핸드레일 1PD/246솔리드·계단 28·ESC 140):
   // PD 안의 솔리드별 bounds/반경을 개별 수집 → 브리지가 솔리드별 box/cylinder 로 분해.
   const collectPerSolid = (id: string, solidIds: number[]): void => {
-    if (!opts.collectBounds || solidIds.length < 2 || solidIds.length > 400) return;
+    if (!opts.collectBounds || solidIds.length < 2 || solidIds.length > 400)
+      return;
     if (opts.collectBoundsFor && !opts.collectBoundsFor.has(id)) return;
     const ctx = subsetContext(source);
     if (!ctx) return;
-    const arrB: Array<{ min: [number, number, number]; max: [number, number, number] } | null> = [];
+    const arrB: Array<{
+      min: [number, number, number];
+      max: [number, number, number];
+    } | null> = [];
     const arrC: number[][] = [];
     for (const sid of solidIds) {
       const keep = reachableIds(ctx.entities, [sid]);
-      let text = '';
+      let text = "";
       for (const k of keep) {
         const b = ctx.bodyMap.get(k);
-        if (b) text += b + ';\n';
+        if (b) text += b + ";\n";
       }
       const g = scanGeomText(text);
       arrB.push(g ? { min: g.min, max: g.max } : null);
@@ -274,7 +361,10 @@ export function importStepAssembly(
   let classified = 0;
   let classifySkipped = 0;
   const classifyBudgetOk = () => {
-    if (classified < maxClassify) { classified++; return true; }
+    if (classified < maxClassify) {
+      classified++;
+      return true;
+    }
     classifySkipped++;
     return false;
   };
@@ -295,14 +385,19 @@ export function importStepAssembly(
       for (const edge of childList) {
         if (pathStack.includes(edge.childPd)) {
           const chain = [...pathStack, edge.childPd]
-            .map((id) => `#${id}(${pdName.get(id) ?? '?'})`)
-            .join(' → ');
+            .map((id) => `#${id}(${pdName.get(id) ?? "?"})`)
+            .join(" → ");
           throw new StepImportError(
             `circular_assembly: NAUO cycle detected: ${chain}`,
           );
         }
         const composed = multiply(worldT, edge.transform);
-        emitInstance(edge.childPd, composed, [...pathStack, edge.childPd], edge.designator);
+        emitInstance(
+          edge.childPd,
+          composed,
+          [...pathStack, edge.childPd],
+          edge.designator,
+        );
       }
       return;
     }
@@ -310,7 +405,11 @@ export function importStepAssembly(
     // Leaf: emit one PartInstance. PDs with no geometry still emit
     // (empty FeatureTree) so the AssemblyState shows the placement.
     const baseLabel = pdName.get(pdId) ?? `Part_${pdId}`;
-    const id = uniqueId(usedIds, sanitizeId(designator ?? baseLabel), instanceIdx);
+    const id = uniqueId(
+      usedIds,
+      sanitizeId(designator ?? baseLabel),
+      instanceIdx,
+    );
     usedIds.add(id);
     const { position, orientation } = decomposeMatrix(worldT);
     parts.push({
@@ -324,36 +423,65 @@ export function importStepAssembly(
       // can move them — though Phase 1 has no mates anyway).
       fixed: parts.length === 0,
     });
+    occurrenceMembership.push({
+      occurrenceId: id,
+      definitionId: `pd_${pdId}`,
+      definitionPath: pathStack.map((item) => `pd_${item}`),
+      worldMatrix: [...worldT],
+    });
 
     // Run the single-solid importer on every solid belonging to this PD.
     if (hasGeom) {
-      const wantClassify = classifyBudgetOk();
-      const wantBounds = !!opts.collectBounds && (!opts.collectBoundsFor || opts.collectBoundsFor.has(id));
-      const subset = (wantClassify || wantBounds) ? buildSubsetForSolids(source, geom.solidIds) : null;
+      const wantClassify =
+        (!opts.classifyPartsFor || opts.classifyPartsFor.has(id)) &&
+        classifyBudgetOk();
+      const wantBounds =
+        !!opts.collectBounds &&
+        (!opts.collectBoundsFor || opts.collectBoundsFor.has(id));
+      const subset =
+        wantClassify || wantBounds
+          ? buildSubsetForSolids(source, geom.solidIds)
+          : null;
       collectBoundsFromSubset(id, subset);
       collectPerSolid(id, geom.solidIds);
-      const trees = wantClassify && subset
-        ? importStep(subset, { namePrefix: opts.namePrefix ?? `${id}` })
-        : null;
+      const trees =
+        wantClassify && subset
+          ? importStep(subset, { namePrefix: opts.namePrefix ?? `${id}` })
+          : null;
       if (trees) {
+        const recovered = trees.placements.flatMap((placement) =>
+          placement.flatPattern ? [placement.flatPattern] : [],
+        );
+        if (recovered.length) flatPatterns[id] = recovered;
         for (const w of trees.warnings) warnings.push(`part_${id}:${w}`);
         for (const u of trees.unsupported) unsupported.push(`part_${id}:${u}`);
         featureTrees[id] = trees.tree;
         // 조용한 빈 트리 제거(260717 실물 검증): 솔리드는 있는데 분류 0 — 사유 명시
         if (trees.tree.nodes.length === 0 && trees.unsupported.length === 0) {
-          unsupported.push(`part_${id}:classifier_empty_tree(${geom.solidIds.length} solids — real-world brep not in classifier vocabulary)`);
+          unsupported.push(
+            `part_${id}:classifier_empty_tree(${geom.solidIds.length} solids — real-world brep not in classifier vocabulary)`,
+          );
         }
       } else {
         featureTrees[id] = { nodes: [] };
-        if (!wantClassify) unsupported.push(`part_${id}:classification_skipped(budget)`);
+        if (!wantClassify)
+          unsupported.push(`part_${id}:classification_skipped(budget)`);
         else warnings.push(`part_${id}:geometry_subset_build_failed`);
       }
     } else if (geom && geom.approxIds.length > 0) {
       // 표면/테셀레이션(260718): 분류 불가 — 경계 box 근사만(사유 명시, 조용한 승격 금지)
-      const wantBounds = !!opts.collectBounds && (!opts.collectBoundsFor || opts.collectBoundsFor.has(id));
-      if (wantBounds) collectBoundsFromSubset(id, buildSubsetForSolids(source, geom.approxIds));
+      const wantBounds =
+        !!opts.collectBounds &&
+        (!opts.collectBoundsFor || opts.collectBoundsFor.has(id));
+      if (wantBounds)
+        collectBoundsFromSubset(
+          id,
+          buildSubsetForSolids(source, geom.approxIds),
+        );
       featureTrees[id] = { nodes: [] };
-      unsupported.push(`part_${id}:surface_or_tessellated_bounds_approx(${geom.approxIds.length} roots — no solids, bounds-only import)`);
+      unsupported.push(
+        `part_${id}:surface_or_tessellated_bounds_approx(${geom.approxIds.length} roots — no solids, bounds-only import)`,
+      );
     } else {
       featureTrees[id] = { nodes: [] };
       unsupported.push(`part_${id}:no_solids_found_for_pd`);
@@ -371,10 +499,13 @@ export function importStepAssembly(
     // containers with no placement information).
     for (const { id: pdId } of productDefs) {
       const geom = pdGeometry.get(pdId);
-      const approxOnly = !!geom && geom.solidIds.length === 0 && geom.approxIds.length > 0;
+      const approxOnly =
+        !!geom && geom.solidIds.length === 0 && geom.approxIds.length > 0;
       if (!geom || (geom.solidIds.length === 0 && !approxOnly)) {
         // 곡선 전용·형상 없는 PD — 조용히 사라지지 않게 사유 기록(260717)
-        unsupported.push(`pd_${pdId}(${pdName.get(pdId) ?? '?'}):no_solids_found (curve-only/empty models are not supported)`);
+        unsupported.push(
+          `pd_${pdId}(${pdName.get(pdId) ?? "?"}):no_solids_found (curve-only/empty models are not supported)`,
+        );
         continue;
       }
       const baseLabel = pdName.get(pdId) ?? `Part_${pdId}`;
@@ -388,34 +519,63 @@ export function importStepAssembly(
         orientation: IDENTITY_QUAT,
         fixed: parts.length === 0,
       });
+      occurrenceMembership.push({
+        occurrenceId: id,
+        definitionId: `pd_${pdId}`,
+        definitionPath: [`pd_${pdId}`],
+        worldMatrix: [...IDENTITY_MATRIX],
+      });
       if (approxOnly) {
         // 표면/테셀레이션(260718): 분류 불가 — 경계 box 근사만(NAUO 경로와 동일 규약)
-        const wantBounds = !!opts.collectBounds && (!opts.collectBoundsFor || opts.collectBoundsFor.has(id));
-        if (wantBounds) collectBoundsFromSubset(id, buildSubsetForSolids(source, geom.approxIds));
+        const wantBounds =
+          !!opts.collectBounds &&
+          (!opts.collectBoundsFor || opts.collectBoundsFor.has(id));
+        if (wantBounds)
+          collectBoundsFromSubset(
+            id,
+            buildSubsetForSolids(source, geom.approxIds),
+          );
         featureTrees[id] = { nodes: [] };
-        unsupported.push(`part_${id}:surface_or_tessellated_bounds_approx(${geom.approxIds.length} roots — no solids, bounds-only import)`);
+        unsupported.push(
+          `part_${id}:surface_or_tessellated_bounds_approx(${geom.approxIds.length} roots — no solids, bounds-only import)`,
+        );
         instanceIdx += 1;
         continue;
       }
-      const wantClassify = classifyBudgetOk();
-      const wantBounds = !!opts.collectBounds && (!opts.collectBoundsFor || opts.collectBoundsFor.has(id));
-      const subset = (wantClassify || wantBounds) ? buildSubsetForSolids(source, geom.solidIds) : null;
+      const wantClassify =
+        (!opts.classifyPartsFor || opts.classifyPartsFor.has(id)) &&
+        classifyBudgetOk();
+      const wantBounds =
+        !!opts.collectBounds &&
+        (!opts.collectBoundsFor || opts.collectBoundsFor.has(id));
+      const subset =
+        wantClassify || wantBounds
+          ? buildSubsetForSolids(source, geom.solidIds)
+          : null;
       collectBoundsFromSubset(id, subset);
       collectPerSolid(id, geom.solidIds);
-      const trees = wantClassify && subset
-        ? importStep(subset, { namePrefix: opts.namePrefix ?? `${id}` })
-        : null;
+      const trees =
+        wantClassify && subset
+          ? importStep(subset, { namePrefix: opts.namePrefix ?? `${id}` })
+          : null;
       if (trees) {
+        const recovered = trees.placements.flatMap((placement) =>
+          placement.flatPattern ? [placement.flatPattern] : [],
+        );
+        if (recovered.length) flatPatterns[id] = recovered;
         for (const w of trees.warnings) warnings.push(`part_${id}:${w}`);
         for (const u of trees.unsupported) unsupported.push(`part_${id}:${u}`);
         featureTrees[id] = trees.tree;
         // 조용한 빈 트리 제거(260717) — NAUO 경로와 동일 규약
         if (trees.tree.nodes.length === 0 && trees.unsupported.length === 0) {
-          unsupported.push(`part_${id}:classifier_empty_tree(${geom.solidIds.length} solids — real-world brep not in classifier vocabulary)`);
+          unsupported.push(
+            `part_${id}:classifier_empty_tree(${geom.solidIds.length} solids — real-world brep not in classifier vocabulary)`,
+          );
         }
       } else {
         featureTrees[id] = { nodes: [] };
-        if (!wantClassify) unsupported.push(`part_${id}:classification_skipped(budget)`);
+        if (!wantClassify)
+          unsupported.push(`part_${id}:classification_skipped(budget)`);
         else warnings.push(`part_${id}:geometry_subset_build_failed`);
       }
       instanceIdx += 1;
@@ -423,16 +583,46 @@ export function importStepAssembly(
   }
 
   if (classifySkipped > 0) {
-    warnings.push(`perf:classification_capped(${maxClassify} classified, ${classifySkipped} placement-only — raise opts.maxClassifyParts to override)`);
+    warnings.push(
+      `perf:classification_capped(${maxClassify} classified, ${classifySkipped} placement-only — raise opts.maxClassifyParts to override)`,
+    );
   }
   if (parts.length === 0) {
-    warnings.push('parse:no_part_instances_emitted');
+    warnings.push("parse:no_part_instances_emitted");
   }
 
   return {
     state: { parts, mates: [] },
-    ...(opts.collectBounds ? { bounds, cylRadii, solidBounds, solidCylRadii } : {}),
+    productStructure: {
+      definitions: productDefs.map(({ id }) => {
+        const geometry = pdGeometry.get(id);
+        const bodyEntityIds = [...(geometry?.solidIds ?? [])].sort(
+          (a, b) => a - b,
+        );
+        return {
+          definitionId: `pd_${id}`,
+          name: pdName.get(id) ?? `Part_${id}`,
+          bodyEntityIds,
+          bodyCount: bodyEntityIds.length,
+          container: (children.get(id)?.length ?? 0) > 0,
+        };
+      }),
+      occurrences: occurrenceMembership,
+      relationships: [...children.entries()].flatMap(([parentPd, edges]) =>
+        edges.map((edge) => ({
+          relationshipId: `nauo_${edge.nauoId}`,
+          parentDefinitionId: `pd_${parentPd}`,
+          childDefinitionId: `pd_${edge.childPd}`,
+          designator: edge.designator,
+          localToParent: [...edge.transform],
+        })),
+      ),
+    },
+    ...(opts.collectBounds
+      ? { bounds, cylRadii, cylinderAxes, solidBounds, solidCylRadii }
+      : {}),
     featureTrees,
+    flatPatterns,
     warnings,
     unsupported,
   };
@@ -450,8 +640,12 @@ interface GeometryForPart {
 }
 
 const APPROX_GEOM_ROOTS = new Set([
-  'SHELL_BASED_SURFACE_MODEL', 'FACE_BASED_SURFACE_MODEL',
-  'TESSELLATED_SOLID', 'TESSELLATED_SHELL', 'TRIANGULATED_FACE_SET', 'POLYGONAL_FACE_SET',
+  "SHELL_BASED_SURFACE_MODEL",
+  "FACE_BASED_SURFACE_MODEL",
+  "TESSELLATED_SOLID",
+  "TESSELLATED_SHELL",
+  "TRIANGULATED_FACE_SET",
+  "POLYGONAL_FACE_SET",
 ]);
 
 interface NauoEdge {
@@ -463,18 +657,27 @@ interface NauoEdge {
 
 /** Row-major 4×4 matrix, last row implicit [0 0 0 1]. Stored as 16 numbers
  *  so we don't allocate a typed-array per edge. */
-type Matrix4 = readonly [
-  number, number, number, number,
-  number, number, number, number,
-  number, number, number, number,
-  number, number, number, number,
+export type Matrix4 = readonly [
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
 ];
 
 const IDENTITY_MATRIX: Matrix4 = [
-  1, 0, 0, 0,
-  0, 1, 0, 0,
-  0, 0, 1, 0,
-  0, 0, 0, 1,
+  1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
 ];
 
 const IDENTITY_QUAT: Quat = { x: 0, y: 0, z: 0, w: 1 };
@@ -488,18 +691,18 @@ function productNameForDef(
   entities: Map<number, StepEntity>,
 ): string | null {
   const formationArg = pd.args[2];
-  if (!formationArg || formationArg.kind !== 'ref') return null;
+  if (!formationArg || formationArg.kind !== "ref") return null;
   const formation = entities.get(formationArg.id);
   if (!formation) return null;
   // PRODUCT_DEFINITION_FORMATION_WITH_SPECIFIED_SOURCE(id,desc,product,source)
   // or plain PRODUCT_DEFINITION_FORMATION(id,desc,product)
   const productArg = formation.args[2];
-  if (!productArg || productArg.kind !== 'ref') return null;
+  if (!productArg || productArg.kind !== "ref") return null;
   const product = entities.get(productArg.id);
-  if (!product || product.name !== 'PRODUCT') return null;
+  if (!product || product.name !== "PRODUCT") return null;
   // PRODUCT(id, name, desc, (contexts))
   const nameArg = product.args[1] ?? product.args[0];
-  if (nameArg && nameArg.kind === 'string' && nameArg.value.trim() !== '') {
+  if (nameArg && nameArg.kind === "string" && nameArg.value.trim() !== "") {
     return nameArg.value;
   }
   return `Part_${pdId}`;
@@ -513,16 +716,21 @@ function productNameForDef(
  * collect every MANIFOLD_SOLID_BREP / BREP_WITH_VOIDS in `items`.
  */
 // SHAPE_REPRESENTATION_RELATIONSHIP 인접 리스트 — 파일당 1회 계산 후 캐시(WeakMap).
-const srrAdjCache = new WeakMap<Map<number, StepEntity>, Map<number, number[]>>();
-function srrAdjacency(entities: Map<number, StepEntity>): Map<number, number[]> {
+const srrAdjCache = new WeakMap<
+  Map<number, StepEntity>,
+  Map<number, number[]>
+>();
+function srrAdjacency(
+  entities: Map<number, StepEntity>,
+): Map<number, number[]> {
   const hit = srrAdjCache.get(entities);
   if (hit) return hit;
   const adj = new Map<number, number[]>();
   for (const [, ent] of entities) {
-    if (ent.name !== 'SHAPE_REPRESENTATION_RELATIONSHIP') continue;
+    if (ent.name !== "SHAPE_REPRESENTATION_RELATIONSHIP") continue;
     const a = ent.args[2];
     const b = ent.args[3];
-    if (!a || a.kind !== 'ref' || !b || b.kind !== 'ref') continue;
+    if (!a || a.kind !== "ref" || !b || b.kind !== "ref") continue;
     if (!adj.has(a.id)) adj.set(a.id, []);
     if (!adj.has(b.id)) adj.set(b.id, []);
     adj.get(a.id)!.push(b.id);
@@ -541,24 +749,27 @@ function findGeometryForProductDef(
   // Find PRODUCT_DEFINITION_SHAPE referencing this PD.
   const pdsIds: number[] = [];
   for (const [id, ent] of entities) {
-    if (ent.name !== 'PRODUCT_DEFINITION_SHAPE') continue;
+    if (ent.name !== "PRODUCT_DEFINITION_SHAPE") continue;
     // PDS('','', pd) — args[2] is the PD ref (in our writer); some writers
     // wrap it in CHARACTERIZED_DEFINITION which we accept transparently.
     const pdRef = ent.args[2];
-    if (pdRef && pdRef.kind === 'ref' && pdRef.id === pdId) pdsIds.push(id);
+    if (pdRef && pdRef.kind === "ref" && pdRef.id === pdId) pdsIds.push(id);
   }
   if (pdsIds.length === 0) return out;
 
   // Find SHAPE_DEFINITION_REPRESENTATION pointing at our PDS.
   const repIds: number[] = [];
   for (const [, ent] of entities) {
-    if (ent.name !== 'SHAPE_DEFINITION_REPRESENTATION') continue;
+    if (ent.name !== "SHAPE_DEFINITION_REPRESENTATION") continue;
     // SDR(definition, representation)
     const defArg = ent.args[0];
     const repArg = ent.args[1];
     if (
-      defArg && defArg.kind === 'ref' && pdsIds.includes(defArg.id) &&
-      repArg && repArg.kind === 'ref'
+      defArg &&
+      defArg.kind === "ref" &&
+      pdsIds.includes(defArg.id) &&
+      repArg &&
+      repArg.kind === "ref"
     ) {
       repIds.push(repArg.id);
     }
@@ -576,7 +787,10 @@ function findGeometryForProductDef(
     while (queue.length && repSet.size < 16) {
       const cur = queue.pop()!;
       for (const nb of srrAdj.get(cur) ?? []) {
-        if (!repSet.has(nb)) { repSet.add(nb); queue.push(nb); }
+        if (!repSet.has(nb)) {
+          repSet.add(nb);
+          queue.push(nb);
+        }
       }
     }
   }
@@ -587,14 +801,14 @@ function findGeometryForProductDef(
     if (!rep) continue;
     // {ADVANCED_BREP_,SHAPE_,MANIFOLD_SURFACE_}*REPRESENTATION(name, items, context)
     const itemsArg = rep.args[1];
-    if (!itemsArg || itemsArg.kind !== 'list') continue;
+    if (!itemsArg || itemsArg.kind !== "list") continue;
     for (const item of itemsArg.items) {
-      if (item.kind !== 'ref') continue;
+      if (item.kind !== "ref") continue;
       const target = entities.get(item.id);
       if (!target) continue;
       if (
-        target.name === 'MANIFOLD_SOLID_BREP' ||
-        target.name === 'BREP_WITH_VOIDS'
+        target.name === "MANIFOLD_SOLID_BREP" ||
+        target.name === "BREP_WITH_VOIDS"
       ) {
         out.solidIds.push(item.id);
       } else if (APPROX_GEOM_ROOTS.has(target.name)) {
@@ -619,26 +833,26 @@ function findGeometryForProductDef(
  *         → REPRESENTATION_RELATIONSHIP_WITH_TRANSFORMATION
  *         → ITEM_DEFINED_TRANSFORMATION(name, desc, axis1, axis2)
  */
-function findTransformForNauo(
+function findTransformEntityForNauo(
   nauoId: number,
   entities: Map<number, StepEntity>,
-): Matrix4 | null {
+): StepEntity | null {
   // Find PDS whose 'definition' (args[2]) points at this NAUO.
   const pdsIds: number[] = [];
   for (const [id, ent] of entities) {
-    if (ent.name !== 'PRODUCT_DEFINITION_SHAPE') continue;
+    if (ent.name !== "PRODUCT_DEFINITION_SHAPE") continue;
     const defArg = ent.args[2];
-    if (defArg && defArg.kind === 'ref' && defArg.id === nauoId) {
+    if (defArg && defArg.kind === "ref" && defArg.id === nauoId) {
       pdsIds.push(id);
     }
   }
   // Find CDSR referencing one of those PDS entries.
   const cdsrIds: number[] = [];
   for (const [id, ent] of entities) {
-    if (ent.name !== 'CONTEXT_DEPENDENT_SHAPE_REPRESENTATION') continue;
+    if (ent.name !== "CONTEXT_DEPENDENT_SHAPE_REPRESENTATION") continue;
     // CDSR(rep_relationship, represented_product_relation)
     const pdsArg = ent.args[1];
-    if (pdsArg && pdsArg.kind === 'ref' && pdsIds.includes(pdsArg.id)) {
+    if (pdsArg && pdsArg.kind === "ref" && pdsIds.includes(pdsArg.id)) {
       cdsrIds.push(id);
     }
   }
@@ -647,7 +861,7 @@ function findTransformForNauo(
     const cdsr = entities.get(cdsrId);
     if (!cdsr) continue;
     const relArg = cdsr.args[0];
-    if (!relArg || relArg.kind !== 'ref') continue;
+    if (!relArg || relArg.kind !== "ref") continue;
     const rel = entities.get(relArg.id);
     if (!rel) continue;
     // The transformation can live in:
@@ -661,17 +875,17 @@ function findTransformForNauo(
     }
     for (const group of allArgGroups) {
       for (const a of group) {
-        if (a.kind === 'ref') {
+        if (a.kind === "ref") {
           const target = entities.get(a.id);
-          if (target && target.name === 'ITEM_DEFINED_TRANSFORMATION') {
-            return matrixFromItemDefinedTransformation(target, entities);
+          if (target && target.name === "ITEM_DEFINED_TRANSFORMATION") {
+            return target;
           }
-        } else if (a.kind === 'typed') {
+        } else if (a.kind === "typed") {
           for (const inner of a.args) {
-            if (inner.kind !== 'ref') continue;
+            if (inner.kind !== "ref") continue;
             const target = entities.get(inner.id);
-            if (target && target.name === 'ITEM_DEFINED_TRANSFORMATION') {
-              return matrixFromItemDefinedTransformation(target, entities);
+            if (target && target.name === "ITEM_DEFINED_TRANSFORMATION") {
+              return target;
             }
           }
         }
@@ -681,6 +895,38 @@ function findTransformForNauo(
   return null;
 }
 
+function findTransformForNauo(
+  nauoId: number,
+  entities: Map<number, StepEntity>,
+): Matrix4 | null {
+  const entity = findTransformEntityForNauo(nauoId, entities);
+  return entity ? matrixFromItemDefinedTransformation(entity, entities) : null;
+}
+
+/** Strict, read-only transform evidence. Unlike assembly import, this never
+ * substitutes identity when placement is absent or malformed. */
+export function readStepNauoTransform(
+  nauoId: number,
+  entities: Map<number, StepEntity>,
+):
+  | { status: "available"; matrix: Matrix4 }
+  | { status: "missing" | "invalid"; reason: string } {
+  const entity = findTransformEntityForNauo(nauoId, entities);
+  if (!entity)
+    return {
+      status: "missing",
+      reason: "No ITEM_DEFINED_TRANSFORMATION is wired to this occurrence.",
+    };
+  const matrix = matrixFromItemDefinedTransformation(entity, entities);
+  return matrix
+    ? { status: "available", matrix }
+    : {
+        status: "invalid",
+        reason:
+          "The occurrence transformation references an invalid or incomplete AXIS2_PLACEMENT_3D.",
+      };
+}
+
 /** ITEM_DEFINED_TRANSFORMATION(name, desc, axis_src, axis_tgt) → 4×4. */
 function matrixFromItemDefinedTransformation(
   idt: StepEntity,
@@ -688,8 +934,8 @@ function matrixFromItemDefinedTransformation(
 ): Matrix4 | null {
   const srcArg = idt.args[2];
   const tgtArg = idt.args[3];
-  if (!srcArg || srcArg.kind !== 'ref') return null;
-  if (!tgtArg || tgtArg.kind !== 'ref') return null;
+  if (!srcArg || srcArg.kind !== "ref") return null;
+  if (!tgtArg || tgtArg.kind !== "ref") return null;
   const src = readPlacementMatrix(srcArg.id, entities);
   const tgt = readPlacementMatrix(tgtArg.id, entities);
   if (!src || !tgt) return null;
@@ -709,20 +955,20 @@ function readPlacementMatrix(
   entities: Map<number, StepEntity>,
 ): Matrix4 | null {
   const ent = entities.get(id);
-  if (!ent || ent.name !== 'AXIS2_PLACEMENT_3D') return null;
+  if (!ent || ent.name !== "AXIS2_PLACEMENT_3D") return null;
   const originRef = ent.args[1];
   const zRef = ent.args[2];
   const xRef = ent.args[3];
-  if (!originRef || originRef.kind !== 'ref') return null;
+  if (!originRef || originRef.kind !== "ref") return null;
   const origin = readCartesianPoint(originRef.id, entities);
   if (!origin) return null;
   let zAxis: [number, number, number] = [0, 0, 1];
-  if (zRef && zRef.kind === 'ref') {
+  if (zRef && zRef.kind === "ref") {
     const z = readDirection(zRef.id, entities);
     if (z) zAxis = z;
   }
   let xAxis: [number, number, number];
-  if (xRef && xRef.kind === 'ref') {
+  if (xRef && xRef.kind === "ref") {
     const x = readDirection(xRef.id, entities);
     if (x) {
       xAxis = orthogonalize(x, zAxis);
@@ -742,10 +988,22 @@ function readPlacementMatrix(
   ];
   const yN = normalize(y);
   return [
-    x[0], yN[0], z[0], origin[0],
-    x[1], yN[1], z[1], origin[1],
-    x[2], yN[2], z[2], origin[2],
-    0,    0,     0,    1,
+    x[0],
+    yN[0],
+    z[0],
+    origin[0],
+    x[1],
+    yN[1],
+    z[1],
+    origin[1],
+    x[2],
+    yN[2],
+    z[2],
+    origin[2],
+    0,
+    0,
+    0,
+    1,
   ];
 }
 
@@ -754,12 +1012,12 @@ function readCartesianPoint(
   entities: Map<number, StepEntity>,
 ): [number, number, number] | null {
   const cp = entities.get(id);
-  if (!cp || cp.name !== 'CARTESIAN_POINT') return null;
+  if (!cp || cp.name !== "CARTESIAN_POINT") return null;
   const coords = cp.args[1];
-  if (!coords || coords.kind !== 'list') return null;
+  if (!coords || coords.kind !== "list") return null;
   const xs: number[] = [];
   for (const it of coords.items) {
-    if (it.kind !== 'number') return null;
+    if (it.kind !== "number") return null;
     xs.push(it.value);
   }
   if (xs.length !== 3) return null;
@@ -771,12 +1029,12 @@ function readDirection(
   entities: Map<number, StepEntity>,
 ): [number, number, number] | null {
   const ent = entities.get(id);
-  if (!ent || ent.name !== 'DIRECTION') return null;
+  if (!ent || ent.name !== "DIRECTION") return null;
   const listArg = ent.args[1];
-  if (!listArg || listArg.kind !== 'list') return null;
+  if (!listArg || listArg.kind !== "list") return null;
   const xs: number[] = [];
   for (const it of listArg.items) {
-    if (it.kind !== 'number') return null;
+    if (it.kind !== "number") return null;
     xs.push(it.value);
   }
   if (xs.length !== 3) return null;
@@ -785,7 +1043,7 @@ function readDirection(
 
 // ─── matrix utilities ─────────────────────────────────────────────────────
 
-function multiply(a: Matrix4, b: Matrix4): Matrix4 {
+export function multiplyStepMatrices(a: Matrix4, b: Matrix4): Matrix4 {
   const r = new Array<number>(16).fill(0);
   for (let i = 0; i < 4; i++) {
     for (let j = 0; j < 4; j++) {
@@ -799,6 +1057,8 @@ function multiply(a: Matrix4, b: Matrix4): Matrix4 {
   return r as unknown as Matrix4;
 }
 
+const multiply = multiplyStepMatrices;
+
 /**
  * Inverse of an orthonormal (rotation + translation) 4×4.
  *   - rotation R: inverse is R-transpose.
@@ -809,22 +1069,49 @@ function multiply(a: Matrix4, b: Matrix4): Matrix4 {
  * spec for STEP placements), so this is sufficient.
  */
 function invertOrthonormal(m: Matrix4): Matrix4 {
-  const r00 = m[0]!, r01 = m[1]!, r02 = m[2]!,  tx = m[3]!;
-  const r10 = m[4]!, r11 = m[5]!, r12 = m[6]!,  ty = m[7]!;
-  const r20 = m[8]!, r21 = m[9]!, r22 = m[10]!, tz = m[11]!;
+  const r00 = m[0]!,
+    r01 = m[1]!,
+    r02 = m[2]!,
+    tx = m[3]!;
+  const r10 = m[4]!,
+    r11 = m[5]!,
+    r12 = m[6]!,
+    ty = m[7]!;
+  const r20 = m[8]!,
+    r21 = m[9]!,
+    r22 = m[10]!,
+    tz = m[11]!;
   // Rᵀ
-  const i00 = r00, i01 = r10, i02 = r20;
-  const i10 = r01, i11 = r11, i12 = r21;
-  const i20 = r02, i21 = r12, i22 = r22;
+  const i00 = r00,
+    i01 = r10,
+    i02 = r20;
+  const i10 = r01,
+    i11 = r11,
+    i12 = r21;
+  const i20 = r02,
+    i21 = r12,
+    i22 = r22;
   // -Rᵀ·t
   const itx = -(i00 * tx + i01 * ty + i02 * tz);
   const ity = -(i10 * tx + i11 * ty + i12 * tz);
   const itz = -(i20 * tx + i21 * ty + i22 * tz);
   return [
-    i00, i01, i02, itx,
-    i10, i11, i12, ity,
-    i20, i21, i22, itz,
-    0,   0,   0,   1,
+    i00,
+    i01,
+    i02,
+    itx,
+    i10,
+    i11,
+    i12,
+    ity,
+    i20,
+    i21,
+    i22,
+    itz,
+    0,
+    0,
+    0,
+    1,
   ];
 }
 
@@ -833,10 +1120,22 @@ function invertOrthonormal(m: Matrix4): Matrix4 {
  * Quaternion conversion uses the Shepperd algorithm: pick the largest of
  * `trace`, `m00`, `m11`, `m22` as the pivot to avoid divide-by-near-zero.
  */
-function decomposeMatrix(m: Matrix4): { position: { x: number; y: number; z: number }; orientation: Quat } {
-  const m00 = m[0]!, m01 = m[1]!, m02 = m[2]!,  tx = m[3]!;
-  const m10 = m[4]!, m11 = m[5]!, m12 = m[6]!,  ty = m[7]!;
-  const m20 = m[8]!, m21 = m[9]!, m22 = m[10]!, tz = m[11]!;
+function decomposeMatrix(m: Matrix4): {
+  position: { x: number; y: number; z: number };
+  orientation: Quat;
+} {
+  const m00 = m[0]!,
+    m01 = m[1]!,
+    m02 = m[2]!,
+    tx = m[3]!;
+  const m10 = m[4]!,
+    m11 = m[5]!,
+    m12 = m[6]!,
+    ty = m[7]!;
+  const m20 = m[8]!,
+    m21 = m[9]!,
+    m22 = m[10]!,
+    tz = m[11]!;
 
   const trace = m00 + m11 + m22;
   let qx: number, qy: number, qz: number, qw: number;
@@ -896,24 +1195,32 @@ function orthogonalize(
   return [ox / len, oy / len, oz / len];
 }
 
-function defaultXAxisFor(z: [number, number, number]): [number, number, number] {
+function defaultXAxisFor(
+  z: [number, number, number],
+): [number, number, number] {
   // Pick the world basis vector least aligned with z to avoid singularity.
   const az = [Math.abs(z[0]), Math.abs(z[1]), Math.abs(z[2])];
   const seed: [number, number, number] =
-    az[0]! <= az[1]! && az[0]! <= az[2]! ? [1, 0, 0]
-    : az[1]! <= az[2]! ? [0, 1, 0]
-    : [0, 0, 1];
+    az[0]! <= az[1]! && az[0]! <= az[2]!
+      ? [1, 0, 0]
+      : az[1]! <= az[2]!
+        ? [0, 1, 0]
+        : [0, 0, 1];
   return orthogonalize(seed, z);
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────
 
 function sanitizeId(label: string): string {
-  const cleaned = label.replace(/[^A-Za-z0-9_-]/g, '_').replace(/^_+|_+$/g, '');
-  return cleaned.length > 0 ? cleaned : 'part';
+  const cleaned = label.replace(/[^A-Za-z0-9_-]/g, "_").replace(/^_+|_+$/g, "");
+  return cleaned.length > 0 ? cleaned : "part";
 }
 
-function uniqueId(used: ReadonlySet<string>, base: string, fallbackIdx: number): string {
+function uniqueId(
+  used: ReadonlySet<string>,
+  base: string,
+  fallbackIdx: number,
+): string {
   if (!used.has(base)) return base;
   let i = 1;
   while (used.has(`${base}_${i}`)) i++;
@@ -930,7 +1237,7 @@ function nauoDesignator(ent: StepEntity): string | null {
   if (ent.args[2]) candidates.push(ent.args[2]);
   if (ent.args[0]) candidates.push(ent.args[0]);
   for (const c of candidates) {
-    if (c.kind === 'string' && c.value.trim() !== '') return c.value;
+    if (c.kind === "string" && c.value.trim() !== "") return c.value;
   }
   return null;
 }
@@ -949,7 +1256,9 @@ function fallbackSinglePartImport(
   warnings: string[],
   unsupported: string[],
 ): StepAssemblyImportResult {
-  const result = importStep(source, { namePrefix: opts.namePrefix ?? 'imported' });
+  const result = importStep(source, {
+    namePrefix: opts.namePrefix ?? "imported",
+  });
   for (const w of result.warnings) warnings.push(w);
   for (const u of result.unsupported) unsupported.push(u);
   if (result.tree.nodes.length === 0) {
@@ -960,17 +1269,19 @@ function fallbackSinglePartImport(
       unsupported,
     };
   }
-  const partId = 'imported';
+  const partId = "imported";
   return {
     state: {
-      parts: [{
-        id: partId,
-        name: 'Imported Part',
-        partTemplateId: 'pd_anon',
-        position: { x: 0, y: 0, z: 0 },
-        orientation: IDENTITY_QUAT,
-        fixed: true,
-      }],
+      parts: [
+        {
+          id: partId,
+          name: "Imported Part",
+          partTemplateId: "pd_anon",
+          position: { x: 0, y: 0, z: 0 },
+          orientation: IDENTITY_QUAT,
+          fixed: true,
+        },
+      ],
       mates: [],
     },
     featureTrees: { [partId]: result.tree },
@@ -1000,22 +1311,46 @@ function fallbackSinglePartImport(
  */
 /** 형상 텍스트 스캔 코어(260718 공용): CARTESIAN_POINT·COORDINATES_LIST 포인트 →
  *  로버스트 경계(절벽 갭 트림 — SolidWorks datum 고립점 실측) + CYLINDRICAL_SURFACE 반경. */
-function scanGeomText(text: string): { min: [number, number, number]; max: [number, number, number]; radii: number[]; trimmed: number } | null {
+function scanGeomText(text: string): {
+  min: [number, number, number];
+  max: [number, number, number];
+  radii: number[];
+  axes: Array<{
+    entityId: number;
+    origin: [number, number, number];
+    direction: [number, number, number];
+    radius: number;
+  }>;
+  trimmed: number;
+} | null {
   const radii: number[] = [];
-  for (const m of text.matchAll(/CYLINDRICAL_SURFACE\s*\(\s*'[^']*'\s*,\s*#\d+\s*,\s*([-\d.eE+]+)\s*\)/g)) {
+  for (const m of text.matchAll(
+    /CYLINDRICAL_SURFACE\s*\(\s*'[^']*'\s*,\s*#\d+\s*,\s*([-\d.eE+]+)\s*\)/g,
+  )) {
     const rr = +m[1];
     if (Number.isFinite(rr) && rr > 0) radii.push(rr);
   }
+  const axes = scanCylinderAxes(text);
   const pts: Array<[number, number, number]> = [];
-  for (const m of text.matchAll(/CARTESIAN_POINT\s*\(\s*'[^']*'\s*,\s*\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)/g)) {
-    const x = +m[1], y = +m[2], z = +m[3];
-    if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) pts.push([x, y, z]);
+  for (const m of text.matchAll(
+    /CARTESIAN_POINT\s*\(\s*'[^']*'\s*,\s*\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)/g,
+  )) {
+    const x = +m[1],
+      y = +m[2],
+      z = +m[3];
+    if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z))
+      pts.push([x, y, z]);
   }
   // 테셀레이션(260718): COORDINATES_LIST 의 좌표 삼중항(CARTESIAN_POINT 미사용 표현)
   for (const cl of text.matchAll(/COORDINATES_LIST\s*\([^;]*;/g)) {
-    for (const m of cl[0].matchAll(/\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)/g)) {
-      const x = +m[1], y = +m[2], z = +m[3];
-      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) pts.push([x, y, z]);
+    for (const m of cl[0].matchAll(
+      /\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)/g,
+    )) {
+      const x = +m[1],
+        y = +m[2],
+        z = +m[3];
+      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z))
+        pts.push([x, y, z]);
     }
   }
   if (pts.length < 4) return null;
@@ -1025,36 +1360,94 @@ function scanGeomText(text: string): { min: [number, number, number]; max: [numb
   for (let k = 0; k < 3; k++) {
     const vs = pts.map((p) => p[k]).sort((a, b) => a - b);
     const n = vs.length;
-    const core = Math.max(1e-6, vs[Math.floor(n * 0.95)] - vs[Math.floor(n * 0.05)]);
+    const core = Math.max(
+      1e-6,
+      vs[Math.floor(n * 0.95)] - vs[Math.floor(n * 0.05)],
+    );
     const edge = Math.max(1, Math.floor(n * 0.02));
     let lo = 0;
-    for (let i = 0; i < edge; i++) if (vs[i + 1] - vs[i] > 10 * core) { lo = i + 1; }
+    for (let i = 0; i < edge; i++)
+      if (vs[i + 1] - vs[i] > 10 * core) {
+        lo = i + 1;
+      }
     let hi = n - 1;
-    for (let i = n - 1; i > n - 1 - edge; i--) if (vs[i] - vs[i - 1] > 10 * core) { hi = i - 1; }
+    for (let i = n - 1; i > n - 1 - edge; i--)
+      if (vs[i] - vs[i - 1] > 10 * core) {
+        hi = i - 1;
+      }
     trimmed += lo + (n - 1 - hi);
     min[k] = vs[lo];
     max[k] = vs[hi];
   }
-  return { min, max, radii, trimmed };
+  return { min, max, radii, axes, trimmed };
+}
+function scanCylinderAxes(text: string): Array<{
+  entityId: number;
+  origin: [number, number, number];
+  direction: [number, number, number];
+  radius: number;
+}> {
+  const axes: Array<{
+      entityId: number;
+      origin: [number, number, number];
+      direction: [number, number, number];
+      radius: number;
+    }> = [],
+    entities = parseEntities(text);
+  for (const [entityId, entity] of entities) {
+    if (entity.name !== "CYLINDRICAL_SURFACE") continue;
+    const placement =
+        entity.args[1]?.kind === "ref"
+          ? readPlacementMatrix(entity.args[1].id, entities)
+          : null,
+      radius = entity.args[2]?.kind === "number" ? entity.args[2].value : null;
+    if (
+      !placement ||
+      radius === null ||
+      !Number.isFinite(radius) ||
+      radius <= 0
+    )
+      continue;
+    axes.push({
+      entityId,
+      origin: [placement[3], placement[7], placement[11]],
+      direction: normalize([placement[2], placement[6], placement[10]]),
+      radius,
+    });
+  }
+  return axes;
 }
 
 // 단일 엔트리 메모(260718): 멀티솔리드 분해는 부품당 수백 회 subset 을 만든다 —
 // heal+본문추출+파싱을 소스별 1회로 캐시(참조 동일성 우선 비교 — V8 포인터 단락).
-let _subsetCtx: { source: string; bodyMap: Map<number, string>; entities: Map<number, StepEntity> } | null = null;
-function subsetContext(source: string): { bodyMap: Map<number, string>; entities: Map<number, StepEntity> } | null {
+let _subsetCtx: {
+  source: string;
+  bodyMap: Map<number, string>;
+  entities: Map<number, StepEntity>;
+} | null = null;
+function subsetContext(
+  source: string,
+): { bodyMap: Map<number, string>; entities: Map<number, StepEntity> } | null {
   if (_subsetCtx && _subsetCtx.source === source) return _subsetCtx;
   const heal = healStepSource(source);
   const healed = heal.healed;
   const dataIdx = healed.search(/\bDATA\s*;/i);
   if (dataIdx < 0) return null;
-  const endIdx = healed.indexOf('END-ISO-10303-21');
+  const endIdx = healed.indexOf("END-ISO-10303-21");
   const dataBlock = healed.slice(dataIdx, endIdx >= 0 ? endIdx : undefined);
-  _subsetCtx = { source, bodyMap: extractEntityBodies(dataBlock), entities: parseEntities(dataBlock) };
+  _subsetCtx = {
+    source,
+    bodyMap: extractEntityBodies(dataBlock),
+    entities: parseEntities(dataBlock),
+  };
   return _subsetCtx;
 }
 
 /** BFS 로 solid 하위 그래프 엔티티 id 집합 수집(공용). */
-function reachableIds(entities: Map<number, StepEntity>, rootIds: number[]): Set<number> {
+function reachableIds(
+  entities: Map<number, StepEntity>,
+  rootIds: number[],
+): Set<number> {
   const keep = new Set<number>();
   const queue: number[] = [...rootIds];
   while (queue.length > 0) {
@@ -1071,7 +1464,10 @@ function reachableIds(entities: Map<number, StepEntity>, rootIds: number[]): Set
   return keep;
 }
 
-function buildSubsetForSolids(source: string, solidIds: number[]): string | null {
+function buildSubsetForSolids(
+  source: string,
+  solidIds: number[],
+): string | null {
   if (solidIds.length === 0) return null;
   const ctx = subsetContext(source);
   if (!ctx) return null;
@@ -1089,27 +1485,31 @@ function buildSubsetForSolids(source: string, solidIds: number[]): string | null
   // Minimal viable STEP header — importStep will hit healStepSource which
   // tolerates a stub HEADER block.
   return [
-    'ISO-10303-21;',
-    'HEADER;',
+    "ISO-10303-21;",
+    "HEADER;",
     "FILE_DESCRIPTION(('subset'),'2;1');",
     "FILE_NAME('subset','',(''),(''),'','','');",
     "FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));",
-    'ENDSEC;',
-    'DATA;',
+    "ENDSEC;",
+    "DATA;",
     ...lines,
-    'ENDSEC;',
-    'END-ISO-10303-21;',
-    '',
-  ].join('\n');
+    "ENDSEC;",
+    "END-ISO-10303-21;",
+    "",
+  ].join("\n");
 }
 
-function collectRefs(args: ReadonlyArray<StepArg>, keep: Set<number>, queue: number[]): void {
+function collectRefs(
+  args: ReadonlyArray<StepArg>,
+  keep: Set<number>,
+  queue: number[],
+): void {
   for (const a of args) {
-    if (a.kind === 'ref') {
+    if (a.kind === "ref") {
       if (!keep.has(a.id)) queue.push(a.id);
-    } else if (a.kind === 'list') {
+    } else if (a.kind === "list") {
       collectRefs(a.items, keep, queue);
-    } else if (a.kind === 'typed') {
+    } else if (a.kind === "typed") {
       collectRefs(a.args, keep, queue);
     }
   }
@@ -1128,38 +1528,75 @@ function extractEntityBodies(dataBlock: string): Map<number, string> {
   while (i < n) {
     while (i < n) {
       const ch = dataBlock[i]!;
-      if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') { i++; continue; }
-      if (ch === '/' && dataBlock[i + 1] === '*') {
-        const close = dataBlock.indexOf('*/', i + 2);
-        if (close < 0) { i = n; break; }
-        i = close + 2; continue;
+      if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r") {
+        i++;
+        continue;
+      }
+      if (ch === "/" && dataBlock[i + 1] === "*") {
+        const close = dataBlock.indexOf("*/", i + 2);
+        if (close < 0) {
+          i = n;
+          break;
+        }
+        i = close + 2;
+        continue;
       }
       break;
     }
     if (i >= n) break;
-    if (dataBlock[i] !== '#') { i++; continue; }
+    if (dataBlock[i] !== "#") {
+      i++;
+      continue;
+    }
     const idStart = i + 1;
     let idEnd = idStart;
-    while (idEnd < n && dataBlock[idEnd]! >= '0' && dataBlock[idEnd]! <= '9') idEnd++;
-    if (idEnd === idStart) { i++; continue; }
+    while (idEnd < n && dataBlock[idEnd]! >= "0" && dataBlock[idEnd]! <= "9")
+      idEnd++;
+    if (idEnd === idStart) {
+      i++;
+      continue;
+    }
     const id = Number.parseInt(dataBlock.slice(idStart, idEnd), 10);
     let j = idEnd;
-    while (j < n && (dataBlock[j] === ' ' || dataBlock[j] === '\t')) j++;
-    if (dataBlock[j] !== '=') { i = j; continue; }
+    while (j < n && (dataBlock[j] === " " || dataBlock[j] === "\t")) j++;
+    if (dataBlock[j] !== "=") {
+      i = j;
+      continue;
+    }
     j++;
-    while (j < n && (dataBlock[j] === ' ' || dataBlock[j] === '\t' || dataBlock[j] === '\n' || dataBlock[j] === '\r')) j++;
+    while (
+      j < n &&
+      (dataBlock[j] === " " ||
+        dataBlock[j] === "\t" ||
+        dataBlock[j] === "\n" ||
+        dataBlock[j] === "\r")
+    )
+      j++;
     const bodyStart = j;
-    let depth = 0, inString = false, semiPos = -1;
+    let depth = 0,
+      inString = false,
+      semiPos = -1;
     while (j < n) {
       const ch = dataBlock[j]!;
       if (ch === "'") {
-        if (inString && dataBlock[j + 1] === "'") { j += 2; continue; }
-        inString = !inString; j++; continue;
+        if (inString && dataBlock[j + 1] === "'") {
+          j += 2;
+          continue;
+        }
+        inString = !inString;
+        j++;
+        continue;
       }
-      if (inString) { j++; continue; }
-      if (ch === '(') depth++;
-      else if (ch === ')') depth--;
-      else if (ch === ';' && depth === 0) { semiPos = j; break; }
+      if (inString) {
+        j++;
+        continue;
+      }
+      if (ch === "(") depth++;
+      else if (ch === ")") depth--;
+      else if (ch === ";" && depth === 0) {
+        semiPos = j;
+        break;
+      }
       j++;
     }
     if (semiPos < 0) break;

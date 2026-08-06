@@ -97,11 +97,11 @@
  * Part 514 application objects used by AP214 / AP242.
  */
 
-import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
-import type { RevolveFeature } from '@/lib/cad/revolveProfile';
-import type { SweepFeature } from '@/lib/cad/sweepLoft';
-import type { FeatureTree, FeatureNode } from '@/lib/cad/featureTree';
-import { healStepSource } from './stepRead';
+import type { ExtrudeFeature } from "@/lib/cad/extrudeProfile";
+import type { RevolveFeature } from "@/lib/cad/revolveProfile";
+import type { SweepFeature } from "@/lib/cad/sweepLoft";
+import type { FeatureTree, FeatureNode } from "@/lib/cad/featureTree";
+import { healStepSource } from "./stepRead";
 
 // ─── tolerances ───────────────────────────────────────────────────────────
 
@@ -116,6 +116,15 @@ const AXIS_EPS = 1e-4;
 export interface WorldBBox {
   min: [number, number, number];
   max: [number, number, number];
+}
+export interface StepAnalyticArc2D {
+  center: [number, number];
+  axisX: [number, number];
+  axisY: [number, number];
+  radiusX: number;
+  radiusY: number;
+  startAngleRad: number;
+  sweepRad: number;
 }
 
 /**
@@ -136,6 +145,20 @@ export interface WorldBBox {
  * as faithful.
  */
 export interface SolidPlacement {
+  /** Source MANIFOLD_SOLID_BREP/BREP_WITH_VOIDS entity number when this
+   * placement came from an explicit B-rep solid. Direct swept/revolved
+   * entities use their own source entity number. This preserves the bridge
+   * back to exact face topology for downstream evidence extractors. */
+  sourceEntityId?: number;
+  /** Exact canonical 2D profile for a planar extrude. Circular inner loops
+   * remain analytic even though the current feature IR stores one loop. */
+  flatPattern?: {
+    outline: Array<[number, number]>;
+    outerArcs: StepAnalyticArc2D[];
+    holes: Array<{ center: [number, number]; radius: number }>;
+    thickness: number;
+    area: number;
+  };
   /** True world-space AABB of this solid, or null when not recoverable. */
   worldBBox: WorldBBox | null;
 }
@@ -177,8 +200,8 @@ export function importStep(
   source: string,
   opts: ImportStepOptions = {},
 ): StepImportResult {
-  if (typeof source !== 'string' || source.length === 0) {
-    throw new StepImportError('empty_source: STEP source is empty');
+  if (typeof source !== "string" || source.length === 0) {
+    throw new StepImportError("empty_source: STEP source is empty");
   }
 
   const warnings: string[] = [];
@@ -195,18 +218,21 @@ export function importStep(
   // Slice out the DATA section. Without it there's nothing to parse.
   const dataIdx = healed.search(/\bDATA\s*;/i);
   if (dataIdx < 0) {
-    throw new StepImportError('no_data_section: missing DATA; section');
+    throw new StepImportError("no_data_section: missing DATA; section");
   }
-  const endIdx = healed.indexOf('END-ISO-10303-21');
-  const dataBlock = healed.slice(
-    dataIdx,
-    endIdx >= 0 ? endIdx : undefined,
-  );
+  const endIdx = healed.indexOf("END-ISO-10303-21");
+  const dataBlock = healed.slice(dataIdx, endIdx >= 0 ? endIdx : undefined);
 
   const entities = parseEntities(dataBlock);
   if (entities.size === 0) {
-    warnings.push('parse:no_entities');
-    return { tree: { nodes: [] }, warnings, unsupported, placements: [], hasUnexpandedInstances: false };
+    warnings.push("parse:no_entities");
+    return {
+      tree: { nodes: [] },
+      warnings,
+      unsupported,
+      placements: [],
+      hasUnexpandedInstances: false,
+    };
   }
 
   // MAPPED_ITEM instancing: a shared representation placed via a transform. The
@@ -215,7 +241,7 @@ export function importStep(
   // approximate. Record it so the caller never presents it as faithful.
   let mappedItemCount = 0;
   for (const ent of entities.values()) {
-    if (ent.name === 'MAPPED_ITEM') mappedItemCount++;
+    if (ent.name === "MAPPED_ITEM") mappedItemCount++;
   }
   const hasUnexpandedInstances = mappedItemCount > 0;
   if (hasUnexpandedInstances) {
@@ -235,13 +261,16 @@ export function importStep(
   // Find every SWEPT_DISK_SOLID — Phase 4 wishlist (recognised, not converted).
   const sweptDiskSolidIds: number[] = [];
   for (const [id, ent] of entities) {
-    if (ent.name === 'MANIFOLD_SOLID_BREP' || ent.name === 'BREP_WITH_VOIDS') {
+    if (ent.name === "MANIFOLD_SOLID_BREP" || ent.name === "BREP_WITH_VOIDS") {
       solidIds.push(id);
-    } else if (ent.name === 'REVOLVED_AREA_SOLID') {
+    } else if (ent.name === "REVOLVED_AREA_SOLID") {
       revolveSolidIds.push(id);
-    } else if (ent.name === 'SWEPT_AREA_SOLID' || ent.name === 'EXTRUDED_AREA_SOLID') {
+    } else if (
+      ent.name === "SWEPT_AREA_SOLID" ||
+      ent.name === "EXTRUDED_AREA_SOLID"
+    ) {
       sweptAreaSolidIds.push(id);
-    } else if (ent.name === 'SWEPT_DISK_SOLID') {
+    } else if (ent.name === "SWEPT_DISK_SOLID") {
       sweptDiskSolidIds.push(id);
     }
   }
@@ -251,7 +280,7 @@ export function importStep(
     sweptAreaSolidIds.length === 0 &&
     sweptDiskSolidIds.length === 0
   ) {
-    warnings.push('parse:no_manifold_solid_brep');
+    warnings.push("parse:no_manifold_solid_brep");
   }
   // Sort by id for deterministic node ordering across runs / serialisations.
   solidIds.sort((a, b) => a - b);
@@ -259,7 +288,7 @@ export function importStep(
   sweptAreaSolidIds.sort((a, b) => a - b);
   sweptDiskSolidIds.sort((a, b) => a - b);
 
-  const prefix = opts.namePrefix ?? 'imported';
+  const prefix = opts.namePrefix ?? "imported";
   const nodes: FeatureNode[] = [];
   // Per-node world placement, kept in lock-step with `nodes` (one push each).
   const placements: SolidPlacement[] = [];
@@ -271,26 +300,58 @@ export function importStep(
   for (const solidId of solidIds) {
     let feature: ExtrudeFeature | RevolveFeature | SweepFeature | null = null;
     let placement: WorldBBox | null = null;
+    let flatPattern: SolidPlacement["flatPattern"];
     let reason: string | null = null;
     try {
       const result = solidToFeature(solidId, entities);
-      if (result.kind === 'ok') {
+      if (result.kind === "ok") {
         feature = result.feature;
         placement = result.worldBBox ?? null;
+        const retainedHoles = result.holesUnrepresented;
+        if (
+          feature.kind === "extrude" &&
+          (!result.arcApprox || retainedHoles?.outerExact)
+        ) {
+          const holes = (retainedHoles?.circles ?? []).map((hole) => ({
+              center: [hole.x, hole.y] as [number, number],
+              radius: hole.r,
+            })),
+            outerArea =
+              retainedHoles?.exactOuterArea ??
+              Math.abs(polygonSignedArea(feature.loop)),
+            holeArea = holes.reduce(
+              (sum, hole) => sum + Math.PI * hole.radius * hole.radius,
+              0,
+            );
+          flatPattern = {
+            outline: feature.loop.map((point) => [point.x, point.y]),
+            outerArcs: retainedHoles?.outerArcs ?? [],
+            holes,
+            thickness: feature.depth,
+            area: outerArea - holeArea,
+          };
+        }
         if (result.holesUnrepresented) {
           const h = result.holesUnrepresented;
+          warnings.push(`#${solidId}:inner_loops_unrepresented(${h.count})`);
           warnings.push(
-            `#${solidId}: 판재 외곽·두께는 받았으나 **원통 홀 ${h.count}개(반경 `
-            + `${h.radiiMm.slice(0, 4).map((r) => r.toFixed(1)).join('/')}mm)를 형상에 반영하지 `
-            + `못했습니다** — 부피가 약 ${h.volumeOverPct}% 과대합니다(IR 프로파일이 단일 루프라 `
-            + '내부 루프를 담을 수 없습니다). 정확 복원이 아닙니다.',
+            `#${solidId}: 판재 외곽·두께는 받았으나 **원통 홀 ${h.count}개(반경 ` +
+              `${h.radiiMm
+                .slice(0, 4)
+                .map((r) => r.toFixed(1))
+                .join("/")}mm)를 형상에 반영하지 ` +
+              `못했습니다** — 부피가 약 ${h.volumeOverPct}% 과대합니다(IR 프로파일이 단일 루프라 ` +
+              "내부 루프를 담을 수 없습니다). 정확 복원이 아닙니다.",
           );
         }
         if (result.arcApprox) {
+          warnings.push(
+            `#${solidId}:outer_arcs_chord_approximated(${result.arcApprox.edges},${result.arcApprox.maxSagittaMm})`,
+          );
           // 「정확 복원」이라 말하지 않는다 — 근사 엣지 수와 오차를 수치로 고지한다.
           warnings.push(
-            `#${solidId}: 원호 엣지 ${result.arcApprox.edges}개를 현으로 근사했습니다 — `
-            + `최대 오차(새그) ${result.arcApprox.maxSagittaMm}mm. 정확 복원이 아닙니다.`,
+            `#${solidId}: 원호 엣지 ${result.arcApprox.edges}개를 현으로 근사했습니다 — ` +
+              `최대 오차(새그) ${result.arcApprox.maxSagittaMm}mm. 정확 복원이 아닙니다.`,
           );
         }
       } else {
@@ -300,11 +361,15 @@ export function importStep(
       reason = `parse_error: ${(err as Error).message}`;
     }
     if (!feature) {
-      unsupported.push(`#${solidId}: ${reason ?? 'unknown'}`);
+      unsupported.push(`#${solidId}: ${reason ?? "unknown"}`);
       continue;
     }
-    placements.push({ worldBBox: placement });
-    if (feature.kind === 'extrude') {
+    placements.push({
+      worldBBox: placement,
+      sourceEntityId: solidId,
+      ...(flatPattern ? { flatPattern } : {}),
+    });
+    if (feature.kind === "extrude") {
       nodes.push({
         id: `${prefix}_${extrudeIdx}`,
         name: `Imported Solid ${extrudeIdx + 1}`,
@@ -312,7 +377,7 @@ export function importStep(
         payload: feature,
       });
       extrudeIdx += 1;
-    } else if (feature.kind === 'revolve') {
+    } else if (feature.kind === "revolve") {
       // BREP-derived revolve (cylinder primitive).
       nodes.push({
         id: `${prefix}_revolve_${cylinderRevolveIdx}`,
@@ -340,7 +405,7 @@ export function importStep(
     let reason: string | null = null;
     try {
       const result = revolvedAreaSolidToRevolve(revolveId, entities);
-      if (result.kind === 'ok') {
+      if (result.kind === "ok") {
         feature = result.feature;
         placement = result.worldBBox ?? null;
       } else {
@@ -350,10 +415,10 @@ export function importStep(
       reason = `parse_error: ${(err as Error).message}`;
     }
     if (!feature) {
-      unsupported.push(`#${revolveId}: ${reason ?? 'unknown'}`);
+      unsupported.push(`#${revolveId}: ${reason ?? "unknown"}`);
       continue;
     }
-    placements.push({ worldBBox: placement });
+    placements.push({ worldBBox: placement, sourceEntityId: revolveId });
     nodes.push({
       id: `${prefix}_revolve_${cylinderRevolveIdx}`,
       name: `Imported Revolved Solid ${cylinderRevolveIdx + 1}`,
@@ -370,7 +435,7 @@ export function importStep(
     let reason: string | null = null;
     try {
       const result = sweptAreaSolidToSweep(sweptId, entities);
-      if (result.kind === 'ok') {
+      if (result.kind === "ok") {
         feature = result.feature;
         placement = result.worldBBox ?? null;
       } else {
@@ -380,10 +445,10 @@ export function importStep(
       reason = `parse_error: ${(err as Error).message}`;
     }
     if (!feature) {
-      unsupported.push(`#${sweptId}: ${reason ?? 'unknown'}`);
+      unsupported.push(`#${sweptId}: ${reason ?? "unknown"}`);
       continue;
     }
-    placements.push({ worldBBox: placement });
+    placements.push({ worldBBox: placement, sourceEntityId: sweptId });
     nodes.push({
       id: `${prefix}_sweep_${sweepIdx}`,
       name: `Imported Swept Solid ${sweepIdx + 1}`,
@@ -412,16 +477,25 @@ export function importStep(
   ) {
     let shellCount = 0;
     for (const ent of entities.values()) {
-      if (ent.name === 'CLOSED_SHELL' || ent.name === 'OPEN_SHELL') shellCount++;
+      if (ent.name === "CLOSED_SHELL" || ent.name === "OPEN_SHELL")
+        shellCount++;
     }
     if (shellCount === 0) {
-      warnings.push('parse:no_closed_shell');
+      warnings.push("parse:no_closed_shell");
     } else {
-      warnings.push(`parse:closed_shell_without_manifold_solid_brep (${shellCount} shell(s))`);
+      warnings.push(
+        `parse:closed_shell_without_manifold_solid_brep (${shellCount} shell(s))`,
+      );
     }
   }
 
-  return { tree: { nodes }, warnings, unsupported, placements, hasUnexpandedInstances };
+  return {
+    tree: { nodes },
+    warnings,
+    unsupported,
+    placements,
+    hasUnexpandedInstances,
+  };
 }
 
 // ─── errors ───────────────────────────────────────────────────────────────
@@ -429,7 +503,7 @@ export function importStep(
 export class StepImportError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'StepImportError';
+    this.name = "StepImportError";
   }
 }
 
@@ -437,14 +511,14 @@ export class StepImportError extends Error {
 
 /** Atomic argument value pulled out of an entity body. */
 export type StepArg =
-  | { kind: 'ref'; id: number }
-  | { kind: 'string'; value: string }
-  | { kind: 'number'; value: number }
-  | { kind: 'enum'; value: string }     // .T. / .F. / .UNSPECIFIED. / etc
-  | { kind: 'wildcard' }                // *
-  | { kind: 'null' }                    // $
-  | { kind: 'list'; items: StepArg[] }
-  | { kind: 'typed'; name: string; args: StepArg[] }; // e.g. LENGTH_MEASURE(...)
+  | { kind: "ref"; id: number }
+  | { kind: "string"; value: string }
+  | { kind: "number"; value: number }
+  | { kind: "enum"; value: string } // .T. / .F. / .UNSPECIFIED. / etc
+  | { kind: "wildcard" } // *
+  | { kind: "null" } // $
+  | { kind: "list"; items: StepArg[] }
+  | { kind: "typed"; name: string; args: StepArg[] }; // e.g. LENGTH_MEASURE(...)
 
 export interface StepEntity {
   /** ENTITY name in uppercase. Empty string for composite ("complex") types
@@ -471,12 +545,12 @@ export function parseEntities(dataBlock: string): Map<number, StepEntity> {
     // Skip whitespace + comments. STEP comments are /* ... */.
     while (i < n) {
       const ch = dataBlock[i]!;
-      if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
+      if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r") {
         i++;
         continue;
       }
-      if (ch === '/' && dataBlock[i + 1] === '*') {
-        const close = dataBlock.indexOf('*/', i + 2);
+      if (ch === "/" && dataBlock[i + 1] === "*") {
+        const close = dataBlock.indexOf("*/", i + 2);
         if (close < 0) {
           i = n;
           break;
@@ -487,7 +561,7 @@ export function parseEntities(dataBlock: string): Map<number, StepEntity> {
       break;
     }
     if (i >= n) break;
-    if (dataBlock[i] !== '#') {
+    if (dataBlock[i] !== "#") {
       // Skip a single non-# character (could be inside ENDSEC; or noise);
       // advancing one prevents infinite loops on malformed input.
       i++;
@@ -496,20 +570,28 @@ export function parseEntities(dataBlock: string): Map<number, StepEntity> {
     // #N = BODY ;
     const idStart = i + 1;
     let idEnd = idStart;
-    while (idEnd < n && dataBlock[idEnd]! >= '0' && dataBlock[idEnd]! <= '9') idEnd++;
+    while (idEnd < n && dataBlock[idEnd]! >= "0" && dataBlock[idEnd]! <= "9")
+      idEnd++;
     if (idEnd === idStart) {
       i++;
       continue;
     }
     const id = Number.parseInt(dataBlock.slice(idStart, idEnd), 10);
     let j = idEnd;
-    while (j < n && (dataBlock[j] === ' ' || dataBlock[j] === '\t')) j++;
-    if (dataBlock[j] !== '=') {
+    while (j < n && (dataBlock[j] === " " || dataBlock[j] === "\t")) j++;
+    if (dataBlock[j] !== "=") {
       i = j;
       continue;
     }
     j++;
-    while (j < n && (dataBlock[j] === ' ' || dataBlock[j] === '\t' || dataBlock[j] === '\n' || dataBlock[j] === '\r')) j++;
+    while (
+      j < n &&
+      (dataBlock[j] === " " ||
+        dataBlock[j] === "\t" ||
+        dataBlock[j] === "\n" ||
+        dataBlock[j] === "\r")
+    )
+      j++;
 
     // Read body up to a SEMICOLON that's outside strings/parens.
     const bodyStart = j;
@@ -531,9 +613,9 @@ export function parseEntities(dataBlock: string): Map<number, StepEntity> {
         j++;
         continue;
       }
-      if (ch === '(') depth++;
-      else if (ch === ')') depth--;
-      else if (ch === ';' && depth === 0) {
+      if (ch === "(") depth++;
+      else if (ch === ")") depth--;
+      else if (ch === ";" && depth === 0) {
         semiPos = j;
         break;
       }
@@ -563,11 +645,13 @@ function parseEntityBody(body: string, id: number): StepEntity {
   if (trimmed.length === 0) {
     throw new StepImportError(`malformed_entity: #${id} body is empty`);
   }
-  if (trimmed.startsWith('(')) {
+  if (trimmed.startsWith("(")) {
     // Composite (complex) type — the outer parens wrap a space-separated
     // list of sub-entities like `( LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(...) )`.
-    if (!trimmed.endsWith(')')) {
-      throw new StepImportError(`malformed_entity: #${id} composite body not paren-wrapped`);
+    if (!trimmed.endsWith(")")) {
+      throw new StepImportError(
+        `malformed_entity: #${id} composite body not paren-wrapped`,
+      );
     }
     const inner = trimmed.slice(1, -1).trim();
     const subEntities = parseSubEntities(inner, id);
@@ -575,18 +659,20 @@ function parseEntityBody(body: string, id: number): StepEntity {
     // wins (mirrors how OCCT names complex types in some readers). The
     // sub-entity list is also preserved for callers that need it.
     return {
-      name: '',
+      name: "",
       args: [],
       subEntities,
     };
   }
   // Regular form: NAME ( args ).
-  const openParen = trimmed.indexOf('(');
+  const openParen = trimmed.indexOf("(");
   if (openParen < 0) {
     throw new StepImportError(`malformed_entity: #${id} has no '('`);
   }
-  if (!trimmed.endsWith(')')) {
-    throw new StepImportError(`malformed_entity: #${id} body does not end with ')'`);
+  if (!trimmed.endsWith(")")) {
+    throw new StepImportError(
+      `malformed_entity: #${id} body does not end with ')'`,
+    );
   }
   const name = trimmed.slice(0, openParen).trim().toUpperCase();
   const argText = trimmed.slice(openParen + 1, trimmed.length - 1);
@@ -607,19 +693,30 @@ function parseSubEntities(
   const n = text.length;
   while (i < n) {
     // Skip whitespace.
-    while (i < n && (text[i] === ' ' || text[i] === '\t' || text[i] === '\n' || text[i] === '\r')) i++;
+    while (
+      i < n &&
+      (text[i] === " " ||
+        text[i] === "\t" ||
+        text[i] === "\n" ||
+        text[i] === "\r")
+    )
+      i++;
     if (i >= n) break;
     // Read sub-entity name (uppercase identifier).
     const nameStart = i;
-    while (i < n && text[i] !== '(' && text[i] !== ' ' && text[i] !== '\t') i++;
+    while (i < n && text[i] !== "(" && text[i] !== " " && text[i] !== "\t") i++;
     const subName = text.slice(nameStart, i).trim().toUpperCase();
     if (subName.length === 0) {
-      throw new StepImportError(`malformed_entity: #${id} composite sub-entity missing name`);
+      throw new StepImportError(
+        `malformed_entity: #${id} composite sub-entity missing name`,
+      );
     }
     // Whitespace between name and `(` is tolerated.
-    while (i < n && (text[i] === ' ' || text[i] === '\t')) i++;
-    if (text[i] !== '(') {
-      throw new StepImportError(`malformed_entity: #${id} composite sub-entity ${subName} missing '('`);
+    while (i < n && (text[i] === " " || text[i] === "\t")) i++;
+    if (text[i] !== "(") {
+      throw new StepImportError(
+        `malformed_entity: #${id} composite sub-entity ${subName} missing '('`,
+      );
     }
     // Find matching close paren.
     let depth = 0;
@@ -640,15 +737,17 @@ function parseSubEntities(
         j++;
         continue;
       }
-      if (ch === '(') depth++;
-      else if (ch === ')') {
+      if (ch === "(") depth++;
+      else if (ch === ")") {
         depth--;
         if (depth === 0) break;
       }
       j++;
     }
     if (j >= n) {
-      throw new StepImportError(`malformed_entity: #${id} composite sub-entity ${subName} unterminated`);
+      throw new StepImportError(
+        `malformed_entity: #${id} composite sub-entity ${subName} unterminated`,
+      );
     }
     const argText = text.slice(i + 1, j);
     subs.push({ name: subName, args: parseArgList(argText) });
@@ -668,7 +767,14 @@ export function parseArgList(text: string): StepArg[] {
   let i = 0;
   while (i < n) {
     // Skip whitespace.
-    while (i < n && (text[i] === ' ' || text[i] === '\t' || text[i] === '\n' || text[i] === '\r')) i++;
+    while (
+      i < n &&
+      (text[i] === " " ||
+        text[i] === "\t" ||
+        text[i] === "\n" ||
+        text[i] === "\r")
+    )
+      i++;
     if (i >= n) break;
     // Find next top-level comma.
     const start = i;
@@ -689,46 +795,46 @@ export function parseArgList(text: string): StepArg[] {
         i++;
         continue;
       }
-      if (ch === '(') depth++;
-      else if (ch === ')') depth--;
-      else if (ch === ',' && depth === 0) break;
+      if (ch === "(") depth++;
+      else if (ch === ")") depth--;
+      else if (ch === "," && depth === 0) break;
       i++;
     }
     const piece = text.slice(start, i).trim();
     if (piece.length > 0) {
       args.push(parseSingleArg(piece));
     }
-    if (i < n && text[i] === ',') i++;
+    if (i < n && text[i] === ",") i++;
   }
   return args;
 }
 
 function parseSingleArg(s: string): StepArg {
-  if (s === '*') return { kind: 'wildcard' };
-  if (s === '$') return { kind: 'null' };
-  if (s.startsWith('#')) {
+  if (s === "*") return { kind: "wildcard" };
+  if (s === "$") return { kind: "null" };
+  if (s.startsWith("#")) {
     const id = Number.parseInt(s.slice(1), 10);
     if (!Number.isFinite(id)) {
       throw new StepImportError(`malformed_arg: bad ref '${s}'`);
     }
-    return { kind: 'ref', id };
+    return { kind: "ref", id };
   }
   if (s.startsWith("'") && s.endsWith("'")) {
-    return { kind: 'string', value: s.slice(1, -1).replace(/''/g, "'") };
+    return { kind: "string", value: s.slice(1, -1).replace(/''/g, "'") };
   }
-  if (s.startsWith('.') && s.endsWith('.')) {
-    return { kind: 'enum', value: s.slice(1, -1) };
+  if (s.startsWith(".") && s.endsWith(".")) {
+    return { kind: "enum", value: s.slice(1, -1) };
   }
-  if (s.startsWith('(') && s.endsWith(')')) {
-    return { kind: 'list', items: parseArgList(s.slice(1, -1)) };
+  if (s.startsWith("(") && s.endsWith(")")) {
+    return { kind: "list", items: parseArgList(s.slice(1, -1)) };
   }
   // Typed value: NAME(...).
-  const openParen = s.indexOf('(');
-  if (openParen > 0 && s.endsWith(')')) {
+  const openParen = s.indexOf("(");
+  if (openParen > 0 && s.endsWith(")")) {
     const name = s.slice(0, openParen).trim().toUpperCase();
     if (/^[A-Z_][A-Z0-9_]*$/i.test(name)) {
       return {
-        kind: 'typed',
+        kind: "typed",
         name,
         args: parseArgList(s.slice(openParen + 1, -1)),
       };
@@ -740,35 +846,47 @@ function parseSingleArg(s: string): StepArg {
   // single trailing dot when the body already contains one so we round-
   // trip our own output cleanly.
   let numText = s;
-  if (numText.endsWith('.') && (numText.slice(0, -1).includes('.') ||
-      numText.toLowerCase().includes('e'))) {
+  if (
+    numText.endsWith(".") &&
+    (numText.slice(0, -1).includes(".") || numText.toLowerCase().includes("e"))
+  ) {
     numText = numText.slice(0, -1);
   }
   const num = Number(numText);
   if (Number.isFinite(num)) {
-    return { kind: 'number', value: num };
+    return { kind: "number", value: num };
   }
   // Unrecognised — fall back to a string-like enum to avoid throwing on
   // exotic syntactic features we don't model (binary literals etc).
-  return { kind: 'enum', value: s };
+  return { kind: "enum", value: s };
 }
 
 // ─── solid → feature classification ───────────────────────────────────────
 
 type SolidParseResult =
   | {
-    kind: 'ok'; feature: ExtrudeFeature | RevolveFeature | SweepFeature; worldBBox?: WorldBBox | null;
-    /** 원호를 현으로 근사한 엣지 수·최대 새그(mm) — **있으면 이 솔리드는 근사다** (260801). */
-    arcApprox?: { edges: number; maxSagittaMm: number };
-    /**
-     * 원통 홀을 **형상에 반영하지 못한 채** 외곽만 받은 경우 (260801c).
-     * IR 의 프로파일이 단일 루프라 내부 루프(홀)를 담을 수 없고, 소비부는 노드마다
-     * 독립 바디로 배치해 노드 간 부울을 하지 않는다 — 홀을 별 노드로 내면 「구멍」이
-     * 아니라 **별개 원통 바디**가 된다. 그래서 외곽만 받고 **손실을 수치로 고지**한다.
-     */
-    holesUnrepresented?: { count: number; radiiMm: number[]; volumeOverPct: number };
-  }
-  | { kind: 'unsupported'; reason: string };
+      kind: "ok";
+      feature: ExtrudeFeature | RevolveFeature | SweepFeature;
+      worldBBox?: WorldBBox | null;
+      /** 원호를 현으로 근사한 엣지 수·최대 새그(mm) — **있으면 이 솔리드는 근사다** (260801). */
+      arcApprox?: { edges: number; maxSagittaMm: number };
+      /**
+       * 원통 홀을 **형상에 반영하지 못한 채** 외곽만 받은 경우 (260801c).
+       * IR 의 프로파일이 단일 루프라 내부 루프(홀)를 담을 수 없고, 소비부는 노드마다
+       * 독립 바디로 배치해 노드 간 부울을 하지 않는다 — 홀을 별 노드로 내면 「구멍」이
+       * 아니라 **별개 원통 바디**가 된다. 그래서 외곽만 받고 **손실을 수치로 고지**한다.
+       */
+      holesUnrepresented?: {
+        count: number;
+        radiiMm: number[];
+        volumeOverPct: number;
+        circles: Array<{ x: number; y: number; r: number }>;
+        outerArcs: StepAnalyticArc2D[];
+        exactOuterArea: number;
+        outerExact: boolean;
+      };
+    }
+  | { kind: "unsupported"; reason: string };
 
 /**
  * Classify a MANIFOLD_SOLID_BREP and convert to either an ExtrudeFeature
@@ -782,28 +900,40 @@ function solidToFeature(
 ): SolidParseResult {
   const solid = entities.get(solidId);
   if (!solid) {
-    return { kind: 'unsupported', reason: `solid #${solidId} not found in entity table` };
+    return {
+      kind: "unsupported",
+      reason: `solid #${solidId} not found in entity table`,
+    };
   }
   // MANIFOLD_SOLID_BREP('', #shell) — second arg is the CLOSED_SHELL ref.
   const shellRef = solid.args[1];
-  if (!shellRef || shellRef.kind !== 'ref') {
-    return { kind: 'unsupported', reason: 'MANIFOLD_SOLID_BREP missing shell ref' };
+  if (!shellRef || shellRef.kind !== "ref") {
+    return {
+      kind: "unsupported",
+      reason: "MANIFOLD_SOLID_BREP missing shell ref",
+    };
   }
   const shell = entities.get(shellRef.id);
-  if (!shell || (shell.name !== 'CLOSED_SHELL' && shell.name !== 'OPEN_SHELL')) {
-    return { kind: 'unsupported', reason: 'shell ref does not point to CLOSED_SHELL' };
+  if (
+    !shell ||
+    (shell.name !== "CLOSED_SHELL" && shell.name !== "OPEN_SHELL")
+  ) {
+    return {
+      kind: "unsupported",
+      reason: "shell ref does not point to CLOSED_SHELL",
+    };
   }
   // CLOSED_SHELL('', (#face, #face, ...))
   const facesArg = shell.args[1];
-  if (!facesArg || facesArg.kind !== 'list') {
-    return { kind: 'unsupported', reason: 'CLOSED_SHELL missing face list' };
+  if (!facesArg || facesArg.kind !== "list") {
+    return { kind: "unsupported", reason: "CLOSED_SHELL missing face list" };
   }
   const faceRefs: number[] = [];
   for (const item of facesArg.items) {
-    if (item.kind === 'ref') faceRefs.push(item.id);
+    if (item.kind === "ref") faceRefs.push(item.id);
   }
   if (faceRefs.length === 0) {
-    return { kind: 'unsupported', reason: 'CLOSED_SHELL has zero faces' };
+    return { kind: "unsupported", reason: "CLOSED_SHELL has zero faces" };
   }
 
   // Decode every face. Surface type is captured so the classifier can route
@@ -814,20 +944,20 @@ function solidToFeature(
   const otherSurfaces: string[] = [];
   for (const fr of faceRefs) {
     const decoded = decodeFace(fr, entities);
-    if (decoded.kind === 'plane') {
+    if (decoded.kind === "plane") {
       planeFaces.push(decoded.face);
-    } else if (decoded.kind === 'cylinder') {
+    } else if (decoded.kind === "cylinder") {
       cylinderFaces.push(decoded.face);
-    } else if (decoded.kind === 'linear_extrusion') {
+    } else if (decoded.kind === "linear_extrusion") {
       extrusionFaces.push(decoded.face);
-    } else if (decoded.kind === 'other_surface') {
+    } else if (decoded.kind === "other_surface") {
       // Record but keep going — a single BSPLINE among 7 faces still aborts,
       // but we want the reason to name the surface kind exactly.
       otherSurfaces.push(decoded.surfaceName);
     } else {
       // Hard parse error (missing entity / bad loop) — abort whole solid.
       return {
-        kind: 'unsupported',
+        kind: "unsupported",
         reason: `face #${fr}: ${decoded.reason}`,
       };
     }
@@ -840,8 +970,8 @@ function solidToFeature(
     // debugging mixed-geometry STEP files).
     const uniq = Array.from(new Set(otherSurfaces));
     return {
-      kind: 'unsupported',
-      reason: `${faceRefs.length} faces include unsupported surface(s): ${uniq.join(', ')}`,
+      kind: "unsupported",
+      reason: `${faceRefs.length} faces include unsupported surface(s): ${uniq.join(", ")}`,
     };
   }
 
@@ -853,10 +983,19 @@ function solidToFeature(
    * 근사한 형상을 정확한 것으로 읽는 것이 이 세션에서 가장 여러 번 막은 오류다.
    */
   const arcEdgeTotal = planeFaces.reduce((n, f) => n + (f.arcEdges ?? 0), 0);
-  const arcSagMax = planeFaces.reduce((m, f) => Math.max(m, f.arcSagittaMm ?? 0), 0);
-  const arcApprox = arcEdgeTotal > 0
-    ? { arcApprox: { edges: arcEdgeTotal, maxSagittaMm: +arcSagMax.toFixed(4) } }
-    : {};
+  const arcSagMax = planeFaces.reduce(
+    (m, f) => Math.max(m, f.arcSagittaMm ?? 0),
+    0,
+  );
+  const arcApprox =
+    arcEdgeTotal > 0
+      ? {
+          arcApprox: {
+            edges: arcEdgeTotal,
+            maxSagittaMm: +arcSagMax.toFixed(4),
+          },
+        }
+      : {};
 
   // ─── try box detection first (6 planar axis-aligned faces) ──────────────
   if (
@@ -868,9 +1007,9 @@ function solidToFeature(
     if (box) {
       const { x0, y0, x1, y1, z0, z1 } = box;
       return {
-        kind: 'ok',
+        kind: "ok",
         feature: {
-          kind: 'extrude',
+          kind: "extrude",
           loop: [
             { x: x0, y: y0 },
             { x: x1, y: y0 },
@@ -878,8 +1017,8 @@ function solidToFeature(
             { x: x0, y: y1 },
           ],
           depth: z1 - z0,
-          direction: 'one_sided',
-          mode: 'add',
+          direction: "one_sided",
+          mode: "add",
         },
         worldBBox: solidWorldBBox,
         ...arcApprox,
@@ -895,10 +1034,15 @@ function solidToFeature(
   ) {
     const cyl = cylinderFaces[0]!;
     const result = cylinderToRevolve(cyl, planeFaces);
-    if (result.kind === 'ok') {
-      return { kind: 'ok', feature: result.feature, worldBBox: solidWorldBBox, ...arcApprox };
+    if (result.kind === "ok") {
+      return {
+        kind: "ok",
+        feature: result.feature,
+        worldBBox: solidWorldBBox,
+        ...arcApprox,
+      };
     }
-    return { kind: 'unsupported', reason: `cylinder: ${result.reason}` };
+    return { kind: "unsupported", reason: `cylinder: ${result.reason}` };
   }
 
   if (cylinderFaces.length > 0) {
@@ -917,20 +1061,27 @@ function solidToFeature(
      * → 외곽·두께는 **정확히** 받고, 홀은 **개수·반경·부피 과대율을 수치로 고지**한다.
      *   「정확 복원」이라 말하지 않는다(`stepFileBounds` 전례).
      */
-    const withHoles = prismWithCylindricalHoles(planeFaces, cylinderFaces, entities);
+    const withHoles = prismWithCylindricalHoles(
+      planeFaces,
+      cylinderFaces,
+      entities,
+    );
     if (withHoles) {
       return {
-        kind: 'ok', feature: withHoles.feature, worldBBox: solidWorldBBox,
-        ...arcApprox, holesUnrepresented: withHoles.holes,
+        kind: "ok",
+        feature: withHoles.feature,
+        worldBBox: solidWorldBBox,
+        ...arcApprox,
+        holesUnrepresented: withHoles.holes,
       };
     }
     // 판+홀 패턴이 아니면 종전대로 거부한다 — 추측해서 받지 않는다.
     return {
-      kind: 'unsupported',
+      kind: "unsupported",
       reason:
         `${faceRefs.length} faces (${cylinderFaces.length} CYLINDRICAL_SURFACE, ` +
-        `${planeFaces.length} PLANE) — 1 cylinder + 2 caps 도 아니고 「판재+원통 홀」 패턴도 아니다`
-        + (prismHoleWhy.length ? ` · ${prismHoleWhy.join(' / ')}` : ''),
+        `${planeFaces.length} PLANE) — 1 cylinder + 2 caps 도 아니고 「판재+원통 홀」 패턴도 아니다` +
+        (prismHoleWhy.length ? ` · ${prismHoleWhy.join(" / ")}` : ""),
     };
   }
 
@@ -943,10 +1094,18 @@ function solidToFeature(
   ) {
     const ext = extrusionFaces[0]!;
     const result = linearExtrusionToSweep(ext, planeFaces);
-    if (result.kind === 'ok') {
-      return { kind: 'ok', feature: result.feature, worldBBox: solidWorldBBox, ...arcApprox };
+    if (result.kind === "ok") {
+      return {
+        kind: "ok",
+        feature: result.feature,
+        worldBBox: solidWorldBBox,
+        ...arcApprox,
+      };
     }
-    return { kind: 'unsupported', reason: `linear extrusion: ${result.reason}` };
+    return {
+      kind: "unsupported",
+      reason: `linear extrusion: ${result.reason}`,
+    };
   }
 
   if (extrusionFaces.length > 0) {
@@ -954,7 +1113,7 @@ function solidToFeature(
     // pattern (multiple extrusion surfaces, mixed extrusion + cylinder, etc.).
     // Phase 4 will handle these via OCCT round-trip.
     return {
-      kind: 'unsupported',
+      kind: "unsupported",
       reason:
         `${faceRefs.length} faces (${extrusionFaces.length} SURFACE_OF_LINEAR_EXTRUSION, ` +
         `${planeFaces.length} PLANE) — extrusion detector wants exactly 1 extrusion + 2 caps`,
@@ -974,7 +1133,7 @@ function solidToFeature(
    * 되돌린다**. 회전을 붙이지 않고 내보내면 형상은 맞고 자리는 틀리는, 더 나쁜 결과가 된다.
    */
   const AXIS_REMAP: Array<{
-    axis: 'x' | 'y' | 'z';
+    axis: "x" | "y" | "z";
     /** 이 축이 캡 법선인가 */
     isCap: (n: [number, number, number]) => boolean;
     /**
@@ -989,15 +1148,35 @@ function solidToFeature(
     /** 로컬에서 그린 형상을 월드로 되돌리는 회전(OpenSCAD X→Y→Z 순) */
     rotateDeg: [number, number, number] | null;
   }> = [
-    { axis: 'z', isCap: (n) => isZAxisNormal(n), isSide: (n) => Math.abs(n[2]) <= AXIS_EPS, toLocal: (v) => v, rotateDeg: null },
+    {
+      axis: "z",
+      isCap: (n) => isZAxisNormal(n),
+      isSide: (n) => Math.abs(n[2]) <= AXIS_EPS,
+      toLocal: (v) => v,
+      rotateDeg: null,
+    },
     // 캡이 ±X → 로컬 Z = 월드 X. (y,z,x) 순환이 곧 rotate([90,0,90]) 의 역이다.
-    { axis: 'x', isCap: (n) => Math.abs(Math.abs(n[0]) - 1) <= AXIS_EPS && Math.abs(n[1]) <= AXIS_EPS && Math.abs(n[2]) <= AXIS_EPS,
+    {
+      axis: "x",
+      isCap: (n) =>
+        Math.abs(Math.abs(n[0]) - 1) <= AXIS_EPS &&
+        Math.abs(n[1]) <= AXIS_EPS &&
+        Math.abs(n[2]) <= AXIS_EPS,
       isSide: (n) => Math.abs(n[0]) <= AXIS_EPS,
-      toLocal: (v) => [v[1], v[2], v[0]], rotateDeg: [90, 0, 90] },
+      toLocal: (v) => [v[1], v[2], v[0]],
+      rotateDeg: [90, 0, 90],
+    },
     // 캡이 ±Y → 로컬 Z = 월드 Y.
-    { axis: 'y', isCap: (n) => Math.abs(Math.abs(n[1]) - 1) <= AXIS_EPS && Math.abs(n[0]) <= AXIS_EPS && Math.abs(n[2]) <= AXIS_EPS,
+    {
+      axis: "y",
+      isCap: (n) =>
+        Math.abs(Math.abs(n[1]) - 1) <= AXIS_EPS &&
+        Math.abs(n[0]) <= AXIS_EPS &&
+        Math.abs(n[2]) <= AXIS_EPS,
       isSide: (n) => Math.abs(n[1]) <= AXIS_EPS,
-      toLocal: (v) => [v[2], v[0], v[1]], rotateDeg: [90, 0, 0] },
+      toLocal: (v) => [v[2], v[0], v[1]],
+      rotateDeg: [90, 0, 0],
+    },
   ];
 
   let lastPrismReason: string | null = null;
@@ -1008,27 +1187,46 @@ function solidToFeature(
     for (const f of planeFaces) {
       if (cand.isCap(f.normal)) caps.push(f);
       else if (cand.isSide(f.normal)) sides.push(f);
-      else { bad = true; break; }
+      else {
+        bad = true;
+        break;
+      }
     }
     // ⚠ 이 후보 축에서 분류가 안 된다고 **바로 실패로 단정하지 않는다** — 다른 축에서는
     //   맞을 수 있다. 처음 여기서 즉시 return 하는 바람에 X·Y 후보가 시도조차 되지 않았다.
     if (bad) continue;
-    if (!(caps.length === 2 && sides.length === planeFaces.length - 2 && sides.length >= 3)) continue;
+    if (!(
+      caps.length === 2 &&
+      sides.length === planeFaces.length - 2 &&
+      sides.length >= 3
+    ))
+      continue;
     // 재매핑된 좌표로 기존 검출기를 그대로 쓴다 — 로직을 복제하지 않는다(복제하면 갈린다).
     const remap = (f: PlaneFace): PlaneFace => ({
       normal: cand.toLocal(f.normal),
       loop: f.loop.map((v) => cand.toLocal(v)),
+      ...(f.analyticArcs
+        ? {
+            analyticArcs: f.analyticArcs.map((arc) => ({
+              ...arc,
+              center: cand.toLocal(arc.center),
+              axisX: cand.toLocal(arc.axisX),
+              axisY: cand.toLocal(arc.axisY),
+              polyline: arc.polyline.map((point) => cand.toLocal(point)),
+            })),
+          }
+        : {}),
     });
     const prism = capsToPrism(caps.map(remap), sides.map(remap));
-    if (prism.kind === 'ok') {
+    if (prism.kind === "ok") {
       return {
-        kind: 'ok',
+        kind: "ok",
         feature: {
-          kind: 'extrude',
+          kind: "extrude",
           loop: prism.loop,
           depth: prism.depth,
-          direction: 'one_sided',
-          mode: 'add',
+          direction: "one_sided",
+          mode: "add",
           ...(cand.rotateDeg ? { at: { rotateDeg: cand.rotateDeg } } : {}),
         },
         worldBBox: solidWorldBBox,
@@ -1037,13 +1235,14 @@ function solidToFeature(
     }
     lastPrismReason = `${cand.axis}축 프리즘: ${prism.reason}`;
   }
-  if (lastPrismReason) return { kind: 'unsupported', reason: `prism: ${lastPrismReason}` };
+  if (lastPrismReason)
+    return { kind: "unsupported", reason: `prism: ${lastPrismReason}` };
 
   return {
-    kind: 'unsupported',
+    kind: "unsupported",
     reason:
-      `${planeFaces.length} planar faces — 세 주축(X·Y·Z) 어느 쪽으로도 「캡 2 + 측면 N(N≥3)」 `
-      + '패턴이 아니다(박스·다각프리즘 모두 불일치)',
+      `${planeFaces.length} planar faces — 세 주축(X·Y·Z) 어느 쪽으로도 「캡 2 + 측면 N(N≥3)」 ` +
+      "패턴이 아니다(박스·다각프리즘 모두 불일치)",
   };
 }
 
@@ -1058,6 +1257,17 @@ interface PlaneFace {
   arcEdges?: number;
   /** 근사 최대 새그(mm) = R(1−cos(Δθ/2)). 「정확」이라 말하지 않기 위한 수치. */
   arcSagittaMm?: number;
+  splineEdges?: number;
+  analyticArcs?: Array<{
+    center: [number, number, number];
+    axisX: [number, number, number];
+    axisY: [number, number, number];
+    radiusX: number;
+    radiusY: number;
+    startAngleRad: number;
+    sweepRad: number;
+    polyline: Array<[number, number, number]>;
+  }>;
 }
 
 interface CylinderFace {
@@ -1081,20 +1291,20 @@ interface LinearExtrusionFace {
 
 type FaceDecodeResult =
   /** Planar face with outer-bound loop decoded. */
-  | { kind: 'plane'; face: PlaneFace }
+  | { kind: "plane"; face: PlaneFace }
   /** CYLINDRICAL_SURFACE face — outer-bound loop intentionally NOT decoded
    *  (would contain CIRCLE edges, which the linear-edge path rejects). */
-  | { kind: 'cylinder'; face: CylinderFace }
+  | { kind: "cylinder"; face: CylinderFace }
   /** SURFACE_OF_LINEAR_EXTRUSION face — outer-bound loop intentionally NOT
    *  decoded; cap-plane geometry is used to reconstruct the rectangle. */
-  | { kind: 'linear_extrusion'; face: LinearExtrusionFace }
+  | { kind: "linear_extrusion"; face: LinearExtrusionFace }
   /** Non-planar, non-cylinder, non-extrusion surface we recognise but can't
    *  import yet (BSPLINE / NURBS / CONICAL / SPHERICAL / TOROIDAL /
    *  SURFACE_OF_REVOLUTION). */
-  | { kind: 'other_surface'; surfaceName: string }
+  | { kind: "other_surface"; surfaceName: string }
   /** Hard parse failure (missing entity, malformed loop, non-linear edge on
    *  a PLANE face) — aborts the entire solid with a specific reason. */
-  | { kind: 'unsupported'; reason: string };
+  | { kind: "unsupported"; reason: string };
 
 /**
  * Walk one ADVANCED_FACE and return one of:
@@ -1110,35 +1320,52 @@ function decodeFace(
   entities: Map<number, StepEntity>,
 ): FaceDecodeResult {
   const face = entities.get(faceId);
-  if (!face || face.name !== 'ADVANCED_FACE') {
-    return { kind: 'unsupported', reason: `not an ADVANCED_FACE` };
+  if (!face || face.name !== "ADVANCED_FACE") {
+    return { kind: "unsupported", reason: `not an ADVANCED_FACE` };
   }
   // ADVANCED_FACE('', (#bound, ...), #surface, .T.)
   const boundsArg = face.args[1];
   const surfaceArg = face.args[2];
-  if (!boundsArg || boundsArg.kind !== 'list' || !surfaceArg || surfaceArg.kind !== 'ref') {
-    return { kind: 'unsupported', reason: `ADVANCED_FACE missing bounds/surface` };
+  if (
+    !boundsArg ||
+    boundsArg.kind !== "list" ||
+    !surfaceArg ||
+    surfaceArg.kind !== "ref"
+  ) {
+    return {
+      kind: "unsupported",
+      reason: `ADVANCED_FACE missing bounds/surface`,
+    };
   }
   const surface = entities.get(surfaceArg.id);
-  const surfaceName = surface?.name ?? 'unknown';
+  const surfaceName = surface?.name ?? "unknown";
 
   // ─── CYLINDRICAL_SURFACE branch ─────────────────────────────────────────
   // CYLINDRICAL_SURFACE('', #axis2_placement_3d, radius)
-  if (surface && surface.name === 'CYLINDRICAL_SURFACE') {
+  if (surface && surface.name === "CYLINDRICAL_SURFACE") {
     const axisRef = surface.args[1];
     const radiusArg = surface.args[2];
-    if (!axisRef || axisRef.kind !== 'ref') {
-      return { kind: 'unsupported', reason: `CYLINDRICAL_SURFACE missing axis ref` };
+    if (!axisRef || axisRef.kind !== "ref") {
+      return {
+        kind: "unsupported",
+        reason: `CYLINDRICAL_SURFACE missing axis ref`,
+      };
     }
-    if (!radiusArg || radiusArg.kind !== 'number' || !(radiusArg.value > 0)) {
-      return { kind: 'unsupported', reason: `CYLINDRICAL_SURFACE has non-positive radius` };
+    if (!radiusArg || radiusArg.kind !== "number" || !(radiusArg.value > 0)) {
+      return {
+        kind: "unsupported",
+        reason: `CYLINDRICAL_SURFACE has non-positive radius`,
+      };
     }
     const axisPlacement = readAxisPlacement(axisRef.id, entities);
     if (!axisPlacement) {
-      return { kind: 'unsupported', reason: `CYLINDRICAL_SURFACE bad AXIS2_PLACEMENT_3D` };
+      return {
+        kind: "unsupported",
+        reason: `CYLINDRICAL_SURFACE bad AXIS2_PLACEMENT_3D`,
+      };
     }
     return {
-      kind: 'cylinder',
+      kind: "cylinder",
       face: {
         axisDir: axisPlacement.zDir,
         axisOrigin: axisPlacement.origin,
@@ -1152,17 +1379,23 @@ function decodeFace(
   // where #extrusion_axis_vector is typically VECTOR('', #direction, magnitude).
   // We only record the direction + magnitude; the cap planes provide the
   // actual sweep length.
-  if (surface && surface.name === 'SURFACE_OF_LINEAR_EXTRUSION') {
+  if (surface && surface.name === "SURFACE_OF_LINEAR_EXTRUSION") {
     const vecRef = surface.args[2];
-    if (!vecRef || vecRef.kind !== 'ref') {
-      return { kind: 'unsupported', reason: `SURFACE_OF_LINEAR_EXTRUSION missing vector ref` };
+    if (!vecRef || vecRef.kind !== "ref") {
+      return {
+        kind: "unsupported",
+        reason: `SURFACE_OF_LINEAR_EXTRUSION missing vector ref`,
+      };
     }
     const decoded = readExtrusionVector(vecRef.id, entities);
     if (!decoded) {
-      return { kind: 'unsupported', reason: `SURFACE_OF_LINEAR_EXTRUSION bad VECTOR/DIRECTION` };
+      return {
+        kind: "unsupported",
+        reason: `SURFACE_OF_LINEAR_EXTRUSION bad VECTOR/DIRECTION`,
+      };
     }
     return {
-      kind: 'linear_extrusion',
+      kind: "linear_extrusion",
       face: { extrusionDir: decoded.direction, magnitude: decoded.magnitude },
     };
   }
@@ -1171,29 +1404,42 @@ function decodeFace(
   // Surface kinds that Phase 2/3 explicitly recognises but cannot import.
   // Phase 4 will add BSPLINE / NURBS / cone / sphere / torus /
   // surface-of-revolution with a non-trivial profile.
-  if (surface && surface.name !== 'PLANE') {
-    return { kind: 'other_surface', surfaceName };
+  if (surface && surface.name !== "PLANE") {
+    return { kind: "other_surface", surfaceName };
   }
 
-  if (!surface || surface.name !== 'PLANE') {
-    return { kind: 'unsupported', reason: `surface is ${surfaceName} (unknown)` };
+  if (!surface || surface.name !== "PLANE") {
+    return {
+      kind: "unsupported",
+      reason: `surface is ${surfaceName} (unknown)`,
+    };
   }
   // PLANE('', #axis2placement)
   const axisRef = surface.args[1];
-  if (!axisRef || axisRef.kind !== 'ref') {
-    return { kind: 'unsupported', reason: `PLANE missing AXIS2_PLACEMENT_3D ref` };
+  if (!axisRef || axisRef.kind !== "ref") {
+    return {
+      kind: "unsupported",
+      reason: `PLANE missing AXIS2_PLACEMENT_3D ref`,
+    };
   }
   const axis = entities.get(axisRef.id);
-  if (!axis || axis.name !== 'AXIS2_PLACEMENT_3D') {
-    return { kind: 'unsupported', reason: `PLANE axis is not AXIS2_PLACEMENT_3D` };
+  if (!axis || axis.name !== "AXIS2_PLACEMENT_3D") {
+    return {
+      kind: "unsupported",
+      reason: `PLANE axis is not AXIS2_PLACEMENT_3D`,
+    };
   }
   // AXIS2_PLACEMENT_3D('', #point, #zdir, #refdir)
   const normalRef = axis.args[2];
-  if (!normalRef || normalRef.kind !== 'ref') {
-    return { kind: 'unsupported', reason: `AXIS2_PLACEMENT_3D missing normal direction` };
+  if (!normalRef || normalRef.kind !== "ref") {
+    return {
+      kind: "unsupported",
+      reason: `AXIS2_PLACEMENT_3D missing normal direction`,
+    };
   }
   const rawNormal = readDirection(normalRef.id, entities);
-  if (!rawNormal) return { kind: 'unsupported', reason: `bad DIRECTION entity` };
+  if (!rawNormal)
+    return { kind: "unsupported", reason: `bad DIRECTION entity` };
   /**
    * ⚠ 260801g — `ADVANCED_FACE(..., .F.)` 의 **sense 플래그를 읽지 않고 있었다.**
    *   플래그가 `.F.` 면 면 법선은 곡면 법선의 **반대**다. 무시하면 판재의 위·아래 캡이
@@ -1203,7 +1449,7 @@ function decodeFace(
    *   루프 순서도 면 법선 기준 CCW 이므로, 법선을 바로잡으면 감김도 함께 맞는다.
    */
   const senseArg = face.args[3];
-  const senseFalse = senseArg?.kind === 'enum' && senseArg.value === 'F';
+  const senseFalse = senseArg?.kind === "enum" && senseArg.value === "F";
   const normal: [number, number, number] = senseFalse
     ? [-rawNormal[0], -rawNormal[1], -rawNormal[2]]
     : rawNormal;
@@ -1212,11 +1458,14 @@ function decodeFace(
   let outerBoundRef: number | null = null;
   const plainBounds: number[] = [];
   for (const item of boundsArg.items) {
-    if (item.kind !== 'ref') continue;
+    if (item.kind !== "ref") continue;
     const b = entities.get(item.id);
     if (!b) continue;
-    if (b.name === 'FACE_OUTER_BOUND') { outerBoundRef = item.id; break; }
-    if (b.name === 'FACE_BOUND') plainBounds.push(item.id);
+    if (b.name === "FACE_OUTER_BOUND") {
+      outerBoundRef = item.id;
+      break;
+    }
+    if (b.name === "FACE_BOUND") plainBounds.push(item.id);
   }
   if (outerBoundRef === null && plainBounds.length === 1) {
     /**
@@ -1230,26 +1479,30 @@ function decodeFace(
   }
   if (outerBoundRef === null) {
     return {
-      kind: 'unsupported',
-      reason: plainBounds.length > 1
-        ? `FACE_OUTER_BOUND 없음 · FACE_BOUND ${plainBounds.length}개 — 어느 것이 외곽인지 고를 수 없다(추정하지 않는다)`
-        : 'no FACE_OUTER_BOUND',
+      kind: "unsupported",
+      reason:
+        plainBounds.length > 1
+          ? `FACE_OUTER_BOUND 없음 · FACE_BOUND ${plainBounds.length}개 — 어느 것이 외곽인지 고를 수 없다(추정하지 않는다)`
+          : "no FACE_OUTER_BOUND",
     };
   }
   const bound = entities.get(outerBoundRef)!;
   // FACE_OUTER_BOUND('', #loop, .T.)
   const loopRef = bound.args[1];
-  if (!loopRef || loopRef.kind !== 'ref') {
-    return { kind: 'unsupported', reason: `FACE_OUTER_BOUND missing loop ref` };
+  if (!loopRef || loopRef.kind !== "ref") {
+    return { kind: "unsupported", reason: `FACE_OUTER_BOUND missing loop ref` };
   }
   const loop = entities.get(loopRef.id);
-  if (!loop || loop.name !== 'EDGE_LOOP') {
-    return { kind: 'unsupported', reason: `loop is ${loop?.name ?? 'unknown'}, expected EDGE_LOOP` };
+  if (!loop || loop.name !== "EDGE_LOOP") {
+    return {
+      kind: "unsupported",
+      reason: `loop is ${loop?.name ?? "unknown"}, expected EDGE_LOOP`,
+    };
   }
   // EDGE_LOOP('', (#oe, #oe, ...))
   const oeArg = loop.args[1];
-  if (!oeArg || oeArg.kind !== 'list') {
-    return { kind: 'unsupported', reason: `EDGE_LOOP missing edge list` };
+  if (!oeArg || oeArg.kind !== "list") {
+    return { kind: "unsupported", reason: `EDGE_LOOP missing edge list` };
   }
 
   // Walk the ORIENTED_EDGE chain. Each ORIENTED_EDGE
@@ -1264,36 +1517,56 @@ function decodeFace(
   // 원호 근사 누적 — 이 면에서 근사한 엣지 수와 최대 새그(mm).
   let arcSagittaMm = 0;
   let arcEdges = 0;
+  let splineEdges = 0;
+  const analyticArcs: NonNullable<PlaneFace["analyticArcs"]> = [];
   for (const item of oeArg.items) {
-    if (item.kind !== 'ref') {
-      return { kind: 'unsupported', reason: `ORIENTED_EDGE non-ref in loop list` };
+    if (item.kind !== "ref") {
+      return {
+        kind: "unsupported",
+        reason: `ORIENTED_EDGE non-ref in loop list`,
+      };
     }
     const oe = entities.get(item.id);
-    if (!oe || oe.name !== 'ORIENTED_EDGE') {
-      return { kind: 'unsupported', reason: `ORIENTED_EDGE missing` };
+    if (!oe || oe.name !== "ORIENTED_EDGE") {
+      return { kind: "unsupported", reason: `ORIENTED_EDGE missing` };
     }
     const ecRef = oe.args[3];
     const oeFlag = oe.args[4];
-    if (!ecRef || ecRef.kind !== 'ref') {
-      return { kind: 'unsupported', reason: `ORIENTED_EDGE missing EDGE_CURVE ref` };
+    if (!ecRef || ecRef.kind !== "ref") {
+      return {
+        kind: "unsupported",
+        reason: `ORIENTED_EDGE missing EDGE_CURVE ref`,
+      };
     }
-    const forwardOe = oeFlag?.kind === 'enum' ? oeFlag.value !== 'F' : true;
+    const forwardOe = oeFlag?.kind === "enum" ? oeFlag.value !== "F" : true;
     const ec = entities.get(ecRef.id);
-    if (!ec || ec.name !== 'EDGE_CURVE') {
-      return { kind: 'unsupported', reason: `EDGE_CURVE missing` };
+    if (!ec || ec.name !== "EDGE_CURVE") {
+      return { kind: "unsupported", reason: `EDGE_CURVE missing` };
     }
     // EDGE_CURVE('', #vstart, #vend, #curve, .T.|.F.)
     const vStartRef = ec.args[1];
     const vEndRef = ec.args[2];
     const curveRef = ec.args[3];
-    if (!vStartRef || vStartRef.kind !== 'ref' || !vEndRef || vEndRef.kind !== 'ref') {
-      return { kind: 'unsupported', reason: `EDGE_CURVE missing vertex refs` };
+    const ecFlag = ec.args[4];
+    const sameSenseEc = ecFlag?.kind === "enum" ? ecFlag.value !== "F" : true;
+    if (
+      !vStartRef ||
+      vStartRef.kind !== "ref" ||
+      !vEndRef ||
+      vEndRef.kind !== "ref"
+    ) {
+      return { kind: "unsupported", reason: `EDGE_CURVE missing vertex refs` };
     }
     let arcCurve: StepEntity | null = null;
     let splineCurve: StepEntity | null = null;
-    if (curveRef && curveRef.kind === 'ref') {
+    if (curveRef && curveRef.kind === "ref") {
       const curve = entities.get(curveRef.id);
-      if (curve && curve.name && curve.name !== 'LINE' && curve.name !== 'POLYLINE') {
+      if (
+        curve &&
+        curve.name &&
+        curve.name !== "LINE" &&
+        curve.name !== "POLYLINE"
+      ) {
         /**
          * ⚠ 260801 — **원호 엣지가 임포트의 실제 병목이었다.**
          *
@@ -1310,11 +1583,13 @@ function decodeFace(
          * B_SPLINE·기타 곡선은 **그대로 거부한다** — 제어점 없이 현 분할을 하면
          * 그건 근사가 아니라 지어내기다.
          */
-        if (curve.name === 'CIRCLE' || curve.name === 'ELLIPSE') arcCurve = curve;
-        else if (curve.name === 'B_SPLINE_CURVE_WITH_KNOTS') splineCurve = curve;
+        if (curve.name === "CIRCLE" || curve.name === "ELLIPSE")
+          arcCurve = curve;
+        else if (curve.name === "B_SPLINE_CURVE_WITH_KNOTS")
+          splineCurve = curve;
         else {
           return {
-            kind: 'unsupported',
+            kind: "unsupported",
             reason: `non-linear edge (${curve.name}) — likely curved surface`,
           };
         }
@@ -1323,7 +1598,7 @@ function decodeFace(
     const start = readVertexPoint(vStartRef.id, entities);
     const end = readVertexPoint(vEndRef.id, entities);
     if (!start || !end) {
-      return { kind: 'unsupported', reason: `VERTEX_POINT decode failed` };
+      return { kind: "unsupported", reason: `VERTEX_POINT decode failed` };
     }
     const first = forwardOe ? start : end;
     if (ring.length === 0 || !pointEq(ring[ring.length - 1]!, first)) {
@@ -1332,33 +1607,58 @@ function decodeFace(
     if (splineCurve) {
       const sp = bsplineChordPoints(splineCurve, entities);
       if (!sp) {
-        return { kind: 'unsupported', reason: 'B_SPLINE 엣지의 제어점·노트를 읽지 못해 근사하지 않았다' };
+        return {
+          kind: "unsupported",
+          reason: "B_SPLINE 엣지의 제어점·노트를 읽지 못해 근사하지 않았다",
+        };
       }
       const seq = forwardOe ? sp.points : sp.points.slice().reverse();
-      for (const q of seq) if (!pointEq(ring[ring.length - 1]!, q)) ring.push(q);
+      for (const q of seq)
+        if (!pointEq(ring[ring.length - 1]!, q)) ring.push(q);
       arcSagittaMm = Math.max(arcSagittaMm, sp.sagittaMm);
       arcEdges += 1;
+      splineEdges += 1;
     }
     if (arcCurve) {
-      const arc = arcChordPoints(arcCurve, forwardOe ? start : end, forwardOe ? end : start, entities);
+      const arc = arcChordPoints(
+        arcCurve,
+        forwardOe ? start : end,
+        forwardOe ? end : start,
+        entities,
+        forwardOe === sameSenseEc,
+      );
       if (!arc) {
-        return { kind: 'unsupported', reason: `${arcCurve.name} 엣지의 중심·반경(장단축)을 읽지 못해 근사하지 않았다` };
+        return {
+          kind: "unsupported",
+          reason: `${arcCurve.name} 엣지의 중심·반경(장단축)을 읽지 못해 근사하지 않았다`,
+        };
       }
-      for (const q of arc.points) if (!pointEq(ring[ring.length - 1]!, q)) ring.push(q);
+      for (const q of arc.points)
+        if (!pointEq(ring[ring.length - 1]!, q)) ring.push(q);
       arcSagittaMm = Math.max(arcSagittaMm, arc.sagittaMm);
       arcEdges += 1;
+      analyticArcs.push(arc.analytic);
     }
   }
   if (ring.length < 3) {
-    return { kind: 'unsupported', reason: `loop has ${ring.length} distinct vertices, need ≥ 3` };
+    return {
+      kind: "unsupported",
+      reason: `loop has ${ring.length} distinct vertices, need ≥ 3`,
+    };
   }
   // Drop a closing duplicate vertex if present (some writers repeat v0 at end).
   if (ring.length > 3 && pointEq(ring[0]!, ring[ring.length - 1]!)) {
     ring.pop();
   }
   return {
-    kind: 'plane',
-    face: { normal, loop: ring, ...(arcEdges ? { arcEdges, arcSagittaMm } : {}) },
+    kind: "plane",
+    face: {
+      normal,
+      loop: ring,
+      ...(arcEdges ? { arcEdges, arcSagittaMm } : {}),
+      ...(splineEdges ? { splineEdges } : {}),
+      ...(analyticArcs.length ? { analyticArcs } : {}),
+    },
   };
 }
 
@@ -1387,34 +1687,51 @@ function bsplineChordPoints(
   const cpArg = curve.args[2];
   const multArg = curve.args[6];
   const knotArg = curve.args[7];
-  if (degArg?.kind !== 'number' || cpArg?.kind !== 'list' || multArg?.kind !== 'list' || knotArg?.kind !== 'list') return null;
+  if (
+    degArg?.kind !== "number" ||
+    cpArg?.kind !== "list" ||
+    multArg?.kind !== "list" ||
+    knotArg?.kind !== "list"
+  )
+    return null;
   const degree = Math.round(degArg.value);
   if (!(degree >= 1 && degree <= 7)) return null;
   const cps: Array<[number, number, number]> = [];
   for (const it of cpArg.items) {
-    if (it.kind !== 'ref') return null;
+    if (it.kind !== "ref") return null;
     const q = readCartesianPoint(it.id, entities);
     if (!q) return null;
     cps.push(q);
   }
   const mults: number[] = [];
-  for (const it of multArg.items) { if (it.kind !== 'number') return null; mults.push(Math.round(it.value)); }
+  for (const it of multArg.items) {
+    if (it.kind !== "number") return null;
+    mults.push(Math.round(it.value));
+  }
   const uk: number[] = [];
-  for (const it of knotArg.items) { if (it.kind !== 'number') return null; uk.push(it.value); }
+  for (const it of knotArg.items) {
+    if (it.kind !== "number") return null;
+    uk.push(it.value);
+  }
   if (mults.length !== uk.length || !uk.length) return null;
   // 다중도를 펼쳐 완전 노트벡터. 길이는 제어점수 + 차수 + 1 이어야 한다(아니면 우리가 못 읽은 것이다).
   const knots: number[] = [];
-  for (let i = 0; i < uk.length; i++) for (let k = 0; k < mults[i]!; k++) knots.push(uk[i]!);
+  for (let i = 0; i < uk.length; i++)
+    for (let k = 0; k < mults[i]!; k++) knots.push(uk[i]!);
   if (knots.length !== cps.length + degree + 1) return null;
-  const u0 = knots[degree]!, u1 = knots[cps.length]!;
+  const u0 = knots[degree]!,
+    u1 = knots[cps.length]!;
   if (!(u1 > u0)) return null;
   const evalAt = (u: number): [number, number, number] | null => {
     // 구간 찾기
     let span = -1;
     for (let i = degree; i < cps.length; i++) {
-      if (u >= knots[i]! && u < knots[i + 1]!) { span = i; break; }
+      if (u >= knots[i]! && u < knots[i + 1]!) {
+        span = i;
+        break;
+      }
     }
-    if (span < 0) span = cps.length - 1;   // u = u1 끝점
+    if (span < 0) span = cps.length - 1; // u = u1 끝점
     const d: Array<[number, number, number]> = [];
     for (let j = 0; j <= degree; j++) {
       const cp = cps[span - degree + j];
@@ -1426,8 +1743,13 @@ function bsplineChordPoints(
         const i = span - degree + j;
         const den = knots[i + degree - r + 1]! - knots[i]!;
         const a = den > 0 ? (u - knots[i]!) / den : 0;
-        const p0 = d[j - 1]!, p1 = d[j]!;
-        d[j] = [p0[0] + a * (p1[0] - p0[0]), p0[1] + a * (p1[1] - p0[1]), p0[2] + a * (p1[2] - p0[2])];
+        const p0 = d[j - 1]!,
+          p1 = d[j]!;
+        d[j] = [
+          p0[0] + a * (p1[0] - p0[0]),
+          p0[1] + a * (p1[1] - p0[1]),
+          p0[2] + a * (p1[2] - p0[2]),
+        ];
       }
     }
     return d[degree] ?? null;
@@ -1444,11 +1766,14 @@ function bsplineChordPoints(
   let sag = 0;
   const all = [evalAt(u0), ...points, evalAt(u1)];
   for (let i = 0; i < all.length - 1; i++) {
-    const a = all[i], b = all[i + 1];
+    const a = all[i],
+      b = all[i + 1];
     if (!a || !b) continue;
     const mid = evalAt(u0 + ((u1 - u0) * (i + 0.5)) / n);
     if (!mid) continue;
-    const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, cz = (a[2] + b[2]) / 2;
+    const cx = (a[0] + b[0]) / 2,
+      cy = (a[1] + b[1]) / 2,
+      cz = (a[2] + b[2]) / 2;
     sag = Math.max(sag, Math.hypot(mid[0] - cx, mid[1] - cy, mid[2] - cz));
   }
   return { points, sagittaMm: +sag.toFixed(4) };
@@ -1475,48 +1800,68 @@ export function arcChordPoints(
   start: [number, number, number],
   end: [number, number, number],
   entities: Map<number, StepEntity>,
-): { points: Array<[number, number, number]>; sagittaMm: number } | null {
+  positiveSweep = true,
+): {
+  points: Array<[number, number, number]>;
+  sagittaMm: number;
+  analytic: NonNullable<PlaneFace["analyticArcs"]>[number];
+} | null {
   const placeRef = circle.args[1];
   const radArg = circle.args[2];
-  if (!placeRef || placeRef.kind !== 'ref') return null;
+  if (!placeRef || placeRef.kind !== "ref") return null;
   /**
    * ⚠ 260801g: **타원도 같은 경로**로 받는다. `ELLIPSE(name, placement, a, b)` 는 장·단축을
    *   엔티티가 들고 있어 원과 같은 부류다(선언된 데이터의 계산). 원은 a=b 인 경우다.
    */
-  const semiB = circle.name === 'ELLIPSE' && circle.args[3]?.kind === 'number' ? circle.args[3].value : null;
-  const R = radArg?.kind === 'number' ? radArg.value : NaN;
+  const semiB =
+    circle.name === "ELLIPSE" && circle.args[3]?.kind === "number"
+      ? circle.args[3].value
+      : null;
+  const R = radArg?.kind === "number" ? radArg.value : NaN;
   if (!Number.isFinite(R) || !(R > 0)) return null;
-  if (circle.name === 'ELLIPSE' && !(semiB !== null && semiB > 0)) return null;
+  if (circle.name === "ELLIPSE" && !(semiB !== null && semiB > 0)) return null;
   const rb = semiB ?? R;
   const ent = entities.get(placeRef.id);
-  if (!ent || ent.name !== 'AXIS2_PLACEMENT_3D') return null;
+  if (!ent || ent.name !== "AXIS2_PLACEMENT_3D") return null;
   const originRef = ent.args[1];
   const zRef = ent.args[2];
   const xRef = ent.args[3];
-  if (!originRef || originRef.kind !== 'ref') return null;
+  if (!originRef || originRef.kind !== "ref") return null;
   const C = readCartesianPoint(originRef.id, entities);
   if (!C) return null;
-  const zDir = zRef && zRef.kind === 'ref' ? readDirection(zRef.id, entities) : null;
-  const xDir = xRef && xRef.kind === 'ref' ? readDirection(xRef.id, entities) : null;
+  const zDir =
+    zRef && zRef.kind === "ref" ? readDirection(zRef.id, entities) : null;
+  const xDir =
+    xRef && xRef.kind === "ref" ? readDirection(xRef.id, entities) : null;
   if (!zDir || !xDir) return null;
   const z = unitVec(zDir);
   // X 축을 법선에 직교화(STEP 의 refdir 은 직교 보장이 없다)
   const dotXZ = xDir[0] * z[0] + xDir[1] * z[1] + xDir[2] * z[2];
-  const xRaw: [number, number, number] = [xDir[0] - dotXZ * z[0], xDir[1] - dotXZ * z[1], xDir[2] - dotXZ * z[2]];
+  const xRaw: [number, number, number] = [
+    xDir[0] - dotXZ * z[0],
+    xDir[1] - dotXZ * z[1],
+    xDir[2] - dotXZ * z[2],
+  ];
   const x = unitVec(xRaw);
   if (!(Math.hypot(x[0], x[1], x[2]) > 0.5)) return null;
   const y: [number, number, number] = [
-    z[1] * x[2] - z[2] * x[1], z[2] * x[0] - z[0] * x[2], z[0] * x[1] - z[1] * x[0],
+    z[1] * x[2] - z[2] * x[1],
+    z[2] * x[0] - z[0] * x[2],
+    z[0] * x[1] - z[1] * x[0],
   ];
   const ang = (p: [number, number, number]) => {
     const d: [number, number, number] = [p[0] - C[0], p[1] - C[1], p[2] - C[2]];
     // 타원은 매개변수각이므로 y 성분을 단축으로 정규화해야 각이 맞는다.
-    return Math.atan2((d[0] * y[0] + d[1] * y[1] + d[2] * y[2]) / rb, (d[0] * x[0] + d[1] * x[1] + d[2] * x[2]) / R);
+    return Math.atan2(
+      (d[0] * y[0] + d[1] * y[1] + d[2] * y[2]) / rb,
+      (d[0] * x[0] + d[1] * x[1] + d[2] * x[2]) / R,
+    );
   };
   const a0 = ang(start);
   let sweep = ang(end) - a0;
-  while (sweep <= 1e-9) sweep += 2 * Math.PI;      // 반시계 기준 정규화
-  if (pointEq(start, end)) sweep = 2 * Math.PI;    // 완전한 원
+  if (positiveSweep) while (sweep <= 1e-9) sweep += 2 * Math.PI;
+  else while (sweep >= -1e-9) sweep -= 2 * Math.PI;
+  if (pointEq(start, end)) sweep = positiveSweep ? 2 * Math.PI : -2 * Math.PI;
   /**
    * ⚠ 260801g — 처음 **작은 쪽 반축**으로 잡았다가 고쳤다. 매개변수각 Δt 를 균등 분할하면
    *   최대 새그는 `a·Δt²/8` 로 **큰 쪽 반축**이 지배한다(장축 끝은 곡률반경이 b²/a 로 작지만
@@ -1526,20 +1871,37 @@ export function arcChordPoints(
   const rGov = Math.max(R, rb);
   const ratio = Math.max(-1, Math.min(1, 1 - ARC_CHORD_TOL_MM / rGov));
   const dMax = 2 * Math.acos(ratio);
-  const n = Math.max(1, Math.min(64, Math.ceil(sweep / Math.max(1e-6, dMax))));
+  const n = Math.max(
+    1,
+    Math.min(64, Math.ceil(Math.abs(sweep) / Math.max(1e-6, dMax))),
+  );
   const dth = sweep / n;
   const points: Array<[number, number, number]> = [];
   // 끝점은 다음 엣지가 넣으므로 **중간점만** 넣는다(중복 정점 방지).
   for (let i = 1; i < n; i++) {
     const t = a0 + dth * i;
-    const c = Math.cos(t), sn = Math.sin(t);
+    const c = Math.cos(t),
+      sn = Math.sin(t);
     points.push([
       C[0] + R * c * x[0] + rb * sn * y[0],
       C[1] + R * c * x[1] + rb * sn * y[1],
       C[2] + R * c * x[2] + rb * sn * y[2],
     ]);
   }
-  return { points, sagittaMm: rGov * (1 - Math.cos(dth / 2)) };
+  return {
+    points,
+    sagittaMm: rGov * (1 - Math.cos(Math.abs(dth) / 2)),
+    analytic: {
+      center: C,
+      axisX: x,
+      axisY: y,
+      radiusX: R,
+      radiusY: rb,
+      startAngleRad: a0,
+      sweepRad: sweep,
+      polyline: [start, ...points, end],
+    },
+  };
 }
 
 /**
@@ -1553,12 +1915,12 @@ function readAxisPlacement(
   entities: Map<number, StepEntity>,
 ): { origin: [number, number, number]; zDir: [number, number, number] } | null {
   const ent = entities.get(id);
-  if (!ent || ent.name !== 'AXIS2_PLACEMENT_3D') return null;
+  if (!ent || ent.name !== "AXIS2_PLACEMENT_3D") return null;
   // AXIS2_PLACEMENT_3D('', #cartesian_point, #zdir, #refdir)
   const originRef = ent.args[1];
   const zDirRef = ent.args[2];
-  if (!originRef || originRef.kind !== 'ref') return null;
-  if (!zDirRef || zDirRef.kind !== 'ref') return null;
+  if (!originRef || originRef.kind !== "ref") return null;
+  if (!zDirRef || zDirRef.kind !== "ref") return null;
   const origin = readCartesianPoint(originRef.id, entities);
   const zDir = readDirection(zDirRef.id, entities);
   if (!origin || !zDir) return null;
@@ -1569,14 +1931,17 @@ function readAxisPlacement(
 function readAxis1Placement(
   id: number,
   entities: Map<number, StepEntity>,
-): { origin: [number, number, number]; direction: [number, number, number] } | null {
+): {
+  origin: [number, number, number];
+  direction: [number, number, number];
+} | null {
   const ent = entities.get(id);
-  if (!ent || ent.name !== 'AXIS1_PLACEMENT') return null;
+  if (!ent || ent.name !== "AXIS1_PLACEMENT") return null;
   // AXIS1_PLACEMENT('', #cartesian_point, #direction)
   const originRef = ent.args[1];
   const dirRef = ent.args[2];
-  if (!originRef || originRef.kind !== 'ref') return null;
-  if (!dirRef || dirRef.kind !== 'ref') return null;
+  if (!originRef || originRef.kind !== "ref") return null;
+  if (!dirRef || dirRef.kind !== "ref") return null;
   const origin = readCartesianPoint(originRef.id, entities);
   const direction = readDirection(dirRef.id, entities);
   if (!origin || !direction) return null;
@@ -1588,12 +1953,12 @@ function readCartesianPoint(
   entities: Map<number, StepEntity>,
 ): [number, number, number] | null {
   const cp = entities.get(id);
-  if (!cp || cp.name !== 'CARTESIAN_POINT') return null;
+  if (!cp || cp.name !== "CARTESIAN_POINT") return null;
   const coords = cp.args[1];
-  if (!coords || coords.kind !== 'list') return null;
+  if (!coords || coords.kind !== "list") return null;
   const xs: number[] = [];
   for (const item of coords.items) {
-    if (item.kind !== 'number') return null;
+    if (item.kind !== "number") return null;
     xs.push(item.value);
   }
   if (xs.length !== 3) return null;
@@ -1605,13 +1970,13 @@ function readDirection(
   entities: Map<number, StepEntity>,
 ): [number, number, number] | null {
   const ent = entities.get(id);
-  if (!ent || ent.name !== 'DIRECTION') return null;
+  if (!ent || ent.name !== "DIRECTION") return null;
   // DIRECTION('', (x, y, z))
   const listArg = ent.args[1];
-  if (!listArg || listArg.kind !== 'list') return null;
+  if (!listArg || listArg.kind !== "list") return null;
   const xs: number[] = [];
   for (const item of listArg.items) {
-    if (item.kind !== 'number') return null;
+    if (item.kind !== "number") return null;
     xs.push(item.value);
   }
   if (xs.length !== 3) return null;
@@ -1630,22 +1995,29 @@ function readExtrusionVector(
   entities: Map<number, StepEntity>,
 ): { direction: [number, number, number]; magnitude: number } | null {
   const ent = entities.get(id);
-  if (!ent || ent.name !== 'VECTOR') return null;
+  if (!ent || ent.name !== "VECTOR") return null;
   const dirRef = ent.args[1];
   const magArg = ent.args[2];
-  if (!dirRef || dirRef.kind !== 'ref') return null;
+  if (!dirRef || dirRef.kind !== "ref") return null;
   const dir = readDirection(dirRef.id, entities);
   if (!dir) return null;
   // Magnitude defaults to 1 when missing / non-numeric / 0 (some writers
   // emit `$` because the cap planes carry the true length).
   let magnitude = 1;
-  if (magArg && magArg.kind === 'number' && Number.isFinite(magArg.value) && magArg.value > 0) {
+  if (
+    magArg &&
+    magArg.kind === "number" &&
+    Number.isFinite(magArg.value) &&
+    magArg.value > 0
+  ) {
     magnitude = magArg.value;
   }
   // Normalise the direction so callers can treat it as a unit vector.
   const len = Math.hypot(dir[0], dir[1], dir[2]);
   const unit: [number, number, number] =
-    len > 1e-12 ? [dir[0] / len, dir[1] / len, dir[2] / len] : [dir[0], dir[1], dir[2]];
+    len > 1e-12
+      ? [dir[0] / len, dir[1] / len, dir[2] / len]
+      : [dir[0], dir[1], dir[2]];
   return { direction: unit, magnitude };
 }
 
@@ -1654,17 +2026,17 @@ function readVertexPoint(
   entities: Map<number, StepEntity>,
 ): [number, number, number] | null {
   const vp = entities.get(id);
-  if (!vp || vp.name !== 'VERTEX_POINT') return null;
+  if (!vp || vp.name !== "VERTEX_POINT") return null;
   // VERTEX_POINT('', #cartesian_point)
   const cpRef = vp.args[1];
-  if (!cpRef || cpRef.kind !== 'ref') return null;
+  if (!cpRef || cpRef.kind !== "ref") return null;
   const cp = entities.get(cpRef.id);
-  if (!cp || cp.name !== 'CARTESIAN_POINT') return null;
+  if (!cp || cp.name !== "CARTESIAN_POINT") return null;
   const coords = cp.args[1];
-  if (!coords || coords.kind !== 'list') return null;
+  if (!coords || coords.kind !== "list") return null;
   const xs: number[] = [];
   for (const item of coords.items) {
-    if (item.kind !== 'number') return null;
+    if (item.kind !== "number") return null;
     xs.push(item.value);
   }
   if (xs.length !== 3) return null;
@@ -1689,7 +2061,18 @@ function prismWithCylindricalHoles(
   planeFaces: PlaneFace[],
   cylinderFaces: CylinderFace[],
   entities: Map<number, StepEntity>,
-): { feature: ExtrudeFeature; holes: { count: number; radiiMm: number[]; volumeOverPct: number } } | null {
+): {
+  feature: ExtrudeFeature;
+  holes: {
+    count: number;
+    radiiMm: number[];
+    volumeOverPct: number;
+    circles: Array<{ x: number; y: number; r: number }>;
+    outerArcs: StepAnalyticArc2D[];
+    exactOuterArea: number;
+    outerExact: boolean;
+  };
+} | null {
   void entities;
   /**
    * ⚠ 260801g — 거부 사유가 「패턴이 아니다」로 뭉개져 있었다. 무엇이 막았는지 모르면
@@ -1703,13 +2086,30 @@ function prismWithCylindricalHoles(
     toLocal: (v: [number, number, number]) => [number, number, number];
     rotateDeg: [number, number, number] | null;
   }> = [
-    { axis: 2, isCap: (n) => isZAxisNormal(n), toLocal: (v) => v, rotateDeg: null },
-    { axis: 0,
-      isCap: (n) => Math.abs(Math.abs(n[0]) - 1) <= AXIS_EPS && Math.abs(n[1]) <= AXIS_EPS && Math.abs(n[2]) <= AXIS_EPS,
-      toLocal: (v) => [v[1], v[2], v[0]], rotateDeg: [90, 0, 90] },
-    { axis: 1,
-      isCap: (n) => Math.abs(Math.abs(n[1]) - 1) <= AXIS_EPS && Math.abs(n[0]) <= AXIS_EPS && Math.abs(n[2]) <= AXIS_EPS,
-      toLocal: (v) => [v[2], v[0], v[1]], rotateDeg: [90, 0, 0] },
+    {
+      axis: 2,
+      isCap: (n) => isZAxisNormal(n),
+      toLocal: (v) => v,
+      rotateDeg: null,
+    },
+    {
+      axis: 0,
+      isCap: (n) =>
+        Math.abs(Math.abs(n[0]) - 1) <= AXIS_EPS &&
+        Math.abs(n[1]) <= AXIS_EPS &&
+        Math.abs(n[2]) <= AXIS_EPS,
+      toLocal: (v) => [v[1], v[2], v[0]],
+      rotateDeg: [90, 0, 90],
+    },
+    {
+      axis: 1,
+      isCap: (n) =>
+        Math.abs(Math.abs(n[1]) - 1) <= AXIS_EPS &&
+        Math.abs(n[0]) <= AXIS_EPS &&
+        Math.abs(n[2]) <= AXIS_EPS,
+      toLocal: (v) => [v[2], v[0], v[1]],
+      rotateDeg: [90, 0, 0],
+    },
   ];
   for (const cand of AXES) {
     const caps: PlaneFace[] = [];
@@ -1718,24 +2118,46 @@ function prismWithCylindricalHoles(
     for (const f of planeFaces) {
       if (cand.isCap(f.normal)) caps.push(f);
       else if (Math.abs(f.normal[cand.axis]) <= AXIS_EPS) sides.push(f);
-      else { bad = true; break; }
+      else {
+        bad = true;
+        break;
+      }
     }
     if (bad || caps.length !== 2 || sides.length < 3) {
-      why.push(`축${cand.axis}: 캡 ${caps.length}장·측면 ${sides.length}장`
-        + (bad ? ' (캡축과 어긋난 평면이 있다 — 계단·챔퍼면일 수 있다)' : ' (캡 2장 + 측면 3장 이상이 필요하다)'));
+      why.push(
+        `축${cand.axis}: 캡 ${caps.length}장·측면 ${sides.length}장` +
+          (bad
+            ? " (캡축과 어긋난 평면이 있다 — 계단·챔퍼면일 수 있다)"
+            : " (캡 2장 + 측면 3장 이상이 필요하다)"),
+      );
       continue;
     }
     // ② 모든 원통 축이 캡 축과 평행해야 홀이다.
     const axisDir: [number, number, number] = [0, 0, 0];
     axisDir[cand.axis] = 1;
     if (!cylinderFaces.every((c) => directionsParallel(c.axisDir, axisDir))) {
-      const off = cylinderFaces.filter((c) => !directionsParallel(c.axisDir, axisDir)).length;
-      why.push(`축${cand.axis}: 원통 ${off}/${cylinderFaces.length}개의 축이 판 두께축과 나란하지 않다 — 관통홀이 아니다(측면 홀·라운드)`);
+      const off = cylinderFaces.filter(
+        (c) => !directionsParallel(c.axisDir, axisDir),
+      ).length;
+      why.push(
+        `축${cand.axis}: 원통 ${off}/${cylinderFaces.length}개의 축이 판 두께축과 나란하지 않다 — 관통홀이 아니다(측면 홀·라운드)`,
+      );
       continue;
     }
     const remap = (f: PlaneFace): PlaneFace => ({
       normal: cand.toLocal(f.normal),
       loop: f.loop.map((v) => cand.toLocal(v)),
+      ...(f.analyticArcs
+        ? {
+            analyticArcs: f.analyticArcs.map((arc) => ({
+              ...arc,
+              center: cand.toLocal(arc.center),
+              axisX: cand.toLocal(arc.axisX),
+              axisY: cand.toLocal(arc.axisY),
+              polyline: arc.polyline.map((point) => cand.toLocal(point)),
+            })),
+          }
+        : {}),
     });
     /**
      * ⚠ `capsToPrism` 을 쓰지 않는다 — 그 함수는 **「캡 정점 수 = 측면 수」**를 요구한다.
@@ -1745,7 +2167,9 @@ function prismWithCylindricalHoles(
      */
     const prism = capsToOutline(caps.map(remap));
     if (!prism) {
-      why.push(`축${cand.axis}: 캡 2장이 서로 평행한 평면 루프가 아니다(두께를 정할 수 없다)`);
+      why.push(
+        `축${cand.axis}: 캡 2장이 서로 평행한 평면 루프가 아니다(두께를 정할 수 없다)`,
+      );
       continue;
     }
     /**
@@ -1768,7 +2192,13 @@ function prismWithCylindricalHoles(
       const dEdge = distancePointToLoop(q[0], q[1], prism.loop);
       if (inside && dEdge >= c.radius - TOL) {
         // 같은 홀의 반쪽 원통면이 2장으로 쪼개져 오는 경우가 흔하다 — 중심·반경으로 병합.
-        if (!holesFound.some((u) => Math.hypot(u.x - q[0], u.y - q[1]) < TOL && Math.abs(u.r - c.radius) < 1e-6)) {
+        if (
+          !holesFound.some(
+            (u) =>
+              Math.hypot(u.x - q[0], u.y - q[1]) < TOL &&
+              Math.abs(u.r - c.radius) < 1e-6,
+          )
+        ) {
           holesFound.push({ x: q[0], y: q[1], r: c.radius });
         }
       } else rounds += 1;
@@ -1777,22 +2207,28 @@ function prismWithCylindricalHoles(
     const outerArea = Math.abs(polygonSignedArea(prism.loop));
     const holeArea = uniq.reduce((sum, u) => sum + Math.PI * u.r * u.r, 0);
     if (!(outerArea > 0) || holeArea >= outerArea) {
-      why.push(`축${cand.axis}: 홀 면적이 외곽 면적 이상이다(${uniq.length}개·라운드 ${rounds}개) — 판재가 아니다`);
+      why.push(
+        `축${cand.axis}: 홀 면적이 외곽 면적 이상이다(${uniq.length}개·라운드 ${rounds}개) — 판재가 아니다`,
+      );
       continue;
     }
     return {
       feature: {
-        kind: 'extrude',
+        kind: "extrude",
         loop: prism.loop,
         depth: prism.depth,
-        direction: 'one_sided',
-        mode: 'add',
+        direction: "one_sided",
+        mode: "add",
         ...(cand.rotateDeg ? { at: { rotateDeg: cand.rotateDeg } } : {}),
       } as ExtrudeFeature,
       holes: {
         count: uniq.length,
         radiiMm: uniq.map((u) => +u.r.toFixed(4)),
         volumeOverPct: +((holeArea / outerArea) * 100).toFixed(2),
+        circles: uniq,
+        outerArcs: prism.outerArcs,
+        exactOuterArea: prism.exactArea,
+        outerExact: !planeFaces.some((face) => (face.splineEdges ?? 0) > 0),
       },
     };
   }
@@ -1807,7 +2243,12 @@ function prismWithCylindricalHoles(
  * 필요한 것은 캡 2장이 각각 평면이고 서로 다른 축 위치에 있다는 사실이다.
  * 로컬 프레임(캡 축 = Z)으로 재매핑된 입력을 받는다.
  */
-function capsToOutline(caps: PlaneFace[]): { loop: Array<{ x: number; y: number }>; depth: number } | null {
+function capsToOutline(caps: PlaneFace[]): {
+  loop: Array<{ x: number; y: number }>;
+  depth: number;
+  outerArcs: StepAnalyticArc2D[];
+  exactArea: number;
+} | null {
   let bottom: PlaneFace | null = null;
   let top: PlaneFace | null = null;
   for (const c of caps) {
@@ -1822,40 +2263,124 @@ function capsToOutline(caps: PlaneFace[]): { loop: Array<{ x: number; y: number 
   const depth = Math.abs(z1 - z0);
   if (!(depth > POINT_EPS)) return null;
   // 아래 캡은 아래에서 보면 CCW 라 뒤집어야 IR 이 기대하는 CCW XY 루프가 된다.
-  const xy = bottom.loop.slice().reverse().map((v) => ({ x: v[0], y: v[1] }));
-  if (polygonSignedArea(xy) <= 0) xy.reverse();
-  return { loop: xy, depth };
+  const xy = bottom.loop
+    .slice()
+    .reverse()
+    .map((v) => ({ x: v[0], y: v[1] }));
+  let reverseSource = true;
+  if (polygonSignedArea(xy) <= 0) {
+    xy.reverse();
+    reverseSource = false;
+  }
+  const reversedArcs = reverseSource
+    ? (bottom.analyticArcs ?? [])
+        .slice()
+        .reverse()
+        .map((arc) => ({
+          ...arc,
+          startAngleRad: arc.startAngleRad + arc.sweepRad,
+          sweepRad: -arc.sweepRad,
+          polyline: arc.polyline.slice().reverse(),
+        }))
+    : (bottom.analyticArcs ?? []);
+  const outerArcs: StepAnalyticArc2D[] = reversedArcs.map((arc) => ({
+    center: [arc.center[0], arc.center[1]],
+    axisX: [arc.axisX[0], arc.axisX[1]],
+    axisY: [arc.axisY[0], arc.axisY[1]],
+    radiusX: arc.radiusX,
+    radiusY: arc.radiusY,
+    startAngleRad: arc.startAngleRad,
+    sweepRad: arc.sweepRad,
+  }));
+  const cross2 = (a: [number, number], b: [number, number]) =>
+    a[0] * b[1] - a[1] * b[0];
+  let correction = 0;
+  for (const arc of reversedArcs) {
+    const C: [number, number] = [arc.center[0], arc.center[1]],
+      A: [number, number] = [
+        arc.axisX[0] * arc.radiusX,
+        arc.axisX[1] * arc.radiusX,
+      ],
+      B: [number, number] = [
+        arc.axisY[0] * arc.radiusY,
+        arc.axisY[1] * arc.radiusY,
+      ],
+      t0 = arc.startAngleRad,
+      t1 = t0 + arc.sweepRad,
+      exactIntegral =
+        0.5 *
+        (cross2(C, A) * (Math.cos(t1) - Math.cos(t0)) +
+          cross2(C, B) * (Math.sin(t1) - Math.sin(t0)) +
+          cross2(A, B) * arc.sweepRad),
+      sampled = arc.polyline.map(
+        (point) => [point[0], point[1]] as [number, number],
+      ),
+      sampledIntegral = sampled
+        .slice(0, -1)
+        .reduce(
+          (sum, point, index) => sum + 0.5 * cross2(point, sampled[index + 1]!),
+          0,
+        );
+    correction += exactIntegral - sampledIntegral;
+  }
+  return {
+    loop: xy,
+    depth,
+    outerArcs,
+    exactArea: Math.abs(polygonSignedArea(xy) + correction),
+  };
 }
 
 /** 점에서 폴리곤 **경계**까지의 최단거리(세그먼트 기준). */
-function distancePointToLoop(px: number, py: number, loop: ReadonlyArray<{ x: number; y: number }>): number {
+function distancePointToLoop(
+  px: number,
+  py: number,
+  loop: ReadonlyArray<{ x: number; y: number }>,
+): number {
   let best = Infinity;
   for (let i = 0; i < loop.length; i++) {
-    const a = loop[i]!, b = loop[(i + 1) % loop.length]!;
-    const dx = b.x - a.x, dy = b.y - a.y;
+    const a = loop[i]!,
+      b = loop[(i + 1) % loop.length]!;
+    const dx = b.x - a.x,
+      dy = b.y - a.y;
     const L2 = dx * dx + dy * dy;
-    const t = L2 > 0 ? Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / L2)) : 0;
+    const t =
+      L2 > 0
+        ? Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / L2))
+        : 0;
     best = Math.min(best, Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy)));
   }
   return best;
 }
 
 /** 폴리곤 부호면적(CCW=+). */
-function polygonSignedArea(loop: ReadonlyArray<{ x: number; y: number }>): number {
+function polygonSignedArea(
+  loop: ReadonlyArray<{ x: number; y: number }>,
+): number {
   let a = 0;
   for (let i = 0; i < loop.length; i++) {
-    const p = loop[i]!, q = loop[(i + 1) % loop.length]!;
+    const p = loop[i]!,
+      q = loop[(i + 1) % loop.length]!;
     a += p.x * q.y - q.x * p.y;
   }
   return a / 2;
 }
 
 /** 점이 폴리곤 내부인가 — ray casting. 경계 위는 **내부로 보지 않는다**(홀이 아니라 라운드다). */
-function pointInPolygon(px: number, py: number, loop: ReadonlyArray<{ x: number; y: number }>): boolean {
+function pointInPolygon(
+  px: number,
+  py: number,
+  loop: ReadonlyArray<{ x: number; y: number }>,
+): boolean {
   let inside = false;
   for (let i = 0, j = loop.length - 1; i < loop.length; j = i++) {
-    const a = loop[i]!, b = loop[j]!;
-    if ((a.y > py) !== (b.y > py) && px < ((b.x - a.x) * (py - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+    const a = loop[i]!,
+      b = loop[j]!;
+    if (
+      a.y > py !== b.y > py &&
+      px < ((b.x - a.x) * (py - a.y)) / (b.y - a.y) + a.x
+    )
+      inside = !inside;
   }
   return inside;
 }
@@ -1863,8 +2388,8 @@ function pointInPolygon(px: number, py: number, loop: ReadonlyArray<{ x: number;
 // ─── cylinder primitive → RevolveFeature ──────────────────────────────────
 
 type CylinderRevolveResult =
-  | { kind: 'ok'; feature: RevolveFeature }
-  | { kind: 'unsupported'; reason: string };
+  | { kind: "ok"; feature: RevolveFeature }
+  | { kind: "unsupported"; reason: string };
 
 /**
  * Reconstruct a `RevolveFeature` from a BREP cylinder: 1 CYLINDRICAL_SURFACE
@@ -1893,20 +2418,23 @@ function cylinderToRevolve(
   const axisKind = classifyAxisAlignment(cyl.axisDir);
   if (axisKind === null) {
     return {
-      kind: 'unsupported',
+      kind: "unsupported",
       reason:
         `cylinder axis (${formatDir(cyl.axisDir)}) is not axis-aligned ` +
         `(Phase 2 limit: only ±X/±Y/±Z)`,
     };
   }
   if (caps.length !== 2) {
-    return { kind: 'unsupported', reason: `expected 2 cap planes, got ${caps.length}` };
+    return {
+      kind: "unsupported",
+      reason: `expected 2 cap planes, got ${caps.length}`,
+    };
   }
   // Both cap normals must be parallel to the cylinder axis.
   for (const cap of caps) {
     if (!directionsParallel(cap.normal, cyl.axisDir)) {
       return {
-        kind: 'unsupported',
+        kind: "unsupported",
         reason:
           `cap plane normal (${formatDir(cap.normal)}) not parallel to cylinder axis ` +
           `(${formatDir(cyl.axisDir)})`,
@@ -1925,13 +2453,16 @@ function cylinderToRevolve(
   }
   const height = Math.abs(projs[1]! - projs[0]!);
   if (!(height > POINT_EPS)) {
-    return { kind: 'unsupported', reason: `degenerate cylinder height: ${height}` };
+    return {
+      kind: "unsupported",
+      reason: `degenerate cylinder height: ${height}`,
+    };
   }
   // Build the canonical revolve loop: rectangle (radius × height) in the
   // X≥0 half-plane, axis = +Y. Loop walks CCW.
   const r = cyl.radius;
   const feature: RevolveFeature = {
-    kind: 'revolve',
+    kind: "revolve",
     loop: [
       { x: 0, y: 0 },
       { x: r, y: 0 },
@@ -1939,16 +2470,16 @@ function cylinderToRevolve(
       { x: 0, y: height },
     ],
     angleDegrees: 360,
-    mode: 'add',
+    mode: "add",
   };
-  return { kind: 'ok', feature };
+  return { kind: "ok", feature };
 }
 
 // ─── linear extrusion primitive → SweepFeature ────────────────────────────
 
 type LinearExtrusionSweepResult =
-  | { kind: 'ok'; feature: SweepFeature }
-  | { kind: 'unsupported'; reason: string };
+  | { kind: "ok"; feature: SweepFeature }
+  | { kind: "unsupported"; reason: string };
 
 /**
  * Reconstruct a `SweepFeature` from a BREP linear-extrusion primitive: 1
@@ -1981,20 +2512,23 @@ function linearExtrusionToSweep(
   const axisKind = classifyAxisAlignment(ext.extrusionDir);
   if (axisKind === null) {
     return {
-      kind: 'unsupported',
+      kind: "unsupported",
       reason:
         `extrusion direction (${formatDir(ext.extrusionDir)}) is not axis-aligned ` +
         `(Phase 3 limit: only ±X/±Y/±Z)`,
     };
   }
   if (caps.length !== 2) {
-    return { kind: 'unsupported', reason: `expected 2 cap planes, got ${caps.length}` };
+    return {
+      kind: "unsupported",
+      reason: `expected 2 cap planes, got ${caps.length}`,
+    };
   }
   // Both cap normals must be parallel to the extrusion direction.
   for (const cap of caps) {
     if (!directionsParallel(cap.normal, ext.extrusionDir)) {
       return {
-        kind: 'unsupported',
+        kind: "unsupported",
         reason:
           `cap plane normal (${formatDir(cap.normal)}) not parallel to extrusion direction ` +
           `(${formatDir(ext.extrusionDir)})`,
@@ -2005,14 +2539,17 @@ function linearExtrusionToSweep(
   // along the sweep — different counts mean it's actually a loft).
   if (caps[0]!.loop.length !== caps[1]!.loop.length) {
     return {
-      kind: 'unsupported',
+      kind: "unsupported",
       reason:
         `cap vertex counts differ (${caps[0]!.loop.length} vs ${caps[1]!.loop.length}) — ` +
         `non-uniform profile (likely loft, Phase 4)`,
     };
   }
   if (caps[0]!.loop.length < 3) {
-    return { kind: 'unsupported', reason: `cap has ${caps[0]!.loop.length} vertices, need ≥ 3` };
+    return {
+      kind: "unsupported",
+      reason: `cap has ${caps[0]!.loop.length} vertices, need ≥ 3`,
+    };
   }
   // Compute cap centroids and order: project along the extrusion axis and
   // use the smaller projection as the bottom (path start).
@@ -2030,13 +2567,16 @@ function linearExtrusionToSweep(
   const top = caps[topIdx]!;
   const sweepLen = Math.abs(projs[topIdx]! - projs[bottomIdx]!);
   if (!(sweepLen > POINT_EPS)) {
-    return { kind: 'unsupported', reason: `degenerate extrusion length: ${sweepLen}` };
+    return {
+      kind: "unsupported",
+      reason: `degenerate extrusion length: ${sweepLen}`,
+    };
   }
   // Verify the top cap's vertex set matches the bottom in the perpendicular
   // plane (it's the same profile, just translated along the axis).
   if (!vertexSetsMatchInPerpPlane(bottom.loop, top.loop, axisKind)) {
     return {
-      kind: 'unsupported',
+      kind: "unsupported",
       reason: `cap vertex sets do not match in plane perpendicular to ${axisKind.toUpperCase()} axis`,
     };
   }
@@ -2048,21 +2588,30 @@ function linearExtrusionToSweep(
   // Drop closing duplicate if present.
   if (
     profile2D.length > 3 &&
-    Math.abs(profile2D[0]!.x - profile2D[profile2D.length - 1]!.x) <= POINT_EPS &&
+    Math.abs(profile2D[0]!.x - profile2D[profile2D.length - 1]!.x) <=
+      POINT_EPS &&
     Math.abs(profile2D[0]!.y - profile2D[profile2D.length - 1]!.y) <= POINT_EPS
   ) {
     profile2D.pop();
   }
   return {
-    kind: 'ok',
+    kind: "ok",
     feature: {
-      kind: 'sweep',
+      kind: "sweep",
       profile: { points: profile2D },
       path: [
-        { x: centres[bottomIdx]![0], y: centres[bottomIdx]![1], z: centres[bottomIdx]![2] },
-        { x: centres[topIdx]![0], y: centres[topIdx]![1], z: centres[topIdx]![2] },
+        {
+          x: centres[bottomIdx]![0],
+          y: centres[bottomIdx]![1],
+          z: centres[bottomIdx]![2],
+        },
+        {
+          x: centres[topIdx]![0],
+          y: centres[topIdx]![1],
+          z: centres[topIdx]![2],
+        },
       ],
-      mode: 'add',
+      mode: "add",
     },
   };
 }
@@ -2075,10 +2624,10 @@ function linearExtrusionToSweep(
  */
 function perpProject(
   v: [number, number, number],
-  axisKind: 'x' | 'y' | 'z',
+  axisKind: "x" | "y" | "z",
 ): { x: number; y: number } {
-  if (axisKind === 'x') return { x: v[1], y: v[2] };
-  if (axisKind === 'y') return { x: v[0], y: v[2] };
+  if (axisKind === "x") return { x: v[1], y: v[2] };
+  if (axisKind === "y") return { x: v[0], y: v[2] };
   return { x: v[0], y: v[1] };
 }
 
@@ -2091,7 +2640,7 @@ function perpProject(
 function vertexSetsMatchInPerpPlane(
   a: Array<[number, number, number]>,
   b: Array<[number, number, number]>,
-  axisKind: 'x' | 'y' | 'z',
+  axisKind: "x" | "y" | "z",
 ): boolean {
   if (a.length !== b.length) return false;
   const used = new Array<boolean>(b.length).fill(false);
@@ -2101,7 +2650,10 @@ function vertexSetsMatchInPerpPlane(
     for (let j = 0; j < b.length; j++) {
       if (used[j]) continue;
       const vb2 = perpProject(b[j]!, axisKind);
-      if (Math.abs(va2.x - vb2.x) <= POINT_EPS && Math.abs(va2.y - vb2.y) <= POINT_EPS) {
+      if (
+        Math.abs(va2.x - vb2.x) <= POINT_EPS &&
+        Math.abs(va2.y - vb2.y) <= POINT_EPS
+      ) {
         used[j] = true;
         matched = true;
         break;
@@ -2115,8 +2667,8 @@ function vertexSetsMatchInPerpPlane(
 // ─── SWEPT_AREA_SOLID / EXTRUDED_AREA_SOLID → SweepFeature ────────────────
 
 type SweptAreaSolidResult =
-  | { kind: 'ok'; feature: SweepFeature; worldBBox?: WorldBBox | null }
-  | { kind: 'unsupported'; reason: string };
+  | { kind: "ok"; feature: SweepFeature; worldBBox?: WorldBBox | null }
+  | { kind: "unsupported"; reason: string };
 
 /**
  * Parse a SWEPT_AREA_SOLID or EXTRUDED_AREA_SOLID entity directly into a
@@ -2152,18 +2704,30 @@ function sweptAreaSolidToSweep(
   entities: Map<number, StepEntity>,
 ): SweptAreaSolidResult {
   const ent = entities.get(sweptId);
-  if (!ent || (ent.name !== 'SWEPT_AREA_SOLID' && ent.name !== 'EXTRUDED_AREA_SOLID')) {
-    return { kind: 'unsupported', reason: `not a SWEPT_AREA_SOLID / EXTRUDED_AREA_SOLID` };
+  if (
+    !ent ||
+    (ent.name !== "SWEPT_AREA_SOLID" && ent.name !== "EXTRUDED_AREA_SOLID")
+  ) {
+    return {
+      kind: "unsupported",
+      reason: `not a SWEPT_AREA_SOLID / EXTRUDED_AREA_SOLID`,
+    };
   }
   // args[0]=name, args[1]=swept_area, args[2]=direction-or-vector, args[3?]=depth.
   const sweptAreaArg = ent.args[1];
   const dirArg = ent.args[2];
   const depthArg = ent.args[3];
-  if (!sweptAreaArg || sweptAreaArg.kind !== 'ref') {
-    return { kind: 'unsupported', reason: `${ent.name} missing swept_area ref` };
+  if (!sweptAreaArg || sweptAreaArg.kind !== "ref") {
+    return {
+      kind: "unsupported",
+      reason: `${ent.name} missing swept_area ref`,
+    };
   }
-  if (!dirArg || dirArg.kind !== 'ref') {
-    return { kind: 'unsupported', reason: `${ent.name} missing extrusion direction/vector ref` };
+  if (!dirArg || dirArg.kind !== "ref") {
+    return {
+      kind: "unsupported",
+      reason: `${ent.name} missing extrusion direction/vector ref`,
+    };
   }
   // Resolve the direction reference: it could point at either a DIRECTION
   // (with depth in arg[3]) or a VECTOR (with magnitude = depth and arg[3]
@@ -2171,24 +2735,27 @@ function sweptAreaSolidToSweep(
   let extrusionDir: [number, number, number] | null = null;
   let depth = 0;
   const dirEnt = entities.get(dirArg.id);
-  if (dirEnt && dirEnt.name === 'DIRECTION') {
+  if (dirEnt && dirEnt.name === "DIRECTION") {
     extrusionDir = readDirection(dirArg.id, entities);
-    if (depthArg && depthArg.kind === 'number') {
+    if (depthArg && depthArg.kind === "number") {
       // Honour the explicit depth, including 0 (which we reject below as
       // degenerate). This is important for round-tripping SWEPT_AREA_SOLID
       // files where depth=0 indicates "the producer wrote a malformed
       // entity"; we should surface that, not silently default to 1.
       depth = depthArg.value;
-    } else if (!depthArg || depthArg.kind === 'null') {
+    } else if (!depthArg || depthArg.kind === "null") {
       // No depth given: default to magnitude 1 — some viewers emit
       // SWEPT_AREA_SOLID with no scalar at all (treating direction as a
       // pre-scaled "translation vector").
       depth = 1;
     } else {
       // Non-numeric depth (string / enum / list / ref) — reject explicitly.
-      return { kind: 'unsupported', reason: `${ent.name} has non-numeric depth` };
+      return {
+        kind: "unsupported",
+        reason: `${ent.name} has non-numeric depth`,
+      };
     }
-  } else if (dirEnt && dirEnt.name === 'VECTOR') {
+  } else if (dirEnt && dirEnt.name === "VECTOR") {
     const decoded = readExtrusionVector(dirArg.id, entities);
     if (decoded) {
       extrusionDir = decoded.direction;
@@ -2196,15 +2763,21 @@ function sweptAreaSolidToSweep(
     }
   }
   if (!extrusionDir) {
-    return { kind: 'unsupported', reason: `${ent.name} extrusion ref is not DIRECTION or VECTOR` };
+    return {
+      kind: "unsupported",
+      reason: `${ent.name} extrusion ref is not DIRECTION or VECTOR`,
+    };
   }
   if (!(depth > POINT_EPS)) {
-    return { kind: 'unsupported', reason: `${ent.name} has degenerate depth ${depth}` };
+    return {
+      kind: "unsupported",
+      reason: `${ent.name} has degenerate depth ${depth}`,
+    };
   }
   const axisKind = classifyAxisAlignment(extrusionDir);
   if (axisKind === null) {
     return {
-      kind: 'unsupported',
+      kind: "unsupported",
       reason:
         `extrusion direction (${formatDir(extrusionDir)}) is not axis-aligned ` +
         `(Phase 3 limit: only ±X/±Y/±Z)`,
@@ -2213,12 +2786,12 @@ function sweptAreaSolidToSweep(
 
   // ─── decode the swept_area profile (re-uses the revolve helper) ─────────
   const profile = readSweptAreaProfile(sweptAreaArg.id, entities);
-  if (profile.kind !== 'ok') {
-    return { kind: 'unsupported', reason: `swept_area: ${profile.reason}` };
+  if (profile.kind !== "ok") {
+    return { kind: "unsupported", reason: `swept_area: ${profile.reason}` };
   }
   if (profile.points.length < 3) {
     return {
-      kind: 'unsupported',
+      kind: "unsupported",
       reason: `swept_area has ${profile.points.length} points, need ≥ 3`,
     };
   }
@@ -2233,7 +2806,8 @@ function sweptAreaSolidToSweep(
   // Drop closing duplicate if present.
   if (
     profile2D.length > 3 &&
-    Math.abs(profile2D[0]!.x - profile2D[profile2D.length - 1]!.x) <= POINT_EPS &&
+    Math.abs(profile2D[0]!.x - profile2D[profile2D.length - 1]!.x) <=
+      POINT_EPS &&
     Math.abs(profile2D[0]!.y - profile2D[profile2D.length - 1]!.y) <= POINT_EPS
   ) {
     profile2D.pop();
@@ -2248,10 +2822,10 @@ function sweptAreaSolidToSweep(
   // World extent = union of the swept_area profile and its translate along the axis.
   const sweptWorldBBox = bboxOfSweptProfile(profile.points, axisU, depth);
   return {
-    kind: 'ok',
+    kind: "ok",
     worldBBox: sweptWorldBBox,
     feature: {
-      kind: 'sweep',
+      kind: "sweep",
       profile: { points: profile2D },
       path: [
         { x: origin[0], y: origin[1], z: origin[2] },
@@ -2261,7 +2835,7 @@ function sweptAreaSolidToSweep(
           z: origin[2] + depth * axisU[2],
         },
       ],
-      mode: 'add',
+      mode: "add",
     },
   };
 }
@@ -2269,8 +2843,8 @@ function sweptAreaSolidToSweep(
 // ─── REVOLVED_AREA_SOLID → RevolveFeature ─────────────────────────────────
 
 type RevolvedAreaResult =
-  | { kind: 'ok'; feature: RevolveFeature; worldBBox?: WorldBBox | null }
-  | { kind: 'unsupported'; reason: string };
+  | { kind: "ok"; feature: RevolveFeature; worldBBox?: WorldBBox | null }
+  | { kind: "unsupported"; reason: string };
 
 /**
  * Parse a REVOLVED_AREA_SOLID entity directly into a `RevolveFeature`.
@@ -2298,39 +2872,48 @@ function revolvedAreaSolidToRevolve(
   entities: Map<number, StepEntity>,
 ): RevolvedAreaResult {
   const ent = entities.get(revolveId);
-  if (!ent || ent.name !== 'REVOLVED_AREA_SOLID') {
-    return { kind: 'unsupported', reason: `not a REVOLVED_AREA_SOLID` };
+  if (!ent || ent.name !== "REVOLVED_AREA_SOLID") {
+    return { kind: "unsupported", reason: `not a REVOLVED_AREA_SOLID` };
   }
   // args[0]=name, args[1]=swept_area, args[2]=axis, args[3]=angle.
   const sweptAreaArg = ent.args[1];
   const axisArg = ent.args[2];
   const angleArg = ent.args[3];
-  if (!sweptAreaArg || sweptAreaArg.kind !== 'ref') {
-    return { kind: 'unsupported', reason: `REVOLVED_AREA_SOLID missing swept_area ref` };
+  if (!sweptAreaArg || sweptAreaArg.kind !== "ref") {
+    return {
+      kind: "unsupported",
+      reason: `REVOLVED_AREA_SOLID missing swept_area ref`,
+    };
   }
-  if (!axisArg || axisArg.kind !== 'ref') {
-    return { kind: 'unsupported', reason: `REVOLVED_AREA_SOLID missing AXIS1_PLACEMENT ref` };
+  if (!axisArg || axisArg.kind !== "ref") {
+    return {
+      kind: "unsupported",
+      reason: `REVOLVED_AREA_SOLID missing AXIS1_PLACEMENT ref`,
+    };
   }
   // Angle is in radians per ISO 10303. Some viewers emit 0 to mean "full
   // revolve"; we treat 0 / null / missing as 2π.
   let angleRad = 2 * Math.PI;
-  if (angleArg && angleArg.kind === 'number' && angleArg.value > 0) {
+  if (angleArg && angleArg.kind === "number" && angleArg.value > 0) {
     angleRad = angleArg.value;
   }
   if (angleRad > 2 * Math.PI + 1e-6) {
-    return { kind: 'unsupported', reason: `revolve angle ${angleRad} rad exceeds 2π` };
+    return {
+      kind: "unsupported",
+      reason: `revolve angle ${angleRad} rad exceeds 2π`,
+    };
   }
   const angleDegrees = (angleRad * 180) / Math.PI;
 
   // ─── decode axis ────────────────────────────────────────────────────────
   const axisPlacement = readAxis1Placement(axisArg.id, entities);
   if (!axisPlacement) {
-    return { kind: 'unsupported', reason: `bad AXIS1_PLACEMENT entity` };
+    return { kind: "unsupported", reason: `bad AXIS1_PLACEMENT entity` };
   }
   const axisKind = classifyAxisAlignment(axisPlacement.direction);
   if (axisKind === null) {
     return {
-      kind: 'unsupported',
+      kind: "unsupported",
       reason:
         `revolve axis (${formatDir(axisPlacement.direction)}) is not axis-aligned ` +
         `(Phase 2 limit: only ±X/±Y/±Z)`,
@@ -2339,12 +2922,12 @@ function revolvedAreaSolidToRevolve(
 
   // ─── decode profile ────────────────────────────────────────────────────
   const profile = readSweptAreaProfile(sweptAreaArg.id, entities);
-  if (profile.kind !== 'ok') {
-    return { kind: 'unsupported', reason: `swept_area: ${profile.reason}` };
+  if (profile.kind !== "ok") {
+    return { kind: "unsupported", reason: `swept_area: ${profile.reason}` };
   }
   if (profile.points.length < 3) {
     return {
-      kind: 'unsupported',
+      kind: "unsupported",
       reason: `swept_area has ${profile.points.length} points, need ≥ 3`,
     };
   }
@@ -2375,7 +2958,7 @@ function revolvedAreaSolidToRevolve(
       if (signSeen === 0) signSeen = sign;
       else if (signSeen !== sign) {
         return {
-          kind: 'unsupported',
+          kind: "unsupported",
           reason: `profile straddles the revolve axis (would self-intersect)`,
         };
       }
@@ -2386,26 +2969,27 @@ function revolvedAreaSolidToRevolve(
   // Drop closing duplicate vertex if present.
   if (
     canonical.length > 3 &&
-    Math.abs(canonical[0]!.x - canonical[canonical.length - 1]!.x) <= POINT_EPS &&
+    Math.abs(canonical[0]!.x - canonical[canonical.length - 1]!.x) <=
+      POINT_EPS &&
     Math.abs(canonical[0]!.y - canonical[canonical.length - 1]!.y) <= POINT_EPS
   ) {
     canonical.pop();
   }
 
   return {
-    kind: 'ok',
+    kind: "ok",
     feature: {
-      kind: 'revolve',
+      kind: "revolve",
       loop: canonical,
       angleDegrees,
-      mode: 'add',
+      mode: "add",
     },
   };
 }
 
 type SweptAreaResult =
-  | { kind: 'ok'; points: Array<[number, number, number]> }
-  | { kind: 'unsupported'; reason: string };
+  | { kind: "ok"; points: Array<[number, number, number]> }
+  | { kind: "unsupported"; reason: string };
 
 /**
  * Extract the profile point ring from a REVOLVED_AREA_SOLID's swept_area.
@@ -2425,79 +3009,101 @@ function readSweptAreaProfile(
 ): SweptAreaResult {
   const ent = entities.get(sweptAreaId);
   if (!ent) {
-    return { kind: 'unsupported', reason: `swept_area #${sweptAreaId} missing` };
-  }
-  if (ent.name !== 'PLANAR_FACE' && ent.name !== 'FACE_OUTER_BOUND') {
     return {
-      kind: 'unsupported',
+      kind: "unsupported",
+      reason: `swept_area #${sweptAreaId} missing`,
+    };
+  }
+  if (ent.name !== "PLANAR_FACE" && ent.name !== "FACE_OUTER_BOUND") {
+    return {
+      kind: "unsupported",
       reason: `swept_area type ${ent.name} not supported (Phase 2: PLANAR_FACE only)`,
     };
   }
   // Find the FACE_OUTER_BOUND. PLANAR_FACE has bounds list as args[1];
   // FACE_OUTER_BOUND is itself the bound entity.
   let boundEnt: StepEntity | null = null;
-  if (ent.name === 'PLANAR_FACE') {
+  if (ent.name === "PLANAR_FACE") {
     const boundsArg = ent.args[1];
-    if (!boundsArg || boundsArg.kind !== 'list') {
-      return { kind: 'unsupported', reason: `PLANAR_FACE missing bounds list` };
+    if (!boundsArg || boundsArg.kind !== "list") {
+      return { kind: "unsupported", reason: `PLANAR_FACE missing bounds list` };
     }
     for (const item of boundsArg.items) {
-      if (item.kind !== 'ref') continue;
+      if (item.kind !== "ref") continue;
       const b = entities.get(item.id);
-      if (b && b.name === 'FACE_OUTER_BOUND') {
+      if (b && b.name === "FACE_OUTER_BOUND") {
         boundEnt = b;
         break;
       }
     }
     if (!boundEnt) {
-      return { kind: 'unsupported', reason: `PLANAR_FACE has no FACE_OUTER_BOUND` };
+      return {
+        kind: "unsupported",
+        reason: `PLANAR_FACE has no FACE_OUTER_BOUND`,
+      };
     }
   } else {
     boundEnt = ent;
   }
   // FACE_OUTER_BOUND('', #loop, .T.)
   const loopRef = boundEnt.args[1];
-  if (!loopRef || loopRef.kind !== 'ref') {
-    return { kind: 'unsupported', reason: `FACE_OUTER_BOUND missing loop ref` };
+  if (!loopRef || loopRef.kind !== "ref") {
+    return { kind: "unsupported", reason: `FACE_OUTER_BOUND missing loop ref` };
   }
   const loop = entities.get(loopRef.id);
-  if (!loop || loop.name !== 'EDGE_LOOP') {
-    return { kind: 'unsupported', reason: `bound loop is ${loop?.name ?? 'unknown'}` };
+  if (!loop || loop.name !== "EDGE_LOOP") {
+    return {
+      kind: "unsupported",
+      reason: `bound loop is ${loop?.name ?? "unknown"}`,
+    };
   }
   const oeArg = loop.args[1];
-  if (!oeArg || oeArg.kind !== 'list') {
-    return { kind: 'unsupported', reason: `EDGE_LOOP missing edge list` };
+  if (!oeArg || oeArg.kind !== "list") {
+    return { kind: "unsupported", reason: `EDGE_LOOP missing edge list` };
   }
   const ring: Array<[number, number, number]> = [];
   for (const item of oeArg.items) {
-    if (item.kind !== 'ref') {
-      return { kind: 'unsupported', reason: `ORIENTED_EDGE non-ref in loop` };
+    if (item.kind !== "ref") {
+      return { kind: "unsupported", reason: `ORIENTED_EDGE non-ref in loop` };
     }
     const oe = entities.get(item.id);
-    if (!oe || oe.name !== 'ORIENTED_EDGE') {
-      return { kind: 'unsupported', reason: `ORIENTED_EDGE missing` };
+    if (!oe || oe.name !== "ORIENTED_EDGE") {
+      return { kind: "unsupported", reason: `ORIENTED_EDGE missing` };
     }
     const ecRef = oe.args[3];
     const oeFlag = oe.args[4];
-    if (!ecRef || ecRef.kind !== 'ref') {
-      return { kind: 'unsupported', reason: `ORIENTED_EDGE missing EDGE_CURVE` };
+    if (!ecRef || ecRef.kind !== "ref") {
+      return {
+        kind: "unsupported",
+        reason: `ORIENTED_EDGE missing EDGE_CURVE`,
+      };
     }
-    const forwardOe = oeFlag?.kind === 'enum' ? oeFlag.value !== 'F' : true;
+    const forwardOe = oeFlag?.kind === "enum" ? oeFlag.value !== "F" : true;
     const ec = entities.get(ecRef.id);
-    if (!ec || ec.name !== 'EDGE_CURVE') {
-      return { kind: 'unsupported', reason: `EDGE_CURVE missing` };
+    if (!ec || ec.name !== "EDGE_CURVE") {
+      return { kind: "unsupported", reason: `EDGE_CURVE missing` };
     }
     const vStartRef = ec.args[1];
     const vEndRef = ec.args[2];
     const curveRef = ec.args[3];
-    if (!vStartRef || vStartRef.kind !== 'ref' || !vEndRef || vEndRef.kind !== 'ref') {
-      return { kind: 'unsupported', reason: `EDGE_CURVE missing vertex refs` };
+    if (
+      !vStartRef ||
+      vStartRef.kind !== "ref" ||
+      !vEndRef ||
+      vEndRef.kind !== "ref"
+    ) {
+      return { kind: "unsupported", reason: `EDGE_CURVE missing vertex refs` };
     }
-    if (curveRef && curveRef.kind === 'ref') {
+    if (curveRef && curveRef.kind === "ref") {
       const curve = entities.get(curveRef.id);
-      if (curve && curve.name && curve.name !== 'LINE' && curve.name !== 'POLYLINE') {
+      if (
+        curve &&
+        curve.name &&
+        curve.name !== "LINE" &&
+        curve.name !== "POLYLINE"
+      ) {
         return {
-          kind: 'unsupported',
+          kind: "unsupported",
           reason: `profile has non-linear edge (${curve.name})`,
         };
       }
@@ -2505,7 +3111,7 @@ function readSweptAreaProfile(
     const start = readVertexPoint(vStartRef.id, entities);
     const end = readVertexPoint(vEndRef.id, entities);
     if (!start || !end) {
-      return { kind: 'unsupported', reason: `VERTEX_POINT decode failed` };
+      return { kind: "unsupported", reason: `VERTEX_POINT decode failed` };
     }
     const first = forwardOe ? start : end;
     if (ring.length === 0 || !pointEq(ring[ring.length - 1]!, first)) {
@@ -2516,7 +3122,7 @@ function readSweptAreaProfile(
   if (ring.length > 3 && pointEq(ring[0]!, ring[ring.length - 1]!)) {
     ring.pop();
   }
-  return { kind: 'ok', points: ring };
+  return { kind: "ok", points: ring };
 }
 
 // ─── geometric helpers ────────────────────────────────────────────────────
@@ -2528,8 +3134,12 @@ function readSweptAreaProfile(
  * a canonicalised cylinder the two cap planes bound the radial + axial extent.
  */
 function bboxOfPlaneFaces(faces: PlaneFace[]): WorldBBox | null {
-  let minX = Infinity, minY = Infinity, minZ = Infinity;
-  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    minZ = Infinity;
+  let maxX = -Infinity,
+    maxY = -Infinity,
+    maxZ = -Infinity;
   for (const f of faces) {
     for (const v of f.loop) {
       if (v[0] < minX) minX = v[0];
@@ -2556,7 +3166,11 @@ function bboxOfSweptProfile(
   for (const p of points) {
     const ends: Array<[number, number, number]> = [
       p,
-      [p[0] + depth * axisU[0], p[1] + depth * axisU[1], p[2] + depth * axisU[2]],
+      [
+        p[0] + depth * axisU[0],
+        p[1] + depth * axisU[1],
+        p[2] + depth * axisU[2],
+      ],
     ];
     for (const q of ends) {
       for (let k = 0; k < 3; k++) {
@@ -2568,7 +3182,10 @@ function bboxOfSweptProfile(
   return { min, max };
 }
 
-function pointEq(a: [number, number, number], b: [number, number, number]): boolean {
+function pointEq(
+  a: [number, number, number],
+  b: [number, number, number],
+): boolean {
   return (
     Math.abs(a[0] - b[0]) <= POINT_EPS &&
     Math.abs(a[1] - b[1]) <= POINT_EPS &&
@@ -2581,7 +3198,11 @@ function isAxisAligned(n: [number, number, number]): boolean {
 }
 
 function isZAxisNormal(n: [number, number, number]): boolean {
-  return Math.abs(n[0]) <= AXIS_EPS && Math.abs(n[1]) <= AXIS_EPS && Math.abs(Math.abs(n[2]) - 1) <= AXIS_EPS;
+  return (
+    Math.abs(n[0]) <= AXIS_EPS &&
+    Math.abs(n[1]) <= AXIS_EPS &&
+    Math.abs(Math.abs(n[2]) - 1) <= AXIS_EPS
+  );
 }
 
 /** Normal lies in the XY plane (z component ~ 0) — required for prism sides. */
@@ -2595,8 +3216,10 @@ function isHorizontalAxisNormal(n: [number, number, number]): boolean {
   const ay = Math.abs(n[1]);
   const az = Math.abs(n[2]);
   if (az > AXIS_EPS) return false;
-  return (Math.abs(ax - 1) <= AXIS_EPS && ay <= AXIS_EPS) ||
-         (Math.abs(ay - 1) <= AXIS_EPS && ax <= AXIS_EPS);
+  return (
+    (Math.abs(ax - 1) <= AXIS_EPS && ay <= AXIS_EPS) ||
+    (Math.abs(ay - 1) <= AXIS_EPS && ax <= AXIS_EPS)
+  );
 }
 
 /**
@@ -2610,15 +3233,18 @@ function isHorizontalAxisNormal(n: [number, number, number]): boolean {
  */
 function classifyAxisAlignment(
   dir: [number, number, number],
-): 'x' | 'y' | 'z' | null {
+): "x" | "y" | "z" | null {
   const len = Math.hypot(dir[0], dir[1], dir[2]);
   if (len < 1e-9) return null;
   const ax = Math.abs(dir[0] / len);
   const ay = Math.abs(dir[1] / len);
   const az = Math.abs(dir[2] / len);
-  if (Math.abs(ax - 1) <= AXIS_EPS && ay <= AXIS_EPS && az <= AXIS_EPS) return 'x';
-  if (Math.abs(ay - 1) <= AXIS_EPS && ax <= AXIS_EPS && az <= AXIS_EPS) return 'y';
-  if (Math.abs(az - 1) <= AXIS_EPS && ax <= AXIS_EPS && ay <= AXIS_EPS) return 'z';
+  if (Math.abs(ax - 1) <= AXIS_EPS && ay <= AXIS_EPS && az <= AXIS_EPS)
+    return "x";
+  if (Math.abs(ay - 1) <= AXIS_EPS && ax <= AXIS_EPS && az <= AXIS_EPS)
+    return "y";
+  if (Math.abs(az - 1) <= AXIS_EPS && ax <= AXIS_EPS && ay <= AXIS_EPS)
+    return "z";
   return null;
 }
 
@@ -2642,8 +3268,12 @@ function unitVec(v: [number, number, number]): [number, number, number] {
   return [v[0] / len, v[1] / len, v[2] / len];
 }
 
-function centroid(loop: Array<[number, number, number]>): [number, number, number] {
-  let sx = 0, sy = 0, sz = 0;
+function centroid(
+  loop: Array<[number, number, number]>,
+): [number, number, number] {
+  let sx = 0,
+    sy = 0,
+    sz = 0;
   for (const v of loop) {
     sx += v[0];
     sy += v[1];
@@ -2655,7 +3285,8 @@ function centroid(loop: Array<[number, number, number]>): [number, number, numbe
 
 /** Format a direction as a short "(x,y,z)" string for unsupported reasons. */
 function formatDir(d: [number, number, number]): string {
-  const fmt = (v: number) => Math.abs(v) < 1e-6 ? '0' : Number(v.toFixed(4)).toString();
+  const fmt = (v: number) =>
+    Math.abs(v) < 1e-6 ? "0" : Number(v.toFixed(4)).toString();
   return `(${fmt(d[0])},${fmt(d[1])},${fmt(d[2])})`;
 }
 
@@ -2670,23 +3301,33 @@ function formatDir(d: [number, number, number]): string {
  * straddle check, which is the correct relaxation.)
  */
 function pickPerpSignReference(
-  axisKind: 'x' | 'y' | 'z',
+  axisKind: "x" | "y" | "z",
   perpX: number,
   perpY: number,
   _perpZ: number,
 ): number {
-  if (axisKind === 'x') return perpY;
-  if (axisKind === 'y') return perpX;
+  if (axisKind === "x") return perpY;
+  if (axisKind === "y") return perpX;
   return perpX; // z-axis: profile expected in XZ or YZ plane
 }
 
 // ─── box reconstruction ───────────────────────────────────────────────────
 
-function facesToBox(
-  faces: PlaneFace[],
-): { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number } | null {
+function facesToBox(faces: PlaneFace[]): {
+  x0: number;
+  y0: number;
+  z0: number;
+  x1: number;
+  y1: number;
+  z1: number;
+} | null {
   // Collect every vertex; the 8 unique corners give us the bbox.
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity,
+    minZ = Infinity,
+    maxZ = -Infinity;
   for (const f of faces) {
     for (const v of f.loop) {
       if (v[0] < minX) minX = v[0];
@@ -2709,8 +3350,8 @@ function facesToBox(
 // ─── polygon prism reconstruction ─────────────────────────────────────────
 
 type PrismResult =
-  | { kind: 'ok'; loop: Array<{ x: number; y: number }>; depth: number }
-  | { kind: 'unsupported'; reason: string };
+  | { kind: "ok"; loop: Array<{ x: number; y: number }>; depth: number }
+  | { kind: "unsupported"; reason: string };
 
 function capsToPrism(caps: PlaneFace[], sides: PlaneFace[]): PrismResult {
   // Assign bottom (-Z normal) and top (+Z normal).
@@ -2721,17 +3362,17 @@ function capsToPrism(caps: PlaneFace[], sides: PlaneFace[]): PrismResult {
     else if (c.normal[2] > 0.5) top = c;
   }
   if (!bottom || !top) {
-    return { kind: 'unsupported', reason: 'caps not assignable to ±Z' };
+    return { kind: "unsupported", reason: "caps not assignable to ±Z" };
   }
   if (bottom.loop.length !== top.loop.length) {
     return {
-      kind: 'unsupported',
+      kind: "unsupported",
       reason: `cap vertex counts differ (bottom=${bottom.loop.length}, top=${top.loop.length})`,
     };
   }
   if (bottom.loop.length !== sides.length) {
     return {
-      kind: 'unsupported',
+      kind: "unsupported",
       reason: `side count ${sides.length} != cap vertex count ${bottom.loop.length}`,
     };
   }
@@ -2740,17 +3381,17 @@ function capsToPrism(caps: PlaneFace[], sides: PlaneFace[]): PrismResult {
   const z1 = top.loop[0]![2];
   for (const v of bottom.loop) {
     if (Math.abs(v[2] - z0) > POINT_EPS) {
-      return { kind: 'unsupported', reason: 'bottom cap not planar in Z' };
+      return { kind: "unsupported", reason: "bottom cap not planar in Z" };
     }
   }
   for (const v of top.loop) {
     if (Math.abs(v[2] - z1) > POINT_EPS) {
-      return { kind: 'unsupported', reason: 'top cap not planar in Z' };
+      return { kind: "unsupported", reason: "top cap not planar in Z" };
     }
   }
   const depth = z1 - z0;
   if (!(depth > POINT_EPS)) {
-    return { kind: 'unsupported', reason: `non-positive depth ${depth}` };
+    return { kind: "unsupported", reason: `non-positive depth ${depth}` };
   }
   // Project bottom cap to XY. The bottom cap is wound CW (when viewed from
   // below it's CCW), so reverse it to recover the CCW XY loop the
@@ -2763,13 +3404,20 @@ function capsToPrism(caps: PlaneFace[], sides: PlaneFace[]): PrismResult {
   // Verify top cap matches bottom cap in XY (any rotation / reflection ok
   // as long as the vertex set agrees within POINT_EPS).
   if (!xyVertexSetsMatch(bottom.loop, top.loop)) {
-    return { kind: 'unsupported', reason: 'top cap XY vertices do not match bottom cap' };
+    return {
+      kind: "unsupported",
+      reason: "top cap XY vertices do not match bottom cap",
+    };
   }
   // Drop a closing duplicate if the writer included one.
-  if (xy.length > 3 && Math.abs(xy[0]!.x - xy[xy.length - 1]!.x) <= POINT_EPS && Math.abs(xy[0]!.y - xy[xy.length - 1]!.y) <= POINT_EPS) {
+  if (
+    xy.length > 3 &&
+    Math.abs(xy[0]!.x - xy[xy.length - 1]!.x) <= POINT_EPS &&
+    Math.abs(xy[0]!.y - xy[xy.length - 1]!.y) <= POINT_EPS
+  ) {
     xy.pop();
   }
-  return { kind: 'ok', loop: xy, depth };
+  return { kind: "ok", loop: xy, depth };
 }
 
 function xyVertexSetsMatch(
@@ -2783,7 +3431,10 @@ function xyVertexSetsMatch(
     for (let j = 0; j < b.length; j++) {
       if (used[j]) continue;
       const vb = b[j]!;
-      if (Math.abs(va[0] - vb[0]) <= POINT_EPS && Math.abs(va[1] - vb[1]) <= POINT_EPS) {
+      if (
+        Math.abs(va[0] - vb[0]) <= POINT_EPS &&
+        Math.abs(va[1] - vb[1]) <= POINT_EPS
+      ) {
         used[j] = true;
         matched = true;
         break;

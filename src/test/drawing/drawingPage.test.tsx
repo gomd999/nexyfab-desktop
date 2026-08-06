@@ -148,8 +148,10 @@ describe('DrawingPageContent', () => {
   it('submitting a dimension through the modal appends to sheet.dimensions and shows a list entry', () => {
     const { container } = mount();
     fireEvent.click(screen.getByTestId('drawing-add-annotation-button'));
-    fireEvent.change(screen.getByTestId('solver-dim-ref-0-input'), { target: { value: 'e1' } });
-    fireEvent.change(screen.getByTestId('solver-dim-ref-1-input'), { target: { value: 'e2' } });
+    // Reference-review partition (260807): unresolved refs are excluded from
+    // the rendered sheet — use real topo names from the default cube part.
+    fireEvent.change(screen.getByTestId('solver-dim-ref-0-input'), { target: { value: 'f.side.3' } });
+    fireEvent.change(screen.getByTestId('solver-dim-ref-1-input'), { target: { value: 'f.side.1' } });
     fireEvent.click(screen.getByTestId('solver-dim-submit'));
     // Modal closes after onAdd; list entry appears.
     expect(screen.queryByTestId('solver-dim-modal')).toBeNull();
@@ -163,8 +165,9 @@ describe('DrawingPageContent', () => {
   it('deleting an annotation from the list removes it from the sheet', () => {
     const { container } = mount();
     fireEvent.click(screen.getByTestId('drawing-add-annotation-button'));
-    fireEvent.change(screen.getByTestId('solver-dim-ref-0-input'), { target: { value: 'e1' } });
-    fireEvent.change(screen.getByTestId('solver-dim-ref-1-input'), { target: { value: 'e2' } });
+    // Reference-review partition (260807): use real topo names (see above).
+    fireEvent.change(screen.getByTestId('solver-dim-ref-0-input'), { target: { value: 'f.side.3' } });
+    fireEvent.change(screen.getByTestId('solver-dim-ref-1-input'), { target: { value: 'f.side.1' } });
     fireEvent.click(screen.getByTestId('solver-dim-submit'));
     // Grab the rendered dimension's id from the data-dim-id attribute on
     // the SheetRenderer's first dim group.

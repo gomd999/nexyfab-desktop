@@ -11,6 +11,7 @@
  *  - 단위=IfcSIUnit LENGTHUNIT 감지(m→×1000·mm→×1). 재질=클래스별 기본값(IfcMaterial 파싱=후속).
  *  - 파일 예산 150MB(초과=정직 거부 — 분할 안내). 부품 예산 600(초과=클래스별 대표화).
  */
+import { classifyIndexedMeshBoundaries, repairIndexedMeshDegenerateFaces } from './indexedMeshClosure';
 
 export interface IfcImportResult {
   ok: boolean;
@@ -19,20 +20,26 @@ export interface IfcImportResult {
     name: string;
     domain: string;
     importedApprox?: boolean;
+    /** Reusable type geometry only; contains no placed physical occurrence. */
+    definitionOnly?: boolean;
     // ⚠ 260729c: 삼각 메시 요소는 `mesh` 로 나간다 — 형상은 AABB 로 표시되지만
     //   **부피·질량은 실측**이다(박스로 뭉개면 최대 58배 과대, 실측). 둘은 다른 정보다.
     parts: Array<{
       id: string;
       type: 'box' | 'mesh';
       params: { width: number; depth: number; height: number }
-        | { volumeMm3: number; aabb: { min: number[]; max: number[] } };
+        | { volumeMm3?: number; aabb: { min: number[]; max: number[] }; verts?: number[][]; faces?: number[][]; openSurface?: boolean };
       at: { tx: number; ty: number; tz: number; rz?: number };
       role: string; material: string; qty?: number;
       meshVolumeExact?: boolean; boxVolumeMm3?: number;
+      geometryEvidence?: 'exact_extrusion_box' | 'exact_mesh_volume_aabb_display' | 'exact_surface_mesh' | 'aabb_only';
+      sourceClass?: string;
+      representationKinds?: string[];
+      closureEvidence?: { watertight: boolean; sourceDeclaredOpenSurface: boolean; boundaryEdges: number; nonManifoldEdges: number; degenerateFaces: number; orientationConsistent: boolean; degenerateRepairApplied: boolean; removedDegenerateFaces: number; boundaryComponents: number; closedBoundaryLoops: number; openBoundaryChains: number; branchedBoundaryComponents: number; planarClosedBoundaryLoops: number; microGapCandidates: number; totalBoundaryLengthMm: number };
     }>;
     note: string;
   };
-  stats?: { elements: number; imported: number; exact: number; approx: number; skipped: number; unitScale: number; byClass: Record<string, number>; skipByClass?: Record<string, number>; representative?: boolean };
+  stats?: { elements: number; imported: number; exact: number; approx: number; skipped: number; unitScale: number; byClass: Record<string, number>; skipByClass?: Record<string, number>; dimensionSamples?: Record<string, number[][]>; dimensionEvidence?: Array<{ entityId: number; ifcClass: string; dimensions: number[] }>; authoritativeThicknessRecoveries?: number; authoritativeInputRecoveries?: number; appliedAuthoritativeInputs?: Array<{ entityId: number; globalId: string; axis: number; valueMm: number; provenance: string; beforeDimensionsMm: number[]; afterDimensionsMm: number[] }>; representative?: boolean };
 }
 
 const ELEMENT_CLASSES: Record<string, { role: string; material: string }> = {
@@ -54,8 +61,11 @@ const ELEMENT_CLASSES: Record<string, { role: string; material: string }> = {
   IFCCURTAINWALL: { role: 'wall', material: 'glass' },
   IFCRAILING: { role: 'railing', material: 'steel' },
   IFCBUILDINGELEMENTPROXY: { role: 'element', material: 'concrete' },
+  IFCBUILTELEMENT: { role: 'element', material: 'concrete' },
   IFCFURNISHINGELEMENT: { role: 'furniture', material: 'timber' },
   IFCFLOWTERMINAL: { role: 'fixture', material: 'steel' },
+  IFCSANITARYTERMINAL: { role: 'fixture', material: 'ceramic' },
+  IFCREINFORCINGBAR: { role: 'reinforcement', material: 'steel' },
 
   // ── IFC4.3 인프라 (260729c) ────────────────────────────────────────────────
   // 실측: PCERT 4.3 인프라 씬이 Rail 73→1 · Road 33→1 로 무너졌다. 원인은 4.3 이
@@ -144,7 +154,11 @@ const refOf = (s: string | undefined): number | null => {
   return m ? +m[1] : null;
 };
 
-export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {}): IfcImportResult {
+export interface IfcAuthoritativeGeometryOverride { globalId: string; axis: number; valueMm: number; provenance: string }
+export interface IfcImportOptions { name?: string; maxParts?: number; authoritativeGeometryOverrides?: IfcAuthoritativeGeometryOverride[] }
+
+export function ifcToNexyfabAssembly(source: string, { name = 'IFC import', maxParts = 600, authoritativeGeometryOverrides = [] }: IfcImportOptions = {}): IfcImportResult {
+  const partLimit = Number.isSafeInteger(maxParts) && maxParts > 0 ? maxParts : 600;
   if (source.length > 300_000_000) return { ok: false, error: 'IFC 300MB 초과 — 파일 예산 밖(층/동 분할 내보내기 필요, 정직 거부)' };
   if (!/FILE_SCHEMA\s*\(\s*\(\s*'IFC/i.test(source.slice(0, 4000))) return { ok: false, error: 'IFC 스키마 헤더 없음 — IFC SPF 파일이 아님' };
 
@@ -154,14 +168,18 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
   let m: RegExpExecArray | null;
   while ((m = re.exec(source))) ents.set(+m[1], { name: m[2], raw: m[3] });
   if (ents.size === 0) return { ok: false, error: '엔티티 0건 — 파싱 실패' };
+  const approvedOverrideByGlobalId = new Map(authoritativeGeometryOverrides.map(value => [value.globalId, value]));
 
   // ── 2. 단위 스케일(m→1000·mm→1) ──
-  let unitScale = 1;
+  let unitScale = 1, areaScaleToMm2 = 1_000_000, volumeScaleToMm3 = 1_000_000_000;
+  let lengthUnitFound = false, areaUnitFound = false, volumeUnitFound = false;
   for (const e of ents.values()) {
-    if (e.name === 'IFCSIUNIT' && e.raw.includes('.LENGTHUNIT.')) {
+    if (!lengthUnitFound && e.name === 'IFCSIUNIT' && e.raw.includes('.LENGTHUNIT.')) {
       unitScale = e.raw.includes('.MILLI.') ? 1 : 1000;
-      break;
+      lengthUnitFound = true;
     }
+    if (!areaUnitFound && e.name === 'IFCSIUNIT' && e.raw.includes('.AREAUNIT.')) { areaScaleToMm2 = e.raw.includes('.MILLI.') ? 1 : 1_000_000; areaUnitFound = true; }
+    if (!volumeUnitFound && e.name === 'IFCSIUNIT' && e.raw.includes('.VOLUMEUNIT.')) { volumeScaleToMm3 = e.raw.includes('.MILLI.') ? 1 : 1_000_000_000; volumeUnitFound = true; }
   }
 
   // ── 3. 배치 합성(IfcLocalPlacement 체인, 메모) ──
@@ -174,8 +192,9 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
     if (!e) return I4;
     const a = splitArgs(e.raw);
     const loc = readPoint(refOf(a[0]));
-    const zAx = readDir(refOf(a[1])) ?? [0, 0, 1];
-    const xRef = readDir(refOf(a[2])) ?? defaultX(zAx);
+    const is2d = e.name === 'IFCAXIS2PLACEMENT2D';
+    const zAx = is2d ? [0, 0, 1] : readDir(refOf(a[1])) ?? [0, 0, 1];
+    const xRef = readDir(refOf(is2d ? a[1] : a[2])) ?? defaultX(zAx);
     // 그램-슈미트: x ⟂ z, y = z×x
     const dot = xRef[0] * zAx[0] + xRef[1] * zAx[1] + xRef[2] * zAx[2];
     let x = [xRef[0] - dot * zAx[0], xRef[1] - dot * zAx[1], xRef[2] - dot * zAx[2]];
@@ -205,7 +224,11 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
     const hit = placeCache.get(id);
     if (hit) return hit;
     const e = ents.get(id);
-    if (!e || e.name !== 'IFCLOCALPLACEMENT') return I4;
+    if (!e) return I4;
+    if (e.name === 'IFCLINEARPLACEMENT') {
+      const a = splitArgs(e.raw); const M = mul(placementM(refOf(a[0]), guard + 1), axis2M(refOf(a[2]))); placeCache.set(id, M); return M;
+    }
+    if (e.name !== 'IFCLOCALPLACEMENT') return I4;
     const a = splitArgs(e.raw);
     const parent = placementM(refOf(a[0]), guard + 1);
     const local = axis2M(refOf(a[1]));
@@ -246,6 +269,24 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
   const meshVolOf = (id: number, depth = 0): number => {
     const e = ents.get(id);
     if (!e || depth > 12) return 0;
+    if (e.name === 'IFCCLOSEDSHELL') {
+      let v6 = 0, triangles = 0, faces = 0;
+      for (const faceRef of (e.raw.match(/#\d+/g) ?? []).map(value => +value.slice(1))) {
+        const face = ents.get(faceRef); if (face?.name !== 'IFCFACE') continue;
+        const bounds = (face.raw.match(/#\d+/g) ?? []).map(value => +value.slice(1)).map(value => ents.get(value)).filter((value): value is Ent => value?.name === 'IFCFACEOUTERBOUND');
+        const bound = bounds[0]; if (!bound) continue;
+        const boundArgs = splitArgs(bound.raw), loop = ents.get(refOf(boundArgs[0]) ?? -1); if (loop?.name !== 'IFCPOLYLOOP') continue;
+        const points = (loop.raw.match(/#\d+/g) ?? []).map(value => readPoint(+value.slice(1))); if (points.length < 3) continue;
+        if (boundArgs[1]?.toUpperCase() === '.F.') points.reverse();
+        const p = points[0]!;
+        for (let index = 1; index + 1 < points.length; index++) {
+          const q = points[index]!, r = points[index + 1]!;
+          v6 += p[0] * (q[1] * r[2] - q[2] * r[1]) + p[1] * (q[2] * r[0] - q[0] * r[2]) + p[2] * (q[0] * r[1] - q[1] * r[0]); triangles++;
+        }
+        faces++;
+      }
+      return faces >= 4 && triangles >= 4 ? Math.abs(v6 / 6) : 0;
+    }
     if (e.name === 'IFCTRIANGULATEDFACESET' || e.name === 'IFCPOLYGONALFACESET') {
       const a = splitArgs(e.raw);
       const listId = refOf(a[0]);
@@ -321,7 +362,10 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
     }
     inStack.add(id);
     let acc: B3 | null = null;
-    if (e.name === 'IFCRECTANGLEPROFILEDEF' || e.name === 'IFCCIRCLEPROFILEDEF' || e.name === 'IFCCIRCLEHOLLOWPROFILEDEF' || e.name === 'IFCISHAPEPROFILEDEF' || e.name === 'IFCLSHAPEPROFILEDEF' || e.name === 'IFCUSHAPEPROFILEDEF' || e.name === 'IFCTSHAPEPROFILEDEF') {
+    if (e.name === 'IFCCIRCLE' || e.name === 'IFCELLIPSE') {
+      const a = splitArgs(e.raw); const rx = (parseFloat(a[1]) || 0) * unitScale; const ry = e.name === 'IFCELLIPSE' ? (parseFloat(a[2]) || 0) * unitScale : rx;
+      if (rx > 0 && ry > 0) acc = xformB({ min: [-rx, -ry, 0], max: [rx, ry, 0] }, axis2M(refOf(a[0])));
+    } else if (e.name === 'IFCRECTANGLEPROFILEDEF' || e.name === 'IFCCIRCLEPROFILEDEF' || e.name === 'IFCCIRCLEHOLLOWPROFILEDEF' || e.name === 'IFCISHAPEPROFILEDEF' || e.name === 'IFCLSHAPEPROFILEDEF' || e.name === 'IFCUSHAPEPROFILEDEF' || e.name === 'IFCTSHAPEPROFILEDEF') {
       // 파라메트릭 프로파일=치수 스칼라(점 스캔 불가 — casa 멀리언 28건 x/y=0 실측) → 폐형 경계.
       // 2D Position 회전은 미적용(v1 — 경계 근사 명시), 위치 오프셋만 반영.
       const a = splitArgs(e.raw);
@@ -333,6 +377,10 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
       else if (e.name === 'IFCCIRCLEPROFILEDEF' || e.name === 'IFCCIRCLEHOLLOWPROFILEDEF') { hx = hy = (parseFloat(a[3]) || 0) * unitScale; }
       else { hx = ((parseFloat(a[4]) || parseFloat(a[3]) || 0) * unitScale) / 2; hy = ((parseFloat(a[3]) || 0) * unitScale) / 2; } // I/L/U/T: depth·width 순서 관례 근사
       if (hx > 0 && hy > 0) acc = { min: [ox - hx, oy - hy, 0], max: [ox + hx, oy + hy, 0] };
+    } else if (e.name === 'IFCBLOCK') {
+      const a = splitArgs(e.raw);
+      const x = (parseFloat(a[1]) || 0) * unitScale, y = (parseFloat(a[2]) || 0) * unitScale, z = (parseFloat(a[3]) || 0) * unitScale;
+      if (x > 0 && y > 0 && z > 0) acc = xformB({ min: [0, 0, 0], max: [x, y, z] }, axis2M(refOf(a[0])));
     } else if (e.name === 'IFCEXTRUDEDAREASOLID') {
       // 압출 깊이=스칼라(점 스캔 불가 — casa 벽 34건 z=0 스킵 실측) → 스윕 폐형:
       // 경계 = 프로파일 2D 경계 ∪ (경계+방향×깊이) 를 Position 으로 변환
@@ -343,6 +391,21 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
       if (profB && dLen > 0) {
         const shifted: B3 = { min: profB.min.map((v, k) => v + dir[k] * dLen), max: profB.max.map((v, k) => v + dir[k] * dLen) };
         acc = xformB(mergeB(profB, shifted)!, axis2M(refOf(a[1])));
+      }
+    } else if (e.name === 'IFCFIXEDREFERENCESWEPTAREASOLID' || e.name === 'IFCSECTIONEDSOLIDHORIZONTAL' || e.name === 'IFCSECTIONEDSOLID') {
+      const a = splitArgs(e.raw);
+      const directrix = boundsOf(refOf(e.name === 'IFCFIXEDREFERENCESWEPTAREASOLID' ? a[2] : a[0]) ?? -1, depth + 1);
+      const profileIds = e.name === 'IFCFIXEDREFERENCESWEPTAREASOLID'
+        ? [refOf(a[0])].filter((value): value is number => value !== null)
+        : (a[1]?.match(/#\d+/g) ?? []).map(value => +value.slice(1));
+      let profile: B3 | null = null;
+      for (const profileId of profileIds) profile = mergeB(profile, boundsOf(profileId, depth + 1));
+      if (directrix && profile) {
+        // Section orientation changes along the curve. Expanding the directrix
+        // by the maximum profile radius on all axes is conservative and avoids
+        // inventing an exact swept B-rep while retaining collision-safe bounds.
+        const radius = Math.max(...profile.min.map(Math.abs), ...profile.max.map(Math.abs));
+        if (radius > 0) acc = { min: directrix.min.map(value => value - radius), max: directrix.max.map(value => value + radius) };
       }
     } else if (e.name === 'IFCBOOLEANCLIPPINGRESULT' || e.name === 'IFCBOOLEANRESULT') {
       // 클리핑=1피연산자 기준(하프스페이스 무한평면 점 오염 방지 — 개구/절단 미공제 과대측 명시)
@@ -388,7 +451,7 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
   };
 
   /** 압출 정확 경로: IfcExtrudedAreaSolid(사각 프로파일·z 압출) → 로컬 box. 실패=null. */
-  const tryExtrusion = (solidId: number): { min: number[]; max: number[]; M: M4 } | null => {
+  const tryExtrusion = (solidId: number): { min: number[]; max: number[]; M: M4; exactBox: boolean } | null => {
     const e = ents.get(solidId);
     if (!e || e.name !== 'IFCEXTRUDEDAREASOLID') return null;
     const a = splitArgs(e.raw);
@@ -404,7 +467,7 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
       if (p2) { const loc = readPoint(refOf(splitArgs(p2.raw)[0])); ox = loc[0]; oy = loc[1]; }
       const xd = (parseFloat(pa[3]) || 0) * unitScale, yd = (parseFloat(pa[4]) || 0) * unitScale;
       if (xd <= 0 || yd <= 0) return null;
-      return { min: [ox - xd / 2, oy - yd / 2, 0], max: [ox + xd / 2, oy + yd / 2, depth], M: posM };
+      return { min: [ox - xd / 2, oy - yd / 2, 0], max: [ox + xd / 2, oy + yd / 2, depth], M: posM, exactBox: true };
     }
     if (prof.name === 'IFCARBITRARYCLOSEDPROFILEDEF') {
       const pa = splitArgs(prof.raw);
@@ -412,7 +475,7 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
       if (curve == null) return null;
       const b = localBounds([curve]);
       if (!b) return null;
-      return { min: [b.min[0], b.min[1], 0], max: [b.max[0], b.max[1], depth], M: axis2M(refOf(a[1])) };
+      return { min: [b.min[0], b.min[1], 0], max: [b.max[0], b.max[1], depth], M: axis2M(refOf(a[1])), exactBox: false };
     }
     return null;
   };
@@ -420,36 +483,165 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
   // ── 5. 요소 수집·방출 ──
   const parts: NonNullable<IfcImportResult['assembly']>['parts'] = [];
   const byClass: Record<string, number> = {};
-  let exact = 0, approx = 0, skipped = 0, elements = 0;
+  let exact = 0, approx = 0, skipped = 0, elements = 0, authoritativeThicknessRecoveries = 0, authoritativeInputRecoveries = 0;
+  const appliedAuthoritativeInputs: NonNullable<NonNullable<IfcImportResult['stats']>['appliedAuthoritativeInputs']> = [];
   const skipByClass: Record<string, number> = {};
+  const dimensionSamples: Record<string, number[][]> = {};
+  const dimensionEvidence: Array<{ entityId: number; ifcClass: string; dimensions: number[] }> = [];
   const skipC = (cls: string, why = '?') => { skipped++; const k = cls + ':' + why; skipByClass[k] = (skipByClass[k] ?? 0) + 1; };
+  const recordDimensions = (cls: string, values: number[], entityId: number | null) => { const measured = values.map(value => +value.toPrecision(8)); const samples = dimensionSamples[cls] ?? []; if (samples.length < 8) samples.push(measured); dimensionSamples[cls] = samples; if (entityId !== null) dimensionEvidence.push({ entityId, ifcClass: cls, dimensions: measured }); };
   const used = new Set<string>();
-  const emit = (cls: string, nameStr: string, place: M4, lb: { min: number[]; max: number[] }, extM: M4 | null, repId: number | null = null) => {
-    const meta = ELEMENT_CLASSES[cls];
+  // IFC occurrences may intentionally omit Representation and inherit a
+  // mapped representation from their IfcTypeProduct via IfcRelDefinesByType.
+  const typeRepresentationRefs = new Map<number, number[]>();
+  const occurrenceTypeIds = new Map<number, number>();
+  const materialRootsByObject = new Map<number, number[]>();
+  const propertyRootsByObject = new Map<number, number[]>();
+  const decompositionParents = new Set<number>();
+  for (const e of ents.values()) {
+    if (e.name === 'IFCRELAGGREGATES') { const parentId = refOf(splitArgs(e.raw)[4]); if (parentId !== null) decompositionParents.add(parentId); }
+    if (e.name === 'IFCRELASSOCIATESMATERIAL') {
+      const materialArgs = splitArgs(e.raw); const materialId = refOf(materialArgs[5]);
+      if (materialId !== null) for (const objectId of (materialArgs[4]?.match(/#\d+/g) ?? []).map(value => +value.slice(1))) materialRootsByObject.set(objectId, [...(materialRootsByObject.get(objectId) ?? []), materialId]);
+    }
+    if (e.name === 'IFCRELDEFINESBYPROPERTIES') {
+      const propertyArgs = splitArgs(e.raw); const propertyId = refOf(propertyArgs[5]);
+      if (propertyId !== null) for (const objectId of (propertyArgs[4]?.match(/#\d+/g) ?? []).map(value => +value.slice(1))) propertyRootsByObject.set(objectId, [...(propertyRootsByObject.get(objectId) ?? []), propertyId]);
+    }
+    if (e.name !== 'IFCRELDEFINESBYTYPE') continue;
+    const args = splitArgs(e.raw); const typeId = refOf(args[5]); const typeEntity = typeId == null ? null : ents.get(typeId);
+    const representationMaps = typeEntity ? (splitArgs(typeEntity.raw)[6]?.match(/#\d+/g) ?? []).map(value => +value.slice(1)) : [];
+    for (const occurrence of (args[4]?.match(/#\d+/g) ?? []).map(value => +value.slice(1))) {
+      if (typeId !== null) occurrenceTypeIds.set(occurrence, typeId);
+      if (representationMaps.length) typeRepresentationRefs.set(occurrence, representationMaps);
+    }
+  }
+  const representationKindCache = new Map<number, string[]>();
+  const representationKinds = (rootId: number | null): string[] => {
+    if (rootId === null) return [];
+    const cached = representationKindCache.get(rootId); if (cached) return cached;
+    const pending = [rootId], seen = new Set<number>(), kinds = new Set<string>();
+    while (pending.length && seen.size < 20_000) {
+      const id = pending.pop()!; if (seen.has(id)) continue; seen.add(id); const entity = ents.get(id); if (!entity) continue;
+      if (/^(?:IFC(?:FACETEDBREP|SHELLBASEDSURFACEMODEL|FACEBASEDSURFACEMODEL|TRIANGULATEDFACESET|POLYGONALFACESET|EXTRUDEDAREASOLID|BOOLEANRESULT|BOOLEANCLIPPINGRESULT|MAPPEDITEM|GEOMETRICSET))$/.test(entity.name)) kinds.add(entity.name);
+      for (const match of entity.raw.matchAll(/#(\d+)/g)) pending.push(+match[1]);
+    }
+    const result = [...kinds].sort(); representationKindCache.set(rootId, result); return result;
+  };
+  const surfaceMeshOf = (rootId: number | null): { verts: number[][]; faces: number[][]; openSurface: boolean } | null => {
+    if (rootId === null) return null;
+    const inverseRigid = (matrix: M4): M4 => { const tx = matrix[3], ty = matrix[7], tz = matrix[11]; return [matrix[0], matrix[4], matrix[8], -(matrix[0] * tx + matrix[4] * ty + matrix[8] * tz), matrix[1], matrix[5], matrix[9], -(matrix[1] * tx + matrix[5] * ty + matrix[9] * tz), matrix[2], matrix[6], matrix[10], -(matrix[2] * tx + matrix[6] * ty + matrix[10] * tz)]; };
+    const operatorM = (id: number | null): M4 => { const entity = id === null ? null : ents.get(id); if (!entity) return I4; const args = splitArgs(entity.raw), x = readDir(refOf(args[0])) ?? [1, 0, 0], y = readDir(refOf(args[1])) ?? [0, 1, 0], origin = readPoint(refOf(args[2])), scale = parseFloat(args[3]) || 1, z = readDir(refOf(args[4])) ?? [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]]; return [x[0] * scale, y[0] * scale, z[0] * scale, origin[0], x[1] * scale, y[1] * scale, z[1] * scale, origin[1], x[2] * scale, y[2] * scale, z[2] * scale, origin[2]]; };
+    const verts: number[][] = [], faces: number[][] = []; let openSurface = false;
+    const walk = (id: number, transform: M4, stack: Set<number>, depth: number) => {
+      if (depth > 220 || stack.has(id) || verts.length > 2_000_000) return; const entity = ents.get(id); if (!entity || STOP_NAMES.has(entity.name)) return; const nextStack = new Set(stack).add(id);
+      if (entity.name === 'IFCMAPPEDITEM') { const args = splitArgs(entity.raw), map = ents.get(refOf(args[0]) ?? -1); if (!map) return; const mapArgs = splitArgs(map.raw), source = refOf(mapArgs[1]), origin = axis2M(refOf(mapArgs[0])), target = operatorM(refOf(args[1])); if (source !== null) walk(source, mul(transform, mul(target, inverseRigid(origin))), nextStack, depth + 1); return; }
+      if (entity.name === 'IFCCLOSEDSHELL' || entity.name === 'IFCOPENSHELL') {
+        if (entity.name === 'IFCOPENSHELL') openSurface = true;
+        const vertexByCoordinate = new Map<string, number>(); const vertex = (pointId: number) => { const point = readPoint(pointId), transformed = applyM(transform, point[0], point[1], point[2]), key = transformed.map(value => Math.round(value * 1e6)).join(':'); const existing = vertexByCoordinate.get(key); if (existing !== undefined) return existing; const index = verts.length; verts.push(transformed); vertexByCoordinate.set(key, index); return index; };
+        for (const faceId of (entity.raw.match(/#\d+/g) ?? []).map(value => +value.slice(1))) { const face = ents.get(faceId); if (face?.name !== 'IFCFACE') continue; const outerId = (face.raw.match(/#\d+/g) ?? []).map(value => +value.slice(1)).find(value => ents.get(value)?.name === 'IFCFACEOUTERBOUND'); if (outerId === undefined) continue; const outer = ents.get(outerId)!, args = splitArgs(outer.raw), loop = ents.get(refOf(args[0]) ?? -1); if (loop?.name !== 'IFCPOLYLOOP') continue; const polygon = (loop.raw.match(/#\d+/g) ?? []).map(value => vertex(+value.slice(1))); if (args[1]?.toUpperCase() === '.F.') polygon.reverse(); for (let index = 1; index + 1 < polygon.length; index++) faces.push([polygon[0]!, polygon[index]!, polygon[index + 1]!]); }
+        return;
+      }
+      for (const match of entity.raw.matchAll(/#(\d+)/g)) walk(+match[1], transform, nextStack, depth + 1);
+    };
+    walk(rootId, I4, new Set(), 0);
+    return verts.length >= 3 && faces.length ? { verts, faces, openSurface } : null;
+  };
+  const materialLayerThickness = (entityId: number): number | null => {
+    const typeId = occurrenceTypeIds.get(entityId);
+    const pending = [...(materialRootsByObject.get(entityId) ?? []), ...(typeId === undefined ? [] : materialRootsByObject.get(typeId) ?? [])];
+    const seen = new Set<number>(), layers = new Set<number>(); let total = 0;
+    while (pending.length && seen.size < 20_000) {
+      const id = pending.pop()!; if (seen.has(id)) continue; seen.add(id); const entity = ents.get(id); if (!entity) continue;
+      if (entity.name === 'IFCMATERIALLAYER') {
+        const thickness = (parseFloat(splitArgs(entity.raw)[1]) || 0) * unitScale;
+        if (thickness > 0.5 && Number.isFinite(thickness) && !layers.has(id)) { layers.add(id); total += thickness; }
+        continue;
+      }
+      for (const match of entity.raw.matchAll(/#(\d+)/g)) pending.push(+match[1]);
+    }
+    return total > 0.5 ? total : null;
+  };
+  const quantityVolumeAreaThickness = (entityId: number): number | null => {
+    const typeId = occurrenceTypeIds.get(entityId);
+    const pending = [...(propertyRootsByObject.get(entityId) ?? []), ...(typeId === undefined ? [] : propertyRootsByObject.get(typeId) ?? [])];
+    const seen = new Set<number>(), areas = new Set<number>(), volumes = new Set<number>();
+    while (pending.length && seen.size < 20_000) {
+      const id = pending.pop()!; if (seen.has(id)) continue; seen.add(id); const entity = ents.get(id); if (!entity) continue;
+      if (entity.name === 'IFCQUANTITYAREA' || entity.name === 'IFCQUANTITYVOLUME') {
+        const value = parseFloat(splitArgs(entity.raw)[3]) || 0;
+        if (value > 0 && Number.isFinite(value)) (entity.name === 'IFCQUANTITYAREA' ? areas : volumes).add(+value.toPrecision(10));
+        continue;
+      }
+      for (const match of entity.raw.matchAll(/#(\d+)/g)) pending.push(+match[1]);
+    }
+    if (areas.size !== 1 || volumes.size !== 1) return null;
+    const area = [...areas][0]! * areaScaleToMm2, volume = [...volumes][0]! * volumeScaleToMm3;
+    const thickness = volume / area;
+    return Number.isFinite(thickness) && thickness > 0.5 ? thickness : null;
+  };
+  const emit = (cls: string, nameStr: string, place: M4, lb: { min: number[]; max: number[] }, extM: M4 | null, repId: number | null = null, sourceEntityId: number | null = null, forceApprox = false) => {
+    const meta = ELEMENT_CLASSES[cls] ?? { role: 'definition', material: 'unspecified' };
+    const sourceRepresentationKinds = representationKinds(repId);
     const M = extM ? mul(place, extM) : place;
     // 순수 z-회전 판정 → rz 보존 box(정밀 간섭 판정 가능), 아니면 월드 AABB
     const pureZ = Math.abs(M[2]) < 1e-6 && Math.abs(M[6]) < 1e-6 && Math.abs(M[8]) < 1e-6 && Math.abs(M[9]) < 1e-6 && Math.abs(M[10] - 1) < 1e-6;
     let id = nameStr.replace(/[^\w가-힣-]/g, '_').slice(0, 40) || cls.toLowerCase();
     while (used.has(id)) id = `${id}_`;
     used.add(id);
-    const dims = [lb.max[0] - lb.min[0], lb.max[1] - lb.min[1], lb.max[2] - lb.min[2]];
-    if (!dims.every((d) => Number.isFinite(d) && d > 0.5)) { skipC(cls, 'dims'); return; }
-    if (pureZ && extM) {
+    let governedBounds = lb;
+    let dims = [lb.max[0] - lb.min[0], lb.max[1] - lb.min[1], lb.max[2] - lb.min[2]];
+    const missingAxes = dims.flatMap((dimension, index) => !Number.isFinite(dimension) || dimension <= 0.5 ? [index] : []);
+    if (sourceEntityId !== null && ['IFCWALL', 'IFCWALLSTANDARDCASE'].includes(cls) && missingAxes.length === 1) {
+      const thickness = materialLayerThickness(sourceEntityId);
+      if (thickness !== null) {
+        const axis = missingAxes[0]!; governedBounds = { min: [...lb.min], max: [...lb.max] };
+        const center = (lb.min[axis]! + lb.max[axis]!) / 2;
+        governedBounds.min[axis] = center - thickness / 2; governedBounds.max[axis] = center + thickness / 2;
+        dims = governedBounds.max.map((value, index) => value - governedBounds.min[index]!);
+        authoritativeThicknessRecoveries++;
+      }
+    }
+    if (sourceEntityId !== null && cls === 'IFCDOOR' && missingAxes.length === 1 && dims.some(dimension => !Number.isFinite(dimension) || dimension <= 0.5)) {
+      const thickness = quantityVolumeAreaThickness(sourceEntityId);
+      if (thickness !== null) {
+        const axis = missingAxes[0]!; governedBounds = { min: [...lb.min], max: [...lb.max] };
+        const center = (lb.min[axis]! + lb.max[axis]!) / 2;
+        governedBounds.min[axis] = center - thickness / 2; governedBounds.max[axis] = center + thickness / 2;
+        dims = governedBounds.max.map((value, index) => value - governedBounds.min[index]!);
+        authoritativeThicknessRecoveries++;
+      }
+    }
+    if (sourceEntityId !== null && missingAxes.length === 1 && dims.some(dimension => !Number.isFinite(dimension) || dimension <= 0.5)) {
+      const sourceEntity = ents.get(sourceEntityId); const sourceArgs = sourceEntity ? splitArgs(sourceEntity.raw) : [];
+      const globalId = sourceArgs[0]?.match(/^'([^']+)'$/)?.[1]; const override = globalId ? approvedOverrideByGlobalId.get(globalId) : undefined;
+      if (override && override.axis === missingAxes[0]) {
+        const beforeDimensionsMm = [...dims], axis = override.axis;
+        governedBounds = { min: [...governedBounds.min], max: [...governedBounds.max] };
+        const center = (governedBounds.min[axis]! + governedBounds.max[axis]!) / 2;
+        governedBounds.min[axis] = center - override.valueMm / 2; governedBounds.max[axis] = center + override.valueMm / 2;
+        dims = governedBounds.max.map((value, index) => value - governedBounds.min[index]!);
+        authoritativeInputRecoveries++;
+        appliedAuthoritativeInputs.push({ entityId: sourceEntityId, globalId: globalId!, axis, valueMm: override.valueMm, provenance: override.provenance, beforeDimensionsMm, afterDimensionsMm: [...dims] });
+      }
+    }
+    if (!dims.every((d) => Number.isFinite(d) && d > 0.5)) { recordDimensions(cls, dims, sourceEntityId); skipC(cls, 'dims'); return; }
+    if (pureZ && extM && !forceApprox) {
       const rz = (Math.atan2(M[4], M[0]) * 180) / Math.PI;
       const c = Math.cos((rz * Math.PI) / 180), s = Math.sin((rz * Math.PI) / 180);
       // 로컬 min 코너를 rz 회전 원점으로 환산
-      const tx = M[3] + lb.min[0] * c - lb.min[1] * s;
-      const ty = M[7] + lb.min[0] * s + lb.min[1] * c;
-      parts.push({ id, type: 'box', params: { width: +dims[0].toFixed(1), depth: +dims[1].toFixed(1), height: +dims[2].toFixed(1) }, at: { tx: +tx.toFixed(1), ty: +ty.toFixed(1), tz: +(M[11] + lb.min[2]).toFixed(1), ...(Math.abs(rz) > 0.01 ? { rz: +rz.toFixed(2) } : {}) }, role: meta.role, material: meta.material });
+      const tx = M[3] + governedBounds.min[0] * c - governedBounds.min[1] * s;
+      const ty = M[7] + governedBounds.min[0] * s + governedBounds.min[1] * c;
+      parts.push({ id, type: 'box', params: { width: +dims[0].toFixed(1), depth: +dims[1].toFixed(1), height: +dims[2].toFixed(1) }, at: { tx: +tx.toFixed(1), ty: +ty.toFixed(1), tz: +(M[11] + governedBounds.min[2]).toFixed(1), ...(Math.abs(rz) > 0.01 ? { rz: +rz.toFixed(2) } : {}) }, role: meta.role, material: meta.material, geometryEvidence: 'exact_extrusion_box', sourceClass: cls, representationKinds: sourceRepresentationKinds });
       exact++;
     } else {
       const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
-      for (const cx of [lb.min[0], lb.max[0]]) for (const cy of [lb.min[1], lb.max[1]]) for (const cz of [lb.min[2], lb.max[2]]) {
+      for (const cx of [governedBounds.min[0], governedBounds.max[0]]) for (const cy of [governedBounds.min[1], governedBounds.max[1]]) for (const cz of [governedBounds.min[2], governedBounds.max[2]]) {
         const w = applyM(M, cx, cy, cz);
         for (let k = 0; k < 3; k++) { if (w[k] < mn[k]) mn[k] = w[k]; if (w[k] > mx[k]) mx[k] = w[k]; }
       }
       const wd = [mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]];
-      if (!wd.every((d) => Number.isFinite(d) && d > 0.5)) { skipC(cls, 'wdims'); return; }
+      if (!wd.every((d) => Number.isFinite(d) && d > 0.5)) { recordDimensions(cls, wd, sourceEntityId); skipC(cls, 'wdims'); return; }
       // 삼각 메시가 있으면 **실부피**를 살린다 — 박스로 뭉개면 최대 58배 과대(실측).
       // 배치 변환의 행렬식으로 스케일을 보정한다(회전·평행이동은 부피 불변이라 1).
       const det = Math.abs(
@@ -459,7 +651,14 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
       );
       const mv = repId != null ? meshVolOf(repId) * (Number.isFinite(det) && det > 0 ? det : 1) : 0;
       const boxVol = wd[0] * wd[1] * wd[2];
-      if (mv > 0 && mv <= boxVol * 1.001) {
+      const surfaceMesh = surfaceMeshOf(repId);
+      if (surfaceMesh) {
+        const repair = repairIndexedMeshDegenerateFaces(surfaceMesh.verts, surfaceMesh.faces), closure = repair.after, boundaries = classifyIndexedMeshBoundaries(repair.verts, repair.faces, 0.01), topologyVolume = closure.volumeMm3 * (Number.isFinite(det) && det > 0 ? det : 1), effectiveVolume = closure.watertight ? topologyVolume : 0;
+        const worldVerts = surfaceMesh.verts.map(vertex => applyM(M, vertex[0]!, vertex[1]!, vertex[2]!));
+        const meshMin = [Infinity, Infinity, Infinity], meshMax = [-Infinity, -Infinity, -Infinity]; for (const vertex of worldVerts) for (let axis = 0; axis < 3; axis++) { meshMin[axis] = Math.min(meshMin[axis]!, vertex[axis]!); meshMax[axis] = Math.max(meshMax[axis]!, vertex[axis]!); } const meshSize = meshMax.map((value, axis) => value - meshMin[axis]!);
+        const localVerts = worldVerts.map(vertex => vertex.map((value, axis) => +(value - meshMin[axis]!).toFixed(6)));
+        parts.push({ id, type: 'mesh', params: { ...(effectiveVolume > 0 ? { volumeMm3: +effectiveVolume.toFixed(1) } : {}), aabb: { min: [0, 0, 0], max: meshSize.map(value => +value.toFixed(1)) }, verts: localVerts, faces: repair.faces, openSurface: !closure.watertight }, at: { tx: +meshMin[0]!.toFixed(1), ty: +meshMin[1]!.toFixed(1), tz: +meshMin[2]!.toFixed(1) }, role: meta.role, material: meta.material, ...(effectiveVolume > 0 ? { meshVolumeExact: true } : {}), boxVolumeMm3: +boxVol.toFixed(1), geometryEvidence: 'exact_surface_mesh', sourceClass: cls, representationKinds: sourceRepresentationKinds, closureEvidence: { watertight: closure.watertight, sourceDeclaredOpenSurface: surfaceMesh.openSurface, boundaryEdges: closure.boundaryEdges, nonManifoldEdges: closure.nonManifoldEdges, degenerateFaces: closure.degenerateFaces, orientationConsistent: closure.orientationConsistent, degenerateRepairApplied: repair.accepted, removedDegenerateFaces: repair.removedFaces, boundaryComponents: boundaries.components, closedBoundaryLoops: boundaries.closedLoops, openBoundaryChains: boundaries.openChains, branchedBoundaryComponents: boundaries.branchedComponents, planarClosedBoundaryLoops: boundaries.planarClosedLoops, microGapCandidates: boundaries.microGapCandidates, totalBoundaryLengthMm: boundaries.totalBoundaryLengthMm } });
+      } else if (mv > 0 && mv <= boxVol * 1.001) {
         parts.push({
           id, type: 'mesh',
           params: {
@@ -470,27 +669,49 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
           role: meta.role, material: meta.material,
           // 형상은 여전히 AABB 로 표시되지만 **부피·질량은 실측**이다 — 둘을 구별해 적는다.
           meshVolumeExact: true, boxVolumeMm3: +boxVol.toFixed(1),
+          geometryEvidence: 'exact_mesh_volume_aabb_display',
+          sourceClass: cls,
+          representationKinds: sourceRepresentationKinds,
         });
       } else {
-        parts.push({ id, type: 'box', params: { width: +wd[0].toFixed(1), depth: +wd[1].toFixed(1), height: +wd[2].toFixed(1) }, at: { tx: +mn[0].toFixed(1), ty: +mn[1].toFixed(1), tz: +mn[2].toFixed(1) }, role: meta.role, material: meta.material });
+        parts.push({ id, type: 'box', params: { width: +wd[0].toFixed(1), depth: +wd[1].toFixed(1), height: +wd[2].toFixed(1) }, at: { tx: +mn[0].toFixed(1), ty: +mn[1].toFixed(1), tz: +mn[2].toFixed(1) }, role: meta.role, material: meta.material, geometryEvidence: 'aabb_only', sourceClass: cls, representationKinds: sourceRepresentationKinds });
       }
       approx++;
     }
   };
 
-  for (const [, e] of ents) {
+  for (const [entityId, e] of ents) {
     // 공간 구조는 **부품이 아니다** — 세지도 임포트하지도 않고 그 사실만 남긴다.
     // (IfcRoad·IfcRoadPart 등을 물체로 넣으면 부피·질량·간섭이 허구가 되고 자식과 이중 계상)
     if (SPATIAL_CLASSES.has(e.name)) { skipC(e.name, 'spatial'); continue; }
     const meta = ELEMENT_CLASSES[e.name];
     if (!meta) continue;
+    const a = splitArgs(e.raw);
+    const repId = refOf(a[6]);
+    // A decomposed parent is an assembly/container occurrence even when an
+    // Axis/FootPrint representation is present. Its children are the physical
+    // solids; counting the parent again invents a duplicate zero-thickness part.
+    if (decompositionParents.has(entityId)) { skipC(e.name, 'aggregate'); continue; }
+    const occurrenceName = a[2]?.replace(/'/g, '') ?? '';
+    if (repId == null && e.name === 'IFCBUILDINGELEMENTPROXY' && /^Group#/i.test(occurrenceName)) { skipC(e.name, 'placeholder'); continue; }
+    if (repId !== null) {
+      const pds = ents.get(repId); const representationIds = pds ? (pds.raw.match(/#\d+/g) ?? []).map(value => +value.slice(1)) : [];
+      const representations = representationIds.map(id => ents.get(id)).filter((value): value is Ent => value?.name === 'IFCSHAPEREPRESENTATION');
+      const referenceOnly = representations.length > 0 && representations.every(representation => {
+        const repArgs = splitArgs(representation.raw); const identifier = repArgs[1]?.replace(/'/g, '').toUpperCase(); const representationType = repArgs[2]?.replace(/'/g, '').toUpperCase();
+        return ['AXIS', 'FOOTPRINT'].includes(identifier ?? '') && /CURVE/.test(representationType ?? '');
+      });
+      if (referenceOnly && e.name === 'IFCBUILTELEMENT') { skipC(e.name, 'reference'); continue; }
+    }
     elements++;
     byClass[e.name] = (byClass[e.name] ?? 0) + 1;
-    if (parts.length >= 600) { skipC(e.name, 'budget'); continue; } // 부품 예산(대표성: 순서대로 600 — 명시)
-    const a = splitArgs(e.raw);
+    if (parts.length >= partLimit) { skipC(e.name, 'budget'); continue; } // explicit preview/full-analysis budget
     const place = placementM(refOf(a[5]));
-    const repId = refOf(a[6]);
-    if (repId == null) { skipC(e.name, 'norep'); continue; }
+    if (repId == null) {
+      const inherited = typeRepresentationRefs.get(entityId); const inheritedBounds = inherited?.length ? localBounds(inherited) : null; const inheritedRepId = inherited?.[0] ?? null;
+      if (inheritedBounds) { emit(e.name, occurrenceName || e.name, place, inheritedBounds, null, inheritedRepId, entityId); continue; }
+      skipC(e.name, 'norep'); continue;
+    }
     // ProductDefinitionShape → ShapeRepresentation(s) → items
     const pds = ents.get(repId);
     if (!pds) { skipC(e.name, 'nopds'); continue; }
@@ -502,24 +723,36 @@ export function ifcToNexyfabAssembly(source: string, { name = 'IFC import' } = {
       if (!rep || rep.name !== 'IFCSHAPEREPRESENTATION') continue;
       for (const ir of (rep.raw.match(/#\d+/g) ?? []).map((r) => +r.slice(1))) {
         const ext = tryExtrusion(ir);
-        if (ext) { emit(e.name, splitArgs(e.raw)[2]?.replace(/'/g, '') || e.name, place, { min: ext.min, max: ext.max }, ext.M, repId); done = true; break; }
+        if (ext) { emit(e.name, splitArgs(e.raw)[2]?.replace(/'/g, '') || e.name, place, { min: ext.min, max: ext.max }, ext.M, repId, entityId, !ext.exactBox); done = true; break; }
       }
       if (done) break;
     }
     if (done) continue;
     // ②폐포 점 스캔 AABB(FacetedBrep·매핑·불리언 등 일괄 — 개구 미공제 과대측 명시)
     const lb = localBounds([repId]);
-    if (lb) emit(e.name, splitArgs(e.raw)[2]?.replace(/'/g, '') || e.name, place, lb, null, repId);
+    if (lb) emit(e.name, splitArgs(e.raw)[2]?.replace(/'/g, '') || e.name, place, lb, null, repId, entityId);
     else skipC(e.name, 'nobounds');
   }
 
-  if (parts.length === 0) return { ok: false, error: `건축 요소 형상 0건(요소 ${elements}) — 지원 클래스/형상 없음`, stats: { elements, imported: 0, exact, approx, skipped, unitScale, byClass, skipByClass } };
+  let definitionOnly = false;
+  if (parts.length === 0 && elements === 0) {
+    for (const [entityId, entity] of ents) {
+      if (!entity.name.endsWith('TYPE')) continue;
+      const args = splitArgs(entity.raw); const maps = (args[6]?.match(/#\d+/g) ?? []).map(value => +value.slice(1));
+      const bounds = maps.length ? localBounds(maps) : null;
+      if (!bounds) continue;
+      emit(entity.name.replace(/TYPE$/, ''), args[2]?.replace(/'/g, '') || `${entity.name}_${entityId}`, I4, bounds, null, maps[0] ?? null, entityId);
+    }
+    definitionOnly = parts.length > 0;
+    if (definitionOnly) elements = parts.length;
+  }
+  if (parts.length === 0) return { ok: false, error: `건축 요소 형상 0건(요소 ${elements}) — 지원 클래스/형상 없음`, stats: { elements, imported: 0, exact, approx, skipped, unitScale, byClass, skipByClass, dimensionSamples, dimensionEvidence, authoritativeThicknessRecoveries, authoritativeInputRecoveries, appliedAuthoritativeInputs } };
   return {
     ok: true,
     assembly: {
-      name, domain: 'building', importedApprox: true, parts,
+      name, domain: definitionOnly ? 'building_definition' : 'building', importedApprox: true, definitionOnly, parts,
       note: `IFC2X3 임포트: 정확 압출 box ${exact}(rz 보존)·AABB 근사 ${approx}(FacetedBrep/매핑 — 개구 미공제 과대측 명시)·스킵 ${skipped} · 재질=클래스 기본값(IfcMaterial 후속) · 단위 ×${unitScale}`,
     },
-    stats: { elements, imported: parts.length, exact, approx, skipped, unitScale, byClass, skipByClass, representative: elements > 600 },
+    stats: { elements, imported: parts.length, exact, approx, skipped, unitScale, byClass, skipByClass, dimensionSamples, dimensionEvidence, authoritativeThicknessRecoveries, authoritativeInputRecoveries, appliedAuthoritativeInputs, representative: elements > partLimit },
   };
 }

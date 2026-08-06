@@ -71,10 +71,13 @@ describe('drawing page named-channel relink (R5)', () => {
     });
     list = screen.getByTestId('drawing-page-annotation-list');
     expect(list.textContent).not.toContain('= 28.53');
-    expect(list.textContent).toContain('⚠ unresolved-ref');
 
-    // The ⚠ row offers 재지정 → panel opens, scoped to this dimension.
-    fireEvent.click(within(list).getByRole('button', { name: 'Relink' }));
+    // Reference-review partition (260807): the unresolved dimension is
+    // excluded from the rendered sheet and surfaces in the review queue,
+    // which owns the Relink entry point (was: inline ⚠ row in the list).
+    const review = screen.getByTestId('drawing-reference-review');
+    expect(review.textContent).toContain('e.vert.4');
+    fireEvent.click(within(review).getByRole('button', { name: 'Relink' }));
     const panel = screen.getByTestId('refrelink-panel');
     expect(panel.textContent).toContain('e.vert.4');
 

@@ -40,15 +40,15 @@
  * Clear text encoding of the exchange structure).
  */
 
-import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
+import type { ExtrudeFeature } from "@/lib/cad/extrudeProfile";
 
 // ─── constants ────────────────────────────────────────────────────────────
 
 /** Application string baked into FILE_NAME(originating_system). */
-const NEXYFAB_APPLICATION = 'NEXYFAB-PRO';
+const NEXYFAB_APPLICATION = "NEXYFAB-PRO";
 
 /** AP214 schema string — same FILE_SCHEMA value used by existing imports. */
-const AP214_SCHEMA = 'AUTOMOTIVE_DESIGN { 1 0 10303 214 3 1 1 1 }';
+const AP214_SCHEMA = "AUTOMOTIVE_DESIGN { 1 0 10303 214 3 1 1 1 }";
 
 /**
  * Numeric formatting matches OCCT / NX style for STEP / AP214 REAL literals.
@@ -73,7 +73,7 @@ const AP214_SCHEMA = 'AUTOMOTIVE_DESIGN { 1 0 10303 214 3 1 1 1 }';
  */
 function fmt(n: number): string {
   if (!Number.isFinite(n)) throw new Error(`stepWrite: non-finite number ${n}`);
-  if (n === 0) return '0.';
+  if (n === 0) return "0.";
   const abs = Math.abs(n);
 
   // Sub-resolution: 6-decimal toFixed would round to 0 and silently lose the
@@ -84,13 +84,13 @@ function fmt(n: number): string {
   }
 
   const fixed = n.toFixed(6);
-  if (!fixed.includes('.')) {
+  if (!fixed.includes(".")) {
     // Defensive: toFixed(6) always includes a '.', but guard anyway so a
     // future refactor can't reintroduce the missing-dot regression.
     return `${fixed}.`;
   }
   // Strip trailing zeros from the fractional part.
-  const trimmed = fixed.replace(/0+$/, '');
+  const trimmed = fixed.replace(/0+$/, "");
   // If everything after the '.' was zero, `trimmed` now ends with '.' — the
   // value is an integer and we keep the single trailing dot (REAL marker).
   // Otherwise (genuine fractional component) `trimmed` already ends in a
@@ -107,24 +107,24 @@ function fmt(n: number): string {
 function toStepExponential(n: number): string {
   // toExponential always emits "d[.ddd]e±dd".
   const e = n.toExponential();
-  const [mantRaw, expRaw] = e.split('e');
+  const [mantRaw, expRaw] = e.split("e");
   const exp = Number.parseInt(expRaw!, 10);
   let mant = mantRaw!;
-  if (!mant.includes('.')) {
+  if (!mant.includes(".")) {
     // Single-digit mantissa (e.g. "1"): append '.' so the literal is
     // unambiguously REAL ("1.E-7", not "1E-7").
     mant = `${mant}.`;
   } else {
     // Multi-digit mantissa (e.g. "1.5"): strip trailing fractional zeros —
     // a bare trailing '.' is fine as a REAL marker.
-    mant = mant.replace(/0+$/, '');
+    mant = mant.replace(/0+$/, "");
   }
-  return `${mant}E${exp >= 0 ? '+' : ''}${exp}`;
+  return `${mant}E${exp >= 0 ? "+" : ""}${exp}`;
 }
 
 /** Escape a STEP string literal — single quote doubled, control chars stripped. */
 function esc(s: string): string {
-  return s.replace(/'/g, "''").replace(/[\x00-\x1f]/g, ' ');
+  return s.replace(/'/g, "''").replace(/[\x00-\x1f]/g, " ");
 }
 
 // ─── header ───────────────────────────────────────────────────────────────
@@ -146,22 +146,22 @@ export interface StepHeaderOptions {
  * section and the trailing `END-ISO-10303-21;` marker.
  */
 export function writeStepHeader(opts: StepHeaderOptions = {}): string {
-  const author = esc(opts.authorName ?? '');
-  const org = esc(opts.organization ?? '');
-  const desc = esc(opts.description ?? 'NexyFab Pro feature export');
-  const filename = esc(opts.filename ?? 'nexyfab.step');
+  const author = esc(opts.authorName ?? "");
+  const org = esc(opts.organization ?? "");
+  const desc = esc(opts.description ?? "NexyFab Pro feature export");
+  const filename = esc(opts.filename ?? "nexyfab.step");
   const ts = esc(opts.timestamp ?? new Date().toISOString());
 
   return [
-    'ISO-10303-21;',
-    'HEADER;',
+    "ISO-10303-21;",
+    "HEADER;",
     `FILE_DESCRIPTION(('${desc}'),'2;1');`,
     `FILE_NAME('${filename}','${ts}',('${author}'),('${org}'),` +
       `'${NEXYFAB_APPLICATION}','${NEXYFAB_APPLICATION}','');`,
     `FILE_SCHEMA(('${AP214_SCHEMA}'));`,
-    'ENDSEC;',
-    '',
-  ].join('\n');
+    "ENDSEC;",
+    "",
+  ].join("\n");
 }
 
 // ─── id allocator + buffer ────────────────────────────────────────────────
@@ -185,7 +185,7 @@ class StepBuilder {
 
   /** All entity lines as a single newline-terminated string. */
   serialize(): string {
-    return this.lines.join('\n') + '\n';
+    return this.lines.join("\n") + "\n";
   }
 }
 
@@ -241,9 +241,18 @@ function emitBox(
   //   0..3 bottom ring, 4..7 top ring, 8..11 vertical risers.
   type Edge = { a: number; b: number };
   const edges: Edge[] = [
-    { a: 0, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 3 }, { a: 3, b: 0 }, // bottom
-    { a: 4, b: 5 }, { a: 5, b: 6 }, { a: 6, b: 7 }, { a: 7, b: 4 }, // top
-    { a: 0, b: 4 }, { a: 1, b: 5 }, { a: 2, b: 6 }, { a: 3, b: 7 }, // risers
+    { a: 0, b: 1 },
+    { a: 1, b: 2 },
+    { a: 2, b: 3 },
+    { a: 3, b: 0 }, // bottom
+    { a: 4, b: 5 },
+    { a: 5, b: 6 },
+    { a: 6, b: 7 },
+    { a: 7, b: 4 }, // top
+    { a: 0, b: 4 },
+    { a: 1, b: 5 },
+    { a: 2, b: 6 },
+    { a: 3, b: 7 }, // risers
   ];
 
   const edgeCurves: string[] = [];
@@ -263,7 +272,9 @@ function emitBox(
     const dirRef = b.add(`DIRECTION('',(${fmt(dxN)},${fmt(dyN)},${fmt(dzN)}))`);
     const vecRef = b.add(`VECTOR('',${dirRef},${fmt(length)})`);
     const lineRef = b.add(`LINE('',${pStart},${vecRef})`);
-    const ecRef = b.add(`EDGE_CURVE('',${vp[e.a]!},${vp[e.b]!},${lineRef},.T.)`);
+    const ecRef = b.add(
+      `EDGE_CURVE('',${vp[e.a]!},${vp[e.b]!},${lineRef},.T.)`,
+    );
     edgeCurves.push(ecRef);
   }
 
@@ -273,12 +284,12 @@ function emitBox(
   // Face index → edge index list (signed: positive means .T., negative .F.).
   // Edge index 0..11 maps to `edges[]` above.
   const faceEdgeSpecs: ReadonlyArray<ReadonlyArray<number>> = [
-    [0, 9, -4, -8],   // -Y face (y=y0): v0→v1→v5→v4→v0  (outward normal -Y)
-    [1, 10, -5, -9],  // +X face (x=x1): v1→v2→v6→v5→v1
+    [0, 9, -4, -8], // -Y face (y=y0): v0→v1→v5→v4→v0  (outward normal -Y)
+    [1, 10, -5, -9], // +X face (x=x1): v1→v2→v6→v5→v1
     [2, 11, -6, -10], // +Y face (y=y1): v2→v3→v7→v6→v2
-    [3, 8, -7, -11],  // -X face (x=x0): v3→v0→v4→v7→v3
+    [3, 8, -7, -11], // -X face (x=x0): v3→v0→v4→v7→v3
     [-3, -2, -1, -0], // -Z bottom (z=z0): v0→v3→v2→v1→v0 (outward normal -Z)
-    [4, 5, 6, 7],     // +Z top (z=z1): v4→v5→v6→v7→v4
+    [4, 5, 6, 7], // +Z top (z=z1): v4→v5→v6→v7→v4
   ];
 
   const faceNormals: ReadonlyArray<[number, number, number]> = [
@@ -312,9 +323,9 @@ function emitBox(
       const isNegative = Object.is(spec, -0) || spec < 0;
       const idx = Math.abs(spec);
       const ec = edgeCurves[idx]!;
-      return b.add(`ORIENTED_EDGE('',*,*,${ec},.${isNegative ? 'F' : 'T'}.)`);
+      return b.add(`ORIENTED_EDGE('',*,*,${ec},.${isNegative ? "F" : "T"}.)`);
     });
-    const loopList = orientedEdges.join(',');
+    const loopList = orientedEdges.join(",");
     const loop = b.add(`EDGE_LOOP('',(${loopList}))`);
     const outerBound = b.add(`FACE_OUTER_BOUND('',${loop},.T.)`);
 
@@ -322,15 +333,21 @@ function emitBox(
     const refDir = faceRefDirs[f]!;
     const pIdx = facePointIndex[f]!;
 
-    const planeNormalDir = b.add(`DIRECTION('',(${fmt(normal[0])},${fmt(normal[1])},${fmt(normal[2])}))`);
-    const planeRefDir = b.add(`DIRECTION('',(${fmt(refDir[0])},${fmt(refDir[1])},${fmt(refDir[2])}))`);
-    const planeAxis = b.add(`AXIS2_PLACEMENT_3D('',${cp[pIdx]!},${planeNormalDir},${planeRefDir})`);
+    const planeNormalDir = b.add(
+      `DIRECTION('',(${fmt(normal[0])},${fmt(normal[1])},${fmt(normal[2])}))`,
+    );
+    const planeRefDir = b.add(
+      `DIRECTION('',(${fmt(refDir[0])},${fmt(refDir[1])},${fmt(refDir[2])}))`,
+    );
+    const planeAxis = b.add(
+      `AXIS2_PLACEMENT_3D('',${cp[pIdx]!},${planeNormalDir},${planeRefDir})`,
+    );
     const plane = b.add(`PLANE('',${planeAxis})`);
     const face = b.add(`ADVANCED_FACE('',(${outerBound}),${plane},.T.)`);
     faceRefs.push(face);
   }
 
-  const shell = b.add(`CLOSED_SHELL('',(${faceRefs.join(',')}))`);
+  const shell = b.add(`CLOSED_SHELL('',(${faceRefs.join(",")}))`);
   const solid = b.add(`MANIFOLD_SOLID_BREP('',${shell})`);
 
   // Global coordinate context for the shape representation.
@@ -374,8 +391,14 @@ function corner(
 ): [number, number, number] {
   // Match emitBox's v0..v7 ordering above.
   const mapping: ReadonlyArray<[number, number, number]> = [
-    [x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0],
-    [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1],
+    [x0, y0, z0],
+    [x1, y0, z0],
+    [x1, y1, z0],
+    [x0, y1, z0],
+    [x0, y0, z1],
+    [x1, y0, z1],
+    [x1, y1, z1],
+    [x0, y1, z1],
   ];
   return mapping[i]!;
 }
@@ -395,16 +418,26 @@ function emitProductForSolid(
   const appCtx = b.add(
     `APPLICATION_CONTEXT('core data for automotive mechanical design processes')`,
   );
-  b.add(`APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2010,${appCtx})`);
+  b.add(
+    `APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2010,${appCtx})`,
+  );
   const prodCtx = b.add(`PRODUCT_CONTEXT('',${appCtx},'mechanical')`);
-  const prodDefCtx = b.add(`PRODUCT_DEFINITION_CONTEXT('part definition',${appCtx},'design')`);
-  const product = b.add(`PRODUCT('${esc(productName)}','${esc(productName)}','',(${prodCtx}))`);
+  const prodDefCtx = b.add(
+    `PRODUCT_DEFINITION_CONTEXT('part definition',${appCtx},'design')`,
+  );
+  const product = b.add(
+    `PRODUCT('${esc(productName)}','${esc(productName)}','',(${prodCtx}))`,
+  );
   b.add(`PRODUCT_RELATED_PRODUCT_CATEGORY('part','',(${product}))`);
   const formation = b.add(
     `PRODUCT_DEFINITION_FORMATION_WITH_SPECIFIED_SOURCE(' ',' ',${product},.NOT_KNOWN.)`,
   );
-  const productDef = b.add(`PRODUCT_DEFINITION(' ','',${formation},${prodDefCtx})`);
-  const productDefShape = b.add(`PRODUCT_DEFINITION_SHAPE('','',${productDef})`);
+  const productDef = b.add(
+    `PRODUCT_DEFINITION(' ','',${formation},${prodDefCtx})`,
+  );
+  const productDefShape = b.add(
+    `PRODUCT_DEFINITION_SHAPE('','',${productDef})`,
+  );
 
   const brepRep = b.add(
     `ADVANCED_BREP_SHAPE_REPRESENTATION('${esc(productName)}',(${refs.worldAxis},${refs.solid}),${refs.geomContext})`,
@@ -420,8 +453,12 @@ export interface StepEntitiesInput {
   /** One axis-aligned box per part. Coordinates in mm. */
   boxes: ReadonlyArray<{
     name: string;
-    x0: number; y0: number; z0: number;
-    x1: number; y1: number; z1: number;
+    x0: number;
+    y0: number;
+    z0: number;
+    x1: number;
+    y1: number;
+    z1: number;
   }>;
 }
 
@@ -436,7 +473,7 @@ export interface StepEntitiesInput {
  */
 export function writeStepEntities(input: StepEntitiesInput): string {
   if (input.boxes.length === 0) {
-    throw new Error('writeStepEntities: at least one box is required');
+    throw new Error("writeStepEntities: at least one box is required");
   }
   const b = new StepBuilder();
   for (const box of input.boxes) {
@@ -444,16 +481,23 @@ export function writeStepEntities(input: StepEntitiesInput): string {
     const geom = emitBox(b, box.x0, box.y0, box.z0, box.x1, box.y1, box.z1);
     emitProductForSolid(b, box.name, geom);
   }
-  return ['DATA;', b.serialize() + 'ENDSEC;', ''].join('\n');
+  return ["DATA;", b.serialize() + "ENDSEC;", ""].join("\n");
 }
 
 function validateBoxNonDegenerate(box: {
-  x0: number; y0: number; z0: number;
-  x1: number; y1: number; z1: number;
+  x0: number;
+  y0: number;
+  z0: number;
+  x1: number;
+  y1: number;
+  z1: number;
 }): void {
-  if (box.x1 - box.x0 <= 0) throw new Error(`stepWrite: degenerate box X (x0=${box.x0}, x1=${box.x1})`);
-  if (box.y1 - box.y0 <= 0) throw new Error(`stepWrite: degenerate box Y (y0=${box.y0}, y1=${box.y1})`);
-  if (box.z1 - box.z0 <= 0) throw new Error(`stepWrite: degenerate box Z (z0=${box.z0}, z1=${box.z1})`);
+  if (box.x1 - box.x0 <= 0)
+    throw new Error(`stepWrite: degenerate box X (x0=${box.x0}, x1=${box.x1})`);
+  if (box.y1 - box.y0 <= 0)
+    throw new Error(`stepWrite: degenerate box Y (y0=${box.y0}, y1=${box.y1})`);
+  if (box.z1 - box.z0 <= 0)
+    throw new Error(`stepWrite: degenerate box Z (z0=${box.z0}, z1=${box.z1})`);
 }
 
 // ─── ExtrudeFeature convenience ───────────────────────────────────────────
@@ -476,17 +520,26 @@ export function writeExtrudeAsStep(
   feature: ExtrudeFeature,
   opts: ExtrudeToStepOptions = {},
 ): string {
-  if (feature.kind !== 'extrude') {
-    throw new Error(`writeExtrudeAsStep: expected kind='extrude', got '${(feature as { kind: string }).kind}'`);
+  if (feature.kind !== "extrude") {
+    throw new Error(
+      `writeExtrudeAsStep: expected kind='extrude', got '${(feature as { kind: string }).kind}'`,
+    );
   }
   if (feature.loop.length < 3) {
-    throw new Error(`writeExtrudeAsStep: loop must have at least 3 points, got ${feature.loop.length}`);
+    throw new Error(
+      `writeExtrudeAsStep: loop must have at least 3 points, got ${feature.loop.length}`,
+    );
   }
   if (!(feature.depth > 0) || !Number.isFinite(feature.depth)) {
-    throw new Error(`writeExtrudeAsStep: depth must be positive, got ${feature.depth}`);
+    throw new Error(
+      `writeExtrudeAsStep: depth must be positive, got ${feature.depth}`,
+    );
   }
 
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
   for (const p of feature.loop) {
     if (p.x < minX) minX = p.x;
     if (p.x > maxX) maxX = p.x;
@@ -498,9 +551,13 @@ export function writeExtrudeAsStep(
   const data = writeStepEntities({
     boxes: [
       {
-        name: opts.productName ?? 'extrude',
-        x0: minX, y0: minY, z0: 0,
-        x1: maxX, y1: maxY, z1: feature.depth,
+        name: opts.productName ?? "extrude",
+        x0: minX,
+        y0: minY,
+        z0: 0,
+        x1: maxX,
+        y1: maxY,
+        z1: feature.depth,
       },
     ],
   });
@@ -564,7 +621,9 @@ function isConvexLoop(loop: ReadonlyArray<{ x: number; y: number }>): boolean {
  * non-adjacent edges. Fine for small N (typical sketch polygons < 64 verts).
  * Returns true iff any two non-adjacent edges properly cross.
  */
-function hasSelfIntersection(loop: ReadonlyArray<{ x: number; y: number }>): boolean {
+function hasSelfIntersection(
+  loop: ReadonlyArray<{ x: number; y: number }>,
+): boolean {
   const n = loop.length;
   for (let i = 0; i < n; i++) {
     const a1 = loop[i]!;
@@ -594,8 +653,10 @@ function segmentsCross(
   const d2 = orient(p3, p4, p2);
   const d3 = orient(p1, p2, p3);
   const d4 = orient(p1, p2, p4);
-  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
-      ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+  if (
+    ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+    ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+  ) {
     return true;
   }
   return false;
@@ -611,10 +672,10 @@ function orient(
 
 /** Classification of a sketch loop for the polygon writer. */
 export type PolygonLoopClassification =
-  | { kind: 'convex' }
-  | { kind: 'concave'; reason: 'reflex vertex' }
-  | { kind: 'self_intersecting' }
-  | { kind: 'degenerate'; reason: string };
+  | { kind: "convex" }
+  | { kind: "concave"; reason: "reflex vertex" }
+  | { kind: "self_intersecting" }
+  | { kind: "degenerate"; reason: string };
 
 /**
  * Inspect a loop and decide whether the polygon writer can render it as-is
@@ -626,14 +687,15 @@ export type PolygonLoopClassification =
 export function classifyPolygonLoop(
   loop: ReadonlyArray<{ x: number; y: number }>,
 ): PolygonLoopClassification {
-  if (loop.length < 3) return { kind: 'degenerate', reason: 'fewer than 3 points' };
+  if (loop.length < 3)
+    return { kind: "degenerate", reason: "fewer than 3 points" };
   // Self-intersection check first: a bowtie has zero signed area but should
   // be reported as crossing edges (its actual failure mode), not "degenerate".
-  if (hasSelfIntersection(loop)) return { kind: 'self_intersecting' };
+  if (hasSelfIntersection(loop)) return { kind: "self_intersecting" };
   const area = signedArea2D(loop);
-  if (Math.abs(area) < 1e-9) return { kind: 'degenerate', reason: 'zero area' };
-  if (!isConvexLoop(loop)) return { kind: 'concave', reason: 'reflex vertex' };
-  return { kind: 'convex' };
+  if (Math.abs(area) < 1e-9) return { kind: "degenerate", reason: "zero area" };
+  if (!isConvexLoop(loop)) return { kind: "concave", reason: "reflex vertex" };
+  return { kind: "convex" };
 }
 
 /**
@@ -660,7 +722,9 @@ function emitPolygonExtrude(
   }
   for (let i = 0; i < n; i++) {
     const p = loop[i]!;
-    cp.push(b.add(`CARTESIAN_POINT('',(${fmt(p.x)},${fmt(p.y)},${fmt(depth)}))`));
+    cp.push(
+      b.add(`CARTESIAN_POINT('',(${fmt(p.x)},${fmt(p.y)},${fmt(depth)}))`),
+    );
   }
 
   const vp = cp.map((p) => b.add(`VERTEX_POINT('',${p})`));
@@ -684,21 +748,23 @@ function emitPolygonExtrude(
     const uy = endCoords[1] - startCoords[1];
     const uz = endCoords[2] - startCoords[2];
     const length = Math.hypot(ux, uy, uz);
-    if (length <= 0) throw new Error('emitPolygonExtrude: zero-length edge');
+    if (length <= 0) throw new Error("emitPolygonExtrude: zero-length edge");
     const dxN = ux / length;
     const dyN = uy / length;
     const dzN = uz / length;
     const dirRef = b.add(`DIRECTION('',(${fmt(dxN)},${fmt(dyN)},${fmt(dzN)}))`);
     const vecRef = b.add(`VECTOR('',${dirRef},${fmt(length)})`);
     const lineRef = b.add(`LINE('',${pStart},${vecRef})`);
-    const ecRef = b.add(`EDGE_CURVE('',${vp[e.a]!},${vp[e.b]!},${lineRef},.T.)`);
+    const ecRef = b.add(
+      `EDGE_CURVE('',${vp[e.a]!},${vp[e.b]!},${lineRef},.T.)`,
+    );
     edgeCurves.push(ecRef);
   }
 
   // Edge index helpers.
-  const botEdge = (i: number) => i;                // 0..n-1
-  const topEdge = (i: number) => n + i;            // n..2n-1
-  const riserEdge = (i: number) => 2 * n + i;      // 2n..3n-1
+  const botEdge = (i: number) => i; // 0..n-1
+  const topEdge = (i: number) => n + i; // n..2n-1
+  const riserEdge = (i: number) => 2 * n + i; // 2n..3n-1
 
   const faceRefs: string[] = [];
 
@@ -717,7 +783,7 @@ function emitPolygonExtrude(
       b.add(`ORIENTED_EDGE('',*,*,${edgeCurves[topEdge(i)]!},.F.)`),
       b.add(`ORIENTED_EDGE('',*,*,${edgeCurves[riserEdge(i)]!},.F.)`),
     ];
-    const loopRef = b.add(`EDGE_LOOP('',(${orientedEdges.join(',')}))`);
+    const loopRef = b.add(`EDGE_LOOP('',(${orientedEdges.join(",")}))`);
     const outerBound = b.add(`FACE_OUTER_BOUND('',${loopRef},.T.)`);
 
     const a = loop[i]!;
@@ -732,9 +798,15 @@ function emitPolygonExtrude(
     const rx = ex / eLen;
     const ry = ey / eLen;
 
-    const planeNormalDir = b.add(`DIRECTION('',(${fmt(nx)},${fmt(ny)},${fmt(0)}))`);
-    const planeRefDir = b.add(`DIRECTION('',(${fmt(rx)},${fmt(ry)},${fmt(0)}))`);
-    const planeAxis = b.add(`AXIS2_PLACEMENT_3D('',${cp[i]!},${planeNormalDir},${planeRefDir})`);
+    const planeNormalDir = b.add(
+      `DIRECTION('',(${fmt(nx)},${fmt(ny)},${fmt(0)}))`,
+    );
+    const planeRefDir = b.add(
+      `DIRECTION('',(${fmt(rx)},${fmt(ry)},${fmt(0)}))`,
+    );
+    const planeAxis = b.add(
+      `AXIS2_PLACEMENT_3D('',${cp[i]!},${planeNormalDir},${planeRefDir})`,
+    );
     const plane = b.add(`PLANE('',${planeAxis})`);
     const face = b.add(`ADVANCED_FACE('',(${outerBound}),${plane},.T.)`);
     faceRefs.push(face);
@@ -745,13 +817,19 @@ function emitPolygonExtrude(
   {
     const orientedEdges: string[] = [];
     for (let i = n - 1; i >= 0; i--) {
-      orientedEdges.push(b.add(`ORIENTED_EDGE('',*,*,${edgeCurves[botEdge(i)]!},.F.)`));
+      orientedEdges.push(
+        b.add(`ORIENTED_EDGE('',*,*,${edgeCurves[botEdge(i)]!},.F.)`),
+      );
     }
-    const loopRef = b.add(`EDGE_LOOP('',(${orientedEdges.join(',')}))`);
+    const loopRef = b.add(`EDGE_LOOP('',(${orientedEdges.join(",")}))`);
     const outerBound = b.add(`FACE_OUTER_BOUND('',${loopRef},.T.)`);
-    const planeNormalDir = b.add(`DIRECTION('',(${fmt(0)},${fmt(0)},${fmt(-1)}))`);
+    const planeNormalDir = b.add(
+      `DIRECTION('',(${fmt(0)},${fmt(0)},${fmt(-1)}))`,
+    );
     const planeRefDir = b.add(`DIRECTION('',(${fmt(1)},${fmt(0)},${fmt(0)}))`);
-    const planeAxis = b.add(`AXIS2_PLACEMENT_3D('',${cp[0]!},${planeNormalDir},${planeRefDir})`);
+    const planeAxis = b.add(
+      `AXIS2_PLACEMENT_3D('',${cp[0]!},${planeNormalDir},${planeRefDir})`,
+    );
     const plane = b.add(`PLANE('',${planeAxis})`);
     const face = b.add(`ADVANCED_FACE('',(${outerBound}),${plane},.T.)`);
     faceRefs.push(face);
@@ -762,19 +840,25 @@ function emitPolygonExtrude(
   {
     const orientedEdges: string[] = [];
     for (let i = 0; i < n; i++) {
-      orientedEdges.push(b.add(`ORIENTED_EDGE('',*,*,${edgeCurves[topEdge(i)]!},.T.)`));
+      orientedEdges.push(
+        b.add(`ORIENTED_EDGE('',*,*,${edgeCurves[topEdge(i)]!},.T.)`),
+      );
     }
-    const loopRef = b.add(`EDGE_LOOP('',(${orientedEdges.join(',')}))`);
+    const loopRef = b.add(`EDGE_LOOP('',(${orientedEdges.join(",")}))`);
     const outerBound = b.add(`FACE_OUTER_BOUND('',${loopRef},.T.)`);
-    const planeNormalDir = b.add(`DIRECTION('',(${fmt(0)},${fmt(0)},${fmt(1)}))`);
+    const planeNormalDir = b.add(
+      `DIRECTION('',(${fmt(0)},${fmt(0)},${fmt(1)}))`,
+    );
     const planeRefDir = b.add(`DIRECTION('',(${fmt(1)},${fmt(0)},${fmt(0)}))`);
-    const planeAxis = b.add(`AXIS2_PLACEMENT_3D('',${cp[n]!},${planeNormalDir},${planeRefDir})`);
+    const planeAxis = b.add(
+      `AXIS2_PLACEMENT_3D('',${cp[n]!},${planeNormalDir},${planeRefDir})`,
+    );
     const plane = b.add(`PLANE('',${planeAxis})`);
     const face = b.add(`ADVANCED_FACE('',(${outerBound}),${plane},.T.)`);
     faceRefs.push(face);
   }
 
-  const shell = b.add(`CLOSED_SHELL('',(${faceRefs.join(',')}))`);
+  const shell = b.add(`CLOSED_SHELL('',(${faceRefs.join(",")}))`);
   const solid = b.add(`MANIFOLD_SOLID_BREP('',${shell})`);
 
   // Geometric representation context (mirrors emitBox).
@@ -824,7 +908,10 @@ export interface PolygonExtrudeOptions extends ExtrudeToStepOptions {
    * Hook for callers that want to observe (or fail loudly on) bbox fallback.
    * Default: log to console.warn.
    */
-  onFallback?: (info: { reason: PolygonLoopClassification['kind']; detail: string }) => void;
+  onFallback?: (info: {
+    reason: PolygonLoopClassification["kind"];
+    detail: string;
+  }) => void;
 }
 
 /**
@@ -843,23 +930,31 @@ export function writeExtrudePolygonAsStep(
   feature: ExtrudeFeature,
   opts: PolygonExtrudeOptions = {},
 ): string {
-  if (feature.kind !== 'extrude') {
-    throw new Error(`writeExtrudePolygonAsStep: expected kind='extrude', got '${(feature as { kind: string }).kind}'`);
+  if (feature.kind !== "extrude") {
+    throw new Error(
+      `writeExtrudePolygonAsStep: expected kind='extrude', got '${(feature as { kind: string }).kind}'`,
+    );
   }
   if (feature.loop.length < 3) {
-    throw new Error(`writeExtrudePolygonAsStep: loop must have at least 3 points, got ${feature.loop.length}`);
+    throw new Error(
+      `writeExtrudePolygonAsStep: loop must have at least 3 points, got ${feature.loop.length}`,
+    );
   }
   if (!(feature.depth > 0) || !Number.isFinite(feature.depth)) {
-    throw new Error(`writeExtrudePolygonAsStep: depth must be positive, got ${feature.depth}`);
+    throw new Error(
+      `writeExtrudePolygonAsStep: depth must be positive, got ${feature.depth}`,
+    );
   }
 
   const classification = classifyPolygonLoop(feature.loop);
-  if (classification.kind !== 'convex') {
+  if (classification.kind !== "convex") {
     const reason = classification.kind;
     const detail =
-      classification.kind === 'concave' ? classification.reason :
-      classification.kind === 'degenerate' ? classification.reason :
-      'edges cross';
+      classification.kind === "concave"
+        ? classification.reason
+        : classification.kind === "degenerate"
+          ? classification.reason
+          : "edges cross";
     const onFallback = opts.onFallback ?? defaultFallbackWarn;
     onFallback({ reason, detail });
     return writeExtrudeAsStep(feature, opts);
@@ -868,14 +963,16 @@ export function writeExtrudePolygonAsStep(
   // Ensure CCW (positive signed area). If input is CW, reverse so emit*
   // sees the canonical orientation it expects.
   const loop: ReadonlyArray<{ x: number; y: number }> =
-    signedArea2D(feature.loop) >= 0 ? feature.loop : [...feature.loop].reverse();
+    signedArea2D(feature.loop) >= 0
+      ? feature.loop
+      : [...feature.loop].reverse();
 
   const b = new StepBuilder();
   const geom = emitPolygonExtrude(b, loop, feature.depth);
-  emitProductForSolid(b, opts.productName ?? 'extrude', geom);
+  emitProductForSolid(b, opts.productName ?? "extrude", geom);
 
   const header = writeStepHeader(opts);
-  const data = ['DATA;', b.serialize() + 'ENDSEC;', ''].join('\n');
+  const data = ["DATA;", b.serialize() + "ENDSEC;", ""].join("\n");
   return `${header}${data}END-ISO-10303-21;\n`;
 }
 
@@ -895,22 +992,39 @@ function defaultFallbackWarn(info: { reason: string; detail: string }): void {
  */
 export type AssemblyPart =
   | {
-      kind?: 'box';
+      kind?: "box";
       /** Stable id used as the NAUO id and the PRODUCT name. */
       id: string;
       /** Human-readable display name (UI label). */
       name: string;
-      x0: number; y0: number; z0: number;
-      x1: number; y1: number; z1: number;
+      x0: number;
+      y0: number;
+      z0: number;
+      x1: number;
+      y1: number;
+      z1: number;
     }
   | {
-      kind: 'polygon';
+      kind: "polygon";
       id: string;
       name: string;
       /** CCW (or CW — auto-corrected) profile loop. */
       loop: ReadonlyArray<{ x: number; y: number }>;
       /** Extrude depth in +Z (mm). */
       depth: number;
+    }
+  | {
+      kind: "multi_body";
+      id: string;
+      name: string;
+      bodies: ReadonlyArray<{
+        x0: number;
+        y0: number;
+        z0: number;
+        x1: number;
+        y1: number;
+        z1: number;
+      }>;
     };
 
 export interface AssemblyStepInput {
@@ -942,7 +1056,7 @@ export interface AssemblyStepOptions extends StepHeaderOptions {
    */
   onFallback?: (info: {
     partId: string;
-    reason: PolygonLoopClassification['kind'];
+    reason: PolygonLoopClassification["kind"];
     detail: string;
   }) => void;
 }
@@ -952,12 +1066,13 @@ export function writeAssemblyAsStep(
   opts: AssemblyStepOptions = {},
 ): string {
   if (input.parts.length === 0) {
-    throw new Error('writeAssemblyAsStep: at least one part is required');
+    throw new Error("writeAssemblyAsStep: at least one part is required");
   }
   // Detect duplicate ids early — NAUOs require uniqueness per assembly.
   const seen = new Set<string>();
   for (const p of input.parts) {
-    if (seen.has(p.id)) throw new Error(`writeAssemblyAsStep: duplicate part id '${p.id}'`);
+    if (seen.has(p.id))
+      throw new Error(`writeAssemblyAsStep: duplicate part id '${p.id}'`);
     seen.add(p.id);
   }
 
@@ -967,33 +1082,56 @@ export function writeAssemblyAsStep(
   const appCtx = b.add(
     `APPLICATION_CONTEXT('core data for automotive mechanical design processes')`,
   );
-  b.add(`APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2010,${appCtx})`);
+  b.add(
+    `APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2010,${appCtx})`,
+  );
   const prodCtx = b.add(`PRODUCT_CONTEXT('',${appCtx},'mechanical')`);
-  const prodDefCtx = b.add(`PRODUCT_DEFINITION_CONTEXT('part definition',${appCtx},'design')`);
+  const prodDefCtx = b.add(
+    `PRODUCT_DEFINITION_CONTEXT('part definition',${appCtx},'design')`,
+  );
 
   // Root assembly product (no geometry — pure container).
   const asmName = esc(input.assemblyName);
-  const asmProduct = b.add(`PRODUCT('${asmName}','${asmName}','',(${prodCtx}))`);
+  const asmProduct = b.add(
+    `PRODUCT('${asmName}','${asmName}','',(${prodCtx}))`,
+  );
   b.add(`PRODUCT_RELATED_PRODUCT_CATEGORY('assembly','',(${asmProduct}))`);
   const asmFormation = b.add(
     `PRODUCT_DEFINITION_FORMATION_WITH_SPECIFIED_SOURCE(' ',' ',${asmProduct},.NOT_KNOWN.)`,
   );
-  const asmDef = b.add(`PRODUCT_DEFINITION(' ','',${asmFormation},${prodDefCtx})`);
+  const asmDef = b.add(
+    `PRODUCT_DEFINITION(' ','',${asmFormation},${prodDefCtx})`,
+  );
 
   // Per-part: geometry + product chain + NAUO.
   for (const part of input.parts) {
-    const geom = emitGeometryForPart(b, part, opts);
+    const geometries =
+      part.kind === "multi_body"
+        ? part.bodies.map((body) =>
+            emitBox(b, body.x0, body.y0, body.z0, body.x1, body.y1, body.z1),
+          )
+        : [emitGeometryForPart(b, part, opts)];
+    if (geometries.length < 2 && part.kind === "multi_body") {
+      throw new Error(
+        `writeAssemblyAsStep: multi-body part '${part.id}' requires at least two bodies`,
+      );
+    }
+    const geom = geometries[0]!;
 
     const partName = esc(part.name);
-    const partProduct = b.add(`PRODUCT('${esc(part.id)}','${partName}','',(${prodCtx}))`);
+    const partProduct = b.add(
+      `PRODUCT('${esc(part.id)}','${partName}','',(${prodCtx}))`,
+    );
     b.add(`PRODUCT_RELATED_PRODUCT_CATEGORY('part','',(${partProduct}))`);
     const partFormation = b.add(
       `PRODUCT_DEFINITION_FORMATION_WITH_SPECIFIED_SOURCE(' ',' ',${partProduct},.NOT_KNOWN.)`,
     );
-    const partDef = b.add(`PRODUCT_DEFINITION(' ','',${partFormation},${prodDefCtx})`);
+    const partDef = b.add(
+      `PRODUCT_DEFINITION(' ','',${partFormation},${prodDefCtx})`,
+    );
     const partDefShape = b.add(`PRODUCT_DEFINITION_SHAPE('','',${partDef})`);
     const partRep = b.add(
-      `ADVANCED_BREP_SHAPE_REPRESENTATION('${partName}',(${geom.worldAxis},${geom.solid}),${geom.geomContext})`,
+      `ADVANCED_BREP_SHAPE_REPRESENTATION('${partName}',(${geom.worldAxis},${geometries.map((item) => item.solid).join(",")}),${geom.geomContext})`,
     );
     b.add(`SHAPE_DEFINITION_REPRESENTATION(${partDefShape},${partRep})`);
 
@@ -1003,7 +1141,7 @@ export function writeAssemblyAsStep(
   }
 
   const header = writeStepHeader(opts);
-  const data = ['DATA;', b.serialize() + 'ENDSEC;', ''].join('\n');
+  const data = ["DATA;", b.serialize() + "ENDSEC;", ""].join("\n");
   return `${header}${data}END-ISO-10303-21;\n`;
 }
 
@@ -1017,29 +1155,46 @@ function emitGeometryForPart(
   part: AssemblyPart,
   opts: AssemblyStepOptions,
 ): BoxGeometryRefs {
-  if (part.kind === 'polygon') {
+  if (part.kind === "multi_body") {
+    throw new Error(
+      "writeAssemblyAsStep: multi-body geometry must be emitted as a group",
+    );
+  }
+  if (part.kind === "polygon") {
     if (part.loop.length < 3) {
-      throw new Error(`writeAssemblyAsStep: polygon part '${part.id}' loop must have ≥ 3 points`);
+      throw new Error(
+        `writeAssemblyAsStep: polygon part '${part.id}' loop must have ≥ 3 points`,
+      );
     }
     if (!(part.depth > 0) || !Number.isFinite(part.depth)) {
-      throw new Error(`writeAssemblyAsStep: polygon part '${part.id}' depth must be positive`);
+      throw new Error(
+        `writeAssemblyAsStep: polygon part '${part.id}' depth must be positive`,
+      );
     }
     const cls = classifyPolygonLoop(part.loop);
-    if (cls.kind === 'convex') {
-      const loop = signedArea2D(part.loop) >= 0 ? part.loop : [...part.loop].reverse();
+    if (cls.kind === "convex") {
+      const loop =
+        signedArea2D(part.loop) >= 0 ? part.loop : [...part.loop].reverse();
       return emitPolygonExtrude(b, loop, part.depth);
     }
-    if (cls.kind === 'degenerate') {
-      throw new Error(`writeAssemblyAsStep: polygon part '${part.id}' is degenerate (${cls.reason})`);
+    if (cls.kind === "degenerate") {
+      throw new Error(
+        `writeAssemblyAsStep: polygon part '${part.id}' is degenerate (${cls.reason})`,
+      );
     }
     // Concave or self-intersecting → bbox fallback.
-    const detail = cls.kind === 'concave' ? cls.reason : 'edges cross';
-    const onFallback = opts.onFallback ?? ((info) =>
-      console.warn(
-        `[stepWrite] assembly part '${info.partId}' polygon → bbox fallback: ${info.reason} (${info.detail})`,
-      ));
+    const detail = cls.kind === "concave" ? cls.reason : "edges cross";
+    const onFallback =
+      opts.onFallback ??
+      ((info) =>
+        console.warn(
+          `[stepWrite] assembly part '${info.partId}' polygon → bbox fallback: ${info.reason} (${info.detail})`,
+        ));
     onFallback({ partId: part.id, reason: cls.kind, detail });
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
     for (const p of part.loop) {
       if (p.x < minX) minX = p.x;
       if (p.x > maxX) maxX = p.x;

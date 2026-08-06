@@ -87,20 +87,22 @@ describe('io 등록부 → IGES (폴리라인 와이어프레임)', () => {
 });
 
 describe('io 등록부 → IFC (IfcFacetedBrep)', () => {
-  it('BoxGeometry → IFC → 자기검사 + ifcImport: AABB 20×30×40', async () => {
+  it('BoxGeometry → IFC → 자기검사 + ifcImport: 정확 메시 체적 24000·AABB 20×30×40', async () => {
     const text = await buildIFCText(makeBox(), 'box');
     const c = selfCheckIfc(text, { brepPoints: 8 });
     expect(c.errors).toEqual([]);
     const r = ifcToNexyfabAssembly(text, { name: 'rt' });
     expect(r.ok, r.error).toBe(true);
     const p = r.assembly!.parts[0];
-    // IfcFacetedBrep 는 삼각 메시(IfcTriangulatedFaceSet)가 아니므로 box 로 나온다.
-    // 260729c 에 mesh 경로가 생겨 params 가 유니온이 됐다 — 어느 쪽인지 먼저 고정한다.
-    expect(p.type).toBe('box');
-    const box = p.params as { width: number; depth: number; height: number };
-    expect(box.width).toBeCloseTo(20, 6);
-    expect(box.depth).toBeCloseTo(30, 6);
-    expect(box.height).toBeCloseTo(40, 6);
+    // 실형상 복원(260807): IfcFacetedBrep → 정확 표면 메시 + 수밀 체적(AABB 박스 근사 폐기)
+    expect(p.type).toBe('mesh');
+    expect(p.geometryEvidence).toBe('exact_surface_mesh');
+    expect(p.meshVolumeExact).toBe(true);
+    const m = p.params as { volumeMm3: number; aabb: { min: number[]; max: number[] } };
+    expect(m.volumeMm3).toBeCloseTo(24000, 1);
+    expect(m.aabb.max[0] - m.aabb.min[0]).toBeCloseTo(20, 6);
+    expect(m.aabb.max[1] - m.aabb.min[1]).toBeCloseTo(30, 6);
+    expect(m.aabb.max[2] - m.aabb.min[2]).toBeCloseTo(40, 6);
   });
 
   it('개방 지오메트리는 폐셸 요건 사유로 거부(throw)', async () => {

@@ -19,10 +19,10 @@
  *   - warnings: no PD treated as single part
  */
 
-import { describe, it, expect } from 'vitest';
-import { importStepAssembly } from './stepAssemblyImport';
-import { StepImportError } from './stepImport';
-import { writeAssemblyAsStep, writeStepHeader } from './stepWrite';
+import { describe, it, expect } from "vitest";
+import { importStepAssembly } from "./stepAssemblyImport";
+import { StepImportError } from "./stepImport";
+import { writeAssemblyAsStep, writeStepHeader } from "./stepWrite";
 
 // ─── micro-helpers for hand-crafted assemblies ────────────────────────────
 
@@ -37,10 +37,17 @@ import { writeAssemblyAsStep, writeStepHeader } from './stepWrite';
  * depending on writeAssemblyAsStep (which doesn't emit ITEM_DEFINED_TRANSFORMATION).
  */
 interface FixturePart {
-  pdId: string;             // alias used in `children` edges
+  pdId: string; // alias used in `children` edges
   name: string;
   /** Box dimensions; omit for a "container" PD (sub-assembly). */
-  box?: { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number };
+  box?: {
+    x0: number;
+    y0: number;
+    z0: number;
+    x1: number;
+    y1: number;
+    z1: number;
+  };
 }
 
 interface FixtureEdge {
@@ -52,7 +59,10 @@ interface FixtureEdge {
   rotate?: { axis: [number, number, number]; angleRad: number };
 }
 
-function buildAssemblyFixture(parts: FixturePart[], edges: FixtureEdge[]): string {
+function buildAssemblyFixture(
+  parts: FixturePart[],
+  edges: FixtureEdge[],
+): string {
   // Manual STEP entity builder — we want full control of the entity ids so
   // tests can reference them deterministically.
   const lines: string[] = [];
@@ -65,9 +75,13 @@ function buildAssemblyFixture(parts: FixturePart[], edges: FixtureEdge[]): strin
 
   // Shared context.
   const appCtx = add(`APPLICATION_CONTEXT('automotive design')`);
-  add(`APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2010,#${appCtx})`);
+  add(
+    `APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2010,#${appCtx})`,
+  );
   const prodCtx = add(`PRODUCT_CONTEXT('',#${appCtx},'mechanical')`);
-  const prodDefCtx = add(`PRODUCT_DEFINITION_CONTEXT('part definition',#${appCtx},'design')`);
+  const prodDefCtx = add(
+    `PRODUCT_DEFINITION_CONTEXT('part definition',#${appCtx},'design')`,
+  );
 
   // Geom context shared by all reps.
   const dimExp = add(`DIMENSIONAL_EXPONENTS(1.0,0.0,0.0,0.0,0.0,0.0,0.0)`);
@@ -75,8 +89,12 @@ function buildAssemblyFixture(parts: FixturePart[], edges: FixtureEdge[]): strin
   // Above composite is for human-readability; our parser tolerates anonymous units.
   void dimExp;
   const lenUnit = add(`(LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(.MILLI.,.METRE.))`);
-  const plnAngUnit = add(`(NAMED_UNIT(*) PLANE_ANGLE_UNIT() SI_UNIT($,.RADIAN.))`);
-  const solAngUnit = add(`(NAMED_UNIT(*) SOLID_ANGLE_UNIT() SI_UNIT($,.STERADIAN.))`);
+  const plnAngUnit = add(
+    `(NAMED_UNIT(*) PLANE_ANGLE_UNIT() SI_UNIT($,.RADIAN.))`,
+  );
+  const solAngUnit = add(
+    `(NAMED_UNIT(*) SOLID_ANGLE_UNIT() SI_UNIT($,.STERADIAN.))`,
+  );
   const uncertainty = add(
     `UNCERTAINTY_MEASURE_WITH_UNIT(LENGTH_MEASURE(0.00001),#${lenUnit},'distance_accuracy_value','')`,
   );
@@ -88,7 +106,9 @@ function buildAssemblyFixture(parts: FixturePart[], edges: FixtureEdge[]): strin
   const worldOrigin = add(`CARTESIAN_POINT('',(0.,0.,0.))`);
   const worldZ = add(`DIRECTION('',(0.,0.,1.))`);
   const worldX = add(`DIRECTION('',(1.,0.,0.))`);
-  const worldAxisPlacement = add(`AXIS2_PLACEMENT_3D('',#${worldOrigin},#${worldZ},#${worldX})`);
+  const worldAxisPlacement = add(
+    `AXIS2_PLACEMENT_3D('',#${worldOrigin},#${worldZ},#${worldX})`,
+  );
 
   // Per-part: emit PRODUCT chain + geometry.
   const partRefs = new Map<string, { productDef: number; pds: number }>();
@@ -98,7 +118,9 @@ function buildAssemblyFixture(parts: FixturePart[], edges: FixtureEdge[]): strin
     const formation = add(
       `PRODUCT_DEFINITION_FORMATION_WITH_SPECIFIED_SOURCE(' ',' ',#${product},.NOT_KNOWN.)`,
     );
-    const productDef = add(`PRODUCT_DEFINITION(' ','',#${formation},#${prodDefCtx})`);
+    const productDef = add(
+      `PRODUCT_DEFINITION(' ','',#${formation},#${prodDefCtx})`,
+    );
     const pds = add(`PRODUCT_DEFINITION_SHAPE('','',#${productDef})`);
     partRefs.set(p.pdId, { productDef, pds });
 
@@ -116,13 +138,18 @@ function buildAssemblyFixture(parts: FixturePart[], edges: FixtureEdge[]): strin
   for (const e of edges) {
     const parent = partRefs.get(e.parent);
     const child = partRefs.get(e.child);
-    if (!parent || !child) throw new Error(`unknown part in edge ${e.parent} → ${e.child}`);
+    if (!parent || !child)
+      throw new Error(`unknown part in edge ${e.parent} → ${e.child}`);
     const nauoName = `${e.parent}_to_${e.child}`;
     const nauo = add(
       `NEXT_ASSEMBLY_USAGE_OCCURRENCE('${nauoName}','${nauoName}','',#${parent.productDef},#${child.productDef},$)`,
     );
     if (e.translate || e.rotate) {
-      const srcAxis = buildAxisPlacement(add, e.translate ?? [0, 0, 0], e.rotate);
+      const srcAxis = buildAxisPlacement(
+        add,
+        e.translate ?? [0, 0, 0],
+        e.rotate,
+      );
       const tgtAxis = worldAxisPlacement;
       const idt = add(
         `ITEM_DEFINED_TRANSFORMATION('edge_xform','',#${srcAxis},#${tgtAxis})`,
@@ -136,20 +163,37 @@ function buildAssemblyFixture(parts: FixturePart[], edges: FixtureEdge[]): strin
   }
 
   const header = writeStepHeader();
-  return `${header}DATA;\n${lines.join('\n')}\nENDSEC;\nEND-ISO-10303-21;\n`;
+  return `${header}DATA;\n${lines.join("\n")}\nENDSEC;\nEND-ISO-10303-21;\n`;
 }
 
 /** Emit a minimal 6-face axis-aligned box solid. Returns the MANIFOLD_SOLID_BREP id. */
 function emitBoxBody(
   add: (body: string) => number,
-  box: { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number },
+  box: {
+    x0: number;
+    y0: number;
+    z0: number;
+    x1: number;
+    y1: number;
+    z1: number;
+  },
 ): number {
   const { x0, y0, z0, x1, y1, z1 } = box;
   // 8 corner points: bottom (z0) 0-3, top (z1) 4-7.
   const pts = [
-    [x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0],
-    [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1],
-  ].map((p) => add(`CARTESIAN_POINT('',(${p[0]!.toFixed(6)},${p[1]!.toFixed(6)},${p[2]!.toFixed(6)}))`));
+    [x0, y0, z0],
+    [x1, y0, z0],
+    [x1, y1, z0],
+    [x0, y1, z0],
+    [x0, y0, z1],
+    [x1, y0, z1],
+    [x1, y1, z1],
+    [x0, y1, z1],
+  ].map((p) =>
+    add(
+      `CARTESIAN_POINT('',(${p[0]!.toFixed(6)},${p[1]!.toFixed(6)},${p[2]!.toFixed(6)}))`,
+    ),
+  );
   const verts = pts.map((cp) => add(`VERTEX_POINT('',#${cp})`));
 
   // Directions reused everywhere.
@@ -163,17 +207,21 @@ function emitBoxBody(
   const refYDir = add(`DIRECTION('',(0.,1.,0.))`);
 
   // 6 plane surfaces (origin = first corner of the face, normal as listed).
-  const makePlane = (origin: number, normal: number, refDir: number): number => {
+  const makePlane = (
+    origin: number,
+    normal: number,
+    refDir: number,
+  ): number => {
     const ax = add(`AXIS2_PLACEMENT_3D('',#${origin},#${normal},#${refDir})`);
     return add(`PLANE('',#${ax})`);
   };
 
   const plnBottom = makePlane(pts[0]!, dirZn, refXDir);
-  const plnTop    = makePlane(pts[4]!, dirZp, refXDir);
-  const plnFront  = makePlane(pts[0]!, dirYn, refXDir);
-  const plnBack   = makePlane(pts[3]!, dirYp, refXDir);
-  const plnLeft   = makePlane(pts[0]!, dirXn, refYDir);
-  const plnRight  = makePlane(pts[1]!, dirXp, refYDir);
+  const plnTop = makePlane(pts[4]!, dirZp, refXDir);
+  const plnFront = makePlane(pts[0]!, dirYn, refXDir);
+  const plnBack = makePlane(pts[3]!, dirYp, refXDir);
+  const plnLeft = makePlane(pts[0]!, dirXn, refYDir);
+  const plnRight = makePlane(pts[1]!, dirXp, refYDir);
 
   // Each face needs an EDGE_LOOP of 4 ORIENTED_EDGEs.
   // Lines per edge; reuse for orientation flips via ORIENTED_EDGE flag.
@@ -208,10 +256,10 @@ function emitBoxBody(
   ];
 
   const oe = (ec: number, fwd: boolean): number =>
-    add(`ORIENTED_EDGE('',*,*,#${ec},.${fwd ? 'T' : 'F'}.)`);
+    add(`ORIENTED_EDGE('',*,*,#${ec},.${fwd ? "T" : "F"}.)`);
 
   const makeFace = (pln: number, oeList: number[]): number => {
-    const loop = add(`EDGE_LOOP('',(${oeList.map((o) => `#${o}`).join(',')}))`);
+    const loop = add(`EDGE_LOOP('',(${oeList.map((o) => `#${o}`).join(",")}))`);
     const bound = add(`FACE_OUTER_BOUND('',#${loop},.T.)`);
     return add(`ADVANCED_FACE('',(#${bound}),#${pln},.T.)`);
   };
@@ -220,26 +268,40 @@ function emitBoxBody(
   // We emit CCW-from-above (the bottom-face's normal is -Z, so the loop is
   // CW when seen from below = walks 0,1,2,3 — close enough for facesToBox).
   const faceBottom = makeFace(plnBottom, [
-    oe(eBottom[0]!, true), oe(eBottom[1]!, true), oe(eBottom[2]!, true), oe(eBottom[3]!, true),
+    oe(eBottom[0]!, true),
+    oe(eBottom[1]!, true),
+    oe(eBottom[2]!, true),
+    oe(eBottom[3]!, true),
   ]);
   const faceTop = makeFace(plnTop, [
-    oe(eTop[0]!, true), oe(eTop[1]!, true), oe(eTop[2]!, true), oe(eTop[3]!, true),
+    oe(eTop[0]!, true),
+    oe(eTop[1]!, true),
+    oe(eTop[2]!, true),
+    oe(eTop[3]!, true),
   ]);
   const faceFront = makeFace(plnFront, [
-    oe(eBottom[0]!, true), oe(eVert[1]!, true),
-    oe(eTop[0]!, false),    oe(eVert[0]!, false),
+    oe(eBottom[0]!, true),
+    oe(eVert[1]!, true),
+    oe(eTop[0]!, false),
+    oe(eVert[0]!, false),
   ]);
   const faceBack = makeFace(plnBack, [
-    oe(eBottom[2]!, false), oe(eVert[2]!, true),
-    oe(eTop[2]!, true),      oe(eVert[3]!, false),
+    oe(eBottom[2]!, false),
+    oe(eVert[2]!, true),
+    oe(eTop[2]!, true),
+    oe(eVert[3]!, false),
   ]);
   const faceLeft = makeFace(plnLeft, [
-    oe(eBottom[3]!, true), oe(eVert[0]!, true),
-    oe(eTop[3]!, false),    oe(eVert[3]!, false),
+    oe(eBottom[3]!, true),
+    oe(eVert[0]!, true),
+    oe(eTop[3]!, false),
+    oe(eVert[3]!, false),
   ]);
   const faceRight = makeFace(plnRight, [
-    oe(eBottom[1]!, true), oe(eVert[2]!, true),
-    oe(eTop[1]!, false),    oe(eVert[1]!, false),
+    oe(eBottom[1]!, true),
+    oe(eVert[2]!, true),
+    oe(eTop[1]!, false),
+    oe(eVert[1]!, false),
   ]);
 
   const shell = add(
@@ -281,7 +343,11 @@ function rotateVector(
   angleRad: number,
 ): [number, number, number] {
   const len = Math.hypot(...axis);
-  const k: [number, number, number] = [axis[0] / len, axis[1] / len, axis[2] / len];
+  const k: [number, number, number] = [
+    axis[0] / len,
+    axis[1] / len,
+    axis[2] / len,
+  ];
   const c = Math.cos(angleRad);
   const s = Math.sin(angleRad);
   const dot = k[0] * v[0] + k[1] * v[1] + k[2] * v[2];
@@ -299,23 +365,37 @@ function rotateVector(
 
 // ─── 1: single PD → 1 part ────────────────────────────────────────────────
 
-describe('importStepAssembly — single part', () => {
-  it('imports 1 PRODUCT_DEFINITION as 1 part instance (warns about no NAUO)', () => {
+describe("importStepAssembly — single part", () => {
+  it("imports 1 PRODUCT_DEFINITION as 1 part instance (warns about no NAUO)", () => {
     const step = buildAssemblyFixture(
-      [{ pdId: 'A', name: 'Cube', box: { x0: 0, y0: 0, z0: 0, x1: 10, y1: 10, z1: 10 } }],
+      [
+        {
+          pdId: "A",
+          name: "Cube",
+          box: { x0: 0, y0: 0, z0: 0, x1: 10, y1: 10, z1: 10 },
+        },
+      ],
       [],
     );
     const result = importStepAssembly(step);
     expect(result.state.parts).toHaveLength(1);
     expect(result.state.parts[0]!.fixed).toBe(true);
     expect(result.state.mates).toEqual([]);
-    expect(result.warnings.some((w) => w.includes('no_assembly_relationships'))).toBe(true);
+    expect(
+      result.warnings.some((w) => w.includes("no_assembly_relationships")),
+    ).toBe(true);
     expect(Object.keys(result.featureTrees)).toHaveLength(1);
   });
 
-  it('attaches an ExtrudeFeature in the featureTree for a box part', () => {
+  it("attaches an ExtrudeFeature in the featureTree for a box part", () => {
     const step = buildAssemblyFixture(
-      [{ pdId: 'A', name: 'Cube', box: { x0: 0, y0: 0, z0: 0, x1: 5, y1: 4, z1: 3 } }],
+      [
+        {
+          pdId: "A",
+          name: "Cube",
+          box: { x0: 0, y0: 0, z0: 0, x1: 5, y1: 4, z1: 3 },
+        },
+      ],
       [],
     );
     const result = importStepAssembly(step);
@@ -323,19 +403,28 @@ describe('importStepAssembly — single part', () => {
     const tree = result.featureTrees[partId];
     expect(tree).toBeDefined();
     expect(tree!.nodes.length).toBeGreaterThanOrEqual(1);
-    expect(tree!.nodes[0]!.payload.kind).toBe('extrude');
+    expect(tree!.nodes[0]!.payload.kind).toBe("extrude");
   });
 });
 
 // ─── 2: writeAssemblyAsStep round-trip ────────────────────────────────────
 
-describe('importStepAssembly — writeAssemblyAsStep round-trip', () => {
-  it('round-trips 2 boxes through writeAssemblyAsStep', () => {
+describe("importStepAssembly — writeAssemblyAsStep round-trip", () => {
+  it("round-trips 2 boxes through writeAssemblyAsStep", () => {
     const step = writeAssemblyAsStep({
-      assemblyName: 'Bracket',
+      assemblyName: "Bracket",
       parts: [
-        { id: 'base', name: 'Base', x0: 0, y0: 0, z0: 0, x1: 20, y1: 20, z1: 5 },
-        { id: 'top',  name: 'Top',  x0: 5, y0: 5, z0: 5, x1: 15, y1: 15, z1: 10 },
+        {
+          id: "base",
+          name: "Base",
+          x0: 0,
+          y0: 0,
+          z0: 0,
+          x1: 20,
+          y1: 20,
+          z1: 5,
+        },
+        { id: "top", name: "Top", x0: 5, y0: 5, z0: 5, x1: 15, y1: 15, z1: 10 },
       ],
     });
     const result = importStepAssembly(step);
@@ -353,30 +442,38 @@ describe('importStepAssembly — writeAssemblyAsStep round-trip', () => {
 
 // ─── 3: NAUO + IDT translation ────────────────────────────────────────────
 
-describe('importStepAssembly — translation transforms', () => {
-  it('applies ITEM_DEFINED_TRANSFORMATION translation to the child placement', () => {
+describe("importStepAssembly — translation transforms", () => {
+  it("applies ITEM_DEFINED_TRANSFORMATION translation to the child placement", () => {
     const step = buildAssemblyFixture(
       [
-        { pdId: 'asm', name: 'Asm' },
-        { pdId: 'child', name: 'Child', box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 } },
+        { pdId: "asm", name: "Asm" },
+        {
+          pdId: "child",
+          name: "Child",
+          box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 },
+        },
       ],
-      [{ parent: 'asm', child: 'child', translate: [10, 20, 30] }],
+      [{ parent: "asm", child: "child", translate: [10, 20, 30] }],
     );
     const result = importStepAssembly(step);
     expect(result.state.parts).toHaveLength(1);
     expect(result.state.parts[0]!.position).toEqual({ x: 10, y: 20, z: 30 });
   });
 
-  it('composes translations through a 3-level hierarchy', () => {
+  it("composes translations through a 3-level hierarchy", () => {
     const step = buildAssemblyFixture(
       [
-        { pdId: 'root', name: 'Root' },
-        { pdId: 'mid',  name: 'Mid' },
-        { pdId: 'leaf', name: 'Leaf', box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 } },
+        { pdId: "root", name: "Root" },
+        { pdId: "mid", name: "Mid" },
+        {
+          pdId: "leaf",
+          name: "Leaf",
+          box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 },
+        },
       ],
       [
-        { parent: 'root', child: 'mid',  translate: [10, 0, 0] },
-        { parent: 'mid',  child: 'leaf', translate: [0, 5, 0] },
+        { parent: "root", child: "mid", translate: [10, 0, 0] },
+        { parent: "mid", child: "leaf", translate: [0, 5, 0] },
       ],
     );
     const result = importStepAssembly(step);
@@ -386,25 +483,39 @@ describe('importStepAssembly — translation transforms', () => {
     expect(result.state.parts[0]!.position.z).toBeCloseTo(0);
   });
 
-  it('flattens a 3-level hierarchy with 3 leaf parts', () => {
+  it("flattens a 3-level hierarchy with 3 leaf parts", () => {
     const step = buildAssemblyFixture(
       [
-        { pdId: 'root', name: 'Root' },
-        { pdId: 'sub',  name: 'Sub' },
-        { pdId: 'p1', name: 'P1', box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 } },
-        { pdId: 'p2', name: 'P2', box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 } },
-        { pdId: 'p3', name: 'P3', box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 } },
+        { pdId: "root", name: "Root" },
+        { pdId: "sub", name: "Sub" },
+        {
+          pdId: "p1",
+          name: "P1",
+          box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 },
+        },
+        {
+          pdId: "p2",
+          name: "P2",
+          box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 },
+        },
+        {
+          pdId: "p3",
+          name: "P3",
+          box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 },
+        },
       ],
       [
-        { parent: 'root', child: 'sub', translate: [100, 0, 0] },
-        { parent: 'sub',  child: 'p1',  translate: [1, 0, 0] },
-        { parent: 'sub',  child: 'p2',  translate: [2, 0, 0] },
-        { parent: 'root', child: 'p3',  translate: [0, 50, 0] },
+        { parent: "root", child: "sub", translate: [100, 0, 0] },
+        { parent: "sub", child: "p1", translate: [1, 0, 0] },
+        { parent: "sub", child: "p2", translate: [2, 0, 0] },
+        { parent: "root", child: "p3", translate: [0, 50, 0] },
       ],
     );
     const result = importStepAssembly(step);
     expect(result.state.parts).toHaveLength(3);
-    const sorted = [...result.state.parts].sort((a, b) => a.position.x - b.position.x);
+    const sorted = [...result.state.parts].sort(
+      (a, b) => a.position.x - b.position.x,
+    );
     // p3 at (0, 50, 0), p1 at (101, 0, 0), p2 at (102, 0, 0)
     expect(sorted[0]!.position.y).toBeCloseTo(50);
     expect(sorted[1]!.position.x).toBeCloseTo(101);
@@ -414,17 +525,24 @@ describe('importStepAssembly — translation transforms', () => {
 
 // ─── 4: rotation → quaternion ─────────────────────────────────────────────
 
-describe('importStepAssembly — rotation transforms', () => {
-  it('converts a 90° rotation around Z into the expected quaternion', () => {
+describe("importStepAssembly — rotation transforms", () => {
+  it("converts a 90° rotation around Z into the expected quaternion", () => {
     const step = buildAssemblyFixture(
       [
-        { pdId: 'asm', name: 'Asm' },
-        { pdId: 'c',   name: 'Child', box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 } },
+        { pdId: "asm", name: "Asm" },
+        {
+          pdId: "c",
+          name: "Child",
+          box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 },
+        },
       ],
-      [{
-        parent: 'asm', child: 'c',
-        rotate: { axis: [0, 0, 1], angleRad: Math.PI / 2 },
-      }],
+      [
+        {
+          parent: "asm",
+          child: "c",
+          rotate: { axis: [0, 0, 1], angleRad: Math.PI / 2 },
+        },
+      ],
     );
     const result = importStepAssembly(step);
     expect(result.state.parts).toHaveLength(1);
@@ -436,18 +554,25 @@ describe('importStepAssembly — rotation transforms', () => {
     expect(Math.abs(q.w)).toBeCloseTo(Math.SQRT1_2, 4);
   });
 
-  it('handles a 180° rotation around an arbitrary axis (non-axis-aligned quaternion)', () => {
+  it("handles a 180° rotation around an arbitrary axis (non-axis-aligned quaternion)", () => {
     // Axis (1,1,0)/sqrt(2), 180°.
     const axis: [number, number, number] = [1 / Math.SQRT2, 1 / Math.SQRT2, 0];
     const step = buildAssemblyFixture(
       [
-        { pdId: 'asm', name: 'Asm' },
-        { pdId: 'c',   name: 'Child', box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 } },
+        { pdId: "asm", name: "Asm" },
+        {
+          pdId: "c",
+          name: "Child",
+          box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 },
+        },
       ],
-      [{
-        parent: 'asm', child: 'c',
-        rotate: { axis, angleRad: Math.PI },
-      }],
+      [
+        {
+          parent: "asm",
+          child: "c",
+          rotate: { axis, angleRad: Math.PI },
+        },
+      ],
     );
     const result = importStepAssembly(step);
     const q = result.state.parts[0]!.orientation;
@@ -462,16 +587,16 @@ describe('importStepAssembly — rotation transforms', () => {
 
 // ─── 5: cycles ────────────────────────────────────────────────────────────
 
-describe('importStepAssembly — error cases', () => {
-  it('throws on a circular NAUO chain A → B → A', () => {
+describe("importStepAssembly — error cases", () => {
+  it("throws on a circular NAUO chain A → B → A", () => {
     const step = buildAssemblyFixture(
       [
-        { pdId: 'A', name: 'A' },
-        { pdId: 'B', name: 'B' },
+        { pdId: "A", name: "A" },
+        { pdId: "B", name: "B" },
       ],
       [
-        { parent: 'A', child: 'B' },
-        { parent: 'B', child: 'A' },
+        { parent: "A", child: "B" },
+        { parent: "B", child: "A" },
       ],
     );
     // With A→B→A, the root finder sees no PD that is *not* a child →
@@ -481,36 +606,38 @@ describe('importStepAssembly — error cases', () => {
     // Re-test with a reachable cycle: outer → A, A → B, B → A.
     const cyclic = buildAssemblyFixture(
       [
-        { pdId: 'outer', name: 'Outer' },
-        { pdId: 'A', name: 'A' },
-        { pdId: 'B', name: 'B' },
+        { pdId: "outer", name: "Outer" },
+        { pdId: "A", name: "A" },
+        { pdId: "B", name: "B" },
       ],
       [
-        { parent: 'outer', child: 'A' },
-        { parent: 'A', child: 'B' },
-        { parent: 'B', child: 'A' },
+        { parent: "outer", child: "A" },
+        { parent: "A", child: "B" },
+        { parent: "B", child: "A" },
       ],
     );
     expect(() => importStepAssembly(cyclic)).toThrow(/circular_assembly/);
   });
 
-  it('throws on empty source', () => {
-    expect(() => importStepAssembly('')).toThrow(StepImportError);
+  it("throws on empty source", () => {
+    expect(() => importStepAssembly("")).toThrow(StepImportError);
   });
 
-  it('throws when DATA section missing', () => {
-    expect(() => importStepAssembly('ISO-10303-21;\nHEADER;\nENDSEC;\n')).toThrow(/no_data_section/);
-  });
-
-  it('throws on corrupt STEP with unbalanced parens', () => {
+  it("throws when DATA section missing", () => {
     expect(() =>
-      importStepAssembly('ISO-10303-21;\nDATA;\n#1=BAD(unclosed\n')
+      importStepAssembly("ISO-10303-21;\nHEADER;\nENDSEC;\n"),
+    ).toThrow(/no_data_section/);
+  });
+
+  it("throws on corrupt STEP with unbalanced parens", () => {
+    expect(() =>
+      importStepAssembly("ISO-10303-21;\nDATA;\n#1=BAD(unclosed\n"),
     ).toThrow();
   });
 
-  it('returns empty state on a valid header with no entities', () => {
+  it("returns empty state on a valid header with no entities", () => {
     const step =
-      'ISO-10303-21;\nHEADER;\nENDSEC;\nDATA;\nENDSEC;\nEND-ISO-10303-21;\n';
+      "ISO-10303-21;\nHEADER;\nENDSEC;\nDATA;\nENDSEC;\nEND-ISO-10303-21;\n";
     const result = importStepAssembly(step);
     expect(result.state.parts).toEqual([]);
     expect(result.state.mates).toEqual([]);
@@ -520,13 +647,13 @@ describe('importStepAssembly — error cases', () => {
 
 // ─── 6: featureTrees per part ─────────────────────────────────────────────
 
-describe('importStepAssembly — featureTrees', () => {
-  it('produces one FeatureTree per emitted part (each with ≥ 1 extrude node)', () => {
+describe("importStepAssembly — featureTrees", () => {
+  it("produces one FeatureTree per emitted part (each with ≥ 1 extrude node)", () => {
     const step = writeAssemblyAsStep({
-      assemblyName: 'Pair',
+      assemblyName: "Pair",
       parts: [
-        { id: 'p1', name: 'P1', x0: 0, y0: 0, z0: 0, x1: 10, y1: 10, z1: 10 },
-        { id: 'p2', name: 'P2', x0: 0, y0: 0, z0: 0, x1: 5,  y1: 5,  z1: 5  },
+        { id: "p1", name: "P1", x0: 0, y0: 0, z0: 0, x1: 10, y1: 10, z1: 10 },
+        { id: "p2", name: "P2", x0: 0, y0: 0, z0: 0, x1: 5, y1: 5, z1: 5 },
       ],
     });
     const result = importStepAssembly(step);
@@ -538,28 +665,50 @@ describe('importStepAssembly — featureTrees', () => {
     }
   });
 
-  it('keeps unique part ids when two NAUO edges reuse the same PD label', () => {
+  it("keeps unique part ids when two NAUO edges reuse the same PD label", () => {
     const step = buildAssemblyFixture(
       [
-        { pdId: 'root', name: 'Root' },
-        { pdId: 'bolt', name: 'Bolt', box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 } },
+        { pdId: "root", name: "Root" },
+        {
+          pdId: "bolt",
+          name: "Bolt",
+          box: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 },
+        },
       ],
       [
-        { parent: 'root', child: 'bolt', translate: [1, 0, 0] },
-        { parent: 'root', child: 'bolt', translate: [2, 0, 0] },
+        { parent: "root", child: "bolt", translate: [1, 0, 0] },
+        { parent: "root", child: "bolt", translate: [2, 0, 0] },
       ],
     );
     const result = importStepAssembly(step);
     expect(result.state.parts).toHaveLength(2);
     const ids = result.state.parts.map((p) => p.id);
     expect(new Set(ids).size).toBe(2);
+    const boltDefinition = result.productStructure?.definitions.find(
+      (item) => item.name === "Bolt",
+    );
+    expect(boltDefinition).toMatchObject({ bodyCount: 1, container: false });
+    expect(
+      result.productStructure?.occurrences.filter(
+        (item) => item.definitionId === boltDefinition?.definitionId,
+      ),
+    ).toHaveLength(2);
+    expect(result.productStructure?.relationships).toHaveLength(2);
+    expect(
+      result.productStructure?.occurrences.map(
+        (item) => item.definitionPath.length,
+      ),
+    ).toEqual([2, 2]);
+    expect(
+      result.productStructure?.occurrences.map((item) => item.worldMatrix[3]),
+    ).toEqual([1, 2]);
   });
 });
 
 // ─── 7: no PRODUCT_DEFINITION fallback ────────────────────────────────────
 
-describe('importStepAssembly — headless STEP', () => {
-  it('warns and falls back to single-part import when no PRODUCT_DEFINITION present', () => {
+describe("importStepAssembly — headless STEP", () => {
+  it("warns and falls back to single-part import when no PRODUCT_DEFINITION present", () => {
     // Use the single-solid stepImport pipeline against a raw box file.
     const step = `${writeStepHeader()}DATA;
 #1=CARTESIAN_POINT('',(0.,0.,0.));
@@ -570,7 +719,9 @@ ENDSEC;
 END-ISO-10303-21;
 `;
     const result = importStepAssembly(step);
-    expect(result.warnings.some((w) => w.includes('no_product_definition'))).toBe(true);
+    expect(
+      result.warnings.some((w) => w.includes("no_product_definition")),
+    ).toBe(true);
     // No solids → empty state (fallback degenerates gracefully).
     expect(result.state.parts).toEqual([]);
   });
@@ -579,36 +730,44 @@ END-ISO-10303-21;
 // ─── 8: 실물 코퍼스 회귀(로컬 전용 — NIST PMI STEP, 공식 '제약 없음') ──────────
 // 260717: SDR→빈 SHAPE_REPRESENTATION + SRR 형제 연결(AP242 실무 관례)을 못 따라가
 // NIST 단품 13/17 이 parts=0 이던 구조적 갭의 재발 방지. 코퍼스 미존재=skip(정직).
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
-const NIST_DIR = 'C:/Users/gomd9/Downloads/참고파일들/NIST-PMI/NIST-PMI-STEP-Files';
-(existsSync(NIST_DIR) ? describe : describe.skip)('importStepAssembly — NIST PMI 실물 코퍼스', () => {
-  it('AP242 단품(SRR 형제 표현): tessellated 전용 1건 제외 전부 parts≥1', () => {
-    const files = readdirSync(NIST_DIR).filter((f) => f.toLowerCase().endsWith('.stp'));
-    expect(files.length).toBeGreaterThanOrEqual(17);
-    const zero: string[] = [];
-    for (const f of files) {
-      const r = importStepAssembly(readFileSync(join(NIST_DIR, f), 'utf8'));
-      if (r.state.parts.length === 0) zero.push(f);
-    }
-    // 260718: -tg(tessellated) 도 bounds 근사로 임포트 — 전 파일 parts≥1
-    expect(zero).toEqual([]);
-  });
-  it('빈 분류 트리는 조용히 넘어가지 않는다(unsupported 사유 명시)', () => {
-    const f = readdirSync(NIST_DIR).find((q) => q === 'nist_ctc_01_asme1_ap242-e1.stp')!;
-    const r = importStepAssembly(readFileSync(join(NIST_DIR, f), 'utf8'));
-    expect(r.state.parts.length).toBeGreaterThanOrEqual(1);
-    const tree = Object.values(r.featureTrees)[0];
-    // 본질: 트리가 비면 반드시 사유가 남는다(분류기 자체 사유 or 상위 폴백 사유 — 조용한 실패 금지)
-    if (tree && tree.nodes.length === 0) {
-      expect(r.unsupported.length).toBeGreaterThan(0);
-    }
-  });
-});
+const NIST_DIR =
+  "C:/Users/gomd9/Downloads/참고파일들/NIST-PMI/NIST-PMI-STEP-Files";
+(existsSync(NIST_DIR) ? describe : describe.skip)(
+  "importStepAssembly — NIST PMI 실물 코퍼스",
+  () => {
+    it("AP242 단품(SRR 형제 표현): tessellated 전용 1건 제외 전부 parts≥1", () => {
+      const files = readdirSync(NIST_DIR).filter((f) =>
+        f.toLowerCase().endsWith(".stp"),
+      );
+      expect(files.length).toBeGreaterThanOrEqual(17);
+      const zero: string[] = [];
+      for (const f of files) {
+        const r = importStepAssembly(readFileSync(join(NIST_DIR, f), "utf8"));
+        if (r.state.parts.length === 0) zero.push(f);
+      }
+      // 260718: -tg(tessellated) 도 bounds 근사로 임포트 — 전 파일 parts≥1
+      expect(zero).toEqual([]);
+    });
+    it("빈 분류 트리는 조용히 넘어가지 않는다(unsupported 사유 명시)", () => {
+      const f = readdirSync(NIST_DIR).find(
+        (q) => q === "nist_ctc_01_asme1_ap242-e1.stp",
+      )!;
+      const r = importStepAssembly(readFileSync(join(NIST_DIR, f), "utf8"));
+      expect(r.state.parts.length).toBeGreaterThanOrEqual(1);
+      const tree = Object.values(r.featureTrees)[0];
+      // 본질: 트리가 비면 반드시 사유가 남는다(분류기 자체 사유 or 상위 폴백 사유 — 조용한 실패 금지)
+      if (tree && tree.nodes.length === 0) {
+        expect(r.unsupported.length).toBeGreaterThan(0);
+      }
+    });
+  },
+);
 
 // ─── 9: 갭 해소(260718) — 테셀/표면 bounds 근사 + 원통 인식 힌트 ────────────
-import { stepToNexyfabAssembly } from './stepToNexyfabAssembly';
+import { stepToNexyfabAssembly } from "./stepToNexyfabAssembly";
 
 function flatStepWith(geomEntities: string, repItems: string): string {
   // NAUO 없는 단품: PRODUCT 체인 + SDR → SHAPE_REPRESENTATION(items)
@@ -629,35 +788,39 @@ END-ISO-10303-21;
 `;
 }
 
-describe('importStepAssembly — 테셀레이션/표면 bounds 근사(260718)', () => {
-  it('TRIANGULATED_FACE_SET(COORDINATES_LIST)만 있는 PD 도 임포트 + bounds + 사유 명시', () => {
+describe("importStepAssembly — 테셀레이션/표면 bounds 근사(260718)", () => {
+  it("TRIANGULATED_FACE_SET(COORDINATES_LIST)만 있는 PD 도 임포트 + bounds + 사유 명시", () => {
     const step = flatStepWith(
       `#20=COORDINATES_LIST('',4,((0.,0.,0.),(100.,0.,0.),(0.,50.,0.),(0.,0.,30.)));
 #21=TRIANGULATED_FACE_SET('',#20,$,((1,2,3),(1,2,4)),$);`,
-      '#21',
+      "#21",
     );
     const r = importStepAssembly(step, { collectBounds: true });
     expect(r.state.parts).toHaveLength(1);
-    expect(r.unsupported.some((u) => u.includes('surface_or_tessellated_bounds_approx'))).toBe(true);
+    expect(
+      r.unsupported.some((u) =>
+        u.includes("surface_or_tessellated_bounds_approx"),
+      ),
+    ).toBe(true);
     const b = r.bounds?.[r.state.parts[0].id];
     expect(b).toBeDefined();
     expect(b!.min).toEqual([0, 0, 0]);
     expect(b!.max).toEqual([100, 50, 30]);
   });
-  it('곡선 전용 PD 는 여전히 정직 미지원(승격 금지)', () => {
+  it("곡선 전용 PD 는 여전히 정직 미지원(승격 금지)", () => {
     const step = flatStepWith(
       `#20=CARTESIAN_POINT('',(0.,0.,0.));
 #21=GEOMETRIC_CURVE_SET('',(#20));`,
-      '#21',
+      "#21",
     );
     const r = importStepAssembly(step, { collectBounds: true });
     expect(r.state.parts).toHaveLength(0);
-    expect(r.unsupported.some((u) => u.includes('no_solids_found'))).toBe(true);
+    expect(r.unsupported.some((u) => u.includes("no_solids_found"))).toBe(true);
   });
 });
 
-describe('stepToNexyfabAssembly — 원통 인식(260718)', () => {
-  it('CYLINDRICAL_SURFACE R + AABB 2축=2R 폐형이면 cylinder 방출(z축)', () => {
+describe("stepToNexyfabAssembly — 원통 인식(260718)", () => {
+  it("CYLINDRICAL_SURFACE R + AABB 2축=2R 폐형이면 cylinder 방출(z축)", () => {
     const step = flatStepWith(
       `#20=CARTESIAN_POINT('',(-25.,-25.,0.));
 #21=CARTESIAN_POINT('',(25.,-25.,0.));
@@ -677,17 +840,17 @@ describe('stepToNexyfabAssembly — 원통 인식(260718)', () => {
 #37=ADVANCED_FACE('',(#31),#36,.T.);
 #38=CLOSED_SHELL('',(#37));
 #39=MANIFOLD_SOLID_BREP('',#38);`,
-      '#39',
+      "#39",
     );
-    const r = stepToNexyfabAssembly(step, { name: 'cyl-e2e' });
+    const r = stepToNexyfabAssembly(step, { name: "cyl-e2e" });
     expect(r.ok).toBe(true);
-    const cyl = r.assembly!.parts.find((p) => p.type === 'cylinder');
+    const cyl = r.assembly!.parts.find((p) => p.type === "cylinder");
     expect(cyl).toBeDefined();
     expect(cyl!.params.diameter).toBeCloseTo(50, 1);
     expect(cyl!.params.length).toBeCloseTo(80, 1);
     expect(r.stats?.cylinders).toBe(1);
   });
-  it('AABB 가 2R 과 안 맞으면(경사축·복합형상) box 유지 — 정직', () => {
+  it("AABB 가 2R 과 안 맞으면(경사축·복합형상) box 유지 — 정직", () => {
     const step = flatStepWith(
       `#20=CARTESIAN_POINT('',(0.,0.,0.));
 #21=CARTESIAN_POINT('',(100.,0.,0.));
@@ -703,10 +866,10 @@ describe('stepToNexyfabAssembly — 원통 인식(260718)', () => {
 #37=ADVANCED_FACE('',(#31),#36,.T.);
 #38=CLOSED_SHELL('',(#37));
 #39=MANIFOLD_SOLID_BREP('',#38);`,
-      '#39',
+      "#39",
     );
-    const r = stepToNexyfabAssembly(step, { name: 'box-honest' });
+    const r = stepToNexyfabAssembly(step, { name: "box-honest" });
     expect(r.ok).toBe(true);
-    expect(r.assembly!.parts.every((p) => p.type === 'box')).toBe(true);
+    expect(r.assembly!.parts.every((p) => p.type === "box")).toBe(true);
   });
 });

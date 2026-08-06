@@ -122,8 +122,8 @@ describe('DrawingPageContent STEP+PMI export', () => {
     mount();
     // Add one linear dimension via the modal so the sheet picks up a PMI row.
     fireEvent.click(screen.getByTestId('drawing-add-annotation-button'));
-    fireEvent.change(screen.getByTestId('solver-dim-ref-0-input'), { target: { value: 'e1' } });
-    fireEvent.change(screen.getByTestId('solver-dim-ref-1-input'), { target: { value: 'e2' } });
+    fireEvent.change(screen.getByTestId('solver-dim-ref-0-input'), { target: { value: 'f.side.3' } });
+    fireEvent.change(screen.getByTestId('solver-dim-ref-1-input'), { target: { value: 'f.side.1' } });
     fireEvent.click(screen.getByTestId('solver-dim-submit'));
     fireEvent.click(screen.getByTestId('drawing-export-step-button'));
     const text = await blobToText(lastBlob());
@@ -171,14 +171,14 @@ describe('DrawingPageContent STEP+PMI export', () => {
 describe('DrawingPageContent STEP+PMI export — bindings + saved view', () => {
   /**
    * Add one linear dimension via the modal so the sheet has a PMI row +
-   * two distinct refs (e1, e2). The first ref (e1) becomes the sample
+   * two distinct refs (f.side.3, f.side.1). The first ref becomes the sample
    * binding key (see `buildSampleBindings` Phase-1 algorithm: first ref
    * per dimension, then GD&T targetRefs).
    */
   function addLinearDim(): void {
     fireEvent.click(screen.getByTestId('drawing-add-annotation-button'));
-    fireEvent.change(screen.getByTestId('solver-dim-ref-0-input'), { target: { value: 'e1' } });
-    fireEvent.change(screen.getByTestId('solver-dim-ref-1-input'), { target: { value: 'e2' } });
+    fireEvent.change(screen.getByTestId('solver-dim-ref-0-input'), { target: { value: 'f.side.3' } });
+    fireEvent.change(screen.getByTestId('solver-dim-ref-1-input'), { target: { value: 'f.side.1' } });
     fireEvent.click(screen.getByTestId('solver-dim-submit'));
   }
 
@@ -216,10 +216,10 @@ describe('DrawingPageContent STEP+PMI export — bindings + saved view', () => {
     fireEvent.click(screen.getByTestId('drawing-export-step-button'));
     const text = await blobToText(lastBlob());
     // Bindings orchestrator emits SHAPE_ASPECT + SHAPE_DEFINITION_REPRESENTATION
-    // for each unique resolved ref. The first ref ('e1') is bound.
+    // for each unique resolved ref. The first ref ('f.side.3') is bound.
     expect(text).toContain('SHAPE_ASPECT(');
     expect(text).toContain('SHAPE_DEFINITION_REPRESENTATION(');
-    expect(text).toContain("'e1'");
+    expect(text).toContain("'f.side.3'");
   });
 
   it('"Include shape bindings" + sheet empty → bindings-ignored warning is surfaced', async () => {
@@ -272,7 +272,7 @@ describe('DrawingPageContent STEP+PMI export — bindings + saved view', () => {
     const text = await blobToText(lastBlob());
     expect(text).toContain('DRAUGHTING_MODEL');
     expect(text).toContain('SHAPE_ASPECT(');
-    expect(text).toContain("'e1'");
+    expect(text).toContain("'f.side.3'");
   });
 
   it('"Include shape bindings" with a real binding → success info banner shows binding count', async () => {
@@ -283,7 +283,7 @@ describe('DrawingPageContent STEP+PMI export — bindings + saved view', () => {
     const info = screen.getByTestId('drawing-export-step-info');
     expect(info).toBeInTheDocument();
     // The Phase-1 sample binder produces 1 binding per unique
-    // first-ref/targetRef. A linear dim with refs [e1, e2] yields 1.
+    // first-ref/targetRef. A linear dim with refs [f.side.3, f.side.1] yields 1.
     expect(info.textContent ?? '').toMatch(/1/);
   });
 
@@ -337,11 +337,11 @@ describe('DrawingPageContent STEP+PMI export — bindings + saved view', () => {
 // ─── Phase 5.3.5 OCCT-direct hybrid-mode tests ───────────────────────────
 
 describe('DrawingPageContent STEP+PMI export — Phase 5.3.5 OCCT hybrid mode', () => {
-  /** Add one linear dim with refs [e1,e2] so the sheet has a real PMI body. */
+  /** Add one linear dim with valid cube refs so the sheet has a real PMI body. */
   function addLinearDim(): void {
     fireEvent.click(screen.getByTestId('drawing-add-annotation-button'));
-    fireEvent.change(screen.getByTestId('solver-dim-ref-0-input'), { target: { value: 'e1' } });
-    fireEvent.change(screen.getByTestId('solver-dim-ref-1-input'), { target: { value: 'e2' } });
+    fireEvent.change(screen.getByTestId('solver-dim-ref-0-input'), { target: { value: 'f.side.3' } });
+    fireEvent.change(screen.getByTestId('solver-dim-ref-1-input'), { target: { value: 'f.side.1' } });
     fireEvent.click(screen.getByTestId('solver-dim-submit'));
   }
 
@@ -376,7 +376,7 @@ describe('DrawingPageContent STEP+PMI export — Phase 5.3.5 OCCT hybrid mode', 
     fireEvent.click(screen.getByTestId('drawing-export-step-button'));
     const text = await blobToText(lastBlob());
     expect(text).toContain('SHAPE_ASPECT(');
-    expect(text).toContain("'e1'");
+    expect(text).toContain("'f.side.3'");
   });
 
   it("hybridMode='occt' → orchestrator path engaged (no SHAPE_ASPECT rows even with includeBindings)", async () => {
@@ -410,7 +410,7 @@ describe('DrawingPageContent STEP+PMI export — Phase 5.3.5 OCCT hybrid mode', 
     fireEvent.click(screen.getByTestId('drawing-export-step-button'));
     const text = await blobToText(lastBlob());
     expect(text).toContain('SHAPE_ASPECT(');
-    expect(text).toContain("'e1'");
+    expect(text).toContain("'f.side.3'");
   });
 
   it('OCCT bindings checkbox is hidden when hybridMode is shape_aspect', () => {
@@ -451,12 +451,12 @@ describe('DrawingPageContent STEP+PMI export — Phase 5.3.5 OCCT hybrid mode', 
       target: { value: 'occt' },
     });
     fireEvent.click(screen.getByTestId('drawing-include-occt-bindings'));
-    // Bind ref 'e1' to face 0 of the sample 6-face meta. The face entityId
+    // Bind ref 'f.side.3' to face 0 of the sample 6-face meta. The face entityId
     // is resolved via the placeholder meta {faceEntityIds:[1..6]} so the
     // patched PMI source will mention '#1'.
     fireEvent.change(screen.getByTestId('drawing-occt-bindings-input'), {
       target: {
-        value: JSON.stringify([{ pmiRefId: 'e1', faceRef: { faceIdx: 0 } }]),
+        value: JSON.stringify([{ pmiRefId: 'f.side.3', faceRef: { faceIdx: 0 } }]),
       },
     });
     fireEvent.click(screen.getByTestId('drawing-export-step-button'));
@@ -464,8 +464,8 @@ describe('DrawingPageContent STEP+PMI export — Phase 5.3.5 OCCT hybrid mode', 
     expect(text).toMatch(/^ISO-10303-21;/);
     // The OCCT patcher rewrites the Phase-1 TODO comment to mention the
     // resolved entity id. With faceEntityIds[0]=1, the comment should
-    // include '#1 (e1)'.
-    expect(text).toContain('#1 (e1)');
+    // include '#1 (f.side.3)'.
+    expect(text).toContain('#1 (f.side.3)');
   });
 
   it('invalid OCCT bindings JSON surfaces a parse-error banner and skips the download', () => {
