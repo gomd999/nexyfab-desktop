@@ -1,0 +1,20 @@
+{
+  "scenario": "A 10 mm long bar is crossed by a 0.2 mm pin between collision-free endpoint frames 0 and 10.",
+  "broadPhase": "exact-linear-aabb",
+  "narrowPhase": "executed FeatureTree tessellated mesh separation",
+  "result": {
+    "partA": "bar",
+    "partB": "pin",
+    "status": "collision_bracket",
+    "searchStartFrame": 0,
+    "searchEndFrame": 10,
+    "firstPossibleFrame": 2.449951171875,
+    "confirmedCollisionFrame": 2.45025634765625,
+    "bracketWidthFrames": 0.00030517578125,
+    "evaluations": 26,
+    "clearIntervals": 9
+  },
+  "invariant": "Every interval preceding firstPossibleFrame was proven clear by measured mesh separation exceeding the conservative rigid-body motion bound.",
+  "failClosedCode": "PRECISE_TOI_UNRESOLVED",
+  "surfaces": ["Web", "API", "CLI", "MCP"]
+}

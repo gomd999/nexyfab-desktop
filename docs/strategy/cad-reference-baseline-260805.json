@@ -1,0 +1,38 @@
+{
+  "schema": "nexyfab.cad-corpus-baseline-summary.v2",
+  "runSignature": "f59a3df83ddc0490ca41c03d717a84e0cb4cde9d1aaa89f5237a0a7372937967",
+  "fixtureCount": 25,
+  "counts": { "pass": 0, "fail": 2, "notRun": 23, "error": 0 },
+  "tiers": {
+    "core-a": { "fail": 2, "notRun": 16, "total": 18 },
+    "challenge-b": { "fail": 0, "notRun": 7, "total": 7 }
+  },
+  "blockingEvidence": [
+    {
+      "assertion": "geometry.import",
+      "status": "fail",
+      "fixtureIds": ["A01", "A10"],
+      "reasonClass": "occt-step-header-authorisation-parse"
+    },
+    {
+      "assertion": "geometry.surface-types",
+      "status": "not_run",
+      "fixtureCount": 25,
+      "reasonClass": "imported-step-enum-wrapper-unmapped"
+    },
+    {
+      "assertion": "geometry.curve-types",
+      "status": "not_run",
+      "fixtureCount": 25,
+      "reasonClass": "imported-step-enum-wrapper-unmapped"
+    }
+  ],
+  "resumeVerification": {
+    "selected": 25,
+    "signatureMatched": true,
+    "checkpointResultsReused": 25
+  },
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false,
+  "releaseBlocking": true
+}

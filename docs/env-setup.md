@@ -191,6 +191,30 @@ Email falls back to console.log when `SMTP_HOST` is not set.
 | `NEXT_PUBLIC_SERVER_STEP_IMPORT` | (set) | Client: set to `0` to disable server STEP preview and use browser-only import. |
 | `OPENSCAD_BIN` | (PATH) | OpenSCAD CLI binary path when not on `PATH` (see `JSCAD_OPENSCAD_BRIDGE.md`). |
 
+### Radiance daylight engine (optional, server-only)
+
+NexyFab supports the official Radiance 6.0 distribution as an out-of-process
+daylight calculation engine. Configure all six paths as absolute paths:
+
+```env
+RADIANCE_OCONV_PATH=/opt/radiance/bin/oconv
+RADIANCE_RTRACE_PATH=/opt/radiance/bin/rtrace
+RADIANCE_RFLUXMTX_PATH=/opt/radiance/bin/rfluxmtx
+RADIANCE_GENDAYMTX_PATH=/opt/radiance/bin/gendaymtx
+RADIANCE_DCTIMESTEP_PATH=/opt/radiance/bin/dctimestep
+RADIANCE_RMTXOP_PATH=/opt/radiance/bin/rmtxop
+```
+
+The executable basename must match the variable and the path must be
+executable. Missing tools produce `not_run`; they never produce a passing
+daylight result. The server launches commands with `shell: false` in a unique
+temporary directory and rejects Radiance `!` shell escapes in user-derived
+scene, weather, and sensor inputs.
+
+Do not point these variables at wrappers or general-purpose shells. Pin and
+record the Radiance distribution version and checksum in the deployment
+artifact. See `docs/radiance-deployment.md` for the release procedure.
+
 Local mock worker (development): `nexyfab.com/new/services/brep-worker-mock` — run `npm install && node server.mjs`, then `BREP_WORKER_URL=http://127.0.0.1:8787`.
 
 Verbose API logs (STEP worker retries, CLI failures): `NF_API_DEBUG=1`.

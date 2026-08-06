@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.cad-corpus-baseline-delta.v1",
+  "baselineSignature": "55f411e354bc56297e294bf3d4b7539e297e745e0041648a49c09e85ba0f7080",
+  "candidateSignature": "fff713360043e75b0f55d0679acafc7b00fa02215e47f893894ae2b8048290f6",
+  "producerVersion": "6",
+  "fixtureCount": 25,
+  "candidateCounts": { "pass": 25, "fail": 0, "notRun": 0, "error": 0 },
+  "assertionCount": 425,
+  "fixtureStatusChanged": 0,
+  "worsenedAssertions": 0,
+  "removedAssertions": 0,
+  "measuredOccurrenceTotal": 78,
+  "restoredWorldPlacementTotal": 78,
+  "newCapabilities": [
+    "stable-cad-failure-taxonomy",
+    "bounded-step-import-recovery",
+    "governed-healing-approval-policy",
+    "product-spatial-ir",
+    "ifc-spatial-placement-evidence",
+    "cross-domain-release-gates",
+    "ai-project-generation-pipeline",
+    "api-cli-mcp-project-verification"
+  ],
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false
+}

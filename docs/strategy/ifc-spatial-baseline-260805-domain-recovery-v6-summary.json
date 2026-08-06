@@ -1,0 +1,29 @@
+{
+  "schema": "nexyfab.ifc-spatial-baseline-summary.v6",
+  "sourceArtifact": "C:/tmp/nexyfab-ifc-spatial-baseline-260805-domain-recovery-v6.json",
+  "selected": 87,
+  "counts": { "pass": 86, "fail": 0, "not_run": 1, "error": 0 },
+  "failureCodes": { "GEOMETRY_INCOMPLETE": 1 },
+  "incompleteGeometryReasons": { "dims": 1 },
+  "incompleteGeometryClasses": { "IFCRAILING": 1 },
+  "recoveryActions": { "quantity_volume_area_thickness": 63, "request_authoritative_thickness": 1 },
+  "classificationCorrections": {
+    "decomposedParentsWithAxisOrFootprintAreAssemblyContainers": 97,
+    "physicalChildrenRemainIndependentlyImported": true,
+    "duplicateParentSolidsInvented": 0
+  },
+  "specializedDomainEvidence": {
+    "alignment": { "horizontalSegments": 2, "verticalSegments": 2, "cantSegments": 2, "georeferenced": true },
+    "structuralAnalysis": { "nodes": 4, "members": 3, "memberConnectivityComplete": true, "activities": 1, "reactions": 9, "loads": 19 }
+  },
+  "semanticTotals": { "occurrences": 30284, "definitions": 68420, "propertyDefinitions": 52343, "quantityDefinitions": 8708, "materialDefinitions": 7369, "georeferenceEntities": 44, "duplicateGlobalIds": 0 },
+  "remainingBlocker": {
+    "class": "IFCRAILING",
+    "count": 1,
+    "measuredBoundsMm": [0, 1754.4194, 1000],
+    "missingEvidence": ["physical width", "assigned profile", "material layer thickness", "type representation"],
+    "action": "request_authoritative_thickness"
+  },
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false
+}

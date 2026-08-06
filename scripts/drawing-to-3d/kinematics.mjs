@@ -205,8 +205,18 @@ export function solveMobility(assembly, opts = {}) {
   if (!valid.length) return { mobility: null, errors, note: '유효한 운동쌍이 없다 — 계산하지 않았다(0 이 아니다)' };
 
   // 접지는 하나로 묶는다(지면에 고정된 부재가 여럿이어도 한 링크다)
-  const groundedLinked = [...linked].filter((id) => grounded.has(id));
-  const free = [...linked].filter((id) => !grounded.has(id));
+  let groundedLinked = [...linked].filter((id) => grounded.has(id));
+  /**
+   * ⚠⚠ **접지 선언이 없으면 첫 링크를 기준으로 삼는다.** 자유도는 **상대 자유도**로 세는
+   *   것이 관례이고 Kutzbach 의 `n−1` 이 바로 그 암묵 접지다. 야코비안만 접지를 안 하면
+   *   **전체 강체 6자유도가 그대로 더해져** 같은 기구를 두 방법이 전혀 다르게 말한다
+   *   (실측: 회전쌍 1개짜리 2부품에서 Kutzbach 1 · 야코비안 7 → `methodsDisagree` 오탐).
+   *   기준을 하나로 맞추고, **무엇을 기준으로 삼았는지**를 결과에 적는다.
+   */
+  const groundAssumed = groundedLinked.length === 0;
+  if (groundAssumed) groundedLinked = [[...linked][0]];
+  const groundSet = new Set(groundedLinked);
+  const free = [...linked].filter((id) => !groundSet.has(id));
   const offset = new Map(free.map((id, i) => [id, i * 6]));
   const nLinks = free.length + (groundedLinked.length ? 1 : 0);
   const totalDof = free.length * 6;
@@ -271,11 +281,12 @@ export function solveMobility(assembly, opts = {}) {
     illConditioned, rankTolerance: d.tolerance, borderline: d.borderline,
     rankCertain: d.borderline === 0,
     perJoint, errors,
-    ...(groundedLinked.length ? { grounded: groundedLinked } : {}),
+    grounded: groundedLinked, groundAssumed,
     /**
      * ⚠ 반드시 함께 낸다 — 숫자 하나만 주면 「확정된 자유도」로 읽힌다.
      */
-    note: `자유도 ${mobility}${redundant ? ` · 여분 구속 ${redundant}개(평행사변형 링크 등 — Kutzbach 는 이걸 음수로만 말한다)` : ''}`
+    note: `자유도 ${mobility}${groundAssumed ? `(접지 선언이 없어 '${groundedLinked[0]}' 를 기준 링크로 삼은 **상대 자유도**다)` : ''}`
+      + `${redundant ? ` · 여분 구속 ${redundant}개(평행사변형 링크 등 — Kutzbach 는 이걸 음수로만 말한다)` : ''}`
       + `${illConditioned ? ' · ⚠특이 자세에 가깝다(조건수 큼 — 이 자세에서만 성립할 수 있다)' : ''}`
       + `${d.borderline ? ` · ⚠랭크가 공차에 민감하다(경계 특이값 ${d.borderline}개 — 자유도가 ±1 흔들릴 수 있다)` : ''}`
       + '. **선형화된 순간 운동학**이라 지금 자세 기준이고 유한 변위 궤적이 아니다.',

@@ -1,0 +1,40 @@
+{
+  "schema": "nexyfab.ai-step-manufacturing-evidence.v1",
+  "generatedAt": "2026-08-05T13:04:22.286Z",
+  "input": {
+    "name": "SPIRAL STAIRCASE.stp",
+    "bytes": 1692390,
+    "sha256": "ed418ebd4c9473b112f9d5d23e83d63aae0f59f2a03a5472f2e730c7f609d54b"
+  },
+  "requirements": [
+    "member_identity",
+    "miter_lengths",
+    "cut_list"
+  ],
+  "report": {
+    "passed": true,
+    "checks": [
+      {
+        "requirement": "member_identity",
+        "status": "passed",
+        "measured": 2,
+        "reason": "2 structural member(s) recovered."
+      },
+      {
+        "requirement": "miter_lengths",
+        "status": "passed",
+        "measured": 2,
+        "reason": "2 member end-cut pair(s) recovered."
+      },
+      {
+        "requirement": "cut_list",
+        "status": "passed",
+        "measured": 2,
+        "reason": "2 deterministic cut-list group(s) recovered."
+      }
+    ],
+    "sourceSideEffects": false
+  },
+  "releaseReady": true,
+  "quoteOrRfqSideEffects": false
+}

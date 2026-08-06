@@ -1,0 +1,42 @@
+{
+  "date": "2026-08-05",
+  "scope": "STEP occurrence-aware analytic cylinder relation evidence",
+  "implementation": {
+    "localGeometry": "CYLINDRICAL_SURFACE axis placement and radius",
+    "worldGeometry": "part occurrence quaternion and translation",
+    "relations": ["distinct-part coaxiality", "named shaft-bearing coaxiality"],
+    "defaultTolerance": { "angularRad": 0.00001, "linearSourceUnits": 0.0001 },
+    "failClosed": "two or more measurable cylindrical parts without a qualifying pair fail; insufficient analytic evidence remains not_run"
+  },
+  "surfaces": [
+    "corpus adapter",
+    "Web API",
+    "CLI",
+    "MCP",
+    "OpenAPI",
+    "capabilities"
+  ],
+  "actualCorpus": {
+    "sourceLabel": "NutBolt.STEP",
+    "sha256": "950610e947294e704fb74087817d70c94e3f3e6791bda272a65cdc205b6788d4",
+    "sizeBytes": 1374709,
+    "measuredSolids": 2,
+    "analyticCylinderAxes": 53,
+    "coaxialPairs": 492,
+    "geometryRoundtripVolumeDeltaPct": 0,
+    "scenarioStatus": "pass",
+    "summary": { "pass": 1, "fail": 0, "notRun": 0 }
+  },
+  "verification": {
+    "focusedTestsPassed": 29,
+    "focusedTestsSkippedOptionalExternal": 2,
+    "typecheck": "passed",
+    "cliSyntax": "passed",
+    "mcpSyntax": "passed"
+  },
+  "sideEffects": {
+    "quoteCreated": false,
+    "rfqSent": false,
+    "sourceModified": false
+  }
+}

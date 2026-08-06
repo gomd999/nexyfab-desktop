@@ -1,0 +1,54 @@
+{
+  "date": "2026-08-05",
+  "scope": "STEP repeated occurrence transform pattern fidelity",
+  "algorithm": {
+    "minimumOccurrences": 3,
+    "linear": "farthest-pair axis, perpendicular deviation, sorted equal-pitch stations",
+    "circular": "four or more coplanar centroidal points, equal radius, equal wrap-around angular pitch",
+    "defaultLinearToleranceSourceUnits": 0.0001,
+    "relativeTolerance": 0.000001,
+    "verdict": "regular=pass, measured irregular=fail, missing world placement or insufficient non-collinear count=not_run"
+  },
+  "actualCorpus": {
+    "sourceLabel": "DIFFERENTIAL GEAR BOX FILE.STEP",
+    "sha256": "6a66de0b245fd5f3764358c105f39845922fb9485d5617e6537e39686844d51c",
+    "sizeBytes": 13673241,
+    "measuredSolids": 21,
+    "patternStatus": "pass",
+    "scenarioStatus": "fail",
+    "scenarioSummary": { "pass": 0, "fail": 1, "notRun": 0 },
+    "groups": [
+      {
+        "childDefinitionId": 26306,
+        "occurrences": 6,
+        "kind": "circular",
+        "angularPitchRad": 1.0471975511965976,
+        "maxDeviationSourceUnits": 4.046762924758696e-13
+      },
+      {
+        "childDefinitionId": 64556,
+        "occurrences": 6,
+        "kind": "circular",
+        "angularPitchRad": 1.0471975511965976,
+        "maxDeviationSourceUnits": 3.8669067947694207e-13
+      }
+    ],
+    "remainingScenarioVerdicts": [
+      "subassemblies: fail because the executed source graph depth is one",
+      "shaft_bearing_layout: not_run because product roles are absent despite 856 cylinder axes"
+    ]
+  },
+  "surfaces": [
+    "corpus adapter",
+    "Web API",
+    "CLI",
+    "MCP",
+    "OpenAPI",
+    "capabilities"
+  ],
+  "sideEffects": {
+    "quoteCreated": false,
+    "rfqSent": false,
+    "sourceModified": false
+  }
+}

@@ -1,3 +1,30 @@
+# ---- Official Radiance 6.0 headless build ----
+FROM debian:bookworm-slim AS radiance-builder
+ARG RADIANCE_SOURCE_URL=https://radsite.lbl.gov/radiance/dist/rad6R0P1.tar.gz
+ARG RADIANCE_SOURCE_SHA256=b720d39e43fcf2ea09ab1699b62418836dfad8316743727761d29e85f82585cf
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl cmake build-essential \
+ && rm -rf /var/lib/apt/lists/* \
+ && curl --fail --location --proto '=https' --tlsv1.2 \
+      "$RADIANCE_SOURCE_URL" --output /tmp/radiance.tar.gz \
+ && echo "$RADIANCE_SOURCE_SHA256  /tmp/radiance.tar.gz" | sha256sum --check --strict \
+ && mkdir -p /src /build /opt/radiance \
+ && tar -xzf /tmp/radiance.tar.gz -C /src \
+ && cmake -S /src/ray -B /build \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=/opt/radiance \
+      -DBUILD_HEADLESS=ON \
+      -DBUILD_QT=OFF \
+      -DBUILD_LIBTIFF=OFF \
+      -DBUILD_TESTING=OFF \
+ && cmake --build /build --parallel "$(nproc)" \
+ && cmake --install /build \
+ && for tool in oconv rtrace rfluxmtx gendaymtx dctimestep rmtxop; do \
+      test -x "/opt/radiance/bin/$tool" || exit 1; \
+    done \
+ && /opt/radiance/bin/rtrace -features \
+ && rm -rf /tmp/radiance.tar.gz /src /build
+
 # ---- Build stage ----
 FROM node:22-slim AS builder
 WORKDIR /app
@@ -94,6 +121,17 @@ ENV OPENSCADPATH=/opt/openscad-libs
 # gmsh: out-of-process boundary-conforming tet mesher for the FEA precise path
 # (server-only, execFile shell-out like the openscad CLI; GPL-as-subprocess).
 ENV GMSH_BIN=/usr/bin/gmsh
+
+# Official, checksum-pinned Radiance 6.0 daylight engine. Only the installed
+# runtime is copied; source and compiler toolchains remain in radiance-builder.
+COPY --from=radiance-builder /opt/radiance /opt/radiance
+ENV RAYPATH=.:/opt/radiance/lib \
+    RADIANCE_OCONV_PATH=/opt/radiance/bin/oconv \
+    RADIANCE_RTRACE_PATH=/opt/radiance/bin/rtrace \
+    RADIANCE_RFLUXMTX_PATH=/opt/radiance/bin/rfluxmtx \
+    RADIANCE_GENDAYMTX_PATH=/opt/radiance/bin/gendaymtx \
+    RADIANCE_DCTIMESTEP_PATH=/opt/radiance/bin/dctimestep \
+    RADIANCE_RMTXOP_PATH=/opt/radiance/bin/rmtxop
 
 # Copy only what's needed
 COPY --from=builder /app/public ./public

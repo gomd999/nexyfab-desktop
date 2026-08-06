@@ -1,0 +1,33 @@
+{
+  "schema": "nexyfab.ai-step-manufacturing-evidence.v1",
+  "generatedAt": "2026-08-05T13:04:09.365Z",
+  "input": {
+    "name": "A0101.STEP",
+    "bytes": 22547959,
+    "sha256": "e075d49f2ccf007593e022957ae0f91a27a228d18410c27f9f55b742287ff87d"
+  },
+  "requirements": [
+    "flat_pattern",
+    "bend_table"
+  ],
+  "report": {
+    "passed": true,
+    "checks": [
+      {
+        "requirement": "flat_pattern",
+        "status": "passed",
+        "measured": 2,
+        "reason": "2 exact flat pattern(s) recovered."
+      },
+      {
+        "requirement": "bend_table",
+        "status": "passed",
+        "measured": 0,
+        "reason": "Authoritative empty bend table: every panel is an exact planar extrude and no in-plane coaxial bend surfaces exist."
+      }
+    ],
+    "sourceSideEffects": false
+  },
+  "releaseReady": true,
+  "quoteOrRfqSideEffects": false
+}

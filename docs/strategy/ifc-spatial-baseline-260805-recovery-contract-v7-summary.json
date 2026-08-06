@@ -1,0 +1,29 @@
+{
+  "schema": "nexyfab.ifc-spatial-baseline-summary.v7",
+  "sourceArtifact": "C:/tmp/nexyfab-ifc-spatial-baseline-260805-recovery-contract-v7.json",
+  "selected": 87,
+  "counts": { "pass": 86, "fail": 0, "not_run": 1, "error": 0 },
+  "failureCodes": { "GEOMETRY_INCOMPLETE": 1 },
+  "recoveryActions": { "quantity_volume_area_thickness": 63, "request_authoritative_thickness": 1 },
+  "remainingRequest": {
+    "entityId": 119350,
+    "globalId": "3jNbvLAhL0YvMN0lzMe4bX",
+    "ifcClass": "IFCRAILING",
+    "measuredDimensionsMm": [0, 1754.4194, 1000],
+    "missingAxes": [0],
+    "requiredInputs": ["profile_definition_or_physical_width_mm"],
+    "action": "request_authoritative_thickness"
+  },
+  "recoveryInterfaces": {
+    "api": "POST /api/cad/v1/ifc/recovery-plan",
+    "cli": "ifc recovery-plan --file",
+    "mcp": "plan_ifc_geometry_recovery"
+  },
+  "unitRegressionGuard": {
+    "firstProjectLengthUnitRemainsAuthoritative": true,
+    "laterConversionSiUnitsCannotOverrideCoordinateScale": true,
+    "doorQuantityRecoveryStillMeasured": 63
+  },
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false
+}

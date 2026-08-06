@@ -1,0 +1,47 @@
+{
+  "date": "2026-08-05",
+  "scope": "STEP cabinet panel and weldment member evidence",
+  "cabinet": {
+    "runnerRecovery": "oversize candidates are skipped without reading; next ranked preferred-format source within the byte budget is selected",
+    "sourceLabel": "A0101.STEP",
+    "sha256": "e075d49f2ccf007593e022957ae0f91a27a228d18410c27f9f55b742287ff87d",
+    "sizeBytes": 22547959,
+    "occurrences": 463,
+    "independentPanels": 2,
+    "panelEvidence": "two distinct 3 x 48 x 762.5 source-unit occurrences",
+    "independentPanelsStatus": "pass",
+    "flatPatternStatus": "pass",
+    "flatPatternCount": 2,
+    "bendTableStatus": "pass",
+    "bendCandidates": 0,
+    "bendTableRows": 0,
+    "reason": "selective B-rep reclassification preserves signed analytic CIRCLE/ELLIPSE edges and circular inner loops, including exact area correction, so both flat patterns pass. Every panel is an exact planar extrude and no in-plane coaxial bend surfaces exist; the authoritative bend table is therefore empty rather than not_run."
+  },
+  "weldment": {
+    "sourceLabel": "SPIRAL STAIRCASE.stp",
+    "sha256": "ed418ebd4c9473b112f9d5d23e83d63aae0f59f2a03a5472f2e730c7f609d54b",
+    "sizeBytes": 1692390,
+    "measuredSolids": 9,
+    "measuredMembers": 2,
+    "cutListGroups": 2,
+    "memberIdentityStatus": "pass",
+    "cutListStatus": "pass",
+    "miterLengthsStatus": "pass",
+    "miterResolvedMembers": 2,
+    "massStatus": "not_run",
+    "reason": "world bounds prove member profile/axis/length; STEP end-plane equations prove centreline cut length and cut angle for both members; only material density is absent"
+  },
+  "surfaces": [
+    "corpus adapter",
+    "Web API",
+    "CLI",
+    "MCP",
+    "OpenAPI",
+    "capabilities"
+  ],
+  "sideEffects": {
+    "quoteCreated": false,
+    "rfqSent": false,
+    "sourceModified": false
+  }
+}

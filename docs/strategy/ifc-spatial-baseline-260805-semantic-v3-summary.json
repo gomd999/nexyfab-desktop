@@ -1,0 +1,28 @@
+{
+  "schema": "nexyfab.ifc-spatial-baseline-summary.v4",
+  "sourceArtifact": "C:/tmp/nexyfab-ifc-spatial-baseline-260805-semantic-reference-v3.json",
+  "selected": 87,
+  "counts": { "pass": 80, "fail": 0, "not_run": 7, "error": 0 },
+  "failureCodes": { "UNSUPPORTED_ENTITY": 2, "GEOMETRY_INCOMPLETE": 5 },
+  "incompleteGeometryReasons": { "dims": 161 },
+  "incompleteGeometryClasses": { "IFCDOOR": 63, "IFCWALL": 97, "IFCRAILING": 1 },
+  "recoveryActions": { "request_authoritative_thickness": 161 },
+  "semanticTotals": {
+    "occurrences": 30284,
+    "definitions": 68420,
+    "propertyDefinitions": 52343,
+    "quantityDefinitions": 8708,
+    "materialDefinitions": 7369,
+    "georeferenceEntities": 44,
+    "duplicateGlobalIds": 0,
+    "disconnectedOccurrencesDiagnostic": 3136
+  },
+  "semanticRules": {
+    "duplicateGlobalIdChecksEncodedIfcRootIdsOnly": true,
+    "ordinaryArgumentZeroNamesAndUrisAreNotGlobalIds": true,
+    "roundtripChecksGlobalIdSpatialParentDefinitionsAndGeoreference": true,
+    "disconnectedOccurrenceCountIsDiagnosticNotAutomaticFailure": true
+  },
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false
+}

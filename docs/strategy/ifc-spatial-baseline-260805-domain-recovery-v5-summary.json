@@ -1,0 +1,24 @@
+{
+  "schema": "nexyfab.ifc-spatial-baseline-summary.v5",
+  "sourceArtifact": "C:/tmp/nexyfab-ifc-spatial-baseline-260805-domain-recovery-v5.json",
+  "selected": 87,
+  "counts": { "pass": 83, "fail": 0, "not_run": 4, "error": 0 },
+  "failureCodes": { "GEOMETRY_INCOMPLETE": 4 },
+  "incompleteGeometryReasons": { "dims": 98 },
+  "incompleteGeometryClasses": { "IFCWALL": 97, "IFCRAILING": 1 },
+  "recoveryActions": { "quantity_volume_area_thickness": 63, "request_authoritative_thickness": 98 },
+  "specializedDomainEvidence": {
+    "alignment": { "horizontalSegments": 2, "verticalSegments": 2, "cantSegments": 2, "georeferenced": true },
+    "structuralAnalysis": { "nodes": 4, "members": 3, "memberConnectivityComplete": true, "activities": 1, "reactions": 9, "loads": 19 }
+  },
+  "semanticTotals": { "occurrences": 30284, "definitions": 68420, "propertyDefinitions": 52343, "quantityDefinitions": 8708, "materialDefinitions": 7369, "georeferenceEntities": 44, "duplicateGlobalIds": 0 },
+  "governance": {
+    "doorThicknessRequiresUniquePositiveVolumeAndArea": true,
+    "conflictingQuantityRatiosFailClosed": true,
+    "wallThicknessRequiresOccurrenceOrTypeMaterialLayers": true,
+    "alignmentAndStructuralAnalysisAreNotFabricatedAsSolidBoxes": true,
+    "remaining98MissingDimensionsRequireAuthoritativeInput": true
+  },
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false
+}

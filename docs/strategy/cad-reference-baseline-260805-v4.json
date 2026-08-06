@@ -1,0 +1,23 @@
+{
+  "schema": "nexyfab.cad-corpus-baseline-delta.v1",
+  "baselineSignature": "3d7b0feb84941edd5c95b612159a50e292a7891ac679198918900ce379aad493",
+  "candidateSignature": "f3fd8c53a774fc285fcb568dc69a17845c5f4bb5180127ff8749706be8690717",
+  "fixtureCount": 25,
+  "candidateCounts": { "pass": 25, "fail": 0, "notRun": 0, "error": 0 },
+  "assertionStatusDelta": { "pass": 100, "fail": 0, "notRun": 0 },
+  "regressions": 0,
+  "blockers": 0,
+  "releaseBlocking": false,
+  "newExactEvidence": [
+    "solid-presence",
+    "compound-compsolid-solid-shell-boundaries",
+    "step-nauo-product-occurrence-count",
+    "face-edge-face-adjacency"
+  ],
+  "failClosedFixes": [
+    "zero-solid-valid-shell-is-fail",
+    "partial-summary-is-rejected"
+  ],
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false
+}

@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-05T12:48:49.391Z",
+  "rootLabel": "참고파일들",
+  "summary": {
+    "pass": 1,
+    "fail": 0,
+    "not_run": 0
+  },
+  "records": [
+    {
+      "schemaVersion": 1,
+      "scenarioId": "electrical-cabinet",
+      "input": {
+        "sha256": "e075d49f2ccf007593e022957ae0f91a27a228d18410c27f9f55b742287ff87d",
+        "extension": "step",
+        "sizeBytes": 22547959
+      },
+      "importer": "step_brep_pure_ts_v1",
+      "status": "pass",
+      "assertions": [
+        {
+          "assertion": "geometry_import",
+          "status": "pass",
+          "reason": "Faithful STEP geometry was measured.",
+          "measured": 1
+        },
+        {
+          "assertion": "bom_quantity",
+          "status": "pass",
+          "reason": "STEP product definitions and occurrences produced a deterministic instance quantity.",
+          "measured": 463
+        },
+        {
+          "assertion": "independent_panels",
+          "status": "pass",
+          "reason": "2 distinct constant-thickness STEP occurrences satisfy the governed panel aspect policy.",
+          "measured": 2
+        },
+        {
+          "assertion": "flat_pattern",
+          "status": "pass",
+          "reason": "2 flat panels have exact planar outer-loop patterns with no unrepresented inner loops.",
+          "measured": 2
+        },
+        {
+          "assertion": "bend_table",
+          "status": "pass",
+          "reason": "Authoritative empty bend table: every panel is an exact planar extrude and no in-plane coaxial bend surfaces exist.",
+          "measured": 0
+        }
+      ],
+      "sideEffects": {
+        "quoteCreated": false,
+        "rfqSent": false,
+        "sourceModified": false
+      },
+      "sourceLabel": "A0101.STEP"
+    }
+  ]
+}

@@ -1,0 +1,297 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-04T01:01:06.644Z",
+  "rootLabel": "document(manuals)",
+  "policy": {
+    "sourceReadOnly": true,
+    "copiedPdfBytes": false,
+    "promptBulkIngestion": false
+  },
+  "count": 20,
+  "documents": [
+    {
+      "documentId": "MANUAL-01",
+      "fileName": "_DesignDivision_assistant_engineer_design_design_v8_MicroStation V8 Manual.pdf",
+      "sha256": "a17c7e44a657eab771d4eebab4dae59d43153b1c60cce989e214f13350c3efbe",
+      "bytes": 15819802,
+      "pageCount": null,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "microstation",
+      "domains": [
+        "civil",
+        "drawing"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-02",
+      "fileName": "AutoCAD Workbook for Architects and Engineers.pdf",
+      "sha256": "3296f610aec0a0e83fd67df2a1bb3d53eb22f2154dcfb969a718eda9c324e69a",
+      "bytes": 25450524,
+      "pageCount": 298,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "autocad",
+      "domains": [
+        "drafting",
+        "drawing"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-03",
+      "fileName": "Autodesk 3ds Max 2021 Fundamentals.pdf",
+      "sha256": "b3fefc0e859b94450aa6600763c6569e9bd0dda89bcd93b0b8003c5d67a96e98",
+      "bytes": 2075947,
+      "pageCount": null,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "visualization",
+      "domains": [
+        "visualization"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-04",
+      "fileName": "Autodesk Civil 3D 2022 Fundamentals.pdf",
+      "sha256": "9a343d53b896e2fb68f3ce667cc4e87d98b5dd31686cd3fb27a24a73f62a6bc8",
+      "bytes": 3370018,
+      "pageCount": null,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "civil3d",
+      "domains": [
+        "civil",
+        "alignment",
+        "survey"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-05",
+      "fileName": "autodesk-fusion-360 (1).pdf",
+      "sha256": "7e9cc059368d19ea1c2f4835a9192a1987f26b75f6e2017f3a32eff39d2e85bc",
+      "bytes": 12994951,
+      "pageCount": 255,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "fusion360",
+      "domains": [
+        "part",
+        "assembly",
+        "manufacturing"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-06",
+      "fileName": "Enscape.pdf",
+      "sha256": "caaa7de3ac814f81bab100d4c1946437397b5fa4ba96b9760d3b79af21e07e50",
+      "bytes": 5121526,
+      "pageCount": 29,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "visualization",
+      "domains": [
+        "visualization"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-07",
+      "fileName": "Getting_Started_Civil.pdf",
+      "sha256": "878d1c9a5afd238b772df1874734dcbd561909b4ccbd24019c58941f31f41e02",
+      "bytes": 10830818,
+      "pageCount": 240,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "civil3d",
+      "domains": [
+        "civil",
+        "alignment",
+        "survey"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-08",
+      "fileName": "Grasshopper Learning Material.pdf",
+      "sha256": "8a6b20c80c57fa3c7a19601bb8e4153626e1537d955a3e1b9226fec347906de3",
+      "bytes": 3769263,
+      "pageCount": 20,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "grasshopper",
+      "domains": [
+        "parametric_graph"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-09",
+      "fileName": "Grasshopper+Primer_Korean+Edition_rev.01.pdf",
+      "sha256": "f775306d992bebc4ecb5774677e30c6979a79a87735eb566675547297d83a9c7",
+      "bytes": 5909777,
+      "pageCount": 166,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "grasshopper",
+      "domains": [
+        "parametric_graph"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-10",
+      "fileName": "handout_5231_CD5231_20-_20Getting_20Started_20with_20Fusion_20360 (1).pdf",
+      "sha256": "972cedbf23d40b0a64c0eaa072a01705e5fa11a0229ce12f9996ccae846580e9",
+      "bytes": 3337229,
+      "pageCount": 41,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "fusion360",
+      "domains": [
+        "part",
+        "assembly",
+        "manufacturing"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-11",
+      "fileName": "handout_7273_VI7273-L_Handlout.pdf",
+      "sha256": "0dedbe46507cdafddd30f1efa31aa4c49ee89cfd4746188f13d8947c3f6b190e",
+      "bytes": 1771083,
+      "pageCount": 29,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "other",
+      "domains": [
+        "review_required"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-12",
+      "fileName": "moving-from-autocad-to-vectorworks-landmark-a-guide.pdf",
+      "sha256": "fa348f61549254da0d97bfcded4d9c7dee535c5a6c0a2f530f210e1576ac2653",
+      "bytes": 10528208,
+      "pageCount": 27,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "autocad",
+      "domains": [
+        "drafting",
+        "drawing"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-13",
+      "fileName": "Rhino 6 Level 1 Training (ko-kr).pdf",
+      "sha256": "7d387bb8201487216700dea8001835a964063f59726b9ee2b5374c7eb175b674",
+      "bytes": 31179438,
+      "pageCount": 344,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "rhino",
+      "domains": [
+        "surface",
+        "brep",
+        "drafting"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-14",
+      "fileName": "Rhino Level 1 v4.pdf",
+      "sha256": "2f6367d50683e5140b3d1f85f59f652125996ec23015447472b1b611ee951441",
+      "bytes": 7852748,
+      "pageCount": 256,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "rhino",
+      "domains": [
+        "surface",
+        "brep",
+        "drafting"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-15",
+      "fileName": "Rhino User's Guide for Windows.pdf",
+      "sha256": "19b45e5ef785434b82504d10058e1154a7e38798532c02f684c3859d422a22d4",
+      "bytes": 30982230,
+      "pageCount": 276,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "rhino",
+      "domains": [
+        "surface",
+        "brep",
+        "drafting"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-16",
+      "fileName": "SketchUp 2024 for Interior Designers.pdf",
+      "sha256": "aaa357a686d9380be65479ba2d052b72cdc8f1db88aa605dd79272fa04dc7652",
+      "bytes": 4240384,
+      "pageCount": null,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "sketchup",
+      "domains": [
+        "concept_modeling"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-17",
+      "fileName": "SOLIDWORKS_Introduction_KO(1).pdf",
+      "sha256": "2cdc70e6deba8df9e9eb4f256508df36df4ecd97e349f98a1241b70af168abf1",
+      "bytes": 7187594,
+      "pageCount": 131,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "solidworks",
+      "domains": [
+        "part",
+        "assembly",
+        "drawing",
+        "manufacturing"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-18",
+      "fileName": "Vectorworks Landmark.pdf",
+      "sha256": "b3dd7985703a330ed8216572d982ab0904a3dc176821f03ee0bfa1f0edac8838",
+      "bytes": 9257320,
+      "pageCount": 3,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "vectorworks",
+      "domains": [
+        "bim",
+        "landscape",
+        "drawing"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-19",
+      "fileName": "whatsnew(1).pdf",
+      "sha256": "a0b8f612ba00b7a40ca91eb4c3b66496c5b4deb1915fb0c76e02266d0b7c104b",
+      "bytes": 15713032,
+      "pageCount": 293,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "other",
+      "domains": [
+        "review_required"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    },
+    {
+      "documentId": "MANUAL-20",
+      "fileName": "woojsungcom-rhinograsshoppertutorial001200902181.pdf",
+      "sha256": "aea891e73964c4976e2c3f8f224493794de6e886e0bd4f0d0d879217ef406200",
+      "bytes": 30084448,
+      "pageCount": 47,
+      "pageCountMethod": "pdf-page-object-scan-approximate",
+      "family": "rhino",
+      "domains": [
+        "surface",
+        "brep",
+        "drafting"
+      ],
+      "sourcePolicy": "read_only_local_reference"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schema": "nexyfab.ifc-spatial-baseline-summary.v1",
+  "sourceArtifact": "C:/tmp/nexyfab-ifc-spatial-baseline-260805-v7.json",
+  "selected": 87,
+  "counts": { "pass": 68, "fail": 0, "not_run": 19, "error": 0 },
+  "deltaFromV6": { "pass": 1, "fail": 0, "not_run": -1, "error": 0 },
+  "failureCodes": { "UNSUPPORTED_ENTITY": 17, "IFC_PLACEMENT_UNRESOLVED": 1, "BYTE_BUDGET_EXCEEDED": 2 },
+  "unresolvedPlacementClasses": { "IFCSIGNAL": 2 },
+  "gridPlacement": {
+    "status": "implemented_exact_subset",
+    "subset": "two non-parallel IfcGridAxis instances backed by two-point IfcPolyline curves, zero virtual-intersection offsets, no PlacementRefDirection",
+    "worldMatrix": "row-major local-to-world, including the complete IfcLocalPlacement parent chain",
+    "failClosedOutsideSubset": true
+  },
+  "linearPlacement": { "status": "not_run", "reason": "requires governed evaluation of IfcPointByDistanceExpression against alignment composite curves" },
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false
+}

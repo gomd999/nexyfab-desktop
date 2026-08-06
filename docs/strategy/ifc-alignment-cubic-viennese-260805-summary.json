@@ -1,0 +1,43 @@
+{
+  "date": "2026-08-05",
+  "scope": "IFC4.3 horizontal CUBIC and VIENNESEBEND evaluation",
+  "officialBasis": [
+    "buildingSMART IfcAlignmentHorizontalSegmentTypeEnum",
+    "buildingSMART Viennese Bend Transition Segment",
+    "buildingSMART IfcThirdOrderPolynomialSpiral",
+    "buildingSMART IfcSeventhOrderPolynomialSpiral"
+  ],
+  "cubic": {
+    "status": "implemented_governed",
+    "conditions": [
+      "exactly one endpoint has zero curvature",
+      "finite positive segment length"
+    ],
+    "method": "common cubic y=x^3/(6RL), Simpson arc-length inversion, local-to-world transform",
+    "failureReason": "cubic_requires_one_infinite_radius"
+  },
+  "vienneseBend": {
+    "status": "implemented_authoritative_input_gated",
+    "requiredInputs": [
+      "matchingCantSegment",
+      "railHeadDistance",
+      "gravityCenterHeight",
+      "gravityCenterHeightProvenance"
+    ],
+    "method": "official normalized cant-angle and gravity-center coupled curvature with 256/512 RK4 error evidence",
+    "failureReason": "viennese_authoritative_input_missing"
+  },
+  "surfaces": ["Web API", "CLI", "MCP", "OpenAPI", "capabilities"],
+  "actualCorpus": {
+    "cubicOccurrences": 0,
+    "vienneseBendOccurrences": 0,
+    "claim": "not_present; implementation verified by governed synthetic regression only"
+  },
+  "verification": {
+    "focusedTests": 89,
+    "focusedTestsPassed": 89,
+    "typecheck": "passed",
+    "cliSyntax": "passed",
+    "mcpSyntax": "passed"
+  }
+}

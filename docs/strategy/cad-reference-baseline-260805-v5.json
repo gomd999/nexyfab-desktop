@@ -1,0 +1,35 @@
+{
+  "schema": "nexyfab.cad-corpus-baseline-delta.v1",
+  "baselineSignature": "f3fd8c53a774fc285fcb568dc69a17845c5f4bb5180127ff8749706be8690717",
+  "candidateSignature": "55f411e354bc56297e294bf3d4b7539e297e745e0041648a49c09e85ba0f7080",
+  "producerVersion": "5",
+  "fixtureCount": 25,
+  "candidateCounts": { "pass": 25, "fail": 0, "notRun": 0, "error": 0 },
+  "newAssertionStatusDelta": { "pass": 75, "fail": 0, "notRun": 0 },
+  "regressions": 0,
+  "blockers": 0,
+  "releaseBlocking": false,
+  "newExactEvidence": [
+    "step-occurrence-local-to-parent-transform",
+    "step-occurrence-world-placement",
+    "step-assembly-cycle-free"
+  ],
+  "measuredOccurrenceFixtures": { "A16": 1, "A17": 1, "B05": 63, "B06": 13 },
+  "measuredOccurrenceTotal": 78,
+  "restoredWorldPlacementTotal": 78,
+  "missingTransformTotal": 0,
+  "invalidTransformTotal": 0,
+  "reflectionTotal": 0,
+  "nonUniformScaleTotal": 0,
+  "failClosedFixes": [
+    "missing-step-transform-is-not-run-without-identity-invention",
+    "invalid-reflected-non-uniform-step-transform-is-fail",
+    "ambiguous-or-cyclic-world-chain-is-not-releaseable",
+    "legacy-step-zero-solid-is-fail",
+    "pmi-zero-to-zero-is-not-run",
+    "feature-fidelity-zero-to-zero-requires-explicit-not-applicable",
+    "assembly-design-ok-requires-authoritative-dof-and-precise-interference"
+  ],
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "nexyfab.ifc-spatial-baseline-summary.v3",
+  "sourceArtifact": "C:/tmp/nexyfab-ifc-spatial-baseline-260805-v26.json",
+  "selected": 87,
+  "counts": { "pass": 80, "fail": 0, "not_run": 7, "error": 0 },
+  "failureCodes": { "UNSUPPORTED_ENTITY": 2, "GEOMETRY_INCOMPLETE": 5 },
+  "unresolvedPlacementClasses": {},
+  "incompleteGeometryReasons": { "dims": 161 },
+  "incompleteGeometryClasses": { "IFCDOOR": 63, "IFCWALL": 97, "IFCRAILING": 1 },
+  "recoveryActions": { "request_authoritative_thickness": 161 },
+  "verdictRules": {
+    "completePhysicalOccurrenceCoverageRequired": true,
+    "definitionOnlyGeometryIsNotOccurrenceEvidence": true,
+    "specializedAlignmentAndStructuralAnalysisRequireDedicatedAdapters": true,
+    "missingThicknessIsNeverInvented": true
+  },
+  "implementedSinceV17": [
+    "IfcBlock CSG bounds",
+    "IfcBuiltElement occurrence classification",
+    "definition-only IfcTypeProduct geometry",
+    "IfcFixedReferenceSweptAreaSolid and IfcSectionedSolid conservative bounds",
+    "explicit CartesianPosition for IfcLinearPlacement",
+    "IFC facility container classification",
+    "IfcCircle and IfcEllipse profile bounds",
+    "occurrence-scoped recovery evidence and repeat-loop prevention"
+  ],
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false
+}

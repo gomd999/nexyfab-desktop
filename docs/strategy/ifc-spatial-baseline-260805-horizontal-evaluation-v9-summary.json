@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.ifc-spatial-baseline-summary.v9",
+  "sourceArtifact": "C:/tmp/nexyfab-ifc-spatial-baseline-260805-horizontal-evaluation-v9.json",
+  "selected": 87,
+  "counts": { "pass": 86, "fail": 0, "not_run": 1, "error": 0 },
+  "failureCodes": { "GEOMETRY_INCOMPLETE": 1 },
+  "horizontalAlignmentEvidence": {
+    "files": 4,
+    "validFiles": 4,
+    "segments": 20,
+    "evaluatedSegments": 20,
+    "notRunSegments": 0,
+    "continuityPassedFiles": 4,
+    "maxRk4ErrorEstimateSourceUnits": 1.5843180092946943e-8,
+    "maxJunctionPositionErrorSourceUnits": 2.8749442362615533e-6,
+    "maxJunctionDirectionErrorRad": 6.299749610860772e-11,
+    "supported": ["LINE", "CIRCULARARC", "CLOTHOID", "COSINECURVE", "SINECURVE", "BLOSSCURVE", "HELMERTCURVE"]
+  },
+  "remaining": {
+    "occurrences": 1,
+    "ifcClass": "IFCRAILING",
+    "requiredInput": "profile_definition_or_physical_width_mm"
+  },
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false
+}

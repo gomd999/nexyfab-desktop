@@ -191,6 +191,24 @@ describe('★③ 안 잰 것과 0 을 구분한다', () => {
     expect(s.note ?? '').toBeDefined();
   });
 
+  /**
+   * ⚠⚠ **접지 선언이 없으면 첫 링크를 기준으로 삼는다.** 자유도는 상대 자유도로 세는 것이
+   *   관례이고 Kutzbach 의 `n−1` 이 그 암묵 접지다. 야코비안만 접지를 안 하면 **전체
+   *   강체 6자유도가 그대로 더해져** 두 방법이 전혀 다른 값을 말한다
+   *   (실측: 회전쌍 1개 2부품에서 Kutzbach 1 · 야코비안 7 → methodsDisagree 오탐).
+   */
+  it('★접지 선언이 없어도 상대 자유도를 낸다 — 강체 6자유도를 얹지 않는다', () => {
+    const noGround = { parts: FOUR_BAR.parts.map((p) => ({ id: p.id })), joints: FOUR_BAR.joints };
+    const s = solve(noGround)! as Sol & { groundAssumed: boolean; grounded: string[] };
+    expect(s.mobility, '접지를 선언한 경우와 같아야 한다').toBe(solve(FOUR_BAR)!.mobility);
+    expect(s.groundAssumed, '무엇을 기준으로 삼았는지 밝힌다').toBe(true);
+    expect(s.grounded).toHaveLength(1);
+    expect(s.note).toMatch(/상대 자유도/);
+
+    const pair = { parts: [{ id: 'a' }, { id: 'b' }], joints: [{ type: 'revolute', axis: 'z', between: ['a', 'b'], atMm: [0, 0, 0] }] };
+    expect(solve(pair)!.mobility, '회전쌍 하나 = 상대 자유도 1(7 이 아니다)').toBe(1);
+  });
+
   /** ⚠ 값 하나만 주면 「확정된 자유도」로 읽힌다. 한계를 반드시 문장으로 붙인다. */
   it('note 가 선형화·순간 운동학이라는 한계를 말한다', () => {
     expect(solve(FOUR_BAR)!.note).toMatch(/선형화|순간/);

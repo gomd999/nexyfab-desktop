@@ -18,6 +18,7 @@
  * Time: 30–180s per scenario depending on render complexity.
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { runValidation, formatReportMarkdown } from '../src/lib/ai/scad-agent/validation/runValidation';
 import { makeServerAiClient } from '../src/lib/ai/scad-agent/runScadAgent';
@@ -48,6 +49,13 @@ async function checkOpenScadInstalled(): Promise<boolean> {
 
 async function main() {
   console.log('🔧 SCAD Agent Validation\n');
+
+  if (!process.env.OPENSCADPATH) {
+    const userLibraryRoot = path.join(os.homedir(), 'Documents', 'OpenSCAD', 'libraries');
+    if (fs.existsSync(path.join(userLibraryRoot, 'BOSL2'))) {
+      process.env.OPENSCADPATH = userLibraryRoot;
+    }
+  }
 
   if (!hasAnyAiKey()) {
     console.error('❌ No AI API key configured.');

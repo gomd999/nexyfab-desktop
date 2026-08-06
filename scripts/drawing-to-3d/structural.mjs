@@ -19,6 +19,28 @@ export const DENSITY = {
   STS316: 7980, STS304: 7930, steel: 7850, aluminum: 2700, FRP: 1800, water: 1000, concrete: 2400, PVC: 1400, castiron: 7200,
   timber: 500, glass: 2500,
 };
+/**
+ * 재료 탄성상수 — E·항복강도(MPa) · 푸아송비. `DENSITY` 와 **같은 키**를 쓴다.
+ *
+ * ⚠⚠ **항복점이 없는 재료에 항복강도를 지어내지 않는다.** 회주철·콘크리트·유리는
+ *   항복 없이 파단하고, FRP 는 적층 구성에 따라 강성이 통째로 달라진다. `fy: null` 과
+ *   사유를 둔다 — 숫자를 채워 넣으면 「연성 금속처럼」 계산돼 **가장 위험한 재료가 가장
+ *   안전해 보인다.** 대신 압축강도(`fc`)가 의미 있는 것은 그걸 준다.
+ * ⚠ 대표값이다. 실제 설계는 재료 증명서의 값을 써야 하고, 계산 결과에 `assumed` 로 표시된다.
+ */
+export const ELASTIC = {
+  steel: { E: 205000, fy: 235, nu: 0.30, ko: '일반구조용강(SS275 계열 대표)' },
+  STS304: { E: 193000, fy: 205, nu: 0.29, ko: '오스테나이트계 스테인리스' },
+  STS316: { E: 193000, fy: 205, nu: 0.30, ko: '오스테나이트계 스테인리스' },
+  aluminum: { E: 69000, fy: 240, nu: 0.33, ko: '알루미늄 6061-T6' },
+  PVC: { E: 3000, fy: 45, nu: 0.40, ko: '경질 PVC' },
+  timber: { E: 10000, fy: 8, nu: 0.35, ko: '침엽수 구조재(섬유방향 허용압축 대표)' },
+  castiron: { E: 100000, fy: null, fc: 700, nu: 0.26, ko: '회주철(FC250)', noYield: '항복점 없이 취성 파단 — 압축강도로 본다' },
+  concrete: { E: 27000, fy: null, fc: 24, nu: 0.18, ko: '보통 콘크리트 fck 24', noYield: '항복점 없음 — 설계기준압축강도(fck)로 본다' },
+  glass: { E: 70000, fy: null, nu: 0.22, ko: '소다석회유리', noYield: '취성 파단 — 허용응력은 표면 결함·하중지속에 좌우된다' },
+  FRP: { E: null, fy: null, nu: null, ko: '섬유강화플라스틱', noYield: '적층 구성마다 다르다 — 대표값을 둘 수 없다(선언 필요)' },
+};
+
 // 각관/형강 단면성능 (mm) — I, Z, A
 export const SECTIONS = {
   'SHS50x50x3': sqTube(50, 3), 'SHS40x40x3': sqTube(40, 3), 'SHS60x60x3.2': sqTube(60, 3.2), 'SHS75x75x4': sqTube(75, 4),

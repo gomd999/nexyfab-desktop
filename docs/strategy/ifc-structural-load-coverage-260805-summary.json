@@ -1,0 +1,28 @@
+{
+  "sourceCorpusFile": "structural-curve-member.ifc",
+  "valid": true,
+  "errors": [],
+  "nodes": 4,
+  "members": 3,
+  "activities": 1,
+  "reactions": 9,
+  "allStructuralLoadNamedEntities": 19,
+  "loadCoverage": {
+    "numericEntities": 14,
+    "normalized": 14,
+    "unitUnresolved": 0,
+    "unsupported": 0
+  },
+  "numericClasses": {
+    "IFCSTRUCTURALLOADLINEARFORCE": 2,
+    "IFCSTRUCTURALLOADSINGLEDISPLACEMENT": 4,
+    "IFCSTRUCTURALLOADSINGLEFORCE": 8
+  },
+  "supportedAdditionalIfc4NumericClasses": [
+    "IFCSTRUCTURALLOADPLANARFORCE",
+    "IFCSTRUCTURALLOADSINGLEDISPLACEMENTDISTORTION",
+    "IFCSTRUCTURALLOADSINGLEFORCEWARPING",
+    "IFCSTRUCTURALLOADTEMPERATURE"
+  ],
+  "failClosedUnknownClassCode": "structural_load_type_unsupported"
+}

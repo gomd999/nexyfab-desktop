@@ -1,0 +1,33 @@
+{
+  "schema": "nexyfab.ifc-spatial-baseline-summary.v10",
+  "sourceArtifact": "C:/tmp/nexyfab-ifc-spatial-baseline-260805-linear-placement-v10.json",
+  "selected": 87,
+  "counts": { "pass": 86, "fail": 0, "not_run": 1, "error": 0 },
+  "failureCodes": { "GEOMETRY_INCOMPLETE": 1 },
+  "linearPlacementEvidence": {
+    "total": 28,
+    "explicitCartesian": 28,
+    "distanceEvaluated": 28,
+    "crossChecked": 28,
+    "mismatches": 0,
+    "maxPositionDifferenceSourceUnits": 1.5934771423859253e-7,
+    "maxBasisDifference": 6.391614668088685e-13
+  },
+  "supportedFallback": [
+    "IfcPointByDistanceExpression.DistanceAlong",
+    "OffsetLateral",
+    "OffsetVertical",
+    "OffsetLongitudinal",
+    "horizontal tangent basis",
+    "constant-gradient elevation",
+    "parabolic-gradient elevation",
+    "vertical circular-arc elevation"
+  ],
+  "remaining": {
+    "occurrences": 1,
+    "ifcClass": "IFCRAILING",
+    "requiredInput": "profile_definition_or_physical_width_mm"
+  },
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false
+}

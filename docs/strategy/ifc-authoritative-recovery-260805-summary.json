@@ -1,0 +1,27 @@
+{
+  "sourceCorpusFile": "Obekt architektoniczny.ifc",
+  "actualSourceInputCount": 0,
+  "actualSourceResult": {
+    "ok": true,
+    "releaseReady": false,
+    "imported": 171,
+    "applied": 0,
+    "rejected": 0,
+    "remaining": {
+      "entityId": 119350,
+      "globalId": "3jNbvLAhL0YvMN0lzMe4bX",
+      "ifcClass": "IFCRAILING",
+      "measuredDimensionsMm": [0, 1754.4194, 1000],
+      "missingAxes": [0],
+      "requiredInputs": ["profile_definition_or_physical_width_mm"]
+    }
+  },
+  "syntheticContractTest": {
+    "operatorProvidedWidthMm": 50,
+    "provenance": "operator measurement drawing A-12",
+    "beforeDimensionsMm": [0, 1000, 900],
+    "afterDimensionsMm": [50, 1000, 900],
+    "releaseReady": true
+  },
+  "interpretation": "The 50 mm value belongs only to a synthetic contract fixture. It was not applied to the actual corpus and is not source truth."
+}

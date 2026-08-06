@@ -25,6 +25,8 @@ import { TOL_CONTACT, PARTS_BUDGET } from './geometry-tolerance.mjs';
 import { resolveConstraints } from './assembly-constraints.mjs'; // ⓑ 관계 배치(런타임 호출 — 순환 안전)
 import { mobilityCheck } from './mobility.mjs'; // 기구 자유도(선언된 joints 가 있을 때만)
 import { solveMobility } from './kinematics.mjs'; // 같은 질문을 **푼다**(Kutzbach 는 세기만 한다)
+import { analyzeConnections, declaredContacts } from './connections.mjs'; // 체결부 강도·접촉 선언
+import { bucklingPrecheck } from './buckling.mjs'; // 압축 좌굴 **선별**(법정 검토는 column_buckling)
 
 // 부품 → 계통색 (service/role 우선, 없으면 type). 계통색 GA 3D·도면 색분류 공용.
 export const SERVICE_COL = {
@@ -963,6 +965,24 @@ export function pairExempt(pa, pb, ba, bb) {
       if (ok) return `보어 끼워맞춤(⌀${sd} 축 → ⌀${bore} 보어 — 조립 정상. 끼워맞춤 등급은 공차 계층)`;
     }
   }
+
+  /**
+   * ④ **억지 끼워맞춤(press fit)** — 설계상 과영(過盈)이라 **겹치는 것이 정상**이다.
+   * 압입 베어링·스플라인·리벳 후 팽창이 여기 든다.
+   * ⚠ **선언 기반**이다(`pressFitWith` — `contacts[{kind:'interference-fit'}]` 도 여기로
+   *   정규화된다). 선언 문법은 둘이어도 **규칙은 이 한 곳에만** 있다.
+   * ⚠ **크기 상한을 건다.** 선언만으로 무제한 면제하면 「끼워맞춤이라 적었으니 통과」로
+   *   총체적 배치 오류를 덮는다. 과영은 지름의 0.1% 수준이지 부재 절반이 아니다 —
+   *   겹침 최소변이 작은 쪽 부재 최소변의 5%(또는 2mm)를 넘으면 **면제하지 않는다**.
+   */
+  const pf = pa.pressFitWith === (pb.id ?? pb.type) || pb.pressFitWith === (pa.id ?? pa.type);
+  if (pf) {
+    const ov = [0, 1, 2].map((k) => Math.min(ba.max[k], bb.max[k]) - Math.max(ba.min[k], bb.min[k]));
+    const minOv = Math.min(...ov);
+    const minSide = Math.min(...[0, 1, 2].map((k) => Math.min(ba.max[k] - ba.min[k], bb.max[k] - bb.min[k])));
+    const cap = Math.max(2, minSide * 0.05);
+    if (minOv <= cap) return `억지 끼워맞춤 선언(과영 ${minOv.toFixed(2)}mm ≤ 상한 ${cap.toFixed(2)}mm — 겹침이 설계 의도. 압입력·응력은 도메인 계산 영역)`;
+  }
   return null;
 }
 
@@ -1026,6 +1046,24 @@ export function buildAssembly(asm, opts = {}) {
    * ⚠ 이미 보정된 어셈블리(`_placeCorrected`)는 건너뛴다 — 라우트처럼 밖에서 먼저 부르고
    *   보정 내역을 응답에 싣는 경로가 있고, 두 번 돌 이유가 없다.
    */
+  /**
+   * ★ⓞ 접촉 선언 정규화 — `contacts[{kind:'interference-fit'}]` 를 부품의 `pressFitWith`
+   * 로 옮긴다. 선언 문법이 둘(부품 속성 · 접촉 목록)이어도 **면제 규칙은 `pairExempt`
+   * 한 곳에만** 있게 하려는 것이다(규칙을 두 곳이 각자 들면 반드시 갈린다 — 이 세션에
+   * 그렇게 여덟 번 틀렸다). 여기는 규칙이 아니라 **입력 표기의 통일**이다.
+   */
+  const declared = declaredContacts(asm);
+  if (declared) {
+    const idOf = (p) => p.id ?? p.type;
+    for (const c of declared.contacts) {
+      if (c.kind !== 'interference-fit') continue;
+      for (const [a, b] of [[c.between[0], c.between[1]], [c.between[1], c.between[0]]]) {
+        const part = asm.parts.find((p) => idOf(p) === a);
+        if (part && !part.pressFitWith) part.pressFitWith = b;
+      }
+    }
+  }
+
   let placeCorrections = null;
   if (opts.autoPlace === true && !asm._placeCorrected) {
     const pc = autoPlaceCorrect(asm);
@@ -1594,6 +1632,19 @@ export function buildAssembly(asm, opts = {}) {
         : {}),
     }
     : mobilityBase;
+  /**
+   * 체결부 강도 — `connections[]` 를 **선언한 어셈블리에만** 붙는다.
+   * ⚠ `designOk` 에는 **넣지 않는다.** designOk 는 「조립이 성립하나」(간섭·부유·배관)이고
+   *   체결부는 「하중을 버티나」다. 섞으면 제원을 안 적었다는 이유로 조립 판정이 떨어지거나,
+   *   거꾸로 체결부 불합격이 조립 성공에 묻힌다 — 다른 질문은 따로 답해야 한다.
+   */
+  const connections = analyzeConnections(asm);
+  /**
+   * 압축 좌굴 **선별** — `axialN`(음수) 또는 `compressionN` 을 선언한 부재만.
+   * ⚠ `designOk` 에 넣지 않는 이유는 체결부와 같다. 그리고 이건 **선별**이라 더더욱
+   *   판정에 못 쓴다 — 걸린 부재를 `column_buckling`(AISC 360 §E3)으로 넘기라는 신호다.
+   */
+  const buckling = bucklingPrecheck(asm);
   const designOk = support.floating.length === 0
     && interferences.length === 0
     && (!pipes || (pipes.errors.length === 0 && pipes.obstacleViolations.length === 0 && pipes.crossViolations.length === 0));
@@ -1616,6 +1667,15 @@ export function buildAssembly(asm, opts = {}) {
      *   실제로는 **안 잰 것**이다. 안 잰 것과 0 은 다르다.
      */
     ...(mobility ? { mobility } : {}),
+    /**
+     * 체결부·접촉 선언 — 선언이 없으면 키 자체가 없다(안 잰 것과 「이상 없음」은 다르다).
+     * ⚠ 키 이름이 `declaredContacts` 인 이유: `contacts` 는 이미 **기하로 판정한**
+     *   zero-thickness 맞닿음이다. 같은 이름을 쓰면 스프레드 순서에 따라 조용히 덮어쓴다
+     *   (실제로 그렇게 쓸 뻔했다). **판정한 접촉**과 **선언한 접촉**은 다른 것이다.
+     */
+    ...(connections ? { connections } : {}),
+    ...(declared ? { declaredContacts: declared } : {}),
+    ...(buckling ? { buckling } : {}),
     assembly: asm };
 }
 

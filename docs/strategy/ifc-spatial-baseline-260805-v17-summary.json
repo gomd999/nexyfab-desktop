@@ -1,0 +1,26 @@
+{
+  "schema": "nexyfab.ifc-spatial-baseline-summary.v2",
+  "sourceArtifact": "C:/tmp/nexyfab-ifc-spatial-baseline-260805-v17.json",
+  "selected": 87,
+  "counts": { "pass": 67, "fail": 0, "not_run": 20, "error": 0 },
+  "failureCodes": { "UNSUPPORTED_ENTITY": 12, "IFC_PLACEMENT_UNRESOLVED": 1, "GEOMETRY_INCOMPLETE": 8 },
+  "unresolvedPlacementClasses": { "IFCSIGNAL": 2 },
+  "incompleteGeometryReasons": { "dims": 167 },
+  "incompleteGeometryClasses": { "IFCCOLUMN": 2, "IFCDOOR": 63, "IFCWALL": 97, "IFCRAILING": 1, "IFCFURNISHINGELEMENT": 4 },
+  "verdictStrengthening": {
+    "completePhysicalOccurrenceCoverageRequired": true,
+    "previewRepresentativeLimitUsedForCorpus": false,
+    "maxCorpusParts": 20000,
+    "filesAboveFormer128MiBLimitAnalyzed": 2,
+    "note": "The earlier v7 68/19 result used a weaker success definition. v17 requires imported physical occurrences to equal physical element occurrences."
+  },
+  "implementedRecovery": [
+    "exact straight-axis IfcGridPlacement world matrices",
+    "IfcTypeProduct RepresentationMaps inheritance",
+    "shapeless decomposition-parent classification",
+    "Group# non-geometric proxy classification",
+    "IfcSanitaryTerminal and IfcReinforcingBar physical mappings"
+  ],
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false
+}

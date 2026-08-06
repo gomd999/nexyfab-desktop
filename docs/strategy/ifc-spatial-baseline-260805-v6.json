@@ -1,0 +1,28 @@
+{
+  "schema": "nexyfab.ifc-spatial-baseline-summary.v1",
+  "fixtureCount": 87,
+  "counts": { "pass": 67, "fail": 0, "notRun": 20, "error": 0 },
+  "initialComparableCounts": { "pass": 16, "fail": 0, "notRun": 71, "error": 0 },
+  "passIncrease": 51,
+  "notRunDecrease": 51,
+  "failureFixtureCounts": {
+    "UNSUPPORTED_ENTITY": 18,
+    "IFC_PLACEMENT_UNRESOLVED": 2,
+    "BYTE_BUDGET_EXCEEDED": 2
+  },
+  "remainingUnsupportedPlacementOccurrences": {
+    "IFCSIGNAL_linearPlacement": 2,
+    "IFCCOLUMN_gridPlacement": 25
+  },
+  "classificationFixes": [
+    "ifc-type-style-property-is-not-occurrence",
+    "structural-analysis-record-is-not-physical-element",
+    "distribution-system-is-logical-system",
+    "optional-spatial-container-placement-is-not-physical-placement-failure",
+    "shape-less-element-assembly-is-container",
+    "unsupported-valid-ifc-is-not-run-not-corrupt-fail",
+    "byte-budget-block-is-not-run-not-runner-error"
+  ],
+  "sourceDisclosure": false,
+  "quoteOrRfqSideEffects": false
+}

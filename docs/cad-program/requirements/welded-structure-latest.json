@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-05T12:17:11.001Z",
+  "rootLabel": "참고파일들",
+  "summary": {
+    "pass": 0,
+    "fail": 0,
+    "not_run": 1
+  },
+  "records": [
+    {
+      "schemaVersion": 1,
+      "scenarioId": "welded-structure",
+      "input": {
+        "sha256": "ed418ebd4c9473b112f9d5d23e83d63aae0f59f2a03a5472f2e730c7f609d54b",
+        "extension": "stp",
+        "sizeBytes": 1692390
+      },
+      "importer": "step_brep_pure_ts_v1",
+      "status": "not_run",
+      "assertions": [
+        {
+          "assertion": "geometry_import",
+          "status": "pass",
+          "reason": "Faithful STEP geometry was measured.",
+          "measured": 9
+        },
+        {
+          "assertion": "member_identity",
+          "status": "pass",
+          "reason": "2 elongated STEP solids have measured member axes, profiles, and lengths.",
+          "measured": 2
+        },
+        {
+          "assertion": "cut_list",
+          "status": "pass",
+          "reason": "2 profile/length groups were deterministically aggregated from measured members.",
+          "measured": 2
+        },
+        {
+          "assertion": "miter_lengths",
+          "status": "pass",
+          "reason": "2 members have two authoritative STEP end planes with centreline length and cut angle.",
+          "measured": 2
+        },
+        {
+          "assertion": "mass",
+          "status": "not_run",
+          "reason": "not_run: source material density is not authoritatively bound to each member"
+        }
+      ],
+      "sideEffects": {
+        "quoteCreated": false,
+        "rfqSent": false,
+        "sourceModified": false
+      },
+      "sourceLabel": "SPIRAL STAIRCASE.stp"
+    }
+  ]
+}
