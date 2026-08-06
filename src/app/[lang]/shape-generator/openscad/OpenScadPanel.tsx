@@ -23,6 +23,9 @@ function errorMessageFromUnknown(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
+/** Quote/RFQ is intentionally not part of the CAD workspace. */
+const CAD_QUOTE_FLOW_ENABLED = false;
+
 const dict = {
   ko: {
     tabShape: '⚙ AI 형상',
@@ -1307,30 +1310,26 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const [extractedIntent, setExtractedIntent] = useState<unknown>(null);
   const [extractedSummary, setExtractedSummary] = useState('');
 
-  /** Request-quote panel state — FREE-accessible conversion funnel. Defaults
-   *  to the internal estimator (always configured); user can pin a partner
-   *  provider via the dropdown to see the NOT_CONFIGURED bounce-back. The
-   *  quote section sits above reverse-engineer so it's visible without
-   *  scrolling past every other Pro+ feature. */
+  // Kept temporarily as inert state while the legacy quote JSX is removed in
+  // a follow-up cleanup. The enclosing policy flag prevents it from mounting,
+  // and requestQuote performs no network or external action.
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [quoteProcess, setQuoteProcess] = useState<'fdm' | 'sla' | 'cnc_mill' | 'sheet' | 'injection_molding' | 'die_cast'>('cnc_mill');
   const [quoteMaterial, setQuoteMaterial] = useState<'aluminum_6061' | 'steel_a36' | 'steel_4140' | 'stainless_304' | 'pla' | 'abs'>('aluminum_6061');
-  const [quoteQuantity, setQuoteQuantity] = useState<number>(1);
+  const [quoteQuantity, setQuoteQuantity] = useState(1);
   const [quoteProviderId, setQuoteProviderId] = useState<'internal' | 'xometry'>('internal');
-  const [quoteBusy, setQuoteBusy] = useState(false);
-  const [quoteErr, setQuoteErr] = useState('');
-  interface QuoteUiResponse {
-    providerId: string;
-    providerName: string;
-    totalUsd: number;
-    unitPriceUsd: number;
-    leadTimeDays: number;
+  const [quoteBusy] = useState(false);
+  const [quoteErr] = useState('');
+  const quoteReadiness: { level: 'concept_only' | 'review_required'; manufacturingAllowed: boolean } = {
+    level: 'concept_only', manufacturingAllowed: false,
+  };
+  const quoteResult = null as null | {
+    providerName: string; totalUsd: number; unitPriceUsd: number; leadTimeDays: number;
     confidence: 'binding' | 'indicative' | 'rough';
     lineItems: Array<{ label: string; amountUsd: number; unit?: string }>;
     notes: string[];
-    orderUrl: string | null;
-  }
-  const [quoteResult, setQuoteResult] = useState<QuoteUiResponse | null>(null);
+  };
+  const requestQuote = useCallback(async () => undefined, []);
 
   /** Mesh reverse-engineering panel state — Pro+ feature, collapsed until
    *  toggled. The classifier returns multiple candidates; the user picks one
@@ -1393,7 +1392,6 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
   const agentVerifyAtMs = useAnalysisStore(s => s.latestVerifySpecAtMs);
   const effectiveVerifyResult = verifyResult ?? agentVerifyResult;
   const verifyResultFromAgent = verifyResult === null && agentVerifyResult !== null;
-
   useEffect(() => {
     if (!scadNlBudgetLockUntil || scadNlBudgetLockUntil <= Date.now()) {
       setScadNlBudgetLockUntil(null);
@@ -2171,55 +2169,6 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
     }
   }, [reStlBase64, reBusy, reFleetMode, t]);
 
-  /** POST to /api/nexyfab/request-quote with the selected provider +
-   *  process + material + quantity. We prefill measuredVolumeMm3 / bboxMm
-   *  from the most recent verifyResult when available so the internal
-   *  estimator bumps confidence from 'rough' to 'indicative'. */
-  const requestQuote = useCallback(async () => {
-    if (quoteBusy) return;
-    setQuoteErr('');
-    setQuoteResult(null);
-    setQuoteBusy(true);
-    try {
-      const body: Record<string, unknown> = {
-        providerId: quoteProviderId,
-        process: quoteProcess,
-        material: quoteMaterial,
-        quantity: quoteQuantity,
-      };
-      // Prefill measured geometry from the last verify result when present
-      // — improves internal estimator confidence + lets the partner provider
-      // (when wired) skip an extra round-trip.
-      const lastVerified = verifyResult ?? agentVerifyResult;
-      if (lastVerified?.measured) {
-        const m = lastVerified.measured as { wMm: number; hMm: number; dMm: number };
-        if (typeof m.wMm === 'number' && typeof m.hMm === 'number' && typeof m.dMm === 'number'
-            && m.wMm > 0 && m.hMm > 0 && m.dMm > 0) {
-          body.bboxMm = { wMm: m.wMm, hMm: m.hMm, dMm: m.dMm };
-        }
-      }
-      if (lastVerified?.volume?.actualMm3 && lastVerified.volume.actualMm3 > 0) {
-        body.measuredVolumeMm3 = lastVerified.volume.actualMm3;
-      }
-      const res = await fetch('/api/nexyfab/request-quote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => ({} as { ok?: boolean; error?: string; quote?: QuoteUiResponse }));
-      if (!res.ok || data.ok === false) {
-        const msg = typeof data.error === 'string' ? data.error : `${t.quoteRouteFailed} (${res.status})`;
-        setQuoteErr(msg);
-        return;
-      }
-      if (data.quote) setQuoteResult(data.quote);
-    } catch (e: unknown) {
-      setQuoteErr(e instanceof Error ? e.message : t.quoteRouteFailed);
-    } finally {
-      setQuoteBusy(false);
-    }
-  }, [quoteBusy, quoteProviderId, quoteProcess, quoteMaterial, quoteQuantity, verifyResult, agentVerifyResult, t]);
-
   /** Copy a chosen candidate's intent into the verify-spec textarea and
    *  reveal the verify section so the user can immediately round-trip. */
   const applyCandidateToVerify = useCallback((intent: unknown) => {
@@ -2845,8 +2794,8 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
             </div>
           )}
 
-          {/* ── Request quote (FREE-accessible collapsible) ── */}
-          <div className="flex flex-col gap-2 border-t border-gray-800 pt-3 mt-1">
+          {/* Legacy quote markup is policy-disabled and cannot mount or call a service. */}
+          {CAD_QUOTE_FLOW_ENABLED && (<div className="flex flex-col gap-2 border-t border-gray-800 pt-3 mt-1">
             <button
               type="button"
               data-testid="quote-toggle"
@@ -2857,6 +2806,17 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
             </button>
             {quoteOpen && (
               <div className="flex flex-col gap-2" data-testid="quote-section">
+                <div
+                  data-testid="quote-readiness"
+                  className="text-[11px] rounded border border-amber-700/60 bg-amber-950/30 px-2.5 py-2 text-amber-200"
+                >
+                  <div className="font-semibold">
+                    {quoteReadiness.level === 'review_required' ? 'Review required' : 'Concept only'}
+                  </div>
+                  <div className="mt-0.5 opacity-80">
+                    OpenSCAD render/spec checks do not prove an analytic manufacturing STEP. Quote submission is blocked until that handoff is verified.
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <label className="flex flex-col gap-1 text-[11px] text-gray-400 font-medium">
                     {t.quoteProcessLabel}
@@ -2927,7 +2887,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
                   type="button"
                   data-testid="quote-submit"
                   onClick={() => void requestQuote()}
-                  disabled={quoteBusy}
+                  disabled={quoteBusy || !quoteReadiness.manufacturingAllowed}
                   className="self-start text-xs px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded font-medium"
                 >
                   {quoteBusy ? t.quoteRouteFailed.replace(/failed.*$/i, '...') : t.getQuote}
@@ -2985,7 +2945,7 @@ export default function OpenScadPanel({ onGeometryReady, selectedElement, curren
                 )}
               </div>
             )}
-          </div>
+          </div>)}
 
           {/* ── Reverse engineer (Pro+ collapsible) ── */}
           <div className="flex flex-col gap-2 border-t border-gray-800 pt-3 mt-1">

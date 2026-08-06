@@ -567,6 +567,8 @@ export interface DesignContext {
   estimatedUnitCostUSD: number | null;
   /** Currently selected face or edge (from 3D viewport click), null if none */
   selectedElement?: import('./editing/selectionInfo').ElementSelectionInfo | null;
+  /** Stable semantic target for face/edge/part chat edits. */
+  selectionContext?: import('@/lib/ai/selectionContext').SelectionContext | null;
 }
 
 interface ShapeChatProps {

@@ -36,6 +36,8 @@ export interface FloatingAiPromptProps {
   onOpenFullChat?: () => void;
   /** Optional: disable the prompt (e.g. while WASM loads). */
   disabled?: boolean;
+  /** Undo the last committed AI transaction as one operation. */
+  onUndo?: () => void | Promise<void>;
 }
 
 const STORAGE_KEY = 'nexyfab_floating_ai_open_v1';
@@ -110,7 +112,7 @@ const TEMPLATES: { icon: string; ko: string; en: string; promptKo: string; promp
 ];
 
 export default function FloatingAiPrompt({
-  lang, onSubmit, onImageGenerate, onOpenFullChat, disabled = false,
+  lang, onSubmit, onImageGenerate, onOpenFullChat, disabled = false, onUndo,
 }: FloatingAiPromptProps) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
@@ -330,7 +332,22 @@ export default function FloatingAiPrompt({
             maxHeight: 220, overflowY: 'auto',
           }}
         >
-          {response}
+          <div style={{ whiteSpace: 'pre-wrap' }}>{response}</div>
+          {onUndo && (
+            <button
+              type="button"
+              onClick={async () => {
+                await onUndo();
+                setResponse(ko ? 'AI 변경을 되돌렸습니다.' : 'The AI edit was undone.');
+              }}
+              style={{
+                marginTop: 8, background: 'transparent', border: '1px solid var(--nx-border)',
+                borderRadius: 6, padding: '5px 9px', color: 'var(--nx-text)', cursor: 'pointer',
+              }}
+            >
+              ↶ {ko ? 'AI 변경 되돌리기' : 'Undo AI edit'}
+            </button>
+          )}
         </div>
       )}
 

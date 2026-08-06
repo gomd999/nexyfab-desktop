@@ -173,6 +173,7 @@ describe('FeatureTreeView', () => {
       hole: '⊙',
       fillet: '◜',
       chamfer: '◢',
+      shell: '□',
       rib: '▮',
       sweep_path: '〰',
       boolean: '∪',

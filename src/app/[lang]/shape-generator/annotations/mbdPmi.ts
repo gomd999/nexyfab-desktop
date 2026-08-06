@@ -24,6 +24,11 @@
 
 import type { DatumReferenceFrame } from '../tolerance/datumReferenceFrame';
 import type { GdtCallout } from '../quality/inspectionPlan';
+import type { TopologyRemapResult } from '@/lib/cad/topologyRemap';
+import {
+  propagateTopologyReferences,
+  type ReferenceReviewItem,
+} from '@/lib/cad/topologyReferencePropagation';
 
 export type PmiKind = 'dimension' | 'geometric-tol' | 'surface-finish' | 'note' | 'datum-target';
 
@@ -98,6 +103,7 @@ export type PmiAnnotation =
 /** Per-part collection of PMI. */
 export class PmiCollection {
   private items = new Map<string, PmiAnnotation>();
+  private reviewItems = new Map<string, PmiAnnotation>();
 
   add(pmi: PmiAnnotation): void {
     this.items.set(pmi.id, pmi);
@@ -113,6 +119,20 @@ export class PmiCollection {
 
   list(): PmiAnnotation[] {
     return Array.from(this.items.values());
+  }
+
+  /** PMI quarantined after an ambiguous or broken topology regeneration. */
+  listReview(): PmiAnnotation[] {
+    return Array.from(this.reviewItems.values());
+  }
+
+  /** Return one reviewed annotation to the active collection after relinking. */
+  restoreReviewed(id: string, topoHashes: string[]): boolean {
+    const annotation = this.reviewItems.get(id);
+    if (!annotation || topoHashes.length === 0) return false;
+    this.reviewItems.delete(id);
+    this.items.set(id, { ...annotation, topoHashes });
+    return true;
   }
 
   /** All PMI attached to a specific topology hash. */
@@ -152,6 +172,18 @@ export class PmiCollection {
       if (changed) renamed++;
     }
     return renamed;
+  }
+
+  /**
+   * Apply a complete regeneration report. Safe PMI is renamed in place;
+   * ambiguous/broken PMI is retained in a review quarantine and cannot be
+   * exported or consumed by inspection planning until explicitly restored.
+   */
+  reconcileTopology(remaps: readonly TopologyRemapResult[]): ReferenceReviewItem[] {
+    const propagated = propagateTopologyReferences({ remaps, pmi: this.list() });
+    this.items = new Map(propagated.activePmi.map(annotation => [annotation.id, annotation]));
+    for (const annotation of propagated.reviewPmi) this.reviewItems.set(annotation.id, annotation);
+    return propagated.review;
   }
 }
 

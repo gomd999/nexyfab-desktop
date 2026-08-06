@@ -34,11 +34,15 @@
  *   assembly-ai-source-badge.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   detectAssemblyIntent,
   type AssemblyPlan,
 } from '@/lib/ai/assemblyNlParser';
+import type { AiAssemblyProgram } from '@/lib/ai/aiAssemblyProgram';
+import type { AiGenerationDecision } from '@/lib/ai/aiGenerationPipeline';
+import { refineGenerationSession } from '../ai/generationSessionClient';
+import type { GenerationRunState } from '@/lib/ai/generationRunState';
 
 export type AssemblyAiLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 
@@ -255,6 +259,8 @@ export interface AssemblyAiPanelProps {
   intentFetcher?: AssemblyAiIntentFetcher;
   /** Click handler for the Apply button. Receives the resolved plan. */
   onBuildAssembly: (plan: AssemblyPlan) => void;
+  /** Full product decomposition path for real independent parts and hierarchy. */
+  onBuildProduct?: (program: AiAssemblyProgram) => void;
 }
 
 /**
@@ -269,6 +275,7 @@ type PanelStatus =
   | { kind: 'idle' }
   | { kind: 'detecting' }
   | { kind: 'plan'; plan: Exclude<AssemblyPlan, { kind: 'unparsed' }>; source: 'regex' | 'llm' }
+  | { kind: 'product'; program: AiAssemblyProgram; verification?: AiGenerationDecision; generationStateWarning?: string }
   | { kind: 'not_understood' }
   | { kind: 'error'; message: string };
 
@@ -359,11 +366,24 @@ function summarisePlan(
 export default function AssemblyAiPanel(
   props: AssemblyAiPanelProps,
 ): React.ReactElement {
-  const { lang, intentFetcher, onBuildAssembly } = props;
+  const { lang, intentFetcher, onBuildAssembly, onBuildProduct } = props;
   const d = dict[lang];
 
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<PanelStatus>({ kind: 'idle' });
+  const [checkpoint, setCheckpoint] = useState<{ stage: string; status: string; error?: string } | null>(null);
+
+  useEffect(() => {
+    const stages = ['intent', 'decomposition', 'interfaces', 'part_programs', 'kernel', 'topology', 'assembly_solve', 'motion', 'manufacturing', 'roundtrip', 'release'] as const;
+    const onState = (event: Event) => {
+      const state = (event as CustomEvent<GenerationRunState>).detail;
+      const last = [...stages].reverse().map(stage => state?.stages?.[stage]).find(record => record && record.status !== 'pending' && record.status !== 'not_run');
+      if (last) setCheckpoint({ stage: last.stage, status: last.status });
+    };
+    const onError = (event: Event) => setCheckpoint({ stage: 'evidence', status: 'failed', error: String((event as CustomEvent<unknown>).detail) });
+    window.addEventListener('nexyfab:generation-state', onState); window.addEventListener('nexyfab:generation-state-error', onError);
+    return () => { window.removeEventListener('nexyfab:generation-state', onState); window.removeEventListener('nexyfab:generation-state-error', onError); };
+  }, []);
 
   const trimmed = input.trim();
   const sendDisabled = trimmed.length === 0 || status.kind === 'detecting';
@@ -402,6 +422,28 @@ export default function AssemblyAiPanel(
     }
 
     if (llmResult === null || llmResult.kind === 'unparsed') {
+      try {
+        const refined = await refineGenerationSession(trimmed);
+        if (refined.status === 'ready') {
+          const program = refined.program;
+          let verification: AiGenerationDecision | undefined;
+          try {
+            const verifyRes = await fetch('/api/cad/v1/generation/verify', {
+              method: 'POST', headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                intent: { unresolved: program.unresolved, conflicts: [] },
+                decomposition: { valid: true, independentPartCount: program.parts.length, errors: [] },
+                parts: program.parts.map(part => ({ instanceId: part.instanceId, manufacturingPassed: false, errors: ['Manufacturing verification is pending.'] })),
+              }),
+            });
+            verification = ((await verifyRes.json()) as { decision?: AiGenerationDecision }).decision;
+          } catch { /* concept stays editable if evidence verification is temporarily unavailable */ }
+          setStatus({ kind: 'product', program, verification });
+          return;
+        }
+        setStatus({ kind: 'error', message: refined.reasons.join(' ') || `Refinement stopped at ${refined.stage}.` });
+        return;
+      } catch { /* show the normal not-understood state below */ }
       setStatus({ kind: 'not_understood' });
       return;
     }
@@ -410,12 +452,18 @@ export default function AssemblyAiPanel(
   }, [trimmed, intentFetcher]);
 
   const handleApply = useCallback(() => {
+    if (status.kind === 'product') {
+      onBuildProduct?.(status.program);
+      setInput('');
+      setStatus({ kind: 'idle' });
+      return;
+    }
     if (status.kind !== 'plan') return;
     onBuildAssembly(status.plan);
     // Clear input + preview so the panel is ready for the next prompt.
     setInput('');
     setStatus({ kind: 'idle' });
-  }, [status, onBuildAssembly]);
+  }, [status, onBuildAssembly, onBuildProduct]);
 
   const statusText = useMemo(() => {
     switch (status.kind) {
@@ -430,7 +478,7 @@ export default function AssemblyAiPanel(
     }
   }, [status, d]);
 
-  const applyDisabled = status.kind !== 'plan';
+  const applyDisabled = status.kind !== 'plan' && status.kind !== 'product';
 
   const preview = useMemo(() => {
     if (status.kind !== 'plan') return null;
@@ -509,6 +557,10 @@ export default function AssemblyAiPanel(
           {statusText}
         </div>
       )}
+
+      {checkpoint && <div data-testid="assembly-ai-generation-checkpoint" style={{ fontSize: 11, color: checkpoint.status === 'passed' ? '#166534' : '#b45309' }}>
+        Generation evidence: {checkpoint.stage} · {checkpoint.status}{checkpoint.error ? ` · ${checkpoint.error}` : ''}
+      </div>}
 
       {status.kind === 'plan' && preview !== null && (
         <div
@@ -597,6 +649,28 @@ export default function AssemblyAiPanel(
               marginTop: 4,
             }}
           >
+            {d.apply}
+          </button>
+        </div>
+      )}
+
+      {status.kind === 'product' && (
+        <div data-testid="assembly-ai-product-preview" style={{ padding: 8, background: 'var(--nx-panel-2)', borderRadius: 4 }}>
+          <div style={{ fontWeight: 600 }}>{status.program.name}</div>
+          <div style={{ marginTop: 5, fontSize: 12 }}>
+            {status.program.parts.map(part => (
+              <div key={part.instanceId}>• {status.program.assembly.parts.find(item => item.id === part.instanceId)?.name ?? part.instanceId} — {part.metadata.partNumber}</div>
+            ))}
+          </div>
+          {status.program.structure?.map(sub => <div key={sub.id} style={{ marginTop: 5, fontSize: 11 }}>↳ {sub.name}: {sub.instanceIds.length} parts</div>)}
+          {status.program.unresolved.length > 0 && <div style={{ marginTop: 6, color: '#d97706', fontSize: 11 }}>⚠ {status.program.unresolved.join(', ')}</div>}
+          <div data-testid="assembly-ai-release-status" style={{ marginTop: 6, padding: 6, borderRadius: 4, background: status.verification?.status === 'pass' ? '#dcfce7' : '#fff7ed', color: status.verification?.status === 'pass' ? '#166534' : '#9a3412', fontSize: 11 }}>
+            {status.verification?.status === 'pass' ? `Release ready · ${status.verification.stage}` : `Concept only · next: ${status.verification?.stage ?? 'verification unavailable'}`}
+            {status.verification?.errors[0] ? ` · ${status.verification.errors[0]}` : ''}
+          </div>
+          {status.generationStateWarning && <div data-testid="assembly-ai-generation-state-warning" style={{ marginTop: 5, color: '#b45309', fontSize: 11 }}>⚠ Generation checkpoint unavailable: {status.generationStateWarning}</div>}
+          <button type="button" data-testid="assembly-ai-apply" onClick={handleApply} disabled={!onBuildProduct}
+            style={{ marginTop: 8, padding: '6px 12px', border: '1px solid #059669', background: onBuildProduct ? '#059669' : '#9ca3af', color: '#fff', borderRadius: 4 }}>
             {d.apply}
           </button>
         </div>

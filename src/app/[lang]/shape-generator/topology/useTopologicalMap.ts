@@ -18,7 +18,7 @@
 import { useState, useCallback, useRef } from 'react';
 import type * as THREE from 'three';
 import {
-  buildTopologicalMap,
+  rebuildTopologicalMapWithRemap,
   resolveStableId,
   getStableIdForIndex,
   findFacesByTag,
@@ -26,13 +26,13 @@ import {
   createEmptyTopologicalMap,
   summariseMap,
 } from './TopologicalNaming';
-import type { TopologicalMap, StableFace } from './TopologicalNaming';
+import type { TopologicalMap, StableFace, TopologicalRegenerationReport } from './TopologicalNaming';
 
 export type { TopologicalMap, StableFace };
 
 export type UseTopologicalMapReturn = {
   map: TopologicalMap;
-  update: (geo: import('three').BufferGeometry, originFeatureId?: string) => void;
+  update: (geo: import('three').BufferGeometry, originFeatureId?: string) => TopologicalRegenerationReport;
   resolveId: (stableId: string) => number | null;
   getIdForIndex: (index: number) => string | null;
   facesByTag: (tag: string) => StableFace[];
@@ -48,9 +48,10 @@ export function useTopologicalMap(): UseTopologicalMapReturn {
 
   const update = useCallback((geo: THREE.BufferGeometry, originFeatureId?: string) => {
     const prev = mapRef.current;
-    const next = buildTopologicalMap(geo, prev, originFeatureId);
-    mapRef.current = next;
-    setMap(next);
+    const report = rebuildTopologicalMapWithRemap(geo, prev, originFeatureId);
+    mapRef.current = report.map;
+    setMap(report.map);
+    return report;
   }, []);
 
   const resolveId = useCallback((stableId: string) => {

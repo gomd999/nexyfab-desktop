@@ -3,6 +3,11 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { expectedAnalyticFeatureSignature, validateCadFeatureProgram, type CadFeatureProgram } from '@/lib/ai/cadFeatureProgram';
+import { evaluateManufacturingGates } from '@/lib/ai/manufacturingGates';
+import { compareStepRoundtrip, type BrepMeasurement } from '@/lib/ai/stepRoundtripVerification';
+import { evaluateProgramDfm } from '@/lib/ai/manufacturingContext';
+import { createHash } from 'node:crypto';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -48,14 +53,24 @@ function getReplicad(): Promise<any> {
  * patterns), ribs (fused fins), shells (hollow, open top/bottom), all-edge
  * fillet/chamfer (best-effort).
  */
-interface Feat {
-  id?: string; type?: string; shape?: string;
-  width?: number; depth?: number; height?: number; length?: number; alongY?: boolean;
-  diameter?: number; posX?: number; posY?: number;
-  feature?: string; count?: number; pcd?: number; spacing?: number; axis?: string;
-  radius?: number; distance?: number; wallThickness?: number; openFace?: string;
+const requiredNum = (v: unknown, field: string): number => {
+  if (typeof v !== 'number' || !Number.isFinite(v)) throw new Error(`Missing validated dimension: ${field}`);
+  return v;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function measureBrep(replicad: any, shape: any): BrepMeasurement {
+  const bbox = shape.boundingBox;
+  const solidCount = typeof shape?._listTopo === 'function' ? shape._listTopo('solid').length : 0;
+  return {
+    shapeType: shape?.constructor?.name ?? 'Unknown',
+    isNull: shape?.isNull === true,
+    bbox: { width: bbox.width, height: bbox.height, depth: bbox.depth },
+    volumeMm3: replicad.measureVolume(shape.asShape3D()),
+    faceCount: Array.isArray(shape.faces) ? shape.faces.length : 0,
+    solidCount,
+  };
 }
-const num = (v: unknown, d: number): number => (typeof v === 'number' && isFinite(v) ? v : d);
 
 export async function POST(req: NextRequest) {
   // Building a real B-rep runs OCCT server-side (a few CPU-seconds); this route
@@ -65,7 +80,11 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(`cad-feature-step:${ip}`, 30, 3_600_000).allowed) {
     return NextResponse.json({ error: 'Too many STEP exports — try again shortly.', code: 'RATE_LIMIT' }, { status: 429 });
   }
-  const body = (await req.json().catch(() => ({}))) as { features?: Feat[]; part?: string };
+  const body = (await req.json().catch(() => ({}))) as CadFeatureProgram;
+  const validation = validateCadFeatureProgram(body);
+  if (!validation.ok) {
+    return NextResponse.json({ error: 'invalid feature program', code: 'FEATURE_PROGRAM_INVALID', details: validation.errors }, { status: 422 });
+  }
   const feats = Array.isArray(body.features) ? body.features : [];
   const base = feats.find(f => f.type === 'sketchExtrude');
   if (!base) return NextResponse.json({ error: 'no base feature' }, { status: 400 });
@@ -74,13 +93,13 @@ export async function POST(req: NextRequest) {
     const replicad = await getReplicad();
     const skipped: string[] = [];
 
-    const h = num(base.height, 8);
+    const h = requiredNum(base.height, 'base.height');
     // Base solid (replicad makeBaseBox is centred in X/Y; holes use the same
     // centred coordinates, matching the program's posX/posY).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let solid: any = base.shape === 'circle'
-      ? replicad.makeCylinder(num(base.width, 50) / 2, h)
-      : replicad.makeBaseBox(num(base.width, 100), num(base.depth, 80), h);
+      ? replicad.makeCylinder(requiredNum(base.width, 'base.width') / 2, h)
+      : replicad.makeBaseBox(requiredNum(base.width, 'base.width'), requiredNum(base.depth, 'base.depth'), h);
 
     const cutHole = (dia: number, x: number, y: number) => {
       // Generous through-cut covering either z-centring convention.
@@ -91,20 +110,20 @@ export async function POST(req: NextRequest) {
     for (const f of feats) {
       if (f.type !== 'hole') continue;
       const pat = feats.find(p => (p.type === 'circularPattern' || p.type === 'linearPattern') && p.feature === f.id);
-      const dia = num(f.diameter, 6);
+      const dia = requiredNum(f.diameter, `${f.id}.diameter`);
       if (pat?.type === 'circularPattern') {
-        const cnt = Math.max(2, Math.round(num(pat.count, 4)));
-        const r = num(pat.pcd, 60) / 2;
+        const cnt = requiredNum(pat.count, `${pat.id}.count`);
+        const r = requiredNum(pat.pcd, `${pat.id}.pcd`) / 2;
         for (let i = 0; i < cnt; i++) { const a = (i / cnt) * 2 * Math.PI; cutHole(dia, Math.cos(a) * r, Math.sin(a) * r); }
       } else if (pat?.type === 'linearPattern') {
-        const cnt = Math.max(2, Math.round(num(pat.count, 3)));
-        const sp = num(pat.spacing, 20);
+        const cnt = requiredNum(pat.count, `${pat.id}.count`);
+        const sp = requiredNum(pat.spacing, `${pat.id}.spacing`);
         for (let i = 0; i < cnt; i++) {
           const off = (i - (cnt - 1) / 2) * sp;
-          cutHole(dia, num(f.posX, 0) + (pat.axis === 'y' ? 0 : off), num(f.posY, 0) + (pat.axis === 'y' ? off : 0));
+          cutHole(dia, requiredNum(f.posX, `${f.id}.posX`) + (pat.axis === 'y' ? 0 : off), requiredNum(f.posY, `${f.id}.posY`) + (pat.axis === 'y' ? off : 0));
         }
       } else {
-        cutHole(dia, num(f.posX, 0), num(f.posY, 0));
+        cutHole(dia, requiredNum(f.posX, `${f.id}.posX`), requiredNum(f.posY, `${f.id}.posY`));
       }
     }
 
@@ -114,12 +133,12 @@ export async function POST(req: NextRequest) {
     const shell = feats.find(f => f.type === 'shell');
     if (shell) {
       try {
-        const wt = num(shell.wallThickness, 2);
-        const H = num(base.height, 8);
+        const wt = requiredNum(shell.wallThickness, `${shell.id}.wallThickness`);
+        const H = requiredNum(base.height, 'base.height');
         const zoff = shell.openFace === 'bottom' ? -wt - 20 : wt;
         const inner = base.shape === 'circle'
-          ? replicad.makeCylinder(num(base.width, 50) / 2 - wt, H + 20, [0, 0, zoff], [0, 0, 1])
-          : replicad.makeBaseBox(num(base.width, 100) - 2 * wt, num(base.depth, 80) - 2 * wt, H + 20).translate([0, 0, zoff]);
+          ? replicad.makeCylinder(requiredNum(base.width, 'base.width') / 2 - wt, H + 20, [0, 0, zoff], [0, 0, 1])
+          : replicad.makeBaseBox(requiredNum(base.width, 'base.width') - 2 * wt, requiredNum(base.depth, 'base.depth') - 2 * wt, H + 20).translate([0, 0, zoff]);
         solid = solid.cut(inner);
       } catch { skipped.push('shell'); }
     }
@@ -129,8 +148,8 @@ export async function POST(req: NextRequest) {
     for (const f of feats) {
       if (f.type !== 'rib') continue;
       try {
-        const t = num(f.width, 8), rh = num(f.height, 40), L = num(f.length, num(base.depth, 80));
-        const rib = replicad.makeBaseBox(f.alongY ? t : L, f.alongY ? L : t, rh).translate([num(f.posX, 0), num(f.posY, 0), 0]);
+        const t = requiredNum(f.width, `${f.id}.width`), rh = requiredNum(f.height, `${f.id}.height`), L = requiredNum(f.length, `${f.id}.length`);
+        const rib = replicad.makeBaseBox(f.alongY ? t : L, f.alongY ? L : t, rh).translate([requiredNum(f.posX, `${f.id}.posX`), requiredNum(f.posY, `${f.id}.posY`), 0]);
         solid = solid.fuse(rib);
       } catch { skipped.push('rib'); }
     }
@@ -140,7 +159,7 @@ export async function POST(req: NextRequest) {
     // feasible value and REPORT it, rather than silently dropping the feature.
     // 0.42 (not 0.49): a radius right at half the thickness leaves a degenerate
     // sliver that corrupts the B-rep and fails the STEP export — keep a margin.
-    const maxEdge = Math.max(0.3, Math.min(num(base.height, 8), num(base.width, 100), num(base.depth, 80)) * 0.42);
+    const maxEdge = Math.max(0.3, Math.min(requiredNum(base.height, 'base.height'), requiredNum(base.width, 'base.width'), base.shape === 'circle' ? requiredNum(base.width, 'base.width') : requiredNum(base.depth, 'base.depth')) * 0.42);
     const clamped: string[] = [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const solidBeforeEdges: any = solid; // fall back to this if the edge ops corrupt the B-rep
@@ -151,11 +170,11 @@ export async function POST(req: NextRequest) {
       // edge ops that comfortably fit.
       try {
         if (f.type === 'fillet') {
-          const want = num(f.radius, 3);
+          const want = requiredNum(f.radius, `${f.id}.radius`);
           if (want > maxEdge) { skipped.push(`fillet ${want}mm (max ~${maxEdge.toFixed(1)}mm for this thickness)`); continue; }
           solid = solid.fillet(want); appliedEdgeOp = true;
         } else if (f.type === 'chamfer') {
-          const want = num(f.distance, 1);
+          const want = requiredNum(f.distance, `${f.id}.distance`);
           if (want > maxEdge) { skipped.push(`chamfer ${want}mm (max ~${maxEdge.toFixed(1)}mm)`); continue; }
           solid = solid.chamfer(want); appliedEdgeOp = true;
         }
@@ -165,11 +184,14 @@ export async function POST(req: NextRequest) {
     // Edge ops can silently produce a B-rep that won't export (degenerate blends).
     // If blobSTEP throws, re-export WITHOUT the edge ops so the part still ships.
     let step: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let exportedSolid: any = solid;
     try {
       step = await solid.blobSTEP().text();
     } catch {
       if (!appliedEdgeOp) throw new Error('STEP export failed');
       step = await solidBeforeEdges.blobSTEP().text();
+      exportedSolid = solidBeforeEdges;
       skipped.push('fillet/chamfer (export-incompatible)');
     }
     // A degenerate program (e.g. a hole wider than the body) can cut everything
@@ -178,6 +200,78 @@ export async function POST(req: NextRequest) {
     if (!step.includes('MANIFOLD_SOLID_BREP') || !step.includes('ADVANCED_FACE')) {
       return NextResponse.json({ error: 'empty solid', code: 'DEGENERATE' }, { status: 422 });
     }
+    const before = measureBrep(replicad, exportedSolid);
+    const imported = await replicad.importSTEP(new Blob([step], { type: 'application/step' }));
+    const after = measureBrep(replicad, imported);
+    const roundtrip = compareStepRoundtrip(before, after);
+    const expected = base.shape === 'circle'
+      ? { width: requiredNum(base.width, 'base.width'), height: requiredNum(base.width, 'base.width'), depth: h }
+      : { width: requiredNum(base.width, 'base.width'), height: requiredNum(base.depth, 'base.depth'), depth: h };
+    const baseDimErrors = [
+      Math.abs(before.bbox.width - expected.width),
+      Math.abs(before.bbox.height - expected.height),
+      Math.abs(before.bbox.depth - expected.depth),
+    ];
+    const maxBaseDimError = Math.max(...baseDimErrors);
+    const featureExpectation = expectedAnalyticFeatureSignature(body);
+    const actualCylinderFaces = exportedSolid.faces.filter((face: { geomType: string }) => face.geomType === 'CYLINDRE').length;
+    const featureMismatches: string[] = [];
+    if (actualCylinderFaces !== featureExpectation.expectedCylinderFaces) {
+      featureMismatches.push(`Expected ${featureExpectation.expectedCylinderFaces} cylindrical faces, found ${actualCylinderFaces}.`);
+    }
+    if (featureExpectation.unsupportedFeatureIds.length > 0) {
+      featureMismatches.push(`Feature recognition not implemented for: ${featureExpectation.unsupportedFeatureIds.join(', ')}.`);
+    }
+    const requestedFeatureCount = 1 + featureExpectation.expectedThroughHoles + featureExpectation.unsupportedFeatureIds.length;
+    const verifiedFeatureCount = 1
+      + (actualCylinderFaces === featureExpectation.expectedCylinderFaces ? featureExpectation.expectedThroughHoles : 0);
+    const artifactId = `sha256:${createHash('sha256').update(step).digest('hex')}`;
+    const gateReport = evaluateManufacturingGates({
+      provenance: body.verificationContext ? {
+        traceable: true,
+        privacyCompliant: body.verificationContext.privacyCompliant,
+        refs: [body.verificationContext.inputRef],
+      } : undefined,
+      intent: body.verificationContext ? {
+        resolved: body.verificationContext.intentResolved,
+        unresolved: body.verificationContext.intentResolved ? [] : ['Design intent is not resolved.'],
+        conflicts: [],
+      } : undefined,
+      program: { valid: true, errors: [] },
+      kernel: { built: true, analytic: true, engine: 'replicad/OCCT', errors: [] },
+      topology: {
+        closed: before.solidCount === 1 && !before.isNull,
+        manifold: before.solidCount === 1 && !before.isNull,
+        solidCount: before.solidCount,
+        errors: [],
+      },
+      dimensions: {
+        checked: 3,
+        maxErrorMm: maxBaseDimError,
+        toleranceMm: 0.05,
+        mismatches: maxBaseDimError <= 0.05 ? [] : [`Base bounding box differs by ${maxBaseDimError}mm.`],
+      },
+      features: {
+        requested: requestedFeatureCount,
+        verified: verifiedFeatureCount,
+        skipped,
+        mismatches: featureMismatches,
+      },
+      dfm: evaluateProgramDfm(body, body.verificationContext),
+      stepRoundtrip: {
+        reimported: true,
+        topologyMatched: roundtrip.topologyMatched,
+        dimensionsMatched: roundtrip.dimensionsMatched,
+        errors: roundtrip.errors,
+      },
+      release: {
+        artifactId,
+        exactArtifactVerified: roundtrip.passed,
+        authorized: false,
+        reasons: [],
+      },
+    });
+    const encodedGateReport = Buffer.from(JSON.stringify(gateReport), 'utf8').toString('base64url');
     return new NextResponse(step, {
       status: 200,
       headers: {
@@ -185,6 +279,8 @@ export async function POST(req: NextRequest) {
         'Content-Disposition': `attachment; filename="${(body.part ?? 'nexyfab-part').replace(/[^\w.-]/g, '_')}.step"`,
         'X-Skipped': skipped.join(',') || 'none',
         'X-Clamped': clamped.join('; ') || 'none',
+        'X-Manufacturing-Gates': encodedGateReport,
+        'X-Artifact-Id': artifactId,
       },
     });
   } catch (e) {

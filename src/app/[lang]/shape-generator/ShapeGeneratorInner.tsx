@@ -129,6 +129,7 @@ import FirstTimeOnboardingShell from './onboarding/FirstTimeOnboardingShell';
 import type { SampleTemplate } from './templates/sampleTemplates';
 import AiAssistantShell from './ai/AiAssistantShell';
 import { resolveFeatureEditPrompt } from './ai/featureEditFromPrompt';
+import { modelContentRevision, selectionContextFromElement } from '@/lib/ai/selectionContext';
 import { useIPShareFlow } from './hooks/useIPShareFlow';
 import { useShapeGeneratorUI } from './hooks/useShapeGeneratorUI';
 const QuoteWizard = dynamic(() => import('./onboarding/QuoteWizard'), { ssr: false });
@@ -2922,6 +2923,12 @@ export function ShapeGeneratorInner() {
     () => features.filter(f => f.enabled).map(f => ({ type: f.type, params: { ...f.params } })),
     [features],
   );
+  const aiModelRevision = useMemo(() => modelContentRevision({
+    shapeId: selectedId,
+    params,
+    features: features.map(f => ({ id: f.id, type: f.type, params: f.params, enabled: f.enabled })),
+    sketch: { segments: sketchProfile.segments, closed: sketchProfile.closed },
+  }), [selectedId, params, features, sketchProfile.segments, sketchProfile.closed]);
   // ── 채팅 히스토리 (저장/복원용) ──────────────────────────────────────────
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const buildAutoSaveState = useCallback((): AutoSaveState => ({
@@ -4415,7 +4422,44 @@ export function ShapeGeneratorInner() {
     const geo = effectiveResult?.geometry;
     if (!geo) return;
     const activeFeatureId = features.length > 0 ? features[features.length - 1].id : undefined;
-    topoMap.update(geo, activeFeatureId);
+    const report = topoMap.update(geo, activeFeatureId);
+    if (report.remaps.length === 0) return;
+
+    const current = useSelectionStore.getState().selectedElement;
+    if (!current || current.type === 'edge') return;
+    const byPrevious = new Map(report.remaps.map(remap => [remap.previousRef, remap]));
+    const selectedFaces = current.type === 'face' ? [current] : current.faces;
+    const selectedRemaps = selectedFaces
+      .map(face => face.persistentId ? byPrevious.get(face.persistentId) : undefined)
+      .filter((remap): remap is NonNullable<typeof remap> => remap !== undefined);
+    if (selectedRemaps.some(remap => remap.quality === 'ambiguous' || remap.quality === 'broken')) {
+      useSelectionStore.getState().setSelectedElement(null);
+      addToast(
+        'error',
+        lang === 'ko'
+          ? '형상 재생성 후 선택한 면 참조가 끊겨 선택을 해제했습니다. 면을 다시 선택해 주세요.'
+          : 'The selected face reference was lost after regeneration. Please select the face again.',
+      );
+      return;
+    }
+
+    const rename = new Map(
+      selectedRemaps
+        .filter(remap => remap.mappedRef && remap.mappedRef !== remap.previousRef)
+        .map(remap => [remap.previousRef, remap.mappedRef!]),
+    );
+    if (rename.size === 0) return;
+    useSelectionStore.getState().setSelectedElement(
+      current.type === 'face'
+        ? { ...current, persistentId: current.persistentId ? rename.get(current.persistentId) ?? current.persistentId : undefined }
+        : {
+            ...current,
+            faces: current.faces.map(face => ({
+              ...face,
+              persistentId: face.persistentId ? rename.get(face.persistentId) ?? face.persistentId : undefined,
+            })),
+          },
+    );
   }, [effectiveResult?.geometry]);
 
   // ── G3: RefRelink 배선 — 리빌드 상실(reference.lost) 수집 → 패널 → 적용 ──
@@ -5158,8 +5202,16 @@ export function ShapeGeneratorInner() {
       feaSafetyFactor: feaResult?.safetyFactor ?? null,
       massG,
       estimatedUnitCostUSD: estimatedUnitCostUSD !== null ? Math.round(estimatedUnitCostUSD * 100) / 100 : null,
-      selectedElement };
-  }, [selectedId, params, enabledFeaturesForContext, isSketchMode, sketchResult, effectiveResult, dfmResults, feaResult, materialId, geometryMetrics, selectedElement]);
+      selectedElement,
+      selectionContext: selectionContextFromElement(selectedElement, {
+        projectRevision: aiModelRevision,
+        assemblyPath: highlightedPartId ? ['main', highlightedPartId] : ['main'],
+        partInstanceId: highlightedPartId ?? undefined,
+        bodyId: selectedId ?? undefined,
+        featureId: selectedFeatureId ?? undefined,
+      }),
+    };
+  }, [selectedId, params, enabledFeaturesForContext, isSketchMode, sketchResult, effectiveResult, dfmResults, feaResult, materialId, geometryMetrics, selectedElement, aiModelRevision, highlightedPartId, selectedFeatureId]);
 
   // Param-level DFM warnings: used by LeftPanel to show inline badges on sliders
   const dfmParamWarnings = useMemo(
@@ -11842,8 +11894,41 @@ export function ShapeGeneratorInner() {
           resolveFeatureEditPrompt(prompt, features, undefined, {
             selection: useSelectionStore.getState().selectedElement,
             baseShape: selectedId,
+            projectRevision: aiModelRevision,
+            assemblyPath: highlightedPartId ? ['main', highlightedPartId] : ['main'],
+            partInstanceId: highlightedPartId ?? undefined,
+            bodyId: selectedId ?? undefined,
+            featureId: selectedFeatureId ?? undefined,
           })
         }
+        getCurrentRevision={() => modelContentRevision({
+          shapeId: selectedId,
+          params,
+          features: features.map(f => ({ id: f.id, type: f.type, params: f.params, enabled: f.enabled })),
+          sketch: { segments: sketchProfile.segments, closed: sketchProfile.closed },
+        })}
+        captureEditSnapshot={() => ({
+          selectedId,
+          params: { ...params },
+          history: {
+            nodes: featureHistory.nodes.map(node => structuredClone(node)),
+            rootId: featureHistory.rootId,
+            activeNodeId: featureHistory.activeNodeId,
+          },
+          placedParts: structuredClone(placedParts),
+        })}
+        restoreEditSnapshot={(rawSnapshot) => {
+          const snapshot = rawSnapshot as {
+            selectedId: string | null;
+            params: Record<string, number>;
+            history: { nodes: typeof featureHistory.nodes; rootId: string; activeNodeId: string };
+            placedParts: typeof placedParts;
+          };
+          if (snapshot.selectedId) setSelectedId(snapshot.selectedId);
+          setParams(snapshot.params);
+          replaceHistory(snapshot.history.nodes, snapshot.history.rootId, snapshot.history.activeNodeId);
+          setPlacedParts(snapshot.placedParts);
+        }}
       />
 
       {/* ═══ AI Process Router Panel ═══ */}

@@ -588,38 +588,6 @@ function QuickQuotePageInner() {
             }
         }
 
-        // B2 — SCAD agent → quote bridge. The agent stashed STEP under
-        // a token; pull it down and feed through the same handler the
-        // file-picker uses. One-shot: the endpoint deletes the entry on
-        // read, so navigating back to the URL won't re-fetch.
-        const stepToken = searchParams.get('stepToken');
-        if (stepToken) {
-            (async () => {
-                try {
-                    const res = await fetch(`/api/nexyfab/scad-agent/export-to-quote?token=${encodeURIComponent(stepToken)}`);
-                    if (!res.ok) return;
-                    const blob = await res.blob();
-                    const file = new File([blob], 'agent-export.step', { type: 'application/step' });
-                    handleFileSelect([file]);
-                } catch { /* fail silent — user can drag the file manually */ }
-            })();
-        }
-
-        if (from === 'studio') {
-            // Design → quote handoff: Studio stashed the rendered STL in
-            // sessionStorage. Feed it through the same file handler as a manual
-            // upload (extracts volume / surface / dimensions). One-shot.
-            try {
-                const stl = sessionStorage.getItem('nexyfab:studio-quote-stl');
-                sessionStorage.removeItem('nexyfab:studio-quote-stl');
-                if (stl) {
-                    const bytes = Uint8Array.from(atob(stl), ch => ch.charCodeAt(0));
-                    const file = new File([bytes], 'studio-design.stl', { type: 'model/stl' });
-                    handleFileSelect([file]);
-                }
-            } catch { /* fail silent — user can upload manually */ }
-        }
-
         if (from === 'shape-cart') {
             // Load cart from localStorage
             try {

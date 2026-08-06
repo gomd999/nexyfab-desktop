@@ -22,7 +22,11 @@ export interface ProgramFeature {
   // fillet / chamfer / shell
   radius?: number; distance?: number; where?: string; wallThickness?: number; openFace?: string;
 }
-export interface FeatureProgram { part?: string; features: ProgramFeature[] }
+export interface FeatureProgram {
+  part?: string;
+  features: ProgramFeature[];
+  verificationContext?: ManufacturingVerificationContext;
+}
 
 const n = (v: unknown, d = 0): number => (typeof v === 'number' && isFinite(v) ? v : d);
 
@@ -155,3 +159,4 @@ export function emitScadFromProgram(program: FeatureProgram): string {
 
   return `include <BOSL2/std.scad>\n\n${params.join('\n')}\n\n${body.join('\n')}\n`;
 }
+import type { ManufacturingVerificationContext } from '@/lib/ai/manufacturingContext';

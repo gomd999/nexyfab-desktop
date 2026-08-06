@@ -92,6 +92,13 @@ describe('checkSweep', () => {
     });
     expect(r.clear).toBe(true);
   });
+  it('detects a thin obstacle between frames without sampling tunnelling', () => {
+    const angle = 12.345 * Math.PI / 180; const x = 10 * Math.cos(angle); const y = 10 * Math.sin(angle);
+    const obstacle: Polygon = [{ x: x - 0.001, y: y - 0.02 }, { x: x + 0.001, y: y - 0.02 }, { x: x + 0.001, y: y + 0.02 }, { x: x - 0.001, y: y + 0.02 }];
+    const r = checkSweep({ pivot: { x: 0, y: 0 }, sweptPoints: [{ x: 10, y: 0 }], startAngleDeg: 0, endAngleDeg: 90, obstacles: [{ id: 'thin', polygon: obstacle }], arcSamples: 8 });
+    expect(r.clear).toBe(false);
+    expect(r.firstCollisionAngleDeg).toBeCloseTo(12.34, 1);
+  });
 });
 
 describe('maxSafeAngleDeg', () => {

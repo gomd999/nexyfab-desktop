@@ -35,12 +35,17 @@
  * cleanup / selection-state machinery without hitting WebGLRenderer.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { AssemblyState, PartInstance } from '@/lib/assembly/assemblyState';
 import type { FeatureTree, FeatureNode } from '@/lib/cad/featureTree';
 import type { ExtrudeFeature } from '@/lib/cad/extrudeProfile';
+import { classifyViewportTopologyPick, type ViewportPickMode } from '@/lib/assembly/viewportTopologyPick';
+import { classifyFeatureTopologyPick } from '@/lib/assembly/featureTopologyPick';
+import type { ToolbarSelectionRef } from './MateConstraintsToolbar';
+import { buildTopologicalMap, type TopologicalMap } from '../topology/TopologicalNaming';
+import { pickStableMeshFace } from '@/lib/cad/meshTopologyPick';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -71,6 +76,7 @@ const BACKGROUND = '#f9fafb'; // tailwind gray-50
 // ─── default fallback geometry ───────────────────────────────────────────
 
 const DEFAULT_SIZE = 30;
+const meshBytesCache = new Map<string, Promise<ArrayBuffer | null>>();
 
 interface Bbox3 {
   sx: number;
@@ -123,6 +129,38 @@ export function bboxFromFeatureTree(tree: FeatureTree | undefined): Bbox3 | null
   return null;
 }
 
+/** Execute the base extrude as a real polygonal solid for the assembly view. */
+export function geometryFromFeatureTree(
+  tree: FeatureTree | undefined,
+): { geometry: THREE.BufferGeometry; offset: { cx: number; cy: number; cz: number }; exact: boolean } {
+  const bbox = bboxFromFeatureTree(tree);
+  const node = tree?.nodes.find(item => item.payload.kind === 'extrude');
+  if (node) {
+    const extrude = node.payload as ExtrudeFeature;
+    if (extrude.loop.length >= 3 && Number.isFinite(extrude.depth) && extrude.depth > 0) {
+      try {
+        const shape = new THREE.Shape();
+        shape.moveTo(extrude.loop[0]!.x, extrude.loop[0]!.y);
+        for (let index = 1; index < extrude.loop.length; index += 1) {
+          shape.lineTo(extrude.loop[index]!.x, extrude.loop[index]!.y);
+        }
+        shape.closePath();
+        const geometry = new THREE.ExtrudeGeometry(shape, { depth: extrude.depth, bevelEnabled: false, steps: 1 });
+        geometry.computeVertexNormals();
+        return { geometry, offset: { cx: 0, cy: 0, cz: 0 }, exact: true };
+      } catch { /* test mocks may not expose Shape/ExtrudeGeometry */ }
+    }
+  }
+  const sx = bbox?.sx ?? DEFAULT_SIZE;
+  const sy = bbox?.sy ?? DEFAULT_SIZE;
+  const sz = bbox?.sz ?? DEFAULT_SIZE;
+  return {
+    geometry: new THREE.BoxGeometry(sx, sy, sz),
+    offset: { cx: bbox?.cx ?? 0, cy: bbox?.cy ?? 0, cz: bbox?.cz ?? 0 },
+    exact: false,
+  };
+}
+
 // ─── component ───────────────────────────────────────────────────────────
 
 export interface Assembly3DViewerProps {
@@ -132,12 +170,16 @@ export interface Assembly3DViewerProps {
   /** Highlight a specific part (selected from the parts list). */
   selectedPartId?: string;
   /** Click handler — fires with the picked part's id. */
-  onSelectPart?: (partId: string) => void;
+  onSelectPart?: (partId: string, options?: { additive: boolean }) => void;
+  pickMode?: ViewportPickMode;
+  onSelectReference?: (reference: ToolbarSelectionRef) => void;
   /** Canvas dimensions. Default 480×320 to fit a side panel. */
   width?: number;
   height?: number;
   /** Locale for the axis legend. */
   lang?: Assembly3DViewerLang;
+  /** Publishes the live Three viewport so external editing overlays can attach. */
+  onViewportReady?: (viewport: { scene: THREE.Scene; camera: THREE.Camera; domElement: HTMLElement } | null) => void;
 }
 
 /**
@@ -153,9 +195,12 @@ export default function Assembly3DViewer({
   featureTrees,
   selectedPartId,
   onSelectPart,
+  pickMode = 'part',
+  onSelectReference,
   width = 480,
   height = 320,
   lang = 'en',
+  onViewportReady,
 }: Assembly3DViewerProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -166,12 +211,62 @@ export default function Assembly3DViewer({
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const meshesRef = useRef<Map<string, THREE.Mesh>>(new Map());
+  const topologyMapsRef = useRef<Map<string,TopologicalMap>>(new Map());
   const onSelectRef = useRef<typeof onSelectPart>(onSelectPart);
+  const onSelectReferenceRef = useRef(onSelectReference);
+  const [tessellated, setTessellated] = useState<Record<string, THREE.BufferGeometry>>({});
+  const onViewportReadyRef = useRef(onViewportReady);
+  const treeSignature = useMemo(() => JSON.stringify(featureTrees ?? {}), [featureTrees]);
+
+  // Full-stack replay: complex trees are rendered once on the server and
+  // replace the immediate base-extrude preview when their STL is ready.
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    const entries = Object.entries(featureTrees ?? {}).filter(([, tree]) =>
+      tree.nodes.length > 1 || tree.nodes[0]?.payload.kind !== 'extrude');
+    if (entries.length === 0) {
+      setTessellated({});
+      return () => controller.abort();
+    }
+    void Promise.all(entries.map(async ([partId, tree]) => {
+      const key = JSON.stringify(tree);
+      let pending = meshBytesCache.get(key);
+      if (!pending) {
+        pending = fetch('/api/feature-tree-mesh', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ tree }), signal: controller.signal,
+        }).then(async response => {
+          if (!response.ok) return null;
+          const data = (await response.json()) as { ok?: boolean; stl?: string };
+          return data.ok && data.stl ? base64ToArrayBuffer(data.stl) : null;
+        }).catch(() => null);
+        meshBytesCache.set(key, pending);
+      }
+      const bytes = await pending;
+      if (!bytes || !active) return null;
+      const { STLLoader } = await import('three/examples/jsm/loaders/STLLoader.js');
+      const geometry = new STLLoader().parse(bytes);
+      geometry.computeVertexNormals();
+      return [partId, geometry] as const;
+    })).then(results => {
+      if (!active) return;
+      const next: Record<string, THREE.BufferGeometry> = {};
+      for (const result of results) if (result) next[result[0]] = result[1];
+      setTessellated(previous => {
+        for (const geometry of Object.values(previous)) geometry.dispose();
+        return next;
+      });
+    });
+    return () => { active = false; controller.abort(); };
+  }, [treeSignature, featureTrees]);
 
   // Keep the click handler ref in sync without re-running the mount effect.
   useEffect(() => {
     onSelectRef.current = onSelectPart;
   }, [onSelectPart]);
+  useEffect(() => { onViewportReadyRef.current = onViewportReady; }, [onViewportReady]);
+  useEffect(() => { onSelectReferenceRef.current = onSelectReference; }, [onSelectReference]);
 
   // Stable copy of axis labels for the DOM legend (no re-render churn).
   const labels = useMemo(() => axisDict[lang] ?? axisDict.en, [lang]);
@@ -211,6 +306,7 @@ export default function Assembly3DViewer({
       console.warn('Assembly3DViewer: WebGLRenderer init failed (likely jsdom)', err);
     }
     rendererRef.current = renderer;
+    if (renderer?.domElement) onViewportReadyRef.current?.({ scene, camera, domElement: renderer.domElement });
 
     // Lights — single ambient + key directional. Plenty for box geometry.
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
@@ -300,7 +396,8 @@ export default function Assembly3DViewer({
         if (dom && dom.parentNode === container) {
           container.removeChild(dom);
         }
-        rendererRef.current = null;
+      rendererRef.current = null;
+      onViewportReadyRef.current?.(null);
       }
       sceneRef.current = null;
       cameraRef.current = null;
@@ -335,18 +432,25 @@ export default function Assembly3DViewer({
       const existing = meshes.get(part.id);
       const tree = featureTrees?.[part.id];
       const bbox = bboxFromFeatureTree(tree);
-      const sx = bbox?.sx ?? DEFAULT_SIZE;
-      const sy = bbox?.sy ?? DEFAULT_SIZE;
-      const sz = bbox?.sz ?? DEFAULT_SIZE;
-      const cx = bbox?.cx ?? 0;
-      const cy = bbox?.cy ?? 0;
-      const cz = bbox?.cz ?? 0;
+      let built: ReturnType<typeof geometryFromFeatureTree>;
+      try {
+        const finalGeometry = tessellated[part.id];
+        built = finalGeometry
+          ? { geometry: finalGeometry.clone(), offset: { cx: 0, cy: 0, cz: 0 }, exact: true }
+          : geometryFromFeatureTree(tree);
+      } catch {
+        built = {
+          geometry: { dispose: () => {} } as unknown as THREE.BufferGeometry,
+          offset: { cx: bbox?.cx ?? 0, cy: bbox?.cy ?? 0, cz: bbox?.cz ?? 0 },
+          exact: false,
+        };
+      }
 
       let mesh = existing;
       if (!mesh) {
         let geometry: THREE.BufferGeometry;
         try {
-          geometry = new THREE.BoxGeometry(sx, sy, sz);
+          geometry = built.geometry;
         } catch {
           // Mock geometry path — create a plain object that satisfies the
           // dispose() contract so cleanup doesn't blow up.
@@ -377,6 +481,7 @@ export default function Assembly3DViewer({
         }
         const ud: PartMeshUserData = { partId: part.id };
         mesh.userData = ud;
+        mesh.name = `part-mesh-${part.id}`;
         try {
           scene.add?.(mesh);
         } catch {
@@ -389,7 +494,7 @@ export default function Assembly3DViewer({
         // for Phase 1; OCCT path will incrementalize this.
         try {
           mesh.geometry?.dispose?.();
-          mesh.geometry = new THREE.BoxGeometry(sx, sy, sz);
+          mesh.geometry = built.geometry;
         } catch {
           /* ignore mock failure */
         }
@@ -398,12 +503,13 @@ export default function Assembly3DViewer({
       // Apply placement = position + quaternion. Also pre-offset by the
       // bbox center so the box hugs the part origin instead of dangling
       // in the +Z corner.
-      applyPlacement(mesh, part, { cx, cy, cz });
+      applyPlacement(mesh, part, built.offset);
+      try{const previous=topologyMapsRef.current.get(part.id);topologyMapsRef.current.set(part.id,buildTopologicalMap(mesh.geometry,previous,tree?.nodes.at(-1)?.id??part.partTemplateId));}catch{/* mock geometry has no attributes */}
 
       // Apply selection colour.
       applySelectionColor(mesh, part.id === selectedPartId);
     }
-  }, [state, featureTrees, selectedPartId]);
+  }, [state, featureTrees, selectedPartId, tessellated]);
 
   // Selection-only re-paint (cheap, skips geometry rebuild) — also runs
   // for free above; this duplicate effect lets a parent toggle highlight
@@ -454,7 +560,7 @@ export default function Assembly3DViewer({
 
       // Intersect against the per-part meshes only (skip helpers / lights).
       const targets = Array.from(meshesRef.current.values());
-      let hits: Array<{ object: THREE.Object3D }> = [];
+      let hits: Array<{ object: THREE.Object3D; point?:THREE.Vector3; face?:{normal:THREE.Vector3}; faceIndex?:number }> = [];
       try {
         hits = raycaster.intersectObjects(targets, false) as Array<{ object: THREE.Object3D }>;
       } catch {
@@ -462,9 +568,17 @@ export default function Assembly3DViewer({
       }
       if (hits.length === 0) return;
       const ud = hits[0]?.object?.userData as PartMeshUserData | undefined;
-      if (ud?.partId) callback(ud.partId);
+      if (ud?.partId) {
+        if(pickMode!=='part'&&onSelectReferenceRef.current){
+          const hit=hits[0],mesh=hit?.object as THREE.Mesh;
+          try{mesh.geometry.computeBoundingBox();const box=mesh.geometry.boundingBox;if(box&&hit?.point&&hit.face){const localPoint=mesh.worldToLocal(hit.point.clone());const semantic=classifyFeatureTopologyPick(featureTrees?.[ud.partId],localPoint,pickMode);const boundary=semantic??classifyViewportTopologyPick(pickMode,localPoint,hit.face.normal,box);if(boundary){onSelectReferenceRef.current({partId:ud.partId,...boundary});return;}if(pickMode==='face'&&Number.isInteger(hit.faceIndex)){const map=topologyMapsRef.current.get(ud.partId),stable=map&&pickStableMeshFace(mesh.geometry,hit.faceIndex!,map);if(stable){onSelectReferenceRef.current({partId:ud.partId,refId:`mesh-face:${stable.stableId}`,refKind:'face'});return;}}}}catch{/* unsupported mock or non-pickable geometry */}
+          return;
+        }
+        const additive = e.ctrlKey || e.metaKey || e.shiftKey;
+        if (additive) callback(ud.partId, { additive: true }); else callback(ud.partId);
+      }
     },
-    [width, height],
+    [width, height, pickMode, featureTrees],
   );
 
   return (
@@ -549,6 +663,13 @@ function applySelectionColor(mesh: THREE.Mesh, selected: boolean): void {
     // Mock path — stash for test inspection.
     (mat as unknown as { _color: string })._color = hex;
   }
+}
+
+function base64ToArrayBuffer(value: string): ArrayBuffer {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes.buffer;
 }
 
 /** Re-export the helper used in tests. */

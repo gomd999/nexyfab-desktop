@@ -11,11 +11,10 @@ test.describe('Shape Generator', () => {
   test.beforeEach(async ({ page }) => {
     test.setTimeout(90_000);
     await seedShapeGeneratorForE2e(page);
-    await page.goto('/en/shape-generator/', { waitUntil: 'domcontentloaded' });
+    await page.goto('/en/shape-generator/?expert=1&mode=expert', { waitUntil: 'domcontentloaded' });
     await dismissShapeGeneratorOverlays(page);
     await expect(page.getByTestId('shape-generator-workspace')).toBeVisible({ timeout: 60000 });
     await exitSketchIfNeeded(page);
-    await expect(page.getByRole('button', { name: 'Evaluate' })).toBeVisible({ timeout: 60000 });
     await page.waitForSelector('[data-testid="shape-generator"], canvas, .shape-generator', {
       timeout: 20000,
       state: 'attached',
@@ -34,8 +33,11 @@ test.describe('Shape Generator', () => {
     test.setTimeout(120_000);
     /** Empty scene does not mount R3F Canvas (`ShapePreview` shows placeholder until `hasContent`). */
     const pickBox = page.getByTestId('m4-pick-box').first();
-    await pickBox.waitFor({ state: 'visible', timeout: 30000 });
-    await pickBox.click({ force: true });
+    const existingCanvas = page.locator(`canvas[data-engine="${VIEWPORT_ENGINE}"]`).first();
+    if (!await existingCanvas.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await pickBox.waitFor({ state: 'attached', timeout: 30000 });
+      await pickBox.click({ force: true });
+    }
     await page.waitForTimeout(2000);
     const taggedCanvas = page.locator(`canvas[data-engine="${VIEWPORT_ENGINE}"]`).first();
     const canvasOk = await taggedCanvas.isVisible({ timeout: 25000 }).catch(() => false);

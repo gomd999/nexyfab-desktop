@@ -12,10 +12,15 @@ test.describe('CAD workspace switcher', () => {
     test.setTimeout(120_000);
     const errors: string[] = [];
     page.on('console', (m) => {
-      if (m.type() === 'error' && !/favicon|401|403|gtag|cookie|hydrat|418|requestStorage|ResizeObserver/i.test(m.text())) errors.push(m.text());
+      if (m.type() === 'error' && !/favicon|401|403|status of 400|gtag|cookie|hydrat|418|requestStorage|ResizeObserver|posthog\.com/i.test(m.text())) errors.push(m.text());
+    });
+    page.on('response', response => {
+      if (response.status() >= 400 && !/favicon|recaptcha|google-analytics|posthog|\/api\/auth\/(?:session|refresh)|\/api\/nexyfab\/notifications/i.test(response.url())) {
+        errors.push(`HTTP ${response.status()} ${response.url()}`);
+      }
     });
 
-    await page.goto('/en/shape-generator?mode=expert', { waitUntil: 'domcontentloaded' });
+    await page.goto('/en/shape-generator?expert=1&mode=expert', { waitUntil: 'domcontentloaded' });
     // The modeler boots its WASM/scene asynchronously; wait for the workspace select.
     const sel = page.locator('select').filter({ has: page.locator('option[value="drawing"]') }).first();
     await expect(sel).toHaveCount(1, { timeout: 60_000 });

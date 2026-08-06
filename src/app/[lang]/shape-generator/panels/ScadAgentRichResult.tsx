@@ -282,7 +282,6 @@ export function RichResult({ toolName, output, meta, ok, onShowBrepHandle }: Ric
           {typeof meta?.bytes === 'number' && (
             <span style={S.metric}>{(meta.bytes / 1024).toFixed(1)} KB</span>
           )}
-          {meta?.handle && <QuoteFromBrepButton handle={meta.handle} />}
         </div>
       } />;
 
@@ -444,65 +443,6 @@ export function RichResult({ toolName, output, meta, ok, onShowBrepHandle }: Ric
       return <Card tone="default" body={output} />;
   }
 }
-
-// ─── B2 — "Get a quote" button after STEP export ───────────────────────────
-//
-// Stashes the agent's STEP output into the export-to-quote endpoint
-// (returns a one-shot token), then opens /quick-quote with the token
-// pre-filled so the user lands directly on AI cost analysis.
-
-function QuoteFromBrepButton({ handle }: { handle: string }) {
-  const [busy, setBusy] = React.useState(false);
-  const [err, setErr] = React.useState<string | null>(null);
-
-  const onClick = React.useCallback(async () => {
-    if (busy) return;
-    setBusy(true); setErr(null);
-    try {
-      const res = await fetch('/api/nexyfab/scad-agent/export-to-quote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ handle }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error ?? `HTTP ${res.status}`);
-      }
-      const data = await res.json() as { ok: boolean; token: string };
-      // Open in a new tab so the agent panel state survives.
-      const lang = (typeof document !== 'undefined' && document.documentElement.lang)
-        || (typeof location !== 'undefined' && location.pathname.split('/')[1])
-        || 'ko';
-      window.open(`/${lang}/quick-quote?stepToken=${encodeURIComponent(data.token)}`, '_blank');
-    } catch (e) {
-      setErr((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }, [busy, handle]);
-
-  return (
-    <>
-      <button onClick={onClick} disabled={busy} style={quoteBtnStyle} title="Open in NexyFab quote flow">
-        {busy ? '⏳' : '💰 견적'}
-      </button>
-      {err && <span style={{ fontSize: 9, color: '#ffa198' }}>{err}</span>}
-    </>
-  );
-}
-
-const quoteBtnStyle: React.CSSProperties = {
-  marginLeft: 'auto',
-  padding: '2px 8px',
-  fontSize: 10,
-  fontFamily: 'inherit',
-  borderRadius: 4,
-  border: '1px solid var(--nx-warn)',
-  background: 'transparent',
-  color: '#f0b34c',
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-};
 
 // ─── W6 — "Show in canvas" button for B-rep handles ───────────────────────
 //

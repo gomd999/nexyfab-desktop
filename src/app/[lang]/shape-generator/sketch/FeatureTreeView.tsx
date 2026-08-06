@@ -131,6 +131,7 @@ const KIND_ICON: Record<FeatureKind, string> = {
   hole: '⊙',
   fillet: '◜',
   chamfer: '◢',
+  shell: '□',
   rib: '▮',
   sweep_path: '〰',
   boolean: '∪',

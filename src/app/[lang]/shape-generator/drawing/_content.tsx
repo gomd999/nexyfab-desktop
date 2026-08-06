@@ -110,6 +110,7 @@ import { findSheetSnapTarget, type SheetSnapTarget } from '@/lib/drawing/sheetSn
 import { SheetPngExportButton } from './SheetPngExportButton';
 import StepCompareVersionPanel from './StepCompareVersionPanel';
 import OrdinateDimensionPanel from './OrdinateDimensionPanel';
+import { partitionDrawingReferences } from '@/lib/drawing/referenceReview';
 
 // ─── sample parts ────────────────────────────────────────────────────────
 
@@ -1906,6 +1907,23 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     return projectPolyhedron(poly, 'front').bbox;
   }, [sourceId]);
 
+  const drawingReferencePartition = useMemo(() => {
+    const geometry = sampleGeometryForSourceId(sourceId);
+    let validRefs: Set<string> | null = null;
+    if ('feature' in geometry) {
+      try {
+        validRefs = new Set(buildExtrudeTopo(geometry.feature).byName.keys());
+      } catch {
+        validRefs = null;
+      }
+    }
+    return partitionDrawingReferences({
+      validRefs,
+      dimensions: annotations.dimensions,
+      gdt: annotations.gdtCallouts,
+    });
+  }, [annotations.dimensions, annotations.gdtCallouts, sourceId]);
+
   const sheet: Sheet = useMemo(() => {
     const built: Sheet = (() => {
     const base = standardThreeViewSheet({
@@ -1917,8 +1935,8 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     });
     const withAnnotations: Sheet = {
       ...base,
-      dimensions: annotations.dimensions,
-      gdtCallouts: annotations.gdtCallouts,
+      dimensions: drawingReferencePartition.dimensions,
+      gdtCallouts: drawingReferencePartition.gdt,
       ordinateChains: annotations.ordinateChains,
       surfaceFinishSymbols: annotations.surfaceFinishSymbols,
       weldSymbols: annotations.weldSymbols,
@@ -2005,7 +2023,7 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
     }
     if (extraVps.length === 0) return built;
     return { ...built, viewports: [...built.viewports, ...extraVps] };
-  }, [sourceId, paperSize, scale, annotations, templateKey, titleblockOverrides, sectionViews, detailViews, brokenViews, frontViewBbox]);
+  }, [sourceId, paperSize, scale, annotations, drawingReferencePartition, templateKey, titleblockOverrides, sectionViews, detailViews, brokenViews, frontViewBbox]);
 
   // Cutting planes for the section viewports, keyed by viewport id.
   const cuttingPlanes = useMemo(
@@ -2193,6 +2211,29 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
   /** Audit trail of applied relinks (RefRelinkPanel history pane). */
   const [relinkHistory, setRelinkHistory] = useState<RelinkRecord[]>([]);
   const [relinkToast, setRelinkToast] = useState<string | null>(null);
+  const [gdtRelinkDraft, setGdtRelinkDraft] = useState<Record<string, string>>({});
+
+  const validGdtTargets = useMemo(
+    () => currentAnchors?.names().filter(name => name.startsWith('f.')) ?? [],
+    [currentAnchors],
+  );
+
+  const handleGdtRelinkApply = useCallback((id: string) => {
+    const targetRef = gdtRelinkDraft[id];
+    if (!targetRef || !currentAnchors || currentAnchors.anchor(targetRef) === null) return;
+    setAnnotations(prev => ({
+      ...prev,
+      gdtCallouts: prev.gdtCallouts.map(callout =>
+        callout.id === id ? { ...callout, targetRef } : callout,
+      ),
+    }));
+    setGdtRelinkDraft(prev => {
+      const { [id]: _drop, ...rest } = prev;
+      void _drop;
+      return rest;
+    });
+    setRelinkToast(`${dict.relinkApplied}: ${id} → ${targetRef}`);
+  }, [currentAnchors, dict.relinkApplied, gdtRelinkDraft]);
 
   /**
    * Dimensions whose audit failure is `unresolved-ref` AND whose refs really
@@ -3730,6 +3771,73 @@ export function DrawingPageContent({ lang }: { lang: string }): React.ReactEleme
                 >
                   ✕
                 </button>
+              </div>
+            ) : null}
+
+            {drawingReferencePartition.review.length > 0 ? (
+              <div
+                data-testid="drawing-reference-review"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  padding: 8,
+                  border: '1px solid #f59e0b',
+                  borderRadius: 4,
+                  background: '#fffbeb',
+                  fontSize: 11,
+                }}
+              >
+                <strong>
+                  {lang === 'ko'
+                    ? `참조 검토 대기 (${drawingReferencePartition.review.length})`
+                    : `Reference review (${drawingReferencePartition.review.length})`}
+                </strong>
+                <span>
+                  {lang === 'ko'
+                    ? '아래 주석은 도면 표시와 내보내기에서 안전하게 제외되었습니다.'
+                    : 'These annotations are safely excluded from rendering and export.'}
+                </span>
+                {drawingReferencePartition.review.map(item => (
+                  <div
+                    key={`${item.consumer}:${item.id}`}
+                    data-testid={`drawing-reference-review-${item.consumer}-${item.id}`}
+                    style={{ padding: 6, borderRadius: 3, background: '#fff' }}
+                  >
+                    <div style={{ marginBottom: 5 }}>
+                      <code>{item.id}</code> · {item.refs.join(', ')}
+                    </div>
+                    {item.consumer === 'dimension' ? (
+                      <button
+                        type="button"
+                        onClick={() => setRelinkDimId(item.id)}
+                        style={{ padding: '3px 8px', border: 0, borderRadius: 3, background: '#b45309', color: '#fff', cursor: 'pointer' }}
+                      >
+                        {dict.relinkAnnotation}
+                      </button>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <select
+                          aria-label={`GD&T target ${item.id}`}
+                          value={gdtRelinkDraft[item.id] ?? ''}
+                          onChange={event => setGdtRelinkDraft(prev => ({ ...prev, [item.id]: event.target.value }))}
+                          style={{ minWidth: 0, flex: 1, fontSize: 11 }}
+                        >
+                          <option value="">{lang === 'ko' ? '새 면 선택' : 'Select face'}</option>
+                          {validGdtTargets.map(name => <option key={name} value={name}>{name}</option>)}
+                        </select>
+                        <button
+                          type="button"
+                          disabled={!gdtRelinkDraft[item.id]}
+                          onClick={() => handleGdtRelinkApply(item.id)}
+                          style={{ padding: '3px 8px', border: 0, borderRadius: 3, background: '#b45309', color: '#fff', cursor: 'pointer' }}
+                        >
+                          {lang === 'ko' ? '적용' : 'Apply'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             ) : null}
 

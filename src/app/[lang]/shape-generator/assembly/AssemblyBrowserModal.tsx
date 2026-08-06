@@ -41,6 +41,10 @@ import type { Mate, MateKind, MateRef, MateRefKind } from '@/lib/assembly/mate';
 import type { FeatureTree } from '@/lib/cad/featureTree';
 import type { SaveError } from '@/lib/cad/featureTreePersist';
 import { listPartRefs } from '@/lib/assembly/geometryResolver';
+import {
+  reconcileFeatureTreeMateReferences,
+} from '@/lib/cad/featureTreeReferenceReconcile';
+import type { ReferenceReviewItem } from '@/lib/cad/topologyReferencePropagation';
 import MateConstraintsToolbar, {
   type ToolbarSelectionRef,
   type ToolbarRefKind,
@@ -59,8 +63,9 @@ import {
 import FeatureTreePlannerPanel from '../sketch/FeatureTreePlannerPanel';
 import type { PlanStep } from '@/lib/ai/featureTreePlanner';
 import { buildBom, bomToCsv, bomToJson } from '@/lib/assembly/bomExport';
-import Assembly3DViewer from './Assembly3DViewer';
+import Assembly3DViewer, { bboxFromFeatureTree } from './Assembly3DViewer';
 import AssemblyAiPanel from './AssemblyAiPanel';
+import type { AiAssemblyProgram } from '@/lib/ai/aiAssemblyProgram';
 import AssemblyConstraintsPanel from './AssemblyConstraintsPanel';
 import AssemblyExplodePanel from './AssemblyExplodePanel';
 import {
@@ -74,10 +79,25 @@ import {
   type ImportedExplode,
 } from '@/lib/assembly/explodeImport';
 import PartManipulatorGizmo, {
-  type PartManipulatorMode,
-  type Vec3,
+  PartManipulatorMode,
+  Vec3,
 } from './PartManipulatorGizmo';
 import type { AssemblyPlan } from '@/lib/ai/assemblyNlParser';
+import { evaluateAssemblyAnimation, type AssemblyAnimation } from '@/lib/assembly/assemblyAnimation';
+import AssemblyAnimationTimeline from './AssemblyAnimationTimeline';
+import { verifyAssemblyAnimationWithRecovery } from '@/lib/assembly/assemblyAnimationVerification';
+import type { PreciseCollisionTimeEvidence } from '@/lib/assembly/featureTreePreciseInterference';
+import { prepareMateAwareMove, rotateAssemblyParts, translateAssemblyParts, type MateMovePolicy, type TransformSpace } from '@/lib/assembly/multiPartTransform';
+import { parseAssemblyAnimationPackage, serializeAssemblyAnimationPackage } from '@/lib/assembly/assemblyAnimationPackage';
+import { featureTreeGeometryResolver } from '@/lib/assembly/geometryResolver';
+import { snapAssemblyReferences } from '@/lib/assembly/referenceSnap';
+import { buildStandaloneAssemblyHtml } from '@/lib/assembly/assemblyStandaloneHtml';
+import { applyAssemblyAnimationCommand } from '@/lib/assembly/assemblyAnimationCommand';
+import { encodeAssemblyGlb } from '@/lib/assembly/assemblyGlbExport';
+import { downloadBlob } from '@/lib/platform';
+import type { ViewportPickMode } from '@/lib/assembly/viewportTopologyPick';
+import { assertAssemblySelectionEditCurrent, planAssemblySelectionEdits, type AssemblySelectionEditPreview } from '@/lib/ai/assemblySelectionEdit';
+import { advanceGenerationSession } from '../ai/generationSessionClient';
 
 // ─── i18n ────────────────────────────────────────────────────────────────
 
@@ -992,6 +1012,8 @@ const dict: Record<AssemblyBrowserLang, Dict> = {
  */
 export interface AssemblyBrowserSolveResult {
   success: boolean;
+  /** Solved placements; constrained transform commits require this. */
+  state?: AssemblyState;
   iterations?: number;
   finalMaxResidual?: number;
   /** Approximate DoF — supplied by the caller (Phase-1 route returns 0). */
@@ -1547,6 +1569,32 @@ function stringifyRecord(rec: Record<string, FeatureTree>): Record<string, strin
 
 const EMPTY_STATE: AssemblyState = { parts: [], mates: [] };
 
+function applyPlanSteps(tree: FeatureTree, steps: readonly PlanStep[]): FeatureTree {
+  let nodes = [...tree.nodes];
+  for (const step of steps) {
+    if (step.type === 'add_node' && step.node !== undefined) {
+      nodes.push(step.node);
+    } else if (step.type === 'remove_node' && step.nodeId !== undefined) {
+      nodes = nodes.filter((node) => node.id !== step.nodeId);
+    } else if (
+      step.type === 'move_node' &&
+      step.nodeId !== undefined &&
+      typeof step.toIdx === 'number'
+    ) {
+      const fromIdx = nodes.findIndex((node) => node.id === step.nodeId);
+      if (fromIdx >= 0) {
+        const [moved] = nodes.splice(fromIdx, 1);
+        if (moved !== undefined) nodes.splice(step.toIdx, 0, moved);
+      }
+    } else if (step.type === 'toggle_suppress' && step.nodeId !== undefined) {
+      nodes = nodes.map((node) =>
+        node.id === step.nodeId ? { ...node, suppressed: node.suppressed !== true } : node,
+      );
+    }
+  }
+  return { nodes };
+}
+
 export default function AssemblyBrowserModal({
   lang,
   initialState,
@@ -1706,6 +1754,12 @@ export default function AssemblyBrowserModal({
    * recent two when the user clicks a 3rd ref (see `toggleSelection`).
    */
   const [selection, setSelection] = useState<ReadonlyArray<ToolbarSelectionRef>>([]);
+  const [selectionEditCommand,setSelectionEditCommand]=useState('');
+  const [selectionEditPreview,setSelectionEditPreview]=useState<AssemblySelectionEditPreview|null>(null);
+  const [selectionEditError,setSelectionEditError]=useState<string|null>(null);
+  const [confirmDerivedSelection,setConfirmDerivedSelection]=useState(false);
+  const [selectionEditUndo,setSelectionEditUndo]=useState<{state:AssemblyState;featureTrees:Record<string,FeatureTree>}|null>(null);
+  const [topologyReview, setTopologyReview] = useState<ReferenceReviewItem[]>([]);
   const [solveState, setSolveState] = useState<
     | { status: 'idle' }
     | { status: 'loading' }
@@ -1878,6 +1932,49 @@ export default function AssemblyBrowserModal({
     return { ok: true, tree: parsed as FeatureTree };
   }
 
+  const commitPartFeatureTree = useCallback(
+    (partId: string, nextTree: FeatureTree | undefined, description: string): void => {
+      const previousTree = featureTrees[partId];
+      const reconciled = reconcileFeatureTreeMateReferences({
+        partId,
+        before: previousTree,
+        after: nextTree,
+        mates: state.mates,
+      });
+
+      setFeatureTrees((prev) => {
+        if (nextTree !== undefined) return { ...prev, [partId]: nextTree };
+        if (!(partId in prev)) return prev;
+        const { [partId]: _drop, ...rest } = prev;
+        void _drop;
+        return rest;
+      });
+
+      const affectedMateIds = new Set(
+        state.mates
+          .filter((mate) => mate.a.partId === partId || mate.b.partId === partId)
+          .map((mate) => mate.id),
+      );
+      setTopologyReview((prev) => [
+        ...prev.filter(
+          (item) => item.consumer !== 'mate' || !affectedMateIds.has(item.id),
+        ),
+        ...reconciled.review,
+      ]);
+
+      const matesChanged = reconciled.mates.some(
+        (mate, index) =>
+          mate.suppressed !== state.mates[index]?.suppressed ||
+          mate.a.refId !== state.mates[index]?.a.refId ||
+          mate.b.refId !== state.mates[index]?.b.refId,
+      );
+      if (matesChanged) {
+        recordState({ ...state, mates: reconciled.mates }, description);
+      }
+    },
+    [featureTrees, recordState, setFeatureTrees, state],
+  );
+
   const updateFeatureTreeText = useCallback((partId: string, text: string) => {
     setFeatureTreeText((prev) => ({ ...prev, [partId]: text }));
     const result = parseFeatureTreeBody(text);
@@ -1888,19 +1985,15 @@ export default function AssemblyBrowserModal({
         void _drop;
         return rest;
       });
-      setFeatureTrees((prev) => {
-        if (result.tree === undefined) {
-          if (!(partId in prev)) return prev;
-          const { [partId]: _drop, ...rest } = prev;
-          void _drop;
-          return rest;
-        }
-        return { ...prev, [partId]: result.tree };
-      });
+      commitPartFeatureTree(
+        partId,
+        result.tree,
+        `Regenerate ${partId} and reconcile assembly references`,
+      );
     } else {
       setFeatureTreeError((prev) => ({ ...prev, [partId]: result.error }));
     }
-  }, []);
+  }, [commitPartFeatureTree]);
 
   // ── mates ops ──────────────────────────────────────────────────────────
 
@@ -2403,69 +2496,24 @@ export default function AssemblyBrowserModal({
    */
   const applyPlanStepsToPartTree = useCallback(
     (partId: string, steps: PlanStep[]): void => {
-      setFeatureTrees((prev) => {
-        const current = prev[partId] ?? { nodes: [] };
-        let nextNodes = [...current.nodes];
-        for (const step of steps) {
-          if (step.type === 'add_node' && step.node !== undefined) {
-            nextNodes.push(step.node);
-          } else if (step.type === 'remove_node' && step.nodeId !== undefined) {
-            nextNodes = nextNodes.filter((n) => n.id !== step.nodeId);
-          } else if (
-            step.type === 'move_node' &&
-            step.nodeId !== undefined &&
-            typeof step.toIdx === 'number'
-          ) {
-            const fromIdx = nextNodes.findIndex((n) => n.id === step.nodeId);
-            if (fromIdx >= 0) {
-              const [moved] = nextNodes.splice(fromIdx, 1);
-              if (moved !== undefined) nextNodes.splice(step.toIdx, 0, moved);
-            }
-          } else if (step.type === 'toggle_suppress' && step.nodeId !== undefined) {
-            nextNodes = nextNodes.map((n) =>
-              n.id === step.nodeId
-                ? { ...n, suppressed: !(n.suppressed === true) }
-                : n,
-            );
-          }
-        }
-        const nextTree: FeatureTree = { nodes: nextNodes };
-        const out = { ...prev, [partId]: nextTree };
-        return out;
-      });
+      const nextTree = applyPlanSteps(featureTrees[partId] ?? { nodes: [] }, steps);
+      commitPartFeatureTree(
+        partId,
+        nextTree,
+        `Apply AI feature plan to ${partId} and reconcile assembly references`,
+      );
       // Keep the textarea body in sync so a user who later opens the JSON
       // editor sees the planner-produced tree rather than the pre-apply one.
-      setFeatureTreeText((prev) => {
-        const currentTree = featureTrees[partId] ?? { nodes: [] };
-        let nextNodes = [...currentTree.nodes];
-        for (const step of steps) {
-          if (step.type === 'add_node' && step.node !== undefined) {
-            nextNodes.push(step.node);
-          } else if (step.type === 'remove_node' && step.nodeId !== undefined) {
-            nextNodes = nextNodes.filter((n) => n.id !== step.nodeId);
-          } else if (
-            step.type === 'move_node' &&
-            step.nodeId !== undefined &&
-            typeof step.toIdx === 'number'
-          ) {
-            const fromIdx = nextNodes.findIndex((n) => n.id === step.nodeId);
-            if (fromIdx >= 0) {
-              const [moved] = nextNodes.splice(fromIdx, 1);
-              if (moved !== undefined) nextNodes.splice(step.toIdx, 0, moved);
-            }
-          } else if (step.type === 'toggle_suppress' && step.nodeId !== undefined) {
-            nextNodes = nextNodes.map((n) =>
-              n.id === step.nodeId
-                ? { ...n, suppressed: !(n.suppressed === true) }
-                : n,
-            );
-          }
-        }
-        return { ...prev, [partId]: JSON.stringify({ nodes: nextNodes }, null, 2) };
-      });
+      setFeatureTreeText((prev) => ({
+        ...prev,
+        [partId]: JSON.stringify(nextTree, null, 2),
+      }));
     },
-    [setFeatureTrees, featureTrees],
+    [commitPartFeatureTree, featureTrees],
   );
+  const previewSelectionEdit=useCallback(()=>{try{const preview=planAssemblySelectionEdits({state,featureTrees,selection,selectedMateIds:[...selectedMateIds],command:selectionEditCommand});setSelectionEditPreview(preview);setSelectionEditError(null);setConfirmDerivedSelection(false);}catch(error){setSelectionEditPreview(null);setSelectionEditError(error instanceof Error?error.message:String(error));}},[featureTrees,selectedMateIds,selection,selectionEditCommand,state]);
+  const applySelectionEdit=useCallback(()=>{if(!selectionEditPreview)return;try{assertAssemblySelectionEditCurrent(selectionEditPreview,state,featureTrees,{confirmDerived:confirmDerivedSelection});setSelectionEditUndo({state,featureTrees});history.recordChange(selectionEditPreview.nextState,`AI selection edit: ${selectionEditPreview.summary}`);setFeatureTrees(selectionEditPreview.nextFeatureTrees);setFeatureTreeText(Object.fromEntries(Object.entries(selectionEditPreview.nextFeatureTrees).map(([id,tree])=>[id,JSON.stringify(tree,null,2)])));setSelectionEditPreview(null);setSelectionEditError(null);}catch(error){setSelectionEditError(error instanceof Error?error.message:String(error));}},[confirmDerivedSelection,featureTrees,history,selectionEditPreview,setFeatureTrees,state]);
+  const undoSelectionEdit=useCallback(()=>{if(!selectionEditUndo)return;history.recordChange(selectionEditUndo.state,'Undo AI selection edit');setFeatureTrees(selectionEditUndo.featureTrees);setFeatureTreeText(Object.fromEntries(Object.entries(selectionEditUndo.featureTrees).map(([id,tree])=>[id,JSON.stringify(tree,null,2)])));setSelectionEditUndo(null);setSelectionEditError(null);},[history,selectionEditUndo,setFeatureTrees]);
 
   /**
    * Pick a fresh part id that does not collide with any existing one in
@@ -2891,6 +2939,8 @@ export default function AssemblyBrowserModal({
   // panel and the mates panel, sharing the `selectedPartId` state with the
   // 2D parts list so a click in either surface highlights the other.
   const [show3DView, setShow3DView] = useState<boolean>(false);
+  const [viewportPickMode,setViewportPickMode]=useState<ViewportPickMode>('part');
+  const [viewerViewport, setViewerViewport] = useState<{ scene: import('three').Scene; camera: import('three').Camera; domElement: HTMLElement } | null>(null);
   const toggle3DView = useCallback(() => setShow3DView((v) => !v), []);
 
   /**
@@ -2900,12 +2950,14 @@ export default function AssemblyBrowserModal({
    * part is removed (handled in `removePartLocal`).
    */
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
-  const onSelectPartFromViewer = useCallback((partId: string) => {
-    setSelectedPartId((prev) => (prev === partId ? null : partId));
-  }, []);
-  const onSelectPartFromList = useCallback((partId: string) => {
-    setSelectedPartId((prev) => (prev === partId ? null : partId));
-  }, []);
+  const [selectedPartIds, setSelectedPartIds] = useState<Set<string>>(new Set());
+  const onSelectPartFromViewer = useCallback((partId: string, options?: {additive:boolean}) => {
+    if(!options?.additive){const next=selectedPartId===partId?null:partId;setSelectedPartId(next);setSelectedPartIds(next?new Set([next]):new Set());return;}
+    const next=new Set(selectedPartIds);if(next.has(partId))next.delete(partId);else next.add(partId);setSelectedPartIds(next);setSelectedPartId(next.has(partId)?partId:next.values().next().value??null);
+  }, [selectedPartId,selectedPartIds]);
+  const onSelectPartFromList = useCallback((partId: string, additive=false) => {
+    onSelectPartFromViewer(partId,{additive});
+  }, [onSelectPartFromViewer]);
 
   // ── AI panel (UUUUU Agent integration, Phase 3.A.UUUUU-integration) ──
   //
@@ -2963,11 +3015,38 @@ export default function AssemblyBrowserModal({
     () => effectiveExploded.steps.filter((s) => s.distance > 0).length,
     [effectiveExploded],
   );
-  /** State handed to Assembly3DViewer — displaced while explode is ON. */
-  const viewerState = useMemo(
-    () => (explodeOpen ? interpolateExplode(state, effectiveExploded, explodeAmount) : state),
-    [explodeOpen, state, effectiveExploded, explodeAmount],
-  );
+  const [animation, setAnimation] = useState<AssemblyAnimation>({ version: 1, name: 'Assembly motion', fps: 30, startFrame: 0, endFrame: 100, loop: false, tracks: [] });
+  const [animationFrame, setAnimationFrame] = useState(0);
+  const [animationPlaying, setAnimationPlaying] = useState(false);
+  const [animationPackageError,setAnimationPackageError]=useState<string|null>(null);
+  const [animationCommand,setAnimationCommand]=useState('');
+  const runAnimationCommand=useCallback(()=>{try{const result=applyAssemblyAnimationCommand(state,animation,animationCommand);setAnimation(result.animation);setAnimationPackageError(null);}catch(error){setAnimationPackageError(error instanceof Error?error.message:String(error));}},[animation,animationCommand,state]);
+  const animationImportRef=useRef<HTMLInputElement|null>(null);
+  const exportAnimation=useCallback(()=>{try{const blob=new Blob([serializeAssemblyAnimationPackage(state,animation,featureTrees)],{type:'application/json'}),url=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=url;anchor.download=`${projectId??'assembly'}-animation.json`;document.body.appendChild(anchor);anchor.click();anchor.remove();URL.revokeObjectURL(url);setAnimationPackageError(null);}catch(error){setAnimationPackageError(error instanceof Error?error.message:String(error));}},[animation,featureTrees,projectId,state]);
+  const exportAnimationHtml=useCallback(()=>{try{const blob=new Blob([buildStandaloneAssemblyHtml(state,animation,featureTrees)],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=url;anchor.download=`${projectId??'assembly'}-animation.html`;document.body.appendChild(anchor);anchor.click();anchor.remove();URL.revokeObjectURL(url);setAnimationPackageError(null);}catch(error){setAnimationPackageError(error instanceof Error?error.message:String(error));}},[animation,featureTrees,projectId,state]);
+  const exportAnimationGlb=useCallback(async()=>{try{if(!viewerViewport)throw new Error('Open the 3D view and wait for all part geometry before exporting GLB.');const bytes=await encodeAssemblyGlb(viewerViewport.scene,state,animation);await downloadBlob(`${projectId??'assembly'}-animation.glb`,new Blob([bytes],{type:'model/gltf-binary'}));setAnimationPackageError(null);}catch(error){setAnimationPackageError(error instanceof Error?error.message:String(error));}},[animation,projectId,state,viewerViewport]);
+  const importAnimation=useCallback(async(file:File)=>{try{const p=parseAssemblyAnimationPackage(await file.text());history.recordChange(p.state,'Import animation package');setFeatureTrees(p.featureTrees);setAnimation(p.animation);setAnimationFrame(p.animation.startFrame);setAnimationPlaying(false);setAnimationPackageError(null);}catch(error){setAnimationPackageError(error instanceof Error?error.message:String(error));}},[history,setFeatureTrees]);
+  const animationLocalBoxes=useMemo(()=>Object.fromEntries(Object.entries(featureTrees).flatMap(([id,tree])=>{const b=bboxFromFeatureTree(tree);return b?[[id,{min:{x:b.cx-b.sx/2,y:b.cy-b.sy/2,z:b.cz-b.sz/2},max:{x:b.cx+b.sx/2,y:b.cy+b.sy/2,z:b.cz+b.sz/2}}]]:[];})),[featureTrees]);
+  const animationVerification = useMemo(() => animation.tracks.length ? verifyAssemblyAnimationWithRecovery(state,animation,new Map(Object.entries(animationLocalBoxes)),{frameStep:Math.max(1,Math.ceil((animation.endFrame-animation.startFrame)/200))}).verification : null, [animation, animationLocalBoxes, state]);
+  const [preciseTimeOfImpact,setPreciseTimeOfImpact]=useState<PreciseCollisionTimeEvidence[]|null>(null),[preciseAnimationBusy,setPreciseAnimationBusy]=useState(false);
+  useEffect(()=>setPreciseTimeOfImpact(null),[animation,featureTrees,state]);
+  const runPreciseAnimationVerification=useCallback(async()=>{setPreciseAnimationBusy(true);try{const response=await fetch('/api/cad/v1/assembly/animation/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({state,animation,localBoxes:animationLocalBoxes,featureTrees,frameStep:Math.max(1,Math.ceil((animation.endFrame-animation.startFrame)/200)),toiFrameTolerance:1e-3,toiMaxDepth:20})}),json=await response.json() as {ok?:boolean;message?:string;precise?:{continuous?:{timeOfImpact?:PreciseCollisionTimeEvidence[]}}};if(!response.ok||!json.ok)throw new Error(json.message??`Precise animation verification failed (${response.status})`);setPreciseTimeOfImpact(json.precise?.continuous?.timeOfImpact??[]);setAnimationPackageError(null);}catch(error){setPreciseTimeOfImpact(null);setAnimationPackageError(error instanceof Error?error.message:String(error));}finally{setPreciseAnimationBusy(false);}},[animation,animationLocalBoxes,featureTrees,state]);
+  /** State handed to Assembly3DViewer — animation is evaluated without mutating design history. */
+  const viewerState = useMemo(() => {
+    const base = explodeOpen ? interpolateExplode(state, effectiveExploded, explodeAmount) : state;
+    return animation.tracks.length ? evaluateAssemblyAnimation(base, animation, animationFrame) : base;
+  }, [explodeOpen, state, effectiveExploded, explodeAmount, animation, animationFrame]);
+
+  const addSelectedPoseKeyframe = useCallback(() => {
+    if (!selectedPartId) return;
+    const part = state.parts.find(item => item.id === selectedPartId); if (!part) return;
+    setAnimation(previous => {
+      const existing = previous.tracks.find(track => track.targetPartId === selectedPartId);
+      const keyframe = { frame: animationFrame, position: { ...part.position }, orientation: { ...part.orientation }, interpolation: 'smoothstep' as const };
+      if (!existing) return { ...previous, tracks: [...previous.tracks, { id: `pose:${selectedPartId}`, targetPartId: selectedPartId, keyframes: [keyframe] }] };
+      return { ...previous, tracks: previous.tracks.map(track => track.id === existing.id ? { ...track, keyframes: [...track.keyframes.filter(key => key.frame !== animationFrame), keyframe].sort((a,b)=>a.frame-b.frame) } : track) };
+    });
+  }, [animationFrame, selectedPartId, state.parts]);
 
   // Play: ramp the explode amount 0 → 1 over ~700ms via rAF. Falls back to an
   // instant jump where requestAnimationFrame is unavailable (older jsdom).
@@ -3169,6 +3248,61 @@ export default function AssemblyBrowserModal({
     [overrideState, history.state, recordState],
   );
 
+  const onBuildProductFromAi = useCallback((program: AiAssemblyProgram) => {
+    const base = overrideState ?? history.state;
+    const used = new Set(base.parts.map(part => part.id));
+    const idMap = new Map<string, string>();
+    for (const part of program.assembly.parts) {
+      let id = part.id;
+      let suffix = 2;
+      while (used.has(id)) id = `${part.id}_${suffix++}`;
+      used.add(id);
+      idMap.set(part.id, id);
+    }
+    const parts = program.assembly.parts.map(part => ({
+      ...part,
+      id: idMap.get(part.id)!,
+      fixed: base.parts.length > 0 ? false : part.fixed,
+    }));
+    const mateIds = new Set(base.mates.map(mate => mate.id));
+    const mates = program.assembly.mates.map((mate, index) => {
+      let id = mate.id || `ai_mate_${index + 1}`;
+      let suffix = 2;
+      while (mateIds.has(id)) id = `${mate.id || 'ai_mate'}_${suffix++}`;
+      mateIds.add(id);
+      return { ...mate, id, a: { ...mate.a, partId: idMap.get(mate.a.partId) ?? mate.a.partId }, b: { ...mate.b, partId: idMap.get(mate.b.partId) ?? mate.b.partId } } as Mate;
+    });
+    setFeatureTrees(previous => {
+      const next = { ...previous };
+      for (const part of program.parts) {
+        const mappedId = idMap.get(part.instanceId);
+        if (mappedId) next[mappedId] = part.featureTree;
+      }
+      return next;
+    });
+    setFeatureTreeText(previous => {
+      const next = { ...previous };
+      for (const part of program.parts) {
+        const mappedId = idMap.get(part.instanceId);
+        if (mappedId) next[mappedId] = JSON.stringify(part.featureTree, null, 2);
+      }
+      return next;
+    });
+    history.recordChange({ parts: [...base.parts, ...parts], mates: [...base.mates, ...mates] }, `AI product: ${program.name}`);
+    setShow3DView(true);
+    const appliedProgram: AiAssemblyProgram = {
+      ...program,
+      // Verify the generated subassembly in its own governed frame. Existing
+      // document parts may not have AI FeatureTrees and must not dilute proof.
+      assembly: { ...program.assembly, parts: program.assembly.parts.map(part => ({ ...part, id: idMap.get(part.id) ?? part.id })), mates },
+      parts: program.parts.map(part => ({ ...part, instanceId: idMap.get(part.instanceId) ?? part.instanceId })),
+      structure: program.structure?.map(group => ({ ...group, instanceIds: group.instanceIds.map(id => idMap.get(id) ?? id) })),
+    };
+    void advanceGenerationSession(appliedProgram).catch(error => {
+      window.dispatchEvent(new CustomEvent('nexyfab:generation-state-error', { detail: error instanceof Error ? error.message : String(error) }));
+    });
+  }, [overrideState, history, setFeatureTrees]);
+
   // ── Part manipulator gizmo (RRRRR Agent integration) ──────────────────
   //
   // The gizmo only mounts when both `show3DView` is ON and a part is
@@ -3191,18 +3325,19 @@ export default function AssemblyBrowserModal({
   // The phase-2 follow-up will either add a `viewerRef` prop to
   // Assembly3DViewer or render the gizmo inside the viewer itself.
   const [gizmoMode, setGizmoMode] = useState<PartManipulatorMode>('translate');
-  const stubGizmoScene = useMemo(
-    // Cast through unknown so we don't pull `three` into the modal's import
-    // graph just for a sentinel. The gizmo only reads `.add?.()` / `.remove?.()`
-    // off the scene, both of which optional-chain on missing methods.
-    () => ({}) as unknown as import('three').Scene,
-    [],
-  );
-
+  const fallbackGizmoScene = useMemo(() => ({}) as import('three').Scene, []);
   const selectedPart = useMemo<PartInstance | null>(() => {
     if (selectedPartId === null) return null;
     return state.parts.find((p) => p.id === selectedPartId) ?? null;
   }, [selectedPartId, state.parts]);
+  const [groupDelta,setGroupDelta]=useState<Vec3>({x:0,y:0,z:0});
+  const [groupRotation,setGroupRotation]=useState<Vec3>({x:0,y:0,z:0});
+  const [transformSpace,setTransformSpace]=useState<TransformSpace>('world');
+  const [mateMovePolicy,setMateMovePolicy]=useState<MateMovePolicy>('cancel');
+  const [transformSnap,setTransformSnap]=useState(1);
+  const [groupTransformError,setGroupTransformError]=useState<string|null>(null);
+  const snapSelectedReferences=useCallback(()=>{try{if(selection.length!==2)throw new Error('Select exactly two point, axis, or plane references.');const [target,moving]=selection;const toMateRef=(ref:ToolbarSelectionRef):MateRef=>({partId:ref.partId,refId:ref.refId,refKind:ref.refKind});const resolver=featureTreeGeometryResolver(new Map(Object.entries(featureTrees)));const result=snapAssemblyReferences(state,toMateRef(moving!),toMateRef(target!),resolver);history.recordChange(result.state,`Snap ${moving!.partId} to ${target!.partId}`);setSuggestions(previous=>previous.some(mate=>mate.id===result.suggestedMate.id)?previous:[...previous,result.suggestedMate]);setGroupTransformError(null);}catch(error){setGroupTransformError(error instanceof Error?error.message:String(error));}},[featureTrees,history,selection,state]);
+  const applyGroupTransform=useCallback(async()=>{const ids=[...selectedPartIds].filter(id=>state.parts.some(p=>p.id===id));if(!ids.length)return;try{const prepared=prepareMateAwareMove(state,ids,mateMovePolicy);if(prepared.cancelled&&prepared.affectedMateIds.length)throw new Error(`Move cancelled: ${prepared.affectedMateIds.length} connected mate(s).`);const snap=(value:number)=>transformSnap>0?Math.round(value/transformSnap)*transformSnap:value;let next=translateAssemblyParts(prepared.state,ids,{x:snap(groupDelta.x),y:snap(groupDelta.y),z:snap(groupDelta.z)},{space:transformSpace,referencePartId:selectedPartId??undefined});next=rotateAssemblyParts(next,ids,{x:snap(groupRotation.x),y:snap(groupRotation.y),z:snap(groupRotation.z)},{space:transformSpace});if(prepared.requiresSolve){if(!onSolve)throw new Error('Constrained move requires an assembly solver.');const solved=await onSolve(next,featureTrees,solverSelection);if(!solved.success||!solved.state)throw new Error('Constrained move did not return converged solved placements.');next=solved.state;}history.recordChange(next,`Transform ${ids.length} selected part(s)`);setGroupDelta({x:0,y:0,z:0});setGroupRotation({x:0,y:0,z:0});setGroupTransformError(null);}catch(error){setGroupTransformError(error instanceof Error?error.message:String(error));}},[featureTrees,groupDelta,groupRotation,history,mateMovePolicy,onSolve,selectedPartId,selectedPartIds,solverSelection,state,transformSnap,transformSpace]);
 
   /**
    * PartManipulatorGizmo.onTransform handler. Records a single history
@@ -3579,7 +3714,7 @@ export default function AssemblyBrowserModal({
                         ) {
                           return;
                         }
-                        onSelectPartFromList(p.id);
+                        onSelectPartFromList(p.id, e.ctrlKey || e.metaKey || e.shiftKey);
                       }}
                       style={{
                         display: 'flex',
@@ -3886,6 +4021,13 @@ export default function AssemblyBrowserModal({
                 onAdd={onAddMateFromToolbar}
                 onClear={onClearSelection}
               />
+              <div data-testid="solver-assembly-selection-edit" style={{display:'flex',flexDirection:'column',gap:5,paddingTop:5,borderTop:'1px dashed var(--nx-border)'}}>
+                <div style={{display:'flex',gap:5}}><input aria-label="Selected geometry edit command" value={selectionEditCommand} onChange={event=>{setSelectionEditCommand(event.target.value);setSelectionEditPreview(null);}} placeholder="홀 직경 8mm / 면 오프셋 2mm / 메이트 거리 10mm" style={{flex:1}}/><button type="button" disabled={selection.length===0&&selectedMateIds.size===0} onClick={previewSelectionEdit}>Preview</button></div>
+                {selectionEditPreview&&<div data-testid="solver-assembly-selection-edit-preview" style={{padding:6,background:'var(--nx-panel-2)',borderRadius:4,fontSize:11}}><div><strong>Plan:</strong> {selectionEditPreview.summary}</div><div>Operations: {selectionEditPreview.transaction.operations.map(operation=>operation.kind).join(', ')}</div><div>Revision: {selectionEditPreview.transaction.baseRevision}</div>{selectionEditPreview.transaction.selection.topology.some(ref=>ref.referenceQuality!=='persistent')&&<label><input type="checkbox" checked={confirmDerivedSelection} onChange={event=>setConfirmDerivedSelection(event.target.checked)}/> Confirm derived topology reference</label>}<div style={{display:'flex',gap:5,marginTop:4}}><button type="button" onClick={applySelectionEdit}>Apply atomically</button><button type="button" onClick={()=>{setSelectionEditPreview(null);setSelectionEditError(null);}}>Cancel</button></div></div>}
+                {selectionEditPreview?.evidence&&<div data-testid="solver-assembly-selection-edit-evidence" style={{fontSize:11,color:'var(--nx-text-muted)'}}>FeatureTree estimate: ΔV {selectionEditPreview.evidence.deltaVolumeMm3.toFixed(3)} mm³ · changed {selectionEditPreview.evidence.changedFeatureIds.join(', ')||'none'} · topology {selectionEditPreview.evidence.topologyValidation}</div>}
+                {selectionEditUndo&&<button type="button" onClick={undoSelectionEdit}>Undo last selection edit</button>}
+                {selectionEditError&&<div role="alert" style={{color:'#dc2626',fontSize:11}}>{selectionEditError}</div>}
+              </div>
             </div>
           </section>
 
@@ -3909,10 +4051,24 @@ export default function AssemblyBrowserModal({
                 featureTrees={featureTrees}
                 selectedPartId={selectedPartId ?? undefined}
                 onSelectPart={onSelectPartFromViewer}
+                pickMode={viewportPickMode}
+                onSelectReference={reference=>setSelection(previous=>toggleSelection(previous,reference))}
                 width={400}
                 height={400}
                 lang={lang}
+                onViewportReady={setViewerViewport}
               />
+              <label style={{fontSize:11}}>Pick <select aria-label="3D topology pick mode" value={viewportPickMode} onChange={event=>setViewportPickMode(event.target.value as ViewportPickMode)}><option value="part">Part</option><option value="face">Face</option><option value="edge">Edge</option><option value="point">Point</option></select></label>
+              <AssemblyAnimationTimeline animation={animation} frame={animationFrame} playing={animationPlaying} onFrameChange={setAnimationFrame} onPlayingChange={setAnimationPlaying} verification={animationVerification} timeOfImpact={preciseTimeOfImpact}/>
+              <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                <button type="button" data-testid="solver-assembly-add-keyframe" disabled={!selectedPartId} onClick={addSelectedPoseKeyframe}>◆ Keyframe</button>
+                <button type="button" data-testid="solver-assembly-precise-animation-verify" disabled={preciseAnimationBusy||!animation.tracks.length} onClick={()=>void runPreciseAnimationVerification()}>{preciseAnimationBusy?'Verifying…':'Precise collision'}</button>
+                <label style={{fontSize:11}}>End <input aria-label="Animation end frame" type="number" min={1} max={100000} value={animation.endFrame} onChange={event=>setAnimation(previous=>({...previous,endFrame:Math.max(previous.startFrame+1,Number(event.target.value)||1)}))} style={{width:70}}/></label>
+                <label style={{fontSize:11}}>FPS <input aria-label="Animation FPS" type="number" min={1} max={240} value={animation.fps} onChange={event=>setAnimation(previous=>({...previous,fps:Math.max(1,Math.min(240,Number(event.target.value)||30))}))} style={{width:55}}/></label>
+                <button type="button" onClick={exportAnimation}>Export JSON</button><button type="button" onClick={exportAnimationHtml}>Export HTML</button><button type="button" onClick={()=>void exportAnimationGlb()}>Export GLB</button><button type="button" onClick={()=>animationImportRef.current?.click()}>Import JSON</button><input ref={animationImportRef} type="file" accept="application/json,.json" hidden onChange={event=>{const file=event.target.files?.[0];if(file)void importAnimation(file);event.target.value='';}}/>
+              </div>
+              {animationPackageError&&<div role="alert" style={{fontSize:11,color:'#dc2626'}}>{animationPackageError}</div>}
+              <div style={{display:'flex',gap:6}}><input aria-label="Animation command" value={animationCommand} onChange={event=>setAnimationCommand(event.target.value)} placeholder="0~100프레임 arm X축 100mm 이동" style={{flex:1}}/><button type="button" onClick={runAnimationCommand}>AI timeline</button></div>
               {/* ── RRRRR Agent: PartManipulatorGizmo integration ──
                   Only when a part is selected. The gizmo's render gate is
                   Boolean(selectedPart && scene); we pass a stub scene so
@@ -3970,9 +4126,22 @@ export default function AssemblyBrowserModal({
                       {t.gizmoModeRotate}
                     </button>
                   </div>
+                  <div data-testid="solver-assembly-multi-transform" style={{display:'flex',gap:4,alignItems:'center',fontSize:11}}>
+                    <span>{selectedPartIds.size} selected · Δ mm</span>
+                    {(['x','y','z'] as const).map(axis=><label key={axis}>{axis.toUpperCase()} <input aria-label={`Group delta ${axis.toUpperCase()}`} type="number" value={groupDelta[axis]} onChange={event=>setGroupDelta(previous=>({...previous,[axis]:Number(event.target.value)||0}))} style={{width:55}}/></label>)}
+                    <select aria-label="Transform space" value={transformSpace} onChange={event=>setTransformSpace(event.target.value as TransformSpace)}><option value="world">World</option><option value="local">Local</option></select>
+                    {(['x','y','z'] as const).map(axis=><label key={`r${axis}`}>R{axis.toUpperCase()}° <input aria-label={`Group rotation ${axis.toUpperCase()}`} type="number" value={groupRotation[axis]} onChange={event=>setGroupRotation(previous=>({...previous,[axis]:Number(event.target.value)||0}))} style={{width:55}}/></label>)}
+                    <label>Snap <input aria-label="Transform snap" type="number" min={0} value={transformSnap} onChange={event=>setTransformSnap(Math.max(0,Number(event.target.value)||0))} style={{width:48}}/></label>
+                    <select aria-label="Mate move policy" value={mateMovePolicy} onChange={event=>setMateMovePolicy(event.target.value as MateMovePolicy)}><option value="cancel">Cancel on mates</option><option value="constrained">Keep mates</option><option value="suppress">Suppress mates</option><option value="remove">Remove mates</option></select>
+                    <button type="button" onClick={()=>void applyGroupTransform()}>Apply</button>
+                    <button type="button" disabled={selection.length!==2} onClick={snapSelectedReferences}>Snap refs</button>
+                  </div>
+                  {groupTransformError&&<div role="alert" style={{fontSize:11,color:'#dc2626'}}>{groupTransformError}</div>}
                   <PartManipulatorGizmo
                     selectedPart={selectedPart}
-                    scene={stubGizmoScene}
+                    scene={viewerViewport?.scene ?? fallbackGizmoScene}
+                    camera={viewerViewport?.camera ?? null}
+                    domElement={viewerViewport?.domElement ?? null}
                     onTransform={onGizmoTransform}
                     mode={gizmoMode}
                   />
@@ -4342,6 +4511,52 @@ export default function AssemblyBrowserModal({
             layout). Mounts only when the user clicks the panel toggle in
             the top-bar — default off so the modal layout is unchanged
             for the 210 pre-existing tests. */}
+        {topologyReview.length > 0 && (
+          <section
+            data-testid="solver-topology-review"
+            style={{
+              padding: 10,
+              border: '1px solid #f59e0b',
+              background: '#fffbeb',
+              borderRadius: 6,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              fontSize: 12,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+              <strong>
+                {lang === 'ko'
+                  ? `재생성 참조 검토 (${topologyReview.length})`
+                  : `Regeneration reference review (${topologyReview.length})`}
+              </strong>
+              <button
+                type="button"
+                data-testid="solver-topology-review-dismiss-all"
+                onClick={() => setTopologyReview([])}
+                style={{ border: 0, background: 'transparent', cursor: 'pointer' }}
+              >
+                {lang === 'ko' ? '모두 확인' : 'Dismiss all'}
+              </button>
+            </div>
+            <span>
+              {lang === 'ko'
+                ? '형상 변경으로 참조가 사라진 메이트를 안전하게 억제했습니다.'
+                : 'Mates whose references disappeared were safely suppressed.'}
+            </span>
+            {topologyReview.map((item, index) => (
+              <div
+                key={`${item.consumer}:${item.id}:${item.ref}:${index}`}
+                data-testid="solver-topology-review-item"
+                style={{ padding: 7, background: '#fff', borderRadius: 4 }}
+              >
+                <code>{item.id}</code> · <code>{item.ref}</code> · {item.reason}
+              </div>
+            ))}
+          </section>
+        )}
+
         {aiPanelOn && (
           <div
             data-testid="solver-assembly-ai-panel-host"
@@ -4351,7 +4566,7 @@ export default function AssemblyBrowserModal({
               gap: 6,
             }}
           >
-            <AssemblyAiPanel lang={lang} onBuildAssembly={onBuildAssemblyFromPlan} />
+            <AssemblyAiPanel lang={lang} onBuildAssembly={onBuildAssemblyFromPlan} onBuildProduct={onBuildProductFromAi} />
           </div>
         )}
 

@@ -28,7 +28,8 @@ export interface ClearanceFanInput {
   startAngleDeg: number;
   endAngleDeg: number;
   obstacles: { id: string; polygon: Polygon }[];
-  arcSamples?: number; // default 64
+  /** Retained for API compatibility; exact arc/segment intersection no longer samples frames. */
+  arcSamples?: number;
 }
 
 export interface CollisionEvent {
@@ -49,7 +50,6 @@ export interface ClearanceFanResult {
 export function checkSweep(input: ClearanceFanInput): ClearanceFanResult {
   const warnings: string[] = [];
   if (input.sweptPoints.length === 0) warnings.push('No swept points; nothing to check.');
-  const samples = Math.max(8, input.arcSamples ?? 64);
   const collisions: CollisionEvent[] = [];
 
   const startRad = input.startAngleDeg * Math.PI / 180;
@@ -64,24 +64,20 @@ export function checkSweep(input: ClearanceFanInput): ClearanceFanResult {
     maxR = Math.max(maxR, r);
     const baseAngle = Math.atan2(dy, dx);
 
-    for (let i = 0; i <= samples; i++) {
-      const t = i / samples;
-      const rotation = startRad + (endRad - startRad) * t;
-      const ang = baseAngle + rotation;
-      const px = input.pivot.x + r * Math.cos(ang);
-      const py = input.pivot.y + r * Math.sin(ang);
-
-      for (const obs of input.obstacles) {
-        if (pointInPolygon({ x: px, y: py }, obs.polygon)) {
-          collisions.push({
-            sweptPointId: sp.id ?? `pt(${sp.x},${sp.y})`,
-            obstacleId: obs.id,
-            angleDeg: rotation * 180 / Math.PI,
-            position: { x: px, y: py },
-          });
-          break;
+    for (const obs of input.obstacles) {
+      const candidates: Array<{ rotation: number; position: FanPoint }> = [];
+      const startPosition = rotatedPoint(input.pivot, r, baseAngle + startRad);
+      if (pointInPolygon(startPosition, obs.polygon)) candidates.push({ rotation: startRad, position: startPosition });
+      for (let i = 0; i < obs.polygon.length; i++) {
+        const a = obs.polygon[i]!; const b = obs.polygon[(i + 1) % obs.polygon.length]!;
+        for (const position of circleSegmentIntersections(input.pivot, r, a, b)) {
+          const rotation = rotationOnSweep(Math.atan2(position.y - input.pivot.y, position.x - input.pivot.x) - baseAngle, startRad, endRad);
+          if (rotation !== null) candidates.push({ rotation, position });
         }
       }
+      candidates.sort((a, b) => Math.abs(a.rotation - startRad) - Math.abs(b.rotation - startRad));
+      const hit = candidates[0];
+      if (hit) collisions.push({ sweptPointId: sp.id ?? `pt(${sp.x},${sp.y})`, obstacleId: obs.id, angleDeg: hit.rotation * 180 / Math.PI, position: hit.position });
     }
   }
 
@@ -94,6 +90,26 @@ export function checkSweep(input: ClearanceFanInput): ClearanceFanResult {
     arcExtentsMm: arcExtents,
     warnings,
   };
+}
+
+const rotatedPoint = (pivot: FanPoint, radius: number, angle: number): FanPoint => ({ x: pivot.x + radius * Math.cos(angle), y: pivot.y + radius * Math.sin(angle) });
+
+function rotationOnSweep(raw: number, start: number, end: number): number | null {
+  const low = Math.min(start, end) - 1e-10; const high = Math.max(start, end) + 1e-10;
+  const kMin = Math.ceil((low - raw) / (2 * Math.PI)); const kMax = Math.floor((high - raw) / (2 * Math.PI));
+  if (kMin > kMax) return null;
+  let best = raw + kMin * 2 * Math.PI;
+  for (let k = kMin + 1; k <= kMax; k++) { const value = raw + k * 2 * Math.PI; if (Math.abs(value - start) < Math.abs(best - start)) best = value; }
+  return best;
+}
+
+function circleSegmentIntersections(center: FanPoint, radius: number, a: FanPoint, b: FanPoint): FanPoint[] {
+  const dx = b.x - a.x, dy = b.y - a.y, fx = a.x - center.x, fy = a.y - center.y;
+  const qa = dx * dx + dy * dy; if (qa <= 1e-20) return Math.abs(fx * fx + fy * fy - radius * radius) <= 1e-9 ? [a] : [];
+  const qb = 2 * (fx * dx + fy * dy), qc = fx * fx + fy * fy - radius * radius;
+  const discriminant = qb * qb - 4 * qa * qc; if (discriminant < -1e-10) return [];
+  const root = Math.sqrt(Math.max(0, discriminant)); const values = [(-qb - root) / (2 * qa), (-qb + root) / (2 * qa)];
+  return values.filter((value, index) => value >= -1e-10 && value <= 1 + 1e-10 && (index === 0 || Math.abs(value - values[0]!) > 1e-10)).map(value => ({ x: a.x + value * dx, y: a.y + value * dy }));
 }
 
 function pointInPolygon(p: { x: number; y: number }, polygon: Polygon): boolean {

@@ -19,6 +19,11 @@
  */
 
 import * as THREE from 'three';
+import {
+  remapTopologyEntities,
+  type TopologyEntitySnapshot,
+  type TopologyRemapResult,
+} from '@/lib/cad/topologyRemap';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -55,6 +60,24 @@ export interface TopologicalMap {
   generation: number;
   /** Build timestamp */
   builtAt: number;
+}
+
+export interface TopologicalRegenerationReport {
+  map: TopologicalMap;
+  remaps: TopologyRemapResult[];
+}
+
+/** Convert the live face registry into the kernel-neutral remap input. */
+export function topologicalMapSnapshots(map: TopologicalMap): TopologyEntitySnapshot[] {
+  return Object.values(map.faces).map(face => ({
+    kind: 'face',
+    persistentRef: face.stableId,
+    featureId: face.originFeatureId,
+    semanticRole: face.tag,
+    centroid: [...face.signature.centroid],
+    direction: [...face.signature.normal],
+    measure: face.signature.area,
+  }));
 }
 
 // ─── Signature computation ─────────────────────────────────────────────────────
@@ -243,6 +266,20 @@ export function buildTopologicalMap(
   }
 
   return { faces, indexToStable, generation, builtAt: Date.now() };
+}
+
+/** Build a new map and report conservative face-reference correspondence. */
+export function rebuildTopologicalMapWithRemap(
+  geo: THREE.BufferGeometry,
+  previous: TopologicalMap,
+  originFeatureId?: string,
+): TopologicalRegenerationReport {
+  const map = buildTopologicalMap(geo, previous, originFeatureId);
+  const remaps = remapTopologyEntities(
+    topologicalMapSnapshots(previous),
+    topologicalMapSnapshots(map),
+  );
+  return { map, remaps };
 }
 
 /**

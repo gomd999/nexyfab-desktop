@@ -25,6 +25,21 @@ import { emitScadFromProgram, type FeatureProgram } from './emitScadFromProgram'
 import { CODEGEN_MODELS, DEFAULT_CODEGEN_MODEL } from '@/lib/ai/codegenModels';
 import { renderScadWasm, wasmAvailable } from './wasmRender';
 import { captureMultiView } from './multiViewCapture';
+import {
+  classifyManufacturingReadiness,
+  type ManufacturingReadiness,
+} from '@/lib/ai/manufacturingReadiness';
+import type { ManufacturingGateReport } from '@/lib/ai/manufacturingGates';
+
+function decodeGateReport(encoded: string | null): ManufacturingGateReport | undefined {
+  if (!encoded) return undefined;
+  try {
+    const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(encoded.length / 4) * 4, '=');
+    return JSON.parse(atob(base64)) as ManufacturingGateReport;
+  } catch {
+    return undefined;
+  }
+}
 
 /** base64-encode STL bytes (for the download button + persistence) in chunks. */
 function uint8ToB64(u8: Uint8Array): string {
@@ -180,6 +195,9 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const lastTargetRef = useRef<number | null>(null); // requested largest dim (mm) of the current fresh model
   const autoFixedRef = useRef(false);                // one-shot guard for dimension auto-correct
   const [stlB64, setStlB64] = useState<string | null>(null);
+  const [readiness, setReadiness] = useState<ManufacturingReadiness>(() =>
+    classifyManufacturingReadiness({ hasGeometry: false, hasFeatureProgram: false }),
+  );
   const [genCount, setGenCount] = useState(0);
   const colorReqRef = useRef(0); // guards against stale colored renders
 
@@ -191,6 +209,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
   const lastGeoRef = useRef<THREE.BufferGeometry | null>(null); // newest rendered mesh (for multi-view capture)
   const [precise, setPrecise] = useState(initialPrecise); // expert: NL → exact B-rep feature program
   const programRef = useRef<FeatureProgram | null>(null); // last precise feature program (for refine)
+  const clarificationContextRef = useRef<string | null>(null);
   const [modelId, setModelId] = useState(DEFAULT_CODEGEN_MODEL); // user-picked codegen model
   useEffect(() => { try { const m = localStorage.getItem('nexyfab:studio-model'); if (m && CODEGEN_MODELS.some(x => x.id === m)) setModelId(m); } catch { /* ignore */ } }, []);
   const pickModel = useCallback((id: string) => { setModelId(id); try { localStorage.setItem('nexyfab:studio-model', id); } catch { /* ignore */ } }, []);
@@ -366,20 +385,48 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     if (precise && !sentImage) {
       let preciseOk = false;
       try {
+        const precisePrompt = clarificationContextRef.current
+          ? `${clarificationContextRef.current}\nUser clarification: ${text}`
+          : text;
         const res = await fetch('/api/nexyfab/cad-feature-program', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ prompt: text, modelId, ...(programRef.current ? { previousProgram: programRef.current } : {}) }),
+          body: JSON.stringify({ prompt: precisePrompt, modelId, ...(programRef.current ? { previousProgram: programRef.current } : {}) }),
         });
-        const data = await res.json().catch(() => ({})) as { part?: string; features?: unknown[]; error?: string };
+        const data = await res.json().catch(() => ({})) as {
+          part?: string; features?: unknown[]; verificationContext?: FeatureProgram['verificationContext'];
+          error?: string; code?: string; questions?: string[];
+        };
+        if (res.status === 422 && (
+          data.code === 'CLARIFICATION_REQUIRED'
+          || data.code === 'FEATURE_PROGRAM_INVALID'
+          || data.code === 'UNGROUNDED_DIMENSIONS'
+        )) {
+          clarificationContextRef.current = precisePrompt;
+          const questions = Array.isArray(data.questions) && data.questions.length > 0
+            ? data.questions
+            : [T('누락된 치수를 알려주세요.', 'Please provide the missing dimensions.')];
+          setAiMsg(aiId, `${T('제작 치수를 임의로 정하지 않겠습니다. 다음을 확인해 주세요:', 'I will not invent manufacturing dimensions. Please confirm:')}\n${questions.map((question, index) => `${index + 1}. ${question}`).join('\n')}`, 'done');
+          setBusy(false);
+          return;
+        }
         if (res.ok && Array.isArray(data.features) && data.features.length > 0) {
-          const program = { part: data.part, features: data.features } as FeatureProgram;
+          const program = {
+            part: data.part,
+            features: data.features,
+            verificationContext: data.verificationContext,
+          } as FeatureProgram;
           programRef.current = program;
+          clarificationContextRef.current = null;
           const code = emitScadFromProgram(program);
           setAiMsg(aiId, T('렌더링…', 'Rendering…'), 'thinking');
           setScad(code); setColoredObject(null); setMobileTab('3d'); setGenCount(c => c + 1);
           const r = await renderScad(code);
           if (r.ok) {
             preciseOk = true;
+            setReadiness(classifyManufacturingReadiness({
+              hasGeometry: true,
+              hasFeatureProgram: true,
+            }));
             setAiMsg(aiId, T('완성! 정확한 치수로 만들었어요. 우측 슬라이더로 조정하거나, 계속 말해서 수정하세요 (예: 구멍 8mm로, 리브 더 높게).', 'Done! Built to exact dimensions. Tune with the sliders, or keep chatting (e.g. holes to 8mm, taller ribs).'), 'done');
             setTimeout(() => {
               const canvas = document.querySelector('[data-studio-canvas] canvas') as HTMLCanvasElement | null;
@@ -492,6 +539,10 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         return;
       }
       const DONE = T('완성! 우측 슬라이더로 치수를 조정하거나, 계속 말해서 수정하세요.', 'Done! Tune dimensions on the right, or keep chatting to refine.');
+      setReadiness(classifyManufacturingReadiness({
+        hasGeometry: true,
+        hasFeatureProgram: false,
+      }));
       setAiMsg(aiId, DONE, 'done');
       void renderColored(code); // CADAM-style colours (progressive)
       // Thumbnail + persist + (on a fresh text generation) a visual self-critique.
@@ -813,9 +864,28 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
               // Surface any approximation rather than letting it ship silently.
               const skipped = res.headers.get('X-Skipped');
               const clamped = res.headers.get('X-Clamped');
+              const skippedFeatures = skipped && skipped !== 'none'
+                ? skipped.split(',').map((value) => value.trim()).filter(Boolean)
+                : [];
+              const clampedDimensions = clamped && clamped !== 'none'
+                ? clamped.split(',').map((value) => value.trim()).filter(Boolean)
+                : [];
+              const gateReport = decodeGateReport(res.headers.get('X-Manufacturing-Gates'));
+              setReadiness(classifyManufacturingReadiness({
+                hasGeometry: true,
+                hasFeatureProgram: true,
+                analyticStepHandoffPassed: true,
+                skippedFeatures,
+                clampedDimensions,
+                gateReport,
+              }));
               const notes: string[] = [];
               if (skipped && skipped !== 'none') notes.push(T(`미반영 피처: ${skipped}`, `Features not applied: ${skipped}`));
               if (clamped && clamped !== 'none') notes.push(T(`치수 조정: ${clamped}`, `Clamped: ${clamped}`));
+              if (gateReport && !gateReport.passed) notes.push(T(
+                `제조 검증 중단: ${gateReport.firstBlockingGate ?? 'unknown'}`,
+                `Manufacturing verification blocked at ${gateReport.firstBlockingGate ?? 'unknown'}`,
+              ));
               if (notes.length) alert(T('STEP를 내보냈어요.\n', 'STEP exported.\n') + notes.join('\n'));
               return;
             }
@@ -824,6 +894,10 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
         } catch { /* fall through */ }
       }
       // Free-form (or analytic failed): tessellated solid → AP203 STEP.
+      setReadiness(classifyManufacturingReadiness({
+        hasGeometry: true,
+        hasFeatureProgram: false,
+      }));
       const pos = geometry.getAttribute('position');
       if (!pos) return;
       const positions = Array.from(pos.array as Float32Array);
@@ -842,8 +916,9 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
 
   const newDesign = useCallback(() => {
     currentIdRef.current = freshId(); setCurrentId(currentIdRef.current);
-    lastThumbRef.current = null; importStlRef.current = null; programRef.current = null; colorReqRef.current++;
+    lastThumbRef.current = null; importStlRef.current = null; programRef.current = null; clarificationContextRef.current = null; colorReqRef.current++;
     setMessages([]); setScad(''); setGeometry(null); setColoredObject(null); setStlB64(null); setNeedLogin(false); setInput(''); setSidebarOpen(false);
+    setReadiness(classifyManufacturingReadiness({ hasGeometry: false, hasFeatureProgram: false }));
   }, []);
 
   const loadDesign = useCallback((id: string) => {
@@ -853,6 +928,7 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     lastThumbRef.current = d.thumb ?? null; importStlRef.current = null;
     setMessages(d.messages.map(m => ({ id: nextId(), ...m })));
     setScad(d.scad);
+    setReadiness(classifyManufacturingReadiness({ hasGeometry: true, hasFeatureProgram: false }));
     setColoredObject(null);
     setNeedLogin(false); setSidebarOpen(false);
     setGenCount(c => c + 1);
@@ -883,15 +959,6 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
     if (onExpert) onExpert();
     else router.push(`/${lang}/shape-generator?mode=expert`);
   }, [scad, stlB64, lang, router, onExpert]);
-
-  // Manufacturing quote handoff — hand the rendered STL to the instant-quote
-  // page, which extracts volume/dimensions from the file (same path as a manual
-  // upload). Closes the design → quote funnel without a re-upload step.
-  const quoteHandoff = useCallback(() => {
-    if (!stlB64) return;
-    try { sessionStorage.setItem('nexyfab:studio-quote-stl', stlB64); } catch { return; }
-    router.push(`/${lang}/quick-quote?from=studio`);
-  }, [stlB64, lang, router]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }
@@ -1151,7 +1218,25 @@ export default function StudioInner({ onExpert, initialPrecise = false }: { onEx
               <button onClick={() => void enhanceInput()} disabled={!input.trim() || enhancing || busy} className="shrink-0 text-[11px] px-2 h-7 rounded-lg border st-bd st-hover disabled:opacity-40" title={T('OpenSCAD용 정밀 프롬프트로 다듬기', 'Refine into a precise OpenSCAD brief')}>{enhancing ? '…' : T('✨ 다듬기', '✨ Refine')}</button>
               <button onClick={() => void send()} disabled={busy || (!input.trim() && !image)} className="shrink-0 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg w-7 h-7 flex items-center justify-center" title={T('보내기', 'Send')}>↑</button>
             </div>
-            <button onClick={quoteHandoff} disabled={!stlB64} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded py-2 text-[12px] font-bold" title={T('이 부품으로 제조 견적받기', 'Get a manufacturing quote for this part')}>{T('💵 견적받기', '💵 Get a quote')}</button>
+            <div
+              className={`rounded border px-2.5 py-2 text-[11px] ${readiness.level === 'verified' ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300' : readiness.level === 'review_required' ? 'border-amber-500/50 bg-amber-500/10 text-amber-200' : 'border-slate-500/50 bg-slate-500/10 st-text-2'}`}
+              data-testid="manufacturing-readiness"
+            >
+              <div className="font-bold">
+                {readiness.level === 'verified'
+                  ? T('제조 검증됨', 'Verified for manufacturing')
+                  : readiness.level === 'review_required'
+                    ? T('검토 필요', 'Review required')
+                    : T('개념 모델', 'Concept only')}
+              </div>
+              <div className="mt-0.5 opacity-80">
+                {readiness.level === 'verified'
+                  ? T('해석형 STEP 전달 검사를 통과했습니다.', 'Analytic STEP handoff passed.')
+                  : readiness.level === 'review_required'
+                    ? T('STEP 검사와 누락 피처를 확인해야 제조 데이터로 사용할 수 있습니다.', 'STEP and feature-loss checks are required before manufacturing use.')
+                    : T('렌더링 성공은 제조 가능성을 보장하지 않습니다.', 'A successful render does not prove manufacturability.')}
+              </div>
+            </div>
             <div className="flex gap-2">
               <button onClick={exportStl} disabled={!stlB64} className="flex-1 border st-bd st-hover disabled:opacity-40 rounded py-1.5 text-[11px]">⬇ STL</button>
               <button onClick={() => void exportStep()} disabled={!geometry || stepBusy} className="flex-1 border st-bd st-hover disabled:opacity-40 rounded py-1.5 text-[11px]" title={precise ? T('제조용 analytic STEP (CAD 호환)', 'Analytic STEP for manufacturing (CAD interchange)') : T('제조용 STEP (테셀레이션, CAD 호환)', 'STEP for manufacturing (tessellated, CAD interchange)')}>{stepBusy ? '…' : '⬇ STEP'}</button>

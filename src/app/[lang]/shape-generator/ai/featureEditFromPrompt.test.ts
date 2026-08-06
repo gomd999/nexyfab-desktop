@@ -127,4 +127,32 @@ describe('resolveFeatureEditPrompt', () => {
     const r = await resolveFeatureEditPrompt('xyzzy', [], fetchPlan);
     expect(r.intents).toEqual([]);
   });
+
+  it('sends revision-bound persistent topology and part/feature identity to the AI', async () => {
+    const fetchPlan = vi.fn(async (_text: string, context?: import('@/lib/ai/modelContext').AiModelContext) => {
+      expect(context?.selectionContext).toMatchObject({
+        projectRevision: 'model-deadbeef',
+        assemblyPath: ['main', 'housing-1'],
+        partInstanceId: 'housing-1',
+        bodyId: 'body-1',
+        featureId: 'extrude-1',
+        units: 'mm',
+      });
+      expect(context?.selectionContext?.topology[0]).toMatchObject({
+        kind: 'face', persistentRef: 'face:extrude-1:top', referenceQuality: 'persistent',
+      });
+      return null;
+    });
+    await resolveFeatureEditPrompt('perform an unusual operation', [], fetchPlan, {
+      selection: {
+        type: 'face', normal: [0, 0, 1], position: [0, 0, 10], area: 100,
+        triangleCount: 2, normalLabel: 'Top', triangleIndices: [0, 1],
+        persistentId: 'face:extrude-1:top', partName: 'housing-1',
+      },
+      baseShape: 'box', projectRevision: 'model-deadbeef',
+      assemblyPath: ['main', 'housing-1'], partInstanceId: 'housing-1',
+      bodyId: 'body-1', featureId: 'extrude-1',
+    });
+    expect(fetchPlan).toHaveBeenCalledOnce();
+  });
 });

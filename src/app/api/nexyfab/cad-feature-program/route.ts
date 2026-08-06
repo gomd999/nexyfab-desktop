@@ -4,6 +4,9 @@ import { getPrompt } from '@/lib/ai/prompts';
 import { rateLimit } from '@/lib/rate-limit';
 import { getTrustedClientIp } from '@/lib/client-ip';
 import { resolveCodegenModel } from '@/lib/ai/codegenModels';
+import { clarificationQuestions, findUngroundedProgramDimensions, validateCadFeatureProgram, type CadFeatureProgram } from '@/lib/ai/cadFeatureProgram';
+import { extractManufacturingContext } from '@/lib/ai/manufacturingContext';
+import type { SelectionContext } from '@/lib/ai/selectionContext';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,22 +19,25 @@ export const dynamic = 'force-dynamic';
  * solid with an editable feature tree + STEP. (Free-form/organic stays on
  * /scad-intent-from-nl.)
  */
-interface FeatureProgram { part?: string; features?: unknown[] }
+interface FeatureProgram { part?: string; features?: unknown[]; questions?: unknown[] }
 
 export async function POST(req: NextRequest) {
   const ip = getTrustedClientIp(req.headers);
   if (!rateLimit(`cad-feature-program:${ip}`, 20, 3_600_000).allowed) {
     return NextResponse.json({ error: 'Too many requests — try again shortly.', code: 'RATE_LIMIT' }, { status: 429 });
   }
-  const body = (await req.json().catch(() => ({}))) as { prompt?: string; previousProgram?: FeatureProgram; modelId?: string };
+  const body = (await req.json().catch(() => ({}))) as { prompt?: string; previousProgram?: FeatureProgram; modelId?: string; selectionContext?: SelectionContext };
   const prompt = (body.prompt ?? '').trim();
   if (!prompt) return NextResponse.json({ error: 'prompt required' }, { status: 400 });
   const codegen = resolveCodegenModel(typeof body.modelId === 'string' ? body.modelId : undefined);
 
   const def = getPrompt('cad-feature-program');
-  const userContent = body.previousProgram
+  const selectionBlock = body.selectionContext
+    ? `\n\nThe user explicitly selected this CAD context. Modify only this target unless the request clearly requires a broader dependency update:\n\`\`\`json\n${JSON.stringify(body.selectionContext)}\n\`\`\``
+    : '';
+  const userContent = (body.previousProgram
     ? `Here is the current feature program:\n\`\`\`json\n${JSON.stringify(body.previousProgram)}\n\`\`\`\n\nApply this change and return the COMPLETE updated program (keep features not mentioned): ${prompt}`
-    : prompt;
+    : prompt) + selectionBlock;
 
   let text: string;
   try {
@@ -58,7 +64,44 @@ export async function POST(req: NextRequest) {
   let program: FeatureProgram;
   try { program = JSON.parse(m[0]); } catch { return NextResponse.json({ error: 'invalid program JSON' }, { status: 502 }); }
   if (!Array.isArray(program.features) || program.features.length === 0) {
-    return NextResponse.json({ error: 'program has no features' }, { status: 502 });
+    const questions = Array.isArray(program.questions)
+      ? program.questions.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).slice(0, 5)
+      : [];
+    return NextResponse.json({
+      error: 'dimensions need clarification', code: 'CLARIFICATION_REQUIRED',
+      questions: questions.length > 0 ? questions : ['Please provide the missing base dimensions.'],
+    }, { status: 422 });
   }
-  return NextResponse.json({ part: program.part ?? 'part', features: program.features });
+  const extractedContext = extractManufacturingContext(prompt);
+  const previousContext = (body.previousProgram as CadFeatureProgram | undefined)?.verificationContext;
+  const candidate: CadFeatureProgram = {
+    part: program.part ?? 'part',
+    features: program.features as CadFeatureProgram['features'],
+    verificationContext: {
+      ...extractedContext,
+      process: extractedContext.process ?? previousContext?.process,
+      material: extractedContext.material ?? previousContext?.material,
+    },
+  };
+  const validation = validateCadFeatureProgram(candidate);
+  if (!validation.ok) {
+    return NextResponse.json({
+      error: 'feature program needs clarification',
+      code: 'FEATURE_PROGRAM_INVALID',
+      details: validation.errors,
+      questions: clarificationQuestions(validation.errors),
+    }, { status: 422 });
+  }
+  if (!body.previousProgram) {
+    const ungrounded = findUngroundedProgramDimensions(prompt, candidate);
+    if (ungrounded.length > 0) {
+      return NextResponse.json({
+        error: 'dimensions need clarification',
+        code: 'UNGROUNDED_DIMENSIONS',
+        details: ungrounded,
+        questions: clarificationQuestions(ungrounded),
+      }, { status: 422 });
+    }
+  }
+  return NextResponse.json(candidate);
 }

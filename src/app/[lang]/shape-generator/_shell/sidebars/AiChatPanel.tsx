@@ -10,6 +10,7 @@ import { useAuthStore } from '@/hooks/useAuth';
 import { I } from '../Icons';
 import { useLang } from '../../hooks/useLang';
 import { loc } from '../../lib/loc';
+import { buildScadAgentBody, SCAD_AGENT_ENDPOINT, textFromAgentEvent, type AiChatWireEvent } from './aiChatTransport';
 
 interface Message {
   id: string;
@@ -38,7 +39,7 @@ const SUGGESTIONS: Record<string, string[]> = {
   ar: ['أنشئ حاملاً من الألومنيوم بسماكة 5 مم', 'طبّق تدويرًا 2 مم على كل الحواف الحادة', 'أضف 4 ثقوب غاطسة ∅6.5 في الزوايا', 'غيّر الثقوب إلى ملولبة M5'],
 };
 
-export function AiChatPanel({ isKo }: AiChatPanelProps) {
+export function AiChatPanel({ isKo: _isKo }: AiChatPanelProps) {
   const lang = useLang();
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -74,7 +75,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
       // back to full-JSON mode if the server doesn't advertise text/event-
       // stream. Token-level rendering means the panel feels native-AI even
       // when the underlying model is slow.
-      const res = await fetch('/api/nexyfab/scad-agent', {
+      const res = await fetch(SCAD_AGENT_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,8 +85,13 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
           // the request falls back to guest and hits the daily limit → 401.
           ...(useAuthStore.getState().token ? { Authorization: `Bearer ${useAuthStore.getState().token}` } : {}),
         },
-        body: JSON.stringify({ prompt, mode: 'chat', stream: true }),
+        body: JSON.stringify(buildScadAgentBody(prompt)),
       });
+
+      if (!res.ok) {
+        const failure = await res.json().catch(() => null) as { error?: string } | null;
+        throw new Error(failure?.error ?? `AI request failed (HTTP ${res.status})`);
+      }
 
       const contentType = res.headers.get('content-type') ?? '';
       const isStream = contentType.includes('event-stream') || contentType.includes('ndjson') || contentType.includes('text/plain');
@@ -110,8 +116,9 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
             buffer = buffer.slice(frame.length);
             const payload = parseFrame(frame);
             if (!payload) continue;
-            if (typeof payload.delta === 'string') {
-              acc += payload.delta;
+            const text = textFromAgentEvent(payload);
+            if (text) {
+              acc += `${acc ? '\n' : ''}${text}`;
               if (firstChunk) firstChunk = false;
               setMessages(prev => prev.map(m => m.id === assistantId
                 ? { ...m, loading: false, content: acc }
@@ -182,7 +189,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
     return undefined;
   }
 
-  function parseFrame(frame: string): { delta?: string; diagnostics?: unknown; intent?: unknown; pattern?: unknown } | null {
+  function parseFrame(frame: string): AiChatWireEvent | null {
     const trimmed = frame.trim();
     if (!trimmed) return null;
     // SSE "data: ..." prefix.
@@ -321,7 +328,7 @@ export function AiChatPanel({ isKo }: AiChatPanelProps) {
             fontSize: 12, outline: 'none',
           }}
         />
-        <VoiceButton isKo={isKo} onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} disabled={busy} />
+        <VoiceButton onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} disabled={busy} />
         <button
           type="submit"
           disabled={busy || !input.trim()}
@@ -359,8 +366,7 @@ interface SpeechRecognitionLike {
   onend: (() => void) | null;
 }
 
-function VoiceButton({ isKo, onTranscript, disabled }: {
-  isKo: boolean;
+function VoiceButton({ onTranscript, disabled }: {
   onTranscript: (text: string) => void;
   disabled: boolean;
 }) {

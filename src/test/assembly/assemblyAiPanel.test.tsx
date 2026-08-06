@@ -33,6 +33,33 @@ function typeInto(testId: string, value: string): void {
 }
 
 describe('AssemblyAiPanel', () => {
+  it('shows the next fail-closed stage for a decomposed multi-part product', async () => {
+    const fetcher = vi.fn().mockResolvedValue(null);
+    const program = {
+      version: 1, units: 'mm', classification: 'review_required', name: 'Robot', unresolved: [],
+      assembly: { parts: [{ id: 'base', name: 'Base', partTemplateId: 'base', position: { x: 0, y: 0, z: 0 }, orientation: { x: 0, y: 0, z: 0, w: 1 }, fixed: true }], mates: [] },
+      parts: [{ instanceId: 'base', featureTree: { nodes: [] }, metadata: { partNumber: 'R-001', revision: 'A', quantity: 1, source: 'confirmed' } }],
+    };
+    let generationRevision = 0;
+    const stages = ['intent', 'decomposition', 'interfaces', 'part_programs'];
+    const generationState = () => ({ schema: 'nexyfab.generation-run.v1', runId: 'ui', revision: generationRevision,
+      stages: Object.fromEntries(stages.map((stage, index) => [stage, { status: generationRevision > index ? 'passed' : 'pending', ...(generationRevision > index ? { checkpointHash: 'a'.repeat(64) } : {}) }])), verifiedPartArtifacts: {} });
+    const remote = vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
+      const url = String(input);
+      if (url.includes('/generation/state')) return new Response(JSON.stringify({ ok: true, state: generationState() }), { status: 200 });
+      if (url.includes('/generation/refine')) {
+        const stage = stages[generationRevision]!; generationRevision++;
+        return new Response(JSON.stringify({ ok: true, state: generationState(), draft: { output: { stage }, evidenceRefs: [`e:${stage}`] }, decision: { disposition: 'advance', reasons: [] }, ...(stage === 'part_programs' ? { program } : {}) }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: true, releaseReady: false, decision: { stage: 'part_geometry', status: 'blocked', errors: ['base: Manufacturing verification is pending.'], warnings: [] } }), { status: 200 });
+    });
+    render(<AssemblyAiPanel lang="en" intentFetcher={fetcher} onBuildAssembly={vi.fn()} onBuildProduct={vi.fn()} />);
+    fireEvent.change(screen.getByTestId('assembly-ai-input'), { target: { value: 'build an articulated industrial robot with reducers' } });
+    fireEvent.click(screen.getByTestId('assembly-ai-send'));
+    expect(await screen.findByTestId('assembly-ai-release-status')).toHaveTextContent('Concept only · next: part_geometry');
+    expect(remote.mock.calls.map(call => String(call[0]))).toEqual(['/api/cad/v1/generation/state', '/api/cad/v1/generation/refine', '/api/cad/v1/generation/refine', '/api/cad/v1/generation/refine', '/api/cad/v1/generation/refine', '/api/cad/v1/generation/verify']);
+    remote.mockRestore();
+  });
   it('renders the panel with input, send button, and no preview by default', () => {
     render(<AssemblyAiPanel lang="en" onBuildAssembly={vi.fn()} />);
     expect(screen.getByTestId('assembly-ai-panel')).toBeInTheDocument();

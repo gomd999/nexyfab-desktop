@@ -229,3 +229,46 @@ export function dispatchFeatureEditBatch(
   }
   return results;
 }
+
+export interface AtomicDispatchResult<TSnapshot> {
+  committed: boolean;
+  results: DispatchResult[];
+  snapshot: TSnapshot;
+  errorReason?: string;
+}
+
+/**
+ * Executes an AI batch as one transaction. A failed action or thrown store
+ * mutation restores the exact caller-owned snapshot, preventing half-applied
+ * feature trees and assemblies.
+ */
+export async function dispatchFeatureEditBatchAtomic<TSnapshot>(
+  intents: FeatureEditIntent[],
+  store: FeatureStoreApi,
+  capture: () => TSnapshot,
+  restore: (snapshot: TSnapshot) => void | Promise<void>,
+): Promise<AtomicDispatchResult<TSnapshot>> {
+  const snapshot = capture();
+  try {
+    const results = dispatchFeatureEditBatch(intents, store, { stopOnError: true });
+    const failed = results.find(result => !result.applied);
+    if (failed || results.length !== intents.length) {
+      await restore(snapshot);
+      return {
+        committed: false,
+        results,
+        snapshot,
+        errorReason: failed?.errorReason ?? 'AI edit batch did not complete',
+      };
+    }
+    return { committed: true, results, snapshot };
+  } catch (error) {
+    await restore(snapshot);
+    return {
+      committed: false,
+      results: [],
+      snapshot,
+      errorReason: (error as Error)?.message ?? String(error),
+    };
+  }
+}

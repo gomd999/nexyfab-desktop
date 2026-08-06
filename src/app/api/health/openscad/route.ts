@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { resolveOpenScadExecutable } from '@/lib/openscad-render/resolveOpenScadExecutable';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -50,7 +51,7 @@ interface HealthReport {
 
 async function checkBinary(): Promise<CheckResult> {
   const start = Date.now();
-  const bin = process.env.OPENSCAD_BIN || (process.platform === 'win32' ? 'openscad.com' : 'openscad');
+  const bin = resolveOpenScadExecutable();
   try {
     const { stdout, stderr } = await execFileAsync(bin, ['--version'], { timeout: 5_000 });
     const text = (stdout || stderr || '').trim();

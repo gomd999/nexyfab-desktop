@@ -59,7 +59,7 @@ export type EditorLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 // ─── selection ref ────────────────────────────────────────────────────────
 
 /** Subset of {@link MateRefKind} the toolbar currently picks against. */
-export type ToolbarRefKind = Extract<MateRefKind, 'axis' | 'plane' | 'point' | 'edge'>;
+export type ToolbarRefKind = Extract<MateRefKind, 'face' | 'axis' | 'plane' | 'point' | 'edge'>;
 
 export interface ToolbarSelectionRef {
   partId: string;

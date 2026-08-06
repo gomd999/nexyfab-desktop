@@ -211,8 +211,8 @@ interface DesignFunnelBarProps {
 
 export default function DesignFunnelBar({
   lang, hasGeometry, dfmChecked, dfmClean, dfmIssueCount,
-  rfqDone,
-  onGoToDFM, onGoToQuote, onProcessRouter, onAISupplierMatch, onCostCopilot, onAIHistory, onOpenScad, onIdeaDesign,
+  rfqDone: _rfqDone,
+  onGoToDFM, onGoToQuote: _onGoToQuote, onProcessRouter, onAISupplierMatch, onCostCopilot, onAIHistory, onOpenScad, onIdeaDesign,
   selectionActive: _selectionActive = false, onToggleSelection: _onToggleSelection,
   theme,
   sketchMode = false,
@@ -236,8 +236,10 @@ export default function DesignFunnelBar({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [aiMenuOpen]);
 
-  // 현재 활성 단계 계산
-  const step = rfqDone ? 3 : (dfmChecked && dfmClean) ? 2 : hasGeometry ? 1 : 0;
+  // CAD workspace ends at design verification. Quote/RFQ is intentionally
+  // outside this product flow; users export the assembly or contact NexyFab
+  // independently.
+  const step = (dfmChecked && dfmClean) ? 2 : hasGeometry ? 1 : 0;
 
   const steps = [
     {
@@ -260,15 +262,6 @@ export default function DesignFunnelBar({
           : tt.dfmIssues(dfmIssueCount),
       action: hasGeometry && !dfmClean ? onGoToDFM : undefined,
       actionLabel: tt.viewDfm,
-    },
-    {
-      n: 3,
-      label: tt.getQuote,
-      icon: '📋',
-      done: rfqDone,
-      hint: rfqDone ? tt.quoteRequested : tt.finalizeShape,
-      action: hasGeometry && !rfqDone ? onGoToQuote : undefined,
-      actionLabel: tt.requestQuote,
     },
   ];
 

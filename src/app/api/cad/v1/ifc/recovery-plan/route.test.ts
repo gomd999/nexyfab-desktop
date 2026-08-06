@@ -1,0 +1,6 @@
+import { NextRequest } from 'next/server'; import { describe, expect, it } from 'vitest'; import { POST } from './route';
+const req = (body: unknown) => new NextRequest('http://localhost/api/cad/v1/ifc/recovery-plan', { method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body) });
+describe('IFC recovery plan route',()=>{
+  it('returns occurrence-scoped required inputs without source',async()=>{const source=`ISO-10303-21;HEADER;FILE_SCHEMA(('IFC2X3'));ENDSEC;DATA;#1=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);#2=IFCCARTESIANPOINT((0.,0.,0.));#3=IFCCARTESIANPOINT((0.,100.,100.));#4=IFCPOLYLINE((#2,#3));#5=IFCSHAPEREPRESENTATION($,'Body','Curve3D',(#4));#6=IFCPRODUCTDEFINITIONSHAPE($,$,(#5));#7=IFCRAILING('0DAlDmbNb6ZhcaPbmdsMGX',$,'R',$,$,$,#6,$,.NOTDEFINED.);ENDSEC;END-ISO-10303-21;`;const response=await POST(req({ifc:source}));const json=await response.json();expect(json).toMatchObject({ok:true,releaseReady:false,requests:[{globalId:'0DAlDmbNb6ZhcaPbmdsMGX',requiredInputs:['profile_definition_or_physical_width_mm']}],sourceReturned:false});expect(JSON.stringify(json)).not.toContain('ISO-10303-21');});
+  it('rejects local path fields',async()=>{expect((await POST(req({ifc:'x',path:'C:\\x.ifc'}))).status).toBe(400);});
+});

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { dispatchFeatureEdit, dispatchFeatureEditBatch, type FeatureStoreApi, type FeatureEditIntent } from './featureEditDispatcher';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { dispatchFeatureEdit, dispatchFeatureEditBatch, dispatchFeatureEditBatchAtomic, type FeatureStoreApi, type FeatureEditIntent } from './featureEditDispatcher';
 import type { FeatureInstance } from '../features/types';
 
 function mockStore(initial: FeatureInstance[] = []): FeatureStoreApi & {
@@ -224,5 +224,32 @@ describe('dispatchFeatureEditBatch', () => {
     const results = dispatchFeatureEditBatch(intents, store, { stopOnError: true });
     expect(results).toHaveLength(1);
     expect(store.features).toHaveLength(0);
+  });
+});
+
+describe('dispatchFeatureEditBatchAtomic', () => {
+  it('commits a complete batch and returns its rollback snapshot', async () => {
+    const store = mockStore();
+    const snapshot = { marker: 'before' };
+    const restore = vi.fn();
+    const result = await dispatchFeatureEditBatchAtomic([
+      { kind: 'add_feature', featureType: 'fillet', params: { radius: 2 } },
+    ], store, () => snapshot, restore);
+    expect(result.committed).toBe(true);
+    expect(result.snapshot).toBe(snapshot);
+    expect(restore).not.toHaveBeenCalled();
+  });
+
+  it('restores the snapshot when a later action fails', async () => {
+    const store = mockStore();
+    const snapshot = { marker: 'before' };
+    const restore = vi.fn();
+    const result = await dispatchFeatureEditBatchAtomic([
+      { kind: 'add_feature', featureType: 'fillet', params: { radius: 2 } },
+      { kind: 'remove_feature', featureId: 'missing-feature' },
+    ], store, () => snapshot, restore);
+    expect(result.committed).toBe(false);
+    expect(restore).toHaveBeenCalledOnce();
+    expect(restore).toHaveBeenCalledWith(snapshot);
   });
 });

@@ -20,11 +20,15 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import FloatingAiPrompt from './FloatingAiPrompt';
 import {
   dispatchFeatureEditBatch,
+  dispatchFeatureEditBatchAtomic,
   type FeatureEditIntent,
   type FeatureStoreApi,
 } from './featureEditDispatcher';
 import { EditOriginTracker, nextBatchId } from './editOriginTracker';
 import { useVoiceInput } from './useVoiceInput';
+import type { SelectionContext } from '@/lib/ai/selectionContext';
+import { selectionRequiresConfirmation } from '@/lib/ai/selectionContext';
+import { updateGenerationSessionForEdit } from './generationSessionClient';
 
 export interface AiAssistantShellProps {
   lang: string;
@@ -35,7 +39,16 @@ export interface AiAssistantShellProps {
   promptToIntents: (prompt: string) => Promise<{
     intents: FeatureEditIntent[];
     explanation: string;
+    baseRevision?: string;
+    selectionContext?: SelectionContext;
   }>;
+  /** Current content revision, re-read after planning to reject stale edits. */
+  getCurrentRevision?: () => string;
+  /** Product UI may replace the default browser confirmation dialog. */
+  confirmPlan?: (summary: string) => boolean | Promise<boolean>;
+  /** Full model snapshot hooks make a multi-action AI edit atomic and undoable. */
+  captureEditSnapshot?: () => unknown;
+  restoreEditSnapshot?: (snapshot: unknown) => void | Promise<void>;
   /** Optional callback when origin tracker records a new AI batch. */
   onAiBatch?: (batchId: string, intentCount: number) => void;
   /** Optional: open the full chat sidebar. */
@@ -52,12 +65,14 @@ export interface AiAssistantShellProps {
 
 export default function AiAssistantShell({
   lang, store, promptToIntents, onAiBatch, onOpenFullChat, disabled,
-  scadEditActive, onScadEdit, onImageGenerate,
+  scadEditActive, onScadEdit, onImageGenerate, getCurrentRevision, confirmPlan,
+  captureEditSnapshot, restoreEditSnapshot,
 }: AiAssistantShellProps) {
   const trackerRef = useRef<EditOriginTracker | null>(null);
   if (!trackerRef.current) trackerRef.current = new EditOriginTracker();
 
   const [voiceTranscript, setVoiceTranscript] = useState<string>('');
+  const [undoAiEdit, setUndoAiEdit] = useState<(() => Promise<void>) | null>(null);
 
   // Voice input — pipes transcripts into the prompt input via a
   // controlled flow. Caller can subscribe to the latest transcript
@@ -89,10 +104,43 @@ export default function AiAssistantShell({
     // sketch mode. This makes the manual→AI→manual workflow safe.
     try { window.dispatchEvent(new CustomEvent('nexyfab:tool', { detail: { id: 'sketch.finish' } })); } catch { /* ok */ }
     try {
-      const { intents, explanation } = await promptToIntents(prompt);
+      const { intents, explanation, baseRevision, selectionContext } = await promptToIntents(prompt);
       if (intents.length === 0) return explanation || 'No actions inferred.';
+      const currentRevision = getCurrentRevision?.();
+      if (baseRevision && currentRevision && baseRevision !== currentRevision) {
+        return lang === 'ko'
+          ? '모델이 AI 분석 이후 변경되어 적용을 중단했습니다. 현재 상태에서 다시 요청해 주세요.'
+          : 'The model changed after AI planning, so the edit was not applied. Please retry on the current state.';
+      }
+      const destructive = intents.some(intent =>
+        intent.kind === 'clear_all' || intent.kind === 'replace_pipeline' ||
+        intent.kind === 'remove_feature' || intent.kind === 'set_assembly_parts');
+      const uncertainTarget = selectionContext ? selectionRequiresConfirmation(selectionContext) : false;
+      if (destructive || uncertainTarget) {
+        const summary = formatPlanConfirmation(intents, uncertainTarget, lang, store);
+        const accepted = confirmPlan
+          ? await confirmPlan(summary)
+          : (typeof window !== 'undefined' ? window.confirm(summary) : false);
+        if (!accepted) return lang === 'ko' ? '변경을 적용하지 않았습니다.' : 'The edit was not applied.';
+      }
       const batchId = nextBatchId();
-      const results = dispatchFeatureEditBatch(intents, store);
+      let results;
+      if (captureEditSnapshot && restoreEditSnapshot) {
+        const atomic = await dispatchFeatureEditBatchAtomic(
+          intents, store, captureEditSnapshot, restoreEditSnapshot,
+        );
+        results = atomic.results;
+        if (!atomic.committed) {
+          return `${explanation}\n\n${lang === 'ko' ? '변경 도중 오류가 발생해 전체 상태를 자동 복구했습니다.' : 'An edit failed, so the complete model state was restored.'}${atomic.errorReason ? `\n${atomic.errorReason}` : ''}`;
+        }
+        setUndoAiEdit(() => async () => {
+          await restoreEditSnapshot(atomic.snapshot);
+          setUndoAiEdit(null);
+        });
+      } else {
+        results = dispatchFeatureEditBatch(intents, store);
+        setUndoAiEdit(null);
+      }
       // Record each applied action in the origin tracker.
       for (let i = 0; i < intents.length; i++) {
         const intent = intents[i]!;
@@ -106,6 +154,12 @@ export default function AiAssistantShell({
       onAiBatch?.(batchId, intents.length);
       const applied = results.filter(r => r.applied).length;
       const failed = results.filter(r => !r.applied);
+      let generationStateWarning = '';
+      const appliedIntents = intents.filter((_, index) => results[index]?.applied);
+      if (appliedIntents.length > 0) {
+        try { await updateGenerationSessionForEdit(appliedIntents, selectionContext); }
+        catch (error) { generationStateWarning = `\n⚠️ Generation verification state was not updated: ${error instanceof Error ? error.message : String(error)}`; }
+      }
       let reply = `${explanation}\n\nApplied ${applied}/${intents.length} action(s).`;
       // Surface WHICH actions failed and WHY, instead of a silent partial apply.
       if (failed.length > 0) {
@@ -113,11 +167,12 @@ export default function AiAssistantShell({
           .map(r => `⚠️ ${r.summary || 'action'}${r.errorReason ? ` — ${r.errorReason}` : ''}`)
           .join('\n');
       }
+      reply += generationStateWarning;
       return reply;
     } catch (err) {
       return `AI error: ${(err as Error)?.message ?? err}`;
     }
-  }, [disabled, promptToIntents, store, onAiBatch, scadEditActive, onScadEdit]);
+  }, [disabled, promptToIntents, store, onAiBatch, scadEditActive, onScadEdit, getCurrentRevision, confirmPlan, lang, captureEditSnapshot, restoreEditSnapshot]);
 
   // Cleanup voice on unmount.
   useEffect(() => {
@@ -140,8 +195,40 @@ export default function AiAssistantShell({
       onImageGenerate={onImageGenerate}
       onOpenFullChat={onOpenFullChat}
       disabled={disabled}
+      onUndo={undoAiEdit ?? undefined}
     />
   );
+}
+
+function formatPlanConfirmation(
+  intents: FeatureEditIntent[],
+  uncertainTarget: boolean,
+  lang: string,
+  store: FeatureStoreApi,
+): string {
+  const actions = intents.map(intent => {
+    switch (intent.kind) {
+      case 'update_param': {
+        const feature = store.features.find(item => item.id === intent.featureId);
+        const before = feature?.params[intent.paramKey];
+        return `${feature?.type ?? intent.featureId}.${intent.paramKey}: ${before ?? '?'} → ${intent.value}`;
+      }
+      case 'add_feature': return `+ ${intent.featureType} ${JSON.stringify(intent.params)}`;
+      case 'add_feature_on_selection': return `+ ${intent.featureType} on selected ${intent.edgeSelections?.length ? 'edge' : 'face'}`;
+      case 'remove_feature': return `− ${store.features.find(item => item.id === intent.featureId)?.type ?? 'feature'} [${intent.featureId}]`;
+      case 'clear_all': return `− all ${store.features.length} features`;
+      case 'replace_pipeline': return `${store.features.length} → ${intent.features.length} features`;
+      case 'set_assembly_parts': return `assembly → ${intent.parts.length} independent parts`;
+      case 'set_base_shape': return `base shape → ${intent.shapeId} ${JSON.stringify(intent.params)}`;
+      case 'toggle_feature': return `${intent.featureId}: ${intent.enabled ? 'enabled' : 'suppressed'}`;
+      case 'reorder_feature': return `${intent.featureId} → position ${intent.newIndex + 1}`;
+      case 'add_sketch_extrude': return `+ sketch extrude ${intent.sketchData.config.depth} mm`;
+    }
+  }).join('\n- ');
+  if (lang === 'ko') {
+    return `AI 변경 미리보기\n- ${actions}${uncertainTarget ? '\n\n선택 대상이 파생 참조이므로 형상 변경 후 달라질 수 있습니다.' : ''}\n\n적용할까요?`;
+  }
+  return `AI edit preview\n- ${actions}${uncertainTarget ? '\n\nThe selected target uses a derived reference and may change after regeneration.' : ''}\n\nApply these changes?`;
 }
 
 /** Convert a successful intent into an EditAction record. Best-effort:

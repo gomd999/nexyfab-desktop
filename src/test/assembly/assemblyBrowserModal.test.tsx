@@ -3259,6 +3259,7 @@ describe('AssemblyBrowserModal', () => {
       // The viewer's outer host renders even in jsdom — its inner WebGL
       // renderer init may bail (no WebGL) but the host div is unconditional.
       expect(screen.getByTestId('assembly-3d-viewer')).toBeInTheDocument();
+      expect(screen.getByTestId('solver-assembly-precise-animation-verify')).toBeDisabled();
       // aria-pressed reflects the new state.
       expect(screen.getByTestId('solver-assembly-3d-toggle')).toHaveAttribute(
         'aria-pressed',
