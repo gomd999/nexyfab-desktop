@@ -4,6 +4,7 @@ ARG RADIANCE_SOURCE_URL=https://radsite.lbl.gov/radiance/dist/rad6R0P1.tar.gz
 ARG RADIANCE_SOURCE_SHA256=b720d39e43fcf2ea09ab1699b62418836dfad8316743727761d29e85f82585cf
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates curl cmake build-essential \
+      libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxext-dev \
  && rm -rf /var/lib/apt/lists/* \
  && curl --fail --location --proto '=https' --tlsv1.2 \
       "$RADIANCE_SOURCE_URL" --output /tmp/radiance.tar.gz \

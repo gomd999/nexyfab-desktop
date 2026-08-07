@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * X2 — Client-side Sentry capture helper.
  *
@@ -40,7 +42,7 @@ export function captureClientError(err: unknown, ctx: ClientCaptureContext): voi
   if (shouldSilence(key)) return;
 
   const tags = { source: ctx.source, ...(ctx.tags ?? {}) };
-  void import('@sentry/nextjs').then(s => {
+  void import('@sentry/browser').then(s => {
     if (s.captureException) {
       s.captureException(err instanceof Error ? err : new Error(String(err)), {
         tags,
@@ -56,7 +58,7 @@ export function captureClientMessage(message: string, ctx: ClientCaptureContext,
   if (shouldSilence(key)) return;
 
   const tags = { source: ctx.source, ...(ctx.tags ?? {}) };
-  void import('@sentry/nextjs').then(s => {
+  void import('@sentry/browser').then(s => {
     if (s.captureMessage) {
       s.captureMessage(message, { level, tags, extra: ctx.extra });
     }

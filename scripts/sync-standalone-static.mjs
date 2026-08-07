@@ -9,9 +9,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const standaloneServer = path.join(root, '.next', 'standalone', 'server.js');
-const staticSrc = path.join(root, '.next', 'static');
-const staticDest = path.join(root, '.next', 'standalone', '.next', 'static');
+const distDir = process.env.NEXT_DIST_DIR || '.next';
+const standaloneServer = path.join(root, distDir, 'standalone', 'server.js');
+const staticSrc = path.join(root, distDir, 'static');
+const staticDest = path.join(root, distDir, 'standalone', distDir, 'static');
 
 if (!fs.existsSync(standaloneServer)) {
   process.exit(0);

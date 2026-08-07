@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { captureClientError } from '@/lib/client-error-capture';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -30,13 +31,11 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     // unhandled subtree crashes always reach the Issues feed. Lazy-import to
     // keep the ErrorBoundary fallback path on the critical render path while
     // still benefiting from instrumentation-client.ts's PII scrub.
-    void import('@sentry/nextjs')
-      .then(sentry => {
-        sentry.captureException?.(error, {
-          tags: { source: 'ErrorBoundary' },
-          extra: { componentStack: info.componentStack },
-        });
-      })
+    void Promise.resolve()
+      .then(() => captureClientError(error, {
+        source: 'ErrorBoundary',
+        extra: { componentStack: info.componentStack ?? undefined },
+      }))
       .catch(() => { /* SDK unavailable — fallback already logged above */ });
   }
 

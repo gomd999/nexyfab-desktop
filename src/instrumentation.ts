@@ -1,27 +1,32 @@
 /**
- * Next.js instrumentation — Sentry (Node/Edge) + 서버 기동 검증·DB 초기화.
+ * Next.js instrumentation — SDK-free server error forwarding + startup/DB init.
  * `next build` 시 Node 런타임에서만 startup/Postgres 경로가 실행됩니다.
  */
-import { captureRequestError, init as sentryInit } from '@sentry/nextjs';
-// Shared, unit-tested PII scrubber (src/lib/sentryRedact.test.ts).
-import { scrubEvent } from './lib/sentryRedact';
+import { forwardToSentry } from './lib/sentry-forward';
+import { scrubString } from './lib/sentryRedact';
 
-export const onRequestError = captureRequestError;
-
-const sentryOptions = {
-  dsn: process.env.SENTRY_DSN,
-  tracesSampleRate: 0.1,
-  debug: false,
-  sendDefaultPii: false,
-  beforeSend(event: Parameters<NonNullable<Parameters<typeof sentryInit>[0]['beforeSend']>>[0]) {
-    return scrubEvent(event);
-  },
-} as const;
+export function onRequestError(
+  error: unknown,
+  request: Readonly<{ path: string; method: string }>,
+  context: Readonly<{ routerKind: string; routePath: string; routeType: string }>,
+) {
+  const value = error instanceof Error ? error : new Error(String(error));
+  forwardToSentry({
+    level: 'error',
+    message: String(scrubString(value.message)),
+    stack: String(scrubString(value.stack)),
+    tags: {
+      routerKind: context.routerKind,
+      routePath: context.routePath,
+      routeType: context.routeType,
+      method: request.method,
+    },
+    extra: { path: scrubString(request.path) },
+  });
+}
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    sentryInit({ ...sentryOptions });
-
     const { validateStartup } = await import('./lib/startup-validation');
     validateStartup();
 
@@ -32,9 +37,5 @@ export async function register() {
         process.exit(1);
       });
     }
-  }
-
-  if (process.env.NEXT_RUNTIME === 'edge') {
-    sentryInit({ ...sentryOptions });
   }
 }

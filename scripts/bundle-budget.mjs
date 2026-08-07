@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
-const nextDir = join(root, '.next');
+const nextDir = join(root, process.env.NEXT_DIST_DIR || '.next');
 const manifestPath = join(nextDir, 'build-manifest.json');
 const budgetPath = join(__dirname, 'bundle-budget.json');
 

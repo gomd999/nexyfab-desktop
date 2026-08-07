@@ -27,9 +27,37 @@ const CSP_INCLUDE_UPGRADE_INSECURE = process.env.CSP_OMIT_UPGRADE_INSECURE !== '
 
 // Tauri 빌드 시 static export, 웹 배포 시 standalone
 const isTauri = process.env.TAURI === 'true';
+const buildId =
+  process.env.NEXYFAB_BUILD_ID ||
+  (process.env.RAILWAY_GIT_COMMIT_SHA ?? '').slice(0, 12) ||
+  process.env.RAILWAY_DEPLOYMENT_ID ||
+  new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
 
 const nextConfig: NextConfig = {
+  // Lets CI/diagnostics build in an isolated cache while a deployed
+  // standalone process is still holding the default `.next` directory.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   output: isTauri ? 'export' : 'standalone',
+  // Standalone tracing otherwise walks multi-GB desktop/build/reference
+  // directories that cannot be imported by the web runtime. Keep runtime
+  // data, public assets and OCCT workers eligible while excluding only
+  // development evidence and unrelated build products.
+  outputFileTracingExcludes: {
+    '*': [
+      './.claude/**/*',
+      './.git/**/*',
+      './src-tauri/**/*',
+      './out/**/*',
+      './out2/**/*',
+      './docs/**/*',
+      './e2e/**/*',
+      './tests/**/*',
+      './test-results/**/*',
+      './playwright-report/**/*',
+      './validation-reports/**/*',
+    ],
+  },
+  allowedDevOrigins: ['127.0.0.1', 'localhost'],
   trailingSlash: true,
   serverExternalPackages: ['better-sqlite3'],
   // Stamp the build with a short commit SHA so sentry-forward.ts can tag
@@ -37,6 +65,9 @@ const nextConfig: NextConfig = {
   // RAILWAY_GIT_COMMIT_SHA at build time; falls back to a manual override
   // or 'dev' in local builds.
   env: {
+    // Compiled into the server bundle, including local Railway uploads where
+    // no Git commit SHA is available.
+    NEXYFAB_BUILD_ID: buildId,
     NEXT_PUBLIC_RELEASE:
       (process.env.RAILWAY_GIT_COMMIT_SHA ?? '').slice(0, 8) ||
       process.env.NEXT_PUBLIC_RELEASE ||
@@ -44,6 +75,16 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      {
+        source: '/ko/:path*',
+        destination: '/kr/:path*',
+        permanent: true,
+      },
+      {
+        source: '/zh/:path*',
+        destination: '/cn/:path*',
+        permanent: true,
+      },
       {
         source: '/:lang/generative-design/:path*',
         destination: '/:lang/shape-generator/',
@@ -55,12 +96,39 @@ const nextConfig: NextConfig = {
     // Delegates to `src/lib/security/cspHeaders.ts` so the directive set is
     // unit-testable without booting Next.js. The function is pure — env
     // values are captured at module load (above).
-    return buildSecurityHeaders({
+    const securityHeaders = buildSecurityHeaders({
       isDev,
       extraConnectSrc: CSP_EXTRA_CONNECT_SRC,
       includeUpgradeInsecure: CSP_INCLUDE_UPGRADE_INSECURE,
       corsAllowedOrigins: CORS_ALLOWED_ORIGINS,
     });
+    return [
+      ...securityHeaders,
+      {
+        // These files are not content-hashed, so use a bounded cache instead
+        // of immutable. This prevents a 65+ MB download on every editor visit
+        // while allowing a corrected kernel to replace the cached copy.
+        source: '/occt-worker/:path*',
+        headers: [{
+          key: 'Cache-Control',
+          value: 'public, max-age=86400, stale-while-revalidate=604800',
+        }],
+      },
+      {
+        source: '/replicad_single.wasm',
+        headers: [{
+          key: 'Cache-Control',
+          value: 'public, max-age=86400, stale-while-revalidate=604800',
+        }],
+      },
+      {
+        source: '/occt-import-js.wasm',
+        headers: [{
+          key: 'Cache-Control',
+          value: 'public, max-age=86400, stale-while-revalidate=604800',
+        }],
+      },
+    ];
   },
   productionBrowserSourceMaps: false,
   images: {
