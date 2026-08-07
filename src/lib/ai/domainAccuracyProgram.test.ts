@@ -1,0 +1,96 @@
+import { describe, expect, it } from 'vitest';
+import {
+  DOMAIN_ACCURACY_DOMAINS,
+  DOMAIN_ACCURACY_PROFILES,
+  assessDomainAccuracy,
+  type DomainAccuracyDomain,
+  type DomainAccuracyEvidence,
+} from './domainAccuracyProgram';
+
+function passingEvidence(domain: DomainAccuracyDomain): DomainAccuracyEvidence {
+  return {
+    domain,
+    approvedCases: 20,
+    independentReviewers: 2,
+    campaigns: 3,
+    minimumRepeatsPerCase: 15,
+    minimumRepeatsPerCampaign: 5,
+    requiredGateRuns: 300,
+    requiredGatePasses: 300,
+    falseVerified: 0,
+    falseClear: 0,
+    destructivePartMerge: 0,
+    axes: DOMAIN_ACCURACY_PROFILES[domain].requiredAxes.map(axis => ({
+      axis,
+      expected: 300,
+      measured: 300,
+      passed: 285,
+    })),
+  };
+}
+
+describe('parallel domain accuracy release contract', () => {
+  it.each(DOMAIN_ACCURACY_DOMAINS)('%s accepts complete 95% evidence', domain => {
+    expect(assessDomainAccuracy(passingEvidence(domain))).toMatchObject({
+      domain,
+      eligible: true,
+      blockers: [],
+    });
+  });
+
+  it('fails closed when an interior motion axis is missing', () => {
+    const evidence = passingEvidence('interior');
+    evidence.axes = evidence.axes.filter(item => item.axis !== 'motion');
+    expect(assessDomainAccuracy(evidence)).toMatchObject({
+      eligible: false,
+      blockers: expect.arrayContaining(['accuracy:motion', 'coverage:motion']),
+    });
+  });
+
+  it('separates accuracy from coverage', () => {
+    const evidence = passingEvidence('mechanical');
+    evidence.axes = evidence.axes.map(item => item.axis === 'features'
+      ? { ...item, measured: 150, passed: 150 }
+      : item);
+    expect(assessDomainAccuracy(evidence).blockers).toContain('coverage:features');
+    expect(assessDomainAccuracy(evidence).blockers).not.toContain('accuracy:features');
+  });
+
+  it('rejects insufficient review, campaigns, repeats, or gate passes', () => {
+    const evidence = passingEvidence('civil');
+    Object.assign(evidence, {
+      approvedCases: 19,
+      independentReviewers: 1,
+      campaigns: 2,
+      minimumRepeatsPerCase: 14,
+      minimumRepeatsPerCampaign: 4,
+      requiredGatePasses: 299,
+    });
+    expect(assessDomainAccuracy(evidence).blockers).toEqual(expect.arrayContaining([
+      'approved_cases:19/20',
+      'independent_reviewers:minimum_2',
+      'campaigns:2/3',
+      'repeats:14/15',
+      'campaign_repeats:4/5',
+      'required_gate_pass_rate',
+    ]));
+  });
+
+  it('rejects unsafe success claims even when numeric accuracy passes', () => {
+    const evidence = passingEvidence('landscape');
+    evidence.falseVerified = 1;
+    evidence.falseClear = 1;
+    evidence.destructivePartMerge = 1;
+    expect(assessDomainAccuracy(evidence).blockers).toEqual(expect.arrayContaining([
+      'false_verified', 'false_clear', 'destructive_part_merge',
+    ]));
+  });
+
+  it('rejects inconsistent evidence counts', () => {
+    const evidence = passingEvidence('building');
+    evidence.axes = evidence.axes.map(item => item.axis === 'dimensions'
+      ? { ...item, expected: 10, measured: 11, passed: 12 }
+      : item);
+    expect(assessDomainAccuracy(evidence).blockers).toContain('counts_invalid:dimensions');
+  });
+});
