@@ -183,3 +183,9 @@ export {
   THREAD_STEP_METADATA_VERSION,
   type ThreadStepMetadata,
 } from './threadStepIo';
+
+export {
+  applyThreadOcct,
+  MAX_EXACT_THREAD_TURNS,
+  type ThreadOcctPlacement,
+} from './applyThreadOcct';

@@ -149,6 +149,8 @@ describe('geometric thread — external cut removes real volume', () => {
     const host = makeHostCylinder();
     const before = meshVolume(host);
     const r = applyThreadGeometric(host, feature);
+    expect(r.metadata.booleanApplied).toBe(true);
+    expect(r.metadata.degradedReason).toBeUndefined();
     const after = meshVolume(r.geometry);
     const removed = before - after;
     const theory = theoreticalRemoval('external', M8.pitch, M8_MAJOR_R, M8_MINOR_R, 20);

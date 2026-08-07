@@ -54,6 +54,25 @@ describe('applyThreadGeometric — guard rails', () => {
   });
 });
 
+describe('applyThreadGeometric — fail-closed Boolean', () => {
+  it('rejects a production thread operation with no parent geometry', () => {
+    const feature = makeThreadFeature({
+      id: 'f-empty', threadRef: { series: 'ISO_M_COARSE', designation: 'M8' }, length: 20, mode: 'geometric',
+    });
+    expect(() => applyThreadGeometric(new BufferGeometry(), feature)).toThrow(/THREAD_BOOLEAN_FAILED.*no positions/);
+  });
+
+  it('marks an explicitly allowed cutter-only preview as degraded', () => {
+    const feature = makeThreadFeature({
+      id: 'f-preview', threadRef: { series: 'ISO_M_COARSE', designation: 'M8' }, length: 20, mode: 'geometric',
+    });
+    const result = applyThreadGeometric(new BufferGeometry(), feature, { allowDegradedCutterPreview: true });
+    expect(result.metadata.booleanApplied).toBe(false);
+    expect(result.metadata.degradedReason).toMatch(/no positions/);
+    expect(result.geometry.attributes.position!.count).toBeGreaterThan(0);
+  });
+});
+
 describe('applyThreadGeometric — geometry shape', () => {
   it('returns a NEW BufferGeometry (not parent reference)', () => {
     const parent = makeCylinderLikeGeometry();

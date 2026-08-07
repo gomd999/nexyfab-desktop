@@ -96,6 +96,10 @@ export interface ApplyThreadGeometricResult {
     finalVertexCount: number;
     /** True iff the worker path was used (false = client-side fallback). */
     usedWorker: boolean;
+    /** True only when the returned geometry is the parent after thread CSG. */
+    booleanApplied: boolean;
+    /** Present only for an explicitly allowed cutter-only preview. */
+    degradedReason?: string;
     /**
      * Sampling diagnostics (helpful for cap-warning + perf telemetry).
      * `samplesPerTurn` is what was actually used, `totalSamples` is the
@@ -130,6 +134,8 @@ export interface ApplyThreadGeometricOptions {
    * unit-testing the sweep alone without the CSG cost. Default false.
    */
   skipBoolean?: boolean;
+  /** Preview-only escape hatch; production fails closed on Boolean errors. */
+  allowDegradedCutterPreview?: boolean;
   /**
    * Attempt the worker path (`occtSweepHelix`). Default false. When true and
    * the worker is offline, the worker error is **caught** and the client
@@ -476,10 +482,13 @@ export function applyThreadGeometric(
   //    can still type-check + run unit tests with `skipBoolean: true`. A real
   //    runtime always has the package installed.
   let finalGeom: THREE.BufferGeometry = threadGeom;
+  let booleanApplied = false;
+  let degradedReason: string | undefined;
   if (!options.skipBoolean) {
     try {
       const parentHasGeom = (parentGeometry.attributes.position?.count ?? 0) > 0;
-      if (parentHasGeom) {
+      if (!parentHasGeom) throw new Error('parent geometry has no positions');
+      {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const csg = require('three-bvh-csg') as {
           Evaluator: new () => { evaluate: (a: unknown, b: unknown, op: unknown) => { geometry: THREE.BufferGeometry } | null };
@@ -493,13 +502,20 @@ export function applyThreadGeometric(
         if (result?.geometry) {
           finalGeom = result.geometry;
           finalGeom.computeVertexNormals();
-        }
+          booleanApplied = true;
+        } else throw new Error('thread CSG returned no geometry');
       }
     } catch (err) {
       // CSG sometimes blows up on degenerate input — fall through to the
       // pre-boolean cutter mesh so the user at least sees the helix. This is
       // an HONEST degradation: the returned mesh is then NOT a threaded part.
-      console.warn('[applyThreadGeometric] CSG fallback to pre-boolean mesh', err);
+      const reason = err instanceof Error ? err.message : String(err);
+      if (!options.allowDegradedCutterPreview) {
+        threadGeom.dispose();
+        throw new Error(`applyThreadGeometric: THREAD_BOOLEAN_FAILED — ${reason}`);
+      }
+      degradedReason = reason;
+      console.warn('[applyThreadGeometric] preview-only fallback to cutter mesh', err);
     }
   }
 
@@ -530,6 +546,8 @@ export function applyThreadGeometric(
       threadVertexCount: cutter.vertexCount,
       finalVertexCount: finalGeom.attributes.position?.count ?? 0,
       usedWorker,
+      booleanApplied,
+      degradedReason,
       samplesPerTurn,
       totalSamples: cutter.totalSamples,
     },
