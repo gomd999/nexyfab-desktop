@@ -57,8 +57,14 @@ export async function loadOcctNode(opts: { distDir?: string } = {}): Promise<Nod
     // Dynamic import (server-only module — never bundled for the browser, which
     // uses the worker bridge). A plain import() works under both Node and the
     // vitest runner; the Function('import') trick is blocked in vitest's vm.
+    // `webpackIgnore` keeps webpack from treating the variable specifier as a
+    // fully-dynamic context module ("Critical dependency: the request of a
+    // dependency is an expression" in every route chunk importing this file).
+    // At runtime nothing changes: Node resolves the bare specifier from
+    // node_modules, and when the package is absent this returns { ok:false }
+    // exactly as before (webpack could never bundle a variable request either).
     const specifier = 'opencascade.js/dist/opencascade.wasm.js';
-    const mod = (await import(/* @vite-ignore */ specifier)) as { default?: (cfg: unknown) => Promise<OcctModule> };
+    const mod = (await import(/* webpackIgnore: true */ /* @vite-ignore */ specifier)) as { default?: (cfg: unknown) => Promise<OcctModule> };
     const glue = mod.default;
     if (typeof glue !== 'function') return { ok: false, reason: 'opencascade.js dist glue has no default factory' };
 

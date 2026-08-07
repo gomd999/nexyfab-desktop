@@ -1,21 +1,26 @@
 /**
- * Server-side error capture helper.
+ * Server-side error capture helper — SDK-free (envelope POST only).
  *
- * Wraps `@sentry/nextjs` `captureException` with:
+ * Adds on top of `forwardToSentry`:
  *   - PII scrubbing (emails, JWTs, query strings, secret-like keys)
  *   - structured tags (route, method, errorClass)
- *   - graceful degradation when the SDK isn't initialized (DSN missing)
- *   - fallback to `forwardToSentry` envelope POST when SDK init failed
+ *   - graceful no-op when SENTRY_DSN is unset
  *
  * Use from API route catch blocks so production crashes hit the Issues feed
  * without each route hand-rolling Sentry boilerplate.
  *
- * Why a wrapper instead of raw `captureException`:
+ * Why a wrapper instead of an SDK call:
  *   - PII rules live in one place. We can update SCRUB_KEYS + scrubValue and
  *     every route inherits the new policy.
- *   - The route doesn't need to know whether @sentry/nextjs is initialized;
- *     we resolve that here.
  *   - Tags/extras are normalized so the Sentry UI groups events sensibly.
+ *
+ * 260808: the previous "@sentry/nextjs first, envelope fallback" order was
+ * removed. The server never calls `Sentry.init` (instrumentation.ts is
+ * SDK-free by design), so the SDK's `captureException` was an UNINITIALIZED
+ * no-op that returned early and silently dropped every server error before
+ * the envelope fallback could run. The dynamic `import('@sentry/nextjs')`
+ * was also the sole source of the Prisma/OpenTelemetry "critical dependency"
+ * build warnings in every route chunk importing this file (e.g. eng-chat).
  */
 import { forwardToSentry } from './sentry-forward';
 
@@ -101,33 +106,14 @@ export function captureServerError(err: unknown, ctx: CaptureContext = {}): void
     ...(ctx.tags ?? {}),
   };
 
-  // Try the @sentry/nextjs SDK first — it has the richest stack traces and
-  // ties events to the active span/transaction. Dynamic import keeps the
-  // bundle slim when this file is reached during edge or test runs that
-  // didn't initialize the SDK.
-  void (async () => {
-    try {
-      const sentry = await import('@sentry/nextjs').catch(() => null);
-      if (sentry?.captureException) {
-        sentry.captureException(err instanceof Error ? err : new Error(message), {
-          tags,
-          extra: scrubbedExtras,
-          user: ctx.userId ? { id: ctx.userId } : undefined,
-        });
-        return;
-      }
-    } catch { /* fall through to envelope POST */ }
-
-    // Fallback: SDK not initialized → POST directly to the envelope endpoint.
-    // forwardToSentry is also a no-op when SENTRY_DSN is unset, so this path
-    // is safe in dev.
-    forwardToSentry({
-      level: 'error',
-      message: scrubString(message),
-      stack,
-      tags,
-      extra: scrubbedExtras,
-      user: ctx.userId ? { id: ctx.userId } : undefined,
-    });
-  })();
+  // Envelope POST directly — forwardToSentry is a no-op when SENTRY_DSN is
+  // unset, so this is safe in dev/test and never blocks the response.
+  forwardToSentry({
+    level: 'error',
+    message: scrubString(message),
+    stack,
+    tags,
+    extra: scrubbedExtras,
+    user: ctx.userId ? { id: ctx.userId } : undefined,
+  });
 }
