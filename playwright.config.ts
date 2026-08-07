@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const isCi = !!process.env.CI;
+const browserMatrix = process.env.PW_BROWSER_MATRIX === '1';
 /** CI uses a dedicated port so E2E does not collide with another app on :3000. */
 const e2ePort = process.env.E2E_PORT ?? (isCi ? '3333' : '3000');
 const defaultOrigin = `http://127.0.0.1:${e2ePort}`;
@@ -22,7 +23,7 @@ export default defineConfig({
   },
 
   /** CI에서는 chromium만(동일 스펙 이중 실행·웹서버 부담 감소). 로컬은 모바일 회귀 포함. */
-  projects: isCi
+  projects: isCi && !browserMatrix
     ? [
         {
           name: 'chromium',
@@ -40,6 +41,12 @@ export default defineConfig({
       ]
     : [
         { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+        ...(browserMatrix
+          ? [
+              { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+              { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+            ]
+          : []),
         { name: 'mobile-chrome', use: { ...devices['Pixel 5'] } },
       ],
 

@@ -7,6 +7,47 @@ on:
     branches: [main, master]
 
 jobs:
+  migration-restore:
+    name: PostgreSQL migration + restore drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nexyfab_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nexyfab_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nexyfab_ci
+      RESTORE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nexyfab_restore_drill
+      BACKUP_FILE: /tmp/nexyfab-ci.sql.gz
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - name: Apply migrations twice (idempotency gate)
+        run: |
+          npm run migrate -- up
+          npm run migrate -- up
+      - name: Create backup and isolated restore target
+        run: |
+          pg_dump "$DATABASE_URL" | gzip > "$BACKUP_FILE"
+          createdb "$RESTORE_DATABASE_URL"
+      - name: Restore drill and integrity check
+        run: npm run backup:verify-restore
+
   typecheck:
     name: TypeScript Check
     runs-on: ubuntu-latest
@@ -109,10 +150,40 @@ jobs:
         env:
           NODE_ENV: test
 
+  domain-accuracy:
+    name: Domain accuracy (${{ matrix.domain }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - domain: common
+            script: test:accuracy:common
+          - domain: mechanical
+            script: test:accuracy:mechanical
+          - domain: civil
+            script: test:accuracy:civil
+          - domain: building
+            script: test:accuracy:building
+          - domain: landscape
+            script: test:accuracy:landscape
+          - domain: interior
+            script: test:accuracy:interior
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npm run ${{ matrix.script }}
+
   build:
     name: Build Check
     runs-on: ubuntu-latest
-    needs: [typecheck, lint, test, robustness, security]
+    needs: [typecheck, lint, test, robustness, domain-accuracy, security, migration-restore]
     env:
       JWT_SECRET: ci-test-secret-at-least-32-chars
       NEXYFAB_DB_PATH: /tmp/nexyfab-ci.db
@@ -184,6 +255,9 @@ jobs:
           # for CI — durable enough for the test run, discarded with the
           # runner.
           NEXYFAB_DB_PATH: /tmp/nexyfab-ci-e2e.db
+          # Keep the real OCCT suite on the release path. Without this env the
+          # suite is skipped and a stub-only deployment can still look green.
+          NEXYFAB_OCCT_REAL: '1'
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -207,8 +281,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
       - run: npm ci --legacy-peer-deps
-      - name: OCCT burn-in (pipeline + STEP round-trip + B-rep chain/extrude + F1 perf-guard probe + F3 selection-survival)
-        run: npx vitest run src/app/\[lang\]/shape-generator/__tests__/pipeline.occt.burnin.test.ts src/app/\[lang\]/shape-generator/__tests__/step.roundTrip.test.ts src/app/\[lang\]/shape-generator/__tests__/pipeline.occt.chain.test.ts src/app/\[lang\]/shape-generator/__tests__/occtEngine.extrude.test.ts src/app/\[lang\]/shape-generator/__tests__/occtEngineSelection.probe.test.ts src/app/\[lang\]/shape-generator/__tests__/selectionSurvivesParamChange.test.ts
+      - name: OCCT burn-in (pipeline + adversarial STEP + corpus + parity + leak guards)
+        run: npx vitest run src/app/\[lang\]/shape-generator/__tests__/pipeline.occt.burnin.test.ts src/app/\[lang\]/shape-generator/__tests__/step.roundTrip.test.ts src/app/\[lang\]/shape-generator/__tests__/pipeline.occt.chain.test.ts src/app/\[lang\]/shape-generator/__tests__/pipeline.engineParity.burnin.test.ts src/app/\[lang\]/shape-generator/__tests__/occtCorpus.regression.test.ts src/app/\[lang\]/shape-generator/__tests__/occtEngine.extrude.test.ts src/app/\[lang\]/shape-generator/__tests__/occtEngineSelection.probe.test.ts src/app/\[lang\]/shape-generator/__tests__/selectionSurvivesParamChange.test.ts src/app/\[lang\]/shape-generator/features/stepBurnIn.test.ts src/app/\[lang\]/shape-generator/stepImport/healingStress.burnin.test.ts
         env:
           RUN_OCCT_FEASIBILITY: '1'
           NODE_ENV: test

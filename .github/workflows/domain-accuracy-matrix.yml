@@ -1,0 +1,70 @@
+name: Domain accuracy regression matrix
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/lib/ai/**'
+      - 'src/lib/assembly/**'
+      - 'src/lib/eng-domain/**'
+      - 'src/lib/brep-bridge/**'
+      - 'scripts/drawing-to-3d/**'
+      - 'package.json'
+      - '.github/workflows/domain-accuracy-matrix.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/lib/ai/**'
+      - 'src/lib/assembly/**'
+      - 'src/lib/eng-domain/**'
+      - 'src/lib/brep-bridge/**'
+      - 'scripts/drawing-to-3d/**'
+      - 'package.json'
+      - '.github/workflows/domain-accuracy-matrix.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: domain-accuracy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  common-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:accuracy:common
+
+  domain:
+    name: ${{ matrix.domain }} accuracy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - domain: mechanical
+            script: test:accuracy:mechanical
+          - domain: civil
+            script: test:accuracy:civil
+          - domain: building
+            script: test:accuracy:building
+          - domain: landscape
+            script: test:accuracy:landscape
+          - domain: interior
+            script: test:accuracy:interior
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run ${{ matrix.script }}

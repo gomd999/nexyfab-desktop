@@ -42,6 +42,9 @@ export async function GET(req: NextRequest) {
   }
 
   const db = getDbAdapter();
+  // Older Postgres databases may lack this field even though partner-facing
+  // APIs and delay notifications depend on it. Keep this cron self-healing.
+  await db.execute('ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS partner_email TEXT').catch(() => {});
   await db.execute('ALTER TABLE nf_orders ADD COLUMN last_delay_reminder_at INTEGER').catch(() => {});
 
   const now = Date.now();

@@ -14,10 +14,16 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const build =
+    process.env.NEXYFAB_BUILD_ID ||
+    process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 12) ||
+    process.env.NEXYFAB_BUILD_TAG ||
+    process.env.NEXT_PUBLIC_RELEASE ||
+    'unknown';
   return NextResponse.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     /** Dockerfile 의 `CACHEBUST` → `NEXYFAB_BUILD_TAG`. 미설정이면 'unknown'. */
-    build: process.env.NEXYFAB_BUILD_TAG || 'unknown',
+    build,
   });
 }

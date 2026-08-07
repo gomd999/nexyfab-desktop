@@ -1,0 +1,63 @@
+name: Commercial CAD browser matrix
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '20 18 * * 1'
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/app/[lang]/shape-generator/**'
+      - 'src/lib/occt/**'
+      - 'public/occt-worker/**'
+      - 'e2e/occt/**'
+      - 'playwright.config.ts'
+
+jobs:
+  real-occt-browser-matrix:
+    name: Real OCCT (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit, mobile-chrome]
+    env:
+      CI: true
+      PW_BROWSER_MATRIX: '1'
+      NEXYFAB_OCCT_REAL: '1'
+      JWT_SECRET: ci-commercial-cad-secret-at-least-32-characters
+      NEXYFAB_DB_PATH: /tmp/nexyfab-commercial-cad.db
+      CSP_OMIT_UPGRADE_INSECURE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - name: Install browser
+        shell: bash
+        run: |
+          if [ "${{ matrix.project }}" = "mobile-chrome" ]; then
+            npx playwright install --with-deps chromium
+          else
+            npx playwright install --with-deps "${{ matrix.project }}"
+          fi
+      - name: Verify browser executable
+        shell: bash
+        run: |
+          if [ "${{ matrix.project }}" = "mobile-chrome" ]; then
+            npm run browser:preflight -- chromium
+          else
+            npm run browser:preflight -- "${{ matrix.project }}"
+          fi
+      - name: Real OCCT acceptance
+        run: npx playwright test e2e/occt --project=${{ matrix.project }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: commercial-cad-${{ matrix.project }}-report
+          path: playwright-report/
+          retention-days: 14

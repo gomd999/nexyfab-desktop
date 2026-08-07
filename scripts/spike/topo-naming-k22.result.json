@@ -1,7 +1,7 @@
 {
   "meta": {
     "adr": "ADR-017 §D2",
-    "generatedAt": "2026-08-06T18:34:22.125Z",
+    "generatedAt": "2026-08-07T16:53:35.600Z",
     "note": "Measurement only. Rates exclude nogt (edge genuinely gone). mismatch = SILENT wrong entity.",
     "systemA": "topoNaming + composedTopo (feature-id prefixes W1-B, kernel-history seam keys W3-A), resolved via nearestByMidpoint(1e-3) — replica of nodeOcctBridge.resolvePickedEdges",
     "systemB": "edgeCorrespondence.bestEdgeMatch + remapPointThroughBbox — shape-generator path"
@@ -309,7 +309,7 @@
       "succeeded": 36,
       "failures": []
     },
-    "postFilletReferenceCoverage": "NOT SUPPORTED — fillet: shape occt_74 has no stable topology — name-based selection unavailable; use ['sel:all']"
+    "postFilletReferenceCoverage": "SUPPORTED"
   },
   "S4": {
     "measurable": true,
