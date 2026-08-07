@@ -2,8 +2,8 @@
 
 - 기준일: 2026-08-07 (Asia/Seoul)
 - 문서 역할: 이후 작업의 단일 상태 추적 문서
-- 현재 감사: 363/363 pass (P1 zip triage·라우팅 결속 검증 +14 체크 포함)
-- 감사 artifact set SHA-256: `2e9d1a428dac6e6029fafce84c878dc2838157ef106753c9afabe5711bdb1c53`
+- 현재 감사: 374/374 pass (P1 zip triage +14 · P2 joint 클리어런스 capability +11 체크 포함)
+- 감사 artifact set SHA-256: `f8d699bb603584cabba72d9a53f6b08b480cb8097c6783d1fd9e51fa0665d181`
 - 정확도 선언: 현재 자료로 일반적인 95% AI CAD 정확도를 주장할 수 없음
 
 ## 1. 목표와 판정 원칙
@@ -190,11 +190,11 @@
 
 목표: 복잡 assembly를 단순 부품 목록이 아니라 작동 가능한 제품으로 검증한다.
 
-- [ ] SolidWorks/Inventor/CATIA/Creo/Revit worker 계약 구현 또는 연결
-- [ ] mate/constraint를 fixed, revolute, prismatic 등 공통 joint IR로 변환
-- [ ] joint origin, axis, limits, parent/child occurrence hash 결속
-- [ ] native motion sweep와 precise collision 비교
-- [ ] clearance certificate와 pair-budget exhaustion `not_run` 처리
+- [ ] SolidWorks/Inventor/CATIA/Creo/Revit worker 계약 구현 또는 연결 (계약·라우팅·canary는 존재, worker ready 0 — 외부 환경 종속)
+- [ ] mate/constraint를 fixed, revolute, prismatic 등 공통 joint IR로 변환 (IR 스키마 v1.1과 revolute→exact hinge 컴파일은 완료. prismatic 등은 어댑터가 정직 `not_run` — 외부 native mate 소스가 없어 나머지 타입 컴파일은 워커 종속)
+- [x] joint origin, axis, limits, parent/child occurrence hash 결속 (`jointMotionClearanceCertificate.ts` `bindJointsToOccurrences` — transform 1e-9 정밀도 결정론 occurrence 해시, 미지 타입 fixed 변환 금지, 테스트 4종)
+- [x] native motion sweep와 precise collision 비교 (스윕 매 프레임 `preciseSeparation` 정밀 메시 분리 — 결정론 2링크 스펙시멘에서 해석값 실증: 0→90° 최소 간극 5mm 정확, 0→180° 되접힘 첫 접촉 126.87° 예측→5° 격자 검출)
+- [x] clearance certificate와 pair-budget exhaustion `not_run` 처리 (`nexyfab.joint-motion-clearance-certificate.v1` — 예산 소진·기하 부재·미수렴 프레임 전부 `not_run`, false-clear 금지. capability 아티팩트=`docs/evidence/joint-motion-clearance-260807/specimen-run-1.json`, 감사 11체크 고정)
 - [ ] 사용자 확정 joint/치수 보호 및 국소 repair
 
 완료 조건:

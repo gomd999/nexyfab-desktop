@@ -85,6 +85,7 @@
     "evidence:phase-b-forms": "tsx scripts/reference/build-phase-b-review-forms.ts",
     "evidence:phase-b-submissions-validate": "tsx scripts/reference/validate-phase-b-review-submissions.ts",
     "evidence:joint-boundary": "tsx scripts/reference/build-joint-evidence-boundary-report.ts",
+    "evidence:joint-motion-clearance": "tsx scripts/reference/build-joint-motion-clearance-evidence.ts",
     "checkpoint:workspace": "node scripts/create-workspace-checkpoint.mjs",
     "evidence:ifc-fidelity": "tsx scripts/build-ifc-fidelity-evidence.ts",
     "evidence:ifc-collision": "tsx scripts/build-ifc-collision-capability-evidence.ts",

@@ -80,6 +80,7 @@ const artifacts = [
   "docs/strategy/native-cad-worker-host-deployment-260807.md",
   "docs/strategy/current-status-and-next-execution-plan-260807-v2.md",
   "docs/evidence/complex-holdout-lineage-v2-260807/zip-member-triage.json",
+  "docs/evidence/joint-motion-clearance-260807/specimen-run-1.json",
 ];
 const implementation = [
   "src/lib/ai/scadAssemblyBridge.ts",
@@ -147,6 +148,8 @@ const implementation = [
   "scripts/reference/validate-phase-b-review-submissions.ts",
   "src/lib/reference/jointEvidenceReleaseGate.ts",
   "scripts/reference/build-joint-evidence-boundary-report.ts",
+  "src/lib/reference/jointMotionClearanceCertificate.ts",
+  "scripts/reference/build-joint-motion-clearance-evidence.ts",
   "scripts/create-workspace-checkpoint.mjs",
   "scripts/reference/build-ground-truth-review-priority.ts",
   "scripts/reference/validate-ground-truth-approvals.ts",
@@ -630,6 +633,21 @@ check(
   nativeRoutingManifest.jobs
     ?.filter((item) => item.source?.kind === "zip-member")
     .every((item) => typeof item.source?.sha256 === "string" && item.source.sha256.length === 64),
+  true,
+);
+const jointClearance = load(
+  "docs/evidence/joint-motion-clearance-260807/specimen-run-1.json",
+);
+check("joint_clearance.status", jointClearance.status, "pass");
+check("joint_clearance.score_eligible", jointClearance.scoreEligible, false);
+check("joint_clearance.clear_sweep", jointClearance.expectations?.clearSweepPasses, true);
+check("joint_clearance.collision_detected", jointClearance.expectations?.foldBackCollisionDetected, true);
+check("joint_clearance.budget_not_run", jointClearance.expectations?.budgetExhaustionIsNotRun, true);
+check("joint_clearance.missing_geometry_not_run", jointClearance.expectations?.missingGeometryIsNotRun, true);
+check("joint_clearance.occurrence_hashes_bound", jointClearance.expectations?.occurrenceHashesBound, true);
+check(
+  "joint_clearance.no_fixed_fabrication",
+  jointClearance.scenarios?.clear?.policy?.fixedJointFabricationForbidden,
   true,
 );
 const canonicalSource = fs.readFileSync(
