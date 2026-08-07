@@ -43,8 +43,8 @@
     },
     {
       "id": "shell-on-extruded-brep",
-      "title": "Shell t=1 (open top) on a HEALTHY 30x30x10 extruded solid — replicad shell on extruded-profile B-reps currently throws (wasm exception); production falls back to mesh shell",
-      "expectation": "fail-clean",
+      "title": "Shell t=1 (open top) on a HEALTHY 30x30x10 extruded solid — K3 260808: the heuristic path now shells via a bbox-extreme FaceFinder (the wasm closed-shell binding still throws for every source, so the old closed+cut path never worked)",
+      "expectation": "ok",
       "steps": [
         { "op": "extrude", "out": "a", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10 }
       ],
@@ -71,8 +71,8 @@
     },
     {
       "id": "shell-thin-plate",
-      "title": "Shell a 30x30x2 plate with t=1.5 (walls thicker than the body)",
-      "expectation": "fail-clean",
+      "title": "Shell a 30x30x2 plate with t=1.5 — K3 260808: geometrically a VALID shallow tray (cavity 27x27x0.5); measured vol 1435.5 = closed form, watertight. The old fail-clean encoded the broken closed-shell binding, not geometry",
+      "expectation": "ok",
       "steps": [
         { "op": "extrude", "out": "a", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 2 }
       ],
@@ -80,8 +80,8 @@
     },
     {
       "id": "shell-thickness-exceeds-boss",
-      "title": "20x20x20 box with a 4x4x4 boss; shell t=2.5 (> boss half-width)",
-      "expectation": "fail-clean",
+      "title": "20x20x20 box with a 4x4x4 boss; shell t=2.5 (> boss half-width) — K3 260808: OCCT absorbs the boss into the thick wall; measured vol 4124.2, watertight, no failed checks. Old fail-clean encoded the broken closed-shell binding",
+      "expectation": "ok",
       "steps": [
         { "op": "extrude", "out": "box", "profile": [[-10, -10], [10, -10], [10, 10], [-10, 10]], "depth": 20 },
         { "op": "extrude", "out": "boss", "profile": [[-2, -2], [2, -2], [2, 2], [-2, 2]], "depth": 4, "offset": 20 },

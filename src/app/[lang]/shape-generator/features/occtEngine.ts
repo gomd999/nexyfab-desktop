@@ -1702,56 +1702,81 @@ export function occtShellBox(
     // makeBaseBox) do not affect this. Because the convention is empirical,
     // verify inwardness via the bounding box and retry the opposite sign if
     // a future replicad upgrade flips it again.
-    const shellInward = (sign: 1 | -1) => source.shell(sign * thickness, () => faceFinder);
-    const grewOutward = (shape: ShellableShape): boolean => {
-      const src = source.boundingBox?.bounds;
-      const out = shape.boundingBox?.bounds;
-      if (!src || !out) return false; // bounds unavailable → trust the measured default
-      const tol = Math.max(1e-3, thickness * 0.5);
-      for (let axis = 0; axis < 3; axis++) {
-        if (out[0][axis]! < src[0][axis]! - tol || out[1][axis]! > src[1][axis]! + tol) return true;
-      }
-      return false;
-    };
-    let shelledF = shellInward(1);
-    if (grewOutward(shelledF)) {
-      reportWarning('csg', new Error('shell(+t, finder) grew outward — replicad sign convention changed; retrying -t'), {
-        phase: 'occt_shell_sign_flip', thickness,
-      });
-      shelledF = shellInward(-1);
-      if (grewOutward(shelledF)) {
-        throw new Error('SHELL_OUTWARD: both shell sign conventions grew the body outward — refusing to emit a wrong-walled solid');
-      }
-    }
-    const meshF = shelledF.mesh({
-      tolerance: tessellation.tolerance ?? 0.1,
-      angularTolerance: tessellation.angularTolerance ?? 0.2,
-    });
-    return { geometry: meshToBufferGeometry(meshF), handle: registerShape(shelledF) };
+    return finishShellInward(source, thickness, () => faceFinder, tessellation);
   }
 
-  // Replicad shell uses a negative thickness for inward.
-  // Note: we just use .shell(-thickness) for a closed hollow shell,
-  // and cut the open face via boolean subtraction to ensure reliability.
-  let shelled = source.shell(-thickness);
-
+  // Heuristic path (no user face pick). The old implementation shelled the
+  // CLOSED solid and boolean-cut the open face — but the wasm binding's
+  // closed shell (no removed face) throws for EVERY source, both signs,
+  // including makeBaseBox (probed 260808), so this path NEVER produced an
+  // OCCT result and always fell to the mesh fallback. Replace it with the
+  // finder-variant shell on the bbox-extreme plane. "Top" is ambiguous
+  // between axis conventions (three primitives are Y-up, sketch extrudes are
+  // Z-up), so try the Y plane then the Z plane — replicad throws when a
+  // finder matches no face, which moves us to the next candidate.
   if (openFace > 0) {
-    const cutHeight = thickness * 4;
-    const cutBox = (rc.makeBaseBox as ReplicadLike['makeBaseBox'])(hostBox.w * 3, cutHeight, hostBox.d * 3) as ShellableShape;
-    
-    // hostBox.cy is the center.
-    // bounding box max Y is hostBox.cy + hostBox.h / 2
-    let cy = hostBox.cy;
-    if (openFace === 1) { // top
-      cy = hostBox.cy + hostBox.h / 2 + cutHeight / 2 - thickness;
-    } else { // bottom
-      cy = hostBox.cy - hostBox.h / 2 - cutHeight / 2 + thickness;
+    const FinderCtor = (rc as Record<string, unknown>).FaceFinder as (new () => { inPlane: (plane: string, offset: number) => unknown }) | undefined;
+    const bb = source.boundingBox?.bounds;
+    if (FinderCtor && bb) {
+      const top = openFace === 1;
+      const candidates: Array<[string, number]> = top
+        ? [['XZ', bb[1][1]!], ['XY', bb[1][2]!]]
+        : [['XZ', bb[0][1]!], ['XY', bb[0][2]!]];
+      let lastErr: unknown = null;
+      for (const [plane, offset] of candidates) {
+        try {
+          return finishShellInward(source, thickness, () => new FinderCtor().inPlane(plane, offset), tessellation);
+        } catch (err) { lastErr = err; }
+      }
+      throw new Error(`SHELL_OPEN_FACE_NOT_FOUND: no planar ${top ? 'top' : 'bottom'} face at the bounding-box extreme accepted the shell (${lastErr instanceof Error ? lastErr.message : String(lastErr)})`);
     }
-    
-    const cutTranslated = cutBox.translate([hostBox.cx, cy, hostBox.cz - hostBox.d / 2]);
-    shelled = shelled.cut(cutTranslated);
   }
 
+  // Closed hollow (openFace 0): the wasm binding's no-removed-face shell
+  // throws unconditionally — refuse honestly so the exact mesh shell (W5-C)
+  // takes over for convex planar solids instead of us emitting garbage.
+  throw new Error('SHELL_CLOSED_UNSUPPORTED: closed hollow shell is not supported by the OCCT wasm binding (BRepOffset with no removed face throws) — the mesh shell path handles convex planar solids exactly');
+}
+
+/**
+ * Inward finder-variant shell with the measured sign convention and a
+ * bounding-box inwardness guard.
+ *
+ * Sign convention, MEASURED 260808 on the replicad-opencascadejs build of
+ * record (probe: 100×60×30, wall 2, top finder): POSITIVE thickness hollows
+ * INWARD keeping the outer surface (vol 29472 = closed form, bbox
+ * unchanged); NEGATIVE adds the wall OUTWARD (vol 32599, bbox grows by t on
+ * every axis) — that outward shell was REF-PART 1's "+10.6% uneven wall"
+ * finding. Wire orientation and source kind (extrude vs makeBaseBox) do not
+ * affect it. Because the convention is empirical, verify inwardness via the
+ * bounding box and retry the opposite sign if a replicad upgrade flips it.
+ */
+function finishShellInward(
+  source: ShellableShape,
+  thickness: number,
+  finderFactory: () => unknown,
+  tessellation: { tolerance?: number; angularTolerance?: number },
+): OcctBooleanResult {
+  const grewOutward = (shape: ShellableShape): boolean => {
+    const src = source.boundingBox?.bounds;
+    const out = shape.boundingBox?.bounds;
+    if (!src || !out) return false; // bounds unavailable → trust the measured default
+    const tol = Math.max(1e-3, thickness * 0.5);
+    for (let axis = 0; axis < 3; axis++) {
+      if (out[0][axis]! < src[0][axis]! - tol || out[1][axis]! > src[1][axis]! + tol) return true;
+    }
+    return false;
+  };
+  let shelled = source.shell(thickness, finderFactory);
+  if (grewOutward(shelled)) {
+    reportWarning('csg', new Error('shell(+t, finder) grew outward — replicad sign convention changed; retrying -t'), {
+      phase: 'occt_shell_sign_flip', thickness,
+    });
+    shelled = source.shell(-thickness, finderFactory);
+    if (grewOutward(shelled)) {
+      throw new Error('SHELL_OUTWARD: both shell sign conventions grew the body outward — refusing to emit a wrong-walled solid');
+    }
+  }
   const mesh = shelled.mesh({
     tolerance: tessellation.tolerance ?? 0.1,
     angularTolerance: tessellation.angularTolerance ?? 0.2,
