@@ -1,0 +1,34 @@
+name: OCCT kernel soak (long-run / memory)
+
+# Long-run kernel stability: repeats the full STEP burn-in corpus on one
+# kernel instance and gates pass-rate degradation + RSS growth. Too slow for
+# the per-PR pipeline — runs weekly and on demand.
+on:
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: Corpus repetitions on one kernel instance
+        required: false
+        default: '15'
+        type: string
+  schedule:
+    - cron: '40 18 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  kernel-soak:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NEXYFAB_OCCT_SOAK_ITERATIONS: ${{ inputs.iterations || '15' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npm run test:occt:soak
