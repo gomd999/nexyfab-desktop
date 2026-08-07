@@ -80,6 +80,9 @@ describe('stepBurnIn', () => {
     if (report.failures.length) {
       console.log('[stepBurnIn:pathological] documented limits:', JSON.stringify(report.failures, null, 2));
     }
+    if (report.recoveries.length) {
+      console.log('[stepBurnIn:pathological] transparent recoveries:', JSON.stringify(report.recoveries, null, 2));
+    }
     // No pass-rate expectation — these may legitimately fail. The contract is only
     // that the harness handles every degenerate input GRACEFULLY (structured
     // pass/fail, never an unhandled throw). The recorded failures are the kernel's
@@ -87,5 +90,10 @@ describe('stepBurnIn', () => {
     // "the kernel now handles this".
     expect(report.total).toBeGreaterThanOrEqual(6);
     expect(report.passed + report.failures.length).toBe(report.total);
+    expect(report.recoveries).toContainEqual(expect.objectContaining({
+      label: 'fillet r2.5 on 5mm-thin box',
+      strategy: 'reduced-radius',
+      requested: 2.5,
+    }));
   }, 240_000);
 });

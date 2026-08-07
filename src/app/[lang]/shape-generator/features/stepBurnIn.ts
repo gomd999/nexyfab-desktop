@@ -34,6 +34,7 @@ export interface StepBurnInReport {
   failures: StepBurnInFailure[];
   /** passed / total (1 when total is 0). */
   passRate: number;
+  recoveries: Array<{ label: string; strategy: 'reduced-radius'; requested: number; applied: number }>;
 }
 
 type Pt = { x: number; y: number };
@@ -342,12 +343,14 @@ export async function runStepBurnIn(
   volTol = 1e-3,
 ): Promise<StepBurnInReport> {
   const failures: StepBurnInFailure[] = [];
+  const recoveries: StepBurnInReport['recoveries'] = [];
   let passed = 0;
 
   for (const c of cases) {
     try {
       const shape = await c.build(kernel);
       if (!shape) { failures.push({ label: c.label, reason: 'build returned null' }); continue; }
+      if (shape.recovery) recoveries.push({ label: c.label, ...shape.recovery });
       const v0 = shape.volume;
       if (!Number.isFinite(v0 as number) || Math.abs(v0 as number) < 1e-9) {
         failures.push({ label: c.label, reason: `built shape has no usable volume (${v0})` });
@@ -376,5 +379,5 @@ export async function runStepBurnIn(
   }
 
   const total = cases.length;
-  return { total, passed, failures, passRate: total > 0 ? passed / total : 1 };
+  return { total, passed, failures, passRate: total > 0 ? passed / total : 1, recoveries };
 }

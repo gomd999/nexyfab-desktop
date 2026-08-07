@@ -7,6 +7,8 @@ import { noteMeshFallback } from './downgradeNotice';
 import { captureKernelFailure } from './kernelCorpus';
 import { reportWarning } from '../lib/telemetry';
 import { stampFaceFeatureIdAll, FACE_FEATURE_ID_ATTR } from './faceProvenance';
+import { applyBooleanRobust } from './booleanRobust';
+import { assessKernelOperationGeometry, requireValidBrepResult } from './kernelOperationQuality';
 
 // ─── Internal helpers ───────────────────────────────────────────────────────
 
@@ -197,9 +199,20 @@ export async function applyBooleanAsync(
     if (!result || !result.attributes.position || result.attributes.position.count === 0) {
       throw new Error(`Boolean ${type}: empty result from worker — 교차 없음 또는 non-manifold 입력`);
     }
+    const quality = assessKernelOperationGeometry(result, { geometryClass: 'mesh' });
+    if (!quality.valid) {
+      throw new Error(`Boolean ${type}: worker result failed quality validation (${quality.issues.join(', ')})`);
+    }
     return result;
   }
-  return applyBooleanSync(type, geometry, toolGeo);
+  const robust = applyBooleanRobust(type, geometry, toolGeo, (op, base, tool) => {
+    try { return { geometry: applyBooleanSync(op, base, tool), error: null }; }
+    catch (err) { return { geometry: null, error: err instanceof Error ? err.message : String(err) }; }
+  });
+  if (!robust.geometry) {
+    throw new Error(`Boolean ${type}: synchronous result failed quality validation (${robust.failure?.kind ?? 'unknown'})`);
+  }
+  return robust.geometry;
 }
 
 // ─── Feature definition (synchronous, for the pipeline) ─────────────────────
@@ -282,7 +295,7 @@ export const booleanFeature: FeatureDefinition = {
         const shape: 'box' | 'cylinder' | 'sphere' =
           toolShapeCode === 1 ? 'cylinder' : toolShapeCode === 2 ? 'sphere' : 'box';
 
-        const result = occtBoxBooleanWithPrimitive(
+        const result = requireValidBrepResult(occtBoxBooleanWithPrimitive(
           type,
           host,
           {
@@ -299,8 +312,7 @@ export const booleanFeature: FeatureDefinition = {
           },
           undefined,
           upstreamHandle,
-        );
-        if (result.handle) result.geometry.userData.occtHandle = result.handle;
+        ));
         return result.geometry;
       } catch (err) {
         if (err instanceof OcctNotReadyError) {
@@ -343,7 +355,30 @@ export const booleanFeature: FeatureDefinition = {
     if (ctx?.featureId) {
       stampFaceFeatureIdAll(toolGeo, ctx.featureId, { avoidIdsFrom: geometry });
     }
-    return noteMeshFallback(applyBooleanSync(type, geometry, toolGeo), {
+    const robust = applyBooleanRobust(type, geometry, toolGeo, (op, base, tool) => {
+      try {
+        return { geometry: applyBooleanSync(op, base, tool), error: null };
+      } catch (err) {
+        return { geometry: null, error: err instanceof Error ? err.message : String(err) };
+      }
+    });
+    if (!robust.geometry) {
+      const detail = robust.failure?.kind === 'invalid_result'
+        ? robust.failure.issues.join(', ')
+        : robust.failure?.kind === 'evaluator_error'
+          ? `evaluator_error: ${robust.failure.message}`
+          : robust.failure?.kind ?? 'unknown';
+      captureKernelFailure({
+        op: 'boolean',
+        stage: 'mesh-quality-gate',
+        params: { type, attempts: robust.attempts },
+        geometry,
+        error: `Mesh Boolean rejected: ${detail}`,
+        resolution: { strategy: 'none', detail: `blocked: ${detail}` },
+      });
+      throw new Error(`Boolean ${type} failed quality validation (${detail})`);
+    }
+    return noteMeshFallback(robust.geometry, {
       op: 'Boolean', engine, featureId: ctx?.featureId,
     });
   },

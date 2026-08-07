@@ -33,6 +33,7 @@ export interface KernelShape {
   kind: OcctShapeKind;
   volume?: number;
   bbox?: KernelBBox;
+  recovery?: { strategy: 'reduced-radius'; requested: number; applied: number };
 }
 
 export type BooleanKind = 'union' | 'subtract' | 'intersect';
@@ -69,9 +70,9 @@ export interface SolidKernel {
  */
 export function createKSeriesKernel(bridge: OcctBridge): SolidKernel {
   const registry = new Map<string, OcctShape>();
-  const record = (shape: OcctShape): KernelShape => {
+  const record = (shape: OcctShape, recovery?: KernelShape['recovery']): KernelShape => {
     registry.set(shape.id, shape);
-    return { id: shape.id, kind: shape.kind, volume: shape.volume, bbox: shape.bbox };
+    return { id: shape.id, kind: shape.kind, volume: shape.volume, bbox: shape.bbox, recovery };
   };
   const resolve = (id: string, where: string): OcctShape => {
     const s = registry.get(id);
@@ -97,8 +98,18 @@ export function createKSeriesKernel(bridge: OcctBridge): SolidKernel {
       return r.ok && r.shape ? record(r.shape) : null;
     },
     async fillet(id, edgeIds, radius) {
-      const r = await bridge.fillet(resolve(id, 'fillet'), edgeIds, radius);
-      return r.ok && r.shape ? record(r.shape) : null;
+      const source = resolve(id, 'fillet');
+      const requested = await bridge.fillet(source, edgeIds, radius);
+      if (requested.ok && requested.shape) return record(requested.shape);
+      for (const factor of [0.75, 0.5, 0.25]) {
+        const applied = Math.round(radius * factor * 1000) / 1000;
+        if (applied < 0.2) break;
+        const recovered = await bridge.fillet(source, edgeIds, applied);
+        if (recovered.ok && recovered.shape) {
+          return record(recovered.shape, { strategy: 'reduced-radius', requested: radius, applied });
+        }
+      }
+      return null;
     },
     async chamfer(id, edgeIds, distance) {
       const r = await bridge.chamfer(resolve(id, 'chamfer'), edgeIds, distance);

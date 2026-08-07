@@ -12,7 +12,7 @@ import {
 import { wantsOcctEngine, shouldUseOcctEngine } from './engineSelection';
 import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
 import { assertRoundingApplied } from './roundingGuard';
-import { classifyMeshDowngrade, stampDowngrade, clearStaleBrepHandle } from './downgradeNotice';
+import { classifyMeshDowngrade, makeReducedNotice, stampDowngrade, clearStaleBrepHandle } from './downgradeNotice';
 import { captureKernelFailure } from './kernelCorpus';
 import { tryMeshChamfer } from './meshRounding';
 import {
@@ -23,6 +23,24 @@ import {
   makeReferenceLostNotice,
   type EdgeRefResolution,
 } from './topologyEdgeFinder';
+import { requireValidBrepResult } from './kernelOperationQuality';
+
+function stampReducedChamfer(
+  geometry: THREE.BufferGeometry,
+  requested: number,
+  applied: number,
+  featureId?: string,
+): THREE.BufferGeometry {
+  if (applied === requested) return geometry;
+  stampDowngrade(geometry, makeReducedNotice({
+    op: 'Chamfer',
+    featureId,
+    requested: { distance: requested },
+    applied: { distance: applied },
+    detail: `distance ${requested} → ${applied} mm`,
+  }));
+  return geometry;
+}
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -94,8 +112,7 @@ function applyChamferOcct(
     // pre-bridge via resolveBrepHostHandleAsync and pass the handle in.
     const upstreamHandle = hostHandle !== undefined ? hostHandle : resolveBrepHostHandle(geometry);
     const host = hostBoxFromGeometry(geometry);
-    const result = occtChamferBox(host, dist, {}, upstreamHandle, edgeFinder ?? undefined);
-    if (result.handle) result.geometry.userData.occtHandle = result.handle;
+    const result = requireValidBrepResult(occtChamferBox(host, dist, {}, upstreamHandle, edgeFinder ?? undefined));
     return result.geometry;
   } catch (err) {
     console.warn('[chamfer] OCCT path failed, falling back to mesh approximator:', err);
@@ -192,9 +209,9 @@ function applyChamferSync(
     try {
       if (shouldUseOcctEngine(engine)) {
         const out = applyChamferOcct(geometry, dist, null);
-        if (out) return out;
+        if (out) return stampReducedChamfer(out, requested, dist, ctx?.featureId);
       }
-      return applyChamferMeshCsg(geometry, dist, ctx, wantedOcct);
+      return stampReducedChamfer(applyChamferMeshCsg(geometry, dist, ctx, wantedOcct), requested, dist, ctx?.featureId);
     } catch (err) {
       lastErr = err;
     }
@@ -237,7 +254,7 @@ async function applyChamferWithEdgeFinder(
           const out = applyChamferOcct(geometry, dist, outcome.finder, hostHandle);
           if (out) {
             if (dist !== requested) console.warn(`[chamfer] reduced ${requested}→${dist}mm to fit the solid`);
-            return out;
+            return stampReducedChamfer(out, requested, dist, ctx?.featureId);
           }
         } catch (err) {
           if (i === 0) {
@@ -255,7 +272,7 @@ async function applyChamferWithEdgeFinder(
       }
       const out = applyChamferMeshCsg(geometry, dist, ctx, wantedOcct);
       if (dist !== requested) console.warn(`[chamfer] reduced ${requested}→${dist}mm to fit the solid`);
-      return out;
+      return stampReducedChamfer(out, requested, dist, ctx?.featureId);
     } catch (err) {
       lastErr = err; // too large at this distance — try a smaller bevel
     }

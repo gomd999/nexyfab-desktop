@@ -63,27 +63,71 @@ export interface ModelVerificationResult {
   };
 }
 
-/** Count edges shared by exactly one triangle (open boundary) after welding
- *  coincident vertices — a watertight solid has zero. */
+/** Count genuinely open boundary edges after welding coincident vertices — a
+ *  watertight solid has zero.
+ *
+ *  An edge used by exactly one triangle is only a *candidate*: mesh CSG
+ *  (three-bvh-csg) and face-wise tessellations routinely leave T-junctions,
+ *  where a triangle edge is subdivided by the neighbouring face's seam. The
+ *  long and short sides each appear once, yet the surface is closed — measured
+ *  260808: box−cylinder golden output had 482/482 such candidates covered, and
+ *  coplanar-cube subtract/union produced exact volumes (500/1500) with every
+ *  candidate covered. So a candidate only counts as boundary when its midpoint
+ *  is NOT lying on some other (collinear, overlapping) edge segment. */
 function boundaryEdgeCount(geo: THREE.BufferGeometry): number {
   const pos = geo.attributes.position;
   if (!pos) return 0;
   const idx = geo.index ? Array.from(geo.index.array as ArrayLike<number>) : Array.from({ length: pos.count }, (_, i) => i);
   const key = (i: number) => `${Math.round(pos.getX(i) * 1e4)},${Math.round(pos.getY(i) * 1e4)},${Math.round(pos.getZ(i) * 1e4)}`;
   const vid = new Map<string, number>();
-  const canon = (i: number) => { const k = key(i); let v = vid.get(k); if (v === undefined) { v = vid.size; vid.set(k, v); } return v; };
-  const edges = new Map<string, number>();
+  const rep: number[] = []; // canonical id → representative x,y,z (flat)
+  const canon = (i: number) => {
+    const k = key(i); let v = vid.get(k);
+    if (v === undefined) { v = vid.size; vid.set(k, v); rep.push(pos.getX(i), pos.getY(i), pos.getZ(i)); }
+    return v;
+  };
+  const edges = new Map<string, { u: number; v: number; n: number }>();
   for (let t = 0; t < idx.length / 3; t++) {
     const a = canon(idx[t * 3]!), b = canon(idx[t * 3 + 1]!), c = canon(idx[t * 3 + 2]!);
     if (a === b || b === c || c === a) continue; // skip degenerate
     for (const [u, v] of [[a, b], [b, c], [c, a]]) {
-      const ek = u < v ? `${u}_${v}` : `${v}_${u}`;
-      edges.set(ek, (edges.get(ek) ?? 0) + 1);
+      const ek = u! < v! ? `${u}_${v}` : `${v}_${u}`;
+      const e = edges.get(ek);
+      if (e) e.n++; else edges.set(ek, { u: u!, v: v!, n: 1 });
     }
   }
-  let boundary = 0;
-  for (const count of edges.values()) if (count === 1) boundary++;
-  return boundary;
+  const all = Array.from(edges.values());
+  const candidates = all.filter(e => e.n === 1);
+  if (candidates.length === 0) return 0;
+
+  // Coverage test is O(candidates × edges); cap the work and deterministically
+  // sample when a pathological mesh would exceed it. Sampled counts are scaled
+  // back up, so ">0 means open" verdicts stay stable either way.
+  const WORK_BUDGET = 50_000_000;
+  const step = Math.max(1, Math.ceil((candidates.length * all.length) / WORK_BUDGET));
+  const TOL2 = 1e-3 * 1e-3;
+  let genuineSampled = 0, tested = 0;
+  for (let ci = 0; ci < candidates.length; ci += step) {
+    const e = candidates[ci]!;
+    tested++;
+    const mx = (rep[e.u * 3]! + rep[e.v * 3]!) / 2;
+    const my = (rep[e.u * 3 + 1]! + rep[e.v * 3 + 1]!) / 2;
+    const mz = (rep[e.u * 3 + 2]! + rep[e.v * 3 + 2]!) / 2;
+    let covered = false;
+    for (const o of all) {
+      if (o === e) continue;
+      const rx = rep[o.u * 3]!, ry = rep[o.u * 3 + 1]!, rz = rep[o.u * 3 + 2]!;
+      const sx = rep[o.v * 3]! - rx, sy = rep[o.v * 3 + 1]! - ry, sz = rep[o.v * 3 + 2]! - rz;
+      const len2 = sx * sx + sy * sy + sz * sz;
+      if (len2 < 1e-12) continue;
+      const t = ((mx - rx) * sx + (my - ry) * sy + (mz - rz) * sz) / len2;
+      if (t < -1e-6 || t > 1 + 1e-6) continue;
+      const dx = rx + sx * t - mx, dy = ry + sy * t - my, dz = rz + sz * t - mz;
+      if (dx * dx + dy * dy + dz * dz < TOL2) { covered = true; break; }
+    }
+    if (!covered) genuineSampled++;
+  }
+  return step === 1 ? genuineSampled : Math.round((genuineSampled * candidates.length) / Math.max(1, tested));
 }
 
 /** Signed divergence-theorem volume. Sign encodes winding: a closed solid with

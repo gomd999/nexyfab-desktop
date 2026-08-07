@@ -1,98 +1,98 @@
-/**
- * booleanRobust.test.ts — the robust-boolean wrapper (applyBooleanRobust) had
- * NO test coverage despite being the production layer that short-circuits the
- * disjoint / identical cases per operation and runs the jitter → weld retry
- * pipeline. Each short-circuit has an exact, operation-dependent right answer;
- * these pin them and exercise a real overlapping subtract end-to-end.
- */
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { applyBooleanRobust } from './booleanRobust';
+import { applyBooleanRobust, deterministicJitterGeometry } from './booleanRobust';
 
-/** A 10mm cube centred at (x,0,0). */
 function cubeAt(x: number): THREE.BufferGeometry {
-  const g = new THREE.BoxGeometry(10, 10, 10);
-  g.translate(x, 0, 0);
-  return g;
+  const geometry = new THREE.BoxGeometry(10, 10, 10);
+  geometry.translate(x, 0, 0);
+  return geometry;
 }
 
-function meshVolume(geo: THREE.BufferGeometry): number {
-  const pos = geo.getAttribute('position');
-  const idx = geo.index;
-  const triCount = idx ? idx.count / 3 : pos.count / 3;
-  let v = 0;
+function meshVolume(geometry: THREE.BufferGeometry): number {
+  const pos = geometry.getAttribute('position');
+  const idx = geometry.index;
+  const triangleCount = idx ? idx.count / 3 : pos.count / 3;
+  let volume = 0;
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
-  for (let t = 0; t < triCount; t++) {
-    const i0 = idx ? idx.getX(t * 3) : t * 3;
-    const i1 = idx ? idx.getX(t * 3 + 1) : t * 3 + 1;
-    const i2 = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+  for (let triangle = 0; triangle < triangleCount; triangle++) {
+    const i0 = idx ? idx.getX(triangle * 3) : triangle * 3;
+    const i1 = idx ? idx.getX(triangle * 3 + 1) : triangle * 3 + 1;
+    const i2 = idx ? idx.getX(triangle * 3 + 2) : triangle * 3 + 2;
     a.fromBufferAttribute(pos, i0); b.fromBufferAttribute(pos, i1); c.fromBufferAttribute(pos, i2);
-    v += a.dot(b.clone().cross(c)) / 6;
+    volume += a.dot(b.clone().cross(c)) / 6;
   }
-  return Math.abs(v);
+  return Math.abs(volume);
 }
 
-describe('applyBooleanRobust · disjoint short-circuit (per operation)', () => {
-  it('union of disjoint solids concatenates both', () => {
-    const r = applyBooleanRobust('union', cubeAt(0), cubeAt(100));
-    expect(r.geometry).not.toBeNull();
-    expect(r.failure).toBeNull();
-    expect(r.hints[0]?.code).toBe('disjoint');
-    // Both cubes survive → ~2000 mm³ total.
-    expect(meshVolume(r.geometry!)).toBeCloseTo(2000, 0);
+describe('applyBooleanRobust disjoint short-circuits', () => {
+  it('preserves both disjoint solids for union and reports a valid faceted compound', () => {
+    const result = applyBooleanRobust('union', cubeAt(0), cubeAt(100));
+    expect(result).toMatchObject({ failure: null, attempts: 0, quality: { valid: true, grade: 'FACETED', metrics: { componentCount: 2 } } });
+    expect(meshVolume(result.geometry!)).toBeCloseTo(2000, 0);
   });
-
-  it('subtract of a non-touching tool returns the base unchanged', () => {
-    const r = applyBooleanRobust('subtract', cubeAt(0), cubeAt(100));
-    expect(r.geometry).not.toBeNull();
-    expect(r.failure).toBeNull();
-    expect(meshVolume(r.geometry!)).toBeCloseTo(1000, 0); // base only
+  it('returns the unchanged base for a disjoint subtract', () => {
+    const result = applyBooleanRobust('subtract', cubeAt(0), cubeAt(100));
+    expect(result).toMatchObject({ failure: null, quality: { valid: true, grade: 'FACETED' } });
+    expect(meshVolume(result.geometry!)).toBeCloseTo(1000, 0);
   });
-
-  it('intersect of disjoint solids is empty', () => {
-    const r = applyBooleanRobust('intersect', cubeAt(0), cubeAt(100));
-    expect(r.geometry).toBeNull();
-    expect(r.failure?.kind).toBe('disjoint_inputs');
+  it('classifies an empty disjoint intersection explicitly', () => {
+    const result = applyBooleanRobust('intersect', cubeAt(0), cubeAt(100));
+    expect(result).toMatchObject({ geometry: null, failure: { kind: 'disjoint_inputs' }, quality: { valid: false, grade: 'FAILED' } });
   });
 });
 
-describe('applyBooleanRobust · identical-input short-circuit (per operation)', () => {
-  it('subtract of identical inputs is empty (A − A = ∅)', () => {
-    const r = applyBooleanRobust('subtract', cubeAt(0), cubeAt(0));
-    expect(r.geometry).toBeNull();
-    expect(r.failure?.kind).toBe('identical_inputs');
+describe('applyBooleanRobust identical-input identities', () => {
+  it('returns an explicit empty result for A minus A', () => {
+    expect(applyBooleanRobust('subtract', cubeAt(0), cubeAt(0))).toMatchObject({ geometry: null, failure: { kind: 'identical_inputs' } });
   });
-
-  it('union of identical inputs returns A unchanged', () => {
-    const r = applyBooleanRobust('union', cubeAt(0), cubeAt(0));
-    expect(r.geometry).not.toBeNull();
-    expect(r.failure).toBeNull();
-    expect(meshVolume(r.geometry!)).toBeCloseTo(1000, 0);
-  });
-
-  it('intersect of identical inputs returns A unchanged', () => {
-    const r = applyBooleanRobust('intersect', cubeAt(0), cubeAt(0));
-    expect(r.geometry).not.toBeNull();
-    expect(meshVolume(r.geometry!)).toBeCloseTo(1000, 0);
+  it.each(['union', 'intersect'] as const)('%s returns the unchanged solid', operation => {
+    const result = applyBooleanRobust(operation, cubeAt(0), cubeAt(0));
+    expect(result).toMatchObject({ failure: null, quality: { valid: true, grade: 'FACETED' } });
+    expect(meshVolume(result.geometry!)).toBeCloseTo(1000, 0);
   });
 });
 
-describe('applyBooleanRobust · real overlapping boolean', () => {
-  it('subtracting an overlapping tool removes the intersection volume', () => {
-    // Base cube [-5,5]³; tool shifted +5 in x overlaps the [0,5] slab (half).
-    const r = applyBooleanRobust('subtract', cubeAt(0), cubeAt(5));
-    expect(r.geometry).not.toBeNull();
-    expect(r.failure).toBeNull();
-    // Removed half the cube → ~500 mm³ remains.
-    expect(meshVolume(r.geometry!)).toBeGreaterThan(400);
-    expect(meshVolume(r.geometry!)).toBeLessThan(600);
-  });
+/** Volume-correct but genuinely open: a welded box with one face removed —
+ *  its rim edges are covered by no collinear neighbour, unlike the CSG
+ *  T-junction artifacts the watertight check deliberately tolerates. */
+function openBox(): THREE.BufferGeometry {
+  const solid = new THREE.BoxGeometry(10, 10, 10).toNonIndexed();
+  const pos = solid.getAttribute('position') as THREE.BufferAttribute;
+  const trimmed = new THREE.BufferGeometry();
+  trimmed.setAttribute('position', new THREE.Float32BufferAttribute(Array.from(pos.array as Float32Array).slice(0, (pos.count - 6) * 3), 3));
+  return trimmed;
+}
 
-  it('union of overlapping cubes is less than the disjoint sum (overlap merged once)', () => {
-    const r = applyBooleanRobust('union', cubeAt(0), cubeAt(5));
-    expect(r.geometry).not.toBeNull();
-    // Two 1000mm³ cubes overlapping by 500 → ~1500, well under 2000.
-    expect(meshVolume(r.geometry!)).toBeGreaterThan(1400);
-    expect(meshVolume(r.geometry!)).toBeLessThan(1600);
+describe('applyBooleanRobust fail-closed topology gate', () => {
+  it.each(['subtract', 'union'] as const)('rejects a volume-correct %s result with genuinely open boundaries', operation => {
+    const result = applyBooleanRobust(operation, cubeAt(0), cubeAt(5), () => ({ geometry: openBox(), error: null }));
+    expect(result.geometry).toBeNull();
+    expect(result.failure).toMatchObject({ kind: 'invalid_result', issues: expect.arrayContaining(['error:watertight']) });
+    expect(result.attempts).toBe(3);
+    expect(result.hints.map(item => item.code)).toEqual(expect.arrayContaining(['retry-jitter', 'retry-weld']));
+  });
+  // Coplanar overlapping cubes are the pathological mesh-CSG case (shared
+  // ±Y/±Z planes). The evaluator's output carries T-junction seams but is a
+  // closed solid with the exact expected volume — the gate must let it pass.
+  it.each([['subtract', 500], ['union', 1500]] as const)('%s of coplanar overlapping cubes passes with exact volume', (operation, expected) => {
+    const result = applyBooleanRobust(operation, cubeAt(0), cubeAt(5));
+    expect(result.failure).toBeNull();
+    expect(result.quality.valid).toBe(true);
+    expect(meshVolume(result.geometry!)).toBeCloseTo(expected, 0);
+  });
+});
+
+describe('applyBooleanRobust deterministic recovery evidence', () => {
+  it('produces byte-identical jitter and never mutates the source', () => {
+    const source = cubeAt(0);
+    const before = Array.from(source.attributes.position.array as ArrayLike<number>);
+    const a = deterministicJitterGeometry(source, 0.001);
+    const b = deterministicJitterGeometry(source, 0.001);
+    expect(Array.from(a.attributes.position.array as ArrayLike<number>)).toEqual(Array.from(b.attributes.position.array as ArrayLike<number>));
+    expect(Array.from(source.attributes.position.array as ArrayLike<number>)).toEqual(before);
+  });
+  it('rejects invalid jitter amounts', () => {
+    expect(() => deterministicJitterGeometry(cubeAt(0), Number.NaN)).toThrow('jitter amount');
+    expect(() => deterministicJitterGeometry(cubeAt(0), -1)).toThrow('jitter amount');
   });
 });

@@ -35,6 +35,7 @@ import {
 } from './topologyEdgeFinder';
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
 import { captureKernelFailure, resolveKernelFailure } from './kernelCorpus';
+import { requireValidBrepResult } from './kernelOperationQuality';
 
 /** Retry ladder, as fractions of the requested radius. */
 export const RADIUS_LADDER_FACTORS = [0.75, 0.5, 0.25] as const;
@@ -88,7 +89,7 @@ function tryFillet(
   edgeFinder: ReplicadEdgeFinder | undefined,
 ): { geometry: BufferGeometry; handle: string | null } | { error: string } {
   try {
-    const r = occtFilletBox(host, radius, {}, hostHandle, edgeFinder);
+    const r = requireValidBrepResult(occtFilletBox(host, radius, {}, hostHandle, edgeFinder));
     return { geometry: r.geometry, handle: r.handle };
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) };
