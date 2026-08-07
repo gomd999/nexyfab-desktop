@@ -15,6 +15,7 @@
 
 import * as THREE from 'three';
 import { Brush, Evaluator, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg';
+import { configureEvaluatorAttributes } from '../features/meshMerge';
 
 export interface TriangleMesh {
   /** Flat vertex array (x, y, z) triples. */
@@ -66,6 +67,20 @@ export function meshBoolean(input: BooleanInput): BooleanResult {
     brushA.updateMatrixWorld();
     brushB.updateMatrixWorld();
     const evaluator = new Evaluator();
+    configureEvaluatorAttributes(evaluator, brushA.geometry, brushB.geometry);
+    // Real per-triangle origin: stamp each input with a constant marker
+    // attribute the evaluator interpolates through, then read it back per
+    // output triangle. (Until K2 fixed the attribute-mismatch crash this
+    // path always threw for typical inputs and the naive concat fallback
+    // provided origins — keep the contract now that the evaluator runs.)
+    const ORIGIN_ATTR = 'nfabBoolOrigin';
+    const stampOrigin = (g: THREE.BufferGeometry, v: number) => {
+      const n = g.getAttribute('position').count;
+      g.setAttribute(ORIGIN_ATTR, new THREE.BufferAttribute(new Float32Array(n).fill(v), 1));
+    };
+    stampOrigin(brushA.geometry, 0);
+    stampOrigin(brushB.geometry, 1);
+    evaluator.attributes = [...evaluator.attributes, ORIGIN_ATTR];
     evaluator.useGroups = false;
     const opCode = input.op === 'union'
       ? ADDITION
@@ -75,15 +90,22 @@ export function meshBoolean(input: BooleanInput): BooleanResult {
     const result = evaluator.evaluate(brushA, brushB, opCode);
     const mesh = fromBufferGeometry(result.geometry);
     const triCount = mesh.indices.length / 3;
+    const originAttr = result.geometry.getAttribute(ORIGIN_ATTR);
+    const resultIndex = result.geometry.getIndex();
+    const triangleOrigin = new Array(triCount).fill(0);
+    if (originAttr) {
+      for (let t = 0; t < triCount; t++) {
+        const v0 = resultIndex ? resultIndex.getX(t * 3) : t * 3;
+        triangleOrigin[t] = originAttr.getX(v0) >= 0.5 ? 1 : 0;
+      }
+    }
     return {
       mesh,
       // BVH-CSG output is closed when both inputs were closed; we
       // can't cheaply verify here, so claim closed only when both
       // inputs claim ≥ 4 triangles (rough heuristic).
       isClosed: input.a.indices.length >= 12 && input.b.indices.length >= 12,
-      // Per-triangle origin isn't tracked by three-bvh-csg out of the
-      // box; emit all-zero for now (caller can re-derive if needed).
-      triangleOrigin: new Array(triCount).fill(0),
+      triangleOrigin,
       intersectionEdges: 0,
     };
   } catch {

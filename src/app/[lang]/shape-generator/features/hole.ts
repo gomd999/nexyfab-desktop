@@ -4,7 +4,8 @@ import type { FeatureDefinition } from './types';
 import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry, resolveBrepHostHandle } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback } from './downgradeNotice';
-import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
+import { stampFaceFeatureIdAll, propagateFeatureIdMap } from './faceProvenance';
+import { configureEvaluatorAttributes } from './meshMerge';
 import { resolveUpToFacePlaneY, assertPlaneOnBody } from './cut';
 import { appendPatternSeed } from './patternHelpers/featureSeed';
 
@@ -202,7 +203,7 @@ export const holeFeature: FeatureDefinition = {
     if (ctx?.featureId) {
       stampFaceFeatureIdAll(holeCyl, ctx.featureId, { avoidIdsFrom: geometry });
     }
-    configureEvaluatorForProvenance(evaluator, geometry, holeCyl);
+    configureEvaluatorAttributes(evaluator, geometry, holeCyl);
     const brushB = makeBrush(holeCyl);
     let result = evaluator.evaluate(brushA, brushB, SUBTRACTION);
     propagateFeatureIdMap(result.geometry, geometry, holeCyl);
@@ -221,7 +222,7 @@ export const holeFeature: FeatureDefinition = {
         if (ctx?.featureId) {
           stampFaceFeatureIdAll(cbCyl, ctx.featureId, { avoidIdsFrom: result.geometry });
         }
-        configureEvaluatorForProvenance(evaluator, result.geometry, cbCyl);
+        configureEvaluatorAttributes(evaluator, result.geometry, cbCyl);
         const brushCB = makeBrush(cbCyl);
         const prev = result.geometry;
         result = evaluator.evaluate(result, brushCB, SUBTRACTION);
@@ -242,7 +243,7 @@ export const holeFeature: FeatureDefinition = {
       if (ctx?.featureId) {
         stampFaceFeatureIdAll(cone, ctx.featureId, { avoidIdsFrom: result.geometry });
       }
-      configureEvaluatorForProvenance(evaluator, result.geometry, cone);
+      configureEvaluatorAttributes(evaluator, result.geometry, cone);
       const brushCS = makeBrush(cone);
       const prev = result.geometry;
       result = evaluator.evaluate(result, brushCS, SUBTRACTION);

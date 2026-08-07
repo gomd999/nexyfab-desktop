@@ -3,6 +3,7 @@ import type { FeatureDefinition } from './types';
 import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry, resolveBrepHostHandle } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback } from './downgradeNotice';
+import { configureEvaluatorAttributes } from './meshMerge';
 
 export const moldToolsFeature: FeatureDefinition = {
   type: 'moldTools',
@@ -133,7 +134,7 @@ export const moldToolsFeature: FeatureDefinition = {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { Evaluator, Brush, SUBTRACTION } = require('three-bvh-csg') as {
-        Evaluator: new () => { evaluate: (a: InstanceType<typeof Brush>, b: InstanceType<typeof Brush>, op: number) => THREE.Mesh };
+        Evaluator: new () => { attributes: string[]; evaluate: (a: InstanceType<typeof Brush>, b: InstanceType<typeof Brush>, op: number) => THREE.Mesh };
         Brush: new (geo: THREE.BufferGeometry, mat: THREE.Material) => THREE.Mesh & { geometry: THREE.BufferGeometry };
         SUBTRACTION: number;
       };
@@ -142,6 +143,7 @@ export const moldToolsFeature: FeatureDefinition = {
       cutBox.translate(cx, cy, cz);
 
       const evaluator = new Evaluator();
+      configureEvaluatorAttributes(evaluator, geometry, cutBox);
       const geoBrush = new Brush(geometry, new THREE.MeshStandardMaterial());
       const cutBrush = new Brush(cutBox, new THREE.MeshStandardMaterial());
 

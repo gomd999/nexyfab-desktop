@@ -201,6 +201,15 @@ export function propagateFeatureIdMap(
  * `propagateFeatureIdMap` on the result to keep the per-triangle id round-
  * trip intact across a boolean op.
  */
+/**
+ * ⚠ K2 (95% plan): this helper is ADDITIVE-ONLY — it does not remove
+ * attributes an operand lacks, so an Evaluator configured only by it still
+ * crashes ("Cannot read properties of undefined (reading 'array')") when one
+ * side is missing uv/normal (OCCT tessellations, welded meshes). CSG sites
+ * should call `meshMerge.configureEvaluatorAttributes` instead, which is a
+ * superset: intersection of position/normal/uv on both operands PLUS the
+ * provenance sentinel handling below.
+ */
 export function configureEvaluatorForProvenance(
   evaluator: { attributes: string[] },
   ...inputs: THREE.BufferGeometry[]

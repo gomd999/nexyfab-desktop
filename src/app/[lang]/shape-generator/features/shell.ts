@@ -12,7 +12,8 @@ import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback } from './downgradeNotice';
 import { captureKernelFailure } from './kernelCorpus';
 import { buildFaceFinderBySignature } from './topologyEdgeFinder';
-import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
+import { stampFaceFeatureIdAll, propagateFeatureIdMap } from './faceProvenance';
+import { configureEvaluatorAttributes } from './meshMerge';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -350,7 +351,7 @@ export function applyExactMeshShell(
     stampFaceFeatureIdAll(inner, ctx.featureId, { avoidIdsFrom: geometry });
   }
   const evaluator = new Evaluator();
-  configureEvaluatorForProvenance(evaluator, geometry, inner);
+  configureEvaluatorAttributes(evaluator, geometry, inner);
   const result = evaluator.evaluate(makeBrush(geometry), makeBrush(inner), SUBTRACTION);
   propagateFeatureIdMap(result.geometry, geometry, inner);
   return result.geometry;

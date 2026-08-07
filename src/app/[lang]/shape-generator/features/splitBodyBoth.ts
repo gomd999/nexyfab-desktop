@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry, resolveBrepHostHandle } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { configureEvaluatorAttributes } from './meshMerge';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo.toNonIndexed(), new THREE.MeshStandardMaterial());
@@ -71,6 +72,7 @@ export function splitBodyBoth(
 
   // Positive side
   const posBox = makeCutBox(1);
+  configureEvaluatorAttributes(evaluator, geometry, posBox);
   const brushPos = makeBrush(posBox);
   brushPos.updateMatrixWorld();
   let posGeo: THREE.BufferGeometry;

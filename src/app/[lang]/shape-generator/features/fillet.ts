@@ -3,7 +3,8 @@ import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition, FeatureApplyContext } from './types';
 import { occtEdgeSignatures, type ReplicadEdgeFinder } from './occtEngine';
 import { wantsOcctEngine, shouldUseOcctEngine } from './engineSelection';
-import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
+import { stampFaceFeatureIdAll, propagateFeatureIdMap } from './faceProvenance';
+import { configureEvaluatorAttributes } from './meshMerge';
 import { assertRoundingApplied } from './roundingGuard';
 import { classifyMeshDowngrade, stampDowngrade, makeReducedNotice, clearStaleBrepHandle } from './downgradeNotice';
 import { tryMeshFillet } from './meshRounding';
@@ -125,7 +126,7 @@ function applyFilletMeshCsg(
     if (ctx?.featureId) {
       stampFaceFeatureIdAll(intermediate, ctx.featureId, { avoidIdsFrom: runningGeo });
     }
-    configureEvaluatorForProvenance(evaluator, runningGeo, intermediate);
+    configureEvaluatorAttributes(evaluator, runningGeo, intermediate);
     resultBrush = evaluator.evaluate(resultBrush, makeBrush(intermediate), INTERSECTION);
     propagateFeatureIdMap(resultBrush.geometry, runningGeo, intermediate);
     runningGeo = resultBrush.geometry;

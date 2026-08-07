@@ -9,6 +9,7 @@
 import './ensureWorkerWindow';
 import * as THREE from 'three';
 import { Evaluator, Brush, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg';
+import { configureEvaluatorAttributes } from '../features/meshMerge';
 
 // ─── Message types ──────────────────────────────────────────────────────────
 
@@ -56,6 +57,7 @@ ctx.addEventListener('message', (event: MessageEvent<CSGWorkerInput>) => {
     const geoB = buildGeometry(meshB);
 
     const evaluator = new Evaluator();
+    configureEvaluatorAttributes(evaluator, geoA, geoB);
     const brushA = makeBrush(geoA);
     const brushB = makeBrush(geoB);
 

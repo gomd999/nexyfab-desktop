@@ -29,6 +29,7 @@ import type { FeatureDefinition } from './types';
 import { occtRib } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback } from './downgradeNotice';
+import { configureEvaluatorAttributes } from './meshMerge';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -98,6 +99,7 @@ export const ribFeature: FeatureDefinition = {
     // butt-trim against the body's walls automatically.
     try {
       const evaluator = new Evaluator();
+      configureEvaluatorAttributes(evaluator, geometry, ribGeo);
       const result = evaluator.evaluate(makeBrush(geometry), makeBrush(ribGeo), ADDITION);
       return result.geometry;
     } catch {

@@ -6,7 +6,8 @@ import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback } from './downgradeNotice';
 import { captureKernelFailure } from './kernelCorpus';
 import { reportWarning } from '../lib/telemetry';
-import { stampFaceFeatureIdAll, FACE_FEATURE_ID_ATTR } from './faceProvenance';
+import { stampFaceFeatureIdAll } from './faceProvenance';
+import { configureEvaluatorAttributes } from './meshMerge';
 import { applyBooleanRobust } from './booleanRobust';
 import { assessKernelOperationGeometry, requireValidBrepResult } from './kernelOperationQuality';
 
@@ -14,15 +15,6 @@ import { assessKernelOperationGeometry, requireValidBrepResult } from './kernelO
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
-}
-
-/** Ensure a geometry carries the per-vertex face-feature-id attribute so a CSG
- *  evaluator told to process it never reads `.array` of an absent attribute.
- *  Sentinel 0 = "unattributed" (what an unstamped base should read back as). */
-function fillSentinelFaceId(geo: THREE.BufferGeometry): void {
-  if (geo.getAttribute(FACE_FEATURE_ID_ATTR)) return;
-  const vertCount = geo.attributes.position.count;
-  geo.setAttribute(FACE_FEATURE_ID_ATTR, new THREE.BufferAttribute(new Uint32Array(vertCount), 1));
 }
 
 function getCSGOperation(type: 'union' | 'subtract' | 'intersect'): number {
@@ -107,18 +99,11 @@ export function applyBooleanSync(
   geoB: THREE.BufferGeometry,
 ): THREE.BufferGeometry {
   const evaluator = new Evaluator();
-  // B1 deep follow-up — preserve per-triangle feature id when either input
-  // carries the attribute. Same wiring as CSGOperations.applyCSG; keeps
-  // boolean output's mixed provenance intact.
-  if (geoA.getAttribute(FACE_FEATURE_ID_ATTR) || geoB.getAttribute(FACE_FEATURE_ID_ATTR)) {
-    // three-bvh-csg requires BOTH operands to carry an attribute it's told to
-    // process. A leading boolean on a fresh (unstamped) base has it on the tool
-    // only — fill the missing side with the sentinel (0 = unattributed) so the
-    // evaluator doesn't read `.array` of an absent attribute.
-    fillSentinelFaceId(geoA);
-    fillSentinelFaceId(geoB);
-    evaluator.attributes = [...evaluator.attributes, FACE_FEATURE_ID_ATTR];
-  }
+  // K2 — canonical attribute contract for arbitrary operands: interpolated
+  // attributes = intersection of position/normal/uv (missing normals are
+  // computed), and per-triangle feature-id provenance is preserved with
+  // sentinel back-fill when either side carries it.
+  configureEvaluatorAttributes(evaluator, geoA, geoB);
   const brushA = makeBrush(geoA);
   const brushB = makeBrush(geoB);
   const result: Brush = evaluator.evaluate(brushA, brushB, getCSGOperation(type));
@@ -150,6 +135,7 @@ export function applyBooleanSyncSafe(
 ): BooleanSyncResult {
   try {
     const evaluator = new Evaluator();
+    configureEvaluatorAttributes(evaluator, geoA, geoB);
     const brushA = makeBrush(geoA);
     const brushB = makeBrush(geoB);
     const result: Brush = evaluator.evaluate(brushA, brushB, getCSGOperation(type));

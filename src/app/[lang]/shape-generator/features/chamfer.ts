@@ -10,7 +10,8 @@ import {
   type ReplicadEdgeFinder,
 } from './occtEngine';
 import { wantsOcctEngine, shouldUseOcctEngine } from './engineSelection';
-import { stampFaceFeatureIdAll, configureEvaluatorForProvenance, propagateFeatureIdMap } from './faceProvenance';
+import { stampFaceFeatureIdAll, propagateFeatureIdMap } from './faceProvenance';
+import { configureEvaluatorAttributes } from './meshMerge';
 import { assertRoundingApplied } from './roundingGuard';
 import { classifyMeshDowngrade, makeReducedNotice, stampDowngrade, clearStaleBrepHandle } from './downgradeNotice';
 import { captureKernelFailure } from './kernelCorpus';
@@ -160,7 +161,7 @@ function applyChamferMeshCsg(
     stampFaceFeatureIdAll(expanded, ctx.featureId, { avoidIdsFrom: geometry });
   }
   const evaluator = new Evaluator();
-  configureEvaluatorForProvenance(evaluator, expanded, geometry);
+  configureEvaluatorAttributes(evaluator, expanded, geometry);
   const result = evaluator.evaluate(makeBrush(expanded), makeBrush(geometry), INTERSECTION);
   propagateFeatureIdMap(result.geometry, expanded, geometry);
   // Guard a degenerate CSG result rather than returning an empty solid. A large

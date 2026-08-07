@@ -3,6 +3,7 @@ import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition } from './types';
 import { occtBoxBooleanWithPrimitive, hostBoxFromGeometry, resolveBrepHostHandle } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
+import { configureEvaluatorAttributes } from './meshMerge';
 
 function makeBrush(geo: THREE.BufferGeometry): Brush {
   return new Brush(geo, new THREE.MeshStandardMaterial());
@@ -115,6 +116,7 @@ export const splitBodyFeature: FeatureDefinition = {
     }
 
     const evaluator = new Evaluator();
+    configureEvaluatorAttributes(evaluator, geometry, cutBoxGeo);
     const brushA = makeBrush(geometry);
     const brushB = makeBrush(cutBoxGeo);
 

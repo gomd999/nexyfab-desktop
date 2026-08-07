@@ -120,6 +120,11 @@ export function configureEvaluatorAttributes(
   a: THREE.BufferGeometry,
   b: THREE.BufferGeometry,
 ): void {
+  // Normals are required downstream (shading, offset ops) — compute instead
+  // of dropping when an operand arrives without them (K2: welded/derived
+  // meshes). uv stays intersection-only: cosmetic on CAD bodies.
+  if (!a.getAttribute('normal')) a.computeVertexNormals();
+  if (!b.getAttribute('normal')) b.computeVertexNormals();
   const attrs = ['position', 'normal', 'uv'].filter(
     k => a.getAttribute(k) && b.getAttribute(k),
   );

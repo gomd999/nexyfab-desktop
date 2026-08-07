@@ -429,6 +429,13 @@ function meshToBufferGeometry(
   }
   geometry.setIndex(new Uint32BufferAttribute(mesh.triangles, 1));
   if (!geometry.attributes.normal) geometry.computeVertexNormals();
+  // three-bvh-csg's Evaluator processes ['position','uv','normal'] by default
+  // and reads `.array` of an ABSENT attribute when an operand lacks one (K2:
+  // "Cannot read properties of undefined (reading 'array')" — the mesh-CSG
+  // fallback crash whenever an OCCT tessellation met a three.js primitive).
+  // OCCT tessellations carry no texture coordinates, so emit zero uv here at
+  // the choke point; alignEvaluatorAttributes guards the remaining sources.
+  geometry.setAttribute('uv', new Float32BufferAttribute(new Array((mesh.vertices.length / 3) * 2).fill(0), 2));
   return geometry;
 }
 

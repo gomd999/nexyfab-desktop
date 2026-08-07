@@ -10,6 +10,7 @@ import {
 } from './occtEngine';
 import { shouldUseOcctEngine } from './engineSelection';
 import { noteMeshFallback, stampDowngrade } from './downgradeNotice';
+import { configureEvaluatorAttributes } from './meshMerge';
 import {
   buildEdgeFinderFromSelection,
   resolveEdgeFinderBySignature,
@@ -83,6 +84,7 @@ export function applyVariableFillet(
     }
     iPos.needsUpdate = true;
 
+    configureEvaluatorAttributes(evaluator, resultBrush.geometry, intermediate);
     resultBrush = evaluator.evaluate(resultBrush, makeBrush(intermediate), INTERSECTION);
   }
 
