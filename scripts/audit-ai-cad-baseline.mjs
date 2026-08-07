@@ -150,6 +150,7 @@ const implementation = [
   "scripts/reference/build-joint-evidence-boundary-report.ts",
   "src/lib/reference/jointMotionClearanceCertificate.ts",
   "scripts/reference/build-joint-motion-clearance-evidence.ts",
+  "src/lib/reference/userConfirmedJointGuard.ts",
   "scripts/create-workspace-checkpoint.mjs",
   "scripts/reference/build-ground-truth-review-priority.ts",
   "scripts/reference/validate-ground-truth-approvals.ts",
@@ -650,6 +651,10 @@ check(
   jointClearance.scenarios?.clear?.policy?.fixedJointFabricationForbidden,
   true,
 );
+check("joint_guard.repair_local_and_recertified", jointClearance.expectations?.repairIsLocalAndRecertified, true);
+check("joint_guard.confirmed_never_auto_repaired", jointClearance.expectations?.confirmedJointNeverAutoRepaired, true);
+check("joint_guard.stale_confirmation_fail_closed", jointClearance.expectations?.staleConfirmationFailsClosed, true);
+check("joint_guard.edit_guard_blocks_confirmed", jointClearance.expectations?.editGuardBlocksConfirmedJoint, true);
 const canonicalSource = fs.readFileSync(
   path.join(root, "src/lib/ai/generationCanonicalResponse.ts"),
   "utf8",

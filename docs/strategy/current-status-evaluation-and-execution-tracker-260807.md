@@ -2,8 +2,8 @@
 
 - 기준일: 2026-08-07 (Asia/Seoul)
 - 문서 역할: 이후 작업의 단일 상태 추적 문서
-- 현재 감사: 374/374 pass (P1 zip triage +14 · P2 joint 클리어런스 capability +11 체크 포함)
-- 감사 artifact set SHA-256: `f8d699bb603584cabba72d9a53f6b08b480cb8097c6783d1fd9e51fa0665d181`
+- 현재 감사: 379/379 pass (P1 zip triage +14 · P2 joint 클리어런스 +11 · P2 확정 joint 가드 +5 체크 포함)
+- 감사 artifact set SHA-256: `37e81f55cf16e391f9109ee96637d0da44bfda07558337a8815eb3c2e8d378e7`
 - 정확도 선언: 현재 자료로 일반적인 95% AI CAD 정확도를 주장할 수 없음
 
 ## 1. 목표와 판정 원칙
@@ -195,7 +195,7 @@
 - [x] joint origin, axis, limits, parent/child occurrence hash 결속 (`jointMotionClearanceCertificate.ts` `bindJointsToOccurrences` — transform 1e-9 정밀도 결정론 occurrence 해시, 미지 타입 fixed 변환 금지, 테스트 4종)
 - [x] native motion sweep와 precise collision 비교 (스윕 매 프레임 `preciseSeparation` 정밀 메시 분리 — 결정론 2링크 스펙시멘에서 해석값 실증: 0→90° 최소 간극 5mm 정확, 0→180° 되접힘 첫 접촉 126.87° 예측→5° 격자 검출)
 - [x] clearance certificate와 pair-budget exhaustion `not_run` 처리 (`nexyfab.joint-motion-clearance-certificate.v1` — 예산 소진·기하 부재·미수렴 프레임 전부 `not_run`, false-clear 금지. capability 아티팩트=`docs/evidence/joint-motion-clearance-260807/specimen-run-1.json`, 감사 11체크 고정)
-- [ ] 사용자 확정 joint/치수 보호 및 국소 repair
+- [x] 사용자 확정 joint/치수 보호 및 국소 repair (`userConfirmedJointGuard.ts` — 확정=joint 정의 해시 결속(정의 변경 시 자동 실효·stale은 fail-closed), 편집 가드=확정 joint/치수 연산 거부(명시 override만 해제), repair=실패 joint만 국소 제안(격자 검증 상한 축소·재인증 필수)·확정 joint는 user_input으로만. 테스트 10종, capability 아티팩트·감사 5체크 고정)
 
 완료 조건:
 

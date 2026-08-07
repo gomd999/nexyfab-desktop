@@ -18,7 +18,8 @@ import { adaptCadNativeAssembly } from '../../src/lib/reference/cadNativeAssembl
 import type { CadNativeAssemblyEvidence } from '../../src/lib/reference/cadNativeAssemblyEvidence';
 import { planCadNativeJointMotion } from '../../src/lib/reference/cadNativeJointMotionPlan';
 import { buildCadProductBundleManifest } from '../../src/lib/reference/cadCorpusProductBundle';
-import { buildJointMotionClearanceCertificate } from '../../src/lib/reference/jointMotionClearanceCertificate';
+import { bindJointsToOccurrences, buildJointMotionClearanceCertificate } from '../../src/lib/reference/jointMotionClearanceCertificate';
+import { computeJointDefinitionHash, evaluateEditAgainstConfirmations, planLocalJointRepair } from '../../src/lib/reference/userConfirmedJointGuard';
 
 const output = path.resolve(process.argv[2] ?? 'docs/evidence/joint-motion-clearance-260807/specimen-run-1.json');
 
@@ -66,21 +67,45 @@ async function run(limits: { lower: number; upper: number }, maximumPairChecks?:
     ['native:link-1', await collisionGeometryFromFeatureTree('native:link-1', { nodes: [bar('link-bar', 0, 80)] })],
   ]);
   if (dropGeometry) geometries.delete('native:link-1');
-  return buildJointMotionClearanceCertificate({ evidence, adapter, plan, geometries, maximumPairChecks });
+  return { evidence, plan, certificate: buildJointMotionClearanceCertificate({ evidence, adapter, plan, geometries, maximumPairChecks }) };
 }
 
 async function main() {
-  const clear = await run({ lower: 0, upper: 90 });
-  const foldBack = await run({ lower: 0, upper: 180 });
-  const budget = await run({ lower: 0, upper: 90 }, 3);
-  const noGeometry = await run({ lower: 0, upper: 90 }, undefined, true);
-  const scenarios = { clear, foldBack, budget, noGeometry };
+  const clearRun = await run({ lower: 0, upper: 90 });
+  const foldBackRun = await run({ lower: 0, upper: 180 });
+  const budgetRun = await run({ lower: 0, upper: 90 }, 3);
+  const noGeometryRun = await run({ lower: 0, upper: 90 }, undefined, true);
+  const clear = clearRun.certificate, foldBack = foldBackRun.certificate, budget = budgetRun.certificate, noGeometry = noGeometryRun.certificate;
+
+  // 사용자 확정 보호·국소 repair 성질 — 같은 스펙시멘으로 고정한다.
+  const emptyRegistry = { joints: [], dimensions: [] };
+  const confirmedRegistry = {
+    joints: bindJointsToOccurrences(foldBackRun.evidence).joints.map(joint => ({ jointId: joint.jointId, jointDefinitionHash: computeJointDefinitionHash(joint) })),
+    dimensions: [],
+  };
+  const staleRegistry = {
+    joints: bindJointsToOccurrences(clearRun.evidence).joints.map(joint => ({ jointId: joint.jointId, jointDefinitionHash: computeJointDefinitionHash(joint) })),
+    dimensions: [],
+  };
+  const openRepair = planLocalJointRepair(foldBack, foldBackRun.plan, emptyRegistry);
+  const confirmedRepair = planLocalJointRepair(foldBack, foldBackRun.plan, confirmedRegistry);
+  const staleRepair = planLocalJointRepair(foldBack, foldBackRun.plan, staleRegistry);
+  const guardBlocked = evaluateEditAgainstConfirmations([{ kind: 'remove_mate', mateId: 'native:shoulder' }], confirmedRegistry);
+  const guardReleased = evaluateEditAgainstConfirmations([{ kind: 'remove_mate', mateId: 'native:shoulder' }], confirmedRegistry, ['shoulder']);
+
+  const scenarios = { clear, foldBack, budget, noGeometry, guard: { openRepair, confirmedRepair, staleRepair, guardBlocked, guardReleased } };
   const expectations = {
     clearSweepPasses: clear.status === 'pass' && (clear.sweeps[0]?.minimumClearanceMm ?? 0) > 4.5 && (clear.sweeps[0]?.minimumClearanceMm ?? 99) <= 5.000001,
     foldBackCollisionDetected: foldBack.status === 'fail' && (foldBack.sweeps[0]?.collision?.parameterValue ?? 0) > 120 && (foldBack.sweeps[0]?.collision?.parameterValue ?? 999) <= 135,
     budgetExhaustionIsNotRun: budget.status === 'not_run' && budget.sweeps[0]?.reason === 'pair_budget_exhausted',
     missingGeometryIsNotRun: noGeometry.status === 'not_run' && noGeometry.sweeps[0]?.reason === 'collision_geometry_unavailable:native:link-1',
     occurrenceHashesBound: clear.binding.joints.every(joint => /^[a-f0-9]{64}$/.test(joint.parentOccurrenceHash) && /^[a-f0-9]{64}$/.test(joint.childOccurrenceHash)),
+    repairIsLocalAndRecertified: openRepair.status === 'pass' && openRepair.touchedJointIds.join(',') === 'shoulder'
+      && openRepair.items[0]?.action?.requiresRecertification === true
+      && (openRepair.items[0]?.action?.newUpperLimit ?? 999) < (foldBack.sweeps[0]?.collision?.parameterValue ?? 0),
+    confirmedJointNeverAutoRepaired: confirmedRepair.items[0]?.disposition === 'user_input' && confirmedRepair.touchedJointIds.length === 0,
+    staleConfirmationFailsClosed: staleRepair.status === 'fail' && staleRepair.errors[0] === 'user_confirmation_stale:shoulder',
+    editGuardBlocksConfirmedJoint: guardBlocked.allowed === false && guardReleased.allowed === true,
   };
   const status = Object.values(expectations).every(Boolean) ? 'pass' : 'fail';
   const body = JSON.stringify({ scenarios, expectations }, null, 2);
