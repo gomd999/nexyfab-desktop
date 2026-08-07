@@ -17,7 +17,9 @@ jobs:
   real-occt-browser-matrix:
     name: Real OCCT (${{ matrix.project }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # npm ci + browser install + full prod build (485-546s on a fast machine;
+    # slower on 2-core runners) + the OCCT suite — 30 min was webServer-bound.
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:

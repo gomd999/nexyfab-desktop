@@ -59,7 +59,10 @@ export default defineConfig({
     command: 'npm run build && node .next/standalone/server.js',
     url: baseURL,
     reuseExistingServer: process.env.PW_REUSE_DEV === '1',
-    timeout: 600_000,
+    // 600s barely covered the prod build on a fast dev machine (measured
+    // 485-546s, 260808). 2-core CI runners are slower — give the build room
+    // instead of failing the whole browser-matrix job at the webServer step.
+    timeout: 1_500_000,
     env: {
       ...process.env,
       NODE_ENV: 'production',

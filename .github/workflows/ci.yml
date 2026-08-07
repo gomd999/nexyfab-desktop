@@ -44,7 +44,10 @@ jobs:
       - name: Create backup and isolated restore target
         run: |
           pg_dump "$DATABASE_URL" | gzip > "$BACKUP_FILE"
-          createdb "$RESTORE_DATABASE_URL"
+          # createdb takes a database NAME, not a URI — passing the URL would
+          # create a DB literally named "postgres://…" (and connect over the
+          # local socket, not the service container). Create via the CI URL.
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE DATABASE nexyfab_restore_drill'
       - name: Restore drill and integrity check
         run: npm run backup:verify-restore
 
