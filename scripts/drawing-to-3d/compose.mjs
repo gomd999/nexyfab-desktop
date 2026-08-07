@@ -20,6 +20,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { callAiJson } from './ai-json.mjs';
+import { extractHoleSpec, gateHoleRealization } from './hole-realization.mjs';
 
 // ─── 폴리곤 게이트 (intent 모듈 verify.ts의 .mjs 포트) ──────────────────────
 function signedArea(pts) {
@@ -334,15 +335,20 @@ export async function composeFromText(description, { models = ['gemini-2.5-pro',
  */
 export async function composeWithGate(description, { maxRounds = 2, models } = {}) {
   let { intent } = await composeFromText(description, models ? { models } : {});
-  let errs = gateComposite(intent);
+  // K4(260808) — 요청 텍스트의 명시적 구멍 요구(개수·지름)를 결정론 파서로 뽑아
+  // 교정 루프의 게이트에 편입한다. 종전에는 "Φ8 구멍 4개"가 subtract 피처 없이
+  // 스펙 문장으로만 남아도 통과했다(치수 충실도 사각).
+  const holeSpec = extractHoleSpec(description);
+  const gateAll = (it) => [...gateComposite(it), ...gateHoleRealization(it, holeSpec)];
+  let errs = gateAll(intent);
   let rounds = 1;
   while (errs.length && rounds <= maxRounds) {
-    const fix = `아래 부품 조합 JSON이 기하 게이트에서 실패했다. 오류를 고쳐 같은 형식으로 다시 출력하라.\n오류: ${JSON.stringify(errs)}\n각 프리미티브 필수: revolve/extrude→profile(닫힌 단순 폴리곤, revolve는 x≥0), extrude→height, cylinder→diameter&height, box→size[3], sphere→diameter.\n현재 JSON: ${JSON.stringify(intent)}`;
+    const fix = `아래 부품 조합 JSON이 기하 게이트에서 실패했다. 오류를 고쳐 같은 형식으로 다시 출력하라.\n오류: ${JSON.stringify(errs)}\n각 프리미티브 필수: revolve/extrude→profile(닫힌 단순 폴리곤, revolve는 x≥0), extrude→height, cylinder→diameter&height, box→size[3], sphere→diameter. 구멍은 op:'subtract' cylinder로 실체화하고 위치는 at.translate로 지정.\n현재 JSON: ${JSON.stringify(intent)}`;
     try {
       const { data } = await callAiJson(fix, COMPOSE_SCHEMA, { models: models ?? ['gemini-2.5-pro'], maxOutputTokens: 8192 });
       intent = data;
     } catch { break; }
-    errs = gateComposite(intent);
+    errs = gateAll(intent);
     rounds++;
   }
   /**
@@ -350,12 +356,18 @@ export async function composeWithGate(description, { maxRounds = 2, models } = {
    * 종전에는 여기서 `gatePassed:false` 로 끝나 멀쩡한 피처까지 버려졌다(제품 원칙 §0.4).
    */
   let dropped = [];
+  // K4 — 구멍 실체화 오류는 피처 단위 drop 으로 해소될 수 없다(빠진 것이지 깨진
+  // 것이 아니다). resolve 에 넘기지 말고 분리해 정직하게 unmetHoles 로 표면화한다.
+  let unmetHoles = errs.filter((e) => e.startsWith('hole_realization:'));
+  errs = errs.filter((e) => !e.startsWith('hole_realization:'));
   if (errs.length) {
     const r = resolveComposeIntent(intent);
-    if (r.allFailed) return { intent, gatePassed: false, gateErrors: errs, rounds, dropped: r.dropped };
+    if (r.allFailed) return { intent, gatePassed: false, gateErrors: [...errs, ...unmetHoles], rounds, dropped: r.dropped };
     intent = r.intent;
     dropped = r.dropped;
     errs = [];
+    // drop 이후 구멍 실체화가 달라졌을 수 있다(구멍 피처가 drop 됐을 수도) — 재판정.
+    unmetHoles = gateHoleRealization(intent, holeSpec);
   }
   const scad = emitComposite(intent);
   let verify = null;
@@ -369,7 +381,12 @@ export async function composeWithGate(description, { maxRounds = 2, models } = {
     verify = { triangles: n, manifold: bad === 0, nonManifoldEdges: bad };
   } catch (e) { verify = { error: e.message }; }
   // dropped 가 있으면 **부분 산출**이다 — 호출부·화면이 한 번에 알 수 있게 degraded 를 같이 낸다.
-  return { intent, scad, gatePassed: true, rounds, verify, dropped, degraded: dropped.length > 0 };
+  return {
+    intent, scad, gatePassed: true, rounds, verify, dropped,
+    // K4 — 요청된 구멍이 실체화되지 않은 채 산출되면 부분 산출이다(정직 표기).
+    unmetHoles,
+    degraded: dropped.length > 0 || unmetHoles.length > 0,
+  };
 }
 
 const isMain = process.argv[1] && process.argv[1].replaceAll('\\', '/').endsWith('compose.mjs');
