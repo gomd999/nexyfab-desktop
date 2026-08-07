@@ -272,6 +272,21 @@ npm run test:accuracy:interior
 - `.env.local` 또는 상위 `.env`의 값을 출력하거나 문서에 복사하지 않는다.
 - 95% 정확도는 독립 holdout 승인 전까지 공개 보장하지 않는다.
 
+## 10.5 2026-08-08 세션 실행 기록 (§8 "외부 staging이 아직 없을 때" 완주)
+
+1. **worktree 146개 변경 → 기능군 16커밋 완결** (b3e19637 ~). docs/evidence/(149MB)만 관례대로 비추적 유지. 각 커밋은 pre-commit 훅(lint-staged+전체 tsc+vitest related)을 통과했다.
+2. **CAD 품질게이트 근본수정 (c0e85a35)** — 커밋 과정에서 related 전체 실행 시 13개 테스트가 실패하는 것을 발견(§4의 "44개 통과"는 표적 묶음만 실행한 결과였다):
+   - `boundaryEdgeCount`를 T-정션 인지형으로 교체. 실측: box−cylinder 골든의 경계엣지 482/482가 콜리니어 덮임(T-정션 산물), 동일평면 큐브 subtract/union도 부피 500/1500 정확 — 종전 원시 계수는 정상 mesh CSG boolean 전부를 fail-closed시켰다.
+   - watertight 차단은 mesh 클래스에만 적용. OCCT tessellation은 면별 삼각화라 곡면 이음에서 코드(chord) 불일치가 정상이며(접선 fillet 카나리아 재현), B-rep 유효성은 커널 계약이다.
+   - `requireValidBrepResult`의 단일바디 요구 제거 — subtract 분할은 정당하고, 용접 컴포넌트 계수가 융합 솔리드를 2개로 오판해 정확한 OCCT 결과를 크래시 있는 mesh 폴백으로 강등시켰다(REF-PART 1 보스 union).
+3. **middleware→proxy 전환 완료 (d2d47a7a)** — Next 16.2.6 소스로 실증: proxy는 항상 Node.js 런타임(runtime segment config=E1031), middleware+proxy 공존=빌드 에러 E900, src/ 사용 시 src/*만 스캔(루트 middleware.ts는 종전대로 dormant). `src/middleware.ts`→`src/proxy.ts`+export 개명. 검증: 클린 빌드에서 deprecation 경고 소멸·`ƒ Proxy` 인식·번들 691.6KB 예산 통과, standalone에서 admin 428/expert 게이트 307/expert=1 200/legacy locale 308 curl 실측, Playwright 9/9(landing 7+Q8 2, 1.0m). ⚠️ rename 자체는 e9abcf97에 섞여 들어감 — 그 커밋 단독 checkout 금지(export 부재).
+4. **eng-chat Sentry/Prisma 경고 축소 + 서버 오류 삼킴 회귀 수정** — error-capture.ts의 `import('@sentry/nextjs')` 우선 경로는 (a) Prisma/OTel critical dependency 경고의 유일한 원천이었고 (b) 서버는 어디서도 Sentry.init을 하지 않으므로 **초기화 안 된 captureException이 no-op으로 이벤트를 버리고 envelope 폴백을 가로채는** 회귀였다. envelope POST 단일화.
+5. **nodeOcctLoader 경고 축소** — 변수 지정자 dynamic import에 `webpackIgnore: true` 추가(런타임 동작 동일, 부재 시 graceful fallback 유지).
+6. **브라우저/정확도 CI 정적 검토 → 결함 3건 수정 (e9abcf97)** — ① ci.yml restore drill의 `createdb "$RESTORE_DATABASE_URL"`은 URI를 DB 이름으로 오용(로컬 소켓 접속 + 'postgres://…'라는 이름의 DB 생성) → psql CREATE DATABASE로 교체 ② domain-accuracy-matrix.yml만 `npm ci`(--legacy-peer-deps 누락 — 설치 단계 실패) ③ Playwright webServer timeout 600s는 실측 빌드 485-546s와 거의 동일 → 1500s, matrix job 30→50분. 4개 워크플로우 YAML 파스 검증.
+7. **CAD corpus 장시간/메모리 자동화 (§8-6)** — `stepBurnInSoak.test.ts`: 한 커널 인스턴스에서 전체 burn-in 코퍼스를 N회 반복, 반복별 pass-rate 열화와 워밍업 후 RSS 성장(예산 256MB)을 게이트. `npm run test:occt:soak`(--expose-gc), 주간+dispatch `occt-kernel-soak.yml`. 실측(4회): 17/17 전회, RSS 687.5→625.1MB(성장 -62.4MB, 누수 없음).
+
+추가 확인된 함정: 기존 dist 디렉터리 재사용 재빌드는 §21.3의 비결정 `Cannot read properties of undefined (reading 'length')` 예외를 재현한다 — dist 완전 삭제 후 클린 빌드가 정식 경로. next build는 tsconfig.json에 `.next-<dist>/types` include를 자동 추가한다(기계 churn — 커밋하지 말 것).
+
 ## 11. 완료 정의
 
 유료 공개 서비스는 아래가 모두 충족돼야 한다.
