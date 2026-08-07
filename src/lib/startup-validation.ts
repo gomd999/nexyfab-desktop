@@ -1,3 +1,5 @@
+import { commercialReadinessIssues } from './commercial-readiness';
+
 /**
  * Startup validation — called once when the server starts.
  * Validates required environment variables and fails fast if misconfigured.
@@ -141,6 +143,12 @@ export function validateStartup(): void {
   for (const [key, defaultVal] of dangerousDefaults) {
     if (process.env[key] === defaultVal) {
       errors.push(`❌ SECURITY: ${key} is set to default development value. Change immediately!`);
+    }
+  }
+
+  if (process.env.NEXYFAB_COMMERCIAL_MODE === '1') {
+    for (const issue of commercialReadinessIssues(process.env)) {
+      errors.push(`❌ COMMERCIAL ${issue.code}: ${issue.message}`);
     }
   }
 

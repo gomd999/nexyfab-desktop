@@ -1,0 +1,51 @@
+import { describe, expect, it } from 'vitest';
+import { commercialReadinessIssues } from './commercial-readiness';
+
+const base = {
+  DATABASE_URL: 'postgres://db',
+  REDIS_URL: 'redis://cache',
+  S3_BUCKET: 'cad-private',
+  S3_ACCESS_KEY_ID: 'key',
+  S3_SECRET_ACCESS_KEY: 'secret',
+  CRON_SECRET: 'cron-secret',
+  SMTP_HOST: 'smtp.example.com',
+  SENTRY_DSN: 'https://public@sentry.example/1',
+  NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: 'stable-key',
+  TOSS_SECRET_KEY: 'toss-secret',
+  TOSS_WEBHOOK_SECRET: 'toss-webhook',
+};
+
+describe('commercialReadinessIssues', () => {
+  it('accepts a complete commercial configuration', () => {
+    expect(commercialReadinessIssues(base)).toEqual([]);
+  });
+
+  it('requires distributed infrastructure and observability', () => {
+    const issues = commercialReadinessIssues({
+      ...base,
+      REDIS_URL: '',
+      SENTRY_DSN: undefined,
+    });
+    expect(issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
+      'rate_limit.redis_required',
+      'observability.sentry_required',
+    ]));
+  });
+
+  it('does not accept a payment API key without webhook verification', () => {
+    const issues = commercialReadinessIssues({
+      ...base,
+      TOSS_WEBHOOK_SECRET: undefined,
+    });
+    expect(issues.some((issue) => issue.code === 'payments.provider_incomplete')).toBe(true);
+  });
+
+  it('accepts any one fully configured supported payment provider', () => {
+    const env = { ...base, TOSS_SECRET_KEY: undefined, TOSS_WEBHOOK_SECRET: undefined };
+    expect(commercialReadinessIssues({
+      ...env,
+      DODO_API_KEY: 'dodo-key',
+      DODO_WEBHOOK_SECRET: 'dodo-webhook',
+    })).toEqual([]);
+  });
+});

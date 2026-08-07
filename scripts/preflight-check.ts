@@ -46,14 +46,26 @@ const REQUIRED_ENV: Array<{ key: string; reason: string; critical: boolean }> = 
   { key: 'NEXT_PUBLIC_NEXYSYS_URL', reason: 'Cross-product links',      critical: false },
 ];
 
-const REQUIRED_MIGRATIONS = [
-  { version: 77, name: 'concierge_status' },
-  { version: 78, name: 'partner_invites' },
-  { version: 79, name: 'agreement_consents' },
-  { version: 80, name: 'escrow_transactions' },
-  { version: 81, name: 'pro_grace_until' },
-  { version: 82, name: 'payment_attempts' },
-  { version: 83, name: 'orders_quote_id' },
+// PostgreSQL is managed by one idempotent schema file rather than SQLite's
+// numbered migration array. Check capabilities that the running release
+// actually needs; requiring synthetic version rows rejects healthy databases.
+const REQUIRED_TABLES = [
+  'nf_partner_invites',
+  'nf_partner_agreement_consents',
+  'nf_escrow_transactions',
+  'nf_payment_attempts',
+  'nf_manufacturing_lineage',
+];
+
+const REQUIRED_COLUMNS: Array<[string, string]> = [
+  ['nf_users', 'pro_grace_until'],
+  ['nf_orders', 'quote_id'],
+  ['nf_orders', 'payment_status'],
+  ['nf_orders', 'toss_order_id'],
+  ['nf_orders', 'lineage_id'],
+  ['nf_orders', 'artifact_sha256'],
+  ['nf_rfqs', 'lineage_id'],
+  ['nf_quotes', 'lineage_id'],
 ];
 
 interface Result { ok: boolean; failures: string[]; warnings: string[] }
@@ -89,21 +101,14 @@ async function checkMigrations(): Promise<Result> {
     const client = new Client({ connectionString: process.env.DATABASE_URL });
     await client.connect();
     try {
-      const { rows } = await client.query<{ version: number; name: string }>(
-        'SELECT version, name FROM nf_schema_migrations ORDER BY version',
-      );
-      const applied = new Set(rows.map(r => r.version));
-      for (const m of REQUIRED_MIGRATIONS) {
-        if (!applied.has(m.version)) failures.push(`v${m.version} (${m.name}) not applied`);
+      for (const table of REQUIRED_TABLES) {
+        const result = await client.query<{ exists: boolean }>(
+          `SELECT to_regclass($1) IS NOT NULL AS exists`,
+          [`public.${table}`],
+        );
+        if (!result.rows[0]?.exists) failures.push(`${table} table missing`);
       }
-      // Also spot-check critical columns that lazy-init paths depend on.
-      const critColumns: Array<[string, string]> = [
-        ['nf_users', 'pro_grace_until'],
-        ['nf_orders', 'quote_id'],
-        ['nf_orders', 'payment_status'],
-        ['nf_orders', 'toss_order_id'],
-      ];
-      for (const [table, col] of critColumns) {
+      for (const [table, col] of REQUIRED_COLUMNS) {
         const r = await client.query<{ exists: boolean }>(
           `SELECT EXISTS (
              SELECT 1 FROM information_schema.columns
