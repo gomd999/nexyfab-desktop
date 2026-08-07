@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 export const GENERATION_STAGES = ['intent', 'decomposition', 'interfaces', 'part_programs', 'kernel', 'topology', 'assembly_solve', 'motion', 'manufacturing', 'roundtrip', 'release'] as const;
 export type GenerationRunStage = typeof GENERATION_STAGES[number];
 export type GenerationRunStatus = 'pending' | 'running' | 'passed' | 'failed' | 'not_run' | 'blocked';
@@ -25,7 +23,27 @@ function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
   return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
 }
-export const generationArtifactHash = (value: unknown): string => createHash('sha256').update(canonical(value)).digest('hex');
+/**
+ * Synchronous browser-safe fingerprint for generation state.
+ * This is intentionally not a security primitive; it only detects state
+ * changes in the client pipeline. Four independent FNV-1a lanes preserve the
+ * existing 64-hex-character artifact-hash contract without node:crypto.
+ */
+export const generationArtifactHash = (value: unknown): string => {
+  const input = canonical(value);
+  const seeds = [0x811c9dc5, 0x9e3779b9, 0x165667b1, 0x85ebca6b, 0xc2b2ae35, 0x27d4eb2f, 0xdeadbeef, 0x31415926];
+  const primes = seeds.map(() => 0x01000193);
+  const lanes = seeds.map((seed, lane) => {
+    let hash = seed >>> 0;
+    for (let i = 0; i < input.length; i++) {
+      const code = input.charCodeAt(i);
+      hash = Math.imul(hash ^ ((code + lane + (code >>> 8)) & 0xff), primes[lane]!) >>> 0;
+      hash = Math.imul(hash ^ ((code >>> 8) + lane), primes[lane]!) >>> 0;
+    }
+    return hash.toString(16).padStart(8, '0');
+  });
+  return lanes.join('');
+};
 const blankStage = (stage: GenerationRunStage): GenerationStageRecord => ({ stage, status: 'pending', attempt: 0, errorCodes: [], warnings: [], unresolved: [], metrics: {}, affectedPartIds: [] });
 export function createGenerationRun(runId: string): GenerationRunState {
   if (!runId.trim()) throw new Error('runId is required.');
