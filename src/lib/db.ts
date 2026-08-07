@@ -1708,6 +1708,57 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
       ALTER TABLE nf_users ADD COLUMN last_login_fingerprint TEXT;
     `,
   },
+
+  {
+    version: 78,
+    name: 'manufacturing_artifact_lineage',
+    sql: `
+      CREATE TABLE IF NOT EXISTS nf_manufacturing_lineage (
+        lineage_id          TEXT PRIMARY KEY,
+        user_id             TEXT NOT NULL,
+        project_id          TEXT NOT NULL,
+        document_version_id TEXT NOT NULL,
+        generation_run_id   TEXT NOT NULL,
+        verification_run_id TEXT NOT NULL,
+        artifact_id         TEXT NOT NULL UNIQUE,
+        artifact_sha256     TEXT NOT NULL,
+        release_status      TEXT NOT NULL DEFAULT 'draft',
+        authorized_at       INTEGER,
+        authorized_by       TEXT,
+        invalidated_at      INTEGER,
+        invalidation_reason TEXT,
+        created_at          INTEGER NOT NULL,
+        updated_at          INTEGER NOT NULL,
+        CHECK (release_status IN ('draft', 'verified', 'authorized', 'revoked')),
+        CHECK (length(artifact_sha256) = 64)
+      );
+      CREATE INDEX IF NOT EXISTS idx_mfg_lineage_project_version
+        ON nf_manufacturing_lineage(project_id, document_version_id);
+      CREATE INDEX IF NOT EXISTS idx_mfg_lineage_user
+        ON nf_manufacturing_lineage(user_id, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_mfg_lineage_release
+        ON nf_manufacturing_lineage(release_status, updated_at);
+
+      ALTER TABLE nf_rfqs ADD COLUMN lineage_id TEXT;
+      ALTER TABLE nf_rfqs ADD COLUMN artifact_id TEXT;
+      ALTER TABLE nf_rfqs ADD COLUMN artifact_sha256 TEXT;
+      ALTER TABLE nf_rfqs ADD COLUMN document_version_id TEXT;
+
+      ALTER TABLE nf_quotes ADD COLUMN lineage_id TEXT;
+      ALTER TABLE nf_quotes ADD COLUMN artifact_id TEXT;
+      ALTER TABLE nf_quotes ADD COLUMN artifact_sha256 TEXT;
+      ALTER TABLE nf_quotes ADD COLUMN document_version_id TEXT;
+
+      ALTER TABLE nf_orders ADD COLUMN lineage_id TEXT;
+      ALTER TABLE nf_orders ADD COLUMN artifact_id TEXT;
+      ALTER TABLE nf_orders ADD COLUMN artifact_sha256 TEXT;
+      ALTER TABLE nf_orders ADD COLUMN document_version_id TEXT;
+
+      CREATE INDEX IF NOT EXISTS idx_rfqs_lineage ON nf_rfqs(lineage_id);
+      CREATE INDEX IF NOT EXISTS idx_quotes_lineage ON nf_quotes(lineage_id);
+      CREATE INDEX IF NOT EXISTS idx_orders_lineage ON nf_orders(lineage_id);
+    `,
+  },
 ];
 
 function runMigrations(db: Database.Database): void {

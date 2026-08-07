@@ -1596,6 +1596,11 @@ CREATE INDEX IF NOT EXISTS idx_payment_attempt_order
 ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS quote_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_orders_quote_id ON nf_orders(quote_id);
 
+-- v85: Partner email on production orders. Older deployments only added
+-- this field through SQLite lazy migrations.
+ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS partner_email TEXT;
+CREATE INDEX IF NOT EXISTS idx_orders_partner_email ON nf_orders(partner_email);
+
 
 -- ─── v84: API usage telemetry ────────────────────────────────────────
 -- Granular log of every external API call so the admin console can plot
@@ -1881,3 +1886,47 @@ ALTER TABLE nf_rfqs           ADD COLUMN IF NOT EXISTS preferred_factory_id TEXT
 ALTER TABLE nf_refresh_tokens ADD COLUMN IF NOT EXISTS user_agent TEXT;
 ALTER TABLE nf_refresh_tokens ADD COLUMN IF NOT EXISTS ip TEXT;
 ALTER TABLE nf_refresh_tokens ADD COLUMN IF NOT EXISTS last_used_at BIGINT;
+
+-- Manufacturing artifact lineage — one immutable verified artifact from CAD
+-- generation through RFQ, quote, order and production.
+CREATE TABLE IF NOT EXISTS nf_manufacturing_lineage (
+  lineage_id          TEXT PRIMARY KEY,
+  user_id             TEXT NOT NULL,
+  project_id          TEXT NOT NULL,
+  document_version_id TEXT NOT NULL,
+  generation_run_id   TEXT NOT NULL,
+  verification_run_id TEXT NOT NULL,
+  artifact_id         TEXT NOT NULL UNIQUE,
+  artifact_sha256     TEXT NOT NULL,
+  release_status      TEXT NOT NULL DEFAULT 'draft'
+    CHECK (release_status IN ('draft', 'verified', 'authorized', 'revoked')),
+  authorized_at       BIGINT,
+  authorized_by       TEXT,
+  invalidated_at      BIGINT,
+  invalidation_reason TEXT,
+  created_at          BIGINT NOT NULL,
+  updated_at          BIGINT NOT NULL,
+  CHECK (length(artifact_sha256) = 64)
+);
+CREATE INDEX IF NOT EXISTS idx_mfg_lineage_project_version
+  ON nf_manufacturing_lineage(project_id, document_version_id);
+CREATE INDEX IF NOT EXISTS idx_mfg_lineage_user
+  ON nf_manufacturing_lineage(user_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_mfg_lineage_release
+  ON nf_manufacturing_lineage(release_status, updated_at);
+
+ALTER TABLE nf_rfqs ADD COLUMN IF NOT EXISTS lineage_id TEXT;
+ALTER TABLE nf_rfqs ADD COLUMN IF NOT EXISTS artifact_id TEXT;
+ALTER TABLE nf_rfqs ADD COLUMN IF NOT EXISTS artifact_sha256 TEXT;
+ALTER TABLE nf_rfqs ADD COLUMN IF NOT EXISTS document_version_id TEXT;
+ALTER TABLE nf_quotes ADD COLUMN IF NOT EXISTS lineage_id TEXT;
+ALTER TABLE nf_quotes ADD COLUMN IF NOT EXISTS artifact_id TEXT;
+ALTER TABLE nf_quotes ADD COLUMN IF NOT EXISTS artifact_sha256 TEXT;
+ALTER TABLE nf_quotes ADD COLUMN IF NOT EXISTS document_version_id TEXT;
+ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS lineage_id TEXT;
+ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS artifact_id TEXT;
+ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS artifact_sha256 TEXT;
+ALTER TABLE nf_orders ADD COLUMN IF NOT EXISTS document_version_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_rfqs_lineage ON nf_rfqs(lineage_id);
+CREATE INDEX IF NOT EXISTS idx_quotes_lineage ON nf_quotes(lineage_id);
+CREATE INDEX IF NOT EXISTS idx_orders_lineage ON nf_orders(lineage_id);
