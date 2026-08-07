@@ -41,6 +41,8 @@ import ReferenceGeometryLayer from './referenceGeometry/ReferenceGeometryLayer';
 import ThreadCosmeticIndicator from './features/threads/ThreadCosmeticIndicator';
 // === D6 THREADS BOUNDARY END ===
 import PerfMonitor from './PerfMonitor';
+import ViewportBenchmarkFixture from './ViewportBenchmarkFixture';
+import type { ViewportComplexityTier } from '@/lib/viewportPerformance';
 import PinComments from './comments/PinComments';
 import type { UnitSystem } from './units';
 import { getMaterialPreset, type MaterialPreset } from './materials';
@@ -1325,6 +1327,7 @@ interface ShapePreviewProps {
   snapGrid?: number;
   unitSystem?: UnitSystem;
   showPerf?: boolean;
+  viewportBenchmarkTier?: ViewportComplexityTier;
   materialId?: string;
   collabUsers?: CollabUser[];
   /** Yjs awareness presences (CRDT path). When set + non-empty, supersedes
@@ -1601,7 +1604,7 @@ export default function ShapePreview({
   showDimensions = false, measureActive = false, measureMode = 'distance', sectionActive = false,
   sectionAxis = 'y', sectionOffset = 0.5, showPlanes = false, constructPlanes,
   transformMode = 'off', onTransformChange, snapGrid, unitSystem = 'mm',
-  showPerf = false, materialId, collabUsers, awarenessPresences, awarenessLocalClientId,
+  showPerf = false, viewportBenchmarkTier, materialId, collabUsers, awarenessPresences, awarenessLocalClientId,
   showPrintAnalysis = false, printAnalysis = null,
   printBuildDirection = [0, 1, 0], printOverhangAngle = 45,
   renderMode = 'standard', renderSettings, onCaptureScreenshot: _onCaptureScreenshot,
@@ -2793,10 +2796,10 @@ export default function ShapePreview({
                 const onLost = (ev: Event) => {
                   ev.preventDefault();
                   setGlContextLost(true);
-                  void import('@sentry/nextjs').then(s => {
-                    s.captureMessage?.('webgl_context_lost', {
-                      level: 'warning',
-                      tags: { source: 'ShapePreview', surface: 'canvas' },
+                  void import('@/lib/client-error-capture').then(({ captureClientMessage }) => {
+                    captureClientMessage('webgl_context_lost', {
+                      source: 'ShapePreview',
+                      tags: { surface: 'canvas' },
                     });
                   }).catch(() => { /* SDK absent — banner still shows */ });
                 };
@@ -3166,7 +3169,8 @@ export default function ShapePreview({
                 )}
 
                 {/* Performance monitor */}
-                {showPerf && <PerfMonitor visible lang={lang} />}
+                {viewportBenchmarkTier && <ViewportBenchmarkFixture tier={viewportBenchmarkTier} />}
+                {(showPerf || viewportBenchmarkTier) && <PerfMonitor visible lang={lang} />}
 
                 {/* Collaboration cursors — CRDT path takes precedence. */}
                 {awarenessPresences && awarenessPresences.size > 0 && awarenessLocalClientId !== undefined ? (

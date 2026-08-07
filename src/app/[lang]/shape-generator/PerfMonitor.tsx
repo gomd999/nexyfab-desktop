@@ -5,6 +5,25 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { LOCAL_LABELS } from './constants/labels';
 import { getSuppressCadPerfToasts, setSuppressCadPerfToasts } from '@/lib/cadPerfHints';
+import {
+  evaluateViewportPerformance,
+  percentile95,
+  type ViewportPerformanceSnapshot,
+} from '@/lib/viewportPerformance';
+import * as THREE from 'three';
+
+function collectSceneRenderStats(scene: THREE.Scene): { triangles: number; drawCalls: number } {
+  let triangles = 0;
+  let drawCalls = 0;
+  scene.traverse((object) => {
+    if (!object.visible || !(object instanceof THREE.Mesh)) return;
+    const geometry = object.geometry;
+    const elementCount = geometry.index?.count ?? geometry.getAttribute('position')?.count ?? 0;
+    triangles += Math.floor(elementCount / 3);
+    drawCalls += Math.max(1, geometry.groups.length);
+  });
+  return { triangles, drawCalls };
+}
 
 function resolveLabelsLang(routeLang?: string): keyof typeof LOCAL_LABELS {
   if (!routeLang) return 'en';
@@ -22,13 +41,16 @@ interface PerfMonitorProps {
 }
 
 export default function PerfMonitor({ visible, lang = 'en' }: PerfMonitorProps) {
-  const { gl } = useThree();
+  const { gl, scene, invalidate } = useThree();
   const timesRef = useRef<number[]>([]);
   const [fps, setFps] = useState(0);
   const [triangles, setTriangles] = useState(0);
   const [calls, setCalls] = useState(0);
   const [textures, setTextures] = useState(0);
   const [geometries, setGeometries] = useState(0);
+  const [frameTimeP95Ms, setFrameTimeP95Ms] = useState(0);
+  const [budgetPassed, setBudgetPassed] = useState(true);
+  const [complexityTier, setComplexityTier] = useState<'S' | 'M' | 'L' | 'XL'>('S');
   const frameCountRef = useRef(0);
   const lt = LOCAL_LABELS[resolveLabelsLang(lang)];
   const [suppressLoadToasts, setSuppressLoadToastsState] = useState(false);
@@ -40,6 +62,9 @@ export default function PerfMonitor({ visible, lang = 'en' }: PerfMonitorProps) 
 
   useFrame(() => {
     if (!visible) return;
+    // The viewport normally renders on demand. A performance sample must run
+    // continuously or idle gaps are incorrectly reported as multi-second frames.
+    invalidate();
 
     const now = performance.now();
     const times = timesRef.current;
@@ -53,14 +78,35 @@ export default function PerfMonitor({ visible, lang = 'en' }: PerfMonitorProps) 
       const elapsed = times[times.length - 1] - times[0];
       const avgFps = ((times.length - 1) / elapsed) * 1000;
       setFps(Math.round(avgFps));
+      const frameTimes = times.slice(1).map((time, index) => time - times[index]!);
+      setFrameTimeP95Ms(Number(percentile95(frameTimes).toFixed(1)));
     }
 
     const info = gl.info;
-    setTriangles(info.render.triangles);
-    setCalls(info.render.calls);
+    const sceneStats = collectSceneRenderStats(scene);
+    setTriangles(sceneStats.triangles);
+    setCalls(Math.max(info.render.calls, sceneStats.drawCalls));
     if (info.memory) {
       setTextures(info.memory.textures);
       setGeometries(info.memory.geometries);
+    }
+
+    if (frameCountRef.current % 60 === 0 && times.length >= 2) {
+      const frameTimes = times.slice(1).map((time, index) => time - times[index]!);
+      const elapsed = times[times.length - 1]! - times[0]!;
+      const snapshot: ViewportPerformanceSnapshot = {
+        sampledAt: Date.now(),
+        fps: Math.round(((times.length - 1) / elapsed) * 1000),
+        frameTimeP95Ms: Number(percentile95(frameTimes).toFixed(1)),
+        triangles: sceneStats.triangles,
+        drawCalls: Math.max(info.render.calls, sceneStats.drawCalls),
+        geometries: info.memory?.geometries ?? 0,
+        textures: info.memory?.textures ?? 0,
+      };
+      const verdict = evaluateViewportPerformance(snapshot);
+      setBudgetPassed(verdict.passed);
+      setComplexityTier(verdict.tier);
+      window.dispatchEvent(new CustomEvent('nexyfab:viewport-performance', { detail: { snapshot, verdict } }));
     }
   });
 
@@ -126,6 +172,13 @@ export default function PerfMonitor({ visible, lang = 'en' }: PerfMonitorProps) 
           <span>{lt.perfSuppressLoadToasts}</span>
         </label>
         <div
+          data-testid="viewport-performance"
+          data-complexity-tier={complexityTier}
+          data-budget-status={budgetPassed ? 'passed' : 'failed'}
+          data-fps={fps}
+          data-frame-p95-ms={frameTimeP95Ms}
+          data-triangles={triangles}
+          data-draw-calls={calls}
           style={{
             pointerEvents: 'none',
             userSelect: 'none',
@@ -149,6 +202,7 @@ export default function PerfMonitor({ visible, lang = 'en' }: PerfMonitorProps) 
           <span>{formatTris(triangles)} tris</span>
           <span>{calls} draws</span>
           <span>{geometries} geo / {textures} tex</span>
+          <span>{complexityTier} · p95 {frameTimeP95Ms}ms · {budgetPassed ? 'PASS' : 'OVER'}</span>
         </div>
       </div>
     </Html>

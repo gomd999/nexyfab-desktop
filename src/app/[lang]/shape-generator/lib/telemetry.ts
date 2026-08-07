@@ -175,9 +175,9 @@ function report(
   // when Sentry is disabled (most dev sessions). The instrumentation-client
   // beforeSend already scrubs PII a second time — defense in depth.
   if (level !== 'info' && typeof window !== 'undefined') {
-    void import('@sentry/nextjs').then(sentry => {
-      sentry.captureException?.(err instanceof Error ? err : new Error(message), {
-        level: level === 'error' ? 'error' : 'warning',
+    void import('@/lib/client-error-capture').then(({ captureClientError }) => {
+      captureClientError(err instanceof Error ? err : new Error(message), {
+        source,
         tags: { telemetrySource: source, sessionId: SESSION_ID },
         extra: scrubbed,
       });
