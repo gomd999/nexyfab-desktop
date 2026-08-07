@@ -77,4 +77,7 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (isMain) process.exitCode = await main();
+// No top-level await: tsx resolves .ts CLI entries as CJS in this repo (no
+// "type": "module"), where top-level await is a transform error — the vitest
+// ESM import path hid this, so the CLI had never actually run (found 260808).
+if (isMain) void main().then(code => { process.exitCode = code; });

@@ -1,0 +1,1286 @@
+[
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-water_tank-01",
+    "domain": "building",
+    "sourceHash": "41126e0987a2a9859fb309103fe246271c2bce3acfbd8ade9f0e4b41416e47f7",
+    "sourceKind": "internal-template",
+    "templateId": "water_tank",
+    "parameters": {
+      "innerWidth": 3200,
+      "innerDepth": 2400,
+      "wallHeight": 2000,
+      "wallThk": 240,
+      "baseThk": 320
+    },
+    "artifactHash": "d5718d94e93f34f44aa1e466e95992c1a7631fc8649f8b6f96407fdbbe0284fb",
+    "artifactSummary": {
+      "name": "RC 물탱크 (내공 3200×2400×2000)",
+      "partCount": 5,
+      "pipeCount": 0,
+      "roles": [
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-steel_canopy-01",
+    "domain": "building",
+    "sourceHash": "28dec5cc46a206c3b8d4082d0152b93f9d3b8355bd529d5a4a08a21ae8790935",
+    "sourceKind": "internal-template",
+    "templateId": "steel_canopy",
+    "parameters": {
+      "baysX": 4.8,
+      "bayX": 4800,
+      "spanY": 9600,
+      "colH": 3200,
+      "pitchDeg": 9.6,
+      "purlinSpacing": 1200
+    },
+    "artifactHash": "a7fec8fc287ddc4d73768e83c131a2cdfe1d3e8896b446d7d41cabbc4814432f",
+    "artifactSummary": {
+      "name": "강구조 캐노피 24×9.6m",
+      "partCount": 33,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "purlin",
+        "rafter"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-rc_frame-01",
+    "domain": "building",
+    "sourceHash": "e951d2fa2de5762fdfcb42562e85ab32f2fea5e6389723319760f4afaa43717b",
+    "sourceKind": "internal-template",
+    "templateId": "rc_frame",
+    "parameters": {
+      "baysX": 1,
+      "baysY": 1,
+      "floors": 1,
+      "bayX": 4800,
+      "bayY": 4800,
+      "storyH": 2640,
+      "colSize": 400,
+      "beamWidth": 240,
+      "beamHeight": 480,
+      "slabThk": 120
+    },
+    "artifactHash": "588c8d59cf27bf8dc5e1ad2ef6e3a096da95d23435bfb19b030613e09de1782e",
+    "artifactSummary": {
+      "name": "RC 라멘 골조 (1×1베이 1층)",
+      "partCount": 9,
+      "pipeCount": 1,
+      "roles": [
+        "beam",
+        "column",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-industrial_stair-01",
+    "domain": "building",
+    "sourceHash": "7ca9eb30cb4d70176782758db89c56e096c10a21197226a4b0fe103226fddca3",
+    "sourceKind": "internal-template",
+    "templateId": "industrial_stair",
+    "parameters": {
+      "totalRise": 3200,
+      "flights": 1,
+      "width": 720,
+      "treadDepth": 220,
+      "riserH": 144,
+      "handrailH": 960
+    },
+    "artifactHash": "1bb368cbe5b0a1fdb7fd96dad7c4b69a8c4ab5c429f93632d25aa2f9f1e2c4ed",
+    "artifactSummary": {
+      "name": "산업 계단 H3.2m×22단",
+      "partCount": 39,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "handrail",
+        "landing",
+        "post",
+        "stringer",
+        "tread"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-masonry_wall-01",
+    "domain": "building",
+    "sourceHash": "7a965b5f4333447d4b3db6f8ec11a651638038af67eb4270ef2a201ec2fd8b3c",
+    "sourceKind": "internal-template",
+    "templateId": "masonry_wall",
+    "parameters": {
+      "length": 3120,
+      "height": 1760,
+      "thickness": 152,
+      "blockL": 312,
+      "blockH": 152,
+      "joint": 8,
+      "coreCount": 1.6,
+      "coreW": 84,
+      "coreD": 92,
+      "openingW": 0,
+      "openingH": 1680,
+      "lintelH": 152
+    },
+    "artifactHash": "6554b104c022e8c404d1f414fd44c95524b8fbfb50c388fc8832640f60bb6955",
+    "artifactSummary": {
+      "name": "조적 벽체 (블록 99장 · 11단)",
+      "partCount": 99,
+      "pipeCount": 0,
+      "roles": [
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-elevator_shaft-01",
+    "domain": "building",
+    "sourceHash": "c341fe229e86507e805f31ae8e30ce883e20fb769041f514d309ce766d88c8da",
+    "sourceKind": "internal-template",
+    "templateId": "elevator_shaft",
+    "parameters": {
+      "floors": 3.2,
+      "shape": "rect",
+      "floorH": 2640,
+      "carW": 1280,
+      "carD": 1200,
+      "doorW": 720
+    },
+    "artifactHash": "03d4ee3eeb9fdc9e12b7419544b099edea0006a929758a2c1f62f54b76fcb656",
+    "artifactSummary": {
+      "name": "엘리베이터 샤프트 3층",
+      "partCount": 19,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "buffer",
+        "car",
+        "guiderail",
+        "header",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-plant_room-01",
+    "domain": "building",
+    "sourceHash": "b6f68ab2d1afc6c784a1c4bfdeff2c97bccfe18ee59ef3b5cd4b990c5a68fedf",
+    "sourceKind": "internal-template",
+    "templateId": "plant_room",
+    "parameters": {
+      "width": 6400,
+      "depth": 4800,
+      "ceilingH": 2880,
+      "wallThk": 160,
+      "ductW": 640,
+      "ductH": 400,
+      "pipeDia": 120
+    },
+    "artifactHash": "f7d5e346d6932ccaca6a94bc099accdf0ad37eeb7393726bcbef11f2e599989e",
+    "artifactSummary": {
+      "name": "설비 기계실",
+      "partCount": 15,
+      "pipeCount": 0,
+      "roles": [
+        "duct",
+        "equipment",
+        "pad",
+        "pipe",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-duct_run-01",
+    "domain": "building",
+    "sourceHash": "92438600059af2b450c97ac6ff01d4260787947306bd3f5b89c807461a4c3fd1",
+    "sourceKind": "internal-template",
+    "templateId": "duct_run",
+    "parameters": {
+      "length": 14400,
+      "trunkW": 640,
+      "trunkH": 320,
+      "branches": 3.2,
+      "ceilingH": 2880
+    },
+    "artifactHash": "70d20c722c487f1fa65aade4486ce5f93095990e2f5e27f63041530830d97864",
+    "artifactSummary": {
+      "name": "HVAC 덕트런 14.4m·분기 3",
+      "partCount": 30,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "duct",
+        "hanger",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-gable_house-01",
+    "domain": "building",
+    "sourceHash": "386b8c5ad21bb49a056339822dc7ba1d99a0b9e25c5cb0050dcb45ef6079d823",
+    "sourceKind": "internal-template",
+    "templateId": "gable_house",
+    "parameters": {
+      "width": 7200,
+      "depth": 5600,
+      "wallH": 2200,
+      "pitchDeg": 24
+    },
+    "artifactHash": "b6fa4847a3a924a56989f98bedc81e21978ee9ffd2c23623dcaa12933e7cdfce",
+    "artifactSummary": {
+      "name": "박공 주택 7.2×5.6m",
+      "partCount": 19,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "roof",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-commercial_massing-01",
+    "domain": "building",
+    "sourceHash": "6a5303f22220773d72279f875b200092b4b408a336ed5f54a76a06b29fd8c014",
+    "sourceKind": "internal-template",
+    "templateId": "commercial_massing",
+    "parameters": {
+      "width": 12000,
+      "depth": 9600,
+      "floors": 3.2,
+      "facade": "flat",
+      "balcony": "false",
+      "groundH": 3360,
+      "floorH": 2880
+    },
+    "artifactHash": "d366322b5bf3bf6ff3a80a050ab85b1fd7282042b2b7faf83573457e7c35af5f",
+    "artifactSummary": {
+      "name": "상가 매스 3층 12×9.6m",
+      "partCount": 51,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "parapet",
+        "pipe",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-water_tank-02",
+    "domain": "building",
+    "sourceHash": "4ca1ebceb8bb31935976ffaeaea7731520850038ef0ab68a812b2215f5a23a5f",
+    "sourceKind": "internal-template",
+    "templateId": "water_tank",
+    "parameters": {
+      "innerWidth": 3360,
+      "innerDepth": 2520,
+      "wallHeight": 2100,
+      "wallThk": 252,
+      "baseThk": 336
+    },
+    "artifactHash": "f975e3db86dddb69ff16658746a58a0e47738cbd2a4ebe59dd8ccab6f147c8a0",
+    "artifactSummary": {
+      "name": "RC 물탱크 (내공 3360×2520×2100)",
+      "partCount": 5,
+      "pipeCount": 0,
+      "roles": [
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-steel_canopy-02",
+    "domain": "building",
+    "sourceHash": "a633f3e6ca5deec20b67a1cf66e47a8c433d507f1a5eda8beca454fbb68d6f8b",
+    "sourceKind": "internal-template",
+    "templateId": "steel_canopy",
+    "parameters": {
+      "baysX": 5.04,
+      "bayX": 5040,
+      "spanY": 10080,
+      "colH": 3360,
+      "pitchDeg": 10.08,
+      "purlinSpacing": 1260
+    },
+    "artifactHash": "50f414612171e5571f23bb9bcc9790a964779015de308d0a70029c8628ca4583",
+    "artifactSummary": {
+      "name": "강구조 캐노피 25.2×10.08m",
+      "partCount": 33,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "purlin",
+        "rafter"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-rc_frame-02",
+    "domain": "building",
+    "sourceHash": "72207b117f77cad66a659d407d5a1aa1d6a4fae0940199645294591e766b0a35",
+    "sourceKind": "internal-template",
+    "templateId": "rc_frame",
+    "parameters": {
+      "baysX": 1,
+      "baysY": 1,
+      "floors": 1,
+      "bayX": 5040,
+      "bayY": 5040,
+      "storyH": 2772,
+      "colSize": 420,
+      "beamWidth": 252,
+      "beamHeight": 504,
+      "slabThk": 126
+    },
+    "artifactHash": "0fcc3a70089f98e4359f3479587e9e98223cacc3d6fa4c0bb12f3a3ffe3e0220",
+    "artifactSummary": {
+      "name": "RC 라멘 골조 (1×1베이 1층)",
+      "partCount": 9,
+      "pipeCount": 1,
+      "roles": [
+        "beam",
+        "column",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-industrial_stair-02",
+    "domain": "building",
+    "sourceHash": "6f4b3dbe3a429d9e53f3ef4adfb00c35d4b3249c9e9b8de124b5a62f641be857",
+    "sourceKind": "internal-template",
+    "templateId": "industrial_stair",
+    "parameters": {
+      "totalRise": 3360,
+      "flights": 1,
+      "width": 756,
+      "treadDepth": 220,
+      "riserH": 151.2,
+      "handrailH": 1008
+    },
+    "artifactHash": "a3c29acfc3476810f3c9b74ead77e40321ba9c948f77a5bdf08c462b5ab592a6",
+    "artifactSummary": {
+      "name": "산업 계단 H3.36m×22단",
+      "partCount": 39,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "handrail",
+        "landing",
+        "post",
+        "stringer",
+        "tread"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-masonry_wall-02",
+    "domain": "building",
+    "sourceHash": "1217d27bf235292bda02c9b35ae1047d4a695b885ba7b7bf3870ab7a3b6c838b",
+    "sourceKind": "internal-template",
+    "templateId": "masonry_wall",
+    "parameters": {
+      "length": 3276,
+      "height": 1848,
+      "thickness": 159.6,
+      "blockL": 327.6,
+      "blockH": 159.6,
+      "joint": 8.4,
+      "coreCount": 1.68,
+      "coreW": 88.2,
+      "coreD": 96.6,
+      "openingW": 0,
+      "openingH": 1764,
+      "lintelH": 159.6
+    },
+    "artifactHash": "2b8e24056d31f77857759d9b2322d20666424205f4162d8a66dd8514eb3a35b5",
+    "artifactSummary": {
+      "name": "조적 벽체 (블록 99장 · 11단)",
+      "partCount": 99,
+      "pipeCount": 0,
+      "roles": [
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-elevator_shaft-02",
+    "domain": "building",
+    "sourceHash": "fba664d73c8d4f99bfb0d575132b89c40bdb581fe086af197158f78e712d7d30",
+    "sourceKind": "internal-template",
+    "templateId": "elevator_shaft",
+    "parameters": {
+      "floors": 3.36,
+      "shape": "rect",
+      "floorH": 2772,
+      "carW": 1344,
+      "carD": 1260,
+      "doorW": 756
+    },
+    "artifactHash": "c294ec03db0da3225e8cea4d33f431e24d9419ab35ddf90753bd89130b6cb7ab",
+    "artifactSummary": {
+      "name": "엘리베이터 샤프트 3층",
+      "partCount": 19,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "buffer",
+        "car",
+        "guiderail",
+        "header",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-plant_room-02",
+    "domain": "building",
+    "sourceHash": "adb143018759c2047d315cab96ef651a0939a56f3a04ffd9e7ca0e0e544db710",
+    "sourceKind": "internal-template",
+    "templateId": "plant_room",
+    "parameters": {
+      "width": 6720,
+      "depth": 5040,
+      "ceilingH": 3024,
+      "wallThk": 168,
+      "ductW": 672,
+      "ductH": 420,
+      "pipeDia": 126
+    },
+    "artifactHash": "8eeb9aa9ddffc6467e488f04804997ab7063996cd3b46526e62c03b303dbe94c",
+    "artifactSummary": {
+      "name": "설비 기계실",
+      "partCount": 15,
+      "pipeCount": 0,
+      "roles": [
+        "duct",
+        "equipment",
+        "pad",
+        "pipe",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-duct_run-02",
+    "domain": "building",
+    "sourceHash": "534a73a4036fadfe4351e9fa2cac14a8317355a8f88b4c81271f2a5f7413f9c6",
+    "sourceKind": "internal-template",
+    "templateId": "duct_run",
+    "parameters": {
+      "length": 15120,
+      "trunkW": 672,
+      "trunkH": 336,
+      "branches": 3.36,
+      "ceilingH": 3024
+    },
+    "artifactHash": "7529702e575d2b4299f3179d901b1505ee284b57160a76ab1a996d1612b71089",
+    "artifactSummary": {
+      "name": "HVAC 덕트런 15.12m·분기 3",
+      "partCount": 30,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "duct",
+        "hanger",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-gable_house-02",
+    "domain": "building",
+    "sourceHash": "27a4e0969269991557a0f5bc908f0145abc53440a572ce29cfb580caaf23bd98",
+    "sourceKind": "internal-template",
+    "templateId": "gable_house",
+    "parameters": {
+      "width": 7560,
+      "depth": 5880,
+      "wallH": 2268,
+      "pitchDeg": 25.2
+    },
+    "artifactHash": "c8fb862c14470cf1fe501450428e4f4162dfe09dac37f94c7a31bc3607669dad",
+    "artifactSummary": {
+      "name": "박공 주택 7.56×5.88m",
+      "partCount": 19,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "roof",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-commercial_massing-02",
+    "domain": "building",
+    "sourceHash": "242e304712341813c25a585defaf3d9c60ebb38dded0a19e1fe79e637b4fcb31",
+    "sourceKind": "internal-template",
+    "templateId": "commercial_massing",
+    "parameters": {
+      "width": 12600,
+      "depth": 10080,
+      "floors": 3.36,
+      "facade": "flat",
+      "balcony": "false",
+      "groundH": 3528,
+      "floorH": 3024
+    },
+    "artifactHash": "0010b428750eddcdb7565f7c10bbd9eb7985894fa0ba729bc549b6d9dc621b15",
+    "artifactSummary": {
+      "name": "상가 매스 3층 12.6×10.08m",
+      "partCount": 51,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "parapet",
+        "pipe",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-water_tank-03",
+    "domain": "building",
+    "sourceHash": "7041d97abbd93db6e841ba75b7cc2e846e477db648f5ca502084b10fcf4e5960",
+    "sourceKind": "internal-template",
+    "templateId": "water_tank",
+    "parameters": {
+      "innerWidth": 3520,
+      "innerDepth": 2640,
+      "wallHeight": 2200,
+      "wallThk": 264,
+      "baseThk": 352
+    },
+    "artifactHash": "8097c5f6ec093b47b6cfcc00079d1e53867a16f94272c968c8279d401669518d",
+    "artifactSummary": {
+      "name": "RC 물탱크 (내공 3520×2640×2200)",
+      "partCount": 5,
+      "pipeCount": 0,
+      "roles": [
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-steel_canopy-03",
+    "domain": "building",
+    "sourceHash": "0b523af7307c8f85dcc1cfacbeb3efc72403a0252a1f5e32437c7f09ff15b887",
+    "sourceKind": "internal-template",
+    "templateId": "steel_canopy",
+    "parameters": {
+      "baysX": 5.28,
+      "bayX": 5280,
+      "spanY": 10560,
+      "colH": 3520,
+      "pitchDeg": 10.56,
+      "purlinSpacing": 1320
+    },
+    "artifactHash": "fd9d0a942f0de871e19706200cbd044b26a4f003e399a552dec74630ec4cea10",
+    "artifactSummary": {
+      "name": "강구조 캐노피 26.4×10.56m",
+      "partCount": 33,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "purlin",
+        "rafter"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-rc_frame-03",
+    "domain": "building",
+    "sourceHash": "b2a78d0f0b78396473966a975967c2d4afcaeb829097357ef549368706183fd5",
+    "sourceKind": "internal-template",
+    "templateId": "rc_frame",
+    "parameters": {
+      "baysX": 1,
+      "baysY": 1,
+      "floors": 1,
+      "bayX": 5280,
+      "bayY": 5280,
+      "storyH": 2904,
+      "colSize": 440,
+      "beamWidth": 264,
+      "beamHeight": 528,
+      "slabThk": 132
+    },
+    "artifactHash": "a1abd54ad267f35d707fa98012a5205ba50194305b8c0ea8f842935e74ec9b9f",
+    "artifactSummary": {
+      "name": "RC 라멘 골조 (1×1베이 1층)",
+      "partCount": 9,
+      "pipeCount": 1,
+      "roles": [
+        "beam",
+        "column",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-industrial_stair-03",
+    "domain": "building",
+    "sourceHash": "45e16d9bad4b386236fe37502f994636dc162a47c47fb198b4c6cd77dfd9fcf6",
+    "sourceKind": "internal-template",
+    "templateId": "industrial_stair",
+    "parameters": {
+      "totalRise": 3520,
+      "flights": 1,
+      "width": 792,
+      "treadDepth": 228.8,
+      "riserH": 158.4,
+      "handrailH": 1056
+    },
+    "artifactHash": "8f1159035353f03d13c09c1210a3f482ea42de79ef7174a5916dd38b6501191c",
+    "artifactSummary": {
+      "name": "산업 계단 H3.52m×22단",
+      "partCount": 39,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "handrail",
+        "landing",
+        "post",
+        "stringer",
+        "tread"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-masonry_wall-03",
+    "domain": "building",
+    "sourceHash": "d927395c281fed071d3ade0e5ffdac214d6c73093e13906baae364d8f2dabd2f",
+    "sourceKind": "internal-template",
+    "templateId": "masonry_wall",
+    "parameters": {
+      "length": 3432,
+      "height": 1936,
+      "thickness": 167.2,
+      "blockL": 343.2,
+      "blockH": 167.2,
+      "joint": 8.8,
+      "coreCount": 1.76,
+      "coreW": 92.4,
+      "coreD": 101.2,
+      "openingW": 0,
+      "openingH": 1848,
+      "lintelH": 167.2
+    },
+    "artifactHash": "01b1f80ae4c949d472a15d73941067d673af16b0258b52e938b9fa37adb04044",
+    "artifactSummary": {
+      "name": "조적 벽체 (블록 99장 · 11단)",
+      "partCount": 99,
+      "pipeCount": 0,
+      "roles": [
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-elevator_shaft-03",
+    "domain": "building",
+    "sourceHash": "e93194c7ad025efaae851ace8305e3f7750d28550bba0d47e2774e1629433355",
+    "sourceKind": "internal-template",
+    "templateId": "elevator_shaft",
+    "parameters": {
+      "floors": 3.52,
+      "shape": "rect",
+      "floorH": 2904,
+      "carW": 1408,
+      "carD": 1320,
+      "doorW": 792
+    },
+    "artifactHash": "e59871100c29e6cb5cbd362ff05794affaa9ee037b631d7233e6c140c1cf5f37",
+    "artifactSummary": {
+      "name": "엘리베이터 샤프트 4층",
+      "partCount": 22,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "buffer",
+        "car",
+        "guiderail",
+        "header",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-plant_room-03",
+    "domain": "building",
+    "sourceHash": "ef8a549f4bf266067f954919bb8db5c694f41f552c9b793e226f7fa62ef7b8cf",
+    "sourceKind": "internal-template",
+    "templateId": "plant_room",
+    "parameters": {
+      "width": 7040,
+      "depth": 5280,
+      "ceilingH": 3168,
+      "wallThk": 176,
+      "ductW": 704,
+      "ductH": 440,
+      "pipeDia": 132
+    },
+    "artifactHash": "22373afbc5a18d031670b9d92f4adbac12465df4ef6d9b95cfea4aae1c297c83",
+    "artifactSummary": {
+      "name": "설비 기계실",
+      "partCount": 15,
+      "pipeCount": 0,
+      "roles": [
+        "duct",
+        "equipment",
+        "pad",
+        "pipe",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-duct_run-03",
+    "domain": "building",
+    "sourceHash": "c0c91b2f81233f9309b804b553803925ae8b983702c88a4518cacb3702994559",
+    "sourceKind": "internal-template",
+    "templateId": "duct_run",
+    "parameters": {
+      "length": 15840,
+      "trunkW": 704,
+      "trunkH": 352,
+      "branches": 3.52,
+      "ceilingH": 3168
+    },
+    "artifactHash": "25cee5595292f7b3b7b0a0795b0790853598cc8775cac1a9720d0bd7f87a652f",
+    "artifactSummary": {
+      "name": "HVAC 덕트런 15.84m·분기 4",
+      "partCount": 34,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "duct",
+        "hanger",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-gable_house-03",
+    "domain": "building",
+    "sourceHash": "22310e02c85eea7252c3f878a6ea513e390bca182e91ec92474863020404bc4d",
+    "sourceKind": "internal-template",
+    "templateId": "gable_house",
+    "parameters": {
+      "width": 7920,
+      "depth": 6160,
+      "wallH": 2376,
+      "pitchDeg": 26.4
+    },
+    "artifactHash": "be2d33de2bb671303ecc76bd1328d94b71c843086d7fc3aa68d88ca03ca6ffb9",
+    "artifactSummary": {
+      "name": "박공 주택 7.92×6.16m",
+      "partCount": 19,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "roof",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-commercial_massing-03",
+    "domain": "building",
+    "sourceHash": "bc8583a17303bd85f5bb0061ceed777ec11a31cfa21dd2a6ca3762940469e8af",
+    "sourceKind": "internal-template",
+    "templateId": "commercial_massing",
+    "parameters": {
+      "width": 13200,
+      "depth": 10560,
+      "floors": 3.52,
+      "facade": "flat",
+      "balcony": "false",
+      "groundH": 3696,
+      "floorH": 3168
+    },
+    "artifactHash": "9df0a074ff3d33a78d8dcc76c8cdc32fffb53d491b175bd8539a2c19438f7ee6",
+    "artifactSummary": {
+      "name": "상가 매스 4층 13.2×10.56m",
+      "partCount": 67,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "parapet",
+        "pipe",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-water_tank-04",
+    "domain": "building",
+    "sourceHash": "9d0e5d76eb6366f246b8eebb5db397dfd865461f6352e2fc0ad752de6701cb69",
+    "sourceKind": "internal-template",
+    "templateId": "water_tank",
+    "parameters": {
+      "innerWidth": 3680,
+      "innerDepth": 2760,
+      "wallHeight": 2300,
+      "wallThk": 276,
+      "baseThk": 368
+    },
+    "artifactHash": "d96c3d5cb6a91daa79a89a6bd48333374ae75f64cb3c908ccdcf6424b1e714bf",
+    "artifactSummary": {
+      "name": "RC 물탱크 (내공 3680×2760×2300)",
+      "partCount": 5,
+      "pipeCount": 0,
+      "roles": [
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-steel_canopy-04",
+    "domain": "building",
+    "sourceHash": "3897b2c2fc4fa329fb0d87d2ee9d2e4f88a6a5f161fe485d503acfd945421f16",
+    "sourceKind": "internal-template",
+    "templateId": "steel_canopy",
+    "parameters": {
+      "baysX": 5.52,
+      "bayX": 5520,
+      "spanY": 11040,
+      "colH": 3680,
+      "pitchDeg": 11.04,
+      "purlinSpacing": 1380
+    },
+    "artifactHash": "46971bb2a7d21e83930ae93ce99b36d3e35fc340096df608a1b8d9378aa58d48",
+    "artifactSummary": {
+      "name": "강구조 캐노피 33.12×11.04m",
+      "partCount": 37,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "purlin",
+        "rafter"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-rc_frame-04",
+    "domain": "building",
+    "sourceHash": "24fb70f6f0cee7297c630035ea75e38563f2453098e231cccd0c8b265b504906",
+    "sourceKind": "internal-template",
+    "templateId": "rc_frame",
+    "parameters": {
+      "baysX": 1,
+      "baysY": 1,
+      "floors": 1,
+      "bayX": 5520,
+      "bayY": 5520,
+      "storyH": 3036,
+      "colSize": 460,
+      "beamWidth": 276,
+      "beamHeight": 552,
+      "slabThk": 138
+    },
+    "artifactHash": "1034741042fa459f46a3f8dbed573adaca377e694e90b891878d7de0560d4bf6",
+    "artifactSummary": {
+      "name": "RC 라멘 골조 (1×1베이 1층)",
+      "partCount": 9,
+      "pipeCount": 1,
+      "roles": [
+        "beam",
+        "column",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-industrial_stair-04",
+    "domain": "building",
+    "sourceHash": "bc8125476f6177dc133d3721bc4f9e429b90295d284b26bb4dd721ed20070ff0",
+    "sourceKind": "internal-template",
+    "templateId": "industrial_stair",
+    "parameters": {
+      "totalRise": 3680,
+      "flights": 1,
+      "width": 828,
+      "treadDepth": 239.2,
+      "riserH": 165.6,
+      "handrailH": 1104
+    },
+    "artifactHash": "9a51344e430ec5f40a933faf3ddefa5a52ee8ac3565257f5961ace61ba8b7ac3",
+    "artifactSummary": {
+      "name": "산업 계단 H3.68m×22단",
+      "partCount": 39,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "handrail",
+        "landing",
+        "post",
+        "stringer",
+        "tread"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-masonry_wall-04",
+    "domain": "building",
+    "sourceHash": "3110704190341770bf97b3448af408818c49b221848b4dfc94ee0db4cc4e8ea4",
+    "sourceKind": "internal-template",
+    "templateId": "masonry_wall",
+    "parameters": {
+      "length": 3588,
+      "height": 2024,
+      "thickness": 174.8,
+      "blockL": 358.8,
+      "blockH": 174.8,
+      "joint": 9.2,
+      "coreCount": 1.84,
+      "coreW": 96.6,
+      "coreD": 105.8,
+      "openingW": 0,
+      "openingH": 1932,
+      "lintelH": 174.8
+    },
+    "artifactHash": "b6963d934fba066619d088ba6999a3985f8bb523fecbbb62bff7b7312c2d6db5",
+    "artifactSummary": {
+      "name": "조적 벽체 (블록 99장 · 11단)",
+      "partCount": 99,
+      "pipeCount": 0,
+      "roles": [
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-elevator_shaft-04",
+    "domain": "building",
+    "sourceHash": "36fe98022702a23c9a6f9c340a337e60aab18bdcc2aa0e6e3430905788c3709e",
+    "sourceKind": "internal-template",
+    "templateId": "elevator_shaft",
+    "parameters": {
+      "floors": 3.68,
+      "shape": "rect",
+      "floorH": 3036,
+      "carW": 1472,
+      "carD": 1380,
+      "doorW": 828
+    },
+    "artifactHash": "c77c20819b5110c8ed73bec0316d58fc22e44f570da3f9203bd035a618371c01",
+    "artifactSummary": {
+      "name": "엘리베이터 샤프트 4층",
+      "partCount": 22,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "buffer",
+        "car",
+        "guiderail",
+        "header",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-plant_room-04",
+    "domain": "building",
+    "sourceHash": "a42eb7552cbd6207d66af154c31aa11f250292fe6e8041de749191f40a0cbd79",
+    "sourceKind": "internal-template",
+    "templateId": "plant_room",
+    "parameters": {
+      "width": 7360,
+      "depth": 5520,
+      "ceilingH": 3312,
+      "wallThk": 184,
+      "ductW": 736,
+      "ductH": 460,
+      "pipeDia": 138
+    },
+    "artifactHash": "c93c7c8f9525eab05c74c62dfbe02c48963e3fa01476f2b05c7a261381763170",
+    "artifactSummary": {
+      "name": "설비 기계실",
+      "partCount": 15,
+      "pipeCount": 0,
+      "roles": [
+        "duct",
+        "equipment",
+        "pad",
+        "pipe",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-duct_run-04",
+    "domain": "building",
+    "sourceHash": "7dc36a1e460abde8737bb52872144477bd7cf347fabbd8b064cd2c0a98b227ba",
+    "sourceKind": "internal-template",
+    "templateId": "duct_run",
+    "parameters": {
+      "length": 16560,
+      "trunkW": 736,
+      "trunkH": 368,
+      "branches": 3.68,
+      "ceilingH": 3312
+    },
+    "artifactHash": "41f93bacab66c3f383e1d805bf2782fd1d641eb1fa79c23ead644c5570d9f344",
+    "artifactSummary": {
+      "name": "HVAC 덕트런 16.56m·분기 4",
+      "partCount": 36,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "duct",
+        "hanger",
+        "slab"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-gable_house-04",
+    "domain": "building",
+    "sourceHash": "9d979e5b1b2e36aff2a36fb576263ecdb1a1998fac10eb52b3b803b5a117bbf7",
+    "sourceKind": "internal-template",
+    "templateId": "gable_house",
+    "parameters": {
+      "width": 8280,
+      "depth": 6440,
+      "wallH": 2484,
+      "pitchDeg": 27.6
+    },
+    "artifactHash": "758b14e9206fc1ccf893895817b97fc55acacc4a95976f4b62c4b6953f573cb0",
+    "artifactSummary": {
+      "name": "박공 주택 8.28×6.44m",
+      "partCount": 19,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "roof",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "building-commercial_massing-04",
+    "domain": "building",
+    "sourceHash": "769009a1cf726381bcca22171b33e58885508371199e919e960ab54ed2b71482",
+    "sourceKind": "internal-template",
+    "templateId": "commercial_massing",
+    "parameters": {
+      "width": 13800,
+      "depth": 11040,
+      "floors": 3.68,
+      "facade": "flat",
+      "balcony": "false",
+      "groundH": 3864,
+      "floorH": 3312
+    },
+    "artifactHash": "ff024be8692055daf226b9b599809e58067b726381ca0c967ecf716d04a5091f",
+    "artifactSummary": {
+      "name": "상가 매스 4층 13.8×11.04m",
+      "partCount": 79,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "column",
+        "parapet",
+        "pipe",
+        "slab",
+        "wall"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  }
+]

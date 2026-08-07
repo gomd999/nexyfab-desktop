@@ -1,0 +1,1234 @@
+[
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-desk_stand-01",
+    "domain": "mechanical",
+    "sourceHash": "88a62d0fd08e994dcffb471b318519bce8a9aebc6e5d2a279f1cd75c6610afee",
+    "sourceKind": "internal-template",
+    "templateId": "desk_stand",
+    "parameters": {
+      "baseW": 208,
+      "baseD": 176,
+      "baseT": 4.8,
+      "plateW": 224,
+      "plateD": 192,
+      "plateT": 3.2,
+      "postH": 128,
+      "sliderH": 136,
+      "ventW": 144,
+      "ventD": 104,
+      "lipH": 12.8
+    },
+    "artifactHash": "7689aba82d5b14c2dc07bff378eb6a62dba5411f909094ad4469a76d88f7f29b",
+    "artifactSummary": {
+      "name": "데스크 거치대 208x176 (높이조절·각도조절)",
+      "partCount": 25,
+      "pipeCount": 0,
+      "roles": [
+        "deck",
+        "fastener",
+        "frame",
+        "mount",
+        "pad",
+        "stop"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-tower_crane-01",
+    "domain": "mechanical",
+    "sourceHash": "85cde6a5f0707b3bb3d65279a054387cee4dfbe442d758740d3f3bb15d9a7ce5",
+    "sourceKind": "internal-template",
+    "templateId": "tower_crane",
+    "parameters": {
+      "mastH": 24000,
+      "jibLen": 28000,
+      "mastW": 1280,
+      "hookDrop": 6400
+    },
+    "artifactHash": "f2a678a8458e2ebdf7e633cc94a0ac4fb8e1ea0f72e09dd6fa60271fc1713eb8",
+    "artifactSummary": {
+      "name": "타워 크레인 H24m·지브 28m",
+      "partCount": 94,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "cab",
+        "cable",
+        "chord",
+        "counterweight",
+        "deck",
+        "diagonal",
+        "hook",
+        "joint",
+        "stay",
+        "trolley",
+        "vertical"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-pump_unit-01",
+    "domain": "mechanical",
+    "sourceHash": "e88b57472c4b8c09e102c6334dd28e0c82bb4b0e98e5242e3cf47582a869077d",
+    "sourceKind": "internal-template",
+    "templateId": "pump_unit",
+    "parameters": {
+      "suctionDia": 120,
+      "dischargeDia": 80,
+      "motorDia": 280
+    },
+    "artifactHash": "198af343b0cca8d679a374f24284caa5ee4eca93fe2ebbba35e1c7c8f9af2db0",
+    "artifactSummary": {
+      "name": "원심 펌프 유닛 120/80",
+      "partCount": 9,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "guard",
+        "inlet",
+        "motor",
+        "outlet",
+        "pump"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-gate_valve-01",
+    "domain": "mechanical",
+    "sourceHash": "56f14dd8f11aa5485522c806e6c59e053ad1b27fa6195a1607878ded34c17d5d",
+    "sourceKind": "internal-template",
+    "templateId": "gate_valve",
+    "parameters": {
+      "dn": 120,
+      "standH": 400
+    },
+    "artifactHash": "1b563c18f8ab7124db67326844ddbd26a9e225167b9b8ad5b487d4ac8cdee4dd",
+    "artifactSummary": {
+      "name": "게이트 밸브 DN120(전시 스탠드)",
+      "partCount": 9,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "joint",
+        "shaft",
+        "valve"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-tank_silo-01",
+    "domain": "mechanical",
+    "sourceHash": "474d43c722b7ea4c03c51057fd1e92f6e5f9071ce2a198e92f44286871d21938",
+    "sourceKind": "internal-template",
+    "templateId": "tank_silo",
+    "parameters": {
+      "diameter": 2400,
+      "shellH": 4800,
+      "hopper": "yes",
+      "wallThk": 4.8,
+      "legH": 2160
+    },
+    "artifactHash": "e2ad638cede55d68156a49a501935723d556d8f05513fa7bbc5a9e1d1c9c1c48",
+    "artifactSummary": {
+      "name": "사일로 D2.4m+호퍼",
+      "partCount": 7,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "roof",
+        "shell"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-pressure_vessel-01",
+    "domain": "mechanical",
+    "sourceHash": "464f03751fbfe80820985499e3f82c8f632301c1f0f1a44337b8f798228cb848",
+    "sourceKind": "internal-template",
+    "templateId": "pressure_vessel",
+    "parameters": {
+      "diameter": 1280,
+      "shellLen": 3200,
+      "wallThk": 9.6,
+      "saddleH": 480
+    },
+    "artifactHash": "0980b4aa534bf648574c5b854cdf67e940f6d40bc4e39d362ca4537be24967a3",
+    "artifactSummary": {
+      "name": "압력용기 D1280×L3200",
+      "partCount": 7,
+      "pipeCount": 0,
+      "roles": [
+        "head",
+        "nozzle",
+        "saddle_sup",
+        "shell"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-motor_mount-01",
+    "domain": "mechanical",
+    "sourceHash": "b38cce319cf94a9ec330ef33bf775e83488bddd01aac3d4f4e81ba03f6e4bb83",
+    "sourceKind": "internal-template",
+    "templateId": "motor_mount",
+    "parameters": {
+      "baseW": 160,
+      "baseD": 112,
+      "baseT": 11.2,
+      "webH": 128,
+      "webT": 9.6,
+      "ribT": 8,
+      "filletR": 9.6,
+      "anchorDia": 11.2,
+      "anchorCbDia": 20.8,
+      "anchorCbDepth": 6.4,
+      "motorBcd": 72,
+      "motorHoleD": 7.2,
+      "motorBolts": 3.2,
+      "edgeDist": 32
+    },
+    "artifactHash": "70aa4bfede99cd876d2f7b7987fa828421e55276b5e0d454fc3f1137de87ba51",
+    "artifactSummary": {
+      "name": "모터 마운트 브래킷 (복합·필렛·카운터보어·볼트패턴)",
+      "partCount": 1,
+      "pipeCount": 0,
+      "roles": [
+        "plate"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-gusset_bracket-01",
+    "domain": "mechanical",
+    "sourceHash": "13c2897be9dad3b24bb7f1fb0dfa017a7effeac1bbcc4256ce7c2bb7a38ae0d6",
+    "sourceKind": "internal-template",
+    "templateId": "gusset_bracket",
+    "parameters": {
+      "legA": 240,
+      "legB": 192,
+      "thickness": 9.6,
+      "chamfer": 32,
+      "boltDia": 14.4,
+      "edgeDist": 44,
+      "boltRows": 1.6,
+      "boltSpan": 0.4
+    },
+    "artifactHash": "44af424dd71e46a776b489d72ffa535019589990603cf7dcf7b9fc7a613c0f83",
+    "artifactSummary": {
+      "name": "거셋 브래킷 판 (240×192×t9.6 · chamfer 32)",
+      "partCount": 1,
+      "pipeCount": 0,
+      "roles": [
+        "plate"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-mold_cavity-01",
+    "domain": "mechanical",
+    "sourceHash": "6b320fff515a4ae376c17de4cabf770bb85307e9df0a8d7845afceb6c1094f27",
+    "sourceKind": "internal-template",
+    "templateId": "mold_cavity",
+    "parameters": {
+      "blockW": 240,
+      "blockD": 200,
+      "blockH": 96,
+      "cavityDia": 128
+    },
+    "artifactHash": "23a8a5a2266361ed71d678e60a9f88009070b9a7c6fe1db4733e6985ce7b8520",
+    "artifactSummary": {
+      "name": "금형 캐비티 240×200×96",
+      "partCount": 1,
+      "pipeCount": 0,
+      "roles": [
+        "mold"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-gear_train-01",
+    "domain": "mechanical",
+    "sourceHash": "6edcafac31b2b1692157522f57d6c63ccd601072eea4240f1301ac6e9607d486",
+    "sourceKind": "internal-template",
+    "templateId": "gear_train",
+    "parameters": {
+      "module": 2.4,
+      "thickness": 20,
+      "shaftDia": 12
+    },
+    "artifactHash": "8135b02f620e25d7b3df3fec6e7d632a717ed2abfa69f212676ac05e1ab16676",
+    "artifactSummary": {
+      "name": "기어 트레인 20-40-20-60 (m2.4)",
+      "partCount": 9,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "gear",
+        "shaft"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-four_bar-01",
+    "domain": "mechanical",
+    "sourceHash": "72eb22bb4a43ffd68c9b0c3465ebd5f92300a8d622cd90ed132f006ddab07e1b",
+    "sourceKind": "internal-template",
+    "templateId": "four_bar",
+    "parameters": {
+      "ground": 320,
+      "crank": 96,
+      "coupler": 280,
+      "rocker": 200,
+      "inputDeg": 48
+    },
+    "artifactHash": "edab1ef6723dadf5f72ffae7ce4dfc68dc274143ecc2330f6401f63afc80ff50",
+    "artifactSummary": {
+      "name": "4절 링크 g320/a96/b280/c200 @48°",
+      "partCount": 8,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "joint",
+        "link"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-flanged_fitting-01",
+    "domain": "mechanical",
+    "sourceHash": "59872907c0d6f3011f25fb1cb31bc14588b7aa5c3280a2ce6a5386a0e7ef84ac",
+    "sourceKind": "internal-template",
+    "templateId": "flanged_fitting",
+    "parameters": {
+      "kind": "elbow90",
+      "od": 91.44,
+      "bendR": 136,
+      "wallThk": 4.8
+    },
+    "artifactHash": "ca848c5369d0a4a84b11bc972785d320952607b246b77c142a1ca0a96ea0b0eb",
+    "artifactSummary": {
+      "name": "플랜지 90° 엘보 OD91.44",
+      "partCount": 3,
+      "pipeCount": 0,
+      "roles": [
+        "mount",
+        "pipe"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-heat_exchanger-01",
+    "domain": "mechanical",
+    "sourceHash": "88db17bb1102b9971caccbc8a061d9d412b7f26ba4c78160fe5bc1d1ef10ad6d",
+    "sourceKind": "internal-template",
+    "templateId": "heat_exchanger",
+    "parameters": {
+      "shellID": 480,
+      "tubeLen": 2400,
+      "tubeOD": 15.2,
+      "baffles": 3.2,
+      "nozzleOD": 91.44
+    },
+    "artifactHash": "c01168c5a9f1b8f55fd2cc1443727f8d64665085b1c06ede1935c9e55ce0402c",
+    "artifactSummary": {
+      "name": "셸튜브 열교환기 TEMA AEL 480×2400",
+      "partCount": 47,
+      "pipeCount": 0,
+      "roles": [
+        "mount",
+        "pipe",
+        "support",
+        "vessel"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-robot_arm-01",
+    "domain": "mechanical",
+    "sourceHash": "5e7bac5a4e9fc3e9dfd720dd6c9b5a2fd9c42031ddd85fa91f4086d03d62b961",
+    "sourceKind": "internal-template",
+    "templateId": "robot_arm",
+    "parameters": {
+      "upperArmLen": 560,
+      "forearmLen": 480,
+      "shoulderDeg": 28,
+      "elbowDeg": 44,
+      "linkW": 96
+    },
+    "artifactHash": "e7ff5ed4dbc9c8133153ecd00f41bf4d4460238e15257707f59152bae9b984e8",
+    "artifactSummary": {
+      "name": "로봇 암 5-DOF (28°/44°)",
+      "partCount": 11,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "gripper",
+        "joint",
+        "link"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-machine_line-01",
+    "domain": "mechanical",
+    "sourceHash": "564877fa59bf7576cf33d509212afffa13c9b0be04ff51aa707b49a7688d219d",
+    "sourceKind": "internal-template",
+    "templateId": "machine_line",
+    "parameters": {
+      "stations": 3.2,
+      "stationPitch": 1200,
+      "conveyorW": 400,
+      "frameH": 720,
+      "guard": "yes"
+    },
+    "artifactHash": "9e0ec54f51d58aa01ee5ff85fd9f0079fa6691d37c3ab76b9accdf500cf531c4",
+    "artifactSummary": {
+      "name": "산업기계 라인 3스테이션",
+      "partCount": 30,
+      "pipeCount": 0,
+      "roles": [
+        "conveyor",
+        "fence",
+        "frame",
+        "head",
+        "panel",
+        "station"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-conveyor-01",
+    "domain": "mechanical",
+    "sourceHash": "a8e07d149ba66209c5d51fa50ed2d737ad50fe034fc9506cea182d4c879cf68c",
+    "sourceKind": "internal-template",
+    "templateId": "conveyor",
+    "parameters": {
+      "kind": "belt",
+      "length": 4800,
+      "width": 480,
+      "frameH": 600,
+      "legPitch": 1200,
+      "rollerPitch": 240
+    },
+    "artifactHash": "b474f8532ff9f80e15d7e2cddd178724fd9e074f54ee6820bac86e9f0ac8a8b4",
+    "artifactSummary": {
+      "name": "벨트 컨베이어 4.8m",
+      "partCount": 41,
+      "pipeCount": 0,
+      "roles": [
+        "conveyor",
+        "frame",
+        "motor",
+        "mount"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-transmission_tower-01",
+    "domain": "mechanical",
+    "sourceHash": "babe78b4c0d79e6b03a326874fc3333a58f276f6de7ace62ef0b2c2077c60f43",
+    "sourceKind": "internal-template",
+    "templateId": "transmission_tower",
+    "parameters": {
+      "height": 24000,
+      "baseW": 4800,
+      "topW": 1200,
+      "panels": 4.8,
+      "legSize": 96,
+      "braceSize": 60,
+      "armLen": 2000
+    },
+    "artifactHash": "b1c3262f8e4dca6ac183262775da5363fd283df7e98f4645459dd9e4fd0b38f4",
+    "artifactSummary": {
+      "name": "송전탑 24m×5패널",
+      "partCount": 83,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "brace",
+        "column"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-excavator_bucket-01",
+    "domain": "mechanical",
+    "sourceHash": "904542c9995d2c0c87d4d22a84f2c3aa6010aa2b026494226b41c25433cffc45",
+    "sourceKind": "internal-template",
+    "templateId": "excavator_bucket",
+    "parameters": {
+      "width": 1200,
+      "depth": 960,
+      "height": 880,
+      "teeth": 4,
+      "shellThk": 20
+    },
+    "artifactHash": "82f5a4b509569bc4d7a70cb2ae75ab5a760a731984469ed860a03de3746daed4",
+    "artifactSummary": {
+      "name": "굴착기 버킷 1.2m",
+      "partCount": 13,
+      "pipeCount": 0,
+      "roles": [
+        "boss",
+        "edge",
+        "shell",
+        "sideplate",
+        "tooth"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-desk_stand-02",
+    "domain": "mechanical",
+    "sourceHash": "957f7aa05de727012f1dc3a26e98938f0d96b8fc2f13a9ee3a16d313324b0cd7",
+    "sourceKind": "internal-template",
+    "templateId": "desk_stand",
+    "parameters": {
+      "baseW": 218.4,
+      "baseD": 184.8,
+      "baseT": 5.04,
+      "plateW": 235.2,
+      "plateD": 201.6,
+      "plateT": 3.36,
+      "postH": 134.4,
+      "sliderH": 142.8,
+      "ventW": 151.2,
+      "ventD": 109.2,
+      "lipH": 13.44
+    },
+    "artifactHash": "bd83158b306dab1f599e8e0ef60b1a12c433f2ec6c949c22d6979781d3c8bb05",
+    "artifactSummary": {
+      "name": "데스크 거치대 218.4x184.8 (높이조절·각도조절)",
+      "partCount": 25,
+      "pipeCount": 0,
+      "roles": [
+        "deck",
+        "fastener",
+        "frame",
+        "mount",
+        "pad",
+        "stop"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-tower_crane-02",
+    "domain": "mechanical",
+    "sourceHash": "442d4070e30a3e26c003ab7b3cd3244d12ef735ca2e08a8d436256ea01553a8a",
+    "sourceKind": "internal-template",
+    "templateId": "tower_crane",
+    "parameters": {
+      "mastH": 25200,
+      "jibLen": 29400,
+      "mastW": 1344,
+      "hookDrop": 6720
+    },
+    "artifactHash": "64cdce408658febe1034102c8049ff9ca1057b0c857f71a400ddeaea2dbf3123",
+    "artifactSummary": {
+      "name": "타워 크레인 H25.2m·지브 29.4m",
+      "partCount": 99,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "cab",
+        "cable",
+        "chord",
+        "counterweight",
+        "deck",
+        "diagonal",
+        "hook",
+        "joint",
+        "stay",
+        "trolley",
+        "vertical"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-pump_unit-02",
+    "domain": "mechanical",
+    "sourceHash": "300557d77a40bb286d18882059dcc8a2222b1b1930e52f086308fe3edc0b7132",
+    "sourceKind": "internal-template",
+    "templateId": "pump_unit",
+    "parameters": {
+      "suctionDia": 126,
+      "dischargeDia": 84,
+      "motorDia": 294
+    },
+    "artifactHash": "a83166c1ccff34c0f7f906472e909c9eaf0ae2a5818d45328d4af2c1c951b561",
+    "artifactSummary": {
+      "name": "원심 펌프 유닛 126/84",
+      "partCount": 9,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "guard",
+        "inlet",
+        "motor",
+        "outlet",
+        "pump"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-gate_valve-02",
+    "domain": "mechanical",
+    "sourceHash": "30b3c9f32c24615667d09d5259121be84f40df9e2f131c668630dfa1027072fa",
+    "sourceKind": "internal-template",
+    "templateId": "gate_valve",
+    "parameters": {
+      "dn": 126,
+      "standH": 420
+    },
+    "artifactHash": "79794e4fb2012485e29b2a39ab117b74c4fd62f7be29966421a5e8d16e496370",
+    "artifactSummary": {
+      "name": "게이트 밸브 DN126(전시 스탠드)",
+      "partCount": 9,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "joint",
+        "shaft",
+        "valve"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-tank_silo-02",
+    "domain": "mechanical",
+    "sourceHash": "88baec1d3d2ecbb5ab1557ee070d80832e539e2f11b0d5a1271191ae374c6cbd",
+    "sourceKind": "internal-template",
+    "templateId": "tank_silo",
+    "parameters": {
+      "diameter": 2520,
+      "shellH": 5040,
+      "hopper": "yes",
+      "wallThk": 5.04,
+      "legH": 2268
+    },
+    "artifactHash": "d63e0518dfa935fdc0c9820573fff4bbd5a31b7d14fc7f52da59ff60a10d8047",
+    "artifactSummary": {
+      "name": "사일로 D2.52m+호퍼",
+      "partCount": 7,
+      "pipeCount": 0,
+      "roles": [
+        "column",
+        "roof",
+        "shell"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-pressure_vessel-02",
+    "domain": "mechanical",
+    "sourceHash": "03786568a8030e107230c8225448b790381ebb349f8a48571a3e88f8f277cf5a",
+    "sourceKind": "internal-template",
+    "templateId": "pressure_vessel",
+    "parameters": {
+      "diameter": 1344,
+      "shellLen": 3360,
+      "wallThk": 10.08,
+      "saddleH": 504
+    },
+    "artifactHash": "ecd951c178be39077c948f8d9b76bf30323c6c4131618d1f543a2686ab19f2bd",
+    "artifactSummary": {
+      "name": "압력용기 D1344×L3360",
+      "partCount": 7,
+      "pipeCount": 0,
+      "roles": [
+        "head",
+        "nozzle",
+        "saddle_sup",
+        "shell"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-motor_mount-02",
+    "domain": "mechanical",
+    "sourceHash": "58e051a77baf55a4517fbfa8dae9810464d5040ed7306b2304bb732e05422dd3",
+    "sourceKind": "internal-template",
+    "templateId": "motor_mount",
+    "parameters": {
+      "baseW": 168,
+      "baseD": 117.6,
+      "baseT": 11.76,
+      "webH": 134.4,
+      "webT": 10.08,
+      "ribT": 8.4,
+      "filletR": 10.08,
+      "anchorDia": 11.76,
+      "anchorCbDia": 21.84,
+      "anchorCbDepth": 6.72,
+      "motorBcd": 75.6,
+      "motorHoleD": 7.56,
+      "motorBolts": 3.36,
+      "edgeDist": 33.6
+    },
+    "artifactHash": "08323dde533b3dd9cb8b242e12b401528eedafb03d05a76ec290acf58bbabdb2",
+    "artifactSummary": {
+      "name": "모터 마운트 브래킷 (복합·필렛·카운터보어·볼트패턴)",
+      "partCount": 1,
+      "pipeCount": 0,
+      "roles": [
+        "plate"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-gusset_bracket-02",
+    "domain": "mechanical",
+    "sourceHash": "ca208b5258edd83f05f11078652216cd1647fd11b10774d8f87e403807beb576",
+    "sourceKind": "internal-template",
+    "templateId": "gusset_bracket",
+    "parameters": {
+      "legA": 252,
+      "legB": 201.6,
+      "thickness": 10.08,
+      "chamfer": 33.6,
+      "boltDia": 15.12,
+      "edgeDist": 46.2,
+      "boltRows": 1.68,
+      "boltSpan": 0.42
+    },
+    "artifactHash": "0191a18eb3c0f2831460ef0ec0856b4eca2391c6e71ec1cf128bbb28bb59366d",
+    "artifactSummary": {
+      "name": "거셋 브래킷 판 (252×201.6×t10.08 · chamfer 34)",
+      "partCount": 1,
+      "pipeCount": 0,
+      "roles": [
+        "plate"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-mold_cavity-02",
+    "domain": "mechanical",
+    "sourceHash": "f3c7d5605459f5c2532871c4d4101d81a0fa038b3f919d04cc64414d44cfad30",
+    "sourceKind": "internal-template",
+    "templateId": "mold_cavity",
+    "parameters": {
+      "blockW": 252,
+      "blockD": 210,
+      "blockH": 100.8,
+      "cavityDia": 134.4
+    },
+    "artifactHash": "7db95b7a77f3a2631ea4761f124fadd0750c8e871965bfadd8655e7e57803939",
+    "artifactSummary": {
+      "name": "금형 캐비티 252×210×100.8",
+      "partCount": 1,
+      "pipeCount": 0,
+      "roles": [
+        "mold"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-gear_train-02",
+    "domain": "mechanical",
+    "sourceHash": "e5a64338e0bf29f9b0351c1e557ad35121fc7727b065de9d21882652a724d32c",
+    "sourceKind": "internal-template",
+    "templateId": "gear_train",
+    "parameters": {
+      "module": 2.52,
+      "thickness": 21,
+      "shaftDia": 12.6
+    },
+    "artifactHash": "57367f89c8c9b369331966b30014ded52cee3634a07590cd33618c20eb384efb",
+    "artifactSummary": {
+      "name": "기어 트레인 20-40-20-60 (m2.52)",
+      "partCount": 9,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "gear",
+        "shaft"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-four_bar-02",
+    "domain": "mechanical",
+    "sourceHash": "e2264e847c7106345cd3f35a02179d2e04cc902a1644b21f7016b0eeaac42a49",
+    "sourceKind": "internal-template",
+    "templateId": "four_bar",
+    "parameters": {
+      "ground": 336,
+      "crank": 100.8,
+      "coupler": 294,
+      "rocker": 210,
+      "inputDeg": 50.4
+    },
+    "artifactHash": "d60e907d0724a40bb45aa809607870c6b89de82a5133a0956af70a7effadca61",
+    "artifactSummary": {
+      "name": "4절 링크 g336/a100.8/b294/c210 @50°",
+      "partCount": 8,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "joint",
+        "link"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-flanged_fitting-02",
+    "domain": "mechanical",
+    "sourceHash": "fcbd900d63e2ee68a6b644d17d21c8e5666785ea8dc5b3d8e22e56a23a4524df",
+    "sourceKind": "internal-template",
+    "templateId": "flanged_fitting",
+    "parameters": {
+      "kind": "elbow90",
+      "od": 96.012,
+      "bendR": 142.8,
+      "wallThk": 5.04
+    },
+    "artifactHash": "dbf9c96c9198393256fbfc6b6f8a47886b051a2b3aedfa8719b945c0a24493d6",
+    "artifactSummary": {
+      "name": "플랜지 90° 엘보 OD96.012",
+      "partCount": 3,
+      "pipeCount": 0,
+      "roles": [
+        "mount",
+        "pipe"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-heat_exchanger-02",
+    "domain": "mechanical",
+    "sourceHash": "76bb5b8c20d89d7f96dd0cfc0c079eb4f97d6d2b98eca35625e9077c90617342",
+    "sourceKind": "internal-template",
+    "templateId": "heat_exchanger",
+    "parameters": {
+      "shellID": 504,
+      "tubeLen": 2520,
+      "tubeOD": 15.96,
+      "baffles": 3.36,
+      "nozzleOD": 96.012
+    },
+    "artifactHash": "23dc76d54ca2b5396df72490563c38370cd1a738cc68a56ccdd1c3ed288d4f83",
+    "artifactSummary": {
+      "name": "셸튜브 열교환기 TEMA AEL 504×2520",
+      "partCount": 47,
+      "pipeCount": 0,
+      "roles": [
+        "mount",
+        "pipe",
+        "support",
+        "vessel"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-robot_arm-02",
+    "domain": "mechanical",
+    "sourceHash": "5a88aa7bff66020b547a958f9ef1f9c56929ab0a05eecf1505852160d454585d",
+    "sourceKind": "internal-template",
+    "templateId": "robot_arm",
+    "parameters": {
+      "upperArmLen": 588,
+      "forearmLen": 504,
+      "shoulderDeg": 29.4,
+      "elbowDeg": 46.2,
+      "linkW": 100.8
+    },
+    "artifactHash": "7e255135cea1d5a39ad7ee99230eac3915b5b42ad9b1cf9a4ec85757c98560ff",
+    "artifactSummary": {
+      "name": "로봇 암 5-DOF (29.4°/46.2°)",
+      "partCount": 11,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "gripper",
+        "joint",
+        "link"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-machine_line-02",
+    "domain": "mechanical",
+    "sourceHash": "6249e0444cba783a9a40bcf684085a328d444709c6e46607f50415cde8aaa7e1",
+    "sourceKind": "internal-template",
+    "templateId": "machine_line",
+    "parameters": {
+      "stations": 3.36,
+      "stationPitch": 1260,
+      "conveyorW": 420,
+      "frameH": 756,
+      "guard": "yes"
+    },
+    "artifactHash": "781b6308949df1695960ffc0918571d83d25756d4d633f6c6a547b771c5d3c2c",
+    "artifactSummary": {
+      "name": "산업기계 라인 3스테이션",
+      "partCount": 30,
+      "pipeCount": 0,
+      "roles": [
+        "conveyor",
+        "fence",
+        "frame",
+        "head",
+        "panel",
+        "station"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-conveyor-02",
+    "domain": "mechanical",
+    "sourceHash": "a606c3eef448c4c78c5c1522249ac9f7d90e9749e3c1f6e27a782ffa2eeea602",
+    "sourceKind": "internal-template",
+    "templateId": "conveyor",
+    "parameters": {
+      "kind": "belt",
+      "length": 5040,
+      "width": 504,
+      "frameH": 630,
+      "legPitch": 1260,
+      "rollerPitch": 252
+    },
+    "artifactHash": "b86d6d1021dac5e78d150089e7156a62aa330a678529185fac94c3ad29d41cba",
+    "artifactSummary": {
+      "name": "벨트 컨베이어 5.04m",
+      "partCount": 41,
+      "pipeCount": 0,
+      "roles": [
+        "conveyor",
+        "frame",
+        "motor",
+        "mount"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-transmission_tower-02",
+    "domain": "mechanical",
+    "sourceHash": "5278f8990c58046de260ccd4dd319b5de07696da5918b8f3aaa20708d9957bc6",
+    "sourceKind": "internal-template",
+    "templateId": "transmission_tower",
+    "parameters": {
+      "height": 25200,
+      "baseW": 5040,
+      "topW": 1260,
+      "panels": 5.04,
+      "legSize": 100.8,
+      "braceSize": 63,
+      "armLen": 2100
+    },
+    "artifactHash": "a644fb791cb994376c3f16ef606e1d4cbb445b5e2ae58253ff846f054119bb9e",
+    "artifactSummary": {
+      "name": "송전탑 25.2m×5패널",
+      "partCount": 83,
+      "pipeCount": 0,
+      "roles": [
+        "beam",
+        "brace",
+        "column"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-excavator_bucket-02",
+    "domain": "mechanical",
+    "sourceHash": "242f49f74cdbc2cefd55fc01f5472ed84aeb99988006c6648ea0db5907029c21",
+    "sourceKind": "internal-template",
+    "templateId": "excavator_bucket",
+    "parameters": {
+      "width": 1260,
+      "depth": 1008,
+      "height": 924,
+      "teeth": 4.2,
+      "shellThk": 21
+    },
+    "artifactHash": "93abb0054528ecb5319823484aca9bf58d0486b03e43ba9d71f6c86df0498eab",
+    "artifactSummary": {
+      "name": "굴착기 버킷 1.26m",
+      "partCount": 13,
+      "pipeCount": 0,
+      "roles": [
+        "boss",
+        "edge",
+        "shell",
+        "sideplate",
+        "tooth"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-desk_stand-03",
+    "domain": "mechanical",
+    "sourceHash": "7290dba5b96581e31f22cc4fd6f96813f4d55bf67683a79c32dc9c2066c21bef",
+    "sourceKind": "internal-template",
+    "templateId": "desk_stand",
+    "parameters": {
+      "baseW": 228.8,
+      "baseD": 193.6,
+      "baseT": 5.28,
+      "plateW": 246.4,
+      "plateD": 211.2,
+      "plateT": 3.52,
+      "postH": 140.8,
+      "sliderH": 149.6,
+      "ventW": 158.4,
+      "ventD": 114.4,
+      "lipH": 14.08
+    },
+    "artifactHash": "1b6867aa7bc1d68dfeb6d6f01ad0a186c8105b2ce296b4ba25aba6edf48ba63d",
+    "artifactSummary": {
+      "name": "데스크 거치대 228.8x193.6 (높이조절·각도조절)",
+      "partCount": 25,
+      "pipeCount": 0,
+      "roles": [
+        "deck",
+        "fastener",
+        "frame",
+        "mount",
+        "pad",
+        "stop"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-tower_crane-03",
+    "domain": "mechanical",
+    "sourceHash": "bcfd92ea1aa28d14f8e7a90c4c8d26d57c9bb196643063f646dd914def677022",
+    "sourceKind": "internal-template",
+    "templateId": "tower_crane",
+    "parameters": {
+      "mastH": 26400,
+      "jibLen": 30800,
+      "mastW": 1408,
+      "hookDrop": 7040
+    },
+    "artifactHash": "27f45b63ef537b23bb95718d9b14986a53605a11009615497c3760a52289853a",
+    "artifactSummary": {
+      "name": "타워 크레인 H26.4m·지브 30.8m",
+      "partCount": 103,
+      "pipeCount": 0,
+      "roles": [
+        "base",
+        "cab",
+        "cable",
+        "chord",
+        "counterweight",
+        "deck",
+        "diagonal",
+        "hook",
+        "joint",
+        "stay",
+        "trolley",
+        "vertical"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-pump_unit-03",
+    "domain": "mechanical",
+    "sourceHash": "cf7cfcb29216295fa13127aa2962a528f76ebfa9d3a3657dcfbc358bf43c6e8e",
+    "sourceKind": "internal-template",
+    "templateId": "pump_unit",
+    "parameters": {
+      "suctionDia": 132,
+      "dischargeDia": 88,
+      "motorDia": 308
+    },
+    "artifactHash": "189e66d2fda93a541440c1b4d7c9c76ba426ccda320f04c8074bfee1a6b161e5",
+    "artifactSummary": {
+      "name": "원심 펌프 유닛 132/88",
+      "partCount": 9,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "guard",
+        "inlet",
+        "motor",
+        "outlet",
+        "pump"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  },
+  {
+    "schema": "nexyfab.domain-accuracy-candidate.v1",
+    "caseId": "mechanical-gate_valve-03",
+    "domain": "mechanical",
+    "sourceHash": "0a2ccdeb3df33102e8f65c6875d12a942940b162f56454c1d3cf6698babb52eb",
+    "sourceKind": "internal-template",
+    "templateId": "gate_valve",
+    "parameters": {
+      "dn": 132,
+      "standH": 440
+    },
+    "artifactHash": "c19cd57199ef9068f6a295fa7337150bdddfbfdc5f2e7ab6e812843e5c681056",
+    "artifactSummary": {
+      "name": "게이트 밸브 DN132(전시 스탠드)",
+      "partCount": 9,
+      "pipeCount": 0,
+      "roles": [
+        "frame",
+        "joint",
+        "shaft",
+        "valve"
+      ],
+      "alignmentErrors": [],
+      "unverifiedPartCount": 0
+    },
+    "split": "candidate"
+  }
+]
