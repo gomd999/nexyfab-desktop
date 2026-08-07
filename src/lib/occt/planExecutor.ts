@@ -71,7 +71,26 @@ async function runHole(
   if (![h.center.x, h.center.y, h.diameter, h.depth].every(Number.isFinite) || h.diameter <= 0 || h.depth <= 0) {
     return { ok: false, error: `hole ${cmd.resultId}: invalid center/diameter/depth` };
   }
-  const cuts = [{ diameter: h.diameter, depth: h.depth }];
+  const bottom = target.bbox?.min.z;
+  const targetDepth = Number.isFinite(bottom) ? top! - bottom! : undefined;
+  const isBlind = h.terminationMode === 'blind' ||
+    (h.terminationMode !== 'through' && Number.isFinite(targetDepth) && h.depth < targetDepth! - 0.01);
+  if (h.terminationMode === 'through' && !Number.isFinite(targetDepth)) {
+    return { ok: false, error: `hole ${cmd.resultId}: through termination requires target bottom Z` };
+  }
+  const mainDepth = h.terminationMode === 'through' ? targetDepth! : h.depth;
+  const cuts = [{ diameter: h.diameter, depth: mainDepth }];
+  const drillTipAngle = h.drillTipAngleDegrees ?? 118;
+  if (isBlind && (!Number.isFinite(drillTipAngle) || drillTipAngle < 60 || drillTipAngle >= 180)) {
+    return { ok: false, error: `hole ${cmd.resultId}: drill tip angle must be in [60, 180) degrees` };
+  }
+  const drillTipHeight = isBlind
+    ? (h.diameter / 2) / Math.tan((drillTipAngle * Math.PI) / 360)
+    : 0;
+  if (isBlind && mainDepth <= drillTipHeight) {
+    return { ok: false, error: `hole ${cmd.resultId}: depth must exceed drill tip height ${drillTipHeight.toFixed(3)} mm` };
+  }
+  if (isBlind) cuts[0] = { diameter: h.diameter, depth: mainDepth - drillTipHeight };
   if (h.holeType === 'counterbore') {
     if (!Number.isFinite(h.counterboreDiameter) || !Number.isFinite(h.counterboreDepth) || h.counterboreDiameter! <= h.diameter || h.counterboreDepth! <= 0) {
       return { ok: false, error: `hole ${cmd.resultId}: invalid counterbore dimensions` };
@@ -81,9 +100,15 @@ async function runHole(
   const warnings: string[] = [];
   let acc = target;
   const epsilon = 0.01;
+  const seamEpsilon = 1e-5;
   for (let index = 0; index < cuts.length; index++) {
     const cut = cuts[index]!;
-    const toolResult = await bridge.buildPrismAt(circleLoop(h.center.x, h.center.y, cut.diameter), top! - cut.depth - epsilon, cut.depth + 2 * epsilon);
+    const lowerOverlap = isBlind && index === 0 ? seamEpsilon : epsilon;
+    const toolResult = await bridge.buildPrismAt(
+      circleLoop(h.center.x, h.center.y, cut.diameter),
+      top! - cut.depth - lowerOverlap,
+      cut.depth + lowerOverlap + epsilon,
+    );
     if (!toolResult.ok || !toolResult.shape) return { ok: false, error: `hole ${cmd.resultId}: tool build failed: ${toolResult.error ?? 'no shape'}` };
     const tool = toolResult.shape;
     const result = await bridge.boolean.subtract(acc, tool, { baseId: index === 0 ? cmd.target : `${cmd.resultId}:bore`, toolId: `${cmd.resultId}:tool:${index}`, opId: `${cmd.resultId}:cut:${index}` });
@@ -92,6 +117,21 @@ async function runHole(
     if (acc !== target) bridge.release(acc);
     acc = result.shape;
     warnings.push(...toolResult.warnings, ...result.warnings);
+  }
+  if (isBlind) {
+    if (!bridge.buildConeAt) return { ok: false, error: `hole ${cmd.resultId}: bridge has no buildConeAt for drill tip` };
+    const apexZ = top! - mainDepth;
+    const toolResult = await bridge.buildConeAt(h.center, apexZ, drillTipHeight + seamEpsilon, 0, h.diameter / 2);
+    if (!toolResult.ok || !toolResult.shape) return { ok: false, error: `hole ${cmd.resultId}: drill tip build failed: ${toolResult.error ?? 'no shape'}` };
+    const tool = toolResult.shape;
+    const result = await bridge.boolean.subtract(acc, tool, {
+      baseId: `${cmd.resultId}:bore`, toolId: `${cmd.resultId}:drill-tip-tool`, opId: `${cmd.resultId}:drill-tip-cut`,
+    });
+    bridge.release(tool);
+    if (!result.ok || !result.shape) return { ok: false, error: `hole ${cmd.resultId}: drill tip cut failed: ${result.error ?? 'no shape'}` };
+    if (acc !== target) bridge.release(acc);
+    acc = result.shape;
+    warnings.push(...toolResult.warnings, ...result.warnings, `blind drill tip: ${drillTipAngle} degrees`);
   }
   if (h.holeType === 'countersink') {
     if (!bridge.buildConeAt) return { ok: false, error: `hole ${cmd.resultId}: bridge has no buildConeAt` };

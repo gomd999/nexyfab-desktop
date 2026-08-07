@@ -79,6 +79,8 @@ export interface CreateWasmBridgeOptions {
   shapeBudget?: number;
   /** Worker-init handshake timeout in ms. Default 30000. */
   initTimeoutMs?: number;
+  /** Maximum time for an individual worker request. Default 120000. */
+  operationTimeoutMs?: number;
   /** Fires when `liveShapes >= shapeBudget`. Advisory; bridge does not throttle. */
   onLowMemory?: (liveShapes: number) => void;
   /**
@@ -94,6 +96,8 @@ export interface CreateWasmBridgeOptions {
 export interface OcctWasmExtras {
   /** Terminate the worker; subsequent calls reject. Safe to call twice. */
   dispose(): void;
+  /** Replace an unhealthy worker and invalidate all old native handles. */
+  restart(): void;
   /** Live shape handle count (for tests + UI memory indicator). */
   readonly liveShapeCount: number;
   /** Last reqId issued (for tests verifying reqId monotonicity). */
@@ -111,6 +115,7 @@ interface Pending {
   reject: (err: Error) => void;
   /** Op label for error messages. */
   op: string;
+  timer?: ReturnType<typeof setTimeout>;
 }
 
 /** Phase-4 stub dispatcher — the safe default (no WASM, no CSP requirements). */
@@ -138,6 +143,7 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
   const workerUrl = opts.workerUrl ?? DEFAULT_WORKER_URL;
   const shapeBudget = opts.shapeBudget ?? 256;
   const initTimeoutMs = opts.initTimeoutMs ?? 30_000;
+  const operationTimeoutMs = opts.operationTimeoutMs ?? 120_000;
   const onLowMemory = opts.onLowMemory;
 
   // Pick a worker factory.
@@ -149,7 +155,7 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     return createWasmWorkerStub();
   });
 
-  const worker = factory();
+  let worker = factory();
 
   // ─── reqId-keyed pending table ─────────────────────────────────────────
   const pending = new Map<number, Pending>();
@@ -165,6 +171,7 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     const p = pending.get(resp.reqId);
     if (!p) return;
     pending.delete(resp.reqId);
+    if (p.timer) clearTimeout(p.timer);
     p.resolve(resp);
   };
 
@@ -172,12 +179,20 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     const msg = ev instanceof Error ? ev.message : 'occt-wasm: worker error';
     for (const [reqId, p] of pending) {
       pending.delete(reqId);
+      if (p.timer) clearTimeout(p.timer);
       p.reject(new Error(`${p.op}: ${msg}`));
     }
   };
 
-  worker.addEventListener('message', onMessage);
-  worker.addEventListener('error', onError);
+  const attachWorker = (): void => {
+    worker.addEventListener('message', onMessage);
+    worker.addEventListener('error', onError);
+  };
+  const detachWorker = (): void => {
+    worker.removeEventListener('message', onMessage);
+    worker.removeEventListener('error', onError);
+  };
+  attachWorker();
 
   const sendRequest = (op: string, args?: Record<string, unknown>): Promise<WireResponse> => {
     if (disposed) {
@@ -187,11 +202,22 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     lastReqId = reqId;
     const req: WireRequest = { op: op as WireRequest['op'], reqId, args };
     return new Promise<WireResponse>((resolve, reject) => {
-      pending.set(reqId, { resolve, reject, op });
+      const timer = setTimeout(() => {
+        const request = pending.get(reqId);
+        if (!request) return;
+        pending.delete(reqId);
+        request.reject(new Error(`occt-wasm: ${op} timed out after ${operationTimeoutMs}ms`));
+        // A native kernel call cannot be safely interrupted in-place. Replace
+        // the Worker so a wedged WASM instance and its native heap do not
+        // poison subsequent requests. All old handles become intentionally stale.
+        restart();
+      }, operationTimeoutMs);
+      pending.set(reqId, { resolve, reject, op, timer });
       try {
         worker.postMessage(req);
       } catch (err) {
         pending.delete(reqId);
+        clearTimeout(timer);
         reject(new Error(`${op}: postMessage failed: ${(err as Error).message}`));
       }
     });
@@ -300,6 +326,25 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     return toOperationResult(resp);
   };
 
+  const buildPrismAt = async (
+    loop: ReadonlyArray<{ x: number; y: number }>, z0: number, heightMm: number,
+  ): Promise<OcctOperationResult> => {
+    await ensureReady();
+    return toOperationResult(await sendRequest('buildPrismAt', { loop: [...loop], z0, heightMm }));
+  };
+
+  const buildConeAt = async (
+    center: { x: number; y: number }, z0: number, heightMm: number, radius0: number, radius1: number,
+  ): Promise<OcctOperationResult> => {
+    await ensureReady();
+    return toOperationResult(await sendRequest('buildConeAt', { center, z0, heightMm, radius0, radius1 }));
+  };
+
+  const buildThreadHelixCutter: NonNullable<OcctBridge['buildThreadHelixCutter']> = async (opts) => {
+    await ensureReady();
+    return toOperationResult(await sendRequest('buildThreadHelixCutter', { opts }));
+  };
+
   const boolean: OcctBooleanOps = {
     async union(a, b) {
       await ensureReady();
@@ -335,6 +380,27 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     await ensureReady();
     const handle = wireHandleOf(shape, 'chamfer');
     const resp = await sendRequest('chamfer', { handle, edgeIds, dim: distance });
+    return toOperationResult(resp);
+  };
+
+  const variableFillet = async (
+    shape: OcctShape,
+    edges: ReadonlyArray<{ edgeId: string; radius: number }>,
+  ): Promise<OcctOperationResult> => {
+    await ensureReady();
+    const handle = wireHandleOf(shape, 'variableFillet');
+    const resp = await sendRequest('variableFillet', { handle, edges: [...edges] });
+    return toOperationResult(resp);
+  };
+
+  const lawFillet = async (
+    shape: OcctShape,
+    edges: ReadonlyArray<{ edgeId: string; startRadius: number; endRadius: number }>,
+    options?: { continuity?: 'G1' | 'G2'; angularTolerance?: number },
+  ): Promise<OcctOperationResult> => {
+    await ensureReady();
+    const handle = wireHandleOf(shape, 'lawFillet');
+    const resp = await sendRequest('lawFillet', { handle, edges: [...edges], options });
     return toOperationResult(resp);
   };
 
@@ -403,14 +469,32 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     });
   };
 
+  const restart = (): void => {
+    if (disposed) throw new Error('occt-wasm: cannot restart a disposed bridge');
+    detachWorker();
+    for (const [reqId, p] of pending) {
+      pending.delete(reqId);
+      if (p.timer) clearTimeout(p.timer);
+      p.reject(new Error(`${p.op}: worker restarted`));
+    }
+    worker.terminate();
+    idToHandle.clear();
+    liveCount = 0;
+    lowMemoryNotified = false;
+    ready = false;
+    initPromise = null;
+    worker = factory();
+    attachWorker();
+  };
+
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
-    worker.removeEventListener('message', onMessage);
-    worker.removeEventListener('error', onError);
+    detachWorker();
     // Reject any in-flight requests so callers don't hang.
     for (const [reqId, p] of pending) {
       pending.delete(reqId);
+      if (p.timer) clearTimeout(p.timer);
       p.reject(new Error(`${p.op}: bridge disposed`));
     }
     idToHandle.clear();
@@ -421,8 +505,13 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
   const bridge: WasmOcctBridge = {
     buildFromExtrude,
     buildFromRevolve,
+    buildPrismAt,
+    buildConeAt,
+    buildThreadHelixCutter,
     boolean,
     fillet,
+    variableFillet,
+    lawFillet,
     chamfer,
     buildPlanarFace,
     thicken,
@@ -431,6 +520,7 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     importSTEP,
     tessellate,
     release,
+    restart,
     dispose,
     get liveShapeCount() { return liveCount; },
     get lastReqId() { return lastReqId; },

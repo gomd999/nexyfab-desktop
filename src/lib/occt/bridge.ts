@@ -138,6 +138,12 @@ export interface OcctBridge {
     shape: OcctShape,
     edges: ReadonlyArray<{ edgeId: string; radius: number }>,
   ): Promise<OcctOperationResult>;
+  /** Linear radius law along each edge, from its kernel start to end vertex. */
+  lawFillet?(
+    shape: OcctShape,
+    edges: ReadonlyArray<{ edgeId: string; startRadius: number; endRadius: number }>,
+    options?: { continuity?: 'G1' | 'G2'; angularTolerance?: number },
+  ): Promise<OcctOperationResult>;
   /**
    * Draft (taper) the side walls of a solid for moulding/casting: planar faces
    * perpendicular-ish to `pullDir` (default +Z) tilt by `angleDeg`, pivoting
@@ -159,6 +165,18 @@ export interface OcctBridge {
   buildPrismAt?(loop: ReadonlyArray<{ x: number; y: number }>, z0: number, heightMm: number): Promise<OcctOperationResult>;
   /** Build a conical frustum along +Z for countersink and tapered-tool cuts. */
   buildConeAt?(center: { x: number; y: number }, z0: number, heightMm: number, radius0: number, radius1: number): Promise<OcctOperationResult>;
+  /** Build an exact BREP triangular thread cutter swept along a cylindrical
+   * helix. The returned solid is intended for a subsequent Boolean cut. */
+  buildThreadHelixCutter?(opts: {
+    center: { x: number; y: number };
+    z0: number;
+    innerRadius: number;
+    outerRadius: number;
+    pitch: number;
+    lengthMm: number;
+    direction?: 'right_hand' | 'left_hand';
+    threadKind?: 'external' | 'internal';
+  }): Promise<OcctOperationResult>;
   /**
    * Build a planar FACE (open surface / sheet body) from a 2D loop at height
    * `z` (default 0). The input to {@link thicken} / {@link surfaceTrim}. The
@@ -381,6 +399,76 @@ function makeStubBridge(): OcctBridge {
     };
   };
 
+  const variableFillet = async (
+    shape: OcctShape,
+    edges: ReadonlyArray<{ edgeId: string; radius: number }>,
+  ): Promise<OcctOperationResult> => {
+    assertLive(shape, 'variableFillet');
+    if (edges.length === 0 || edges.some((edge) => !(edge.radius > 0) || !Number.isFinite(edge.radius))) {
+      return { ok: false, error: 'variableFillet requires positive finite radii', warnings: [] };
+    }
+    const next: OcctShape = { id: allocId(), kind: shape.kind, bbox: cloneBBox(shape.bbox) };
+    const orig = internals.featureOf.get(shape);
+    if (orig) internals.featureOf.set(next, orig);
+    return {
+      ok: true,
+      shape: next,
+      warnings: [`stub: no actual variable fillet (edges=${edges.length})`],
+    };
+  };
+
+  const lawFillet = async (
+    shape: OcctShape,
+    edges: ReadonlyArray<{ edgeId: string; startRadius: number; endRadius: number }>,
+    options?: { continuity?: 'G1' | 'G2'; angularTolerance?: number },
+  ): Promise<OcctOperationResult> => {
+    assertLive(shape, 'lawFillet');
+    if (edges.length === 0 || edges.some((edge) =>
+      !(edge.startRadius > 0) || !Number.isFinite(edge.startRadius) ||
+      !(edge.endRadius > 0) || !Number.isFinite(edge.endRadius))) {
+      return { ok: false, error: 'lawFillet requires positive finite start/end radii', warnings: [] };
+    }
+    if (options?.angularTolerance !== undefined && (!(options.angularTolerance > 0) || !Number.isFinite(options.angularTolerance))) {
+      return { ok: false, error: 'lawFillet angularTolerance must be positive finite', warnings: [] };
+    }
+    const next: OcctShape = { id: allocId(), kind: shape.kind, bbox: cloneBBox(shape.bbox) };
+    const orig = internals.featureOf.get(shape);
+    if (orig) internals.featureOf.set(next, orig);
+    return { ok: true, shape: next, warnings: [`stub: no actual law fillet (edges=${edges.length})`] };
+  };
+
+  const buildPrismAt = async (
+    loop: ReadonlyArray<{ x: number; y: number }>, z0: number, heightMm: number,
+  ): Promise<OcctOperationResult> => {
+    if (loop.length < 3 || !Number.isFinite(z0) || !(heightMm > 0) || !Number.isFinite(heightMm)) {
+      return { ok: false, error: 'buildPrismAt requires loop, finite z0, and positive height', warnings: [] };
+    }
+    const b = bboxOf2D(loop);
+    const shape: OcctShape = {
+      id: allocId(), kind: 'solid',
+      bbox: { min: { x: b.minX, y: b.minY, z: z0 }, max: { x: b.maxX, y: b.maxY, z: z0 + heightMm } },
+    };
+    return { ok: true, shape, warnings: ['stub: bbox-only positioned prism'] };
+  };
+
+  const buildConeAt = async (
+    center: { x: number; y: number }, z0: number, heightMm: number, radius0: number, radius1: number,
+  ): Promise<OcctOperationResult> => {
+    const radius = Math.max(radius0, radius1);
+    if (![center?.x, center?.y, z0, heightMm, radius0, radius1].every(Number.isFinite) ||
+        !(heightMm > 0) || radius0 < 0 || radius1 < 0 || !(radius > 0)) {
+      return { ok: false, error: 'buildConeAt requires finite dimensions and positive height/radius', warnings: [] };
+    }
+    const shape: OcctShape = {
+      id: allocId(), kind: 'solid',
+      bbox: {
+        min: { x: center.x - radius, y: center.y - radius, z: z0 },
+        max: { x: center.x + radius, y: center.y + radius, z: z0 + heightMm },
+      },
+    };
+    return { ok: true, shape, warnings: ['stub: bbox-only conical frustum'] };
+  };
+
   const buildPlanarFace = async (loop: ReadonlyArray<{ x: number; y: number }>, z = 0): Promise<OcctOperationResult> => {
     if (!Array.isArray(loop) || loop.length < 3) {
       return { ok: false, error: `buildPlanarFace: loop must have ≥3 points, got ${loop?.length ?? 0}`, warnings: [] };
@@ -553,6 +641,10 @@ function makeStubBridge(): OcctBridge {
     buildFromRevolve,
     boolean,
     fillet,
+    variableFillet,
+    lawFillet,
+    buildPrismAt,
+    buildConeAt,
     chamfer,
     buildPlanarFace,
     thicken,

@@ -76,6 +76,27 @@ function makeAlwaysErrorWorker(error: string): WorkerLike {
   };
 }
 
+// ACKs init but deliberately hangs every modelling operation.
+function makeOperationHangWorker(): WorkerLike {
+  const listeners = new Set<(ev: { data: unknown }) => void>();
+  return {
+    postMessage(msg: unknown): void {
+      const req = msg as { reqId: number; op: string };
+      if (req.op !== 'init') return;
+      queueMicrotask(() => {
+        for (const listener of listeners) listener({ data: { reqId: req.reqId, ok: true } });
+      });
+    },
+    addEventListener(event, listener): void {
+      if (event === 'message') listeners.add(listener);
+    },
+    removeEventListener(event, listener): void {
+      if (event === 'message') listeners.delete(listener);
+    },
+    terminate(): void { listeners.clear(); },
+  };
+}
+
 // ─── construction ─────────────────────────────────────────────────────────
 
 describe('createWasmBridge: construction', () => {
@@ -92,6 +113,7 @@ describe('createWasmBridge: construction', () => {
     expect(typeof bridge.importSTEP).toBe('function');
     expect(typeof bridge.release).toBe('function');
     expect(typeof bridge.dispose).toBe('function');
+    expect(typeof bridge.restart).toBe('function');
     bridge.dispose();
   });
 
@@ -222,6 +244,53 @@ describe('createWasmBridge: reqId tracking', () => {
   });
 });
 
+describe('createWasmBridge: operation timeout', () => {
+  it('rejects a hung operation, replaces the worker, and recovers', async () => {
+    let attempt = 0;
+    const factory = vi.fn(() => (++attempt === 1 ? makeOperationHangWorker() : createWasmWorkerStub()));
+    const bridge = createWasmBridge({
+      workerFactory: factory,
+      initTimeoutMs: 100,
+      operationTimeoutMs: 30,
+    });
+    await expect(bridge.buildFromExtrude(rectExtrude())).rejects.toThrow(
+      /buildFromExtrude timed out after 30ms/,
+    );
+    expect(factory).toHaveBeenCalledTimes(2);
+    expect(bridge.ready).toBe(false);
+    const recovered = await bridge.buildFromExtrude(rectExtrude());
+    expect(recovered.ok).toBe(true);
+    bridge.dispose();
+  });
+});
+
+describe('createWasmBridge: worker restart', () => {
+  it('replaces the worker, clears native handles, and accepts fresh operations', async () => {
+    const factory = vi.fn(() => createWasmWorkerStub());
+    const bridge = createWasmBridge({ workerFactory: factory });
+    const before = await bridge.buildFromExtrude(rectExtrude());
+    expect(before.ok).toBe(true);
+    expect(bridge.liveShapeCount).toBe(1);
+
+    bridge.restart();
+    expect(factory).toHaveBeenCalledTimes(2);
+    expect(bridge.ready).toBe(false);
+    expect(bridge.liveShapeCount).toBe(0);
+    await expect(bridge.exportSTEP(before.shape!)).rejects.toThrow(/unknown shape id/);
+
+    const after = await bridge.buildFromExtrude(rectExtrude());
+    expect(after.ok).toBe(true);
+    expect(bridge.ready).toBe(true);
+    bridge.dispose();
+  });
+
+  it('rejects restart after disposal', () => {
+    const bridge = createWasmBridge();
+    bridge.dispose();
+    expect(() => bridge.restart()).toThrow(/disposed bridge/);
+  });
+});
+
 // ─── basic kernel ops ─────────────────────────────────────────────────────
 
 describe('createWasmBridge: kernel ops', () => {
@@ -240,6 +309,23 @@ describe('createWasmBridge: kernel ops', () => {
     const r = await bridge.buildFromRevolve(diskRevolve());
     expect(r.ok).toBe(true);
     expect(r.shape!.bbox).toEqual({ min: { x: -4, y: 0, z: -4 }, max: { x: 4, y: 2, z: 4 } });
+    bridge.dispose();
+  });
+
+  it('buildPrismAt and buildConeAt preserve explicit tool Z placement over the wire', async () => {
+    const bridge = createWasmBridge();
+    expect(bridge.buildPrismAt).toBeTypeOf('function');
+    expect(bridge.buildConeAt).toBeTypeOf('function');
+    const prism = await bridge.buildPrismAt!([
+      { x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 },
+    ], 12, 8);
+    expect(prism.ok).toBe(true);
+    expect(prism.shape!.bbox?.min.z).toBe(12);
+    expect(prism.shape!.bbox?.max.z).toBe(20);
+    const cone = await bridge.buildConeAt!({ x: 5, y: 7 }, 16, 4, 3, 6);
+    expect(cone.ok).toBe(true);
+    expect(cone.shape!.bbox?.min.z).toBe(16);
+    expect(cone.shape!.bbox?.max.z).toBe(20);
     bridge.dispose();
   });
 
@@ -269,6 +355,33 @@ describe('createWasmBridge: kernel ops', () => {
     const bridge = createWasmBridge();
     const a = (await bridge.buildFromExtrude(rectExtrude())).shape!;
     const r = await bridge.fillet(a, ['e1', 'e2'], 1.0);
+    expect(r.ok).toBe(true);
+    expect(r.shape!.bbox).toEqual(a.bbox);
+    expect(r.shape!.id).not.toBe(a.id);
+    bridge.dispose();
+  });
+
+  it('variableFillet sends an edge-specific radius list through the wire protocol', async () => {
+    const bridge = createWasmBridge();
+    const a = (await bridge.buildFromExtrude(rectExtrude())).shape!;
+    expect(bridge.variableFillet).toBeTypeOf('function');
+    const r = await bridge.variableFillet!(a, [
+      { edgeId: 'e1', radius: 0.5 },
+      { edgeId: 'e2', radius: 1.25 },
+    ]);
+    expect(r.ok).toBe(true);
+    expect(r.shape!.bbox).toEqual(a.bbox);
+    expect(r.shape!.id).not.toBe(a.id);
+    bridge.dispose();
+  });
+
+  it('lawFillet sends continuous start/end radii through the wire protocol', async () => {
+    const bridge = createWasmBridge();
+    const a = (await bridge.buildFromExtrude(rectExtrude())).shape!;
+    expect(bridge.lawFillet).toBeTypeOf('function');
+    const r = await bridge.lawFillet!(a, [
+      { edgeId: 'e1', startRadius: 0.5, endRadius: 1.5 },
+    ], { continuity: 'G2', angularTolerance: 1e-4 });
     expect(r.ok).toBe(true);
     expect(r.shape!.bbox).toEqual(a.bbox);
     expect(r.shape!.id).not.toBe(a.id);
@@ -334,6 +447,16 @@ describe('createWasmBridge: handle table', () => {
     bridge.release(a);
     expect(bridge.liveShapeCount).toBe(1);
     bridge.release(b);
+    expect(bridge.liveShapeCount).toBe(0);
+    bridge.dispose();
+  });
+
+  it('returns to zero live handles after a long create/release burn-in', async () => {
+    const bridge = createWasmBridge({ shapeBudget: 32 });
+    for (let i = 0; i < 500; i++) {
+      const shape = (await bridge.buildFromExtrude(rectExtrude())).shape!;
+      bridge.release(shape);
+    }
     expect(bridge.liveShapeCount).toBe(0);
     bridge.dispose();
   });

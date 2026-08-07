@@ -72,10 +72,15 @@ export type WireOp =
   | 'init'
   | 'buildFromExtrude'
   | 'buildFromRevolve'
+  | 'buildPrismAt'
+  | 'buildConeAt'
+  | 'buildThreadHelixCutter'
   | 'booleanUnion'
   | 'booleanSubtract'
   | 'booleanIntersect'
   | 'fillet'
+  | 'variableFillet'
+  | 'lawFillet'
   | 'chamfer'
   | 'buildPlanarFace'
   | 'thicken'
@@ -199,6 +204,36 @@ export function createWasmWorkerStub(opts: CreateStubOpts = {}): WorkerLike {
           return;
         }
 
+        case 'buildPrismAt': {
+          if (!inner.buildPrismAt) { reply({ reqId, ok: false, error: 'buildPrismAt: not supported' }); return; }
+          const r = await inner.buildPrismAt(
+            Array.isArray(args.loop) ? args.loop as Array<{ x: number; y: number }> : [],
+            Number(args.z0), Number(args.heightMm),
+          );
+          if (!r.ok || !r.shape) { reply({ reqId, ok: false, error: r.error ?? 'buildPrismAt failed', warnings: r.warnings }); return; }
+          reply({ reqId, ok: true, shape: shapeToWire(r.shape), warnings: r.warnings });
+          return;
+        }
+
+        case 'buildConeAt': {
+          if (!inner.buildConeAt) { reply({ reqId, ok: false, error: 'buildConeAt: not supported' }); return; }
+          const r = await inner.buildConeAt(
+            args.center as { x: number; y: number }, Number(args.z0), Number(args.heightMm),
+            Number(args.radius0), Number(args.radius1),
+          );
+          if (!r.ok || !r.shape) { reply({ reqId, ok: false, error: r.error ?? 'buildConeAt failed', warnings: r.warnings }); return; }
+          reply({ reqId, ok: true, shape: shapeToWire(r.shape), warnings: r.warnings });
+          return;
+        }
+
+        case 'buildThreadHelixCutter': {
+          if (!inner.buildThreadHelixCutter) { reply({ reqId, ok: false, error: 'buildThreadHelixCutter: not supported' }); return; }
+          const r = await inner.buildThreadHelixCutter(args.opts as Parameters<NonNullable<OcctBridge['buildThreadHelixCutter']>>[0]);
+          if (!r.ok || !r.shape) { reply({ reqId, ok: false, error: r.error ?? 'buildThreadHelixCutter failed', warnings: r.warnings }); return; }
+          reply({ reqId, ok: true, shape: shapeToWire(r.shape), warnings: r.warnings });
+          return;
+        }
+
         case 'booleanUnion':
         case 'booleanSubtract':
         case 'booleanIntersect': {
@@ -235,6 +270,51 @@ export function createWasmWorkerStub(opts: CreateStubOpts = {}): WorkerLike {
             : await inner.chamfer(s, edgeIds, dim);
           if (!r.ok || !r.shape) {
             reply({ reqId, ok: false, error: r.error ?? `${op} failed`, warnings: r.warnings });
+            return;
+          }
+          reply({ reqId, ok: true, shape: shapeToWire(r.shape), warnings: r.warnings });
+          return;
+        }
+
+        case 'variableFillet': {
+          const s = resolveHandle(args.handle);
+          if (!s) {
+            reply({ reqId, ok: false, error: `variableFillet: unknown handle (${String(args.handle)})` });
+            return;
+          }
+          if (!inner.variableFillet) {
+            reply({ reqId, ok: false, error: 'variableFillet: not supported by this kernel' });
+            return;
+          }
+          const edges = Array.isArray(args.edges)
+            ? args.edges as Array<{ edgeId: string; radius: number }>
+            : [];
+          const r = await inner.variableFillet(s, edges);
+          if (!r.ok || !r.shape) {
+            reply({ reqId, ok: false, error: r.error ?? 'variableFillet failed', warnings: r.warnings });
+            return;
+          }
+          reply({ reqId, ok: true, shape: shapeToWire(r.shape), warnings: r.warnings });
+          return;
+        }
+
+        case 'lawFillet': {
+          const s = resolveHandle(args.handle);
+          if (!s) {
+            reply({ reqId, ok: false, error: `lawFillet: unknown handle (${String(args.handle)})` });
+            return;
+          }
+          if (!inner.lawFillet) {
+            reply({ reqId, ok: false, error: 'lawFillet: not supported by this kernel' });
+            return;
+          }
+          const edges = Array.isArray(args.edges)
+            ? args.edges as Array<{ edgeId: string; startRadius: number; endRadius: number }>
+            : [];
+          const options = args.options as { continuity?: 'G1' | 'G2'; angularTolerance?: number } | undefined;
+          const r = await inner.lawFillet(s, edges, options);
+          if (!r.ok || !r.shape) {
+            reply({ reqId, ok: false, error: r.error ?? 'lawFillet failed', warnings: r.warnings });
             return;
           }
           reply({ reqId, ok: true, shape: shapeToWire(r.shape), warnings: r.warnings });

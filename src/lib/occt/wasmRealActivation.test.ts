@@ -357,6 +357,22 @@ describe('occt-worker-real.js: booleanOp on mock module', () => {
   });
 });
 
+describe('occt-worker-real.js: selected-edge rounding contract', () => {
+  it('fails closed instead of silently widening one selected edge to all edges', () => {
+    const { introspect } = setupReady();
+    const built = introspect.ops.buildFromExtrude({
+      kind: 'extrude',
+      loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+      depth: 5,
+      direction: 'one_sided',
+      mode: 'add',
+    });
+    const selected = introspect.ops.filletOrChamfer('fillet', built.handle!, ['e.vert.0'], 1);
+    expect(selected.ok).toBe(false);
+    expect(selected.error).toMatch(/refusing to widen selection/i);
+  });
+});
+
 describe('occt-worker-real.js: STEP I/O on mock module', () => {
   it('exportSTEP returns ISO-10303-21 envelope from stub Writer', () => {
     const { introspect } = setupReady();

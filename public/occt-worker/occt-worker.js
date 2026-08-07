@@ -394,6 +394,86 @@
           return;
         }
 
+        case 'buildPrismAt': {
+          var prismLoop = Array.isArray(args.loop) ? args.loop : [];
+          var prismZ = Number(args.z0), prismH = Number(args.heightMm);
+          if (prismLoop.length < 3 || !isFinite(prismZ) || !(prismH > 0) || !isFinite(prismH)) {
+            reply({ reqId: reqId, ok: false, error: 'buildPrismAt: invalid dimensions', warnings: [] }); return;
+          }
+          var pminX = Infinity, pmaxX = -Infinity, pminY = Infinity, pmaxY = -Infinity;
+          for (var pi = 0; pi < prismLoop.length; pi++) {
+            pminX = Math.min(pminX, prismLoop[pi].x); pmaxX = Math.max(pmaxX, prismLoop[pi].x);
+            pminY = Math.min(pminY, prismLoop[pi].y); pmaxY = Math.max(pmaxY, prismLoop[pi].y);
+          }
+          var prismRec = { kind: 'solid', bbox: { min: { x: pminX, y: pminY, z: prismZ }, max: { x: pmaxX, y: pmaxY, z: prismZ + prismH } } };
+          var prismHandle = allocShape(prismRec);
+          reply({ reqId: reqId, ok: true, shape: shapeToWire(prismHandle, prismRec), warnings: ['stub: bbox-only positioned prism'] }); return;
+        }
+
+        case 'buildConeAt': {
+          var coneCenter = args.center || {}, coneZ = Number(args.z0), coneH = Number(args.heightMm);
+          var coneR0 = Number(args.radius0), coneR1 = Number(args.radius1), coneR = Math.max(coneR0, coneR1);
+          if (![coneCenter.x, coneCenter.y, coneZ, coneH, coneR0, coneR1].every(isFinite) || !(coneH > 0) || coneR0 < 0 || coneR1 < 0 || !(coneR > 0)) {
+            reply({ reqId: reqId, ok: false, error: 'buildConeAt: invalid dimensions', warnings: [] }); return;
+          }
+          var coneRec = { kind: 'solid', bbox: { min: { x: coneCenter.x - coneR, y: coneCenter.y - coneR, z: coneZ }, max: { x: coneCenter.x + coneR, y: coneCenter.y + coneR, z: coneZ + coneH } } };
+          var coneHandle = allocShape(coneRec);
+          reply({ reqId: reqId, ok: true, shape: shapeToWire(coneHandle, coneRec), warnings: ['stub: bbox-only conical frustum'] }); return;
+        }
+
+        case 'variableFillet': {
+          var srcVariable = resolveHandle(args.handle);
+          if (!srcVariable) {
+            reply({ reqId: reqId, ok: false, error: 'variableFillet: unknown handle (' + args.handle + ')', warnings: [] });
+            return;
+          }
+          var variableEdges = Array.isArray(args.edges) ? args.edges : [];
+          if (variableEdges.length === 0 || variableEdges.some(function (entry) {
+            return !entry || typeof entry.edgeId !== 'string' || !(entry.radius > 0) || !isFinite(entry.radius);
+          })) {
+            reply({ reqId: reqId, ok: false, error: 'variableFillet: every edge requires a positive finite radius', warnings: [] });
+            return;
+          }
+          var recVariable = { kind: srcVariable.kind, bbox: cloneBBox(srcVariable.bbox), feature: srcVariable.feature };
+          var hVariable = allocShape(recVariable);
+          reply({
+            reqId: reqId,
+            ok: true,
+            shape: shapeToWire(hVariable, recVariable),
+            warnings: ['stub: no actual variable fillet (edges=' + variableEdges.length + ')']
+          });
+          return;
+        }
+        case 'buildThreadHelixCutter': {
+          reply({ reqId: reqId, ok: false, error: 'buildThreadHelixCutter: exact OCCT kernel required', warnings: [] });
+          return;
+        }
+
+        case 'lawFillet': {
+          var srcLaw = resolveHandle(args.handle);
+          if (!srcLaw) {
+            reply({ reqId: reqId, ok: false, error: 'lawFillet: unknown handle (' + args.handle + ')', warnings: [] });
+            return;
+          }
+          var lawEdges = Array.isArray(args.edges) ? args.edges : [];
+          if (lawEdges.length === 0 || lawEdges.some(function (entry) {
+            return !entry || typeof entry.edgeId !== 'string' || !(entry.startRadius > 0) ||
+              !isFinite(entry.startRadius) || !(entry.endRadius > 0) || !isFinite(entry.endRadius);
+          })) {
+            reply({ reqId: reqId, ok: false, error: 'lawFillet: every edge requires positive finite start/end radii', warnings: [] });
+            return;
+          }
+          var recLaw = { kind: srcLaw.kind, bbox: cloneBBox(srcLaw.bbox), feature: srcLaw.feature };
+          var hLaw = allocShape(recLaw);
+          reply({
+            reqId: reqId,
+            ok: true,
+            shape: shapeToWire(hLaw, recLaw),
+            warnings: ['stub: no actual law fillet (edges=' + lawEdges.length + ')']
+          });
+          return;
+        }
+
         case 'buildPlanarFace': {
           var loop = Array.isArray(args.loop) ? args.loop : [];
           if (loop.length < 3) { reply({ reqId: reqId, ok: false, error: 'buildPlanarFace: loop must have >=3 points, got ' + loop.length, warnings: [] }); return; }

@@ -139,11 +139,15 @@
   // ─── handle table: integer ↔ TopoDS_Shape ──────────────────────────────
   /** @type {Map<number, any>} */
   const handles = new Map();
+  const edgeTopos = new Map();
+  const faceTopos = new Map();
   let nextHandle = 1;
 
-  function alloc(shape) {
+  function alloc(shape, edgeTopo, faceTopo) {
     const h = nextHandle++;
     handles.set(h, shape);
+    if (edgeTopo && edgeTopo.size) edgeTopos.set(h, edgeTopo);
+    if (faceTopo && faceTopo.length) faceTopos.set(h, faceTopo);
     return h;
   }
 
@@ -156,6 +160,12 @@
       void _e;
     }
     handles.delete(h);
+    edgeTopos.delete(h);
+    var faces = faceTopos.get(h) || [];
+    for (var i = 0; i < faces.length; i++) {
+      if (faces[i].face && typeof faces[i].face.delete === 'function') faces[i].face.delete();
+    }
+    faceTopos.delete(h);
     return true;
   }
 
@@ -272,6 +282,427 @@
     return { ok: false, error: 'occt-real: not ready (' + mode + ': ' + modeReason + ')', warnings: [] };
   }
 
+  function extrudeEdgeTopo(loop, z0, z1) {
+    var topo = new Map();
+    for (var i = 0; i < loop.length; i++) {
+      var j = (i + 1) % loop.length, lo = Math.min(i, j), hi = Math.max(i, j);
+      var a = loop[i], b = loop[j];
+      topo.set('e.bottom.' + lo + '-' + hi, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: z0 });
+      topo.set('e.top.' + lo + '-' + hi, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: z1 });
+      topo.set('e.vert.' + i, { x: a.x, y: a.y, z: (z0 + z1) / 2 });
+    }
+    return topo;
+  }
+
+  function rotateRevolvePoint(p, angleDeg) {
+    var angle = angleDeg * Math.PI / 180;
+    return { x: p.x * Math.cos(angle), y: p.y, z: -p.x * Math.sin(angle) };
+  }
+
+  function revolveEdgeTopo(profile, angleDegrees) {
+    var topo = new Map(), eps = 1e-9, full = angleDegrees >= 360 - eps;
+    for (var i = 0; i < profile.length; i++) {
+      var p = profile[i];
+      if (Math.abs(p.x) > eps) topo.set('e.lat.' + i, rotateRevolvePoint(p, full ? 180 : angleDegrees / 2));
+    }
+    for (var e = 0; e < profile.length; e++) {
+      var j = (e + 1) % profile.length, a = profile[e], b = profile[j];
+      var bothOnAxis = Math.abs(a.x) <= eps && Math.abs(b.x) <= eps;
+      var mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      if (bothOnAxis) {
+        if (!full) topo.set('e.axis.' + e, { x: 0, y: mid.y, z: 0 });
+      } else if (full) {
+        if (Math.abs(a.y - b.y) > eps) topo.set('e.seam.' + e, { x: mid.x, y: mid.y, z: 0 });
+      } else {
+        topo.set('e.mer.start.' + e, { x: mid.x, y: mid.y, z: 0 });
+        topo.set('e.mer.end.' + e, rotateRevolvePoint(mid, angleDegrees));
+      }
+    }
+    return topo;
+  }
+
+  function uniqueEdgeMidpoints(shape) {
+    var Exp = occt && (occt.TopExp_Explorer_2 || occt.TopExp_Explorer);
+    var Curve = occt && (occt.BRepAdaptor_Curve_2 || occt.BRepAdaptor_Curve);
+    var topoDS = occt && occt.TopoDS, enums = occt && occt.TopAbs_ShapeEnum;
+    if (!Exp || !Curve || !topoDS || typeof topoDS.Edge_1 !== 'function' || !enums) return [];
+    var exp = null, out = [], seen = new Set();
+    try {
+      exp = new Exp(shape, enums.TopAbs_EDGE, enums.TopAbs_SHAPE);
+      while (exp.More()) {
+        var edge = topoDS.Edge_1(exp.Current()), curve = new Curve(edge);
+        try {
+          var p = curve.Value((curve.FirstParameter() + curve.LastParameter()) / 2);
+          var mid = { x: p.X(), y: p.Y(), z: p.Z() };
+          var key = Math.round(mid.x * 1000) + ',' + Math.round(mid.y * 1000) + ',' + Math.round(mid.z * 1000);
+          if (!seen.has(key)) { seen.add(key); out.push({ edge: edge, mid: mid }); }
+          if (p && typeof p.delete === 'function') p.delete();
+        } finally { if (curve && typeof curve.delete === 'function') curve.delete(); }
+        exp.Next();
+      }
+    } finally { if (exp && typeof exp.delete === 'function') exp.delete(); }
+    return out;
+  }
+
+  function faceCentroid(face) {
+    var Props = occt && (occt.GProp_GProps_1 || occt.GProp_GProps);
+    var fn = occt && occt.BRepGProp && (occt.BRepGProp.SurfaceProperties_1 || occt.BRepGProp.SurfaceProperties);
+    if (!Props || !fn) return null;
+    var props = null, p = null;
+    try {
+      props = new Props();
+      if (occt.BRepGProp.SurfaceProperties_1) occt.BRepGProp.SurfaceProperties_1(face, props, false, false);
+      else occt.BRepGProp.SurfaceProperties(face, props);
+      p = props.CentreOfMass();
+      return { x: p.X(), y: p.Y(), z: p.Z() };
+    } catch (_e) { return null; }
+    finally {
+      if (p && typeof p.delete === 'function') p.delete();
+      if (props && typeof props.delete === 'function') props.delete();
+    }
+  }
+
+  function classifyExtrudeFaces(shape, loop, z0, z1) {
+    var Exp = occt && (occt.TopExp_Explorer_2 || occt.TopExp_Explorer);
+    var topoDS = occt && occt.TopoDS, enums = occt && occt.TopAbs_ShapeEnum;
+    if (!Exp || !topoDS || typeof topoDS.Face_1 !== 'function' || !enums) return [];
+    var exp = null, candidates = [], counts = new Map(), zMid = (z0 + z1) / 2, tol = 1e-4;
+    try {
+      exp = new Exp(shape, enums.TopAbs_FACE, enums.TopAbs_SHAPE);
+      while (exp.More()) {
+        var face = topoDS.Face_1(exp.Current()), c = faceCentroid(face), name = null;
+        if (c && Math.abs(c.z - z0) <= tol) name = 'f.cap.bottom';
+        else if (c && Math.abs(c.z - z1) <= tol) name = 'f.cap.top';
+        else if (c && Math.abs(c.z - zMid) <= tol) {
+          var best = -1, bestDist = Infinity, second = Infinity;
+          for (var i = 0; i < loop.length; i++) {
+            var q = loop[(i + 1) % loop.length];
+            var d = Math.hypot(c.x - (loop[i].x + q.x) / 2, c.y - (loop[i].y + q.y) / 2);
+            if (d < bestDist) { second = bestDist; bestDist = d; best = i; }
+            else if (d < second) second = d;
+          }
+          if (bestDist <= tol && second > tol) name = 'f.side.' + best;
+        }
+        if (name) { candidates.push({ face: face, name: name }); counts.set(name, (counts.get(name) || 0) + 1); }
+        else if (face && typeof face.delete === 'function') face.delete();
+        exp.Next();
+      }
+    } finally { if (exp && typeof exp.delete === 'function') exp.delete(); }
+    return candidates.filter(function (entry) {
+      if (counts.get(entry.name) === 1) return true;
+      if (entry.face && typeof entry.face.delete === 'function') entry.face.delete();
+      return false;
+    });
+  }
+
+  function listToShapes(list) {
+    var List = occt && occt.TopTools_ListOfShape_1;
+    if (!List) return [];
+    var copy = new List(), out = [];
+    try {
+      copy.Assign(list);
+      while (copy.Size() > 0) { out.push(copy.First_1()); copy.RemoveFirst(); }
+      return out;
+    } finally { if (copy && typeof copy.delete === 'function') copy.delete(); }
+  }
+
+  function uniqueFaces(shape) {
+    var Exp = occt && (occt.TopExp_Explorer_2 || occt.TopExp_Explorer);
+    var topoDS = occt && occt.TopoDS, enums = occt && occt.TopAbs_ShapeEnum;
+    if (!Exp || !topoDS || typeof topoDS.Face_1 !== 'function' || !enums) return [];
+    var exp = null, out = [];
+    try {
+      exp = new Exp(shape, enums.TopAbs_FACE, enums.TopAbs_SHAPE);
+      while (exp.More()) {
+        var face = topoDS.Face_1(exp.Current()), duplicate = false;
+        for (var i = 0; i < out.length; i++) {
+          try { if (out[i].IsSame(face)) { duplicate = true; break; } } catch (_e) { void _e; }
+        }
+        if (duplicate && face && typeof face.delete === 'function') face.delete();
+        else out.push(face);
+        exp.Next();
+      }
+    } finally { if (exp && typeof exp.delete === 'function') exp.delete(); }
+    return out;
+  }
+
+  function propagatedBooleanFaces(algo, resultShape, operands) {
+    var resultFaces = uniqueFaces(resultShape);
+    var candidates = resultFaces.map(function () { return new Set(); });
+    for (var o = 0; o < operands.length; o++) {
+      var faces = faceTopos.get(operands[o].handle) || [];
+      for (var f = 0; f < faces.length; f++) {
+        var qualified = operands[o].prefix ? operands[o].prefix + '/' + faces[f].name : faces[f].name;
+        try { if (typeof algo.IsDeleted === 'function' && algo.IsDeleted(faces[f].face)) continue; }
+        catch (_deletedError) { void _deletedError; }
+        for (var i = 0; i < resultFaces.length; i++) {
+          try { if (resultFaces[i].IsSame(faces[f].face)) candidates[i].add(qualified); }
+          catch (_sameError) { void _sameError; }
+        }
+        var modified = [];
+        try { modified = listToShapes(algo.Modified(faces[f].face)); }
+        catch (_modifiedError) { continue; }
+        for (var m = 0; m < modified.length; m++) {
+          for (var r = 0; r < resultFaces.length; r++) {
+            try { if (resultFaces[r].IsSame(modified[m])) candidates[r].add(qualified); }
+            catch (_matchError) { void _matchError; }
+          }
+          if (modified[m] && typeof modified[m].delete === 'function') modified[m].delete();
+        }
+      }
+    }
+    var out = [];
+    for (var n = 0; n < resultFaces.length; n++) {
+      if (candidates[n].size === 1) out.push({ face: resultFaces[n], name: Array.from(candidates[n])[0] });
+      else if (resultFaces[n] && typeof resultFaces[n].delete === 'function') resultFaces[n].delete();
+    }
+    return out;
+  }
+
+  function classifyRevolveFaces(builder, wire, resultShape, profile, angleDegrees) {
+    var resultFaces = uniqueFaces(resultShape);
+    var candidates = resultFaces.map(function () { return new Set(); });
+    var sourceEdges = uniqueEdgeMidpoints(wire), tol = 1e-4;
+    for (var i = 0; i < profile.length; i++) {
+      var q = profile[(i + 1) % profile.length];
+      var anchor = { x: (profile[i].x + q.x) / 2, y: (profile[i].y + q.y) / 2, z: 0 };
+      var best = -1, distance = Infinity;
+      for (var e = 0; e < sourceEdges.length; e++) {
+        var d = Math.hypot(
+          sourceEdges[e].mid.x - anchor.x,
+          sourceEdges[e].mid.y - anchor.y,
+          sourceEdges[e].mid.z - anchor.z
+        );
+        if (d < distance) { best = e; distance = d; }
+      }
+      if (best < 0 || distance > tol || typeof builder.Generated !== 'function') continue;
+      var generated = [];
+      try { generated = listToShapes(builder.Generated(sourceEdges[best].edge)); }
+      catch (_generatedError) { continue; }
+      for (var g = 0; g < generated.length; g++) {
+        for (var r = 0; r < resultFaces.length; r++) {
+          try { if (resultFaces[r].IsSame(generated[g])) candidates[r].add('f.profile.' + i); }
+          catch (_sameError) { void _sameError; }
+        }
+        if (generated[g] && typeof generated[g].delete === 'function') generated[g].delete();
+      }
+    }
+    for (var s = 0; s < sourceEdges.length; s++) {
+      if (sourceEdges[s].edge && typeof sourceEdges[s].edge.delete === 'function') sourceEdges[s].edge.delete();
+    }
+    if (angleDegrees < 360 - 1e-9) {
+      var caps = [
+        { method: 'FirstShape', name: 'f.cap.start' },
+        { method: 'LastShape', name: 'f.cap.end' }
+      ];
+      for (var c = 0; c < caps.length; c++) {
+        if (typeof builder[caps[c].method] !== 'function') continue;
+        var cap = null;
+        try {
+          cap = builder[caps[c].method]();
+          for (var k = 0; k < resultFaces.length; k++) {
+            try { if (resultFaces[k].IsSame(cap)) candidates[k].add(caps[c].name); }
+            catch (_capMatchError) { void _capMatchError; }
+          }
+        } catch (_capError) { void _capError; }
+        finally { if (cap && typeof cap.delete === 'function') cap.delete(); }
+      }
+    }
+    var out = [];
+    for (var n = 0; n < resultFaces.length; n++) {
+      if (candidates[n].size === 1) out.push({ face: resultFaces[n], name: Array.from(candidates[n])[0] });
+      else if (resultFaces[n] && typeof resultFaces[n].delete === 'function') resultFaces[n].delete();
+    }
+    return out;
+  }
+
+  function booleanSeamTopo(op, algo, resultEdges, operands) {
+    var generatedBy = resultEdges.map(function () { return new Set(); });
+    for (var o = 0; o < operands.length; o++) {
+      var faces = faceTopos.get(operands[o].handle) || [];
+      for (var f = 0; f < faces.length; f++) {
+        var generated = [];
+        try { generated = listToShapes(algo.Generated(faces[f].face)); } catch (_e) { continue; }
+        for (var g = 0; g < generated.length; g++) {
+          for (var e = 0; e < resultEdges.length; e++) {
+            try {
+              if (resultEdges[e].edge.IsSame(generated[g])) generatedBy[e].add(operands[o].prefix + '/' + faces[f].name);
+            } catch (_sameError) { void _sameError; }
+          }
+          if (generated[g] && typeof generated[g].delete === 'function') generated[g].delete();
+        }
+      }
+    }
+    var out = new Map();
+    for (var i = 0; i < generatedBy.length; i++) {
+      if (generatedBy[i].size < 2) continue;
+      var pair = Array.from(generatedBy[i]).sort().join('&');
+      out.set(op + '/seam(' + pair + ')', resultEdges[i].mid);
+    }
+    return out;
+  }
+
+  function roundedFaceTopo(op, algo, resultShape, sourceHandle, edgeIds, pickedEdges) {
+    var resultFaces = uniqueFaces(resultShape);
+    var candidates = resultFaces.map(function () { return new Set(); });
+    var sourceFaces = faceTopos.get(sourceHandle) || [];
+    for (var f = 0; f < sourceFaces.length; f++) {
+      for (var r = 0; r < resultFaces.length; r++) {
+        try { if (resultFaces[r].IsSame(sourceFaces[f].face)) candidates[r].add(sourceFaces[f].name); }
+        catch (_sameError) { void _sameError; }
+      }
+      var modified = [];
+      try { modified = listToShapes(algo.Modified(sourceFaces[f].face)); } catch (_modifiedError) { modified = []; }
+      for (var m = 0; m < modified.length; m++) {
+        for (var mr = 0; mr < resultFaces.length; mr++) {
+          try { if (resultFaces[mr].IsSame(modified[m])) candidates[mr].add(sourceFaces[f].name); }
+          catch (_matchError) { void _matchError; }
+        }
+        if (modified[m] && typeof modified[m].delete === 'function') modified[m].delete();
+      }
+    }
+    if (!(edgeIds.length === 1 && edgeIds[0] === 'sel:all') && typeof algo.Generated === 'function') {
+      for (var p = 0; p < pickedEdges.length; p++) {
+        var generated = [];
+        try { generated = listToShapes(algo.Generated(pickedEdges[p])); } catch (_generatedError) { generated = []; }
+        var matchedFaceIndexes = new Set();
+        var orderedFaceIndexes = [];
+        for (var g = 0; g < generated.length; g++) {
+          var generatedFaceIndex = -1;
+          for (var gr = 0; gr < resultFaces.length; gr++) {
+            try {
+              if (resultFaces[gr].IsSame(generated[g])) {
+                matchedFaceIndexes.add(gr);
+                generatedFaceIndex = gr;
+              }
+            }
+            catch (_generatedMatchError) { void _generatedMatchError; }
+          }
+          if (generatedFaceIndex >= 0) orderedFaceIndexes.push(generatedFaceIndex);
+          if (generated[g] && typeof generated[g].delete === 'function') generated[g].delete();
+        }
+        if (matchedFaceIndexes.size === 1) {
+          candidates[Array.from(matchedFaceIndexes)[0]].add(op + '/face(' + edgeIds[p] + ')');
+        } else if (op === 'chamfer' && matchedFaceIndexes.size > 1 && typeof algo.Contour === 'function') {
+          var contour = 0;
+          try { contour = algo.Contour(pickedEdges[p]); } catch (_contourError) { contour = 0; }
+          if (contour > 0) {
+            for (var surface = 0; surface < orderedFaceIndexes.length; surface++) {
+              candidates[orderedFaceIndexes[surface]] = new Set([
+                op + '/face(' + edgeIds[p] + ')/contour.' + contour + '.surface.' + (surface + 1)
+              ]);
+            }
+          }
+        }
+      }
+    }
+    if (pickedEdges.length === 1 && edgeIds.length === 1) {
+      var generatedFaceName = op + '/face(' + edgeIds[0] + ')';
+      var alreadyNamed = candidates.some(function (set) { return set.has(generatedFaceName); });
+      if (!alreadyNamed) {
+        var unnamed = [];
+        for (var u = 0; u < candidates.length; u++) if (candidates[u].size === 0) unnamed.push(u);
+        if (unnamed.length === 1) candidates[unnamed[0]].add(generatedFaceName);
+      }
+    }
+    var out = [];
+    for (var i = 0; i < resultFaces.length; i++) {
+      if (candidates[i].size === 1) out.push({ face: resultFaces[i], name: Array.from(candidates[i])[0] });
+      else if (resultFaces[i] && typeof resultFaces[i].delete === 'function') resultFaces[i].delete();
+    }
+    return out;
+  }
+
+  function roundedSemanticEdges(op, shape, namedFaces) {
+    var resultEdges = uniqueEdgeMidpoints(shape);
+    var adjacent = resultEdges.map(function () { return new Set(); });
+    for (var f = 0; f < namedFaces.length; f++) {
+      var faceEdges = uniqueEdgeMidpoints(namedFaces[f].face);
+      for (var e = 0; e < faceEdges.length; e++) {
+        for (var r = 0; r < resultEdges.length; r++) {
+          try { if (resultEdges[r].edge.IsSame(faceEdges[e].edge)) adjacent[r].add(namedFaces[f].name); }
+          catch (_sameError) { void _sameError; }
+        }
+        if (faceEdges[e].edge && typeof faceEdges[e].edge.delete === 'function') faceEdges[e].edge.delete();
+      }
+    }
+    var proposed = new Map(), collisions = new Set();
+    for (var i = 0; i < adjacent.length; i++) {
+      if (adjacent[i].size < 2) continue;
+      var name = op + '/edge(' + Array.from(adjacent[i]).sort().join('&') + ')';
+      if (proposed.has(name)) collisions.add(name);
+      else proposed.set(name, resultEdges[i].mid);
+    }
+    collisions.forEach(function (name) { proposed.delete(name); });
+    return proposed;
+  }
+
+  function resolveWorkerEdges(handle, shape, edgeIds) {
+    var edges = uniqueEdgeMidpoints(shape);
+    if (edgeIds.length === 1 && edgeIds[0] === 'sel:all') return { ok: true, edges: edges.map(function (e) { return e.edge; }) };
+    var topo = edgeTopos.get(handle);
+    if (!topo || edges.length === 0) return { ok: false, error: 'selected-edge topology unavailable' };
+    var picked = [], claimed = new Set();
+    for (var n = 0; n < edgeIds.length; n++) {
+      var anchor = topo.get(edgeIds[n]), best = -1, dist = Infinity;
+      if (!anchor) return { ok: false, error: 'unknown selected edge ' + edgeIds[n] };
+      for (var i = 0; i < edges.length; i++) {
+        var m = edges[i].mid, d = Math.hypot(m.x - anchor.x, m.y - anchor.y, m.z - anchor.z);
+        if (d < dist) { best = i; dist = d; }
+      }
+      if (best < 0 || dist > 1e-3 || claimed.has(best)) return { ok: false, error: 'selected edge ' + edgeIds[n] + ' no longer resolves uniquely' };
+      claimed.add(best); picked.push(edges[best].edge);
+    }
+    return { ok: true, edges: picked };
+  }
+
+  function survivingWorkerEdgeTopo(handle, shape) {
+    var source = edgeTopos.get(handle);
+    if (!source) return null;
+    var edges = uniqueEdgeMidpoints(shape), out = new Map(), claimed = new Set();
+    source.forEach(function (anchor, name) {
+      var best = -1, dist = Infinity;
+      for (var i = 0; i < edges.length; i++) {
+        var m = edges[i].mid, d = Math.hypot(m.x - anchor.x, m.y - anchor.y, m.z - anchor.z);
+        if (d < dist) { best = i; dist = d; }
+      }
+      if (best >= 0 && dist <= 1e-3 && !claimed.has(best)) {
+        claimed.add(best); out.set(name, edges[best].mid);
+      }
+    });
+    return out;
+  }
+
+  function composedWorkerEdgeTopo(shape, operands, seamTopo) {
+    var edges = uniqueEdgeMidpoints(shape), out = new Map(), claimed = new Set();
+    for (var o = 0; o < operands.length; o++) {
+      var topo = edgeTopos.get(operands[o].handle);
+      if (!topo) continue;
+      topo.forEach(function (anchor, name) {
+        var best = -1, dist = Infinity;
+        for (var i = 0; i < edges.length; i++) {
+          var m = edges[i].mid, d = Math.hypot(m.x - anchor.x, m.y - anchor.y, m.z - anchor.z);
+          if (d < dist) { best = i; dist = d; }
+        }
+        if (best >= 0 && dist <= 1e-3 && !claimed.has(best)) {
+          claimed.add(best); out.set(operands[o].prefix + '/' + name, edges[best].mid);
+        }
+      });
+    }
+    if (seamTopo) seamTopo.forEach(function (anchor, name) {
+      if (!out.has(name)) out.set(name, anchor);
+    });
+    return out;
+  }
+
+  function importedWorkerEdgeTopo(shape) {
+    var mids = uniqueEdgeMidpoints(shape).map(function (entry) { return entry.mid; });
+    mids.sort(function (a, b) { return a.x - b.x || a.y - b.y || a.z - b.z; });
+    var out = new Map();
+    for (var i = 0; i < mids.length; i++) out.set('e.import.' + i, mids[i]);
+    return out;
+  }
+
   // ─── per-op OCCT call sites ────────────────────────────────────────────
 
   /**
@@ -286,6 +717,8 @@
     if (!isFinite(feature.depth) || feature.depth === 0) {
       return { ok: false, error: 'buildFromExtrude: depth must be non-zero finite', warnings: [] };
     }
+    var z0 = feature.z0 == null ? 0 : feature.z0;
+    if (!isFinite(z0)) return { ok: false, error: 'buildFromExtrude: z0 must be finite', warnings: [] };
 
     // Allocate polygon + points first so try/finally can free them.
     var Polygon = occt.BRepBuilderAPI_MakePolygon_1 || occt.BRepBuilderAPI_MakePolygon;
@@ -308,7 +741,7 @@
       polygon = new Polygon();
       for (var i = 0; i < feature.loop.length; i++) {
         var p = feature.loop[i];
-        var pnt = new Pnt(p.x, p.y, 0);
+        var pnt = new Pnt(p.x, p.y, z0);
         points.push(pnt);
         // Embind generated polygons accept Add_1 (real) or Add (older naming).
         if (typeof polygon.Add_1 === 'function') polygon.Add_1(pnt);
@@ -321,7 +754,11 @@
       vec = new Vec(0, 0, feature.depth);
       prismBuilder = new MakePrism(face, vec, false, true);
       var shape = prismBuilder.Shape();
-      var h = alloc(shape);
+      var h = alloc(
+        shape,
+        extrudeEdgeTopo(feature.loop, z0, z0 + feature.depth),
+        classifyExtrudeFaces(shape, feature.loop, z0, z0 + feature.depth)
+      );
       return { ok: true, handle: h, kind: 'solid', warnings: [] };
     } catch (err) {
       return { ok: false, error: 'buildFromExtrude: ' + (err && err.message), warnings: [] };
@@ -338,6 +775,166 @@
     }
   }
 
+  function buildPrismAt(loop, z0, heightMm) {
+    if (!Array.isArray(loop) || loop.length < 3 || !isFinite(z0) || !isFinite(heightMm) || !(heightMm > 0)) {
+      return { ok: false, error: 'buildPrismAt: loop, z0, and positive height are required', warnings: [] };
+    }
+    var circle = detectCircleLoop(loop);
+    if (circle) return buildCylinderAt(circle.center, z0, heightMm, circle.radius);
+    return buildFromExtrude({ loop: loop, depth: heightMm, z0: z0 });
+  }
+
+  function detectCircleLoop(loop) {
+    if (!Array.isArray(loop) || loop.length < 16) return null;
+    var cx = 0, cy = 0;
+    for (var i = 0; i < loop.length; i++) { cx += loop[i].x; cy += loop[i].y; }
+    cx /= loop.length; cy /= loop.length;
+    var radii = [], radius = 0;
+    for (var r = 0; r < loop.length; r++) {
+      var value = Math.hypot(loop[r].x - cx, loop[r].y - cy);
+      if (!isFinite(value) || !(value > 0)) return null;
+      radii.push(value); radius += value;
+    }
+    radius /= loop.length;
+    var tolerance = Math.max(1e-7, radius * 1e-6);
+    for (var j = 0; j < radii.length; j++) if (Math.abs(radii[j] - radius) > tolerance) return null;
+    var direction = 0, total = 0;
+    for (var a = 0; a < loop.length; a++) {
+      var b = (a + 1) % loop.length;
+      var aa = Math.atan2(loop[a].y - cy, loop[a].x - cx);
+      var ab = Math.atan2(loop[b].y - cy, loop[b].x - cx);
+      var delta = ab - aa;
+      while (delta <= -Math.PI) delta += 2 * Math.PI;
+      while (delta > Math.PI) delta -= 2 * Math.PI;
+      if (Math.abs(delta) < 1e-9) return null;
+      var sign = delta > 0 ? 1 : -1;
+      if (direction === 0) direction = sign;
+      else if (sign !== direction) return null;
+      total += delta;
+    }
+    if (Math.abs(Math.abs(total) - 2 * Math.PI) > 1e-6) return null;
+    return { center: { x: cx, y: cy }, radius: radius };
+  }
+
+  function classifyAxialPrimitiveFaces(shape, center, z0, z1) {
+    var faces = uniqueFaces(shape), out = [], tol = 1e-4;
+    for (var i = 0; i < faces.length; i++) {
+      var c = faceCentroid(faces[i]), name = null;
+      if (c && Math.abs(c.z - z0) <= tol) name = 'f.cap.bottom';
+      else if (c && Math.abs(c.z - z1) <= tol) name = 'f.cap.top';
+      else if (c && Math.abs(c.x - center.x) <= tol && Math.abs(c.y - center.y) <= tol) name = 'f.side.0';
+      if (name) out.push({ face: faces[i], name: name });
+      else if (faces[i] && faces[i].delete) faces[i].delete();
+    }
+    return out;
+  }
+
+  function buildCylinderAt(center, z0, heightMm, radius) {
+    var Pnt = occt && (occt.gp_Pnt_3 || occt.gp_Pnt), Dir = occt && (occt.gp_Dir_4 || occt.gp_Dir);
+    var Ax2 = occt && (occt.gp_Ax2_3 || occt.gp_Ax2), Cylinder = occt && (occt.BRepPrimAPI_MakeCylinder_3 || occt.BRepPrimAPI_MakeCylinder);
+    if (!Pnt || !Dir || !Ax2 || !Cylinder) return { ok: false, error: 'buildCylinderAt: required OCCT symbol missing', warnings: [] };
+    var origin = null, dir = null, axis = null, maker = null;
+    try {
+      origin = new Pnt(center.x, center.y, z0); dir = new Dir(0, 0, 1); axis = new Ax2(origin, dir);
+      maker = new Cylinder(axis, radius, heightMm);
+      var shape = maker.Shape();
+      var h = alloc(shape, importedWorkerEdgeTopo(shape), classifyAxialPrimitiveFaces(shape, center, z0, z0 + heightMm));
+      return { ok: true, handle: h, kind: 'solid', warnings: ['analytic circular prism promoted to OCCT cylinder'] };
+    } catch (err) { return { ok: false, error: 'buildCylinderAt: ' + (err && err.message), warnings: [] }; }
+    finally {
+      if (maker && maker.delete) maker.delete(); if (axis && axis.delete) axis.delete();
+      if (dir && dir.delete) dir.delete(); if (origin && origin.delete) origin.delete();
+    }
+  }
+
+  function buildConeAt(center, z0, heightMm, radius0, radius1) {
+    if (!occt) return notReady();
+    if (!center || !isFinite(center.x) || !isFinite(center.y) || !isFinite(z0) || !isFinite(heightMm) || !(heightMm > 0) ||
+        !isFinite(radius0) || !isFinite(radius1) || radius0 < 0 || radius1 < 0 || (radius0 === 0 && radius1 === 0)) {
+      return { ok: false, error: 'buildConeAt: finite center/z0, positive height, and non-negative radii are required', warnings: [] };
+    }
+    var Pnt = occt.gp_Pnt_3 || occt.gp_Pnt;
+    var Dir = occt.gp_Dir_4 || occt.gp_Dir;
+    var Ax2 = occt.gp_Ax2_3 || occt.gp_Ax2;
+    var Cone = occt.BRepPrimAPI_MakeCone_3 || occt.BRepPrimAPI_MakeCone;
+    if (!Pnt || !Dir || !Ax2 || !Cone) return { ok: false, error: 'buildConeAt: required OCCT symbol missing', warnings: [] };
+    var origin = null, dir = null, axis = null, maker = null;
+    try {
+      origin = new Pnt(center.x, center.y, z0);
+      dir = new Dir(0, 0, 1);
+      axis = new Ax2(origin, dir);
+      maker = new Cone(axis, radius0, radius1, heightMm);
+      var shape = maker.Shape();
+      var h = alloc(shape, importedWorkerEdgeTopo(shape));
+      return { ok: true, handle: h, kind: 'solid', warnings: [] };
+    } catch (err) {
+      return { ok: false, error: 'buildConeAt: ' + (err && err.message), warnings: [] };
+    } finally {
+      if (maker && maker.delete) maker.delete();
+      if (axis && axis.delete) axis.delete();
+      if (dir && dir.delete) dir.delete();
+      if (origin && origin.delete) origin.delete();
+    }
+  }
+
+  function buildThreadHelixCutter(opts) {
+    if (!occt) return notReady();
+    opts = opts || {};
+    var center = opts.center || {};
+    var values = [center.x, center.y, opts.z0, opts.innerRadius, opts.outerRadius, opts.pitch, opts.lengthMm];
+    if (!values.every(isFinite) || !(opts.innerRadius > 0) || !(opts.outerRadius > opts.innerRadius) ||
+        !(opts.pitch > 0) || !(opts.lengthMm > 0)) {
+      return { ok: false, error: 'buildThreadHelixCutter: requires finite center/z0, 0 < innerRadius < outerRadius, and positive pitch/length', warnings: [] };
+    }
+    var required = ['gp_Pnt_3', 'gp_Dir_4', 'gp_Ax3_3', 'Geom_CylindricalSurface_1', 'Handle_Geom_Surface_2',
+      'gp_Pnt2d_3', 'gp_Dir2d_4', 'Geom2d_Line_3', 'Handle_Geom2d_Curve_2', 'BRepBuilderAPI_MakeEdge_31',
+      'BRepBuilderAPI_MakeWire_2', 'BRepBuilderAPI_MakePolygon_1', 'BRepBuilderAPI_MakeFace_15',
+      'BRepOffsetAPI_MakePipe_1', 'BRepCheck_Analyzer'];
+    for (var ri = 0; ri < required.length; ri++) {
+      if (!occt[required[ri]]) return { ok: false, error: 'buildThreadHelixCutter: required OCCT symbol missing: ' + required[ri], warnings: [] };
+    }
+    try {
+      var origin = new occt.gp_Pnt_3(center.x, center.y, opts.z0);
+      var axis = new occt.gp_Ax3_3(origin, new occt.gp_Dir_4(0, 0, 1), new occt.gp_Dir_4(1, 0, 0));
+      var threadKind = opts.threadKind === 'internal' ? 'internal' : 'external';
+      var spineRadius = threadKind === 'internal' ? opts.innerRadius : opts.outerRadius;
+      var surface = new occt.Geom_CylindricalSurface_1(axis, spineRadius);
+      var surfaceHandle = new occt.Handle_Geom_Surface_2(surface);
+      var hand = opts.direction === 'left_hand' ? -1 : 1;
+      var p2 = new occt.gp_Pnt2d_3(0, 0);
+      var d2 = new occt.gp_Dir2d_4(hand * 2 * Math.PI, opts.pitch);
+      var line = new occt.Geom2d_Line_3(p2, d2);
+      var lineHandle = new occt.Handle_Geom2d_Curve_2(line);
+      var turns = opts.lengthMm / opts.pitch;
+      var parameterLength = turns * Math.hypot(2 * Math.PI, opts.pitch);
+      var edgeMaker = new occt.BRepBuilderAPI_MakeEdge_31(lineHandle, surfaceHandle, 0, parameterLength);
+      var helixEdge = edgeMaker.Edge();
+      if (!occt.BRepLib || !occt.BRepLib.BuildCurves3d_2 || !occt.BRepLib.BuildCurves3d_2(helixEdge)) {
+        return { ok: false, error: 'buildThreadHelixCutter: OCCT could not build the 3D helix curve', warnings: [] };
+      }
+      var spine = new occt.BRepBuilderAPI_MakeWire_2(helixEdge).Wire();
+      var halfWidth = Math.min(opts.pitch * 0.24, opts.lengthMm * 0.24);
+      var profile = new occt.BRepBuilderAPI_MakePolygon_1();
+      var baseRadius = threadKind === 'internal' ? opts.innerRadius : opts.outerRadius;
+      var tipRadius = threadKind === 'internal' ? opts.outerRadius : opts.innerRadius;
+      profile.Add_1(new occt.gp_Pnt_3(center.x + baseRadius, center.y, opts.z0 - halfWidth));
+      profile.Add_1(new occt.gp_Pnt_3(center.x + tipRadius, center.y, opts.z0));
+      profile.Add_1(new occt.gp_Pnt_3(center.x + baseRadius, center.y, opts.z0 + halfWidth));
+      profile.Close();
+      var profileFace = new occt.BRepBuilderAPI_MakeFace_15(profile.Wire(), false).Face();
+      var pipe = new occt.BRepOffsetAPI_MakePipe_1(spine, profileFace);
+      var shape = pipe.Shape();
+      var analyzer = null;
+      try { analyzer = new occt.BRepCheck_Analyzer(shape, true, false); }
+      catch (_) { analyzer = new occt.BRepCheck_Analyzer(shape, true); }
+      if (!analyzer.IsValid_2()) return { ok: false, error: 'buildThreadHelixCutter: OCCT produced an invalid helical cutter', warnings: [] };
+      var h = alloc(shape, importedWorkerEdgeTopo(shape));
+      return { ok: true, handle: h, kind: 'solid', warnings: ['exact OCCT cylindrical helix sweep'] };
+    } catch (err) {
+      return { ok: false, error: 'buildThreadHelixCutter: ' + (err && err.message), warnings: [] };
+    }
+  }
+
   /**
    * profile → MakeFace → BRepPrimAPI_MakeRevol around gp_Ax1(+Y).
    * Phase 1 simplification: always full 360° (angleDegrees is acknowledged
@@ -348,10 +945,11 @@
     if (!feature || !Array.isArray(feature.loop) || feature.loop.length < 3) {
       return { ok: false, error: 'buildFromRevolve: loop must have >=3 points', warnings: [] };
     }
-    var warnings = [];
-    if (typeof feature.angleDegrees === 'number' && feature.angleDegrees < 360) {
-      warnings.push('phase1: partial sweep ' + feature.angleDegrees + 'deg uses full revolve envelope');
+    var angleDegrees = feature.angleDegrees == null ? 360 : feature.angleDegrees;
+    if (!isFinite(angleDegrees) || !(angleDegrees > 0) || angleDegrees > 360) {
+      return { ok: false, error: 'buildFromRevolve: angleDegrees must be in (0, 360]', warnings: [] };
     }
+    var warnings = [];
 
     var Polygon = occt.BRepBuilderAPI_MakePolygon_1 || occt.BRepBuilderAPI_MakePolygon;
     var Pnt = occt.gp_Pnt_3 || occt.gp_Pnt;
@@ -390,13 +988,17 @@
         origin = new Pnt(0, 0, 0);
         dir = new Dir(0, 1, 0);
         axis = new Ax1(origin, dir);
-        revolBuilder = new MakeRevol(face, axis, false);
+        revolBuilder = new MakeRevol(face, axis, angleDegrees * Math.PI / 180, false);
       } else {
         // Fall back to whatever MakeRevol overload exists on the module.
         revolBuilder = new MakeRevol(face);
       }
       var shape = revolBuilder.Shape();
-      var h = alloc(shape);
+      var h = alloc(
+        shape,
+        revolveEdgeTopo(feature.loop, angleDegrees),
+        classifyRevolveFaces(revolBuilder, wire, shape, feature.loop, angleDegrees)
+      );
       return { ok: true, handle: h, kind: 'solid', warnings: warnings };
     } catch (err) {
       return { ok: false, error: 'buildFromRevolve: ' + (err && err.message), warnings: warnings };
@@ -435,7 +1037,14 @@
         return { ok: false, error: op + ': BRepAlgoAPI not done', warnings: [] };
       }
       var shape = algo.Shape();
-      var h = alloc(shape);
+      var operands = [
+        { handle: handleA, prefix: 'a' }, { handle: handleB, prefix: 'b' }
+      ];
+      var resultEdges = uniqueEdgeMidpoints(shape);
+      var opName = op === 'booleanUnion' ? 'union' : (op === 'booleanSubtract' ? 'cut' : 'intersect');
+      var seams = booleanSeamTopo(opName, algo, resultEdges, operands);
+      var resultFaces = propagatedBooleanFaces(algo, shape, operands);
+      var h = alloc(shape, composedWorkerEdgeTopo(shape, operands, seams), resultFaces);
       return { ok: true, handle: h, kind: 'solid', warnings: [] };
     } catch (err) {
       return { ok: false, error: op + ': ' + (err && err.message), warnings: [] };
@@ -449,13 +1058,25 @@
    * Real edge selection (matching `edgeIds` against TopExp_Explorer output) is
    * a Phase 5.5+ follow-up.
    */
-  function filletOrChamfer(op, handle, edgeIds, dim) {
+  function filletOrChamfer(op, handle, edgeIds, dim, perEdgeDims, radiusLaws, continuityOptions) {
     if (!occt) return notReady();
     var src = handles.get(handle);
     if (!src) return { ok: false, error: op + ': unknown handle', warnings: [] };
-    if (!isFinite(dim) || !(dim > 0)) {
+    if (!perEdgeDims && !radiusLaws && (!isFinite(dim) || !(dim > 0))) {
       return { ok: false, error: op + ': dim must be positive finite', warnings: [] };
     }
+    if (!Array.isArray(edgeIds) || edgeIds.length === 0) return { ok: false, error: op + ': no edges selected', warnings: [] };
+    if (perEdgeDims && (perEdgeDims.length !== edgeIds.length || perEdgeDims.some(function (v) { return !isFinite(v) || !(v > 0); }))) {
+      return { ok: false, error: op + ': every selected edge requires a positive finite dimension', warnings: [] };
+    }
+    if (radiusLaws && (radiusLaws.length !== edgeIds.length || radiusLaws.some(function (law) {
+      return !law || !isFinite(law.startRadius) || !(law.startRadius > 0) || !isFinite(law.endRadius) || !(law.endRadius > 0);
+    }))) {
+      return { ok: false, error: op + ': every selected edge requires positive finite start/end radii', warnings: [] };
+    }
+    var matched = resolveWorkerEdges(handle, src, edgeIds);
+    if (!matched.ok) return { ok: false, error: op + ': ' + matched.error + '; refusing to widen selection', warnings: [] };
+    if (matched.edges.length === 0) return { ok: false, error: op + ': no live edges resolved', warnings: [] };
 
     var Algo = op === 'fillet'
       ? (occt.BRepFilletAPI_MakeFillet_1 || occt.BRepFilletAPI_MakeFillet)
@@ -463,12 +1084,33 @@
     if (!Algo) return { ok: false, error: op + ': OCCT symbol missing', warnings: [] };
 
     var algo = null;
-    var explorer = null;
-    var warnings = ['phase1: ' + op + ' applied to all edges (edgeIds=' + (edgeIds ? edgeIds.length : 0) + ' ignored)'];
+    var warnings = [];
     try {
-      algo = new Algo(src);
+      algo = op === 'fillet' ? new Algo(src, 0) : new Algo(src);
+      for (var selectedIndex = 0; selectedIndex < matched.edges.length; selectedIndex++) {
+        var selectedDim = perEdgeDims ? perEdgeDims[selectedIndex] : dim;
+        if (radiusLaws) {
+          if (typeof algo.Add_3 !== 'function') {
+            return { ok: false, error: op + ': OCCT linear radius-law overload unavailable', warnings: [] };
+          }
+          algo.Add_3(radiusLaws[selectedIndex].startRadius, radiusLaws[selectedIndex].endRadius, matched.edges[selectedIndex]);
+        } else if (typeof algo.Add_2 === 'function') algo.Add_2(selectedDim, matched.edges[selectedIndex]);
+        else algo.Add(selectedDim, matched.edges[selectedIndex]);
+      }
+      if (continuityOptions) {
+        var shapeEnum = occt.GeomAbs_Shape;
+        var continuity = continuityOptions.continuity === 'G2'
+          ? shapeEnum && shapeEnum.GeomAbs_C2
+          : shapeEnum && shapeEnum.GeomAbs_C1;
+        var angularTolerance = continuityOptions.angularTolerance == null ? 1e-4 : continuityOptions.angularTolerance;
+        if (!continuity || typeof algo.SetContinuity !== 'function' || !isFinite(angularTolerance) || !(angularTolerance > 0)) {
+          return { ok: false, error: op + ': requested continuity settings unavailable or invalid', warnings: [] };
+        }
+        algo.SetContinuity(continuity, angularTolerance);
+      }
       // Iterate TopExp_Explorer with TopAbs_EDGE to add every edge.
-      if (typeof occt.TopExp_Explorer_2 === 'function' && occt.TopAbs_ShapeEnum) {
+      /* Legacy all-edge fallback removed: selected IDs must never widen. */
+      if (false && typeof occt.TopExp_Explorer_2 === 'function' && occt.TopAbs_ShapeEnum) {
         var TopExp = occt.TopExp_Explorer_2 || occt.TopExp_Explorer;
         explorer = new TopExp(src, occt.TopAbs_ShapeEnum.TopAbs_EDGE, occt.TopAbs_ShapeEnum.TopAbs_SHAPE);
         while (explorer.More()) {
@@ -483,20 +1125,97 @@
           }
           explorer.Next();
         }
-      } else if (typeof algo.Add === 'function') {
+      } else if (false && typeof algo.Add === 'function') {
         // Stub path — no explorer, just no edges. Algo.Build() still runs.
         void edgeIds;
       }
       if (typeof algo.Build === 'function') algo.Build();
+      if (typeof algo.IsDone === 'function' && !algo.IsDone()) {
+        return { ok: false, error: op + ': OCCT kernel did not produce a valid rounded shape', warnings: warnings };
+      }
       var shape = algo.Shape();
-      var h = alloc(shape);
+      if (!shape || (typeof shape.IsNull === 'function' && shape.IsNull())) {
+        return { ok: false, error: op + ': OCCT kernel returned an empty rounded shape', warnings: warnings };
+      }
+      var faces = roundedFaceTopo(op, algo, shape, handle, edgeIds, matched.edges);
+      var edges = survivingWorkerEdgeTopo(handle, shape) || new Map();
+      roundedSemanticEdges(op, shape, faces).forEach(function (anchor, name) { edges.set(name, anchor); });
+      var h = alloc(shape, edges, faces);
       return { ok: true, handle: h, kind: 'solid', warnings: warnings };
     } catch (err) {
       return { ok: false, error: op + ': ' + (err && err.message), warnings: warnings };
     } finally {
-      if (explorer && typeof explorer.delete === 'function') explorer.delete();
       if (algo && typeof algo.delete === 'function') algo.delete();
     }
+  }
+
+  function variableFilletWithRecovery(handle, entries) {
+    if (!Array.isArray(entries) || entries.length === 0) {
+      return { ok: false, error: 'variableFillet: no edges selected', warnings: [] };
+    }
+    var edgeIds = [], radii = [];
+    for (var i = 0; i < entries.length; i++) {
+      if (!entries[i] || typeof entries[i].edgeId !== 'string' || !isFinite(entries[i].radius) || !(entries[i].radius > 0)) {
+        return { ok: false, error: 'variableFillet: every edge requires an id and positive finite radius', warnings: [] };
+      }
+      edgeIds.push(entries[i].edgeId);
+      radii.push(entries[i].radius);
+    }
+    var factors = [1, 0.75, 0.5, 0.25];
+    var failures = [];
+    for (var attempt = 0; attempt < factors.length; attempt++) {
+      var scaled = radii.map(function (radius) { return radius * factors[attempt]; });
+      var result = filletOrChamfer('fillet', handle, edgeIds, NaN, scaled);
+      if (result.ok) {
+        if (factors[attempt] < 1) {
+          result.warnings = (result.warnings || []).concat([
+            'variableFillet: recovered by uniformly scaling all radii to ' + factors[attempt] +
+            'x; requested ratios preserved'
+          ]);
+        }
+        return result;
+      }
+      failures.push(factors[attempt] + 'x: ' + result.error);
+      if (result.error && /unknown selected edge|topology unavailable|requires an id|positive finite/.test(result.error)) break;
+    }
+    return {
+      ok: false,
+      error: 'variableFillet: all radius scales failed (' + failures.join('; ') + ')',
+      warnings: []
+    };
+  }
+
+  function lawFilletWithRecovery(handle, entries, continuityOptions) {
+    if (!Array.isArray(entries) || entries.length === 0) {
+      return { ok: false, error: 'lawFillet: no edges selected', warnings: [] };
+    }
+    var edgeIds = [], laws = [];
+    for (var i = 0; i < entries.length; i++) {
+      var entry = entries[i];
+      if (!entry || typeof entry.edgeId !== 'string' || !isFinite(entry.startRadius) || !(entry.startRadius > 0) ||
+          !isFinite(entry.endRadius) || !(entry.endRadius > 0)) {
+        return { ok: false, error: 'lawFillet: every edge requires positive finite start/end radii', warnings: [] };
+      }
+      edgeIds.push(entry.edgeId);
+      laws.push({ startRadius: entry.startRadius, endRadius: entry.endRadius });
+    }
+    var factors = [1, 0.75, 0.5, 0.25], failures = [];
+    for (var attempt = 0; attempt < factors.length; attempt++) {
+      var scaled = laws.map(function (law) {
+        return { startRadius: law.startRadius * factors[attempt], endRadius: law.endRadius * factors[attempt] };
+      });
+      var result = filletOrChamfer('fillet', handle, edgeIds, NaN, null, scaled, continuityOptions || { continuity: 'G1' });
+      if (result.ok) {
+        result.warnings = (result.warnings || []).concat([
+          'lawFillet: linear start-to-end radius law applied at ' + factors[attempt] + 'x scale with ' +
+          ((continuityOptions && continuityOptions.continuity) || 'G1') + ' continuity'
+        ]);
+        return result;
+      }
+      failures.push(factors[attempt] + 'x: ' + result.error);
+      if (result.error && /unknown selected edge|topology unavailable|positive finite|overload unavailable/.test(result.error)) break;
+    }
+    return { ok: false, error: 'lawFillet: all radius scales failed (' + failures.join('; ') + ')', warnings: [] };
   }
 
   // ─── STEP MEMFS paths — ⚠ 10-CHAR HARD CEILING (kernel defect, W3-D) ──
@@ -652,8 +1371,8 @@
       if (!shape || (typeof shape.IsNull === 'function' && shape.IsNull())) {
         return { ok: false, error: 'importSTEP: kernel returned a null shape despite ' + n + ' transfer root(s)', warnings: [] };
       }
-      var h = alloc(shape);
-      return { ok: true, handle: h, kind: 'solid', warnings: ['imported B-rep — no stable edge names (use sel:all)'] };
+      var h = alloc(shape, importedWorkerEdgeTopo(shape));
+      return { ok: true, handle: h, kind: 'solid', warnings: ['imported B-rep edges named deterministically as e.import.*'] };
     } catch (err) {
       return { ok: false, error: 'importSTEP: ' + (err && err.message), warnings: [] };
     } finally {
@@ -980,6 +1699,18 @@
           makeShapePayload(reqId, buildFromRevolve(args.feature));
           return;
 
+        case 'buildPrismAt':
+          makeShapePayload(reqId, buildPrismAt(args.loop || [], args.z0, args.heightMm));
+          return;
+
+        case 'buildConeAt':
+          makeShapePayload(reqId, buildConeAt(args.center, args.z0, args.heightMm, args.radius0, args.radius1));
+          return;
+
+        case 'buildThreadHelixCutter':
+          makeShapePayload(reqId, buildThreadHelixCutter(args.opts));
+          return;
+
         case 'booleanUnion':
         case 'booleanSubtract':
         case 'booleanIntersect':
@@ -989,6 +1720,19 @@
         case 'fillet':
         case 'chamfer':
           makeShapePayload(reqId, filletOrChamfer(op, args.handle, args.edgeIds || [], args.dim));
+          return;
+
+        case 'variableFillet':
+          var variableEdges = Array.isArray(args.edges) ? args.edges : [];
+          makeShapePayload(reqId, variableFilletWithRecovery(args.handle, variableEdges));
+          return;
+
+        case 'lawFillet':
+          makeShapePayload(reqId, lawFilletWithRecovery(
+            args.handle,
+            Array.isArray(args.edges) ? args.edges : [],
+            args.options || { continuity: 'G1' }
+          ));
           return;
 
         case 'buildPlanarFace':
@@ -1056,14 +1800,21 @@
         get reason() { return modeReason; },
         get occt() { return occt; },
         get handles() { return handles; },
+        get edgeTopos() { return edgeTopos; },
+        get faceTopos() { return faceTopos; },
         get nextHandle() { return nextHandle; },
         // Op handlers exposed so the test can invoke them directly with a
         // mock module installed.
         ops: {
           buildFromExtrude: buildFromExtrude,
           buildFromRevolve: buildFromRevolve,
+          buildPrismAt: buildPrismAt,
+          buildConeAt: buildConeAt,
+          buildThreadHelixCutter: buildThreadHelixCutter,
           booleanOp: booleanOp,
           filletOrChamfer: filletOrChamfer,
+          variableFilletWithRecovery: variableFilletWithRecovery,
+          lawFilletWithRecovery: lawFilletWithRecovery,
           exportSTEP: exportSTEP,
           importSTEP: importSTEP,
           tessellate: tessellate,

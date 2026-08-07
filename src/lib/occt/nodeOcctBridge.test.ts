@@ -540,6 +540,19 @@ describe("nodeOcctBridge (real OCCT)", () => {
     expect(c.shape?.volume).toBeCloseTo(490, 0);
   });
 
+  it("preserves untouched edge names across fillet for a following chamfer", async () => {
+    if (!okLoad) return;
+    const box = await bridge.buildFromExtrude({
+      kind: "extrude", loop: SQ(0, 12), depth: 6, direction: "one_sided", mode: "add",
+    });
+    expect(box.ok).toBe(true);
+    const fillet = await bridge.fillet(box.shape!, ["e.vert.0", "e.vert.1"], 1);
+    expect(fillet.ok).toBe(true);
+    const chamfer = await bridge.chamfer(fillet.shape!, ["e.vert.2", "e.vert.3"], 1);
+    expect(chamfer.ok, chamfer.error).toBe(true);
+    expect(chamfer.shape?.volume).toBeGreaterThan(0);
+  });
+
   it("K2.2: name-based fillet works on a composed (boolean) shape", async () => {
     if (!okLoad) return;
     const base = await bridge.buildFromExtrude({
@@ -892,4 +905,27 @@ describe("nodeOcctBridge (real OCCT)", () => {
     expect(sec.ok).toBe(false);
     expect(sec.error).toMatch(/do not intersect/);
   });
+
+  it("K11: exact cylindrical helix sweep cuts a BREP thread and survives STEP export", async () => {
+    if (!okLoad) return;
+    expect(bridge.buildThreadHelixCutter).toBeTypeOf("function");
+    const circle = Array.from({ length: 48 }, (_, i) => {
+      const a = 2 * Math.PI * i / 48;
+      return { x: 4 * Math.cos(a), y: 4 * Math.sin(a) };
+    });
+    const rod = await bridge.buildPrismAt!(circle, 0, 4);
+    const cutter = await bridge.buildThreadHelixCutter!({
+      center: { x: 0, y: 0 }, z0: 0.5, innerRadius: 3.3, outerRadius: 4.3,
+      pitch: 1.25, lengthMm: 2.5, direction: "right_hand",
+    });
+    expect(cutter.ok, cutter.error).toBe(true);
+    expect(cutter.shape?.kind).toBe("solid");
+    expect(cutter.shape?.volume).toBeGreaterThan(0);
+    expect(cutter.warnings).toContain("exact OCCT cylindrical helix sweep");
+    const threaded = await bridge.boolean.subtract(rod.shape!, cutter.shape!);
+    expect(threaded.ok, threaded.error).toBe(true);
+    expect(threaded.shape!.volume).toBeLessThan(rod.shape!.volume!);
+    const step = await bridge.exportSTEP(threaded.shape!);
+    expect(step).toContain("ADVANCED_BREP_SHAPE_REPRESENTATION");
+  }, 60_000);
 });

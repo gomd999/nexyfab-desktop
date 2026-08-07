@@ -1425,6 +1425,29 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
     return { live, picked };
   }
 
+  /** Preserve only edge names whose geometric anchors still bind uniquely
+   * after a topology-changing round. Consumed edges naturally disappear. */
+  function survivingRoundedEdgeTopo(
+    source: OcctShape,
+    rounded: OcctInstance,
+  ): EdgeAnchorSource | undefined {
+    const topo = topos.get(source.id);
+    if (!topo) return undefined;
+    const resultEdges = uniqueEdges(oc, rounded);
+    const mids = resultEdges.map((entry) => entry.mid);
+    const inherited = new Map<string, Vec3>();
+    const claimed = new Set<number>();
+    for (const name of topo.names()) {
+      const anchor = topo.anchor(name);
+      if (!anchor) continue;
+      const match = nearestByMidpoint(mids, anchor, 1e-3);
+      if (match.index < 0 || claimed.has(match.index)) continue;
+      claimed.add(match.index);
+      inherited.set(name, mids[match.index]!);
+    }
+    return inherited.size > 0 ? fromAnchors(inherited) : undefined;
+  }
+
   function roundEdges(
     op: "fillet" | "chamfer",
     shape: OcctShape,
@@ -1468,10 +1491,11 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
         [{ faces: faceTables.get(shape.id) ?? [] }],
         rounded,
       );
+      const inheritedEdges = survivingRoundedEdgeTopo(shape, rounded);
       return result(
         rounded,
         [`${op}ed ${picked.length} edge(s) @ ${size}`],
-        undefined,
+        inheritedEdges,
         "solid",
         inheritedFaces,
       );
@@ -2145,6 +2169,60 @@ export function createNodeOcctBridge(oc: OcctModule): OcctBridge {
         return {
           ok: false,
           error: `buildConeAt: ${e instanceof Error ? e.message : String(e)}`,
+          warnings: [],
+        };
+      }
+    },
+
+    async buildThreadHelixCutter(opts) {
+      try {
+        const { center, z0, innerRadius, outerRadius, pitch, lengthMm } = opts;
+        if (![center?.x, center?.y, z0, innerRadius, outerRadius, pitch, lengthMm].every(Number.isFinite))
+          throw new Error("all dimensions must be finite");
+        if (!(innerRadius > 0) || !(outerRadius > innerRadius) || !(pitch > 0) || !(lengthMm > 0))
+          throw new Error("requires 0 < innerRadius < outerRadius and positive pitch/length");
+
+        const hand = opts.direction === "left_hand" ? -1 : 1;
+        const turns = lengthMm / pitch;
+        const threadKind = opts.threadKind ?? "external";
+        const spineRadius = threadKind === "internal" ? innerRadius : outerRadius;
+        const axis = m.inst(
+          "gp_Ax3_3",
+          m.inst("gp_Pnt_3", center.x, center.y, z0),
+          m.inst("gp_Dir_4", 0, 0, 1),
+          m.inst("gp_Dir_4", 1, 0, 0),
+        );
+        const surface = m.inst("Geom_CylindricalSurface_1", axis, spineRadius);
+        const surfaceHandle = m.inst("Handle_Geom_Surface_2", surface);
+        const p2 = m.inst("gp_Pnt2d_3", 0, 0);
+        const d2 = m.inst("gp_Dir2d_4", hand * 2 * Math.PI, pitch);
+        const line = m.inst("Geom2d_Line_3", p2, d2);
+        const lineHandle = m.inst("Handle_Geom2d_Curve_2", line);
+        const parameterLength = turns * Math.hypot(2 * Math.PI, pitch);
+        const edgeMaker = m.inst("BRepBuilderAPI_MakeEdge_31", lineHandle, surfaceHandle, 0, parameterLength);
+        const helixEdge = edgeMaker.Edge() as OcctInstance;
+        const built3d = m.stat("BRepLib").BuildCurves3d_2(helixEdge) as boolean;
+        if (!built3d) throw new Error("OCCT could not build the 3D helix curve");
+        const spine = m.inst("BRepBuilderAPI_MakeWire_2", helixEdge).Wire() as OcctInstance;
+
+        const halfWidth = Math.min(pitch * 0.24, lengthMm * 0.24);
+        const profilePoly = m.inst("BRepBuilderAPI_MakePolygon_1");
+        const baseRadius = threadKind === "internal" ? innerRadius : outerRadius;
+        const tipRadius = threadKind === "internal" ? outerRadius : innerRadius;
+        profilePoly.Add_1(m.inst("gp_Pnt_3", center.x + baseRadius, center.y, z0 - halfWidth));
+        profilePoly.Add_1(m.inst("gp_Pnt_3", center.x + tipRadius, center.y, z0));
+        profilePoly.Add_1(m.inst("gp_Pnt_3", center.x + baseRadius, center.y, z0 + halfWidth));
+        profilePoly.Close();
+        const profileFace = m.inst("BRepBuilderAPI_MakeFace_15", profilePoly.Wire(), false).Face() as OcctInstance;
+        const pipe = m.inst("BRepOffsetAPI_MakePipe_1", spine, profileFace);
+        const shape = pipe.Shape() as OcctInstance;
+        const analyzer = buildAnalyzer(oc, shape);
+        if (!(analyzer.IsValid_2() as boolean)) throw new Error("OCCT produced an invalid helical cutter");
+        return result(shape, ["exact OCCT cylindrical helix sweep"], undefined, "solid");
+      } catch (e) {
+        return {
+          ok: false,
+          error: `buildThreadHelixCutter: ${e instanceof Error ? e.message : String(e)}`,
           warnings: [],
         };
       }
