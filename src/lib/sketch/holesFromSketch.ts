@@ -40,6 +40,7 @@ import {
   buildHoleFeature,
   holeToScad,
   type HoleType,
+  type HoleTerminationMode,
 } from '@/lib/cad/holeProfile';
 import {
   replayTree,
@@ -53,6 +54,8 @@ export interface HoleRequest {
   holeType: HoleType;
   diameter: number;
   depth: number;
+  terminationMode?: HoleTerminationMode;
+  drillTipAngleDegrees?: number;
   counterboreDiameter?: number;
   counterboreDepth?: number;
   countersinkAngleDegrees?: number;
@@ -134,6 +137,8 @@ export function holesFromSketch(
           holeType: h.holeType,
           diameter: h.diameter,
           depth: h.depth,
+          terminationMode: h.terminationMode ?? (h.depth >= opts.extrudeDepth ? 'through' : 'blind'),
+          drillTipAngleDegrees: h.drillTipAngleDegrees,
           counterboreDiameter: h.counterboreDiameter,
           counterboreDepth: h.counterboreDepth,
           countersinkAngleDegrees: h.countersinkAngleDegrees,

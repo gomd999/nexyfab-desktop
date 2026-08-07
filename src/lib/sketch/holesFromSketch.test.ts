@@ -66,7 +66,7 @@ describe('holesFromSketch', () => {
     }
   });
 
-  it('counterbore hole emits 2 cylinders inside the hole block', () => {
+  it('blind counterbore emits drill body, conical tip, and counterbore', () => {
     const r = holesFromSketch(rectWithCenters(), {
       extrudeDepth: 10,
       holes: [
@@ -82,9 +82,10 @@ describe('holesFromSketch', () => {
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      // 1 parent linear_extrude + 2 hole cylinders.
+      // Main bore + drill tip + counterbore.
       const cylinderCount = (r.scad.match(/cylinder\(/g) ?? []).length;
-      expect(cylinderCount).toBe(2);
+      expect(cylinderCount).toBe(3);
+      expect(r.scad).toContain('d1=0, d2=5');
     }
   });
 
@@ -106,6 +107,19 @@ describe('holesFromSketch', () => {
     if (r.ok) {
       expect(r.scad).toMatch(/d1=5/);
       expect(r.scad).toMatch(/d2=/);
+      expect((r.scad.match(/cylinder\(/g) ?? [])).toHaveLength(3);
+    }
+  });
+
+  it('infers through termination when requested depth reaches parent thickness', () => {
+    const r = holesFromSketch(rectWithCenters(), {
+      extrudeDepth: 10,
+      holes: [{ ...baseDrilledHole, depth: 10 }],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect((r.scad.match(/cylinder\(/g) ?? [])).toHaveLength(1);
+      expect(r.scad).not.toContain('d1=0');
     }
   });
 

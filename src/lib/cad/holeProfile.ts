@@ -30,6 +30,7 @@
 // ─── IR ───────────────────────────────────────────────────────────────────
 
 export type HoleType = 'drilled' | 'counterbore' | 'countersink';
+export type HoleTerminationMode = 'auto' | 'blind' | 'through';
 
 export interface HoleFeature {
   kind: 'hole';
@@ -41,6 +42,12 @@ export interface HoleFeature {
   diameter: number;
   /** Main bore depth, mm. > 0. */
   depth: number;
+  /** Explicit termination semantics. `auto`/undefined preserves legacy
+   * parent-thickness inference; `blind` and `through` are deterministic. */
+  terminationMode?: HoleTerminationMode;
+  /** Included drill-point angle in degrees. Defaults to 118 degrees for
+   * blind holes; ignored when the bore passes through the parent body. */
+  drillTipAngleDegrees?: number;
   /** Counterbore (cbore) larger top diameter — required when holeType is
    *  'counterbore'. > diameter. */
   counterboreDiameter?: number;
@@ -62,6 +69,8 @@ export interface HoleOptions {
   holeType: HoleType;
   diameter: number;
   depth: number;
+  terminationMode?: HoleTerminationMode;
+  drillTipAngleDegrees?: number;
   counterboreDiameter?: number;
   counterboreDepth?: number;
   countersinkAngleDegrees?: number;
@@ -84,6 +93,13 @@ export function buildHoleFeature(opts: HoleOptions): HoleFeature {
   }
   if (!Number.isFinite(opts.depth) || opts.depth <= 0) {
     throw new Error(`hole depth must be positive, got: ${opts.depth}`);
+  }
+  if (opts.terminationMode !== undefined && !['auto', 'blind', 'through'].includes(opts.terminationMode)) {
+    throw new Error(`invalid hole termination mode: ${opts.terminationMode}`);
+  }
+  if (opts.drillTipAngleDegrees !== undefined &&
+      (!Number.isFinite(opts.drillTipAngleDegrees) || opts.drillTipAngleDegrees < 60 || opts.drillTipAngleDegrees >= 180)) {
+    throw new Error(`drill tip angle must be in [60, 180) degrees, got: ${opts.drillTipAngleDegrees}`);
   }
   if (opts.holeType === 'counterbore') {
     if (!Number.isFinite(opts.counterboreDiameter) || (opts.counterboreDiameter ?? 0) <= 0) {
@@ -115,6 +131,8 @@ export function buildHoleFeature(opts: HoleOptions): HoleFeature {
     holeType: opts.holeType,
     diameter: opts.diameter,
     depth: opts.depth,
+    terminationMode: opts.terminationMode,
+    drillTipAngleDegrees: opts.drillTipAngleDegrees,
     counterboreDiameter: opts.counterboreDiameter,
     counterboreDepth: opts.counterboreDepth,
     countersinkAngleDegrees: opts.countersinkAngleDegrees,
@@ -192,14 +210,26 @@ export function holeToScad(feature: HoleFeature): string {
 
   const bores: string[] = [];
 
-  // Main bore (always present).
+  // Main bore (always present). Explicit blind holes preserve their conical
+  // drill point; legacy/auto and through features retain the compatible
+  // overshooting-cylinder representation because this serializer has no
+  // parent body thickness available for inference.
   const boreD = formatNum(feature.diameter);
-  const boreH = formatNum(feature.depth + epsilon);
-  // translate Z so cylinder top is at z=+epsilon (poke up above parent's
-  // top face) and bottom sits at z=-(depth).
-  bores.push(
-    `translate([0, 0, -${formatNum(feature.depth)}]) cylinder(h=${boreH}, d=${boreD}, $fn=64);`,
-  );
+  if (feature.terminationMode === 'blind') {
+    const tipAngle = feature.drillTipAngleDegrees ?? 118;
+    const tipHeight = (feature.diameter / 2) / Math.tan((tipAngle * Math.PI) / 360);
+    if (feature.depth <= tipHeight) throw new Error(`hole depth must exceed drill tip height ${formatNum(tipHeight)} mm`);
+    const shoulderZ = -feature.depth + tipHeight;
+    bores.push(
+      `translate([0, 0, ${formatNum(shoulderZ)}]) cylinder(h=${formatNum(feature.depth - tipHeight + epsilon)}, d=${boreD}, $fn=64);`,
+      `translate([0, 0, -${formatNum(feature.depth)}]) cylinder(h=${formatNum(tipHeight)}, d1=0, d2=${boreD}, $fn=64);`,
+    );
+  } else {
+    const boreH = formatNum(feature.depth + epsilon);
+    bores.push(
+      `translate([0, 0, -${formatNum(feature.depth)}]) cylinder(h=${boreH}, d=${boreD}, $fn=64);`,
+    );
+  }
 
   if (feature.holeType === 'counterbore') {
     const cbD = formatNum(feature.counterboreDiameter!);

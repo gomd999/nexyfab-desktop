@@ -142,11 +142,17 @@ export function useCsgWorker() {
       // If worker is available and idle, use it
       if (workerRef.current && !pendingRef.current) {
         return new Promise<THREE.BufferGeometry>((resolve, reject) => {
+          const activeWorker = workerRef.current!;
           const timeoutId = setTimeout(() => {
             pendingRef.current = null;
             setLoading(false);
             const msg = 'CSG worker timed out (30s)';
             reportError('csg', msg, { path: 'worker_timeout', type });
+            if (workerRef.current === activeWorker) {
+              activeWorker.terminate();
+              workerRef.current = null;
+              spawnWorker();
+            }
             reject(new Error(msg));
           }, 30_000);
 
@@ -161,7 +167,7 @@ export function useCsgWorker() {
 
             const message: CSGWorkerInput = { type, meshA, meshB };
 
-            workerRef.current!.postMessage(message, [
+            activeWorker.postMessage(message, [
               meshA.positions.buffer,
               meshA.normals.buffer,
               meshA.indices.buffer,
@@ -182,7 +188,7 @@ export function useCsgWorker() {
       // Fallback: synchronous on main thread
       return Promise.resolve(applyBooleanSync(type, geoA, geoB));
     },
-    [],
+    [spawnWorker],
   );
 
   /** Cancel any in-flight CSG work, terminate the worker, and re-spawn. */

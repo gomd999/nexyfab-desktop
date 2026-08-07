@@ -4,6 +4,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import type { StepWorkerInput, StepWorkerOutput, SerializedGeometry, StepAnalysisStats } from './stepWorker';
 import { trackGeometry } from '../hooks/useGeometryGC';
+import { assertStepInput } from './stepInputPolicy';
 
 export interface StepWorkerResult {
   stats: StepAnalysisStats;
@@ -95,6 +96,11 @@ export function useStepWorker() {
 
   const parseStep = useCallback(
     (buffer: ArrayBuffer, filename: string): Promise<StepWorkerResult> => {
+      try {
+        assertStepInput(buffer, filename);
+      } catch (error) {
+        return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+      }
       if (!workerRef.current) {
         return Promise.reject(new Error('Step worker not initialized'));
       }
@@ -105,9 +111,15 @@ export function useStepWorker() {
       }
 
       return new Promise<StepWorkerResult>((resolve, reject) => {
+        const activeWorker = workerRef.current!;
         const timeoutId = setTimeout(() => {
           pendingRef.current = null;
           setLoading(false);
+          if (workerRef.current === activeWorker) {
+            activeWorker.terminate();
+            workerRef.current = null;
+            spawnWorker();
+          }
           reject(new Error('Step parsing timed out (60s)'));
         }, 60_000);
 
@@ -122,7 +134,7 @@ export function useStepWorker() {
             type: 'PARSE_STEP',
             payload: { buffer, filename },
           };
-          workerRef.current!.postMessage(message, [buffer]);
+          activeWorker.postMessage(message, [buffer]);
         } catch (err) {
           clearTimeout(timeoutId);
           pendingRef.current = null;

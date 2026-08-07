@@ -66,6 +66,27 @@ describe('buildHoleFeature — validation', () => {
     ).toThrow(/depth must be positive/);
   });
 
+  it('preserves a valid drill-tip angle and rejects non-physical angles', () => {
+    const feature = buildHoleFeature({
+      center: { x: 0, y: 0 }, holeType: 'drilled', diameter: 6, depth: 10, drillTipAngleDegrees: 135,
+    });
+    expect(feature.drillTipAngleDegrees).toBe(135);
+    expect(() => buildHoleFeature({
+      center: { x: 0, y: 0 }, holeType: 'drilled', diameter: 6, depth: 10, drillTipAngleDegrees: 180,
+    })).toThrow(/drill tip angle/);
+  });
+
+  it('serializes an explicit blind termination with a conical drill point', () => {
+    const feature = buildHoleFeature({
+      center: { x: 0, y: 0 }, holeType: 'drilled', diameter: 6, depth: 8,
+      terminationMode: 'blind', drillTipAngleDegrees: 118,
+    });
+    expect(feature.terminationMode).toBe('blind');
+    const scad = holeToScad(feature);
+    expect(scad).toContain('d1=0, d2=6');
+    expect(scad.match(/cylinder\(/g)).toHaveLength(2);
+  });
+
   it('counterbore requires counterboreDiameter > bore diameter', () => {
     expect(() =>
       buildHoleFeature({
