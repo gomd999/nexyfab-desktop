@@ -192,7 +192,18 @@ function buildDrawingSvg(intent: ComposeIntent | undefined): string | null {
     .map(hh => `<circle cx="${(ox + hh.x * s).toFixed(1)}" cy="${(topY + hh.y * s).toFixed(1)}" r="${Math.max(1.2, (hh.d * s) / 2).toFixed(1)}" fill="none" stroke="#93c5fd" stroke-width="0.9"/><line x1="${(ox + hh.x * s - 3).toFixed(1)}" y1="${(topY + hh.y * s).toFixed(1)}" x2="${(ox + hh.x * s + 3).toFixed(1)}" y2="${(topY + hh.y * s).toFixed(1)}" stroke="#93c5fd" stroke-width="0.4"/>`)
     .join('');
   const note = placed.length < holes.length ? `⌀ holes ×${holes.length} (${holes.length - placed.length} 위치 미부여)` : (holes.length ? `⌀ holes ×${holes.length}` : '');
-  return `<svg viewBox="0 0 ${ox + fw + 60} ${topY + tt + 30}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#0b1020;border-radius:8px">
+  // K5(260808) — 구멍 위치 치수선: 고유 x/y 좌표별로 하단/우측에 1회씩
+  // (행·열을 공유하는 패턴은 중복 치수 없이 읽힌다). 4개 초과 좌표는 생략 표기.
+  const uniq = (vals: number[]) => [...new Set(vals.map(v => +v.toFixed(2)))].sort((a, b) => a - b);
+  const hxs = uniq(placed.map(hh => hh.x)).slice(0, 4);
+  const hys = uniq(placed.map(hh => hh.y)).slice(0, 4);
+  const holeDims = [
+    ...hxs.map((hx, i) => dim(ox, topY + tt + 8 + i * 10, ox + hx * s, topY + tt + 8 + i * 10, `${hx}`, true)),
+    ...hys.map((hy, i) => dim(ox + fw + 8 + i * 12, topY, ox + fw + 8 + i * 12, topY + hy * s, `${hy}`)),
+  ].join('');
+  const diaGroups = [...placed.reduce((m, hh) => m.set(hh.d, (m.get(hh.d) ?? 0) + 1), new Map<number, number>()).entries()]
+    .map(([dd, n]) => `⌀${dd}×${n}`).join(' ');
+  return `<svg viewBox="0 0 ${ox + fw + 60} ${topY + tt + 30 + (hxs.length ? hxs.length * 10 + 6 : 0)}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#0b1020;border-radius:8px">
     <text x="${ox}" y="14" fill="#8b949e" font-size="9" font-family="ui-monospace,monospace">FRONT (정면)</text>
     <rect x="${ox}" y="${oy}" width="${fw}" height="${fh}" fill="none" stroke="#cbd5e1" stroke-width="1.1"/>
     ${dim(ox, oy - 8, ox + fw, oy - 8, `${w}`)}
@@ -200,8 +211,9 @@ function buildDrawingSvg(intent: ComposeIntent | undefined): string | null {
     <text x="${ox}" y="${topY - 8}" fill="#8b949e" font-size="9" font-family="ui-monospace,monospace">TOP (평면)</text>
     <rect x="${ox}" y="${topY}" width="${fw}" height="${tt}" fill="none" stroke="#cbd5e1" stroke-width="1.1"/>
     ${holeCircles}
+    ${holeDims}
     ${dim(ox - 10, topY, ox - 10, topY + tt, `${d}`)}
-    ${note ? `<text x="${ox}" y="${topY + tt + 20}" fill="#6e7681" font-size="9" font-family="ui-monospace,monospace">${note}</text>` : ''}
+    ${(diaGroups || note) ? `<text x="${ox}" y="${topY + tt + 20 + hxs.length * 10}" fill="#6e7681" font-size="9" font-family="ui-monospace,monospace">${[diaGroups, placed.length < holes.length ? note : ''].filter(Boolean).join(' · ')}</text>` : ''}
   </svg>`;
 }
 
