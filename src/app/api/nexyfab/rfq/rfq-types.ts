@@ -32,6 +32,10 @@ export interface RFQEntry {
   note?: string;
   deadline?: string;
   preferredFactoryId?: string;
+  lineageId?: string;
+  artifactId?: string;
+  artifactSha256?: string;
+  documentVersionId?: string;
   status: 'pending' | 'assigned' | 'quoted' | 'accepted' | 'rejected';
   assignedFactoryId?: string;
   assignedFactoryName?: string;
@@ -62,6 +66,10 @@ export function rowToRfq(row: Record<string, unknown>): RFQEntry {
     note: (row.note as string) || undefined,
     deadline: (row.deadline as string) || undefined,
     preferredFactoryId: (row.preferred_factory_id as string) || undefined,
+    lineageId: (row.lineage_id as string) || undefined,
+    artifactId: (row.artifact_id as string) || undefined,
+    artifactSha256: (row.artifact_sha256 as string) || undefined,
+    documentVersionId: (row.document_version_id as string) || undefined,
     status: (row.status as RFQEntry['status']) ?? 'pending',
     assignedFactoryId: (row.assigned_factory_id as string) || undefined,
     assignedFactoryName: (row.assigned_factory_name as string) || undefined,

@@ -16,6 +16,7 @@ import { getDemoSession, DEMO_USER_ID } from '@/lib/demo-session';
 import { getTrustedClientIpOrUndefined } from '@/lib/client-ip';
 import { normPartnerEmail } from '@/lib/partner-factory-access';
 import { serializeRfqAnalysisSummary } from '@/lib/rfq-analysis-summary';
+import { resolveAuthorizedManufacturingLineage } from '@/lib/manufacturingLineageDb';
 
 // 데모 RFQ 일일 한도 — IP 별. 본 계정의 50/일 과 별개.
 const DEMO_DAILY_LIMIT_PER_IP = 5;
@@ -38,6 +39,12 @@ const rfqSchema = z.object({
   // 해당 검증 ID 를 같이 보낸다. AI 매칭 엔진이 PASS/WARN/FAIL 컨텍스트를
   // 즉시 활용할 수 있게 nf_rfqs.dfm_check_id FK 로 영속화.
   dfmCheckId: z.string().max(100).optional(),
+  manufacturingArtifact: z.object({
+    lineageId: z.string().min(1).max(200),
+    artifactId: z.string().min(1).max(200),
+    artifactSha256: z.string().regex(/^[a-f0-9]{64}$/),
+    documentVersionId: z.string().min(1).max(200),
+  }).optional(),
 });
 
 // ─── POST /api/nexyfab/rfq ────────────────────────────────────────────────────
@@ -119,6 +126,16 @@ export async function POST(req: NextRequest) {
 
   const db = getDbAdapter();
 
+  const manufacturingLineage = parsed.data.manufacturingArtifact
+    ? await resolveAuthorizedManufacturingLineage(db, userId, parsed.data.manufacturingArtifact)
+    : null;
+  if (manufacturingLineage && !manufacturingLineage.ok) {
+    return NextResponse.json(
+      { error: '승인된 제조 산출물과 견적 요청이 일치하지 않습니다.', code: manufacturingLineage.code },
+      { status: 409 },
+    );
+  }
+
   const dayStart = Date.now() - 86_400_000;
   if (isDemo) {
     // 데모: IP 별 일일 한도. 본 계정과 별개 카운트.
@@ -174,8 +191,9 @@ export async function POST(req: NextRequest) {
        (id, user_id, user_email, shape_id, shape_name, material_id, quantity,
         volume_cm3, surface_area_cm2, bbox, dfm_results, cost_estimates, note,
         deadline, preferred_factory_id, shape_share_token, dfm_score, dfm_process,
-        dfm_check_id, analysis_summary, status, created_at, updated_at, session_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+        dfm_check_id, analysis_summary, lineage_id, artifact_id, artifact_sha256,
+        document_version_id, status, created_at, updated_at, session_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
     rfqId,
     userId,
     userEmail ?? null,
@@ -196,6 +214,10 @@ export async function POST(req: NextRequest) {
     body.dfmProcess ?? null,
     resolvedDfmCheckId,
     resolvedAnalysisSummaryJson,
+    manufacturingLineage?.ok ? manufacturingLineage.ref.lineageId : null,
+    manufacturingLineage?.ok ? manufacturingLineage.ref.artifactId : null,
+    manufacturingLineage?.ok ? manufacturingLineage.ref.artifactSha256 : null,
+    manufacturingLineage?.ok ? manufacturingLineage.ref.documentVersionId : null,
     now,
     now,
     isDemo ? demoSession!.id : null,

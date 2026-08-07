@@ -7,6 +7,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { recordUsage } from '@/lib/billing-engine';
 import type { NexyfabOrder, NexyfabOrderStep } from '@/types/nexyfab-orders';
 import { isIncoterm, isValidHsCode, normalizeHsCode } from '@/lib/shipping';
+import { resolveAuthorizedManufacturingLineage, type ManufacturingLineageRefInput } from '@/lib/manufacturingLineageDb';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,10 @@ interface NexyfabOrderRow {
   tracking_carrier: string | null;
   tracking_last_event: string | null;
   tracking_updated_at: number | null;
+  lineage_id: string | null;
+  artifact_id: string | null;
+  artifact_sha256: string | null;
+  document_version_id: string | null;
 }
 
 function rowToOrder(row: NexyfabOrderRow): NexyfabOrder {
@@ -43,6 +48,10 @@ function rowToOrder(row: NexyfabOrderRow): NexyfabOrder {
   return {
     id: row.id,
     rfqId: row.rfq_id ?? undefined,
+    lineageId: row.lineage_id ?? undefined,
+    artifactId: row.artifact_id ?? undefined,
+    artifactSha256: row.artifact_sha256 ?? undefined,
+    documentVersionId: row.document_version_id ?? undefined,
     userId: row.user_id,
     partName: row.part_name,
     manufacturerName: row.manufacturer_name,
@@ -186,6 +195,7 @@ export async function POST(req: NextRequest) {
     shipFromCountry?: string;
     shipToCountry?: string;
     estimatedLeadDays?: number;
+    manufacturingArtifact?: ManufacturingLineageRefInput;
   };
 
   const currency = (body.currency ?? 'KRW').toUpperCase();
@@ -232,6 +242,53 @@ export async function POST(req: NextRequest) {
   const estimatedDeliveryAt = now + leadDays * DAY;
 
   const db = getDbAdapter();
+  if (!body.rfqId) {
+    return NextResponse.json(
+      { error: '승인된 제조 산출물이 연결된 RFQ가 필요합니다.', code: 'RFQ_REQUIRED_FOR_ORDER' },
+      { status: 409 },
+    );
+  }
+  const rfqLineage = await db.queryOne<{
+    lineage_id: string | null;
+    artifact_id: string | null;
+    artifact_sha256: string | null;
+    document_version_id: string | null;
+  }>(
+    `SELECT lineage_id, artifact_id, artifact_sha256, document_version_id
+       FROM nf_rfqs WHERE id = ? AND user_id = ?`,
+    body.rfqId,
+    userId,
+  );
+  if (!rfqLineage?.lineage_id || !rfqLineage.artifact_id || !rfqLineage.artifact_sha256 || !rfqLineage.document_version_id) {
+    return NextResponse.json(
+      { error: 'RFQ에 G9 승인 제조 산출물이 연결되지 않았습니다.', code: 'RFQ_ARTIFACT_RELEASE_REQUIRED' },
+      { status: 409 },
+    );
+  }
+  const serverArtifact: ManufacturingLineageRefInput = {
+    lineageId: rfqLineage.lineage_id,
+    artifactId: rfqLineage.artifact_id,
+    artifactSha256: rfqLineage.artifact_sha256,
+    documentVersionId: rfqLineage.document_version_id,
+  };
+  if (body.manufacturingArtifact && (
+    body.manufacturingArtifact.lineageId !== serverArtifact.lineageId
+    || body.manufacturingArtifact.artifactId !== serverArtifact.artifactId
+    || body.manufacturingArtifact.artifactSha256 !== serverArtifact.artifactSha256
+    || body.manufacturingArtifact.documentVersionId !== serverArtifact.documentVersionId
+  )) {
+    return NextResponse.json(
+      { error: '주문 산출물이 RFQ 산출물과 일치하지 않습니다.', code: 'ORDER_ARTIFACT_MISMATCH' },
+      { status: 409 },
+    );
+  }
+  const authorizedLineage = await resolveAuthorizedManufacturingLineage(db, userId, serverArtifact);
+  if (!authorizedLineage.ok) {
+    return NextResponse.json(
+      { error: '제조 산출물 승인이 만료되었거나 취소되었습니다.', code: authorizedLineage.code },
+      { status: 409 },
+    );
+  }
   // Lazy-add v83 column so deploys without the migration applied still work.
   await db.execute('ALTER TABLE nf_orders ADD COLUMN quote_id TEXT').catch(() => {});
   await db.execute(
@@ -239,8 +296,9 @@ export async function POST(req: NextRequest) {
       (id, rfq_id, quote_id, user_id, part_name, manufacturer_name, quantity,
        total_price_krw, total_price, currency, buyer_country,
        hs_code, incoterm, ship_from_country, ship_to_country,
+       lineage_id, artifact_id, artifact_sha256, document_version_id,
        status, steps, created_at, estimated_delivery_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     body.rfqId ?? null,
     body.quoteId ?? null,
@@ -256,6 +314,10 @@ export async function POST(req: NextRequest) {
     incoterm,
     shipFromCountry,
     shipToCountry,
+    authorizedLineage.ref.lineageId,
+    authorizedLineage.ref.artifactId,
+    authorizedLineage.ref.artifactSha256,
+    authorizedLineage.ref.documentVersionId,
     'placed',
     JSON.stringify(steps),
     now,
@@ -278,6 +340,10 @@ export async function POST(req: NextRequest) {
   const order: NexyfabOrder = {
     id,
     rfqId: body.rfqId,
+    lineageId: authorizedLineage.ref.lineageId,
+    artifactId: authorizedLineage.ref.artifactId,
+    artifactSha256: authorizedLineage.ref.artifactSha256,
+    documentVersionId: authorizedLineage.ref.documentVersionId,
     userId,
     partName: body.partName,
     manufacturerName: body.manufacturerName,

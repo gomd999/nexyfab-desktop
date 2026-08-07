@@ -116,8 +116,13 @@ export async function POST(req: NextRequest) {
   const db = getDbAdapter();
 
   // RFQ 존재 및 이 파트너 팩토리에 배정됐는지 확인
-  const rfq = await db.queryOne<{ id: string; shape_name: string; assigned_factory_id: string | null }>(
-    'SELECT id, shape_name, assigned_factory_id FROM nf_rfqs WHERE id = ?',
+  const rfq = await db.queryOne<{
+    id: string; shape_name: string; assigned_factory_id: string | null;
+    lineage_id: string | null; artifact_id: string | null;
+    artifact_sha256: string | null; document_version_id: string | null;
+  }>(
+    `SELECT id, shape_name, assigned_factory_id, lineage_id, artifact_id,
+            artifact_sha256, document_version_id FROM nf_rfqs WHERE id = ?`,
     rfqId,
   );
   if (!rfq) return NextResponse.json({ error: 'RFQ를 찾을 수 없습니다.' }, { status: 404 });
@@ -160,8 +165,9 @@ export async function POST(req: NextRequest) {
        amount, currency, fx_quote, fx_valid_until,
        hs_code, incoterm,
        estimated_days, partner_note, valid_until, partner_email,
+       lineage_id, artifact_id, artifact_sha256, document_version_id,
        status, responded_at, responded_by, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'responded',?,?,?)`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'responded',?,?,?)`,
     id,
     rfqId,
     rfq.shape_name || rfqId,
@@ -177,6 +183,10 @@ export async function POST(req: NextRequest) {
     note || null,
     validUntil ?? null,
     normPartnerEmail(partner.email),
+    rfq.lineage_id,
+    rfq.artifact_id,
+    rfq.artifact_sha256,
+    rfq.document_version_id,
     now,
     partner.company || partner.email,
     nowIso,

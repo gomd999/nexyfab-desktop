@@ -3,9 +3,10 @@
  * POST /api/admin/jobs/trigger — manually trigger a cron job
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAdmin } from '@/lib/admin-auth';
+import { verifyAdmin, verifySuperAdmin } from '@/lib/admin-auth';
 import { getDbAdapter } from '@/lib/db-adapter';
 import { processJobQueue } from '@/lib/job-queue';
+import { recordAdminAudit } from '@/lib/admin-audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,15 +77,19 @@ export async function GET(req: NextRequest) {
 
 // POST — trigger job processing or manual cron
 export async function POST(req: NextRequest) {
-  if (!(await verifyAdmin(req))) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const superAdmin = await verifySuperAdmin(req);
+  if (!superAdmin) return NextResponse.json({ error: 'Forbidden — super_admin required' }, { status: 403 });
 
   const body = await req.json().catch(() => ({})) as { action?: string };
   const action = body.action ?? 'process_queue';
 
   if (action === 'process_queue') {
     await processJobQueue();
+    await recordAdminAudit(req, {
+      adminUserId: superAdmin.userId,
+      action: 'job_queue.process',
+      target: 'all',
+    });
     return NextResponse.json({ ok: true, action: 'process_queue' });
   }
 
@@ -96,6 +101,12 @@ export async function POST(req: NextRequest) {
       headers: { 'x-cron-secret': secret },
     }).catch(() => null);
     const data = res ? await res.json().catch(() => ({})) : {};
+    await recordAdminAudit(req, {
+      adminUserId: superAdmin.userId,
+      action: 'cron.trigger',
+      target: action,
+      metadata: { upstreamOk: Boolean(res?.ok) },
+    });
     return NextResponse.json({ ok: true, action, result: data });
   }
 
@@ -105,6 +116,12 @@ export async function POST(req: NextRequest) {
       headers: req.headers,
     }).catch(() => null);
     const data = res ? await res.json().catch(() => ({})) : {};
+    await recordAdminAudit(req, {
+      adminUserId: superAdmin.userId,
+      action: 'cron.trigger',
+      target: action,
+      metadata: { upstreamOk: Boolean(res?.ok) },
+    });
     return NextResponse.json({ ok: true, action, result: data });
   }
 
@@ -116,6 +133,12 @@ export async function POST(req: NextRequest) {
       headers: { 'x-cron-secret': secret },
     }).catch(() => null);
     const data = res ? await res.json().catch(() => ({})) : {};
+    await recordAdminAudit(req, {
+      adminUserId: superAdmin.userId,
+      action: 'backup.trigger',
+      target: 'database',
+      metadata: { upstreamOk: Boolean(res?.ok) },
+    });
     return NextResponse.json({ ok: true, action, result: data });
   }
 
@@ -124,9 +147,8 @@ export async function POST(req: NextRequest) {
 
 // DELETE — clear done/failed jobs older than N days
 export async function DELETE(req: NextRequest) {
-  if (!(await verifyAdmin(req))) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const superAdmin = await verifySuperAdmin(req);
+  if (!superAdmin) return NextResponse.json({ error: 'Forbidden — super_admin required' }, { status: 403 });
 
   const days = parseInt(req.nextUrl.searchParams.get('days') ?? '7', 10);
   const cutoff = Date.now() - days * 86_400_000;
@@ -136,6 +158,13 @@ export async function DELETE(req: NextRequest) {
     `DELETE FROM nf_job_queue WHERE status IN ('done', 'failed') AND created_at < ?`,
     cutoff,
   ).catch(() => ({ changes: 0 }));
+
+  await recordAdminAudit(req, {
+    adminUserId: superAdmin.userId,
+    action: 'job_queue.prune',
+    target: 'done_failed',
+    metadata: { days, deleted: result.changes },
+  });
 
   return NextResponse.json({ ok: true, deleted: result.changes });
 }

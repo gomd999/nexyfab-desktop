@@ -27,6 +27,10 @@ interface QuoteRow {
   details: string;
   valid_until: string | null;
   partner_email: string | null;
+  lineage_id: string | null;
+  artifact_id: string | null;
+  artifact_sha256: string | null;
+  document_version_id: string | null;
   status: string;
   created_at: string;
   updated_at: string | null;
@@ -42,6 +46,10 @@ function rowToQuote(row: QuoteRow) {
     details: row.details,
     validUntil: row.valid_until,
     partnerEmail: row.partner_email,
+    lineageId: row.lineage_id,
+    artifactId: row.artifact_id,
+    artifactSha256: row.artifact_sha256,
+    documentVersionId: row.document_version_id,
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -119,12 +127,29 @@ export async function POST(req: NextRequest) {
   const db = getDbAdapter();
   const id = `QT-${Date.now()}`;
   const createdAt = new Date().toISOString();
+  const rfqLineage = inquiryId
+    ? await db.queryOne<{
+        lineage_id: string | null;
+        artifact_id: string | null;
+        artifact_sha256: string | null;
+        document_version_id: string | null;
+      }>(
+        `SELECT lineage_id, artifact_id, artifact_sha256, document_version_id
+           FROM nf_rfqs WHERE id = ?`,
+        inquiryId,
+      )
+    : undefined;
+  if (inquiryId && !rfqLineage) {
+    return NextResponse.json({ error: '연결할 RFQ를 찾을 수 없습니다.' }, { status: 404 });
+  }
 
   try {
     await db.execute(
       `INSERT INTO nf_quotes
-        (id, inquiry_id, project_name, factory_name, estimated_amount, details, valid_until, partner_email, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+        (id, inquiry_id, project_name, factory_name, estimated_amount, details,
+         valid_until, partner_email, lineage_id, artifact_id, artifact_sha256,
+         document_version_id, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
       id,
       inquiryId ?? null,
       projectName,
@@ -133,6 +158,10 @@ export async function POST(req: NextRequest) {
       details ?? '',
       validUntil ?? null,
       partnerEmail ?? null,
+      rfqLineage?.lineage_id ?? null,
+      rfqLineage?.artifact_id ?? null,
+      rfqLineage?.artifact_sha256 ?? null,
+      rfqLineage?.document_version_id ?? null,
       createdAt,
     );
   } catch (err) {
@@ -149,6 +178,10 @@ export async function POST(req: NextRequest) {
     details: details ?? '',
     validUntil: validUntil ?? null,
     partnerEmail: partnerEmail ?? null,
+    lineageId: rfqLineage?.lineage_id ?? null,
+    artifactId: rfqLineage?.artifact_id ?? null,
+    artifactSha256: rfqLineage?.artifact_sha256 ?? null,
+    documentVersionId: rfqLineage?.document_version_id ?? null,
     status: 'pending',
     createdAt,
   };

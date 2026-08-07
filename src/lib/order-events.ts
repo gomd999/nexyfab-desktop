@@ -14,7 +14,7 @@
  */
 import { getDbAdapter } from './db-adapter';
 
-export type OrderEventKind = 'status_change' | 'note' | 'photo' | 'shipment' | 'delay';
+export type OrderEventKind = 'status_change' | 'note' | 'photo' | 'shipment' | 'delay' | 'payment' | 'refund';
 
 export interface OrderEventInput {
   orderId: string;

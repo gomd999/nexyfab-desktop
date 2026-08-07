@@ -28,6 +28,13 @@ export interface NexyfabOrderTracking {
 export interface NexyfabOrder {
   id: string;
   rfqId?: string;
+  /** Immutable manufacturing artifact selected and G9-authorized at RFQ time. */
+  lineageId?: string | null;
+  artifactId?: string | null;
+  artifactSha256?: string | null;
+  documentVersionId?: string | null;
+  generationRunId?: string | null;
+  verificationRunId?: string | null;
   userId: string;
   manufacturerId?: string;
   partName: string;

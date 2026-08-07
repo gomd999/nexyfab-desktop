@@ -4,6 +4,7 @@ import { getDbAdapter } from '@/lib/db-adapter';
 import { checkOrigin } from '@/lib/csrf';
 import type { NexyfabOrderStatus } from '@/types/nexyfab-orders';
 import { evaluateStage } from '@/lib/stage-engine';
+import { recordOrderEvent } from '@/lib/order-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -152,6 +153,15 @@ export async function PATCH(
     'UPDATE nf_orders SET status = ?, updated_at = ? WHERE id = ?',
     newStatus, now, id,
   );
+  await recordOrderEvent({
+    orderId: id,
+    kind: 'status_change',
+    authorEmail: authUser.email,
+    authorRole: row.user_id === authUser.userId ? 'customer' : 'partner',
+    fromStatus: currentStatus,
+    toStatus: newStatus,
+    metadata: { source: 'order_patch' },
+  });
 
   // Delivery is the operational close-out, not the cash event — metrics
   // were already bumped at payment. Re-evaluate stage as a safety net so

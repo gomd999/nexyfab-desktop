@@ -49,8 +49,11 @@ export async function POST(
   const rfq = await db.queryOne<{
     id: string; shape_name: string | null; material_id: string | null;
     quantity: number; volume_cm3: number | null; user_email: string | null;
+    lineage_id: string | null; artifact_id: string | null;
+    artifact_sha256: string | null; document_version_id: string | null;
   }>(
-    `SELECT id, shape_name, material_id, quantity, volume_cm3, user_email
+    `SELECT id, shape_name, material_id, quantity, volume_cm3, user_email,
+            lineage_id, artifact_id, artifact_sha256, document_version_id
      FROM nf_rfqs WHERE id = ? AND user_id = ?`,
     rfqId, authUser.userId,
   );
@@ -100,8 +103,9 @@ export async function POST(
       await db.execute(
         `INSERT INTO nf_quotes
            (id, inquiry_id, project_name, factory_name, estimated_amount,
-            details, valid_until, partner_email, status, created_at, updated_at, response_token)
-         VALUES (?, ?, ?, ?, 0, ?, ?, ?, 'pending', ?, ?, ?)`,
+            details, valid_until, partner_email, status, created_at, updated_at, response_token,
+            lineage_id, artifact_id, artifact_sha256, document_version_id)
+         VALUES (?, ?, ?, ?, 0, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)`,
         quoteId,
         rfqId,
         partName,
@@ -112,6 +116,10 @@ export async function POST(
         nowIso,
         nowIso,
         responseToken,
+        rfq.lineage_id,
+        rfq.artifact_id,
+        rfq.artifact_sha256,
+        rfq.document_version_id,
       );
 
       // 이메일 발송

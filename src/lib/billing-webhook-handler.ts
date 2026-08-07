@@ -8,6 +8,7 @@ import { logAudit } from './audit';
 import { recordOrderCompletion } from './stage-engine';
 import { logFunnelEvent } from './funnel-logger';
 import { sendOpsAlert } from './notify/opsAlert';
+import { recordOrderEvent } from './order-events';
 
 export interface AwWebhookEvent {
   id:         string;
@@ -63,6 +64,15 @@ export async function handleBillingEvent(event: AwWebhookEvent): Promise<string>
           if (ord?.user_id) {
             await recordOrderCompletion(ord.user_id, Number(ord.total_price_krw) || 0);
           }
+          await recordOrderEvent({
+            orderId,
+            kind: 'status_change',
+            authorEmail: 'system@nexyfab.com',
+            authorRole: 'system',
+            fromStatus: 'placed',
+            toStatus: 'production',
+            metadata: { source: 'airwallex', eventId: event.id, paymentStatus: 'paid' },
+          });
         }
       }
       break;
@@ -82,6 +92,14 @@ export async function handleBillingEvent(event: AwWebhookEvent): Promise<string>
           "UPDATE nf_orders SET payment_status = 'failed' WHERE id = ?",
           orderId,
         );
+        await recordOrderEvent({
+          orderId,
+          kind: 'payment',
+          authorEmail: 'system@nexyfab.com',
+          authorRole: 'system',
+          body: 'Payment provider reported failure',
+          metadata: { source: 'airwallex', eventId: event.id },
+        });
       }
       break;
     }

@@ -6,6 +6,7 @@ import { checkOrigin } from '@/lib/csrf';
 import { confirmPayment } from '@/lib/toss-client';
 import { recordOrderCompletion } from '@/lib/stage-engine';
 import { notifyFounder } from '@/lib/notify/founderNotify';
+import { recordOrderEvent } from '@/lib/order-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,6 +77,14 @@ export async function POST(
       "UPDATE nf_orders SET payment_status = 'reserved_awaiting_manager', updated_at = ? WHERE id = ?",
       Date.now(), orderId,
     );
+    await recordOrderEvent({
+      orderId,
+      kind: 'payment',
+      authorEmail: authUser.email,
+      authorRole: 'customer',
+      body: 'Payment reserved for manager review',
+      metadata: { paymentStatus: 'reserved_awaiting_manager' },
+    });
     // Pull buyer email for the founder alert (best-effort).
     const buyer = await db.queryOne<{ email: string | null }>(
       'SELECT email FROM nf_users WHERE id = ?', authUser.userId,
@@ -133,8 +142,8 @@ export async function PATCH(
   await ensurePaymentCols(db);
   await ensureAttemptTable(db);
 
-  const order = await db.queryOne<{ id: string; user_id: string; toss_order_id: string | null; payment_status: string | null; total_price_krw: number }>(
-    'SELECT id, user_id, toss_order_id, payment_status, total_price_krw FROM nf_orders WHERE id = ?',
+  const order = await db.queryOne<{ id: string; user_id: string; toss_order_id: string | null; payment_status: string | null; total_price_krw: number; status: string }>(
+    'SELECT id, user_id, toss_order_id, payment_status, total_price_krw, status FROM nf_orders WHERE id = ?',
     orderId,
   );
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
@@ -188,6 +197,15 @@ export async function PATCH(
         "UPDATE nf_orders SET payment_status = 'paid', status = 'production', updated_at = ? WHERE id = ?",
         Date.now(), orderId,
       );
+      await recordOrderEvent({
+        orderId,
+        kind: 'status_change',
+        authorEmail: authUser.email,
+        authorRole: 'customer',
+        fromStatus: order.status,
+        toStatus: 'production',
+        metadata: { source: 'toss', paymentStatus: 'paid', tossOrderId: body.tossOrderId },
+      });
       // Stage promotion: the 'pending' → 'processing' lock above is the
       // exactly-once gate, so we can safely bump cumulative metrics here.
       await recordOrderCompletion(order.user_id, Number(order.total_price_krw) || 0);
@@ -297,6 +315,14 @@ export async function PATCH(
         "UPDATE nf_orders SET payment_status = 'pending' WHERE id = ?",
         orderId,
       );
+      await recordOrderEvent({
+        orderId,
+        kind: 'payment',
+        authorEmail: authUser.email,
+        authorRole: 'customer',
+        body: 'Payment confirmation did not complete',
+        metadata: { provider: 'toss', providerStatus: payment.status },
+      });
     }
     // Stamp the attempt with final status so the dedup lookup also tells
     // us whether this exact (tossOrderId, paymentKey) succeeded later.
@@ -318,6 +344,14 @@ export async function PATCH(
       JSON.stringify({ error: (err as Error).message }), attemptId,
     ).catch(() => {});
     const errMsg = err instanceof Error ? err.message : String(err);
+    await recordOrderEvent({
+      orderId,
+      kind: 'payment',
+      authorEmail: authUser.email,
+      authorRole: 'customer',
+      body: 'Payment confirmation failed',
+      metadata: { provider: 'toss', error: errMsg.slice(0, 300) },
+    });
     return NextResponse.json({ error: '결제 승인에 실패했습니다.', detail: errMsg }, { status: 502 });
   }
 }
