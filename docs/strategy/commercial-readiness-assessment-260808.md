@@ -91,6 +91,8 @@
 
 ### Phase 4 — 정확도 독립 검증 (👤 외부 인력 필수)
 
+상세 실행판: [domain-accuracy-95-plan-260808.md](./domain-accuracy-95-plan-260808.md) (커널 결함 K1~K7·도메인별 케이스 20구성·ground truth 파이프라인·마일스톤 M1~M9)
+
 | # | 작업 | 담당 |
 |---|---|---|
 | 4-1 | 👤 5개 분야 holdout 세트에 대한 **전문가 blind review 섭외·수행**(승인 0/88이 병목) | 👤 |
