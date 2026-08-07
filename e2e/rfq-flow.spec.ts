@@ -13,7 +13,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('RFQ flow', () => {
   test('quick-quote 페이지 로드', async ({ page }) => {
-    await page.goto('/ko/quick-quote', { waitUntil: 'domcontentloaded' });
+    await page.goto('/kr/quick-quote', { waitUntil: 'domcontentloaded' });
     await expect(
       page.getByText(/RFQ|견적|quote|업로드|upload/i).first()
     ).toBeVisible({ timeout: 15_000 });
@@ -27,7 +27,7 @@ test.describe('RFQ flow', () => {
   });
 
   test('shape-generator → RFQ 패널 접근점 존재', async ({ page }) => {
-    await page.goto('/ko/shape-generator', { waitUntil: 'domcontentloaded' });
+    await page.goto('/kr/shape-generator', { waitUntil: 'domcontentloaded' });
     // Wait for the workspace shell.
     await page.waitForLoadState('networkidle').catch(() => {});
     // RFQ entry can be a button, link or panel toggle — accept any.

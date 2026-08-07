@@ -253,7 +253,7 @@ export default function RfqPanel({
   }, [t, onClose]);
 
   return (
-    <div style={{
+    <div data-testid="rfq-panel" style={{
       background: 'var(--nx-bg)', border: '1px solid var(--nx-panel-2)', borderRadius: 14,
       width: 340, fontFamily: 'Inter, system-ui, sans-serif',
       boxShadow: '0 8px 32px rgba(0,0,0,0.5)',

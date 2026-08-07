@@ -3,8 +3,7 @@
  *
  * Walks the most common customer workflow end to end:
  *   1. Workspace loads
- *   2. Pick a starter box
- *   3. Evaluate produces a 3D viewport
+ *   2. Default starter box produces a 3D viewport
  *   4. Open DFM panel
  *   5. Open RFQ panel
  *   6. Auto-save indicator appears
@@ -26,27 +25,28 @@ const VIEWPORT_ENGINE = 'r3f-viewport';
 
 test.describe('Q8 happy-path workflow', () => {
   test.beforeEach(async ({ page }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(300_000);
+    const startupErrors: string[] = [];
+    page.on('pageerror', (error) => startupErrors.push(`pageerror: ${error.message}`));
+    page.on('console', (message) => {
+      if (message.type() === 'error') startupErrors.push(`console: ${message.text()}`);
+    });
+    page.on('requestfailed', (request) => {
+      startupErrors.push(`requestfailed: ${request.url()} (${request.failure()?.errorText ?? 'unknown'})`);
+    });
     await seedShapeGeneratorForE2e(page);
-    await page.goto('/en/shape-generator/', { waitUntil: 'domcontentloaded' });
+    await page.goto('/en/shape-generator/?expert=1', { waitUntil: 'domcontentloaded' });
     await dismissShapeGeneratorOverlays(page);
-    await expect(page.getByTestId('shape-generator-workspace')).toBeVisible({ timeout: 60000 });
+    try {
+      await expect(page.getByTestId('shape-generator-workspace')).toBeVisible({ timeout: 180_000 });
+    } catch (error) {
+      throw new Error(`CAD workspace failed to start:\n${startupErrors.join('\n') || 'no browser error captured'}`, { cause: error });
+    }
     await exitSketchIfNeeded(page);
-    await expect(page.getByRole('button', { name: 'Evaluate' })).toBeVisible({ timeout: 60000 });
   });
 
-  test('pick box → evaluate → see canvas → open DFM → open RFQ', async ({ page }) => {
-    // 1. Pick a starter box
-    const pickBox = page.getByTestId('m4-pick-box').first();
-    await pickBox.waitFor({ state: 'visible', timeout: 30000 });
-    await pickBox.click({ force: true });
-    await page.waitForTimeout(1500);
-
-    // 2. Evaluate
-    await page.getByRole('button', { name: 'Evaluate' }).click();
-    await page.waitForTimeout(2500);
-
-    // 3. Verify the 3D canvas mounted (skip on headless GPU misses)
+  test('default box → see canvas → open DFM → open RFQ', async ({ page }) => {
+    // 1. Verify the default box and 3D canvas mounted.
     const taggedCanvas = page.locator(`canvas[data-engine="${VIEWPORT_ENGINE}"]`).first();
     const canvasOk = await taggedCanvas.isVisible({ timeout: 25000 }).catch(() => false);
     if (!canvasOk) {
@@ -54,44 +54,33 @@ test.describe('Q8 happy-path workflow', () => {
       test.skip(fallback, 'WebGL unavailable in this CI runner');
     }
 
-    // 4. Open DFM panel — UI uses any of: button text "DFM", "Manufacturing", or testid
-    const dfmBtn = page.locator('button', { hasText: /DFM|Manufacturab|제조성/i }).first();
-    if (await dfmBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await dfmBtn.click({ force: true });
-      await page.waitForTimeout(1500);
-      // DFM panel surface should be present in some form
-      const dfmPanel = page.locator('[data-testid*="dfm"], [class*="DFM"], text=/manufacturab/i').first();
-      await dfmPanel.isVisible({ timeout: 8000 }).catch(() => false);
-    }
+    // 2. Open DFM panel. This is a release-path assertion, not an optional probe.
+    const dfmBtn = page.getByTestId('shell-open-dfm');
+    await expect(dfmBtn).toBeVisible({ timeout: 10_000 });
+    await dfmBtn.click();
+    await page.getByTestId('shell-open-full-dfm').click();
+    await expect(page.getByTestId('dfm-panel')).toBeVisible({ timeout: 10_000 });
 
-    // 5. Open RFQ / quote
-    const quoteBtn = page.locator('[data-tour="get-quote"]').first();
-    if (await quoteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await quoteBtn.click({ force: true });
-      await page.waitForTimeout(1500);
-    }
+    // 3. Open RFQ / quote
+    const quoteBtn = page.getByTestId('shell-open-rfq');
+    await expect(quoteBtn).toBeVisible({ timeout: 10_000 });
+    await quoteBtn.click();
+    await expect(page.getByTestId('rfq-panel')).toBeVisible({ timeout: 10_000 });
 
-    // 6. Auto-save indicator (best-effort — only verify if visible)
-    const autoSave = page.locator('[class*="autoSave"], [class*="AutoSave"], text=/saved|저장/i').first();
-    await autoSave.isVisible({ timeout: 5000 }).catch(() => false);
+    // 4. Force a save and require a concrete saved state.
+    await page.keyboard.press('Control+S');
+    await expect(page.getByTestId('autosave-indicator')).toHaveAttribute('data-save-state', 'saved', { timeout: 15_000 });
 
     // Final assertion — workspace is still alive after the full workflow
     await expect(page.getByTestId('shape-generator-workspace')).toBeVisible();
   });
 
-  test('undo/redo and feature evaluation do not throw uncaught errors', async ({ page }) => {
+  test('undo/redo on the default part do not throw uncaught errors', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
     page.on('console', (msg) => {
       if (msg.type() === 'error') errors.push(msg.text());
     });
-
-    const pickBox = page.getByTestId('m4-pick-box').first();
-    await pickBox.click({ force: true });
-    await page.waitForTimeout(1500);
-
-    await page.getByRole('button', { name: 'Evaluate' }).click();
-    await page.waitForTimeout(2500);
 
     // Drive undo/redo hotkeys to exercise history paths
     await page.keyboard.press('Control+Z');

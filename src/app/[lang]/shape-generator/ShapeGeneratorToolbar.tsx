@@ -737,6 +737,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
       {/* DFM issue badge — always visible when geometry exists */}
       {effectiveResult && (
         <button
+          data-testid="open-dfm-panel"
           onClick={onToggleDFM}
           title={!dfmUnlocked
             ? tt.dfmProLocked
@@ -887,6 +888,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
           return (
             <button
               data-tour="get-quote"
+              data-testid="open-rfq-panel"
               onClick={() => void onGetQuote()}
               disabled={rfqPending}
               title={tt.dfmIssuesTooltip(dfmIssueCount)}
@@ -906,6 +908,7 @@ export default function ShapeGeneratorToolbar(props: ShapeGeneratorToolbarProps)
         return (
           <button
             data-tour="get-quote"
+            data-testid="open-rfq-panel"
             onClick={() => void onGetQuote()}
             disabled={rfqPending}
             title={clean ? tt.dfmPassed : undefined}

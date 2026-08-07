@@ -143,7 +143,7 @@ export default function AutoSaveIndicator({
     t.cloudSynced;
 
   return (
-    <div style={{
+    <div data-testid="autosave-indicator" data-save-state={saveError ? 'error' : isSaving ? 'saving' : 'saved'} style={{
       // top:140 sits BELOW the ribbon row so it never overlaps the expanded
       // ("All tools") ribbon's right-hand tools (reported 2026-06-29).
       // right: 336 clears the 320px right property pane (2026-06-12)

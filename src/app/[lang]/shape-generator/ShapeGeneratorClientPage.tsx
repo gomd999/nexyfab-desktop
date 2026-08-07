@@ -29,12 +29,16 @@ export default function ShapeGeneratorClientPage() {
     const sp = new URLSearchParams(window.location.search);
     const entry = sp.get('entry');
     const wantExpert = seg.length > 0
+      || sp.get('expert') === '1'
+      || sp.get('expert') === 'true'
       || sp.get('mode') === 'expert'
       || !!sp.get('project')
       || (entry !== null && entry !== 'ai'); // entry=assembly/sketch/part → expert
     return wantExpert ? 'expert' : 'studio';
   };
-  const [mode, setModeRaw] = useState<'studio' | 'expert'>(computeMode);
+  // Keep the server and first client render identical; derive URL mode after
+  // mount to avoid a hydration mismatch on expert deep links.
+  const [mode, setModeRaw] = useState<'studio' | 'expert'>('studio');
   // A user choosing Expert in-app (Studio's "Expert →") must stick; only a real
   // navigation (pathname change) re-derives the mode from the URL. usePathname
   // is reactive, so this fires even when Next reuses the page on a soft nav —

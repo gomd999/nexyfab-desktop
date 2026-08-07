@@ -441,6 +441,15 @@ export function ModelerShell() {
         },
         publishLabel: d.publish,
         rightExtras: (
+          <>
+          <button
+            type="button"
+            className="nx-pillbtn"
+            data-testid="shell-open-rfq"
+            onClick={() => window.dispatchEvent(new CustomEvent('nexyfab:open-rfq'))}
+          >
+            Quote
+          </button>
           <button
             type="button"
             className="nx-pillbtn"
@@ -451,6 +460,7 @@ export function ModelerShell() {
           >
             {themeMode === 'dark' ? <I.sun size={12} /> : <I.moon size={12} />}
           </button>
+          </>
         ),
       }}
       ribbon={{
@@ -803,6 +813,7 @@ function DfmDrawerContent({ d }: { d: ShellDict }) {
         </div>
       )}
       <button
+        data-testid="shell-open-full-dfm"
         onClick={launch}
         style={{
           height: 32, padding: '0 16px', border: 0, borderRadius: 4,

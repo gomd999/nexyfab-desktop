@@ -227,6 +227,7 @@ function InspectorTab({
         {/* DFM meta = REAL warning count from the last auto-DFM run (bridged
             from Inner); "run" until the first analysis completes. */}
         <AnalyzeRow
+          testId="shell-open-dfm"
           label={d.dfmCheck}
           meta={dfmWarningCount === null
             ? d.runLower
@@ -258,7 +259,7 @@ function InspectorTab({
 // APPEARANCE — live material straight from sceneStore (same store the
 // viewport renderer reads). Editing the select swaps the actual rendered
 // material via setMaterialId, matching the toolbar material-drop behaviour.
-function AppearanceSection({ d, isKo, lang }: { d: ShellDict; isKo: boolean; lang: string }) {
+function AppearanceSection({ d, isKo: _isKo, lang }: { d: ShellDict; isKo: boolean; lang: string }) {
   const materialId = useSceneStore(s => s.materialId);
   const setMaterialId = useSceneStore(s => s.setMaterialId);
   const preset = MATERIAL_PRESETS.find(m => m.id === materialId);
@@ -349,9 +350,10 @@ function CamSection({ d }: { d: ShellDict }) {
   );
 }
 
-function AnalyzeRow({ label, meta, drawer }: { label: string; meta?: string; drawer: 'dfm' | 'fea' | 'cost' | 'variants' | 'motion' }) {
+function AnalyzeRow({ label, meta, drawer, testId }: { label: string; meta?: string; drawer: 'dfm' | 'fea' | 'cost' | 'variants' | 'motion'; testId?: string }) {
   return (
     <div
+      data-testid={testId}
       onClick={() => {
         // Dispatch a custom event the ModelerShell listens for to open the
         // BottomDrawer on the target tab.

@@ -597,7 +597,7 @@ export default function DFMPanel({ results: propResults, onAnalyze, onClose, onH
   // Mobile-aware width: full-width drawer on small viewports
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   return (
-    <div style={{
+    <div data-testid="dfm-panel" style={{
       width: isMobile ? '100vw' : 320,
       maxWidth: '100vw',
       background: C.bg, borderLeft: `1px solid ${C.border}`,

@@ -432,6 +432,12 @@ export function ShapeGeneratorInner() {
   const langSeg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
   const tabLabels = TAB_LABELS[lang] || TAB_LABELS.en;
   const searchParams = useSearchParams();
+  const viewportBenchmarkParam = searchParams?.get('viewportBenchmark');
+  const viewportBenchmarkTier = (
+    searchParams?.get('expert') === '1' &&
+    (viewportBenchmarkParam === 'S' || viewportBenchmarkParam === 'M' ||
+      viewportBenchmarkParam === 'L' || viewportBenchmarkParam === 'XL')
+  ) ? viewportBenchmarkParam : undefined;
 
   useGeometryGC();
 
@@ -5015,17 +5021,20 @@ export function ShapeGeneratorInner() {
     const onFea = () => setShowFEA(true);
     const onCost = () => setShowCostPanel(true);
     const onVariants = () => setShowVariantsPanel(true);
+    const onRfq = () => setShowRfqPanel(true);
     window.addEventListener('nexyfab:open-dfm', onDfm);
     window.addEventListener('nexyfab:open-fea', onFea);
     window.addEventListener('nexyfab:open-cost', onCost);
     window.addEventListener('nexyfab:open-variants', onVariants);
+    window.addEventListener('nexyfab:open-rfq', onRfq);
     return () => {
       window.removeEventListener('nexyfab:open-dfm', onDfm);
       window.removeEventListener('nexyfab:open-fea', onFea);
       window.removeEventListener('nexyfab:open-cost', onCost);
       window.removeEventListener('nexyfab:open-variants', onVariants);
+      window.removeEventListener('nexyfab:open-rfq', onRfq);
     };
-  }, [setShowDFM, setShowFEA, setShowCostPanel, setShowVariantsPanel]);
+  }, [setShowDFM, setShowFEA, setShowCostPanel, setShowVariantsPanel, setShowRfqPanel]);
 
   /** Sketch palette “slice guide” ↔ 3D section plane (X) when solid geometry exists. */
   useEffect(() => {
@@ -8956,6 +8965,7 @@ export function ShapeGeneratorInner() {
                     onTransformChange={setTransformMatrix}
                     snapGrid={snapEnabled ? snapSize : undefined}
                     showPerf={showPerf}
+                    viewportBenchmarkTier={viewportBenchmarkTier}
                     materialId={materialId}
                     onMaterialDrop={setMaterialId}
                     onRadialCommand={canvasOnRadialCommand}
