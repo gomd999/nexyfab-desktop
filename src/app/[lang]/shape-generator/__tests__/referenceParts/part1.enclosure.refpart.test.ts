@@ -302,22 +302,13 @@ describeMaybe('REF-PART 1 · electronics enclosure', () => {
     console.log(`[REF-PART 1] stage volumes: body=${vBody.toFixed(0)} (exp ${V_SOLID}), `
       + `shell=${vShellStage.toFixed(0)} (exp ${V_SHELL.toFixed(0)}), shellErrors=${JSON.stringify(shelled.errors)}`);
     expect(Math.abs(vBody - V_SOLID)).toBeLessThan(V_SOLID * 0.01);
-    // The B-rep face-pick shell deviates from the closed form: measured ≈ 32 597
-    // vs ideal 29 472 — the extra ≈ 3 136 mm³ is one X wall at DOUBLE thickness
-    // (cavity ≈ 94×56×28 instead of 96×56×28).
-    if (Math.abs(vShellStage - V_SHELL) > V_SHELL * 0.03) {
-      recordFinding({
-        part: 'P1 enclosure',
-        severity: 'major',
-        title: 'face-pick B-rep shell produces an uneven wall on a sketch-extruded body',
-        detail: `shell(-2, topFaceFinder) volume ${vShellStage.toFixed(0)} vs closed-form ${V_SHELL.toFixed(0)} `
-          + '(+10.6%) — cavity measures ≈ 94×56×28, i.e. one X wall is ~4 mm instead of 2 mm. The open-face '
-          + 'FaceFinder path (shell.ts applyAsync → occtShellBox shell(-t, finder)) mis-offsets one wall of the '
-          + 'polyline-contour extrude. A user measuring the wall sees double thickness on one side.',
-      });
-    }
-    expect(vShellStage).toBeGreaterThan(V_SHELL * 0.95);
-    expect(vShellStage).toBeLessThan(V_SHELL * 1.15);
+    // RESOLVED 260808 (was a pinned major finding): the face-pick shell used
+    // to measure ≈ 32 597 (+10.6%) because occtShellBox passed a NEGATIVE
+    // thickness to replicad's finder-variant shell, which offsets OUTWARD —
+    // the "double-thickness X wall" was the outward wall. With the sign fixed
+    // (and bbox-verified inwardness), the shell must now hit the closed form:
+    // cavity exactly 96×56×28 → 29 472 mm³ within 1%.
+    expect(Math.abs(vShellStage - V_SHELL)).toBeLessThan(V_SHELL * 0.01);
 
     cacheClear();
     finalFeatures = [

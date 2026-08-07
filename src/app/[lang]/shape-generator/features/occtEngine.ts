@@ -24,6 +24,7 @@ import {
   Uint32BufferAttribute,
 } from 'three';
 import { publicWasmUrl } from '../lib/publicWasmUrl';
+import { reportWarning } from '../lib/telemetry';
 import type { EdgeSig, FaceSig } from './edgeCorrespondence';
 
 let ocInstance: unknown = null;
@@ -415,6 +416,7 @@ interface ShellableShape extends MeshedShape {
   shell: (thickness: number, finderFn?: (ff: unknown) => unknown) => ShellableShape;
   cut: (other: unknown) => ShellableShape;
   translate: (v: [number, number, number]) => ShellableShape;
+  boundingBox?: { bounds: [number[], number[]] };
 }
 
 function meshToBufferGeometry(
@@ -1684,7 +1686,36 @@ export function occtShellBox(
   // replicad's shell(thickness, finderFn) opens exactly those faces. Otherwise
   // fall back to the closed shell + openFace boolean-cut heuristic.
   if (faceFinder !== undefined) {
-    const shelledF = source.shell(-thickness, () => faceFinder);
+    // Sign convention, MEASURED 260808 on the replicad-opencascadejs build of
+    // record (probe: 100×60×30, wall 2, top finder): POSITIVE thickness
+    // hollows INWARD keeping the outer surface (vol 29472 = closed form,
+    // bbox unchanged); NEGATIVE adds the wall OUTWARD (vol 32599, bbox grows
+    // by t on every axis) — that outward shell was REF-PART 1's "+10.6%
+    // uneven wall" finding. Wire orientation and source kind (extrude vs
+    // makeBaseBox) do not affect this. Because the convention is empirical,
+    // verify inwardness via the bounding box and retry the opposite sign if
+    // a future replicad upgrade flips it again.
+    const shellInward = (sign: 1 | -1) => source.shell(sign * thickness, () => faceFinder);
+    const grewOutward = (shape: ShellableShape): boolean => {
+      const src = source.boundingBox?.bounds;
+      const out = shape.boundingBox?.bounds;
+      if (!src || !out) return false; // bounds unavailable → trust the measured default
+      const tol = Math.max(1e-3, thickness * 0.5);
+      for (let axis = 0; axis < 3; axis++) {
+        if (out[0][axis]! < src[0][axis]! - tol || out[1][axis]! > src[1][axis]! + tol) return true;
+      }
+      return false;
+    };
+    let shelledF = shellInward(1);
+    if (grewOutward(shelledF)) {
+      reportWarning('csg', new Error('shell(+t, finder) grew outward — replicad sign convention changed; retrying -t'), {
+        phase: 'occt_shell_sign_flip', thickness,
+      });
+      shelledF = shellInward(-1);
+      if (grewOutward(shelledF)) {
+        throw new Error('SHELL_OUTWARD: both shell sign conventions grew the body outward — refusing to emit a wrong-walled solid');
+      }
+    }
     const meshF = shelledF.mesh({
       tolerance: tessellation.tolerance ?? 0.1,
       angularTolerance: tessellation.angularTolerance ?? 0.2,
