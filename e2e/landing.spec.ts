@@ -46,12 +46,17 @@ test.describe('Landing page', () => {
   });
 
   test('Korean language version loads', async ({ page }) => {
-    await page.goto('/ko/');
+    await page.goto('/kr/');
     await expect(page).toHaveTitle(/.+/);
     // Should show Korean content
     const body = await page.locator('body').textContent();
     // Korean pages should have some Korean characters
     expect(body).toBeTruthy();
+  });
+
+  test('legacy Korean locale redirects to the canonical route', async ({ page }) => {
+    await page.goto('/ko/shape-generator?expert=1');
+    await expect(page).toHaveURL(/\/kr\/shape-generator\/?\?expert=1$/);
   });
 
   test('pricing page loads', async ({ page }) => {

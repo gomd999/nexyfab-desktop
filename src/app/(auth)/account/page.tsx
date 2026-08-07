@@ -752,7 +752,7 @@ export default function AccountPage() {
       <div style={{ maxWidth: '560px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
         {/* Back nav */}
-        <Link href="/ko" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#0b5cff', fontSize: '13px', textDecoration: 'none', fontWeight: 600 }}>
+        <Link href={`/${ROUTE_LANG[lang]}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#0b5cff', fontSize: '13px', textDecoration: 'none', fontWeight: 600 }}>
           &larr; {t.backToNexyFab}
         </Link>
 

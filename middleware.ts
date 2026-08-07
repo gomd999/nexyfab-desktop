@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTrustedClientIp } from '@/lib/client-ip';
+import { canonicalizeLocalePath } from '@/lib/i18n/normalize';
 
 // ─── JWT verification (inlined for edge runtime compatibility) ─────────────────
 // Cannot import from src/lib/jwt.ts in edge middleware — no Node.js crypto.
@@ -236,6 +237,13 @@ const PARTNER_AUTH_EXEMPT = '/api/partner/auth';
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
 
+  const canonicalPath = canonicalizeLocalePath(pathname);
+  if (canonicalPath !== pathname) {
+    const destination = req.nextUrl.clone();
+    destination.pathname = canonicalPath;
+    return NextResponse.redirect(destination, 308);
+  }
+
   // Only handle API routes
   if (!pathname.startsWith('/api/')) {
     return NextResponse.next();
@@ -404,7 +412,6 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 // ─── Matcher ──────────────────────────────────────────────────────────────────
 
 export const config = {
-  // Run on all /api/** paths; Next.js edge middleware handles the rest of the
-  // filtering inside the function above.
-  matcher: ['/api/:path*'],
+  // API protection plus canonical redirects for legacy ISO locale segments.
+  matcher: ['/api/:path*', '/ko/:path*', '/zh/:path*'],
 };

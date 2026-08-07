@@ -11,6 +11,11 @@ export type IsoLang = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'ar';
 export const SUPPORTED_LANGS: RouteLang[] = ['kr', 'en', 'ja', 'cn', 'es', 'ar'];
 export const DEFAULT_LANG: RouteLang = 'en';
 
+const LEGACY_ROUTE_LANGS: Readonly<Record<string, RouteLang>> = {
+  ko: 'kr',
+  zh: 'cn',
+};
+
 const ROUTE_TO_ISO: Record<RouteLang, IsoLang> = {
   kr: 'ko', en: 'en', ja: 'ja', cn: 'zh', es: 'es', ar: 'ar',
 };
@@ -28,6 +33,16 @@ export function toRouteLang(value: string | undefined | null): RouteLang {
   if (isSupportedLang(value)) return value;
   if (value in ISO_TO_ROUTE) return ISO_TO_ROUTE[value as IsoLang];
   return DEFAULT_LANG;
+}
+
+/**
+ * Canonicalises only the first URL segment. Query strings are handled by the
+ * caller so this helper stays usable in Edge middleware and unit tests.
+ */
+export function canonicalizeLocalePath(pathname: string): string {
+  const match = pathname.match(/^\/(ko|zh)(?=\/|$)/);
+  if (!match) return pathname;
+  return `/${LEGACY_ROUTE_LANGS[match[1]]}${pathname.slice(match[0].length)}`;
 }
 
 /**

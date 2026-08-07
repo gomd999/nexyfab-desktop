@@ -1,14 +1,27 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { richText } from '@/lib/richText';
 import type { homeDict } from './homeDict';
 import { useSwipe } from '@/hooks/useSwipe';
 import { EngDomains, EngDev, EngFaq } from './EngVertical';
-import ChatHero from './ChatHero';
 import { LineIcon } from './_lineIcons';
+
+const ChatHero = dynamic(() => import('./ChatHero'), {
+  ssr: false,
+  loading: () => (
+    <section
+      id="nf-chat"
+      data-testid="chat-hero-loading"
+      aria-busy="true"
+      aria-label="Loading AI design assistant"
+      style={{ minHeight: 560, background: '#020617' }}
+    />
+  ),
+});
 
 interface SiteStats {
   factoryCount: string;
