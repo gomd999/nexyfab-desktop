@@ -206,6 +206,16 @@ export function ModelerShell() {
       },
     },
     {
+      // P-2(260808b) — 역루프: 현재 모델을 AI 챗 컨텍스트로("이 상태에서 …해줘").
+      id: 'send-to-chat',
+      label: 'AI 챗으로 보내기 (모델 컨텍스트)',
+      onClick: () => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('nexyfab:send-to-chat'));
+        }
+      },
+    },
+    {
       // Import a STEP file as a true OCCT B-rep solid (STEPControl_Reader via
       // the worker) — accurate volume/bbox + re-exportable, vs the default
       // occt-import-js → tessellated-mesh import.

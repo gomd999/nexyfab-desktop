@@ -139,6 +139,7 @@ function summarizeFeatures(intent: ComposeIntent | undefined, lang: Lang): strin
 }
 
 import { composeIntentToFeatureProgram, openInPrecisionCad } from './chatCadHandoff';
+import { chatContextPreamble, type ReverseProgramResult } from './shape-generator/ai/programFromNfab';
 // compose intent 의 주(main) box 치수 [w,d,h] 추출 (정투상 도면용).
 function mainBoxDims(intent: ComposeIntent | undefined): [number, number, number] | null {
   const feats = intent?.features;
@@ -1290,6 +1291,17 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [attached, setAttached] = useState<Attached | null>(null);
+  // P-2(260808b) — 역루프: 정밀 CAD가 넘긴 모델 컨텍스트(단발 소비, 탭 단위).
+  const [cadCtx, setCadCtx] = useState<ReverseProgramResult | null>(null);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('nexyfab:chat-context-program');
+      if (raw) {
+        sessionStorage.removeItem('nexyfab:chat-context-program');
+        setCadCtx(JSON.parse(raw) as ReverseProgramResult);
+      }
+    } catch { /* 손상 컨텍스트=무시(빈 상태가 정직) */ }
+  }, []);
   const [authed, setAuthed] = useState<boolean | null>(null); // null=미확인, false=게스트, true=회원
   const [plan, setPlan] = useState<string>('free'); // 스레드당 무료 3회 게이트용(Pro 계열=무제한)
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -1587,7 +1599,9 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           try {
             setCad(j.type === 'assembly'
               ? await runAssemblePipeline(String(j.prompt), ac.signal)
-              : await runComposePipeline(String(j.prompt), lang, ac.signal));
+              : await runComposePipeline(cadCtx ? `${chatContextPreamble(cadCtx)}
+
+${String(j.prompt)}` : String(j.prompt), lang, ac.signal));
           } catch (e) {
             if ((e as Error)?.name === 'AbortError') {
               // 사용자가 "중단"을 눌렀다 — 진행 카드를 에러로 덮지 않고 그대로 둔다.
@@ -1817,7 +1831,9 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           : (cad.error ? '' : t.cadSpecTitle);
         setLast({ content: line, cad });
       } else {
-        const cad = await runComposePipeline(m.genSrc || '', lang);
+        const cad = await runComposePipeline(cadCtx ? `${chatContextPreamble(cadCtx)}
+
+${m.genSrc || ''}` : (m.genSrc || ''), lang);
         setLast({ content: cad.error ? '' : t.cadSpecTitle, cad });
       }
     } catch (e) {
@@ -2129,6 +2145,13 @@ export default function ChatHero({ langCode, appMode = false }: { langCode: stri
           <input ref={fileRef} type="file" accept={ACCEPT_RASTER} onChange={onPickFile} style={{ display: 'none' }} />
 
           {/* 첨부 도면 미리보기 */}
+          {cadCtx && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, margin: '0 0 8px', padding: '5px 12px', borderRadius: 999, background: 'rgba(99,102,241,0.14)', border: '1px solid rgba(99,102,241,0.35)', fontSize: 11.5, color: '#c7d2fe', fontWeight: 600 }}>
+              🛠 CAD 모델 컨텍스트 로드됨 — 요청이 이 모델 기준으로 반영됩니다
+              {cadCtx.unmapped.length > 0 && <span style={{ color: '#fbbf24' }}>· 미반영: {cadCtx.unmapped.join(', ')}</span>}
+              <button onClick={() => setCadCtx(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕</button>
+            </div>
+          )}
           {attached && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 6px 8px' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}

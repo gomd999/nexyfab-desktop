@@ -7023,6 +7023,28 @@ export function ShapeGeneratorInner() {
     return () => window.removeEventListener('nexyfab:kseries-thicken', onThicken);
   }, [activeProfile, setImportedGeometry, setImportedFilename, addToast]);
 
+  // P-2(260808b) — 역루프: 현재 모델(저장 직렬화)을 FeatureProgram 역변환해
+  // 챗 컨텍스트로 넘긴다("이 모델 기준으로 다시 설계"). 변환 불가·미매핑은
+  // programFromNfab 이 정직 처리(챗이 미반영 피처를 그대로 표기).
+  useEffect(() => {
+    const onSendToChat = async () => {
+      try {
+        const { programFromNfab } = await import('./ai/programFromNfab');
+        const result = programFromNfab(getCloudSceneObject());
+        if (!result) {
+          addToast('error', '현재 모델은 챗 컨텍스트로 변환할 수 없습니다 (베이스가 역변환 어휘 밖)');
+          return;
+        }
+        sessionStorage.setItem('nexyfab:chat-context-program', JSON.stringify(result));
+        window.location.href = `/${lang}#nf-chat`;
+      } catch (err) {
+        addToast('error', `Send to chat failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    };
+    window.addEventListener('nexyfab:send-to-chat', onSendToChat);
+    return () => window.removeEventListener('nexyfab:send-to-chat', onSendToChat);
+  }, [getCloudSceneObject, addToast, lang]);
+
   // ─── Multi-body import → assembly parts ──────────────────────────────────
   // When an imported mesh (STL/STEP) is actually several disconnected shells,
   // split it into independent PlacedParts so each can be moved, mated,
