@@ -127,6 +127,15 @@
 | G7 | **실패 축 → §2/§3 백로그로 환류.** 수정 후 재캠페인은 **새 홀드아웃**(같은 케이스 재사용 시 튜닝 오염) — 후보 풀을 도메인당 40+로 넉넉히 생성해 둘 것 | 🤖 | |
 | G8 | 복합제품 57건 외부 추출: 👤 SolidWorks/ODA/Revit/Inventor/Creo 라이선스+워커 호스트 → 🤖 추출·검증 | **👤**+🤖 | 기계 심화용 |
 
+### G4→G6 실전 러너북 (리뷰어·홀드아웃 도착 시 그대로 실행)
+
+드라이런(`node scripts/run-domain-accuracy-dryrun.mjs --domain <d>`)으로 전 구간이 실동작 검증된 체인. 실전은 승격 우회 없이:
+
+1. 독립 홀드아웃 후보 매니페스트 작성(👤 소스, `sourceKind` ≠ internal-template, `sourceRights.benchmarkingAllowed` 명기) → `npx tsx scripts/build-domain-accuracy-review-packets.ts --candidates <후보.json>` — `scoreReadyForReview` 전건 true 확인
+2. 리뷰어 2인 blind 승인 수합(패킷의 `approvalTemplate`에 reviewerId/reviewedAt 기입) → `npx tsx scripts/promote-domain-accuracy-candidates.ts --candidates <후보.json> --approvals <승인.json>` — **exit 0 + approvedCases 방출**이 인증 경로 진입 조건
+3. `npx tsx scripts/run-domain-accuracy-campaign.ts --domain <d> --cases <approvedCases.json> --state <state.json> --runs <runs.json> --executor node --executor-arg scripts/domain-accuracy-validator.mjs --executor-arg --corpus --executor-arg <후보.json>` — 중단돼도 같은 명령 재실행=state 재개(드릴서 무결성 실증). ⚠️실전 전 검증기 축 확대 필요(현 v1=재빌드 결정론 4축, AI 생성 주체 판정은 후보별 생성 파이프라인 호출로 교체)
+4. `npx tsx scripts/report-domain-accuracy.ts --domain <d> --cases <approvedCases.json> --runs <runs.json>` — exit 0=eligible일 때만 `docs/evidence/domain-accuracy-approved/`로 이동
+
 **⚠️ 260808 정정(실행 중 발견)**: 리뷰 패킷 게이트가 `internal-template` 소스를 설계상 거부한다(`independent_holdout_source_required` — 자기 템플릿으로 자기 정확도를 증명하는 순환 차단). 따라서 "자체 생성 후보로 1차 인증 충족"은 **불가**하다. 자체 후보 40×5는 파이프라인 드라이런·리뷰어 캘리브레이션 용도로 생성·커밋했고(`docs/accuracy/`), **인증용 홀드아웃은 벤치마크 권리가 확보된 독립 소스(실무 도면·모델)를 👤가 조달해야 한다** — G3(리뷰어 섭외)와 함께 임계 경로.
 
 ## 5. 측정 원칙 (신뢰성 — 어기면 수치가 무효)
