@@ -119,6 +119,58 @@
         { "op": "filletStep", "out": "a", "host": "solid", "radius": 2 }
       ],
       "final": { "op": "draft", "host": "a", "angle": 5, "direction": 0 }
+    },
+    {
+      "id": "boolean-internal-void",
+      "title": "Subtract a 10x10x10 tool FULLY INSIDE a 30x30x20 host — internal cavity; MEASURED 260808: kernel produces the hollow solid cleanly",
+      "expectation": "ok",
+      "steps": [
+        { "op": "extrude", "out": "host", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 20 },
+        { "op": "extrude", "out": "tool", "profile": [[-5, -5], [5, -5], [5, 5], [-5, 5]], "depth": 10, "offset": 5 }
+      ],
+      "final": { "op": "boolean", "host": "host", "tool": "tool", "type": "subtract" }
+    },
+    {
+      "id": "boolean-tangent-cylinder-cut",
+      "title": "Subtract a cylinder whose surface is EXACTLY tangent to the host side face (x=15) — fuzzy-tangency canary; MEASURED 260808: clean",
+      "expectation": "ok",
+      "steps": [
+        { "op": "extrude", "out": "host", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10 },
+        { "op": "extrudeCircle", "out": "tool", "r": 5, "cx": 10, "cy": 0, "depth": 14, "offset": -2 }
+      ],
+      "final": { "op": "boolean", "host": "host", "tool": "tool", "type": "subtract" }
+    },
+    {
+      "id": "fillet-after-notch-thin-wall",
+      "title": "30x30x10 box minus a 10-wide notch leaving a 4mm wall; fillet ALL edges r=5 (> wall) — MEASURED 260808: ladder avoidance engages",
+      "expectation": "avoided",
+      "steps": [
+        { "op": "extrude", "out": "base", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10 },
+        { "op": "extrude", "out": "notch", "profile": [[11, -5], [16, -5], [16, 5], [11, 5]], "depth": 12, "offset": -1 },
+        { "op": "boolean", "out": "hostn", "host": "base", "tool": "notch", "type": "subtract" }
+      ],
+      "final": { "op": "fillet", "host": "hostn", "radius": 5 }
+    },
+    {
+      "id": "boolean-sliver-wall",
+      "title": "Subtract leaving a 0.05mm sliver wall — degenerate thickness; MEASURED 260808: no crash, sliver solid survives",
+      "expectation": "ok",
+      "steps": [
+        { "op": "extrude", "out": "host", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10 },
+        { "op": "extrude", "out": "tool", "profile": [[-14.95, -16], [16, -16], [16, 16], [-14.95, 16]], "depth": 12, "offset": -1 }
+      ],
+      "final": { "op": "boolean", "host": "host", "tool": "tool", "type": "subtract" }
+    },
+    {
+      "id": "shell-after-through-hole",
+      "title": "Shell t=2 (open top) on a 30x30x10 box with a d10 through-hole — MEASURED 260808: K3 bbox-extreme FaceFinder path does NOT engage on a multi-boundary top face; falls to the closed-shell binding which throws SHELL_CLOSED_UNSUPPORTED. Clean refusal, no crash — holed-solid shell is a real K3 follow-up",
+      "expectation": "fail-clean",
+      "steps": [
+        { "op": "extrude", "out": "base", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10 },
+        { "op": "extrudeCircle", "out": "drill", "r": 5, "cx": 0, "cy": 0, "depth": 14, "offset": -2 },
+        { "op": "boolean", "out": "holed", "host": "base", "tool": "drill", "type": "subtract" }
+      ],
+      "final": { "op": "shell", "host": "holed", "thickness": 2 }
     }
   ]
 }
