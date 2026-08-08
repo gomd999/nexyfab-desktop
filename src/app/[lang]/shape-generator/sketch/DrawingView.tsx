@@ -28,6 +28,7 @@ const dict = {
     scaleLbl: '척도', date: '날짜', drawnBy: '작성자',
     tolLabel: '일반공차', roughLabel: '일반조도',
     frontKo: '정면도', topKo: '평면도', rightKo: '우측면도',
+    hlrToggle: '실투영(HLR)', hlrOn: '실투영 모드 — 은선 포함 · 치수 주석은 표준 모드에서', hlrFail: 'HLR 투영 실패',
   },
   en: {
     downloadSvg: 'Download SVG',
@@ -45,6 +46,7 @@ const dict = {
     scaleLbl: 'Scale', date: 'Date', drawnBy: 'Drawn By',
     tolLabel: 'Gen. Tolerance', roughLabel: 'Gen. Roughness',
     frontKo: 'FRONT', topKo: 'TOP', rightKo: 'RIGHT',
+    hlrToggle: 'True projection (HLR)', hlrOn: 'HLR mode — hidden lines shown · dimensions in standard mode', hlrFail: 'HLR projection failed',
   },
   ja: {
     downloadSvg: 'SVGダウンロード',
@@ -62,6 +64,7 @@ const dict = {
     scaleLbl: '尺度', date: '日付', drawnBy: '作成者',
     tolLabel: '一般公差', roughLabel: '一般粗さ',
     frontKo: '正面図', topKo: '平面図', rightKo: '右側面図',
+    hlrToggle: '実投影(HLR)', hlrOn: 'HLRモード — 陰線表示 · 寸法は標準モード', hlrFail: 'HLR投影失敗',
   },
   zh: {
     downloadSvg: '下载SVG',
@@ -79,6 +82,7 @@ const dict = {
     scaleLbl: '比例', date: '日期', drawnBy: '绘制者',
     tolLabel: '一般公差', roughLabel: '一般粗糙度',
     frontKo: '正视图', topKo: '俯视图', rightKo: '右视图',
+    hlrToggle: '真实投影(HLR)', hlrOn: 'HLR模式 — 显示隐藏线 · 尺寸在标准模式', hlrFail: 'HLR投影失败',
   },
   es: {
     downloadSvg: 'Descargar SVG',
@@ -96,6 +100,7 @@ const dict = {
     scaleLbl: 'Escala', date: 'Fecha', drawnBy: 'Dibujado por',
     tolLabel: 'Tol. general', roughLabel: 'Rug. general',
     frontKo: 'FRENTE', topKo: 'SUPERIOR', rightKo: 'DERECHA',
+    hlrToggle: 'Proyección real (HLR)', hlrOn: 'Modo HLR — líneas ocultas · cotas en modo estándar', hlrFail: 'Fallo de proyección HLR',
   },
   ar: {
     downloadSvg: 'تحميل SVG',
@@ -113,6 +118,7 @@ const dict = {
     scaleLbl: 'المقياس', date: 'التاريخ', drawnBy: 'رسم بواسطة',
     tolLabel: 'التفاوت العام', roughLabel: 'الخشونة العامة',
     frontKo: 'الأمامي', topKo: 'العلوي', rightKo: 'الأيمن',
+    hlrToggle: 'إسقاط حقيقي (HLR)', hlrOn: 'وضع HLR — خطوط مخفية · الأبعاد في الوضع القياسي', hlrFail: 'فشل إسقاط HLR',
   },
 } as const;
 
@@ -268,6 +274,29 @@ function edgeBounds(edges: Edge2D[]) {
 }
 
 /* ─── SVG sub-components ────────────────────────────────────────────────────── */
+
+/** B-4(260808e) — 실 HLR 뷰 패널: occtProjectViews 산출(가시 실선+은선 파선)을
+ *  기존 뷰 슬롯에 중첩 svg 로 맞춰 넣는다(viewBox 자동 맞춤 — 좌표계 사상
+ *  불필요). 라이브 핸들에서 토글 시점마다 재투영 = 연관성 구성적 성립. */
+function HlrViewPanel({ data, cx, cy, w, h, label }: {
+  data: { visible: string[]; hidden: string[]; viewBox: string | null } | undefined;
+  cx: number; cy: number; w: number; h: number; label: string;
+}) {
+  if (!data?.viewBox) return null;
+  return (
+    <g>
+      <svg x={cx - w / 2} y={cy - h / 2} width={w} height={h} viewBox={data.viewBox} preserveAspectRatio="xMidYMid meet">
+        {data.hidden.map((d, i) => (
+          <path key={`h${i}`} d={d} fill="none" stroke="#777" strokeWidth={0.5} strokeDasharray="4 2" vectorEffect="non-scaling-stroke" />
+        ))}
+        {data.visible.map((d, i) => (
+          <path key={`v${i}`} d={d} fill="none" stroke="#000" strokeWidth={0.9} vectorEffect="non-scaling-stroke" />
+        ))}
+      </svg>
+      <text x={cx} y={cy + h / 2 + 14} textAnchor="middle" fontSize={11} fontWeight={600} fill="#000">{label}</text>
+    </g>
+  );
+}
 
 function DimensionLine({ x1, y1, x2, y2, value, unitSystem, side }: {
   x1: number; y1: number; x2: number; y2: number;
@@ -554,6 +583,28 @@ export default function DrawingView({
   const [roughness, setRoughness] = useState<SurfaceRoughnessGrade>(generalRoughness);
   const [tolerance, setTolerance] = useState<ISO2768Class>(toleranceClass);
   const [projection, setProjection] = useState<'first' | 'third'>(projectionAngle);
+  // B-4 — 실 HLR 모드: 라이브 B-rep 핸들이 있을 때만 토글 노출. 토글 시점에
+  // 현재 핸들에서 재투영(수 초·온디맨드 — 스냅샷 아님).
+  const [hlrViews, setHlrViews] = useState<Record<string, { visible: string[]; hidden: string[]; viewBox: string | null }> | null>(null);
+  const [hlrBusy, setHlrBusy] = useState(false);
+  const [hlrError, setHlrError] = useState('');
+  const occtHandle = (result?.geometry?.userData as { occtHandle?: string } | undefined)?.occtHandle;
+  const toggleHlr = useCallback(async () => {
+    if (hlrViews) { setHlrViews(null); return; }
+    if (!occtHandle || hlrBusy) return;
+    setHlrBusy(true); setHlrError('');
+    try {
+      const { occtProjectViews, isOcctReady } = await import('../features/occtEngine');
+      if (!isOcctReady()) throw new Error('OCCT not ready');
+      const projected = occtProjectViews(occtHandle, ['front', 'top', 'right']);
+      if (!projected) throw new Error('projection unavailable');
+      setHlrViews(projected);
+    } catch (err) {
+      setHlrError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setHlrBusy(false);
+    }
+  }, [hlrViews, occtHandle, hlrBusy]);
 
   // M4: Orthographic views are recomputed from `result.geometry` every render (useMemo below).
   // Unlike `AutoDrawingPanel`, there is no separate cached drawing snapshot — no stale-preview gap.
@@ -673,6 +724,22 @@ export default function DrawingView({
       <div style={{
         display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap',
       }}>
+        {occtHandle && (
+          <button
+            onClick={() => { void toggleHlr(); }}
+            disabled={hlrBusy}
+            style={{
+              padding: '5px 14px', borderRadius: 6,
+              border: '1px solid ' + (hlrViews ? 'var(--nx-accent)' : 'var(--nx-border)'),
+              background: hlrViews ? 'var(--nx-bg)' : 'var(--nx-panel-2)',
+              color: hlrViews ? 'var(--nx-accent-2)' : 'var(--nx-text)',
+              fontSize: 12, fontWeight: 600, cursor: hlrBusy ? 'wait' : 'pointer',
+            }}
+          >
+            {hlrBusy ? '…' : `📐 ${tt.hlrToggle}`}
+          </button>
+        )}
+        {hlrError && <span style={{ fontSize: 11, color: '#dc2626' }}>{tt.hlrFail}: {hlrError}</span>}
         <button
           onClick={handleExport}
           style={{
@@ -762,14 +829,21 @@ export default function DrawingView({
           <rect x={MARGIN / 2} y={MARGIN / 2} width={DRAWING_W - MARGIN} height={DRAWING_H - MARGIN}
             fill="none" stroke="#000" strokeWidth={1.5} />
 
-          {/* Front View */}
-          <ViewBlock view={views[0]} ox={frontCX} oy={frontCY} scale={scale} bbox3D={bbox} unitSystem={unitSystem} />
-
-          {/* Top View */}
-          <ViewBlock view={views[1]} ox={topCX} oy={topCY} scale={scale} bbox3D={bbox} unitSystem={unitSystem} />
-
-          {/* Right View */}
-          <ViewBlock view={views[2]} ox={rightCX} oy={rightCY} scale={scale} bbox3D={bbox} unitSystem={unitSystem} />
+          {/* Front / Top / Right — HLR 모드면 실투영 패널로 교체(ISO·치수는 표준 모드 유지) */}
+          {hlrViews ? (
+            <>
+              <HlrViewPanel data={hlrViews.front} cx={frontCX} cy={frontCY} w={Math.max(frontW, 60)} h={Math.max(frontH, 60)} label={tt.frontKo} />
+              <HlrViewPanel data={hlrViews.top} cx={topCX} cy={topCY} w={Math.max(frontW, 60)} h={Math.max(topH, 60)} label={tt.topKo} />
+              <HlrViewPanel data={hlrViews.right} cx={rightCX} cy={rightCY} w={Math.max(rightW, 60)} h={Math.max(frontH, 60)} label={tt.rightKo} />
+              <text x={MARGIN} y={DRAWING_H - MARGIN / 2 - 6} fontSize={10} fill="#666">{tt.hlrOn}</text>
+            </>
+          ) : (
+            <>
+              <ViewBlock view={views[0]} ox={frontCX} oy={frontCY} scale={scale} bbox3D={bbox} unitSystem={unitSystem} />
+              <ViewBlock view={views[1]} ox={topCX} oy={topCY} scale={scale} bbox3D={bbox} unitSystem={unitSystem} />
+              <ViewBlock view={views[2]} ox={rightCX} oy={rightCY} scale={scale} bbox3D={bbox} unitSystem={unitSystem} />
+            </>
+          )}
 
           {/* Iso View */}
           <ViewBlock view={views[3]} ox={isoCX} oy={isoCY} scale={scale * 0.7} bbox3D={bbox} unitSystem={unitSystem} />
