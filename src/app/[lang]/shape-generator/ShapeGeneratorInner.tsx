@@ -7045,6 +7045,28 @@ export function ShapeGeneratorInner() {
     return () => window.removeEventListener('nexyfab:send-to-chat', onSendToChat);
   }, [getCloudSceneObject, addToast, lang]);
 
+  // B-6(260808e) — 좌표 실측 프로브(읽기 전용): E2E가 시드된 피처의 **월드
+  // 기하**를 조회해 스케치평면↔월드 사상을 실측한다(P-1c 보스 배선의 선행
+  // 조건 — 추측 배선 금지 원칙). 상태 변이 없음·직렬화 가능한 값만 반환.
+  useEffect(() => {
+    (window as unknown as { __nfabProbe?: () => unknown }).__nfabProbe = () => {
+      const geo = effectiveResult?.geometry;
+      if (!geo) return { ok: false, reason: 'no_geometry' };
+      geo.computeBoundingBox();
+      const bb = geo.boundingBox;
+      const project = getCloudSceneObject();
+      return {
+        ok: true,
+        bbox: bb ? { min: [bb.min.x, bb.min.y, bb.min.z], max: [bb.max.x, bb.max.y, bb.max.z] } : null,
+        scene: project?.scene ? { selectedId: project.scene.selectedId, params: project.scene.params } : null,
+        nodes: (project?.tree?.nodes ?? []).map(node => ({
+          featureType: node.featureType ?? null, params: node.params, enabled: node.enabled,
+        })),
+      };
+    };
+    return () => { delete (window as unknown as { __nfabProbe?: unknown }).__nfabProbe; };
+  }, [effectiveResult, getCloudSceneObject]);
+
   // ─── Multi-body import → assembly parts ──────────────────────────────────
   // When an imported mesh (STL/STEP) is actually several disconnected shells,
   // split it into independent PlacedParts so each can be moved, mated,

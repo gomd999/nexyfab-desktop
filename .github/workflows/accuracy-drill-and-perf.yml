@@ -1,0 +1,59 @@
+name: Accuracy drill + perf gate (weekly)
+
+# B-5(260808e) — 상용 운영 리듬용 회귀망 2종:
+#  1) 인증 도구 체인 드릴(토목, 재빌드 주체): 후보→패킷→promote 거부 실측→
+#     캠페인 300실행(왕복·결함주입 포함)→리포트 정직 거부까지 14/14 단언.
+#  2) 콜드 로드 성능 게이트: 로컬 실측 기준선 3.2~5.4s → CI 변동성 예산 30s
+#     (파국적 회귀 검출망 — 마이크로 벤치 아님).
+# 둘 다 per-PR 파이프라인엔 무겁다 — 주간 + 수동 트리거.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '10 19 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  certification-drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - name: Civil drill (rebuild subject, 20×3×5 + roundtrip + repair)
+        run: node scripts/run-domain-accuracy-dryrun.mjs --domain civil --out /tmp/drill-civil
+
+  perf-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npx playwright install --with-deps chromium
+      - name: Production build (webpack)
+        run: NODE_OPTIONS=--max-old-space-size=8192 npm run build
+      - name: Start standalone server
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          JWT_SECRET=ci-dummy ADMIN_SECRET=ci-dummy NEXT_PUBLIC_SITE_URL=http://localhost:3311 \
+          NEXYFAB_DB_PATH=/tmp/ci-nexyfab.db DATA_ROOT=/tmp/ci-data PORT=3311 \
+          node .next/standalone/server.js &
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3311/kr/ || true)
+            [ "$code" = "200" ] && break
+            sleep 2
+          done
+      - name: Cold-load perf gate (CI budget 30s)
+        run: node scripts/perf-gate.mjs http://localhost:3311 --budget-ms 30000 --runs 3
