@@ -25,7 +25,15 @@ export function trackGeometry(geo: THREE.BufferGeometry | THREE.EdgesGeometry | 
     // Automatically compute BVH for solid geometries (skip EdgesGeometry as it's not a mesh)
     if (!(geo instanceof THREE.EdgesGeometry)) {
       const g = geo as BufferGeometryWithBVH;
-      if (typeof g.computeBoundsTree === 'function' && g.boundsTree == null) {
+      // F-0(260808f) — position 속성이 없거나 정점 0인 지오메트리는 BVH 대상이
+      // 아니다. 실측: three-mesh-bvh 는 position 이 아예 없으면 던진다(TypeError
+      // reading 'count') — 'none' 베이스리스의 edgeGeometry(맨 BufferGeometry,
+      // EdgesGeometry 인스턴스가 아니라 이 분기에 들어옴)가 정확히 그 경우로,
+      // 그 예외가 generate() 캐치에서 조용히 null 로 강등돼 표시 계층의
+      // lastGood 폴백이 직전 형상(기본 박스)을 화면에 남겼다(브라우저 전용 —
+      // 노드 테스트 환경은 BVH 프로토타입 확장이 없어 이 경로를 건너뛴다).
+      if (typeof g.computeBoundsTree === 'function' && g.boundsTree == null
+        && (g.attributes.position?.count ?? 0) > 0) {
         // Small delay or synchronous? Synchronous is usually fine, but for very large 
         // models it might block. We'll do it synchronously since it's during loading/parsing.
         g.computeBoundsTree();

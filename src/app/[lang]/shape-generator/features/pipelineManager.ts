@@ -387,6 +387,16 @@ function runSketchExtrude(
       // Phase-2 tilted face: profileToGeometry already produced an XY-plane
       // extrusion (axis = +Z). Map (x, y, z) ↦ origin + x·u + y·v + z·n
       // by feeding [u, v, n] as basis columns into a Matrix4.
+      //
+      // F-1(260808f) — 면 스케치 압출은 면에서 법선 방향 한쪽(0..depth)이
+      // CAD 계약이고 B-rep 경로(occtExtrude*OnFrame → .extrude(depth))도
+      // 그렇게 만든다. 그런데 메시 압출기는 중심대칭(−d/2..+d/2)이라 보스가
+      // 면을 관통해 절반만 솟는 불일치가 실측됐다(보스 y-max 11.5≠19). 압출
+      // 계열만 +d/2 보정해 두 커널을 일치시킨다(subtract 도구는 기존 유지 —
+      // 면 안쪽을 깎는 기존 의미를 바꾸지 않는다).
+      if (operation !== 'subtract' && (config.mode === 'extrude' || config.mode === 'extrudeCut')) {
+        sketchGeo.translate(0, 0, (config.depth ?? 0) / 2);
+      }
       const u = new THREE.Vector3(...faceFrame.uAxis);
       const v = new THREE.Vector3(...faceFrame.vAxis);
       const n = new THREE.Vector3(...faceFrame.normal);
@@ -442,6 +452,13 @@ function runSketchExtrude(
         result = mergeAligned(geo, sketchGeo);
         if (result) propagateFeatureIdMap(result, geo, sketchGeo);
       }
+    } else if (!geo.attributes.position || (geo.attributes.position.count ?? 0) === 0) {
+      // F-0(260808f) — 빈 업스트림('none' 베이스리스): 병합할 상대가 없으므로
+      // 스케치 자체가 첫 바디다. mergeGeometries 는 속성 집합이 다른(특히 빈)
+      // 지오메트리에서 null 을 돌려주고, 그 실패가 `return prev`로 이어져
+      // 직전 표시(초기 박스)가 화면에 남는 결함이 실측됐다 — 병합을 건너뛴다.
+      result = sketchGeo;
+      propagateFeatureIdMap(result, geo, sketchGeo);
     } else {
       // Additive sketch (boss): attribute/index-aligned merge so a sketch
       // feature still applies after an OCCT-output feature (shell/fillet

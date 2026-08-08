@@ -4318,12 +4318,20 @@ export function ShapeGeneratorInner() {
   }, [moveFeature, getOrderedNodes]);
 
   // ── Base shape generation (sync, lightweight) ──────────────────────────────
+  /** 베이스 generate() 예외의 실측 보존(F-0 진단) — 프로브 전용, 상태 변이 없음. */
+  const baseGenErrorRef = useRef<string | null>(null);
   const baseShapeResult: ShapeResult | null = useMemo(() => {
     try {
       const resolvedParams: Record<string, number> = {};
       shape.params.forEach(sp => { resolvedParams[sp.key] = sp.key in debouncedParams ? debouncedParams[sp.key] : sp.default; });
+      baseGenErrorRef.current = null;
       return shape.generate(resolvedParams, Object.keys(formulaValues).length > 0 ? formulaValues : undefined);
-    } catch { return null; }
+    } catch (e) {
+      // 조용한 null 강등 금지(F-0 실측 — null 이 lastGood 폴백으로 옛 형상을
+      // 남긴다): 원인 메시지를 보존해 프로브/텔레메트리로 노출한다.
+      baseGenErrorRef.current = e instanceof Error ? `${e.message} | ${(e.stack ?? '').slice(0, 400)}` : String(e);
+      return null;
+    }
   }, [shape, debouncedParams, formulaValues]);
 
   // ── Feature pipeline (async, off main thread via Worker) ───────────────────
@@ -7056,6 +7064,12 @@ export function ShapeGeneratorInner() {
       const bb = geo.boundingBox;
       const project = getCloudSceneObject();
       return {
+        // F-0 진단 확장(260808f): 표시 계층이 lastGood 폴백으로 옛 형상을 들고
+        // 있는지(=result null), 파이프라인 오류가 있는지 실측 노출.
+        resultNull: !result,
+        baseNull: !baseShapeResult,
+        baseGenError: baseGenErrorRef.current,
+        pipelineErrors,
         ok: true,
         bbox: bb ? { min: [bb.min.x, bb.min.y, bb.min.z], max: [bb.max.x, bb.max.y, bb.max.z] } : null,
         scene: project?.scene ? { selectedId: project.scene.selectedId, params: project.scene.params } : null,
@@ -7065,7 +7079,7 @@ export function ShapeGeneratorInner() {
       };
     };
     return () => { delete (window as unknown as { __nfabProbe?: unknown }).__nfabProbe; };
-  }, [effectiveResult, getCloudSceneObject]);
+  }, [effectiveResult, getCloudSceneObject, result, baseShapeResult, pipelineErrors]);
 
   // ─── Multi-body import → assembly parts ──────────────────────────────────
   // When an imported mesh (STL/STEP) is actually several disconnected shells,

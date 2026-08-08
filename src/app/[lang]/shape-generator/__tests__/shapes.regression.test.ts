@@ -68,6 +68,12 @@ describe('shape primitive regression', () => {
       }
 
       expect(result.geometry).toBeDefined();
+      if (shape.id === 'none') {
+        // 베이스리스 파트(260808e): 'none'은 빈 형상이 계약 — 첫 스케치 피처가
+        // 체인을 시작한다. 비어있지 않으면 오히려 회귀.
+        expect(result.geometry.attributes.position.count).toBe(0);
+        return;
+      }
       expect(result.geometry.attributes.position.count).toBeGreaterThan(0);
 
       const sig = computeSignature(result.geometry);

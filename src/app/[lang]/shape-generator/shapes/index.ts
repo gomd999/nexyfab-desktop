@@ -95,6 +95,7 @@ export function meshSurfaceArea(geo: THREE.BufferGeometry): number {
 // ─── Shape registry (populated by imports) ────────────────────────────────────
 
 import { boxShape } from './box';
+import { emptyBaseShape } from './emptyBase';
 import { boltShape } from './bolt';
 import { springShape } from './spring';
 import { tSlotShape } from './tSlot';
@@ -147,7 +148,8 @@ function withGeometryTracking(cfg: ShapeConfig): ShapeConfig {
 }
 
 export const SHAPES: ShapeConfig[] = [
-  boxShape,
+  boxShape, // ⚠️ SHAPES[0]=미지 id 폴백 — 순서 변경 금지
+  emptyBaseShape,
   cylinderShape,
   diskShape,
   ellipsoidShape,
