@@ -7,6 +7,7 @@
  */
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { diagnoseMateMobility, type MobilityDiagnosis } from './mateMobilityDiagnosis';
+import { sweepHingeMateClearance, type MotionSweepCertificate } from './mateMotionSweep';
 import { usePathname } from 'next/navigation';
 import {
   solveAssembly,
@@ -264,6 +265,14 @@ export default function AssemblyMatesPanel({
     });
   }, [assemblyState, onAssemblyUpdate]);
 
+  // F-5(260808g) — 힌지 스윕 인증(Pro 솔버 병렬 채널): 요청 시 1회 실행,
+  // 결과는 메이트별 배지로. fail-closed 결과(not_run)도 사유와 함께 그대로 표시.
+  const [sweepCerts, setSweepCerts] = useState<Record<string, MotionSweepCertificate>>({});
+  const runSweep = useCallback((mateId: string) => {
+    const cert = sweepHingeMateClearance(assemblyState, mateId);
+    setSweepCerts(prev => ({ ...prev, [mateId]: cert }));
+  }, [assemblyState]);
+
   const deleteMate = useCallback((id: string) => {
     onAssemblyUpdate({
       ...assemblyState,
@@ -484,6 +493,31 @@ export default function AssemblyMatesPanel({
                     &#x26A0;
                   </span>
                 )}
+
+                {mate.type === 'hinge' && (() => {
+                  const cert = sweepCerts[mate.id];
+                  const color = !cert ? theme.textMuted
+                    : cert.status === 'pass' ? 'var(--nx-ok)'
+                    : cert.status === 'collision' ? 'var(--nx-error)'
+                    : '#e3b341';
+                  const glyph = !cert ? '⟳' : cert.status === 'pass' ? '⟳✓' : cert.status === 'collision' ? '⟳✕' : '⟳—';
+                  return (
+                    <button
+                      onClick={() => runSweep(mate.id)}
+                      data-testid={`mate-sweep-${mate.id}`}
+                      data-sweep-status={cert?.status ?? 'idle'}
+                      title={cert ? cert.note : '0…180° 스윙 검증 (Pro 솔버 교차)'}
+                      style={{
+                        padding: '2px 6px', borderRadius: 4,
+                        border: `1px solid ${theme.border}`,
+                        background: 'transparent', color, fontSize: 10,
+                        cursor: 'pointer', flexShrink: 0,
+                      }}
+                    >
+                      {glyph}
+                    </button>
+                  );
+                })()}
 
                 <button
                   onClick={() => toggleMate(mate.id)}
