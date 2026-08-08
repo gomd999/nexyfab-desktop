@@ -38,3 +38,45 @@ describe('composeIntentToFeatureProgram (E1)', () => {
     expect(composeIntentToFeatureProgram(undefined)).toBeNull();
   });
 });
+
+describe('P-1a: cylinder body (shaft / pipe)', () => {
+  it('converts a bare shaft to a circle base', () => {
+    const p = composeIntentToFeatureProgram({
+      features: [{ kind: 'cylinder', diameter: 50, height: 400 }],
+    })!;
+    expect(p.features).toHaveLength(1);
+    expect(p.features[0]).toMatchObject({ type: 'sketchExtrude', shape: 'circle', width: 50, height: 400 });
+  });
+
+  it('converts a pipe (concentric bore at (0,0) or unplaced) — the box (0,0) refusal must NOT apply', () => {
+    for (const at of [{ translate: [0, 0, 0] }, undefined]) {
+      const p = composeIntentToFeatureProgram({
+        features: [
+          { kind: 'cylinder', diameter: 100, height: 500 },
+          { kind: 'cylinder', op: 'subtract', diameter: 80, at },
+        ],
+      })!;
+      expect(p.features[0]).toMatchObject({ shape: 'circle', width: 100, height: 500 });
+      expect(p.features[1]).toMatchObject({ type: 'hole', diameter: 80, posX: 0, posY: 0 });
+    }
+  });
+
+  it('refuses eccentric holes (unmeasured origin convention) and bore ≥ OD', () => {
+    expect(composeIntentToFeatureProgram({
+      features: [
+        { kind: 'cylinder', diameter: 100, height: 500 },
+        { kind: 'cylinder', op: 'subtract', diameter: 20, at: { translate: [30, 0, 0] } },
+      ],
+    })).toBeNull();
+    expect(composeIntentToFeatureProgram({
+      features: [
+        { kind: 'cylinder', diameter: 100, height: 500 },
+        { kind: 'cylinder', op: 'subtract', diameter: 100, at: { translate: [0, 0, 0] } },
+      ],
+    })).toBeNull();
+    // 복수 몸체(box+cylinder add)
+    expect(composeIntentToFeatureProgram({
+      features: [{ kind: 'box', size: [100, 60, 8] }, { kind: 'cylinder', diameter: 50, height: 100 }],
+    })).toBeNull();
+  });
+});
