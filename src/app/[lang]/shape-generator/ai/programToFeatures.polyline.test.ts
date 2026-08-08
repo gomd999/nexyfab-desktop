@@ -24,6 +24,8 @@ describe('reconstructFeatureTree — polyline base (P-1b)', () => {
       api as never,
     );
     expect(r.ok).toBe(true);
+    // 실측 결함의 정직 표면화: 기본 프리미티브 잔존이 skipped 로 노출된다
+    expect(r.skipped).toContain('default_base_overlays_polyline');
     expect(api.setBaseShape).not.toHaveBeenCalled();
     expect(api.addSketchFeature).toHaveBeenCalledTimes(1);
     const [profile, config, plane, operation] = api.addSketchFeature.mock.calls[0]!;

@@ -55,6 +55,7 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
   // NOTE: do NOT clearFeatures() here — the modeler mounts fresh on handoff, and
   // clearAll() resets activeNodeId asynchronously, so features added in the same
   // tick attach to a stale (removed) parent and vanish from the tree.
+  const skipped: string[] = [];
   const poly = Array.isArray(base.profile) && base.profile.length >= 3 ? base.profile : null;
   if (poly) {
     // P-1b(260808b) — 임의 폐다각 프로파일: 프리미티브가 아니라 진짜 스케치
@@ -68,6 +69,11 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
     const profile: SketchProfile = { segments, closed: true };
     const config = { mode: 'extrude', depth: h, revolveAngle: 360, revolveAxis: 'y', segments: 32 } as unknown as SketchConfig;
     api.addSketchFeature(profile, config, 'xy', 'add', 0);
+    // ⚠️실측 결함(260808e 프로브): 모델러에 '베이스 없음' 모드가 없어 기본
+    // 프리미티브가 씬에 잔존해 폴리라인과 겹쳐 보인다(bbox 합집합 실측).
+    // 근본 수정=베이스리스 파트(모델러 내부 세션급) 전까지 skipped 로 정직
+    // 표면화 — 호출측 토스트가 사용자에게 기본 도형 정리를 안내한다.
+    skipped.push('default_base_overlays_polyline');
   } else if (api.setBaseShape) {
     if (base.shape === 'circle') {
       api.setBaseShape('cylinder', { diameter: num(base.width, 50), height: h });
@@ -88,7 +94,6 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
   }
 
   // 2. downstream features, in program order (a pattern follows its source hole)
-  const skipped: string[] = [];
   for (const f of feats) {
     try {
     switch (f.type) {
