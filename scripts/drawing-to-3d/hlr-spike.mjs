@@ -21,6 +21,12 @@ export async function hlrProject(asm, { views = ['front', 'top'] } = {}) {
   const st = await intentToStep(built.composeIntent);
   const rc = await ensureReplicad();
   const shape = await rc.importSTEP(new Blob([st.step]));
+  return { ok: true, views: projectShapeViews(rc, shape, views), entities: st.entities, dropped: st.fuseReport?.dropped ?? [] };
+}
+
+/** B-rep 형상 → 뷰별 HLR SVG(visible 실선 + hidden 파선) — 어셈블리/단일 intent
+ *  경로가 공유하는 투영 코어(K5 심화 260808 공용화). */
+export function projectShapeViews(rc, shape, views) {
   const out = {};
   for (const v of views) {
     const pr = rc.drawProjection(shape, v);
@@ -30,7 +36,7 @@ export async function hlrProject(asm, { views = ['front', 'top'] } = {}) {
     const bb = pr.visible.toSVGViewBox ? pr.visible.toSVGViewBox(2) : null;
     out[v] = `<svg xmlns="http://www.w3.org/2000/svg" ${bb ? `viewBox="${bb}"` : ''}>${vis.join('')}${hid.join('')}</svg>`;
   }
-  return { ok: true, views: out, entities: st.entities, dropped: st.fuseReport?.dropped ?? [] };
+  return out;
 }
 
 // CLI

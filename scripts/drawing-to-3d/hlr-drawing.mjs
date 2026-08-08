@@ -11,7 +11,8 @@
  * v1 구멍 콜아웃: `plate_with_holes` 어휘의 holes[{x,y,d}] (top 뷰). 고유
  * x/y 좌표별 위치 치수(각 축 4개 상한 — K5 v1 규약과 동일) + ⌀ 그룹.
  */
-import { hlrProject } from './hlr-spike.mjs';
+import { hlrProject, projectShapeViews } from './hlr-spike.mjs';
+import { intentToStep, ensureReplicad } from './to-step.mjs';
 import { placedAabb } from './assembly.mjs';
 
 const fmt = (n) => String(+n.toFixed(2));
@@ -59,10 +60,41 @@ export async function hlrDrawingWithDims(asm, { views = ['front', 'top'] } = {})
   if (!projected.ok) return projected;
   const ext = overallExtents(asm.parts ?? []);
   const holes = collectPlateHoles(asm.parts ?? []);
+  return {
+    ...overlayDimsOnViews(projected.views, ext, holes),
+    entities: projected.entities, dropped: projected.dropped,
+  };
+}
+
+/**
+ * K5 심화 확대(260808) — compose intent 직결 HLR: 체크포인트 단계(어셈블리
+ * 이전, intent만 존재)에서 실투영 도면을 뽑는다. 전체 치수는 **커널 bbox**
+ * (B-rep 해석값 — 픽셀 측정 아님). 구멍 콜아웃은 v1 범위 밖(투영 자체에
+ * 구멍 실루엣은 나타난다) — 위치 치수는 체크포인트 사양표가 담당.
+ */
+export async function hlrDrawingFromIntent(intent, { views = ['front', 'top'] } = {}) {
+  let st;
+  try {
+    st = await intentToStep(intent);
+  } catch (error) {
+    return { ok: false, gateErrors: [error instanceof Error ? error.message : String(error)] };
+  }
+  const rc = await ensureReplicad();
+  const shape = await rc.importSTEP(new Blob([st.step]));
+  const projectedViews = projectShapeViews(rc, shape, views);
+  const bounds = shape.boundingBox?.bounds;
+  if (!bounds) return { ok: true, views: projectedViews, dims: null, entities: st.entities };
+  const [mn, mx] = bounds;
+  const ext = { min: mn, max: mx, size: [mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]] };
+  return { ...overlayDimsOnViews(projectedViews, ext, []), entities: st.entities };
+}
+
+/** 투영 뷰들에 해석 치수 오버레이 — 어셈블리/단일 intent 경로 공용 코어. */
+function overlayDimsOnViews(projectedViews, ext, holes) {
   const [W, D, H] = ext.size;
   const out = {};
 
-  for (const [view, svg] of Object.entries(projected.views)) {
+  for (const [view, svg] of Object.entries(projectedViews)) {
     const inner = svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
     const vb = (svg.match(/viewBox="([^"]+)"/)?.[1] ?? '0 0 100 100').split(' ').map(Number);
     let [vx, vy, vw, vh] = vb;
@@ -95,6 +127,5 @@ export async function hlrDrawingWithDims(asm, { views = ['front', 'top'] } = {})
   return {
     ok: true, views: out,
     dims: { overall: { W: +fmt(W), D: +fmt(D), H: +fmt(H) }, holes },
-    entities: projected.entities, dropped: projected.dropped,
   };
 }

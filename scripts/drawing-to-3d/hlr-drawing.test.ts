@@ -4,7 +4,8 @@
  * 규약은 이웃 스위트(RUN_OCCT_FEASIBILITY)와 동일.
  */
 import { describe, expect, it } from 'vitest';
-import { hlrDrawingWithDims } from './hlr-drawing.mjs';
+import { hlrDrawingWithDims, hlrDrawingFromIntent } from './hlr-drawing.mjs';
+import { buildAssembly } from './assembly.mjs';
 
 const ENABLED = process.env.RUN_OCCT_FEASIBILITY !== '0';
 const describeMaybe = ENABLED ? describe : describe.skip;
@@ -33,5 +34,38 @@ describeMaybe('HLR drawing with analytic dims (K5)', () => {
     expect(r.views.top).toContain('⌀8×2');
     // 은선(파선) 렌더가 남아 있다 — 실투영 증거
     expect(r.views.front).toContain('stroke-dasharray');
+  }, 120_000);
+});
+
+describeMaybe('HLR drawing from compose intent (K5 확대 — 체크포인트 직결)', () => {
+  const asm = {
+    name: 'plate', domain: 'mech',
+    parts: [{
+      id: 'p', type: 'plate_with_holes',
+      params: { width: 100, depth: 60, thickness: 10, holes: [{ x: 25, y: 30, d: 8 }] },
+      at: {},
+    }],
+  };
+
+  it('projects straight from intent with kernel-bbox dims (no assembly stage)', async () => {
+    const built = buildAssembly(asm) as { ok: boolean; composeIntent: unknown };
+    expect(built.ok).toBe(true);
+    const r = (await hlrDrawingFromIntent(built.composeIntent, { views: ['front', 'top'] })) as unknown as {
+      ok: boolean; views: Record<string, string>; dims: { overall: unknown };
+    };
+    expect(r.ok).toBe(true);
+    // 전체 치수 = 커널 bbox(해석값) — 모델 파라미터와 일치해야 한다
+    expect(r.dims.overall).toEqual({ W: 100, D: 60, H: 10 });
+    expect(r.views.front).toContain('>100<');
+    expect(r.views.top).toContain('>60<');
+    expect((r.views.front.match(/<path/g) ?? []).length).toBeGreaterThan(2);
+    // 구멍 실루엣이 투영 자체에 나타난다(콜아웃은 v1 범위 밖)
+    expect(r.views.top).toContain('stroke-dasharray');
+  }, 120_000);
+
+  it('gate-failing intent → honest refusal, never an empty drawing', async () => {
+    const r = await hlrDrawingFromIntent({ nonsense: true }, { views: ['front'] });
+    expect(r.ok).toBe(false);
+    expect(Array.isArray(r.gateErrors) && r.gateErrors.length).toBeTruthy();
   }, 120_000);
 });
