@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import * as THREE from 'three';
 import type { ShapeResult } from '../shapes';
 import { formatWithUnit, type UnitSystem } from '../units';
+import { extractCircles } from './svgCircleExtract';
 import { exportDrawingPDF } from '../io/pdfExport';
 import type { SurfaceRoughnessGrade, ISO2768Class } from '../annotations/GDTTypes';
 import { ROUGHNESS_RA } from '../annotations/GDTTypes';
@@ -317,16 +318,20 @@ function HlrViewPanel({ data, cx, cy, w, h, label, view, ext, unitSystem }: {
       </g>,
     );
     const pad = Math.max(6, vh * 0.08);
+    // 뷰별 (u,v) 파트 원점(투영 최소 코너) — 원 위치치수의 기준선.
+    let u0 = mnx, v0 = mny;
     if (view === 'front') {
       dimH(mnx, mxx, -mnz + pad, fmtV(W3), 'w');
       dimV(mnx - pad, -mxz, -mnz, fmtV(H3), 'h');
       vx = Math.min(vx, mnx - pad * 2.5); vy = Math.min(vy, -mxz - pad / 2);
       vw = Math.max(vw, W3 + pad * 4); vh = Math.max(vh, H3 + pad * 2.5);
+      u0 = mnx; v0 = -mxz;
     } else if (view === 'top') {
       dimH(mnx, mxx, mny - pad, fmtV(W3), 'w');
       dimV(mnx - pad, mny, mxy, fmtV(D3), 'd');
       vx = Math.min(vx, mnx - pad * 2.5); vy = Math.min(vy, mny - pad * 2.5);
       vw = Math.max(vw, W3 + pad * 4); vh = Math.max(vh, D3 + pad * 4);
+      u0 = mnx; v0 = mny;
     } else {
       // right 뷰 (u,v)=(−y,−z) — drawingProjectionMapping.test.ts 실측 정정
       // (가정 (y,−z)의 u 부호 반전: 판 y 0..60 이 u −60..0 에 투영된다).
@@ -334,6 +339,61 @@ function HlrViewPanel({ data, cx, cy, w, h, label, view, ext, unitSystem }: {
       dimV(-mxy - pad, -mxz, -mnz, fmtV(H3), 'h');
       vx = Math.min(vx, -mxy - pad * 2.5); vy = Math.min(vy, -mxz - pad / 2);
       vw = Math.max(vw, D3 + pad * 4); vh = Math.max(vh, H3 + pad * 2.5);
+      u0 = -mxy; v0 = -mxz;
+    }
+
+    // F-4/D-2(260808g) — 원형 피처(구멍/보스 실루엣) 치수: 소스는 **B-rep
+    // 투영의 완전 원**(svgCircleExtract — 실측 경로 형식 고정)이라 피처 기원
+    // 과 무관하게 모델값이고, 재투영마다 재추출되므로 연관이다.
+    //  · ⌀ 그룹: 같은 지름은 1회 표기(×n), 지시선으로 첫 원에 연결
+    //  · 센터마크 + 위치치수: 고유 u/v 좌표별 스태거(기준선 = 파트 최소 코너)
+    const circles = extractCircles([...(data.visible as unknown[]), ...(data.hidden as unknown[])]);
+    if (circles.length > 0 && circles.length <= 12) {
+      const rnd = (n: number) => Math.round(n * 100) / 100;
+      circles.forEach((c, i) => {
+        const cm = Math.max(1.2, c.r * 0.3);
+        dims.push(
+          <g key={`cm${i}`} stroke="#2563eb" strokeWidth={0.3}>
+            <line x1={c.cx - cm} y1={c.cy} x2={c.cx + cm} y2={c.cy} vectorEffect="non-scaling-stroke" />
+            <line x1={c.cx} y1={c.cy - cm} x2={c.cx} y2={c.cy + cm} vectorEffect="non-scaling-stroke" />
+          </g>,
+        );
+      });
+      const groups = new Map<string, typeof circles>();
+      circles.forEach(c => {
+        const k = rnd(2 * c.r).toFixed(2);
+        const g = groups.get(k);
+        if (g) g.push(c); else groups.set(k, [c]);
+      });
+      let gi = 0;
+      for (const [, cs] of groups) {
+        const c = cs[0];
+        const lx = c.cx + c.r * 0.75, ly = c.cy - c.r * 0.75;
+        dims.push(
+          <g key={`dia${gi}`}>
+            <line x1={lx} y1={ly} x2={lx + pad * 0.9} y2={ly - pad * 0.55} stroke="#2563eb" strokeWidth={0.3} vectorEffect="non-scaling-stroke" />
+            <text x={lx + pad} y={ly - pad * 0.6} fill="#2563eb" fontSize={fs} fontFamily="ui-monospace, monospace">
+              {`⌀${fmtV(rnd(2 * c.r))}${cs.length > 1 ? ` ×${cs.length}` : ''}`}
+            </text>
+          </g>,
+        );
+        gi++;
+      }
+      const uxs = [...new Set(circles.map(c => rnd(c.cx)))].sort((a, b) => a - b);
+      const uys = [...new Set(circles.map(c => rnd(c.cy)))].sort((a, b) => a - b);
+      uxs.forEach((x, i) => {
+        if (Math.abs(x - u0) < 1e-6) return;
+        dimH(u0, x, v0 - pad * (1.9 + 0.75 * i), fmtV(x - u0), `cu${i}`);
+      });
+      uys.forEach((y, i) => {
+        if (Math.abs(y - v0) < 1e-6) return;
+        dimV(u0 - pad * (1.9 + 0.75 * i), v0, y, fmtV(y - v0), `cv${i}`);
+      });
+      // viewBox 확장: 우/하단 모서리를 고정한 채 좌/상단만 스태거 행·열만큼.
+      const right = vx + vw, bottom = vy + vh;
+      vy = Math.min(vy, v0 - pad * (1.9 + 0.75 * uxs.length) - pad / 2);
+      vx = Math.min(vx, u0 - pad * (1.9 + 0.75 * uys.length) - pad / 2);
+      vw = right - vx; vh = bottom - vy;
     }
   }
   const vb = vx + ' ' + vy + ' ' + vw + ' ' + vh;
