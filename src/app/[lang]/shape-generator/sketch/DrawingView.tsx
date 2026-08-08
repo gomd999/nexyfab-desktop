@@ -278,20 +278,73 @@ function edgeBounds(edges: Edge2D[]) {
 /** B-4(260808e) — 실 HLR 뷰 패널: occtProjectViews 산출(가시 실선+은선 파선)을
  *  기존 뷰 슬롯에 중첩 svg 로 맞춰 넣는다(viewBox 자동 맞춤 — 좌표계 사상
  *  불필요). 라이브 핸들에서 토글 시점마다 재투영 = 연관성 구성적 성립. */
-function HlrViewPanel({ data, cx, cy, w, h, label }: {
+function HlrViewPanel({ data, cx, cy, w, h, label, view, ext, unitSystem }: {
   data: { visible: string[]; hidden: string[]; viewBox: string | null } | undefined;
   cx: number; cy: number; w: number; h: number; label: string;
+  view: 'front' | 'top' | 'right';
+  ext: { min: [number, number, number]; max: [number, number, number] } | null;
+  unitSystem: UnitSystem;
 }) {
   if (!data?.viewBox) return null;
+  /**
+   * F-2/D-1(260808f) — 해석 치수 오버레이: 모델 bbox(모델값 — 픽셀 측정 아님)
+   * 를 투영좌표로 사상. 사상 규약은 노드 HLR 엔진(hlr-drawing.mjs)에서 실측
+   * 검증된 그대로: front (x,−z) · top (x,y) · right (y,−z). 재투영 시점마다
+   * 재계산되므로 치수도 연관이다.
+   */
+  const fmtV = (n: number) => formatWithUnit(n, unitSystem, 1);
+  const dims: React.ReactNode[] = [];
+  let [vx, vy, vw, vh] = data.viewBox.split(' ').map(Number);
+  if (ext && [vx, vy, vw, vh].every(Number.isFinite)) {
+    const mnx = ext.min[0], mny = ext.min[1], mnz = ext.min[2];
+    const mxx = ext.max[0], mxy = ext.max[1], mxz = ext.max[2];
+    const W3 = mxx - mnx, D3 = mxy - mny, H3 = mxz - mnz;
+    const fs = Math.max(3.5, vh * 0.05);
+    const dimH = (x0: number, x1: number, y: number, txt: string, key: string) => dims.push(
+      <g key={key}>
+        <line x1={x0} y1={y} x2={x1} y2={y} stroke="#2563eb" strokeWidth={0.35} vectorEffect="non-scaling-stroke" />
+        <line x1={x0} y1={y - 1.5} x2={x0} y2={y + 1.5} stroke="#2563eb" strokeWidth={0.35} vectorEffect="non-scaling-stroke" />
+        <line x1={x1} y1={y - 1.5} x2={x1} y2={y + 1.5} stroke="#2563eb" strokeWidth={0.35} vectorEffect="non-scaling-stroke" />
+        <text x={(x0 + x1) / 2} y={y - 1.2} fill="#2563eb" fontSize={fs} textAnchor="middle" fontFamily="ui-monospace, monospace">{txt}</text>
+      </g>,
+    );
+    const dimV = (x: number, y0: number, y1: number, txt: string, key: string) => dims.push(
+      <g key={key}>
+        <line x1={x} y1={y0} x2={x} y2={y1} stroke="#2563eb" strokeWidth={0.35} vectorEffect="non-scaling-stroke" />
+        <line x1={x - 1.5} y1={y0} x2={x + 1.5} y2={y0} stroke="#2563eb" strokeWidth={0.35} vectorEffect="non-scaling-stroke" />
+        <line x1={x - 1.5} y1={y1} x2={x + 1.5} y2={y1} stroke="#2563eb" strokeWidth={0.35} vectorEffect="non-scaling-stroke" />
+        <text x={x - 1.2} y={(y0 + y1) / 2} fill="#2563eb" fontSize={fs} textAnchor="end" dominantBaseline="middle" fontFamily="ui-monospace, monospace">{txt}</text>
+      </g>,
+    );
+    const pad = Math.max(6, vh * 0.08);
+    if (view === 'front') {
+      dimH(mnx, mxx, -mnz + pad, fmtV(W3), 'w');
+      dimV(mnx - pad, -mxz, -mnz, fmtV(H3), 'h');
+      vx = Math.min(vx, mnx - pad * 2.5); vy = Math.min(vy, -mxz - pad / 2);
+      vw = Math.max(vw, W3 + pad * 4); vh = Math.max(vh, H3 + pad * 2.5);
+    } else if (view === 'top') {
+      dimH(mnx, mxx, mny - pad, fmtV(W3), 'w');
+      dimV(mnx - pad, mny, mxy, fmtV(D3), 'd');
+      vx = Math.min(vx, mnx - pad * 2.5); vy = Math.min(vy, mny - pad * 2.5);
+      vw = Math.max(vw, W3 + pad * 4); vh = Math.max(vh, D3 + pad * 4);
+    } else {
+      dimH(mny, mxy, -mnz + pad, fmtV(D3), 'd');
+      dimV(mny - pad, -mxz, -mnz, fmtV(H3), 'h');
+      vx = Math.min(vx, mny - pad * 2.5); vy = Math.min(vy, -mxz - pad / 2);
+      vw = Math.max(vw, D3 + pad * 4); vh = Math.max(vh, H3 + pad * 2.5);
+    }
+  }
+  const vb = vx + ' ' + vy + ' ' + vw + ' ' + vh;
   return (
     <g>
-      <svg x={cx - w / 2} y={cy - h / 2} width={w} height={h} viewBox={data.viewBox} preserveAspectRatio="xMidYMid meet">
+      <svg x={cx - w / 2} y={cy - h / 2} width={w} height={h} viewBox={vb} preserveAspectRatio="xMidYMid meet">
         {data.hidden.map((d, i) => (
-          <path key={`h${i}`} d={d} fill="none" stroke="#777" strokeWidth={0.5} strokeDasharray="4 2" vectorEffect="non-scaling-stroke" />
+          <path key={'h' + i} d={d} fill="none" stroke="#777" strokeWidth={0.5} strokeDasharray="4 2" vectorEffect="non-scaling-stroke" />
         ))}
         {data.visible.map((d, i) => (
-          <path key={`v${i}`} d={d} fill="none" stroke="#000" strokeWidth={0.9} vectorEffect="non-scaling-stroke" />
+          <path key={'v' + i} d={d} fill="none" stroke="#000" strokeWidth={0.9} vectorEffect="non-scaling-stroke" />
         ))}
+        {dims}
       </svg>
       <text x={cx} y={cy + h / 2 + 14} textAnchor="middle" fontSize={11} fontWeight={600} fill="#000">{label}</text>
     </g>
@@ -588,6 +641,7 @@ export default function DrawingView({
   const [hlrViews, setHlrViews] = useState<Record<string, { visible: string[]; hidden: string[]; viewBox: string | null }> | null>(null);
   const [hlrBusy, setHlrBusy] = useState(false);
   const [hlrError, setHlrError] = useState('');
+  const [hlrExt, setHlrExt] = useState<{ min: [number, number, number]; max: [number, number, number] } | null>(null);
   const occtHandle = (result?.geometry?.userData as { occtHandle?: string } | undefined)?.occtHandle;
   const toggleHlr = useCallback(async () => {
     if (hlrViews) { setHlrViews(null); return; }
@@ -598,6 +652,13 @@ export default function DrawingView({
       if (!isOcctReady()) throw new Error('OCCT not ready');
       const projected = occtProjectViews(occtHandle, ['front', 'top', 'right']);
       if (!projected) throw new Error('projection unavailable');
+      // F-2/D-1 — 치수 소스 = 모델 지오메트리 bbox(모델값). 재투영마다 갱신.
+      const geo = result?.geometry;
+      if (geo) {
+        geo.computeBoundingBox();
+        const bb = geo.boundingBox;
+        setHlrExt(bb ? { min: [bb.min.x, bb.min.y, bb.min.z], max: [bb.max.x, bb.max.y, bb.max.z] } : null);
+      } else setHlrExt(null);
       setHlrViews(projected);
     } catch (err) {
       setHlrError(err instanceof Error ? err.message : String(err));
@@ -832,9 +893,9 @@ export default function DrawingView({
           {/* Front / Top / Right — HLR 모드면 실투영 패널로 교체(ISO·치수는 표준 모드 유지) */}
           {hlrViews ? (
             <>
-              <HlrViewPanel data={hlrViews.front} cx={frontCX} cy={frontCY} w={Math.max(frontW, 60)} h={Math.max(frontH, 60)} label={tt.frontKo} />
-              <HlrViewPanel data={hlrViews.top} cx={topCX} cy={topCY} w={Math.max(frontW, 60)} h={Math.max(topH, 60)} label={tt.topKo} />
-              <HlrViewPanel data={hlrViews.right} cx={rightCX} cy={rightCY} w={Math.max(rightW, 60)} h={Math.max(frontH, 60)} label={tt.rightKo} />
+              <HlrViewPanel data={hlrViews.front} cx={frontCX} cy={frontCY} w={Math.max(frontW, 60)} h={Math.max(frontH, 60)} label={tt.frontKo} view="front" ext={hlrExt} unitSystem={unitSystem} />
+              <HlrViewPanel data={hlrViews.top} cx={topCX} cy={topCY} w={Math.max(frontW, 60)} h={Math.max(topH, 60)} label={tt.topKo} view="top" ext={hlrExt} unitSystem={unitSystem} />
+              <HlrViewPanel data={hlrViews.right} cx={rightCX} cy={rightCY} w={Math.max(rightW, 60)} h={Math.max(frontH, 60)} label={tt.rightKo} view="right" ext={hlrExt} unitSystem={unitSystem} />
               <text x={MARGIN} y={DRAWING_H - MARGIN / 2 - 6} fontSize={10} fill="#666">{tt.hlrOn}</text>
             </>
           ) : (
