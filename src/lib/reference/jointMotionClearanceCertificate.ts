@@ -99,6 +99,12 @@ export function buildJointMotionClearanceCertificate(input: {
   plan: CadNativeJointMotionPlan;
   geometries: ReadonlyMap<string, FeatureTreeCollisionGeometry>;
   maximumPairChecks?: number;
+  /** B-1(260808d) 옵트인 — 정적-정적 쌍(스윕 전 구간 포즈 불변 부품끼리)을
+   *  검사에서 제외한다. 운동 인증서의 증명 대상은 "움직이는 부품 대 나머지"
+   *  이고, 정적 간섭·구조 맞댐은 조립 간섭 게이트의 소관이다(템플릿 브리지의
+   *  leg↔rail 정확 맞댐이 충돌로 오판된 실측이 계기). 기본 false — 외부 CAD
+   *  트랙의 기존 계약(전쌍 검사)은 불변. */
+  skipStaticStaticPairs?: boolean;
 }): JointMotionClearanceCertificate {
   const maximumPairChecks = input.maximumPairChecks ?? 200_000;
   const policy = { approximateGeometryCertificationForbidden: true, budgetExhaustionIsNotRun: true, nonConvergedFrameCertificationForbidden: true, fixedJointFabricationForbidden: true } as const;
@@ -133,11 +139,28 @@ export function buildJointMotionClearanceCertificate(input: {
     let collision: JointSweepCollision | null = null;
     let reason: string | null = null;
     let pairChecks = 0;
+    // 정적/운동 판별: 첫 프레임 대비 임의 프레임에서 포즈가 변한 부품 = 운동측.
+    // 포즈 직렬화 비교라 수치 노이즈에 취약하지 않다(솔버가 동일 입력에 동일
+    // 포즈를 내는 결정론 전제 — 변하면 운동으로 분류되어 검사에 포함=안전측).
+    const movingIds = new Set<string>();
+    if (input.skipStaticStaticPairs && frames.length > 1) {
+      const poseKey = (part: unknown) => JSON.stringify(part);
+      const first = new Map(frames[0]!.solve.success
+        ? frames[0]!.solve.state.parts.map(part => [part.id, poseKey(part)])
+        : []);
+      for (const frame of frames) {
+        if (!frame.solve.success) continue;
+        for (const part of frame.solve.state.parts) {
+          if (first.get(part.id) !== poseKey(part)) movingIds.add(part.id);
+        }
+      }
+    }
     outer: for (const frame of frames) {
       if (!frame.solve.success) { sweepStatus = 'not_run'; reason = `frame_not_converged:${frame.index}`; break; }
       const parts = frame.solve.state.parts;
       for (let a = 0; a < parts.length && sweepStatus === 'pass'; a++) {
         for (let b = a + 1; b < parts.length; b++) {
+          if (input.skipStaticStaticPairs && !movingIds.has(parts[a]!.id) && !movingIds.has(parts[b]!.id)) continue;
           const geometryA = input.geometries.get(parts[a]!.id), geometryB = input.geometries.get(parts[b]!.id);
           if (!geometryA?.available || !geometryB?.available) { sweepStatus = 'not_run'; reason = `collision_geometry_unavailable:${!geometryA?.available ? parts[a]!.id : parts[b]!.id}`; break outer; }
           if (usedPairChecks >= maximumPairChecks) { sweepStatus = 'not_run'; reason = 'pair_budget_exhausted'; break outer; }
