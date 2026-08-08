@@ -41,6 +41,20 @@
 
 - VerifyNet 6겹(체크포인트·manifold·역투영diff·간섭·vision·FEA)은 있으나 **축 단위 자동 assertion**과의 연결이 케이스 계약(`domainValidatorAssertions`)에 이제 막 들어감 — 실제 캠페인에서 falseVerified=0을 지키려면 각 축의 판정기가 "모르면 not_run"을 정확히 뱉어야 함(날조 금지 원칙 유지)
 
+## 1.5 진행 현황 (260808 루프 세션 — 지속 갱신)
+
+| 항목 | 상태 | 증거 |
+|---|---|---|
+| K1 shell 벽 오프셋 | ✅ 완료 | refpart1 4/4, 체적 29472 정확, f-fillet 연쇄 해소 |
+| K2 mesh 폴백 크래시 | ✅ 완료 | 정본 헬퍼 16개소 배선, related 830 |
+| K3 B-rep shell 경로 | ✅ 완료 | corpus 시드 3개 fail-clean→ok 승격 |
+| K4 구멍 실체화 게이트 | ✅ 완료 | 파서+게이트 교정루프 편입, unmetHoles 정직 표면화 |
+| K5 도면 치수 | ✅ v1(체크포인트)+심화(HLR 실투영+해석 치수) | ⌀8×2·위치 25/75 실증 — 웹 배선 후속 |
+| K6 joint IR | ✅ 완료 | prismatic 해석 5mm/20±2mm, cylindrical 단면 스윕 |
+| K7 topo naming | ✅ 판단 완료(ADR-017 accepted — A안 전 시나리오 오매칭 0%) / **승격 잔여**: 브라우저 피처 경로(chamfer·fillet·occtFilletAvoidance·refRelink)가 아직 B안(edgeCorrespondence), 커널 브리지엔 A안 resolvePickedEdges 존재 — 배선 이전이 다음 큰 덩어리 |
+| M2 후보/패킷 | ✅ 드라이런 코퍼스(인증 불가 명시) + CLI 4종 기동 결함 수정 |
+| 스케일(N·레벨) | N1 IR·N2 B-L2·N5 브로드페이즈+20k·B-L3·C-L3(±3% 구배)·A-L2·D-L3 완료, 3D OBB SAT 상시 |
+
 ## 2. 공통 커널 트랙 (도메인 공통 — 전부 🤖, 지금 착수 가능)
 
 우선순위 = 홀드아웃 실패율 기여 추정 순:
@@ -98,7 +112,9 @@
 | G5 | 캠페인 3×5 실행 (`run-domain-accuracy-campaign`) — 승인 케이스만, 튜닝 미사용 플래그 | 🤖 | |
 | G6 | 리포트→`docs/evidence/domain-accuracy-approved/`→certification workflow | 🤖 | |
 | G7 | **실패 축 → §2/§3 백로그로 환류.** 수정 후 재캠페인은 **새 홀드아웃**(같은 케이스 재사용 시 튜닝 오염) — 후보 풀을 도메인당 40+로 넉넉히 생성해 둘 것 | 🤖 | |
-| G8 | 복합제품 57건 외부 추출: 👤 SolidWorks/ODA/Revit/Inventor/Creo 라이선스+워커 호스트 → 🤖 추출·검증 | **👤**+🤖 | 1차 인증에는 필수 아님(자체 생성 후보로 20건 충족 가능). 기계 심화 2차용 |
+| G8 | 복합제품 57건 외부 추출: 👤 SolidWorks/ODA/Revit/Inventor/Creo 라이선스+워커 호스트 → 🤖 추출·검증 | **👤**+🤖 | 기계 심화용 |
+
+**⚠️ 260808 정정(실행 중 발견)**: 리뷰 패킷 게이트가 `internal-template` 소스를 설계상 거부한다(`independent_holdout_source_required` — 자기 템플릿으로 자기 정확도를 증명하는 순환 차단). 따라서 "자체 생성 후보로 1차 인증 충족"은 **불가**하다. 자체 후보 40×5는 파이프라인 드라이런·리뷰어 캘리브레이션 용도로 생성·커밋했고(`docs/accuracy/`), **인증용 홀드아웃은 벤치마크 권리가 확보된 독립 소스(실무 도면·모델)를 👤가 조달해야 한다** — G3(리뷰어 섭외)와 함께 임계 경로.
 
 ## 5. 측정 원칙 (신뢰성 — 어기면 수치가 무효)
 
