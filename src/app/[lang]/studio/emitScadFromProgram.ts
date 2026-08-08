@@ -49,6 +49,7 @@ export function emitScadFromProgram(program: FeatureProgram): string {
   const patterns = feats.filter(f => f.type === 'circularPattern' || f.type === 'linearPattern');
   const patternedIds = new Set(patterns.map(p => p.feature));
   const holes = feats.filter(f => f.type === 'hole');
+  const bosses = feats.filter(f => f.type === 'boss');
   const ribs = feats.filter(f => f.type === 'rib');
   const chamfer = feats.find(f => f.type === 'chamfer');
   const fillet = feats.find(f => f.type === 'fillet');
@@ -132,6 +133,17 @@ export function emitScadFromProgram(program: FeatureProgram): string {
     }
   }
 
+  // ── bosses (F-1 — union'd cylinders standing on the base top face) ───────
+  // posX/posY 는 베이스 중심 기준(chatCadHandoff 가 −w/2, −d/2 이동을 이미
+  // 적용해 방출) — 중심 배치 cuboid 와 좌표계가 일치한다.
+  const bossGeoms: string[] = [];
+  if (bosses.length) params.push('/* [Bosses] */');
+  for (const b of bosses) {
+    const dia = P('Boss diameter', n(b.diameter, 12), ...around(n(b.diameter, 12)));
+    const bh = P('Boss height', n(b.height, 10), ...around(n(b.height, 10)));
+    bossGeoms.push(`translate([${n(b.posX, 0)}, ${n(b.posY, 0)}, ${baseHVar}]) cyl(d=${dia}, h=${bh}, anchor=BOTTOM)`);
+  }
+
   // ── holes (difference'd, patterns expanded) ──────────────────────────────
   const holeGeoms: string[] = [];
   if (holes.length) params.push('/* [Holes] */');
@@ -162,6 +174,7 @@ export function emitScadFromProgram(program: FeatureProgram): string {
   body.push('  union() {');
   body.push(`    ${baseGeom};`);
   for (const g of ribGeoms) body.push(`    ${g};`);
+  for (const g of bossGeoms) body.push(`    ${g};`);
   body.push('  }');
   for (const g of holeGeoms) body.push(`  ${g}`);
   for (const g of shellGeoms) body.push(`  ${g}`);

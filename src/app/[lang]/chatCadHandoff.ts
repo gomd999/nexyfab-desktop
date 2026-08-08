@@ -7,11 +7,11 @@
  * 재사용한다 — 모델러 쪽 코드 변경 0. sessionStorage는 탭 단위이므로 반드시
  * **같은 탭 내 내비게이션**으로 넘긴다(새 탭=빈 스토리지).
  *
- * 정직 범위(P-1a·P-1b 확장, 260808b): ① 단일 사각 판 + 위치 있는 관통 구멍
- * ② 단일 원통 몸체(축·파이프) + **동심** 구멍 ③ 단일 폴리라인(extrude) 몸체
- * — **구멍 없는 경우만**(폴리곤 공간의 구멍 좌표 규약 미실측 — L형·리브판
- * 대부분이 이 범위). 그 밖(보스·회전체·복수 몸체·원통 편심 구멍·폴리라인+
- * 구멍)은 null — 버튼 자체를 숨겨 부분 약속을 하지 않는다.
+ * 정직 범위(P-1a·P-1b·F-1 확장): ① 단일 사각 판 + 위치 있는 관통 구멍 +
+ * **판 상면 보스**(add 원통이 판 상면(z=판두께)에 안착한 경우 — face-frame
+ * 스케치로 시드) ② 단일 원통 몸체(축·파이프) + **동심** 구멍 ③ 단일
+ * 폴리라인(extrude) 몸체 — 구멍 없는 경우만. 그 밖(회전체·복수 몸체·원통
+ * 편심 구멍·측면 보스·폴리라인+구멍)은 null — 버튼 숨김(부분 약속 금지).
  * 좌표 규약은 **몸체 종류별로 다르다**(P-1a에서 충돌 발견):
  *  - 판(box): intent 구멍=판 모서리 원점(x∈[0,w], y∈[0,d]) → 프로그램은 중심
  *    원점(circularPattern 전개가 cos/sin·0 기준인 것에서 실측) — (x−w/2, y−d/2)
@@ -49,6 +49,7 @@ export function composeIntentToFeatureProgram(
   let cyl: { dia: number; len: number } | null = null;
   let poly: { profile: [number, number][]; h: number } | null = null;
   const subs: Array<{ x: number | null; y: number | null; dia: number }> = [];
+  const adds: Array<{ x: number | null; y: number | null; z: number | null; dia: number; h: number }> = [];
 
   for (const raw of feats as IntentFeatureLike[]) {
     const kind = String(raw.kind ?? '');
@@ -73,13 +74,25 @@ export function composeIntentToFeatureProgram(
       }
       poly = { profile, h };
     } else if (kind === 'cylinder' && !sub) {
-      if (box || cyl || poly) return null; // 복수 몸체 — 범위 밖
       const dia = num(raw.diameter) ?? num(raw.d);
       const len = num((raw as { height?: unknown }).height)
         ?? num((raw as { h?: unknown }).h)
         ?? num((raw as { length?: unknown }).length);
       if (dia === null || dia <= 0 || len === null || len <= 0) return null;
-      cyl = { dia, len };
+      if (!box && !cyl && !poly && adds.length === 0) {
+        cyl = { dia, len }; // 첫 add 원통 = 몸체 후보
+      } else if (box) {
+        // F-1: 판 위 add 원통 = 보스 후보(안착 판정은 아래에서)
+        const tr = raw.at?.translate;
+        adds.push({
+          x: Array.isArray(tr) ? num(tr[0]) : null,
+          y: Array.isArray(tr) ? num(tr[1]) : null,
+          z: Array.isArray(tr) ? num(tr[2]) : null,
+          dia, h: len,
+        });
+      } else {
+        return null; // 원통 몸체+add 원통 등 — 범위 밖
+      }
     } else if ((kind === 'cylinder' || kind === 'hole') && sub) {
       const dia = num(raw.diameter) ?? num(raw.d);
       const tr = raw.at?.translate;
@@ -100,6 +113,16 @@ export function composeIntentToFeatureProgram(
       if (hole.x < 0 || hole.x > box.w || hole.y < 0 || hole.y > box.d) return null; // 판 밖=모순
       holes.push({ x: hole.x, y: hole.y, dia: hole.dia });
     }
+    // F-1 — 보스 판정: add 원통이 판 상면(z=판두께±1e-6)에 안착하고 판 안에
+    // 있어야 한다. 그 밖(측면·부유·판 밖)은 정직 거부(전체 null).
+    const bosses: Array<{ x: number; y: number; dia: number; h: number }> = [];
+    for (const boss of adds) {
+      if (boss.x === null || boss.y === null) return null;
+      const z = boss.z ?? 0;
+      if (Math.abs(z - box.h) > 1e-6) return null; // 상면 안착 아님
+      if (boss.x < 0 || boss.x > box.w || boss.y < 0 || boss.y > box.d) return null;
+      bosses.push({ x: boss.x, y: boss.y, dia: boss.dia, h: boss.h });
+    }
     return {
       part: 'chat-part',
       features: [
@@ -108,9 +131,14 @@ export function composeIntentToFeatureProgram(
           id: `h${i + 1}`, type: 'hole', diameter: hole.dia,
           posX: hole.x - box.w / 2, posY: hole.y - box.d / 2, holeType: 0,
         })),
+        ...bosses.map((boss, i): ProgramFeature => ({
+          id: `b${i + 1}`, type: 'boss', diameter: boss.dia, height: boss.h,
+          posX: boss.x - box.w / 2, posY: boss.y - box.d / 2,
+        })),
       ],
     };
   }
+  if (adds.length > 0) return null; // 판 없는 add 원통 잔여 — 범위 밖
 
   if (poly) {
     // 폴리라인 몸체는 구멍 좌표 규약 미실측 — 구멍 있으면 정직 거부

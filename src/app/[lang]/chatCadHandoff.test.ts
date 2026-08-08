@@ -109,3 +109,31 @@ describe('P-1b: polyline (extrude) body', () => {
     })).toBeNull();
   });
 });
+
+describe('F-1: plate-top boss', () => {
+  it('converts an add cylinder seated on the plate top into a boss feature (center-origin)', () => {
+    const p = composeIntentToFeatureProgram({
+      features: [
+        { kind: 'box', size: [100, 60, 8] },
+        { kind: 'cylinder', op: 'add', diameter: 20, height: 15, at: { translate: [30, 30, 8] } },
+      ],
+    })!;
+    expect(p.features[1]).toMatchObject({ type: 'boss', diameter: 20, height: 15, posX: -20, posY: 0 });
+  });
+
+  it('refuses non-seated or out-of-plate add cylinders (side boss / floating / outside)', () => {
+    for (const at of [
+      { translate: [30, 30, 4] },    // 판 중간(측면 관통형) — 안착 아님
+      { translate: [30, 30, 20] },   // 부유
+      { translate: [150, 30, 8] },   // 판 밖
+      undefined,                      // 위치 미부여
+    ]) {
+      expect(composeIntentToFeatureProgram({
+        features: [
+          { kind: 'box', size: [100, 60, 8] },
+          { kind: 'cylinder', op: 'add', diameter: 20, height: 15, at },
+        ],
+      })).toBeNull();
+    }
+  });
+});
