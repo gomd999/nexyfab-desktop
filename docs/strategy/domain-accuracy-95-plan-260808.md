@@ -55,6 +55,19 @@
 | M2 후보/패킷 | ✅ 드라이런 코퍼스(인증 불가 명시) + CLI 4종 기동 결함 수정 |
 | 스케일(N·레벨) | N1 IR·N2 B-L2·N5 브로드페이즈+20k·B-L3·C-L3(±3% 구배)·A-L2·D-L3 완료, 3D OBB SAT 상시 |
 
+### 1.6 K7 승격 로드맵 (260808 스코핑 — 다중 세션 P0)
+
+실측: System A(생성-이력 명명)는 `nodeOcctBridge.ts` 내부에만 존재(topoNaming·composedTopo·resolvePickedEdges). 브라우저 워커(`occt-worker-real.js`)는 관련 코드 0줄 — 브라우저 피처 4종(chamfer·fillet·occtFilletAvoidance·refRelink)은 B안(edgeCorrespondence 기하 서명, S2 생존 59.6%)에 묶여 있다.
+
+이행 슬라이스(각각 커밋 가능한 단위):
+1. **S1 워커 명명 이식**: topoNaming/심 키 생성부를 워커 공유 모듈로 추출(nodeOcctBridge와 단일 소스) → 워커 응답에 face/edge 이름 테이블 동봉
+2. **S2 프로토콜**: wasmBridge·useStepWorker 메시지에 edgeNames 왕복 추가(하위호환: 없으면 B안 유지)
+3. **S3 피처 파라미터 이중화**: edge 선택 저장을 {signature, topoName?} 병기 — 리빌드 시 A안 우선, 실패=명시 상실(S4 규약), B안은 폴백이 아니라 **대조군**(불일치 로그)
+4. **S4 피처별 전환**: fillet → chamfer → occtFilletAvoidance → refRelink 순(각각 회귀+refpart 게이트)
+5. **S5 B안 강등**: 대조 로그 일정 기간 무불일치 후 B안을 진단 전용으로
+
+완료 기준: 스파이크 S2 시나리오를 브라우저 경로 재현 하네스로 옮겨 A안 생존/오매칭이 노드 경로와 동일함을 실측.
+
 ## 2. 공통 커널 트랙 (도메인 공통 — 전부 🤖, 지금 착수 가능)
 
 우선순위 = 홀드아웃 실패율 기여 추정 순:
