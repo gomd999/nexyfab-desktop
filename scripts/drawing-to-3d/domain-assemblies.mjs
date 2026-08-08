@@ -3331,9 +3331,31 @@ function parkingPavementAssembly(p = {}) {
   const topZ = subT + basT + surT;
   const parts = [];
   const P = (id, type, params, at, material, role) => parts.push({ id, type, params, at, material, role });
+  const slopePct = Math.max(0, Math.min(5, num(p.slopePct, 0)));
   P('subbase', 'box', { width: W, depth: D, height: subT }, { tx: 0, ty: 0, tz: 0 }, 'concrete', 'pavement');
   P('base_course', 'box', { width: W, depth: D, height: basT }, { tx: 0, ty: 0, tz: subT }, 'concrete', 'pavement');
-  P('surface_course', 'box', { width: W, depth: D, height: surT }, { tx: 0, ty: 0, tz: subT + basT }, 'concrete', 'pavement');
+  /** W2-2(260808b) — 배수 구배 실기하: slopePct>0 이면 표층을 진행방향(y)
+   *  스트립으로 나누고 **표층 두께를 가변**시켜 상면을 진입면(y=0) 쪽으로
+   *  낮춘다(종단 구배를 표층 두께로 잡는 포장 실무 관례 — 기층은 수평 유지,
+   *  부유/겹침 없음). 교량 종단선형의 스테이션별 스트립 선행기술 재사용.
+   *  구배는 스트립 **상면 기하**에서 재도출 가능해야 한다(landscape-check
+   *  pavementGradingCheck 가 항등 검증). slopePct=0 → 종전 단일 표층(무회귀). */
+  const surfBase = subT + basT;
+  if (slopePct > 0) {
+    const pitch = 1000;
+    const nStrips = Math.max(2, Math.ceil(D / pitch));
+    const rise = (yMid) => (slopePct / 100) * yMid; // 진입면(y=0) 대비 상승고
+    for (let i = 0; i < nStrips; i++) {
+      const y0 = i * pitch;
+      const d = i === nStrips - 1 ? D - y0 : pitch;
+      const yMid = y0 + d / 2;
+      P(`surface_strip_${i + 1}`, 'box',
+        { width: W, depth: d, height: +(surT + rise(yMid)).toFixed(3) },
+        { tx: 0, ty: y0, tz: surfBase }, 'concrete', 'pavement');
+    }
+  } else {
+    P('surface_course', 'box', { width: W, depth: D, height: surT }, { tx: 0, ty: 0, tz: surfBase }, 'concrete', 'pavement');
+  }
   // 경계석 — 배면(y=D)·좌우 2변. 진입면(y=0)은 개구라 미설치. 포장과 맞댐(0겹침).
   const nBack = Math.max(1, Math.round(W / curbU));
   for (let i = 0; i < nBack; i++) {
@@ -3348,12 +3370,21 @@ function parkingPavementAssembly(p = {}) {
     }
   }
   // 휠스토퍼 — 주차 1면당 1기, 배면에서 900 이격(차량 오버행 관례). 표층 위 안착.
+  const wheelY = D - 900;
+  // 스트립 상면은 계단(스트립별 일정 두께)이므로 휠스토퍼는 **자기 스트립의
+  // 상면**에 안착해야 한다 — 연속 경사식(top+slope·y)으로 앉히면 스트립 중심
+  // 대비 ±수 mm 파묻힘/부유가 생긴다(첫 스모크서 간섭 6건 실측).
+  const wheelStripMid = slopePct > 0
+    ? Math.min(Math.ceil(D / 1000) - 1, Math.floor(wheelY / 1000)) * 1000
+      + Math.min(1000, D - Math.min(Math.ceil(D / 1000) - 1, Math.floor(wheelY / 1000)) * 1000) / 2
+    : 0;
+  const wheelTop = slopePct > 0 ? +(topZ + (slopePct / 100) * wheelStripMid).toFixed(3) : topZ;
   for (let i = 0; i < stalls; i++) {
-    P(`wheelstop_${i + 1}`, 'box', { width: 600, depth: 150, height: 100 }, { tx: i * sw + (sw - 600) / 2, ty: D - 900, tz: topZ }, 'concrete', 'wheelstop');
+    P(`wheelstop_${i + 1}`, 'box', { width: 600, depth: 150, height: 100 }, { tx: i * sw + (sw - 600) / 2, ty: wheelY, tz: wheelTop }, 'concrete', 'wheelstop');
   }
   return {
     name: `주차장 포장 ${stalls}면`, domain: 'landscape', kind: 'assembly', parts,
-    parkingMeta: { stalls, stallWidth: sw, stallLength: sl, aisleWidth: aisle, width: W, depth: D, pavementThk: topZ, layers: { subbase: subT, base: basT, surface: surT }, curbHeight: curbH, curbUnits: nBack + 2 * nSide, pavedAreaM2: +((W * D) / 1e6).toFixed(2) },
+    parkingMeta: { stalls, stallWidth: sw, stallLength: sl, aisleWidth: aisle, width: W, depth: D, pavementThk: topZ, layers: { subbase: subT, base: basT, surface: surT }, curbHeight: curbH, curbUnits: nBack + 2 * nSide, pavedAreaM2: +((W * D) / 1e6).toFixed(2), grading: { slopePct, direction: 'toward-entrance-y0' } },
     note: '주차장 포장 매싱 — 구획선/장애인·경차 표시 도색, 우수받이·측구, 노상 다짐·동상방지층은 미포함(부재 아님/입력 영역). 층별 재료(쇄석·아스콘)는 밀도만 콘크리트로 근사하며 물량은 체적 기준 — 재료 단가는 BOQ 입력.',
   };
 }
@@ -4121,6 +4152,7 @@ export const ASSEMBLY_TEMPLATES = {
         { name: 'baseThk', labelKo: '기층 두께', unit: 'mm', default: 100, min: 50, max: 300 },
         { name: 'surfaceThk', labelKo: '표층 두께', unit: 'mm', default: 50, min: 30, max: 150 },
         { name: 'curbHeight', labelKo: '경계석 높이', unit: 'mm', default: 500, min: 300, max: 800 },
+        { name: 'slopePct', labelKo: '배수 구배(진입면 방향)', unit: '%', default: 0, min: 0, max: 5 },
       ],
     },
     {

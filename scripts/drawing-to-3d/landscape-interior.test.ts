@@ -6,6 +6,9 @@
  */
 import { describe, it, expect } from 'vitest';
 import { buildAssemblyTemplate, listAssemblyTemplates } from './domain-assemblies.mjs';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore runtime .mjs
+import { pavementGradingCheck } from './landscape-check.mjs';
 import { buildAssembly } from './assembly.mjs';
 
 type Part = { id: string; role?: string; material?: string };
@@ -70,6 +73,23 @@ describe('조경 템플릿 5종', () => {
     expect(asm.parts.filter((p) => p.id.startsWith('wheelstop_'))).toHaveLength(6);
     expect(ids(asm)).toEqual(expect.arrayContaining(['subbase', 'base_course', 'surface_course']));
     expect(asm.note).toMatch(/구획선/);   // 구획선 도색은 부재 아님 — 정직 명시
+  });
+  it('parking_pavement W2-2: 배수 구배 실기하 — 스트립 상면 재도출=선언 항등 + 휠스토퍼 국소 안착', () => {
+    const { asm, b } = build('landscape', 'parking_pavement', { stalls: 6, slopePct: 2 });
+    expectSound(asm, b);
+    const strips = asm.parts.filter((p: { id: string }) => p.id.startsWith('surface_strip_'));
+    expect(strips.length).toBeGreaterThanOrEqual(2);
+    // 기하 재도출 구배 = 선언 2% (항등) — 선언-기하 표류 검출 계약
+    const g = pavementGradingCheck(asm)! as {
+      checks: Record<string, { pass: boolean; detail: string }>;
+      basis: { derivedPct?: number };
+    };
+    expect(g.checks.slopeIdentity!.pass).toBe(true);
+    expect(g.checks.drainageSlope!.pass).toBe(true);
+    expect(g.basis.derivedPct).toBeCloseTo(2, 2);
+    // 무구배는 조용한 통과 금지 — 배수 미성립 명시
+    const flat = build('landscape', 'parking_pavement', { stalls: 6 }).asm;
+    expect(pavementGradingCheck(flat)!.checks.drainageSlope.pass).toBe(false);
   });
   it('pavilion: 기단+기둥4+처마도리2+지붕판2+용마루 + 경사에 따른 용마루고 폐형', () => {
     const { asm, b } = build('landscape', 'pavilion', {});

@@ -453,3 +453,53 @@ export function slopeGreenCheck(params = {}) {
     ],
   };
 }
+
+/**
+ * W2-2(260808b) — 포장 배수 구배 검사(실기하): 표층 스트립의 **상면 기하**에서
+ * 구배를 재도출해 선언(parkingMeta.grading.slopePct)과 항등 대조하고, 배수
+ * 성립 최소(0.5% — 관례치, 비법정)를 판정한다. 선언-기하 표류·무구배를 잡는다.
+ * 무구배(slopePct=0)면 pass:false + '배수 구배 미설정' — 조용한 통과 금지.
+ */
+export function pavementGradingCheck(asm) {
+  const meta = asm?.parkingMeta;
+  if (!meta) return null;
+  const declared = Number(meta.grading?.slopePct ?? 0);
+  const strips = (asm.parts ?? []).filter((part) => part.id?.startsWith('surface_strip_'));
+  if (declared <= 0 && strips.length === 0) {
+    return {
+      kind: 'pavement_grading',
+      checks: { drainageSlope: { pass: false, detail: '배수 구배 미설정(slopePct=0) — 표면수 배수 성립 안 됨. 0.5% 이상 권장(비법정 관례치)' } },
+      basis: { slopePct: 0 },
+    };
+  }
+  // 상면 z = tz + height — y중심에 대한 선형 재도출(최전/최후 스트립 상면 차 / 스팬)
+  const tops = strips.map((part) => ({
+    yMid: (part.at?.ty ?? 0) + (part.params?.depth ?? 0) / 2,
+    top: (part.at?.tz ?? 0) + (part.params?.height ?? 0),
+  })).sort((a, b) => a.yMid - b.yMid);
+  if (tops.length < 2) {
+    return { kind: 'pavement_grading', checks: { drainageSlope: { pass: false, detail: '표층 스트립 부족 — 구배 재도출 불가' } }, basis: { slopePct: declared } };
+  }
+  const first = tops[0], last = tops[tops.length - 1];
+  const derivedPct = ((last.top - first.top) / (last.yMid - first.yMid)) * 100;
+  const identity = Math.abs(derivedPct - declared) <= 0.05;
+  const drains = derivedPct >= 0.5;
+  return {
+    kind: 'pavement_grading',
+    checks: {
+      slopeIdentity: {
+        pass: identity,
+        detail: identity
+          ? `기하 재도출 구배 ${derivedPct.toFixed(2)}% = 선언 ${declared}% (항등)`
+          : `선언-기하 표류: 재도출 ${derivedPct.toFixed(2)}% ≠ 선언 ${declared}%`,
+      },
+      drainageSlope: {
+        pass: drains,
+        detail: drains
+          ? `배수 구배 ${derivedPct.toFixed(2)}% ≥ 0.5% (관례치·비법정)`
+          : `배수 구배 ${derivedPct.toFixed(2)}% < 0.5% — 표면수 정체 위험`,
+      },
+    },
+    basis: { slopePct: declared, derivedPct: +derivedPct.toFixed(3), stripCount: strips.length },
+  };
+}
