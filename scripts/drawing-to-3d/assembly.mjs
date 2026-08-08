@@ -17,6 +17,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { gate, scadBody, partAabb, gearPoly, sheetPoly, hexPts, boltDims, holeFeature, extrudePoly, compositeSubs } from './reconstruct.mjs';
+import { aabbCandidatePairs } from './broadphase.mjs';
 import { structuralCheck } from './structural.mjs';
 import { supportCheck } from './support-check.mjs';
 import { autoRoutePipes, pipeObstacleCheck, pipeCrossCheck } from './pipe-route.mjs';
@@ -78,6 +79,18 @@ export const COLOR_LABEL = {
   '#475569': '기둥', '#0e7490': '보', '#94a3b8': '슬래브', '#854d0e': '장선/서까래', '#a16207': '데크/기어', '#d1d5db': '바닥', '#0f766e': '테이블', '#7c3aed': '카운터', '#78716c': '벽체', '#6b7280': '볼트/체결', '#57534e': '기초/저판',
   '#0284c7': '급수', '#92400e': '배수', '#0d9488': '통기', '#7c2d12': 'PS/스택',
 };
+
+
+/** N5 — 쌍 후보: ≤300개는 종전 전쌍(비트 동일 경로), 초과는 그리드 브로드페이즈. */
+function pairCandidates(rects, pad = 4) {
+  const n = rects.length;
+  if (n <= 300) {
+    const all = [];
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) all.push([i, j]);
+    return all;
+  }
+  return aabbCandidatePairs(rects, { pad });
+}
 
 const DEG = Math.PI / 180;
 /** OpenSCAD rotate([rx,ry,rz]) 순서(X→Y→Z)로 점 회전. */
@@ -294,7 +307,7 @@ export function autoPlaceCorrect(asm) {
   /** 서로 2mm 넘게 파고드는 쌍 수 — 회전이 상황을 나쁘게 만들지 않는지 본다. */
   const deepPairs = (arr) => {
     let n = 0;
-    for (let i = 0; i < arr.length; i++) for (let j = i + 1; j < arr.length; j++) {
+    for (const [i, j] of pairCandidates(arr.map((pp) => box(pp)))) {
       const A = box(arr[i]), B = box(arr[j]);
       const ov = [0, 1, 2].map((k) => Math.min(A.max[k], B.max[k]) - Math.max(A.min[k], B.min[k]));
       if (ov.every((o) => o > 0) && Math.min(...ov) > 2) n++;
@@ -466,8 +479,8 @@ export function autoPlaceCorrect(asm) {
   const moveCount = new Map();
   for (let pass = 0; pass < 3; pass++) {
     let moved = false;
-    for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) {
-      const A = box(parts[i]), B = box(parts[j]);
+    for (const [i, j] of pairCandidates(parts.map((pp) => box(pp)), 50)) {
+      const A = box(parts[i]), B = box(parts[j]); // 이동 반영 위해 쌍마다 재계산(종전과 동일)
       const ov = [0, 1, 2].map((k) => Math.min(A.max[k], B.max[k]) - Math.max(A.min[k], B.min[k]));
       if (ov[0] <= 0 || ov[1] <= 0 || ov[2] <= 0) continue;
       const depth = Math.min(...ov);
@@ -1122,8 +1135,8 @@ export function buildAssembly(asm, opts = {}) {
   const CONTACT_MM = TOL_CONTACT;
   const interferences = [];
   const contacts = [];
-  for (let i = 0; i < boxes.length; i++) {
-    for (let j = i + 1; j < boxes.length; j++) {
+  for (const [i, j] of pairCandidates(boxes.map((bb) => bb.box))) {
+    {
       const { v, depth } = overlapInfo(boxes[i].box, boxes[j].box);
       const rotated = boxes[i].box.rotated || boxes[j].box.rotated;
       if (v > 1) { // 1mm³ 초과 겹침
@@ -1461,8 +1474,8 @@ export function buildAssembly(asm, opts = {}) {
     if (b.type === 'revolve') return true;
     return !(b.at.rx || b.at.ry);
   };
-  for (let i = 0; i < boxes.length; i++) {
-    for (let j = i + 1; j < boxes.length; j++) {
+  for (const [i, j] of pairCandidates(boxes.map((bb) => bb.box), 8)) {
+    {
       const A = boxes[i].box, B = boxes[j].box;
       const ov = [0, 1, 2].map((k) => Math.min(A.max[k], B.max[k]) - Math.max(A.min[k], B.min[k]));
       const touch = [0, 1, 2].filter((k) => Math.abs(ov[k]) <= TOL);
