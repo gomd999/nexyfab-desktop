@@ -1146,6 +1146,37 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
     }
   }, [lastAssembly, ko]);
 
+  // K5(260808) — HLR 실투영 도면(가시선+은선+해석 치수): 어셈블리 경로 온디맨드.
+  const [hlrBusy, setHlrBusy] = useState(false);
+  const openHlrDrawing = useCallback(async () => {
+    if (!lastAssembly) return;
+    setHlrBusy(true);
+    setExportMsg(null);
+    try {
+      const r = await fetch('/api/nexyfab/drawing/hlr/', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assembly: lastAssembly, views: ['front', 'top'] }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { ok?: boolean; views?: Record<string, string>; error?: string };
+      if (!r.ok || !j.ok || !j.views) throw new Error(j.error ?? 'HLR 실패');
+      const name = String((lastAssembly as { name?: string }).name ?? 'assembly');
+      const html = `<!doctype html><meta charset="utf-8"><title>${name} — HLR</title>`
+        + `<body style="font-family:ui-monospace,monospace;background:#fff;color:#0f172a;padding:16px">`
+        + `<h3 style="margin:0 0 4px">${name} — 정투영 도면 (OCCT HLR · 치수=모델 파라미터)</h3>`
+        + `<p style="margin:0 0 12px;font-size:12px;color:#64748b">실선=가시 · 파선=은선 · 파랑=해석 치수(비법정 참고도)</p>`
+        + Object.entries(j.views).map(([v, svg]) => `<h4 style="margin:12px 0 4px">${v.toUpperCase()}</h4><div style="max-width:900px;border:1px solid #e2e8f0">${svg}</div>`).join('')
+        + `</body>`;
+      const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      setExportMsg(ko ? 'HLR 도면 새 탭에 열림' : 'HLR drawing opened');
+    } catch (e) {
+      setExportMsg((ko ? 'HLR 실패: ' : 'HLR failed: ') + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setHlrBusy(false);
+    }
+  }, [lastAssembly, ko]);
+
   const exportStep = useCallback(async () => {
     if (!intent) return;
     setExporting('step');
@@ -1829,9 +1860,14 @@ export default function DesignInner({ lang, initialDomain, initialTab }: { lang:
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {lastAssembly && (
-                  <button type="button" onClick={() => void downloadPackage()} disabled={pkgBusy} style={exportBtn}>
-                    {pkgBusy ? '…' : ko ? '📦 설계 패키지' : '📦 Design package'}
-                  </button>
+                  <>
+                    <button type="button" onClick={() => void downloadPackage()} disabled={pkgBusy} style={exportBtn}>
+                      {pkgBusy ? '…' : ko ? '📦 설계 패키지' : '📦 Design package'}
+                    </button>
+                    <button type="button" onClick={() => void openHlrDrawing()} disabled={hlrBusy} style={exportBtn}>
+                      {hlrBusy ? '…' : ko ? '📐 HLR 도면' : '📐 HLR drawing'}
+                    </button>
+                  </>
                 )}
                 <button type="button" onClick={exportStep} disabled={exporting !== ''} style={exportBtn}>
                   {exporting === 'step' ? '…' : ko ? 'STEP (B-rep)' : 'STEP (B-rep)'}
