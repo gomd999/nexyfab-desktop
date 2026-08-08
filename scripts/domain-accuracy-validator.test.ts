@@ -144,3 +144,21 @@ describe('W1-2: step_roundtrip axis', () => {
     expect(axisOf(run, 'step_roundtrip')).toMatchObject({ status: 'not_run' });
   });
 });
+
+describe('W1-4: repair axis (defect-injection drill)', () => {
+  const candidate = buildDomainCandidates('civil', 1)[0]!;
+  const axisOf = (run: { assertions: Array<{ axis: string; status: string; reason: string }> }, axis: string) =>
+    run.assertions.find(item => item.axis === axis)!;
+
+  it('injected overlap (tx/ty/tz convention) is detected — repair pass, falseClear stays 0', async () => {
+    const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 }, { repair: true });
+    expect(axisOf(run, 'repair')).toMatchObject({ status: 'pass' });
+    expect(axisOf(run, 'repair').reason).toContain('injected_overlap_detected');
+    expect(run.falseClear).toBe(false);
+  });
+
+  it('default (no flag) keeps repair honestly not_run', async () => {
+    const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
+    expect(axisOf(run, 'repair')).toMatchObject({ status: 'not_run' });
+  });
+});

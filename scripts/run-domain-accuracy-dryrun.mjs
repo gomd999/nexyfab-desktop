@@ -128,6 +128,7 @@ export async function main(args = process.argv.slice(2)) {
     '--executor-arg', '--corpus',
     '--executor-arg', file('dryrun-corpus.json'),
     '--executor-arg', '--roundtrip',
+    '--executor-arg', '--repair',
     '--timeout-ms', '120000',
   ]);
   writeFileSync(file('campaign-summary.json'), campaign.out, 'utf8');

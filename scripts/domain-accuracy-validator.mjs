@@ -53,6 +53,10 @@ const MEASURED_AXES = new Set(['requirements', 'dimensions', 'part_definitions',
  * opts.roundtrip: true 면 step_roundtrip 축을 실측정한다(W1-2) — 재빌드 산출물을
  * STEP 방출(intentToStep)→재임포트(replicad WASM)→체적 유한/양수 검증. 케이스당
  * 수 초의 실연산이라 캠페인/드릴이 명시적으로 켠다(기본 off=not_run).
+ * opts.repair: true 면 repair 축을 실측정한다(W1-4) — **결함 주입 드릴**: 두 번째
+ * 부품을 첫 부품의 AABB 중심으로 이동시켜 겹침을 보장한 변이체를 buildAssembly
+ * 판정기에 넣고 **검출되는지**를 판정한다. 미검출 = 해당 run 의 falseClear=true
+ * (0 계약 직결 — 검출기 침묵을 수치로 드러낸다). 단일 부품 = not_run.
  */
 export async function validateCase(corpusEntry, input, opts = {}) {
   const { caseValue, campaign, repeat } = input;
@@ -84,6 +88,7 @@ export async function validateCase(corpusEntry, input, opts = {}) {
 
   judged('requirements', !rebuildError, rebuildError ? `rebuild_failed:${rebuildError}` : 'rebuild_ok_with_corpus_parameters');
 
+  const flags = { falseClear: false };
   if (rebuilt) {
     const hash = hashAssemblyArtifact(rebuilt);
     judged('dimensions', hash === corpusEntry.artifactHash,
@@ -186,6 +191,49 @@ export async function validateCase(corpusEntry, input, opts = {}) {
         judged('step_roundtrip', false, `roundtrip_failed:${(error instanceof Error ? error.message : String(error)).slice(0, 80)}`);
       }
     }
+
+    if (opts.repair) {
+      if (parts.length < 2) {
+        notRun('repair', 'defect_injection_requires_multipart');
+      } else {
+        try {
+          // 결정론 주입: parts[1] 을 parts[0] 의 AABB 중심으로 평행이동 —
+          // 중심 일치 = 겹침 보장(양쪽 다 유한 체적일 때). 검출기를 시험하는
+          // 것이지 형상을 고치는 게 아니다(판정 경로는 입력 그대로 원칙).
+          const b0 = placedAabb(parts[0]);
+          const b1 = placedAabb(parts[1]);
+          const c0 = [0, 1, 2].map(k => (b0.min[k] + b0.max[k]) / 2);
+          const c1 = [0, 1, 2].map(k => (b1.min[k] + b1.max[k]) / 2);
+          // ⚠규약(260808b 실측 정정): assembly 부품 배치는 at.tx/ty/tz —
+          // intent 의 at.translate 배열이 아니다. 첫 구현이 translate 에 써서
+          // 주입이 무효였고 '미검출 35건'으로 오판됐다(주입 실패≠검출기 침묵).
+          const at1 = parts[1].at ?? {};
+          const mutated = {
+            ...rebuilt,
+            parts: parts.map((part, i) => i === 1
+              ? { ...part, at: { ...at1,
+                  tx: (Number(at1.tx) || 0) + (c0[0] - c1[0]),
+                  ty: (Number(at1.ty) || 0) + (c0[1] - c1[1]),
+                  tz: (Number(at1.tz) || 0) + (c0[2] - c1[2]) } }
+              : part),
+          };
+          const { buildAssembly } = await import('./drawing-to-3d/assembly.mjs');
+          const verdict = buildAssembly(mutated);
+          const detected = verdict.ok === false
+            || (verdict.interferences?.length ?? 0) > 0
+            || (verdict.gateErrors?.length ?? 0) > 0;
+          if (detected) {
+            judged('repair', true,
+              `injected_overlap_detected:${verdict.interferences?.length ?? 0}intf_${verdict.gateErrors?.length ?? 0}gate`);
+          } else {
+            judged('repair', false, 'injected_overlap_UNDETECTED');
+            flags.falseClear = true;
+          }
+        } catch (error) {
+          judged('repair', false, `defect_injection_failed:${(error instanceof Error ? error.message : String(error)).slice(0, 80)}`);
+        }
+      }
+    }
   } else {
     judged('dimensions', false, `rebuild_unavailable:${rebuildError}`);
     judged('part_definitions', false, `rebuild_unavailable:${rebuildError}`);
@@ -197,10 +245,10 @@ export async function validateCase(corpusEntry, input, opts = {}) {
     if (!results.has(axis)) notRun(axis, MEASURED_AXES.has(axis) ? 'unexpected_gap' : `dryrun_v1_out_of_scope:${axis}`);
   }
 
-  return assembleRun(caseValue, campaign, repeat, axes, results);
+  return assembleRun(caseValue, campaign, repeat, axes, results, flags);
 }
 
-function assembleRun(caseValue, campaign, repeat, axes, results) {
+function assembleRun(caseValue, campaign, repeat, axes, results, flags = {}) {
   const assertions = axes.map(axis => results.get(axis));
   return {
     caseId: caseValue.caseId,
@@ -213,7 +261,7 @@ function assembleRun(caseValue, campaign, repeat, axes, results) {
       .filter(item => item.status !== 'not_run')
       .every(item => item.status === 'pass'),
     falseVerified: false,
-    falseClear: false,
+    falseClear: flags.falseClear === true,
     destructivePartMerge: false,
     assertions,
   };
@@ -296,11 +344,12 @@ if (isMain) {
     const subjectIndex = args.indexOf('--subject');
     const subject = subjectIndex >= 0 ? args[subjectIndex + 1] : 'rebuild';
     const roundtrip = args.includes('--roundtrip');
+    const repair = args.includes('--repair');
     const generate = subject === 'ai'
       ? async spec => (await import('./drawing-to-3d/from-text.mjs')).textToAssembly(spec)
       : undefined;
     const input = JSON.parse(await readStdin());
-    const run = await validateCase(corpus.get(input.caseValue.caseId), input, { subject, generate, roundtrip });
+    const run = await validateCase(corpus.get(input.caseValue.caseId), input, { subject, generate, roundtrip, repair });
     process.stdout.write(`${JSON.stringify(run)}\n`);
   })().catch(error => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
