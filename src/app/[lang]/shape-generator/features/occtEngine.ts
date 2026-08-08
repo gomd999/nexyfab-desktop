@@ -536,13 +536,18 @@ export function occtExtrudeProfile(
     pen = pen.lineTo([points[i].x, points[i].y]);
   }
   const sketch = pen.close().sketchOnPlane('XY', planeOffset);
-  const solid = sketch.extrude(depth);
+  // F-4 선행 근본수정(260808g) — 메시 압출기(extrudeGeometry)는 z 중심대칭
+  // (±depth/2, extrudeProfile.ts translate −d/2)인데 B-rep 은 0..depth 로
+  // 자라 **반깊이 오프셋 불일치**가 실측됐다(HLR front v=−8..0 vs 메시 ±4 —
+  // 도면·STEP·다운스트림 전부 표시와 어긋남). 압출 후 −d/2 이동으로 커널을
+  // 표시(메시) 규약에 정렬한다. 이름표 z 도 동일 보정(아래 planeOffset−d/2).
+  const solid = (sketch.extrude(depth) as unknown as PrismSolid).translate([0, 0, -depth / 2]);
   const mesh = solid.mesh({
     tolerance: tessellation.tolerance ?? 0.1,
     angularTolerance: tessellation.angularTolerance ?? 0.2,
   });
   const handle = registerShape(solid);
-  attachExtrudeTopoNames(handle, points, depth, planeOffset);
+  attachExtrudeTopoNames(handle, points, depth, planeOffset - depth / 2);
   return { geometry: meshToBufferGeometry(mesh), handle };
 }
 
@@ -832,7 +837,8 @@ export function occtExtrudeCircle(
   if (typeof drawCircle !== 'function' || !(radius > 0) || !(depth > 0)) {
     return { geometry: new BufferGeometry(), handle: null };
   }
-  let solid = drawCircle(radius).sketchOnPlane('XY', planeOffset).extrude(depth);
+  // 메시 압출과 동일한 z 중심대칭 정렬(위 occtExtrudeProfile 의 실측 근거 참조).
+  let solid = drawCircle(radius).sketchOnPlane('XY', planeOffset).extrude(depth).translate([0, 0, -depth / 2]);
   if (cx !== 0 || cy !== 0) solid = solid.translate([cx, cy, 0]);
   const mesh = solid.mesh({
     tolerance: tessellation.tolerance ?? 0.1,
@@ -903,9 +909,11 @@ export function occtExtrudeWithHoles(
   if (!solid || typeof solid.cut !== 'function') return base;
   for (const hole of holes) {
     if (!hole || hole.length < 3) continue;
-    // Extrude the hole a touch taller than the body and start it just below,
-    // so the cut is a clean through-hole (no coplanar cap faces).
-    const tool = occtExtrudeProfile(hole, depth + 0.2, tessellation, planeOffset - 0.1);
+    // Extrude the hole a touch taller than the body so the cut is a clean
+    // through-hole (no coplanar cap faces). 중심대칭 압출이므로 같은 평면에
+    // 깊이만 +0.2 — 양끝이 0.1 씩 돌출한다(구 0..d 시절의 −0.1 시프트는
+    // 중심대칭에선 상단을 동일평면으로 만들어 제거).
+    const tool = occtExtrudeProfile(hole, depth + 0.2, tessellation, planeOffset);
     const toolSolid = getShape(tool.handle);
     if (!toolSolid) continue;
     try {

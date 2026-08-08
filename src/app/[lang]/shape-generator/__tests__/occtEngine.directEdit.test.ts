@@ -68,8 +68,8 @@ describeMaybe('occtDeleteFaces — sew-and-cap defeaturing', () => {
   it('removes a 5-face boss set from a STEP round-trip IMPORTED solid (volume 16800 → 16000)', async () => {
     resetShapeRegistry();
     // Base 40×40×10 (z 0..10) + boss 10×10×8 on top (z 10..18).
-    const base = occtExtrudeProfile(sq(40), 10);
-    const boss = occtExtrudeProfile(sq(10), 8, {}, 10);
+    const base = occtExtrudeProfile(sq(40), 10, {}, 5); // z 0..10 (중심대칭 정렬 후 offset=+d/2)
+    const boss = occtExtrudeProfile(sq(10), 8, {}, 14); // z 10..18
     const fused = occtBooleanSolids('union', base.handle, boss.handle);
     expect(fused.handle).toBeTruthy();
     expect(meshVolume(fused.geometry)).toBeCloseTo(16800, -1);
@@ -99,8 +99,8 @@ describeMaybe('occtDeleteFaces — sew-and-cap defeaturing', () => {
   it('removes a through-hole with ONE wall-face pick (both end loops capped) — volume restored', () => {
     resetShapeRegistry();
     // 30×30×10 plate (z 0..10) − Ø8 hole through.
-    const plate = occtExtrudeProfile(sq(30), 10);
-    const drill = occtExtrudeCircle(4, 0, 0, 12, {}, -1);
+    const plate = occtExtrudeProfile(sq(30), 10, {}, 5); // z 0..10
+    const drill = occtExtrudeCircle(4, 0, 0, 12, {}, 5); // z −1..11 (관통)
     const holed = occtBooleanSolids('subtract', plate.handle, drill.handle);
     expect(meshVolume(holed.geometry)).toBeCloseTo(9000 - Math.PI * 16 * 10, -1);
 
@@ -114,15 +114,15 @@ describeMaybe('occtDeleteFaces — sew-and-cap defeaturing', () => {
 
   it('refuses to delete a plain box face (opening is not an interior loop)', () => {
     resetShapeRegistry();
-    const box = occtExtrudeProfile(sq(20), 20);
+    const box = occtExtrudeProfile(sq(20), 20, {}, 10); // z 0..20
     expect(() => occtDeleteFaces(box.handle, [sel([0, 0, 20], [0, 0, 1])]))
       .toThrow(/interior loop|open boundary/);
   });
 
   it('refuses an incomplete boss face set (walls without the top)', () => {
     resetShapeRegistry();
-    const base = occtExtrudeProfile(sq(40), 10);
-    const boss = occtExtrudeProfile(sq(10), 8, {}, 10);
+    const base = occtExtrudeProfile(sq(40), 10, {}, 5); // z 0..10 (중심대칭 정렬 후 offset=+d/2)
+    const boss = occtExtrudeProfile(sq(10), 8, {}, 14); // z 10..18
     const fused = occtBooleanSolids('union', base.handle, boss.handle);
     expect(() => occtDeleteFaces(fused.handle, [
       sel([5, 0, 14], [1, 0, 0]),
@@ -136,8 +136,8 @@ describeMaybe('occtDeleteFaces — sew-and-cap defeaturing', () => {
     resetShapeRegistry();
     // Simulate an imported mesh: tessellate the fused B-rep, then bridge back
     // through importSTL + UnifySameDomain.
-    const base = occtExtrudeProfile(sq(40), 10);
-    const boss = occtExtrudeProfile(sq(10), 8, {}, 10);
+    const base = occtExtrudeProfile(sq(40), 10, {}, 5); // z 0..10 (중심대칭 정렬 후 offset=+d/2)
+    const boss = occtExtrudeProfile(sq(10), 8, {}, 14); // z 10..18
     const fused = occtBooleanSolids('union', base.handle, boss.handle);
     const meshHandle = await meshToSimplifiedBrepHandle(fused.geometry);
     expect(meshHandle).toBeTruthy();
@@ -160,7 +160,7 @@ describeMaybe('occtOffsetFace — planar prism rebuild', () => {
 
   it('outward +5 on the top of a 20³ box → V = 20×20×25 (ΔV = area×d exactly)', () => {
     resetShapeRegistry();
-    const box = occtExtrudeProfile(sq(20), 20); // z 0..20, V = 8000
+    const box = occtExtrudeProfile(sq(20), 20, {}, 10); // z 0..20, V = 8000
     const r = occtOffsetFace(box.handle, sel([0, 0, 20], [0, 0, 1]), 5);
     expect(r.handle).toBeTruthy();
     expect(Math.abs(meshVolume(r.geometry) - 10000)).toBeLessThan(10000 * 0.005);
@@ -170,7 +170,7 @@ describeMaybe('occtOffsetFace — planar prism rebuild', () => {
 
   it('inward −5 on a side wall → V = 15×20×20 (1 mm wall offset acceptance case scaled)', () => {
     resetShapeRegistry();
-    const box = occtExtrudeProfile(sq(20), 20);
+    const box = occtExtrudeProfile(sq(20), 20, {}, 10); // z 0..20
     const r = occtOffsetFace(box.handle, sel([10, 0, 10], [1, 0, 0]), -5);
     expect(r.handle).toBeTruthy();
     expect(Math.abs(meshVolume(r.geometry) - 6000)).toBeLessThan(6000 * 0.005);
@@ -178,7 +178,7 @@ describeMaybe('occtOffsetFace — planar prism rebuild', () => {
 
   it('roadmap acceptance: 1 mm wall offset on an imported (STEP round-trip) solid', async () => {
     resetShapeRegistry();
-    const box = occtExtrudeProfile(sq(20), 20);
+    const box = occtExtrudeProfile(sq(20), 20, {}, 10); // z 0..20
     const stepText = await exportOcctStep(box.handle);
     const { importSTEP } = await import('replicad');
     const imported = await importSTEP(new Blob([stepText!]));
@@ -199,7 +199,7 @@ describeMaybe('occtOffsetFace — planar prism rebuild', () => {
 
   it('refuses an inward offset that consumes the whole body', () => {
     resetShapeRegistry();
-    const box = occtExtrudeProfile(sq(20), 20);
+    const box = occtExtrudeProfile(sq(20), 20, {}, 10); // z 0..20
     expect(() => occtOffsetFace(box.handle, sel([0, 0, 20], [0, 0, 1]), -30))
       .toThrow(/consumed the entire body|empty/);
   });

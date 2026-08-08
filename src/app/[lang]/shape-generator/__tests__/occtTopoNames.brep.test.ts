@@ -56,8 +56,9 @@ describeMaybe('K7 — 브라우저 경로 A안 이름 실증(WASM)', () => {
     expect(handle).toBeTruthy();
     const names = occtTopoNames(handle)!;
     expect(names.size).toBeGreaterThan(0);
-    // e.vert.1 = 프로파일 정점 (40,0)의 수직 에지 → 중점 (40,0,5)
-    expect(names.get('e.vert.1')).toEqual({ x: 40, y: 0, z: 5 });
+    // e.vert.1 = 프로파일 정점 (40,0)의 수직 에지 → 중점 (40,0,0)
+    // (260808g 중심대칭 정렬 — 측면 에지 z ±d/2, 중점은 스케치 평면)
+    expect(names.get('e.vert.1')).toEqual({ x: 40, y: 0, z: 0 });
     // 앵커가 커널이 보는 실제 에지와 일치(1e-2mm)
     const sigs = occtEdgeSignatures(handle);
     for (const [, m] of names) {
@@ -65,8 +66,8 @@ describeMaybe('K7 — 브라우저 경로 A안 이름 실증(WASM)', () => {
         Math.hypot(sg.mid[0] - m.x, sg.mid[1] - m.y, sg.mid[2] - m.z) <= 1e-2);
       expect(hit).toBe(true);
     }
-    // 중점에서 벗어난 클릭(z=8)도 선분 거리로 명명된다
-    expect(occtTopoNameAtClick(handle, { x: 40, y: 0, z: 8 }, [0, 0, 1])).toBe('e.vert.1');
+    // 중점에서 벗어난 클릭(z=3 — 에지 스팬 ±5 안)도 선분 거리로 명명된다
+    expect(occtTopoNameAtClick(handle, { x: 40, y: 0, z: 3 }, [0, 0, 1])).toBe('e.vert.1');
   });
 
   it('치수 변경 리빌드: 같은 이름이 이동한 에지를 따라가고 A안이 matched 를 준다', async () => {
@@ -74,7 +75,9 @@ describeMaybe('K7 — 브라우저 경로 A안 이름 실증(WASM)', () => {
     // 원본에서 e.vert.1 을 클릭했다고 저장(중점 40,0,5) → depth 10→14 리빌드
     const rebuilt = occtExtrudeProfile(RECT, 14);
     const moved = occtTopoAnchor(rebuilt.handle, 'e.vert.1');
-    expect(moved).toEqual({ x: 40, y: 0, z: 7 }); // 이름은 그대로, 앵커는 이동
+    // 중심대칭 정렬 후 측면 에지 중점은 깊이와 무관하게 스케치 평면(z=0) —
+    // 이 테스트의 실신호는 아래 A안 matched(낡은 클릭 좌표의 재해결)다.
+    expect(moved).toEqual({ x: 40, y: 0, z: 0 });
     const stored = selAt([40, 0, 5], [0, 0, 1], 10, 'e.vert.1'); // 낡은 클릭 좌표
     const res = await resolveEdgeRefDual(stored, rebuilt.handle!, undefined, 'test');
     expect(res.status).toBe('matched');
@@ -106,8 +109,8 @@ describeMaybe('K7 — 브라우저 경로 A안 이름 실증(WASM)', () => {
       { handle: tool.handle, featureId: 'f2' },
     ], 'f2');
     const names = occtTopoNames(fused)!;
-    expect(names.get('e.vert.1')).toEqual({ x: 40, y: 0, z: 5 });      // 호스트 통과
-    expect(names.get('f2/e.vert.0')).toEqual({ x: 60, y: 0, z: 5 });   // 툴 한정
+    expect(names.get('e.vert.1')).toEqual({ x: 40, y: 0, z: 0 });      // 호스트 통과
+    expect(names.get('f2/e.vert.0')).toEqual({ x: 60, y: 0, z: 0 });   // 툴 한정
     // 승계된 모든 앵커는 결과 B-rep 의 실제 에지 중점
     const sigs = occtEdgeSignatures(fused);
     for (const [, m] of names) {
@@ -138,7 +141,7 @@ describeMaybe('K7 확대 — 프리미티브/솔리드 불리언 이름 승계(W
     const names = occtTopoNames(res.handle)!;
     // 중앙 z축 관통(수직 원통)은 캡 면만 뚫는다 → 외곽 12 에지 전부 생존
     expect(names.size).toBe(before);
-    expect(names.get('e.vert.1')).toEqual({ x: 40, y: 0, z: 5 });
+    expect(names.get('e.vert.1')).toEqual({ x: 40, y: 0, z: 0 });
     // 승계 앵커 전수 실재 + 리빌드 저장 이름이 새 핸들에서 A안 matched
     const stored = selAt([40, 0, 5], [0, 0, 1], 10, 'e.vert.1');
     const r = await resolveEdgeRefDual(stored, res.handle!, undefined, 'test');

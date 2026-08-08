@@ -328,9 +328,11 @@ function HlrViewPanel({ data, cx, cy, w, h, label, view, ext, unitSystem }: {
       vx = Math.min(vx, mnx - pad * 2.5); vy = Math.min(vy, mny - pad * 2.5);
       vw = Math.max(vw, W3 + pad * 4); vh = Math.max(vh, D3 + pad * 4);
     } else {
-      dimH(mny, mxy, -mnz + pad, fmtV(D3), 'd');
-      dimV(mny - pad, -mxz, -mnz, fmtV(H3), 'h');
-      vx = Math.min(vx, mny - pad * 2.5); vy = Math.min(vy, -mxz - pad / 2);
+      // right 뷰 (u,v)=(−y,−z) — drawingProjectionMapping.test.ts 실측 정정
+      // (가정 (y,−z)의 u 부호 반전: 판 y 0..60 이 u −60..0 에 투영된다).
+      dimH(-mxy, -mny, -mnz + pad, fmtV(D3), 'd');
+      dimV(-mxy - pad, -mxz, -mnz, fmtV(H3), 'h');
+      vx = Math.min(vx, -mxy - pad * 2.5); vy = Math.min(vy, -mxz - pad / 2);
       vw = Math.max(vw, D3 + pad * 4); vh = Math.max(vh, H3 + pad * 2.5);
     }
   }

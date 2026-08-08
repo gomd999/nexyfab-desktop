@@ -24,8 +24,8 @@
       "title": "Plate 40x40x5 with 10x10x8 boss; fillet all edges r=6 (> plate thickness 5)",
       "expectation": "avoided",
       "steps": [
-        { "op": "extrude", "out": "plate", "profile": [[-20, -20], [20, -20], [20, 20], [-20, 20]], "depth": 5 },
-        { "op": "extrude", "out": "boss", "profile": [[-5, -5], [5, -5], [5, 5], [-5, 5]], "depth": 8, "offset": 5 },
+        { "op": "extrude", "out": "plate", "profile": [[-20, -20], [20, -20], [20, 20], [-20, 20]], "depth": 5, "offset": 2.5 },
+        { "op": "extrude", "out": "boss", "profile": [[-5, -5], [5, -5], [5, 5], [-5, 5]], "depth": 8, "offset": 9 },
         { "op": "boolean", "out": "a", "type": "union", "host": "plate", "tool": "boss" }
       ],
       "final": { "op": "fillet", "host": "a", "radius": 6 }
@@ -35,8 +35,8 @@
       "title": "Cylinder boss (r=20) tangent to all four sides of a 40x40 plate; fillet all edges r=3 near tangency — canary: tangent blends must KEEP working",
       "expectation": "ok",
       "steps": [
-        { "op": "extrude", "out": "plate", "profile": [[-20, -20], [20, -20], [20, 20], [-20, 20]], "depth": 10 },
-        { "op": "extrudeCircle", "out": "boss", "r": 20, "cx": 0, "cy": 0, "depth": 10, "offset": 10 },
+        { "op": "extrude", "out": "plate", "profile": [[-20, -20], [20, -20], [20, 20], [-20, 20]], "depth": 10, "offset": 5 },
+        { "op": "extrudeCircle", "out": "boss", "r": 20, "cx": 0, "cy": 0, "depth": 10, "offset": 15 },
         { "op": "boolean", "out": "a", "type": "union", "host": "plate", "tool": "boss" }
       ],
       "final": { "op": "fillet", "host": "a", "radius": 3 }
@@ -55,8 +55,8 @@
       "title": "Box with a through-slot leaving a 0.5mm wall at one corner; 2-edge selection r=2 — only the healthy edge can fillet",
       "expectation": "partial",
       "steps": [
-        { "op": "extrude", "out": "solid", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 30 },
-        { "op": "extrude", "out": "slot", "profile": [[12.5, -16], [14.5, -16], [14.5, 16], [12.5, 16]], "depth": 32, "offset": -1 },
+        { "op": "extrude", "out": "solid", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 30, "offset": 15 },
+        { "op": "extrude", "out": "slot", "profile": [[12.5, -16], [14.5, -16], [14.5, 16], [12.5, 16]], "depth": 32, "offset": 15 },
         { "op": "boolean", "out": "a", "type": "subtract", "host": "solid", "tool": "slot" }
       ],
       "final": {
@@ -83,8 +83,8 @@
       "title": "20x20x20 box with a 4x4x4 boss; shell t=2.5 (> boss half-width) — K3 260808: OCCT absorbs the boss into the thick wall; measured vol 4124.2, watertight, no failed checks. Old fail-clean encoded the broken closed-shell binding",
       "expectation": "ok",
       "steps": [
-        { "op": "extrude", "out": "box", "profile": [[-10, -10], [10, -10], [10, 10], [-10, 10]], "depth": 20 },
-        { "op": "extrude", "out": "boss", "profile": [[-2, -2], [2, -2], [2, 2], [-2, 2]], "depth": 4, "offset": 20 },
+        { "op": "extrude", "out": "box", "profile": [[-10, -10], [10, -10], [10, 10], [-10, 10]], "depth": 20, "offset": 10 },
+        { "op": "extrude", "out": "boss", "profile": [[-2, -2], [2, -2], [2, 2], [-2, 2]], "depth": 4, "offset": 22 },
         { "op": "boolean", "out": "a", "type": "union", "host": "box", "tool": "boss" }
       ],
       "final": { "op": "shell", "host": "a", "thickness": 2.5, "openFace": 1 }
@@ -125,8 +125,8 @@
       "title": "Subtract a 10x10x10 tool FULLY INSIDE a 30x30x20 host — internal cavity; MEASURED 260808: kernel produces the hollow solid cleanly",
       "expectation": "ok",
       "steps": [
-        { "op": "extrude", "out": "host", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 20 },
-        { "op": "extrude", "out": "tool", "profile": [[-5, -5], [5, -5], [5, 5], [-5, 5]], "depth": 10, "offset": 5 }
+        { "op": "extrude", "out": "host", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 20, "offset": 10 },
+        { "op": "extrude", "out": "tool", "profile": [[-5, -5], [5, -5], [5, 5], [-5, 5]], "depth": 10, "offset": 10 }
       ],
       "final": { "op": "boolean", "host": "host", "tool": "tool", "type": "subtract" }
     },
@@ -135,8 +135,8 @@
       "title": "Subtract a cylinder whose surface is EXACTLY tangent to the host side face (x=15) — fuzzy-tangency canary; MEASURED 260808: clean",
       "expectation": "ok",
       "steps": [
-        { "op": "extrude", "out": "host", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10 },
-        { "op": "extrudeCircle", "out": "tool", "r": 5, "cx": 10, "cy": 0, "depth": 14, "offset": -2 }
+        { "op": "extrude", "out": "host", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10, "offset": 5 },
+        { "op": "extrudeCircle", "out": "tool", "r": 5, "cx": 10, "cy": 0, "depth": 14, "offset": 5 }
       ],
       "final": { "op": "boolean", "host": "host", "tool": "tool", "type": "subtract" }
     },
@@ -145,8 +145,8 @@
       "title": "30x30x10 box minus a 10-wide notch leaving a 4mm wall; fillet ALL edges r=5 (> wall) — MEASURED 260808: ladder avoidance engages",
       "expectation": "avoided",
       "steps": [
-        { "op": "extrude", "out": "base", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10 },
-        { "op": "extrude", "out": "notch", "profile": [[11, -5], [16, -5], [16, 5], [11, 5]], "depth": 12, "offset": -1 },
+        { "op": "extrude", "out": "base", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10, "offset": 5 },
+        { "op": "extrude", "out": "notch", "profile": [[11, -5], [16, -5], [16, 5], [11, 5]], "depth": 12, "offset": 5 },
         { "op": "boolean", "out": "hostn", "host": "base", "tool": "notch", "type": "subtract" }
       ],
       "final": { "op": "fillet", "host": "hostn", "radius": 5 }
@@ -156,8 +156,8 @@
       "title": "Subtract leaving a 0.05mm sliver wall — degenerate thickness; MEASURED 260808: no crash, sliver solid survives",
       "expectation": "ok",
       "steps": [
-        { "op": "extrude", "out": "host", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10 },
-        { "op": "extrude", "out": "tool", "profile": [[-14.95, -16], [16, -16], [16, 16], [-14.95, 16]], "depth": 12, "offset": -1 }
+        { "op": "extrude", "out": "host", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10, "offset": 5 },
+        { "op": "extrude", "out": "tool", "profile": [[-14.95, -16], [16, -16], [16, 16], [-14.95, 16]], "depth": 12, "offset": 5 }
       ],
       "final": { "op": "boolean", "host": "host", "tool": "tool", "type": "subtract" }
     },
@@ -166,8 +166,8 @@
       "title": "Shell t=2 (open top, openFace 1) on a 30x30x10 box with a d10 through-hole — MEASURED 260808(정정): the K3 bbox-extreme FaceFinder DOES accept the annular multi-boundary top face and shells cleanly. The earlier fail-clean was a seed omission (openFace defaulted to 0 = the unconditionally-unsupported closed path), not a kernel limit",
       "expectation": "ok",
       "steps": [
-        { "op": "extrude", "out": "base", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10 },
-        { "op": "extrudeCircle", "out": "drill", "r": 5, "cx": 0, "cy": 0, "depth": 14, "offset": -2 },
+        { "op": "extrude", "out": "base", "profile": [[-15, -15], [15, -15], [15, 15], [-15, 15]], "depth": 10, "offset": 5 },
+        { "op": "extrudeCircle", "out": "drill", "r": 5, "cx": 0, "cy": 0, "depth": 14, "offset": 5 },
         { "op": "boolean", "out": "holed", "host": "base", "tool": "drill", "type": "subtract" }
       ],
       "final": { "op": "shell", "host": "holed", "thickness": 2, "openFace": 1 }

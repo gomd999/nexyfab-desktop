@@ -694,15 +694,16 @@ describeMaybe('occtExtrudeProfile — B-rep chain start (Phase 1)', () => {
   it('occtMoveCopy move translates the solid (handle + volume preserved)', () => {
     resetShapeRegistry();
     const box = occtExtrudeProfile([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }], 20);
-    // Move +50 in Z: same 8000 mm³ solid, shifted; box spans z∈[0,20] → [50,70].
+    // Move +50 in Z: same 8000 mm³ solid, shifted. 260808g 중심대칭 정렬 후
+    // 압출은 z∈[−10,10] → 이동 후 [40,60].
     const r = occtMoveCopy(box.handle, 0, 0, 50, 0);
     expect(r.handle).toBeTruthy();
     expect(meshVolume(r.geometry)).toBeGreaterThan(7800);
     expect(meshVolume(r.geometry)).toBeLessThan(8200);
     r.geometry.computeBoundingBox();
     const b = r.geometry.boundingBox!;
-    expect(b.min.z).toBeGreaterThan(49);
-    expect(b.max.z).toBeLessThan(71);
+    expect(b.min.z).toBeGreaterThan(39);
+    expect(b.max.z).toBeLessThan(61);
   });
 
   it('occtMoveCopy copy fuses original + translated copy (≈2× volume, one B-rep)', () => {
