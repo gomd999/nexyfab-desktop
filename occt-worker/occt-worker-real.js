@@ -283,6 +283,20 @@
 
   function shapeToWire(handle, shape, kind) {
     const m = shapeMetrics(shape);
+    /**
+     * K7-S2(260808) — 생성-이력 이름 테이블을 와이어로 반출한다. 브라우저
+     * 피처가 B안(기하 서명) 대신 이름을 저장할 수 있게 되는 전제(S3 소비).
+     * 512개 상한 + truncated 플래그 — 조용한 절단 금지.
+     */
+    var edgeNames = null, edgeNamesTruncated = false;
+    var topo = edgeTopos.get(handle);
+    if (topo && topo.size) {
+      edgeNames = [];
+      topo.forEach(function (mid, name) {
+        if (edgeNames.length < 512) edgeNames.push({ name: name, mid: { x: mid.x, y: mid.y, z: mid.z } });
+        else edgeNamesTruncated = true;
+      });
+    }
     return {
       handle: handle,
       kind: kind || 'solid',
@@ -290,6 +304,8 @@
       volume: m.volume,
       area: m.area,
       centerOfMass: m.centerOfMass,
+      edgeNames: edgeNames,
+      edgeNamesTruncated: edgeNamesTruncated,
     };
   }
 
@@ -1032,7 +1048,7 @@
     }
   }
 
-  function booleanOp(op, handleA, handleB) {
+  function booleanOp(op, handleA, handleB, ids) {
     if (!occt) return notReady();
     var a = handles.get(handleA);
     var b = handles.get(handleB);
@@ -1052,8 +1068,14 @@
         return { ok: false, error: op + ': BRepAlgoAPI not done', warnings: [] };
       }
       var shape = algo.Shape();
+      /**
+       * K7-S2 — 접두사=피처ID(스파이크 R0-1: 위치 접두사는 리빌드에서 피연산자
+       * 순서가 바뀌면 조용히 다른 엔티티를 가리킨다). ids 미탑재 호출은 종전
+       * 위치식(a/b) 그대로 — 하위호환·비재해석.
+       */
       var operands = [
-        { handle: handleA, prefix: 'a' }, { handle: handleB, prefix: 'b' }
+        { handle: handleA, prefix: (ids && ids.baseId) ? String(ids.baseId) : 'a' },
+        { handle: handleB, prefix: (ids && ids.toolId) ? String(ids.toolId) : 'b' }
       ];
       var resultEdges = uniqueEdgeMidpoints(shape);
       var opName = op === 'booleanUnion' ? 'union' : (op === 'booleanSubtract' ? 'cut' : 'intersect');
@@ -1729,7 +1751,7 @@
         case 'booleanUnion':
         case 'booleanSubtract':
         case 'booleanIntersect':
-          makeShapePayload(reqId, booleanOp(op, args.handleA, args.handleB));
+          makeShapePayload(reqId, booleanOp(op, args.handleA, args.handleB, args.ids));
           return;
 
         case 'fillet':

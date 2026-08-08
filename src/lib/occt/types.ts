@@ -82,6 +82,13 @@ export interface OcctShape {
   readonly area?: number;
   /** Center of mass (mm). Computed assuming uniform density. */
   readonly centerOfMass?: Vec3;
+  /**
+   * K7-S2(260808) — 생성-이력(topo naming) 에지 이름 테이블(있을 때만).
+   * name → 중점 앵커(mm). 512개 상한이며 초과 시 truncated 가 true 다
+   * (조용한 절단 금지). S3 에서 피처 선택 저장의 A안 원료가 된다.
+   */
+  readonly edgeNames?: ReadonlyArray<{ name: string; mid: Vec3 }>;
+  readonly edgeNamesTruncated?: boolean;
 }
 
 // ─── operation envelope ───────────────────────────────────────────────────

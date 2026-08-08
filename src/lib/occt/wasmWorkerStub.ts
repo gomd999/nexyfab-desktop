@@ -103,6 +103,9 @@ export interface WireShapePayload {
   volume?: number;
   area?: number;
   centerOfMass?: Vec3;
+  /** K7-S2 — 생성-이력 에지 이름 테이블(real 워커; 스텁은 미탑재 가능). */
+  edgeNames?: Array<{ name: string; mid: Vec3 }>;
+  edgeNamesTruncated?: boolean;
 }
 
 export interface WireOkResponse {

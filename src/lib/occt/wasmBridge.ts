@@ -289,6 +289,8 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
       volume: w.volume,
       area: w.area,
       centerOfMass: w.centerOfMass,
+      // K7-S2 — 생성-이력 이름 테이블(있을 때만): S3 피처 이중화의 원료.
+      ...(w.edgeNames ? { edgeNames: w.edgeNames, edgeNamesTruncated: w.edgeNamesTruncated === true } : {}),
     };
   };
 
@@ -345,26 +347,28 @@ export function createWasmBridge(opts: CreateWasmBridgeOptions = {}): WasmOcctBr
     return toOperationResult(await sendRequest('buildThreadHelixCutter', { opts }));
   };
 
+  // K7-S2(260808) — BooleanOperandIds 를 워커까지 운반한다. 종전엔 시그니처만
+  // 받고 버려서(위치 접두사 유지) 스파이크 R0-1 수정이 브라우저 경로에 닿지 않았다.
   const boolean: OcctBooleanOps = {
-    async union(a, b) {
+    async union(a, b, ids) {
       await ensureReady();
       const handleA = wireHandleOf(a, 'union');
       const handleB = wireHandleOf(b, 'union');
-      const resp = await sendRequest('booleanUnion', { handleA, handleB });
+      const resp = await sendRequest('booleanUnion', { handleA, handleB, ids });
       return toOperationResult(resp);
     },
-    async subtract(a, b) {
+    async subtract(a, b, ids) {
       await ensureReady();
       const handleA = wireHandleOf(a, 'subtract');
       const handleB = wireHandleOf(b, 'subtract');
-      const resp = await sendRequest('booleanSubtract', { handleA, handleB });
+      const resp = await sendRequest('booleanSubtract', { handleA, handleB, ids });
       return toOperationResult(resp);
     },
-    async intersect(a, b) {
+    async intersect(a, b, ids) {
       await ensureReady();
       const handleA = wireHandleOf(a, 'intersect');
       const handleB = wireHandleOf(b, 'intersect');
-      const resp = await sendRequest('booleanIntersect', { handleA, handleB });
+      const resp = await sendRequest('booleanIntersect', { handleA, handleB, ids });
       return toOperationResult(resp);
     },
   };

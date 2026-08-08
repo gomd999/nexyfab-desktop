@@ -506,3 +506,54 @@ describe('occt-worker-real.js: dispatcher protocol', () => {
     expect(reply.shape!.centerOfMass).toBeDefined();
   });
 });
+
+// ─── K7-S2: edgeNames 왕복 + 피처ID 접두사 ────────────────────────────────
+describe('K7-S2 — edge-name protocol', () => {
+  const RECT = {
+    kind: 'extrude',
+    loop: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
+    depth: 4,
+    direction: 'one_sided',
+    mode: 'add',
+  };
+
+  it('build replies carry the generative edge-name table over the wire', async () => {
+    const { sandbox } = setupReady();
+    sandbox.postedMessages.length = 0;
+    sandbox.onmessage!({ data: { reqId: 41, op: 'buildFromExtrude', args: { feature: RECT } } });
+    await Promise.resolve();
+    const reply = sandbox.postedMessages.find((m) => m.reqId === 41) as unknown as {
+      ok: boolean; shape?: { edgeNames?: Array<{ name: string; mid: { x: number; y: number; z: number } }>; edgeNamesTruncated?: boolean };
+    };
+    expect(reply.ok).toBe(true);
+    const names = reply.shape!.edgeNames!;
+    expect(names.length).toBeGreaterThan(0);
+    const byName = new Map(names.map((n) => [n.name, n.mid]));
+    expect(byName.has('e.top.0-1')).toBe(true);
+    expect(byName.get('e.vert.0')).toEqual({ x: 0, y: 0, z: 2 });
+    expect(reply.shape!.edgeNamesTruncated).toBe(false);
+  });
+
+  it('boolean ids qualify operand names by FEATURE id (positional a/b only as legacy fallback)', () => {
+    const { introspect } = setupReady();
+    const a = introspect.ops.buildFromExtrude(RECT);
+    const b = introspect.ops.buildFromExtrude({ ...RECT, loop: RECT.loop.map((q) => ({ x: q.x + 5, y: q.y })) });
+    expect(a.ok && b.ok).toBe(true);
+    const withIds = (introspect.ops.booleanOp as unknown as (op: string, x: number, y: number, ids?: { baseId?: string; toolId?: string }) => { ok: boolean; handle?: number })(
+      'booleanUnion', a.handle!, b.handle!, { baseId: 'f-base', toolId: 'f-tool' });
+    expect(withIds.ok).toBe(true);
+    const topo = (introspect as unknown as { edgeTopos: Map<number, Map<string, unknown>> }).edgeTopos.get(withIds.handle!);
+    if (topo && topo.size) {
+      const keys = [...topo.keys()];
+      expect(keys.some((k) => k.startsWith('f-base/') || k.startsWith('f-tool/') || k.includes('f-base/') )).toBe(true);
+      expect(keys.every((k) => !k.startsWith('a/') && !k.startsWith('b/'))).toBe(true);
+    }
+    // 하위호환: ids 없으면 종전 위치 접두사
+    const legacy = introspect.ops.booleanOp('booleanUnion', a.handle!, b.handle!);
+    expect(legacy.ok).toBe(true);
+    const legacyTopo = (introspect as unknown as { edgeTopos: Map<number, Map<string, unknown>> }).edgeTopos.get(legacy.handle!);
+    if (legacyTopo && legacyTopo.size) {
+      expect([...legacyTopo.keys()].every((k) => !k.startsWith('f-base/'))).toBe(true);
+    }
+  });
+});
