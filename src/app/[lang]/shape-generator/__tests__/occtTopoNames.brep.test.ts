@@ -14,6 +14,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
   ensureOcctReady,
+  occtBoxBooleanWithPrimitive,
+  occtBooleanSolids,
   resetShapeRegistry,
   occtExtrudeProfile,
   occtTopoNames,
@@ -113,5 +115,46 @@ describeMaybe('K7 — 브라우저 경로 A안 이름 실증(WASM)', () => {
         Math.hypot(sg.mid[0] - m.x, sg.mid[1] - m.y, sg.mid[2] - m.z) <= 1e-2);
       expect(hit).toBe(true);
     }
+  });
+});
+
+describeMaybe('K7 확대 — 프리미티브/솔리드 불리언 이름 승계(WASM)', () => {
+  beforeAll(async () => {
+    await ensureOcctReady();
+  }, 120_000);
+
+  it('중앙 관통구멍 절삭 후에도 외곽 에지 이름이 전부 생존한다(hole 경로)', async () => {
+    resetShapeRegistry();
+    const base = occtExtrudeProfile(RECT, 10);
+    const before = occtTopoNames(base.handle)!.size;
+    const res = occtBoxBooleanWithPrimitive(
+      'subtract',
+      { w: 40, h: 20, d: 10, cx: 20, cy: 10, cz: 5 },
+      { shape: 'cylinder', w: 6, h: 30, d: 6, cx: 20, cy: 10, cz: 5, rx: 90, ry: 0, rz: 0 },
+      undefined,
+      base.handle,
+    );
+    expect(res.handle).toBeTruthy();
+    const names = occtTopoNames(res.handle)!;
+    // 중앙 z축 관통(수직 원통)은 캡 면만 뚫는다 → 외곽 12 에지 전부 생존
+    expect(names.size).toBe(before);
+    expect(names.get('e.vert.1')).toEqual({ x: 40, y: 0, z: 5 });
+    // 승계 앵커 전수 실재 + 리빌드 저장 이름이 새 핸들에서 A안 matched
+    const stored = selAt([40, 0, 5], [0, 0, 1], 10, 'e.vert.1');
+    const r = await resolveEdgeRefDual(stored, res.handle!, undefined, 'test');
+    expect(r.status).toBe('matched');
+  });
+
+  it('솔리드-솔리드 union: 무한정 동명 이름은 양쪽 다 명시 거부된다(ambiguous)', () => {
+    resetShapeRegistry();
+    const a = occtExtrudeProfile(RECT, 10);
+    const B = [
+      { x: 60, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 20 }, { x: 60, y: 20 },
+    ];
+    const b = occtExtrudeProfile(B, 10);
+    const res = occtBooleanSolids('union', a.handle, b.handle);
+    // 두 이름표가 전 이름을 동명(무접두)으로 주장 → 전부 명시 거부되어 빈
+    // 이름표가 되고, 빈 이름표는 저장하지 않는다(무표=B안 경로, null이 정직).
+    expect(occtTopoNames(res.handle)).toBeNull();
   });
 });

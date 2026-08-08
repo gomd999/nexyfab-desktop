@@ -365,9 +365,14 @@ export function occtBoxBooleanWithPrimitive(
   geometry.setIndex(new Uint32BufferAttribute(mesh.triangles, 1));
   if (!geometry.attributes.normal) geometry.computeVertexNormals();
 
+  const outHandle = registerShape(result);
+  // K7-S3 확대 — 프리미티브 툴 불리언(hole·splitBody·moldTools 등 전 소비처)도
+  // 호스트의 A안 이름을 승계한다. 툴은 무명(원통·원뿔 등 비다각 위상 — 정직
+  // 범위 밖)이라 충돌이 없고, 소비된 에지는 중점 불일치로 자연 탈락한다.
+  composeTopoNamesAfterBoolean(outHandle, [{ handle: hostHandle }]);
   return {
     geometry,
-    handle: registerShape(result),
+    handle: outHandle,
   };
 }
 
@@ -414,7 +419,13 @@ export function occtBooleanSolids(
   geometry.setIndex(new Uint32BufferAttribute(mesh.triangles, 1));
   if (!geometry.attributes.normal) geometry.computeVertexNormals();
 
-  return { geometry, handle: registerShape(result) };
+  const outHandle = registerShape(result);
+  // K7-S3 확대 — 솔리드-솔리드 불리언도 양 피연산자 이름을 승계한다. 두 이름표가
+  // 같은 무한정 이름을 주장하면 composeBooleanTopo가 양쪽 다 명시 거부(ambiguous)
+  // 하므로 무언의 오답은 구조적으로 불가능하다. 피처ID 한정이 필요한 호출처는
+  // 파이프라인 체인처럼 composeTopoNamesAfterBoolean을 직접 쓰면 된다.
+  composeTopoNamesAfterBoolean(outHandle, [{ handle: hostHandle }, { handle: toolHandle }]);
+  return { geometry, handle: outHandle };
 }
 
 // ─── Fillet / Chamfer via OCCT ──────────────────────────────────────────────
