@@ -161,8 +161,13 @@ export async function main(args = process.argv.slice(2)) {
   const unmeasured = axes.filter(axis => axis.measured === 0);
   const CORE_AXES = ['requirements', 'dimensions', 'part_definitions', 'collision_clearance', 'step_roundtrip'];
   const measuredNames = new Set(measured.map(axis => axis.axis));
-  assert(CORE_AXES.every(axis => measuredNames.has(axis)) && measured.every(axis => axis.accuracy === 1 && axis.coverage === 1),
-    `measured axes clean, core 5 included (${measured.map(axis => axis.axis).join(',')})`);
+  // 부분 측정 축(manufacturing 등 — 어휘 커버 템플릿에서만)은 accuracy 1이면
+  // 정상이고 커버리지 미달은 차단기로 정직 표기된다. 커버리지 1은 코어 5만 요구.
+  assert(
+    CORE_AXES.every(axis => measuredNames.has(axis))
+    && measured.every(axis => axis.accuracy === 1)
+    && measured.filter(axis => CORE_AXES.includes(axis.axis)).every(axis => axis.coverage === 1),
+    `measured axes accuracy 1, core 5 full-coverage (${measured.map(axis => `${axis.axis}@${axis.coverage}`).join(',')})`);
   assert(unmeasured.every(axis => reportValue.assessment.blockers.includes(`coverage:${axis.axis}`)),
     'unmeasured axes surface as coverage blockers');
   assert(reportValue.evidence.requiredGatePasses === reportValue.evidence.requiredGateRuns,

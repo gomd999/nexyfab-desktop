@@ -192,6 +192,42 @@ export async function validateCase(corpusEntry, input, opts = {}) {
       }
     }
 
+    // W2-1(260808b) — manufacturing 축(토목 v1): **부품 기하에서 독립 추출한**
+    // 설계 치수가 템플릿의 검토 메타(retainingWall — civilCheck/verifyDomain의
+    // 기저)와 일치하고, 실검토(civilCheck)가 재현 통과하는가. 메타↔기하 표류를
+    // 잡는 왕복이다. 어휘 밖 템플릿은 not_run(사유 명시).
+    if (rebuilt.retainingWall && parts.length === 2 && parts.every(part => part.type === 'box')) {
+      try {
+        const meta = rebuilt.retainingWall;
+        const base = parts.reduce((a, b) => ((a.at?.tz ?? 0) <= (b.at?.tz ?? 0) ? a : b));
+        const wall = parts.find(part => part !== base);
+        const extracted = {
+          H: ((base.params.height ?? 0) + (wall.params.height ?? 0)) / 1000,
+          baseWidth: (base.params.width ?? 0) / 1000,
+          baseThickness: (base.params.height ?? 0) / 1000,
+          toeLength: ((wall.at?.tx ?? 0) - (base.at?.tx ?? 0)) / 1000,
+          stemThickness: (wall.params.width ?? 0) / 1000,
+        };
+        const drift = Object.entries(extracted)
+          .filter(([key, value]) => Math.abs(value - (meta[key] ?? NaN)) > 1e-6)
+          .map(([key]) => key);
+        if (drift.length) {
+          judged('manufacturing', false, `geometry_meta_drift:${drift.join(',')}`);
+        } else {
+          const { civilCheck } = await import('./drawing-to-3d/civil-check.mjs');
+          const prelim = civilCheck(rebuilt);
+          const allPass = !!prelim && Object.values(prelim.checks ?? {}).every(check => check.pass === true);
+          judged('manufacturing', allPass, allPass
+            ? 'shape_to_check_roundtrip_ok'
+            : `preliminary_check_failed:${Object.entries(prelim?.checks ?? {}).filter(([, c]) => !c.pass).map(([k]) => k).join(',')}`);
+        }
+      } catch (error) {
+        judged('manufacturing', false, `roundtrip_failed:${(error instanceof Error ? error.message : String(error)).slice(0, 60)}`);
+      }
+    } else {
+      notRun('manufacturing', 'shape_to_check_roundtrip_vocabulary_pending');
+    }
+
     if (opts.repair) {
       if (parts.length < 2) {
         notRun('repair', 'defect_injection_requires_multipart');

@@ -33,7 +33,7 @@ function caseFor(candidate: { caseId: string; sourceHash: string; artifactHash: 
 describe('domain-accuracy-validator', () => {
   const candidate = buildDomainCandidates('civil', 1)[0]!;
 
-  it('measures 5 axes on a clean rebuild (W1-3: +transforms) and not_runs the rest with honest reasons', async () => {
+  it('measures 6 axes on a clean rebuild (W1-3+W2-1) and not_runs the rest with honest reasons', async () => {
     const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 2, repeat: 3, attempt: 1 });
     expect(run.campaign).toBe(2);
     expect(run.repeat).toBe(3);
@@ -41,15 +41,13 @@ describe('domain-accuracy-validator', () => {
     expect(run.requiredGatesPassed).toBe(true);
     const byAxis = new Map(run.assertions.map((item: { axis: string }) => [item.axis, item]));
     expect(byAxis.size).toBe(CIVIL_AXES.length); // 케이스 축 전량, 중복 없음
-    for (const axis of ['requirements', 'dimensions', 'part_definitions', 'collision_clearance', 'transforms']) {
-      expect(byAxis.get(axis)).toMatchObject({ status: 'pass' });
+    for (const axis of ['requirements', 'dimensions', 'part_definitions', 'collision_clearance', 'transforms', 'manufacturing']) {
+      expect(byAxis.get(axis)).toMatchObject({ status: 'pass' }); // manufacturing=W2-1 왕복
     }
     // W1-3 — 측정 대상이 자명하게 없는 축은 사유 있는 not_run(0==0 부풀리기 금지)
     expect(byAxis.get('features')).toMatchObject({ status: 'not_run', reason: 'no_feature_vocabulary_in_template' });
     expect(byAxis.get('hierarchy')).toMatchObject({ status: 'not_run', reason: 'template_without_hierarchy' });
-    for (const axis of ['manufacturing', 'repair']) {
-      expect(byAxis.get(axis)).toMatchObject({ status: 'not_run', reason: `dryrun_v1_out_of_scope:${axis}` });
-    }
+    expect(byAxis.get('repair')).toMatchObject({ status: 'not_run', reason: 'dryrun_v1_out_of_scope:repair' });
   });
 
   it('ground-truth artifact hash mismatch → dimensions fails loudly', async () => {
@@ -160,5 +158,22 @@ describe('W1-4: repair axis (defect-injection drill)', () => {
   it('default (no flag) keeps repair honestly not_run', async () => {
     const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
     expect(axisOf(run, 'repair')).toMatchObject({ status: 'not_run' });
+  });
+});
+
+describe('W2-1: manufacturing axis (shape→check roundtrip, civil v1)', () => {
+  const axisOf = (run: { assertions: Array<{ axis: string; status: string; reason: string }> }, axis: string) =>
+    run.assertions.find(item => item.axis === axis)!;
+
+  it('retaining-wall family: parts-derived dims match check meta and preliminary check reruns clean', async () => {
+    const candidate = buildDomainCandidates('civil', 3).find(c => c.templateId === 'retaining_wall_run')!;
+    const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
+    expect(axisOf(run, 'manufacturing')).toMatchObject({ status: 'pass', reason: 'shape_to_check_roundtrip_ok' });
+  });
+
+  it('out-of-vocabulary templates stay honestly not_run', async () => {
+    const candidate = buildDomainCandidates('civil', 3).find(c => c.templateId === 'box_culvert')!;
+    const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
+    expect(axisOf(run, 'manufacturing')).toMatchObject({ status: 'not_run', reason: 'shape_to_check_roundtrip_vocabulary_pending' });
   });
 });
