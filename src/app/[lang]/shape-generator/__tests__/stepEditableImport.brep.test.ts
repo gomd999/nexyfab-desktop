@@ -17,6 +17,8 @@ import {
   occtEdgeSignatures,
   occtTopoNames,
   exportOcctStep,
+  occtFilletBox,
+  occtChamferBox,
 } from '../features/occtEngine';
 
 const ENABLED = process.env.RUN_OCCT_FEASIBILITY !== '0';
@@ -75,5 +77,43 @@ describeMaybe('T-1 — STEP 편집가능 임포트(실 WASM)', () => {
     const r = await occtImportStepText('not a step file');
     expect(r.handle).toBeNull();
     expect(r.geometry.attributes.position).toBeUndefined();
+  });
+});
+
+describeMaybe('T-1 슬라이스2 — 임포트 B-rep 다이렉트 편집(N-1 게이트)', () => {
+  beforeAll(async () => {
+    await ensureOcctReady();
+  }, 120_000);
+
+  async function importBox() {
+    resetShapeRegistry();
+    const src = occtExtrudeProfile([
+      { x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 20 }, { x: 0, y: 20 },
+    ], 10);
+    const step = (await exportOcctStep(src.handle))!;
+    return occtImportStepText(step);
+  }
+
+  it('imported handle chains into occtFilletBox — real B-rep fillet + re-export', async () => {
+    const imported = await importBox();
+    const dummyHost = { w: 0, h: 0, d: 0, cx: 0, cy: 0, cz: 0 };
+    const filleted = occtFilletBox(dummyHost, 2, {}, imported.handle);
+    expect(filleted.handle).toBeTruthy();
+    const vol = meshVolume(filleted.geometry);
+    // r=2 전에지 필렛: 8000보다 작고, 과도 손실은 아니어야 한다(해석 근사 7800±)
+    expect(vol).toBeLessThan(8000);
+    expect(vol).toBeGreaterThan(7000);
+    // 곡면(필렛)이 생겨 에지 수가 원 12를 초과 — B-rep 연산 실증
+    expect(occtEdgeSignatures(filleted.handle).length).toBeGreaterThan(12);
+    const reExported = await exportOcctStep(filleted.handle);
+    expect(reExported).toContain('ISO-10303-21');
+  });
+
+  it('imported handle chains into occtChamferBox as well', async () => {
+    const imported = await importBox();
+    const dummyHost = { w: 0, h: 0, d: 0, cx: 0, cy: 0, cz: 0 };
+    const chamfered = occtChamferBox(dummyHost, 1.5, {}, imported.handle);
+    expect(chamfered.handle).toBeTruthy();
+    expect(meshVolume(chamfered.geometry)).toBeLessThan(8000);
   });
 });
