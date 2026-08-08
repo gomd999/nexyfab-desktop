@@ -624,3 +624,99 @@ export function passageWidthCheck(assembly, params = {}) {
         : `침식 보행면의 ${Math.round((1 - coverage) * 100)}% 가 ${minWidthMm}mm 미만 병목 뒤에 있음`,
   };
 }
+
+/**
+ * W2-3(260808b) — 도어 스윙 클리어런스(실기하): 각 출입 개구에 대해 좌/우 힌지
+ * 사분원(반경=문폭, 벽에서 실내 방향 90° 스윕)을 보행 장애물 격자(buildWalkGrid
+ * — 피난 검사와 동일 규칙)로 검사한다. **한쪽 힌지라도 클리어**하면 설치 가능
+ * (힌지 방향은 어휘에 없으므로 자유도 인정 — 비법정), 양쪽 다 막히면 fail.
+ * 문짝은 부품이 아니라 벽 개구+exits 메타로 표현된다(어휘 실측 260808b).
+ * v1 범위: 경계벽(y=0/y=D/x=0/x=W)의 개구만 — 내벽 문은 방향 모호로 not 대상.
+ */
+export function doorSwingCheck(asm, { cell = 100 } = {}) {
+  const rb = asm?.roomBounds;
+  const exits = asm?.exits ?? [];
+  if (!rb || exits.length === 0) return null;
+  const { nx, ny, blocked } = buildWalkGrid(asm.parts ?? [], rb, cell);
+  const cellBlockedInQuarter = (hx, hy, r, alongSign, inwardAxis, inwardSign) => {
+    let hit = 0;
+    const i0 = Math.max(0, Math.floor((hx - r) / cell)), i1 = Math.min(nx - 1, Math.floor((hx + r) / cell));
+    const j0 = Math.max(0, Math.floor((hy - r) / cell)), j1 = Math.min(ny - 1, Math.floor((hy + r) / cell));
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        if (!blocked[j * nx + i]) continue;
+        const cx = (i + 0.5) * cell, cy = (j + 0.5) * cell;
+        const dx = cx - hx, dy = cy - hy;
+        if (dx * dx + dy * dy > r * r) continue;
+        const inward = inwardAxis === 'y' ? dy * inwardSign : dx * inwardSign;
+        const along = inwardAxis === 'y' ? dx * alongSign : dy * alongSign;
+        if (inward >= 0 && along >= 0) hit++;
+      }
+    }
+    return hit;
+  };
+  const doors = exits.map((exit) => {
+    const w = Number(exit.widthMm ?? 900);
+    const ex = Number(exit.x ?? 0), ey = Number(exit.y ?? 0);
+    // 피난 출구(층 템플릿 — side 표기)는 실무 규약상 **피난 방향(계단실 쪽)**
+    // 으로 열린다. 계단실 측은 room 격자 밖(어휘 미표현)이라 판정 불가 —
+    // 안쪽 스윙으로 오판하지 않고 not_run(첫 실측서 층 계단문이 실내 규약으로
+    // 오판정된 것을 정정).
+    if (exit.side) return { x: ex, y: ey, widthMm: w, pass: null, note: 'egress_door_opens_outward_stair_side_not_modeled' };
+    // 경계벽 판정: 어느 변의 개구인가 → 실내 방향
+    let inwardAxis = 'y', inwardSign = 1, hinges;
+    if (Math.abs(ey) <= 200) { inwardAxis = 'y'; inwardSign = 1; hinges = [[ex, ey, +1], [ex + w, ey, -1]]; }
+    else if (Math.abs(ey - rb.D) <= 200) { inwardAxis = 'y'; inwardSign = -1; hinges = [[ex, ey, +1], [ex + w, ey, -1]]; }
+    else if (Math.abs(ex) <= 200) { inwardAxis = 'x'; inwardSign = 1; hinges = [[ex, ey, +1], [ex, ey + w, -1]]; }
+    else if (Math.abs(ex - rb.W) <= 200) { inwardAxis = 'x'; inwardSign = -1; hinges = [[ex, ey, +1], [ex, ey + w, -1]]; }
+    else return { x: ex, y: ey, widthMm: w, pass: null, note: 'interior_wall_opening_direction_ambiguous' };
+    const [hL, hR] = hinges;
+    const leftHit = cellBlockedInQuarter(hL[0], hL[1], w, hL[2], inwardAxis, inwardSign);
+    const rightHit = cellBlockedInQuarter(hR[0], hR[1], w, hR[2], inwardAxis, inwardSign);
+    return { x: ex, y: ey, widthMm: w, leftBlockedCells: leftHit, rightBlockedCells: rightHit, pass: leftHit === 0 || rightHit === 0 };
+  });
+  const judged = doors.filter((door) => door.pass !== null);
+  // 판정 대상 0(전부 피난문/내벽문) = 측정 불가 — false 로 오판하지 않는다.
+  const allPass = judged.length === 0 ? null : judged.every((door) => door.pass);
+  return {
+    kind: 'door_swing',
+    doors,
+    checks: {
+      doorSwing: {
+        pass: allPass,
+        detail: allPass === null
+          ? '판정 가능한 실내 개폐문 없음(피난문=계단실 측 스윙 — 어휘 밖)'
+          : allPass
+            ? `${judged.length}개 문 전부 스윙 가능 힌지 확보(사분원 클리어런스 — 힌지 방향 자유도 인정·비법정)`
+            : `스윙 불가 문 존재: ${judged.filter((door) => !door.pass).map((door) => `@x${door.x}`).join(',')} — 양쪽 힌지 사분원 모두 장애물`,
+      },
+    },
+  };
+}
+
+/**
+ * W2-3(260808b) — 마감 면적 항등(실기하): 메타 floorAreaM2 를 roomBounds
+ * 기하에서 독립 재도출해 대조한다(civil W2-1 메타↔기하 표류 검출과 동일
+ * 패턴). 다실(multiRoom)은 room 폴리곤 합산 어휘가 아직 없어 not_run 정직.
+ */
+export function finishAreaCheck(asm) {
+  const rb = asm?.roomBounds;
+  if (!rb || typeof asm.floorAreaM2 !== 'number') return null;
+  if (asm.multiRoom) {
+    return { kind: 'finish_area', checks: { floorAreaIdentity: { pass: null, detail: 'multiRoom 면적 합산 어휘 미구현 — not_run(정직)' } } };
+  }
+  const derived = +(rb.W * rb.D / 1e6).toFixed(2);
+  const ok = Math.abs(derived - asm.floorAreaM2) <= 0.05;
+  return {
+    kind: 'finish_area',
+    checks: {
+      floorAreaIdentity: {
+        pass: ok,
+        detail: ok
+          ? `바닥 마감 면적 ${derived}m² = 메타 ${asm.floorAreaM2}m² (기하 재도출 항등)`
+          : `메타-기하 표류: 재도출 ${derived}m² ≠ 메타 ${asm.floorAreaM2}m²`,
+      },
+    },
+    basis: { derivedM2: derived, metaM2: asm.floorAreaM2 },
+  };
+}

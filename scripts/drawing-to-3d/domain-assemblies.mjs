@@ -3089,7 +3089,10 @@ function studioUnitAssembly(p = {}) {
   parts.push(P('sink', 'box', { width: 700, depth: 450, height: 180 }, { tx: 500, ty: 380, tz: 850 }, 'steel', 'sink'));
   // 간섭 이력: 침대(W-1900)·책상(W-1600)이 y 700~1000 구간서 관통 — 침대를 좌측으로 이동(그물 검출)
   parts.push(P('bed', 'box', { width: 1500, depth: 2000, height: 450 }, { tx: W - 3500, ty: D - bathD - 2400, tz: 0 }, 'timber', 'bed'));
-  parts.push(P('desk', 'box', { width: 1200, depth: 600, height: 730 }, { tx: W - 1600, ty: 400, tz: 0 }, 'timber', 'table'));
+  // W2-3(260808b) — 도어 스윙 검사가 잡은 실배치 결함: 책상이 문(entryX 4200,
+  // 폭 1000) 앞 400mm 에 있어 양측 힌지 사분원이 모두 막혔다 → 스윙 반경
+  // 밖(ty 1600)으로 이동. 침대(x≤4000)·주방(x≤2100)과 비간섭.
+  parts.push(P('desk', 'box', { width: 1200, depth: 600, height: 730 }, { tx: W - 1600, ty: 1600, tz: 0 }, 'timber', 'table'));
   // MEP 배관(급수·배수) — PS 스택 + 기구 연결 선언(경로=결정론 라우터·벽 관통=슬리브 명세)
   parts.push(...customFurnitureParts(p)); // 에디터 드래그 가구 = 보행·배관 장애물(자동 재라우팅)
   const mep = bathMEP('bath', 0, D - bathD, bathW, bathD, { hasTub: bathW >= 1700 && bathD >= 1500, wallT, sinkId: 'sink' });

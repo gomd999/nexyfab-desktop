@@ -9,6 +9,7 @@ import { buildAssemblyTemplate, listAssemblyTemplates } from './domain-assemblie
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore runtime .mjs
 import { pavementGradingCheck } from './landscape-check.mjs';
+import { doorSwingCheck, finishAreaCheck } from './interior-check.mjs';
 import { buildAssembly } from './assembly.mjs';
 
 type Part = { id: string; role?: string; material?: string };
@@ -73,6 +74,30 @@ describe('조경 템플릿 5종', () => {
     expect(asm.parts.filter((p) => p.id.startsWith('wheelstop_'))).toHaveLength(6);
     expect(ids(asm)).toEqual(expect.arrayContaining(['subbase', 'base_course', 'surface_course']));
     expect(asm.note).toMatch(/구획선/);   // 구획선 도색은 부재 아님 — 정직 명시
+  });
+  it('W2-3 도어 스윙: 유닛 5종 전부 스윙 가능 힌지 확보 + 층 피난문은 정직 not_run', () => {
+    for (const id of ['studio_unit', 'apartment_unit', 'cafe_room', 'two_room', 'three_room_unit']) {
+      const { asm } = build('interior', id, {});
+      const sw = doorSwingCheck(asm)! as { checks: { doorSwing: { pass: boolean | null } } };
+      expect(sw.checks.doorSwing.pass, id).toBe(true);
+    }
+    // 층 템플릿 계단문=피난 방향(계단실 측) 개방 — 실내 규약으로 오판하지 않는다
+    const floor = build('interior', 'interior_floor', {}).asm;
+    expect(doorSwingCheck(floor)!.checks.doorSwing.pass).toBeNull();
+  });
+  it('W2-3 스윙 검사는 실제 장애물을 잡는다 — 문 앞 테이블 주입 시 양측 힌지 fail', () => {
+    const { asm } = build('interior', 'studio_unit', {});
+    const mutated = { ...asm, parts: [...asm.parts, { id: 'inj_table', type: 'box', params: { width: 1200, depth: 600, height: 730 }, at: { tx: 4100, ty: 300, tz: 0 }, role: 'table' }] };
+    expect(doorSwingCheck(mutated)!.checks.doorSwing.pass).toBe(false);
+  });
+  it('W2-3 마감 면적 항등: cafe_room 기하 재도출=메타 일치', () => {
+    const { asm } = build('interior', 'cafe_room', {});
+    const fa = finishAreaCheck(asm)! as { checks: { floorAreaIdentity: { pass: boolean | null } }; basis: { derivedM2: number; metaM2: number } };
+    expect(fa.checks.floorAreaIdentity.pass).toBe(true);
+    expect(fa.basis.derivedM2).toBeCloseTo(fa.basis.metaM2, 1);
+    // 메타 표류 주입 → fail
+    const drifted = finishAreaCheck({ ...asm, floorAreaM2: (asm.floorAreaM2 as number) + 5 })! as { checks: { floorAreaIdentity: { pass: boolean | null } } };
+    expect(drifted.checks.floorAreaIdentity.pass).toBe(false);
   });
   it('parking_pavement W2-2: 배수 구배 실기하 — 스트립 상면 재도출=선언 항등 + 휠스토퍼 국소 안착', () => {
     const { asm, b } = build('landscape', 'parking_pavement', { stalls: 6, slopePct: 2 });
