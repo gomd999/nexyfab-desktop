@@ -54,7 +54,7 @@
     mode = next;
     modeReason = reason || '';
     try {
-      self.postMessage({ event: 'mode', mode: next, reason: modeReason });
+      self.postMessage({ event: 'mode', mode: next, reason: modeReason, topoNaming: topoNamingAvailable });
     } catch (_e) {
       // Worker scope may not have postMessage in some test sandboxes — fine.
       void _e;
@@ -66,6 +66,21 @@
    *   1. self.__OCCT_TEST_MODULE_FACTORY__ — test seam (returns Promise<module>)
    *   2. importScripts('./opencascade.js') → self.Module
    */
+  /**
+   * K7-S1(260808) — 생성-이력 명명(System A) 번들 로드. 실패해도 커널 부팅은
+   * 계속한다(명명은 S2+ 프로토콜에서 소비 — 지금은 가용성 신호만 노출).
+   * self.NexyTopo 가 서면 topo-capable, 아니면 종전 경로 그대로.
+   */
+  var topoNamingAvailable = false;
+  try {
+    if (typeof self.NexyTopo === 'undefined' && typeof importScripts === 'function') {
+      importScripts('./topo-naming.bundle.js');
+    }
+    topoNamingAvailable = typeof self.NexyTopo === 'object' && typeof self.NexyTopo.buildExtrudeTopo === 'function';
+  } catch (_topoErr) {
+    topoNamingAvailable = false; // 정직: 없으면 없다고만 한다(폴백 재해석 금지)
+  }
+
   function resolveModuleFactory() {
     if (typeof self.__OCCT_TEST_MODULE_FACTORY__ === 'function') {
       return { factory: self.__OCCT_TEST_MODULE_FACTORY__, source: 'test-seam' };
