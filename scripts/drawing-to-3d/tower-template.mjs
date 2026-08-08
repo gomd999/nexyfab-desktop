@@ -87,12 +87,62 @@ export function buildTowerIR(p = {}) {
     },
   ];
 
+  /**
+   * B-L3(260808) — 층 차별화: 로비(2배층고·유닛 없음·코어 연속) + 기준층 ×N +
+   * 옥상(파라펫). withLobby=false 면 종전 균일 스택(B-L2)과 동일하다.
+   * 수직 동선 연속성: 코어 벽 정의는 층고만 파라미터로 받는 공유 정의라
+   * 평면 위치가 변형층에서도 동일하다 — gateTower 가 결과에서 재검증한다.
+   */
+  const withLobby = p.withLobby === true;
+  const lobbyH = withLobby ? floorH * 2 : 0;
+  const typicalCount = withLobby ? Math.max(1, floors - 1) : floors;
+  if (withLobby) {
+    const lobbyColH = lobbyH - beamD - slabT;
+    definitions.push({
+      defId: 'lobby_core', system: 'structure',
+      parts: definitions.find(d => d.defId === 'core').parts.map(w => ({
+        ...w, params: { ...w.params, height: lobbyColH },
+      })),
+    });
+    definitions.push({
+      defId: 'lobby_floor', system: 'structure',
+      parts: [
+        { ...box('slab', W, D, slabT, { tx: -colW / 2, ty: -colW / 2, tz: lobbyColH + beamD }), material: 'concrete', role: 'slab' },
+      ],
+      children: [
+        { ref: 'lobby_column', id: 'col', at: { tx: -colW / 2, ty: -colW / 2 }, pattern: { kind: 'grid', nx: nx + 1, ny: ny + 1, dx: bayX, dy: bayY } },
+        { ref: 'beam_x', id: 'gx', at: { tx: colW / 2, ty: -beamW / 2, tz: lobbyColH }, pattern: { kind: 'grid', nx, ny: ny + 1, dx: bayX, dy: bayY } },
+        { ref: 'beam_y', id: 'gy', at: { tx: -beamW / 2, ty: colW / 2, tz: lobbyColH }, pattern: { kind: 'grid', nx: nx + 1, ny, dx: bayX, dy: bayY } },
+        { ref: 'lobby_core', id: 'core' },
+      ],
+    });
+    definitions.push({
+      defId: 'lobby_column', system: 'structure',
+      parts: [box('col', colW, colW, lobbyColH, {}, { material: 'concrete', role: 'column' })],
+    });
+  }
+  definitions.push({
+    defId: 'roof_parapet', system: 'envelope',
+    parts: [
+      { ...box('parapet_s', W, 200, 1100, { tx: -colW / 2, ty: -colW / 2 }), material: 'concrete', role: 'parapet' },
+      { ...box('parapet_n', W, 200, 1100, { tx: -colW / 2, ty: D - colW / 2 - 200 }), material: 'concrete', role: 'parapet' },
+      { ...box('parapet_w', 200, D - 400 - colW, 1100, { tx: -colW / 2, ty: -colW / 2 + 200 }), material: 'concrete', role: 'parapet' },
+      { ...box('parapet_e', 200, D - 400 - colW, 1100, { tx: W - colW / 2 - 200, ty: -colW / 2 + 200 }), material: 'concrete', role: 'parapet' },
+    ],
+  });
+
+  const root = [
+    ...(withLobby ? [{ ref: 'lobby_floor', id: 'lobby' }] : []),
+    { ref: 'typical_floor', id: 'fl', at: { tz: lobbyH }, pattern: { kind: 'linear', count: typicalCount, dz: floorH } },
+    { ref: 'roof_parapet', id: 'roof', at: { tz: lobbyH + typicalCount * floorH } },
+  ];
+
   return {
     schema: 'nexyfab.assembly-hierarchy.v1',
     name: `tower_${floors}f_${nx}x${ny}`, domain: 'building', kind: 'tower',
-    meta: { floors, nx, ny, bayX, bayY, floorH, colW, beamW, beamD, slabT, footprint: [W, D] },
+    meta: { floors, nx, ny, bayX, bayY, floorH, colW, beamW, beamD, slabT, footprint: [W, D], withLobby, lobbyH, typicalCount },
     definitions,
-    root: [{ ref: 'typical_floor', id: 'fl', pattern: { kind: 'linear', count: floors, dz: floorH } }],
+    root,
   };
 }
 
@@ -112,16 +162,33 @@ export function gateTower(ir, expanded) {
     const key = `${part.at.tx.toFixed(1)},${part.at.ty.toFixed(1)}`;
     colXY.set(key, (colXY.get(key) ?? 0) + 1);
   }
+  const levels = (ir.meta.withLobby ? 1 : 0) + (ir.meta.typicalCount ?? floors);
   const gridPoints = (nx + 1) * (ny + 1);
   if (colXY.size !== gridPoints) errs.push(`column_grid: 평면 기둥 위치 ${colXY.size} ≠ 그리드 ${gridPoints}`);
-  for (const [key, n] of colXY) if (n !== floors) errs.push(`column_continuity: (${key}) 발생 ${n} ≠ 층수 ${floors}`);
+  for (const [key, n] of colXY) if (n !== levels) errs.push(`column_continuity: (${key}) 발생 ${n} ≠ 레벨 수 ${levels}`);
+
+  // ①b B-L3 수직 동선 연속성: 코어 벽 평면 위치(tx,ty)가 전 레벨에서 동일하게 발생
+  const coreXY = new Map();
+  for (const part of parts) {
+    if (part.role !== 'core_wall') continue;
+    const key = `${part.at.tx.toFixed(1)},${part.at.ty.toFixed(1)}`;
+    coreXY.set(key, (coreXY.get(key) ?? 0) + 1);
+  }
+  if (coreXY.size > 0) {
+    for (const [key, n] of coreXY) if (n !== levels) errs.push(`core_continuity: 코어벽 (${key}) 발생 ${n} ≠ 레벨 수 ${levels} — 수직 동선 단절`);
+  }
+
+  // ①c 스택 표고 닫힌형: 슬래브 z 집합 = 각 레벨의 (레벨базa + colH + beamD)
+  const slabZ = new Set(parts.filter(pp => pp._occ.leaf === 'slab').map(pp => pp.at.tz.toFixed(1)));
+  if (slabZ.size !== levels) errs.push(`slab_levels: 슬래브 표고 ${slabZ.size}종 ≠ 레벨 ${levels}`);
 
   // ② BOQ 교차: hierarchyCounts(정의×패턴 곱) = 전개 실측 — 닫힌형 두 개
   const counts = hierarchyCounts(ir);
   const slabTotal = parts.filter(pp => pp._occ.leaf === 'slab').length;
-  if (slabTotal !== floors) errs.push(`boq_slab: ${slabTotal} ≠ ${floors}`);
+  if (slabTotal !== levels) errs.push(`boq_slab: ${slabTotal} ≠ 레벨 ${levels}`);
   const colTotal = parts.filter(pp => pp._occ.leaf === 'col').length;
-  if (colTotal !== counts.get('column')) errs.push(`boq_column: 전개 ${colTotal} ≠ 패턴곱 ${counts.get('column')}`);
+  const colExpected = (counts.get('column') ?? 0) + (counts.get('lobby_column') ?? 0);
+  if (colTotal !== colExpected) errs.push(`boq_column: 전개 ${colTotal} ≠ 패턴곱 ${colExpected}`);
 
   // ③ 풋프린트 포함: 모든 부품 AABB 시작점이 풋프린트+여유 안
   const [W, D] = ir.meta.footprint;

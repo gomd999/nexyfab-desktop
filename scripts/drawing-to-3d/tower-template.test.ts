@@ -11,8 +11,8 @@ describe('tower template (N2)', () => {
     const r = buildTower({ floors: 10, nx: 3, ny: 2 });
     expect(r.gateErrors).toEqual([]);
     expect(r.ok).toBe(true);
-    // 층당: 기둥 12 + 보 9+8 + 코어벽 8 + 슬래브 1 + 가구 4유닛×4 = 54
-    expect(r.expanded!.parts).toHaveLength(54 * 10);
+    // 층당 54(기둥12+보17+코어8+슬래브1+가구16) ×10 + 옥상 파라펫 4
+    expect(r.expanded!.parts).toHaveLength(54 * 10 + 4);
     // 시스템 레이어: 구조/인테리어 분리 태그
     const systems = new Set(r.expanded!.parts!.map((p: { system?: string }) => p.system));
     expect(systems.has('structure')).toBe(true);
@@ -32,6 +32,29 @@ describe('tower template (N2)', () => {
   it('face-contact stacking yields zero interference at 6 floors', () => {
     const r = buildTower({ floors: 6, nx: 3, ny: 2 });
     expect(r.ok).toBe(true);
+    const built = buildAssembly({ name: r.expanded!.name, domain: 'building', parts: r.expanded!.parts });
+    expect(built.ok).toBe(true);
+    expect((built.interferences ?? []).length).toBe(0);
+  });
+
+  it('B-L3: lobby variant keeps core continuity and stacks elevations closed-form', () => {
+    const r = buildTower({ floors: 10, nx: 3, ny: 2, withLobby: true });
+    expect(r.gateErrors).toEqual([]);
+    expect(r.ok).toBe(true);
+    // 레벨 = 로비 1 + 기준층 9; 코어벽 8위치 × 10레벨
+    const cores = r.expanded!.parts!.filter((p: { role?: string }) => p.role === 'core_wall');
+    expect(cores).toHaveLength(8 * 10);
+    // 파라펫은 로비층고(2H) + 9H 위에 얹힌다
+    const parapet = r.expanded!.parts!.find((p: { role?: string }) => p.role === 'parapet')!;
+    expect((parapet as { at: { tz: number } }).at.tz).toBe(3400 * 2 + 9 * 3400);
+    // 변이: 로비 코어벽 하나를 밀면 수직 동선 단절이 잡힌다
+    const lc = r.expanded!.parts!.find((p: { id: string }) => p.id.startsWith('lobby/core/'))!;
+    (lc as { at: { tx: number } }).at.tx += 50;
+    expect(gateTower(r.ir, r.expanded!).some((e: string) => e.includes('core_continuity'))).toBe(true);
+  });
+
+  it('B-L3: lobby variant zero interference', () => {
+    const r = buildTower({ floors: 6, nx: 3, ny: 2, withLobby: true });
     const built = buildAssembly({ name: r.expanded!.name, domain: 'building', parts: r.expanded!.parts });
     expect(built.ok).toBe(true);
     expect((built.interferences ?? []).length).toBe(0);
