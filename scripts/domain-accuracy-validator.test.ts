@@ -33,7 +33,7 @@ function caseFor(candidate: { caseId: string; sourceHash: string; artifactHash: 
 describe('domain-accuracy-validator', () => {
   const candidate = buildDomainCandidates('civil', 1)[0]!;
 
-  it('measures 4 axes on a clean rebuild and not_runs the rest with reasons', async () => {
+  it('measures 5 axes on a clean rebuild (W1-3: +transforms) and not_runs the rest with honest reasons', async () => {
     const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 2, repeat: 3, attempt: 1 });
     expect(run.campaign).toBe(2);
     expect(run.repeat).toBe(3);
@@ -41,10 +41,13 @@ describe('domain-accuracy-validator', () => {
     expect(run.requiredGatesPassed).toBe(true);
     const byAxis = new Map(run.assertions.map((item: { axis: string }) => [item.axis, item]));
     expect(byAxis.size).toBe(CIVIL_AXES.length); // 케이스 축 전량, 중복 없음
-    for (const axis of ['requirements', 'dimensions', 'part_definitions', 'collision_clearance']) {
+    for (const axis of ['requirements', 'dimensions', 'part_definitions', 'collision_clearance', 'transforms']) {
       expect(byAxis.get(axis)).toMatchObject({ status: 'pass' });
     }
-    for (const axis of ['features', 'hierarchy', 'transforms', 'manufacturing', 'step_roundtrip', 'repair']) {
+    // W1-3 — 측정 대상이 자명하게 없는 축은 사유 있는 not_run(0==0 부풀리기 금지)
+    expect(byAxis.get('features')).toMatchObject({ status: 'not_run', reason: 'no_feature_vocabulary_in_template' });
+    expect(byAxis.get('hierarchy')).toMatchObject({ status: 'not_run', reason: 'template_without_hierarchy' });
+    for (const axis of ['manufacturing', 'repair']) {
       expect(byAxis.get(axis)).toMatchObject({ status: 'not_run', reason: `dryrun_v1_out_of_scope:${axis}` });
     }
   });

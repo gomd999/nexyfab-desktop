@@ -35,6 +35,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildAssemblyTemplate } from './drawing-to-3d/domain-assemblies.mjs';
 import { hashAssemblyArtifact, CANDIDATE_DOMAIN_MAP } from './build-domain-accuracy-candidates.mjs';
+import { placedAabb } from './drawing-to-3d/assembly.mjs';
 
 /** 판정 축 = 케이스가 실어온 ground truth 축 그대로 — 프로파일 필수축은
  *  evidence 계층이 케이스 승인 시 완전성 검증하므로(도메인별 10~14축 상이),
@@ -104,6 +105,49 @@ export async function validateCase(corpusEntry, input, opts = {}) {
       alignmentErrors.length === 0 && unverified === 0
         ? 'alignment_gate_clean_on_rebuild'
         : `alignment_gate:${alignmentErrors.length}err_${unverified}unverified`);
+
+    // W1-3 — 요약 GT 3종의 독립 재도출 대조. 요약에 필드가 없거나(구코퍼스)
+    // 측정할 대상이 자명하게 0이면 not_run — 공허한 0==0 pass 로 커버리지를
+    // 부풀리지 않는다.
+    if (expected.extents === null) {
+      notRun('transforms', 'extents_non_finite:part_rotation_outside_yaw_vocabulary');
+    } else if (Array.isArray(expected.extents)) {
+      const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+      for (const part of parts) {
+        const b = placedAabb(part);
+        for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], b.min[k]); mx[k] = Math.max(mx[k], b.max[k]); }
+      }
+      const got = parts.length ? [0, 1, 2].map(k => +(mx[k] - mn[k]).toFixed(6)) : [0, 0, 0];
+      const match = got.every(Number.isFinite)
+        && got.every((v, k) => Math.abs(v - expected.extents[k]) <= 1e-6);
+      judged('transforms', match, match
+        ? `extents_rederived_${got.join('x')}`
+        : `extents_mismatch:${got.join('x')}!=${expected.extents.join('x')}`);
+    } else {
+      notRun('transforms', 'corpus_summary_missing:extents');
+    }
+
+    if (typeof expected.holeTotal === 'number' && expected.holeTotal > 0) {
+      const got = parts.reduce((n, part) => n + (Array.isArray(part.params?.holes) ? part.params.holes.length : 0), 0);
+      judged('features', got === expected.holeTotal,
+        got === expected.holeTotal ? `hole_total_${got}` : `hole_total_mismatch:${got}/${expected.holeTotal}`);
+    } else if (expected.holeTotal === 0) {
+      notRun('features', 'no_feature_vocabulary_in_template');
+    }
+
+    if (typeof expected.occCount === 'number' && expected.occCount > 0) {
+      const occParts = parts.filter(part => part._occ);
+      // 고유성 키 = path+leaf: _occ.path 는 **인스턴스** 경로라 같은 인스턴스의
+      // 부품들이 공유하는 게 정상이다(첫 스모크에서 path 단독 고유성 가정이
+      // 308/201로 깨져 실측 정정 — 조립 계약은 "점유 부품 식별자" 고유성).
+      const keys = new Set(occParts.map(part => `${part._occ?.path}::${part._occ?.leaf}`));
+      const ok = occParts.length === expected.occCount && keys.size === occParts.length;
+      judged('hierarchy', ok, ok
+        ? `occ_tree_${occParts.length}_occurrences_unique`
+        : `occ_mismatch:${occParts.length}/${expected.occCount}_unique${keys.size}`);
+    } else if (expected.occCount === 0) {
+      notRun('hierarchy', 'template_without_hierarchy');
+    }
 
     if (opts.roundtrip) {
       // W1-2 — STEP 왕복 실측: 방출(드롭 0)→재임포트→메시 체적 유한/양수.

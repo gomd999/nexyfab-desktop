@@ -158,8 +158,10 @@ export async function main(args = process.argv.slice(2)) {
   const axes = reportValue.assessment.axes;
   const measured = axes.filter(axis => axis.measured > 0);
   const unmeasured = axes.filter(axis => axis.measured === 0);
-  assert(measured.length === 5 && measured.every(axis => axis.accuracy === 1 && axis.coverage === 1),
-    `measured axes clean incl. step_roundtrip (${measured.map(axis => axis.axis).join(',')})`);
+  const CORE_AXES = ['requirements', 'dimensions', 'part_definitions', 'collision_clearance', 'step_roundtrip'];
+  const measuredNames = new Set(measured.map(axis => axis.axis));
+  assert(CORE_AXES.every(axis => measuredNames.has(axis)) && measured.every(axis => axis.accuracy === 1 && axis.coverage === 1),
+    `measured axes clean, core 5 included (${measured.map(axis => axis.axis).join(',')})`);
   assert(unmeasured.every(axis => reportValue.assessment.blockers.includes(`coverage:${axis.axis}`)),
     'unmeasured axes surface as coverage blockers');
   assert(reportValue.evidence.requiredGatePasses === reportValue.evidence.requiredGateRuns,
