@@ -5,7 +5,8 @@
  * 스냅샷·다운로드에 쓰이는 메시 솔버는 `applyGeometryMatesToPlaced` → `AssemblyMates.solveMates`
  * (`AssemblyMate` + 면 인덱스) — 두 경로는 의도적으로 분리됨(M3_ASSEMBLY.md §1 P1).
  */
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { diagnoseMateMobility, type MobilityDiagnosis } from './mateMobilityDiagnosis';
 import { usePathname } from 'next/navigation';
 import {
   solveAssembly,
@@ -287,6 +288,46 @@ export default function AssemblyMatesPanel({
   }, [assemblyState]);
   const redundantCount = rankInfo?.redundantMateIds.length ?? 0;
 
+  // F-3(260808f) — 교차 진단: 배치 솔버와 독립인 검증된 야코비안 랭크
+  // (kinematics.solveMobility)로 메이트를 표준 운동쌍에 사상해 자유도·중복을
+  // 재판정한다. 사상 불가 메이트는 진단이 '부분'임을 함께 표시(조용한 생략
+  // 금지) — leave-one-out 랭크(analyzeAssemblyRank)가 놓치는 판정의 2차 방어선.
+  const [kinDiag, setKinDiag] = useState<MobilityDiagnosis | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const enabled = assemblyState.mates.filter(m => m.enabled);
+    if (enabled.length === 0 || enabled.length > 40) { setKinDiag(null); return; }
+    const worldDir = (sel: _Mate['selections'][0]): [number, number, number] | undefined => {
+      const body = assemblyState.bodies[sel.bodyIndex];
+      const local = sel.localAxis ?? sel.localNormal;
+      if (!body || !local) return undefined;
+      const v = local.clone().applyEuler(body.rotation);
+      return [v.x, v.y, v.z];
+    };
+    const worldPoint = (sel: _Mate['selections'][0]): [number, number, number] | undefined => {
+      const body = assemblyState.bodies[sel.bodyIndex];
+      if (!body) return undefined;
+      const p = sel.localPoint.clone().applyEuler(body.rotation).add(body.position);
+      return [p.x, p.y, p.z];
+    };
+    diagnoseMateMobility(
+      enabled.map(m => ({
+        id: m.id,
+        type: m.type,
+        partA: `b${m.selections[0].bodyIndex}`,
+        partB: `b${m.selections[1].bodyIndex}`,
+        axis: worldDir(m.selections[0]),
+        atMm: worldPoint(m.selections[0]),
+      })),
+      assemblyState.bodies.map((b, i) => ({
+        id: `b${i}`,
+        grounded: b.fixed,
+        atMm: [b.position.x, b.position.y, b.position.z],
+      })),
+    ).then(d => { if (alive) setKinDiag(d); }).catch(() => { if (alive) setKinDiag(null); });
+    return () => { alive = false; };
+  }, [assemblyState]);
+
   const dofColor =
     overConstrained ? 'var(--nx-error)' : // over-constrained — red
     dof === 0 ? 'var(--nx-ok)' :   // fully constrained — green
@@ -339,6 +380,30 @@ export default function AssemblyMatesPanel({
           role="status"
         >
           ⚠ {redundantCount} {tt.overConstrained} · {redundantCount === 1 ? 'mate is redundant' : 'mates are redundant'} (over-defines the assembly)
+        </div>
+      )}
+
+      {/* F-3 — 야코비안 랭크 교차 진단(kinematics.solveMobility). not_run 은
+          표시하지 않는다(측정 안 한 것을 0 으로 보이게 하지 않음). */}
+      {kinDiag && kinDiag.status !== 'not_run' && (
+        <div
+          data-testid="assembly-kinematic-diagnosis"
+          data-status={kinDiag.status}
+          data-redundant={kinDiag.redundant}
+          title={kinDiag.note}
+          style={{
+            fontSize: 10.5,
+            color: kinDiag.overconstrained ? 'var(--nx-error)' : theme.textMuted,
+            background: kinDiag.overconstrained ? 'var(--nx-error)14' : 'transparent',
+            borderRadius: 6,
+            padding: '4px 8px',
+            lineHeight: 1.4,
+          }}
+          role="status"
+        >
+          ⚖ Jacobian · {tt.remainingDOF}: {kinDiag.mobility}
+          {kinDiag.overconstrained ? ` · ${tt.overConstrained}: ${kinDiag.redundant}` : ''}
+          {kinDiag.status === 'partial' ? ` · ±${kinDiag.excluded.length}` : ''}
         </div>
       )}
 
