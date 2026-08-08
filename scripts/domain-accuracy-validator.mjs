@@ -22,6 +22,13 @@
  *
  * falseVerified/falseClear/destructivePartMerge = false: 결함 주입이 없는
  * 드릴에서는 자명하게 0이며, 검출력 주장으로 읽어서는 안 된다.
+ *
+ * W1-1(260808b) — `--subject ai`: 판정 주체를 **AI 생성 파이프라인**으로 전환.
+ * corpus 항목의 `sourceSpec`(자연어 사양 — 실 캠페인에서는 홀드아웃 소스가
+ * 공급)을 textToAssembly에 실호출 → 산출물을 GT와 축별 비교. sourceSpec 이
+ * 없으면 날조하지 않고 소리내며 fail(`source_spec_missing`). AI 주체에서
+ * dimensions 축은 not_run — 치수 GT는 홀드아웃 assertion 의 공차정책이
+ * 정본이며 템플릿 해시 등가로 대신할 수 없다(그건 재빌드 주체의 계약).
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -37,13 +44,23 @@ const axesOfCase = caseValue =>
 
 const MEASURED_AXES = new Set(['requirements', 'dimensions', 'part_definitions', 'collision_clearance']);
 
-/** corpus(후보 매니페스트) 항목 + 캠페인 입력 → DomainAccuracyRun. 순수 함수. */
-export function validateCase(corpusEntry, input) {
+/**
+ * corpus(후보 매니페스트) 항목 + 캠페인 입력 → DomainAccuracyRun.
+ * opts.subject: 'rebuild'(기본 — 템플릿 재빌드 결정론) | 'ai'(AI 생성 주체).
+ * opts.generate: AI 주체의 생성 함수 주입점(async spec => textToAssembly 결과
+ * 형태) — 테스트는 가짜를, CLI는 실 파이프라인을 꽂는다.
+ */
+export async function validateCase(corpusEntry, input, opts = {}) {
   const { caseValue, campaign, repeat } = input;
+  const subject = opts.subject ?? 'rebuild';
   const axes = axesOfCase(caseValue);
   const results = new Map();
   const notRun = (axis, reason) => results.set(axis, { axis, status: 'not_run', reason });
   const judged = (axis, ok, reason) => results.set(axis, { axis, status: ok ? 'pass' : 'fail', reason });
+
+  if (subject === 'ai') {
+    return validateCaseAiSubject(corpusEntry, input, opts, { axes, results, notRun, judged });
+  }
 
   let rebuilt = null;
   let rebuildError = null;
@@ -94,6 +111,10 @@ export function validateCase(corpusEntry, input) {
     if (!results.has(axis)) notRun(axis, MEASURED_AXES.has(axis) ? 'unexpected_gap' : `dryrun_v1_out_of_scope:${axis}`);
   }
 
+  return assembleRun(caseValue, campaign, repeat, axes, results);
+}
+
+function assembleRun(caseValue, campaign, repeat, axes, results) {
   const assertions = axes.map(axis => results.get(axis));
   return {
     caseId: caseValue.caseId,
@@ -110,6 +131,60 @@ export function validateCase(corpusEntry, input) {
     destructivePartMerge: false,
     assertions,
   };
+}
+
+/** W1-1 — AI 생성 주체 판정. 측정 축: requirements(생성+게이트)·part_definitions
+ *  (부품수·역할 vs GT)·collision_clearance(정렬 게이트). dimensions 는 홀드아웃
+ *  assertion 공차정책이 정본이라 not_run(템플릿 해시 등가로 대신하면 날조). */
+async function validateCaseAiSubject(corpusEntry, input, opts, ctx) {
+  const { caseValue, campaign, repeat } = input;
+  const { axes, results, notRun, judged } = ctx;
+  const spec = corpusEntry?.sourceSpec;
+  let generated = null;
+  let genError = null;
+
+  if (!corpusEntry) genError = 'corpus_entry_missing';
+  else if (typeof spec !== 'string' || !spec.trim()) genError = 'source_spec_missing:ai_subject_requires_holdout_spec';
+  else if (typeof opts.generate !== 'function') genError = 'generator_unavailable';
+  else {
+    try {
+      generated = await opts.generate(spec);
+    } catch (error) {
+      genError = `generation_failed:${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+
+  const asm = generated?.assembly ?? null;
+  const genOk = !genError && !!asm && !generated.allFailed
+    && (generated.gateErrors ?? []).length === 0 && (generated.dropped ?? []).length === 0;
+  judged('requirements', genOk, genOk
+    ? 'ai_generation_ok_gates_clean'
+    : (genError ?? `ai_generation_degraded:${(generated?.gateErrors ?? []).length}err_${(generated?.dropped ?? []).length}dropped`));
+
+  if (asm) {
+    const parts = asm.parts ?? [];
+    const roles = [...new Set(parts.map(part => part.role).filter(Boolean))].sort();
+    const expected = corpusEntry.artifactSummary ?? {};
+    const defsOk = parts.length === expected.partCount
+      && JSON.stringify(roles) === JSON.stringify(expected.roles ?? []);
+    judged('part_definitions', defsOk,
+      defsOk ? `ai_part_count_${parts.length}_roles_match` : `ai_part_defs_mismatch:${parts.length}/${expected.partCount}`);
+    const alignmentErrors = asm.alignmentErrors ?? [];
+    const unverified = parts.filter(part => part.unverified === true).length;
+    judged('collision_clearance', alignmentErrors.length === 0 && unverified === 0,
+      alignmentErrors.length === 0 && unverified === 0
+        ? 'ai_alignment_gate_clean'
+        : `ai_alignment_gate:${alignmentErrors.length}err_${unverified}unverified`);
+  } else {
+    judged('part_definitions', false, `ai_output_unavailable:${genError}`);
+    judged('collision_clearance', false, `ai_output_unavailable:${genError}`);
+  }
+  notRun('dimensions', 'ai_subject_dimension_gt_requires_holdout_assertions');
+
+  for (const axis of axes) {
+    if (!results.has(axis)) notRun(axis, `dryrun_v1_out_of_scope:${axis}`);
+  }
+  return assembleRun(caseValue, campaign, repeat, axes, results);
 }
 
 export function loadCorpus(file) {
@@ -132,8 +207,13 @@ if (isMain) {
     const corpusFile = index >= 0 ? args[index + 1] : undefined;
     if (!corpusFile) throw new TypeError('--corpus <candidate-manifest.json> is required');
     const corpus = loadCorpus(corpusFile);
+    const subjectIndex = args.indexOf('--subject');
+    const subject = subjectIndex >= 0 ? args[subjectIndex + 1] : 'rebuild';
+    const generate = subject === 'ai'
+      ? async spec => (await import('./drawing-to-3d/from-text.mjs')).textToAssembly(spec)
+      : undefined;
     const input = JSON.parse(await readStdin());
-    const run = validateCase(corpus.get(input.caseValue.caseId), input);
+    const run = await validateCase(corpus.get(input.caseValue.caseId), input, { subject, generate });
     process.stdout.write(`${JSON.stringify(run)}\n`);
   })().catch(error => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);

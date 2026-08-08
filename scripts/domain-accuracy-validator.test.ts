@@ -33,8 +33,8 @@ function caseFor(candidate: { caseId: string; sourceHash: string; artifactHash: 
 describe('domain-accuracy-validator', () => {
   const candidate = buildDomainCandidates('civil', 1)[0]!;
 
-  it('measures 4 axes on a clean rebuild and not_runs the rest with reasons', () => {
-    const run = validateCase(candidate, { caseValue: caseFor(candidate), campaign: 2, repeat: 3, attempt: 1 });
+  it('measures 4 axes on a clean rebuild and not_runs the rest with reasons', async () => {
+    const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 2, repeat: 3, attempt: 1 });
     expect(run.campaign).toBe(2);
     expect(run.repeat).toBe(3);
     expect(run.usedForTuning).toBe(false);
@@ -49,16 +49,16 @@ describe('domain-accuracy-validator', () => {
     }
   });
 
-  it('ground-truth artifact hash mismatch → dimensions fails loudly', () => {
+  it('ground-truth artifact hash mismatch → dimensions fails loudly', async () => {
     const tampered = { ...candidate, artifactHash: 'f'.repeat(64) };
-    const run = validateCase(tampered, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
+    const run = await validateCase(tampered, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
     const dims = run.assertions.find((item: { axis: string }) => item.axis === 'dimensions');
     expect(dims).toMatchObject({ status: 'fail' });
     expect(run.requiredGatesPassed).toBe(false);
   });
 
-  it('missing corpus entry → measured axes all fail, never silently pass', () => {
-    const run = validateCase(undefined, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
+  it('missing corpus entry → measured axes all fail, never silently pass', async () => {
+    const run = await validateCase(undefined, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 });
     for (const axis of ['requirements', 'dimensions', 'part_definitions', 'collision_clearance']) {
       expect(run.assertions.find((item: { axis: string }) => item.axis === axis)).toMatchObject({ status: 'fail' });
     }
@@ -81,5 +81,45 @@ describe('run-domain-accuracy-dryrun case builder', () => {
         (truth: { provenance: string }) => truth.provenance.includes('DRYRUN'),
       )).toBe(true);
     }
+  });
+});
+
+describe('W1-1: AI-subject mode', () => {
+  const candidate = buildDomainCandidates('civil', 1)[0]!;
+  const byAxis = (run: { assertions: Array<{ axis: string; status: string; reason: string }> }) =>
+    new Map(run.assertions.map(item => [item.axis, item]));
+
+  it('judges via the injected generator: requirements/part_defs/collision measured, dimensions honestly not_run', async () => {
+    const generate = async () => ({
+      assembly: {
+        parts: Array.from({ length: candidate.artifactSummary.partCount }, (_v, i) => ({
+          id: `p${i}`, role: candidate.artifactSummary.roles[i % candidate.artifactSummary.roles.length],
+        })),
+        alignmentErrors: [],
+      },
+      gateErrors: [], dropped: [], allFailed: false,
+    });
+    const run = await validateCase({ ...candidate, sourceSpec: '옹벽 3m' }, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 }, { subject: 'ai', generate });
+    const axes = byAxis(run);
+    expect(axes.get('requirements')).toMatchObject({ status: 'pass' });
+    expect(axes.get('part_definitions')).toMatchObject({ status: 'pass' });
+    expect(axes.get('collision_clearance')).toMatchObject({ status: 'pass' });
+    expect(axes.get('dimensions')).toMatchObject({ status: 'not_run', reason: 'ai_subject_dimension_gt_requires_holdout_assertions' });
+  });
+
+  it('missing sourceSpec → loud fail, never a fabricated generation', async () => {
+    const run = await validateCase(candidate, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 }, { subject: 'ai', generate: async () => { throw new Error('must not be called'); } });
+    expect(byAxis(run).get('requirements')).toMatchObject({ status: 'fail' });
+    expect(byAxis(run).get('requirements')!.reason).toContain('source_spec_missing');
+    expect(run.requiredGatesPassed).toBe(false);
+  });
+
+  it('degraded generation (dropped parts) fails requirements — no silent acceptance', async () => {
+    const generate = async () => ({
+      assembly: { parts: [{ id: 'p0', role: 'wall' }], alignmentErrors: [] },
+      gateErrors: [], dropped: ['p1'], allFailed: false, degraded: true,
+    });
+    const run = await validateCase({ ...candidate, sourceSpec: '옹벽 3m' }, { caseValue: caseFor(candidate), campaign: 1, repeat: 1, attempt: 1 }, { subject: 'ai', generate });
+    expect(byAxis(run).get('requirements')).toMatchObject({ status: 'fail' });
   });
 });
