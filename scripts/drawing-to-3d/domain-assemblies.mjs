@@ -15,6 +15,7 @@ import { TOL_TRIM_RESIDUAL, minSeg } from './geometry-tolerance.mjs';
 import { buildTower } from './tower-template.mjs';
 import { buildBridge } from './bridge-template.mjs';
 import { buildMachineLine } from './machine-line-template.mjs';
+import { buildInteriorFloor } from './interior-floor-template.mjs';
 
 const num = (v, d) => (Number.isFinite(v) ? v : d);
 const P = (id, type, params, at = {}, material, role) => ({ id, type, params, at, ...(material ? { material } : {}), ...(role ? { role } : {}) });
@@ -3841,6 +3842,11 @@ function hiRiseTowerAssembly(p) {
     ],
   };
 }
+function interiorFloorAssembly(p) {
+  const r = buildInteriorFloor({ unitsPerSide: p.unitsPerSide, unitW: p.unitW, unitD: p.unitD, corridorW: p.corridorW, doorW: p.doorW });
+  if (!r.ok) return { ok: false, error: 'gate_failed', name: 'interior floor', domain: 'interior', parts: [], alignmentErrors: r.gateErrors };
+  return r.assembly; // roomBounds/exits 메타 포함 → interior 디스패치가 층 피난·통로 판정
+}
 function modularConveyorLineAssembly(p) {
   const r = buildMachineLine({ modules: p.modules, moduleLen: p.moduleLen, width: p.width, rollerPitch: p.rollerPitch });
   if (!r.ok) return { ok: false, error: 'gate_failed', name: 'modular conveyor line', domain: 'mech', parts: [], alignmentErrors: r.gateErrors };
@@ -4227,6 +4233,16 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   interior: [
+    {
+      id: 'interior_floor', labelKo: '층 전체 평면 (복도+유닛×N·층 피난)', labelEn: 'Full floor plan (corridor+units, floor egress)', build: interiorFloorAssembly,
+      params: [
+        { name: 'unitsPerSide', labelKo: '측당 유닛 수', unit: '', default: 4, min: 1, max: 20 },
+        { name: 'unitW', labelKo: '유닛 폭', unit: 'mm', default: 6000, min: 3000, max: 12000 },
+        { name: 'unitD', labelKo: '유닛 깊이', unit: 'mm', default: 4000, min: 2500, max: 8000 },
+        { name: 'corridorW', labelKo: '복도 폭', unit: 'mm', default: 1800, min: 1200, max: 3600 },
+        { name: 'doorW', labelKo: '유닛 문 폭', unit: 'mm', default: 900, min: 700, max: 1200 },
+      ],
+    },
     {
       id: 'apartment_unit', labelKo: '주거 아파트 유닛 (방2·거실주방·욕실)', labelEn: 'Apartment unit (2BR + LDK + bath)', build: apartmentUnitAssembly,
       params: [

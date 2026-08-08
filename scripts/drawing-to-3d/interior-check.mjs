@@ -17,14 +17,23 @@ import { buildAssembly } from './assembly.mjs';
 
 const round = (v, n = 2) => +Number(v).toFixed(n);
 
+/** 사분면 회전 정규화: rz 를 0/90/180/270 으로 스냅(그 외는 null — 비지원 정직). */
+function quadrant(rz = 0) {
+  const q = ((Math.round(rz) % 360) + 360) % 360;
+  return q === 0 || q === 90 || q === 180 || q === 270 ? q : null;
+}
 function footprint(part) {
   const a = partAabb({ type: part.type, ...part.params });
   const { tx = 0, ty = 0, tz = 0, rz = 0 } = part.at ?? {};
-  // rz 90° 회전(벽체 배치용)만 지원 — placedAabb와 동일 사상(코너 회전)
-  if (rz === 90) {
-    return { x0: tx - a.max[1], x1: tx - a.min[1], y0: ty + a.min[0], y1: ty + a.max[0], z0: a.min[2] + tz, z1: a.max[2] + tz };
-  }
-  return { x0: a.min[0] + tx, x1: a.max[0] + tx, y0: a.min[1] + ty, y1: a.max[1] + ty, z0: a.min[2] + tz, z1: a.max[2] + tz };
+  // D-L3(260808): rz 사분면 전부 지원 — yaw 180° 유닛 인스턴싱(복도 양측 열)의
+  // 벽(180/270)이 종전 rz=90 한정 사상에서 무회전으로 오배치되던 갭 해소.
+  // placedAabb 코너 회전과 동일 수학(z 회전: x'=x·c−y·s, y'=x·s+y·c).
+  const q = quadrant(rz);
+  const z0 = a.min[2] + tz, z1 = a.max[2] + tz;
+  if (q === 90) return { x0: tx - a.max[1], x1: tx - a.min[1], y0: ty + a.min[0], y1: ty + a.max[0], z0, z1 };
+  if (q === 180) return { x0: tx - a.max[0], x1: tx - a.min[0], y0: ty - a.max[1], y1: ty - a.min[1], z0, z1 };
+  if (q === 270) return { x0: tx + a.min[1], x1: tx + a.max[1], y0: ty - a.max[0], y1: ty - a.min[0], z0, z1 };
+  return { x0: a.min[0] + tx, x1: a.max[0] + tx, y0: a.min[1] + ty, y1: a.max[1] + ty, z0, z1 };
 }
 
 /** 보행 차단 격자(공용) — interiorCheck 와 passageWidthCheck 가 같은 규칙을 본다. */
@@ -45,16 +54,19 @@ function buildWalkGrid(parts, rb, cell) {
       ? (ob.params?.openings ?? []).filter((o) => (o.sill ?? 0) < 300 && o.h >= 1800).sort((a, b) => a.x - b.x)
       : [];
     if (!doors.length) { blockRect(f); continue; }
-    const rz90 = (ob.at?.rz ?? 0) === 90;
+    const q = quadrant(ob.at?.rz ?? 0) ?? 0;
     const len = ob.params.length;
     let cur = 0;
     const segs = [];
     for (const d of doors) { if (d.x > cur) segs.push([cur, d.x]); cur = d.x + d.w; }
     if (cur < len) segs.push([cur, len]);
     for (const [s0, s1] of segs) {
-      // 로컬 길이축 구간 → 월드 (footprint 사상과 동일 규약)
-      if (!rz90) blockRect({ x0: (ob.at?.tx ?? 0) + s0, x1: (ob.at?.tx ?? 0) + s1, y0: f.y0, y1: f.y1, z0: f.z0 });
-      else blockRect({ x0: f.x0, x1: f.x1, y0: (ob.at?.ty ?? 0) + s0, y1: (ob.at?.ty ?? 0) + s1, z0: f.z0 });
+      // 로컬 길이축 구간 → 월드 (footprint 사분면 사상과 동일 규약)
+      const tx0 = ob.at?.tx ?? 0, ty0 = ob.at?.ty ?? 0;
+      if (q === 0) blockRect({ x0: tx0 + s0, x1: tx0 + s1, y0: f.y0, y1: f.y1, z0: f.z0 });
+      else if (q === 90) blockRect({ x0: f.x0, x1: f.x1, y0: ty0 + s0, y1: ty0 + s1, z0: f.z0 });
+      else if (q === 180) blockRect({ x0: tx0 - s1, x1: tx0 - s0, y0: f.y0, y1: f.y1, z0: f.z0 });
+      else blockRect({ x0: f.x0, x1: f.x1, y0: ty0 - s1, y1: ty0 - s0, z0: f.z0 });
     }
   }
 
