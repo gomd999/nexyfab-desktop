@@ -23,14 +23,13 @@
 import type { BufferGeometry } from 'three';
 import {
   occtFilletBox,
-  occtEdgeSignatures,
   hostBoxFromGeometry,
   resolveBrepHostHandle,
   resolveBrepHostHandleAsync,
   type ReplicadEdgeFinder,
 } from './occtEngine';
 import {
-  resolveEdgeFinderBySignature,
+  resolveEdgeRefDual,
   buildEdgeFinderFromSelection,
 } from './topologyEdgeFinder';
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
@@ -208,7 +207,8 @@ export async function occtFilletWithAvoidanceAsync(
     let lostReason: string | null = null;
     try {
       if (runningHandle) {
-        const res = await resolveEdgeFinderBySignature(sel, occtEdgeSignatures(runningHandle), currentBbox);
+        // K7-S4 공용 이중화 해석(A안 이름 우선, B안 서명 폴백+대조군).
+        const res = await resolveEdgeRefDual(sel, runningHandle, currentBbox, 'filletAvoidance');
         if (res.status === 'matched') finder = res.finder;
         // ⚠ 'lost' means the matcher REFUSED to identify this edge. Retrying
         // with the stale click point would just launder that refusal into a

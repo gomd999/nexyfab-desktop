@@ -23,6 +23,7 @@ import {
   composeTopoNamesAfterBoolean,
 } from './occtEngine';
 import { buildBestEdgeFinder } from './fillet';
+import { resolveEdgeRefDual } from './topologyEdgeFinder';
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
 
 /** 가짜 B-rep: occtEdgeSignatures 가 읽는 최소 표면(.edges) */
@@ -147,5 +148,37 @@ describe('fillet A-first resolution (K7-S3)', () => {
     // 이름표가 없으면 A안은 판정하지 않는다 — B안/클릭 경로 소관(여기선 replicad
     // 미가용이라 finder 도 null이지만, '상실' 단정은 없어야 한다).
     expect(out.lost).toBeUndefined();
+  });
+});
+
+describe('resolveEdgeRefDual — K7-S4 공용 이중화 해석', () => {
+  const sel = (topoName?: string): EdgeSelectionInfo => ({
+    type: 'edge',
+    position: [0, 0, 5],
+    length: 10,
+    normal: [1, 0, 0],
+    direction: [0, 0, 1],
+    ...(topoName ? { topoName } : {}),
+  });
+
+  it("name table alive but stored name gone → 'name_gone' loss (chamfer 등 전 소비처 공통)", async () => {
+    const h = registerShape(fakeSolid([[[0, 0, 0], [0, 0, 10]]]));
+    setTopoNames(h, new Map([['e.vert.9', v(99, 99, 5)]]));
+    const res = await resolveEdgeRefDual(sel('e.vert.0'), h, undefined, 'chamfer');
+    expect(res.status).toBe('lost');
+    expect(res.status === 'lost' && res.reason).toBe('name_gone');
+  });
+
+  it('no name table → plain B-path verdict, never a loss minted by A', async () => {
+    const h = registerShape(fakeSolid([[[0, 0, 0], [0, 0, 10]]]));
+    const res = await resolveEdgeRefDual(sel('e.vert.0'), h, undefined);
+    expect(res.status).toBe('unavailable'); // replicad 미가용 환경의 B안 판정
+  });
+
+  it('name present but anchor matches no current edge → falls through to B, no name_gone', async () => {
+    const h = registerShape(fakeSolid([[[0, 0, 0], [0, 0, 10]]]));
+    setTopoNames(h, new Map([['e.vert.0', v(77, 77, 5)]])); // 앵커가 현재 에지와 불일치
+    const res = await resolveEdgeRefDual(sel('e.vert.0'), h, undefined);
+    expect(res.status).toBe('unavailable'); // 단정 없이 B안 소관
   });
 });

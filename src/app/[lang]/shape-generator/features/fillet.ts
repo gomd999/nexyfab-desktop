@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition, FeatureApplyContext } from './types';
-import { occtEdgeSignatures, occtTopoNames, occtTopoAnchor, type ReplicadEdgeFinder } from './occtEngine';
+import { type ReplicadEdgeFinder } from './occtEngine';
 import { wantsOcctEngine, shouldUseOcctEngine } from './engineSelection';
 import { stampFaceFeatureIdAll, propagateFeatureIdMap } from './faceProvenance';
 import { configureEvaluatorAttributes } from './meshMerge';
@@ -17,7 +17,7 @@ import {
   buildEdgeFinderFromSelection,
   buildEdgeFinderFromMultiSelection,
   buildEdgeFinderForLoop,
-  resolveEdgeFinderBySignature,
+  resolveEdgeRefDual,
   makeReferenceLostNotice,
   type EdgeRefResolution,
 } from './topologyEdgeFinder';
@@ -61,53 +61,12 @@ export async function buildBestEdgeFinder(
     if (loop) return { finder: loop };
     return { finder: await buildEdgeFinderFromMultiSelection(sels, { currentBbox }) };
   }
-  // Primary (topology-tolerant): re-anchor to a real current edge by signature.
+  // Primary (topology-tolerant): K7-S4 공용 이중화 해석 — A안(생성-이력 이름)
+  // 우선, B안(서명) 폴백+대조군. 로직은 topologyEdgeFinder.resolveEdgeRefDual
+  // 단일 소스(S3에서 이 파일 인라인으로 검증 후 추출).
   const handle = geometry?.userData?.occtHandle as string | undefined;
   if (handle) {
-    const sel = sels[0]!;
-    const sigs = occtEdgeSignatures(handle);
-    // K7-S3 — A안(생성-이력 이름) 우선 해석. 선택에 topoName 이 저장돼 있고 현재
-    // 핸들에 이름표가 있으면: 이름이 실재 → 그 앵커와 일치하는 현재 에지가 곧
-    // 정답(정확 서명으로 파인더 구성). 이름표는 있는데 이름이 사라짐 → 명시
-    // 상실(추측 적용 금지, ADR-017 D1). 이름표 자체가 없는 핸들(미배선 생산
-    // 경로)은 기존 B안 그대로. A가 정하면 B(저장 클릭서명)는 대조군으로 병행
-    // 판정만 하고, 다른 에지를 골랐을 때 로그를 남긴다(S5 강등 근거 수집).
-    if (sel.topoName && occtTopoNames(handle)) {
-      const anchor = occtTopoAnchor(handle, sel.topoName);
-      if (!anchor) {
-        return { finder: null, lost: { status: 'lost', reason: 'name_gone', suggestion: null } };
-      }
-      const aIndex = sigs.findIndex(sg =>
-        Math.hypot(sg.mid[0] - anchor.x, sg.mid[1] - anchor.y, sg.mid[2] - anchor.z) <= 1e-2);
-      if (aIndex >= 0) {
-        const target = sigs[aIndex]!;
-        const exact = {
-          ...sel,
-          position: [target.mid[0], target.mid[1], target.mid[2]] as [number, number, number],
-          direction: [target.dir[0], target.dir[1], target.dir[2]] as [number, number, number],
-          length: target.length,
-          bbox: undefined, // 현재 좌표 그대로 — bbox 재사상은 항등이어야 한다
-        };
-        const resA = await resolveEdgeFinderBySignature(exact, sigs, undefined);
-        if (resA.status === 'matched') {
-          const resB = await resolveEdgeFinderBySignature(sel, sigs, currentBbox);
-          if (resB.status === 'matched' && resB.index !== undefined && resB.index !== aIndex) {
-            console.warn('[fillet] K7-S3 A/B mismatch — name picked a different edge than the click signature', {
-              topoName: sel.topoName, aIndex, bIndex: resB.index,
-            });
-          } else if (resB.status === 'lost') {
-            console.warn('[fillet] K7-S3 A/B mismatch — name resolved but signature reported lost', {
-              topoName: sel.topoName, aIndex, bReason: resB.reason,
-            });
-          }
-          return { finder: resA.finder };
-        }
-        // A 앵커는 실재하나 파인더 구성 불가(replicad 미가용 등) — 기존 경로 속행.
-      }
-      // 이름은 있으나 현재 에지와 앵커 불일치(중점 이동) — 커널 히스토리 없는
-      // 브라우저 합성의 한계다. 단정하지 않고 기존 B안 판정에 맡긴다.
-    }
-    const res = await resolveEdgeFinderBySignature(sel, sigs, currentBbox);
+    const res = await resolveEdgeRefDual(sels[0]!, handle, currentBbox, 'fillet');
     if (res.status === 'matched') return { finder: res.finder };
     if (res.status === 'lost') return { finder: null, lost: res };
     // 'unavailable' — nothing was ruled out, so the click-point path is fair game.

@@ -3,7 +3,6 @@ import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition, FeatureApplyContext } from './types';
 import {
   occtVariableFillet,
-  occtEdgeSignatures,
   hostBoxFromGeometry,
   resolveBrepHostHandleAsync,
   type ReplicadEdgeFinder,
@@ -13,7 +12,7 @@ import { noteMeshFallback, stampDowngrade } from './downgradeNotice';
 import { configureEvaluatorAttributes } from './meshMerge';
 import {
   buildEdgeFinderFromSelection,
-  resolveEdgeFinderBySignature,
+  resolveEdgeRefDual,
   makeReferenceLostNotice,
   type EdgeRefResolution,
 } from './topologyEdgeFinder';
@@ -117,7 +116,8 @@ async function buildEdgeFinder(
   const currentBbox = currentBboxOf(geometry);
   const handle = geometry.userData?.occtHandle as string | undefined;
   if (handle) {
-    const res = await resolveEdgeFinderBySignature(sels[0]!, occtEdgeSignatures(handle), currentBbox);
+    // K7-S4 공용 이중화 해석(A안 이름 우선, B안 서명 폴백+대조군).
+    const res = await resolveEdgeRefDual(sels[0]!, handle, currentBbox, 'variableFillet');
     if (res.status === 'matched') return { finder: res.finder };
     // ⚠ 'lost' is NOT the click-point fallback's cue — the matcher already
     // rejected a better-informed signature (ADR-017 §D1).

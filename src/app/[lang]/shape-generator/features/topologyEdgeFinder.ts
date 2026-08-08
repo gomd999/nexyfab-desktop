@@ -31,6 +31,7 @@
 
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
 import type { ReplicadEdgeFinder } from './occtEngine';
+import { occtEdgeSignatures, occtTopoNames, occtTopoAnchor } from './occtEngine';
 import { bestEdgeMatch, matchFaceBySignature, type EdgeMatchRejection, type EdgeSig, type FaceSig } from './edgeCorrespondence';
 import type { MeshDowngradeNotice } from './downgradeNotice';
 import { AXIS_EPS } from './tolerancePolicy';
@@ -231,6 +232,59 @@ export async function resolveEdgeFinderBySignature(
   } catch {
     return { status: 'unavailable', reason: 'finder_threw' };
   }
+}
+
+/**
+ * K7-S4 — 이중화 해석의 공용 진입점. fillet에서 검증된 S3 로직의 추출이며
+ * chamfer·variableFillet·occtFilletAvoidance 가 같은 경로를 쓴다(소비처별
+ * 재구현 금지). A안(생성-이력 이름) 우선, B안(서명)은 폴백+대조군:
+ *   - 이름표 실재 + 이름 실재 → 앵커와 일치하는 현재 에지를 정확 서명으로
+ *     해석(A 확정). B안을 병행 판정해 다른 에지를 골랐으면 경고 로그만
+ *     남긴다(S5 강등 근거 수집).
+ *   - 이름표 실재 + 이름 소멸 → {lost, 'name_gone'} — 추측 적용 금지(D1).
+ *   - 이름표 부재·앵커 불일치·파인더 구성 불가 → 기존 B안 판정 그대로.
+ */
+export async function resolveEdgeRefDual(
+  selection: EdgeSelectionInfo,
+  handle: string,
+  currentBbox?: BBox3,
+  op = 'edge-ref',
+): Promise<EdgeRefResolution> {
+  const sigs = occtEdgeSignatures(handle);
+  if (selection.topoName && occtTopoNames(handle)) {
+    const anchor = occtTopoAnchor(handle, selection.topoName);
+    if (!anchor) return { status: 'lost', reason: 'name_gone', suggestion: null };
+    const aIndex = sigs.findIndex(sg =>
+      Math.hypot(sg.mid[0] - anchor.x, sg.mid[1] - anchor.y, sg.mid[2] - anchor.z) <= 1e-2);
+    if (aIndex >= 0) {
+      const target = sigs[aIndex]!;
+      const exact: EdgeSelectionInfo = {
+        ...selection,
+        position: [target.mid[0], target.mid[1], target.mid[2]],
+        direction: [target.dir[0], target.dir[1], target.dir[2]],
+        length: target.length,
+        bbox: undefined, // 현재 좌표 그대로 — bbox 재사상은 항등이어야 한다
+      };
+      const resA = await resolveEdgeFinderBySignature(exact, sigs, undefined);
+      if (resA.status === 'matched') {
+        const resB = await resolveEdgeFinderBySignature(selection, sigs, currentBbox);
+        if (resB.status === 'matched' && resB.index !== undefined && resB.index !== aIndex) {
+          console.warn(`[${op}] K7 A/B mismatch — name picked a different edge than the click signature`, {
+            topoName: selection.topoName, aIndex, bIndex: resB.index,
+          });
+        } else if (resB.status === 'lost') {
+          console.warn(`[${op}] K7 A/B mismatch — name resolved but signature reported lost`, {
+            topoName: selection.topoName, aIndex, bReason: resB.reason,
+          });
+        }
+        return resA;
+      }
+      // A 앵커는 실재하나 파인더 구성 불가(replicad 미가용 등) — B안 속행.
+    }
+    // 이름은 있으나 앵커가 현재 에지와 불일치(중점 이동) — 커널 히스토리 없는
+    // 브라우저 합성의 한계다. 단정하지 않고 B안 판정에 맡긴다.
+  }
+  return resolveEdgeFinderBySignature(selection, sigs, currentBbox);
 }
 
 /**

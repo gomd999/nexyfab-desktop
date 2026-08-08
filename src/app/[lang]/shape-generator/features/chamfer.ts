@@ -3,7 +3,6 @@ import { Evaluator, Brush, INTERSECTION } from 'three-bvh-csg';
 import type { FeatureDefinition, FeatureApplyContext } from './types';
 import {
   occtChamferBox,
-  occtEdgeSignatures,
   hostBoxFromGeometry,
   resolveBrepHostHandle,
   resolveBrepHostHandleAsync,
@@ -20,7 +19,7 @@ import {
   buildEdgeFinderFromSelection,
   buildEdgeFinderFromMultiSelection,
   buildEdgeFinderForLoop,
-  resolveEdgeFinderBySignature,
+  resolveEdgeRefDual,
   makeReferenceLostNotice,
   type EdgeRefResolution,
 } from './topologyEdgeFinder';
@@ -76,10 +75,11 @@ async function buildBestEdgeFinder(
     if (loop) return { finder: loop };
     return { finder: await buildEdgeFinderFromMultiSelection(sels, { currentBbox }) };
   }
-  // Primary (topology-tolerant): re-anchor to a real current edge by signature.
+  // Primary (topology-tolerant): K7-S4 공용 이중화 해석(A안 이름 우선, B안 서명
+  // 폴백+대조군) — resolveEdgeRefDual 단일 소스.
   const handle = geometry?.userData?.occtHandle as string | undefined;
   if (handle) {
-    const res = await resolveEdgeFinderBySignature(sels[0]!, occtEdgeSignatures(handle), currentBbox);
+    const res = await resolveEdgeRefDual(sels[0]!, handle, currentBbox, 'chamfer');
     if (res.status === 'matched') return { finder: res.finder };
     if (res.status === 'lost') return { finder: null, lost: res };
     // 'unavailable' — nothing was ruled out, so the click-point path is fair game.
