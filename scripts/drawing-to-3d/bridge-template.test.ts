@@ -11,8 +11,8 @@ describe('bridge template (N3)', () => {
     const r = buildBridge({ spans: 3, girders: 4 });
     expect(r.gateErrors).toEqual([]);
     expect(r.ok).toBe(true);
-    // 경간당: 거더4+가로보9+판3 = 16 → 48; 지점 4×(부재3+교좌4)=28; 총 76
-    expect(r.expanded!.parts!).toHaveLength(76);
+    // 경간당 16×3 + 지점 28 + 신축이음(내부지점 2) = 78
+    expect(r.expanded!.parts!).toHaveLength(78);
   });
 
   it('mutation: a shifted girder line breaks continuity; a lifted deck breaks elevation', () => {
@@ -32,6 +32,17 @@ describe('bridge template (N3)', () => {
     const built = buildAssembly({ name: r.expanded!.name, domain: 'civil', parts: r.expanded!.parts });
     expect(built.ok).toBe(true);
     expect((built.interferences ?? []).length).toBe(0);
+  });
+
+  it('C-L3: expansion joints — count = interior supports, deck gap identity, mutation caught', () => {
+    const r = buildBridge({ spans: 4, girders: 3 });
+    expect(r.ok).toBe(true);
+    const joints = r.expanded!.parts!.filter((p: { role?: string }) => p.role === 'expansion_joint');
+    expect(joints).toHaveLength(3);
+    // 변이: 한 경간을 밀어 이격을 깨면 deck_gap 게이트가 잡는다
+    const decks = r.expanded!.parts!.filter((p: { _occ: { leaf: string } }) => p._occ.leaf === 'deck');
+    (decks[1] as { at: { tx: number } }).at.tx += 30;
+    expect(gateBridge(r.ir, r.expanded!).some((e: string) => e.includes('deck_gap'))).toBe(true);
   });
 
   it('refuses invalid configs honestly', () => {

@@ -94,6 +94,18 @@ export function buildBridgeIR(p = {}) {
     },
   ];
 
+  /**
+   * C-L3 1단계(260808) — 신축이음: 내부 지점(경간 사이)마다 바닥판 단부 사이
+   * gap 을 메우는 이음 스트립(핑거조인트 개념 부재 — 표기용 하드웨어)을 둔다.
+   * 스트립 폭 = gap, 바닥판과 면접촉(간섭 0 유지). 게이트가 「이음 수 = 경간−1」
+   * 과 「인접 바닥판 단부 이격 = gap」을 결과에서 검증한다.
+   * (종단선형·횡경사는 피치(ry) 부재의 AABB 간섭 과탐 해소(OBB) 선행 후 — 미구현 정직 표기)
+   */
+  definitions.push({
+    defId: 'expansion_joint', system: 'envelope',
+    parts: [{ ...box('joint_strip', gap, deckW, 60, { tx: -gap / 2, tz: -60 }), material: 'steel', role: 'expansion_joint' }],
+  });
+
   return {
     schema: 'nexyfab.assembly-hierarchy.v1',
     name: `bridge_${spans}span_${girders}g`, domain: 'civil', kind: 'bridge',
@@ -104,6 +116,7 @@ export function buildBridgeIR(p = {}) {
       { ref: 'span', id: 'sp', pattern: { kind: 'linear', count: spans, dx: spanL } },
       // 지점: x = 0..spans·spanL, 코핑 중심이 지점선
       { ref: 'pier', id: 'pier', at: { ty: ((girders - 1) * spacing) / 2 }, pattern: { kind: 'linear', count: spans + 1, dx: spanL } },
+      ...(spans > 1 ? [{ ref: 'expansion_joint', id: 'ej', at: { tx: spanL, ty: -botW / 2 - 250, tz: zDeck + deckT }, pattern: { kind: 'linear', count: spans - 1, dx: spanL } }] : []),
     ],
   };
 }
@@ -137,6 +150,15 @@ export function gateBridge(ir, expanded) {
   // ④ 교좌: 지점×거더열 격자 전부 존재
   const brg = parts.filter(pp => pp._occ.leaf === 'brg');
   if (brg.length !== (spans + 1) * girders) errs.push(`bearing_count: ${brg.length} ≠ ${(spans + 1) * girders}`);
+
+  // ④b C-L3: 신축이음 — 내부 지점마다 1개, 인접 바닥판 단부 이격 = gap
+  const joints = parts.filter(pp => pp._occ.leaf === 'joint_strip');
+  if (spans > 1 && joints.length !== spans - 1) errs.push(`expansion_joint_count: ${joints.length} ≠ ${spans - 1}`);
+  const deckXs = parts.filter(pp => pp._occ.leaf === 'deck').map(pp => pp.at.tx).sort((a, b) => a - b);
+  for (let k = 1; k < deckXs.length; k++) {
+    const separation = deckXs[k] - (deckXs[k - 1] + ir.meta.girderLen);
+    if (Math.abs(separation - ir.meta.gap) > 0.5) { errs.push(`deck_gap: 지점 ${k} 이격 ${separation.toFixed(1)} ≠ ${ir.meta.gap}`); break; }
+  }
 
   // ⑤ BOQ 교차: 패턴곱 = 전개
   const gTotal = parts.filter(pp => pp._occ.leaf === 'g').length;
