@@ -122,7 +122,7 @@
 | G2 | 검토 패킷 생성 (`build-domain-accuracy-review-packets`) — 리뷰어가 볼 수 있는 형태 | 🤖 | |
 | G3 | **👤 독립 리뷰어 섭외 — 도메인별 2인 이상**(기계: 기계설계 실무자, 토목: 토목구조, …). 보수·NDA·일정 | **👤** | **전체 계획의 임계 경로. 지금 시작해야 함** |
 | G4 | 리뷰어 blind 승인(케이스별 ground truth 확정, reviewerId 기록) | 👤(수행)+🤖(패킷·수합) | |
-| G5 | 캠페인 3×5 실행 (`run-domain-accuracy-campaign`) — 승인 케이스만, 튜닝 미사용 플래그 | 🤖 | |
+| G5 | 캠페인 3×5 실행 (`run-domain-accuracy-campaign`) — 승인 케이스만, 튜닝 미사용 플래그 | 🤖 | ✅260808 **드라이런 완주**(토목 20×3×5=300, `run-domain-accuracy-dryrun.mjs` 14/14 단언): promote 거부 실측·캠페인 재개 무결성·리포트 정직 거부(eligible=false)까지 체인 전 구간 실동작. 실행기=`domain-accuracy-validator.mjs`(실 홀드아웃 도입 시 재사용, v1=재빌드 결정론 4축+not_run 6축) |
 | G6 | 리포트→`docs/evidence/domain-accuracy-approved/`→certification workflow | 🤖 | |
 | G7 | **실패 축 → §2/§3 백로그로 환류.** 수정 후 재캠페인은 **새 홀드아웃**(같은 케이스 재사용 시 튜닝 오염) — 후보 풀을 도메인당 40+로 넉넉히 생성해 둘 것 | 🤖 | |
 | G8 | 복합제품 57건 외부 추출: 👤 SolidWorks/ODA/Revit/Inventor/Creo 라이선스+워커 호스트 → 🤖 추출·검증 | **👤**+🤖 | 기계 심화용 |

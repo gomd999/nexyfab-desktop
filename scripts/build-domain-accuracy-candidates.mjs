@@ -8,6 +8,11 @@ const DOMAIN_MAP = {
 const stable = value => JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
   ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b)))
   : item);
+
+/** 후보 생성과 캠페인 검증기가 공유하는 산출물 해시 — 알고리즘이 갈리면
+ *  재빌드 결정론 판정 자체가 무의미해지므로 반드시 이 함수 하나만 쓴다. */
+export const hashAssemblyArtifact = assembly => createHash('sha256').update(stable(assembly)).digest('hex');
+export { DOMAIN_MAP as CANDIDATE_DOMAIN_MAP };
 const clamp = (value, min, max) => Math.min(max ?? value, Math.max(min ?? value, value));
 
 export function buildDomainCandidates(domain, count = 20) {
@@ -28,7 +33,7 @@ export function buildDomainCandidates(domain, count = 20) {
       return [param.name, Number.isFinite(varied) ? +varied.toFixed(6) : varied];
     }));
     const assembly = buildAssemblyTemplate(registryDomain, template.id, parameters);
-    const artifactHash = createHash('sha256').update(stable(assembly)).digest('hex');
+    const artifactHash = hashAssemblyArtifact(assembly);
     const source = { domain, templateId: template.id, parameters, artifactHash };
     const sourceHash = createHash('sha256').update(stable(source)).digest('hex');
     const roles = [...new Set((assembly.parts ?? []).map(part => part.role).filter(Boolean))].sort();
