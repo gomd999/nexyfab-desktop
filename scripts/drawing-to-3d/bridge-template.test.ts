@@ -62,6 +62,33 @@ describe('bridge template (N3)', () => {
   it('refuses invalid configs honestly (incl. unverified grades)', () => {
     expect(() => buildBridgeIR({ spans: 0 })).toThrow();
     expect(() => buildBridgeIR({ girders: 1 })).toThrow();
-    expect(() => buildBridgeIR({ gradePct: 5 })).toThrow();
+    // B-3(260808e): 3<|g|≤6 은 스트립 근사로 검증 범위에 편입 — 5%는 이제 정상.
+    expect(() => buildBridgeIR({ gradePct: 7 })).toThrow(/6/);
+  });
+});
+
+describe('B-3 — ±6% 스트립 계단 근사(C-L3 완결)', () => {
+  it('grades up to ±6% build clean: gates 0 + interference 0 (strip mode >3%)', () => {
+    for (const gradePct of [3.5, 4.5, 6, -6]) {
+      const r = (buildBridge as any)({ spans: 3, gradePct });
+      expect(r.ok, `grade ${gradePct}`).toBe(true);
+      const v = (buildAssembly as any)({ name: 'br', domain: 'civil', parts: r.expanded.parts });
+      expect((v.interferences ?? []).length, `grade ${gradePct} interf`).toBe(0);
+      // 스트립 모드 실증: 데크가 다수 스트립으로 전개
+      const strips = r.expanded.parts.filter((pp: any) => pp.role === 'deck');
+      expect(strips.length).toBeGreaterThan(3);
+    }
+  });
+
+  it('≤3% keeps the legacy pitched-deck path verbatim (no corpus drift)', () => {
+    const r = (buildBridge as any)({ spans: 3, gradePct: 2 });
+    expect(r.ok).toBe(true);
+    const decks = r.expanded.parts.filter((pp: any) => pp.role === 'deck');
+    expect(decks.length).toBe(3); // 경간당 단일 피치 데크(종전)
+    expect(r.expanded.parts.length).toBe(78);
+  });
+
+  it('honest cap: |grade| > 6% is refused, not approximated silently', () => {
+    expect(() => (buildBridge as any)({ spans: 2, gradePct: 7 })).toThrow(/6/);
   });
 });

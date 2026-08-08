@@ -28,9 +28,19 @@ export function buildBridgeIR(p = {}) {
   const pierH = p.pierH ?? 7000;
   const gap = p.gap ?? 100;                 // 지점부 거더 이격(신축 자리)
   const gradePct = p.gradePct ?? 0;         // C-L3: 종단 경사(%) — 상수 구배(직선 종단)
-  // ±3% = 간섭 0 실측 검증 범위(간선 일반 구배). 그 이상은 데크 경사 단부면
-  // 어휘(스큐 컷) 없이는 박스 코너 잔차가 남는다 — 정직 상한, 확장은 후속.
-  if (!(Math.abs(gradePct) <= 3)) throw new Error('bridge: |gradePct| ≤ 3 (검증 범위 — 단부면 스큐 어휘 후속)');
+  /**
+   * B-3(260808e) — 구배 상한 ±6%:
+   *  · |g| ≤ 3%: 종전 검증 경로 그대로(피치 단일 데크 + 셋백) — 무회귀.
+   *  · 3% < |g| ≤ 6%: **스트립 계단 근사** — 데크·방호벽을 무회전 x-스트립으로
+   *    나눠 구배선을 따라 계단식 배치. 단부면이 수직이라 조인트 침범(피치
+   *    박스의 코너 잔차)이 원천 소멸 → 셋백 0, AABB 판정 전부 정확.
+   *    정직 표기: 상면=계단 근사(실무 포장 종단면과 다름 — 표고·물량·간섭
+   *    판정은 정확), 스트립 하면과 피치 거더 상면 사이 미세 헌치 간극(스트립
+   *    상행 단부 기준 안착 — 간섭 방향 아님)은 실무 헌치 콘크리트 영역.
+   */
+  if (!(Math.abs(gradePct) <= 6)) throw new Error('bridge: |gradePct| ≤ 6 (스트립 근사 검증 범위)');
+  const deckStripMode = Math.abs(gradePct) > 3;
+  const deckStripLen = 500;
   if (!(spans >= 1 && spans <= 30)) throw new Error('bridge: spans 1..30');
   if (!(girders >= 2 && girders <= 12)) throw new Error('bridge: girders 2..12');
 
@@ -60,10 +70,12 @@ export function buildBridgeIR(p = {}) {
    * 줄여 상면을 구배선 아래에 두면(±6% 상한에서 최대 어긋남 < 12mm) 기하
    * 간섭 없이 좌면 간극(솔플레이트 두께)으로 남는다.
    */
-  const SEAT_ALLOWANCE = gradePct === 0 ? 0 : 12; // ±3% 상한 어긋남 실측 < 12mm
+  // ±3%: 실측 <12mm. 3%<|g|≤6%(스트립 모드): 내부 지점 교좌에서 최대 침투
+  // 실측 +2.99mm(6%) → 여유 16mm 로 상향(테이퍼 솔플레이트 영역 — 미모델 정직).
+  const SEAT_ALLOWANCE = gradePct === 0 ? 0 : (Math.abs(gradePct) > 3 ? 16 : 12);
   // 피치 데크의 단부면은 구배에 수직으로 기울어 하단 모서리가 조인트 갭을
   // deckT·|slope| 만큼 침범한다(실무=수직 절단면, 박스 어휘 한계) — 길이 후퇴로 정합.
-  const deckEndSetback = Math.abs(slope) * 250; // deckT 최대 기준
+  const deckEndSetback = deckStripMode ? 0 : Math.abs(slope) * 250; // 스트립=수직 단부라 셋백 불요
   const deckLen = girderLen - 2 * deckEndSetback;
   const pitchDeg = -Math.atan(slope) * 180 / Math.PI; // OpenSCAD Ry: -각 = +x 진행시 +z 상승
   const spanRise = spanL * slope;
@@ -81,7 +93,30 @@ export function buildBridgeIR(p = {}) {
     },
     {
       defId: 'span_deck', system: 'structure',
-      parts: [
+      parts: deckStripMode
+        ? (() => {
+            // 스트립 하면 z = 구배선의 스트립 **상행측 단부**(slope>0=끝, <0=시작)
+            // — 피치 거더 상면이 스트립 전 구간에서 하면 아래 유지(간섭 0 보장,
+            // 하행측 미세 헌치 간극은 안전 방향).
+            const nStrips = Math.max(2, Math.ceil(girderLen / deckStripLen));
+            // 피치 거더 OBB의 cos 수축 잔차: 회전된 거더 단면고의 유효 상면이
+            // girderH·(1−cosθ) 만큼 구배선 위로 나온다(6%에서 ≈3.6mm — 간섭
+            // 728건 실측 후 규명). 스트립 하면을 그만큼 들어 안착(안전 방향,
+            // 실무 헌치 영역).
+            const girderCosLift = girderH * (1 - Math.cos(Math.atan(Math.abs(slope))));
+            const out = [];
+            for (let i = 0; i < nStrips; i++) {
+              const x0 = i * deckStripLen;
+              const len = i === nStrips - 1 ? girderLen - x0 : deckStripLen;
+              const upperX = slope > 0 ? x0 + len : x0;
+              const bottom = (gap / 2 + upperX) * slope + girderCosLift;
+              out.push({ ...box(i === 0 ? 'deck' : `deck_s${i}`, len, deckW, deckT, { tx: x0, tz: bottom }), material: 'concrete', role: 'deck' });
+              out.push({ ...box(i === 0 ? 'barrier_l' : `barrier_l_s${i}`, len, 400, 900, { tx: x0, ty: 0, tz: bottom + deckT }), material: 'concrete', role: 'barrier' });
+              out.push({ ...box(i === 0 ? 'barrier_r' : `barrier_r_s${i}`, len, 400, 900, { tx: x0, ty: deckW - 400, tz: bottom + deckT }), material: 'concrete', role: 'barrier' });
+            }
+            return out;
+          })()
+        : [
         { ...box('deck', deckLen, deckW, deckT, { tx: deckEndSetback, ry: pitchDeg, tz: riseAtSetback + deckEndSetback * slope }), material: 'concrete', role: 'deck' },
         { ...box('barrier_l', deckLen, 400, 900, { tx: deckEndSetback, ty: 0, tz: deckT + riseAtSetback + deckEndSetback * slope, ry: pitchDeg }), material: 'concrete', role: 'barrier' },
         { ...box('barrier_r', deckLen, 400, 900, { tx: deckEndSetback, ty: deckW - 400, tz: deckT + riseAtSetback + deckEndSetback * slope, ry: pitchDeg }), material: 'concrete', role: 'barrier' },
@@ -137,7 +172,7 @@ export function buildBridgeIR(p = {}) {
   return {
     schema: 'nexyfab.assembly-hierarchy.v1',
     name: `bridge_${spans}span_${girders}g`, domain: 'civil', kind: 'bridge',
-    meta: { spans, spanL, girders, spacing, pierH, gap, girderH, girderLen, zDeck, deckT, width, gradePct, spanRise, pitchDeg },
+    meta: { spans, spanL, girders, spacing, pierH, gap, girderH, girderLen, zDeck, deckT, width, gradePct, spanRise, pitchDeg, deckStripMode, deckStripLen },
     definitions,
     root: [
       // 경간: x = k·spanL 에서 시작. 거더 열 y 중심 = 0..(girders−1)·spacing
@@ -178,7 +213,14 @@ export function gateBridge(ir, expanded) {
     .sort((a, b) => a.k - b.k);
   for (const item of decks) {
     const sl = (ir.meta.gradePct ?? 0) / 100;
-    const want = zDeck + item.k * spanRise + (ir.meta.gap / 2) * sl + Math.abs(sl) * 250 * sl;
+    // 스트립 모드: 첫 스트립('deck' leaf) 하면 = 구배선의 상행측 단부
+    //   (slope>0 → gap/2+stripLen, slope<0 → gap/2). 비스트립: 종전 셋백식.
+    const cosLift = ir.meta.deckStripMode
+      ? (ir.meta.girderH ?? 0) * (1 - Math.cos(Math.atan(Math.abs(sl))))
+      : 0;
+    const want = ir.meta.deckStripMode
+      ? zDeck + item.k * spanRise + (ir.meta.gap / 2 + (sl > 0 ? ir.meta.deckStripLen : 0)) * sl + cosLift
+      : zDeck + item.k * spanRise + (ir.meta.gap / 2) * sl + Math.abs(sl) * 250 * sl;
     if (Math.abs(item.tz - want) > 0.1) { errs.push(`deck_elevation: 경간 ${item.k} 표고 ${item.tz.toFixed(1)} ≠ 구배선 ${want.toFixed(1)}`); break; }
   }
 
