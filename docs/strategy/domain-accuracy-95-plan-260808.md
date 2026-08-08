@@ -51,11 +51,13 @@
 | K4 구멍 실체화 게이트 | ✅ 완료 | 파서+게이트 교정루프 편입, unmetHoles 정직 표면화 |
 | K5 도면 치수 | ✅ v1(체크포인트)+심화(HLR 실투영+해석 치수) | ⌀8×2·위치 25/75 실증 — 웹 배선 후속 |
 | K6 joint IR | ✅ 완료 | prismatic 해석 5mm/20±2mm, cylindrical 단면 스윕 |
-| K7 topo naming | ✅ 판단 완료(ADR-017 accepted — A안 전 시나리오 오매칭 0%) / **승격 잔여**: 브라우저 피처 경로(chamfer·fillet·occtFilletAvoidance·refRelink)가 아직 B안(edgeCorrespondence), 커널 브리지엔 A안 resolvePickedEdges 존재 — 배선 이전이 다음 큰 덩어리 |
+| K7 topo naming | ✅ **승격 완료(260808b)** — S1 워커 번들·S2 프로토콜(edgeNames+피처ID)·S3 브라우저 이중화(occtEngine 이름표+topoName 병기+name_gone 명시상실)·S4 4소비처 컷오버(resolveEdgeRefDual 단일소스)+재연결 재발급+불리언 생산자 승계. 실 WASM 하네스 6/6. **잔여 S5(B안 강등)만** — A/B 불일치 텔레메트리(k7_ab_mismatch_*) 증거 축적 후 |
 | M2 후보/패킷 | ✅ 드라이런 코퍼스(인증 불가 명시) + CLI 4종 기동 결함 수정 |
-| 스케일(N·레벨) | N1 IR·N2 B-L2·N5 브로드페이즈+20k·B-L3·C-L3(±3% 구배)·A-L2·D-L3 완료, 3D OBB SAT 상시 |
+| G5 캠페인 체인 드릴 | ✅ **5도메인 완주(260808b)** — 각 20×3×5=300, 14/14 단언(promote 거부 실측·state 재개·리포트 정직 거부). 실행기=domain-accuracy-validator.mjs v1(재빌드 결정론 4축) |
+| 커널 코퍼스/소크 | ✅ 시드 11→16(실측 고정, 오진 1건 자기정정 포함) · 소크 40반복 117s pass-rate 1·RSS 예산 내 |
+| 스케일(N·레벨) | N1 IR·N2 B-L2·N5 브로드페이즈+20k·B-L3·**B-L4(MEP)**·C-L3(±3% 구배+신축이음)·A-L2·D-L3 완료, 3D OBB SAT 상시. 잔여=§실행계획 260808b W-3 |
 
-### 1.6 K7 승격 로드맵 (260808 스코핑 — 다중 세션 P0)
+### 1.6 K7 승격 로드맵 (260808 스코핑 — **S1~S4 완료, S5만 잔여**. 이력 보존용)
 
 실측: System A(생성-이력 명명)는 `nodeOcctBridge.ts` 내부에만 존재(topoNaming·composedTopo·resolvePickedEdges). 브라우저 워커(`occt-worker-real.js`)는 관련 코드 0줄 — 브라우저 피처 4종(chamfer·fillet·occtFilletAvoidance·refRelink)은 B안(edgeCorrespondence 기하 서명, S2 생존 59.6%)에 묶여 있다.
 
