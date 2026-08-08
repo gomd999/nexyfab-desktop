@@ -19,6 +19,7 @@ import {
   exportOcctStep,
   occtFilletBox,
   occtChamferBox,
+  occtProjectViews,
 } from '../features/occtEngine';
 
 const ENABLED = process.env.RUN_OCCT_FEASIBILITY !== '0';
@@ -115,5 +116,32 @@ describeMaybe('T-1 슬라이스2 — 임포트 B-rep 다이렉트 편집(N-1 게
     const chamfered = occtChamferBox(dummyHost, 1.5, {}, imported.handle);
     expect(chamfered.handle).toBeTruthy();
     expect(meshVolume(chamfered.geometry)).toBeLessThan(8000);
+  });
+});
+
+describeMaybe('T-2 슬라이스1 — 인페이지 실 HLR 정투영(연관성 프리미티브)', () => {
+  beforeAll(async () => {
+    await ensureOcctReady();
+  }, 120_000);
+
+  it('projects a live handle into visible+hidden paths, and RE-projects after an edit (associative)', async () => {
+    resetShapeRegistry();
+    const src = occtExtrudeProfile([
+      { x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 20 }, { x: 0, y: 20 },
+    ], 10);
+    const before = occtProjectViews(src.handle, ['front', 'top'])!;
+    expect(before.front!.visible.length).toBeGreaterThan(0);
+    expect(before.front!.viewBox).toBeTruthy();
+    // 편집(필렛) 후 같은 프리미티브로 재투영 — 곡선 실루엣이 늘어나야 한다
+    const filleted = occtFilletBox({ w: 0, h: 0, d: 0, cx: 0, cy: 0, cz: 0 }, 3, {}, src.handle);
+    const after = occtProjectViews(filleted.handle, ['front'])!;
+    const beforeLen = before.front!.visible.join('').length;
+    const afterLen = after.front!.visible.join('').length;
+    expect(afterLen).toBeGreaterThan(beforeLen); // 필렛 호가 투영에 반영 = 연관성
+  });
+
+  it('unknown handle → null (no fabricated drawing)', async () => {
+    resetShapeRegistry();
+    expect(occtProjectViews('occt:none', ['front'])).toBeNull();
   });
 });

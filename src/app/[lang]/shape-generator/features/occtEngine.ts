@@ -1186,6 +1186,38 @@ interface OcctTopoEdge { startPoint: OcctVertexPoint; endPoint: OcctVertexPoint;
 interface EdgeEnumerableShape { edges: OcctTopoEdge[] }
 
 /**
+ * T-2(#4, 260808b) — 등록 솔리드의 **실 HLR 정투영**(가시선+은선): 모델러
+ * 도면 뷰의 메시 근사(EdgesGeometry 20°)를 대체할 프리미티브. 라이브 핸들에서
+ * 호출 시점마다 재투영하므로 연관성은 구성적으로 성립한다(스냅샷 아님).
+ * 뷰 규약은 노드 HLR 엔진(hlr-spike projectShapeViews)과 동일 — replicad
+ * drawProjection = OCCT HLRBRep. 수 초 연산 — 온디맨드 전용(실시간 아님).
+ */
+export function occtProjectViews(
+  handle: string | null | undefined,
+  views: ReadonlyArray<'front' | 'top' | 'right' | 'left' | 'back' | 'bottom'> = ['front', 'top', 'right'],
+): Record<string, { visible: string[]; hidden: string[]; viewBox: string | null }> | null {
+  const rc = requireReplicad();
+  const shape = getShape(handle);
+  const project = (rc as {
+    drawProjection?: (s: unknown, v: string) => {
+      visible: { toSVGPaths: () => string[]; toSVGViewBox?: (m: number) => string };
+      hidden: { toSVGPaths: () => string[] };
+    };
+  }).drawProjection;
+  if (!shape || typeof project !== 'function') return null;
+  const out: Record<string, { visible: string[]; hidden: string[]; viewBox: string | null }> = {};
+  for (const view of views) {
+    const projected = project(shape, view);
+    out[view] = {
+      visible: projected.visible.toSVGPaths(),
+      hidden: projected.hidden.toSVGPaths(),
+      viewBox: projected.visible.toSVGViewBox ? projected.visible.toSVGViewBox(2) : null,
+    };
+  }
+  return out;
+}
+
+/**
  * T-1(#3, 260808b) — STEP 텍스트를 **인페이지 replicad B-rep**으로 임포트해
  * 등록 핸들을 유지한다: 임포트 모델도 다이렉트 B-rep 편집(fillet/chamfer —
  * occtHandle 기반)·정확 체적·정확 재수출(exportOcctStep) 경로에 올라간다.
