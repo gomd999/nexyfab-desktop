@@ -14,6 +14,7 @@ import { buildElements, chordPolyline, clipElements, chainAt, groundFromContours
 import { TOL_TRIM_RESIDUAL, minSeg } from './geometry-tolerance.mjs';
 import { buildTower } from './tower-template.mjs';
 import { buildBridge } from './bridge-template.mjs';
+import { buildMachineLine } from './machine-line-template.mjs';
 
 const num = (v, d) => (Number.isFinite(v) ? v : d);
 const P = (id, type, params, at = {}, material, role) => ({ id, type, params, at, ...(material ? { material } : {}), ...(role ? { role } : {}) });
@@ -3840,6 +3841,19 @@ function hiRiseTowerAssembly(p) {
     ],
   };
 }
+function modularConveyorLineAssembly(p) {
+  const r = buildMachineLine({ modules: p.modules, moduleLen: p.moduleLen, width: p.width, rollerPitch: p.rollerPitch });
+  if (!r.ok) return { ok: false, error: 'gate_failed', name: 'modular conveyor line', domain: 'mech', parts: [], alignmentErrors: r.gateErrors };
+  const mm = r.ir.meta;
+  return {
+    ...r.expanded, domain: 'mech',
+    hierarchyGates: [
+      { labelKo: `레일 연속성 (모듈 경계 ${mm.modules - 1}곳 이격 0)`, pass: true },
+      { labelKo: `롤러 피치 균일 (${mm.rollersPerModule * mm.modules}본 × ${mm.rollerPitch}mm — 경계 가로질러)`, pass: true },
+      { labelKo: '말단 봉합 (마지막 레그 = 라인 끝)', pass: true },
+    ],
+  };
+}
 function multiSpanBridgeAssembly(p) {
   const r = buildBridge({ spans: p.spans, girders: p.girders, spanL: p.spanL, spacing: p.spacing, pierH: p.pierH });
   if (!r.ok) return { ok: false, error: 'gate_failed', name: 'multi-span bridge', domain: 'bridge', parts: [], alignmentErrors: r.gateErrors };
@@ -4324,6 +4338,15 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   mech: [
+    {
+      id: 'modular_conveyor_line', labelKo: '모듈형 롤러 컨베이어 라인 (서브어셈블리×N)', labelEn: 'Modular roller conveyor line', build: modularConveyorLineAssembly,
+      params: [
+        { name: 'modules', labelKo: '모듈 수', unit: '', default: 4, min: 1, max: 50 },
+        { name: 'moduleLen', labelKo: '모듈 길이', unit: 'mm', default: 2000, min: 1000, max: 4000 },
+        { name: 'width', labelKo: '라인 폭', unit: 'mm', default: 600, min: 400, max: 1200 },
+        { name: 'rollerPitch', labelKo: '롤러 피치', unit: 'mm', default: 250, min: 100, max: 500 },
+      ],
+    },
     {
       // ★260803 — 소비재 기구류 첫 아키타입. mech 18종이 전부 중공업이라 라이브에서
       //   노트북 거치대 사진이 「맞는 형상을 찾지 못했어요」로 끝났다(계획서 §1.4).

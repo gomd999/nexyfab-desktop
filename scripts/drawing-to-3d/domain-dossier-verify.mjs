@@ -297,7 +297,15 @@ export function auditDomainSafety(assembly, params = {}) {
  */
 function withHierarchyGates(assembly, run) {
   const gates = assembly?.hierarchyGates;
-  if (!Array.isArray(gates) || !gates.length || !run?.result || typeof run.result !== 'object') return run;
+  if (!Array.isArray(gates) || !gates.length) return run;
+  // mech 처럼 도메인 검토가 의도적으로 null 침묵하는 경우에도 계층 게이트는
+  // 실판정이므로 최소 결과를 합성한다(다른 템플릿의 침묵은 그대로 존중).
+  if (!run?.result || typeof run.result !== 'object') {
+    return {
+      label: '계층 정합 게이트 (전개 결과 결정론 검증)',
+      result: { ok: gates.every((g) => g.pass !== false), hierarchyGates: { labelKo: '계층 정합 게이트 (전개 결과 결정론 검증)', checks: gates.map((g) => ({ labelKo: g.labelKo, pass: g.pass !== false })) } },
+    };
+  }
   return {
     ...run,
     result: {
