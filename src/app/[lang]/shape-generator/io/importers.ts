@@ -323,6 +323,28 @@ export async function parseSTEP(buffer: ArrayBuffer) {
   // Primary: the replicad OCCT route — reads any AP203/214 B-rep STEP server-side
   // and returns a mesh. The occt-import-js client path (importStepFile) needs an
   // unconfigured tessellation worker (503), so it's only a fallback now.
+  // T-1(#3, 260808b) — 1순위: 인페이지 replicad B-rep 임포트. 핸들이 살아
+  // 남으므로 임포트 모델도 다이렉트 편집·정확 재수출이 가능하다(#3 편집가능
+  // 임포트의 최소 슬라이스 — 피처트리 복원이 아님을 정직 유지). OCCT 미가용/
+  // 실패 시 기존 서버 메시 → occt-import-js 폴백은 그대로.
+  try {
+    const stepTextEarly = new TextDecoder().decode(buffer);
+    if (stepTextEarly.includes('ISO-10303-21')) {
+      const { isOcctReady, occtImportStepText } = await import('../features/occtEngine');
+      if (isOcctReady()) {
+        const brep = await occtImportStepText(stepTextEarly);
+        if (brep.handle && (brep.geometry.attributes.position?.count ?? 0) > 0) {
+          brep.geometry.userData = { ...(brep.geometry.userData ?? {}), occtHandle: brep.handle };
+          brep.geometry.computeBoundingBox();
+          return {
+            geometry: brep.geometry, meshCount: 1,
+            faceCount: (brep.geometry.index?.count ?? 0) / 3,
+            name: 'imported.step', boundingBox: brep.geometry.boundingBox ?? new THREE.Box3(),
+          };
+        }
+      }
+    }
+  } catch { /* 인페이지 B-rep 실패 — 아래 메시 경로 폴백 */ }
   try {
     const stepText = new TextDecoder().decode(buffer);
     if (stepText.includes('ISO-10303-21')) {

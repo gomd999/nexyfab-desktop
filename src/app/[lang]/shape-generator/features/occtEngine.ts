@@ -1186,6 +1186,34 @@ interface OcctTopoEdge { startPoint: OcctVertexPoint; endPoint: OcctVertexPoint;
 interface EdgeEnumerableShape { edges: OcctTopoEdge[] }
 
 /**
+ * T-1(#3, 260808b) — STEP 텍스트를 **인페이지 replicad B-rep**으로 임포트해
+ * 등록 핸들을 유지한다: 임포트 모델도 다이렉트 B-rep 편집(fillet/chamfer —
+ * occtHandle 기반)·정확 체적·정확 재수출(exportOcctStep) 경로에 올라간다.
+ * K7 이름표는 부여하지 않는다 — 임포트 형상은 생성 이력이 없으므로 A안 명명
+ * 대상이 아니고(정직 범위), 에지 선택은 B안(서명)으로 동작한다.
+ * 실패는 null 핸들 — 호출측이 기존 메시 임포트 경로로 폴백한다.
+ */
+export async function occtImportStepText(
+  stepText: string,
+  tessellation: { tolerance?: number; angularTolerance?: number } = {},
+): Promise<OcctExtrudeResult> {
+  const rc = requireReplicad();
+  const importFn = (rc as { importSTEP?: (b: Blob) => Promise<MeshedShape> }).importSTEP;
+  if (typeof importFn !== 'function' || !stepText.includes('ISO-10303-21')) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  const shape = await importFn(new Blob([stepText]));
+  const mesh = shape.mesh({
+    tolerance: tessellation.tolerance ?? 0.1,
+    angularTolerance: tessellation.angularTolerance ?? 0.2,
+  });
+  if (!mesh.vertices?.length || !mesh.triangles?.length) {
+    return { geometry: new BufferGeometry(), handle: null };
+  }
+  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(shape) };
+}
+
+/**
  * Enumerate a registered solid's edges into geometric signatures (chord
  * midpoint, sign-normalised direction, chord length). This is the OCCT half of
  * topology tracking: a stored fillet selection is re-anchored by matching its
