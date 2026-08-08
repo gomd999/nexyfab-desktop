@@ -140,7 +140,10 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
         const bossH = num(f.height, 10);
         const dia = num(f.diameter, 20);
         const baseH = num(base.height, 8);
-        if (base.shape !== 'rect' || !api.addSketchFeature) { skipped.push('boss'); break; }
+        // G-0(260808g) — 원판(circle→cylinder 베이스, height→y 중심대칭)도 상면
+        // y=+h/2 이 동일하므로 같은 프레임으로 안착. 폴리라인 베이스는 상면이
+        // y=h/2 가 아니므로(월드 z 압출) 계속 정직하게 skipped.
+        if ((base.shape !== 'rect' && base.shape !== 'circle') || !api.addSketchFeature) { skipped.push('boss'); break; }
         const profile: SketchProfile = {
           segments: generateCircleSegments(pt(num(f.posX, 0), num(f.posY, 0)), dia / 2, 48),
           closed: true,
@@ -157,6 +160,29 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
       case 'circularPattern':
       case 'linearPattern':
         break; // expanded together with their source hole above
+      case 'rib': {
+        // G-0(260808g) — 모델러 rib 는 선분 기반(startX/Z→endX/Z, 두께·높이,
+        // direction 0=부품 바닥 기준 상향). SCAD 방출(translate z=0 anchor
+        // BOTTOM cuboid = 베이스 바닥에서 상향)과 동일 의미. 프로그램 (x,y)
+        // 평면 → 모델러 (x,z) 사상은 hole 과 동일(posY→z).
+        const t = num(f.width, 8);
+        const ribH = num(f.height, 40);
+        const L = num(f.length, num(base.depth, 80));
+        const rx = num(f.posX, 0), ry = num(f.posY, 0);
+        const seg = f.alongY
+          ? { startX: rx, startZ: ry - L / 2, endX: rx, endZ: ry + L / 2 }
+          : { startX: rx - L / 2, startZ: ry, endX: rx + L / 2, endZ: ry };
+        api.addFeatureWithParams('rib', { ...seg, thickness: t, height: ribH, direction: 0 });
+        break;
+      }
+      case 'shell':
+        // G-0(260808g) — openFace: 모델러 enum 1=상면 개방·2=하면 개방(0=밀폐는
+        // 프로그램 어휘에 없음 — SCAD 방출과 동일하게 기본 상면 개방).
+        api.addFeatureWithParams('shell', {
+          wallThickness: num(f.wallThickness, 2),
+          openFace: f.openFace === 'bottom' ? 2 : 1,
+        });
+        break;
       case 'fillet':
         api.addFeatureWithParams('fillet', { radius: num(f.radius, 3) });
         break;
