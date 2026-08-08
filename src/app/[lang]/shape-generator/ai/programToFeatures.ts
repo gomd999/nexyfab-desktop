@@ -55,7 +55,20 @@ export function reconstructFeatureTree(program: FeatureProgram, api: ModelerFeat
   // NOTE: do NOT clearFeatures() here — the modeler mounts fresh on handoff, and
   // clearAll() resets activeNodeId asynchronously, so features added in the same
   // tick attach to a stale (removed) parent and vanish from the tree.
-  if (api.setBaseShape) {
+  const poly = Array.isArray(base.profile) && base.profile.length >= 3 ? base.profile : null;
+  if (poly) {
+    // P-1b(260808b) — 임의 폐다각 프로파일: 프리미티브가 아니라 진짜 스케치
+    // 피처로 시드한다(점 좌표는 intent 폴리곤 공간 그대로 — 중심화하지 않음,
+    // SCAD/STEP 경로와 동일 좌표 유지가 정합 조건).
+    const points = poly.map(([x, y]) => pt(num(x, 0), num(y, 0)));
+    const segments = points.map((a, i) => {
+      const b = points[(i + 1) % points.length]!;
+      return { type: 'line' as const, points: [a, b], id: `hp_seg_${i}` };
+    });
+    const profile: SketchProfile = { segments, closed: true };
+    const config = { mode: 'extrude', depth: h, revolveAngle: 360, revolveAxis: 'y', segments: 32 } as unknown as SketchConfig;
+    api.addSketchFeature(profile, config, 'xy', 'add', 0);
+  } else if (api.setBaseShape) {
     if (base.shape === 'circle') {
       api.setBaseShape('cylinder', { diameter: num(base.width, 50), height: h });
     } else {

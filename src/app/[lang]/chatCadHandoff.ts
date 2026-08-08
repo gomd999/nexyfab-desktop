@@ -7,10 +7,11 @@
  * 재사용한다 — 모델러 쪽 코드 변경 0. sessionStorage는 탭 단위이므로 반드시
  * **같은 탭 내 내비게이션**으로 넘긴다(새 탭=빈 스토리지).
  *
- * 정직 범위(P-1a 확장, 260808b): ① 단일 사각 판 + 위치 있는 관통 구멍
- * ② 단일 원통 몸체(축·파이프) + **동심** 구멍. 그 밖(보스·프리즘·회전체·
- * 복수 몸체·원통의 편심 구멍)은 null — 버튼 자체를 숨겨 부분 약속을 하지
- * 않는다.
+ * 정직 범위(P-1a·P-1b 확장, 260808b): ① 단일 사각 판 + 위치 있는 관통 구멍
+ * ② 단일 원통 몸체(축·파이프) + **동심** 구멍 ③ 단일 폴리라인(extrude) 몸체
+ * — **구멍 없는 경우만**(폴리곤 공간의 구멍 좌표 규약 미실측 — L형·리브판
+ * 대부분이 이 범위). 그 밖(보스·회전체·복수 몸체·원통 편심 구멍·폴리라인+
+ * 구멍)은 null — 버튼 자체를 숨겨 부분 약속을 하지 않는다.
  * 좌표 규약은 **몸체 종류별로 다르다**(P-1a에서 충돌 발견):
  *  - 판(box): intent 구멍=판 모서리 원점(x∈[0,w], y∈[0,d]) → 프로그램은 중심
  *    원점(circularPattern 전개가 cos/sin·0 기준인 것에서 실측) — (x−w/2, y−d/2)
@@ -46,19 +47,33 @@ export function composeIntentToFeatureProgram(
 
   let box: { w: number; d: number; h: number } | null = null;
   let cyl: { dia: number; len: number } | null = null;
+  let poly: { profile: [number, number][]; h: number } | null = null;
   const subs: Array<{ x: number | null; y: number | null; dia: number }> = [];
 
   for (const raw of feats as IntentFeatureLike[]) {
     const kind = String(raw.kind ?? '');
     const sub = raw.op === 'subtract';
     if (kind === 'box' && !sub) {
-      if (box || cyl) return null; // 복수 몸체 — 범위 밖
+      if (box || cyl || poly) return null; // 복수 몸체 — 범위 밖
       if (!Array.isArray(raw.size) || raw.size.length < 3) return null;
       const [w, d, h] = (raw.size as unknown[]).map(v => num(v));
       if (w === null || d === null || h === null || w <= 0 || d <= 0 || h <= 0) return null;
       box = { w, d, h };
+    } else if (kind === 'extrude' && !sub) {
+      if (box || cyl || poly) return null; // 복수 몸체 — 범위 밖
+      const profRaw = (raw as { profile?: unknown }).profile;
+      const h = num((raw as { height?: unknown }).height) ?? num((raw as { depth?: unknown }).depth);
+      if (!Array.isArray(profRaw) || profRaw.length < 3 || h === null || h <= 0) return null;
+      const profile: [number, number][] = [];
+      for (const pt2 of profRaw) {
+        if (!Array.isArray(pt2)) return null;
+        const x = num(pt2[0]); const y = num(pt2[1]);
+        if (x === null || y === null) return null;
+        profile.push([x, y]);
+      }
+      poly = { profile, h };
     } else if (kind === 'cylinder' && !sub) {
-      if (box || cyl) return null; // 복수 몸체 — 범위 밖
+      if (box || cyl || poly) return null; // 복수 몸체 — 범위 밖
       const dia = num(raw.diameter) ?? num(raw.d);
       const len = num((raw as { height?: unknown }).height)
         ?? num((raw as { h?: unknown }).h)
@@ -93,6 +108,17 @@ export function composeIntentToFeatureProgram(
           id: `h${i + 1}`, type: 'hole', diameter: hole.dia,
           posX: hole.x - box.w / 2, posY: hole.y - box.d / 2, holeType: 0,
         })),
+      ],
+    };
+  }
+
+  if (poly) {
+    // 폴리라인 몸체는 구멍 좌표 규약 미실측 — 구멍 있으면 정직 거부
+    if (subs.length > 0) return null;
+    return {
+      part: 'chat-part',
+      features: [
+        { id: 'f1', type: 'sketchExtrude', profile: poly.profile, height: poly.h },
       ],
     };
   }

@@ -13,6 +13,9 @@ export interface ProgramFeature {
   // sketchExtrude
   shape?: 'rect' | 'circle';
   width?: number; depth?: number; height?: number;
+  /** P-1b(260808b) — 임의 폐다각 프로파일 [x,y][] (챗 intent extrude 핸드오프).
+   *  존재 시 shape보다 우선. 점들은 고정값으로 방출(슬라이더 비대상). */
+  profile?: [number, number][];
   // hole
   diameter?: number; posX?: number; posY?: number; holeType?: number;
   // pattern
@@ -68,9 +71,16 @@ export function emitScadFromProgram(program: FeatureProgram): string {
   params.push('/* [Base] */');
   let baseGeom: string;
   let baseHVar = '0';
-  const isCircle = base.shape === 'circle';
+  const basePoly = Array.isArray(base.profile) && base.profile.length >= 3 ? base.profile : null;
+  const isCircle = !basePoly && base.shape === 'circle';
   let baseW = '0', baseD = '0', baseDia = '0'; // captured for the shell cavity
-  if (isCircle) {
+  if (basePoly) {
+    // P-1b — 폴리라인 몸체: 점은 고정, 두께만 슬라이더.
+    const h = P('Extrude height', n(base.height, 8), ...around(n(base.height, 8)));
+    baseHVar = h;
+    const pts = basePoly.map(([x, y]) => `[${Math.round(x * 1000) / 1000},${Math.round(y * 1000) / 1000}]`).join(',');
+    baseGeom = `linear_extrude(height=${h}) polygon(points=[${pts}]);`;
+  } else if (isCircle) {
     const dia = P('Disc diameter', n(base.width, 50), ...around(n(base.width, 50)));
     baseDia = dia;
     baseHVar = P('Thickness', n(base.height, 5), ...around(n(base.height, 5)));

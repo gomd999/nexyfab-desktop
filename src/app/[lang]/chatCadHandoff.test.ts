@@ -80,3 +80,32 @@ describe('P-1a: cylinder body (shaft / pipe)', () => {
     })).toBeNull();
   });
 });
+
+describe('P-1b: polyline (extrude) body', () => {
+  const L_PROFILE = [[0, 0], [80, 0], [80, 8], [8, 8], [8, 60], [0, 60]] as const;
+
+  it('converts an L-profile extrude to a profile-based sketchExtrude', () => {
+    const p = composeIntentToFeatureProgram({
+      features: [{ kind: 'extrude', profile: L_PROFILE.map(pt => [...pt]), height: 40 }],
+    })!;
+    expect(p.features).toHaveLength(1);
+    expect(p.features[0]).toMatchObject({ type: 'sketchExtrude', height: 40 });
+    expect(p.features[0]!.profile).toHaveLength(6);
+    expect(p.features[0]!.profile![1]).toEqual([80, 0]);
+  });
+
+  it('refuses polyline+holes (hole coords in polygon space unmeasured) and degenerate profiles', () => {
+    expect(composeIntentToFeatureProgram({
+      features: [
+        { kind: 'extrude', profile: L_PROFILE.map(pt => [...pt]), height: 40 },
+        { kind: 'cylinder', op: 'subtract', diameter: 8, at: { translate: [20, 4, 0] } },
+      ],
+    })).toBeNull();
+    expect(composeIntentToFeatureProgram({
+      features: [{ kind: 'extrude', profile: [[0, 0], [10, 0]], height: 40 }],
+    })).toBeNull();
+    expect(composeIntentToFeatureProgram({
+      features: [{ kind: 'extrude', profile: L_PROFILE.map(pt => [...pt]) }], // height 없음
+    })).toBeNull();
+  });
+});
