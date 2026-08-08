@@ -137,6 +137,11 @@ interface DrawingViewProps {
   toleranceClass?: ISO2768Class;
   projectionAngle?: 'first' | 'third';
   onExportPDF?: () => void;
+  /** F-4 후속 — 워커 레지스트리 소속 B-rep 핸들의 HLR 투영 RPC(usePipelineWorker.projectViews). */
+  projectViews?: (
+    handle: string,
+    views: Array<'front' | 'top' | 'right'>,
+  ) => Promise<Record<string, { visible: unknown[]; hidden: unknown[]; viewBox: string | null }> | null>;
 }
 
 interface Edge2D {
@@ -684,6 +689,7 @@ export default function DrawingView({
   toleranceClass = 'm',
   projectionAngle = 'first',
   onExportPDF,
+  projectViews,
 }: DrawingViewProps) {
   const pathname = usePathname();
   const seg = pathname?.split('/').filter(Boolean)[0] ?? 'en';
@@ -704,15 +710,26 @@ export default function DrawingView({
   const [hlrBusy, setHlrBusy] = useState(false);
   const [hlrError, setHlrError] = useState('');
   const [hlrExt, setHlrExt] = useState<{ min: [number, number, number]; max: [number, number, number] } | null>(null);
-  const occtHandle = (result?.geometry?.userData as { occtHandle?: string } | undefined)?.occtHandle;
+  const handleData = result?.geometry?.userData as { occtHandle?: string; occtHandleInWorker?: boolean } | undefined;
+  const occtHandle = handleData?.occtHandle;
+  const handleInWorker = !!handleData?.occtHandleInWorker;
   const toggleHlr = useCallback(async () => {
     if (hlrViews) { setHlrViews(null); return; }
     if (!occtHandle || hlrBusy) return;
     setHlrBusy(true); setHlrError('');
     try {
-      const { occtProjectViews, isOcctReady } = await import('../features/occtEngine');
-      if (!isOcctReady()) throw new Error('OCCT not ready');
-      const projected = occtProjectViews(occtHandle, ['front', 'top', 'right']);
+      let projected: Record<string, { visible: string[]; hidden: string[]; viewBox: string | null }> | null = null;
+      if (handleInWorker) {
+        // F-4 후속(260808g) — 워커 파이프라인 결과의 핸들은 워커 레지스트리
+        // 소속(실측: 메인 스레드 조회 불가) → 투영 RPC 로 워커에서 수행.
+        if (!projectViews) throw new Error('projection unavailable (worker RPC unwired)');
+        projected = await projectViews(occtHandle, ['front', 'top', 'right']) as typeof projected;
+        if (!projected) throw new Error('worker projection unavailable');
+      } else {
+        const { occtProjectViews, isOcctReady } = await import('../features/occtEngine');
+        if (!isOcctReady()) throw new Error('OCCT not ready');
+        projected = occtProjectViews(occtHandle, ['front', 'top', 'right']);
+      }
       if (!projected) throw new Error('projection unavailable');
       // F-2/D-1 — 치수 소스 = 모델 지오메트리 bbox(모델값). 재투영마다 갱신.
       const geo = result?.geometry;
@@ -727,7 +744,7 @@ export default function DrawingView({
     } finally {
       setHlrBusy(false);
     }
-  }, [hlrViews, occtHandle, hlrBusy]);
+  }, [hlrViews, occtHandle, hlrBusy, handleInWorker, projectViews, result?.geometry]);
 
   // M4: Orthographic views are recomputed from `result.geometry` every render (useMemo below).
   // Unlike `AutoDrawingPanel`, there is no separate cached drawing snapshot — no stale-preview gap.

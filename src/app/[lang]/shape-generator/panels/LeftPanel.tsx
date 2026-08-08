@@ -1123,6 +1123,23 @@ function LeftPanel({
                   </>
                 ) : (
                   <>
+                    {/* F-4 후속(260808g) — 도면 뷰 정식 진입점: 이전엔 스케치
+                        모드에서만 노출돼 파라메트릭/핸드오프 파트는 PDF 내보내기
+                        우회로만 도달했다(실측). 3D↔도면 토글을 상시 제공. */}
+                    <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
+                      {([['3d', '3D'], ['drawing', t['drawingView'] ?? '2D Drawing']] as const).map(([mode, label]) => (
+                        <button key={mode} onClick={() => onSketchViewModeChange(mode)}
+                          data-testid={`view-mode-${mode}`}
+                          style={{
+                            flex: 1, padding: '5px 0', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                            border: sketchViewMode === mode ? `2px solid ${theme.accent}` : `1px solid ${theme.border}`,
+                            background: sketchViewMode === mode ? `${theme.accent}22` : theme.bg,
+                            color: sketchViewMode === mode ? theme.accent : theme.textMuted,
+                          }}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                     {/* Shape selector — search + favorites + recent + grid */}
                     <div data-tour="shape-selector">
                       {/* Search bar */}

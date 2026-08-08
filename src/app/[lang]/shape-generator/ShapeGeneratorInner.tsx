@@ -628,7 +628,7 @@ export function ShapeGeneratorInner() {
   const { performCSG, loading: csgLoading, cancel: cancelCsg } = useCsgWorker();
   const { runFEA: runFEAWorker, loading: feaWorkerLoading, cancel: cancelFea } = useFEAWorker();
   const { analyzeDFM: analyzeDFMWorker, loading: dfmWorkerLoading, cancel: cancelDfm } = useDFMWorker();
-  const { runPipeline: runPipelineWorker, loading: pipelineWorkerLoading, progress: pipelineProgress, progressLabel: pipelineProgressLabel, cancel: cancelPipeline } = usePipelineWorker();
+  const { runPipeline: runPipelineWorker, loading: pipelineWorkerLoading, progress: pipelineProgress, progressLabel: pipelineProgressLabel, cancel: cancelPipeline, projectViews: projectViewsWorker } = usePipelineWorker();
   const {
     detect: detectInterferenceWorker,
     cancel: cancelInterferenceWorker,
@@ -1972,10 +1972,20 @@ export function ShapeGeneratorInner() {
     let pref: string | null = null;
     try { pref = window.localStorage.getItem('nf_occt_pref'); } catch { /* private mode */ }
     if (pref === 'off') return;
-    const enable = () => { if (!useUIStore.getState().occtMode) void setOcctMode(true); };
+    let enabled = false;
+    const enable = () => {
+      if (enabled) return;
+      enabled = true;
+      if (!useUIStore.getState().occtMode) void setOcctMode(true);
+    };
+    // F-4 후속 실측(260808g): requestIdleCallback 은 WebGL rAF 루프가 프레임을
+    // 포화시키면 **무기한 굶는다**(헤드리스 실측 — 20s 동안 미호출, 저사양
+    // 실기기도 동일 위험). idle 콜백만 믿으면 kernel-of-record 가 조용히
+    // mesh 로 남으므로 3s 타임아웃으로 활성을 보증한다(먼저 온 쪽이 실행).
     const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback;
-    if (ric) ric(enable);
-    else window.setTimeout(enable, 400);
+    const timeoutId = window.setTimeout(enable, 3_000);
+    if (ric) ric(() => { window.clearTimeout(timeoutId); enable(); });
+    return () => window.clearTimeout(timeoutId);
   }, [setOcctMode]);
   const multiView = useUIStore(s => s.multiView);
   const setMultiView = useUIStore(s => s.setMultiView);
@@ -7069,6 +7079,9 @@ export function ShapeGeneratorInner() {
         resultNull: !result,
         baseNull: !baseShapeResult,
         baseGenError: baseGenErrorRef.current,
+        // F-4 후속 — B-rep 핸들 페리 실측(워커 소속 플래그 포함).
+        resultOcctHandle: (result?.geometry?.userData as { occtHandle?: string } | undefined)?.occtHandle ?? null,
+        resultHandleInWorker: !!(result?.geometry?.userData as { occtHandleInWorker?: boolean } | undefined)?.occtHandleInWorker,
         pipelineErrors,
         // F-6(260808g) — 어셈블리 시드 실증용: 배치 파트의 사상 결과 실측.
         placedParts: placedParts.map(p => ({
@@ -10152,9 +10165,30 @@ export function ShapeGeneratorInner() {
                       {lt.sketchRefLoading}
                     </div>
                   )}
+                  {/* F-4 후속(260808g) — 도면 뷰 정식 진입점(쉘 공통): 실측상
+                      기존 진입은 스케치 모드 한정 토글(레거시 LeftPanel — 쉘 v2
+                      에선 0폭)과 PDF 내보내기 우회뿐이었다. 중앙 뷰포트에
+                      플로팅 토글을 상시 제공(비스케치·형상 있음일 때). */}
+                  {!isSketchMode && effectiveResult && (
+                    <button
+                      data-testid="drawing-view-toggle"
+                      onClick={() => setSketchViewMode(sketchViewMode === 'drawing' ? '3d' : 'drawing')}
+                      title={sketchViewMode === 'drawing' ? '3D' : '2D Drawing'}
+                      style={{
+                        position: 'absolute', top: 10, right: 12, zIndex: 30,
+                        padding: '5px 12px', borderRadius: 6,
+                        border: `1px solid ${sketchViewMode === 'drawing' ? 'var(--nx-accent)' : 'var(--nx-border)'}`,
+                        background: sketchViewMode === 'drawing' ? 'var(--nx-bg)' : 'var(--nx-panel-2)',
+                        color: sketchViewMode === 'drawing' ? 'var(--nx-accent-2)' : 'var(--nx-text)',
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      }}
+                    >
+                      {sketchViewMode === 'drawing' ? '⬒ 3D' : '📐 2D'}
+                    </button>
+                  )}
                   <div key={sketchViewMode === 'drawing' ? 'draw' : isSketchMode ? 'sketch2d' : '3d'} style={{ animation: 'fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards', width: '100%', height: '100%' }}>
                     {sketchViewMode === 'drawing' ? (
-                    <DrawingView result={sketchResult || effectiveResult} unitSystem={unitSystem} partName={drawingTitlePartName || selectedId} material={materialKey} />
+                    <DrawingView result={sketchResult || effectiveResult} unitSystem={unitSystem} partName={drawingTitlePartName || selectedId} material={materialKey} projectViews={projectViewsWorker} />
                   ) : isSketchMode ? (
                     sketchViewMode === '3d' ? (
                     <Sketch3DCanvas

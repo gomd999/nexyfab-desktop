@@ -29,6 +29,18 @@ import {
 
 // ─── Message types ───────────────────────────────────────────────────────────
 
+/** F-4 후속(260808g) — 워커 소유 B-rep 핸들의 HLR 투영 RPC. 워커 파이프라인
+ *  결과의 occtHandle 은 워커측 레지스트리 소속이라 메인 스레드 occtProjectViews
+ *  로는 조회 불가(실측) — 투영을 핸들이 사는 컨텍스트에서 수행한다. */
+export interface ProjectViewsInput {
+  type: 'PROJECT_VIEWS';
+  payload: {
+    requestId: number;
+    handle: string;
+    views: Array<'front' | 'top' | 'right' | 'left' | 'back' | 'bottom'>;
+  };
+}
+
 export interface PipelineWorkerInput {
   type: 'RUN_PIPELINE';
   payload: {
@@ -48,7 +60,14 @@ export interface PipelineWorkerInput {
 }
 
 export interface PipelineWorkerOutput {
-  type: 'PIPELINE_RESULT' | 'PIPELINE_ERROR' | 'PIPELINE_PROGRESS';
+  type: 'PIPELINE_RESULT' | 'PIPELINE_ERROR' | 'PIPELINE_PROGRESS' | 'PROJECT_RESULT';
+  /** PROJECT_VIEWS RPC 상관관계 id — PROJECT_RESULT 에만. */
+  requestId?: number;
+  /** PROJECT_RESULT: 뷰별 SVG 경로(직렬화 가능한 순수 데이터) 또는 실패 null. */
+  projectedViews?: Record<string, { visible: unknown[]; hidden: unknown[]; viewBox: string | null }> | null;
+  /** 파이프라인 결과의 B-rep 핸들(워커 레지스트리 소속 — PROJECT_VIEWS 로만
+   *  사용 가능, 메인 스레드 레지스트리에선 조회 불가). */
+  occtHandle?: string | null;
   /** Progress percentage */
   progress?: number;
   /** Progress label */
@@ -78,9 +97,21 @@ export interface PipelineWorkerOutput {
 
 const ctx = self as unknown as Worker;
 
-ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput>) => {
-  const { type, payload } = event.data;
+ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput | ProjectViewsInput>) => {
+  const { type } = event.data;
+  if (type === 'PROJECT_VIEWS') {
+    const { requestId, handle, views } = event.data.payload;
+    try {
+      const { occtProjectViews } = await import('../features/occtEngine');
+      const projected = occtProjectViews(handle, views);
+      ctx.postMessage({ type: 'PROJECT_RESULT', requestId, projectedViews: projected ?? null } satisfies PipelineWorkerOutput);
+    } catch {
+      ctx.postMessage({ type: 'PROJECT_RESULT', requestId, projectedViews: null } satisfies PipelineWorkerOutput);
+    }
+    return;
+  }
   if (type !== 'RUN_PIPELINE') return;
+  const { payload } = event.data;
 
   try {
     const { positions, normals, indices, features, occtMode, baseSpec, faceProvenance } = payload;
@@ -144,6 +175,8 @@ ctx.addEventListener('message', async (event: MessageEvent<PipelineWorkerInput>)
       topoEdgeSignatures: outGeo.userData?.topoEdgeSignatures as PipelineWorkerOutput['topoEdgeSignatures'],
       meshDowngrades: collectDowngrades(outGeo),
       faceProvenance: outFaceProvenance,
+      // F-4 후속 — 핸들 페리(워커 레지스트리 소속임을 소비자가 알도록 명시).
+      occtHandle: (outGeo.userData?.occtHandle as string | undefined) ?? null,
     };
 
     const transferables: ArrayBuffer[] = [outPositions.buffer as ArrayBuffer];

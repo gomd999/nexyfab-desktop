@@ -70,6 +70,9 @@ function deserializeGeometry(
   return geo;
 }
 
+/** 뷰별 SVG 경로(워커 직렬화 그대로) — DrawingView HLR 소비 형태와 동일. */
+export type ProjectedViewsResult = Record<string, { visible: unknown[]; hidden: unknown[]; viewBox: string | null }>;
+
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function usePipelineWorker() {
@@ -78,6 +81,9 @@ export function usePipelineWorker() {
     resolve: (r: PipelineRunResult) => void;
     reject: (e: Error) => void;
   } | null>(null);
+  /** PROJECT_VIEWS RPC pending — requestId → resolve(null=실패/워커소멸). */
+  const projPendingRef = useRef<Map<number, (v: ProjectedViewsResult | null) => void>>(new Map());
+  const projSeqRef = useRef(0);
 
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -97,6 +103,14 @@ export function usePipelineWorker() {
           if (data.label !== undefined) setProgressLabel(data.label);
           return;
         }
+        // F-4 후속 — PROJECT_VIEWS RPC 응답은 파이프라인 pending 과 무관하게
+        // requestId 로 상관(파이프라인 pending 을 지우면 안 된다).
+        if (data.type === 'PROJECT_RESULT') {
+          const req = data.requestId !== undefined ? projPendingRef.current.get(data.requestId) : undefined;
+          if (data.requestId !== undefined) projPendingRef.current.delete(data.requestId);
+          req?.(data.projectedViews ?? null);
+          return;
+        }
 
         const pending = pendingRef.current;
         pendingRef.current = null;
@@ -107,6 +121,11 @@ export function usePipelineWorker() {
 
         if (data.type === 'PIPELINE_RESULT' && data.positions) {
           const geo = deserializeGeometry(data.positions, data.normals, data.indices);
+          // F-4 후속 — 워커 레지스트리 소속 B-rep 핸들 페리(HLR 등은
+          // projectViews RPC 로만 사용 가능함을 플래그로 명시).
+          if (data.occtHandle) {
+            geo.userData = { ...geo.userData, occtHandle: data.occtHandle, occtHandleInWorker: true };
+          }
           // Re-attach stable topology ids (userData doesn't cross the worker
           // boundary, so the worker ships them as plain JSON alongside the mesh).
           if (data.topoEdgeSignatures) {
@@ -153,6 +172,8 @@ export function usePipelineWorker() {
         pendingRef.current = null;
         pending.reject(new Error('Pipeline worker terminated'));
       }
+      for (const [, resolveProj] of projPendingRef.current) resolveProj(null);
+      projPendingRef.current.clear();
     };
   }, [spawnWorker]);
 
@@ -175,6 +196,9 @@ export function usePipelineWorker() {
         setProgress(0);
         setProgressLabel('');
         stale.reject(new Error('Pipeline superseded'));
+        // 워커 교체 = 투영 RPC pending·핸들 레지스트리 소멸 — null 로 정리.
+        for (const [, resolveProj] of projPendingRef.current) resolveProj(null);
+        projPendingRef.current.clear();
         workerRef.current.terminate();
         workerRef.current = null;
         spawnWorker();
@@ -251,5 +275,30 @@ export function usePipelineWorker() {
     spawnWorker();
   }, [spawnWorker]);
 
-  return { runPipeline, loading, progress, progressLabel, cancel };
+  /** F-4 후속(260808g) — 워커 레지스트리 소속 핸들의 HLR 투영 RPC.
+   *  워커 부재/실패/10s 초과 → null(호출측 fail-closed). */
+  const projectViews = useCallback((
+    handle: string,
+    views: Array<'front' | 'top' | 'right' | 'left' | 'back' | 'bottom'>,
+  ): Promise<ProjectedViewsResult | null> => {
+    const worker = workerRef.current;
+    if (!worker) return Promise.resolve(null);
+    const requestId = ++projSeqRef.current;
+    return new Promise<ProjectedViewsResult | null>(resolve => {
+      const timeoutId = setTimeout(() => {
+        projPendingRef.current.delete(requestId);
+        resolve(null);
+      }, 10_000);
+      projPendingRef.current.set(requestId, v => { clearTimeout(timeoutId); resolve(v); });
+      try {
+        worker.postMessage({ type: 'PROJECT_VIEWS', payload: { requestId, handle, views } });
+      } catch {
+        clearTimeout(timeoutId);
+        projPendingRef.current.delete(requestId);
+        resolve(null);
+      }
+    });
+  }, []);
+
+  return { runPipeline, loading, progress, progressLabel, cancel, projectViews };
 }
