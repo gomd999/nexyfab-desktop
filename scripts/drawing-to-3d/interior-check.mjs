@@ -27,22 +27,9 @@ function footprint(part) {
   return { x0: a.min[0] + tx, x1: a.max[0] + tx, y0: a.min[1] + ty, y1: a.max[1] + ty, z0: a.min[2] + tz, z1: a.max[2] + tz };
 }
 
-/**
- * @param assembly cafe_room형 (roomBounds{W,D}·exits[{x,y,widthMm}]·furniture 메타)
- * @param params { travelLimitMm=30000, occupantDensityM2=1.4, cell=100 }
- */
-export function interiorCheck(assembly, params = {}) {
-  const allParts = assembly?.parts ?? [];
-  const unverifiedParts = allParts.filter((p) => p.unverified === true);
-  const parts = allParts.filter((p) => p.unverified !== true);
-  const rb = assembly?.roomBounds;
-  const exits = assembly?.exits ?? [];
-  if (!rb?.W || !rb?.D) return { ok: false, error: 'roomBounds{W,D} 메타 필요 (cafe_room형 어셈블리)' };
-  if (!exits.length) return { ok: false, error: 'exits[] 메타 필요 — 출입구 없는 실은 피난 검토 불가(정직 거부)' };
-
-  const cell = Math.max(50, Number(params.cell) || 100);
+/** 보행 차단 격자(공용) — interiorCheck 와 passageWidthCheck 가 같은 규칙을 본다. */
+function buildWalkGrid(parts, rb, cell) {
   const nx = Math.ceil(rb.W / cell), ny = Math.ceil(rb.D / cell);
-
   // ── 장애물 격자 (보행 차단: 테이블·카운터·벽 — z 1800 이하에 존재하는 풋프린트) ──
   const blocked = new Uint8Array(nx * ny);
   const obstacles = parts.filter((p) => ['table', 'counter', 'wall'].includes(p.role) && footprint(p).z0 < 1800);
@@ -70,6 +57,25 @@ export function interiorCheck(assembly, params = {}) {
       else blockRect({ x0: f.x0, x1: f.x1, y0: (ob.at?.ty ?? 0) + s0, y1: (ob.at?.ty ?? 0) + s1, z0: f.z0 });
     }
   }
+
+  return { nx, ny, blocked };
+}
+
+/**
+ * @param assembly cafe_room형 (roomBounds{W,D}·exits[{x,y,widthMm}]·furniture 메타)
+ * @param params { travelLimitMm=30000, occupantDensityM2=1.4, cell=100 }
+ */
+export function interiorCheck(assembly, params = {}) {
+  const allParts = assembly?.parts ?? [];
+  const unverifiedParts = allParts.filter((p) => p.unverified === true);
+  const parts = allParts.filter((p) => p.unverified !== true);
+  const rb = assembly?.roomBounds;
+  const exits = assembly?.exits ?? [];
+  if (!rb?.W || !rb?.D) return { ok: false, error: 'roomBounds{W,D} 메타 필요 (cafe_room형 어셈블리)' };
+  if (!exits.length) return { ok: false, error: 'exits[] 메타 필요 — 출입구 없는 실은 피난 검토 불가(정직 거부)' };
+
+  const cell = Math.max(50, Number(params.cell) || 100);
+  const { nx, ny, blocked } = buildWalkGrid(parts, rb, cell);
 
   // ── 다중 소스 BFS (출입구 → 전체 도달거리) ─────────────────────────────────
   const dist = new Float32Array(nx * ny).fill(-1);
@@ -511,4 +517,98 @@ if (isMain) {
   const sane = r.travel.maxTravelM > 3 && r.travel.maxTravelM < 20 && r.finishes.floorM2 === 48;
   console.log(sane && r.travel.pass ? 'interior-check self-test: PASS' : 'interior-check self-test: FAIL');
   if (!(sane && r.travel.pass)) process.exit(1);
+}
+
+/**
+ * passageWidthCheck — D-L2(260808): 최소 통로 유효폭 게이트.
+ *
+ * 방법(결정론 형태학): ① 공용 보행격자 → ② 장애물·실경계로부터의 클리어런스
+ * 맵(옥타일 다중소스) → ③ 클리어런스 ≥ minWidth/2 인 셀만 남긴 "침식 보행면"
+ * 에서 출입구 도달성 BFS. 침식면에서 도달 불가한 구역 = 그 구역으로 가는 모든
+ * 경로에 minWidth 미만 병목이 존재한다는 뜻이다(형태학적 필요충분).
+ *
+ * 게이트: (a) 비침식 보행면의 최원점 중 클리어런스가 충분한 대표점이 침식면에서
+ * 도달 가능 (b) 침식 보행면 도달 비율 ≥ minCoverage. 셀 해상도 1셀(기본 100mm)
+ * 은 판정 공차다 — 문폭=minWidth 경계 케이스를 위해 반경에서 1셀을 뺀다(표기).
+ *
+ * 한계값(minWidthMm)은 입력이다 — 용도별 법규(피난통로 등)는 프로젝트 확인.
+ */
+export function passageWidthCheck(assembly, params = {}) {
+  const allParts = (assembly?.parts ?? []).filter((p) => p.unverified !== true);
+  const rb = assembly?.roomBounds;
+  const exits = assembly?.exits ?? [];
+  if (!rb?.W || !rb?.D) return { ok: false, error: 'roomBounds{W,D} 메타 필요' };
+  if (!exits.length) return { ok: false, error: 'exits[] 메타 필요' };
+  const cell = Math.max(50, Number(params.cell) || 100);
+  const minWidthMm = Number(params.minWidthMm) || 900;
+  const minCoverage = Number.isFinite(params.minCoverage) ? params.minCoverage : 0.8;
+  const { nx, ny, blocked } = buildWalkGrid(allParts, rb, cell);
+
+  // ── 클리어런스: 장애물/경계 셀에서의 옥타일 거리(셀 단위) ──────────────────
+  const INF = 1e9;
+  const clear = new Float32Array(nx * ny).fill(INF);
+  const D8 = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2]];
+  // 다중소스 다익스트라(작은 힙 재구현 대신 버킷 근사 — 옥타일이라 우선순위 큐 필요)
+  const heap = [];
+  const push = (idx, d) => { heap.push([d, idx]); let i = heap.length - 1; while (i > 0) { const par = (i - 1) >> 1; if (heap[par][0] <= heap[i][0]) break; [heap[par], heap[i]] = [heap[i], heap[par]]; i = par; } };
+  const pop = () => { const top = heap[0]; const last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const idx = j * nx + i;
+    if (blocked[idx] || i === 0 || j === 0 || i === nx - 1 || j === ny - 1) { clear[idx] = 0; push(idx, 0); }
+  }
+  while (heap.length) {
+    const [d, cur] = pop();
+    if (d > clear[cur]) continue;
+    const ci = cur % nx, cj = (cur / nx) | 0;
+    for (const [dx, dy, w] of D8) {
+      const ni = ci + dx, nj = cj + dy;
+      if (ni < 0 || nj < 0 || ni >= nx || nj >= ny) continue;
+      const nidx = nj * nx + ni;
+      if (d + w < clear[nidx]) { clear[nidx] = d + w; push(nidx, d + w); }
+    }
+  }
+
+  // ── 침식 보행면 + 출입구 도달성 ─────────────────────────────────────────────
+  const rCells = Math.max(0, minWidthMm / 2 / cell - 1); // 1셀 = 판정 공차
+  const walkable = (idx) => !blocked[idx];
+  const eroded = (idx) => walkable(idx) && clear[idx] >= rCells;
+  const reach = new Uint8Array(nx * ny);
+  const qx = new Int32Array(nx * ny); let qh = 0, qt = 0;
+  for (const ex of exits) {
+    const halfW = (ex.widthMm ?? 900) / 2;
+    for (let x = ex.x - halfW; x <= ex.x + halfW; x += cell) {
+      const i = Math.min(nx - 1, Math.max(0, Math.floor(x / cell)));
+      const j = Math.min(ny - 1, Math.max(0, Math.floor((ex.y ?? 0) / cell)));
+      // 출입구 주변에서 가장 가까운 침식 셀을 시드로(문턱 셀 자체는 경계 클리어런스 0)
+      for (let jj = Math.max(0, j - 5); jj <= Math.min(ny - 1, j + 5); jj++) {
+        const idx = jj * nx + i;
+        if (eroded(idx) && !reach[idx]) { reach[idx] = 1; qx[qt++] = idx; }
+      }
+    }
+  }
+  while (qh < qt) {
+    const cur = qx[qh++];
+    const ci = cur % nx, cj = (cur / nx) | 0;
+    for (const [dx, dy] of D8) {
+      const ni = ci + dx, nj = cj + dy;
+      if (ni < 0 || nj < 0 || ni >= nx || nj >= ny) continue;
+      const nidx = nj * nx + ni;
+      if (!reach[nidx] && eroded(nidx)) { reach[nidx] = 1; qx[qt++] = nidx; }
+    }
+  }
+
+  let erodedCells = 0, reached = 0;
+  for (let idx = 0; idx < nx * ny; idx++) { if (eroded(idx)) { erodedCells++; if (reach[idx]) reached++; } }
+  const coverage = erodedCells ? reached / erodedCells : 0;
+  const pass = erodedCells > 0 && coverage >= minCoverage;
+  return {
+    ok: true, pass,
+    minWidthMm, cellMm: cell, toleranceMm: cell,
+    erodedCells, reachedCells: reached, coverage: round(coverage, 3),
+    note: pass
+      ? `유효폭 ${minWidthMm}mm 통로로 침식 보행면의 ${Math.round(coverage * 100)}% 도달`
+      : erodedCells === 0
+        ? `유효폭 ${minWidthMm}mm 를 만족하는 보행면이 없음`
+        : `침식 보행면의 ${Math.round((1 - coverage) * 100)}% 가 ${minWidthMm}mm 미만 병목 뒤에 있음`,
+  };
 }
