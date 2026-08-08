@@ -38,6 +38,7 @@ import {
   type RelinkRecord,
   type RelinkTarget,
 } from '../features/refRelink';
+import { occtTopoNameAtClick } from '../features/occtEngine';
 import type { EdgeSig } from '../features/edgeCorrespondence';
 import type { EdgeSelectionInfo } from '../editing/selectionInfo';
 import type { RefRelinkItem } from './RefRelinkPanel';
@@ -88,7 +89,7 @@ export function useRefRelinkWiring(args: UseRefRelinkWiringArgs): UseRefRelinkWi
   const [history, setHistory] = useState<RelinkRecord[]>([]);
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   // items 계산 시점의 컨텍스트를 apply 가 재사용 (stale-prop 클릭 방지용 ref).
-  const applyCtxRef = useRef<{ bbox?: Bbox3 } | null>(null);
+  const applyCtxRef = useRef<{ bbox?: Bbox3; occtHandle?: string } | null>(null);
 
   const { items, lossKey } = useMemo((): { items: RefRelinkItem[]; lossKey: string | null } => {
     if (!geometry) return { items: [], lossKey: null };
@@ -112,7 +113,8 @@ export function useRefRelinkWiring(args: UseRefRelinkWiringArgs): UseRefRelinkWi
     const scale = bbox
       ? Math.max(bbox.max[0] - bbox.min[0], bbox.max[1] - bbox.min[1], bbox.max[2] - bbox.min[2])
       : undefined;
-    applyCtxRef.current = bbox ? { bbox } : {};
+    const occtHandle = geometry.userData?.occtHandle as string | undefined;
+    applyCtxRef.current = { ...(bbox ? { bbox } : {}), ...(occtHandle ? { occtHandle } : {}) };
 
     const items: RefRelinkItem[] = lost.map(lostRef => ({
       lostRef,
@@ -160,6 +162,17 @@ export function useRefRelinkWiring(args: UseRefRelinkWiringArgs): UseRefRelinkWi
         {
           confident: clickedCandidate?.confident ?? false,
           ...(applyCtxRef.current?.bbox ? { currentBbox: applyCtxRef.current.bbox } : {}),
+          // K7-S4 — 재연결로 고른 에지의 A안 이름을 현재 이름표에서 해석해 병기.
+          ...(() => {
+            const h = applyCtxRef.current?.occtHandle;
+            if (!h || target.kind !== 'sig') return {};
+            const nm = occtTopoNameAtClick(
+              h,
+              { x: target.sig.mid[0], y: target.sig.mid[1], z: target.sig.mid[2] },
+              [target.sig.dir[0], target.sig.dir[1], target.sig.dir[2]],
+            );
+            return nm ? { topoName: nm } : {};
+          })(),
         },
       );
       if (consumer.type !== 'feature') return; // 타입상 도달 불가 (applyRelink 가 보존)

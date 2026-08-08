@@ -362,6 +362,28 @@ describe('applyRelink', () => {
     expect(re.score).toBeCloseTo(1.0, 10);
   });
 
+  it('K7-S4: fresh topoName is stamped, a stale one never survives the relink', () => {
+    const staleSel: EdgeSelectionInfo = { ...SEL, topoName: 'e.vert.99' };
+    const feat: RelinkableConsumer = { type: 'feature', id: 'feat-1', op: 'Fillet', edgeSelections: [staleSel] };
+    const lost: LostRef = {
+      id: 'feature:feat-1#sel0',
+      consumer: { type: 'feature', id: 'feat-1', label: 'Fillet' },
+      kind: 'edge-selection', selectionIndex: 0, reason: 'name_gone',
+      anchor: { position: SEL.position, direction: SEL.direction!, length: SEL.length },
+    };
+    const chosen = BOX_VERTS[1]!;
+    // 호출측이 현재 이름표에서 해석한 새 이름을 넘기면 병기 저장
+    const withName = applyRelink(feat, lost, { kind: 'sig', sigIndex: 1, sig: chosen }, {
+      at: 99, topoName: 'e.vert.1',
+    });
+    const sels1 = (withName.consumer as { edgeSelections: readonly EdgeSelectionInfo[] }).edgeSelections;
+    expect(sels1[0]!.topoName).toBe('e.vert.1');
+    // 이름 해석이 없으면 낡은 이름이 절대 승계되지 않는다(무이름이 정직)
+    const withoutName = applyRelink(feat, lost, { kind: 'sig', sigIndex: 1, sig: chosen }, { at: 99 });
+    const sels2 = (withoutName.consumer as { edgeSelections: readonly EdgeSelectionInfo[] }).edgeSelections;
+    expect(sels2[0]!.topoName).toBeUndefined();
+  });
+
   it('refuses mismatches instead of silently applying', () => {
     const feat: RelinkableConsumer = { type: 'feature', id: 'feat-1', edgeSelections: [SEL] };
     const dim: RelinkableConsumer = { type: 'dimension', id: 'dim-1', refs: ['e.vert.0'] };

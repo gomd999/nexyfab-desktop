@@ -437,6 +437,10 @@ export interface ApplyRelinkOptions {
   /** Current solid bbox: stamped onto a relinked edge selection so the next
    *  rebuild remaps from CURRENT geometry, not the stale pre-loss bbox. */
   currentBbox?: BBox3;
+  /** K7-S4 — 재연결로 고른 현재 에지의 생성-이력(System A) 이름. 호출측(UI)이
+   *  현재 핸들 이름표에서 해석해 넘기면 새 선택에 병기 저장된다. 낡은
+   *  topoName 은 어떤 경우에도 승계되지 않는다(next 재구성이 보장). */
+  topoName?: string;
 }
 
 export interface ApplyRelinkResult {
@@ -496,6 +500,7 @@ export function applyRelink(
       // Stale bbox must NOT survive the relink (it belongs to the pre-loss
       // geometry); anchor to the current bbox when the caller provides it.
       ...(opts.currentBbox ? { bbox: opts.currentBbox } : {}),
+      ...(opts.topoName ? { topoName: opts.topoName } : {}),
       ...(old.partName !== undefined ? { partName: old.partName } : {}),
     };
     const edgeSelections = consumer.edgeSelections.map((s, i) => (i === idx ? next : s));
