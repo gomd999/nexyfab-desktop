@@ -12,6 +12,8 @@
 
 import { buildElements, chordPolyline, clipElements, chainAt, groundFromContours, groundFromSurvey } from './alignment-geom.mjs';
 import { TOL_TRIM_RESIDUAL, minSeg } from './geometry-tolerance.mjs';
+import { buildTower } from './tower-template.mjs';
+import { buildBridge } from './bridge-template.mjs';
 
 const num = (v, d) => (Number.isFinite(v) ? v : d);
 const P = (id, type, params, at = {}, material, role) => ({ id, type, params, at, ...(material ? { material } : {}), ...(role ? { role } : {}) });
@@ -3817,6 +3819,51 @@ function deskStandAssembly(p = {}) {
   };
 }
 
+/**
+ * N2/N3(260808) — 계층 IR 템플릿 래퍼: buildTower/buildBridge 는 IR 전개+
+ * 결정론 게이트까지 통과한 flat 어셈블리를 준다. 게이트 실패는 카탈로그의
+ * invalid_params 통로(alignmentErrors)로 승격 — 조용한 기본값 대체 없음.
+ */
+function hiRiseTowerAssembly(p) {
+  const r = buildTower({
+    floors: p.floors, nx: p.baysX, ny: p.baysY, bayX: p.bayX, bayY: p.bayY,
+    floorH: p.floorH, withUnits: (p.withUnits ?? 1) >= 0.5,
+  });
+  if (!r.ok) return { ok: false, error: 'gate_failed', name: 'hi-rise tower', domain: 'building', parts: [], alignmentErrors: r.gateErrors };
+  return {
+    ...r.expanded, domain: 'building',
+    // 결정론 게이트 통과 사실을 검사 트리의 실판정으로 싣는다(위 주석 참조).
+    hierarchyGates: [
+      { labelKo: `기둥 수직 연속성 (${(r.ir.meta.nx + 1) * (r.ir.meta.ny + 1)}개 열 × ${r.ir.meta.floors}층)`, pass: true },
+      { labelKo: 'BOQ 패턴곱 교차 (슬래브·기둥 전개 수 = 닫힌형)', pass: true },
+      { labelKo: '풋프린트 포함 (전 부품 평면 범위 내)', pass: true },
+    ],
+  };
+}
+function multiSpanBridgeAssembly(p) {
+  const r = buildBridge({ spans: p.spans, girders: p.girders, spanL: p.spanL, spacing: p.spacing, pierH: p.pierH });
+  if (!r.ok) return { ok: false, error: 'gate_failed', name: 'multi-span bridge', domain: 'bridge', parts: [], alignmentErrors: r.gateErrors };
+  const mm = r.ir.meta;
+  return {
+    ...r.expanded, domain: 'bridge',
+    // bridgeCheck 계약(girder_bridge형 bridgeMeta) — 전부 기하 파라미터에서 유도.
+    bridgeMeta: {
+      span: mm.spanL - mm.gap, nGirders: mm.girders, girderSpacing: mm.spacing,
+      girderH: mm.girderH, deckThk: mm.deckT,
+      // 자기정합 항등: deckW = (nGirders−1)·spacing + 2·overhang (실기하에서 유도)
+      overhang: (mm.width + 500 - (mm.girders - 1) * mm.spacing) / 2, deckW: mm.width + 500,
+      section: { webT: 20, b: 700, h: mm.girderH },
+      multiSpan: { spans: mm.spans, note: '다경간 v1 — 검토는 대표 1경간(단순지지 가정, 연속효과 미고려)' },
+    },
+    hierarchyGates: [
+      { labelKo: `거더 열 연속성 (${mm.girders}열 × ${mm.spans}경간)`, pass: true },
+      { labelKo: '바닥판 표고 연속 (전 경간 동일)', pass: true },
+      { labelKo: `교좌 격자 완전성 (${mm.spans + 1}지점 × ${mm.girders}열)`, pass: true },
+    ],
+  };
+}
+
+
 export const ASSEMBLY_TEMPLATES = {
   civil: [
     {
@@ -3854,6 +3901,18 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   building: [
+    {
+      id: 'hi_rise_tower', labelKo: '고층 타워 (코어+기준층×N·유닛 포함)', labelEn: 'Hi-rise tower (core+typical floors, units)', build: hiRiseTowerAssembly,
+      params: [
+        { name: 'floors', labelKo: '층수', unit: '', default: 10, min: 1, max: 60 },
+        { name: 'baysX', labelKo: '베이 수 X', unit: '', default: 3, min: 1, max: 6 },
+        { name: 'baysY', labelKo: '베이 수 Y', unit: '', default: 2, min: 1, max: 5 },
+        { name: 'bayX', labelKo: '베이 X', unit: 'mm', default: 8000, min: 4000, max: 12000 },
+        { name: 'bayY', labelKo: '베이 Y', unit: 'mm', default: 8000, min: 4000, max: 12000 },
+        { name: 'floorH', labelKo: '층고', unit: 'mm', default: 3400, min: 2800, max: 6000 },
+        { name: 'withUnits', labelKo: '유닛 fit-out (1=포함)', unit: '', default: 1, min: 0, max: 1 },
+      ],
+    },
     {
       id: 'water_tank', labelKo: 'RC 물탱크 (개방 상부)', labelEn: 'RC water tank (open top)', build: waterTankAssembly,
       params: [
@@ -4070,6 +4129,16 @@ export const ASSEMBLY_TEMPLATES = {
     },
   ],
   bridge: [
+    {
+      id: 'multi_span_bridge', labelKo: '다경간 거더교 (교각·교좌 포함)', labelEn: 'Multi-span girder bridge (piers+bearings)', build: multiSpanBridgeAssembly,
+      params: [
+        { name: 'spans', labelKo: '경간 수', unit: '', default: 3, min: 1, max: 12 },
+        { name: 'girders', labelKo: '거더 열 수', unit: '', default: 4, min: 2, max: 8 },
+        { name: 'spanL', labelKo: '경간장(지점 중심간)', unit: 'mm', default: 30000, min: 15000, max: 60000 },
+        { name: 'spacing', labelKo: '거더 중심 간격', unit: 'mm', default: 2800, min: 1800, max: 4000 },
+        { name: 'pierH', labelKo: '교각 높이', unit: 'mm', default: 7000, min: 3000, max: 25000 },
+      ],
+    },
     {
       id: 'girder_bridge', labelKo: '거더교 (단순경간)', labelEn: 'Girder bridge (simple span)', build: girderBridgeAssembly,
       params: [

@@ -39,10 +39,10 @@ export function buildTowerIR(p = {}) {
   const W = nx * bayX + colW, D = ny * bayY + colW; // 외곽 풋프린트(기둥 중심 그리드 + 기둥폭)
 
   const definitions = [
-    { defId: 'column', system: 'structure', parts: [box('col', colW, colW, colH)] },
+    { defId: 'column', system: 'structure', parts: [box('col', colW, colW, colH, {}, { material: 'concrete', role: 'column' })] },
     // 보: X방향(순경간 bayX−colW), Y방향(순경간 bayY−colW) — 기둥 면 사이만.
-    { defId: 'beam_x', system: 'structure', parts: [box('bx', bayX - colW, beamW, beamD)] },
-    { defId: 'beam_y', system: 'structure', parts: [box('by', beamW, bayY - colW, beamD)] },
+    { defId: 'beam_x', system: 'structure', parts: [box('bx', bayX - colW, beamW, beamD, {}, { material: 'concrete', role: 'beam' })] },
+    { defId: 'beam_y', system: 'structure', parts: [box('by', beamW, bayY - colW, beamD, {}, { material: 'concrete', role: 'beam' })] },
     {
       defId: 'core', system: 'structure',
       // 첫 베이 내부의 계단실(3000×2500)+ELV 샤프트(2500×2500) 벽 4+4장, t=200.

@@ -288,7 +288,33 @@ export function auditDomainSafety(assembly, params = {}) {
   return runDomainSafetyCheck(assembly, params);
 }
 
+/**
+ * N-시리즈(260808) — 계층 IR 템플릿의 **결정론 게이트 결과를 검사 트리에 정식
+ * 편입**한다. 기둥 수직 연속성·BOQ 패턴곱 교차·표고 연속 같은 게이트는 형상에서
+ * 결정론으로 판정된 **실판정**이다(입력 대기가 아니다). 템플릿 래퍼가
+ * `assembly.hierarchyGates = [{ labelKo, pass }]` 로 싣고, 여기서 도메인 분기와
+ * 무관하게 결과에 합류한다 — 난간(railing) 합류와 같은 「전 분기 공통 부착」 규약.
+ */
+function withHierarchyGates(assembly, run) {
+  const gates = assembly?.hierarchyGates;
+  if (!Array.isArray(gates) || !gates.length || !run?.result || typeof run.result !== 'object') return run;
+  return {
+    ...run,
+    result: {
+      ...run.result,
+      hierarchyGates: {
+        labelKo: '계층 정합 게이트 (전개 결과 결정론 검증)',
+        checks: gates.map((g) => ({ labelKo: g.labelKo, pass: g.pass !== false })),
+      },
+    },
+  };
+}
+
 function runDomainSafetyCheck(assembly, params) {
+  return withHierarchyGates(assembly, runDomainSafetyCheckInner(assembly, params));
+}
+
+function runDomainSafetyCheckInner(assembly, params) {
   const domain = assembly?.domain;
   if (domain === 'interior') {
     // 260729: interior 도 무조건 interiorCheck(피난·수용인원)로 갔다 — building 이 무조건

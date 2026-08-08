@@ -52,7 +52,7 @@ export function buildBridgeIR(p = {}) {
     {
       defId: 'cross_frame', system: 'structure',
       // 인접 거더 내측 면 사이만: 길이 = spacing − botW (AABB 접촉 0)
-      parts: [box('cf', 300, spacing - botW, 500, {}, { material: 'steel', role: 'cross_frame' })],
+      parts: [box('cf', 300, spacing - botW, 500, {}, { material: 'steel', role: 'crossbeam' })],
     },
     {
       defId: 'span_deck', system: 'structure',
