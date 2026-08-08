@@ -6,6 +6,7 @@ import type { FaceSelectionInfo, EdgeSelectionInfo, ElementSelectionInfo } from 
 import { normalToLabel } from './selectionInfo';
 import { getFaceFeatureIdStrict } from '../features/faceProvenance';
 import { findStableEdgeId, type TaggedEdgeSig } from '../features/topologyRegistry';
+import { occtTopoNameAtClick } from '../features/occtEngine';
 
 /** Returns the closest distance from point `p` to the line segment `ab`,
  *  and the projected world-space point on that segment. Used by the
@@ -260,6 +261,16 @@ export default function SelectionMesh({ geometry, onSelect, onPointerDown, onPoi
             : null;
           const edgePersistentId = stableEdgeId
             ?? (persistentId ? `edge_${persistentId}|dir_${dirKey}` : undefined);
+          // K7-S3 — 생성-이력(A안) 이름 병기: B-rep 핸들에 이름표가 있으면 클릭
+          // 에지의 이름을 함께 저장한다(이중화). 이름표 없는 경로 → undefined.
+          const occtHandle = (geometry.userData as { occtHandle?: string } | undefined)?.occtHandle;
+          const clickTopoName = occtHandle
+            ? occtTopoNameAtClick(
+                occtHandle,
+                { x: bestProj.x, y: bestProj.y, z: bestProj.z },
+                [dir.x, dir.y, dir.z],
+              )
+            : null;
           // Capture the part's world bbox so the finder can remap the click
           // point when a dimension changes (scale-aware re-resolution).
           geometry.computeBoundingBox();
@@ -274,6 +285,7 @@ export default function SelectionMesh({ geometry, onSelect, onPointerDown, onPoi
               ? { min: [worldBox.min.x, worldBox.min.y, worldBox.min.z], max: [worldBox.max.x, worldBox.max.y, worldBox.max.z] }
               : undefined,
             persistentId: edgePersistentId,
+            ...(clickTopoName ? { topoName: clickTopoName } : {}),
           };
           onSelect(edgeInfo, e.shiftKey);
           return;

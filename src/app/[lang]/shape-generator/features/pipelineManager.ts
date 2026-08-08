@@ -15,7 +15,7 @@ import {
   getGeoId,
   type PipelineCacheKernel,
 } from './pipelineCache';
-import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeProfileOnFrame, occtExtrudeCircleOnFrame, occtRevolveProfileOnFrame, occtExtrudeCircle, occtRevolveProfile, occtBaseSolid, occtEdgeSignatures, getShape, registerShape } from './occtEngine';
+import { resetShapeRegistry, ensureOcctReady, isOcctReady, isOcctGlobalMode, occtExtrudeProfile, occtExtrudeProfileOnFrame, occtExtrudeCircleOnFrame, occtRevolveProfileOnFrame, occtExtrudeCircle, occtRevolveProfile, occtBaseSolid, occtEdgeSignatures, getShape, registerShape, composeTopoNamesAfterBoolean } from './occtEngine';
 import { TopologyNamer } from './topologyRegistry';
 
 // Persistent across rebuilds within this module's lifetime (the worker reuses
@@ -579,7 +579,17 @@ function runSketchExtrude(
               const res = operation === 'subtract'
                 ? host.cut?.(toolSolid)
                 : host.fuse?.(toolSolid);
-              if (res) brepHandle = registerShape(res);
+              if (res) {
+                brepHandle = registerShape(res);
+                // K7-S3 — 체인 불리언 결과로 A안 이름 승계: 호스트 이름은 그대로
+                // (이미 한정됐으면 통과), 새 툴 이름은 f.id 로 한정. 커널 히스토리
+                // 없는 심(seam.k)은 저장하지 않는다(합성 헬퍼가 거른다).
+                composeTopoNamesAfterBoolean(
+                  brepHandle,
+                  [{ handle: upstreamHandle }, { handle: tool.handle, featureId: f.id }],
+                  f.id,
+                );
+              }
             }
           }
         }

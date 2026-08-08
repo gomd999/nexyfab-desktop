@@ -25,6 +25,8 @@ import {
 } from 'three';
 import { publicWasmUrl } from '../lib/publicWasmUrl';
 import { reportWarning } from '../lib/telemetry';
+import { buildExtrudeTopo, namesOf, edgeMidpoint } from '@/lib/cad/topoNaming';
+import { composeBooleanTopo, isLegacySeamName } from '@/lib/cad/composedTopo';
 import type { EdgeSig, FaceSig } from './edgeCorrespondence';
 
 let ocInstance: unknown = null;
@@ -128,8 +130,45 @@ export function getShape(handle: string | undefined | null): unknown | null {
   return shapeRegistry.get(handle) ?? null;
 }
 
+/**
+ * K7-S3(260808) — 생성-이력(System A) 에지 이름 레지스트리(브라우저 replicad
+ * 경로). 이름→중점 앵커(mm). 생산자: occtExtrudeProfile(공유 buildExtrudeTopo)
+ * ·occtBoxBooleanWithPrimitive(피처ID 한정 operand 승계+신규는 무명). 소비자:
+ * 선택 시 persistentId 기록(occtNearestTopoName), 리빌드 시 A안 우선 해석
+ * (occtTopoAnchor) — 없으면 명시 상실, B안(서명)은 대조군.
+ */
+const edgeTopoNameRegistry = new Map<string, Map<string, { x: number; y: number; z: number }>>();
+
+export function setTopoNames(handle: string, names: Map<string, { x: number; y: number; z: number }>): void {
+  if (names.size) edgeTopoNameRegistry.set(handle, names);
+}
+export function occtTopoNames(handle: string | undefined | null): Map<string, { x: number; y: number; z: number }> | null {
+  if (!handle) return null;
+  return edgeTopoNameRegistry.get(handle) ?? null;
+}
+export function occtTopoAnchor(handle: string | undefined | null, name: string): { x: number; y: number; z: number } | null {
+  return occtTopoNames(handle)?.get(name) ?? null;
+}
+/** 클릭점에서 가장 가까운 이름(허용 반경 내) — 선택 시 persistentId 기록용. */
+export function occtNearestTopoName(
+  handle: string | undefined | null,
+  point: { x: number; y: number; z: number },
+  toleranceMm = 1.5,
+): string | null {
+  const names = occtTopoNames(handle);
+  if (!names) return null;
+  let best: string | null = null;
+  let bestD = toleranceMm;
+  names.forEach((mid, name) => {
+    const d = Math.hypot(mid.x - point.x, mid.y - point.y, mid.z - point.z);
+    if (d < bestD) { bestD = d; best = name; }
+  });
+  return best;
+}
+
 export function resetShapeRegistry(): void {
   shapeRegistry.clear();
+  edgeTopoNameRegistry.clear();
 }
 
 export async function exportOcctStep(handle: string | undefined | null): Promise<string | null> {
@@ -491,7 +530,141 @@ export function occtExtrudeProfile(
     tolerance: tessellation.tolerance ?? 0.1,
     angularTolerance: tessellation.angularTolerance ?? 0.2,
   });
-  return { geometry: meshToBufferGeometry(mesh), handle: registerShape(solid) };
+  const handle = registerShape(solid);
+  attachExtrudeTopoNames(handle, points, depth, planeOffset);
+  return { geometry: meshToBufferGeometry(mesh), handle };
+}
+
+/**
+ * K7-S3 — XY 평면 직선 extrude 의 생성-이력 이름표(System A)를 핸들에 부착.
+ * 이름 기계는 공유 순수 모듈(buildExtrudeTopo — 노드 브리지·워커 번들과 단일
+ * 소스)이라 규약이 갈릴 수 없다. 실패는 "이름 없음"일 뿐 지오메트리 경로를
+ * 절대 깨지 않는다. 원/revolve/면-프레임 extrude 는 다각 위상이 아니므로 S3
+ * 범위 밖(무이름 → B안 대조군만).
+ */
+function attachExtrudeTopoNames(
+  handle: string,
+  points: { x: number; y: number }[],
+  depth: number,
+  planeOffset: number,
+): void {
+  try {
+    const last = points.length - 1;
+    const loop = (last >= 1
+      && Math.abs(points[last]!.x - points[0]!.x) < 1e-6
+      && Math.abs(points[last]!.y - points[0]!.y) < 1e-6)
+      ? points.slice(0, last)
+      : points;
+    const topo = buildExtrudeTopo({
+      kind: 'extrude',
+      loop,
+      depth,
+      profileOffsetZ: planeOffset || undefined,
+      direction: 'one_sided',
+      mode: 'add',
+    });
+    const names = new Map<string, { x: number; y: number; z: number }>();
+    for (const name of namesOf(topo, 'edge')) {
+      const mid = edgeMidpoint(topo, name);
+      if (mid) names.set(name, { x: mid.x, y: mid.y, z: mid.z });
+    }
+    setTopoNames(handle, names);
+  } catch {
+    /* 이름 생산 실패 = 무이름(B안만) — 지오메트리 무손상 */
+  }
+}
+
+/**
+ * K7-S3 — 불리언 결과 핸들로 A안 이름을 승계 합성한다. 피연산자 이름표를
+ * composeBooleanTopo(공유 모듈)에 넣고, 결과 에지 중점(occtEdgeSignatures —
+ * B-rep 정점 기반, 직선 에지는 해석적 중점과 정확 일치)과의 일치 상속만
+ * 저장한다. 브라우저 경로는 커널 히스토리(Modified/Generated)가 없으므로
+ * 위치-서수 심 이름(seam.k)은 저장하지 않는다 — 명시적 손실이 무언의 오답보다
+ * 낫다(ADR-017 D1). 피연산자 어느 쪽에도 이름표가 없으면 아무것도 안 한다.
+ */
+export function composeTopoNamesAfterBoolean(
+  resultHandle: string | null | undefined,
+  operands: ReadonlyArray<{ handle: string | null | undefined; featureId?: string }>,
+  opId?: string,
+): void {
+  if (!resultHandle) return;
+  try {
+    const inputs: { featureId?: string; names: string[]; anchorOf: (n: string) => { x: number; y: number; z: number } | null }[] = [];
+    for (const op of operands) {
+      const names = occtTopoNames(op.handle);
+      if (!names || names.size === 0) continue;
+      inputs.push({
+        featureId: op.featureId,
+        names: [...names.keys()],
+        anchorOf: (n: string) => names.get(n) ?? null,
+      });
+    }
+    if (inputs.length === 0) return;
+    const sigs = occtEdgeSignatures(resultHandle);
+    if (sigs.length === 0) return;
+    const mids = sigs.map(sg => ({ x: sg.mid[0], y: sg.mid[1], z: sg.mid[2] }));
+    const src = composeBooleanTopo(inputs, mids, { tol: 1e-3, opId });
+    const out = new Map<string, { x: number; y: number; z: number }>();
+    for (const name of src.names()) {
+      if (isLegacySeamName(name)) continue;
+      const a = src.anchor(name);
+      if (a) out.set(name, { x: a.x, y: a.y, z: a.z });
+    }
+    setTopoNames(resultHandle, out);
+  } catch {
+    /* 합성 실패 = 무이름 — 지오메트리 무손상 */
+  }
+}
+
+function distPointToSegment(
+  p: { x: number; y: number; z: number },
+  ax: number, ay: number, az: number,
+  bx: number, by: number, bz: number,
+): number {
+  const abx = bx - ax, aby = by - ay, abz = bz - az;
+  const apx = p.x - ax, apy = p.y - ay, apz = p.z - az;
+  const len2 = abx * abx + aby * aby + abz * abz;
+  const t = len2 > 1e-18 ? Math.max(0, Math.min(1, (apx * abx + apy * aby + apz * abz) / len2)) : 0;
+  const qx = ax + t * abx, qy = ay + t * aby, qz = az + t * abz;
+  return Math.hypot(p.x - qx, p.y - qy, p.z - qz);
+}
+
+/**
+ * K7-S3 — 클릭점에서 가장 가까운 현재 솔리드 에지(선분 거리, 방향 정합 필터)를
+ * 찾고, 그 에지의 중점과 일치(≤1e-2mm)하는 A안 이름을 돌려준다. 선택 시
+ * EdgeSelectionInfo.topoName 기록용. 이름표 없는 핸들·일치 이름 없음 → null.
+ */
+export function occtTopoNameAtClick(
+  handle: string | null | undefined,
+  point: { x: number; y: number; z: number },
+  dir?: [number, number, number] | null,
+  tolMm = 1.5,
+): string | null {
+  const names = occtTopoNames(handle);
+  if (!names || names.size === 0) return null;
+  const sigs = occtEdgeSignatures(handle);
+  let bestMid: [number, number, number] | null = null;
+  let bestD = tolMm;
+  const dl = dir ? Math.hypot(dir[0], dir[1], dir[2]) : 0;
+  for (const sg of sigs) {
+    if (dir && dl > 1e-9) {
+      const dot = Math.abs(sg.dir[0] * dir[0] + sg.dir[1] * dir[1] + sg.dir[2] * dir[2]) / dl;
+      if (dot < 0.99) continue;
+    }
+    const hx = sg.dir[0] * sg.length / 2, hy = sg.dir[1] * sg.length / 2, hz = sg.dir[2] * sg.length / 2;
+    const d = distPointToSegment(
+      point,
+      sg.mid[0] - hx, sg.mid[1] - hy, sg.mid[2] - hz,
+      sg.mid[0] + hx, sg.mid[1] + hy, sg.mid[2] + hz,
+    );
+    if (d < bestD) { bestD = d; bestMid = sg.mid as [number, number, number]; }
+  }
+  if (!bestMid) return null;
+  const [mx, my, mz] = bestMid;
+  for (const [name, m] of names) {
+    if (Math.hypot(m.x - mx, m.y - my, m.z - mz) <= 1e-2) return name;
+  }
+  return null;
 }
 
 interface DrawPenOnFrame {

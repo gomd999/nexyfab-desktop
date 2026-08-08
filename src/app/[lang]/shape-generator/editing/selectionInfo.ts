@@ -32,6 +32,11 @@ export interface EdgeSelectionInfo {
    *  until phase-2 topology naming is wired into the pipeline; when
    *  present, downstream features (fillet/chamfer) can attach it. */
   persistentId?: string;
+  /** K7-S3(260808) — 생성-이력(System A) 에지 이름(예: 'e.vert.2', 'f7/e.top.0-1').
+   *  persistentId(레거시 해시/서수 계열)와 병행 저장되는 이중화 채널: 리빌드 시
+   *  이 이름이 현재 이름표에 실재하면 그 앵커가 우선(A안 해석), 이름표는 있는데
+   *  이름이 사라졌으면 명시 상실(추측 적용 금지). 서명(B안)은 대조군으로 병행. */
+  topoName?: string;
 }
 
 export interface MultiSelectionInfo {

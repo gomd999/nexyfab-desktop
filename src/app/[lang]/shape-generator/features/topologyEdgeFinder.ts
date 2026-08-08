@@ -146,7 +146,7 @@ export async function buildEdgeFinderFromSelection(
  *                    Callers must surface this and ask the user to re-select.
  */
 export type EdgeRefResolution =
-  | { status: 'matched'; finder: ReplicadEdgeFinder }
+  | { status: 'matched'; finder: ReplicadEdgeFinder; /** K7-S3 — index of the matched candidate (A/B control-group comparison). */ index?: number }
   | { status: 'unavailable'; reason: 'no_stored_direction' | 'no_candidates' | 'replicad_unavailable' | 'finder_threw' }
   | { status: 'lost'; reason: EdgeMatchRejection; suggestion: EdgeSig | null };
 
@@ -160,6 +160,8 @@ export function makeReferenceLostNotice(
 ): MeshDowngradeNotice {
   const why = reason === 'ambiguous'
     ? 'several edges of the rebuilt solid match it equally well'
+    : reason === 'name_gone'
+      ? 'its generative-history name no longer exists in the rebuilt solid'
     : reason === 'low_confidence'
       ? 'no edge of the rebuilt solid resembles it closely enough'
       : reason === 'no_parallel_candidate'
@@ -221,6 +223,7 @@ export async function resolveEdgeFinderBySignature(
   try {
     return {
       status: 'matched',
+      index: m.index,
       finder: new Ctor()
         .inDirection(matched.dir)
         .containsPoint(matched.mid, 0.5) as unknown as ReplicadEdgeFinder,

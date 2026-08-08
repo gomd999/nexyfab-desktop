@@ -76,6 +76,10 @@ export interface MatchOptions {
 export type EdgeMatchRejection =
   /** No candidate edges were supplied at all. */
   | 'no_candidates'
+  /** K7-S3 — the stored generative-history name (System A) no longer exists in
+   *  the rebuilt solid's name table: the named edge was consumed by an upstream
+   *  edit. Reported by the A-first resolution path, never by the matcher. */
+  | 'name_gone'
   /** No candidate was parallel enough to the stored direction. */
   | 'no_parallel_candidate'
   /** The best candidate's absolute similarity is below the confidence floor —

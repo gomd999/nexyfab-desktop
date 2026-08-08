@@ -67,6 +67,7 @@ interface Dict {
 }
 
 const REASON_EN: Record<LostRefReason, string> = {
+  name_gone: 'the edge’s generative-history name no longer exists after the rebuild',
   ambiguous: 'several current edges match equally well',
   low_confidence: 'no current edge resembles it closely enough',
   no_parallel_candidate: 'no current edge runs in the same direction',
@@ -78,6 +79,7 @@ const REASON_EN: Record<LostRefReason, string> = {
 };
 
 const REASON_KO: Record<LostRefReason, string> = {
+  name_gone: '리빌드 후 생성-이력 이름이 더 이상 존재하지 않음',
   ambiguous: '현재 형상의 여러 엣지가 동점으로 일치 — 판별 불가',
   low_confidence: '충분히 유사한 현재 엣지 없음',
   no_parallel_candidate: '같은 방향의 현재 엣지 없음',
@@ -89,6 +91,7 @@ const REASON_KO: Record<LostRefReason, string> = {
 };
 
 const REASON_JA: Record<LostRefReason, string> = {
+  name_gone: 'リビルド後、生成履歴の名前が存在しなくなった',
   ambiguous: '現在の形状の複数エッジが同点で一致 — 判別不能',
   low_confidence: '十分に類似する現在のエッジがない',
   no_parallel_candidate: '同じ方向の現在のエッジがない',
@@ -100,6 +103,7 @@ const REASON_JA: Record<LostRefReason, string> = {
 };
 
 const REASON_ZH: Record<LostRefReason, string> = {
+  name_gone: '重建后该边的生成历史名称已不存在',
   ambiguous: '当前形状的多条边同分匹配 — 无法判别',
   low_confidence: '没有足够相似的当前边',
   no_parallel_candidate: '没有同方向的当前边',
@@ -111,6 +115,7 @@ const REASON_ZH: Record<LostRefReason, string> = {
 };
 
 const REASON_ES: Record<LostRefReason, string> = {
+  name_gone: 'El nombre de historial generativo de la arista ya no existe tras la reconstrucción',
   ambiguous: 'Varias aristas actuales empatan en la coincidencia: no se puede discriminar',
   low_confidence: 'No hay ninguna arista actual suficientemente similar',
   no_parallel_candidate: 'No hay ninguna arista actual con la misma dirección',
@@ -122,6 +127,7 @@ const REASON_ES: Record<LostRefReason, string> = {
 };
 
 const REASON_AR: Record<LostRefReason, string> = {
+  name_gone: 'لم يعد اسم سجل الإنشاء للحافة موجودًا بعد إعادة البناء',
   ambiguous: 'تتساوى عدة حواف في الشكل الحالي في التطابق — يتعذّر التمييز',
   low_confidence: 'لا توجد حافة حالية مشابهة بدرجة كافية',
   no_parallel_candidate: 'لا توجد حافة حالية بالاتجاه نفسه',

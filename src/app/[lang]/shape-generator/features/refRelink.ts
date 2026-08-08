@@ -74,7 +74,7 @@ type Triple = [number, number, number];
 export type LostRefReason = EdgeMatchRejection | LossReason | 'unresolved-ref';
 
 const EDGE_MATCH_REJECTIONS: ReadonlySet<string> = new Set([
-  'no_candidates', 'no_parallel_candidate', 'low_confidence', 'ambiguous',
+  'no_candidates', 'no_parallel_candidate', 'low_confidence', 'ambiguous', 'name_gone',
 ]);
 
 export type RefConsumerType = 'feature' | 'dimension' | 'mate';
