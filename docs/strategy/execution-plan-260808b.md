@@ -222,9 +222,11 @@ W-4(정례화)는 매 세션 배경 규칙으로 상시. 👤 임계경로 도�
 | F-1 ✅ | 보스 핸드오프(260808f — 컨버터·시드·SCAD 방출·faceFrame 편측 압출 커널 수정, 브라우저 실증 y-max 19 정확, ae2477d1·fa5398c7) | 기지원 face-frame 기계(occtExtrudeProfileOnFrame·sketchData.faceFrame) 연결 — 판 상면 프레임 합성→addSketchFeature, 프로브 실검증 | 1세션 |
 | F-2 ✅ | 도면 치수 연관 D-1(260808f — HLR 패널 해석 치수 오버레이, 재투영 연동, 578f10a4) | hlr-drawing 해석 치수 오버레이 원리를 모델러 HLR 패널로(피처 파라미터→투영좌표, 리빌드 재계산=구성적 연관) | 1세션 |
 | F-3 ✅ | 과구속 진단(260808f — mateMobilityDiagnosis 4/4+패널 ⚖배지, 02ac4187) | kinematics.mjs solveMobility/rankDiagnostics(29/29)를 메이트 시스템에 — 과구속 경고 배지(조용한 오답 제거 우선) | 1세션 |
-| F-4 | 치수 연관 D-2 | 주석 앵커를 K7 위상 이름에 바인딩(업스트림 수정 후 치수 추적) | 1~2세션 |
+| G-0 ✅ | 어휘 마감 스윕(260808g — rib/shell 시드 매핑+원판 보스, 5788e 계열 커밋) | 기존 피처 재사용 | 완료 |
+| F-6 ✅ | 멀티바디 핸드오프(260808g — assemblyToPartsProgram, 브라우저 실증 4/4, 3eed9b40) | setAssemblyParts 재사용 | 완료 |
+| 커널 ✅ | **XY 압출 반깊이 오프셋 근본수정**(260808g — B-rep 0..d→중심대칭 정렬, 시드/픽스처 재저작, 904 그린, 362b1275) | F-4 실측이 발견 | 완료 |
+| F-4 ✅(v1) | 치수 D-2(260808g — 투영 사상 실측 핀 front(x,−z)/top(x,y)/**right(−y,−z) 정정** + B-rep 투영 원 추출 ⌀그룹·위치 스태거. 잔여=브라우저 DOM 실증(도면 뷰 UI 진입점이 PDF 우회뿐인 것 실측 — 진입 UI 정비와 함께) | svgCircleExtract | v1 완료 |
 | F-5 | 솔버 2단계 | K6 메이트 컴파일+모션 솔버를 모델러 어셈블리에 연결(Gauss-Seidel 점진 대체) | 2~3세션 |
-| F-6 | 멀티바디 핸드오프 | placedParts 경로로 어셈블리 시드(기계 아키타입 4/4째) | 1~2세션 |
 | F-7 | 깊이(데이터 주도) | 베타 텔레메트리 상위 피처→엣지케이스 코퍼스 10종/피처·refpart 골든 확대·저사용=실험적 배지 | 상시(push 후) |
 | F-0 ✅ | 베이스리스 파트(260808f — 근본원인 3층: BVH가 position 부재 지오메트리에서 던져 generate() null 강등→lastGood 폴백이 옛 박스 표시. 가드+빈 업스트림 병합 우회+'none' 셰이프, 브라우저 실증 6/6, fa5398c7) | 완료 |
 
